@@ -5,26 +5,26 @@
 #include "MultiplayerGameState.h"
 
 inline void SetupTestScene(
-    FlexKit::GraphicScene&  scene,
-    FlexKit::RenderSystem&  renderSystem,
-    FlexKit::iAllocator*    allocator,
-    GUID_t                  texture1,
-    GUID_t                  texture2,
-    CopyContextHandle       copyContext)
+	FlexKit::GraphicScene&  scene,
+	FlexKit::RenderSystem&  renderSystem,
+	FlexKit::iAllocator*    allocator,
+	GUID_t                  texture1,
+	GUID_t                  texture2,
+	CopyContextHandle       copyContext)
 {
-    /*
-    const AssetHandle demonModel = 666;
+	/*
+	const AssetHandle demonModel = 666;
 
-    // Load Model
-    auto model = GetMesh(renderSystem, demonModel, copyContext);
+	// Load Model
+	auto model = GetMesh(renderSystem, demonModel, copyContext);
 
 	static const size_t N = 10;
 	static const float  W = (float)10;
 
-    MaterialComponent& materials = MaterialComponent::GetComponent();
-    MaterialHandle material = materials.CreateMaterial();
-    materials.AddTexture(texture1, material);
-    materials.AddTexture(texture2, material);
+	MaterialComponent& materials = MaterialComponent::GetComponent();
+	MaterialHandle material = materials.CreateMaterial();
+	materials.AddTexture(texture1, material);
+	materials.AddTexture(texture2, material);
 
 	for (size_t Y = 0; Y < N; ++Y)
 	{
@@ -37,8 +37,8 @@ inline void SetupTestScene(
 			auto& gameObject = allocator->allocate<FlexKit::GameObject>();
 			auto node = FlexKit::GetNewNode();
 
-            gameObject.AddView<DrawableView>(model, node);
-            gameObject.AddView<MaterialComponentView>(material);
+			gameObject.AddView<DrawableView>(model, node);
+			gameObject.AddView<MaterialComponentView>(material);
 
 			SetMaterialParams(
 				gameObject,
@@ -49,45 +49,44 @@ inline void SetupTestScene(
 				roughness,
 				0.0f);
 
-            SetMaterialHandle(gameObject, GetMaterialHandle(gameObject));
+			SetMaterialHandle(gameObject, GetMaterialHandle(gameObject));
 
 			SetPositionW(node, float3{ (float)X * W, 0, (float)Y * W } - float3{ N * W / 2, 0, N * W / 2 });
 
-            if (demonModel == 6666)
-                Pitch(node, (float)pi / 2.0f);
-            else
-                Yaw(node, (float)pi);
+			if (demonModel == 6666)
+				Pitch(node, (float)pi / 2.0f);
+			else
+				Yaw(node, (float)pi);
 
 			scene.AddGameObject(gameObject, node);
 			SetBoundingSphereFromMesh(gameObject);
 		}
 	}
 
-    materials.ReleaseMaterial(material);
-    */
+	materials.ReleaseMaterial(material);
+	*/
 }
 
 
 enum class TestScenes
 {
-    LocalIllumination,
-	GlobalIllumination,
+	LocalIllumination,
 	ShadowTestScene,
-    PhysXTest,
-    AnimationTest
+	PhysXTest,
+	AnimationTest
 };
 
 
 inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestScenes scene = TestScenes::ShadowTestScene)
 {
-    AddAssetFile("assets\\TestScenes.gameres");
-    AddAssetFile("assets\\ZeldaScene.gameres");
-    AddAssetFile("assets\\CubeMapResource.gameres");
-    AddAssetFile("assets\\skull.gameres");
-    AddAssetFile("assets\\debugPlane.gameres");
-    AddAssetFile("assets\\debugTexture.gameres");
-    AddAssetFile("assets\\aRealDemon.gameres");
-    AddAssetFile("assets\\primrose.gameres");
+	AddAssetFile("assets\\TestScenes.gameres");
+	AddAssetFile("assets\\ZeldaScene.gameres");
+	AddAssetFile("assets\\CubeMapResource.gameres");
+	AddAssetFile("assets\\skull.gameres");
+	AddAssetFile("assets\\debugPlane.gameres");
+	AddAssetFile("assets\\debugTexture.gameres");
+	AddAssetFile("assets\\aRealDemon.gameres");
+	AddAssetFile("assets\\primrose.gameres");
 
 	auto& gameState     = app.PushState<GameState>(base);
 	auto& renderSystem  = app.GetFramework().GetRenderSystem();
@@ -112,53 +111,53 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 			auto& renderSystem          = framework.GetRenderSystem();
 			CopyContextHandle upload    = renderSystem.OpenUploadQueue();
 
-            if(0)
-            {
-                auto testPattern1       = 8001;
-                auto testPattern2       = 8002;
+			if(0)
+			{
+				auto testPattern1       = 8001;
+				auto testPattern2       = 8002;
 
-                size_t          mipCount;
-                uint2           WH;
-                DeviceFormat    format;
+				size_t          mipCount;
+				uint2           WH;
+				DeviceFormat    format;
 
-                /*
-                Vector<TextureBuffer> radiance   = LoadCubeMapAsset(2, mipCount, WH, format, allocator);
-                base.GGXMap = MoveTextureBuffersToVRAM(
-                    renderSystem,
-                    upload,
-                    radiance.begin(),
-                    mipCount,
-                    6,
-                    format);
+				/*
+				Vector<TextureBuffer> radiance   = LoadCubeMapAsset(2, mipCount, WH, format, allocator);
+				base.GGXMap = MoveTextureBuffersToVRAM(
+					renderSystem,
+					upload,
+					radiance.begin(),
+					mipCount,
+					6,
+					format);
 
-                Vector<TextureBuffer> irradience = LoadCubeMapAsset(1, mipCount, WH, format, allocator);
-                base.irradianceMap = MoveTextureBuffersToVRAM(
-                    renderSystem,
-                    upload,
-                    irradience.begin(),
-                    mipCount,
-                    6,
-                    format);
-
-
-                renderSystem.SetDebugName(base.irradianceMap, "irradiance Map");
-                renderSystem.SetDebugName(base.GGXMap, "GGX Map");
-                */
-
-                SetupTestScene(
-                    gameState.scene,
-                    app.GetFramework().GetRenderSystem(),
-                    app.GetCore().GetBlockMemory(),
-                    testPattern1, testPattern2, upload);
+				Vector<TextureBuffer> irradience = LoadCubeMapAsset(1, mipCount, WH, format, allocator);
+				base.irradianceMap = MoveTextureBuffersToVRAM(
+					renderSystem,
+					upload,
+					irradience.begin(),
+					mipCount,
+					6,
+					format);
 
 
-                renderSystem.SubmitUploadQueues(SYNC_Graphics, &upload);
-            }
-            else
-            {
-            }
+				renderSystem.SetDebugName(base.irradianceMap, "irradiance Map");
+				renderSystem.SetDebugName(base.GGXMap, "GGX Map");
+				*/
 
-            state.loaded = true;
+				SetupTestScene(
+					gameState.scene,
+					app.GetFramework().GetRenderSystem(),
+					app.GetCore().GetBlockMemory(),
+					testPattern1, testPattern2, upload);
+
+			}
+			else
+			{
+			}
+
+			renderSystem.SubmitUploadQueues(1, &upload, 1);
+
+			state.loaded = true;
 		};
 
 	auto& workItem = CreateWorkItem(loadTexturesTask, app.GetFramework().core.GetBlockMemory());
@@ -166,144 +165,199 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 
 	switch (scene)
 	{
-    case TestScenes::LocalIllumination:
-        AddAssetFile("assets\\ShadowTestScene.gameres");
+	case TestScenes::LocalIllumination:
+		AddAssetFile("assets\\ShadowTestScene.gameres");
 
-        break;
 		break;
-	case TestScenes::GlobalIllumination:
+		break;
 	case TestScenes::ShadowTestScene:
 	{
-        const AssetHandle ShadowScene = 202;
-        AddAssetFile("assets\\ShadowTestScene.gameres");
+		const AssetHandle ShadowScene = 202;
+		AddAssetFile("assets\\ShadowTestScene.gameres");
 
-        FK_ASSERT(FlexKit::LoadScene(app.GetCore(), gameState.scene, ShadowScene), "Failed to load Scene!");
+		FK_ASSERT(FlexKit::LoadScene(app.GetCore(), gameState.scene, ShadowScene), "Failed to load Scene!");
 
-        MaterialComponent& materials = MaterialComponent::GetComponent();
-        MaterialHandle material = materials.CreateMaterial();
-        materials.AddTexture(8001, material);
+		
 
-        DEBUG_ListSceneObjects(gameState.scene);
+		MaterialComponent& materials = MaterialComponent::GetComponent();
+		MaterialHandle testMaterial = materials.CreateMaterial();
+		materials.AddTexture(8001, testMaterial);
 
-        if (auto [gameObject, res] = FindGameObject(gameState.scene, "DaemonGirl.001"); res)
-        {
-            gameObject->AddView<MaterialComponentView>(material);
-            SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
-        }
-        if (auto [gameObject, res] = FindGameObject(gameState.scene, "DaemonGirl.002"); res)
-        {
-            gameObject->AddView<MaterialComponentView>(material);
-            SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
-        }
+		DEBUG_ListSceneObjects(gameState.scene);
+
+		if (auto [gameObject, res] = FindGameObject(gameState.scene, "DaemonGirl.001"); res)
+		{
+			gameObject->AddView<MaterialComponentView>(testMaterial);
+			SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
+		}
+		if (auto [gameObject, res] = FindGameObject(gameState.scene, "DaemonGirl.002"); res)
+		{
+			gameObject->AddView<MaterialComponentView>(testMaterial);
+			SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
+		}
+
+
+		if (auto [gameObject, res] = FindGameObject(gameState.scene, "Body_Mesh.001"); res && true)
+		{
+			MaterialHandle armourMaterial = materials.CreateMaterial();
+			materials.AddTexture(8100, armourMaterial);
+			materials.AddTexture(8200, armourMaterial);
+
+			gameObject->AddView<MaterialComponentView>(armourMaterial);
+			SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
+		}
+
+		if (auto [gameObject, res] = FindGameObject(gameState.scene, "Body_Mesh.002"); res && true)
+		{
+			MaterialHandle armourMaterial = materials.CreateMaterial();
+			materials.AddTexture(8101, armourMaterial);
+			materials.AddTexture(8201, armourMaterial);
+
+			gameObject->AddView<MaterialComponentView>(armourMaterial);
+			SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
+		}
+
+		if (auto [gameObject, res] = FindGameObject(gameState.scene, "Body_Mesh.003"); res && true)
+		{
+			MaterialHandle armourMaterial = materials.CreateMaterial();
+			materials.AddTexture(8102, armourMaterial);
+			materials.AddTexture(8202, armourMaterial);
+
+			gameObject->AddView<MaterialComponentView>(armourMaterial);
+			SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
+		}
+
+		if (auto [gameObject, res] = FindGameObject(gameState.scene, "Body_Mesh.004"); res && true)
+		{
+			MaterialHandle armourMaterial = materials.CreateMaterial();
+			materials.AddTexture(8103, armourMaterial);
+			materials.AddTexture(8203, armourMaterial);
+
+
+			gameObject->AddView<MaterialComponentView>(armourMaterial);
+			SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
+		}
+
+		if (auto [gameObject, res] = FindGameObject(gameState.scene, "Body_Mesh.005"); res && true)
+		{
+			MaterialHandle armourMaterial = materials.CreateMaterial();
+			materials.AddTexture(8105, armourMaterial);
+			materials.AddTexture(8205, armourMaterial);
+
+			gameObject->AddView<MaterialComponentView>(armourMaterial);
+			SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
+		}
+		
+
 	 }  break;
-    case TestScenes::PhysXTest:
-    {
-        auto& allocator = app.GetCore().GetBlockMemory();
+	case TestScenes::PhysXTest:
+	{
+		auto& allocator = app.GetCore().GetBlockMemory();
 
-        // Load Model
-        const AssetHandle model = 1002;
-        auto [triMesh, loaded] = FindMesh("Cube1x1x1");
+		// Load Model
+		const AssetHandle model = 1002;
+		auto [triMesh, loaded] = FindMesh("Cube1x1x1");
 
-        if (!loaded)
-            triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), "Cube1x1x1");
+		if (!loaded)
+			triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), "Cube1x1x1");
 
-        auto    floorShape = base.physics.CreateCubeShape({ 300, 1, 300 });
-        auto    cubeShape  = base.physics.CreateCubeShape({ 0.5f, 0.5f, 0.5f });
+		auto    floorShape = base.physics.CreateCubeShape({ 300, 1, 300 });
+		auto    cubeShape  = base.physics.CreateCubeShape({ 0.5f, 0.5f, 0.5f });
 
-        // Create static Box
-        auto  staticCollider = base.physics.CreateStaticCollider(gameState.pScene, floorShape, { 0, -1.0f, 0 });
-        auto& staticBox = allocator.allocate<GameObject>();
+		// Create static Box
+		auto  staticCollider = base.physics.CreateStaticCollider(gameState.pScene, floorShape, { 0, -1.0f, 0 });
+		auto& staticBox = allocator.allocate<GameObject>();
 
-        staticBox.AddView<StaticBodyView>(staticCollider, gameState.pScene);
-        auto staticNode = GetStaticBodyNode(staticBox);
-        staticBox.AddView<DrawableView>(triMesh, staticNode);
-        staticBox.AddView<SceneNodeView<>>(staticNode);
-        EnableScale(staticBox, true);
-        SetScale(staticBox, { 60, 0.01f, 60 });
-        gameState.scene.AddGameObject(staticBox, staticNode);
-        SetBoundingSphereRadius(staticBox, 400);
+		staticBox.AddView<StaticBodyView>(staticCollider, gameState.pScene);
+		auto staticNode = GetStaticBodyNode(staticBox);
+		staticBox.AddView<DrawableView>(triMesh, staticNode);
+		staticBox.AddView<SceneNodeView<>>(staticNode);
+		EnableScale(staticBox, true);
+		SetScale(staticBox, { 60, 0.01f, 60 });
+		gameState.scene.AddGameObject(staticBox, staticNode);
+		SetBoundingSphereRadius(staticBox, 400);
 
 
-        // Create Rigid Body Box
-        for (size_t y = 0; y < 1; y++)
-        {
-            for (size_t x = 0; x < 10; x++)
-            {
-                auto  rigidBody = base.physics.CreateRigidBodyCollider(gameState.pScene, cubeShape, { (float)x * 1.05f, (float)y * 1.05f, 0 });
-                auto& dynamicBox = allocator.allocate<GameObject>();
+		// Create Rigid Body Box
+		for (size_t y = 0; y < 1; y++)
+		{
+			for (size_t x = 0; x < 10; x++)
+			{
+				auto  rigidBody = base.physics.CreateRigidBodyCollider(gameState.pScene, cubeShape, { (float)x * 1.05f, (float)y * 1.05f, 0 });
+				auto& dynamicBox = allocator.allocate<GameObject>();
 
-                dynamicBox.AddView<RigidBodyView>(rigidBody, gameState.pScene);
-                auto dynamicNode = GetRigidBodyNode(dynamicBox);
-                dynamicBox.AddView<DrawableView>(triMesh, dynamicNode);
+				dynamicBox.AddView<RigidBodyView>(rigidBody, gameState.pScene);
+				auto dynamicNode = GetRigidBodyNode(dynamicBox);
+				dynamicBox.AddView<DrawableView>(triMesh, dynamicNode);
 
-                dynamicBox.AddView<SceneNodeView<>>(dynamicNode);
-                EnableScale(dynamicBox, true);
-                SetScale(dynamicBox, { 0.1f, 0.1f, 0.1f });
+				dynamicBox.AddView<SceneNodeView<>>(dynamicNode);
+				EnableScale(dynamicBox, true);
+				SetScale(dynamicBox, { 0.1f, 0.1f, 0.1f });
 
-                gameState.scene.AddGameObject(dynamicBox, dynamicNode);
+				gameState.scene.AddGameObject(dynamicBox, dynamicNode);
 
-                SetMaterialParams(
-                    dynamicBox,
-                    float3(0.5f, 0.5f, 0.5f), // albedo
-                    (rand() % 1000) / 1000.0f, // specular
-                    1.0f, // IOR
-                    (rand() % 1000) / 1000.0f,
-                    (rand() % 1000) / 1000.0f,
-                    0.0f);
-            }
-        }
+				SetMaterialParams(
+					dynamicBox,
+					float3(0.5f, 0.5f, 0.5f), // albedo
+					(rand() % 1000) / 1000.0f, // specular
+					1.0f, // IOR
+					(rand() % 1000) / 1000.0f,
+					(rand() % 1000) / 1000.0f,
+					0.0f);
+			}
+		}
 
-        /*
-        for (size_t y = 0; y < 0; y++)
-        {
-            auto  rigidBody = base.physics.CreateRigidBodyCollider(gameState.pScene, cubeShape, { -50 , 3.0f * y + 1.0f, 0 });
-            auto& dynamicBox = allocator.allocate<GameObject>();
+		/*
+		for (size_t y = 0; y < 0; y++)
+		{
+			auto  rigidBody = base.physics.CreateRigidBodyCollider(gameState.pScene, cubeShape, { -50 , 3.0f * y + 1.0f, 0 });
+			auto& dynamicBox = allocator.allocate<GameObject>();
 
-            dynamicBox.AddView<RigidBodyView>(rigidBody, gameState.pScene);
-            auto dynamicNode = GetRigidBodyNode(dynamicBox);
-            dynamicBox.AddView<DrawableView>(triMesh, dynamicNode);
-            gameState.scene.AddGameObject(dynamicBox, dynamicNode);
-        }
-        */
-    }   break;
-    case TestScenes::AnimationTest:
-    {
-        auto& allocator = app.GetCore().GetBlockMemory();
+			dynamicBox.AddView<RigidBodyView>(rigidBody, gameState.pScene);
+			auto dynamicNode = GetRigidBodyNode(dynamicBox);
+			dynamicBox.AddView<DrawableView>(triMesh, dynamicNode);
+			gameState.scene.AddGameObject(dynamicBox, dynamicNode);
+		}
+		*/
+	}   break;
+	case TestScenes::AnimationTest:
+	{
+		auto& allocator = app.GetCore().GetBlockMemory();
 
-        if(1)
-        {
-            // Load cube Model
-            const AssetHandle model = 1002;
-            auto triMesh = GetMesh(renderSystem, model);
-            auto& floor  = allocator.allocate<GameObject>();
+		if(1)
+		{
+			// Load cube Model
+			const AssetHandle model = 1002;
+			auto triMesh = GetMesh(renderSystem, model);
+			auto& floor  = allocator.allocate<GameObject>();
 
-            auto node = GetZeroedNode();
-            floor.AddView<DrawableView>(triMesh, node);
-            floor.AddView<SceneNodeView<>>(node);
+			auto node = GetZeroedNode();
+			floor.AddView<DrawableView>(triMesh, node);
+			floor.AddView<SceneNodeView<>>(node);
 
-            gameState.scene.AddGameObject(floor, node);
+			gameState.scene.AddGameObject(floor, node);
 
-            EnableScale(floor, true);
-            SetScale(floor, { 600, 1, 600 });
-            SetBoundingSphereRadius(floor, 900);
-        }
+			EnableScale(floor, true);
+			SetScale(floor, { 600, 1, 600 });
+			SetBoundingSphereRadius(floor, 900);
+		}
 
-        // Load rig Model
-        const AssetHandle riggedModel   = 1005;
-        const AssetHandle skeleton      = 2000;
-        auto triMesh                    = GetMesh(renderSystem, riggedModel);
+		// Load rig Model
+		const AssetHandle riggedModel   = 1005;
+		const AssetHandle skeleton      = 2000;
+		auto triMesh                    = GetMesh(renderSystem, riggedModel);
 
-        auto& GO = allocator.allocate<GameObject>();
-        auto node = GetZeroedNode();
-        GO.AddView<DrawableView>(triMesh, node);
-        GO.AddView<SceneNodeView<>>(node);
-        GO.AddView<SkeletonView>(GetTriMesh(GO), 2000);
-        GO.AddView<StringIDView>("object1", strlen("object1"));
+		auto& GO = allocator.allocate<GameObject>();
+		auto node = GetZeroedNode();
+		GO.AddView<DrawableView>(triMesh, node);
+		GO.AddView<SceneNodeView<>>(node);
+		GO.AddView<SkeletonView>(GetTriMesh(GO), 2000);
+		GO.AddView<StringIDView>("object1", strlen("object1"));
 
-        ToggleSkinned(GO, true);
+		ToggleSkinned(GO, true);
 
-        gameState.scene.AddGameObject(GO, node);
-    }
+		gameState.scene.AddGameObject(GO, node);
+	}
 	default:
 		break;
 	}

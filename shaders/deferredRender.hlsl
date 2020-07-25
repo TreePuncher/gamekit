@@ -460,14 +460,13 @@ float4 DeferredShade_PS(Deferred_PS_IN IN, float4 ScreenPOS : SV_POSITION) : SV_
         const float3 V = mul(inverseTBN, worldV);
 
         // Constants for testing
-            
         const float Ks = metallic;
         const float Kd = (1.0 - Ks) * (1.0 - metallic);
 
         const float3 diffuse = HammonEarlGGX(V, L, albedo, roughness);
         const float3 specular = EricHeitz2018GGX(V, L, albedo, metallic, roughness, anisotropic, ior);
-        const float3 colorSample = saturate((diffuse * Kd + specular * Ks) * La * 10);
-        //const float3 colorSample = dot(N.xyz, Lray) * Albedo; saturate((diffuse * Kd + specular * Ks) * La);
+        const float3 colorSample = saturate((diffuse * Kd + specular * Ks) * La * 40);
+        //const float3 colorSample = dot(N.xyz, Lray);
 
 		const float3 mapVectors[] = {
 			float3(-1,  0,  0), // left
@@ -512,13 +511,14 @@ float4 DeferredShade_PS(Deferred_PS_IN IN, float4 ScreenPOS : SV_POSITION) : SV_
 		const float depth 				= lightPosition_PS.z;
 
 		color += float4(depth - shadowSample > 0.00001f ? 0.0f : (colorSample * Lc * La), 1);
+		//color += float4(colorSample * Lc, 0);
     }
 
-    return color;
+	//return N;
+	return color;
     //return float4(color, 1);
     //return float4(float(localLightCount) / float(lightCount) * float3(1, 1, 1), 1);
     //return float4(color * float(localLightCount) / float(lightCount), 1);
-    //return float4(color * localLightCount / lightCount, 1);
 	//return float4(N / 2 + float3(0.5f, 0.5f, 0.5f), 1);
 }
 

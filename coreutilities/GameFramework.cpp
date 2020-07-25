@@ -257,11 +257,11 @@ namespace FlexKit
 
 		if (drawDebug)
 		{
-			subStates.back()->Update(core, dispatcher, dT);
+			subStates.back()->PreDrawUpdate(core, dispatcher, dT);
 			dispatcher.Execute();
 		}
 
-		subStates.back()->Update(core, dispatcher, dT);
+		subStates.back()->PreDrawUpdate(core, dispatcher, dT);
 		dispatcher.Execute();
 
 		if (stats.fpsT > 1.0)
