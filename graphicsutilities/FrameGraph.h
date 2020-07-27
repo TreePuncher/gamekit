@@ -687,6 +687,7 @@ namespace FlexKit
 				return globalResources.Resources[res->resource].UAVTexture;
 		}
 
+
 		UAVResourceHandle GetUAVBufferResource(FrameResourceHandle handle) const
 		{
 			auto res = find(SubNodeTracking,
