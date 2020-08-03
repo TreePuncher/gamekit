@@ -5023,6 +5023,8 @@ namespace FlexKit
 			return DXGI_FORMAT::DXGI_FORMAT_BC5_UNORM;
 		case FlexKit::DeviceFormat::BC5_SNORM:
 			return DXGI_FORMAT::DXGI_FORMAT_BC5_SNORM;
+        case FlexKit::DeviceFormat::BC7_UNORM:
+            return DXGI_FORMAT::DXGI_FORMAT_BC7_UNORM;
 		default:
 			return DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UINT;
 			break;
@@ -5085,6 +5087,8 @@ namespace FlexKit
 			return FlexKit::DeviceFormat::BC5_UNORM;
 		case DXGI_FORMAT::DXGI_FORMAT_BC5_SNORM:
 			return FlexKit::DeviceFormat::BC5_SNORM;
+        case DXGI_FORMAT::DXGI_FORMAT_BC7_UNORM:
+            return FlexKit::DeviceFormat::BC7_UNORM;
 		case DXGI_FORMAT::DXGI_FORMAT_R32_UINT:
 			return FlexKit::DeviceFormat::R32_UINT;
 

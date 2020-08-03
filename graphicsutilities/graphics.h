@@ -252,6 +252,9 @@ namespace FlexKit
 			return sizeof(uint16_t[2]);
         case DXGI_FORMAT_BC3_UNORM:
         case DXGI_FORMAT_BC5_UNORM:
+        case DXGI_FORMAT_BC7_UNORM:
+        case DXGI_FORMAT_BC7_TYPELESS:
+        case DXGI_FORMAT_BC7_UNORM_SRGB:
             return 16;
 		case DXGI_FORMAT_R16G16_TYPELESS:
 		case DXGI_FORMAT_R16G16_FLOAT:
@@ -314,9 +317,7 @@ namespace FlexKit
 		case DXGI_FORMAT_BC6H_TYPELESS:
 		case DXGI_FORMAT_BC6H_UF16:
 		case DXGI_FORMAT_BC6H_SF16:
-		case DXGI_FORMAT_BC7_TYPELESS:
-		case DXGI_FORMAT_BC7_UNORM:
-		case DXGI_FORMAT_BC7_UNORM_SRGB:
+
 		case DXGI_FORMAT_AYUV:
 		case DXGI_FORMAT_Y410:
 		case DXGI_FORMAT_Y416:

@@ -153,6 +153,56 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    ReadContext OpenReadContext(GUID_t guid)
+    {
+        AssetHandle RHandle = INVALIDHANDLE;
+		for (size_t TI = 0; TI < Resources.Tables.size(); ++TI)
+		{
+			auto& t = Resources.Tables[TI];
+			for (size_t I = 0; I < t->ResourceCount; ++I)
+			{
+				if (t->Entries[I].GUID == guid)
+                    return ReadContext{ Resources.ResourceFiles[TI].str, t->Entries[I].ResourcePosition };
+			}
+		}
+
+        return {};
+    }
+
+
+    /************************************************************************************************/
+
+
+    ReadAsset_RC ReadAsset(ReadContext& readContext, GUID_t guid, void* _ptr, size_t readSize, size_t readOffset)
+    {
+        AssetHandle RHandle = INVALIDHANDLE;
+		for (size_t TI = 0; TI < Resources.Tables.size(); ++TI)
+		{
+			auto& t = Resources.Tables[TI];
+			for (size_t I = 0; I < t->ResourceCount; ++I)
+			{
+				if (t->Entries[I].GUID == guid)
+				{
+                    size_t resourceOffset = t->Entries[I].ResourcePosition;
+
+                    if (readContext.fileDir != Resources.ResourceFiles[TI].str)
+                        readContext = ReadContext{ Resources.ResourceFiles[TI].str, resourceOffset };
+
+                    readContext.offset = resourceOffset;
+                    readContext.Read(_ptr, readSize, readOffset);
+
+                    return RAC_OK;
+				}
+			}
+		}
+
+        return RAC_ERROR;
+    }
+
+
+    /************************************************************************************************/
+
+
 	AssetHandle LoadGameAsset(GUID_t guid)
 	{
 		for (size_t I = 0; I < Resources.ResourcesLoaded.size(); ++I)

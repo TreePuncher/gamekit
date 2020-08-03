@@ -6,26 +6,14 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
-    DDSInfo GetDDSInfo(AssetHandle assetID)
+    DDSInfo GetDDSInfo(AssetHandle assetID, ReadContext& ctx)
     {
-        AssetHandle asset = FlexKit::LoadGameAsset(assetID);
-        TextureResourceBlob* resource = reinterpret_cast<TextureResourceBlob*>(FlexKit::GetAsset(asset));
+        TextureResourceBlob resource;
 
-        if (!resource)
+        if (ReadAsset(ctx, assetID, &resource, sizeof(resource), 0) != RAC_OK)
             return {};
 
-        auto buffer = resource->GetBuffer();
-        const auto bufferSize = resource->GetBufferSize();
-
-        EXITSCOPE(FreeAsset(asset));
-
-        crnd::crn_texture_info info;
-        if (crnd::crnd_get_texture_info(buffer, resource->GetBufferSize(), &info))
-        {
-            return { (uint8_t)info.m_levels, { info.m_width, info.m_height }, resource->format };
-        }
-        else
-            return {};
+        return { (uint8_t)resource.mipLevels, resource.WH, resource.format };
     }
 
 
@@ -44,7 +32,7 @@ namespace FlexKit
         crnd::crn_level_info levelInfo;
         const auto getLevelRes =  crnd::crnd_get_level_info(resource->GetBuffer(), resource->GetBufferSize(), mipLevel, &levelInfo);
 
-        rowPitch = levelInfo.m_blocks_x * levelInfo.m_bytes_per_block;
+        rowPitch   = levelInfo.m_blocks_x * levelInfo.m_bytes_per_block;
         bufferSize = levelInfo.m_blocks_y * rowPitch;
 
         blockSize   = levelInfo.m_bytes_per_block;
@@ -77,7 +65,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    UploadReservation CRNDecompressor::ReadTile(const TileID_t id, const uint2 TileSize, CopyContext& ctx)
+    UploadReservation CRNDecompressor::ReadTile(ReadContext& readCtx, const TileID_t id, const uint2 TileSize, CopyContext& ctx)
     {
         const auto reservation    = ctx.Reserve(64 * KILOBYTE);
         const auto blocksX        = TileSize[0] / 4;
@@ -97,7 +85,7 @@ namespace FlexKit
     }
 
 
-    UploadReservation CRNDecompressor::Read(const uint2 WH, CopyContext& ctx)
+    UploadReservation CRNDecompressor::Read(ReadContext& readCtx, const uint2 WH, CopyContext& ctx)
     {
         const size_t destinationRowPitch    = max(blockSize * WH[0]/4, 256);
         const size_t rowCount               = WH[0] / 4;
@@ -143,6 +131,130 @@ namespace FlexKit
         }
         else
             return {};
+    }
+
+
+    /************************************************************************************************/
+
+
+    DDSDecompressor::DDSDecompressor(ReadContext& readCtx, const uint32_t IN_mipLevel, AssetHandle IN_asset, iAllocator* IN_allocator) :
+        allocator   { IN_allocator },
+        asset       { IN_asset },
+        mipLevel    { IN_mipLevel }
+    {
+        TextureResourceBlob resource;
+
+        FK_ASSERT(ReadAsset(readCtx, asset, &resource, sizeof(resource), 0) == RAC_OK);
+
+        format          = resource.format;
+        WH              = resource.WH;
+        mipLevelOffset  = resource.mipOffsets[mipLevel] + sizeof(resource);
+
+        auto mipSize = resource.mipOffsets[mipLevel + 1] - resource.mipOffsets[mipLevel];
+
+        if (mipSize < 64 * 1024) {
+            buffer = (char*)IN_allocator->malloc(mipSize);
+            memset(buffer, 0xCD, mipSize);
+            readCtx.Read(buffer, mipSize, mipLevelOffset);
+        }
+    }
+
+
+    DDSDecompressor::~DDSDecompressor()
+    {
+        if(buffer)
+            allocator->free(buffer);
+    }
+
+
+
+    /************************************************************************************************/
+
+
+    UploadReservation DDSDecompressor::ReadTile(ReadContext& readCtx, const TileID_t id, const uint2 TileSize, CopyContext& ctx)
+    {
+        const auto reservation    = ctx.Reserve(64 * KILOBYTE);
+        const auto blockSize      = BlockSize(format);
+        const auto blocksX        = 256 / 4;
+        const auto localRowPitch  = blocksX * blockSize;
+        const auto blocksY        = GetTileByteSize() / localRowPitch;
+
+        const auto textureRowWidth = (WH[0] >> mipLevel) / 4 * blockSize;
+
+
+        const auto tileX = id.GetTileX();
+        const auto tileY = id.GetTileY();
+
+        for (size_t row = 0; row < blocksY; ++row)
+            readCtx.Read(
+                reservation.buffer + row * localRowPitch,
+                localRowPitch,
+                mipLevelOffset + row * textureRowWidth + textureRowWidth * tileY * blocksY + localRowPitch * tileX);
+
+        return reservation;
+    }
+
+
+    /************************************************************************************************/
+
+
+    UploadReservation DDSDecompressor::Read(ReadContext& readCtx, const uint2 WH, CopyContext& ctx)
+    {
+        const auto blockSize                = BlockSize(format);
+        const size_t destinationRowPitch    = max(blockSize * WH[0]/4, 256);
+        const size_t rowCount               = max(WH[1] / 4, 1);
+        const size_t columnCount            = max(WH[0] / 4, 1);
+        const size_t blockCount             = rowCount * columnCount;
+        const size_t allocationSize         = rowCount * destinationRowPitch;
+        const auto   reservation            = ctx.Reserve(allocationSize, 512);
+        const size_t sourceRowPitch         = blockSize * columnCount;
+
+        /*
+        for (size_t row = 0; row < rowCount; row++)
+            ReadAsset(
+                readCtx,
+                asset,
+                reservation.buffer + row * destinationRowPitch,
+                columnCount * blockSize,
+                mipLevelOffset + (row * sourceRowPitch));
+        */
+        if (buffer)
+        {
+            for (size_t row = 0; row < rowCount; row++) {
+                const auto sourceOffset = (sourceRowPitch * row);
+                memcpy(
+                    reservation.buffer + row * destinationRowPitch,
+                    buffer + sourceOffset,
+                    sourceRowPitch);
+            }
+        }
+        else
+            ReadAsset(
+                readCtx,
+                asset,
+                reservation.buffer,
+                blockCount * blockSize,
+                mipLevelOffset);
+
+        return reservation;
+    }
+
+
+    /************************************************************************************************/
+
+
+    uint2 DDSDecompressor::GetTextureWH() const
+    {
+        return WH;
+    }
+
+
+    /************************************************************************************************/
+
+
+    std::optional<DDSDecompressor*> CreateDDSDecompressor(ReadContext& readCtx, const uint32_t MIPlevel, AssetHandle asset, iAllocator* allocator)
+    {
+        return &allocator->allocate<DDSDecompressor>(readCtx, MIPlevel, asset, allocator);
     }
 
 
@@ -978,7 +1090,7 @@ namespace FlexKit
                 const TileID_t tileID   = CreateTileID( 0, 0, level );
                 const auto tile         = streamContext.Read(MIPLevelInfo.WH, ctx);
 
-                ctx.CopyTextureRegion(deviceResource, level, { 0, 0, 0 }, tile, MIPLevelInfo.WH, DeviceFormat::BC3_UNORM);
+                ctx.CopyTextureRegion(deviceResource, level, { 0, 0, 0 }, tile, MIPLevelInfo.WH, streamContext.Format());
             }
 
 

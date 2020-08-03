@@ -137,7 +137,7 @@ int main(int argc, char* argv[])
     EXITSCOPE(ReleaseEngineMemory(allocator));
 
     FlexKit::FKApplication app{ allocator, max(std::thread::hardware_concurrency(), 1u) - 1 };
-    app.GetCore().FrameLock = false;
+    app.GetCore().FrameLock = true;
 
     FK_LOG_INFO("Set initial PlayState state.");
     auto& base = app.PushState<BaseState>(app);
@@ -146,22 +146,16 @@ int main(int argc, char* argv[])
     {
         case ApplicationMode::Client:
         {
-            AddAssetFile("assets\\TestScenes.gameres");
-
             auto& NetState      = app.PushState<NetworkState>(base);
             auto& clientState   = app.PushState<GameClientState>(base, NetState, ClientGameDescription{ 1337, server.c_str(), name.c_str() });
         }   break;
         case ApplicationMode::Host:
         {
-            AddAssetFile("assets\\TestScenes.gameres");
-
             auto& NetState  = app.PushState<NetworkState>(base);
             auto& hostState = app.PushState<GameHostState>(base, NetState);
         }   break;
         case ApplicationMode::TextureStreamTestMode:
         {
-            AddAssetFile("assets\\DemonGirl.gameres");
-
             StartTestState(app, base, TestScenes::ShadowTestScene);
         }   break;
         case ApplicationMode::PlaygroundMode:

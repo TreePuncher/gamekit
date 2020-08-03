@@ -1,4 +1,3 @@
-#include <stb_image.h>
 #include <vector>
 
 #include "Common.h"
@@ -9,6 +8,8 @@
 #include "crnlib.h"
 #include "crn_decomp.h"
 #include "dds_defs.h"
+
+#include "Compressonator.h"
 
 #pragma comment(lib,"crunch.lib")
 
@@ -23,6 +24,13 @@ namespace FlexKit::ResourceBuilder
             { "RGBA8_UNORM",    DeviceFormat::R8G8B8A8_UNORM       },
             { "RGBA16_FLOAT",   DeviceFormat::R16G16B16A16_FLOAT   },
             { "RGBA32_FLOAT",   DeviceFormat::R32G32B32A32_FLOAT   },
+            { "BC3",           DeviceFormat::BC3_UNORM            },
+            { "BC5",           DeviceFormat::BC5_UNORM            },
+            { "BC7",           DeviceFormat::BC7_UNORM            },
+
+            { "DXT3",           DeviceFormat::BC3_UNORM            },
+            { "DXT5",           DeviceFormat::BC5_UNORM            },
+            { "DXT7",           DeviceFormat::BC7_UNORM            },
         };
 
         return formatMap[format];
@@ -74,7 +82,9 @@ namespace FlexKit::ResourceBuilder
 
     enum class DDSTextureFormat
     {
+        DXT3,
         DXT5,
+        DXT7,
         UNKNOWN
     };
 
@@ -84,8 +94,12 @@ namespace FlexKit::ResourceBuilder
 
     DDSTextureFormat FormatStringToFormatID(const std::string& ID)
     {
+        if (ID == "DXT3")
+            return DDSTextureFormat::DXT3;
         if (ID == "DXT5")
             return DDSTextureFormat::DXT5;
+        if (ID == "DXT7")
+            return DDSTextureFormat::DXT7;
 
         return DDSTextureFormat::UNKNOWN;
     }
@@ -96,17 +110,12 @@ namespace FlexKit::ResourceBuilder
 
     struct _TextureMipLevelResource
     {
-        int         width;
-        int         height;
-        int         channelCount;
-
-        crn_uint32* buffer;
-
+        CMP_MipSet mipSet;
+        std::string file;
 
         void Release()
         {
-            delete[] buffer;
-            buffer = nullptr;
+            CMP_FreeMipSet(&mipSet);
         }
     };
 
@@ -121,9 +130,12 @@ namespace FlexKit::ResourceBuilder
 
         ResourceBlob CreateBlob() override;
 
-        std::string         ID;
-        GUID_t              assetHandle;
-        FlexKit::DeviceFormat  format;
+        std::string             ID;
+        GUID_t                  assetHandle;
+        FlexKit::DeviceFormat   format;
+        uint32_t                mipLevels;
+        uint32_t                mipOffsets[15];
+        uint2                   WH;
 
         void*     buffer;
         size_t    bufferSize;

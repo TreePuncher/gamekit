@@ -134,7 +134,6 @@ namespace FlexKit::ResourceBuilder
             case fbxsdk::FbxNodeAttribute::EType::eMesh:
             {
                 const char* MeshName    = node->GetName();
-                auto test		        = Attr->GetUniqueID();
                 auto Mesh		        = (fbxsdk::FbxMesh*)Attr;
                 bool found		        = false;
                 bool LoadMesh	        = false;

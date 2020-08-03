@@ -32,7 +32,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ResourceHandles.h"
 #include "TextureUtilities.h"
 
+#define WINDOW_LEAN_AND_MEAN
+
 #include <iostream>
+#include <Windows.h>
 
 
 /************************************************************************************************/
@@ -130,7 +133,8 @@ namespace FlexKit
 			ResourceFiles.Allocator		= nullptr;
 			ResourcesLoaded.Allocator	= nullptr;
 			ResourceGUIDs.Allocator		= nullptr;
-		}
+
+        }
 
 		Vector<ResourceTable*>		Tables;
 		Vector<ResourceDirectory>	ResourceFiles;
@@ -420,7 +424,10 @@ namespace FlexKit
             State           = Resource::ResourceState::EResourceState_UNLOADED;		// Runtime Member
         }
 
-        DeviceFormat                   format;
+        DeviceFormat    format;
+        uint2           WH;
+        uint32_t        mipLevels;
+        uint32_t        mipOffsets[15];
 
         const char* GetBuffer() const
         {
@@ -534,6 +541,161 @@ namespace FlexKit
 
 		return (readSize == out->ResourceSize);
 	}
+
+
+    /************************************************************************************************/
+
+
+    enum ReadAsset_RC
+    {
+        RAC_OK,
+        RAC_ERROR,
+        RAC_ASSET_NOT_FOUND,
+    };
+
+    /*
+    struct ReadContext
+    {
+        ReadContext() = default;
+
+        ReadContext(const char* IN_fileDir, size_t IN_offset)
+        {
+            FILE* F = 0;
+            if (auto res = fopen_s(&F, IN_fileDir, "rb"); res != 0)
+                return;
+
+            file    = F;
+            fileDir = IN_fileDir;
+            offset  = IN_offset;
+        }
+
+        ~ReadContext() { Close(); }
+
+        FILE*           file    = nullptr;
+        const char*     fileDir = nullptr;
+        size_t          offset  = 0;
+
+        // Non-copyable
+        ReadContext(const ReadContext& rhs) = delete;
+        ReadContext& operator = (const ReadContext& rhs) = delete;
+
+        ReadContext& operator = (ReadContext&& rhs) noexcept
+        {
+            Close();
+
+            file    = rhs.file;
+            fileDir = rhs.fileDir;
+            offset  = rhs.offset;
+
+            rhs.file    = nullptr;
+            rhs.fileDir = nullptr;
+            rhs.offset  = 0;
+
+            return *this;
+        }
+
+        void Close()
+        {
+            if(file)
+                ::fclose(file);
+
+            file    = nullptr;
+            fileDir = nullptr;
+        }
+
+        void Read(void* dst_ptr, size_t readSize, size_t readOffset)
+        {
+            if (auto res = fseek(file, offset + readOffset, SEEK_SET); res != 0)
+                __debugbreak();
+
+            if (auto res = fread_s(dst_ptr, readSize, 1, readSize, file); res != readSize)
+                __debugbreak();
+        }
+
+        operator bool() { return file != nullptr; }
+    };
+    */
+
+    struct ReadContext
+    {
+        ReadContext() = default;
+
+        ReadContext(const char* IN_fileDir, size_t IN_offset)
+        {
+            file = CreateFileA(
+                IN_fileDir,
+                GENERIC_READ,
+                FILE_SHARE_READ,
+                nullptr,
+                OPEN_EXISTING,
+                FILE_ATTRIBUTE_NORMAL,
+                NULL);
+
+            if (file == INVALID_HANDLE_VALUE)
+            {
+                auto err = GetLastError();
+                __debugbreak();
+            }
+
+            fileDir = IN_fileDir;
+            offset = IN_offset;
+        }
+
+        ~ReadContext() { Close(); }
+
+        HANDLE          file    = INVALID_HANDLE_VALUE;
+        const char*     fileDir = nullptr;
+        size_t          offset  = 0;
+
+        // Non-copyable
+        ReadContext(const ReadContext& rhs) = delete;
+        ReadContext& operator = (const ReadContext& rhs) = delete;
+
+        ReadContext& operator = (ReadContext&& rhs) noexcept
+        {
+            Close();
+
+            file = rhs.file;
+            fileDir = rhs.fileDir;
+            offset = rhs.offset;
+
+            rhs.file = INVALID_HANDLE_VALUE;
+            rhs.fileDir = nullptr;
+            rhs.offset = 0;
+
+            return *this;
+        }
+
+        void Close()
+        {
+            if(file != INVALID_HANDLE_VALUE)
+                CloseHandle(file);
+        }
+
+        void Read(void* dst_ptr, size_t readSize, size_t readOffset)
+        {
+            if (file != INVALID_HANDLE_VALUE)
+            {
+                DWORD bytesRead = 0;
+
+                OVERLAPPED overlapped = { 0 };
+                overlapped.Offset = readOffset + offset;
+
+                if (auto res = ReadFile(file, dst_ptr, readSize, &bytesRead, &overlapped); res != true)
+                {
+                    auto error = GetLastError();
+                    __debugbreak();
+                }
+            }
+
+        }
+
+
+        operator bool() { return file != nullptr; }
+    };
+
+    ReadContext         OpenReadContext(GUID_t guid);
+    ReadAsset_RC        ReadAsset(ReadContext& readContext, GUID_t Asset, void* _ptr, size_t readSize, size_t readOffset = 0);
 
 
 }	/************************************************************************************************/

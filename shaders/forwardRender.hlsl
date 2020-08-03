@@ -33,8 +33,10 @@ cbuffer Poses : register(b3)
 
 Texture2D<float4> albedoTexture : register(t0);
 Texture2D<float4> testTexture   : register(t1);
+Texture2D<float4> testTexture1   : register(t2);
+Texture2D<float4> testTexture2   : register(t3);
 
-TextureCube<float4>             HDRMap          : register(t3);
+//TextureCube<float4>             HDRMap          : register(t3);
 Texture2D<float4>		        MRIATexture     : register(t4);
 
 StructuredBuffer<uint>		    lightLists	    : register(t5);
@@ -203,24 +205,23 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
     return float4(0.0f, 0.0f, 1.0f, 0.0f); // NO PAGES LOADED!
 }
 
-
 Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 {
     Deferred_OUT gbuffer;
+    
+    const float3 biTangent      = cross(IN.Tangent, IN.Normal);
+    float3x3 inverseTBN         = float3x3(normalize(IN.Tangent), normalize(biTangent), normalize(IN.Normal));
+    float3x3 TBN                = transpose(inverseTBN);
+    const float3 normalSample   = textureCount > 1 ? mul(TBN, SampleVirtualTexture(testTexture, BiLinear, IN.UV).xyz * 2.0f - 1.0f)  : IN.Normal;
 
-    const float3 biTangent = cross(IN.Tangent, IN.Normal);
-    float3x3 inverseTBN = float3x3(normalize(IN.Tangent), normalize(biTangent), normalize(IN.Normal));
-    float3x3 TBN = transpose(inverseTBN);
+    gbuffer.Normal      = mul(View, float4(normalize(normalSample.xyz), 0));
+    gbuffer.Tangent     = mul(View, float4(normalize(IN.Tangent.xyz),  0));
 
-    //const float3 normalSample =  mul(WT, SampleVirtualTexture(testTexture, BiLinear, IN.UV).xyz * 2.0f - 1.0f);
-    const float3 normalSample = textureCount > 1 ? mul(TBN, SampleVirtualTexture(testTexture, BiLinear, IN.UV).xyz) : IN.Normal;
+    float roughness     = false ? SampleVirtualTexture(testTexture1, BiLinear, IN.UV).x : Roughness;
 
-    gbuffer.Normal      = float4(normalize(normalSample),     1);
-    gbuffer.Tangent     = float4(normalize(IN.Tangent),  1);
-    //gbuffer.Tangent     = float4(normalize(cross(IN.Normal, IN.Normal.zxy)),    1);
     gbuffer.Albedo      = float4(Albedo.xyz * SampleVirtualTexture(albedoTexture, BiLinear, IN.UV).xyz, Ks);
+    gbuffer.MRIA        = float4(Metallic, roughness, IOR, Anisotropic);// * SampleVirtualTexture(MRIATexture, BiLinear, IN.UV);
 
-    gbuffer.MRIA        = float4(Metallic, Roughness, IOR, Anisotropic) * SampleVirtualTexture(MRIATexture, BiLinear, IN.UV);
     gbuffer.Depth       = length(IN.WPOS - CameraPOS.xyz) / MaxZ;
 
     return gbuffer;
@@ -228,59 +229,8 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 
 float4 Forward_PS(Forward_PS_IN IN) : SV_TARGET
 {
-    // surface parameters
-    const float3 N			    = normalize(IN.Normal);
-    const float3 T			    = normalize(cross(N, N.zxy));
-    const float3 B			    = normalize(cross(N, T));
-
-    const float2 UV				= IN.UV;
-    const float3x3 inverseTBN	= float3x3(T, B, N);
-    const float3x3 TBN	        = transpose(TBN);
-
-    float3 positionW	        = IN.WPOS;
-    float3 worldV   	        = normalize(CameraPOS - positionW);
-
-    const uint2	lightBin	    = IN.POS / 10.0f;// - uint2( 1, 1 );
-    uint        localLightCount = 0;
-
     float3 Color = float3(0, 0, 0);
-    for (int i = 0; i < lightCount; i++)
-    {
-        if(!isLightContributing(i, lightBin))
-            continue;
-
-        PointLight light	= ReadPointLight(i);
-        localLightCount++;
-
-        const float3 Lc			= light.KI.rgb;
-        const float  Ld			= length(positionW - light.PR.xyz);
-        const float  Li			= light.KI.w;
-        const float  Lr			= light.PR.w;
-        const float  ld_2		= (Ld * Ld);
-        const float  La			= (Li / ld_2) * saturate(1 - (pow(Ld, 10) / pow(Lr, 10)));
-
-		// Compute tangent space vectors
-		const float3 worldL = normalize(light.PR.xyz - positionW);
-		const float3 L = mul(inverseTBN, worldL);
-		const float3 V = mul(inverseTBN, worldV);
-
-		const float3 diffuse    = HammonEarlGGX(V, L, Albedo, .01);
-		const float3 specular   = EricHeitz2018GGX(V, L, Albedo, Metallic, .01, Anisotropic, IOR);
-
-		Color += saturate(diffuse * (1 - Ks) + specular * Ks) * La;
-    }
-
-    //return pow(float4(1, 0, 0, 0) * localLightCount / lightCount, 1.0f / 2.1f); // Light Tiles
-    //return pow(float4(Color * (localLightCount / lightCount) * (localLightCount / lightCount), 1), 1.0f / 2.1f); // Light tiles overlayed on render
-    //return localLightCount == 0 ? float4(1, 0, 1, 1) : float4(0, 1, 1, 1);
-    //return float4(pow(pi * Color, 1.0f / 2.1f), 1);
-    //return float4(n * 0.5 + float3(0.5, 0.5f, 0.5f), 1);									        // Normal debug vis
-    //return float4(pow(tangent * 0.5 + float3(0.5, 0.5f, 0.5f), 0.45f), 1);	
-    //return float4(UV, 0, 1);	
-    //return float4(pow(Color, 1/2.1), 1);
-	//return float4(Color, 1);
-	//return float4(Color.xy,pow(localLightCount / lightCount, 1), 1);
-	return float4(Color.xy, pow(localLightCount / lightCount, 1), 1);
+	return float4(Color, 1);
 }
 
 float4 FlatWhite(Forward_PS_IN IN) : SV_TARGET
@@ -291,7 +241,7 @@ float4 FlatWhite(Forward_PS_IN IN) : SV_TARGET
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2020 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

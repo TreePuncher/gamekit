@@ -1,346 +1,95 @@
 static const float PI			= 3.14159265359f;
 static const float INV_PI	    = 1 / PI;
 
-float Square(float x) { return x * x; }
+float Square(const float x) { return x * x; }
  
-float Theta(float3 w)
+float Theta(const float3 w)
 {
     return acos(w.z / length(w));
 }
  
-float CosTheta(float3 w)
+float CosTheta(const float3 w)
 {
     return cos(Theta(w));
 }
 
-float EricHeitz2018GGXG1Lambda(float3 V, float alpha_x,  float alpha_y)
+float F_Schlick(float LdotH, float3 f0, float3 f90)
 {
-    float Vx2 = Square(V.x);
-    float Vy2 = Square(V.y);
-    float Vz2 = Square(V.z);
-    float ax2 = Square(alpha_x);
-    float ay2 = Square(alpha_y);
-    return (-1.0 + sqrt(1.0 + (Vx2 * ax2 + Vy2 * ay2) / Vz2)) / 2.0;
-}
- 
-float EricHeitz2018GGXG1(float3 V, float alpha_x, float alpha_y)
-{
-    return 1.0 / (1.0 + EricHeitz2018GGXG1Lambda(V, alpha_x, alpha_y));
-}
- 
-// wm: microfacet normal in frame
-float EricHeitz2018GGXD(float3 N,  float alpha_x, float alpha_y)
-{
-    float Nx2 = Square(N.x);
-    float Ny2 = Square(N.y);
-    float Nz2 = Square(N.z);
-    float ax2 = Square(alpha_x);
-    float ay2 = Square(alpha_y);
-    return 1.0 / (PI * alpha_x * alpha_y * Square(Nx2 / ax2 + Ny2 / ay2 + Nz2));
-}
- 
-float EricHeitz2018GGXG2(float3 V, float3 L, float alpha_x, float alpha_y)
-{
-    return EricHeitz2018GGXG1(V, alpha_x, alpha_y) * EricHeitz2018GGXG1(L, alpha_x, alpha_y);
-}
- 
-float3 SchlickFresnel(float NoX, float3 F0)
-{
-	return F0 + (1.0 - F0) * pow(1.0 - NoX, 5.0);
+    return f0 + ( f90 - f0 ) * pow(1.0f - LdotH , 5.0f);
 }
 
-// L is in tangent space here
-float3 Lambert(float3 L, float3 albedo)
+float V_SmithGGXCorrelated(float NdotL, float NdotV, float alphaG )
 {
-	return CosTheta(L) * INV_PI * albedo;
+    // This is the optimize version
+    float alphaG2 = alphaG * alphaG;
+    // Caution : the " NdotL *" and " NdotV *" are explicitely inversed , this is not a mistake .
+    float Lambda_GGXV = NdotL * sqrt (( -NdotV * alphaG2 + NdotV ) * NdotV + alphaG2 );
+    float Lambda_GGXL = NdotV * sqrt (( -NdotL * alphaG2 + NdotL ) * NdotL + alphaG2 );
+
+    return 0.5f / ( Lambda_GGXV + Lambda_GGXL );
 }
 
-float3 EricHeitz2018GGX(float3 V, float3 L, float3 albedo, float metallic, float roughness, float anisotropic, float ior)
+float G1(const float NdotV, const float K)
 {
-    float alpha = roughness * roughness;
-    float aspect = sqrt(1.0 - 0.9 * anisotropic);
-    float alpha_x = alpha * aspect;
-    float alpha_y = alpha / aspect;
- 
-    float3 H = normalize(L + V);
-    float NoV = CosTheta(V);
-    float NoL = CosTheta(L);
-    if (NoV < 0.0 || NoL < 0.0) return float3(0, 0, 0);
- 
-    float VoH = dot(V, H);
-    float NoH = CosTheta(H);
-    float3 F0 = float3(1, 1, 1) * abs((1.0 - ior) / (1.0 + ior));
-    F0 = F0 * F0;
-	F0 = lerp(F0, albedo, metallic);
- 
-    float D = EricHeitz2018GGXD(H, alpha_x, alpha_y);
-    float3 F = SchlickFresnel(max(NoV, 0.0), F0);
-    float G = EricHeitz2018GGXG2(V, L, alpha_x, alpha_y);
-
-    return (F * D * G) / (4.0 * VoH * NoH);
+    return NdotV / (NdotV * (NdotV * (1 - K) + K));
 }
 
-float3 EricHeitz2018GGXVNDF(in float3 Ve, in float alpha_x, in float alpha_y, in float U1, in float U2)
+float G_UE4(float NdotL, float NdotV, float r)
 {
-	// Section 3.2: transforming the view direction to the hemisphere configuration
-    float3 Vh = normalize(float3(alpha_x * Ve.x, alpha_y * Ve.y, Ve.z));
-	// Section 4.1: orthonormal basis (with special case if cross product is zero)
-    float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
-    float3 T1 = lensq > 0.0 ? float3(-Vh.y, Vh.x, 0.0) * rsqrt(lensq) : float3(1.0, 0.0, 0.0);
-    float3 T2 = cross(Vh, T1);
-	// Section 4.2: parameterization of the projected area
-    float r = sqrt(U1);
-    float phi = PI * 2.0 * U2;
-    float t1 = r * cos(phi);
-    float t2 = r * sin(phi);
-    float s = 0.5 * (1.0 + Vh.z);
-    t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
-	// Section 4.3: reprojection onto hemisphere
-    float3 Nh = T1 * t1 + T2 * t2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * Vh;
-	// Section 3.4: transforming the normal back to the ellipsoid configuration
-    float3 Ne = normalize(float3(alpha_x * Nh.x, alpha_y * Nh.y, max(0.0, Nh.z)));
-    return Ne;
-}
-
-float EricHeitz2018GGXDV(in float3 N, in float3 V, in float alpha_x, in float alpha_y)
-{
-    float dotVZ = CosTheta(V);
-    float dotNV = dot(N, V);
-    float G = EricHeitz2018GGXG1(V, alpha_x, alpha_y);
-    float D = EricHeitz2018GGXD(N, alpha_x, alpha_y);
-    return (G * max(dotNV, 0.0) * D) / dotVZ;
-}
- 
-float EricHeitz2018GGXPDF(in float3 V, in float3 Ni, in float3 Li, in float alpha_x, in float alpha_y)
-{
-    float DV = EricHeitz2018GGXDV(Ni, V, alpha_x, alpha_y);
-    float NoV = dot(V, Ni);
-    return DV / (4.0 * NoV);
-}
-
-float3 HammonEarlGGX(float3 V, float3 L, float3 albedo, float roughness)
-{
-    float NoV = CosTheta(V);
-    float NoL = CosTheta(L);
- 
-    if (NoV < 0.0 || NoL < 0.0) return float3(0, 0, 0);
- 
-	float3 H = normalize(V + L);
-    float NoH = CosTheta(H);
-    float VoL = dot(V, L);
- 
-    float alpha = roughness * roughness;
- 
-    float facing = 0.5 + 0.5 * VoL;
-    float roughy = facing * (0.9 - 0.4 * facing) * (0.5 + NoH)/NoH;
-    float smoothy = 1.05 * (1.0 - pow(1.0 - NoL, 5.0)) * (1.0 - pow(1.0 - NoV, 5.0));
-    float single = INV_PI * lerp(smoothy, roughy, alpha);
-    float multi = alpha * 0.1159;
-    return albedo * (single + albedo * multi);
-}
-
-/*
-#define pi 3.14159265
-
-
-float3 F_Schlick(in float3 f0, in float3 f90, in float u)
-{
-	return f0 + (f90 - f0) * pow(f90 - saturate(u), 5.0f);
+    const float K = Square(r + 1) / 8;
+    return G1(NdotV, K) * G1(NdotL, K);
 }
 
 
-float Fr_Disney(float ndotv, float ndotl, float ldoth, float linearRoughness) // Fresnel Factor
+float D_GGX(const float NdotH, const float m)
 {
-	float energyBias	= lerp(0, 0.5, linearRoughness);
-	float energyFactor	= lerp(1.0, 1.0 / 1.51, linearRoughness);
-	float fd90 			= energyBias + 2.0 * ldoth * ldoth * linearRoughness;
-	float3 f0 			= 1.0f;
+    const float m2 = m * m;
+    return INV_PI * m2 / Square(NdotH * NdotH * (m2 - 1) + 1);
+}
 
-	float lightScatter	= F_Schlick(f0, fd90, ndotl).r;
-	float viewScatter	= F_Schlick(f0, fd90, ndotv).r;
-	return lightScatter * viewScatter * energyFactor;
+float F_r(float3 V, float3 H, float3 L, float3 N, float roughness)
+{
+    const float NdotV = abs(dot(N, V)) + 0.00001f; 
+    const float LdotH = saturate(dot(L, H));
+    const float NdotH = saturate(dot(N, H)); 
+    const float NdotL = saturate(dot(N, L));
+
+    const float3 f0  = 2.0 * LdotH * LdotH * roughness;
+    const float3 f90 = 1.0f;
+
+    const float F   = F_Schlick(f0, f90, LdotH);
+    const float Vis = V_SmithGGXCorrelated(NdotV, NdotL, roughness);
+    const float D   = D_GGX(NdotH, roughness);
+
+    return (D * F * Vis * INV_PI);
+}
+
+float Fr_DisneyDiffuse(float NdotV, float NdotL, float LdotH, float linearRoughness)
+{
+    float energyBias    = lerp (0 , 0.5 , linearRoughness );
+    float energyFactor  = lerp (1.0 , 1.0 / 1.51 , linearRoughness );
+    float fd90          = energyBias + 2.0 * LdotH * LdotH * linearRoughness ;
+    float3 f0           = float3 (1.0f , 1.0f , 1.0f);
+    float lightScatter  = F_Schlick ( f0 , fd90 , NdotL ).r;
+    float viewScatter   = F_Schlick (f0 , fd90 , NdotV ).r;
+
+    return lightScatter * viewScatter * energyFactor ;
 }
 
 
-float V_SmithGGXCorrelated(float ndotl, float ndotv, float alphaG)
+float F_d(float3 V, float3 H, float3 L, float3 N, float roughness)
 {
-	float alphaG2       = alphaG * alphaG;
-	float Lambda_GGXV   = ndotl * sqrt((-ndotv * alphaG2 + ndotv) * ndotv + alphaG2);
-	float Lambda_GGXL   = ndotv * sqrt((-ndotl * alphaG2 + ndotl) * ndotl + alphaG2);
-	return saturate(0.5f / (Lambda_GGXV + Lambda_GGXL));
+    const float NdotV = abs(dot(N, V)) + 0.00001f; 
+    const float NdotL = saturate(dot(N, L));
+    const float LdotH = saturate(dot(L, H));
+
+    return Fr_DisneyDiffuse( NdotV , NdotL , LdotH , roughness ) * INV_PI;
 }
 
-
-float D_GGX(float ndoth , float m)
-{
-	float m2    = m * m;
-	float f     = (ndoth * m2 - ndoth) * ndoth + 1;
-	return m2 / (f * f);
-} 
-
-
-float DistanceSquared2(float2 a, float2 b) 
-{
- 	a -= b; 
- 	return dot(a, a); 
-}
-
-
-float DistanceSquared3(float2 a, float2 b) 
-{
- 	a -= b; 
- 	return dot(a, a); 
-}
-
-
-struct SphereAreaLight
-{
-	float3	POSITION;
-	float 	R;	
-};
-
-
-float Fr(float3 l, float3 lc, float3 v, float3 WPOS, float3 Kd, float3 n, float3 Ks, float m, float r) // specular
-{
-	const float3 h  = normalize(v + l);
-	const float  A  = saturate(pow(r, 2));
-
-	const float ndotv = saturate(dot(n, v) + 1e-5);
-	const float ndotl = saturate(dot(n, l));
-	const float ndoth = saturate(dot(n, h));
-	const float ldoth = saturate(dot(l, h));
-	
-	const float3 f0 = (m == 0) ? 0.04f : float3(0.549, 0.556, 0.554);
-
-	const float3	F = F_Schlick(Ks, 1.0f, ldoth);
-	const float		G = V_SmithGGXCorrelated(ndotv, ndotl, A);
-	const float		D = D_GGX(ndoth, A);
-
-	return D * G * F * ndotv * ndotl / 4;
-}
-
-
-float Fd(float3 l, float3 lc, float3 v, float3 WPOS, float3 Kd, float3 n, float3 Ks, float m, float r) // diffuse
-{
-	const float3 h = normalize(v + l);
-	const float  A = saturate(pow(r, 2));
-
-	const float ndotv = saturate(dot(n, v) + 1e-5);
-	const float ndotl = saturate(dot(n, l));
-	const float ndoth = saturate(dot(n, h));
-	const float ldoth = saturate(dot(l, h));
-
-	const float3 f0 = (m == 0) ? 0.04f : float3(0.549, 0.556, 0.554);
-
-	const float3	F = F_Schlick(f0, 1.0f, ldoth);
-	const float		G = V_SmithGGXCorrelated(ndotv, ndotl, A);
-	const float		D = D_GGX(ndoth, A);
-
-	return Fr_Disney(ndotv, ndotl, ldoth, A) * ndotl;
-}
-
-
-float3 BRDF(float3 l, float3 lc, float3 v, float3 WPOS, float3 Kd, float3 n, float3 Ks, float m, float r)
-{
-	float3 h  = normalize(v + l);
-	float  A  = saturate(pow(r, 2));
-
-	float ndotv = (dot(n, v) + 1e-5);
-	float ndotl = (dot(n, l));
-	float ndoth = (dot(n, h));
-	float ldoth = (dot(l, h));
-	
-	//const float ior = 1.505f;
-	//float f0 = (ior - 1)/(ior + 1);
-	//f0 *= f0;
-	const float3 f0 = (m == 0) ? 0.04f : float3(0.549, 0.556, 0.554);
-	
-	//	Specular BRDF
-	float3	F	= F_Schlick(f0, 1.0f, ndotv);
-	float	G	= V_SmithGGXCorrelated(ndotv, ndotl, r);
-	float	D	= D_GGX(ndotl, A);
-
-	return 	(m == 1) ? Fd(l, lc, v, WPOS, Kd, n, Ks, m, r) : 0 +
-			Fr(l, lc, v, WPOS, Kd, n, Ks, m, A);
-}
-
-
-float Square(float x) { return x * x; }
- 
-float Theta(float3 w)
-{
-    return acos(w.z / length(w));
-}
- 
-float CosTheta(float3 w)
-{
-    return cos(Theta(w));
-}
- 
-float EricHeitz2018GGXG1Lambda(float3 V, float alpha_x,  float alpha_y)
-{
-    float Vx2 = Square(V.x);
-    float Vy2 = Square(V.y);
-    float Vz2 = Square(V.z);
-    float ax2 = Square(alpha_x);
-    float ay2 = Square(alpha_y);
-    return (-1.0 + sqrt(1.0 + (Vx2 * ax2 + Vy2 * ay2) / Vz2)) / 2.0;
-}
- 
-float EricHeitz2018GGXG1(float3 V, float alpha_x, float alpha_y)
-{
-    return 1.0 / (1.0 + EricHeitz2018GGXG1Lambda(V, alpha_x, alpha_y));
-}
- 
-// wm: microfacet normal in frame
-float EricHeitz2018GGXD(float3 N,  float alpha_x, float alpha_y)
-{
-    float Nx2 = Square(N.x);
-    float Ny2 = Square(N.y);
-    float Nz2 = Square(N.z);
-    float ax2 = Square(alpha_x);
-    float ay2 = Square(alpha_y);
-    return 1.0 / (pi * alpha_x * alpha_y * Square(Nx2 / ax2 + Ny2 / ay2 + Nz2));
-}
- 
-float EricHeitz2018GGXG2(float3 V, float3 L, float alpha_x, float alpha_y)
-{
-    return EricHeitz2018GGXG1(V, alpha_x, alpha_y) * EricHeitz2018GGXG1(L, alpha_x, alpha_y);
-}
- 
-float3 SchlickFresnel(float NoX, float3 F0)
-{
-	return F0 + (1.0 - F0) * pow(1.0 - NoX, 5.0);
-}
-
-float3 EricHeitz2018GGX(float3 V, float3 L, float roughness, float anisotropic, float ior)
-{
-    float alpha = roughness * roughness;
-    float aspect = sqrt(1.0 - 0.9 * anisotropic);
-    float alpha_x = alpha * aspect;
-    float alpha_y = alpha / aspect;
- 
-    float3 H = normalize(L + V);
-    float NoV = CosTheta(V);
-    float NoL = CosTheta(L);
-    if (NoV < 0.0 || NoL < 0.0) return float3(0, 0, 0);
- 
-    float VoH = dot(V, H);
-    float NoH = CosTheta(H);
-    float3 F0 = float3(1, 1, 1) * abs((1.0 - ior) / (1.0 + ior));
-    F0 = F0 * F0;
- 
-    float D = EricHeitz2018GGXD(H, alpha_x, alpha_y);
-    float3 F = SchlickFresnel(max(NoV, 0.0), F0);
-    float G = EricHeitz2018GGXG2(V, L, alpha_x, alpha_y);
-
-    return (F * D * G) / (4.0f * VoH * NoH);
-}
-*/
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2020 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
