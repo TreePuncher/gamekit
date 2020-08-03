@@ -15,6 +15,7 @@ namespace FlexKit
 
     class RenderSystem;
 
+
     /************************************************************************************************/
 
 
@@ -23,11 +24,15 @@ namespace FlexKit
     public:
         virtual ~iDecompressor() {}
 
-        virtual UploadReservation   ReadTile(const TileID_t id, const uint2 TileSize, CopyContext& ctx) = 0;
-        virtual UploadReservation   Read(const uint2 WH, CopyContext& ctx) = 0;
+        virtual UploadReservation   ReadTile(ReadContext&, const TileID_t id, const uint2 TileSize, CopyContext& ctx) = 0;
+        virtual UploadReservation   Read(ReadContext&, const uint2 WH, CopyContext& ctx) = 0;
         virtual uint2               GetTextureWH() const = 0;
+        virtual DeviceFormat        GetFormat() const = 0;
 
     };
+
+
+    /************************************************************************************************/
 
 
     class CRNDecompressor final : public iDecompressor
@@ -37,9 +42,11 @@ namespace FlexKit
         ~CRNDecompressor();
  
 
-        UploadReservation   ReadTile(const TileID_t id, const uint2 TileSize, CopyContext& ctx) override;
-        UploadReservation   Read(const uint2 WH, CopyContext& ctx) override;
+        UploadReservation   ReadTile(ReadContext&, const TileID_t id, const uint2 TileSize, CopyContext& ctx) override;
+        UploadReservation   Read(ReadContext&, const uint2 WH, CopyContext& ctx) override;
         uint2               GetTextureWH() const override;
+        DeviceFormat        GetFormat() const override { return DeviceFormat::BC3_UNORM; };
+
 
         uint32_t                    blocks_X;
         uint32_t                    blocks_Y;
@@ -56,6 +63,41 @@ namespace FlexKit
 
 
     std::optional<CRNDecompressor*> CreateCRNDecompressor(const uint32_t MIPlevel, AssetHandle asset, iAllocator* allocator);
+
+
+    /************************************************************************************************/
+
+
+    class DDSDecompressor : public iDecompressor
+    {
+    public:
+
+        DDSDecompressor(ReadContext& readCtx, const uint32_t mipLevel, AssetHandle asset, iAllocator* IN_allocator);
+        ~DDSDecompressor();
+
+        UploadReservation   ReadTile(ReadContext&, const TileID_t id, const uint2 TileSize, CopyContext& ctx) override;
+        UploadReservation   Read(ReadContext&, const uint2 WH, CopyContext& ctx) override;
+        uint2               GetTextureWH() const override;
+        DeviceFormat        GetFormat() const override { return format; };
+
+        size_t mipLevelOffset;
+
+        size_t      rowPitch;
+        size_t      bufferSize;
+        size_t      mipLevel;
+
+        uint2       WH;
+
+        DeviceFormat format;
+
+        char* buffer = nullptr;
+
+        AssetHandle     asset;
+        iAllocator*     allocator;
+    };
+
+
+    std::optional<DDSDecompressor*> CreateDDSDecompressor(ReadContext& readCtx, const uint32_t MIPlevel, AssetHandle asset, iAllocator* allocator);
 
 
     /************************************************************************************************/
@@ -80,16 +122,51 @@ namespace FlexKit
         case DeviceFormat::BC5_TYPELESS:
         case DeviceFormat::BC5_UNORM:
         case DeviceFormat::BC5_SNORM:
+        case DeviceFormat::BC7_UNORM:
+        case DeviceFormat::BC7_SNORM:
             return true;
         default:
             return false;
         }
     }
 
-    size_t GetFormatTileSizeWith(DeviceFormat)
+
+    size_t BlockSize(DeviceFormat format)
     {
-        // TODO: actually fill this out, this is only correct *most* of the time
-        return 256;
+        switch (format)
+        {
+        case DeviceFormat::BC1_TYPELESS:
+        case DeviceFormat::BC1_UNORM:
+        case DeviceFormat::BC1_UNORM_SRGB:
+        case DeviceFormat::BC2_TYPELESS:
+        case DeviceFormat::BC2_UNORM:
+        case DeviceFormat::BC2_UNORM_SRGB:
+        case DeviceFormat::BC3_TYPELESS:
+        case DeviceFormat::BC3_UNORM:
+        case DeviceFormat::BC3_UNORM_SRGB:
+        case DeviceFormat::BC4_TYPELESS:
+        case DeviceFormat::BC4_UNORM:
+        case DeviceFormat::BC4_SNORM:
+        case DeviceFormat::BC5_TYPELESS:
+        case DeviceFormat::BC5_UNORM:
+        case DeviceFormat::BC5_SNORM:
+        case DeviceFormat::BC7_UNORM:
+        case DeviceFormat::BC7_SNORM:
+            return 16;
+        default:
+            FK_ASSERT(false, "INVALID INPUT!");
+            return -1;
+            break;
+        }
+    }
+
+    uint2 GetFormatTileSize(DeviceFormat format)
+    {
+        switch (format)
+        {
+        default:
+            return { 256, 256 };
+        }
     }
 
     struct DDSLevelInfo
@@ -101,31 +178,20 @@ namespace FlexKit
 
     struct DDSInfo
     {
-        uint8_t     MIPCount;
-        uint2       WH;
+        uint8_t     MIPCount    = 0;
+        uint2       WH          = { 0, 0 };
 
         DeviceFormat format;
     };
 
-    DDSInfo GetDDSInfo(AssetHandle asset);
+    DDSInfo GetDDSInfo(AssetHandle asset, ReadContext& ctx);
 
     DDSLevelInfo GetMIPLevelInfo(const size_t Level, const uint2 WH, const DeviceFormat format)
     {
-        // TODO: actually figure out the row pitch and tile size, and width
-
-        const uint32_t levelWidth = max(WH[0] >> Level, 4);
-
-        if (levelWidth > GetFormatTileSizeWith(format))
-        {
-            return { 0xff, { levelWidth, levelWidth }, false };
-        }
-        else
-        {
-            return { 0xff,  { levelWidth, levelWidth }, true };
-        }
+        const uint32_t levelHeight  = max(WH[0] >> Level, 4);
+        const uint32_t levelWidth   = max(WH[1] >> Level, 4);
+        return { 0xff, { levelWidth, levelHeight }, levelWidth > GetFormatTileSize(format)[0] };
     }
-
-
 
 
     /************************************************************************************************/
@@ -149,27 +215,28 @@ namespace FlexKit
                 return true;
 
             auto textureAvailable   = isAssetAvailable(asset);
-            auto assetHandle        = LoadGameAsset(asset);
-            EXITSCOPE(FreeAsset(assetHandle));
 
-            TextureResourceBlob* resource   = reinterpret_cast<TextureResourceBlob*>(FlexKit::GetAsset(assetHandle));
+            TextureResourceBlob textureHeader;
+            ReadAsset(readContext, asset, &textureHeader, sizeof(textureHeader));
 
-            if (IsDDS((DeviceFormat)resource->format))
+
+            if (IsDDS((DeviceFormat)textureHeader.format))
             {
                 Close();
 
-                auto res        = CreateCRNDecompressor(MIPlevel, assetHandle, allocator);
-                decompressor    = res.value_or(nullptr);
-                format          = DeviceFormat::BC3_UNORM; // TODO: correctly extract the format
-                currentLevel    = MIPlevel;
-                currentAsset    = asset;
+                auto res = CreateDDSDecompressor(readContext, MIPlevel, asset, allocator);
+
+                FK_ASSERT(res, "Failed to create texture asset decompressor!");
+
+                decompressor = res.value_or(nullptr);
+                format = decompressor->GetFormat(); // TODO: correctly extract the format
+                currentLevel = MIPlevel;
+                currentAsset = asset;
 
                 return res.has_value();
             }
             else
-            {
-                FK_ASSERT(0);
-            }
+                __debugbreak();
 
             return false;
         }
@@ -183,13 +250,13 @@ namespace FlexKit
 
         UploadReservation ReadTile(const TileID_t id, const uint2 TileSize, CopyContext& ctx)
         {
-            return decompressor->ReadTile(id, TileSize, ctx);
+            return decompressor->ReadTile(readContext, id, TileSize, ctx);
         }
 
 
         UploadReservation Read(const uint2 WH, CopyContext& ctx)
         {
-            return decompressor->Read(WH, ctx);
+            return decompressor->Read(readContext, WH, ctx);
         }
 
 
@@ -209,6 +276,7 @@ namespace FlexKit
             return decompressor->GetTextureWH();
         }
 
+        ReadContext     readContext;
         DeviceFormat    format;
         iDecompressor*  decompressor = nullptr;
         AssetHandle     currentAsset = -1;
@@ -255,7 +323,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	constexpr size_t GetMinBlockSize()
+	constexpr size_t GetTileByteSize()
 	{
 		return 64 * KILOBYTE;
 	}
@@ -263,7 +331,7 @@ namespace FlexKit
 	struct TextureCacheDesc
 	{
 		const size_t textureCacheSize	= GIGABYTE;
-		const size_t blockSize			= GetMinBlockSize();
+		const size_t blockSize			= GetTileByteSize();
 	};
 
 

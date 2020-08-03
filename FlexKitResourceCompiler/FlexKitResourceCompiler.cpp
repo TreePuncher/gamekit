@@ -321,8 +321,11 @@ int main(int argc, char* argv[])
 
 			std::cout << "writing resource " << Out << '\n';
 
-			for (auto& blob : blobs)
-				fwrite(blob.buffer, sizeof(char), blob.bufferSize, F);
+            for (auto& blob : blobs)
+            {
+                if (auto res = fwrite(blob.buffer, sizeof(char), blob.bufferSize, F); res != blob.bufferSize)
+                    __debugbreak();
+            }
 	}	break;
 	case TOOL_MODE::ETOOLMODE_LISTCONTENTS:
 	{	if (FileChosen)
@@ -370,7 +373,7 @@ int main(int argc, char* argv[])
 					case EResourceType::EResource_TextureSet:
 					std::cout << " Type: TextureSet" << "\n";			break;
 					case EResourceType::EResource_TerrainCollider:
-					std::cout << " Type: TextureSet" << "\n";			break;
+					std::cout << " Type: TerrainCollider" << "\n";		break;
                     case EResourceType::EResource_CubeMapTexture:
                     std::cout << " Type: CubeMapResource" << "\n";      break;
 					default:

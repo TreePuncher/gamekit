@@ -125,7 +125,7 @@ namespace FlexKit
 
         using View = MaterialView;
 
-        void AddTexture(GUID_t textureAsset, MaterialHandle material, const bool LoadLowest = false);
+        void AddTexture(GUID_t textureAsset, MaterialHandle material, const bool LoadLowest = false, ReadContext& readContext = ReadContext{});
 
 
         RenderSystem&                   renderSystem;

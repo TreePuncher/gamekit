@@ -79,15 +79,6 @@ enum class TestScenes
 
 inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestScenes scene = TestScenes::ShadowTestScene)
 {
-	AddAssetFile("assets\\TestScenes.gameres");
-	AddAssetFile("assets\\ZeldaScene.gameres");
-	AddAssetFile("assets\\CubeMapResource.gameres");
-	AddAssetFile("assets\\skull.gameres");
-	AddAssetFile("assets\\debugPlane.gameres");
-	AddAssetFile("assets\\debugTexture.gameres");
-	AddAssetFile("assets\\aRealDemon.gameres");
-	AddAssetFile("assets\\primrose.gameres");
-
 	auto& gameState     = app.PushState<GameState>(base);
 	auto& renderSystem  = app.GetFramework().GetRenderSystem();
 
@@ -165,11 +156,6 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 
 	switch (scene)
 	{
-	case TestScenes::LocalIllumination:
-		AddAssetFile("assets\\ShadowTestScene.gameres");
-
-		break;
-		break;
 	case TestScenes::ShadowTestScene:
 	{
 		const AssetHandle ShadowScene = 202;
@@ -178,6 +164,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 		FK_ASSERT(FlexKit::LoadScene(app.GetCore(), gameState.scene, ShadowScene), "Failed to load Scene!");
 
 		
+        ReadContext readCtx;
 
 		MaterialComponent& materials = MaterialComponent::GetComponent();
 		MaterialHandle testMaterial = materials.CreateMaterial();
@@ -195,13 +182,11 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 			gameObject->AddView<MaterialComponentView>(testMaterial);
 			SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
 		}
-
-
 		if (auto [gameObject, res] = FindGameObject(gameState.scene, "Body_Mesh.001"); res && true)
 		{
 			MaterialHandle armourMaterial = materials.CreateMaterial();
-			materials.AddTexture(8100, armourMaterial);
-			materials.AddTexture(8200, armourMaterial);
+			materials.AddTexture(8100, armourMaterial, false, readCtx);
+			materials.AddTexture(8200, armourMaterial, false, readCtx);
 
 			gameObject->AddView<MaterialComponentView>(armourMaterial);
 			SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
@@ -210,8 +195,8 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 		if (auto [gameObject, res] = FindGameObject(gameState.scene, "Body_Mesh.002"); res && true)
 		{
 			MaterialHandle armourMaterial = materials.CreateMaterial();
-			materials.AddTexture(8101, armourMaterial);
-			materials.AddTexture(8201, armourMaterial);
+			materials.AddTexture(8101, armourMaterial, false, readCtx);
+			materials.AddTexture(8201, armourMaterial, false, readCtx);
 
 			gameObject->AddView<MaterialComponentView>(armourMaterial);
 			SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
@@ -220,8 +205,8 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 		if (auto [gameObject, res] = FindGameObject(gameState.scene, "Body_Mesh.003"); res && true)
 		{
 			MaterialHandle armourMaterial = materials.CreateMaterial();
-			materials.AddTexture(8102, armourMaterial);
-			materials.AddTexture(8202, armourMaterial);
+			materials.AddTexture(8102, armourMaterial, false, readCtx);
+			materials.AddTexture(8202, armourMaterial, false, readCtx);
 
 			gameObject->AddView<MaterialComponentView>(armourMaterial);
 			SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
@@ -230,8 +215,8 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 		if (auto [gameObject, res] = FindGameObject(gameState.scene, "Body_Mesh.004"); res && true)
 		{
 			MaterialHandle armourMaterial = materials.CreateMaterial();
-			materials.AddTexture(8103, armourMaterial);
-			materials.AddTexture(8203, armourMaterial);
+			materials.AddTexture(8103, armourMaterial, false, readCtx);
+			materials.AddTexture(8203, armourMaterial, false, readCtx);
 
 
 			gameObject->AddView<MaterialComponentView>(armourMaterial);
@@ -241,13 +226,12 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 		if (auto [gameObject, res] = FindGameObject(gameState.scene, "Body_Mesh.005"); res && true)
 		{
 			MaterialHandle armourMaterial = materials.CreateMaterial();
-			materials.AddTexture(8105, armourMaterial);
-			materials.AddTexture(8205, armourMaterial);
+			materials.AddTexture(8105, armourMaterial, false, readCtx);
+			materials.AddTexture(8205, armourMaterial, false, readCtx);
 
 			gameObject->AddView<MaterialComponentView>(armourMaterial);
 			SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
 		}
-		
 
 	 }  break;
 	case TestScenes::PhysXTest:

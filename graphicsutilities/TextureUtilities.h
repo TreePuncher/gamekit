@@ -44,6 +44,8 @@ namespace FlexKit
         BC5_TYPELESS,
         BC5_UNORM,
         BC5_SNORM,
+        BC7_UNORM,
+        BC7_SNORM,
         UNKNOWN
     };
 

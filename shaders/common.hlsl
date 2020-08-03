@@ -168,7 +168,12 @@ float3 GetWorldSpacePosition(float2 UV, float D)
 {
     const float3 V = GetViewVector_VS(UV) * MaxZ * D;
     return mul(ViewI, float4(V, 1));
+}
 
+float3 GetViewSpacePosition(float2 UV, float D) 
+{
+    const float3 V = GetViewVector_VS(UV) * MaxZ * D;
+    return V;
 }
 
 

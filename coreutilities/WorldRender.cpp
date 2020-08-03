@@ -1584,8 +1584,8 @@ namespace FlexKit
 
 				const auto pointLightCount = pointLights.elements.size();
 
-				if (!pointLightCount)
-					return;
+				//if (!pointLightCount)
+				//	return;
 
 				struct
 				{

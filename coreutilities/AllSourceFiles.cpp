@@ -68,3 +68,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TerrainRendering.cpp"
 
 #include "..\PhysicsUtilities\physicsutilities.cpp"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>

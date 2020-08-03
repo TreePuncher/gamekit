@@ -25,7 +25,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TextureUtilities.h"
 #include "Assets.h"
 
-#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #define CRND_HEADER_FILE_ONLY
 #include <crn_decomp.h>

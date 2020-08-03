@@ -76,7 +76,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void MaterialComponent::AddTexture(GUID_t textureAsset, MaterialHandle material, const bool loadLowest)
+    void MaterialComponent::AddTexture(GUID_t textureAsset, MaterialHandle material, const bool loadLowest, ReadContext& readContext)
     {
         const auto res = std::find_if(
             std::begin(textures),
@@ -89,7 +89,7 @@ namespace FlexKit
 
         if (res == std::end(textures))
         {
-            const auto [MIPCount, DDSTextureWH, _] = GetDDSInfo(textureAsset);
+            const auto [MIPCount, DDSTextureWH, format] = GetDDSInfo(textureAsset, readContext);
 
             if (DDSTextureWH.Product() == 0)
                 return;
@@ -97,7 +97,7 @@ namespace FlexKit
             auto textureResource = renderSystem.CreateGPUResource(
                 GPUResourceDesc::ShaderResource(
                     DDSTextureWH,
-                    DeviceFormat::BC3_UNORM,
+                    format,
                     MIPCount,
                     1,
                     ResourceAllocationType::Tiled));
