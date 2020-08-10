@@ -3,7 +3,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2020 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -25,16 +25,26 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+#include "buildsettings.h"
+
+#define TINYGLTF_NO_STB_IMAGE
+#define TINYGLTF_NO_INCLUDE_JSON
+#define TINYGLTF_IMPLEMENTATION
+
+#include <stb_image.h>
+#include <nlohmann\json.hpp>
+#include <tiny_gltf.h>
+
 #include "Common.h"
 #include "MetaData.h"
 #include "ResourceUtilities.h"
-#include "sceneResource.h"
 
-#include "buildsettings.h"
 #include "containers.h"
 #include "memoryutilities.h"
 #include "Assets.h"
 #include "AnimationUtilities.h"
+
+#include <filesystem>
 
 
 namespace FlexKit::ResourceBuilder
@@ -126,9 +136,23 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
+    struct DrawableMaterial
+    {
+        float4 albedo;
+        float4 specular;
+
+        std::vector<uint64_t>           textures;
+        std::vector<DrawableMaterial>   subMaterials;
+    };
+
+
+    /************************************************************************************************/
+
+
     Blob CreateSceneNodeComponent   (uint32_t nodeIdx);
     Blob CreateIDComponent          (std::string& string);
-    Blob CreateDrawableComponent    (GUID_t meshGUID, float4 albedo_S = { 0.5f, 0.5f, 0.5f, 0.5f }, float4 specular_M = { 0.5f, 0.5f, 0.5f, 0.0f });
+    Blob CreateDrawableComponent    (GUID_t meshGUID, const float4 albedo, const float4 specular);
+    Blob CreateMaterialComponent    (DrawableMaterial material);
     Blob CreatePointLightComponent  (float3 K, float2 IR);
 
 
@@ -140,18 +164,36 @@ namespace FlexKit::ResourceBuilder
     public:
         DrawableComponent(GUID_t IN_MGUID = INVALIDHANDLE, float4 IN_albedo = { 0, 1, 0, 0.5f }, float4 specular = { 1, 0, 1, 0 }) :
             EntityComponent { GetTypeGUID(DrawableComponent) },
-            MeshGuid        { IN_MGUID } {}
+            MeshGuid        { IN_MGUID }
+        {
+        }
 
         Blob GetBlob() override
         {
-            return CreateDrawableComponent(MeshGuid, albedo, specular);
+            return CreateDrawableComponent(MeshGuid, material.albedo, material.specular);
         }
 
         GUID_t MeshGuid = INVALIDHANDLE;
         GUID_t Collider = INVALIDHANDLE;
 
-        float4 albedo;
-        float4 specular;
+        DrawableMaterial material;
+    };
+
+
+
+    /************************************************************************************************/
+
+
+    class SkeletonEntityComponent : public EntityComponent
+    {
+    public:
+        SkeletonEntityComponent(GUID_t IN_skeletonResourceID) :
+            EntityComponent     { GetTypeGUID(Skeleton) },
+            skeletonResourceID  { IN_skeletonResourceID }{}
+
+        Blob GetBlob() override;
+
+        GUID_t skeletonResourceID;
     };
 
 
@@ -280,7 +322,7 @@ namespace FlexKit::ResourceBuilder
         std::vector<SceneEntity>		entities;
         std::vector<SceneEntity>		staticEntities;
 
-        size_t		GUID;
+        size_t		GUID    = rand();
         std::string	ID;
     };
 
@@ -293,6 +335,8 @@ namespace FlexKit::ResourceBuilder
 
     ResourceList                                                CreateSceneFromFBXFile(fbxsdk::FbxScene* scene, const CompileSceneFromFBXFile_DESC& Desc, const MetaDataList& metaData);
     std::pair<ResourceList, std::shared_ptr<SceneResource>>     CreateSceneFromFBXFile2(fbxsdk::FbxScene* scene, const CompileSceneFromFBXFile_DESC& Desc);
+    ResourceList                                                CreateSceneFromGlTF(const std::filesystem::path& fileDir, MetaDataList&);
+
 
 
 }   /************************************************************************************************/

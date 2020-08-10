@@ -220,10 +220,13 @@ namespace FlexKit::ResourceBuilder
     public:
         virtual ResourceBlob        CreateBlob() = 0;
         virtual const std::string&  GetResourceID() const { return "resource"; }
+        virtual const uint64_t      GetResourceGUID() const { return -1; }
     };
 
 
-    using ResourceList = std::vector<std::shared_ptr<iResource>>;
+    using Resource_ptr = std::shared_ptr<iResource>;
+    using ResourceList = std::vector<Resource_ptr>;
+
 }   /************************************************************************************************/
 
 #endif

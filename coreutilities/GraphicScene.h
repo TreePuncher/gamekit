@@ -150,30 +150,6 @@ namespace FlexKit
     }
 
 
-    void SetMaterialHandle(GameObject& go, MaterialHandle material)
-    {
-        Apply(
-            go,
-            [&](DrawableView& drawable)
-            {
-                drawable.GetDrawable().material = material;
-            });
-    }
-
-    MaterialHandle GetMaterialHandle(GameObject& go)
-    {
-        return Apply(
-            go,
-            [&](MaterialComponentView& material)
-            {
-                return material.handle;
-            },
-            []() -> MaterialHandle
-            {
-                return InvalidHandle_t;
-            });
-    }
-
     /************************************************************************************************/
 
 
@@ -203,12 +179,12 @@ namespace FlexKit
 	class PointLightView : public ComponentView_t<PointLightComponent>
 	{
 	public:
-		PointLightView(float3 color, float intensity, NodeHandle node) : light{ GetComponent().Create({}) } 
+		PointLightView(float3 color, float intensity, float radius, NodeHandle node) : light{ GetComponent().Create({}) } 
 		{
 			auto& poingLight        = GetComponent()[light];
 			poingLight.K			= color;
 			poingLight.I			= intensity;
-			poingLight.R			= intensity;
+			poingLight.R			= radius;
 			poingLight.Position		= node;
 		}
 

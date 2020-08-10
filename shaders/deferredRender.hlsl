@@ -110,17 +110,16 @@ float4 DeferredShade_PS(Deferred_PS_IN IN, float4 ScreenPOS : SV_POSITION) : SV_
     const float3 V          = -GetViewVector_VS(UV);
     const float3 positionVS =  GetViewSpacePosition(UV, depth);
 
-    const float roughness     = MRIA.y;
+    const float roughness     = 0.5f;//MRIA.y;
     const float ior           = MRIA.b;
 	const float metallic      = MRIA.r;
-	const float3 albedo       = Albedo.rgb;
+	const float3 albedo       = Albedo.rgb; 
     
     const float Ks = 0.0f;
     const float Kd = (1.0 - Ks) * (1.0 - metallic);
 
 	const uint2	lightBin	    = UV * WH / 10.0f;// - uint2( 1, 1 );
     uint        localLightCount = 0;
-
 
     float4 color = 0;
 	[unroll(16)]
@@ -138,19 +137,28 @@ float4 DeferredShade_PS(Deferred_PS_IN IN, float4 ScreenPOS : SV_POSITION) : SV_
         const float3 L		    = normalize(Lp - positionVS);
         
         const float  Ld			= length(positionVS - Lp);
-        const float  Li			= light.KI.w * 10;
-        const float  Lr			= light.PR.w;
+        const float  Li			= abs(light.KI.w);
+        const float  Lr			= abs(light.PR.w);
         const float  ld_2		= Ld * Ld;
-        const float  La			= (Li / ld_2) * saturate(1 - (pow(Ld, 10) / pow(Lr, 10)));
+        const float  La			= min(max(Li / ld_2, 0.0f), PI) * saturate(1 - (pow(Ld, 10) / pow(Lr, 10)));
 
         const float  NdotV      = dot(N.xyz, -V);
         const float  NdotL      = dot(N.xyz, L);
         const float3 H          = normalize(V + L);
-        const float3 diffuse    = F_d(V, H, L, N.xyz, roughness) * albedo;//pow(Albedo.xyz, 1.0f) * INV_PI;
-        //const float3 diffuse    = albedo * INV_PI;
+
+        #if 0
+        const float3 diffuse    = F_d(V, H, L, N.xyz, roughness) * albedo;
+        #else
+        const float3 diffuse    = albedo / PI;
+        #endif
+
         const float3 specular   = F_r(V, H, L, N.xyz, roughness);
 
+        //const float3 colorSample = albedo;
         const float3 colorSample = (diffuse * Kd + specular * Ks) * La * NdotL;
+        //const float3 colorSample =  albedo * NdotL * La;
+
+        //return float4(T, 1);
 
 		const float3 mapVectors[] = {
 			float3(-1,  0,  0), // left
@@ -195,13 +203,20 @@ float4 DeferredShade_PS(Deferred_PS_IN IN, float4 ScreenPOS : SV_POSITION) : SV_
 		const float shadowSample 		= shadowMaps[I].Sample(BiLinear, mul(ViewI, L) * float3( 1, -1, -1));
 		const float depth 				= lightPosition_PS.z;
 
-		const float bias        = clamp(0.00001 * tan(acos(dot(N.xyz, L))), 0.0, 0.01);
-		const float visibility  = 1.0f;//saturate(depth < shadowSample + bias ? 1.0f : 0.0f);
-		color +=  float4(colorSample * Lc * La * visibility, 0 );
+		const float bias        = clamp(0.0001 * tan(acos(dot(N.xyz, L))), 0.0, 0.01);
+		const float visibility  = saturate(depth < shadowSample + bias ? 1.0f : 0.0f);
+		
+        color += float4(colorSample * Lc * visibility, 0 );
     }
 
+	//return float4(T.xyz, 1);
+	//return float4(N.xyz, 1);
 	//return float4(N.xyz / 2 + 0.5f, 1);
-	return pow(color, 2.1f);
+	//return float4(T.xyz / 2 + 0.5f, 1);
+    
+	//return color;
+	//return sqrt(color);
+	return color * color;
 }
 
 

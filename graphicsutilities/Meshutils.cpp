@@ -950,6 +950,15 @@ namespace FlexKit
 			}
 
 
+            /************************************************************************************************/
+
+
+            void AddTexCordToken(const float3 in, uint32_t coordinateIdx, TokenList& out)
+            {
+                out.push_back(TextureCoordinateToken{ in, coordinateIdx });
+            }
+
+
 			/************************************************************************************************/
 
 

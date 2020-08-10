@@ -1,4 +1,5 @@
 #include "Materials.h"
+#include "GraphicScene.h"
 #include "TextureStreamingUtilities.h"
 
 namespace FlexKit
@@ -118,6 +119,65 @@ namespace FlexKit
             res->refCount++;
             materials[handles[material]].Textures.push_back(res->texture);
         }
+    }
+
+
+    /************************************************************************************************/
+
+
+    void MaterialComponent::AddComponentView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    {
+        MaterialComponentBlob materialBlob;
+        memcpy(&materialBlob, buffer, min(sizeof(materialBlob), bufferSize));
+
+        auto newMaterial = CreateMaterial();
+
+        if (materialBlob.materials.size() > 1)
+        {
+            for (auto& subMaterial : materialBlob.materials)
+            {
+                auto newSubMaterial = CreateMaterial();
+                AddSubMaterial(newMaterial, newSubMaterial);
+
+                for (auto& texture : subMaterial.textures)
+                    AddTexture(texture, newSubMaterial);
+            }
+        }
+        else if (materialBlob.materials.size() == 1)
+        {
+            for (auto& texture : materialBlob.materials[0].textures)
+                AddTexture(texture, newMaterial);
+        }
+
+        gameObject.AddView<MaterialView>(newMaterial);
+        SetMaterialHandle(gameObject, newMaterial);
+    }
+
+
+
+    void SetMaterialHandle(GameObject& go, MaterialHandle material)
+    {
+        Apply(
+            go,
+            [&](DrawableView& drawable)
+            {
+                drawable.GetDrawable().material = material;
+            });
+    }
+
+
+    MaterialHandle GetMaterialHandle(GameObject& go)
+    {
+        return Apply(
+            go,
+            [&](MaterialComponentView& material)
+            {
+                return material.handle;
+            },
+            []() -> MaterialHandle
+            {
+                return InvalidHandle_t;
+            });
     }
 
 

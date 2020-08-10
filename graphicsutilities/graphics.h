@@ -3704,6 +3704,7 @@ private:
 		const char*                         ID;
 		SkinDeformer*                       SkinTable;
 		Skeleton*                           Skeleton;
+        static_vector<SubMesh>              subMeshes;
 		static_vector<VertexBufferView*>    Buffers;
 		VertexBuffer		                VertexBuffer;
 

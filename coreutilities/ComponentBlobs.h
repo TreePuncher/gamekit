@@ -14,6 +14,7 @@ namespace FlexKit
         ComponentRequirementTable,
         Entity,
         EntityComponent,
+        MaterialComponentBlock,
     };
 
 
@@ -103,6 +104,10 @@ namespace FlexKit
         float3 K;
     };
 
+    struct SubMaterial
+    {
+        static_vector<uint64_t>  textures;
+    };
 
     struct DrawableComponentBlob
     {
@@ -113,7 +118,25 @@ namespace FlexKit
            GetTypeGUID(DrawableID)
         };
 
-        GUID_t                  resourceID;
+        GUID_t                      resourceID;
+        static_vector<SubMaterial>  materials;
+
+        float4 albedo_smoothness;
+        float4 specular_metal;
+    };
+
+
+    struct MaterialComponentBlob
+    {
+        ComponentBlock::Header  header = {
+           0,
+           EntityComponent,
+           sizeof(MaterialComponentBlob),
+           MaterialComponentID
+        };
+
+        GUID_t                      resourceID;
+        static_vector<SubMaterial>  materials;
 
         float4 albedo_smoothness;
         float4 specular_metal;
@@ -144,6 +167,19 @@ namespace FlexKit
 
         uint32_t    nodeIdx             = 0;
         bool        excludeFromScene    = false;
+    };
+
+
+    struct SkeletonComponentBlob
+    {
+        ComponentBlock::Header  header = {
+            0,
+            EntityComponent,
+            sizeof(SkeletonComponentBlob),
+            GetTypeGUID(Skeleton),
+        };
+
+        uint64_t assetID; // SkeletonAsset ID
     };
 }   // namespace FlexKit
 

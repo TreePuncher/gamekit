@@ -19,6 +19,7 @@ namespace FlexKit
         R8G8B8A_UINT,
         R8G8B8A8_UINT,
         R8G8B8A8_UNORM,
+        R8G8B8A8_UNORM_SRGB,
         R16G16B16A16_UNORM,
         R8G8_UNORM,
         D24_UNORM_S8_UINT,

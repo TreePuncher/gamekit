@@ -128,6 +128,20 @@ namespace FlexKit
 
 
 
+    /************************************************************************************************/
+
+
+    void SkeletonComponent::AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    {
+        SkeletonComponentBlob blob;
+        memcpy(&blob, buffer, bufferSize);
+
+        auto triMeshHandle = GetTriMesh(GO);
+        auto skeleton = Create(triMeshHandle, blob.assetID);
+
+        GO.AddView<SkeletonView>(triMeshHandle, skeleton);
+    }
+
 
     /************************************************************************************************/
 

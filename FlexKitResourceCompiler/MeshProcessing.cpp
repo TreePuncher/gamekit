@@ -288,9 +288,9 @@ namespace FlexKit::ResourceBuilder
 	/************************************************************************************************/
 
 
-	FBXSkinDeformer CreateSkin(const fbxsdk::FbxMesh& mesh)
+	SkinDeformer CreateSkin(const fbxsdk::FbxMesh& mesh)
 	{	// Get Weights
-		FBXSkinDeformer	Out = {};
+		SkinDeformer	Out = {};
 
 		const auto DeformerCount  = mesh.GetDeformerCount();
 		for ( int I = 0; I < DeformerCount; ++I )
@@ -317,7 +317,7 @@ namespace FlexKit::ResourceBuilder
 					auto* const fbxBone			= Cluster->GetLink();
 					const auto	fbxBoneAttrib	= fbxBone->GetNodeAttribute();
 
-					FBXSkinDeformer::BoneWeights bone;
+					SkinDeformer::BoneWeights bone;
 					bone.name = ClusterName;
 
 					for ( size_t III = 0; III < CPICount; ++III )
@@ -338,7 +338,7 @@ namespace FlexKit::ResourceBuilder
 	/************************************************************************************************/
 
 
-	FBXMeshDesc TranslateToTokens(fbxsdk::FbxMesh& mesh, SkeletonResource_ptr skeleton, bool SubDiv_Enabled)
+	MeshDesc TranslateToTokens(fbxsdk::FbxMesh& mesh, SkeletonResource_ptr skeleton, bool SubDiv_Enabled)
 	{
         using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddNormalToken;
 		using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddIndexToken;
@@ -347,8 +347,9 @@ namespace FlexKit::ResourceBuilder
 		using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddWeightToken;
 		using fbxsdk::FbxLayerElement;
 
-		FBXMeshDesc	out = {};
+		MeshDesc	out = {};
         out.tokens      = FlexKit::MeshUtilityFunctions::TokenList{ SystemAllocator };
+        out.skeleton    = skeleton;
 
 		float3 MinV(INFINITY);
 		float3 MaxV(-INFINITY);
@@ -585,7 +586,7 @@ namespace FlexKit::ResourceBuilder
 	/************************************************************************************************/
 
 
-	MeshResource_ptr CreateMeshResource(FbxMesh& mesh, const std::string& ID, const MetaDataList& metaData, const bool enableSubDiv)
+	MeshResource_ptr CreateMeshResource(MeshDesc* meshes, const size_t meshCount, const std::string& ID, const MetaDataList& metaData, const bool enableSubDiv)
 	{
 		using FlexKit::FillBufferView;
 		using FlexKit::AnimationClip;
@@ -598,53 +599,59 @@ namespace FlexKit::ResourceBuilder
         using MeshUtilityFunctions::MeshKDBTree;
         using MeshUtilityFunctions::CreateOptimizedMesh;
 
-		MeshResource_ptr meshOut		= std::make_shared<MeshResource>();
-		SkeletonResource_ptr skeleton	= CreateSkeletonResource(mesh, ID, metaData);
-		const auto transformedMesh		= TranslateToTokens(mesh, skeleton, enableSubDiv);
-        auto kdbTree                    = std::make_shared<MeshKDBTree>(transformedMesh.tokens);
-        auto optimizedMesh              = CreateOptimizedMesh(*kdbTree);
-		auto optimizedBuffer            = OptimizedBuffer(optimizedMesh);
+        static_vector<FlexKit::SubMesh> submeshes;
 
-		static_vector<Pair<VERTEXBUFFER_TYPE, VERTEXBUFFER_FORMAT>> BuffersFound = {
-			{VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32}
-		};
+        MeshResource_ptr meshOut = std::make_shared<MeshResource>();
+        size_t bufferCount  = 0;
 
-        size_t i = 0;
-        CreateBufferView(
-                (byte*)optimizedBuffer.points.data(), optimizedBuffer.points.size(), meshOut->buffers[i++],
-                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, SystemAllocator);
+        FlexKit::BoundingSphere boundingSphere = { 0, 0, 0, 1000 };
+        FlexKit::AABB           aabb = {};
 
-        if (transformedMesh.UV)
-            CreateBufferView(
-                (byte*)optimizedBuffer.textureCoordinates.data(), optimizedBuffer.textureCoordinates.size(), meshOut->buffers[i++],
-                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32, SystemAllocator);
+        OptimizedMesh optimizedMesh;
 
-        if (transformedMesh.Normals)
-            CreateBufferView(
-                (byte*)optimizedBuffer.normals.data(), optimizedBuffer.normals.size(), meshOut->buffers[i++],
-                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, SystemAllocator);
-
-        if(transformedMesh.Tangents)
-            CreateBufferView(
-                (byte*)optimizedBuffer.tangents.data(), optimizedBuffer.tangents.size(), meshOut->buffers[i++],
-                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, SystemAllocator);
-
-		if (transformedMesh.Weights)
+        for(size_t I = 0; I < meshCount; I++)
         {
-            CreateBufferView(
-                (byte*)optimizedBuffer.jointWeights.data(), optimizedBuffer.tangents.size(), meshOut->buffers[i++],
-                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, SystemAllocator);
+            auto kdbTree    = std::make_shared<MeshKDBTree>(meshes[I].tokens);
+            auto submesh    = CreateOptimizedMesh(*kdbTree);
 
-            CreateBufferView(
-                (byte*)optimizedBuffer.jointIndexes.data(), optimizedBuffer.tangents.size(), meshOut->buffers[i++],
-                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R16G16B16A16, SystemAllocator);
+            submeshes.push_back({ optimizedMesh.indexes.size(), submesh.indexes.size() });
 
-		}
+            optimizedMesh  += submesh;
 
-        CreateBufferView(
-                (byte*)optimizedBuffer.indexes.data(), optimizedBuffer.indexes.size(), meshOut->buffers[i++],
-                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32, SystemAllocator);
+            aabb += kdbTree->root->aabb;
+        }
 
+        auto optimizedBuffer = OptimizedBuffer(optimizedMesh);
+
+        auto AddSubMeshBuffer =
+            [&](const VERTEXBUFFER_TYPE type, const VERTEXBUFFER_FORMAT format, auto& source)
+            {
+                VertexBufferView* view;
+                CreateBufferView((byte*)source.data(), source.size(), view,
+                    type, format, SystemAllocator);
+
+               meshOut->buffers[bufferCount++] = view;
+            };
+
+
+        AddSubMeshBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, optimizedBuffer.points);
+
+        if (meshes[0].UV)
+            AddSubMeshBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32, optimizedBuffer.textureCoordinates);
+
+        if (meshes[0].Normals)
+            AddSubMeshBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, optimizedBuffer.normals);
+
+        if (meshes[0].Tangents)
+            AddSubMeshBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, optimizedBuffer.tangents);
+
+        if (meshes[0].Weights)
+        {
+            AddSubMeshBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, optimizedBuffer.jointWeights);
+            AddSubMeshBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R16G16B16A16, optimizedBuffer.jointIndexes);
+        }
+
+        AddSubMeshBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32, optimizedBuffer.indexes);
 
 #if USING(TOOTLE)
 		// Re-Order Buffers
@@ -672,19 +679,19 @@ namespace FlexKit::ResourceBuilder
 		}
 #endif
 
-		meshOut->IndexBuffer_Idx	= BuffersFound.size();
-		meshOut->IndexCount			= optimizedBuffer.IndexCount();
-		meshOut->Skeleton			= skeleton;
-		meshOut->AnimationData		= transformedMesh.Weights ? EAnimationData::EAD_Skin : 0;
-		meshOut->Info.max			= transformedMesh.MaxV;
-		meshOut->Info.min			= transformedMesh.MinV;
-		meshOut->Info.r				= transformedMesh.R;
-		meshOut->TriMeshID			= mesh.GetUniqueID();
+		meshOut->IndexBuffer_Idx	= meshOut->GetIndexBufferIndex();
+		meshOut->IndexCount			= optimizedBuffer.indexes.size() / 4;
+		meshOut->Skeleton			= meshes[0].skeleton;
+		meshOut->AnimationData		= meshes[0].Weights ? EAnimationData::EAD_Skin : 0;
+		meshOut->Info.max			= meshes[0].MaxV;
+		meshOut->Info.min			= meshes[0].MinV;
+		meshOut->Info.r				= meshes[0].R;
+		meshOut->TriMeshID			= meshes[0].ID;
 		meshOut->ID					= ID;
-		meshOut->SkeletonGUID		= skeleton ? skeleton->guid : -1;
-		meshOut->BS					= optimizedBuffer.bs;
-		meshOut->AABB				= optimizedBuffer.aabb;
-        meshOut->kdbTree            = kdbTree;
+		meshOut->SkeletonGUID		= meshes[0].skeleton ? meshes[0].skeleton->guid : -1;
+		meshOut->BS					= boundingSphere;
+		meshOut->AABB				= aabb;
+        meshOut->submeshes          = submeshes;
 
 		return meshOut;
 	}

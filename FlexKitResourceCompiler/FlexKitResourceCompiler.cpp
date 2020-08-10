@@ -4,6 +4,8 @@
 #include "buildsettings.h"
 #include "Geometry.h"
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image.h>
 
 // Sources Files
 #include "common.cpp"
@@ -52,8 +54,9 @@ int main(int argc, char* argv[])
 {
 	bool FileChosen = false;
 
-	static_vector<char*, 24> Inputs;
-	static_vector<char*, 24> MetaDataFiles;
+    std::vector<char*> Inputs;
+    std::vector<char*> glTFAssets;
+    std::vector<char*> MetaDataFiles;
 	
 	char* Out = "assets\\ResourceFile.gameres";
 
@@ -76,6 +79,13 @@ int main(int argc, char* argv[])
 
 			I++;
 		}
+        else if (!strcmp(argv[I], "gltf") || !strcmp(argv[I], "-tf"))
+        {
+            if (argc + 1 > I)
+                glTFAssets.push_back(argv[I + 1]);
+
+            I++;
+        }
 		else if (!strcmp(argv[I], "out") || !strcmp(argv[I], "-o"))
 		{
 			if(argc + 1 > I)
@@ -150,7 +160,7 @@ int main(int argc, char* argv[])
 			if (!MetaData.size())
 			{
 				std::cout << "No Meta Data Found!\n";
-				return -1;
+				//return -1;
 			}
 
 			for (const auto& MD : MetaData)
@@ -244,6 +254,7 @@ int main(int argc, char* argv[])
 				Desc.CookingEnabled = true;
 				Desc.Foundation;
 				Desc.Cooker;
+
 				std::cout << "Compiling File: " << assetLocation << "\n";
 					
 				fbxsdk::FbxManager*		Manager		= fbxsdk::FbxManager::Create();
@@ -264,6 +275,20 @@ int main(int argc, char* argv[])
 					MessageBox(0, L"Failed to Load File!", L"ERROR!", MB_OK);
 				}
 			}
+
+            for (const auto glTF_Asset : glTFAssets)
+            {
+                const filesystem::path assetPath{ glTF_Asset };
+
+                if (!assetPath.empty() && (assetPath.extension() == ".glb"))
+                {
+                    auto sceneResources = CreateSceneFromGlTF(assetPath, MetaData);
+
+                    for (auto& resource : sceneResources)
+                        resources.push_back(resource);
+                }
+            }
+
 
 			if (!resources.size()) 
 			{

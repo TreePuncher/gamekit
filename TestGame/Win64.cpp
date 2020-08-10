@@ -24,7 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "buildsettings.h"
 
-
 #define _WINSOCKAPI_
 #include <windows.h>
 #include <WinSock2.h>
@@ -51,7 +50,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "allsourcefiles.cpp"
 
 #include <iostream>
-
 
 int main(int argc, char* argv[])
 {

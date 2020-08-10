@@ -579,8 +579,16 @@ namespace FlexKit
                     float4( 1, -1, 0, 1),
                 };
 
+                size_t subDrawCount = 0;
+                for (auto& drawable : drawables)
+                {
+                    auto* triMesh = GetMeshResource(drawable.D->MeshHandle);
+
+                    subDrawCount += triMesh->subMeshes.size();
+                }
+
                 const size_t bufferSize = 
-                    AlignedSize<Drawable::VConstantsLayout>() * drawables.size() +
+                    AlignedSize<Drawable::VConstantsLayout>() * subDrawCount +
                     AlignedSize<constantBufferLayout>() +
                     AlignedSize<Camera::ConstantBuffer>() +
                     AlignedSize<decltype(Vertices)>();
@@ -645,27 +653,68 @@ namespace FlexKit
                     }
 
                     const auto materialHandle = visable.D->material;
-                    if (materialHandle != prevMaterial)
+
+                    if (!materials[materialHandle].SubMaterials.empty())
                     {
-                        const auto& textures = materials[materialHandle].Textures;
+                        const auto subMeshCount = triMesh->subMeshes.size();
+                        auto& material = MaterialComponent::GetComponent()[visable.D->material];
 
-                        DescriptorHeap srvHeap;
-                        srvHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), textures.size(), &allocator);
-                        ctx.SetGraphicsDescriptorTable(3, srvHeap);
+                        for (size_t I = 0; I < subMeshCount; I++)
+                        {
+                            auto& subMesh       = triMesh->subMeshes[I];
+                            auto& passMaterial  = materials[material.SubMaterials[I]];
 
-                        for (size_t I = 0; I < textures.size(); I++)
-                            srvHeap.SetSRV(ctx, I, textures[I]);
+                            DescriptorHeap srvHeap;
+
+                            const auto& textures = passMaterial.Textures;
+
+                            srvHeap.Init(
+                                ctx,
+                                resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
+                                &allocator);
+
+                            auto constantData = visable.D->GetConstants();
+                            constantData.textureCount = textures.size();
+
+                            for (size_t I = 0; I < textures.size(); I++) {
+                                srvHeap.SetSRV(ctx, I, textures[I]);
+                                constantData.textureHandles[I] = uint4{ 256, 256, textures[I].to_uint() };
+                            }
+
+                            srvHeap.NullFill(ctx);
+
+                            const auto constants = ConstantBufferDataSet{ constantData, passConstantBuffer };
+
+                            ctx.SetGraphicsConstantBufferView(1, constants);
+                            ctx.SetGraphicsDescriptorTable(3, srvHeap);
+                            ctx.DrawIndexed(subMesh.IndexCount, subMesh.BaseIndex);
+                        }
                     }
+                    else
+                    {
+                        if (materialHandle != prevMaterial)
+                        {
+                            const auto& textures = materials[materialHandle].Textures;
 
-                    const auto& textures = materials[materialHandle].Textures;
-                    if (!textures.size())
-                        continue;
+                            DescriptorHeap srvHeap;
+                            srvHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), textures.size(), &allocator);
+                            ctx.SetGraphicsDescriptorTable(3, srvHeap);
 
-                    prevMaterial = materialHandle;
+                            for (size_t I = 0; I < textures.size(); I++)
+                                srvHeap.SetSRV(ctx, I, textures[I]);
+                        }
 
-                    const auto constants = ConstantBufferDataSet{ visable.D->GetConstants(), passConstantBuffer };
-                    ctx.SetGraphicsConstantBufferView(1, constants);
-                    ctx.DrawIndexed(triMesh->IndexCount);
+                        const auto& textures = materials[materialHandle].Textures;
+                        if (!textures.size())
+                            continue;
+
+                        prevMaterial = materialHandle;
+
+                        const auto constants = ConstantBufferDataSet{ visable.D->GetConstants(), passConstantBuffer };
+
+                        ctx.SetGraphicsConstantBufferView(1, constants);
+                        ctx.DrawIndexed(triMesh->IndexCount);
+                    }
                 }
 
 
