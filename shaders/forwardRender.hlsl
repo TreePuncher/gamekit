@@ -194,7 +194,8 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
     while(mip < MIPCount)
     {
         uint state;
-        const float4 texel = source.SampleLevel(textureSampler, float2(0, 1) + float2(1, -1) * UV, mip, 0.0f, state);
+        //const float4 texel = source.SampleLevel(textureSampler, float2(0, 1) + float2(1, -1) * UV, mip, 0.0f, state);
+        const float4 texel = source.SampleLevel(textureSampler, UV, mip, 0.0f, state);
 
         if(CheckAccessFullyMapped(state))
             return texel;

@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Animation.h"
 
 #include <array>
-
+#include <optional>
 
 namespace FlexKit::ResourceBuilder
 {   /************************************************************************************************/
@@ -50,7 +50,7 @@ namespace FlexKit::ResourceBuilder
 	};
 
 
-	struct FBXSkinDeformer
+	struct SkinDeformer
 	{
 		struct BoneWeights
 		{
@@ -65,34 +65,37 @@ namespace FlexKit::ResourceBuilder
 		size_t						size;
 	};
 
-	struct FBXMeshDesc
+	struct MeshDesc
 	{
 		bool UV         = false;
 		bool Normals    = false;
-        bool Tangents   = false;
+		bool Tangents   = false;
 		bool Weights    = false;
 
 		float3			MinV    = float3(0, 0, 0);
 		float3			MaxV    = float3(0, 0, 0);
 		float			R       = 0;
 
-		size_t			                            faceCount = 0;
-		FBXSkinDeformer                             skin;
-        FlexKit::MeshUtilityFunctions::TokenList    tokens;
+		size_t          ID      = rand();
+
+		size_t			                   faceCount = 0;
+		SkinDeformer                       skin;
+		SkeletonResource_ptr               skeleton;
+		MeshUtilityFunctions::TokenList    tokens;
 	};
 
 
 	/************************************************************************************************/
 
 
-    using MeshKDBTree_ptr = std::shared_ptr<FlexKit::MeshUtilityFunctions::MeshKDBTree>;
+	using MeshKDBTree_ptr = std::shared_ptr<FlexKit::MeshUtilityFunctions::MeshKDBTree>;
 
 
 	struct MeshResource : public iResource
 	{
 		ResourceBlob CreateBlob() override
 		{ 
-			size_t bufferSize			= CalculateResourceSize();
+			size_t bufferSize		= CalculateResourceSize();
 			TriMeshAssetBlob* blob	= reinterpret_cast<TriMeshAssetBlob*>(malloc(bufferSize));
 
 			blob->GUID				= TriMeshID;
@@ -123,6 +126,8 @@ namespace FlexKit::ResourceBuilder
 
 			strcpy_s(blob->ID, ID_LENGTH > ID.size() ? ID_LENGTH : ID.size(), ID.c_str());
 
+            blob->submeshes = submeshes;
+
 			size_t bufferPosition = 0;
 			for (size_t I = 0; I < 16; ++I)
 			{
@@ -151,7 +156,26 @@ namespace FlexKit::ResourceBuilder
 			return out;
 		}
 
-        const std::string& GetResourceID() const override { return ID; }
+		const std::string& GetResourceID() const override { return ID; }
+		const uint64_t     GetResourceGUID() const override { return TriMeshID; }
+
+        std::optional<VertexBufferView*> GetBuffer(VERTEXBUFFER_TYPE type) const
+        {
+            for (auto buffer : buffers)
+                if (buffer && buffer->GetBufferType() == type)
+                    return buffer;
+
+            return {};
+        }
+
+        size_t GetIndexBufferIndex() const
+        {
+            for (size_t I = 0; I < buffers.size(); I++)
+                if (buffers[I] && buffers[I]->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX)
+                    return I;
+
+            return -1;
+        }
 
 		size_t CalculateResourceSize()
 		{
@@ -166,6 +190,8 @@ namespace FlexKit::ResourceBuilder
 		size_t IndexCount;
 		size_t TriMeshID;
 		size_t IndexBuffer_Idx;
+
+        static_vector<FlexKit::SubMesh> submeshes;
 
 		struct SubDivInfo
 		{
@@ -184,53 +210,54 @@ namespace FlexKit::ResourceBuilder
 			float  r;
 		}Info;
 
-        void BakeTransform(const float4x4 transform)
-        {
-            return;
-            for (auto view : buffers)
-            {
-                if (view)
-                {
-                    switch (view->GetBufferType())
-                    {
-                        case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL:
-                        case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT:
-                            TransformBuffer(
-                                view->CreateTypedProxy<float3>(),
-                                [&](auto V) -> float3
-                                {
-                                    return V;
-                                    //return (transform * float4(V, 0)).xyz().normal(); // TODO: Handle scaling correctly
-                                });
-                            break;
-                        case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION:
-                            struct Vertex
-                            {
-                                float pos[3];
-                            };
-                            TransformBuffer(
-                                view->CreateTypedProxy<Vertex>(),
-                                [&](auto V)
-                                {
-                                    Vertex V_out;
 
-                                    const float3 pos = float3::Load(V.pos);
-                                    auto new_v = (transform * float4(pos, 1)).xyz();
-                                    V_out.pos[0] = new_v.x;
-                                    V_out.pos[1] = new_v.y;
-                                    V_out.pos[2] = new_v.z;
+		void BakeTransform(const float4x4 transform)
+		{
+			return;
+			for (auto view : buffers)
+			{
+				if (view)
+				{
+					switch (view->GetBufferType())
+					{
+						case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL:
+						case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT:
+							TransformBuffer(
+								view->CreateTypedProxy<float3>(),
+								[&](auto V) -> float3
+								{
+									return V;
+									//return (transform * float4(V, 0)).xyz().normal(); // TODO: Handle scaling correctly
+								});
+							break;
+						case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION:
+							struct Vertex
+							{
+								float pos[3];
+							};
+							TransformBuffer(
+								view->CreateTypedProxy<Vertex>(),
+								[&](auto V)
+								{
+									Vertex V_out;
 
-                                    return V_out;
-                                });
-                            break;
-                    }
-                }
-            }
-        }
+									const float3 pos = float3::Load(V.pos);
+									auto new_v = (transform * float4(pos, 1)).xyz();
+									V_out.pos[0] = new_v.x;
+									V_out.pos[1] = new_v.y;
+									V_out.pos[2] = new_v.z;
+
+									return V_out;
+								});
+							break;
+					}
+				}
+			}
+		}
 
 
 		// Visibility Information
-        MeshKDBTree_ptr kdbTree;
+		MeshKDBTree_ptr kdbTree;
 		AABB			AABB;
 		BoundingSphere	BS;
 
@@ -257,10 +284,10 @@ namespace FlexKit::ResourceBuilder
 	/************************************************************************************************/
 
 
-	FBXSkinDeformer		CreateSkin			(const fbxsdk::FbxMesh* Mesh);
-	FBXMeshDesc			TranslateToTokens	(fbxsdk::FbxMesh* Mesh, MeshUtilityFunctions::TokenList& TokensOut, SkeletonResource_ptr S = nullptr, bool SubDiv_Enabled = false);
+	SkinDeformer		CreateSkin			(const fbxsdk::FbxMesh* Mesh);
+	MeshDesc			TranslateToTokens	(fbxsdk::FbxMesh* Mesh, MeshUtilityFunctions::TokenList& TokensOut, SkeletonResource_ptr S = nullptr, bool SubDiv_Enabled = false);
 	
-	MeshResource_ptr	CreateMeshResource	(FbxMesh& Mesh, const std::string& ID = std::string{}, const MetaDataList& MD = MetaDataList{}, const bool EnableSubDiv = false);
+	MeshResource_ptr	CreateMeshResource	(MeshDesc*, const size_t meshCount, const std::string& ID, const MetaDataList& MD = MetaDataList{}, const bool EnableSubDiv = false);
 
 
 	/************************************************************************************************/

@@ -30,7 +30,7 @@ namespace FlexKit::ResourceBuilder
             if (ID.FBXID == FBXID)
                 return ID.Guid;
 
-        return INVALIDHANDLE;
+        return FBXID;
     }
 
     bool FBXIDPresentInTable(size_t FBXID, FBXIDTranslationTable& Table)
@@ -104,7 +104,7 @@ namespace FlexKit::ResourceBuilder
 
     struct CompiledMeshInfo
     {
-        FBXMeshDesc	MeshInfo;
+        MeshDesc	MeshInfo;
         Skeleton*	S;
     };
 
@@ -157,8 +157,11 @@ namespace FlexKit::ResourceBuilder
                 {
                     std::cout << "Building Mesh: " << MeshName << "\n";
 
+                    auto skeleton       = CreateSkeletonResource(*Mesh, Name, MD);
+                    MeshDesc meshDesc   = TranslateToTokens(*Mesh, skeleton, false);
+
                     const FbxAMatrix transform  = node->EvaluateGlobalTransform();
-                    MeshResource_ptr resource   = CreateMeshResource(*Mesh, Name, MD, false);
+                    MeshResource_ptr resource   = CreateMeshResource(&meshDesc, 1, Name, MD, false);
 
                     resource->BakeTransform(FBXMATRIX_2_FLOAT4X4((transform)));
                     

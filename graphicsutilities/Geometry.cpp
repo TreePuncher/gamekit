@@ -83,21 +83,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	VertexBufferView VertexBufferView::operator + ( const VertexBufferView& RHS )
+	VertexBufferView VertexBufferView::operator += ( const VertexBufferView& RHS )
 	{	//TODO: THIS FUNCTION
-		FK_ASSERT(0); 
-		//if( RHS.GetBufferSize() != GetBufferSize() )
-		//	FK_ASSERT( 0 );
-		//if( RHS.GetBufferType() != VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX ) // Un-Combinable
-		//	FK_ASSERT( 0 );
+        FK_ASSERT(RHS.GetBufferType() == GetBufferType() && GetBufferFormat() == RHS.GetBufferFormat());
 
-		//VertexBufferView combined;
-		//combined.Begin( VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_COMBINED, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_COMBINED );
-		//combined.SetElementSize( mBufferElementSize + RHS.GetElementSize() );
-		////combined._combine( *this, RHS );
-		//
-		//return combined;
-		return VertexBufferView(nullptr, 0);
+
+
+		return *this;
 	}
 
 

@@ -73,7 +73,7 @@ float Fr_DisneyDiffuse(float NdotV, float NdotL, float LdotH, float linearRoughn
     float lightScatter  = F_Schlick ( f0 , fd90 , NdotL ).r;
     float viewScatter   = F_Schlick (f0 , fd90 , NdotV ).r;
 
-    return lightScatter * viewScatter * energyFactor ;
+    return lightScatter * viewScatter * energyFactor;
 }
 
 

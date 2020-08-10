@@ -398,6 +398,7 @@ namespace FlexKit
             FLEXKITAPI void			AddNormalToken      (float3 in, TokenList& out);
             FLEXKITAPI void			AddNormalToken      (const float3 N, const float3 T, TokenList& out);
             FLEXKITAPI void			AddTexCordToken		(float3 in, TokenList& out);
+            FLEXKITAPI void         AddTexCordToken     (const float3 in, uint32_t coordinateIdx, TokenList& out);
 			FLEXKITAPI void			AddIndexToken		(const uint32_t V, const uint32_t N, const uint32_t T, TokenList& out);
 			FLEXKITAPI void			AddIndexToken		(const uint32_t V, const uint32_t N, const uint32_t T, const uint32_t texCoord, TokenList& out);
 			FLEXKITAPI void			CStrToToken			(const char* in_Line, size_t lineLength, TokenList& out, LoaderState& State_in_out );

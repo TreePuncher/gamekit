@@ -378,6 +378,7 @@ namespace FlexKit
 			Out->Info.r		  = Blob->Info.r;
 			Out->Memory		  = Memory;
 			Out->VertexBuffer.clear();
+            Out->subMeshes    = Blob->submeshes;
 
 			Out->BS			  = { { Blob->BS[0], Blob->BS[1], Blob->BS[2] },Blob->BS[3] };
 			Out->AABB		 = 

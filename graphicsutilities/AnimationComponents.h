@@ -48,12 +48,12 @@ namespace FlexKit
         SkeletonHandle Create(const TriMeshHandle triMesh, const AssetHandle asset)
         {
             auto mesh = GetMeshResource(triMesh);
-            if (!mesh || mesh->SkeletonGUID == -1)
+            if (!mesh)
                 return InvalidHandle_t;
 
             if (!mesh->Skeleton)
             {
-                const auto skeletonGuid  = mesh->SkeletonGUID;
+                const auto skeletonGuid  = asset;
                 const auto available     = isAssetAvailable(skeletonGuid);
 
                 if (!available)
@@ -70,6 +70,10 @@ namespace FlexKit
 
             return handle;
         }
+
+
+        void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
+
 
         struct SkeletonState
         {

@@ -73,7 +73,6 @@ enum class TestScenes
 	LocalIllumination,
 	ShadowTestScene,
 	PhysXTest,
-	AnimationTest
 };
 
 
@@ -94,144 +93,17 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 	renderSystem.QueuePSOLoad(TEXTURE2CUBEMAP_GGX);
 	renderSystem.QueuePSOLoad(TEXTURE2CUBEMAP_IRRADIANCE);
 
-	auto loadTexturesTask =
-		[&]()
-		{
-			auto& framework             = app.GetFramework();
-			auto& allocator             = framework.core.GetBlockMemory();
-			auto& renderSystem          = framework.GetRenderSystem();
-			CopyContextHandle upload    = renderSystem.OpenUploadQueue();
-
-			if(0)
-			{
-				auto testPattern1       = 8001;
-				auto testPattern2       = 8002;
-
-				size_t          mipCount;
-				uint2           WH;
-				DeviceFormat    format;
-
-				/*
-				Vector<TextureBuffer> radiance   = LoadCubeMapAsset(2, mipCount, WH, format, allocator);
-				base.GGXMap = MoveTextureBuffersToVRAM(
-					renderSystem,
-					upload,
-					radiance.begin(),
-					mipCount,
-					6,
-					format);
-
-				Vector<TextureBuffer> irradience = LoadCubeMapAsset(1, mipCount, WH, format, allocator);
-				base.irradianceMap = MoveTextureBuffersToVRAM(
-					renderSystem,
-					upload,
-					irradience.begin(),
-					mipCount,
-					6,
-					format);
-
-
-				renderSystem.SetDebugName(base.irradianceMap, "irradiance Map");
-				renderSystem.SetDebugName(base.GGXMap, "GGX Map");
-				*/
-
-				SetupTestScene(
-					gameState.scene,
-					app.GetFramework().GetRenderSystem(),
-					app.GetCore().GetBlockMemory(),
-					testPattern1, testPattern2, upload);
-
-			}
-			else
-			{
-			}
-
-			renderSystem.SubmitUploadQueues(1, &upload, 1);
-
-			state.loaded = true;
-		};
-
-	auto& workItem = CreateWorkItem(loadTexturesTask, app.GetFramework().core.GetBlockMemory());
-	app.GetFramework().core.Threads.AddWork(workItem);
 
 	switch (scene)
 	{
 	case TestScenes::ShadowTestScene:
 	{
-		const AssetHandle ShadowScene = 202;
-		AddAssetFile("assets\\ShadowTestScene.gameres");
+		const AssetHandle ShadowScene = 2002;
+		AddAssetFile("assets\\SuzanneShaderBallScene.gameres");
 
 		FK_ASSERT(FlexKit::LoadScene(app.GetCore(), gameState.scene, ShadowScene), "Failed to load Scene!");
 
-		
-        ReadContext readCtx;
-
-		MaterialComponent& materials = MaterialComponent::GetComponent();
-		MaterialHandle testMaterial = materials.CreateMaterial();
-		materials.AddTexture(8001, testMaterial);
-
 		DEBUG_ListSceneObjects(gameState.scene);
-
-		if (auto [gameObject, res] = FindGameObject(gameState.scene, "DaemonGirl.001"); res)
-		{
-			gameObject->AddView<MaterialComponentView>(testMaterial);
-			SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
-		}
-		if (auto [gameObject, res] = FindGameObject(gameState.scene, "DaemonGirl.002"); res)
-		{
-			gameObject->AddView<MaterialComponentView>(testMaterial);
-			SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
-		}
-		if (auto [gameObject, res] = FindGameObject(gameState.scene, "Body_Mesh.001"); res && true)
-		{
-			MaterialHandle armourMaterial = materials.CreateMaterial();
-			materials.AddTexture(8100, armourMaterial, false, readCtx);
-			materials.AddTexture(8200, armourMaterial, false, readCtx);
-
-			gameObject->AddView<MaterialComponentView>(armourMaterial);
-			SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
-		}
-
-		if (auto [gameObject, res] = FindGameObject(gameState.scene, "Body_Mesh.002"); res && true)
-		{
-			MaterialHandle armourMaterial = materials.CreateMaterial();
-			materials.AddTexture(8101, armourMaterial, false, readCtx);
-			materials.AddTexture(8201, armourMaterial, false, readCtx);
-
-			gameObject->AddView<MaterialComponentView>(armourMaterial);
-			SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
-		}
-
-		if (auto [gameObject, res] = FindGameObject(gameState.scene, "Body_Mesh.003"); res && true)
-		{
-			MaterialHandle armourMaterial = materials.CreateMaterial();
-			materials.AddTexture(8102, armourMaterial, false, readCtx);
-			materials.AddTexture(8202, armourMaterial, false, readCtx);
-
-			gameObject->AddView<MaterialComponentView>(armourMaterial);
-			SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
-		}
-
-		if (auto [gameObject, res] = FindGameObject(gameState.scene, "Body_Mesh.004"); res && true)
-		{
-			MaterialHandle armourMaterial = materials.CreateMaterial();
-			materials.AddTexture(8103, armourMaterial, false, readCtx);
-			materials.AddTexture(8203, armourMaterial, false, readCtx);
-
-
-			gameObject->AddView<MaterialComponentView>(armourMaterial);
-			SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
-		}
-
-		if (auto [gameObject, res] = FindGameObject(gameState.scene, "Body_Mesh.005"); res && true)
-		{
-			MaterialHandle armourMaterial = materials.CreateMaterial();
-			materials.AddTexture(8105, armourMaterial, false, readCtx);
-			materials.AddTexture(8205, armourMaterial, false, readCtx);
-
-			gameObject->AddView<MaterialComponentView>(armourMaterial);
-			SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
-		}
 
 	 }  break;
 	case TestScenes::PhysXTest:
@@ -304,65 +176,11 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 		}
 		*/
 	}   break;
-	case TestScenes::AnimationTest:
-	{
-		auto& allocator = app.GetCore().GetBlockMemory();
-
-		if(1)
-		{
-			// Load cube Model
-			const AssetHandle model = 1002;
-			auto triMesh = GetMesh(renderSystem, model);
-			auto& floor  = allocator.allocate<GameObject>();
-
-			auto node = GetZeroedNode();
-			floor.AddView<DrawableView>(triMesh, node);
-			floor.AddView<SceneNodeView<>>(node);
-
-			gameState.scene.AddGameObject(floor, node);
-
-			EnableScale(floor, true);
-			SetScale(floor, { 600, 1, 600 });
-			SetBoundingSphereRadius(floor, 900);
-		}
-
-		// Load rig Model
-		const AssetHandle riggedModel   = 1005;
-		const AssetHandle skeleton      = 2000;
-		auto triMesh                    = GetMesh(renderSystem, riggedModel);
-
-		auto& GO = allocator.allocate<GameObject>();
-		auto node = GetZeroedNode();
-		GO.AddView<DrawableView>(triMesh, node);
-		GO.AddView<SceneNodeView<>>(node);
-		GO.AddView<SkeletonView>(GetTriMesh(GO), 2000);
-		GO.AddView<StringIDView>("object1", strlen("object1"));
-
-		ToggleSkinned(GO, true);
-
-		gameState.scene.AddGameObject(GO, node);
-	}
 	default:
 		break;
 	}
 
-
-	auto OnLoadUpdate =
-		[&](EngineCore& core, UpdateDispatcher& dispatcher, double dT)
-		{
-			if(state.loaded)
-			{
-				core.RenderSystem.ReleaseVB(state.vertexBuffer);
-				core.GetBlockMemory().release_allocation(state);
-
-				app.PopState();
-
-				auto& playState = app.PushState<LocalPlayerState>(base, gameState);
-			}
-		};
-
-	using LoadState = GameLoadScreenState<decltype(OnLoadUpdate)>;
-	app.PushState<LoadState>(base, OnLoadUpdate);
+    app.PushState<LocalPlayerState>(base, gameState);
 }
 
 

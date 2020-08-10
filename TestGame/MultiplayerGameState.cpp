@@ -309,7 +309,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 			reserveVB);
 
 		// Draw Skeleton overlay
-		if (auto [gameObject, res] = FindGameObject(scene, "object1"); res)
+		if (auto [gameObject, res] = FindGameObject(scene, "Cylinder"); res)
 		{
 			auto Skeleton = GetSkeleton(*gameObject);
 			auto pose     = GetPoseState(*gameObject);
@@ -317,6 +317,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 
 			//RotateJoint(*gameObject, JointHandle(0), Quaternion{ 0, T, 0 });
 
+            /*
 			for (size_t I = 0; I < 5; I++)
 			{
 				JointHandle joint{ I };
@@ -325,6 +326,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 				jointPose.r = Quaternion{ 0, 0, (float)(T) * 90 };
 				SetJointPose(*gameObject, joint, jointPose);
 			}
+            */
 
 			T += dT;
 

@@ -92,7 +92,7 @@ namespace FlexKit
 
 		~VertexBufferView();
 
-		VertexBufferView  operator + (const VertexBufferView& RHS);
+		VertexBufferView  operator += (const VertexBufferView& RHS);
 
 		VertexBufferView& operator = (const VertexBufferView& RHS);	// Assignment Operator
 		//VertexBuffer& operator = ( const VertexBuffer&& RHS );	// Movement Operator

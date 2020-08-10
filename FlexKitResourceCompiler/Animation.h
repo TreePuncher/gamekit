@@ -226,6 +226,10 @@ namespace FlexKit::ResourceBuilder
             jointIDs[joint] = ID;
         }
 
+
+        const std::string&  GetResourceID()     const override { return ID; }
+        const uint64_t      GetResourceGUID()   const override { return guid; }
+
         size_t								JointCount;
         GUID_t								guid;
         std::string                         ID;

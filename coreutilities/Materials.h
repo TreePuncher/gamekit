@@ -4,6 +4,7 @@
 #include "ResourceHandles.h"
 #include "graphics.h"
 #include "Assets.h"
+#include "ComponentBlobs.h"
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -16,6 +17,7 @@ namespace FlexKit
 
     struct MaterialComponentData
     {
+        static_vector<MaterialHandle, 16>   SubMaterials;
         static_vector<ResourceHandle, 16>   Textures;
         uint32_t                            refCount;
         MaterialHandle                      handle;
@@ -53,14 +55,14 @@ namespace FlexKit
         MaterialComponentData operator [](const MaterialHandle handle) const
         {
             if (handle == InvalidHandle_t)
-                return { {}, 0, InvalidHandle_t };
+                return { {},  {}, 0, InvalidHandle_t };
 
             return materials[handles[handle]];
         }
 
         MaterialHandle CreateMaterial()
         {
-            auto materialIdx = materials.push_back({ {}, 1 });
+            auto materialIdx = materials.push_back({ {}, {}, 1 });
             auto handle = handles.GetNewHandle();
 
             handles[handle] = materialIdx;
@@ -68,9 +70,15 @@ namespace FlexKit
             return handle;
         }
 
+
         void AddRef(MaterialHandle material)
         {
             materials[handles[material]].refCount++;
+        }
+
+        void            AddSubMaterial(MaterialHandle material, MaterialHandle subMaterial)
+        {
+            materials[handles[material]].SubMaterials.push_back(subMaterial);
         }
 
         void            ReleaseMaterial(MaterialHandle material);
@@ -120,13 +128,41 @@ namespace FlexKit
                 GetComponent().AddTexture(textureAsset, handle, LoadLowest);
             }
 
+
+            bool HasSubMaterials() const
+            {
+                return !GetComponent()[handle].SubMaterials.empty();
+            }
+
+            MaterialHandle CreateSubMaterial()
+            {
+                auto& materials = GetComponent();
+
+                if (Shared())
+                {
+                    auto newHandle = GetComponent().CloneMaterial(handle);
+                    GetComponent().ReleaseMaterial(handle);
+
+                    handle = newHandle;
+                }
+
+                if (GetComponent()[handle].SubMaterials.full())
+                    return InvalidHandle_t;
+
+                auto subMaterial = materials.CreateMaterial();
+                materials.AddSubMaterial(handle, subMaterial);
+
+                return subMaterial;
+            }
+
+
             MaterialHandle handle;
         };
 
         using View = MaterialView;
 
         void AddTexture(GUID_t textureAsset, MaterialHandle material, const bool LoadLowest = false, ReadContext& readContext = ReadContext{});
-
+        void AddComponentView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 
         RenderSystem&                   renderSystem;
         TextureStreamingEngine&         streamEngine;
@@ -138,6 +174,10 @@ namespace FlexKit
 
 
     using MaterialComponentView     = MaterialComponent::View;
+
+
+    void SetMaterialHandle(GameObject& go, MaterialHandle material);
+    MaterialHandle GetMaterialHandle(GameObject& go);
 
 
 }   /************************************************************************************************/

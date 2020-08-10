@@ -1,3 +1,4 @@
+#pragma once
 #include <vector>
 
 #include "Common.h"
@@ -5,36 +6,16 @@
 #include "TextureUtilities.h"
 #include "ResourceUtilities.h"
 
-#include "crnlib.h"
-#include "crn_decomp.h"
-#include "dds_defs.h"
-
 #include "Compressonator.h"
 
-#pragma comment(lib,"crunch.lib")
 
 
 namespace FlexKit::ResourceBuilder
 {   /************************************************************************************************/
 
 
-    FlexKit::DeviceFormat FormatStringToDeviceFormat(const std::string& format)
-    {
-        static std::map<std::string, FlexKit::DeviceFormat> formatMap = {
-            { "RGBA8_UNORM",    DeviceFormat::R8G8B8A8_UNORM       },
-            { "RGBA16_FLOAT",   DeviceFormat::R16G16B16A16_FLOAT   },
-            { "RGBA32_FLOAT",   DeviceFormat::R32G32B32A32_FLOAT   },
-            { "BC3",           DeviceFormat::BC3_UNORM            },
-            { "BC5",           DeviceFormat::BC5_UNORM            },
-            { "BC7",           DeviceFormat::BC7_UNORM            },
+    inline FlexKit::DeviceFormat FormatStringToDeviceFormat(const std::string& format);
 
-            { "DXT3",           DeviceFormat::BC3_UNORM            },
-            { "DXT5",           DeviceFormat::BC5_UNORM            },
-            { "DXT7",           DeviceFormat::BC7_UNORM            },
-        };
-
-        return formatMap[format];
-    }
 
     /************************************************************************************************/
 
@@ -128,6 +109,9 @@ namespace FlexKit::ResourceBuilder
     public:
         TextureResource() {}
 
+        const std::string&  GetResourceID() const override      { return ID; }
+        const uint64_t      GetResourceGUID() const override    { return assetHandle; }
+
         ResourceBlob CreateBlob() override;
 
         std::string             ID;
@@ -146,7 +130,9 @@ namespace FlexKit::ResourceBuilder
 
 
     _TextureMipLevelResource CreateMIPMapResource(const std::string& string);
-    inline std::shared_ptr<iResource> CreateTextureResource(std::shared_ptr<Texture_MetaData> metaData);
+
+    std::shared_ptr<iResource> CreateTextureResource(const std::filesystem::path& path, const std::string& formatString);
+    std::shared_ptr<iResource> CreateTextureResource(std::shared_ptr<Texture_MetaData> metaData);
 
 
 }    /************************************************************************************************/

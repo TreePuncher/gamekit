@@ -4979,6 +4979,8 @@ namespace FlexKit
 			return DXGI_FORMAT::DXGI_FORMAT_R32G32_UINT;
 		case FlexKit::DeviceFormat::R8G8B8A8_UNORM:
 			return DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM;
+        case FlexKit::DeviceFormat::R8G8B8A8_UNORM_SRGB:
+            return DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		case FlexKit::DeviceFormat::R8G8_UNORM:
 			return DXGI_FORMAT::DXGI_FORMAT_R8G8_UNORM;
 		case FlexKit::DeviceFormat::R16G16_FLOAT:
@@ -5045,6 +5047,8 @@ namespace FlexKit
 			return FlexKit::DeviceFormat::R32G32_UINT;
 		case DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM:
 			return FlexKit::DeviceFormat::R8G8B8A8_UNORM;
+        case DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+            return FlexKit::DeviceFormat::R8G8B8A8_UNORM_SRGB;
 		case DXGI_FORMAT::DXGI_FORMAT_R8G8_UNORM:
 			return FlexKit::DeviceFormat::R8G8_UNORM;
 		case DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT:

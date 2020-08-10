@@ -226,6 +226,12 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    struct SubMesh
+    {
+        size_t BaseIndex;
+        size_t IndexCount;
+    };
+
 	struct TriMeshAssetBlob
 	{
 		size_t			ResourceSize;
@@ -236,6 +242,7 @@ namespace FlexKit
 		char	ID[FlexKit::ID_LENGTH];
 		bool	HasAnimation;
 		bool	HasIndexBuffer;
+
 		size_t	BufferCount;
 		size_t	IndexCount;
 		size_t	IndexBuffer;
@@ -264,6 +271,9 @@ namespace FlexKit
 			size_t	 Begin;
 			size_t	 size;
 		}Buffers[16];
+
+        static_vector<SubMesh, 16> submeshes;
+
 		char Memory[];
 	};
 

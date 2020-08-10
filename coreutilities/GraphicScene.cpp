@@ -130,7 +130,7 @@ namespace FlexKit
 
         memcpy(&pointLight, buffer, sizeof(pointLight));
 
-        gameObject.AddView<PointLightView>(pointLight.K, 100, GetSceneNode(gameObject));
+        gameObject.AddView<PointLightView>(pointLight.K, pointLight.IR[0], pointLight.IR[1], GetSceneNode(gameObject));
         SetBoundingSphereFromLight(gameObject);
 
         EnablePointLightShadows(gameObject);
@@ -819,9 +819,6 @@ namespace FlexKit
 								memcpy(&position,		&sceneNode->position, sizeof(float3));
 								memcpy(&orientation,	&sceneNode->orientation, sizeof(orientation));
 								memcpy(&scale,			&sceneNode->scale, sizeof(float3));
-
-								if (sceneNode->parent == INVALIDHANDLE) // remove root scaling
-									scale = scale / 100;
 
 								auto newNode = GetNewNode();
 								SetOrientationL	(newNode, orientation);

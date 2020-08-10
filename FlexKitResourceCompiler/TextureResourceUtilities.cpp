@@ -2,6 +2,12 @@
 #include <filesystem>
 #include <numeric>
 
+#include "crnlib.h"
+#include "crn_decomp.h"
+#include "dds_defs.h"
+
+#pragma comment(lib,"crunch.lib")
+
 #ifdef _DEBUG
 #pragma comment(lib, "CMP_Framework_MDd.lib")
 #else
@@ -13,6 +19,27 @@
 namespace FlexKit::ResourceBuilder
 {   /************************************************************************************************/
 
+
+    inline FlexKit::DeviceFormat FormatStringToDeviceFormat(const std::string& format)
+    {
+        static std::map<std::string, FlexKit::DeviceFormat> formatMap = {
+            { "RGBA8_UNORM",    DeviceFormat::R8G8B8A8_UNORM       },
+            { "RGBA16_FLOAT",   DeviceFormat::R16G16B16A16_FLOAT   },
+            { "RGBA32_FLOAT",   DeviceFormat::R32G32B32A32_FLOAT   },
+            { "BC3",           DeviceFormat::BC3_UNORM            },
+            { "BC5",           DeviceFormat::BC5_UNORM            },
+            { "BC7",           DeviceFormat::BC7_UNORM            },
+
+            { "DXT3",           DeviceFormat::BC3_UNORM            },
+            { "DXT5",           DeviceFormat::BC5_UNORM            },
+            { "DXT7",           DeviceFormat::BC7_UNORM            },
+        };
+
+        return formatMap[format];
+    }
+
+
+    /************************************************************************************************/
 
     Blob CubeMapFace::CreateBlob()
     {
@@ -207,6 +234,126 @@ namespace FlexKit::ResourceBuilder
             mipSet,
             string
         };
+    }
+
+
+    /************************************************************************************************/
+
+
+    inline std::shared_ptr<iResource> CreateTextureResource(const std::filesystem::path& path, const std::string& formatString)
+    {
+        std::printf("building texture resource\n");
+
+        CMP_MipSet mipSet;
+        memset(&mipSet, 0, sizeof(CMP_MipSet));
+
+        if (auto res = CMP_LoadTexture(path.string().c_str(), &mipSet); res != CMP_OK)
+        {
+            std::printf("Error %d: Loading source file!\n", res);
+            return {};
+        }
+
+        size_t temp2 = std::log2(mipSet.m_nHeight);
+        CMP_INT nMinSize = CMP_CalcMinMipSize(mipSet.m_nHeight, mipSet.m_nWidth, mipSet.m_nMaxMipLevels);
+
+        if (auto res = CMP_GenerateMIPLevels(&mipSet, nMinSize); res != CMP_OK)
+        {
+            std::printf("Error %d: Failed to create Mip Levels!\n", res);
+            return {};
+        }
+
+
+#if 0
+        std::cout << "DEBUG: nMinSize: " << nMinSize << "\n";
+        std::cout << "DEBUG: INPUT MIP LEVELS: " << mipSet.m_nMipLevels << "\n";
+#endif
+
+        KernelOptions kernel_options;
+        memset(&kernel_options, 0, sizeof(KernelOptions));
+
+        kernel_options.encodeWith = CMP_HPC;
+        kernel_options.format     = CMP_FORMAT_BC7;
+        kernel_options.fquality   = 0.05;
+        kernel_options.threads    = 0;
+
+        CMP_MipSet dstMipSet = { 0 };
+
+        auto ddsformat = FormatStringToFormatID(formatString);
+
+        switch (ddsformat)
+        {
+        case DDSTextureFormat::DXT3:
+            kernel_options.format = CMP_FORMAT_BC3;
+            break;
+        case DDSTextureFormat::DXT5:
+            kernel_options.format = CMP_FORMAT_BC5;
+                break;
+        case DDSTextureFormat::DXT7:
+            kernel_options.format = CMP_FORMAT_BC7;
+            break;
+        default:
+            return {};
+        }
+
+        auto progress = [](CMP_FLOAT fProgress, CMP_DWORD_PTR pUser1, CMP_DWORD_PTR pUser2)-> bool
+        {
+            printf("\rProgress: %f", fProgress);
+            return false;
+        };
+
+        auto cmp_status = CMP_ProcessTexture(&mipSet, &dstMipSet, kernel_options, progress);
+        CMP_SaveTexture(std::string(path.string() + ".cached.dds").c_str(), &dstMipSet);
+
+        printf("\n");
+
+        auto resource = std::make_shared<TextureResource>();
+            
+        size_t bufferSize = 0;
+        for (size_t I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++) {
+            CMP_MipLevel* mipLevel = nullptr;
+            CMP_GetMipLevel(&mipLevel, &dstMipSet, I, 0);
+
+            bufferSize += mipLevel->m_dwLinearSize;
+#if 0
+            std::cout << "_DEBUG: " __FUNCTION__ << " : Mip Size : " << mipLevel->m_dwLinearSize << "\n";
+#endif
+        }
+
+        auto temp = new char[bufferSize];
+        memset(resource->mipOffsets, 0, sizeof(TextureResource::mipOffsets));
+
+        for (size_t I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++)
+        {
+            CMP_MipLevel* mipLevel = nullptr;
+            CMP_GetMipLevel(&mipLevel, &dstMipSet, I, 0);
+
+            resource->mipOffsets[I] = offset;
+
+#if 0
+            std::cout << "_DEBUG: " __FUNCTION__ << " : LinearSize : " << mipLevel->m_dwLinearSize << "\n";
+#endif
+
+            memcpy((char*)temp + offset, mipLevel->m_pbData, mipLevel->m_dwLinearSize);
+            offset += mipLevel->m_dwLinearSize;
+        }
+
+        resource->ID          = path.filename().string();
+        resource->WH          = { dstMipSet.m_nWidth, dstMipSet.m_nHeight };
+        resource->assetHandle = rand();
+        resource->buffer      = temp;
+        resource->bufferSize  = bufferSize;
+        resource->format      = FormatStringToDeviceFormat(formatString);
+        resource->mipLevels   = dstMipSet.m_nMipLevels;
+
+#if 0
+        std::cout << "_DEBUG: " __FUNCTION__ << " : Size : " << resource->bufferSize << "\n";
+        std::cout << "_DEBUG: " __FUNCTION__ << " : MipCount : " << dstMipSet.m_nMipLevels << "\n";
+#endif
+
+        CMP_FreeMipSet(&mipSet);
+        CMP_FreeMipSet(&dstMipSet);
+
+        return resource;
     }
 
 
