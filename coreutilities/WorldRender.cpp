@@ -2,10 +2,11 @@
 #include "TextureStreamingUtilities.h"
 
 #include <d3d12.h>
-#include <d3dx12.h>
 #include <d3dcompiler.h>
 #include <d3d11sdklayers.h>
 #include <d3d11shader.h>
+#include <cmath>
+
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -13,7 +14,7 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateLightPassPSO(RenderSystem* RS)
 	{
-		auto lightPassShader = LoadShader("tiledLightCulling", "tiledLightCulling", "cs_5_0", "assets\\shaders\\lightPass.hlsl");
+		auto lightPassShader = RS->LoadShader("tiledLightCulling", "cs_6_0", "assets\\shaders\\lightPass.hlsl");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_desc = {};
 		PSO_desc.CS				= lightPassShader;
@@ -32,15 +33,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateForwardDrawPSO(RenderSystem* RS)
 	{
-		auto DrawRectVShader = LoadShader("Forward_VS", "Forward_VS", "vs_5_1",	"assets\\shaders\\forwardRender.hlsl");
-		auto DrawRectPShader = LoadShader("Forward_PS", "Forward_PS", "ps_5_1",	"assets\\shaders\\forwardRender.hlsl");
-
-		FINALLY
-			
-		Release(&DrawRectVShader);
-		Release(&DrawRectPShader);
-
-		FINALLYOVER
+		auto DrawRectVShader = RS->LoadShader("Forward_VS", "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
+		auto DrawRectPShader = RS->LoadShader("Forward_PS", "ps_6_0",	"assets\\shaders\\forwardRender.hlsl");
 
 		/*
 		typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -108,10 +102,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateDepthPrePassPSO(RenderSystem* RS)
 	{
-		auto DrawRectVShader = LoadShader("DepthPass_VS", "DepthPass_VS", "vs_5_1",	"assets\\shaders\\forwardRender.hlsl");
+		auto DrawRectVShader = RS->LoadShader("DepthPass_VS", "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
 
-		EXITSCOPE(Release(&DrawRectVShader));
-			
 
 		/*
 		typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -165,13 +157,9 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateGBufferPassPSO(RenderSystem* RS)
 	{
-		auto DrawRectVShader = LoadShader("Forward_VS", "Forward_VS",           "vs_5_1",	"assets\\shaders\\forwardRender.hlsl");
-		auto DrawRectPShader = LoadShader("GBufferFill_PS", "GBufferFill_PS",   "ps_5_1",	"assets\\shaders\\forwardRender.hlsl");
+		auto DrawRectVShader = RS->LoadShader("Forward_VS",       "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
+		auto DrawRectPShader = RS->LoadShader("GBufferFill_PS",   "ps_6_0",	"assets\\shaders\\forwardRender.hlsl");
 
-		FINALLY
-		 Release(&DrawRectVShader);
-		 Release(&DrawRectPShader);
-		FINALLYOVER
 
 		/*
 		typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -233,13 +221,9 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateGBufferSkinnedPassPSO(RenderSystem* RS)
 	{
-		auto DrawRectVShader = LoadShader("ForwardSkinned_VS",  "ForwardSkinned_VS",    "vs_5_1",	"assets\\shaders\\forwardRender.hlsl");
-		auto DrawRectPShader = LoadShader("GBufferFill_PS",     "GBufferFill_PS",       "ps_5_1",	"assets\\shaders\\forwardRender.hlsl");
+		auto DrawRectVShader = RS->LoadShader("ForwardSkinned_VS",    "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
+		auto DrawRectPShader = RS->LoadShader("GBufferFill_PS",       "ps_6_0",	"assets\\shaders\\forwardRender.hlsl");
 
-		FINALLY
-		 Release(&DrawRectVShader);
-		 Release(&DrawRectPShader);
-		FINALLYOVER
 
 		/*
 		typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -304,13 +288,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateDeferredShadingPassPSO(RenderSystem* RS)
 	{
-		auto VShader = LoadShader("ShadingPass_VS",     "DeferredShade_VS",   "vs_5_1",	"assets\\shaders\\deferredRender.hlsl");
-		auto PShader = LoadShader("DeferredShade_PS",   "DeferredShade_VS",   "ps_5_1",	"assets\\shaders\\deferredRender.hlsl");
-
-		FINALLY
-			Release(&VShader);
-			Release(&PShader);
-		FINALLYOVER
+		auto VShader = RS->LoadShader("ShadingPass_VS",     "vs_6_0",	"assets\\shaders\\deferredRender.hlsl");
+		auto PShader = RS->LoadShader("DeferredShade_PS",   "ps_6_0",	"assets\\shaders\\deferredRender.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -360,13 +339,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateBilaterialBlurHorizontalPSO(RenderSystem* RS)
 	{
-		auto VShader = LoadShader("ShadingPass_VS",             "DeferredShade_VS",             "vs_5_1", "assets\\shaders\\deferredRender.hlsl");
-		auto PShader = LoadShader("BilateralBlurHorizontal_PS", "BilateralBlurHorizontal_PS",   "ps_5_1", "assets\\shaders\\BilateralBlur.hlsl");
-
-		FINALLY
-			Release(&VShader);
-			Release(&PShader);
-		FINALLYOVER
+		auto VShader = RS->LoadShader("ShadingPass_VS",             "vs_6_0", "assets\\shaders\\deferredRender.hlsl");
+		auto PShader = RS->LoadShader("BilateralBlurHorizontal_PS", "ps_6_0", "assets\\shaders\\BilateralBlur.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -408,13 +382,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateBilaterialBlurVerticalPSO(RenderSystem* RS)
 	{
-		auto VShader = LoadShader("ShadingPass_VS",             "DeferredShade_VS",         "vs_5_1", "assets\\shaders\\deferredRender.hlsl");
-		auto PShader = LoadShader("BilateralBlurVertical_PS",   "BilateralBlurVertical_PS", "ps_5_1", "assets\\shaders\\BilateralBlur.hlsl");
-
-		FINALLY
-			Release(&VShader);
-			Release(&PShader);
-		FINALLYOVER
+		auto VShader = RS->LoadShader("ShadingPass_VS",             "vs_6_0", "assets\\shaders\\deferredRender.hlsl");
+		auto PShader = RS->LoadShader("BilateralBlurVertical_PS",   "ps_6_0", "assets\\shaders\\BilateralBlur.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -453,11 +422,216 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    ID3D12PipelineState* CreateClearClusterCountersPSO(RenderSystem* RS)
+    {
+        Shader computeShader = RS->LoadShader("ClearCounters", "cs_6_0", R"(assets\shaders\ClusteredRendering.hlsl)");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+            RS->Library.ComputeSignature,
+            computeShader
+        };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+
+        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+        return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* CreateLightBVH_PHASE1_PSO(RenderSystem* RS)
+    {
+        Shader computeShader = RS->LoadShader("CreateLightBVH_PHASE1", "cs_6_0", R"(assets\shaders\LightBVH.hlsl)");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+            RS->Library.ComputeSignature,
+            computeShader
+        };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+
+        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+        return PSO;
+    }
+
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* CreateLightBVH_PHASE2_PSO(RenderSystem* RS)
+    {
+        Shader computeShader = RS->LoadShader("CreateLightBVH_PHASE2", "cs_6_0", R"(assets\shaders\LightBVH.hlsl)");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+            RS->Library.ComputeSignature,
+            computeShader
+        };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+
+        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+        return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* CreateLightBVH_DEBUGVIS_PSO(RenderSystem* RS)
+    {
+        auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\lightBVH_DEBUGVIS.hlsl");
+        auto PShader = RS->LoadShader("PMain", "ps_6_1", "assets\\shaders\\lightBVH_DEBUGVIS.hlsl");
+        auto GShader = RS->LoadShader("GMain", "gs_6_0", "assets\\shaders\\lightBVH_DEBUGVIS.hlsl");
+
+		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+
+		Depth_Desc.DepthFunc	                = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_EQUAL;
+		Depth_Desc.DepthEnable	                = false;
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+			PSO_Desc.pRootSignature        = RS->Library.RSDefault;
+			PSO_Desc.VS                    = VShader;
+			PSO_Desc.PS                    = PShader;
+			PSO_Desc.GS                    = GShader;
+			PSO_Desc.RasterizerState       = Rast_Desc;
+			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask            = UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+			PSO_Desc.NumRenderTargets      = 1;
+			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+			PSO_Desc.SampleDesc.Count      = 1;
+			PSO_Desc.SampleDesc.Quality    = 0;
+			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout           = { nullptr, 0 };
+			PSO_Desc.DepthStencilState     = Depth_Desc;
+		}
+
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* CreateCluster_DEBUGVIS_PSO(RenderSystem* RS)
+    {
+        auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\lightBVH_DEBUGVIS.hlsl");
+        auto PShader = RS->LoadShader("PMain", "ps_6_1", "assets\\shaders\\lightBVH_DEBUGVIS.hlsl");
+        auto GShader = RS->LoadShader("GMain2", "gs_6_0", "assets\\shaders\\lightBVH_DEBUGVIS.hlsl");
+
+		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+
+		Depth_Desc.DepthFunc	                = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_EQUAL;
+		Depth_Desc.DepthEnable	                = false;
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+			PSO_Desc.pRootSignature        = RS->Library.RSDefault;
+			PSO_Desc.VS                    = VShader;
+			PSO_Desc.PS                    = PShader;
+			PSO_Desc.GS                    = GShader;
+			PSO_Desc.RasterizerState       = Rast_Desc;
+			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask            = UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+			PSO_Desc.NumRenderTargets      = 1;
+			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+			PSO_Desc.SampleDesc.Count      = 1;
+			PSO_Desc.SampleDesc.Quality    = 0;
+			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout           = { nullptr, 0 };
+			PSO_Desc.DepthStencilState     = Depth_Desc;
+		}
+
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* CreateLightListArgs_PSO(RenderSystem* RS)
+    {
+        Shader computeShader = RS->LoadShader("CreateLightListArguents", "cs_6_0", R"(assets\shaders\LightListArguementIndirect.hlsl)");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+            RS->Library.ComputeSignature,
+            computeShader
+        };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+
+        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+        return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* CreateClusterLightListsPSO(RenderSystem* RS)
+    {
+        Shader computeShader = RS->LoadShader("CreateClustersLightLists", "cs_6_0", R"(assets\shaders\lightListConstruction.hlsl)");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+            RS->Library.ComputeSignature,
+            computeShader
+        };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+
+        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+        return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* CreateClustersPSO(RenderSystem* RS)
+    {
+        Shader computeShader = RS->LoadShader("CreateClusters", "cs_6_0", R"(assets\shaders\ClusteredRendering.hlsl)");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+            RS->Library.ComputeSignature,
+            computeShader
+        };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+
+        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+        return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
 	ID3D12PipelineState* CreateComputeTiledDeferredPSO(RenderSystem* RS)
 	{
-		Shader computeShader = LoadShader("csmain", "main", "cs_5_0", "assets\\shaders\\computedeferredtiledshading.hlsl");
-
-		EXITSCOPE(Release(&computeShader));
+		Shader computeShader = RS->LoadShader("csmain", "cs_6_0", R"(assets\shaders\computedeferredtiledshading.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			RS->Library.RSDefault,
@@ -478,14 +652,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateEnvironmentPassPSO(RenderSystem* RS)
 	{
-		auto VShader = LoadShader("passthrough_VS", "FORWARDShade_VS", "vs_5_1", "assets\\shaders\\DeferredRender.hlsl");
-		auto PShader = LoadShader("environment_PS", "FORWARDShade_VS", "ps_5_1", "assets\\shaders\\DeferredRender.hlsl");
-
-		FINALLY
-			Release(&VShader);
-			Release(&PShader);
-		FINALLYOVER
-
+		auto VShader = RS->LoadShader("passthrough_VS", "vs_6_0", "assets\\shaders\\DeferredRender.hlsl");
+		auto PShader = RS->LoadShader("environment_PS", "ps_6_0", "assets\\shaders\\DeferredRender.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -536,13 +704,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateForwardDrawInstancedPSO(RenderSystem* RS)
 	{
-		auto VShader = LoadShader("VMain",		"InstanceForward_VS",	"vs_5_1", "assets\\shaders\\DrawInstancedVShader.hlsl");
-		auto PShader = LoadShader("FlatWhite",	"FlatWhite",			"ps_5_1", "assets\\shaders\\forwardRender.hlsl");
-
-		EXITSCOPE(
-			Release(&VShader);
-			Release(&PShader);
-		);
+		auto VShader = RS->LoadShader("VMain",		"vs_6_0", "assets\\shaders\\DrawInstancedVShader.hlsl");
+		auto PShader = RS->LoadShader("FlatWhite",	"ps_6_0", "assets\\shaders\\forwardRender.hlsl");
 
 		/*
 		typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -609,14 +772,11 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateOcclusionDrawPSO(RenderSystem* RS)
 	{
+        FK_ASSERT(0);
+
 		return nullptr;
-		auto DrawRectVShader = LoadShader("Forward_VS", "Forward_VS", "vs_5_1",	"assets\\shaders\\forwardRender.hlsl");
 
-		FINALLY
-			
-		Release(&DrawRectVShader);
-
-		FINALLYOVER
+		auto DrawRectVShader = RS->LoadShader("Forward_VS", "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
 
 		/*
 		typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -669,15 +829,9 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateTexture2CubeMapIrradiancePSO(RenderSystem* RS)
 	{
-		auto VShader = LoadShader("texture2CubeMap_VS"       , "texture2CubeMap_VS",        "vs_5_1", "assets\\shaders\\texture2Cubemap.hlsl");
-		auto GShader = LoadShader("texture2CubeMap_GS"       , "texture2CubeMap_GS",        "gs_5_0", "assets\\shaders\\texture2Cubemap.hlsl");
-		auto PShader = LoadShader("texture2CubeMapDiffuse_PS", "texture2CubeMapDiffuse_PS", "ps_5_1", "assets\\shaders\\texture2Cubemap.hlsl");
-
-		FINALLY
-			Release(&VShader);
-			Release(&PShader);
-		FINALLYOVER
-
+		auto VShader = RS->LoadShader("texture2CubeMap_VS", "vs_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
+		auto GShader = RS->LoadShader("texture2CubeMap_GS", "gs_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
+		auto PShader = RS->LoadShader("texture2CubeMapDiffuse_PS", "ps_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -720,15 +874,9 @@ namespace FlexKit
 	
 	ID3D12PipelineState* CreateTexture2CubeMapGGXPSO(RenderSystem* RS)
 	{
-		auto VShader = LoadShader("texture2CubeMap_VS",     "texture2CubeMap_VS",       "vs_5_1", "assets\\shaders\\texture2Cubemap.hlsl");
-		auto GShader = LoadShader("texture2CubeMap_GS",     "texture2CubeMap_GS",       "gs_5_0", "assets\\shaders\\texture2Cubemap.hlsl");
-		auto PShader = LoadShader("texture2CubeMapGGX_PS",  "texture2CubeMapGGX_PS",    "ps_5_1", "assets\\shaders\\texture2Cubemap.hlsl");
-
-		FINALLY
-			Release(&VShader);
-			Release(&PShader);
-		FINALLYOVER
-
+		auto VShader = RS->LoadShader("texture2CubeMap_VS",     "vs_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
+		auto GShader = RS->LoadShader("texture2CubeMap_GS",     "gs_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
+		auto PShader = RS->LoadShader("texture2CubeMapGGX_PS",  "ps_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -784,7 +932,7 @@ namespace FlexKit
 				pvs.GetData().solid,
 				[&, camera](FrameGraphNodeBuilder& builder, DepthPass& data)
 				{
-					const size_t localBufferSize = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
+					const size_t localBufferSize = Max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
 					
 					data.entityConstantsBuffer  = std::move(reserveConsantBufferSpace(sizeof(ForwardDrawConstants) * MaxEntityDrawCount));
 					data.passConstantsBuffer    = std::move(reserveConsantBufferSpace(2048));
@@ -863,7 +1011,7 @@ namespace FlexKit
 			BackgroundEnvironmentPass{},
 			[&](FrameGraphNodeBuilder& builder, BackgroundEnvironmentPass& data)
 			{
-				const size_t localBufferSize        = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
+				const size_t localBufferSize        = Max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
 				auto& renderSystem                  = frameGraph.GetRenderSystem();
 
 				data.renderTargetObject             = builder.WriteRenderTarget(renderTarget);
@@ -907,7 +1055,7 @@ namespace FlexKit
 
 				ctx.SetScissorAndViewports({ renderTarget });
 				ctx.SetRenderTargets({ frameResources.GetTexture({ data.renderTargetObject }) }, false, {});
-				ctx.SetVertexBuffers({ VertexBufferDataSet{ vertices, data.passVertices } });
+				ctx.SetVertexBuffers({ VertexBufferDataSet{ vertices, 6, data.passVertices } });
 				ctx.SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
 				ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
 
@@ -940,7 +1088,7 @@ namespace FlexKit
 			{
 				builder.AddDataDependency(sceneDescription.cameras);
 
-				const size_t localBufferSize    = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
+				const size_t localBufferSize    = Max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
 				auto& renderSystem              = frameGraph.GetRenderSystem();
 				data.renderTargetObject         = builder.WriteRenderTarget(renderTarget);
 
@@ -996,7 +1144,7 @@ namespace FlexKit
 
 				ctx.SetScissorAndViewports({ renderTarget });
 				ctx.SetRenderTargets({ frameResources.GetTexture(data.renderTargetObject) }, false);
-				ctx.SetVertexBuffers({ VertexBufferDataSet{ vertices, data.passVertices } });
+				ctx.SetVertexBuffers({ VertexBufferDataSet{ vertices, 6, data.passVertices } });
 				ctx.SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
 				ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
 				ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet{ passConstants, data.passConstants });
@@ -1083,7 +1231,7 @@ namespace FlexKit
 
 				ctx.SetScissorAndViewports({ destination });
 				ctx.SetRenderTargets({ frameResources.GetTexture(data.TempObject1), frameResources.GetTexture(data.TempObject2) }, false);
-				ctx.SetVertexBuffers({ VertexBufferDataSet{ vertices, vertexBuffer } });
+				ctx.SetVertexBuffers({ VertexBufferDataSet{ vertices, 6, vertexBuffer } });
 				ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, constantBuffer });
 
 				ctx.Draw(6);
@@ -1091,11 +1239,10 @@ namespace FlexKit
 				DescriptorHeap descHeap2;
 				descHeap2.Init2(ctx, renderSystem.Library.RSDefault.GetDescHeap(0), 5, &allocator);
 
-				
-				descHeap2.SetSRV(ctx, 0, frameResources.ReadRenderTarget(data.TempObject1, &ctx));
+				descHeap2.SetSRV(ctx, 0, frameResources.ReadRenderTarget(data.TempObject1, ctx));
 				descHeap2.SetSRV(ctx, 1, frameResources.GetTexture(data.NormalSource));
 				descHeap2.SetSRV(ctx, 2, frameResources.GetTexture(data.DepthSource), DeviceFormat::R32_FLOAT);
-				descHeap2.SetSRV(ctx, 3, frameResources.ReadRenderTarget(data.TempObject2, &ctx));
+				descHeap2.SetSRV(ctx, 3, frameResources.ReadRenderTarget(data.TempObject2, ctx));
 
 				ctx.SetPipelineState(frameResources.GetPipelineState(BILATERALBLURPASSVERTICAL));
 				ctx.SetGraphicsDescriptorTable(3, descHeap2);
@@ -1139,19 +1286,17 @@ namespace FlexKit
 
 				data.BackBuffer			    = builder.WriteRenderTarget	(Targets.RenderTarget);
 				data.DepthBuffer            = builder.WriteDepthBuffer (Targets.DepthTarget);
-				size_t localBufferSize      = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
+				size_t localBufferSize      = Max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
 
 				data.passConstantsBuffer    = std::move(reserveCB(localBufferSize * 2));
 
 				data.lightLists			    = builder.ReadWriteUAV(lightLists,			DRS_ShaderResource);
 				data.pointLightBuffer	    = builder.ReadWriteUAV(pointLightBuffer,	DRS_ShaderResource);
-
-				data.WH                     = lightMapWH;
 			},
 			[=](ForwardPlusPass& data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
 				const auto cameraConstants  = ConstantBufferDataSet{ GetCameraConstants(camera), data.passConstantsBuffer };
-				const auto passConstants    = ConstantBufferDataSet{ ForwardDrawConstants{ (float)data.pointLights.size(), t, data.WH }, data.passConstantsBuffer };
+				const auto passConstants    = ConstantBufferDataSet{ ForwardDrawConstants{ (float)data.pointLights.size(), t, { 0, 0 } }, data.passConstantsBuffer };
 
 				DescriptorHeap descHeap;
 				descHeap.Init(
@@ -1212,6 +1357,19 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+    struct alignas(16) BVH_Node
+    {
+        float4 MinPoint;
+        float4 MaxPoint;
+
+        uint32_t Offset;
+        uint32_t Count; // max child count is 16
+
+        uint32_t Leaf;
+    };
+
+    constexpr size_t sizeofBVH_Node     = sizeof(BVH_Node);
+    constexpr size_t BVH_ELEMENT_COUNT  = 32;
 
 	LightBufferUpdate& WorldRender::UpdateLightBuffers(
 		UpdateDispatcher&		        dispatcher,
@@ -1219,32 +1377,51 @@ namespace FlexKit
 		const CameraHandle	            camera,
 		const GraphicScene&	            scene,
 		const SceneDescription&         sceneDescription,
+        ResourceHandle                  depthBuffer,
 		ReserveConstantBufferFunction   reserveCB,
-		iAllocator*				        tempMemory, 
-		LighBufferDebugDraw*	        drawDebug)
+		iAllocator*				        tempMemory)
 	{
-		graph.Resources.AddUAVResource(lightLists,			graph.GetRenderSystem().GetObjectState(lightLists));
-		graph.Resources.AddUAVResource(pointLightBuffer,	graph.GetRenderSystem().GetObjectState(pointLightBuffer));
-
 		auto& lightBufferData = graph.AddNode<LightBufferUpdate>(
 			LightBufferUpdate{
 					&sceneDescription.lights.GetData().pointLights,
 					camera,
 					reserveCB,
+                    createClusterLightListLayout
 			},
 			[&, this](FrameGraphNodeBuilder& builder, LightBufferUpdate& data)
 			{
-				auto& renderSystem      = graph.GetRenderSystem();
-				data.lightListObject	= builder.ReadWriteUAV(lightLists,		 DRS_UAV);
-				data.lightBufferObject	= builder.ReadWriteUAV(pointLightBuffer, DRS_Write);
-				data.camera				= camera;
+				auto& renderSystem          = graph.GetRenderSystem();
+				data.lightListObject	    = builder.ReadWriteUAV(lightLists, DRS_UAV);
+                data.lightBufferObject      = builder.ReadWriteUAV(pointLightBuffer, DRS_UAV);
+                data.lightBVH               = builder.ReadWriteUAV(pointLightBVH, DRS_UAV);
+                data.lightLookupObject      = builder.ReadWriteUAV(lightLookupBuffer, DRS_UAV);
+                data.lightCounterObject     = builder.ReadWriteUAV(lightListCounterBuffer, DRS_UAV);
+
+                data.clusterBufferObject	= builder.ReadWriteUAV(clusterBuffer, DRS_UAV);
+                data.counterObject          = builder.ReadWriteUAV(counterBuffer, DRS_UAV);
+
+                data.depthBufferObject      = builder.ReadRenderTarget(depthBuffer);
+                data.indexBufferObject      = builder.ReadWriteUAV(indexBuffer, DRS_UAV);
+
+                data.debugBufferObject      = builder.ReadWriteUAV(debugBuffer1, DRS_UAV);
+                data.argumentBufferObject   = builder.ReadWriteUAV(argumentBuffer, DRS_UAV);
+
+				data.camera				    = camera;
 
 				builder.AddDataDependency(sceneDescription.lights);
 				builder.AddDataDependency(sceneDescription.cameras);
 			},
-			[XY = lightMapWH](LightBufferUpdate& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[timeStats = timeStats](LightBufferUpdate& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
-				const auto cameraConstants = GetCameraConstants(data.camera);
+                auto        CreateClusters              = resources.GetPipelineState(CREATECLUSTERS);
+                auto        ClearCounters               = resources.GetPipelineState(CLEARCOUNTERSPSO);
+                auto        CreateBVH_Phase1            = resources.GetPipelineState(CREATELIGHTBVH_PHASE1);
+                auto        CreateBVH_Phase2            = resources.GetPipelineState(CREATELIGHTBVH_PHASE2);
+                auto        CreateLightLists            = resources.GetPipelineState(CREATECLUSTERLIGHTLISTS);
+                auto        CreateLightListArguments    = resources.GetPipelineState(CREATELIGHTLISTARGS_PSO);
+
+                const auto  cameraConstants     = GetCameraConstants(data.camera);
+                const auto  lightCount          = data.pointLightHandles->size();
 
 				struct ConstantsLayout
 				{
@@ -1252,36 +1429,46 @@ namespace FlexKit
 					float4x4 view;
 					uint2    LightMapWidthHeight;
 					uint32_t lightCount;
-				}constantsValues = {
-					XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(cameraConstants.Proj))),
+
+                    uint32_t nodeCount;
+                    uint32_t nodeOffset;
+                }constantsValues = {
+                    XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(cameraConstants.Proj))),
 					cameraConstants.View,
-					XY,
-					(uint32_t)data.pointLightHandles->size()
+                    { 0, 0 },
+					(uint32_t)lightCount
 				};
 
 				PointLightComponent& pointLights = PointLightComponent::GetComponent();
 
+                uint32_t temp = ceilf(std::logf(float(lightCount)) / std::logf(BVH_ELEMENT_COUNT));
+
 				CBPushBuffer    constantBuffer = data.reserveCB(
 					AlignedSize( sizeof(FlexKit::GPUPointLight) * data.pointLightHandles->size() ) +
-					AlignedSize<ConstantsLayout>()
+                    AlignedSize<ConstantsLayout>() * (1 + ceilf(std::logf(float(lightCount)) / std::logf(BVH_ELEMENT_COUNT))) +
+                    AlignedSize<Camera::ConstantBuffer>()
 				);
 
-				ConstantBufferDataSet constants{ constantsValues, constantBuffer };
+                CBPushBuffer    constantBuffer2 = data.reserveCB(AlignedSize<ConstantsLayout>() * (1 + ceilf(std::logf(float(Max(lightCount, 1))) / std::logf(BVH_ELEMENT_COUNT))));
+
+                const ConstantBufferDataSet constants{ constantsValues, constantBuffer };
+                const ConstantBufferDataSet cameraConstantsBuffer{ GetCameraConstants(data.camera), constantBuffer };
 
 				Vector<FlexKit::GPUPointLight> pointLightValues{ &allocator };
 
 				for (const auto light : *data.pointLightHandles)
 				{
-					PointLight pointLight	= pointLights[light];
-					float3 position			= GetPositionW(pointLight.Position);
+					const PointLight pointLight	= pointLights[light];
+					const float3 WS_position	= GetPositionW(pointLight.Position);
+                    const float3 VS_position    = (constantsValues.view * float4(WS_position, 1)).xyz();
 
 					pointLightValues.push_back(
 						{	{ pointLight.K, pointLight.I	},
-							{ position, pointLight.R        } });
+							{ WS_position, 10        } });
 				}
 
 				const size_t uploadSize = pointLightValues.size() * sizeof(GPUPointLight);
-				ConstantBufferDataSet pointLights_GPU{ (char*)pointLightValues.data(), uploadSize, constantBuffer };
+				const ConstantBufferDataSet pointLights_GPU{ (char*)pointLightValues.data(), uploadSize, constantBuffer };
 
 				ctx.CopyBufferRegion(
 					{ resources.GetObjectResource(pointLights_GPU.Handle()) },
@@ -1293,22 +1480,246 @@ namespace FlexKit
 					{ DRS_Write }
 				);
 
-				DescriptorHeap descHeap;
-				descHeap.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
-				descHeap.SetUAV(ctx, 1, resources.GetUAVBufferResource	(data.lightListObject));
-				descHeap.SetSRV(ctx, 2, resources.ReadUAVBuffer			(data.lightBufferObject, DRS_ShaderResource, ctx));
-				descHeap.SetCBV(ctx, 6, constants.Handle(), constants.Offset(), sizeof(ConstantsLayout));
-				descHeap.NullFill(ctx);
 
-				ctx.SetPipelineState(resources.GetPipelineState(LIGHTPREPASS));
-				ctx.SetComputeRootSignature(resources.renderSystem().Library.ComputeSignature);
-				ctx.SetComputeDescriptorTable(0, descHeap);
+                ctx.SetComputeRootSignature(resources.renderSystem().Library.ComputeSignature);
 
-				ctx.Dispatch({ XY[0], XY[1], 1 });
+                DescriptorHeap clearHeap;
+                clearHeap.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
+                clearHeap.SetUAV(ctx, 2, resources.ReadWriteUAVBuffer(data.counterObject, ctx));
+
+
+                ctx.SetComputeDescriptorTable(0, clearHeap);
+                ctx.Dispatch(ClearCounters, uint3{ 1, 1, 1 });
+
+				DescriptorHeap clusterCreationResources;
+                clusterCreationResources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
+
+                // UAVs start at 0
+                clusterCreationResources.SetUAVStructured(ctx, 0, resources.ReadWriteUAVBuffer(data.clusterBufferObject, ctx), resources.ReadWriteUAVBuffer(data.counterObject, ctx), sizeof(GPUCluster), 0);
+                clusterCreationResources.SetUAV(ctx, 1, resources.ReadWriteUAVTexture(data.indexBufferObject, ctx));
+                clusterCreationResources.SetUAV(ctx, 3, resources.ReadWriteUAVTexture(data.debugBufferObject, ctx));
+
+                // SRV's start at 4
+                clusterCreationResources.SetSRV(ctx, 4, resources.ReadRenderTarget(data.depthBufferObject, ctx), DeviceFormat::R32_FLOAT);
+
+                // CBV's start at 8
+                clusterCreationResources.SetCBV(ctx, 8, cameraConstantsBuffer);
+                clusterCreationResources.SetCBV(ctx, 9, constants);
+                clusterCreationResources.NullFill(ctx);
+
+                ctx.TimeStamp(timeStats, 2);
+
+                const auto threadsWH = resources.GetTextureWH(data.depthBufferObject) / 32;
+                ctx.SetComputeDescriptorTable(0, clusterCreationResources);
+                ctx.Dispatch(CreateClusters, uint3{ threadsWH[0], threadsWH[1] + 1, 1 });
+
+                ctx.TimeStamp(timeStats, 3);
+
+                // Create light BVH
+                // TODO: allow for more than 1024 point lights
+                //          move sorting of lights to a separate pass
+                //          then pull sorted light list into the two pass BVH construct
+                DescriptorHeap BVH_Phase1_Resources;
+                BVH_Phase1_Resources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
+                BVH_Phase1_Resources.SetStructuredResource(ctx, 4, resources.ReadUAVBuffer(data.lightBufferObject, DRS_ShaderResource, ctx), sizeof(GPUPointLight));
+                BVH_Phase1_Resources.SetUAVStructured(ctx, 0, resources.ReadWriteUAVBuffer(data.lightBVH, ctx), sizeof(BVH_Node), 0);
+                BVH_Phase1_Resources.SetUAVStructured(ctx, 1, resources.ReadWriteUAVBuffer(data.lightLookupObject, ctx), sizeof(uint2), 0);
+                BVH_Phase1_Resources.SetCBV(ctx, 8, constants);
+
+                ctx.TimeStamp(timeStats, 6);
+                ctx.SetComputeDescriptorTable(0, BVH_Phase1_Resources);
+                ctx.Dispatch(CreateBVH_Phase1, { 1, 1, 1 }); // Two dispatches to sync across calls
+
+                auto Phase2_Pass =
+                    [&](const uint32_t nodeOffset, const uint32_t nodeCount)
+                    {
+
+                        struct ConstantsLayout
+				        {
+					        float4x4 iproj;
+					        float4x4 view;
+					        uint2    LightMapWidthHeight;
+					        uint32_t lightCount;
+
+                            uint32_t nodeCount;
+                            uint32_t nodeOffset;
+                        }constantValues = {
+                            XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(cameraConstants.Proj))),
+					        cameraConstants.View,
+                            { 0, 0 },
+					        (uint32_t)lightCount,
+                            nodeCount,
+                            nodeOffset
+				        };
+
+                        const ConstantBufferDataSet constantSet{ constantValues, constantBuffer2 };
+
+
+                        DescriptorHeap BVH_Phase2_Resources;
+                        BVH_Phase2_Resources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
+                        BVH_Phase2_Resources.SetUAVStructured(ctx, 0, resources.ReadWriteUAVBuffer(data.lightBVH, ctx), sizeof(BVH_Node), 0);
+                        BVH_Phase2_Resources.SetStructuredResource(ctx, 4, resources.ReadUAVBuffer(data.lightBufferObject, DRS_ShaderResource, ctx), sizeof(GPUPointLight));
+                        BVH_Phase2_Resources.SetCBV(ctx, 8, constantSet);
+
+                        ctx.SetComputeDescriptorTable(0, BVH_Phase2_Resources);
+                        ctx.Dispatch(CreateBVH_Phase2, { 1, 1, 1 });
+                    };
+
+                size_t offset       = 0;
+                size_t nodeCount    = std::ceilf(float(lightCount) / BVH_ELEMENT_COUNT);
+                const uint32_t passCount = std::floor(std::log(lightCount) / std::log(BVH_ELEMENT_COUNT));
+
+                for (uint32_t I = 0; I < passCount; I++)
+                {
+                    Phase2_Pass(offset, nodeCount);
+                    offset      += nodeCount;
+                    nodeCount    = std::ceilf(float(nodeCount) / BVH_ELEMENT_COUNT);
+                }
+
+
+                DescriptorHeap createArgumentResources;
+                createArgumentResources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
+                createArgumentResources.SetUAVStructured(ctx, 0, resources.ReadWriteUAVBuffer(data.argumentBufferObject, ctx), sizeof(uint4), 0);
+                createArgumentResources.SetUAVStructured(ctx, 1, resources.ReadWriteUAVBuffer(data.lightCounterObject, ctx), sizeof(uint32_t), 0);
+                createArgumentResources.SetStructuredResource(ctx, 4, resources.ReadUAVBuffer(data.counterObject, DRS_ShaderResource, ctx), sizeof(uint32_t));
+                createArgumentResources.NullFill(ctx);
+
+                ctx.SetComputeDescriptorTable(0, createArgumentResources);
+                ctx.Dispatch(CreateLightListArguments, { 1, 1, 1 }); // Two dispatches to sync across calls
+
+                struct LightListConstructionConstants
+                {
+                    float4x4 IView;
+                    uint32_t rootNode;
+                } lightListConstants {
+                    float4x4{},
+                    offset
+                };
+
+                // Build Light Lists
+                CBPushBuffer constantBuffer3 = data.reserveCB(AlignedSize<LightListConstructionConstants>());
+                ConstantBufferDataSet   lightListConstantSet{ lightListConstants, constantBuffer3 };
+
+
+                DescriptorHeap createLightListResources;
+                createLightListResources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
+                createLightListResources.SetUAVStructured(ctx, 0, resources.ReadWriteUAVBuffer(data.clusterBufferObject, ctx), sizeof(GPUCluster), 0);
+                createLightListResources.SetUAVStructured(ctx, 1, resources.ReadWriteUAVBuffer(data.lightListObject, ctx), sizeof(uint32_t), 1);
+                createLightListResources.SetUAVStructured(ctx, 2, resources.ReadWriteUAVBuffer(data.lightCounterObject, ctx), sizeof(uint32_t), 0);
+                createLightListResources.SetUAVStructured(ctx, 3, resources.ReadWriteUAVBuffer(data.lightBVH, ctx), sizeof(BVH_Node), 0);
+
+                //createLightListResources.SetStructuredResource(ctx, 4, resources.ReadUAVBuffer(data.lightBVH, DRS_ShaderResource, ctx), sizeof(BVH_Node), 0);
+                createLightListResources.SetStructuredResource(ctx, 5, resources.ReadUAVBuffer(data.lightLookupObject, DRS_ShaderResource, ctx), sizeof(uint32_t),0);
+                createLightListResources.SetStructuredResource(ctx, 6, resources.ReadUAVBuffer(data.lightBufferObject, DRS_ShaderResource, ctx), sizeof(GPUPointLight));
+                createLightListResources.SetCBV(ctx, 8, resources.ReadUAVBuffer(data.counterObject, DRS_ShaderResource, ctx), 0, 4);
+                createLightListResources.SetCBV(ctx, 9, lightListConstantSet);
+                createLightListResources.NullFill(ctx);
+
+                ctx.SetComputeDescriptorTable(0, createLightListResources);
+                ctx.SetPipelineState(CreateLightLists);
+                ctx.ExecuteIndirect(resources.ReadIndirectArgs(data.argumentBufferObject, ctx), data.indirectLayout);
+
+                ctx.TimeStamp(timeStats, 7);
 			});
 
 		return lightBufferData;
 	}
+
+
+    /************************************************************************************************/
+
+
+    DEBUGVIS_DrawBVH& WorldRender::DEBUGVIS_DrawLightBVH(
+		UpdateDispatcher&               dispatcher,
+		FrameGraph&                     frameGraph,
+		const CameraHandle              camera,
+        ResourceHandle                  renderTarget,
+        LightBufferUpdate&              lightBufferUpdate,
+		ReserveConstantBufferFunction   reserveCB,
+		iAllocator*                     tempMemory)
+    {
+        auto& lightBufferData = frameGraph.AddNode<DEBUGVIS_DrawBVH>(
+            DEBUGVIS_DrawBVH{
+                reserveCB,
+                lightBufferUpdate
+            },
+            [&, this](FrameGraphNodeBuilder& builder, DEBUGVIS_DrawBVH& data)
+            {
+                data.lightBVH       = builder.ReadResource(lightBufferUpdate.lightBVH, DRS_ShaderResource);
+                data.clusters       = builder.ReadResource(lightBufferUpdate.clusterBufferObject, DRS_ShaderResource);
+                data.renderTarget   = builder.WriteRenderTarget(renderTarget);
+                data.camera         = camera;
+            },
+            [](DEBUGVIS_DrawBVH& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+            {
+                auto debugBVHVISPSO         = resources.GetPipelineState(LIGHTBVH_DEBUGVIS_PSO);
+                auto debugClusterVISPSO     = resources.GetPipelineState(CLUSTER_DEBUGVIS_PSO);
+                const auto  cameraConstants = GetCameraConstants(data.camera);
+
+                ctx.SetRenderTargets({ resources.GetRenderTarget(data.renderTarget) }, false);
+                ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
+
+                ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
+
+                const auto lightCount = data.lightBufferUpdateData.pointLightHandles->size();
+
+                struct ConstantsLayout
+                {
+                    float4x4 proj;
+                    float4x4 View;
+                    float4x4 IView;
+                    uint2    LightMapWidthHeight;
+                    uint32_t lightCount;
+                }constantsValues = {
+                    cameraConstants.Proj,
+                    cameraConstants.View,
+                    cameraConstants.ViewI,
+                    { 0, 0 },
+                    (uint32_t)lightCount
+                };
+
+                CBPushBuffer            constantBuffer = data.reserveCB(1024);
+                ConstantBufferDataSet   constants{ constantsValues, constantBuffer };
+
+                DescriptorHeap descHeap;
+                descHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), 2, &allocator);
+                descHeap.SetStructuredResource(ctx, 0, resources.ReadUAVBuffer(data.lightBVH, DRS_ShaderResource, ctx), 4, 0);
+                descHeap.SetStructuredResource(ctx, 1, resources.ReadUAVBuffer(data.clusters, DRS_ShaderResource, ctx), sizeof(GPUCluster), 0);
+                descHeap.NullFill(ctx, 2);
+
+                DescriptorHeap nullHeap;
+                nullHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 2, &allocator);
+                nullHeap.NullFill(ctx, 2);
+
+                ctx.SetGraphicsConstantBufferView(0, constants);
+                ctx.SetGraphicsConstantBufferView(1, constants);
+                ctx.SetGraphicsConstantBufferView(2, constants);
+
+                ctx.SetPrimitiveTopology(EIT_POINT);
+                ctx.SetGraphicsDescriptorTable(3, descHeap);
+                ctx.SetGraphicsDescriptorTable(4, nullHeap);
+
+
+                size_t offset       = 0;
+                size_t nodeCount    = std::ceilf(float(lightCount) / BVH_ELEMENT_COUNT);
+
+                const uint32_t passCount = std::floor(std::log(lightCount) / std::log(BVH_ELEMENT_COUNT));
+
+                for (uint32_t I = 0; I < passCount; I++)
+                {
+                    offset      += nodeCount;
+                    nodeCount    = std::floor(float(nodeCount) / BVH_ELEMENT_COUNT);
+                }
+
+                ctx.SetPipelineState(debugBVHVISPSO);
+                ctx.Draw(offset + 1);
+
+                ctx.SetPipelineState(debugClusterVISPSO);
+                //ctx.Draw(uint2{ uint32_t(1080 / 32), size_t(1920 / 32) + 1 }.Product());
+            });
+
+        return lightBufferData;
+    }
 
 
 	/************************************************************************************************/
@@ -1343,8 +1754,10 @@ namespace FlexKit
 				data.TangentTargetObject     = builder.WriteRenderTarget(gbuffer.tangent);
 				data.depthBufferTargetObject = builder.WriteDepthBuffer(depthTarget);
 			},
-			[camera](GBufferPass& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[camera, timeStats = timeStats](GBufferPass& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
+                ctx.TimeStamp(timeStats, 0);
+
 				struct EntityPoses
 				{
 					float4x4 transforms[128];
@@ -1355,12 +1768,11 @@ namespace FlexKit
 					}
 				};
 
-
 				if (!data.pvs.size())
 					return;
 
 				const size_t entityBufferSize =
-					AlignedSize<Drawable::VConstantsLayout>() * data.pvs.size();
+					AlignedSize<Drawable::VConstantsLayout>() * data.pvs.size() * 30;
 
 				constexpr size_t passBufferSize =
 					AlignedSize<Camera::ConstantBuffer>() +
@@ -1381,7 +1793,8 @@ namespace FlexKit
 				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 
 				// Setup pipeline resources
-				ctx.SetScissorAndViewports(
+				SetScissorAndViewports(
+                    ctx,
 					std::tuple{
 						data.gbuffer.albedo,
 						data.gbuffer.MRIA,
@@ -1412,8 +1825,8 @@ namespace FlexKit
 				for (auto& drawable : data.pvs)
 				{
 
-					const auto constants    = drawable.D->GetConstants();
-					auto* triMesh           = GetMeshResource(drawable.D->MeshHandle);
+					auto constants    = drawable.D->GetConstants();
+					auto* triMesh     = GetMeshResource(drawable.D->MeshHandle);
 
 					if (triMesh != prevMesh)
 					{
@@ -1431,10 +1844,8 @@ namespace FlexKit
 						);
 					}
 
-					ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
-
                     auto& materials = MaterialComponent::GetComponent();
-                    auto& material = MaterialComponent::GetComponent()[drawable.D->material];
+                    const auto material  = MaterialComponent::GetComponent()[drawable.D->material];
                     const auto subMeshCount = triMesh->subMeshes.size();
 
                     if (material.SubMaterials.empty())
@@ -1447,7 +1858,7 @@ namespace FlexKit
 						    &allocator);
 
 					    if(material.Textures.size())
-						    for(size_t I = 0; I < min(material.Textures.size(), 4); I++)
+						    for(size_t I = 0; I < Min(material.Textures.size(), 4); I++)
 							    descHeap.SetSRV(ctx, I, material.Textures[I]);
 					    else
 					    {
@@ -1458,7 +1869,9 @@ namespace FlexKit
 					    }
 
 					    descHeap.NullFill(ctx);
+                        constants.textureCount = material.Textures.size();
 
+                        ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
                         ctx.SetGraphicsDescriptorTable(0, descHeap);
                         ctx.DrawIndexed(triMesh->IndexCount);
                     }
@@ -1466,8 +1879,8 @@ namespace FlexKit
                     {
                         for (size_t I = 0; I < subMeshCount; I++)
                         {
-                            auto& subMesh       = triMesh->subMeshes[I];
-                            auto& passMaterial  = materials[material.SubMaterials[I]];
+                            auto& subMesh           = triMesh->subMeshes[I];
+                            const auto passMaterial = materials[material.SubMaterials[I]];
 
                             DescriptorHeap descHeap;
 
@@ -1477,7 +1890,7 @@ namespace FlexKit
 						        &allocator);
 
 					        if(passMaterial.Textures.size())
-						        for(size_t I = 0; I < min(passMaterial.Textures.size(), 4); I++)
+						        for(size_t I = 0; I < Min(passMaterial.Textures.size(), 4); I++)
 							        descHeap.SetSRV(ctx, I, passMaterial.Textures[I]);
 					        else
 					        {
@@ -1488,7 +1901,9 @@ namespace FlexKit
 					        }
 
 					        descHeap.NullFill(ctx);
+                            constants.textureCount = passMaterial.Textures.size();
 
+                            ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
                             ctx.SetGraphicsDescriptorTable(0, descHeap);
                             ctx.DrawIndexed(subMesh.IndexCount, subMesh.BaseIndex);
                         }
@@ -1537,6 +1952,7 @@ namespace FlexKit
                         ctx.DrawIndexed(subMesh.IndexCount, subMesh.BaseIndex);
                     }
 				}
+                ctx.TimeStamp(timeStats, 1);
 			}
 			);
 
@@ -1595,17 +2011,21 @@ namespace FlexKit
 				data.TangentTargetObject        = builder.ReadShaderResource(gbuffer.tangent);
 				data.MRIATargetObject           = builder.ReadShaderResource(gbuffer.MRIA);
 				data.depthBufferTargetObject    = builder.ReadShaderResource(depthTarget);
+                data.clusterIndexBufferObject   = builder.ReadWriteUAV(indexBuffer, DRS_ShaderResource);
+                data.clusterBufferObject        = builder.ReadWriteUAV(clusterBuffer, DRS_ShaderResource);
+                data.lightListsObject           = builder.ReadWriteUAV(lightLists, DRS_ShaderResource);
+
 				data.renderTargetObject         = builder.WriteRenderTarget(renderTarget);
 
 				data.pointLightBufferObject     = builder.ReadWriteUAV(pointLightBuffer, DRS_Write);
 
-				data.passConstants              = reserveCB(64 * KILOBYTE);
+				data.passConstants              = reserveCB(128 * KILOBYTE);
 				data.passVertices               = reserveVB(sizeof(float4) * 6);
 
 				for(auto shadowMap : shadowMaps.shadowMapTargets)
 				  builder.ReadResource(shadowMap, DRS_ShaderResource);
 			},
-			[camera = sceneDescription.camera, renderTarget, t, lightLists = this->lightLists]
+			[camera = sceneDescription.camera, renderTarget, t, lightLists = this->lightLists, timingReadBack = timingReadBack, timeStats = timeStats]
 			(TiledDeferredShade& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
 				PointLightComponent& pointLights = PointLightComponent::GetComponent();
@@ -1616,8 +2036,8 @@ namespace FlexKit
 					float3      position	= GetPositionW(pointLight.Position);
 
 					data.pointLights.push_back(
-						{	{ pointLight.K, 100	},
-							{ position, 2000    } });
+						{	{ pointLight.K, pointLight.I	},
+							{ position,     50    } });
 				}
 
 				auto& renderSystem          = resources.renderSystem();
@@ -1626,15 +2046,15 @@ namespace FlexKit
 
 				const auto pointLightCount = pointLights.elements.size();
 
-				//if (!pointLightCount)
-				//	return;
+				if (!pointLightCount)
+					return;
 
 				struct
 				{
 					float2      WH;
 					float       time;
 					uint32_t    lightCount;
-					float4x4    PV[256];
+					float4x4    PV[1024];
 				}passConstants = { {(float)WH[0], (float)WH[1]}, t, pointLightCount };
 
 				for(size_t I = 0; I < pointLightCount; I++)
@@ -1672,15 +2092,19 @@ namespace FlexKit
 				descHeap.SetSRV(ctx, 2, resources.GetTexture(data.NormalTargetObject));
 				descHeap.SetSRV(ctx, 3, resources.GetTexture(data.TangentTargetObject));
 				descHeap.SetSRV(ctx, 4, resources.GetTexture(data.depthBufferTargetObject), DeviceFormat::R32_FLOAT);
-				descHeap.SetSRV(ctx, 6, lightLists);
+                descHeap.SetSRV(ctx, 5, resources.GetUAVTextureResource(data.clusterIndexBufferObject));
+                descHeap.SetStructuredResource(ctx, 6, resources.GetUAVBufferResource(data.clusterBufferObject), sizeof(GPUCluster));
+                descHeap.SetSRV(ctx, 7, resources.GetUAVBufferResource(data.lightListsObject));
 
-				descHeap.SetStructuredResource(ctx, 7, resources.ReadUAVBuffer(data.pointLightBufferObject, DRS_ShaderResource, ctx), sizeof(GPUPointLight));
+				descHeap.SetStructuredResource(ctx, 9, resources.ReadUAVBuffer(data.pointLightBufferObject, DRS_ShaderResource, ctx), sizeof(GPUPointLight));
 
+#if USING(SHADOWMAPPING)
 				for (size_t shadowMapIdx = 0; shadowMapIdx < pointLightCount; shadowMapIdx++)
 				{
 					auto shadowMap = resources.GetRenderTarget(data.shadowMaps.shadowMapTargets[shadowMapIdx]);
-					descHeap.SetSRVCubemap(ctx, shadowMapIdx + 8, shadowMap, DeviceFormat::R32_FLOAT);
+					descHeap.SetSRVCubemap(ctx, shadowMapIdx + 10, shadowMap, DeviceFormat::R32_FLOAT);
 				}
+#endif
 
 				descHeap.NullFill(ctx, descriptorTableSize);
 
@@ -1695,7 +2119,12 @@ namespace FlexKit
 				ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
 				ctx.SetGraphicsDescriptorTable(3, descHeap);
 
+                ctx.TimeStamp(timeStats, 4);
 				ctx.Draw(6);
+                ctx.TimeStamp(timeStats, 5);
+
+                ctx.ResolveQuery(timeStats, 0, 8, resources.GetObjectResource(timingReadBack), 0);
+                ctx.QueueReadBack(timingReadBack);
 			});
 
 		return pass;
@@ -1711,7 +2140,8 @@ namespace FlexKit
 			ReserveConstantBufferFunction&          constantBufferAllocator,
 			const ComputeTiledDeferredShadeDesc&    scene)
 	{
-		frameGraph.Resources.AddUAVResource(tempBuffer, frameGraph.GetRenderSystem().GetObjectState(tempBuffer));
+        FK_ASSERT(0);
+		//frameGraph.Resources.AddUAVResource(Buffer, frameGraph.GetRenderSystem().GetObjectState(tempBuffer));
 
 		auto& pass = frameGraph.AddNode<ComputeTiledPass>(
 			ComputeTiledPass{
@@ -1720,9 +2150,9 @@ namespace FlexKit
 			},
 			[&](FrameGraphNodeBuilder& builder, ComputeTiledPass& data)
 			{
-				data.dispatchDims   = { lightMapWH[0], lightMapWH[1], 1 };
+				data.dispatchDims   = { 1, 1, 1 };
 				data.activeCamera   = scene.activeCamera;
-				data.WH             = lightMapWH * 10;
+				data.WH             = 1 * 10;
 				// Inputs
 				data.albedoObject         = builder.ReadShaderResource(scene.gbuffer.albedo);
 				data.MRIAObject           = builder.ReadShaderResource(scene.gbuffer.MRIA);
@@ -1734,7 +2164,7 @@ namespace FlexKit
 				data.lightBuffer            = builder.ReadWriteUAV(pointLightBuffer,    DRS_ShaderResource);
 
 				// Ouputs
-				data.tempBufferObject   = builder.ReadWriteUAV(tempBuffer);
+				//data.tempBufferObject   = builder.ReadWriteUAV(tempBuffer);
 				data.renderTargetObject = builder.WriteRenderTarget(scene.renderTarget);
 			},
 			[=]
@@ -1785,7 +2215,7 @@ namespace FlexKit
 				ctx.SetComputeDescriptorTable(4, uavHeap);
 				ctx.Dispatch(data.dispatchDims);
 
-				ctx.CopyTexture2D(
+				CopyTexture2D(ctx, 
 					resources.CopyToTexture(data.renderTargetObject, ctx),
 					resources.CopyUAVTexture(data.tempBufferObject, ctx));
 			});
@@ -1799,12 +2229,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateShadowMapPass(RenderSystem* RS)
 	{
-		auto VShader = LoadShader("VS_Main", "VS_Main", "vs_5_1", "assets\\shaders\\CubeMapShadowMapping.hlsl");
-		auto GShader = LoadShader("GS_Main", "GS_Main", "gs_5_1", "assets\\shaders\\CubeMapShadowMapping.hlsl");
-
-		EXITSCOPE(Release(&VShader));
-		EXITSCOPE(Release(&GShader));
-			
+		auto VShader = RS->LoadShader("VS_Main", "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
+		auto GShader = RS->LoadShader("GS_Main", "gs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
 
 		/*
 		typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -1862,11 +2288,11 @@ namespace FlexKit
 
 	ShadowPassMatrices CalculateShadowMapMatrices(const float3 pos, const float r, const float T)
 	{
-		const auto M1 = DirectX::XMMatrixRotationY( pi / 2) * DirectX::XMMatrixRotationX(pi); // left Face
-		const auto M2 = DirectX::XMMatrixRotationY(-pi / 2) * DirectX::XMMatrixRotationX(pi); // right
+		const auto M1 = DirectX::XMMatrixRotationY( pi / 2.0f) * DirectX::XMMatrixRotationX(pi); // left Face
+		const auto M2 = DirectX::XMMatrixRotationY(-pi / 2.0f) * DirectX::XMMatrixRotationX(pi); // right
 
-		const auto M3 = DirectX::XMMatrixRotationX( pi / 2); // Top Face
-		const auto M4 = DirectX::XMMatrixRotationX(-pi / 2); // Bottom Face
+		const auto M3 = DirectX::XMMatrixRotationX( pi / 2.0f); // Top Face
+		const auto M4 = DirectX::XMMatrixRotationX(-pi / 2.0f); // Bottom Face
 
 		const auto M5 = Float4x4ToXMMATIRX(Quaternion2Matrix(Quaternion(0, 180, 180)));
 		const auto M6 = DirectX::XMMatrixRotationY(0) * DirectX::XMMatrixRotationZ(pi); // backward
@@ -1887,7 +2313,7 @@ namespace FlexKit
 			const XMMATRIX ViewI        = ViewOrientations[I] * DirectX::XMMatrixTranslationFromVector(pos);
 
 			const XMMATRIX View           = DirectX::XMMatrixInverse(nullptr, ViewI);
-			const XMMATRIX perspective    = DirectX::XMMatrixPerspectiveFovRH(-pi/2, 1, 0.1, r);
+			const XMMATRIX perspective    = DirectX::XMMatrixPerspectiveFovRH(float(-pi/2), 1, 0.1f, r);
 			const XMMATRIX PV             = XMMatrixTranspose(perspective) * XMMatrixTranspose(View);
 
 			out.PV[I]       = XMMatrixToFloat4x4(PV).Transpose();
@@ -1901,9 +2327,26 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    float cot(float t)
+    {
+        return 1.0f / std::tanf(t);
+    }
+
+    float ScreenSpaceSize(const Camera c, BoundingSphere bs)
+    {
+        const auto position = GetPositionW(c.Node);
+        const auto d        = (position - bs.xyz()).magnitude();
+        const auto r        = bs.r;
+        const auto fovy     = c.FOV / c.AspectRatio;
+        const auto pr       = cot(fovy / 2) * r / sqrt(d*d - r*r);
+
+        return pi * pr * pr;
+    }
+
 	ShadowMapPassData& ShadowMapPass(
 		FrameGraph&                     frameGraph,
-		GatherTask&                     sceneSource,
+        const SceneDescription          sceneDesc,
+        const uint2                     screenWH,
 		ReserveConstantBufferFunction   reserveCB,
 		const double                    t,
 		iAllocator*                     allocator)
@@ -1911,102 +2354,115 @@ namespace FlexKit
 		auto& shadowMapPass     = allocator->allocate<ShadowMapPassData>(ShadowMapPassData{ allocator->allocate<Vector<TemporaryFrameResourceHandle>>(allocator) });
 		auto& pointLights       = PointLightComponent::GetComponent();
 		const auto lightCount   = pointLights.elements.size();
+        const auto frustum      = GetFrustum(sceneDesc.camera);
+        const auto camera       = CameraComponent::GetComponent().GetCamera(sceneDesc.camera);
 
 		for(size_t I = 0; I < pointLights.elements.size(); I++)
 		{
-			auto& pointLight = pointLights.elements[I];
+            auto& pointLight    = pointLights.elements[I].componentData;
+            auto& lightHandle   = pointLights.elements[I].handle;
 
-			frameGraph.AddNode<LocalShadowMapPassData>(
-				LocalShadowMapPassData{
-					shadowMapPass,
-					sceneSource,
-					reserveCB,
-				},
-				[&](FrameGraphNodeBuilder& builder, LocalShadowMapPassData& data)
-				{
-					builder.AddDataDependency(sceneSource);
+            BoundingSphere boundingSphere{ GetPositionW(pointLight.Position), pointLight.R };
+            if(Intersects(frustum, boundingSphere) && false)
+            {
+			    frameGraph.AddNode<LocalShadowMapPassData>(
+				    LocalShadowMapPassData{
+					    shadowMapPass,
+                        sceneDesc.PVS,
+					    reserveCB,
+				    },
+				    [&](FrameGraphNodeBuilder& builder, LocalShadowMapPassData& data)
+				    {
+                        builder.AddDataDependency(sceneDesc.cameras);
+                        builder.AddDataDependency(sceneDesc.PVS);
 
-                    shadowMapPass.shadowMapTargets.push_back(builder.AcquireVirtualResource(GPUResourceDesc::DepthTarget({ 512, 512 }, DeviceFormat::D32_FLOAT, 6), DRS_DEPTHBUFFERWRITE));
+                        const float SSSize  = ScreenSpaceSize(camera, boundingSphere);
+                        const uint2 WH      = { 128, 128 };
 
-					data.shadowMapTargets   = shadowMapPass.shadowMapTargets.back();
-					data.pointLight         = pointLight.handle;
-				},
-				[=](LocalShadowMapPassData& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
-				{
-					const auto& drawables  = data.sceneSource.GetData().solid;
-					const auto depthTarget = resources.GetTexture(data.shadowMapTargets);
+                        shadowMapPass.shadowMapTargets.push_back(builder.AcquireVirtualResource(GPUResourceDesc::DepthTarget(WH, DeviceFormat::D32_FLOAT, 6), DRS_DEPTHBUFFERWRITE));
 
-					const DepthStencilView_Options DSV_desc = {
-						.depthStencil = depthTarget
-					};
+					    data.shadowMapTargets   = shadowMapPass.shadowMapTargets.back();
+					    data.pointLight         = lightHandle;
+				    },
+				    [=](LocalShadowMapPassData& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+				    {
+                        return;
 
-					ctx.ClearDepthBuffer(depthTarget, 1.0f);
+					    const auto& drawables  = data.sceneSource.GetData().solid;
+					    const auto depthTarget = resources.GetTexture(data.shadowMapTargets);
 
-					if (!drawables.size())
-						return;
+					    const DepthStencilView_Options DSV_desc = {
+                            0, 0,
+						    depthTarget
+					    };
 
-					struct PassConstants
-					{
-						struct PlaneMatrices
-						{
-							float4x4 ViewI;
-							float4x4 PV;
-						}matrices[6];
-					};
+					    ctx.ClearDepthBuffer(depthTarget, 1.0f);
 
-					CBPushBuffer passConstantBuffer = data.reserveCB(
-						AlignedSize<PassConstants>() * lightCount);
+					    if (!drawables.size())
+						    return;
 
-					CBPushBuffer localConstantBuffer = data.reserveCB(AlignedSize<Drawable::VConstantsLayout>() * drawables.size());
+					    struct PassConstants
+					    {
+						    struct PlaneMatrices
+						    {
+							    float4x4 ViewI;
+							    float4x4 PV;
+						    }matrices[6];
+					    };
 
-					for (auto& drawable : drawables)
-						ConstantBufferDataSet{ drawable.D->GetConstants(), localConstantBuffer };
+					    CBPushBuffer passConstantBuffer = data.reserveCB(
+						    AlignedSize<PassConstants>() * lightCount);
 
-					auto constants = CreateCBIterator<Drawable::VConstantsLayout>(localConstantBuffer);
+					    CBPushBuffer localConstantBuffer = data.reserveCB(AlignedSize<Drawable::VConstantsLayout>() * drawables.size());
 
-					auto PSO = resources.GetPipelineState(SHADOWMAPPASS);
-					if (PSO == nullptr)
-						__debugbreak();
+					    for (auto& drawable : drawables)
+						    ConstantBufferDataSet{ drawable.D->GetConstants(), localConstantBuffer };
 
-					ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
-					ctx.SetPipelineState(PSO);
-					ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
+					    auto constants = CreateCBIterator<Drawable::VConstantsLayout>(localConstantBuffer);
 
-					auto& pointLights       = PointLightComponent::GetComponent();
-					auto& light             = pointLights.elements[I].componentData;
-					const float3 Position   = FlexKit::GetPositionW(light.Position);
-					const auto matrices     = CalculateShadowMapMatrices(Position, light.R, t);
+					    auto PSO = resources.GetPipelineState(SHADOWMAPPASS);
+					    if (PSO == nullptr)
+						    __debugbreak();
 
-					PassConstants passConstantData;
+					    ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
+					    ctx.SetPipelineState(PSO);
+					    ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 
-					for(size_t I = 0; I < 6; I++)
-					{
-						passConstantData.matrices[I].ViewI  = matrices.ViewI[I];
-						passConstantData.matrices[I].PV     = matrices.PV[I];
-					}
+					    auto& pointLights       = PointLightComponent::GetComponent();
+					    auto& light             = pointLights.elements[I].componentData;
+					    const float3 Position   = FlexKit::GetPositionW(light.Position);
+					    const auto matrices     = CalculateShadowMapMatrices(Position, light.R, t);
 
-					ConstantBufferDataSet passConstants{ passConstantData, passConstantBuffer };
+					    PassConstants passConstantData;
 
-					ctx.SetScissorAndViewports({ depthTarget });
-					ctx.SetRenderTargets2({}, 0, DSV_desc);
+					    for(size_t I = 0; I < 6; I++)
+					    {
+						    passConstantData.matrices[I].ViewI  = matrices.ViewI[I];
+						    passConstantData.matrices[I].PV     = matrices.PV[I];
+					    }
 
-					ctx.SetGraphicsConstantBufferView(0, passConstants);
+					    ConstantBufferDataSet passConstants{ passConstantData, passConstantBuffer };
 
-					for(size_t drawableIdx = 0; drawableIdx < drawables.size(); drawableIdx++)
-					{
-						auto* const triMesh = GetMeshResource(drawables[drawableIdx].D->MeshHandle);
+					    ctx.SetScissorAndViewports({ depthTarget });
+					    ctx.SetRenderTargets2({}, 0, DSV_desc);
 
-						ctx.SetGraphicsConstantBufferView(1, constants[drawableIdx]);
+					    ctx.SetGraphicsConstantBufferView(0, passConstants);
 
-						ctx.AddIndexBuffer(triMesh);
-						ctx.AddVertexBuffers(triMesh,
-							{ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
+					    for(size_t drawableIdx = 0; drawableIdx < drawables.size(); drawableIdx++)
+					    {
+						    auto* const triMesh = GetMeshResource(drawables[drawableIdx].D->MeshHandle);
 
-                       ctx.DrawIndexedInstanced(triMesh->IndexCount);
-					}
-				});
-		}
+						    ctx.SetGraphicsConstantBufferView(1, constants[drawableIdx]);
 
+						    ctx.AddIndexBuffer(triMesh);
+						    ctx.AddVertexBuffers(triMesh,
+							    { VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
+
+                           ctx.DrawIndexedInstanced(triMesh->IndexCount);
+					    }
+				    });
+		    }
+        }
 		return shadowMapPass;
 	}
 
@@ -2015,6 +2471,7 @@ namespace FlexKit
 		FrameGraph&         frameGraph,
 		ShadowMapPassData&  shadowMaps)
 	{
+        return;
 		struct _ {};
 		frameGraph.AddNode<_>(
 			_{},

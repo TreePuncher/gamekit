@@ -1,7 +1,7 @@
-float3 TopLeft		= float3(-1,  1,  0);
-float3 TopRight		= float3( 1,  1,  0);
-float3 BottomLeft	= float3(-1, -1,  0);
-float3 BottomRight	= float3( 1, -1,  0);
+#define TopLeft float3(-1,  1,  0);
+#define TopRight float3( 1,  1,  0);
+#define BottomLeft float3(-1, -1,  0);
+#define BottomRight float3( 1, -1,  0);
 
 cbuffer CameraConstants : register( b0 )
 {
@@ -158,6 +158,15 @@ float3 GetViewVector_VS(const float2 UV) // View Space Vector
     return normalize(FarPos);
 }
 
+float3 GetViewVector_VS2(const float2 UV) // View Space Vector
+{
+    const float3 LeftPoint  = lerp(TLCorner_VS, BLCorner_VS, UV.y); // Left Edge
+    const float3 RightPoint = lerp(TRCorner_VS, BRCorner_VS, UV.y); // Right Edge
+    const float3 FarPos     = lerp(LeftPoint, RightPoint, UV.x);
+
+    return normalize(FarPos);
+}
+
 float3 GetViewVector(const float2 UV)
 {
     float3 View_VS = GetViewVector_VS(UV);
@@ -175,7 +184,6 @@ float3 GetViewSpacePosition(float2 UV, float D)
     const float3 V = GetViewVector_VS(UV) * MaxZ * D;
     return V;
 }
-
 
 /*
 float3 GetWorldSpacePositionAndViewDir(float3 UVW, out float3 VWS)

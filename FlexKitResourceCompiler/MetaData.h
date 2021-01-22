@@ -79,7 +79,7 @@ namespace FlexKit::ResourceBuilder
 	};
 
 	template<typename TY_Filter>
-	MetaDataList FilterList(TY_Filter& filter, const MetaDataList& metaDatas)
+	MetaDataList FilterList(const TY_Filter& filter, const MetaDataList& metaDatas)
 	{
 		MetaDataList out;
 		for (auto meta : metaDatas)

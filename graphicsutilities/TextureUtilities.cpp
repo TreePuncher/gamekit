@@ -26,8 +26,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Assets.h"
 
 #include <stb_image.h>
-#define CRND_HEADER_FILE_ONLY
-#include <crn_decomp.h>
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -214,7 +212,7 @@ namespace FlexKit
         auto GetRowPitch = [&]
         {
             const size_t elementSize = sizeof(RGBA);
-            return max((width * elementSize) / 256, 1) * 256;
+            return Max((width * elementSize) / 256, 1) * 256;
         };
 
         const size_t rowPitch = GetRowPitch();

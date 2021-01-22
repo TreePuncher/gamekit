@@ -28,8 +28,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "buildsettings.h"
 
 #define TINYGLTF_NO_STB_IMAGE
+#define TINYGLTF_NO_STB_IMAGE_WRITE
 #define TINYGLTF_NO_INCLUDE_JSON
-#define TINYGLTF_IMPLEMENTATION
 
 #include <stb_image.h>
 #include <nlohmann\json.hpp>
@@ -315,8 +315,9 @@ namespace FlexKit::ResourceBuilder
             return idx;
         }
 
+        const ResourceID_t GetResourceTypeID() const override { return SkeletonResourceTypeID; }
 
-        FBXIDTranslationTable			translationTable;
+        IDTranslationTable			    translationTable;
         std::vector<ScenePointLight>	pointLights;
         std::vector<SceneNode>			nodes;
         std::vector<SceneEntity>		entities;

@@ -109,7 +109,7 @@ namespace FlexKit
 			SceneNodeTable.WT[I].m4x4 = DirectX::XMMatrixIdentity();
 
 		SceneNodeTable.used		= 0;
-		SceneNodeTable.max		= NodeMax;
+		SceneNodeTable.Max		= NodeMax;
 	}
 
 
@@ -220,7 +220,7 @@ namespace FlexKit
 	// TODO: Search an optional Free List
 	NodeHandle GetNewNode()
 	{
-		if (SceneNodeTable.max < SceneNodeTable.used)
+		if (SceneNodeTable.Max < SceneNodeTable.used)
 			FK_ASSERT(0);
 
 		uint16_t HandleIndex	= 0;
@@ -228,7 +228,7 @@ namespace FlexKit
 
 		{
             uint16_t itr = 0;
-            uint16_t end = (uint16_t)SceneNodeTable.max;
+            uint16_t end = (uint16_t)SceneNodeTable.Max;
 			for (; itr < end; ++itr)
 			{
 				if (SceneNodeTable.Indexes[itr] == 0xffff)
@@ -525,8 +525,8 @@ namespace FlexKit
 		LT_Entry Local(GetLocal(node));
 		GetTransform(FlexKit::GetParentNode(node), &wt);
 
-		auto tmp2 = FlexKit::Matrix2Quat(FlexKit::XMMatrixToFloat4x4(&DirectX::XMMatrixTranspose(wt)));
-		tmp2 = tmp2.Inverse();
+        const auto transposed = DirectX::XMMatrixTranspose(wt);
+		const auto tmp2 = FlexKit::Matrix2Quat(FlexKit::XMMatrixToFloat4x4(&transposed)).Inverse();
 
 		Local.R = DirectX::XMQuaternionMultiply(in, tmp2);
 		SetLocal(node, &Local);

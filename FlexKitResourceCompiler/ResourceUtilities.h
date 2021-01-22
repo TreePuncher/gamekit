@@ -34,7 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Assets.h"
 #include "AnimationUtilities.h"
 
-#include <physx/PxPhysicsAPI.h>
+#include <PxPhysicsAPI.h>
 
 #include <random>
 #include <limits>
@@ -162,14 +162,36 @@ namespace FlexKit::ResourceBuilder
     };
 
 
-    struct FBXIDTranslation
+    /************************************************************************************************/
+
+
+    struct IDTranslation
     {
         size_t	FBXID;
         GUID_t	Guid;
     };
-    typedef std::vector<FBXIDTranslation> FBXIDTranslationTable;
 
-    Pair<bool, fbxsdk::FbxScene*> LoadFBXScene(const char* file, fbxsdk::FbxManager* lSdkManager, fbxsdk::FbxIOSettings* settings);
+
+    typedef std::vector<IDTranslation> IDTranslationTable;
+
+
+    inline GUID_t	TranslateID(size_t FBXID, IDTranslationTable& Table)
+    {
+        for (auto ID : Table)
+            if (ID.FBXID == FBXID)
+                return ID.Guid;
+
+        return FBXID;
+    }
+
+    inline bool IDPresentInTable(size_t FBXID, IDTranslationTable& Table)
+    {
+        for (auto ID : Table)
+            if (ID.FBXID == FBXID)
+                return true;
+
+        return false;
+    }
 
 
 }   /************************************************************************************************/

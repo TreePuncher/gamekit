@@ -45,7 +45,7 @@ namespace FlexKit
 		VertexBufferHandle		Buffer,
 		ResourceHandle			RenderTarget,
 		iAllocator*				TempMemory,
-		PrintTextFormatting&	Formatting = PrintTextFormatting::DefaultParams());
+		PrintTextFormatting&	Formatting);
 
 	void DrawSprite_Text(
 		const char*				Str,

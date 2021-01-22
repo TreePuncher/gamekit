@@ -461,8 +461,8 @@ namespace FlexKit
 
 	template<typename TY_FN>
 	iWork& CreateWorkItem(
-		TY_FN&		FNIN,
-		iAllocator* allocator = SystemAllocator)
+		const TY_FN&    FNIN,
+		iAllocator*     allocator = SystemAllocator)
 	{
 		return CreateWorkItem(FNIN, allocator, allocator);
 	}
@@ -653,7 +653,7 @@ namespace FlexKit
 	};
 
 	template<typename TY_OP>
-	auto MakeSynchonized(TY_OP operation, iAllocator* allocator)
+	decltype(auto) MakeSynchonized(TY_OP operation, iAllocator* allocator)
 	{
 		return MakeSharedRef<SynchronizedOperation<TY_OP>>(allocator, operation);
 	}

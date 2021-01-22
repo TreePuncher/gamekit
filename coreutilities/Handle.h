@@ -69,13 +69,13 @@ namespace FlexKit
 #endif
 		}
 
-		constexpr explicit Handle_t(size_t in)
+		constexpr explicit Handle_t(size_t in) :
+            INDEX{ (unsigned int)in }
 		{
 #if USING( DEBUGHANDLES )
 			TYPE = 0XFFFF;
 			FLAGS = HANDLE_FLAGS::HF_ERROR;
 #endif
-			INDEX = in;
 		}
 
         constexpr Handle_t(_InvalidHandle_t)
@@ -128,7 +128,8 @@ namespace FlexKit
 
 		operator uint32_t(){ return INDEX; }
 
-		unsigned int    INDEX		: HandleSize    = 0xffffffff;
+        //unsigned int    INDEX		: HandleSize    = 0xffffffff;
+        unsigned int    INDEX		: HandleSize;
 #if USING( DEBUGHANDLES )
 		unsigned int	TYPE		: 28            = 0;
 		unsigned int	FLAGS		: 4             = 0;

@@ -24,14 +24,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "buildsettings.h"
 
-#define _WINSOCKAPI_
-#include <windows.h>
-#include <WinSock2.h>
+//#include <windows.h>
+//#include <WinSock2.h>
 
 #include "Logging.h"
 #include "Application.h"
 #include "AnimationComponents.h"
-#include "Logging.cpp"
 
 #include "BaseState.h"
 #include "client.cpp"
@@ -48,6 +46,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "playgroundmode.hpp"
 
 #include "allsourcefiles.cpp"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 #include <iostream>
 
@@ -134,7 +135,7 @@ int main(int argc, char* argv[])
     auto* allocator = CreateEngineMemory();
     EXITSCOPE(ReleaseEngineMemory(allocator));
 
-    FlexKit::FKApplication app{ allocator, max(std::thread::hardware_concurrency(), 1u) - 1 };
+    FlexKit::FKApplication app{ allocator, Max(std::thread::hardware_concurrency(), 1u) - 1 };
     app.GetCore().FrameLock = true;
 
     FK_LOG_INFO("Set initial PlayState state.");

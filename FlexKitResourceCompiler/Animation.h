@@ -121,7 +121,7 @@ namespace FlexKit::ResourceBuilder
 
     struct AnimationClipResource : public iResource
     {
-        ResourceBlob CreateBlob()
+        ResourceBlob CreateBlob() override
         {
             FK_ASSERT(0);
 
@@ -134,6 +134,9 @@ namespace FlexKit::ResourceBuilder
             Frames.push_back(keyFrame);
         }
 
+        static const ResourceID_t    resourceID = GetTypeGUID(AnimationClipResource);
+
+        const ResourceID_t GetResourceTypeID() const override { return resourceID; }
 
         std::vector<AnimationKeyFrame>	Frames;
         uint32_t						FPS				= 0;
@@ -229,6 +232,7 @@ namespace FlexKit::ResourceBuilder
 
         const std::string&  GetResourceID()     const override { return ID; }
         const uint64_t      GetResourceGUID()   const override { return guid; }
+        const ResourceID_t  GetResourceTypeID() const override { return SkeletonResourceTypeID; }
 
         size_t								JointCount;
         GUID_t								guid;

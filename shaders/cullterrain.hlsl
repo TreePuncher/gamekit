@@ -226,7 +226,7 @@ bool CullRegion(Region_CP R) {
 	aabb.TopHeight	= TerrainHeight;
 	aabb.R			= R.POS.w;
 
-	aabb.TopHeight = max(max(NWCorner.y, NECorner.y), max(SWCorner.y, SECorner.y));
+	aabb.TopHeight = Max(Max(NWCorner.y, NECorner.y), Max(SWCorner.y, SECorner.y));
 	aabb.MinMax[0] = SWCorner;
 	aabb.MinMax[1] = SECorner;
 

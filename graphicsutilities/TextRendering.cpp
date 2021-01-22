@@ -29,7 +29,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <Windows.h>
 #include <windowsx.h>
 #include <d3d12.h>
-#include <d3dx12.h>
 #include <d3dcompiler.h>
 #include <d3d11sdklayers.h>
 #include <d3d11shader.h>
@@ -41,9 +40,9 @@ namespace FlexKit
 	// Create/Load Text Rendering State
 	ID3D12PipelineState* LoadSpriteTextPSO(RenderSystem* RS)
 	{
-		Shader DrawTextVShader = LoadShader("VTextMain", "TextPassThrough", "vs_5_1", "assets\\Shaders\\TextRendering.hlsl");
-		Shader DrawTextGShader = LoadShader("GTextMain", "GTextMain",		"gs_5_0", "assets\\Shaders\\TextRendering.hlsl");
-		Shader DrawTextPShader = LoadShader("PTextMain", "TextShading",		"ps_5_1", "assets\\Shaders\\TextRendering.hlsl");
+		Shader DrawTextVShader = RS->LoadShader("VTextMain", "vs_6_0", "assets\\Shaders\\TextRendering.hlsl");
+		Shader DrawTextGShader = RS->LoadShader("GTextMain", "gs_6_0", "assets\\Shaders\\TextRendering.hlsl");
+		Shader DrawTextPShader = RS->LoadShader("PTextMain", "ps_6_0", "assets\\Shaders\\TextRendering.hlsl");
 
 		HRESULT HR;
 		ID3D12PipelineState* PSO = nullptr;
@@ -112,10 +111,6 @@ namespace FlexKit
 
 		HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE PIPELINE STATE OBJECT"));
-
-		Release(&DrawTextVShader);
-		Release(&DrawTextGShader);
-		Release(&DrawTextPShader);
 
 		return PSO;
 	}
@@ -222,8 +217,8 @@ namespace FlexKit
 					Character.Size          = WH * Formatting.Scale;
 						
 					Text.push_back(Character);
-					YAdvance  = max(YAdvance, GlyphArea.y);
-					CurrentX += XAdvance * Formatting.Scale.x;
+					YAdvance  = Max(YAdvance, GlyphArea.y);
+                    CurrentX += XAdvance * Formatting.Scale.x;
 					itr_2++;
 				}
 

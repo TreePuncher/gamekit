@@ -209,7 +209,7 @@ public:
 		strncpy(
 			player->name, 
 			name, 
-			min(namelen, sizeof(MultiPlayerEntry::name) - 1)); // one less to account for null character
+			Min(namelen, sizeof(MultiPlayerEntry::name) - 1)); // one less to account for null character
 	}
 
 

@@ -168,9 +168,8 @@ float4 DrawRect(RectPoint_PS IN) : SV_TARGET
 
 float4 DrawRectTextured(RectPoint_PS IN) : SV_TARGET
 {
-	float4 Sample = float4(0, 0, 0, 1);// AlbedoTexture.Sample(DefaultSampler, float3(IN.UV.xy, 1));
-	Sample += float4(0, 1, 1, 1);
-	return Sample * IN.Color;
+	const float4 Sample =  AlbedoTexture.Sample(DefaultSampler, float3(IN.UV.xy, 1));
+	return Sample;
 }
 
 

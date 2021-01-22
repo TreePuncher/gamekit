@@ -6,7 +6,6 @@
 
 // Includes
 #include "buildsettings.h"
-#include "containers.h"
 
 #include <math.h>
 #include <stdint.h>
@@ -21,10 +20,11 @@ namespace FlexKit
 {
 	/************************************************************************************************/
 
-	template<typename TY_1, typename TY_2>  constexpr auto floor	    (const TY_1 x, const TY_2 y) noexcept { return ((x > y) ? y : x);   }
-	template<typename TY_1, typename TY_2>  constexpr auto min		(const TY_1 x, const TY_2 y) noexcept { return ((x > y) ? y : x);   }
-	template<typename TY_1, typename TY_2>  constexpr auto max		(const TY_1 x, const TY_2 y) noexcept { return ((x > y) ? x : y);   }
-	template<typename TY_1, typename TY_2>  constexpr auto fastmod   (const TY_1 x, const TY_2 y) noexcept { return ((x < y) ? x : x%y); }
+
+	template<typename TY_1, typename TY_2>  constexpr auto Floor	(const TY_1 x, const TY_2 y) noexcept { return ((x > y) ? y : x);   }
+    template<typename TY_1, typename TY_2>  constexpr auto Min		(const TY_1 x, const TY_2 y) noexcept { return ((x > y) ? y : x);   }
+    template<typename TY_1, typename TY_2>  constexpr auto Max		(const TY_1 x, const TY_2 y) noexcept { return ((x > y) ? x : y);   }
+	template<typename TY_1, typename TY_2>  constexpr auto Fastmod  (const TY_1 x, const TY_2 y) noexcept { return ((x < y) ? x : x%y); }
 
 
     /************************************************************************************************/
@@ -146,7 +146,7 @@ namespace FlexKit
 
 
     FLEXKITAPI template<typename TY>
-	inline TY Saturate(TY A) { return max( 0.0f, min(1.0f, A)); }
+	inline TY Saturate(TY A) { return Max( 0.0f, Min(1.0f, A)); }
 
 
     FLEXKITAPI template<typename TY>
@@ -461,7 +461,7 @@ namespace FlexKit
 
         static const size_t Size() noexcept
         {
-            return SIZE();
+            return SIZE;
         }
 
 
@@ -476,10 +476,10 @@ namespace FlexKit
     FLEXKITAPI template<typename TY_S, size_t ELEMENT_COUNT = 1>
 	Vect<ELEMENT_COUNT, TY_S> operator* (const Vect<ELEMENT_COUNT, TY_S> lhs, const Vect<ELEMENT_COUNT, TY_S> rhs)// vector multiply
 	{
-		auto V_out = v;
+        Vect<ELEMENT_COUNT, TY_S> V_out;
 
 		for (size_t i = 0; i < rhs.size(); ++i)
-			v[i] = lhs[i] * rhs[i];
+            V_out[i] = lhs[i] * rhs[i];
 
 		return V_out;
 	}
@@ -1008,24 +1008,24 @@ namespace FlexKit
 
 
     FLEXKITAPI template<typename TY>
-    float clamp(const TY min, const TY V, const TY max)
+    float clamp(const TY Min, const TY V, const TY Max)
     {
-        return min(max(min, V), max);
+        return Min(Max(Min, V), Max);
     }
 
 
     FLEXKITAPI inline float saturate(float x)
 	{
-		return min(max(x, 0.0f), 1.0f);
+		return Min(Max(x, 0.0f), 1.0f);
 	}
 
 
     FLEXKITAPI inline float3 saturate(float3 v)
 	{
 		float3 out = v;
-		v.x = min(max(v.x, 0.0f), 1.0f);
-		v.y = min(max(v.y, 0.0f), 1.0f);
-		v.z = min(max(v.z, 0.0f), 1.0f);
+		v.x = Min(Max(v.x, 0.0f), 1.0f);
+		v.y = Min(Max(v.y, 0.0f), 1.0f);
+		v.z = Min(Max(v.z, 0.0f), 1.0f);
 
 		return out;
 	}
@@ -1075,7 +1075,7 @@ namespace FlexKit
 #endif
 		}
 
-		inline float4( const float3& V,  const float W  ) 
+		inline float4( const float3& V,  const float W = 0) 
 		{
 			x = V[0];
 			y = V[1];
@@ -1959,10 +1959,10 @@ namespace FlexKit
 
 		Quaternion Q
 		{
-			sqrtf( max(1.0f + M[0][0] - M[1][1] - M[2][2], 0.0f))/2, 
-			sqrtf( max(1.0f - M[0][0] + M[1][1] - M[2][2], 0.0f))/2, 
-			sqrtf( max(1.0f - M[0][0] - M[1][1] + M[2][2], 0.0f))/2, 
-			sqrtf( max(1.0f + M[0][0] + M[1][1] + M[2][2], 0.0f))/2
+			sqrtf( Max(1.0f + M[0][0] - M[1][1] - M[2][2], 0.0f))/2, 
+			sqrtf( Max(1.0f - M[0][0] + M[1][1] - M[2][2], 0.0f))/2, 
+			sqrtf( Max(1.0f - M[0][0] - M[1][1] + M[2][2], 0.0f))/2, 
+			sqrtf( Max(1.0f + M[0][0] + M[1][1] + M[2][2], 0.0f))/2
 		};
 		return Quaternion
 		{

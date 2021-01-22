@@ -97,7 +97,9 @@ namespace FlexKit
 		WCHAR Temp[512];
 		mbstowcs_s(&newSize, Temp, strLoc, ::strlen(strLoc));
 
-        auto file = fopen(strLoc, "rb");
+        FILE* file;
+        fopen_s(&file, strLoc, "rb");
+
         if (!file)
             return false;
 

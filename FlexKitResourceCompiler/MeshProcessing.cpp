@@ -2,7 +2,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2020 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -364,14 +364,14 @@ namespace FlexKit::ResourceBuilder
 				auto V	= CPs[itr];
 				auto V2 = TranslateToFloat3(V);
 
-				MinV.x = min(V2.x, MinV.x);
-				MinV.y = min(V2.y, MinV.y);
-				MinV.z = min(V2.z, MinV.z);
+				MinV.x = Min(V2.x, MinV.x);
+				MinV.y = Min(V2.y, MinV.y);
+				MinV.z = Min(V2.z, MinV.z);
 
-				MaxV.x = max(V2.x, MaxV.x);
-				MaxV.y = max(V2.y, MaxV.y);
-				MaxV.z = max(V2.z, MaxV.z);
-				R = max(R, V2.magnitude());
+				MaxV.x = Max(V2.x, MaxV.x);
+				MaxV.y = Max(V2.y, MaxV.y);
+				MaxV.z = Max(V2.z, MaxV.z);
+				R = Max(R, V2.magnitude());
 
 				AddVertexToken(V2, out.tokens);
 			}
@@ -599,7 +599,7 @@ namespace FlexKit::ResourceBuilder
         using MeshUtilityFunctions::MeshKDBTree;
         using MeshUtilityFunctions::CreateOptimizedMesh;
 
-        static_vector<FlexKit::SubMesh> submeshes;
+        static_vector<FlexKit::SubMesh, 32> submeshes;
 
         MeshResource_ptr meshOut = std::make_shared<MeshResource>();
         size_t bufferCount  = 0;
@@ -614,7 +614,7 @@ namespace FlexKit::ResourceBuilder
             auto kdbTree    = std::make_shared<MeshKDBTree>(meshes[I].tokens);
             auto submesh    = CreateOptimizedMesh(*kdbTree);
 
-            submeshes.push_back({ optimizedMesh.indexes.size(), submesh.indexes.size() });
+            submeshes.push_back({ (uint32_t)optimizedMesh.indexes.size(), (uint32_t)submesh.indexes.size() });
 
             optimizedMesh  += submesh;
 
@@ -683,14 +683,14 @@ namespace FlexKit::ResourceBuilder
 		meshOut->IndexCount			= optimizedBuffer.indexes.size() / 4;
 		meshOut->Skeleton			= meshes[0].skeleton;
 		meshOut->AnimationData		= meshes[0].Weights ? EAnimationData::EAD_Skin : 0;
-		meshOut->Info.max			= meshes[0].MaxV;
-		meshOut->Info.min			= meshes[0].MinV;
-		meshOut->Info.r				= meshes[0].R;
+		meshOut->Info.Max			= aabb.Max;
+		meshOut->Info.Min			= aabb.Min;
+		meshOut->Info.r				= (aabb.Max - aabb.Min).magnitude() / 2;
 		meshOut->TriMeshID			= meshes[0].ID;
 		meshOut->ID					= ID;
 		meshOut->SkeletonGUID		= meshes[0].skeleton ? meshes[0].skeleton->guid : -1;
-		meshOut->BS					= boundingSphere;
-		meshOut->AABB				= aabb;
+		meshOut->BS					= { aabb.MidPoint(), (aabb.Max - aabb.Min).magnitude() / 2 };
+  		meshOut->AABB				= aabb;
         meshOut->submeshes          = submeshes;
 
 		return meshOut;

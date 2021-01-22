@@ -33,7 +33,7 @@ float CalculateTessellationFactor(float3 Control0, float3 Control1)
 {
 	float	e0 = distance(Control0, Control1);
 	float3	m0 = (Control0 + Control1) / 2;
-	return max(1, GetPostProjectionSphereExtent(m0, e0));
+	return Max(1, GetPostProjectionSphereExtent(m0, e0));
 }
 
 
@@ -208,7 +208,7 @@ float4 PS_RenderTerrain(Vertex input) : SV_TARGET
 	const float3 Lv			= float3(0, 1, 0);//normalize(Lp - positionW);
 	const float  ld			= length(Lp - positionW);
 	const float  Li			= 1.0f;
-	const float  La			= Li;//Li / max((ld * ld), 0.00001f);
+	const float  La			= Li;//Li / Max((ld * ld), 0.00001f);
 
 	// surface parameters
 	const float h			= positionW.y / TerrainHeight;

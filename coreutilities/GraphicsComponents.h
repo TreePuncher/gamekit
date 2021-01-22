@@ -185,7 +185,7 @@ namespace FlexKit
 
 		void _CameraDirty()
 		{
-			OnDirty(this, static_cast<TY_Interactor::ParentType_t>(this));
+			OnDirty(this, static_cast<typename TY_Interactor::ParentType_t>(this));
 		}
 	};
 

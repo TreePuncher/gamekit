@@ -51,7 +51,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void AddLogFile(char * file, Verbosity verbosity, bool Append )
+	void AddLogFile(const char * file, Verbosity verbosity, bool Append )
 	{
 		loguru::add_file(file, Append ? loguru::Append : loguru::Truncate, verbosity);
 	}

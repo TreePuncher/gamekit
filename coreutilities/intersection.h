@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2014-2019 Robert May
+Copyright (c) 2014-2020 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define INTERSECTION_H
 
 #include "MathUtils.h"
-
+#include "containers.h"
 
 namespace FlexKit
 {
@@ -42,15 +42,15 @@ namespace FlexKit
             X, Y, Z, Axis_count
         };
 
-        float3 min = { inf, inf, inf };
-        float3 max = { -inf, -inf, -inf };
+        float3 Min = { inf, inf, inf };
+        float3 Max = { -inf, -inf, -inf };
 
         Axis LongestAxis() const
         {
             Axis axis = Axis::Axis_count;
             float d = 0.0f;
 
-            const auto span = min - max;
+            const auto span = Min - Max;
 
             for (size_t I = 0; I < Axis::Axis_count; I++)
             {
@@ -70,8 +70,8 @@ namespace FlexKit
         {
             for (size_t I = 0; I < Axis::Axis_count; I++)
             {
-                min[I] = FlexKit::min(rhs.min[I], min[I]);
-                max[I] = FlexKit::max(rhs.max[I], max[I]);
+                Min[I] = FlexKit::Min(rhs.Min[I], Min[I]);
+                Max[I] = FlexKit::Max(rhs.Max[I], Max[I]);
             }
 
             return (*this);
@@ -79,7 +79,7 @@ namespace FlexKit
 
         float3 MidPoint() const
         {
-            return (min + max) / 2;
+            return (Min + Max) / 2;
         }
     };
 
@@ -205,7 +205,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI bool CompareBSAgainstFrustum(const Frustum* F, BoundingSphere BS);
+	bool Intersects(const Frustum F, const BoundingSphere BS);
 
 
 	/************************************************************************************************/
@@ -217,9 +217,9 @@ namespace FlexKit
 
 		for (int I = 0; I < 6; ++I)
 		{
-			float px = (frustum.Planes[I].Normal.x >= 0.0f) ? aabb.min.x : aabb.max.x;
-			float py = (frustum.Planes[I].Normal.y >= 0.0f) ? aabb.min.y : aabb.max.y;
-			float pz = (frustum.Planes[I].Normal.z >= 0.0f) ? aabb.min.z : aabb.max.z;
+			float px = (frustum.Planes[I].Normal.x >= 0.0f) ? aabb.Min.x : aabb.Max.x;
+			float py = (frustum.Planes[I].Normal.y >= 0.0f) ? aabb.Min.y : aabb.Max.y;
+			float pz = (frustum.Planes[I].Normal.z >= 0.0f) ? aabb.Min.z : aabb.Max.z;
 
 			float3 pV = float3{ px, py, pz } -frustum.Planes[I].Orgin;
 			float dP = dot(frustum.Planes[I].Normal, pV);

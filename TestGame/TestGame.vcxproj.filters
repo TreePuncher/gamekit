@@ -252,6 +252,9 @@
     <ClInclude Include="playgroundmode.hpp">
       <Filter>Headers\TestGame</Filter>
     </ClInclude>
+    <ClInclude Include="..\graphicsutilities\RayTracingUtilities.h">
+      <Filter>Headers\graphicsutilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\coreutilities\AllSourceFiles.cpp">
@@ -424,6 +427,9 @@
     </ClCompile>
     <ClCompile Include="Win64.cpp">
       <Filter>Source\TestGame</Filter>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\RayTracingUtilities.cpp">
+      <Filter>Source\graphicsutilities</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

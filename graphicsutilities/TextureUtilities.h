@@ -47,6 +47,11 @@ namespace FlexKit
         BC5_SNORM,
         BC7_UNORM,
         BC7_SNORM,
+
+
+        R32G32B32_UINT,
+        R32G32B32A32_UINT,
+
         UNKNOWN
     };
 
@@ -60,7 +65,7 @@ namespace FlexKit
         TextureBuffer() = default;
 
         TextureBuffer(uint2 IN_WH, size_t IN_elementSize, iAllocator* IN_Memory) : 
-            Buffer		{ (byte*)IN_Memory->malloc(IN_WH.Product() * IN_elementSize)	},
+            Buffer		{ (byte*)IN_Memory->_aligned_malloc(IN_WH.Product() * IN_elementSize)	},
             WH			{ IN_WH															},
             ElementSize	{ IN_elementSize												},
             Memory		{ IN_Memory														},
@@ -68,7 +73,7 @@ namespace FlexKit
 
 
         TextureBuffer(uint2 IN_WH, size_t IN_elementSize, size_t BufferSize, iAllocator* IN_Memory) : 
-            Buffer		{ (byte*)IN_Memory->malloc(BufferSize)	                        },
+            Buffer		{ (byte*)IN_Memory->_aligned_malloc(BufferSize)	                        },
             WH			{ IN_WH															},
             ElementSize	{ IN_elementSize												},
             Memory		{ IN_Memory														},
@@ -96,7 +101,7 @@ namespace FlexKit
         TextureBuffer(const TextureBuffer& rhs)
         {
             if (Buffer)
-                Memory->free(Buffer);
+                Memory->_aligned_free(Buffer);
 
             if (!rhs.Memory)
                 return;
@@ -114,7 +119,7 @@ namespace FlexKit
         TextureBuffer& operator =(const TextureBuffer& rhs)
         {
             if (Buffer && Memory)
-                Memory->free(Buffer);
+                Memory->_aligned_free(Buffer);
 
             Memory		= rhs.Memory;
             WH			= rhs.WH;
@@ -260,7 +265,7 @@ namespace FlexKit
 
             for(size_t Y = 0; Y < 5; Y++)
                 for(size_t X = 0; X < 5; X++)
-                    samples += blurKernel[X] * blurKernel[Y] * view[TY_EDGEHANDLER::MAP({X, Y}, sampleWindow)];
+                    sample += blurKernel[X] * blurKernel[Y] * view[TY_EDGEHANDLER::MAP({X, Y}, sampleWindow)];
 
             return sample;
         }
@@ -298,8 +303,8 @@ namespace FlexKit
         {
             for (uint32_t X = 0; X < WH[1]; X++)
             {
-                minY = min(view[{ X, Y }][1], minY);
-                maxY = max(view[{ X, Y }][1], maxY);
+                minY = Min(view[{ X, Y }][1], minY);
+                maxY = Max(view[{ X, Y }][1], maxY);
             }
         }
 

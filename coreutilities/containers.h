@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "buildsettings.h"
 #include "memoryutilities.h"
 #include "static_vector.h"
+#include "MathUtils.h"
 
 #if USING(USESTL)
 
@@ -456,7 +457,7 @@ namespace FlexKit
 
 			const size_t idx = Size++;
 
-			new(A + idx) Ty(std::forward<ARGS_t>(in)...);
+            new(A + idx) Ty{ std::forward<ARGS_t>(in)... };
 			return idx;
 		}
 
@@ -638,15 +639,20 @@ namespace FlexKit
 	{
 		typedef Pair<Ty_1, Ty_2> ThisType;
 
-		template<typename Ty_Get, typename Ty_2>	static  inline Ty_Get& _GetByType(Pair<Ty_Get, Ty_2>&		in) { return in.V1; }
-		template<typename Ty_Get, typename Ty_2>	static  inline Ty_Get& _GetByType(Pair<Ty_2, Ty_Get>&		in) { return in.V2; }
-		template<typename Ty_Get>					static  inline Ty_Get& _GetByType(Pair<Ty_Get, Ty_Get>&	in) { static_assert(false, "NON_UNIQUE TYPES IN Pair!");  return in.V2; }
-		template<typename Ty_Get>							inline Ty_Get&  GetByType() { return _GetByType<Ty_Get>(*this); }
+        template<typename Ty_Get, typename Ty_2>	static  inline const auto& _GetByType(const Pair<Ty_Get, Ty_2>& in) { return in.V1; }
+        template<typename Ty_Get, typename Ty_2>	static  inline const auto& _GetByType(const Pair<Ty_2, Ty_Get>& in) { return in.V2; }
+
+		template<typename Ty_Get, typename Ty_2>	static  inline Ty_Get& _GetByType(Pair<Ty_Get, Ty_2>&     in) { return in.V1; }
+		template<typename Ty_Get, typename Ty_2>	static  inline Ty_Get& _GetByType(Pair<Ty_2, Ty_Get>&     in) { return in.V2; }
+		template<typename Ty_Get>					static  inline auto&   _GetByType(Pair<Ty_Get, Ty_Get>&	in) { static_assert(false, "NON_UNIQUE TYPES IN Pair!");  return in.V2; }
+
+        template<typename Ty_Get>							inline auto&  GetByType() const { return _GetByType<Ty_Get>(*this); }
 
 		template<typename Ty_Assign> ThisType operator = (const Ty_Assign& in) { Ty_Assign& thisVar = GetByType<Ty_Assign>(); thisVar = in; return *this; }
 
 		explicit operator bool() { return GetByType<bool>(); }
-		template<typename Ty_1>	operator Ty_1() { return GetByType<Ty_1>(); }
+        template<typename Ty_1>	operator Ty_1() const { return GetByType<Ty_1>(); }
+        template<typename Ty_1>	operator Ty_1() { return GetByType<Ty_1>(); }
 
 		template<size_t index>	auto& Get() noexcept { static_assert(index >= 2, "Invalid Index"); }
 		template<>	constexpr auto& Get<0>() noexcept { return V1; }
@@ -1037,7 +1043,7 @@ namespace FlexKit
 
 
 			Ty Out = front();
-			_Size = std::max(--_Size, 0);
+			_Size = FlexKit::Max(--_Size, 0);
 			return Out;
 		}
 
@@ -1048,7 +1054,7 @@ namespace FlexKit
 
 
 			Ty Out = back();
-			_Size = std::max(--_Size, 0);
+			_Size = FlexKit::Max(--_Size, 0);
 			_Head = (SIZE + --_Head) % SIZE;
 			return Out;
 		}
@@ -1058,7 +1064,7 @@ namespace FlexKit
 			if (_Size + 1 > SIZE)// Call Destructor on Tail
 				back().~Ty();
 
-			_Size = std::min(++_Size, SIZE);
+			_Size = Min(++_Size, SIZE);
 			size_t idx = _Head++;
 			_Head = _Head % SIZE;
 			Buffer[idx] = Item;
@@ -1068,7 +1074,7 @@ namespace FlexKit
 
 		bool push_back(Ty&& Item) noexcept
 		{
-			_Size = std::min(++_Size, SIZE);
+			_Size = Min(++_Size, SIZE);
 			size_t idx = _Head++;
 			_Head = _Head % SIZE;
 
@@ -1089,7 +1095,7 @@ namespace FlexKit
 				back().~Ty();
 			}
 
-			_Size = min(++_Size, SIZE);
+			_Size = Min(++_Size, SIZE);
 			size_t idx = _Head++;
 			_Head = _Head % SIZE;
 			Buffer[idx] = Item;
@@ -1100,7 +1106,7 @@ namespace FlexKit
 		template<typename FN>
 		bool push_back(Ty&& Item, FN callOnTail) noexcept
 		{
-			_Size = min(++_Size, SIZE);
+			_Size = Min(++_Size, SIZE);
 			size_t idx = _Head++;
 			_Head = _Head % SIZE;
 
@@ -1745,7 +1751,7 @@ namespace FlexKit
 
 
 		template<typename VISIT_FN>
-		void Visit(VISIT_FN& FN_Visitor)
+		void Visit(const VISIT_FN& FN_Visitor)
 		{
 			for (auto Idx = 0; Idx < FreeObjectList.size(); ++Idx)
 				if (!FreeObjectList[Idx])
@@ -1754,7 +1760,7 @@ namespace FlexKit
 
 
 		template<typename VISIT_FN>
-		void Visit(VISIT_FN& FN_Visitor) const
+		void Visit(const VISIT_FN& FN_Visitor) const
 		{
 			for (auto Idx = 0; Idx < FreeObjectList.size(); ++Idx)
 				if (!FreeObjectList[Idx])
@@ -1866,7 +1872,7 @@ namespace FlexKit
 				auto itr = _ptr;
 
 				for (size_t i = 0; i < rhs; ++i)
-					itr = ? itr->prev_ptr : nullptr;
+					itr = itr ? itr->prev_ptr : nullptr;
 
 				return { itr };
 			}
@@ -1902,7 +1908,7 @@ namespace FlexKit
 			Iterator& operator += (size_t rhs) noexcept
 			{
 				for (size_t i = 0; i < rhs; ++i)
-					_ptr = ? _ptr->prev_ptr : nullptr;
+					_ptr = _ptr ? _ptr->prev_ptr : nullptr;
 
 				return *this;
 			}
@@ -1911,9 +1917,9 @@ namespace FlexKit
 			Iterator& operator -= (size_t rhs) noexcept
 			{
 				for (size_t i = 0; i < rhs; ++i)
-					_ptr = ? _ptr->prev_ptr : nullptr;
+					_ptr = _ptr ? _ptr->prev_ptr : nullptr;
 
-				return { itr };
+				return *this;
 			}
 
 

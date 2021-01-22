@@ -14,18 +14,21 @@ struct VOUT
 {
 	float4 POS 		: SV_POSITION;
 	float4 WPOS		: POSITION0;
-	float3 NORMAL	: NORMAL;
+	float3 Normal	: NORMAL;
 	float3 Tangent	: TANGENT;
 	float2 UV		: TEXCOORD;
+    float3 Bitangent : BITANGENT;
 };
 
 VOUT VMain(InstancedIN In )
 {
 	VOUT Out;
-	Out.WPOS 	= mul(In.WT, float4(In.POS, 1));
-	Out.POS 	= mul(PV, mul(In.WT, float4(In.POS, 1))); 
-	Out.NORMAL  = mul(In.WT, float4(In.N, 0));
-	Out.Tangent = mul(In.WT, float4(In.Tangent, 0));
-	Out.UV		= In.UV;
+	Out.WPOS 		= mul(In.WT, float4(In.POS, 1));
+	Out.POS 		= mul(PV, mul(In.WT, float4(In.POS, 1))); 
+	Out.Normal  	= mul(In.WT, float4(In.N, 0));
+	Out.Tangent 	= mul(In.WT, float4(In.Tangent, 0));
+	Out.UV			= In.UV;
+    Out.Bitangent 	= cross(Out.Tangent, Out.Normal);
+
 	return Out;
 }

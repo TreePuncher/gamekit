@@ -153,9 +153,9 @@ namespace FlexKit
 	FLEXKITAPI size_t		ReadAssetTableSize	    (FILE* F);
 	FLEXKITAPI size_t		ReadAssetSize		    (FILE* F, ResourceTable* Table, size_t Index);
 
-	FLEXKITAPI void					AddAssetFile	(char* FILELOC);
+	FLEXKITAPI void					AddAssetFile	(const char* FILELOC);
 	FLEXKITAPI Resource*			GetAsset		(AssetHandle RHandle);
-	FLEXKITAPI Pair<GUID_t, bool>	FindAssetGUID	(char* Str);
+	FLEXKITAPI Pair<GUID_t, bool>	FindAssetGUID	(const char* Str);
 
 
 	FLEXKITAPI bool			ReadAssetTable	(FILE* F, ResourceTable* Out, size_t TableSize);
@@ -228,8 +228,8 @@ namespace FlexKit
 
     struct SubMesh
     {
-        size_t BaseIndex;
-        size_t IndexCount;
+        uint32_t BaseIndex;
+        uint32_t IndexCount;
     };
 
 	struct TriMeshAssetBlob
@@ -272,7 +272,7 @@ namespace FlexKit
 			size_t	 size;
 		}Buffers[16];
 
-        static_vector<SubMesh, 16> submeshes;
+        static_vector<SubMesh, 32> submeshes;
 
 		char Memory[];
 	};
@@ -468,7 +468,7 @@ namespace FlexKit
 
 	typedef Pair<size_t, SpriteFontAsset*> LoadFontResult;
 
-	FLEXKITAPI LoadFontResult	LoadFontAsset	( char* file, char* dir, RenderSystem* RS, iAllocator* tempMem, iAllocator* outMem );
+	FLEXKITAPI LoadFontResult	LoadFontAsset	(const char* file, const char* dir, RenderSystem* RS, iAllocator* tempMem, iAllocator* outMem );
 	FLEXKITAPI void				Release			( SpriteFontAsset* asset, RenderSystem* RS);
 
 
@@ -632,14 +632,19 @@ namespace FlexKit
 
         ReadContext(const char* IN_fileDir, size_t IN_offset)
         {
-            file = CreateFileA(
-                IN_fileDir,
+            WCHAR wFileDir[256];
+            memset(wFileDir, 0, sizeof(wFileDir));
+            size_t converted = 0;
+
+            mbstowcs_s(&converted, wFileDir, IN_fileDir, strnlen_s(IN_fileDir, sizeof(wFileDir)));
+
+            file = CreateFile2(
+                wFileDir,
                 GENERIC_READ,
                 FILE_SHARE_READ,
-                nullptr,
                 OPEN_EXISTING,
-                FILE_ATTRIBUTE_NORMAL,
-                NULL);
+                nullptr);
+
 
             if (file == INVALID_HANDLE_VALUE)
             {
@@ -688,13 +693,13 @@ namespace FlexKit
             {
                 DWORD bytesRead = 0;
 
-                OVERLAPPED overlapped = { 0 };
-                overlapped.Offset = readOffset + offset;
+                OVERLAPPED overlapped   = { 0 };
+                overlapped.Offset       = static_cast<DWORD>(readOffset + offset);
 
-                if (auto res = ReadFile(file, dst_ptr, readSize, &bytesRead, &overlapped); res != true)
+                if (bool res = ReadFile(file, dst_ptr, static_cast<DWORD>(readSize), &bytesRead, &overlapped); res != true)
                 {
                     auto error = GetLastError();
-                    __debugbreak();
+                    //__debugbreak();
                 }
             }
 
@@ -706,6 +711,9 @@ namespace FlexKit
 
     ReadContext         OpenReadContext(GUID_t guid);
     ReadAsset_RC        ReadAsset(ReadContext& readContext, GUID_t Asset, void* _ptr, size_t readSize, size_t readOffset = 0);
+
+
+    const char*         GetResourceStringID(GUID_t guid);
 
 
 }	/************************************************************************************************/

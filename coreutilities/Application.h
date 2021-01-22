@@ -31,7 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "EngineCore.h"
 #include "GameFramework.h"
 
-#include <Windows.h>
 #include <iostream>
 
 

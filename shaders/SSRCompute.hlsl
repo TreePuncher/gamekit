@@ -221,7 +221,7 @@ bool Raycast(const float3 OriginCS, const float3 RayCS, out float2 HitPixel, out
     float dK = (k1 - k0) * InvDx;
     float2 dP = float2(StepDir, Delta.y * InvDx);
 
-    float StrideScale = 1.0f - min(1.0f, OriginCS.z * 0.5f);
+    float StrideScale = 1.0f - Min(1.0f, OriginCS.z * 0.5f);
     float Stride = 1.0f + StrideScale * 0.1f;
     dP *= Stride;
     dQ *= Stride;

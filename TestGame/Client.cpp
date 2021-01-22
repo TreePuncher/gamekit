@@ -84,7 +84,7 @@ ClientLobbyState::ClientLobbyState(
 				client.remotePlayers.clear();
 
 				auto playerList				= reinterpret_cast<PlayerListPacket*>(incomingPacket);
-				const size_t playerCount	= FlexKit::max(FlexKit::min(playerList->playerCount, 3u), 0u);
+				const size_t playerCount	= FlexKit::Max(FlexKit::Min(playerList->playerCount, 3u), 0u);
 
 				screen.CreateRow		(client.localID);
 				screen.SetPlayerName	(client.localID, localPlayerName);

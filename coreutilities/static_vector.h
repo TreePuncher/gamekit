@@ -35,7 +35,7 @@ namespace FlexKit
 // Over-Flow Safe
 // Element Position Not Guaranteed 
 
-	template< typename TY_, unsigned int TSIZE = 16 >
+	template<typename TY_, unsigned int TSIZE = 16>
 	class static_vector
 	{
 	public:
@@ -84,8 +84,8 @@ namespace FlexKit
 		static_vector()
 		{
 #ifdef _DEBUG
-			if( sizeof( TY_ ) == sizeof( byte* ) )
-				memset( Elements, 0, sizeof( Elements ) );
+			if constexpr(sizeof(Elements) <= sizeof(byte*))
+				memset(Elements, 0, sizeof(Elements));
 #endif
 			Size = 0;
 		}

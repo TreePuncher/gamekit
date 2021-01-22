@@ -26,9 +26,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "buildsettings.h"
 #include "Assets.h"
 #include "physicsutilities.h"
-#include <physx/PxFoundation.h>
-#include <physx/PxPhysics.h>
-#include <physx/extensions/PxExtensionsAPI.h>
+#include <PxFoundation.h>
+#include <PxPhysics.h>
+#include <extensions/PxExtensionsAPI.h>
 
 using namespace physx;
 

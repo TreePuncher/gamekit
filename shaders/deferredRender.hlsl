@@ -7,13 +7,19 @@ struct PointLight
     float4 PR;	// XYZ + radius in W
 };
 
+struct Cluster
+{
+    float4 Min;	// Min + Offset
+    float4 Max;	// Max + Count
+};
+
 cbuffer LocalConstants : register(b1)
 {
     float2  WH;
     float   Time;
     uint   	lightCount;
 
-	float4x4 pl_PV[512];
+	float4x4 pl_PV[1024];
 }
 
 Texture2D<float4> AlbedoBuffer      : register(t0);
@@ -23,16 +29,19 @@ Texture2D<float4> TangentBuffer     : register(t3);
 Texture2D<float>  DepthBuffer       : register(t4);
 
 // light and shadow map resources
-StructuredBuffer<uint> 			lightBuckets : register(t6);
-StructuredBuffer<PointLight> 	pointLights	 : register(t7);
-TextureCube<float> 				shadowMaps[] : register(t8);
+Texture2D<uint> 			    clusterIndex : register(t5);
+StructuredBuffer<Cluster> 		clusters     : register(t6);
+StructuredBuffer<uint> 		    lightLists   : register(t7);
+StructuredBuffer<uint> 			lightBuckets : register(t8);
+StructuredBuffer<PointLight> 	pointLights	 : register(t9);
+TextureCube<float> 				shadowMaps[] : register(t10);
 
 sampler BiLinear     : register(s0); // Nearest point
 sampler NearestPoint : register(s1); // Nearest point
 
 bool isLightContributing(const uint idx, const uint2 xy)
 {
-    const uint offset       = (xy.x + xy.y * WH[0] / 10) * (1024 / 32);
+    const uint offset       = (xy.x + xy.y * 38) * (1024 / 32);
     const uint wordOffset   = idx / 32;
     const uint bitMask      = 0x1 << (idx % 32);
 
@@ -91,74 +100,93 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 	return float4(1, 0, 1, 1.0);
 }
 
-float4 DeferredShade_PS(Deferred_PS_IN IN, float4 ScreenPOS : SV_POSITION) : SV_Target0
+uint GetSliceIdx(float z)
+{            
+    const float numSlices   = 24;                                      
+    const float MinOverMax  = MaxZ / MinZ;
+    const float LogMoM      = log(MinOverMax);
+
+    return (log(z) * numSlices / LogMoM) - (numSlices * log(MinZ) / LogMoM);
+}
+
+float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 {
     const float2 SampleCoord    = IN.Position;
-    const float2 UV             = SampleCoord.xy / WH; // [0;1]
+    const float2 UV             = SampleCoord.xy / (WH); // [0;1]
     const float  depth          = DepthBuffer.Sample(NearestPoint, UV);
+    const uint2  px             = IN.Position.xy;//UV * WH;
 
-    if (depth >= 1.0f) discard;
-
+    if (depth == 1.0f) 
+        return float4(0.5f, 0.5f, 0.6f, 1);
+    
     const float4 Albedo         = AlbedoBuffer.Sample(NearestPoint, UV);
     const float4 N              = NormalBuffer.Sample(NearestPoint, UV);
     const float3 T              = TangentBuffer.Sample(NearestPoint, UV);
     const float3 B              = normalize(cross(N, T));
 	const float4 MRIA			= MRIABuffer.Sample(NearestPoint, UV);
 
-    const float3 positionW 	= GetWorldSpacePosition(UV, depth);
-
     const float3 V          = -GetViewVector_VS(UV);
-    const float3 positionVS =  GetViewSpacePosition(UV, depth);
+    const float3 positionVS = GetViewSpacePosition(UV, depth);
 
-    const float roughness     = 0.5f;//MRIA.y;
+    const float roughness     = MRIA.g;
     const float ior           = MRIA.b;
 	const float metallic      = MRIA.r;
 	const float3 albedo       = Albedo.rgb; 
-    
-    const float Ks = 0.0f;
+
+    const float Ks = lerp(0, 0.4f, saturate(Albedo.w));
     const float Kd = (1.0 - Ks) * (1.0 - metallic);
 
-	const uint2	lightBin	    = UV * WH / 10.0f;// - uint2( 1, 1 );
-    uint        localLightCount = 0;
+	const uint2	lightBin	    = UV * uint2(38, 18);// - uint2( 1, 1 );
+
+    const float NdotV = saturate(dot(N.xyz, V));
+
+    const uint clusterKey       = clusterIndex.Load(uint3(px.xy, 0));
+    const Cluster localCluster  = clusters[clusterKey];
+    const uint localLightCount  = asuint(localCluster.Max.w);
+    const uint localLightList   = asuint(localCluster.Min.w);
 
     float4 color = 0;
-	[unroll(16)]
-    for(float I = 0; I < lightCount; I++)
+    for(float I = 0; I < localLightCount; I++)
     {
-		if(!isLightContributing(I, lightBin))
-			continue;
-
-		localLightCount++;
-
-        const PointLight light  = pointLights[I];
+        const PointLight light  = pointLights[lightLists[localLightList + I]];
 
         const float3 Lc			= light.KI.rgb;
-        const float3 Lp         = mul(View, float4(light.PR.xyz, 1)).xyz;
+        const float3 Lp         = mul(View, float4(light.PR.xyz, 1));
+        //const float3 Lp         = float4(light.PR.xyz, 1);
         const float3 L		    = normalize(Lp - positionVS);
-        
         const float  Ld			= length(positionVS - Lp);
         const float  Li			= abs(light.KI.w);
-        const float  Lr			= abs(light.PR.w);
+        const float  Lr			= abs(light.PR.w) * 10;
         const float  ld_2		= Ld * Ld;
-        const float  La			= min(max(Li / ld_2, 0.0f), PI) * saturate(1 - (pow(Ld, 10) / pow(Lr, 10)));
-
-        const float  NdotV      = dot(N.xyz, -V);
-        const float  NdotL      = dot(N.xyz, L);
+        const float  La			= (Li / ld_2) * (1 - (pow(Ld, 10) / pow(Lr, 10)));
+        
+        const float  NdotL      = saturate(dot(N.xyz, L));
         const float3 H          = normalize(V + L);
-
-        #if 0
-        const float3 diffuse    = F_d(V, H, L, N.xyz, roughness) * albedo;
+         
+        if(0)
+        {
+            color += float4(albedo, 1) * NdotL * NdotV * La * INV_PI * (1.0f/4.0f);
+            continue;
+        }
+        
+        #if 1
+        const float3 diffuse    = albedo * F_d(V, H, L, N.xyz, roughness);
         #else
-        const float3 diffuse    = albedo / PI;
+        const float3 diffuse    = NdotL * albedo * INV_PI;
         #endif
 
-        const float3 specular   = F_r(V, H, L, N.xyz, roughness);
+        #if 1
+            const float3 specular = F_r_said(V, H, L, N.xyz, albedo, roughness, metallic);
+        #else
+            const float3 specular = F_r(V, H, L, N.xyz, roughness);
+        #endif
+        #if 1
+        
+        const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
+        color += float4(colorSample * Lc, 0 );
+        #else
 
-        //const float3 colorSample = albedo;
         const float3 colorSample = (diffuse * Kd + specular * Ks) * La * NdotL;
-        //const float3 colorSample =  albedo * NdotL * La;
-
-        //return float4(T, 1);
 
 		const float3 mapVectors[] = {
 			float3(-1,  0,  0), // left
@@ -167,15 +195,6 @@ float4 DeferredShade_PS(Deferred_PS_IN IN, float4 ScreenPOS : SV_POSITION) : SV_
 			float3( 0, -1,  0), // bottom
 			float3( 0,  0,  1), // forward
 			float3( 0,  0, -1), // backward
-		};
-
-		float4 Colors[] = {
-			float4(1, 0, 0, 0), // Left
-			float4(0, 1, 0, 0), // Right
-			float4(0, 0, 1, 0), // Top
-			float4(1, 1, 1, 1), // Bottom
-			float4(1, 1, 0, 1), // forward
-			float4(1, 0, 1, 1), // backward
 		};
 
 		int fieldID = 0;
@@ -207,16 +226,46 @@ float4 DeferredShade_PS(Deferred_PS_IN IN, float4 ScreenPOS : SV_POSITION) : SV_
 		const float visibility  = saturate(depth < shadowSample + bias ? 1.0f : 0.0f);
 		
         color += float4(colorSample * Lc * visibility, 0 );
+        #endif
     }
 
+    //return float4(positionW, 0);
+	//return pow(roughness, 2.2f);
+	//return pow(MRIA, 2.2f);
+	//return pow( float4(albedo, 1), 2.2f);
 	//return float4(T.xyz, 1);
 	//return float4(N.xyz, 1);
-	//return float4(N.xyz / 2 + 0.5f, 1);
+    //return pow(float4(roughness, metallic, 0, 0), 2.2f);
+    //return float4(N.xyz / 2 + 0.5f, 1);
 	//return float4(T.xyz / 2 + 0.5f, 1);
     
-	//return color;
-	//return sqrt(color);
-	return color * color;
+    //return pow(UV.y, 1.0f); 
+    //return pow(1 - UV.y, 2.2f); 
+#if 0
+    float4 Colors[] = {
+        float4(1, 0, 0, 0), // Left
+        float4(0, 1, 0, 0), // Right
+        float4(0, 0, 1, 0), // Top
+        float4(0, 1, 1, 1), // Bottom
+        float4(1, 1, 0, 1), // forward
+        float4(1, 0, 1, 1), // backward
+    };
+
+    //if (px.x % (1920 / 38) == 0 || px.y % (1080 / 18) == 0)
+    //    return color * color;
+    //else
+        //return pow(Colors[clusterKey % 6], 1.0f);
+        //return pow(Colors[GetSliceIdx(-positionVS.z) % 6], 1.0f);
+        //return pow(Colors[localLightCount % 6], 1.0f);
+        //return pow(localLightCount / lightCount, 1.0f);
+        //return float4(-positionVS.z, -positionVS.z, -positionVS.z, 1);
+#else
+	//return color; // RGBAfloat16 is already linear
+    //return pow(color, 1.0f/2.2f);
+    //return color;
+
+	return pow(color, 2.2f);
+#endif
 }
 
 

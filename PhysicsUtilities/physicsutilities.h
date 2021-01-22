@@ -34,12 +34,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "memoryutilities.h"
 #include "threadUtilities.h"
 
-#include <physx/PxPhysicsAPI.h>
-#include <physx/characterkinematic/PxController.h>
-#include <physx/extensions/PxDefaultAllocator.h>
-#include <physx/pvd/PxPvd.h>
-#include <physx/pvd/PxPvdTransport.h>
-#include <physx/characterkinematic/PxControllerManager.h>
+#include <PxPhysicsAPI.h>
+#include <characterkinematic/PxController.h>
+#include <extensions/PxDefaultAllocator.h>
+#include <pvd/PxPvd.h>
+#include <pvd/PxPvdTransport.h>
+#include <characterkinematic/PxControllerManager.h>
 
 #ifdef _DEBUG
 #pragma comment(lib,	"LowLevel_static_64.lib"				)
@@ -437,7 +437,7 @@ namespace FlexKit
 		template<typename TY>
 		PhysXScene&	GetOwningScene(TY handle)
 		{
-			return scenes[GetByType<PhysicsSceneHandle>(handle)];
+			return scenes[GetByType<PhysXSceneHandle>(handle)];
 		}
 
 		operator PhysXComponent* () { return this; }
@@ -777,7 +777,7 @@ namespace FlexKit
     };
 
 
-    NodeHandle GetControllerNode(GameObject& GO)
+    inline NodeHandle GetControllerNode(GameObject& GO)
     {
         return Apply(GO, [](CharacterControllerView& controller)
             {
@@ -790,7 +790,7 @@ namespace FlexKit
     }
 
 
-    CharacterControllerHandle GetControllerHandle(GameObject& GO)
+    inline CharacterControllerHandle GetControllerHandle(GameObject& GO)
     {
         return Apply(GO, [](CharacterControllerView& controller)
             {
@@ -802,7 +802,7 @@ namespace FlexKit
             });
     }
     
-    void SetControllerPosition(GameObject& GO, const float3 xyz)
+    inline void SetControllerPosition(GameObject& GO, const float3 xyz)
     {
         Apply(GO, [&](CharacterControllerView& controller)
             {

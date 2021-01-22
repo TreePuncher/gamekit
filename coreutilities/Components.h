@@ -126,13 +126,13 @@ namespace FlexKit
 	};
 
 
-    bool ComponentAvailability(ComponentID ID)
+    inline bool ComponentAvailability(ComponentID ID)
     {
         return ComponentBase::isComponentAvailable(ID);
     }
 
 
-    ComponentBase& GetComponent(ComponentID ID)
+    inline ComponentBase& GetComponent(ComponentID ID)
     {
         return ComponentBase::GetComponent(ID);
     }
@@ -366,7 +366,7 @@ namespace FlexKit
 
 
 	template<typename ... TY_PACKED_ARGS, typename FN, typename ErrorFN>
-	auto Apply_t(GameObject& go, FN fn, ErrorFN errorFn)
+	auto Apply_t(GameObject& go, const FN& fn, const ErrorFN& errorFn)
 	{
         if (!hasViews<TY_PACKED_ARGS...>(go))
 			return errorFn();
@@ -384,7 +384,7 @@ namespace FlexKit
 	template <typename C, typename R, typename... Args>									\
 	struct ApplyProxy<R (C::*) (Args... REM_CTOR var) cv>								\
 	{																					\
-		template<typename FN, typename ErrorFN>	static auto run(GameObject& go, FN& fn, ErrorFN& errorFn)						\
+		template<typename FN, typename ErrorFN>	static auto run(GameObject& go, const FN& fn, ErrorFN errorFn)						\
 		{																				\
 			return Apply_t<Args...>(go, fn, errorFn);									\
 		}																				\
@@ -400,16 +400,16 @@ namespace FlexKit
 
 
 	template<typename FN, typename ErrorFN>
-	auto Apply(GameObject& go, FN& fn, ErrorFN& errorFn)
+	auto Apply(GameObject& go, FN fn, ErrorFN errorFn)
 	{
 		return ApplyProxy<FN>::run(go, fn, errorFn);
 	}
 
 
 	template<typename FN>
-	auto Apply(GameObject& go, const FN& fn)
+	auto Apply(GameObject& go, FN fn)
 	{
-		return ApplyProxy<FN>::run(go, fn, [] {});
+		return ApplyProxy<FN>::run(go, fn, [&] {});
 	}
 
 
@@ -426,14 +426,14 @@ namespace FlexKit
 
 
         template<typename ... TY_Args>
-        BasicComponentView_t(TY_Args ... args) : handle{ GetComponent().Create(std::forward<TY_Args>(args)...) } {}
+        BasicComponentView_t(TY_Args ... args) : handle{ ComponentView_t<TY_Component>::GetComponent().Create(std::forward<TY_Args>(args)...) } {}
 
         virtual ~BasicComponentView_t() final {}
 
 
         decltype(auto) GetData()
         {
-            return GetComponent()[handle];
+            return ComponentView_t<TY_Component>::GetComponent()[handle];
         }
 
         ComponentHandle_t handle;
@@ -749,66 +749,10 @@ namespace FlexKit
 
 
 	using TestView = BasicComponentView_t<StringIDComponent>;
-
-
-	void GameOjectTest(iAllocator* allocator)
-	{
-		SampleComponent		sample1(allocator);
-		SampleComponent2	sample2(allocator);
-		SampleComponent3	sample3(allocator);
-
-		GameObject go;
-		go.AddView<SampleView>();
-		go.AddView<SampleView2>();
-		go.AddView<TestView>();
-
-		Apply(go,
-			[&](	// Function Sources
-				SampleView&	 sample1,
-				SampleView2& sample2,
-				SampleView3& sample3
-			)
-			{	// do things with behaviors
-				// JK doesn't run, not all inputs satisfied!
-				sample1.DoSomething();
-				sample2.DoSomething();
-				sample3.DoSomething();
-
-                FK_ASSERT(false, "Expected Failure");
-			}, 
-            [&]
-            {
-                FK_ASSERT(true, "SUCCESS");
-
-                // this runs instead!
-            });
-
-		go.AddView<SampleView3>();
-
-		Apply(go,
-			[](	// Function Sources
-				SampleView&		sample1,
-				SampleView2&	sample2,
-				SampleView3&	sample3,
-				TestView&		test1	)
-			{	// do things with behaviors
-				sample1.DoSomething();
-				sample2.DoSomething();
-				sample3.DoSomething();
-
-				auto val = test1.GetData();
-
-                FK_ASSERT(true, "SUCCESS");
-			}, 
-			[]
-            {   // should not run
-                FK_ASSERT(false, "Unexpected Failure");
-            });
-	}
+    inline void GameOjectTest(iAllocator* allocator);
 
 
 	/************************************************************************************************/
-
 
 
 	class UpdateDispatcher
@@ -1038,11 +982,11 @@ namespace FlexKit
             typename TY_NODEDATA,
             typename FN_LINKAGE,
             typename FN_UPDATE>
-        UpdateTask<TY_NODEDATA>& Add(uint32_t TaskID, FN_LINKAGE&& LinkageSetup, FN_UPDATE&& UpdateFN)
+        UpdateTask<TY_NODEDATA>& Add(uint32_t TaskID, FN_LINKAGE LinkageSetup, FN_UPDATE UpdateFN)
         {
-            auto& task = Add<TY_NODEDATA>(LinkageSetup, UpdateFN);
+            auto& task = Add<TY_NODEDATA>(LinkageSetup, std::move(UpdateFN));
 
-            if (find(taskMap, [&](auto& task) { return get<0>(task) == TaskID; } ) == taskMap.end())
+            if (find(taskMap, [&](auto& task) { return std::get<0>(task) == TaskID; } ) == taskMap.end())
                 taskMap.push_back({ TaskID, &task });
             else
             {
@@ -1057,12 +1001,12 @@ namespace FlexKit
 			typename TY_NODEDATA,
 			typename FN_LINKAGE,
 			typename FN_UPDATE>
-		UpdateTask<TY_NODEDATA>&	Add(FN_LINKAGE&& LinkageSetup, FN_UPDATE&& UpdateFN)
+		UpdateTask<TY_NODEDATA>&	Add(FN_LINKAGE LinkageSetup, FN_UPDATE&& UpdateFN)
 		{
 			struct data_BoilderPlate : UpdateTaskBase::iUpdateFN
 			{
-				data_BoilderPlate(FN_UPDATE&& IN_fn) :
-					function{ IN_fn } {}
+                data_BoilderPlate(FN_UPDATE&& IN_fn) : 
+                    function{ std::move(IN_fn) } {}
 
 				virtual void operator() (UpdateTaskBase& task, iAllocator& threadAllocator) override
 				{
@@ -1070,7 +1014,7 @@ namespace FlexKit
 				}
 
 				TY_NODEDATA locals;
-				FN_UPDATE	function;
+                FN_UPDATE	function;
 			};
 
 			auto& functor		= allocator->allocate_aligned<data_BoilderPlate>(std::move(UpdateFN));

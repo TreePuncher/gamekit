@@ -59,7 +59,7 @@ namespace FlexKit
 
 
 
-	void AddAssetFile(char* FILELOC)
+	void AddAssetFile(const char* FILELOC)
 	{
 		ResourceDirectory Dir;
 		strcpy_s(Dir.str, FILELOC);
@@ -80,7 +80,7 @@ namespace FlexKit
 	}
 
 
-	Pair<GUID_t, bool>	FindAssetGUID(char* Str)
+	Pair<GUID_t, bool>	FindAssetGUID(const char* Str)
 	{
 		bool Found = false;
 		GUID_t Guid = INVALIDHANDLE;
@@ -198,6 +198,27 @@ namespace FlexKit
 
         return RAC_ERROR;
     }
+
+
+    /************************************************************************************************/
+
+
+    const char* GetResourceStringID(GUID_t guid)
+    {
+        AssetHandle RHandle = INVALIDHANDLE;
+        for (size_t TI = 0; TI < Resources.Tables.size(); ++TI)
+        {
+            auto& t = Resources.Tables[TI];
+            for (size_t I = 0; I < t->ResourceCount; ++I)
+            {
+                if (t->Entries[I].GUID == guid)
+                    return t->Entries[I].ID;
+            }
+        }
+
+        return nullptr;
+    }
+
 
 
     /************************************************************************************************/
@@ -368,12 +389,12 @@ namespace FlexKit
 			Out->SkinTable	  = nullptr;
 			Out->SkeletonGUID = Blob->SkeletonGuid;
 			Out->Skeleton	  = nullptr;
-			Out->Info.min.x   = Blob->Info.maxx;
-			Out->Info.min.y   = Blob->Info.maxy;
-			Out->Info.min.z   = Blob->Info.maxz;
-			Out->Info.max.x   = Blob->Info.minx;
-			Out->Info.max.y   = Blob->Info.miny;
-			Out->Info.max.z   = Blob->Info.minz;
+			Out->Info.Min.x   = Blob->Info.maxx;
+			Out->Info.Min.y   = Blob->Info.maxy;
+			Out->Info.Min.z   = Blob->Info.maxz;
+			Out->Info.Max.x   = Blob->Info.minx;
+			Out->Info.Max.y   = Blob->Info.miny;
+			Out->Info.Max.z   = Blob->Info.minz;
 			Out->IndexCount	  = Blob->IndexCount;
 			Out->Info.r		  = Blob->Info.r;
 			Out->Memory		  = Memory;
@@ -735,7 +756,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadFontResult LoadFontAsset(char* dir, char* file, RenderSystem* RS, iAllocator* tempMem, iAllocator* outMem)
+	LoadFontResult LoadFontAsset(const char* dir, const char* file, RenderSystem* RS, iAllocator* tempMem, iAllocator* outMem)
 	{
 		char TEMP[256];
 		strcpy_s(TEMP, dir);
@@ -844,8 +865,8 @@ namespace FlexKit
 						Fonts[pCB->page].GlyphTable[pCB->id].WH       = { float(pCB->width),	float(pCB->height) };
 						Fonts[pCB->page].GlyphTable[pCB->id].XY       = { float(pCB->x),		float(pCB->y) };
 						Fonts[pCB->page].GlyphTable[pCB->id].Xadvance = pCB->xadvance;
-						Fonts[pCB->page].FontSize[0]				  = max(Fonts[pCB->page].FontSize[0], pCB->width);
-						Fonts[pCB->page].FontSize[1]				  = max(Fonts[pCB->page].FontSize[1], pCB->height);
+						Fonts[pCB->page].FontSize[0]				  = Max(Fonts[pCB->page].FontSize[0], pCB->width);
+						Fonts[pCB->page].FontSize[1]				  = Max(Fonts[pCB->page].FontSize[1], pCB->height);
 					}
 				}break;
 				case 0x05:
@@ -869,6 +890,9 @@ namespace FlexKit
 
 	void Release(SpriteFontAsset* asset, RenderSystem* RS)
 	{
+        if (!asset)
+            return;
+
 		RS->ReleaseTexture(asset->Texture);
 		asset->Memory->free(asset->FontDir);
 		asset->Memory->free(asset);

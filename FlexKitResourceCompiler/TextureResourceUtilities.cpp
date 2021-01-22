@@ -2,11 +2,6 @@
 #include <filesystem>
 #include <numeric>
 
-#include "crnlib.h"
-#include "crn_decomp.h"
-#include "dds_defs.h"
-
-#pragma comment(lib,"crunch.lib")
 
 #ifdef _DEBUG
 #pragma comment(lib, "CMP_Framework_MDd.lib")
@@ -166,7 +161,7 @@ namespace FlexKit::ResourceBuilder
         Blob header { headerData };
         Blob body   = { (const char*)buffer, bufferSize };
 
-        strncpy(headerData.ID, ID.c_str(), min(sizeof(headerData.ID), ID.size()));
+        strncpy(headerData.ID, ID.c_str(), Min(sizeof(headerData.ID), ID.size()));
 
         auto [data, size]   = (header + body).Release();
 
@@ -273,7 +268,7 @@ namespace FlexKit::ResourceBuilder
 
         kernel_options.encodeWith = CMP_HPC;
         kernel_options.format     = CMP_FORMAT_BC7;
-        kernel_options.fquality   = 0.05;
+        kernel_options.fquality   = 0.001;
         kernel_options.threads    = 0;
 
         CMP_MipSet dstMipSet = { 0 };
@@ -301,13 +296,17 @@ namespace FlexKit::ResourceBuilder
             return false;
         };
 
-        auto cmp_status = CMP_ProcessTexture(&mipSet, &dstMipSet, kernel_options, progress);
-        CMP_SaveTexture(std::string(path.string() + ".cached.dds").c_str(), &dstMipSet);
+
+        //if (CMP_LoadTexture(std::string(path.string() + ".cached.dds").c_str(), &dstMipSet) != CMP_ERROR::CMP_OK)
+        {
+            auto cmp_status = CMP_ProcessTexture(&mipSet, &dstMipSet, kernel_options, progress);
+            CMP_SaveTexture(std::string(path.string() + ".cached.dds").c_str(), &dstMipSet);
+        }
 
         printf("\n");
 
         auto resource = std::make_shared<TextureResource>();
-            
+
         size_t bufferSize = 0;
         for (size_t I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++) {
             CMP_MipLevel* mipLevel = nullptr;
@@ -336,7 +335,6 @@ namespace FlexKit::ResourceBuilder
             memcpy((char*)temp + offset, mipLevel->m_pbData, mipLevel->m_dwLinearSize);
             offset += mipLevel->m_dwLinearSize;
         }
-
         resource->ID          = path.filename().string();
         resource->WH          = { dstMipSet.m_nWidth, dstMipSet.m_nHeight };
         resource->assetHandle = rand();
@@ -465,6 +463,132 @@ namespace FlexKit::ResourceBuilder
 
         return resource;
     }
+
+
+    /************************************************************************************************/
+
+
+    std::shared_ptr<iResource>  CreateTextureResource(FlexKit::TextureBuffer& textureBuffer, std::string formatStr)
+    {
+        FK_ASSERT(false, "Not Implemented");
+
+        std::printf("building texture resource\n");
+
+        auto format = FormatStringToFormatID(formatStr);
+
+        CMP_MipSet mipSet;
+        memset(&mipSet, 0, sizeof(CMP_MipSet));
+        mipSet.dwDataSize           = textureBuffer.BufferSize();
+        mipSet.m_nHeight            = textureBuffer.WH[1];
+        mipSet.m_nWidth             = textureBuffer.WH[0];
+        mipSet.m_nMaxMipLevels      = std::log2(std::min(textureBuffer.WH[1], textureBuffer.WH[0]));
+        mipSet.pData                = textureBuffer.Buffer;
+        mipSet.m_nMipLevels         = 1;
+        mipSet.m_format             = CMP_FORMAT_RGBA_8888;
+        mipSet.m_nDepth             = 1;
+        mipSet.m_TextureDataType    = TDT_ARGB;
+
+        CMP_MipLevel        mipLevels[12]   = { 0 };
+        CMP_MipLevelTable   levels[12]      = { 0 };
+
+        mipLevels[0].m_nHeight       = textureBuffer.WH[1];
+        mipLevels[0].m_nWidth        = textureBuffer.WH[0];
+        mipLevels[0].m_dwLinearSize  = textureBuffer.BufferSize();
+        mipLevels[0].m_pcData        = (CMP_COLOR*)textureBuffer.Buffer;
+
+        levels[0] = &mipLevels[0];
+
+        mipSet.m_pMipLevelTable      = levels;
+
+        size_t temp2        = std::log2(mipSet.m_nHeight);
+        CMP_INT nMinSize    = CMP_CalcMinMipSize(mipSet.m_nHeight, mipSet.m_nWidth, mipSet.m_nMaxMipLevels);
+
+        if (auto res = CMP_GenerateMIPLevels(&mipSet, nMinSize); res != CMP_OK)
+        {
+            std::printf("Error %d: Failed to create Mip Levels!\n", res);
+            return {};
+        }
+
+        std::cout << "DEBUG: nMinSize: " << nMinSize << "\n";
+        std::cout << "DEBUG: INPUT MIP LEVELS: " << mipSet.m_nMipLevels << "\n";
+
+        KernelOptions kernel_options;
+        memset(&kernel_options, 0, sizeof(KernelOptions));
+
+        kernel_options.encodeWith = CMP_HPC;
+        kernel_options.format     = CMP_FORMAT_BC7;
+        kernel_options.fquality   = 0.05;
+        kernel_options.threads    = 0;
+
+        CMP_MipSet dstMipSet = { 0 };
+
+        switch (format)
+        {
+        case DDSTextureFormat::DXT3:
+            kernel_options.format = CMP_FORMAT_BC3;
+            break;
+        case DDSTextureFormat::DXT5:
+            kernel_options.format = CMP_FORMAT_BC5;
+                break;
+        case DDSTextureFormat::DXT7:
+            kernel_options.format = CMP_FORMAT_BC7;
+            break;
+        default:
+            return {};
+        }
+
+        auto progress = [](CMP_FLOAT fProgress, CMP_DWORD_PTR pUser1, CMP_DWORD_PTR pUser2)-> bool
+        {
+            printf("\rProgress: %f\n", fProgress);
+            return false;
+        };
+
+        auto cmp_status = CMP_ProcessTexture(&mipSet, &dstMipSet, kernel_options, progress);
+        auto resource = std::make_shared<TextureResource>();
+            
+        size_t bufferSize = 0;
+        for (size_t I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++) {
+            CMP_MipLevel* mipLevel = nullptr;
+            CMP_GetMipLevel(&mipLevel, &dstMipSet, I, 0);
+
+            bufferSize += mipLevel->m_dwLinearSize;
+
+            std::cout << "_DEBUG: " __FUNCTION__ << " : Mip Size : " << mipLevel->m_dwLinearSize << "\n";
+        }
+
+        auto temp = new char[bufferSize];
+        memset(resource->mipOffsets, 0, sizeof(TextureResource::mipOffsets));
+
+        for (size_t I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++)
+        {
+            CMP_MipLevel* mipLevel = nullptr;
+            CMP_GetMipLevel(&mipLevel, &dstMipSet, I, 0);
+
+            resource->mipOffsets[I] = offset;
+
+            std::cout << "_DEBUG: " __FUNCTION__ << " : LinearSize : " << mipLevel->m_dwLinearSize << "\n";
+
+            memcpy((char*)temp + offset, mipLevel->m_pbData, mipLevel->m_dwLinearSize);
+            offset += mipLevel->m_dwLinearSize;
+        }
+
+        resource->ID          = "";
+        resource->WH          = { dstMipSet.m_nWidth, dstMipSet.m_nHeight };
+        resource->assetHandle = 0;
+        resource->buffer      = temp;
+        resource->bufferSize  = bufferSize;
+        resource->format      = FormatStringToDeviceFormat(formatStr);
+        resource->mipLevels   = dstMipSet.m_nMipLevels;
+
+        std::cout << "_DEBUG: " __FUNCTION__ << " : Size : " << resource->bufferSize << "\n";
+        std::cout << "_DEBUG: " __FUNCTION__ << " : MipCount : " << dstMipSet.m_nMipLevels << "\n";
+
+        CMP_FreeMipSet(&mipSet);
+        CMP_FreeMipSet(&dstMipSet);
+
+        return {};
+    }
+
 
 }    /************************************************************************************************/
 

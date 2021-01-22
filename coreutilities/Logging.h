@@ -78,7 +78,7 @@ namespace FlexKit
 
 	struct LogCallback
 	{
-		char*			ID;
+		const char*		ID;
 		void*			User;
 		FNLOG_Callback Callback;
 	};
@@ -89,7 +89,7 @@ namespace FlexKit
 	void ClearLogCallbacks();
 
 	void SetShellVerbocity(Verbosity verbosity);
-	void AddLogFile(char* file, Verbosity verbosity, bool Append = true);
+	void AddLogFile(const char* file, Verbosity verbosity, bool Append = true);
 	Verbosity VerbosityCutof();
 
 	void LogEvent(Verbosity verbosity, const char * file, unsigned line, const char *format, ...);

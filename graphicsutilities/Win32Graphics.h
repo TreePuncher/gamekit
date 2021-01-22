@@ -2,14 +2,16 @@
 
 #include "buildsettings.h"
 #include "Events.h"
+#include "Input.h"
 #include "graphics.h"
 #include <windows.h>
+
+#pragma comment(lib, "Winmm.lib")
 
 namespace FlexKit
 {   /************************************************************************************************/
 
 
-#pragma comment(lib, "Winmm.lib")
 
     struct Win32RenderWindow;
 
@@ -17,10 +19,11 @@ namespace FlexKit
     inline HWND			        gWindowHandle   = 0;
     inline HINSTANCE		    gInstance       = 0;
 
+
     /************************************************************************************************/
 
 
-    void UpdateInput()
+    inline void UpdateInput()
     {
         MSG  msg;
         while (PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE))
@@ -31,6 +34,9 @@ namespace FlexKit
     }
 
 
+    /************************************************************************************************/
+
+    
     FLEXKITAPI struct  Win32RenderWindow : public IRenderWindow
     {
         ResourceHandle GetBackBuffer() const override
@@ -38,32 +44,43 @@ namespace FlexKit
             return backBuffer;
         }
 
+
         bool Present(const uint32_t syncInternal = 0, const uint32_t flags = 0) override
         {
+            if (!swapChain)
+                return false;
+
             auto res = SUCCEEDED(swapChain->Present(syncInternal, flags));
 
             if (!res)
                 renderSystem->_OnCrash();
 
-            renderSystem->_PresentWindow(this);
             renderSystem->Textures.SetBufferedIdx(backBuffer, swapChain->GetCurrentBackBufferIndex());
 
             return res;
         }
 
+
         uint2 GetWH() const override
         {
-            return WH;
+            if (!swapChain)
+                return { 0, 0 };
+            else
+                return WH;
         }
+
 
         void Resize(const uint2 newWH) override
         {
+            if (!swapChain)
+                return;
+
             WH = newWH;
 
 		    renderSystem->WaitforGPU();
 		    renderSystem->_ForceReleaseTexture(backBuffer);
 
-		    const auto HR = swapChain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+		    const auto HR = swapChain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
 		    if (FAILED(HR))
 		    {
 			    FK_ASSERT(0, "Failed to resize back buffer!");
@@ -100,12 +117,20 @@ namespace FlexKit
 
         void Release()
         {
-            swapChain->SetFullscreenState(false, nullptr);
+            if (!swapChain)
+                return;
+            else
+            {
+                swapChain->SetFullscreenState(false, nullptr);
 
-            DestroyWindow(hWindow);
+                DestroyWindow(hWindow);
 
-            swapChain->Release();
-            ShowCursor(true);
+                swapChain->Release();
+                ShowCursor(true);
+
+                swapChain   = nullptr;
+                hWindow     = 0;
+            }
         }
 
 
@@ -120,6 +145,11 @@ namespace FlexKit
             ShowCursor(false);
         }
 
+
+        bool isValid() const
+        {
+            return swapChain != nullptr;
+        }
 
         MouseInputState UpdateCapturedMouseInput(double dT)
         {
@@ -136,11 +166,11 @@ namespace FlexKit
                 mouseState.Position.x -= mouseState.dPos[0] / 2.0f;
                 mouseState.Position.y += mouseState.dPos[1] / 2.0f;
 
-                mouseState.Position.x = max(0.0f, min((float)mouseState.Position.x, (float)WH[0]));
-                mouseState.Position.y = max(0.0f, min((float)mouseState.Position.y, (float)WH[1]));
+                mouseState.Position.x = Max(0.0f, Min((float)mouseState.Position.x, (float)WH[0]));
+                mouseState.Position.y = Max(0.0f, Min((float)mouseState.Position.y, (float)WH[1]));
 
-                mouseState.NormalizedPos.x     = max(0.0f, min(float(mouseState.Position.x) / float(WH[0]), 1));
-                mouseState.NormalizedPos.y     = max(0.0f, min(float(mouseState.Position.y) / float(WH[1]), 1));
+                mouseState.NormalizedPos.x     = Max(0.0f, Min(float(mouseState.Position.x) / float(WH[0]), 1));
+                mouseState.NormalizedPos.y     = Max(0.0f, Min(float(mouseState.Position.y) / float(WH[1]), 1));
                 mouseState.NormalizedScreenCord = Position2SS(mouseState.NormalizedPos);
 
                 const float HorizontalMouseMovement = float(mouseState.dPos[0]) / float(WH[0]);
@@ -210,6 +240,7 @@ namespace FlexKit
             return swapChain;
         }
 
+
         RenderSystem*               renderSystem;
         IDXGISwapChain4*            swapChain;
         ResourceHandle              backBuffer;
@@ -235,106 +266,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    /*
-    bool CreateRenderWindowFromHWND( RenderSystem* RS, HWND hwnd, RenderWindow* out )
-	{
-		SetProcessDPIAware();
-
-
-		RenderWindow NewWindow = {0};
-		static size_t Window_Count = 0;
-
-		Window_Count++;
-
-		RECT ClientRect;
-		RECT WindowRect;
-		GetClientRect(hwnd, &ClientRect);
-		GetWindowRect(hwnd, &WindowRect);
-
-        //MoveWindow(
-        //    hwnd,
-		//	0, 0, 
-		//	WindowRect.right - WindowRect.left - ClientRect.right + In_Desc->width, 
-		//	WindowRect.bottom - WindowRect.top - ClientRect.bottom + In_Desc->height, 
-		//	false);
-        //
-
-        uint32_t width  = WindowRect.right - WindowRect.left;
-        uint32_t height = WindowRect.bottom - WindowRect.top;
-
-		NewWindow.hWindow	  = hwnd;
-		NewWindow.VP.Height	  = WindowRect.bottom - WindowRect.top - ClientRect.bottom;
-		NewWindow.VP.Width	  = WindowRect.right - WindowRect.left - ClientRect.right;
-		NewWindow.VP.X		  = 0;
-		NewWindow.VP.Y		  = 0;
-		NewWindow.VP.Max	  = 1.0f;
-		NewWindow.VP.Min      = 0.0f;
-
-		// Create Swap Chain
-		DXGI_SWAP_CHAIN_DESC1 SwapChainDesc = {};
-		SwapChainDesc.Stereo			= false;
-		SwapChainDesc.BufferCount		= 3;
-		SwapChainDesc.Width				= width;
-		SwapChainDesc.Height			= height;
-		SwapChainDesc.Format			= DXGI_FORMAT_R16G16B16A16_FLOAT;
-		SwapChainDesc.BufferUsage		= DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		SwapChainDesc.SwapEffect		= DXGI_SWAP_EFFECT_FLIP_DISCARD;
-		SwapChainDesc.SampleDesc.Count	= 1;
-		SwapChainDesc.Flags             = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-
-		IDXGISwapChain1* NewSwapChain_ptr = nullptr;
-		HRESULT HR = RS->pGIFactory->CreateSwapChainForHwnd( 
-			RS->GraphicsQueue, hwnd,
-			&SwapChainDesc, nullptr, nullptr,
-			&NewSwapChain_ptr );
-
-
-
-		if ( FAILED( HR ) )
-		{
-			cout << "Failed to Create Swap Chain!\n";
-			FK_ASSERT(FAILED(HR), "FAILED TO CREATE SWAP CHAIN!");
-			return false;
-		}
-
-		NewWindow.SwapChain_ptr = static_cast<IDXGISwapChain4*>(NewSwapChain_ptr);
-
-		//CreateBackBuffer
-		ID3D12Resource* buffer[3];
-
-		for (size_t I = 0; I < SwapChainDesc.BufferCount; ++I)
-		{
-			NewSwapChain_ptr->GetBuffer( I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
-			if (!buffer[I]) {
-				FK_ASSERT(buffer[I], "Failed to Create Back Buffer!");
-				return false;
-			}
-
-		}
-
-		NewWindow.backBuffer = RS->CreateGPUResource(
-			GPUResourceDesc::BackBuffered(
-				uint2{ width, height },
-				DeviceFormat::R16G16B16A16_FLOAT,
-				buffer, 3));
-
-		RS->SetDebugName(NewWindow.backBuffer, "BackBuffer");
-		RS->Textures.SetBufferedIdx(NewWindow.backBuffer, NewWindow.SwapChain_ptr->GetCurrentBackBufferIndex());
-
-		NewWindow.WH[0]         = height;
-		NewWindow.WH[1]         = height;
-		NewWindow.Close         = false;
-		NewWindow.Format		= SwapChainDesc.Format;
-		memset(NewWindow.InputBuffer, 0, sizeof(NewWindow.InputBuffer));
-
-		*out = NewWindow;
-
-		return true;
-	}
-    */
-
-
-    LRESULT CALLBACK WindowProcess( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
+    inline LRESULT CALLBACK WindowProcess( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 	{
 		int Param = wParam;
 		auto ShiftState = GetAsyncKeyState(VK_LSHIFT) | GetAsyncKeyState(VK_RSHIFT);
@@ -665,7 +597,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-	void RegisterWindowClass( HINSTANCE hinst )
+	inline void RegisterWindowClass( HINSTANCE hinst )
 	{
 		// Register Window Class
 		WNDCLASSEX wcex = {0};
@@ -706,20 +638,20 @@ namespace FlexKit
     };
 
 
-    Win32RenderWindowDesc DefaultWindowDesc(uint2 WH)
+    inline Win32RenderWindowDesc DefaultWindowDesc(uint2 WH)
     {
         return {
-            .fullscreen = false,
-            .hInstance = (uint64_t)gInstance,
-            .hWindow = 0,
-            .height = WH[1],
-            .width = WH[0],
-            .depth = 1,
-            .AA_Count = 1,
-            .AA_Quality = 1,
-            .POS_X = 0,
-            .POS_Y = 0,
-            .ID = "RenderWindow"
+            false,
+            (uint64_t)gInstance,
+            0,
+            WH[1],
+            WH[0],
+            1,
+            1,
+            1,
+            0,
+            0,
+            "RenderWindow"
         };
     }
 
@@ -832,7 +764,7 @@ namespace FlexKit
 
 		renderWindow.backBuffer = renderSystem.CreateGPUResource(
 			GPUResourceDesc::BackBuffered(
-				{ renderWindowDesc.width, renderWindowDesc.height },
+				{ SwapChainDesc.Width, SwapChainDesc.Height },
 				DeviceFormat::R16G16B16A16_FLOAT,
 				buffer, 3));
 
@@ -841,10 +773,9 @@ namespace FlexKit
 
 		SetActiveWindow(windowHWND);
 
-        renderWindow.WH[0]      = renderWindowDesc.width;
-        renderWindow.WH[1]      = renderWindowDesc.height;
-        renderWindow.Format		= SwapChainDesc.Format;
-        renderWindow.renderSystem = renderSystem;
+        renderWindow.WH             = { SwapChainDesc.Width, SwapChainDesc.Height };
+        renderWindow.Format		    = SwapChainDesc.Format;
+        renderWindow.renderSystem   = renderSystem;
 
 		memset(renderWindow.InputBuffer, 0, sizeof(renderWindow.InputBuffer));
 
@@ -855,7 +786,67 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    FLEXKITAPI bool CreateWin32RenderWindowFromHWND (RenderSystem* RS, HWND hwnd, RenderWindow* out);
+    inline FLEXKITAPI std::pair<Win32RenderWindow, bool> CreateWin32RenderWindowFromHWND (RenderSystem& renderSystem, HWND hwnd)
+    {
+        Win32RenderWindow renderWindow;
+
+
+        DXGI_SWAP_CHAIN_DESC1 SwapChainDesc = {};
+		SwapChainDesc.Stereo			= false;
+		SwapChainDesc.BufferCount		= 3;
+		SwapChainDesc.Width				= 800;
+		SwapChainDesc.Height			= 600;
+		SwapChainDesc.Format			= DXGI_FORMAT_R16G16B16A16_FLOAT;
+		SwapChainDesc.BufferUsage		= DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		SwapChainDesc.SwapEffect		= DXGI_SWAP_EFFECT_FLIP_DISCARD;
+		SwapChainDesc.SampleDesc.Count	= 1;
+		SwapChainDesc.Flags             = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+
+        IDXGISwapChain1* NewSwapChain_ptr = nullptr;
+        HRESULT HR = renderSystem.pGIFactory->CreateSwapChainForHwnd(
+            renderSystem.GraphicsQueue, hwnd,
+            &SwapChainDesc, nullptr, nullptr,
+            &NewSwapChain_ptr);
+
+        if (FAILED(HR))
+        {
+            std::cout << "Failed to Create Swap Chain!\n";
+            FK_ASSERT(FAILED(HR), "FAILED TO CREATE SWAP CHAIN!");
+            return { {}, false };
+        }
+
+        renderWindow.swapChain = static_cast<IDXGISwapChain4*>(NewSwapChain_ptr);
+
+        //CreateBackBuffer
+        ID3D12Resource* buffer[3];
+
+        for (size_t I = 0; I < SwapChainDesc.BufferCount; ++I)
+        {
+            NewSwapChain_ptr->GetBuffer(I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
+            if (!buffer[I]) {
+                FK_ASSERT(buffer[I], "Failed to Create Back Buffer!");
+                return { {}, false };
+            }
+
+        }
+
+        renderWindow.backBuffer = renderSystem.CreateGPUResource(
+            GPUResourceDesc::BackBuffered(
+                { SwapChainDesc.Width, SwapChainDesc.Height },
+                DeviceFormat::R16G16B16A16_FLOAT,
+                buffer, 3));
+
+        renderSystem.SetDebugName(renderWindow.backBuffer, "BackBuffer");
+        renderSystem.Textures.SetBufferedIdx(renderWindow.backBuffer, renderWindow.swapChain->GetCurrentBackBufferIndex());
+
+        renderWindow.WH             = { SwapChainDesc.Width, SwapChainDesc.Height };
+        renderWindow.Format         = SwapChainDesc.Format;
+        renderWindow.renderSystem   = renderSystem;
+
+        memset(renderWindow.InputBuffer, 0, sizeof(renderWindow.InputBuffer));
+
+        return { renderWindow, true };
+    }
 
 }// Namespace FlexKit
 

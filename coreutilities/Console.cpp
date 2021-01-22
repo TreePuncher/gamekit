@@ -219,7 +219,7 @@ namespace FlexKit
 			if (!strncmp(
 				variable.VariableIdentifier.str, 
 				variableIdentifier, 
-                min(strlen(
+                Min(strlen(
 					variable.VariableIdentifier.str), Arguments->Data_size)))
 			{
 				if (variable.Type == ConsoleVariableType::CONSOLE_BOOL) {
@@ -261,7 +261,7 @@ namespace FlexKit
 		const char* VariableIdentifier = (const char*)Arguments->Data_ptr;
 		for (auto Var : console->variables)
 		{
-			if (!strncmp(Var.VariableIdentifier.str, VariableIdentifier, min(strlen(Var.VariableIdentifier.str), Arguments->Data_size)))
+			if (!strncmp(Var.VariableIdentifier.str, VariableIdentifier, Min(strlen(Var.VariableIdentifier.str), Arguments->Data_size)))
 			{
 				// Print Variable
 				switch (Var.Type)
@@ -458,7 +458,7 @@ namespace FlexKit
 		case InputToken::CT_UNKNOWN: // Try to Identify Token
 			for (auto& I : Identifiers)
 			{
-				if (!strncmp(in[i].Str, I.Str, min(in[i].StrLen, I.size)))
+				if (!strncmp(in[i].Str, I.Str, Min(in[i].StrLen, I.size)))
 				{
 					switch (I.Type)
 					{
@@ -541,13 +541,13 @@ namespace FlexKit
 		};
 
 
-		auto& TranslateTokenToVar = [&](GrammerToken& T) -> TranslationRes
+		const auto TranslateTokenToVar = [&](GrammerToken& T) -> TranslationRes
 		{
 			return { false };
 		};
 
 
-		auto& GetVars = [&](auto& Begin, auto& End, auto& Out)
+		const auto GetVars = [&](auto& Begin, auto& End, auto& Out)
 		{
 
 		};
@@ -564,7 +564,7 @@ namespace FlexKit
 		};
 
 
-		auto& GetArguements = [&](auto Itr) -> TokenRange
+		const auto GetArguments = [&](auto Itr) -> TokenRange
 		{
 			auto Begin = (SyntaxType == ConsoleSyntax::ARGUEMENTSBEGIN) 
 				? (Itr + 1) : Itr;
@@ -912,7 +912,7 @@ namespace FlexKit
 	ConsoleFunction* Console::FindFunction(const char* str, size_t StrLen)
 	{
 		for (auto& fn : functionTable)
-			if (!strncmp(fn.FunctionName, str, min(StrLen, strlen(fn.FunctionName))))
+			if (!strncmp(fn.FunctionName, str, Min(StrLen, strlen(fn.FunctionName))))
 				return &fn;
 
 		return nullptr;

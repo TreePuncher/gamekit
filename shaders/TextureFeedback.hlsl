@@ -26,20 +26,9 @@ cbuffer PassConstants : register(b2)
     uint4  zeroBlock[2];
 }
 
-globallycoherent RasterizerOrderedByteAddressBuffer UAVCounters : register(u0);
-globallycoherent RasterizerOrderedByteAddressBuffer UAVBuffer : register(u1);
-globallycoherent RasterizerOrderedByteAddressBuffer UAVOffsets : register(u2);
-globallycoherent RasterizerOrderedTexture2D<uint>   PPLinkedList : register(u3);
-
-Texture2D<float4>   textures[16] : register(t0);
-
-SamplerState   defaultSampler : register(s1);
-
-void WriteOut(uint blockID, uint textureID, uint offset, uint prev)
-{
-    UAVBuffer.Store3(offset, uint3(blockID, textureID, prev));
-}
-
+AppendStructuredBuffer<uint2>   UAVBuffer : register(u0);
+Texture2D<float4>               textures[16] : register(t0);
+SamplerState                    defaultSampler : register(s1);
 
 struct Forward_VS_OUT
 {
@@ -49,16 +38,6 @@ struct Forward_VS_OUT
     float3 Tangent	: TANGENT;
     float2 UV		: TEXCOORD;
 };
-
-
-void ClearPS(float4 XY : SV_POSITION)
-{
-    UAVOffsets.Store(XY.x * 4 + XY.y * 4 * 240, 0);
-
-    if(XY.x == 0.5f && XY.y == 0.5f)
-        UAVCounters.Store(0, 0);
-}
-
 
 uint Packed(uint TextureIdx, const float2 UV, const uint lod)
 {
@@ -73,7 +52,12 @@ uint Packed(uint TextureIdx, const float2 UV, const uint lod)
     return packed;
 }
 
-uint PushSample(const uint Prev, const float2 UV, const uint desiredLod, const uint TextureIdx, uint2 XY)
+uint CreateTileID(const uint2 XY, const uint mipLevel, const bool packed)
+{
+    return (packed << 31) | (mipLevel << 24) | (packed ? 0 : ((0x0F & XY.x) << 12) | (0x0F & XY.y));
+}
+
+void PushSample(const float2 UV, const uint desiredLod, const uint TextureIdx, uint2 XY)
 {
     uint2 MIPWH     = 0;
     uint MIPCount   = 0;
@@ -105,31 +89,34 @@ uint PushSample(const uint Prev, const float2 UV, const uint desiredLod, const u
     
     const uint2 blockArea   = max(uint2(MIPWH / blockSize), uint2(1, 1));
     const uint2 blockXY     = min(blockArea * saturate(UV), blockArea - uint2(1, 1));
-    const uint  blockID     = (packed << 31) | ((MIPCount - lod) << 24) | (packed ? 0 : (blockXY.x << 12) | (blockXY.y));
+    const uint  blockID     = CreateTileID(blockXY, lod, packed);
 
     MIPWH = 0;
     textures[TextureIdx].GetDimensions(lod, MIPWH.x, MIPWH.y, MIPCount);
         
     if (MIPWH.x == 0 || MIPWH.y == 0)
-        return Prev;
+        return;
 
-    uint offset = -1;
-    UAVCounters.InterlockedAdd(0, NODESIZE, offset);
-    WriteOut(blockID, textureID, offset, Prev);
-    //UAVOffsets.Store(XY.x * 4 + XY.y * 4 * 240, Prev);
-    
-    return offset;
+    //UAVBuffer.Append(uint2(textureID, CreateTileID(uint2(0, 0), lod, true))); // DEBUG
+    UAVBuffer.Append(uint2(textureID, blockID));
 }
 
-
-void TextureFeedback_PS(Forward_VS_OUT IN, float4 XY : SV_POSITION)
+bool CheckLoaded(Texture2D source, in sampler textureSampler, in float2 UV, uint mip)
 {
+    uint state;
+    const float4 texel = source.SampleLevel(textureSampler, UV, mip, 0.0f, state);
+
+    return CheckAccessFullyMapped(state);
+}
+
+[earlydepthstencil]  
+void TextureFeedback_PS(Forward_VS_OUT IN)
+{
+    const float4 XY = IN.POS;
     const float maxAniso = 4;
     const float maxAnisoLog2 = log2(maxAniso);
-    const float2 UV = IN.UV;
+    const float2 UV = IN.UV % 1.0f;
     
-    uint prev = PPLinkedList[XY.xy];
-
     for(uint I = 0; I < textureCount; I++)
     {
         uint2 WH = uint2(0, 0);
@@ -147,17 +134,14 @@ void TextureFeedback_PS(Forward_VS_OUT IN, float4 XY : SV_POSITION)
 
         const float anisoLOD    = maxLod - min(maxLod - minLod, maxAnisoLog2);
         const float desiredLod  = max(min(floor(maxLod) + feedbackBias + 0.5f, MIPCount - 1), 0);
-
-        int lod = desiredLod;
-        while (lod < MIPCount - 1)
+        
+        for(int lod = floor(desiredLod); lod < MIPCount - 1; lod += 1)
         {
-            prev = PushSample(prev, UV, lod, I, XY.xy);
-            if (Packed(I, UV, lod))
+            if(CheckLoaded(textures[I], defaultSampler, UV, min(lod + 1, MIPCount)) | Packed(I, UV, lod))
+            {
+                PushSample(UV, lod, I, XY.xy);
                 break;
-            
-            lod += 1;
+            }
         }
     }
-
-    PPLinkedList[XY.xy] = prev;
 }

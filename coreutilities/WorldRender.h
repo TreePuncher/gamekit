@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2014-2018 Robert May
+Copyright (c) 2016-2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -39,8 +39,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CoreSceneObjects.h"
 #include "AnimationComponents.h"
 #include "GraphicScene.h"
-
-#include <d3dx12.h>
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -84,8 +82,20 @@ namespace FlexKit
 	static const PSOHandle ENVIRONMENTPASS             = PSOHandle(GetTypeGUID(ENVIRONMENTPASS));
 	static const PSOHandle BILATERALBLURPASSHORIZONTAL = PSOHandle(GetTypeGUID(BILATERALBLURPASSHORIZONTAL));
 	static const PSOHandle BILATERALBLURPASSVERTICAL   = PSOHandle(GetTypeGUID(BILATERALBLURPASSVERTICAL));
-	static const PSOHandle LIGHTPREPASS			       = PSOHandle(GetTypeGUID(LIGHTPREPASS));
-	static const PSOHandle DEPTHPREPASS                = PSOHandle(GetTypeGUID(DEPTHPREPASS));
+
+    constexpr PSOHandle LIGHTPREPASS		    = PSOHandle(GetTypeGUID(LIGHTPREPASS));
+
+    constexpr PSOHandle CREATECLUSTERS          = PSOHandle(GetTypeGUID(CREATECLUSTERS));
+    constexpr PSOHandle CLEARCOUNTERSPSO        = PSOHandle(GetTypeGUID(CLEARCOUNTERSPSO));
+    constexpr PSOHandle CREATECLUSTERLIGHTLISTS = PSOHandle(GetTypeGUID(CREATECLUSTERLIGHTLISTS));
+
+    constexpr PSOHandle CREATELIGHTBVH_PHASE1   = PSOHandle(GetTypeGUID(CREATELIGHTPVH1123));
+    constexpr PSOHandle CREATELIGHTBVH_PHASE2   = PSOHandle(GetTypeGUID(CREATELIGHTPVH2));
+    constexpr PSOHandle LIGHTBVH_DEBUGVIS_PSO   = PSOHandle(GetTypeGUID(LIGHTBVH_DEBUGVIS_PSO));
+    constexpr PSOHandle CLUSTER_DEBUGVIS_PSO    = PSOHandle(GetTypeGUID(CLUSTER_DEBUGVIS_PSO));
+    constexpr PSOHandle CREATELIGHTLISTARGS_PSO = PSOHandle(GetTypeGUID(CREATELIGHTLISTARGS_POS));
+
+    static const PSOHandle DEPTHPREPASS                = PSOHandle(GetTypeGUID(DEPTHPREPASS));
 	static const PSOHandle FORWARDDRAWINSTANCED	       = PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
 	static const PSOHandle FORWARDDRAW_OCCLUDE		   = PSOHandle(GetTypeGUID(FORWARDDRAW_OCCLUDE));
 	static const PSOHandle TEXTURE2CUBEMAP_IRRADIANCE  = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP_IRRADIANCE));
@@ -113,11 +123,23 @@ namespace FlexKit
 	ID3D12PipelineState* CreateDeferredShadingPassPSO       (RenderSystem* RS);
 	ID3D12PipelineState* CreateComputeTiledDeferredPSO      (RenderSystem* RS);
 
+    ID3D12PipelineState* CreateLightBVH_PHASE1_PSO          (RenderSystem* RS);
+    ID3D12PipelineState* CreateLightBVH_PHASE2_PSO          (RenderSystem* RS);
+    ID3D12PipelineState* CreateLightBVH_DEBUGVIS_PSO        (RenderSystem* RS);
+    ID3D12PipelineState* CreateLightListArgs_PSO            (RenderSystem* RS);
+    ID3D12PipelineState* CreateCluster_DEBUGVIS_PSO         (RenderSystem* RS);
+    ID3D12PipelineState* CreateClusterLightListsPSO         (RenderSystem* RS);
+
+    ID3D12PipelineState* CreateClustersPSO                  (RenderSystem* RS);
+    ID3D12PipelineState* CreateClearClusterCountersPSO      (RenderSystem* RS);
+
 	ID3D12PipelineState* CreateBilaterialBlurHorizontalPSO  (RenderSystem* RS);
 	ID3D12PipelineState* CreateBilaterialBlurVerticalPSO    (RenderSystem* RS);
 
-	ID3D12PipelineState* CreateShadowMapPass(RenderSystem* RS);
+	ID3D12PipelineState* CreateShadowMapPass                (RenderSystem* RS);
 
+
+    /************************************************************************************************/
 
 
 	struct WorldRender_Targets
@@ -188,6 +210,11 @@ namespace FlexKit
 		float4 PositionR;
 	};
 
+    struct GPUCluster
+    {
+        float3 Min;
+        float3 Max;
+    };
 
 	struct LightBufferUpdate 
 	{
@@ -195,20 +222,37 @@ namespace FlexKit
 
 		CameraHandle			        camera;
 		ReserveConstantBufferFunction   reserveCB;
+        IndirectLayout&                 indirectLayout;
 
-		ResourceHandle			lightListBuffer;
-		FrameResourceHandle		lightListObject;
-		FrameResourceHandle		lightBufferObject;
+        const size_t counterOffset = 0;
+
+		ResourceHandle	    lightListBuffer;
+		FrameResourceHandle	lightListObject;
+		FrameResourceHandle	lightBufferObject;
+        FrameResourceHandle	lightBVH;
+        FrameResourceHandle	lightLookupObject;
+        FrameResourceHandle	lightCounterObject;
+
+
+        FrameResourceHandle	clusterBufferObject;
+        FrameResourceHandle	counterObject;
+        FrameResourceHandle	depthBufferObject;
+        FrameResourceHandle	indexBufferObject;
+        FrameResourceHandle argumentBufferObject;
+
+        FrameResourceHandle	debugBufferObject;
 	};
 
+    struct DEBUGVIS_DrawBVH
+    {
+        ReserveConstantBufferFunction   reserveCB;
+        LightBufferUpdate&              lightBufferUpdateData;
 
-	struct LighBufferDebugDraw
-	{
-		VertexBufferHandle		vertexBuffer;
-		ConstantBufferHandle	constantBuffer;
-		ResourceHandle			renderTarget;
-	};
-
+        FrameResourceHandle	            lightBVH;
+        FrameResourceHandle	            clusters;
+        FrameResourceHandle             renderTarget;
+        CameraHandle			        camera;
+    };
 
 	struct DepthPass
 	{
@@ -254,8 +298,6 @@ namespace FlexKit
 
 		CBPushBuffer passConstantsBuffer;
 		CBPushBuffer entityConstantsBuffer;
-
-		uint2       WH;
 
 		const CBPushBuffer&         entityConstants;
 
@@ -408,19 +450,19 @@ namespace FlexKit
 	};
 
 
-    struct ShadowMapPassData
-    {
-        Vector<TemporaryFrameResourceHandle>    shadowMapTargets;
-    };
+	struct ShadowMapPassData
+	{
+		Vector<TemporaryFrameResourceHandle>    shadowMapTargets;
+	};
 
-    struct LocalShadowMapPassData
-    {
-        ShadowMapPassData&            sharedData;
-        const GatherTask&             sceneSource;
-        ReserveConstantBufferFunction reserveCB;
-        TemporaryFrameResourceHandle  shadowMapTargets;
-        PointLightHandle              pointLight;
-    };
+	struct LocalShadowMapPassData
+	{
+		ShadowMapPassData&            sharedData;
+		const GatherTask&             sceneSource;
+		ReserveConstantBufferFunction reserveCB;
+		TemporaryFrameResourceHandle  shadowMapTargets;
+		PointLightHandle              pointLight;
+	};
 
 	struct TiledDeferredShade
 	{
@@ -428,7 +470,7 @@ namespace FlexKit
 		const PointLightGatherTask&         lights;
 		LightBufferUpdate&                  lightPass;
 		const PointLightShadowGatherTask&   pointLightShadowMaps;
-        ShadowMapPassData&                  shadowMaps;
+		ShadowMapPassData&                  shadowMaps;
 
 		Vector<GPUPointLight>		    pointLights;
 		const Vector<PointLightHandle>* pointLightHandles;
@@ -441,9 +483,14 @@ namespace FlexKit
 		FrameResourceHandle     MRIATargetObject;
 		FrameResourceHandle     TangentTargetObject;
 		FrameResourceHandle     depthBufferTargetObject;
+        FrameResourceHandle     clusterIndexBufferObject;
+        FrameResourceHandle     clusterBufferObject;
+        FrameResourceHandle     lightListsObject;
+
+
 		FrameResourceHandle		pointLightBufferObject;
-        FrameResourceHandle		lightBucketObject;
-        
+		FrameResourceHandle		lightBucketObject;
+		
 		FrameResourceHandle     renderTargetObject;
 	};
 
@@ -471,9 +518,9 @@ namespace FlexKit
 		ReserveConstantBufferFunction   constantBufferAllocator;
 		PointLightGatherTask&           pointLights;
 
-		uint3                       dispatchDims;
-		uint2                       WH;
-		CameraHandle                activeCamera;
+		uint3               dispatchDims;
+		uint2               WH;
+		CameraHandle        activeCamera;
 
 		FrameResourceHandle albedoObject;
 		FrameResourceHandle MRIAObject;
@@ -493,49 +540,83 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    ID3D12PipelineState* CreateShadowMapPass(RenderSystem* RS);
+	ID3D12PipelineState* CreateShadowMapPass(RenderSystem* RS);
 
 
-    struct ShadowPassMatrices
-    {
-        float4x4 ViewI[6];
-        float4x4 PV[6];
-    };
+	struct ShadowPassMatrices
+	{
+		float4x4 ViewI[6];
+		float4x4 PV[6];
+	};
 
-    ShadowPassMatrices CalculateShadowMapMatrices(const float3 pos, const float r, const float T);
-
-    /************************************************************************************************/
-
-
-	inline ShadowMapPassData& ShadowMapPass(
-		FrameGraph&                     frameGraph,
-		GatherTask&                     sceneSource,
-		ReserveConstantBufferFunction   reserveCB,
-		const double                    t,
-        iAllocator*                     allocator);
-
-    void ReleaseShadowMapPass(FrameGraph& frameGraph, ShadowMapPassData& shadowMaps);
+	ShadowPassMatrices CalculateShadowMapMatrices(const float3 pos, const float r, const float T);
 
 
 	/************************************************************************************************/
 
 
+	inline ShadowMapPassData& ShadowMapPass(
+		FrameGraph&                     frameGraph,
+		const SceneDescription          sceneDesc,
+		const uint2                     screenWH,
+		ReserveConstantBufferFunction   reserveCB,
+		const double                    t,
+		iAllocator*                     allocator);
+
+	void ReleaseShadowMapPass(FrameGraph& frameGraph, ShadowMapPassData& shadowMaps);
+
+
+	/************************************************************************************************/
+
+
+#define SHADOWMAPPING OFF
+
+    struct LightCluster
+    {
+        float4 Min;
+        float4 Max;
+    };
+
+    struct DEBUG_WorldRenderTimingValues
+    {
+        float gBufferPass       = 0;
+        float shadingPass       = 0;
+        float ClusterCreation   = 0;
+        float BVHConstruction   = 0;
+    };
+
 	class FLEXKITAPI WorldRender
 	{
 	public:
-		WorldRender(iAllocator* Memory, RenderSystem& RS_IN, TextureStreamingEngine& IN_streamingEngine, const uint2 WH) :
-			renderSystem                { RS_IN                                                                                     },
-			OcclusionCulling	        { false																                        },
-			lightLists			        { renderSystem.CreateUAVBufferResource(sizeof(uint32_t) * (WH / 10).Product() * 32)         },
-			pointLightBuffer	        { renderSystem.CreateUAVBufferResource(sizeof(GPUPointLight) * 1024)                        },
-			tempBuffer                  { renderSystem.CreateUAVTextureResource(WH, DeviceFormat::R16G16B16A16_FLOAT)               },
-			streamingEngine		        { IN_streamingEngine											                            },
-			lightMapWH			        { WH / 10                                                                                   }
+		WorldRender(iAllocator* allocator, RenderSystem& RS_IN, TextureStreamingEngine& IN_streamingEngine, const uint2 WH) :
+			renderSystem                { RS_IN },
+			OcclusionCulling	        { false	},
+
+            lightLists			        { renderSystem.CreateUAVBufferResource(16 * MEGABYTE) },
+			pointLightBuffer	        { renderSystem.CreateUAVBufferResource(4 * MEGABYTE) },
+            pointLightBVH               { renderSystem.CreateUAVBufferResource(4 * MEGABYTE) },
+            lightLookupBuffer           { renderSystem.CreateUAVBufferResource(4 * MEGABYTE) },
+            lightListCounterBuffer      { renderSystem.CreateUAVBufferResource(256) },
+
+            clusterBuffer	            { renderSystem.CreateUAVBufferResource(4 * MEGABYTE) },
+            counterBuffer               { renderSystem.CreateUAVBufferResource(256) },
+
+            indexBuffer                 { renderSystem.CreateUAVTextureResource(WH, DeviceFormat::R32G32B32A32_UINT) },
+            argumentBuffer              { renderSystem.CreateUAVBufferResource(256) },
+
+            debugBuffer1                { renderSystem.CreateUAVTextureResource(WH, DeviceFormat::R32G32B32A32_UINT) },
+
+
+            timeStats                   { renderSystem.CreateTimeStampQuery(256) },
+            timingReadBack              { renderSystem.CreateReadBackBuffer(512) },
+
+			streamingEngine		        { IN_streamingEngine },
+            createClusterLightListLayout{ renderSystem.CreateIndirectLayout({ ILE_DispatchCall }, allocator) }
 		{
-			RS_IN.RegisterPSOLoader(FORWARDDRAW,			    { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawPSO,		   });
+			RS_IN.RegisterPSOLoader(FORWARDDRAW,			    { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawPSO,		  });
 			RS_IN.RegisterPSOLoader(FORWARDDRAWINSTANCED,	    { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO });
 
-			RS_IN.RegisterPSOLoader(LIGHTPREPASS,			    { &RS_IN.Library.ComputeSignature,  CreateLightPassPSO			   });
+			RS_IN.RegisterPSOLoader(LIGHTPREPASS,			    { &RS_IN.Library.ComputeSignature,  CreateLightPassPSO			  });
 			RS_IN.RegisterPSOLoader(DEPTHPREPASS,			    { &RS_IN.Library.RS6CBVs4SRVs,      CreateDepthPrePassPSO         });
 
 			RS_IN.RegisterPSOLoader(GBUFFERPASS,			    { &RS_IN.Library.RS6CBVs4SRVs,      CreateGBufferPassPSO          });
@@ -545,10 +626,22 @@ namespace FlexKit
 			RS_IN.RegisterPSOLoader(ENVIRONMENTPASS,            { &RS_IN.Library.RS6CBVs4SRVs,      CreateEnvironmentPassPSO      });
 			RS_IN.RegisterPSOLoader(COMPUTETILEDSHADINGPASS,    { &RS_IN.Library.RSDefault,         CreateComputeTiledDeferredPSO });
 
-			RS_IN.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL,{ &RS_IN.Library.RSDefault,         CreateBilaterialBlurHorizontalPSO });
-			RS_IN.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,  { &RS_IN.Library.RSDefault,         CreateBilaterialBlurVerticalPSO   });
+            RS_IN.RegisterPSOLoader(CREATECLUSTERS,             { &RS_IN.Library.ComputeSignature,  CreateClustersPSO               });
+            RS_IN.RegisterPSOLoader(CREATECLUSTERLIGHTLISTS,    { &RS_IN.Library.ComputeSignature,  CreateClusterLightListsPSO      });
+            RS_IN.RegisterPSOLoader(CREATELIGHTBVH_PHASE1,      { &RS_IN.Library.ComputeSignature,  CreateLightBVH_PHASE1_PSO       });
+            RS_IN.RegisterPSOLoader(CREATELIGHTBVH_PHASE2,      { &RS_IN.Library.ComputeSignature,  CreateLightBVH_PHASE2_PSO       });
+            RS_IN.RegisterPSOLoader(CREATELIGHTLISTARGS_PSO,    { &RS_IN.Library.ComputeSignature,  CreateLightListArgs_PSO         });
 
-			RS_IN.RegisterPSOLoader(SHADOWMAPPASS,{ &RS_IN.Library.RSDefault, CreateShadowMapPass });
+
+            
+
+            RS_IN.RegisterPSOLoader(CLEARCOUNTERSPSO,           { &RS_IN.Library.ComputeSignature,  CreateClearClusterCountersPSO   });
+                
+			RS_IN.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL,    { &RS_IN.Library.RSDefault, CreateBilaterialBlurHorizontalPSO });
+			RS_IN.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,      { &RS_IN.Library.RSDefault, CreateBilaterialBlurVerticalPSO   });
+
+			RS_IN.RegisterPSOLoader(LIGHTBVH_DEBUGVIS_PSO,  { &RS_IN.Library.RSDefault, CreateLightBVH_DEBUGVIS_PSO });
+			RS_IN.RegisterPSOLoader(CLUSTER_DEBUGVIS_PSO,   { &RS_IN.Library.RSDefault, CreateCluster_DEBUGVIS_PSO });
 
 			RS_IN.QueuePSOLoad(GBUFFERPASS);
 			RS_IN.QueuePSOLoad(GBUFFERPASS_SKINNED);
@@ -560,11 +653,47 @@ namespace FlexKit
 			RS_IN.QueuePSOLoad(COMPUTETILEDSHADINGPASS);
 			RS_IN.QueuePSOLoad(BILATERALBLURPASSHORIZONTAL);
 			RS_IN.QueuePSOLoad(BILATERALBLURPASSVERTICAL);
-			RS_IN.QueuePSOLoad(SHADOWMAPPASS);
+            RS_IN.QueuePSOLoad(SHADOWMAPPASS);
+            RS_IN.QueuePSOLoad(CLEARCOUNTERSPSO);
 
-			RS_IN.SetDebugName(tempBuffer,        "tempBuffer");
-			RS_IN.SetDebugName(lightLists,        "lightLists");
-			RS_IN.SetDebugName(pointLightBuffer,  "pointLightBuffer");
+            RS_IN.QueuePSOLoad(CREATELIGHTBVH_PHASE1);
+            RS_IN.QueuePSOLoad(CREATELIGHTBVH_PHASE2);
+
+			RS_IN.SetDebugName(indexBuffer,             "clusterIndexBuffer");
+			RS_IN.SetDebugName(lightLists,              "lightLists");
+			RS_IN.SetDebugName(pointLightBuffer,        "pointLightBuffer");
+			RS_IN.SetDebugName(pointLightBVH,           "pointLightBVH");
+            RS_IN.SetDebugName(argumentBuffer,          "clusterBuildLightListArgsBuffer");
+            RS_IN.SetDebugName(lightLookupBuffer,       "lightLookUp");
+            RS_IN.SetDebugName(lightListCounterBuffer,  "lightListCounterBuffer");
+            
+
+            RS_IN.SetDebugName(clusterBuffer,       "clusterBuffer");
+            RS_IN.SetDebugName(counterBuffer,       "clusterCounterBuffer");
+
+            RS_IN.SetReadBackEvent(
+                timingReadBack,
+                [&](ReadBackResourceHandle resource)
+                {
+                    auto [buffer, bufferSize] = RS_IN.OpenReadBackBuffer(resource);
+                    EXITSCOPE(RS_IN.CloseReadBackBuffer(resource));
+
+                    size_t timePoints[64];
+                    memcpy(timePoints, (char*)buffer, sizeof(timePoints));
+
+                    UINT64 timeStampFreq;
+                    RS_IN.GraphicsQueue->GetTimestampFrequency(&timeStampFreq);
+
+                    float durations[32];
+
+                    for (size_t I = 0; I < 4; I++)
+                        durations[I] = float(timePoints[2 * I + 1] - timePoints[2 * I + 0]) / timeStampFreq * 1000;
+
+                    timingValues.gBufferPass        = durations[0];
+                    timingValues.ClusterCreation    = durations[1];
+                    timingValues.shadingPass        = durations[2];
+                    timingValues.BVHConstruction    = durations[3];
+                });
 		}
 
 
@@ -582,8 +711,18 @@ namespace FlexKit
 
 		void Release()
 		{
+            renderSystem.ReleaseUAV(clusterBuffer);
+            renderSystem.ReleaseUAV(counterBuffer);
+            renderSystem.ReleaseUAV(indexBuffer);
+            renderSystem.ReleaseUAV(debugBuffer1);
+            renderSystem.ReleaseUAV(argumentBuffer);
+            renderSystem.ReleaseUAV(lightLookupBuffer);
+            renderSystem.ReleaseUAV(lightListCounterBuffer);
+
+
 			renderSystem.ReleaseUAV(lightLists);
 			renderSystem.ReleaseUAV(pointLightBuffer);
+            renderSystem.ReleaseUAV(pointLightBVH);
 		}
 
 
@@ -627,10 +766,18 @@ namespace FlexKit
 				const CameraHandle              camera,
 				const GraphicScene&             scene,
 				const SceneDescription&         desc,
+                ResourceHandle                  depthBuffer,
 				ReserveConstantBufferFunction   reserveCB,
-				iAllocator*                     tempMemory,
-				LighBufferDebugDraw*            drawDebug = nullptr);
+				iAllocator*                     tempMemory);
 
+        DEBUGVIS_DrawBVH& DEBUGVIS_DrawLightBVH(
+				UpdateDispatcher&               dispatcher,
+				FrameGraph&                     frameGraph,
+				const CameraHandle              camera,
+                ResourceHandle                  renderTarget,
+                LightBufferUpdate&              lightBufferUpdate,
+				ReserveConstantBufferFunction   reserveCB,
+				iAllocator*                     tempMemory);
 
 		BackgroundEnvironmentPass& RenderPBR_IBL_Deferred(
 			UpdateDispatcher&               dispatcher,
@@ -679,7 +826,7 @@ namespace FlexKit
 			GBuffer&                        gbuffer,
 			ResourceHandle                  depthTarget,
 			ResourceHandle                  renderTarget,
-            ShadowMapPassData&              shadowMaps,
+			ShadowMapPassData&              shadowMaps,
 			LightBufferUpdate&              lightPass,
 			ReserveConstantBufferFunction   reserveCB,
 			ReserveVertexBufferFunction     reserveVB,
@@ -693,20 +840,38 @@ namespace FlexKit
 			ReserveConstantBufferFunction&          constantBufferAllocator,
 			const ComputeTiledDeferredShadeDesc&    scene);
 
+        DEBUG_WorldRenderTimingValues GetTimingValues() const { return timingValues; }
 	private:
 		RenderSystem&			renderSystem;
 
-		UAVResourceHandle		lightLists;			// GPU
-		UAVResourceHandle		pointLightBuffer;	// GPU
-		UAVTextureHandle		tempBuffer;	        // GPU
+		UAVResourceHandle		lightLists;			    // GPU
+		UAVResourceHandle		pointLightBuffer;	    // GPU
+        UAVResourceHandle		pointLightBVH;          // GPU
+        UAVResourceHandle		lightLookupBuffer;      // GPU
+        UAVResourceHandle		lightListCounterBuffer; // GPU
 
-		uint2					lightMapWH;			// Output Size
+
+        UAVResourceHandle		clusterBuffer;	    // GPU
+        UAVResourceHandle		counterBuffer;	    // GPU
+
+		UAVTextureHandle		indexBuffer;        // GPU
+        UAVResourceHandle		argumentBuffer;     // GPU
+
+
+        UAVTextureHandle		debugBuffer1;       // GPU
+
+        QueryHandle             timeStats;
+        ReadBackResourceHandle  timingReadBack;
 
 		TextureStreamingEngine&	streamingEngine;
 		bool                    OcclusionCulling;
+
+        FlexKit::IndirectLayout createClusterLightListLayout;
+
+        DEBUG_WorldRenderTimingValues timingValues;
 	};
 
-    
+	
 }	/************************************************************************************************/
 
 #endif

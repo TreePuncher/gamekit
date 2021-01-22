@@ -738,7 +738,7 @@ namespace FlexKit
 				return globalResources.Resources[res->resource].SOBuffer;
 		}
 
-		D3D12_VERTEX_BUFFER_VIEW ReadStreamOut(FrameResourceHandle handle, Context* ctx, size_t vertexSize) const
+		D3D12_VERTEX_BUFFER_VIEW ReadStreamOut(FrameResourceHandle handle, Context& ctx, size_t vertexSize) const
 		{
 			/*
 			typedef struct D3D12_VERTEX_BUFFER_VIEW
@@ -754,7 +754,7 @@ namespace FlexKit
 			auto deviceResource = renderSystem().GetDeviceResource(SOHandle);
 
 			if (res.currentState != DRS_VERTEXBUFFER) 
-				ctx->AddStreamOutBarrier(SOHandle, res.currentState, DRS_VERTEXBUFFER);
+				ctx.AddStreamOutBarrier(SOHandle, res.currentState, DRS_VERTEXBUFFER);
 
 			res.currentState = DRS_VERTEXBUFFER;
 
@@ -767,49 +767,49 @@ namespace FlexKit
 			return view;
 		}
 
-		ResourceHandle ReadRenderTarget(FrameResourceHandle resource, Context* ctx) const
+		ResourceHandle ReadRenderTarget(FrameResourceHandle resource, Context& ctx) const
 		{
 			auto state          = GetObjectState(resource);
 			auto renderTarget   = globalResources.GetRenderTarget(resource);
 
 			if (state != DRS_ShaderResource)
 			{
-				ctx->AddShaderResourceBarrier(renderTarget, state, DRS_ShaderResource);
+				ctx.AddShaderResourceBarrier(renderTarget, state, DRS_ShaderResource);
 				_FindSubNodeResource(resource).currentState = DRS_ShaderResource;
 			}
 
 			return renderTarget;
 		}
 
-		UAVTextureHandle ReadWriteUAVTexture(FrameResourceHandle resource, Context* ctx) const
+		UAVTextureHandle ReadWriteUAVTexture(FrameResourceHandle resource, Context& ctx) const
 		{
 			auto state  = GetObjectState(resource);
 			auto UAV2D  = globalResources.Resources[resource].UAVTexture;
 
 			if (state != DRS_UAV)
 			{
-				ctx->AddUAVBarrier(UAV2D, state, DRS_UAV);
+				ctx.AddUAVBarrier(UAV2D, state, DRS_UAV);
 				_FindSubNodeResource(resource).currentState = DRS_ShaderResource;
 			}
 
 			return UAV2D;
 		}
 
-		UAVResourceHandle ReadWriteUAVBuffer(FrameResourceHandle resource, Context* ctx) const
+		UAVResourceHandle ReadWriteUAVBuffer(const FrameResourceHandle resource, Context& ctx) const
 		{
 			auto state = GetObjectState(resource);
 			auto UAVBuffer = globalResources.Resources[resource].UAVBuffer;
 
 			if (state != DRS_UAV)
 			{
-				ctx->AddUAVBarrier(UAVBuffer, state, DRS_UAV);
-				_FindSubNodeResource(resource).currentState = DRS_ShaderResource;
+				ctx.AddUAVBarrier(UAVBuffer, state, DRS_UAV);
+				_FindSubNodeResource(resource).currentState = DRS_UAV;
 			}
 
 			return UAVBuffer;
 		}
 
-		UAVResourceHandle ReadUAVBuffer(FrameResourceHandle resource, DeviceResourceState state, Context& ctx) const
+		UAVResourceHandle ReadUAVBuffer(const FrameResourceHandle resource, DeviceResourceState state, Context& ctx) const
 		{
 			auto currentState = GetObjectState(resource);
 			auto UAVBuffer = globalResources.Resources[resource].UAVBuffer;
@@ -1319,9 +1319,9 @@ namespace FlexKit
 				Context.AddReadable(dependency);
 
 				ResourceTransition transition = {
-					.Object       = frameResourceHandle,
-					.BeforeState  = frameObject.State,
-					.AfterState   = state,
+					frameResourceHandle,
+					frameObject.State,
+					state,
 				};
 
 				Transitions.push_back(transition);
@@ -1357,9 +1357,9 @@ namespace FlexKit
 				Context.AddWriteable(dependency);
 
 				ResourceTransition transition = {
-					.Object       = frameResourceHandle,
-					.BeforeState  = frameObject.State,
-					.AfterState   = state,
+					frameResourceHandle,
+					frameObject.State,
+					state,
 				};
 
 				Transitions.push_back(transition);
@@ -1620,7 +1620,7 @@ namespace FlexKit
 	void ClearDepthBuffer	(FrameGraph& Graph, ResourceHandle Handle, float D);
 	void PresentBackBuffer	(FrameGraph& Graph, IRenderWindow& Window);
 
-	inline void PresentBackBuffer(FrameGraph& frameGraph, ResourceHandle& backBuffer)
+	inline void PresentBackBuffer(FrameGraph& frameGraph, ResourceHandle backBuffer)
 	{
 		struct PassData
 		{
@@ -1666,8 +1666,8 @@ namespace FlexKit
 
 		ConstantBufferDataSet   constants;
 		VertexBufferDataSet     vertices;
-		size_t                  vertexCount;
-		ResourceHandle          texture = InvalidHandle_t;
+		size_t                  vertexCount     = 0;
+		ResourceHandle          texture         = InvalidHandle_t;
 	};
 
 	typedef Vector<ShapeDraw> DrawList;
@@ -1766,8 +1766,14 @@ namespace FlexKit
 
 		bool operator == (Range& rhs)
 		{
-			return  (rhs.itr == itr) & (rhs.end_ == end_) & (rhs.step_ == step_);
+			return  (rhs.itr == itr) && (rhs.end_ == end_) && (rhs.step_ == step_);
 		}
+
+        bool operator != (Range& rhs)
+        {
+            return  !(*this == rhs);
+        }
+
 
 		Range operator ++ ()
 		{
@@ -1786,7 +1792,7 @@ namespace FlexKit
 	};
 
 
-	auto MakeRange(size_t begin, size_t end, size_t step = 1)
+	inline auto MakeRange(size_t begin, size_t end, size_t step = 1)
 	{
 		return Range{ begin, end, step };
 	}
@@ -1813,22 +1819,23 @@ namespace FlexKit
 			ReserveConstantBufferFunction&  reserveCB,
 			FrameResources&			        Resources) override
 		{
-			auto VBBuffer   = reserveVB(sizeof(ShapeVert) * 3 * Divisions);
+			VBPushBuffer VBBuffer   = reserveVB(sizeof(ShapeVert) * 3 * Divisions);
 
 			const float Step = 2 * pi / Divisions;
+            auto range = MakeRange(0, Divisions);
 
 			VertexBufferDataSet vertices{
 				SET_TRANSFORM_OP,
-				MakeRange(0, Divisions),
+				range,
 				[&](size_t I, auto& pushBuffer) -> int
 				{
-					float2 V1 = { POS.x + R * cos(Step * (I + 1)),	POS.y - AspectRatio * (R * sin(Step * (I + 1))) };
-					float2 V2 = { POS.x + R * cos(Step * I),		POS.y - AspectRatio * (R * sin(Step * I)) };
+					const float2 V1 = { POS.x + R * cos(Step * (I + 1)),	POS.y - AspectRatio * (R * sin(Step * (I + 1))) };
+					const float2 V2 = { POS.x + R * cos(Step * I),		POS.y - AspectRatio * (R * sin(Step * I)) };
 
-					pushBuffer.Push(ShapeVert{ Position2SS(POS),    { 0.0f, 1.0f }, Color });
-					pushBuffer.Push(ShapeVert{ Position2SS(V1),	    { 0.0f, 1.0f }, Color });
-					pushBuffer.Push(ShapeVert{ Position2SS(V2),	    { 1.0f, 0.0f }, Color });
-				},
+					pushBuffer.Push(ShapeVert{ Position2SS(POS),    float2{ 0.0f, 1.0f }, Color });
+					pushBuffer.Push(ShapeVert{ Position2SS(V1),	    float2{ 0.0f, 1.0f }, Color });
+					pushBuffer.Push(ShapeVert{ Position2SS(V2),	    float2{ 1.0f, 0.0f }, Color });
+				},                                                  
 				VBBuffer };
 
 			Constants CB_Data = {
@@ -1836,7 +1843,9 @@ namespace FlexKit
 				Color,
 				float4x4::Identity()
 			};
-			ConstantBufferDataSet constants{ CB_Data, reserveCB(256) };
+
+            auto constantBuffer = reserveCB(256);
+			ConstantBufferDataSet constants{ CB_Data, constantBuffer };
 
 			DrawList.push_back({ ShapeDraw::RenderMode::Triangle, constants, vertices, Divisions * 3});
 		}
@@ -1865,17 +1874,18 @@ namespace FlexKit
 			FrameResources&			        Resources) override
 		{
 			auto VBBuffer = reserveVB(sizeof(ShapeVert) * 2 * Lines.size());
+            auto range = MakeRange(0, Lines.size());
 
 			VertexBufferDataSet vertices{
 				SET_TRANSFORM_OP,
-				MakeRange(0, Lines.size()),
+				range,
 				[&](size_t I, auto& pushBuffer) -> ShapeVert
 				{
 					auto positionA = Lines[I].A;
 					auto positionB = Lines[I].B;
 
-					auto pointA = ShapeVert{ positionA, { 0.0f, 1.0f }, Lines[I].AColour };
-					auto pointB = ShapeVert{ positionB, { 0.0f, 1.0f }, Lines[I].BColour };
+					auto pointA = ShapeVert{ positionA, float2{ 0.0f, 1.0f }, float4(Lines[I].AColour, 0) };
+					auto pointB = ShapeVert{ positionB, float2{ 0.0f, 1.0f }, float4(Lines[I].BColour, 0) };
 
 					pushBuffer.Push(pointA);
 					pushBuffer.Push(pointB);
@@ -1890,7 +1900,8 @@ namespace FlexKit
 				float4x4::Identity()
 			};
 
-			ConstantBufferDataSet constants{ CB_Data, reserveCB(256) };
+            auto constantBuffer = reserveCB(256);
+			ConstantBufferDataSet constants{ CB_Data, constantBuffer };
 			DrawList.push_back({ ShapeDraw::RenderMode::Line, constants, vertices, 2 * Lines.size() });
 		}
 
@@ -1917,17 +1928,18 @@ namespace FlexKit
 			FrameResources&			        Resources) override
 		{
 			auto VBBuffer   = reserveVB(sizeof(ShapeVert) * 2 * Lines.size());
+            auto range      = MakeRange(0, Lines.size());
 
 			VertexBufferDataSet vertices{
 				SET_TRANSFORM_OP,
-				MakeRange(0, Lines.size()),
+                range,
 				[&](size_t I, auto& pushBuffer) -> ShapeVert
 				{
 					auto positionA = Position2SS(Lines[I].A);
 					auto positionB = Position2SS(Lines[I].B);
 
-					auto pointA = ShapeVert{ positionA, { 0.0f, 1.0f }, Lines[I].AColour };
-					auto pointB = ShapeVert{ positionB, { 0.0f, 1.0f }, Lines[I].BColour };
+					auto pointA = ShapeVert{ positionA, float2{ 0.0f, 1.0f }, Lines[I].AColour };
+					auto pointB = ShapeVert{ positionB, float2{ 0.0f, 1.0f }, Lines[I].BColour };
 
 					pushBuffer.Push(pointA);
 					pushBuffer.Push(pointB);
@@ -1942,7 +1954,8 @@ namespace FlexKit
 				float4x4::Identity()
 			};
 
-			ConstantBufferDataSet constants{ CB_Data, reserveCB(256) };
+            auto constantBuffer = reserveCB(256);
+			ConstantBufferDataSet constants{ CB_Data, constantBuffer };
 			DrawList.push_back({ ShapeDraw::RenderMode::Line, constants, vertices, 2 * Lines.size() });
 		}
 
@@ -1972,7 +1985,7 @@ namespace FlexKit
 			float2 RectUpperRight	= { RectBottomRight.x,	RectUpperLeft.y };
 			float2 RectBottomLeft	= { RectUpperLeft.x,	RectBottomRight.y };
 
-			ShapeVert vertices[] = {
+			const ShapeVert verticeData[] = {
 				ShapeVert{ Position2SS(RectUpperLeft),	 { 0.0f, 1.0f }, Color },
 				ShapeVert{ Position2SS(RectBottomRight), { 1.0f, 0.0f }, Color },
 				ShapeVert{ Position2SS(RectBottomLeft),	 { 0.0f, 1.0f }, Color },
@@ -1981,17 +1994,20 @@ namespace FlexKit
 				ShapeVert{ Position2SS(RectUpperRight),	 { 1.0f, 1.0f }, Color },
 				ShapeVert{ Position2SS(RectBottomRight), { 1.0f, 0.0f }, Color } };
 
-			Constants CB_Data = {
+			const Constants constantData = {
 				Color,
 				Color,
 				float4x4::Identity()
 			};
 
-			DrawList.push_back(
-				{   ShapeDraw::RenderMode::Triangle,
-					ConstantBufferDataSet   { CB_Data, reserveCB(sizeof(Constants))         },
-					VertexBufferDataSet     { vertices, reserveVB(sizeof(ShapeVert) * 6)    },
-					6 });
+            auto constantBuffer     = reserveCB(sizeof(Constants));
+            auto vertexBuffer       = reserveVB(sizeof(ShapeVert) * 6);
+
+			DrawList.emplace_back(
+                    ShapeDraw::RenderMode::Triangle,
+                    ConstantBufferDataSet{ constantData, constantBuffer },
+                    VertexBufferDataSet{ verticeData, 6, vertexBuffer },
+                    6u);
 		}
 
 		float2 POS;
@@ -2163,6 +2179,7 @@ namespace FlexKit
 		iAllocator*                     allocator, 
 		TY_OTHER ... Args)
 	{
+        /*
 		struct ShapeParams
 		{
 			ReserveVertexBufferFunction     reserveVB;
@@ -2171,27 +2188,40 @@ namespace FlexKit
 			FrameResourceHandle		        RenderTarget;
 			DrawList				        Draws;
 		};
+        */
+        struct temp {};
+
+        FK_ASSERT(0);
+
+        auto& pass = frameGraph.AddNode<temp>({}, [](FrameGraphNodeBuilder& Builder, temp& Data) {}, [](const temp& Data, const ResourceHandler& frameResources, Context& context, iAllocator& allocator) {});
 
 
+        /*
 		auto& Pass = frameGraph.AddNode<ShapeParams>(
 			ShapeParams{
 				reserveVB,
 				reserveCB,
 				state,
 			},
-			[&](FrameGraphNodeBuilder& Builder, ShapeParams& Data)
+            */
+
+        /*
+        auto& pass = frameGraph.AddNode<temp>(
+            temp{},
+			[&](FrameGraphNodeBuilder& Builder, temp& Data)
 			{
 				// Single Thread Section
 				// All Rendering Data Must be pushed into buffers here in advance, or allocated in advance
 				// for thread safety
 
-				Data.RenderTarget	= Builder.WriteRenderTarget(renderTarget);
-				Data.Draws			= DrawList(allocator);
+				//Data.RenderTarget	= Builder.WriteRenderTarget(renderTarget);
+				//Data.Draws			= DrawList(allocator);
 
-				AddShapes(Data.Draws, reserveVB, reserveCB, frameGraph.Resources, std::forward<TY_OTHER&&>(Args)...);
+				//AddShapes(Data.Draws, reserveVB, reserveCB, frameGraph.Resources, std::forward<TY_OTHER&&>(Args)...);
 			},
-			[=](const ShapeParams& Data, const ResourceHandler& frameResources, Context& context, iAllocator& allocator)
+			[=](const temp& Data, const ResourceHandler& frameResources, Context& context, iAllocator& allocator)
 			{	// Multi-threadable Section
+                /*
 				auto WH = frameResources.GetTextureWH(Data.RenderTarget);
 
 				context.SetScissorAndViewports({ frameResources.GetRenderTarget(Data.RenderTarget)} );
@@ -2239,6 +2269,7 @@ namespace FlexKit
 					PreviousMode = D.Mode;
 				}
 			});
+        */
 	} 
 
 
@@ -2328,7 +2359,7 @@ namespace FlexKit
 
 				size_t MaxElementSize = 0;
 				for (auto& i : constantData)
-					MaxElementSize = std::max(MaxElementSize, i.bufferSize);
+					MaxElementSize = Max(MaxElementSize, i.bufferSize);
 
 				data.constantBuffer			= Reserve(desc.constantBuffer, MaxElementSize, constantData.size(), frameGraph.Resources);
 				data.instanceBuffer			= Reserve(desc.instanceBuffer, instanceElementSize * desc.reserveCount, frameGraph.Resources);
@@ -2399,7 +2430,7 @@ namespace FlexKit
 	};
 
 
-	void WireframeRectangleList(
+	inline void WireframeRectangleList(
 		FrameGraph&						frameGraph,
 		DrawWireframeRectangle_Desc&	desc,
 		Vector<Rectangle>&				rects,
@@ -2460,6 +2491,10 @@ namespace FlexKit
 				Data.constants          = ConstantBufferDataSet(locals, constantBuffer);
 				Data.cameraConstants    = ConstantBufferDataSet(cameraBuffer, constantBuffer);
 
+
+                FK_ASSERT(0, "ERROR");
+
+                /*
 				VertexBufferDataSet vertices{
 					SET_TRANSFORM_OP,
 					MakeRange(0, rects.size()),
@@ -2491,6 +2526,7 @@ namespace FlexKit
 					vertexBuffer };
 
 				Data.vertexCount = (uint32_t)rects.size() * 8;
+                */
 			},
 			[](auto& Data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
@@ -2525,7 +2561,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	// Requires a registered DRAW_LINE3D_PSO pipeline state!
-	void Draw3DGrid(
+	inline void Draw3DGrid(
 		FrameGraph&				frameGraph,
 		const size_t			ColumnCount,
 		const size_t			RowCount,
@@ -2545,21 +2581,21 @@ namespace FlexKit
 
 		//  Vertical Lines on ground
 		for (size_t I = 1; I < RowCount; ++I)
-			Lines.push_back(
-				{ { RStep  * I * GridWH.x, 0, 0 },
-				GridColor,
-				{ RStep  * I * GridWH.x, 0, GridWH.y },
-				GridColor });
+			Lines.emplace_back(
+                float3{ RStep  * I * GridWH.x, 0, 0 },
+				GridColor.xyz(),
+                float3{ RStep  * I * GridWH.x, 0, GridWH.y },
+				GridColor.xyz());
 
 
 		// Horizontal lines on ground
 		const auto CStep = 1.0f / ColumnCount;
 		for (size_t I = 1; I < ColumnCount; ++I)
-			Lines.push_back(
-				{ { 0,			0, CStep  * I * GridWH.y },
-				GridColor,
-				{ GridWH.x,		0, CStep  * I * GridWH.y },
-				GridColor });
+			Lines.emplace_back(
+				float3{ 0,			0, CStep  * I * GridWH.y },
+				GridColor.xyz(),
+                float3{ GridWH.x,   0, CStep  * I * GridWH.y },
+				GridColor.xyz());
 
 
 		struct DrawGrid
@@ -2596,8 +2632,8 @@ namespace FlexKit
 
 
 				Drawable::VConstantsLayout DrawableConstants = {	
-					.MP			= Drawable::MaterialProperties{},
-					.Transform	= float4x4::Identity()
+					Drawable::MaterialProperties{},
+					float4x4::Identity()
 				};
 
 				CBPushBuffer cbPushBuffer(
@@ -2613,9 +2649,10 @@ namespace FlexKit
 					sizeof(VertexLayout) * Lines.size() * 2,
 					frameGraph.GetRenderSystem());
 
+                auto range = MakeRange(0, Lines.size());
 				VertexBufferDataSet vertices{
 					SET_TRANSFORM_OP,
-					MakeRange(0, Lines.size()),
+					range,
 					[&](size_t I, auto& pushBuffer) -> VertexLayout
 					{
 						const LineSegment& lineSegment = Lines[I];

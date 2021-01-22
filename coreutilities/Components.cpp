@@ -11,7 +11,7 @@ namespace FlexKit
 
         StringID newID;
         newID.ID[length] = '\0';
-        strncpy_s(newID.ID, initial, min(sizeof(StringID), length));
+        strncpy_s(newID.ID, initial, Min(sizeof(StringID), length));
 
         handles[handle] = static_cast<index_t>(IDs.push_back(newID));
 
@@ -46,6 +46,65 @@ namespace FlexKit
         const size_t IDLen = strnlen(blob.ID, sizeof(blob.ID));
 
         GO.AddView<StringIDView>(blob.ID, IDLen);
+    }
+
+
+    /************************************************************************************************/
+
+
+    void GameOjectTest(iAllocator* allocator)
+    {
+        SampleComponent		sample1(allocator);
+        SampleComponent2	sample2(allocator);
+        SampleComponent3	sample3(allocator);
+
+        GameObject go;
+        go.AddView<SampleView>();
+        go.AddView<SampleView2>();
+        go.AddView<TestView>();
+
+        Apply(go,
+            [&](	// Function Sources
+                SampleView& sample1,
+                SampleView2& sample2,
+                SampleView3& sample3
+                )
+            {	// do things with behaviors
+                // JK doesn't run, not all inputs satisfied!
+                sample1.DoSomething();
+                sample2.DoSomething();
+                sample3.DoSomething();
+
+                FK_ASSERT(false, "Expected Failure");
+            },
+            [&]
+            {
+                FK_ASSERT(true, "SUCCESS");
+
+                // this runs instead!
+            });
+
+        go.AddView<SampleView3>();
+
+        Apply(go,
+            [](	// Function Sources
+                SampleView& sample1,
+                SampleView2& sample2,
+                SampleView3& sample3,
+                TestView& test1)
+            {	// do things with behaviors
+                sample1.DoSomething();
+                sample2.DoSomething();
+                sample3.DoSomething();
+
+                auto val = test1.GetData();
+
+                FK_ASSERT(true, "SUCCESS");
+            },
+            []
+            {   // should not run
+                FK_ASSERT(false, "Unexpected Failure");
+            });
     }
 
 

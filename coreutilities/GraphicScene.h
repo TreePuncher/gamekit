@@ -35,6 +35,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CoreSceneObjects.h"
 #include "defaultpipelinestates.h"
 
+#include "FrameGraph.h"
+
 namespace FlexKit
 {
     // IDs
@@ -117,7 +119,7 @@ namespace FlexKit
 	};
 
 
-	TriMeshHandle GetTriMesh(GameObject& go)
+	inline TriMeshHandle GetTriMesh(GameObject& go)
 	{
 		return Apply(go,
 			[&](DrawableView& drawable)
@@ -134,7 +136,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void SetMaterialParams(GameObject& go, float3 albedo, float kS, float IOR, float anisotropic, float roughness, float metallic)
+    inline void SetMaterialParams(GameObject& go, float3 albedo, float kS, float IOR, float anisotropic, float roughness, float metallic)
     {
         return Apply(go,
             [&](DrawableView& drawable)
@@ -153,7 +155,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void ToggleSkinned(GameObject& go, bool enabled)
+    inline void ToggleSkinned(GameObject& go, bool enabled)
     {
         return Apply(go,
             [&](DrawableView& drawable)
@@ -269,7 +271,7 @@ namespace FlexKit
 
         float rScale = 1;
         for (size_t I = 0; I < 3; ++I)
-            rScale = max(rScale, Scale[I]);
+            rScale = Max(rScale, Scale[I]);
 
 		Apply(
 			go,
@@ -607,7 +609,7 @@ namespace FlexKit
     using PointLightShadowMapView   = PointLightShadowMap::View;
 
 
-    void EnablePointLightShadows(GameObject& gameObject)
+    inline void EnablePointLightShadows(GameObject& gameObject)
     {
         if (!Apply(gameObject,
             [](PointLightShadowMapView& pointLight){ return true; }, []{ return false; }))

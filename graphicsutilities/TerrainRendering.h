@@ -25,6 +25,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef TERRAINRENDERING
 #define TERRAINRENDERING
 
+#include "..\pch.h"
+
 #include "buildsettings.h"
 #include "containers.h"
 #include "intersection.h"
@@ -33,7 +35,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "graphics.h"
 #include "DDSUtilities.h"
 
-#include <d3dx12.h>
 #include <DirectXMath.h>
 
 
@@ -115,7 +116,7 @@ namespace FlexKit
 		{
 			static_assert(size < sBitFields, "Too many bit fields!");
 
-			tileIDBitField	= tileIDBitField | id[0];
+			tileIDBitField	= tileIDBitField | ID[0];
 			size_t i		= 0;
 
 			do
@@ -288,7 +289,7 @@ namespace FlexKit
 	};
 
 
-	static_vector<TerrainPatch, 4> CreateSubPatches(const TerrainPatch& patch)
+	inline static_vector<TerrainPatch, 4> CreateSubPatches(const TerrainPatch& patch)
 	{
 		auto NWPatch = patch;
 		auto NEPatch = patch;
@@ -531,15 +532,15 @@ namespace FlexKit
 			auto point3 = Vect4ToFloat4(transform * float4(WSPoints[2], 1));
 			auto point4 = Vect4ToFloat4(transform * float4(WSPoints[3], 1));
 
-			point1 /= max(0.000001f, point1.w);
-			point2 /= max(0.000001f, point2.w);
-			point3 /= max(0.000001f, point3.w);
-			point4 /= max(0.000001f, point4.w);
+			point1 /= Max(0.000001f, point1.w);
+			point2 /= Max(0.000001f, point2.w);
+			point3 /= Max(0.000001f, point3.w);
+			point4 /= Max(0.000001f, point4.w);
 
-			longestEdge = max(longestEdge, (point1 - point2).xyz().magnitude()) / 2;
-			longestEdge = max(longestEdge, (point2 - point3).xyz().magnitude()) / 2;
-			longestEdge = max(longestEdge, (point3 - point4).xyz().magnitude()) / 2;
-			longestEdge = max(longestEdge, (point4 - point1).xyz().magnitude()) / 2;
+			longestEdge = Max(longestEdge, (point1 - point2).xyz().magnitude()) / 2;
+			longestEdge = Max(longestEdge, (point2 - point3).xyz().magnitude()) / 2;
+			longestEdge = Max(longestEdge, (point3 - point4).xyz().magnitude()) / 2;
+			longestEdge = Max(longestEdge, (point4 - point1).xyz().magnitude()) / 2;
 
 			return longestEdge;
 		}
@@ -618,9 +619,9 @@ namespace FlexKit
 				data.renderTarget = builder.WriteRenderTarget(renderTarget);
 
 				data.heap.Init(
-					frameGraph.resources.renderSystem(),
-					frameGraph.resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
-					tempMemory).NullFill(frameGraph.resources.renderSystem());
+					frameGraph.GetRenderSystem(),
+					frameGraph.GetRenderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
+					tempMemory).NullFill(frameGraph.GetRenderSystem());
 			}, 
 			[&patches = update.patches](debugDraw& data, const FrameResources& resources, Context* ctx)
 			{

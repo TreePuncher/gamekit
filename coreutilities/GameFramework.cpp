@@ -266,7 +266,7 @@ namespace FlexKit
 
 		if (stats.fpsT > 1.0)
 		{
-			stats.fps         = stats.fpsCounter;
+			stats.fps        = stats.fpsCounter;
 			stats.fpsCounter = 0;
 			stats.fpsT       = 0.0;
 		}
@@ -385,22 +385,23 @@ namespace FlexKit
 
 	void GameFramework::DrawDebugHUD(double dT, VertexBufferHandle textBuffer, ResourceHandle renderTarget, FrameGraph& frameGraph)
 	{
-		uint32_t VRamUsage	= (uint32_t)(core.RenderSystem._GetVidMemUsage() / MEGABYTE);
-		char* TempBuffer	= (char*)core.GetTempMemory().malloc(512);
-		auto DrawTiming		= float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
+		uint32_t VRamUsage	        = (uint32_t)(core.RenderSystem._GetVidMemUsage() / MEGABYTE);
+		char* TempBuffer	        = (char*)core.GetTempMemory().malloc(512);
+		auto DrawTiming		        = float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
+        const char* RTFeatureStr    = core.RenderSystem.GetRTFeatureLevel() == RenderSystem::AvailableFeatures::Raytracing::RT_FeatureLevel_NOTAVAILABLE ? "Not Available" : "Available";
 
 		sprintf_s(TempBuffer, 512, 
 			"Current VRam Usage: %u MB\n"
 			"FPS: %u\n"
 			"Update/Draw Dispatch Time: %fms\n"
 			"Objects Drawn: %u\n"
+            "Hardware RT available: %s\n"
 			"Build Date: " __DATE__ "\n",
 			VRamUsage, 
 			(uint32_t)stats.fps,
-			DrawTiming, 
-			(uint32_t)stats.objectsDrawnLastFrame);
-
-
+			DrawTiming,
+			(uint32_t)stats.objectsDrawnLastFrame,
+            RTFeatureStr);
         
         const uint2 WH          = core.RenderSystem.GetTextureWH(renderTarget);
         const float aspectRatio = float(WH[0]) / float(WH[1]);
@@ -610,7 +611,7 @@ namespace FlexKit
 			const char* VariableIdentifier = (const char*)Arguments->Data_ptr;
 			for (auto Var : C->variables)
 			{
-				if (!strncmp(Var.VariableIdentifier.str, VariableIdentifier, min(strlen(Var.VariableIdentifier.str), Arguments->Data_size)))
+				if (!strncmp(Var.VariableIdentifier.str, VariableIdentifier, Min(strlen(Var.VariableIdentifier.str), Arguments->Data_size)))
 				{
 					if(Var.Type == ConsoleVariableType::CONSOLE_UINT)
 					Mode = *(size_t*)Var.Data_ptr;

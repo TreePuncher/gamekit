@@ -1,8 +1,0 @@
-namespace EditorWinUI
-{
-    [default_interface]
-    runtimeclass SceneViewport : Windows.UI.Xaml.Controls.Page
-    {
-        SceneViewport();
-    }
-}

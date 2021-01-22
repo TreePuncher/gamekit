@@ -25,7 +25,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TerrainRendering.h"
 #include "intersection.h"
 
-#include <d3dx12.h>
 #include <stdio.h>
 
 #pragma warning( disable : 4267 )
@@ -36,8 +35,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateCullTerrainComputePSO(RenderSystem* renderSystem)
 	{
-		auto cullTerrain_shader_VS = LoadShader("CP_PassThroughVS", "CP_PassThroughVS", "vs_5_1", "assets\\cullterrain.hlsl");
-		auto cullTerrain_shader_GS = LoadShader("CullTerrain",		"CullTerrain",		"gs_5_0", "assets\\cullterrain.hlsl");
+		auto cullTerrain_shader_VS = renderSystem->LoadShader("CP_PassThroughVS", "vs_6_0", "assets\\cullterrain.hlsl");
+		auto cullTerrain_shader_GS = renderSystem->LoadShader("CullTerrain", "gs_6_0", "assets\\cullterrain.hlsl");
 
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] =
@@ -115,15 +114,9 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateForwardRenderTerrainPSO(RenderSystem* renderSystem)
 	{
-		auto forwardRenderTerrain_shader_VS = LoadShader("CP_PassThroughVS",	"CP_PassThroughVS",		"vs_5_1", "assets\\forwardRenderTerrain.hlsl");
-		auto forwardRenderTerrain_shader_GS = LoadShader("GS_RenderTerrain",	"GS_RenderTerrain",		"gs_5_0", "assets\\forwardRenderTerrain.hlsl");
-		auto forwardRenderTerrain_shader_PS = LoadShader("PS_RenderTerrain",	"PS_RenderTerrain",		"ps_5_1", "assets\\forwardRenderTerrain.hlsl");
-
-		EXITSCOPE(
-			Release(forwardRenderTerrain_shader_VS);
-			Release(forwardRenderTerrain_shader_GS);
-			Release(forwardRenderTerrain_shader_PS);
-			);
+		auto forwardRenderTerrain_shader_VS = renderSystem->LoadShader("CP_PassThroughVS", "vs_6_0", "assets\\forwardRenderTerrain.hlsl");
+		auto forwardRenderTerrain_shader_GS = renderSystem->LoadShader("GS_RenderTerrain", "gs_6_0", "assets\\forwardRenderTerrain.hlsl");
+		auto forwardRenderTerrain_shader_PS = renderSystem->LoadShader("PS_RenderTerrain", "ps_6_0", "assets\\forwardRenderTerrain.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] =
 		{
@@ -172,16 +165,10 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateForwardRenderTerrainWireFramePSO(RenderSystem* renderSystem)
 	{
-		auto forwardRenderTerrain_shader_VS = LoadShader("CP_PassThroughVS",	"CP_PassThroughVS",				"vs_5_1", "assets\\forwardRenderTerrain.hlsl");
-		auto forwardRenderTerrain_shader_GS = LoadShader("GS_RenderTerrain",	"GS_RenderTerrain",				"gs_5_0", "assets\\forwardRenderTerrain.hlsl");
-		auto ShaderPaint_Wire				= LoadShader("PS_RenderTerrainDEBUG",	"PS_RenderTerrainDEBUG",	"ps_5_1", "assets\\forwardRenderTerrainDEBUG.hlsl");
+		auto forwardRenderTerrain_shader_VS = renderSystem->LoadShader("CP_PassThroughVS",		"vs_6_0", "assets\\forwardRenderTerrain.hlsl");
+		auto forwardRenderTerrain_shader_GS = renderSystem->LoadShader("GS_RenderTerrain",		"gs_6_0", "assets\\forwardRenderTerrain.hlsl");
+		auto ShaderPaint_Wire				= renderSystem->LoadShader("PS_RenderTerrainDEBUG",	"ps_6_0", "assets\\forwardRenderTerrainDEBUG.hlsl");
 
-
-		EXITSCOPE(
-			Release(forwardRenderTerrain_shader_VS);
-			Release(forwardRenderTerrain_shader_GS);
-			Release(ShaderPaint_Wire);
-			);
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] =
 		{

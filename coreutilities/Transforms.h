@@ -93,7 +93,7 @@ namespace FlexKit
 		};
 
 		size_t used;
-		size_t max;
+		size_t Max;
 
 		Node*			Nodes;
 		LT_Entry*		LT;
@@ -115,7 +115,7 @@ namespace FlexKit
 		};
 		#pragma pack(pop)
 
-	}SceneNodeTable;
+	}inline SceneNodeTable;
 
 
 	/************************************************************************************************/
@@ -288,48 +288,48 @@ namespace FlexKit
 		void SetParentNode(NodeHandle Parent)
 		{
 			FlexKit::SetParentNode(Parent, node);
-			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
+			Overrides_TY::SetDirty(static_cast<typename Overrides_TY::Parent_TY*>(this));
 		}
 
 
 		void Yaw(float r)
 		{
 			FlexKit::Yaw(node, r);
-			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
+			Overrides_TY::SetDirty(static_cast<typename Overrides_TY::Parent_TY*>(this));
 		}
 
 
 		void Roll(float r)
 		{
 			FlexKit::Roll(node, r);
-			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
+			Overrides_TY::SetDirty(static_cast<typename Overrides_TY::Parent_TY*>(this));
 		}
 
 
 		void Pitch(float r)
 		{
 			FlexKit::Pitch(node, r);
-			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
+			Overrides_TY::SetDirty(static_cast<typename Overrides_TY::Parent_TY*>(this));
 		}
 
 		void Scale(float3 xyz)
 		{
 			FlexKit::Scale(node, xyz);
-			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
+			Overrides_TY::SetDirty(static_cast<typename Overrides_TY::Parent_TY*>(this));
 		}
 
 
 		void TranslateLocal(float3 xyz)
 		{
 			FlexKit::TranslateLocal(node, xyz);
-			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
+			Overrides_TY::SetDirty(static_cast<typename Overrides_TY::Parent_TY*>(this));
 		}
 
 
 		void TranslateWorld(float3 xyz)
 		{
 			FlexKit::TranslateWorld(node, xyz);
-			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
+			Overrides_TY::SetDirty(static_cast<typename Overrides_TY::Parent_TY*>(this));
 		}
 
 
@@ -369,7 +369,7 @@ namespace FlexKit
 		NodeHandle node;
 	};
 
-    void Translate(GameObject& go, const float3 xyz)
+    inline void Translate(GameObject& go, const float3 xyz)
     {
         Apply(go,
             [&](SceneNodeView<>& node)
@@ -378,7 +378,7 @@ namespace FlexKit
             });
     }
 
-	float3 GetWorldPosition(GameObject& go)
+	inline float3 GetWorldPosition(GameObject& go)
 	{
 		return Apply(go, 
 			[&](SceneNodeView<>& node)
@@ -387,7 +387,7 @@ namespace FlexKit
             { return float3{ 0, 0, 0 }; });
 	}
 
-    float3 GetScale(GameObject& go)
+    inline float3 GetScale(GameObject& go)
     {
         return Apply(go,
             [&](SceneNodeView<>& node)
@@ -396,7 +396,7 @@ namespace FlexKit
             { return float3{ 1, 1, 1 }; });
     }
 
-    void ClearParent(GameObject& go)
+    inline void ClearParent(GameObject& go)
     {
         return Apply(go,
             [&](SceneNodeView<>& node)
@@ -406,7 +406,7 @@ namespace FlexKit
         );
     }
 
-    auto GetParentNode(GameObject& go)
+    inline auto GetParentNode(GameObject& go)
     {
         return Apply(go,
             [&](SceneNodeView<>& node) -> NodeHandle
@@ -422,7 +422,7 @@ namespace FlexKit
 
 
 
-    void EnableScale(GameObject& go, bool scale)
+    inline void EnableScale(GameObject& go, bool scale)
     {
         return Apply(go,
             [&](SceneNodeView<>& node)
@@ -432,7 +432,7 @@ namespace FlexKit
     }
 
 
-    void SetScale(GameObject& go, float3 scale)
+    inline void SetScale(GameObject& go, float3 scale)
     {
         return Apply(go,
             [&](SceneNodeView<>& node)
@@ -443,7 +443,7 @@ namespace FlexKit
     }
 
 
-    void Pitch(GameObject& go, float theta)
+    inline void Pitch(GameObject& go, float theta)
     {
         return Apply(go,
             [&](SceneNodeView<>& node)
@@ -454,7 +454,7 @@ namespace FlexKit
     }
 
 
-    void Yaw(GameObject& go, float theta)
+    inline void Yaw(GameObject& go, float theta)
     {
         return Apply(go,
             [&](SceneNodeView<>& node)
@@ -465,7 +465,7 @@ namespace FlexKit
     }
 
 
-    Quaternion GetOrientation(GameObject& go)
+    inline Quaternion GetOrientation(GameObject& go)
     {
         return Apply(go,
             [&](SceneNodeView<>& node)

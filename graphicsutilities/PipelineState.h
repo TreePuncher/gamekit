@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "buildsettings.h"
 #include "containers.h"
 #include "ThreadUtilities.h"
-
+#include "Handle.h"
 #include <atomic>
 #include <condition_variable>
 

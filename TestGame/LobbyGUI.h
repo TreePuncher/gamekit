@@ -77,7 +77,7 @@ public:
 	FlexKit::GUIGrid*			playerScreen;
 	FlexKit::SpriteFontAsset*	font;
 
-    char* zero = "0ms";
+    const char* zero = "0ms";
 };
 
 

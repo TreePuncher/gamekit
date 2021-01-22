@@ -38,6 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GraphicScene.cpp"
 #include "Handle.cpp"
 #include "intersection.cpp"
+#include "logging.cpp"
 #include "MathUtils.cpp"
 #include "Materials.cpp"
 #include "memoryutilities.cpp"
@@ -47,6 +48,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transforms.cpp"
 #include "timeutilities.cpp"
 #include "type.cpp"
+#include "RayTracingUtilities.cpp"
 #include "WorldRender.cpp"
 
 #include "AnimationUtilities.cpp"
@@ -68,6 +70,3 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TerrainRendering.cpp"
 
 #include "..\PhysicsUtilities\physicsutilities.cpp"
-
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
