@@ -566,6 +566,27 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    ID3D12PipelineState* CreateCluster_DEBUGARGSVIS_PSO(RenderSystem* RS)
+    {
+        Shader computeShader = RS->LoadShader("CreateArguments", "cs_6_0", R"(assets\shaders\ClusterArgsDebugVis.hlsl)");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+            RS->Library.RSDefault,
+            computeShader
+        };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+
+        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+        return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
     ID3D12PipelineState* CreateLightListArgs_PSO(RenderSystem* RS)
     {
         Shader computeShader = RS->LoadShader("CreateLightListArguents", "cs_6_0", R"(assets\shaders\LightListArguementIndirect.hlsl)");
@@ -1589,10 +1610,10 @@ namespace FlexKit
 
                 struct LightListConstructionConstants
                 {
-                    float4x4 IView;
+                    float4x4 View;
                     uint32_t rootNode;
                 } lightListConstants {
-                    float4x4{},
+                    cameraConstants.View,
                     offset
                 };
 
@@ -1604,7 +1625,7 @@ namespace FlexKit
                 DescriptorHeap createLightListResources;
                 createLightListResources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
                 createLightListResources.SetUAVStructured(ctx, 0, resources.ReadWriteUAVBuffer(data.clusterBufferObject, ctx), sizeof(GPUCluster), 0);
-                createLightListResources.SetUAVStructured(ctx, 1, resources.ReadWriteUAVBuffer(data.lightListObject, ctx), sizeof(uint32_t), 1);
+                createLightListResources.SetUAVStructured(ctx, 1, resources.ReadWriteUAVBuffer(data.lightListObject, ctx), sizeof(uint32_t), 0);
                 createLightListResources.SetUAVStructured(ctx, 2, resources.ReadWriteUAVBuffer(data.lightCounterObject, ctx), sizeof(uint32_t), 0);
                 createLightListResources.SetUAVStructured(ctx, 3, resources.ReadWriteUAVBuffer(data.lightBVH, ctx), sizeof(BVH_Node), 0);
 
@@ -1648,18 +1669,22 @@ namespace FlexKit
                 data.lightBVH       = builder.ReadResource(lightBufferUpdate.lightBVH, DRS_ShaderResource);
                 data.clusters       = builder.ReadResource(lightBufferUpdate.clusterBufferObject, DRS_ShaderResource);
                 data.renderTarget   = builder.WriteRenderTarget(renderTarget);
+                data.indirectArgs   = builder.ReadWriteUAV(argumentBuffer, DRS_UAV);
+                data.counterBuffer  = builder.ReadWriteUAV(counterBuffer, DRS_ShaderResource);
                 data.camera         = camera;
             },
-            [](DEBUGVIS_DrawBVH& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+            [&](DEBUGVIS_DrawBVH& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
                 auto debugBVHVISPSO         = resources.GetPipelineState(LIGHTBVH_DEBUGVIS_PSO);
                 auto debugClusterVISPSO     = resources.GetPipelineState(CLUSTER_DEBUGVIS_PSO);
+                auto debugClusterArgsVISPSO = resources.GetPipelineState(CLUSTER_DEBUGARGSVIS_PSO);
                 const auto  cameraConstants = GetCameraConstants(data.camera);
 
                 ctx.SetRenderTargets({ resources.GetRenderTarget(data.renderTarget) }, false);
                 ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
 
                 ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
+                ctx.SetComputeRootSignature(resources.renderSystem().Library.RSDefault);
 
                 const auto lightCount = data.lightBufferUpdateData.pointLightHandles->size();
 
@@ -1680,6 +1705,24 @@ namespace FlexKit
 
                 CBPushBuffer            constantBuffer = data.reserveCB(1024);
                 ConstantBufferDataSet   constants{ constantsValues, constantBuffer };
+
+                [&]()
+                {
+                    DescriptorHeap descHeap;
+                    descHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), 2, &allocator);
+                    descHeap.SetSRV(ctx, 0, resources.GetUAVBufferResource(data.counterBuffer));
+                    descHeap.NullFill(ctx, 2);
+
+                    DescriptorHeap UAVHeap;
+                    UAVHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 2, &allocator);
+                    UAVHeap.SetUAVStructured(ctx, 0, resources.GetUAVBufferResource(data.indirectArgs), sizeof(uint32_t[4]), 0);
+                    UAVHeap.NullFill(ctx, 2);
+
+                    ctx.SetComputeDescriptorTable(3, descHeap);
+                    ctx.SetComputeDescriptorTable(4, UAVHeap);
+
+                    ctx.Dispatch(debugClusterArgsVISPSO, { 1, 1, 1 });
+                }();
 
                 DescriptorHeap descHeap;
                 descHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), 2, &allocator);
@@ -1715,7 +1758,7 @@ namespace FlexKit
                 ctx.Draw(offset + 1);
 
                 ctx.SetPipelineState(debugClusterVISPSO);
-                //ctx.Draw(uint2{ uint32_t(1080 / 32), size_t(1920 / 32) + 1 }.Product());
+                ctx.ExecuteIndirect(resources.ReadUAVBuffer(data.indirectArgs, DRS_INDIRECTARGS, ctx), createDebugDrawLayout);
             });
 
         return lightBufferData;
@@ -2064,8 +2107,8 @@ namespace FlexKit
 
 					const auto matrices = CalculateShadowMapMatrices(Position, light.R, t);
 
-					for(size_t II = 0; II < 6; II++)
-						passConstants.PV[6 * I + II] = matrices.PV[II];
+					//for(size_t II = 0; II < 6; II++)
+					//	passConstants.PV[6 * I + II] = matrices.PV[II];
 				}
 
 				struct

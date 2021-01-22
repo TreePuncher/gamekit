@@ -158,15 +158,6 @@ float3 GetViewVector_VS(const float2 UV) // View Space Vector
     return normalize(FarPos);
 }
 
-float3 GetViewVector_VS2(const float2 UV) // View Space Vector
-{
-    const float3 LeftPoint  = lerp(TLCorner_VS, BLCorner_VS, UV.y); // Left Edge
-    const float3 RightPoint = lerp(TRCorner_VS, BRCorner_VS, UV.y); // Right Edge
-    const float3 FarPos     = lerp(LeftPoint, RightPoint, UV.x);
-
-    return normalize(FarPos);
-}
-
 float3 GetViewVector(const float2 UV)
 {
     float3 View_VS = GetViewVector_VS(UV);

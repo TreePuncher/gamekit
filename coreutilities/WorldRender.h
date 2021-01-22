@@ -89,11 +89,12 @@ namespace FlexKit
     constexpr PSOHandle CLEARCOUNTERSPSO        = PSOHandle(GetTypeGUID(CLEARCOUNTERSPSO));
     constexpr PSOHandle CREATECLUSTERLIGHTLISTS = PSOHandle(GetTypeGUID(CREATECLUSTERLIGHTLISTS));
 
-    constexpr PSOHandle CREATELIGHTBVH_PHASE1   = PSOHandle(GetTypeGUID(CREATELIGHTPVH1123));
-    constexpr PSOHandle CREATELIGHTBVH_PHASE2   = PSOHandle(GetTypeGUID(CREATELIGHTPVH2));
-    constexpr PSOHandle LIGHTBVH_DEBUGVIS_PSO   = PSOHandle(GetTypeGUID(LIGHTBVH_DEBUGVIS_PSO));
-    constexpr PSOHandle CLUSTER_DEBUGVIS_PSO    = PSOHandle(GetTypeGUID(CLUSTER_DEBUGVIS_PSO));
-    constexpr PSOHandle CREATELIGHTLISTARGS_PSO = PSOHandle(GetTypeGUID(CREATELIGHTLISTARGS_POS));
+    constexpr PSOHandle CREATELIGHTBVH_PHASE1       = PSOHandle(GetTypeGUID(CREATELIGHTPVH1123));
+    constexpr PSOHandle CREATELIGHTBVH_PHASE2       = PSOHandle(GetTypeGUID(CREATELIGHTPVH2));
+    constexpr PSOHandle LIGHTBVH_DEBUGVIS_PSO       = PSOHandle(GetTypeGUID(LIGHTBVH_DEBUGVIS_PSO));
+    constexpr PSOHandle CLUSTER_DEBUGVIS_PSO        = PSOHandle(GetTypeGUID(CLUSTER_DEBUGVIS_PSO));
+    constexpr PSOHandle CLUSTER_DEBUGARGSVIS_PSO    = PSOHandle(GetTypeGUID(CLUSTER_DEBUGARGSVIS_PSO));
+    constexpr PSOHandle CREATELIGHTLISTARGS_PSO     = PSOHandle(GetTypeGUID(CREATELIGHTLISTARGS_POS));
 
     static const PSOHandle DEPTHPREPASS                = PSOHandle(GetTypeGUID(DEPTHPREPASS));
 	static const PSOHandle FORWARDDRAWINSTANCED	       = PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
@@ -128,6 +129,7 @@ namespace FlexKit
     ID3D12PipelineState* CreateLightBVH_DEBUGVIS_PSO        (RenderSystem* RS);
     ID3D12PipelineState* CreateLightListArgs_PSO            (RenderSystem* RS);
     ID3D12PipelineState* CreateCluster_DEBUGVIS_PSO         (RenderSystem* RS);
+    ID3D12PipelineState* CreateCluster_DEBUGARGSVIS_PSO     (RenderSystem* RS);
     ID3D12PipelineState* CreateClusterLightListsPSO         (RenderSystem* RS);
 
     ID3D12PipelineState* CreateClustersPSO                  (RenderSystem* RS);
@@ -251,6 +253,10 @@ namespace FlexKit
         FrameResourceHandle	            lightBVH;
         FrameResourceHandle	            clusters;
         FrameResourceHandle             renderTarget;
+
+        FrameResourceHandle             indirectArgs;
+        FrameResourceHandle             counterBuffer;
+
         CameraHandle			        camera;
     };
 
@@ -611,7 +617,8 @@ namespace FlexKit
             timingReadBack              { renderSystem.CreateReadBackBuffer(512) },
 
 			streamingEngine		        { IN_streamingEngine },
-            createClusterLightListLayout{ renderSystem.CreateIndirectLayout({ ILE_DispatchCall }, allocator) }
+            createClusterLightListLayout{ renderSystem.CreateIndirectLayout({ ILE_DispatchCall }, allocator) },
+            createDebugDrawLayout       { renderSystem.CreateIndirectLayout({ ILE_DrawCall }, allocator) }
 		{
 			RS_IN.RegisterPSOLoader(FORWARDDRAW,			    { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawPSO,		  });
 			RS_IN.RegisterPSOLoader(FORWARDDRAWINSTANCED,	    { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO });
@@ -631,8 +638,6 @@ namespace FlexKit
             RS_IN.RegisterPSOLoader(CREATELIGHTBVH_PHASE1,      { &RS_IN.Library.ComputeSignature,  CreateLightBVH_PHASE1_PSO       });
             RS_IN.RegisterPSOLoader(CREATELIGHTBVH_PHASE2,      { &RS_IN.Library.ComputeSignature,  CreateLightBVH_PHASE2_PSO       });
             RS_IN.RegisterPSOLoader(CREATELIGHTLISTARGS_PSO,    { &RS_IN.Library.ComputeSignature,  CreateLightListArgs_PSO         });
-
-
             
 
             RS_IN.RegisterPSOLoader(CLEARCOUNTERSPSO,           { &RS_IN.Library.ComputeSignature,  CreateClearClusterCountersPSO   });
@@ -640,8 +645,9 @@ namespace FlexKit
 			RS_IN.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL,    { &RS_IN.Library.RSDefault, CreateBilaterialBlurHorizontalPSO });
 			RS_IN.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,      { &RS_IN.Library.RSDefault, CreateBilaterialBlurVerticalPSO   });
 
-			RS_IN.RegisterPSOLoader(LIGHTBVH_DEBUGVIS_PSO,  { &RS_IN.Library.RSDefault, CreateLightBVH_DEBUGVIS_PSO });
-			RS_IN.RegisterPSOLoader(CLUSTER_DEBUGVIS_PSO,   { &RS_IN.Library.RSDefault, CreateCluster_DEBUGVIS_PSO });
+			RS_IN.RegisterPSOLoader(LIGHTBVH_DEBUGVIS_PSO,      { &RS_IN.Library.RSDefault, CreateLightBVH_DEBUGVIS_PSO });
+			RS_IN.RegisterPSOLoader(CLUSTER_DEBUGVIS_PSO,       { &RS_IN.Library.RSDefault, CreateCluster_DEBUGVIS_PSO });
+			RS_IN.RegisterPSOLoader(CLUSTER_DEBUGARGSVIS_PSO,   { &RS_IN.Library.RSDefault, CreateCluster_DEBUGARGSVIS_PSO });
 
 			RS_IN.QueuePSOLoad(GBUFFERPASS);
 			RS_IN.QueuePSOLoad(GBUFFERPASS_SKINNED);
@@ -867,6 +873,7 @@ namespace FlexKit
 		bool                    OcclusionCulling;
 
         FlexKit::IndirectLayout createClusterLightListLayout;
+        FlexKit::IndirectLayout createDebugDrawLayout;
 
         DEBUG_WorldRenderTimingValues timingValues;
 	};

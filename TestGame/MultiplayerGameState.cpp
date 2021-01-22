@@ -227,7 +227,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 				base.t,
 				core.GetTempMemory());
 
-            if(true)
+            if(false)
             base.render.DEBUGVIS_DrawLightBVH(
                 dispatcher,
                 frameGraph,

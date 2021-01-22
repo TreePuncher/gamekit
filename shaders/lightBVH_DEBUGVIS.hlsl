@@ -84,15 +84,15 @@ void GMain(
     const float3 Min = float3(node.MinPoint.xyz);
     const float3 Max = float3(node.MaxPoint.xyz);
 
-    FrontTopLeft.position   = mul(proj, mul(view, float4(Min.x, Max.yz, 1)));
-    FrontTopRight.position  = mul(proj, mul(view, float4(Max.x, Max.y, Max.z, 1)));
-    RearTopLeft.position    = mul(proj, mul(view, float4(Min.x, Max.y, Min.z, 1)));
-    RearTopRight.position   = mul(proj, mul(view, float4(Max.x, Max.y, Min.z, 1)));
+    FrontTopLeft.position   = mul(proj, float4(Min.x, Max.yz, 1));
+    FrontTopRight.position  = mul(proj, float4(Max.x, Max.y, Max.z, 1));
+    RearTopLeft.position    = mul(proj, float4(Min.x, Max.y, Min.z, 1));
+    RearTopRight.position   = mul(proj, float4(Max.x, Max.y, Min.z, 1));
 
-    FrontBottomLeft.position    = mul(proj, mul(view, float4(Min.xy, Max.z, 1))); 
-    FrontBottomRight.position   = mul(proj, mul(view, float4(Max.x, Min.y, Max.z, 1)));
-    RearBottomLeft.position     = mul(proj, mul(view, float4(Min, 1)));  
-    RearBottomRight.position    = mul(proj, mul(view, float4(Max.x, Min.yz, 1))); 
+    FrontBottomLeft.position    = mul(proj, float4(Min.xy, Max.z, 1)); 
+    FrontBottomRight.position   = mul(proj, float4(Max.x, Min.y, Max.z, 1));
+    RearBottomLeft.position     = mul(proj, float4(Min, 1));  
+    RearBottomRight.position    = mul(proj, float4(Max.x, Min.yz, 1)); 
 
     // Front
     outStream.Append(FrontTopLeft);
@@ -173,7 +173,7 @@ void GMain2(
         float4(1, 0, 1, 0),
     };
 
-    const float4 color = float4(1, 1, 1, 1);
+    const float4 color = colors[asuint(cluster.MaxPoint.w) % 6];
 
     FrontTopLeft.Color  = color;
     FrontTopRight.Color = color;
@@ -187,7 +187,7 @@ void GMain2(
 
     const float3 Min = float3(cluster.MinPoint.xyz);
     const float3 Max = float3(cluster.MaxPoint.xyz);
-#if 1
+#if 0
     FrontTopLeft.position   = mul(proj, mul(view, float4(Min.x, Max.yz, 1)));
     FrontTopRight.position  = mul(proj, mul(view, float4(Max.x, Max.y, Max.z, 1)));
     RearTopLeft.position    = mul(proj, mul(view, float4(Min.x, Max.y, Min.z, 1)));
@@ -239,8 +239,7 @@ void GMain2(
     outStream.Append(FrontBottomRight);
 	outStream.RestartStrip();
 #endif
-
-#if 1
+#if 0
     // Back
     outStream.Append(RearTopLeft);
     outStream.Append(RearTopRight);
@@ -258,6 +257,7 @@ void GMain2(
     outStream.Append(RearBottomRight);
 	outStream.RestartStrip();
 #endif
+#if 0
     // Sides
     outStream.Append(FrontTopLeft);
     outStream.Append(RearTopLeft);
@@ -274,6 +274,7 @@ void GMain2(
     outStream.Append(FrontBottomRight);
     outStream.Append(RearBottomRight);
 	outStream.RestartStrip();
+#endif
 }
 
 float4 PMain(float4 Color  : COLOR) : SV_TARGET

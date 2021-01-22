@@ -145,7 +145,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     const uint localLightCount  = asuint(localCluster.Max.w);
     const uint localLightList   = asuint(localCluster.Min.w);
 
-    float4 color = 0;
+    float4 color = float4(albedo * 0.2f, 1);
     for(float I = 0; I < localLightCount; I++)
     {
         const PointLight light  = pointLights[lightLists[localLightList + I]];
@@ -156,7 +156,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
         const float3 L		    = normalize(Lp - positionVS);
         const float  Ld			= length(positionVS - Lp);
         const float  Li			= abs(light.KI.w);
-        const float  Lr			= abs(light.PR.w) * 10;
+        const float  Lr			= abs(light.PR.w);
         const float  ld_2		= Ld * Ld;
         const float  La			= (Li / ld_2) * (1 - (pow(Ld, 10) / pow(Lr, 10)));
         
@@ -183,7 +183,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
         #if 1
         
         const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
-        color += float4(colorSample * Lc, 0 );
+        color += saturate(float4(colorSample * Lc, 0 ));
         #else
 
         const float3 colorSample = (diffuse * Kd + specular * Ks) * La * NdotL;
@@ -243,6 +243,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     //return pow(1 - UV.y, 2.2f); 
 #if 0
     float4 Colors[] = {
+        float4(0, 0, 0, 0), // Left
         float4(1, 0, 0, 0), // Left
         float4(0, 1, 0, 0), // Right
         float4(0, 0, 1, 0), // Top
@@ -256,8 +257,8 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     //else
         //return pow(Colors[clusterKey % 6], 1.0f);
         //return pow(Colors[GetSliceIdx(-positionVS.z) % 6], 1.0f);
-        //return pow(Colors[localLightCount % 6], 1.0f);
-        //return pow(localLightCount / lightCount, 1.0f);
+        //return pow(Colors[localLightCount % 7], 1.0f);
+        return float(localLightCount) / float(lightCount);
         //return float4(-positionVS.z, -positionVS.z, -positionVS.z, 1);
 #else
 	//return color; // RGBAfloat16 is already linear
