@@ -4,10 +4,10 @@
 
 ID3D12PipelineState* CreateACCState(FlexKit::RenderSystem* renderSystem)
 {
-    auto VShader = LoadShader("VS_Main", "VS_Main", "vs_5_0", "assets\\shaders\\ACC.hlsl");
-    auto HShader = LoadShader("HS_Main", "HS_Main", "hs_5_0", "assets\\shaders\\ACC.hlsl");
-    auto DShader = LoadShader("DS_Main", "DS_Main", "ds_5_0", "assets\\shaders\\ACC.hlsl");
-    auto PShader = LoadShader("PS_Main", "PS_Main", "ps_5_0", "assets\\shaders\\ACC.hlsl");
+    auto VShader = renderSystem->LoadShader("VS_Main", "vs_5_0", "assets\\shaders\\ACC.hlsl");
+    auto HShader = renderSystem->LoadShader("HS_Main", "hs_5_0", "assets\\shaders\\ACC.hlsl");
+    auto DShader = renderSystem->LoadShader("DS_Main", "ds_5_0", "assets\\shaders\\ACC.hlsl");
+    auto PShader = renderSystem->LoadShader("PS_Main", "ps_5_0", "assets\\shaders\\ACC.hlsl");
 
     D3D12_INPUT_ELEMENT_DESC InputElements[] = {
                 { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -21,22 +21,21 @@ ID3D12PipelineState* CreateACCState(FlexKit::RenderSystem* renderSystem)
     D3D12_DEPTH_STENCIL_DESC Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
     Depth_Desc.DepthEnable = false;
 
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC PSO_DESC = {
-        .pRootSignature         = renderSystem->Library.RSDefault,
-        .VS                     = VShader,
-        .PS                     = PShader,
-        .DS                     = DShader,
-        .HS                     = HShader,
-        .BlendState             = CD3DX12_BLEND_DESC(D3D12_DEFAULT),
-        .SampleMask             = UINT_MAX,
-        .RasterizerState        = Rast_Desc,
-        .DepthStencilState      = Depth_Desc,
-        .InputLayout            = { InputElements, sizeof(InputElements) / sizeof(*InputElements) },
-        .PrimitiveTopologyType  = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH,
-        .NumRenderTargets       = 1,
-        .RTVFormats             = { DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_FLOAT },
-        .SampleDesc             = { 1, 0 },
-    };
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC PSO_DESC;
+    PSO_DESC.pRootSignature = renderSystem->Library.RSDefault;
+    PSO_DESC.VS                     = VShader;
+    PSO_DESC.PS                     = PShader;
+    PSO_DESC.DS                     = DShader;
+    PSO_DESC.HS                     = HShader;
+    PSO_DESC.BlendState             = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+    PSO_DESC.SampleMask             = UINT_MAX;
+    PSO_DESC.RasterizerState        = Rast_Desc;
+    PSO_DESC.DepthStencilState      = Depth_Desc;
+    PSO_DESC.InputLayout            = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
+    PSO_DESC.PrimitiveTopologyType  = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+    PSO_DESC.NumRenderTargets       = 1;
+    PSO_DESC.RTVFormats[0]          = DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_FLOAT;
+    PSO_DESC.SampleDesc             = { 1, 0 };
 
     ID3D12PipelineState* PSO = nullptr;
 
@@ -120,10 +119,10 @@ public:
                 };
 
                 VBPushBuffer vertexPool = data.reserveVB(8192);
-                VertexBufferDataSet vbDataSet{ vertexBuffer, vertexPool };
-                VertexBufferDataSet ibDataSet{ indexBuffer, vertexPool };
+                VertexBufferDataSet vbDataSet{ vertexBuffer, 6, vertexPool };
+                VertexBufferDataSet ibDataSet{ indexBuffer, 8, vertexPool };
 
-                ctx.SetScissorAndViewports(std::tuple{ resources.GetRenderTarget(data.renderTarget) });
+                SetScissorAndViewports(ctx, std::tuple{ resources.GetRenderTarget(data.renderTarget) });
 
                 ctx.SetRenderTargets(
                     { resources.GetTexture(data.renderTarget) },

@@ -24,7 +24,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "MultiplayerState.h"
 
-
+namespace SLNet{
+    const SystemAddress UNASSIGNED_SYSTEM_ADDRESS;
+    const RakNetGUID    UNASSIGNED_RAKNET_GUID(-1);
+}
 
 NetworkState::~NetworkState()
 {
@@ -34,7 +37,7 @@ NetworkState::~NetworkState()
 		packet.Release();
 	}
 
-    RakNet::RakPeerInterface::DestroyInstance(&raknet);
+    SLNet::RakPeerInterface::DestroyInstance(&raknet);
 }
 
 
@@ -43,7 +46,7 @@ NetworkState::~NetworkState()
 void NetworkState::Startup(short port)
 {
     raknet.InitializeSecurity(0, 0, false);
-    RakNet::SocketDescriptor socketDescriptor;
+    SLNet::SocketDescriptor socketDescriptor;
     socketDescriptor.port = port;
 
     const auto res = raknet.Startup(10, &socketDescriptor, 1);
@@ -157,7 +160,7 @@ void NetworkState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double
 /************************************************************************************************/
 
 
-void NetworkState::Broadcast(UserPacketHeader& packet)
+void NetworkState::Broadcast(const UserPacketHeader& packet)
 {
     for (auto socket : openConnections)
         raknet.Send((const char*)&packet, packet.packetSize, PacketPriority::MEDIUM_PRIORITY, PacketReliability::UNRELIABLE, 0, socket.address, false, 0);
@@ -167,7 +170,7 @@ void NetworkState::Broadcast(UserPacketHeader& packet)
 /************************************************************************************************/
 
 
-void NetworkState::Send(UserPacketHeader& packet, ConnectionHandle destination)
+void NetworkState::Send(const UserPacketHeader& packet, ConnectionHandle destination)
 {
     auto socket = GetConnection(destination);
 
@@ -198,7 +201,9 @@ void NetworkState::PopHandler()
 
 void NetworkState::Connect(const char* address, uint16_t port)
 {
-    raknet.Startup(16, &RakNet::SocketDescriptor(), 1);
+    auto socketDesc = SLNet::SocketDescriptor();
+
+    raknet.Startup(16, &socketDesc, 1);
 
     auto res = raknet.Connect("127.0.0.1", port, nullptr, 0);
 }
@@ -217,7 +222,7 @@ void NetworkState::CloseConnection(ConnectionHandle handle)
 /************************************************************************************************/
 
 
-ConnectionHandle NetworkState::FindConnectionHandle(RakNet::SystemAddress address)
+ConnectionHandle NetworkState::FindConnectionHandle(SLNet::SystemAddress address)
 {
     for (size_t i = 0; i < openConnections.size(); i++)
         if (openConnections[i].address == address)
@@ -243,7 +248,7 @@ NetworkState::openSocket NetworkState::GetConnection(ConnectionHandle handle)
 /************************************************************************************************/
 
 
-void NetworkState::RemoveConnectionHandle(RakNet::SystemAddress address)
+void NetworkState::RemoveConnectionHandle(SLNet::SystemAddress address)
 {
     for (size_t i = 0; i < openConnections.size(); i++)
         if (openConnections[i].address == address)

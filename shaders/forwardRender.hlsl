@@ -31,10 +31,9 @@ cbuffer Poses : register(b3)
     float4x4 Poses[128];
 }
 
-Texture2D<float4> albedoTexture : register(t0);
-Texture2D<float4> testTexture   : register(t1);
-Texture2D<float4> testTexture1   : register(t2);
-Texture2D<float4> testTexture2   : register(t3);
+Texture2D<float4> albedoTexture  : register(t0);
+Texture2D<float4> normalTexture  : register(t1);
+Texture2D<float4> roughnessMetalTexture : register(t2);
 
 //TextureCube<float4>             HDRMap          : register(t3);
 Texture2D<float4>		        MRIATexture     : register(t4);
@@ -42,8 +41,7 @@ Texture2D<float4>		        MRIATexture     : register(t4);
 StructuredBuffer<uint>		    lightLists	    : register(t5);
 ByteAddressBuffer               pointLights     : register(t6);
 
-
-sampler BiLinear : register(s0); // Nearest point
+sampler BiLinear : register(s0); 
 sampler NearestPoint : register(s1); // Nearest point
 
 bool isLightContributing(uint idx, uint2 xy)
@@ -84,6 +82,7 @@ struct Forward_VS_OUT
     float3 Normal	: NORMAL;
     float3 Tangent	: TANGENT;
     float2 UV		: TEXCOORD;
+    float3 Bitangent : BITANGENT;
 };
 
 Forward_VS_OUT Forward_VS(Vertex In)
@@ -93,7 +92,8 @@ Forward_VS_OUT Forward_VS(Vertex In)
     Out.POS		= mul(PV, mul(WT, float4(In.POS, 1)));
     Out.Normal  = normalize(mul(WT, float4(In.Normal, 0.0f)));
     Out.Tangent = normalize(mul(WT, float4(In.Tangent, 0.0f)));
-    Out.UV		= In.UV % 1.0f;
+    Out.Bitangent = cross(Out.Tangent, Out.Normal);
+    Out.UV		= In.UV;
 
     return Out;
 }
@@ -139,11 +139,12 @@ Forward_VS_OUT ForwardSkinned_VS(VertexSkinned In)
     }
     
     Forward_VS_OUT Out;
-    Out.WPOS	= mul(WT, float4(V.xyz, 1));
-    Out.POS		= mul(PV, mul(WT, float4(V.xyz, 1)));
-    Out.Normal  = normalize(mul(WT, float4(N.xyz, 0.0f)));
-    Out.Tangent = normalize(mul(WT, float4(T.xyz, 0.0f)));
-    Out.UV		= In.UV;
+    Out.WPOS	    = mul(WT, float4(V.xyz, 1));
+    Out.POS		    = mul(PV, mul(WT, float4(V.xyz, 1)));
+    Out.Normal      = normalize(mul(WT, float4(N.xyz, 0.0f)));
+    Out.Tangent     = normalize(mul(WT, float4(T.xyz, 0.0f)));
+    Out.Bitangent   = cross(Out.Tangent, Out.Normal);
+    Out.UV		    = In.UV;
 
     return Out;
 }
@@ -155,11 +156,12 @@ float4 DepthPass_VS(float3 POS : POSITION) : SV_POSITION
 
 struct Forward_PS_IN
 {
-    float4	POS 	: SV_POSITION;
-    float3	WPOS 	: POSITION;
-    float3	Normal	: NORMAL;
-    float3	Tangent	: TANGENT;
-    float2	UV		: TEXCOORD;
+    centroid  float4	POS : SV_POSITION;
+    float3	WPOS 	    : POSITION;
+    float3	Normal	    : NORMAL;
+    float3	Tangent	    : TANGENT;
+    float2	UV		    : TEXCOORD;
+    float3	Bitangent	: BITANGENT;
 };
 
 struct Deferred_OUT
@@ -169,7 +171,7 @@ struct Deferred_OUT
     float4 Normal       : SV_TARGET2;
     float4 Tangent      : SV_TARGET3;
 
-    float Depth : SV_DEPTH;
+    float Depth : SV_DepthLessEqual;
 };
 
 
@@ -194,7 +196,6 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
     while(mip < MIPCount)
     {
         uint state;
-        //const float4 texel = source.SampleLevel(textureSampler, float2(0, 1) + float2(1, -1) * UV, mip, 0.0f, state);
         const float4 texel = source.SampleLevel(textureSampler, UV, mip, 0.0f, state);
 
         if(CheckAccessFullyMapped(state))
@@ -203,25 +204,32 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
         mip = floor(mip + 1);
     }
     
-    return float4(0.0f, 0.0f, 1.0f, 0.0f); // NO PAGES LOADED!
+    return float4(1.0f, 0.0f, 1.0f, 0.0f); // NO PAGES LOADED!
 }
 
 Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 {
-    Deferred_OUT gbuffer;
+    const float4 albedo       = textureCount >= 1 ? SampleVirtualTexture(albedoTexture, BiLinear, IN.UV) : float4(1, 1, 1, 1);
     
-    const float3 biTangent      = cross(IN.Tangent, IN.Normal);
-    float3x3 inverseTBN         = float3x3(normalize(IN.Tangent), normalize(biTangent), normalize(IN.Normal));
-    float3x3 TBN                = transpose(inverseTBN);
-    const float3 normalSample   = textureCount > 1 ? mul(TBN, SampleVirtualTexture(testTexture, BiLinear, IN.UV).xyz * 2.0f - 1.0f)  : IN.Normal;
+    //if(albedo.w < 0.5f)
+    //    discard;
 
-    gbuffer.Normal      = mul(View, float4(normalize(normalSample.xyz), 0));
+    Deferred_OUT gbuffer;
+
+    const float3 biTangent      = normalize(IN.Bitangent);
+    const float4 roughMetal     = textureCount >= 3 ? SampleVirtualTexture(roughnessMetalTexture, BiLinear, IN.UV) : float4(0.7, 0.5f, 0, 0);
+    const float3 normalSample   = textureCount >= 2 ? SampleVirtualTexture(normalTexture, BiLinear, IN.UV).xyz : float3(0.5f, 0.5f, 1.0f);
+    const float3 normalCorrected = float3(normalSample.x, normalSample.y, normalSample.z);
+    
+    float3x3 inverseTBN = float3x3(normalize(IN.Tangent), normalize(biTangent), normalize(IN.Normal));
+    float3x3 TBN        = transpose(inverseTBN);
+    const float3 normal = mul(TBN, normalCorrected * 2.0f - 1.0f);
+
+    gbuffer.Normal      = mul(View, float4(normalize(normal), 0));
     gbuffer.Tangent     = mul(View, float4(normalize(IN.Tangent.xyz),  0));
 
-    float roughness     = false ? SampleVirtualTexture(testTexture1, BiLinear, IN.UV).x : Roughness;
-
-    gbuffer.Albedo      = float4(Albedo.xyz * SampleVirtualTexture(albedoTexture, BiLinear, IN.UV).xyz, Ks);
-    gbuffer.MRIA        = float4(Metallic, roughness, IOR, Anisotropic);// * SampleVirtualTexture(MRIATexture, BiLinear, IN.UV);
+    gbuffer.MRIA        = roughMetal.zyxx;
+    gbuffer.Albedo      = float4(albedo.xyz, Ks);
 
     gbuffer.Depth       = length(IN.WPOS - CameraPOS.xyz) / MaxZ;
 

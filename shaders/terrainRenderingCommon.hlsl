@@ -297,8 +297,8 @@ float GetEdgeSpan(float3 Point1, float3 Point2)
 	const float4 P1 = mul(Proj, mul(View, float4(Point1, 1)));
 	const float4 P2 = mul(Proj, mul(View, float4(Point2, 1)));
 
-	const float3 P1SS = P1 / max(0.00001, P1.w) * float3(aspectRatio, 1, 0);
-	const float3 P2SS = P2 / max(0.00001, P2.w) * float3(aspectRatio, 1, 0);
+	const float3 P1SS = P1 / Max(0.00001, P1.w) * float3(aspectRatio, 1, 0);
+	const float3 P2SS = P2 / Max(0.00001, P2.w) * float3(aspectRatio, 1, 0);
 
 	const float span = length(P2SS - P1SS) / 2;
 	return span;
@@ -312,19 +312,19 @@ float GetRegionSpan(Region_CP CP)
 	const float4 SW = mul(Proj, mul(View, float4(GetSWPoint(CP).pos, 1)));
 	const float4 SE = mul(Proj, mul(View, float4(GetSEPoint(CP).pos, 1)));
 
-	const float3 NWSS = (NW.xyz / max(0.00001, NW.w)) * float3( 1, 0, 1 );
-	const float3 NESS = (NE.xyz / max(0.00001, NE.w)) * float3( 1, 0, 1 );
-	const float3 SESS = (SE.xyz / max(0.00001, SE.w)) * float3( 1, 0, 1 );
-	const float3 SWSS = (SW.xyz / max(0.00001, SW.w)) * float3( 1, 0, 1 );
+	const float3 NWSS = (NW.xyz / Max(0.00001, NW.w)) * float3( 1, 0, 1 );
+	const float3 NESS = (NE.xyz / Max(0.00001, NE.w)) * float3( 1, 0, 1 );
+	const float3 SESS = (SE.xyz / Max(0.00001, SE.w)) * float3( 1, 0, 1 );
+	const float3 SWSS = (SW.xyz / Max(0.00001, SW.w)) * float3( 1, 0, 1 );
 
 	const float Span1 = length(NWSS - NESS) / 2;
 	const float Span2 = length(SWSS - SESS) / 2;
 	const float Span3 = length(NESS - SESS) / 2;
 	const float Span4 = length(NWSS - SWSS) / 2;
 
-	float temp1 = max(Span1, Span2);
-	float temp2 = max(Span3, Span4);
-	return max(temp1, temp2);
+	float temp1 = Max(Span1, Span2);
+	float temp2 = Max(Span3, Span4);
+	return Max(temp1, temp2);
 }
 
 

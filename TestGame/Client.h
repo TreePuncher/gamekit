@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "MultiplayerState.h"
+#include "MultiplayerGameState.h"
 #include "Packets.h"
 #include "LobbyGUI.h"
 

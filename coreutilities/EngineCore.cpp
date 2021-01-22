@@ -151,11 +151,11 @@ namespace FlexKit
 			State->Position.x -= State->dPos[0] * 0.5f;
 			State->Position.y += State->dPos[1] * 0.5f;
 
-			State->Position[0] = max(0.0f, min((float)State->Position[0], (float)Window->WH[0]));
-			State->Position[1] = max(0.0f, min((float)State->Position[1], (float)Window->WH[1]));
+			State->Position[0] = Max(0.0f, Min((float)State->Position[0], (float)Window->WH[0]));
+			State->Position[1] = Max(0.0f, Min((float)State->Position[1], (float)Window->WH[1]));
 
-			State->NormalizedPos[0]			= max(0.0f, min((float)State->Position[0] / (float)Window->WH[0], 1));
-			State->NormalizedPos[1]			= max(0.0f, min((float)State->Position[1] / (float)Window->WH[1], 1));
+			State->NormalizedPos[0]			= Max(0.0f, Min((float)State->Position[0] / (float)Window->WH[0], 1));
+			State->NormalizedPos[1]			= Max(0.0f, Min((float)State->Position[1] / (float)Window->WH[1], 1));
 			State->NormalizedScreenCord		= Position2SS(State->NormalizedPos);
 
 			const auto WH                       = Window->WH;

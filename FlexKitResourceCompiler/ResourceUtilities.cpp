@@ -16,69 +16,12 @@
 #include <Windows.h>
 #include <shobjidl.h> 
 
-#include <physx/PxPhysicsAPI.h>
+#include <PxPhysicsAPI.h>
 
 using namespace FlexKit;
 
 namespace FlexKit::ResourceBuilder
-{   /************************************************************************************************/
-
-
-    GUID_t	TranslateID(size_t FBXID, FBXIDTranslationTable& Table)
-    {
-        for (auto ID : Table)
-            if (ID.FBXID == FBXID)
-                return ID.Guid;
-
-        return FBXID;
-    }
-
-    bool FBXIDPresentInTable(size_t FBXID, FBXIDTranslationTable& Table)
-    {
-        for (auto ID : Table)
-            if (ID.FBXID == FBXID)
-                return true;
-
-        return false;
-    }
-
-    /************************************************************************************************/
-
-
-    Pair<bool, fbxsdk::FbxScene*>  
-    LoadFBXScene(const char* file, fbxsdk::FbxManager* lSdkManager, fbxsdk::FbxIOSettings* settings)
-    {
-        fbxsdk::FbxNode*	 node	  = nullptr;
-        fbxsdk::FbxImporter* importer = fbxsdk::FbxImporter::Create(lSdkManager, "");
-
-        if (!importer->Initialize(file, -1, lSdkManager->GetIOSettings()))
-        {
-            printf("Failed to Load: %s\n", file);
-            printf("Error Returned: %s\n", importer->GetStatus().GetErrorString());
-            return{ false, nullptr };
-        }
-
-        fbxsdk::FbxScene* scene = FbxScene::Create(lSdkManager, "Scene");
-        if (!importer->Import(scene))
-        {
-            printf("Failed to Load: %s\n", file);
-            printf("Error Returned: %s\n", importer->GetStatus().GetErrorString());
-            return{ false, nullptr };
-        }
-
-        if (const auto& axisSystem = scene->GetGlobalSettings().GetAxisSystem();
-            axisSystem != FbxAxisSystem(FbxAxisSystem::EUpVector::eYAxis, FbxAxisSystem::EFrontVector::eParityOdd, FbxAxisSystem::ECoordSystem::eRightHanded))
-        {
-            std::cout << "Converting scene axis system\n";
-
-            FbxAxisSystem newAxisSystem(FbxAxisSystem::EUpVector::eYAxis, FbxAxisSystem::EFrontVector::eParityOdd, FbxAxisSystem::ECoordSystem::eRightHanded);
-            newAxisSystem.DeepConvertScene(scene);
-        }
-
-        return{ true, scene };
-    }
-
-
+{   
     /************************************************************************************************/
 
 
@@ -89,108 +32,6 @@ namespace FlexKit::ResourceBuilder
         iAllocator*		LevelMem;
         RenderSystem*	RS;
     };
-
-
-    /************************************************************************************************/
-
-
-    MeshResource_ptr FindGeoByID(GeometryList& geometry, size_t ID)
-    {
-        auto res = std::find_if(begin(geometry), end(geometry), [&](auto& v) { return v->TriMeshID == ID; });
-
-        return (res != geometry.end()) ? *res : MeshResource_ptr{ nullptr };
-    }
-
-
-    struct CompiledMeshInfo
-    {
-        MeshDesc	MeshInfo;
-        Skeleton*	S;
-    };
-
-
-    /************************************************************************************************/
-
-
-    void GatherAllGeometry(
-        GeometryList&			geometry,
-        fbxsdk::FbxNode*		node, 
-        FBXIDTranslationTable&	Table, 
-        const MetaDataList&		MD			= MetaDataList{}, 
-        bool					subDiv		= false)
-    {
-        using FlexKit::AnimationClip;
-        using FlexKit::Skeleton;
-
-        auto AttributeCount = node->GetNodeAttributeCount();
-
-        for (int itr = 0; itr < AttributeCount; ++itr)
-        {
-            auto Attr		= node->GetNodeAttributeByIndex(itr);
-            auto nodeName	= node->GetName();
-
-            switch (Attr->GetAttributeType())
-            {
-            case fbxsdk::FbxNodeAttribute::EType::eMesh:
-            {
-                const char* MeshName    = node->GetName();
-                auto Mesh		        = (fbxsdk::FbxMesh*)Attr;
-                bool found		        = false;
-                bool LoadMesh	        = false;
-                size_t uniqueID	        = (size_t)Mesh->GetUniqueID();
-                auto Geo		        = FindGeoByID(geometry, uniqueID);
-
-                MetaDataList RelatedMetaData;
-
-    #if USING(RESCOMPILERVERBOSE)
-                std::cout << "Found Mesh: " << MeshName << "\n";
-    #endif
-                RelatedMetaData = FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_MESH, MeshName);
-
-                if(!RelatedMetaData.size())
-                    LoadMesh = true;
-
-                const auto MeshInfo	= GetMeshMetaData(RelatedMetaData);
-                const auto Name		= MeshInfo ? MeshInfo->MeshID : Mesh->GetName();
-
-                if (!FBXIDPresentInTable(Mesh->GetUniqueID(), Table))
-                {
-                    std::cout << "Building Mesh: " << MeshName << "\n";
-
-                    auto skeleton       = CreateSkeletonResource(*Mesh, Name, MD);
-                    MeshDesc meshDesc   = TranslateToTokens(*Mesh, skeleton, false);
-
-                    const FbxAMatrix transform  = node->EvaluateGlobalTransform();
-                    MeshResource_ptr resource   = CreateMeshResource(&meshDesc, 1, Name, MD, false);
-
-                    resource->BakeTransform(FBXMATRIX_2_FLOAT4X4((transform)));
-                    
-                    if(MeshInfo)
-                    {
-                        resource->TriMeshID		= MeshInfo->guid;
-                        resource->ID			= MeshInfo->MeshID;
-                    }
-                    else
-                    {
-                        resource->TriMeshID		= CreateRandomID();
-                        resource->ID			= Mesh->GetName();
-                    }
-
-                    Table.push_back({ Mesh->GetUniqueID(), resource->TriMeshID });
-
-                    if constexpr (USING(RESCOMPILERVERBOSE))
-                        std::cout << "Compiled Resource: " << Name << "\n";
-
-                    geometry.push_back(resource);
-                }
-            }	break;
-            }
-        }
-
-        size_t NodeCount = node->GetChildCount();
-        for(int itr = 0; itr < NodeCount; ++itr)
-            GatherAllGeometry(geometry, node->GetChild(itr), Table, MD, subDiv);
-    }
 
 
     /************************************************************************************************/

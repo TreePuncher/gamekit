@@ -24,7 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #include "SSReflections.h"
-#include <d3dx12.h>
 
 namespace FlexKit
 {
@@ -32,7 +31,7 @@ namespace FlexKit
 	{
 		ID3D12PipelineState* PSO = nullptr;
 		D3D12_COMPUTE_PIPELINE_STATE_DESC Desc = {};
-		Shader CS = LoadShader("Trace", "SSR", "cs_5_0", "assets\\SSRCompute.hlsl");
+		Shader CS = LoadShader("Trace", "SSR", "cs_6_0", "assets\\SSRCompute.hlsl");
 
 		Desc.pRootSignature = RS->Library.ShadingRTSig;
 		Desc.CS = CS;
@@ -116,8 +115,8 @@ namespace FlexKit
 		auto CurrentReflectionBuffer	= SSR->ReflectionBuffer[SSR->CurrentBuffer];
 
 		// The Max is to quiet a error if a no Lights are passed
-		TablePOS = PushSRVToDescHeap	(RS, PLB->Resource, TablePOS,  max(PLB->size(), 1),  PLB_Stride);	
-		TablePOS = PushSRVToDescHeap	(RS, SPLB->Resource, TablePOS, max(SPLB->size(), 1), SPLB_Stride);
+		TablePOS = PushSRVToDescHeap	(RS, PLB->Resource, TablePOS,  Max(PLB->size(), 1),  PLB_Stride);	
+		TablePOS = PushSRVToDescHeap	(RS, SPLB->Resource, TablePOS, Max(SPLB->size(), 1), SPLB_Stride);
 
 		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.ColorTex,			TablePOS);
 		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.SpecularTex,		TablePOS);

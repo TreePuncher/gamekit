@@ -293,7 +293,7 @@ float GetRegionSpan(Region_CP CP)
     float Span3 = length(TLSS - BLSS);
 	float Span4 = length(TRSS - BRSS);
 
-    return max(max(Span1, Span2), max(Span3, Span4));
+    return Max(Max(Span1, Span2), Max(Span3, Span4));
 }
 
 
@@ -474,7 +474,7 @@ bool CullRegion(Region_CP R){
     aabb.Position  = R.POS.xz;
     aabb.TopHeight = TerrainHeight;
     aabb.R = R.POS.w;
-    //aabb.TopHeight = max(max(TL.y, TR.y), max(BL.y, BR.y));
+    //aabb.TopHeight = Max(Max(TL.y, TR.y), Max(BL.y, BR.y));
     aabb.MinMax[0] = BL;
     aabb.MinMax[1] = float3(TR.x, TerrainHeight, TR.z);
 
@@ -556,7 +556,7 @@ float CalculateTessellationFactor(float3 Control0, float3 Control1)
 {
 	float	e0 = distance(Control0, Control1);
 	float3	m0 = (Control0 + Control1) / 2;
-	return max(1, GetPostProjectionSphereExtent(m0, e0));
+	return Max(1, GetPostProjectionSphereExtent(m0, e0));
 }
 
 
@@ -761,14 +761,14 @@ RegionTessFactors ScreenSpaceFactors(InputPatch<Region_CP, 1> ip)
     
     float MaxSubFactor    = 32;
     float4 MaxSubFactors  = float4(MaxSubFactor, MaxSubFactor, MaxSubFactor, MaxSubFactor);
-    float4 ClampedFactors = max(float4(1.0f, 1.0f, 1.0f, 1.0f), min(Factors, MaxSubFactors));
+    float4 ClampedFactors = Max(float4(1.0f, 1.0f, 1.0f, 1.0f), Min(Factors, MaxSubFactors));
 
     [unroll]
     for (int II = 0; II < 4; ++II)
         factors.EdgeTess[II] = ClampedFactors[II];
 
-    factors.InsideTess[0] = min(float((Factors[1] + Factors[3])) / 2.0f, MaxSubFactor); // North South
-    factors.InsideTess[1] = min(float((Factors[0] + Factors[2])) / 2.0f, MaxSubFactor); // East West
+    factors.InsideTess[0] = Min(float((Factors[1] + Factors[3])) / 2.0f, MaxSubFactor); // North South
+    factors.InsideTess[1] = Min(float((Factors[0] + Factors[2])) / 2.0f, MaxSubFactor); // East West
 
 	return factors;
 }

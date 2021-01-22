@@ -13,9 +13,21 @@ float CosTheta(const float3 w)
     return cos(Theta(w));
 }
 
-float F_Schlick(float LdotH, float3 f0, float3 f90)
+/*
+float F_Schlick(float LdotH, float f0, float f90)
+{
+    return f0 + (f90 - f0) * pow(1.0f - LdotH, 5.0f);
+}
+*/
+
+float F_Schlick(float LdotH, float f0, float f90)
 {
     return f0 + ( f90 - f0 ) * pow(1.0f - LdotH , 5.0f);
+}
+
+float Schlick_Fresnel(float cosT, float f0)
+{
+    return f0 + (1.0f - f0) * pow(1.0f - cosT, 5.0f);
 }
 
 float V_SmithGGXCorrelated(float NdotL, float NdotV, float alphaG )
@@ -47,21 +59,40 @@ float D_GGX(const float NdotH, const float m)
     return INV_PI * m2 / Square(NdotH * NdotH * (m2 - 1) + 1);
 }
 
+float3 F_r_said(float3 V, float3 H, float3 L, float3 N, float3 albedo, float roughness, float metallic)
+{
+    float cosT  = max(dot(N, V), 0.0f);
+    float LdotH = saturate(dot(L, H));
+    float NdotV = abs(dot(N, V));
+    float NdotL = saturate(dot(N, L));
+
+    float NdotH = dot(N, H);
+    float f90   = 0.5f + 2.0f * NdotV * NdotV * roughness;
+    float3 F    = F_Schlick(cosT, 1.0f, f90);
+
+    F = lerp(F, albedo, metallic);
+
+    float Vis   = V_SmithGGXCorrelated(NdotV, NdotL, roughness);
+    float D     = D_GGX(NdotH, roughness);
+
+    return (D * F * Vis * INV_PI);
+}
+
 float F_r(float3 V, float3 H, float3 L, float3 N, float roughness)
 {
-    const float NdotV = abs(dot(N, V)) + 0.00001f; 
+    const float NdotV = saturate(dot(N, V)) + 0.00001f; 
     const float LdotH = saturate(dot(L, H));
     const float NdotH = saturate(dot(N, H)); 
     const float NdotL = saturate(dot(N, L));
 
-    const float3 f0  = 2.0 * LdotH * LdotH * roughness;
+    const float3 f0  = LdotH * LdotH * roughness;
     const float3 f90 = 1.0f;
 
     const float F   = F_Schlick(f0, f90, LdotH);
     const float Vis = V_SmithGGXCorrelated(NdotV, NdotL, roughness);
     const float D   = D_GGX(NdotH, roughness);
 
-    return (D * F * Vis * INV_PI);
+    return max(D * F * Vis * INV_PI, 0.0f);
 }
 
 float Fr_DisneyDiffuse(float NdotV, float NdotL, float LdotH, float linearRoughness)
@@ -70,8 +101,8 @@ float Fr_DisneyDiffuse(float NdotV, float NdotL, float LdotH, float linearRoughn
     float energyFactor  = lerp (1.0 , 1.0 / 1.51 , linearRoughness );
     float fd90          = energyBias + 2.0 * LdotH * LdotH * linearRoughness ;
     float3 f0           = float3 (1.0f , 1.0f , 1.0f);
-    float lightScatter  = F_Schlick ( f0 , fd90 , NdotL ).r;
-    float viewScatter   = F_Schlick (f0 , fd90 , NdotV ).r;
+    float lightScatter  = F_Schlick(f0 , fd90 , NdotL ).r;
+    float viewScatter   = F_Schlick(f0 , fd90 , NdotV ).r;
 
     return lightScatter * viewScatter * energyFactor;
 }
@@ -83,7 +114,7 @@ float F_d(float3 V, float3 H, float3 L, float3 N, float roughness)
     const float NdotL = saturate(dot(N, L));
     const float LdotH = saturate(dot(L, H));
 
-    return Fr_DisneyDiffuse( NdotV , NdotL , LdotH , roughness ) * INV_PI;
+    return Fr_DisneyDiffuse(NdotV , NdotL , LdotH , roughness) * INV_PI * INV_PI;
 }
 
 

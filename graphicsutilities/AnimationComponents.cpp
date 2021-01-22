@@ -37,7 +37,7 @@ namespace FlexKit
                         SkeletonView& skeleton)
 					{
                         auto& drawable = drawView.GetDrawable();
-						if (drawable.Skinned && CompareBSAgainstFrustum(&F, BS))
+						if (drawable.Skinned && Intersects(F, BS))
                             out_skinned.push_back({ &drawable, &skeleton.GetPoseState() });
 					});
 			}

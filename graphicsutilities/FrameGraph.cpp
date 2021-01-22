@@ -341,26 +341,46 @@ namespace FlexKit
 
 	FrameResourceHandle  FrameGraphNodeBuilder::AcquireVirtualResource(const GPUResourceDesc desc, DeviceResourceState initialState)
 	{
-		const auto& memoryPool      = Resources->memoryPools.back();
-		auto virtualResource        = memoryPool->Aquire(desc);
+        auto NeededFlags = 0;
 
-		FrameObject virtualObject       = FrameObject::VirtualObject();
-		virtualObject.shaderResource    = virtualResource;
-		virtualObject.State             = DeviceResourceState::DRS_DEPTHBUFFERWRITE;
+        auto FindResourcePool =
+            [&]() -> PoolAllocatorInterface*
+            {
+                return Resources->memoryPools.back();
 
-		auto virtualResourceHandle = FrameResourceHandle{ Resources->Resources.emplace_back(virtualObject) };
-		Resources->Resources[virtualResourceHandle].Handle = virtualResourceHandle;
-		Resources->virtualResources.push_back(virtualResourceHandle);
+                for (auto pool : Resources->memoryPools)
+                {
+                    if (pool->Flags() | NeededFlags)
+                        return pool;
+                }
 
-		FrameObjectLink outputObject;
-			outputObject.neededState    = Resources->renderSystem.GetObjectState(virtualResource);
-			outputObject.Source         = &Node;
-			outputObject.handle         = virtualResourceHandle;
+                return nullptr;
+            };
 
-		Context.AddWriteable(outputObject);
-		Node.OutputObjects.push_back(outputObject);
+        if(auto memoryPool = FindResourcePool(); memoryPool)
+        {
+		    auto virtualResource    = memoryPool->Aquire(desc);
 
-		return  virtualResourceHandle;
+		    FrameObject virtualObject       = FrameObject::VirtualObject();
+		    virtualObject.shaderResource    = virtualResource;
+		    virtualObject.State             = DeviceResourceState::DRS_DEPTHBUFFERWRITE;
+
+		    auto virtualResourceHandle = FrameResourceHandle{ Resources->Resources.emplace_back(virtualObject) };
+		    Resources->Resources[virtualResourceHandle].Handle = virtualResourceHandle;
+		    Resources->virtualResources.push_back(virtualResourceHandle);
+
+		    FrameObjectLink outputObject;
+			    outputObject.neededState    = Resources->renderSystem.GetObjectState(virtualResource);
+			    outputObject.Source         = &Node;
+			    outputObject.handle         = virtualResourceHandle;
+
+		    Context.AddWriteable(outputObject);
+		    Node.OutputObjects.push_back(outputObject);
+
+		    return  virtualResourceHandle;
+        }
+        else
+            return InvalidHandle_t;
 	}
 
 
@@ -391,7 +411,12 @@ namespace FlexKit
 
 	FrameResourceHandle	FrameGraphNodeBuilder::ReadWriteUAV(UAVResourceHandle handle, DeviceResourceState state)
 	{
-		return AddWriteableResource(handle, state);
+        if (auto frameResource = AddWriteableResource(handle, state); frameResource != InvalidHandle_t)
+            return frameResource;
+
+        Context.resources.AddUAVResource(handle, Context.resources.renderSystem.GetObjectState(handle));
+
+        return AddWriteableResource(handle, state);
 	}
 
 
@@ -400,7 +425,12 @@ namespace FlexKit
 
 	FrameResourceHandle	FrameGraphNodeBuilder::ReadWriteUAV(UAVTextureHandle handle, DeviceResourceState state)
 	{
-		return AddWriteableResource(handle, state);
+        if (auto frameResource = AddWriteableResource(handle, state); frameResource != InvalidHandle_t)
+            return frameResource;
+
+        Context.resources.AddUAVResource(handle, Context.resources.renderSystem.GetObjectState(handle));
+
+        return AddWriteableResource(handle, state);
 	}
 
 
@@ -519,7 +549,7 @@ namespace FlexKit
 			Vector<FrameGraphNodeWork>::Iterator end;
 		};
 
-		static const size_t workerCount = 10;
+		static const size_t workerCount = 2;
 		static_vector<SubmissionWorkRange> workList;
 		for (size_t I = 0; I < workerCount; I++)
 		{

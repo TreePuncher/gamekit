@@ -35,8 +35,8 @@ namespace FlexKit
 		size_t DepthPart	= (Depth & 0x00ffffffffffff);
 		size_t PosedBit		= (size_t(Posed)	<< (Posed		? 63 : 0));
 		size_t TextureBit	= (size_t(Textured) << (Textured	? 62 : 0));
+
 		return DepthPart | PosedBit | TextureBit;
-			
 	}
 
 	void SortPVS(PVS* PVS_, Camera* C)
@@ -55,7 +55,7 @@ namespace FlexKit
 			v.SortID = SortID;
 		}
 		
-		std::sort( PVS_->begin(), PVS_->end(), []( PVEntry& R, PVEntry& L ) -> bool
+		std::sort( PVS_->begin(), PVS_->end(), [](const PVEntry& R, const PVEntry& L ) -> bool
 		{
 			return ( (size_t)R.SortID < (size_t)L.SortID);
 		} );
@@ -257,13 +257,13 @@ namespace FlexKit
 
 		for (auto P : Frustum.Points)
 		{
-			Out.Min.x = min(Out.Min.x, P.x);
-			Out.Min.y = min(Out.Min.y, P.y);
-			Out.Min.z = min(Out.Min.z, P.z);
+			Out.Min.x = Min(Out.Min.x, P.x);
+			Out.Min.y = Min(Out.Min.y, P.y);
+			Out.Min.z = Min(Out.Min.z, P.z);
 
-			Out.Max.x = max(Out.Min.x, P.x);
-			Out.Max.y = max(Out.Min.y, P.y);
-			Out.Max.z = max(Out.Min.z, P.z);
+			Out.Max.x = Max(Out.Min.x, P.x);
+			Out.Max.y = Max(Out.Min.y, P.y);
+			Out.Max.z = Max(Out.Min.z, P.z);
 		}
 
 		return Out;
@@ -362,11 +362,11 @@ namespace FlexKit
 		return NewData;
 	}
 
+
 	float4x4 Camera::GetPV()
 	{
 		return PV;
 	}
-
 
 
 	/************************************************************************************************/

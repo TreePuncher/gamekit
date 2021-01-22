@@ -1,0 +1,203 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{31EBEF0D-793C-4B4D-84A1-EAF0AE305B60}</ProjectGuid>
+    <Keyword>QtVS_v303</Keyword>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">10.0.19041.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">10.0.19041.0</WindowsTargetPlatformVersion>
+    <QtMsBuild Condition="'$(QtMsBuild)'=='' OR !Exists('$(QtMsBuild)\qt.targets')">$(MSBuildProjectDirectory)\QtMsBuild</QtMsBuild>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') or !Exists('$(QtMsBuild)\qt.props')">
+    <Message Importance="High" Text="QtMsBuild: could not locate qt.targets, qt.props; project may not build correctly." />
+  </Target>
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <ImportGroup Condition="Exists('$(QtMsBuild)\qt_defaults.props')">
+    <Import Project="$(QtMsBuild)\qt_defaults.props" />
+  </ImportGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <LibraryPath>%COMPRESSONATOR_ROOT%\lib\VS2017\x64;$(LibraryPath)</LibraryPath>
+    <OutDir>..\builds\debug</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <LibraryPath>%COMPRESSONATOR_ROOT%\lib\VS2017\x64;$(LibraryPath)</LibraryPath>
+    <OutDir>..\builds\Release\</OutDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <AdditionalIncludeDirectories>%fmodapidir%\api\lowlevel\inc;%fmodapidir%\api\core\inc;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\libxml2;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\utils;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\arch;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\base;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\math;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\sync;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio\collada;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio\fbx;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\animation;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\constraint;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\geometry;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\shading;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\libxml2\libxml;..\coreutilities;..\graphicsutilities;..\physicsutilities;..\Dependencies\sdks;..\Dependencies\sdks\fbxsdk\include;..\Dependencies\sdks\DirectXTK\Src;..\Dependencies\sdks\DirectXTK\Inc;..\Dependencies\sdks\DirectX-Graphics-Samples\Libraries\D3DX12;..\Dependencies\sdks\crunch\inc;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_);.\;%COMPRESSONATOR_ROOT%\include</AdditionalIncludeDirectories>
+    </ClCompile>
+    <QtMoc>
+      <AdditionalDependencies>
+      </AdditionalDependencies>
+    </QtMoc>
+    <Link>
+      <AdditionalLibraryDirectories>$(Qt_LIBPATH_);..\Dependencies\libs\debug;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\lib\vs2017\x64\debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>%fmodapidir%\api\lowlevel\inc;%fmodapidir%\api\core\inc;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\libxml2;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\utils;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\arch;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\base;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\math;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\sync;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio\collada;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio\fbx;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\animation;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\constraint;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\geometry;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\shading;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\libxml2\libxml;..\coreutilities;..\graphicsutilities;..\physicsutilities;..\Dependencies\sdks;..\Dependencies\sdks\fbxsdk\include;..\Dependencies\sdks\DirectXTK\Src;..\Dependencies\sdks\DirectXTK\Inc;..\Dependencies\sdks\DirectX-Graphics-Samples\Libraries\D3DX12;..\Dependencies\sdks\crunch\inc;%(AdditionalIncludeDirectories);$(Qt_INCLUDEPATH_);.\;%COMPRESSONATOR_ROOT%\include</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+    </ClCompile>
+    <QtMoc>
+      <AdditionalDependencies>
+      </AdditionalDependencies>
+    </QtMoc>
+    <Link>
+      <AdditionalLibraryDirectories>$(Qt_LIBPATH_);..\Dependencies\libs\release;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\lib\vs2017\x64\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">
+    <QtInstall>qt5</QtInstall>
+    <QtModules>
+    </QtModules>
+    <QtBuildConfig>debug</QtBuildConfig>
+    <QtLibrarySearchPath>debug\lib</QtLibrarySearchPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
+    <QtInstall>qt5</QtInstall>
+    <QtModules>
+    </QtModules>
+    <QtBuildConfig>release</QtBuildConfig>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <VcpkgEnableManifest>true</VcpkgEnableManifest>
+    <VcpkgUseStatic>false</VcpkgUseStatic>
+    <VcpkgTriplet>
+    </VcpkgTriplet>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <VcpkgEnableManifest>true</VcpkgEnableManifest>
+  </PropertyGroup>
+  <ImportGroup Condition="Exists('$(QtMsBuild)\qt.props')">
+    <Import Project="$(QtMsBuild)\qt.props" />
+  </ImportGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">
+    <ClCompile>
+      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="Configuration">
+    <ClCompile>
+      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <Optimization>MaxSpeed</Optimization>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="EditorApplication.cpp" />
+    <ClCompile Include="EditorCodeEditor.cpp" />
+    <ClCompile Include="EditorConfig.cpp" />
+    <ClCompile Include="EditorOperators.cpp" />
+    <ClCompile Include="EditorOutputWindow.cpp" />
+    <ClCompile Include="EditorRenderer.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="EditorMainWindow.cpp" />
+    <ClCompile Include="EditorProject.cpp" />
+    <ClCompile Include="EditorRenderThread.cpp" />
+    <ClCompile Include="EditorResources.cpp" />
+    <ClCompile Include="EditorScriptEngine.cpp" />
+    <ClCompile Include="EditorTaskList.cpp" />
+    <ClCompile Include="flxEditor-Win64.cpp">
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
+    </ClCompile>
+    <ClCompile Include="ResourceBrowserWidget.cpp" />
+    <ClCompile Include="TaskManager.cpp" />
+    <ClCompile Include="TextureViewer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="DXRenderWindow.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="DXRenderWindow.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="EditorApplication.h" />
+    <QtMoc Include="EditorCodeEditor.h" />
+    <ClInclude Include="EditorConfig.h" />
+    <ClInclude Include="EditorGadgetInterface.h" />
+    <QtMoc Include="EditorOutputWindow.h" />
+    <ClInclude Include="EditorResources.h" />
+    <ClInclude Include="EditorScriptEngine.h" />
+    <ClInclude Include="EditorTaskList.h" />
+    <QtMoc Include="TextureViewer.h" />
+    <QtMoc Include="TaskManager.h" />
+    <QtMoc Include="ResourceBrowserWidget.h" />
+    <QtMoc Include="EditorRenderThread.h" />
+    <QtMoc Include="EditorMainWindow.h" />
+    <ClInclude Include="EditorImport.h" />
+    <ClInclude Include="EditorOperators.h" />
+    <ClInclude Include="EditorProject.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtUic Include="EditorCodeEditor.ui" />
+    <QtUic Include="EditorOutputWindow.ui" />
+    <QtUic Include="ResourceBrowserWidget.ui" />
+    <QtUic Include="TaskManager.ui" />
+    <QtUic Include="TextureViewer.ui" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">
+    <Import Project="$(QtMsBuild)\qt.targets" />
+  </ImportGroup>
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="..\packages\WinPixEventRuntime.1.0.200127001\build\WinPixEventRuntime.targets" Condition="Exists('..\packages\WinPixEventRuntime.1.0.200127001\build\WinPixEventRuntime.targets')" />
+  </ImportGroup>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\WinPixEventRuntime.1.0.200127001\build\WinPixEventRuntime.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\WinPixEventRuntime.1.0.200127001\build\WinPixEventRuntime.targets'))" />
+  </Target>
+</Project>

@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2016 Robert May
+Copyright (c) 2015 - 2020 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -477,10 +477,12 @@ namespace FlexKit
             auto moveBuffer =
                 [&](auto& target, auto& source)
                 {
+                    target.reserve(target.size() + sizeof(source[0]) * source.size());
+
                     for(auto temp : source)
                     {
                         char byteBuffer[sizeof(temp)];
-                        memcpy(byteBuffer, &temp, sizeof(byteBuffer));
+                        memcpy(byteBuffer, &temp, sizeof(temp));
                         for (auto byte : byteBuffer)
                             target.push_back(byte);
                     }
@@ -917,7 +919,7 @@ namespace FlexKit
 
             void AddWeightToken(WeightIndexPair in, TokenList& out)
             {
-                out.push_back(JointWeightToken{ (float3)in });
+                out.push_back(JointWeightToken{ float4{ (float3)in, 0 } });
                 out.push_back(JointIndexToken{ in.Get<1>() });
 			}
 

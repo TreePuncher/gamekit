@@ -121,7 +121,7 @@ void LocalPlayerState::PreDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatc
 
 void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
-	frameGraph.AddMemoryPool(&base.memoryPool);
+	frameGraph.AddMemoryPool(&base.renderTargetAllocator);
 
 	frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
 	frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
@@ -163,11 +163,6 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 		base.depthBuffer
 	};
 
-	LighBufferDebugDraw debugDraw;
-	debugDraw.constantBuffer = base.constantBuffer;
-	debugDraw.renderTarget   = targets.RenderTarget;
-	debugDraw.vertexBuffer	 = base.vertexBuffer;
-
 	const SceneDescription sceneDesc = {
 		activeCamera,
 		pointLightGather,
@@ -189,12 +184,6 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 	{
 		switch(renderMode)
 		{
-		case RenderMode::ForwardPlus:
-		{
-			//auto& depthPass       = base.render.DepthPrePass(dispatcher, frameGraph, activeCamera, PVS, targets.DepthTarget, core.GetTempMemory());
-			//auto& lighting        = base.render.UpdateLightBuffers(dispatcher, frameGraph, activeCamera, scene, sceneDesc, core.GetTempMemory(), &debugDraw);
-			//auto& deferredPass    = base.render.RenderPBR_ForwardPlus(dispatcher, frameGraph, depthPass, activeCamera, targets, sceneDesc, base.t, base.irradianceMap, core.GetTempMemory());
-		}   break;
 		case RenderMode::Deferred:
 		{
 			AddGBufferResource(base.gbuffer, frameGraph);
@@ -216,33 +205,17 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 				activeCamera,
 				scene,
 				sceneDesc,
+                targets.DepthTarget,
 				reserveCB,
-				core.GetTempMemory(),
-				&debugDraw);
+				core.GetTempMemory());
 
 			auto& shadowMapPass = ShadowMapPass(
 				frameGraph,
-				PVS,
+                sceneDesc,
+                core.RenderSystem.GetTextureWH(base.depthBuffer),
 				reserveCB,
 				base.t,
 				core.GetTempMemory());
-
-
-			/*
-			base.render.RenderPBR_IBL_Deferred(
-				dispatcher,
-				frameGraph,
-				sceneDesc,
-				activeCamera,
-				targets.RenderTarget,
-				base.depthBuffer,
-				base.gbuffer,
-				reserveCB,
-				reserveVB,
-				base.t,
-				core.GetTempMemory());
-			*/
-
 
 			base.render.RenderPBR_DeferredShade(
 				dispatcher,
@@ -254,49 +227,18 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 				base.t,
 				core.GetTempMemory());
 
+            if(true)
+            base.render.DEBUGVIS_DrawLightBVH(
+                dispatcher,
+                frameGraph,
+                activeCamera,
+                targets.RenderTarget,
+                lightPass,
+                reserveCB,
+                core.GetTempMemory());
+
 			ReleaseShadowMapPass(frameGraph, shadowMapPass);
-
 		}   break;
-		case RenderMode::ComputeTiledDeferred:
-		{
-			ComputeTiledDeferredShadeDesc desc =
-			{
-				pointLightGather,
-				base.gbuffer,
-				base.depthBuffer,
-				targets.RenderTarget,
-				activeCamera,
-			};
-
-			AddGBufferResource(base.gbuffer, frameGraph);
-			ClearGBuffer(base.gbuffer, frameGraph);
-
-			base.render.RenderPBR_GBufferPass(
-				dispatcher,
-				frameGraph,
-				sceneDesc,
-				activeCamera,
-				base.gbuffer,
-				base.depthBuffer,
-				reserveCB,
-				core.GetTempMemory());
-
-			base.render.UpdateLightBuffers(
-				dispatcher,
-				frameGraph,
-				activeCamera,
-				scene,
-				sceneDesc,
-				reserveCB,
-				core.GetTempMemory(),
-				&debugDraw);
-
-			base.render.RenderPBR_ComputeDeferredTiledShade(
-				dispatcher,
-				frameGraph,
-				reserveCB,
-				desc);
-		}
 		}
 
 		base.streamingEngine.TextureFeedbackPass(
@@ -355,6 +297,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 				}
 			}
 
+            /*
 			DrawShapes(
 				DRAW_LINE_PSO,
 				frameGraph,
@@ -363,11 +306,12 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 				targets.RenderTarget,
 				core.GetTempMemory(),
 				LineShape{ lines });
+                */
 		}
 	}
 
 	framework.stats.objectsDrawnLastFrame = PVS.GetData().solid.size();
-	framework.DrawDebugHUD(dT, base.vertexBuffer, base.renderWindow, frameGraph);
+    base.DEBUG_PrintDebugStats(core, frameGraph, base.vertexBuffer, base.renderWindow);
 
 	PresentBackBuffer(frameGraph, base.renderWindow);
 }
@@ -416,50 +360,17 @@ bool LocalPlayerState::EventHandler(Event evt)
 		{
 			switch (evt.mData1.mKC[0])
 			{
-			case KC_SPACE: // Reload Shaders
-			{
-				if (evt.Action == Event::Pressed)
-				{
-					if constexpr(false)
-					{
-						auto pos        = GetCameraControllerHeadPosition(thirdPersonCamera);
-						auto forward    = GetCameraControllerForwardVector(thirdPersonCamera);
-
-						// Load Model
-						const AssetHandle model = 1002;
-						auto [triMesh, loaded] = FindMesh("Cube1x1x1");
-
-						auto& allocator = framework.core.GetBlockMemory();
-
-						auto  rigidBody = base.physics.CreateRigidBodyCollider(game.pScene, PxShapeHandle{ 1 }, pos + forward * 20);
-						auto& dynamicBox = allocator.allocate<GameObject>();
-
-						dynamicBox.AddView<RigidBodyView>(rigidBody, game.pScene);
-						auto dynamicNode = GetRigidBodyNode(dynamicBox);
-						dynamicBox.AddView<DrawableView>(triMesh, dynamicNode);
-						game.scene.AddGameObject(dynamicBox, dynamicNode);
-
-						ApplyForce(dynamicBox, forward * 100);
-
-						SetMaterialParams(
-							dynamicBox,
-							float3(0.5f, 0.5f, 0.5f), // albedo
-							(rand() % 1000) / 1000.0f, // specular
-							1.0f, // IOR
-							(rand() % 1000) / 1000.0f,
-							(rand() % 1000) / 1000.0f,
-							0.0f);
-					}
-				}
-			}   break;
 			case KC_U: // Reload Shaders
 			{
 				if (evt.Action == Event::Release)
 				{
 					std::cout << "Reloading Shaders\n";
-					framework.core.RenderSystem.QueuePSOLoad(GBUFFERPASS);
-					framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
-				}
+                    framework.core.RenderSystem.QueuePSOLoad(LIGHTBVH_DEBUGVIS_PSO);
+                    framework.core.RenderSystem.QueuePSOLoad(CLUSTER_DEBUGVIS_PSO);
+                    framework.core.RenderSystem.QueuePSOLoad(CREATECLUSTERS);
+                    framework.core.RenderSystem.QueuePSOLoad(CREATECLUSTERLIGHTLISTS);
+                    framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
+                }
 			}   return true;
 			case KC_P: // Reload Shaders
 			{
@@ -487,7 +398,7 @@ bool LocalPlayerState::EventHandler(Event evt)
 
 /**********************************************************************
 
-Copyright (c) 2019 Robert May
+Copyright (c) 2020 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

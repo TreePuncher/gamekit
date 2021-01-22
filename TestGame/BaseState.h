@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "defaultpipelinestates.h"
 #include "Win32Graphics.h"
 #include "TextureStreamingUtilities.h"
+#include "RayTracingUtilities.h"
 
 
 #include <angelscript.h>
@@ -170,8 +171,8 @@ public:
 			streamingEngine	    { IN_Framework.core.RenderSystem, IN_Framework.core.GetBlockMemory() },
             sounds              { IN_Framework.core.Threads,      IN_Framework.core.GetBlockMemory() },
 
-            //d3DMemoryPool   { IN_Framework.GetRenderSystem() },
-            memoryPool      { IN_Framework.core.RenderSystem, IN_Framework.core.RenderSystem.CreateHeap(512 * MEGABYTE, DeviceHeapFlags::RenderTarget), 256 * MEGABYTE, 64 * KILOBYTE, IN_Framework.core.GetBlockMemory() },
+            renderTargetAllocator   { IN_Framework.core.RenderSystem, IN_Framework.core.RenderSystem.CreateHeap(64 * MEGABYTE, DeviceHeapFlags::RenderTarget), 256 * MEGABYTE, 64 * KILOBYTE, 0, IN_Framework.core.GetBlockMemory() },
+            temporaryAllocator      { IN_Framework.core.RenderSystem, IN_Framework.core.RenderSystem.CreateHeap(64 * MEGABYTE, DeviceHeapFlags::UAV), 256 * MEGABYTE, 64 * KILOBYTE, 0, IN_Framework.core.GetBlockMemory() },
 
             renderWindow{ std::get<0>(CreateWin32RenderWindow(IN_Framework.GetRenderSystem(), DefaultWindowDesc({ 1920, 1080 }) )) },
 
@@ -180,6 +181,10 @@ public:
 						streamingEngine,
                         renderWindow.GetWH()
 					},
+
+            rtEngine{ IN_Framework.core.RenderSystem.RTAvailable() ?
+                (iRayTracer&)IN_Framework.core.GetBlockMemory().allocate<RTX_RayTracer>(IN_Framework.core.RenderSystem, IN_Framework.core.GetBlockMemory()) :
+                (iRayTracer&)IN_Framework.core.GetBlockMemory().allocate<NullRayTracer>() },
 
 			cameras		        { framework.core.GetBlockMemory() },
 			ids			        { framework.core.GetBlockMemory() },
@@ -247,13 +252,70 @@ public:
             return;
 
         auto& renderSystem  = framework.GetRenderSystem();
-        auto adjustedWH     = uint2{ max(8u, WH[0]), max(8u, WH[1]) };
+        auto adjustedWH     = uint2{ Max(8u, WH[0]), Max(8u, WH[1]) };
 
         renderWindow.Resize(adjustedWH);
 
         renderSystem.ReleaseTexture(depthBuffer);
         depthBuffer = renderSystem.CreateDepthBuffer(adjustedWH, true);
         gbuffer.Resize(adjustedWH);
+    }
+
+    void DEBUG_PrintDebugStats(EngineCore& core, FrameGraph& frameGraph, VertexBufferHandle textBuffer, ResourceHandle renderTarget)
+    {
+        const size_t bufferSize     = 1024;
+        uint32_t VRamUsage	        = (uint32_t)(core.RenderSystem._GetVidMemUsage() / MEGABYTE);
+		char* TempBuffer	        = (char*)core.GetTempMemory().malloc(bufferSize);
+		auto DrawTiming		        = float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
+        const char* RTFeatureStr    = core.RenderSystem.GetRTFeatureLevel() == RenderSystem::AvailableFeatures::Raytracing::RT_FeatureLevel_NOTAVAILABLE ? "Not Available" : "Available";
+
+        const auto shadingStats         = render.GetTimingValues();
+        const auto texturePassTime      = streamingEngine.debug_GetPassTime();
+        const auto textureUpdateTime    = streamingEngine.debug_GetUpdateTime();
+
+        sprintf_s(TempBuffer, bufferSize,
+			"Current VRam Usage: %u MB\n"
+			"FPS: %u\n"
+			"Update/Draw Dispatch Time: %fms\n"
+			//"Objects Drawn: %u\n"
+            "Hardware RT: %s\n"
+            "Timing:\n"
+            "    GBufferPass: %fms\n"
+            "    Shading: %fms\n"
+            "    Cluster creation: %fms\n"
+            "    Light BVH creation: %fms\n"
+            "    Texture Feedback Pass: %fms\n"
+            "    Texture Update: %fms\n"
+			"\nBuild Date: " __DATE__ "\n",
+
+
+			VRamUsage, 
+			(uint32_t)framework.stats.fps,
+			DrawTiming,
+			//(uint32_t)framework.stats.objectsDrawnLastFrame,
+            RTFeatureStr,
+            shadingStats.gBufferPass,
+            shadingStats.shadingPass,
+            shadingStats.ClusterCreation,
+            shadingStats.BVHConstruction,
+            texturePassTime,
+            textureUpdateTime);
+        
+        const uint2 WH          = core.RenderSystem.GetTextureWH(renderTarget);
+        const float aspectRatio = float(WH[0]) / float(WH[1]);
+
+		PrintTextFormatting Format = PrintTextFormatting::DefaultParams();
+        Format.Scale = float2(0.5f, 0.5f) * float2{ (float)WH[0], (float)WH[1] } / float2{ 1920, 1080 };
+        Format.Color = { 1, 1, 1, 1 };
+
+		DrawSprite_Text(
+				TempBuffer, 
+				frameGraph, 
+				*framework.DefaultAssets.Font,
+                textBuffer,
+				renderTarget, 
+				core.GetTempMemory(), 
+				Format);
     }
 
 
@@ -266,7 +328,8 @@ public:
     size_t  counter = 0;
 
     // render resources
-    MemoryPoolAllocator         memoryPool;
+    MemoryPoolAllocator         renderTargetAllocator;
+    MemoryPoolAllocator         temporaryAllocator;
 
     Win32RenderWindow           renderWindow;
 	WorldRender					render;
@@ -275,7 +338,10 @@ public:
 	VertexBufferHandle			vertexBuffer;
 	ConstantBufferHandle		constantBuffer;
     SoundSystem			        sounds;
+
+    // Heaps
     DeviceHeapHandle            renderTargetTemporaryPool;
+    DeviceHeapHandle            TemporaryPool;
 
 	// Components
 	SceneNodeComponent			    transforms;
@@ -294,6 +360,7 @@ public:
     CameraControllerComponent       orbitCameras;
 
 	TextureStreamingEngine		    streamingEngine;
+    iRayTracer&                     rtEngine;
 };
 
 

@@ -4,9 +4,6 @@
 #include "buildsettings.h"
 #include "Geometry.h"
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb_image.h>
-
 // Sources Files
 #include "common.cpp"
 #include "Animation.cpp"
@@ -16,6 +13,7 @@
 #include "TTFontLoader.cpp"
 #include "SceneResource.cpp"
 #include "TextureResourceUtilities.cpp"
+#include "FBXResourceUtilities.cpp"
 
 #include "AnimationUtilities.cpp"
 #include "MeshUtils.cpp"
@@ -28,7 +26,16 @@
 
 #include <algorithm>
 #include <initializer_list>
-#include <physx/extensions/PxDefaultAllocator.h>
+#include <extensions/PxDefaultAllocator.h>
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
+
+#define TINYGLTF_NO_STB_IMAGE_WRITE
+#define TINYGLTF_NO_INCLUDE_JSON
+#define TINYGLTF_IMPLEMENTATION
+#include <tiny_gltf.h>
+
 
 using namespace FlexKit;
 using namespace FlexKit::ResourceBuilder;
@@ -58,7 +65,7 @@ int main(int argc, char* argv[])
     std::vector<char*> glTFAssets;
     std::vector<char*> MetaDataFiles;
 	
-	char* Out = "assets\\ResourceFile.gameres";
+	const char* Out = "assets\\ResourceFile.gameres";
 
 	enum class TOOL_MODE
 	{

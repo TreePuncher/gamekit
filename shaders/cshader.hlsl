@@ -199,7 +199,7 @@ void Tiled_Shading( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID
 								float3 Ld = SpotLights[II].D;
 								float3 Lv = normalize(Lp - WPOS);
 								float3 Lk = SpotLights[II].K;
-								float La = pow(max(dot(-Ld, Lv), 0), 10);
+								float La = pow(Max(dot(-Ld, Lv), 0), 10);
 
 								ColorOut += float4(Frd(Lv, Lk, vdir, WPOS, Kd, n, Ks, m, r) * La * PIInverse, 0);
 							}
@@ -293,7 +293,7 @@ void Tiled_Shading( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID
 		float3 Ld = SpotLights[II].D;
 		float3 Lv = normalize(Lp - WPOS);
 		float3 Lk = SpotLights[II].K;
-		float La = pow(max(dot(-Ld, Lv), 0), 10);
+		float La = pow(Max(dot(-Ld, Lv), 0), 10);
 
 		ColorOut += float4(Frd(Lv, Lk, vdir, WPOS, Kd, n, Ks, m, r) * La * PIInverse, 0);
 	}

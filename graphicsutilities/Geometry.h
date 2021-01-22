@@ -149,7 +149,7 @@ namespace FlexKit
 
 
 		template< typename TY >
-		inline bool Push(TY& in)
+		inline bool Push(const TY& in)
 		{
 			if (mBufferUsed + sizeof(TY) > mBufferSize)
 				return false;
@@ -171,7 +171,7 @@ namespace FlexKit
 
 
 		template< typename TY >
-		inline bool Push(TY& in, size_t bytesize)
+		inline bool Push(const TY& in, size_t bytesize)
 		{
 			if (mBufferUsed + bytesize > mBufferSize)
 				return false;
@@ -188,7 +188,7 @@ namespace FlexKit
 
 
 		template<>
-		inline bool Push(float3& in)
+		inline bool Push(const float3& in)
 		{
             if (mBufferUsed + static_cast<uint32_t>(mBufferFormat) > mBufferSize) {
                 mBufferinError = true;
@@ -438,7 +438,7 @@ namespace FlexKit
 		struct RInfo
 		{
 			float3 Offset;
-			float3 min, max;
+			float3 Min, Max;
 			float  r;
 		}Info;
 

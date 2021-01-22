@@ -51,6 +51,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define PHYSX_PVD			ON
 #define DEBUGALLOCATOR		OFF
 #define DEBUGGRAPHICS		ON
+#define DEBUGSHADERS		ON
 #define ENABLEDRED		    OFF
 #define DEBUGHANDLES		OFF
 #define DEBUGMEMORY			OFF
@@ -70,6 +71,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define PHYSX_PVD			OFF
 #define DEBUGALLOCATOR		OFF
 #define DEBUGGRAPHICS		OFF
+#define DEBUGSHADERS		ON
 #define ENABLEDRED		    OFF
 #define DEBUGHANDLES		OFF
 #define DEBUGMEMORY			OFF
@@ -110,8 +112,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #ifdef _DEBUG
 
+#include "Logging.h"
 #define FK_ASSERT1(A) assert(A)
-#define FK_ASSERT2(A, B) if(!A) {FK_LOG_ERROR( B ); assert(false);}
+#define FK_ASSERT2(A, B) if(!(A) && false) {FK_LOG_ERROR( B ); assert(false);}
 
 #else
 
@@ -192,7 +195,7 @@ static const size_t MEGABYTE	= 1024 * KILOBYTE;
 static const size_t GIGABYTE	= 1024 * MEGABYTE;
 
 constexpr size_t DefaultWorkerCount = 2; // should be safe for a quad core cpu
-const size_t INVALIDHANDLE = -1;
+const size_t INVALIDHANDLE          = size_t(-1);
 
 namespace FlexKit {
     using byte = uint8_t;

@@ -1,0 +1,24 @@
+{
+	"name": "flexkit",
+	"version-string": "0.0.1",
+    "dependencies": [
+        {
+            "name": "angelscript",
+            "features": [ "addons" ]
+        },
+        {
+            "name": "directxtex",
+            "features": [ "dx12", "openexr" ]
+        },
+        "boost",
+        "cppcoro",
+        "directxtk12",
+        "imgui",
+        "physx",
+        "fmt",
+        "slikenet", 
+        "stb",
+        "tinygltf",
+        "qt5"
+    ]
+}

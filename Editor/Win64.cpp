@@ -34,7 +34,7 @@ public:
         wxWindow{ parent, wxID_ANY, wxDefaultPosition, parent->GetSize() },
         app     {{ (uint32_t)parent->GetSize().x, (uint32_t)parent->GetSize().y },
                     memory,
-                    max(std::thread::hardware_concurrency(), 1u) - 1, GetHandle() }
+                    Max(std::thread::hardware_concurrency(), 1u) - 1, GetHandle() }
     {
         Show(true);
         auto& editor = app.PushState<EditorBase>();
@@ -186,7 +186,7 @@ wxIMPLEMENT_APP(TestApp);
 
 
     const auto        WH          = FlexKit::uint2{ 1920, 1080 };
-    const uint32_t    threadCount = max(std::thread::hardware_concurrency(), 1u) - 1;
+    const uint32_t    threadCount = Max(std::thread::hardware_concurrency(), 1u) - 1;
 
     //auto* memory = FlexKit::CreateEngineMemory();
     //EXITSCOPE(FlexKit::ReleaseEngineMemory(memory));

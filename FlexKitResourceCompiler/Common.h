@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "XMMathConversion.h"
 #include "MeshUtils.h"
 #include "AnimationUtilities.h"
-
+#include "ResourceIDs.h"
 
 #include <DirectXMath.h>
 
@@ -219,8 +219,9 @@ namespace FlexKit::ResourceBuilder
     {
     public:
         virtual ResourceBlob        CreateBlob() = 0;
-        virtual const std::string&  GetResourceID() const { return "resource"; }
-        virtual const uint64_t      GetResourceGUID() const { return -1; }
+        virtual const std::string&  GetResourceID()     const { const static std::string _temp{ "resource" };  return _temp; }
+        virtual const uint64_t      GetResourceGUID()   const { return -1; }
+        virtual const ResourceID_t  GetResourceTypeID() const = 0;// { return -1; }
     };
 
 

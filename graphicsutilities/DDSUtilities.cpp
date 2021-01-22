@@ -2,9 +2,7 @@
 #include "DDSUtilities.h"
 
 #include <d3d12.h>
-#include <d3dx12.h>
 #include <Windows.h>
-#include <dds.h>
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -285,7 +283,7 @@ namespace FlexKit
 
 		// DDS files always start with the same magic number ("DDS ")
 		uint32_t dwMagicNumber = *(const uint32_t*)(*ddsData);
-		if (dwMagicNumber != DDS_MAGIC)
+		if (dwMagicNumber != DirectX::DDS_MAGIC)
 			return E_FAIL;
 
 		auto hdr = reinterpret_cast<DDS_HEADER*>(*ddsData + sizeof(uint32_t));
@@ -871,19 +869,19 @@ namespace FlexKit
 
 
 	static HRESULT CreateD3DResources12(
-		RenderSystem* RS,
-        CopyContextHandle handle,
-		uint32_t resDim,
-		size_t width,
-		size_t height,
-		size_t depth,
-		size_t mipCount,
-		size_t arraySize,
-		DXGI_FORMAT format,
-		bool forceSRGB,
-		bool isCubeMap,
+		RenderSystem*           RS,
+        CopyContextHandle       handle,
+		uint32_t                resDim,
+		size_t                  width,
+		size_t                  height,
+		size_t                  depth,
+		size_t                  mipCount,
+		size_t                  arraySize,
+		DXGI_FORMAT             format,
+		bool                    forceSRGB,
+		bool                    isCubeMap,
 		D3D12_SUBRESOURCE_DATA* initData,
-		ID3D12Resource** texture
+		ID3D12Resource**        texture
 	)
 	{
 		FK_ASSERT(RS, "INVALID ARGUEMENT");
@@ -910,8 +908,10 @@ namespace FlexKit
 			texDesc.Layout             = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 			texDesc.Flags              = D3D12_RESOURCE_FLAG_NONE;
 
+            auto heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+
 			hr = RS->pDevice->CreateCommittedResource(
-				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+				&heapProperties,
 				D3D12_HEAP_FLAG_NONE,
 				&texDesc,
 				D3D12_RESOURCE_STATE_COMMON,
@@ -933,11 +933,13 @@ namespace FlexKit
 				ID3D12Resource* textureUploadHeap	= nullptr;
 				ID3D12GraphicsCommandList* cmdList	= RS->_GetCopyContext(handle).commandList;
 
+                auto heapProperties     = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+                auto resDesc            = CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize);
 
 				hr = RS->pDevice->CreateCommittedResource(
-					&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+					&heapProperties,
 					D3D12_HEAP_FLAG_NONE,
-					&CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize),
+					&resDesc,
 					D3D12_RESOURCE_STATE_GENERIC_READ,
 					nullptr,
 					IID_PPV_ARGS(&textureUploadHeap));
@@ -1004,15 +1006,15 @@ namespace FlexKit
 
 
 	static HRESULT CreateTextureFromDDS12(
-		RenderSystem* RS,
-        CopyContextHandle handle,
-		const DDS_HEADER* header,
-		const uint8_t* bitData,
-		size_t bitSize,
-		size_t maxsize,
-		bool forceSRGB,
-		ID3D12Resource** texture,
-		DXGI_FORMAT*	 formatOut = nullptr)
+		RenderSystem*       RS,
+        CopyContextHandle   handle,
+		const DDS_HEADER*   header,
+		const uint8_t*      bitData,
+		size_t              bitSize,
+		size_t              maxsize,
+		bool                forceSRGB,
+		ID3D12Resource**    texture,
+		DXGI_FORMAT*	    formatOut = nullptr)
 	{
 		HRESULT hr = S_OK;
 

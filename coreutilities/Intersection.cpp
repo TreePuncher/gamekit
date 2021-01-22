@@ -5,7 +5,7 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	bool CompareBSAgainstFrustum(const Frustum* F, const BoundingSphere BS)
+	bool Intersects(const Frustum F, const BoundingSphere BS)
 	{
 		bool Bottom = false;
 		bool Near	= false;
@@ -17,40 +17,40 @@ namespace FlexKit
 		const float  r = BS.w;
 
 		{
-			auto P = V - F->Planes[EPlane_FAR].Orgin;
-			auto N = F->Planes[EPlane_FAR].Normal;
+			auto P = V - F.Planes[EPlane_FAR].Orgin;
+			auto N = F.Planes[EPlane_FAR].Normal;
 
 			float NdP	= N.dot(P);
 			float D		= NdP - r;
 			Far			= D <= 0;
 		}
 		{
-			auto P = V - F->Planes[EPlane_NEAR].Orgin;
-			auto N = F->Planes[EPlane_NEAR].Normal;
+			auto P = V - F.Planes[EPlane_NEAR].Orgin;
+			auto N = F.Planes[EPlane_NEAR].Normal;
 
 			float NdP	= N.dot(P);
 			float D		= NdP - r;
 			Near		= D <= 0;
 		}
 		{
-			auto P = V - F->Planes[EPlane_TOP].Orgin;
-			auto N = F->Planes[EPlane_TOP].Normal;
+			auto P = V - F.Planes[EPlane_TOP].Orgin;
+			auto N = F.Planes[EPlane_TOP].Normal;
 
 			float NdP	= N.dot(P);
 			float D		= NdP - r;
 			Top			= D <= 0;
 		}
 		{
-			auto P = V - F->Planes[EPlane_BOTTOM].Orgin;
-			auto N = F->Planes[EPlane_BOTTOM].Normal;
+			auto P = V - F.Planes[EPlane_BOTTOM].Orgin;
+			auto N = F.Planes[EPlane_BOTTOM].Normal;
 
 			float NdP	= N.dot(P);
 			float D		= NdP - r;
 			Bottom		= D <= 0;
 		}
 		{
-			auto P = V - F->Planes[EPlane_LEFT].Orgin;
-			auto N = F->Planes[EPlane_LEFT].Normal;
+			auto P = V - F.Planes[EPlane_LEFT].Orgin;
+			auto N = F.Planes[EPlane_LEFT].Normal;
 
 			float NdP	= N.dot(P);
 			float D		= NdP - r;
@@ -58,8 +58,8 @@ namespace FlexKit
 			int x = 0; 
 		}
 		{
-			auto P = V - F->Planes[EPlane_RIGHT].Orgin;
-			auto N = F->Planes[EPlane_RIGHT].Normal;
+			auto P = V - F.Planes[EPlane_RIGHT].Orgin;
+			auto N = F.Planes[EPlane_RIGHT].Normal;
 
 			float NdP	= N.dot(P);
 			float D		= NdP - r;

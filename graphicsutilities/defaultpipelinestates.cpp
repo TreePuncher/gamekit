@@ -26,8 +26,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CoreSceneObjects.h"
 
 
-#include <d3dx12.h>
-
 namespace FlexKit
 {
 	/************************************************************************************************/
@@ -35,15 +33,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateDrawTriStatePSO(RenderSystem* RS)
 	{
-		auto DrawRectVShader = LoadShader("DrawRect_VS",	"DrawRect_VS", "vs_5_1",	"assets\\shaders\\vshader.hlsl");
-		auto DrawRectPShader = LoadShader("DrawRect",		"DrawRect", "ps_5_1",		"assets\\shaders\\pshader.hlsl");
-
-		FINALLY
-			
-		Release(&DrawRectVShader);
-		Release(&DrawRectPShader);
-
-		FINALLYOVER
+		auto DrawRectVShader = RS->LoadShader("DrawRect_VS",	"vs_6_0", "assets\\shaders\\vshader.hlsl");
+		auto DrawRectPShader = RS->LoadShader("DrawRect",		"ps_6_0", "assets\\shaders\\pshader.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -86,15 +77,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateTexturedTriStatePSO(RenderSystem* RS)
 	{
-		auto DrawRectVShader = LoadShader("DrawRect_VS",		"DrawRect_VS",		"vs_5_1", "assets\\shaders\\vshader.hlsl");
-		auto DrawRectPShader = LoadShader("DrawRectTextured",	"DrawRectTextured", "ps_5_1", "assets\\shaders\\pshader.hlsl");
-
-		FINALLY
-			
-		Release(&DrawRectVShader);
-		Release(&DrawRectPShader);
-
-		FINALLYOVER
+		auto DrawRectVShader = RS->LoadShader("DrawRect_VS",		"vs_6_0", "assets\\shaders\\vshader.hlsl");
+		auto DrawRectPShader = RS->LoadShader("DrawRectTextured",	"ps_6_0", "assets\\shaders\\pshader.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -139,15 +123,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateTexturedTriStateDEBUGPSO(RenderSystem* RS)
 	{
-		auto DrawRectVShader = LoadShader("VS",	"VS", "vs_5_1", "assets\\shaders\\temp.hlsl");
-		auto DrawRectPShader = LoadShader("PS",	"PS", "ps_5_1", "assets\\shaders\\temp.hlsl");
-
-		FINALLY
-			
-		Release(&DrawRectVShader);
-		Release(&DrawRectPShader);
-
-		FINALLYOVER
+		auto DrawRectVShader = RS->LoadShader("VS",	"vs_6_0", "assets\\shaders\\temp.hlsl");
+		auto DrawRectPShader = RS->LoadShader("PS",	"ps_6_0", "assets\\shaders\\temp.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -192,22 +169,14 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateDrawLineStatePSO(RenderSystem* RS)
 	{
-		auto DrawRectVShader = LoadShader("DrawRect_VS",	"DrawRect_VS",	"vs_5_1",	"assets\\shaders\\vshader.hlsl");
-		auto DrawRectPShader = LoadShader("DrawRect",		"DrawRect",		"ps_5_1",	"assets\\shaders\\pshader.hlsl");
-
-		FINALLY
-			
-		Release(&DrawRectVShader);
-		Release(&DrawRectPShader);
-
-		FINALLYOVER
+		auto DrawRectVShader = RS->LoadShader("DrawRect_VS",	"vs_6_0",	"assets\\shaders\\vshader.hlsl");
+		auto DrawRectPShader = RS->LoadShader("DrawRect",		"ps_6_0",	"assets\\shaders\\pshader.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 				{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 8,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 				{ "COLOR",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		};
-
 
 		D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		Rast_Desc.FillMode		= D3D12_FILL_MODE::D3D12_FILL_MODE_WIREFRAME;
@@ -253,20 +222,14 @@ namespace FlexKit
 	*/
 	ID3D12PipelineState* CreateDraw2StatePSO(RenderSystem* RS)
 	{
-		auto DrawRectVShader = LoadShader("V10Main",	"V10Main",	"vs_5_1",	"assets\\shaders\\vshader.hlsl");
-		auto DrawRectPShader = LoadShader("DrawRect",	"DrawRect",	"ps_5_1",	"assets\\shaders\\pshader.hlsl");
-
-		EXITSCOPE(
-			Release(&DrawRectVShader);
-			Release(&DrawRectPShader);
-		);
+		auto DrawRectVShader = RS->LoadShader("V10Main",	"vs_6_0",	"assets\\shaders\\vshader.hlsl");
+		auto DrawRectPShader = RS->LoadShader("DrawRect",	"ps_6_0",	"assets\\shaders\\pshader.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,		0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 				{ "COLOR",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,		0, sizeof(float4),	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 				{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,			0, sizeof(float4)*2,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		};
-
 
 		D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		Rast_Desc.FillMode		= D3D12_FILL_MODE::D3D12_FILL_MODE_WIREFRAME;
@@ -305,7 +268,7 @@ namespace FlexKit
 
 	ID3D12PipelineState* LoadOcclusionState(RenderSystem* RS)
 	{
-		Shader VShader = LoadShader("VMain", "VMAIN", "vs_5_1", "assets\\shaders\\VShader.hlsl" );
+		Shader VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\VShader.hlsl" );
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] =
 		{
@@ -537,8 +500,8 @@ namespace FlexKit
 
     ID3D12PipelineState* LoadClearRenderTarget_RG32(RenderSystem* renderSystem)
     {
-        auto VShader = LoadShader("FullscreenQuad", "FullscreenQuad", "vs_5_1", "assets\\shaders\\FullscreenQuad.hlsl");
-        auto PShader = LoadShader("ClearRenderTargetUINT2", "ClearRenderTargetUINT2", "ps_5_1", "assets\\shaders\\ClearRenderTarget.hlsl");
+        auto VShader = renderSystem->LoadShader("FullscreenQuad", "vs_6_0", "assets\\shaders\\FullscreenQuad.hlsl");
+        auto PShader = renderSystem->LoadShader("ClearRenderTargetUINT2", "ps_6_0", "assets\\shaders\\ClearRenderTarget.hlsl");
 
         D3D12_INPUT_ELEMENT_DESC InputElements[] = {
                 { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },

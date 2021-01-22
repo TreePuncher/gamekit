@@ -698,13 +698,13 @@ namespace FlexKit
 				Apply(*potentialVisible.entity,
 					[&](DrawableView& drawable)
 					{
-						if (!drawable.GetDrawable().Skinned && CompareBSAgainstFrustum(&F, BS))
+						if (!drawable.GetDrawable().Skinned && Intersects(F, BS))
 						{
 							float distance = 0;
 							if (potentialVisible.transparent)
-								PushPV(drawable, T_out);
+								PushPV(drawable, T_out, POS);
 							else
-								PushPV(drawable, out);
+								PushPV(drawable, out, POS);
 						}
 					});
 			}
@@ -882,6 +882,8 @@ namespace FlexKit
                                 if (itr >= componentCount)
                                     break;
                             }
+
+                            SetBoundingSphereFromMesh(gameObject);
 						}
 						case SceneBlockType::EntityComponent:
 							break;
@@ -939,11 +941,11 @@ namespace FlexKit
 					SceneVisibilityView&	visibility,
 					SceneNodeView<>&		sceneNode)
 				{
-					auto position	= sceneNode.GetPosition();
-					auto scale		= sceneNode.GetScale();
-					auto radius		= pointLight.GetRadius();
+					const auto position	    = sceneNode.GetPosition();
+					const auto scale		= sceneNode.GetScale();
+					const auto radius		= pointLight.GetRadius();
 
-					if (CompareBSAgainstFrustum(&f, { position, radius * scale }))
+					if (Intersects(f, BoundingSphere{ position, radius * scale }))
 						lights.emplace_back(pointLight);
 
 					//visibility->GetBoundingVolume();

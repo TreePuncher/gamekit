@@ -34,3 +34,4 @@ Release/
 *.ini
 /EditorWinUI/Generated Files/winrt
 /packages
+/vcpkg_installed

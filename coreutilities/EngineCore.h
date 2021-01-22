@@ -26,13 +26,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "buildsettings.h"
 
-#include "timeutilities.h"
+#include "Assets.h"
 #include "containers.h"
 #include "GraphicsComponents.h"
 #include "memoryutilities.h"
 #include "ProfilingUtilities.h"
-#include "Assets.h"
 #include "ThreadUtilities.h"
+#include "timeutilities.h"
+#include "Input.h"
 
 #include "FrameGraph.h"
 #include "graphics.h"
@@ -75,28 +76,6 @@ namespace FlexKit
 		bool F;
 		bool SpaceBar;
 		size_t FrameID;
-	};
-
-
-	/************************************************************************************************/
-
-
-	struct MouseInputState
-	{
-		FlexKit::int2	dPos					= { 0, 0 };
-		FlexKit::float2	Normalized_dPos			= { 0, 0 };
-		FlexKit::float2	Position				= { 0, 0 };
-		FlexKit::float2	NormalizedPos			= { 0, 0 };
-		FlexKit::float2	NormalizedScreenCord	= { 0, 0 };
-
-
-
-		bool LMB_Pressed = false;
-		bool RMB_Pressed = false;
-		bool Enabled = false;
-
-		double LMB_Duration = 0.0;
-		double RMB_Duration = 0.0;
 	};
 
 

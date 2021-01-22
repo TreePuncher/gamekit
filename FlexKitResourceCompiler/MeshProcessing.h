@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MetaData.h"
 #include "Geometry.h"
 #include "Animation.h"
+#include "ResourceIDs.h"
 
 #include <array>
 #include <optional>
@@ -76,7 +77,7 @@ namespace FlexKit::ResourceBuilder
 		float3			MaxV    = float3(0, 0, 0);
 		float			R       = 0;
 
-		size_t          ID      = rand();
+		size_t          ID      = (uint32_t)rand();
 
 		size_t			                   faceCount = 0;
 		SkinDeformer                       skin;
@@ -108,21 +109,21 @@ namespace FlexKit::ResourceBuilder
 
 			blob->IndexCount	= IndexCount;
 			blob->IndexBuffer	= IndexBuffer_Idx;
-			blob->Info.minx		= Info.min.x;
-			blob->Info.miny		= Info.min.y;
-			blob->Info.minz		= Info.min.z;
-			blob->Info.maxx		= Info.max.x;
-			blob->Info.maxy		= Info.max.y;
-			blob->Info.maxz		= Info.max.z;
+			blob->Info.minx		= Info.Min.x;
+			blob->Info.miny		= Info.Min.y;
+			blob->Info.minz		= Info.Min.z;
+			blob->Info.maxx		= Info.Max.x;
+			blob->Info.maxy		= Info.Max.y;
+			blob->Info.maxz		= Info.Max.z;
 			blob->Info.r		= Info.r;
 	
 			memcpy(blob->BS, &BS, sizeof(BoundingSphere));
-			blob->AABB[0] = AABB.min[0];
-			blob->AABB[1] = AABB.min[1];
-			blob->AABB[2] = AABB.min[2];
-			blob->AABB[3] = AABB.max[0];
-			blob->AABB[4] = AABB.max[1];
-			blob->AABB[5] = AABB.max[2];
+			blob->AABB[0] = AABB.Min[0];
+			blob->AABB[1] = AABB.Min[1];
+			blob->AABB[2] = AABB.Min[2];
+			blob->AABB[3] = AABB.Max[0];
+			blob->AABB[4] = AABB.Max[1];
+			blob->AABB[5] = AABB.Max[2];
 
 			strcpy_s(blob->ID, ID_LENGTH > ID.size() ? ID_LENGTH : ID.size(), ID.c_str());
 
@@ -156,8 +157,9 @@ namespace FlexKit::ResourceBuilder
 			return out;
 		}
 
-		const std::string& GetResourceID() const override { return ID; }
-		const uint64_t     GetResourceGUID() const override { return TriMeshID; }
+        const ResourceID_t GetResourceTypeID()  const override { return MeshResourceTypeID; }
+		const std::string& GetResourceID()      const override { return ID; }
+		const uint64_t     GetResourceGUID()    const override { return TriMeshID; }
 
         std::optional<VertexBufferView*> GetBuffer(VERTEXBUFFER_TYPE type) const
         {
@@ -191,7 +193,7 @@ namespace FlexKit::ResourceBuilder
 		size_t TriMeshID;
 		size_t IndexBuffer_Idx;
 
-        static_vector<FlexKit::SubMesh> submeshes;
+        static_vector<FlexKit::SubMesh, 32> submeshes;
 
 		struct SubDivInfo
 		{
@@ -206,7 +208,7 @@ namespace FlexKit::ResourceBuilder
 		struct RInfo
 		{
 			float3 Offset;
-			float3 min, max;
+			float3 Min, Max;
 			float  r;
 		}Info;
 
@@ -222,21 +224,24 @@ namespace FlexKit::ResourceBuilder
 					{
 						case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL:
 						case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT:
-							TransformBuffer(
-								view->CreateTypedProxy<float3>(),
-								[&](auto V) -> float3
-								{
-									return V;
-									//return (transform * float4(V, 0)).xyz().normal(); // TODO: Handle scaling correctly
-								});
-							break;
+                        {
+                            auto proxy = view->CreateTypedProxy<float3>();
+                            TransformBuffer(
+                                proxy,
+                                [&](auto V) -> float3
+                                {
+                                    return V;
+                                    //return (transform * float4(V, 0)).xyz().normal(); // TODO: Handle scaling correctly
+                                });
+                        }	break;
 						case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION:
-							struct Vertex
+                        {	struct Vertex
 							{
 								float pos[3];
 							};
+                            auto proxy = view->CreateTypedProxy<Vertex>();
 							TransformBuffer(
-								view->CreateTypedProxy<Vertex>(),
+								proxy,
 								[&](auto V)
 								{
 									Vertex V_out;
@@ -249,7 +254,7 @@ namespace FlexKit::ResourceBuilder
 
 									return V_out;
 								});
-							break;
+						}	break;
 					}
 				}
 			}

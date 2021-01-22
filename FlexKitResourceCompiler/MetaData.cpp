@@ -261,7 +261,7 @@ namespace FlexKit::ResourceBuilder
 	/************************************************************************************************/
 
 
-	const Value* FindValue(const std::vector<Value>& Values, char* ValueID)
+	const Value* FindValue(const std::vector<Value>& Values, const char* ValueID)
 	{
 		auto res = 
 			FlexKit::find(
@@ -467,7 +467,7 @@ namespace FlexKit::ResourceBuilder
 		FK_ASSERT((AssetGUID->Type == ValueType::INT));
 #else
 		if ((!AssetID || AssetID->Type != ValueType::STRING) || (!AssetGUID || AssetGUID->Type != ValueType::INT))
-			return false;
+			return nullptr;
 #endif
 
 		Mesh_MetaData* model = new Mesh_MetaData;
@@ -501,7 +501,7 @@ namespace FlexKit::ResourceBuilder
 		FK_ASSERT((AssetGUID->Type	== ValueType::INT));
 #else
 		if ((!AssetID || AssetID->Type != ValueType::STRING) || (!AssetGUID || AssetGUID->Type != ValueType::INT))
-			return false;
+			return nullptr;
 #endif
 
 		Skeleton_MetaData* Skeleton = new Skeleton_MetaData;
@@ -940,8 +940,8 @@ namespace FlexKit::ResourceBuilder
 				std::cout << "Animation Event\n";		break;
 			case MetaData::EMETAINFOTYPE::EMI_TEXTURESET:			
 				std::cout << "TexureSet\n";				break;
-            case MetaData::EMETAINFOTYPE::EMI_TEXTURE:
-                std::cout << MetaData->ID << " Texure\n"; break;
+			case MetaData::EMETAINFOTYPE::EMI_TEXTURE:
+				std::cout << MetaData->ID << " Texure\n"; break;
 
 			default:
 				break;

@@ -472,7 +472,7 @@ namespace FlexKit
 				ASE.Playing   = true;
 				ASE.Speed     = 1.0f;
 				ASE.ForceLoop = ForceLoop;
-				ASE.Weight    = max(min(Weight, 1.0f), 0.0f);
+				ASE.Weight    = Max(Min(Weight, 1.0f), 0.0f);
 				ASE.ID		  = chrono::high_resolution_clock::now().time_since_epoch().count();
 				EAS->Clips.push_back(ASE);
 				E->Posed	  = true; // Enable Posing or Animation won't do anything
@@ -520,7 +520,7 @@ namespace FlexKit
 				ASE.Playing	  = true;
 				ASE.Speed	  = 1.0f;
 				ASE.ForceLoop = ForceLoop;
-				ASE.Weight	  = max(min(Weight, 1.0f), 0.0f);
+				ASE.Weight	  = Max(Min(Weight, 1.0f), 0.0f);
 				ASE.ID		  = chrono::high_resolution_clock::now().time_since_epoch().count();
 				EAS->Clips.push_back(ASE);
 				
@@ -568,7 +568,7 @@ namespace FlexKit
 				ASE.Playing	  = true;
 				ASE.Speed	  = 1.0f;
 				ASE.ForceLoop = ForceLoop;
-				ASE.Weight	  = max(min(Weight, 1.0f), 0.0f);
+				ASE.Weight	  = Max(Min(Weight, 1.0f), 0.0f);
 				ASE.ID		  = chrono::high_resolution_clock::now().time_since_epoch().count();
 				ASE.FirstPlay = true;
 				EAS->Clips.push_back(ASE);
@@ -1095,9 +1095,9 @@ namespace FlexKit
 
         const float4 Colors[] =
         {
-            RED,
-            GREEN,
-            BLUE
+            { RED },
+            { GREEN },
+            { BLUE }
         };
 
 
@@ -1126,7 +1126,7 @@ namespace FlexKit
             {
                 const float4 V      = WT * (PT * debugLines[itr]);
                 const auto& color   = Colors[itr];
-                lines.push_back({ B, color, V.xyz(), color });
+                lines.emplace_back(B, color.xyz(), V.xyz(), color.xyz());
             }
 		}
 

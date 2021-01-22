@@ -118,8 +118,8 @@ namespace FlexKit
            GetTypeGUID(DrawableID)
         };
 
-        GUID_t                      resourceID;
-        static_vector<SubMaterial>  materials;
+        GUID_t                          resourceID;
+        static_vector<SubMaterial, 32>  materials;
 
         float4 albedo_smoothness;
         float4 specular_metal;
@@ -135,8 +135,8 @@ namespace FlexKit
            MaterialComponentID
         };
 
-        GUID_t                      resourceID;
-        static_vector<SubMaterial>  materials;
+        GUID_t                          resourceID;
+        static_vector<SubMaterial, 32>  materials;
 
         float4 albedo_smoothness;
         float4 specular_metal;

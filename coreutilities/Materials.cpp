@@ -77,7 +77,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void MaterialComponent::AddTexture(GUID_t textureAsset, MaterialHandle material, const bool loadLowest, ReadContext& readContext)
+    void MaterialComponent::AddTexture(GUID_t textureAsset, MaterialHandle material, ReadContext& readContext, const bool loadLowest)
     {
         const auto res = std::find_if(
             std::begin(textures),
@@ -91,6 +91,10 @@ namespace FlexKit
         if (res == std::end(textures))
         {
             const auto [MIPCount, DDSTextureWH, format] = GetDDSInfo(textureAsset, readContext);
+            const auto resourceStrID = GetResourceStringID(textureAsset);
+
+            if(resourceStrID)
+                std::cout << resourceStrID << "\n";
 
             if (DDSTextureWH.Product() == 0)
                 return;
@@ -128,9 +132,10 @@ namespace FlexKit
     void MaterialComponent::AddComponentView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
         MaterialComponentBlob materialBlob;
-        memcpy(&materialBlob, buffer, min(sizeof(materialBlob), bufferSize));
+        memcpy(&materialBlob, buffer, Min(sizeof(materialBlob), bufferSize));
 
         auto newMaterial = CreateMaterial();
+        auto rdCtx = ReadContext{};
 
         if (materialBlob.materials.size() > 1)
         {
@@ -140,13 +145,14 @@ namespace FlexKit
                 AddSubMaterial(newMaterial, newSubMaterial);
 
                 for (auto& texture : subMaterial.textures)
-                    AddTexture(texture, newSubMaterial);
+                    AddTexture(texture, newSubMaterial, rdCtx);
             }
         }
         else if (materialBlob.materials.size() == 1)
         {
+
             for (auto& texture : materialBlob.materials[0].textures)
-                AddTexture(texture, newMaterial);
+                AddTexture(texture, newMaterial, rdCtx);
         }
 
         gameObject.AddView<MaterialView>(newMaterial);

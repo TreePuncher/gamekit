@@ -17,8 +17,8 @@ namespace FlexKit
 
     struct MaterialComponentData
     {
-        static_vector<MaterialHandle, 16>   SubMaterials;
-        static_vector<ResourceHandle, 16>   Textures;
+        static_vector<MaterialHandle, 32>   SubMaterials;
+        static_vector<ResourceHandle, 32>   Textures;
         uint32_t                            refCount;
         MaterialHandle                      handle;
     };
@@ -50,7 +50,10 @@ namespace FlexKit
             renderSystem    { IN_renderSystem },
             materials       { allocator },
             textures        { allocator },
-            handles         { allocator } {}
+            handles         { allocator }
+        {
+            materials.reserve(256);
+        }
 
         MaterialComponentData operator [](const MaterialHandle handle) const
         {
@@ -95,7 +98,10 @@ namespace FlexKit
                 GetComponent().AddRef(handle);
             }
 
-            MaterialView() : handle{ GetComponent().CreateMaterial() } {}
+            MaterialView() : handle{ GetComponent().CreateMaterial() }
+            {
+                int x = 0;
+            }
 
             ~MaterialView()
             {
@@ -125,7 +131,8 @@ namespace FlexKit
                     handle = newHandle;
                 }
 
-                GetComponent().AddTexture(textureAsset, handle, LoadLowest);
+                ReadContext rdCtx{};
+                GetComponent().AddTexture(textureAsset, handle, rdCtx, LoadLowest);
             }
 
 
@@ -161,7 +168,7 @@ namespace FlexKit
 
         using View = MaterialView;
 
-        void AddTexture(GUID_t textureAsset, MaterialHandle material, const bool LoadLowest = false, ReadContext& readContext = ReadContext{});
+        void AddTexture(GUID_t textureAsset, MaterialHandle material, ReadContext& readContext, const bool LoadLowest = false);
         void AddComponentView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 
         RenderSystem&                   renderSystem;

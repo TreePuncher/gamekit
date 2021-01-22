@@ -83,19 +83,19 @@ namespace FlexKit
 			free(_ptr);
 		}
 
-        template<typename T>
-        void release(T& _ref)
-        {
-            _ref.~T();
-            free(&_ref);
-        }
+		template<typename T>
+		void release(T& _ref)
+		{
+			_ref.~T();
+			free(&_ref);
+		}
 
 	protected:
 		iAllocator() noexcept {}
 	};
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	class _SystemAllocator : public iAllocator
@@ -135,57 +135,57 @@ namespace FlexKit
 	static _SystemAllocator SystemAllocator;
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    template<typename TY>
-    class FLEXKITAPI STLAllocatorAdapter
-    {
-    public:
-        using size_type         = size_t;
-        using difference_type   = std::ptrdiff_t;
-        using value_type        = TY;
+	template<typename TY>
+	class FLEXKITAPI STLAllocatorAdapter
+	{
+	public:
+		using size_type         = size_t;
+		using difference_type   = std::ptrdiff_t;
+		using value_type        = TY;
 
-        STLAllocatorAdapter(iAllocator* IN_allocator) noexcept : allocator{ IN_allocator } {}
+		STLAllocatorAdapter(iAllocator* IN_allocator) noexcept : allocator{ IN_allocator } {}
 
-        [[nodiscard]]
-        TY* allocate(const size_t n = 1)
-        {
-            auto* _ptr = allocator->malloc(sizeof(TY) * n);
+		[[nodiscard]]
+		TY* allocate(const size_t n = 1)
+		{
+			auto* _ptr = allocator->malloc(sizeof(TY) * n);
 
-            if (_ptr == nullptr)
-                throw std::bad_alloc{};
+			if (_ptr == nullptr)
+				throw std::bad_alloc{};
 
-            return nullptr;
-        }
+			return nullptr;
+		}
 
-        void deallocate(TY* _ptr, const size_t s) noexcept
-        {
-            allocator->free(_ptr);
-        }
+		void deallocate(TY* _ptr, const size_t s) noexcept
+		{
+			allocator->free(_ptr);
+		}
 
-        size_t max_size() const noexcept { return -1; }
+		size_t max_size() const noexcept { return -1; }
 
-        template<typename ... TY_ARGS>
-        [[nodiscard]] TY& construct(TY_ARGS&& ... args)
-        {
-            return nullptr;
-        }
+		template<typename ... TY_ARGS>
+		[[nodiscard]] TY& construct(TY_ARGS&& ... args)
+		{
+			return nullptr;
+		}
 
-        void destroy(TY& _ref)
-        {
-            _ref.~TY();
-            allocator->free(&_ref);
-        }
+		void destroy(TY& _ref)
+		{
+			_ref.~TY();
+			allocator->free(&_ref);
+		}
 
-        std::byte* address() { return nullptr; }
-
-
-        iAllocator* allocator;
-    };
+		std::byte* address() { return nullptr; }
 
 
-    /************************************************************************************************/
+		iAllocator* allocator;
+	};
+
+
+	/************************************************************************************************/
 
 
 	class FLEXKITAPI StackAllocator
@@ -246,8 +246,8 @@ namespace FlexKit
 		void*	_aligned_malloc		(size_t s, size_t alignement = 0x10);
 		void	clear				();
 
-        operator iAllocator* () { return &AllocatorInterface; }
-        operator iAllocator& () { return  AllocatorInterface; }
+		operator iAllocator* () { return &AllocatorInterface; }
+		operator iAllocator& () { return  AllocatorInterface; }
 	private:
 		size_t used		= 0;
 		size_t size		= 0;
@@ -541,7 +541,7 @@ namespace FlexKit
 						if(NextBlockData < Size && BlockTable[NextBlockData].state == BlockData::UNUSED)
 						{// Split Block
 							BlockTable[NextBlockData].state          = BlockData::Free;
-                            BlockTable[NextBlockData].AllocationSize = static_cast<uint16_t>(BlockTable[currentBlock].AllocationSize - BlocksNeeded);
+							BlockTable[NextBlockData].AllocationSize = static_cast<uint16_t>(BlockTable[currentBlock].AllocationSize - BlocksNeeded);
 							BlockTable[currentBlock].AllocationSize  = static_cast<uint16_t>(BlocksNeeded);
 
 							FK_ASSERT(BlockTable[NextBlockData].AllocationSize);
@@ -905,7 +905,7 @@ namespace FlexKit
 	public:
 		Shared_ref() = delete;
 
-        constexpr Shared_ref(TY& IN_reference, DELETER_FN&& IN_deleter_fn, iAllocator* IN_allocator) noexcept :
+		constexpr Shared_ref(TY& IN_reference, DELETER_FN&& IN_deleter_fn, iAllocator* IN_allocator) noexcept :
 			allocator	{ IN_allocator									},
 			counter_ref	{ IN_allocator->allocate<std::atomic_int>(1)	},
 			deleter		{ IN_deleter_fn									},
@@ -918,7 +918,7 @@ namespace FlexKit
 		}
 
 
-        constexpr Shared_ref(const Shared_ref& r_ref) noexcept :
+		constexpr Shared_ref(const Shared_ref& r_ref) noexcept :
 			allocator	{ r_ref.allocator	},
 			counter_ref { r_ref.counter_ref	},
 			deleter		{ r_ref.deleter		},
@@ -935,17 +935,18 @@ namespace FlexKit
 			return reference == rhs.Get();
 		}
 
-        template<typename ... TY_Args>
-        auto operator ()(TY_Args ... args)
-        {
-            //if constexpr (std::is_invocable<REF_TY>::value)
-                return Get()(std::forward<TY_Args>(args)...);
-        }
+		template<typename ... TY_Args>
+		decltype(auto) operator ()(TY_Args ... args)
+		{
+			//static_assert(std::is_invocable_v<TY>);
+
+			return Get()(std::forward<TY_Args>(args)...);
+		}
 
 		operator TY& ()	noexcept { return reference; }
-        TY&		Get()		noexcept { return reference; }
+		TY&		Get()		noexcept { return reference; }
 
-        TY*		ptr()	    noexcept { return &reference; }
+		TY*		ptr()	    noexcept { return &reference; }
 
 		void AddRef()
 		{
@@ -971,7 +972,7 @@ namespace FlexKit
 	protected:
 		DELETER_FN			deleter;
 		iAllocator*			allocator;
-        TY&				    reference;
+		TY&				    reference;
 		std::atomic_int&	counter_ref;
 	};
 
@@ -1049,7 +1050,7 @@ namespace FlexKit
 
 
 	template<typename TY>
-	TY& MakeHeapCopy(TY& data, iAllocator* allocator)
+	TY& MakeHeapCopy(const TY& data, iAllocator* allocator)
 	{
 		return allocator->allocate_aligned<TY>(data);
 	};

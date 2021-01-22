@@ -44,6 +44,8 @@ namespace FlexKit::ResourceBuilder
 
 
         ResourceBlob CreateBlob() override;
+
+        const ResourceID_t GetResourceTypeID() const override { return CubeMapResourceTypeID; }
     };
 
 
@@ -53,7 +55,7 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
-    void CreateCompressedDDSTextureResource()
+    inline void CreateCompressedDDSTextureResource()
     {
     }
 
@@ -73,7 +75,7 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
-    DDSTextureFormat FormatStringToFormatID(const std::string& ID)
+    inline DDSTextureFormat FormatStringToFormatID(const std::string& ID)
     {
         if (ID == "DXT3")
             return DDSTextureFormat::DXT3;
@@ -111,6 +113,7 @@ namespace FlexKit::ResourceBuilder
 
         const std::string&  GetResourceID() const override      { return ID; }
         const uint64_t      GetResourceGUID() const override    { return assetHandle; }
+        const ResourceID_t  GetResourceTypeID() const override  { return TextureResourceTypeID; }
 
         ResourceBlob CreateBlob() override;
 
@@ -129,10 +132,12 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
-    _TextureMipLevelResource CreateMIPMapResource(const std::string& string);
+    _TextureMipLevelResource    CreateMIPMapResource(const std::string& string);
 
-    std::shared_ptr<iResource> CreateTextureResource(const std::filesystem::path& path, const std::string& formatString);
-    std::shared_ptr<iResource> CreateTextureResource(std::shared_ptr<Texture_MetaData> metaData);
+    std::shared_ptr<iResource>  CreateTextureResource(const std::filesystem::path& path, const std::string& formatString);
+    std::shared_ptr<iResource>  CreateTextureResource(std::shared_ptr<Texture_MetaData> metaData);
+
+    std::shared_ptr<iResource>  CreateTextureResource(FlexKit::TextureBuffer& textureBuffer, std::string format);
 
 
 }    /************************************************************************************************/

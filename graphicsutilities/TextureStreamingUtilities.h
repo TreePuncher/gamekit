@@ -6,9 +6,6 @@
 #include "ThreadUtilities.h"
 #include "GraphicScene.h"
 
-#define CRND_HEADER_FILE_ONLY
-#include <crn_decomp.h>
-
 namespace FlexKit
 {   /************************************************************************************************/
 
@@ -30,39 +27,6 @@ namespace FlexKit
         virtual DeviceFormat        GetFormat() const = 0;
 
     };
-
-
-    /************************************************************************************************/
-
-
-    class CRNDecompressor final : public iDecompressor
-    {
-    public:
-        CRNDecompressor(const uint32_t mipLevel, AssetHandle asset, iAllocator* IN_allocator);
-        ~CRNDecompressor();
- 
-
-        UploadReservation   ReadTile(ReadContext&, const TileID_t id, const uint2 TileSize, CopyContext& ctx) override;
-        UploadReservation   Read(ReadContext&, const uint2 WH, CopyContext& ctx) override;
-        uint2               GetTextureWH() const override;
-        DeviceFormat        GetFormat() const override { return DeviceFormat::BC3_UNORM; };
-
-
-        uint32_t                    blocks_X;
-        uint32_t                    blocks_Y;
-        uint32_t                    blockSize;
-        char*                       buffer;
-        size_t                      rowPitch;
-        size_t                      bufferSize;
-        uint2                       WH;
-        iAllocator*                 allocator;
-    };
-
-
-    /************************************************************************************************/
-
-
-    std::optional<CRNDecompressor*> CreateCRNDecompressor(const uint32_t MIPlevel, AssetHandle asset, iAllocator* allocator);
 
 
     /************************************************************************************************/
@@ -188,8 +152,8 @@ namespace FlexKit
 
     DDSLevelInfo GetMIPLevelInfo(const size_t Level, const uint2 WH, const DeviceFormat format)
     {
-        const uint32_t levelHeight  = max(WH[0] >> Level, 4);
-        const uint32_t levelWidth   = max(WH[1] >> Level, 4);
+        const uint32_t levelHeight  = Max(WH[0] >> Level, 4u);
+        const uint32_t levelWidth   = Max(WH[1] >> Level, 4u);
         return { 0xff, { levelWidth, levelHeight }, levelWidth > GetFormatTileSize(format)[0] };
     }
 
@@ -285,13 +249,18 @@ namespace FlexKit
     };
 
 
-    inline const PSOHandle TEXTUREFEEDBACKPASS          = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKPASS));
-    inline const PSOHandle TEXTUREFEEDBACKCLEAR         = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKCLEAR));
-    inline const PSOHandle TEXTUREFEEDBACKCOMPRESSOR    = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKCOMPRESSOR));
+    inline const PSOHandle TEXTUREFEEDBACKPASS                  = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKPASS));
+    inline const PSOHandle TEXTUREFEEDBACKCOMPRESSOR            = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKCOMPRESSOR));
+    inline const PSOHandle TEXTUREFEEDBACKMERGEBLOCKS           = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKMERGEBLOCKS));
+    inline const PSOHandle TEXTUREFEEDBACKPREFIXSUMBLOCKSIZES   = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKPREFIXSUMBLOCKSIZES));
+    inline const PSOHandle TEXTUREFEEDBACKSETBLOCKSIZES         = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKSETBLOCKSIZES));
+
 
     ID3D12PipelineState* CreateTextureFeedbackPassPSO(RenderSystem* RS);
-    ID3D12PipelineState* CreateTextureFeedbackClearPSO(RenderSystem* RS);
     ID3D12PipelineState* CreateTextureFeedbackCompressorPSO(RenderSystem* RS);
+    ID3D12PipelineState* CreateTextureFeedbackBlockSizePreFixSum(RenderSystem* RS);
+    ID3D12PipelineState* CreateTextureFeedbackMergeBlocks(RenderSystem* RS);
+    ID3D12PipelineState* CreateTextureFeedbackSetBlockSizes(RenderSystem* RS);
 
     
     /************************************************************************************************/
@@ -302,18 +271,17 @@ namespace FlexKit
         CameraHandle                    camera;
         GatherTask&                     pvs;
         ReserveConstantBufferFunction   reserveCB;
-        
+
+        FrameResourceHandle             debugBuffer;
+
+
         FrameResourceHandle             feedbackCounters;
         FrameResourceHandle             feedbackBuffer;
-        FrameResourceHandle             feedbackLists;
         FrameResourceHandle             feedbackDepth;
-        FrameResourceHandle             feedbackOffsets;
-        FrameResourceHandle             feedbackPPLists;
+        FrameResourceHandle             feedbackBlockSizes;
+        FrameResourceHandle             feedbackBlockOffsets;
 
-        FrameResourceHandle             feedbackOutputTemp;
-        FrameResourceHandle             feedbackOutputFinal;
-        FrameResourceHandle             feedbackPPLists_Temp1;
-        FrameResourceHandle             feedbackPPLists_Temp2;
+        FrameResourceHandle             feedbackBufferCompressed;
 
 
         ReadBackResourceHandle          readbackBuffer;
@@ -330,7 +298,7 @@ namespace FlexKit
 
 	struct TextureCacheDesc
 	{
-		const size_t textureCacheSize	= GIGABYTE;
+		const size_t textureCacheSize	= 256 * MEGABYTE;
 		const size_t blockSize			= GetTileByteSize();
 	};
 
@@ -348,13 +316,13 @@ namespace FlexKit
 
     struct gpuTileID
     {
-        TileID_t tileID;
         uint32_t TextureID;
-        uint32_t prev;// Unused
+        TileID_t tileID;
 
         uint64_t GetSortingID() const
         {
             return (uint64_t(TextureID) << 32) | tileID.bytes;
+            //return (uint64_t(tileID.bytes) << 32) | TextureID;
         }
 
         bool IsPacked() const
@@ -480,6 +448,9 @@ namespace FlexKit
         void PostUpdatedTiles(const BlockAllocation& blocks, iAllocator& threadLocalAllocator);
         void MarkUpdateCompleted() { updateInProgress = false; taskInProgress = false; }
 
+        float debug_GetPassTime()       const { return passTime; }
+        float debug_GetUpdateTime()     const { return updateTime; }
+
 	private:
 
         inline static const size_t OffsetBufferSize = 240 * 240 * sizeof(uint32_t);
@@ -506,17 +477,16 @@ namespace FlexKit
         std::atomic_bool        updateInProgress    = false;
         std::atomic_bool        taskInProgress      = false;
 
-        UAVResourceHandle		feedbackOffsets;    // GPU
-        UAVTextureHandle        feedbackPPLists;    // GPU
         UAVResourceHandle		feedbackBuffer;     // GPU
         UAVResourceHandle       feedbackCounters;   // GPU
+        UAVResourceHandle       feedbackBlockSizes; // GPU
+        UAVResourceHandle       feedbackBlockOffsets; // GPU
+
 
         ResourceHandle		    feedbackDepth;  // GPU
 
-        UAVResourceHandle		feedbackOutputTemp;   // GPU
+        UAVResourceHandle		feedbackDebug;   // GPU
         UAVResourceHandle		feedbackOutputFinal;  // GPU
-        UAVTextureHandle        feedbackTemp1;        // GPU
-        UAVTextureHandle        feedbackTemp2;        // GPU
 
         ReadBackResourceHandle  feedbackReturnBuffer; // CPU + GPU
 
@@ -524,8 +494,13 @@ namespace FlexKit
 		TextureBlockAllocator	textureBlockAllocator;
         DeviceHeapHandle        heap;
 
+        QueryHandle             timeStats;
+
         iAllocator*             allocator;
 		const TextureCacheDesc	settings;
+
+        float passTime      = 0;
+        float updateTime    = 0;
 	};
 
 

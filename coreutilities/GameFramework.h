@@ -168,11 +168,11 @@ namespace FlexKit
 
 		virtual ~FrameworkState() {}
 
-		virtual void Update			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) {}
-		virtual void DebugDraw		(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) {}
-		virtual void PreDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) {}
-		virtual void Draw			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) {}
-		virtual void PostDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) {}
+		virtual void Update			(EngineCore& core, UpdateDispatcher& dispatcher, double dT) {}
+		virtual void DebugDraw		(EngineCore& core, UpdateDispatcher& dispatcher, double dT) {}
+		virtual void PreDrawUpdate	(EngineCore& core, UpdateDispatcher& dispatcher, double dT) {}
+		virtual void Draw			(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) {}
+		virtual void PostDrawUpdate	(EngineCore& core, UpdateDispatcher& dispatcher, double dT) {}
 
 		virtual bool EventHandler	(Event evt) { return false;}
 

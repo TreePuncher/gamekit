@@ -1,6 +1,7 @@
 #ifndef MULTIPLAYERGAMESTATE_H
 #define MULTIPLAYERGAMESTATE_H
 
+
 #include "GameFramework.h"
 #include "containers.h"
 #include "Components.h"
@@ -98,7 +99,10 @@ class LocalPlayerState : public FlexKit::FrameworkState
 public:
     LocalPlayerState(FlexKit::GameFramework& IN_framework, BaseState& IN_base, GameState& IN_game);
 
-    virtual ~LocalPlayerState() final override {}
+    virtual ~LocalPlayerState() final override
+    {
+        framework.core.GetBlockMemory().release_allocation(thirdPersonCamera);
+    }
 
     void Update         (EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
     void PreDrawUpdate  (EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;

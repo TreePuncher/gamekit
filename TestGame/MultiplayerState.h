@@ -2,7 +2,6 @@
 #define MULTIPLAYER_STATE_INCLUDED
 
 
-#include "MultiplayerGameState.h"
 #include "BaseState.h"
 
 #include "containers.h"
@@ -13,19 +12,11 @@
 #include "GuiUtilities.h"
 
 #include <functional>
-#include <raknet/Source/RakPeerInterface.h>
-#include <raknet/Source/RakNetStatistics.h>
-#include <raknet/Source/MessageIdentifiers.h>
+#include <slikenet/peerinterface.h>
+#include <slikenet/statistics.h>
+#include <slikenet/MessageIdentifiers.h>
+#include <slikenet/types.h>
 
-
-#pragma comment(lib, "ws2_32.lib")
-#pragma comment(lib, "user32.lib")
-
-#ifdef _DEBUG
-#pragma comment(lib, "RakNet_VS2008_DLL_Debug_x64.lib")
-#else
-#pragma comment(lib, "RakNet_VS2008_DLL_Release_x64.lib")
-#endif
 
 
 using FlexKit::EngineCore;
@@ -37,7 +28,6 @@ using FlexKit::GameFramework;
 
 
 using ConnectionHandle = Handle_t<32, GetTypeGUID(ConnectionHandle)>;
-
 
 /************************************************************************************************/
 
@@ -210,14 +200,14 @@ class NetworkState : public FlexKit::FrameworkState
 {
 protected:
 
-	RakNet::RakPeerInterface& raknet = *RakNet::RakPeerInterface::GetInstance();
+    SLNet::RakPeerInterface& raknet = *SLNet::RakPeerInterface::GetInstance();
 
 	struct openSocket
 	{
 		uint64_t state      = 0;
 		uint64_t latency    = 0;
 
-		RakNet::SystemAddress address;
+        SLNet::SystemAddress address;
 		ConnectionHandle    handle;
 	};
 
@@ -248,10 +238,10 @@ public:
 
     void Startup(short port);
     void Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) final override;
-    void Broadcast(UserPacketHeader& packet);
+    void Broadcast(const UserPacketHeader& packet);
 
 
-    void Send           (UserPacketHeader& packet, ConnectionHandle destination);
+    void Send           (const UserPacketHeader& packet, ConnectionHandle destination);
     void PushHandler    (Vector<PacketHandler*>& handler);
     void PopHandler     ();
 
@@ -259,10 +249,10 @@ public:
     void CloseConnection    (ConnectionHandle handle);
 
 
-    ConnectionHandle    FindConnectionHandle(RakNet::SystemAddress address);
+    ConnectionHandle    FindConnectionHandle(SLNet::SystemAddress address);
     openSocket          GetConnection(ConnectionHandle handle);
 
-    void RemoveConnectionHandle(RakNet::SystemAddress address);
+    void RemoveConnectionHandle(SLNet::SystemAddress address);
     void SystemInError();
 
 

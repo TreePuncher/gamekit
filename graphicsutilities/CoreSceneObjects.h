@@ -176,10 +176,15 @@ namespace FlexKit
 	
 	typedef Vector<PVEntry> PVS;
 
-	inline void PushPV(Drawable& e, PVS& pvs)
+    size_t CreateSortingID(bool Posed, bool Textured, size_t Depth);
+
+	inline void PushPV(Drawable& e, PVS& pvs, const float3 CameraPosition)
 	{
+        auto drawablePosition = GetPositionW(e.Node);
+        auto distanceFromView = (CameraPosition - drawablePosition).magnitude();
+
 		if (e.MeshHandle != InvalidHandle_t)
-			pvs.push_back(PVEntry( e, pvs.size(), 0u));
+			pvs.push_back(PVEntry( e, pvs.size(), CreateSortingID(false, false, (size_t)distanceFromView)));
 	}
 
 	FLEXKITAPI void SortPVS				(PVS* PVS_, Camera* C);
