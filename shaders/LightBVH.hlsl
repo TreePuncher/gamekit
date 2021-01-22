@@ -186,18 +186,19 @@ void CreateLightBVH_PHASE1(const uint threadID : SV_GroupIndex)
 		localLight = pointLights[threadID];
 
     const float3 WS_pos = localLight.PR.xyz;
+    const float3 VS_P = mul(view, float4(WS_pos, 1));
 
 	GroupMemoryBarrierWithGroupSync();
 
 	if(threadID < lightCount)
 	{
-		InterlockedMin(minX, floor(WS_pos.x - localLight.PR.w));
-		InterlockedMin(minY, floor(WS_pos.y - localLight.PR.w));
-		InterlockedMin(minZ, floor(WS_pos.z - localLight.PR.w));
+		InterlockedMin(minX, floor(VS_P.x - localLight.PR.w));
+		InterlockedMin(minY, floor(VS_P.y - localLight.PR.w));
+		InterlockedMin(minZ, floor(VS_P.z - localLight.PR.w));
 
-		InterlockedMax(maxX, ceil(WS_pos.x + localLight.PR.w));
-		InterlockedMax(maxY, ceil(WS_pos.y + localLight.PR.w));
-		InterlockedMax(maxZ, ceil(WS_pos.z + localLight.PR.w));
+		InterlockedMax(maxX, ceil(VS_P.x + localLight.PR.w));
+		InterlockedMax(maxY, ceil(VS_P.y + localLight.PR.w));
+		InterlockedMax(maxZ, ceil(VS_P.z + localLight.PR.w));
 	}
 
 	GroupMemoryBarrierWithGroupSync();
@@ -205,7 +206,7 @@ void CreateLightBVH_PHASE1(const uint threadID : SV_GroupIndex)
 	const int3 range   = float3(maxX - minX, maxY - minY, maxZ - minZ);
 	const int3 offset  = -float3(minX, minY, minZ);
 
-	const float3    normalizedPosition  = (WS_pos + offset) / range;
+	const float3    normalizedPosition  = (VS_P + offset) / range;
 	const uint      mortonCode          = CreateMortonCode(normalizedPosition * ComponentMask);
 
 	scratchSpace[threadID]  = (threadID < lightCount) ? uint2(mortonCode, threadID) : uint2(-1, -1);
@@ -230,9 +231,14 @@ void CreateLightBVH_PHASE1(const uint threadID : SV_GroupIndex)
             const uint lightID  = scratchSpace[(threadID * NODEMAXSIZE) + itr].y;
             const float4 PR     = pointLights[lightID].PR;
             const float R       = PR.w;
+            
+            const float3 VS_P = mul(view, float4(PR.xyz, 1));
 
-            minXYZ = min(PR.xyz - R, minXYZ);
-            maxXYZ = max(PR.xyz + R, maxXYZ);
+            minXYZ = min(VS_P - R, minXYZ);
+            maxXYZ = max(VS_P + R, maxXYZ);
+
+            //minXYZ = min(PR.xyz - R, minXYZ);
+            //maxXYZ = max(PR.xyz + R, maxXYZ);
         }
 
         BVH_Node node;
@@ -277,7 +283,6 @@ void CreateLightBVH_PHASE2(const uint threadID : SV_GroupIndex)
         node.MaxPoint   = float4(maxXYZ, 0);
 
         node.Offset = nodeSize > 1 ? offset : BVHNodes[offset].Offset;
-        //node.Offset = offset;
         node.Count  = nodeSize;
 
         node.Leaf   = 0;

@@ -6,6 +6,12 @@ struct Cluster
     float4 MaxPoint;
 };
 
+cbuffer Constants : register(b1)
+{
+    float4x4 IProj;
+};
+
+
 RWStructuredBuffer<Cluster>     clusterBuffer   : register(u0); // in-out
 RWTexture2D<uint4>              indexBuffer     : register(u1); // in-out
 RWTexture1D<uint>               counters        : register(u2); // in-out
@@ -95,59 +101,70 @@ float GetSliceDepth(float slice)
     return MinZ * pow(MaxZ / MinZ, floor(slice) / numSlices);
 }
 
+float2 UV2Clip(float2 UV)
+{
+    return 2 * float2(UV.x, 1.0f - UV.y) - 1.0f;
+}
+
+float4 Clip2View(float4 DC){
+    //View space transform
+    const float4 view = mul(IProj, DC);
+
+    //Perspective projection
+    return view / view.w;
+}
+
+float3 lineIntersectionToZPlane(float3 A, float3 B, float zDistance){
+    //all clusters planes are aligned in the same z direction
+    float3 normal = float3(0.0, 0.0, 1.0);
+    //getting the line from the eye to the tile
+    float3 ab =  B - A;
+    //Computing the intersection length for the line and the plane
+    float t = (zDistance - dot(normal, A)) / dot(normal, ab);
+    //Computing the actual xyz position of the point along the line
+    float3 result = A + t * ab;
+    return result;
+}
+
+
 Cluster CreateCluster(const uint clusterID)
 {
     const uint X            = (clusterID >> 20) & 0xff;
     const uint Y            = (clusterID >> 10) & 0xff;
     const uint SliceIdx     = (clusterID >> 00) & 0xff;
 
-    const float minZ = (GetSliceDepth(SliceIdx + 0) - MinZ);
-    const float maxZ = (GetSliceDepth(SliceIdx + 1) - MinZ);
+    const float minZ = GetSliceDepth(SliceIdx);
+    const float maxZ = GetSliceDepth(SliceIdx + 1);
 
     const uint2 WH          = GetTextureWH(depthBuffer);
     const uint2 TileSize    = uint2(32, 32);
-    const float2 TileWHDim  = (WH / TileSize);
+    const float2 TileWHDim  = (float2(WH) / TileSize);
 
     const uint2 Temp = uint2(X, Y);
     const float2 XY1 = float2(Temp.x, Temp.y) / TileWHDim; // {{ -1 -> 1 }, {1 -> -1}}
     const float2 XY2 = float2(Temp.x + 1, Temp.y + 1) / TileWHDim; // {{ -1 -> 1 },  {1 -> -1}}
 
-    const float2 DC_Min = float2(-1.0f + 2 * XY1.x, 1.0f - 2 * XY1.y);//GetViewSpacePosition(XY1, minZ);
-    const float2 DC_Max = float2(-1.0f + 2 * XY2.x, 1.0f - 2 * XY2.y);//GetViewSpacePosition(XY2, minZ);
+    const float2 Clip_Min = UV2Clip(XY1);
+    const float2 Clip_Max = UV2Clip(XY2);
 
-    const float3 point1 = GetViewVector_VS2(XY1) * minZ;
-    const float3 point2 = GetViewVector_VS2(XY2) * maxZ;
+    const float3 VS_Min = Clip2View(float4(Clip_Min, 1, 1)); // View Vector
+    const float3 VS_Max = Clip2View(float4(Clip_Max, 1, 1)); // View Vector
 
-    const float3 VS_Min = point1;
-    const float3 VS_Max = point2;
+    const float3 center = float3(0, 0, 1);
+    const float3 eye    = float3(0, 0, 0);
 
-    float3 AABBCorners[8];
-    AABBCorners[0] = mul(ViewI, float4(VS_Max.x, VS_Max.y, VS_Max.z, 1));
-    AABBCorners[1] = mul(ViewI, float4(VS_Min, 1));  
+    const float3 MinPointNear = lineIntersectionToZPlane(eye, VS_Min, -minZ);
+    const float3 MinPointFar = lineIntersectionToZPlane(eye, VS_Min,  -maxZ);
 
-    AABBCorners[2] = mul(ViewI, float4(VS_Min.x, VS_Max.yz, 1));
-    AABBCorners[3] = mul(ViewI, float4(VS_Min.x, VS_Max.y, VS_Min.z, 1));
-    AABBCorners[4] = mul(ViewI, float4(VS_Max.x, VS_Max.y, VS_Min.z, 1));
+    const float3 MaxPointNear = lineIntersectionToZPlane(eye, VS_Max, -minZ);
+    const float3 MaxPointFar  = lineIntersectionToZPlane(eye, VS_Max, -maxZ);
 
-    AABBCorners[5] = mul(ViewI, float4(VS_Min.xy, VS_Max.z, 1)); 
-    AABBCorners[6] = mul(ViewI, float4(VS_Max.x,  VS_Min.y, VS_Max.z, 1));
-    AABBCorners[7] = mul(ViewI, float4(VS_Max.x, VS_Min.yz, 1)); 
-
-    //float3 WS_Min = float3( 10000,  10000,  10000);
-    //float3 WS_Max = float3( -10000,  -10000, -10000);
-
-    float3 WS_Min = float3( -10000,  -10000, -10000);
-    float3 WS_Max = float3( 10000,  10000,  10000);
-
-    for(uint I = 0; I < 0; I++)
-    {
-        WS_Min = min(WS_Min, AABBCorners[I]);
-        WS_Max = max(WS_Max, AABBCorners[I]);
-    }
+    const float3 ClusterMin = min(min(MinPointNear, MinPointFar), min(MaxPointNear, MaxPointFar));
+    const float3 ClusterMax = max(max(MinPointNear, MinPointFar), max(MaxPointNear, MaxPointFar));
 
     Cluster cluster;
-    cluster.MinPoint = float4(WS_Min, 0);
-    cluster.MaxPoint = float4(WS_Max, 0);
+    cluster.MinPoint = float4(ClusterMin, asfloat(0));
+    cluster.MaxPoint = float4(ClusterMax, asfloat(0));
 
     return cluster;
 }

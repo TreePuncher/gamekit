@@ -1,25 +1,23 @@
 struct Arguments
 {
-    uint X;
-    uint Y;
-    uint Z;
-    uint padding;
+    uint vertexCount;
+    uint instanceCount;
+    uint baseVertex;
+    uint baseInstance;
 };
 
-RWStructuredBuffer<Arguments>   argumentBuffer   : register(u0); // in-out
-RWStructuredBuffer<uint>        counters1        : register(u1); // in-out
-StructuredBuffer<uint>          counters2        : register(t0);
+RWStructuredBuffer<Arguments>   argumentBuffer      : register(u0); // in-out
+StructuredBuffer<uint>          counters            : register(t0);
 
 [numthreads(1, 1, 1)]
-void CreateLightListArguents()
+void CreateArguments()
 {
     Arguments args;
-    args.X = min(counters2[0], 1024);
-    args.Y = ceil(float(counters2[0]) / 1024.0f);
-    args.Z = 1;
+    args.vertexCount    = counters[0];
+    args.instanceCount  = 1;
+    args.baseVertex     = 0;
+    args.baseInstance   = 0;
     argumentBuffer[0] = args;
-
-    counters1[0] = 0;
 }
 
 /**********************************************************************

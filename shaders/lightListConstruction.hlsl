@@ -5,7 +5,7 @@ cbuffer constants : register(b0)
 
 cbuffer constants : register(b1)
 {
-    float4x4    IView;
+    float4x4    View;
     uint        rootNode;
 }
 
@@ -40,19 +40,13 @@ struct PointLight
 
 #define NODEMAXSIZE 32
 
-RWStructuredBuffer<Cluster>     Clusters      : register(u0); // in-out
-RWStructuredBuffer<uint>        lightList     : register(u1); // in-out
-RWStructuredBuffer<uint>        counters      : register(u2); // in-out
-RWStructuredBuffer<BVH_Node>    BVHNodes      : register(u3);
+                    RWStructuredBuffer<Cluster>     Clusters      : register(u0); // in-out
+                    RWStructuredBuffer<uint>        lightList     : register(u1); // in-out
+globallycoherent    RWBuffer<uint>                  counters      : register(u2); // in-out
+                    RWStructuredBuffer<BVH_Node>    BVHNodes      : register(u3);
 
 StructuredBuffer<uint>                              LightLookup   : register(t1); 
 StructuredBuffer<PointLight>                        PointLights   : register(t2); 
-
-#define MaxLocalLightCount 128
-
-groupshared uint counts[32];
-groupshared uint localLightLists[32 * MaxLocalLightCount];
-
 
 AABB GetClusterAABB(Cluster C)
 {
@@ -75,10 +69,11 @@ AABB GetBVHAABB(BVH_Node n)
 AABB GetPointLightAABB(uint lightID)
 {
     PointLight pointLight = PointLights[lightID];
+    float3 VS_pos = mul(View, float4(pointLight.PR.xyz, 1));
 
     AABB aabb;
-    aabb.MinPoint = pointLight.PR.xyz - pointLight.PR.w;
-    aabb.MinPoint = pointLight.PR.xyz + pointLight.PR.w;
+    aabb.MinPoint = VS_pos - pointLight.PR.w;
+    aabb.MaxPoint = VS_pos + pointLight.PR.w;
 
     return aabb;
 }
@@ -108,13 +103,49 @@ uint GetChildCount(const BVH_Node node)
     return node.Count;
 }
 
-groupshared uint stack[1024];
+groupshared uint stack[512];
 groupshared uint stackSize;
 groupshared uint parentIdx;
 
-groupshared uint lights[256];
+#define lightBufferSize 256
+
+groupshared uint lights[lightBufferSize];
 groupshared uint lightCount;
 groupshared uint offset;
+
+void CmpSwap(const uint const lhs, const uint rhs, const uint op)
+{ 
+    const uint LValue = lights[lhs]; 
+    const uint RValue = lights[rhs];
+
+    const uint V1 = op == 0 ? min(LValue, RValue) : max(LValue, RValue);
+    const uint V2 = op == 0 ? max(LValue, RValue) : min(LValue, RValue);
+
+    lights[lhs] = V1;
+    lights[rhs] = V2;
+}
+
+void BitonicPass(const uint localThreadID, const int I, const int J)
+{
+    const uint swapMask = (1 << (J + 1)) - 1;
+    const uint offset   = 1 << J;
+
+    if((localThreadID & swapMask) < offset)
+    {
+        const uint op  = (localThreadID >> (I + 1)) & 0x01;
+        CmpSwap(localThreadID, localThreadID + offset, op);
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+} 
+
+// Pad extra elements with -1
+void SortLights(const uint localThreadID)
+{
+	for(int I = 0; I < log2(32); I++)
+        for(int J = I; J >= 0; J--)
+        	BitonicPass(localThreadID, I, J);
+} 
 
 void InitStack()
 {
@@ -145,32 +176,36 @@ uint PopNode()
     return stack[stackSize];
 }
 
-[numthreads(NODEMAXSIZE, 1, 1)]
+[numthreads(32, 1, 1)]
 void CreateClustersLightLists(const uint threadID : SV_GroupIndex, const uint3 groupID : SV_GroupID)
 {
     const uint groupIdx = groupID.x + groupID.y * 1024;
-    if(groupIdx < clusterCount)
-    {         
-        Cluster localCluster    = Clusters[groupIdx];
-        const AABB aabb         = GetClusterAABB(localCluster);
- 
-        if(threadID == 0)
-        {
-            InitStack();
-            PushNode(rootNode);
-        }
-        do
-        {
-            const BVH_Node parent = BVHNodes[parentIdx];
-            const uint childCount = GetChildCount(parent);
+    if(groupIdx >= clusterCount)
+        return;
 
+    Cluster localCluster    = Clusters[groupIdx];
+    const AABB aabb         = GetClusterAABB(localCluster);
+
+    if(threadID == 0)
+    {
+        InitStack();
+        PushNode(rootNode);
+    }
+
+    do
+    {
+        const BVH_Node parent = BVHNodes[parentIdx];
+        const uint childCount = GetChildCount(parent);
+
+        if(threadID < childCount)
+        {
             if(IsLeafNode(parent))
             {
                 const uint idx      = GetFirstChild(parent) + threadID;
                 const uint lightID  = LightLookup[idx];
                 const AABB b        = GetPointLightAABB(lightID);
 
-                if(threadID < childCount && CompareAABBToAABB(aabb, b))
+                if(CompareAABBToAABB(aabb, b))
                     PushLight(lightID);
             }
             else
@@ -178,31 +213,30 @@ void CreateClustersLightLists(const uint threadID : SV_GroupIndex, const uint3 g
                 const uint idx          = GetFirstChild(parent) + threadID; 
                 const AABB b            = GetBVHAABB(BVHNodes[idx]);
 
-                if(threadID < childCount && CompareAABBToAABB(aabb, b))
+                if(CompareAABBToAABB(aabb, b))
                     PushNode(idx);
             }
-
-            if(threadID == 0)
-                parentIdx = PopNode();
-        }while(parentIdx != rootNode);
-
+        }
         if(threadID == 0)
-        {
-            InterlockedAdd(counters[0], lightCount, offset);
-            
-            localCluster.MaxPoint.w = asfloat(lightCount);
-            localCluster.MinPoint.w = asfloat(offset);
-            Clusters[groupIdx]      = localCluster;
-        }
+            parentIdx = PopNode();
+    }while(parentIdx != rootNode);
 
-        // Move Light List to global memory
-        const uint end = ceil(float(lightCount) / NODEMAXSIZE);
-        for(uint I = 0; I < lightCount; I++)
-        {
-            const uint idx = threadID + (I * NODEMAXSIZE);
-            if(idx < lightCount)
-                lightList[idx + offset] = lights[idx];
-        }
+    if(threadID == 0)
+    {
+        InterlockedAdd(counters[0], lightCount, offset);
+        
+        localCluster.MaxPoint.w = asfloat(lightCount);
+        localCluster.MinPoint.w = asfloat(offset);
+        Clusters[groupIdx]      = localCluster;
+    }
+
+    // Move Light List to global memory
+    const uint end = ceil(float(lightCount) / NODEMAXSIZE);
+    for(uint I = 0; I < end; I++)
+    {
+        const uint idx = threadID + (I * NODEMAXSIZE);
+        if(idx < lightCount)
+            lightList[idx + offset] = lights[idx];
     }
 }
 
