@@ -211,8 +211,8 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 {
     const float4 albedo       = textureCount >= 1 ? SampleVirtualTexture(albedoTexture, BiLinear, IN.UV) : float4(1, 1, 1, 1);
     
-    //if(albedo.w < 0.5f)
-    //    discard;
+    if(albedo.w < 0.5f)
+        discard;
 
     Deferred_OUT gbuffer;
 
@@ -226,7 +226,7 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
     const float3 normal = mul(TBN, normalCorrected * 2.0f - 1.0f);
 
     gbuffer.Normal      = mul(View, float4(normalize(normal), 0));
-    gbuffer.Tangent     = mul(View, float4(normalize(IN.Tangent.xyz),  0));
+    //gbuffer.Tangent     = mul(View, float4(normalize(IN.Tangent.xyz),  0));
 
     gbuffer.MRIA        = roughMetal.zyxx;
     gbuffer.Albedo      = float4(albedo.xyz, Ks);

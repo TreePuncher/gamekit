@@ -171,9 +171,6 @@ public:
 			streamingEngine	    { IN_Framework.core.RenderSystem, IN_Framework.core.GetBlockMemory() },
             sounds              { IN_Framework.core.Threads,      IN_Framework.core.GetBlockMemory() },
 
-            renderTargetAllocator   { IN_Framework.core.RenderSystem, IN_Framework.core.RenderSystem.CreateHeap(64 * MEGABYTE, DeviceHeapFlags::RenderTarget), 256 * MEGABYTE, 64 * KILOBYTE, 0, IN_Framework.core.GetBlockMemory() },
-            temporaryAllocator      { IN_Framework.core.RenderSystem, IN_Framework.core.RenderSystem.CreateHeap(64 * MEGABYTE, DeviceHeapFlags::UAV), 256 * MEGABYTE, 64 * KILOBYTE, 0, IN_Framework.core.GetBlockMemory() },
-
             renderWindow{ std::get<0>(CreateWin32RenderWindow(IN_Framework.GetRenderSystem(), DefaultWindowDesc({ 1920, 1080 }) )) },
 
 			render	{	IN_Framework.core.GetTempMemory(),
@@ -261,6 +258,7 @@ public:
         gbuffer.Resize(adjustedWH);
     }
 
+
     void DEBUG_PrintDebugStats(EngineCore& core, FrameGraph& frameGraph, VertexBufferHandle textBuffer, ResourceHandle renderTarget)
     {
         const size_t bufferSize     = 1024;
@@ -327,9 +325,6 @@ public:
     float   t = 0.0f;
     size_t  counter = 0;
 
-    // render resources
-    MemoryPoolAllocator         renderTargetAllocator;
-    MemoryPoolAllocator         temporaryAllocator;
 
     Win32RenderWindow           renderWindow;
 	WorldRender					render;
@@ -338,10 +333,6 @@ public:
 	VertexBufferHandle			vertexBuffer;
 	ConstantBufferHandle		constantBuffer;
     SoundSystem			        sounds;
-
-    // Heaps
-    DeviceHeapHandle            renderTargetTemporaryPool;
-    DeviceHeapHandle            TemporaryPool;
 
 	// Components
 	SceneNodeComponent			    transforms;

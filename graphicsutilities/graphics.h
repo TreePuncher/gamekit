@@ -2904,14 +2904,16 @@ private:
 		{
 			NONE,
 			RenderTarget,
-            UAV
+            UAV,
+            ALL = 0xff
 		};
 	}
 
 
 	struct DeviceHeap
 	{
-		ID3D12Heap* heap;
+		ID3D12Heap*         heap;
+        DeviceHeapHandle    handle;
 
 		operator ID3D12Heap* () { return heap; }
 
@@ -2938,6 +2940,7 @@ private:
 				heap.Release();
 
 			heaps.clear();
+            handles.Clear();
 		}
 
 
@@ -2971,6 +2974,8 @@ private:
 
 			if (SUCCEEDED(HR))
 			{
+                auto localLock = std::scoped_lock{ m };
+
 				auto handle = handles.GetNewHandle();
 				handles[handle] = (index_t)heaps.push_back({ heap_ptr });
 
@@ -2983,11 +2988,30 @@ private:
 		}
 
 
+        void ReleaseHeap(DeviceHeapHandle heap)
+        {
+            const auto idx = handles[heap];
+            heaps[idx].Release();
+
+            auto localLock = std::scoped_lock{ m };
+            handles.RemoveHandle(heap);
+
+            if (heaps.size() > 1)
+            {
+                heaps[idx] = heaps.back();
+                handles[heaps[idx].handle] = idx;
+            }
+
+            heaps.pop_back();
+        }
+
+
 		size_t GetHeapSize(DeviceHeapHandle heap) const
 		{
 			auto desc = heaps[handles[heap]].heap->GetDesc();
 			return desc.SizeInBytes;
 		}
+
 
 		ID3D12Heap* GetDeviceResource(DeviceHeapHandle handle) const
 		{
@@ -2996,7 +3020,7 @@ private:
 
 
 	private:
-
+        std::mutex                                      m;
 		Vector<DeviceHeap>                              heaps;
 		HandleUtilities::HandleTable<DeviceHeapHandle>  handles;
 		ID3D12Device*                                   pDevice;                                     
@@ -3318,7 +3342,7 @@ private:
 
 		void                UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator);
 		void                UpdateTextureTileMappings(const ResourceHandle Handle, const TileMapList&);
-		const TileMapList& GetTileMappings(const ResourceHandle Handle);
+		const TileMapList&  GetTileMappings(const ResourceHandle Handle);
 
 
 		TextureDimension GetTextureDimension(ResourceHandle handle) const;
@@ -3402,6 +3426,7 @@ private:
 		void ReleaseUAV(UAVResourceHandle);
 		void ReleaseUAV(UAVTextureHandle);
 		void ReleaseReadBack(ReadBackResourceHandle);
+        void ReleaseHeap(DeviceHeapHandle);
 
 		void                SubmitUploadQueues(uint32_t flags, CopyContextHandle* handle, size_t count = 1);
 		CopyContextHandle   OpenUploadQueue();
@@ -3618,14 +3643,16 @@ private:
         virtual uint32_t Flags() const = 0;
 	};
 
+    constexpr size_t DefaultBlockSize = 64 * KILOBYTE;
+
 	class MemoryPoolAllocator : public PoolAllocatorInterface
 	{
 	public:
-		MemoryPoolAllocator(RenderSystem&, DeviceHeapHandle IN_heap, size_t IN_heapSize, size_t IN_blockSize, uint32_t IN_flags, iAllocator* IN_allocator);
+		MemoryPoolAllocator(RenderSystem&, size_t IN_heapSize, size_t IN_blockSize, uint32_t IN_flags, iAllocator* IN_allocator);
 		MemoryPoolAllocator(const MemoryPoolAllocator& rhs)             = delete;
 		MemoryPoolAllocator& operator =(const MemoryPoolAllocator& rhs) = delete;
 
-		~MemoryPoolAllocator() override = default;
+        ~MemoryPoolAllocator() override;
 
 		enum NodeFlags
 		{

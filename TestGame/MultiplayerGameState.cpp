@@ -121,8 +121,6 @@ void LocalPlayerState::PreDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatc
 
 void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
-	frameGraph.AddMemoryPool(&base.renderTargetAllocator);
-
 	frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
 	frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
 
@@ -131,17 +129,12 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 
 	float2 mouse_dPos   = base.renderWindow.mouseState.Normalized_dPos;
 
-	auto& scene				            = game.scene;
+	auto& scene				= game.scene;
 
-	auto& pointLightGather              = scene.GetPointLights(dispatcher, core.GetTempMemory());
-	auto& pointLightShadowCasterGather  = scene.GetPointLightShadows(dispatcher, core.GetTempMemory());
-
-	auto& transforms		= QueueTransformUpdateTask	(dispatcher);
+	auto& transforms		= QueueTransformUpdateTask(dispatcher);
 	auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
-	auto& cameraConstants	= MakeHeapCopy				(Camera::ConstantBuffer{}, core.GetTempMemory());
-	auto& PVS				= GatherScene               (dispatcher, scene, activeCamera, core.GetTempMemory());
-	auto& skinnedObjects    = GatherSkinned             (dispatcher, scene, activeCamera, core.GetTempMemory());
-	auto& updatedPoses      = UpdatePoses               (dispatcher, skinnedObjects, core.GetTempMemory());
+	auto& cameraConstants	= MakeHeapCopy(Camera::ConstantBuffer{}, core.GetTempMemory());
+
 	auto& cameraControllers = UpdateThirdPersonCameraControllers(dispatcher, mouse_dPos, dT);
 
 	transforms.AddInput(cameraControllers);
@@ -149,28 +142,9 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 	cameras.AddInput(cameraControllers);
 	cameras.AddInput(transforms);
 
-	PVS.AddInput(transforms);
-	PVS.AddInput(cameras);
-
-	skinnedObjects.AddInput(cameras);
-	updatedPoses.AddInput(skinnedObjects);
-
-	pointLightGather.AddInput(transforms);
-	pointLightGather.AddInput(cameras);
-
 	WorldRender_Targets targets = {
 		base.renderWindow.GetBackBuffer(),
 		base.depthBuffer
-	};
-
-	const SceneDescription sceneDesc = {
-		activeCamera,
-		pointLightGather,
-		pointLightShadowCasterGather,
-		transforms,
-		cameras,
-		PVS,
-		skinnedObjects
 	};
 
 	ClearVertexBuffer   (frameGraph, base.vertexBuffer);
@@ -186,69 +160,33 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 		{
 		case RenderMode::Deferred:
 		{
-			AddGBufferResource(base.gbuffer, frameGraph);
-			ClearGBuffer(base.gbuffer, frameGraph);
+            DrawSceneDescription scene =
+            {
+                .camera = activeCamera,
+                .scene  = game.scene,
+                .dt     = dT,
+                .t      = base.t,
 
-			base.render.RenderPBR_GBufferPass(
-				dispatcher,
-				frameGraph,
-				sceneDesc,
-				activeCamera,
-				base.gbuffer,
-				base.depthBuffer,
-				reserveCB,
-				core.GetTempMemory());
+                .gbuffer    = base.gbuffer,
+                .reserveVB  = reserveVB,
+                .reserveCB  = reserveCB,
 
-			auto& lightPass = base.render.UpdateLightBuffers(
-				dispatcher,
-				frameGraph,
-				activeCamera,
-				scene,
-				sceneDesc,
-                targets.DepthTarget,
-				reserveCB,
-				core.GetTempMemory());
+                .transformDependency    = transforms,
+                .cameraDependency       = cameras
+            };
 
-			auto& shadowMapPass = ShadowMapPass(
-				frameGraph,
-                sceneDesc,
-                core.RenderSystem.GetTextureWH(base.depthBuffer),
-				reserveCB,
-				base.t,
-				core.GetTempMemory());
+            auto& drawnScene = base.render.DrawScene(dispatcher, frameGraph, scene, targets, core.GetTempMemory());
 
-			base.render.RenderPBR_DeferredShade(
-				dispatcher,
-				frameGraph,
-				sceneDesc,
-				pointLightGather,
-				base.gbuffer, base.depthBuffer, targets.RenderTarget, shadowMapPass, lightPass,
-				reserveCB, reserveVB,
-				base.t,
-				core.GetTempMemory());
-
-            if(false)
-            base.render.DEBUGVIS_DrawLightBVH(
+            base.streamingEngine.TextureFeedbackPass(
                 dispatcher,
                 frameGraph,
                 activeCamera,
-                targets.RenderTarget,
-                lightPass,
+                base.renderWindow.GetWH(),
+                drawnScene.PVS,
                 reserveCB,
-                core.GetTempMemory());
-
-			ReleaseShadowMapPass(frameGraph, shadowMapPass);
+                reserveVB);
 		}   break;
 		}
-
-		base.streamingEngine.TextureFeedbackPass(
-			dispatcher,
-			frameGraph,
-			activeCamera,
-			base.renderWindow.GetWH(),
-			PVS,
-			reserveCB,
-			reserveVB);
 
 		// Draw Skeleton overlay
 		if (auto [gameObject, res] = FindGameObject(scene, "Cylinder"); res)
@@ -310,7 +248,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 		}
 	}
 
-	framework.stats.objectsDrawnLastFrame = PVS.GetData().solid.size();
+	//framework.stats.objectsDrawnLastFrame = PVS.GetData().solid.size();
     base.DEBUG_PrintDebugStats(core, frameGraph, base.vertexBuffer, base.renderWindow);
 
 	PresentBackBuffer(frameGraph, base.renderWindow);

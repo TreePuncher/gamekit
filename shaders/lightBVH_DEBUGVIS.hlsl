@@ -239,7 +239,7 @@ void GMain2(
     outStream.Append(FrontBottomRight);
 	outStream.RestartStrip();
 #endif
-#if 0
+#if 1
     // Back
     outStream.Append(RearTopLeft);
     outStream.Append(RearTopRight);
@@ -257,7 +257,7 @@ void GMain2(
     outStream.Append(RearBottomRight);
 	outStream.RestartStrip();
 #endif
-#if 0
+#if 1
     // Sides
     outStream.Append(FrontTopLeft);
     outStream.Append(RearTopLeft);

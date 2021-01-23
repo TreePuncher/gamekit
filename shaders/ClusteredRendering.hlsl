@@ -150,7 +150,7 @@ Cluster CreateCluster(const uint clusterID)
     const float3 VS_Min = Clip2View(float4(Clip_Min, 1, 1)); // View Vector
     const float3 VS_Max = Clip2View(float4(Clip_Max, 1, 1)); // View Vector
 
-    const float3 center = float3(0, 0, 1);
+    const float3 center = float3(0, 0,-1);
     const float3 eye    = float3(0, 0, 0);
 
     const float3 MinPointNear = lineIntersectionToZPlane(eye, VS_Min, -minZ);

@@ -1485,7 +1485,7 @@ namespace FlexKit
 
 					pointLightValues.push_back(
 						{	{ pointLight.K, pointLight.I	},
-							{ WS_position, 10        } });
+							{ WS_position, 15        } });
 				}
 
 				const size_t uploadSize = pointLightValues.size() * sizeof(GPUPointLight);
@@ -1629,7 +1629,6 @@ namespace FlexKit
                 createLightListResources.SetUAVStructured(ctx, 2, resources.ReadWriteUAVBuffer(data.lightCounterObject, ctx), sizeof(uint32_t), 0);
                 createLightListResources.SetUAVStructured(ctx, 3, resources.ReadWriteUAVBuffer(data.lightBVH, ctx), sizeof(BVH_Node), 0);
 
-                //createLightListResources.SetStructuredResource(ctx, 4, resources.ReadUAVBuffer(data.lightBVH, DRS_ShaderResource, ctx), sizeof(BVH_Node), 0);
                 createLightListResources.SetStructuredResource(ctx, 5, resources.ReadUAVBuffer(data.lightLookupObject, DRS_ShaderResource, ctx), sizeof(uint32_t),0);
                 createLightListResources.SetStructuredResource(ctx, 6, resources.ReadUAVBuffer(data.lightBufferObject, DRS_ShaderResource, ctx), sizeof(GPUPointLight));
                 createLightListResources.SetCBV(ctx, 8, resources.ReadUAVBuffer(data.counterObject, DRS_ShaderResource, ctx), 0, 4);

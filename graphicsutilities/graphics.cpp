@@ -5201,6 +5201,15 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    void RenderSystem::ReleaseHeap(DeviceHeapHandle heap)
+    {
+        heaps.ReleaseHeap(heap);
+    }
+
+
 	/************************************************************************************************/
 
 
@@ -8275,17 +8284,26 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    MemoryPoolAllocator::MemoryPoolAllocator(RenderSystem& IN_renderSystem, DeviceHeapHandle IN_heap, size_t IN_heapSize, size_t IN_blockSize, uint32_t IN_flags, iAllocator* IN_allocator) :
+    MemoryPoolAllocator::MemoryPoolAllocator(RenderSystem& IN_renderSystem, size_t IN_heapSize, size_t IN_blockSize, uint32_t IN_flags, iAllocator* IN_allocator) :
         renderSystem    { IN_renderSystem },
         blockCount      { IN_heapSize / IN_blockSize },
         blockSize       { IN_blockSize },
         allocator       { IN_allocator },
         allocations     { IN_allocator },
         freeRanges      { IN_allocator },
-        heap            { IN_heap },
+        heap            { IN_renderSystem.CreateHeap(IN_heapSize, IN_flags) },
         flags           { 0 }
     {
         freeRanges.push_back({ 0, (uint32_t)blockCount, Clear });
+    }
+
+
+    /************************************************************************************************/
+
+
+    MemoryPoolAllocator::~MemoryPoolAllocator()
+    {
+        renderSystem.ReleaseHeap(heap);
     }
 
 

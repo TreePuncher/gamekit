@@ -59,6 +59,28 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    class GBuffer;
+
+    struct DrawSceneDescription
+    {
+        CameraHandle        camera;
+        GraphicScene&       scene;
+        const double        dt;  // time since last frame
+        const double        t;  // running time
+
+        // Resources
+        GBuffer&                        gbuffer;
+        ReserveVertexBufferFunction     reserveVB;
+        ReserveConstantBufferFunction   reserveCB;
+
+        // Inputs
+        UpdateTask&         transformDependency;
+        UpdateTask&         cameraDependency;
+
+        Vector<UpdateTask*> sceneDependencies;
+    };
+
+
 	struct SceneDescription
 	{
 		CameraHandle                            camera;
@@ -612,6 +634,9 @@ namespace FlexKit
 
             debugBuffer1                { renderSystem.CreateUAVTextureResource(WH, DeviceFormat::R32G32B32A32_UINT) },
 
+            UAVPool                     { renderSystem, 64 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAV, allocator },
+            RTPool                      { renderSystem, 64 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::RenderTarget, allocator },
+
 
             timeStats                   { renderSystem.CreateTimeStampQuery(256) },
             timingReadBack              { renderSystem.CreateReadBackBuffer(512) },
@@ -714,7 +739,6 @@ namespace FlexKit
 
 		}
 
-
 		void Release()
 		{
             renderSystem.ReleaseUAV(clusterBuffer);
@@ -730,6 +754,114 @@ namespace FlexKit
 			renderSystem.ReleaseUAV(pointLightBuffer);
             renderSystem.ReleaseUAV(pointLightBVH);
 		}
+
+
+        
+        auto& DrawScene(UpdateDispatcher& dispatcher, FrameGraph& frameGraph, DrawSceneDescription& drawSceneDesc, WorldRender_Targets targets, iAllocator* temporary)
+        {
+            auto&       scene           = drawSceneDesc.scene;
+            const auto  camera          = drawSceneDesc.camera;
+            auto&       gbuffer         = drawSceneDesc.gbuffer;
+            const auto  t               = drawSceneDesc.t;
+
+            auto        depthTarget     = targets.DepthTarget;
+            auto        renderTarget    = targets.RenderTarget;
+
+            auto& PVS = GatherScene(dispatcher, &scene, camera, temporary);
+            PVS.AddInput(drawSceneDesc.transformDependency);
+            PVS.AddInput(drawSceneDesc.cameraDependency);
+
+            auto& pointLightGather                = scene.GetPointLights(dispatcher, temporary);
+            auto& pointLightShadowCasterGather    = scene.GetPointLightShadows(dispatcher, temporary);
+
+            pointLightGather.AddInput(drawSceneDesc.transformDependency);
+            pointLightGather.AddInput(drawSceneDesc.cameraDependency);
+
+            auto& skinnedObjects    = GatherSkinned(dispatcher, scene, camera, temporary);
+            auto& updatedPoses      = UpdatePoses(dispatcher, skinnedObjects, temporary);
+
+            // [skinned Objects] -> [update Poses] 
+            skinnedObjects.AddInput(drawSceneDesc.cameraDependency);
+            updatedPoses.AddInput(skinnedObjects);
+
+            const SceneDescription sceneDesc = {
+                drawSceneDesc.camera,
+                pointLightGather,
+                pointLightShadowCasterGather,
+                drawSceneDesc.transformDependency,
+                drawSceneDesc.cameraDependency,
+                PVS,
+                skinnedObjects
+            };
+
+            auto& reserveCB = drawSceneDesc.reserveCB;
+            auto& reserveVB = drawSceneDesc.reserveVB;
+
+            // Add Resources
+            AddGBufferResource(gbuffer, frameGraph);
+            frameGraph.AddMemoryPool(&UAVPool);
+            frameGraph.AddMemoryPool(&RTPool);
+
+            ClearGBuffer(gbuffer, frameGraph);
+
+            RenderPBR_GBufferPass(
+                dispatcher,
+                frameGraph,
+                sceneDesc,
+                sceneDesc.camera,
+                gbuffer,
+                depthTarget,
+                reserveCB,
+                temporary);
+
+            auto& lightPass = UpdateLightBuffers(
+                dispatcher,
+                frameGraph,
+                camera,
+                scene,
+                sceneDesc,
+                depthTarget,
+                reserveCB,
+                temporary);
+
+            auto& shadowMapPass = ShadowMapPass(
+                frameGraph,
+                sceneDesc,
+                renderSystem.GetTextureWH(depthTarget),
+                reserveCB,
+                t,
+                temporary);
+
+            RenderPBR_DeferredShade(
+                dispatcher,
+                frameGraph,
+                sceneDesc,
+                pointLightGather,
+                gbuffer, depthTarget, renderTarget, shadowMapPass, lightPass,
+                reserveCB, reserveVB,
+                t,
+                temporary);
+
+            if (false)
+                DEBUGVIS_DrawLightBVH(
+                    dispatcher,
+                    frameGraph,
+                    camera,
+                    targets.RenderTarget,
+                    lightPass,
+                    reserveCB,
+                    temporary);
+
+            ReleaseShadowMapPass(frameGraph, shadowMapPass);
+
+            struct DrawOutputs
+            {
+                UpdateTaskTyped<GetPVSTaskData>& PVS;
+            } &outputs = temporary->allocate<DrawOutputs>(PVS);
+
+
+            return outputs;
+        }
 
 
 		DepthPass& DepthPrePass(
@@ -865,6 +997,9 @@ namespace FlexKit
 
 
         UAVTextureHandle		debugBuffer1;       // GPU
+
+        MemoryPoolAllocator     UAVPool;
+        MemoryPoolAllocator     RTPool;
 
         QueryHandle             timeStats;
         ReadBackResourceHandle  timingReadBack;

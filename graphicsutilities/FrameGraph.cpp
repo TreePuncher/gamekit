@@ -342,6 +342,8 @@ namespace FlexKit
 	FrameResourceHandle  FrameGraphNodeBuilder::AcquireVirtualResource(const GPUResourceDesc desc, DeviceResourceState initialState)
 	{
         auto NeededFlags = 0;
+        NeededFlags |= desc.unordered       ? DeviceHeapFlags::UAV : 0;
+        NeededFlags |= desc.renderTarget    ? DeviceHeapFlags::RenderTarget : 0;
 
         auto FindResourcePool =
             [&]() -> PoolAllocatorInterface*
@@ -350,7 +352,7 @@ namespace FlexKit
 
                 for (auto pool : Resources->memoryPools)
                 {
-                    if (pool->Flags() | NeededFlags)
+                    if ((pool->Flags() & NeededFlags) == NeededFlags)
                         return pool;
                 }
 
@@ -363,7 +365,7 @@ namespace FlexKit
 
 		    FrameObject virtualObject       = FrameObject::VirtualObject();
 		    virtualObject.shaderResource    = virtualResource;
-		    virtualObject.State             = DeviceResourceState::DRS_DEPTHBUFFERWRITE;
+		    virtualObject.State             = initialState;
 
 		    auto virtualResourceHandle = FrameResourceHandle{ Resources->Resources.emplace_back(virtualObject) };
 		    Resources->Resources[virtualResourceHandle].Handle = virtualResourceHandle;

@@ -1468,7 +1468,7 @@ namespace FlexKit
 
 
 		void AddRenderTarget	(ResourceHandle Texture);
-		void AddMemoryPool      (PoolAllocatorInterface* allocator);
+		void AddMemoryPool      (PoolAllocatorInterface* poolAllocator);
 
 		struct FrameGraphNodeWork
 		{
