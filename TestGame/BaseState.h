@@ -221,7 +221,7 @@ public:
 	{
 		framework.GetRenderSystem().ReleaseVB(vertexBuffer);
 		framework.GetRenderSystem().ReleaseCB(constantBuffer);
-        framework.GetRenderSystem().ReleaseTexture(depthBuffer);
+        framework.GetRenderSystem().ReleaseResource(depthBuffer);
 
         renderWindow.Release();
 	}
@@ -253,7 +253,7 @@ public:
 
         renderWindow.Resize(adjustedWH);
 
-        renderSystem.ReleaseTexture(depthBuffer);
+        renderSystem.ReleaseResource(depthBuffer);
         depthBuffer = renderSystem.CreateDepthBuffer(adjustedWH, true);
         gbuffer.Resize(adjustedWH);
     }

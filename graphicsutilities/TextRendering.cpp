@@ -251,7 +251,7 @@ namespace FlexKit
 				ctx.SetPipelineState				(resources.GetPipelineState(DRAW_SPRITE_TEXT_PSO));
 
 				ctx.SetScissorAndViewports			({ resources.GetRenderTarget(data.renderTarget) });
-				ctx.SetRenderTargets				({ resources.GetTexture(data.renderTarget) }, false);
+				ctx.SetRenderTargets				({ resources.GetResource(data.renderTarget) }, false);
 
 				ctx.SetGraphicsDescriptorTable		(0, descHeap);
 				ctx.SetPrimitiveTopology			(EInputTopology::EIT_POINT);

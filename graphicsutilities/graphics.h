@@ -213,13 +213,14 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			return sizeof(float) * 3;
 		case DXGI_FORMAT_R32G32B32_UINT:
 			return sizeof(float) * 3;
-		case DXGI_FORMAT_R32G32B32_SINT:
 		case DXGI_FORMAT_R16G16B16A16_TYPELESS:
 		case DXGI_FORMAT_R16G16B16A16_FLOAT:
 		case DXGI_FORMAT_R16G16B16A16_UNORM:
 		case DXGI_FORMAT_R16G16B16A16_UINT:
 		case DXGI_FORMAT_R16G16B16A16_SNORM:
 		case DXGI_FORMAT_R16G16B16A16_SINT:
+            return sizeof(uint16_t[4]);
+		case DXGI_FORMAT_R32G32B32_SINT:
 		case DXGI_FORMAT_R32G32_TYPELESS:
 		case DXGI_FORMAT_R32G32_FLOAT:
 		case DXGI_FORMAT_R32G32_UINT:
@@ -249,16 +250,17 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		case DXGI_FORMAT_BC7_TYPELESS:
 		case DXGI_FORMAT_BC7_UNORM_SRGB:
 			return 16;
+        case DXGI_FORMAT_R32_TYPELESS:
+        case DXGI_FORMAT_D32_FLOAT:
+        case DXGI_FORMAT_R32_FLOAT:
+        case DXGI_FORMAT_R32_UINT:
+        case DXGI_FORMAT_R32_SINT:  
+            return sizeof(float);
 		case DXGI_FORMAT_R16G16_TYPELESS:
 		case DXGI_FORMAT_R16G16_FLOAT:
 		case DXGI_FORMAT_R16G16_UNORM:
 		case DXGI_FORMAT_R16G16_SNORM:
 		case DXGI_FORMAT_R16G16_SINT:
-		case DXGI_FORMAT_R32_TYPELESS:
-		case DXGI_FORMAT_D32_FLOAT:
-		case DXGI_FORMAT_R32_FLOAT:
-		case DXGI_FORMAT_R32_UINT:
-		case DXGI_FORMAT_R32_SINT:
 		case DXGI_FORMAT_R24G8_TYPELESS:
 		case DXGI_FORMAT_D24_UNORM_S8_UINT:
 		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
@@ -573,7 +575,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	struct UAVBuffer
 	{
-		UAVBuffer(const RenderSystem& rs, const UAVResourceHandle handle, const size_t stride = -1, const size_t offset = 0); // auto Fills the struct
+		UAVBuffer(const RenderSystem& rs, const ResourceHandle handle, const size_t stride = -1, const size_t offset = 0); // auto Fills the struct
 
 		ID3D12Resource* resource;
 		uint32_t		elementCount;
@@ -998,23 +1000,23 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		DescriptorHeap& NullFill	(Context& ctx, const size_t end = -1);
 
 		bool SetCBV					(Context& ctx, size_t idx, const ConstantBufferDataSet& constants);
-		bool SetCBV					(Context& ctx, size_t idx, ConstantBufferHandle	Handle, size_t offset, size_t bufferSize);
-        bool SetCBV                 (Context& ctx, size_t idx, UAVResourceHandle	Handle, size_t offset, size_t bufferSize);
+		bool SetCBV					(Context& ctx, size_t idx, ConstantBufferHandle, size_t offset, size_t bufferSize);
+        bool SetCBV                 (Context& ctx, size_t idx, ResourceHandle, size_t offset, size_t bufferSize);
 
 		bool SetSRV					(Context& ctx, size_t idx, ResourceHandle		Handle);
 		bool SetSRV					(Context& ctx, size_t idx, ResourceHandle		Handle, DeviceFormat format);
-		bool SetSRV					(Context& ctx, size_t idx, UAVTextureHandle		Handle);
-		bool SetSRV					(Context& ctx, size_t idx, UAVResourceHandle	Handle);
+		//bool SetSRV					(Context& ctx, size_t idx, ResourceHandle		Handle);
+		//bool SetSRV					(Context& ctx, size_t idx, ResourceHandle	Handle);
 		bool SetSRVCubemap          (Context& ctx, size_t idx, ResourceHandle		Handle);
 		bool SetSRVCubemap          (Context& ctx, size_t idx, ResourceHandle		Handle, DeviceFormat format);
 
-		bool SetUAV					(Context& ctx, size_t idx, UAVResourceHandle	Handle, size_t offset = 0);
-		bool SetUAV					(Context& ctx, size_t idx, UAVTextureHandle		Handle);
-		bool SetUAVStructured       (Context& ctx, size_t idx, UAVResourceHandle    Handle, size_t stride, size_t offset = 1);
-		bool SetUAVStructured       (Context& ctx, size_t idx, UAVResourceHandle	Handle, UAVResourceHandle counter, size_t stride, size_t Offset);
+		bool SetUAVBuffer			(Context& ctx, size_t idx, ResourceHandle, size_t   offset = 0);
+		bool SetUAVTexture			(Context& ctx, size_t idx, ResourceHandle);
 
-		bool SetStructuredResource	(Context& ctx, size_t idx, ResourceHandle		Handle, size_t stride);
-		bool SetStructuredResource	(Context& ctx, size_t idx, UAVResourceHandle	Handle, size_t stride, size_t offset = 0);
+		bool SetUAVStructured       (Context& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset = 1);
+		bool SetUAVStructured       (Context& ctx, size_t idx, ResourceHandle resource, ResourceHandle counter, size_t stride, size_t Offset);
+
+		bool SetStructuredResource	(Context& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset = 0);
 
 		operator D3D12_GPU_DESCRIPTOR_HANDLE () const { return descriptorHeap.V2; } // TODO: FIX PAIRS SO AUTO CASTING WORKS
 
@@ -1252,14 +1254,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			Texture     { IN_texture    },
 			UAV         { false         } {}
 
-		TextureObject(UAVTextureHandle IN_UAV) :
-			UAVTexture  { IN_UAV        },
-			UAV         { true          } {}
-
-		union {
-			ResourceHandle	    Texture;
-			UAVTextureHandle    UAVTexture;
-		};
+        ResourceHandle Texture;
 
 		const bool UAV = false;
 	};
@@ -1543,23 +1538,20 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void CreateAS(const AccelerationStructureDesc&, const TriMesh& );
 
-		void AddUAVBarrier			(UAVResourceHandle, DeviceResourceState, DeviceResourceState);
-		void AddUAVBarrier			(UAVTextureHandle,	DeviceResourceState, DeviceResourceState);
-
 		void AddAliasingBarrier     (ResourceHandle Handle, DeviceResourceState Before, DeviceResourceState State);
 
 		void AddPresentBarrier			(ResourceHandle Handle,	DeviceResourceState Before);
 		void AddRenderTargetBarrier		(ResourceHandle Handle,	DeviceResourceState Before, DeviceResourceState State = DeviceResourceState::DRS_RenderTarget);
 		void AddStreamOutBarrier		(SOResourceHandle,		DeviceResourceState Before, DeviceResourceState State);
-		void AddShaderResourceBarrier	(ResourceHandle Handle,	DeviceResourceState Before, DeviceResourceState State);
+		void AddResourceBarrier	        (ResourceHandle Handle,	DeviceResourceState Before, DeviceResourceState State);
 
 		void AddCopyResourceBarrier (ResourceHandle Handle, DeviceResourceState Before, DeviceResourceState State);
 
 		void ClearDepthBuffer		(ResourceHandle Texture, float ClearDepth = 0.0f); // Assumes full-screen Clear
 		void ClearRenderTarget		(ResourceHandle Texture, float4 ClearColor = float4(0.0f)); // Assumes full-screen Clear
-		void ClearUAVTexture        (UAVTextureHandle UAV, float4 clearColor = float4(0, 0, 0, 0));
-		void ClearUAVTexture        (UAVTextureHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
-		void ClearUAV               (UAVResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
+		void ClearUAVTexture        (ResourceHandle UAV, float4 clearColor = float4(0, 0, 0, 0));
+		void ClearUAVTexture        (ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
+		void ClearUAV               (ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
 
 		void SetRootSignature		    (RootSignature& RS);
 		void SetComputeRootSignature    (RootSignature& RS);
@@ -1612,7 +1604,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferHandle, size_t offset);
 		void SetComputeConstantBufferView   (size_t idx, const ConstantBufferDataSet& CB);
 		void SetComputeShaderResourceView	(size_t idx, Texture2D&			Texture);
-		void SetComputeUnorderedAccessView	(size_t idx, UAVResourceHandle& Texture);
+		void SetComputeUnorderedAccessView	(size_t idx, ResourceHandle& Texture);
 
 		void BeginQuery	(QueryHandle query, size_t idx);
 		void EndQuery	(QueryHandle query, size_t idx);
@@ -1630,7 +1622,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			static_vector<DeviceResourceState>	finalStates);
 
 		void ImmediateWrite(
-			static_vector<UAVResourceHandle>	handles,
+			static_vector<ResourceHandle>	handles,
 			static_vector<size_t>				value,
 			static_vector<DeviceResourceState>	currentStates,
 			static_vector<DeviceResourceState>	finalStates);
@@ -1660,10 +1652,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void DrawIndexedInstanced	(size_t IndexCount, size_t IndexOffet = 0, size_t BaseVertex = 0, size_t InstanceCount = 1, size_t InstanceOffset = 0);
 		void Clear					();
 
-		void ResolveQuery			(QueryHandle query, size_t begin, size_t end, UAVResourceHandle destination, size_t destOffset);
+		void ResolveQuery			(QueryHandle query, size_t begin, size_t end, ResourceHandle destination, size_t destOffset);
 		void ResolveQuery			(QueryHandle query, size_t begin, size_t end, ID3D12Resource* destination, size_t destOffset);
 
-		void ExecuteIndirect		(UAVResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset = 0, size_t executionCount = 1);
+		void ExecuteIndirect		(ResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset = 0, size_t executionCount = 1);
 		void Dispatch				(uint3);
         void Dispatch               (ID3D12PipelineState* PSO, uint3 xyz) { SetPipelineState(PSO); Dispatch(xyz); }
 		void DispatchRays           (uint3, const DispatchDesc desc);
@@ -1672,8 +1664,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void SetPredicate(bool Enable, QueryHandle Handle = {}, size_t = 0);
 
-		void CopyBuffer		(const UploadSegment src, const UAVResourceHandle destination);
-		void CopyBuffer		(const UploadSegment src, const size_t uploadSize, const UAVResourceHandle destination);
 		void CopyBuffer		(const UploadSegment src, const ResourceHandle destination);
 		void CopyTexture2D	(const UploadSegment src, const ResourceHandle destination, const uint2 BufferSize);
 
@@ -1745,29 +1735,23 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			DeviceResourceState OldState;
 			DeviceResourceState NewState;
 
-			enum BarrierType
+			enum class Type
 			{
-				BT_RenderTarget,
-				BT_ConstantBuffer,
-				BT_UAVBuffer,
-				BT_UAVTexture,
-				BT_QueryBuffer,
-				BT_VertexBuffer,
-				BT_StreamOut,
-				BT_ShaderResource,
-				BT_Generic,
-				BT_Aliasing,
-				BT_
-			}Type;
+				ConstantBuffer,
+				QueryBuffer,
+				VertexBuffer,
+				StreamOut,
+				Resource,
+				Generic,
+				Aliasing,
+                Unknown,
+			}Type = Type::Unknown;
 
 			union 
 			{
-				UAVResourceHandle	UAVBuffer;
-				UAVTextureHandle	UAVTexture;
-				ResourceHandle		renderTarget;
-				ResourceHandle		shaderResource;
+				ResourceHandle		resourceHandle;
 				SOResourceHandle	streamOut;
-				ID3D12Resource*		resource;
+				ID3D12Resource*		resource_ptr;
 				QueryHandle			query;
 			};
 		};
@@ -2184,9 +2168,9 @@ private:
 		uint8_t             bufferCount  = 0;
 
 		uint2           WH;
-		DeviceFormat   format;
+		DeviceFormat    format;
 
-		uint8_t arraySize  = 1;
+		uint8_t         arraySize  = 1;
 
 		union
 		{
@@ -2203,6 +2187,9 @@ private:
 			DeviceHeapHandle    heap;
 			ID3D12Heap*         customHeap;
 		} placed;
+
+
+        size_t  byteSize = 0;
 
 		static GPUResourceDesc RenderTarget(uint2 IN_WH, DeviceFormat IN_format, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
 		{
@@ -2274,6 +2261,7 @@ private:
 			};
 		}
 
+
 		static GPUResourceDesc StructuredResource(const uint32_t bufferSize)
 		{
 			return {
@@ -2288,7 +2276,7 @@ private:
 				false,  // created
 				ResourceAllocationType::Committed,
 
-				TextureDimension::Texture1D, // dimensions
+				TextureDimension::Buffer, // dimensions
 				1, // mip count
 				1, // buffered count
 
@@ -2297,7 +2285,7 @@ private:
 		}
 
 
-		static GPUResourceDesc UAVResource(uint2 IN_WH, DeviceFormat IN_format, bool renderTarget = false)
+		static GPUResourceDesc UAVResource(const size_t bufferSize, DeviceFormat IN_format = DeviceFormat::UNKNOWN, bool renderTarget = false)
 		{
 			return {
 				false,  // render target flag
@@ -2311,9 +2299,32 @@ private:
 				false,  // created
 				ResourceAllocationType::Committed,
 				
-				TextureDimension::Texture1D, // dimensions
+				TextureDimension::Buffer, // dimensions
 				1, // mip count
-				1, // buffered count
+				3, // buffered count
+
+                uint2{ (uint32_t)bufferSize, 0 }, IN_format
+			};
+		}
+
+
+        static GPUResourceDesc UAVTexture(const uint2 IN_WH, const DeviceFormat IN_format, bool renderTarget = false)
+		{
+			return {
+				false,  // render target flag
+				false,  // depth target flag
+				true,   // UAV Resource flag
+				false,  // buffered flag
+				false,  // shader resource flag
+				true,   // structured flag
+				false,  // clear value
+				false,  // back buffer
+				false,  // created
+				ResourceAllocationType::Committed,
+				
+				TextureDimension::Texture2D, // dimensions
+				1, // mip count
+				3, // buffered count
 
 				IN_WH, IN_format
 			};
@@ -2496,6 +2507,24 @@ private:
 	using TileMapList = Vector<TileMapping>;
 
 
+    struct UAVResourceLayout
+    {
+        uint32_t	stride;
+        uint32_t	elementCount;
+        DXGI_FORMAT format;
+    };
+
+    struct UAVTextureLayout
+    {
+        uint2		WH;
+        uint16_t	mipCount;
+        DXGI_FORMAT format;
+    };
+
+
+    using GPUResourceExtra_t = std::variant<UAVResourceLayout, UAVTextureLayout>;
+
+
 	FLEXKITAPI class TextureStateTable
 	{
 	public:
@@ -2535,6 +2564,8 @@ private:
 		size_t              GetArraySize(ResourceHandle) const;
 		uint32_t            GetMIPCount(ResourceHandle) const;
 		
+        void                SetExtra(ResourceHandle handle, GPUResourceExtra_t);
+        GPUResourceExtra_t  GetExtra(ResourceHandle handle) const;
 
 		void                SetBufferedIdx(ResourceHandle handle, uint32_t idx);
 		void                SetDebugName(ResourceHandle handle, const char* str);
@@ -2545,8 +2576,9 @@ private:
 
 		void			    MarkRTUsed		(ResourceHandle Handle);
 
-		DeviceResourceState GetState	(ResourceHandle Handle) const;
-		ID3D12Resource*		GetResource (ResourceHandle Handle, ID3D12Device* device) const;
+		DeviceResourceState GetState	    (ResourceHandle Handle) const;
+		ID3D12Resource*		GetResource     (ResourceHandle Handle, ID3D12Device* device) const;
+        size_t              GetResourceSize (ResourceHandle Handle) const;
 
 
 		void ReplaceResources(ResourceHandle handle, ID3D12Resource** begin, size_t size);
@@ -2562,9 +2594,11 @@ private:
 
 	private:
 
+
 		struct UserEntry
 		{
 			size_t				    ResourceIdx;
+            size_t                  resourceSize; // ByteSize
 			int64_t				    FGI_FrameStamp;
 			uint32_t			    FrameGraphIndex;
 			uint32_t			    Flags;
@@ -2573,6 +2607,7 @@ private:
 			DXGI_FORMAT			    Format;
 			TextureDimension        dimension;
 			Vector<TileMapping>     tileMappings = {};
+            GPUResourceExtra_t      extra;
 		};
 
 		struct ResourceEntry
@@ -2608,121 +2643,6 @@ private:
 
 		Vector<UnusedResource>	delayRelease;
 		iAllocator*             allocator;
-	};
-
-
-	/************************************************************************************************/
-
-
-	template<typename TY_Handle, typename TY_Extra = int>
-	FLEXKITAPI class UAVResourceTable
-	{
-	public:
-		UAVResourceTable(iAllocator* IN_allocator) :
-			resources	{ IN_allocator	},
-			handles		{ IN_allocator	}{}
-
-
-		struct UAVResource
-		{
-			static_vector<ID3D12Resource*, 3>	resources;	// assumes triple buffering
-			size_t								resourceSize;
-			DeviceResourceState					resourceStates[3];
-			TY_Handle							resourceHandle;
-			uint8_t								resourceIdx;
-			TY_Extra							extraFields;
-		};
-
-
-		TY_Handle AddResource(static_vector<ID3D12Resource*,3> newResources, size_t resourceSize, DeviceResourceState initialState)
-		{
-			auto newHandle		= handles.GetNewHandle();
-			handles[newHandle]	= 
-					resources.push_back({
-						newResources,
-						resourceSize,
-						{initialState, initialState, initialState},
-						newHandle,
-						0 });
-
-			return newHandle;
-		}
-
-		const UAVResource* operator [](const TY_Handle handle) const noexcept
-		{
-			if (handle == InvalidHandle_t)
-				return nullptr;
-			else
-				return &resources[handles[handle]];
-		}
-
-
-		ID3D12Resource*	GetAsset(const TY_Handle handle) const
-		{
-			auto& resourceEntry = resources[handles[handle]];
-			return resourceEntry.resources[resourceEntry.resourceIdx];
-		}
-
-
-		TY_Extra GetExtra(const TY_Handle handle) const
-		{
-			auto& resourceEntry = resources[handles[handle]];
-			return resourceEntry.extraFields;
-		}
-
-		void SetExtra(const TY_Handle handle, const TY_Extra& extra) noexcept
-		{
-			auto& resourceEntry = resources[handles[handle]];
-			resourceEntry.extraFields = extra;
-		}
-
-
-		DeviceResourceState	GetAssetState(const TY_Handle handle) const
-		{
-			auto& resourceEntry = resources[handles[handle]];
-			return resourceEntry.resourceStates[resourceEntry.resourceIdx];
-		}
-
-		void SetResourceState(TY_Handle handle, DeviceResourceState state)
-		{
-			auto& resourceEntry = resources[handles[handle]];
-			resourceEntry.resourceStates[resourceEntry.resourceIdx] = state;
-		}
-
-
-		void ReleaseResource(TY_Handle handle)
-		{
-			size_t idx = handles[handle];
-			handles.RemoveHandle(handle);
-
-			for (auto resource : resources[idx].resources)
-				resource->Release();
-
-			if (resources.size() > 1 && resources.size() < idx)
-			{
-				resources[idx] = resources.back();
-				handles[resources.back().resourceHandle] = idx;
-			}
-
-			resources.pop_back();
-		}
-
-
-		void ReleaseAll()
-		{
-			for (auto resourceEntry : resources) 
-			{
-				for (auto resource : resourceEntry.resources)
-					resource->Release();
-			}
-
-			resources.clear();
-			handles.Clear();
-		}
-
-		HandleUtilities::HandleTable<TY_Handle, 32>			handles;
-		Vector<UAVResource>									resources;
-		iAllocator*											allocator;
 	};
 
 
@@ -2977,7 +2897,7 @@ private:
                 auto localLock = std::scoped_lock{ m };
 
 				auto handle = handles.GetNewHandle();
-				handles[handle] = (index_t)heaps.push_back({ heap_ptr });
+				handles[handle] = (index_t)heaps.push_back({ heap_ptr, handle });
 
 				return handle;
 			}
@@ -3241,20 +3161,6 @@ private:
 	/************************************************************************************************/
 
 
-	struct UAVResourceLayout
-	{
-		uint32_t	stride;
-		uint32_t	elementCount;
-		DXGI_FORMAT format;
-	};
-
-	struct UAVTextureLayout
-	{
-		uint2		WH;
-		uint16_t	mipCount;
-		DXGI_FORMAT format;
-	};
-
 	enum SubmitCopyFlags
 	{
 		SYNC_Graphics   = 0x01,
@@ -3278,8 +3184,6 @@ private:
 			VertexBuffers   { IN_allocator },
 			ConstantBuffers { IN_allocator, this },
 			PipelineStates  { IN_allocator, this, IN_Threads },
-			BufferUAVs      { IN_allocator },
-			Texture2DUAVs   { IN_allocator },
 			PendingBarriers { IN_allocator },
 			StreamOutTable  { IN_allocator },
 			ReadBackTable   { IN_allocator },
@@ -3315,8 +3219,6 @@ private:
 		void WaitforGPU();
 
 		void SetDebugName(ResourceHandle, const char*);
-		void SetDebugName(UAVResourceHandle, const char*);
-		void SetDebugName(UAVTextureHandle, const char*);
 
 		size_t						GetVertexBufferSize(const VertexBufferHandle);
 		D3D12_GPU_VIRTUAL_ADDRESS	GetVertexBufferAddress(const VertexBufferHandle VB);
@@ -3329,12 +3231,15 @@ private:
 		void        MarkTextureUsed(ResourceHandle Handle);
 
         const size_t    GetResourceSize(ConstantBufferHandle handle) const noexcept;
-		const size_t    GetResourceSize(ResourceHandle handle) const noexcept;
-		const size_t    GetResourceSize(GPUResourceDesc desc) const noexcept;
+        const size_t    GetResourceSize(ResourceHandle desc) const noexcept;
+
+		const size_t    GetAllocationSize(ResourceHandle handle) const noexcept; // Includes padding and alignment
+		const size_t    GetAllocationSize(GPUResourceDesc desc) const noexcept; // Includes padding and alignment
+
 
 		const size_t	GetTextureElementSize(ResourceHandle   Handle) const;
 		const uint2		GetTextureWH(ResourceHandle   Handle) const;
-		const uint2		GetTextureWH(UAVTextureHandle Handle) const;
+
 		DeviceFormat	GetTextureFormat(ResourceHandle Handle) const;
 		DXGI_FORMAT		GetTextureDeviceFormat(ResourceHandle Handle) const;
 		uint32_t        GetTextureMipCount(ResourceHandle Handle) const;
@@ -3362,8 +3267,8 @@ private:
 		ResourceHandle			CreateDepthBufferArray			(const uint2 WH, const bool UseFloat = false, const size_t arraySize = 1, const bool buffered = true, const ResourceAllocationType = ResourceAllocationType::Committed);
 		ResourceHandle			CreateGPUResource			    (const GPUResourceDesc& desc);
 		QueryHandle				CreateOcclusionBuffer			(size_t Size);
-		UAVResourceHandle		CreateUAVBufferResource			(size_t bufferHandle, bool tripleBuffer = true);
-		UAVTextureHandle		CreateUAVTextureResource		(const uint2 WH, const DeviceFormat, const bool RenderTarget = false);
+        ResourceHandle		    CreateUAVBufferResource			(size_t bufferHandle, bool tripleBuffer = true);
+        ResourceHandle		    CreateUAVTextureResource		(const uint2 WH, const DeviceFormat, const bool RenderTarget = false);
 		SOResourceHandle		CreateStreamOutResource			(size_t bufferHandle, bool tripleBuffer = true);
 		QueryHandle				CreateSOQuery					(size_t SOIndex, size_t count);
 		QueryHandle				CreateTimeStampQuery			(size_t count);
@@ -3376,15 +3281,11 @@ private:
 		void                        FlushPendingReadBacks();
 
 		void SetObjectState(SOResourceHandle	handle,	DeviceResourceState state);
-		void SetObjectState(UAVResourceHandle	handle, DeviceResourceState state);
-		void SetObjectState(UAVTextureHandle	handle, DeviceResourceState state);
 		void SetObjectState(ResourceHandle		handle, DeviceResourceState state);
 
 
 		DeviceResourceState GetObjectState(const QueryHandle		handle) const;
 		DeviceResourceState GetObjectState(const SOResourceHandle	handle) const;
-		DeviceResourceState GetObjectState(const UAVResourceHandle	handle) const;
-		DeviceResourceState GetObjectState(const UAVTextureHandle	handle) const;
 		DeviceResourceState GetObjectState(const ResourceHandle		handle) const;
 
 
@@ -3393,17 +3294,12 @@ private:
 		ID3D12Resource*		GetDeviceResource(const ConstantBufferHandle	handle) const;
 		ID3D12Resource*		GetDeviceResource(const ResourceHandle		    handle) const;
 		ID3D12Resource*		GetDeviceResource(const SOResourceHandle		handle) const;
-		ID3D12Resource*		GetDeviceResource(const UAVResourceHandle	    handle) const;
-		ID3D12Resource*		GetDeviceResource(const UAVTextureHandle		handle) const;
-
 		ID3D12Resource*     GetSOCounterResource(const SOResourceHandle handle) const;
 		size_t				GetStreamOutBufferSize(const SOResourceHandle handle) const;
 
-		UAVResourceLayout	GetUAVBufferLayout(const UAVResourceHandle) const noexcept;
-		void				SetUAVBufferLayout(const UAVResourceHandle, const UAVResourceLayout) noexcept;
-		size_t              GetUAVBufferSize(const UAVResourceHandle) const noexcept;
-
-		Texture2D			GetUAV2DTexture(const UAVTextureHandle) const;
+		UAVResourceLayout	GetUAVBufferLayout(const ResourceHandle) const noexcept;
+		void				SetUAVBufferLayout(const ResourceHandle, const UAVResourceLayout) noexcept;
+		size_t              GetUAVBufferSize(const ResourceHandle) const noexcept;
 
 		size_t              GetHeapSize(const DeviceHeapHandle heap) const;
 
@@ -3422,9 +3318,7 @@ private:
 
 		void ReleaseCB(ConstantBufferHandle);
 		void ReleaseVB(VertexBufferHandle);
-		void ReleaseTexture(ResourceHandle);
-		void ReleaseUAV(UAVResourceHandle);
-		void ReleaseUAV(UAVTextureHandle);
+		void ReleaseResource(ResourceHandle);
 		void ReleaseReadBack(ReadBackResourceHandle);
         void ReleaseHeap(DeviceHeapHandle);
 
@@ -3454,14 +3348,14 @@ private:
 
 		operator RenderSystem* () { return this; }
 
-		ID3D12Device4* pDevice = nullptr;
-		ID3D12CommandQueue* GraphicsQueue = nullptr;
-		ID3D12CommandQueue* ComputeQueue = nullptr;
+		ID3D12Device4*      pDevice         = nullptr;
+		ID3D12CommandQueue* GraphicsQueue   = nullptr;
+		ID3D12CommandQueue* ComputeQueue    = nullptr;
 
-		size_t              pendingFrames[3] = { 0, 0, 0 };
-		size_t              frameIdx = 0;
-		size_t              CurrentFrame = 0;
-		std::atomic_uint    FenceCounter = 0;
+		size_t              pendingFrames[3]    = { 0, 0, 0 };
+		size_t              frameIdx            = 0;
+		size_t              CurrentFrame        = 0;
+		std::atomic_uint    FenceCounter        = 0;
 
 		ID3D12Fence* Fence = nullptr;
 
@@ -3471,7 +3365,7 @@ private:
 		IDXGIAdapter4* pDXGIAdapter = nullptr;
 
 		ConstantBuffer			NullConstantBuffer; // Zero Filled Constant Buffer
-		UAVTextureHandle   		NullUAV; // 1x1 Zero UAV
+		ResourceHandle   		NullUAV; // 1x1 Zero UAV
 		ResourceHandle          NullSRV;
 		ResourceHandle          NullSRV1D;
 		ResourceHandle          DefaultTexture;
@@ -3524,20 +3418,18 @@ private:
 			RootSignature ComputeSignature;		// 
 		}Library;
 
-		Vector<Context>                                         Contexts;
-		size_t                                                  contextIdx = 0;
+		Vector<Context>             Contexts;
+		size_t                      contextIdx = 0;
 
-		HeapTable                                               heaps;
-		CopyEngine		                                        copyEngine;
-		ConstantBufferTable		                                ConstantBuffers;
-		QueryTable				                                Queries;
-		VertexBufferStateTable									VertexBuffers;
-		TextureStateTable										Textures;
-		UAVResourceTable<UAVResourceHandle, UAVResourceLayout>	BufferUAVs;
-		UAVResourceTable<UAVTextureHandle, UAVTextureLayout>	Texture2DUAVs;
-		SOResourceTable											StreamOutTable;
-		PipelineStateTable										PipelineStates;
-		ReadBackStateTable                                      ReadBackTable;
+		HeapTable                   heaps;
+		CopyEngine		            copyEngine;
+		ConstantBufferTable		    ConstantBuffers;
+		QueryTable				    Queries;
+		VertexBufferStateTable		VertexBuffers;
+		TextureStateTable			Textures;
+		SOResourceTable				StreamOutTable;
+		PipelineStateTable			PipelineStates;
+		ReadBackStateTable          ReadBackTable;
 
 		struct AvailableFeatures
 		{

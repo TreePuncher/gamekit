@@ -355,18 +355,18 @@ namespace FlexKit
 
 		~GBuffer()
 		{
-			RS.ReleaseTexture(albedo);
-			RS.ReleaseTexture(MRIA);
-			RS.ReleaseTexture(normal);
-			RS.ReleaseTexture(tangent);
+			RS.ReleaseResource(albedo);
+			RS.ReleaseResource(MRIA);
+			RS.ReleaseResource(normal);
+			RS.ReleaseResource(tangent);
 		}
 
 		void Resize(const uint2 WH)
 		{
-			RS.ReleaseTexture(albedo);
-			RS.ReleaseTexture(MRIA);
-			RS.ReleaseTexture(normal);
-			RS.ReleaseTexture(tangent);
+			RS.ReleaseResource(albedo);
+			RS.ReleaseResource(MRIA);
+			RS.ReleaseResource(normal);
+			RS.ReleaseResource(tangent);
 
 			albedo  = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM));
 			MRIA    = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT));
@@ -409,20 +409,20 @@ namespace FlexKit
 			},
 			[](GBufferClear& data, ResourceHandler& resources, Context& ctx, iAllocator&)
 			{
-				ctx.ClearRenderTarget(resources.GetTexture(data.albedo));
-				ctx.ClearRenderTarget(resources.GetTexture(data.MRIA));
-				ctx.ClearRenderTarget(resources.GetTexture(data.normal));
-				ctx.ClearRenderTarget(resources.GetTexture(data.tangent));
+				ctx.ClearRenderTarget(resources.GetResource(data.albedo));
+				ctx.ClearRenderTarget(resources.GetResource(data.MRIA));
+				ctx.ClearRenderTarget(resources.GetResource(data.normal));
+				ctx.ClearRenderTarget(resources.GetResource(data.tangent));
 			});
 	}
 
 
 	void AddGBufferResource(GBuffer& gbuffer, FrameGraph& frameGraph)
 	{
-		frameGraph.Resources.AddShaderResource(gbuffer.albedo, true);
-		frameGraph.Resources.AddShaderResource(gbuffer.MRIA, true);
-		frameGraph.Resources.AddShaderResource(gbuffer.normal, true);
-		frameGraph.Resources.AddShaderResource(gbuffer.tangent, true);
+		frameGraph.Resources.AddResource(gbuffer.albedo, true);
+		frameGraph.Resources.AddResource(gbuffer.MRIA, true);
+		frameGraph.Resources.AddResource(gbuffer.normal, true);
+		frameGraph.Resources.AddResource(gbuffer.tangent, true);
 	}
 
 
@@ -664,7 +664,6 @@ namespace FlexKit
             RS_IN.RegisterPSOLoader(CREATELIGHTBVH_PHASE2,      { &RS_IN.Library.ComputeSignature,  CreateLightBVH_PHASE2_PSO       });
             RS_IN.RegisterPSOLoader(CREATELIGHTLISTARGS_PSO,    { &RS_IN.Library.ComputeSignature,  CreateLightListArgs_PSO         });
             
-
             RS_IN.RegisterPSOLoader(CLEARCOUNTERSPSO,           { &RS_IN.Library.ComputeSignature,  CreateClearClusterCountersPSO   });
                 
 			RS_IN.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL,    { &RS_IN.Library.RSDefault, CreateBilaterialBlurHorizontalPSO });
@@ -741,18 +740,18 @@ namespace FlexKit
 
 		void Release()
 		{
-            renderSystem.ReleaseUAV(clusterBuffer);
-            renderSystem.ReleaseUAV(counterBuffer);
-            renderSystem.ReleaseUAV(indexBuffer);
-            renderSystem.ReleaseUAV(debugBuffer1);
-            renderSystem.ReleaseUAV(argumentBuffer);
-            renderSystem.ReleaseUAV(lightLookupBuffer);
-            renderSystem.ReleaseUAV(lightListCounterBuffer);
+            renderSystem.ReleaseResource(clusterBuffer);
+            renderSystem.ReleaseResource(counterBuffer);
+            renderSystem.ReleaseResource(indexBuffer);
+            renderSystem.ReleaseResource(debugBuffer1);
+            renderSystem.ReleaseResource(argumentBuffer);
+            renderSystem.ReleaseResource(lightLookupBuffer);
+            renderSystem.ReleaseResource(lightListCounterBuffer);
 
 
-			renderSystem.ReleaseUAV(lightLists);
-			renderSystem.ReleaseUAV(pointLightBuffer);
-            renderSystem.ReleaseUAV(pointLightBVH);
+			renderSystem.ReleaseResource(lightLists);
+			renderSystem.ReleaseResource(pointLightBuffer);
+            renderSystem.ReleaseResource(pointLightBVH);
 		}
 
 
@@ -982,21 +981,21 @@ namespace FlexKit
 	private:
 		RenderSystem&			renderSystem;
 
-		UAVResourceHandle		lightLists;			    // GPU
-		UAVResourceHandle		pointLightBuffer;	    // GPU
-        UAVResourceHandle		pointLightBVH;          // GPU
-        UAVResourceHandle		lightLookupBuffer;      // GPU
-        UAVResourceHandle		lightListCounterBuffer; // GPU
+		ResourceHandle		lightLists;			    // GPU
+		ResourceHandle		pointLightBuffer;	    // GPU
+        ResourceHandle		pointLightBVH;          // GPU
+        ResourceHandle		lightLookupBuffer;      // GPU
+        ResourceHandle		lightListCounterBuffer; // GPU
 
 
-        UAVResourceHandle		clusterBuffer;	    // GPU
-        UAVResourceHandle		counterBuffer;	    // GPU
+        ResourceHandle		clusterBuffer;	    // GPU
+        ResourceHandle		counterBuffer;	    // GPU
 
-		UAVTextureHandle		indexBuffer;        // GPU
-        UAVResourceHandle		argumentBuffer;     // GPU
+		ResourceHandle		indexBuffer;        // GPU
+        ResourceHandle		argumentBuffer;     // GPU
 
 
-        UAVTextureHandle		debugBuffer1;       // GPU
+        ResourceHandle		debugBuffer1;       // GPU
 
         MemoryPoolAllocator     UAVPool;
         MemoryPoolAllocator     RTPool;

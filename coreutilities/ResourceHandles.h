@@ -36,8 +36,6 @@ namespace FlexKit
     typedef Handle_t<32u, GetTypeGUID(ReadBackResourceHandle)>  ReadBackResourceHandle;
 	typedef Handle_t<32u, GetTypeGUID(StreamTexture2DHandle)>	StreamingTexture2DHandle;
     typedef Handle_t<32u, GetTypeGUID(ShaderResourceHandle)>	ShaderResourceHandle;
-    typedef Handle_t<32u, GetTypeGUID(UAVResourceHandle)>		UAVResourceHandle;
-	typedef Handle_t<32u, GetTypeGUID(UAVTextureHandle)>		UAVTextureHandle;
 	typedef Handle_t<32u, GetTypeGUID(SOResourceHandle)>		SOResourceHandle;
 	typedef Handle_t<32u, GetTypeGUID(QueryBuffer)>				QueryHandle;
 	typedef Handle_t<16u, GetTypeGUID(TriMesh)>					TriMeshHandle;

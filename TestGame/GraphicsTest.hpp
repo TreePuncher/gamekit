@@ -125,7 +125,7 @@ public:
                 SetScissorAndViewports(ctx, std::tuple{ resources.GetRenderTarget(data.renderTarget) });
 
                 ctx.SetRenderTargets(
-                    { resources.GetTexture(data.renderTarget) },
+                    { resources.GetResource(data.renderTarget) },
                     false);
 
                 ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);

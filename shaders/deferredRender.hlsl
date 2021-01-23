@@ -152,7 +152,6 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 
         const float3 Lc			= light.KI.rgb;
         const float3 Lp         = mul(View, float4(light.PR.xyz, 1));
-        //const float3 Lp         = float4(light.PR.xyz, 1);
         const float3 L		    = normalize(Lp - positionVS);
         const float  Ld			= length(positionVS - Lp);
         const float  Li			= abs(light.KI.w) * 2;

@@ -980,7 +980,7 @@ namespace FlexKit
 					ctx.SetRenderTargets(
 						{},
 						true,
-						resources.GetTexture(data.depthBufferObject));
+						resources.GetResource(data.depthBufferObject));
 
 					ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 					ctx.SetGraphicsDescriptorTable(0, heap);
@@ -1075,7 +1075,7 @@ namespace FlexKit
 				ctx.SetGraphicsDescriptorTable(4, descHeap);
 
 				ctx.SetScissorAndViewports({ renderTarget });
-				ctx.SetRenderTargets({ frameResources.GetTexture({ data.renderTargetObject }) }, false, {});
+				ctx.SetRenderTargets({ frameResources.GetResource({ data.renderTargetObject }) }, false, {});
 				ctx.SetVertexBuffers({ VertexBufferDataSet{ vertices, 6, data.passVertices } });
 				ctx.SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
 				ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
@@ -1152,11 +1152,11 @@ namespace FlexKit
 				DescriptorHeap descHeap;
 				descHeap.Init2(ctx, renderSystem.Library.RSDefault.GetDescHeap(0), 20, &allocator);
 
-				descHeap.SetSRV(ctx, 0, frameResources.GetTexture(data.AlbedoTargetObject));
-				descHeap.SetSRV(ctx, 1, frameResources.GetTexture(data.MRIATargetObject));
-				descHeap.SetSRV(ctx, 2, frameResources.GetTexture(data.NormalTargetObject));
-				descHeap.SetSRV(ctx, 3, frameResources.GetTexture(data.TangentTargetObject));
-				descHeap.SetSRV(ctx, 4, frameResources.GetTexture(data.depthBufferTargetObject), DeviceFormat::R32_FLOAT);
+				descHeap.SetSRV(ctx, 0, frameResources.GetResource(data.AlbedoTargetObject));
+				descHeap.SetSRV(ctx, 1, frameResources.GetResource(data.MRIATargetObject));
+				descHeap.SetSRV(ctx, 2, frameResources.GetResource(data.NormalTargetObject));
+				descHeap.SetSRV(ctx, 3, frameResources.GetResource(data.TangentTargetObject));
+				descHeap.SetSRV(ctx, 4, frameResources.GetResource(data.depthBufferTargetObject), DeviceFormat::R32_FLOAT);
 				descHeap.NullFill(ctx, 20);
 
 				ctx.SetRootSignature(renderSystem.Library.RSDefault);
@@ -1164,7 +1164,7 @@ namespace FlexKit
 				ctx.SetGraphicsDescriptorTable(3, descHeap);
 
 				ctx.SetScissorAndViewports({ renderTarget });
-				ctx.SetRenderTargets({ frameResources.GetTexture(data.renderTargetObject) }, false);
+				ctx.SetRenderTargets({ frameResources.GetResource(data.renderTargetObject) }, false);
 				ctx.SetVertexBuffers({ VertexBufferDataSet{ vertices, 6, data.passVertices } });
 				ctx.SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
 				ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
@@ -1241,9 +1241,9 @@ namespace FlexKit
 				DescriptorHeap descHeap;
 				descHeap.Init2(ctx, renderSystem.Library.RSDefault.GetDescHeap(0), 5, &allocator);
 
-				descHeap.SetSRV(ctx, 0, frameResources.GetTexture(data.Source));
-				descHeap.SetSRV(ctx, 1, frameResources.GetTexture(data.NormalSource));
-				descHeap.SetSRV(ctx, 2, frameResources.GetTexture(data.DepthSource), DeviceFormat::R32_FLOAT);
+				descHeap.SetSRV(ctx, 0, frameResources.GetResource(data.Source));
+				descHeap.SetSRV(ctx, 1, frameResources.GetResource(data.NormalSource));
+				descHeap.SetSRV(ctx, 2, frameResources.GetResource(data.DepthSource), DeviceFormat::R32_FLOAT);
 				descHeap.NullFill(ctx, 3);
 
 				ctx.SetRootSignature(frameResources.renderSystem().Library.RSDefault);
@@ -1251,7 +1251,7 @@ namespace FlexKit
 				ctx.SetGraphicsDescriptorTable(3, descHeap);
 
 				ctx.SetScissorAndViewports({ destination });
-				ctx.SetRenderTargets({ frameResources.GetTexture(data.TempObject1), frameResources.GetTexture(data.TempObject2) }, false);
+				ctx.SetRenderTargets({ frameResources.GetResource(data.TempObject1), frameResources.GetResource(data.TempObject2) }, false);
 				ctx.SetVertexBuffers({ VertexBufferDataSet{ vertices, 6, vertexBuffer } });
 				ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, constantBuffer });
 
@@ -1261,13 +1261,13 @@ namespace FlexKit
 				descHeap2.Init2(ctx, renderSystem.Library.RSDefault.GetDescHeap(0), 5, &allocator);
 
 				descHeap2.SetSRV(ctx, 0, frameResources.ReadRenderTarget(data.TempObject1, ctx));
-				descHeap2.SetSRV(ctx, 1, frameResources.GetTexture(data.NormalSource));
-				descHeap2.SetSRV(ctx, 2, frameResources.GetTexture(data.DepthSource), DeviceFormat::R32_FLOAT);
+				descHeap2.SetSRV(ctx, 1, frameResources.GetResource(data.NormalSource));
+				descHeap2.SetSRV(ctx, 2, frameResources.GetResource(data.DepthSource), DeviceFormat::R32_FLOAT);
 				descHeap2.SetSRV(ctx, 3, frameResources.ReadRenderTarget(data.TempObject2, ctx));
 
 				ctx.SetPipelineState(frameResources.GetPipelineState(BILATERALBLURPASSVERTICAL));
 				ctx.SetGraphicsDescriptorTable(3, descHeap2);
-				ctx.SetRenderTargets({ frameResources.GetTexture(data.DestinationObject) }, false);
+				ctx.SetRenderTargets({ frameResources.GetResource(data.DestinationObject) }, false);
 				ctx.Draw(6);
 			});
 
@@ -1335,9 +1335,9 @@ namespace FlexKit
 				// Setup Initial Shading State
 				ctx.SetScissorAndViewports({Targets.RenderTarget});
 				ctx.SetRenderTargets(
-					{ resources.GetTexture(data.BackBuffer) },
+					{ resources.GetResource(data.BackBuffer) },
 					true,
-					resources.GetTexture(data.DepthBuffer));
+					resources.GetResource(data.DepthBuffer));
 
 				ctx.SetPrimitiveTopology			(EInputTopology::EIT_TRIANGLE);
 				ctx.SetGraphicsDescriptorTable		(0, descHeap);
@@ -1506,7 +1506,7 @@ namespace FlexKit
 
                 DescriptorHeap clearHeap;
                 clearHeap.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
-                clearHeap.SetUAV(ctx, 2, resources.ReadWriteUAVBuffer(data.counterObject, ctx));
+                clearHeap.SetUAVBuffer(ctx, 2, resources.ReadWriteUAV(data.counterObject, ctx));
 
 
                 ctx.SetComputeDescriptorTable(0, clearHeap);
@@ -1516,9 +1516,9 @@ namespace FlexKit
                 clusterCreationResources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
 
                 // UAVs start at 0
-                clusterCreationResources.SetUAVStructured(ctx, 0, resources.ReadWriteUAVBuffer(data.clusterBufferObject, ctx), resources.ReadWriteUAVBuffer(data.counterObject, ctx), sizeof(GPUCluster), 0);
-                clusterCreationResources.SetUAV(ctx, 1, resources.ReadWriteUAVTexture(data.indexBufferObject, ctx));
-                clusterCreationResources.SetUAV(ctx, 3, resources.ReadWriteUAVTexture(data.debugBufferObject, ctx));
+                clusterCreationResources.SetUAVStructured(ctx, 0, resources.ReadWriteUAV(data.clusterBufferObject, ctx), resources.ReadWriteUAV(data.counterObject, ctx), sizeof(GPUCluster), 0);
+                clusterCreationResources.SetUAVTexture(ctx, 1, resources.ReadWriteUAV(data.indexBufferObject, ctx));
+                clusterCreationResources.SetUAVTexture(ctx, 3, resources.ReadWriteUAV(data.debugBufferObject, ctx));
 
                 // SRV's start at 4
                 clusterCreationResources.SetSRV(ctx, 4, resources.ReadRenderTarget(data.depthBufferObject, ctx), DeviceFormat::R32_FLOAT);
@@ -1542,9 +1542,9 @@ namespace FlexKit
                 //          then pull sorted light list into the two pass BVH construct
                 DescriptorHeap BVH_Phase1_Resources;
                 BVH_Phase1_Resources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
-                BVH_Phase1_Resources.SetStructuredResource(ctx, 4, resources.ReadUAVBuffer(data.lightBufferObject, DRS_ShaderResource, ctx), sizeof(GPUPointLight));
-                BVH_Phase1_Resources.SetUAVStructured(ctx, 0, resources.ReadWriteUAVBuffer(data.lightBVH, ctx), sizeof(BVH_Node), 0);
-                BVH_Phase1_Resources.SetUAVStructured(ctx, 1, resources.ReadWriteUAVBuffer(data.lightLookupObject, ctx), sizeof(uint2), 0);
+                BVH_Phase1_Resources.SetStructuredResource(ctx, 4, resources.ReadUAV(data.lightBufferObject, DRS_ShaderResource, ctx), sizeof(GPUPointLight));
+                BVH_Phase1_Resources.SetUAVStructured(ctx, 0, resources.ReadWriteUAV(data.lightBVH, ctx), sizeof(BVH_Node), 0);
+                BVH_Phase1_Resources.SetUAVStructured(ctx, 1, resources.ReadWriteUAV(data.lightLookupObject, ctx), sizeof(uint2), 0);
                 BVH_Phase1_Resources.SetCBV(ctx, 8, constants);
 
                 ctx.TimeStamp(timeStats, 6);
@@ -1578,8 +1578,8 @@ namespace FlexKit
 
                         DescriptorHeap BVH_Phase2_Resources;
                         BVH_Phase2_Resources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
-                        BVH_Phase2_Resources.SetUAVStructured(ctx, 0, resources.ReadWriteUAVBuffer(data.lightBVH, ctx), sizeof(BVH_Node), 0);
-                        BVH_Phase2_Resources.SetStructuredResource(ctx, 4, resources.ReadUAVBuffer(data.lightBufferObject, DRS_ShaderResource, ctx), sizeof(GPUPointLight));
+                        BVH_Phase2_Resources.SetUAVStructured(ctx, 0, resources.ReadWriteUAV(data.lightBVH, ctx), sizeof(BVH_Node), 0);
+                        BVH_Phase2_Resources.SetStructuredResource(ctx, 4, resources.ReadUAV(data.lightBufferObject, DRS_ShaderResource, ctx), sizeof(GPUPointLight));
                         BVH_Phase2_Resources.SetCBV(ctx, 8, constantSet);
 
                         ctx.SetComputeDescriptorTable(0, BVH_Phase2_Resources);
@@ -1600,9 +1600,9 @@ namespace FlexKit
 
                 DescriptorHeap createArgumentResources;
                 createArgumentResources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
-                createArgumentResources.SetUAVStructured(ctx, 0, resources.ReadWriteUAVBuffer(data.argumentBufferObject, ctx), sizeof(uint4), 0);
-                createArgumentResources.SetUAVStructured(ctx, 1, resources.ReadWriteUAVBuffer(data.lightCounterObject, ctx), sizeof(uint32_t), 0);
-                createArgumentResources.SetStructuredResource(ctx, 4, resources.ReadUAVBuffer(data.counterObject, DRS_ShaderResource, ctx), sizeof(uint32_t));
+                createArgumentResources.SetUAVStructured(ctx, 0, resources.ReadWriteUAV(data.argumentBufferObject, ctx), sizeof(uint4), 0);
+                createArgumentResources.SetUAVStructured(ctx, 1, resources.ReadWriteUAV(data.lightCounterObject, ctx), sizeof(uint32_t), 0);
+                createArgumentResources.SetStructuredResource(ctx, 4, resources.ReadUAV(data.counterObject, DRS_ShaderResource, ctx), sizeof(uint32_t));
                 createArgumentResources.NullFill(ctx);
 
                 ctx.SetComputeDescriptorTable(0, createArgumentResources);
@@ -1624,14 +1624,14 @@ namespace FlexKit
 
                 DescriptorHeap createLightListResources;
                 createLightListResources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
-                createLightListResources.SetUAVStructured(ctx, 0, resources.ReadWriteUAVBuffer(data.clusterBufferObject, ctx), sizeof(GPUCluster), 0);
-                createLightListResources.SetUAVStructured(ctx, 1, resources.ReadWriteUAVBuffer(data.lightListObject, ctx), sizeof(uint32_t), 0);
-                createLightListResources.SetUAVStructured(ctx, 2, resources.ReadWriteUAVBuffer(data.lightCounterObject, ctx), sizeof(uint32_t), 0);
-                createLightListResources.SetUAVStructured(ctx, 3, resources.ReadWriteUAVBuffer(data.lightBVH, ctx), sizeof(BVH_Node), 0);
+                createLightListResources.SetUAVStructured(ctx, 0, resources.ReadWriteUAV(data.clusterBufferObject, ctx), sizeof(GPUCluster), 0);
+                createLightListResources.SetUAVStructured(ctx, 1, resources.ReadWriteUAV(data.lightListObject, ctx), sizeof(uint32_t), 0);
+                createLightListResources.SetUAVStructured(ctx, 2, resources.ReadWriteUAV(data.lightCounterObject, ctx), sizeof(uint32_t), 0);
+                createLightListResources.SetUAVStructured(ctx, 3, resources.ReadWriteUAV(data.lightBVH, ctx), sizeof(BVH_Node), 0);
 
-                createLightListResources.SetStructuredResource(ctx, 5, resources.ReadUAVBuffer(data.lightLookupObject, DRS_ShaderResource, ctx), sizeof(uint32_t),0);
-                createLightListResources.SetStructuredResource(ctx, 6, resources.ReadUAVBuffer(data.lightBufferObject, DRS_ShaderResource, ctx), sizeof(GPUPointLight));
-                createLightListResources.SetCBV(ctx, 8, resources.ReadUAVBuffer(data.counterObject, DRS_ShaderResource, ctx), 0, 4);
+                createLightListResources.SetStructuredResource(ctx, 5, resources.ReadUAV(data.lightLookupObject, DRS_ShaderResource, ctx), sizeof(uint32_t),0);
+                createLightListResources.SetStructuredResource(ctx, 6, resources.ReadUAV(data.lightBufferObject, DRS_ShaderResource, ctx), sizeof(GPUPointLight));
+                createLightListResources.SetCBV(ctx, 8, resources.ReadUAV(data.counterObject, DRS_ShaderResource, ctx), 0, 4);
                 createLightListResources.SetCBV(ctx, 9, lightListConstantSet);
                 createLightListResources.NullFill(ctx);
 
@@ -1709,12 +1709,12 @@ namespace FlexKit
                 {
                     DescriptorHeap descHeap;
                     descHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), 2, &allocator);
-                    descHeap.SetSRV(ctx, 0, resources.GetUAVBufferResource(data.counterBuffer));
+                    descHeap.SetSRV(ctx, 0, resources.GetResource(data.counterBuffer));
                     descHeap.NullFill(ctx, 2);
 
                     DescriptorHeap UAVHeap;
                     UAVHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 2, &allocator);
-                    UAVHeap.SetUAVStructured(ctx, 0, resources.GetUAVBufferResource(data.indirectArgs), sizeof(uint32_t[4]), 0);
+                    UAVHeap.SetUAVStructured(ctx, 0, resources.GetResource(data.indirectArgs), sizeof(uint32_t[4]), 0);
                     UAVHeap.NullFill(ctx, 2);
 
                     ctx.SetComputeDescriptorTable(3, descHeap);
@@ -1725,8 +1725,8 @@ namespace FlexKit
 
                 DescriptorHeap descHeap;
                 descHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), 2, &allocator);
-                descHeap.SetStructuredResource(ctx, 0, resources.ReadUAVBuffer(data.lightBVH, DRS_ShaderResource, ctx), 4, 0);
-                descHeap.SetStructuredResource(ctx, 1, resources.ReadUAVBuffer(data.clusters, DRS_ShaderResource, ctx), sizeof(GPUCluster), 0);
+                descHeap.SetStructuredResource(ctx, 0, resources.ReadUAV(data.lightBVH, DRS_ShaderResource, ctx), 4, 0);
+                descHeap.SetStructuredResource(ctx, 1, resources.ReadUAV(data.clusters, DRS_ShaderResource, ctx), sizeof(GPUCluster), 0);
                 descHeap.NullFill(ctx, 2);
 
                 DescriptorHeap nullHeap;
@@ -1757,7 +1757,7 @@ namespace FlexKit
                 ctx.Draw(offset + 1);
 
                 ctx.SetPipelineState(debugClusterVISPSO);
-                ctx.ExecuteIndirect(resources.ReadUAVBuffer(data.indirectArgs, DRS_INDIRECTARGS, ctx), createDebugDrawLayout);
+                ctx.ExecuteIndirect(resources.ReadUAV(data.indirectArgs, DRS_INDIRECTARGS, ctx), createDebugDrawLayout);
             });
 
         return lightBufferData;
@@ -1845,16 +1845,16 @@ namespace FlexKit
 					});
 
 				RenderTargetList renderTargets = {
-					resources.GetTexture(data.AlbedoTargetObject),
-					resources.GetTexture(data.MRIATargetObject),
-					resources.GetTexture(data.NormalTargetObject),
-					resources.GetTexture(data.TangentTargetObject),
+					resources.GetResource(data.AlbedoTargetObject),
+					resources.GetResource(data.MRIATargetObject),
+					resources.GetResource(data.NormalTargetObject),
+					resources.GetResource(data.TangentTargetObject),
 				};
 
 				ctx.SetRenderTargets(
 					renderTargets,
 					true,
-					resources.GetTexture(data.depthBufferTargetObject));
+					resources.GetResource(data.depthBufferTargetObject));
 
 				// Setup Constants
 				ctx.SetGraphicsConstantBufferView(1, cameraConstants);
@@ -2027,7 +2027,7 @@ namespace FlexKit
 			float4 PR;	// XYZ + radius in W
 		};
 
-		frameGraph.Resources.AddUAVResource(pointLightBuffer, frameGraph.GetRenderSystem().GetObjectState(pointLightBuffer));
+		frameGraph.Resources.AddResource(pointLightBuffer, frameGraph.GetRenderSystem().GetObjectState(pointLightBuffer));
 
 		auto& pass = frameGraph.AddNode<TiledDeferredShade>(
 			TiledDeferredShade{
@@ -2129,16 +2129,16 @@ namespace FlexKit
 
 				DescriptorHeap descHeap;
 				descHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), descriptorTableSize, &allocator);
-				descHeap.SetSRV(ctx, 0, resources.GetTexture(data.AlbedoTargetObject));
-				descHeap.SetSRV(ctx, 1, resources.GetTexture(data.MRIATargetObject));
-				descHeap.SetSRV(ctx, 2, resources.GetTexture(data.NormalTargetObject));
-				descHeap.SetSRV(ctx, 3, resources.GetTexture(data.TangentTargetObject));
-				descHeap.SetSRV(ctx, 4, resources.GetTexture(data.depthBufferTargetObject), DeviceFormat::R32_FLOAT);
-                descHeap.SetSRV(ctx, 5, resources.GetUAVTextureResource(data.clusterIndexBufferObject));
-                descHeap.SetStructuredResource(ctx, 6, resources.GetUAVBufferResource(data.clusterBufferObject), sizeof(GPUCluster));
-                descHeap.SetSRV(ctx, 7, resources.GetUAVBufferResource(data.lightListsObject));
+				descHeap.SetSRV(ctx, 0, resources.GetResource(data.AlbedoTargetObject));
+				descHeap.SetSRV(ctx, 1, resources.GetResource(data.MRIATargetObject));
+				descHeap.SetSRV(ctx, 2, resources.GetResource(data.NormalTargetObject));
+				descHeap.SetSRV(ctx, 3, resources.GetResource(data.TangentTargetObject));
+				descHeap.SetSRV(ctx, 4, resources.GetResource(data.depthBufferTargetObject), DeviceFormat::R32_FLOAT);
+                descHeap.SetSRV(ctx, 5, resources.GetResource(data.clusterIndexBufferObject));
+                descHeap.SetStructuredResource(ctx, 6, resources.GetResource(data.clusterBufferObject), sizeof(GPUCluster));
+                descHeap.SetStructuredResource(ctx, 7, resources.GetResource(data.lightListsObject), sizeof(uint32_t));
 
-				descHeap.SetStructuredResource(ctx, 9, resources.ReadUAVBuffer(data.pointLightBufferObject, DRS_ShaderResource, ctx), sizeof(GPUPointLight));
+				descHeap.SetStructuredResource(ctx, 9, resources.ReadUAV(data.pointLightBufferObject, DRS_ShaderResource, ctx), sizeof(GPUPointLight));
 
 #if USING(SHADOWMAPPING)
 				for (size_t shadowMapIdx = 0; shadowMapIdx < pointLightCount; shadowMapIdx++)
@@ -2155,7 +2155,7 @@ namespace FlexKit
 				ctx.SetPrimitiveTopology(EIT_TRIANGLELIST);
 
 				ctx.SetScissorAndViewports({ renderTarget });
-				ctx.SetRenderTargets({ resources.GetTexture({ data.renderTargetObject })}, false, {});
+				ctx.SetRenderTargets({ resources.GetResource({ data.renderTargetObject })}, false, {});
 				ctx.SetVertexBuffers({ VertexBufferDataSet{ vertices, data.passVertices } });
 				ctx.SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
 				ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
@@ -2236,17 +2236,17 @@ namespace FlexKit
 				PointLightComponent& pointLights = PointLightComponent::GetComponent();
 				DescriptorHeap srvHeap;
 				srvHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), 7, &allocator);
-				srvHeap.SetSRV(ctx, 0, resources.GetTexture(data.albedoObject));
-				srvHeap.SetSRV(ctx, 1, resources.GetTexture(data.MRIAObject));
-				srvHeap.SetSRV(ctx, 2, resources.GetTexture(data.normalObject));
-				srvHeap.SetSRV(ctx, 3, resources.GetTexture(data.tangentObject));
-				srvHeap.SetSRV(ctx, 4, resources.GetTexture(data.depthBufferObject), DeviceFormat::R32_FLOAT);
+				srvHeap.SetSRV(ctx, 0, resources.GetResource(data.albedoObject));
+				srvHeap.SetSRV(ctx, 1, resources.GetResource(data.MRIAObject));
+				srvHeap.SetSRV(ctx, 2, resources.GetResource(data.normalObject));
+				srvHeap.SetSRV(ctx, 3, resources.GetResource(data.tangentObject));
+				srvHeap.SetSRV(ctx, 4, resources.GetResource(data.depthBufferObject), DeviceFormat::R32_FLOAT);
 				srvHeap.SetSRV(ctx, 5, lightLists);
 				srvHeap.SetSRV(ctx, 6, pointLightBuffer);
 
 				DescriptorHeap uavHeap;
 				uavHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 10, &allocator);
-				uavHeap.SetUAV(ctx, 0, resources.GetUAVTextureResource(data.tempBufferObject));
+				uavHeap.SetUAVTexture(ctx, 0, resources.GetResource(data.tempBufferObject));
 
 				ctx.SetComputeRootSignature(resources.renderSystem().Library.RSDefault);
 				ctx.SetPipelineState(resources.GetPipelineState(COMPUTETILEDSHADINGPASS));
@@ -2431,7 +2431,7 @@ namespace FlexKit
                         return;
 
 					    const auto& drawables  = data.sceneSource.GetData().solid;
-					    const auto depthTarget = resources.GetTexture(data.shadowMapTargets);
+					    const auto depthTarget = resources.GetResource(data.shadowMapTargets);
 
 					    const DepthStencilView_Options DSV_desc = {
                             0, 0,

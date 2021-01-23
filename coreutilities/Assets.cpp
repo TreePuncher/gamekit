@@ -893,7 +893,7 @@ namespace FlexKit
         if (!asset)
             return;
 
-		RS->ReleaseTexture(asset->Texture);
+		RS->ReleaseResource(asset->Texture);
 		asset->Memory->free(asset->FontDir);
 		asset->Memory->free(asset);
 	}
