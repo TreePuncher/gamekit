@@ -145,7 +145,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     const uint localLightCount  = asuint(localCluster.Max.w);
     const uint localLightList   = asuint(localCluster.Min.w);
 
-    float4 color = float4(albedo * 0.2f, 1);
+    float4 color = float4(albedo * 0.15f, 1);
     for(float I = 0; I < localLightCount; I++)
     {
         const PointLight light  = pointLights[lightLists[localLightList + I]];
@@ -155,7 +155,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
         //const float3 Lp         = float4(light.PR.xyz, 1);
         const float3 L		    = normalize(Lp - positionVS);
         const float  Ld			= length(positionVS - Lp);
-        const float  Li			= abs(light.KI.w);
+        const float  Li			= abs(light.KI.w) * 2;
         const float  Lr			= abs(light.PR.w);
         const float  ld_2		= Ld * Ld;
         const float  La			= (Li / ld_2) * (1 - (pow(Ld, 10) / pow(Lr, 10)));
@@ -261,11 +261,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
         return float(localLightCount) / float(lightCount);
         //return float4(-positionVS.z, -positionVS.z, -positionVS.z, 1);
 #else
-	//return color; // RGBAfloat16 is already linear
-    //return pow(color, 1.0f/2.2f);
-    //return color;
-
-	return pow(color, 2.2f);
+	return pow(color, 2.1f);
 #endif
 }
 
