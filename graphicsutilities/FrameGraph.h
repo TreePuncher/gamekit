@@ -78,8 +78,6 @@ namespace FlexKit
 		OT_ShaderResource,
 		OT_VertexBuffer,
 		OT_IndirectArguments,
-		OT_UAVBuffer,
-		OT_UAVTexture,
 		OT_Virtual,
 	};
 
@@ -121,12 +119,9 @@ namespace FlexKit
 
 		union
 		{
-			UAVTextureHandle	UAVTexture;
 			ResourceHandle      shaderResource;
-
 			QueryHandle			query;
 			SOResourceHandle	SOBuffer;
-			UAVResourceHandle	UAVBuffer;
 
 			struct {
 				char	buff[256];
@@ -186,28 +181,6 @@ namespace FlexKit
 			shaderResource.shaderResource   = handle;
 
 			return shaderResource;
-		}
-
-
-		static FrameObject UAVBufferObject(UAVResourceHandle handle, DeviceResourceState InitialState = DeviceResourceState::DRS_UAV)
-		{
-			FrameObject UnorderedAccessViewObject;
-			UnorderedAccessViewObject.State                = InitialState;
-			UnorderedAccessViewObject.Type                 = OT_UAVBuffer;
-			UnorderedAccessViewObject.UAVBuffer			   = handle;
-
-			return UnorderedAccessViewObject;
-		}
-
-
-		static FrameObject UAVTextureObject(UAVTextureHandle handle, DeviceResourceState InitialState = DeviceResourceState::DRS_UAV)
-		{
-			FrameObject UnorderedAccessViewObject;
-			UnorderedAccessViewObject.State         = InitialState;
-			UnorderedAccessViewObject.Type          = OT_UAVTexture;
-			UnorderedAccessViewObject.UAVTexture    = handle;
-
-			return UnorderedAccessViewObject;
 		}
 
 
@@ -342,26 +315,6 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		void AddUAVResource(UAVResourceHandle handle, DeviceResourceState InitialState = DeviceResourceState::DRS_Write)
-		{
-			Resources.push_back(
-				FrameObject::UAVBufferObject(handle, InitialState));
-
-			Resources.back().Handle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
-		}
-
-		void AddUAVResource(UAVTextureHandle handle, DeviceResourceState InitialState = DeviceResourceState::DRS_Write)
-		{
-			Resources.push_back(
-				FrameObject::UAVTextureObject(handle, InitialState));
-
-			Resources.back().Handle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
-		}
-
-
-		/************************************************************************************************/
-
-
 		void AddSOResource(SOResourceHandle handle)
 		{
 			DeviceResourceState initialState = renderSystem.GetObjectState(handle);
@@ -376,7 +329,7 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		void AddShaderResource(ResourceHandle handle, const bool renderTarget = false)
+		void AddResource(ResourceHandle handle, const bool renderTarget = false)
 		{
 			DeviceResourceState initialState = renderSystem.GetObjectState(handle);
 
@@ -521,46 +474,6 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		FrameResourceHandle	FindFrameResource(UAVResourceHandle handle)
-		{
-			auto res = find(Resources, 
-				[&](const auto& LHS)
-				{
-					auto CorrectType = LHS.Type == OT_UAVBuffer;
-
-					return (CorrectType && LHS.UAVBuffer == handle);
-				});
-
-			if (res != Resources.end())
-				return res->Handle;
-
-			return InvalidHandle_t;
-		}
-
-
-		/************************************************************************************************/
-
-
-		FrameResourceHandle	FindFrameResource(UAVTextureHandle handle)
-		{
-			auto res = find(Resources, 
-				[&](const auto& LHS)
-				{
-					auto CorrectType = LHS.Type == OT_UAVTexture;
-
-					return (CorrectType && LHS.UAVTexture == handle);
-				});
-
-			if (res != Resources.end())
-				return res->Handle;
-
-			return InvalidHandle_t;
-		}
-
-
-		/************************************************************************************************/
-
-
 		FrameResourceHandle	FindFrameResource(SOResourceHandle handle)
 		{
 			auto res = find(Resources,
@@ -650,19 +563,14 @@ namespace FlexKit
 		FrameObject*            GetAssetObject(FrameResourceHandle handle) { return globalResources.GetAssetObject(handle); }
 
 		ResourceHandle          GetRenderTarget(FrameResourceHandle handle) const { return globalResources.GetRenderTarget(handle); }
-		ResourceHandle          GetTexture(FrameResourceHandle handle) const { return globalResources.GetTexture(handle); }
+		ResourceHandle          GetResource(FrameResourceHandle handle) const { return globalResources.GetTexture(handle); }
 
 
 		/************************************************************************************************/
 
 
-		ID3D12Resource* GetUAVDeviceResource(FrameResourceHandle handle) const
-		{
-			return GetObjectResource(globalResources.Resources[handle].UAVBuffer);
-		}
-
-
-		UAVTextureHandle GetUAVTextureResource(FrameResourceHandle handle) const
+        /*
+		ResourceHandle GetUAVTextureResource(FrameResourceHandle handle) const
 		{
 			auto res = find(SubNodeTracking,
 				[&](const LocallyTrackedResource& rhs) -> bool
@@ -688,7 +596,7 @@ namespace FlexKit
 		}
 
 
-		UAVResourceHandle GetUAVBufferResource(FrameResourceHandle handle) const
+		ResourceHandle GetUAVBufferResource(FrameResourceHandle handle) const
 		{
 			auto res = find(SubNodeTracking,
 				[&](const auto& rhs) -> bool
@@ -712,6 +620,8 @@ namespace FlexKit
 			else
 				return globalResources.Resources[res->resource].UAVBuffer;
 		}
+        */
+
 
 		SOResourceHandle GetSOResource(FrameResourceHandle handle) const
 		{
@@ -737,6 +647,7 @@ namespace FlexKit
 			else
 				return globalResources.Resources[res->resource].SOBuffer;
 		}
+
 
 		D3D12_VERTEX_BUFFER_VIEW ReadStreamOut(FrameResourceHandle handle, Context& ctx, size_t vertexSize) const
 		{
@@ -767,6 +678,7 @@ namespace FlexKit
 			return view;
 		}
 
+
 		ResourceHandle ReadRenderTarget(FrameResourceHandle resource, Context& ctx) const
 		{
 			auto state          = GetObjectState(resource);
@@ -774,64 +686,55 @@ namespace FlexKit
 
 			if (state != DRS_ShaderResource)
 			{
-				ctx.AddShaderResourceBarrier(renderTarget, state, DRS_ShaderResource);
+				ctx.AddResourceBarrier(renderTarget, state, DRS_ShaderResource);
 				_FindSubNodeResource(resource).currentState = DRS_ShaderResource;
 			}
 
 			return renderTarget;
 		}
 
-		UAVTextureHandle ReadWriteUAVTexture(FrameResourceHandle resource, Context& ctx) const
+
+		ResourceHandle ReadWriteUAV(FrameResourceHandle resource, Context& ctx) const
 		{
 			auto state  = GetObjectState(resource);
-			auto UAV2D  = globalResources.Resources[resource].UAVTexture;
+			auto UAV2D  = globalResources.Resources[resource].shaderResource;
 
 			if (state != DRS_UAV)
 			{
-				ctx.AddUAVBarrier(UAV2D, state, DRS_UAV);
-				_FindSubNodeResource(resource).currentState = DRS_ShaderResource;
+				ctx.AddResourceBarrier(UAV2D, state, DRS_UAV);
+				_FindSubNodeResource(resource).currentState = DRS_UAV;
 			}
 
 			return UAV2D;
 		}
 
-		UAVResourceHandle ReadWriteUAVBuffer(const FrameResourceHandle resource, Context& ctx) const
-		{
-			auto state = GetObjectState(resource);
-			auto UAVBuffer = globalResources.Resources[resource].UAVBuffer;
 
-			if (state != DRS_UAV)
-			{
-				ctx.AddUAVBarrier(UAVBuffer, state, DRS_UAV);
-				_FindSubNodeResource(resource).currentState = DRS_UAV;
-			}
-
-			return UAVBuffer;
-		}
-
-		UAVResourceHandle ReadUAVBuffer(const FrameResourceHandle resource, DeviceResourceState state, Context& ctx) const
+		ResourceHandle ReadUAV(const FrameResourceHandle resource, DeviceResourceState state, Context& ctx) const
 		{
 			auto currentState = GetObjectState(resource);
-			auto UAVBuffer = globalResources.Resources[resource].UAVBuffer;
+			auto UAVBuffer = globalResources.Resources[resource].shaderResource;
 
 			if (state != currentState)
 			{
-				ctx.AddUAVBarrier(UAVBuffer, currentState, state);
+				ctx.AddResourceBarrier(UAVBuffer, currentState, state);
 				_FindSubNodeResource(resource).currentState = state;
 			}
 
 			return UAVBuffer;
 		}
 
-		UAVResourceHandle ReadIndirectArgs(FrameResourceHandle resource, Context& ctx) const
+
+		ResourceHandle ReadIndirectArgs(FrameResourceHandle resource, Context& ctx) const
 		{
-			return ReadUAVBuffer(resource, DRS_INDIRECTARGS, ctx);
+			return ReadUAV(resource, DRS_INDIRECTARGS, ctx);
 		}
 
-		UAVResourceHandle WriteUAV(FrameResourceHandle resource, Context& ctx) const
+
+		ResourceHandle WriteUAV(FrameResourceHandle resource, Context& ctx) const
 		{
-			return ReadUAVBuffer(resource, DRS_Write, ctx);
+			return ReadUAV(resource, DRS_Write, ctx);
 		}
+
 
 		ResourceHandle CopyToTexture(FrameResourceHandle resource, Context& ctx)
 		{
@@ -840,40 +743,43 @@ namespace FlexKit
 
 			if (state != DRS_Write)
 			{
-				ctx.AddShaderResourceBarrier(renderTarget, state, DRS_Write);
+				ctx.AddResourceBarrier(renderTarget, state, DRS_Write);
 				_FindSubNodeResource(resource).currentState = DRS_Write;
 			}
 
 			return renderTarget;
 		}
 
-		UAVTextureHandle CopyUAVTexture(FrameResourceHandle resource, Context& ctx)
+
+		ResourceHandle CopyUAVTexture(FrameResourceHandle resource, Context& ctx)
 		{
 			auto state = GetObjectState(resource);
-			auto UAV2D = globalResources.Resources[resource].UAVTexture;
+			auto UAV2D = globalResources.Resources[resource].shaderResource;
 
 			if (state != DRS_Read)
 			{
-				ctx.AddUAVBarrier(UAV2D, state, DRS_Read);
+				ctx.AddResourceBarrier(UAV2D, state, DRS_Read);
 				_FindSubNodeResource(resource).currentState = DRS_Read;
 			}
 
 			return UAV2D;
 		}
 
-		UAVResourceHandle CopyToUAV(FrameResourceHandle resource, Context& ctx)
+
+		ResourceHandle CopyToUAV(FrameResourceHandle resource, Context& ctx)
 		{
 			auto state = GetObjectState(resource);
-			auto UAV = globalResources.Resources[resource].UAVBuffer;
+			auto UAV = globalResources.Resources[resource].shaderResource;
 
 			if (state != DRS_Write)
 			{
-				ctx.AddUAVBarrier(UAV, state, DRS_Write);
+				ctx.AddResourceBarrier(UAV, state, DRS_Write);
 				_FindSubNodeResource(resource).currentState = DRS_Write;
 			}
 
 			return UAV;
 		}
+
 
 		DeviceResourceState GetObjectState(FrameResourceHandle handle) const
 		{
@@ -1010,6 +916,7 @@ namespace FlexKit
 		};
 	}
 
+
 	auto MakePred(ResourceHandle handle, const PassObjectList& resources)
 	{
 		return [handle, &resources](FrameObjectLink& lhs)
@@ -1018,21 +925,6 @@ namespace FlexKit
 		};
 	}
 
-	auto MakePred(UAVTextureHandle handle, const PassObjectList& resources)
-	{
-		return [handle, &resources](FrameObjectLink& lhs)
-		{
-			return (resources[lhs.handle].UAVTexture == handle && resources[lhs.handle].Type == OT_UAVTexture);
-		};
-	}
-
-	auto MakePred(UAVResourceHandle handle, const PassObjectList& resources)
-	{
-		return [handle, &resources](FrameObjectLink& lhs)
-		{
-			return (resources[lhs.handle].UAVBuffer == handle && resources[lhs.handle].Type == OT_UAVBuffer);
-		};
-	}
 
 	auto MakePred(SOResourceHandle handle, const PassObjectList& resources)
 	{
@@ -1265,7 +1157,6 @@ namespace FlexKit
 
 		FrameResourceHandle ReadRenderTarget	(ResourceHandle   Handle);
 		FrameResourceHandle WriteRenderTarget	(ResourceHandle   Handle);
-		FrameResourceHandle WriteRenderTarget   (UAVTextureHandle Handle);
 
 		FrameResourceHandle	PresentBackBuffer	(ResourceHandle handle);
 		FrameResourceHandle	ReadBackBuffer		(ResourceHandle handle);
@@ -1277,14 +1168,13 @@ namespace FlexKit
 		void                ReleaseVirtualResource(FrameResourceHandle handle);
 
 
-		FrameResourceHandle	ReadWriteUAV    (UAVResourceHandle, DeviceResourceState state = DeviceResourceState::DRS_Write);
-		FrameResourceHandle	ReadWriteUAV    (UAVTextureHandle,	DeviceResourceState	state = DeviceResourceState::DRS_Write);
+		FrameResourceHandle	ReadWriteUAV    (ResourceHandle, DeviceResourceState state = DeviceResourceState::DRS_Write);
 
 		FrameResourceHandle	ReadSOBuffer	(SOResourceHandle);
 		FrameResourceHandle	WriteSOBuffer	(SOResourceHandle);
 
-		FrameResourceHandle ReadResource(FrameResourceHandle handle, DeviceResourceState state);
-		FrameResourceHandle WriteResource(FrameResourceHandle handle, DeviceResourceState state);
+		FrameResourceHandle ReadResource    (FrameResourceHandle handle, DeviceResourceState state);
+		FrameResourceHandle WriteResource   (FrameResourceHandle handle, DeviceResourceState state);
 
 
 		size_t							GetDescriptorTableSize			(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot

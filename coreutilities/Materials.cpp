@@ -52,7 +52,7 @@ namespace FlexKit
 
             if (res->refCount == 0)
             {
-                renderSystem.ReleaseTexture(res->texture);
+                renderSystem.ReleaseResource(res->texture);
                 textures.remove_unstable(res);
             }
         }

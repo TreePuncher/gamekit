@@ -477,16 +477,16 @@ namespace FlexKit
         std::atomic_bool        updateInProgress    = false;
         std::atomic_bool        taskInProgress      = false;
 
-        UAVResourceHandle		feedbackBuffer;     // GPU
-        UAVResourceHandle       feedbackCounters;   // GPU
-        UAVResourceHandle       feedbackBlockSizes; // GPU
-        UAVResourceHandle       feedbackBlockOffsets; // GPU
+        ResourceHandle		feedbackBuffer;     // GPU
+        ResourceHandle       feedbackCounters;   // GPU
+        ResourceHandle       feedbackBlockSizes; // GPU
+        ResourceHandle       feedbackBlockOffsets; // GPU
 
 
         ResourceHandle		    feedbackDepth;  // GPU
 
-        UAVResourceHandle		feedbackDebug;   // GPU
-        UAVResourceHandle		feedbackOutputFinal;  // GPU
+        ResourceHandle		feedbackDebug;   // GPU
+        ResourceHandle		feedbackOutputFinal;  // GPU
 
         ReadBackResourceHandle  feedbackReturnBuffer; // CPU + GPU
 

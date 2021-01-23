@@ -46,7 +46,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	UAVBuffer::UAVBuffer(const RenderSystem& rs, const UAVResourceHandle handle, const size_t IN_stride, const size_t IN_offset)
+	UAVBuffer::UAVBuffer(const RenderSystem& rs, const ResourceHandle handle, const size_t IN_stride, const size_t IN_offset)
 	{
 		auto uavLayout	= rs.GetUAVBufferLayout(handle);
         auto bufferSize = rs.GetUAVBufferSize(handle);
@@ -478,9 +478,12 @@ namespace FlexKit
 							ctx.renderSystem->DescriptorCBVSRVUAVSize,
 							Idx);
 
+                        Texture2D nullTexture{ nullptr };
+                        nullTexture.Format = DXGI_FORMAT_R8G8B8A8_UINT;
+
 						PushUAV2DToDescHeap(
 							ctx.renderSystem,
-							ctx.renderSystem->GetUAV2DTexture(ctx.renderSystem->NullUAV),
+                            nullTexture,
 							POS);
 					}	break;
 					case DescHeapEntryType::HeapError:
@@ -650,7 +653,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    bool DescriptorHeap::SetCBV(Context& ctx, size_t idx, UAVResourceHandle	Handle, size_t offset, size_t bufferSize)
+    bool DescriptorHeap::SetCBV(Context& ctx, size_t idx, ResourceHandle	Handle, size_t offset, size_t bufferSize)
     {
         if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx))
 			return false;
@@ -675,72 +678,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetSRV(Context& ctx, size_t idx, UAVTextureHandle handle)
-	{
-		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
-			return false;
-
-        auto layout     = ctx.renderSystem->GetUAV2DTexture(handle);
-        auto resource   = ctx.renderSystem->GetDeviceResource(handle);
-
-		FillState[idx] = true;
-
-        Push2DSRVToDescHeap(ctx.renderSystem, resource, IncrementHeapPOS(
-            descriptorHeap,
-            ctx.renderSystem->DescriptorCBVSRVUAVSize,
-            idx),
-            D3D12_BUFFER_SRV_FLAG_NONE,
-            layout.Format);
-
-        /*
-        PushSRVToDescHeap(
-			ctx.renderSystem,
-            resource,
-			);
-        */
-
-		return true;
-	}
-
-
-	/************************************************************************************************/
-
-
-	bool DescriptorHeap::SetSRV(Context& ctx, size_t idx, UAVResourceHandle handle)
-	{
-		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
-			return false;
-
-		FillState[idx] = true;
-
-		auto layout		= ctx.renderSystem->GetUAVBufferLayout(handle);
-		auto resource	= ctx.renderSystem->GetDeviceResource(handle);
-
-		PushSRVToDescHeap(
-			ctx.renderSystem, 
-			resource, 
-			IncrementHeapPOS(
-				descriptorHeap,
-				ctx.renderSystem->DescriptorCBVSRVUAVSize,
-				idx),
-			layout.elementCount, 
-			layout.stride);
-
-		return true;
-	}
-
-
-	/************************************************************************************************/
-
-
-	bool DescriptorHeap::SetUAV(Context& ctx, size_t idx, UAVResourceHandle	Handle, size_t offset)
+	bool DescriptorHeap::SetUAVBuffer(Context& ctx, size_t idx, ResourceHandle handle, size_t offset)
 	{
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
 			return false;
 
 		FillState[idx] = true;
 
-		UAVBuffer UAV{ *ctx.renderSystem, Handle };
+		UAVBuffer UAV{ *ctx.renderSystem, handle };
 		UAV.offset = offset;
 
 		PushUAVBufferToDescHeap(
@@ -753,19 +698,22 @@ namespace FlexKit
 
 		return true;
 	}
-
+    
 
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetUAV(Context& ctx, size_t idx, UAVTextureHandle handle)
+	bool DescriptorHeap::SetUAVTexture(Context& ctx, size_t idx, ResourceHandle handle)
 	{
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
 			return false;
 
 		FillState[idx] = true;
 
-		Texture2D tex = ctx.renderSystem->GetUAV2DTexture(handle);
+        Texture2D tex;
+        tex.WH          = ctx.renderSystem->GetTextureWH(handle);
+        tex.Texture     = ctx.renderSystem->GetDeviceResource(handle);
+        tex.Format      = ctx.renderSystem->GetTextureDeviceFormat(handle);
 
 		PushUAV2DToDescHeap(
 			ctx.renderSystem,
@@ -782,7 +730,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    bool DescriptorHeap::SetUAVStructured(Context& ctx, size_t idx, UAVResourceHandle handle, size_t stride, size_t offset)
+    bool DescriptorHeap::SetUAVStructured(Context& ctx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
     {
         if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
 			return false;
@@ -810,8 +758,8 @@ namespace FlexKit
     bool DescriptorHeap::SetUAVStructured(
         Context&            ctx,
         size_t              idx,
-        UAVResourceHandle	resource,
-        UAVResourceHandle   counter,
+        ResourceHandle	resource,
+        ResourceHandle   counter,
         size_t              stride,
         size_t              counterOffset)
     {
@@ -840,14 +788,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetStructuredResource(Context& ctx, size_t idx, ResourceHandle handle, size_t stride)
+	bool DescriptorHeap::SetStructuredResource(Context& ctx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
 	{
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
 			return false;
 
 		FillState[idx] = true;
 
-		auto WH = ctx.renderSystem->GetTextureWH(handle);
+		const auto byteSize = ctx.renderSystem->GetResourceSize(handle);
 
 		PushSRVToDescHeap(
 			ctx.renderSystem,
@@ -855,8 +803,10 @@ namespace FlexKit
 			IncrementHeapPOS(descriptorHeap,
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
 				idx),
-			WH[0],
-			stride);
+            byteSize / stride,
+			stride,
+            D3D12_BUFFER_SRV_FLAG_NONE,
+            offset);
 
 		return true;
 	}
@@ -865,7 +815,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetStructuredResource(Context& ctx, size_t idx, UAVResourceHandle handle, size_t stride, size_t offset)
+    /*
+	bool DescriptorHeap::SetStructuredResource(Context& ctx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
 	{
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
 			return false;
@@ -887,7 +838,7 @@ namespace FlexKit
 
 		return true;
 	}
-
+    */
 
 	/************************************************************************************************/
 
@@ -1136,8 +1087,8 @@ namespace FlexKit
 		Barrier NewBarrier;
 		NewBarrier.OldState				= Before;
 		NewBarrier.NewState				= New;
-		NewBarrier.Type					= Barrier::BT_RenderTarget;
-		NewBarrier.renderTarget			= Handle;
+		NewBarrier.Type					= Barrier::Type::Resource;
+		NewBarrier.resourceHandle   	= Handle;
 
 		PendingBarriers.push_back(NewBarrier);
 	}
@@ -1192,84 +1143,21 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-	void Context::AddUAVBarrier(UAVResourceHandle handle, DeviceResourceState priorState, DeviceResourceState desiredState)
-	{
-		auto res = find(PendingBarriers,
-			[&](Barrier& rhs) -> bool
-			{
-				return
-					rhs.Type        == Barrier::BT_UAVBuffer &&
-					rhs.UAVBuffer   == handle;
-			});
-
-		if(res == PendingBarriers.end())
-		{
-			Barrier NewBarrier;
-			NewBarrier.OldState		= priorState;
-			NewBarrier.NewState		= desiredState;
-			NewBarrier.Type			= Barrier::BT_UAVBuffer;
-			NewBarrier.UAVBuffer	= handle;
-
-			PendingBarriers.push_back(NewBarrier);
-		}
-		else if (res->OldState == desiredState)
-		{  // Barrier no longer needed
-			PendingBarriers.remove_unstable(res);
-		}
-		else
-			res->NewState = desiredState; // Fuse
-	}
-
-	/************************************************************************************************/
-
-
-	void Context::AddUAVBarrier(UAVTextureHandle handle, DeviceResourceState priorState, DeviceResourceState desiredState)
-	{
-		auto res = find(PendingBarriers,
-			[&](Barrier& rhs) -> bool
-			{
-				return
-					rhs.Type        == Barrier::BT_UAVTexture &&
-					rhs.UAVTexture == handle;
-			});
-
-		if(res == PendingBarriers.end())
-		{
-			Barrier NewBarrier;
-			NewBarrier.OldState		= priorState;
-			NewBarrier.NewState		= desiredState;
-			NewBarrier.Type			= Barrier::BT_UAVTexture;
-			NewBarrier.UAVTexture   = handle;
-
-			PendingBarriers.push_back(NewBarrier);
-		}
-		else if (res->OldState == desiredState)
-		{   // Barrier no longer needed
-			PendingBarriers.remove_unstable(res);
-		}
-		else
-			res->NewState = desiredState; // Fuse
-	}
-
-
-	/************************************************************************************************/
-
-
 	void Context::AddAliasingBarrier(ResourceHandle handle, DeviceResourceState Before, DeviceResourceState State)
 	{
 		auto res = find(PendingBarriers,
 			[&](Barrier& rhs) -> bool
 			{
 				return
-					rhs.Type            == Barrier::BT_Aliasing &&
-					rhs.shaderResource  == handle;
+					rhs.Type            == Barrier::Type::Aliasing &&
+					rhs.resourceHandle  == handle;
 			});
 
 		if (std::end(PendingBarriers) == res)
 		{
 			Barrier barrier;
-			barrier.Type            = Barrier::BT_Aliasing;
-			barrier.shaderResource  = handle;
+			barrier.Type            = Barrier::Type::Aliasing;
+			barrier.resourceHandle  = handle;
 
 			PendingBarriers.push_back(barrier);
 		}
@@ -1283,10 +1171,10 @@ namespace FlexKit
 	void Context::AddPresentBarrier(ResourceHandle Handle, DeviceResourceState Before)
 	{
 		Barrier NewBarrier;
-		NewBarrier.OldState		= Before;
-		NewBarrier.NewState		= DeviceResourceState::DRS_Present;
-		NewBarrier.Type			= Barrier::BT_RenderTarget;
-		NewBarrier.renderTarget	= Handle;
+		NewBarrier.OldState		    = Before;
+		NewBarrier.NewState		    = DeviceResourceState::DRS_Present;
+		NewBarrier.Type			    = Barrier::Type::Resource;
+		NewBarrier.resourceHandle	= Handle;
 
 		PendingBarriers.push_back(NewBarrier);
 	}
@@ -1301,7 +1189,7 @@ namespace FlexKit
 			[&](Barrier& rhs) -> bool
 			{
 				return
-					rhs.Type		== Barrier::BT_StreamOut &&
+					rhs.Type		== Barrier::Type::StreamOut &&
 					rhs.streamOut	== streamOut;
 			});
 
@@ -1313,7 +1201,7 @@ namespace FlexKit
 			Barrier NewBarrier;
 			NewBarrier.OldState		= Before;
 			NewBarrier.NewState		= State;
-			NewBarrier.Type			= Barrier::BT_StreamOut;
+			NewBarrier.Type			= Barrier::Type::StreamOut;
 			NewBarrier.streamOut	= streamOut;
 			PendingBarriers.push_back(NewBarrier);
 		}
@@ -1323,14 +1211,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::AddShaderResourceBarrier(ResourceHandle resource, DeviceResourceState Before, DeviceResourceState State)
+	void Context::AddResourceBarrier(ResourceHandle resource, DeviceResourceState Before, DeviceResourceState State)
 	{
 		auto res = find(PendingBarriers, 
 			[&](Barrier& rhs) -> bool
 			{
 				return
-					rhs.Type			== Barrier::BT_ShaderResource &&
-					rhs.shaderResource	== resource;
+					rhs.Type			== Barrier::Type::Resource &&
+					rhs.resourceHandle	== resource;
 			});
 
 		if (res != PendingBarriers.end()) {
@@ -1341,8 +1229,8 @@ namespace FlexKit
 			Barrier NewBarrier;
 			NewBarrier.OldState			= Before;
 			NewBarrier.NewState			= State;
-			NewBarrier.Type				= Barrier::BT_ShaderResource;
-			NewBarrier.shaderResource	= resource;
+			NewBarrier.Type				= Barrier::Type::Resource;
+			NewBarrier.resourceHandle	= resource;
 			PendingBarriers.push_back(NewBarrier);
 		}
 	}
@@ -1357,8 +1245,8 @@ namespace FlexKit
 			[&](Barrier& rhs) -> bool
 			{
 				return
-					rhs.Type            == Barrier::BT_ShaderResource &&
-					rhs.shaderResource  == resource;
+					rhs.Type            == Barrier::Type::Resource &&
+					rhs.resourceHandle  == resource;
 			});
 
 		if (res != PendingBarriers.end()) {
@@ -1369,8 +1257,8 @@ namespace FlexKit
 			Barrier NewBarrier;
 			NewBarrier.OldState         = Before;
 			NewBarrier.NewState         = State;
-			NewBarrier.Type             = Barrier::BT_ShaderResource;
-			NewBarrier.shaderResource   = resource;
+			NewBarrier.Type             = Barrier::Type::Resource;
+			NewBarrier.resourceHandle   = resource;
 			PendingBarriers.push_back(NewBarrier);
 		}
 	}
@@ -1827,7 +1715,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::SetComputeShaderResourceView(size_t idx, Texture2D&			Texture)
+	void Context::SetComputeShaderResourceView(size_t idx, Texture2D& Texture)
 	{
 		DeviceContext->SetComputeRootShaderResourceView(idx, Texture->GetGPUVirtualAddress());
 	}
@@ -1835,9 +1723,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::SetComputeUnorderedAccessView(size_t idx, UAVResourceHandle& UAVResource)
+	void Context::SetComputeUnorderedAccessView(size_t idx, ResourceHandle& UAVResource)
 	{
-		auto resource = renderSystem->BufferUAVs.GetAsset(UAVResource);
+		auto resource = renderSystem->GetDeviceResource(UAVResource);
 		DeviceContext->SetComputeRootUnorderedAccessView(idx, resource->GetGPUVirtualAddress());
 	}
 
@@ -1945,7 +1833,7 @@ namespace FlexKit
 
 
 	void Context::ImmediateWrite(
-		static_vector<UAVResourceHandle>		handles,
+		static_vector<ResourceHandle>		handles,
 		static_vector<size_t>					value,
 		static_vector<DeviceResourceState>		currentStates,
 		static_vector<DeviceResourceState>		finalStates)
@@ -2335,12 +2223,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::ClearUAVTexture(UAVTextureHandle UAV, float4 clearColor)
+	void Context::ClearUAVTexture(ResourceHandle UAV, float4 clearColor)
 	{
 		auto view       = _ReserveSRVLocal(1);
 		auto resource   = renderSystem->GetDeviceResource(UAV);
 
-		Texture2D tex   = renderSystem->GetUAV2DTexture(UAV);
+        Texture2D tex{
+            renderSystem->GetDeviceResource(UAV),
+            renderSystem->GetTextureWH(UAV),
+            renderSystem->GetTextureMipCount(UAV),
+            renderSystem->GetTextureDeviceFormat(UAV),
+        };
 
 		PushUAV2DToDescHeap(
 			renderSystem,
@@ -2355,12 +2248,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::ClearUAVTexture(UAVTextureHandle UAV, uint4 clearColor)
+	void Context::ClearUAVTexture(ResourceHandle UAV, uint4 clearColor)
 	{
 		auto view       = _ReserveSRVLocal(1);
 		auto resource   = renderSystem->GetDeviceResource(UAV);
 
-		Texture2D tex   = renderSystem->GetUAV2DTexture(UAV);
+        Texture2D tex{
+            renderSystem->GetDeviceResource(UAV),
+            renderSystem->GetTextureWH(UAV),
+            renderSystem->GetTextureMipCount(UAV),
+            renderSystem->GetTextureDeviceFormat(UAV),
+        };
 
 		PushUAV2DToDescHeap(
 			renderSystem,
@@ -2379,7 +2277,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::ClearUAV(UAVResourceHandle UAV, uint4 clearColor)
+	void Context::ClearUAV(ResourceHandle UAV, uint4 clearColor)
 	{
 		auto view = _ReserveSRVLocal(1);
 		auto resource = renderSystem->GetDeviceResource(UAV);
@@ -2404,7 +2302,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::ResolveQuery(QueryHandle query, size_t begin, size_t end, UAVResourceHandle destination, size_t destOffset)
+	void Context::ResolveQuery(QueryHandle query, size_t begin, size_t end, ResourceHandle destination, size_t destOffset)
 	{
         if (query == InvalidHandle_t)
             return;
@@ -2439,7 +2337,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::ExecuteIndirect(UAVResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset, size_t executionCount)
+	void Context::ExecuteIndirect(ResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset, size_t executionCount)
 	{
 		UpdateResourceStates();
 		DeviceContext->ExecuteIndirect(
@@ -2527,32 +2425,6 @@ namespace FlexKit
 				D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_NOT_EQUAL_ZERO);
 		else
 			DeviceContext->SetPredication(nullptr, 0, D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_EQUAL_ZERO);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::CopyBuffer(const UploadSegment src, const UAVResourceHandle destination)
-	{
-		const auto  destinationResource		= renderSystem->GetDeviceResource(destination);
-
-		UpdateResourceStates();
-
-		DeviceContext->CopyBufferRegion(destinationResource, 0, src.resource, src.offset, src.uploadSize);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::CopyBuffer(const UploadSegment src, const size_t uploadSize, const UAVResourceHandle destination)
-	{
-		const auto destinationResource	= renderSystem->GetDeviceResource(destination);
-
-		UpdateResourceStates();
-
-		DeviceContext->CopyBufferRegion(destinationResource, 0, src.resource, src.offset, uploadSize);
 	}
 
 
@@ -2717,10 +2589,10 @@ namespace FlexKit
 	void Context::_AddBarrier(ID3D12Resource* resource, DeviceResourceState currentState, DeviceResourceState newState)
 	{
 		Barrier barrier;
-		barrier.Type		= Barrier::BT_Generic;
-		barrier.resource	= resource;
-		barrier.OldState	= currentState;
-		barrier.NewState	= newState;
+		barrier.Type		    = Barrier::Type::Generic;
+		barrier.resource_ptr    = resource;
+		barrier.OldState	    = currentState;
+		barrier.NewState	    = newState;
 
 		PendingBarriers.push_back(barrier);
 	}
@@ -2740,67 +2612,10 @@ namespace FlexKit
 		{
 			switch(B.Type)
 			{
-				case Barrier::BT_RenderTarget:
-				{
-					auto handle			= B.renderTarget;
-					auto resource		= renderSystem->GetDeviceResource(handle);
-					auto currentState	= DRS2D3DState(B.OldState);
-					auto newState		= DRS2D3DState(B.NewState);
-
-					/*
-					#ifdef _DEBUG
-						std::cout << "Transitioning Resource: " << Resource
-							<< " From State: " << CurrentState << " To State: "
-							<< NewState << "\n";
-					#endif
-					*/
-
-					if (B.OldState != B.NewState)
-						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-							resource, currentState, newState));
-				}	break;
-				case Barrier::BT_UAVBuffer:
-				{
-					auto handle			= B.UAVBuffer;
-					auto resource		= renderSystem->GetDeviceResource(handle);
-					auto currentState	= DRS2D3DState(B.OldState);
-					auto newState		= DRS2D3DState(B.NewState);
-
-					/*
-					#ifdef _DEBUG
-						std::cout << "Transitioning Resource: " << Resource 
-							<< " From State: " << CurrentState << " To State: " 
-							<< NewState << "\n";
-					#endif
-					*/
-
-					if (B.OldState != B.NewState)
-						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-							resource, currentState, newState));
-				}	break;
-				case Barrier::BT_UAVTexture:
-				{
-					auto handle			= B.UAVTexture;
-					auto resource		= renderSystem->GetDeviceResource(handle);
-					auto currentState	= DRS2D3DState(B.OldState);
-					auto newState		= DRS2D3DState(B.NewState);
-
-					/*
-					#ifdef _DEBUG
-						std::cout << "Transitioning Resource: " << Resource 
-							<< " From State: " << CurrentState << " To State: " 
-							<< NewState << "\n";
-					#endif
-					*/
-
-					if (B.OldState != B.NewState)
-						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-							resource, currentState, newState));
-				}	break;
-				case Barrier::BT_ConstantBuffer:
-				case Barrier::BT_VertexBuffer:
+				case Barrier::Type::ConstantBuffer:
+				case Barrier::Type::VertexBuffer:
 					break;
-				case Barrier::BT_StreamOut:
+				case Barrier::Type::StreamOut:
 				{
 
 					if (DeviceResourceState::DRS_STREAMOUTCLEAR == B.OldState || DeviceResourceState::DRS_STREAMOUTCLEAR == B.NewState) {
@@ -2830,9 +2645,9 @@ namespace FlexKit
 							Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(resource, currentState, newState));
 					}
 				}	break;
-				case Barrier::BT_Generic:
+                case Barrier::Type::Generic:
 				{
-					auto resource		= B.resource;
+					auto resource		= B.resource_ptr;
 					auto currentState	= DRS2D3DState(B.OldState);
 					auto newState		= DRS2D3DState(B.NewState);
 
@@ -2848,9 +2663,9 @@ namespace FlexKit
 						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
 							resource, currentState, newState));
 				}	break;
-				case Barrier::BT_ShaderResource:
+                case Barrier::Type::Resource:
 				{
-					auto resource		= renderSystem->GetDeviceResource(B.shaderResource);
+					auto resource		= renderSystem->GetDeviceResource(B.resourceHandle);
 					auto currentState	= DRS2D3DState(B.OldState);
 					auto newState		= DRS2D3DState(B.NewState);
 
@@ -2858,9 +2673,9 @@ namespace FlexKit
 						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
 							resource, currentState, newState));
 				}	break;
-				case Barrier::BT_Aliasing:
+                case Barrier::Type::Aliasing:
 				{
-					auto aliasingBarrier = CD3DX12_RESOURCE_BARRIER::Aliasing(renderSystem->GetDeviceResource(B.shaderResource), nullptr);
+					auto aliasingBarrier = CD3DX12_RESOURCE_BARRIER::Aliasing(renderSystem->GetDeviceResource(B.resourceHandle), nullptr);
 
 					Barriers.push_back(aliasingBarrier);
 				}   break;
@@ -3896,8 +3711,6 @@ namespace FlexKit
 		ConstantBuffers.Release();
 		VertexBuffers.Release();
 		Textures.Release();
-		BufferUAVs.ReleaseAll();
-		Texture2DUAVs.ReleaseAll();
 		PipelineStates.ReleasePSOs();
 		ReadBackTable.Release();
 
@@ -4046,27 +3859,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-
-	void RenderSystem::SetDebugName(UAVResourceHandle handle, const char* str)
-	{
-		auto resource = GetDeviceResource(handle);
-		SETDEBUGNAME(resource, str);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void RenderSystem::SetDebugName(UAVTextureHandle handle, const char* str)
-	{
-		auto resource = GetDeviceResource(handle);
-		SETDEBUGNAME(resource, str);
-	}
-
-
-	/************************************************************************************************/
-
-
 	D3D12_GPU_VIRTUAL_ADDRESS RenderSystem::GetVertexBufferAddress(const VertexBufferHandle VB)
 	{
 		return VertexBuffers.GetAsset(VB)->GetGPUVirtualAddress();
@@ -4100,10 +3892,16 @@ namespace FlexKit
     }
 
 
+    const size_t RenderSystem::GetResourceSize(ResourceHandle handle) const noexcept
+    {
+        return Textures.GetResourceSize(handle);
+    }
+
+
     /************************************************************************************************/
 
 
-	const size_t    RenderSystem::GetResourceSize(ResourceHandle handle) const noexcept
+	const size_t    RenderSystem::GetAllocationSize(ResourceHandle handle) const noexcept
 	{
 		auto resource               = GetDeviceResource(handle);
 		D3D12_RESOURCE_DESC desc    = resource->GetDesc();
@@ -4113,7 +3911,7 @@ namespace FlexKit
 	}
 
 
-	const size_t    RenderSystem::GetResourceSize(GPUResourceDesc desc) const noexcept
+	const size_t    RenderSystem::GetAllocationSize(GPUResourceDesc desc) const noexcept
 	{
 		D3D12_RESOURCE_DESC   Resource_DESC = 
 				(desc.Dimensions == TextureDimension::Texture1D) ?
@@ -4178,11 +3976,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const uint2	RenderSystem::GetTextureWH(UAVTextureHandle Handle) const
+    /*
+	const uint2	RenderSystem::GetTextureWH(ResourceHandle Handle) const
 	{
 		return Texture2DUAVs.GetExtra(Handle).WH;
 	}
-
+    */
 
 	/************************************************************************************************/
 
@@ -4376,24 +4175,53 @@ namespace FlexKit
 		}
 		else
 		{
-			D3D12_RESOURCE_DESC   Resource_DESC = 
-					(desc.Dimensions == TextureDimension::Texture1D) ?
-					CD3DX12_RESOURCE_DESC::Buffer(desc.WH[0]):
-					(desc.Dimensions == TextureDimension::Texture2D) ? (
-					CD3DX12_RESOURCE_DESC::Tex2D(
-						TextureFormat2DXGIFormat(desc.format),
-						desc.WH[0],
-						desc.WH[1],
-						desc.arraySize,
-						desc.MipLevels)
-					) : (
-					CD3DX12_RESOURCE_DESC::Tex2D(
-						TextureFormat2DXGIFormat(desc.format),
-						desc.WH[0],
-						desc.WH[1],
-						6,
-						desc.MipLevels));
+            size_t byteSize = 0;
+			D3D12_RESOURCE_DESC Resource_DESC = 
+                [&]() -> CD3DX12_RESOURCE_DESC
+                {
+                    const auto dxgiFormat = TextureFormat2DXGIFormat(desc.format);
 
+                    switch (desc.Dimensions)
+                    {
+                    case TextureDimension::Buffer:
+                        byteSize = desc.WH[0];
+                        return CD3DX12_RESOURCE_DESC::Buffer(desc.WH[0]);
+                    case TextureDimension::Texture1D:
+                        
+                        byteSize = desc.WH[0] * GetFormatElementSize(dxgiFormat);
+                        return CD3DX12_RESOURCE_DESC::Tex1D(
+                            dxgiFormat,
+                            desc.WH[0],
+                            desc.arraySize,
+                            desc.MipLevels);
+                    case TextureDimension::Texture2D:
+                        byteSize = desc.WH.Product() * GetFormatElementSize(dxgiFormat);
+
+                        return CD3DX12_RESOURCE_DESC::Tex2D(
+                            dxgiFormat,
+                            desc.WH[0],
+                            desc.WH[1],
+                            desc.arraySize,
+                            desc.MipLevels);
+                    case TextureDimension::Texture3D:
+                        byteSize = desc.WH.Product() * GetFormatElementSize(dxgiFormat) * desc.arraySize;
+
+                        return CD3DX12_RESOURCE_DESC::Tex3D(
+                            dxgiFormat,
+                            desc.WH[0],
+                            desc.WH[1],
+                            desc.arraySize,
+                            desc.MipLevels);
+                    case TextureDimension::TextureCubeMap:
+                        byteSize = desc.WH.Product() * GetFormatElementSize(dxgiFormat) * 6;
+
+                        return CD3DX12_RESOURCE_DESC::Tex2D(
+                            dxgiFormat,
+                            desc.WH[0],
+                            desc.WH[1],
+                            6,
+                            desc.MipLevels);
+                }}();
 
 			Resource_DESC.Flags	= desc.renderTarget ?
 									D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET : 
@@ -4406,7 +4234,7 @@ namespace FlexKit
 			Resource_DESC.Flags |=  (desc.depthTarget) ? D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL : 
 				D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
 
-			Resource_DESC.MipLevels	= !desc.MipLevels ? 1 : desc.MipLevels;
+			Resource_DESC.MipLevels	= Max(desc.MipLevels, 1);
 
 			D3D12_HEAP_PROPERTIES HEAP_Props	={};
 			HEAP_Props.CPUPageProperty			= D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
@@ -4446,7 +4274,7 @@ namespace FlexKit
 				case ResourceAllocationType::Tiled:
 				{
 					Resource_DESC.Layout = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
-
+                    
 					HRESULT HR = pDevice->CreateReservedResource(
 									&Resource_DESC,
 									InitialState,
@@ -4484,13 +4312,14 @@ namespace FlexKit
 
 			auto filledDesc = desc;
 
-
 			auto initialState =
 				filledDesc.renderTarget ? DRS_RenderTarget:
 				filledDesc.depthTarget  ? DRS_DEPTHBUFFERWRITE :
 				DRS_ShaderResource;
 
-			filledDesc.resources = NewResource;
+			filledDesc.resources    = NewResource;
+            filledDesc.byteSize     = byteSize;
+
 			return Textures.AddResource(filledDesc, initialState);
 		}
 
@@ -4510,97 +4339,32 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	UAVResourceHandle RenderSystem::CreateUAVBufferResource(size_t resourceSize, bool tripleBuffer)
+    ResourceHandle RenderSystem::CreateUAVBufferResource(size_t resourceSize, bool tripleBuffer)
 	{
-		D3D12_RESOURCE_DESC Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(resourceSize);
-		Resource_DESC.Alignment           = 0;
-		Resource_DESC.DepthOrArraySize    = 1;
-		Resource_DESC.Dimension           = D3D12_RESOURCE_DIMENSION::D3D12_RESOURCE_DIMENSION_BUFFER;
-		Resource_DESC.Layout              = D3D12_TEXTURE_LAYOUT::D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		Resource_DESC.Width               = resourceSize;
-		Resource_DESC.Height              = 1;
-		Resource_DESC.Format              = DXGI_FORMAT_UNKNOWN;
-		Resource_DESC.SampleDesc.Count    = 1;
-		Resource_DESC.SampleDesc.Quality  = 0;
-		Resource_DESC.Flags               = D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        auto desc = GPUResourceDesc::UAVResource(resourceSize);
+        desc.bufferCount = tripleBuffer ? 3 : 1;
 
-		D3D12_HEAP_PROPERTIES HEAP_Props  = {};
-		HEAP_Props.CPUPageProperty        = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		HEAP_Props.Type                   = D3D12_HEAP_TYPE_DEFAULT;
-		HEAP_Props.MemoryPoolPreference   = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
-		HEAP_Props.CreationNodeMask       = 0;
-		HEAP_Props.VisibleNodeMask        = 0;
+        UAVResourceLayout layout;
+        layout.elementCount = resourceSize / sizeof(uint32_t);// initial layout assume a uint buffer
+        layout.format       = DXGI_FORMAT_UNKNOWN;
+        layout.stride       = sizeof(uint32_t);
 
-		static_vector<ID3D12Resource*, 3> buffers;
+        auto handle = CreateGPUResource(desc);
+        Textures.SetExtra(handle, layout);
 
-		for (size_t I = 0; I < (tripleBuffer ? BufferCount : 1); ++I)
-		{
-			ID3D12Resource* Resource = nullptr;
-			HRESULT HR = pDevice->CreateCommittedResource(
-								&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES | D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS,
-								&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
-								IID_PPV_ARGS(&Resource));
-
-			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE UAV BUFFER RESOURCE!"));
-			buffers.push_back(Resource);
-
-			SETDEBUGNAME(Resource, __func__);
-		}
-
-		auto handle = BufferUAVs.AddResource(buffers, resourceSize, DeviceResourceState::DRS_Write); // DRS Write assumed on first use, ignores initial state specified above!
-
-		UAVResourceLayout layout;
-		layout.elementCount		= resourceSize / sizeof(uint32_t);// initial layout assume a uint buffer
-		layout.format			= DXGI_FORMAT_UNKNOWN;
-		layout.stride			= sizeof(uint32_t);
-
-		BufferUAVs.SetExtra(handle, layout);
-
-		return handle;
+        return handle;
 	}
 
 
 	/************************************************************************************************/
 
 
-	UAVTextureHandle RenderSystem::CreateUAVTextureResource(const uint2 WH, const DeviceFormat format, const bool RenderTarget)
+    ResourceHandle RenderSystem::CreateUAVTextureResource(const uint2 WH, const DeviceFormat format, const bool renderTarget)
 	{
-		D3D12_RESOURCE_DESC Resource_DESC = CD3DX12_RESOURCE_DESC::Tex2D(TextureFormat2DXGIFormat(format), WH[0], WH[1]);
-		Resource_DESC.MipLevels         = 1;
+        auto desc           = GPUResourceDesc::UAVTexture(WH, format, renderTarget);
+        desc.bufferCount    = 3;
 
-		Resource_DESC.Flags              =
-			D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS |
-			(RenderTarget ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE);
-
-		D3D12_HEAP_PROPERTIES HEAP_Props = {};
-		HEAP_Props.CPUPageProperty       = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		HEAP_Props.Type                  = D3D12_HEAP_TYPE_DEFAULT;
-		HEAP_Props.MemoryPoolPreference  = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
-		HEAP_Props.CreationNodeMask      = 0;
-		HEAP_Props.VisibleNodeMask       = 0;
-
-		static_vector<ID3D12Resource*, 3> buffers;
-
-		ID3D12Resource* Resource = nullptr;
-		HRESULT HR = pDevice->CreateCommittedResource(
-							&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES | D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS,
-							&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
-							IID_PPV_ARGS(&Resource));
-
-		CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE UAV TEXTURE RESOURCE!"));
-		buffers.push_back(Resource);
-
-		SETDEBUGNAME(Resource, __func__);
-
-		auto handle = Texture2DUAVs.AddResource(buffers, 1, DeviceResourceState::DRS_Write);
-
-		UAVTextureLayout layout;
-		layout.format   = TextureFormat2DXGIFormat(format);
-		layout.mipCount = 1;
-		layout.WH       = WH;
-		Texture2DUAVs.SetExtra(handle, layout);
-
-		return handle;
+        return CreateGPUResource(desc);
 	}
 
 
@@ -4937,23 +4701,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::SetObjectState(UAVResourceHandle handle, DeviceResourceState state)
-	{
-		BufferUAVs.SetResourceState(handle, state);
-	}
-
-	/************************************************************************************************/
-
-
-	void RenderSystem::SetObjectState(UAVTextureHandle handle, DeviceResourceState state)
-	{
-		Texture2DUAVs.SetResourceState(handle, state);
-	}
-
-
-	/************************************************************************************************/
-
-
 	void RenderSystem::SetObjectState(ResourceHandle handle, DeviceResourceState state)
 	{
 		Textures.SetState(handle, state);
@@ -4977,23 +4724,6 @@ namespace FlexKit
 		return StreamOutTable.GetAssetState(handle);
 	}
 
-
-	/************************************************************************************************/
-
-
-	DeviceResourceState RenderSystem::GetObjectState(const UAVResourceHandle handle) const
-	{
-		return BufferUAVs.GetAssetState(handle);
-	}
-
-
-	/************************************************************************************************/
-
-
-	DeviceResourceState RenderSystem::GetObjectState(const UAVTextureHandle handle) const
-	{
-		return Texture2DUAVs.GetAssetState(handle);
-	}
 
 	/************************************************************************************************/
 
@@ -5049,24 +4779,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12Resource*	RenderSystem::GetDeviceResource(const UAVResourceHandle handle) const
-	{
-		return BufferUAVs.GetAsset(handle);
-	}
-
-
-	/************************************************************************************************/
-
-
-	ID3D12Resource* RenderSystem::GetDeviceResource(const UAVTextureHandle handle) const
-	{
-		return Texture2DUAVs.GetAsset(handle);
-	}
-
-
-	/************************************************************************************************/
-
-
 	ID3D12Resource*	RenderSystem::GetSOCounterResource(const SOResourceHandle handle) const
 	{
 		return StreamOutTable.GetAssetCounter(handle);
@@ -5086,47 +4798,30 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	UAVResourceLayout RenderSystem::GetUAVBufferLayout(const UAVResourceHandle handle) const noexcept
+	UAVResourceLayout RenderSystem::GetUAVBufferLayout(const ResourceHandle handle) const noexcept
 	{
-		return  BufferUAVs.GetExtra(handle);
+        auto extra  = Textures.GetExtra(handle);
+        auto temp   = std::get_if<UAVResourceLayout>(&extra);
+
+        return temp ? *temp : UAVResourceLayout{};
 	}
 
 
 	/************************************************************************************************/
 
 
-	void RenderSystem::SetUAVBufferLayout(const UAVResourceHandle handle, const UAVResourceLayout newConfig) noexcept
+	void RenderSystem::SetUAVBufferLayout(const ResourceHandle handle, const UAVResourceLayout newConfig) noexcept
 	{
-		BufferUAVs.SetExtra(handle, newConfig);
+        Textures.SetExtra(handle, newConfig);
 	}
 
 
 	/************************************************************************************************/
 
 
-	size_t RenderSystem::GetUAVBufferSize(const UAVResourceHandle handle) const noexcept
+	size_t RenderSystem::GetUAVBufferSize(const ResourceHandle handle) const noexcept
 	{
-		if (auto res = BufferUAVs[handle]; res)
-			return res->resourceSize;
-
-		return 0;
-	}
-
-
-	/************************************************************************************************/
-
-
-	Texture2D RenderSystem::GetUAV2DTexture(const UAVTextureHandle handle) const
-	{
-		const auto layout = Texture2DUAVs.GetExtra(handle);
-
-		Texture2D tex;
-		tex.WH			= layout.WH;
-		tex.mipCount	= layout.mipCount;
-		tex.Texture		= GetDeviceResource(handle);
-		tex.Format		= layout.format;
-
-		return tex;
+        return Textures.GetResourceSize(handle);
 	}
 
 
@@ -5169,28 +4864,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::ReleaseTexture(ResourceHandle Handle)
+	void RenderSystem::ReleaseResource(ResourceHandle Handle)
 	{
 		Textures.ReleaseTexture(Handle);
 	}
 
-
-	/************************************************************************************************/
-
-
-	void RenderSystem::ReleaseUAV(UAVResourceHandle handle)
-	{
-		BufferUAVs.ReleaseResource(handle);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void RenderSystem::ReleaseUAV(UAVTextureHandle handle)
-	{
-		Texture2DUAVs.ReleaseResource(handle);
-	}
 
 	/************************************************************************************************/
 
@@ -6175,6 +5853,7 @@ namespace FlexKit
 
 		UserEntry Entry;
 		Entry.ResourceIdx		= Resources.push_back(NewEntry);
+        Entry.resourceSize      = Desc.byteSize;
 		Entry.FrameGraphIndex	= -1;
 		Entry.FGI_FrameStamp    = -1;
 		Entry.Handle            = Handle;
@@ -6373,6 +6052,26 @@ namespace FlexKit
 		auto UserIdx = Handles[handle];
 		return Resources[UserEntries[UserIdx].ResourceIdx].mipCount;
 	}
+
+
+    /************************************************************************************************/
+
+
+    void TextureStateTable::SetExtra(ResourceHandle handle, GPUResourceExtra_t extra)
+    {
+        auto UserIdx = Handles[handle];
+        UserEntries[UserIdx].extra = extra;
+    }
+
+
+    /************************************************************************************************/
+
+
+    GPUResourceExtra_t  TextureStateTable::GetExtra(ResourceHandle handle) const
+    {
+        auto UserIdx = Handles[handle];
+        return UserEntries[UserIdx].extra;
+    }
 
 
 	/************************************************************************************************/
@@ -6617,6 +6316,16 @@ namespace FlexKit
 
 		return resources[currentIdx];
 	}
+
+
+    /************************************************************************************************/
+
+
+    size_t TextureStateTable::GetResourceSize(ResourceHandle Handle) const
+    {
+        auto  Idx			= Handles[Handle];
+		return UserEntries[Idx].resourceSize;
+    }
 
 
 	/************************************************************************************************/
@@ -7705,8 +7414,8 @@ namespace FlexKit
 			Desc.Buffer.NumElements         = ElementCount - offset;
 			Desc.Buffer.StructureByteStride = Stride;
 		}
+        RS->pDevice->CreateShaderResourceView(Buffer, &Desc, POS);
 
-		RS->pDevice->CreateShaderResourceView(Buffer, &Desc, POS);
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
 
@@ -8391,7 +8100,7 @@ namespace FlexKit
         std::scoped_lock localLock{ lock };
 
         auto frameIdx   = renderSystem.GetCurrentFrame();
-        auto size       = renderSystem.GetResourceSize(desc);
+        auto size       = renderSystem.GetAllocationSize(desc);
 
         const size_t requestedBlockCount = size / blockSize;
         auto block = GetMemory(requestedBlockCount, frameIdx, Clear);
