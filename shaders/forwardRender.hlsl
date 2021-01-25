@@ -211,8 +211,8 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 {
     const float4 albedo       = textureCount >= 1 ? SampleVirtualTexture(albedoTexture, BiLinear, IN.UV) : float4(1, 1, 1, 1);
     
-    if(albedo.w < 0.5f)
-        discard;
+    //if(albedo.w < 0.5f)
+    //    discard;
 
     Deferred_OUT gbuffer;
 

@@ -97,7 +97,6 @@ void PushSample(const float2 UV, const uint desiredLod, const uint TextureIdx, u
     if (MIPWH.x == 0 || MIPWH.y == 0)
         return;
 
-    //UAVBuffer.Append(uint2(textureID, CreateTileID(uint2(0, 0), lod, true))); // DEBUG
     UAVBuffer.Append(uint2(textureID, blockID));
 }
 

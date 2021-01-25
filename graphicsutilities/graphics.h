@@ -256,6 +256,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
         case DXGI_FORMAT_R32_UINT:
         case DXGI_FORMAT_R32_SINT:  
             return sizeof(float);
+        case DXGI_FORMAT_UNKNOWN:
+            return 1;
 		case DXGI_FORMAT_R16G16_TYPELESS:
 		case DXGI_FORMAT_R16G16_FLOAT:
 		case DXGI_FORMAT_R16G16_UNORM:
@@ -312,7 +314,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		case DXGI_FORMAT_BC6H_TYPELESS:
 		case DXGI_FORMAT_BC6H_UF16:
 		case DXGI_FORMAT_BC6H_SF16:
-
 		case DXGI_FORMAT_AYUV:
 		case DXGI_FORMAT_Y410:
 		case DXGI_FORMAT_Y416:
@@ -333,7 +334,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		case DXGI_FORMAT_V208:
 		case DXGI_FORMAT_V408:
 		case DXGI_FORMAT_FORCE_UINT:
-		case DXGI_FORMAT_UNKNOWN:
 			throw; // unimplemented argument
 		default:
 			throw; // invalid argument 
@@ -1013,7 +1013,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		bool SetUAVBuffer			(Context& ctx, size_t idx, ResourceHandle, size_t   offset = 0);
 		bool SetUAVTexture			(Context& ctx, size_t idx, ResourceHandle);
 
-		bool SetUAVStructured       (Context& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset = 1);
+		bool SetUAVStructured       (Context& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset = 0);
 		bool SetUAVStructured       (Context& ctx, size_t idx, ResourceHandle resource, ResourceHandle counter, size_t stride, size_t Offset);
 
 		bool SetStructuredResource	(Context& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset = 0);
@@ -1538,7 +1538,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void CreateAS(const AccelerationStructureDesc&, const TriMesh& );
 
-		void AddAliasingBarrier     (ResourceHandle Handle, DeviceResourceState Before, DeviceResourceState State);
+		void AddAliasingBarrier (ResourceHandle Handle);
+		void AddUAVBarrier      (ResourceHandle Handle);
 
 		void AddPresentBarrier			(ResourceHandle Handle,	DeviceResourceState Before);
 		void AddRenderTargetBarrier		(ResourceHandle Handle,	DeviceResourceState Before, DeviceResourceState State = DeviceResourceState::DRS_RenderTarget);
@@ -1744,6 +1745,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				Resource,
 				Generic,
 				Aliasing,
+                UAV,
                 Unknown,
 			}Type = Type::Unknown;
 
@@ -2024,14 +2026,29 @@ private:
 	// WARNING, NOT IMPLEMENTED FULLY!
 	FLEXKITAPI struct QueryTable
 	{
-		QueryTable(iAllocator* Memory, RenderSystem* RS_in) :
-			users{Memory},
-			resources{Memory},
-			RS{RS_in}{}
+		QueryTable(iAllocator* persistent, RenderSystem* RS_in) :
+			users       { persistent },
+			resources   { persistent },
+			RS          { RS_in } {}
 
 
-		~QueryTable(){}
+		~QueryTable()
+        {
+            Release();
+        }
 
+
+        void Release()
+        {
+            for (auto& resource : resources)
+            {
+                for (auto queries : resource.resources)
+                    queries->Release();
+            }
+
+            resources.clear();
+            users.clear();
+        }
 
 		QueryHandle			CreateQueryBuffer	(size_t Count, QueryType type);
 		QueryHandle			CreateSOQueryBuffer	(size_t count, size_t SOIndex);
@@ -2189,7 +2206,92 @@ private:
 		} placed;
 
 
-        size_t  byteSize = 0;
+        size_t byteSize;
+
+        size_t CalculateByteSize() const
+        {
+            const auto dxgiFormat = TextureFormat2DXGIFormat(format);
+
+            switch (Dimensions)
+            {
+            case TextureDimension::Buffer:
+                return WH[0];
+            case TextureDimension::Texture1D:
+                return WH[0] * GetFormatElementSize(dxgiFormat);
+            case TextureDimension::Texture2D:
+                return WH.Product() * GetFormatElementSize(dxgiFormat);
+            case TextureDimension::Texture3D:
+                return WH.Product() * GetFormatElementSize(dxgiFormat) * arraySize;
+            case TextureDimension::TextureCubeMap:
+                return WH.Product() * GetFormatElementSize(dxgiFormat) * 6;
+            };
+
+            return -1;
+        }
+
+        D3D12_RESOURCE_DESC GetD3D12ResourceDesc() const
+        {
+            const auto dxgiFormat = TextureFormat2DXGIFormat(format);
+            D3D12_RESOURCE_DESC desc;
+
+            switch (Dimensions)
+            {
+            case TextureDimension::Buffer:
+                desc = CD3DX12_RESOURCE_DESC::Buffer(WH[0]);
+
+                break;
+            case TextureDimension::Texture1D:
+                desc = CD3DX12_RESOURCE_DESC::Tex1D(
+                    dxgiFormat,
+                    WH[0],
+                    arraySize,
+                    MipLevels);
+
+                break;
+            case TextureDimension::Texture2D:
+                desc = CD3DX12_RESOURCE_DESC::Tex2D(
+                    dxgiFormat,
+                    WH[0],
+                    WH[1],
+                    arraySize,
+                    MipLevels);
+
+                break;
+            case TextureDimension::Texture3D:
+                desc = CD3DX12_RESOURCE_DESC::Tex3D(
+                    dxgiFormat,
+                    WH[0],
+                    WH[1],
+                    arraySize,
+                    MipLevels);
+
+                break;
+            case TextureDimension::TextureCubeMap:
+                desc = CD3DX12_RESOURCE_DESC::Tex2D(
+                    dxgiFormat,
+                    WH[0],
+                    WH[1],
+                    6,
+                    MipLevels);
+                break;
+            };
+
+            desc.Flags = renderTarget ?
+                D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET :
+                D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+
+            desc.Flags |= unordered ?
+                D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS :
+                D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+
+            desc.Flags |= depthTarget ? D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL :
+                D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+
+            desc.MipLevels = Min(Max(MipLevels, 1), 15);
+
+            return desc;
+        }
+
 
 		static GPUResourceDesc RenderTarget(uint2 IN_WH, DeviceFormat IN_format, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
 		{
@@ -2280,7 +2382,8 @@ private:
 				1, // mip count
 				1, // buffered count
 
-				{ bufferSize, 1 }
+				{ bufferSize, 1 },
+                DeviceFormat::UNKNOWN
 			};
 		}
 
@@ -2303,7 +2406,7 @@ private:
 				1, // mip count
 				3, // buffered count
 
-                uint2{ (uint32_t)bufferSize, 0 }, IN_format
+                uint2{ (uint32_t)bufferSize, 1 }, IN_format
 			};
 		}
 
@@ -2822,10 +2925,11 @@ private:
 	{
 		enum DeviceHeapFlagEnums: uint32_t
 		{
-			NONE,
-			RenderTarget,
-            UAV,
-            ALL = 0xff
+			NONE            = 0,
+			RenderTarget    = 1,
+            UAVBuffer       = 2,
+            UAVTextures     = 4,
+            ALL             = 0xff
 		};
 	}
 
@@ -2884,8 +2988,10 @@ private:
 				size,
 				HEAP_Props,
 				D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
-                ((flags & DeviceHeapFlags::RenderTarget)    ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES) |
-                ((flags & DeviceHeapFlags::UAV)             ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE)
+                ((flags == DeviceHeapFlags::NONE)            ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE) |
+                ((flags == DeviceHeapFlags::RenderTarget)    ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE) |
+                ((flags == DeviceHeapFlags::UAVBuffer)       ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS | D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS: D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE) | 
+                ((flags == DeviceHeapFlags::UAVTextures)     ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS | D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES: D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE)
 			};
 
 			ID3D12Heap1* heap_ptr = nullptr;
@@ -3359,15 +3465,11 @@ private:
 
 		ID3D12Fence* Fence = nullptr;
 
-		CopyContextHandle       ImmediateUpload = InvalidHandle_t;
+		CopyContextHandle   ImmediateUpload = InvalidHandle_t;
 
 		IDXGIFactory5* pGIFactory = nullptr;
 		IDXGIAdapter4* pDXGIAdapter = nullptr;
 
-		ConstantBuffer			NullConstantBuffer; // Zero Filled Constant Buffer
-		ResourceHandle   		NullUAV; // 1x1 Zero UAV
-		ResourceHandle          NullSRV;
-		ResourceHandle          NullSRV1D;
 		ResourceHandle          DefaultTexture;
 
 		struct PendingBarrier
@@ -3599,7 +3701,7 @@ private:
 		Vector<MemoryRange> freeRanges;
 		Vector<Allocation>  allocations;
 
-		std::mutex   lock;
+		std::mutex   m;
 		iAllocator*  allocator;
 	};
 

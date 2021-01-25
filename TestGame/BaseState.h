@@ -166,17 +166,17 @@ public:
 			depthBuffer		    { IN_Framework.core.RenderSystem.CreateDepthBuffer(renderWindow.GetWH(),	true) },
 
 			vertexBuffer	    { IN_Framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 1, false) },
-			constantBuffer	    { IN_Framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 128, false) },
+			constantBuffer	    { IN_Framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 64, false) },
 			asEngine		    { asCreateScriptEngine() },
 			streamingEngine	    { IN_Framework.core.RenderSystem, IN_Framework.core.GetBlockMemory() },
             sounds              { IN_Framework.core.Threads,      IN_Framework.core.GetBlockMemory() },
 
             renderWindow{ std::get<0>(CreateWin32RenderWindow(IN_Framework.GetRenderSystem(), DefaultWindowDesc({ 1920, 1080 }) )) },
 
-			render	{	IN_Framework.core.GetTempMemory(),
-						IN_Framework.core.RenderSystem,
+			render	{	IN_Framework.core.RenderSystem,
 						streamingEngine,
-                        renderWindow.GetWH()
+                        renderWindow.GetWH(),
+                        IN_Framework.core.GetBlockMemory(),
 					},
 
             rtEngine{ IN_Framework.core.RenderSystem.RTAvailable() ?

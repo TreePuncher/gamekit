@@ -19,7 +19,6 @@ void MergeBlocks(const uint threadID : SV_GroupIndex, const uint3 blockIdx : SV_
 	GroupMemoryBarrierWithGroupSync();
 
 	if(localBlockOffset < localBlockSize)
-		//textureSamples_Out[outputOffset] = uint2(inputBlockOffset, request.x);
 		textureSamples_Out[outputOffset] = request;
 
 	GroupMemoryBarrierWithGroupSync();
@@ -29,7 +28,7 @@ void MergeBlocks(const uint threadID : SV_GroupIndex, const uint3 blockIdx : SV_
 void SetBlockCounters(const uint threadID : SV_GroupIndex)
 {
 	const int sampleCount 		= requestBlockOffsets[255];
-	const int localBlockCount	= sampleCount / 1024 > threadID ? 1024 : max(0, int(sampleCount - threadID * 1024));
+	const int localBlockCount	= sampleCount * 1024 > threadID * 1024 ? 1024 : ((sampleCount / 1024 == threadID) ? sampleCount % 1024 : 0);
 
 	feedbackCounters[threadID] = localBlockCount;
 

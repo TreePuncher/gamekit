@@ -171,8 +171,10 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 .reserveVB  = reserveVB,
                 .reserveCB  = reserveCB,
 
+                .debugDisplay           = false,
+
                 .transformDependency    = transforms,
-                .cameraDependency       = cameras
+                .cameraDependency       = cameras,
             };
 
             auto& drawnScene = base.render.DrawScene(dispatcher, frameGraph, scene, targets, core.GetTempMemory());

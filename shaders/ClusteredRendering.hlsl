@@ -13,9 +13,8 @@ cbuffer Constants : register(b1)
 
 
 RWStructuredBuffer<Cluster>     clusterBuffer   : register(u0); // in-out
-RWTexture2D<uint4>              indexBuffer     : register(u1); // in-out
+RWTexture2D<uint>               indexBuffer     : register(u1); // in-out
 RWTexture1D<uint>               counters        : register(u2); // in-out
-RWTexture2D<uint4>              debugBuffer     : register(u3); // in-out
 Texture2D<float>                depthBuffer     : register(t0); // in
 
 sampler BiLinear : register(s0); 
@@ -80,9 +79,9 @@ uint2 GetTextureWH(Texture2D<float> texture)
 #define MAXZ 10000.0f
 
 [numthreads(8, 1, 1)]
-void ClearCounters(uint3 gid : SV_DISPATCHTHREADID)
+void ClearCounters(uint threadID : SV_GroupIndex)
 {
-    counters[gid.x] = 0;
+    counters[threadID] = 0;
 }
 
 uint GetSliceIdx(float z)
@@ -236,7 +235,7 @@ void FindClusterIndex(const uint3 globalThreadID, const uint localClusterID)
             GroupMemoryBarrierWithGroupSync();
 
             const uint clusterIndex         = localClusterIndexes[I];
-            indexBuffer[globalThreadID.xy]  = uint4(clusterIndex, localClusterID, uniqueClusterCounter, 0);
+            indexBuffer[globalThreadID.xy]  = clusterIndex;
 			return;
         }
     }
@@ -274,8 +273,6 @@ void CreateClusters(uint3 globalThreadID : SV_DISPATCHTHREADID, uint localThread
 
     if(globalThreadID.x < WH.x && globalThreadID.y < WH.y)
 	    FindClusterIndex(globalThreadID, localClusterID);
-
-    debugBuffer[globalThreadID.xy] = uint4(localClusterIDs[localThreadID], slice, uniqueClusterCounter, localClusterID);
 }
 
 /**********************************************************************
