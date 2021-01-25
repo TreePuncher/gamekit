@@ -28,7 +28,7 @@ namespace FlexKit
 		}	break;
 
 		case OT_Virtual:
-		case OT_ShaderResource:
+		case OT_Resource:
 		case OT_BackBuffer:
 		case OT_DepthBuffer:
 		{
@@ -49,7 +49,7 @@ namespace FlexKit
 					AfterState);
 				break;
 			case DRS_Retired:
-				ctx->AddAliasingBarrier(resourceObject.shaderResource, BeforeState, AfterState);
+				ctx->AddAliasingBarrier(resourceObject.shaderResource);
 				break;
 			default:
 				FK_ASSERT(0);
@@ -89,6 +89,37 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    FrameGraphNode::FrameGraphNode(FN_NodeAction IN_action, void* IN_nodeData, iAllocator* IN_allocator) :
+			InputObjects	{ IN_allocator	},
+			OutputObjects	{ IN_allocator	},
+			Sources			{ IN_allocator	},
+			Transitions		{ IN_allocator	},
+			NodeAction		{ IN_action     },
+			nodeData        { IN_nodeData   },
+			Executed		{ false		    },
+			subNodeTracking { IN_allocator  },
+
+			retiredObjects  { IN_allocator  },
+            acquiredObjects { IN_allocator  } {}
+
+
+    FrameGraphNode::FrameGraphNode(const FrameGraphNode& RHS) :
+			Sources			{ RHS.Sources		        },
+			InputObjects	{ RHS.InputObjects	        },
+			OutputObjects	{ RHS.OutputObjects	        },
+			Transitions		{ RHS.Transitions	        },
+			NodeAction		{ std::move(RHS.NodeAction)	},
+			nodeData        { RHS.nodeData              },
+			retiredObjects  { RHS.retiredObjects        },
+			subNodeTracking { RHS.subNodeTracking       },
+			Executed		{ false				        },
+            acquiredObjects { RHS.acquiredObjects       } {}
+
+
+
+    /************************************************************************************************/
+
+
 	void FrameGraphNode::HandleBarriers(FrameResources& Resources, Context& Ctx)
 	{
 		for (const auto& T : Transitions) 
@@ -99,7 +130,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void FrameGraphNode::AddTransition(ResourceTransition& transition)
+	void FrameGraphNode::AddTransition(const ResourceTransition& transition)
 	{
 		Transitions.push_back(transition);
 	}
@@ -141,19 +172,31 @@ namespace FlexKit
 			case FrameObjectResourceType::OT_StreamOut:
 				ctx->AddStreamOutBarrier(resource.SOBuffer, currentState, nodeState);
 				break;
+			case FrameObjectResourceType::OT_DepthBuffer:
 			case FrameObjectResourceType::OT_BackBuffer:
 			case FrameObjectResourceType::OT_RenderTarget:
-			case FrameObjectResourceType::OT_ShaderResource:
+			case FrameObjectResourceType::OT_Resource:
 				ctx->AddResourceBarrier(resource.shaderResource, currentState, nodeState);
 				break;
 			case FrameObjectResourceType::OT_ConstantBuffer:
-			case FrameObjectResourceType::OT_DepthBuffer:
 			case FrameObjectResourceType::OT_IndirectArguments:
 			case FrameObjectResourceType::OT_PVS:
 			case FrameObjectResourceType::OT_VertexBuffer:
 				FK_ASSERT(0, "UN-IMPLEMENTED BLOCK!");
 			}
-		}
+        }
+  
+
+        for (auto& retired : retiredObjects)
+        {
+            auto resource = resources.Resources[retired.handle];
+
+            if (resource.virtualState == VirtualResourceState::Virtual_Temporary ||
+                resource.virtualState == VirtualResourceState::Virtual_Released)
+            {
+                ctx->AddAliasingBarrier(resource.shaderResource);
+            }
+        }
 	}
 
 
@@ -194,6 +237,13 @@ namespace FlexKit
         Node.Transitions = std::move(Transitions);
         Context.Retirees += RetiredObjects;
 
+        for (auto& temporary : temporaryObjects)
+        {
+            auto resource = Resources->Resources[temporary.handle];
+            resource.pool->Release(resource.shaderResource, false);
+        }
+
+        temporaryObjects.clear();
         Transitions.clear();
 	}
 
@@ -285,17 +335,23 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle  FrameGraphNodeBuilder::AcquireVirtualResource(const GPUResourceDesc desc, DeviceResourceState initialState)
+	FrameResourceHandle  FrameGraphNodeBuilder::AcquireVirtualResource(const GPUResourceDesc desc, DeviceResourceState initialState, bool temp)
 	{
         auto NeededFlags = 0;
-        NeededFlags |= desc.unordered       ? DeviceHeapFlags::UAV : 0;
-        NeededFlags |= desc.renderTarget    ? DeviceHeapFlags::RenderTarget : 0;
+        NeededFlags |= !desc.unordered && desc.Dimensions == TextureDimension::Texture1D ? DeviceHeapFlags::RenderTarget : 0;
+        NeededFlags |= !desc.unordered && desc.Dimensions == TextureDimension::Texture2D ? DeviceHeapFlags::RenderTarget : 0;
+        NeededFlags |= !desc.unordered && desc.Dimensions == TextureDimension::Texture3D ? DeviceHeapFlags::RenderTarget : 0;
+        NeededFlags |= !desc.unordered && desc.Dimensions == TextureDimension::Texture2DArray ? DeviceHeapFlags::RenderTarget : 0;
+
+        NeededFlags |= desc.unordered && desc.Dimensions == TextureDimension::Buffer    ? DeviceHeapFlags::UAVBuffer : 0;
+        NeededFlags |= desc.unordered && desc.Dimensions == TextureDimension::Texture1D ? DeviceHeapFlags::UAVTextures : 0;
+        NeededFlags |= desc.unordered && desc.Dimensions == TextureDimension::Texture2D ? DeviceHeapFlags::UAVTextures : 0;
+        NeededFlags |= desc.unordered && desc.Dimensions == TextureDimension::Texture3D ? DeviceHeapFlags::UAVTextures : 0;
+        NeededFlags |= desc.renderTarget ? DeviceHeapFlags::RenderTarget : 0;
 
         auto FindResourcePool =
             [&]() -> PoolAllocatorInterface*
             {
-                return Resources->memoryPools.back();
-
                 for (auto pool : Resources->memoryPools)
                 {
                     if ((pool->Flags() & NeededFlags) == NeededFlags)
@@ -305,13 +361,14 @@ namespace FlexKit
                 return nullptr;
             };
 
-        if(auto memoryPool = FindResourcePool(); memoryPool)
+        for(auto memoryPool = FindResourcePool(); memoryPool; memoryPool = FindResourcePool())
         {
-		    auto virtualResource    = memoryPool->Aquire(desc);
-
+            auto virtualResource            = memoryPool->Aquire(desc, temp);
 		    FrameObject virtualObject       = FrameObject::VirtualObject();
 		    virtualObject.shaderResource    = virtualResource;
 		    virtualObject.State             = initialState;
+            virtualObject.virtualState      = VirtualResourceState::Virtual_Temporary;
+            virtualObject.pool              = memoryPool;
 
 		    auto virtualResourceHandle = FrameResourceHandle{ Resources->Resources.emplace_back(virtualObject) };
 		    Resources->Resources[virtualResourceHandle].Handle = virtualResourceHandle;
@@ -322,13 +379,25 @@ namespace FlexKit
 			    outputObject.Source         = &Node;
 			    outputObject.handle         = virtualResourceHandle;
 
+            Resources->renderSystem.SetDebugName(virtualResource, "Virtual Resource");
+
+
 		    Context.AddWriteable(outputObject);
 		    Node.OutputObjects.push_back(outputObject);
 
+
+            if (initialState != outputObject.neededState)
+                Node.AddTransition(ResourceTransition{ virtualResourceHandle, outputObject.neededState, initialState });
+
+            if (temp) {
+                Node.retiredObjects.push_back(outputObject);
+                temporaryObjects.push_back(outputObject);
+            }
+
 		    return  virtualResourceHandle;
         }
-        else
-            return InvalidHandle_t;
+
+        return InvalidHandle_t;
 	}
 
 
@@ -337,20 +406,17 @@ namespace FlexKit
 
 	void FrameGraphNodeBuilder::ReleaseVirtualResource(FrameResourceHandle handle)
 	{
-		FrameResourceHandle resource    = Resources->FindFrameResource(handle);
-		auto freedResource              = Resources->GetTexture(resource);
+        auto& resource                   = Resources->Resources[handle];
 
         FrameObjectLink freeObject;
 		freeObject.neededState      = DeviceResourceState::DRS_Retired;
 		freeObject.Source           = &Node;
 		freeObject.handle           = handle;
 
-        Resources->Resources[handle].State = DRS_Retired;
+        resource.virtualState       = VirtualResourceState::Virtual_Released;
 
-		Node.RetiredObjects.push_back(freeObject);
-
-		const auto& memoryPool  = Resources->memoryPools.back();
-		memoryPool->Release(freedResource, false);
+		Node.retiredObjects.push_back(freeObject);
+        resource.pool->Release(resource.shaderResource, false);
 	}
 
 
@@ -604,7 +670,7 @@ namespace FlexKit
 			case OT_BackBuffer:
 			case OT_DepthBuffer:
 			case OT_RenderTarget:
-			case OT_ShaderResource:
+			case OT_Resource:
 			{
 				auto shaderResource = I.shaderResource;
 				auto state			= I.State;
@@ -613,8 +679,9 @@ namespace FlexKit
 			}	break;
 			case OT_Virtual:
 			{
-				if(I.State == DRS_Retired)
-					Resources.renderSystem.ReleaseResource(I.shaderResource);
+                if (I.virtualState == VirtualResourceState::Virtual_Released || I.virtualState == VirtualResourceState::Virtual_Temporary) {
+                    Resources.renderSystem.ReleaseResource(I.shaderResource);
+                }
 			}   break;
 			default:
 				FK_ASSERT(false, "UN-IMPLEMENTED BLOCK!");

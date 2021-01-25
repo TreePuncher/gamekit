@@ -18,6 +18,7 @@ cbuffer LocalConstants : register(b1)
     float2  WH;
     float   Time;
     uint   	lightCount;
+    float4  ambientLight;
 
 	float4x4 pl_PV[1024];
 }
@@ -145,7 +146,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     const uint localLightCount  = asuint(localCluster.Max.w);
     const uint localLightList   = asuint(localCluster.Min.w);
 
-    float4 color = float4(albedo * 0.15f, 1);
+    float4 color = float4(albedo * ambientLight, 1);
     for(float I = 0; I < localLightCount; I++)
     {
         const PointLight light  = pointLights[lightLists[localLightList + I]];
@@ -154,7 +155,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
         const float3 Lp         = mul(View, float4(light.PR.xyz, 1));
         const float3 L		    = normalize(Lp - positionVS);
         const float  Ld			= length(positionVS - Lp);
-        const float  Li			= abs(light.KI.w) * 2;
+        const float  Li			= abs(light.KI.w);
         const float  Lr			= abs(light.PR.w);
         const float  ld_2		= Ld * Ld;
         const float  La			= (Li / ld_2) * (1 - (pow(Ld, 10) / pow(Lr, 10)));
@@ -242,22 +243,23 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     //return pow(1 - UV.y, 2.2f); 
 #if 0
     float4 Colors[] = {
-        float4(0, 0, 0, 0), // Left
-        float4(1, 0, 0, 0), // Left
-        float4(0, 1, 0, 0), // Right
-        float4(0, 0, 1, 0), // Top
-        float4(0, 1, 1, 1), // Bottom
-        float4(1, 1, 0, 1), // forward
-        float4(1, 0, 1, 1), // backward
+        float4(0, 0, 0, 0), 
+        float4(1, 0, 0, 0), 
+        float4(0, 1, 0, 0), 
+        float4(0, 0, 1, 0), 
+        float4(1, 1, 0, 1), 
+        float4(0, 1, 1, 1), 
+        float4(1, 0, 1, 1), 
+        float4(1, 1, 1, 1), 
     };
 
     //if (px.x % (1920 / 38) == 0 || px.y % (1080 / 18) == 0)
     //    return color * color;
     //else
-        //return pow(Colors[clusterKey % 6], 1.0f);
+        return pow(Colors[clusterKey % 8], 1.0f);
         //return pow(Colors[GetSliceIdx(-positionVS.z) % 6], 1.0f);
         //return pow(Colors[localLightCount % 7], 1.0f);
-        return float(localLightCount) / float(lightCount);
+        //return float(localLightCount) / float(lightCount);
         //return float4(-positionVS.z, -positionVS.z, -positionVS.z, 1);
 #else
 	return pow(color, 2.1f);

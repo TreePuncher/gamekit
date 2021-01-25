@@ -110,7 +110,7 @@ namespace FlexKit
 
 
     template<typename TY>
-    FLEXKITAPI decltype(auto) _TimeBlock(TY& function, const char* id)
+    FLEXKITAPI decltype(auto) _TimeBlock(TY function, const char* id)
     {
         std::chrono::high_resolution_clock Clock;
         auto Before = Clock.now();
@@ -146,7 +146,7 @@ namespace FlexKit
 #define PROFILELABEL PROFILELABEL_(__LINE__)
 
 #define ProfileFunction() const auto PROFILELABEL_ = _ProfileFunction(__FUNCTION__)
-#define TIMEBLOCK(A, B) _TimeBlock([&]{ return A; }, B)
+#define TIMEBLOCK(A, B) _TimeBlock([&]{ return A(); }, B)
 
 
 	FLEXKITAPI void		InitDebug		(EngineMemory_DEBUG* _ptr);

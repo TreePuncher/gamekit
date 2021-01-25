@@ -194,9 +194,12 @@ void CompactSamples(const uint localThreadID)
 /************************************************************************************************/
 
 
-void LoadLocalValues(const uint threadID, const uint groupID)
+void LoadLocalValues(const uint threadID, const uint groupID, const uint sampleCount)
 {
-    localTextureSamples[threadID] = textureSamples[threadID + groupID * BlockSize].xy;
+	if(threadID + groupID * BlockSize < sampleCount)
+    	localTextureSamples[threadID] = textureSamples[threadID + groupID * BlockSize].xy;
+	else
+    	localTextureSamples[threadID] = uint2(-1, -1);
 }
 
 
@@ -208,14 +211,12 @@ void WriteBackValues(const uint threadID, const uint groupID)
     GroupMemoryBarrierWithGroupSync();
 
     const uint end = offset[BlockSize - 1];
-
+	
 	if(threadID < end)
 		textureSamples[threadID + groupID * BlockSize] = localTextureSamples[threadID];
-	else
-		textureSamples[threadID + groupID * BlockSize] = uint2(-2, -3);
 
     if(threadID == 0)
-        segmentSizes[groupID.x] = end;
+        segmentSizes[groupID.x] = end - (localTextureSamples[BlockSize - 1] == uint2(-1, -1) ? 1 : 0);
 
     GroupMemoryBarrierWithGroupSync();
 }
@@ -234,7 +235,7 @@ void CompressBlocks(const uint threadID : SV_GroupIndex, const uint3 groupID : S
 		return;
 	}
 
-    LoadLocalValues(threadID, groupID.x);
+    LoadLocalValues(threadID, groupID.x, sampleCount);
     LocalBitonicSort(threadID);
     CompactSamples(threadID);
     WriteBackValues(threadID, groupID.x);

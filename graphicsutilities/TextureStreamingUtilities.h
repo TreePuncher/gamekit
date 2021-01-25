@@ -272,16 +272,13 @@ namespace FlexKit
         GatherTask&                     pvs;
         ReserveConstantBufferFunction   reserveCB;
 
-        FrameResourceHandle             debugBuffer;
+        FrameResourceHandle             feedbackBuffers[2];
 
-
-        FrameResourceHandle             feedbackCounters;
-        FrameResourceHandle             feedbackBuffer;
         FrameResourceHandle             feedbackDepth;
+        FrameResourceHandle             feedbackCounters;
         FrameResourceHandle             feedbackBlockSizes;
         FrameResourceHandle             feedbackBlockOffsets;
 
-        FrameResourceHandle             feedbackBufferCompressed;
 
 
         ReadBackResourceHandle          readbackBuffer;
@@ -477,16 +474,6 @@ namespace FlexKit
         std::atomic_bool        updateInProgress    = false;
         std::atomic_bool        taskInProgress      = false;
 
-        ResourceHandle		feedbackBuffer;     // GPU
-        ResourceHandle       feedbackCounters;   // GPU
-        ResourceHandle       feedbackBlockSizes; // GPU
-        ResourceHandle       feedbackBlockOffsets; // GPU
-
-
-        ResourceHandle		    feedbackDepth;  // GPU
-
-        ResourceHandle		feedbackDebug;   // GPU
-        ResourceHandle		feedbackOutputFinal;  // GPU
 
         ReadBackResourceHandle  feedbackReturnBuffer; // CPU + GPU
 

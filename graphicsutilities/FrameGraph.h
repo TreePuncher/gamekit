@@ -75,7 +75,7 @@ namespace FlexKit
 		OT_PVS,
 		OT_Query,
 		OT_StreamOut,
-		OT_ShaderResource,
+		OT_Resource,
 		OT_VertexBuffer,
 		OT_IndirectArguments,
 		OT_Virtual,
@@ -89,12 +89,13 @@ namespace FlexKit
 
 	class FrameGraphNode;
 
-	enum class virtualResourceState
+	enum class VirtualResourceState
 	{
 		NonVirtual,
 		Virtual_Null,
 		Virtual_Created,
-		Virtual_Released,
+        Virtual_Released,
+        Virtual_Temporary,
 	};
 
 	struct FrameObject
@@ -103,19 +104,14 @@ namespace FlexKit
 			Handle{ (uint32_t)INVALIDHANDLE }{}
 
 
-		FrameObject(const FrameObject& rhs) :
-			Type	{ rhs.Type		},
-			State	{ rhs.State		},
-			Handle	{ rhs.Handle	}
-		{
-			Buffer = rhs.Buffer;
-		}
+        FrameObject(const FrameObject& rhs) = default;
 
 		FrameResourceHandle		Handle; // For Fast Search
 		FrameObjectResourceType Type;
 		DeviceResourceState		State;
-		FrameGraphNode*         lastModifier = nullptr;
-		virtualResourceState    virtualState = virtualResourceState::NonVirtual;
+		VirtualResourceState    virtualState    = VirtualResourceState::NonVirtual;
+		FrameGraphNode*         lastModifier    = nullptr;
+        PoolAllocatorInterface* pool            = nullptr;
 
 		union
 		{
@@ -177,7 +173,7 @@ namespace FlexKit
 		{
 			FrameObject shaderResource;
 			shaderResource.State            = InitialState;
-			shaderResource.Type             = OT_ShaderResource;
+			shaderResource.Type             = OT_Resource;
 			shaderResource.shaderResource   = handle;
 
 			return shaderResource;
@@ -213,7 +209,7 @@ namespace FlexKit
 		static FrameObject VirtualObject()
 		{
 			FrameObject virtualObject;
-			virtualObject.virtualState  = virtualResourceState::Virtual_Null;
+			virtualObject.virtualState  = VirtualResourceState::Virtual_Null;
 			virtualObject.State         = DeviceResourceState::DRS_UNKNOWN;
 			virtualObject.Type		    = OT_Virtual;
 
@@ -436,7 +432,7 @@ namespace FlexKit
 				[&](const FrameObject& LHS)
 				{
 					auto CorrectType = (
-						LHS.Type == OT_ShaderResource	||
+						LHS.Type == OT_Resource	||
 						LHS.Type == OT_RenderTarget		||
 						LHS.Type == OT_DepthBuffer      ||
 						LHS.Type == OT_BackBuffer);
@@ -459,7 +455,7 @@ namespace FlexKit
 			auto res = find(Resources,
 				[&](const auto& LHS)
 				{
-					auto CorrectType = LHS.Type == OT_ShaderResource;
+					auto CorrectType = LHS.Type == OT_Resource;
 
 					return (CorrectType && LHS.shaderResource == Handle);
 				});
@@ -957,35 +953,14 @@ namespace FlexKit
 	public:
 		typedef void (*FN_NodeAction)(FrameGraphNode& node, FrameResources& Resources, Context& ctx, iAllocator& tempAllocator);
 
-		FrameGraphNode(FN_NodeAction IN_action, void* IN_nodeData, iAllocator* IN_allocator = nullptr) :
-			InputObjects	{ IN_allocator		    },
-			OutputObjects	{ IN_allocator		    },
-			Sources			{ IN_allocator		    },
-			Transitions		{ IN_allocator		    },
-			NodeAction		{ IN_action             },
-			nodeData        { IN_nodeData           },
-			Executed		{ false				    },
-			SubNodeTracking { IN_allocator          },
-			RetiredObjects  { IN_allocator          }{}
-
-
-		FrameGraphNode(const FrameGraphNode& RHS) :
-			Sources			{ RHS.Sources		        },
-			InputObjects	{ RHS.InputObjects	        },
-			OutputObjects	{ RHS.OutputObjects	        },
-			Transitions		{ RHS.Transitions	        },
-			NodeAction		{ std::move(RHS.NodeAction)	},
-			nodeData        { RHS.nodeData              },
-			RetiredObjects  { RHS.RetiredObjects        },
-			SubNodeTracking { RHS.SubNodeTracking       },
-			Executed		{ false				        } {}
-
+        FrameGraphNode(FN_NodeAction IN_action, void* IN_nodeData, iAllocator* IN_allocator = nullptr);
+        FrameGraphNode(const FrameGraphNode& RHS);
 
 		~FrameGraphNode() = default;
 
 
 		void HandleBarriers	(FrameResources& Resouces, Context& Ctx);
-		void AddTransition	(ResourceTransition& Dep);
+		void AddTransition	(const ResourceTransition& Dep);
 
 		void RestoreResourceStates  (Context* ctx, FrameResources& resources, LocallyTrackedObjectList& locallyTrackedObjects);
 		void AcquireResources       (FrameResources& resources, Context& ctx);
@@ -1000,9 +975,12 @@ namespace FlexKit
 		Vector<FrameGraphNode*>			Sources;// Nodes that this node reads from
 		Vector<FrameObjectLink>	        InputObjects;
 		Vector<FrameObjectLink>	        OutputObjects;
-		Vector<FrameObjectLink>	        RetiredObjects;
 		Vector<ResourceTransition>		Transitions;
-		LocallyTrackedObjectList        SubNodeTracking;
+
+        Vector<FrameObjectLink>	        acquiredObjects;
+		Vector<FrameObjectLink>	        retiredObjects;
+
+		LocallyTrackedObjectList        subNodeTracking;
 	};
 
 
@@ -1134,13 +1112,14 @@ namespace FlexKit
 			FrameGraphNode&				IN_Node,
 			FrameGraphResourceContext&	IN_context,
 			iAllocator*					IN_allocator) :
-				DataDependencies{ IN_DataDependencies	},
-				Context			{ IN_context			},
-				inputNodes      { IN_allocator			},
-				Node			{ IN_Node				},
-				Resources		{ IN_Resources			},
-				RetiredObjects  { IN_allocator          },
-				Transitions		{ IN_allocator			}{}
+				DataDependencies    { IN_DataDependencies	},
+				Context			    { IN_context			},
+				inputNodes          { IN_allocator			},
+				Node			    { IN_Node				},
+				Resources		    { IN_Resources			},
+				RetiredObjects      { IN_allocator          },
+				Transitions		    { IN_allocator			},
+                temporaryObjects    { IN_allocator          } {}
 
 
 		// No Copying
@@ -1164,7 +1143,7 @@ namespace FlexKit
 
 		FrameResourceHandle	WriteDepthBuffer	(ResourceHandle handle);
 
-		FrameResourceHandle AcquireVirtualResource(const GPUResourceDesc desc, DeviceResourceState initialState);
+		FrameResourceHandle AcquireVirtualResource(const GPUResourceDesc desc, DeviceResourceState initialState, bool temp = true);
 		void                ReleaseVirtualResource(FrameResourceHandle handle);
 
 
@@ -1176,6 +1155,11 @@ namespace FlexKit
 		FrameResourceHandle ReadResource    (FrameResourceHandle handle, DeviceResourceState state);
 		FrameResourceHandle WriteResource   (FrameResourceHandle handle, DeviceResourceState state);
 
+
+        void SetDebugName(FrameResourceHandle handle, const char* debugName)
+        {
+            Resources->renderSystem.SetDebugName(Resources->GetTexture(handle), debugName);
+        }
 
 		size_t							GetDescriptorTableSize			(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
 		const DesciptorHeapLayout<16>&	GetDescriptorTableLayout		(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
@@ -1219,7 +1203,7 @@ namespace FlexKit
 				frameObject.State = state;
 			}
 
-			Node.SubNodeTracking.push_back({ frameResourceHandle, state });
+			Node.subNodeTracking.push_back({ frameResourceHandle, state });
 
 			return frameResourceHandle;
 		}
@@ -1259,7 +1243,7 @@ namespace FlexKit
 
 			frameObject.lastModifier = &Node;
 
-			Node.SubNodeTracking.push_back({ frameResourceHandle, state, state });
+			Node.subNodeTracking.push_back({ frameResourceHandle, state, state });
 
 			return frameResourceHandle;
 		}
@@ -1283,6 +1267,8 @@ namespace FlexKit
 		Vector<ResourceTransition>	Transitions;
 		Vector<FrameObjectLink>	    RetiredObjects;
 		Vector<UpdateTask*>&	    DataDependencies;
+        Vector<FrameObjectLink>	    temporaryObjects;
+
 
 		FrameGraphResourceContext&		Context;
 		FrameGraphNode&					Node;
@@ -1339,10 +1325,10 @@ namespace FlexKit
 
 						node.HandleBarriers(resources, ctx);
 
-						ResourceHandler handler{ resources, node.SubNodeTracking };
+						ResourceHandler handler{ resources, node.subNodeTracking };
 						data.draw(data.fields, handler, ctx, tempAllocator);
 
-						node.RestoreResourceStates(&ctx, resources, node.SubNodeTracking);
+						node.RestoreResourceStates(&ctx, resources, node.subNodeTracking);
 						data.fields.~TY();
 					},
 					&data,

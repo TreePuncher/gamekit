@@ -73,10 +73,13 @@ namespace FlexKit
         ReserveVertexBufferFunction     reserveVB;
         ReserveConstantBufferFunction   reserveCB;
 
+        bool                debugDisplay = false;
+
         // Inputs
         UpdateTask&         transformDependency;
         UpdateTask&         cameraDependency;
 
+        
         Vector<UpdateTask*> sceneDependencies;
     };
 
@@ -117,6 +120,8 @@ namespace FlexKit
     constexpr PSOHandle CLUSTER_DEBUGVIS_PSO        = PSOHandle(GetTypeGUID(CLUSTER_DEBUGVIS_PSO));
     constexpr PSOHandle CLUSTER_DEBUGARGSVIS_PSO    = PSOHandle(GetTypeGUID(CLUSTER_DEBUGARGSVIS_PSO));
     constexpr PSOHandle CREATELIGHTLISTARGS_PSO     = PSOHandle(GetTypeGUID(CREATELIGHTLISTARGS_POS));
+    constexpr PSOHandle CREATELIGHTDEBUGVIS_PSO     = PSOHandle(GetTypeGUID(CREATELIGHTDEBUGVIS_PSO));
+
 
     static const PSOHandle DEPTHPREPASS                = PSOHandle(GetTypeGUID(DEPTHPREPASS));
 	static const PSOHandle FORWARDDRAWINSTANCED	       = PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
@@ -146,6 +151,7 @@ namespace FlexKit
 	ID3D12PipelineState* CreateDeferredShadingPassPSO       (RenderSystem* RS);
 	ID3D12PipelineState* CreateComputeTiledDeferredPSO      (RenderSystem* RS);
 
+    ID3D12PipelineState* CreateLight_DEBUGARGSVIS_PSO       (RenderSystem* RS);
     ID3D12PipelineState* CreateLightBVH_PHASE1_PSO          (RenderSystem* RS);
     ID3D12PipelineState* CreateLightBVH_PHASE2_PSO          (RenderSystem* RS);
     ID3D12PipelineState* CreateLightBVH_DEBUGVIS_PSO        (RenderSystem* RS);
@@ -263,8 +269,6 @@ namespace FlexKit
         FrameResourceHandle	depthBufferObject;
         FrameResourceHandle	indexBufferObject;
         FrameResourceHandle argumentBufferObject;
-
-        FrameResourceHandle	debugBufferObject;
 	};
 
     struct DEBUGVIS_DrawBVH
@@ -275,6 +279,7 @@ namespace FlexKit
         FrameResourceHandle	            lightBVH;
         FrameResourceHandle	            clusters;
         FrameResourceHandle             renderTarget;
+        FrameResourceHandle	            pointLights;
 
         FrameResourceHandle             indirectArgs;
         FrameResourceHandle             counterBuffer;
@@ -517,7 +522,6 @@ namespace FlexKit
 
 
 		FrameResourceHandle		pointLightBufferObject;
-		FrameResourceHandle		lightBucketObject;
 		
 		FrameResourceHandle     renderTargetObject;
 	};
@@ -613,37 +617,29 @@ namespace FlexKit
         float BVHConstruction   = 0;
     };
 
+
+    struct DrawOutputs
+    {
+        UpdateTaskTyped<GetPVSTaskData>& PVS;
+    };
+
 	class FLEXKITAPI WorldRender
 	{
 	public:
-		WorldRender(iAllocator* allocator, RenderSystem& RS_IN, TextureStreamingEngine& IN_streamingEngine, const uint2 WH) :
+		WorldRender(RenderSystem& RS_IN, TextureStreamingEngine& IN_streamingEngine, const uint2 WH, iAllocator* persistent) :
 			renderSystem                { RS_IN },
 			OcclusionCulling	        { false	},
 
-            lightLists			        { renderSystem.CreateUAVBufferResource(16 * MEGABYTE) },
-			pointLightBuffer	        { renderSystem.CreateUAVBufferResource(4 * MEGABYTE) },
-            pointLightBVH               { renderSystem.CreateUAVBufferResource(4 * MEGABYTE) },
-            lightLookupBuffer           { renderSystem.CreateUAVBufferResource(4 * MEGABYTE) },
-            lightListCounterBuffer      { renderSystem.CreateUAVBufferResource(256) },
-
-            clusterBuffer	            { renderSystem.CreateUAVBufferResource(4 * MEGABYTE) },
-            counterBuffer               { renderSystem.CreateUAVBufferResource(256) },
-
-            indexBuffer                 { renderSystem.CreateUAVTextureResource(WH, DeviceFormat::R32G32B32A32_UINT) },
-            argumentBuffer              { renderSystem.CreateUAVBufferResource(256) },
-
-            debugBuffer1                { renderSystem.CreateUAVTextureResource(WH, DeviceFormat::R32G32B32A32_UINT) },
-
-            UAVPool                     { renderSystem, 64 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAV, allocator },
-            RTPool                      { renderSystem, 64 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::RenderTarget, allocator },
-
+            UAVPool                     { renderSystem, 64 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
+            UAVTexturePool              { renderSystem, 64 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent },
+            RTPool                      { renderSystem, 64 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::RenderTarget, persistent },
 
             timeStats                   { renderSystem.CreateTimeStampQuery(256) },
             timingReadBack              { renderSystem.CreateReadBackBuffer(512) },
 
 			streamingEngine		        { IN_streamingEngine },
-            createClusterLightListLayout{ renderSystem.CreateIndirectLayout({ ILE_DispatchCall }, allocator) },
-            createDebugDrawLayout       { renderSystem.CreateIndirectLayout({ ILE_DrawCall }, allocator) }
+            createClusterLightListLayout{ renderSystem.CreateIndirectLayout({ ILE_DispatchCall }, persistent) },
+            createDebugDrawLayout       { renderSystem.CreateIndirectLayout({ ILE_DrawCall }, persistent) }
 		{
 			RS_IN.RegisterPSOLoader(FORWARDDRAW,			    { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawPSO,		  });
 			RS_IN.RegisterPSOLoader(FORWARDDRAWINSTANCED,	    { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO });
@@ -663,15 +659,15 @@ namespace FlexKit
             RS_IN.RegisterPSOLoader(CREATELIGHTBVH_PHASE1,      { &RS_IN.Library.ComputeSignature,  CreateLightBVH_PHASE1_PSO       });
             RS_IN.RegisterPSOLoader(CREATELIGHTBVH_PHASE2,      { &RS_IN.Library.ComputeSignature,  CreateLightBVH_PHASE2_PSO       });
             RS_IN.RegisterPSOLoader(CREATELIGHTLISTARGS_PSO,    { &RS_IN.Library.ComputeSignature,  CreateLightListArgs_PSO         });
-            
             RS_IN.RegisterPSOLoader(CLEARCOUNTERSPSO,           { &RS_IN.Library.ComputeSignature,  CreateClearClusterCountersPSO   });
                 
-			RS_IN.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL,    { &RS_IN.Library.RSDefault, CreateBilaterialBlurHorizontalPSO });
-			RS_IN.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,      { &RS_IN.Library.RSDefault, CreateBilaterialBlurVerticalPSO   });
+			RS_IN.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL, { &RS_IN.Library.RSDefault, CreateBilaterialBlurHorizontalPSO });
+			RS_IN.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,   { &RS_IN.Library.RSDefault, CreateBilaterialBlurVerticalPSO   });
 
 			RS_IN.RegisterPSOLoader(LIGHTBVH_DEBUGVIS_PSO,      { &RS_IN.Library.RSDefault, CreateLightBVH_DEBUGVIS_PSO });
 			RS_IN.RegisterPSOLoader(CLUSTER_DEBUGVIS_PSO,       { &RS_IN.Library.RSDefault, CreateCluster_DEBUGVIS_PSO });
 			RS_IN.RegisterPSOLoader(CLUSTER_DEBUGARGSVIS_PSO,   { &RS_IN.Library.RSDefault, CreateCluster_DEBUGARGSVIS_PSO });
+            RS_IN.RegisterPSOLoader(CREATELIGHTDEBUGVIS_PSO,    { &RS_IN.Library.RSDefault, CreateLight_DEBUGARGSVIS_PSO });
 
 			RS_IN.QueuePSOLoad(GBUFFERPASS);
 			RS_IN.QueuePSOLoad(GBUFFERPASS_SKINNED);
@@ -688,18 +684,6 @@ namespace FlexKit
 
             RS_IN.QueuePSOLoad(CREATELIGHTBVH_PHASE1);
             RS_IN.QueuePSOLoad(CREATELIGHTBVH_PHASE2);
-
-			RS_IN.SetDebugName(indexBuffer,             "clusterIndexBuffer");
-			RS_IN.SetDebugName(lightLists,              "lightLists");
-			RS_IN.SetDebugName(pointLightBuffer,        "pointLightBuffer");
-			RS_IN.SetDebugName(pointLightBVH,           "pointLightBVH");
-            RS_IN.SetDebugName(argumentBuffer,          "clusterBuildLightListArgsBuffer");
-            RS_IN.SetDebugName(lightLookupBuffer,       "lightLookUp");
-            RS_IN.SetDebugName(lightListCounterBuffer,  "lightListCounterBuffer");
-            
-
-            RS_IN.SetDebugName(clusterBuffer,       "clusterBuffer");
-            RS_IN.SetDebugName(counterBuffer,       "clusterCounterBuffer");
 
             RS_IN.SetReadBackEvent(
                 timingReadBack,
@@ -740,127 +724,10 @@ namespace FlexKit
 
 		void Release()
 		{
-            renderSystem.ReleaseResource(clusterBuffer);
-            renderSystem.ReleaseResource(counterBuffer);
-            renderSystem.ReleaseResource(indexBuffer);
-            renderSystem.ReleaseResource(debugBuffer1);
-            renderSystem.ReleaseResource(argumentBuffer);
-            renderSystem.ReleaseResource(lightLookupBuffer);
-            renderSystem.ReleaseResource(lightListCounterBuffer);
-
-
-			renderSystem.ReleaseResource(lightLists);
-			renderSystem.ReleaseResource(pointLightBuffer);
-            renderSystem.ReleaseResource(pointLightBVH);
 		}
 
 
-        
-        auto& DrawScene(UpdateDispatcher& dispatcher, FrameGraph& frameGraph, DrawSceneDescription& drawSceneDesc, WorldRender_Targets targets, iAllocator* temporary)
-        {
-            auto&       scene           = drawSceneDesc.scene;
-            const auto  camera          = drawSceneDesc.camera;
-            auto&       gbuffer         = drawSceneDesc.gbuffer;
-            const auto  t               = drawSceneDesc.t;
-
-            auto        depthTarget     = targets.DepthTarget;
-            auto        renderTarget    = targets.RenderTarget;
-
-            auto& PVS = GatherScene(dispatcher, &scene, camera, temporary);
-            PVS.AddInput(drawSceneDesc.transformDependency);
-            PVS.AddInput(drawSceneDesc.cameraDependency);
-
-            auto& pointLightGather                = scene.GetPointLights(dispatcher, temporary);
-            auto& pointLightShadowCasterGather    = scene.GetPointLightShadows(dispatcher, temporary);
-
-            pointLightGather.AddInput(drawSceneDesc.transformDependency);
-            pointLightGather.AddInput(drawSceneDesc.cameraDependency);
-
-            auto& skinnedObjects    = GatherSkinned(dispatcher, scene, camera, temporary);
-            auto& updatedPoses      = UpdatePoses(dispatcher, skinnedObjects, temporary);
-
-            // [skinned Objects] -> [update Poses] 
-            skinnedObjects.AddInput(drawSceneDesc.cameraDependency);
-            updatedPoses.AddInput(skinnedObjects);
-
-            const SceneDescription sceneDesc = {
-                drawSceneDesc.camera,
-                pointLightGather,
-                pointLightShadowCasterGather,
-                drawSceneDesc.transformDependency,
-                drawSceneDesc.cameraDependency,
-                PVS,
-                skinnedObjects
-            };
-
-            auto& reserveCB = drawSceneDesc.reserveCB;
-            auto& reserveVB = drawSceneDesc.reserveVB;
-
-            // Add Resources
-            AddGBufferResource(gbuffer, frameGraph);
-            frameGraph.AddMemoryPool(&UAVPool);
-            frameGraph.AddMemoryPool(&RTPool);
-
-            ClearGBuffer(gbuffer, frameGraph);
-
-            RenderPBR_GBufferPass(
-                dispatcher,
-                frameGraph,
-                sceneDesc,
-                sceneDesc.camera,
-                gbuffer,
-                depthTarget,
-                reserveCB,
-                temporary);
-
-            auto& lightPass = UpdateLightBuffers(
-                dispatcher,
-                frameGraph,
-                camera,
-                scene,
-                sceneDesc,
-                depthTarget,
-                reserveCB,
-                temporary);
-
-            auto& shadowMapPass = ShadowMapPass(
-                frameGraph,
-                sceneDesc,
-                renderSystem.GetTextureWH(depthTarget),
-                reserveCB,
-                t,
-                temporary);
-
-            RenderPBR_DeferredShade(
-                dispatcher,
-                frameGraph,
-                sceneDesc,
-                pointLightGather,
-                gbuffer, depthTarget, renderTarget, shadowMapPass, lightPass,
-                reserveCB, reserveVB,
-                t,
-                temporary);
-
-            if (false)
-                DEBUGVIS_DrawLightBVH(
-                    dispatcher,
-                    frameGraph,
-                    camera,
-                    targets.RenderTarget,
-                    lightPass,
-                    reserveCB,
-                    temporary);
-
-            ReleaseShadowMapPass(frameGraph, shadowMapPass);
-
-            struct DrawOutputs
-            {
-                UpdateTaskTyped<GetPVSTaskData>& PVS;
-            } &outputs = temporary->allocate<DrawOutputs>(PVS);
-
-
-            return outputs;
-        }
+        DrawOutputs& DrawScene(UpdateDispatcher& dispatcher, FrameGraph& frameGraph, DrawSceneDescription& drawSceneDesc, WorldRender_Targets targets, iAllocator* temporary);
 
 
 		DepthPass& DepthPrePass(
@@ -981,23 +848,8 @@ namespace FlexKit
 	private:
 		RenderSystem&			renderSystem;
 
-		ResourceHandle		lightLists;			    // GPU
-		ResourceHandle		pointLightBuffer;	    // GPU
-        ResourceHandle		pointLightBVH;          // GPU
-        ResourceHandle		lightLookupBuffer;      // GPU
-        ResourceHandle		lightListCounterBuffer; // GPU
-
-
-        ResourceHandle		clusterBuffer;	    // GPU
-        ResourceHandle		counterBuffer;	    // GPU
-
-		ResourceHandle		indexBuffer;        // GPU
-        ResourceHandle		argumentBuffer;     // GPU
-
-
-        ResourceHandle		debugBuffer1;       // GPU
-
         MemoryPoolAllocator     UAVPool;
+        MemoryPoolAllocator     UAVTexturePool;
         MemoryPoolAllocator     RTPool;
 
         QueryHandle             timeStats;
