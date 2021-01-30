@@ -295,7 +295,7 @@ namespace FlexKit
 
 	struct TextureCacheDesc
 	{
-		const size_t textureCacheSize	= 256 * MEGABYTE;
+		const size_t textureCacheSize	= 128 * MEGABYTE;
 		const size_t blockSize			= GetTileByteSize();
 	};
 
@@ -339,6 +339,8 @@ namespace FlexKit
         AllocatedBlockList  reallocations;
         AllocatedBlockList  allocations;
         AllocatedBlockList  packedAllocations;
+
+        operator bool() const { return reallocations.size() + allocations.size() + packedAllocations.size(); }
     };
 
 	class TextureBlockAllocator

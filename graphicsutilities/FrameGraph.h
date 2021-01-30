@@ -550,7 +550,7 @@ namespace FlexKit
 
 		template<typename TY>
 		ID3D12Resource*         GetObjectResource(TY handle) const  { return globalResources.GetObjectResource(handle); }
-		ID3D12PipelineState*    GetPipelineState(PSOHandle state)	const { return globalResources.GetPipelineState(state); }
+		ID3D12PipelineState*    GetPipelineState(PSOHandle state) const { return globalResources.GetPipelineState(state); }
 
 		size_t                  GetVertexBufferOffset(VertexBufferHandle handle, size_t vertexSize) { return globalResources.GetVertexBufferOffset(handle, vertexSize); }
 		size_t                  GetVertexBufferOffset(VertexBufferHandle handle) { return globalResources.GetVertexBufferOffset(handle); }
@@ -563,60 +563,6 @@ namespace FlexKit
 
 
 		/************************************************************************************************/
-
-
-        /*
-		ResourceHandle GetUAVTextureResource(FrameResourceHandle handle) const
-		{
-			auto res = find(SubNodeTracking,
-				[&](const LocallyTrackedResource& rhs) -> bool
-				{
-					return rhs.resource == handle;
-				});
-
-			if (res == SubNodeTracking.end())
-			{
-				auto res = find(globalResources.Resources,
-					[&](const FrameObject& rhs) -> bool
-					{
-						return rhs.Handle == handle && rhs.Type == OT_UAVTexture;
-					});
-
-				FK_ASSERT(res != globalResources.Resources.end());
-				SubNodeTracking.push_back({ res->Handle, res->State });
-
-				return res->UAVTexture;
-			}
-			else
-				return globalResources.Resources[res->resource].UAVTexture;
-		}
-
-
-		ResourceHandle GetUAVBufferResource(FrameResourceHandle handle) const
-		{
-			auto res = find(SubNodeTracking,
-				[&](const auto& rhs) -> bool
-				{
-					return rhs.resource == handle;
-				});
-
-			if (res == SubNodeTracking.end())
-			{
-				auto res = find(globalResources.Resources,
-					[&](const FrameObject& rhs) -> bool
-					{
-						return rhs.Handle == handle && rhs.Type == OT_UAVBuffer;
-					});
-
-				FK_ASSERT(res != globalResources.Resources.end());
-				SubNodeTracking.push_back({ res->Handle, res->State });
-
-				return res->UAVBuffer;
-			}
-			else
-				return globalResources.Resources[res->resource].UAVBuffer;
-		}
-        */
 
 
 		SOResourceHandle GetSOResource(FrameResourceHandle handle) const
@@ -978,7 +924,8 @@ namespace FlexKit
 		Vector<ResourceTransition>		Transitions;
 
         Vector<FrameObjectLink>	        acquiredObjects;
-		Vector<FrameObjectLink>	        retiredObjects;
+        Vector<FrameObjectLink>	        retiredObjects;
+        Vector<FrameObjectLink>	        createdObjects;
 
 		LocallyTrackedObjectList        subNodeTracking;
 	};
@@ -1325,10 +1272,13 @@ namespace FlexKit
 
 						node.HandleBarriers(resources, ctx);
 
-						ResourceHandler handler{ resources, node.subNodeTracking };
+                        LocallyTrackedObjectList localTracking{ &tempAllocator };
+                        localTracking = node.subNodeTracking;
+
+						ResourceHandler handler{ resources, localTracking };
 						data.draw(data.fields, handler, ctx, tempAllocator);
 
-						node.RestoreResourceStates(&ctx, resources, node.subNodeTracking);
+						node.RestoreResourceStates(&ctx, resources, localTracking);
 						data.fields.~TY();
 					},
 					&data,

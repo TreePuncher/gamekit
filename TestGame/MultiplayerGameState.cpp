@@ -177,8 +177,8 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 .cameraDependency       = cameras,
             };
 
+#if 1
             auto& drawnScene = base.render.DrawScene(dispatcher, frameGraph, scene, targets, core.GetTempMemory());
-
             base.streamingEngine.TextureFeedbackPass(
                 dispatcher,
                 frameGraph,
@@ -187,6 +187,23 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 drawnScene.PVS,
                 reserveCB,
                 reserveVB);
+#else
+            frameGraph.AddMemoryPool(&base.render.UAVPool);
+            frameGraph.AddMemoryPool(&base.render.RTPool);
+
+            auto& PVS = GatherScene(dispatcher, &game.scene, activeCamera, core.GetTempMemory());
+            PVS.AddInput(transforms);
+            PVS.AddInput(cameras);
+
+            base.streamingEngine.TextureFeedbackPass(
+                dispatcher,
+                frameGraph,
+                activeCamera,
+                base.renderWindow.GetWH(),
+                PVS,
+                reserveCB,
+                reserveVB);
+#endif
 		}   break;
 		}
 

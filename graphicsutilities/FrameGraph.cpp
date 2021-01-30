@@ -49,7 +49,7 @@ namespace FlexKit
 					AfterState);
 				break;
 			case DRS_Retired:
-				ctx->AddAliasingBarrier(resourceObject.shaderResource);
+				ctx->AddAliasingBarrier(resourceObject.shaderResource, InvalidHandle_t);
 				break;
 			default:
 				FK_ASSERT(0);
@@ -99,21 +99,23 @@ namespace FlexKit
 			Executed		{ false		    },
 			subNodeTracking { IN_allocator  },
 
+            createdObjects  { IN_allocator  },
 			retiredObjects  { IN_allocator  },
             acquiredObjects { IN_allocator  } {}
 
 
     FrameGraphNode::FrameGraphNode(const FrameGraphNode& RHS) :
-			Sources			{ RHS.Sources		        },
-			InputObjects	{ RHS.InputObjects	        },
-			OutputObjects	{ RHS.OutputObjects	        },
-			Transitions		{ RHS.Transitions	        },
-			NodeAction		{ std::move(RHS.NodeAction)	},
-			nodeData        { RHS.nodeData              },
-			retiredObjects  { RHS.retiredObjects        },
-			subNodeTracking { RHS.subNodeTracking       },
-			Executed		{ false				        },
-            acquiredObjects { RHS.acquiredObjects       } {}
+			Sources			{ RHS.Sources		            },
+			InputObjects	{ RHS.InputObjects	            },
+			OutputObjects	{ RHS.OutputObjects	            },
+			Transitions		{ RHS.Transitions	            },
+			NodeAction		{ std::move(RHS.NodeAction)	    },
+			nodeData        { RHS.nodeData                  },
+			retiredObjects  { RHS.retiredObjects            },
+			subNodeTracking { RHS.subNodeTracking           },
+			Executed		{ false				            },
+            createdObjects  { std::move(RHS.createdObjects) },
+            acquiredObjects { RHS.acquiredObjects           } {}
 
 
 
@@ -122,6 +124,9 @@ namespace FlexKit
 
 	void FrameGraphNode::HandleBarriers(FrameResources& Resources, Context& Ctx)
 	{
+        for (const auto& virtualResource : createdObjects)
+            Ctx.AddAliasingBarrier(InvalidHandle_t, Resources.GetTexture(virtualResource.handle));
+
 		for (const auto& T : Transitions) 
 			T.ProcessTransition(Resources, &Ctx);
 	}
@@ -194,7 +199,10 @@ namespace FlexKit
             if (resource.virtualState == VirtualResourceState::Virtual_Temporary ||
                 resource.virtualState == VirtualResourceState::Virtual_Released)
             {
-                ctx->AddAliasingBarrier(resource.shaderResource);
+                if( resource.State == DRS_DEPTHBUFFERWRITE ||
+                    resource.State == DRS_RenderTarget)
+                ctx->DiscardResource(resource.shaderResource);
+                ctx->AddAliasingBarrier(resource.shaderResource, InvalidHandle_t);
             }
         }
 	}
@@ -370,6 +378,8 @@ namespace FlexKit
             virtualObject.virtualState      = VirtualResourceState::Virtual_Temporary;
             virtualObject.pool              = memoryPool;
 
+            Resources->renderSystem.SetDebugName(virtualResource, "Un-named virtual resources");
+
 		    auto virtualResourceHandle = FrameResourceHandle{ Resources->Resources.emplace_back(virtualObject) };
 		    Resources->Resources[virtualResourceHandle].Handle = virtualResourceHandle;
 		    Resources->virtualResources.push_back(virtualResourceHandle);
@@ -379,12 +389,12 @@ namespace FlexKit
 			    outputObject.Source         = &Node;
 			    outputObject.handle         = virtualResourceHandle;
 
+            FK_LOG_9("Allocated Resource: %u", Resources->GetObjectResource(virtualResource));
             Resources->renderSystem.SetDebugName(virtualResource, "Virtual Resource");
 
 
 		    Context.AddWriteable(outputObject);
 		    Node.OutputObjects.push_back(outputObject);
-
 
             if (initialState != outputObject.neededState)
                 Node.AddTransition(ResourceTransition{ virtualResourceHandle, outputObject.neededState, initialState });
@@ -406,7 +416,7 @@ namespace FlexKit
 
 	void FrameGraphNodeBuilder::ReleaseVirtualResource(FrameResourceHandle handle)
 	{
-        auto& resource                   = Resources->Resources[handle];
+        auto& resource              = Resources->Resources[handle];
 
         FrameObjectLink freeObject;
 		freeObject.neededState      = DeviceResourceState::DRS_Retired;
@@ -679,6 +689,8 @@ namespace FlexKit
 			}	break;
 			case OT_Virtual:
 			{
+                Resources.renderSystem.SetObjectState(I.shaderResource, I.State);
+
                 if (I.virtualState == VirtualResourceState::Virtual_Released || I.virtualState == VirtualResourceState::Virtual_Temporary) {
                     Resources.renderSystem.ReleaseResource(I.shaderResource);
                 }

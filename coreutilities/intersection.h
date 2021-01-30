@@ -86,6 +86,21 @@ namespace FlexKit
 
 	typedef float4 BoundingSphere;
 
+
+    AABB operator + (const AABB& lhs, const BoundingSphere& rhs)
+    {
+        auto lowerBound = rhs.xyz() -= rhs.w;
+        auto upperBound = rhs.xyz() += rhs.w;
+
+        AABB A;
+        A.Min = lowerBound;
+        A.Max = upperBound;
+
+        return A;
+    }
+
+
+
 	/************************************************************************************************/
 
 

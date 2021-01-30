@@ -107,7 +107,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 
 		FK_ASSERT(FlexKit::LoadScene(app.GetCore(), gameState.scene, ShadowScene), "Failed to load Scene!");
 
-		DEBUG_ListSceneObjects(gameState.scene);
+		//DEBUG_ListSceneObjects(gameState.scene);
 
 	 }  break;
 	case TestScenes::PhysXTest:

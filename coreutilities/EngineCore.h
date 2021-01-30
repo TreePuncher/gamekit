@@ -134,7 +134,8 @@ namespace FlexKit
 			RenderSystem	{ memory->BlockAllocator, &Threads				}
 		{
 			InitiateSceneNodeBuffer(memory->NodeMem, sizeof(EngineMemory::NodeMem));
-			Initiate(memory);
+            if (!Initiate(memory))
+                throw std::runtime_error{"Failed to initiate core"};
 		}
 
 
@@ -158,8 +159,8 @@ namespace FlexKit
 		EngineCore& operator =	(const EngineCore&) = delete;
 
 		bool					FrameLock   = true;
+        size_t                  FPSLimit    = 120;
 		bool					End         = false;
-
         ThreadManager			Threads;
 
 		RenderSystem			RenderSystem;

@@ -738,8 +738,6 @@ namespace FlexKit
 			&SwapChainDesc, nullptr, nullptr,
 			&NewSwapChain_ptr );
 
-
-
 		if ( FAILED( HR ) )
 		{
 			std::cout << "Failed to Create Swap Chain!\n";

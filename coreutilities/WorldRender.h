@@ -40,6 +40,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AnimationComponents.h"
 #include "GraphicScene.h"
 
+#include <DXProgrammableCapture.h>
+
 namespace FlexKit
 {	/************************************************************************************************/
 
@@ -493,7 +495,7 @@ namespace FlexKit
 		ShadowMapPassData&            sharedData;
 		const GatherTask&             sceneSource;
 		ReserveConstantBufferFunction reserveCB;
-		TemporaryFrameResourceHandle  shadowMapTargets;
+		TemporaryFrameResourceHandle  shadowMapTarget;
 		PointLightHandle              pointLight;
 	};
 
@@ -595,8 +597,6 @@ namespace FlexKit
 		const double                    t,
 		iAllocator*                     allocator);
 
-	void ReleaseShadowMapPass(FrameGraph& frameGraph, ShadowMapPassData& shadowMaps);
-
 
 	/************************************************************************************************/
 
@@ -646,6 +646,8 @@ namespace FlexKit
 
 			RS_IN.RegisterPSOLoader(LIGHTPREPASS,			    { &RS_IN.Library.ComputeSignature,  CreateLightPassPSO			  });
 			RS_IN.RegisterPSOLoader(DEPTHPREPASS,			    { &RS_IN.Library.RS6CBVs4SRVs,      CreateDepthPrePassPSO         });
+            RS_IN.RegisterPSOLoader(SHADOWMAPPASS,              { &RS_IN.Library.RS6CBVs4SRVs,      CreateShadowMapPass           });
+
 
 			RS_IN.RegisterPSOLoader(GBUFFERPASS,			    { &RS_IN.Library.RS6CBVs4SRVs,      CreateGBufferPassPSO          });
 			RS_IN.RegisterPSOLoader(GBUFFERPASS_SKINNED,	    { &RS_IN.Library.RS6CBVs4SRVs,      CreateGBufferSkinnedPassPSO   });
@@ -692,21 +694,23 @@ namespace FlexKit
                     auto [buffer, bufferSize] = RS_IN.OpenReadBackBuffer(resource);
                     EXITSCOPE(RS_IN.CloseReadBackBuffer(resource));
 
-                    size_t timePoints[64];
-                    memcpy(timePoints, (char*)buffer, sizeof(timePoints));
+                    if(buffer){
+                        size_t timePoints[64];
+                        memcpy(timePoints, (char*)buffer, sizeof(timePoints));
 
-                    UINT64 timeStampFreq;
-                    RS_IN.GraphicsQueue->GetTimestampFrequency(&timeStampFreq);
+                        UINT64 timeStampFreq;
+                        RS_IN.GraphicsQueue->GetTimestampFrequency(&timeStampFreq);
 
-                    float durations[32];
+                        float durations[32];
 
-                    for (size_t I = 0; I < 4; I++)
-                        durations[I] = float(timePoints[2 * I + 1] - timePoints[2 * I + 0]) / timeStampFreq * 1000;
+                        for (size_t I = 0; I < 4; I++)
+                            durations[I] = float(timePoints[2 * I + 1] - timePoints[2 * I + 0]) / timeStampFreq * 1000;
 
-                    timingValues.gBufferPass        = durations[0];
-                    timingValues.ClusterCreation    = durations[1];
-                    timingValues.shadingPass        = durations[2];
-                    timingValues.BVHConstruction    = durations[3];
+                        timingValues.gBufferPass        = durations[0];
+                        timingValues.ClusterCreation    = durations[1];
+                        timingValues.shadingPass        = durations[2];
+                        timingValues.BVHConstruction    = durations[3];
+                    }
                 });
 		}
 

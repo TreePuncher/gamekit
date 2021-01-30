@@ -416,8 +416,44 @@ namespace FlexKit
         const GraphicScene*             scene;
     };
 
+    struct SceneBVHBuild
+    {
+        struct SceneElement
+        {
+            uint32_t            ID;
+            VisibilityHandle    handle;
+
+            friend bool operator > (const SceneElement& lhs, const SceneElement& rhs)
+            {
+                return lhs.ID > rhs.ID;
+            }
+
+            friend bool operator < (const SceneElement& lhs, const SceneElement& rhs)
+            {
+                return lhs.ID < rhs.ID;
+            }
+        };
+
+
+        struct SceneNode {
+            AABB boundingVolume;
+
+            union {
+                SceneNode*      children;
+                SceneElement*   elements;
+            };
+
+            size_t  count   = 0;
+            bool    Leaf    = false;
+        }* root = nullptr;
+
+        Vector<SceneElement>  elements;
+        Vector<SceneNode>     sceneNodes;
+    };
+
     using PointLightGatherTask          = UpdateTaskTyped<PointLightGather>;
     using PointLightShadowGatherTask    = UpdateTaskTyped<PointLightShadowGather>;
+    using BuildBVHTask                  = UpdateTaskTyped<SceneBVHBuild>;
 
 	class GraphicScene
 	{
@@ -443,7 +479,7 @@ namespace FlexKit
 
 		Vector<PointLightHandle>    FindPointLights(const Frustum& f, iAllocator* tempMemory) const;
 
-
+        BuildBVHTask&               GetSceneBVH(UpdateDispatcher& disatcher, iAllocator* tempMemory) const;
         PointLightGatherTask&	    GetPointLights(UpdateDispatcher& disatcher, iAllocator* tempMemory) const;
 		size_t					    GetPointLightCount();
 
