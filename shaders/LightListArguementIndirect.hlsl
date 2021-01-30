@@ -14,9 +14,10 @@ StructuredBuffer<uint>          counters2        : register(t0);
 void CreateLightListArguents()
 {
     Arguments args;
-    args.X = min(counters2[0], 1024);
-    args.Y = ceil(float(counters2[0]) / 1024.0f);
-    args.Z = 1;
+    args.X          = min(counters2[0], 1024);
+    args.Y          = min(ceil(float(counters2[0]) / 1024.0f), 1024);
+    args.Z          = 1;
+    args.padding    = 0;
     argumentBuffer[0] = args;
 
     counters1[0] = 0;

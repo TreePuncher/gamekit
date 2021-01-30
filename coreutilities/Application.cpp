@@ -5,7 +5,10 @@ namespace FlexKit
 	FKApplication::FKApplication(EngineMemory* IN_Memory, size_t threadCount) :
 		Memory		{ IN_Memory },
 		Core		{ IN_Memory, threadCount },
-		framework	{ Core } {}
+		framework	{ Core }
+    {
+        HRESULT hr = DXGIGetDebugInterface1(0, IID_PPV_ARGS(&pix));
+    }
 
 
     /************************************************************************************************/
@@ -48,13 +51,10 @@ namespace FlexKit
 	{
 		double T				= 0.0f;
 		double FPSTimer			= 0.0;
-		double dT				= 1.0/120.0;
-
+		double dT				= 1.0 / 120;
 
 		while (!Core.End && framework.subStates.size())
 		{
-            FK_LOG_2("BEGIN FRAME");
-
 			Core.Time.Before();
 
 			const auto frameStart = std::chrono::high_resolution_clock::now();
@@ -102,7 +102,6 @@ namespace FlexKit
 
 			Core.Time.After();
 			Core.Time.Update();
-
 		}
 			// End Update  -----------------------------------------------------------------------------------------
 	}

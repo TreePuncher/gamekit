@@ -32,7 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GameFramework.h"
 
 #include <iostream>
-
+#include <DXProgrammableCapture.h>
 
 namespace FlexKit
 {
@@ -69,9 +69,10 @@ namespace FlexKit
         EngineCore&     GetCore()       { return Core;      }
 
     private:
-        EngineMemory*	Memory;
-        EngineCore		Core;
-        GameFramework	framework;
+        EngineMemory*	        Memory;
+        EngineCore		        Core;
+        GameFramework	        framework;
+        IDXGraphicsAnalysis*    pix;
     };
 
 }

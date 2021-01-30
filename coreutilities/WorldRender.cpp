@@ -993,8 +993,9 @@ namespace FlexKit
         PVS.AddInput(drawSceneDesc.transformDependency);
         PVS.AddInput(drawSceneDesc.cameraDependency);
 
-        auto& pointLightGather                = scene.GetPointLights(dispatcher, temporary);
-        auto& pointLightShadowCasterGather    = scene.GetPointLightShadows(dispatcher, temporary);
+        auto& pointLightGather                  = scene.GetPointLights(dispatcher, temporary);
+        auto& pointLightShadowCasterGather      = scene.GetPointLightShadows(dispatcher, temporary);
+        //auto& sceneBVH                          = scene.GetSceneBVH(dispatcher, temporary);
 
         pointLightGather.AddInput(drawSceneDesc.transformDependency);
         pointLightGather.AddInput(drawSceneDesc.cameraDependency);
@@ -1075,7 +1076,6 @@ namespace FlexKit
                 reserveCB,
                 temporary);
 
-        ReleaseShadowMapPass(frameGraph, shadowMapPass);
 
         auto& outputs = temporary->allocate<DrawOutputs>(PVS);
         return outputs;
@@ -1571,14 +1571,14 @@ namespace FlexKit
                 data.lightBufferObject      = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512 * KILOBYTE), DRS_ShaderResource, false);
 
                 // Temporaries
-                data.lightBVH               = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512 * KILOBYTE), DRS_UAV, true);
-                data.lightLookupObject      = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512 * KILOBYTE), DRS_UAV, true);
-                data.lightCounterObject     = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DRS_UAV, true);
+                data.lightBVH               = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512 * KILOBYTE), DRS_UAV);
+                data.lightLookupObject      = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512 * KILOBYTE), DRS_UAV);
+                data.lightCounterObject     = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DRS_UAV);
 
-                data.counterObject          = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DRS_UAV, true);
+                data.counterObject          = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DRS_UAV);
 
                 data.depthBufferObject      = builder.ReadRenderTarget(depthBuffer);
-                data.argumentBufferObject   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DRS_UAV, true);
+                data.argumentBufferObject   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DRS_UAV);
 
 				data.camera				    = camera;
 
@@ -1651,7 +1651,7 @@ namespace FlexKit
 
 					pointLightValues.push_back(
 						{	{ pointLight.K, pointLight.I	},
-							{ WS_position, 16        } });
+							{ WS_position, 32        } });
 				}
 
 				const size_t uploadSize = pointLightValues.size() * sizeof(GPUPointLight);
@@ -1666,7 +1666,6 @@ namespace FlexKit
 					{ DRS_Write },
 					{ DRS_Write }
 				);
-
 
                 ctx.SetComputeRootSignature(resources.renderSystem().Library.ComputeSignature);
 
@@ -1717,6 +1716,9 @@ namespace FlexKit
                 ctx.SetComputeDescriptorTable(0, BVH_Phase1_Resources);
                 ctx.Dispatch(CreateBVH_Phase1, { 1, 1, 1 }); // Two dispatches to sync across calls
 
+                ctx.AddUAVBarrier(resources.GetResource(data.lightLookupObject));
+                ctx.AddUAVBarrier(resources.GetResource(data.lightBVH));
+
                 auto Phase2_Pass =
                     [&](const uint32_t nodeOffset, const uint32_t nodeCount)
                     {
@@ -1750,6 +1752,8 @@ namespace FlexKit
 
                         ctx.SetComputeDescriptorTable(0, BVH_Phase2_Resources);
                         ctx.Dispatch(CreateBVH_Phase2, { 1, 1, 1 });
+
+                        ctx.AddUAVBarrier(resources.GetResource(data.lightBVH));
                     };
 
                 size_t offset       = 0;
@@ -1773,6 +1777,10 @@ namespace FlexKit
 
                 ctx.SetComputeDescriptorTable(0, createArgumentResources);
                 ctx.Dispatch(CreateLightListArguments, { 1, 1, 1 }); // Two dispatches to sync across calls
+
+                ctx.AddUAVBarrier(resources.GetResource(data.counterObject));
+                ctx.AddUAVBarrier(resources.GetResource(data.lightCounterObject));
+                ctx.AddUAVBarrier(resources.GetResource(data.argumentBufferObject));
 
                 struct LightListConstructionConstants
                 {
@@ -1927,7 +1935,7 @@ namespace FlexKit
                 ctx.Draw(offset + 1);
 
                 ctx.SetPipelineState(debugClusterVISPSO);
-                //ctx.ExecuteIndirect(resources.ReadUAV(data.indirectArgs, DRS_INDIRECTARGS, ctx), createDebugDrawLayout);
+                ctx.ExecuteIndirect(resources.ReadUAV(data.indirectArgs, DRS_INDIRECTARGS, ctx), createDebugDrawLayout);
 
                 ctx.SetPipelineState(debugLightVISPSO);
                 ctx.Draw(lightCount);
@@ -2264,9 +2272,6 @@ namespace FlexKit
 
 				const auto pointLightCount = pointLights.elements.size();
 
-				if (!pointLightCount)
-					return;
-
 				struct
 				{
 					float2      WH;
@@ -2289,8 +2294,8 @@ namespace FlexKit
 
 					const auto matrices = CalculateShadowMapMatrices(Position, light.R, t);
 
-					//for(size_t II = 0; II < 6; II++)
-					//	passConstants.PV[6 * I + II] = matrices.PV[II];
+					for(size_t II = 0; II < 6; II++)
+						passConstants.PV[6 * I + II] = matrices.PV[II];
 				}
 
 				struct
@@ -2308,7 +2313,7 @@ namespace FlexKit
 				};
 
 
-				const size_t descriptorTableSize = 20 + data.shadowMaps.shadowMapTargets.size() * 4;
+				const size_t descriptorTableSize = 20 + data.shadowMaps.shadowMapTargets.size() * 6;
 
 				DescriptorHeap descHeap;
 				descHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), descriptorTableSize, &allocator);
@@ -2323,13 +2328,11 @@ namespace FlexKit
 
 				descHeap.SetStructuredResource(ctx, 9, resources.ReadUAV(data.pointLightBufferObject, DRS_ShaderResource, ctx), sizeof(GPUPointLight));
 
-#if USING(SHADOWMAPPING)
 				for (size_t shadowMapIdx = 0; shadowMapIdx < pointLightCount; shadowMapIdx++)
 				{
-					auto shadowMap = resources.GetRenderTarget(data.shadowMaps.shadowMapTargets[shadowMapIdx]);
-					descHeap.SetSRVCubemap(ctx, shadowMapIdx + 10, shadowMap, DeviceFormat::R32_FLOAT);
+					auto shadowMap = resources.GetResource(data.shadowMaps.shadowMapTargets[shadowMapIdx]);
+					descHeap.SetSRVCubemap(ctx, 10 + shadowMapIdx, shadowMap, DeviceFormat::R32_FLOAT);
 				}
-#endif
 
 				descHeap.NullFill(ctx, descriptorTableSize);
 
@@ -2582,13 +2585,13 @@ namespace FlexKit
         const auto frustum      = GetFrustum(sceneDesc.camera);
         const auto camera       = CameraComponent::GetComponent().GetCamera(sceneDesc.camera);
 
-		for(size_t I = 0; I < pointLights.elements.size(); I++)
+        for(size_t I = 0; I < pointLights.elements.size(); I++)
 		{
             auto& pointLight    = pointLights.elements[I].componentData;
             auto& lightHandle   = pointLights.elements[I].handle;
 
             BoundingSphere boundingSphere{ GetPositionW(pointLight.Position), pointLight.R };
-            if(Intersects(frustum, boundingSphere) && false)
+            if(Intersects(frustum, boundingSphere) || true)
             {
 			    frameGraph.AddNode<LocalShadowMapPassData>(
 				    LocalShadowMapPassData{
@@ -2604,17 +2607,18 @@ namespace FlexKit
                         const float SSSize  = ScreenSpaceSize(camera, boundingSphere);
                         const uint2 WH      = { 128, 128 };
 
-                        shadowMapPass.shadowMapTargets.push_back(builder.AcquireVirtualResource(GPUResourceDesc::DepthTarget(WH, DeviceFormat::D32_FLOAT, 6), DRS_DEPTHBUFFERWRITE));
+                        auto shadowMap      = builder.AcquireVirtualResource(GPUResourceDesc::DepthTarget(WH, DeviceFormat::D32_FLOAT, 6), DRS_DEPTHBUFFERWRITE, false);
+                        builder.SetDebugName(shadowMap, "Shadow Map");
 
-					    data.shadowMapTargets   = shadowMapPass.shadowMapTargets.back();
+					    data.shadowMapTarget    = shadowMap;
 					    data.pointLight         = lightHandle;
+
+                        shadowMapPass.shadowMapTargets.push_back(shadowMap);
 				    },
 				    [=](LocalShadowMapPassData& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 				    {
-                        return;
-
 					    const auto& drawables  = data.sceneSource.GetData().solid;
-					    const auto depthTarget = resources.GetResource(data.shadowMapTargets);
+					    const auto depthTarget = resources.GetResource(data.shadowMapTarget);
 
 					    const DepthStencilView_Options DSV_desc = {
                             0, 0,
@@ -2640,21 +2644,19 @@ namespace FlexKit
 
 					    CBPushBuffer localConstantBuffer = data.reserveCB(AlignedSize<Drawable::VConstantsLayout>() * drawables.size());
 
-					    for (auto& drawable : drawables)
-						    ConstantBufferDataSet{ drawable.D->GetConstants(), localConstantBuffer };
+                        for (auto& drawable : drawables)
+                            ConstantBufferDataSet{ drawable.D->GetConstants(), localConstantBuffer };
 
 					    auto constants = CreateCBIterator<Drawable::VConstantsLayout>(localConstantBuffer);
 
 					    auto PSO = resources.GetPipelineState(SHADOWMAPPASS);
-					    if (PSO == nullptr)
-						    __debugbreak();
 
 					    ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
 					    ctx.SetPipelineState(PSO);
 					    ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 
-					    auto& pointLights       = PointLightComponent::GetComponent();
-					    auto& light             = pointLights.elements[I].componentData;
+					    const auto& pointLights = PointLightComponent::GetComponent();
+					    const auto& light       = pointLights[data.pointLight];
 					    const float3 Position   = FlexKit::GetPositionW(light.Position);
 					    const auto matrices     = CalculateShadowMapMatrices(Position, light.R, t);
 
@@ -2689,23 +2691,6 @@ namespace FlexKit
 		    }
         }
 		return shadowMapPass;
-	}
-
-
-	void ReleaseShadowMapPass(
-		FrameGraph&         frameGraph,
-		ShadowMapPassData&  shadowMaps)
-	{
-        return;
-		struct _ {};
-		frameGraph.AddNode<_>(
-			_{},
-			[&](FrameGraphNodeBuilder& builder, _& data)
-			{
-				for (auto& map : shadowMaps.shadowMapTargets)
-					builder.ReleaseVirtualResource(map);
-			},
-			[=](_& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator) {});
 	}
 
 

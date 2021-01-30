@@ -64,7 +64,9 @@ namespace FlexKit
 		BAdesc.MediumBlock	= MEGABYTE * 128;
 		BAdesc.LargeBlock	= MEGABYTE * 256;
 
-		new(&Memory->BlockAllocator) BlockAllocator();
+        new(&Memory->BlockAllocator)    BlockAllocator();
+        new(&Memory->LevelAllocator)    StackAllocator();
+        new(&Memory->TempAllocator)     StackAllocator();
 
 		Memory->BlockAllocator.Init(BAdesc);
 		Memory->LevelAllocator.Init(Memory->LevelMem,	LEVELBUFFERSIZE);
@@ -96,8 +98,11 @@ namespace FlexKit
 		desc.Memory			    = GetBlockMemory();
 		desc.TempMemory			= GetTempMemory();
 
-		if (!RenderSystem.Initiate(&desc))
-			return false;
+        if (!RenderSystem.Initiate(&desc)) {
+            FK_LOG_ERROR("Failed to initiate renderSystem");
+
+            return false;
+        }
 
         InitiateAssetTable(GetBlockMemory());
 

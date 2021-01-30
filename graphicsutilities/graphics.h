@@ -38,8 +38,11 @@
 
 #if USING(AFTERMATH)
 
-#include "..\dependencies\sdks\nvidia-aftermath\include\GFSDK_Aftermath.h"
-#pragma comment( lib, "../Dependencies/sdks/nvidia-aftermath/lib/x64/GFSDK_Aftermath_Lib.x64.lib")
+#include "..\ThirdParty\aftermath\include\GFSDK_Aftermath.h"
+#include "..\ThirdParty\aftermath\include\GFSDK_Aftermath_GpuCrashDump.h"
+#include "..\ThirdParty\aftermath\include\GFSDK_Aftermath_GpuCrashDumpDecoding.h"
+
+#pragma comment( lib, "..\\ThirdParty\\aftermath\\lib\\x64\\GFSDK_Aftermath_Lib.x64.lib")
 
 #endif
 
@@ -68,12 +71,12 @@ namespace FlexKit
 
 #pragma warning(disable:4067)
 FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
-#ifdef USING(DEBUGGRAPHICS)
+//#ifdef USING(DEBUGGRAPHICS)
 #define SETDEBUGNAME(RES, ID) {const char* NAME = ID; FlexKit::SetDebugName(RES, ID, strnlen(ID, 64));}
 
-#else
-#define SETDEBUGNAME(RES, ID) 
-#endif
+//#else
+//#define SETDEBUGNAME(RES, ID) 
+//#endif
 
 #define SAFERELEASE(RES) if(RES) {RES->Release(); RES = nullptr;}
 
@@ -756,6 +759,12 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		size_t startingTileIndex;
 	};
 
+    struct SyncPoint
+    {
+        UINT            syncCounter = 0;
+        ID3D12Fence*    fence       = nullptr;
+    };
+
 	class CopyContext
 	{
 	public:
@@ -797,8 +806,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void Wait(CopyContextHandle handle);
 		void Close(CopyContextHandle handle);
 
-		void Submit(CopyContextHandle* begin, CopyContextHandle* end);
-		void Signal(ID3D12Fence* fence, const size_t counter);
+        SyncPoint   Submit(CopyContextHandle* begin, CopyContextHandle* end);
+		void        Signal(ID3D12Fence* fence, const size_t counter);
 
 		void Push_Temporary(ID3D12Resource* resource, CopyContextHandle handle);
 
@@ -1441,6 +1450,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			Memory					= RHS.Memory;
 			commandAllocator        = RHS.commandAllocator;
 
+
 			// Null out old Context
 			RHS.commandAllocator        = nullptr;
 			RHS.DeviceContext			= nullptr;
@@ -1466,7 +1476,12 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 			RHS.descHeapRTV = nullptr;
 			RHS.descHeapSRV = nullptr;
-			RHS.descHeapDSV = nullptr;
+            RHS.descHeapDSV = nullptr;
+
+#if USING(AFTERMATH)
+            AFTERMATH_context       = RHS.AFTERMATH_context;
+            RHS.AFTERMATH_context   = nullptr;
+#endif
 		}
 
 
@@ -1527,6 +1542,12 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			RHS.descHeapSRV = nullptr;
 			RHS.descHeapDSV = nullptr;
 
+
+#if USING(AFTERMATH)
+            AFTERMATH_context       = RHS.AFTERMATH_context;
+            RHS.AFTERMATH_context   = nullptr;
+#endif
+
 			return *this;
 		}
 
@@ -1538,8 +1559,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void CreateAS(const AccelerationStructureDesc&, const TriMesh& );
 
-		void AddAliasingBarrier (ResourceHandle Handle);
-		void AddUAVBarrier      (ResourceHandle Handle);
+        void DiscardResource(ResourceHandle resource);
+
+		void AddAliasingBarrier (ResourceHandle before, ResourceHandle after);
+		void AddUAVBarrier      (ResourceHandle Handle = InvalidHandle_t);
 
 		void AddPresentBarrier			(ResourceHandle Handle,	DeviceResourceState Before);
 		void AddRenderTargetBarrier		(ResourceHandle Handle,	DeviceResourceState Before, DeviceResourceState State = DeviceResourceState::DRS_RenderTarget);
@@ -1611,6 +1634,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void EndQuery	(QueryHandle query, size_t idx);
 
         void TimeStamp(QueryHandle query, size_t idx);
+
+        void SetMarker_DEBUG(const char* str);
 
 
 		void CopyBufferRegion(
@@ -1755,6 +1780,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				SOResourceHandle	streamOut;
 				ID3D12Resource*		resource_ptr;
 				QueryHandle			query;
+
+                ResourceHandle		aliasedResources[2];
 			};
 		};
 
@@ -2632,12 +2659,12 @@ private:
 	{
 	public:
 		TextureStateTable(iAllocator* IN_allocator) :
-			Handles		        { IN_allocator },
-			UserEntries	        { IN_allocator },
-			Resources	        { IN_allocator },
-			BufferedResources   { IN_allocator },
-			delayRelease        { IN_allocator },
-			allocator           { IN_allocator } {}
+			Handles		        { SystemAllocator },
+			UserEntries	        { SystemAllocator },
+			Resources	        { SystemAllocator },
+			BufferedResources   { SystemAllocator },
+			delayRelease        { SystemAllocator },
+			allocator           { SystemAllocator } {}
 
 
 		~TextureStateTable()
@@ -2657,7 +2684,9 @@ private:
 
 		ResourceHandle	    AddResource		(const GPUResourceDesc& Desc, const DeviceResourceState InitialState);
 		void			    SetState		(ResourceHandle Handle, DeviceResourceState State);
+        void			    SetDebug        (ResourceHandle Handle, const char* string);
 
+        const char*         GetDebug(ResourceHandle Handle);
 		uint2			    GetWH(ResourceHandle Handle) const;
 		size_t			    GetFrameGraphIndex(ResourceHandle Texture, size_t FrameID) const;
 		void			    SetFrameGraphIndex(ResourceHandle Texture, size_t FrameID, size_t Index);
@@ -2683,6 +2712,7 @@ private:
 		ID3D12Resource*		GetResource     (ResourceHandle Handle, ID3D12Device* device) const;
         size_t              GetResourceSize (ResourceHandle Handle) const;
 
+        ResourceHandle      FindResourceHandle(ID3D12Resource* deviceResource) const;
 
 		void ReplaceResources(ResourceHandle handle, ID3D12Resource** begin, size_t size);
 
@@ -2711,6 +2741,7 @@ private:
 			TextureDimension        dimension;
 			Vector<TileMapping>     tileMappings = {};
             GPUResourceExtra_t      extra;
+            const char*             userString;
 		};
 
 		struct ResourceEntry
@@ -2721,15 +2752,19 @@ private:
 			ID3D12Resource* GetAsset() const					{ return Resources[CurrentResource];		}
 			void			IncreaseIdx()						{ CurrentResource = ++CurrentResource % 3;	}
 
-			size_t				ResourceCount;
-			size_t				CurrentResource;
+			size_t				ResourceCount   = 0;
+			size_t				CurrentResource = 0;
 			ID3D12Resource*		Resources[3];
 			size_t				FrameLocks[3];
 			DeviceResourceState	States[3];
 			DXGI_FORMAT			Format;
 			uint8_t				mipCount;
 			uint2				WH;
-			ResourceHandle      owner;
+			ResourceHandle      owner           = InvalidHandle_t;
+
+#if USING(AFTERMATH)
+            GFSDK_Aftermath_ResourceHandle  aftermathResource[3];
+#endif
 		};
 
 			
@@ -2737,7 +2772,7 @@ private:
 		Vector<ResourceEntry>							    Resources;
 		Vector<ResourceHandle>							    BufferedResources;
 		HandleUtilities::HandleTable<ResourceHandle, 32>	Handles;
-
+        std::mutex                                          m;
 		struct UnusedResource
 		{
 			ID3D12Resource* resource;
@@ -3366,20 +3401,20 @@ private:
 		Shader  LoadShader(const char* entryPoint, const char* ShaderType, const char* file);
 
 		// Resource Creation and Destruction
-		DeviceHeapHandle        CreateHeap                      (const size_t heapSize, const uint32_t flags);
-		ConstantBufferHandle	CreateConstantBuffer			(size_t BufferSize, bool GPUResident = true);
-		VertexBufferHandle		CreateVertexBuffer				(size_t BufferSize, bool GPUResident = true);
-		ResourceHandle			CreateDepthBuffer				(const uint2 WH, const bool UseFloat = false, size_t bufferCount = 3);
-		ResourceHandle			CreateDepthBufferArray			(const uint2 WH, const bool UseFloat = false, const size_t arraySize = 1, const bool buffered = true, const ResourceAllocationType = ResourceAllocationType::Committed);
-		ResourceHandle			CreateGPUResource			    (const GPUResourceDesc& desc);
-		QueryHandle				CreateOcclusionBuffer			(size_t Size);
-        ResourceHandle		    CreateUAVBufferResource			(size_t bufferHandle, bool tripleBuffer = true);
-        ResourceHandle		    CreateUAVTextureResource		(const uint2 WH, const DeviceFormat, const bool RenderTarget = false);
-		SOResourceHandle		CreateStreamOutResource			(size_t bufferHandle, bool tripleBuffer = true);
-		QueryHandle				CreateSOQuery					(size_t SOIndex, size_t count);
-		QueryHandle				CreateTimeStampQuery			(size_t count);
-		IndirectLayout			CreateIndirectLayout			(static_vector<IndirectDrawDescription> entries, iAllocator* allocator);
-		ReadBackResourceHandle  CreateReadBackBuffer            (const size_t bufferSize);
+        [[nodiscard]] DeviceHeapHandle          CreateHeap                  (const size_t heapSize, const uint32_t flags);
+        [[nodiscard]] ConstantBufferHandle	    CreateConstantBuffer		(size_t BufferSize, bool GPUResident = true);
+        [[nodiscard]] VertexBufferHandle		CreateVertexBuffer			(size_t BufferSize, bool GPUResident = true);
+		[[nodiscard]] ResourceHandle			CreateDepthBuffer			(const uint2 WH, const bool UseFloat = false, size_t bufferCount = 3);
+        [[nodiscard]] ResourceHandle			CreateDepthBufferArray		(const uint2 WH, const bool UseFloat = false, const size_t arraySize = 1, const bool buffered = true, const ResourceAllocationType = ResourceAllocationType::Committed);
+        [[nodiscard]] ResourceHandle			CreateGPUResource			(const GPUResourceDesc& desc);
+        [[nodiscard]] QueryHandle				CreateOcclusionBuffer		(size_t Size);
+        [[nodiscard]] ResourceHandle		    CreateUAVBufferResource		(size_t bufferHandle, bool tripleBuffer = true);
+        [[nodiscard]] ResourceHandle		    CreateUAVTextureResource	(const uint2 WH, const DeviceFormat, const bool RenderTarget = false);
+        [[nodiscard]] SOResourceHandle		    CreateStreamOutResource		(size_t bufferHandle, bool tripleBuffer = true);
+        [[nodiscard]] QueryHandle				CreateSOQuery				(size_t SOIndex, size_t count);
+        [[nodiscard]] QueryHandle				CreateTimeStampQuery		(size_t count);
+        [[nodiscard]] IndirectLayout			CreateIndirectLayout		(static_vector<IndirectDrawDescription> entries, iAllocator* allocator);
+        [[nodiscard]] ReadBackResourceHandle    CreateReadBackBuffer        (const size_t bufferSize);
 
 		void                        SetReadBackEvent    (ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler);
 		std::pair<void*, size_t>    OpenReadBackBuffer  (ReadBackResourceHandle readbackBuffer, const size_t readSize = -1);
@@ -3451,6 +3486,23 @@ private:
 		auto*               _GetCopyQueue() { return copyEngine.copyQueue; }
 
 		void                _OnCrash();
+
+#if USING(AFTERMATH)
+        static void GpuCrashDumpCallback(const void* pGpuCrashDump, const uint32_t gpuCrashDumpSize, void* pUserData);
+        static void ShaderDebugInfoCallback(const void* pShaderDebugInfo, const uint32_t shaderDebugInfoSize, void* pUserData);
+        static void CrashDumpDescriptionCallback(PFN_GFSDK_Aftermath_AddGpuCrashDumpDescription addDescription, void* pUserData);
+
+        void WriteGpuCrashDumpToFile(const void* pGpuCrashDump, const uint32_t gpuCrashDumpSize);
+
+        static void OnShaderDebugInfoLookup(const GFSDK_Aftermath_ShaderDebugInfoIdentifier* pIdentifier, PFN_GFSDK_Aftermath_SetData setShaderDebugInfo, void* pUserData);
+        static void OnShaderLookup(const GFSDK_Aftermath_ShaderHash* pShaderHash, PFN_GFSDK_Aftermath_SetData setShaderBinary, void* pUserData);
+        static void OnShaderInstructionsLookup(const GFSDK_Aftermath_ShaderInstructionsHash* pShaderInstructionsHash, PFN_GFSDK_Aftermath_SetData setShaderBinary, void* pUserData);
+        static void OnShaderSourceDebugInfoLookup(const GFSDK_Aftermath_ShaderDebugName* pShaderDebugName, PFN_GFSDK_Aftermath_SetData setShaderBinary, void* pUserData);
+#endif
+
+#if USING(ENABLEDRED)
+        ID3D12DeviceRemovedExtendedData1* dred;
+#endif
 
 		operator RenderSystem* () { return this; }
 
@@ -3588,6 +3640,8 @@ private:
 		ID3D12DebugDevice*		pDebugDevice	= nullptr;
 		iAllocator*				Memory			= nullptr;
 
+        std::mutex              crashM;
+
 	};
 
 
@@ -3687,6 +3741,11 @@ private:
 			uint32_t blockCount;
 			uint64_t flags;
 			uint64_t frameID;
+
+            friend bool operator < (MemoryRange& lhs, MemoryRange& rhs)
+            {
+                return lhs.blockCount < rhs.blockCount;
+            }
 		};
 
 		struct Allocation

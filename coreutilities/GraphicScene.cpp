@@ -30,6 +30,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "componentBlobs.h"
 #include "AnimationRuntimeUtilities.H"
 
+#include <cmath>
+
 namespace FlexKit
 {
 	/************************************************************************************************/
@@ -957,6 +959,113 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+    #define ComponentSize 9
+    #define ComponentMask (1 << ComponentSize) - 1
+
+    inline uint CreateMortonCode(const uint3 XYZ)
+    {
+        const uint X = uint(XYZ[0]) & ComponentMask;
+        const uint Y = uint(XYZ[1]) & ComponentMask;
+        const uint Z = uint(XYZ[2]) & ComponentMask;
+
+        uint mortonCode = 0;
+
+        for (uint I = 0; I < ComponentSize; I++)
+        {
+            const uint x_bit = X & (1 << I);
+            const uint y_bit = Y & (1 << I);
+            const uint z_bit = Z & (1 << I);
+
+            const uint XYZ = x_bit << 2 | y_bit << 0 | z_bit << 1;
+            //const uint XYZ = x_bit << 0 | y_bit << 1 | z_bit << 2;
+
+            mortonCode |= XYZ << I * 3;
+        }
+
+        return mortonCode;
+    }
+
+
+    /************************************************************************************************/
+
+
+    BuildBVHTask& GraphicScene::GetSceneBVH(UpdateDispatcher& dispatcher, iAllocator* temporary) const
+    {
+        return dispatcher.Add<SceneBVHBuild>(
+			[&](UpdateDispatcher::UpdateBuilder& builder, SceneBVHBuild& data)
+			{
+                builder.SetDebugString("BVH");
+			},
+			[this, temporary = temporary](SceneBVHBuild& data, iAllocator& threadAllocator)
+			{
+                FK_LOG_9("Build BVH");
+
+                auto& visables = SceneVisibilityComponent::GetComponent();
+
+                data.elements   = Vector<SceneBVHBuild::SceneElement>{ temporary, visables.elements.size() };
+                data.sceneNodes = Vector<SceneBVHBuild::SceneNode>{ temporary };
+
+                for (auto& visable : visables)
+                {
+                    const auto POS  = GetPositionW(visable.componentData.node);
+                    const auto ID   = CreateMortonCode({ (uint)POS.x, (uint)POS.y, (uint)POS.z });
+
+                    data.elements.push_back({ ID, visable.handle });
+                }
+
+                // Phase 1 - Build Leaf Nodes -
+                const size_t end = std::ceil(visables.elements.size() / 4.0f);
+                for (size_t I = 0; I < end; I+= 4)
+                {
+                    SceneBVHBuild::SceneNode node;
+
+                    for (size_t II = I; II < Min(end, I + 4); II++ )
+                        node.boundingVolume = node.boundingVolume + visables[data.elements[II].handle].boundingSphere;
+
+                    node.elements   = data.elements.begin() + I;
+                    node.count      = visables.elements.size() % 4 + 1;
+                    node.Leaf       = true;
+
+                    data.sceneNodes.push_back(node);
+                }
+
+                // Phase 2 - Build Interior Nodes -
+                uint begin = 0;
+                while (true)
+                {
+                    const uint end  = data.sceneNodes.size();
+                    const uint temp = end;
+
+                    if (end - begin > 1)
+                    {
+                        for (uint I = begin; I < end; I += 4)
+                        {
+                            SceneBVHBuild::SceneNode node;
+
+                            for (size_t II = I; II < Min(end, I + 4); II++)
+                                node.boundingVolume += data.sceneNodes[II].boundingVolume;
+
+                            node.children = data.sceneNodes.begin() + I;
+                            node.count = (end - begin) % 4;
+                            node.Leaf = false;
+
+                            data.sceneNodes.push_back(node);
+                        }
+                    }
+                    else
+                        break;
+                    begin = temp;
+                }
+
+                data.root = data.sceneNodes.begin() + begin;
+			}
+		);
+    }
+
+
+    /************************************************************************************************/
 
 
     PointLightGatherTask& GraphicScene::GetPointLights(UpdateDispatcher& dispatcher, iAllocator* tempMemory) const

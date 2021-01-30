@@ -253,6 +253,7 @@ namespace FlexKit
 		size_t size		= 0;
 		byte*  Buffer	= 0;
 
+
 		struct AllocatorAdapter : public iAllocator
 		{	
 			explicit AllocatorAdapter(StackAllocator* Allocator = nullptr) noexcept :

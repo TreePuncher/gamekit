@@ -131,26 +131,27 @@ int main(int argc, char* argv[])
         //app.PushArgument(argv[I]);
     }
 
-
-    auto* allocator = CreateEngineMemory();
-    EXITSCOPE(ReleaseEngineMemory(allocator));
-
-    FlexKit::FKApplication app{ allocator, Max(std::thread::hardware_concurrency(), 1u) - 1 };
-    app.GetCore().FrameLock = true;
-
-    FK_LOG_INFO("Set initial PlayState state.");
-    auto& base = app.PushState<BaseState>(app);
-
-    switch (applicationMode)
+    try
     {
+        auto* allocator = CreateEngineMemory();
+        EXITSCOPE(ReleaseEngineMemory(allocator));
+
+        FlexKit::FKApplication app{ allocator, Max(std::thread::hardware_concurrency(), 1u) - 1 };
+        app.GetCore().FrameLock = false;
+
+        FK_LOG_INFO("Set initial PlayState state.");
+        auto& base = app.PushState<BaseState>(app);
+
+        switch (applicationMode)
+        {
         case ApplicationMode::Client:
         {
-            auto& NetState      = app.PushState<NetworkState>(base);
-            auto& clientState   = app.PushState<GameClientState>(base, NetState, ClientGameDescription{ 1337, server.c_str(), name.c_str() });
+            auto& NetState = app.PushState<NetworkState>(base);
+            auto& clientState = app.PushState<GameClientState>(base, NetState, ClientGameDescription{ 1337, server.c_str(), name.c_str() });
         }   break;
         case ApplicationMode::Host:
         {
-            auto& NetState  = app.PushState<NetworkState>(base);
+            auto& NetState = app.PushState<NetworkState>(base);
             auto& hostState = app.PushState<GameHostState>(base, NetState);
         }   break;
         case ApplicationMode::TextureStreamTestMode:
@@ -165,23 +166,28 @@ int main(int argc, char* argv[])
         {
             app.PushState<GraphicsTest>(base);
         }   break;
-    default:
-        return -1;
-    }
+        default:
+            return -1;
+        }
 
-    try
-    {
-        FK_LOG_2("Running application.");
-        app.Run();
-        FK_LOG_2("Application shutting down.");
+        try
+        {
+            FK_LOG_2("Running application.");
+            app.Run();
+            FK_LOG_2("Application shutting down.");
 
-        FK_LOG_2("Cleanup Startup.");
-        app.Release();
-        FK_LOG_2("Cleanup Finished.");
+            FK_LOG_2("Cleanup Startup.");
+            app.Release();
+            FK_LOG_2("Cleanup Finished.");
+        }
+        catch (...)
+        {
+            return -1;
+        };
     }
     catch (...)
     {
-        return -1;
+        return -2;
     };
 
     return 0;

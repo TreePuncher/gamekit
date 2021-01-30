@@ -413,8 +413,8 @@ namespace FlexKit
 
                 data.readbackBuffer             = feedbackReturnBuffer;
 
-                builder.SetDebugName(data.feedbackBuffers[0], "feedbackBuffer");
-                builder.SetDebugName(data.feedbackBuffers[1], "feedbackBufferCompressed");
+                builder.SetDebugName(data.feedbackBuffers[0], "feedbackBuffer0");
+                builder.SetDebugName(data.feedbackBuffers[1], "feedbackBuffer1");
                 builder.SetDebugName(data.feedbackCounters, "feedbackCounters");
                 builder.SetDebugName(data.feedbackBlockSizes, "feedbackBlockSizes");
                 builder.SetDebugName(data.feedbackBlockOffsets, "feedbackBlockOffsets");
@@ -590,24 +590,11 @@ namespace FlexKit
 
                 auto CompressionPass = [&](auto Source, auto Destination)
                 {
-                    ctx.SetComputeRootSignature(resources.renderSystem().Library.RSDefault);
-
                     DescriptorHeap uavCompressHeap;
                     uavCompressHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 3, &allocator);
                     uavCompressHeap.SetUAVBuffer(ctx, 0, resources.WriteUAV(data.feedbackCounters, ctx));
                     uavCompressHeap.SetUAVStructured(ctx, 1, resources.GetResource(Source), sizeof(uint32_t[2]));
                     uavCompressHeap.SetUAVBuffer(ctx, 2, resources.ReadWriteUAV(data.feedbackBlockSizes, ctx));
-
-                    const uint32_t blockCount = (MEGABYTE * 2) / (1024 * sizeof(uint32_t[2]));
-
-                    ctx.AddUAVBarrier(resources.GetResource(Source));
-                    ctx.AddUAVBarrier(resources.GetResource(data.feedbackCounters));
-
-                    ctx.SetComputeDescriptorTable(4, uavCompressHeap);
-                    ctx.Dispatch(resources.GetPipelineState(TEXTUREFEEDBACKCOMPRESSOR), { blockCount, 1, 1 });
-
-                    ctx.AddUAVBarrier(resources.GetResource(Destination));
-                    ctx.AddUAVBarrier(resources.GetResource(data.feedbackBlockSizes));
 
                     // Prefix Sum
                     DescriptorHeap srvPreFixSumHeap;
@@ -619,10 +606,6 @@ namespace FlexKit
                     uavPreFixSumHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 1, &allocator);
                     uavPreFixSumHeap.SetUAVStructured(ctx, 0, resources.ReadWriteUAV(data.feedbackBlockOffsets, ctx), sizeof(uint32_t), 0);
                     uavPreFixSumHeap.NullFill(ctx, 1);
-
-                    ctx.SetComputeDescriptorTable(3, srvPreFixSumHeap);
-                    ctx.SetComputeDescriptorTable(4, uavPreFixSumHeap);
-                    ctx.Dispatch(resources.GetPipelineState(TEXTUREFEEDBACKPREFIXSUMBLOCKSIZES), { 1 , 1, 1 });
 
                     //  Merge partial blocks
                     DescriptorHeap srvMergeHeap;
@@ -636,26 +619,38 @@ namespace FlexKit
                     uavMergeHeap.SetUAVBuffer(ctx, 0, resources.ReadWriteUAV(Destination, ctx));
                     uavMergeHeap.SetUAVBuffer(ctx, 1, resources.ReadWriteUAV(data.feedbackCounters, ctx));
 
+                    const uint32_t blockCount = (MEGABYTE * 2) / (1024 * sizeof(uint32_t[2]));
+
+                    ctx.SetComputeRootSignature(resources.renderSystem().Library.RSDefault);
+
+                    ctx.AddUAVBarrier();
+
+                    ctx.SetComputeDescriptorTable(4, uavCompressHeap);
+                    ctx.Dispatch(resources.GetPipelineState(TEXTUREFEEDBACKCOMPRESSOR), { blockCount, 1, 1 });
+
+                    ctx.AddUAVBarrier();
+
+                    ctx.SetComputeDescriptorTable(3, srvPreFixSumHeap);
+                    ctx.SetComputeDescriptorTable(4, uavPreFixSumHeap);
+                    ctx.Dispatch(resources.GetPipelineState(TEXTUREFEEDBACKPREFIXSUMBLOCKSIZES), { 1 , 1, 1 });
+
                     ctx.SetComputeDescriptorTable(3, srvMergeHeap);
                     ctx.SetComputeDescriptorTable(4, uavMergeHeap);
 
-                    ctx.AddUAVBarrier(resources.GetResource(Destination));
-                    ctx.AddUAVBarrier(resources.GetResource(data.feedbackBlockOffsets));
+                    ctx.AddUAVBarrier();
 
                     ctx.Dispatch(resources.GetPipelineState(TEXTUREFEEDBACKMERGEBLOCKS), { blockCount , 1, 1 });
-
-                    ctx.AddUAVBarrier(resources.GetResource(Destination));
-                    
                     ctx.Dispatch(resources.GetPipelineState(TEXTUREFEEDBACKSETBLOCKSIZES), { 1, 1, 1 });
 
-                    ctx.AddUAVBarrier(resources.GetResource(Destination));
-                    ctx.AddUAVBarrier(resources.GetResource(data.feedbackBlockSizes));
+                    ctx.AddUAVBarrier();
                 };
 
                 const size_t passCount = 3;
                 for (size_t itr = 0; itr < passCount; itr++) {
                     CompressionPass(data.feedbackBuffers[itr % 2], data.feedbackBuffers[(itr + 1) % 2]);
                 }
+
+                
                 // Write out
                 ctx.CopyBufferRegion(
                     {   resources.GetObjectResource(resources.ReadUAV(data.feedbackCounters, DRS_Read, ctx)) ,
@@ -706,9 +701,9 @@ namespace FlexKit
                 auto Duration   = std::chrono::duration_cast<std::chrono::microseconds>(After - Before);
 
                 textureStreamEngine.updateTime = float(Duration.count()) / 1000.0f; );
-        if (!buffer) {
+
+        if (!buffer)
             return;
-        }
 
         uint32_t timePointA = 0;
         uint32_t timePointB = 0;
@@ -727,7 +722,7 @@ namespace FlexKit
 
         if (requestCount)
         {
-            const auto requestSize = requestCount * sizeof(uint2) - 2;
+            const auto requestSize = requestCount * sizeof(uint2);
             requests = reinterpret_cast<gpuTileID*>(threadLocalAllocator.malloc(requestSize));
             memcpy(requests, (std::byte*)buffer + 64, requestSize);
         }
@@ -767,7 +762,8 @@ namespace FlexKit
         const auto stateUpdateRes     = textureStreamEngine.UpdateTileStates(requests, requests + uniqueCount, &threadLocalAllocator);
         const auto blockAllocations   = textureStreamEngine.AllocateTiles(stateUpdateRes.begin(), stateUpdateRes.end());
 
-        textureStreamEngine.PostUpdatedTiles(blockAllocations, *allocator);
+        if(blockAllocations)
+            textureStreamEngine.PostUpdatedTiles(blockAllocations, *allocator);
     }
 
 
@@ -1008,7 +1004,6 @@ namespace FlexKit
             const auto asset            = GetResourceAsset(resource);
 
             if (!asset) {
-                __debugbreak();
                 continue;
             }
 

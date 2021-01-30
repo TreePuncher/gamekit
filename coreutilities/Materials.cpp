@@ -93,9 +93,6 @@ namespace FlexKit
             const auto [MIPCount, DDSTextureWH, format] = GetDDSInfo(textureAsset, readContext);
             const auto resourceStrID = GetResourceStringID(textureAsset);
 
-            if(resourceStrID)
-                std::cout << resourceStrID << "\n";
-
             if (DDSTextureWH.Product() == 0)
                 return;
 
@@ -107,7 +104,7 @@ namespace FlexKit
                     1,
                     ResourceAllocationType::Tiled));
 
-            renderSystem.SetDebugName(textureResource, "Texture");
+            renderSystem.SetDebugName(textureResource, "Virtual Texture");
 
             streamEngine.BindAsset(textureAsset, textureResource);
 

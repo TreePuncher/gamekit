@@ -126,20 +126,18 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     const float3 B              = normalize(cross(N, T));
 	const float4 MRIA			= MRIABuffer.Sample(NearestPoint, UV);
 
-    const float3 V          = -GetViewVector_VS(UV);
-    const float3 positionVS = GetViewSpacePosition(UV, depth);
+    const float3 V              = -GetViewVector_VS(UV);
+    const float3 positionVS     = GetViewSpacePosition(UV, depth);
+    const float3 positionWS     = GetWorldSpacePosition(UV, depth);
 
     const float roughness     = MRIA.g;
     const float ior           = MRIA.b;
-	const float metallic      = MRIA.r;
+	const float metallic      = MRIA.r > 0.1f ? 1.0f : 0.0f;
 	const float3 albedo       = Albedo.rgb; 
 
-    const float Ks = lerp(0, 0.4f, saturate(Albedo.w));
-    const float Kd = (1.0 - Ks) * (1.0 - metallic);
-
-	const uint2	lightBin	    = UV * uint2(38, 18);// - uint2( 1, 1 );
-
-    const float NdotV = saturate(dot(N.xyz, V));
+    const float Ks      = lerp(0, 0.4f, saturate(Albedo.w));
+    const float Kd      = (1.0 - Ks) * (1.0 - metallic);
+    const float NdotV   = saturate(dot(N.xyz, V));
 
     const uint clusterKey       = clusterIndex.Load(uint3(px.xy, 0));
     const Cluster localCluster  = clusters[clusterKey];
@@ -149,7 +147,8 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     float4 color = float4(albedo * ambientLight, 1);
     for(float I = 0; I < localLightCount; I++)
     {
-        const PointLight light  = pointLights[lightLists[localLightList + I]];
+        const uint pointLightIdx    = lightLists[localLightList + I];
+        const PointLight light      = pointLights[pointLightIdx];
 
         const float3 Lc			= light.KI.rgb;
         const float3 Lp         = mul(View, float4(light.PR.xyz, 1));
@@ -170,9 +169,9 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
         }
         
         #if 1
-        const float3 diffuse    = albedo * F_d(V, H, L, N.xyz, roughness);
+            const float3 diffuse    = albedo * F_d(V, H, L, N.xyz, roughness);
         #else
-        const float3 diffuse    = NdotL * albedo * INV_PI;
+            const float3 diffuse    = NdotL * albedo * INV_PI;
         #endif
 
         #if 1
@@ -180,52 +179,60 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
         #else
             const float3 specular = F_r(V, H, L, N.xyz, roughness);
         #endif
-        #if 1
-        
-        const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
-        color += saturate(float4(colorSample * Lc, 0 ));
+
+        #if 0   // Non shadowmapped pass
+            const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
+            color += saturate(float4(colorSample * Lc, 0 ));
         #else
+            const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
 
-        const float3 colorSample = (diffuse * Kd + specular * Ks) * La * NdotL;
+            const float3 mapVectors[] = {
+                float3(-1,  0,  0), // left
+                float3( 1,  0,  0), // right
+                float3( 0,  1,  0), // top
+                float3( 0, -1,  0), // bottom
+                float3( 0,  0,  1), // forward
+                float3( 0,  0, -1), // backward
+            };
 
-		const float3 mapVectors[] = {
-			float3(-1,  0,  0), // left
-			float3( 1,  0,  0), // right
-			float3( 0,  1,  0), // top
-			float3( 0, -1,  0), // bottom
-			float3( 0,  0,  1), // forward
-			float3( 0,  0, -1), // backward
-		};
+            int fieldID = 0;
+            float a = -1.0f;
+            
+            [unroll(6)]
+            for(int II = 0; II < 6; II++){
+                const float b = dot(mapVectors[II], mul(ViewI, -L));
 
-		int fieldID = 0;
-		float a = -1.0f;
-		
-		[unroll(6)]
-		for(int II = 0; II < 6; II++){
-			const float b = dot(mapVectors[II], mul(ViewI, -L));
+                if(b > a){
+                    fieldID = II;
+                    a = b;
+                }
+            }
 
-			if(b > a){
-				fieldID = II;
-				a = b;
-			}
-		}
+            const float4 lightPosition_DC 	= mul(pl_PV[6 * pointLightIdx + fieldID], float4(positionWS.xyz, 1));
+            const float3 lightPosition_PS 	= lightPosition_DC / lightPosition_DC.a;
 
-		const float4 lightPosition_DC 	= mul(pl_PV[6 * I + fieldID], float4(positionW.xyz, 1));
-		const float3 lightPosition_PS 	= lightPosition_DC / lightPosition_DC.a;
+            if( lightPosition_PS.z < 0.0f || lightPosition_PS.z > 1.0f || 
+                lightPosition_PS.x > 1.0f || lightPosition_PS.x < -1.0f ||
+                lightPosition_PS.y > 1.0f || lightPosition_PS.y < -1.0f )
+                continue;
 
-		if( lightPosition_PS.z < 0.0f || lightPosition_PS.z > 1.0f || 
-			lightPosition_PS.x > 1.0f || lightPosition_PS.x < -1.0f ||
-			lightPosition_PS.y > 1.0f || lightPosition_PS.y < -1.0f )
-			continue;
+            const float2 shadowMapUV 	  	= float2(lightPosition_PS.x / 2 + 0.5f, 0.5f - lightPosition_PS.y / 2);
+            const float shadowSample 		= shadowMaps[pointLightIdx].Sample(BiLinear, mul(ViewI, L) * float3( 1, -1, -1));
+            const float depth 				= lightPosition_PS.z;
 
-		const float2 shadowMapUV 	  	= float2( lightPosition_PS.x / 2 + 0.5f, 0.5f - lightPosition_PS.y / 2);
-		const float shadowSample 		= shadowMaps[I].Sample(BiLinear, mul(ViewI, L) * float3( 1, -1, -1));
-		const float depth 				= lightPosition_PS.z;
+            const float bias        = clamp(0.0001 * tan(acos(dot(N.xyz, L))), 0.0, 0.01);
+            const float visibility  = saturate(depth < shadowSample + bias ? 1.0f : 0.0f);
+            
+            float4 Colors[] = {
+                float4(1, 0, 0, 0), 
+                float4(0, 1, 0, 0), 
+                float4(0, 0, 1, 0), 
+                float4(1, 1, 0, 1), 
+                float4(0, 1, 1, 1), 
+                float4(1, 0, 1, 1), 
+            };
 
-		const float bias        = clamp(0.0001 * tan(acos(dot(N.xyz, L))), 0.0, 0.01);
-		const float visibility  = saturate(depth < shadowSample + bias ? 1.0f : 0.0f);
-		
-        color += float4(colorSample * Lc * visibility, 0 );
+            color += float4(saturate(colorSample * Lc * visibility), 0 );
         #endif
     }
 
