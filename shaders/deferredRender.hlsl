@@ -265,7 +265,6 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     //else
         return pow(Colors[clusterKey % 8], 1.0f);
         //return pow(Colors[GetSliceIdx(-positionVS.z) % 6], 1.0f);
-        //return pow(Colors[localLightCount % 7], 1.0f);
         //return float(localLightCount) / float(lightCount);
         //return float4(-positionVS.z, -positionVS.z, -positionVS.z, 1);
 #else

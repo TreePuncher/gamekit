@@ -100,16 +100,18 @@ namespace FlexKit
 	struct EngineMemory
 	{
 		// Allocators
-		BlockAllocator	BlockAllocator;
-		StackAllocator	TempAllocator;
-		StackAllocator	LevelAllocator;
+		BlockAllocator	    BlockAllocator;
+		StackAllocator	    TempAllocator;
+		StackAllocator	    LevelAllocator;
+        ThreadSafeAllocator TempAllocatorMT;
 
 		EngineMemory_DEBUG	Debug;
 
 
-		auto GetBlockMemory() -> decltype(BlockAllocator)&	 { return BlockAllocator; }
-		auto GetLevelMemory() -> decltype(LevelAllocator)&	 { return LevelAllocator; }
-		auto GetTempMemory()  -> decltype(TempAllocator)&	 { return TempAllocator;  }
+		auto GetBlockMemory() -> decltype(BlockAllocator)&	    { return BlockAllocator; }
+		auto GetLevelMemory() -> decltype(LevelAllocator)&	    { return LevelAllocator; }
+		auto GetTempMemory()  -> decltype(TempAllocator)&	    { return TempAllocator;  }
+		auto GetTempMemoryMT()  -> decltype(TempAllocatorMT)&	{ return TempAllocatorMT; }
 
 
 		// Memory Pools
@@ -171,9 +173,10 @@ namespace FlexKit
 
 		EngineMemory*			Memory;
 
-		BlockAllocator& GetBlockMemory() { return  Memory->BlockAllocator; }
-		StackAllocator& GetLevelMemory() { return  Memory->LevelAllocator; }
-		StackAllocator& GetTempMemory()  { return  Memory->TempAllocator; }
+		BlockAllocator&         GetBlockMemory()    { return  Memory->BlockAllocator; }
+		StackAllocator&         GetLevelMemory()    { return  Memory->LevelAllocator; }
+		StackAllocator&         GetTempMemory()     { return  Memory->TempAllocator; }
+		ThreadSafeAllocator&    GetTempMemoryMT()   { return  Memory->GetTempMemoryMT(); }
 
 		EngineMemory_DEBUG* GetDebugMemory() { return &Memory->Debug; }
 	};

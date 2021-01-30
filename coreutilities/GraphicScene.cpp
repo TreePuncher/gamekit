@@ -991,51 +991,59 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    BuildBVHTask& GraphicScene::GetSceneBVH(UpdateDispatcher& dispatcher, iAllocator* temporary) const
+    BuildBVHTask& GraphicScene::GetSceneBVH(UpdateDispatcher& dispatcher, UpdateTask& transformDependency, iAllocator* frameTemporary) const
     {
         return dispatcher.Add<SceneBVHBuild>(
 			[&](UpdateDispatcher::UpdateBuilder& builder, SceneBVHBuild& data)
 			{
                 builder.SetDebugString("BVH");
+                builder.AddInput(transformDependency);
 			},
-			[this, temporary = temporary](SceneBVHBuild& data, iAllocator& threadAllocator)
+			[this, frameTemporary = frameTemporary](SceneBVHBuild& data, iAllocator& threadAllocator)
 			{
                 FK_LOG_9("Build BVH");
 
                 auto& visables = SceneVisibilityComponent::GetComponent();
 
-                data.elements   = Vector<SceneBVHBuild::SceneElement>{ temporary, visables.elements.size() };
-                data.sceneNodes = Vector<SceneBVHBuild::SceneNode>{ temporary };
+                auto elements   = Vector<SceneBVHBuild::SceneElement>{ &threadAllocator, visables.elements.size() };
+                auto sceneNodes = Vector<SceneBVHBuild::SceneNode>{ &threadAllocator };
 
                 for (auto& visable : visables)
                 {
                     const auto POS  = GetPositionW(visable.componentData.node);
                     const auto ID   = CreateMortonCode({ (uint)POS.x, (uint)POS.y, (uint)POS.z });
 
-                    data.elements.push_back({ ID, visable.handle });
+                    elements.push_back({ ID, visable.handle });
                 }
 
                 // Phase 1 - Build Leaf Nodes -
-                const size_t end = std::ceil(visables.elements.size() / 4.0f);
-                for (size_t I = 0; I < end; I+= 4)
+                const size_t end            = std::ceil(visables.elements.size() / 4.0f);
+                const size_t elementCount   = visables.elements.size();
+
+                for (size_t I = 0; I < end; ++I)
                 {
                     SceneBVHBuild::SceneNode node;
 
-                    for (size_t II = I; II < Min(end, I + 4); II++ )
-                        node.boundingVolume = node.boundingVolume + visables[data.elements[II].handle].boundingSphere;
+                    size_t end = Min(elementCount, 4 * I + 4);
 
-                    node.elements   = data.elements.begin() + I;
-                    node.count      = visables.elements.size() % 4 + 1;
+                    for (size_t II = 4 * I; II < Min(elementCount, 4 * I + 4); II++) {
+                        const size_t idx    = II;
+                        auto& visable       =  visables[elements[idx].handle];
+                        node.boundingVolume = node.boundingVolume + visable.boundingSphere;
+                    }
+
+                    node.children   = 4 * I;
+                    node.count      = end - 4 * I;
                     node.Leaf       = true;
 
-                    data.sceneNodes.push_back(node);
+                    sceneNodes.push_back(node);
                 }
 
                 // Phase 2 - Build Interior Nodes -
                 uint begin = 0;
                 while (true)
                 {
-                    const uint end  = data.sceneNodes.size();
+                    const uint end  = sceneNodes.size();
                     const uint temp = end;
 
                     if (end - begin > 1)
@@ -1045,13 +1053,13 @@ namespace FlexKit
                             SceneBVHBuild::SceneNode node;
 
                             for (size_t II = I; II < Min(end, I + 4); II++)
-                                node.boundingVolume += data.sceneNodes[II].boundingVolume;
+                                node.boundingVolume += sceneNodes[II].boundingVolume;
 
-                            node.children = data.sceneNodes.begin() + I;
-                            node.count = (end - begin) % 4;
-                            node.Leaf = false;
+                            node.children   = I;
+                            node.count      = (end - begin) % 4;
+                            node.Leaf       = false;
 
-                            data.sceneNodes.push_back(node);
+                            sceneNodes.push_back(node);
                         }
                     }
                     else
@@ -1059,7 +1067,15 @@ namespace FlexKit
                     begin = temp;
                 }
 
-                data.root = data.sceneNodes.begin() + begin;
+
+                // publish Data
+                data.elements   = Vector<SceneBVHBuild::SceneElement>{ frameTemporary };
+                data.sceneNodes = Vector<SceneBVHBuild::SceneNode>{ frameTemporary };
+
+                data.elements   = elements;
+                data.sceneNodes = sceneNodes;
+
+                data.root       = begin;
 			}
 		);
     }
@@ -1105,29 +1121,35 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    PointLightShadowGatherTask& GraphicScene::GetPointLightShadows(UpdateDispatcher& dispatcher, iAllocator* tempMemory) const
+    PointLightShadowGatherTask& GraphicScene::GetVisableLights(UpdateDispatcher& dispatcher, CameraHandle camera, BuildBVHTask& bvh, iAllocator* temporaryMemory) const
     {
         return dispatcher.Add<PointLightShadowGather>(
 			[&](UpdateDispatcher::UpdateBuilder& builder, PointLightShadowGather& data)
 			{
                 builder.SetDebugString("Point Light Shadow Gather");
+                builder.AddInput(bvh);
+
+                data.pointLightShadows = Vector<PointLightHandle>{ temporaryMemory };
 			},
-			[this](PointLightShadowGather& data, iAllocator& threadAllocator)
+            [this, &bvh = bvh.GetData(), camera = camera](PointLightShadowGather& data, iAllocator& threadAllocator)
 			{
                 FK_LOG_9("Point Light Shadow Gather");
+                Vector<PointLightHandle> pointLightShadows{ &threadAllocator };
+                auto& visabilityComponent = SceneVisibilityComponent::GetComponent();
 
-                Vector<PointLightShadowHandle>	pointLightShadows{ &threadAllocator };
-                auto& visables = SceneVisibilityComponent::GetComponent();
-
-                for (auto entity : sceneEntities)
-                {
-                    Apply(*visables[entity].entity,
-                        [&](PointLightView&             pointLight,
-                            PointLightShadowMapView&    shadowMap)
-                        {
-                            pointLightShadows.emplace_back(shadowMap.handle);
-                        });
-                }
+                const auto frustum = GetFrustum(camera);
+            
+                TraverseBVH(bvh, frustum,
+                    [&](VisibilityHandle intersector)
+                    {
+                        GameObject& go = *visabilityComponent[intersector].entity;
+                        Apply(go,
+                            [&](PointLightView& light)
+                            {
+                                pointLightShadows.push_back(light);
+                            }
+                        );
+                    });
 
                 data.pointLightShadows = pointLightShadows;
 			}
@@ -1136,6 +1158,45 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+    PointLightUpdate& GraphicScene::UpdatePointLights(UpdateDispatcher& dispatcher, BuildBVHTask& bvh, PointLightShadowGatherTask& visablePointLights, iAllocator* persistentMemory) const
+    {
+        return dispatcher.Add<PointLightUpdate_DATA>(
+			[&](UpdateDispatcher::UpdateBuilder& builder, PointLightUpdate_DATA& data)
+			{
+                builder.SetDebugString("Point Light Shadow Gather");
+                builder.AddInput(bvh);
+			},
+            [this, &bvh = bvh.GetData(), &visablePointLights = visablePointLights.GetData().pointLightShadows](PointLightUpdate_DATA& data, iAllocator& threadAllocator)
+			{
+                auto& visables  = SceneVisibilityComponent::GetComponent();
+                auto& lights    = PointLightComponent::GetComponent();
+
+                for (auto visableLight : visablePointLights)
+                {
+                    auto& light         = lights[visableLight];
+                    const float3 POS    = GetPositionW(light.Position);
+                    const float  r      = light.R;
+                    AABB lightAABB{POS - r, POS + r};
+
+                    Vector<VisibilityHandle> PVS{ &threadAllocator };
+
+                    TraverseBVH(bvh, lightAABB,
+                        [&](VisibilityHandle intersector)
+                        {
+                            PVS.push_back(intersector);
+                        });
+
+                    auto& previousPVS = light.shadowState->visableObjects;
+                    // Compare previousPVS with current PVS to see if shadow map needs update
+                }
+			}
+		);
+    }
+
+
+    /************************************************************************************************/
 
 
 	size_t	GraphicScene::GetPointLightCount()

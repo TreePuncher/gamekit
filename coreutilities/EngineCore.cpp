@@ -67,6 +67,7 @@ namespace FlexKit
         new(&Memory->BlockAllocator)    BlockAllocator();
         new(&Memory->LevelAllocator)    StackAllocator();
         new(&Memory->TempAllocator)     StackAllocator();
+        new(&Memory->TempAllocatorMT)   ThreadSafeAllocator(Memory->TempAllocator);
 
 		Memory->BlockAllocator.Init(BAdesc);
 		Memory->LevelAllocator.Init(Memory->LevelMem,	LEVELBUFFERSIZE);

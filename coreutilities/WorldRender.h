@@ -731,7 +731,7 @@ namespace FlexKit
 		}
 
 
-        DrawOutputs& DrawScene(UpdateDispatcher& dispatcher, FrameGraph& frameGraph, DrawSceneDescription& drawSceneDesc, WorldRender_Targets targets, iAllocator* temporary);
+        DrawOutputs& DrawScene(UpdateDispatcher& dispatcher, FrameGraph& frameGraph, DrawSceneDescription& drawSceneDesc, WorldRender_Targets targets, iAllocator* persistent, ThreadSafeAllocator& temporary);
 
 
 		DepthPass& DepthPrePass(

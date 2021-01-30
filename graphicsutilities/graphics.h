@@ -4028,14 +4028,6 @@ private:
 	/************************************************************************************************/
 
 
-	struct PointLight
-	{
-		float3 K;
-		float I, R;
-
-		NodeHandle Position;
-	};
-
 	struct PointLightEntry
 	{
 		float4 POS;// + R 
@@ -4059,14 +4051,6 @@ private:
 	};
 
 	struct Skeleton;
-
-	enum LightBufferFlags
-	{
-		Dirty  = 0x01,
-		Unused = 0x02,
-		Clean  = 0x00
-	};
-
 
 	const size_t PLB_Stride  = sizeof(float[8]);
 	const size_t SPLB_Stride = sizeof(float[12]);
@@ -4474,17 +4458,6 @@ private:
 		uint64_t			vertexStride	= 0;
 		VertexBufferHandle	vertexBuffer	= InvalidHandle_t;
 	};
-
-
-	/************************************************************************************************/
-
-
-	typedef Vector<PointLight>			PLList;
-	typedef Vector<PointLightEntry>		PLBuffer;
-	typedef Vector<SpotLight>			SLList;
-	typedef Vector<SpotLightEntry>		SLBuffer;
-	typedef Vector<char>				LightFlags;
-	typedef Vector<char*>				LightIDs;
 
 
 	/************************************************************************************************/
