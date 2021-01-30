@@ -581,9 +581,6 @@ namespace FlexKit
                         ctx.SetGraphicsConstantBufferView(1, constants);
                         ctx.DrawIndexed(triMesh->IndexCount);
                     }
-
-                    ctx.AddUAVBarrier(resources.GetResource(data.feedbackBuffers[0]));
-                    ctx.AddUAVBarrier(resources.GetResource(data.feedbackCounters));
                 }
 
                 ctx.TimeStamp(timeStats, 1);
@@ -622,8 +619,6 @@ namespace FlexKit
                     const uint32_t blockCount = (MEGABYTE * 2) / (1024 * sizeof(uint32_t[2]));
 
                     ctx.SetComputeRootSignature(resources.renderSystem().Library.RSDefault);
-
-                    ctx.AddUAVBarrier();
 
                     ctx.SetComputeDescriptorTable(4, uavCompressHeap);
                     ctx.Dispatch(resources.GetPipelineState(TEXTUREFEEDBACKCOMPRESSOR), { blockCount, 1, 1 });

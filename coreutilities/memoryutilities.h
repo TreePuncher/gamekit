@@ -95,6 +95,56 @@ namespace FlexKit
 	};
 
 
+    class ThreadSafeAllocator : public iAllocator
+    {
+    public:
+        ThreadSafeAllocator(iAllocator* IN_allocator) :
+            allocator{ IN_allocator } {}
+
+        void* malloc(size_t s)
+        {
+            std::scoped_lock{ m };
+            return allocator->malloc(s);
+        }
+
+        void  free(void* _ptr)
+        {
+            std::scoped_lock{ m };
+            allocator->free(_ptr);
+        }
+
+        void* _aligned_malloc(size_t s, size_t A = 0x10)
+        {
+            std::scoped_lock{ m };
+            return allocator->_aligned_malloc(s, A);
+        }
+
+        void  _aligned_free(void* _ptr)
+        {
+            std::scoped_lock{ m };
+            return allocator->_aligned_free(_ptr);
+        }
+
+        void  clear(void)
+        {
+            std::scoped_lock{ m };
+            return allocator->clear();
+        }
+
+        void* malloc_Debug(size_t s, const char* MD, size_t MDSectionSize)
+        {
+            std::scoped_lock{ m };
+            return allocator->malloc_Debug(s, MD, MDSectionSize);
+        }
+
+        operator iAllocator* () { return this; }
+
+    private:
+
+        iAllocator* allocator;
+        std::mutex  m;
+    };
+
 	/************************************************************************************************/
 
 

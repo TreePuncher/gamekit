@@ -168,6 +168,36 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    enum LightStateFlags
+    {
+        Dirty = 0x00,
+        Clean = 0x01,
+        Unused = 0x02,
+    };
+
+
+    struct CubeMapState
+    {
+        uint                        shadowMapSize;
+        ResourceHandle              shadowMap;
+        Vector<VisibilityHandle>    visableObjects;
+    };
+
+
+    struct PointLight
+    {
+        float3 K;
+        float I, R;
+
+        NodeHandle      Position;
+        ResourceHandle  shadowMap = InvalidHandle_t;
+
+        bool                forceDisableShadowMapping = false;
+        LightStateFlags     state;
+        CubeMapState*       shadowState;
+    };
+
+
     class PointLightEventHandler
     {
     public:
@@ -228,6 +258,11 @@ namespace FlexKit
 		bool			transparent = false;
 
 		BoundingSphere	boundingSphere = { 0, 0, 0, 0 }; // model space
+
+        AABB            GetAABB() const
+        {
+            return { boundingSphere.xyz() - boundingSphere.w, boundingSphere.xyz() + boundingSphere.w };
+        }
 	};
 
 	using SceneVisibilityComponent = BasicComponent_t<VisibilityFields, VisibilityHandle, SceneVisibilityComponentID>;
@@ -412,8 +447,8 @@ namespace FlexKit
 
     struct PointLightShadowGather
     {
-        Vector<PointLightShadowHandle>	pointLightShadows;
-        const GraphicScene*             scene;
+        Vector<PointLightHandle>	pointLightShadows;
+        const GraphicScene*         scene;
     };
 
     struct SceneBVHBuild
@@ -438,22 +473,61 @@ namespace FlexKit
         struct SceneNode {
             AABB boundingVolume;
 
-            union {
-                SceneNode*      children;
-                SceneElement*   elements;
-            };
+            uint16_t    children    = 0;
+            uint8_t     count       = 0;
+            bool        Leaf        = false;
+        };
 
-            size_t  count   = 0;
-            bool    Leaf    = false;
-        }* root = nullptr;
+        uint16_t                root;
+        Vector<SceneElement>    elements;
+        Vector<SceneNode>       sceneNodes;
+    };
 
-        Vector<SceneElement>  elements;
-        Vector<SceneNode>     sceneNodes;
+    template<typename TY_BV, typename TY_FN_OnIntersection>
+    void TraverseBVHNode(const SceneBVHBuild& BVH, const SceneBVHBuild::SceneNode& node, const TY_BV& bv, TY_FN_OnIntersection& IntersectionHandler)
+    {
+        static auto& visabilityComponent = SceneVisibilityComponent::GetComponent();
+
+        if (!Intersects(bv, node.boundingVolume))
+            return;
+
+        if (node.Leaf)
+        {
+            const auto end = node.children + node.count;
+
+            for (auto childIdx = node.children; childIdx < end; ++childIdx)
+            {
+                const auto child = BVH.elements[childIdx];
+                const auto aabb = visabilityComponent[child.handle].GetAABB();
+
+                if (Intersects(bv, aabb))
+                    IntersectionHandler(child.handle);
+            }
+        }
+        else
+        {
+            const auto end = node.children + node.count;
+
+            for (auto child = node.children; child < end; ++child)
+                TraverseBVHNode(BVH, BVH.sceneNodes[child], bv, IntersectionHandler);
+        }
+    }
+
+    template<typename TY_BV, typename TY_FN_OnIntersection>
+    void TraverseBVH(const SceneBVHBuild& BVH, const TY_BV& bv, TY_FN_OnIntersection IntersectionHandler)
+    {
+        TraverseBVHNode(BVH, BVH.sceneNodes[BVH.root], bv, IntersectionHandler);
+    }
+
+    struct PointLightUpdate_DATA
+    {
+
     };
 
     using PointLightGatherTask          = UpdateTaskTyped<PointLightGather>;
     using PointLightShadowGatherTask    = UpdateTaskTyped<PointLightShadowGather>;
     using BuildBVHTask                  = UpdateTaskTyped<SceneBVHBuild>;
+    using PointLightUpdate              = UpdateTaskTyped<PointLightUpdate_DATA>;
 
 	class GraphicScene
 	{
@@ -479,11 +553,13 @@ namespace FlexKit
 
 		Vector<PointLightHandle>    FindPointLights(const Frustum& f, iAllocator* tempMemory) const;
 
-        BuildBVHTask&               GetSceneBVH(UpdateDispatcher& disatcher, iAllocator* tempMemory) const;
-        PointLightGatherTask&	    GetPointLights(UpdateDispatcher& disatcher, iAllocator* tempMemory) const;
+        BuildBVHTask&               GetSceneBVH(UpdateDispatcher&, UpdateTask& transformDependency, iAllocator* tempMemory) const;
+        PointLightGatherTask&	    GetPointLights(UpdateDispatcher&, iAllocator* tempMemory) const;
 		size_t					    GetPointLightCount();
 
-        PointLightShadowGatherTask& GetPointLightShadows(UpdateDispatcher& disatcher, iAllocator* tempMemory) const;
+
+        PointLightShadowGatherTask& GetVisableLights(UpdateDispatcher&, CameraHandle, BuildBVHTask&, iAllocator* tempMemory) const;
+        PointLightUpdate&           UpdatePointLights(UpdateDispatcher&, BuildBVHTask&, PointLightShadowGatherTask&, iAllocator* persistentMemory) const;
 
         auto begin()    { return sceneEntities.begin(); }
         auto end()      { return sceneEntities.end(); }

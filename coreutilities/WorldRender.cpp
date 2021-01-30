@@ -979,7 +979,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    DrawOutputs& WorldRender::DrawScene(UpdateDispatcher& dispatcher, FrameGraph& frameGraph, DrawSceneDescription& drawSceneDesc, WorldRender_Targets targets, iAllocator* temporary)
+    DrawOutputs& WorldRender::DrawScene(UpdateDispatcher& dispatcher, FrameGraph& frameGraph, DrawSceneDescription& drawSceneDesc, WorldRender_Targets targets, iAllocator* persistent, ThreadSafeAllocator& temporary)
     {
         auto&       scene           = drawSceneDesc.scene;
         const auto  camera          = drawSceneDesc.camera;
@@ -993,9 +993,11 @@ namespace FlexKit
         PVS.AddInput(drawSceneDesc.transformDependency);
         PVS.AddInput(drawSceneDesc.cameraDependency);
 
-        auto& pointLightGather                  = scene.GetPointLights(dispatcher, temporary);
-        auto& pointLightShadowCasterGather      = scene.GetPointLightShadows(dispatcher, temporary);
-        //auto& sceneBVH                          = scene.GetSceneBVH(dispatcher, temporary);
+        auto& pointLightGather          = scene.GetPointLights(dispatcher, temporary);
+        auto& sceneBVH                  = scene.GetSceneBVH(dispatcher, drawSceneDesc.transformDependency, temporary);
+        auto& pointLightShadows         = scene.GetVisableLights(dispatcher, camera, sceneBVH, temporary);
+
+        scene.UpdatePointLights(dispatcher, sceneBVH, pointLightShadows, persistent);
 
         pointLightGather.AddInput(drawSceneDesc.transformDependency);
         pointLightGather.AddInput(drawSceneDesc.cameraDependency);
@@ -1010,7 +1012,7 @@ namespace FlexKit
         const SceneDescription sceneDesc = {
             drawSceneDesc.camera,
             pointLightGather,
-            pointLightShadowCasterGather,
+            pointLightShadows,
             drawSceneDesc.transformDependency,
             drawSceneDesc.cameraDependency,
             PVS,
@@ -1077,7 +1079,8 @@ namespace FlexKit
                 temporary);
 
 
-        auto& outputs = temporary->allocate<DrawOutputs>(PVS);
+        auto& outputs = temporary.allocate<DrawOutputs>(PVS);
+
         return outputs;
     }
 

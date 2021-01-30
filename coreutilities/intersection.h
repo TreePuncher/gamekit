@@ -247,6 +247,17 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    inline bool Intersects(const AABB a, const AABB b)
+	{
+        return  (a.Min.x <= a.Max.x && b.Min.x <= a.Max.x) &&
+                (a.Min.y <= a.Max.y && b.Min.y <= a.Max.y) &&
+                (a.Min.z <= a.Max.z && b.Min.z <= a.Max.z);
+	}
+
+
 	/************************************************************************************************/
 
 
