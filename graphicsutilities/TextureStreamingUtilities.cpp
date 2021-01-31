@@ -521,6 +521,7 @@ namespace FlexKit
 
                     const auto materialHandle = visable.D->material;
 
+                    ctx.BeginEvent_DEBUG("Texture Feedback Pass");
 
                     if (!materials[materialHandle].SubMaterials.empty())
                     {
@@ -583,6 +584,7 @@ namespace FlexKit
                     }
                 }
 
+                ctx.EndEvent_DEBUG();
                 ctx.TimeStamp(timeStats, 1);
 
                 auto CompressionPass = [&](auto Source, auto Destination)
@@ -640,12 +642,15 @@ namespace FlexKit
                     ctx.AddUAVBarrier();
                 };
 
+                ctx.BeginEvent_DEBUG("Texture feedback stream compression");
+
                 const size_t passCount = 3;
                 for (size_t itr = 0; itr < passCount; itr++) {
                     CompressionPass(data.feedbackBuffers[itr % 2], data.feedbackBuffers[(itr + 1) % 2]);
                 }
 
-                
+                ctx.EndEvent_DEBUG();
+
                 // Write out
                 ctx.CopyBufferRegion(
                     {   resources.GetObjectResource(resources.ReadUAV(data.feedbackCounters, DRS_Read, ctx)) ,

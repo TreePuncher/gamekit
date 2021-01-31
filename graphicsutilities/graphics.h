@@ -46,6 +46,12 @@
 
 #endif
 
+#if USING(PIX)
+#define USE_PIX
+#endif
+
+#include <pix3.h>
+
 namespace FlexKit
 {
 	// Forward Declarations
@@ -1637,6 +1643,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
         void SetMarker_DEBUG(const char* str);
 
+        void BeginEvent_DEBUG(const char* str);
+        void EndEvent_DEBUG();
 
 		void CopyBufferRegion(
 			static_vector<ID3D12Resource*>		sources,

@@ -502,6 +502,17 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    uint32_t GetFlags(NodeHandle Node)
+    {
+        auto index  = _SNHandleToIndex(Node);
+        auto F      = SceneNodeTable.Flags[index];
+        return F;
+    }
+
+
 	/************************************************************************************************/
 
 

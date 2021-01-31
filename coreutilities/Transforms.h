@@ -141,6 +141,7 @@ namespace FlexKit
 	FLEXKITAPI NodeHandle	GetNewNode					();
 	FLEXKITAPI NodeHandle	GetZeroedNode				();
 	FLEXKITAPI bool			GetFlag						( NodeHandle Node,	size_t f );
+	FLEXKITAPI uint32_t     GetFlags    				( NodeHandle Node);
 	FLEXKITAPI NodeHandle	GetParentNode				( NodeHandle Node );
 
 	FLEXKITAPI void			SetFlag						( NodeHandle Node,	SceneNodes::StateFlags f );

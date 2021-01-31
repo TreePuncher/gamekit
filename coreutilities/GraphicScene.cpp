@@ -1201,29 +1201,54 @@ namespace FlexKit
 
                     Vector<VisibilityHandle> PVS{ &threadAllocator };
 
-
                     TraverseBVH(bvh, lightAABB,
                         [&](VisibilityHandle visable)
                         {
                             PVS.push_back(visable);
                         });
 
-                    if (light.shadowState)
+                    std::sort(
+                        std::begin(PVS), std::end(PVS),
+                        [](const auto& lhs, const auto& rhs)
+                        {
+                            return lhs < rhs;
+                        });
+
+                    if(const auto flags = GetFlags(light.Position); flags & (SceneNodes::DIRTY | SceneNodes::UPDATED))
+                        light.state = LightStateFlags::Dirty;
+
+                    if (light.state != LightStateFlags::Dirty && light.shadowState)
                     {   // Compare previousPVS with current PVS to see if shadow map needs update
                         auto& previousPVS = light.shadowState->visableObjects;
+
+                        if (previousPVS.size() == PVS.size())
+                        {
+                            for (size_t I = 0; I < PVS.size(); ++I)
+                            {
+                                if (PVS[I] != previousPVS[I])
+                                    break; // do full update
+
+                                const auto flags = GetFlags(visables[PVS[I]].node);
+
+                                if (flags & (SceneNodes::DIRTY | SceneNodes::UPDATED) != 0)
+                                    break;
+                            }
+                        }
+
+                        continue;
                     }
-                    else
-                    {   // Full update
-                        light.shadowState = &persistentMemory->allocate<CubeMapState>
-                            (   128,
-                                Vector<VisibilityHandle>{ persistentMemory },
-                                persistentMemory);
 
-                        light.shadowState->visableObjects = PVS;
+                    light.state = LightStateFlags::Dirty;
 
-                        data.dirtyList.push_back(visableLight);
-                    }
+                    // Full update
+                    light.shadowState = &persistentMemory->allocate<CubeMapState>
+                        (   128,
+                            Vector<VisibilityHandle>{ persistentMemory },
+                            persistentMemory);
 
+                    light.shadowState->visableObjects = PVS;
+
+                    data.dirtyList.push_back(visableLight);
                 }
 			}
 		);

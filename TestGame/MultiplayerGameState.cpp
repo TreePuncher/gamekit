@@ -104,7 +104,12 @@ LocalPlayerState::LocalPlayerState(
 
 void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
-	base.Update(core, dispatcher, dT);
+    base.Update(core, dispatcher, dT);
+
+    if (auto [gameObject, res] = FindGameObject(game.scene, "Cube"); res)
+    {
+        Yaw(*gameObject, pi * dT);
+    }
 }
 
 

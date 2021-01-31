@@ -1818,6 +1818,27 @@ namespace FlexKit
     }
 
 
+    /************************************************************************************************/
+
+
+    void Context::BeginEvent_DEBUG(const char* str)
+    {
+        wchar_t temp[64];
+        mbstowcs(temp, str, 64);
+
+        PIXBeginEvent(DeviceContext, PIX_COLOR_INDEX(rand() % 255), temp);
+    }
+
+
+    /************************************************************************************************/
+
+
+    void Context::EndEvent_DEBUG()
+    {
+        PIXEndEvent(DeviceContext);
+    }
+
+
 	/************************************************************************************************/
 
 

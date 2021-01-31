@@ -63,6 +63,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RESCOMPILERVERBOSE	ON
 #define TOOTLE				OFF
 #define AFTERMATH			OFF
+#define PIX                 ON
 
 #else
 
@@ -83,6 +84,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RESCOMPILERVERBOSE	ON
 #define TOOTLE				OFF
 #define AFTERMATH			OFF
+#define PIX                 ON
 
 #endif
 
