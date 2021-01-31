@@ -1028,7 +1028,7 @@ namespace FlexKit
         auto& pointLightGather      = scene.GetPointLights(dispatcher, temporary);
         auto& sceneBVH              = scene.GetSceneBVH(dispatcher, drawSceneDesc.transformDependency, temporary);
         auto& visablePointLights    = scene.GetVisableLights(dispatcher, camera, sceneBVH, temporary);
-        auto& pointLightUpdate      = scene.UpdatePointLights(dispatcher, sceneBVH, visablePointLights, persistent);
+        auto& pointLightUpdate      = scene.UpdatePointLights(dispatcher, sceneBVH, visablePointLights, temporary, persistent);
 
         auto& acquireShadowMaps     = AcquireShadowMaps(dispatcher, frameGraph.GetRenderSystem(), pointLightUpdate);
 
@@ -1671,11 +1671,9 @@ namespace FlexKit
 
 				PointLightComponent& pointLights = PointLightComponent::GetComponent();
 
-                uint32_t temp = ceilf(std::logf(float(lightCount)) / std::logf(BVH_ELEMENT_COUNT));
-
 				CBPushBuffer    constantBuffer = data.reserveCB(
 					AlignedSize( sizeof(FlexKit::GPUPointLight) * lightCount ) +
-                    AlignedSize<ConstantsLayout>() * (1 + ceilf(std::logf(float(lightCount)) / std::logf(BVH_ELEMENT_COUNT))) +
+                    AlignedSize<ConstantsLayout>() * (1 + ceilf(std::logf(float(Max(lightCount, 1))) / std::logf(BVH_ELEMENT_COUNT))) +
                     AlignedSize<Camera::ConstantBuffer>()
 				);
 
@@ -1694,7 +1692,7 @@ namespace FlexKit
 
 					pointLightValues.push_back(
 						{	{ pointLight.K, pointLight.I	},
-							{ WS_position, 32        } });
+							{ WS_position, pointLight.R     } });
 				}
 
 				const size_t uploadSize = pointLightValues.size() * sizeof(GPUPointLight);
@@ -2337,7 +2335,7 @@ namespace FlexKit
 
                         GPULights.push_back(
                             {   { light.K, light.I	},
-                                { position,     50    } });
+                                { position, light.R } });
 
                         for (size_t II = 0; II < 6; II++)
                             passConstants.PV[6 * lightID + II] = matrices.PV[II];
@@ -2378,7 +2376,7 @@ namespace FlexKit
 
 				for (size_t shadowMapIdx = 0; shadowMapIdx < pointLightCount; shadowMapIdx++)
 				{
-					auto shadowMap = lightComponent[visableLights[shadowMapIdx]].shadowMap;
+                    auto shadowMap = lightComponent[visableLights[shadowMapIdx]].shadowMap;
 					descHeap.SetSRVCubemap(ctx, 10 + shadowMapIdx, shadowMap, DeviceFormat::R32_FLOAT);
 				}
 
@@ -2650,15 +2648,14 @@ namespace FlexKit
 				{
                     auto& visableLights = data.pointLightShadows;
                     auto& pointLights   = PointLightComponent::GetComponent();
-
+                    
                     for (size_t I = 0; I < visableLights.size(); I++)
                     {
                         auto& lightHandle   = visableLights[I];
                         auto& pointLight    = pointLights[lightHandle];
 
-                        if (pointLight.state == LightStateFlags::Dirty)
+                        if (pointLight.state == LightStateFlags::Dirty && pointLight.shadowMap != InvalidHandle_t)
                         {
-                            FK_LOG_INFO("Updating Shadow Map");
                             pointLight.state = LightStateFlags::Clean;
 
                             const auto& visibilityComponent = SceneVisibilityComponent::GetComponent();
