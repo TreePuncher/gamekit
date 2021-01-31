@@ -417,10 +417,14 @@ namespace FlexKit
 			},
 			[](GBufferClear& data, ResourceHandler& resources, Context& ctx, iAllocator&)
 			{
+                ctx.BeginEvent_DEBUG("Clear GBuffer");
+
 				ctx.ClearRenderTarget(resources.GetResource(data.albedo));
 				ctx.ClearRenderTarget(resources.GetResource(data.MRIA));
 				ctx.ClearRenderTarget(resources.GetResource(data.normal));
 				ctx.ClearRenderTarget(resources.GetResource(data.tangent));
+
+                ctx.EndEvent_DEBUG();
 			});
 	}
 

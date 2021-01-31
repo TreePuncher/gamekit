@@ -1172,6 +1172,8 @@ namespace FlexKit
                 ctx.SetGraphicsConstantBufferView(3, cameraConstants);
                 ctx.NullGraphicsConstantBufferView(6);
 
+                ctx.BeginEvent_DEBUG("Z-PrePass");
+
                 TriMesh* prevMesh = nullptr;
                 for (const auto& drawable : data.drawables)
                 {
@@ -1191,6 +1193,8 @@ namespace FlexKit
                     ctx.SetGraphicsConstantBufferView(2, constants);
                     ctx.DrawIndexedInstanced(triMesh->IndexCount);
                 }
+
+                ctx.EndEvent_DEBUG();
             });
 
         return pass;
@@ -1622,14 +1626,14 @@ namespace FlexKit
 
                 builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DRS_UAV, true);
 
-                builder.SetDebugName(data.clusterBufferObject, "ClusterBufferObject");
-                builder.SetDebugName(data.indexBufferObject, "indexBufferObject");
-                builder.SetDebugName(data.lightListObject, "lightListObject");
-                builder.SetDebugName(data.lightBufferObject, "lightBufferObject");
-                builder.SetDebugName(data.lightBVH, "lightBVH");
-                builder.SetDebugName(data.lightLookupObject, "lightLookupObject");
-                builder.SetDebugName(data.lightCounterObject, "lightCounterObject");
-                builder.SetDebugName(data.counterObject, "counterObject");
+                builder.SetDebugName(data.clusterBufferObject,  "ClusterBufferObject");
+                builder.SetDebugName(data.indexBufferObject,    "indexBufferObject");
+                builder.SetDebugName(data.lightListObject,      "lightListObject");
+                builder.SetDebugName(data.lightBufferObject,    "lightBufferObject");
+                builder.SetDebugName(data.lightBVH,             "lightBVH");
+                builder.SetDebugName(data.lightLookupObject,    "lightLookupObject");
+                builder.SetDebugName(data.lightCounterObject,   "lightCounterObject");
+                builder.SetDebugName(data.counterObject,        "counterObject");
                 builder.SetDebugName(data.argumentBufferObject, "argumentBufferObject");
 
 				builder.AddDataDependency(sceneDesc.pointLightMaps);
@@ -1637,6 +1641,8 @@ namespace FlexKit
 			},
 			[timeStats = timeStats](LightBufferUpdate& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
+                ctx.BeginEvent_DEBUG("Update Light Buffers");
+
                 auto        CreateClusters              = resources.GetPipelineState(CREATECLUSTERS);
                 auto        ClearCounters               = resources.GetPipelineState(CLEARCOUNTERSPSO);
                 auto        CreateBVH_Phase1            = resources.GetPipelineState(CREATELIGHTBVH_PHASE1);
@@ -1749,6 +1755,8 @@ namespace FlexKit
                 BVH_Phase1_Resources.SetUAVStructured(ctx, 1, resources.ReadWriteUAV(data.lightLookupObject, ctx), sizeof(uint2), 0);
                 BVH_Phase1_Resources.SetCBV(ctx, 8, constants);
 
+                ctx.BeginEvent_DEBUG("Build BVH");
+
                 ctx.TimeStamp(timeStats, 6);
                 ctx.SetComputeDescriptorTable(0, BVH_Phase1_Resources);
                 ctx.Dispatch(CreateBVH_Phase1, { 1, 1, 1 }); // Two dispatches to sync across calls
@@ -1797,12 +1805,15 @@ namespace FlexKit
                 size_t nodeCount    = std::ceilf(float(lightCount) / BVH_ELEMENT_COUNT);
                 const uint32_t passCount = std::floor(std::log(lightCount) / std::log(BVH_ELEMENT_COUNT));
 
+
                 for (uint32_t I = 0; I < passCount; I++)
                 {
                     Phase2_Pass(offset, nodeCount);
                     offset      += nodeCount;
                     nodeCount    = std::ceilf(float(nodeCount) / BVH_ELEMENT_COUNT);
                 }
+
+                ctx.EndEvent_DEBUG();
 
 
                 DescriptorHeap createArgumentResources;
@@ -1851,6 +1862,8 @@ namespace FlexKit
                 ctx.ExecuteIndirect(resources.ReadIndirectArgs(data.argumentBufferObject, ctx), data.indirectLayout);
 
                 ctx.TimeStamp(timeStats, 7);
+
+                ctx.EndEvent_DEBUG();
 			});
 
 		return lightBufferData;
@@ -2080,6 +2093,8 @@ namespace FlexKit
 				// submit draw calls
 				TriMesh* prevMesh = nullptr;
 
+                ctx.BeginEvent_DEBUG("G-Buffer Pass");
+
 				// unskinned models
 				for (auto& drawable : data.pvs)
 				{
@@ -2210,7 +2225,11 @@ namespace FlexKit
                     {
                         ctx.DrawIndexed(subMesh.IndexCount, subMesh.BaseIndex);
                     }
+
 				}
+
+                ctx.EndEvent_DEBUG();
+
                 ctx.TimeStamp(timeStats, 1);
 			}
 			);
@@ -2376,9 +2395,13 @@ namespace FlexKit
 				ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
 				ctx.SetGraphicsDescriptorTable(3, descHeap);
 
+                ctx.BeginEvent_DEBUG("Clustered Shading");
+
                 ctx.TimeStamp(timeStats, 4);
 				ctx.Draw(6);
                 ctx.TimeStamp(timeStats, 5);
+
+                ctx.EndEvent_DEBUG();
 
                 ctx.ResolveQuery(timeStats, 0, 8, resources.GetObjectResource(timingReadBack), 0);
                 ctx.QueueReadBack(timingReadBack);
@@ -2707,8 +2730,11 @@ namespace FlexKit
 
 					        ctx.SetGraphicsConstantBufferView(0, passConstants);
 
+                            ctx.BeginEvent_DEBUG("Shadow Map Pass");
+
                             if (auto state = resources.renderSystem().GetObjectState(depthTarget); state != DRS_DEPTHBUFFERWRITE)
                                 ctx.AddResourceBarrier(depthTarget, state, DRS_DEPTHBUFFERWRITE);
+
 
 					        for(size_t drawableIdx = 0; drawableIdx < drawables.size(); drawableIdx++)
 					        {
@@ -2724,6 +2750,8 @@ namespace FlexKit
 					        }
 
                             ctx.AddResourceBarrier(depthTarget, DRS_DEPTHBUFFERWRITE, DRS_ShaderResource);
+
+                            ctx.EndEvent_DEBUG();
                         }
                     }
 				});
