@@ -251,7 +251,7 @@ namespace FlexKit
 		PassObjectList			        Resources;
 		TemporaryPassObjectList         virtualResources;
 		Vector<PoolAllocatorInterface*> memoryPools;
-
+        std::mutex                      m;
 
 		void AddMemoryPool(PoolAllocatorInterface* heapAllocator)
 		{
@@ -325,15 +325,37 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		void AddResource(ResourceHandle handle, const bool renderTarget = false)
+		FrameResourceHandle AddResource(ResourceHandle handle, const bool renderTarget = false)
 		{
 			DeviceResourceState initialState = renderSystem.GetObjectState(handle);
 
 			Resources.push_back(
 				FrameObject::TextureObject(handle, initialState));
 
-			Resources.back().Handle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
+            auto resourceHandle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
+			Resources.back().Handle = resourceHandle;
+
+            return resourceHandle;
 		}
+
+
+        /************************************************************************************************/
+
+
+        FrameResourceHandle AddResourceMT(ResourceHandle handle, const bool renderTarget = false)
+        {
+            std::scoped_lock lock{};
+
+            DeviceResourceState initialState = renderSystem.GetObjectState(handle);
+
+            Resources.push_back(
+                FrameObject::TextureObject(handle, initialState));
+
+            auto resourceHandle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
+            Resources.back().Handle = resourceHandle;
+
+            return resourceHandle;
+        }
 
 
 		/************************************************************************************************/
@@ -560,6 +582,15 @@ namespace FlexKit
 
 		ResourceHandle          GetRenderTarget(FrameResourceHandle handle) const { return globalResources.GetRenderTarget(handle); }
 		ResourceHandle          GetResource(FrameResourceHandle handle) const { return globalResources.GetTexture(handle); }
+
+
+        /************************************************************************************************/
+
+
+        FrameResourceHandle     AddResource(ResourceHandle resource) const
+        {
+            return globalResources.AddResourceMT(resource);
+        }
 
 
 		/************************************************************************************************/
@@ -1295,6 +1326,9 @@ namespace FlexKit
 
 		void AddRenderTarget	(ResourceHandle Texture);
 		void AddMemoryPool      (PoolAllocatorInterface* poolAllocator);
+
+        FrameResourceHandle     AddResource(ResourceHandle resource);
+
 
 		struct FrameGraphNodeWork
 		{

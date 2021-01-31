@@ -879,6 +879,10 @@ namespace FlexKit
 			return float3( x / a, y / a, z / a );
 		}
 
+        float3 operator / (const float3& a) const
+        {
+            return _mm_div_ps(pfloats, a);
+        }
 
 		float3& Scale( float S )
 		{

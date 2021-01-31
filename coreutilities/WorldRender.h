@@ -91,6 +91,7 @@ namespace FlexKit
 		CameraHandle                            camera;
 		PointLightGatherTask&	                lights;
 		PointLightShadowGatherTask&	            pointLightMaps;
+        UpdateTask&	                            shadowMapAquire;
 		UpdateTask&							    transforms;
 		UpdateTask&							    cameras;
 		UpdateTaskTyped<GetPVSTaskData>&	    PVS;
@@ -250,7 +251,7 @@ namespace FlexKit
 
 	struct LightBufferUpdate 
 	{
-		const Vector<PointLightHandle>*	pointLightHandles;
+		const Vector<PointLightHandle>&	visableLights;
 
 		CameraHandle			        camera;
 		ReserveConstantBufferFunction   reserveCB;
@@ -487,17 +488,21 @@ namespace FlexKit
 
 	struct ShadowMapPassData
 	{
-		Vector<TemporaryFrameResourceHandle>    shadowMapTargets;
+		Vector<TemporaryFrameResourceHandle> shadowMapTargets;
 	};
 
 	struct LocalShadowMapPassData
 	{
-		ShadowMapPassData&            sharedData;
-		const GatherTask&             sceneSource;
-		ReserveConstantBufferFunction reserveCB;
-		TemporaryFrameResourceHandle  shadowMapTarget;
-		PointLightHandle              pointLight;
+        const Vector<PointLightHandle>& pointLightShadows;
+		ShadowMapPassData&              sharedData;
+		ReserveConstantBufferFunction   reserveCB;
 	};
+
+    struct AcquireShadowMapResources
+    {
+    };
+
+    using AcquireShadowMapTask = UpdateTaskTyped<AcquireShadowMapResources>;
 
 	struct TiledDeferredShade
 	{
@@ -507,7 +512,6 @@ namespace FlexKit
 		const PointLightShadowGatherTask&   pointLightShadowMaps;
 		ShadowMapPassData&                  shadowMaps;
 
-		Vector<GPUPointLight>		    pointLights;
 		const Vector<PointLightHandle>* pointLightHandles;
 
 		CBPushBuffer            passConstants;
@@ -847,6 +851,8 @@ namespace FlexKit
 			FrameGraph&                             frameGraph,
 			ReserveConstantBufferFunction&          constantBufferAllocator,
 			const ComputeTiledDeferredShadeDesc&    scene);
+
+        AcquireShadowMapTask& AcquireShadowMaps(UpdateDispatcher& dispatcher, RenderSystem& renderSystem, PointLightUpdate& pointLightUpdate);
 
         DEBUG_WorldRenderTimingValues GetTimingValues() const { return timingValues; }
 	private:

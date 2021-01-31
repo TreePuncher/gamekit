@@ -979,6 +979,38 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    AcquireShadowMapTask& WorldRender::AcquireShadowMaps(UpdateDispatcher& dispatcher, RenderSystem& renderSystem, PointLightUpdate& pointLightUpdate)
+    {
+        return dispatcher.Add<AcquireShadowMapResources>(
+            [&](UpdateDispatcher::UpdateBuilder& builder, AcquireShadowMapResources& data)
+            {
+                builder.AddInput(pointLightUpdate);
+            },
+            [&dirtyList = pointLightUpdate.GetData().dirtyList, &shadowMapAllocator = RTPool, &renderSystem = renderSystem]
+            (AcquireShadowMapResources& data, iAllocator& threadAllocator)
+            {
+                auto& lights = PointLightComponent::GetComponent();
+
+                for (auto lightHandle : dirtyList)
+                {
+                    auto& light = lights[lightHandle];
+
+                    if (light.shadowMap != InvalidHandle_t)
+                        shadowMapAllocator.Release(light.shadowMap, false, false);
+
+                    auto shadowMap = shadowMapAllocator.Aquire(GPUResourceDesc::DepthTarget({ 128, 128 }, DeviceFormat::D32_FLOAT, 6));
+                    renderSystem.SetDebugName(shadowMap, "Shadow Map");
+
+                    light.shadowMap = shadowMap;
+                }
+
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
     DrawOutputs& WorldRender::DrawScene(UpdateDispatcher& dispatcher, FrameGraph& frameGraph, DrawSceneDescription& drawSceneDesc, WorldRender_Targets targets, iAllocator* persistent, ThreadSafeAllocator& temporary)
     {
         auto&       scene           = drawSceneDesc.scene;
@@ -993,11 +1025,12 @@ namespace FlexKit
         PVS.AddInput(drawSceneDesc.transformDependency);
         PVS.AddInput(drawSceneDesc.cameraDependency);
 
-        auto& pointLightGather          = scene.GetPointLights(dispatcher, temporary);
-        auto& sceneBVH                  = scene.GetSceneBVH(dispatcher, drawSceneDesc.transformDependency, temporary);
-        auto& pointLightShadows         = scene.GetVisableLights(dispatcher, camera, sceneBVH, temporary);
+        auto& pointLightGather      = scene.GetPointLights(dispatcher, temporary);
+        auto& sceneBVH              = scene.GetSceneBVH(dispatcher, drawSceneDesc.transformDependency, temporary);
+        auto& visablePointLights    = scene.GetVisableLights(dispatcher, camera, sceneBVH, temporary);
+        auto& pointLightUpdate      = scene.UpdatePointLights(dispatcher, sceneBVH, visablePointLights, persistent);
 
-        scene.UpdatePointLights(dispatcher, sceneBVH, pointLightShadows, persistent);
+        auto& acquireShadowMaps     = AcquireShadowMaps(dispatcher, frameGraph.GetRenderSystem(), pointLightUpdate);
 
         pointLightGather.AddInput(drawSceneDesc.transformDependency);
         pointLightGather.AddInput(drawSceneDesc.cameraDependency);
@@ -1012,7 +1045,8 @@ namespace FlexKit
         const SceneDescription sceneDesc = {
             drawSceneDesc.camera,
             pointLightGather,
-            pointLightShadows,
+            visablePointLights,
+            acquireShadowMaps,
             drawSceneDesc.transformDependency,
             drawSceneDesc.cameraDependency,
             PVS,
@@ -1548,7 +1582,7 @@ namespace FlexKit
 		FrameGraph&				        graph,
 		const CameraHandle	            camera,
 		const GraphicScene&	            scene,
-		const SceneDescription&         sceneDescription,
+		const SceneDescription&         sceneDesc,
         ResourceHandle                  depthBuffer,
 		ReserveConstantBufferFunction   reserveCB,
 		iAllocator*				        tempMemory)
@@ -1558,7 +1592,7 @@ namespace FlexKit
 
 		auto& lightBufferData = graph.AddNode<LightBufferUpdate>(
 			LightBufferUpdate{
-					&sceneDescription.lights.GetData().pointLights,
+                    sceneDesc.pointLightMaps.GetData().pointLightShadows,
 					camera,
 					reserveCB,
                     createClusterLightListLayout
@@ -1598,8 +1632,8 @@ namespace FlexKit
                 builder.SetDebugName(data.counterObject, "counterObject");
                 builder.SetDebugName(data.argumentBufferObject, "argumentBufferObject");
 
-				builder.AddDataDependency(sceneDescription.lights);
-				builder.AddDataDependency(sceneDescription.cameras);
+				builder.AddDataDependency(sceneDesc.pointLightMaps);
+				builder.AddDataDependency(sceneDesc.cameras);
 			},
 			[timeStats = timeStats](LightBufferUpdate& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
@@ -1611,7 +1645,7 @@ namespace FlexKit
                 auto        CreateLightListArguments    = resources.GetPipelineState(CREATELIGHTLISTARGS_PSO);
 
                 const auto  cameraConstants     = GetCameraConstants(data.camera);
-                const auto  lightCount          = data.pointLightHandles->size();
+                const auto  lightCount          = data.visableLights.size();
 
 				struct ConstantsLayout
 				{
@@ -1634,7 +1668,7 @@ namespace FlexKit
                 uint32_t temp = ceilf(std::logf(float(lightCount)) / std::logf(BVH_ELEMENT_COUNT));
 
 				CBPushBuffer    constantBuffer = data.reserveCB(
-					AlignedSize( sizeof(FlexKit::GPUPointLight) * data.pointLightHandles->size() ) +
+					AlignedSize( sizeof(FlexKit::GPUPointLight) * lightCount ) +
                     AlignedSize<ConstantsLayout>() * (1 + ceilf(std::logf(float(lightCount)) / std::logf(BVH_ELEMENT_COUNT))) +
                     AlignedSize<Camera::ConstantBuffer>()
 				);
@@ -1646,7 +1680,7 @@ namespace FlexKit
 
 				Vector<FlexKit::GPUPointLight> pointLightValues{ &allocator };
 
-				for (const auto light : *data.pointLightHandles)
+				for (const auto light : data.visableLights)
 				{
 					const PointLight pointLight	= pointLights[light];
 					const float3 WS_position	= GetPositionW(pointLight.Position);
@@ -1865,7 +1899,7 @@ namespace FlexKit
                 ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
                 ctx.SetComputeRootSignature(resources.renderSystem().Library.RSDefault);
 
-                const auto lightCount = data.lightBufferUpdateData.pointLightHandles->size();
+                const auto lightCount = data.lightBufferUpdateData.visableLights.size();
 
                 struct ConstantsLayout
                 {
@@ -1921,7 +1955,6 @@ namespace FlexKit
                 ctx.SetPrimitiveTopology(EIT_POINT);
                 ctx.SetGraphicsDescriptorTable(3, descHeap);
                 ctx.SetGraphicsDescriptorTable(4, nullHeap);
-
 
                 size_t offset       = 0;
                 size_t nodeCount    = std::ceilf(float(lightCount) / BVH_ELEMENT_COUNT);
@@ -2226,8 +2259,7 @@ namespace FlexKit
 
 				auto& renderSystem              = frameGraph.GetRenderSystem();
 
-				data.pointLights                = Vector<FlexKit::GPUPointLight>{ allocator, 1024 };
-				data.pointLightHandles          = &sceneDescription.lights.GetData().pointLights;
+				data.pointLightHandles          = &sceneDescription.pointLightMaps.GetData().pointLightShadows;
 
 				data.AlbedoTargetObject         = builder.ReadShaderResource(gbuffer.albedo);
 				data.NormalTargetObject         = builder.ReadShaderResource(gbuffer.normal);
@@ -2244,11 +2276,6 @@ namespace FlexKit
 				data.passConstants              = reserveCB(128 * KILOBYTE);
 				data.passVertices               = reserveVB(sizeof(float4) * 6);
 
-                for (auto shadowMap : shadowMaps.shadowMapTargets) {
-                    builder.ReadResource(shadowMap, DRS_ShaderResource);
-                    builder.ReleaseVirtualResource(shadowMap);
-                }
-
                 builder.ReleaseVirtualResource(lightPass.clusterBufferObject);
                 builder.ReleaseVirtualResource(lightPass.indexBufferObject);
                 builder.ReleaseVirtualResource(lightPass.lightListObject);
@@ -2257,23 +2284,14 @@ namespace FlexKit
 			[camera = sceneDescription.camera, renderTarget, t, timingReadBack = timingReadBack, timeStats = timeStats]
 			(TiledDeferredShade& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
-				PointLightComponent& pointLights = PointLightComponent::GetComponent();
-
-				for (const auto light : *data.pointLightHandles)
-				{
-					const auto  pointLight	= pointLights[light];
-					float3      position	= GetPositionW(pointLight.Position);
-
-					data.pointLights.push_back(
-						{	{ pointLight.K, pointLight.I	},
-							{ position,     50    } });
-				}
+				PointLightComponent&    lightComponent  = PointLightComponent::GetComponent();
+                const auto&             visableLights   = *data.pointLightHandles;
+                Vector<GPUPointLight>   GPULights{ &allocator };
 
 				auto& renderSystem          = resources.renderSystem();
 				const auto WH               = resources.renderSystem().GetTextureWH(renderTarget);
 				const auto cameraConstants  = GetCameraConstants(camera);
-
-				const auto pointLightCount = pointLights.elements.size();
+				const auto pointLightCount  = visableLights.size();
 
 				struct
 				{
@@ -2290,16 +2308,24 @@ namespace FlexKit
                     { 0.1f, 0.1f, 0.1f, 0 }
                 };
 
-				for(size_t I = 0; I < pointLightCount; I++)
-				{
-					auto& light                      = pointLights.elements[I].componentData;
-					const float3 Position            = GetPositionW(light.Position);
+                {
+                    size_t lightID = 0;
+                    for (auto lightHandle : visableLights)
+                    {
+                        auto& light             = lightComponent[lightHandle];
+                        const float3 position   = GetPositionW(light.Position);
+                        const auto matrices     = CalculateShadowMapMatrices(position, light.R, t);
 
-					const auto matrices = CalculateShadowMapMatrices(Position, light.R, t);
+                        GPULights.push_back(
+                            {   { light.K, light.I	},
+                                { position,     50    } });
 
-					for(size_t II = 0; II < 6; II++)
-						passConstants.PV[6 * I + II] = matrices.PV[II];
-				}
+                        for (size_t II = 0; II < 6; II++)
+                            passConstants.PV[6 * lightID + II] = matrices.PV[II];
+
+                        lightID++;
+                    }
+                }
 
 				struct
 				{
@@ -2333,7 +2359,7 @@ namespace FlexKit
 
 				for (size_t shadowMapIdx = 0; shadowMapIdx < pointLightCount; shadowMapIdx++)
 				{
-					auto shadowMap = resources.GetResource(data.shadowMaps.shadowMapTargets[shadowMapIdx]);
+					auto shadowMap = lightComponent[visableLights[shadowMapIdx]].shadowMap;
 					descHeap.SetSRVCubemap(ctx, 10 + shadowMapIdx, shadowMap, DeviceFormat::R32_FLOAT);
 				}
 
@@ -2582,117 +2608,126 @@ namespace FlexKit
 		const double                    t,
 		iAllocator*                     allocator)
 	{
-		auto& shadowMapPass     = allocator->allocate<ShadowMapPassData>(ShadowMapPassData{ allocator->allocate<Vector<TemporaryFrameResourceHandle>>(allocator) });
-		auto& pointLights       = PointLightComponent::GetComponent();
-		const auto lightCount   = pointLights.elements.size();
-        const auto frustum      = GetFrustum(sceneDesc.camera);
-        const auto camera       = CameraComponent::GetComponent().GetCamera(sceneDesc.camera);
+		auto& shadowMapPass         = allocator->allocate<ShadowMapPassData>(ShadowMapPassData{ allocator->allocate<Vector<TemporaryFrameResourceHandle>>(allocator) });
 
-        for(size_t I = 0; I < pointLights.elements.size(); I++)
-		{
-            auto& pointLight    = pointLights.elements[I].componentData;
-            auto& lightHandle   = pointLights.elements[I].handle;
+		frameGraph.AddNode<LocalShadowMapPassData>(
+				LocalShadowMapPassData{
+                    sceneDesc.pointLightMaps.GetData().pointLightShadows,
+					shadowMapPass,
+					reserveCB,
+				},
+				[&](FrameGraphNodeBuilder& builder, LocalShadowMapPassData& data)
+				{
+                    builder.AddDataDependency(sceneDesc.cameras);
+                    builder.AddDataDependency(sceneDesc.PVS);
+                    builder.AddDataDependency(sceneDesc.pointLightMaps);
+                    builder.AddDataDependency(sceneDesc.shadowMapAquire);
+				},
+				[=](LocalShadowMapPassData& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+				{
+                    auto& visableLights = data.pointLightShadows;
+                    auto& pointLights   = PointLightComponent::GetComponent();
 
-            BoundingSphere boundingSphere{ GetPositionW(pointLight.Position), pointLight.R };
-            if(Intersects(frustum, boundingSphere) || true)
-            {
-			    frameGraph.AddNode<LocalShadowMapPassData>(
-				    LocalShadowMapPassData{
-					    shadowMapPass,
-                        sceneDesc.PVS,
-					    reserveCB,
-				    },
-				    [&](FrameGraphNodeBuilder& builder, LocalShadowMapPassData& data)
-				    {
-                        builder.AddDataDependency(sceneDesc.cameras);
-                        builder.AddDataDependency(sceneDesc.PVS);
+                    for (size_t I = 0; I < visableLights.size(); I++)
+                    {
+                        auto& lightHandle   = visableLights[I];
+                        auto& pointLight    = pointLights[lightHandle];
 
-                        const float SSSize  = ScreenSpaceSize(camera, boundingSphere);
-                        const uint2 WH      = { 128, 128 };
+                        if (pointLight.state == LightStateFlags::Dirty)
+                        {
+                            FK_LOG_INFO("Updating Shadow Map");
+                            pointLight.state = LightStateFlags::Clean;
 
-                        auto shadowMap      = builder.AcquireVirtualResource(GPUResourceDesc::DepthTarget(WH, DeviceFormat::D32_FLOAT, 6), DRS_DEPTHBUFFERWRITE, false);
-                        builder.SetDebugName(shadowMap, "Shadow Map");
+                            const auto& visibilityComponent = SceneVisibilityComponent::GetComponent();
+                            const auto& visables            = pointLight.shadowState->visableObjects;
+					        const auto depthTarget          = pointLight.shadowMap;
+                            const float3 pointLightPosition = GetPositionW(pointLight.Position);
 
-					    data.shadowMapTarget    = shadowMap;
-					    data.pointLight         = lightHandle;
+					        const DepthStencilView_Options DSV_desc = {
+                                0, 0,
+						        depthTarget
+					        };
 
-                        shadowMapPass.shadowMapTargets.push_back(shadowMap);
-				    },
-				    [=](LocalShadowMapPassData& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
-				    {
-					    const auto& drawables  = data.sceneSource.GetData().solid;
-					    const auto depthTarget = resources.GetResource(data.shadowMapTarget);
+					        ctx.ClearDepthBuffer(depthTarget, 1.0f);
 
-					    const DepthStencilView_Options DSV_desc = {
-                            0, 0,
-						    depthTarget
-					    };
+					        if (!visables.size())
+						        return;
 
-					    ctx.ClearDepthBuffer(depthTarget, 1.0f);
+					        struct PassConstants
+					        {
+						        struct PlaneMatrices
+						        {
+							        float4x4 ViewI;
+							        float4x4 PV;
+						        }matrices[6];
+					        };
 
-					    if (!drawables.size())
-						    return;
+					        CBPushBuffer passConstantBuffer = data.reserveCB(
+						        AlignedSize<PassConstants>());
 
-					    struct PassConstants
-					    {
-						    struct PlaneMatrices
-						    {
-							    float4x4 ViewI;
-							    float4x4 PV;
-						    }matrices[6];
-					    };
+					        CBPushBuffer localConstantBuffer = data.reserveCB(AlignedSize<Drawable::VConstantsLayout>() * visables.size());
 
-					    CBPushBuffer passConstantBuffer = data.reserveCB(
-						    AlignedSize<PassConstants>() * lightCount);
+                            PVS  drawables{ &allocator, visables.size() };
+                            for (auto& visable : visables)
+                            {
+                                auto entity = visibilityComponent[visable].entity;
 
-					    CBPushBuffer localConstantBuffer = data.reserveCB(AlignedSize<Drawable::VConstantsLayout>() * drawables.size());
+                                Apply(*entity,
+                                    [&](DrawableView& view)
+                                    {
+                                        PushPV(view.GetDrawable(), drawables, pointLightPosition);
+                                    });
+                            }
 
-                        for (auto& drawable : drawables)
-                            ConstantBufferDataSet{ drawable.D->GetConstants(), localConstantBuffer };
+                            for (auto& drawable : drawables)
+                                ConstantBufferDataSet{ drawable.D->GetConstants(), localConstantBuffer };
 
-					    auto constants = CreateCBIterator<Drawable::VConstantsLayout>(localConstantBuffer);
+					        auto constants  = CreateCBIterator<Drawable::VConstantsLayout>(localConstantBuffer);
+					        auto PSO        = resources.GetPipelineState(SHADOWMAPPASS);
 
-					    auto PSO = resources.GetPipelineState(SHADOWMAPPASS);
+					        ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
+					        ctx.SetPipelineState(PSO);
+					        ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 
-					    ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
-					    ctx.SetPipelineState(PSO);
-					    ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
+					        const float3 Position   = FlexKit::GetPositionW(pointLight.Position);
+					        const auto matrices     = CalculateShadowMapMatrices(Position, pointLight.R, t);
 
-					    const auto& pointLights = PointLightComponent::GetComponent();
-					    const auto& light       = pointLights[data.pointLight];
-					    const float3 Position   = FlexKit::GetPositionW(light.Position);
-					    const auto matrices     = CalculateShadowMapMatrices(Position, light.R, t);
+					        PassConstants passConstantData;
 
-					    PassConstants passConstantData;
+					        for(size_t I = 0; I < 6; I++)
+					        {
+						        passConstantData.matrices[I].ViewI  = matrices.ViewI[I];
+						        passConstantData.matrices[I].PV     = matrices.PV[I];
+					        }
 
-					    for(size_t I = 0; I < 6; I++)
-					    {
-						    passConstantData.matrices[I].ViewI  = matrices.ViewI[I];
-						    passConstantData.matrices[I].PV     = matrices.PV[I];
-					    }
+					        ConstantBufferDataSet passConstants{ passConstantData, passConstantBuffer };
 
-					    ConstantBufferDataSet passConstants{ passConstantData, passConstantBuffer };
+					        ctx.SetScissorAndViewports({ depthTarget });
+					        ctx.SetRenderTargets2({}, 0, DSV_desc);
 
-					    ctx.SetScissorAndViewports({ depthTarget });
-					    ctx.SetRenderTargets2({}, 0, DSV_desc);
+					        ctx.SetGraphicsConstantBufferView(0, passConstants);
 
-					    ctx.SetGraphicsConstantBufferView(0, passConstants);
+                            if (auto state = resources.renderSystem().GetObjectState(depthTarget); state != DRS_DEPTHBUFFERWRITE)
+                                ctx.AddResourceBarrier(depthTarget, state, DRS_DEPTHBUFFERWRITE);
 
-					    for(size_t drawableIdx = 0; drawableIdx < drawables.size(); drawableIdx++)
-					    {
-						    auto* const triMesh = GetMeshResource(drawables[drawableIdx].D->MeshHandle);
+					        for(size_t drawableIdx = 0; drawableIdx < drawables.size(); drawableIdx++)
+					        {
+						        auto* const triMesh = GetMeshResource(drawables[drawableIdx].D->MeshHandle);
 
-						    ctx.SetGraphicsConstantBufferView(1, constants[drawableIdx]);
+						        ctx.SetGraphicsConstantBufferView(1, constants[drawableIdx]);
 
-						    ctx.AddIndexBuffer(triMesh);
-						    ctx.AddVertexBuffers(triMesh,
-							    { VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
+						        ctx.AddIndexBuffer(triMesh);
+						        ctx.AddVertexBuffers(triMesh,
+							        { VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
 
-                           ctx.DrawIndexedInstanced(triMesh->IndexCount);
-					    }
-				    });
-		    }
-        }
+                                ctx.DrawIndexedInstanced(triMesh->IndexCount);
+					        }
+
+                            ctx.AddResourceBarrier(depthTarget, DRS_DEPTHBUFFERWRITE, DRS_ShaderResource);
+                        }
+                    }
+				});
+
 		return shadowMapPass;
 	}
 
