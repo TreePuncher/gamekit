@@ -553,7 +553,7 @@ namespace FlexKit
 
 	bool DescriptorHeap::SetSRVCubemap(Context& ctx, size_t idx, ResourceHandle	handle, DeviceFormat format)
 	{
-		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
+		if (handle == InvalidHandle_t || !CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
 			return false;
 
 		FillState[idx] = true;

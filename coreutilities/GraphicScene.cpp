@@ -1172,7 +1172,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    PointLightUpdate& GraphicScene::UpdatePointLights(UpdateDispatcher& dispatcher, BuildBVHTask& bvh, PointLightShadowGatherTask& visablePointLights, iAllocator* persistentMemory) const
+    PointLightUpdate& GraphicScene::UpdatePointLights(UpdateDispatcher& dispatcher, BuildBVHTask& bvh, PointLightShadowGatherTask& visablePointLights, iAllocator* temporaryMemory, iAllocator* persistentMemory) const
     {
         return dispatcher.Add<PointLightUpdate_DATA>(
 			[&](UpdateDispatcher::UpdateBuilder& builder, PointLightUpdate_DATA& data)
@@ -1181,10 +1181,10 @@ namespace FlexKit
                 builder.AddInput(bvh);
                 builder.AddInput(visablePointLights);
 
-                data.dirtyList = Vector<PointLightHandle>{ persistentMemory };
+                data.dirtyList = Vector<PointLightHandle>{ temporaryMemory };
 			},
             [   this,
-                &bvh = bvh.GetData(),
+                &bvh                = bvh.GetData(),
                 &visablePointLights = visablePointLights.GetData().pointLightShadows,
                 persistentMemory    = persistentMemory]
             (PointLightUpdate_DATA& data, iAllocator& threadAllocator)
@@ -1238,15 +1238,16 @@ namespace FlexKit
                         continue;
                     }
 
+                    if (!light.shadowState) {
+                        light.shadowState                   = &persistentMemory->allocate<CubeMapState>();
+                        light.shadowState->visableObjects   = Vector<VisibilityHandle>{ persistentMemory };
+                    }
+
                     light.state = LightStateFlags::Dirty;
 
-                    // Full update
-                    light.shadowState = &persistentMemory->allocate<CubeMapState>
-                        (   128,
-                            Vector<VisibilityHandle>{ persistentMemory },
-                            persistentMemory);
-
-                    light.shadowState->visableObjects = PVS;
+                    light.shadowState->allocator        = persistentMemory;
+                    light.shadowState->shadowMapSize    = 128;
+                    light.shadowState->visableObjects   = PVS;
 
                     data.dirtyList.push_back(visableLight);
                 }
