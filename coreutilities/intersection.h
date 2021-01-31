@@ -81,13 +81,18 @@ namespace FlexKit
         {
             return (Min + Max) / 2;
         }
+
+        float3 Span() const
+        {
+            return Max - Min;
+        }
     };
 
 
 	typedef float4 BoundingSphere;
 
 
-    AABB operator + (const AABB& lhs, const BoundingSphere& rhs)
+    inline AABB operator + (const AABB& lhs, const BoundingSphere& rhs)
     {
         auto lowerBound = rhs.xyz() -= rhs.w;
         auto upperBound = rhs.xyz() += rhs.w;

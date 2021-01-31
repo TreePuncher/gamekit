@@ -217,6 +217,15 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    FrameResourceHandle FrameGraph::AddResource(ResourceHandle resource)
+    {
+        return Resources.AddResource(resource, true);
+    }
+
+
 	/************************************************************************************************/
 
 

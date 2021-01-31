@@ -179,8 +179,8 @@ namespace FlexKit
     struct CubeMapState
     {
         uint                        shadowMapSize;
-        ResourceHandle              shadowMap;
         Vector<VisibilityHandle>    visableObjects;
+        iAllocator*                 allocator;
     };
 
 
@@ -194,7 +194,7 @@ namespace FlexKit
 
         bool                forceDisableShadowMapping = false;
         LightStateFlags     state;
-        CubeMapState*       shadowState;
+        CubeMapState*       shadowState = nullptr;
     };
 
 
@@ -521,7 +521,7 @@ namespace FlexKit
 
     struct PointLightUpdate_DATA
     {
-
+        Vector<PointLightHandle> dirtyList;
     };
 
     using PointLightGatherTask          = UpdateTaskTyped<PointLightGather>;

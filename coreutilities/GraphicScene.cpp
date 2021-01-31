@@ -1008,13 +1008,24 @@ namespace FlexKit
                 auto elements   = Vector<SceneBVHBuild::SceneElement>{ &threadAllocator, visables.elements.size() };
                 auto sceneNodes = Vector<SceneBVHBuild::SceneNode>{ &threadAllocator };
 
+                AABB worldAABB;
+
+                for (auto& visable : visables)
+                    worldAABB += visable.componentData.GetAABB();
+
+                const float3 worldSpan  = worldAABB.Span();
+                const float3 offset     = worldSpan / 2.0f;
+
                 for (auto& visable : visables)
                 {
-                    const auto POS  = GetPositionW(visable.componentData.node);
-                    const auto ID   = CreateMortonCode({ (uint)POS.x, (uint)POS.y, (uint)POS.z });
+                    const auto POS          = GetPositionW(visable.componentData.node);
+                    const auto normalizePOS = offset + (POS / worldSpan);
+                    const auto ID           = CreateMortonCode({ (uint)normalizePOS.x, (uint)normalizePOS.y, (uint)normalizePOS.z });
 
                     elements.push_back({ ID, visable.handle });
                 }
+
+                std::sort(elements.begin(), elements.end());
 
                 // Phase 1 - Build Leaf Nodes -
                 const size_t end            = std::ceil(visables.elements.size() / 4.0f);
@@ -1052,11 +1063,12 @@ namespace FlexKit
                         {
                             SceneBVHBuild::SceneNode node;
 
-                            for (size_t II = I; II < Min(end, I + 4); II++)
+                            const size_t localEnd = Min(end, (I + 1) * 4);
+                            for (size_t II = I; II < localEnd; II++)
                                 node.boundingVolume += sceneNodes[II].boundingVolume;
 
                             node.children   = I;
-                            node.count      = (end - begin) % 4;
+                            node.count      = (localEnd - I);
                             node.Leaf       = false;
 
                             sceneNodes.push_back(node);
@@ -1138,7 +1150,7 @@ namespace FlexKit
                 auto& visabilityComponent = SceneVisibilityComponent::GetComponent();
 
                 const auto frustum = GetFrustum(camera);
-            
+
                 TraverseBVH(bvh, frustum,
                     [&](VisibilityHandle intersector)
                     {
@@ -1167,8 +1179,15 @@ namespace FlexKit
 			{
                 builder.SetDebugString("Point Light Shadow Gather");
                 builder.AddInput(bvh);
+                builder.AddInput(visablePointLights);
+
+                data.dirtyList = Vector<PointLightHandle>{ persistentMemory };
 			},
-            [this, &bvh = bvh.GetData(), &visablePointLights = visablePointLights.GetData().pointLightShadows](PointLightUpdate_DATA& data, iAllocator& threadAllocator)
+            [   this,
+                &bvh = bvh.GetData(),
+                &visablePointLights = visablePointLights.GetData().pointLightShadows,
+                persistentMemory    = persistentMemory]
+            (PointLightUpdate_DATA& data, iAllocator& threadAllocator)
 			{
                 auto& visables  = SceneVisibilityComponent::GetComponent();
                 auto& lights    = PointLightComponent::GetComponent();
@@ -1182,14 +1201,29 @@ namespace FlexKit
 
                     Vector<VisibilityHandle> PVS{ &threadAllocator };
 
+
                     TraverseBVH(bvh, lightAABB,
-                        [&](VisibilityHandle intersector)
+                        [&](VisibilityHandle visable)
                         {
-                            PVS.push_back(intersector);
+                            PVS.push_back(visable);
                         });
 
-                    auto& previousPVS = light.shadowState->visableObjects;
-                    // Compare previousPVS with current PVS to see if shadow map needs update
+                    if (light.shadowState)
+                    {   // Compare previousPVS with current PVS to see if shadow map needs update
+                        auto& previousPVS = light.shadowState->visableObjects;
+                    }
+                    else
+                    {   // Full update
+                        light.shadowState = &persistentMemory->allocate<CubeMapState>
+                            (   128,
+                                Vector<VisibilityHandle>{ persistentMemory },
+                                persistentMemory);
+
+                        light.shadowState->visableObjects = PVS;
+
+                        data.dirtyList.push_back(visableLight);
+                    }
+
                 }
 			}
 		);

@@ -3466,7 +3466,7 @@ private:
 		void                SubmitUploadQueues(uint32_t flags, CopyContextHandle* handle, size_t count = 1);
 		CopyContextHandle   OpenUploadQueue();
 		CopyContextHandle   GetImmediateUploadQueue();
-		Context& GetCommandList();
+		Context&            GetCommandList();
 		// Internal
 		//ResourceHandle			_AddBackBuffer						(Texture2D_Desc& Desc, ID3D12Resource* Res, uint32_t Tag);
 		static ConstantBuffer	_CreateConstantBufferResource(RenderSystem* RS, ConstantBuffer_desc* desc);

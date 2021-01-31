@@ -134,7 +134,6 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 	auto& transforms		= QueueTransformUpdateTask(dispatcher);
 	auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
 	auto& cameraConstants	= MakeHeapCopy(Camera::ConstantBuffer{}, core.GetTempMemory());
-
 	auto& cameraControllers = UpdateThirdPersonCameraControllers(dispatcher, mouse_dPos, dT);
 
 	transforms.AddInput(cameraControllers);
