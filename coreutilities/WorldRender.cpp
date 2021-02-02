@@ -1797,8 +1797,8 @@ namespace FlexKit
                         ctx.AddUAVBarrier(resources.GetResource(data.lightBVH));
                     };
 
-                size_t offset       = 0;
-                size_t nodeCount    = std::ceilf(float(lightCount) / BVH_ELEMENT_COUNT);
+                uint32_t offset       = 0;
+                uint32_t nodeCount    = std::ceilf(float(lightCount) / BVH_ELEMENT_COUNT);
                 const uint32_t passCount = std::floor(std::log(lightCount) / std::log(BVH_ELEMENT_COUNT));
 
 

@@ -26,6 +26,7 @@
 #include "..\FlexKitResourceCompiler\MeshProcessing.cpp"
 #include "..\FlexKitResourceCompiler\SceneResource.cpp"
 #include "..\FlexKitResourceCompiler\TextureResourceUtilities.cpp"
+#include "..\FlexKitResourceCompiler\ResourceUtilities.cpp"
 #include <angelscript/scriptbuilder/scriptbuilder.cpp>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION

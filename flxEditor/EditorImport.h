@@ -13,6 +13,16 @@ public:
 };
 
 
+class iEditorExporter
+{
+public:
+    virtual bool            Export(const std::string fileDir, const FlexKit::ResourceBuilder::ResourceList&)   = 0;
+    virtual std::string     GetFileTypeName()                   = 0;
+    virtual std::string     GetFileExt()                        = 0;
+};
+
+
+
 /**********************************************************************
 
 Copyright (c) 2019-2021 Robert May

@@ -19,11 +19,22 @@
 #include "TextureViewer.h"
 
 
+/************************************************************************************************/
+
 class TextureResource;
 class EditorScriptEngine;
 
 /************************************************************************************************/
 
+using FlexKit::ResourceBuilder::ResourceList;
+
+class SelectionContext
+{
+public:
+    std::optional<ResourceList> GetSelectedResources() { return {}; }
+};
+
+/************************************************************************************************/
 
 class EditorMainWindow : public QMainWindow
 {
@@ -35,6 +46,7 @@ public:
 
 
     void                    AddImporter(iEditorImportor* importer);
+    void                    AddExporter(iEditorExporter* exporter);
 
     QTextEdit*              AddTextView();
     DXRenderWindow*         AddViewPort();
@@ -61,6 +73,8 @@ signals:
 
 private:
 
+    SelectionContext    selectionContext;
+
     QApplication&       QtApplication;
     EditorProject&      project;
     EditorRenderer&     renderer;
@@ -69,6 +83,7 @@ private:
 
     QMenu*              fileMenu    = nullptr;
     QMenu*              importMenu  = nullptr;
+    QMenu*              exportMenu  = nullptr;
     QMenu*              gadgetMenu  = nullptr;
 };
 

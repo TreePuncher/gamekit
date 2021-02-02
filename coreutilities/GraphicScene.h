@@ -387,6 +387,8 @@ namespace FlexKit
 
 
         SceneBVH() = default;
+        SceneBVH(const SceneBVH& ) = default;
+
 
         SceneBVH(iAllocator* allocator) :
             elements    { allocator },
@@ -395,6 +397,7 @@ namespace FlexKit
 
         SceneBVH(SceneBVH&& rhs) = default;
         SceneBVH& operator = (SceneBVH&& rhs) = default;
+        SceneBVH& operator = (const SceneBVH& rhs) = default;
 
         static SceneBVH Build(GraphicScene& scene, iAllocator* allocator);
 

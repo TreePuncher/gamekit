@@ -13,8 +13,7 @@
 class gltfImporter : public iEditorImportor
 {
 public:
-	gltfImporter(EditorProject& IN_project, FlexKit::RenderSystem& IN_renderSystem) :
-		renderSystem    { IN_renderSystem },
+	gltfImporter(EditorProject& IN_project) :
 		project         { IN_project }{}
 
 	bool Import(const std::string fileDir) override
@@ -46,8 +45,32 @@ public:
 		return "glb";
 	}
 
-	EditorProject&          project;
-	FlexKit::RenderSystem&  renderSystem;
+	EditorProject& project;
+};
+
+
+class GameResExporter : public iEditorExporter
+{
+public:
+    GameResExporter(EditorProject& IN_project) :
+		project         { IN_project }{}
+
+	bool Export(const std::string fileDir, const FlexKit::ResourceBuilder::ResourceList& resourceList) override
+	{
+        return FlexKit::ResourceBuilder::ExportGameRes(fileDir, resourceList);
+	}
+
+	std::string GetFileTypeName() override
+	{
+		return "gameresource";
+	}
+
+	std::string GetFileExt() override
+	{
+		return "gameres";
+	}
+
+	EditorProject& project;
 };
 
 
@@ -69,6 +92,7 @@ private:
     void CreateTexture2DResource(FlexKit::TextureBuffer* buffer, uint32_t resourceID, std::string* resourceName, std::string* format);
 };
 
+
 class EditorApplication
 {
 public:
@@ -78,7 +102,8 @@ public:
 		mainWindow          { editorRenderer, scripts, project, qtApp },
 		visibilityComponent { FlexKit::SystemAllocator },
 		pointLights         { FlexKit::SystemAllocator },
-		gltfImporter        { project, editorRenderer.framework.GetRenderSystem() },
+		gltfImporter        { project },
+        gameResExporter     { project },
 		projectConnector    { project }
 	{
 		auto viewportWidget = editorRenderer.CreateRenderWindow();
@@ -90,6 +115,7 @@ public:
 			};
 
 		mainWindow.AddImporter(&gltfImporter);
+        mainWindow.AddExporter(&gameResExporter);
 		mainWindow.setCentralWidget(viewportWidget);
 
 		projectConnector.Register(scripts);
@@ -139,8 +165,8 @@ public:
 				}   break;
 				default:
 				{
-					auto Blob = component->GetBlob();
-					auto& componentSystem = FlexKit::GetComponent(component->id);
+					auto Blob               = component->GetBlob();
+					auto& componentSystem   = FlexKit::GetComponent(component->id);
 
 					componentSystem.AddComponentView(*newEntity, Blob, Blob.size(), FlexKit::SystemAllocator);
 				}   break;
@@ -165,7 +191,8 @@ public:
 
 	EditorProjectScriptConnector    projectConnector;
 
-	gltfImporter                    gltfImporter;
+    gltfImporter                    gltfImporter;
+    GameResExporter                 gameResExporter;
 };
 
 
