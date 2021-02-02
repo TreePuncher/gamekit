@@ -352,13 +352,11 @@ namespace FlexKit
 			RS              { RS_IN },
 			albedo          { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM)) },
 			MRIA            { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT)) },
-			normal          { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT)) },
-			tangent         { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT)) }
+			normal          { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT)) }
 		{
 			RS.SetDebugName(albedo,     "Albedo");
 			RS.SetDebugName(MRIA,       "MRIA");
 			RS.SetDebugName(normal,     "Normal");
-			RS.SetDebugName(tangent,    "Tangent");
 		}
 
 		~GBuffer()
@@ -366,7 +364,6 @@ namespace FlexKit
 			RS.ReleaseResource(albedo);
 			RS.ReleaseResource(MRIA);
 			RS.ReleaseResource(normal);
-			RS.ReleaseResource(tangent);
 		}
 
 		void Resize(const uint2 WH)
@@ -374,23 +371,19 @@ namespace FlexKit
 			RS.ReleaseResource(albedo);
 			RS.ReleaseResource(MRIA);
 			RS.ReleaseResource(normal);
-			RS.ReleaseResource(tangent);
 
 			albedo  = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM));
 			MRIA    = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT));
 			normal  = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT));
-			tangent = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT));
 
 			RS.SetDebugName(albedo,  "Albedo");
 			RS.SetDebugName(MRIA,    "MRIA");
 			RS.SetDebugName(normal,  "Normal");
-			RS.SetDebugName(tangent, "Tangent");
 		}
 
 		ResourceHandle albedo;	 // rgba_UNORM, Albedo + Metal
 		ResourceHandle MRIA;	 // rgba_UNORM, Metal + roughness + IOR + ANISO
 		ResourceHandle normal;	 // float16_RGBA
-		ResourceHandle tangent;	 // float16_RGBA
 
 		RenderSystem& RS;
 	};
@@ -403,7 +396,6 @@ namespace FlexKit
 			FrameResourceHandle albedo;
 			FrameResourceHandle MRIA;
 			FrameResourceHandle normal;
-			FrameResourceHandle tangent;
 		};
 
 		auto& clear = frameGraph.AddNode<GBufferClear>(
@@ -413,7 +405,6 @@ namespace FlexKit
 				data.albedo             = builder.WriteRenderTarget(gbuffer.albedo);
 				data.MRIA               = builder.WriteRenderTarget(gbuffer.MRIA);
 				data.normal             = builder.WriteRenderTarget(gbuffer.normal);
-				data.tangent            = builder.WriteRenderTarget(gbuffer.tangent);
 			},
 			[](GBufferClear& data, ResourceHandler& resources, Context& ctx, iAllocator&)
 			{
@@ -422,7 +413,6 @@ namespace FlexKit
 				ctx.ClearRenderTarget(resources.GetResource(data.albedo));
 				ctx.ClearRenderTarget(resources.GetResource(data.MRIA));
 				ctx.ClearRenderTarget(resources.GetResource(data.normal));
-				ctx.ClearRenderTarget(resources.GetResource(data.tangent));
 
                 ctx.EndEvent_DEBUG();
 			});
@@ -434,7 +424,6 @@ namespace FlexKit
 		frameGraph.Resources.AddResource(gbuffer.albedo, true);
 		frameGraph.Resources.AddResource(gbuffer.MRIA, true);
 		frameGraph.Resources.AddResource(gbuffer.normal, true);
-		frameGraph.Resources.AddResource(gbuffer.tangent, true);
 	}
 
 
@@ -449,7 +438,6 @@ namespace FlexKit
 		FrameResourceHandle AlbedoTargetObject;     // RGBA8
 		FrameResourceHandle NormalTargetObject;     // RGBA16Float
 		FrameResourceHandle MRIATargetObject;
-		FrameResourceHandle TangentTargetObject;
 		FrameResourceHandle IOR_ANISOTargetObject;  // RGBA8
 
 		FrameResourceHandle depthBufferTargetObject;
@@ -461,7 +449,6 @@ namespace FlexKit
 		FrameResourceHandle AlbedoTargetObject;     // RGBA8
 		FrameResourceHandle NormalTargetObject;     // RGBA16Float
 		FrameResourceHandle MRIATargetObject;
-		FrameResourceHandle TangentTargetObject;
 		FrameResourceHandle IOR_ANISOTargetObject;  // RGBA8
 		FrameResourceHandle depthBufferTargetObject;
 
@@ -524,15 +511,12 @@ namespace FlexKit
 		FrameResourceHandle     AlbedoTargetObject;     // RGBA8
 		FrameResourceHandle     NormalTargetObject;     // RGBA16Float
 		FrameResourceHandle     MRIATargetObject;
-		FrameResourceHandle     TangentTargetObject;
 		FrameResourceHandle     depthBufferTargetObject;
         FrameResourceHandle     clusterIndexBufferObject;
         FrameResourceHandle     clusterBufferObject;
         FrameResourceHandle     lightListsObject;
 
-
 		FrameResourceHandle		pointLightBufferObject;
-		
 		FrameResourceHandle     renderTargetObject;
 	};
 
@@ -567,7 +551,6 @@ namespace FlexKit
 		FrameResourceHandle albedoObject;
 		FrameResourceHandle MRIAObject;
 		FrameResourceHandle normalObject;
-		FrameResourceHandle tangentObject;
 		FrameResourceHandle depthBufferObject;
 
 		FrameResourceHandle lightBitBucketObject;

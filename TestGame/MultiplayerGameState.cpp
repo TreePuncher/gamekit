@@ -132,7 +132,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 	CameraHandle activeCamera = GetCameraControllerCamera(thirdPersonCamera);
 	SetCameraAspectRatio(activeCamera, base.renderWindow.GetAspectRatio());
 
-	float2 mouse_dPos   = base.renderWindow.mouseState.Normalized_dPos;
+	float2 mouse_dPos       = base.renderWindow.mouseState.Normalized_dPos;
 
 	auto& scene				= game.scene;
 
@@ -182,6 +182,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
             };
 
             auto& drawnScene = base.render.DrawScene(dispatcher, frameGraph, scene, targets, core.GetBlockMemory(), core.GetTempMemoryMT());
+
             base.streamingEngine.TextureFeedbackPass(
                 dispatcher,
                 frameGraph,

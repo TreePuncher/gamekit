@@ -290,6 +290,7 @@ namespace FlexKit
 		subStates.back()->Draw(core, dispatcher, dT, frameGraph);
 
         Free_DelayedReleaseResources(core.RenderSystem);
+
 		frameGraph.SubmitFrameGraph(dispatcher, core.RenderSystem, core.GetBlockMemory());
 
 		FK_LOG_9("Frame Draw Begin");
@@ -311,7 +312,7 @@ namespace FlexKit
 
 	void GameFramework::DrawFrame(double dT)
 	{
-        UpdateDispatcher dispatcher{ &core.Threads, core.GetTempMemory() };
+        UpdateDispatcher dispatcher{ &core.Threads, core.GetTempMemoryMT() };
         Update(dispatcher, dT);
 
 		FK_LOG_9("Frame Begin");
@@ -321,17 +322,17 @@ namespace FlexKit
             return;
         }
 
-		UpdatePreDraw	(dispatcher, core.GetTempMemory(), dT);
+		UpdatePreDraw	(dispatcher, core.GetTempMemoryMT(), dT);
 
 		ProfileBegin(PROFILE_SUBMISSION);
 
-		Draw			(dispatcher, core.GetTempMemory(), dT);
+		Draw			(dispatcher, core.GetTempMemoryMT(), dT);
 
         dispatcher.Execute();
 
         ProfileEnd(PROFILE_SUBMISSION);
 
-		PostDraw		(dispatcher, core.GetTempMemory(), dT);
+		PostDraw		(dispatcher, core.GetTempMemoryMT(), dT);
 
 		core.GetTempMemory().clear();
 

@@ -195,11 +195,10 @@ namespace FlexKit
 			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask            = UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-			PSO_Desc.NumRenderTargets      = 4;
+			PSO_Desc.NumRenderTargets      = 3;
 			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R8G8B8A8_UNORM; // Albedo
 			PSO_Desc.RTVFormats[1]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // Specular
 			PSO_Desc.RTVFormats[2]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // Normal
-			PSO_Desc.RTVFormats[3]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // Tangent
 			PSO_Desc.SampleDesc.Count      = 1;
 			PSO_Desc.SampleDesc.Quality    = 0;
 			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
@@ -262,11 +261,10 @@ namespace FlexKit
 			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask            = UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-			PSO_Desc.NumRenderTargets      = 4;
+			PSO_Desc.NumRenderTargets      = 3;
 			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R8G8B8A8_UNORM; // Albedo
 			PSO_Desc.RTVFormats[1]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // Specular
 			PSO_Desc.RTVFormats[2]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // Normal
-			PSO_Desc.RTVFormats[3]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // Tangent
 			PSO_Desc.SampleDesc.Count      = 1;
 			PSO_Desc.SampleDesc.Quality    = 0;
 			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
@@ -995,10 +993,12 @@ namespace FlexKit
                 {
                     auto& light = lights[lightHandle];
 
-                    if (light.shadowMap != InvalidHandle_t)
+                    if (light.shadowMap != InvalidHandle_t) {
                         shadowMapAllocator.Release(light.shadowMap, false, false);
+                        renderSystem.ReleaseResource(light.shadowMap);
+                    }
 
-                    auto shadowMap = shadowMapAllocator.Aquire(GPUResourceDesc::DepthTarget({ 128, 128 }, DeviceFormat::D32_FLOAT, 6));
+                    auto shadowMap = shadowMapAllocator.Aquire(GPUResourceDesc::DepthTarget({ 256, 256 }, DeviceFormat::D32_FLOAT, 6));
                     renderSystem.SetDebugName(shadowMap, "Shadow Map");
 
                     light.shadowMap = shadowMap;
@@ -1026,7 +1026,7 @@ namespace FlexKit
         PVS.AddInput(drawSceneDesc.cameraDependency);
 
         auto& pointLightGather      = scene.GetPointLights(dispatcher, temporary);
-        auto& sceneBVH              = scene.GetSceneBVH(dispatcher, drawSceneDesc.transformDependency, temporary);
+        auto& sceneBVH              = scene.UpdateSceneBVH(dispatcher, drawSceneDesc.transformDependency, persistent);
         auto& visablePointLights    = scene.GetVisableLights(dispatcher, camera, sceneBVH, temporary);
         auto& pointLightUpdate      = scene.UpdatePointLights(dispatcher, sceneBVH, visablePointLights, temporary, persistent);
 
@@ -1303,7 +1303,6 @@ namespace FlexKit
 
 				data.AlbedoTargetObject         = builder.ReadShaderResource(gbuffer.albedo);
 				data.NormalTargetObject         = builder.ReadShaderResource(gbuffer.normal);
-				data.TangentTargetObject        = builder.ReadShaderResource(gbuffer.tangent);
 				data.MRIATargetObject           = builder.ReadShaderResource(gbuffer.MRIA);
 				data.depthBufferTargetObject    = builder.ReadShaderResource(depthTarget);
 
@@ -1343,7 +1342,6 @@ namespace FlexKit
 				descHeap.SetSRV(ctx, 0, frameResources.GetResource(data.AlbedoTargetObject));
 				descHeap.SetSRV(ctx, 1, frameResources.GetResource(data.MRIATargetObject));
 				descHeap.SetSRV(ctx, 2, frameResources.GetResource(data.NormalTargetObject));
-				descHeap.SetSRV(ctx, 3, frameResources.GetResource(data.TangentTargetObject));
 				descHeap.SetSRV(ctx, 4, frameResources.GetResource(data.depthBufferTargetObject), DeviceFormat::R32_FLOAT);
 				descHeap.NullFill(ctx, 20);
 
@@ -2021,7 +2019,6 @@ namespace FlexKit
 				data.AlbedoTargetObject      = builder.WriteRenderTarget(gbuffer.albedo);
 				data.MRIATargetObject        = builder.WriteRenderTarget(gbuffer.MRIA);
 				data.NormalTargetObject      = builder.WriteRenderTarget(gbuffer.normal);
-				data.TangentTargetObject     = builder.WriteRenderTarget(gbuffer.tangent);
 				data.depthBufferTargetObject = builder.WriteDepthBuffer(depthTarget);
 			},
 			[camera, timeStats = timeStats](GBufferPass& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
@@ -2069,14 +2066,12 @@ namespace FlexKit
 						data.gbuffer.albedo,
 						data.gbuffer.MRIA,
 						data.gbuffer.normal,
-						data.gbuffer.tangent,
 					});
 
 				RenderTargetList renderTargets = {
 					resources.GetResource(data.AlbedoTargetObject),
 					resources.GetResource(data.MRIATargetObject),
 					resources.GetResource(data.NormalTargetObject),
-					resources.GetResource(data.TangentTargetObject),
 				};
 
 				ctx.SetRenderTargets(
@@ -2280,7 +2275,6 @@ namespace FlexKit
 
 				data.AlbedoTargetObject         = builder.ReadShaderResource(gbuffer.albedo);
 				data.NormalTargetObject         = builder.ReadShaderResource(gbuffer.normal);
-				data.TangentTargetObject        = builder.ReadShaderResource(gbuffer.tangent);
 				data.MRIATargetObject           = builder.ReadShaderResource(gbuffer.MRIA);
 				data.depthBufferTargetObject    = builder.ReadShaderResource(depthTarget);
                 data.clusterIndexBufferObject   = builder.ReadResource(lightPass.indexBufferObject, DRS_ShaderResource);
@@ -2366,7 +2360,6 @@ namespace FlexKit
 				descHeap.SetSRV(ctx, 0, resources.GetResource(data.AlbedoTargetObject));
 				descHeap.SetSRV(ctx, 1, resources.GetResource(data.MRIATargetObject));
 				descHeap.SetSRV(ctx, 2, resources.GetResource(data.NormalTargetObject));
-				descHeap.SetSRV(ctx, 3, resources.GetResource(data.TangentTargetObject));
 				descHeap.SetSRV(ctx, 4, resources.GetResource(data.depthBufferTargetObject), DeviceFormat::R32_FLOAT);
                 descHeap.SetSRV(ctx, 5, resources.GetResource(data.clusterIndexBufferObject));
                 descHeap.SetStructuredResource(ctx, 6, resources.GetResource(data.clusterBufferObject), sizeof(GPUCluster));
@@ -2435,7 +2428,6 @@ namespace FlexKit
 				data.albedoObject         = builder.ReadShaderResource(scene.gbuffer.albedo);
 				data.MRIAObject           = builder.ReadShaderResource(scene.gbuffer.MRIA);
 				data.normalObject         = builder.ReadShaderResource(scene.gbuffer.normal);
-				data.tangentObject        = builder.ReadShaderResource(scene.gbuffer.tangent);
 				data.depthBufferObject    = builder.ReadShaderResource(scene.depthTarget);
 
 				//data.lightBitBucketObject   = builder.ReadWriteUAV(lightLists,          DRS_ShaderResource);
@@ -2475,7 +2467,6 @@ namespace FlexKit
 				srvHeap.SetSRV(ctx, 0, resources.GetResource(data.albedoObject));
 				srvHeap.SetSRV(ctx, 1, resources.GetResource(data.MRIAObject));
 				srvHeap.SetSRV(ctx, 2, resources.GetResource(data.normalObject));
-				srvHeap.SetSRV(ctx, 3, resources.GetResource(data.tangentObject));
 				srvHeap.SetSRV(ctx, 4, resources.GetResource(data.depthBufferObject), DeviceFormat::R32_FLOAT);
 				//srvHeap.SetSRV(ctx, 5, data.lightLists);
 				//srvHeap.SetSRV(ctx, 6, data.lightBuffer);
