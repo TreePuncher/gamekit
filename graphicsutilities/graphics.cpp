@@ -4079,7 +4079,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	uint32_t RenderSystem::GetTextureMipCount(ResourceHandle handle) const
+    uint8_t RenderSystem::GetTextureMipCount(ResourceHandle handle) const
 	{
 		return Textures.GetMIPCount(handle);
 	}
@@ -6107,7 +6107,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	uint32_t TextureStateTable::GetMIPCount(ResourceHandle handle) const
+    uint8_t TextureStateTable::GetMIPCount(ResourceHandle handle) const
 	{
 		auto UserIdx = Handles[handle];
 		return Resources[UserEntries[UserIdx].ResourceIdx].mipCount;

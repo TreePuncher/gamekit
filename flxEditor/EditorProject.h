@@ -72,6 +72,16 @@ public:
         resources.emplace_back(ProjectResource{ resource });
     }
 
+    FlexKit::ResourceBuilder::ResourceList GetResources() const
+    {
+        FlexKit::ResourceBuilder::ResourceList out;
+
+        for (auto& r : resources)
+            out.push_back(r.resource);
+
+        return out;
+    }
+
     std::vector<ProjectScene>       scenes;
     std::vector<ProjectResource>    resources;
     ProjectLayout                   layout;

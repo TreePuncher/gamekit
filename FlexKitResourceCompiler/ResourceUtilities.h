@@ -165,6 +165,12 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
+    bool ExportGameRes(const std::string& file, const ResourceList& blobs);
+
+
+    /************************************************************************************************/
+
+
     struct IDTranslation
     {
         size_t	FBXID;

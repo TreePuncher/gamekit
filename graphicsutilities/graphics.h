@@ -2702,7 +2702,7 @@ private:
 		DXGI_FORMAT		    GetFormat(ResourceHandle handle) const;
 		TextureDimension    GetDimension(ResourceHandle) const;
 		size_t              GetArraySize(ResourceHandle) const;
-		uint32_t            GetMIPCount(ResourceHandle) const;
+        uint8_t             GetMIPCount(ResourceHandle) const;
 		
         void                SetExtra(ResourceHandle handle, GPUResourceExtra_t);
         GPUResourceExtra_t  GetExtra(ResourceHandle handle) const;
@@ -3391,7 +3391,7 @@ private:
 
 		DeviceFormat	GetTextureFormat(ResourceHandle Handle) const;
 		DXGI_FORMAT		GetTextureDeviceFormat(ResourceHandle Handle) const;
-		uint32_t        GetTextureMipCount(ResourceHandle Handle) const;
+        uint8_t         GetTextureMipCount(ResourceHandle Handle) const;
 
 
 		void                UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator);

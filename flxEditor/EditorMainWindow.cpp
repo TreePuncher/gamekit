@@ -20,10 +20,10 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
     renderer        { IN_renderer       },
     scriptEngine    { IN_scriptEngine   }
 {
-    this->resize({ 800, 600 });
+    resize({ 800, 600 });
     fileMenu       = menuBar()->addMenu("File");
     importMenu     = fileMenu->addMenu("Import");
-
+    exportMenu     = fileMenu->addMenu("Export");
 
     auto quitAction = fileMenu->addAction("Quit");
     quitAction->setShortcut(tr("CTRL+Q"));
@@ -59,11 +59,7 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
     setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowTabbedDocks | QMainWindow::AllowNestedDocks);
     tabPosition(Qt::TopDockWidgetArea);
 
-    AddResourceList();
-
     show();
-
-    AddTextureViewer();
 }
 
 
@@ -130,14 +126,39 @@ void EditorMainWindow::AddImporter(iEditorImportor* importer)
     connect(importAction, &QAction::triggered, this,
         [=]
         {
-            const auto importText = std::string{ "Import " } + importer->GetFileTypeName();
-            const auto fileMenuText = std::string{ "Image Files (*." } + importer->GetFileExt() + ")";
-            const auto fileDir = QFileDialog::getOpenFileName(this, tr(importText.c_str()), QDir::currentPath(), fileMenuText.c_str());
-            const auto fileStr = fileDir.toStdString();
+            const auto importText   = std::string{ "Import " } + importer->GetFileTypeName();
+            const auto fileMenuText = std::string{ "Files (*." } + importer->GetFileExt() + ")";
+            const auto fileDir      = QFileDialog::getOpenFileName(this, tr(importText.c_str()), QDir::currentPath(), fileMenuText.c_str());
+            const auto fileStr      = fileDir.toStdString();
 
             if (fileDir.size() && !importer->Import(fileStr))
-            {
-                // Log Error
+            {   // Log Error
+                FK_LOG_ERROR("Import Failed!");
+            }
+        });
+}
+
+
+void EditorMainWindow::AddExporter(iEditorExporter* exporter)
+{
+    auto importAction = exportMenu->addAction(exporter->GetFileTypeName().c_str());
+
+    connect(importAction, &QAction::triggered, this,
+        [=]
+        {
+            const auto importText   = std::string{ "Export" } + exporter->GetFileTypeName();
+            const auto fileMenuText = std::string{ "Files (*." } + exporter->GetFileExt() + ")";
+            const auto fileDir      = QFileDialog::getSaveFileName(this, tr(importText.c_str()), QDir::currentPath(), fileMenuText.c_str());
+            const auto fileStr      = fileDir.toStdString();
+
+            auto selectedResources  = selectionContext.GetSelectedResources().value_or(ResourceList{});
+
+            if(!selectedResources.size())
+                selectedResources = project.GetResources();
+
+            if (fileDir.size() && selectedResources.size() && !exporter->Export(fileStr, selectedResources))
+            {   // Log Error
+                FK_LOG_ERROR("Export Failed!");
             }
         });
 }

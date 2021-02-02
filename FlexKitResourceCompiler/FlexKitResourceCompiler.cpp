@@ -56,7 +56,6 @@ public:
 };
 
 
-
 int main(int argc, char* argv[])
 {
 	bool FileChosen = false;
@@ -303,61 +302,7 @@ int main(int argc, char* argv[])
 				return -1;
 			}
 
-			std::vector<ResourceBlob> blobs;
-
-			for (auto resource : resources)
-				blobs.push_back(resource->CreateBlob());
-
-			sort(blobs.begin(),
-				blobs.end(),
-				[](auto& lhs, auto& rhs) 
-				{
-					return lhs.GUID < rhs.GUID;
-				});
-
-
-			size_t TableSize     = sizeof(ResourceEntry) * resources.size() + sizeof(ResourceTable);
-			ResourceTable& Table = *(ResourceTable*)malloc(TableSize);
-			EXITSCOPE(free(&Table));
-
-			FK_ASSERT(&Table != nullptr, "Allocation Error!");
-
-			memset(&Table, 0, TableSize);
-			Table.MagicNumber	= 0xF4F3F2F1F4F3F2F1;
-			Table.Version       = 0x0000000000000002;
-			Table.ResourceCount = resources.size();
-
-			std::cout << "Resources Found: " << resources.size() << "\n";
-
-			size_t Position = TableSize;
-
-			for(size_t I = 0; I < blobs.size(); ++I)
-			{
-				Table.Entries[I].ResourcePosition	= Position;
-				Table.Entries[I].GUID				= blobs[I].GUID;
-				Table.Entries[I].Type				= blobs[I].resourceType;
-					
-				memcpy(Table.Entries[I].ID, blobs[I].ID.c_str(), ID_LENGTH);
-
-				Position += blobs[I].bufferSize;
-				std::cout << "Resource Found: " << blobs[I].ID << " ID: " << Table.Entries[I].GUID << "\n";
-			}
-
-			FILE* F			= nullptr;
-			if (fopen_s(&F, Out, "wb") == EINVAL)
-				return -1;
-
-			EXITSCOPE(fclose(F));
-
-			fwrite(&Table, sizeof(char), TableSize, F);
-
-			std::cout << "writing resource " << Out << '\n';
-
-            for (auto& blob : blobs)
-            {
-                if (auto res = fwrite(blob.buffer, sizeof(char), blob.bufferSize, F); res != blob.bufferSize)
-                    __debugbreak();
-            }
+            ExportGameRes("", resources);
 	}	break;
 	case TOOL_MODE::ETOOLMODE_LISTCONTENTS:
 	{	if (FileChosen)
