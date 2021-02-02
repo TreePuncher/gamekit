@@ -261,7 +261,8 @@ namespace FlexKit
 
         AABB            GetAABB() const
         {
-            return { boundingSphere.xyz() - boundingSphere.w, boundingSphere.xyz() + boundingSphere.w };
+            const auto posW = GetPositionW(node);
+            return { posW - boundingSphere.w, posW + boundingSphere.w };
         }
 	};
 
@@ -345,100 +346,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct QuadTreeNode
-	{
-		QuadTreeNode(iAllocator* in_allocator) : 
-			allocator{ in_allocator } {}
-
-		~QuadTreeNode()
-		{
-
-		}
-
-		void Clear()
-		{
-			for (auto child : ChildNodes) 
-			{
-				child->Clear();
-				child->Contents.clear();
-				allocator->free(child);
-			}
-
-			ChildNodes.clear();
-			Contents.clear();
-		}
-
-		void AddEntity		(VisibilityHandle visable);
-		void RemoveEntity	(VisibilityHandle visable);
-		
-		enum SphereTestRes
-		{
-			Partially	= 2,
-			Fully		= 3, 
-			Failed		= 0
-		};
-
-		SphereTestRes IsSphereInside(float r, float3 pos);
-
-		// requires SceneVisibilityComponent
-		void UpdateBounds();
-		void ExpandNode(iAllocator* allocator);
-
-		float4								GetArea() const;
-
-		float2								lowerLeft;
-		float2								upperRight;
-		float2								centerPoint;
-
-		static_vector<VisibilityHandle, 4>	Contents;
-		static_vector<QuadTreeNode*,4>		ChildNodes;
-
-		iAllocator*							allocator;
-	};
-
-
-	struct QuadTree
-	{
-		QuadTree(SceneHandle in_scene, float2 AreaDimensions, iAllocator* in_allocator) :
-			allocator	{ in_allocator	},
-			scene		{ in_scene		},
-			root		{ in_allocator	}
-		{
-			area					= float2{0, 0};
-
-			root.upperRight = AreaDimensions;
-			root.lowerLeft	= AreaDimensions * -1;
-		}
-
-		void clear();
-		
-		void AddEntity		(VisibilityHandle handle);
-		void RemoveEntity	(VisibilityHandle handle);
-
-		void Rebuild		(GraphicScene& parentScene);
-
-		float4		GetArea();
-
-		UpdateTask& Update(FlexKit::UpdateDispatcher& dispatcher, GraphicScene* parentScene, UpdateTask& transformDependency);
-
-		const SceneHandle			scene;
-		const size_t				NodeSize = 16;
-
-
-		size_t						RebuildPeriod	= 10;
-		size_t						RebuildCounter	= 10;
-
-		float2						area;
-		QuadTreeNode				root;
-		iAllocator*					allocator;
-	};
-
-
-	void UpdateQuadTree		( QuadTreeNode* Node, GraphicScene* Scene );
-
-	
-	/************************************************************************************************/
-
 	struct PointLightGather
 	{
 		Vector<PointLightHandle>	pointLights;
@@ -451,26 +358,26 @@ namespace FlexKit
         const GraphicScene*         scene;
     };
 
-    struct SceneBVHBuild
+    struct alignas(64) SceneBVH
     {
-        struct SceneElement
+        struct BVHElement
         {
             uint32_t            ID;
             VisibilityHandle    handle;
 
-            friend bool operator > (const SceneElement& lhs, const SceneElement& rhs)
+            friend bool operator > (const BVHElement& lhs, const BVHElement& rhs)
             {
                 return lhs.ID > rhs.ID;
             }
 
-            friend bool operator < (const SceneElement& lhs, const SceneElement& rhs)
+            friend bool operator < (const BVHElement& lhs, const BVHElement& rhs)
             {
                 return lhs.ID < rhs.ID;
             }
         };
 
 
-        struct SceneNode {
+        struct BVHNode {
             AABB boundingVolume;
 
             uint16_t    children    = 0;
@@ -478,46 +385,89 @@ namespace FlexKit
             bool        Leaf        = false;
         };
 
-        uint16_t                root;
-        Vector<SceneElement>    elements;
-        Vector<SceneNode>       sceneNodes;
-    };
 
-    template<typename TY_BV, typename TY_FN_OnIntersection>
-    void TraverseBVHNode(const SceneBVHBuild& BVH, const SceneBVHBuild::SceneNode& node, const TY_BV& bv, TY_FN_OnIntersection& IntersectionHandler)
-    {
-        static auto& visabilityComponent = SceneVisibilityComponent::GetComponent();
+        SceneBVH() = default;
 
-        if (!Intersects(bv, node.boundingVolume))
-            return;
+        SceneBVH(iAllocator* allocator) :
+            elements    { allocator },
+            nodes       { allocator },
+            allocator   { allocator } {}
 
-        if (node.Leaf)
+        SceneBVH(SceneBVH&& rhs) = default;
+        SceneBVH& operator = (SceneBVH&& rhs) = default;
+
+        static SceneBVH Build(GraphicScene& scene, iAllocator* allocator);
+
+        void Release()
         {
-            const auto end = node.children + node.count;
+            allocator->release(this);
+        }
 
-            for (auto childIdx = node.children; childIdx < end; ++childIdx)
+        template<typename TY_BV, typename TY_FN_OnIntersection>
+        void TraverseBVHNode(const BVHNode& node, const TY_BV& bv, TY_FN_OnIntersection& IntersectionHandler)
+        {
+            static auto& visabilityComponent = SceneVisibilityComponent::GetComponent();
+
+            if (!Intersects(bv, node.boundingVolume))
+                return;
+
+            if (node.Leaf)
             {
-                const auto child = BVH.elements[childIdx];
-                const auto aabb = visabilityComponent[child.handle].GetAABB();
+                const auto end = node.children + node.count;
 
-                if (Intersects(bv, aabb))
-                    IntersectionHandler(child.handle);
+                for (auto childIdx = node.children; childIdx < end; ++childIdx)
+                {
+                    const auto child    = elements[childIdx];
+                    const auto aabb     = visabilityComponent[child.handle].GetAABB();
+
+                    if (Intersects(bv, aabb))
+                        IntersectionHandler(child.handle);
+                }
+            }
+            else
+            {
+                const auto end = node.children + node.count;
+
+                for (auto child = node.children; child < end; ++child)
+                    TraverseBVHNode(nodes[child], bv, IntersectionHandler);
             }
         }
-        else
+
+
+        template<typename TY_BV, typename TY_FN_OnIntersection>
+        void TraverseBVH(const TY_BV& bv, TY_FN_OnIntersection IntersectionHandler)
         {
-            const auto end = node.children + node.count;
-
-            for (auto child = node.children; child < end; ++child)
-                TraverseBVHNode(BVH, BVH.sceneNodes[child], bv, IntersectionHandler);
+            TraverseBVHNode(nodes[root], bv, IntersectionHandler);
         }
-    }
 
-    template<typename TY_BV, typename TY_FN_OnIntersection>
-    void TraverseBVH(const SceneBVHBuild& BVH, const TY_BV& bv, TY_FN_OnIntersection IntersectionHandler)
+        bool Valid() const
+        {
+            return nodes.size();
+        }
+
+        SceneBVH Copy(iAllocator& allocator) const
+        {
+            SceneBVH copy{ &allocator };
+
+            copy.elements   = elements;
+            copy.nodes      = nodes;
+            copy.root       = root;
+
+            return copy;
+        }
+
+        Vector<BVHElement>    elements;
+        Vector<BVHNode>       nodes;
+        uint16_t              root      = 0;
+        iAllocator*           allocator = nullptr;
+    };
+
+
+    struct SceneBVHBuild
     {
-        TraverseBVHNode(BVH, BVH.sceneNodes[BVH.root], bv, IntersectionHandler);
-    }
+        SceneBVH* bvh;
+    };
+
 
     struct PointLightUpdate_DATA
     {
@@ -536,7 +486,6 @@ namespace FlexKit
 				allocator					{ in_allocator							},
 				HandleTable					{ in_allocator							},
 				sceneID						{ rand()								},
-				sceneManagement				{ sceneID, {1024, 1024}, in_allocator	},
 				sceneEntities				{ in_allocator							} {}
 				
 		~GraphicScene()
@@ -549,11 +498,9 @@ namespace FlexKit
 
 		void				ClearScene			();
 
-		Drawable&	        SetNode(SceneEntityHandle EHandle, NodeHandle Node);
-
 		Vector<PointLightHandle>    FindPointLights(const Frustum& f, iAllocator* tempMemory) const;
 
-        BuildBVHTask&               GetSceneBVH(UpdateDispatcher&, UpdateTask& transformDependency, iAllocator* tempMemory) const;
+        BuildBVHTask&               UpdateSceneBVH(UpdateDispatcher&, UpdateTask& transformDependency, iAllocator* persistent);
         PointLightGatherTask&	    GetPointLights(UpdateDispatcher&, iAllocator* tempMemory) const;
 		size_t					    GetPointLightCount();
 
@@ -568,9 +515,9 @@ namespace FlexKit
 
 		HandleUtilities::HandleTable<SceneEntityHandle, 16> HandleTable;
 			
-		Vector<VisibilityHandle>			sceneEntities;
-		QuadTree							sceneManagement;
-		iAllocator*							allocator;
+		Vector<VisibilityHandle>		sceneEntities;
+        SceneBVH                        bvh;
+		iAllocator*						allocator       = nullptr;
 
 		operator GraphicScene* () { return this; }
 	};
@@ -661,7 +608,8 @@ namespace FlexKit
 			{1, 0, 0, 1}
 		};
 
-		const auto	area		= scene.sceneManagement.GetArea();
+        /*
+		const auto	area		= scene.bvh->sceneNodes[scene.bvh->root].boundingVolume;
 		const auto	areaLL		= (area.y <  area.z) ? float2{ area.x, area.y } : float2{ area.z, area.w };
 		const auto	areaUR		= (area.y >= area.z) ? float2{ area.x, area.y } : float2{ area.z, area.w };
 		const auto	areaSpan	= (areaUR - areaLL);
@@ -703,6 +651,7 @@ namespace FlexKit
 			drawDesc,
 			rects,
 			tempMemory);
+        */
 	}
 
 

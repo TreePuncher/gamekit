@@ -175,12 +175,12 @@ namespace FlexKit
 		template<typename HANDLE, size_t SIZE = 128>
 		struct HandleTable
 		{
-			HandleTable(iAllocator* Memory = nullptr, const Type_t type = 0x00 ) : mType( type ), FreeList(Memory), Indexes(Memory) {}
+			HandleTable(iAllocator* Memory = nullptr, const Type_t type = 0x00 ) : mType( type ), Indexes(Memory) {}
 
 			void Initiate( iAllocator* Memory )
 			{
-				FreeList.Allocator = Memory;
-				Indexes.Allocator = Memory;
+                FreeList            = -1;
+				Indexes.Allocator   = Memory;
 			}
 
 			inline index_t&	operator[] ( const HANDLE in )
@@ -198,18 +198,18 @@ namespace FlexKit
 
 			inline HANDLE	GetNewHandle()
 			{
-                while(FreeList.size() && FreeList.back() >= FreeList.size())
-                    FreeList.pop_back();
+                if (FreeList != -1) {
+                    const auto idx = FreeList;
+                    FreeList = Indexes[idx];
 
-                if (FreeList.size())
-                    return { FreeList.pop_back(), mType, FlexKit::Handle::HF_USED };
+                    return { (index_t)idx, mType, FlexKit::Handle::HF_USED };
+                }
 
                 return { (index_t)Indexes.push_back(-1), mType, FlexKit::Handle::HF_USED };
 			}
 
 			inline void	Clear()
 			{
-				FreeList.clear();
 				Indexes.clear();
 			}
 
@@ -223,10 +223,8 @@ namespace FlexKit
 
 			inline void	RemoveHandle( HANDLE in )
 			{
-				if( in.INDEX < Indexes.size() )
-					FreeList.push_back( Indexes[in.INDEX] );
-				else
-					FK_ASSERT( 0 );
+                Indexes[in] = FreeList;
+                FreeList    = in;
 			}
 
 			inline size_t size()
@@ -262,12 +260,11 @@ namespace FlexKit
 			HandleTable( const HandleTable<HANDLE>& in )				= delete;	// Do not allow Table copying
 			HandleTable& operator = ( const HandleTable<HANDLE>& rhs )	= delete;	// Do not allow Table copying
 
-			Vector<index_t> FreeList;
+            index_t         FreeList = -1;
 			Vector<index_t> Indexes;
 
 			void Release()
 			{
-				FreeList.Release();
 				Indexes.Release();
 			}
 

@@ -26,7 +26,6 @@ cbuffer LocalConstants : register(b1)
 Texture2D<float4> AlbedoBuffer      : register(t0);
 Texture2D<float4> MRIABuffer        : register(t1); // metallic, roughness, IOR, anisotropic
 Texture2D<float4> NormalBuffer      : register(t2);
-Texture2D<float4> TangentBuffer     : register(t3);
 Texture2D<float>  DepthBuffer       : register(t4);
 
 // light and shadow map resources
@@ -122,8 +121,6 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     
     const float4 Albedo         = AlbedoBuffer.Sample(NearestPoint, UV);
     const float4 N              = NormalBuffer.Sample(NearestPoint, UV);
-    const float3 T              = TangentBuffer.Sample(NearestPoint, UV);
-    const float3 B              = normalize(cross(N, T));
 	const float4 MRIA			= MRIABuffer.Sample(NearestPoint, UV);
 
     const float3 V              = -GetViewVector_VS(UV);

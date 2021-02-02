@@ -169,7 +169,6 @@ struct Deferred_OUT
     float4 Albedo       : SV_TARGET0;
     float4 MRIA         : SV_TARGET1;
     float4 Normal       : SV_TARGET2;
-    float4 Tangent      : SV_TARGET3;
 
     float Depth : SV_DepthLessEqual;
 };
@@ -211,23 +210,21 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 {
     const float4 albedo       = textureCount >= 1 ? SampleVirtualTexture(albedoTexture, BiLinear, IN.UV) : float4(1, 1, 1, 1);
     
-    //if(albedo.w < 0.5f)
-    //    discard;
+    if(albedo.w < 0.5f)
+        discard;
 
     Deferred_OUT gbuffer;
 
-    const float3 biTangent      = normalize(IN.Bitangent);
-    const float4 roughMetal     = textureCount >= 3 ? SampleVirtualTexture(roughnessMetalTexture, BiLinear, IN.UV) : float4(0.7, 0.5f, 0, 0);
-    const float3 normalSample   = textureCount >= 2 ? SampleVirtualTexture(normalTexture, BiLinear, IN.UV).xyz : float3(0.5f, 0.5f, 1.0f);
-    const float3 normalCorrected = float3(normalSample.x, normalSample.y, normalSample.z);
+    const float3 biTangent          = normalize(IN.Bitangent);
+    const float4 roughMetal         = textureCount >= 3 ? SampleVirtualTexture(roughnessMetalTexture, BiLinear, IN.UV) : float4(0.7, 0.5f, 0, 0);
+    const float3 normalSample       = textureCount >= 2 ? SampleVirtualTexture(normalTexture, BiLinear, IN.UV).xyz : float3(0.5f, 0.5f, 1.0f);
+    const float3 normalCorrected    = float3(normalSample.x, normalSample.y, normalSample.z);
     
     float3x3 inverseTBN = float3x3(normalize(IN.Tangent), normalize(biTangent), normalize(IN.Normal));
     float3x3 TBN        = transpose(inverseTBN);
     const float3 normal = mul(TBN, normalCorrected * 2.0f - 1.0f);
 
     gbuffer.Normal      = mul(View, float4(normalize(normal), 0));
-    //gbuffer.Tangent     = mul(View, float4(normalize(IN.Tangent.xyz),  0));
-
     gbuffer.MRIA        = roughMetal.zyxx;
     gbuffer.Albedo      = float4(albedo.xyz, Ks);
 

@@ -82,8 +82,6 @@ namespace FlexKit
                     std::cout << ID.GetString() << '\n';
                 });
         }
-
-
     }
 
 
@@ -132,7 +130,7 @@ namespace FlexKit
 
         memcpy(&pointLight, buffer, sizeof(pointLight));
 
-        gameObject.AddView<PointLightView>(pointLight.K, pointLight.IR[0], pointLight.IR[1], GetSceneNode(gameObject));
+        gameObject.AddView<PointLightView>(pointLight.K, pointLight.IR[0], sqrt(pointLight.IR[0]), GetSceneNode(gameObject));
         SetBoundingSphereFromLight(gameObject);
 
         EnablePointLightShadows(gameObject);
@@ -192,7 +190,7 @@ namespace FlexKit
 		}
 
 		sceneEntities.clear();
-		sceneManagement.clear();
+        bvh = SceneBVH(allocator);
 	}
 
 
@@ -358,283 +356,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UpdateQuadTree(QuadTreeNode* Node, GraphicScene* Scene)
-	{
-		/*
-		for (const auto D : Scene->Drawables) {
-			if (GetFlag(D.Node, SceneNodes::StateFlags::UPDATED))
-			{
-				if()
-				{	// Moved Branch
-					if()
-					{	// Space in Node Available
-					}
-					else
-					{	// Node Split Needed
-					}
-				}
-			}
-		}
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
-	void QuadTreeNode::ExpandNode(iAllocator* allocator)
-	{
-		ChildNodes.push_back(&allocator->allocate_aligned<QuadTreeNode>(allocator));
-		ChildNodes.push_back(&allocator->allocate_aligned<QuadTreeNode>(allocator));
-		ChildNodes.push_back(&allocator->allocate_aligned<QuadTreeNode>(allocator));
-		ChildNodes.push_back(&allocator->allocate_aligned<QuadTreeNode>(allocator));
-
-		const auto SpanVector	= upperRight - lowerLeft;
-		const auto CenterPoint	= (lowerLeft + upperRight) / 2;
-
-		ChildNodes[(int)QuadTreeNodeLocation::UpperRight]->upperRight	= CenterPoint + SpanVector / 2;
-		ChildNodes[(int)QuadTreeNodeLocation::UpperRight]->lowerLeft	= CenterPoint;
-
-		ChildNodes[(int)QuadTreeNodeLocation::UpperLeft]->upperRight	= CenterPoint + (SpanVector / 2) * float2( 0.0f,  1.0f);
-		ChildNodes[(int)QuadTreeNodeLocation::UpperLeft]->lowerLeft		= CenterPoint + (SpanVector / 2) * float2(-1.0f,  0.0f);
-
-		ChildNodes[(int)QuadTreeNodeLocation::LowerLeft]->upperRight	= CenterPoint;
-		ChildNodes[(int)QuadTreeNodeLocation::LowerLeft]->lowerLeft		= CenterPoint - (SpanVector / 2);
-
-		ChildNodes[(int)QuadTreeNodeLocation::LowerRight]->upperRight	= CenterPoint + (SpanVector / 2) * float2( 1.0f,  0.0f);
-		ChildNodes[(int)QuadTreeNodeLocation::LowerRight]->lowerLeft	= CenterPoint + (SpanVector / 2) * float2( 0.0f, -1.0f);
-
-		for (auto& node : ChildNodes)
-			node->centerPoint = (node->upperRight + node->lowerLeft) / 2;
-	}
-
-
-	/************************************************************************************************/
-
-
-	float4 QuadTreeNode::GetArea() const
-	{
-		const auto areaLL = (lowerLeft.y <  upperRight.y) ? lowerLeft : upperRight;
-		const auto areaUR = (lowerLeft.y >= upperRight.y) ? lowerLeft : upperRight;
-
-		return { areaLL, areaUR };
-	}
-
-
-	/************************************************************************************************/
-
-
-	void QuadTree::clear()
-	{
-		root.Clear();
-	}
-
-
-	/************************************************************************************************/
-
-
-	void QuadTreeNode::AddEntity(VisibilityHandle visable)
-	{
-		if (ChildNodes.empty() && !Contents.full())
-		{
-			Contents.push_back(visable);
-		}
-		else
-		{
-			if (ChildNodes.empty()) 
-			{
-				ExpandNode(allocator);
-
-				for (auto C : Contents)
-					AddEntity(visable);
-
-				Contents.clear();
-			}
-
-			// Get Nearest Node
-			auto visableEntity	= SceneVisibilityComponent::GetComponent()[visable];
-			auto node			= visableEntity.node;
-			auto position		= GetPositionW(node);
-
-			float2 pos_f2{position.x, position.z};
-
-			float			l = 1000000000.0f;
-			QuadTreeNode*	nearestNode = ChildNodes.front();
-
-			for (auto child : ChildNodes)
-			{
-				float d = (child->centerPoint - pos_f2).Magnitude();
-				if (d < l)
-				{
-					l = d;
-					nearestNode = child;
-				}
-			}
-
-			nearestNode->AddEntity(visable);
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	QuadTreeNode::SphereTestRes QuadTreeNode::IsSphereInside(float r, float3 pos)
-	{
-		float nodeSpan			= (lowerLeft - upperRight).Magnitude();
-		float l					= (float2(pos.x, pos.z) - centerPoint).Magnitude();
-
-		bool OutSideNode		= (l > (nodeSpan / 2));
-
-		return OutSideNode ? Failed : Fully;
-	}
-
-	/************************************************************************************************/
-
-	void QuadTreeNode::UpdateBounds()
-	{
-		for (auto child : ChildNodes) 
-		{
-			child->UpdateBounds();
-
-			upperRight.x = (child->upperRight.x > upperRight.x) ? child->upperRight.x : upperRight.x;
-			upperRight.y = (child->upperRight.y > upperRight.y) ? child->upperRight.y : upperRight.y;
-
-			lowerLeft.x = (child->lowerLeft.x > lowerLeft.x) ? child->lowerLeft.x : lowerLeft.x;
-			lowerLeft.y = (child->lowerLeft.y > lowerLeft.y) ? child->lowerLeft.y : lowerLeft.y;
-		}
-
-		auto& visibility = SceneVisibilityComponent::GetComponent();
-
-		for(auto visable : Contents)
-		{
-			auto& visableInfo	= visibility[visable];
-			auto node			= visableInfo.node;
-			auto boundingSphere	= visableInfo.boundingSphere;
-			auto r				= boundingSphere.w;
-			auto offset			= boundingSphere.xyz();
-			auto position		= GetPositionW(node);
-
-			float2 vectorToNode				= centerPoint - float2{position.x + offset.x, position.z + offset.x };
-			
-			float2 vectorToNodeNormalized	= vectorToNode / vectorToNode.Magnitude();
-			
-			if ((vectorToNode * vectorToNode).Sum() < 0.00001f)
-				vectorToNodeNormalized = float2{ 0, 0 };
-
-			float2 newUR					= centerPoint + vectorToNodeNormalized * -r;
-
-			upperRight.x = (newUR.y > upperRight.y) ? newUR.x : upperRight.x;
-			upperRight.y = (newUR.y > upperRight.y) ? newUR.y : upperRight.y;
-
-			lowerLeft.x = (newUR.y < lowerLeft.y) ? newUR.x : lowerLeft.x;
-			lowerLeft.y = (newUR.y < lowerLeft.y) ? newUR.y : lowerLeft.y;
-		}
-	}
-
-	/************************************************************************************************/
-
-
-	void QuadTree::AddEntity(VisibilityHandle entityHandle)
-	{
-		root.AddEntity(entityHandle);
-		//UpdateBounds();
-	}
-
-
-	/************************************************************************************************/
-
-
-	void QuadTree::RemoveEntity(VisibilityHandle handle)
-	{
-
-	}
-
-
-	/************************************************************************************************/
-
-
-	void QuadTree::Rebuild(GraphicScene& parentScene) 
-	{
-		RebuildCounter = 0;
-		root.Clear();
-
-		float2 lowerLeft	{ 0, 0 };
-		float2 upperRight	{ 0, 0 };
-			
-		//for (auto item : allEntities)
-		{
-			//auto boundingSphere = parentScene.GetBoundingSphere(item);
-			//float r = boundingSphere.w;
-
-			//upperRight.x = boundingSphere.x + r > upperRight.x ? boundingSphere.x + r : upperRight.x;
-			//upperRight.y = boundingSphere.z + r > upperRight.y ? boundingSphere.z + r : upperRight.y;
-
-			//lowerLeft.x = boundingSphere.x - r < lowerLeft.x ? boundingSphere.x - r : lowerLeft.x;
-			//lowerLeft.y = boundingSphere.z - r < lowerLeft.y ? boundingSphere.z - r : lowerLeft.y;
-		}
-
-		auto centerPoint	= (upperRight - lowerLeft) / 2;
-		root.centerPoint	= centerPoint;
-		root.lowerLeft		= lowerLeft;
-		root.upperRight		= upperRight;
-
-		//for (auto item : allEntities)
-		//	root.AddChild(item, allocator);
-	}
-
-
-	/************************************************************************************************/
-
-
-	float4	QuadTree::GetArea()
-	{
-		return root.GetArea();
-	}
-
-
-	/************************************************************************************************/
-
-
-	UpdateTask& QuadTree::Update(FlexKit::UpdateDispatcher& dispatcher, GraphicScene* parentScene, UpdateTask& transformDependency)
-	{
-		struct QuadTreeUpdate
-		{
-			QuadTree*		QTree;
-			GraphicScene*	parentScene;
-		};
-
-		auto& task = dispatcher.Add<QuadTreeUpdate>(
-			[&](DependencyBuilder& builder, auto& QuadTreeUpdate)
-			{
-				builder.AddInput(transformDependency);
-				builder.SetDebugString("QuadTree Update!");
-
-				QuadTreeUpdate.QTree		= this;
-				QuadTreeUpdate.parentScene	= parentScene;
-
-			},
-			[](auto& QuadTreeUpdate, iAllocator& threadAllocator)
-			{
-				FK_LOG_9("QuadTree::Update");
-
-				const auto period  = QuadTreeUpdate.QTree->RebuildPeriod;
-				const auto counter = QuadTreeUpdate.QTree->RebuildCounter;
-
-				//if (period <= counter)
-				//	QuadTreeUpdate.QTree->Rebuild(*QuadTreeUpdate.parentScene);
-				//else
-				//	QuadTreeUpdate.QTree->root.UpdateBounds(*QuadTreeUpdate.parentScene);
-
-				//QuadTreeUpdate.QTree->RebuildCounter++;
-			});
-
-		return task;
-	}
-
-
-	/************************************************************************************************/
-
 	/*
 	void UpdateGraphicScenePoseTransform(GraphicScene* SM)
 	{
@@ -651,19 +372,133 @@ namespace FlexKit
 	}
 	*/
 
-	/************************************************************************************************/
-
-
-	void UpdateShadowCasters(GraphicScene* GS)
-	{
-		//for (auto& Caster : GS->SpotLightCasters)
-		//{
-		//	UpdateCamera(GS->RS, *GS->SN, &Caster.C, 0.00f);
-		//}
-	}
-
 
 	/************************************************************************************************/
+
+
+    #define ComponentSize 9
+    #define ComponentMask (1 << ComponentSize) - 1
+
+    inline uint CreateMortonCode(const uint3 XYZ)
+    {
+        const uint X = uint(XYZ[0]) & ComponentMask;
+        const uint Y = uint(XYZ[1]) & ComponentMask;
+        const uint Z = uint(XYZ[2]) & ComponentMask;
+
+        uint mortonCode = 0;
+
+        for (uint I = 0; I < ComponentSize; I++)
+        {
+            const uint x_bit = X & (1 << I);
+            const uint y_bit = Y & (1 << I);
+            const uint z_bit = Z & (1 << I);
+
+            const uint XYZ = x_bit << 2 | y_bit << 0 | z_bit << 1;
+            //const uint XYZ = x_bit << 0 | y_bit << 1 | z_bit << 2;
+
+            mortonCode |= XYZ << I * 3;
+        }
+
+        return mortonCode;
+    }
+
+
+    /************************************************************************************************/
+
+
+    SceneBVH SceneBVH::Build(GraphicScene& scene, iAllocator* allocator)
+    {
+        auto& visables              = scene.sceneEntities;
+        auto& visibilityComponent   = SceneVisibilityComponent::GetComponent();
+
+        auto elements   = Vector<BVHElement>{ allocator, visables.size() };
+        auto nodes      = Vector<BVHNode>{ allocator, visables.size() * 2 };
+
+        AABB worldAABB;
+
+        for (auto& visable : visables)
+            worldAABB += visibilityComponent[visable].GetAABB();
+
+        const float3 worldSpan  = worldAABB.Span();
+        const float3 offset     = -worldAABB.Min;
+
+        for (auto& visable : visables)
+        {
+            const auto POS          = GetPositionW(visibilityComponent[visable].node);
+            const auto normalizePOS = (offset + POS) / worldSpan;
+            const auto ID           = CreateMortonCode({
+                                        (uint)(normalizePOS.x * ComponentMask),
+                                        (uint)(normalizePOS.y * ComponentMask),
+                                        (uint)(normalizePOS.z * ComponentMask)});
+
+            elements.push_back({ ID, visable });
+        }
+
+        std::sort(elements.begin(), elements.end());
+
+        // Phase 1 - Build Leaf Nodes -
+        const size_t end            = std::ceil(visables.size() / 4.0f);
+        const size_t elementCount   = visables.size();
+
+        for (size_t I = 0; I < end; ++I)
+        {
+            BVHNode node;
+
+            size_t end = Min(elementCount, 4 * I + 4);
+
+            for (size_t II = 4 * I; II < Min(elementCount, 4 * I + 4); II++) {
+                const size_t idx    = II;
+                auto& visable       =  visables[elements[idx].handle];
+                node.boundingVolume = node.boundingVolume + visibilityComponent[visable].boundingSphere;
+            }
+
+            node.children   = 4 * I;
+            node.count      = end - 4 * I;
+            node.Leaf       = true;
+
+            nodes.push_back(node);
+        }
+
+        // Phase 2 - Build Interior Nodes -
+        uint begin = 0;
+        while (true)
+        {
+            const uint end  = nodes.size();
+            const uint temp = end;
+
+            if (end - begin > 1)
+            {
+                for (uint I = begin; I < end; I += 4)
+                {
+                    BVHNode node;
+
+                    const size_t localEnd = Min(end, (I + 1) * 4);
+                    for (size_t II = I; II < localEnd; II++)
+                        node.boundingVolume += nodes[II].boundingVolume;
+
+                    node.children   = I;
+                    node.count      = (localEnd - I);
+                    node.Leaf       = false;
+
+                    nodes.push_back(node);
+                }
+            }
+            else
+                break;
+
+            begin = temp;
+        }
+
+        SceneBVH BVH{ allocator };
+        BVH.elements    = elements;
+        BVH.nodes       = nodes;
+        BVH.root        = begin;
+
+        return BVH;
+    }
+
+
+    /************************************************************************************************/
 
 
 	void GatherScene(GraphicScene* SM, CameraHandle Camera, PVS& out, PVS& T_out)
@@ -958,136 +793,22 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
-
-
-    #define ComponentSize 9
-    #define ComponentMask (1 << ComponentSize) - 1
-
-    inline uint CreateMortonCode(const uint3 XYZ)
-    {
-        const uint X = uint(XYZ[0]) & ComponentMask;
-        const uint Y = uint(XYZ[1]) & ComponentMask;
-        const uint Z = uint(XYZ[2]) & ComponentMask;
-
-        uint mortonCode = 0;
-
-        for (uint I = 0; I < ComponentSize; I++)
-        {
-            const uint x_bit = X & (1 << I);
-            const uint y_bit = Y & (1 << I);
-            const uint z_bit = Z & (1 << I);
-
-            const uint XYZ = x_bit << 2 | y_bit << 0 | z_bit << 1;
-            //const uint XYZ = x_bit << 0 | y_bit << 1 | z_bit << 2;
-
-            mortonCode |= XYZ << I * 3;
-        }
-
-        return mortonCode;
-    }
-
-
     /************************************************************************************************/
 
 
-    BuildBVHTask& GraphicScene::GetSceneBVH(UpdateDispatcher& dispatcher, UpdateTask& transformDependency, iAllocator* frameTemporary) const
+    BuildBVHTask& GraphicScene::UpdateSceneBVH(UpdateDispatcher& dispatcher, UpdateTask& transformDependency, iAllocator* allocator)
     {
         return dispatcher.Add<SceneBVHBuild>(
-			[&](UpdateDispatcher::UpdateBuilder& builder, SceneBVHBuild& data)
+            [&](UpdateDispatcher::UpdateBuilder& builder, SceneBVHBuild& data)
 			{
                 builder.SetDebugString("BVH");
                 builder.AddInput(transformDependency);
 			},
-			[this, frameTemporary = frameTemporary](SceneBVHBuild& data, iAllocator& threadAllocator)
+			[this, allocator = allocator](SceneBVHBuild& data, iAllocator& threadAllocator)
 			{
                 FK_LOG_9("Build BVH");
-
-                auto& visables = SceneVisibilityComponent::GetComponent();
-
-                auto elements   = Vector<SceneBVHBuild::SceneElement>{ &threadAllocator, visables.elements.size() };
-                auto sceneNodes = Vector<SceneBVHBuild::SceneNode>{ &threadAllocator };
-
-                AABB worldAABB;
-
-                for (auto& visable : visables)
-                    worldAABB += visable.componentData.GetAABB();
-
-                const float3 worldSpan  = worldAABB.Span();
-                const float3 offset     = worldSpan / 2.0f;
-
-                for (auto& visable : visables)
-                {
-                    const auto POS          = GetPositionW(visable.componentData.node);
-                    const auto normalizePOS = offset + (POS / worldSpan);
-                    const auto ID           = CreateMortonCode({ (uint)normalizePOS.x, (uint)normalizePOS.y, (uint)normalizePOS.z });
-
-                    elements.push_back({ ID, visable.handle });
-                }
-
-                std::sort(elements.begin(), elements.end());
-
-                // Phase 1 - Build Leaf Nodes -
-                const size_t end            = std::ceil(visables.elements.size() / 4.0f);
-                const size_t elementCount   = visables.elements.size();
-
-                for (size_t I = 0; I < end; ++I)
-                {
-                    SceneBVHBuild::SceneNode node;
-
-                    size_t end = Min(elementCount, 4 * I + 4);
-
-                    for (size_t II = 4 * I; II < Min(elementCount, 4 * I + 4); II++) {
-                        const size_t idx    = II;
-                        auto& visable       =  visables[elements[idx].handle];
-                        node.boundingVolume = node.boundingVolume + visable.boundingSphere;
-                    }
-
-                    node.children   = 4 * I;
-                    node.count      = end - 4 * I;
-                    node.Leaf       = true;
-
-                    sceneNodes.push_back(node);
-                }
-
-                // Phase 2 - Build Interior Nodes -
-                uint begin = 0;
-                while (true)
-                {
-                    const uint end  = sceneNodes.size();
-                    const uint temp = end;
-
-                    if (end - begin > 1)
-                    {
-                        for (uint I = begin; I < end; I += 4)
-                        {
-                            SceneBVHBuild::SceneNode node;
-
-                            const size_t localEnd = Min(end, (I + 1) * 4);
-                            for (size_t II = I; II < localEnd; II++)
-                                node.boundingVolume += sceneNodes[II].boundingVolume;
-
-                            node.children   = I;
-                            node.count      = (localEnd - I);
-                            node.Leaf       = false;
-
-                            sceneNodes.push_back(node);
-                        }
-                    }
-                    else
-                        break;
-                    begin = temp;
-                }
-
-
-                // publish Data
-                data.elements   = Vector<SceneBVHBuild::SceneElement>{ frameTemporary };
-                data.sceneNodes = Vector<SceneBVHBuild::SceneNode>{ frameTemporary };
-
-                data.elements   = elements;
-                data.sceneNodes = sceneNodes;
-
-                data.root       = begin;
+                bvh         = bvh.Build(*this, &threadAllocator).Copy(*allocator);
+                data.bvh    = &bvh;
 			}
 		);
     }
@@ -1143,7 +864,7 @@ namespace FlexKit
 
                 data.pointLightShadows = Vector<PointLightHandle>{ temporaryMemory };
 			},
-            [this, &bvh = bvh.GetData(), camera = camera](PointLightShadowGather& data, iAllocator& threadAllocator)
+            [this, &bvh = bvh.GetData().bvh, camera = camera](PointLightShadowGather& data, iAllocator& threadAllocator)
 			{
                 FK_LOG_9("Point Light Shadow Gather");
                 Vector<PointLightHandle> pointLightShadows{ &threadAllocator };
@@ -1151,7 +872,7 @@ namespace FlexKit
 
                 const auto frustum = GetFrustum(camera);
 
-                TraverseBVH(bvh, frustum,
+                bvh->TraverseBVH(frustum,
                     [&](VisibilityHandle intersector)
                     {
                         GameObject& go = *visabilityComponent[intersector].entity;
@@ -1184,7 +905,7 @@ namespace FlexKit
                 data.dirtyList = Vector<PointLightHandle>{ temporaryMemory };
 			},
             [   this,
-                &bvh                = bvh.GetData(),
+                &bvh                = bvh.GetData().bvh,
                 &visablePointLights = visablePointLights.GetData().pointLightShadows,
                 persistentMemory    = persistentMemory]
             (PointLightUpdate_DATA& data, iAllocator& threadAllocator)
@@ -1201,7 +922,7 @@ namespace FlexKit
 
                     Vector<VisibilityHandle> PVS{ &threadAllocator };
 
-                    TraverseBVH(bvh, lightAABB,
+                    bvh->TraverseBVH(lightAABB,
                         [&](VisibilityHandle visable)
                         {
                             PVS.push_back(visable);
