@@ -15,6 +15,7 @@ struct TemporaryBuffers
 };
 
 using FNRender_t = std::function<void (FlexKit::UpdateDispatcher& Dispatcher, double dT, TemporaryBuffers&, FlexKit::FrameGraph& graph, FlexKit::ResourceHandle renderTarget)>;
+using FNResize_t = std::function<void (FlexKit::uint2 newSize)>;
 
 class DXRenderWindow : public QWidget
 {
@@ -37,6 +38,11 @@ public:
         onDraw = draw;
     }
 
+    void SetOnResize(FNResize_t resize)
+    {
+        onResize = resize;
+    }
+
 public slots:
     void OnFrame();
 
@@ -53,6 +59,8 @@ private:
 
 
     FNRender_t                  onDraw;
+    FNResize_t                  onResize;
+
     FlexKit::Win32RenderWindow  renderWindow;
     FlexKit::CameraHandle       camera  = FlexKit::InvalidHandle_t;
 };

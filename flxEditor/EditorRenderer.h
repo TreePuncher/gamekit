@@ -2,7 +2,8 @@
 #include <GameFramework.h>
 #include <QtWidgets/qapplication>
 #include "DXRenderWindow.h"
-
+#include "TextureStreamingUtilities.h"
+#include "WorldRender.h"
 
 class QWidget;
 
@@ -12,10 +13,12 @@ class EditorRenderer : public FlexKit::FrameworkState
 public:
     EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FKApplication& IN_application, QApplication& IN_QtApplication) :
         FrameworkState  { IN_framework      },
+        QtApplication   { IN_QtApplication  },
         application     { IN_application    },
         vertexBuffer    { IN_framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 1, false)        },
         constantBuffer  { IN_framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 128, false)    },
-        QtApplication   { IN_QtApplication  }
+        textureEngine   { IN_framework.core.RenderSystem, IN_framework.core.GetBlockMemory() },
+        worldRender     { IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory() }
     {
         auto& renderSystem = framework.GetRenderSystem();
         renderSystem.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_PSO, { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateTexturedTriStatePSO });
@@ -34,7 +37,6 @@ public:
         application.DrawOneFrame(0.0);
     }
 
-
     DXRenderWindow* CreateRenderWindow(QWidget* parent = nullptr)
     {
         auto viewPortWidget = new DXRenderWindow{ application.GetFramework().GetRenderSystem(), parent };
@@ -42,7 +44,6 @@ public:
 
         return viewPortWidget;
     }
-
 
     void DrawRenderWindow(DXRenderWindow* renderWindow)
     {
@@ -90,6 +91,12 @@ protected:
 
     std::atomic_bool                drawInProgress = false;
 
+
+public:
+    FlexKit::TextureStreamingEngine textureEngine;
+    FlexKit::WorldRender            worldRender;
+
+private:
     // Temp Buffers
     FlexKit::VertexBufferHandle		vertexBuffer;
     FlexKit::ConstantBufferHandle	constantBuffer;

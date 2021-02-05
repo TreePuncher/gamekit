@@ -124,6 +124,8 @@ public:
 		// connect script gadgets
 		for (auto& gadget : scripts.GetGadgets())
 			mainWindow.RegisterGadget(gadget);
+
+        //mainWindow.AddModelViewer();
 	}
 
 	~EditorApplication()

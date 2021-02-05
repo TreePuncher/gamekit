@@ -116,10 +116,11 @@ private:	/**********************************************************************
 
     enum class RenderMode
     {
-        ForwardPlus,
-        Deferred,
-        ComputeTiledDeferred
-    }   renderMode = RenderMode::Deferred;
+        Normal,
+        Debug,
+    }   renderMode = RenderMode::Debug;
+
+    ClusterDebugDrawMode debugDrawMode = ClusterDebugDrawMode::BVH;
 
     float                       T = 0;
     NetObjectInputComponent		netInputObjects;

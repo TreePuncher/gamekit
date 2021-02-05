@@ -108,7 +108,7 @@ void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispa
 
     if (auto [gameObject, res] = FindGameObject(game.scene, "Cube"); res)
     {
-        Yaw(*gameObject, pi * dT);
+        //Yaw(*gameObject, pi * dT);
     }
 }
 
@@ -160,99 +160,94 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 
 	if(base.renderWindow.GetWH().Product() != 0)
 	{
-		switch(renderMode)
-		{
-		case RenderMode::Deferred:
-		{
-            DrawSceneDescription scene =
-            {
-                .camera = activeCamera,
-                .scene  = game.scene,
-                .dt     = dT,
-                .t      = base.t,
+        DrawSceneDescription scene =
+        {
+            .camera = activeCamera,
+            .scene  = game.scene,
+            .dt     = dT,
+            .t      = base.t,
 
-                .gbuffer    = base.gbuffer,
-                .reserveVB  = reserveVB,
-                .reserveCB  = reserveCB,
+            .gbuffer    = base.gbuffer,
+            .reserveVB  = reserveVB,
+            .reserveCB  = reserveCB,
 
-                .debugDisplay           = false,
+            .debugDisplay           = renderMode == RenderMode::Debug,
+            .debugDrawMode          = debugDrawMode,
 
-                .transformDependency    = transforms,
-                .cameraDependency       = cameras,
-            };
+            .transformDependency    = transforms,
+            .cameraDependency       = cameras,
+        };
 
-            auto& drawnScene = base.render.DrawScene(dispatcher, frameGraph, scene, targets, core.GetBlockMemory(), core.GetTempMemoryMT());
+        auto& drawnScene = base.render.DrawScene(dispatcher, frameGraph, scene, targets, core.GetBlockMemory(), core.GetTempMemoryMT());
 
-            base.streamingEngine.TextureFeedbackPass(
-                dispatcher,
-                frameGraph,
-                activeCamera,
-                base.renderWindow.GetWH(),
-                drawnScene.PVS,
-                reserveCB,
-                reserveVB);
-		}   break;
-		}
+        base.streamingEngine.TextureFeedbackPass(
+            dispatcher,
+            frameGraph,
+            activeCamera,
+            base.renderWindow.GetWH(),
+            drawnScene.PVS,
+            reserveCB,
+            reserveVB);
 
-		// Draw Skeleton overlay
-		if (auto [gameObject, res] = FindGameObject(scene, "Cylinder"); res)
-		{
-			auto Skeleton = GetSkeleton(*gameObject);
-			auto pose     = GetPoseState(*gameObject);
-			auto node     = GetSceneNode(*gameObject);
+	    // Draw Skeleton overlay
+	    if (auto [gameObject, res] = FindGameObject(game.scene, "Cylinder"); res)
+	    {
+		    auto Skeleton = GetSkeleton(*gameObject);
+		    auto pose     = GetPoseState(*gameObject);
+		    auto node     = GetSceneNode(*gameObject);
 
-			//RotateJoint(*gameObject, JointHandle(0), Quaternion{ 0, T, 0 });
+		    //RotateJoint(*gameObject, JointHandle(0), Quaternion{ 0, T, 0 });
 
             /*
-			for (size_t I = 0; I < 5; I++)
-			{
-				JointHandle joint{ I };
+		    for (size_t I = 0; I < 5; I++)
+		    {
+			    JointHandle joint{ I };
 
-				auto jointPose = GetJointPose(*gameObject, joint);
-				jointPose.r = Quaternion{ 0, 0, (float)(T) * 90 };
-				SetJointPose(*gameObject, joint, jointPose);
-			}
+			    auto jointPose = GetJointPose(*gameObject, joint);
+			    jointPose.r = Quaternion{ 0, 0, (float)(T) * 90 };
+			    SetJointPose(*gameObject, joint, jointPose);
+		    }
             */
 
-			T += dT;
+		    T += dT;
 
-			if (!Skeleton)
-				return;
+		    if (!Skeleton)
+			    return;
 
-			LineSegments lines = DEBUG_DrawPoseState(*pose, node, core.GetTempMemory());
-			//LineSegments lines = BuildSkeletonLineSet(Skeleton, node, core.GetTempMemory());
+		    LineSegments lines = DEBUG_DrawPoseState(*pose, node, core.GetTempMemory());
+		    //LineSegments lines = BuildSkeletonLineSet(Skeleton, node, core.GetTempMemory());
 
-			const auto cameraConstants = GetCameraConstants(activeCamera);
+		    const auto cameraConstants = GetCameraConstants(activeCamera);
 
-			for (auto& line : lines)
-			{
-				const auto tempA = cameraConstants.PV * float4{ line.A, 1 };
-				const auto tempB = cameraConstants.PV * float4{ line.B, 1 };
+		    for (auto& line : lines)
+		    {
+			    const auto tempA = cameraConstants.PV * float4{ line.A, 1 };
+			    const auto tempB = cameraConstants.PV * float4{ line.B, 1 };
 
-				if (tempA.w <= 0 || tempB.w <= 0)
-				{
-					line.A = { 0, 0, 0 };
-					line.B = { 0, 0, 0 };
-				}
-				else
-				{
-					line.A = tempA.xyz() / tempA.w;
-					line.B = tempB.xyz() / tempB.w;
-				}
-			}
+			    if (tempA.w <= 0 || tempB.w <= 0)
+			    {
+				    line.A = { 0, 0, 0 };
+				    line.B = { 0, 0, 0 };
+			    }
+			    else
+			    {
+				    line.A = tempA.xyz() / tempA.w;
+				    line.B = tempB.xyz() / tempB.w;
+			    }
+		    }
 
             /*
-			DrawShapes(
-				DRAW_LINE_PSO,
-				frameGraph,
-				reserveVB,
-				reserveCB,
-				targets.RenderTarget,
-				core.GetTempMemory(),
-				LineShape{ lines });
-                */
-		}
-	}
+		        DrawShapes(
+			    DRAW_LINE_PSO,
+			    frameGraph,
+			    reserveVB,
+			    reserveCB,
+			    targets.RenderTarget,
+			    core.GetTempMemory(),
+			    LineShape{ lines });
+            */
+	    }
+    }
 
 	//framework.stats.objectsDrawnLastFrame = PVS.GetData().solid.size();
     base.DEBUG_PrintDebugStats(core, frameGraph, base.vertexBuffer, base.renderWindow);
@@ -316,16 +311,32 @@ bool LocalPlayerState::EventHandler(Event evt)
                     framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
                 }
 			}   return true;
-			case KC_P: // Reload Shaders
+			case KC_P:
 			{
 				if (evt.Action == Event::Release)
 				{
-					if (renderMode == RenderMode::Deferred)
-						renderMode = RenderMode::ForwardPlus;
+					if (renderMode == RenderMode::Normal)
+						renderMode = RenderMode::Debug;
 					else
-						renderMode = RenderMode::Deferred;
+						renderMode = RenderMode::Normal;
 				}
 			}   return true;
+            case KC_L:
+            {
+                if (evt.Action == Event::Release)
+                    switch (debugDrawMode)
+                    {
+                    case ClusterDebugDrawMode::BVH:
+                        debugDrawMode = ClusterDebugDrawMode::Lights;
+                        break;
+                    case ClusterDebugDrawMode::Lights:
+                        debugDrawMode = ClusterDebugDrawMode::Clusters;
+                        break;
+                    case ClusterDebugDrawMode::Clusters:
+                        debugDrawMode = ClusterDebugDrawMode::BVH;
+                        break;
+                    }
+            }   return true;
 			case KC_M:
 				if (evt.Action == Event::Release)
 					base.renderWindow.EnableCaptureMouse(!base.renderWindow.mouseCapture);

@@ -67,7 +67,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    bool IsDDS(DeviceFormat format)
+    inline bool IsDDS(DeviceFormat format)
     {
         switch (format)
         {
@@ -95,7 +95,7 @@ namespace FlexKit
     }
 
 
-    size_t BlockSize(DeviceFormat format)
+    inline size_t BlockSize(DeviceFormat format)
     {
         switch (format)
         {
@@ -124,7 +124,7 @@ namespace FlexKit
         }
     }
 
-    uint2 GetFormatTileSize(DeviceFormat format)
+    inline uint2 GetFormatTileSize(DeviceFormat format)
     {
         switch (format)
         {
@@ -150,7 +150,7 @@ namespace FlexKit
 
     DDSInfo GetDDSInfo(AssetHandle asset, ReadContext& ctx);
 
-    DDSLevelInfo GetMIPLevelInfo(const size_t Level, const uint2 WH, const DeviceFormat format)
+    inline DDSLevelInfo GetMIPLevelInfo(const size_t Level, const uint2 WH, const DeviceFormat format)
     {
         const uint32_t levelHeight  = Max(WH[0] >> Level, 4u);
         const uint32_t levelWidth   = Max(WH[1] >> Level, 4u);

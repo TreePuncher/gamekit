@@ -63,6 +63,14 @@ namespace FlexKit
 
     class GBuffer;
 
+    enum class ClusterDebugDrawMode
+    {
+        BVH,
+        Lights,
+        Clusters
+    };
+
+
     struct DrawSceneDescription
     {
         CameraHandle        camera;
@@ -75,7 +83,8 @@ namespace FlexKit
         ReserveVertexBufferFunction     reserveVB;
         ReserveConstantBufferFunction   reserveCB;
 
-        bool                debugDisplay = false;
+        bool                    debugDisplay = false;
+        ClusterDebugDrawMode    debugDrawMode;
 
         // Inputs
         UpdateTask&         transformDependency;
@@ -389,7 +398,7 @@ namespace FlexKit
 	};
 
 
-	void ClearGBuffer(GBuffer& gbuffer, FrameGraph& frameGraph)
+	inline void ClearGBuffer(GBuffer& gbuffer, FrameGraph& frameGraph)
 	{
 		struct GBufferClear
 		{
@@ -402,9 +411,9 @@ namespace FlexKit
 			GBufferClear{},
 			[&](FrameGraphNodeBuilder& builder, GBufferClear& data)
 			{
-				data.albedo             = builder.WriteRenderTarget(gbuffer.albedo);
-				data.MRIA               = builder.WriteRenderTarget(gbuffer.MRIA);
-				data.normal             = builder.WriteRenderTarget(gbuffer.normal);
+				data.albedo  = builder.WriteRenderTarget(gbuffer.albedo);
+				data.MRIA    = builder.WriteRenderTarget(gbuffer.MRIA);
+				data.normal  = builder.WriteRenderTarget(gbuffer.normal);
 			},
 			[](GBufferClear& data, ResourceHandler& resources, Context& ctx, iAllocator&)
 			{
@@ -419,7 +428,7 @@ namespace FlexKit
 	}
 
 
-	void AddGBufferResource(GBuffer& gbuffer, FrameGraph& frameGraph)
+	inline void AddGBufferResource(GBuffer& gbuffer, FrameGraph& frameGraph)
 	{
 		frameGraph.Resources.AddResource(gbuffer.albedo, true);
 		frameGraph.Resources.AddResource(gbuffer.MRIA, true);
@@ -617,13 +626,13 @@ namespace FlexKit
 	class FLEXKITAPI WorldRender
 	{
 	public:
-		WorldRender(RenderSystem& RS_IN, TextureStreamingEngine& IN_streamingEngine, const uint2 WH, iAllocator* persistent) :
+		WorldRender(RenderSystem& RS_IN, TextureStreamingEngine& IN_streamingEngine, iAllocator* persistent) :
 			renderSystem                { RS_IN },
 			OcclusionCulling	        { false	},
 
             UAVPool                     { renderSystem, 64 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
             UAVTexturePool              { renderSystem, 64 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent },
-            RTPool                      { renderSystem, 64 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::RenderTarget, persistent },
+            RTPool                      { renderSystem, 512 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::RenderTarget, persistent },
 
             timeStats                   { renderSystem.CreateTimeStampQuery(256) },
             timingReadBack              { renderSystem.CreateReadBackBuffer(512) },
@@ -767,7 +776,8 @@ namespace FlexKit
 				const SceneDescription&         desc,
                 ResourceHandle                  depthBuffer,
 				ReserveConstantBufferFunction   reserveCB,
-				iAllocator*                     tempMemory);
+				iAllocator*                     tempMemory,
+                bool                            releaseTemporaries = true);
 
         DEBUGVIS_DrawBVH& DEBUGVIS_DrawLightBVH(
 				UpdateDispatcher&               dispatcher,
@@ -776,6 +786,7 @@ namespace FlexKit
                 ResourceHandle                  renderTarget,
                 LightBufferUpdate&              lightBufferUpdate,
 				ReserveConstantBufferFunction   reserveCB,
+                ClusterDebugDrawMode            mode,
 				iAllocator*                     tempMemory);
 
 		BackgroundEnvironmentPass& RenderPBR_IBL_Deferred(
@@ -831,13 +842,6 @@ namespace FlexKit
 			ReserveVertexBufferFunction     reserveVB,
 			float                           t,
 			iAllocator*                     allocator);
-
-
-		ComputeTiledPass& RenderPBR_ComputeDeferredTiledShade(
-			UpdateDispatcher&                       dispatcher,
-			FrameGraph&                             frameGraph,
-			ReserveConstantBufferFunction&          constantBufferAllocator,
-			const ComputeTiledDeferredShadeDesc&    scene);
 
         AcquireShadowMapTask& AcquireShadowMaps(UpdateDispatcher& dispatcher, RenderSystem& renderSystem, PointLightUpdate& pointLightUpdate);
 

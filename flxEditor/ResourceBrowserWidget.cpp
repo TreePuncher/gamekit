@@ -73,6 +73,10 @@ void ResourceBrowserWidget::ShowContextMenu(const QPoint& pos)
 
         switch (type)
         {
+        case MeshResourceTypeID:
+        {
+
+        }   break;
         case TextureResourceTypeID:
         {
             QAction viewTexture("View Texture", this);

@@ -264,17 +264,19 @@ void CreateLightBVH_PHASE2(const uint threadID : SV_GroupIndex)
 
     if(threadID * NODEMAXSIZE < nodeCount)
     {
-        const uint nodeSize = (threadID + 1) * NODEMAXSIZE < nodeCount ? NODEMAXSIZE : min(max(int(nodeCount) - NODEMAXSIZE * threadID, 0), NODEMAXSIZE);
+        const uint count    = (threadID + 1) * NODEMAXSIZE < nodeCount ? NODEMAXSIZE : nodeCount % NODEMAXSIZE;
         const uint offset   = inputOffset + threadID * NODEMAXSIZE;
 
-        float3 minXYZ = float3( 1000,  1000,  1000);
-        float3 maxXYZ = float3(-1000, -1000, -1000);
+        float3 minXYZ = float3( 10000,  10000,  10000);
+        float3 maxXYZ = float3(-10000, -10000, -10000);
 
-        for(uint itr = 0; itr < nodeSize; itr++)
+        for(uint itr = 0; itr < count; itr++)
         {
             const BVH_Node node = BVHNodes[offset + itr];
 
             minXYZ = min(node.MinPoint, minXYZ);
+            maxXYZ = max(node.MinPoint, maxXYZ);
+            minXYZ = min(node.MaxPoint, maxXYZ);
             maxXYZ = max(node.MaxPoint, maxXYZ);
         }
 
@@ -282,10 +284,9 @@ void CreateLightBVH_PHASE2(const uint threadID : SV_GroupIndex)
         node.MinPoint   = float4(minXYZ, 0);
         node.MaxPoint   = float4(maxXYZ, 0);
 
-        node.Offset = nodeSize > 1 ? offset : BVHNodes[offset].Offset;
-        node.Count  = nodeSize;
-
-        node.Leaf   = 0;
+        node.Offset = (count != 1) ? offset : BVHNodes[offset].Offset;
+        node.Count  = (count != 1) ? count : BVHNodes[offset].Count;
+        node.Leaf   = (count != 1) ? 0 : BVHNodes[offset].Leaf;
 
         BVHNodes[OutID] = node;
     }

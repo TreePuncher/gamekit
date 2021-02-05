@@ -15,7 +15,7 @@ void CreateLightListArguents()
 {
     Arguments args;
     args.X          = min(counters2[0], 1024);
-    args.Y          = min(ceil(float(counters2[0]) / 1024.0f), 1024);
+    args.Y          = min(ceil(float(counters2[0]) / 1024.0f), 32);
     args.Z          = 1;
     args.padding    = 0;
     argumentBuffer[0] = args;

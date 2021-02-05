@@ -125,6 +125,9 @@ void DXRenderWindow::resizeEvent(QResizeEvent* evt)
 
     if (ResizeEventHandler)
         ResizeEventHandler(this);
+
+    if (onResize)
+        onResize({ (uint32_t)width, (uint32_t)height });
 }
 
 

@@ -1357,7 +1357,7 @@ namespace FlexKit
 
 				if (res != renderTargetViews.end())
 				{
-					RTV_CPU_HANDLES.push_back(res->CPU_Handle);
+					RTV_CPU_HANDLES.push_back(res->descriptor);
 				}
 				else
 				{
@@ -1398,7 +1398,7 @@ namespace FlexKit
 				DSV_CPU_HANDLE = DSV;
 			}
 			else
-				DSV_CPU_HANDLE = res->CPU_Handle;
+				DSV_CPU_HANDLE = res->descriptor;
 		}
 
 
@@ -1430,7 +1430,7 @@ namespace FlexKit
 
 				if (res != renderTargetViews.end())
 				{
-					RTV_CPU_HANDLES.push_back(res->CPU_Handle);
+					RTV_CPU_HANDLES.push_back(res->descriptor);
 				}
 				else
 				{
@@ -1458,7 +1458,8 @@ namespace FlexKit
 
 		if(depthEnabled)
 		{
-			auto descriptor = _ReserveDSV(1);
+			auto descriptor = _GetDepthDesciptor(DSV.depthStencil);
+
 			PushDepthStencilArray(renderSystem, DSV.depthStencil, DSV.ArraySliceOffset, DSV.MipOffset, descriptor);
 
 			DSV_CPU_HANDLE = descriptor;
@@ -2224,32 +2225,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::ClearDepthBuffer(ResourceHandle depthStencil, float ClearDepth)
+	void Context::ClearDepthBuffer(ResourceHandle depthBuffer, float ClearDepth)
 	{
 		UpdateResourceStates();
 
-		auto DSV_CPU_HANDLE = D3D12_CPU_DESCRIPTOR_HANDLE{};
+        auto descriptor = _GetDepthDesciptor(depthBuffer);
+        PushDepthStencilArray(renderSystem, depthBuffer, 0, 0, descriptor);
 
-			if (auto res = std::find_if(
-				depthStencilViews.begin(),
-				depthStencilViews.end(),
-				[&](RTV_View& view)
-				{
-					return view.resource == depthStencil;
-				});
-				res == depthStencilViews.end())
-			{
-				auto DSV = _ReserveDSV(1);
-				PushDepthStencilArray(renderSystem, depthStencil, 0, 0, DSV);
-
-				DSV_CPU_HANDLE = DSV;
-			}
-			else
-				DSV_CPU_HANDLE = res->CPU_Handle;
-
-
-		DeviceContext->ClearDepthStencilView(DSV_CPU_HANDLE, D3D12_CLEAR_FLAG_DEPTH, ClearDepth, 0, 0, nullptr);
-		renderSystem->Textures.MarkRTUsed(depthStencil);
+		DeviceContext->ClearDepthStencilView(descriptor, D3D12_CLEAR_FLAG_DEPTH, ClearDepth, 0, 0, nullptr);
+		renderSystem->Textures.MarkRTUsed(depthBuffer);
 	}
 
 
@@ -2272,7 +2256,7 @@ namespace FlexKit
 
 		if (res != renderTargetViews.end())
 		{
-			RTV_CPU_HANDLES = res->CPU_Handle;
+			RTV_CPU_HANDLES = res->descriptor;
 		}
 		else
 		{
@@ -2558,6 +2542,9 @@ namespace FlexKit
 		CurrentPipelineState = nullptr;
 
 		DeviceContext->ClearState(nullptr);
+
+        depthStencilViews.clear();
+        renderTargetViews.clear();
 	}
 
 
@@ -2665,6 +2652,37 @@ namespace FlexKit
 
 		PendingBarriers.push_back(barrier);
 	}
+
+
+    /************************************************************************************************/
+
+
+    DescHeapPOS Context::_GetDepthDesciptor(ResourceHandle depthBuffer)
+    {
+        auto DSV_CPU_HANDLE = DescHeapPOS{};
+
+        if (auto res = std::find_if(
+            depthStencilViews.begin(),
+            depthStencilViews.end(),
+            [&](RTV_View& view)
+            {
+                return view.resource == depthBuffer;
+            });
+            res == depthStencilViews.end())
+        {
+            if (!depthStencilViews.full()) {
+                auto DSV        = _ReserveDSV(1);
+                DSV_CPU_HANDLE  = DSV;
+                depthStencilViews.push_back({ depthBuffer, DSV });
+            }
+            else
+                DSV_CPU_HANDLE = depthStencilViews[rand() % depthStencilViews.size()].descriptor;
+        }
+        else
+            DSV_CPU_HANDLE = res->descriptor;
+
+        return DSV_CPU_HANDLE;
+    }
 
 
 	/************************************************************************************************/
@@ -4249,7 +4267,9 @@ namespace FlexKit
 			CV.Color[3] = 0.0f;
 			CV.Format	= TextureFormat2DXGIFormat(desc.format);
 		
-			auto flags = D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES |  ( desc.unordered ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE);
+			auto flags = D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES |
+                (desc.unordered ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE);
+
 
 			D3D12_CLEAR_VALUE* pCV = (desc.CVFlag | desc.renderTarget | desc.depthTarget) ? &CV : nullptr;
 

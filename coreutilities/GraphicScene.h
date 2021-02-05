@@ -440,7 +440,8 @@ namespace FlexKit
         template<typename TY_BV, typename TY_FN_OnIntersection>
         void TraverseBVH(const TY_BV& bv, TY_FN_OnIntersection IntersectionHandler)
         {
-            TraverseBVHNode(nodes[root], bv, IntersectionHandler);
+            if(nodes.size())
+                TraverseBVHNode(nodes[root], bv, IntersectionHandler);
         }
 
         bool Valid() const
