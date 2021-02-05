@@ -228,6 +228,24 @@ ResourceBrowserWidget* EditorMainWindow::AddResourceList()
 /************************************************************************************************/
 
 
+void EditorMainWindow::AddModelViewer()
+{
+    auto docklet        = new QDockWidget{ this };
+    auto modelViewer    = new ModelViewerWidget(renderer, this);
+
+    modelViewer->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+
+    docklet->setWindowTitle("Model Viewer");
+    docklet->setWidget(modelViewer);
+    docklet->show();
+
+    addDockWidget(Qt::LeftDockWidgetArea, docklet);
+}
+
+
+/************************************************************************************************/
+
+
 TextureViewer* EditorMainWindow::AddTextureViewer(TextureResource* res)
 {
     auto docklet        = new QDockWidget{ this };

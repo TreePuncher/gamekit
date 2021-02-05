@@ -472,7 +472,7 @@ namespace FlexKit
                 {
                     BVHNode node;
 
-                    const size_t localEnd = Min(end, (I + 1) * 4);
+                    const size_t localEnd = Min(end, I + 4);
                     for (size_t II = I; II < localEnd; II++)
                         node.boundingVolume += nodes[II].boundingVolume;
 
@@ -867,24 +867,34 @@ namespace FlexKit
             [this, &bvh = bvh.GetData().bvh, camera = camera](PointLightShadowGather& data, iAllocator& threadAllocator)
 			{
                 FK_LOG_9("Point Light Shadow Gather");
-                Vector<PointLightHandle> pointLightShadows{ &threadAllocator };
+                Vector<PointLightHandle> visablePointLights{ &threadAllocator };
                 auto& visabilityComponent = SceneVisibilityComponent::GetComponent();
 
                 const auto frustum = GetFrustum(camera);
 
-                bvh->TraverseBVH(frustum,
-                    [&](VisibilityHandle intersector)
-                    {
-                        GameObject& go = *visabilityComponent[intersector].entity;
-                        Apply(go,
-                            [&](PointLightView& light)
-                            {
-                                pointLightShadows.push_back(light);
-                            }
-                        );
-                    });
+                auto& lights = PointLightComponent::GetComponent();
 
-                data.pointLightShadows = pointLightShadows;
+
+                if constexpr (true)
+                {
+                    for (auto& light : lights)
+                        visablePointLights.push_back(light.handle);
+                }
+                else
+                {
+                    bvh->TraverseBVH(frustum,
+                        [&](VisibilityHandle intersector)
+                        {
+                            GameObject& go = *visabilityComponent[intersector].entity;
+                            Apply(go,
+                                [&](PointLightView& light)
+                                {
+                                    visablePointLights.push_back(light);
+                                }
+                            );
+                        });
+                }
+                data.pointLightShadows = visablePointLights;
 			}
 		);
     }
@@ -935,13 +945,14 @@ namespace FlexKit
                             return lhs < rhs;
                         });
 
-                    if(const auto flags = GetFlags(light.Position); flags & (SceneNodes::DIRTY | SceneNodes::UPDATED))
-                        light.state = LightStateFlags::Dirty;
+                    //if(const auto flags = GetFlags(light.Position); flags & (SceneNodes::DIRTY | SceneNodes::UPDATED))
+                    //    light.state = LightStateFlags::Dirty;
 
-                    if (light.state != LightStateFlags::Dirty && light.shadowState)
+                    if (light.shadowState)
                     {   // Compare previousPVS with current PVS to see if shadow map needs update
                         auto& previousPVS = light.shadowState->visableObjects;
 
+                        /*
                         if (previousPVS.size() == PVS.size())
                         {
                             for (size_t I = 0; I < PVS.size(); ++I)
@@ -955,7 +966,7 @@ namespace FlexKit
                                     break;
                             }
                         }
-
+                        */
                         continue;
                     }
 

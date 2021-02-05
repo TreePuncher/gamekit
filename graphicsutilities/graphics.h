@@ -1031,7 +1031,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		bool SetUAVStructured       (Context& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset = 0);
 		bool SetUAVStructured       (Context& ctx, size_t idx, ResourceHandle resource, ResourceHandle counter, size_t stride, size_t Offset);
 
-		bool SetStructuredResource	(Context& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset = 0);
+		bool SetStructuredResource	(Context& ctx, size_t idx, ResourceHandle, size_t stride = 4, size_t offset = 0); //
 
 		operator D3D12_GPU_DESCRIPTOR_HANDLE () const { return descriptorHeap.V2; } // TODO: FIX PAIRS SO AUTO CASTING WORKS
 
@@ -1757,10 +1757,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		}
 
-
 	private:
 
 		void _AddBarrier(ID3D12Resource* resource, DeviceResourceState currentState, DeviceResourceState newState);
+
+        DescHeapPOS _GetDepthDesciptor(ResourceHandle resource);
 
 		struct Barrier
 		{
@@ -1837,8 +1838,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		};
 
 		struct RTV_View {
-			ResourceHandle                  resource;
-			D3D12_CPU_DESCRIPTOR_HANDLE     CPU_Handle;
+			ResourceHandle  resource;
+            DescHeapPOS     descriptor;
 		};
 
 		static_vector<StreamOutResource, 128>       TrackedSOBuffers;

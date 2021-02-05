@@ -32,21 +32,11 @@ Texture2D<float>  DepthBuffer       : register(t4);
 Texture2D<uint> 			    clusterIndex : register(t5);
 StructuredBuffer<Cluster> 		clusters     : register(t6);
 StructuredBuffer<uint> 		    lightLists   : register(t7);
-StructuredBuffer<uint> 			lightBuckets : register(t8);
-StructuredBuffer<PointLight> 	pointLights	 : register(t9);
+StructuredBuffer<PointLight> 	pointLights	 : register(t8);
 TextureCube<float> 				shadowMaps[] : register(t10);
 
 sampler BiLinear     : register(s0); // Nearest point
 sampler NearestPoint : register(s1); // Nearest point
-
-bool isLightContributing(const uint idx, const uint2 xy)
-{
-    const uint offset       = (xy.x + xy.y * 38) * (1024 / 32);
-    const uint wordOffset   = idx / 32;
-    const uint bitMask      = 0x1 << (idx % 32);
-
-    return lightBuckets[wordOffset + offset] & bitMask;
-}
 
 struct Vertex
 {
@@ -142,7 +132,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     const uint localLightList   = asuint(localCluster.Min.w);
 
     float4 color = float4(albedo * ambientLight, 1);
-    for(float I = 0; I < localLightCount; I++)
+    for(uint I = 0; I < localLightCount; I++)
     {
         const uint pointLightIdx    = lightLists[localLightList + I];
         const PointLight light      = pointLights[pointLightIdx];
@@ -159,12 +149,6 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
         const float  NdotL      = saturate(dot(N.xyz, L));
         const float3 H          = normalize(V + L);
          
-        if(0)
-        {
-            color += float4(albedo, 1) * NdotL * NdotV * La * INV_PI * (1.0f/4.0f);
-            continue;
-        }
-        
         #if 1
             const float3 diffuse    = albedo * F_d(V, H, L, N.xyz, roughness);
         #else
@@ -179,7 +163,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 
         #if 0   // Non shadowmapped pass
             const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
-            color += saturate(float4(colorSample * Lc, 0 ));
+            color += saturate(float4(colorSample, 0 ));
         #else
             const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
 
@@ -260,9 +244,9 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     //if (px.x % (1920 / 38) == 0 || px.y % (1080 / 18) == 0)
     //    return color * color;
     //else
-        return pow(Colors[clusterKey % 8], 1.0f);
+        //return pow(Colors[clusterKey % 8], 1.0f);
         //return pow(Colors[GetSliceIdx(-positionVS.z) % 6], 1.0f);
-        //return float(localLightCount) / float(lightCount);
+        return sqrt(float(localLightCount) / float(lightCount));
         //return float4(-positionVS.z, -positionVS.z, -positionVS.z, 1);
 #else
 	return pow(color, 2.1f);

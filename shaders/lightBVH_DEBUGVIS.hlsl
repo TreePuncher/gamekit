@@ -160,6 +160,9 @@ void GMain2(
 {   
     const uint id = nodeID[0].ID;
     Cluster cluster = Clusters[id];
+    const uint lightCount = asuint(cluster.MaxPoint.w);
+    if(lightCount == 0)
+        return;
 
     vertex FrontTopLeft;
     vertex FrontTopRight;
@@ -180,7 +183,7 @@ void GMain2(
         float4(1, 0, 1, 0),
     };
 
-    const float4 color = colors[asuint(cluster.MaxPoint.w) % 6];
+    const float4 color = colors[lightCount % 6];
 
     FrontTopLeft.Color  = color;
     FrontTopRight.Color = color;
@@ -194,18 +197,7 @@ void GMain2(
 
     const float3 Min = float3(cluster.MinPoint.xyz);
     const float3 Max = float3(cluster.MaxPoint.xyz);
-#if 0
-    FrontTopLeft.position   = mul(proj, mul(view, float4(Min.x, Max.yz, 1)));
-    FrontTopRight.position  = mul(proj, mul(view, float4(Max.x, Max.y, Max.z, 1)));
-    RearTopLeft.position    = mul(proj, mul(view, float4(Min.x, Max.y, Min.z, 1)));
-    RearTopRight.position   = mul(proj, mul(view, float4(Max.x, Max.y, Min.z, 1)));
 
-    FrontBottomLeft.position    = mul(proj, mul(view, float4(Min.xy, Max.z, 1))); 
-    FrontBottomRight.position   = mul(proj, mul(view, float4(Max.x, Min.y, Max.z, 1)));
-    RearBottomLeft.position     = mul(proj, mul(view, float4(Min, 1)));  
-    RearBottomRight.position    = mul(proj, mul(view, float4(Max.x, Min.yz, 1))); 
-#else
-#if 1
     FrontTopLeft.position   = mul(proj, float4(Min.x, Max.yz, 1));
     FrontTopRight.position  = mul(proj, float4(Max.x, Max.y, Max.z, 1));
     RearTopLeft.position    = mul(proj, float4(Min.x, Max.y, Min.z, 1));
@@ -215,20 +207,7 @@ void GMain2(
     FrontBottomRight.position   = mul(proj, float4(Max.x, Min.y, Max.z, 1));
     RearBottomLeft.position     = mul(proj, float4(Min, 1));  
     RearBottomRight.position    = mul(proj, float4(Max.x, Min.yz, 1)); 
-#else
-    FrontTopLeft.position   = float4(Min.x, Max.yz, 1);
-    FrontTopRight.position  = float4(Max.x, Max.y, Max.z, 1);
-    RearTopLeft.position    = float4(Min.x, Max.y, Min.z, 1);
-    RearTopRight.position   = float4(Max.x, Max.y, Min.z, 1);
 
-    FrontBottomLeft.position    = float4(Min.xy, Max.z, 1); 
-    FrontBottomRight.position   = float4(Max.x, Min.y, Max.z, 1);
-    RearBottomLeft.position     = float4(Min, 1);  
-    RearBottomRight.position    = float4(Max.x, Min.yz, 1); 
-#endif
-#endif
-
-#if 1
     // Front
     outStream.Append(FrontTopLeft);
     outStream.Append(FrontTopRight);
@@ -245,8 +224,6 @@ void GMain2(
     outStream.Append(FrontTopRight);
     outStream.Append(FrontBottomRight);
 	outStream.RestartStrip();
-#endif
-#if 1
     // Back
     outStream.Append(RearTopLeft);
     outStream.Append(RearTopRight);
@@ -263,8 +240,6 @@ void GMain2(
     outStream.Append(RearTopRight);
     outStream.Append(RearBottomRight);
 	outStream.RestartStrip();
-#endif
-#if 1
     // Sides
     outStream.Append(FrontTopLeft);
     outStream.Append(RearTopLeft);
@@ -281,7 +256,6 @@ void GMain2(
     outStream.Append(FrontBottomRight);
     outStream.Append(RearBottomRight);
 	outStream.RestartStrip();
-#endif
 }
 
 [maxvertexcount(32)]

@@ -175,7 +175,6 @@ public:
 
 			render	{	IN_Framework.core.RenderSystem,
 						streamingEngine,
-                        renderWindow.GetWH(),
                         IN_Framework.core.GetBlockMemory(),
 					},
 

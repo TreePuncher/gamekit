@@ -149,6 +149,7 @@
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
     </ClCompile>
+    <ClCompile Include="ModelViewerWidget.cpp" />
     <ClCompile Include="ResourceBrowserWidget.cpp" />
     <ClCompile Include="TaskManager.cpp" />
     <ClCompile Include="TextureViewer.cpp" />
@@ -164,6 +165,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EditorApplication.h" />
+    <QtMoc Include="ModelViewerWidget.h" />
     <QtMoc Include="EditorCodeEditor.h" />
     <ClInclude Include="EditorConfig.h" />
     <ClInclude Include="EditorGadgetInterface.h" />
@@ -183,6 +185,7 @@
   <ItemGroup>
     <QtUic Include="EditorCodeEditor.ui" />
     <QtUic Include="EditorOutputWindow.ui" />
+    <QtUic Include="ModelViewerWidget.ui" />
     <QtUic Include="ResourceBrowserWidget.ui" />
     <QtUic Include="TaskManager.ui" />
     <QtUic Include="TextureViewer.ui" />

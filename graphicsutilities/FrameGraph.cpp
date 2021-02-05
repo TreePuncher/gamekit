@@ -304,6 +304,13 @@ namespace FlexKit
 	FrameResourceHandle FrameGraphNodeBuilder::WriteRenderTarget(ResourceHandle RenderTarget)
 	{
 		const auto resourceHandle   = AddWriteableResource(RenderTarget, DeviceResourceState::DRS_RenderTarget);
+
+        if (resourceHandle == InvalidHandle_t)
+        {
+            Resources->AddResource(RenderTarget, true);
+            return WriteRenderTarget(RenderTarget);
+        }
+
 		auto resource               = Resources->GetAssetObject(resourceHandle);
 
 		if (!resource)
@@ -327,7 +334,13 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::WriteBackBuffer(ResourceHandle handle)
 	{
-		return AddWriteableResource(handle, DeviceResourceState::DRS_RenderTarget);
+		auto res = AddWriteableResource(handle, DeviceResourceState::DRS_RenderTarget);
+        if (res == InvalidHandle_t) {
+            Resources->AddResource(handle);
+            return WriteBackBuffer(handle);
+        }
+
+        return res;
 	}
 
 

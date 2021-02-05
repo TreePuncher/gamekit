@@ -302,7 +302,7 @@ int main(int argc, char* argv[])
 				return -1;
 			}
 
-            ExportGameRes("", resources);
+            ExportGameRes(Out, resources);
 	}	break;
 	case TOOL_MODE::ETOOLMODE_LISTCONTENTS:
 	{	if (FileChosen)

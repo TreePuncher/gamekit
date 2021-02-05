@@ -31,10 +31,12 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
     renderWindow->SetOnDraw(
         [&](FlexKit::UpdateDispatcher& Dispatcher, double dT, TemporaryBuffers& temporary, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget)
         {
+            FlexKit::ClearBackBuffer(frameGraph, renderTarget, { 1, 0, 1, 1 });
+            FlexKit::PresentBackBuffer(frameGraph, renderTarget);
+
             if (texture == FlexKit::InvalidHandle_t)
                 return;
 
-            frameGraph.AddRenderTarget(renderTarget);
 
             struct DrawTexture
             {
@@ -43,6 +45,8 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
                 FlexKit::ReserveVertexBufferFunction        ReserveVertexBuffer;
             };
 
+
+            if(false)
             auto& draw = frameGraph.AddNode<DrawTexture>(
                 DrawTexture{
                     FlexKit::InvalidHandle_t,

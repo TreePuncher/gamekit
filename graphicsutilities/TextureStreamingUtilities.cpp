@@ -494,6 +494,7 @@ namespace FlexKit
                 ctx.TimeStamp(timeStats, 0);
                 ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKPASS));
 
+                ctx.BeginEvent_DEBUG("Texture Feedback Pass");
 
                 size_t element = 0;
                 for (size_t J = element; J < drawables.size(); J++)
@@ -520,8 +521,6 @@ namespace FlexKit
                     }
 
                     const auto materialHandle = visable.D->material;
-
-                    ctx.BeginEvent_DEBUG("Texture Feedback Pass");
 
                     if (!materials[materialHandle].SubMaterials.empty())
                     {

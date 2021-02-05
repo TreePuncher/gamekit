@@ -43,10 +43,10 @@ struct PointLight
                     RWStructuredBuffer<Cluster>     Clusters      : register(u0); // in-out
                     RWStructuredBuffer<uint>        lightList     : register(u1); // in-out
 globallycoherent    RWBuffer<uint>                  counters      : register(u2); // in-out
-                    RWStructuredBuffer<BVH_Node>    BVHNodes      : register(u3);
-
-StructuredBuffer<uint>                              LightLookup   : register(t1); 
-StructuredBuffer<PointLight>                        PointLights   : register(t2); 
+                    
+StructuredBuffer<BVH_Node>    BVHNodes      : register(t0);
+StructuredBuffer<uint>        LightLookup   : register(t1); 
+StructuredBuffer<PointLight>  PointLights   : register(t2); 
 
 AABB GetClusterAABB(Cluster C)
 {
@@ -104,7 +104,7 @@ uint GetChildCount(const BVH_Node node)
 }
 
 groupshared uint stack[512];
-groupshared uint stackSize;
+groupshared  int stackSize;
 groupshared uint parentIdx;
 
 #define lightBufferSize 256
@@ -180,63 +180,80 @@ uint PopNode()
 void CreateClustersLightLists(const uint threadID : SV_GroupIndex, const uint3 groupID : SV_GroupID)
 {
     const uint groupIdx = groupID.x + groupID.y * 1024;
-    if(groupIdx >= clusterCount)
-        return;
-
-    Cluster localCluster    = Clusters[groupIdx];
-    const AABB aabb         = GetClusterAABB(localCluster);
-
-    if(threadID == 0)
+    if(groupIdx < clusterCount)
     {
-        InitStack();
-        PushNode(rootNode);
-    }
+        Cluster localCluster    = Clusters[groupIdx];
+        const AABB aabb         = GetClusterAABB(localCluster);
 
-    do
-    {
-        const BVH_Node parent = BVHNodes[parentIdx];
-        const uint childCount = GetChildCount(parent);
-
-        if(threadID < childCount)
+        if(threadID == 0)
         {
-            if(IsLeafNode(parent))
+            InitStack();
+            PushNode(rootNode);
+        }
+
+        do
+        {
+            const BVH_Node parent = BVHNodes[parentIdx];
+            const uint childCount = GetChildCount(parent);
+
+            if(threadID < childCount)
             {
-                const uint idx      = GetFirstChild(parent) + threadID;
-                const uint lightID  = LightLookup[idx];
-                const AABB b        = GetPointLightAABB(lightID);
+                if(IsLeafNode(parent))
+                {
+                    const uint idx      = GetFirstChild(parent) + threadID;
+                    const uint lightID  = LightLookup[idx];
+                    const AABB b        = GetPointLightAABB(lightID);
 
-                if(CompareAABBToAABB(aabb, b))
-                    PushLight(lightID);
+                    if(CompareAABBToAABB(aabb, b))
+                        PushLight(lightID);
+                }
+                else
+                { 
+                    const uint idx          = GetFirstChild(parent) + threadID; 
+                    const AABB b            = GetBVHAABB(BVHNodes[idx]);
+
+                    if(CompareAABBToAABB(aabb, b) | true)
+                        PushNode(idx);
+                }
             }
-            else
-            { 
-                const uint idx          = GetFirstChild(parent) + threadID; 
-                const AABB b            = GetBVHAABB(BVHNodes[idx]);
 
-                if(CompareAABBToAABB(aabb, b))
-                    PushNode(idx);
+            GroupMemoryBarrierWithGroupSync();
+
+            if(threadID == 0)
+                parentIdx = PopNode();
+
+            GroupMemoryBarrierWithGroupSync();
+        }while(parentIdx != rootNode);
+
+        if(lightCount > 0)
+        {
+            if(threadID == 0)
+            {
+                InterlockedAdd(counters[0], lightCount, offset);
+                
+                localCluster.MaxPoint.w = asfloat(lightCount);
+                localCluster.MinPoint.w = asfloat(offset);
+                Clusters[groupIdx]      = localCluster;
+            }
+
+            // Move Light List to global memory
+            const uint end = ceil(float(lightCount) / NODEMAXSIZE);
+            for(uint I = 0; I < end; I++)
+            {
+                const uint idx = threadID + (I * NODEMAXSIZE);
+                if(idx < lightCount)
+                    lightList[idx + offset] = lights[idx];
             }
         }
-        if(threadID == 0)
-            parentIdx = PopNode();
-    }while(parentIdx != rootNode);
-
-    if(threadID == 0)
-    {
-        InterlockedAdd(counters[0], lightCount, offset);
-        
-        localCluster.MaxPoint.w = asfloat(lightCount);
-        localCluster.MinPoint.w = asfloat(offset);
-        Clusters[groupIdx]      = localCluster;
-    }
-
-    // Move Light List to global memory
-    const uint end = ceil(float(lightCount) / NODEMAXSIZE);
-    for(uint I = 0; I < end; I++)
-    {
-        const uint idx = threadID + (I * NODEMAXSIZE);
-        if(idx < lightCount)
-            lightList[idx + offset] = lights[idx];
+        else
+        {
+            if(threadID == 0)
+            {
+                localCluster.MaxPoint.w = asfloat(0);
+                localCluster.MinPoint.w = asfloat(-1);
+                Clusters[groupIdx]      = localCluster;
+            }
+        }
     }
 }
 

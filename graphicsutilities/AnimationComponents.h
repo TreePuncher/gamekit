@@ -153,7 +153,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    bool hasSkeletonLoaded(GameObject& gameObject)
+    inline bool hasSkeletonLoaded(GameObject& gameObject)
     {
         return Apply(
             gameObject,
@@ -165,7 +165,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    Skeleton* GetSkeleton(GameObject& gameObject)
+    inline Skeleton* GetSkeleton(GameObject& gameObject)
     {
         return Apply(
             gameObject,
@@ -177,7 +177,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    PoseState* GetPoseState(GameObject& gameObject)
+    inline PoseState* GetPoseState(GameObject& gameObject)
     {
         return Apply(
             gameObject,
@@ -189,7 +189,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void RotateJoint(GameObject& gameObject, JointHandle jointID, const Quaternion Q)
+    inline void RotateJoint(GameObject& gameObject, JointHandle jointID, const Quaternion Q)
     {
         Apply(
             gameObject,
@@ -207,7 +207,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    JointPose GetJointPose(GameObject& gameObject, JointHandle jointID)
+    inline JointPose GetJointPose(GameObject& gameObject, JointHandle jointID)
     {
         return Apply(
             gameObject,
@@ -222,7 +222,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void SetJointPose(GameObject& gameObject, JointHandle jointID, JointPose pose)
+    inline void SetJointPose(GameObject& gameObject, JointHandle jointID, JointPose pose)
     {
         Apply(
             gameObject,

@@ -17,6 +17,7 @@
 #include "EditorProject.h"
 #include "EditorGadgetInterface.h"
 #include "TextureViewer.h"
+#include "ModelViewerWidget.h"
 
 
 /************************************************************************************************/
@@ -53,6 +54,7 @@ public:
     ResourceBrowserWidget*  AddResourceList();
     void                    AddEditorView();
     void                    AddOutputView();
+    void                    AddModelViewer();
     TextureViewer*          AddTextureViewer(TextureResource* res = nullptr);
 
 
