@@ -66,6 +66,19 @@ namespace FlexKit
             return axis;
         }
 
+        AABB operator + (const AABB& rhs) const
+        {
+            AABB aabb = *this;
+
+            for (size_t I = 0; I < Axis::Axis_count; I++)
+            {
+                aabb.Min[I] = FlexKit::Min(rhs.Min[I], Min[I]);
+                aabb.Max[I] = FlexKit::Max(rhs.Max[I], Max[I]);
+            }
+
+            return aabb;
+        }
+
         AABB operator += (const AABB& rhs)
         {
             for (size_t I = 0; I < Axis::Axis_count; I++)
