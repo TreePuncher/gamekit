@@ -919,71 +919,93 @@ namespace FlexKit
             [   this,
                 &bvh                = bvh.GetData().bvh,
                 &visablePointLights = visablePointLights.GetData().pointLightShadows,
-                persistentMemory    = persistentMemory]
+                persistentMemory    = persistentMemory,
+                &threads            = *dispatcher.threads
+            ]
             (PointLightUpdate_DATA& data, iAllocator& threadAllocator)
 			{
                 auto& visables  = SceneVisibilityComponent::GetComponent();
                 auto& lights    = PointLightComponent::GetComponent();
 
+                WorkBarrier barrier{ threads, &threadAllocator };
+
                 for (auto visableLight : visablePointLights)
                 {
-                    auto& light         = lights[visableLight];
-                    const float3 POS    = GetPositionW(light.Position);
-                    const float  r      = light.R;
-                    AABB lightAABB{POS - r, POS + r};
-
-                    Vector<VisibilityHandle> PVS{ &threadAllocator };
-
-                    bvh->TraverseBVH(lightAABB,
-                        [&](VisibilityHandle visable)
+                    auto& temp = CreateWorkItem(
+                        [&](auto& threadAllocator)
                         {
-                            PVS.push_back(visable);
-                        });
+                            auto& light         = lights[visableLight];
+                            const float3 POS    = GetPositionW(light.Position);
+                            const float  r      = light.R;
+                            AABB lightAABB{POS - r, POS + r};
 
-                    std::sort(
-                        std::begin(PVS), std::end(PVS),
-                        [](const auto& lhs, const auto& rhs)
-                        {
-                            return lhs < rhs;
-                        });
+                            Vector<VisibilityHandle> PVS{ &threadAllocator };
 
-                    //if(const auto flags = GetFlags(light.Position); flags & (SceneNodes::DIRTY | SceneNodes::UPDATED))
-                    //    light.state = LightStateFlags::Dirty;
+                            bvh->TraverseBVH(lightAABB,
+                                [&](VisibilityHandle visable)
+                                {
+                                    PVS.push_back(visable);
+                                });
 
-                    if (light.shadowState)
-                    {   // Compare previousPVS with current PVS to see if shadow map needs update
-                        auto& previousPVS = light.shadowState->visableObjects;
+                            std::sort(
+                                std::begin(PVS), std::end(PVS),
+                                [](const auto& lhs, const auto& rhs)
+                                {
+                                    return lhs < rhs;
+                                });
 
-                        /*
-                        if (previousPVS.size() == PVS.size())
-                        {
-                            for (size_t I = 0; I < PVS.size(); ++I)
-                            {
-                                if (PVS[I] != previousPVS[I])
-                                    break; // do full update
+                            //if(const auto flags = GetFlags(light.Position); flags & (SceneNodes::DIRTY | SceneNodes::UPDATED))
+                            //    light.state = LightStateFlags::Dirty;
 
-                                const auto flags = GetFlags(visables[PVS[I]].node);
+                            if (light.shadowState)
+                            {   // Compare previousPVS with current PVS to see if shadow map needs update
+                                auto& previousPVS = light.shadowState->visableObjects;
 
-                                if (flags & (SceneNodes::DIRTY | SceneNodes::UPDATED) != 0)
-                                    break;
+                                /*
+                                if (previousPVS.size() == PVS.size())
+                                {
+                                    for (size_t I = 0; I < PVS.size(); ++I)
+                                    {
+                                        if (PVS[I] != previousPVS[I])
+                                            break; // do full update
+
+                                        const auto flags = GetFlags(visables[PVS[I]].node);
+
+                                        if (flags & (SceneNodes::DIRTY | SceneNodes::UPDATED) != 0)
+                                            break;
+                                    }
+                                }
+                                */
+                                return;
                             }
-                        }
-                        */
-                        continue;
+
+                            if (!light.shadowState) {
+                                light.shadowState                   = &persistentMemory->allocate<CubeMapState>();
+
+                                FK_ASSERT(light.shadowState);
+                                light.shadowState->visableObjects   = Vector<VisibilityHandle>{ persistentMemory };
+                            }
+
+                            light.state = LightStateFlags::Dirty;
+
+                            light.shadowState->allocator        = persistentMemory;
+                            light.shadowState->shadowMapSize    = 128;
+                            light.shadowState->visableObjects   = PVS;
+
+                        });
+
+                    barrier.AddWork(temp);
+                    threads.AddWork(temp);
+                }
+
+                barrier.JoinLocal();
+
+                for (auto visableLight : visablePointLights)
+                {
+                    auto& light = lights[visableLight];
+                    if (lights[visableLight].state == LightStateFlags::Dirty && light.shadowState) {
+                        data.dirtyList.push_back(visableLight);
                     }
-
-                    if (!light.shadowState) {
-                        light.shadowState                   = &persistentMemory->allocate<CubeMapState>();
-                        light.shadowState->visableObjects   = Vector<VisibilityHandle>{ persistentMemory };
-                    }
-
-                    light.state = LightStateFlags::Dirty;
-
-                    light.shadowState->allocator        = persistentMemory;
-                    light.shadowState->shadowMapSize    = 128;
-                    light.shadowState->visableObjects   = PVS;
-
-                    data.dirtyList.push_back(visableLight);
                 }
 			}
 		);

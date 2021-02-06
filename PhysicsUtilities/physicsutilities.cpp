@@ -77,7 +77,7 @@ namespace FlexKit
                 const auto enditr = remaining >= 512 ? itr + 512 : colliders.end();
 
                 auto& workitem = CreateWorkItem(
-                    [&, itr, enditr]
+                    [&, itr, enditr](iAllocator&)
                     {
                         _updateColliders(itr, enditr);
                     },  temp_allocator);

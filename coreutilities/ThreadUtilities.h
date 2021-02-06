@@ -442,7 +442,7 @@ namespace FlexKit
 
 		void Run(iAllocator& allocator) override
 		{
-			Callback();
+			Callback(allocator);
 		}
 
 		TY_FN       Callback;
