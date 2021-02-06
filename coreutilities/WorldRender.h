@@ -70,6 +70,20 @@ namespace FlexKit
         Clusters
     };
 
+    enum class BVHVisMode
+    {
+        Both,
+        BVH,
+        BoundingVolumes
+    };
+
+    enum class DebugVisMode
+    {
+        Disabled,
+        ClusterVIS,
+        BVHVIS
+    };
+
 
     struct DrawSceneDescription
     {
@@ -83,8 +97,9 @@ namespace FlexKit
         ReserveVertexBufferFunction     reserveVB;
         ReserveConstantBufferFunction   reserveCB;
 
-        bool                    debugDisplay = false;
-        ClusterDebugDrawMode    debugDrawMode;
+        DebugVisMode            debugDisplay    = DebugVisMode::Disabled;
+        BVHVisMode              BVHVisMode      = BVHVisMode::Both;
+        ClusterDebugDrawMode    debugDrawMode   = ClusterDebugDrawMode::BVH;
 
         // Inputs
         UpdateTask&         transformDependency;
@@ -142,7 +157,8 @@ namespace FlexKit
 	static const PSOHandle TEXTURE2CUBEMAP_GGX         = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP_GGX));
 
 
-	static const PSOHandle SHADOWMAPPASS                = PSOHandle(GetTypeGUID(SHADOWMAPPASS));
+	static const PSOHandle SHADOWMAPPASS = PSOHandle(GetTypeGUID(SHADOWMAPPASS));
+    static const PSOHandle DEBUG_DrawBVH = PSOHandle(GetTypeGUID(DEBUG_DrawBVH1));
 
 
 	/************************************************************************************************/
@@ -179,6 +195,9 @@ namespace FlexKit
 	ID3D12PipelineState* CreateBilaterialBlurVerticalPSO    (RenderSystem* RS);
 
 	ID3D12PipelineState* CreateShadowMapPass                (RenderSystem* RS);
+
+    ID3D12PipelineState* CreateDEBUGBVHVIS                  (RenderSystem* RS);
+
 
 
     /************************************************************************************************/
@@ -589,6 +608,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    AcquireShadowMapTask& AcquireShadowMaps(UpdateDispatcher& dispatcher, RenderSystem& renderSystem, MemoryPoolAllocator&, PointLightUpdate& pointLightUpdate);
+
+
+    /************************************************************************************************/
+
+
 	inline ShadowMapPassData& ShadowMapPass(
 		FrameGraph&                     frameGraph,
 		const SceneDescription          sceneDesc,
@@ -671,6 +696,8 @@ namespace FlexKit
 			RS_IN.RegisterPSOLoader(CLUSTER_DEBUGARGSVIS_PSO,   { &RS_IN.Library.RSDefault, CreateCluster_DEBUGARGSVIS_PSO });
             RS_IN.RegisterPSOLoader(CREATELIGHTDEBUGVIS_PSO,    { &RS_IN.Library.RSDefault, CreateLight_DEBUGARGSVIS_PSO });
 
+            RS_IN.RegisterPSOLoader(DEBUG_DrawBVH, { &RS_IN.Library.RSDefault, CreateDEBUGBVHVIS });
+
 			RS_IN.QueuePSOLoad(GBUFFERPASS);
 			RS_IN.QueuePSOLoad(GBUFFERPASS_SKINNED);
 			RS_IN.QueuePSOLoad(DEPTHPREPASS);
@@ -683,6 +710,8 @@ namespace FlexKit
 			RS_IN.QueuePSOLoad(BILATERALBLURPASSVERTICAL);
             RS_IN.QueuePSOLoad(SHADOWMAPPASS);
             RS_IN.QueuePSOLoad(CLEARCOUNTERSPSO);
+
+            RS_IN.QueuePSOLoad(DEBUG_DrawBVH);
 
             RS_IN.QueuePSOLoad(CREATELIGHTBVH_PHASE1);
             RS_IN.QueuePSOLoad(CREATELIGHTBVH_PHASE2);
@@ -779,15 +808,6 @@ namespace FlexKit
 				iAllocator*                     tempMemory,
                 bool                            releaseTemporaries = true);
 
-        DEBUGVIS_DrawBVH& DEBUGVIS_DrawLightBVH(
-				UpdateDispatcher&               dispatcher,
-				FrameGraph&                     frameGraph,
-				const CameraHandle              camera,
-                ResourceHandle                  renderTarget,
-                LightBufferUpdate&              lightBufferUpdate,
-				ReserveConstantBufferFunction   reserveCB,
-                ClusterDebugDrawMode            mode,
-				iAllocator*                     tempMemory);
 
 		BackgroundEnvironmentPass& RenderPBR_IBL_Deferred(
 			UpdateDispatcher&               dispatcher,
@@ -843,7 +863,28 @@ namespace FlexKit
 			float                           t,
 			iAllocator*                     allocator);
 
-        AcquireShadowMapTask& AcquireShadowMaps(UpdateDispatcher& dispatcher, RenderSystem& renderSystem, PointLightUpdate& pointLightUpdate);
+
+        DEBUGVIS_DrawBVH& DEBUGVIS_DrawLightBVH(
+				UpdateDispatcher&               dispatcher,
+				FrameGraph&                     frameGraph,
+				const CameraHandle              camera,
+                ResourceHandle                  renderTarget,
+                LightBufferUpdate&              lightBufferUpdate,
+				ReserveConstantBufferFunction   reserveCB,
+                ClusterDebugDrawMode            mode,
+				iAllocator*                     tempMemory);
+
+
+        void DEBUGVIS_BVH(
+			UpdateDispatcher&               dispatcher,
+			FrameGraph&                     frameGraph,
+            SceneBVH&                       bvh,
+            CameraHandle                    camera,
+			ResourceHandle                  renderTarget,
+			ReserveConstantBufferFunction   reserveCB,
+			ReserveVertexBufferFunction     reserveVB,
+            BVHVisMode                      mode,
+			iAllocator*                     allocator);
 
         DEBUG_WorldRenderTimingValues GetTimingValues() const { return timingValues; }
 	private:

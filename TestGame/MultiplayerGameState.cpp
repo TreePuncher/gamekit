@@ -171,7 +171,8 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
             .reserveVB  = reserveVB,
             .reserveCB  = reserveCB,
 
-            .debugDisplay           = renderMode == RenderMode::Debug,
+            .debugDisplay           = renderMode,
+            .BVHVisMode             = bvhVisMode,
             .debugDrawMode          = debugDrawMode,
 
             .transformDependency    = transforms,
@@ -315,26 +316,50 @@ bool LocalPlayerState::EventHandler(Event evt)
 			{
 				if (evt.Action == Event::Release)
 				{
-					if (renderMode == RenderMode::Normal)
-						renderMode = RenderMode::Debug;
-					else
-						renderMode = RenderMode::Normal;
+                    switch (renderMode)
+                    {
+                    case DebugVisMode::BVHVIS:
+                        renderMode = DebugVisMode::ClusterVIS;  break;
+                    case DebugVisMode::ClusterVIS:
+                        renderMode = DebugVisMode::Disabled;  break;
+                    case DebugVisMode::Disabled:
+                        renderMode = DebugVisMode::BVHVIS;  break;
+                    }
 				}
 			}   return true;
             case KC_L:
             {
                 if (evt.Action == Event::Release)
-                    switch (debugDrawMode)
+
+                    if (renderMode == DebugVisMode::BVHVIS)
                     {
-                    case ClusterDebugDrawMode::BVH:
-                        debugDrawMode = ClusterDebugDrawMode::Lights;
-                        break;
-                    case ClusterDebugDrawMode::Lights:
-                        debugDrawMode = ClusterDebugDrawMode::Clusters;
-                        break;
-                    case ClusterDebugDrawMode::Clusters:
-                        debugDrawMode = ClusterDebugDrawMode::BVH;
-                        break;
+                        switch (bvhVisMode)
+                        {
+                        case BVHVisMode::BVH:
+                            bvhVisMode = BVHVisMode::BoundingVolumes;
+                            break;
+                        case BVHVisMode::BoundingVolumes:
+                            bvhVisMode = BVHVisMode::Both;
+                            break;
+                        case BVHVisMode::Both:
+                            bvhVisMode = BVHVisMode::BVH;
+                            break;
+                        }
+                    }
+                    else if (renderMode == DebugVisMode::ClusterVIS)
+                    {
+                        switch (debugDrawMode)
+                        {
+                        case ClusterDebugDrawMode::BVH:
+                            debugDrawMode = ClusterDebugDrawMode::Lights;
+                            break;
+                        case ClusterDebugDrawMode::Lights:
+                            debugDrawMode = ClusterDebugDrawMode::Clusters;
+                            break;
+                        case ClusterDebugDrawMode::Clusters:
+                            debugDrawMode = ClusterDebugDrawMode::BVH;
+                            break;
+                        }
                     }
             }   return true;
 			case KC_M:

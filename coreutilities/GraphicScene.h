@@ -222,7 +222,7 @@ namespace FlexKit
 
 		float GetRadius() const noexcept
 		{
-			return GetComponent()[light].I;
+			return GetComponent()[light].R;
 		}
 
 		void SetNode(NodeHandle node) const noexcept

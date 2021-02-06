@@ -732,7 +732,7 @@ namespace FlexKit
 			PSO_Desc.RasterizerState       = Rast_Desc;
 			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask            = UINT_MAX;
-			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
 			PSO_Desc.NumRenderTargets      = 1;
 			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
 			PSO_Desc.SampleDesc.Count      = 1;
@@ -974,37 +974,49 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
+    /************************************************************************************************/
 
 
-    AcquireShadowMapTask& WorldRender::AcquireShadowMaps(UpdateDispatcher& dispatcher, RenderSystem& renderSystem, PointLightUpdate& pointLightUpdate)
+    ID3D12PipelineState* CreateDEBUGBVHVIS(RenderSystem* RS)
     {
-        return dispatcher.Add<AcquireShadowMapResources>(
-            [&](UpdateDispatcher::UpdateBuilder& builder, AcquireShadowMapResources& data)
-            {
-                builder.AddInput(pointLightUpdate);
-            },
-            [&dirtyList = pointLightUpdate.GetData().dirtyList, &shadowMapAllocator = RTPool, &renderSystem = renderSystem]
-            (AcquireShadowMapResources& data, iAllocator& threadAllocator)
-            {
-                auto& lights = PointLightComponent::GetComponent();
+        auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\DebugVISBVH.hlsl");
+        auto GShader = RS->LoadShader("GMain", "gs_6_0", "assets\\shaders\\DebugVISBVH.hlsl");
+        auto PShader = RS->LoadShader("PMain", "ps_6_0", "assets\\shaders\\DebugVISBVH.hlsl");
 
-                for (auto lightHandle : dirtyList)
-                {
-                    auto& light = lights[lightHandle];
+		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+            { "MIN", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	 D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "MAX", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "COLOR", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 32, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		};
 
-                    if (light.shadowMap != InvalidHandle_t) {
-                        shadowMapAllocator.Release(light.shadowMap, false, false);
-                        renderSystem.ReleaseResource(light.shadowMap);
-                    }
+		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_EQUAL;
+		Depth_Desc.DepthEnable	= false;
 
-                    auto shadowMap = shadowMapAllocator.Aquire(GPUResourceDesc::DepthTarget({ 512, 512 }, DeviceFormat::D32_FLOAT, 6));
-                    renderSystem.SetDebugName(shadowMap, "Shadow Map");
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+			PSO_Desc.pRootSignature        = RS->Library.RSDefault;
+			PSO_Desc.VS                    = VShader;
+			PSO_Desc.PS                    = PShader;
+			PSO_Desc.GS                    = GShader;
+			PSO_Desc.RasterizerState       = Rast_Desc;
+			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask            = UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+			PSO_Desc.NumRenderTargets      = 1;
+			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+			PSO_Desc.SampleDesc.Count      = 1;
+			PSO_Desc.SampleDesc.Quality    = 0;
+			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
+			PSO_Desc.DepthStencilState     = Depth_Desc;
+		}
 
-                    light.shadowMap = shadowMap;
-                }
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		FK_ASSERT(SUCCEEDED(HR));
 
-            });
+		return PSO;
     }
 
 
@@ -1029,8 +1041,7 @@ namespace FlexKit
         auto& sceneBVH              = scene.UpdateSceneBVH(dispatcher, drawSceneDesc.transformDependency, persistent);
         auto& visablePointLights    = scene.GetVisableLights(dispatcher, camera, sceneBVH, temporary);
         auto& pointLightUpdate      = scene.UpdatePointLights(dispatcher, sceneBVH, visablePointLights, temporary, persistent);
-
-        auto& acquireShadowMaps     = AcquireShadowMaps(dispatcher, frameGraph.GetRenderSystem(), pointLightUpdate);
+        auto& shadowMaps            = AcquireShadowMaps(dispatcher, frameGraph.GetRenderSystem(), RTPool, pointLightUpdate);
 
         pointLightGather.AddInput(drawSceneDesc.transformDependency);
         pointLightGather.AddInput(drawSceneDesc.cameraDependency);
@@ -1046,7 +1057,7 @@ namespace FlexKit
             drawSceneDesc.camera,
             pointLightGather,
             visablePointLights,
-            acquireShadowMaps,
+            shadowMaps,
             drawSceneDesc.transformDependency,
             drawSceneDesc.cameraDependency,
             PVS,
@@ -1083,7 +1094,7 @@ namespace FlexKit
             depthTarget,
             reserveCB,
             temporary,
-            !drawSceneDesc.debugDisplay);
+            drawSceneDesc.debugDisplay != DebugVisMode::ClusterVIS);
 
         auto& shadowMapPass = ShadowMapPass(
             frameGraph,
@@ -1103,7 +1114,8 @@ namespace FlexKit
             t,
             temporary);
 
-        if (drawSceneDesc.debugDisplay)
+        if (drawSceneDesc.debugDisplay == DebugVisMode::ClusterVIS)
+        {
             DEBUGVIS_DrawLightBVH(
                 dispatcher,
                 frameGraph,
@@ -1113,7 +1125,20 @@ namespace FlexKit
                 reserveCB,
                 drawSceneDesc.debugDrawMode,
                 temporary);
-
+        }
+        else if(drawSceneDesc.debugDisplay == DebugVisMode::BVHVIS)
+        {
+            DEBUGVIS_BVH(
+                dispatcher,
+                frameGraph,
+                *sceneBVH.GetData().bvh,
+                camera,
+                renderTarget,
+                reserveCB,
+                reserveVB,
+                drawSceneDesc.BVHVisMode,
+                temporary);
+        }
 
         auto& outputs = temporary.allocate<DrawOutputs>(PVS);
 
@@ -1651,6 +1676,9 @@ namespace FlexKit
                 const auto  cameraConstants     = GetCameraConstants(data.camera);
                 const auto  lightCount          = data.visableLights.size();
 
+                if (!lightCount)
+                    return;
+
 				struct ConstantsLayout
 				{
 					float4x4 iproj;
@@ -1669,15 +1697,16 @@ namespace FlexKit
 
 				PointLightComponent& pointLights = PointLightComponent::GetComponent();
 
-                uint32_t temp = ceilf(std::logf(float(lightCount)) / std::logf(BVH_ELEMENT_COUNT));
+                uint32_t nodeReservation = ceilf(std::logf(float(lightCount)) / std::logf(BVH_ELEMENT_COUNT));
 
 				CBPushBuffer    constantBuffer = data.reserveCB(
 					AlignedSize( sizeof(FlexKit::GPUPointLight) * data.visableLights.size() ) +
-                    AlignedSize<ConstantsLayout>() * (1 + ceilf(std::logf(float(lightCount)) / std::logf(BVH_ELEMENT_COUNT))) +
+                    AlignedSize<ConstantsLayout>() * (1 + nodeReservation) +
                     AlignedSize<Camera::ConstantBuffer>()
 				);
 
-                CBPushBuffer    constantBuffer2 = data.reserveCB(AlignedSize<ConstantsLayout>() * (1 + ceilf(std::logf(float(Max(lightCount, 1))) / std::logf(BVH_ELEMENT_COUNT))));
+                auto constantBuffer2ReserveSize = AlignedSize<ConstantsLayout>() * (1 + nodeReservation);
+                CBPushBuffer    constantBuffer2 = data.reserveCB(constantBuffer2ReserveSize);
 
                 const ConstantBufferDataSet constants{ constantsValues, constantBuffer };
                 const ConstantBufferDataSet cameraConstantsBuffer{ GetCameraConstants(data.camera), constantBuffer };
@@ -2321,6 +2350,9 @@ namespace FlexKit
 				const auto cameraConstants  = GetCameraConstants(camera);
 				const auto pointLightCount  = visableLights.size();
 
+                if (!pointLightCount)
+                    return;
+
 				struct
 				{
 					float2      WH;
@@ -2412,6 +2444,109 @@ namespace FlexKit
 
 		return pass;
 	}
+
+
+    /************************************************************************************************/
+
+
+    void WorldRender::DEBUGVIS_BVH(
+			UpdateDispatcher&               dispatcher,
+			FrameGraph&                     frameGraph,
+            SceneBVH&                       bvh,
+            CameraHandle                    camera,
+			ResourceHandle                  renderTarget,
+			ReserveConstantBufferFunction   reserveCB,
+			ReserveVertexBufferFunction     reserveVB,
+            BVHVisMode                      mode,
+			iAllocator*                     allocator)
+    {
+        struct DebugVisDesc
+        {
+            ReserveConstantBufferFunction   reserveCB;
+            ReserveVertexBufferFunction     reserveVB;
+
+            FrameResourceHandle             renderTargetObject;
+        };
+
+        struct Vertex {
+            float4 Min;
+            float4 Max;
+            float3 Color;
+        };
+
+
+        frameGraph.AddNode<DebugVisDesc>(
+            DebugVisDesc{
+                reserveCB,
+                reserveVB,
+            },
+            [&](FrameGraphNodeBuilder& builder, DebugVisDesc& desc)
+            {
+                desc.renderTargetObject = builder.WriteRenderTarget(renderTarget);
+            },
+            [=, &bvh = bvh](DebugVisDesc& desc, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+            {
+                auto drawElementsState  = resources.GetPipelineState(DEBUG_DrawBVH);
+
+                const auto vertexCount      = bvh.elements.size() + bvh.nodes.size();
+                const auto vertexBufferSize = vertexCount * sizeof(Vertex);
+                auto constantBuffer         = desc.reserveCB(1024);
+                auto vertexBuffer           = desc.reserveVB(vertexBufferSize);
+                auto cameraConstants        = GetCameraConstants(camera);
+
+                struct {
+                    float4x4 proj;
+                    float4x4 view;
+                }   constantData = {
+                        cameraConstants.Proj,
+                        cameraConstants.View,
+                };
+
+                auto& VisibilityComponent = SceneVisibilityComponent::GetComponent();
+
+                Vector<Vertex> verts{ &allocator };
+
+                for (auto& bv : bvh.elements)
+                {
+                    Vertex v;
+                    AABB aabb   = VisibilityComponent[bv.handle].GetAABB();
+                    v.Min       = aabb.Min;
+                    v.Max       = aabb.Max;
+                    v.Color     = WHITE;
+
+                    if(mode == BVHVisMode::BoundingVolumes || mode == BVHVisMode::Both)
+                        verts.push_back(v);
+                }
+
+                for (auto& bv : bvh.nodes)
+                {
+                    Vertex v;
+                    auto aabb   = bv.boundingVolume;
+                    v.Min       = aabb.Min;
+                    v.Max       = aabb.Max;
+                    v.Color     = BLUE;
+
+                    if (mode == BVHVisMode::BVH || mode == BVHVisMode::Both)
+                        verts.push_back(v);
+                }
+
+                auto vertices       = VertexBufferDataSet{ verts.data(), verts.size() * sizeof(Vertex), vertexBuffer };
+                auto constants      = ConstantBufferDataSet{ constantData, constantBuffer };
+                auto renderTargets  = { resources.GetRenderTarget(desc.renderTargetObject) };
+
+                ctx.SetRenderTargets(renderTargets, false);
+                ctx.SetScissorAndViewports(renderTargets);
+
+                ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
+                ctx.SetPipelineState(drawElementsState);
+
+                ctx.SetPrimitiveTopology(EIT_POINT);
+                ctx.SetGraphicsConstantBufferView(0, constants);
+                ctx.SetVertexBuffers({ vertices });
+
+                ctx.Draw(verts.size());
+            });
+    }
 
 
 	/************************************************************************************************/
@@ -2532,6 +2667,43 @@ namespace FlexKit
 
         return pi * pr * pr;
     }
+
+    /************************************************************************************************/
+
+
+    AcquireShadowMapTask& AcquireShadowMaps(UpdateDispatcher& dispatcher, RenderSystem& renderSystem, MemoryPoolAllocator& RTPool, PointLightUpdate& pointLightUpdate)
+    {
+        return dispatcher.Add<AcquireShadowMapResources>(
+            [&](UpdateDispatcher::UpdateBuilder& builder, AcquireShadowMapResources& data)
+            {
+                builder.AddInput(pointLightUpdate);
+            },
+            [&dirtyList = pointLightUpdate.GetData().dirtyList, &shadowMapAllocator = RTPool, &renderSystem = renderSystem]
+            (AcquireShadowMapResources& data, iAllocator& threadAllocator)
+            {
+                auto& lights = PointLightComponent::GetComponent();
+
+                for (auto lightHandle : dirtyList)
+                {
+                    auto& light = lights[lightHandle];
+
+                    if (light.shadowMap != InvalidHandle_t) {
+                        shadowMapAllocator.Release(light.shadowMap, false, false);
+                        renderSystem.ReleaseResource(light.shadowMap);
+                    }
+
+                    auto shadowMap = shadowMapAllocator.Aquire(GPUResourceDesc::DepthTarget({ 512, 512 }, DeviceFormat::D32_FLOAT, 6));
+                    renderSystem.SetDebugName(shadowMap, "Shadow Map");
+
+                    light.shadowMap = shadowMap;
+                }
+
+            });
+    }
+
+
+    /************************************************************************************************/
+
 
 	ShadowMapPassData& ShadowMapPass(
 		FrameGraph&                     frameGraph,

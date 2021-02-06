@@ -113,14 +113,9 @@ public:
 
 private:	/************************************************************************************************/
 
-
-    enum class RenderMode
-    {
-        Normal,
-        Debug,
-    }   renderMode = RenderMode::Debug;
-
-    ClusterDebugDrawMode debugDrawMode = ClusterDebugDrawMode::BVH;
+    DebugVisMode            renderMode      = DebugVisMode::Disabled;
+    ClusterDebugDrawMode    debugDrawMode   = ClusterDebugDrawMode::BVH;
+    BVHVisMode              bvhVisMode      = BVHVisMode::BVH;
 
     float                       T = 0;
     NetObjectInputComponent		netInputObjects;

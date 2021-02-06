@@ -437,23 +437,25 @@ namespace FlexKit
         std::sort(elements.begin(), elements.end());
 
         // Phase 1 - Build Leaf Nodes -
-        const size_t end            = std::ceil(visables.size() / 4.0f);
-        const size_t elementCount   = visables.size();
+        const size_t end            = std::ceil(elements.size() / 4.0f);
+        const size_t elementCount   = elements.size();
 
         for (size_t I = 0; I < end; ++I)
         {
             BVHNode node;
 
-            size_t end = Min(elementCount, 4 * I + 4);
+            const size_t begin  = 4 * I;
+            const size_t end    = Min(elementCount, 4 * I + 4);
 
-            for (size_t II = 4 * I; II < Min(elementCount, 4 * I + 4); II++) {
+            for (size_t II = 4 * I; II < end; II++) {
                 const size_t idx    = II;
                 auto& visable       =  visables[elements[idx].handle];
-                node.boundingVolume = node.boundingVolume + visibilityComponent[visable].boundingSphere;
+                const auto aabb     = visibilityComponent[visable].GetAABB();
+                node.boundingVolume += aabb;
             }
 
             node.children   = 4 * I;
-            node.count      = end - 4 * I;
+            node.count      = end - begin;
             node.Leaf       = true;
 
             nodes.push_back(node);
@@ -490,8 +492,8 @@ namespace FlexKit
         }
 
         SceneBVH BVH{ allocator };
-        BVH.elements    = elements;
-        BVH.nodes       = nodes;
+        BVH.elements    = std::move(elements);
+        BVH.nodes       = std::move(nodes);
         BVH.root        = begin;
 
         return BVH;
@@ -875,7 +877,7 @@ namespace FlexKit
                 auto& lights = PointLightComponent::GetComponent();
 
 
-                if constexpr (true)
+                if constexpr (false)
                 {
                     for (auto& light : lights)
                         visablePointLights.push_back(light.handle);
