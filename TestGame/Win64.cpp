@@ -78,7 +78,7 @@ int main(int argc, char* argv[])
 
     FK_LOG_INFO("Logging initialized started.");
 
-    uint2   WH          = uint2{ 1920, 1080 };
+    uint2   WH = uint2{ (uint)(1920 * 1.4), (uint)(1080 * 1.4) };
 
     for (size_t I = 0; I < argc; ++I)
     {
@@ -140,7 +140,7 @@ int main(int argc, char* argv[])
         app.GetCore().FrameLock = true;
 
         FK_LOG_INFO("Set initial PlayState state.");
-        auto& base = app.PushState<BaseState>(app);
+        auto& base = app.PushState<BaseState>(app, WH);
 
         switch (applicationMode)
         {

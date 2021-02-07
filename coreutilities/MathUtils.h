@@ -21,10 +21,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	template<typename TY_1, typename TY_2>  constexpr auto Floor	(const TY_1 x, const TY_2 y) noexcept { return ((x > y) ? y : x);   }
-    template<typename TY_1, typename TY_2>  constexpr auto Min		(const TY_1 x, const TY_2 y) noexcept { return ((x > y) ? y : x);   }
-    template<typename TY_1, typename TY_2>  constexpr auto Max		(const TY_1 x, const TY_2 y) noexcept { return ((x > y) ? x : y);   }
-	template<typename TY_1, typename TY_2>  constexpr auto Fastmod  (const TY_1 x, const TY_2 y) noexcept { return ((x < y) ? x : x%y); }
+	template<typename TY_1, typename TY_2>  constexpr auto Floor	(const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x > (TY_1)y) ? y : x);   }
+    template<typename TY_1, typename TY_2>  constexpr auto Min		(const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x > (TY_1)y) ? y : x);   }
+    template<typename TY_1, typename TY_2>  constexpr auto Max		(const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x > (TY_1)y) ? x : y);   }
+	template<typename TY_1, typename TY_2>  constexpr auto Fastmod  (const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x < (TY_1)y) ? x : x%y); }
 
 
     /************************************************************************************************/
@@ -509,7 +509,7 @@ namespace FlexKit
 		auto V_out = v;
 
 		for (auto& Vs : V_out)
-			Vs *= scaler;
+			Vs *= (TY_Vs)scaler;
 
 		return V_out;
 	}

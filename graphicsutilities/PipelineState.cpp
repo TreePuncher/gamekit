@@ -125,7 +125,7 @@ namespace FlexKit
 
 
 				if (PSO->changeState(newState))
-					WorkQueue->AddWork(&NewTask, queueAllocator);
+					WorkQueue->AddWork(&NewTask);
 				else
 					continue;
 

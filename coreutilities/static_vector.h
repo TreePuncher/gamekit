@@ -185,7 +185,7 @@ namespace FlexKit
 		{
 			if (!full())
 			{
-                new(&Elements[Size]) TY_{ std::move<TY_ARGS>(in_args)...};
+                new(&Elements[Size]) TY_{ std::forward<TY_ARGS>(in_args)...};
 				Size++;
 			}
 		}

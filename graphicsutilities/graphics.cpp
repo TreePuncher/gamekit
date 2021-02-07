@@ -7324,9 +7324,7 @@ namespace FlexKit
 			HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS); FK_ASSERT(eventHandle != 0);
 			Fence->SetEventOnCompletion(pendingFrame, eventHandle);
 
-            if (const auto ret = WaitForSingleObject(eventHandle, INFINITY); ret == WAIT_TIMEOUT);
-                //_OnCrash();
-
+            const auto ret = WaitForSingleObject(eventHandle, INFINITY);
 			CloseHandle(eventHandle);
 		}
 	}

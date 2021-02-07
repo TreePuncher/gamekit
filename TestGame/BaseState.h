@@ -160,7 +160,8 @@ class BaseState : public FrameworkState
 public:
 	BaseState(	
 		GameFramework& IN_Framework,
-		FKApplication& IN_App	) :
+		FKApplication& IN_App,
+        uint2 WH    = { 1920, 1080 }) :
 			App				    { IN_App },
 			FrameworkState	    { IN_Framework },
 			depthBuffer		    { IN_Framework.core.RenderSystem.CreateDepthBuffer(renderWindow.GetWH(),	true) },
@@ -171,7 +172,7 @@ public:
 			streamingEngine	    { IN_Framework.core.RenderSystem, IN_Framework.core.GetBlockMemory() },
             sounds              { IN_Framework.core.Threads,      IN_Framework.core.GetBlockMemory() },
 
-            renderWindow{ std::get<0>(CreateWin32RenderWindow(IN_Framework.GetRenderSystem(), DefaultWindowDesc({ 1920, 1080 }) )) },
+            renderWindow{ std::get<0>(CreateWin32RenderWindow(IN_Framework.GetRenderSystem(), DefaultWindowDesc({ WH }) )) },
 
 			render	{	IN_Framework.core.RenderSystem,
 						streamingEngine,

@@ -163,7 +163,7 @@ void NetworkState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double
 void NetworkState::Broadcast(const UserPacketHeader& packet)
 {
     for (auto socket : openConnections)
-        raknet.Send((const char*)&packet, packet.packetSize, PacketPriority::MEDIUM_PRIORITY, PacketReliability::UNRELIABLE, 0, socket.address, false, 0);
+        raknet.Send((const char*)&packet, (int)packet.packetSize, PacketPriority::MEDIUM_PRIORITY, PacketReliability::UNRELIABLE, 0, socket.address, false, 0);
 }
 
 
@@ -174,7 +174,7 @@ void NetworkState::Send(const UserPacketHeader& packet, ConnectionHandle destina
 {
     auto socket = GetConnection(destination);
 
-    raknet.Send((const char*)&packet, packet.packetSize, PacketPriority::MEDIUM_PRIORITY, PacketReliability::UNRELIABLE, 0, socket.address, false, 0);
+    raknet.Send((const char*)&packet, (int)packet.packetSize, PacketPriority::MEDIUM_PRIORITY, PacketReliability::UNRELIABLE, 0, socket.address, false, 0);
 }
 
 
