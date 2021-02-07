@@ -21,4 +21,4 @@ clone and open TestGame.sln
 Hit F7 to build. Vcpkg will grab all other dependencies. 
 
 ##Screenshots:
-![Sponza](/screenshots/sponza.jpeg)
+![](/screenshots/sponza.jpg)
