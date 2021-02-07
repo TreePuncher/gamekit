@@ -1008,19 +1008,22 @@ namespace FlexKit
             ]
             (PointLightUpdate_DATA& data, iAllocator& threadAllocator)
 			{
-                WorkBarrier barrier{ threads, &threadAllocator };
+                WorkBarrier     barrier{ threads, &threadAllocator };
+                Vector<Task*>   taskList{ &threadAllocator, visablePointLights.size() };
 
                 for (auto visableLight : visablePointLights)
                 {
                     auto& task = threadAllocator.allocate<Task>(visableLight, *bvh, *persistentMemory);
                     barrier.AddWork(task);
-                    threads.AddWork(task);
+                    taskList.push_back(&task);
                 }
+
+                for (auto& task : taskList)
+                    threads.AddWork(task);
 
                 barrier.Join();
 
                 auto& lights = PointLightComponent::GetComponent();
-
                 for (auto visableLight : visablePointLights)
                 {
                     auto& light = lights[visableLight];
