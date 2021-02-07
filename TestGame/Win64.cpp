@@ -78,7 +78,7 @@ int main(int argc, char* argv[])
 
     FK_LOG_INFO("Logging initialized started.");
 
-    uint2   WH = uint2{ (uint)(1920 * 1.4), (uint)(1080 * 1.4) };
+    uint2   WH = uint2{ (uint)(1280), (uint)(720) };
 
     for (size_t I = 0; I < argc; ++I)
     {

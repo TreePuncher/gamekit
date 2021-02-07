@@ -151,6 +151,11 @@ namespace FlexKit
             return swapChain != nullptr;
         }
 
+        void SetWindowTitle(const char* str)
+        {
+            SetWindowTextA(hWindow, str);
+        }
+
         MouseInputState UpdateCapturedMouseInput(double dT)
         {
             const double updateFreq = 1.0f / 50.0f;
