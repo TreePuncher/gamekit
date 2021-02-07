@@ -905,7 +905,7 @@ namespace FlexKit
 
             for (auto node : nodes)
                 if (node->isLeaf())
-                    threads->AddWork(node->threadTask, allocator);
+                    threads->AddWork(node->threadTask);
 
 			barrier.Join();
 

@@ -75,7 +75,7 @@ namespace FlexKit
 		iWork& operator = (iWork& rhs)  = delete;
 		iWork& operator = (iWork&& rhs) = delete;
 
-		iWork(iAllocator* Memory) :
+		iWork(iAllocator* Memory = nullptr) :
 			_debugID	{ "UNIDENTIFIED!" }
 			//: subscribers{Memory}
 		{
@@ -97,6 +97,8 @@ namespace FlexKit
 		{
 			for (auto& watcher : subscribers)
 				watcher();
+
+            subscribers.clear();
 		}
 
 
@@ -165,7 +167,7 @@ namespace FlexKit
 	public:
 		using ElementType = alignedAtomicWrapper<TY_E>;
 
-		CircularStealingQueue(iAllocator* IN_allocator, const size_t initialReservation = 64) noexcept :
+		CircularStealingQueue(iAllocator* IN_allocator, const size_t initialReservation = 256) noexcept :
 			queueArraySize	{ initialReservation	},
 			queue			{ nullptr				},
 			frontCounter	{ 0						},
@@ -188,12 +190,14 @@ namespace FlexKit
 
 		[[nodiscard]] std::optional<TY_E> pop_back() noexcept // FILO
 		{
+            std::scoped_lock lock{ m };
+
 			const auto back  = backCounter.fetch_sub(1) - 1;
 			const auto front = frontCounter.load();
 
 			if (front <= back)
 			{
-				auto job = *queue[back % 64];
+				auto job = *queue[back % queueArraySize];
 
 				if (front != back)
 					return job;
@@ -219,6 +223,8 @@ namespace FlexKit
 
 		[[nodiscard]] std::optional<TY_E> Steal() noexcept // FIFO
 		{
+            std::scoped_lock lock{ m };
+
 			auto front = frontCounter.load(std::memory_order_seq_cst);
 			auto back  = backCounter.load(std::memory_order_seq_cst);
 
@@ -238,6 +244,8 @@ namespace FlexKit
 	
 		void push_back(TY_E element) noexcept
 		{
+            std::scoped_lock lock{ m };
+
 			if (queueArraySize < size() + 1)
 				_Expand();
 
@@ -307,6 +315,8 @@ namespace FlexKit
 
 		alignas(64) std::atomic_int64_t     backCounter    = 0;
 		alignas(64) std::atomic_int64_t     frontCounter   = 0;
+
+        std::mutex                          m;
 	};
 
 
@@ -373,7 +383,7 @@ namespace FlexKit
 
 		auto&   GetQueue() { return workQueue; }
 
-		iAllocator& GetThreadLocalAllocator() { return localAllocator; }
+		//iAllocator& GetThreadLocalAllocator() { return localAllocator; }
 
 		static ThreadManager*	Manager;
 
@@ -392,7 +402,7 @@ namespace FlexKit
 		CircularStealingQueue<iWork*>   workQueue;
 		std::thread					    Thread;
 
-		StackAllocator                                  localAllocator;
+		//StackAllocator                                  localAllocator;
 		std::unique_ptr<std::array<byte, MEGABYTE * 16>> buffer;
 	};
 
@@ -406,16 +416,31 @@ namespace FlexKit
 	FLEXKITAPI inline void                              _SetThreadLocalQueue(CircularStealingQueue<iWork*>& localQueue);
 
 	FLEXKITAPI inline _WorkerThread&                    GetLocalThread();
-	FLEXKITAPI inline iAllocator&                       GetThreadLocalAllocator();
 
+    thread_local static_vector<std::unique_ptr<StackAllocator>> localAllocators;
 
-	FLEXKITAPI inline void RunTask(iWork& work, iAllocator& allocator)
+	FLEXKITAPI inline void RunTask(iWork& work)
 	{
-		work.Run(allocator);
+        std::unique_ptr<StackAllocator> allocator;
+
+        if (localAllocators.empty())
+        {
+            allocator = std::make_unique<StackAllocator>();
+            allocator->Init((byte*)malloc(1 * MEGABYTE), 1 * MEGABYTE);
+        }
+        else
+        {
+            allocator = std::move(localAllocators.back());
+            localAllocators.pop_back();
+        }
+
+		work.Run(*allocator);
 		work.NotifyWatchers();
 		work.Release();
 
-		allocator.clear();
+        allocator->clear();
+
+        localAllocators.emplace_back(std::move(allocator));
 	}
 
 	using WorkerList	= IntrusiveLinkedList<_WorkerThread>;
@@ -429,7 +454,7 @@ namespace FlexKit
 	class LambdaWork : public iWork
 	{
 	public:
-		LambdaWork(TY_FN& FNIN, iAllocator* IN_allocator = FlexKit::SystemAllocator) noexcept :
+		LambdaWork(TY_FN&& FNIN, iAllocator* IN_allocator = FlexKit::SystemAllocator) noexcept :
 			iWork		{ IN_allocator  },
 			allocator   { IN_allocator  },
 			Callback	{ FNIN          } {}
@@ -452,7 +477,7 @@ namespace FlexKit
 
 	template<typename TY_FN>
 	iWork& CreateWorkItem(
-		TY_FN FNIN, 
+		TY_FN&&     FNIN, 
 		iAllocator* Memory_1,
 		iAllocator* Memory_2)
 	{
@@ -461,8 +486,8 @@ namespace FlexKit
 
 	template<typename TY_FN>
 	iWork& CreateWorkItem(
-		const TY_FN&    FNIN,
-		iAllocator*     allocator = SystemAllocator)
+		TY_FN&&     FNIN,
+		iAllocator* allocator = SystemAllocator)
 	{
 		return CreateWorkItem(FNIN, allocator, allocator);
 	}
@@ -474,7 +499,7 @@ namespace FlexKit
 	class ThreadManager
 	{
 	public:
-		ThreadManager(const uint32_t ThreadCount = 2, iAllocator* IN_allocator = SystemAllocator);
+		ThreadManager(const size_t ThreadCount = 2, iAllocator* IN_allocator = SystemAllocator);
 		~ThreadManager() { Release(); }
 
 		void Release();
@@ -482,7 +507,7 @@ namespace FlexKit
 
 		void SendShutdown();
 
-		void AddWork(iWork* newWork, iAllocator* Allocator = SystemAllocator) noexcept;
+		void AddWork(iWork* newWork) noexcept;
 		void AddBackgroundWork(iWork& newWork) noexcept;
 
 		void WaitForWorkersToComplete(iAllocator& tempAllocator);
@@ -496,7 +521,7 @@ namespace FlexKit
 
 		iWork* FindWork(bool stealBackground = false);
 
-		uint32_t GetThreadCount() const noexcept;
+        size_t GetThreadCount() const noexcept;
 
 		auto GetThreadsBegin()	{ return threads.begin(); }
 		auto GetThreadsEnd()	{ return threads.end(); }
@@ -510,7 +535,7 @@ namespace FlexKit
 		std::atomic_int				workingThreadCount;
 		std::default_random_engine	randomDevice;
 
-		const uint32_t				workerCount;
+		const size_t				workerCount;
 		iAllocator*					allocator;
 		std::mutex					exclusive;
 
@@ -559,7 +584,7 @@ namespace FlexKit
 
 
 		std::atomic_int	    tasksInProgress = 0;
-		std::atomic_bool    inProgress      = true;
+		std::atomic_bool    inProgress      = false;
 
 		ThreadManager&				threads;
 		Vector<OnCompletionEvent>	PostEvents;

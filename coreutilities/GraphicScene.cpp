@@ -440,15 +440,15 @@ namespace FlexKit
         const size_t end            = std::ceil(elements.size() / 4.0f);
         const size_t elementCount   = elements.size();
 
-        for (size_t I = 0; I < end; ++I)
+        for (uint16_t I = 0; I < end; ++I)
         {
             BVHNode node;
 
-            const size_t begin  = 4 * I;
-            const size_t end    = Min(elementCount, 4 * I + 4);
+            const uint16_t begin  = 4 * I;
+            const uint16_t end    = (uint16_t)Min(elementCount, 4 * I + 4);
 
-            for (size_t II = 4 * I; II < end; II++) {
-                const size_t idx    = II;
+            for (uint16_t II = 4 * I; II < end; II++) {
+                const uint16_t idx  = II;
                 auto& visable       =  visables[elements[idx].handle];
                 const auto aabb     = visibilityComponent[visable].GetAABB();
                 node.boundingVolume += aabb;
@@ -465,8 +465,8 @@ namespace FlexKit
         uint begin = 0;
         while (true)
         {
-            const uint end  = nodes.size();
-            const uint temp = end;
+            const uint end  = (uint)nodes.size();
+            const uint temp = (uint)end;
 
             if (end - begin > 1)
             {
@@ -479,7 +479,7 @@ namespace FlexKit
                         node.boundingVolume += nodes[II].boundingVolume;
 
                     node.children   = I;
-                    node.count      = (localEnd - I);
+                    node.count      = uint8_t(localEnd - I);
                     node.Leaf       = false;
 
                     nodes.push_back(node);
@@ -907,6 +907,90 @@ namespace FlexKit
 
     PointLightUpdate& GraphicScene::UpdatePointLights(UpdateDispatcher& dispatcher, BuildBVHTask& bvh, PointLightShadowGatherTask& visablePointLights, iAllocator* temporaryMemory, iAllocator* persistentMemory) const
     {
+        class Task : public iWork
+        {
+        public:
+            Task(PointLightHandle IN_light, SceneBVH& IN_bvh, iAllocator& IN_allocator) :
+                iWork           {},
+                persistentMemory{ IN_allocator },
+                lightHandle     { IN_light },
+                bvh             { IN_bvh }
+            {
+                _debugID = "PointLightUpdate_Task";
+            }
+
+            void Run(iAllocator& threadLocalAllocator)
+            {
+                auto& visables = SceneVisibilityComponent::GetComponent();
+                auto& lights = PointLightComponent::GetComponent();
+
+                auto& light = lights[lightHandle];
+                const float3 POS = GetPositionW(light.Position);
+                const float  r = light.R;
+                AABB lightAABB{ POS - r, POS + r };
+
+                Vector<VisibilityHandle> PVS{ &threadLocalAllocator };
+
+                bvh.TraverseBVH(lightAABB,
+                    [&](VisibilityHandle visable)
+                    {
+                        PVS.push_back(visable);
+                    });
+
+                /*
+                std::sort(
+                    std::begin(PVS), std::end(PVS),
+                    [](const auto& lhs, const auto& rhs)
+                    {
+                        return lhs < rhs;
+                    });
+                */
+
+                //if(const auto flags = GetFlags(light.Position); flags & (SceneNodes::DIRTY | SceneNodes::UPDATED))
+                //    light.state = LightStateFlags::Dirty;
+
+                if (light.shadowState)
+                {   // Compare previousPVS with current PVS to see if shadow map needs update
+                    auto& previousPVS = light.shadowState->visableObjects;
+
+                    
+
+                    /*
+                    if (previousPVS.size() == PVS.size())
+                    {
+                        for (size_t I = 0; I < PVS.size(); ++I)
+                        {
+                            if (PVS[I] != previousPVS[I])
+                                break; // do full update
+
+                            const auto flags = GetFlags(visables[PVS[I]].node);
+
+                            if (flags & (SceneNodes::DIRTY | SceneNodes::UPDATED) != 0)
+                                break;
+                        }
+                    }
+                    */
+                    return;
+                }
+
+                if (!light.shadowState)
+                    light.shadowState = &persistentMemory.allocate<CubeMapState>(&persistentMemory);
+
+                light.state = LightStateFlags::Dirty;
+                light.shadowState->shadowMapSize = 128;
+                light.shadowState->visableObjects = PVS;
+            }
+
+            void Release()
+            {
+
+            }
+
+            iAllocator&             persistentMemory;
+            SceneBVH&               bvh;
+            const PointLightHandle  lightHandle = InvalidHandle_t;
+        };
+
         return dispatcher.Add<PointLightUpdate_DATA>(
 			[&](UpdateDispatcher::UpdateBuilder& builder, PointLightUpdate_DATA& data)
 			{
@@ -924,88 +1008,24 @@ namespace FlexKit
             ]
             (PointLightUpdate_DATA& data, iAllocator& threadAllocator)
 			{
-                auto& visables  = SceneVisibilityComponent::GetComponent();
-                auto& lights    = PointLightComponent::GetComponent();
-
                 WorkBarrier barrier{ threads, &threadAllocator };
 
                 for (auto visableLight : visablePointLights)
                 {
-                    auto& temp = CreateWorkItem(
-                        [&](auto& threadAllocator)
-                        {
-                            auto& light         = lights[visableLight];
-                            const float3 POS    = GetPositionW(light.Position);
-                            const float  r      = light.R;
-                            AABB lightAABB{POS - r, POS + r};
-
-                            Vector<VisibilityHandle> PVS{ &threadAllocator };
-
-                            bvh->TraverseBVH(lightAABB,
-                                [&](VisibilityHandle visable)
-                                {
-                                    PVS.push_back(visable);
-                                });
-
-                            std::sort(
-                                std::begin(PVS), std::end(PVS),
-                                [](const auto& lhs, const auto& rhs)
-                                {
-                                    return lhs < rhs;
-                                });
-
-                            //if(const auto flags = GetFlags(light.Position); flags & (SceneNodes::DIRTY | SceneNodes::UPDATED))
-                            //    light.state = LightStateFlags::Dirty;
-
-                            if (light.shadowState)
-                            {   // Compare previousPVS with current PVS to see if shadow map needs update
-                                auto& previousPVS = light.shadowState->visableObjects;
-
-                                /*
-                                if (previousPVS.size() == PVS.size())
-                                {
-                                    for (size_t I = 0; I < PVS.size(); ++I)
-                                    {
-                                        if (PVS[I] != previousPVS[I])
-                                            break; // do full update
-
-                                        const auto flags = GetFlags(visables[PVS[I]].node);
-
-                                        if (flags & (SceneNodes::DIRTY | SceneNodes::UPDATED) != 0)
-                                            break;
-                                    }
-                                }
-                                */
-                                return;
-                            }
-
-                            if (!light.shadowState) {
-                                light.shadowState                   = &persistentMemory->allocate<CubeMapState>();
-
-                                FK_ASSERT(light.shadowState);
-                                light.shadowState->visableObjects   = Vector<VisibilityHandle>{ persistentMemory };
-                            }
-
-                            light.state = LightStateFlags::Dirty;
-
-                            light.shadowState->allocator        = persistentMemory;
-                            light.shadowState->shadowMapSize    = 128;
-                            light.shadowState->visableObjects   = PVS;
-
-                        });
-
-                    barrier.AddWork(temp);
-                    threads.AddWork(temp);
+                    auto& task = threadAllocator.allocate<Task>(visableLight, *bvh, *persistentMemory);
+                    barrier.AddWork(task);
+                    threads.AddWork(task);
                 }
 
-                barrier.JoinLocal();
+                barrier.Join();
+
+                auto& lights = PointLightComponent::GetComponent();
 
                 for (auto visableLight : visablePointLights)
                 {
                     auto& light = lights[visableLight];
-                    if (lights[visableLight].state == LightStateFlags::Dirty && light.shadowState) {
+                    if (lights[visableLight].state == LightStateFlags::Dirty && light.shadowState)
                         data.dirtyList.push_back(visableLight);
-                    }
                 }
 			}
 		);
@@ -1043,8 +1063,8 @@ namespace FlexKit
 
         if (material != InvalidHandle_t)
         {
-            auto textures = MaterialComponent::GetComponent()[material].Textures;
-            Constants.textureCount = textures.size();
+            auto textures           = MaterialComponent::GetComponent()[material].Textures;
+            Constants.textureCount  = (uint32_t)textures.size();
 
             for (auto& texture : textures)
                 Constants.textureHandles[std::distance(std::begin(textures), &texture)] = uint4{ 256, 256, texture.to_uint() };

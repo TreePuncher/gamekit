@@ -178,7 +178,11 @@ namespace FlexKit
 
     struct CubeMapState
     {
-        uint                        shadowMapSize;
+        CubeMapState(iAllocator* IN_allocator) :
+            allocator       { IN_allocator },
+            visableObjects  { IN_allocator } {}
+
+        uint                        shadowMapSize = 1;
         Vector<VisibilityHandle>    visableObjects;
         iAllocator*                 allocator;
     };

@@ -42,12 +42,6 @@ namespace FlexKit
     }
 
 
-
-    FLEXKITAPI inline iAllocator& GetThreadLocalAllocator()
-    {
-        return *_localAllocator;
-    }
-
 	/************************************************************************************************/
 
 
@@ -98,7 +92,7 @@ namespace FlexKit
 				{
 					hasJob.store(true, std::memory_order_release);
 
-                    RunTask(*work, localAllocator);
+                    RunTask(*work);
 
 					hasJob.store(false, std::memory_order_release);
 
@@ -177,10 +171,10 @@ namespace FlexKit
                 {
                     localWorkQueue  = &workQueue;
                     _localThread    = this;
-                    _localAllocator = localAllocator;
+                    //_localAllocator = localAllocator;
 
-                    buffer = std::make_unique<std::array<byte, MEGABYTE * 16>>();
-                    localAllocator.Init(buffer->data(), MEGABYTE * 16);
+                    //buffer = std::make_unique<std::array<byte, MEGABYTE * 16>>();
+                    //localAllocator.Init(buffer->data(), MEGABYTE * 16);
 
                     _Run();
                 }));
@@ -284,11 +278,12 @@ namespace FlexKit
 	void WorkBarrier::AddWork(iWork& work)
 	{
 		++tasksInProgress;
+        inProgress = true;
 
 		work.Subscribe(
 			[&]
 			{
-				const auto prev = tasksInProgress.fetch_sub(1); FK_ASSERT(prev > 0);
+				const auto prev = tasksInProgress.fetch_sub(1, std::memory_order::memory_order_seq_cst); FK_ASSERT(prev > 0);
 
 				if (prev == 1)
 					_OnEnd();
@@ -323,7 +318,7 @@ namespace FlexKit
 
 	void WorkBarrier::Join()
 	{
-        if (!tasksInProgress)
+        if (!inProgress)
             return;
 
 		do
@@ -332,7 +327,7 @@ namespace FlexKit
 				return;
 
 			for(auto work = threads.FindWork(); work; work = threads.FindWork())
-                RunTask(*work, GetThreadLocalAllocator());
+                RunTask(*work);
 
 		} while (true);
 
@@ -345,24 +340,20 @@ namespace FlexKit
 
     void WorkBarrier::JoinLocal()
     {
-        if (!tasksInProgress)
+        if (!inProgress)
             return;
 
-		do
-		{
-			if (!inProgress)
-				return;
-
-			while(true)
+		while(inProgress)
+        {
+            auto work = localWorkQueue->pop_back().value_or(nullptr);
+            if (work)
             {
-                auto work = localWorkQueue->pop_back().value_or(nullptr);
-                if (work)
-                    RunTask(*work, GetThreadLocalAllocator());
-                else
-                    break;
-			}
-		} while (true);
+                RunTask(*work);
+            }
+            else break;
+		}
 
+        Wait();
         Reset();
     }
 
@@ -373,14 +364,14 @@ namespace FlexKit
     void WorkBarrier::Reset()
     {
         tasksInProgress = 0;
-        inProgress      = true;
+        inProgress      = false;
     }
 
 
     /************************************************************************************************/
 
 
-    ThreadManager::ThreadManager(const uint32_t threadCount, iAllocator* IN_allocator) :
+    ThreadManager::ThreadManager(const size_t threadCount, iAllocator* IN_allocator) :
 		threads				{ },
 		allocator			{ IN_allocator		},
 		workingThreadCount	{ 0					},
@@ -446,7 +437,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-	void ThreadManager::AddWork(iWork* newWork, iAllocator* Allocator) noexcept
+	void ThreadManager::AddWork(iWork* newWork) noexcept
 	{
         PushToLocalQueue(*newWork);
 		workerWait.notify_all();
@@ -471,7 +462,7 @@ namespace FlexKit
 		while (!localWorkQueue.empty())
 		{
 			if (auto workItem = FindWork(true); workItem)
-                RunTask(*workItem, localAllocator);
+                RunTask(*workItem);
 		}
 		while (workingThreadCount > 0);
 	}
@@ -557,7 +548,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-	uint32_t ThreadManager::GetThreadCount() const noexcept
+    size_t ThreadManager::GetThreadCount() const noexcept
 	{
 		return workerCount;
 	}

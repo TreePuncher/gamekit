@@ -1829,8 +1829,8 @@ namespace FlexKit
                         ctx.EndEvent_DEBUG();
                     };
 
-                size_t offset       = 0;
-                size_t nodeCount    = std::ceilf(float(lightCount) / BVH_ELEMENT_COUNT);
+                uint32_t offset       = 0;
+                uint32_t nodeCount    = std::ceilf(float(lightCount) / BVH_ELEMENT_COUNT);
                 const uint32_t passCount = std::floor(std::log(lightCount) / std::log(BVH_ELEMENT_COUNT));
 
                 for (uint32_t I = 0; I < passCount; I++)
@@ -2158,8 +2158,8 @@ namespace FlexKit
 						);
 					}
 
-                    auto& materials = MaterialComponent::GetComponent();
-                    const auto material  = MaterialComponent::GetComponent()[drawable.D->material];
+                    auto& materials         = MaterialComponent::GetComponent();
+                    const auto material     = MaterialComponent::GetComponent()[drawable.D->material];
                     const auto subMeshCount = triMesh->subMeshes.size();
 
                     if (material.SubMaterials.empty())
@@ -2168,11 +2168,11 @@ namespace FlexKit
 
 					    descHeap.Init(
 						    ctx,
-						    resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
+						    resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0u),
 						    &allocator);
 
 					    if(material.Textures.size())
-						    for(size_t I = 0; I < Min(material.Textures.size(), 4); I++)
+						    for(size_t I = 0; I < Min(material.Textures.size(), 4u); I++)
 							    descHeap.SetSRV(ctx, I, material.Textures[I]);
 					    else
 					    {
@@ -2183,7 +2183,7 @@ namespace FlexKit
 					    }
 
 					    descHeap.NullFill(ctx);
-                        constants.textureCount = material.Textures.size();
+                        constants.textureCount = (uint32_t)material.Textures.size();
 
                         ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
                         ctx.SetGraphicsDescriptorTable(0, descHeap);
@@ -2215,7 +2215,7 @@ namespace FlexKit
 					        }
 
 					        descHeap.NullFill(ctx);
-                            constants.textureCount = passMaterial.Textures.size();
+                            constants.textureCount = (uint32_t)passMaterial.Textures.size();
 
                             ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
                             ctx.SetGraphicsDescriptorTable(0, descHeap);
@@ -2270,7 +2270,7 @@ namespace FlexKit
 
                 ctx.EndEvent_DEBUG();
 
-                ctx.TimeStamp(timeStats, 1);
+                ctx.TimeStamp(timeStats, 1u);
 			}
 			);
 
@@ -2348,7 +2348,7 @@ namespace FlexKit
 				auto& renderSystem          = resources.renderSystem();
 				const auto WH               = resources.renderSystem().GetTextureWH(renderTarget);
 				const auto cameraConstants  = GetCameraConstants(camera);
-				const auto pointLightCount  = visableLights.size();
+				const auto pointLightCount  = (uint32_t)visableLights.size();
 
                 if (!pointLightCount)
                     return;
@@ -2369,7 +2369,7 @@ namespace FlexKit
                 };
 
                 {
-                    size_t lightID = 0;
+                    uint32_t lightID = 0;
                     for (auto lightHandle : visableLights)
                     {
                         auto& light             = lightComponent[lightHandle];
@@ -2613,14 +2613,14 @@ namespace FlexKit
 
 	ShadowPassMatrices CalculateShadowMapMatrices(const float3 pos, const float r, const float T)
 	{
-		const auto M1 = DirectX::XMMatrixRotationY( pi / 2.0f) * DirectX::XMMatrixRotationX(pi); // left Face
-		const auto M2 = DirectX::XMMatrixRotationY(-pi / 2.0f) * DirectX::XMMatrixRotationX(pi); // right
+		const auto M1 = DirectX::XMMatrixRotationY((float) pi / 2.0f) * DirectX::XMMatrixRotationX((float)pi); // left Face
+		const auto M2 = DirectX::XMMatrixRotationY((float)-pi / 2.0f) * DirectX::XMMatrixRotationX((float)pi); // right
 
-		const auto M3 = DirectX::XMMatrixRotationX( pi / 2.0f); // Top Face
-		const auto M4 = DirectX::XMMatrixRotationX(-pi / 2.0f); // Bottom Face
+		const auto M3 = DirectX::XMMatrixRotationX((float) pi / 2.0f); // Top Face
+		const auto M4 = DirectX::XMMatrixRotationX((float)-pi / 2.0f); // Bottom Face
 
 		const auto M5 = Float4x4ToXMMATIRX(Quaternion2Matrix(Quaternion(0, 180, 180)));
-		const auto M6 = DirectX::XMMatrixRotationY(0) * DirectX::XMMatrixRotationZ(pi); // backward
+		const auto M6 = DirectX::XMMatrixRotationY(0) * DirectX::XMMatrixRotationZ((float)pi); // backward
 
 		const XMMATRIX ViewOrientations[] = {
 			M1,
@@ -2692,7 +2692,7 @@ namespace FlexKit
                         renderSystem.ReleaseResource(light.shadowMap);
                     }
 
-                    auto shadowMap = shadowMapAllocator.Aquire(GPUResourceDesc::DepthTarget({ 512, 512 }, DeviceFormat::D32_FLOAT, 6));
+                    auto shadowMap = shadowMapAllocator.Aquire(GPUResourceDesc::DepthTarget({ 256, 256 }, DeviceFormat::D32_FLOAT, 6));
                     renderSystem.SetDebugName(shadowMap, "Shadow Map");
 
                     light.shadowMap = shadowMap;
@@ -2713,7 +2713,7 @@ namespace FlexKit
 		const double                    t,
 		iAllocator*                     allocator)
 	{
-		auto& shadowMapPass         = allocator->allocate<ShadowMapPassData>(ShadowMapPassData{ allocator->allocate<Vector<TemporaryFrameResourceHandle>>(allocator) });
+		auto& shadowMapPass = allocator->allocate<ShadowMapPassData>(ShadowMapPassData{ allocator->allocate<Vector<TemporaryFrameResourceHandle>>(allocator) });
 
 		frameGraph.AddNode<LocalShadowMapPassData>(
 				LocalShadowMapPassData{

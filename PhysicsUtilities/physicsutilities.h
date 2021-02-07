@@ -508,13 +508,13 @@ namespace FlexKit
 			void submitTask(physx::PxBaseTask& pxTask)
 			{
 				auto& newTask = allocator->allocate_aligned<PhysXTask>(pxTask, allocator);
-				threads.AddWork(newTask, allocator);
+				threads.AddWork(newTask);
 			}
 
 
 			uint32_t getWorkerCount() const
 			{
-				return threads.GetThreadCount();
+				return (uint32_t)threads.GetThreadCount();
 			}
 
 

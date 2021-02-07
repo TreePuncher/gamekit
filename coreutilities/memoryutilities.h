@@ -296,6 +296,8 @@ namespace FlexKit
 		void*	_aligned_malloc		(size_t s, size_t alignement = 0x10);
 		void	clear				();
 
+        void*   buffer() { return Buffer; }
+
 		operator iAllocator* () { return &AllocatorInterface; }
 		operator iAllocator& () { return  AllocatorInterface; }
 	private:

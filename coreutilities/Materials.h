@@ -65,7 +65,7 @@ namespace FlexKit
 
         MaterialHandle CreateMaterial()
         {
-            auto materialIdx = materials.push_back({ {}, {}, 1 });
+            auto materialIdx = (index_t)materials.push_back({ {}, {}, 1 });
             auto handle = handles.GetNewHandle();
 
             handles[handle] = materialIdx;

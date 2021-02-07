@@ -96,7 +96,7 @@ namespace FlexKit
 
 		    const auto bufferCount = desc.BufferCount;
 
-		    for (size_t I = 0; I < bufferCount; ++I)
+		    for (UINT I = 0; I < bufferCount; ++I)
 		    {
                 swapChain->GetBuffer(I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
 			    if (!buffer[I])
@@ -750,7 +750,7 @@ namespace FlexKit
 		//CreateBackBuffer
 		ID3D12Resource* buffer[3];
 
-		for (size_t I = 0; I < SwapChainDesc.BufferCount; ++I)
+		for (UINT I = 0; I < SwapChainDesc.BufferCount; ++I)
 		{
 			NewSwapChain_ptr->GetBuffer( I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
 			if (!buffer[I]) {
@@ -818,7 +818,7 @@ namespace FlexKit
         //CreateBackBuffer
         ID3D12Resource* buffer[3];
 
-        for (size_t I = 0; I < SwapChainDesc.BufferCount; ++I)
+        for (UINT I = 0; I < SwapChainDesc.BufferCount; ++I)
         {
             NewSwapChain_ptr->GetBuffer(I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
             if (!buffer[I]) {
