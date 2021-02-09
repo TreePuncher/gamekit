@@ -752,11 +752,13 @@ namespace FlexKit
                 });
 
             readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
+            /*
             readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
             readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
             readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
             readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
             readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
+            */
 		}
 
 

@@ -619,7 +619,7 @@ namespace FlexKit
     {
         auto& gameObject = allocator->allocate<GameObject>();
 
-        gameObject.AddView<CharacterControllerView>(scene, float3{ 0, 10, 40 });
+        gameObject.AddView<CharacterControllerView>(scene, float3{ 0, 10, 0 });
         gameObject.AddView<CameraControllerView>(
             CameraControllerComponent::GetComponent().Create(
                 ThirdPersonCamera(
@@ -658,6 +658,15 @@ namespace FlexKit
             []
             {
                 return float3(0, 0, 0);
+            });
+    }
+
+
+    float3 SetCameraControllerPosition(GameObject& GO, const float3 pos)
+    {
+        Apply(GO, [&](CameraControllerView& cameraController)
+            {
+                cameraController.GetData().SetPosition(pos);
             });
     }
 
@@ -810,6 +819,15 @@ namespace FlexKit
     void ThirdPersonCamera::Roll(float Theta)
     {
         Rotate({ 0, 0, Theta });
+    }
+
+
+    /************************************************************************************************/
+
+
+    void ThirdPersonCamera::SetPosition(const float3 xyz)
+    {
+        FlexKit::SetPositionL(yawNode, xyz);
     }
 
 

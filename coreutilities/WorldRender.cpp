@@ -1942,6 +1942,7 @@ namespace FlexKit
                 if(data.readBackHandle != InvalidHandle_t)
                 {
                     ctx.BeginEvent_DEBUG("Resolution Match Shadow Maps");
+                    FK_LOG_INFO("ReadBack Buffer : %u", data.readBackHandle.to_uint());
 
                     struct Constants
                     {
@@ -1987,6 +1988,7 @@ namespace FlexKit
                         { DRS_Write },
                         { DRS_Write });
 
+                    if(false)
                     ctx.QueueReadBack(data.readBackHandle,
                         [&, &readBackBuffers = readBackBuffers, &renderSystem = *ctx.renderSystem](ReadBackResourceHandle readBack)
                         {
