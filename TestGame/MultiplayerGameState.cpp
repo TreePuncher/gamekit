@@ -96,6 +96,8 @@ LocalPlayerState::LocalPlayerState(
 	eventMap.MapKeyToEvent(KEYCODES::KC_D, TPC_MoveRight);
 	eventMap.MapKeyToEvent(KEYCODES::KC_Q, TPC_MoveDown);
 	eventMap.MapKeyToEvent(KEYCODES::KC_E, TPC_MoveUp);
+
+    base.framework.GetRenderSystem().DEBUG_AttachPIX();
 }
 
 
@@ -312,7 +314,7 @@ bool LocalPlayerState::EventHandler(Event evt)
                     framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
                 }
 			}   return true;
-			case KC_P:
+			case KC_K:
 			{
 				if (evt.Action == Event::Release)
 				{
@@ -366,6 +368,22 @@ bool LocalPlayerState::EventHandler(Event evt)
 				if (evt.Action == Event::Release)
 					base.renderWindow.EnableCaptureMouse(!base.renderWindow.mouseCapture);
 				break;
+            case KC_P: // Reload Shaders
+            {
+                if (evt.Action == Event::Release)
+                {
+                    if (captureInProgress)
+                    {
+                        FK_LOG_INFO("Ending Pix Capture");
+                        captureInProgress = !base.framework.GetRenderSystem().DEBUG_EndPixCapture();
+                    }
+                    else
+                    {
+                        FK_LOG_INFO("Beginning Pix Capture");
+                        captureInProgress = base.framework.GetRenderSystem().DEBUG_BeginPixCapture();
+                    }
+                }
+            }   break;
 			default:
 				return handled;
 			}

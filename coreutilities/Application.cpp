@@ -5,10 +5,7 @@ namespace FlexKit
 	FKApplication::FKApplication(EngineMemory* IN_Memory, size_t threadCount) :
 		Memory		{ IN_Memory },
 		Core		{ IN_Memory, threadCount },
-		framework	{ Core }
-    {
-        HRESULT hr = DXGIGetDebugInterface1(0, IID_PPV_ARGS(&pix));
-    }
+		framework	{ Core } {}
 
 
     /************************************************************************************************/

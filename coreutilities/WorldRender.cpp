@@ -668,6 +668,47 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    ID3D12PipelineState* CreateResolutionMatch_PSO(RenderSystem* RS)
+    {
+        Shader computeShader = RS->LoadShader("ResolutionMatch", "cs_6_0", R"(assets\shaders\ResolutionMatch.hlsl)");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+            RS->Library.ComputeSignature,
+            computeShader
+        };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+
+        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+        return PSO;
+    }
+
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* CreateClearResolutionMatch_PSO(RenderSystem* RS)
+    {
+        Shader computeShader = RS->LoadShader("Clear", "cs_6_0", R"(assets\shaders\ResolutionMatch.hlsl)");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+            RS->Library.ComputeSignature,
+            computeShader
+        };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+
+        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+        return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
     ID3D12PipelineState* CreateClustersPSO(RenderSystem* RS)
     {
         Shader computeShader = RS->LoadShader("CreateClusters", "cs_6_0", R"(assets\shaders\ClusteredRendering.hlsl)");
@@ -1638,16 +1679,21 @@ namespace FlexKit
                 data.lightBufferObject      = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512 * KILOBYTE), DRS_ShaderResource, false);
 
                 // Temporaries
-                data.lightBVH               = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512 * KILOBYTE), DRS_UAV, releaseTemporaries);
-                data.lightLookupObject      = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512 * KILOBYTE), DRS_UAV, releaseTemporaries);
-                data.lightCounterObject     = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DRS_UAV, releaseTemporaries);
+                data.lightBVH               = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512 * KILOBYTE),  DRS_UAV, releaseTemporaries);
+                data.lightLookupObject      = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512 * KILOBYTE),  DRS_UAV, releaseTemporaries);
+                data.lightCounterObject     = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512),             DRS_UAV, releaseTemporaries);
+                data.lightResolutionObject  = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(64 * KILOBYTE),   DRS_UAV);
 
                 data.counterObject          = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DRS_UAV, releaseTemporaries);
                 data.argumentBufferObject   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DRS_UAV, releaseTemporaries);
 
                 data.depthBufferObject      = builder.ReadRenderTarget(depthBuffer);
-
 				data.camera				    = camera;
+
+                if (readBackBuffers.size())
+                    data.readBackHandle = readBackBuffers.pop_front();
+                else
+                    data.readBackHandle = InvalidHandle_t;
 
                 builder.SetDebugName(data.clusterBufferObject,  "ClusterBufferObject");
                 builder.SetDebugName(data.indexBufferObject,    "indexBufferObject");
@@ -1662,7 +1708,7 @@ namespace FlexKit
 				builder.AddDataDependency(sceneDescription.lights);
 				builder.AddDataDependency(sceneDescription.cameras);
 			},
-			[timeStats = timeStats](LightBufferUpdate& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[timeStats = timeStats, this](LightBufferUpdate& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
                 ctx.BeginEvent_DEBUG("Update Light Buffers");
 
@@ -1672,6 +1718,8 @@ namespace FlexKit
                 auto        CreateBVH_Phase2            = resources.GetPipelineState(CREATELIGHTBVH_PHASE2);
                 auto        CreateLightLists            = resources.GetPipelineState(CREATECLUSTERLIGHTLISTS);
                 auto        CreateLightListArguments    = resources.GetPipelineState(CREATELIGHTLISTARGS_PSO);
+                auto        resolutionMatchShadowsMaps  = resources.GetPipelineState(RESOLUTIONMATCHSHADOWMAPS);
+                auto        clearShadowMapBuffer        = resources.GetPipelineState(CLEARSHADOWRESOLUTIONBUFFER);
 
                 const auto  cameraConstants     = GetCameraConstants(data.camera);
                 const auto  lightCount          = data.visableLights.size();
@@ -1889,6 +1937,70 @@ namespace FlexKit
                 ctx.TimeStamp(timeStats, 7);
 
                 ctx.EndEvent_DEBUG();
+
+
+                if(data.readBackHandle != InvalidHandle_t)
+                {
+                    ctx.BeginEvent_DEBUG("Resolution Match Shadow Maps");
+
+                    struct Constants
+                    {
+                        float FOV;
+                        uint2 WH;
+                    } constants{
+                        cameraConstants.FOV,
+                        resources.GetTextureWH(data.depthBufferObject)
+                    };
+
+                    // Build Light Lists
+                    CBPushBuffer constantBuffer4 = data.reserveCB(AlignedSize<Constants>());
+                    ConstantBufferDataSet   lightListConstantSet{ constants, constantBuffer4 };
+
+                    DescriptorHeap resolutionMatchShadowMaps;
+                    resolutionMatchShadowMaps.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
+
+                    resolutionMatchShadowMaps.SetUAVStructured(ctx, 0, resources.ReadWriteUAV(data.lightResolutionObject, ctx), 4, 0);
+                    resolutionMatchShadowMaps.SetStructuredResource(ctx, 4, resources.ReadWriteUAV(data.clusterBufferObject, ctx), sizeof(GPUCluster), 0);
+                    resolutionMatchShadowMaps.SetStructuredResource(ctx, 5, resources.ReadWriteUAV(data.lightListObject, ctx), sizeof(uint32_t), 0);
+                    resolutionMatchShadowMaps.SetStructuredResource(ctx, 6, resources.ReadUAV(data.lightBufferObject, DRS_ShaderResource, ctx), sizeof(GPUPointLight));
+
+                    resolutionMatchShadowMaps.SetCBV(ctx, 8, resources.ReadUAV(data.counterObject, DRS_ShaderResource, ctx), 0, 4);
+                    resolutionMatchShadowMaps.SetCBV(ctx, 9, lightListConstantSet);
+
+                    resolutionMatchShadowMaps.NullFill(ctx);
+
+                    ctx.SetComputeDescriptorTable(0, resolutionMatchShadowMaps);
+                    ctx.Dispatch(clearShadowMapBuffer, { 1, 1, 1 });
+
+                    ctx.AddUAVBarrier(resources.ReadWriteUAV(data.lightResolutionObject, ctx));
+
+                    ctx.SetPipelineState(resolutionMatchShadowsMaps);
+                    ctx.ExecuteIndirect(resources.ReadIndirectArgs(data.argumentBufferObject, ctx), data.indirectLayout);
+
+                    // Write out
+                    ctx.CopyBufferRegion(
+                        {   resources.GetObjectResource(resources.ReadUAV(data.lightResolutionObject, DRS_Read, ctx)) },
+                        { 0 },
+                        { resources.GetObjectResource(data.readBackHandle) },
+                        { 0 },
+                        { 64 * KILOBYTE },
+                        { DRS_Write },
+                        { DRS_Write });
+
+                    ctx.QueueReadBack(data.readBackHandle,
+                        [&, &readBackBuffers = readBackBuffers, &renderSystem = *ctx.renderSystem](ReadBackResourceHandle readBack)
+                        {
+                            auto [buffer, bufferSize] = renderSystem.OpenReadBackBuffer(readBack);
+
+                            auto temp = malloc(bufferSize);
+                            memcpy(temp, buffer, bufferSize);
+
+                            readBackBuffers.push_back(readBack);
+                        });
+
+                    ctx.EndEvent_DEBUG();
+                }
+
                 ctx.EndEvent_DEBUG();
 			});
 

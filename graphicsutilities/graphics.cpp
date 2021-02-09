@@ -1539,6 +1539,12 @@ namespace FlexKit
 		queuedReadBacks.push_back(readBack);
 	}
 
+    void Context::QueueReadBack(ReadBackResourceHandle readBack, ReadBackEventHandler callback)
+    {
+        renderSystem->SetReadBackEvent(readBack, std::move(callback));
+        QueueReadBack(readBack);
+    }
+
 
 	/************************************************************************************************/
 
@@ -7262,6 +7268,48 @@ namespace FlexKit
         __debugbreak();
     }
 #endif
+
+
+    bool RenderSystem::DEBUG_AttachPIX()
+    {
+#if USING(PIX)
+        if (pix)
+            return true;
+
+        HRESULT hr = DXGIGetDebugInterface1(0, IID_PPV_ARGS(&pix));
+
+        return SUCCEEDED(hr);
+#else
+        return false;
+#endif
+    }
+
+
+    bool RenderSystem::DEBUG_BeginPixCapture()
+    {
+#if USING(PIX)
+        if (pix)
+            pix->BeginCapture();
+
+        return pix != nullptr;
+#else
+        return false;
+#endif
+    }
+
+
+    bool RenderSystem::DEBUG_EndPixCapture()
+    {
+#if USING(PIX)
+        if (pix)
+            pix->BeginCapture();
+
+        return pix != nullptr;
+#else
+        return false;
+#endif
+    }
+
 
 	/************************************************************************************************/
 

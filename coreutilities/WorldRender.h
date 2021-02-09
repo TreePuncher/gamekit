@@ -148,7 +148,8 @@ namespace FlexKit
     constexpr PSOHandle CLUSTER_DEBUGARGSVIS_PSO    = PSOHandle(GetTypeGUID(CLUSTER_DEBUGARGSVIS_PSO));
     constexpr PSOHandle CREATELIGHTLISTARGS_PSO     = PSOHandle(GetTypeGUID(CREATELIGHTLISTARGS_POS));
     constexpr PSOHandle CREATELIGHTDEBUGVIS_PSO     = PSOHandle(GetTypeGUID(CREATELIGHTDEBUGVIS_PSO));
-
+    constexpr PSOHandle RESOLUTIONMATCHSHADOWMAPS   = PSOHandle(GetTypeGUID(RESOLUTIONMATCHSHADOWMAPS));
+    constexpr PSOHandle CLEARSHADOWRESOLUTIONBUFFER = PSOHandle(GetTypeGUID(CLEARSHADOWRESOLUTIONBUFFER));
 
     static const PSOHandle DEPTHPREPASS                = PSOHandle(GetTypeGUID(DEPTHPREPASS));
 	static const PSOHandle FORWARDDRAWINSTANCED	       = PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
@@ -187,6 +188,8 @@ namespace FlexKit
     ID3D12PipelineState* CreateCluster_DEBUGVIS_PSO         (RenderSystem* RS);
     ID3D12PipelineState* CreateCluster_DEBUGARGSVIS_PSO     (RenderSystem* RS);
     ID3D12PipelineState* CreateClusterLightListsPSO         (RenderSystem* RS);
+    ID3D12PipelineState* CreateResolutionMatch_PSO          (RenderSystem* RS);
+    ID3D12PipelineState* CreateClearResolutionMatch_PSO     (RenderSystem* RS);
 
     ID3D12PipelineState* CreateClustersPSO                  (RenderSystem* RS);
     ID3D12PipelineState* CreateClearClusterCountersPSO      (RenderSystem* RS);
@@ -293,7 +296,9 @@ namespace FlexKit
         FrameResourceHandle	lightBVH;
         FrameResourceHandle	lightLookupObject;
         FrameResourceHandle	lightCounterObject;
+        FrameResourceHandle	lightResolutionObject;
 
+        ReadBackResourceHandle  readBackHandle;
 
         FrameResourceHandle	clusterBufferObject;
         FrameResourceHandle	counterObject;
@@ -691,10 +696,12 @@ namespace FlexKit
 			RS_IN.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL, { &RS_IN.Library.RSDefault, CreateBilaterialBlurHorizontalPSO });
 			RS_IN.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,   { &RS_IN.Library.RSDefault, CreateBilaterialBlurVerticalPSO   });
 
-			RS_IN.RegisterPSOLoader(LIGHTBVH_DEBUGVIS_PSO,      { &RS_IN.Library.RSDefault, CreateLightBVH_DEBUGVIS_PSO });
-			RS_IN.RegisterPSOLoader(CLUSTER_DEBUGVIS_PSO,       { &RS_IN.Library.RSDefault, CreateCluster_DEBUGVIS_PSO });
-			RS_IN.RegisterPSOLoader(CLUSTER_DEBUGARGSVIS_PSO,   { &RS_IN.Library.RSDefault, CreateCluster_DEBUGARGSVIS_PSO });
-            RS_IN.RegisterPSOLoader(CREATELIGHTDEBUGVIS_PSO,    { &RS_IN.Library.RSDefault, CreateLight_DEBUGARGSVIS_PSO });
+			RS_IN.RegisterPSOLoader(LIGHTBVH_DEBUGVIS_PSO,          { &RS_IN.Library.RSDefault, CreateLightBVH_DEBUGVIS_PSO });
+			RS_IN.RegisterPSOLoader(CLUSTER_DEBUGVIS_PSO,           { &RS_IN.Library.RSDefault, CreateCluster_DEBUGVIS_PSO });
+			RS_IN.RegisterPSOLoader(CLUSTER_DEBUGARGSVIS_PSO,       { &RS_IN.Library.RSDefault, CreateCluster_DEBUGARGSVIS_PSO });
+            RS_IN.RegisterPSOLoader(CREATELIGHTDEBUGVIS_PSO,        { &RS_IN.Library.RSDefault, CreateLight_DEBUGARGSVIS_PSO });
+            RS_IN.RegisterPSOLoader(RESOLUTIONMATCHSHADOWMAPS,      { &RS_IN.Library.RSDefault, CreateResolutionMatch_PSO });
+            RS_IN.RegisterPSOLoader(CLEARSHADOWRESOLUTIONBUFFER,    { &RS_IN.Library.RSDefault, CreateClearResolutionMatch_PSO});
 
             RS_IN.RegisterPSOLoader(DEBUG_DrawBVH, { &RS_IN.Library.RSDefault, CreateDEBUGBVHVIS });
 
@@ -710,6 +717,8 @@ namespace FlexKit
 			RS_IN.QueuePSOLoad(BILATERALBLURPASSVERTICAL);
             RS_IN.QueuePSOLoad(SHADOWMAPPASS);
             RS_IN.QueuePSOLoad(CLEARCOUNTERSPSO);
+            RS_IN.QueuePSOLoad(RESOLUTIONMATCHSHADOWMAPS);
+            RS_IN.QueuePSOLoad(CLEARSHADOWRESOLUTIONBUFFER);
 
             RS_IN.QueuePSOLoad(DEBUG_DrawBVH);
 
@@ -741,6 +750,13 @@ namespace FlexKit
                         timingValues.BVHConstruction    = durations[3];
                     }
                 });
+
+            readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
+            readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
+            readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
+            readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
+            readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
+            readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
 		}
 
 
@@ -896,6 +912,8 @@ namespace FlexKit
 
         QueryHandle             timeStats;
         ReadBackResourceHandle  timingReadBack;
+
+        CircularBuffer<ReadBackResourceHandle, 6> readBackBuffers;
 
 		TextureStreamingEngine&	streamingEngine;
 		bool                    OcclusionCulling;
