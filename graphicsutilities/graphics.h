@@ -48,9 +48,12 @@
 
 #if USING(PIX)
 #define USE_PIX
-#endif
 
 #include <pix3.h>
+#include <DXProgrammableCapture.h>
+
+#endif
+
 
 namespace FlexKit
 {
@@ -1420,6 +1423,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
+    using ReadBackEventHandler = TypeErasedCallable<64, void, ReadBackResourceHandle>;
+
+
 	FLEXKITAPI class Context
 	{
 	public:
@@ -1618,6 +1624,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
         */
 
 		void QueueReadBack(ReadBackResourceHandle readBack);
+        void QueueReadBack(ReadBackResourceHandle readBack, ReadBackEventHandler callback);
 
 		void SetDepthStencil		(ResourceHandle DS);
 		void SetPrimitiveTopology	(EInputTopology Topology);
@@ -3495,6 +3502,14 @@ private:
 		auto*               _GetCopyQueue() { return copyEngine.copyQueue; }
 
 		void                _OnCrash();
+
+        bool                DEBUG_AttachPIX();
+        bool                DEBUG_BeginPixCapture();
+        bool                DEBUG_EndPixCapture();
+
+#if USING(PIX)
+        IDXGraphicsAnalysis* pix;
+#endif
 
 #if USING(AFTERMATH)
         static void GpuCrashDumpCallback(const void* pGpuCrashDump, const uint32_t gpuCrashDumpSize, void* pUserData);

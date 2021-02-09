@@ -116,6 +116,7 @@ private:	/**********************************************************************
     DebugVisMode            renderMode      = DebugVisMode::Disabled;
     ClusterDebugDrawMode    debugDrawMode   = ClusterDebugDrawMode::BVH;
     BVHVisMode              bvhVisMode      = BVHVisMode::BVH;
+    bool                    captureInProgress = false;
 
     float                       T = 0;
     NetObjectInputComponent		netInputObjects;
