@@ -90,6 +90,12 @@ LocalPlayerState::LocalPlayerState(
 		netInputObjects	    { IN_framework.core.GetBlockMemory()	                            },
 		thirdPersonCamera   { CreateThirdPersonCameraController(IN_game.pScene, IN_framework.core.GetBlockMemory())   }
 {
+    Apply(thirdPersonCamera,
+        [&](CameraControllerView& camera)
+        {
+            camera.GetData().SetPosition({ 0, 15, 0 });
+        });
+
 	eventMap.MapKeyToEvent(KEYCODES::KC_W, TPC_MoveForward);
 	eventMap.MapKeyToEvent(KEYCODES::KC_S, TPC_MoveBackward);
 	eventMap.MapKeyToEvent(KEYCODES::KC_A, TPC_MoveLeft);
@@ -107,6 +113,20 @@ LocalPlayerState::LocalPlayerState(
 void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
     base.Update(core, dispatcher, dT);
+
+    Apply(thirdPersonCamera,
+        [&](CameraControllerView& camera)
+        {
+            camera.GetData().Yaw(dT * pi / 4);
+
+            camera.GetData().SetPosition(
+                lerp(
+                    float3{-100, 15, 0 },
+                    float3{ 100, 15, 0 },
+                    std::sin(T) / 2.0f + 0.5f));
+        });
+
+    T += dT;
 
     if (auto [gameObject, res] = FindGameObject(game.scene, "Cube"); res)
     {

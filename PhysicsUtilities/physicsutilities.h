@@ -846,9 +846,10 @@ namespace FlexKit
         void Yaw    (const float theta);
         void Pitch  (const float theta);
         void Roll   (const float theta);
-
+        void SetPosition(const float3 xyz);
 
         float3 GetHeadPosition() const;
+
 
         void Update(const float2 mouseInput, const double dt);
 
@@ -894,6 +895,8 @@ namespace FlexKit
 
     float3          GetCameraControllerHeadPosition(GameObject& GO);
     float3          GetCameraControllerForwardVector(GameObject& GO);
+
+    float3          SetCameraControllerPosition(GameObject& GO, const float3 pos);
 
 
     auto& UpdateThirdPersonCameraControllers(UpdateDispatcher& dispatcher, float2 mouseInput, const double dT)
