@@ -118,6 +118,7 @@ private:	/**********************************************************************
     BVHVisMode              bvhVisMode      = BVHVisMode::BVH;
     bool                    captureInProgress = false;
 
+    size_t                      frameCounter = 0;
     float                       T = 0;
     NetObjectInputComponent		netInputObjects;
     InputMap					eventMap;

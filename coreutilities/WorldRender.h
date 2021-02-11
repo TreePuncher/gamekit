@@ -115,7 +115,7 @@ namespace FlexKit
 		CameraHandle                            camera;
 		PointLightGatherTask&	                lights;
 		PointLightShadowGatherTask&	            pointLightMaps;
-        UpdateTask&	                            shadowMapAquire;
+        UpdateTask&	                            shadowMapAcquire;
 		UpdateTask&							    transforms;
 		UpdateTask&							    cameras;
 		UpdateTaskTyped<GetPVSTaskData>&	    PVS;
@@ -435,9 +435,9 @@ namespace FlexKit
 			GBufferClear{},
 			[&](FrameGraphNodeBuilder& builder, GBufferClear& data)
 			{
-				data.albedo  = builder.WriteRenderTarget(gbuffer.albedo);
-				data.MRIA    = builder.WriteRenderTarget(gbuffer.MRIA);
-				data.normal  = builder.WriteRenderTarget(gbuffer.normal);
+				data.albedo  = builder.RenderTarget(gbuffer.albedo);
+				data.MRIA    = builder.RenderTarget(gbuffer.MRIA);
+				data.normal  = builder.RenderTarget(gbuffer.normal);
 			},
 			[](GBufferClear& data, ResourceHandler& resources, Context& ctx, iAllocator&)
 			{

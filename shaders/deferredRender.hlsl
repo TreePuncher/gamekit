@@ -127,6 +127,10 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     const float NdotV   = saturate(dot(N.xyz, V));
 
     const uint clusterKey       = clusterIndex.Load(uint3(px.xy, 0));
+
+    if(clusterKey == -1)
+        discard;
+
     const Cluster localCluster  = clusters[clusterKey];
     const uint localLightCount  = asuint(localCluster.Max.w);
     const uint localLightList   = asuint(localCluster.Min.w);

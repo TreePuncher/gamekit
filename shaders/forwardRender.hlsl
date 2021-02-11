@@ -211,7 +211,15 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
     const float4 albedo       = textureCount >= 1 ? SampleVirtualTexture(albedoTexture, BiLinear, IN.UV) : float4(1, 1, 1, 1);
     
     if(albedo.w < 0.5f)
-        discard;
+    {   
+        Deferred_OUT gbuffer;
+        gbuffer.Normal      = mul(View, float4(normalize(IN.Normal), 0.0f));
+        gbuffer.MRIA        = float4(0.0f, 0.5f, 0.5, 0.5f);
+        gbuffer.Albedo      = float4(normalize(IN.Normal) / 2.0f + 0.5f, 0);
+        gbuffer.Depth       = length(IN.WPOS - CameraPOS.xyz) / MaxZ;
+        
+        return gbuffer;
+    }
 
     Deferred_OUT gbuffer;
 

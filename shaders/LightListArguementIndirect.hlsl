@@ -10,6 +10,7 @@ RWStructuredBuffer<Arguments>   argumentBuffer   : register(u0); // in-out
 RWStructuredBuffer<uint>        counters1        : register(u1); // in-out
 StructuredBuffer<uint>          counters2        : register(t0);
 
+
 [numthreads(1, 1, 1)]
 void CreateLightListArguents()
 {

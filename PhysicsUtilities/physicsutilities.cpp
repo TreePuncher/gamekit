@@ -662,7 +662,7 @@ namespace FlexKit
     }
 
 
-    float3 SetCameraControllerPosition(GameObject& GO, const float3 pos)
+    void SetCameraControllerPosition(GameObject& GO, const float3 pos)
     {
         Apply(GO, [&](CameraControllerView& cameraController)
             {
