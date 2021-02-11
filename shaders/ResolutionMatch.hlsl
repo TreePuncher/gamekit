@@ -10,12 +10,7 @@ struct PointLight
     float4 PR;	// XYZ + radius in W
 };
 
-cbuffer clusterConstants : register(b0)
-{
-    uint clusterCount;
-}
-
-cbuffer passConstants : register( b1 )
+cbuffer passConstants : register( b0 )
 {
     float FOV;
     uint2 WH;
@@ -27,6 +22,7 @@ RWStructuredBuffer<uint>    shadowMapResolutions : register(u0);
 StructuredBuffer<Cluster>       Clusters    : register(t0); 
 StructuredBuffer<uint>          lightList   : register(t1);
 StructuredBuffer<PointLight>    PointLights : register(t2); 
+StructuredBuffer<uint>          Counters    : register(t3); 
 
 #define PI 3.14159265359f
 
@@ -65,7 +61,9 @@ float ScreenSpaceSize(const float3 C_pos, const float C_r)
 void ResolutionMatch(const uint threadID : SV_GroupIndex, const uint3 groupID : SV_GROUPID)
 {
     return;
-    const uint groupIdx = groupID.x + groupID.y * 1024;
+    const uint groupIdx     = groupID.x + groupID.y * 1024;
+    const uint clusterCount = Counters[0];
+
     if(groupIdx < clusterCount)
     {
         Cluster C = Clusters[groupIdx];

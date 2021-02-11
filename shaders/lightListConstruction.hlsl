@@ -1,10 +1,5 @@
 cbuffer constants : register(b0)
 {
-    uint clusterCount;
-}
-
-cbuffer constants : register(b1)
-{
     float4x4    View;
     uint        rootNode;
 }
@@ -47,6 +42,8 @@ globallycoherent    RWBuffer<uint>                  counters      : register(u2)
 StructuredBuffer<BVH_Node>    BVHNodes      : register(t0);
 StructuredBuffer<uint>        LightLookup   : register(t1); 
 StructuredBuffer<PointLight>  PointLights   : register(t2); 
+StructuredBuffer<uint>        Counters      : register(t3); 
+
 
 AABB GetClusterAABB(Cluster C)
 {
@@ -180,6 +177,8 @@ uint PopNode()
 void CreateClustersLightLists(const uint threadID : SV_GroupIndex, const uint3 groupID : SV_GroupID)
 {
     const uint groupIdx = groupID.x + groupID.y * 1024;
+    const uint clusterCount = Counters[0];
+
     if(groupIdx < clusterCount)
     {
         Cluster localCluster    = Clusters[groupIdx];

@@ -142,7 +142,7 @@ namespace FlexKit
 				if (Formatting.PixelSize == float2{ 1.0f, 1.0f })
 					Formatting.PixelSize = float2{ 1.0f, 1.0f } / frameGraph.Resources.renderSystem.GetTextureWH(renderTarget);
 
-				Data.renderTarget	= Builder.WriteRenderTarget(renderTarget);
+				Data.renderTarget	= Builder.RenderTarget(renderTarget);
 
 				size_t StrLen		= strlen(Str);
 				size_t BufferSize	= StrLen * sizeof(TextEntry);

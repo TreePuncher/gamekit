@@ -127,6 +127,11 @@ void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispa
         });
 
     T += dT;
+    if (frameCounter == 805) {
+        core.RenderSystem.DEBUG_AttachPIX();
+        core.RenderSystem.DEBUG_BeginPixCapture();
+    }
+    std::cout << "Frame: " << frameCounter++ << " : " << T << "\n";
 
     if (auto [gameObject, res] = FindGameObject(game.scene, "Cube"); res)
     {

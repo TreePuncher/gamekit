@@ -24,6 +24,7 @@
 
 #include <iso646.h>
 #include <algorithm>
+#include <concepts>
 #include <string>
 #include <d3d12.h>
 #include <d3d12sdklayers.h>
@@ -32,7 +33,7 @@
 
 #include <tuple>
 #include <variant>
-
+#include <optional>
 
 #include <..\thirdparty\dxcapi.h>
 
@@ -113,31 +114,40 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	enum DeviceResourceState
 	{
-		DRS_Free			 = 0x0003, // Forces any type of transition
-		DRS_Read			 = 0x0001,
-		DRS_Retired			 = 0x1000,
+		DRS_Free			    = 0x0003, // Forces any type of transition
+		DRS_ReadFlag		    = 0x0001,
+		DRS_Retired			    = 0x1000,
 
-		DRS_Write			 = 0x0002,
-		DRS_Present			 = 0x1005, // Implied Read and Retire
-		DRS_RenderTarget	 = 0x0006, // Implied write
-		DRS_ShaderResource	 = 0x0009, // Implied Read
-		DRS_UAV				 = 0x000A, // Implied Write
-		DRS_STREAMOUT		 = 0x000B, // Implied Write
-		DRS_STREAMOUTCLEAR	 = 0x000D, // Implied Write
-		DRS_VERTEXBUFFER	 = 0x000C, // Implied Read
-		DRS_CONSTANTBUFFER	 = 0x000C, // Implied Read
-		DRS_DEPTHBUFFER		 = 0x0030,
-		DRS_DEPTHBUFFERREAD  = 0x0030 | DRS_Read,
-		DRS_DEPTHBUFFERWRITE = 0x0030 | DRS_Write,
+		DRS_WriteFlag   	        = 0x0002,
+		DRS_Present			        = 0x1005, // Implied Read and Retire
+		DRS_RenderTarget	        = 0x0006, // Implied write
+        DRS_PixelShaderResource     = 0x0009, // Implied Read
+		DRS_UAV				        = 0x000A, // Implied Write
+		DRS_STREAMOUT		        = 0x000B, // Implied Write
+		DRS_STREAMOUTCLEAR	        = 0x000D, // Implied Write
+		DRS_VERTEXBUFFER	        = 0x000C, // Implied Read
+		DRS_CONSTANTBUFFER	        = 0x000C, // Implied Read
+		DRS_DEPTHBUFFER		        = 0x0030,
+		DRS_DEPTHBUFFERREAD         = 0x0030 | DRS_ReadFlag,
+		DRS_DEPTHBUFFERWRITE        = 0x0030 | DRS_WriteFlag,
 
-		DRS_PREDICATE		 = 0x0015, // Implied Read
-		DRS_INDIRECTARGS	 = 0x0019, // Implied Read
-		DRS_UNKNOWN			 = 0x0040, 
-		DRS_GENERIC			 = 0x0020,
-		DRS_VIRTUAL          = 0x0080,
-		DRS_ERROR			 = 0xFFFF 
+		DRS_PREDICATE		        = 0x0015, // Implied Read
+		DRS_INDIRECTARGS	        = 0x0019, // Implied Read
+
+        DRS_NonPixelShaderResource  = 0x0050 | DRS_WriteFlag,
+
+        DRS_CopyDest                = 0x0060 | DRS_WriteFlag,
+        DRS_CopySrc                 = 0x0070 | DRS_ReadFlag,
+
+        DRS_INDEXBUFFER             = 0x0080 | DRS_ReadFlag,
+
+
+		DRS_UNKNOWN			        = 0x0040, 
+        DRS_GenericRead             = 0x0020,
+        DRS_Common                  = 0x0090,
+		DRS_VIRTUAL                 = 0x00A0,
+		DRS_ERROR			        = 0xFFFF 
 	};
-
 
 	/************************************************************************************************/
 
@@ -150,19 +160,17 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_PRESENT;
 		case DeviceResourceState::DRS_RenderTarget:
 			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RENDER_TARGET;
-		case DeviceResourceState::DRS_ShaderResource:
+		case DeviceResourceState::DRS_PixelShaderResource:
 			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 		case DeviceResourceState::DRS_UAV:
 			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-		case DeviceResourceState::DRS_Write:
+		case DeviceResourceState::DRS_CopyDest:
 			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST;
-		case DeviceResourceState::DRS_Read:
+		case DeviceResourceState::DRS_CopySrc:
 			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_SOURCE;
 		case DeviceResourceState::DRS_VERTEXBUFFER:
 			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
 		case DeviceResourceState::DRS_Free:
-			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
-		case DeviceResourceState::DRS_UNKNOWN:
 			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
 		case DeviceResourceState::DRS_INDIRECTARGS:
 			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
@@ -174,7 +182,16 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_WRITE;
 		case DeviceResourceState::DRS_DEPTHBUFFERREAD:
 			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_READ;
+        case DeviceResourceState::DRS_NonPixelShaderResource:
+            return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+        case DeviceResourceState::DRS_INDEXBUFFER:
+            return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_INDEX_BUFFER;
+        case DeviceResourceState::DRS_GenericRead:
+            return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_GENERIC_READ;
+		case DeviceResourceState::DRS_UNKNOWN:
+            FK_ASSERT(0);
 		}
+
 		return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
 	}
 
@@ -185,23 +202,30 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	{
 		switch (state)
 		{
+        case D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_GENERIC_READ:
+            return DeviceResourceState::DRS_GenericRead;
 		case D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_PRESENT:
 			return DeviceResourceState::DRS_Present;
 		case D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RENDER_TARGET:
 			return DeviceResourceState::DRS_RenderTarget;
 		case D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE:
-			return DeviceResourceState::DRS_ShaderResource;
+			return DeviceResourceState::DRS_PixelShaderResource;
 		case D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_UNORDERED_ACCESS:
 			return DeviceResourceState::DRS_UAV;
 		case D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST:
-			return DeviceResourceState::DRS_Write;
+			return DeviceResourceState::DRS_CopyDest;
 		case D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_SOURCE:
-			return DeviceResourceState::DRS_Read;
+			return DeviceResourceState::DRS_CopySrc;
 		case D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER:
 			return DeviceResourceState::DRS_VERTEXBUFFER;
+        case D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE:
+            return DeviceResourceState::DRS_NonPixelShaderResource;
+        case D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_INDEX_BUFFER:
+            return DeviceResourceState::DRS_INDEXBUFFER;
 		}
 
-		return DeviceResourceState::DRS_GENERIC;
+        FK_ASSERT(0);
+		return DeviceResourceState::DRS_ERROR;
 	}
 
 
@@ -796,7 +820,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		size_t                      counter             = 0;
 		HANDLE                      eventHandle;
 
-		UploadBuffer               uploadBuffer;
+		UploadBuffer                uploadBuffer;
 
 		Vector<ID3D12Resource*>                 freeResources;
 		static_vector<D3D12_RESOURCE_BARRIER>   pendingBarriers;
@@ -815,7 +839,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void Wait(CopyContextHandle handle);
 		void Close(CopyContextHandle handle);
 
-        SyncPoint   Submit(CopyContextHandle* begin, CopyContextHandle* end);
+        SyncPoint   Submit(CopyContextHandle* begin, CopyContextHandle* end, std::optional<SyncPoint> sync = {});
 		void        Signal(ID3D12Fence* fence, const size_t counter);
 
 		void Push_Temporary(ID3D12Resource* resource, CopyContextHandle handle);
@@ -1585,8 +1609,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void ClearDepthBuffer		(ResourceHandle Texture, float ClearDepth = 0.0f); // Assumes full-screen Clear
 		void ClearRenderTarget		(ResourceHandle Texture, float4 ClearColor = float4(0.0f)); // Assumes full-screen Clear
-		void ClearUAVTexture        (ResourceHandle UAV, float4 clearColor = float4(0, 0, 0, 0));
-		void ClearUAVTexture        (ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
+		void ClearUAVTextureFloat   (ResourceHandle UAV, float4 clearColor = float4(0, 0, 0, 0));
+		void ClearUAVTextureUint    (ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
 		void ClearUAV               (ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
 
 		void SetRootSignature		    (RootSignature& RS);
@@ -1764,9 +1788,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		}
 
-	private:
+        void _AddBarrier(ID3D12Resource* resource, DeviceResourceState currentState, DeviceResourceState newState);
 
-		void _AddBarrier(ID3D12Resource* resource, DeviceResourceState currentState, DeviceResourceState newState);
+	private:
 
         DescHeapPOS _GetDepthDesciptor(ResourceHandle resource);
 
@@ -2439,7 +2463,7 @@ private:
 				true,   // UAV Resource flag
 				false,  // buffered flag
 				false,  // shader resource flag
-				true,   // structured flag
+				true,  // structured flag
 				false,  // clear value
 				false,  // back buffer
 				false,  // created
@@ -2452,6 +2476,28 @@ private:
                 uint2{ (uint32_t)bufferSize, 1 }, IN_format
 			};
 		}
+
+        static GPUResourceDesc UAVResource2(const size_t bufferSize, DeviceFormat IN_format = DeviceFormat::R32_UINT, bool renderTarget = false)
+        {
+            return {
+                false,  // render target flag
+                false,  // depth target flag
+                true,   // UAV Resource flag
+                false,  // buffered flag
+                false,  // shader resource flag
+                false,  // structured flag
+                false,  // clear value
+                false,  // back buffer
+                false,  // created
+                ResourceAllocationType::Committed,
+
+                TextureDimension::Texture1D, // dimensions
+                1, // mip count
+                3, // buffered count
+
+                uint2{ (uint32_t)bufferSize, 1 }, IN_format
+            };
+        }
 
 
         static GPUResourceDesc UAVTexture(const uint2 IN_WH, const DeviceFormat IN_format, bool renderTarget = false)
@@ -2741,9 +2787,6 @@ private:
 
 		void _ReleaseTextureForceRelease(ResourceHandle Handle);
 
-	private:
-
-
 		struct UserEntry
 		{
 			size_t				    ResourceIdx;
@@ -2789,6 +2832,7 @@ private:
 		Vector<ResourceHandle>							    BufferedResources;
 		HandleUtilities::HandleTable<ResourceHandle, 32>	Handles;
         std::mutex                                          m;
+
 		struct UnusedResource
 		{
 			ID3D12Resource* resource;
@@ -3330,6 +3374,22 @@ private:
 	};
 
 
+    struct Barrier
+    {
+        ResourceHandle  handle;
+        ID3D12Resource* _ptr;
+
+        enum class ResourceType
+        {
+            PTR,
+            HNDL
+        } type;
+
+        DeviceResourceState beforeState;
+        DeviceResourceState afterState;
+    };
+
+
 	FLEXKITAPI class RenderSystem
 	{
 	public:
@@ -3358,6 +3418,14 @@ private:
 		bool Initiate(Graphics_Desc* desc_in);
 		void Release();
 
+        template<typename FN>
+        void LockedResourceOperation(FN op) requires std::invocable<FN>
+        {
+            std::unique_lock lock{ Textures.m };
+
+            op();
+        }
+
 		size_t						GetCurrentFrame();
 		size_t                      GetCurrentCounter();
 		ID3D12PipelineState*        GetPSO(PSOHandle StateID);
@@ -3368,10 +3436,10 @@ private:
 		void QueuePSOLoad(PSOHandle State);
 
 
-		void BeginSubmission();
-		void Submit(Vector<Context*>& CLs);
-		void _UpdateCounters();
-		void _UpdateSubResources(ResourceHandle handle, ID3D12Resource** resources, const size_t size);
+		void        BeginSubmission();
+        SyncPoint   Submit(Vector<Context*>& CLs, std::optional<SyncPoint> sync = {});
+		void        _UpdateCounters();
+		void        _UpdateSubResources(ResourceHandle handle, ID3D12Resource** resources, const size_t size);
 
 		void WaitforGPU();
 
@@ -3412,7 +3480,7 @@ private:
 
 		void			UploadTexture(ResourceHandle, CopyContextHandle, byte* buffer, size_t bufferSize); // Uses Upload Queue
 		void            UploadTexture(ResourceHandle handle, CopyContextHandle, TextureBuffer* buffer, size_t resourceCount); // Uses Upload Queue
-		void			UpdateResourceByUploadQueue(ID3D12Resource* Dest, CopyContextHandle, void* Data, size_t Size, size_t ByteSize, D3D12_RESOURCE_STATES EndState);
+		void			UpdateResourceByUploadQueue(ID3D12Resource* Dest, CopyContextHandle, void* Data, size_t Size, size_t ByteSize, DeviceResourceState EndState);
 
 		Shader  LoadShader(const char* entryPoint, const char* ShaderType, const char* file);
 
@@ -3479,7 +3547,7 @@ private:
 		void ReleaseReadBack(ReadBackResourceHandle);
         void ReleaseHeap(DeviceHeapHandle);
 
-		void                SubmitUploadQueues(uint32_t flags, CopyContextHandle* handle, size_t count = 1);
+        SyncPoint           SubmitUploadQueues(uint32_t flags, CopyContextHandle* handle, size_t count = 1, std::optional<SyncPoint> sync = {});
 		CopyContextHandle   OpenUploadQueue();
 		CopyContextHandle   GetImmediateUploadQueue();
 		Context&            GetCommandList();
@@ -3492,7 +3560,8 @@ private:
 		void                    _PushDelayReleasedResource(ID3D12Resource*, CopyContextHandle = InvalidHandle_t);
 
 		void    _ForceReleaseTexture(ResourceHandle handle);
-		void    _InsertBarrier(ID3D12Resource*, D3D12_RESOURCE_STATES currentState, D3D12_RESOURCE_STATES endState);
+        void    _InsertBarrier(const Vector<Barrier>& vector);
+        void    _InsertBarrier(Barrier vector);
 
 		size_t  _GetVidMemUsage();
 
@@ -3538,22 +3607,14 @@ private:
 		size_t              frameIdx            = 0;
 		size_t              CurrentFrame        = 0;
 		std::atomic_uint    FenceCounter        = 0;
-
-		ID3D12Fence* Fence = nullptr;
+		ID3D12Fence*        Fence               = nullptr;
 
 		CopyContextHandle   ImmediateUpload = InvalidHandle_t;
 
-		IDXGIFactory5* pGIFactory = nullptr;
-		IDXGIAdapter4* pDXGIAdapter = nullptr;
+		IDXGIFactory5*      pGIFactory = nullptr;
+		IDXGIAdapter4*      pDXGIAdapter = nullptr;
 
-		ResourceHandle          DefaultTexture;
-
-		struct PendingBarrier
-		{
-			ID3D12Resource*         resource;
-			D3D12_RESOURCE_STATES   beginState;
-			D3D12_RESOURCE_STATES   endState;
-		};
+		ResourceHandle      DefaultTexture;
 
 		size_t BufferCount = 0;
 		size_t DescriptorRTVSize = 0;
@@ -3652,7 +3713,7 @@ private:
 		std::atomic_uint                SyncCounter = 0;
 		Vector<UploadSyncPoint>         Syncs;
 		Vector<FreeEntry>	            FreeList;
-		Vector<D3D12_RESOURCE_BARRIER>	PendingBarriers;
+		Vector<Barrier>	                PendingBarriers;
 
 		ThreadManager&          threads;
 
@@ -3665,7 +3726,7 @@ private:
 		iAllocator*				Memory			= nullptr;
 
         std::mutex              crashM;
-
+        std::mutex              barrierLock;
 	};
 
 
@@ -3705,12 +3766,18 @@ private:
     /************************************************************************************************/
 
 
+    struct AcquireResult
+    {
+        ResourceHandle resource;
+        ResourceHandle overlap;
+    };
+
 	struct PoolAllocatorInterface
 	{
 		virtual ~PoolAllocatorInterface() {};
 
-		virtual ResourceHandle Aquire(GPUResourceDesc desc, bool temporary = false) = 0;
-		virtual void Release(ResourceHandle handle, const bool freeResourceImmedate = true, const bool allowImmediateReuse = true) = 0;
+		virtual AcquireResult   Acquire(GPUResourceDesc desc, bool temporary = false) = 0;
+		virtual void            Release(ResourceHandle handle, const bool freeResourceImmedate = true, const bool allowImmediateReuse = true) = 0;
 
         virtual uint32_t Flags() const = 0;
 	};
@@ -3739,12 +3806,14 @@ private:
 			size_t offset   = 0;
 			size_t size     = 0;
 
+            ResourceHandle Overlap = InvalidHandle_t;
+
 			operator bool () { return size > 0; }
 		};
 
 		
-		HeapAllocation GetMemory(const size_t requestBlockCount, const uint64_t frameID, const uint64_t flags);
-		ResourceHandle Aquire(GPUResourceDesc desc, bool temporary = true) final override;
+		HeapAllocation  GetMemory(const size_t requestBlockCount, const uint64_t frameID, const uint64_t flags);
+        AcquireResult   Acquire(GPUResourceDesc desc, bool temporary = true) final override;
 
         uint32_t Flags() const final override;
 
@@ -3761,10 +3830,11 @@ private:
 
 		struct MemoryRange
 		{
-			uint32_t offset;
-			uint32_t blockCount;
-			uint64_t flags;
-			uint64_t frameID;
+			uint32_t        offset;
+			uint32_t        blockCount;
+			uint64_t        flags;
+			uint64_t        frameID;
+            ResourceHandle  priorAllocation = InvalidHandle_t;
 
             friend bool operator < (MemoryRange& lhs, MemoryRange& rhs)
             {
@@ -3778,7 +3848,7 @@ private:
 			uint32_t        blockCount;
 			size_t          frameID;
 			uint64_t        flags;
-			ResourceHandle  resource;
+			ResourceHandle  resource = InvalidHandle_t;
 		};
 
 		Vector<MemoryRange> freeRanges;
@@ -3811,6 +3881,7 @@ private:
 
 	FLEXKITAPI DescHeapPOS PushCubeMapTextureToDescHeap (RenderSystem* RS, Texture2D tex, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushCubeMapTextureToDescHeap (RenderSystem* RS, ResourceHandle resource, DescHeapPOS POS, DeviceFormat format);
+    FLEXKITAPI DescHeapPOS PushUAV1DToDescHeap          (RenderSystem* RS, ID3D12Resource* resource, DXGI_FORMAT format, uint mip, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushUAV2DToDescHeap		    (RenderSystem* RS, Texture2D tex, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushUAVBufferToDescHeap	    (RenderSystem* RS, UAVBuffer buffer, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushUAVBufferToDescHeap2	    (RenderSystem* RS, UAVBuffer buffer, ID3D12Resource* counter, DescHeapPOS POS);
@@ -4883,7 +4954,7 @@ private:
 		DeviceFormat       format;
 	};
 
-	FLEXKITAPI void _UpdateSubResourceByUploadQueue (RenderSystem* RS, CopyContextHandle, ID3D12Resource* Dest, SubResourceUpload_Desc* Desc, D3D12_RESOURCE_STATES EndState);
+	FLEXKITAPI void _UpdateSubResourceByUploadQueue (RenderSystem* RS, CopyContextHandle, ID3D12Resource* Dest, SubResourceUpload_Desc* Desc, DeviceResourceState EndState);
 
 
 	/************************************************************************************************/

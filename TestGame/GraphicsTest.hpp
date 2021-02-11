@@ -94,7 +94,7 @@ public:
             },
             [&](FrameGraphNodeBuilder& nodeBuilder, ACCTest& data)
             {
-                data.renderTarget = nodeBuilder.WriteRenderTarget(base.renderWindow.GetBackBuffer());
+                data.renderTarget = nodeBuilder.RenderTarget(base.renderWindow.GetBackBuffer());
             },
             [=](ACCTest& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {

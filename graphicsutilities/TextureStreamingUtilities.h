@@ -279,8 +279,6 @@ namespace FlexKit
         FrameResourceHandle             feedbackBlockSizes;
         FrameResourceHandle             feedbackBlockOffsets;
 
-
-
         ReadBackResourceHandle          readbackBuffer;
     };
 
@@ -476,10 +474,10 @@ namespace FlexKit
         std::atomic_bool        updateInProgress    = false;
         std::atomic_bool        taskInProgress      = false;
 
-
         ReadBackResourceHandle  feedbackReturnBuffer; // CPU + GPU
 
         Vector<MappedAsset>     mappedAssets;
+        MemoryPoolAllocator     poolAllocator;
 		TextureBlockAllocator	textureBlockAllocator;
         DeviceHeapHandle        heap;
 
