@@ -14,7 +14,7 @@ cbuffer Constants : register(b1)
 
 RWStructuredBuffer<Cluster>     clusterBuffer   : register(u0); // in-out
 RWTexture2D<uint>               indexBuffer     : register(u1); // in-out
-RWTexture1D<uint>               counters        : register(u2); // in-out
+RWStructuredBuffer<uint>        counters        : register(u2); // in-out
 Texture2D<float>                depthBuffer     : register(t0); // in
 
 sampler BiLinear : register(s0); 
@@ -26,7 +26,7 @@ sampler NearestPoint : register(s1); // Nearest point
 groupshared uint localClusterIDs[SharedMemorySize];
 groupshared uint localClusterIndexes[NUMSLICES];
 
-groupshared uint uniqueClusters[NUMSLICES];
+groupshared uint uniqueClusters[24];
 groupshared uint uniqueClusterCounter;
 
 void CmpSwap(const uint const lhs, const uint rhs, const uint op)
@@ -78,7 +78,7 @@ uint2 GetTextureWH(Texture2D<float> texture)
 #define NEARZ 0.1f
 #define MAXZ 10000.0f
 
-[numthreads(8, 1, 1)]
+[numthreads(128, 1, 1)]
 void ClearCounters(uint threadID : SV_GroupIndex)
 {
     counters[threadID] = 0;
@@ -232,8 +232,6 @@ void FindClusterIndex(const uint3 globalThreadID, const uint localClusterID)
 
         if(localClusterID == clusterId)
         {   	
-            GroupMemoryBarrierWithGroupSync();
-
             const uint clusterIndex         = localClusterIndexes[I];
             indexBuffer[globalThreadID.xy]  = clusterIndex;
 			return;

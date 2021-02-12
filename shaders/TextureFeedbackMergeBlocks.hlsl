@@ -1,5 +1,5 @@
-RWStructuredBuffer<uint2> textureSamples_Out 	: register(u0);
-RWStructuredBuffer<uint> feedbackCounters		: register(u1); // readback to CPU
+globallycoherent RWStructuredBuffer<uint2> textureSamples_Out 	: register(u0);
+globallycoherent RWStructuredBuffer<uint> feedbackCounters		: register(u1); // readback to CPU
 
 StructuredBuffer<uint2>	textureSamples_In	: register(t0);
 StructuredBuffer<uint>  requestBlockSizes	: register(t1);
@@ -8,26 +8,25 @@ StructuredBuffer<uint>  requestBlockOffsets : register(t2);
 [numthreads(1024, 1, 1)]
 void MergeBlocks(const uint threadID : SV_GroupIndex, const uint3 blockIdx : SV_GROUPID)
 {
-	const uint sampleCount		= requestBlockOffsets[255];       
-    const uint blockOffset      = requestBlockOffsets[blockIdx.x];
-	const uint localBlockSize 	= requestBlockSizes[blockIdx.x];
-	const uint localBlockOffset = threadID;
-	const uint inputBlockOffset = blockIdx.x * 1024 + localBlockOffset;
-	const uint outputOffset		= localBlockOffset + blockOffset;
-	const uint2 request 		= textureSamples_In[inputBlockOffset];
-
-	GroupMemoryBarrierWithGroupSync();
+	const uint localBlockSize 		= requestBlockSizes[blockIdx.x];
+	const uint localBlockOffset 	= threadID;
 
 	if(localBlockOffset < localBlockSize)
-		textureSamples_Out[outputOffset] = request;
+	{
+		const uint sampleCount		= requestBlockOffsets[255];       
+		const uint blockOffset      = requestBlockOffsets[blockIdx.x];
+		const uint inputBlockOffset = blockIdx.x * 1024 + localBlockOffset;
+		const uint outputOffset		= localBlockOffset + blockOffset;
+		const uint2 request 		= textureSamples_In[inputBlockOffset];
 
-	GroupMemoryBarrierWithGroupSync();
+		textureSamples_Out[outputOffset] = request;
+	}
 }
 
 [numthreads(256, 1, 1)]
 void SetBlockCounters(const uint threadID : SV_GroupIndex)
 {
-	const int sampleCount 		= requestBlockOffsets[255];
+	const int sampleCount 		= requestBlockOffsets[512 - 1];
 	const int localBlockCount	= sampleCount * 1024 > threadID * 1024 ? 1024 : ((sampleCount / 1024 == threadID) ? sampleCount % 1024 : 0);
 
 	if(threadID == 0)

@@ -122,11 +122,11 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 	const float metallic      = MRIA.r > 0.1f ? 1.0f : 0.0f;
 	const float3 albedo       = Albedo.rgb; 
 
-    const float Ks      = lerp(0, 0.4f, saturate(Albedo.w));
-    const float Kd      = (1.0 - Ks) * (1.0 - metallic);
-    const float NdotV   = saturate(dot(N.xyz, V));
+    const float Ks              = lerp(0, 0.4f, saturate(Albedo.w));
+    const float Kd              = (1.0 - Ks) * (1.0 - metallic);
+    const float NdotV           = saturate(dot(N.xyz, V));
 
-    const uint clusterKey       = clusterIndex.Load(uint3(px.xy, 0));
+    const uint clusterKey = clusterIndex.Load(uint3(px.xy, 0));
 
     if(clusterKey == -1)
         discard;
@@ -249,12 +249,13 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     //    return color * color;
     //else
         //return pow(Colors[clusterKey % 8], 1.0f);
-        return pow(Colors[GetSliceIdx(-positionVS.z) % 6], 1.0f);
-        //return sqrt(float(localLightCount) / float(lightCount));
+        //return pow(Colors[GetSliceIdx(-positionVS.z) % 6], 1.0f);
+        return (float(localLightCount) / float(lightCount));
         //return float4(-positionVS.z, -positionVS.z, -positionVS.z, 1);
-#else
-	return pow(color, 2.1f);
+        //color = float4(N / 2.0f + 0.5f);
+    color = Albedo;
 #endif
+	return pow(color, 2.1f);
 }
 
 

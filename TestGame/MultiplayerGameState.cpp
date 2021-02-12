@@ -93,7 +93,7 @@ LocalPlayerState::LocalPlayerState(
     Apply(thirdPersonCamera,
         [&](CameraControllerView& camera)
         {
-            camera.GetData().SetPosition({ 0, 15, 0 });
+            camera.GetData().SetPosition({ 100, 15, 0 });
         });
 
 	eventMap.MapKeyToEvent(KEYCODES::KC_W, TPC_MoveForward);
@@ -114,11 +114,13 @@ void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispa
 {
     base.Update(core, dispatcher, dT);
 
+    if(!base.renderWindow.mouseCapture && false)
     Apply(thirdPersonCamera,
         [&](CameraControllerView& camera)
         {
-            camera.GetData().Yaw(dT * pi / 4);
+            camera.GetData().Yaw(dT * pi);
 
+            if(0)
             camera.GetData().SetPosition(
                 lerp(
                     float3{-100, 15, 0 },
@@ -127,15 +129,9 @@ void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispa
         });
 
     T += dT;
-    if (frameCounter == 805) {
+    if (frameCounter == 805 && false) {
         core.RenderSystem.DEBUG_AttachPIX();
         core.RenderSystem.DEBUG_BeginPixCapture();
-    }
-    std::cout << "Frame: " << frameCounter++ << " : " << T << "\n";
-
-    if (auto [gameObject, res] = FindGameObject(game.scene, "Cube"); res)
-    {
-        //Yaw(*gameObject, pi * dT);
     }
 }
 

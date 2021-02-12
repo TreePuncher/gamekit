@@ -98,12 +98,15 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 	{
 	case TestScenes::ShadowTestScene:
 	{
-
 		const AssetHandle ShadowScene = 2002;
 		AddAssetFile("assets\\SuzanneShaderBallScene.gameres");
 
         //const AssetHandle ShadowScene = 1234;
         //AddAssetFile("assets\\lightTestScene.gameres");
+
+        //const AssetHandle ShadowScene = 2082;
+        //AddAssetFile("assets\\primRose.gameres");
+
 
 		FK_ASSERT(FlexKit::LoadScene(app.GetCore(), gameState.scene, ShadowScene), "Failed to load Scene!");
 

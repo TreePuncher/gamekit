@@ -584,6 +584,11 @@ namespace FlexKit
 		ResourceHandle          GetResource(FrameResourceHandle handle) const { return globalResources.GetTexture(handle); }
 
 
+        ResourceHandle          operator[](FrameResourceHandle handle) const
+        {
+            return GetResource(handle);
+        }
+
         /************************************************************************************************/
 
 

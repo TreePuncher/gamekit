@@ -1,7 +1,7 @@
 StructuredBuffer<uint> 		segmentSizes 	: register(t0);
 RWStructuredBuffer<uint>  	segmentOffsets	: register(u0);
 
-#define BlockSize 256
+#define BlockSize 512
 groupshared uint offsets[BlockSize];
 
 void ParallelPreFixSum(const uint threadID)

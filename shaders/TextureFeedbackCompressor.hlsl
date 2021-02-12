@@ -196,10 +196,16 @@ void CompactSamples(const uint localThreadID)
 
 void LoadLocalValues(const uint threadID, const uint groupID, const uint sampleCount)
 {
-	if(threadID + groupID * BlockSize < sampleCount)
-    	localTextureSamples[threadID] = textureSamples[threadID + groupID * BlockSize].xy;
-	else
-    	localTextureSamples[threadID] = uint2(-1, -1);
+	uint2 tileID = uint2(-1, -1);
+
+	if(threadID + groupID * BlockSize < sampleCount){
+		tileID = textureSamples[threadID + groupID * BlockSize].xy;
+    	tileID = (tileID != uint2(0, 0)) ? tileID : uint2(-1, -1);
+	}
+
+	localTextureSamples[threadID] = tileID;
+
+	GroupMemoryBarrierWithGroupSync();
 }
 
 
@@ -214,9 +220,11 @@ void WriteBackValues(const uint threadID, const uint groupID)
 	
 	if(threadID < end)
 		textureSamples[threadID + groupID * BlockSize] = localTextureSamples[threadID];
+	else
+		textureSamples[threadID + groupID * BlockSize] = uint2(-1, -1);
 
     if(threadID == 0)
-        segmentSizes[groupID.x] = end - (localTextureSamples[BlockSize - 1] == uint2(-1, -1) ? 1 : 0);
+        segmentSizes[groupID] = end - (localTextureSamples[BlockSize - 1] == uint2(-1, -1) ? 1 : 0);
 
     GroupMemoryBarrierWithGroupSync();
 }
