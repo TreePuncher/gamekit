@@ -13,12 +13,14 @@ external Dependencies
 
 Additional dependencies are pulled in automatically via git submodules.
 
-##Build Instructions:
+## Build Instructions:
 
-###Windows:
+### Windows:
 Install fmod sdk, fbx sdk, and vcpkg. 
 clone and open TestGame.sln
 Hit F7 to build. Vcpkg will grab all other dependencies. 
 
-##Screenshots:
-![](/screenshots/sponza.jpg)
+## Screenshots:
+![PBR Shading](/screenshots/sponza.jpg)
+![Clustered Light Culling](/screenshots/CLC.jpg)
+![TextureStreaming And Tiled Resources](/screenshots/StreamingTiledTextures.jpg)

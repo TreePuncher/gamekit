@@ -827,6 +827,8 @@ namespace FlexKit
 
     void ThirdPersonCamera::SetPosition(const float3 xyz)
     {
+        auto& controllerImpl = CharacterControllerComponent::GetComponent()[controller];
+        controllerImpl.controller->setPosition({ (float)xyz.x, (float)xyz.y, (float)xyz.z });
         FlexKit::SetPositionL(yawNode, xyz);
     }
 

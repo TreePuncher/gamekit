@@ -741,6 +741,7 @@ namespace FlexKit
 		FlexKit::LT_Entry Local(FlexKit::GetLocal(Node));
 
 		Local.R = DirectX::XMQuaternionMultiply(rot, Local.R);
+        Local.R = DirectX::XMQuaternionNormalize(Local.R);
 
 		FlexKit::SetLocal(Node, &Local);
 	}

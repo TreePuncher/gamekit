@@ -7,6 +7,7 @@ struct BVH_Node
     uint Count; // max child count is 16
 
     uint Leaf;
+    uint pad;
 };
 
 struct PointLight
@@ -216,9 +217,12 @@ void CreateLightBVH_PHASE1(const uint threadID : SV_GroupIndex)
 
     GroupMemoryBarrierWithGroupSync();
 
+    if(threadID < lightCount)
+        lightLookup[threadID] = scratchSpace[threadID].y;
+        
     // Build BVH Tree
     // ...
-    if(threadID * NODEMAXSIZE < lightCount)
+    if(threadID < ceil(float(lightCount) / float(NODEMAXSIZE)))
     {
         // Determine MinMax for node
         // Slow, optimize this
@@ -249,12 +253,10 @@ void CreateLightBVH_PHASE1(const uint threadID : SV_GroupIndex)
         node.Count  = nodeSize;
 
         node.Leaf   = 1;
-
+        node.pad    = 0;
+        
         BVHNodes[threadID] = node;
     }
-
-    if(threadID < lightCount)
-        lightLookup[threadID] = scratchSpace[threadID].y;
 }
 
 [numthreads(GROUPSIZE, 1, 1)]
@@ -274,20 +276,22 @@ void CreateLightBVH_PHASE2(const uint threadID : SV_GroupIndex)
         {
             const BVH_Node node = BVHNodes[offset + itr];
 
+            /*
             minXYZ = min(node.MinPoint, minXYZ);
             maxXYZ = max(node.MinPoint, maxXYZ);
             minXYZ = min(node.MaxPoint, maxXYZ);
             maxXYZ = max(node.MaxPoint, maxXYZ);
+            */
         }
 
         BVH_Node node;
         node.MinPoint   = float4(minXYZ, 0);
         node.MaxPoint   = float4(maxXYZ, 0);
 
-        node.Offset = (count != 1) ? offset : BVHNodes[offset].Offset;
-        node.Count  = (count != 1) ? count : BVHNodes[offset].Count;
-        node.Leaf   = (count != 1) ? 0 : BVHNodes[offset].Leaf;
-
+        node.Offset = offset;
+        node.Count  = count;
+        node.Leaf   = 0;
+        node.pad    = 0;
         BVHNodes[OutID] = node;
     }
 }

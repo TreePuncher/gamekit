@@ -1640,8 +1640,8 @@ namespace FlexKit
 
         uint32_t Offset;
         uint32_t Count; // max child count is 16
-
         uint32_t Leaf;
+        uint32_t Padding;
     };
 
     constexpr size_t sizeofBVH_Node     = sizeof(BVH_Node);
@@ -1675,7 +1675,7 @@ namespace FlexKit
                 // Output Objects
                 data.clusterBufferObject	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1 * MEGABYTE), DRS_UAV, false);
                 data.indexBufferObject      = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture({ WH }, DeviceFormat::R32_UINT), DRS_UAV, false);
-				data.lightListObject	    = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512 * KILOBYTE), DRS_UAV, false);
+				data.lightListObject	    = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1024 * KILOBYTE), DRS_UAV, false);
                 data.lightBufferObject      = builder.AcquireVirtualResource(GPUResourceDesc::StructuredResource(512 * KILOBYTE), DRS_CopyDest, false);
 
                 // Temporaries
@@ -1802,13 +1802,15 @@ namespace FlexKit
 
                 DescriptorHeap clearHeap;
                 clearHeap.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
-                clearHeap.SetUAVBuffer(ctx, 2, resources.UAV(data.counterObject, ctx));
+                clearHeap.SetUAVStructured(ctx, 2, resources.UAV(data.counterObject, ctx), sizeof(UINT), 0);
                 clearHeap.NullFill(ctx);
 
 
                 ctx.SetComputeDescriptorTable(0, clearHeap);
                 ctx.Dispatch(ClearCounters, uint3{ 1, 1, 1 });
-                
+                ctx.AddUAVBarrier(resources[data.counterObject]);
+
+
 				DescriptorHeap clusterCreationResources;
                 clusterCreationResources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
 
@@ -1829,7 +1831,7 @@ namespace FlexKit
                 const auto threadsWH = resources.GetTextureWH(data.depthBufferObject) / 32;
                 ctx.SetComputeDescriptorTable(0, clusterCreationResources);
                 ctx.Dispatch(CreateClusters, uint3{ threadsWH[0], threadsWH[1] + 1, 1 });
-                ctx.AddUAVBarrier();
+                ctx.AddUAVBarrier(resources[data.lightBVH]);
 
                 ctx.TimeStamp(timeStats, 3);
 
@@ -1840,7 +1842,7 @@ namespace FlexKit
                 DescriptorHeap BVH_Phase1_Resources;
                 BVH_Phase1_Resources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
                 BVH_Phase1_Resources.SetUAVStructured       (ctx, 0, resources.UAV(data.lightBVH, ctx), sizeof(BVH_Node), 0);
-                BVH_Phase1_Resources.SetUAVStructured       (ctx, 1, resources.UAV(data.lightLookupObject, ctx), sizeof(uint2), 0);
+                BVH_Phase1_Resources.SetUAVStructured       (ctx, 1, resources.UAV(data.lightLookupObject, ctx), sizeof(uint), 0);
                 BVH_Phase1_Resources.SetStructuredResource  (ctx, 4, resources.Transition(data.lightBufferObject, DRS_NonPixelShaderResource, ctx), sizeof(GPUPointLight));
                 BVH_Phase1_Resources.SetCBV(ctx, 8, constants);
 
@@ -1876,8 +1878,8 @@ namespace FlexKit
 
                         DescriptorHeap BVH_Phase2_Resources;
                         BVH_Phase2_Resources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
-                        BVH_Phase2_Resources.SetUAVStructured(ctx, 0, resources.UAV(data.lightBVH, ctx), sizeof(BVH_Node), 0);
-                        BVH_Phase2_Resources.SetStructuredResource(ctx, 4, resources.Transition(data.lightBufferObject, DRS_NonPixelShaderResource, ctx), sizeof(GPUPointLight));
+                        BVH_Phase2_Resources.SetUAVStructured(ctx, 0,       resources.UAV(data.lightBVH, ctx), sizeof(BVH_Node), 0);
+                        BVH_Phase2_Resources.SetStructuredResource(ctx, 4,  resources.Transition(data.lightBufferObject, DRS_NonPixelShaderResource, ctx), sizeof(GPUPointLight));
                         BVH_Phase2_Resources.SetCBV(ctx, 8, constantSet);
 
                         ctx.BeginEvent_DEBUG("BVH Phase2");
@@ -1902,7 +1904,6 @@ namespace FlexKit
                 }
 
                 ctx.EndEvent_DEBUG();
-
 
                 DescriptorHeap createArgumentResources;
                 createArgumentResources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
@@ -1933,14 +1934,14 @@ namespace FlexKit
 
                 DescriptorHeap createLightListResources;
                 createLightListResources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
-                createLightListResources.SetUAVStructured(ctx, 0, resources.Transition(data.clusterBufferObject, DRS_UAV, ctx), sizeof(GPUCluster), 0);
-                createLightListResources.SetUAVStructured(ctx, 1, resources.Transition(data.lightListObject, DRS_UAV, ctx), sizeof(uint32_t), 0);
-                createLightListResources.SetUAVStructured(ctx, 2, resources.Transition(data.lightCounterObject, DRS_UAV, ctx), sizeof(uint32_t), 0);
+                createLightListResources.SetUAVStructured(ctx, 0, resources.Transition(data.clusterBufferObject,    DRS_UAV, ctx), sizeof(GPUCluster), 0);
+                createLightListResources.SetUAVStructured(ctx, 1, resources.Transition(data.lightListObject,        DRS_UAV, ctx), sizeof(uint32_t), 0);
+                createLightListResources.SetUAVStructured(ctx, 2, resources.Transition(data.lightCounterObject,     DRS_UAV, ctx), sizeof(uint32_t), 0);
 
-                createLightListResources.SetStructuredResource(ctx, 4, resources.Transition(data.lightBVH,       DRS_NonPixelShaderResource, ctx), 4);
+                createLightListResources.SetStructuredResource(ctx, 4, resources.Transition(data.lightBVH,          DRS_NonPixelShaderResource, ctx), sizeofBVH_Node);
                 createLightListResources.SetStructuredResource(ctx, 5, resources.Transition(data.lightLookupObject, DRS_NonPixelShaderResource, ctx), sizeof(uint32_t));
                 createLightListResources.SetStructuredResource(ctx, 6, resources.Transition(data.lightBufferObject, DRS_NonPixelShaderResource, ctx), sizeof(GPUPointLight));
-                createLightListResources.SetStructuredResource(ctx, 7, resources.Transition(data.counterObject, DRS_NonPixelShaderResource, ctx), sizeof(uint32_t));
+                createLightListResources.SetStructuredResource(ctx, 7, resources.Transition(data.counterObject,     DRS_NonPixelShaderResource, ctx), sizeof(uint32_t));
                 //createLightListResources.SetCBV(ctx, 8, resources.ReadUAV(data.counterObject, DRS_ShaderResource, ctx), 0, 4);
                 createLightListResources.SetCBV(ctx, 8, lightListConstantSet);
                 createLightListResources.NullFill(ctx);
@@ -1954,7 +1955,7 @@ namespace FlexKit
                 ctx.EndEvent_DEBUG();
 
 
-                if(data.readBackHandle != InvalidHandle_t)
+                if(data.readBackHandle != InvalidHandle_t && false)
                 {
                     ctx.BeginEvent_DEBUG("Resolution Match Shadow Maps");
                     FK_LOG_INFO("ReadBack Buffer : %u", data.readBackHandle.to_uint());
