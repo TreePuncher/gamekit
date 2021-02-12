@@ -21,6 +21,9 @@ clone and open TestGame.sln
 Hit F7 to build. Vcpkg will grab all other dependencies. 
 
 ## Screenshots:
+### PBR shading
 ![PBR Shading](/screenshots/sponza.jpg)
+### Clustered light culling
 ![Clustered Light Culling](/screenshots/CLC.jpg)
+### Streaming Tiled Textures
 ![TextureStreaming And Tiled Resources](/screenshots/StreamingTiledTextures.jpg)
