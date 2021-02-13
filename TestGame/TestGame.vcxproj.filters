@@ -255,6 +255,9 @@
     <ClInclude Include="..\graphicsutilities\RayTracingUtilities.h">
       <Filter>Headers\graphicsutilities</Filter>
     </ClInclude>
+    <ClInclude Include="..\coreutilities\DebugUI.h">
+      <Filter>Headers\coreutilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\coreutilities\AllSourceFiles.cpp">
@@ -430,6 +433,9 @@
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\RayTracingUtilities.cpp">
       <Filter>Source\graphicsutilities</Filter>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\DebugUI.cpp">
+      <Filter>Source\coreutilities</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -137,6 +137,10 @@ namespace FlexKit
 			size_t fps;
 			size_t fpsCounter;
 			size_t objectsDrawnLastFrame;
+
+            CircularBuffer<double, 120>  frameTimes;
+            CircularBuffer<double, 120>  shadingTimes;
+            CircularBuffer<double, 120>  feedbackTimes;
 		}stats;
 
 		struct {

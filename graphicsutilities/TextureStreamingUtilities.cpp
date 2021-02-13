@@ -314,7 +314,6 @@ namespace FlexKit
             textureBlockAllocator   { desc.textureCacheSize / desc.blockSize,   IN_allocator },
 			renderSystem	        { IN_renderSystem	},
 			settings		        { desc				},
-            poolAllocator           { IN_renderSystem, 64 * MEGABYTE, 64*KILOBYTE, DeviceHeapFlags::UAVBuffer, IN_allocator },
             feedbackReturnBuffer    { IN_renderSystem.CreateReadBackBuffer(2 * MEGABYTE) },
             heap                    { IN_renderSystem.CreateHeap(desc.textureCacheSize, 0) },
             mappedAssets            { IN_allocator },
@@ -406,11 +405,11 @@ namespace FlexKit
             {
                 builder.AddDataDependency(sceneGather);
 
-                data.feedbackBuffers[0]         = builder.AcquireVirtualResource(poolAllocator, GPUResourceDesc::UAVResource(4 * MEGABYTE), DRS_UAV);
-                data.feedbackBuffers[1]         = builder.AcquireVirtualResource(poolAllocator, GPUResourceDesc::UAVResource(4 * MEGABYTE), DRS_UAV);
-                data.feedbackCounters           = builder.AcquireVirtualResource(poolAllocator, GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DRS_UAV);
-                data.feedbackBlockSizes         = builder.AcquireVirtualResource(poolAllocator, GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DRS_UAV);
-                data.feedbackBlockOffsets       = builder.AcquireVirtualResource(poolAllocator, GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DRS_UAV);
+                data.feedbackBuffers[0]         = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4 * MEGABYTE), DRS_UAV);
+                data.feedbackBuffers[1]         = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4 * MEGABYTE), DRS_UAV);
+                data.feedbackCounters           = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DRS_UAV);
+                data.feedbackBlockSizes         = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DRS_UAV);
+                data.feedbackBlockOffsets       = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DRS_UAV);
                 data.feedbackDepth              = builder.AcquireVirtualResource(GPUResourceDesc::DepthTarget({ 128, 128 }, DeviceFormat::D32_FLOAT), DRS_DEPTHBUFFERWRITE);
 
                 data.readbackBuffer             = feedbackReturnBuffer;
@@ -570,9 +569,6 @@ namespace FlexKit
                             ctx.SetGraphicsConstantBufferView(1, constants);
                             ctx.SetGraphicsDescriptorTable(3, srvHeap);
                             ctx.DrawIndexed(subMesh.IndexCount, subMesh.BaseIndex);
-
-                            ctx.AddUAVBarrier(resources.GetResource(data.feedbackCounters));
-                            ctx.AddUAVBarrier(resources.GetResource(data.feedbackBuffers[0]));
                         }
                     }
                     else
@@ -598,9 +594,6 @@ namespace FlexKit
                         ctx.SetGraphicsConstantBufferView(1, constants);
                         ctx.DrawIndexed(triMesh->IndexCount);
                     }
-
-                    ctx.AddUAVBarrier(resources.GetResource(data.feedbackCounters));
-                    ctx.AddUAVBarrier(resources.GetResource(data.feedbackBuffers[0]));
                 }
 
                 ctx.EndEvent_DEBUG();
@@ -670,7 +663,7 @@ namespace FlexKit
                     ctx.EndEvent_DEBUG();
                 };
 
-                //ctx.BeginEvent_DEBUG("Texture feedback stream compression");
+                ctx.BeginEvent_DEBUG("Texture feedback stream compression");
                 const size_t passCount = 4;
                 for (size_t itr = 0; itr < passCount; itr++)
                     CompressionPass(data.feedbackBuffers[itr % 2], data.feedbackBuffers[(itr + 1) % 2]);
@@ -687,7 +680,7 @@ namespace FlexKit
                     { DRS_CopyDest, DRS_CopyDest },
                     { DRS_CopyDest, DRS_CopyDest });
 
-                //ctx.ResolveQuery(timeStats, 0, 4, resources.GetObjectResource(data.readbackBuffer), 8);
+                ctx.ResolveQuery(timeStats, 0, 4, resources.GetObjectResource(data.readbackBuffer), 8);
                 ctx.QueueReadBack(data.readbackBuffer);
 
                 ctx.EndEvent_DEBUG();

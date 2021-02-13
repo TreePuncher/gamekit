@@ -37,12 +37,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Win32Graphics.h"
 #include "TextureStreamingUtilities.h"
 #include "RayTracingUtilities.h"
-
+#include "DebugUI.h"
 
 #include <angelscript.h>
 #include <angelscript/scriptstdstring/scriptstdstring.h>
 #include <angelscript/scriptbuilder/scriptbuilder.h>
-
+#include <imgui.h>
 #include <fmod.hpp>
 
 using FlexKit::WorldRender;
@@ -196,7 +196,8 @@ public:
             rigidBodies         { physics },
             staticBodies        { physics },
             characterControllers{ physics, framework.core.GetBlockMemory() },
-            orbitCameras        { framework.core.GetBlockMemory() }
+            orbitCameras        { framework.core.GetBlockMemory() },
+            debugUI             { framework.core.RenderSystem, framework.core.GetBlockMemory() }
 	{
 		auto& RS = *IN_Framework.GetRenderSystem();
 		RS.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS6CBVs4SRVs, LoadSpriteTextPSO		        });
@@ -260,7 +261,7 @@ public:
     }
 
 
-    void DEBUG_PrintDebugStats(EngineCore& core, FrameGraph& frameGraph, VertexBufferHandle textBuffer, ResourceHandle renderTarget)
+    void DEBUG_PrintDebugStats(EngineCore& core)
     {
         const size_t bufferSize     = 1024;
         uint32_t VRamUsage	        = (uint32_t)(core.RenderSystem._GetVidMemUsage() / MEGABYTE);
@@ -299,22 +300,10 @@ public:
             shadingStats.BVHConstruction,
             texturePassTime,
             textureUpdateTime);
-        
-        const uint2 WH          = core.RenderSystem.GetTextureWH(renderTarget);
-        const float aspectRatio = float(WH[0]) / float(WH[1]);
 
-		PrintTextFormatting Format = PrintTextFormatting::DefaultParams();
-        Format.Scale = float2(0.5f, 0.5f) * float2{ (float)WH[0], (float)WH[1] } / float2{ 1920, 1080 };
-        Format.Color = { 1, 1, 1, 1 };
-
-		DrawSprite_Text(
-				TempBuffer, 
-				frameGraph, 
-				*framework.DefaultAssets.Font,
-                textBuffer,
-				renderTarget, 
-				core.GetTempMemory(), 
-				Format);
+        ImGui::Begin("Debug Stats");
+        ImGui::Text(TempBuffer);
+        ImGui::End();
     }
 
 
@@ -351,6 +340,7 @@ public:
     CharacterControllerComponent    characterControllers;
     CameraControllerComponent       orbitCameras;
 
+    ImGUIIntegrator                 debugUI;
 	TextureStreamingEngine		    streamingEngine;
     iRayTracer&                     rtEngine;
 };
