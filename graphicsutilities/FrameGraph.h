@@ -2492,7 +2492,7 @@ namespace FlexKit
 				descHeap.NullFill(ctx);
 
 				ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
-				ctx.SetPipelineState(resources.GetPipelineState(DRAW_LINE3D_PSO));
+				//ctx.SetPipelineState(resources.GetPipelineState(DRAW_LINE3D_PSO));
 
 				ctx.SetScissorAndViewports({ resources.GetRenderTarget(Data.RenderTarget) });
 				ctx.SetRenderTargets(

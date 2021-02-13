@@ -116,7 +116,17 @@ private:	/**********************************************************************
     DebugVisMode            renderMode      = DebugVisMode::Disabled;
     ClusterDebugDrawMode    debugDrawMode   = ClusterDebugDrawMode::BVH;
     BVHVisMode              bvhVisMode      = BVHVisMode::BVH;
-    bool                    captureInProgress = false;
+
+    bool                    showDebugMenu       = false;
+
+    bool                    captureInProgress   = false;
+    bool                    animateCamera       = false;
+    bool                    showDebugStats      = false;
+
+    bool                    drawFrameChart      = false;
+    bool                    drawShadingPlot     = false;
+    bool                    drawFeedbackPlot    = false;
+
 
     size_t                      frameCounter = 0;
     float                       T = 0;

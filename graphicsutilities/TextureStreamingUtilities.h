@@ -477,7 +477,6 @@ namespace FlexKit
         ReadBackResourceHandle  feedbackReturnBuffer; // CPU + GPU
 
         Vector<MappedAsset>     mappedAssets;
-        MemoryPoolAllocator     poolAllocator;
 		TextureBlockAllocator	textureBlockAllocator;
         DeviceHeapHandle        heap;
 

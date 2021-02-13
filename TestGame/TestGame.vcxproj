@@ -109,6 +109,7 @@
     <ClInclude Include="..\coreutilities\Components.h" />
     <ClInclude Include="..\coreutilities\Console.h" />
     <ClInclude Include="..\coreutilities\DebugPanel.h" />
+    <ClInclude Include="..\coreutilities\DebugUI.h" />
     <ClInclude Include="..\coreutilities\DungeonGen.h" />
     <ClInclude Include="..\coreutilities\EngineCore.h" />
     <ClInclude Include="..\coreutilities\Events.h" />
@@ -198,6 +199,9 @@
     </ClCompile>
     <ClCompile Include="..\coreutilities\DebugPanel.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\DebugUI.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\coreutilities\DungeonGen.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>

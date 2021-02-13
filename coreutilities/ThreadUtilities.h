@@ -417,7 +417,7 @@ namespace FlexKit
 
 	FLEXKITAPI inline _WorkerThread&                    GetLocalThread();
 
-    thread_local static_vector<std::unique_ptr<StackAllocator>> localAllocators;
+    inline thread_local static_vector<std::unique_ptr<StackAllocator>> localAllocators;
 
 	FLEXKITAPI inline void RunTask(iWork& work)
 	{

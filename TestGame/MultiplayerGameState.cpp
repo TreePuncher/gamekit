@@ -1,6 +1,8 @@
 #include "MultiplayerGameState.h"
 #include "Packets.h"
 
+#include <imgui.h>
+#include <implot.h>
 
 using namespace FlexKit;
 
@@ -113,22 +115,151 @@ LocalPlayerState::LocalPlayerState(
 void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
     base.Update(core, dispatcher, dT);
+    base.debugUI.Update(base.renderWindow, core, dispatcher, dT);
 
-    if(!base.renderWindow.mouseCapture && false)
-    Apply(thirdPersonCamera,
-        [&](CameraControllerView& camera)
+    ImGui::NewFrame();
+
+    if (showDebugMenu)
+    {
+        ImGui::Begin("Debug Options");
+
+        if (ImGui::Button("Animated Camera"))
+            animateCamera = !animateCamera;
+
+        if (ImGui::Button("Toggle Stats"))
+            showDebugStats = !showDebugStats;
+
+        if (ImGui::BeginMenu("Plot Menu"))
         {
-            camera.GetData().Yaw(dT * pi);
+            if (ImGui::MenuItem("Frame Time Plot"))
+                drawFrameChart = !drawFrameChart;
+            if (ImGui::MenuItem("Shading Time Plot"))
+                drawShadingPlot = !drawShadingPlot;
+            if (ImGui::MenuItem("Feedback Time Plot"))
+                drawFeedbackPlot = !drawFeedbackPlot;
+            ImGui::EndMenu();
+        }
 
-            if(0)
-            camera.GetData().SetPosition(
-                lerp(
-                    float3{-100, 15, 0 },
-                    float3{ 100, 15, 0 },
-                    std::sin(T) / 2.0f + 0.5f));
-        });
+        if (ImGui::BeginMenu("Debug Vis Menu"))
+        {
+            if (ImGui::BeginMenu("Scene Vis"))
+            {
+                if (ImGui::MenuItem("BVH"))
+                {
+                    renderMode = DebugVisMode::BVHVIS;
+                    bvhVisMode = BVHVisMode::BVH;
+                }
+                if (ImGui::MenuItem("AABB"))
+                {
+                    renderMode = DebugVisMode::BVHVIS;
+                    bvhVisMode = BVHVisMode::BoundingVolumes;
+                }
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Deferred Shading VIS"))
+            {
+                if (ImGui::MenuItem("BVH"))
+                {
+                    renderMode = DebugVisMode::ClusterVIS;
+                    debugDrawMode = ClusterDebugDrawMode::BVH;
+                }
+                if (ImGui::MenuItem("Clusters"))
+                {
+                    renderMode = DebugVisMode::ClusterVIS;
+                    debugDrawMode = ClusterDebugDrawMode::Clusters;
+                }
+                if (ImGui::MenuItem("Lights"))
+                {
+                    renderMode = DebugVisMode::ClusterVIS;
+                    debugDrawMode = ClusterDebugDrawMode::Lights;
+                }
+                ImGui::EndMenu();
+            }
+            if (ImGui::MenuItem("Clear"))
+            {
+                renderMode = DebugVisMode::Disabled;
+            }
+            ImGui::EndMenu();
+        }
 
-    T += dT;
+        ImGui::End();
+    }
+
+    if (drawFrameChart || drawShadingPlot || drawFeedbackPlot)
+    {
+        ImGui::Begin("Frame Times");
+        ImPlot::BeginPlot("Time Plots");
+
+        if(drawFrameChart)
+        {
+            double Y_values[120];
+            double X_values[120];
+            size_t valueCount = 0;
+            for (auto time : framework.stats.frameTimes)
+            {
+                Y_values[valueCount] = time;
+                X_values[valueCount] = valueCount / -120.0;
+                valueCount++;
+            }
+
+            ImPlot::PlotLine("Update Times", X_values, Y_values, valueCount);
+        }
+
+        if (drawShadingPlot)
+        {
+            double Y_values[120];
+            double X_values[120];
+            size_t valueCount = 0;
+            for (auto time : framework.stats.shadingTimes)
+            {
+                Y_values[valueCount] = time;
+                X_values[valueCount] = valueCount / -120.0;
+                valueCount++;
+            }
+
+            ImPlot::PlotLine("Deferred Shading", X_values, Y_values, valueCount);
+        }
+
+        if (drawFeedbackPlot)
+        {
+            double Y_values[120];
+            double X_values[120];
+            size_t valueCount = 0;
+            for (auto time : framework.stats.feedbackTimes)
+            {
+                Y_values[valueCount] = time;
+                X_values[valueCount] = 3 * valueCount / -120.0;
+                valueCount++;
+            }
+
+            ImPlot::PlotLine("texture feedback", X_values, Y_values, valueCount);
+        }
+
+        ImPlot::EndPlot();
+        ImGui::End();
+    }
+
+    if(showDebugStats)
+        base.DEBUG_PrintDebugStats(core);
+
+    ImGui::Render();
+
+    if(animateCamera)
+        Apply(thirdPersonCamera,
+            [&](CameraControllerView& camera)
+            {
+                camera.GetData().Yaw(dT * pi);
+
+                camera.GetData().SetPosition(
+                    lerp(
+                        float3{-100, 15, 0 },
+                        float3{ 100, 15, 0 },
+                        std::sin(T) / 2.0f + 0.5f));
+
+                T += dT;
+            });
+
+    
     if (frameCounter == 805 && false) {
         core.RenderSystem.DEBUG_AttachPIX();
         core.RenderSystem.DEBUG_BeginPixCapture();
@@ -274,7 +405,14 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     }
 
 	//framework.stats.objectsDrawnLastFrame = PVS.GetData().solid.size();
-    base.DEBUG_PrintDebugStats(core, frameGraph, base.vertexBuffer, base.renderWindow);
+    base.debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, base.renderWindow.GetBackBuffer());
+
+    const auto shadingStats         = base.render.GetTimingValues();
+    const auto texturePassTime      = base.streamingEngine.debug_GetPassTime();
+    const auto textureUpdateTime    = base.streamingEngine.debug_GetUpdateTime();
+
+    framework.stats.shadingTimes.push_back(shadingStats.shadingPass);
+    framework.stats.feedbackTimes.push_back(texturePassTime);
 
 	PresentBackBuffer(frameGraph, base.renderWindow);
 }
@@ -405,13 +543,19 @@ bool LocalPlayerState::EventHandler(Event evt)
                     }
                 }
             }   break;
+            case KC_F1:
+                if (evt.Action == Event::Release)
+                    showDebugMenu = !showDebugMenu;
 			default:
 				return handled;
 			}
 		}   break;
 	}
 
-	return handled;
+    if (!handled)
+        return base.debugUI.HandleInput(evt);
+    else
+	    return true;
 }
 
 

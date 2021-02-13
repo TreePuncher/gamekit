@@ -63,6 +63,8 @@ namespace FlexKit
 			const auto updateDuration   = frameEnd - frameStart;
             const auto desiredFrameTime = std::chrono::microseconds(1000000) / 120;
 
+            framework.stats.frameTimes.push_back(double(std::chrono::duration_cast<std::chrono::microseconds>(updateDuration).count()) / 100000.0f);
+
             if (Core.FrameLock)// FPS Locked
             {
                 auto sleepTime  = desiredFrameTime - updateDuration;
