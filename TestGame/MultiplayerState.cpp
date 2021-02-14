@@ -78,7 +78,8 @@ void NetworkState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double
                                         packet->systemAddress,
                                         ConnectionHandle{ random() } });
 
-            Accepted(openConnections.back().handle);
+            if(Accepted)
+                Accepted(openConnections.back().handle);
         }   break;
         case ID_CONNECTION_LOST:
 		case ID_DISCONNECTION_NOTIFICATION:
@@ -172,6 +173,9 @@ void NetworkState::Broadcast(const UserPacketHeader& packet)
 
 void NetworkState::Send(const UserPacketHeader& packet, ConnectionHandle destination)
 {
+    if (destination == InvalidHandle_t)
+        return;
+
     auto socket = GetConnection(destination);
 
     raknet.Send((const char*)&packet, (int)packet.packetSize, PacketPriority::MEDIUM_PRIORITY, PacketReliability::UNRELIABLE, 0, socket.address, false, 0);

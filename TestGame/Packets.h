@@ -36,14 +36,54 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 typedef uint64_t MultiplayerPlayerID_t;
 
 
+inline MultiplayerPlayerID_t GeneratePlayerID()
+{
+    std::random_device generator;
+    std::uniform_int_distribution<MultiplayerPlayerID_t> distribution(
+        std::numeric_limits<MultiplayerPlayerID_t>::min(),
+        std::numeric_limits<MultiplayerPlayerID_t>::max());
+
+    return distribution(generator);
+}
+
+
+/************************************************************************************************/
+
+
 enum LobbyPacketIDs : PacketID_t
 {
 	_LobbyPacketID_Begin		= UserPacketIDCount,
 	LoadGame					= GetCRCGUID(LoadGame),
     ClientGameLoaded            = GetCRCGUID(ClientGameLoaded),
     BeginGame                   = GetCRCGUID(BeginGame),
+    PlayerJoin                  = GetCRCGUID(PlayerJoin),
 	RequestPlayerList			= GetCRCGUID(RequestPlayerList),
 	RequestPlayerListResponse	= GetCRCGUID(PlayerList),
+};
+
+
+/************************************************************************************************/
+
+
+class LobbyMessagePacket
+{
+public:
+    LobbyMessagePacket(MultiplayerPlayerID_t IN_id, std::string msg) :
+        Header  {   { sizeof(LobbyMessagePacket) },
+                    { LobbyMessage} },
+        playerID{ IN_id }
+    {
+        strncpy(message, msg.c_str(), 64);
+    }
+
+    UserPacketHeader* GetRawPacket()
+    {
+        return &Header;
+    }
+
+    UserPacketHeader			Header;
+    const MultiplayerPlayerID_t	playerID;
+    char                        message[64];
 };
 
 
@@ -99,6 +139,8 @@ public:
 class ClientDataPacket
 {
 public:
+    ClientDataPacket() = default;
+
 	ClientDataPacket(MultiplayerPlayerID_t IN_id, const char* PlayerName) :
 		Header			{	{sizeof(ClientDataPacket)},
 							{UserPacketIDs::ClientDataRequestResponse} },
@@ -114,10 +156,29 @@ public:
 	}
 
 	UserPacketHeader			Header;
-	const MultiplayerPlayerID_t	playerID;
+	const MultiplayerPlayerID_t	playerID = 0;
 	char						playerName[32];
 	uint16_t					playerNameLength;
 };
+
+
+/************************************************************************************************/
+
+
+class PlayerJoinEventPacket
+{
+public:
+    PlayerJoinEventPacket(MultiplayerPlayerID_t IN_id) :
+        Header{ { sizeof(PlayerJoinEventPacket) },
+                { PlayerJoin } },
+        playerID{ IN_id }{}
+
+    UserPacketHeader* GetRawPacket() { return &Header; }
+
+    UserPacketHeader			Header;
+    char                        PlayerName[64];
+    const MultiplayerPlayerID_t	playerID = 0;
+}; 
 
 
 /************************************************************************************************/

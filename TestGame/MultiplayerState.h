@@ -125,6 +125,8 @@ enum EBasePacketIDs : unsigned char
 class UserPacketHeader
 {
 public:
+    UserPacketHeader() = default;
+
 	UserPacketHeader(const size_t IN_size, PacketID_t IN_id) :
 		EBasePacketIDs	{ EBP_USERPACKET	},
 		packetSize		{ IN_size			},
@@ -136,8 +138,8 @@ public:
 	}
 
 	unsigned char		EBasePacketIDs;
-	const size_t		packetSize;
-	const PacketID_t	id;
+	const size_t		packetSize  = 0;
+	const PacketID_t	id          = 0;
 };
 
 

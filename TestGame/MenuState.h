@@ -25,86 +25,173 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+
 #include "GameFramework.h"
 #include "CameraUtilities.h"
+#include "BaseState.h"
+#include "Packets.h"
+#include "MultiplayerState.h"
 
 using FlexKit::iAllocator;
 using FlexKit::FrameworkState;
 using FlexKit::GameFramework;
 using FlexKit::EngineCore;
+using FlexKit::Event;
 
-struct MenuState;
+class NetworkState;
 
-struct CBArguements
+
+/************************************************************************************************/
+
+
+struct GameInfo
 {
-	EngineCore*		Engine;
-	MenuState*		State;
+    std::string name;
+    std::string lobbyName;
+
+    ConnectionHandle connectionHandle = InvalidHandle_t;
 };
 
 
-struct MenuState : public FrameworkState
+/************************************************************************************************/
+
+// Manage host network state
+class HostState : public FrameworkState
 {
-	MenuState(GameFramework* framework, iAllocator* Memory) : 
-		FrameworkState	{ framework },
-		UISystem		{ FlexKit::GuiSystem_Desc{}, Memory }
-	{
-	}
-
-	MenuState(MenuState& rhs) :
-		FrameworkState	(std::move(rhs.framework)),
-		UISystem		(std::move(rhs.UISystem))
-	{
-		CursorSize		= rhs.CursorSize;
-	}
+public:
+    HostState(GameFramework& framework, GameInfo IN_info, BaseState& IN_base, NetworkState& IN_net);
 
 
-	FlexKit::float2			CursorSize;
-	FlexKit::GuiSystem		UISystem;
+    void HandleIncomingConnection(ConnectionHandle connectionhandle);
+    void HandleDisconnection(ConnectionHandle connection);
 
-	double T;
+    void BroadCastMessage(std::string);
 
-	CBArguements CBArgs;
+    void Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) override;
+
+
+    struct Player
+    {
+        std::string             playerName;
+        MultiplayerPlayerID_t   playerID;
+        ConnectionHandle        connection;
+    };
+
+    std::vector<Player> playerList;
+
+    std::function<void (std::string)>       OnMessageRecieved   = [](std::string msg) {};
+    std::function<void (Player& player)>    OnPlayerJoin        = [](Player& player) {};
+
+    Vector<PacketHandler*> handler;
+
+    GameInfo        info;
+    NetworkState&   net;
+    BaseState&      base;
 };
 
 
-MenuState* CreateMenuState(GameFramework* framework, EngineCore* Engine);
+/************************************************************************************************/
 
 
-struct JoinScreen : public FrameworkState
+class ClientState : public FrameworkState
 {
-	JoinScreen(GameFramework* framework, iAllocator* Memory) : 
-		FrameworkState	{ framework },
-		UISystem		{ FlexKit::GuiSystem_Desc{}, Memory }
-	{
-		memset(Name, '\0', 32);
-		memset(Server, '\0', 64);
-	}
+public:
+    ClientState(GameFramework& framework, MultiplayerPlayerID_t, ConnectionHandle handle, BaseState& IN_base, NetworkState& IN_net);
 
-	JoinScreen(JoinScreen&& rhs) : 
-		FrameworkState	{rhs.framework},
-		UISystem		{std::move(rhs.UISystem)}
-	{
-		CursorSize = rhs.CursorSize;
-	}
+    void SendChatMessage(std::string msg);
 
-	FlexKit::float2			CursorSize;
-	FlexKit::GuiSystem		UISystem;
+    void Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) override;
+    void Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)  override;
+    void PostDrawUpdate(EngineCore&, UpdateDispatcher&, double dT) override;
 
-	char	Name	[32];
-	char	Server	[64];
+    std::function<void()>                           OnPlayerListReceived    = [](){};
+    std::function<void(std::string)>                OnMessageRecieved       = [](std::string msg) {};
+    std::function<void(HostState::Player& player)>  OnPlayerJoin            = [](HostState::Player& player) {};
 
-	enum SubState
-	{
-		ENTERSERVERINFO,
-		ENTERNAMEINFO,
-		NONE
-	}State;
-
-	CBArguements CBArgs;
+    std::vector<HostState::Player>  peers;
+    MultiplayerPlayerID_t           clientID;
+    ConnectionHandle                server;
+    PacketHandlerVector             packetHandlers;
+    NetworkState& net;
+    BaseState& base;
 };
 
 
-JoinScreen* CreateJoinScreenState(GameFramework* framework, EngineCore* Engine);
+/************************************************************************************************/
 
+// Render Lobby and contain chat
+class LobbyState : public FrameworkState
+{
+public:
+    LobbyState(GameFramework& framework, BaseState& IN_base, NetworkState& IN_host) :
+        FrameworkState  { framework },
+        base            { IN_base   },
+        net             { IN_host   }
+    {
+        memset(inputBuffer, '\0', 512);
+        chatHistory += "Lobby Created\n";
+    }
+
+
+
+    void Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) override;
+    void Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)  override;
+
+    void PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT) override;
+    bool EventHandler(Event evt) override;
+
+    void MessageRecieved(std::string& msg)
+    {
+        chatHistory += msg + '\n';
+    }
+
+    std::function<void              (std::string)>  OnSendMessage;
+    std::function<HostState::Player (uint idx)>     GetPlayer       = [](uint idx){ return HostState::Player{};};
+    std::function<size_t            ()>             GetPlayerCount  = []{ return 0;};
+    
+    std::vector<HostState::Player>      playerList;
+    std::string                         chatHistory;
+    BaseState&                          base;
+    NetworkState&                       net;
+
+    char inputBuffer[512];
+};
+
+
+/************************************************************************************************/
+
+
+class MenuState : public FrameworkState
+{
+public:
+    MenuState(GameFramework& framework, BaseState& IN_base, NetworkState& IN_net);
+
+    void Update         (EngineCore&, UpdateDispatcher&, double dT) override;
+    void Draw           (EngineCore&, UpdateDispatcher&, double dT, FrameGraph&)  override;
+    void PostDrawUpdate (EngineCore&, UpdateDispatcher&, double dT) override;
+
+    bool EventHandler(Event evt) override;
+
+    enum class MenuMode
+    {
+        MainMenu,
+        Join,
+        JoinInProgress,
+        Host
+    } mode = MenuMode::MainMenu;
+
+
+    char name[128];
+    char lobbyName[128];
+    char server[128];
+
+    PacketHandlerVector packetHandlers;
+
+    NetworkState&       net;
+    BaseState&          base;
+};
+
+
+/************************************************************************************************/
 
 #endif
