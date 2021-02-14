@@ -23,420 +23,537 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "MenuState.h"
-#include "PlayState.h"
-#include "HostState.h"
-#include "Client.h"
 
 
 /************************************************************************************************/
 
 
-bool OnHostPressed(void* _ptr, size_t GUIElement)
+ClientState::ClientState(
+    GameFramework&          framework,
+    MultiplayerPlayerID_t   clientID,
+    ConnectionHandle        server,
+    BaseState&              IN_base,
+    NetworkState&           IN_net) :
+            FrameworkState  { framework },
+            clientID        { clientID  },
+            server          { server    },
+            net             { IN_net    },
+            base            { IN_base   },
+            packetHandlers  { framework.core.GetBlockMemory() }
 {
-	return false;
-	/*
-	std::cout << "Host Pressed\n";
-	auto* Args = (CBArguements*)_ptr;
+    packetHandlers.push_back(
+        CreatePacketHandler(
+            LobbyMessage,
+            [&](UserPacketHeader* header, Packet* packet, NetworkState* network)
+            {
+                LobbyMessagePacket* pckt = reinterpret_cast<LobbyMessagePacket*>(header);
+                std::string msg = pckt->message;
 
-	Args->State->framework.ActiveScene->ClearScene();
+                OnMessageRecieved(msg);
+            },
+            framework.core.GetBlockMemory()
+        ));
 
-	PopSubState(Args->State->framework);
-	PushSubState(
-		Args->State->framework, 
-		&Args->State->framework.core.GetBlockMemory().allocate_aligned<HostState>(
-			Args->Engine, 
-			Args->State->framework));
+    packetHandlers.push_back(
+        CreatePacketHandler(
+            PlayerJoin,
+            [&](UserPacketHeader* header, Packet* packet, NetworkState* network)
+            {
+                auto pckt               = reinterpret_cast<PlayerJoinEventPacket*>(header);
+                std::string playerName  = pckt->PlayerName;
 
-	//Args->Engine->GetBlockMemory().free(_ptr);
-	return true;
-	*/
+                HostState::Player p = {
+                    .playerName = playerName,
+                    .playerID   = pckt->playerID,
+                };
+
+                peers.push_back(p);
+                OnPlayerJoin(peers.back());
+            },
+            framework.core.GetBlockMemory()
+        ));
+
+    net.PushHandler(packetHandlers);
 }
 
 
 /************************************************************************************************/
 
 
-bool OnJoinPressed(void* _ptr, size_t GUIElement)
+void ClientState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
-	return false;
-
-	/*
-	std::cout << "Join Pressed\n";
-	if (_ptr) {
-		auto* Args = (CBArguements*)_ptr;
-		auto ThisState = Args->State;
-
-		//Args->State->framework.ActiveScene->ClearScene();
-		auto framework = Args->State->framework;
-
-		PopSubState	(framework);
-		//PushSubState(Args->State->framework, CreateClientState(Args->Engine, Args->State->framework));
-		PushSubState(framework, CreateJoinScreenState(framework, framework.Core));
-	}
-	return true;
-	*/
+    net.Update(core, dispatcher, dT);
 }
 
 
 /************************************************************************************************/
 
 
-bool OnExitPressed(void* _ptr, size_t GUIElement)
+void ClientState::SendChatMessage(std::string msg)
 {
-	auto* Args = (CBArguements*)_ptr;
-	Args->State->framework.Quit = true;
-	return true;
+    LobbyMessagePacket packet(clientID, msg);
+
+    net.Send(packet.Header, server);
 }
 
 
 /************************************************************************************************/
 
 
-bool OnExitEntered(void* _ptr, size_t GUIElement)
+void ClientState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
-	auto* Args = (CBArguements*)_ptr;
-	std::cout << "Button Entered!\n";
-	return true;
+    auto renderTarget = base.renderWindow.GetBackBuffer();
+
+    ClearVertexBuffer(frameGraph, base.vertexBuffer);
+    ClearBackBuffer(frameGraph, renderTarget, 0.0f);
+
+    auto reserveVB = FlexKit::CreateVertexBufferReserveObject(base.vertexBuffer, core.RenderSystem, core.GetTempMemory());
+    auto reserveCB = FlexKit::CreateConstantBufferReserveObject(base.constantBuffer, core.RenderSystem, core.GetTempMemory());
+
+    ImGui::Render();
+    base.debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderTarget);
+
+    FlexKit::PresentBackBuffer(frameGraph, renderTarget);
 }
 
 
 /************************************************************************************************/
 
 
-bool OnExitLeft(void* _ptr, size_t GUIElement)
+void ClientState::PostDrawUpdate(EngineCore&, UpdateDispatcher&, double dT)
 {
-	auto* Args = (CBArguements*)_ptr;
-	std::cout << "Button Left!\n";
-	return true;
+
 }
 
 
 /************************************************************************************************/
 
 
-bool PreDraw(FrameworkState* StateMemory, EngineCore* Engine, double DT)
+HostState::HostState(GameFramework& framework, GameInfo IN_info, BaseState& IN_base, NetworkState& IN_net) :
+    FrameworkState  { framework },
+    net             { IN_net },
+    base            { IN_base },
+    info            { IN_info },
+    handler         { framework.core.GetBlockMemory() }
 {
-	MenuState*			ThisState = (MenuState*)StateMemory;
-	WindowInput	Input	  = {};
+    net.HandleNewConnection = [&](ConnectionHandle connection) { HandleIncomingConnection(connection); };
+    net.HandleDisconnection = [&](ConnectionHandle connection) { HandleDisconnection(connection); };
 
-	Input.LeftMouseButtonPressed  = ThisState->framework.MouseState.LMB_Pressed;
-	Input.MousePosition			  = ThisState->framework.MouseState.NormalizedPos;
-	Input.CursorWH				  = ThisState->CursorSize;
+    Player host{
+        .playerName = info.name,
+        .playerID   = GeneratePlayerID()
+    };
 
+    playerList.push_back(host);
 
-	return true;
+    // Register Packet Handlers
+
+    handler.push_back(
+        CreatePacketHandler(
+            ClientDataRequestResponse,
+            [&](UserPacketHeader* incomingPacket, Packet* packet, NetworkState* network)
+            {
+                const ClientDataPacket* clientData = reinterpret_cast<ClientDataPacket*>(incomingPacket);
+
+                const std::string           playerName  { clientData->playerName };
+                const PlayerJoinEventPacket joinEvent   { clientData->playerID };
+
+                for (auto& player : playerList)
+                {
+                    if (clientData->playerID == player.playerID)
+                        player.playerName = playerName;
+                    else
+                        net.Send(joinEvent.Header, player.connection);
+                }
+            },
+            framework.core.GetBlockMemory()));
+
+    handler.push_back(
+        CreatePacketHandler(
+            LobbyMessage,
+            [&](UserPacketHeader* incomingPacket, Packet* packet, NetworkState* network)
+            {
+                LobbyMessagePacket* msgPacket = reinterpret_cast<LobbyMessagePacket*>(incomingPacket);
+
+                std::string msg = msgPacket->message;
+
+                for (auto& player : playerList)
+                {
+                    if (player.playerID != msgPacket->playerID)
+                    {
+                        LobbyMessagePacket outMessage{ player.playerID, msg };
+                        net.Send(outMessage.Header, player.connection);
+                    }
+                }
+
+                if (OnMessageRecieved)
+                    OnMessageRecieved(msg);
+            },
+            framework.core.GetBlockMemory()));
+
+    net.PushHandler(handler);
+
+    net.Startup(1337);
 }
 
 
 /************************************************************************************************/
 
 
-bool Update			(FrameworkState* StateMemory, EngineCore* Engine, double dT)
+void HostState::HandleIncomingConnection(ConnectionHandle connectionhandle)
 {
-	MenuState*			ThisState = (MenuState*)StateMemory;
-	WindowInput	Input	  = {};
-	GameFramework*		framework	  = ThisState->framework;
+    Player host{
+        .playerName = "Incoming",
+        .playerID   = GeneratePlayerID(),
+        .connection = connectionhandle
+    };
 
-	ThisState->T += dT;
+    playerList.push_back(host);
 
-	Input.LeftMouseButtonPressed  = ThisState->framework.MouseState.LMB_Pressed;
-	Input.MousePosition			  = ThisState->framework.MouseState.NormalizedPos;
-	Input.CursorWH				  = ThisState->CursorSize;
+    RequestClientDataPacket packet(host.playerID);
+    net.Send(packet.header, connectionhandle);
 
-	//Yaw(Engine->Nodes, framework.ActiveCamera->Node, pi / 8 );
-	//Pitch(Engine->Nodes, framework.ActiveCamera->Node, pi / 8 * ThisState->framework.MouseState.dPos[1] * dT);
-	
-	ThisState->UISystem.Update(dT, Input, GetPixelSize(&Engine->Window), Engine->GetTempMemory());
+    if (OnPlayerJoin)
+        OnPlayerJoin(playerList.back());
 
-	//UpdateSimpleWindow(&Input, &ThisState->Window);
+}
 
-	/*
-	auto Model = ThisState->Model;
-	framework.GScene.SetMaterialParams(
-		Model, 
-		float4(
-			std::abs(std::sin(ThisState->T * 2)), 	0, 0, 
-			std::abs(std::sin(ThisState->T/2))), 
-		float4(1, 1, 1, 0));
-	*/
+/************************************************************************************************/
 
-	//DEBUG_DrawCameraFrustum(framework.ImmediateRender, framework.ActiveCamera);
 
-	return true;
+void HostState::HandleDisconnection(ConnectionHandle connection)
+{
+    playerList.erase(
+        std::remove_if(
+            playerList.begin(), playerList.end(),
+            [&](auto& player)
+            {
+                return player.connection == connection;
+            }));
 }
 
 
 /************************************************************************************************/
 
 
-void ReleaseMenu	(FrameworkState* StateMemory)
+void HostState::Update(EngineCore&core, UpdateDispatcher& dispatcher, double dT)
 {
-	MenuState*			ThisState = (MenuState*)StateMemory;
-
-	ThisState->UISystem.Release();
-	ThisState->framework.core.GetBlockMemory().free(ThisState);
+    net.Update(core, dispatcher, dT);
 }
 
 
 /************************************************************************************************/
 
 
-MenuState* CreateMenuState(GameFramework* framework, EngineCore* Engine)
+void HostState::BroadCastMessage(std::string msg)
 {
-	/*
-	FK_ASSERT(framework != nullptr);
-	auto* State	= &Engine->GetBlockMemory().allocate_aligned<MenuState>(&Engine->GetBlockMemory().AllocatorInterface);
+    for (auto& player : playerList)
+    {
+        LobbyMessagePacket msgPkt{ player.playerID, msg };
 
-	//State->VTable.PreDrawUpdate = PreDraw;
-	//State->VTable.Update        = Update;
-	//State->VTable.Release       = ReleaseMenu;
-	State->T                    = 0;
-	State->framework            = framework;
-	State->CursorSize           = float2{ 0.03f / GetWindowAspectRatio(Engine), 0.03f };
 
-	framework.MouseState.Enabled   = true;
-
-	if(1)
-	{
-		auto Grid = State->BettererWindow.CreateGrid();
-		Grid.resize(0.2f, 0.5f);
-		Grid.SetGridDimensions(3, 5);
-		Grid.SetPosition({0.7f, 0.1f});
-
-		auto Font = framework.DefaultAssets.Font;
-
-		auto C = Grid.ColumnWidths();
-		Grid.ColumnWidths()[0] = 0.05f;
-		Grid.ColumnWidths()[1] = 0.90f;
-		Grid.ColumnWidths()[2] = 0.05f;
-
-		Grid.RowHeights()[0] = 0.05f;
-		Grid.RowHeights()[1] = 0.30f;
-		Grid.RowHeights()[2] = 0.30f;
-		Grid.RowHeights()[3] = 0.30f;
-		Grid.RowHeights()[4] = 0.05f;
-
-		auto Btn1 = Grid.CreateButton({ 1, 1 });
-		auto Btn2 = Grid.CreateButton({ 1, 2 });
-		auto Btn3 = Grid.CreateButton({ 1, 3 });
-
-		auto Args		= &State->CBArgs;
-		Args->Engine	= Engine;
-		Args->State		= State;
-
-		std::cout << Args->Engine;
-		std::cout << Args->State;
-		std::cout << Args->State->framework;
-
-		Btn1.SetActive(true);
-		auto& Btn1_Ref		= Btn1._IMPL();
-		auto DefaultFont	= State->framework.DefaultAssets.Font;
-
-		Btn1_Ref.Clicked = OnHostPressed;
-		Btn1_Ref.USR     = Args;
-		Btn1_Ref.Text	 = "Host";
-		Btn1_Ref.Font	 = DefaultFont;
-
-		Btn2.SetActive(true);
-		Btn2._IMPL().Clicked = OnJoinPressed;
-		Btn2._IMPL().USR     = Args;
-		Btn2._IMPL().Text    = "Join";
-		Btn2._IMPL().Font	 = DefaultFont;
-
-		Btn3.SetActive(true);
-		Btn3._IMPL().Clicked = OnExitPressed;
-		Btn3._IMPL().USR     = Args;
-		Btn3._IMPL().Text	 = "Quit";
-		Btn3._IMPL().Font	 = DefaultFont;
-	}
-	else
-	{
-		SimpleWindow_Desc Desc(0.26f, 0.36f, 1, 1, (float)Engine->Window.WH[0] / (float)Engine->Window.WH[1]);
-	
-		auto Window			= &State->Window;
-		auto WindowSize		= GetWindowWH(Engine);
-		InitiateSimpleWindow(Engine->GetBlockMemory(), Window, Desc);
-		Window->Position	= {0.65f, 0.1f};
-		Window->CellBorder  = {0.01f, 0.01f};
-		Window->CellColor   = float4(Grey(0.2f), 1.0f);
-		Window->PanelColor  = float4(Grey(0.2f), 1.0f);
-
-		GUIList List_Desc;
-		List_Desc.Position	= { 0, 0 };
-		List_Desc.WH		= { 1, 1 };
-		List_Desc.Color		= float4(Grey(0.2f), 1);
-	
-		auto HorizontalOffset	= SimpleWindowAddHorizonalList	(Window, List_Desc);
-		SimpleWindowAddDivider(Window, { 0.02f, 0.00f }, HorizontalOffset);
-
-		auto ButtonStack   = SimpleWindowAddVerticalList	(Window, List_Desc, HorizontalOffset);
-
-		List_Desc.Position = { 0, 1 };
-		List_Desc.WH	   = { 1, 1 };
-
-		auto Args		= &State->CBArgs;
-		Args->Engine	= Engine;
-		Args->State		= State;
-
-		SimpleWindowAddDivider(Window, {0.0f, 0.01f}, ButtonStack);
-
-		GUITextButton_Desc TextButton{};
-		TextButton.Font			   = framework.DefaultAssets.Font;
-		TextButton.Text			   = "Host";
-		TextButton.WH			   = float2(0.2f, 0.1f);
-		TextButton.WindowSize	   = {(float)WindowSize[0], (float)WindowSize[1]};
-		TextButton.CB_Args		   = Args;
-		TextButton.OnClicked_CB    = OnHostPressed;
-
-		TextButton.BackGroundColor = float4(Grey(.5), 1);
-		TextButton.CharacterScale  = float2(16, 32) / Conversion::Vect2TOfloat2(framework.DefaultAssets.Font->FontSize);
-		SimpleWindowAddTextButton(Window, TextButton, Engine->RenderSystem, ButtonStack);
-
-		SimpleWindowAddDivider(Window, { 0.0f, 0.005f }, ButtonStack);
-
-		TextButton.Text			   = "Join";
-		TextButton.OnClicked_CB    = OnJoinPressed;
-		TextButton.BackGroundColor = float4(Grey(.5), 1);
-		TextButton.CharacterScale  = float2(16, 32) / Conversion::Vect2TOfloat2(framework.DefaultAssets.Font->FontSize);
-		SimpleWindowAddTextButton(Window, TextButton, Engine->RenderSystem, ButtonStack);
-
-		SimpleWindowAddDivider(Window, {0.0f, 0.005f}, ButtonStack);
-
-		TextButton.OnClicked_CB    = OnExitPressed;
-		TextButton.OnEntered_CB    = OnExitEntered;
-		TextButton.OnExit_CB       = OnExitLeft;
-		TextButton.Text            = "Exit Game";
-		SimpleWindowAddTextButton(Window, TextButton, Engine->RenderSystem, ButtonStack);
-	}
-
-	return State;
-	*/
-	return nullptr;
+        net.Send(msgPkt.Header, player.connection);
+    }
 }
 
 
 /************************************************************************************************/
 
 
-bool JoinScreenUpdate(FrameworkState* StateMemory, EngineCore* Engine, double dT)
+void LobbyState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
-	JoinScreen*			ThisState = (JoinScreen*)StateMemory;
-	WindowInput	Input = {};
-	GameFramework*		framework = ThisState->framework;
+    base.Update(core, dispatcher, dT);
+    base.debugUI.Update(base.renderWindow, core, dispatcher, dT);
 
-	Input.LeftMouseButtonPressed = ThisState->framework.MouseState.LMB_Pressed;
-	Input.MousePosition			 = ThisState->framework.MouseState.NormalizedPos;
-	Input.CursorWH				 = ThisState->CursorSize;
+    net.Update(core, dispatcher, dT);
 
-	ThisState->UISystem.Update(dT, Input, GetPixelSize(&Engine->Window), Engine->GetTempMemory());
+    ImGui::NewFrame();
 
-	return false;
+    // Player List
+
+    ImGui::Begin("Lobby");
+
+    int selected = 0;
+    const char* players[16];
+    for (size_t I = 0; I < playerList.size(); I++)
+        players[I] = playerList[I].playerName.c_str();
+
+    ImGui::ListBox("Players", &selected, players, playerList.size());
+
+    // Chat
+    ImGui::InputTextMultiline("Chat Log", const_cast<char*>(chatHistory.c_str()), chatHistory.size(), ImVec2(), ImGuiInputTextFlags_ReadOnly);
+
+    ImGui::InputText("type here...", inputBuffer, 512);
+
+    if (ImGui::Button("Send"))
+    {
+        std::string msg = inputBuffer;
+        chatHistory += inputBuffer;
+        chatHistory += "\n";
+
+        memset(inputBuffer, '\0', 512);
+
+        if (OnSendMessage)
+            OnSendMessage(msg);
+    }
+
+    ImGui::End();
 }
 
 
 /************************************************************************************************/
 
 
-bool JoinScreenPreDraw(FrameworkState* StateMemory, EngineCore* Engine, double DT)
+void LobbyState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
-	JoinScreen*			ThisState = (JoinScreen*)StateMemory;
-	WindowInput	Input = {};
+    auto renderTarget = base.renderWindow.GetBackBuffer();
 
-	FK_ASSERT(0);
-	//ThisState->BettererWindow.Draw(Engine->RenderSystem, ThisState->framework.Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));
-	//ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, ThisState->framework.Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));
+    ClearVertexBuffer(frameGraph, base.vertexBuffer);
+    ClearBackBuffer(frameGraph, renderTarget, 0.0f);
 
-	DrawMouseCursor(Engine, ThisState->framework, ThisState->framework.MouseState.NormalizedPos, { 0.02f / GetWindowAspectRatio(Engine), 0.02f});
+    auto reserveVB = FlexKit::CreateVertexBufferReserveObject(base.vertexBuffer, core.RenderSystem, core.GetTempMemory());
+    auto reserveCB = FlexKit::CreateConstantBufferReserveObject(base.constantBuffer, core.RenderSystem, core.GetTempMemory());
 
-	return false;
+    ImGui::Render();
+    base.debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderTarget);
+
+    FlexKit::PresentBackBuffer(frameGraph, renderTarget);
 }
 
 
 /************************************************************************************************/
 
 
-void ReleaseJoinScreen(FrameworkState* StateMemory)
+void LobbyState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
-	JoinScreen*	ThisState = (JoinScreen*)StateMemory;
-	
-	ThisState->UISystem.Release();
-	ThisState->~JoinScreen();
+    base.PostDrawUpdate(core, dispatcher, dT);
 }
 
 
 /************************************************************************************************/
 
 
-bool ServerFieldClicked(void* _ptr, size_t GUIElement)
+bool LobbyState::EventHandler(Event evt)
 {
-	std::cout << "Server Field Clicked\n";
-	return false;
+    switch (evt.InputSource)
+    {
+    case Event::E_SystemEvent:
+    {
+        switch (evt.Action)
+        {
+        case Event::InputAction::Resized:
+        {
+            const auto width    = (uint32_t)evt.mData1.mINT[0];
+            const auto height   = (uint32_t)evt.mData2.mINT[0];
+
+            base.Resize({ width, height });
+        }   break;
+
+        case Event::InputAction::Exit:
+            framework.quit = true;
+            break;
+        default:
+            break;
+        }
+    }   break;
+    };
+
+    return base.debugUI.HandleInput(evt);
 }
 
 
 /************************************************************************************************/
 
 
-bool NameFieldClicked(void* _ptr, size_t GUIElement)
+MenuState::MenuState(GameFramework& framework, BaseState& IN_base, NetworkState& IN_net) :
+	FrameworkState	    { framework },
+    net                 { IN_net },
+    base                { IN_base },
+    packetHandlers{ framework.core.GetBlockMemory() }
 {
-	std::cout << "Name Field Clicked\n";
-	return false;
+    memset(name, '\0',      sizeof(name));
+    memset(lobbyName, '\0', sizeof(lobbyName));
+    memset(server, '\0',    sizeof(server));
+
+    packetHandlers.push_back(
+        CreatePacketHandler(
+            UserPacketIDs::ClientDataRequest,
+            [&](UserPacketHeader* header, Packet* packet, NetworkState* network)
+            {
+                FK_LOG_INFO("Joining Lobby");
+
+                auto request = reinterpret_cast<RequestClientDataPacket*>(header);
+                ClientDataPacket clientPacket(request->playerID, name);
+
+                net.Send(clientPacket.Header, packet->sender);
+
+                auto& net_temp  = net;
+                auto& base_temp = base;
+
+                net.PopHandler();
+
+                framework.PopState();
+
+                auto& client    = framework.PushState<ClientState>(request->playerID, packet->sender, base_temp, net_temp);
+                auto& lobby     = framework.PushState<LobbyState>(base_temp, net_temp);
+
+                client.OnPlayerJoin         = [&](HostState::Player& player){ lobby.chatHistory += "Player Joined\n"; };
+                client.OnMessageRecieved    = [&](std::string msg) { lobby.MessageRecieved(msg); };
+                lobby.OnSendMessage         = [&](std::string msg) { client.SendChatMessage(msg); };
+
+            }, framework.core.GetBlockMemory()));
 }
 
 
 /************************************************************************************************/
 
 
-JoinScreen* CreateJoinScreenState(GameFramework* framework, EngineCore* Engine)
+void MenuState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
-	FK_ASSERT(framework != nullptr);
-	FK_ASSERT(Engine != nullptr);
+    base.Update(core, dispatcher, dT);
+    base.debugUI.Update(base.renderWindow, core, dispatcher, dT);
 
-	auto* State	= &Engine->GetBlockMemory().allocate_aligned<JoinScreen>(
-													framework, 
-													(iAllocator*)Engine->GetBlockMemory());
+    ImGui::NewFrame();
 
-	framework.MouseState.Enabled = true;
+    switch (mode)
+    {
+    case MenuMode::MainMenu:
+        ImGui::Begin("Menu");
 
-	State->framework            = framework;
-	State->CursorSize           = float2{ 0.03f / GetWindowAspectRatio(Engine), 0.03f };
+        if (ImGui::Button("Join"))
+            mode = MenuMode::Join;
 
-	memset(State->Name, '\0',	sizeof(JoinScreen::Name));
-	memset(State->Server, '\0', sizeof(JoinScreen::Server));
+        if (ImGui::Button("Host"))
+            mode = MenuMode::Host;
 
-	auto&  Grid = State->UISystem.CreateGrid();
+        if (ImGui::Button("Exit"))
+            framework.quit = true;
 
-	//Grid.resize				(0.3f, 0.2f);
-	//Grid.SetPosition		({ 0.3f, 0.35f});
-	//Grid.SetGridDimensions	(1, 5);
-	//Grid.SetActive			(true);
+        ImGui::End();
+        break;
+    case MenuMode::Join:
+    {
+        ImGui::Begin("Join");
+        ImGui::InputText("Name", name, 128);
+        ImGui::InputText("Server Address", server, 128);
 
-	Grid.RowHeights[0] = 0.20f;
-	Grid.RowHeights[1] = 0.20f;
-	Grid.RowHeights[2] = 0.20f;
-	Grid.RowHeights[3] = 0.20f;
-	Grid.RowHeights[4] = 0.20f;
+        if (ImGui::Button("Join") && strnlen_s(name, 128) && strnlen_s(server, 128))
+        {
+            net.PushHandler(packetHandlers);
+            net.Connect(server, 1337);
 
-	Grid.ColumnWidths[0] = 1.0f;
+            mode = MenuMode::JoinInProgress;
+        }
 
-	//auto TextLabel1		= Grid.CreateTextBox({0, 0}, "Enter Server IP", framework.DefaultAssets.Font);
-	//TextLabel1.SetActive(true);
+        ImGui::End();
+    }   break;
+    case MenuMode::JoinInProgress:
+    {
+        net.Update(core, dispatcher, dT);
 
-	//auto TextLabel2		= Grid.CreateTextBox({0, 2}, "Enter Name", framework.DefaultAssets.Font);
-	//TextLabel2.SetActive(true);
+        ImGui::Begin("Joining...");
+        ImGui::End();
+    }   break;
+    case MenuMode::Host:
+    {   // Get Host name, start listing, push lobby state
+        ImGui::Begin("Host");
+        ImGui::InputText("Name", name, 128);
+        ImGui::InputText("LobbyName", lobbyName, 128);
 
-	//auto IPInput		= Grid.CreateTextBox({ 0, 1 }, State->Name, framework.DefaultAssets.Font);
-	//IPInput.SetActive(true);
-	//IPInput._IMPL().Clicked		= [](size_t x) -> bool{return false;};
-	//auto NameInput				= Grid.CreateTextBox({ 0, 3 }, State->Server, framework.DefaultAssets.Font);
-	//NameInput.SetActive(true);
-	//NameInput._IMPL().Clicked	= NameFieldClicked;
+        if (ImGui::Button("Start") && strnlen_s(name, 128) && strnlen_s(lobbyName, 128))
+        {
+            GameInfo info;
+            info.name       = name;
+            info.lobbyName  = lobbyName;
 
-	//auto AcceptButton	= Grid.CreateButton({ 0, 4 }, "Accept", framework.DefaultAssets.Font);
-	//AcceptButton.SetActive(true);
-	//sAcceptButton.SetUSR(State);
+            auto& framework_temp    = framework;
+            auto& base_temp         = base;
+            auto& net_temp          = net;
 
-	return State;
+            framework_temp.PopState();
+
+            auto& host  = framework_temp.PushState<HostState>(info, base_temp, net_temp);
+            auto& lobby = framework_temp.PushState<LobbyState>(base_temp, net_temp);
+
+            lobby.GetPlayer         = [&](uint idx) { return host.playerList[idx]; };
+            lobby.GetPlayerCount    = [&] {return host.playerList.size(); };
+
+            host.OnPlayerJoin       = [&](HostState::Player& player){
+                lobby.chatHistory  += "Player Joining...\n";
+            };
+
+            host.OnMessageRecieved  = [&](std::string message) { lobby.MessageRecieved(message); };
+            lobby.OnSendMessage     = [&](std::string message) { host.BroadCastMessage(message); };
+        }
+
+        ImGui::End();
+    }   break;
+    default:
+        framework.quit = true;
+    }
+
+}
+
+
+/************************************************************************************************/
+
+
+void MenuState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
+{
+
+    auto renderTarget = base.renderWindow.GetBackBuffer();
+
+    ClearVertexBuffer(frameGraph, base.vertexBuffer);
+    ClearBackBuffer(frameGraph, renderTarget, 0.0f);
+
+    auto reserveVB = FlexKit::CreateVertexBufferReserveObject(base.vertexBuffer, core.RenderSystem, core.GetTempMemory());
+    auto reserveCB = FlexKit::CreateConstantBufferReserveObject(base.constantBuffer, core.RenderSystem, core.GetTempMemory());
+
+    ImGui::Render();
+    base.debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderTarget);
+
+    FlexKit::PresentBackBuffer(frameGraph, renderTarget);
+}
+
+
+/************************************************************************************************/
+
+
+void MenuState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+{
+    base.PostDrawUpdate(core, dispatcher, dT);
+}
+
+
+/************************************************************************************************/
+
+
+bool MenuState::EventHandler(Event evt)
+{
+    switch (evt.InputSource)
+    {
+    case Event::E_SystemEvent:
+    {
+        switch (evt.Action)
+        {
+        case Event::InputAction::Resized:
+        {
+            const auto width    = (uint32_t)evt.mData1.mINT[0];
+            const auto height   = (uint32_t)evt.mData2.mINT[0];
+
+            base.Resize({ width, height });
+        }   break;
+
+        case Event::InputAction::Exit:
+            framework.quit = true;
+            break;
+        default:
+            break;
+        }
+    }   break;
+    };
+
+    return base.debugUI.HandleInput(evt);
 }
 
 

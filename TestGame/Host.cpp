@@ -5,19 +5,6 @@
 
 using FlexKit::GameFramework;
 
-/************************************************************************************************/
-
-
-MultiplayerPlayerID_t GeneratePlayerID()
-{
-	std::random_device generator;
-	std::uniform_int_distribution<MultiplayerPlayerID_t> distribution(
-		std::numeric_limits<MultiplayerPlayerID_t>::min(),
-		std::numeric_limits<MultiplayerPlayerID_t>::max());
-
-	return distribution(generator);
-}
-
 
 /************************************************************************************************/
 
