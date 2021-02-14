@@ -114,6 +114,8 @@ LocalPlayerState::LocalPlayerState(
 
 void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
+    ProfileFunction();
+
     base.Update(core, dispatcher, dT);
     base.debugUI.Update(base.renderWindow, core, dispatcher, dT);
 
@@ -129,14 +131,19 @@ void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispa
         if (ImGui::Button("Toggle Stats"))
             showDebugStats = !showDebugStats;
 
+        if (ImGui::Button("Toggle Profiler"))
+            drawProfiler = !drawProfiler;
+
         if (ImGui::BeginMenu("Plot Menu"))
         {
-            if (ImGui::MenuItem("Frame Time Plot"))
+            if (ImGui::MenuItem("Frame Time"))
                 drawFrameChart = !drawFrameChart;
-            if (ImGui::MenuItem("Shading Time Plot"))
+            if (ImGui::MenuItem("Shading Time"))
                 drawShadingPlot = !drawShadingPlot;
-            if (ImGui::MenuItem("Feedback Time Plot"))
+            if (ImGui::MenuItem("Feedback Time"))
                 drawFeedbackPlot = !drawFeedbackPlot;
+            if (ImGui::MenuItem("Present Time"))
+                drawPresentWaitTime = !drawPresentWaitTime;
             ImGui::EndMenu();
         }
 
@@ -185,62 +192,151 @@ void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispa
         ImGui::End();
     }
 
-    if (drawFrameChart || drawShadingPlot || drawFeedbackPlot)
+    if (drawFrameChart || drawShadingPlot || drawFeedbackPlot || drawPresentWaitTime)
     {
-        ImGui::Begin("Frame Times");
-        ImPlot::BeginPlot("Time Plots");
-
-        if(drawFrameChart)
+        if(ImGui::Begin("Plots"))
         {
-            double Y_values[120];
-            double X_values[120];
-            size_t valueCount = 0;
-            for (auto time : framework.stats.frameTimes)
+            ImPlot::BeginPlot("Time Plots");
+
+            if(drawFrameChart)
             {
-                Y_values[valueCount] = time;
-                X_values[valueCount] = valueCount / -120.0;
-                valueCount++;
+                double Y_values[120];
+                double X_values[120];
+                size_t valueCount = 0;
+                for (auto time : framework.stats.frameTimes)
+                {
+                    Y_values[valueCount] = time.duration;
+                    X_values[valueCount] = valueCount / 120.0;
+                    valueCount++;
+                }
+
+                ImPlot::PlotLine("Update Times", X_values, Y_values, valueCount);
             }
 
-            ImPlot::PlotLine("Update Times", X_values, Y_values, valueCount);
-        }
-
-        if (drawShadingPlot)
-        {
-            double Y_values[120];
-            double X_values[120];
-            size_t valueCount = 0;
-            for (auto time : framework.stats.shadingTimes)
+            if (drawShadingPlot)
             {
-                Y_values[valueCount] = time;
-                X_values[valueCount] = valueCount / -120.0;
-                valueCount++;
+                double Y_values[120];
+                double X_values[120];
+                size_t valueCount = 0;
+                for (auto time : framework.stats.shadingTimes)
+                {
+                    Y_values[valueCount] = time.duration;
+                    X_values[valueCount] = valueCount / 120.0;
+                    valueCount++;
+                }
+
+                ImPlot::PlotLine("Deferred Shading", X_values, Y_values, valueCount);
             }
 
-            ImPlot::PlotLine("Deferred Shading", X_values, Y_values, valueCount);
-        }
-
-        if (drawFeedbackPlot)
-        {
-            double Y_values[120];
-            double X_values[120];
-            size_t valueCount = 0;
-            for (auto time : framework.stats.feedbackTimes)
+            if (drawFeedbackPlot)
             {
-                Y_values[valueCount] = time;
-                X_values[valueCount] = 3 * valueCount / -120.0;
-                valueCount++;
+                double Y_values[120];
+                double X_values[120];
+                size_t valueCount = 0;
+                for (auto time : framework.stats.feedbackTimes)
+                {
+                    Y_values[valueCount] = time.duration;
+                    X_values[valueCount] = valueCount / 120.0;
+                    valueCount++;
+                }
+
+                ImPlot::PlotShaded("texture feedback", X_values, Y_values, valueCount);
             }
 
-            ImPlot::PlotLine("texture feedback", X_values, Y_values, valueCount);
-        }
+            if(drawPresentWaitTime)
+            {
+                double Y_values[120];
+                double X_values[120];
+                size_t valueCount = 0;
+                for (auto time : framework.stats.presentTimes)
+                {
+                    Y_values[valueCount] = time.duration;
+                    X_values[valueCount] = valueCount / 120.0;
+                    valueCount++;
+                }
 
-        ImPlot::EndPlot();
-        ImGui::End();
+                ImPlot::PlotLine("texture feedback", X_values, Y_values, valueCount);
+            }
+
+            ImPlot::EndPlot();
+            ImGui::End();
+        }
     }
 
     if(showDebugStats)
         base.DEBUG_PrintDebugStats(core);
+
+    if (auto stats = profiler.GetStats(); stats && drawProfiler)
+    {
+        if(ImGui::Begin("Profiler"))
+        {
+            ImDrawList* draw_list       = ImGui::GetWindowDrawList();
+            const uint32_t threadCount  = stats->Threads.size();
+
+            ImVec2 windowPOS    = ImGui::GetWindowPos();
+            ImVec2 windowSize   = ImGui::GetWindowSize();
+
+            if (stats)
+            {
+                uint32_t threadID = 0;
+                //for (auto& thread : stats->Threads) {
+                    auto& thread        = stats->Threads.front();
+                    auto& profilings    = thread.timePoints;
+                    auto duration       = profilings.front().GetDuration();
+                    auto start          = profilings.front().begin;
+
+                    ImGui::BeginChild(GetCRCGUID("PROFILEGRAPH" + threadID++));
+                    ImColor color(1.0f, 1.0f, 1.0f, 1.0f);
+
+                    auto GetChild = [&](uint64_t childID) -> FrameTiming&
+                    {
+                        for (auto& timeSample : profilings)
+                            if (timeSample.profileID == childID)
+                                return timeSample;
+
+                        FK_ASSERT(0);
+                    };
+
+                    auto VisitChildren =
+                        [&](uint64_t nodeID, auto& _Self, uint32_t maxDepth, uint32_t currentDepth) -> void
+                        {
+                            FrameTiming& node = GetChild(nodeID);
+                            // Render Current Profile Sample
+                            float begin  = node.GetRelativeTimePointBegin(start, duration);
+                            float end    = node.GetRelativeTimePointEnd(start, duration);
+
+                            ImVec2 pMin = ImVec2{ windowPOS.x + windowSize.x * begin,    windowPOS.y + currentDepth * 50.0f + 30};
+                            ImVec2 pMax = ImVec2{ windowPOS.x + windowSize.x * end,      windowPOS.y + currentDepth * 50.0f + 80.0f };
+                            ImColor color       (1.0f, 1.0f, 1.0f, 1.0f);
+                            draw_list->AddRectFilled(pMin, pMax, color, 0, 0);
+
+                            ImVec2 pTxt = ImVec2{ windowPOS.x + windowSize.x * begin + 20,    windowPOS.y + currentDepth * 50.0f + 30};
+                            ImColor textColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+
+
+                            // Visit Child Samples
+                            if(currentDepth + 1 < maxDepth)
+                                for(uint64_t childID : node.children)
+                                    _Self(childID, _Self, maxDepth, currentDepth + 1);
+
+                            draw_list->AddText(pTxt, textColor, node.Function);
+                        };
+
+                    VisitChildren(profilings.front().profileID, VisitChildren, 3, 0);
+
+                    ImGui::EndChild();
+                //}
+            }
+            else
+            {
+                ImGui::Text("No Profiling Stats Available!");
+            }
+
+            ImGui::End();
+        }
+    }
+
 
     ImGui::Render();
 
@@ -280,6 +376,8 @@ void LocalPlayerState::PreDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatc
 
 void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
+    ProfileFunction();
+
 	frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
 	frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
 
@@ -411,8 +509,18 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     const auto texturePassTime      = base.streamingEngine.debug_GetPassTime();
     const auto textureUpdateTime    = base.streamingEngine.debug_GetUpdateTime();
 
-    framework.stats.shadingTimes.push_back(shadingStats.shadingPass);
-    framework.stats.feedbackTimes.push_back(texturePassTime);
+    framework.stats.shadingTimes.push_back(
+        GameFramework::TimePoint{
+                .T          = framework.runningTime,
+                .duration   = shadingStats.shadingPass
+        });
+
+
+    framework.stats.feedbackTimes.push_back(
+        GameFramework::TimePoint{
+                .T          = framework.runningTime,
+                .duration   = texturePassTime
+        });
 
 	PresentBackBuffer(frameGraph, base.renderWindow);
 }

@@ -184,7 +184,6 @@ namespace FlexKit
 
 	void GameFramework::Initiate()
 	{
-		SetDebugMemory			(core.GetDebugMemory());
 		InitiateAssetTable	    (core.GetBlockMemory());
 		InitiateGeometryTable	(core.GetBlockMemory());
 
@@ -281,6 +280,7 @@ namespace FlexKit
 
 	void GameFramework::Draw(UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT)
 	{
+        ProfileFunction();
 		FK_LOG_9("Frame Draw Begin");
 
 		FrameGraph&	frameGraph = TempMemory->allocate_aligned<FrameGraph>(core.RenderSystem, core.Threads, TempMemory);
@@ -312,6 +312,8 @@ namespace FlexKit
 
 	void GameFramework::DrawFrame(double dT)
 	{
+        ProfileFunction();
+
         UpdateDispatcher dispatcher{ &core.Threads, core.GetTempMemoryMT() };
         Update(dispatcher, dT);
 
@@ -324,13 +326,9 @@ namespace FlexKit
 
 		UpdatePreDraw	(dispatcher, core.GetTempMemoryMT(), dT);
 
-		ProfileBegin(PROFILE_SUBMISSION);
-
 		Draw			(dispatcher, core.GetTempMemoryMT(), dT);
 
         dispatcher.Execute();
-
-        ProfileEnd(PROFILE_SUBMISSION);
 
 		PostDraw		(dispatcher, core.GetTempMemoryMT(), dT);
 
@@ -388,7 +386,7 @@ namespace FlexKit
 	{
 		uint32_t VRamUsage	        = (uint32_t)(core.RenderSystem._GetVidMemUsage() / MEGABYTE);
 		char* TempBuffer	        = (char*)core.GetTempMemory().malloc(512);
-		auto DrawTiming		        = float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
+		auto DrawTiming		        = 0.0f;
         const char* RTFeatureStr    = core.RenderSystem.GetRTFeatureLevel() == RenderSystem::AvailableFeatures::Raytracing::RT_FeatureLevel_NOTAVAILABLE ? "Not Available" : "Available";
 
 		sprintf_s(TempBuffer, 512, 

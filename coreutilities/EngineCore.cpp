@@ -73,8 +73,6 @@ namespace FlexKit
 		Memory->LevelAllocator.Init(Memory->LevelMem,	LEVELBUFFERSIZE);
 		Memory->TempAllocator.Init(Memory->TempMem,		TEMPBUFFERSIZE);
 
-		InitDebug(&Memory->Debug);
-
         Success = true;
 		return Memory;
 	}

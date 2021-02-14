@@ -26,89 +26,180 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define PROFILINGUTILITIES
 
 #include "buildsettings.h"
-#include <Windows.h>
-#include <chrono>
+#include "containers.h"
 
+#include <chrono>
+#include <mutex>
+#include <memory>
 
 /************************************************************************************************/
 
 
 namespace FlexKit
 {
-	enum PROFILE_IDs
+    using TimePoint     = std::chrono::high_resolution_clock::time_point;
+    using TimeDuration  = std::chrono::high_resolution_clock::duration;
+
+    struct FrameTiming
+    {
+        const char* Function;
+        uint64_t    profileID;
+        uint64_t    parentID;
+        TimePoint   begin;
+        TimePoint   end;
+
+        TimeDuration GetDuration() const
+        {
+            return end - begin;
+        }
+
+        double GetDurationDouble()
+        {
+            auto duration = end - begin;
+            auto fDuration = double(duration.count()) / 100000000.0;
+
+            return fDuration;
+        }
+
+        double GetRelativeTimePointBegin(const TimePoint rel_begin, const TimeDuration duration)
+        {
+            auto relativeTimePoint = double((begin - rel_begin).count()) / double(duration.count());
+
+            return relativeTimePoint;
+        }
+
+        double GetRelativeTimePointEnd(const TimePoint rel_begin, const TimeDuration duration)
+        {
+            auto relativeTimePoint = double((end - rel_begin).count()) / double(duration.count());
+
+            return relativeTimePoint;
+        }
+
+        static_vector <uint64_t> children;
+    };
+
+
+    struct ThreadStats
+    {
+        std::vector<FrameTiming> timePoints;
+    };
+
+	struct ThreadProfiler
 	{
-		PROFILE_ANIMATIONUPDATE,
-		PROFILE_TRANSFORMUPDATE,
-		PROFILE_ENTITYUPDATE,
-		PROFILE_FRAME,
-		PROFILE_SUBMISSION,
-        PROFILE_SHADOWMAPPASS,
-		PROFILE_PRESENT,
-		PROFILE_SORTING,
-		PROFILE_ID_COUNT
+
+        void BeginFrame()
+        {
+            activeFrames.clear();
+            completedFrames.clear();
+        }
+
+        void EndFrame()
+        {
+            std::sort(
+                completedFrames.begin(),
+                completedFrames.end(),
+                [](FrameTiming& lhs, FrameTiming& rhs)
+                {
+                    return lhs.begin < rhs.begin;
+                });
+        }
+
+        ThreadStats GetStats()
+        {
+            return { completedFrames };
+        }
+
+        void Push(const char* func, uint64_t Id, TimePoint tp)
+        {
+            const auto parentID = activeFrames.size() ? activeFrames.back().profileID : -1;
+
+            if (activeFrames.size()) {
+                auto& parent = activeFrames.back();
+                parent.children.push_back(Id);
+            }
+
+            FrameTiming timing{
+                .Function   = func,
+                .profileID  = Id,
+                .parentID   = parentID,
+                .begin      = tp,
+            };
+
+            activeFrames.push_back(timing);
+        }
+
+        void Pop(uint64_t Id, TimePoint tp)
+        {
+            auto& frames = activeFrames;
+
+            FK_ASSERT(Id == frames.back().profileID);
+
+            auto currentFrame = frames.back();
+            frames.pop_back();
+
+            currentFrame.end = tp;
+            completedFrames.push_back(currentFrame);
+        }
+
+        std::vector<FrameTiming> activeFrames;
+        std::vector<FrameTiming> completedFrames;
 	};
 
 
-	enum COUNTER_IDs
-	{
-		COUNTER_DRAWCALL,
-		COUNTER_INDEXEDDRAWCALL,
-		COUNTER_DRAWCALL_SECOND,
-		COUNTER_INDEXEDDRAWCALL_SECOND,
-		COUNTER_DRAWCALL_LASTSECOND,
-		COUNTER_INDEXEDDRAWCALL_LASTSECOND,
-		COUNTER_OBJECTSDRAWN_FRAME,
-		COUNTER_OBJECTSDRAWN_LASTFRAME,
-		COUNTER_OBJECTSDRAWN_SECOND,
-		COUNTER_OBJECTSDRAWN_LASTSECOND,
-		COUNTER_FRAMECOUNTER,
-		COUNTER_AVERAGEANIMATIONTIME,
-		COUNTER_AVERAGEFRAMETIME,
-		COUNTER_AVERAGESORTTIME,
-		COUNTER_AVERAGEENTITYUPDATETIME,
-		COUNTER_AVERAGEPRESENT,
-		COUNTER_AVERAGETRANSFORMUPDATETIME,
-		COUNTER_ACC_ANIMTIME,
-		COUNTER_ACC_FRAMETIME,
-		COUNTER_ACC_SORTTIME,
-		COUNTER_ACC_ENTITYUPDATETIME,
-		COUNTER_ACC_PRESENT,
-		COUNTER_ACC_TRANSFORMUPDATETIME,
-		COUNTER_ENTITYUPDATETIME,
-		COUNTER_COUNT
-	};
+    class ProfilingStats
+    {
+    public:
 
+        std::vector<ThreadStats> Threads;
+    };
 
-	struct FrameStats
-	{
-		size_t	DrawCallsLastSecond	= 0;
-		size_t	DrawCallsLastFrame	= 0;
-		double	PresentTime			= 0.0;
-		double	AverageFPSTime		= 0.0;
-		double	AverageSortTime		= 0.0;
-		double	EntUpdateTime		= 0.0;
-	};
+    struct EngineProfiling
+    {
+        ThreadProfiler& GetThreadProfiler()
+        {
+            std::scoped_lock lock{ m };
+
+            threadProfilers.emplace_back(std::make_unique<ThreadProfiler>());
+
+            return *threadProfilers.back().get();
+        }
+
+        void BeginFrame()
+        {
+            for (auto& threadProfiler : threadProfilers)
+                threadProfiler->BeginFrame();
+        }
+
+        void EndFrame()
+        {
+            for (auto& threadProfiler : threadProfilers)
+                threadProfiler->EndFrame();
+
+            auto frameStats = std::make_shared<ProfilingStats>();
+
+            for (auto& threadProfiler : threadProfilers)
+                frameStats->Threads.push_back(threadProfiler->GetStats());
+
+            stats.push_back(std::move(frameStats));
+        }
+
+        std::shared_ptr<ProfilingStats>  GetStats()
+        {
+            if(stats.size())
+                return stats.back();
+            else
+                return {};
+        }
+
+        std::mutex m;
+
+        CircularBuffer<std::shared_ptr<ProfilingStats>>     stats;
+        std::vector<std::unique_ptr<ThreadProfiler>>        threadProfilers;
+    };
+
+    inline EngineProfiling profiler;
 
 	
-	struct EngineMemory_DEBUG
-	{
-		size_t		FrameCount;
-		FrameStats	LastSecond[60];
-		bool		PrintStats;
-
-		struct PROFILETIMINGS
-		{
-			LARGE_INTEGER	Begin;
-			LARGE_INTEGER	End;
-			LARGE_INTEGER	Freq;
-			LARGE_INTEGER	Elapsed;
-			size_t			Duration;
-		}Timings[PROFILE_IDs::PROFILE_ID_COUNT];
-
-		size_t Counters[COUNTER_IDs::COUNTER_COUNT];
-	};
-
-
     template<typename TY>
     FLEXKITAPI decltype(auto) _TimeBlock(TY function, const char* id)
     {
@@ -123,47 +214,40 @@ namespace FlexKit
         return function();
     }
 
+    inline thread_local ThreadProfiler& threadProfiler = profiler.GetThreadProfiler();
+
     class _ProfileFunction
     {
     public:
-
-        _ProfileFunction(const char* FunctionName) : id{ FunctionName } {}
+        _ProfileFunction(const char* FunctionName, uint64_t IN_profileID) :
+            function    { FunctionName },
+            profileID   { IN_profileID }
+        {
+            threadProfiler.Push(FunctionName, profileID, std::chrono::high_resolution_clock::now());
+        }
 
         ~_ProfileFunction()
         {
-            auto after = std::chrono::high_resolution_clock::now();
-
-            auto Duration = std::chrono::duration_cast<std::chrono::microseconds>(after - before);
-            FK_LOG_0("Function %s executed in %umicroseconds.", id, Duration.count());
+            threadProfiler.Pop(profileID, std::chrono::high_resolution_clock::now());
         }
 
     private:
         std::chrono::high_resolution_clock::time_point before = std::chrono::high_resolution_clock::now();
-        const char* id = "Unnamed function";
+        const char*     function = "Unnamed function";
+        const uint64_t  profileID;
     };
 
 #define PROFILELABEL_(a) MERGECOUNT_(PROFILE_ID_, a)
 #define PROFILELABEL PROFILELABEL_(__LINE__)
 
-#define ProfileFunction() const auto PROFILELABEL_ = _ProfileFunction(__FUNCTION__)
+#define _STRINGIFY(A) #A
+#define STRINGIFY(A) _STRINGIFY(A)
+
+#define GETLINEHASH(A) FlexKit::GenerateTypeGUID<sizeof(A)>(A)
+
+#define ProfileFunction() const auto PROFILELABEL_ = _ProfileFunction(__FUNCTION__, GETLINEHASH(STRINGIFY(__LINE__) __FUNCTION__))
 #define TIMEBLOCK(A, B) _TimeBlock([&]{ return A(); }, B)
-
-
-	FLEXKITAPI void		InitDebug		(EngineMemory_DEBUG* _ptr);
-	FLEXKITAPI void		SetDebugMemory	(EngineMemory_DEBUG* _ptr);
-	FLEXKITAPI void		LogFrameStats	(FrameStats Stats);
-	FLEXKITAPI void		AddCounter		(uint16_t Id, size_t N);
-	FLEXKITAPI void		IncCounter		(uint16_t Id);
-	FLEXKITAPI size_t	GetCounter		(uint16_t Id);
-	FLEXKITAPI void		ResetCounter	(uint16_t Id);
-	FLEXKITAPI void		ProfileBegin	(uint16_t Id);
-	FLEXKITAPI void		ProfileEnd		(uint16_t Id);
-	FLEXKITAPI size_t	GetDuration		(uint16_t Id);
-
-	FLEXKITAPI FrameStats	GetStats		();
-	FLEXKITAPI void			UpdateFPSStats	();
 }
-
 
 /************************************************************************************************/
 

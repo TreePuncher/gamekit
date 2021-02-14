@@ -48,10 +48,13 @@ namespace FlexKit
 	{
 		double T				= 0.0f;
 		double FPSTimer			= 0.0;
-		double dT				= 1.0 / 120;
+		double dT				= 1.0 / 60;
 
 		while (!Core.End && framework.subStates.size())
 		{
+            profiler.BeginFrame();
+
+
 			Core.Time.Before();
 
 			const auto frameStart = std::chrono::high_resolution_clock::now();
@@ -61,9 +64,13 @@ namespace FlexKit
 
 			const auto frameEnd         = std::chrono::high_resolution_clock::now();
 			const auto updateDuration   = frameEnd - frameStart;
-            const auto desiredFrameTime = std::chrono::microseconds(1000000) / 120;
+            const auto desiredFrameTime = std::chrono::microseconds(1000000) / 60;
 
-            framework.stats.frameTimes.push_back(double(std::chrono::duration_cast<std::chrono::microseconds>(updateDuration).count()) / 100000.0f);
+
+            framework.stats.frameTimes.push_back(
+                GameFramework::TimePoint{
+                    .T          = framework.runningTime,
+                    .duration   = double(std::chrono::duration_cast<std::chrono::microseconds>(updateDuration).count()) / 100000.0f});
 
             if (Core.FrameLock)// FPS Locked
             {
@@ -93,11 +100,14 @@ namespace FlexKit
                 }
             }
 
+            profiler.EndFrame();
+
 			const auto sleepEnd      = std::chrono::high_resolution_clock::now();
 			const auto totalDuration = std::chrono::duration_cast<std::chrono::nanoseconds>(sleepEnd - frameStart);
 
 			dT = double(totalDuration.count() ) / 1000000000.0;
             T += dT;
+            framework.runningTime += dT;
 
 			Core.Time.After();
 			Core.Time.Update();
