@@ -105,9 +105,6 @@ namespace FlexKit
 		StackAllocator	    LevelAllocator;
         ThreadSafeAllocator TempAllocatorMT;
 
-		EngineMemory_DEBUG	Debug;
-
-
 		auto GetBlockMemory() -> decltype(BlockAllocator)&	    { return BlockAllocator; }
 		auto GetLevelMemory() -> decltype(LevelAllocator)&	    { return LevelAllocator; }
 		auto GetTempMemory()  -> decltype(TempAllocator)&	    { return TempAllocator;  }
@@ -177,8 +174,6 @@ namespace FlexKit
 		StackAllocator&         GetLevelMemory()    { return  Memory->LevelAllocator; }
 		StackAllocator&         GetTempMemory()     { return  Memory->TempAllocator; }
 		ThreadSafeAllocator&    GetTempMemoryMT()   { return  Memory->GetTempMemoryMT(); }
-
-		EngineMemory_DEBUG* GetDebugMemory() { return &Memory->Debug; }
 	};
 
 

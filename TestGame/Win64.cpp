@@ -116,22 +116,17 @@ int main(int argc, char* argv[])
         FlexKit::FKApplication app{ allocator, Max(std::thread::hardware_concurrency(), 1u) - 1 };
         app.GetCore().FrameLock = true;
 
-        FK_LOG_INFO("Set initial PlayState state.");
+
         auto& base      = app.PushState<BaseState>(app, WH);
+
+#if 0
+        FK_LOG_INFO("Set initial PlayState state.");
         auto& net       = app.PushState<NetworkState>(base);
         auto& menuState = app.PushState<MenuState>(base, net);
 
-        /*
+#else
         switch (applicationMode)
         {
-        case ApplicationMode::Client:
-        {
-            auto& clientState   = app.PushState<GameClientState>(base, NetState, ClientGameDescription{ 1337, server.c_str(), name.c_str() });
-        }   break;
-        case ApplicationMode::Host:
-        {
-            auto& hostState = app.PushState<GameHostState>(base, NetState);
-        }   break;
         case ApplicationMode::TextureStreamTestMode:
         {
             StartTestState(app, base, TestScenes::ShadowTestScene);
@@ -147,7 +142,7 @@ int main(int argc, char* argv[])
         default:
             return -1;
         }
-        */
+#endif
 
         try
         {

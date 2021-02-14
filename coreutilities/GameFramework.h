@@ -125,10 +125,15 @@ namespace FlexKit
 		bool	drawPhysicsDebug;
 		bool	quit;
 
-
 		double runningTime			= 0.0;
 		double fixStepAccumulator	= 0.0;
 		double fixedTimeStep		= 1.0 / 60.0;
+
+        struct TimePoint
+        {
+            double T;
+            double duration;
+        };
 
 		struct FrameStats
 		{
@@ -138,9 +143,10 @@ namespace FlexKit
 			size_t fpsCounter;
 			size_t objectsDrawnLastFrame;
 
-            CircularBuffer<double, 120>  frameTimes;
-            CircularBuffer<double, 120>  shadingTimes;
-            CircularBuffer<double, 120>  feedbackTimes;
+            CircularBuffer<TimePoint, 120>  frameTimes;
+            CircularBuffer<TimePoint, 120>  shadingTimes;
+            CircularBuffer<TimePoint, 120>  feedbackTimes;
+            CircularBuffer<TimePoint, 120>  presentTimes;
 		}stats;
 
 		struct {

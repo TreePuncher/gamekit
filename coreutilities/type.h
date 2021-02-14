@@ -144,7 +144,8 @@ namespace FlexKit
 
 	};
 
-	inline uint32_t CRC32(byte* Buffer, size_t BufferSize = 0)
+    template<typename TY>
+    inline constexpr uint32_t CRC32(const TY Buffer, const size_t BufferSize = 0)
 	{
 		uint32_t CRC = 0xffffffff;
 		for (size_t I = 0; I < BufferSize; ++I)
@@ -156,11 +157,21 @@ namespace FlexKit
 
 #define GetCRC32(A) ~IDGen<sizeof(A)-2>::GetHash(A);
 
-	template<size_t SIZE>
-	constexpr Type_t GenerateTypeGUID(const char* A)
+	template<size_t SIZE, typename TY>
+	constexpr Type_t GenerateTypeGUID(const TY& A)
 	{
 		return ~IDGen<SIZE - 2>::GetHash2(A);
-		//return GetCRC32(A);
+        /*
+        //return GetCRC32(A);
+
+        uint32_t CRC = 0xffffffff;
+        for (size_t I = 0; I < SIZE; ++I)
+        {
+            CRC = (uint8_t)CRC ^ A[I] ^ (CRC >> 8);
+        }
+
+        return CRC;
+        */
 	}
 
 #define GetTypeGUID(A)	FlexKit::GenerateTypeGUID<sizeof(#A)>(#A)

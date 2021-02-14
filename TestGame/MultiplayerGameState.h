@@ -126,6 +126,9 @@ private:	/**********************************************************************
     bool                    drawFrameChart      = false;
     bool                    drawShadingPlot     = false;
     bool                    drawFeedbackPlot    = false;
+    bool                    drawPresentWaitTime = false;
+    bool                    drawProfiler        = false;
+
 
 
     size_t                      frameCounter = 0;

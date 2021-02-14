@@ -266,7 +266,7 @@ public:
         const size_t bufferSize     = 1024;
         uint32_t VRamUsage	        = (uint32_t)(core.RenderSystem._GetVidMemUsage() / MEGABYTE);
 		char* TempBuffer	        = (char*)core.GetTempMemory().malloc(bufferSize);
-		auto DrawTiming		        = float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
+		auto DrawTiming		        = 0.0f;
         const char* RTFeatureStr    = core.RenderSystem.GetRTFeatureLevel() == RenderSystem::AvailableFeatures::Raytracing::RT_FeatureLevel_NOTAVAILABLE ? "Not Available" : "Available";
 
         const auto shadingStats         = render.GetTimingValues();
