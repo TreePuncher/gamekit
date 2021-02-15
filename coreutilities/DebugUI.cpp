@@ -30,11 +30,11 @@ namespace FlexKit
 
 
 	    D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC	(D3D12_DEFAULT);
-        Rast_Desc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;// Maybe help with narrow lines?
+        Rast_Desc.CullMode      = D3D12_CULL_MODE_NONE;
 
 	    D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-	    Depth_Desc.DepthFunc = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
-	    Depth_Desc.DepthEnable = false;
+	    Depth_Desc.DepthFunc    = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+	    Depth_Desc.DepthEnable  = false;
 
 	    D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 		    PSO_Desc.pRootSignature        = renderSystem->Library.RSDefault;
@@ -276,6 +276,8 @@ namespace FlexKit
 		    [](auto& builder, DrawImGui_data& data) {},
 		    [drawData, renderTarget](DrawImGui_data& pass, FlexKit::ResourceHandler& frameResources, FlexKit::Context& ctx, auto& allocator)
 		    {
+                ctx.BeginEvent_DEBUG("ImGui");
+
 			    const auto cmdCount     = drawData->CmdListsCount;
 			    auto& cmdLists          = drawData->CmdLists;
 			    const ImVec2 clip_off   = drawData->DisplayPos;
@@ -350,6 +352,8 @@ namespace FlexKit
 					    ctx.DrawIndexed(cmd.ElemCount, cmd.IdxOffset, cmd.VtxOffset);
 				    }
 			    }
+
+                ctx.EndEvent_DEBUG();
 		    });
     }
 

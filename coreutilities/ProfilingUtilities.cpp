@@ -24,9 +24,167 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "ProfilingUtilities.h"
 
+#include <imgui.h>
 #include <Windows.h>
 #include <iostream>
 
 namespace FlexKit
 {
+
+    void EngineProfiling::DrawProfiler()
+    {
+        if (auto stats = pausedFrame ? pausedFrame : profiler.GetStats(); stats)
+        {
+            if (ImGui::Begin("Profiler"))
+            {
+                if (ImGui::Button("Pause"))
+                {
+                    if (pausedFrame)
+                        pausedFrame = nullptr;
+                    else
+                        pausedFrame = stats;
+                }
+
+                ImGui::SameLine();
+
+                if (ImGui::Button("Toggle Labels"))
+                    showLabels = !showLabels;
+
+                ImDrawList* draw_list       = ImGui::GetWindowDrawList();
+                const uint32_t threadCount  = (uint32_t)stats->Threads.size();
+                const float scrollY         = ImGui::GetScrollY();
+
+                ImGui::CalcItemWidth();
+                ImGui::GetFrameHeight();
+
+                if (stats)
+                {
+                    TimePoint begin = TimePoint::max();
+                    TimePoint end = TimePoint::min();
+
+                    for (auto& thread : stats->Threads)
+                    {
+                        for (const auto sample : thread.timePoints)
+                        {
+                            begin = min(sample.begin, begin);
+                            end = max(sample.end, end);
+                        }
+                    }
+
+                    const auto duration = end - begin;
+                    const double fDuration = double(duration.count()) / 100000000.0;
+
+                    const int   maxDepth    = 3;
+                    const float barWidth    = 25.0f;
+                    const float areaH       = stats->Threads.size() * maxDepth * barWidth;
+
+                    const ImVec2 windowPOS  = ImGui::GetWindowPos();
+                    const ImVec2 windowSize = ImGui::GetWindowSize();
+
+                    if(ImGui::BeginChild(GetCRCGUID("PROFILEGRAPH" + threadID++), ImVec2(windowSize.x, areaH)))
+                    {
+                        const auto contentBegin = ImGui::GetCursorScreenPos();
+
+                        uint32_t threadOffsetCounter = 0;
+
+                        for (size_t threadID = 0; threadID < stats->Threads.size(); threadID++)
+                        {
+                            auto& thread = stats->Threads[threadID];
+                            auto& profilings = thread.timePoints;
+
+                            if (!profilings.size())
+                                continue;
+
+                            ImColor color(1.0f, 1.0f, 1.0f, 1.0f);
+
+                            auto GetChild = [&](uint64_t childID) -> FrameTiming&
+                            {
+                                for (auto& timeSample : profilings)
+                                    if (timeSample.profileID == childID)
+                                        return timeSample;
+
+                                FK_ASSERT(0);
+                            };
+
+
+                            const float threadOffset = threadOffsetCounter++ * barWidth * maxDepth;
+
+
+                            const ImVec2 pMin = ImVec2{ contentBegin.x,                  contentBegin.y + barWidth + threadOffset - scrollY };
+                            const ImVec2 pMax = ImVec2{ contentBegin.x + windowSize.x,   contentBegin.y + maxDepth * barWidth + threadOffset - scrollY };
+
+                            const ImVec2 threadBoxMin = ImVec2{ contentBegin.x,                  contentBegin.y + threadOffset - scrollY };
+                            const ImVec2 threadBoxMax = ImVec2{ contentBegin.x + windowSize.x,   contentBegin.y + maxDepth * barWidth + threadOffset - scrollY };
+
+                            static const ImColor colors[] = {
+                                ImColor{11, 173, 181},
+                                ImColor{73, 127, 130},
+                            };
+
+                            draw_list->AddRectFilled(threadBoxMin, threadBoxMax, colors[threadOffsetCounter % 2], 0, 0);
+
+
+                            if (pMax.y > 0.0f)
+                            {
+                                auto VisitChildren =
+                                    [&](uint64_t nodeID, auto& _Self, uint32_t maxDepth, uint32_t currentDepth) -> void
+                                    {
+                                        FrameTiming& node = GetChild(nodeID);
+                                        // Render Current Profile Sample
+                                        const float fbegin  = node.GetRelativeTimePointBegin(begin, duration);
+                                        const float fend    = node.GetRelativeTimePointEnd(begin, duration);
+
+                                        const ImVec2 pMin = ImVec2{
+                                            contentBegin.x + windowSize.x * fbegin,
+                                            contentBegin.y + (currentDepth + 0) * barWidth + threadOffset - scrollY };
+
+                                        const ImVec2 pMax = ImVec2{
+                                            contentBegin.x + windowSize.x * fend,
+                                            contentBegin.y + (currentDepth + 1) * barWidth + threadOffset - scrollY };
+
+                                        if (pMax.y > 0.0f)
+                                        {
+                                            static const ImColor colors[] = {
+                                                {37, 232, 132},
+                                                {235, 96, 115},
+                                                {181, 11, 119},
+                                            };
+                                            draw_list->AddRectFilled(pMin, pMax, colors[currentDepth % 3], 0, 0);
+
+                                            const ImVec2 pTxt = ImVec2{
+                                                contentBegin.x + windowSize.x * fbegin,
+                                                contentBegin.y + currentDepth * barWidth + threadOffset - scrollY };
+
+                                            const ImColor textColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+                                            // Visit Child Samples
+                                            if (currentDepth + 1 < maxDepth)
+                                                for (uint64_t childID : node.children)
+                                                    _Self(childID, _Self, maxDepth, currentDepth + 1);
+
+                                            if(showLabels || ImGui::IsMouseHoveringRect(pMin, pMax, true))
+                                                draw_list->AddText(pTxt, textColor, node.Function);
+                                        }
+                                    };
+
+                                for (auto profile : profilings)
+                                    if (profile.parentID == uint64_t(-1))
+                                        VisitChildren(profile.profileID, VisitChildren, maxDepth, 0);
+                            }
+                        }
+
+                        ImGui::EndChild();
+                    }
+                }
+                else
+                {
+                    ImGui::Text("No Profiling Stats Available!");
+                }
+            }
+
+            ImGui::End();
+        }
+    }
+
+
 }

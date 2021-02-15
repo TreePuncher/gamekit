@@ -278,7 +278,7 @@ void LobbyState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double d
     for (size_t I = 0; I < playerList.size(); I++)
         players[I] = playerList[I].playerName.c_str();
 
-    ImGui::ListBox("Players", &selected, players, playerList.size());
+    ImGui::ListBox("Players", &selected, players, (int)playerList.size());
 
     // Chat
     ImGui::InputTextMultiline("Chat Log", const_cast<char*>(chatHistory.c_str()), chatHistory.size(), ImVec2(), ImGuiInputTextFlags_ReadOnly);

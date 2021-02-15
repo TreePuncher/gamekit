@@ -306,13 +306,13 @@ namespace FlexKit::ResourceBuilder
 
                 if (node.translation.size())
                     for (size_t I = 0; I < 3; I++)
-                        newNode.position[I] = node.translation[I];
+                        newNode.position[I] = (float)node.translation[I];
                 else
                     newNode.position = float3{ 0, 0, 0 };
 
                 if (node.rotation.size())
                     for (size_t I = 0; I < 4; I++)
-                        newNode.Q[I] = node.rotation[I];
+                        newNode.Q[I] = (float)node.rotation[I];
                 else
                     newNode.Q = Quaternion{ 0, 0, 0, 1 };
 

@@ -202,7 +202,7 @@ void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispa
             {
                 double Y_values[120];
                 double X_values[120];
-                size_t valueCount = 0;
+                int valueCount = 0;
                 for (auto time : framework.stats.frameTimes)
                 {
                     Y_values[valueCount] = time.duration;
@@ -217,7 +217,7 @@ void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispa
             {
                 double Y_values[120];
                 double X_values[120];
-                size_t valueCount = 0;
+                int valueCount = 0;
                 for (auto time : framework.stats.shadingTimes)
                 {
                     Y_values[valueCount] = time.duration;
@@ -232,7 +232,7 @@ void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispa
             {
                 double Y_values[120];
                 double X_values[120];
-                size_t valueCount = 0;
+                int valueCount = 0;
                 for (auto time : framework.stats.feedbackTimes)
                 {
                     Y_values[valueCount] = time.duration;
@@ -247,7 +247,7 @@ void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispa
             {
                 double Y_values[120];
                 double X_values[120];
-                size_t valueCount = 0;
+                int valueCount = 0;
                 for (auto time : framework.stats.presentTimes)
                 {
                     Y_values[valueCount] = time.duration;
@@ -266,77 +266,8 @@ void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispa
     if(showDebugStats)
         base.DEBUG_PrintDebugStats(core);
 
-    if (auto stats = profiler.GetStats(); stats && drawProfiler)
-    {
-        if(ImGui::Begin("Profiler"))
-        {
-            ImDrawList* draw_list       = ImGui::GetWindowDrawList();
-            const uint32_t threadCount  = stats->Threads.size();
-
-            ImVec2 windowPOS    = ImGui::GetWindowPos();
-            ImVec2 windowSize   = ImGui::GetWindowSize();
-
-            if (stats)
-            {
-                uint32_t threadID = 0;
-                //for (auto& thread : stats->Threads) {
-                    auto& thread        = stats->Threads.front();
-                    auto& profilings    = thread.timePoints;
-                    auto duration       = profilings.front().GetDuration();
-                    auto start          = profilings.front().begin;
-
-                    ImGui::BeginChild(GetCRCGUID("PROFILEGRAPH" + threadID++));
-                    ImColor color(1.0f, 1.0f, 1.0f, 1.0f);
-
-                    auto GetChild = [&](uint64_t childID) -> FrameTiming&
-                    {
-                        for (auto& timeSample : profilings)
-                            if (timeSample.profileID == childID)
-                                return timeSample;
-
-                        FK_ASSERT(0);
-                    };
-
-                    auto VisitChildren =
-                        [&](uint64_t nodeID, auto& _Self, uint32_t maxDepth, uint32_t currentDepth) -> void
-                        {
-                            FrameTiming& node = GetChild(nodeID);
-                            // Render Current Profile Sample
-                            float begin  = node.GetRelativeTimePointBegin(start, duration);
-                            float end    = node.GetRelativeTimePointEnd(start, duration);
-
-                            ImVec2 pMin = ImVec2{ windowPOS.x + windowSize.x * begin,    windowPOS.y + currentDepth * 50.0f + 30};
-                            ImVec2 pMax = ImVec2{ windowPOS.x + windowSize.x * end,      windowPOS.y + currentDepth * 50.0f + 80.0f };
-                            ImColor color       (1.0f, 1.0f, 1.0f, 1.0f);
-                            draw_list->AddRectFilled(pMin, pMax, color, 0, 0);
-
-                            ImVec2 pTxt = ImVec2{ windowPOS.x + windowSize.x * begin + 20,    windowPOS.y + currentDepth * 50.0f + 30};
-                            ImColor textColor(0.0f, 0.0f, 0.0f, 1.0f);
-
-
-
-                            // Visit Child Samples
-                            if(currentDepth + 1 < maxDepth)
-                                for(uint64_t childID : node.children)
-                                    _Self(childID, _Self, maxDepth, currentDepth + 1);
-
-                            draw_list->AddText(pTxt, textColor, node.Function);
-                        };
-
-                    VisitChildren(profilings.front().profileID, VisitChildren, 3, 0);
-
-                    ImGui::EndChild();
-                //}
-            }
-            else
-            {
-                ImGui::Text("No Profiling Stats Available!");
-            }
-
-            ImGui::End();
-        }
-    }
-
+    if(drawProfiler)
+        profiler.DrawProfiler();
 
     ImGui::Render();
 
@@ -354,12 +285,6 @@ void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispa
 
                 T += dT;
             });
-
-    
-    if (frameCounter == 805 && false) {
-        core.RenderSystem.DEBUG_AttachPIX();
-        core.RenderSystem.DEBUG_BeginPixCapture();
-    }
 }
 
 

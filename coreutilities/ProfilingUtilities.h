@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "buildsettings.h"
 #include "containers.h"
+#include "type.h"
 
 #include <chrono>
 #include <mutex>
@@ -118,7 +119,7 @@ namespace FlexKit
                 parent.children.push_back(Id);
             }
 
-            FrameTiming timing{
+            FrameTiming timing{ 
                 .Function   = func,
                 .profileID  = Id,
                 .parentID   = parentID,
@@ -132,7 +133,8 @@ namespace FlexKit
         {
             auto& frames = activeFrames;
 
-            FK_ASSERT(Id == frames.back().profileID);
+            if(!frames.size() || Id != frames.back().profileID) // Discard, frame changed
+                return;
 
             auto currentFrame = frames.back();
             frames.pop_back();
@@ -141,8 +143,8 @@ namespace FlexKit
             completedFrames.push_back(currentFrame);
         }
 
-        std::vector<FrameTiming> activeFrames;
-        std::vector<FrameTiming> completedFrames;
+        std::vector<FrameTiming> activeFrames{ 128 };
+        std::vector<FrameTiming> completedFrames{ 128 };
 	};
 
 
@@ -191,8 +193,13 @@ namespace FlexKit
                 return {};
         }
 
+        void DrawProfiler();
+
         std::mutex m;
 
+        bool showLabels = true;
+
+        std::shared_ptr<ProfilingStats>                     pausedFrame;
         CircularBuffer<std::shared_ptr<ProfilingStats>>     stats;
         std::vector<std::unique_ptr<ThreadProfiler>>        threadProfilers;
     };
