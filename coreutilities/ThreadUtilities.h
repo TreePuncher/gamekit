@@ -33,6 +33,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "buildsettings.h"
 #include "containers.h"
 #include "memoryutilities.h"
+#include "ProfilingUtilities.h"
+
 #include <array>
 #include <atomic>
 #include <memory>
@@ -421,6 +423,8 @@ namespace FlexKit
 
 	FLEXKITAPI inline void RunTask(iWork& work)
 	{
+        ProfileFunction();
+
         std::unique_ptr<StackAllocator> allocator;
 
         if (localAllocators.empty())

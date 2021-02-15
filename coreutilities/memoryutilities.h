@@ -1017,7 +1017,7 @@ namespace FlexKit
 			if (counter_ref == 0)
 			{
 				deleter(&reference);
-				counter_ref.store(-INFINITY);
+				counter_ref.store((int)-1);
 				allocator->release(&counter_ref);
 			}
 		}

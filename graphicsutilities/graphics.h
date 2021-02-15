@@ -3577,7 +3577,7 @@ private:
         bool                DEBUG_EndPixCapture();
 
 #if USING(PIX)
-        IDXGraphicsAnalysis* pix;
+        IDXGraphicsAnalysis* pix = nullptr;
 #endif
 
 #if USING(AFTERMATH)
