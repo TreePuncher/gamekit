@@ -1286,10 +1286,10 @@ namespace FlexKit
 			}
 		};
 
-		void ProcessNode		(FrameGraphNode* N, FrameResources& Resources, Vector<FrameGraphNodeWork>& taskList, iAllocator& allocator);
+		void        ProcessNode		(FrameGraphNode* N, FrameResources& Resources, Vector<FrameGraphNodeWork>& taskList, iAllocator& allocator);
 		
-		void UpdateFrameGraph	(RenderSystem* RS, iAllocator* Temp);// 
-		void SubmitFrameGraph	(UpdateDispatcher& dispatcher, RenderSystem* RS, iAllocator* persistentAllocator);
+		void        UpdateFrameGraph(RenderSystem* RS, iAllocator* Temp);// 
+		UpdateTask& SubmitFrameGraph(UpdateDispatcher& dispatcher, RenderSystem* RS, iAllocator* persistentAllocator);
 
 		RenderSystem& GetRenderSystem() { return Resources.renderSystem; }
 

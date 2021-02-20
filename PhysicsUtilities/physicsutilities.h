@@ -817,6 +817,14 @@ namespace FlexKit
     using CameraControllerHandle                        = Handle_t<32, CameraControllerComponentID>;
 
 
+    struct ThirdPersonCameraFrameState
+    {
+        float3 Position;
+        float  yaw;
+        float  pitch;
+        float  roll;
+    };
+
     struct ThirdPersonCamera
     {
         ThirdPersonCamera(
@@ -838,9 +846,26 @@ namespace FlexKit
 
         ThirdPersonCamera(const ThirdPersonCamera&) = default;
 
+        struct KeyStates
+        {
+            bool forward  = false;
+            bool backward = false;
+            bool left     = false;
+            bool right    = false;
+            bool up       = false;
+            bool down     = false;
+
+            bool KeyPressed() const
+            {
+                return forward | backward | left | right | up | down;
+            }
+        };
+
         Quaternion	GetOrientation()     const;
         float3      GetForwardVector()   const;
         float3      GetRightVector()     const;
+
+        void SetRotation(const float3 xyz);
 
         void Rotate (const float3 xyz);
         void Yaw    (const float theta);
@@ -852,6 +877,18 @@ namespace FlexKit
 
 
         void Update(const float2 mouseInput, const double dt);
+        void Update(const float2 mouseInput, const KeyStates& keyState, const double dt);
+
+        ThirdPersonCameraFrameState GetFrameState() const
+        {
+            ThirdPersonCameraFrameState out;
+
+            out.pitch   = pitch;
+            out.yaw     = yaw;
+            out.roll    = roll;
+
+            return out;
+        }
 
         CharacterControllerHandle   controller    = InvalidHandle_t;
         CameraHandle                camera        = InvalidHandle_t;
@@ -861,25 +898,16 @@ namespace FlexKit
         NodeHandle pitchNode    = InvalidHandle_t;
         NodeHandle rollNode     = InvalidHandle_t;
 
+        float           pitch   = 0;
+        float           roll    = 0;
+        float           yaw     = 0;
+
         float3          velocity     = 0;
         float           acceleration = 500;
         float           drag         = 5.0;
         float			moveRate     = 100;
 
-        struct KeyStates
-        {
-            bool forward  = false;
-            bool backward = false;
-            bool left     = false;
-            bool right    = false;
-            bool up       = false;
-            bool down     = false;
-
-            bool KeyPressed()
-            {
-                return forward | backward | left | right | up | down;
-            }
-        }keyStates;
+        KeyStates keyStates;
     };
 
 
@@ -895,6 +923,8 @@ namespace FlexKit
 
     float3          GetCameraControllerHeadPosition(GameObject& GO);
     float3          GetCameraControllerForwardVector(GameObject& GO);
+
+    Quaternion      GetCameraControllerOrientation(GameObject& GO);
 
     void            SetCameraControllerPosition(GameObject& GO, const float3 pos);
 

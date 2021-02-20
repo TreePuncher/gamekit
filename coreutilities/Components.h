@@ -447,7 +447,6 @@ namespace FlexKit
     {
         static void OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
         {
-            std::cout << "THIS IS A TEST!\n";
         }
     };
 
@@ -483,6 +482,14 @@ namespace FlexKit
 
 			return handle;
 		}
+
+        TY_Handle Create()
+        {
+            auto handle = handles.GetNewHandle();
+            handles[handle] = (index_t)elements.push_back({ handle, {} });
+
+            return handle;
+        }
 
 
         void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
@@ -898,6 +905,7 @@ namespace FlexKit
 
 		void Execute()
 		{
+            ProfileFunction();
 			WorkBarrier barrier{ *threads, allocator };
 
             for (auto& node : nodes)

@@ -637,6 +637,8 @@ namespace FlexKit
 
     void FrameGraph::_SubmitFrameGraph(iAllocator& persistentAllocator)
     {
+        ProfileFunction();
+
         Vector<FrameGraphNodeWork> taskList{ &persistentAllocator };
 
         for (auto& N : Nodes)
@@ -651,7 +653,7 @@ namespace FlexKit
             Vector<FrameGraphNodeWork>::Iterator end;
         };
 
-        static const size_t workerCount = 1;
+        static const size_t workerCount = Min(taskList.size(), 3);
         static_vector<SubmissionWorkRange> workList;
         for (size_t I = 0; I < workerCount; I++)
         {
@@ -672,6 +674,8 @@ namespace FlexKit
 
             void Run(iAllocator& tempAllocator) override
             {
+                ProfileFunction();
+
                 std::for_each(work.begin, work.end,
                     [&](auto& item)
                     {
@@ -720,7 +724,7 @@ namespace FlexKit
 	}
 
 
-	void FrameGraph::SubmitFrameGraph(UpdateDispatcher& dispatcher, RenderSystem* renderSystem, iAllocator* persistentAllocator)
+	UpdateTask& FrameGraph::SubmitFrameGraph(UpdateDispatcher& dispatcher, RenderSystem* renderSystem, iAllocator* persistentAllocator)
 	{
 		struct SubmitData
 		{
@@ -734,7 +738,7 @@ namespace FlexKit
 		std::sort(dataDependencies.begin(), dataDependencies.end());
 		dataDependencies.erase(std::unique(dataDependencies.begin(), dataDependencies.end()), dataDependencies.end());
 
-		dispatcher.Add<SubmitData>(
+		return dispatcher.Add<SubmitData>(
 			[&](auto& builder, SubmitData& data)
 			{
 				FK_LOG_9("Frame Graph Single-Thread Section Begin");
@@ -750,6 +754,7 @@ namespace FlexKit
 			},
 			[=](SubmitData& data, iAllocator& threadAllocator)
 			{
+                ProfileFunction();
 				data.frameGraph->_SubmitFrameGraph(*persistentAllocator);
 			});
 	}

@@ -9,7 +9,7 @@ using FlexKit::GameFramework;
 /************************************************************************************************/
 
 
-void GameHostLobbyState::Update(EngineCore& core, UpdateDispatcher& Dispatcher, double dT)
+UpdateTask* GameHostLobbyState::Update(EngineCore& core, UpdateDispatcher& Dispatcher, double dT)
 {
 	for (auto player : playerLobbyState)
 	{
@@ -27,13 +27,15 @@ void GameHostLobbyState::Update(EngineCore& core, UpdateDispatcher& Dispatcher, 
 	//windowInput.LeftMouseButtonPressed  = framework.MouseState.LMB_Pressed;
 
 	screen.Update(dT, windowInput, base.renderWindow.GetPixelSize(), core.GetTempMemory());
+
+    return nullptr;
 }
 
 
 /************************************************************************************************/
 
 
-void GameHostLobbyState::Draw(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph)
+UpdateTask* GameHostLobbyState::Draw(UpdateTask*, EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph)
 {
 	auto currentRenderTarget = base.renderWindow.GetBackBuffer();
 
@@ -64,15 +66,17 @@ void GameHostLobbyState::Draw(EngineCore& core, UpdateDispatcher& Dispatcher, do
         framework.DrawDebugHUD(dT, host.base.vertexBuffer, base.renderWindow.GetBackBuffer(), frameGraph);
 
     PresentBackBuffer(frameGraph, base.renderWindow);
+
+    return nullptr;
 }
 
 
 /************************************************************************************************/
 
 
-void GameHostLobbyState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+void GameHostLobbyState::PostDrawUpdate(EngineCore& core, double dT)
 {
-    base.PostDrawUpdate(core, dispatcher, dT);
+    base.PostDrawUpdate(core, dT);
 }
 
 
@@ -191,15 +195,15 @@ GameHostLobbyState::GameHostLobbyState(
 				auto request				= (RequestPlayerListPacket*)(packetContents);
 				auto packetSize				= PlayerListPacket::GetPacketSize(host.players.size() - 1);
 				auto packetBuffer			= framework.core.GetTempMemory()._aligned_malloc(packetSize);
-                PlayerListPacket& newPacket = *new(packetBuffer) PlayerListPacket{ request->playerID, host.players.size() - 1 };
+                PlayerListPacket& newPacket = *new(packetBuffer) PlayerListPacket{ host.players.size() - 1 };
 
 				size_t idx = 0;
 				for (auto& playerState : host.players)
 				{
-					if (playerState.ID == newPacket.playerID)
+					if (playerState.ID != request->playerID)
 						continue;
 
-					newPacket.Players[idx].playerID	= playerState.ID;
+					newPacket.Players[idx].ID	= playerState.ID;
 
 					if (playerState.local)
 						newPacket.Players[idx].ready = localHostReady;
@@ -211,9 +215,9 @@ GameHostLobbyState::GameHostLobbyState(
 					}
 
 					strncpy(
-						newPacket.Players[idx].playerName, 
+						newPacket.Players[idx].name, 
 						playerState.name,
-						sizeof(PlayerListPacket::entry::playerName));
+						sizeof(PlayerListPacket::entry::name));
 
 					idx++;
 				}
@@ -259,7 +263,8 @@ void GameHostLobbyState::AddLocalPlayer(const MultiplayerPlayerID_t ID)
 
 void GameHostLobbyState::HandleNewConnection(const ConnectionHandle handle)
 {
-	auto newID = host.GetNewID();
+    /*
+	auto newID = host.();
 
 	RequestClientDataPacket packet(newID);
 
@@ -277,6 +282,7 @@ void GameHostLobbyState::HandleNewConnection(const ConnectionHandle handle)
 					false});
     
     host.network.Send(packet.header, handle);
+    */
 }
 
 

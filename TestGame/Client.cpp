@@ -92,11 +92,11 @@ ClientLobbyState::ClientLobbyState(
 
 				for (size_t idx = 0; idx < playerCount; ++idx)
 				{
-					auto nameStr	= playerList->Players[idx].playerName;
-					auto id			= playerList->Players[idx].playerID;
+					auto nameStr	= playerList->Players[idx].name;
+					auto id			= playerList->Players[idx].ID;
 					auto ready		= playerList->Players[idx].ready;
 
-					client.remotePlayers.push_back({ playerList->Players[idx].playerID });
+					client.remotePlayers.push_back({ playerList->Players[idx].ID });
 					strncpy(client.remotePlayers.back().name, nameStr, sizeof(RemotePlayer::name));
 
 					screen.CreateRow		(id);
@@ -161,7 +161,7 @@ bool ClientLobbyState::EventHandler(FlexKit::Event evt)
 /************************************************************************************************/
 
 
-void ClientLobbyState::Update(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT)
+UpdateTask* ClientLobbyState::Update(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT)
 {
 	if (refreshCounter++ > 10)
 	{
@@ -170,13 +170,15 @@ void ClientLobbyState::Update(EngineCore& Engine, UpdateDispatcher& Dispatcher, 
 		RequestPlayerListPacket packet{ client.localID };
 		client.network.Send(packet.Header, client.server);
 	}
+
+    return nullptr;
 }
 
 
 /************************************************************************************************/
 
 
-void ClientLobbyState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
+UpdateTask* ClientLobbyState::Draw(UpdateTask*, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
     auto currentRenderTarget = base.renderWindow.GetBackBuffer();
 
@@ -207,15 +209,17 @@ void ClientLobbyState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
         framework.DrawDebugHUD(dT, client.base.vertexBuffer, base.renderWindow.GetBackBuffer(), frameGraph);
 
     PresentBackBuffer(frameGraph, base.renderWindow);
+
+    return nullptr;
 }
 
 
 /************************************************************************************************/
 
 
-void ClientLobbyState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+void ClientLobbyState::PostDrawUpdate(EngineCore& core, double dT)
 {
-    base.PostDrawUpdate(core, dispatcher, dT);
+    base.PostDrawUpdate(core, dT);
 }
 
 

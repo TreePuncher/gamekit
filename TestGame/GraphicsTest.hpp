@@ -59,19 +59,12 @@ public:
         framework.GetRenderSystem().QueuePSOLoad(ACCState);
     }
 
-    void Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) override
+    UpdateTask* Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) override
     {
+        return nullptr;
     }
 
-    void DebugDraw(EngineCore& core, UpdateDispatcher& dispatcher, double dT) override
-    {
-    }
-
-    void PreDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT) override
-    {
-    }
-
-    void Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) override
+    UpdateTask* Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) override
     {
         ClearBackBuffer(frameGraph, base.renderWindow.GetBackBuffer(), 0.0f);
         ClearVertexBuffer(frameGraph, base.vertexBuffer);
@@ -137,11 +130,13 @@ public:
             });
 
         PresentBackBuffer(frameGraph, base.renderWindow);
+
+        return nullptr;
     }
 
-    void PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT) override
+    void PostDrawUpdate(EngineCore& core, double dT) override
     {
-        base.PostDrawUpdate(core, dispatcher, dT);
+        base.PostDrawUpdate(core, dT);
     }
 
     bool EventHandler(Event evt) override

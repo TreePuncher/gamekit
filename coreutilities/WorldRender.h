@@ -662,7 +662,7 @@ namespace FlexKit
 
             UAVPool                     { renderSystem, 64 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
             UAVTexturePool              { renderSystem, 64 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent },
-            RTPool                      { renderSystem, 512 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::RenderTarget, persistent },
+            RTPool                      { renderSystem, 256 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::RenderTarget, persistent },
 
             timeStats                   { renderSystem.CreateTimeStampQuery(256) },
             timingReadBack              { renderSystem.CreateReadBackBuffer(512) },

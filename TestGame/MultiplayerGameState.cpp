@@ -47,34 +47,27 @@ GameState::~GameState()
 /************************************************************************************************/
 
 
-void GameState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+UpdateTask* GameState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
-	base.Update(core, dispatcher, dT);
+	return base.Update(core, dispatcher, dT);
 }
 
 
 /************************************************************************************************/
 
 
-void GameState::PreDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+UpdateTask* GameState::Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
+    return nullptr;
 }
 
 
 /************************************************************************************************/
 
 
-void GameState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
+void GameState::PostDrawUpdate(EngineCore& core, double dT)
 {
-}
-
-
-/************************************************************************************************/
-
-
-void GameState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
-{
-	base.PostDrawUpdate(core, dispatcher, dT);
+	base.PostDrawUpdate(core, dT);
 }
 
 
@@ -112,7 +105,7 @@ LocalPlayerState::LocalPlayerState(
 /************************************************************************************************/
 
 
-void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
+UpdateTask* LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
     ProfileFunction();
 
@@ -203,10 +196,12 @@ void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispa
                 double Y_values[120];
                 double X_values[120];
                 int valueCount = 0;
+
                 for (auto time : framework.stats.frameTimes)
                 {
                     Y_values[valueCount] = time.duration;
-                    X_values[valueCount] = valueCount / 120.0;
+                    X_values[valueCount] = valueCount;
+
                     valueCount++;
                 }
 
@@ -218,10 +213,12 @@ void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispa
                 double Y_values[120];
                 double X_values[120];
                 int valueCount = 0;
+
                 for (auto time : framework.stats.shadingTimes)
                 {
                     Y_values[valueCount] = time.duration;
-                    X_values[valueCount] = valueCount / 120.0;
+                    X_values[valueCount] = valueCount;
+
                     valueCount++;
                 }
 
@@ -233,10 +230,12 @@ void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispa
                 double Y_values[120];
                 double X_values[120];
                 int valueCount = 0;
+
                 for (auto time : framework.stats.feedbackTimes)
                 {
                     Y_values[valueCount] = time.duration;
-                    X_values[valueCount] = valueCount / 120.0;
+                    X_values[valueCount] = valueCount;
+
                     valueCount++;
                 }
 
@@ -248,10 +247,12 @@ void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispa
                 double Y_values[120];
                 double X_values[120];
                 int valueCount = 0;
+
                 for (auto time : framework.stats.presentTimes)
                 {
                     Y_values[valueCount] = time.duration;
-                    X_values[valueCount] = valueCount / 120.0;
+                    X_values[valueCount] = valueCount;
+
                     valueCount++;
                 }
 
@@ -267,7 +268,7 @@ void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispa
         base.DEBUG_PrintDebugStats(core);
 
     if(drawProfiler)
-        profiler.DrawProfiler();
+        profiler.DrawProfiler(core.GetTempMemory());
 
     ImGui::Render();
 
@@ -285,21 +286,15 @@ void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispa
 
                 T += dT;
             });
+
+    return nullptr;
 }
 
 
 /************************************************************************************************/
 
 
-void LocalPlayerState::PreDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatcher, double dT)
-{
-}
-
-
-/************************************************************************************************/
-
-
-void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
+UpdateTask* LocalPlayerState::Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
     ProfileFunction();
 
@@ -389,8 +384,8 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 
 		    T += dT;
 
-		    if (!Skeleton)
-			    return;
+            if (!Skeleton)
+                return nullptr;
 
 		    LineSegments lines = DEBUG_DrawPoseState(*pose, node, core.GetTempMemory());
 		    //LineSegments lines = BuildSkeletonLineSet(Skeleton, node, core.GetTempMemory());
@@ -448,15 +443,19 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
         });
 
 	PresentBackBuffer(frameGraph, base.renderWindow);
+
+    return nullptr;
 }
 
 
 /************************************************************************************************/
 
 
-void LocalPlayerState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+void LocalPlayerState::PostDrawUpdate(EngineCore& core, double dT)
 {
-	base.PostDrawUpdate(core, dispatcher, dT);
+    ProfileFunction();
+
+	base.PostDrawUpdate(core, dT);
 }
 
 
@@ -465,6 +464,8 @@ void LocalPlayerState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispat
 
 bool LocalPlayerState::EventHandler(Event evt)
 {
+    ProfileFunction();
+
 	bool handled = eventMap.Handle(evt, [&](auto& evt)
 		{
 			HandleEvents(thirdPersonCamera, evt);

@@ -662,6 +662,26 @@ namespace FlexKit
     }
 
 
+    /************************************************************************************************/
+
+
+    Quaternion GetCameraControllerOrientation(GameObject& GO)
+    {
+        return Apply(GO,
+            [](CameraControllerView& cameraController)
+            {
+                return GetOrientation(cameraController.GetData().cameraNode);
+            },
+            []
+            {
+                return Quaternion(0, 0, 0, 1);
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
     void SetCameraControllerPosition(GameObject& GO, const float3 pos)
     {
         Apply(GO, [&](CameraControllerView& cameraController)
@@ -780,6 +800,27 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    void ThirdPersonCamera::SetRotation(const float3 xyz)
+    {
+
+        if (xyz[0] != 0.0f)
+            FlexKit::SetOrientationL(pitchNode, Quaternion{ RadToDegree(xyz[0]), 0, 0 });
+        
+
+        if (xyz[1] != 0.0f)
+            FlexKit::SetOrientationL(yawNode, Quaternion{ 0, RadToDegree(xyz[1]), 0 });
+
+
+        if (xyz[2] != 0.0f)
+            FlexKit::SetOrientationL(pitchNode, Quaternion{ 0, 0, RadToDegree(xyz[2]) });
+
+        CameraComponent::GetComponent().MarkDirty(camera);
+    }
+
+
+    /************************************************************************************************/
+
+
     void ThirdPersonCamera::Rotate(float3 xyz)
     {
         if (xyz[0] != 0.0f)
@@ -849,6 +890,12 @@ namespace FlexKit
 
     void ThirdPersonCamera::Update(const float2 mouseInput, const double dt)
     {
+        Update(mouseInput, keyStates, dt);
+    }
+
+
+    void ThirdPersonCamera::Update(const float2 mouseInput, const ThirdPersonCamera::KeyStates& keyStates, const double dt)
+    {
         auto& controllerImpl = CharacterControllerComponent::GetComponent()[controller];
 
         controllerImpl.updateTimer += dt;
@@ -859,8 +906,13 @@ namespace FlexKit
         {
             controllerImpl.updateTimer -= deltaTime;
 
-            Yaw(controllerImpl.mouseMoved[0] * deltaTime * pi * 50);
-            Pitch(controllerImpl.mouseMoved[1] * deltaTime * pi * 50);
+
+            yaw     += controllerImpl.mouseMoved[0] * deltaTime * pi * 50;
+            pitch   += controllerImpl.mouseMoved[1] * deltaTime * pi * 50;
+
+            SetRotation({ pitch, yaw, roll });
+            //Yaw(controllerImpl.mouseMoved[0] * deltaTime * pi * 50);
+            //Pitch(controllerImpl.mouseMoved[1] * deltaTime * pi * 50);
 
             controllerImpl.mouseMoved = { 0.0f, 0.0f };
 
@@ -923,6 +975,7 @@ namespace FlexKit
                 velocity = 0;
         }
     }
+
 
 
 	/************************************************************************************************/

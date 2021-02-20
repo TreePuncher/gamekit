@@ -238,9 +238,9 @@ public:
 	/************************************************************************************************/
 
 
-    void Startup(short port);
-    void Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) final override;
-    void Broadcast(const UserPacketHeader& packet);
+    void        Startup(short port);
+    UpdateTask* Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) final override;
+    void        Broadcast(const UserPacketHeader& packet);
 
 
     void Send           (const UserPacketHeader& packet, ConnectionHandle destination);
@@ -248,6 +248,7 @@ public:
     void PopHandler     ();
 
     void Connect            (const char* address, uint16_t port);
+    void Disconnect         ();
     void CloseConnection    (ConnectionHandle handle);
 
 

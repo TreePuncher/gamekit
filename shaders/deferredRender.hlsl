@@ -250,9 +250,9 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     //else
         //return pow(Colors[clusterKey % 8], 1.0f);
         //return pow(Colors[GetSliceIdx(-positionVS.z) % 6], 1.0f);
-        return (float(localLightCount) / float(lightCount));
+        //return (float(localLightCount) / float(lightCount));
         //return float4(-positionVS.z, -positionVS.z, -positionVS.z, 1);
-        //color = float4(N / 2.0f + 0.5f);
+        return color = float4(N / 2.0f + 0.5f);
     color = Albedo;
 #endif
 	return pow(color, 2.1f);

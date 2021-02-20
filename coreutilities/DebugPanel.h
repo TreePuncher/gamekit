@@ -34,10 +34,9 @@ namespace FlexKit
 		void IncrementRecallIndex();
 		void DecrementRecallIndex();
 
-		void Update			    (EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) override;
-		void DebugDraw			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) override;
-		void Draw				(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) override;
-		void PostDrawUpdate 	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) override;
+		UpdateTask* Update		    (                    EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) override;
+		UpdateTask* Draw		    (UpdateTask* update, EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) override;
+		void        PostDrawUpdate 	(EngineCore& Engine, double dT) override;
 
 		bool EventHandler		(Event evt)	override;
 	};

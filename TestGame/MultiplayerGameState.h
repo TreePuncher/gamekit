@@ -79,10 +79,10 @@ public:
     GameState(const GameState&) = delete;
     GameState& operator =	(const GameState&) = delete;
 
-    void Update         (EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final;
-    void PreDrawUpdate  (EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final;
-    void Draw           (EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final;
-    void PostDrawUpdate (EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final;
+    UpdateTask* Update          (EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final;
+    UpdateTask* Draw            (UpdateTask*, EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final;
+
+    void        PostDrawUpdate  (EngineCore& Engine, double dT) final;
 
     GraphicScene	    scene;
     PhysXSceneHandle    pScene;
@@ -104,11 +104,10 @@ public:
         framework.core.GetBlockMemory().release_allocation(thirdPersonCamera);
     }
 
-    void Update         (EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
-    void PreDrawUpdate  (EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
-    void Draw           (EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) final override;
-    void PostDrawUpdate (EngineCore& core, UpdateDispatcher& dispatcher, double dT) final override;
-    bool EventHandler   (Event evt) final override;
+    UpdateTask* Update         (EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
+    UpdateTask* Draw           (UpdateTask*, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) final override;
+    void        PostDrawUpdate (EngineCore& core, double dT) final override;
+    bool        EventHandler   (Event evt) final override;
 
 
 private:	/************************************************************************************************/
@@ -128,7 +127,6 @@ private:	/**********************************************************************
     bool                    drawFeedbackPlot    = false;
     bool                    drawPresentWaitTime = false;
     bool                    drawProfiler        = false;
-
 
 
     size_t                      frameCounter = 0;
@@ -220,10 +218,9 @@ public:
         frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
         frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
 
-        ClearVertexBuffer(frameGraph, base.vertexBuffer);
-
-        ClearBackBuffer(frameGraph, targets.RenderTarget, 0.0f);
-        ClearDepthBuffer(frameGraph, base.depthBuffer, 1.0f);
+        ClearVertexBuffer   (frameGraph, base.vertexBuffer);
+        ClearBackBuffer     (frameGraph, targets.RenderTarget, 0.0f);
+        ClearDepthBuffer    (frameGraph, base.depthBuffer, 1.0f);
 
         OnDraw(core, dispatcher, frameGraph, dT);
 

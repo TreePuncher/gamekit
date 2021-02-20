@@ -423,7 +423,7 @@ namespace FlexKit
 
 	FLEXKITAPI inline void RunTask(iWork& work)
 	{
-        ProfileFunction();
+        //ProfileFunction();
 
         std::unique_ptr<StackAllocator> allocator;
 

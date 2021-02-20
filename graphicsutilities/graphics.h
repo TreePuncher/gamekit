@@ -1989,7 +1989,7 @@ private:
 		Vector<UserVertexBuffer>	UserBuffers;
 		Vector<FreeVertexBuffer>	FreeBuffers;
 
-		HandleUtilities::HandleTable<VertexBufferHandle, 32>	Handles;
+		HandleUtilities::HandleTable<VertexBufferHandle>    Handles;
 
 		std::mutex criticalSection;
 	};
@@ -2830,7 +2830,7 @@ private:
 		Vector<UserEntry>								    UserEntries;
 		Vector<ResourceEntry>							    Resources;
 		Vector<ResourceHandle>							    BufferedResources;
-		HandleUtilities::HandleTable<ResourceHandle, 32>	Handles;
+		HandleUtilities::HandleTable<ResourceHandle>	    Handles;
         std::mutex                                          m;
 
 		struct UnusedResource
@@ -2997,7 +2997,7 @@ private:
 			handles.Clear();
 		}
 
-		HandleUtilities::HandleTable<SOResourceHandle, 32>	handles;
+		HandleUtilities::HandleTable<SOResourceHandle>	    handles;
 		Vector<SOResource>									resources;
 		iAllocator*											allocator;
 	};

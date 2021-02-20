@@ -29,26 +29,21 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	void DebugPanel::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+	UpdateTask* DebugPanel::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 	{
         if (!pauseBackgroundLogic)
-            topState.Update(core, dispatcher, dT);
+            return topState.Update(core, dispatcher, dT);
+
+        return nullptr;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void DebugPanel::DebugDraw(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+	UpdateTask* DebugPanel::Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& graph)
 	{
-	}
-
-	/************************************************************************************************/
-
-
-	void DebugPanel::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& graph)
-	{
-        topState.Draw(core, dispatcher, dT, graph);
+        return topState.Draw(update, core, dispatcher, dT, graph);
 		//console.Draw(graph, core.Window.backBuffer, core.GetTempMemory());
 	}
 
@@ -56,10 +51,10 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void DebugPanel::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+    void DebugPanel::PostDrawUpdate(EngineCore& core, double dT)
     {
-        topState.PostDrawUpdate(core, dispatcher, dT);
-        renderWindow->Present(0, 0);
+        topState.PostDrawUpdate(core, dT);
+        renderWindow->Present(1, 0);
     }
 
 

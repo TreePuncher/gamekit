@@ -1,27 +1,3 @@
-/**********************************************************************
-
-Copyright (c) 2018 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
 #include "MultiplayerState.h"
 
 namespace SLNet{
@@ -60,12 +36,12 @@ void NetworkState::Startup(short port)
 /************************************************************************************************/
 
 
-void NetworkState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+UpdateTask* NetworkState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
 	// Recieve Packets
 	for(auto packet = raknet.Receive(); packet != nullptr; raknet.DeallocatePacket(packet), packet = raknet.Receive())
 	{
-        FK_LOG_INFO("Packet Recieved!");
+        //FK_LOG_INFO("Packet Recieved!");
 
 		switch(packet->data[0])
 		{
@@ -89,7 +65,7 @@ void NetworkState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double
             auto handle = FindConnectionHandle(packet->systemAddress);
             if (handle == InvalidHandle_t) {
                 SystemInError();
-                return;
+                return nullptr;
             }
 
             HandleDisconnection(handle);
@@ -125,7 +101,7 @@ void NetworkState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double
 		}   break;
 		default:
 		{
-            FK_LOG_INFO("Unrecognized packet, dropped!");
+            FK_LOG_INFO("Unrecognized packet, dropped!  Packet ID: $u", uint32_t(packet->data[0]));
 
 		}   break;
 		}
@@ -155,6 +131,8 @@ void NetworkState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double
     }
     else
         timer += dT;
+
+    return nullptr;
 }
 
 
@@ -210,6 +188,16 @@ void NetworkState::Connect(const char* address, uint16_t port)
     raknet.Startup(16, &socketDesc, 1);
 
     auto res = raknet.Connect("127.0.0.1", port, nullptr, 0);
+}
+
+
+/************************************************************************************************/
+
+
+void NetworkState::Disconnect()
+{
+    openConnections.clear();
+    raknet.Shutdown(0);
 }
 
 

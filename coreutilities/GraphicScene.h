@@ -521,7 +521,7 @@ namespace FlexKit
 
 		const SceneHandle					sceneID;
 
-		HandleUtilities::HandleTable<SceneEntityHandle, 16> HandleTable;
+		HandleUtilities::HandleTable<SceneEntityHandle> HandleTable;
 			
 		Vector<VisibilityHandle>		sceneEntities;
         SceneBVH                        bvh;

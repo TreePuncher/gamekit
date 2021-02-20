@@ -74,12 +74,12 @@ namespace FlexKit
 
 		void Initiate();
 
-		void Update				(UpdateDispatcher& dispatcher, double dT);
-		void UpdateFixed		(UpdateDispatcher& dispatcher, double dT); // called at fixed time rate
-		void UpdatePreDraw		(UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT);
-		void Draw				(UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT);
-		void PostDraw			(UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT);
-		void Release			();
+		UpdateTask* Update      (UpdateDispatcher& dispatcher, double dT);
+        UpdateTask* Draw	    (UpdateTask* update, UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT);
+
+		void        PostDraw    (iAllocator* TempMemory, double dT);
+
+		void Release		();
 
 		void DrawFrame(double dT);
 
@@ -103,8 +103,14 @@ namespace FlexKit
 
 			subStates.push_back(&State);
 
+            pushOccured = true;
+
 			return State;
 		}
+
+        bool    PushPopDetected() const {
+            return pushOccured;
+        }
 
 		LogCallback				logMessagePipe = {
 			"INFO",
@@ -120,10 +126,10 @@ namespace FlexKit
 
 		double	physicsUpdateTimer;
 		bool	consoleActive;
-		bool	drawDebug;
 		bool	drawDebugStats;
 		bool	drawPhysicsDebug;
 		bool	quit;
+        bool    pushOccured = false;
 
 		double runningTime			= 0.0;
 		double fixStepAccumulator	= 0.0;
@@ -178,11 +184,10 @@ namespace FlexKit
 
 		virtual ~FrameworkState() {}
 
-		virtual void Update			(EngineCore& core, UpdateDispatcher& dispatcher, double dT) {}
-		virtual void DebugDraw		(EngineCore& core, UpdateDispatcher& dispatcher, double dT) {}
-		virtual void PreDrawUpdate	(EngineCore& core, UpdateDispatcher& dispatcher, double dT) {}
-		virtual void Draw			(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) {}
-		virtual void PostDrawUpdate	(EngineCore& core, UpdateDispatcher& dispatcher, double dT) {}
+		virtual UpdateTask* Update			(                       EngineCore&, UpdateDispatcher&, double dT) { return nullptr; }
+		virtual UpdateTask* Draw			(UpdateTask* update,    EngineCore&, UpdateDispatcher&, double dT, FrameGraph& frameGraph) { return nullptr;}
+
+		virtual void        PostDrawUpdate	(EngineCore&, double dT) {}
 
 		virtual bool EventHandler	(Event evt) { return false;}
 
