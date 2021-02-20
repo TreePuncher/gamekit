@@ -70,7 +70,7 @@ namespace FlexKit
             framework.stats.frameTimes.push_back(
                 GameFramework::TimePoint{
                     .T          = framework.runningTime,
-                    .duration   = double(std::chrono::duration_cast<std::chrono::microseconds>(updateDuration).count()) / 10000.0f});
+                    .duration   = double(std::chrono::duration_cast<std::chrono::microseconds>(updateDuration).count()) / 1000.0f});
 
             if (Core.FrameLock)// FPS Locked
             {

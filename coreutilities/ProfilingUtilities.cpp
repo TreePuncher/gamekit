@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace FlexKit
 {
 
-    void EngineProfiling::DrawProfiler()
+    void EngineProfiling::DrawProfiler(iAllocator& temp)
     {
         if (auto stats = pausedFrame ? pausedFrame : profiler.GetStats(); stats)
         {
@@ -71,15 +71,25 @@ namespace FlexKit
                         }
                     }
 
-                    const auto duration = end - begin;
-                    const double fDuration = double(duration.count()) / 100000000.0;
+                    const auto duration     = end - begin;
+                    const double fDuration  = double(duration.count()) / 100000000.0;
 
-                    const int   maxDepth    = 3;
+                    const int   maxDepth    = 4;
                     const float barWidth    = 25.0f;
                     const float areaH       = stats->Threads.size() * maxDepth * barWidth;
 
                     const ImVec2 windowPOS  = ImGui::GetWindowPos();
                     const ImVec2 windowSize = ImGui::GetWindowSize();
+
+                    struct imDrawText
+                    {
+                        ImVec2      pos;
+                        ImColor     color;
+                        const char* string;
+                    };
+
+                    Vector<imDrawText> textstack{ &temp };
+                    size_t drawCount = 0;
 
                     if(ImGui::BeginChild(GetCRCGUID("PROFILEGRAPH" + threadID++), ImVec2(windowSize.x, areaH)))
                     {
@@ -121,7 +131,7 @@ namespace FlexKit
                                 ImColor{73, 127, 130},
                             };
 
-                            draw_list->AddRectFilled(threadBoxMin, threadBoxMax, colors[threadOffsetCounter % 2], 0, 0);
+                            draw_list->AddRectFilled(threadBoxMin, threadBoxMax, colors[threadOffsetCounter % 2], 0);
 
 
                             if (pMax.y > 0.0f)
@@ -149,7 +159,7 @@ namespace FlexKit
                                                 {235, 96, 115},
                                                 {181, 11, 119},
                                             };
-                                            draw_list->AddRectFilled(pMin, pMax, colors[currentDepth % 3], 0, 0);
+                                            draw_list->AddRectFilled(pMin, pMax, colors[drawCount++ % 3], 0);
 
                                             const ImVec2 pTxt = ImVec2{
                                                 contentBegin.x + windowSize.x * fbegin,
@@ -157,13 +167,22 @@ namespace FlexKit
 
                                             const ImColor textColor(0.0f, 0.0f, 0.0f, 1.0f);
 
+                                            
+
+
                                             // Visit Child Samples
                                             if (currentDepth + 1 < maxDepth)
                                                 for (uint64_t childID : node.children)
                                                     _Self(childID, _Self, maxDepth, currentDepth + 1);
 
+                                            //ImGui::CalcTextSize();
+
                                             if(showLabels || ImGui::IsMouseHoveringRect(pMin, pMax, true))
-                                                draw_list->AddText(pTxt, textColor, node.Function);
+                                                textstack.emplace_back(
+                                                    pTxt,
+                                                    textColor,
+                                                    node.Function
+                                                );
                                         }
                                     };
 
@@ -172,6 +191,10 @@ namespace FlexKit
                                         VisitChildren(profile.profileID, VisitChildren, maxDepth, 0);
                             }
                         }
+
+
+                        for(auto& txt : textstack)
+                            draw_list->AddText(txt.pos, txt.color, txt.string);
 
                         ImGui::EndChild();
                     }

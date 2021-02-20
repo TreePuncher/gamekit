@@ -63,9 +63,10 @@ public:
 	~ClientLobbyState();
 
 
-	void Update			(EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
-	void Draw			(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph&) final override;
-	void PostDrawUpdate	(EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
+	UpdateTask* Update	        (EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
+    UpdateTask* Draw	        (UpdateTask*, EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph&) final override;
+
+	void        PostDrawUpdate	(EngineCore& core, double dT) final override;
 
 	bool EventHandler	(Event evt) final override;
 

@@ -167,7 +167,7 @@ public:
 			depthBuffer		    { IN_Framework.core.RenderSystem.CreateDepthBuffer(renderWindow.GetWH(),	true) },
 
 			vertexBuffer	    { IN_Framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 1, false) },
-			constantBuffer	    { IN_Framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 64, false) },
+			constantBuffer	    { IN_Framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 8, false) },
 			asEngine		    { asCreateScriptEngine() },
 			streamingEngine	    { IN_Framework.core.RenderSystem, IN_Framework.core.GetBlockMemory() },
             sounds              { IN_Framework.core.Threads,      IN_Framework.core.GetBlockMemory() },
@@ -229,19 +229,21 @@ public:
 	}
 
 
-    void Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+    UpdateTask* Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
     {
         UpdateInput();
         renderWindow.UpdateCapturedMouseInput(dT);
 
         physics.Update(dT, core.GetTempMemory());
         t += dT;
+
+        return nullptr;
     }
 
 
-    void PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT) override
+    void PostDrawUpdate(EngineCore& core, double dT) override
     {
-        renderWindow.Present();
+        renderWindow.Present(1, 0);
     }
 
 

@@ -172,7 +172,7 @@ namespace FlexKit
 	{
 		// TODO RESORT HANDLES AFTER FREE LIST FILLS
 
-		template<typename HANDLE, size_t SIZE = 128>
+		template<typename HANDLE>
 		struct HandleTable
 		{
 			HandleTable(iAllocator* Memory = nullptr, const Type_t type = 0x00 ) : mType( type ), Indexes(Memory) {}
@@ -237,7 +237,8 @@ namespace FlexKit
 				return Indexes.size();
 			}
 
-			typedef typename static_vector<index_t, SIZE>::iterator iterator;
+			typedef typename static_vector<index_t>::iterator iterator;
+
 			iterator	begin()
 			{
 				return Indexes.begin();

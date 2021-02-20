@@ -388,6 +388,13 @@ namespace FlexKit
             { return float3{ 0, 0, 0 }; });
 	}
 
+    inline void SetWorldPosition(GameObject& go, const float3 pos)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& view)
+            {   SetPositionW(view.node, pos); });
+    }
+
     inline float3 GetScale(GameObject& go)
     {
         return Apply(go,
@@ -488,6 +495,14 @@ namespace FlexKit
             {
                 return NodeHandle(InvalidHandle_t);
             });
+    }
+
+
+    inline void SetOrientation(GameObject& go, const Quaternion q)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& view)
+            { SetOrientation(view.node, q); });
     }
 
 }	/************************************************************************************************/

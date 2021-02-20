@@ -12,18 +12,19 @@ class PlayGroundMode : public FlexKit::FrameworkState
 
     }
 
-    void Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) final override
+    UpdateTask* Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) final override
     {
-        base.Update(core, dispatcher, dT);
+        return base.Update(core, dispatcher, dT);
     }
 
-    void Draw(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final override
+    UpdateTask* Draw(UpdateTask* update, EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final override
     {
+        return nullptr;
     }
 
-    void PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT) final override
+    void PostDrawUpdate(EngineCore& core, double dT) final override
     {
-        base.PostDrawUpdate(core, dispatcher, dT);
+        base.PostDrawUpdate(core, dT);
     }
 
     BaseState& base;

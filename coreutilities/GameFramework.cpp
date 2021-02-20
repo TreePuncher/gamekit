@@ -129,10 +129,6 @@ namespace FlexKit
 			}	break;
 			case KC_F1:
 			{
-				auto temp1 = framework.drawDebug;
-				auto temp2 = framework.drawDebugStats;
-				framework.drawDebug		    = !framework.drawDebug	    | (framework.drawDebugStats & !(temp1 & temp2));
-				framework.drawDebugStats	= !framework.drawDebugStats | (framework.drawDebug & !(temp1 & temp2));
 			}	break;
 			case KC_F2:
 			{
@@ -190,8 +186,6 @@ namespace FlexKit
 		quit						= false;
 		physicsUpdateTimer			= 0.0f;
 
-		drawDebug					= false;
-
 #ifdef _DEBUG
 		drawDebugStats			= true;
 #else
@@ -208,7 +202,6 @@ namespace FlexKit
 
 		console.BindUIntVar("FPS",			&stats.fps);
 		console.BindBoolVar("HUD",			&drawDebugStats);
-		console.BindBoolVar("DrawDebug",	&drawDebug);
 		console.BindBoolVar("FrameLock",    &core.FrameLock);
 
 		console.AddFunction({ "SetRenderMode", &SetDebugRenderMode, this, 1, { ConsoleVariableType::CONSOLE_UINT }});
@@ -220,90 +213,51 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GameFramework::Update(UpdateDispatcher& dispatcher, double dT)
+	UpdateTask* GameFramework::Update(UpdateDispatcher& dispatcher, double dT)
 	{
 		runningTime += dT;
 
 		if (!subStates.size()) {
 			quit = true;
-			return;
+			return nullptr;
 		}
 
 		subStates.back()->Update(core, dispatcher, dT);
 
 		core.End = quit;
+
+        return nullptr;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void GameFramework::UpdateFixed(UpdateDispatcher& dispatcher, double dt)
-	{
-		//core.Physics.Simulate(dt);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void GameFramework::UpdatePreDraw(UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT)
-	{
-		if (!subStates.size()) {
-			quit = true;
-			return;
-		}
-
-		if (drawDebug)
-		{
-			subStates.back()->PreDrawUpdate(core, dispatcher, dT);
-			dispatcher.Execute();
-		}
-
-		subStates.back()->PreDrawUpdate(core, dispatcher, dT);
-		dispatcher.Execute();
-
-		if (stats.fpsT > 1.0)
-		{
-			stats.fps        = stats.fpsCounter;
-			stats.fpsCounter = 0;
-			stats.fpsT       = 0.0;
-		}
-
-		stats.fpsCounter++;
-		stats.fpsT += dT;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void GameFramework::Draw(UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT)
+    UpdateTask* GameFramework::Draw(UpdateTask* update, UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT)
 	{
         ProfileFunction();
-		FK_LOG_9("Frame Draw Begin");
 
 		FrameGraph&	frameGraph = TempMemory->allocate_aligned<FrameGraph>(core.RenderSystem, core.Threads, TempMemory);
 
 		frameGraph.UpdateFrameGraph(core.RenderSystem, core.GetTempMemory());
 
-		subStates.back()->Draw(core, dispatcher, dT, frameGraph);
+		subStates.back()->Draw(update, core, dispatcher, dT, frameGraph);
 
         Free_DelayedReleaseResources(core.RenderSystem);
 
-		frameGraph.SubmitFrameGraph(dispatcher, core.RenderSystem, core.GetBlockMemory());
-
-		FK_LOG_9("Frame Draw Begin");
+		return &frameGraph.SubmitFrameGraph(dispatcher, core.RenderSystem, core.GetBlockMemory());
 	}
 
 
 	/************************************************************************************************/
 
 
-	void GameFramework::PostDraw(UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dt)
+	void GameFramework::PostDraw(iAllocator* TempMemory, double dt)
 	{
+        ProfileFunction();
+
         if(subStates.back())
-            subStates.back()->PostDrawUpdate(core, dispatcher, dt);
+            subStates.back()->PostDrawUpdate(core, dt);
 	}
 
 
@@ -314,8 +268,10 @@ namespace FlexKit
 	{
         ProfileFunction();
 
+        pushOccured = false;
+
         UpdateDispatcher dispatcher{ &core.Threads, core.GetTempMemoryMT() };
-        Update(dispatcher, dT);
+        auto updateTask = Update(dispatcher, dT);
 
 		FK_LOG_9("Frame Begin");
         if (!subStates.size())
@@ -324,13 +280,11 @@ namespace FlexKit
             return;
         }
 
-		UpdatePreDraw	(dispatcher, core.GetTempMemoryMT(), dT);
-
-		Draw			(dispatcher, core.GetTempMemoryMT(), dT);
+		auto drawTask   = Draw(updateTask, dispatcher, core.GetTempMemoryMT(), dT);
 
         dispatcher.Execute();
 
-		PostDraw		(dispatcher, core.GetTempMemoryMT(), dT);
+		PostDraw(core.GetTempMemoryMT(), dT);
 
 		core.GetTempMemory().clear();
 

@@ -7439,6 +7439,8 @@ namespace FlexKit
 
 	void RenderSystem::BeginSubmission()
 	{
+        ProfileFunction();
+
 		const auto pendingFrame = pendingFrames[(frameIdx) % 3];
 
 		while (pendingFrame > Fence->GetCompletedValue())
@@ -7457,6 +7459,8 @@ namespace FlexKit
 
     SyncPoint RenderSystem::Submit(Vector<Context*>& contexts, std::optional<SyncPoint> syncOptional)
 	{
+        ProfileFunction();
+
 		if (ImmediateUpload != InvalidHandle_t)
 		{
 			SubmitUploadQueues(SYNC_Graphics, &ImmediateUpload);

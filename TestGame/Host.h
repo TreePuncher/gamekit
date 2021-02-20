@@ -31,9 +31,10 @@ public:
 	void HandleNewConnection(const ConnectionHandle);
     void HandleDisconnection(const ConnectionHandle);
 
-	void Update			(EngineCore&, UpdateDispatcher&, double dT) final override;
-	void Draw			(EngineCore&, UpdateDispatcher&, double dT, FrameGraph&) final override;
-	void PostDrawUpdate	(EngineCore&, UpdateDispatcher&, double dT) final override;
+	UpdateTask* Update			(               EngineCore&, UpdateDispatcher&, double dT) final override;
+	UpdateTask* Draw			(UpdateTask*,   EngineCore&, UpdateDispatcher&, double dT, FrameGraph&) final override;
+
+	void        PostDrawUpdate	(EngineCore&, double dT) final override;
 
 	bool EventHandler(Event evt) final override;
 
@@ -220,21 +221,9 @@ public:
 	}
 
 
-	void Update(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final override
+    UpdateTask* Update(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final override
 	{
-	}
-
-
-	MultiplayerPlayerID_t GetNewID()
-	{
-        while (true)
-        {
-            auto newID = GeneratePlayerID();
-
-            if (std::find_if(std::begin(players), std::end(players),
-                    [&](auto& player) -> bool { return player.ID == newID; }) == players.end() )
-                return newID;
-		}
+        return nullptr;
 	}
 
 
