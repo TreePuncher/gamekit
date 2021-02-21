@@ -119,7 +119,8 @@ int main(int argc, char* argv[])
 
         auto& base      = app.PushState<BaseState>(app, WH);
 
-#if 0
+#if 1
+
         FK_LOG_INFO("Set initial PlayState state.");
         auto& net       = app.PushState<NetworkState>(base);
         auto& menuState = app.PushState<MenuState>(base, net);

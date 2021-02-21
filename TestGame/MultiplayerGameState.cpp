@@ -466,9 +466,9 @@ bool LocalPlayerState::EventHandler(Event evt)
 {
     ProfileFunction();
 
-	bool handled = eventMap.Handle(evt, [&](auto& evt)
+	bool handled = eventMap.Handle(evt, [&](auto& evt) -> bool
 		{
-			HandleEvents(thirdPersonCamera, evt);
+			return HandleEvents(thirdPersonCamera, evt);
 		});
 
 	switch (evt.InputSource)

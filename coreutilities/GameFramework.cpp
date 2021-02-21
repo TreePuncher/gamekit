@@ -222,11 +222,11 @@ namespace FlexKit
 			return nullptr;
 		}
 
-		subStates.back()->Update(core, dispatcher, dT);
+		auto dependency = subStates.back()->Update(core, dispatcher, dT);
 
 		core.End = quit;
 
-        return nullptr;
+        return dependency;
 	}
 
 

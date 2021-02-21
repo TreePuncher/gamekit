@@ -211,6 +211,11 @@ namespace FlexKit
             }
         }
 
+        void ToggleMouseCapture()
+        {
+            EnableCaptureMouse(!mouseCapture);
+        }
+
 
         int2 GetMousedPos() const
         {

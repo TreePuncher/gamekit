@@ -544,7 +544,6 @@ namespace FlexKit
 	{
 		CameraHandle	camera;
 		GraphicScene*	scene; // Source Scene
-		StackAllocator	taskMemory;
 		PVS				solid;
 		PVS				transparent;
 
@@ -590,77 +589,6 @@ namespace FlexKit
 
 
 	inline void Release(PoseState* EPS, iAllocator* allocator);
-
-
-	/************************************************************************************************/
-
-
-	inline void DEBUG_DrawQuadTree(
-		GraphicScene&			scene, 
-		UpdateDispatcher&		dispatcher,
-		UpdateTask&				sceneUpdate,
-		FrameGraph&				graph, 
-		CameraHandle			camera,
-		VertexBufferHandle		vertexBuffer, 
-		ConstantBufferHandle	constantBuffer,
-		ResourceHandle			renderTarget,
-		iAllocator*				tempMemory)
-	{
-		Vector<FlexKit::Rectangle> rects{ tempMemory };
-
-		const float4 colors[] =
-		{
-			{0, 0, 1, 1},
-			{0, 1, 1, 1},
-			{1, 1, 0, 1},
-			{1, 0, 0, 1}
-		};
-
-        /*
-		const auto	area		= scene.bvh->sceneNodes[scene.bvh->root].boundingVolume;
-		const auto	areaLL		= (area.y <  area.z) ? float2{ area.x, area.y } : float2{ area.z, area.w };
-		const auto	areaUR		= (area.y >= area.z) ? float2{ area.x, area.y } : float2{ area.z, area.w };
-		const auto	areaSpan	= (areaUR - areaLL);
-		int			itr			= 0;
-
-		auto drawNode = [&](auto& self, const QuadTreeNode& Node, const int depth) -> void
-		{
-			auto nodeArea = Node.GetArea();
-
-			//const auto ll = (float2{ nodeArea.x, nodeArea.y } - areaLL) / areaSpan;
-			//const auto ur = (float2{ nodeArea.z, nodeArea.w } - areaLL) / areaSpan;
-
-			const auto ll = float2{nodeArea.x, nodeArea.y};// lower left
-			const auto ur = float2{nodeArea.z, nodeArea.w};// upper right
-
-			FlexKit::Rectangle rect;
-			rect.Color		= colors[depth % 4];
-			rect.Position	= ll;
-			rect.WH			= ur - ll;
-			rects.push_back(rect);
-
-			for (auto& child : Node.ChildNodes)
-				self(self, *child, depth + 1 + itr++);
-		};
-
-		drawNode(drawNode, scene.sceneManagement.root, 0);
-
-		DrawWireframeRectangle_Desc drawDesc =
-		{
-			renderTarget,
-			vertexBuffer,
-			constantBuffer,
-			camera,
-			DRAW_LINE3D_PSO
-		};
-
-		WireframeRectangleList(
-			graph,
-			drawDesc,
-			rects,
-			tempMemory);
-        */
-	}
 
 
     /************************************************************************************************/

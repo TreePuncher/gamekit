@@ -422,8 +422,8 @@ namespace FlexKit
 		void							Release();
 		void							ReleaseScene				(PhysXSceneHandle);
 
-        void                            Update(const double dt, iAllocator* temp_allocator);
-		void							Simulate(const double dt, WorkBarrier* barrier = nullptr, iAllocator* temp_allocator = nullptr);
+        UpdateTask&                     Update(UpdateDispatcher&, const double dt);
+		void							Simulate( const double dt, WorkBarrier* barrier = nullptr, iAllocator* temp_allocator = nullptr);
 
         [[nodiscard]] PhysXSceneHandle	CreateScene();
         [[nodiscard]] StaticBodyHandle	CreateStaticCollider	(const PhysXSceneHandle, const PxShapeHandle shape, const float3 pos = { 0, 0, 0 }, const Quaternion q = { 0, 0, 0, 1 });
@@ -552,6 +552,11 @@ namespace FlexKit
         }
 
 
+        StaticBodyHandle Create(PhysXSceneHandle scene, PxShapeHandle shape, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 })
+        {
+            return physx.CreateStaticCollider(scene, shape, pos, q);
+        }
+
         void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
         {
         }
@@ -569,6 +574,8 @@ namespace FlexKit
         }
 
 
+
+
     private:
         PhysXComponent& physx;
     };
@@ -584,13 +591,17 @@ namespace FlexKit
             staticBody  { IN_staticBody },
             scene       { IN_handle     } {}
 
+        StaticBodyView(PhysXSceneHandle scene, PxShapeHandle shape, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 }) :
+            staticBody  { GetComponent().Create(scene, shape, pos, q) },
+            scene       { scene } {}
+
         NodeHandle GetNode() const
         {
             return GetComponent().GetScene(scene)[staticBody].node;
         }
 
-        const PhysXSceneHandle    scene;
-        const StaticBodyHandle    staticBody;
+        const PhysXSceneHandle scene;
+        const StaticBodyHandle staticBody;
     };
 
 
@@ -600,18 +611,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    constexpr ComponentID RigicBodyComponentID = GetTypeGUID(RigicBodyComponentID);
+    constexpr ComponentID RigidBodyComponentID = GetTypeGUID(RigicBodyComponentID);
 
     class RigidBodyView;
 
-    class RigidBodyComponent : public Component<RigidBodyComponent, RigicBodyComponentID>
+    class RigidBodyComponent : public Component<RigidBodyComponent, RigidBodyComponentID >
     {
     public:
         RigidBodyComponent(PhysXComponent& IN_physx) :
             physx{ IN_physx } {}
 
 
-        RigidBodyView CreateRigidBody(PhysXSceneHandle IN_scene);
+        RigidBodyHandle CreateRigidBody(PxShapeHandle shape, PhysXSceneHandle scene, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 })
+        {
+            return physx.CreateRigidBodyCollider(scene, shape, pos, q);
+        }
 
 
         void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
@@ -642,6 +656,10 @@ namespace FlexKit
         RigidBodyView(RigidBodyHandle IN_staticBody, PhysXSceneHandle IN_scene) :
             staticBody  { IN_staticBody },
             scene       { IN_scene} {}
+
+        RigidBodyView(PxShapeHandle shape, PhysXSceneHandle IN_scene, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 }) :
+            staticBody  { GetComponent().CreateRigidBody(shape, IN_scene, pos, q) },
+            scene       { IN_scene } {}
 
         NodeHandle GetNode() const;
 
@@ -957,7 +975,7 @@ namespace FlexKit
     };
 
 
-    void HandleEvents(GameObject& GO, Event evt);
+    bool HandleEvents(GameObject& GO, Event evt);
 
 
     /************************************************************************************************/

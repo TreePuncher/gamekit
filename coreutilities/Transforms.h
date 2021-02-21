@@ -42,7 +42,7 @@ namespace FlexKit
 
 	struct Node
 	{
-		NodeHandle	TH;
+		NodeHandle	handle; //?
 		NodeHandle	Parent;
 		NodeHandle	ChildrenList;
 		bool		Scaleflag;// Calculates Scale only when set to on, Off By default
@@ -77,7 +77,7 @@ namespace FlexKit
 		{	
 			m4x4  = DirectX::XMMatrixIdentity(); 
 			//World = LT_Entry::Zero();
-		}	
+		}
 	};
 	
 
@@ -92,29 +92,31 @@ namespace FlexKit
 			UPDATED = 0x08
 		};
 
-		size_t used;
-		size_t Max;
+		Vector<Node>            Nodes;
+		Vector<LT_Entry>	    LT;
+		Vector<WT_Entry>        WT;
+		Vector<char>            Flags;
+        Vector<ChildrenVector>  Children;
 
-		Node*			Nodes;
-		LT_Entry*		LT;
-		WT_Entry*		WT;
-		char*			Flags;
+        NodeHandle  root;
 
-		uint16_t*		Indexes;
-		ChildrenVector* Children;
+        HandleUtilities::HandleTable<NodeHandle> Indexes;
 
 
-		#pragma pack(push, 1)
-		struct BOILERPLATE
-		{
-			Node		N;
-			LT_Entry	LT;
-			WT_Entry	WT;
-			uint16_t	I;
-			char		State;
-		};
-		#pragma pack(pop)
+        size_t _AddNode()
+        {
+            const auto idx0 = Nodes.emplace_back();
+            const auto idx1 = LT.emplace_back();
+            const auto idx2 = WT.emplace_back(WT_Entry{DirectX::XMMatrixIdentity()});
+            const auto idx3 = Flags.emplace_back();
+            const auto idx4 = Children.emplace_back();
 
+            FK_ASSERT((idx0 == idx1) && (idx2 == idx3) && (idx1 == idx2) && (idx3 == idx4));
+
+            return idx0;
+        }
+
+        size_t size() const { return Nodes.size(); }
 	}inline SceneNodeTable;
 
 
@@ -124,7 +126,7 @@ namespace FlexKit
 	FLEXKITAPI uint16_t	_SNHandleToIndex	(NodeHandle Node);
 	FLEXKITAPI void		_SNSetHandleIndex	(NodeHandle Node, uint16_t index);
 
-	FLEXKITAPI void			InitiateSceneNodeBuffer		( byte* pmem, size_t );
+	FLEXKITAPI void			InitiateSceneNodeBuffer		( iAllocator* persistent );
 	FLEXKITAPI void			SortNodes					( StackAllocator* Temp );
 	FLEXKITAPI void			ReleaseNode					( NodeHandle Node );
 

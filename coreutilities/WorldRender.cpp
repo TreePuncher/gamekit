@@ -1079,7 +1079,7 @@ namespace FlexKit
         PVS.AddInput(drawSceneDesc.cameraDependency);
 
         auto& pointLightGather      = scene.GetPointLights(dispatcher, temporary);
-        auto& sceneBVH              = scene.UpdateSceneBVH(dispatcher, drawSceneDesc.transformDependency, persistent);
+        auto& sceneBVH              = scene.UpdateSceneBVH(dispatcher, drawSceneDesc.transformDependency, temporary);
         auto& visablePointLights    = scene.GetVisableLights(dispatcher, camera, sceneBVH, temporary);
         auto& pointLightUpdate      = scene.UpdatePointLights(dispatcher, sceneBVH, visablePointLights, temporary, persistent);
         auto& shadowMaps            = AcquireShadowMaps(dispatcher, frameGraph.GetRenderSystem(), RTPool, pointLightUpdate);
@@ -2216,7 +2216,7 @@ namespace FlexKit
 					return;
 
 				const size_t entityBufferSize =
-					AlignedSize<Drawable::VConstantsLayout>() * data.pvs.size() * 30;
+					AlignedSize<Drawable::VConstantsLayout>() * data.pvs.size();
 
 				constexpr size_t passBufferSize =
 					AlignedSize<Camera::ConstantBuffer>() +
@@ -2265,6 +2265,18 @@ namespace FlexKit
 
                 ctx.BeginEvent_DEBUG("G-Buffer Pass");
 
+                DescriptorHeap defaultHeap{};
+                defaultHeap.Init(
+                    ctx,
+                    resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0u),
+                    &allocator);
+
+                defaultHeap.SetSRV(ctx, 0, resources.renderSystem().DefaultTexture);
+                defaultHeap.SetSRV(ctx, 1, resources.renderSystem().DefaultTexture);
+                defaultHeap.SetSRV(ctx, 2, resources.renderSystem().DefaultTexture);
+                defaultHeap.SetSRV(ctx, 3, resources.renderSystem().DefaultTexture);
+                defaultHeap.NullFill(ctx);
+
 				// unskinned models
 				for (auto& drawable : data.pvs)
 				{
@@ -2294,29 +2306,30 @@ namespace FlexKit
 
                     if (material.SubMaterials.empty())
                     {
-                        DescriptorHeap descHeap;
+                        
 
-					    descHeap.Init(
-						    ctx,
-						    resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0u),
-						    &allocator);
+                        if (material.Textures.size())
+                        {
+                            DescriptorHeap descHeap;
 
-					    if(material.Textures.size())
-						    for(size_t I = 0; I < Min(material.Textures.size(), 4u); I++)
-							    descHeap.SetSRV(ctx, I, material.Textures[I]);
+                            descHeap.Init(
+                                ctx,
+                                resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0u),
+                                &allocator);
+
+                            for (size_t I = 0; I < Min(material.Textures.size(), 4u); I++)
+                                descHeap.SetSRV(ctx, I, material.Textures[I]);
+
+                            descHeap.NullFill(ctx);
+
+                            ctx.SetGraphicsDescriptorTable(0, descHeap);
+                        }
 					    else
-					    {
-						    descHeap.SetSRV(ctx, 0, resources.renderSystem().DefaultTexture);
-						    descHeap.SetSRV(ctx, 1, resources.renderSystem().DefaultTexture);
-						    descHeap.SetSRV(ctx, 2, resources.renderSystem().DefaultTexture);
-						    descHeap.SetSRV(ctx, 3, resources.renderSystem().DefaultTexture);
-					    }
+                            ctx.SetGraphicsDescriptorTable(0, defaultHeap);
 
-					    descHeap.NullFill(ctx);
                         constants.textureCount = (uint32_t)material.Textures.size();
 
                         ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
-                        ctx.SetGraphicsDescriptorTable(0, descHeap);
                         ctx.DrawIndexed(triMesh->IndexCount);
                     }
                     else
@@ -2333,22 +2346,21 @@ namespace FlexKit
 						        resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
 						        &allocator);
 
-					        if(passMaterial.Textures.size())
-						        for(size_t I = 0; I < Min(passMaterial.Textures.size(), 4); I++)
-							        descHeap.SetSRV(ctx, I, passMaterial.Textures[I]);
-					        else
-					        {
-						        descHeap.SetSRV(ctx, 0, resources.renderSystem().DefaultTexture);
-						        descHeap.SetSRV(ctx, 1, resources.renderSystem().DefaultTexture);
-						        descHeap.SetSRV(ctx, 2, resources.renderSystem().DefaultTexture);
-						        descHeap.SetSRV(ctx, 3, resources.renderSystem().DefaultTexture);
-					        }
+                            if (passMaterial.Textures.size())
+                            {
+                                for (size_t I = 0; I < Min(passMaterial.Textures.size(), 4); I++)
+                                    descHeap.SetSRV(ctx, I, passMaterial.Textures[I]);
 
-					        descHeap.NullFill(ctx);
+                                descHeap.NullFill(ctx);
+
+                                ctx.SetGraphicsDescriptorTable(0, descHeap);
+                            }
+					        else
+                                ctx.SetGraphicsDescriptorTable(0, defaultHeap);
+
                             constants.textureCount = (uint32_t)passMaterial.Textures.size();
 
                             ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
-                            ctx.SetGraphicsDescriptorTable(0, descHeap);
                             ctx.DrawIndexed(subMesh.IndexCount, subMesh.BaseIndex);
                         }
                     }

@@ -87,19 +87,33 @@ namespace FlexKit
 	static const size_t MAX_CLIENTS = 10;
 	static const size_t SERVER_PORT = 60000;
 
-	static const size_t PRE_ALLOC_SIZE = GIGABYTE * 1;
 	static const size_t LEVELBUFFERSIZE = MEGABYTE * 64;
-	static const size_t NODEBUFFERSIZE = MEGABYTE * 64;
 	static const size_t TEMPBUFFERSIZE = MEGABYTE * 256;
-	static const size_t BLOCKALLOCSIZE = MEGABYTE * 512;
+	static const size_t BLOCKALLOCSIZE = GIGABYTE * 2;
 
+	static const size_t PRE_ALLOC_SIZE = BLOCKALLOCSIZE + TEMPBUFFERSIZE + LEVELBUFFERSIZE;
 
 	/************************************************************************************************/
 
 
 	struct EngineMemory
 	{
-		// Allocators
+        EngineMemory() :
+            BlockAllocator{},
+            TempAllocator{},
+            LevelAllocator{},
+            TempAllocatorMT{ TempAllocator }
+        {
+            BlockAllocator_desc BAdesc;
+            BAdesc.SmallBlock   = BLOCKALLOCSIZE / 4;
+            BAdesc.MediumBlock  = BLOCKALLOCSIZE / 4;
+            BAdesc.LargeBlock   = BLOCKALLOCSIZE / 2;
+
+            BlockAllocator.Init(BAdesc);
+            LevelAllocator.Init(LevelMem, LEVELBUFFERSIZE);
+            TempAllocator.Init(TempMem, TEMPBUFFERSIZE);
+        }
+
 		BlockAllocator	    BlockAllocator;
 		StackAllocator	    TempAllocator;
 		StackAllocator	    LevelAllocator;
@@ -112,10 +126,9 @@ namespace FlexKit
 
 
 		// Memory Pools
-		byte	NodeMem[NODEBUFFERSIZE];
-		byte	BlockMem[BLOCKALLOCSIZE];
-		byte	LevelMem[LEVELBUFFERSIZE];
-		byte	TempMem[TEMPBUFFERSIZE];
+		byte*	BlockMem = (byte*)_aligned_malloc(BLOCKALLOCSIZE, 16);
+		byte*	LevelMem = (byte*)_aligned_malloc(LEVELBUFFERSIZE, 16);
+		byte*	TempMem  = (byte*)_aligned_malloc(TEMPBUFFERSIZE, 16);
 	};
 
 
@@ -132,7 +145,8 @@ namespace FlexKit
 			Threads			{ threadCount, memory->BlockAllocator	        },
 			RenderSystem	{ memory->BlockAllocator, &Threads				}
 		{
-			InitiateSceneNodeBuffer(memory->NodeMem, sizeof(EngineMemory::NodeMem));
+			InitiateSceneNodeBuffer(memory->BlockAllocator);
+
             if (!Initiate(memory))
                 throw std::runtime_error{"Failed to initiate core"};
 		}

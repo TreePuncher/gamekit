@@ -352,19 +352,32 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void PhysXComponent::Update(double dt, iAllocator* temp_allocator)
+    UpdateTask& PhysXComponent::Update(UpdateDispatcher& dispatcher, double dt)
     {
-        const auto updatePeriod = 1.0 / updateFrequency;
-
-        while(acc > updatePeriod)
+        struct PhysXUpdate
         {
-            WorkBarrier barrier{ dispatcher, temp_allocator };
-            Simulate(dt, &barrier, temp_allocator);
-            barrier.JoinLocal(); // Only works on work in local thread queue, to avoid increasing latency doing other tasks before continuing
-            acc -= updatePeriod;
-        }
 
-        acc += dt;
+        };
+        return dispatcher.Add<PhysXUpdate>(
+            [&](UpdateDispatcher::UpdateBuilder& Builder, auto& Data)
+            {
+
+            },
+            [this, dt = dt, &dispatcher]
+            (auto& Data, iAllocator& threadAllocator)
+            {
+                const auto updatePeriod = 1.0 / updateFrequency;
+
+                while (acc > updatePeriod)
+                {
+                    WorkBarrier barrier{ threads, &threadAllocator };
+                    Simulate(dt, &barrier, &threadAllocator);
+                    barrier.JoinLocal(); // Only works on work in local thread queue, to avoid increasing latency doing other tasks before continuing
+                    acc -= updatePeriod;
+                }
+
+                acc += dt;
+            });
     }
 
 
@@ -575,7 +588,7 @@ namespace FlexKit
     }
 
 
-    void HandleEvents(GameObject& GO, Event evt)
+    bool HandleEvents(GameObject& GO, Event evt)
     {
         return Apply(GO,
             [&](CameraControllerView& cameraController)
@@ -590,25 +603,27 @@ namespace FlexKit
 			        {
 			        case TPC_MoveForward:
 				        keyStates.forward	= state;
-				        break;
+                        return true;
 			        case TPC_MoveBackward:
 				        keyStates.backward	= state;
-				        break;
+                        return true;
 			        case TPC_MoveLeft:
 				        keyStates.left		= state;
-				        break;
+                        return true;
 			        case TPC_MoveRight:
 				        keyStates.right		= state;
-				        break;
+                        return true;
                     case TPC_MoveUp:
                         keyStates.up        = state;
-                        break;
+                        return true;
                     case TPC_MoveDown:
                         keyStates.down      = state;
-                        break;
+                        return true;
+                    default:
+                        return false;
 			        }
 		        }
-            });
+            }, [] { return false; });
     }
 
 
