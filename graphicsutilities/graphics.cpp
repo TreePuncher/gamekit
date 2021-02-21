@@ -237,6 +237,9 @@ namespace FlexKit
 	ConstantBufferTable::SubAllocation ConstantBufferTable::Reserve(ConstantBufferHandle CB, size_t reserveSize)
 	{
 		const auto res = Push(CB, nullptr, reserveSize);
+        if (!res.has_value())
+            DebugBreak();
+
 		FK_ASSERT(res.has_value());
 
 		const size_t UserIdx	= handles[CB];

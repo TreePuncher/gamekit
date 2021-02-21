@@ -187,7 +187,7 @@ struct PlayerUpdatePacket
     PlayerFrameState        state{};
 };
 
-void HandleEvents(PlayerInputState& keyState, Event evt)
+bool HandleEvents(PlayerInputState& keyState, Event evt)
 {
     if (evt.InputSource == FlexKit::Event::Keyboard)
     {
@@ -197,24 +197,28 @@ void HandleEvents(PlayerInputState& keyState, Event evt)
         {
         case TPC_MoveForward:
             keyState.forward    = state;
-            break;
+            return true;
         case TPC_MoveBackward:
             keyState.backward   = state;
-            break;
+            return true;
         case TPC_MoveLeft:
             keyState.left       = state;
-            break;
+            return true;
         case TPC_MoveRight:
             keyState.right      = state;
-            break;
+            return true;
         case TPC_MoveUp:
             keyState.up         = state;
-            break;
+            return true;
         case TPC_MoveDown:
             keyState.down       = state;
-            break;
+            return true;
+        default:
+            return false;
         }
     }
+
+    return false;
 }
 
 
@@ -356,9 +360,17 @@ public:
         localPlayerComponent    { IN_base.framework.core.GetBlockMemory() },
         remotePlayerComponent   { IN_base.framework.core.GetBlockMemory() },
 
-        packetHandlers          { IN_base.framework.core.GetBlockMemory() }
+        packetHandlers          { IN_base.framework.core.GetBlockMemory() },
+
+        floorCollider           { IN_base.framework.core.GetBlockMemory().allocate<GameObject>() },
+
+        cubes                   { IN_base.framework.core.GetBlockMemory() },
+        cubeShape               { IN_base.physics.CreateCubeShape({ 0.5f, 0.5f, 0.5f}) }
     {
         auto& allocator = IN_base.framework.core.GetBlockMemory();
+        auto floorShape = base.physics.CreateCubeShape({ 100, 1, 100 });
+
+        floorCollider.AddView<StaticBodyView>(pscene, floorShape, float3{0, -0.5f, 0});
 
         packetHandlers.push_back(
             CreatePacketHandler(
@@ -386,6 +398,12 @@ public:
         AddAssetFile("assets\\multiplayerAssets.gameres");
 
         FK_ASSERT(LoadScene(base.framework.core, gscene, sceneID));
+
+
+        for (size_t K = 0; K < 32; K++)
+            for (size_t J = 0; J < 100; J++)
+                for (size_t I = 0; I < 20; I++)
+                    AddCube({ J * 1.0f, 1.0f * I, K * 1.0f });
     }
 
     ~HostWorldStateMangager()
@@ -402,34 +420,50 @@ public:
 
         WorldStateUpdate out;
 
-        fixedUpdate(dT,
-            [&](auto dT)
-            {
-                currentInputState.mousedXY = base.renderWindow.mouseState.Normalized_dPos;
-                UpdatePlayerState(localPlayer, currentInputState, dT);
+        struct HostWorldUpdate
+        {
 
-                
-                const PlayerFrameState localState = GetPlayerFrameState(localPlayer);
+        };
 
-                // Send Player Updates
-                for (auto& playerView : remotePlayerComponent)
+        out.update =
+            &dispatcher.Add<HostWorldUpdate>(
+                [](UpdateDispatcher::UpdateBuilder& Builder, auto& data)
                 {
-                    const auto playerID     = playerView.componentData.ID;
-                    const auto state        = playerView.componentData.GetFrameState();
-                    const auto connection   = playerView.componentData.connection;
+                },
+                [&, dT = dT](auto& data, iAllocator& threadAllocator)
+                {
+                    fixedUpdate(dT,
+                        [&](auto dT)
+                        {
+                            currentInputState.mousedXY = base.renderWindow.mouseState.Normalized_dPos;
+                            UpdatePlayerState(localPlayer, currentInputState, dT);
 
-                    SendFrameState(localPlayerID, localState, connection);
 
-                    for (auto otherPlayer : remotePlayerComponent)
-                    {
-                        const auto otherPID     = otherPlayer.componentData.ID;
-                        const auto connection   = otherPlayer.componentData.connection;
+                            const PlayerFrameState localState = GetPlayerFrameState(localPlayer);
 
-                        if (playerID != otherPID)
-                            SendFrameState(playerID, state, connection);
-                    }
-                }
-            });
+                            // Send Player Updates
+                            for (auto& playerView : remotePlayerComponent)
+                            {
+                                const auto playerID = playerView.componentData.ID;
+                                const auto state = playerView.componentData.GetFrameState();
+                                const auto connection = playerView.componentData.connection;
+
+                                SendFrameState(localPlayerID, localState, connection);
+
+                                for (auto otherPlayer : remotePlayerComponent)
+                                {
+                                    const auto otherPID = otherPlayer.componentData.ID;
+                                    const auto connection = otherPlayer.componentData.connection;
+
+                                    if (playerID != otherPID)
+                                        SendFrameState(playerID, state, connection);
+                                }
+                            }
+                        });
+                });
+
+        auto& physicsUpdate = base.physics.Update(dispatcher, dT);
+        out.update->AddOutput(physicsUpdate);
 
         return out;
     }
@@ -449,12 +483,12 @@ public:
 
         bool handled =
             eventMap.Handle(evt,
-            [&](auto& evt)
+            [&](auto& evt) -> bool
             {
-                HandleEvents(currentInputState, evt);
+                return HandleEvents(currentInputState, evt);
             });
 
-        return false;
+        return handled;
     }
 
     GraphicScene& GetScene() final
@@ -490,6 +524,28 @@ public:
         SetBoundingSphereFromMesh(gameObject);
     }
 
+    void AddCube(float3 POS)
+    {
+        auto& gameObject        = base.framework.core.GetBlockMemory().allocate<GameObject>();
+        auto [triMesh, loaded]  = FindMesh(cube1X1X1);
+        auto& renderSystem      = base.framework.GetRenderSystem();
+
+        if (!loaded)
+            triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), cube1X1X1);
+
+        gameObject.AddView<RigidBodyView>(cubeShape, pscene, POS);
+
+        auto node = GetRigidBodyNode(gameObject);
+
+        gameObject.AddView<SceneNodeView<>>(node);
+        gameObject.AddView<DrawableView>(triMesh, node);
+
+        gscene.AddGameObject(gameObject, node);
+
+        SetBoundingSphereFromMesh(gameObject);
+
+        cubes.emplace_back(&gameObject);
+    }
 
     void UpdateRemotePlayer(const PlayerFrameState& playerState, MultiplayerPlayerID_t player)
     {
@@ -512,6 +568,9 @@ public:
 
     const MultiplayerPlayerID_t     localPlayerID;
     const GUID_t                    playerModel = 7894;
+    const GUID_t                    cube1X1X1   = 7895;
+
+    const PxShapeHandle cubeShape;
 
     FixedUpdate         fixedUpdate{ 60 };
 
@@ -527,6 +586,9 @@ public:
     InputMap					        eventMap;
 
     GameObject&                         localPlayer;
+    GameObject&                         floorCollider;
+
+    Vector<GameObject*>                 cubes;
 
     PacketHandlerVector                 packetHandlers;
 
@@ -551,9 +613,14 @@ public:
         packetHandlers          { IN_base.framework.core.GetBlockMemory() },
 
         pscene                  { IN_base.physics.CreateScene() },
-        localPlayer             { CreateThirdPersonCameraController(pscene, IN_base.framework.core.GetBlockMemory()) }
+        localPlayer             { CreateThirdPersonCameraController(pscene, IN_base.framework.core.GetBlockMemory()) },
+
+        floorCollider           { IN_base.framework.core.GetBlockMemory().allocate<GameObject>() }
     {
         auto& allocator = IN_base.framework.core.GetBlockMemory();
+        auto floorShape = base.physics.CreateCubeShape({1000, 1, 1000});
+
+        floorCollider.AddView<StaticBodyView>(pscene, floorShape);
 
         packetHandlers.push_back(
             CreatePacketHandler(
@@ -621,18 +688,34 @@ public:
 
         net.Update(core, dispatcher, dT);
 
+        struct WorldUpdate
+        {
+
+        };
+
         WorldStateUpdate out;
+        out.update =
+            &dispatcher.Add<WorldUpdate>(
+                [](UpdateDispatcher::UpdateBuilder& Builder, auto& data)
+                {
+                },
+                [&](auto& data, iAllocator& threadAllocator)
+                {
+                    fixedUpdate(dT,
+                        [this, dT = dT](auto dT)
+                        {
+                            currentInputState.mousedXY = base.renderWindow.mouseState.Normalized_dPos;
+                            UpdatePlayerState(localPlayer, currentInputState, dT);
 
-        fixedUpdate(dT,
-            [&](auto dT)
-            {
-                currentInputState.mousedXY = base.renderWindow.mouseState.Normalized_dPos;
-                UpdatePlayerState(localPlayer, currentInputState, dT);
+                            const PlayerFrameState frameState = GetPlayerFrameState(localPlayer);
 
-                const PlayerFrameState frameState = GetPlayerFrameState(localPlayer);
+                            SendFrameState(ID, frameState, server);
+                        });
+                }
+            );
 
-                SendFrameState(ID, frameState, server);
-            });
+        auto& physicsUpdate = base.physics.Update(dispatcher, dT);
+        out.update->AddOutput(physicsUpdate);
 
         return out;
     }
@@ -652,14 +735,11 @@ public:
     {
         ProfileFunction();
 
-        bool handled =
-            eventMap.Handle(evt,
-                [&](auto& evt)
+        return eventMap.Handle(evt,
+                [&](auto& evt) -> bool
                 {
-                    HandleEvents(currentInputState, evt);
+                    return HandleEvents(currentInputState, evt);
                 });
-
-        return false;
     }
 
 
@@ -697,6 +777,8 @@ public:
     RemotePlayerComponent           remotePlayerComponent;
 
     GameObject&                     localPlayer;
+    GameObject&                     floorCollider;
+
 
     CircularBuffer<LocalFrame, 240>	history;
     InputMap					    eventMap;
@@ -818,7 +900,44 @@ public:
 
     bool EventHandler(Event evt) override
     {
-        return worldState.EventHandler(evt);
+        if (worldState.EventHandler(evt))
+            return true;
+
+        switch (evt.InputSource)
+        {
+            case Event::E_SystemEvent:
+            {
+                switch (evt.Action)
+                {
+                case Event::InputAction::Resized:
+                {
+                    const auto width    = (uint32_t)evt.mData1.mINT[0];
+                    const auto height   = (uint32_t)evt.mData2.mINT[0];
+                    base.Resize({ width, height });
+                }   break;
+
+                case Event::InputAction::Exit:
+                    framework.quit = true;
+                    break;
+                default:
+                    break;
+                }
+            }   break;
+
+            case Event::Keyboard:
+            {
+                if (evt.Action == Event::Release)
+                    switch (evt.mData1.mKC[0])
+                    {
+                    case KC_M:
+                        base.renderWindow.ToggleMouseCapture();
+                        break;
+                    case KC_ESC:
+                        framework.quit = true;
+                        break;
+                    };
+            }   break;
+        }
     }
 
 

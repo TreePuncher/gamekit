@@ -540,11 +540,9 @@ namespace FlexKit
 		auto& task = dispatcher.Add<GetPVSTaskData>(
 			[&](auto& builder, auto& data)
 			{
-				size_t taskMemorySize = KILOBYTE * 2048;
-				data.taskMemory.Init((byte*)allocator->malloc(taskMemorySize), taskMemorySize);
 				data.scene			= scene;
-				data.solid			= PVS{ data.taskMemory };
-				data.transparent	= PVS{ data.taskMemory };
+				data.solid			= PVS{ allocator };
+				data.transparent	= PVS{ allocator };
 				data.camera			= C;
 
                 builder.SetDebugString("Gather Scene");
@@ -553,8 +551,14 @@ namespace FlexKit
 			{
                 FK_LOG_9("Start PVS gather\n");
 
-                GatherScene(data.scene, data.camera, data.solid, data.transparent);
+                PVS solid       { &threadAllocator };
+                PVS transparent { &threadAllocator };
+
+                GatherScene(data.scene, data.camera, solid, transparent);
 				SortPVS(&data.solid, &CameraComponent::GetComponent().GetCamera(data.camera));
+
+                data.solid          = solid;
+                data.transparent    = transparent;
 
                 FK_LOG_9("End PVS gather\n");
 			});

@@ -937,6 +937,11 @@ namespace FlexKit
 		{ 
 			return &AllocatorInterface; 
 		}
+
+        operator iAllocator& ()
+        {
+            return AllocatorInterface;
+        }
 	};
 
 

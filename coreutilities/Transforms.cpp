@@ -43,7 +43,7 @@ namespace FlexKit
 
 	inline uint16_t	_SNHandleToIndex(NodeHandle Node) 
 	{ 
-		return SceneNodeTable.Indexes[Node.INDEX]; 
+		return SceneNodeTable.Indexes[Node]; 
 	}
 
 
@@ -52,64 +52,24 @@ namespace FlexKit
 
 	inline void		_SNSetHandleIndex(NodeHandle Node, uint16_t index)
 	{ 
-		SceneNodeTable.Indexes[Node.INDEX] = index; 
+		SceneNodeTable.Indexes[Node] = index; 
 	}
 
 
 	/************************************************************************************************/
 
 
-	void InitiateSceneNodeBuffer(byte* pmem, size_t MemSize)
+	void InitiateSceneNodeBuffer(iAllocator* persistent)
 	{
-		size_t NodeFootPrint = sizeof(SceneNodes::BOILERPLATE);
-		size_t NodeMax = (MemSize - sizeof(SceneNodes)) / NodeFootPrint  - 0x20;
+        SceneNodeTable.Nodes    = { persistent, 2048 };
+        SceneNodeTable.LT       = { persistent, 2048 };
+        SceneNodeTable.WT       = { persistent, 2048 };
+        SceneNodeTable.Flags    = { persistent, 2048 };
+        SceneNodeTable.Children = { persistent, 2048 };
 
-		SceneNodeTable.Nodes = (Node*)pmem;
-		{
-			const size_t aligment = 0x10;
-			auto Memory = pmem + NodeMax;
-			size_t alignoffset = (size_t)Memory % aligment;
-			if(alignoffset)
-				Memory += aligment - alignoffset;	// 16 Byte byte Align
-			SceneNodeTable.LT = (LT_Entry*)(Memory);
-			int c = 0; // Debug Point
-		}
-		{
-			const size_t aligment = 0x40;
-			char* Memory = (char*)SceneNodeTable.LT + NodeMax;
-			size_t alignoffset = (size_t)Memory % aligment; // Cache Align
-			if(alignoffset)
-				Memory += aligment - alignoffset;
-			SceneNodeTable.WT = (WT_Entry*)(Memory);
-			int c = 0; // Debug Point
-		}
-		{
-			SceneNodeTable.Flags = (char*)(SceneNodeTable.WT + NodeMax);
-			for (size_t I = 0; I < NodeMax; ++I)
-				SceneNodeTable.Flags[I] = SceneNodes::FREE;
+        SceneNodeTable.Indexes.Initiate( persistent );
 
-			int c = 0; // Debug Point
-		}
-		{
-			SceneNodeTable.Indexes = (uint16_t*)(SceneNodeTable.Flags + NodeMax);
-			for (size_t I = 0; I < NodeMax; ++I)
-				SceneNodeTable.Indexes[I] = 0xffff;
-
-			int c = 0; // Debug Point
-		}
-
-		for (size_t I = 0; I < NodeMax; ++I)
-		{
-			SceneNodeTable.LT[I].R = DirectX::XMQuaternionIdentity();
-			SceneNodeTable.LT[I].S = DirectX::XMVectorSet(1, 1, 1, 1);
-			SceneNodeTable.LT[I].T = DirectX::XMVectorSet(0, 0, 0, 0);
-		}
-
-		for (size_t I = 0; I < NodeMax; ++I)
-			SceneNodeTable.WT[I].m4x4 = DirectX::XMMatrixIdentity();
-
-		SceneNodeTable.used		= 0;
-		SceneNodeTable.Max		= NodeMax;
+        SceneNodeTable.root = GetZeroedNode();
 	}
 
 
@@ -118,7 +78,7 @@ namespace FlexKit
 
 	void PushAllChildren(size_t CurrentNode, Vector<size_t>& Out)
 	{
-		for (size_t I = 1; I < SceneNodeTable.used; ++I)
+		for (size_t I = 1; I < SceneNodeTable.size(); ++I)
 		{
 			auto ParentIndex = _SNHandleToIndex(SceneNodeTable.Nodes[I].Parent);
 			if(ParentIndex == CurrentNode)
@@ -150,7 +110,7 @@ namespace FlexKit
 	size_t FindFreeIndex()
 	{
 		size_t FreeIndex = -1;
-		for (size_t I = SceneNodeTable.used - 1; I >= 0; ++I)
+		for (size_t I = 0; I >= 0; ++I)
 		{
 			if (SceneNodeTable.Flags[I] & SceneNodes::FREE) {
 				FreeIndex = I;
@@ -164,7 +124,7 @@ namespace FlexKit
 	{
 		#ifdef _DEBUG
 			std::cout << "Node Usage Before\n";
-			for (size_t I = 0; I < SceneNodeTable.used; ++I)
+			for (size_t I = 0; I < SceneNodeTable.size(); ++I)
 				if (SceneNodeTable.Flags[I] & SceneNodes::FREE)
 					std::cout << "Node: " << I << " Unused\n";
 				else
@@ -172,23 +132,25 @@ namespace FlexKit
 		#endif
 
 		// Find Order
-		if (SceneNodeTable.used > 1)
+		if (0 > 1)
 		{
-			size_t NewLength = SceneNodeTable.used;
-			Vector<size_t> Out{ *Temp, SceneNodeTable.used - 1 };
+			Vector<size_t> Out{ *Temp, SceneNodeTable.LT.size() - 1 };
 
-			for (size_t I = 1; I < SceneNodeTable.used; ++I)// First Node Is Always Root
+			for (size_t I = 1; I < SceneNodeTable.LT.size(); ++I)// First Node Is Always Root
 			{
 				if (SceneNodeTable.Flags[I] & SceneNodes::FREE) {
 					size_t II = I + 1;
-					for (; II < SceneNodeTable.used; ++II)
+					for (; II < SceneNodeTable.LT.size(); ++II)
 						if (!(SceneNodeTable.Flags[II] & SceneNodes::FREE))
 							break;
 					
 					SwapNodeEntryies(I, II);
-					SceneNodeTable.Indexes[I] = (uint16_t)I;
-					SceneNodeTable.Indexes[II]= (uint16_t)II;
-					NewLength--;
+
+                    SceneNodeTable.Nodes[I];
+
+					SceneNodeTable.Indexes[NodeHandle(I)]   = (uint16_t)I;
+					SceneNodeTable.Indexes[NodeHandle(II)]  = (uint16_t)II;
+					//NewLength--;
 					int x = 0;
 				}
 				if(SceneNodeTable.Nodes[I].Parent == NodeHandle(-1))
@@ -198,14 +160,14 @@ namespace FlexKit
 				if (ParentIndex > I)
 				{					
 					SwapNodeEntryies(ParentIndex, I);
-					SceneNodeTable.Indexes[ParentIndex]	= (uint16_t)I;
-					SceneNodeTable.Indexes[I]			= (uint16_t)ParentIndex;
+					SceneNodeTable.Indexes[NodeHandle(ParentIndex)]	= (uint16_t)I;
+					SceneNodeTable.Indexes[NodeHandle(I)]			= (uint16_t)ParentIndex;
 				}
 			}
-			SceneNodeTable.used = NewLength + 1;
+
 #ifdef _DEBUG
 			std::cout << "Node Usage After\n";
-			for (size_t I = 0; I < SceneNodeTable.used; ++I)
+			for (size_t I = 0; I < SceneNodeTable.size(); ++I)
 				if (SceneNodeTable.Flags[I] & SceneNodes::FREE)
 					std::cout << "Node: " << I << " Unused\n";
 				else
@@ -220,39 +182,17 @@ namespace FlexKit
 	// TODO: Search an optional Free List
 	NodeHandle GetNewNode()
 	{
-		if (SceneNodeTable.Max < SceneNodeTable.used)
-			FK_ASSERT(0);
+        uint16_t nodeIdx = SceneNodeTable._AddNode();
 
-		uint16_t HandleIndex	= 0;
-        uint16_t NodeIndex		= 0;
+		SceneNodeTable.Flags[nodeIdx] = SceneNodes::DIRTY;
+        const auto handle = SceneNodeTable.Indexes.GetNewHandle();
 
-		{
-            uint16_t itr = 0;
-            uint16_t end = (uint16_t)SceneNodeTable.Max;
-			for (; itr < end; ++itr)
-			{
-				if (SceneNodeTable.Indexes[itr] == 0xffff)
-					break;
-			}
-			NodeIndex = itr;
+		SceneNodeTable.Indexes[handle]          = nodeIdx;
+        auto& node  = SceneNodeTable.Nodes[nodeIdx];
+		node.handle	= handle;
+        node.Parent = SceneNodeTable.root;
 
-			itr = 0;
-			for (; itr < end; ++itr)
-			{
-				if (SceneNodeTable.Flags[itr] & SceneNodes::FREE) break;
-			}
-
-			HandleIndex = itr;
-		}
-
-		SceneNodeTable.Flags[NodeIndex] = SceneNodes::DIRTY;
-		auto node = NodeHandle(HandleIndex);
-
-		SceneNodeTable.Indexes[HandleIndex] = NodeIndex;
-		SceneNodeTable.Nodes[node.INDEX].TH	= node;
-		SceneNodeTable.used++;
-
-		return node;
+		return handle;
 	}
 
 
@@ -284,12 +224,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	NodeHandle GetParentNode(NodeHandle node )
+	NodeHandle GetParentNode(NodeHandle handle)
 	{
-		if (node == FlexKit::InvalidHandle_t)
+		if (handle == FlexKit::InvalidHandle_t)
 			return FlexKit::InvalidHandle_t;
 
-		return SceneNodeTable.Nodes[SceneNodeTable.Indexes[node.INDEX]].Parent;
+        const auto idx  = SceneNodeTable.Indexes[handle];
+        const auto node = SceneNodeTable.Nodes[idx];
+
+		return node.Parent;
 	}
 
 
@@ -304,7 +247,8 @@ namespace FlexKit
 		if (ChildIndex < ParentIndex)
 			SwapNodes(parent, node);
 
-		SceneNodeTable.Nodes[SceneNodeTable.Indexes[node.INDEX]].Parent = parent;
+		SceneNodeTable.Nodes[SceneNodeTable.Indexes[node]].Parent = parent;
+
 		SetFlag(node, SceneNodes::DIRTY);
 	}
 
@@ -316,6 +260,7 @@ namespace FlexKit
 	{
 		DirectX::XMMATRIX wt;
 		GetTransform(node, &wt);
+
 		return float3( wt.r[0].m128_f32[3], wt.r[1].m128_f32[3], wt.r[2].m128_f32[3] );
 	}
 
@@ -326,6 +271,7 @@ namespace FlexKit
 	float3 GetPositionL(NodeHandle Node)
 	{
 		auto Local = GetLocal(Node);
+
 		return Local.T;
 	}
 
@@ -436,8 +382,10 @@ namespace FlexKit
 
     float4x4 GetWT(NodeHandle node)
     {
-        auto index = _SNHandleToIndex(node);
-        return XMMatrixToFloat4x4(SceneNodeTable.WT[index].m4x4);
+        auto index  = _SNHandleToIndex(node);
+        auto WT     = XMMatrixToFloat4x4(SceneNodeTable.WT[index].m4x4);
+
+        return WT;
     }
 
 
@@ -603,12 +551,12 @@ namespace FlexKit
 			}
 		}
 #else
-		for (size_t itr = 1; itr < SceneNodeTable.used; ++itr)
+		for (size_t itr = 1; itr < SceneNodeTable.size(); ++itr)
 			if (SceneNodeTable.Flags[itr] | SceneNodes::UPDATED && !(SceneNodeTable.Flags[itr] | SceneNodes::DIRTY))
 				SceneNodeTable.Flags[itr] ^= SceneNodes::CLEAR;
 
 		size_t Unused_Nodes = 0;;
-		for (size_t itr = 1; itr < SceneNodeTable.used; ++itr)
+		for (size_t itr = 1; itr < SceneNodeTable.size(); ++itr)
 		{
 			if (!(SceneNodeTable.Flags[itr] & SceneNodes::FREE)  &&
 				 (SceneNodeTable.Flags[itr] | SceneNodes::DIRTY) ||
@@ -618,7 +566,7 @@ namespace FlexKit
 				SceneNodeTable.Flags[itr] |= SceneNodes::UPDATED; // Propagates Dirty Status of Panret to Children to update
 
 				DirectX::XMMATRIX LT = XMMatrixIdentity();
-				LT_Entry TRS = GetLocal(SceneNodeTable.Nodes[itr].TH);
+				LT_Entry TRS = GetLocal(SceneNodeTable.Nodes[itr].handle);
 
 				bool sf = (SceneNodeTable.Flags[itr] & SceneNodes::StateFlags::SCALE) != 0;
 				LT =(	XMMatrixRotationQuaternion(TRS.R) *
@@ -638,7 +586,7 @@ namespace FlexKit
 #endif
 
 		SceneNodeTable.WT[0].SetToIdentity();// Making sure root is Identity 
-		return ((float(Unused_Nodes) / float(SceneNodeTable.used)) > 0.25f);
+		return ((float(Unused_Nodes) / float(SceneNodeTable.size())) > 0.25f);
 	}
 
 
@@ -657,8 +605,8 @@ namespace FlexKit
 		WT = DirectX::XMMatrixIdentity();
 		FlexKit::SetWT(node, &WT);
 
-		SceneNodeTable.Nodes[_SNHandleToIndex(node)].Scaleflag = false;
-		SceneNodeTable.Nodes[_SNHandleToIndex(node)].Parent = NodeHandle(0);
+		SceneNodeTable.Nodes[_SNHandleToIndex(node)].Scaleflag  = false;
+		SceneNodeTable.Nodes[_SNHandleToIndex(node)].Parent     = NodeHandle(0);
 
 		return node;
 	}

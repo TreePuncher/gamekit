@@ -430,7 +430,7 @@ namespace FlexKit
         if (localAllocators.empty())
         {
             allocator = std::make_unique<StackAllocator>();
-            allocator->Init((byte*)malloc(1 * MEGABYTE), 1 * MEGABYTE);
+            allocator->Init((byte*)malloc(16 * MEGABYTE), 16 * MEGABYTE);
         }
         else
         {
@@ -458,7 +458,7 @@ namespace FlexKit
 	class LambdaWork : public iWork
 	{
 	public:
-		LambdaWork(TY_FN&& FNIN, iAllocator* IN_allocator = FlexKit::SystemAllocator) noexcept :
+		LambdaWork(TY_FN FNIN, iAllocator* IN_allocator = FlexKit::SystemAllocator) noexcept :
 			iWork		{ IN_allocator  },
 			allocator   { IN_allocator  },
 			Callback	{ FNIN          } {}
@@ -481,7 +481,7 @@ namespace FlexKit
 
 	template<typename TY_FN>
 	iWork& CreateWorkItem(
-		TY_FN&&     FNIN, 
+		TY_FN       FNIN, 
 		iAllocator* Memory_1,
 		iAllocator* Memory_2)
 	{
@@ -490,7 +490,7 @@ namespace FlexKit
 
 	template<typename TY_FN>
 	iWork& CreateWorkItem(
-		TY_FN&&     FNIN,
+		TY_FN       FNIN,
 		iAllocator* allocator = SystemAllocator)
 	{
 		return CreateWorkItem(FNIN, allocator, allocator);

@@ -49,29 +49,13 @@ namespace FlexKit
 	{
         Success = false;
 
-		auto* Memory = (EngineMemory*)_aligned_malloc(PRE_ALLOC_SIZE, 0x40);
+        auto* Memory = new(_aligned_malloc(sizeof(EngineMemory), 0x40)) EngineMemory{};
+
 		FK_ASSERT(Memory != nullptr, "Memory Allocation Error!");
 
         if (Memory == nullptr) {
             return nullptr;
         }
-
-		memset(Memory, 0, PRE_ALLOC_SIZE);
-
-		bool Out = false;
-		BlockAllocator_desc BAdesc;
-		BAdesc.SmallBlock	= MEGABYTE * 128;
-		BAdesc.MediumBlock	= MEGABYTE * 128;
-		BAdesc.LargeBlock	= MEGABYTE * 256;
-
-        new(&Memory->BlockAllocator)    BlockAllocator();
-        new(&Memory->LevelAllocator)    StackAllocator();
-        new(&Memory->TempAllocator)     StackAllocator();
-        new(&Memory->TempAllocatorMT)   ThreadSafeAllocator(Memory->TempAllocator);
-
-		Memory->BlockAllocator.Init(BAdesc);
-		Memory->LevelAllocator.Init(Memory->LevelMem,	LEVELBUFFERSIZE);
-		Memory->TempAllocator.Init(Memory->TempMem,		TEMPBUFFERSIZE);
 
         Success = true;
 		return Memory;
