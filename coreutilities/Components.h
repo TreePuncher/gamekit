@@ -209,6 +209,7 @@ namespace FlexKit
 	{
 	public:
         ComponentView_t() : ComponentViewBase{ ComponentTY::GetComponentID() } {}
+        virtual ~ComponentView_t() override {}
 
 		static ComponentID		GetComponentID()	{ return ComponentTY::GetComponentID(); }
 		static decltype(auto)	GetComponent()		{ return ComponentTY::GetComponent(); }
@@ -232,6 +233,13 @@ namespace FlexKit
 			Release();
 		}
 
+
+        GameObject              (const GameObject& rhs) = delete;
+        GameObject& operator =  (const GameObject& rhs) = delete;
+
+
+        GameObject              (GameObject&& rhs) = delete;
+        GameObject& operator =  (GameObject&& rhs) = delete;
 
 		template<typename TY_View, typename ... TY_args>
 		auto& AddView(TY_args&& ... args)
@@ -275,6 +283,12 @@ namespace FlexKit
 
 			views.clear();
 		}
+
+
+        void _Clear()
+        {
+            views.clear();
+        }
 
 
 		ComponentViewBase* GetView(ComponentID id)
@@ -467,6 +481,11 @@ namespace FlexKit
             elements        { allocator },
             handles         { allocator } {}
 
+        ~BasicComponent_t()
+        {
+            elements.Release();
+        }
+
 		struct elementData
 		{
 			TY_Handle		handle;
@@ -483,10 +502,19 @@ namespace FlexKit
 			return handle;
 		}
 
+        TY_Handle Create(TY&& initial)
+        {
+            auto handle = handles.GetNewHandle();
+            handles[handle] = (index_t)elements.emplace_back(handle, std::move(initial));
+
+            return handle;
+        }
+
+
         TY_Handle Create()
         {
             auto handle = handles.GetNewHandle();
-            handles[handle] = (index_t)elements.push_back({ handle, {} });
+            handles[handle] = (index_t)elements.emplace_back(handle, TY{});
 
             return handle;
         }

@@ -20,6 +20,7 @@
         "slikenet", 
         "stb",
         "tinygltf",
-        "qt5"
+        "qt5", 
+        "range-v3"
     ]
 }

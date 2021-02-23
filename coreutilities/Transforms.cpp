@@ -551,22 +551,26 @@ namespace FlexKit
 			}
 		}
 #else
-		for (size_t itr = 1; itr < SceneNodeTable.size(); ++itr)
-			if (SceneNodeTable.Flags[itr] | SceneNodes::UPDATED && !(SceneNodeTable.Flags[itr] | SceneNodes::DIRTY))
-				SceneNodeTable.Flags[itr] ^= SceneNodes::CLEAR;
 
-		size_t Unused_Nodes = 0;;
+        SceneNodeTable.Flags[0] = SceneNodes::CLEAR;
+
+		size_t Unused_Nodes = 0;
 		for (size_t itr = 1; itr < SceneNodeTable.size(); ++itr)
 		{
-			if (!(SceneNodeTable.Flags[itr] & SceneNodes::FREE)  &&
-				 (SceneNodeTable.Flags[itr] | SceneNodes::DIRTY) ||
-				SceneNodeTable.Flags[_SNHandleToIndex(SceneNodeTable.Nodes[itr].Parent)] | SceneNodes::UPDATED)
-			{
-				SceneNodeTable.Flags[itr] ^= SceneNodes::DIRTY;
-				SceneNodeTable.Flags[itr] |= SceneNodes::UPDATED; // Propagates Dirty Status of Panret to Children to update
+            const auto flag         = SceneNodeTable.Flags[itr];
+            const auto parentFlag   = SceneNodeTable.Flags[_SNHandleToIndex(SceneNodeTable.Nodes[itr].Parent)];
+            const auto scaleFlag    = flag & SceneNodes::SCALE;
 
+            if ((flag & SceneNodes::UPDATED) && !(parentFlag & SceneNodes::UPDATED))
+                SceneNodeTable.Flags[itr] = scaleFlag;
+
+            else if((flag & SceneNodes::DIRTY) || (parentFlag & SceneNodes::UPDATED))
+			{
 				DirectX::XMMATRIX LT = XMMatrixIdentity();
 				LT_Entry TRS = GetLocal(SceneNodeTable.Nodes[itr].handle);
+
+                const auto newFlag          = scaleFlag | SceneNodes::UPDATED;
+                SceneNodeTable.Flags[itr]   = newFlag;
 
 				bool sf = (SceneNodeTable.Flags[itr] & SceneNodes::StateFlags::SCALE) != 0;
 				LT =(	XMMatrixRotationQuaternion(TRS.R) *

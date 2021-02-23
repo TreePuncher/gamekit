@@ -182,6 +182,12 @@ namespace FlexKit
             allocator       { IN_allocator },
             visableObjects  { IN_allocator } {}
 
+        void Release()
+        {
+            visableObjects.Release();
+            allocator->free(this);
+        }
+
         uint                        shadowMapSize = 1;
         Vector<VisibilityHandle>    visableObjects;
         iAllocator*                 allocator;
@@ -190,6 +196,50 @@ namespace FlexKit
 
     struct PointLight
     {
+        PointLight() = default;
+
+        ~PointLight()
+        {
+            if (shadowState)
+                shadowState->Release();
+        }
+
+        PointLight(PointLight&& rhs)
+        {
+            K = rhs.K;
+            I = rhs.I;
+            R = rhs.R;
+
+            Position    = rhs.Position;
+            shadowMap   = rhs.shadowMap;
+
+            forceDisableShadowMapping   = rhs.forceDisableShadowMapping;
+            state                       = rhs.state;
+            shadowState                 = rhs.shadowState;
+
+            rhs.shadowMap       = InvalidHandle_t;
+            rhs.shadowState     = nullptr;
+        }
+
+        PointLight& operator = (PointLight&& rhs)
+        {
+            K = rhs.K;
+            I = rhs.I;
+            R = rhs.R;
+
+            Position    = rhs.Position;
+            shadowMap   = rhs.shadowMap;
+
+            forceDisableShadowMapping   = rhs.forceDisableShadowMapping;
+            state                       = rhs.state;
+            shadowState                 = rhs.shadowState;
+
+            rhs.shadowMap       = InvalidHandle_t;
+            rhs.shadowState     = nullptr;
+
+            return *this;
+        }
+
         float3 K;
         float I, R;
 
@@ -215,7 +265,7 @@ namespace FlexKit
 	class PointLightView : public ComponentView_t<PointLightComponent>
 	{
 	public:
-		PointLightView(float3 color, float intensity, float radius, NodeHandle node) : light{ GetComponent().Create({}) } 
+		PointLightView(float3 color, float intensity, float radius, NodeHandle node) : light{ GetComponent().Create() } 
 		{
 			auto& poingLight        = GetComponent()[light];
 			poingLight.K			= color;

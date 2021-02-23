@@ -428,7 +428,10 @@ namespace FlexKit
         [[nodiscard]] PhysXSceneHandle	CreateScene();
         [[nodiscard]] StaticBodyHandle	CreateStaticCollider	(const PhysXSceneHandle, const PxShapeHandle shape, const float3 pos = { 0, 0, 0 }, const Quaternion q = { 0, 0, 0, 1 });
         [[nodiscard]] RigidBodyHandle	CreateRigidBodyCollider	(const PhysXSceneHandle, const PxShapeHandle shape, const float3 pos = { 0, 0, 0 }, const Quaternion q = { 0, 0, 0, 1 });
+
         [[nodiscard]] PxShapeHandle     CreateCubeShape         (const float3 dimensions);
+        [[nodiscard]] PxShapeHandle     CreateSphereShape       (const float radius);
+
 
         PhysXScene&                     GetScene_ref(PhysXSceneHandle handle);
         physx::PxMaterial*              GetDefaultMaterial() const { return defaultMaterial;}
@@ -451,12 +454,11 @@ namespace FlexKit
 
 		//physx::PxProfileZoneManager*	ProfileZoneManager;
 		//physx::PxCooking*				Oven;
-
+        physx::PxCudaContextManager*    cudaContextmanager = nullptr;
 
 		bool							updateColliders;
 		physx::PxPvd*					visualDebugger;
 		physx::PxPvdTransport*			visualDebuggerConnection;
-		//physx::PxGpuDispatcher*			GPUDispatcher;
 		physx::PxMaterial*				defaultMaterial;
 
 		bool							remoteDebuggerEnabled = true;
@@ -489,6 +491,8 @@ namespace FlexKit
 
 				void Run(iAllocator& allocator) final override
 				{
+                    ProfileFunction();
+
 					task.run();
 					task.release();
 				}

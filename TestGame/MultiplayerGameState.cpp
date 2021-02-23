@@ -10,54 +10,101 @@ using namespace FlexKit;
 /************************************************************************************************/
 
 
-GameState::GameState(
-			GameFramework&  IN_framework, 
-			BaseState&		IN_base) :
-				FrameworkState	{ IN_framework },
-
-				pScene          { IN_base.physics.CreateScene() },
-		
-				frameID			{ 0										},
-				base			{ IN_base								},
-				scene			{ IN_framework.core.GetBlockMemory()	} {}
-
-
-/************************************************************************************************/
-
-
-GameState::~GameState()
+void UpdatePlayerState(GameObject& player, const PlayerInputState& currentInputState, double dT)
 {
-	iAllocator* allocator = base.framework.core.GetBlockMemory();
-	auto& entities = scene.sceneEntities;
+    Apply(player,
+        [&](LocalPlayerView& player,
+            CameraControllerView& camera)
+        {
+            const ThirdPersonCamera::KeyStates tpc_keyState =
+            {
+                .forward    = currentInputState.forward > 0.0,
+                .backward   = currentInputState.backward > 0.0,
+                .left       = currentInputState.left > 0.0,
+                .right      = currentInputState.right > 0.0,
+                .up         = currentInputState.up > 0.0,
+                .down       = currentInputState.down > 0.0,
+            };
 
-	while(entities.size())
-	{
-		auto* entityGO = SceneVisibilityView::GetComponent()[entities.back()].entity;
-		scene.RemoveEntity(*entityGO);
+            const auto cameraState = camera.GetData().GetFrameState();
 
-		entityGO->Release();
-		allocator->free(entityGO);
-	}
-
-	scene.ClearScene();
-	base.physics.ReleaseScene(pScene);
+            player.GetData().inputHistory.push_back({ {}, {}, {}, currentInputState, cameraState });
+            camera.GetData().Update(currentInputState.mousedXY, tpc_keyState, dT);
+        });
 }
 
 
 /************************************************************************************************/
 
 
-UpdateTask* GameState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+bool HandleEvents(PlayerInputState& keyState, Event evt)
 {
-	return base.Update(core, dispatcher, dT);
+    if (evt.InputSource == FlexKit::Event::Keyboard)
+    {
+        auto state = evt.Action == Event::Pressed ? 1.0f : 0.0f;
+
+        switch (evt.mData1.mINT[0])
+        {
+        case TPC_MoveForward:
+            keyState.forward = state;
+            return true;
+        case TPC_MoveBackward:
+            keyState.backward = state;
+            return true;
+        case TPC_MoveLeft:
+            keyState.left = state;
+            return true;
+        case TPC_MoveRight:
+            keyState.right = state;
+            return true;
+        case TPC_MoveUp:
+            keyState.up = state;
+            return true;
+        case TPC_MoveDown:
+            keyState.down = state;
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    return false;
 }
 
 
 /************************************************************************************************/
 
 
-UpdateTask* GameState::Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
+PlayerFrameState GetPlayerFrameState(GameObject& gameObject)
 {
+    PlayerFrameState out;
+
+    Apply(
+        gameObject,
+        [&](LocalPlayerView& view)
+        {
+            const float3        pos = GetCameraControllerHeadPosition(gameObject);
+            const Quaternion    q = GetCameraControllerOrientation(gameObject);
+
+            out.pos = pos;
+            out.orientation = q;
+        });
+
+    return out;
+}
+
+
+/************************************************************************************************/
+
+
+RemotePlayerData* FindPlayer(MultiplayerPlayerID_t ID, RemotePlayerComponent& players)
+{
+    for (auto& player : players)
+    {
+        if (player.componentData.ID == ID)
+            return &players[player.handle];
+    }
+
     return nullptr;
 }
 
@@ -65,277 +112,81 @@ UpdateTask* GameState::Draw(UpdateTask* update, EngineCore& core, UpdateDispatch
 /************************************************************************************************/
 
 
-void GameState::PostDrawUpdate(EngineCore& core, double dT)
+LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerInterface& IN_worldState, BaseState& IN_base) :
+        FrameworkState  { IN_framework  },
+        worldState      { IN_worldState },
+        base            { IN_base }
 {
-	base.PostDrawUpdate(core, dT);
+    //base.renderWindow.EnableCaptureMouse(true);
 }
 
 
 /************************************************************************************************/
 
 
-LocalPlayerState::LocalPlayerState(
-	GameFramework&      IN_framework,
-	BaseState&          IN_base,
-	GameState&          IN_game) :
-		FrameworkState	    { IN_framework							                            },
-		game			    { IN_game								                            },
-		base			    { IN_base								                            },
-		eventMap		    { IN_framework.core.GetBlockMemory()	                            },
-		netInputObjects	    { IN_framework.core.GetBlockMemory()	                            },
-		thirdPersonCamera   { CreateThirdPersonCameraController(IN_game.pScene, IN_framework.core.GetBlockMemory())   }
+LocalGameState::~LocalGameState()
 {
-    Apply(thirdPersonCamera,
-        [&](CameraControllerView& camera)
-        {
-            camera.GetData().SetPosition({ 100, 15, 0 });
-        });
-
-	eventMap.MapKeyToEvent(KEYCODES::KC_W, TPC_MoveForward);
-	eventMap.MapKeyToEvent(KEYCODES::KC_S, TPC_MoveBackward);
-	eventMap.MapKeyToEvent(KEYCODES::KC_A, TPC_MoveLeft);
-	eventMap.MapKeyToEvent(KEYCODES::KC_D, TPC_MoveRight);
-	eventMap.MapKeyToEvent(KEYCODES::KC_Q, TPC_MoveDown);
-	eventMap.MapKeyToEvent(KEYCODES::KC_E, TPC_MoveUp);
-
-    base.framework.GetRenderSystem().DEBUG_AttachPIX();
+    base.framework.core.GetBlockMemory().release_allocation(worldState);
 }
 
 
 /************************************************************************************************/
 
 
-UpdateTask* LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
+UpdateTask* LocalGameState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
     ProfileFunction();
 
     base.Update(core, dispatcher, dT);
-    base.debugUI.Update(base.renderWindow, core, dispatcher, dT);
 
-    ImGui::NewFrame();
+    auto tasks = worldState.Update(core, dispatcher, dT);
 
-    if (showDebugMenu)
-    {
-        ImGui::Begin("Debug Options");
-
-        if (ImGui::Button("Animated Camera"))
-            animateCamera = !animateCamera;
-
-        if (ImGui::Button("Toggle Stats"))
-            showDebugStats = !showDebugStats;
-
-        if (ImGui::Button("Toggle Profiler"))
-            drawProfiler = !drawProfiler;
-
-        if (ImGui::BeginMenu("Plot Menu"))
-        {
-            if (ImGui::MenuItem("Frame Time"))
-                drawFrameChart = !drawFrameChart;
-            if (ImGui::MenuItem("Shading Time"))
-                drawShadingPlot = !drawShadingPlot;
-            if (ImGui::MenuItem("Feedback Time"))
-                drawFeedbackPlot = !drawFeedbackPlot;
-            if (ImGui::MenuItem("Present Time"))
-                drawPresentWaitTime = !drawPresentWaitTime;
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("Debug Vis Menu"))
-        {
-            if (ImGui::BeginMenu("Scene Vis"))
-            {
-                if (ImGui::MenuItem("BVH"))
-                {
-                    renderMode = DebugVisMode::BVHVIS;
-                    bvhVisMode = BVHVisMode::BVH;
-                }
-                if (ImGui::MenuItem("AABB"))
-                {
-                    renderMode = DebugVisMode::BVHVIS;
-                    bvhVisMode = BVHVisMode::BoundingVolumes;
-                }
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu("Deferred Shading VIS"))
-            {
-                if (ImGui::MenuItem("BVH"))
-                {
-                    renderMode = DebugVisMode::ClusterVIS;
-                    debugDrawMode = ClusterDebugDrawMode::BVH;
-                }
-                if (ImGui::MenuItem("Clusters"))
-                {
-                    renderMode = DebugVisMode::ClusterVIS;
-                    debugDrawMode = ClusterDebugDrawMode::Clusters;
-                }
-                if (ImGui::MenuItem("Lights"))
-                {
-                    renderMode = DebugVisMode::ClusterVIS;
-                    debugDrawMode = ClusterDebugDrawMode::Lights;
-                }
-                ImGui::EndMenu();
-            }
-            if (ImGui::MenuItem("Clear"))
-            {
-                renderMode = DebugVisMode::Disabled;
-            }
-            ImGui::EndMenu();
-        }
-
-        ImGui::End();
-    }
-
-    if (drawFrameChart || drawShadingPlot || drawFeedbackPlot || drawPresentWaitTime)
-    {
-        if(ImGui::Begin("Plots"))
-        {
-            ImPlot::BeginPlot("Time Plots");
-
-            if(drawFrameChart)
-            {
-                double Y_values[120];
-                double X_values[120];
-                int valueCount = 0;
-
-                for (auto time : framework.stats.frameTimes)
-                {
-                    Y_values[valueCount] = time.duration;
-                    X_values[valueCount] = valueCount;
-
-                    valueCount++;
-                }
-
-                ImPlot::PlotLine("Update Times", X_values, Y_values, valueCount);
-            }
-
-            if (drawShadingPlot)
-            {
-                double Y_values[120];
-                double X_values[120];
-                int valueCount = 0;
-
-                for (auto time : framework.stats.shadingTimes)
-                {
-                    Y_values[valueCount] = time.duration;
-                    X_values[valueCount] = valueCount;
-
-                    valueCount++;
-                }
-
-                ImPlot::PlotLine("Deferred Shading", X_values, Y_values, valueCount);
-            }
-
-            if (drawFeedbackPlot)
-            {
-                double Y_values[120];
-                double X_values[120];
-                int valueCount = 0;
-
-                for (auto time : framework.stats.feedbackTimes)
-                {
-                    Y_values[valueCount] = time.duration;
-                    X_values[valueCount] = valueCount;
-
-                    valueCount++;
-                }
-
-                ImPlot::PlotShaded("texture feedback", X_values, Y_values, valueCount);
-            }
-
-            if(drawPresentWaitTime)
-            {
-                double Y_values[120];
-                double X_values[120];
-                int valueCount = 0;
-
-                for (auto time : framework.stats.presentTimes)
-                {
-                    Y_values[valueCount] = time.duration;
-                    X_values[valueCount] = valueCount;
-
-                    valueCount++;
-                }
-
-                ImPlot::PlotLine("texture feedback", X_values, Y_values, valueCount);
-            }
-
-            ImPlot::EndPlot();
-            ImGui::End();
-        }
-    }
-
-    if(showDebugStats)
-        base.DEBUG_PrintDebugStats(core);
-
-    if(drawProfiler)
-        profiler.DrawProfiler(core.GetTempMemory());
-
-    ImGui::Render();
-
-    if(animateCamera)
-        Apply(thirdPersonCamera,
-            [&](CameraControllerView& camera)
-            {
-                camera.GetData().Yaw(dT * pi);
-
-                camera.GetData().SetPosition(
-                    lerp(
-                        float3{-100, 15, 0 },
-                        float3{ 100, 15, 0 },
-                        std::sin(T) / 2.0f + 0.5f));
-
-                T += dT;
-            });
-
-    return nullptr;
+    return tasks.update;
 }
 
 
 /************************************************************************************************/
 
 
-UpdateTask* LocalPlayerState::Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
+UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
     ProfileFunction();
 
-	frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
-	frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
 
-	CameraHandle activeCamera = GetCameraControllerCamera(thirdPersonCamera);
-	SetCameraAspectRatio(activeCamera, base.renderWindow.GetAspectRatio());
+    frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
+    frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
 
-	float2 mouse_dPos       = base.renderWindow.mouseState.Normalized_dPos;
+    CameraHandle activeCamera = worldState.GetActiveCamera();
+    SetCameraAspectRatio(activeCamera, base.renderWindow.GetAspectRatio());
 
-	auto& scene				= game.scene;
+    auto& scene             = worldState.GetScene();
+    auto& transforms        = QueueTransformUpdateTask(dispatcher);
+    auto& cameras           = CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
+    auto& cameraConstants   = MakeHeapCopy(Camera::ConstantBuffer{}, core.GetTempMemory());
 
-	auto& transforms		= QueueTransformUpdateTask(dispatcher);
-	auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
-	auto& cameraConstants	= MakeHeapCopy(Camera::ConstantBuffer{}, core.GetTempMemory());
-	auto& cameraControllers = UpdateThirdPersonCameraControllers(dispatcher, mouse_dPos, dT);
+    if (updateTask)
+        transforms.AddInput(*updateTask);
 
-	transforms.AddInput(cameraControllers);
+    cameras.AddInput(transforms);
 
-	cameras.AddInput(cameraControllers);
-	cameras.AddInput(transforms);
+    WorldRender_Targets targets = {
+        base.renderWindow.GetBackBuffer(),
+        base.depthBuffer
+    };
 
-	WorldRender_Targets targets = {
-		base.renderWindow.GetBackBuffer(),
-		base.depthBuffer
-	};
+    ClearVertexBuffer   (frameGraph, base.vertexBuffer);
+    ClearBackBuffer     (frameGraph, targets.RenderTarget, {0.0f, 0.0f, 0.0f, 0.0f});
+    ClearDepthBuffer    (frameGraph, base.depthBuffer, 1.0f);
 
-	ClearVertexBuffer   (frameGraph, base.vertexBuffer);
-	ClearBackBuffer     (frameGraph, targets.RenderTarget, 0.0f);
-	ClearDepthBuffer    (frameGraph, base.depthBuffer, 1.0f);
+    auto reserveVB = FlexKit::CreateVertexBufferReserveObject(base.vertexBuffer, core.RenderSystem, core.GetTempMemory());
+    auto reserveCB = FlexKit::CreateConstantBufferReserveObject(base.constantBuffer, core.RenderSystem, core.GetTempMemory());
 
-	auto reserveVB = FlexKit::CreateVertexBufferReserveObject(base.vertexBuffer, core.RenderSystem, core.GetTempMemory());
-	auto reserveCB = FlexKit::CreateConstantBufferReserveObject(base.constantBuffer, core.RenderSystem, core.GetTempMemory());
-
-	if(base.renderWindow.GetWH().Product() != 0)
-	{
-        DrawSceneDescription scene =
+    if (base.renderWindow.GetWH().Product() != 0)
+    {
+        DrawSceneDescription sceneDesc =
         {
             .camera = activeCamera,
-            .scene  = game.scene,
+            .scene  = scene,
             .dt     = dT,
             .t      = base.t,
 
@@ -343,15 +194,15 @@ UpdateTask* LocalPlayerState::Draw(UpdateTask* update, EngineCore& core, UpdateD
             .reserveVB  = reserveVB,
             .reserveCB  = reserveCB,
 
-            .debugDisplay           = renderMode,
-            .BVHVisMode             = bvhVisMode,
-            .debugDrawMode          = debugDrawMode,
+            .debugDisplay   = DebugVisMode::Disabled,
+            .BVHVisMode     = BVHVisMode::BVH,
+            .debugDrawMode  = ClusterDebugDrawMode::BVH,
 
             .transformDependency    = transforms,
             .cameraDependency       = cameras,
         };
 
-        auto& drawnScene = base.render.DrawScene(dispatcher, frameGraph, scene, targets, core.GetBlockMemory(), core.GetTempMemoryMT());
+        auto& drawnScene = base.render.DrawScene(dispatcher, frameGraph, sceneDesc, targets, core.GetBlockMemory(), core.GetTempMemoryMT());
 
         base.streamingEngine.TextureFeedbackPass(
             dispatcher,
@@ -361,88 +212,9 @@ UpdateTask* LocalPlayerState::Draw(UpdateTask* update, EngineCore& core, UpdateD
             drawnScene.PVS,
             reserveCB,
             reserveVB);
-
-	    // Draw Skeleton overlay
-	    if (auto [gameObject, res] = FindGameObject(game.scene, "Cylinder"); res)
-	    {
-		    auto Skeleton = GetSkeleton(*gameObject);
-		    auto pose     = GetPoseState(*gameObject);
-		    auto node     = GetSceneNode(*gameObject);
-
-		    //RotateJoint(*gameObject, JointHandle(0), Quaternion{ 0, T, 0 });
-
-            /*
-		    for (size_t I = 0; I < 5; I++)
-		    {
-			    JointHandle joint{ I };
-
-			    auto jointPose = GetJointPose(*gameObject, joint);
-			    jointPose.r = Quaternion{ 0, 0, (float)(T) * 90 };
-			    SetJointPose(*gameObject, joint, jointPose);
-		    }
-            */
-
-		    T += dT;
-
-            if (!Skeleton)
-                return nullptr;
-
-		    LineSegments lines = DEBUG_DrawPoseState(*pose, node, core.GetTempMemory());
-		    //LineSegments lines = BuildSkeletonLineSet(Skeleton, node, core.GetTempMemory());
-
-		    const auto cameraConstants = GetCameraConstants(activeCamera);
-
-		    for (auto& line : lines)
-		    {
-			    const auto tempA = cameraConstants.PV * float4{ line.A, 1 };
-			    const auto tempB = cameraConstants.PV * float4{ line.B, 1 };
-
-			    if (tempA.w <= 0 || tempB.w <= 0)
-			    {
-				    line.A = { 0, 0, 0 };
-				    line.B = { 0, 0, 0 };
-			    }
-			    else
-			    {
-				    line.A = tempA.xyz() / tempA.w;
-				    line.B = tempB.xyz() / tempB.w;
-			    }
-		    }
-
-            /*
-		        DrawShapes(
-			    DRAW_LINE_PSO,
-			    frameGraph,
-			    reserveVB,
-			    reserveCB,
-			    targets.RenderTarget,
-			    core.GetTempMemory(),
-			    LineShape{ lines });
-            */
-	    }
     }
 
-	//framework.stats.objectsDrawnLastFrame = PVS.GetData().solid.size();
-    base.debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, base.renderWindow.GetBackBuffer());
-
-    const auto shadingStats         = base.render.GetTimingValues();
-    const auto texturePassTime      = base.streamingEngine.debug_GetPassTime();
-    const auto textureUpdateTime    = base.streamingEngine.debug_GetUpdateTime();
-
-    framework.stats.shadingTimes.push_back(
-        GameFramework::TimePoint{
-                .T          = framework.runningTime,
-                .duration   = shadingStats.shadingPass
-        });
-
-
-    framework.stats.feedbackTimes.push_back(
-        GameFramework::TimePoint{
-                .T          = framework.runningTime,
-                .duration   = texturePassTime
-        });
-
-	PresentBackBuffer(frameGraph, base.renderWindow);
+    PresentBackBuffer(frameGraph, base.renderWindow);
 
     return nullptr;
 }
@@ -451,151 +223,66 @@ UpdateTask* LocalPlayerState::Draw(UpdateTask* update, EngineCore& core, UpdateD
 /************************************************************************************************/
 
 
-void LocalPlayerState::PostDrawUpdate(EngineCore& core, double dT)
+void LocalGameState::PostDrawUpdate(EngineCore& core, double dT)
 {
     ProfileFunction();
 
-	base.PostDrawUpdate(core, dT);
+    base.PostDrawUpdate(core, dT);
 }
 
 
 /************************************************************************************************/
 
 
-bool LocalPlayerState::EventHandler(Event evt)
+bool LocalGameState::EventHandler(Event evt)
 {
-    ProfileFunction();
+    if (worldState.EventHandler(evt))
+        return true;
 
-	bool handled = eventMap.Handle(evt, [&](auto& evt) -> bool
-		{
-			return HandleEvents(thirdPersonCamera, evt);
-		});
-
-	switch (evt.InputSource)
-	{
-		case Event::E_SystemEvent:
-		{
-			switch (evt.Action)
-			{
-			case Event::InputAction::Resized:
-			{
-				const auto width  = (uint32_t)evt.mData1.mINT[0];
-				const auto height = (uint32_t)evt.mData2.mINT[0];
-				base.Resize({ width, height });
-			}   break;
-
-			case Event::InputAction::Exit:
-				framework.quit = true;
-				break;
-			default:
-				break;
-			}
-		}   break;
-		case Event::Keyboard:
-		{
-			switch (evt.mData1.mKC[0])
-			{
-			case KC_U: // Reload Shaders
-			{
-				if (evt.Action == Event::Release)
-				{
-					std::cout << "Reloading Shaders\n";
-                    framework.core.RenderSystem.QueuePSOLoad(LIGHTBVH_DEBUGVIS_PSO);
-                    framework.core.RenderSystem.QueuePSOLoad(CLUSTER_DEBUGVIS_PSO);
-                    framework.core.RenderSystem.QueuePSOLoad(CREATECLUSTERS);
-                    framework.core.RenderSystem.QueuePSOLoad(CREATECLUSTERLIGHTLISTS);
-                    framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
-                }
-			}   return true;
-			case KC_K:
-			{
-				if (evt.Action == Event::Release)
-				{
-                    switch (renderMode)
-                    {
-                    case DebugVisMode::BVHVIS:
-                        renderMode = DebugVisMode::ClusterVIS;  break;
-                    case DebugVisMode::ClusterVIS:
-                        renderMode = DebugVisMode::Disabled;  break;
-                    case DebugVisMode::Disabled:
-                        renderMode = DebugVisMode::BVHVIS;  break;
-                    }
-				}
-			}   return true;
-            case KC_L:
+    switch (evt.InputSource)
+    {
+        case Event::E_SystemEvent:
+        {
+            switch (evt.Action)
             {
-                if (evt.Action == Event::Release)
-
-                    if (renderMode == DebugVisMode::BVHVIS)
-                    {
-                        switch (bvhVisMode)
-                        {
-                        case BVHVisMode::BVH:
-                            bvhVisMode = BVHVisMode::BoundingVolumes;
-                            break;
-                        case BVHVisMode::BoundingVolumes:
-                            bvhVisMode = BVHVisMode::Both;
-                            break;
-                        case BVHVisMode::Both:
-                            bvhVisMode = BVHVisMode::BVH;
-                            break;
-                        }
-                    }
-                    else if (renderMode == DebugVisMode::ClusterVIS)
-                    {
-                        switch (debugDrawMode)
-                        {
-                        case ClusterDebugDrawMode::BVH:
-                            debugDrawMode = ClusterDebugDrawMode::Lights;
-                            break;
-                        case ClusterDebugDrawMode::Lights:
-                            debugDrawMode = ClusterDebugDrawMode::Clusters;
-                            break;
-                        case ClusterDebugDrawMode::Clusters:
-                            debugDrawMode = ClusterDebugDrawMode::BVH;
-                            break;
-                        }
-                    }
-            }   return true;
-			case KC_M:
-				if (evt.Action == Event::Release)
-					base.renderWindow.EnableCaptureMouse(!base.renderWindow.mouseCapture);
-				break;
-            case KC_P: // Reload Shaders
+            case Event::InputAction::Resized:
             {
-                if (evt.Action == Event::Release)
-                {
-                    if (captureInProgress)
-                    {
-                        FK_LOG_INFO("Ending Pix Capture");
-                        captureInProgress = !base.framework.GetRenderSystem().DEBUG_EndPixCapture();
-                    }
-                    else
-                    {
-                        FK_LOG_INFO("Beginning Pix Capture");
-                        captureInProgress = base.framework.GetRenderSystem().DEBUG_BeginPixCapture();
-                    }
-                }
+                const auto width    = (uint32_t)evt.mData1.mINT[0];
+                const auto height   = (uint32_t)evt.mData2.mINT[0];
+                base.Resize({ width, height });
             }   break;
-            case KC_F1:
-                if (evt.Action == Event::Release)
-                    showDebugMenu = !showDebugMenu;
-			default:
-				return handled;
-			}
-		}   break;
-	}
 
-    if (!handled)
-        return base.debugUI.HandleInput(evt);
-    else
-	    return true;
+            case Event::InputAction::Exit:
+                framework.quit = true;
+                break;
+            default:
+                break;
+            }
+        }   break;
+
+        case Event::Keyboard:
+        {
+            if (evt.Action == Event::Release)
+                switch (evt.mData1.mKC[0])
+                {
+                case KC_M:
+                    base.renderWindow.ToggleMouseCapture();
+                    break;
+                case KC_ESC:
+                    framework.quit = true;
+                    break;
+                };
+        }   break;
+    }
 }
+
+
+/************************************************************************************************/
 
 
 /**********************************************************************
 
-Copyright (c) 2020 Robert May
+Copyright (c) 2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

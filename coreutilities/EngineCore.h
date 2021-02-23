@@ -160,6 +160,7 @@ namespace FlexKit
 			Release();
 
             RenderSystem.Release();
+            profiler.Release();
 
 			Memory = nullptr;
 		}

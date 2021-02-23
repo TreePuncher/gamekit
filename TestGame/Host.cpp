@@ -9,24 +9,129 @@ using FlexKit::GameFramework;
 /************************************************************************************************/
 
 
-UpdateTask* GameHostLobbyState::Update(EngineCore& core, UpdateDispatcher& Dispatcher, double dT)
+HostState::HostState(GameFramework& framework, GameInfo IN_info, BaseState& IN_base, NetworkState& IN_net) :
+    FrameworkState  { framework },
+    net             { IN_net },
+    base            { IN_base },
+    info            { IN_info },
+    handler         { framework.core.GetBlockMemory() },
+    hostID          { GeneratePlayerID() }
 {
-	for (auto player : playerLobbyState)
-	{
-		auto playerHostState = host.GetPlayer(player.ID);
-		if (playerHostState->state == Lobby)
-		{
-			screen.SetPlayerName(player.ID, playerHostState->name);
-			screen.SetPlayerReady(player.ID, player.Ready);
-		}
-	}
+    net.HandleNewConnection = [&](ConnectionHandle connection) { HandleIncomingConnection(connection); };
+    net.HandleDisconnection = [&](ConnectionHandle connection) { HandleDisconnection(connection); };
 
-	FlexKit::WindowInput windowInput;
-	windowInput.CursorWH                = { 0.05f, 0.05f };
-	//windowInput.MousePosition           = framework.MouseState.NormalizedScreenCord;
-	//windowInput.LeftMouseButtonPressed  = framework.MouseState.LMB_Pressed;
+    Player host{
+        .name = info.name,
+        .ID   = hostID
+    };
 
-	screen.Update(dT, windowInput, base.renderWindow.GetPixelSize(), core.GetTempMemory());
+    players.push_back(host);
+
+    // Register Packet Handlers
+    handler.push_back(
+        CreatePacketHandler(
+            ClientDataRequestResponse,
+            [&](UserPacketHeader* incomingPacket, Packet* packet, NetworkState* network)
+            {
+                const ClientDataPacket* clientData = reinterpret_cast<ClientDataPacket*>(incomingPacket);
+
+                const std::string           name        { clientData->playerName };
+                const PlayerJoinEventPacket joinEvent   { clientData->playerID };
+
+                for (auto& player : players)
+                {
+                    if (clientData->playerID == player.ID)
+                        player.name = name;
+                    else
+                        net.Send(joinEvent.Header, player.connection);
+                }
+            },
+            framework.core.GetBlockMemory()));
+
+    handler.push_back(
+        CreatePacketHandler(
+            LobbyMessage,
+            [&](UserPacketHeader* incomingPacket, Packet* packet, NetworkState* network)
+            {
+                LobbyMessagePacket* msgPacket = reinterpret_cast<LobbyMessagePacket*>(incomingPacket);
+
+                std::string msg = msgPacket->message;
+
+                for (auto& player : players)
+                {
+                    if (player.ID != msgPacket->playerID)
+                    {
+                        LobbyMessagePacket outMessage{ player.ID, msg };
+                        net.Send(outMessage.Header, player.connection);
+                    }
+                }
+
+                if (OnMessageRecieved)
+                    OnMessageRecieved(msg);
+            },
+            framework.core.GetBlockMemory()));
+
+    handler.push_back(
+        CreatePacketHandler(
+            RequestPlayerListPacket::PacketID(),
+            [&](UserPacketHeader* incomingPacket, Packet* packet, NetworkState* network)
+            {
+                RequestPlayerListPacket* request = reinterpret_cast<RequestPlayerListPacket*>(incomingPacket);
+
+                auto player = GetPlayer(request->playerID);
+
+                if(player)
+                    SendPlayerList(player->connection);
+            },
+            framework.core.GetBlockMemory()));
+
+    net.PushHandler(handler);
+    net.Startup(1337);
+}
+
+
+/************************************************************************************************/
+
+
+void HostState::HandleIncomingConnection(ConnectionHandle connectionhandle)
+{
+    Player host{
+        .name       = "Incoming",
+        .ID         = GetNewID(),
+        .connection = connectionhandle
+    };
+
+    players.push_back(host);
+
+    RequestClientDataPacket packet(host.ID);
+    net.Send(packet.header, connectionhandle);
+
+    if (OnPlayerJoin)
+        OnPlayerJoin(players.back());
+
+}
+
+/************************************************************************************************/
+
+
+void HostState::HandleDisconnection(ConnectionHandle connection)
+{
+    players.erase(
+        std::remove_if(
+            players.begin(), players.end(),
+            [&](auto& player)
+            {
+                return player.connection == connection;
+            }));
+}
+
+
+/************************************************************************************************/
+
+
+UpdateTask* HostState::Update(EngineCore&core, UpdateDispatcher& dispatcher, double dT)
+{
+    net.Update(core, dispatcher, dT);
 
     return nullptr;
 }
@@ -35,287 +140,89 @@ UpdateTask* GameHostLobbyState::Update(EngineCore& core, UpdateDispatcher& Dispa
 /************************************************************************************************/
 
 
-UpdateTask* GameHostLobbyState::Draw(UpdateTask*, EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph)
+MultiplayerPlayerID_t HostState::GetNewID() const
 {
-	auto currentRenderTarget = base.renderWindow.GetBackBuffer();
+    while (true)
+    {
+        const auto newID = GeneratePlayerID();
 
-    frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
-
-	ClearVertexBuffer	(frameGraph, host.base.vertexBuffer);
-	ClearBackBuffer		(frameGraph, currentRenderTarget, { 0.0f, 0.0f, 0.0f, 0.0f });
-
-	LobbyScreenDrawDesc Desc;
-	Desc.allocator			= core.GetTempMemory();
-	Desc.constantBuffer		= host.base.constantBuffer;
-	Desc.vertexBuffer		= host.base.vertexBuffer;
-	Desc.renderTarget		= currentRenderTarget;
-	screen.Draw(Desc, Dispatcher, frameGraph);
-
-    /*
-	DrawMouseCursor(
-		framework.MouseState.NormalizedScreenCord,
-		{ 0.05f, 0.05f },
-		host.base.vertexBuffer,
-		host.base.constantBuffer,
-		currentRenderTarget,
-		core.GetTempMemory(),
-		&frameGraph);
-    */
-
-    if (framework.drawDebugStats)
-        framework.DrawDebugHUD(dT, host.base.vertexBuffer, base.renderWindow.GetBackBuffer(), frameGraph);
-
-    PresentBackBuffer(frameGraph, base.renderWindow);
-
-    return nullptr;
+        if (std::find_if(std::begin(players), std::end(players),
+            [&](auto& player) -> bool { return player.ID == newID; }) == players.end())
+            return newID;
+    }
 }
 
 
 /************************************************************************************************/
 
 
-void GameHostLobbyState::PostDrawUpdate(EngineCore& core, double dT)
+HostState::Player* HostState::GetPlayer(MultiplayerPlayerID_t ID)
 {
-    base.PostDrawUpdate(core, dT);
+    if (auto res = std::find_if(
+            std::begin(players),
+            std::end(players),
+            [&](auto& player) -> bool { return player.ID == ID; });
+            res != players.end())
+
+        return &(*res);
+    else
+        return nullptr;
 }
 
 
 /************************************************************************************************/
 
 
-bool GameHostLobbyState::EventHandler(Event evt)
+void HostState::BroadCastMessage(std::string msg)
 {
-	if (evt.InputSource == Event::Keyboard &&
-		evt.Action == Event::Pressed)
-	{
-		switch ((DEBUG_EVENTS)evt.mData1.mINT[0])
-		{
-		case FlexKit::KC_SPACE:
-		{
-			host.BeginGame();
-            return true;
-		}	break;
-		default:
-			break;
-		}
-	}
+    for (auto& player : players)
+    {
+        LobbyMessagePacket msgPkt{ player.ID, msg };
 
-    return false;
+
+        net.Send(msgPkt.Header, player.connection);
+    }
+}
+
+/************************************************************************************************/
+
+
+void HostState::SendPlayerList(ConnectionHandle dest)
+{
+    auto& temp  = framework.core.GetTempMemory();
+    auto packet = PlayerListPacket::Create(players.size(), temp);
+
+
+    for (size_t I = 0; I < players.size(); I++)
+    {
+        strcpy(packet->Players[I].name, players[I].name.c_str());
+
+        packet->Players[I].ready    = false;
+        packet->Players[I].ID       = players[I].ID;
+
+        strncpy(packet->Players[I].name, players[I].name.c_str(), sizeof(packet->Players[I].name));
+    }
+
+    net.Send(*packet, dest);
 }
 
 
 /************************************************************************************************/
 
 
-GameHostLobbyState::GameHostLobbyState(
-	GameFramework&	IN_framework,
-    BaseState&      IN_base,
-	GameHostState&	IN_host) :
-		FrameworkState		{ IN_framework																}, 
-		packetHandlers		{ IN_framework.core.GetBlockMemory()										},
-        base                { IN_base                                                                   },
-		host				{ IN_host																	},
-		playerLobbyState	{ IN_framework.core.GetBlockMemory()										},
-		screen				{ IN_framework.core.GetBlockMemory(), IN_framework.DefaultAssets.Font	}
+void HostState::SendGameStart()
 {
+    StartGamePacket startGamePacket;
 
-    host.network.HandleNewConnection =
-        [&](auto connection)
-        {
-	        HandleNewConnection(connection);
-        };
-
-
-    host.network.HandleDisconnection =
-        [&](auto connection)
-        {
-            HandleDisconnection(connection);
-        };
-
-	packetHandlers.push_back(
-		CreatePacketHandler(
-			ClientDataRequestResponse,
-			[&](UserPacketHeader* packetContents, Packet* incomingPacket, NetworkState* network)
-			{
-				ClientDataPacket* ClientData = (ClientDataPacket*)packetContents;
-
-				if (auto player = host.GetPlayer(ClientData->playerID); player)
-				{
-					player->state = Lobby;
-
-					host.SetPlayerName(
-						ClientData->playerID, 
-						ClientData->playerName, 
-						ClientData->playerNameLength);
-
-					FK_LOG_9("Player: %s joined game", ClientData->playerName);
-				}
-			}, 
-			IN_framework.core.GetBlockMemory()));
-
-
-	packetHandlers.push_back(
-		CreatePacketHandler(
-			ClientReadyEvent,
-			[&](UserPacketHeader* packetContents, Packet* incomingPacket, NetworkState* network)
-			{
-				FK_LOG_INFO("ready packet recieved!");
-
-				ClientReady* readyPacket = (ClientReady*)packetContents;
-				auto playerState = host.GetPlayer(readyPacket->playerID);
-
-				if (playerState)
-				{
-					for (auto& playerLobby : playerLobbyState)
-					{
-						if (playerLobby.ID == readyPacket->playerID)
-						{
-							playerLobby.Ready = readyPacket->ready;
-
-#ifdef _DEBUG
-							if (readyPacket->ready)
-								FK_LOG_9("Player: %s is now ready", playerState->name);
-							else
-								FK_LOG_9("Player: %s is now not ready", playerState->name);
-#endif
-						}
-					}
-				}
-			}, 
-			IN_framework.core.GetBlockMemory()));
-
-
-	packetHandlers.push_back(
-		CreatePacketHandler(
-			RequestPlayerList,
-			[&](UserPacketHeader* packetContents, Packet* incomingPacket, NetworkState* network)
-			{
-				FK_LOG_9("Player list requested");
-
-				auto request				= (RequestPlayerListPacket*)(packetContents);
-				auto packetSize				= PlayerListPacket::GetPacketSize(host.players.size() - 1);
-				auto packetBuffer			= framework.core.GetTempMemory()._aligned_malloc(packetSize);
-                PlayerListPacket& newPacket = *new(packetBuffer) PlayerListPacket{ host.players.size() - 1 };
-
-				size_t idx = 0;
-				for (auto& playerState : host.players)
-				{
-					if (playerState.ID != request->playerID)
-						continue;
-
-					newPacket.Players[idx].ID	= playerState.ID;
-
-					if (playerState.local)
-						newPacket.Players[idx].ready = localHostReady;
-					else
-					{
-						auto [player, found] = GetPlayerLobbyState(playerState.ID);
-						if(found)
-							newPacket.Players[idx].ready = player.Ready;
-					}
-
-					strncpy(
-						newPacket.Players[idx].name, 
-						playerState.name,
-						sizeof(PlayerListPacket::entry::name));
-
-					idx++;
-				}
-
-			    host.network.Send(newPacket, incomingPacket->sender);
-			}, 
-			IN_framework.core.GetBlockMemory()));
-
-
-	host.network.PushHandler(packetHandlers);
-    screen.ClearRows();
+    for (size_t I = 0; I < players.size(); I++)
+        net.Send(startGamePacket, players[I].connection);
 }
 
-
-/************************************************************************************************/
-
-
-GameHostLobbyState::~GameHostLobbyState()
-{
-	host.network.PopHandler();
-	for (auto handler : packetHandlers)
-		framework.core.GetBlockMemory().free(handler);
-}
-
-
-/************************************************************************************************/
-
-
-void GameHostLobbyState::AddLocalPlayer(const MultiplayerPlayerID_t ID)
-{
-	screen.CreateRow(ID);
-
-	const auto localPlayer	= host.GetPlayer(ID);
-	const auto nameLength	= strnlen(localPlayer->name, 32);
-
-	host.SetState(ID, Lobby);
-	screen.SetPlayerName(ID, localPlayer->name);
-}
-
-
-/************************************************************************************************/
-
-
-void GameHostLobbyState::HandleNewConnection(const ConnectionHandle handle)
-{
-    /*
-	auto newID = host.();
-
-	RequestClientDataPacket packet(newID);
-
-	host.players.push_back({
-					false,
-					Joining,
-					newID,
-					handle,
-					""});
-
-	screen.CreateRow(newID);
-
-	playerLobbyState.push_back({	
-					newID, 
-					false});
-    
-    host.network.Send(packet.header, handle);
-    */
-}
-
-
-/************************************************************************************************/
-
-
-void GameHostLobbyState::HandleDisconnection(const ConnectionHandle handle)
-{
-    screen.ClearRows();
-
-    auto disconnectedPlayer = host.GetPlayer(handle);
-
-    playerLobbyState.remove_stable(
-        find(   playerLobbyState,
-                [&](PlayerLobbyEntry& e) -> bool { return e.ID == disconnectedPlayer->ID; }));
-    
-    host.RemovePlayer(disconnectedPlayer->ID);
-
-    // Re-add LocalPlayer
-    auto hostPlayer         = host.hostPlayer;
-    const auto localPlayer  = host.GetPlayer(hostPlayer);
-    screen.CreateRow(hostPlayer);
-    screen.SetPlayerName(hostPlayer, localPlayer->name);
-    
-    // Other Players
-    for (auto player : host.players)
-        screen.CreateRow(player.ID);
-}
 
 
 /**********************************************************************
 
-Copyright (c) 2019 Robert May
+Copyright (c) 2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

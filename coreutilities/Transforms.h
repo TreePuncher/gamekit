@@ -282,7 +282,7 @@ namespace FlexKit
 		operator NodeHandle () { return node; }
 
 
-		NodeHandle GetParentNode()
+		NodeHandle GetParentNode() const
 		{
 			return FlexKit::GetParentNode(node);
 		}
@@ -419,7 +419,7 @@ namespace FlexKit
     inline auto GetParentNode(GameObject& go)
     {
         return Apply(go,
-            [&](SceneNodeView<>& node) -> NodeHandle
+            [&](const SceneNodeView<>& node) -> NodeHandle
             {
                 return node.GetParentNode();
             },
@@ -478,7 +478,7 @@ namespace FlexKit
     inline Quaternion GetOrientation(GameObject& go)
     {
         return Apply(go,
-            [&](SceneNodeView<>& node)
+            [&](const SceneNodeView<>& node)
             { return node.GetOrientation(); },
             []
             { return Quaternion{ 0, 0, 0, 1 }; });
@@ -489,7 +489,7 @@ namespace FlexKit
     {
         return Apply(
             go,
-            [](SceneNodeView<>& node)
+            [](const SceneNodeView<>& node)
             {
                 return node.node;
             },

@@ -139,10 +139,10 @@ namespace FlexKit
 		inline  Vector(
 			iAllocator*		Alloc = nullptr,
 			const size_t	InitialReservation = 0) :
-				Allocator(Alloc),
-				Max(InitialReservation),
-				Size(0),
-				A(nullptr)
+                Allocator   { Alloc },
+				Max         { InitialReservation },
+				Size        { 0 },
+				A           { nullptr }
 		{
 			if (InitialReservation > 0)
 			{
@@ -189,14 +189,14 @@ namespace FlexKit
 
 
 		inline  Vector(THISTYPE&& RHS) noexcept :
-			A(RHS.A),
-			Allocator(RHS.Allocator),
-			Max(RHS.Max),
-			Size(RHS.Size)
+			A           { RHS.A },
+			Allocator   { RHS.Allocator },
+			Max         { RHS.Max },
+			Size        { RHS.Size }
 		{
-			RHS.A = nullptr;
-			RHS.Max = 0;
-			RHS.Size = 0;
+			RHS.A       = nullptr;
+			RHS.Max     = 0;
+			RHS.Size    = 0;
 		}
 
 
@@ -422,7 +422,8 @@ namespace FlexKit
 			}
 
 			const size_t idx = Size++;
-			new(A + idx) Ty{ in }; // 
+			new(A + idx) Ty{ in }; //
+
 			return idx;
 		}
 
@@ -1002,6 +1003,7 @@ namespace FlexKit
 			for (auto& Element : *this)
 				Element.~Ty();
 
+            _Head = 0;
 			_Size = 0;
 		}
 
@@ -1697,10 +1699,10 @@ namespace FlexKit
 	{
 	public:
 		ObjectPool(iAllocator* Allocator, const size_t PoolSize) :
-			Pool{ reinterpret_cast<TY*>(Allocator->_aligned_malloc(sizeof(TY) * PoolSize)) },
-			FreeObjectList{ Allocator },
-			PoolMaxSize{ PoolSize },
-			Allocator{ Allocator }
+			Pool            { reinterpret_cast<TY*>(Allocator->_aligned_malloc(sizeof(TY) * PoolSize)) },
+			FreeObjectList  { Allocator },
+			PoolMaxSize     { PoolSize },
+			Allocator       { Allocator }
 		{
 			FreeObjectList.resize(PoolSize);
 

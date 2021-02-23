@@ -13,7 +13,6 @@
 #include "host.cpp"
 #include "lobbygui.cpp"
 #include "menuState.cpp"
-#include "TestScene.h"
 
 #include "GraphicsTest.hpp"
 
@@ -31,15 +30,6 @@
 
 int main(int argc, char* argv[])
 {
-    enum class ApplicationMode
-    {
-        Client,
-        Host,
-        TextureStreamTestMode,
-        ACCTestMode,
-        PlaygroundMode,
-    }   applicationMode = ApplicationMode::TextureStreamTestMode;
-
     std::string name;
     std::string server;
 
@@ -59,8 +49,6 @@ int main(int argc, char* argv[])
 
     for (size_t I = 0; I < argc; ++I)
     {
-        const char* TextureStreamingTestStr = "TextureStreamingTest";
-
         if (!strncmp("-WH", argv[I], 2))
         {
             const auto X_str = argv[I + 1];
@@ -73,39 +61,6 @@ int main(int argc, char* argv[])
 
             I += 2;
         }
-        else if (!strncmp("-C", argv[I], 2))
-        {
-            try
-            {
-                std::cout << "Please Enter Player Name: \n";
-                std::cin >> name;
-
-                std::cout << "Please Enter Server: \n";
-                std::cin >> server;
-            }
-            catch (...)
-            {
-                return -1;
-            }
-            applicationMode = ApplicationMode::Client;
-        }
-        else if (!strncmp("-S", argv[I], 2))
-        {
-            try
-            {
-                std::cout << "Please Enter Player Name: \n";
-                std::cin >> name;
-            }
-            catch (...)
-            {
-                return -1;
-            }
-            applicationMode = ApplicationMode::Host;
-        }
-        else if (!strncmp(TextureStreamingTestStr, argv[I], strlen(TextureStreamingTestStr))) // 
-            applicationMode = ApplicationMode::TextureStreamTestMode;
-
-        //app.PushArgument(argv[I]);
     }
 
     try
@@ -118,32 +73,9 @@ int main(int argc, char* argv[])
 
 
         auto& base      = app.PushState<BaseState>(app, WH);
-
-#if 1
-
-        FK_LOG_INFO("Set initial PlayState state.");
         auto& net       = app.PushState<NetworkState>(base);
         auto& menuState = app.PushState<MenuState>(base, net);
 
-#else
-        switch (applicationMode)
-        {
-        case ApplicationMode::TextureStreamTestMode:
-        {
-            StartTestState(app, base, TestScenes::ShadowTestScene);
-        }   break;
-        case ApplicationMode::PlaygroundMode:
-        {
-
-        }   break;
-        case ApplicationMode::ACCTestMode:
-        {
-            app.PushState<GraphicsTest>(base);
-        }   break;
-        default:
-            return -1;
-        }
-#endif
 
         try
         {

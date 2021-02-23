@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <mutex>
 #include <memory>
 
+
 /************************************************************************************************/
 
 
@@ -40,6 +41,7 @@ namespace FlexKit
 {
     using TimePoint     = std::chrono::high_resolution_clock::time_point;
     using TimeDuration  = std::chrono::high_resolution_clock::duration;
+
 
     struct FrameTiming
     {
@@ -84,6 +86,7 @@ namespace FlexKit
     {
         std::vector<FrameTiming> timePoints;
     };
+
 
 	struct ThreadProfiler
 	{
@@ -143,6 +146,13 @@ namespace FlexKit
             completedFrames.push_back(currentFrame);
         }
 
+
+        void Release()
+        {
+            activeFrames.clear();
+            completedFrames.clear();
+        }
+
         std::vector<FrameTiming> activeFrames{ 128 };
         std::vector<FrameTiming> completedFrames{ 128 };
 	};
@@ -168,12 +178,15 @@ namespace FlexKit
 
         void BeginFrame()
         {
+#if USING(ENABLEPROFILER)
             for (auto& threadProfiler : threadProfilers)
                 threadProfiler->BeginFrame();
+#endif
         }
 
         void EndFrame()
         {
+#if USING(ENABLEPROFILER)
             for (auto& threadProfiler : threadProfilers)
                 threadProfiler->EndFrame();
 
@@ -183,6 +196,15 @@ namespace FlexKit
                 frameStats->Threads.push_back(threadProfiler->GetStats());
 
             stats.push_back(std::move(frameStats));
+#endif
+        }
+
+        void Release()
+        {
+            for (auto& threadProfiler : threadProfilers)
+                threadProfiler->Release();
+
+            stats.Release();
         }
 
         std::shared_ptr<ProfilingStats>  GetStats()
@@ -210,12 +232,12 @@ namespace FlexKit
     template<typename TY>
     FLEXKITAPI decltype(auto) _TimeBlock(TY function, const char* id)
     {
-        std::chrono::high_resolution_clock Clock;
-        auto Before = Clock.now();
+        static const std::chrono::high_resolution_clock Clock;
+        const auto Before = Clock.now();
 
         EXITSCOPE(
-            auto After = Clock.now();
-            auto Duration = std::chrono::duration_cast<std::chrono::microseconds>(After - Before);
+            const auto After = Clock.now();
+            const auto Duration = std::chrono::duration_cast<std::chrono::microseconds>(After - Before);
         FK_LOG_0("Function %s executed in %umicroseconds.", id, Duration.count()); );
 
         return function();
@@ -252,7 +274,11 @@ namespace FlexKit
 
 #define GETLINEHASH(A) FlexKit::GenerateTypeGUID<sizeof(A)>(A)
 
+#if USING(ENABLEPROFILER)
 #define ProfileFunction() const auto PROFILELABEL_ = _ProfileFunction(__FUNCTION__, GETLINEHASH(STRINGIFY(__LINE__) __FUNCTION__))
+#else
+#define ProfileFunction()
+#endif
 #define TIMEBLOCK(A, B) _TimeBlock([&]{ return A(); }, B)
 }
 
