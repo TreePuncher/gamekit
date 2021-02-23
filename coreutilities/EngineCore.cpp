@@ -110,58 +110,6 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
-
-
-	void ClearMouseButtonStates(MouseInputState* State)
-	{
-		State->LMB_Duration = 0;
-		State->RMB_Duration = 0;
-
-		State->LMB_Pressed = false;
-		State->RMB_Pressed = false;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void UpdateMouseInput(MouseInputState* State, RenderWindow* Window)
-	{
-        FK_ASSERT(0);
-
-		if (!State->Enabled)
-			return;
-        /*
-		if (GetForegroundWindow() == Window->hWindow)
-		{
-			State->dPos = GetMousedPos(Window);
-			State->Position.x -= State->dPos[0] * 0.5f;
-			State->Position.y += State->dPos[1] * 0.5f;
-
-			State->Position[0] = Max(0.0f, Min((float)State->Position[0], (float)Window->WH[0]));
-			State->Position[1] = Max(0.0f, Min((float)State->Position[1], (float)Window->WH[1]));
-
-			State->NormalizedPos[0]			= Max(0.0f, Min((float)State->Position[0] / (float)Window->WH[0], 1));
-			State->NormalizedPos[1]			= Max(0.0f, Min((float)State->Position[1] / (float)Window->WH[1], 1));
-			State->NormalizedScreenCord		= Position2SS(State->NormalizedPos);
-
-			const auto WH                       = Window->WH;
-			const float HorizontalMouseMovement	= float(State->dPos[0]) / WH[0];
-			const float VerticalMouseMovement	= float(State->dPos[1]) / WH[1];
-
-			State->Normalized_dPos ={ HorizontalMouseMovement, VerticalMouseMovement };
-
-			SetSystemCursorToWindowCenter(Window);
-		}
-		else
-		{
-            DisableMouseInput(State);
-		}
-        */
-	}
-
-
 	/************************************************************************************************/
 
 

@@ -4,6 +4,25 @@
 /************************************************************************************************/
 
 
+LobbyState::LobbyState(GameFramework& framework, BaseState& IN_base, NetworkState& IN_host) :
+    FrameworkState{ framework },
+    base{ IN_base },
+    net{ IN_host }
+{
+    memset(inputBuffer, '\0', 512);
+    chatHistory += "Lobby Created\n";
+
+    for (size_t I = 0; I < 25; ++I)
+        localPlayerCards.push_back(&base.framework.core.GetBlockMemory().allocate<PowerCard>());
+
+    for (size_t I = 0; I < 25; ++I)
+        localPlayerCards.push_back(&base.framework.core.GetBlockMemory().allocate<FireBall>());
+}
+
+
+/************************************************************************************************/
+
+
 UpdateTask* LobbyState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
     base.Update(core, dispatcher, dT);
@@ -16,8 +35,20 @@ UpdateTask* LobbyState::Update(EngineCore& core, UpdateDispatcher& dispatcher, d
 
     ImGui::NewFrame();
 
-    // Player List
+    if (DrawChatRoom(core, dispatcher, dT))
+        return nullptr;
 
+    DrawSpellbookEditor(core, dispatcher, dT);
+
+    return nullptr;
+}
+
+/************************************************************************************************/
+
+
+bool LobbyState::DrawChatRoom(EngineCore&, UpdateDispatcher&, double dT)
+{
+    // Player List
     ImGui::Begin("Lobby");
 
     int selected = 0;
@@ -50,15 +81,27 @@ UpdateTask* LobbyState::Update(EngineCore& core, UpdateDispatcher& dispatcher, d
             OnSendMessage(msg);
     }
 
-    if (ImGui::Button("StartGame")) {
-        OnGameStart();
-        return nullptr;
+    if (host)
+    {
+        if (ImGui::Button("StartGame")) {
+            OnGameStart();
+            return true;
+        }
     }
     else if (ImGui::Button("Ready"))
         OnReady();
 
     ImGui::End();
 
+    return false;
+}
+
+
+/************************************************************************************************/
+
+
+void LobbyState::DrawSpellbookEditor(EngineCore&, UpdateDispatcher&, double dT)
+{
     ImGui::Begin("Spellbook");
 
     const char* cardNames[50];
@@ -75,9 +118,6 @@ UpdateTask* LobbyState::Update(EngineCore& core, UpdateDispatcher& dispatcher, d
         OnApplySpellbookChanges();
 
     ImGui::End();
-
-
-    return nullptr;
 }
 
 
@@ -142,6 +182,16 @@ bool LobbyState::EventHandler(Event evt)
 
     return base.debugUI.HandleInput(evt);
 }
+
+
+/************************************************************************************************/
+
+
+void LobbyState::MessageRecieved(std::string& msg)
+{
+    chatHistory += msg + '\n';
+}
+
 
 
 /************************************************************************************************/

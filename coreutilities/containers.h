@@ -223,7 +223,8 @@ namespace FlexKit
 		{
 			if (!Allocator) Allocator = RHS.Allocator;
 
-			Release();
+            clear();
+
 			reserve(RHS.size());
 
 			for (const auto& E : RHS)
@@ -255,13 +256,12 @@ namespace FlexKit
 
 		THISTYPE& operator =(THISTYPE&& RHS)
 		{
-			Allocator = RHS.Allocator;
-
 			Release();
 
-			A       = RHS.A;
-			Max     = RHS.Max;
-			Size    = RHS.Size;
+			Allocator   = RHS.Allocator;
+			A           = RHS.A;
+			Max         = RHS.Max;
+			Size        = RHS.Size;
 
 			RHS.Size    = 0;
 			RHS.Max     = 0;
@@ -417,7 +417,7 @@ namespace FlexKit
 					Allocator->_aligned_free(A);
 				}
 
-				A = NewMem;
+				A   = NewMem;
 				Max = NewSize;
 			}
 
@@ -548,7 +548,7 @@ namespace FlexKit
 
 		void reserve(size_t NewSize)
 		{
-			if (Max < NewSize)
+			if (!A || Max < NewSize)
 			{// Increase Size
 				FK_ASSERT(Allocator);
 				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * NewSize);
@@ -559,12 +559,12 @@ namespace FlexKit
 					size_t itr = 0;
 					size_t End = Size;
 					for (; itr < End; ++itr)
-						new(NewMem + itr) Ty(std::move(A[itr])); // move if Possible
+                        new(NewMem + itr) Ty{ std::move(A[itr]) }; // move if Possible
 
 					Allocator->_aligned_free(A);
 				}
 
-				A = NewMem;
+				A   = NewMem;
 				Max = NewSize;
 			}
 		}
@@ -584,9 +584,9 @@ namespace FlexKit
 
 		void clear()
 		{
-			for (size_t i = 0; i < size(); ++i) {
+			for (size_t i = 0; i < size(); ++i)
 				(A + i)->~Ty();
-			}
+
 			Size = 0;
 		}
 
@@ -601,7 +601,7 @@ namespace FlexKit
 			if (A && Allocator)
 				Allocator->_aligned_free(A);
 
-			A = nullptr;
+			A   = nullptr;
 			Max = 0;
 		}
 
@@ -620,6 +620,16 @@ namespace FlexKit
 		Iterator_const end()	const { return A + Size; }
 		size_t size()			const { return Size; }
 
+
+        Vector Copy(iAllocator& destination) const
+        {
+            Vector c{ &destination };
+
+            for (const auto& e : *this)
+                c.emplace_back(e);
+
+            return c;
+        }
 
 		/************************************************************************************************/
 

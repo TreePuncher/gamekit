@@ -33,56 +33,7 @@ MenuState::MenuState(GameFramework& framework, BaseState& IN_base, NetworkState&
 
                 framework.PopState();
 
-                auto& client    = framework.PushState<ClientState>(request->playerID, packet->sender, base_temp, net_temp);
-                auto& lobby     = framework.PushState<LobbyState>(base_temp, net_temp);
-
-                client.OnMessageRecieved    = [&](std::string msg) { lobby.MessageRecieved(msg); };
-                client.OnPlayerJoin         =
-                    [&](ClientState::Player& player)
-                    {
-                        LobbyState::Player lobbyPlayer = {
-                            .Name   = player.name,
-                            .ID     = player.ID,
-                        };
-
-                        lobby.players.push_back(lobbyPlayer);
-                        lobby.chatHistory += "Player Joined\n";
-                    };
-
-                client.OnGameStart          =
-                    [&]()
-                    {
-                        auto& framework_temp    = framework;
-                        auto& net_temp          = net;
-                        auto& base_temp         = base;
-
-                        framework_temp.PopState();
-
-                        auto& worldState = framework_temp.core.GetBlockMemory().allocate<ClientWorldStateMangager>(client.server, client.clientID, net_temp, base_temp);
-                        auto& localState = framework_temp.PushState<LocalGameState>(worldState, base_temp);
-
-                        for (auto& player : client.peers)
-                            if(player.ID != client.clientID)
-                                worldState.AddRemotePlayer(player.ID);
-                    };
-
-                lobby.OnSendMessage         = [&](std::string msg) { client.SendChatMessage(msg); };
-                lobby.GetPlayer             =
-                    [&](uint idx) -> LobbyState::Player
-                    {
-                        auto& peer = client.peers[idx];
-                        
-                        LobbyState::Player out{
-                            .Name   = peer.name,
-                            .ID     = peer.ID,
-                        };
-
-                        return out;
-                    };
-
-                lobby.GetPlayerCount        = [&](){ return client.peers.size(); };
-
-                client.RequestPlayerList();
+                PushClientState(request->playerID, packet->sender, base, net);
             }, framework.core.GetBlockMemory()));
 }
 
@@ -166,55 +117,7 @@ UpdateTask* MenuState::Update(EngineCore& core, UpdateDispatcher& dispatcher, do
 
             framework_temp.PopState();
 
-            auto& host  = framework_temp.PushState<HostState>(info, base_temp, net_temp);
-            auto& lobby = framework_temp.PushState<LobbyState>(base_temp, net_temp);
-
-            lobby.GetPlayer         =
-                [&](uint idx) -> LobbyState::Player
-                {
-                    auto& player = host.players[idx];
-
-                    const LobbyState::Player lobbyPlayer = {
-                            .Name   = player.name,
-                            .ID     = player.ID
-                    };
-
-                    return lobbyPlayer;
-                };
-
-            lobby.GetPlayerCount    = [&]                       { return host.players.size(); };
-            lobby.OnSendMessage     = [&](std::string message)  { host.BroadCastMessage(message); };
-
-            host.OnMessageRecieved  = [&](std::string message)  { lobby.MessageRecieved(message); };
-            host.OnPlayerJoin       =
-                [&](HostState::Player& player)
-                {
-                    const LobbyState::Player lobbyPlayer = {
-                        .Name   = player.name,
-                        .ID     = player.ID
-                    };
-
-                    lobby.players.push_back(lobbyPlayer);
-                    lobby.chatHistory  += "Player Joining...\n";
-                };
-
-            lobby.OnGameStart =
-                [&]
-                {
-                    auto& net_temp  = net;
-                    auto& base_temp = base;
-
-                    framework_temp.PopState();
-
-                    host.SendGameStart();
-
-                    auto& worldState = framework_temp.core.GetBlockMemory().allocate<HostWorldStateMangager>(host.hostID, net_temp, base_temp);
-                    auto& localState = framework_temp.PushState<LocalGameState>(worldState, base_temp);
-
-                    for (auto& player : host.players)
-                        if(player.ID != host.hostID)
-                            worldState.AddPlayer(player.connection, player.ID);
-                };
+            PushHostState(info, framework_temp, base_temp, net);
         }
 
         ImGui::End();

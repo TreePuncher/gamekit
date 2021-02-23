@@ -160,12 +160,12 @@ namespace FlexKit
 		PVEntry(Drawable& d) : OcclusionID(-1), D(&d){}
 		PVEntry(Drawable& d, size_t ID, size_t sortID) : OcclusionID(ID), D(&d), SortID(sortID) {}
 
-		size_t		SortID;
-		size_t		OcclusionID;
-		Drawable*	D;
+		size_t		SortID          = 0;
+		size_t		OcclusionID     = 0;
+		Drawable*	    D               = nullptr;
 
-		operator Drawable* ()	{ return D;			}
-		operator size_t ()		{ return SortID;	}
+		operator Drawable* ()   { return D; } 
+		operator size_t ()      { return SortID; }
 
 		bool operator < (PVEntry rhs)
 		{

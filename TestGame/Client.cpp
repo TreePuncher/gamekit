@@ -162,3 +162,63 @@ void ClientState::PostDrawUpdate(EngineCore&, double dT)
 {
 
 }
+
+
+/************************************************************************************************/
+
+
+void PushClientState(const MultiplayerPlayerID_t playerID, const ConnectionHandle server, BaseState& base, NetworkState& net)
+{
+    auto& framework = base.framework;
+    auto& client    = framework.PushState<ClientState>(playerID, server, base, net);
+    auto& lobby     = framework.PushState<LobbyState>(base, net);
+
+    client.OnMessageRecieved    = [&](std::string msg) { lobby.MessageRecieved(msg); };
+    client.OnPlayerJoin         =
+        [&](ClientState::Player& player)
+        {
+            LobbyState::Player lobbyPlayer = {
+                .Name   = player.name,
+                .ID     = player.ID,
+            };
+
+            lobby.players.push_back(lobbyPlayer);
+            lobby.chatHistory += "Player Joined\n";
+        };
+
+    client.OnGameStart          =
+        [&]()
+        {
+            auto& framework_temp    = framework;
+            auto& net_temp          = net;
+            auto& base_temp         = base;
+
+            framework_temp.PopState();
+
+            auto& worldState = framework_temp.core.GetBlockMemory().allocate<ClientWorldStateMangager>(client.server, client.clientID, net_temp, base_temp);
+            auto& localState = framework_temp.PushState<LocalGameState>(worldState, base_temp);
+
+            for (auto& player : client.peers)
+                if(player.ID != client.clientID)
+                    worldState.AddRemotePlayer(player.ID);
+        };
+
+    lobby.OnSendMessage         = [&](std::string msg) { client.SendChatMessage(msg); };
+    lobby.GetPlayer             =
+        [&](uint idx) -> LobbyState::Player
+        {
+            auto& peer = client.peers[idx];
+                        
+            LobbyState::Player out{
+                .Name   = peer.name,
+                .ID     = peer.ID,
+            };
+
+            return out;
+        };
+
+    lobby.GetPlayerCount        = [&](){ return client.peers.size(); };
+
+    client.RequestPlayerList();
+}
+

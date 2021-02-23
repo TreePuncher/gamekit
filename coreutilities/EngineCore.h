@@ -87,11 +87,10 @@ namespace FlexKit
 	static const size_t MAX_CLIENTS = 10;
 	static const size_t SERVER_PORT = 60000;
 
-	static const size_t LEVELBUFFERSIZE = MEGABYTE * 64;
 	static const size_t TEMPBUFFERSIZE = MEGABYTE * 256;
 	static const size_t BLOCKALLOCSIZE = GIGABYTE * 2;
 
-	static const size_t PRE_ALLOC_SIZE = BLOCKALLOCSIZE + TEMPBUFFERSIZE + LEVELBUFFERSIZE;
+	static const size_t PRE_ALLOC_SIZE = BLOCKALLOCSIZE + TEMPBUFFERSIZE;
 
 	/************************************************************************************************/
 
@@ -101,7 +100,6 @@ namespace FlexKit
         EngineMemory() :
             BlockAllocator{},
             TempAllocator{},
-            LevelAllocator{},
             TempAllocatorMT{ TempAllocator }
         {
             BlockAllocator_desc BAdesc;
@@ -110,24 +108,20 @@ namespace FlexKit
             BAdesc.LargeBlock   = BLOCKALLOCSIZE / 2;
 
             BlockAllocator.Init(BAdesc);
-            LevelAllocator.Init(LevelMem, LEVELBUFFERSIZE);
             TempAllocator.Init(TempMem, TEMPBUFFERSIZE);
         }
 
 		BlockAllocator	    BlockAllocator;
 		StackAllocator	    TempAllocator;
-		StackAllocator	    LevelAllocator;
         ThreadSafeAllocator TempAllocatorMT;
 
 		auto GetBlockMemory() -> decltype(BlockAllocator)&	    { return BlockAllocator; }
-		auto GetLevelMemory() -> decltype(LevelAllocator)&	    { return LevelAllocator; }
-		auto GetTempMemory()  -> decltype(TempAllocator)&	    { return TempAllocator;  }
+		auto GetTempMemory()  -> decltype(TempAllocator)&	    { return TempAllocator; }
 		auto GetTempMemoryMT()  -> decltype(TempAllocatorMT)&	{ return TempAllocatorMT; }
 
 
 		// Memory Pools
 		byte*	BlockMem = (byte*)_aligned_malloc(BLOCKALLOCSIZE, 16);
-		byte*	LevelMem = (byte*)_aligned_malloc(LEVELBUFFERSIZE, 16);
 		byte*	TempMem  = (byte*)_aligned_malloc(TEMPBUFFERSIZE, 16);
 	};
 
@@ -186,8 +180,7 @@ namespace FlexKit
 		EngineMemory*			Memory;
 
 		BlockAllocator&         GetBlockMemory()    { return  Memory->BlockAllocator; }
-		StackAllocator&         GetLevelMemory()    { return  Memory->LevelAllocator; }
-		StackAllocator&         GetTempMemory()     { return  Memory->TempAllocator; }
+        StackAllocator&         GetTempMemory()     { return  Memory->GetTempMemory(); }
 		ThreadSafeAllocator&    GetTempMemoryMT()   { return  Memory->GetTempMemoryMT(); }
 	};
 

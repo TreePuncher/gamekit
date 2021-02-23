@@ -219,6 +219,67 @@ void HostState::SendGameStart()
 }
 
 
+/************************************************************************************************/
+
+
+void PushHostState(GameInfo& info, GameFramework& framework, BaseState& base, NetworkState& net)
+{
+    auto& host  = framework.PushState<HostState>(info, base, net);
+    auto& lobby = framework.PushState<LobbyState>(base, net);
+
+    lobby.host  = true;
+
+    lobby.GetPlayer         =
+        [&](uint idx) -> LobbyState::Player
+        {
+            auto& player = host.players[idx];
+
+            const LobbyState::Player lobbyPlayer = {
+                    .Name   = player.name,
+                    .ID     = player.ID
+            };
+
+            return lobbyPlayer;
+        };
+
+    lobby.GetPlayerCount    = [&]                       { return host.players.size(); };
+    lobby.OnSendMessage     = [&](std::string message)  { host.BroadCastMessage(message); };
+
+    host.OnMessageRecieved  = [&](std::string message)  { lobby.MessageRecieved(message); };
+    host.OnPlayerJoin       =
+        [&](HostState::Player& player)
+        {
+            const LobbyState::Player lobbyPlayer = {
+                .Name   = player.name,
+                .ID     = player.ID
+            };
+
+            lobby.players.push_back(lobbyPlayer);
+            lobby.chatHistory  += "Player Joining...\n";
+        };
+
+    lobby.OnGameStart =
+        [&]
+        {
+            auto& net_temp  = net;
+            auto& base_temp = base;
+
+            framework.PopState();
+
+            host.SendGameStart();
+
+            auto& worldState = framework.core.GetBlockMemory().allocate<HostWorldStateMangager>(host.hostID, net_temp, base_temp);
+            auto& localState = framework.PushState<LocalGameState>(worldState, base_temp);
+
+            for (auto& player : host.players)
+                if(player.ID != host.hostID)
+                    worldState.AddPlayer(player.connection, player.ID);
+        };
+}
+
+
+/************************************************************************************************/
+
 
 /**********************************************************************
 

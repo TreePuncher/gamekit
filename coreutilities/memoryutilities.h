@@ -103,37 +103,37 @@ namespace FlexKit
 
         void* malloc(size_t s)
         {
-            std::scoped_lock{ m };
+            std::unique_lock l{ m };
             return allocator->malloc(s);
         }
 
         void  free(void* _ptr)
         {
-            std::scoped_lock{ m };
+            std::unique_lock l{ m };
             allocator->free(_ptr);
         }
 
         void* _aligned_malloc(size_t s, size_t A = 0x10)
         {
-            std::scoped_lock{ m };
+            std::unique_lock l{ m };
             return allocator->_aligned_malloc(s, A);
         }
 
         void  _aligned_free(void* _ptr)
         {
-            std::scoped_lock{ m };
+            std::unique_lock l{ m };
             return allocator->_aligned_free(_ptr);
         }
 
         void  clear(void)
         {
-            std::scoped_lock{ m };
+            std::unique_lock l{ m };
             return allocator->clear();
         }
 
         void* malloc_Debug(size_t s, const char* MD, size_t MDSectionSize)
         {
-            std::scoped_lock{ m };
+            std::unique_lock l{ m };
             return allocator->malloc_Debug(s, MD, MDSectionSize);
         }
 
@@ -301,9 +301,10 @@ namespace FlexKit
 		operator iAllocator* () { return &AllocatorInterface; }
 		operator iAllocator& () { return  AllocatorInterface; }
 	private:
-		size_t used		= 0;
-		size_t size		= 0;
-		byte*  Buffer	= 0;
+
+        size_t  used	= 0;
+        size_t  size	= 0;
+		byte*   Buffer	= 0;
 
 
 		struct AllocatorAdapter : public iAllocator
@@ -500,9 +501,9 @@ namespace FlexKit
 		
 		void free(void* _ptr)
 		{
-			size_t temp  = (size_t)_ptr;
-			size_t temp2 = (size_t)Blocks;
-			size_t index = (temp - temp2) / sizeof(Block);
+			const size_t temp  = (size_t)_ptr;
+			const size_t temp2 = (size_t)Blocks;
+			const size_t index = (temp - temp2) / sizeof(Block);
 
 			if (index > Size)
 				throw(std::runtime_error("Invalid Free"));
@@ -512,9 +513,9 @@ namespace FlexKit
 
 		void _aligned_free(void* _ptr)
 		{
-			size_t temp  = (size_t)_ptr;
-			size_t temp2 = (size_t)Blocks;
-			size_t index = (temp - temp2) / sizeof(Block);
+			const size_t temp  = (size_t)_ptr;
+			const size_t temp2 = (size_t)Blocks;
+			const size_t index = (temp - temp2) / sizeof(Block);
 
 			if (index > Size)
 				throw(std::runtime_error("Invalid Free"));
@@ -783,11 +784,11 @@ namespace FlexKit
 			return ret + MetaDataSectionSize;
 		}
 
-		char*	_aligned_malloc(size_t s, size_t alignement = 0x10, bool MarkDebugMetaData = false)
+		char*	_aligned_malloc(size_t s, size_t alignment = 0x10, bool MarkDebugMetaData = false)
 		{
-			const char* NewBuffer		= (char*)malloc(s + alignement, true, MarkDebugMetaData);
-			const size_t alignoffset	= (size_t)(NewBuffer) % alignement;
-			const size_t Offset			= alignoffset  ? (alignement - alignoffset) : 0;
+			const char* NewBuffer		= (char*)malloc(s + alignment, true, MarkDebugMetaData);
+			const size_t alignoffset	= (size_t)(NewBuffer) % alignment;
+			const size_t Offset			= alignment - alignoffset;
 
 			return (char*)(NewBuffer + Offset);
 		}

@@ -163,7 +163,7 @@ namespace FlexKit
 		}
 
 		sceneEntities.clear();
-        bvh = SceneBVH(allocator);
+        bvh = SceneBVH(*allocator);
 	}
 
 
@@ -379,15 +379,15 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    SceneBVH SceneBVH::Build(GraphicScene& scene, iAllocator* allocator)
+    SceneBVH SceneBVH::Build(GraphicScene& scene, iAllocator& allocator)
     {
         ProfileFunction();
 
         auto& visables              = scene.sceneEntities;
         auto& visibilityComponent   = SceneVisibilityComponent::GetComponent();
 
-        auto elements   = Vector<BVHElement>{ allocator, visables.size() };
-        auto nodes      = Vector<BVHNode>{ allocator, visables.size() * 2 };
+        auto elements   = Vector<BVHElement>{ &allocator, visables.size() };
+        auto nodes      = Vector<BVHNode>{ &allocator, visables.size() * 2 };
 
         AABB worldAABB;
 
@@ -467,8 +467,8 @@ namespace FlexKit
         }
 
         SceneBVH BVH{ allocator };
-        BVH.elements    = std::move(elements);
-        BVH.nodes       = std::move(nodes);
+        BVH.elements    = elements.Copy(allocator);
+        BVH.nodes       = nodes.Copy(allocator);
         BVH.root        = begin;
 
         return BVH;
@@ -512,9 +512,11 @@ namespace FlexKit
 					Ls * potentialVisible.boundingSphere.w };
 
 				Apply(*potentialVisible.entity,
-					[&](DrawableView& drawable)
+					[&](DrawableView& view)
 					{
-						if (!drawable.GetDrawable().Skinned && Intersects(F, BS))
+                        auto& drawable = view.GetDrawable();
+
+						if (!drawable.Skinned && Intersects(F, BS))
 						{
 							float distance = 0;
 							if (potentialVisible.transparent)
@@ -531,32 +533,28 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    UpdateTaskTyped<GetPVSTaskData>& GatherScene(UpdateDispatcher& dispatcher, GraphicScene* scene, CameraHandle C, iAllocator* allocator)
+    UpdateTaskTyped<GetPVSTaskData>& GatherScene(UpdateDispatcher& dispatcher, GraphicScene* scene, CameraHandle C, iAllocator& allocator)
 	{
 		auto& task = dispatcher.Add<GetPVSTaskData>(
 			[&](auto& builder, auto& data)
 			{
 				data.scene			= scene;
-				data.solid			= PVS{ allocator };
-				data.transparent	= PVS{ allocator };
 				data.camera			= C;
 
                 builder.SetDebugString("Gather Scene");
 			},
-			[](GetPVSTaskData& data, iAllocator& threadAllocator)
+			[&allocator = allocator](GetPVSTaskData& data, iAllocator& threadAllocator)
 			{
-                FK_LOG_9("Start PVS gather\n");
+                ProfileFunction();
 
                 PVS solid       { &threadAllocator };
                 PVS transparent { &threadAllocator };
 
                 GatherScene(data.scene, data.camera, solid, transparent);
-				SortPVS(&data.solid, &CameraComponent::GetComponent().GetCamera(data.camera));
+				SortPVS(&solid, &CameraComponent::GetComponent().GetCamera(data.camera));
 
-                data.solid          = solid;
-                data.transparent    = transparent;
-
-                FK_LOG_9("End PVS gather\n");
+                data.solid          = solid.Copy(allocator);
+                data.transparent    = transparent.Copy(allocator);
 			});
 
 		return task;
@@ -767,9 +765,6 @@ namespace FlexKit
 
 					if (Intersects(f, BoundingSphere{ position, radius * scale }))
 						lights.emplace_back(pointLight);
-
-					//visibility->GetBoundingVolume();
-					//BoundingSphere BoundingVolume = float4(Pw, light.R * Ps);
 				});
 
 		return lights;
@@ -792,7 +787,7 @@ namespace FlexKit
                 FK_LOG_9("Build BVH");
                 ProfileFunction();
 
-                bvh         = bvh.Build(*this, &threadAllocator).Copy(*allocator);
+                bvh         = bvh.Build(*this, threadAllocator).Copy(*allocator);
                 data.bvh    = &bvh;
 			}
 		);
