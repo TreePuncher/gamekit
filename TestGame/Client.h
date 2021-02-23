@@ -245,5 +245,7 @@ public:
 };
 
 
+void PushClientState(const MultiplayerPlayerID_t, const ConnectionHandle server, GameFramework&, BaseState&, NetworkState&);
+
 
 /************************************************************************************************/

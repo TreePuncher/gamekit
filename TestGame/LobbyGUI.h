@@ -32,46 +32,37 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Fonts.h"
 
 
+/************************************************************************************************/
+
+
 class LobbyState : public FrameworkState
 {
 public:
-    LobbyState(GameFramework& framework, BaseState& IN_base, NetworkState& IN_host) :
-        FrameworkState  { framework },
-        base            { IN_base   },
-        net             { IN_host   }
-    {
-        memset(inputBuffer, '\0', 512);
-        chatHistory += "Lobby Created\n";
-
-        for (size_t I = 0; I < 25; ++I)
-            localPlayerCards.push_back(&base.framework.core.GetBlockMemory().allocate<PowerCard>());
-
-        for (size_t I = 0; I < 25; ++I)
-            localPlayerCards.push_back(&base.framework.core.GetBlockMemory().allocate<FireBall>());
-    }
-
-
+    LobbyState(GameFramework& framework, BaseState& IN_base, NetworkState& IN_host);
 
     UpdateTask* Update  (             EngineCore&, UpdateDispatcher&, double dT) override;
     UpdateTask* Draw    (UpdateTask*, EngineCore&, UpdateDispatcher&, double dT, FrameGraph&)  override;
+
+    bool        DrawChatRoom        (EngineCore&, UpdateDispatcher&, double dT);
+    void        DrawSpellbookEditor (EngineCore&, UpdateDispatcher&, double dT);
+
 
     void PostDrawUpdate (EngineCore&, double dT) override;
 
     bool EventHandler   (Event evt) override;
 
-    void MessageRecieved(std::string& msg)
-    {
-        chatHistory += msg + '\n';
-    }
-
-    bool                                            host        = false;
-    int                                             selection2  = 0;
+    void MessageRecieved(std::string& msg);
 
     struct Player
     {
         std::string             Name;
         MultiplayerPlayerID_t   ID;
     };
+
+
+    bool host       = false;
+    int  selection2 = 0;
+
 
     std::function<void   (std::string)>  OnSendMessage;
     std::function<Player (uint idx)>     GetPlayer       = [](uint idx){ return Player{}; };
@@ -93,5 +84,9 @@ public:
 
     char inputBuffer[512];
 };
+
+
+/************************************************************************************************/
+
 
 #endif

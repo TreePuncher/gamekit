@@ -444,16 +444,16 @@ namespace FlexKit
         SceneBVH(const SceneBVH& ) = default;
 
 
-        SceneBVH(iAllocator* allocator) :
-            elements    { allocator },
-            nodes       { allocator },
-            allocator   { allocator } {}
+        SceneBVH(iAllocator& allocator) :
+            elements    { &allocator },
+            nodes       { &allocator },
+            allocator   { &allocator } {}
 
         SceneBVH(SceneBVH&& rhs) = default;
         SceneBVH& operator = (SceneBVH&& rhs) = default;
         SceneBVH& operator = (const SceneBVH& rhs) = default;
 
-        static SceneBVH Build(GraphicScene& scene, iAllocator* allocator);
+        static SceneBVH Build(GraphicScene& scene, iAllocator& allocator);
 
         void Release()
         {
@@ -503,12 +503,12 @@ namespace FlexKit
             return nodes.size();
         }
 
-        SceneBVH Copy(iAllocator& allocator) const
+        SceneBVH Copy(iAllocator& dest) const
         {
-            SceneBVH copy{ &allocator };
+            SceneBVH copy{ dest };
 
-            copy.elements   = elements;
-            copy.nodes      = nodes;
+            copy.elements   = elements.Copy(dest);
+            copy.nodes      = nodes.Copy(dest);
             copy.root       = root;
 
             return copy;
@@ -617,7 +617,7 @@ namespace FlexKit
 	FLEXKITAPI void UpdateShadowCasters				(GraphicScene* SM);
 
     FLEXKITAPI void         GatherScene(GraphicScene* SM, CameraHandle Camera, PVS& solid, PVS& transparent);
-    FLEXKITAPI GatherTask&  GatherScene(UpdateDispatcher& dispatcher, GraphicScene* scene, CameraHandle C, iAllocator* allocator);
+    FLEXKITAPI GatherTask&  GatherScene(UpdateDispatcher& dispatcher, GraphicScene* scene, CameraHandle C, iAllocator& allocator);
 
 
 	FLEXKITAPI void ReleaseGraphicScene				(GraphicScene* SM);

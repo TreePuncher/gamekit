@@ -86,22 +86,6 @@ namespace FlexKit
 
 		while (true)
 		{
-			auto doWork = [&](iWork* work)
-			{
-				if (work) 
-				{
-					hasJob.store(true, std::memory_order_release);
-
-                    RunTask(*work);
-
-					hasJob.store(false, std::memory_order_release);
-
-					return true;
-				}
-				return false;
-			};
-
-
             for(size_t I = 0; I < 10; I++)
 			{
 				EXITSCOPE({
@@ -113,7 +97,11 @@ namespace FlexKit
                     if (auto workItem = Manager->FindWork(true); workItem)
                     {
                         I = 0;
-                        doWork(workItem);
+                        hasJob.store(true, std::memory_order_release);
+
+                        RunTask(*workItem);
+
+                        hasJob.store(false, std::memory_order_release);
                     }
                     else if(I > 1)
                     {
@@ -171,10 +159,6 @@ namespace FlexKit
                 {
                     localWorkQueue  = &workQueue;
                     _localThread    = this;
-                    //_localAllocator = localAllocator;
-
-                    //buffer = std::make_unique<std::array<byte, MEGABYTE * 16>>();
-                    //localAllocator.Init(buffer->data(), MEGABYTE * 16);
 
                     _Run();
                 }));
@@ -565,7 +549,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

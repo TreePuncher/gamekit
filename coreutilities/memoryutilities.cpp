@@ -48,11 +48,15 @@ namespace FlexKit
 
 	void* StackAllocator::malloc(size_t s)
 	{
+        //std::unique_lock l{ m };
+
+        const auto adjustedSize = s + 64;
+
 		void* memory = nullptr;
-		if (used + s < size)
+		if (used + adjustedSize < size)
 		{
 			memory = Buffer + used;
-			used += s;
+			used += adjustedSize;
 		}
 #if USING(FATALERROR)
 		FK_ASSERT(memory);
@@ -67,11 +71,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void* StackAllocator::_aligned_malloc(size_t s, size_t alignement)
+	void* StackAllocator::_aligned_malloc(size_t s, size_t alignment)
 	{
-		byte* _ptr = (byte*)malloc( s + alignement );
-		size_t alignoffset = (size_t)_ptr % alignement;
-		_ptr += alignement - alignoffset;
+		byte* _ptr          = (byte*)malloc(s + alignment);
+		size_t alignOffset  = (size_t)_ptr % alignment;
+		_ptr               += alignment - alignOffset;
+
 		return _ptr;
 	}
 
@@ -81,6 +86,8 @@ namespace FlexKit
 
 	void StackAllocator::clear()
 	{
+        //std::unique_lock l{ m };
+
 		used = 0;
 #ifdef _DEBUG
 		//memset(Buffer, 0xBB, size);

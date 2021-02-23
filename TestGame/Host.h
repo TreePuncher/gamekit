@@ -122,16 +122,16 @@ public:
                             // Send Player Updates
                             for (auto& playerView : remotePlayerComponent)
                             {
-                                const auto playerID = playerView.componentData.ID;
-                                const auto state = playerView.componentData.GetFrameState();
-                                const auto connection = playerView.componentData.connection;
+                                const auto playerID     = playerView.componentData.ID;
+                                const auto state        = playerView.componentData.GetFrameState();
+                                const auto connection   = playerView.componentData.connection;
 
                                 SendFrameState(localPlayerID, localState, connection);
 
                                 for (auto otherPlayer : remotePlayerComponent)
                                 {
-                                    const auto otherPID = otherPlayer.componentData.ID;
-                                    const auto connection = otherPlayer.componentData.connection;
+                                    const auto otherPID     = otherPlayer.componentData.ID;
+                                    const auto connection   = otherPlayer.componentData.connection;
 
                                     if (playerID != otherPID)
                                         SendFrameState(playerID, state, connection);
@@ -319,6 +319,9 @@ public:
     NetworkState&   net;
     BaseState&      base;
 };
+
+
+void PushHostState(const GameInfo&, GameFramework&, BaseState&, NetworkState&);
 
 
 /************************************************************************************************/

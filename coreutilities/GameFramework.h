@@ -71,7 +71,7 @@ namespace FlexKit
             {
                 T += dT;
 
-                while (T > updateRate) {
+                while (T >= updateRate) {
                     FN(updateRate);
 
                     T -= updateRate;
