@@ -16,144 +16,204 @@
 /************************************************************************************************/
 
 
-class NetworkState;
-class PacketHandler;
+enum LobbyPacketIDs : PacketID_t
+{
+	_LobbyPacketID_Begin		= UserPacketIDCount,
+	LoadGame					= GetCRCGUID(LoadGame),
+    ClientGameLoaded            = GetCRCGUID(ClientGameLoaded),
+    BeginGame                   = GetCRCGUID(BeginGame),
+    PlayerJoin                  = GetCRCGUID(PlayerJoin),
+	RequestPlayerList			= GetCRCGUID(RequestPlayerList),
+	RequestPlayerListResponse	= GetCRCGUID(PlayerList),
+    PlayerUpdate                = GetCRCGUID(PlayerUpdate),
+};
 
 
 /************************************************************************************************/
 
 
-constexpr	ComponentID NetObjectComponentID	= GetTypeGUID(NetObjectComponentID);
-using		NetComponentHandle					= Handle_t<32, NetObjectComponentID>;
-using		NetObjectID							= size_t;
+typedef uint64_t MultiplayerPlayerID_t;
 
-struct NetObject
+
+inline MultiplayerPlayerID_t GeneratePlayerID()
 {
-	GameObject* gameObject;
-	NetObjectID	netID;
-};
+    std::random_device generator;
+    std::uniform_int_distribution<MultiplayerPlayerID_t> distribution(
+        std::numeric_limits<MultiplayerPlayerID_t>::min(),
+        std::numeric_limits<MultiplayerPlayerID_t>::max());
 
-using NetObjectReplicationComponent = BasicComponent_t<NetObject, NetComponentHandle, NetObjectComponentID>;
+    return distribution(generator);
+}
 
 
 /************************************************************************************************/
 
 
-constexpr	ComponentID	NetInputEventsComponentID	= GetTypeGUID(NetInputEventsComponentID);
-using					NetInputComponentHandle		= Handle_t<32, NetInputEventsComponentID>;
-
-struct NetInputFrame
+struct GameInfo
 {
-	bool forward	= false;
-	bool backward	= false;
-	bool left		= false;
-	bool right		= false;
-};
+    std::string name;
+    std::string lobbyName;
 
-struct NetStateFrame
-{
-	float3	position;
-	size_t	frameID;
+    ConnectionHandle connectionHandle = InvalidHandle_t;
 };
-
-struct NetInput
-{
-	GameObject*							gameObject;
-	CircularBuffer<NetInputFrame, 60>	inputFrames;
-	CircularBuffer<NetInputFrame, 60>	stateFrames;
-};
-
-using NetObjectInputComponent = FlexKit::BasicComponent_t<NetInput, NetComponentHandle, NetObjectComponentID>;
 
 
 /************************************************************************************************/
 
-// current frame of game state
-class GameState final : public FlexKit::FrameworkState
+
+struct SpellBookUpdatePacket
+{
+    SpellBookUpdatePacket(MultiplayerPlayerID_t IN_id) :
+        header{ sizeof(SpellBookUpdatePacket), SpellbookUpdate },
+        ID{ IN_id } {}
+
+    UserPacketHeader        header;
+    MultiplayerPlayerID_t   ID = 0;
+    CardTypeID_t            spellBook[50] = {};
+};
+
+
+/************************************************************************************************/
+
+
+struct WorldStateUpdate
+{
+    UpdateTask* update = nullptr;
+};
+
+
+class WorldStateMangagerInterface
 {
 public:
-    GameState(GameFramework& IN_framework, BaseState& base);
+    virtual ~WorldStateMangagerInterface() {}
 
-    ~GameState();
-
-    GameState(const GameState&) = delete;
-    GameState& operator =	(const GameState&) = delete;
-
-    UpdateTask* Update          (EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final;
-    UpdateTask* Draw            (UpdateTask*, EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final;
-
-    void        PostDrawUpdate  (EngineCore& Engine, double dT) final;
-
-    GraphicScene	    scene;
-    PhysXSceneHandle    pScene;
-    BaseState&          base;
-    size_t			    frameID;
+    virtual WorldStateUpdate    Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) = 0;
+    virtual bool                EventHandler(Event evt) = 0;
+    virtual CameraHandle        GetActiveCamera() const = 0;
+    virtual GraphicScene&       GetScene() = 0;
 };
 
 
-// Takes inputs,
-// passes inputs to GameState
-// timeline
-class LocalPlayerState : public FlexKit::FrameworkState
+struct PlayerInputState
 {
-public:
-    LocalPlayerState(FlexKit::GameFramework& IN_framework, BaseState& IN_base, GameState& IN_game);
+    float forward   = 0;
+    float backward  = 0;
+    float left      = 0;
+    float right     = 0;
+    float up        = 0;
+    float down      = 0;
 
-    virtual ~LocalPlayerState() final override
+    FlexKit::float2 mousedXY = { 0, 0 };
+};
+
+
+struct PlayerFrameState
+{
+    float3                      pos;
+    float3                      velocity;
+    Quaternion                  orientation;
+
+    PlayerInputState            inputState;
+    ThirdPersonCameraFrameState cameraState;
+};
+
+
+struct PlayerUpdatePacket
+{
+    UserPacketHeader        header{ sizeof(PlayerUpdatePacket), { PlayerUpdate } };
+
+    MultiplayerPlayerID_t   playerID{ (uint64_t)-1 };
+    PlayerFrameState        state{};
+};
+
+
+void UpdatePlayerState(GameObject& player, const PlayerInputState& currentInputState, double dT);
+bool HandleEvents(PlayerInputState& keyState, Event evt);
+
+
+enum class NetEventType
+{
+
+};
+
+struct iNetEvent
+{
+
+};
+
+
+struct LocalPlayerData
+{
+    CircularBuffer<PlayerFrameState>    inputHistory;
+    Vector<iNetEvent>                   pendingEvent;
+};
+
+
+struct RemotePlayerData
+{
+    GameObject*             gameObject;
+    ConnectionHandle        connection;
+    MultiplayerPlayerID_t   ID;
+
+    void Update(PlayerFrameState state)
     {
-        framework.core.GetBlockMemory().release_allocation(thirdPersonCamera);
+        SetWorldPosition(*gameObject, state.pos);
+        SetOrientation(*gameObject, state.orientation);
     }
 
-    UpdateTask* Update         (EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
-    UpdateTask* Draw           (UpdateTask*, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) final override;
-    void        PostDrawUpdate (EngineCore& core, double dT) final override;
-    bool        EventHandler   (Event evt) final override;
+    PlayerFrameState    GetFrameState() const
+    {
+        PlayerFrameState out
+        {
+            .pos            = GetWorldPosition(*gameObject),
+            .velocity       = { 0, 0, 0 },
+            .orientation    = GetOrientation(*gameObject),
+        };
 
-
-private:	/************************************************************************************************/
-
-    DebugVisMode            renderMode      = DebugVisMode::Disabled;
-    ClusterDebugDrawMode    debugDrawMode   = ClusterDebugDrawMode::BVH;
-    BVHVisMode              bvhVisMode      = BVHVisMode::BVH;
-
-    bool                    showDebugMenu       = false;
-
-    bool                    captureInProgress   = false;
-    bool                    animateCamera       = false;
-    bool                    showDebugStats      = false;
-
-    bool                    drawFrameChart      = false;
-    bool                    drawShadingPlot     = false;
-    bool                    drawFeedbackPlot    = false;
-    bool                    drawPresentWaitTime = false;
-    bool                    drawProfiler        = false;
-
-
-    size_t                      frameCounter = 0;
-    float                       T = 0;
-    NetObjectInputComponent		netInputObjects;
-    InputMap					eventMap;
-    GameObject&                 thirdPersonCamera;
-    BaseState&                  base;
-    GameState&                  game;
+        return out;
+    }
 };
+
+
+inline static const ComponentID LocalPlayerComponentID  = GetTypeGUID(LocalPlayerData);
+
+using LocalPlayerHandle     = Handle_t<32, LocalPlayerComponentID>;
+using LocalPlayerComponent  = BasicComponent_t<LocalPlayerData, LocalPlayerHandle, LocalPlayerComponentID>;
+using LocalPlayerView       = LocalPlayerComponent::View;
+
+inline static const ComponentID RemotePlayerComponentID  = GetTypeGUID(RemotePlayerData);
+
+using RemotePlayerHandle     = Handle_t<32, RemotePlayerComponentID>;
+using RemotePlayerComponent  = BasicComponent_t<RemotePlayerData, RemotePlayerHandle, RemotePlayerComponentID>;
+using RemotePlayerView       = RemotePlayerComponent::View;
 
 
 /************************************************************************************************/
 
 
-// Takes inputs,
-// passes inputs to remote GameState and a local GameState
-// net object replication
-// handles latency mitigation
-class RemotePlayerState : public FlexKit::FrameworkState
+PlayerFrameState    GetPlayerFrameState(GameObject& gameObject);
+RemotePlayerData*   FindPlayer(MultiplayerPlayerID_t ID, RemotePlayerComponent& players);
+
+
+/************************************************************************************************/
+
+
+class LocalGameState : public FrameworkState
 {
 public:
-    RemotePlayerState(GameFramework& IN_framework, BaseState& IN_base) :
-        FrameworkState{ IN_framework },
-        base{ IN_base }  {}
+    LocalGameState(GameFramework& IN_framework, WorldStateMangagerInterface& IN_worldState, BaseState& IN_base);
+    ~LocalGameState();
 
-    BaseState& base;
+
+    UpdateTask* Update  (EngineCore& core, UpdateDispatcher& dispatcher, double dT);
+    UpdateTask* Draw    (UpdateTask* updateTask, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph);
+
+
+    void PostDrawUpdate (EngineCore& core, double dT) override;
+    bool EventHandler   (Event evt) override;
+
+    BaseState&                      base;
+    WorldStateMangagerInterface&    worldState;
 };
 
 

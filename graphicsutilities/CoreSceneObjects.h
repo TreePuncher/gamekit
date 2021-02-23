@@ -184,7 +184,7 @@ namespace FlexKit
         auto distanceFromView = (CameraPosition - drawablePosition).magnitude();
 
 		if (e.MeshHandle != InvalidHandle_t)
-			pvs.push_back(PVEntry( e, pvs.size(), CreateSortingID(false, false, (size_t)distanceFromView)));
+			pvs.push_back(PVEntry( e, 0, CreateSortingID(false, false, (size_t)distanceFromView)));
 	}
 
 	FLEXKITAPI void SortPVS				(PVS* PVS_, Camera* C);

@@ -296,6 +296,7 @@ enum UserPacketIDs : PacketID_t
 	ClientDisconnect,
 	ClientReadyEvent,
 	LobbyMessage,
+    SpellbookUpdate,
 	UserPacketIDCount,
 };
 

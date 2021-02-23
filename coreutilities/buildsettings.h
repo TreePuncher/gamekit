@@ -64,6 +64,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define TOOTLE				OFF
 #define AFTERMATH			OFF
 #define PIX                 ON
+#define ENABLEPROFILER      ON
 
 #else
 
@@ -85,6 +86,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define TOOTLE				OFF
 #define AFTERMATH			OFF
 #define PIX                 ON
+#define ENABLEPROFILER      OFF
+
 
 #endif
 

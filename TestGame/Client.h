@@ -1,26 +1,4 @@
-/**********************************************************************
-
-Copyright (c) 2019 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
+#pragma once
 
 #include "MultiplayerState.h"
 #include "MultiplayerGameState.h"
@@ -31,204 +9,241 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /************************************************************************************************/
 
 
-class GameClientState;
-
-
-struct ClientGameDescription
-{
-	short		port			= 1337;
-	const char*	serverAddress	= "127.0.0.1"; // no place like home
-	const char* name			= nullptr;
-};
-
-
-struct RemotePlayer
-{
-	MultiplayerPlayerID_t	id;
-	char					name[32];
-};
-
-
-class ClientLobbyState : public FlexKit::FrameworkState
+class ClientWorldStateMangager : public WorldStateMangagerInterface
 {
 public:
-	ClientLobbyState(
-		GameFramework&		IN_framework,
-        BaseState&          IN_base,
-		GameClientState&	IN_client,
-		NetworkState&		IN_network,
-		const char*			IN_localPlayerName);
+    ClientWorldStateMangager(ConnectionHandle IN_server, MultiplayerPlayerID_t IN_playerID, NetworkState& IN_net, BaseState& IN_base) :
+        net                     { IN_net    },
+        base                    { IN_base   },
+
+        ID                      { IN_playerID   },
+        server                  { IN_server     },
+
+        localPlayerComponent    { IN_base.framework.core.GetBlockMemory() },
+        remotePlayerComponent   { IN_base.framework.core.GetBlockMemory() },
+        eventMap                { IN_base.framework.core.GetBlockMemory() },
+        packetHandlers          { IN_base.framework.core.GetBlockMemory() },
+
+        pscene                  { IN_base.physics.CreateScene() },
+        localPlayer             { CreateThirdPersonCameraController(pscene, IN_base.framework.core.GetBlockMemory()) },
+
+        floorCollider           { IN_base.framework.core.GetBlockMemory().allocate<GameObject>() }
+    {
+        auto& allocator = IN_base.framework.core.GetBlockMemory();
+        auto floorShape = base.physics.CreateCubeShape({1000, 1, 1000});
+
+        floorCollider.AddView<StaticBodyView>(pscene, floorShape);
+
+        packetHandlers.push_back(
+            CreatePacketHandler(
+                PlayerUpdate,
+                [&](UserPacketHeader* header, Packet* packet, NetworkState* network)
+                {
+                    auto* updatePacket = reinterpret_cast<PlayerUpdatePacket*>(header);
+                    UpdateRemotePlayer(updatePacket->state, updatePacket->playerID);
+                },
+                allocator));
+
+        net.PushHandler(packetHandlers);
+
+        eventMap.MapKeyToEvent(KEYCODES::KC_W, TPC_MoveForward);
+        eventMap.MapKeyToEvent(KEYCODES::KC_S, TPC_MoveBackward);
+
+        eventMap.MapKeyToEvent(KEYCODES::KC_A, TPC_MoveLeft);
+        eventMap.MapKeyToEvent(KEYCODES::KC_D, TPC_MoveRight);
+        eventMap.MapKeyToEvent(KEYCODES::KC_Q, TPC_MoveDown);
+        eventMap.MapKeyToEvent(KEYCODES::KC_E, TPC_MoveUp);
+
+        localPlayer.AddView<LocalPlayerView>();
+
+        static const GUID_t sceneID = 1234;
+        AddAssetFile("assets\\multiplayerAssets.gameres");
+
+        FK_ASSERT(LoadScene(base.framework.core, gscene, sceneID));
+    }
+
+    ~ClientWorldStateMangager(){}
 
 
-	~ClientLobbyState();
+    void AddRemotePlayer(MultiplayerPlayerID_t playerID)
+    {
+        auto& gameObject    = base.framework.core.GetBlockMemory().allocate<GameObject>();
+        auto test           = RemotePlayerData{ &gameObject, InvalidHandle_t, playerID };
+        auto playerView     = gameObject.AddView<RemotePlayerView>(test);
 
 
-	UpdateTask* Update	        (EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
-    UpdateTask* Draw	        (UpdateTask*, EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph&) final override;
+        auto [triMesh, loaded] = FindMesh(playerModel);
 
-	void        PostDrawUpdate	(EngineCore& core, double dT) final override;
+        auto& renderSystem = base.framework.GetRenderSystem();
 
-	bool EventHandler	(Event evt) final override;
+        if (!loaded)
+            triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), playerModel);
 
-    BaseState&              base;
-	size_t					refreshCounter;
-	Vector<PacketHandler*>	packetHandlers;
-	NetworkState&			network;
-	GameClientState&		client;
-	MultiplayerLobbyScreen	screen;
+        gameObject.AddView<SceneNodeView<>>();
+        gameObject.AddView<DrawableView>(triMesh, GetSceneNode(gameObject));
 
-	bool					ready;
-	const char*				localPlayerName;
+        gscene.AddGameObject(gameObject, GetSceneNode(gameObject));
+
+        SetBoundingSphereFromMesh(gameObject);
+    }
+
+
+    void UpdateRemotePlayer(const PlayerFrameState& playerState, MultiplayerPlayerID_t player)
+    {
+        auto playerView = FindPlayer(player, remotePlayerComponent);
+
+        if (playerView)
+            playerView->Update(playerState);
+    }
+
+    WorldStateUpdate Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) final
+    {
+        ProfileFunction();
+
+        net.Update(core, dispatcher, dT);
+
+        struct WorldUpdate
+        {
+
+        };
+
+        WorldStateUpdate out;
+        out.update =
+            &dispatcher.Add<WorldUpdate>(
+                [](UpdateDispatcher::UpdateBuilder& Builder, auto& data)
+                {
+                },
+                [&](auto& data, iAllocator& threadAllocator)
+                {
+                    fixedUpdate(dT,
+                        [this, dT = dT](auto dT)
+                        {
+                            currentInputState.mousedXY = base.renderWindow.mouseState.Normalized_dPos;
+                            UpdatePlayerState(localPlayer, currentInputState, dT);
+
+                            const PlayerFrameState frameState = GetPlayerFrameState(localPlayer);
+
+                            SendFrameState(ID, frameState, server);
+                        });
+                }
+            );
+
+        auto& physicsUpdate = base.physics.Update(dispatcher, dT);
+        out.update->AddOutput(physicsUpdate);
+
+        return out;
+    }
+
+
+    void SendFrameState(const MultiplayerPlayerID_t ID, const PlayerFrameState& state, const ConnectionHandle connection)
+    {
+        PlayerUpdatePacket packet;
+        packet.playerID = ID;
+        packet.state    = state;
+
+        net.Send(packet.header, connection);
+    }
+
+
+    bool EventHandler(Event evt) final
+    {
+        ProfileFunction();
+
+        return eventMap.Handle(evt,
+                [&](auto& evt) -> bool
+                {
+                    return HandleEvents(currentInputState, evt);
+                });
+    }
+
+
+    GraphicScene& GetScene() final
+    {
+        return gscene;
+    }
+
+
+    CameraHandle GetActiveCamera() const final
+    {
+        return GetCameraControllerCamera(localPlayer);
+    }
+
+
+    struct LocalFrame
+    {
+        float3              playerPosition;
+        PlayerInputState    input;
+    };
+
+    const ConnectionHandle          server;
+    const MultiplayerPlayerID_t     ID;
+
+    GUID_t                          playerModel = 7894;
+
+    FixedUpdate                     fixedUpdate{ 60 };
+
+    GraphicScene                    gscene;
+    PhysXSceneHandle                pscene;
+
+    PlayerInputState                currentInputState;
+
+    LocalPlayerComponent            localPlayerComponent;
+    RemotePlayerComponent           remotePlayerComponent;
+
+    GameObject&                     localPlayer;
+    GameObject&                     floorCollider;
+
+
+    CircularBuffer<LocalFrame, 240>	history;
+    InputMap					    eventMap;
+
+    PacketHandlerVector             packetHandlers;
+
+    GraphicScene    scene;
+    BaseState&      base;
+    NetworkState&   net;
 };
 
 
 /************************************************************************************************/
 
 
-class GameClientState : public FlexKit::FrameworkState
+class ClientState : public FrameworkState
 {
 public:
-	GameClientState(
-		GameFramework&          IN_framework,
-		BaseState&				IN_base,
-		NetworkState&			IN_network,
-		ClientGameDescription	IN_desc = ClientGameDescription{}) :
-			FrameworkState		{ IN_framework							},
-			base				{ IN_base								},
-			network				{ IN_network							},
-			packetHandlers		{ IN_framework.core.GetBlockMemory()	},
-			remotePlayers		{ IN_framework.core.GetBlockMemory()	}
-	{
-		char Address[256];
-		if (!IN_desc.name)
-		{
-			std::cout << "Please Enter Name: \n";
-			std::cin >> localName;
-		}
-		else 
-			strncpy(localName, IN_desc.name, strnlen(IN_desc.name, 32) + 1);
+    ClientState(GameFramework& framework, MultiplayerPlayerID_t, ConnectionHandle handle, BaseState& IN_base, NetworkState& IN_net);
 
-		if (!IN_desc.serverAddress)
-		{
-			std::cout << "Please Address: \n";
-			std::cin >> Address;
-		}
+    void SendChatMessage(std::string msg);
+    void RequestPlayerList();
 
-		std::cout << "Connecting now\n";
-        network.Accepted =
-            [&](ConnectionHandle IN_server)
-            {
-                server = IN_server;
-                JoinLobby();
-            };
+    void SendSpellbookUpdate(std::vector<CardInterface*>& spellbook);
 
-        network.Connect("127.0.0.1", 1337);
-	}
+    UpdateTask* Update(EngineCore&, UpdateDispatcher&, double dT) override;
+    UpdateTask* Draw(UpdateTask* update, EngineCore&, UpdateDispatcher&, double dT, FrameGraph& frameGraph)  override;
+
+    void PostDrawUpdate(EngineCore&, double dT) override;
 
 
-	~GameClientState()
-	{
-        network.CloseConnection(server);
-
-        Sleep(1000); // IDK, does it need time to send the packet?
-
-		for (auto handler : packetHandlers)
-			framework.core.GetBlockMemory().free(handler);
-	}
-
-
-    void StartGame()
+    struct Player
     {
-        FK_LOG_INFO("Recieved game start from host. Starting Game!");
+        std::string           name;
+        MultiplayerPlayerID_t ID;
+    };
 
-        struct LoadState
-        {
-            LoadState(iAllocator* allocator) : handler{ allocator } 
-            {
-                handler.emplace_back(
-                    CreatePacketHandler(
-                        BeginGame,
-                        [&]( UserPacketHeader*   header,
-                            Packet*             packet,
-                            NetworkState*       network)
-                        {
-                            FK_ASSERT(header  != nullptr);
-                            FK_ASSERT(packet  != nullptr);
-                            FK_ASSERT(network != nullptr);
+    std::function<void()>                OnPlayerListReceived = []() {};
+    std::function<void(std::string)>     OnMessageRecieved = [](std::string msg) {};
+    std::function<void(Player& player)>  OnPlayerJoin = [](Player& player) {};
+    std::function<void()>                OnGameStart = []() {};
 
-                            beginLoad = true;
-                        }, allocator));
-            }
+    std::vector<Player>         peers;
+    const MultiplayerPlayerID_t clientID;
+    ConnectionHandle            server;
+    PacketHandlerVector         packetHandlers;
 
-            PacketHandlerVector handler;
-            bool                beginLoad   = false;
-
-            operator PacketHandlerVector& ()    { return handler;   }
-            operator bool()                     { return beginLoad; }
-        };
-
-        auto& allocator     = framework.core.GetBlockMemory();
-        auto& waiting       = allocator.allocate<LoadState>(allocator);
-
-        auto OnCompletion   = [&](auto& core, auto& Dispatcher, double dT)
-        {
-            auto& gameState     = framework.PushState<GameState>(base);
-            auto& localState    = framework.PushState<LocalPlayerState>(base, gameState);
-
-            // if we don't update, these states will miss their first frame update
-            gameState.Update(core, Dispatcher, dT);
-            localState.Update(core, Dispatcher, dT);
-
-            network.PopHandler();
-            framework.core.GetBlockMemory().release_allocation(waiting);
-        };
-
-        auto OnUpdate = [&](auto& core, auto& dispatcher, double dt) -> bool
-        {
-            return waiting;
-        };
-
-        framework.PopState(); // pop lobby state
-        network.PushHandler(waiting);
-
-		auto& gameState     = framework.PushState<GameState>(base);
-        /*
-        auto& localState    =
-            framework.PushState
-                <GameLoadSceneState<decltype(OnCompletion),decltype(OnUpdate)>>
-                (base, gameState.scene, "MultiplayerTestLevel", OnCompletion, OnUpdate);
-                */
-	}
-
-
-    void JoinLobby()
-    {
-		framework.PushState<ClientLobbyState>(base, *this, network, localName);
-    }
-
-	void ServerLost()
-	{
-		FK_LOG_INFO("Server lost, quitting!");
-		framework.quit = true;
-	}
-
-
-	bool Update(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT)
-	{
-		// Handle Packets
-
-		return true;
-	}
-
-	Vector<RemotePlayer>	remotePlayers;
-	Vector<PacketHandler*>	packetHandlers;
-	NetworkState&			network;
-	BaseState&				base;
-    ConnectionHandle        server;
-
-	MultiplayerPlayerID_t	localID;
-	char					localName[32];
+    NetworkState& net;
+    BaseState& base;
 };
+
 
 
 /************************************************************************************************/

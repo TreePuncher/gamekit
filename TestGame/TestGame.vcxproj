@@ -172,7 +172,6 @@
     <ClInclude Include="MultiplayerState.h" />
     <ClInclude Include="Packets.h" />
     <ClInclude Include="playgroundmode.hpp" />
-    <ClInclude Include="TestScene.h" />
     <ClInclude Include="ThirdPersonUtilities.h" />
   </ItemGroup>
   <ItemGroup>

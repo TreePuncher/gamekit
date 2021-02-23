@@ -101,36 +101,36 @@ enum DEBUG_EVENTS : int64_t
 /************************************************************************************************/
 
 
-constexpr	FlexKit::ComponentID PlayerCamerComponentID	= GetTypeGUID(PlayerCamerComponentID);
-using		PlayerCameraHandle							= Handle_t<32, PlayerCamerComponentID>;
+using CardTypeID_t = uint32_t;
 
-
-struct PlayerCamera
+struct CardInterface
 {
-	GameObject* gameObject;
-	size_t		health;
+    const CardTypeID_t  CardID = -1;
+    const char* cardName = "!!!!!";
+    const char* description = "!!!!!";
+
+    const uint          requiredPowerLevel = 0;
 };
 
 
-using PlayerCameraComponent = FlexKit::BasicComponent_t<PlayerCamera, PlayerCameraHandle, PlayerCamerComponentID>;
-
-
-/************************************************************************************************/
-
-
-constexpr	FlexKit::ComponentID PlayerComponentID	= GetTypeGUID(PlayerComponentID);
-using		PlayerHandle							= FlexKit::Handle_t<32, PlayerComponentID>;
-
-
-struct Player
+struct PowerCard : public CardInterface
 {
-	GameObject* gameObject;
-	size_t		health;
+    PowerCard() : CardInterface{
+        GetTypeGUID(PowerCard),
+        "PowerCard",
+        "Use to increase current level, allows for more powerful spell casting" } {}
 };
 
 
-using PlayerComponent   = FlexKit::BasicComponent_t<Player, PlayerHandle, PlayerComponentID>;
-using PlayerView        = PlayerComponent::View;
+struct FireBall : public CardInterface
+{
+    FireBall() : CardInterface{
+        GetTypeGUID(FireBall),
+        "FireBall",
+        "Throws a small ball a fire, burns on contact.\n"
+        "Required casting level is 1" } {}
+
+};
 
 
 /************************************************************************************************/

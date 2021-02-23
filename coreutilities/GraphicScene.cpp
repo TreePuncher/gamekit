@@ -126,8 +126,6 @@ namespace FlexKit
 			{
 				sceneEntities.push_back(visibility);
 			});
-
-		//sceneManagement.AddEntity(vis);
 	}
 
 
@@ -162,8 +160,6 @@ namespace FlexKit
 			auto entity		= visables[visHandle].entity;
 			auto visable	= entity->GetView(visableID);
 			entity->RemoveView(visable);
-
-			allocator->release(visable);
 		}
 
 		sceneEntities.clear();
@@ -913,12 +909,12 @@ namespace FlexKit
             {
                 ProfileFunction();
 
-                auto& visables = SceneVisibilityComponent::GetComponent();
-                auto& lights = PointLightComponent::GetComponent();
+                auto& visables  = SceneVisibilityComponent::GetComponent();
+                auto& lights    = PointLightComponent::GetComponent();
 
-                auto& light = lights[lightHandle];
-                const float3 POS = GetPositionW(light.Position);
-                const float  r = light.R;
+                auto& light         = lights[lightHandle];
+                const float3 POS    = GetPositionW(light.Position);
+                const float  r      = light.R;
                 AABB lightAABB{ POS - r, POS + r };
 
                 Vector<VisibilityHandle> PVS{ &threadLocalAllocator };
@@ -929,39 +925,51 @@ namespace FlexKit
                         PVS.push_back(visable);
                     });
 
-                /*
+                if(const auto flags = GetFlags(light.Position); flags & (SceneNodes::DIRTY | SceneNodes::UPDATED))
+                    light.state = LightStateFlags::Dirty;
+
                 std::sort(
                     std::begin(PVS), std::end(PVS),
                     [](const auto& lhs, const auto& rhs)
                     {
                         return lhs < rhs;
                     });
-                */
 
-                //if(const auto flags = GetFlags(light.Position); flags & (SceneNodes::DIRTY | SceneNodes::UPDATED))
-                //    light.state = LightStateFlags::Dirty;
+                auto markDirty =
+                    [&]
+                    {
+                        light.state = LightStateFlags::Dirty;
+                    };
+
 
                 if (light.shadowState)
                 {   // Compare previousPVS with current PVS to see if shadow map needs update
                     auto& previousPVS = light.shadowState->visableObjects;
 
-                    
-
-                    /*
                     if (previousPVS.size() == PVS.size())
                     {
                         for (size_t I = 0; I < PVS.size(); ++I)
                         {
                             if (PVS[I] != previousPVS[I])
+                            {
+                                markDirty();
                                 break; // do full update
-
+                            }
                             const auto flags = GetFlags(visables[PVS[I]].node);
 
-                            if (flags & (SceneNodes::DIRTY | SceneNodes::UPDATED) != 0)
-                                break;
+                            if (flags & (SceneNodes::UPDATED | SceneNodes::DIRTY))
+                            {
+                                markDirty();
+                                return;
+                            }
                         }
                     }
-                    */
+                    else
+                    {
+                        markDirty();
+                        return;
+                    }
+
                     return;
                 }
 

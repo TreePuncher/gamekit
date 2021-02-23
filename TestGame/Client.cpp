@@ -1,28 +1,3 @@
-/**********************************************************************
-
-Copyright (c) 2018 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
-
 #include "Client.h"
 #include "MathUtils.h"
 
@@ -30,146 +5,151 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /************************************************************************************************/
 
 
-ClientLobbyState::ClientLobbyState(
-	GameFramework&          IN_framework,
+ClientState::ClientState(
+    GameFramework&          framework,
+    MultiplayerPlayerID_t   clientID,
+    ConnectionHandle        server,
     BaseState&              IN_base,
-	GameClientState&		IN_client,
-	NetworkState&			IN_network, 
-	const char*				IN_localPlayerName) :
-		FrameworkState	{ IN_framework          },
-        base            { IN_base               },
-		client			{ IN_client			    },
-		localPlayerName { IN_localPlayerName	},
-		network			{ IN_network			},
-		ready			{ false					},
-		refreshCounter	{ 0						},
-		packetHandlers	{ IN_framework.core.GetBlockMemory()							        },
-		screen			{ IN_framework.core.GetBlockMemory(), IN_framework.DefaultAssets.Font	}
+    NetworkState&           IN_net) :
+            FrameworkState  { framework },
+            clientID        { clientID  },
+            server          { server    },
+            net             { IN_net    },
+            base            { IN_base   },
+            packetHandlers  { framework.core.GetBlockMemory() }
 {
-	packetHandlers.push_back(
-		CreatePacketHandler(
-			LobbyMessage, 
-			[&](auto, auto, auto)
-			{
-				std::cout << "Message Received!\n";
-			}, 
-			IN_framework.core.GetBlockMemory()));
+    packetHandlers.push_back(
+        CreatePacketHandler(
+            LobbyMessage,
+            [&](UserPacketHeader* header, Packet* packet, NetworkState* network)
+            {
+                LobbyMessagePacket* pckt = reinterpret_cast<LobbyMessagePacket*>(header);
+                std::string msg = pckt->message;
 
+                OnMessageRecieved(msg);
+            },
+            framework.core.GetBlockMemory()
+        ));
 
-	packetHandlers.push_back(
-		CreatePacketHandler(
-			ClientDataRequest,
-			[&](UserPacketHeader* incomingPacket, Packet* P, NetworkState* network)
-			{
-				auto				request = reinterpret_cast<RequestClientDataPacket*>(incomingPacket);
-				ClientDataPacket	responsePacket(request->playerID, localPlayerName);
+    packetHandlers.push_back(
+        CreatePacketHandler(
+            PlayerJoin,
+            [&](UserPacketHeader* header, Packet* packet, NetworkState* network)
+            {
+                auto pckt               = reinterpret_cast<PlayerJoinEventPacket*>(header);
+                std::string playerName  = pckt->PlayerName;
 
-				client.localID = request->playerID;
+                Player p = {
+                    .name   = playerName,
+                    .ID     = pckt->playerID,
+                };
 
-				FK_LOG_INFO("Sending Client Info");
-				std::cout << "playerID set to: " << request->playerID << "\n";
-				network->Send(responsePacket.Header, P->sender);
-			},
-			IN_framework.core.GetBlockMemory()));
+                peers.push_back(p);
+                OnPlayerJoin(peers.back());
+            },
+            framework.core.GetBlockMemory()
+        ));
 
+    packetHandlers.push_back(
+        CreatePacketHandler(
+            BeginGame,
+            [&](UserPacketHeader* header, Packet* packet, NetworkState* network)
+            {
+                OnGameStart();
+            },
+            framework.core.GetBlockMemory()
+        ));
 
-	packetHandlers.push_back(
-		CreatePacketHandler(
-			RequestPlayerListResponse,
-			[&](UserPacketHeader* incomingPacket, Packet* P, NetworkState* network)
-			{
-				FK_LOG_INFO("Player List Received");
+    packetHandlers.push_back(
+        CreatePacketHandler(
+            RequestPlayerListResponse,
+            [&](UserPacketHeader* header, Packet* packet, NetworkState* network)
+            {
+                FK_LOG_INFO("Player List Recieved!");
 
-				screen.ClearRows();
-				client.remotePlayers.clear();
+                auto playerList = static_cast<PlayerListPacket*>(header);
 
-				auto playerList				= reinterpret_cast<PlayerListPacket*>(incomingPacket);
-				const size_t playerCount	= FlexKit::Max(FlexKit::Min(playerList->playerCount, 3u), 0u);
+                const auto playerCount = playerList->playerCount;
+                for (uint32_t I = 0; I < playerCount; ++I)
+                {
+                    Player player;
+                    player.name = playerList->Players[I].name;
+                    player.ID   = playerList->Players[I].ID;
 
-				screen.CreateRow		(client.localID);
-				screen.SetPlayerName	(client.localID, localPlayerName);
-				screen.SetPlayerReady	(client.localID, ready);
+                    if(player.ID != clientID)
+                        peers.push_back(player);
+                }
+                
+            },
+            framework.core.GetBlockMemory()
+                ));
 
-				for (size_t idx = 0; idx < playerCount; ++idx)
-				{
-					auto nameStr	= playerList->Players[idx].name;
-					auto id			= playerList->Players[idx].ID;
-					auto ready		= playerList->Players[idx].ready;
-
-					client.remotePlayers.push_back({ playerList->Players[idx].ID });
-					strncpy(client.remotePlayers.back().name, nameStr, sizeof(RemotePlayer::name));
-
-					screen.CreateRow		(id);
-					screen.SetPlayerName	(id, client.remotePlayers.back().name);
-					screen.SetPlayerReady	(id, ready);
-				}
-			},
-			IN_framework.core.GetBlockMemory()));
-
-		packetHandlers.push_back(
-		CreatePacketHandler(
-			LoadGame,
-			[&](UserPacketHeader* incomingPacket, Packet* P, NetworkState* network)
-			{
-				FK_LOG_INFO("Loading Game");
-				client.StartGame();
-			},
-			IN_framework.core.GetBlockMemory()));
-
-	network.PushHandler(packetHandlers);
+    net.PushHandler(packetHandlers);
 }
 
 
 /************************************************************************************************/
 
 
-ClientLobbyState::~ClientLobbyState()
+UpdateTask* ClientState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
-	network.PopHandler();
-
-	for (auto handler : packetHandlers)
-		framework.core.GetBlockMemory().free(handler);
+    return net.Update(core, dispatcher, dT);
 }
 
 
 /************************************************************************************************/
 
 
-bool ClientLobbyState::EventHandler(FlexKit::Event evt)
+void ClientState::SendChatMessage(std::string msg)
 {
-	if (evt.InputSource == FlexKit::Event::InputType::Keyboard)
-	{
-		if (evt.Action == FlexKit::Event::InputAction::Release)
-		{
-			switch (evt.mData1.mKC[0])
-			{
-			case FlexKit::KC_R:
-			{
-				ready = !ready;
-				
-				ClientReady packet(client.localID, ready);
-				network.Send(packet.header, client.server);
-			}
-			}
-		}
-	}
+    LobbyMessagePacket packet(clientID, msg);
 
-    return true;
+    net.Send(packet.Header, server);
 }
 
 
 /************************************************************************************************/
 
 
-UpdateTask* ClientLobbyState::Update(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT)
+void ClientState::RequestPlayerList()
 {
-	if (refreshCounter++ > 10)
-	{
-		refreshCounter = 0;
+    RequestPlayerListPacket packet{ clientID };
 
-		RequestPlayerListPacket packet{ client.localID };
-		client.network.Send(packet.Header, client.server);
-	}
+    net.Send(packet.Header, server);
+}
+
+
+/************************************************************************************************/
+
+
+void ClientState::SendSpellbookUpdate(std::vector<CardInterface*>& spellbook)
+{
+    SpellBookUpdatePacket packet{ clientID };
+
+    for (size_t I = 0; I < spellbook.size(); ++I)
+        packet.spellBook[I] = spellbook[I]->CardID;
+
+    net.Send(packet.header, server);
+}
+
+
+/************************************************************************************************/
+
+
+UpdateTask* ClientState::Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
+{
+    auto renderTarget = base.renderWindow.GetBackBuffer();
+
+    ClearVertexBuffer(frameGraph, base.vertexBuffer);
+    ClearBackBuffer(frameGraph, renderTarget, 0.0f);
+
+    auto reserveVB = CreateVertexBufferReserveObject(base.vertexBuffer, core.RenderSystem, core.GetTempMemory());
+    auto reserveCB = CreateConstantBufferReserveObject(base.constantBuffer, core.RenderSystem, core.GetTempMemory());
+
+    ImGui::Render();
+    base.debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderTarget);
+
+    FlexKit::PresentBackBuffer(frameGraph, renderTarget);
 
     return nullptr;
 }
@@ -178,49 +158,7 @@ UpdateTask* ClientLobbyState::Update(EngineCore& Engine, UpdateDispatcher& Dispa
 /************************************************************************************************/
 
 
-UpdateTask* ClientLobbyState::Draw(UpdateTask*, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
+void ClientState::PostDrawUpdate(EngineCore&, double dT)
 {
-    auto currentRenderTarget = base.renderWindow.GetBackBuffer();
 
-    frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
-
-	ClearVertexBuffer	(frameGraph, client.base.vertexBuffer);
-	ClearBackBuffer		(frameGraph, currentRenderTarget);
-
-	LobbyScreenDrawDesc Desc;
-	Desc.allocator			= core.GetTempMemory();
-	Desc.constantBuffer		= client.base.constantBuffer;
-	Desc.vertexBuffer		= client.base.vertexBuffer;
-	Desc.renderTarget		= currentRenderTarget;
-	screen.Draw(Desc, dispatcher, frameGraph);
-
-    /*
-	FlexKit::DrawMouseCursor(
-		framework.MouseState.NormalizedScreenCord,
-		{ 0.05f, 0.05f },
-		client.base.vertexBuffer,
-		client.base.constantBuffer,
-		currentRenderTarget,
-		core.GetTempMemory(),
-		&frameGraph);
-    */
-
-    if (framework.drawDebugStats)
-        framework.DrawDebugHUD(dT, client.base.vertexBuffer, base.renderWindow.GetBackBuffer(), frameGraph);
-
-    PresentBackBuffer(frameGraph, base.renderWindow);
-
-    return nullptr;
 }
-
-
-/************************************************************************************************/
-
-
-void ClientLobbyState::PostDrawUpdate(EngineCore& core, double dT)
-{
-    base.PostDrawUpdate(core, dT);
-}
-
-
-/************************************************************************************************/

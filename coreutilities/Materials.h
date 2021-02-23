@@ -103,7 +103,7 @@ namespace FlexKit
                 int x = 0;
             }
 
-            ~MaterialView()
+            ~MaterialView() final override
             {
                 GetComponent().ReleaseMaterial(handle);
             }

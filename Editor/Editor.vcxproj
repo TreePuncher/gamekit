@@ -95,7 +95,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\buildsettings.h" />
     <ClInclude Include="..\coreutilities\Application.h" />
     <ClInclude Include="..\coreutilities\Assets.h" />
     <ClInclude Include="..\coreutilities\CameraUtilities.h" />

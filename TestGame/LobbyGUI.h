@@ -32,54 +32,66 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Fonts.h"
 
 
-/************************************************************************************************/
-
-
-typedef size_t LobbyRowID;
-
-struct LobbyScreenDrawDesc
-{
-	FlexKit::VertexBufferHandle		vertexBuffer;
-	FlexKit::ConstantBufferHandle	constantBuffer;
-	FlexKit::ResourceHandle			renderTarget;
-	FlexKit::iAllocator*			allocator;
-};
-
-
-/************************************************************************************************/
-
-
-class MultiplayerLobbyScreen
+class LobbyState : public FrameworkState
 {
 public:
-	MultiplayerLobbyScreen(FlexKit::iAllocator* memory, FlexKit::SpriteFontAsset* IN_font);
+    LobbyState(GameFramework& framework, BaseState& IN_base, NetworkState& IN_host) :
+        FrameworkState  { framework },
+        base            { IN_base   },
+        net             { IN_host   }
+    {
+        memset(inputBuffer, '\0', 512);
+        chatHistory += "Lobby Created\n";
 
-	void Update	(double dt, FlexKit::WindowInput& input, FlexKit::float2 pixelSize, FlexKit::iAllocator* allocator);
-	void Draw	(LobbyScreenDrawDesc& desc, FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph);
+        for (size_t I = 0; I < 25; ++I)
+            localPlayerCards.push_back(&base.framework.core.GetBlockMemory().allocate<PowerCard>());
 
-	void ClearRows		();
-	void CreateRow		(LobbyRowID id);
-	void SetPlayerName	(LobbyRowID id, const char*	name	);
-	void SetPlayerReady	(LobbyRowID id, bool		ready	);
-	void SetPlayerPing	(LobbyRowID id, int         ping,   iAllocator* allocator);
+        for (size_t I = 0; I < 25; ++I)
+            localPlayerCards.push_back(&base.framework.core.GetBlockMemory().allocate<FireBall>());
+    }
 
-	struct Row
-	{
-		LobbyRowID			id;
-        FlexKit::GUIButton* ping;
-		FlexKit::GUIButton* name;
-		FlexKit::GUIButton* ready;
-	};
 
-	FlexKit::Vector<Row>		rows;
-	FlexKit::GuiSystem			gui;
-	FlexKit::GUIGrid*			playerList;
-	FlexKit::GUIGrid*			playerScreen;
-	FlexKit::SpriteFontAsset*	font;
 
-    const char* zero = "0ms";
+    UpdateTask* Update  (             EngineCore&, UpdateDispatcher&, double dT) override;
+    UpdateTask* Draw    (UpdateTask*, EngineCore&, UpdateDispatcher&, double dT, FrameGraph&)  override;
+
+    void PostDrawUpdate (EngineCore&, double dT) override;
+
+    bool EventHandler   (Event evt) override;
+
+    void MessageRecieved(std::string& msg)
+    {
+        chatHistory += msg + '\n';
+    }
+
+    bool                                            host        = false;
+    int                                             selection2  = 0;
+
+    struct Player
+    {
+        std::string             Name;
+        MultiplayerPlayerID_t   ID;
+    };
+
+    std::function<void   (std::string)>  OnSendMessage;
+    std::function<Player (uint idx)>     GetPlayer       = [](uint idx){ return Player{}; };
+    std::function<size_t ()>             GetPlayerCount  = []{ return 0;};
+
+    std::function<void ()>               OnGameStart     = [] {};
+    std::function<void ()>               OnReady         = [] {};
+
+    std::function<void()>                OnApplySpellbookChanges    = [] {};
+
+
+    std::vector<CardInterface*> localPlayerCards;
+
+    std::vector<Player> players;
+    std::string         chatHistory;
+
+    BaseState&          base;
+    NetworkState&       net;
+
+    char inputBuffer[512];
 };
 
-
-/************************************************************************************************/
 #endif

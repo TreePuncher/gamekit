@@ -53,6 +53,8 @@ namespace FlexKit
     {
         auto _updateColliders = [&](auto itr, const auto end)
         {
+            ProfileFunction();
+
             for (; itr < end; itr++)
             {
                 auto& collider = *itr;
@@ -130,6 +132,9 @@ namespace FlexKit
 		if (!foundation)
 			FK_ASSERT(0); // Failed to init
 
+        PxCudaContextManagerDesc cudaDesc;
+
+        cudaContextmanager = nullptr; // PxCreateCudaContextManager(*foundation, cudaDesc);
 
 #if USING(PHYSX_PVD)
 		if (remoteDebuggerEnabled || true)
@@ -186,9 +191,16 @@ namespace FlexKit
 	PhysXSceneHandle PhysXComponent::CreateScene()
 	{
 		physx::PxSceneDesc desc(physxAPI->getTolerancesScale());
-		desc.gravity		= physx::PxVec3(0.0f, -9.81f, 0.0f);
-		desc.filterShader	= physx::PxDefaultSimulationFilterShader;
-		desc.cpuDispatcher	= &dispatcher;
+		desc.gravity		     = physx::PxVec3(0.0f, -9.81f, 0.0f);
+		desc.filterShader	     = physx::PxDefaultSimulationFilterShader;
+		desc.cpuDispatcher	     = &dispatcher;
+        desc.cudaContextManager  = cudaContextmanager;
+
+        desc.gpuDynamicsConfig.forceStreamCapacity      *= 4;
+        desc.gpuDynamicsConfig.patchStreamSize          = 8096 * sizeof(PxContactPatch);
+
+        if(cudaContextmanager != nullptr)
+            desc.flags              |= PxSceneFlag::eENABLE_GPU_DYNAMICS;
 
 		auto pScene			= physxAPI->createScene(desc);
 		auto Idx			= scenes.emplace_back(pScene, *this, allocator);
@@ -228,7 +240,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    PxShapeHandle  PhysXComponent::CreateCubeShape(const float3 dimensions)
+    PxShapeHandle   PhysXComponent::CreateCubeShape(const float3 dimensions)
     {
         auto shape = physxAPI->createShape(
             physx::PxBoxGeometry(dimensions.x, dimensions.y, dimensions.z),
@@ -237,6 +249,21 @@ namespace FlexKit
 
         return PxShapeHandle{ shapes.push_back({ shape }) };
     }
+
+
+    /************************************************************************************************/
+
+
+    PxShapeHandle   PhysXComponent::CreateSphereShape(const float radius)
+    {
+        auto shape = physxAPI->createShape(
+            physx::PxSphereGeometry(radius),
+            *defaultMaterial,
+            false);
+
+        return PxShapeHandle{ shapes.push_back({ shape }) };
+    }
+
 
 
     /************************************************************************************************/

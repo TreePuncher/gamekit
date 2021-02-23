@@ -58,6 +58,33 @@ namespace FlexKit
 	class FrameworkState;
 
 
+    /************************************************************************************************/
+
+
+    class FixedUpdate
+    {
+    public:
+        FixedUpdate(double IN_updateRate) : updateRate{ 1.0 / IN_updateRate } {}
+
+        template<typename TY_FN> requires std::invocable<TY_FN, double>
+            void operator() (double dT, TY_FN FN)
+            {
+                T += dT;
+
+                while (T > updateRate) {
+                    FN(updateRate);
+
+                    T -= updateRate;
+                }
+            }
+
+            double GetdT() const { return updateRate; }
+
+            double updateRate = 0.0;
+            double T = 0.0;
+    };
+
+
 	/************************************************************************************************/
 
 

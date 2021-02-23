@@ -240,9 +240,6 @@
     <ClInclude Include="Packets.h">
       <Filter>Headers\TestGame</Filter>
     </ClInclude>
-    <ClInclude Include="TestScene.h">
-      <Filter>Headers\TestGame</Filter>
-    </ClInclude>
     <ClInclude Include="ThirdPersonUtilities.h">
       <Filter>Headers\TestGame</Filter>
     </ClInclude>

@@ -39,9 +39,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\buildsettings.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
     <ClInclude Include="..\coreutilities\Application.h">
       <Filter>Headers\coreutilities</Filter>
     </ClInclude>

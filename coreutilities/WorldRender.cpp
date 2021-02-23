@@ -1075,6 +1075,7 @@ namespace FlexKit
         auto        renderTarget    = targets.RenderTarget;
 
         auto& PVS = GatherScene(dispatcher, &scene, camera, temporary);
+
         PVS.AddInput(drawSceneDesc.transformDependency);
         PVS.AddInput(drawSceneDesc.cameraDependency);
 
@@ -1763,9 +1764,9 @@ namespace FlexKit
 
 				for (const auto light : data.visableLights)
 				{
-					const PointLight pointLight	= pointLights[light];
-					const float3 WS_position	= GetPositionW(pointLight.Position);
-                    const float3 VS_position    = (constantsValues.view * float4(WS_position, 1)).xyz();
+					const PointLight& pointLight	= pointLights[light];
+					const float3 WS_position	    = GetPositionW(pointLight.Position);
+                    const float3 VS_position        = (constantsValues.view * float4(WS_position, 1)).xyz();
 
 					pointLightValues.push_back(
 						{	{ pointLight.K, pointLight.I },
@@ -1830,7 +1831,7 @@ namespace FlexKit
                 
                 const auto threadsWH = resources.GetTextureWH(data.depthBufferObject) / 32;
                 ctx.SetComputeDescriptorTable(0, clusterCreationResources);
-                ctx.Dispatch(CreateClusters, uint3{ threadsWH[0], threadsWH[1] + 1, 1 });
+                ctx.Dispatch(CreateClusters, uint3{ threadsWH[0] + 1, threadsWH[1] + 1, 1 });
                 ctx.AddUAVBarrier(resources[data.lightBVH]);
 
                 ctx.TimeStamp(timeStats, 3);
@@ -2216,7 +2217,7 @@ namespace FlexKit
 					return;
 
 				const size_t entityBufferSize =
-					AlignedSize<Drawable::VConstantsLayout>() * data.pvs.size();
+					AlignedSize<Drawable::VConstantsLayout>() * data.pvs.size() * 2;
 
 				constexpr size_t passBufferSize =
 					AlignedSize<Camera::ConstantBuffer>() +
