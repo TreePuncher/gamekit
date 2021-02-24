@@ -347,6 +347,10 @@ namespace FlexKit
 			return FlexKit::GetPositionW(node);
 		}
 
+        float3	GetPositionL() const
+        {
+            return FlexKit::GetPositionW(node);
+        }
 
 		float3	GetScale() const noexcept
 		{
@@ -381,14 +385,24 @@ namespace FlexKit
             });
     }
 
-	inline float3 GetWorldPosition(GameObject& go)
+	inline float3 GetLocalPosition(GameObject& go)
 	{
 		return Apply(go, 
 			[&](SceneNodeView<>& node)
-			{	return node.GetPosition(); }, 
+			{	return node.GetPositionL(); }, 
 			[]
             { return float3{ 0, 0, 0 }; });
 	}
+
+    inline float3 GetWorldPosition(GameObject& go)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& node)
+            {	return node.GetPosition(); },
+            []
+            { return float3{ 0, 0, 0 }; });
+    }
+
 
     inline void SetWorldPosition(GameObject& go, const float3 pos)
     {

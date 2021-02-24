@@ -657,11 +657,12 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    GameObject& CreateThirdPersonCameraController(PhysXSceneHandle scene, iAllocator* allocator, const float R, const float H)
+    GameObject& CreateThirdPersonCameraController(PhysXSceneHandle scene, iAllocator& allocator, const float R, const float H)
     {
-        auto& gameObject = allocator->allocate<GameObject>();
+        auto& gameObject = allocator.allocate<GameObject>();
 
         gameObject.AddView<CharacterControllerView>(scene, float3{ 0, 10, 0 });
+
         gameObject.AddView<CameraControllerView>(
             CameraControllerComponent::GetComponent().Create(
                 ThirdPersonCamera(
@@ -724,11 +725,83 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    NodeHandle GetCameraControllerNode(GameObject& GO)
+    {
+        return Apply(GO,
+            [](CameraControllerView& cameraController)
+            {
+                return cameraController.GetData().yawNode;
+            },
+            [] () -> NodeHandle
+            {
+                return InvalidHandle_t;
+            });
+    }
+
+
+    void YawCameraController(GameObject& GO, float rad)
+    {
+        Apply(GO,
+            [&](CameraControllerView& view)
+            {
+                view.GetData().Yaw(rad);
+            });
+    }
+
+    void PitchCameraController(GameObject& GO, float rad)
+    {
+        Apply(GO,
+            [&](CameraControllerView& view)
+            {
+                view.GetData().Pitch(rad);
+            });
+    }
+
+    void RollCameraController(GameObject& GO, float rad)
+    {
+        Apply(GO,
+            [&](CameraControllerView& view)
+            {
+                view.GetData().Roll(rad);
+            });
+    }
+
+    /************************************************************************************************/
+
+
     void SetCameraControllerPosition(GameObject& GO, const float3 pos)
     {
         Apply(GO, [&](CameraControllerView& cameraController)
             {
                 cameraController.GetData().SetPosition(pos);
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    void SetCameraControllerCameraHeightOffset(GameObject& GO, const float offset)
+    {
+        Apply(GO, [&](CameraControllerView& cameraController)
+            {
+                auto& controller = cameraController.GetData();
+
+                TranslateLocal(controller.pitchNode, float3{ 0, offset, 0 });
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    void SetCameraControllerCameraBackOffset(GameObject& GO, const float offset)
+    {
+        Apply(GO, [&](CameraControllerView& cameraController)
+            {
+                auto& controller = cameraController.GetData();
+
+                TranslateLocal(controller.pitchNode, float3{ 0, 0, offset });
             });
     }
 
@@ -854,7 +927,7 @@ namespace FlexKit
 
 
         if (xyz[2] != 0.0f)
-            FlexKit::SetOrientationL(pitchNode, Quaternion{ 0, 0, RadToDegree(xyz[2]) });
+            FlexKit::SetOrientationL(rollNode, Quaternion{ 0, 0, RadToDegree(xyz[2]) });
 
         CameraComponent::GetComponent().MarkDirty(camera);
     }
@@ -872,7 +945,7 @@ namespace FlexKit
             FlexKit::Yaw(yawNode, xyz[1]);
 
         if (xyz[2] != 0.0f)
-            FlexKit::Roll(pitchNode, xyz[2]);
+            FlexKit::Roll(rollNode, xyz[2]);
 
         CameraComponent::GetComponent().MarkDirty(camera);
     }
@@ -883,7 +956,7 @@ namespace FlexKit
 
     void ThirdPersonCamera::Yaw(float Theta)
     {
-        Rotate({ 0, Theta, 0 });
+        yaw += RadToDegree(Theta);
     }
 
 
@@ -892,7 +965,7 @@ namespace FlexKit
 
     void ThirdPersonCamera::Pitch(float Theta)
     {
-        ThirdPersonCamera::Rotate({ Theta, 0, 0 });
+        pitch += RadToDegree(Theta);
     }
 
 
@@ -901,7 +974,7 @@ namespace FlexKit
 
     void ThirdPersonCamera::Roll(float Theta)
     {
-        Rotate({ 0, 0, Theta });
+        roll += RadToDegree(Theta);
     }
 
 
@@ -943,6 +1016,9 @@ namespace FlexKit
         controllerImpl.updateTimer += dt;
         controllerImpl.mouseMoved += mouseInput;
 
+        const float focusHeight     = controllerImpl.focusHeight;
+        const float cameraDistance  = controllerImpl.cameraDistance;
+
         const double deltaTime = 1.0 / 60;
         while(controllerImpl.updateTimer >= deltaTime)
         {
@@ -952,69 +1028,88 @@ namespace FlexKit
             yaw     += controllerImpl.mouseMoved[0] * deltaTime * pi * 50;
             pitch   += controllerImpl.mouseMoved[1] * deltaTime * pi * 50;
 
-            SetRotation({ pitch, yaw, roll });
-            //Yaw(controllerImpl.mouseMoved[0] * deltaTime * pi * 50);
-            //Pitch(controllerImpl.mouseMoved[1] * deltaTime * pi * 50);
+            yaw     = fmod(yaw, DegreetoRad(360.0f));
+            pitch   = clamp(DegreetoRad(-75.0f), pitch, DegreetoRad(75.0f));
 
             controllerImpl.mouseMoved = { 0.0f, 0.0f };
 
+            SetRotation({ pitch, yaw, roll });
+
             float3 movementVector   { 0 };
-            const float3 forward    { GetForwardVector() };
+            const float3 forward    { (GetForwardVector() * float3(1, 0, 1)).normal() };
             const float3 right      { GetRightVector() };
             const float3 up         { 0, 1, 0 };
 
-            if (keyStates.forward)
-                movementVector += forward;
-
-            if (keyStates.backward)
-                movementVector -= forward;
-
-            if (keyStates.right)
-                movementVector += right;
-
-            if (keyStates.left)
-                movementVector -= right;
-
-            if (keyStates.up)
-                movementVector += up;
+            movementVector += keyStates.forward     ? forward   : float3::Zero();
+            movementVector -= keyStates.backward    ? forward   : float3::Zero();
+            movementVector += keyStates.right       ? right     : float3::Zero();
+            movementVector -= keyStates.left        ? right     : float3::Zero();
+            movementVector += keyStates.up          ? up        : float3::Zero();
 
             if (keyStates.down)
                 movementVector -= up;
 
-            movementVector.normalize();
-
             if (keyStates.KeyPressed())
+            {
+                movementVector.normalize();
                 velocity += movementVector * acceleration * (float)deltaTime;
-
-            if (velocity.magnitudesquared() > 0.01f) {
-                velocity -= velocity * drag * (float)deltaTime;
-
-                const float3    desiredMove    = velocity * (float)deltaTime;
-                const auto      pxPrevPos      = controllerImpl.controller->getPosition();
-                const float3    prevPos        = { (float)pxPrevPos.x, (float)pxPrevPos.y, (float)pxPrevPos.z };
-
-                physx::PxControllerFilters filters;
-                auto collision = controllerImpl.controller->move(
-                    {   desiredMove.x,
-                        desiredMove.y,
-                        desiredMove.z },
-                    0.001f,
-                    dt,
-                    filters);
-
-
-                const auto   pxPostPos  = controllerImpl.controller->getPosition();
-                const float3 postPos    = { (float)pxPostPos.x, (float)pxPostPos.y, (float)pxPostPos.z };
-
-                const auto deltaPos = prevPos - postPos;
-                if (desiredMove.magnitudesquared() * 0.5f >= deltaPos.magnitudesquared())
-                    velocity = 0;
-
-                SetPositionW(yawNode, { (float)postPos.x, (float)postPos.y, (float)postPos.z } );
-                CameraComponent::GetComponent().MarkDirty(camera);
             }
-            else
+            
+            if (velocity.magnitudesquared() < 0.1f || velocity.isNaN())
+                velocity = 0.0f;
+
+            PxControllerState state;
+            controllerImpl.controller->getState(state);
+
+            if(!floorContact)
+                velocity += -up * gravity;
+
+            velocity -= velocity * drag * (float)deltaTime;
+
+            const auto  desiredMove    = velocity * (float)deltaTime;
+            const auto& pxPrevPos      = controllerImpl.controller->getPosition();
+            const auto  prevPos        = float3{ (float)pxPrevPos.x, (float)pxPrevPos.y, (float)pxPrevPos.z };
+
+            physx::PxControllerFilters filters;
+            auto collision = controllerImpl.controller->move(
+                {   desiredMove.x,
+                    desiredMove.y,
+                    desiredMove.z },
+                0.001f,
+                dt,
+                filters);
+
+            floorContact = PxControllerCollisionFlag::eCOLLISION_DOWN & collision;
+
+            const auto      pxPostPos  = controllerImpl.controller->getPosition();
+            const float3    postPos    = pxVec3ToFloat3(pxPostPos);
+            const auto      deltaPos = prevPos - postPos;
+
+            if (desiredMove.magnitudesquared() * 0.5f >= deltaPos.magnitudesquared())
                 velocity = 0;
+
+            const auto pxFootPosition   = controllerImpl.controller->getFootPosition();
+            const float3 newPosition    = { (float)pxFootPosition.x, (float)pxFootPosition.y, (float)pxFootPosition.z };
+
+            auto& scene = PhysXComponent::GetComponent().GetScene_ref(controllerImpl.scene);
+            const float3 origin = newPosition - forward * cameraDistance + up * 10.0f;
+            const float3 ray    = -up;
+
+            float cameraMinY    = 0;
+
+            scene.RayCast(origin, ray, 100,
+                [&](auto hit)
+                {
+                    cameraMinY = hit.distance - origin.y + 1;
+                    return false;
+                });
+
+            const auto cameraY = Max(focusHeight - std::tanf(pitch) * cameraDistance, cameraMinY);
+
+            SetPositionW(yawNode, { (float)pxFootPosition.x, (float)pxFootPosition.y, (float)pxFootPosition.z } );
+            SetPositionL(pitchNode, float3(0, cameraY, cameraDistance));
+
+            CameraComponent::GetComponent().MarkDirty(camera);
         }
     }
 

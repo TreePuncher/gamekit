@@ -99,6 +99,12 @@ namespace FlexKit
         {
             return Max - Min;
         }
+
+        float3 Dim() const
+        {
+            auto span = Span();
+            return { abs(span.x), abs(span.y), abs(span.z) };
+        }
     };
 
 

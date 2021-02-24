@@ -205,7 +205,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
             const float shadowSample 		= shadowMaps[pointLightIdx].Sample(BiLinear, mul(ViewI, L) * float3( 1, -1, -1));
             const float depth 				= lightPosition_PS.z;
 
-            const float bias        = clamp(0.0001 * tan(acos(dot(N.xyz, L))), 0.0, 0.01);
+            const float bias        = clamp(0.00001f * tan(acos(dot(N.xyz, L))), 0.0, 0.00001f);
             const float visibility  = saturate(depth < shadowSample + bias ? 1.0f : 0.0f);
             
             float4 Colors[] = {

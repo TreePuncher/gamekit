@@ -169,6 +169,8 @@ void ClientState::PostDrawUpdate(EngineCore&, double dT)
 
 void PushClientState(const MultiplayerPlayerID_t playerID, const ConnectionHandle server, BaseState& base, NetworkState& net)
 {
+    AddAssetFile("assets\\multiplayerAssets.gameres");
+
     auto& framework = base.framework;
     auto& client    = framework.PushState<ClientState>(playerID, server, base, net);
     auto& lobby     = framework.PushState<LobbyState>(base, net);

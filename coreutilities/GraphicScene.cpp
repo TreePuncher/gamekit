@@ -713,6 +713,8 @@ namespace FlexKit
 				}
 
 
+                UpdateTransforms();
+
 				return true;
 			}
 		}

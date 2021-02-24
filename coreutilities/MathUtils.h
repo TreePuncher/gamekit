@@ -61,8 +61,8 @@ namespace FlexKit
 	FLEXKITAPI template<size_t N>	inline int Factorial	() { return N * Factorial<N-1>(); }
 	FLEXKITAPI template<>			inline int Factorial<1>	() { return 1; }
 
-	FLEXKITAPI template<typename Ty> static Ty DegreetoRad( Ty deg ) { return (Ty)(deg * pi ) /180; }
-	FLEXKITAPI template<typename Ty> static Ty RadToDegree( Ty deg ) { return (Ty)(deg * 180) / pi; }
+	FLEXKITAPI template<typename Ty> constexpr Ty DegreetoRad( Ty deg ) noexcept { return (Ty)(deg * pi ) /180; }
+	FLEXKITAPI template<typename Ty> constexpr Ty RadToDegree( Ty deg ) noexcept { return (Ty)(deg * 180) / pi; }
 
 
     FLEXKITAPI template<typename TY, typename TY_C, typename FN>
@@ -736,18 +736,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
     FLEXKITAPI union alignas(16)  float3
-	{
-	public:
-		float3() noexcept {}
+    {
+    public:
+        float3() noexcept {}
 
-		float3 ( float val )	noexcept				    { pfloats = _mm_set_ps1(val);					    }
-		float3 ( float X, float Y, float Z )	noexcept    { pfloats = _mm_set_ps(0.0f, Z, Y, X);			    }
-		float3 ( const float2 in, float Z = 0 )	noexcept    { pfloats = _mm_setr_ps(in.x, in.y, Z, 0.0f);	    }
-		float3 ( const float3& a ) noexcept                 { pfloats = a.pfloats;							    }
-		float3 ( const __m128& in ) noexcept                { pfloats = in;									    }
+        float3(float val)	noexcept { pfloats = _mm_set_ps1(val); }
+        float3(float X, float Y, float Z)	noexcept { pfloats = _mm_set_ps(0.0f, Z, Y, X); }
+        float3(const float2 in, float Z = 0)	noexcept { pfloats = _mm_setr_ps(in.x, in.y, Z, 0.0f); }
+        float3(const float3& a) noexcept { pfloats = a.pfloats; }
+        float3(const __m128& in) noexcept { pfloats = in; }
 
-		float2 xy() const noexcept { return { x, y }; }
-		float2 yz() const noexcept { return { y, z }; }
+        float2 xy() const noexcept { return { x, y }; }
+        float2 yz() const noexcept { return { y, z }; }
         float2 yx() const noexcept { return { y, x }; }
         float2 xz() const noexcept { return { x, z }; }
         float2 zy() const noexcept { return { z, y }; }
@@ -757,167 +757,167 @@ namespace FlexKit
         float3 yzx() const noexcept { return { y, z, x }; }
 
 
-		float3& operator = (float F) noexcept
-		{
-			pfloats = _mm_set_ps1(F);
-			return *this;
-		}
+        float3& operator = (float F) noexcept
+        {
+            pfloats = _mm_set_ps1(F);
+            return *this;
+        }
 
 
-		float& operator[] ( const size_t index )	noexcept        { return *GetElement_ptr(pfloats, index); }
-		float operator[]  ( const size_t index )	const noexcept  { return GetElement(pfloats, index); }
+        float& operator[] (const size_t index)	noexcept { return *GetElement_ptr(pfloats, index); }
+        float operator[]  (const size_t index)	const noexcept { return GetElement(pfloats, index); }
 
-		// Operator Overloads
-		float3 operator - ()	noexcept                            { return _mm_mul_ps(pfloats, _mm_set_ps1(-1));	}
-		float3 operator - ()	const noexcept                      { return _mm_mul_ps(pfloats, _mm_set_ps1(-1));	}
-		float3 operator + ( const float& rhs )	const noexcept  { return _mm_add_ps(pfloats, _mm_set_ps1(rhs));	}
-		float3 operator + ( const float3& rhs )	const noexcept  { return _mm_add_ps(pfloats, rhs);				}
+        // Operator Overloads
+        float3 operator - ()	noexcept { return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
+        float3 operator - ()	const noexcept { return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
+        float3 operator + (const float& rhs)	const noexcept { return _mm_add_ps(pfloats, _mm_set_ps1(rhs)); }
+        float3 operator + (const float3& rhs)	const noexcept { return _mm_add_ps(pfloats, rhs); }
 
 
-		float3& operator += ( const float3& rhs )
-		{
+        float3& operator += (const float3& rhs)
+        {
 #if USING(FASTMATH)
-			pfloats = _mm_add_ps(pfloats, rhs);
+            pfloats = _mm_add_ps(pfloats, rhs);
 #else
-			x += rhs.x;
-			y += rhs.y;
-			z += rhs.z;
+            x += rhs.x;
+            y += rhs.y;
+            z += rhs.z;
 #endif
-			return *this;
-		}
+            return *this;
+        }
 
 
-		float3 operator - ( const float rhs ) const
-		{
+        float3 operator - (const float rhs) const
+        {
 #if USING(FASTMATH)
-			return _mm_sub_ps(pfloats, _mm_set1_ps(rhs));
+            return _mm_sub_ps(pfloats, _mm_set1_ps(rhs));
 #else
-			return float3( x - rhs, y - rhs, z - rhs );
+            return float3(x - rhs, y - rhs, z - rhs);
 #endif
-		}
+        }
 
-		
-		float3& operator -= ( const float3& rhs )
-		{
+
+        float3& operator -= (const float3& rhs)
+        {
 #if USING(FASTMATH)
-			pfloats = _mm_sub_ps(pfloats, rhs.pfloats);
+            pfloats = _mm_sub_ps(pfloats, rhs.pfloats);
 #else
-			x -= rhs.x;
-			y -= rhs.y;
-			z -= rhs.z;
+            x -= rhs.x;
+            y -= rhs.y;
+            z -= rhs.z;
 #endif
-			return *this;
-		}
+            return *this;
+        }
 
-		
-		bool operator == ( const float3& rhs ) const
-		{
-			if( rhs.x == x )
-				if( rhs.y == y )
-					if( rhs.z == z )
-						return true;
-			return false;
-		}
 
-		
-		float3 operator - ( const float3& a ) const
-		{
+        bool operator == (const float3& rhs) const
+        {
+            if (rhs.x == x)
+                if (rhs.y == y)
+                    if (rhs.z == z)
+                        return true;
+            return false;
+        }
+
+
+        float3 operator - (const float3& a) const
+        {
 #if USING(FASTMATH)
-			return _mm_sub_ps(pfloats, a);
+            return _mm_sub_ps(pfloats, a);
 #else
-			return float3( x - a.x, y - a.y, z - a.z );
+            return float3(x - a.x, y - a.y, z - a.z);
 #endif
-		}
-		
-		static bool Compare(const float3& lhs, const float3& rhs, float ep = 0.001f)
-		{
-			float3 temp = lhs - rhs;
-			return (temp.x < ep) && (temp.y < ep)  && (temp.z < ep);
-		}
-		
-		float3 operator *	( const float3& a )	const 
-		{ 
+        }
+
+        static bool Compare(const float3& lhs, const float3& rhs, float ep = 0.001f)
+        {
+            float3 temp = lhs - rhs;
+            return (temp.x < ep) && (temp.y < ep) && (temp.z < ep);
+        }
+
+        float3 operator *	(const float3& a)	const
+        {
 #if USING(FASTMATH)
-			return _mm_mul_ps(a.pfloats, pfloats);
+            return _mm_mul_ps(a.pfloats, pfloats);
 #else
-			return float3( x * a.x, y * a.y, z * a.z );	
+            return float3(x * a.x, y * a.y, z * a.z);
 #endif
-		}
+        }
 
 
-		float3 operator *	( const float a ) const 
-		{	
+        float3 operator *	(const float a) const
+        {
 #if USING(FASTMATH)
-			return _mm_mul_ps(_mm_set1_ps(a), pfloats);
+            return _mm_mul_ps(_mm_set1_ps(a), pfloats);
 #else
-			return float3( x * a, y * a, z * a );		
+            return float3(x * a, y * a, z * a);
 #endif
 
-		}
+        }
 
 
-		float3& operator *=	( const float3& a )		
-		{
-			x *= a.x;
-			y *= a.y;
-			z *= a.z;
-			return *this;
-		}
+        float3& operator *=	(const float3& a)
+        {
+            x *= a.x;
+            y *= a.y;
+            z *= a.z;
+            return *this;
+        }
 
 
-		float3& operator *=	( float a )
-		{
-			x *= a;
-			y *= a;
-			z *= a;
-			return *this;
-		}
+        float3& operator *=	(float a)
+        {
+            x *= a;
+            y *= a;
+            z *= a;
+            return *this;
+        }
 
 
-		float3 operator / ( const float& a ) const
-		{
-			return float3( x / a, y / a, z / a );
-		}
+        float3 operator / (const float& a) const
+        {
+            return float3(x / a, y / a, z / a);
+        }
 
         float3 operator / (const float3& a) const
         {
             return _mm_div_ps(pfloats, a);
         }
 
-		float3& Scale( float S )
-		{
+        float3& Scale(float S)
+        {
 #if USING(FASTMATH)
-			pfloats = _mm_mul_ps(pfloats, _mm_set1_ps(S));
+            pfloats = _mm_mul_ps(pfloats, _mm_set1_ps(S));
 #else
-			(*this)[0] *= S;
-			(*this)[1] *= S;
-			(*this)[2] *= S;
+            (*this)[0] *= S;
+            (*this)[1] *= S;
+            (*this)[2] *= S;
 #endif
-			return *this;
-		}
+            return *this;
+        }
 
 
         const float3 inverse() const noexcept
-		{
-			return float3( -x, -y, -z );
-		}
+        {
+            return float3(-x, -y, -z);
+        }
 
-		// Identities
-        const float3 cross(const float3 rhs ) const noexcept
-		{
-			return CrossProduct( pfloats, rhs.pfloats );
-		}
+        // Identities
+        const float3 cross(const float3 rhs) const noexcept
+        {
+            return CrossProduct(pfloats, rhs.pfloats);
+        }
 
-		const float3 distance(const float3 &b ) const noexcept
-		{
-			return b.magnitude() - magnitude();
-		}
+        const float3 distance(const float3& b) const noexcept
+        {
+            return b.magnitude() - magnitude();
+        }
 
 
-		float dot( const float3 &b ) const 
-		{
-			return DotProduct3(pfloats, b.pfloats);
-		}
+        float dot(const float3& b) const
+        {
+            return DotProduct3(pfloats, b.pfloats);
+        }
 
 
         float3 abs() const noexcept
@@ -926,35 +926,40 @@ namespace FlexKit
         }
 
 
-		float magnitude() const noexcept
-		{
+        float magnitude() const noexcept
+        {
 #if USING(FASTMATH)
-			__m128 r = _mm_mul_ps(pfloats, pfloats);
-			r = _mm_hadd_ps(r, r);
-			r = _mm_hadd_ps(r, r);
-			float x = GetFirst(r);
-			//return _mm_mul_ps(_mm_rsqrt_ps(r), _mm_set1_ps(r.m128_f32[0])).m128_f32[0];
-			auto M = _mm_mul_ps(_mm_rsqrt_ps(r), _mm_set1_ps(x));
-			float Res = GetLast(M);
+            __m128 r = _mm_mul_ps(pfloats, pfloats);
+            r = _mm_hadd_ps(r, r);
+            r = _mm_hadd_ps(r, r);
+            float x = GetFirst(r);
+            //return _mm_mul_ps(_mm_rsqrt_ps(r), _mm_set1_ps(r.m128_f32[0])).m128_f32[0];
+            auto M = _mm_mul_ps(_mm_rsqrt_ps(r), _mm_set1_ps(x));
+            float Res = GetLast(M);
 
-			return Res;
+            return Res;
 #else
-			return ::std::sqrt( ( x*x ) + ( y*y ) + ( z*z ) );
+            return ::std::sqrt((x * x) + (y * y) + (z * z));
 #endif
-		}
+        }
 
 
-		inline float magnitudesquared() const 
-		{
+        inline float magnitudesquared() const
+        {
 #if USING(FASTMATH)
-			__m128 r = _mm_mul_ps(pfloats, pfloats);
-			r = _mm_hadd_ps(r, r);
-			r = _mm_hadd_ps(r, r);
-			return GetLast(r);
+            __m128 r = _mm_mul_ps(pfloats, pfloats);
+            r = _mm_hadd_ps(r, r);
+            r = _mm_hadd_ps(r, r);
+            return GetLast(r);
 #else		
-			return ( x*x ) + ( y*y ) + ( z*z );
+            return (x * x) + (y * y) + (z * z);
 #endif
-		}
+        }
+
+        bool isNaN() const
+        {
+            return (std::isnan(x) || std::isnan(y) || std::isnan(z));
+        }
 
 		void normalize() noexcept
 		{
@@ -972,6 +977,7 @@ namespace FlexKit
 			return sq;
 		}
 
+        static float3 Zero() { return float3{ 0 }; }
 
 		operator __m128 () const	 { return pfloats; }
 		inline float* toFloat3_ptr() { return reinterpret_cast<float*>( &pfloats ); }
@@ -1014,19 +1020,19 @@ namespace FlexKit
 
 
     FLEXKITAPI template<typename TY>
-    float clamp(const TY Min, const TY V, const TY Max)
+    TY clamp(const TY min, const TY v, const TY max) noexcept
     {
-        return Min(Max(Min, V), Max);
+        return Min(Max(min, v), max);
     }
 
 
-    FLEXKITAPI inline float saturate(float x)
+    FLEXKITAPI inline float saturate(float x) noexcept
 	{
-		return Min(Max(x, 0.0f), 1.0f);
+        return clamp(0.0f, x, 1.0f);
 	}
 
 
-    FLEXKITAPI inline float3 saturate(float3 v)
+    FLEXKITAPI inline float3 saturate(float3 v) noexcept
 	{
 		float3 out = v;
 		v.x = Min(Max(v.x, 0.0f), 1.0f);

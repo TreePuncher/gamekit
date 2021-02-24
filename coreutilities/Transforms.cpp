@@ -561,10 +561,8 @@ namespace FlexKit
             const auto parentFlag   = SceneNodeTable.Flags[_SNHandleToIndex(SceneNodeTable.Nodes[itr].Parent)];
             const auto scaleFlag    = flag & SceneNodes::SCALE;
 
-            if ((flag & SceneNodes::UPDATED) && !(parentFlag & SceneNodes::UPDATED))
-                SceneNodeTable.Flags[itr] = scaleFlag;
 
-            else if((flag & SceneNodes::DIRTY) || (parentFlag & SceneNodes::UPDATED))
+            if((flag & SceneNodes::DIRTY) || (parentFlag & SceneNodes::UPDATED))
 			{
 				DirectX::XMMATRIX LT = XMMatrixIdentity();
 				LT_Entry TRS = GetLocal(SceneNodeTable.Nodes[itr].handle);
@@ -584,6 +582,8 @@ namespace FlexKit
 				auto temp						= SceneNodeTable.WT[itr].m4x4;
 				SceneNodeTable.WT[itr].m4x4	= WT;
 			}
+            else
+                SceneNodeTable.Flags[itr] = scaleFlag;
 
 			Unused_Nodes += (SceneNodeTable.Flags[itr] & SceneNodes::FREE);
 		}
