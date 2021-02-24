@@ -13,8 +13,8 @@ using namespace FlexKit;
 void UpdatePlayerState(GameObject& player, const PlayerInputState& currentInputState, double dT)
 {
     Apply(player,
-        [&](LocalPlayerView& player,
-            CameraControllerView& camera)
+        [&](LocalPlayerView&        player,
+            CameraControllerView&   camera)
         {
             const ThirdPersonCamera::KeyStates tpc_keyState =
             {
@@ -117,7 +117,7 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
         worldState      { IN_worldState },
         base            { IN_base }
 {
-    //base.renderWindow.EnableCaptureMouse(true);
+    base.renderWindow.ToggleMouseCapture();
 }
 
 

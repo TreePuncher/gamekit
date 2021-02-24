@@ -29,5 +29,36 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace FlexKit;
 
+
+
+/************************************************************************************************/
+
+
+GameObject& CreatePlayer(const PlayerDesc& desc, RenderSystem& renderSystem, iAllocator& allocator)
+{
+    GameObject& player = CreateThirdPersonCameraController(desc.pscene, allocator, desc.r, desc.h);
+
+    SetCameraControllerCameraHeightOffset(player, 7.5);
+    SetCameraControllerCameraBackOffset(player, 15);
+
+    static const GUID_t meshID = 7896;
+
+    auto [triMesh, loaded] = FindMesh(meshID);
+
+    if (!loaded)
+        triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), meshID);
+
+    auto node = GetCameraControllerNode(player);
+
+    player.AddView<LocalPlayerView>();
+    player.AddView<SceneNodeView<>>(node);
+    player.AddView<DrawableView>(triMesh, node);
+
+    desc.gscene.AddGameObject(player, node);
+
+    return player;
+}
+
+
 /************************************************************************************************/
 

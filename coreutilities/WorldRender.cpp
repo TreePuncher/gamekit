@@ -1572,6 +1572,8 @@ namespace FlexKit
 			},
 			[=](ForwardPlusPass& data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
+                GetCameraMatrices(camera);
+
 				const auto cameraConstants  = ConstantBufferDataSet{ GetCameraConstants(camera), data.passConstantsBuffer };
 				const auto passConstants    = ConstantBufferDataSet{ ForwardDrawConstants{ (float)data.pointLights.size(), t, { 0, 0 } }, data.passConstantsBuffer };
 
@@ -2217,7 +2219,7 @@ namespace FlexKit
 					return;
 
 				const size_t entityBufferSize =
-					AlignedSize<Drawable::VConstantsLayout>() * data.pvs.size() * 2;
+					AlignedSize<Drawable::VConstantsLayout>() * data.pvs.size();
 
 				constexpr size_t passBufferSize =
 					AlignedSize<Camera::ConstantBuffer>() +

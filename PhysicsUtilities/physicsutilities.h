@@ -40,6 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <pvd/PxPvd.h>
 #include <pvd/PxPvdTransport.h>
 #include <characterkinematic/PxControllerManager.h>
+#include <PxQueryReport.h>
 
 #ifdef _DEBUG
 #pragma comment(lib,	"LowLevel_static_64.lib"				)
@@ -72,6 +73,13 @@ namespace FlexKit
 	typedef void(*FNPSCENECALLBACK_POSTUPDATE)(void*);
 	typedef void(*FNPSCENECALLBACK_PREUPDATE) (void*);
 
+
+    /************************************************************************************************/
+
+
+    inline float3          pxVec3ToFloat3(const physx::PxExtendedVec3 v)    { return { (float)v.x, (float)v.y, (float)v.z }; }
+    inline float3          pxVec3ToFloat3(const physx::PxVec3 v)            { return { v.x, v.y, v.z }; }
+    inline physx::PxVec3   Float3TopxVec3(const float3 v)                   { return { v.x, v.y, v.z }; }
 
 	/************************************************************************************************/
 
@@ -280,6 +288,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+
 	class PhysXScene
 	{
 	public:
@@ -382,6 +391,50 @@ namespace FlexKit
 		void SetPosition	        (const RigidBodyHandle, float3 xyz);
 		void SetMass                (const RigidBodyHandle, float m);
         void SetRigidBodyPosition   (const RigidBodyHandle, const float3 xyz);
+
+        struct RayCastHit
+        {
+            const float     distance;
+            const float3    normal;
+        };
+
+        template<typename FN_callable>
+        struct HitCallback : public physx::PxRaycastCallback
+        {
+            HitCallback(FN_callable callable) :
+                physx::PxRaycastCallback{ nullptr, 0 },
+                hitHandler{ callable }{}
+
+            physx::PxAgain processTouches(const physx::PxRaycastHit* hit, physx::PxU32 nbHits) final
+            {
+                return hitHandler(
+                    RayCastHit{
+                        .distance   = (float)hit->distance,
+                        .normal     = pxVec3ToFloat3(hit->normal) } );
+            }
+
+            void finalizeQuery() final override
+            {
+                if(hasBlock)
+                    hitHandler(
+                        RayCastHit{
+                            .distance   = (float)block.distance,
+                            .normal     = pxVec3ToFloat3(block.normal) });
+            }
+
+            FN_callable hitHandler;
+        };
+
+        template<typename TY_HITFN>
+        void RayCast(const float3 origin, const float3 ray, const float maxDistance, TY_HITFN OnHit)
+        {
+            const auto pxOrigin = Float3TopxVec3(origin);
+            const auto pxRay    = Float3TopxVec3(ray);
+
+            HitCallback<TY_HITFN> hitCallback{ OnHit };
+
+            scene->raycast(pxOrigin, pxRay, maxDistance, hitCallback);
+        }
 
         physx::PxControllerManager& GetCharacterController() { return *controllerManager; }
 
@@ -686,13 +739,15 @@ namespace FlexKit
 
     struct CharacterController
     {
-        NodeHandle                node;
-        PhysXSceneHandle          scene;
+        NodeHandle              node;
+        PhysXSceneHandle        scene;
 
-        physx::PxController*      controller;
+        physx::PxController*    controller;
 
-        float2                    mouseMoved = { 0, 0 };
-        double                    updateTimer = 0;
+        float                   focusHeight     = 2.0f;
+        float                   cameraDistance  = 10.0f;
+        float2                  mouseMoved      = { 0, 0 };
+        double                  updateTimer     = 0;
     };
 
 
@@ -920,14 +975,17 @@ namespace FlexKit
         NodeHandle pitchNode    = InvalidHandle_t;
         NodeHandle rollNode     = InvalidHandle_t;
 
-        float           pitch   = 0;
-        float           roll    = 0;
-        float           yaw     = 0;
+        float           pitch   = 0; // parented to yaw
+        float           roll    = 0; // Parented to pitch
+        float           yaw     = 0; 
 
-        float3          velocity     = 0;
-        float           acceleration = 500;
-        float           drag         = 5.0;
-        float			moveRate     = 100;
+        float3          velocity        = 0;
+        float           acceleration    = 500;
+        float           drag            = 5.0;
+        float			moveRate        = 100;
+        float           gravity         = 9.8f;
+
+        bool            floorContact = false;
 
         KeyStates keyStates;
     };
@@ -941,14 +999,18 @@ namespace FlexKit
 
 
     CameraHandle    GetCameraControllerCamera(GameObject& GO);
-    GameObject&     CreateThirdPersonCameraController(PhysXSceneHandle scene, iAllocator* allocator, const float R = 1, const float H = 1);
+    GameObject&     CreateThirdPersonCameraController(PhysXSceneHandle scene, iAllocator& allocator, const float R = 1, const float H = 1);
 
     float3          GetCameraControllerHeadPosition(GameObject& GO);
     float3          GetCameraControllerForwardVector(GameObject& GO);
-
     Quaternion      GetCameraControllerOrientation(GameObject& GO);
+    NodeHandle      GetCameraControllerNode(GameObject& GO);
 
-    void            SetCameraControllerPosition(GameObject& GO, const float3 pos);
+
+    void            YawCameraController(GameObject& GO, float rad);
+
+    void            SetCameraControllerCameraHeightOffset(GameObject& GO, const float offset);
+    void            SetCameraControllerCameraBackOffset(GameObject& GO, const float offset);
 
 
     auto& UpdateThirdPersonCameraControllers(UpdateDispatcher& dispatcher, float2 mouseInput, const double dT)

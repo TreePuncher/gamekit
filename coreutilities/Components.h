@@ -624,6 +624,20 @@ namespace FlexKit
 		StringIDHandle ID;
 	};
 
+
+    inline const char* GetStringID(GameObject& go)
+    {
+        return Apply(go,
+            [](StringIDView& ID) -> const char*
+            {
+                return ID.GetString();
+            },
+            []() -> const char*
+            {
+                return nullptr;
+            });
+    }
+
 	
 	/************************************************************************************************/
 

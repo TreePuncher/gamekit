@@ -1,9 +1,286 @@
 #include "Host.h"
 #include <random>
 #include <limits>
-
+#include <regex>
 
 using FlexKit::GameFramework;
+
+
+/************************************************************************************************/
+
+
+HostWorldStateMangager::HostWorldStateMangager(MultiplayerPlayerID_t IN_player, NetworkState& IN_net, BaseState& IN_base) :
+    net                     { IN_net    },
+    base                    { IN_base   },
+
+    eventMap                { IN_base.framework.core.GetBlockMemory() },
+
+    pscene                  { IN_base.physics.CreateScene() },
+    gscene                  { IN_base.framework.core.GetBlockMemory() },
+
+    localPlayerID           { IN_player },
+    localPlayer             { CreatePlayer(
+                                PlayerDesc{
+                                    .pscene = pscene,
+                                    .gscene = gscene,
+                                    .h      = 0.5f,
+                                    .r      = 0.5f
+                                },
+                                IN_base.framework.core.RenderSystem,
+                                IN_base.framework.core.GetBlockMemory()) },
+
+    localPlayerComponent    { IN_base.framework.core.GetBlockMemory() },
+    remotePlayerComponent   { IN_base.framework.core.GetBlockMemory() },
+
+    packetHandlers          { IN_base.framework.core.GetBlockMemory() },
+
+    floorCollider           { gameOjectPool.Allocate() },
+
+    gameOjectPool           { IN_base.framework.core.GetBlockMemory(), 8096 },
+    cubeShape               { IN_base.physics.CreateCubeShape({ 0.5f, 0.5f, 0.5f}) }
+{
+    auto& allocator = IN_base.framework.core.GetBlockMemory();
+    auto floorShape = base.physics.CreateCubeShape({ 100, 1, 100 });
+
+    floorCollider.AddView<StaticBodyView>(pscene, floorShape, float3{0, -1.0f, 0});
+
+    packetHandlers.push_back(
+        CreatePacketHandler(
+            PlayerUpdate,
+            [&](UserPacketHeader* header, Packet* packet, NetworkState* network)
+            {
+                auto* updatePacket = reinterpret_cast<PlayerUpdatePacket*>(header);
+                UpdateRemotePlayer(updatePacket->state, updatePacket->playerID);
+            },
+            allocator));
+
+    net.PushHandler(packetHandlers);
+
+    eventMap.MapKeyToEvent(KEYCODES::KC_W, TPC_MoveForward);
+    eventMap.MapKeyToEvent(KEYCODES::KC_S, TPC_MoveBackward);
+
+    eventMap.MapKeyToEvent(KEYCODES::KC_A, TPC_MoveLeft);
+    eventMap.MapKeyToEvent(KEYCODES::KC_D, TPC_MoveRight);
+    eventMap.MapKeyToEvent(KEYCODES::KC_Q, TPC_MoveDown);
+    eventMap.MapKeyToEvent(KEYCODES::KC_E, TPC_MoveUp);
+
+    static const GUID_t sceneID = 1234;
+    FK_ASSERT(LoadScene(base.framework.core, gscene, sceneID));
+
+    auto& visibility = SceneVisibilityComponent::GetComponent();
+
+    SetControllerPosition(localPlayer, { -30, 5, -30 });
+
+    static std::regex pattern{"Cube"};
+    for (auto& entity : gscene.sceneEntities)
+    {
+        auto& go    = *visibility[entity].entity;
+        auto id     = GetStringID(go);
+
+        if (id && std::regex_search(id, pattern))
+        {
+            auto meshHandle = GetTriMesh(go);
+            auto mesh       = GetMeshResource(meshHandle);
+
+            AABB aabb{
+                .Min = mesh->Info.Min,
+                .Max = mesh->Info.Max };
+
+            const auto mipPoint = aabb.MidPoint();
+            const auto dim      = aabb.Dim() / 2.0f;
+            const auto pos      = GetWorldPosition(go);
+
+            PxShapeHandle shape = IN_base.physics.CreateCubeShape(dim);
+
+            go.AddView<StaticBodyView>(pscene, shape, pos);
+        }
+    }
+
+    for (size_t I = 0; I < 256; I++)
+        AddCube({ float(I % 2), I * 2.0f, 0});
+}
+
+
+/************************************************************************************************/
+
+
+HostWorldStateMangager::~HostWorldStateMangager()
+{
+    auto& allocator = base.framework.core.GetBlockMemory();
+
+    localPlayer.Release();
+    gscene.ClearScene();
+
+}
+
+
+WorldStateUpdate HostWorldStateMangager::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+{
+    ProfileFunction();
+
+    net.Update(core, dispatcher, dT);
+
+    WorldStateUpdate out;
+
+    struct HostWorldUpdate
+    {
+
+    };
+
+    out.update =
+        &dispatcher.Add<HostWorldUpdate>(
+            [](UpdateDispatcher::UpdateBuilder& Builder, auto& data)
+            {
+            },
+            [&, dT = dT](auto& data, iAllocator& threadAllocator)
+            {
+                fixedUpdate(dT,
+                    [&](auto dT)
+                    {
+                        //YawCameraController(localPlayer, pi* dT);
+
+                        currentInputState.mousedXY = base.renderWindow.mouseState.Normalized_dPos;
+                        UpdatePlayerState(localPlayer, currentInputState, dT);
+
+                        const PlayerFrameState localState = GetPlayerFrameState(localPlayer);
+
+                        // Send Player Updates
+                        for (auto& playerView : remotePlayerComponent)
+                        {
+                            const auto playerID     = playerView.componentData.ID;
+                            const auto state        = playerView.componentData.GetFrameState();
+                            const auto connection   = playerView.componentData.connection;
+
+                            SendFrameState(localPlayerID, localState, connection);
+
+                            for (auto otherPlayer : remotePlayerComponent)
+                            {
+                                const auto otherPID     = otherPlayer.componentData.ID;
+                                const auto connection = otherPlayer.componentData.connection;
+
+                                if (playerID != otherPID)
+                                    SendFrameState(playerID, state, connection);
+                            }
+                        }
+                    });
+            });
+
+    auto& physicsUpdate = base.physics.Update(dispatcher, dT);
+    physicsUpdate.AddInput(*out.update);
+
+    return out;
+}
+
+
+/************************************************************************************************/
+
+
+void HostWorldStateMangager::SendFrameState(const MultiplayerPlayerID_t ID, const PlayerFrameState& state, const ConnectionHandle connection)
+{
+    PlayerUpdatePacket packet;
+    packet.playerID = ID;
+    packet.state    = state;
+
+    net.Send(packet.header, connection);
+}
+
+
+/************************************************************************************************/
+
+
+bool HostWorldStateMangager::EventHandler(Event evt)
+{
+    ProfileFunction();
+
+    bool handled =
+        eventMap.Handle(evt,
+        [&](auto& evt) -> bool
+        {
+            return HandleEvents(currentInputState, evt);
+        });
+
+    return handled;
+}
+
+
+/************************************************************************************************/
+
+
+GraphicScene& HostWorldStateMangager::GetScene()
+{
+    return gscene;
+}
+
+
+/************************************************************************************************/
+
+
+CameraHandle HostWorldStateMangager::GetActiveCamera() const 
+{
+    return GetCameraControllerCamera(localPlayer);
+}
+
+
+/************************************************************************************************/
+
+
+void HostWorldStateMangager::AddPlayer(ConnectionHandle connection, MultiplayerPlayerID_t ID)
+{
+    auto& gameObject    = base.framework.core.GetBlockMemory().allocate<GameObject>();
+    auto test           = RemotePlayerData{ &gameObject, connection, ID };
+    auto playerView     = gameObject.AddView<RemotePlayerView>(test);
+
+
+    auto [triMesh, loaded] = FindMesh(playerModel);
+
+    auto& renderSystem = base.framework.GetRenderSystem();
+
+    if (!loaded)
+        triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), playerModel);
+
+    gameObject.AddView<SceneNodeView<>>();
+    gameObject.AddView<DrawableView>(triMesh, GetSceneNode(gameObject));
+
+    gscene.AddGameObject(gameObject, GetSceneNode(gameObject));
+
+    SetBoundingSphereFromMesh(gameObject);
+}
+
+
+/************************************************************************************************/
+
+
+void HostWorldStateMangager::AddCube(float3 POS)
+{
+    auto [triMesh, loaded]  = FindMesh(cube1X1X1);
+    auto& renderSystem      = base.framework.GetRenderSystem();
+
+    auto& gameObject = gameOjectPool.Allocate();
+
+    if (!loaded)
+        triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), cube1X1X1);
+
+    gameObject.AddView<RigidBodyView>(cubeShape, pscene, POS);
+
+    gameObject.AddView<SceneNodeView<>>(GetRigidBodyNode(gameObject));
+    gameObject.AddView<DrawableView>(triMesh, GetSceneNode(gameObject));
+
+    gscene.AddGameObject(gameObject, GetSceneNode(gameObject));
+
+    SetBoundingSphereFromMesh(gameObject);
+}
+
+
+/************************************************************************************************/
+
+
+void HostWorldStateMangager::UpdateRemotePlayer(const PlayerFrameState& playerState, MultiplayerPlayerID_t player)
+{
+    auto playerView = FindPlayer(player, remotePlayerComponent);
+
+    if (playerView)
+        playerView->Update(playerState);
+}
 
 
 /************************************************************************************************/
@@ -224,6 +501,8 @@ void HostState::SendGameStart()
 
 void PushHostState(GameInfo& info, GameFramework& framework, BaseState& base, NetworkState& net)
 {
+    AddAssetFile("assets\\multiplayerAssets.gameres");
+
     auto& host  = framework.PushState<HostState>(info, base, net);
     auto& lobby = framework.PushState<LobbyState>(base, net);
 

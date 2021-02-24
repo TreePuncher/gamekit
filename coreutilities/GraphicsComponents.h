@@ -109,6 +109,12 @@ namespace FlexKit
 	inline float4x4							GetCameraPV				(CameraHandle camera) { return CameraComponent::GetComponent().GetCameraPV(camera);				}
 
 
+    inline void GetCameraMatrices(CameraHandle camera)
+    {
+        //CameraComponent::GetComponent().GetCamera(camera).UpdateMatrices();
+    }
+
+
 
     /************************************************************************************************/
 
