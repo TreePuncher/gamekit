@@ -1630,7 +1630,7 @@ namespace FlexKit
 
 
 		template< const int RHS_COL >
-		Matrix<ROW, RHS_COL>	operator*( const Matrix<ROW, RHS_COL>& rhs )
+		Matrix<ROW, RHS_COL>	operator*( const Matrix<ROW, RHS_COL>& rhs ) const
 		{
 			static_assert( ROW == RHS_COL, "ROW AND RHS COLS DO NOT MATCH" );
 			Matrix<ROW, RHS_COL> out;
@@ -1648,7 +1648,7 @@ namespace FlexKit
 			return out;
 		}
 
-		Matrix<3, 3> operator*(const Matrix<3, 3>& rhs)
+		Matrix<3, 3> operator*(const Matrix<3, 3>& rhs) const
 		{
 			Matrix<3, 3> out;
 			auto transposed = rhs.Transpose();
@@ -1666,7 +1666,7 @@ namespace FlexKit
 		}
 
 
-		Matrix<4, 4> operator*( const Matrix<4, 4>& rhs )
+		Matrix<4, 4> operator*( const Matrix<4, 4>& rhs ) const
 		{
 			Matrix<4, 4> out;
 			auto transposed = rhs.Transpose();

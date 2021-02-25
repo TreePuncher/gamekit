@@ -730,7 +730,7 @@ namespace FlexKit
         return Apply(GO,
             [](CameraControllerView& cameraController)
             {
-                return cameraController.GetData().yawNode;
+                return cameraController.GetData().objectNode;
             },
             [] () -> NodeHandle
             {
@@ -876,17 +876,22 @@ namespace FlexKit
             controller  { IN_controller },
             camera      { IN_camera     },
             yawNode     { IN_node       },
+
+            cameraNode  { GetZeroedNode() },
+            objectNode  { GetZeroedNode() },
+
             pitchNode   { GetZeroedNode() },
             rollNode    { GetZeroedNode() },
             moveRate    { initialMovementSpeed }
     {
+        SetParentNode(rollNode, cameraNode);
         SetParentNode(pitchNode, rollNode);
         SetParentNode(yawNode, pitchNode);
 
         auto& cameras = CameraComponent::GetComponent();
         ReleaseNode(cameras.GetCameraNode(camera));
 
-        cameras.SetCameraNode(camera, rollNode);
+        cameras.SetCameraNode(camera, cameraNode);
         cameras.MarkDirty(camera);
 
         TranslateWorld(yawNode, initialPos);
@@ -1024,12 +1029,11 @@ namespace FlexKit
         {
             controllerImpl.updateTimer -= deltaTime;
 
-
             yaw     += controllerImpl.mouseMoved[0] * deltaTime * pi * 50;
             pitch   += controllerImpl.mouseMoved[1] * deltaTime * pi * 50;
 
             yaw     = fmod(yaw, DegreetoRad(360.0f));
-            pitch   = clamp(DegreetoRad(-75.0f), pitch, DegreetoRad(75.0f));
+            pitch   = clamp(DegreetoRad(-85.0f), pitch, DegreetoRad(75.0f));
 
             controllerImpl.mouseMoved = { 0.0f, 0.0f };
 
@@ -1104,10 +1108,16 @@ namespace FlexKit
                     return false;
                 });
 
-            const auto cameraY = Max(focusHeight - std::tanf(pitch) * cameraDistance, cameraMinY);
+            const auto cameraY      = Max(focusHeight - std::tanf(pitch) * cameraDistance, cameraMinY);
+            const auto footPosition = pxVec3ToFloat3( pxFootPosition );
 
-            SetPositionW(yawNode, { (float)pxFootPosition.x, (float)pxFootPosition.y, (float)pxFootPosition.z } );
-            SetPositionL(pitchNode, float3(0, cameraY, cameraDistance));
+            SetPositionW(objectNode, footPosition);
+
+            const auto position             = footPosition - forward * cameraDistance + up * cameraY;
+            const auto newCameraPosition    = lerp(position, cameraPosition, 0.65f);
+            cameraPosition                  = newCameraPosition;
+
+            SetPositionW(yawNode, cameraPosition);
 
             CameraComponent::GetComponent().MarkDirty(camera);
         }

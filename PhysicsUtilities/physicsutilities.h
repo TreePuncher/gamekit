@@ -970,12 +970,17 @@ namespace FlexKit
         CharacterControllerHandle   controller    = InvalidHandle_t;
         CameraHandle                camera        = InvalidHandle_t;
 
+        NodeHandle objectNode   = InvalidHandle_t;
         NodeHandle cameraNode   = InvalidHandle_t;
+
         NodeHandle yawNode      = InvalidHandle_t;
         NodeHandle pitchNode    = InvalidHandle_t;
         NodeHandle rollNode     = InvalidHandle_t;
 
-        float           pitch   = 0; // parented to yaw
+
+        float3          cameraPosition  = float3(0, 0, 0);
+
+        float           pitch           = 0; // parented to yaw
         float           roll    = 0; // Parented to pitch
         float           yaw     = 0; 
 

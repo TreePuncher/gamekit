@@ -429,6 +429,13 @@ namespace FlexKit
 	}
 
 
+    void SetWT(NodeHandle node, const float4x4  in)
+    {
+        SceneNodeTable.WT[_SNHandleToIndex(node)].m4x4 = Float4x4ToXMMATIRX(in);
+        SetFlag(node, SceneNodes::DIRTY);
+    }
+
+
 	/************************************************************************************************/
 
 
@@ -592,6 +599,35 @@ namespace FlexKit
 		SceneNodeTable.WT[0].SetToIdentity();// Making sure root is Identity 
 		return ((float(Unused_Nodes) / float(SceneNodeTable.size())) > 0.25f);
 	}
+
+
+    /************************************************************************************************/
+
+
+    void UpdateNode(NodeHandle node)
+    {
+        static_vector<NodeHandle> stack;
+
+        stack.push_back(node);
+
+        const auto root = SceneNodeTable.root;
+        for(NodeHandle itr = node; itr != root;)
+        {
+            auto parent = GetParentNode(itr);
+            stack.push_back(parent);
+            itr = parent;
+        }
+
+        float4x4 transform = float4x4::Identity();
+
+        for (auto itr = stack.rbegin(); itr != stack.rend(); itr++)
+        {
+            const float4x4 parent = GetWT(*itr);
+            transform = parent * transform;
+        }
+
+        SetWT(node, transform);
+    }
 
 
 	/************************************************************************************************/

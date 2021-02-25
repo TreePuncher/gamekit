@@ -38,8 +38,8 @@ GameObject& CreatePlayer(const PlayerDesc& desc, RenderSystem& renderSystem, iAl
 {
     GameObject& player = CreateThirdPersonCameraController(desc.pscene, allocator, desc.r, desc.h);
 
-    SetCameraControllerCameraHeightOffset(player, 7.5);
-    SetCameraControllerCameraBackOffset(player, 15);
+    //SetCameraControllerCameraHeightOffset(player, 7.5);
+    //SetCameraControllerCameraBackOffset(player, 15);
 
     static const GUID_t meshID = 7896;
 

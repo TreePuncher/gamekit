@@ -154,6 +154,7 @@ namespace FlexKit
 	FLEXKITAPI void			SetPositionW				( NodeHandle Node,	float3 in );
 	FLEXKITAPI void			SetPositionL				( NodeHandle Node,	float3 in );
 	FLEXKITAPI void			SetWT						( NodeHandle Node,	DirectX::XMMATRIX* __restrict in  ); // Set World Transform
+	FLEXKITAPI void			SetWT						( NodeHandle Node,	const float4x4  in); // Set World Transform
 	FLEXKITAPI void			SetScale					( NodeHandle Node,	float3 In );
 
 	FLEXKITAPI void			Scale						( NodeHandle Node,	float3 In );
@@ -175,6 +176,8 @@ namespace FlexKit
 	FLEXKITAPI inline void Roll							( NodeHandle Node,	float r );
 	FLEXKITAPI inline void Pitch						( NodeHandle Node,	float r );
 
+
+    FLEXKITAPI inline void UpdateNode(NodeHandle Node);
 
 	/************************************************************************************************/
 
