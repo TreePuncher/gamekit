@@ -278,19 +278,10 @@ namespace FlexKit::ResourceBuilder
 	using GeometryList		= std::vector<MeshResource_ptr>;
 
 
-	/************************************************************************************************/
-
-
-	size_t GetNormalIndex	(const int pIndex, const int vIndex, const int vID, fbxsdk::FbxMesh* Mesh);
-	size_t GetTexcordIndex	(const int pIndex, const int vIndex, fbxsdk::FbxMesh* Mesh);
-	size_t GetVertexIndex	(const int pIndex, const int vIndex, const int vID, fbxsdk::FbxMesh* Mesh);
-
 
 	/************************************************************************************************/
 
 
-	SkinDeformer		CreateSkin			(const fbxsdk::FbxMesh* Mesh);
-	MeshDesc			TranslateToTokens	(fbxsdk::FbxMesh* Mesh, MeshUtilityFunctions::TokenList& TokensOut, SkeletonResource_ptr S = nullptr, bool SubDiv_Enabled = false);
 	
 	MeshResource_ptr	CreateMeshResource	(MeshDesc*, const size_t meshCount, const std::string& ID, const MetaDataList& MD = MetaDataList{}, const bool EnableSubDiv = false);
 

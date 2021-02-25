@@ -1,10 +1,9 @@
 #pragma once
 #include "ResourceUtilities.h"
 
-
 namespace FlexKit::ResourceBuilder
 {
-    Pair<bool, fbxsdk::FbxScene*> LoadFBXScene(const char* file, fbxsdk::FbxManager* lSdkManager, fbxsdk::FbxIOSettings* settings);
+    std::pair<ResourceList, std::shared_ptr<SceneResource>>     CreateSceneFromFBXFile2(std::string file, const CompileSceneFromFBXFile_DESC& Desc);
 }
 
 /**********************************************************************

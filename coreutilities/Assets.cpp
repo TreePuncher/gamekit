@@ -67,6 +67,9 @@ namespace FlexKit
 		FILE* F = 0;
 		int S   = fopen_s(&F, FILELOC, "rb");
 
+        if (S)
+            FK_LOG_ERROR("Failed To Read Asset Table");
+
 		size_t TableSize	 = ReadAssetTableSize(F);
 		ResourceTable* Table = (ResourceTable*)Resources.ResourceMemory->_aligned_malloc(TableSize);
 

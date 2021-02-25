@@ -259,16 +259,9 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
-    fbxsdk::FbxNode*	 FindSkeletonRoot	(const fbxsdk::FbxMesh& M);
-    void				 FindAllJoints		(JointList& Out, const FbxNode* N, const size_t Parent = 0xFFFF);
-
     CutList				    GetAnimationCuts			(const MetaDataList& MD,  const std::string& id);
-    SkeletonJointAnimation	GetJointAnimation			(const FbxNode* N,        const AnimationProperties properties = AnimationProperties{});
     JointHandle             GetJoint					(const JointList& joints, const char* ID);
-    void				    GetJointTransforms			(JointList& joints, const FbxMesh& M);
-    FbxAMatrix			    GetGeometryTransformation	(const FbxNode* inNode);	
     SkeletonMetaData_ptr    GetSkeletonMetaData		    (const MetaDataList& metaDatas);
-    SkeletonResource_ptr    CreateSkeletonResource		(FbxMesh& M, const std::string& ParentID = "", const MetaDataList& related = MetaDataList{});
 
 
 }   /************************************************************************************************/

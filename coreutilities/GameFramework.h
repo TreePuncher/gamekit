@@ -150,6 +150,7 @@ namespace FlexKit
 
 		static_vector<MouseHandler>		mouseHandlers;
 		static_vector<FrameworkState*>	subStates;
+        static_vector<FrameworkState*>	delayedFrees;
 
 		double	physicsUpdateTimer;
 		bool	consoleActive;

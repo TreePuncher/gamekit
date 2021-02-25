@@ -112,8 +112,8 @@ namespace FlexKit::ResourceBuilder
                             
                         for (size_t i = 0; i < bufferAcessor.minValues.size(); i++)
                         {
-                            newMesh.MinV[i] = bufferAcessor.minValues[i];
-                            newMesh.MaxV[i] = bufferAcessor.maxValues[i];
+                            newMesh.MinV[i] = (float)bufferAcessor.minValues[i];
+                            newMesh.MaxV[i] = (float)bufferAcessor.maxValues[i];
                         }
                     }
                     else if (attribute.first == "NORMAL")
@@ -540,9 +540,9 @@ namespace FlexKit::ResourceBuilder
                 std::vector<float4x4>           jointPoses;
 
                 for (auto _ : skin.joints)
-                    parentLinkage.push_back(INVALIDHANDLE);
+                    parentLinkage.push_back((uint32_t)INVALIDHANDLE);
 
-                for (size_t I = 0; I < skin.joints.size(); I++)
+                for (uint32_t I = 0; I < skin.joints.size(); I++)
                     nodeMap[skin.joints[I]] = I;
 
                 for (auto& joint :skin.joints)
@@ -555,19 +555,19 @@ namespace FlexKit::ResourceBuilder
                     JointPose pose;
                     if (node.translation.size())
                     {
-                        pose.ts.x = node.translation[0];
-                        pose.ts.y = node.translation[1];
-                        pose.ts.z = node.translation[2];
+                        pose.ts.x = (float)node.translation[0];
+                        pose.ts.y = (float)node.translation[1];
+                        pose.ts.z = (float)node.translation[2];
                     }
                     else
                         pose.ts = float4{ 0, 0, 0, 1 };
 
                     if (node.rotation.size())
                     {
-                        pose.r[0] = node.rotation[0];
-                        pose.r[1] = node.rotation[1];
-                        pose.r[2] = node.rotation[2];
-                        pose.r[2] = node.rotation[3];
+                        pose.r[0] = (float)node.rotation[0];
+                        pose.r[1] = (float)node.rotation[1];
+                        pose.r[2] = (float)node.rotation[2];
+                        pose.r[2] = (float)node.rotation[3];
                     }
                     else
                         pose.r = Quaternion{ 0, 0, 0, 1 };

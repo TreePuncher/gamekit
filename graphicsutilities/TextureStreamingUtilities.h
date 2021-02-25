@@ -126,11 +126,11 @@ namespace FlexKit
 
     inline uint2 GetFormatTileSize(DeviceFormat format)
     {
-        switch (format)
-        {
-        default:
+        //switch (format)
+        //{
+        //default:
             return { 256, 256 };
-        }
+        //}
     }
 
     struct DDSLevelInfo

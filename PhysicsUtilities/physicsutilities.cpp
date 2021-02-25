@@ -646,11 +646,10 @@ namespace FlexKit
                     case TPC_MoveDown:
                         keyStates.down      = state;
                         return true;
-                    default:
-                        return false;
 			        }
 		        }
-            }, [] { return false; });
+                return false;
+            }, []() -> bool { return false; });
     }
 
 
@@ -685,6 +684,39 @@ namespace FlexKit
             []
             {
                 return float3(0, 0, 0);
+            });
+    }
+
+
+
+    /************************************************************************************************/
+
+
+    float3 GetCameraControllerModelPosition(GameObject& GO)
+    {
+        return Apply(GO, [](CameraControllerView& cameraController)
+            {
+                return GetPositionW(cameraController.GetData().objectNode);
+            },
+            []
+            {
+                return float3(0, 0, 0);
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    Quaternion GetCameraControllerModelOrientation(GameObject& GO)
+    {
+        return Apply(GO, [](CameraControllerView& cameraController)
+            {
+                return GetOrientation(cameraController.GetData().objectNode);
+            },
+            []
+            {
+                return Quaternion{};
             });
     }
 

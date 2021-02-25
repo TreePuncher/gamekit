@@ -58,7 +58,7 @@ public:
     };
 
     const MultiplayerPlayerID_t     localPlayerID;
-    const GUID_t                    playerModel = 7894;
+    const GUID_t                    playerModel = 7896;
     const GUID_t                    cube1X1X1   = 7895;
 
     const PxShapeHandle cubeShape;

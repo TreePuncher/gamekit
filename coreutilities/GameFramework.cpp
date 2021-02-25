@@ -292,6 +292,11 @@ namespace FlexKit
 
 		FK_LOG_9("Frame End");
 
+        for (auto state : delayedFrees)
+            core.GetBlockMemory().release_allocation(*state);
+
+        delayedFrees.clear();
+
 		// Memory -----------------------------------------------------------------------------------
 		//Engine->GetBlockMemory().LargeBlockAlloc.Collapse(); // Coalesce blocks
 	}
@@ -397,8 +402,7 @@ namespace FlexKit
 
 	void GameFramework::PopState()
 	{
-		subStates.back()->~FrameworkState();
-		core.GetBlockMemory().free(subStates.back());
+        delayedFrees.push_back(subStates.back());
 		subStates.pop_back();
 	}
 

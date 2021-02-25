@@ -6,6 +6,8 @@
 #include "LobbyGUI.h"
 
 
+#include <regex>
+
 /************************************************************************************************/
 
 
@@ -25,7 +27,15 @@ public:
         packetHandlers          { IN_base.framework.core.GetBlockMemory() },
 
         pscene                  { IN_base.physics.CreateScene() },
-        localPlayer             { CreateThirdPersonCameraController(pscene, IN_base.framework.core.GetBlockMemory()) },
+        localPlayer             { CreatePlayer(
+                                    PlayerDesc{
+                                        .pscene = pscene,
+                                        .gscene = gscene,
+                                        .h      = 0.5f,
+                                        .r      = 0.5f
+                                    },
+                                    IN_base.framework.core.RenderSystem,
+                                    IN_base.framework.core.GetBlockMemory()) },
 
         floorCollider           { IN_base.framework.core.GetBlockMemory().allocate<GameObject>() }
     {
@@ -57,9 +67,37 @@ public:
         localPlayer.AddView<LocalPlayerView>();
 
         static const GUID_t sceneID = 1234;
-        AddAssetFile("assets\\multiplayerAssets.gameres");
 
         FK_ASSERT(LoadScene(base.framework.core, gscene, sceneID));
+
+        auto& visibility = SceneVisibilityComponent::GetComponent();
+
+        SetControllerPosition(localPlayer, { 30, 5, -30 });
+
+        static std::regex pattern{"Cube"};
+        for (auto& entity : gscene.sceneEntities)
+        {
+            auto& go    = *visibility[entity].entity;
+            auto id     = GetStringID(go);
+
+            if (id && std::regex_search(id, pattern))
+            {
+                auto meshHandle = GetTriMesh(go);
+                auto mesh       = GetMeshResource(meshHandle);
+
+                AABB aabb{
+                    .Min = mesh->Info.Min,
+                    .Max = mesh->Info.Max };
+
+                const auto mipPoint = aabb.MidPoint();
+                const auto dim      = aabb.Dim() / 2.0f;
+                const auto pos      = GetWorldPosition(go);
+
+                PxShapeHandle shape = IN_base.physics.CreateCubeShape(dim);
+
+                go.AddView<StaticBodyView>(pscene, shape, pos);
+            }
+        }
     }
 
     ~ClientWorldStateMangager(){}
@@ -113,11 +151,12 @@ public:
                 [](UpdateDispatcher::UpdateBuilder& Builder, auto& data)
                 {
                 },
-                [&](auto& data, iAllocator& threadAllocator)
+                [&, dT = dT](auto& data, iAllocator& threadAllocator)
                 {
                     fixedUpdate(dT,
                         [this, dT = dT](auto dT)
                         {
+                            FK_LOG_INFO("Client World State Update");
                             currentInputState.mousedXY = base.renderWindow.mouseState.Normalized_dPos;
                             UpdatePlayerState(localPlayer, currentInputState, dT);
 
@@ -178,7 +217,7 @@ public:
     const ConnectionHandle          server;
     const MultiplayerPlayerID_t     ID;
 
-    GUID_t                          playerModel = 7894;
+    GUID_t                          playerModel = 7896;
 
     FixedUpdate                     fixedUpdate{ 60 };
 
@@ -230,10 +269,10 @@ public:
         MultiplayerPlayerID_t ID;
     };
 
-    std::function<void()>                OnPlayerListReceived = []() {};
-    std::function<void(std::string)>     OnMessageRecieved = [](std::string msg) {};
-    std::function<void(Player& player)>  OnPlayerJoin = [](Player& player) {};
-    std::function<void()>                OnGameStart = []() {};
+    std::function<void()>                OnPlayerListReceived   = []() {};
+    std::function<void(std::string)>     OnMessageRecieved      = [](std::string msg) {};
+    std::function<void(Player& player)>  OnPlayerJoin           = [](Player& player) {};
+    std::function<void()>                OnGameStart            = []() {};
 
     std::vector<Player>         peers;
     const MultiplayerPlayerID_t clientID;

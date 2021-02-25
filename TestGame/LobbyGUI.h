@@ -66,7 +66,7 @@ public:
 
     std::function<void   (std::string)>  OnSendMessage;
     std::function<Player (uint idx)>     GetPlayer       = [](uint idx){ return Player{}; };
-    std::function<size_t ()>             GetPlayerCount  = []{ return 0;};
+    std::function<uint ()>               GetPlayerCount  = []{ return 0;};
 
     std::function<void ()>               OnGameStart     = [] {};
     std::function<void ()>               OnReady         = [] {};

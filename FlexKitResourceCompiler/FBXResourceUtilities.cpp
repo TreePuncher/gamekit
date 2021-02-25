@@ -9,8 +9,847 @@
 #include "Scenes.h"
 #include "MeshProcessing.h"
 
+#include "fbxsdk.h"
+
 namespace FlexKit::ResourceBuilder
 {   /************************************************************************************************/
+
+    
+	size_t          GetNormalIndex	    (const int pIndex, const int vIndex, const int vID, fbxsdk::FbxMesh* Mesh);
+	size_t          GetTexcordIndex	    (const int pIndex, const int vIndex, fbxsdk::FbxMesh* Mesh);
+	size_t          GetVertexIndex	    (const int pIndex, const int vIndex, const int vID, fbxsdk::FbxMesh* Mesh);
+	MeshDesc		TranslateToTokens	(fbxsdk::FbxMesh* Mesh, MeshUtilityFunctions::TokenList& TokensOut, SkeletonResource_ptr S = nullptr, bool SubDiv_Enabled = false);
+	SkinDeformer	CreateSkin			(const fbxsdk::FbxMesh* Mesh);
+
+
+    /************************************************************************************************/
+
+
+    inline float3 TranslateToFloat3(const FbxVector4& in)
+    {
+        return float3(
+            (float)in.mData[0],
+            (float)in.mData[1],
+            (float)in.mData[2]);
+    }
+
+
+    inline float3 TranslateToFloat3(const FbxDouble3& in)
+    {
+        return float3(
+            (float)in.mData[0],
+            (float)in.mData[1],
+            (float)in.mData[2]);
+    }
+
+
+    inline float4 TranslateToFloat4(const FbxVector4& in)
+    {
+        return float4(
+            (float)in.mData[0],
+            (float)in.mData[1],
+            (float)in.mData[2],
+            (float)in.mData[3]);
+    }
+
+
+    /************************************************************************************************/
+
+
+    inline XMMATRIX FBXMATRIX_2_XMMATRIX(const FbxAMatrix& AM)
+    {
+        XMMATRIX M; // Xmmatrix is Filled with 32-bit floats
+        for (uint32_t I = 0; I < 4; ++I)
+            for (uint32_t II = 0; II < 4; ++II)
+                M.r[I].m128_f32[II] = (float)AM[I][II];
+
+        return M;
+    }
+
+
+    inline FbxAMatrix XMMATRIX_2_FBXMATRIX(const XMMATRIX& M)
+    {
+        FbxAMatrix AM; // FBX Matrix is filled with 64-bit floats
+        for (uint32_t I = 0; I < 4; ++I)
+            for (uint32_t II = 0; II < 4; ++II)
+                AM[I][II] = M.r[I].m128_f32[II];
+
+        return AM;
+    }
+
+
+    inline float4x4 FBXMATRIX_2_FLOAT4X4(const FbxAMatrix& AM)
+    {
+        return FlexKit::XMMatrixToFloat4x4(FBXMATRIX_2_XMMATRIX(AM));
+    }
+
+
+    /************************************************************************************************/
+
+
+    FbxAMatrix GetGeometryTransformation(FbxNode* inNode)
+    {
+        const FbxVector4 lT = inNode->GetGeometricTranslation(FbxNode::eSourcePivot);
+        const FbxVector4 lR = inNode->GetGeometricRotation(FbxNode::eSourcePivot);
+        const FbxVector4 lS = inNode->GetGeometricScaling(FbxNode::eSourcePivot);
+
+        return FbxAMatrix(lT, lR, lS);
+    }
+
+
+    /************************************************************************************************/
+
+
+    Pair<bool, fbxsdk::FbxScene*>   LoadFBXScene(std::string file, fbxsdk::FbxManager* lSdkManager, fbxsdk::FbxIOSettings* settings);
+    ResourceList                    CreateSceneFromFBXFile(fbxsdk::FbxScene* scene, const CompileSceneFromFBXFile_DESC& Desc, const MetaDataList& metaData);
+
+
+    /************************************************************************************************/
+
+
+    FbxVector4 ReadNormal(int index, fbxsdk::FbxMesh* Mesh)	
+	{ 
+		FbxVector4 out;
+		auto Normals = Mesh->GetElementNormal(index); 
+		auto Mapping = Normals->GetMappingMode();
+
+		out = Normals->GetDirectArray().GetAt(index);
+		switch (Mapping)
+		{
+		case fbxsdk::FbxLayerElement::eNone:
+			break;
+		case fbxsdk::FbxLayerElement::eByControlPoint:
+				{
+					switch (Normals->GetReferenceMode())
+					{
+					case fbxsdk::FbxLayerElement::eDirect:
+						out = Normals->GetDirectArray().GetAt(index);
+						break;
+					case fbxsdk::FbxLayerElement::eIndexToDirect:
+					{
+						int normalIndex = Normals->GetIndexArray().GetAt(index);
+						out = Normals->GetDirectArray().GetAt(normalIndex);
+					}	break;
+					default:
+						break;
+					}
+				}
+			break;
+		case fbxsdk::FbxLayerElement::eByPolygonVertex:
+		{
+			auto NormalIndex = Normals->GetIndexArray();
+			auto NIndex = NormalIndex.GetAt(index);
+			{
+				switch (Normals->GetReferenceMode())
+				{
+				case fbxsdk::FbxLayerElement::eDirect:
+				{
+					out = Normals->GetDirectArray().GetAt(index);
+				}	break;
+				case fbxsdk::FbxLayerElement::eIndexToDirect:
+				{
+					int x = 0;
+				}	break;
+				default:
+					break;
+				}
+			}
+		}
+		default:
+			break;
+		}
+		return out;
+	}
+
+
+    /************************************************************************************************/
+
+
+    FbxVector4 ReadTangent(int index, fbxsdk::FbxMesh* Mesh)
+    {
+        FbxVector4 out;
+        auto Tangents = Mesh->GetElementTangent(index);
+        auto Mapping = Tangents->GetMappingMode();
+
+        out = Tangents->GetDirectArray().GetAt(index);
+        switch (Mapping)
+        {
+        case fbxsdk::FbxLayerElement::eNone:
+            break;
+        case fbxsdk::FbxLayerElement::eByControlPoint:
+        {
+            switch (Tangents->GetReferenceMode())
+            {
+            case fbxsdk::FbxLayerElement::eDirect:
+                out = Tangents->GetDirectArray().GetAt(index);
+                break;
+            case fbxsdk::FbxLayerElement::eIndexToDirect:
+            {
+                int TangentIndex = Tangents->GetIndexArray().GetAt(index);
+                out = Tangents->GetDirectArray().GetAt(TangentIndex);
+            }	break;
+            default:
+                break;
+            }
+        }
+        break;
+        case fbxsdk::FbxLayerElement::eByPolygonVertex:
+        {
+            auto TangentIndex = Tangents->GetIndexArray();
+            auto NIndex = TangentIndex.GetAt(index);
+            {
+                switch (Tangents->GetReferenceMode())
+                {
+                case fbxsdk::FbxLayerElement::eDirect:
+                {
+                    out = Tangents->GetDirectArray().GetAt(index);
+                }	break;
+                case fbxsdk::FbxLayerElement::eIndexToDirect:
+                {
+                    int x = 0;
+                }	break;
+                default:
+                    break;
+                }
+            }
+        }
+        default:
+            break;
+        }
+        return out;
+    }
+
+
+	/************************************************************************************************/
+
+
+    uint32_t GetNormalIndex(const int pIndex, const int vIndex, const int vID, const fbxsdk::FbxMesh& mesh)
+	{
+		using FlexKit::MeshUtilityFunctions::TokenList;
+
+		int CPIndex     = mesh.GetPolygonVertex(pIndex, vIndex);
+		auto NElement   = mesh.GetElementNormal(0);
+
+        const auto MappingMode    = NElement->GetMappingMode();
+        const auto referenceMode  = NElement->GetReferenceMode();
+
+		switch (MappingMode)
+		{
+			case FbxGeometryElement::eByPolygonVertex:
+			{
+				auto ReferenceMode = NElement->GetReferenceMode();
+				switch (referenceMode)
+				{
+				case FbxGeometryElement::eDirect:
+				{
+					return vID;
+				}	break;
+				case FbxGeometryElement::eIndexToDirect:
+				{
+					return NElement->GetIndexArray().GetAt(vID);
+				}
+				break;
+				default:
+					break; // other reference modes not shown here!
+				}
+			}	break;
+			case FbxGeometryElement::eByControlPoint:
+			{
+				switch (NElement->GetReferenceMode())
+				{
+				case FbxGeometryElement::eDirect:
+					return CPIndex;
+				case FbxGeometryElement::eIndexToDirect:
+					return NElement->GetIndexArray().GetAt(CPIndex);
+					break;
+				default:
+					break;
+				}
+			}	break;
+		}
+		return -1;
+	}
+
+
+	/************************************************************************************************/
+
+
+	uint32_t GetTexcordIndex(const int pIndex, const int vIndex, fbxsdk::FbxMesh& mesh)
+	{
+		const int CPIndex       = mesh.GetPolygonVertex(pIndex, vIndex);
+		const auto UVElement    = mesh.GetElementUV(0);
+
+		if ( !UVElement )
+			return -1;
+
+		switch (UVElement->GetMappingMode())
+		{
+			case FbxGeometryElement::eByControlPoint:
+			{
+				switch (UVElement->GetReferenceMode())
+				{
+				case FbxGeometryElement::eDirect:
+					return CPIndex;
+				case FbxGeometryElement::eIndexToDirect:
+					return UVElement->GetIndexArray().GetAt(CPIndex);
+					break;
+				default:
+					break;
+				}
+			}break;
+				return -1;
+
+			case FbxGeometryElement::eByPolygonVertex:
+				switch (UVElement->GetReferenceMode())
+				{
+				case FbxGeometryElement::eDirect:
+				case FbxGeometryElement::eIndexToDirect:
+				{
+					const int lTextureUVIndex = mesh.GetTextureUVIndex(pIndex, vIndex);
+					return (size_t)lTextureUVIndex;
+				}
+				break;
+				default:
+					break; // other reference modes not shown here!
+				}
+
+			case FbxGeometryElement::eByPolygon: // doesn't make much sense for UVs
+			case FbxGeometryElement::eAllSame:   // doesn't make much sense for UVs
+			case FbxGeometryElement::eNone:      // doesn't make much sense for UVs
+				return -1;
+		}
+		return -1;
+	}
+
+
+	/************************************************************************************************/
+
+
+    uint32_t GetVertexIndex(const int pIndex, const int vIndex, const int vID, fbxsdk::FbxMesh& mesh)
+	{ 
+		return (uint32_t)mesh.GetPolygonVertex(pIndex, vIndex);
+	}
+
+
+	/************************************************************************************************/
+
+
+	SkinDeformer CreateSkin(const fbxsdk::FbxMesh& mesh)
+	{	// Get Weights
+		SkinDeformer	Out = {};
+
+		const auto DeformerCount  = mesh.GetDeformerCount();
+		for ( int I = 0; I < DeformerCount; ++I )
+		{
+			fbxsdk::FbxStatus S;
+			auto D		= mesh.GetDeformer(I, &S);
+			auto Type	= D->GetDeformerType();
+			switch ( Type ) 
+			{
+			case fbxsdk::FbxDeformer::EDeformerType::eSkin:
+			{
+				auto Skin			= (FbxSkin*)D;
+				auto ClusterCount	= Skin->GetClusterCount();
+				
+				Out.bones.reserve(ClusterCount);
+				for ( int II = 0; II < ClusterCount; ++II)
+				{
+					const auto Cluster			= Skin->GetCluster( II );
+					const auto ClusterName		= Cluster->GetLink()->GetName();
+					const auto CPIndices		= Cluster->GetControlPointIndices();
+					const auto Weights			= Cluster->GetControlPointWeights();
+					const size_t CPICount		= Cluster->GetControlPointIndicesCount();
+
+					auto* const fbxBone			= Cluster->GetLink();
+					const auto	fbxBoneAttrib	= fbxBone->GetNodeAttribute();
+
+					SkinDeformer::BoneWeights bone;
+					bone.name = ClusterName;
+
+					for ( size_t III = 0; III < CPICount; ++III )
+					{
+						bone.weights.push_back((float)Weights[III]);
+						bone.indices.push_back(CPIndices[III]);
+					}
+
+					Out.bones.emplace_back(std::move(bone));
+				}
+			}	break;
+			}
+		}
+		return Out;
+	}
+
+
+	/************************************************************************************************/
+
+
+	MeshDesc TranslateToTokens(fbxsdk::FbxMesh& mesh, SkeletonResource_ptr skeleton, bool SubDiv_Enabled)
+	{
+        using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddNormalToken;
+		using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddIndexToken;
+		using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddTexCordToken;
+		using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddVertexToken;
+		using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddWeightToken;
+		using fbxsdk::FbxLayerElement;
+
+		MeshDesc	out = {};
+        out.tokens      = FlexKit::MeshUtilityFunctions::TokenList{ SystemAllocator };
+        out.skeleton    = skeleton;
+
+		float3 MinV(INFINITY);
+		float3 MaxV(-INFINITY);
+		float  R = 0;
+
+		{	// Get Vertices
+			const size_t VCount   = mesh.GetControlPointsCount();
+			const auto CPs        = mesh.mControlPoints;
+
+			for (int itr = 0; itr < VCount; ++itr) 
+			{
+				auto V	= CPs[itr];
+				auto V2 = TranslateToFloat3(V);
+
+				MinV.x = Min(V2.x, MinV.x);
+				MinV.y = Min(V2.y, MinV.y);
+				MinV.z = Min(V2.z, MinV.z);
+
+				MaxV.x = Max(V2.x, MaxV.x);
+				MaxV.y = Max(V2.y, MaxV.y);
+				MaxV.z = Max(V2.z, MaxV.z);
+				R = Max(R, V2.magnitude());
+
+				AddVertexToken(V2, out.tokens);
+			}
+		}
+		{	// Get Normals
+			size_t	NormalCount = mesh.GetElementNormalCount();
+			auto	Normals     = mesh.GetElementNormal();
+			auto	Tangents    = mesh.GetElementTangent();
+			size_t	VCount	    = mesh.GetPolygonVertexCount();
+			size_t	NCount	    = Normals->GetDirectArray().GetCount();
+
+            auto	mapping     = Normals->GetMappingMode();
+            auto	reference   = Normals->GetReferenceMode();
+
+            if (!Tangents && mesh.GetElementUV(0))
+            {
+                auto UVElement = mesh.GetElementUV(0);
+
+                mesh.GenerateTangentsData(UVElement->GetName());
+                Tangents = mesh.GetElementTangent();
+            }
+
+			if (NormalCount)
+				out.Normals = true;
+
+            if (Tangents)
+            {
+                for (int itr = 0; itr < NCount; ++itr)
+                    AddNormalToken(
+                        TranslateToFloat3(Normals->GetDirectArray().GetAt(itr)),
+                        TranslateToFloat3(Tangents->GetDirectArray().GetAt(itr)),
+                        out.tokens);
+
+                out.Tangents    = true;
+                out.Normals     = true;
+            }
+            else if(Normals)
+            {
+                for (int itr = 0; itr < NCount; ++itr)
+                    AddNormalToken(
+                        TranslateToFloat3(Normals->GetDirectArray().GetAt(itr)),
+                        out.tokens);
+
+                out.Tangents    = false;
+                out.Normals     = true;
+            }
+		}
+		{	// Get UV's
+			auto UVElement = mesh.GetElementUV(0);
+			if (UVElement) {
+				out.UV = true;
+				auto size = UVElement->GetDirectArray().GetCount();
+				for (int I = 0; I < size; ++I) {
+					auto UV = UVElement->GetDirectArray().GetAt(I);
+					AddTexCordToken({ float(UV[0]), float(UV[1]), 0.0f }, out.tokens);
+				}
+			}
+		}	// Get Use-able Deformers
+		if (mesh.GetDeformerCount() && skeleton)
+		{
+			const size_t			VCount		= (size_t)mesh.GetControlPointsCount();
+			std::vector<float4>		Weights;
+			std::vector<uint4_16>	boneIndices;
+
+			boneIndices.resize(VCount);
+			Weights.resize(VCount);
+
+			for (size_t I = 0; I < VCount; ++I)	Weights[I]		= { 0.0f, 0.0f, 0.0f, 0.0f };
+			for (size_t I = 0; I < VCount; ++I)	boneIndices[I]	= { -1, -1, -1, -1 };
+
+			auto skin		= CreateSkin(mesh);
+
+			for (size_t I = 0; I < skin.bones.size(); ++I)
+			{
+				JointHandle Handle = skeleton->FindJoint(skin.bones[I].name);
+
+				for (size_t II = 0; II < skin.bones[I].weights.size(); ++II)
+				{
+					size_t III = 0;
+					for (; III < 4; ++III)
+					{
+						size_t Index = skin.bones[I].indices[II];
+						if (boneIndices[Index][III] == -1)
+							break;
+					}
+
+					if (III != 4) {
+						Weights[skin.bones[I].indices[II]][III] = skin.bones[I].weights[II];
+						boneIndices[skin.bones[I].indices[II]][III] = Handle;
+					}
+				}
+			}
+
+			for (size_t I = 0; I < VCount; ++I)
+				AddWeightToken({ Weights[I].pFloats, boneIndices[I] }, out.tokens);
+
+			out.Weights		= true;
+			skin.indices	= std::move(boneIndices);
+			out.skin		= std::move(skin);
+		}
+		{	// Calculate Indices
+			const auto Normals	= mesh.GetElementNormal();
+			const auto UVs		= mesh.GetElementUV(0);
+
+			const size_t  NormalCount	= mesh.GetPolygonVertexCount();
+			const size_t  TriCount	    = mesh.GetPolygonCount();
+
+			size_t  faceCount	= 0;
+			int     IndexCount	= 0;
+
+			// Iterate through each Tri
+			for (int triID = 0; triID < TriCount; ++triID)
+			{	// Process each Vertex in tri
+				const int size = mesh.GetPolygonSize(triID);
+				const size_t NC = mesh.GetElementNormal()->GetDirectArray().GetCount();
+
+				if (size == 3)
+				{
+					const uint32_t VertexIndex1 = GetVertexIndex(triID, 0, IndexCount, mesh);
+                    const uint32_t NormalIndex1 = out.Normals ? GetNormalIndex(triID, 0, IndexCount, mesh) : 0;
+                    const uint32_t UVCordIndex1 = out.UV ? GetTexcordIndex(triID, 0, mesh) : 0;
+
+					const uint32_t VertexIndex2 = GetVertexIndex(triID, 1, IndexCount + 1, mesh);
+                    const uint32_t NormalIndex2 = out.Normals ? GetNormalIndex(triID, 1, IndexCount + 1, mesh) : 0;
+                    const uint32_t UVCordIndex2 = out.UV ? GetTexcordIndex(triID, 1, mesh) : 0;
+
+					const uint32_t VertexIndex3 = GetVertexIndex(triID, 2, IndexCount + 2, mesh);
+                    const uint32_t NormalIndex3 = out.Normals ? GetNormalIndex(triID, 2, IndexCount + 2, mesh) : 0;
+                    const uint32_t UVCordIndex3 = out.UV ? GetTexcordIndex(triID, 2, mesh) : 0;
+
+					AddIndexToken(VertexIndex1, NormalIndex1, NormalIndex1, UVCordIndex1, out.tokens);
+                    AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, out.tokens);
+                    AddIndexToken(VertexIndex2, NormalIndex2, NormalIndex2, UVCordIndex2, out.tokens);
+
+					IndexCount += 3;
+                    ++faceCount;
+				}
+				else if (size == 4)
+				{	// Quads
+
+					if constexpr(false)
+					{
+						auto VertexIndex1 = GetVertexIndex(triID, 0, IndexCount, mesh);
+						auto NormalIndex1 = out.Normals ? GetNormalIndex(triID, 0, IndexCount, mesh) : 0;
+						auto UVCordIndex1 = out.UV ? GetTexcordIndex(triID, 0, mesh) : 0;
+
+						auto VertexIndex2 = GetVertexIndex(triID, 1, IndexCount + 1, mesh);
+						auto NormalIndex2 = out.Normals ? GetNormalIndex(triID, 1, IndexCount + 1, mesh) : 0;
+						auto UVCordIndex2 = out.UV ? GetTexcordIndex(triID, 1, mesh) : 0;
+
+						auto VertexIndex3 = GetVertexIndex(triID, 2, IndexCount + 2, mesh);
+						auto NormalIndex3 = out.Normals ? GetNormalIndex(triID, 2, IndexCount + 2, mesh) : 0;
+						auto UVCordIndex3 = out.UV ? GetTexcordIndex(triID, 2, mesh) : 0;
+
+						auto VertexIndex4 = GetVertexIndex(triID, 3, IndexCount + 3, mesh);
+						auto NormalIndex4 = out.Normals ? GetNormalIndex(triID, 3, IndexCount + 3, mesh) : 0;
+						auto UVCordIndex4 = out.UV ? GetTexcordIndex(triID, 3, mesh) : 0;
+
+						AddIndexToken(VertexIndex1, NormalIndex1, UVCordIndex1, out.tokens);
+						AddIndexToken(VertexIndex2, NormalIndex2, UVCordIndex2, out.tokens);
+						AddIndexToken(VertexIndex3, NormalIndex3, UVCordIndex3, out.tokens);
+						AddIndexToken(VertexIndex4, NormalIndex4, UVCordIndex4, out.tokens);
+
+						IndexCount += 4;
+					}
+					else
+					{
+						auto VertexIndex1 = GetVertexIndex(triID, 0, IndexCount, mesh);
+						auto NormalIndex1 = out.Normals ? GetNormalIndex(triID, 0, IndexCount, mesh) : 0;
+						auto UVCordIndex1 = out.UV ? GetTexcordIndex(triID, 0, mesh) : 0;
+
+						auto VertexIndex2 = GetVertexIndex(triID, 1, IndexCount + 1, mesh);
+						auto NormalIndex2 = out.Normals ? GetNormalIndex(triID, 1, IndexCount + 1, mesh) : 0;
+						auto UVCordIndex2 = out.UV ? GetTexcordIndex(triID, 1, mesh) : 0;
+
+						auto VertexIndex3 = GetVertexIndex(triID, 2, IndexCount + 2, mesh);
+						auto NormalIndex3 = out.Normals ? GetNormalIndex(triID, 2, IndexCount + 2, mesh) : 0;
+						auto UVCordIndex3 = out.UV ? GetTexcordIndex(triID, 2, mesh) : 0;
+
+						auto VertexIndex4 = GetVertexIndex(triID, 3, IndexCount + 3, mesh);
+						auto NormalIndex4 = out.Normals ? GetNormalIndex(triID, 3, IndexCount + 3, mesh) : 0;
+						auto UVCordIndex4 = out.UV ? GetTexcordIndex(triID, 3, mesh) : 0;
+
+						AddIndexToken(VertexIndex1, NormalIndex1, NormalIndex1, UVCordIndex1, out.tokens);
+                        AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, out.tokens);
+                        AddIndexToken(VertexIndex2, NormalIndex2, NormalIndex2, UVCordIndex2, out.tokens);
+
+                        AddIndexToken(VertexIndex1, NormalIndex1, NormalIndex1, UVCordIndex1, out.tokens);
+                        AddIndexToken(VertexIndex4, NormalIndex4, NormalIndex4, UVCordIndex4, out.tokens);
+                        AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, out.tokens);
+
+						IndexCount += 4;
+                        faceCount += 2;
+					}
+
+				}
+
+				//if (SubDiv_Enabled)	AddPatchEndToken(out.tokens);
+			}
+
+			out.faceCount = faceCount;
+		}
+
+		out.MinV	= MinV;
+		out.MaxV	= MaxV;
+		out.R		= R;
+
+		return out;
+	}
+
+
+	/************************************************************************************************/
+
+
+    fbxsdk::FbxNode* FindSkeletonRoot(const fbxsdk::FbxMesh& mesh)
+    {
+        auto DeformerCount  = mesh.GetDeformerCount();
+        for (int32_t I = 0; I < DeformerCount; ++I)
+        {
+            fbxsdk::FbxStatus S;
+            const auto D	= mesh.GetDeformer(I, &S);  FK_ASSERT(D != nullptr);
+            const auto Type	= D->GetDeformerType();
+
+            switch (Type)
+            {
+            case fbxsdk::FbxDeformer::EDeformerType::eSkin:
+            {
+                const auto Skin			= (FbxSkin*)D;
+                const auto ClusterCount	= Skin->GetClusterCount();
+
+                const auto Cluster		= Skin->GetCluster(0);
+                const auto CLBone		= Cluster->GetLink();
+                const auto CLBoneAttrib	= CLBone->GetNodeAttribute();
+                const auto CLBoneName	= CLBone->GetName();
+                auto* I				    = CLBone;
+
+                while (true)
+                {
+                    if (I->GetParent()->GetSkeleton())
+                        I = I->GetParent();
+                    else
+                        return I;
+                }
+
+            }	break;
+            default:
+                break;
+            }
+        }
+
+        return nullptr;
+    }
+
+    
+    /************************************************************************************************/
+
+
+    void GetJointTransforms(JointList& Out, const FbxMesh& mesh)
+    {
+        using DirectX::XMMatrixRotationQuaternion;
+
+        FbxAMatrix Identity;
+        Identity.FbxAMatrix::SetIdentity();
+
+        const auto DeformerCount = mesh.GetDeformerCount();
+        for (int I = 0; I < DeformerCount; ++I)
+        {
+            const auto D = mesh.GetDeformer(I);
+            if (D->GetDeformerType() == FbxDeformer::EDeformerType::eSkin)
+            {
+                const auto Skin = (FbxSkin*)D;
+                auto root = Skin->GetCluster(0);
+                auto rootLinkMatrix = FbxAMatrix{};
+
+                FbxAMatrix G = GetGeometryTransformation(root->GetLink());
+                root->GetTransformLinkMatrix(rootLinkMatrix);
+
+                for (int II = 0; Skin->GetClusterCount() > II; ++II)
+                {
+                    const auto Cluster  = Skin->GetCluster(II);
+                    const auto ID       = Cluster->GetLink()->GetName();
+
+                    JointHandle Handle              = GetJoint(Out, ID);
+                    FbxAMatrix G                    = GetGeometryTransformation(Cluster->GetLink());
+                    FbxAMatrix transformMatrix;
+                    FbxAMatrix transformLinkMatrix;
+
+                    Cluster->GetTransformLinkMatrix(transformLinkMatrix);
+                    Cluster->GetTransformMatrix(transformMatrix);
+
+                    const FbxAMatrix globalBindposeInverseMatrix = transformLinkMatrix.Inverse() * transformMatrix * G;
+                    const XMMATRIX Inverse  = FBXMATRIX_2_XMMATRIX(globalBindposeInverseMatrix);
+
+                    Out[Handle].Inverse = Inverse;
+                }
+            }
+        }
+    }
+
+
+    /************************************************************************************************/
+
+
+    SkeletonJointAnimation GetJointAnimation(const FbxNode* node, const AnimationProperties properties = {})
+    {
+        const auto Scene            = node->GetScene();
+        const auto AnimationStack   = Scene->GetCurrentAnimationStack();
+        const auto TakeInfo         = Scene->GetTakeInfo(AnimationStack->GetName());
+        const auto Begin            = TakeInfo->mLocalTimeSpan.GetStart();
+        const auto End              = TakeInfo->mLocalTimeSpan.GetStop();
+        const auto Duration         = (End - Begin).GetFrameCount(FbxTime::ConvertFrameRateToTimeMode(properties.frameRate));
+        const auto FrameRate        = properties.frameRate;
+
+        SkeletonJointAnimation A;
+        A.FPS = (uint32_t)properties.frameRate;
+        A.FrameCount = Duration;
+        A.Poses.resize(Duration);
+
+        for (size_t I = 0; I < size_t(Duration); ++I)
+        {
+            FbxTime	CurrentFrame;
+            CurrentFrame.SetFrame(I, FbxTime::ConvertFrameRateToTimeMode(properties.frameRate));
+            A.Poses[I].JPose = GetPose(FBXMATRIX_2_XMMATRIX(const_cast<FbxNode*>(node)->EvaluateLocalTransform(CurrentFrame)));
+        }
+
+        return A;
+    }
+
+
+    /************************************************************************************************/
+
+
+    void FindAllJoints(JointList& Out, const FbxNode* N, const size_t Parent = 0xFFFF)
+    {
+        if (N->GetNodeAttribute() && N->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton )
+        {
+            fbxsdk::FbxSkeleton* Sk = (fbxsdk::FbxSkeleton*)N->GetNodeAttribute();
+            
+            const int JointIndex = (int)Out.size();
+            const int ChildCount = N->GetChildCount();
+
+            SkeletonJoint NewJoint;
+            NewJoint.mID	    = N->GetName();
+            NewJoint.mParent	= JointHandle(Parent);
+
+            Out.emplace_back(SkeletonJointInfo{ { NewJoint }, GetJointAnimation(N), DirectX::XMMatrixIdentity() });
+
+            for ( int I = 0; I < ChildCount; ++I )
+                FindAllJoints(Out, N->GetChild( I ), JointIndex);
+        }
+    }
+
+
+    /************************************************************************************************/
+
+
+    SkeletonResource_ptr CreateSkeletonResource(FbxMesh& mesh, const std::string& parentID, const MetaDataList& MD)
+    {
+        using FlexKit::AnimationClip;
+        using FlexKit::Skeleton;
+
+        auto skeleton = std::make_unique<SkeletonResource>();
+
+        // Gather MetaData
+        auto Related		= FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETON, parentID);
+        auto SkeletonInfo	= GetSkeletonMetaData(MD);
+        skeleton->metaData  = Related;
+
+        auto root	= FindSkeletonRoot(mesh);
+        if (!root || !SkeletonInfo)
+            return nullptr;
+
+        std::vector<SkeletonJointInfo> joints;
+        FindAllJoints		(joints, root);
+        GetJointTransforms	(joints, mesh);
+
+        for (auto j : joints)
+            skeleton->AddJoint(j.Joint, j.Inverse);
+        
+        const std::string ID = SkeletonInfo->SkeletonID;
+        skeleton->guid  = SkeletonInfo->SkeletonGUID;
+        skeleton->ID    = ID;
+
+        for (size_t joint = 0; joint < joints.size(); ++joint)
+            skeleton->joints[joint].mID = skeleton->joints[joint].mID;
+
+        const CutList cuts = GetAnimationCuts(MD, ID);
+        for(const auto& cut : cuts)
+        {
+            const auto begin	= (size_t)(cut.T_Start);
+            const auto end		= (size_t)(cut.T_End);
+
+            AnimationClipResource clip;
+            clip.FPS		= 60;
+            clip.mID		= cut.ID;
+            clip.guid		= cut.guid;
+            clip.isLooping	= false;
+
+            const size_t clipFrameCount = end - begin;
+
+            for (size_t frame = 0; frame < clipFrameCount; ++frame)
+            {
+                AnimationKeyFrame keyFrame;
+                keyFrame.FrameNumber = frame;
+
+                for (size_t jointIdx = 0; jointIdx < joints.size(); ++jointIdx)
+                {
+                    const auto& joint       = joints[jointIdx];
+                    const auto  inverse		= DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(GetPoseTransform(skeleton->jointPoses[jointIdx])));
+                    const auto  pose		= Float4x4ToXMMATIRX(GetPoseTransform(joints[jointIdx].Animation.Poses[(frame + begin) % (joint.Animation.FrameCount - 1)].JPose));
+                    const auto  localPose   = GetPose(pose * inverse);
+
+                    keyFrame.AddJointPose(JointHandle(jointIdx), localPose);
+                }
+
+                clip.AddKeyFrame(keyFrame, frame * 1.0 / 60.0f);
+            }
+
+            //clip.Compress();
+        }
+
+        return skeleton;
+    }
+
+
+    /************************************************************************************************/
+
+
+    inline uint32_t		FetchIndex(uint32_t itr, fbxsdk::FbxMesh* Mesh) { return Mesh->GetPolygonVertex(itr / 3, itr % 3); }
+
+
+    /************************************************************************************************/
 
 
     MeshResource_ptr FindGeoByID(GeometryList& geometry, size_t ID)
@@ -402,14 +1241,31 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
-    ResourceList CreateSceneFromFBXFile(fbxsdk::FbxScene* scene, const CompileSceneFromFBXFile_DESC& Desc, const MetaDataList& metaData)
+    ResourceList CreateSceneFromFBXFile(std::string file, const MetaDataList& metaData)
     {
-        IDTranslationTable  translationTable;
-        ResourceList	    resources = GatherSceneResources(scene, Desc.Cooker, translationTable, true, metaData);
+	    fbxsdk::FbxManager*		Manager		= fbxsdk::FbxManager::Create();
+	    fbxsdk::FbxIOSettings*	Settings	= fbxsdk::FbxIOSettings::Create(Manager, IOSROOT);
 
-        GetScenes(scene, metaData, translationTable, resources);
+        auto [res, scene] = LoadFBXScene(file, Manager, Settings);
 
-        return resources;
+	    Manager->SetIOSettings(Settings);
+
+        if (res)
+        {
+            IDTranslationTable  translationTable;
+            ResourceList	    resources = GatherSceneResources(scene, nullptr, translationTable, true, metaData);
+
+            GetScenes(scene, metaData, translationTable, resources);
+
+            return resources;
+        }
+        else
+        {
+            std::cout << "Failed to Open FBX File: " << file << "\n";
+            MessageBox(0, L"Failed to Load File!", L"ERROR!", MB_OK);
+
+            return {};
+        }
     }
 
 
@@ -444,14 +1300,14 @@ namespace FlexKit::ResourceBuilder
 
 
     Pair<bool, fbxsdk::FbxScene*>
-    LoadFBXScene(const char* file, fbxsdk::FbxManager* lSdkManager, fbxsdk::FbxIOSettings* settings)
+    LoadFBXScene(std::string file, fbxsdk::FbxManager* lSdkManager, fbxsdk::FbxIOSettings* settings)
     {
         fbxsdk::FbxNode* node = nullptr;
         fbxsdk::FbxImporter* importer = fbxsdk::FbxImporter::Create(lSdkManager, "");
 
-        if (!importer->Initialize(file, -1, lSdkManager->GetIOSettings()))
+        if (!importer->Initialize(file.c_str(), -1, lSdkManager->GetIOSettings()))
         {
-            printf("Failed to Load: %s\n", file);
+            printf("Failed to Load: %s\n", file.c_str());
             printf("Error Returned: %s\n", importer->GetStatus().GetErrorString());
             return{ false, nullptr };
         }
@@ -459,7 +1315,7 @@ namespace FlexKit::ResourceBuilder
         fbxsdk::FbxScene* scene = FbxScene::Create(lSdkManager, "Scene");
         if (!importer->Import(scene))
         {
-            printf("Failed to Load: %s\n", file);
+            printf("Failed to Load: %s\n", file.c_str());
             printf("Error Returned: %s\n", importer->GetStatus().GetErrorString());
             return{ false, nullptr };
         }
