@@ -83,8 +83,8 @@ PlayerFrameState GetPlayerFrameState(GameObject& gameObject)
         gameObject,
         [&](LocalPlayerView& view)
         {
-            const float3        pos = GetCameraControllerHeadPosition(gameObject);
-            const Quaternion    q = GetCameraControllerOrientation(gameObject);
+            const float3        pos = GetCameraControllerModelPosition(gameObject);
+            const Quaternion    q   = GetCameraControllerModelOrientation(gameObject);
 
             out.pos = pos;
             out.orientation = q;
@@ -250,11 +250,10 @@ bool LocalGameState::EventHandler(Event evt)
                 const auto width    = (uint32_t)evt.mData1.mINT[0];
                 const auto height   = (uint32_t)evt.mData2.mINT[0];
                 base.Resize({ width, height });
-            }   break;
-
+            }   return true;
             case Event::InputAction::Exit:
                 framework.quit = true;
-                break;
+                return true;
             default:
                 break;
             }
@@ -267,13 +266,15 @@ bool LocalGameState::EventHandler(Event evt)
                 {
                 case KC_M:
                     base.renderWindow.ToggleMouseCapture();
-                    break;
+                    return true;
                 case KC_ESC:
                     framework.quit = true;
-                    break;
+                    return true;
                 };
         }   break;
     }
+
+    return false;
 }
 
 

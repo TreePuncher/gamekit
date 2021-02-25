@@ -57,7 +57,7 @@ bool LobbyState::DrawChatRoom(EngineCore&, UpdateDispatcher&, double dT)
     const char* playerNames[16];
     const uint playerCount = GetPlayerCount();
 
-    for (size_t I = 0; I < playerCount; I++) {
+    for (uint I = 0; I < playerCount; I++) {
         auto player         = GetPlayer(I);
         playerStrings[I]    = player.Name;
         playerNames[I]      = playerStrings[I].c_str();
@@ -109,7 +109,7 @@ void LobbyState::DrawSpellbookEditor(EngineCore&, UpdateDispatcher&, double dT)
     for (size_t I = 0; I < localPlayerCards.size(); ++I)
         cardNames[I] = localPlayerCards[I]->cardName;
 
-    ImGui::ListBox("Spell list", &selection2, cardNames, localPlayerCards.size());
+    ImGui::ListBox("Spell list", &selection2, cardNames, (uint)localPlayerCards.size());
 
     auto str = const_cast<char*>(localPlayerCards[selection2]->description);
     ImGui::InputTextMultiline("Spell Description", str, strnlen(str, 64), { 0, 0 }, ImGuiInputTextFlags_ReadOnly);

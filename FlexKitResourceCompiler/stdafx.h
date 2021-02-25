@@ -29,11 +29,3 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdio.h>
 #include <tchar.h>
 
-
-#if 0
-#ifdef _DEBUG
-#pragma comment(lib, "flexkitd.lib")
-#else
-#pragma comment(lib, "flexkit.lib")
-#endif
-#endif

@@ -41,7 +41,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma comment(lib, "Shell32.lib")
 
 // FBX Loading
-#include				"fbxsdk.h"
 #pragma comment	(lib,	"libfbxsdk.lib")
 
 // PhysX Cooking Deps
@@ -79,7 +78,6 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
-    inline uint32_t		FetchIndex			(uint32_t itr, fbxsdk::FbxMesh* Mesh)			{ return Mesh->GetPolygonVertex(itr / 3, itr % 3);	}
     inline uint32_t		FetchIndex2			(uint32_t itr, const IndexList* IL)				{ return IL->at(itr);								}
     inline float3		FetchVertexPOS		(uint32_t itr, const CombinedVertexBuffer* Buff){ return Buff->at(itr).POS;							}
     inline float3		FetchWeights		(uint32_t itr, const CombinedVertexBuffer* Buff){ return Buff->at(itr).WEIGHTS;						}
@@ -96,67 +94,6 @@ namespace FlexKit::ResourceBuilder
 
     /************************************************************************************************/
 
-
-    inline float3 TranslateToFloat3(const FbxVector4& in)
-    {
-        return float3(
-            (float)in.mData[0],
-            (float)in.mData[1],
-            (float)in.mData[2]);
-    }
-
-
-    inline float3 TranslateToFloat3(const FbxDouble3& in)
-    {
-        return float3(
-            (float)in.mData[0],
-            (float)in.mData[1],
-            (float)in.mData[2]);
-    }
-
-
-    inline float4 TranslateToFloat4(const FbxVector4& in)
-    {
-        return float4(
-            (float)in.mData[0],
-            (float)in.mData[1],
-            (float)in.mData[2],
-            (float)in.mData[3]);
-    }
-
-
-    /************************************************************************************************/
-
-
-    inline XMMATRIX FBXMATRIX_2_XMMATRIX(const FbxAMatrix& AM)
-    {
-        XMMATRIX M; // Xmmatrix is Filled with 32-bit floats
-        for (uint32_t I = 0; I < 4; ++I)
-            for (uint32_t II = 0; II < 4; ++II)
-                M.r[I].m128_f32[II] = (float)AM[I][II];
-
-        return M;
-    }
-
-
-    inline FbxAMatrix XMMATRIX_2_FBXMATRIX(const XMMATRIX& M)
-    {
-        FbxAMatrix AM; // FBX Matrix is filled with 64-bit floats
-        for (uint32_t I = 0; I < 4; ++I)
-            for (uint32_t II = 0; II < 4; ++II)
-                AM[I][II] = M.r[I].m128_f32[II];
-
-        return AM;
-    }
-
-
-    inline float4x4 FBXMATRIX_2_FLOAT4X4(const FbxAMatrix& AM)
-    {
-        return FlexKit::XMMatrixToFloat4x4(FBXMATRIX_2_XMMATRIX(AM));
-    }
-
-
-    /************************************************************************************************/
 
     class iResource;
 

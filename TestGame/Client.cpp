@@ -169,8 +169,6 @@ void ClientState::PostDrawUpdate(EngineCore&, double dT)
 
 void PushClientState(const MultiplayerPlayerID_t playerID, const ConnectionHandle server, BaseState& base, NetworkState& net)
 {
-    AddAssetFile("assets\\multiplayerAssets.gameres");
-
     auto& framework = base.framework;
     auto& client    = framework.PushState<ClientState>(playerID, server, base, net);
     auto& lobby     = framework.PushState<LobbyState>(base, net);
@@ -197,8 +195,12 @@ void PushClientState(const MultiplayerPlayerID_t playerID, const ConnectionHandl
 
             framework_temp.PopState();
 
+            AddAssetFile("assets\\multiplayerAssets.gameres");
+
             auto& worldState = framework_temp.core.GetBlockMemory().allocate<ClientWorldStateMangager>(client.server, client.clientID, net_temp, base_temp);
             auto& localState = framework_temp.PushState<LocalGameState>(worldState, base_temp);
+
+            net_temp.HandleDisconnection = [&](ConnectionHandle connection) { framework.quit = true; };
 
             for (auto& player : client.peers)
                 if(player.ID != client.clientID)
@@ -219,7 +221,7 @@ void PushClientState(const MultiplayerPlayerID_t playerID, const ConnectionHandl
             return out;
         };
 
-    lobby.GetPlayerCount        = [&](){ return client.peers.size(); };
+    lobby.GetPlayerCount        = [&](){ return (uint)client.peers.size(); };
 
     client.RequestPlayerList();
 }

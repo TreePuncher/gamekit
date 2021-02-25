@@ -96,8 +96,9 @@ HostWorldStateMangager::HostWorldStateMangager(MultiplayerPlayerID_t IN_player, 
         }
     }
 
-    for (size_t I = 0; I < 256; I++)
-        AddCube({ float(I % 2), I * 2.0f, 0});
+
+    //for (size_t I = 0; I < 256; I++)
+    //    AddCube({ float(I % 2), I * 2.0f, 0});
 }
 
 
@@ -521,7 +522,7 @@ void PushHostState(GameInfo& info, GameFramework& framework, BaseState& base, Ne
             return lobbyPlayer;
         };
 
-    lobby.GetPlayerCount    = [&]                       { return host.players.size(); };
+    lobby.GetPlayerCount    = [&]                       { return (uint)host.players.size(); };
     lobby.OnSendMessage     = [&](std::string message)  { host.BroadCastMessage(message); };
 
     host.OnMessageRecieved  = [&](std::string message)  { lobby.MessageRecieved(message); };
@@ -549,6 +550,19 @@ void PushHostState(GameInfo& info, GameFramework& framework, BaseState& base, Ne
 
             auto& worldState = framework.core.GetBlockMemory().allocate<HostWorldStateMangager>(host.hostID, net_temp, base_temp);
             auto& localState = framework.PushState<LocalGameState>(worldState, base_temp);
+
+            net_temp.HandleDisconnection =
+                [&](ConnectionHandle connection)
+                {
+                    for(auto& player : worldState.remotePlayerComponent)
+                    {
+                        if (connection == player.componentData.connection)
+                        {
+                            player.componentData.gameObject->Release();
+                            return;
+                        }
+                    }
+                };
 
             for (auto& player : host.players)
                 if(player.ID != host.hostID)

@@ -1,8 +1,5 @@
 #include "buildsettings.h"
 
-//#include <windows.h>
-//#include <WinSock2.h>
-
 #include "Logging.h"
 #include "Application.h"
 #include "AnimationComponents.h"
@@ -19,7 +16,6 @@
 #include "MultiplayerState.cpp"
 #include "MultiplayerGameState.cpp"
 #include "playgroundmode.hpp"
-//#include "DebugUI.cpp"
 
 #include "allsourcefiles.cpp"
 

@@ -1626,7 +1626,7 @@ namespace FlexKit
 		{
 			VBPushBuffer VBBuffer   = reserveVB(sizeof(ShapeVert) * 3 * Divisions);
 
-			const float Step = 2 * pi / Divisions;
+			const float Step = 2.0f * (float)pi / Divisions;
             auto range = MakeRange(0, Divisions);
 
 			VertexBufferDataSet vertices{

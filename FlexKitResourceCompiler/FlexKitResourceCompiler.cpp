@@ -251,35 +251,14 @@ int main(int argc, char* argv[])
                     
 			}
 
+
 			// Scan Input Files for Resources
 			for (auto assetLocation : Inputs)
 			{
-				CompileSceneFromFBXFile_DESC Desc;
-				Desc.CloseFBX		= true;
-				Desc.IncludeShaders = false;
-				Desc.CookingEnabled = true;
-				Desc.Foundation;
-				Desc.Cooker;
+				ResourceList sceneResources = CreateSceneFromFBXFile(assetLocation, MetaData);
 
-				std::cout << "Compiling File: " << assetLocation << "\n";
-					
-				fbxsdk::FbxManager*		Manager		= fbxsdk::FbxManager::Create();
-				fbxsdk::FbxIOSettings*	Settings	= fbxsdk::FbxIOSettings::Create(Manager, IOSROOT);
-				Manager->SetIOSettings(Settings);
-
-				auto [res, scene] = LoadFBXScene(assetLocation, Manager, Settings);
-				if(res)
-				{
-					ResourceList sceneResources = CreateSceneFromFBXFile(scene, Desc, MetaData);
-
-					for (auto& resource : sceneResources)
-						resources.push_back(resource);
-				}
-				else
-				{
-					std::cout << "Failed to Open FBX File: " << assetLocation << "\n";
-					MessageBox(0, L"Failed to Load File!", L"ERROR!", MB_OK);
-				}
+				for (auto& resource : sceneResources)
+					resources.push_back(resource);
 			}
 
             for (const auto glTF_Asset : glTFAssets)

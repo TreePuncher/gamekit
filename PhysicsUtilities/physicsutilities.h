@@ -980,7 +980,7 @@ namespace FlexKit
 
         float3          cameraPosition  = float3(0, 0, 0);
 
-        float           pitch           = 0; // parented to yaw
+        float           pitch   = 0; // parented to yaw
         float           roll    = 0; // Parented to pitch
         float           yaw     = 0; 
 
@@ -1010,6 +1010,10 @@ namespace FlexKit
     float3          GetCameraControllerForwardVector(GameObject& GO);
     Quaternion      GetCameraControllerOrientation(GameObject& GO);
     NodeHandle      GetCameraControllerNode(GameObject& GO);
+
+    float3          GetCameraControllerModelPosition(GameObject& GO);
+    Quaternion      GetCameraControllerModelOrientation(GameObject& GO);
+
 
 
     void            YawCameraController(GameObject& GO, float rad);

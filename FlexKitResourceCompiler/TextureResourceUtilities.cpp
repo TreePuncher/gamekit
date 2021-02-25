@@ -206,20 +206,16 @@ namespace FlexKit::ResourceBuilder
         memset(&kernel_options, 0, sizeof(KernelOptions));
 
 
-        CMP_ERROR CMP_API CMP_DestroyComputeLibrary(CMP_BOOL forceClose);
-        CMP_ERROR CMP_API CMP_SetComputeOptions(ComputeOptions * options);
-
-
         kernel_options.encodeWith   = CMP_GPU_DXC;
         kernel_options.format       = CMP_FORMAT_BC7;
-        kernel_options.fquality     = 0.05;
+        kernel_options.fquality     = 0.05f;
         kernel_options.threads      = 0;
 
-       auto progress = [](CMP_FLOAT fProgress, CMP_DWORD_PTR pUser1, CMP_DWORD_PTR pUser2)-> bool
-       {
-           //std::cout << "Progress: " << fProgress * 100 << "\n";
-           return true;
-       };
+        auto progress = [](CMP_FLOAT fProgress, CMP_DWORD_PTR pUser1, CMP_DWORD_PTR pUser2)-> bool
+        {
+            //std::cout << "Progress: " << fProgress * 100 << "\n";
+            return true;
+        };
 
         CMP_MipSet dstMipSet = { 0 };
 
@@ -248,8 +244,8 @@ namespace FlexKit::ResourceBuilder
             return {};
         }
 
-        size_t temp2 = std::log2(mipSet.m_nHeight);
-        CMP_INT nMinSize = CMP_CalcMinMipSize(mipSet.m_nHeight, mipSet.m_nWidth, mipSet.m_nMaxMipLevels);
+        const size_t    temp2       = (size_t)std::log2(mipSet.m_nHeight);
+        const CMP_INT   nMinSize    = CMP_CalcMinMipSize(mipSet.m_nHeight, mipSet.m_nWidth, mipSet.m_nMaxMipLevels);
 
         if (auto res = CMP_GenerateMIPLevels(&mipSet, nMinSize); res != CMP_OK)
         {
@@ -268,7 +264,7 @@ namespace FlexKit::ResourceBuilder
 
         kernel_options.encodeWith = CMP_HPC;
         kernel_options.format     = CMP_FORMAT_BC7;
-        kernel_options.fquality   = 0.001;
+        kernel_options.fquality   = 0.001f;
         kernel_options.threads    = 0;
 
         CMP_MipSet dstMipSet = { 0 };
@@ -307,8 +303,8 @@ namespace FlexKit::ResourceBuilder
 
         auto resource = std::make_shared<TextureResource>();
 
-        size_t bufferSize = 0;
-        for (size_t I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++) {
+        int bufferSize = 0;
+        for (int I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++) {
             CMP_MipLevel* mipLevel = nullptr;
             CMP_GetMipLevel(&mipLevel, &dstMipSet, I, 0);
 
@@ -321,7 +317,7 @@ namespace FlexKit::ResourceBuilder
         auto temp = new char[bufferSize];
         memset(resource->mipOffsets, 0, sizeof(TextureResource::mipOffsets));
 
-        for (size_t I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++)
+        for (int I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++)
         {
             CMP_MipLevel* mipLevel = nullptr;
             CMP_GetMipLevel(&mipLevel, &dstMipSet, I, 0);
@@ -373,7 +369,6 @@ namespace FlexKit::ResourceBuilder
             return {};
         }
 
-        size_t temp2 = std::log2(mipSet.m_nHeight);
         CMP_INT nMinSize = CMP_CalcMinMipSize(mipSet.m_nHeight, mipSet.m_nWidth, mipSet.m_nMaxMipLevels);
 
         if (auto res = CMP_GenerateMIPLevels(&mipSet, nMinSize); res != CMP_OK)
@@ -390,7 +385,7 @@ namespace FlexKit::ResourceBuilder
 
         kernel_options.encodeWith = CMP_HPC;
         kernel_options.format     = CMP_FORMAT_BC7;
-        kernel_options.fquality   = 0.05;
+        kernel_options.fquality   = 0.05f;
         kernel_options.threads    = 0;
 
         CMP_MipSet dstMipSet = { 0 };
@@ -422,7 +417,7 @@ namespace FlexKit::ResourceBuilder
         auto resource = std::make_shared<TextureResource>();
             
         size_t bufferSize = 0;
-        for (size_t I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++) {
+        for (int I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++) {
             CMP_MipLevel* mipLevel = nullptr;
             CMP_GetMipLevel(&mipLevel, &dstMipSet, I, 0);
 
@@ -434,7 +429,7 @@ namespace FlexKit::ResourceBuilder
         auto temp = new char[bufferSize];
         memset(resource->mipOffsets, 0, sizeof(TextureResource::mipOffsets));
 
-        for (size_t I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++)
+        for (int I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++)
         {
             CMP_MipLevel* mipLevel = nullptr;
             CMP_GetMipLevel(&mipLevel, &dstMipSet, I, 0);
@@ -478,10 +473,10 @@ namespace FlexKit::ResourceBuilder
 
         CMP_MipSet mipSet;
         memset(&mipSet, 0, sizeof(CMP_MipSet));
-        mipSet.dwDataSize           = textureBuffer.BufferSize();
+        mipSet.dwDataSize           = (uint32_t)textureBuffer.BufferSize();
         mipSet.m_nHeight            = textureBuffer.WH[1];
         mipSet.m_nWidth             = textureBuffer.WH[0];
-        mipSet.m_nMaxMipLevels      = std::log2(std::min(textureBuffer.WH[1], textureBuffer.WH[0]));
+        mipSet.m_nMaxMipLevels      = (uint32_t)std::log2(std::min(textureBuffer.WH[1], textureBuffer.WH[0]));
         mipSet.pData                = textureBuffer.Buffer;
         mipSet.m_nMipLevels         = 1;
         mipSet.m_format             = CMP_FORMAT_RGBA_8888;
@@ -493,14 +488,13 @@ namespace FlexKit::ResourceBuilder
 
         mipLevels[0].m_nHeight       = textureBuffer.WH[1];
         mipLevels[0].m_nWidth        = textureBuffer.WH[0];
-        mipLevels[0].m_dwLinearSize  = textureBuffer.BufferSize();
+        mipLevels[0].m_dwLinearSize  = (uint32_t)textureBuffer.BufferSize();
         mipLevels[0].m_pcData        = (CMP_COLOR*)textureBuffer.Buffer;
 
         levels[0] = &mipLevels[0];
 
         mipSet.m_pMipLevelTable      = levels;
 
-        size_t temp2        = std::log2(mipSet.m_nHeight);
         CMP_INT nMinSize    = CMP_CalcMinMipSize(mipSet.m_nHeight, mipSet.m_nWidth, mipSet.m_nMaxMipLevels);
 
         if (auto res = CMP_GenerateMIPLevels(&mipSet, nMinSize); res != CMP_OK)
@@ -517,7 +511,7 @@ namespace FlexKit::ResourceBuilder
 
         kernel_options.encodeWith = CMP_HPC;
         kernel_options.format     = CMP_FORMAT_BC7;
-        kernel_options.fquality   = 0.05;
+        kernel_options.fquality   = 0.05f;
         kernel_options.threads    = 0;
 
         CMP_MipSet dstMipSet = { 0 };
@@ -547,7 +541,7 @@ namespace FlexKit::ResourceBuilder
         auto resource = std::make_shared<TextureResource>();
             
         size_t bufferSize = 0;
-        for (size_t I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++) {
+        for (int I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++) {
             CMP_MipLevel* mipLevel = nullptr;
             CMP_GetMipLevel(&mipLevel, &dstMipSet, I, 0);
 
@@ -559,7 +553,7 @@ namespace FlexKit::ResourceBuilder
         auto temp = new char[bufferSize];
         memset(resource->mipOffsets, 0, sizeof(TextureResource::mipOffsets));
 
-        for (size_t I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++)
+        for (int I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++)
         {
             CMP_MipLevel* mipLevel = nullptr;
             CMP_GetMipLevel(&mipLevel, &dstMipSet, I, 0);

@@ -34,7 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-	const	size_t											NodeHandleSize = 16;
+	const	size_t											NodeHandleSize = 32;
 	typedef Handle_t<NodeHandleSize, GetCRCGUID(SCENENODE)>	NodeHandle;
 	typedef Handle_t<16, GetCRCGUID(TextureSet)>			TextureSetHandle;
 	typedef static_vector<NodeHandle, 32>					ChildrenVector;

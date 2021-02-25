@@ -42,7 +42,10 @@ namespace FlexKit
 
 
 	inline uint16_t	_SNHandleToIndex(NodeHandle Node) 
-	{ 
+	{
+        if (Node == InvalidHandle_t)
+            return 0;
+
 		return SceneNodeTable.Indexes[Node]; 
 	}
 
@@ -182,7 +185,7 @@ namespace FlexKit
 	// TODO: Search an optional Free List
 	NodeHandle GetNewNode()
 	{
-        uint16_t nodeIdx = SceneNodeTable._AddNode();
+        uint nodeIdx = (uint)SceneNodeTable._AddNode();
 
 		SceneNodeTable.Flags[nodeIdx] = SceneNodes::DIRTY;
         const auto handle = SceneNodeTable.Indexes.GetNewHandle();
@@ -215,6 +218,9 @@ namespace FlexKit
 
 	void ReleaseNode(NodeHandle handle)
 	{
+        if (InvalidHandle_t == handle)
+            return;
+
 		SceneNodeTable.Flags[_SNHandleToIndex(handle)] = SceneNodes::FREE;
 		SceneNodeTable.Nodes[_SNHandleToIndex(handle)].Parent = NodeHandle(-1);
 		_SNSetHandleIndex(handle, -1);
