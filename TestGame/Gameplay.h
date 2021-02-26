@@ -49,10 +49,10 @@ enum PLAYER_EVENTS : int64_t
 	PLAYER_DOWN				= GetCRCGUID(PLAYER_DOWN),
 	PLAYER_RIGHT			= GetCRCGUID(PLAYER_RIGHT),
 
-	PLAYER_ACTION1			= GetCRCGUID(PLAYER_ACTION1),
-	PLAYER_ACTION2			= GetCRCGUID(PLAYER_ACTION2),
-	PLAYER_ACTION3			= GetCRCGUID(PLAYER_ACTION3),
-	PLAYER_ACTION4			= GetCRCGUID(PLAYER_ACTION4),
+	PLAYER_ACTION1			= GetTypeGUID(A123CTION11),
+	PLAYER_ACTION2			= GetTypeGUID(AC3TION12),
+	PLAYER_ACTION3			= GetTypeGUID(A11123CTION13),
+	PLAYER_ACTION4			= GetTypeGUID(AC123TION11),
 
 	PLAYER_HOLD				= GetCRCGUID(PLAYER_HOLD),
 
@@ -84,11 +84,11 @@ using CardTypeID_t = uint32_t;
 
 struct CardInterface
 {
-    const CardTypeID_t  CardID = -1;
-    const char* cardName = "!!!!!";
-    const char* description = "!!!!!";
+    CardTypeID_t  CardID      = (CardTypeID_t)-1;
+    const char*   cardName    = "!!!!!";
+    const char*   description = "!!!!!";
 
-    const uint          requiredPowerLevel = 0;
+    uint          requiredPowerLevel = 0;
 };
 
 
@@ -104,11 +104,12 @@ struct PowerCard : public CardInterface
 struct FireBall : public CardInterface
 {
     FireBall() : CardInterface{
-        GetTypeGUID(FireBall),
+        ID(),
         "FireBall",
         "Throws a small ball a fire, burns on contact.\n"
         "Required casting level is 1" } {}
 
+    static CardTypeID_t ID() { return GetTypeGUID(FireBall); };
 };
 
 
@@ -121,6 +122,29 @@ struct PlayerDesc
     float r = 1;
 };
 
+
+inline static const ComponentID SpellComponentID  = GetTypeGUID(SpellComponent);
+
+struct SpellData
+{
+    GameObject*             gameObject;
+
+    uint32_t                caster;
+    CardInterface           card;
+
+    float                   life;
+    float                   duration;
+
+    float3                  position;
+    float3                  velocity;
+};
+
+using SpellHandle       = Handle_t<32, SpellComponentID>;
+using SpellComponent    = BasicComponent_t<SpellData, SpellHandle, SpellComponentID>;
+using SpellView         = SpellComponent::View;
+
+
+UpdateTask& UpdateSpells(UpdateDispatcher& dispathcer, ObjectPool<GameObject>& objectPool, const double dt);
 
 GameObject& CreatePlayer(const PlayerDesc& desc, RenderSystem& renderSystem, iAllocator& allocator);
 

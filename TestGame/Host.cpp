@@ -29,6 +29,7 @@ HostWorldStateMangager::HostWorldStateMangager(MultiplayerPlayerID_t IN_player, 
                                 IN_base.framework.core.RenderSystem,
                                 IN_base.framework.core.GetBlockMemory()) },
 
+    spellComponent          { IN_base.framework.core.GetBlockMemory() },
     localPlayerComponent    { IN_base.framework.core.GetBlockMemory() },
     remotePlayerComponent   { IN_base.framework.core.GetBlockMemory() },
 
@@ -106,10 +107,33 @@ WorldStateUpdate HostWorldStateMangager::Update(EngineCore& core, UpdateDispatch
                 fixedUpdate(dT,
                     [&](auto dT)
                     {
-                        //YawCameraController(localPlayer, pi* dT);
-
                         currentInputState.mousedXY = base.renderWindow.mouseState.Normalized_dPos;
                         UpdatePlayerState(localPlayer, currentInputState, dT);
+
+                        for (auto& event : currentInputState.events)
+                        {
+                            switch (event)
+                            {
+                            case PlayerInputState::Event::Action1:
+                            case PlayerInputState::Event::Action2:
+                            case PlayerInputState::Event::Action3:
+                            case PlayerInputState::Event::Action4:
+                            {
+                                SpellData initial;
+                                initial.card     = FireBall();
+                                initial.caster   = localPlayerID;
+                                initial.duration = 3.0f;
+                                initial.life     = 0.0f;
+
+                                auto velocity           = (float3{1.0f, 0.0f, 1.0f} * GetCameraControllerForwardVector(localPlayer)).normal() * 50.0f;
+                                auto initialPosition    = GetCameraControllerHeadPosition(localPlayer);
+
+                                CreateSpell(initial, initialPosition, velocity);
+                            }   break;
+                            default:
+                                break;
+                            }
+                        }
 
                         const PlayerFrameState localState = GetPlayerFrameState(localPlayer);
 
@@ -125,17 +149,21 @@ WorldStateUpdate HostWorldStateMangager::Update(EngineCore& core, UpdateDispatch
                             for (auto otherPlayer : remotePlayerComponent)
                             {
                                 const auto otherPID     = otherPlayer.componentData.ID;
-                                const auto connection = otherPlayer.componentData.connection;
+                                const auto connection   = otherPlayer.componentData.connection;
 
                                 if (playerID != otherPID)
                                     SendFrameState(playerID, state, connection);
                             }
                         }
+
+                        currentInputState.events.clear();
                     });
             });
 
+    auto& spellUpdate   = UpdateSpells(dispatcher, gameOjectPool, dT);
     auto& physicsUpdate = base.physics.Update(dispatcher, dT);
     physicsUpdate.AddInput(*out.update);
+    physicsUpdate.AddInput(spellUpdate);
 
     return out;
 }
@@ -161,14 +189,12 @@ bool HostWorldStateMangager::EventHandler(Event evt)
 {
     ProfileFunction();
 
-    bool handled =
+    return
         eventMap.Handle(evt,
         [&](auto& evt) -> bool
         {
             return HandleEvents(currentInputState, evt);
         });
-
-    return handled;
 }
 
 
@@ -237,6 +263,45 @@ void HostWorldStateMangager::AddCube(float3 POS)
     gscene.AddGameObject(gameObject, GetSceneNode(gameObject));
 
     SetBoundingSphereFromMesh(gameObject);
+}
+
+
+/************************************************************************************************/
+
+
+GameObject& HostWorldStateMangager::CreateSpell(SpellData initial, float3 initialPosition, float3 initialVelocity)
+{
+    auto& gameObject    = gameOjectPool.Allocate();
+    auto& spellInstance = gameObject.AddView<SpellView>();
+    auto& spell         = spellInstance.GetData();
+
+
+    auto [triMesh, loaded] = FindMesh(spellModel);
+
+    auto& renderSystem = base.framework.GetRenderSystem();
+
+    if (!loaded)
+        triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), spellModel);
+
+    gameObject.AddView<SceneNodeView<>>();
+    gameObject.AddView<DrawableView>(triMesh, GetSceneNode(gameObject));
+
+    SetWorldPosition(gameObject, initialPosition);
+
+    gscene.AddGameObject(gameObject, GetSceneNode(gameObject));
+
+    SetBoundingSphereFromMesh(gameObject);
+
+    spell.caster        = initial.caster;
+    spell.card          = initial.card;
+    spell.duration      = initial.duration;
+    spell.life          = initial.life;
+    spell.gameObject    = &gameObject;
+
+    spell.position      = initialPosition;
+    spell.velocity      = initialVelocity;
+
+    return gameObject;
 }
 
 

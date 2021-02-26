@@ -909,7 +909,7 @@ namespace FlexKit
             NodeHandle                  IN_node              = GetZeroedNode(),
             CameraHandle                IN_camera            = CameraComponent::GetComponent().CreateCamera(),
             float3                      initialPos           = { 0, 0, 0 },
-            const float                 initialMovementSpeed = 500);
+            const float                 initialMovementSpeed = 50);
 
         static physx::PxFilterFlags Test(
             physx::PxFilterObjectAttributes attributes0,
@@ -985,9 +985,9 @@ namespace FlexKit
         float           yaw     = 0; 
 
         float3          velocity        = 0;
-        float           acceleration    = 500;
-        float           drag            = 5.0;
-        float			moveRate        = 100;
+        float           acceleration    = 100;
+        float           drag            = 5.0f;
+        float			moveRate        = 50;
         float           gravity         = 9.8f;
 
         bool            floorContact = false;

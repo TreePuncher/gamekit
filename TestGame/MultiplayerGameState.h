@@ -103,6 +103,16 @@ struct PlayerInputState
     float up        = 0;
     float down      = 0;
 
+    enum class Event
+    {
+        Action1,
+        Action2,
+        Action3,
+        Action4,
+    };
+
+    static_vector<Event> events;
+
     FlexKit::float2 mousedXY = { 0, 0 };
 };
 

@@ -442,7 +442,10 @@ namespace FlexKit
         template<typename ... TY_Args>
         BasicComponentView_t(TY_Args ... args) : handle{ ComponentView_t<TY_Component>::GetComponent().Create(std::forward<TY_Args>(args)...) } {}
 
-        virtual ~BasicComponentView_t() final {}
+        virtual ~BasicComponentView_t() final
+        {
+            TY_Component::GetComponent().Remove(handle);
+        }
 
 
         decltype(auto) GetData()

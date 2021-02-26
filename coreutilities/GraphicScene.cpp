@@ -936,6 +936,7 @@ namespace FlexKit
                     [&]
                     {
                         light.state = LightStateFlags::Dirty;
+                        light.shadowState->visableObjects = PVS;
                     };
 
 
