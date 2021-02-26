@@ -79,7 +79,6 @@ public:
     ObjectPool<GameObject>              gameOjectPool;
 
     GameObject&                         localPlayer;
-    GameObject&                         floorCollider;
 
     PacketHandlerVector                 packetHandlers;
 

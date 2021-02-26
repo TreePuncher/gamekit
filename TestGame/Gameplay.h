@@ -48,7 +48,12 @@ enum PLAYER_EVENTS : int64_t
 	PLAYER_LEFT				= GetCRCGUID(PLAYER_LEFT),
 	PLAYER_DOWN				= GetCRCGUID(PLAYER_DOWN),
 	PLAYER_RIGHT			= GetCRCGUID(PLAYER_RIGHT),
+
 	PLAYER_ACTION1			= GetCRCGUID(PLAYER_ACTION1),
+	PLAYER_ACTION2			= GetCRCGUID(PLAYER_ACTION2),
+	PLAYER_ACTION3			= GetCRCGUID(PLAYER_ACTION3),
+	PLAYER_ACTION4			= GetCRCGUID(PLAYER_ACTION4),
+
 	PLAYER_HOLD				= GetCRCGUID(PLAYER_HOLD),
 
 	PLAYER_ROTATE_LEFT		= GetCRCGUID(PLAYER_ROTATE_LEFT),
@@ -116,7 +121,11 @@ struct PlayerDesc
     float r = 1;
 };
 
+
 GameObject& CreatePlayer(const PlayerDesc& desc, RenderSystem& renderSystem, iAllocator& allocator);
+
+
+void CreateMultiplayerScene(EngineCore& core, GraphicScene&, PhysXSceneHandle, ObjectPool<GameObject>& objectPool);
 
 
 /************************************************************************************************/
