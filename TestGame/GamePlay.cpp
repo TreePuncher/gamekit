@@ -98,7 +98,7 @@ void CreateMultiplayerScene(EngineCore& core, GraphicScene& gscene, PhysXSceneHa
 
             PxShapeHandle shape = physics.CreateCubeShape(dim);
 
-            go.AddView<StaticBodyView>(pscene, shape, pos, q.Inverse());
+            go.AddView<StaticBodyView>(pscene, shape, pos, q);
         }
     }
 }

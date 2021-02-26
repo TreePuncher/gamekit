@@ -933,9 +933,12 @@ namespace FlexKit
             r = _mm_hadd_ps(r, r);
             r = _mm_hadd_ps(r, r);
             float x = GetFirst(r);
+
+            return sqrt(x);
             //return _mm_mul_ps(_mm_rsqrt_ps(r), _mm_set1_ps(r.m128_f32[0])).m128_f32[0];
-            auto M = _mm_mul_ps(_mm_rsqrt_ps(r), _mm_set1_ps(x));
-            float Res = GetLast(M);
+
+            auto M      = _mm_mul_ps(_mm_rsqrt_ps(r), _mm_set1_ps(x));
+            float Res   = GetLast(M);
 
             return Res;
 #else
@@ -969,12 +972,14 @@ namespace FlexKit
 
 		float3 normal() const noexcept
 		{
+            return _mm_div_ps(pfloats, _mm_set_ps1(magnitude()));
+            /*
 			__m128 sq = _mm_mul_ps(pfloats, pfloats);
 			sq = _mm_hadd_ps(sq, sq);
 			sq = _mm_hadd_ps(sq, sq);
 			sq = _mm_mul_ps(_mm_rsqrt_ps(sq), pfloats);
-
 			return sq;
+            */
 		}
 
         static float3 Zero() { return float3{ 0 }; }
