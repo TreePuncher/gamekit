@@ -63,6 +63,17 @@ bool HandleEvents(PlayerInputState& keyState, Event evt)
         case TPC_MoveDown:
             keyState.down = state;
             return true;
+        case PLAYER_ACTION1:
+            keyState.events.push_back(PlayerInputState::Event::Action1);
+            return true;
+        case PLAYER_ACTION2:
+            keyState.events.push_back(PlayerInputState::Event::Action1);
+            return true;
+        case PLAYER_ACTION3:
+            keyState.events.push_back(PlayerInputState::Event::Action1);
+            return true;
+        case PLAYER_ACTION4:
+            keyState.events.push_back(PlayerInputState::Event::Action1);
         default:
             return false;
         }

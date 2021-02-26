@@ -106,3 +106,39 @@ void CreateMultiplayerScene(EngineCore& core, GraphicScene& gscene, PhysXSceneHa
 
 /************************************************************************************************/
 
+
+UpdateTask& UpdateSpells(FlexKit::UpdateDispatcher& dispathcer, ObjectPool<GameObject>& objectPool, const double dt)
+{
+
+    struct _ {};
+    return dispathcer.Add<_>(
+        [&](auto& builder, auto& _)
+        {
+        },
+        [=, &objectPool = objectPool](auto& _, auto& allocator)
+        {
+            auto& spellComponent = SpellComponent::GetComponent();
+
+            Vector<GameObject*> freeList{ &allocator };
+
+            for (auto& spellInstance : spellComponent)
+            {
+                auto& spell = spellInstance.componentData;
+                spell.life      += dt;
+                spell.position  += spell.velocity * dt;
+
+                if (spell.life > spell.duration)
+                    freeList.push_back(spell.gameObject);
+                else
+                    SetWorldPosition(*spell.gameObject, spell.position);
+            }
+
+            for (auto object : freeList)
+                objectPool.Release(*object);
+        });
+
+}
+
+
+/************************************************************************************************/
+
