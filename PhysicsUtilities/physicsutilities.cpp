@@ -462,7 +462,7 @@ namespace FlexKit
 		physx::PxTransform pxInitialPose =
 			physx::PxTransform{ PxMat44(PxIdentity) };
 		
-		pxInitialPose.q = physx::PxQuat{ initialQ.x, initialQ.y, initialQ.z, initialQ.w};
+		pxInitialPose.q = physx::PxQuat{ initialQ.x, initialQ.y, initialQ.z, -initialQ.w};
 		pxInitialPose.p = physx::PxVec3{ initialPosition.x, initialPosition.y, initialPosition.z };
 
 		auto rigidStaticActor	= system.physxAPI->createRigidStatic(pxInitialPose);
@@ -1124,28 +1124,38 @@ namespace FlexKit
             if (desiredMove.magnitudesquared() * 0.5f >= deltaPos.magnitudesquared())
                 velocity = 0;
 
-            const auto pxFootPosition   = controllerImpl.controller->getFootPosition();
-            const float3 newPosition    = { (float)pxFootPosition.x, (float)pxFootPosition.y, (float)pxFootPosition.z };
+            const float3 footPosition   = pxVec3ToFloat3(controllerImpl.controller->getFootPosition());
 
             auto& scene = PhysXComponent::GetComponent().GetScene_ref(controllerImpl.scene);
-            const float3 origin = newPosition - forward * cameraDistance + up * 10.0f;
-            const float3 ray    = -up;
 
-            float cameraMinY    = 0;
+            const float3 origin1    = footPosition + up * 3 + 2.0f * -forward;
+            const float3 ray1       = -forward.normal();
 
-            scene.RayCast(origin, ray, 100,
+            float cameraZ = cameraDistance;
+
+            scene.RayCast(origin1, ray1, 10,
                 [&](auto hit)
                 {
-                    cameraMinY = hit.distance - origin.y + 1;
+                    cameraZ = Min(hit.distance + 1.0f, cameraDistance);
                     return false;
                 });
 
-            const auto cameraY      = Max(focusHeight - std::tanf(pitch) * cameraDistance, cameraMinY);
-            const auto footPosition = pxVec3ToFloat3( pxFootPosition );
+            const float3 origin2 = footPosition - forward * cameraZ + up * 10.0f;
+            const float3 ray2    = (-up).normal();
+
+            float cameraMinY     = 0;
+            scene.RayCast(origin2, ray2, 100,
+                [&](auto hit)
+                {
+                    cameraMinY = hit.distance - origin2.y + 1;
+                    return false;
+                });
+
+            const auto cameraY      = Max(focusHeight - std::tanf(pitch) * cameraZ, cameraMinY);
 
             SetPositionW(objectNode, footPosition);
 
-            const auto position             = footPosition - forward * cameraDistance + up * cameraY;
+            const auto position             = footPosition - forward * cameraZ + up * cameraY;
             const auto newCameraPosition    = lerp(position, cameraPosition, 0.65f);
             cameraPosition                  = newCameraPosition;
 
