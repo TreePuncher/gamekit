@@ -634,9 +634,6 @@ namespace FlexKit::ResourceBuilder
             n.scale			= node.scale;
             n.parent		= node.parent;
 
-            if(n.parent == -1)
-                n.orientation = Quaternion::Identity();
-
             /*
             if (n.parent == 0)
             {// if Parent is root, bake rotation, fixes weird blender rotation issues

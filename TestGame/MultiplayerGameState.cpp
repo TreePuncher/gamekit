@@ -86,7 +86,7 @@ PlayerFrameState GetPlayerFrameState(GameObject& gameObject)
             const float3        pos = GetCameraControllerModelPosition(gameObject);
             const Quaternion    q   = GetCameraControllerModelOrientation(gameObject);
 
-            out.pos = pos;
+            out.pos         = pos;
             out.orientation = q;
         });
 
@@ -117,7 +117,7 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
         worldState      { IN_worldState },
         base            { IN_base }
 {
-    base.renderWindow.ToggleMouseCapture();
+    //base.renderWindow.ToggleMouseCapture();
 }
 
 

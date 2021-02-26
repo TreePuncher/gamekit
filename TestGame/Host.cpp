@@ -34,15 +34,10 @@ HostWorldStateMangager::HostWorldStateMangager(MultiplayerPlayerID_t IN_player, 
 
     packetHandlers          { IN_base.framework.core.GetBlockMemory() },
 
-    floorCollider           { gameOjectPool.Allocate() },
-
     gameOjectPool           { IN_base.framework.core.GetBlockMemory(), 8096 },
     cubeShape               { IN_base.physics.CreateCubeShape({ 0.5f, 0.5f, 0.5f}) }
 {
     auto& allocator = IN_base.framework.core.GetBlockMemory();
-    auto floorShape = base.physics.CreateCubeShape({ 100, 1, 100 });
-
-    floorCollider.AddView<StaticBodyView>(pscene, floorShape, float3{0, -1.0f, 0});
 
     packetHandlers.push_back(
         CreatePacketHandler(
@@ -64,41 +59,14 @@ HostWorldStateMangager::HostWorldStateMangager(MultiplayerPlayerID_t IN_player, 
     eventMap.MapKeyToEvent(KEYCODES::KC_Q, TPC_MoveDown);
     eventMap.MapKeyToEvent(KEYCODES::KC_E, TPC_MoveUp);
 
-    static const GUID_t sceneID = 1234;
-    FK_ASSERT(LoadScene(base.framework.core, gscene, sceneID));
-
-    auto& visibility = SceneVisibilityComponent::GetComponent();
+    eventMap.MapKeyToEvent(KEYCODES::KC_1, PLAYER_ACTION1);
+    eventMap.MapKeyToEvent(KEYCODES::KC_2, PLAYER_ACTION2);
+    eventMap.MapKeyToEvent(KEYCODES::KC_3, PLAYER_ACTION3);
+    eventMap.MapKeyToEvent(KEYCODES::KC_4, PLAYER_ACTION4);
 
     SetControllerPosition(localPlayer, { -30, 5, -30 });
 
-    static std::regex pattern{"Cube"};
-    for (auto& entity : gscene.sceneEntities)
-    {
-        auto& go    = *visibility[entity].entity;
-        auto id     = GetStringID(go);
-
-        if (id && std::regex_search(id, pattern))
-        {
-            auto meshHandle = GetTriMesh(go);
-            auto mesh       = GetMeshResource(meshHandle);
-
-            AABB aabb{
-                .Min = mesh->Info.Min,
-                .Max = mesh->Info.Max };
-
-            const auto mipPoint = aabb.MidPoint();
-            const auto dim      = aabb.Dim() / 2.0f;
-            const auto pos      = GetWorldPosition(go);
-
-            PxShapeHandle shape = IN_base.physics.CreateCubeShape(dim);
-
-            go.AddView<StaticBodyView>(pscene, shape, pos);
-        }
-    }
-
-
-    //for (size_t I = 0; I < 256; I++)
-    //    AddCube({ float(I % 2), I * 2.0f, 0});
+    CreateMultiplayerScene(IN_base.framework.core, gscene, pscene, gameOjectPool);
 }
 
 

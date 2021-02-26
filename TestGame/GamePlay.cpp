@@ -62,3 +62,47 @@ GameObject& CreatePlayer(const PlayerDesc& desc, RenderSystem& renderSystem, iAl
 
 /************************************************************************************************/
 
+
+void CreateMultiplayerScene(EngineCore& core, GraphicScene& gscene, PhysXSceneHandle pscene, ObjectPool<GameObject>& objectPool)
+{
+    static const GUID_t sceneID = 1234;
+    FK_ASSERT(LoadScene(core, gscene, sceneID));
+
+    auto& physics       = PhysXComponent::GetComponent();
+    auto& visibility    = SceneVisibilityComponent::GetComponent();
+    auto floorShape     = physics.CreateCubeShape({ 200, 1, 200 });
+
+    auto& floorCollider = objectPool.Allocate();
+    floorCollider.AddView<StaticBodyView>(pscene, floorShape, float3{ 0, -1.0f, 0 });
+
+    static std::regex pattern{"Cube"};
+    for (auto& entity : gscene.sceneEntities)
+    {
+        auto& go    = *visibility[entity].entity;
+        auto id     = GetStringID(go);
+
+        if (id && std::regex_search(id, pattern))
+        {
+            auto meshHandle = GetTriMesh(go);
+            auto mesh       = GetMeshResource(meshHandle);
+
+            AABB aabb{
+                .Min = mesh->Info.Min,
+                .Max = mesh->Info.Max };
+
+            const auto midPoint = aabb.MidPoint();
+            const auto dim      = aabb.Dim() / 2.0f;
+            const auto pos      = GetWorldPosition(go);
+            auto q              = GetOrientation(go);
+
+
+            PxShapeHandle shape = physics.CreateCubeShape(dim);
+
+            go.AddView<StaticBodyView>(pscene, shape, pos, q.Inverse());
+        }
+    }
+}
+
+
+/************************************************************************************************/
+
