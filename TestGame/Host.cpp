@@ -15,28 +15,17 @@ HostWorldStateMangager::HostWorldStateMangager(MultiplayerPlayerID_t IN_player, 
 
     eventMap                { IN_base.framework.core.GetBlockMemory() },
 
-    pscene                  { IN_base.physics.CreateScene() },
-    gscene                  { IN_base.framework.core.GetBlockMemory() },
+    pendingRemoteUpdates    { IN_base.framework.core.GetBlockMemory() },
 
     localPlayerID           { IN_player },
-    localPlayer             { CreatePlayer(
-                                PlayerDesc{
-                                    .pscene = pscene,
-                                    .gscene = gscene,
-                                    .h      = 0.5f,
-                                    .r      = 0.5f
-                                },
-                                IN_base.framework.core.RenderSystem,
-                                IN_base.framework.core.GetBlockMemory()) },
+    localPlayer             { world.AddLocalPlayer(IN_player) },
 
     spellComponent          { IN_base.framework.core.GetBlockMemory() },
     localPlayerComponent    { IN_base.framework.core.GetBlockMemory() },
     remotePlayerComponent   { IN_base.framework.core.GetBlockMemory() },
 
     packetHandlers          { IN_base.framework.core.GetBlockMemory() },
-
-    gameOjectPool           { IN_base.framework.core.GetBlockMemory(), 8096 },
-    cubeShape               { IN_base.physics.CreateCubeShape({ 0.5f, 0.5f, 0.5f}) }
+    world                   { IN_base.framework.core }
 {
     auto& allocator = IN_base.framework.core.GetBlockMemory();
 
@@ -46,7 +35,8 @@ HostWorldStateMangager::HostWorldStateMangager(MultiplayerPlayerID_t IN_player, 
             [&](UserPacketHeader* header, Packet* packet, NetworkState* network)
             {
                 auto* updatePacket = reinterpret_cast<PlayerUpdatePacket*>(header);
-                UpdateRemotePlayer(updatePacket->state, updatePacket->playerID);
+
+                pendingRemoteUpdates.push_back(updatePacket->state);
             },
             allocator));
 
@@ -67,7 +57,7 @@ HostWorldStateMangager::HostWorldStateMangager(MultiplayerPlayerID_t IN_player, 
 
     SetControllerPosition(localPlayer, { -30, 5, -30 });
 
-    CreateMultiplayerScene(IN_base.framework.core, gscene, pscene, gameOjectPool);
+    CreateMultiplayerScene(world);
 }
 
 
@@ -79,8 +69,7 @@ HostWorldStateMangager::~HostWorldStateMangager()
     auto& allocator = base.framework.core.GetBlockMemory();
 
     localPlayer.Release();
-    gscene.ClearScene();
-
+    world.gscene.ClearScene();
 }
 
 
@@ -125,19 +114,24 @@ WorldStateUpdate HostWorldStateMangager::Update(EngineCore& core, UpdateDispatch
                                 initial.duration = 3.0f;
                                 initial.life     = 0.0f;
 
-                                auto velocity           = (float3{1.0f, 0.0f, 1.0f} * GetCameraControllerForwardVector(localPlayer)).normal() * 50.0f;
-                                auto initialPosition    = GetCameraControllerHeadPosition(localPlayer);
+                                auto velocity    = (float3{1.0f, 0.0f, 1.0f} * GetCameraControllerForwardVector(localPlayer)).normal() * 50.0f;
+                                auto position    = GetCameraControllerHeadPosition(localPlayer);
 
-                                CreateSpell(initial, initialPosition, velocity);
+                                world.CreateSpell(initial, position, velocity);
                             }   break;
                             default:
                                 break;
                             }
                         }
 
-                        const PlayerFrameState localState = GetPlayerFrameState(localPlayer);
+                        for (auto& playerUpdate : pendingRemoteUpdates)
+                            world.UpdatePlayer(playerUpdate);
+
 
                         // Send Player Updates
+                        PlayerFrameState localState = GetPlayerFrameState(localPlayer);
+                        localState.inputState       = currentInputState;
+
                         for (auto& playerView : remotePlayerComponent)
                         {
                             const auto playerID     = playerView.componentData.ID;
@@ -156,12 +150,14 @@ WorldStateUpdate HostWorldStateMangager::Update(EngineCore& core, UpdateDispatch
                             }
                         }
 
+                        pendingRemoteUpdates.clear();
                         currentInputState.events.clear();
                     });
             });
 
-    auto& spellUpdate   = UpdateSpells(dispatcher, gameOjectPool, dT);
+    auto& spellUpdate   = UpdateSpells(dispatcher, world.objectPool, dT);
     auto& physicsUpdate = base.physics.Update(dispatcher, dT);
+
     physicsUpdate.AddInput(*out.update);
     physicsUpdate.AddInput(spellUpdate);
 
@@ -203,7 +199,7 @@ bool HostWorldStateMangager::EventHandler(Event evt)
 
 GraphicScene& HostWorldStateMangager::GetScene()
 {
-    return gscene;
+    return world.gscene;
 }
 
 
@@ -221,87 +217,14 @@ CameraHandle HostWorldStateMangager::GetActiveCamera() const
 
 void HostWorldStateMangager::AddPlayer(ConnectionHandle connection, MultiplayerPlayerID_t ID)
 {
-    auto& gameObject    = base.framework.core.GetBlockMemory().allocate<GameObject>();
-    auto test           = RemotePlayerData{ &gameObject, connection, ID };
-    auto playerView     = gameObject.AddView<RemotePlayerView>(test);
+    auto& remotePlayer = world.AddRemotePlayer(ID);
 
-
-    auto [triMesh, loaded] = FindMesh(playerModel);
-
-    auto& renderSystem = base.framework.GetRenderSystem();
-
-    if (!loaded)
-        triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), playerModel);
-
-    gameObject.AddView<SceneNodeView<>>();
-    gameObject.AddView<DrawableView>(triMesh, GetSceneNode(gameObject));
-
-    gscene.AddGameObject(gameObject, GetSceneNode(gameObject));
-
-    SetBoundingSphereFromMesh(gameObject);
-}
-
-
-/************************************************************************************************/
-
-
-void HostWorldStateMangager::AddCube(float3 POS)
-{
-    auto [triMesh, loaded]  = FindMesh(cube1X1X1);
-    auto& renderSystem      = base.framework.GetRenderSystem();
-
-    auto& gameObject = gameOjectPool.Allocate();
-
-    if (!loaded)
-        triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), cube1X1X1);
-
-    gameObject.AddView<RigidBodyView>(cubeShape, pscene, POS);
-
-    gameObject.AddView<SceneNodeView<>>(GetRigidBodyNode(gameObject));
-    gameObject.AddView<DrawableView>(triMesh, GetSceneNode(gameObject));
-
-    gscene.AddGameObject(gameObject, GetSceneNode(gameObject));
-
-    SetBoundingSphereFromMesh(gameObject);
-}
-
-
-/************************************************************************************************/
-
-
-GameObject& HostWorldStateMangager::CreateSpell(SpellData initial, float3 initialPosition, float3 initialVelocity)
-{
-    auto& gameObject    = gameOjectPool.Allocate();
-    auto& spellInstance = gameObject.AddView<SpellView>();
-    auto& spell         = spellInstance.GetData();
-
-
-    auto [triMesh, loaded] = FindMesh(spellModel);
-
-    auto& renderSystem = base.framework.GetRenderSystem();
-
-    if (!loaded)
-        triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), spellModel);
-
-    gameObject.AddView<SceneNodeView<>>();
-    gameObject.AddView<DrawableView>(triMesh, GetSceneNode(gameObject));
-
-    SetWorldPosition(gameObject, initialPosition);
-
-    gscene.AddGameObject(gameObject, GetSceneNode(gameObject));
-
-    SetBoundingSphereFromMesh(gameObject);
-
-    spell.caster        = initial.caster;
-    spell.card          = initial.card;
-    spell.duration      = initial.duration;
-    spell.life          = initial.life;
-    spell.gameObject    = &gameObject;
-
-    spell.position      = initialPosition;
-    spell.velocity      = initialVelocity;
-
-    return gameObject;
+    Apply(
+        remotePlayer,
+        [&](RemotePlayerView& remote)
+        {
+            remote.GetData().connection = connection;
+        });
 }
 
 
@@ -310,10 +233,41 @@ GameObject& HostWorldStateMangager::CreateSpell(SpellData initial, float3 initia
 
 void HostWorldStateMangager::UpdateRemotePlayer(const PlayerFrameState& playerState, MultiplayerPlayerID_t player)
 {
-    auto playerView = FindPlayer(player, remotePlayerComponent);
+    auto playerView = FindPlayer(player);
 
-    if (playerView)
+    if (playerView) {
         playerView->Update(playerState);
+
+        for (const auto event_ : playerState.inputState.events)
+        {
+            switch (event_)
+            {
+            case PlayerInputState::Event::Action1:
+            case PlayerInputState::Event::Action2:
+            case PlayerInputState::Event::Action3:
+            case PlayerInputState::Event::Action4:
+            {
+                SpellData initial;
+                initial.card     = FireBall();
+                initial.caster   = player;
+                initial.duration = 3.0f;
+                initial.life     = 0.0f;
+
+                auto& player     = *playerView->gameObject;
+
+                //auto velocity    = (float3{1.0f, 0.0f, 1.0f} * GetCameraControllerForwardVector(player)).normal() * 50.0f;
+                //auto position    = GetCameraControllerHeadPosition(player);
+
+                auto velocity = playerState.forwardVector * 50.0f;//(float3{1.0f, 0.0f, 1.0f} * GetCameraControllerForwardVector(player)).normal() * 50.0f;
+                auto position = playerState.pos;
+
+                world.CreateSpell(initial, position, velocity);
+            }   break;
+            default:
+                break;
+            }
+        }
+    }
 }
 
 

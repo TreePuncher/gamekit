@@ -37,6 +37,8 @@ public:
         PlayerInputState    input;
     };
 
+    Vector<PlayerFrameState>        pendingRemoteUpdates;
+
     const ConnectionHandle          server;
     const MultiplayerPlayerID_t     ID;
 
@@ -44,17 +46,15 @@ public:
 
     FixedUpdate                     fixedUpdate{ 60 };
 
-    GraphicScene                    gscene;
-    PhysXSceneHandle                pscene;
+    GameWorld                       world;
 
     PlayerInputState                currentInputState;
 
+    SpellComponent                  spellComponent;
     LocalPlayerComponent            localPlayerComponent;
     RemotePlayerComponent           remotePlayerComponent;
 
     GameObject&                     localPlayer;
-    ObjectPool<GameObject>          gameOjectPool;
-
 
     CircularBuffer<LocalFrame, 240>	history;
     InputMap					    eventMap;

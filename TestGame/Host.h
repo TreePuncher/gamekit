@@ -41,9 +41,6 @@ public:
 
 
     void AddPlayer(ConnectionHandle connection, MultiplayerPlayerID_t ID);
-    void AddCube(float3 POS);
-
-    GameObject& CreateSpell(SpellData spell, float3 InitialPosition, float3 InitialVelocity);
 
     void UpdateRemotePlayer(const PlayerFrameState& playerState, MultiplayerPlayerID_t player);
 
@@ -60,18 +57,13 @@ public:
     };
 
     const MultiplayerPlayerID_t     localPlayerID;
-    const GUID_t                    playerModel = 7896;
-    const GUID_t                    cube1X1X1   = 7895;
-    const GUID_t                    spellModel  = 7894;
-
-    const PxShapeHandle cubeShape;
 
     FixedUpdate         fixedUpdate{ 60 };
 
-    GraphicScene        gscene;
-    PhysXSceneHandle    pscene;
+    GameWorld           world;
 
-    PlayerInputState    currentInputState;
+    PlayerInputState            currentInputState;
+    Vector<PlayerFrameState>    pendingRemoteUpdates;
 
     SpellComponent                      spellComponent;
     LocalPlayerComponent                localPlayerComponent;
@@ -79,8 +71,6 @@ public:
 
     CircularBuffer<ServerFrame, 240>	history;
     InputMap					        eventMap;
-
-    ObjectPool<GameObject>              gameOjectPool;
 
     GameObject&                         localPlayer;
 
