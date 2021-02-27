@@ -139,8 +139,8 @@ struct PlayerDesc
     PhysXSceneHandle        pscene;
     GraphicScene&           gscene;  
 
-    float h = 1;
-    float r = 1;
+    float h = 1.0f;
+    float r = 1.0f;
 };
 
 
@@ -212,8 +212,8 @@ struct RemotePlayerData
 
     void Update(PlayerFrameState state)
     {
-        SetWorldPosition(*gameObject, state.pos);
-        SetOrientation(*gameObject, state.orientation);
+        SetControllerPosition(*gameObject, state.pos);
+        SetControllerOrientation(*gameObject, state.orientation);
     }
 
     PlayerFrameState    GetFrameState() const
@@ -282,7 +282,7 @@ public:
 
     GameObject& AddRemotePlayer(MultiplayerPlayerID_t playerID)
     {
-        auto& gameObject    = objectPool.Allocate();
+        auto& gameObject = objectPool.Allocate();
 
         gameObject.AddView<RemotePlayerView>(RemotePlayerData{ &gameObject, InvalidHandle_t, playerID });
 
@@ -291,8 +291,9 @@ public:
         if (!loaded)
             triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), playerModel);
 
-        gameObject.AddView<SceneNodeView<>>();
-        gameObject.AddView<DrawableView>(triMesh, GetSceneNode(gameObject));
+        auto& characterController = gameObject.AddView<CharacterControllerView>(pscene, float3{0, 0, 0}, GetZeroedNode(), 1.0f, 1.0f);
+        gameObject.AddView<SceneNodeView<>>(characterController.GetNode());
+        gameObject.AddView<DrawableView>(triMesh, characterController.GetNode());
 
         gscene.AddGameObject(gameObject, GetSceneNode(gameObject));
 
