@@ -89,8 +89,6 @@ void GameWorld::UpdatePlayer(const PlayerFrameState& playerState)
     if (playerView) {
         playerView->Update(playerState);
 
-        std::cout << playerState.orientation << "\n";
-
         for (const auto event_ : playerState.inputState.events)
         {
             switch (event_)
@@ -166,7 +164,7 @@ PlayerFrameState GetPlayerFrameState(GameObject& gameObject)
         [&](LocalPlayerView& view)
         {
             const float3        pos = GetCameraControllerModelPosition(gameObject);
-            const Quaternion    q = GetCameraControllerModelOrientation(gameObject);
+            const Quaternion    q   = GetCameraControllerModelOrientation(gameObject);
 
             out.player          = view.GetData().player;
             out.pos             = pos;

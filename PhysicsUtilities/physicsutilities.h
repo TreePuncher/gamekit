@@ -77,9 +77,10 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    inline float3          pxVec3ToFloat3(const physx::PxExtendedVec3 v)    { return { (float)v.x, (float)v.y, (float)v.z }; }
-    inline float3          pxVec3ToFloat3(const physx::PxVec3 v)            { return { v.x, v.y, v.z }; }
-    inline physx::PxVec3   Float3TopxVec3(const float3 v)                   { return { v.x, v.y, v.z }; }
+    inline float3                   pxVec3ToFloat3(const physx::PxExtendedVec3 v)    { return { (float)v.x, (float)v.y, (float)v.z }; }
+    inline float3                   pxVec3ToFloat3(const physx::PxVec3 v)            { return { v.x, v.y, v.z }; }
+    inline physx::PxVec3            Float3TopxVec3(const float3 v)                   { return { v.x, v.y, v.z }; }
+    inline physx::PxExtendedVec3    Float3TopxVec3Ext(const float3 v)                { return { v.x, v.y, v.z }; }
 
 	/************************************************************************************************/
 
@@ -684,12 +685,10 @@ namespace FlexKit
             return physx.CreateRigidBodyCollider(scene, shape, pos, q);
         }
 
-
         void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
         {
             FK_ASSERT(0);
         }
-
 
         void Remove(RigidBodyView& rigidBody);
 
@@ -739,15 +738,16 @@ namespace FlexKit
 
     struct CharacterController
     {
-        NodeHandle              node;
-        PhysXSceneHandle        scene;
+        CharacterControllerHandle   handle;
+        NodeHandle                  node;
+        PhysXSceneHandle            scene;
 
-        physx::PxController*    controller;
+        physx::PxController*        controller;
 
-        float                   focusHeight     = 2.0f;
-        float                   cameraDistance  = 10.0f;
-        float2                  mouseMoved      = { 0, 0 };
-        double                  updateTimer     = 0;
+        float                       focusHeight     = 2.0f;
+        float                       cameraDistance  = 10.0f;
+        float2                      mouseMoved      = { 0, 0 };
+        double                      updateTimer     = 0;
     };
 
 
@@ -756,6 +756,7 @@ namespace FlexKit
     public:
         CharacterControllerComponent(PhysXComponent& IN_physx, iAllocator* allocator) :
             physx       { IN_physx  },
+            handles     { allocator },
             controllers { allocator } {}
 
 
@@ -775,14 +776,18 @@ namespace FlexKit
 
             auto controller = manager.createController(CCDesc);
 
-            auto idx = controllers.push_back(
+            auto newHandle  = handles.GetNewHandle();
+            auto idx        = controllers.push_back(
                 CharacterController{
+                    newHandle,
                     node,
                     scene,
                     controller
                 });
 
-            return CharacterControllerHandle{ idx };
+            handles[newHandle] = idx;
+
+            return newHandle;
         }
 
 
@@ -792,9 +797,17 @@ namespace FlexKit
         }
 
 
-        void Remove()
+        void Remove(CharacterControllerHandle handle)
         {
-            //instance.scene.ReleaseCollider(instance.handle);
+            const auto idx              = handles[handle];
+            auto& characterController   = controllers[idx];
+
+            characterController.controller->release();
+            characterController = controllers.back();
+
+            controllers.pop_back();
+
+            handles[characterController.handle] = idx;
         }
 
 
@@ -811,8 +824,9 @@ namespace FlexKit
 
     private:
 
-        Vector<CharacterController> controllers;
-        PhysXComponent&             physx;
+        HandleUtilities::HandleTable<CharacterControllerHandle> handles;
+        Vector<CharacterController>                             controllers;
+        PhysXComponent&                                         physx;
     };
 
 
@@ -835,6 +849,11 @@ namespace FlexKit
             controller  { IN_controller } {}
 
 
+        ~CharacterControllerView()
+        {
+            GetComponent().Remove(controller);
+        }
+
         NodeHandle GetNode() const
         {
             return GetComponent()[controller].node;
@@ -845,10 +864,15 @@ namespace FlexKit
         void SetPosition(const float3 xyz)
         {
             auto& ref = GetComponent()[controller];
-            ref.controller->setPosition({ xyz.x, xyz.y, xyz.z });
+            ref.controller->setFootPosition(Float3TopxVec3Ext(xyz));
             SetPositionW(ref.node, xyz);
         }
 
+        void SetOrientation(const Quaternion q)
+        {
+            auto& ref = GetComponent()[controller];
+            FlexKit::SetOrientation(ref.node, q);
+        }
 
         CharacterControllerHandle controller;
     };
@@ -884,6 +908,14 @@ namespace FlexKit
         Apply(GO, [&](CharacterControllerView& controller)
             {
                 controller.SetPosition(xyz);
+            });
+    }
+
+    inline void SetControllerOrientation(GameObject& GO, const Quaternion q)
+    {
+        Apply(GO, [&](CharacterControllerView& controller)
+            {
+                controller.SetOrientation(q);
             });
     }
 
