@@ -48,9 +48,12 @@ GameObject& CreatePlayer(const PlayerDesc& desc, RenderSystem& renderSystem, iAl
     if (!loaded)
         triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), meshID);
 
+
+    auto& localplayer               = player.AddView<LocalPlayerView>();
+    localplayer.GetData().player    = desc.player;
+
     auto node = GetCameraControllerNode(player);
 
-    player.AddView<LocalPlayerView>();
     player.AddView<SceneNodeView<>>(node);
     player.AddView<DrawableView>(triMesh, node);
 
@@ -63,46 +66,59 @@ GameObject& CreatePlayer(const PlayerDesc& desc, RenderSystem& renderSystem, iAl
 /************************************************************************************************/
 
 
-void CreateMultiplayerScene(EngineCore& core, GraphicScene& gscene, PhysXSceneHandle pscene, ObjectPool<GameObject>& objectPool)
+void CreateMultiplayerScene(GameWorld& world)
 {
     static const GUID_t sceneID = 1234;
-    FK_ASSERT(LoadScene(core, gscene, sceneID));
+    world.LoadScene(sceneID);
 
     auto& physics       = PhysXComponent::GetComponent();
-    auto& visibility    = SceneVisibilityComponent::GetComponent();
+    auto& floorCollider = world.objectPool.Allocate();
     auto floorShape     = physics.CreateCubeShape({ 200, 1, 200 });
 
-    auto& floorCollider = objectPool.Allocate();
-    floorCollider.AddView<StaticBodyView>(pscene, floorShape, float3{ 0, -1.0f, 0 });
+    floorCollider.AddView<StaticBodyView>(world.pscene, floorShape, float3{ 0, -1.0f, 0 });
+}
 
-    static std::regex pattern{"Cube"};
-    for (auto& entity : gscene.sceneEntities)
-    {
-        auto& go    = *visibility[entity].entity;
-        auto id     = GetStringID(go);
 
-        if (id && std::regex_search(id, pattern))
+/************************************************************************************************/
+
+
+void GameWorld::UpdatePlayer(const PlayerFrameState& playerState)
+{
+    auto playerView = FindPlayer(playerState.player);
+
+    if (playerView) {
+        playerView->Update(playerState);
+
+        std::cout << playerState.orientation << "\n";
+
+        for (const auto event_ : playerState.inputState.events)
         {
-            auto meshHandle = GetTriMesh(go);
-            auto mesh       = GetMeshResource(meshHandle);
+            switch (event_)
+            {
+            case PlayerInputState::Event::Action1:
+            case PlayerInputState::Event::Action2:
+            case PlayerInputState::Event::Action3:
+            case PlayerInputState::Event::Action4:
+            {
+                SpellData initial;
+                initial.card     = FireBall();
+                initial.caster   = playerState.player;
+                initial.duration = 3.0f;
+                initial.life     = 0.0f;
 
-            AABB aabb{
-                .Min = mesh->Info.Min,
-                .Max = mesh->Info.Max };
+                auto& player     = *playerView->gameObject;
 
-            const auto midPoint = aabb.MidPoint();
-            const auto dim      = aabb.Dim() / 2.0f;
-            const auto pos      = GetWorldPosition(go);
-            auto q              = GetOrientation(go);
+                auto velocity    = playerState.forwardVector * 50.0f;//(float3{1.0f, 0.0f, 1.0f} * GetCameraControllerForwardVector(player)).normal() * 50.0f;
+                auto position    = playerState.pos;
 
-
-            PxShapeHandle shape = physics.CreateCubeShape(dim);
-
-            go.AddView<StaticBodyView>(pscene, shape, pos, q);
+                CreateSpell(initial, position, velocity);
+            }   break;
+            default:
+                break;
+            }
         }
     }
 }
-
 
 /************************************************************************************************/
 
@@ -138,6 +154,45 @@ UpdateTask& UpdateSpells(FlexKit::UpdateDispatcher& dispathcer, ObjectPool<GameO
         });
 
 }
+/************************************************************************************************/
+
+
+PlayerFrameState GetPlayerFrameState(GameObject& gameObject)
+{
+    PlayerFrameState out;
+
+    Apply(
+        gameObject,
+        [&](LocalPlayerView& view)
+        {
+            const float3        pos = GetCameraControllerModelPosition(gameObject);
+            const Quaternion    q = GetCameraControllerModelOrientation(gameObject);
+
+            out.player          = view.GetData().player;
+            out.pos             = pos;
+            out.orientation     = q;
+            out.forwardVector   = (float3{ 1.0f, 0.0f, 1.0f } * GetCameraControllerForwardVector(gameObject)).normal();
+        });
+
+    return out;
+}
+
+/************************************************************************************************/
+
+
+RemotePlayerData* FindPlayer(MultiplayerPlayerID_t ID)
+{
+    auto& players = RemotePlayerComponent::GetComponent();
+
+    for (auto& player : players)
+    {
+        if (player.componentData.ID == ID)
+            return &players[player.handle];
+    }
+
+    return nullptr;
+}
+
 
 
 /************************************************************************************************/

@@ -32,23 +32,6 @@ enum LobbyPacketIDs : PacketID_t
 /************************************************************************************************/
 
 
-typedef uint64_t MultiplayerPlayerID_t;
-
-
-inline MultiplayerPlayerID_t GeneratePlayerID()
-{
-    std::random_device generator;
-    std::uniform_int_distribution<MultiplayerPlayerID_t> distribution(
-        std::numeric_limits<MultiplayerPlayerID_t>::min(),
-        std::numeric_limits<MultiplayerPlayerID_t>::max());
-
-    return distribution(generator);
-}
-
-
-/************************************************************************************************/
-
-
 struct GameInfo
 {
     std::string name;
@@ -93,41 +76,6 @@ public:
     virtual GraphicScene&       GetScene() = 0;
 };
 
-
-struct PlayerInputState
-{
-    float forward   = 0;
-    float backward  = 0;
-    float left      = 0;
-    float right     = 0;
-    float up        = 0;
-    float down      = 0;
-
-    enum class Event
-    {
-        Action1,
-        Action2,
-        Action3,
-        Action4,
-    };
-
-    static_vector<Event> events;
-
-    FlexKit::float2 mousedXY = { 0, 0 };
-};
-
-
-struct PlayerFrameState
-{
-    float3                      pos;
-    float3                      velocity;
-    Quaternion                  orientation;
-
-    PlayerInputState            inputState;
-    ThirdPersonCameraFrameState cameraState;
-};
-
-
 struct PlayerUpdatePacket
 {
     UserPacketHeader        header{ sizeof(PlayerUpdatePacket), { PlayerUpdate } };
@@ -150,59 +98,6 @@ struct iNetEvent
 {
 
 };
-
-
-struct LocalPlayerData
-{
-    CircularBuffer<PlayerFrameState>    inputHistory;
-    Vector<iNetEvent>                   pendingEvent;
-};
-
-
-struct RemotePlayerData
-{
-    GameObject*             gameObject;
-    ConnectionHandle        connection;
-    MultiplayerPlayerID_t   ID;
-
-    void Update(PlayerFrameState state)
-    {
-        SetWorldPosition(*gameObject, state.pos);
-        SetOrientation(*gameObject, state.orientation);
-    }
-
-    PlayerFrameState    GetFrameState() const
-    {
-        PlayerFrameState out
-        {
-            .pos            = GetWorldPosition(*gameObject),
-            .velocity       = { 0, 0, 0 },
-            .orientation    = GetOrientation(*gameObject),
-        };
-
-        return out;
-    }
-};
-
-
-inline static const ComponentID LocalPlayerComponentID  = GetTypeGUID(LocalPlayerData);
-
-using LocalPlayerHandle     = Handle_t<32, LocalPlayerComponentID>;
-using LocalPlayerComponent  = BasicComponent_t<LocalPlayerData, LocalPlayerHandle, LocalPlayerComponentID>;
-using LocalPlayerView       = LocalPlayerComponent::View;
-
-inline static const ComponentID RemotePlayerComponentID  = GetTypeGUID(RemotePlayerData);
-
-using RemotePlayerHandle     = Handle_t<32, RemotePlayerComponentID>;
-using RemotePlayerComponent  = BasicComponent_t<RemotePlayerData, RemotePlayerHandle, RemotePlayerComponentID>;
-using RemotePlayerView       = RemotePlayerComponent::View;
-
-
-/************************************************************************************************/
-
-
-PlayerFrameState    GetPlayerFrameState(GameObject& gameObject);
-RemotePlayerData*   FindPlayer(MultiplayerPlayerID_t ID, RemotePlayerComponent& players);
 
 
 /************************************************************************************************/

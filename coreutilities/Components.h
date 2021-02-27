@@ -448,6 +448,15 @@ namespace FlexKit
         }
 
 
+        // No moving
+        BasicComponentView_t(const BasicComponentView_t&)               = delete;
+        BasicComponentView_t& operator = (const BasicComponentView_t&)  = delete;
+
+        BasicComponentView_t(BasicComponentView_t&&)                = delete;
+        BasicComponentView_t& operator = (BasicComponentView_t&&)   = delete;
+
+        
+
         decltype(auto) GetData()
         {
             return ComponentView_t<TY_Component>::GetComponent()[handle];

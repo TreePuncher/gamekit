@@ -12,23 +12,17 @@ ClientWorldStateMangager::ClientWorldStateMangager(ConnectionHandle IN_server, M
     ID                      { IN_playerID   },
     server                  { IN_server     },
 
+    pendingRemoteUpdates    { IN_base.framework.core.GetBlockMemory() },
+
+    spellComponent          { IN_base.framework.core.GetBlockMemory() },
     localPlayerComponent    { IN_base.framework.core.GetBlockMemory() },
     remotePlayerComponent   { IN_base.framework.core.GetBlockMemory() },
+
     eventMap                { IN_base.framework.core.GetBlockMemory() },
     packetHandlers          { IN_base.framework.core.GetBlockMemory() },
 
-    pscene                  { IN_base.physics.CreateScene() },
-    localPlayer             { CreatePlayer(
-                                PlayerDesc{
-                                    .pscene = pscene,
-                                    .gscene = gscene,
-                                    .h      = 0.5f,
-                                    .r      = 0.5f
-                                },
-                                IN_base.framework.core.RenderSystem,
-                                IN_base.framework.core.GetBlockMemory()) },
-
-    gameOjectPool           { IN_base.framework.core.GetBlockMemory(), 8096 }
+    world                   { IN_base.framework.core },
+    localPlayer             { world.AddLocalPlayer(IN_playerID) }
 {
     auto& allocator = IN_base.framework.core.GetBlockMemory();
 
@@ -38,7 +32,8 @@ ClientWorldStateMangager::ClientWorldStateMangager(ConnectionHandle IN_server, M
             [&](UserPacketHeader* header, Packet* packet, NetworkState* network)
             {
                 auto* updatePacket = reinterpret_cast<PlayerUpdatePacket*>(header);
-                UpdateRemotePlayer(updatePacket->state, updatePacket->playerID);
+
+                pendingRemoteUpdates.push_back(updatePacket->state);
             },
             allocator));
 
@@ -52,17 +47,20 @@ ClientWorldStateMangager::ClientWorldStateMangager(ConnectionHandle IN_server, M
     eventMap.MapKeyToEvent(KEYCODES::KC_Q, TPC_MoveDown);
     eventMap.MapKeyToEvent(KEYCODES::KC_E, TPC_MoveUp);
 
+    eventMap.MapKeyToEvent(KEYCODES::KC_1, PLAYER_ACTION1);
+    eventMap.MapKeyToEvent(KEYCODES::KC_2, PLAYER_ACTION2);
+    eventMap.MapKeyToEvent(KEYCODES::KC_3, PLAYER_ACTION3);
+    eventMap.MapKeyToEvent(KEYCODES::KC_4, PLAYER_ACTION4);
+
     localPlayer.AddView<LocalPlayerView>();
 
     static const GUID_t sceneID = 1234;
-
-    FK_ASSERT(LoadScene(base.framework.core, gscene, sceneID));
 
     auto& visibility = SceneVisibilityComponent::GetComponent();
 
     SetControllerPosition(localPlayer, { 30, 10, -30 });
 
-    CreateMultiplayerScene(IN_base.framework.core, gscene, pscene, gameOjectPool);
+    CreateMultiplayerScene(world);
 }
 
 
@@ -77,40 +75,12 @@ ClientWorldStateMangager::~ClientWorldStateMangager(){}
 
 void ClientWorldStateMangager::AddRemotePlayer(MultiplayerPlayerID_t playerID)
 {
-    auto& gameObject    = base.framework.core.GetBlockMemory().allocate<GameObject>();
-    auto test           = RemotePlayerData{ &gameObject, InvalidHandle_t, playerID };
-    auto playerView     = gameObject.AddView<RemotePlayerView>(test);
-
-
-    auto [triMesh, loaded] = FindMesh(playerModel);
-
-    auto& renderSystem = base.framework.GetRenderSystem();
-
-    if (!loaded)
-        triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), playerModel);
-
-    gameObject.AddView<SceneNodeView<>>();
-    gameObject.AddView<DrawableView>(triMesh, GetSceneNode(gameObject));
-
-    gscene.AddGameObject(gameObject, GetSceneNode(gameObject));
-
-    SetBoundingSphereFromMesh(gameObject);
+    world.AddRemotePlayer(playerID);
 }
 
 
 /************************************************************************************************/
 
-
-void ClientWorldStateMangager::UpdateRemotePlayer(const PlayerFrameState& playerState, MultiplayerPlayerID_t player)
-{
-    auto playerView = FindPlayer(player, remotePlayerComponent);
-
-    if (playerView)
-        playerView->Update(playerState);
-}
-
-
-/************************************************************************************************/
 
 
 WorldStateUpdate ClientWorldStateMangager::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
@@ -135,19 +105,53 @@ WorldStateUpdate ClientWorldStateMangager::Update(EngineCore& core, UpdateDispat
                 fixedUpdate(dT,
                     [this, dT = dT](auto dT)
                     {
-                        FK_LOG_INFO("Client World State Update");
                         currentInputState.mousedXY = base.renderWindow.mouseState.Normalized_dPos;
                         UpdatePlayerState(localPlayer, currentInputState, dT);
 
-                        const PlayerFrameState frameState = GetPlayerFrameState(localPlayer);
+                        for (auto& event : currentInputState.events)
+                        {
+                            switch (event)
+                            {
+                            case PlayerInputState::Event::Action1:
+                            case PlayerInputState::Event::Action2:
+                            case PlayerInputState::Event::Action3:
+                            case PlayerInputState::Event::Action4:
+                            {
+                                SpellData initial;
+                                initial.card     = FireBall();
+                                initial.caster   = ID;
+                                initial.duration = 3.0f;
+                                initial.life     = 0.0f;
 
+                                auto velocity    = (float3{1.0f, 0.0f, 1.0f} * GetCameraControllerForwardVector(localPlayer)).normal() * 50.0f;
+                                auto position    = GetCameraControllerHeadPosition(localPlayer);
+
+                                world.CreateSpell(initial, position, velocity);
+                            }   break;
+                            default:
+                                break;
+                            }
+                        }
+
+                        for (auto& playerUpdate : pendingRemoteUpdates)
+                            world.UpdatePlayer(playerUpdate);
+
+
+                        PlayerFrameState frameState     = GetPlayerFrameState(localPlayer);
+                        frameState.inputState           = currentInputState;
                         SendFrameState(ID, frameState, server);
+
+                        pendingRemoteUpdates.clear();
+                        currentInputState.events.clear();
                     });
             }
         );
 
     auto& physicsUpdate = base.physics.Update(dispatcher, dT);
-    out.update->AddOutput(physicsUpdate);
+    auto& spellUpdate   = UpdateSpells(dispatcher, world.objectPool, dT);
+
+    physicsUpdate.AddInput(*out.update);
+    physicsUpdate.AddInput(spellUpdate);
 
     return out;
 }
@@ -186,7 +190,7 @@ bool ClientWorldStateMangager::EventHandler(Event evt)
 
 GraphicScene& ClientWorldStateMangager::GetScene()
 {
-    return gscene;
+    return world.gscene;
 }
 
 

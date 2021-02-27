@@ -28,7 +28,7 @@ void UpdatePlayerState(GameObject& player, const PlayerInputState& currentInputS
 
             const auto cameraState = camera.GetData().GetFrameState();
 
-            player.GetData().inputHistory.push_back({ {}, {}, {}, currentInputState, cameraState });
+            player.GetData().inputHistory.push_back({0, {}, {}, {}, {}, currentInputState, cameraState });
             camera.GetData().Update(currentInputState.mousedXY, tpc_keyState, dT);
         });
 }
@@ -64,16 +64,20 @@ bool HandleEvents(PlayerInputState& keyState, Event evt)
             keyState.down = state;
             return true;
         case PLAYER_ACTION1:
-            keyState.events.push_back(PlayerInputState::Event::Action1);
+            if(evt.Action == Event::Pressed)
+                keyState.events.push_back(PlayerInputState::Event::Action1);
             return true;
         case PLAYER_ACTION2:
-            keyState.events.push_back(PlayerInputState::Event::Action1);
+            if (evt.Action == Event::Pressed)
+                keyState.events.push_back(PlayerInputState::Event::Action1);
             return true;
         case PLAYER_ACTION3:
-            keyState.events.push_back(PlayerInputState::Event::Action1);
+            if (evt.Action == Event::Pressed)
+                keyState.events.push_back(PlayerInputState::Event::Action1);
             return true;
         case PLAYER_ACTION4:
-            keyState.events.push_back(PlayerInputState::Event::Action1);
+            if (evt.Action == Event::Pressed)
+                keyState.events.push_back(PlayerInputState::Event::Action1);
         default:
             return false;
         }
@@ -82,42 +86,6 @@ bool HandleEvents(PlayerInputState& keyState, Event evt)
     return false;
 }
 
-
-/************************************************************************************************/
-
-
-PlayerFrameState GetPlayerFrameState(GameObject& gameObject)
-{
-    PlayerFrameState out;
-
-    Apply(
-        gameObject,
-        [&](LocalPlayerView& view)
-        {
-            const float3        pos = GetCameraControllerModelPosition(gameObject);
-            const Quaternion    q   = GetCameraControllerModelOrientation(gameObject);
-
-            out.pos         = pos;
-            out.orientation = q;
-        });
-
-    return out;
-}
-
-
-/************************************************************************************************/
-
-
-RemotePlayerData* FindPlayer(MultiplayerPlayerID_t ID, RemotePlayerComponent& players)
-{
-    for (auto& player : players)
-    {
-        if (player.componentData.ID == ID)
-            return &players[player.handle];
-    }
-
-    return nullptr;
-}
 
 
 /************************************************************************************************/
