@@ -455,7 +455,11 @@ namespace FlexKit
         BasicComponentView_t(BasicComponentView_t&&)                = delete;
         BasicComponentView_t& operator = (BasicComponentView_t&&)   = delete;
 
-        
+
+        decltype(auto) operator -> ()
+        {
+            return &GetData();
+        }
 
         decltype(auto) GetData()
         {

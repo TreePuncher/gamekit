@@ -10,10 +10,11 @@ using namespace FlexKit;
 /************************************************************************************************/
 
 
-void UpdatePlayerState(GameObject& player, const PlayerInputState& currentInputState, double dT)
+void UpdateLocalPlayer(GameObject& gameObject, const PlayerInputState& currentInputState, double dT)
 {
-    Apply(player,
-        [&](LocalPlayerView&        player,
+    Apply(gameObject,
+        [&](LocalPlayerView&        local,
+            PlayerView&             player,
             CameraControllerView&   camera)
         {
             const ThirdPersonCamera::KeyStates tpc_keyState =
@@ -28,8 +29,11 @@ void UpdatePlayerState(GameObject& player, const PlayerInputState& currentInputS
 
             const auto cameraState = camera.GetData().GetFrameState();
 
-            player.GetData().inputHistory.push_back({0, {}, {}, {}, {}, currentInputState, cameraState });
-            camera.GetData().Update(currentInputState.mousedXY, tpc_keyState, dT);
+            local->inputHistory.push_back({0, {}, {}, {}, {}, currentInputState, cameraState });
+            camera->Update(currentInputState.mousedXY, tpc_keyState, dT);
+
+            player->forward     = (GetCameraControllerForwardVector(gameObject) * float3(1, 0, 1)).normal();
+            player->position    = GetCameraControllerHeadPosition(gameObject);
         });
 }
 
@@ -97,6 +101,13 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
         base            { IN_base }
 {
     //base.renderWindow.ToggleMouseCapture();
+
+    worldState.SetOnGameEventRecieved(
+        [&](Event evt)
+        {
+            EventHandler(evt);
+        }
+    );
 }
 
 
@@ -251,9 +262,30 @@ bool LocalGameState::EventHandler(Event evt)
                     return true;
                 };
         }   break;
+
+        case Event::InputType::Local:
+        {
+            switch (evt.mData1.mINT[0])
+            {
+            case (int)PlayerEvents::PlayerDeath:
+                // TODO: Game over screen
+                framework.quit = true;
+                break;
+            }
+        }break;
+
     }
 
     return false;
+}
+
+
+/************************************************************************************************/
+
+
+void LocalGameState::OnGameEnd()
+{
+
 }
 
 

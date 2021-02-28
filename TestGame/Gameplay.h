@@ -62,7 +62,7 @@ using FlexKit::Quaternion;
 /************************************************************************************************/
 
 
-enum PLAYER_EVENTS : int64_t
+enum PLAYER_INPUT_EVENTS : int64_t
 {
 	PLAYER_UP				= GetCRCGUID(PLAYER_UP),
 	PLAYER_LEFT				= GetCRCGUID(PLAYER_LEFT),
@@ -89,6 +89,11 @@ enum PLAYER_EVENTS : int64_t
 	PLAYER_UNKNOWN,
 };
 
+enum class PlayerEvents
+{
+    PlayerDeath,
+    PlayerHit,
+};
 
 enum DEBUG_EVENTS : int64_t
 {
@@ -102,32 +107,32 @@ enum DEBUG_EVENTS : int64_t
 
 using CardTypeID_t = uint32_t;
 
+class GameWorld;
+
 struct CardInterface
 {
-    CardTypeID_t  CardID      = (CardTypeID_t)-1;
-    const char*   cardName    = "!!!!!";
-    const char*   description = "!!!!!";
+    CardTypeID_t  CardID                = (CardTypeID_t)-1;
+    const char*   cardName              = "!!!!!";
+    const char*   description           = "!!!!!";
 
-    uint          requiredPowerLevel = 0;
+    uint          requiredPowerLevel    = 0;
+
+    std::function<void (GameWorld& world, GameObject& player)> OnCast   = [](GameWorld& world, GameObject& player){};
+    std::function<void (GameWorld& world, GameObject& player)> OnHit    = [](GameWorld& world, GameObject& player){};
 };
 
 
 struct PowerCard : public CardInterface
 {
-    PowerCard() : CardInterface{
-        GetTypeGUID(PowerCard),
-        "PowerCard",
-        "Use to increase current level, allows for more powerful spell casting" } {}
+    PowerCard();
+
+    static CardTypeID_t ID() { return GetTypeGUID(PowerCard); };
 };
 
 
 struct FireBall : public CardInterface
 {
-    FireBall() : CardInterface{
-        ID(),
-        "FireBall",
-        "Throws a small ball a fire, burns on contact.\n"
-        "Required casting level is 1" } {}
+    FireBall();
 
     static CardTypeID_t ID() { return GetTypeGUID(FireBall); };
 };
@@ -143,8 +148,6 @@ struct PlayerDesc
     float r = 1.0f;
 };
 
-
-inline static const ComponentID SpellComponentID  = GetTypeGUID(SpellComponent);
 
 struct SpellData
 {
@@ -196,24 +199,78 @@ struct PlayerFrameState
 };
 
 
+struct PlayerState
+{
+    GameObject*             gameObject;
+    MultiplayerPlayerID_t   playerID;
+    float                   playerHealth    = 100.0f;
+    uint32_t                maxCastingLevel = 1;
+    float                   mana            = 0.0f;
+
+    float3                  forward;
+    float3                  position;
+
+    void ApplyDamage(float damage)
+    {
+        playerHealth -= damage;
+
+        if (playerHealth > 0.0f)
+        {
+            FlexKit::Event event;
+            event.InputSource       = Event::InputType::Local;
+            event.mType             = Event::EventType::iObject;
+            event.mData1.mINT[0]    = (int)PlayerEvents::PlayerHit;
+
+            std::cout << "Player took hit, Health: " << playerHealth << "\n";
+        }
+        else if(playerHealth <= 0.0f)
+        {
+            FlexKit::Event event;
+            event.InputSource       = Event::InputType::Local;
+            event.mType             = Event::EventType::iObject;
+            event.mData1.mINT[0]    = (int)PlayerEvents::PlayerDeath;
+
+            std::cout << "Player took hit, DEAD\n";
+        }
+    }
+
+    static_vector<FlexKit::Event> playerEvents;
+};
+
+inline static const ComponentID PlayerComponentID = GetTypeGUID(PlayerGameComponentID);
+
+using PlayerHandle      = Handle_t<32, PlayerComponentID>;
+using PlayerComponent   = BasicComponent_t<PlayerState, PlayerHandle, PlayerComponentID>;
+using PlayerView        = PlayerComponent::View;
+
+
 struct LocalPlayerData
 {
-    MultiplayerPlayerID_t               player;
+    PlayerHandle                        playerGameState;
+    MultiplayerPlayerID_t               playerID;
     CircularBuffer<PlayerFrameState>    inputHistory;
     //Vector<iNetEvent>                   pendingEvent;
 };
 
-
 struct RemotePlayerData
 {
     GameObject*             gameObject;
+    PlayerHandle            playerGameState;
     ConnectionHandle        connection;
-    MultiplayerPlayerID_t   ID;
+    MultiplayerPlayerID_t   playerID;
 
     void Update(PlayerFrameState state)
     {
         SetControllerPosition(*gameObject, state.pos);
         SetControllerOrientation(*gameObject, state.orientation);
+
+        Apply(
+            *gameObject,
+            [&](PlayerView& player)
+            {
+                player->forward     = state.forwardVector;
+                player->position    = GetControllerPosition(*gameObject);
+            });
     }
 
     PlayerFrameState    GetFrameState() const
@@ -241,6 +298,8 @@ inline static const ComponentID RemotePlayerComponentID  = GetTypeGUID(RemotePla
 using RemotePlayerHandle     = Handle_t<32, RemotePlayerComponentID>; // this is a handle to an instance
 using RemotePlayerComponent  = BasicComponent_t<RemotePlayerData, RemotePlayerHandle, RemotePlayerComponentID>; // This defines a new component
 using RemotePlayerView       = RemotePlayerComponent::View; // This defines an interface to access data in the component in a easy manner 
+
+inline static const ComponentID SpellComponentID = GetTypeGUID(SpellComponent);
 
 using SpellHandle       = Handle_t<32, SpellComponentID>;
 using SpellComponent    = BasicComponent_t<SpellData, SpellHandle, SpellComponentID>;
@@ -280,18 +339,30 @@ public:
                     allocator);
     }
 
-    GameObject& AddRemotePlayer(MultiplayerPlayerID_t playerID)
+    GameObject& AddRemotePlayer(MultiplayerPlayerID_t playerID, ConnectionHandle connection = InvalidHandle_t)
     {
         auto& gameObject = objectPool.Allocate();
 
-        gameObject.AddView<RemotePlayerView>(RemotePlayerData{ &gameObject, InvalidHandle_t, playerID });
+        auto& player    = gameObject.AddView<PlayerView>(
+            PlayerState{
+                .gameObject         = &gameObject,
+                .playerID           = playerID,
+                .playerHealth       = 100.0f,
+                .maxCastingLevel    = 1 });
+
+        auto& dummy     = gameObject.AddView<RemotePlayerView>(
+            RemotePlayerData{
+                .gameObject         = &gameObject,
+                .playerGameState    = player.handle,
+                .connection         = connection,
+                .playerID           = playerID });
 
         auto [triMesh, loaded] = FindMesh(playerModel);
 
         if (!loaded)
             triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), playerModel);
 
-        auto& characterController = gameObject.AddView<CharacterControllerView>(pscene, float3{0, 0, 0}, GetZeroedNode(), 1.0f, 1.0f);
+        auto& characterController = gameObject.AddView<CharacterControllerView>(pscene, &gameObject, float3{0, 0, 0}, GetZeroedNode(), 1.0f, 1.0f);
         gameObject.AddView<SceneNodeView<>>(characterController.GetNode());
         gameObject.AddView<DrawableView>(triMesh, characterController.GetNode());
 
@@ -390,8 +461,17 @@ public:
         return res;
     }
 
-    void UpdatePlayer(const PlayerFrameState& playerState);
+    void        UpdatePlayer        (const PlayerFrameState& playerState, const double);
+    void        UpdateRemotePlayer  (const PlayerFrameState& playerState, const double);
+    UpdateTask& UpdateSpells(UpdateDispatcher& dispathcer, ObjectPool<GameObject>& objectPool, const double dt);
 
+
+    struct GameEvent
+    {
+
+    };
+
+    Vector<GameEvent>       pendingEvents;
 
     const GUID_t            playerModel = 7896;
     const GUID_t            cube1X1X1   = 7895;
@@ -409,16 +489,14 @@ public:
 };
 
 
-UpdateTask& UpdateSpells(UpdateDispatcher& dispathcer, ObjectPool<GameObject>& objectPool, const double dt);
-
-
 /************************************************************************************************/
 
 
 void CreateMultiplayerScene(GameWorld&);
 
 PlayerFrameState    GetPlayerFrameState (GameObject& gameObject);
-RemotePlayerData*   FindPlayer          (MultiplayerPlayerID_t ID);
+RemotePlayerData*   FindRemotePlayer    (MultiplayerPlayerID_t ID);
+GameObject*         FindPlayer          (MultiplayerPlayerID_t ID);
 
 
 /************************************************************************************************/

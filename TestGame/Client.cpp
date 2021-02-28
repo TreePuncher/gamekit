@@ -15,6 +15,7 @@ ClientWorldStateMangager::ClientWorldStateMangager(ConnectionHandle IN_server, M
     pendingRemoteUpdates    { IN_base.framework.core.GetBlockMemory() },
 
     spellComponent          { IN_base.framework.core.GetBlockMemory() },
+    playerComponent         { IN_base.framework.core.GetBlockMemory() },
     localPlayerComponent    { IN_base.framework.core.GetBlockMemory() },
     remotePlayerComponent   { IN_base.framework.core.GetBlockMemory() },
 
@@ -95,8 +96,8 @@ WorldStateUpdate ClientWorldStateMangager::Update(EngineCore& core, UpdateDispat
     };
 
     WorldStateUpdate out;
-    out.update =
-        &dispatcher.Add<WorldUpdate>(
+    auto& worldUpdate =
+        dispatcher.Add<WorldUpdate>(
             [](UpdateDispatcher::UpdateBuilder& Builder, auto& data)
             {
             },
@@ -105,41 +106,38 @@ WorldStateUpdate ClientWorldStateMangager::Update(EngineCore& core, UpdateDispat
                 fixedUpdate(dT,
                     [this, dT = dT](auto dT)
                     {
-                        currentInputState.mousedXY = base.renderWindow.mouseState.Normalized_dPos;
-                        UpdatePlayerState(localPlayer, currentInputState, dT);
+                        // Send Player Updates
+                        PlayerFrameState localState = GetPlayerFrameState(localPlayer);
+                        currentInputState.mousedXY  = base.renderWindow.mouseState.Normalized_dPos;
+                        localState.inputState = currentInputState;
 
-                        for (auto& event : currentInputState.events)
-                        {
-                            switch (event)
-                            {
-                            case PlayerInputState::Event::Action1:
-                            case PlayerInputState::Event::Action2:
-                            case PlayerInputState::Event::Action3:
-                            case PlayerInputState::Event::Action4:
-                            {
-                                SpellData initial;
-                                initial.card     = FireBall();
-                                initial.caster   = ID;
-                                initial.duration = 3.0f;
-                                initial.life     = 0.0f;
-
-                                auto velocity    = (float3{1.0f, 0.0f, 1.0f} * GetCameraControllerForwardVector(localPlayer)).normal() * 50.0f;
-                                auto position    = GetCameraControllerHeadPosition(localPlayer);
-
-                                world.CreateSpell(initial, position, velocity);
-                            }   break;
-                            default:
-                                break;
-                            }
-                        }
+                        UpdateLocalPlayer(localPlayer, currentInputState, dT);
+                        world.UpdatePlayer(localState, dT);
 
                         for (auto& playerUpdate : pendingRemoteUpdates)
-                            world.UpdatePlayer(playerUpdate);
+                            world.UpdateRemotePlayer(playerUpdate, dT);
 
+                        // Process Player events
+                        for (auto& player : playerComponent)
+                        {
+                            for (auto& evt : player.componentData.playerEvents)
+                            {
+                                switch (evt.mData1.mINT[0])
+                                {
+                                case (int)PlayerEvents::PlayerDeath:
+                                {
+                                    static_vector<Event> events{ evt };
+                                    BroadcastEvent(events);
 
-                        PlayerFrameState frameState     = GetPlayerFrameState(localPlayer);
-                        frameState.inputState           = currentInputState;
-                        SendFrameState(ID, frameState, server);
+                                    gameEventHandler(evt); // broadcast evt globally
+                                }   break;
+                                }
+                            }
+
+                            player.componentData.playerEvents.clear();
+                        }
+
+                        SendFrameState(ID, localState, server);
 
                         pendingRemoteUpdates.clear();
                         currentInputState.events.clear();
@@ -148,11 +146,13 @@ WorldStateUpdate ClientWorldStateMangager::Update(EngineCore& core, UpdateDispat
         );
 
     auto& physicsUpdate = base.physics.Update(dispatcher, dT);
-    auto& spellUpdate   = UpdateSpells(dispatcher, world.objectPool, dT);
+    auto& spellUpdate   = world.UpdateSpells(dispatcher, world.objectPool, dT);
 
-    physicsUpdate.AddInput(*out.update);
+    spellUpdate.AddInput(worldUpdate);
+    physicsUpdate.AddInput(worldUpdate);
     physicsUpdate.AddInput(spellUpdate);
 
+    out.update = &physicsUpdate;
     return out;
 }
 

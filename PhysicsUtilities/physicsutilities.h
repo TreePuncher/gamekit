@@ -440,7 +440,6 @@ namespace FlexKit
         physx::PxControllerManager& GetCharacterController() { return *controllerManager; }
 
 
-	private:
 		physx::PxScene*				scene				= nullptr;
 		physx::PxControllerManager*	controllerManager	= nullptr;
 		physx::PxClientID			CID;
@@ -740,6 +739,7 @@ namespace FlexKit
     {
         CharacterControllerHandle   handle;
         NodeHandle                  node;
+        GameObject*                 gameObject;
         PhysXSceneHandle            scene;
 
         physx::PxController*        controller;
@@ -760,7 +760,7 @@ namespace FlexKit
             controllers { allocator } {}
 
 
-        CharacterControllerHandle Create(const PhysXSceneHandle scene, const NodeHandle node = GetZeroedNode(), const float3 initialPosition = {}, const float R = 1, const float H = 1)
+        CharacterControllerHandle Create(const PhysXSceneHandle scene, GameObject* gameObject, const NodeHandle node = GetZeroedNode(), const float3 initialPosition = {}, const float R = 1, const float H = 1)
         {
             auto& manager = physx.GetScene_ref(scene).GetCharacterController();
 
@@ -768,8 +768,8 @@ namespace FlexKit
 
             physx::PxCapsuleControllerDesc CCDesc;
             CCDesc.material         = physx.GetDefaultMaterial();
-            CCDesc.radius           = 1;
-            CCDesc.height           = 1;
+            CCDesc.radius           = R;
+            CCDesc.height           = H;
             CCDesc.contactOffset    = 0.01f;
             CCDesc.position         = { initialPosition.x, initialPosition.y, initialPosition.z };
             CCDesc.climbingMode     = physx::PxCapsuleClimbingMode::eEASY;
@@ -781,9 +781,12 @@ namespace FlexKit
                 CharacterController{
                     newHandle,
                     node,
+                    gameObject,
                     scene,
                     controller
                 });
+
+            controller->setUserData(gameObject);
 
             handles[newHandle] = idx;
 
@@ -837,12 +840,17 @@ namespace FlexKit
     {
     public:
         CharacterControllerView(
-            PhysXSceneHandle scene,
-            const float3    initialPosition = { 0, 0, 0 },
-            NodeHandle      node            = GetZeroedNode(),
-            const float     R               = 1.0f,
-            const float     H               = 1.0f) :
-                controller{ GetComponent().Create(scene, node, initialPosition) } {}
+            PhysXSceneHandle    scene,
+            GameObject*         gameObject,
+            const float3        initialPosition = { 0, 0, 0 },
+            NodeHandle          node            = GetZeroedNode(),
+            const float         R               = 1.0f,
+            const float         H               = 1.0f) :
+                controller{ GetComponent().Create(scene, gameObject, node, initialPosition) }
+        {
+            GetComponent()[controller].controller->getActor()->userData = gameObject;
+            GetComponent()[controller].controller->setUserData(gameObject);
+        }
 
 
         CharacterControllerView(CharacterControllerHandle IN_controller) :
@@ -860,6 +868,13 @@ namespace FlexKit
         }
 
         struct MoveFilter {};
+
+        float3 GetPosition()
+        {
+            auto& ref = GetComponent()[controller];
+            
+            return pxVec3ToFloat3(ref.controller->getPosition());
+        }
 
         void SetPosition(const float3 xyz)
         {
@@ -902,7 +917,15 @@ namespace FlexKit
                 return (CharacterControllerHandle)InvalidHandle_t;
             });
     }
-    
+
+    inline float3 GetControllerPosition(GameObject& GO)
+    {
+        return Apply(GO, [&](CharacterControllerView& controller)
+            {
+                return controller.GetPosition();
+            }, [] { return float3{ 0, 0, 0 };  });
+    }
+
     inline void SetControllerPosition(GameObject& GO, const float3 xyz)
     {
         Apply(GO, [&](CharacterControllerView& controller)

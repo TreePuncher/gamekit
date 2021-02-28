@@ -27,6 +27,19 @@ public:
     void SendFrameState(const MultiplayerPlayerID_t ID, const PlayerFrameState& state, const ConnectionHandle connection);
     bool EventHandler(Event evt) final;
 
+    void SetOnGameEventRecieved(GameEventHandler handler)
+    {
+        gameEventHandler = handler;
+    }
+
+    void BroadcastEvent(static_vector<Event> events)
+    {
+        GameEventPacket packet;
+        packet.events = events;
+
+        for (auto& remotePlayer : remotePlayerComponent)
+            net.Send(packet.header, remotePlayer.componentData.connection);
+    }
 
     GraphicScene&   GetScene() final;
     CameraHandle    GetActiveCamera() const final;
@@ -51,6 +64,7 @@ public:
     PlayerInputState                currentInputState;
 
     SpellComponent                  spellComponent;
+    PlayerComponent                 playerComponent;
     LocalPlayerComponent            localPlayerComponent;
     RemotePlayerComponent           remotePlayerComponent;
 
@@ -60,6 +74,8 @@ public:
     InputMap					    eventMap;
 
     PacketHandlerVector             packetHandlers;
+
+    GameEventHandler                gameEventHandler;
 
     GraphicScene    scene;
     BaseState&      base;
