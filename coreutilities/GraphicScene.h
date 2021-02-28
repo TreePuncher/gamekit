@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -396,6 +396,31 @@ namespace FlexKit
 			});
 	}
 
+
+
+    inline BoundingSphere GetBoundingSphereFromMesh(GameObject& go)
+    {
+        const auto Scale = GetScale(go);
+
+        float rScale = 1;
+        for (size_t I = 0; I < 3; ++I)
+            rScale = Max(rScale, Scale[I]);
+
+        return Apply(
+            go,
+            [&](SceneVisibilityView& visibility,
+                DrawableView& drawable)
+            {
+                auto boundingSphere = drawable.GetBoundingSphere();
+                auto pos            = GetPositionW(drawable.GetDrawable().Node);
+
+                return BoundingSphere{ pos, boundingSphere.w * rScale };
+            },
+            []()
+            {
+                return BoundingSphere{ 0, 0, 0, 0 };
+            });
+    }
 
 	/************************************************************************************************/
 

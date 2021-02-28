@@ -59,6 +59,7 @@ namespace FlexKit
 			Joystick,
 			Keyboard,
 			Mouse,
+            Local,
 			E_SystemEvent
 		} InputSource;
 

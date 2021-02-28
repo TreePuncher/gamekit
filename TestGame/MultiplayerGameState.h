@@ -22,10 +22,12 @@ enum LobbyPacketIDs : PacketID_t
 	LoadGame					= GetCRCGUID(LoadGame),
     ClientGameLoaded            = GetCRCGUID(ClientGameLoaded),
     BeginGame                   = GetCRCGUID(BeginGame),
+    GameOver                    = GetCRCGUID(GameOver),
     PlayerJoin                  = GetCRCGUID(PlayerJoin),
 	RequestPlayerList			= GetCRCGUID(RequestPlayerList),
 	RequestPlayerListResponse	= GetCRCGUID(PlayerList),
     PlayerUpdate                = GetCRCGUID(PlayerUpdate),
+    GameEvent                   = GetCRCGUID(GameEvent)
 };
 
 
@@ -74,6 +76,9 @@ public:
     virtual bool                EventHandler(Event evt) = 0;
     virtual CameraHandle        GetActiveCamera() const = 0;
     virtual GraphicScene&       GetScene() = 0;
+
+    using GameEventHandler      = std::function<void (Event evt)>;
+    virtual void                SetOnGameEventRecieved(GameEventHandler) = 0;
 };
 
 struct PlayerUpdatePacket
@@ -85,19 +90,16 @@ struct PlayerUpdatePacket
 };
 
 
-void UpdatePlayerState(GameObject& player, const PlayerInputState& currentInputState, double dT);
+struct GameEventPacket
+{
+    UserPacketHeader        header{ sizeof(GameEventPacket), { GameEvent } };
+
+    static_vector<Event>    events;
+};
+
+
+void UpdateLocalPlayer(GameObject& player, const PlayerInputState& currentInputState, double dT);
 bool HandleEvents(PlayerInputState& keyState, Event evt);
-
-
-enum class NetEventType
-{
-
-};
-
-struct iNetEvent
-{
-
-};
 
 
 /************************************************************************************************/
@@ -116,6 +118,8 @@ public:
 
     void PostDrawUpdate (EngineCore& core, double dT) override;
     bool EventHandler   (Event evt) override;
+
+    void OnGameEnd();
 
     BaseState&                      base;
     WorldStateMangagerInterface&    worldState;
@@ -212,7 +216,6 @@ public:
     }
 
 
-
     /************************************************************************************************/
 
 private:
@@ -225,7 +228,7 @@ private:
 
 /**********************************************************************
 
-Copyright (c) 2019 Robert May
+Copyright (c) 2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

@@ -39,11 +39,21 @@ public:
     GraphicScene&   GetScene() final;
     CameraHandle    GetActiveCamera() const final;
 
+    void SetOnGameEventRecieved(GameEventHandler handler) final
+    {
+        gameEventHandler = handler;
+    }
 
     void AddPlayer(ConnectionHandle connection, MultiplayerPlayerID_t ID);
 
-    void UpdateRemotePlayer(const PlayerFrameState& playerState, MultiplayerPlayerID_t player);
+    void BroadcastEvent(static_vector<Event> events)
+    {
+        GameEventPacket packet;
+        packet.events = events;
 
+        for (auto& remotePlayer : remotePlayerComponent)
+            net.Send(packet.header, remotePlayer.componentData.connection);
+    }
 
     struct PlayerState
     {
@@ -66,8 +76,11 @@ public:
     Vector<PlayerFrameState>    pendingRemoteUpdates;
 
     SpellComponent                      spellComponent;
-    LocalPlayerComponent                localPlayerComponent;
-    RemotePlayerComponent               remotePlayerComponent;
+    PlayerComponent                     playerComponent;        // players game state such as health, player deck, etc
+    LocalPlayerComponent                localPlayerComponent;   // Handles local tasks such as input, and local state history
+    RemotePlayerComponent               remotePlayerComponent;  // Updates remote player proxies
+
+    GameEventHandler                    gameEventHandler;
 
     CircularBuffer<ServerFrame, 240>	history;
     InputMap					        eventMap;

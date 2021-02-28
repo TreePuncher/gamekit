@@ -21,6 +21,7 @@ HostWorldStateMangager::HostWorldStateMangager(MultiplayerPlayerID_t IN_player, 
     localPlayer             { world.AddLocalPlayer(IN_player) },
 
     spellComponent          { IN_base.framework.core.GetBlockMemory() },
+    playerComponent         { IN_base.framework.core.GetBlockMemory() },
     localPlayerComponent    { IN_base.framework.core.GetBlockMemory() },
     remotePlayerComponent   { IN_base.framework.core.GetBlockMemory() },
 
@@ -86,8 +87,8 @@ WorldStateUpdate HostWorldStateMangager::Update(EngineCore& core, UpdateDispatch
 
     };
 
-    out.update =
-        &dispatcher.Add<HostWorldUpdate>(
+    auto& worldUpdate =
+        dispatcher.Add<HostWorldUpdate>(
             [](UpdateDispatcher::UpdateBuilder& Builder, auto& data)
             {
             },
@@ -96,45 +97,41 @@ WorldStateUpdate HostWorldStateMangager::Update(EngineCore& core, UpdateDispatch
                 fixedUpdate(dT,
                     [&](auto dT)
                     {
-                        currentInputState.mousedXY = base.renderWindow.mouseState.Normalized_dPos;
-                        UpdatePlayerState(localPlayer, currentInputState, dT);
-
-                        for (auto& event : currentInputState.events)
-                        {
-                            switch (event)
-                            {
-                            case PlayerInputState::Event::Action1:
-                            case PlayerInputState::Event::Action2:
-                            case PlayerInputState::Event::Action3:
-                            case PlayerInputState::Event::Action4:
-                            {
-                                SpellData initial;
-                                initial.card     = FireBall();
-                                initial.caster   = localPlayerID;
-                                initial.duration = 3.0f;
-                                initial.life     = 0.0f;
-
-                                auto velocity    = (float3{1.0f, 0.0f, 1.0f} * GetCameraControllerForwardVector(localPlayer)).normal() * 50.0f;
-                                auto position    = GetCameraControllerHeadPosition(localPlayer);
-
-                                world.CreateSpell(initial, position, velocity);
-                            }   break;
-                            default:
-                                break;
-                            }
-                        }
-
-                        for (auto& playerUpdate : pendingRemoteUpdates)
-                            world.UpdatePlayer(playerUpdate);
-
-
                         // Send Player Updates
                         PlayerFrameState localState = GetPlayerFrameState(localPlayer);
+                        currentInputState.mousedXY  = base.renderWindow.mouseState.Normalized_dPos;
                         localState.inputState       = currentInputState;
+
+                        UpdateLocalPlayer(localPlayer, currentInputState, dT);
+                        world.UpdatePlayer(localState, dT);
+
+                        for (auto& playerUpdate : pendingRemoteUpdates)
+                            world.UpdateRemotePlayer(playerUpdate, dT);
+
+                        // Process Player events
+                        for (auto& player : playerComponent)
+                        {
+                            for (auto& evt : player.componentData.playerEvents)
+                            {
+                                switch (evt.mData1.mINT[0])
+                                {
+                                case (int)PlayerEvents::PlayerDeath:
+                                {
+                                    static_vector<Event> events{ evt };
+                                    BroadcastEvent(events);
+
+                                    gameEventHandler(evt); // broadcast evt globally
+                                }   break;
+                                }
+                            }
+
+                            player.componentData.playerEvents.clear();
+                        }
+                        
 
                         for (auto& playerView : remotePlayerComponent)
                         {
-                            const auto playerID     = playerView.componentData.ID;
+                            const auto playerID     = playerView.componentData.playerID;
                             const auto state        = playerView.componentData.GetFrameState();
                             const auto connection   = playerView.componentData.connection;
 
@@ -142,7 +139,7 @@ WorldStateUpdate HostWorldStateMangager::Update(EngineCore& core, UpdateDispatch
 
                             for (auto otherPlayer : remotePlayerComponent)
                             {
-                                const auto otherPID     = otherPlayer.componentData.ID;
+                                const auto otherPID     = otherPlayer.componentData.playerID;
                                 const auto connection   = otherPlayer.componentData.connection;
 
                                 if (playerID != otherPID)
@@ -155,11 +152,14 @@ WorldStateUpdate HostWorldStateMangager::Update(EngineCore& core, UpdateDispatch
                     });
             });
 
-    auto& spellUpdate   = UpdateSpells(dispatcher, world.objectPool, dT);
     auto& physicsUpdate = base.physics.Update(dispatcher, dT);
+    auto& spellUpdate   = world.UpdateSpells(dispatcher, world.objectPool, dT);
 
-    physicsUpdate.AddInput(*out.update);
+    spellUpdate.AddInput(worldUpdate);
+    physicsUpdate.AddInput(worldUpdate);
     physicsUpdate.AddInput(spellUpdate);
+
+    out.update = &physicsUpdate;
 
     return out;
 }
@@ -225,49 +225,6 @@ void HostWorldStateMangager::AddPlayer(ConnectionHandle connection, MultiplayerP
         {
             remote.GetData().connection = connection;
         });
-}
-
-
-/************************************************************************************************/
-
-
-void HostWorldStateMangager::UpdateRemotePlayer(const PlayerFrameState& playerState, MultiplayerPlayerID_t player)
-{
-    auto playerView = FindPlayer(player);
-
-    if (playerView) {
-        playerView->Update(playerState);
-
-        for (const auto event_ : playerState.inputState.events)
-        {
-            switch (event_)
-            {
-            case PlayerInputState::Event::Action1:
-            case PlayerInputState::Event::Action2:
-            case PlayerInputState::Event::Action3:
-            case PlayerInputState::Event::Action4:
-            {
-                SpellData initial;
-                initial.card     = FireBall();
-                initial.caster   = player;
-                initial.duration = 3.0f;
-                initial.life     = 0.0f;
-
-                auto& player     = *playerView->gameObject;
-
-                //auto velocity    = (float3{1.0f, 0.0f, 1.0f} * GetCameraControllerForwardVector(player)).normal() * 50.0f;
-                //auto position    = GetCameraControllerHeadPosition(player);
-
-                auto velocity = playerState.forwardVector * 50.0f;//(float3{1.0f, 0.0f, 1.0f} * GetCameraControllerForwardVector(player)).normal() * 50.0f;
-                auto position = playerState.pos;
-
-                world.CreateSpell(initial, position, velocity);
-            }   break;
-            default:
-                break;
-            }
-        }
-    }
 }
 
 
