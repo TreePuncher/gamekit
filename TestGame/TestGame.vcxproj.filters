@@ -255,6 +255,9 @@
     <ClInclude Include="..\coreutilities\DebugUI.h">
       <Filter>Headers\coreutilities</Filter>
     </ClInclude>
+    <ClInclude Include="..\coreutilities\Particles.h">
+      <Filter>Headers\coreutilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\coreutilities\AllSourceFiles.cpp">
@@ -432,6 +435,9 @@
       <Filter>Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\DebugUI.cpp">
+      <Filter>Source\coreutilities</Filter>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\Particles.cpp">
       <Filter>Source\coreutilities</Filter>
     </ClCompile>
   </ItemGroup>

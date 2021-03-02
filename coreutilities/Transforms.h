@@ -102,6 +102,20 @@ namespace FlexKit
 
         HandleUtilities::HandleTable<NodeHandle> Indexes;
 
+        ~SceneNodes()
+        {
+            Release();
+        }
+
+        void Release()
+        {
+            Nodes.Release();
+            LT.Release();
+            WT.Release();
+            Flags.Release();
+            Children.Release();
+            Indexes.Release();
+        }
 
         size_t _AddNode()
         {
@@ -191,7 +205,7 @@ namespace FlexKit
 
         ~SceneNodeComponent()
         {
-
+            SceneNodeTable.Release();
         }
 
         NodeHandle GetZeroedNode()

@@ -25,6 +25,7 @@ class MenuState : public FrameworkState
 {
 public:
     MenuState(GameFramework& framework, BaseState& IN_base, NetworkState& IN_net);
+    ~MenuState();
 
     UpdateTask* Update      (             EngineCore&, UpdateDispatcher&, double dT) override;
     UpdateTask* Draw        (UpdateTask*, EngineCore&, UpdateDispatcher&, double dT, FrameGraph&)  override;

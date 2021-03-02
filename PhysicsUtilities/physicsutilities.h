@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -1059,7 +1059,7 @@ namespace FlexKit
 
 
     CameraHandle    GetCameraControllerCamera(GameObject& GO);
-    GameObject&     CreateThirdPersonCameraController(PhysXSceneHandle scene, iAllocator& allocator, const float R = 1, const float H = 1);
+    GameObject&     CreateThirdPersonCameraController(GameObject& gameObject, PhysXSceneHandle scene, iAllocator& allocator, const float R = 1, const float H = 1);
 
     float3          GetCameraControllerHeadPosition(GameObject& GO);
     float3          GetCameraControllerForwardVector(GameObject& GO);

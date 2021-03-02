@@ -1,5 +1,5 @@
 #include "MenuState.h"
-
+#include "playgroundmode.hpp"
 
 /************************************************************************************************/
 
@@ -8,7 +8,7 @@ MenuState::MenuState(GameFramework& framework, BaseState& IN_base, NetworkState&
 	FrameworkState	    { framework },
     net                 { IN_net },
     base                { IN_base },
-    packetHandlers{ framework.core.GetBlockMemory() }
+    packetHandlers      { framework.core.GetBlockMemory() }
 {
     memset(name,        '\0', sizeof(name));
     memset(lobbyName,   '\0', sizeof(lobbyName));
@@ -38,6 +38,13 @@ MenuState::MenuState(GameFramework& framework, BaseState& IN_base, NetworkState&
 }
 
 
+MenuState::~MenuState()
+{
+    for (auto handler : packetHandlers) {
+        framework.core.GetBlockMemory().release_allocation(*handler);
+    }
+}
+
 /************************************************************************************************/
 
 
@@ -58,6 +65,11 @@ UpdateTask* MenuState::Update(EngineCore& core, UpdateDispatcher& dispatcher, do
 
         if (ImGui::Button("Host"))
             mode = MenuMode::Host;
+
+        if (ImGui::Button("Playground"))
+        {
+
+        }
 
         if (ImGui::Button("Exit"))
             framework.quit = true;

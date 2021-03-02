@@ -155,6 +155,13 @@ namespace FlexKit
 		auto&	visables	= SceneVisibilityComponent::GetComponent();
 		auto	visableID	= SceneVisibilityComponent::GetComponentID();
 
+        for (auto* gameObject : ownedGameObjects) {
+            gameObject->Release();
+            allocator->release(*gameObject);
+        }
+
+        ownedGameObjects.clear();
+
 		for (auto visHandle : sceneEntities)
 		{
 			auto entity		= visables[visHandle].entity;
@@ -659,6 +666,7 @@ namespace FlexKit
                             EntityBlock::Header entityBlock;
                             memcpy(&entityBlock, block, sizeof(entityBlock));
 							auto& gameObject = allocator->allocate<GameObject>(allocator);
+                            GS_out.ownedGameObjects.push_back(&gameObject);
 
                             size_t itr                  = 0;
                             size_t componentOffset      = 0;

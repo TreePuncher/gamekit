@@ -65,7 +65,7 @@ FireBall::FireBall() : CardInterface{
             Apply(player,
                 [](PlayerView& player)
                 {
-                    player->ApplyDamage(5);
+                    player->ApplyDamage(100);
                 });
         };
 }
@@ -73,9 +73,10 @@ FireBall::FireBall() : CardInterface{
 /************************************************************************************************/
 
 
-GameObject& CreatePlayer(const PlayerDesc& desc, RenderSystem& renderSystem, iAllocator& allocator)
+GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
 {
-    GameObject& gameObject = CreateThirdPersonCameraController(desc.pscene, allocator, desc.r, desc.h);
+    GameObject& gameObject = objectPool.Allocate();
+    CreateThirdPersonCameraController(gameObject, desc.pscene, allocator, desc.r, desc.h);
 
     static const GUID_t meshID = 7896;
 

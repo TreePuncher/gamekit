@@ -39,12 +39,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //		Config loading system?
 //
 //	Graphics:
-//		(PARTLY) Frame Graph Rendering
+//		(DONE) Frame Graph Rendering
 //				(Done) Auto Barrier Handling
 //				TODO: (In Progress) Replacement Draw Utility Functions that use the frame graph rather then direct submission
 //
 //		(DONE) Basic Gui rendering methods (Draw Rect, etc)
-//		(PARTLY) Multi-threaded Texture Uploads
+//		(DONE) Multi-threaded Texture Uploads
 //		TODO: (Partly)	Terrain Rendering
 //				(DONE) Geometry generation
 //				(DONE) CULLING
@@ -167,9 +167,8 @@ namespace FlexKit
 
 	GameFramework::GameFramework(EngineCore& IN_core) :
 		console				{ DefaultAssets.Font, IN_core.RenderSystem, IN_core.GetBlockMemory() },
-		core				{ IN_core	},
-		fixStepAccumulator	{ 0.0		}
-
+		core				{ IN_core	                },
+		fixStepAccumulator	{ 0.0		                }
 	{
 		Initiate();
 	}
@@ -268,18 +267,23 @@ namespace FlexKit
 	{
         ProfileFunction();
 
-        pushOccured = false;
-
-        UpdateDispatcher dispatcher{ &core.Threads, core.GetTempMemoryMT() };
-        auto updateTask = Update(dispatcher, dT);
 
 		FK_LOG_9("Frame Begin");
-        if (!subStates.size())
+        if (!subStates.size() && !deferredPushes.size())
         {
             FK_LOG_9("State stack empty!");
             return;
         }
+        else if (deferredPushes.size())
+        {
+            for (auto deferredPush : deferredPushes)
+                subStates.push_back(deferredPush);
 
+            deferredPushes.clear();
+        }
+
+        UpdateDispatcher dispatcher{ &core.Threads, core.GetTempMemoryMT() };
+        auto updateTask = Update(dispatcher, dT);
 		auto drawTask   = Draw(updateTask, dispatcher, core.GetTempMemoryMT(), dT);
 
         dispatcher.Execute();
@@ -292,10 +296,12 @@ namespace FlexKit
 
 		FK_LOG_9("Frame End");
 
-        for (auto state : delayedFrees)
+        for (auto state : deferredFrees) {
             core.GetBlockMemory().release_allocation(*state);
+            subStates.pop_back();
+        }
 
-        delayedFrees.clear();
+        deferredFrees.clear();
 
 		// Memory -----------------------------------------------------------------------------------
 		//Engine->GetBlockMemory().LargeBlockAlloc.Collapse(); // Coalesce blocks
@@ -312,8 +318,18 @@ namespace FlexKit
 
 		GetRenderSystem().WaitforGPU();
 
-		while (subStates.size())
-			PopState();
+        for (auto state : deferredFrees) {
+            core.GetBlockMemory().release_allocation(*state);
+            subStates.pop_back();
+        }
+
+        for (auto state : deferredPushes)
+            core.GetBlockMemory().release_allocation(state);
+
+        while (subStates.size()) {
+            core.GetBlockMemory().release_allocation(*subStates.back());
+            subStates.pop_back();
+        }
 
 		console.Release();
 		FlexKit::Release(DefaultAssets.Font, core.RenderSystem);
@@ -400,10 +416,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    void GameFramework::PushState(FrameworkState& state)
+    {
+        deferredPushes.push_back(&state);
+    }
+
+
+    /************************************************************************************************/
+
+
 	void GameFramework::PopState()
 	{
-        delayedFrees.push_back(subStates.back());
-		subStates.pop_back();
+        deferredFrees.push_back(subStates.back());
 	}
 
 

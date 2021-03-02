@@ -601,8 +601,10 @@ namespace FlexKit
 			if (A && Allocator)
 				Allocator->_aligned_free(A);
 
-			A   = nullptr;
-			Max = 0;
+			A           = nullptr;
+            Allocator   = nullptr;
+			Max         = 0;
+            Size        = 0;
 		}
 
 

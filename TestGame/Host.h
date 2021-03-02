@@ -102,6 +102,7 @@ class HostState : public FrameworkState
 {
 public:
     HostState(GameFramework& framework, GameInfo IN_info, BaseState& IN_base, NetworkState& IN_net);
+    ~HostState();
 
     void HandleIncomingConnection(ConnectionHandle connectionhandle);
     void HandleDisconnection(ConnectionHandle connection);

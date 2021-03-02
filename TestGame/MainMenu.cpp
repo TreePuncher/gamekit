@@ -120,7 +120,7 @@ void MainMenu::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, F
 
 void MainMenu::PostDrawUpdate(EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
-    base.PostDrawUpdate(core, dispatcher, dT);
+    base.PostDrawUpdate(core, dT);
 }
 
 

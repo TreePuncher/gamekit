@@ -631,10 +631,8 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    GameObject& CreateThirdPersonCameraController(PhysXSceneHandle scene, iAllocator& allocator, const float R, const float H)
+    GameObject& CreateThirdPersonCameraController(GameObject& gameObject, PhysXSceneHandle scene, iAllocator& allocator, const float R, const float H)
     {
-        auto& gameObject = allocator.allocate<GameObject>();
-
         gameObject.AddView<CharacterControllerView>(scene, &gameObject, float3{ 0, 10, 0 });
 
         gameObject.AddView<CameraControllerView>(

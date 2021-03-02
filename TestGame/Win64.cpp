@@ -59,11 +59,11 @@ int main(int argc, char* argv[])
         }
     }
 
+    auto* allocator = CreateEngineMemory();
+    EXITSCOPE(ReleaseEngineMemory(allocator));
+
     try
     {
-        auto* allocator = CreateEngineMemory();
-        EXITSCOPE(ReleaseEngineMemory(allocator));
-
         FlexKit::FKApplication app{ allocator, Max(std::thread::hardware_concurrency(), 1u) - 1 };
         app.GetCore().FrameLock = false;
 

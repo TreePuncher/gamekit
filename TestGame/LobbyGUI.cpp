@@ -19,6 +19,13 @@ LobbyState::LobbyState(GameFramework& framework, BaseState& IN_base, NetworkStat
         localPlayerCards.push_back(&base.framework.core.GetBlockMemory().allocate<FireBall>());
 }
 
+LobbyState::~LobbyState()
+{
+    for (auto card : localPlayerCards)
+        base.framework.core.GetBlockMemory().release_allocation(*card);
+}
+
+
 
 /************************************************************************************************/
 
@@ -29,9 +36,6 @@ UpdateTask* LobbyState::Update(EngineCore& core, UpdateDispatcher& dispatcher, d
     base.debugUI.Update(base.renderWindow, core, dispatcher, dT);
 
     net.Update(core, dispatcher, dT);
-
-    if (framework.PushPopDetected())
-        return nullptr;
 
     ImGui::NewFrame();
 
@@ -50,6 +54,7 @@ bool LobbyState::DrawChatRoom(EngineCore&, UpdateDispatcher&, double dT)
 {
     // Player List
     ImGui::Begin("Lobby");
+    EXITSCOPE(ImGui::End());
 
     int selected = 0;
 
@@ -91,7 +96,7 @@ bool LobbyState::DrawChatRoom(EngineCore&, UpdateDispatcher&, double dT)
     else if (ImGui::Button("Ready"))
         OnReady();
 
-    ImGui::End();
+    
 
     return false;
 }
