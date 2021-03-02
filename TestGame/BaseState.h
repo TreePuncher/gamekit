@@ -243,7 +243,7 @@ public:
 
     void PostDrawUpdate(EngineCore& core, double dT) override
     {
-        renderWindow.Present(1, 0);
+        renderWindow.Present(0, 0);
     }
 
 

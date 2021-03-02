@@ -146,13 +146,12 @@ namespace FlexKit
 
 
     TextureBlockAllocator::TextureBlockAllocator(const size_t blockCount, iAllocator* IN_allocator) :
-        blockTable      { IN_allocator },
-        allocator       { IN_allocator }
+        free            { IN_allocator },
+        stale           { IN_allocator },
+        inuse           { IN_allocator }
     {
-        blockTable.reserve(blockCount);
-
         for (size_t I = 0; I < blockCount; ++I)
-            blockTable.emplace_back(
+            free.emplace_back(
                 Block
                 {
                     (uint32_t)-1,
@@ -776,8 +775,85 @@ namespace FlexKit
             requests + requestCount,
             lg_comparitor);
 
-        const auto end            = std::unique(requests, requests + requestCount, eq_comparitor);
-        const auto uniqueCount    = (size_t)(end - requests);
+        auto end            = std::unique(requests, requests + requestCount, eq_comparitor);
+        auto uniqueCount    = (size_t)(end - requests);
+
+        size_t nextStart    = 0;
+
+        while (true)
+        {
+            size_t itr          = nextStart;
+            const size_t end    = uniqueCount;
+
+            bool finished = true;
+
+            for (;itr < end; ++itr)
+            {
+                const auto tile             = requests[itr];
+                const auto textureHandle    = ResourceHandle{ tile.TextureID };
+
+                if (!textureStreamEngine.GetResourceAsset(textureHandle).has_value())
+                    continue;
+
+                if(!tile.IsPacked())
+                {
+                    const auto mipLevel = tile.tileID.GetMipLevel() + 1;
+                    const auto tileX    = tile.tileID.GetTileX() / 2;
+                    const auto tileY    = tile.tileID.GetTileY() / 2;
+
+                    auto mipCount       = textureStreamEngine.renderSystem.GetTextureMipCount(textureHandle);
+                    auto WH             = textureStreamEngine.renderSystem.GetTextureWH(textureHandle);
+                    auto tileWH         = textureStreamEngine.renderSystem.GetTextureTilingWH(textureHandle, tile.tileID.GetMipLevel());
+                    auto tileSize       = GetFormatTileSize(textureStreamEngine.renderSystem.GetTextureFormat(textureHandle));
+                    size_t packBegin    = log2(Min(WH[0], WH[1])) - log2(Min(tileSize[0], tileSize[1])) + 1;
+
+                    if(packBegin < mipLevel){
+                        const gpuTileID newTile = {
+                            .TextureID  = tile.TextureID,
+                            .tileID     = TileID_t{
+                                .segments = {
+                                    .ytile      = tileY,
+                                    .xtile      = tileX,
+                                    .mipLevel   = mipLevel,
+                                    .packed     = false,
+                                }
+                            }
+                        };
+
+                        requests[uniqueCount++] = newTile;
+                    }
+                    else
+                    {
+                        const gpuTileID newTile = {
+                            .TextureID  = tile.TextureID,
+                            .tileID     = TileID_t{
+                                .segments = {
+                                    .ytile      = 0,
+                                    .xtile      = 0,
+                                    .mipLevel   = (uint)packBegin,
+                                    .packed     = true
+                                }
+                            }
+                        };
+
+                        requests[uniqueCount++] = newTile;
+                    }
+
+                    finished = false;
+                }
+
+                nextStart = end;
+            }
+
+            if (finished)
+                break;
+        }
+
+        std::sort(requests, requests + uniqueCount, lg_comparitor);
+
+        end            = std::unique(requests, requests + uniqueCount, eq_comparitor);
+        uniqueCount    = (size_t)(end - requests);
+
 
         const auto stateUpdateRes     = textureStreamEngine.UpdateTileStates(requests, requests + uniqueCount, &threadLocalAllocator);
         const auto blockAllocations   = textureStreamEngine.AllocateTiles(stateUpdateRes.begin(), stateUpdateRes.end());
@@ -903,10 +979,10 @@ namespace FlexKit
             for (const AllocatedBlock& block : blocks)
             {
                 const TileMapping mapping = {
-                    block.tileID,
-                    InvalidHandle_t,
-                    TileMapState::Null,
-                    block.offset,
+                    .tileID     = block.tileID,
+                    .heap       = heap,
+                    .state      = TileMapState::Null,
+                    .heapOffset = block.tileIdx,
                 };
 
                 mappings.push_back(mapping);
@@ -1135,8 +1211,8 @@ namespace FlexKit
             //barriers.emplace_back(b);
         }
 
-        renderSystem.UpdateTileMappings(updatedTextures.begin(), updatedTextures.end(), allocator);
-        renderSystem.SubmitUploadQueues(SYNC_Graphics, &ctxHandle, 1, sync);
+        auto syncPoint = renderSystem.UpdateTileMappings(updatedTextures.begin(), updatedTextures.end(), allocator);
+        renderSystem.SubmitUploadQueues(SYNC_Graphics, &ctxHandle, 1, syncPoint);
         //renderSystem._InsertBarrier(barriers);
     }
 
@@ -1148,38 +1224,51 @@ namespace FlexKit
     {
         auto pred = [](const auto& lhs, const auto& rhs)
         {
-            return (lhs.resource << 32 |  lhs.tileID) <  (size_t(rhs.resource) << 32 | rhs.tileID);
+            return lhs < rhs;
         };
 
-        std::sort(blockTable.begin(), blockTable.end(), pred);
+        std::sort(inuse.begin(), inuse.end(), pred);
 
-        for (auto& blockState : blockTable)
-            if(blockState.state != EBlockState::Free) blockState.state = EBlockState::Stale;
+        auto find = [&](const gpuTileID gpuTile) -> TextureBlockAllocator::Block*
+        {
 
-        auto I                  = begin;
-        size_t stateIterator    = 0;
+            for (auto& tile : inuse)
+                if (tile == gpuTile)
+                    return &tile;
+
+            return nullptr;
+        };
+
+        for (auto& itr : inuse)
+            itr.state = TextureBlockAllocator::EBlockState::Stale;
 
         Vector<gpuTileID> allocationsNeeded{ allocator };
+        for (const gpuTileID* itr = begin; itr < end; itr++)
+        {
+            if (ResourceHandle{ itr->TextureID } == InvalidHandle_t)
+                continue;
 
-        std::for_each(begin, end,
-            [&](const gpuTileID tile)
+            auto res = find(*itr);
+
+            if (res)
+                res->state = TextureBlockAllocator::EBlockState::InUse;
+            else
+                allocationsNeeded.push_back(*itr);
+        }
+
+
+        auto stalePartition = std::partition(inuse.begin(), inuse.end(),
+            [](auto& block)
             {
-                if (!tile.tileID.valid())
-                    return;
-
-                auto res =
-                    std::lower_bound(
-                        blockTable.begin(), blockTable.end(), tile,
-                        [&](auto lhs, auto rhs)
-                        {
-                            return lhs < rhs;
-                        });
-
-                if (res != std::end(blockTable) && res->tileID == tile.tileID && res->resource == tile.TextureID)
-                    res->state = EBlockState::InUse;
-                else
-                    allocationsNeeded.push_back(tile);
+                return block.state == EBlockState::InUse;
             });
+
+
+        for (auto itr = stalePartition; itr < inuse.end(); itr++ )
+            stale.push_back(*itr);
+
+        if(stalePartition != inuse.end())
+            inuse.erase(stalePartition, inuse.end());
 
         return allocationsNeeded;
     }
@@ -1194,72 +1283,80 @@ namespace FlexKit
         AllocatedBlockList reallocatedBlocks    { allocator };
         AllocatedBlockList packedBlocks         { allocator };
 
-        uint32_t            itr         = 0;
-        const auto          blockCount  = blockTable.size();
-        const gpuTileID*    block_itr   = begin;
-        int allocatedBlockCount         = 0;
+        const auto inuseEnd = inuse.size();
 
-        while (block_itr < end && allocatedBlockCount < 128)
-        {
-            while (itr < blockCount)
+        std::sort(stale.begin(), stale.end(),
+            [&](auto lhs, auto rhs)
             {
-                const auto idx          = (last + itr) % blockCount;
+                return lhs > rhs;
+            });
 
-                if (blockTable[idx].state != EBlockState::InUse &&
-                    blockTable[idx].tileID.GetMipLevel() > block_itr->tileID.GetMipLevel())
+        std::for_each(begin, end,
+            [&](gpuTileID tile)
+            {
+                if (ResourceHandle{ tile.TextureID } == InvalidHandle_t)
+                    return;
+
+                if (free.size())
                 {
-                    if (blockTable[idx].resource != InvalidHandle_t &&
-                        (blockTable[idx].state == EBlockState::Stale ||
-                         blockTable[idx].tileID.GetMipLevel() > block_itr->tileID.GetMipLevel()))
-                    {
-                        reallocatedBlocks.push_back({
-                            blockTable[idx].tileID,
-                            blockTable[idx].resource,
-                            blockTable[idx].blockID * 64 * KILOBYTE,
-                            blockTable[idx].blockID
-                            });
-                    }
+                    auto block      = free.pop_back();
+                    block.tileID    = tile.tileID;
+                    block.resource  = ResourceHandle{ tile.TextureID };
+                    block.state     = EBlockState::InUse;
+                    inuse.push_back(block);
 
-                    const auto resourceHandle = ResourceHandle{ block_itr->TextureID };
-                    const auto tileID         = block_itr->tileID;
+                    AllocatedBlock allocation{
+                        .tileID     = tile.tileID,
+                        .resource   = ResourceHandle{ tile.TextureID },
+                        .offset     = block.blockID * 64 * KILOBYTE,
+                        .tileIdx    = block.blockID
+                    };
 
-                    blockTable[idx].resource = resourceHandle;
-                    blockTable[idx].tileID   = tileID;
-                    blockTable[idx].state    = EBlockState::InUse;
-                    blockTable[idx].packed   = block_itr->IsPacked();
-
-                    AllocatedBlock block = {
-                            tileID,
-                            resourceHandle,
-                            blockTable[idx].blockID * 64 * KILOBYTE,
-                            blockTable[idx].blockID };
-
-                    if (block_itr->IsPacked())
-                        packedBlocks.push_back(block);
+                    if (tile.IsPacked())
+                        packedBlocks.push_back(allocation);
                     else
-                        allocatedBlocks.push_back(block);
-
-                    allocatedBlockCount++;
-
-                    break;
+                        allocatedBlocks.push_back(allocation);
                 }
+                else if (stale.size())
+                {
+                    auto block  = stale.pop_back();
 
-                ++itr;
-            }
+                    AllocatedBlock reallocation{
+                        .tileID     = block.tileID,
+                        .resource   = block.resource,
+                        .offset     = block.blockID * 64 * KILOBYTE,
+                        .tileIdx    = block.blockID
+                    };
 
-            if (itr > blockCount)
-            {
-                last = 0;
-                return {
-                    std::move(reallocatedBlocks),
-                    std::move(allocatedBlocks),
-                    std::move(packedBlocks) }; /// Hrmm, we ran out of free blocks
-            }
+                    reallocatedBlocks.push_back(reallocation);
 
-            block_itr++;
-        }
+                    if (block.state != EBlockState::Stale)
+                        DebugBreak();
 
-        last = (last + itr + 1) % blockTable.size();
+                    block.tileID    = tile.tileID;
+                    block.resource  = ResourceHandle{ tile.TextureID };
+                    block.state     = EBlockState::InUse;
+
+                    inuse.push_back(block);
+
+                    AllocatedBlock allocation{
+                        .tileID     = tile.tileID,
+                        .resource   = ResourceHandle{ tile.TextureID },
+                        .offset     = block.blockID * 64 * KILOBYTE,
+                        .tileIdx    = block.blockID
+                    };
+
+                    if (tile.IsPacked())
+                        packedBlocks.push_back(allocation);
+                    else
+                        allocatedBlocks.push_back(allocation);
+                }
+                else
+                {   // steal
+                    DebugBreak();
+                    FK_ASSERT(0);
+                }
+            });
 
         return {
             std::move(reallocatedBlocks),

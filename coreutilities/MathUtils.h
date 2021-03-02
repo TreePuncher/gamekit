@@ -529,6 +529,21 @@ namespace FlexKit
     }
 
 
+    /************************************************************************************************/
+
+
+    FLEXKITAPI template<typename TY_Vs, size_t ELEMENT_COUNT = 1>
+    Vect<ELEMENT_COUNT, TY_Vs> operator / (const Vect<ELEMENT_COUNT, TY_Vs>& v1, const Vect<ELEMENT_COUNT, TY_Vs>& v2)// scaler multiply
+    {
+        auto V_out = v1;
+
+        for (size_t I = 0; I < ELEMENT_COUNT; ++I)
+            V_out[I] = v1[I] / v2[I];
+
+        return V_out;
+    }
+
+
 	/************************************************************************************************/
 
 
