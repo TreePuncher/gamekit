@@ -218,7 +218,7 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
         if(CheckAccessFullyMapped(state))
             return texel;
 
-        mip = (mip + 1);
+        mip = floor(mip + 1);
     }
     
     return float4(1.0f, 0.0f, 1.0f, 0.0f); // NO PAGES LOADED!
