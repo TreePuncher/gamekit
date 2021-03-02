@@ -184,6 +184,10 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
         float4(0, 0, 1, 1),
     };
 
+    #if 0
+    return float4(1, 0, 1, 1);
+    #endif
+
     float MIPCount      = 1;
     float width         = 0;
     float height        = 0;
@@ -196,10 +200,25 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
         uint state;
         const float4 texel = source.SampleLevel(textureSampler, UV, mip, 0.0f, state);
 
+        #if 0
+        uint mipWidth;
+        uint mipHeight;
+        source.GetDimensions(mip, mipWidth, mipHeight, MIPCount);
+
+        const float tilesW = float(mipWidth)  / 256.0f;
+        const float tilesH = float(mipHeight) / 256.0f;
+
+        const uint tilex = tilesW * UV.x;
+        const uint tiley = tilesW * UV.y;
+
+        if(CheckAccessFullyMapped(state))
+            return float4(float(tilex) / tilesW, float(tiley) / tilesH, float(mip) / MIPCount, 1);
+        #endif
+
         if(CheckAccessFullyMapped(state))
             return texel;
 
-        mip = floor(mip + 1);
+        mip = (mip + 1);
     }
     
     return float4(1.0f, 0.0f, 1.0f, 0.0f); // NO PAGES LOADED!
@@ -207,7 +226,7 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
 
 Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 {
-    const float4 albedo       = textureCount >= 1 ? SampleVirtualTexture(albedoTexture, BiLinear, IN.UV) : float4(1, 1, 1, 1);
+    const float4 albedo     = textureCount >= 1 ? SampleVirtualTexture(albedoTexture, BiLinear, IN.UV) : float4(1, 1, 1, 1);
     
     if(albedo.w < 0.5f)
     {   

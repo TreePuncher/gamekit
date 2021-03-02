@@ -52,9 +52,12 @@ uint Packed(uint TextureIdx, const float2 UV, const uint lod)
     return packed;
 }
 
-uint CreateTileID(const uint2 XY, const uint mipLevel, const bool packed)
+uint CreateTileID(const uint2 XY, const uint mipLevel, const bool packed, const uint mipCount)
 {
-    return (packed << 31) | (mipLevel << 24) | (packed ? 0 : ((0x0F & XY.x) << 12) | (0x0F & XY.y));
+    if(packed)
+        return (packed << 31) | (mipLevel << 24);
+    else
+        return (packed << 31) | (mipLevel << 24) | (packed ? 0 : ((0xFF & XY.x) << 12) | (0xFF & XY.y));
 }
 
 void PushSample(const float2 UV, const uint desiredLod, const uint TextureIdx, uint2 XY)
@@ -67,6 +70,9 @@ void PushSample(const float2 UV, const uint desiredLod, const uint TextureIdx, u
     
     textures[TextureIdx].GetDimensions(desiredLod, MIPWH.x, MIPWH.y, MIPCount);
 
+    if (MIPWH.x == 0 || MIPWH.y == 0)
+        return;
+        
     int lod             = desiredLod;
     const int packed    = MIPWH.x < blockSize.x;
     
@@ -89,13 +95,7 @@ void PushSample(const float2 UV, const uint desiredLod, const uint TextureIdx, u
     
     const uint2 blockArea   = max(uint2(MIPWH / blockSize), uint2(1, 1));
     const uint2 blockXY     = min(blockArea * saturate(UV), blockArea - uint2(1, 1));
-    const uint  blockID     = CreateTileID(blockXY, lod, packed);
-
-    MIPWH = 0;
-    textures[TextureIdx].GetDimensions(lod, MIPWH.x, MIPWH.y, MIPCount);
-        
-    if (MIPWH.x == 0 || MIPWH.y == 0)
-        return;
+    const uint  blockID     = CreateTileID(blockXY, lod, packed, MIPCount);
 
     UAVBuffer.Append(uint2(textureID, blockID));
 }
@@ -111,10 +111,10 @@ bool CheckLoaded(Texture2D source, in sampler textureSampler, in float2 UV, uint
 [earlydepthstencil]  
 void TextureFeedback_PS(Forward_VS_OUT IN)
 {
-    const float4 XY = IN.POS;
-    const float maxAniso = 4;
-    const float maxAnisoLog2 = log2(maxAniso);
-    const float2 UV = IN.UV % 1.0f;
+    const float4 XY             = IN.POS;
+    const float maxAniso        = 4;
+    const float maxAnisoLog2    = log2(maxAniso);
+    const float2 UV             = IN.UV % 1.0f;
     
     for(uint I = 0; I < textureCount; I++)
     {
@@ -132,11 +132,11 @@ void TextureFeedback_PS(Forward_VS_OUT IN)
         const float minLod = 0.5 * log2(min(px, py));
 
         const float anisoLOD    = maxLod - min(maxLod - minLod, maxAnisoLog2);
-        const float desiredLod  = max(min(floor(maxLod) + feedbackBias + 0.5f, MIPCount - 1), 0);
+        const float desiredLod  = max(min(floor(maxLod) + feedbackBias - 0.5f, MIPCount - 1), 0);
         
-        for(int lod = floor(desiredLod); lod < MIPCount - 1; lod += 1)
+        for(int lod = MIPCount - 1; lod > 0 && lod > floor(desiredLod); --lod)
         {
-            if(CheckLoaded(textures[I], defaultSampler, UV, min(lod + 1, MIPCount)) | Packed(I, UV, lod))
+            if(!CheckLoaded(textures[I], defaultSampler, UV, lod))
             {
                 PushSample(UV, lod, I, XY.xy);
                 break;

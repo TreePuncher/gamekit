@@ -124,15 +124,6 @@ namespace FlexKit
         }
     }
 
-    inline uint2 GetFormatTileSize(DeviceFormat format)
-    {
-        //switch (format)
-        //{
-        //default:
-            return { 256, 256 };
-        //}
-    }
-
     struct DDSLevelInfo
     {
         size_t  RowPitch = 0;
@@ -359,6 +350,14 @@ namespace FlexKit
             {
                 return ((uint64_t)resource.to_uint()) << 32 | tileID;
             }
+
+            operator gpuTileID() const
+            {
+                return
+                    gpuTileID{
+                        .TextureID  = resource.to_uint(),
+                        .tileID     = tileID };
+            }
         };
 
         enum EBlockState : uint8_t
@@ -378,7 +377,9 @@ namespace FlexKit
         const static uint32_t   blockSize   = 64 * KILOBYTE;
         uint32_t                last        = 0;
 
-        Vector<Block>           blockTable;
+        Vector<Block>           free;
+        Vector<Block>           stale;
+        Vector<Block>           inuse;
 
 		iAllocator*             allocator;
 	};

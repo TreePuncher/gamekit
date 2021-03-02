@@ -4141,6 +4141,21 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    uint2 RenderSystem::GetTextureTilingWH(ResourceHandle handle, const uint mipLevel) const
+    {
+        auto WH = Textures.GetWH(handle);
+        WH[0]   = WH[0] >> mipLevel;
+        WH[1]   = WH[1] >> mipLevel;
+
+        const auto tileSize = GetFormatTileSize(GetTextureFormat(handle));
+
+        return WH / tileSize;
+    }
+
+
 	/************************************************************************************************/
 
 
@@ -4563,7 +4578,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator)
+    SyncPoint RenderSystem::UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator)
 	{
 		FK_LOG_9("Updating tile mappings for frame: %u", GetCurrentFrame());
 
@@ -4581,8 +4596,53 @@ namespace FlexKit
 			Vector<UINT>                            tileRanges  { allocator };
 			DeviceHeapHandle                        heap = InvalidHandle_t;
 
-			uint32_t I = 0;
 
+            auto nullEnd = std::partition(mappings.begin(), mappings.end(),
+                [](auto& mapping)
+                {
+                    return mapping.state == TileMapState::Null;
+                });
+
+            std::for_each(mappings.begin(), nullEnd,
+                [&](auto& mapping)
+                {
+                    const auto flag = D3D12_TILE_RANGE_FLAG_NULL;
+
+					D3D12_TILED_RESOURCE_COORDINATE coordinate;
+					coordinate.Subresource  = mapping.tileID.GetMipLevel();
+					coordinate.X            = mapping.tileID.GetTileX();
+					coordinate.Y            = mapping.tileID.GetTileY();
+					coordinate.Z            = 0;
+
+					coordinates.push_back(coordinate);
+
+					offsets.push_back(mapping.heapOffset);
+					flags.push_back(flag);
+					tileRanges.push_back(1);
+                });
+
+            if (coordinates.size())
+            {
+                copyEngine.copyQueue->UpdateTileMappings(
+                    deviceResource,
+                    coordinates.size(),
+                    coordinates.data(),
+                    nullptr,
+                    nullptr,
+                    coordinates.size(),
+                    flags.data(),
+                    offsets.data(),
+                    tileRanges.data(),
+                    D3D12_TILE_MAPPING_FLAG_NONE);
+            }
+
+            coordinates.clear();
+            regionSizes.clear();
+            flags.clear();
+            offsets.clear();
+            tileRanges.clear();
+
+            uint32_t I = std::distance(mappings.begin(), nullEnd);
 			while(I < mappings.size())
 			{
 				heap = mappings[I].heap;
@@ -4591,13 +4651,9 @@ namespace FlexKit
 				{
 					auto& mapping = mappings[I];
 
-					if (mapping.state == TileMapState::InUse)
-						continue;
+					mapping.state = TileMapState::InUse;
 
-					if (mapping.state == TileMapState::Updated)
-						mapping.state = TileMapState::InUse;
-
-					const auto flag = mapping.state == TileMapState::Null ? D3D12_TILE_RANGE_FLAG_NULL : D3D12_TILE_RANGE_FLAG_NONE;
+					const auto flag = D3D12_TILE_RANGE_FLAG_NONE;
 
 					D3D12_TILED_RESOURCE_COORDINATE coordinate;
 					coordinate.Subresource  = mapping.tileID.GetMipLevel();
@@ -4609,7 +4665,7 @@ namespace FlexKit
 					if(flag == D3D12_TILE_RANGE_FLAG_NONE)
 						FK_LOG_9("Mapping Tile { %u, %u, %u MIP } to Offset: { %u }", coordinate.X, coordinate.Y, coordinate.Subresource, mapping.heapOffset );
 					else
-						FK_LOG_9("Unmapping Tile { %u, %u, %u MIP } from Offset: { %u }", coordinate.X, coordinate.Y, coordinate.Subresource, mapping.heapOffset);
+                        FK_LOG_INFO("Unmapping Tile { %u, %u, %u MIP } from Offset: { %u }", coordinate.X, coordinate.Y, coordinate.Subresource, mapping.heapOffset);
 #endif
 
 					coordinates.push_back(coordinate);
@@ -4677,6 +4733,12 @@ namespace FlexKit
 		}
 
 		FK_LOG_9("Completed file mapping update");
+
+        const auto counter = ++FenceCounter;
+        if (auto HR = GraphicsQueue->Signal(Fence, counter); FAILED(HR))
+            FK_LOG_ERROR("Failed to Signal");
+
+        return { counter, Fence };
 	}
 
 

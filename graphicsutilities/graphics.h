@@ -2642,7 +2642,7 @@ private:
 
         bool valid() const
         {
-            return segments.xtile < 64 && segments.ytile < 64 && segments.mipLevel <= 14;
+            return segments.xtile < 128 && segments.ytile < 128 && segments.mipLevel <= 14;
         }
 
 		bool packed() const
@@ -3390,6 +3390,15 @@ private:
     };
 
 
+    inline uint2 GetFormatTileSize(DeviceFormat format)
+    {
+        //switch (format)
+        //{
+        //default:
+        return { 256, 256 };
+        //}
+    }
+
 	FLEXKITAPI class RenderSystem
 	{
 	public:
@@ -3468,9 +3477,11 @@ private:
 		DeviceFormat	GetTextureFormat(ResourceHandle Handle) const;
 		DXGI_FORMAT		GetTextureDeviceFormat(ResourceHandle Handle) const;
         uint8_t         GetTextureMipCount(ResourceHandle Handle) const;
+        uint2           GetTextureTilingWH(ResourceHandle Handle, const uint mipLevel) const;
 
 
-		void                UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator);
+
+        SyncPoint           UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator);
 		void                UpdateTextureTileMappings(const ResourceHandle Handle, const TileMapList&);
 		const TileMapList&  GetTileMappings(const ResourceHandle Handle);
 
