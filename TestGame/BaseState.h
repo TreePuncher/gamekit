@@ -224,6 +224,7 @@ public:
 		framework.GetRenderSystem().ReleaseVB(vertexBuffer);
 		framework.GetRenderSystem().ReleaseCB(constantBuffer);
         framework.GetRenderSystem().ReleaseResource(depthBuffer);
+        framework.core.GetBlockMemory().release_allocation(rtEngine);
 
         renderWindow.Release();
 	}

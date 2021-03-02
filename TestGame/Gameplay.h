@@ -69,10 +69,10 @@ enum PLAYER_INPUT_EVENTS : int64_t
 	PLAYER_DOWN				= GetCRCGUID(PLAYER_DOWN),
 	PLAYER_RIGHT			= GetCRCGUID(PLAYER_RIGHT),
 
-	PLAYER_ACTION1			= GetTypeGUID(A123CTION11),
-	PLAYER_ACTION2			= GetTypeGUID(AC3TION12),
-	PLAYER_ACTION3			= GetTypeGUID(A11123CTION13),
-	PLAYER_ACTION4			= GetTypeGUID(AC123TION11),
+	PLAYER_ACTION1			= GetTypeGUID(PLAYER_ACTION1),
+	PLAYER_ACTION2			= GetTypeGUID(PLAYER_ACTION2),
+	PLAYER_ACTION3			= GetTypeGUID(PLAYER_ACTION3),
+	PLAYER_ACTION4			= GetTypeGUID(PLAYER_ACTION4),
 
 	PLAYER_HOLD				= GetCRCGUID(PLAYER_HOLD),
 
@@ -216,21 +216,21 @@ struct PlayerState
 
         if (playerHealth > 0.0f)
         {
-            FlexKit::Event event;
-            event.InputSource       = Event::InputType::Local;
-            event.mType             = Event::EventType::iObject;
-            event.mData1.mINT[0]    = (int)PlayerEvents::PlayerHit;
+            FlexKit::Event evt;
+            evt.InputSource       = Event::InputType::Local;
+            evt.mType             = Event::EventType::iObject;
+            evt.mData1.mINT[0]    = (int)PlayerEvents::PlayerHit;
 
-            std::cout << "Player took hit, Health: " << playerHealth << "\n";
+            playerEvents.push_back(evt);
         }
         else if(playerHealth <= 0.0f)
         {
-            FlexKit::Event event;
-            event.InputSource       = Event::InputType::Local;
-            event.mType             = Event::EventType::iObject;
-            event.mData1.mINT[0]    = (int)PlayerEvents::PlayerDeath;
+            FlexKit::Event evt;
+            evt.InputSource       = Event::InputType::Local;
+            evt.mType             = Event::EventType::iObject;
+            evt.mData1.mINT[0]    = (int)PlayerEvents::PlayerDeath;
 
-            std::cout << "Player took hit, DEAD\n";
+            playerEvents.push_back(evt);
         }
     }
 
@@ -305,7 +305,6 @@ using SpellHandle       = Handle_t<32, SpellComponentID>;
 using SpellComponent    = BasicComponent_t<SpellData, SpellHandle, SpellComponentID>;
 using SpellView         = SpellComponent::View;
 
-GameObject& CreatePlayer(const PlayerDesc& desc, RenderSystem& renderSystem, iAllocator& allocator);
 
 class GameWorld
 {
@@ -325,6 +324,8 @@ public:
     }
 
 
+    GameObject& CreatePlayer(const PlayerDesc& desc);
+
     GameObject& AddLocalPlayer(MultiplayerPlayerID_t multiplayerID)
     {
         return CreatePlayer(
@@ -334,9 +335,7 @@ public:
                         .gscene = gscene,
                         .h      = 0.5f,
                         .r      = 0.5f
-                    },
-                    renderSystem,
-                    allocator);
+                    });
     }
 
     GameObject& AddRemotePlayer(MultiplayerPlayerID_t playerID, ConnectionHandle connection = InvalidHandle_t)

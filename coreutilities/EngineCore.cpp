@@ -103,6 +103,8 @@ namespace FlexKit
 
 		CmdArguments.Release();
 		RenderSystem.Release();
+        SceneNodeTable.Release();
+        ReleaseGeometryTable();
 
 		Threads.Release();
 

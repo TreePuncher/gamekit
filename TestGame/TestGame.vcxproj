@@ -124,6 +124,7 @@
     <ClInclude Include="..\coreutilities\Materials.h" />
     <ClInclude Include="..\coreutilities\MathUtils.h" />
     <ClInclude Include="..\coreutilities\NetworkUtilities.h" />
+    <ClInclude Include="..\coreutilities\Particles.h" />
     <ClInclude Include="..\coreutilities\ProfilingUtilities.h" />
     <ClInclude Include="..\coreutilities\ResourceHandles.h" />
     <ClInclude Include="..\coreutilities\Signal.h" />
@@ -241,6 +242,7 @@
     <ClCompile Include="..\coreutilities\NetworkUtilities.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\coreutilities\Particles.cpp" />
     <ClCompile Include="..\coreutilities\ProfilingUtilities.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>

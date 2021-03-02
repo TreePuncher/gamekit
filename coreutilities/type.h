@@ -160,7 +160,7 @@ namespace FlexKit
 	template<size_t SIZE, typename TY>
 	constexpr Type_t GenerateTypeGUID(const TY& A)
 	{
-		return ~IDGen<SIZE - 2>::GetHash2(A);
+		return ~IDGen<SIZE - 1>::GetHash2(A);
         /*
         //return GetCRC32(A);
 

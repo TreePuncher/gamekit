@@ -50,7 +50,7 @@ namespace FlexKit
 		double FPSTimer			= 0.0;
 		double dT				= 1.0 / 120.0;
 
-		while (!Core.End && framework.subStates.size())
+		while (!Core.End && framework.Running())
 		{
             profiler.BeginFrame();
 

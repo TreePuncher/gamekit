@@ -67,6 +67,7 @@ namespace FlexKit
         GameFramework&	GetFramework()  { return framework; }
         EngineCore&     GetCore()       { return Core;      }
 
+        bool running() { return framework.Running();  }
     private:
         EngineMemory*	        Memory;
         EngineCore		        Core;

@@ -153,6 +153,8 @@ namespace FlexKit
 
 			Release();
 
+            ReleaseGeometryTable();
+            SceneNodeTable.Release();
             RenderSystem.Release();
             profiler.Release();
 

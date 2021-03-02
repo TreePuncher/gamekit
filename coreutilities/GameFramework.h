@@ -106,7 +106,7 @@ namespace FlexKit
 
 		void        PostDraw    (iAllocator* TempMemory, double dT);
 
-		void Release		();
+		void Release();
 
 		void DrawFrame(double dT);
 
@@ -117,6 +117,7 @@ namespace FlexKit
 		void PostPhysicsUpdate	();
 		void PrePhysicsUpdate	();
 
+        void PushState(FrameworkState& state);
 		void PopState();
 
 		RenderSystem&	GetRenderSystem()	{ return core.RenderSystem; }
@@ -126,18 +127,14 @@ namespace FlexKit
 		{
 			FK_LOG_9("Pushing New State");
 
-			auto& State = core.GetBlockMemory().allocate_aligned<TY_INITIALSTATE>(*this, std::forward<TY_ARGS>(args)...);
+			auto& state = core.GetBlockMemory().allocate_aligned<TY_INITIALSTATE>(*this, std::forward<TY_ARGS>(args)...);
 
-			subStates.push_back(&State);
+            PushState(state);
 
-            pushOccured = true;
-
-			return State;
+			return state;
 		}
 
-        bool    PushPopDetected() const {
-            return pushOccured;
-        }
+        bool PushPopDetected() const { return deferredPushes.size() | deferredFrees.size(); }
 
 		LogCallback				logMessagePipe = {
 			"INFO",
@@ -145,19 +142,24 @@ namespace FlexKit
 			PushMessageToConsole
 		};
 
+        bool Running() const
+        {
+            return !quit && (subStates.size() || deferredPushes.size());
+        }
+
 		EngineCore&				core;
 		NodeHandle				rootNode;
 
 		static_vector<MouseHandler>		mouseHandlers;
 		static_vector<FrameworkState*>	subStates;
-        static_vector<FrameworkState*>	delayedFrees;
+        static_vector<FrameworkState*>	deferredPushes;
+        static_vector<FrameworkState*>	deferredFrees;
 
 		double	physicsUpdateTimer;
 		bool	consoleActive;
 		bool	drawDebugStats;
 		bool	drawPhysicsDebug;
 		bool	quit;
-        bool    pushOccured = false;
 
 		double runningTime			= 0.0;
 		double fixStepAccumulator	= 0.0;

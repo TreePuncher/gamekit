@@ -69,6 +69,11 @@ HostWorldStateMangager::~HostWorldStateMangager()
 {
     auto& allocator = base.framework.core.GetBlockMemory();
 
+    for (auto handler : packetHandlers)
+        allocator.release_allocation(*handler);
+
+    packetHandlers.clear();
+
     localPlayer.Release();
     world.gscene.ClearScene();
 }
@@ -309,6 +314,18 @@ HostState::HostState(GameFramework& framework, GameInfo IN_info, BaseState& IN_b
 
     net.PushHandler(handler);
     net.Startup(1337);
+}
+
+
+/************************************************************************************************/
+
+
+HostState::~HostState()
+{
+    for (auto h : handler)
+        framework.core.GetBlockMemory().release_allocation(*h);
+
+    handler.clear();
 }
 
 

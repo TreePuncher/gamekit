@@ -566,10 +566,11 @@ namespace FlexKit
 	{
 	public:
 		GraphicScene(iAllocator* in_allocator = SystemAllocator) :
-				allocator					{ in_allocator							},
-				HandleTable					{ in_allocator							},
-				sceneID						{ rand()								},
-				sceneEntities				{ in_allocator							} {}
+				allocator					{ in_allocator	},
+				HandleTable					{ in_allocator	},
+				sceneID						{ rand()		},
+                ownedGameObjects            { in_allocator  },
+				sceneEntities				{ in_allocator	} {}
 				
 		~GraphicScene()
 		{
@@ -597,7 +598,8 @@ namespace FlexKit
 		const SceneHandle					sceneID;
 
 		HandleUtilities::HandleTable<SceneEntityHandle> HandleTable;
-			
+
+        Vector<GameObject*>		        ownedGameObjects;
 		Vector<VisibilityHandle>		sceneEntities;
         SceneBVH                        bvh;
 		iAllocator*						allocator       = nullptr;
