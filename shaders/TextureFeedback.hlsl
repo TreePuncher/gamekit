@@ -132,15 +132,17 @@ void TextureFeedback_PS(Forward_VS_OUT IN)
         const float minLod = 0.5 * log2(min(px, py));
 
         const float anisoLOD    = maxLod - min(maxLod - minLod, maxAnisoLog2);
-        const float desiredLod  = max(min(floor(maxLod) + feedbackBias - 0.5f, MIPCount - 1), 0);
+        const float desiredLod  = max(min(floor(maxLod) + feedbackBias - 1.0f, MIPCount - 1), 0);
         
-        for(int lod = MIPCount - 1; lod > 0 && lod > floor(desiredLod); --lod)
+        for(int lod = MIPCount - 1; lod > 0 && lod >= floor(desiredLod); --lod)
         {
             if(!CheckLoaded(textures[I], defaultSampler, UV, lod))
             {
                 PushSample(UV, lod, I, XY.xy);
-                break;
+                return;
             }
         }
+
+        PushSample(UV, floor(desiredLod), I, XY.xy);
     }
 }

@@ -284,7 +284,7 @@ namespace FlexKit
 
 	struct TextureCacheDesc
 	{
-		const size_t textureCacheSize	= 128 * MEGABYTE;
+		const size_t textureCacheSize	= 64 * MEGABYTE;
 		const size_t blockSize			= GetTileByteSize();
 	};
 
@@ -307,8 +307,7 @@ namespace FlexKit
 
         uint64_t GetSortingID() const
         {
-            return (uint64_t(TextureID) << 32) | tileID.bytes;
-            //return (uint64_t(tileID.bytes) << 32) | TextureID;
+            return (uint64_t(TextureID) << 32) | CreateTileID(tileID.GetTileX(), tileID.GetTileY(), tileID.GetMipLevel());
         }
 
         bool IsPacked() const
@@ -342,7 +341,7 @@ namespace FlexKit
             ResourceHandle  resource            = InvalidHandle_t;
             uint8_t         state               = EBlockState::Free;
             uint8_t         packed              = 0;
-            uint8_t         parentLevel         = -1;
+            uint8_t         staleFrameCount     = 0;
             uint8_t         packedLevelCount    = -1;
             uint32_t        blockID;
 
