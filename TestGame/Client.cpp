@@ -90,14 +90,12 @@ WorldStateUpdate ClientWorldStateMangager::Update(EngineCore& core, UpdateDispat
 
     net.Update(core, dispatcher, dT);
 
-    struct WorldUpdate
-    {
-
-    };
+    struct _ { };
 
     WorldStateUpdate out;
+
     auto& worldUpdate =
-        dispatcher.Add<WorldUpdate>(
+        dispatcher.Add<_>(
             [](UpdateDispatcher::UpdateBuilder& Builder, auto& data)
             {
             },
@@ -153,6 +151,7 @@ WorldStateUpdate ClientWorldStateMangager::Update(EngineCore& core, UpdateDispat
     physicsUpdate.AddInput(spellUpdate);
 
     out.update = &physicsUpdate;
+
     return out;
 }
 

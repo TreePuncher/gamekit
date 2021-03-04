@@ -72,7 +72,6 @@ struct Vertex
     float3 Normal	: NORMAL;
     float3 Tangent	: Tangent;
     float2 UV		: TEXCOORD;
-
 };
 
 struct Forward_VS_OUT
@@ -88,12 +87,12 @@ struct Forward_VS_OUT
 Forward_VS_OUT Forward_VS(Vertex In)
 {
     Forward_VS_OUT Out;
-    Out.WPOS	= mul(WT, float4(In.POS, 1));
-    Out.POS		= mul(PV, mul(WT, float4(In.POS, 1)));
-    Out.Normal  = normalize(mul(WT, float4(In.Normal, 0.0f)));
-    Out.Tangent = normalize(mul(WT, float4(In.Tangent, 0.0f)));
-    Out.Bitangent = cross(Out.Tangent, Out.Normal);
-    Out.UV		= In.UV;
+    Out.WPOS	    = mul(WT, float4(In.POS, 1));
+    Out.POS		    = mul(PV, mul(WT, float4(In.POS, 1)));
+    Out.Normal      = normalize(mul(WT, float4(In.Normal, 0.0f)));
+    Out.Tangent     = normalize(mul(WT, float4(In.Tangent, 0.0f)));
+    Out.Bitangent   = cross(Out.Tangent, Out.Normal);
+    Out.UV		    = In.UV;
 
     return Out;
 }
@@ -250,10 +249,9 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
     float3x3 TBN        = transpose(inverseTBN);
     const float3 normal = mul(TBN, normalCorrected * 2.0f - 1.0f);
 
-    gbuffer.Normal      = mul(View, float4(normalize(normal), 0));
-    gbuffer.MRIA        = roughMetal.zyxx;
     gbuffer.Albedo      = float4(albedo.xyz, Ks);
-
+    gbuffer.MRIA        = roughMetal.zyxx;
+    gbuffer.Normal      = mul(View, float4(normalize(normal), 0));
     gbuffer.Depth       = length(IN.WPOS - CameraPOS.xyz) / MaxZ;
 
     return gbuffer;

@@ -96,11 +96,17 @@ bool HandleEvents(PlayerInputState& keyState, Event evt)
 
 
 LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerInterface& IN_worldState, BaseState& IN_base) :
-        FrameworkState  { IN_framework  },
-        worldState      { IN_worldState },
-        base            { IN_base }
+        FrameworkState      { IN_framework  },
+        worldState          { IN_worldState },
+        testParticleSystem  { IN_framework.core.GetBlockMemory() },
+        emitters            { IN_framework.core.GetBlockMemory() },
+        base                { IN_base }
 {
     //base.renderWindow.ToggleMouseCapture();
+    auto& renderSystem = framework.core.RenderSystem;
+
+    renderSystem.RegisterPSOLoader(INSTANCEPARTICLEDPASS,       { &renderSystem.Library.RSDefault, CreateParticleMeshInstancedPSO });
+    renderSystem.RegisterPSOLoader(INSTANCEPARTICLEDEPTHDPASS,  { &renderSystem.Library.RSDefault, CreateParticleMeshInstancedDepthPSO });
 
     worldState.SetOnGameEventRecieved(
         [&](Event evt)
@@ -108,6 +114,11 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
             EventHandler(evt);
         }
     );
+
+
+    auto& particleEmitter = worldState.CreateGameObject();
+    particleEmitter.AddView<SceneNodeView<>>();
+    particleEmitter.AddView<ParticleEmitterView>(ParticleEmitterData{ &testParticleSystem, GetSceneNode(particleEmitter) });
 }
 
 
@@ -142,7 +153,6 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 {
     ProfileFunction();
 
-
     frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
     frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
 
@@ -157,7 +167,18 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
     if (updateTask)
         transforms.AddInput(*updateTask);
 
+    auto tasks = worldState.DrawTasks(core, dispatcher, dT);
+
+    for (auto task : tasks)
+        cameras.AddOutput(*task);
+
     cameras.AddInput(transforms);
+
+    auto& emitterTask            = UpdateParticleEmitters(dispatcher, dT);
+    auto& particleSystemUpdate   = testParticleSystem.Update(dT, core.Threads, dispatcher);
+
+    emitterTask.AddInput(transforms);
+    emitterTask.AddOutput(particleSystemUpdate);
 
     WorldRender_Targets targets = {
         base.renderWindow.GetBackBuffer(),
@@ -173,6 +194,14 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 
     if (base.renderWindow.GetWH().Product() != 0)
     {
+        auto& renderSystem = base.framework.core.RenderSystem;
+
+        auto [triMesh, loaded] = FindMesh(7894);
+
+        if (!loaded)
+            triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), 7894);
+
+
         DrawSceneDescription sceneDesc =
         {
             .camera = activeCamera,
@@ -190,18 +219,63 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 
             .transformDependency    = transforms,
             .cameraDependency       = cameras,
+
+            .additionalGbufferPass  = {
+                [&]()
+                {
+                    auto& particlePass  = testParticleSystem.DrawInstanceMesh(
+                            testParticleSystem,
+                            particleSystemUpdate,
+                            dispatcher,
+                            frameGraph,
+                            triMesh,
+                            reserveCB,
+                            reserveVB,
+                            activeCamera,
+                            base.gbuffer,
+                            targets.DepthTarget);
+                }},
+            .additionalShadowPass = {
+                    [&, triMesh = triMesh](
+                        ReserveConstantBufferFunction&  reserveCB,
+                        ReserveVertexBufferFunction&    reserveVB,
+                        ConstantBufferDataSet*          passConstants,
+                        ResourceHandle*                 depthTargets,
+                        const size_t                    targetCount,
+                        const ResourceHandler&          resources,
+                        Context&                        ctx,
+                        iAllocator&                     allocator)
+                    {
+                        testParticleSystem.DrawInstanceMeshShadowPass(
+                            triMesh,
+                            reserveCB,
+                            reserveVB,
+                            passConstants,
+                            depthTargets,
+                            targetCount,
+                            resources,
+                            ctx,
+                            allocator);
+                    }
+                }
         };
 
-        auto& drawnScene = base.render.DrawScene(dispatcher, frameGraph, sceneDesc, targets, core.GetBlockMemory(), core.GetTempMemoryMT());
+        auto& drawnScene = base.render.DrawScene(
+                                dispatcher,
+                                frameGraph,
+                                sceneDesc,
+                                targets,
+                                core.GetBlockMemory(),
+                                core.GetTempMemoryMT());
 
         base.streamingEngine.TextureFeedbackPass(
-            dispatcher,
-            frameGraph,
-            activeCamera,
-            base.renderWindow.GetWH(),
-            drawnScene.PVS,
-            reserveCB,
-            reserveVB);
+                                dispatcher,
+                                frameGraph,
+                                activeCamera,
+                                base.renderWindow.GetWH(),
+                                drawnScene.PVS,
+                                reserveCB,
+                                reserveVB);
     }
 
     PresentBackBuffer(frameGraph, base.renderWindow);

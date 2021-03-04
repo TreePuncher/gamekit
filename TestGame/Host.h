@@ -31,13 +31,17 @@ public:
 
     ~HostWorldStateMangager();
 
-    WorldStateUpdate Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) final;
+    WorldStateUpdate    Update      (EngineCore& core, UpdateDispatcher& dispatcher, double dT) final;
+    Vector<UpdateTask*> DrawTasks   (EngineCore& core, UpdateDispatcher& dispatcher, double dT) final;
+
 
     void SendFrameState(const MultiplayerPlayerID_t ID, const PlayerFrameState& state, const ConnectionHandle connection);
     bool EventHandler(Event evt) final;
 
     GraphicScene&   GetScene() final;
     CameraHandle    GetActiveCamera() const final;
+
+    GameObject&     CreateGameObject() final { return world.objectPool.Allocate(); };
 
     void SetOnGameEventRecieved(GameEventHandler handler) final
     {
@@ -68,12 +72,13 @@ public:
 
     const MultiplayerPlayerID_t     localPlayerID;
 
-    FixedUpdate         fixedUpdate{ 60 };
+    FixedUpdate                 fixedUpdate{ 60 };
 
-    GameWorld           world;
+    GameWorld                   world;
 
     PlayerInputState            currentInputState;
     Vector<PlayerFrameState>    pendingRemoteUpdates;
+
 
     SpellComponent                      spellComponent;
     PlayerComponent                     playerComponent;        // players game state such as health, player deck, etc

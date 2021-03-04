@@ -154,10 +154,11 @@ namespace FlexKit
             free.emplace_back(
                 Block
                 {
-                    (uint32_t)-1,
-                    InvalidHandle_t,
-                    0, 0, 0, 0, // state, subresourceCount, subresourceStart, padding
-                    (uint32_t)I
+                    .tileID                 = uint32_t(-1),
+                    .resource               = InvalidHandle_t,
+                    .state                  = EBlockState::Free,
+                    .staleFrameCount        = 0,
+                    .blockID                = uint32_t(I),
                 });
     }
 
@@ -1039,7 +1040,7 @@ namespace FlexKit
                 return blocks;
             }();
 
-            TileMapList mappings{ allocator };
+            TileMapList mappings{ &threadLocalAllocator };
             for (const AllocatedBlock& block : blocks)
             {
                 const auto level = block.tileID.GetMipLevel();
@@ -1117,7 +1118,7 @@ namespace FlexKit
                     DRS_CopyDest);
 
 
-            TileMapList mappings{ allocator };
+            TileMapList mappings{ &threadLocalAllocator };
 
             mappings.push_back(
                 TileMapping{
@@ -1195,8 +1196,8 @@ namespace FlexKit
             //barriers.emplace_back(b);
         }
 
-        auto syncPoint = renderSystem.UpdateTileMappings(updatedTextures.begin(), updatedTextures.end(), &threadLocalAllocator);
-        renderSystem.SubmitUploadQueues(SYNC_Graphics, &ctxHandle, 1, syncPoint);
+        renderSystem.UpdateTileMappings(updatedTextures.begin(), updatedTextures.end(), &threadLocalAllocator);
+        renderSystem.SubmitUploadQueues(SYNC_Graphics, &ctxHandle, 1, sync);
         //renderSystem._InsertBarrier(barriers);
     }
 
@@ -1262,17 +1263,17 @@ namespace FlexKit
         }
 
         for (auto& tile : stale)
-            tile.staleFrameCount = Min(tile.staleFrameCount + 1, 254);
+            tile.staleFrameCount++;
 
         for (auto& tile : inuse)
-            if(tile.staleFrameCount > 8)
+            if(tile.staleFrameCount > 120)
                 stale.push_back(tile);
 
         inuse.erase(
             std::remove_if(inuse.begin(), inuse.end(),
                 [](auto& tile)
                 {
-                    return (tile.staleFrameCount > 8);
+                    return (tile.staleFrameCount > 120);
                 })
             , inuse.end());
 
@@ -1304,7 +1305,7 @@ namespace FlexKit
         std::sort(stale.begin(), stale.end(),
             [&](auto lhs, auto rhs)
             {
-                return lhs.staleFrameCount < lhs.staleFrameCount;
+                return lhs.staleFrameCount < rhs.staleFrameCount;
             });
 
         Vector<TextureBlockAllocator::Block> usedBlocks{ allocator };
@@ -1312,6 +1313,9 @@ namespace FlexKit
         std::for_each(begin, end,
             [&](gpuTileID tile)
             {
+                if (tile.tileID.bytes == -1)
+                    return;
+
                 if (ResourceHandle{ tile.TextureID } == InvalidHandle_t)
                     return;
 
@@ -1371,6 +1375,7 @@ namespace FlexKit
                     block.staleFrameCount   = 0;
 
                     usedBlocks.push_back(block);
+
                     return;
                 }
             });
@@ -1386,6 +1391,9 @@ namespace FlexKit
             };
 
             inuse.push_back(tile);
+
+            if (tile.tileID.GetMipLevel() > 15)
+                DebugBreak();
 
             if (tile.tileID.packed())
                 packedBlocks.push_back(allocation);

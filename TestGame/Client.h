@@ -21,7 +21,8 @@ public:
     void AddRemotePlayer(MultiplayerPlayerID_t playerID);
     void UpdateRemotePlayer(const PlayerFrameState& playerState, MultiplayerPlayerID_t player);
 
-    WorldStateUpdate Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) final;
+    WorldStateUpdate    Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) final;
+    Vector<UpdateTask*> DrawTasks(EngineCore& core, UpdateDispatcher& dispatcher, double dT) final { return {}; }
 
 
     void SendFrameState(const MultiplayerPlayerID_t ID, const PlayerFrameState& state, const ConnectionHandle connection);
@@ -43,6 +44,8 @@ public:
 
     GraphicScene&   GetScene() final;
     CameraHandle    GetActiveCamera() const final;
+
+    GameObject&     CreateGameObject() final { return world.objectPool.Allocate(); };
 
     struct LocalFrame
     {

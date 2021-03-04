@@ -48,7 +48,7 @@ namespace FlexKit
 	{
 		double T				= 0.0f;
 		double FPSTimer			= 0.0;
-		double dT				= 1.0 / 120.0;
+		double dT				= 1.0 / 60.0f;
 
 		while (!Core.End && framework.Running())
 		{
@@ -64,7 +64,7 @@ namespace FlexKit
 
 			const auto frameEnd         = std::chrono::high_resolution_clock::now();
 			const auto updateDuration   = frameEnd - frameStart;
-            const auto desiredFrameTime = std::chrono::microseconds(1000000) / 120.0;
+            const auto desiredFrameTime = std::chrono::microseconds(1000000) / 60.0f;
 
 
             framework.stats.frameTimes.push_back(

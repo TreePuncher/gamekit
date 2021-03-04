@@ -63,7 +63,8 @@ struct SpellBookUpdatePacket
 
 struct WorldStateUpdate
 {
-    UpdateTask* update = nullptr;
+    UpdateTask*             update = nullptr;
+    Vector<UpdateTask*>     drawTasks;
 };
 
 
@@ -73,9 +74,13 @@ public:
     virtual ~WorldStateMangagerInterface() {}
 
     virtual WorldStateUpdate    Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) = 0;
+    virtual Vector<UpdateTask*> DrawTasks(EngineCore& core, UpdateDispatcher& dispatcher, double dT) = 0;
+
     virtual bool                EventHandler(Event evt) = 0;
     virtual CameraHandle        GetActiveCamera() const = 0;
     virtual GraphicScene&       GetScene() = 0;
+
+    virtual GameObject&         CreateGameObject() = 0;
 
     using GameEventHandler      = std::function<void (Event evt)>;
     virtual void                SetOnGameEventRecieved(GameEventHandler) = 0;
@@ -115,6 +120,39 @@ public:
     UpdateTask* Update  (EngineCore& core, UpdateDispatcher& dispatcher, double dT);
     UpdateTask* Draw    (UpdateTask* updateTask, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph);
 
+    struct particle_data
+    {
+        particle_data() = default;
+
+        particle_data(InitialParticleProperties properties) :
+            position    { properties.position },
+            velocity    { properties.velocity },
+            maxAge      { properties.lifespan }{}
+
+        float3  position;
+        float3  velocity;
+        float   age     = 0.0f;
+        float   maxAge  = 0.0f;
+
+        static std::optional<particle_data> Update(particle_data particle, double dT)
+        {
+            if (particle.age + dT < particle.maxAge)
+            {
+                particle_data updated;
+                updated.age         = particle.age + dT;
+                updated.maxAge      = particle.maxAge;
+                updated.position    = particle.position + particle.velocity * dT;
+                updated.velocity    = particle.velocity;
+
+                return updated;
+            }
+            else
+                return {};
+        }
+    };
+
+    ParticleSystem<particle_data>   testParticleSystem;
+    ParticleEmitterComponent        emitters;
 
     void PostDrawUpdate (EngineCore& core, double dT) override;
     bool EventHandler   (Event evt) override;

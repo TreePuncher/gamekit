@@ -1127,6 +1127,9 @@ namespace FlexKit
             reserveCB,
             temporary);
 
+        for (auto& pass : drawSceneDesc.additionalGbufferPass)
+            pass();
+
         auto& lightPass = UpdateLightBuffers(
             dispatcher,
             frameGraph,
@@ -1141,10 +1144,11 @@ namespace FlexKit
         auto& shadowMapPass = ShadowMapPass(
             frameGraph,
             sceneDesc,
-            renderSystem.GetTextureWH(depthTarget),
             reserveCB,
+            reserveVB,
+            drawSceneDesc.additionalShadowPass,
             t,
-            temporary);
+            &temporary);
 
         RenderPBR_DeferredShade(
             dispatcher,
@@ -2218,8 +2222,16 @@ namespace FlexKit
 				if (!data.pvs.size())
 					return;
 
+                size_t drawCallCount = 0;
+                for (auto& drawable : data.pvs)
+                {
+                    auto* triMesh = GetMeshResource(drawable.D->MeshHandle);
+                    drawCallCount += Max(triMesh->subMeshes.size(), 1);
+                }
+
+
 				const size_t entityBufferSize =
-					AlignedSize<Drawable::VConstantsLayout>() * data.pvs.size();
+					AlignedSize<Drawable::VConstantsLayout>() * drawCallCount;
 
 				constexpr size_t passBufferSize =
 					AlignedSize<Camera::ConstantBuffer>() +
@@ -2283,7 +2295,6 @@ namespace FlexKit
 				// unskinned models
 				for (auto& drawable : data.pvs)
 				{
-
 					auto constants    = drawable.D->GetConstants();
 					auto* triMesh     = GetMeshResource(drawable.D->MeshHandle);
 
@@ -2837,7 +2848,7 @@ namespace FlexKit
                         renderSystem.ReleaseResource(light.shadowMap);
                     }
 
-                    auto [shadowMap, _] = shadowMapAllocator.Acquire(GPUResourceDesc::DepthTarget({ 256, 256 }, DeviceFormat::D32_FLOAT, 6));
+                    auto [shadowMap, _] = shadowMapAllocator.Acquire(GPUResourceDesc::DepthTarget({ 512, 512 }, DeviceFormat::D32_FLOAT, 6));
                     renderSystem.SetDebugName(shadowMap, "Shadow Map");
 
                     light.shadowMap = shadowMap;
@@ -2851,12 +2862,13 @@ namespace FlexKit
 
 
 	ShadowMapPassData& ShadowMapPass(
-		FrameGraph&                     frameGraph,
-        const SceneDescription          sceneDesc,
-        const uint2                     screenWH,
-		ReserveConstantBufferFunction   reserveCB,
-		const double                    t,
-		iAllocator*                     allocator)
+		FrameGraph&                             frameGraph,
+        const SceneDescription                  sceneDesc,
+        ReserveConstantBufferFunction           reserveCB,
+        ReserveVertexBufferFunction             reserveVB,
+        static_vector<AdditionalShadowMapPass>& additional,
+		const double                            t,
+		iAllocator*                             allocator)
 	{
 		auto& shadowMapPass = allocator->allocate<ShadowMapPassData>(ShadowMapPassData{ allocator->allocate<Vector<TemporaryFrameResourceHandle>>(allocator) });
 
@@ -2865,6 +2877,8 @@ namespace FlexKit
                     sceneDesc.pointLightMaps.GetData().pointLightShadows,
 					shadowMapPass,
 					reserveCB,
+                    reserveVB,
+                    additional
 				},
 				[&](FrameGraphNodeBuilder& builder, LocalShadowMapPassData& data)
 				{
@@ -2878,6 +2892,9 @@ namespace FlexKit
                     auto& visableLights = data.pointLightShadows;
                     auto& pointLights   = PointLightComponent::GetComponent();
                     
+                    Vector<ResourceHandle>          shadowMaps          { &allocator, visableLights.size() };
+                    Vector<ConstantBufferDataSet>   passConstant2       { &allocator, visableLights.size() };
+
                     for (size_t I = 0; I < visableLights.size(); I++)
                     {
                         auto& lightHandle   = visableLights[I];
@@ -2946,6 +2963,8 @@ namespace FlexKit
 
 					        ConstantBufferDataSet passConstants{ passConstantData, passConstantBuffer };
 
+                            passConstant2.push_back(passConstants);
+
                             const DepthStencilView_Options DSV_desc = {
                                 0, 0,
                                 depthTarget };
@@ -2961,7 +2980,6 @@ namespace FlexKit
                             if (auto state = resources.renderSystem().GetObjectState(depthTarget); state != DRS_DEPTHBUFFERWRITE)
                                 ctx.AddResourceBarrier(depthTarget, state, DRS_DEPTHBUFFERWRITE);
 
-
 					        for(size_t drawableIdx = 0; drawableIdx < drawables.size(); drawableIdx++)
 					        {
 						        auto* const triMesh = GetMeshResource(drawables[drawableIdx].D->MeshHandle);
@@ -2975,10 +2993,33 @@ namespace FlexKit
                                 ctx.DrawIndexedInstanced(triMesh->IndexCount);
 					        }
 
-                            ctx.AddResourceBarrier(depthTarget, DRS_DEPTHBUFFERWRITE, DRS_PixelShaderResource);
+                            shadowMaps.push_back(depthTarget);
 
                             ctx.EndEvent_DEBUG();
                         }
+                    }
+
+                    if(shadowMaps.size())
+                    {
+                        for (auto& additionalPass : data.additionalShadowPass)
+                        {
+                            ctx.BeginEvent_DEBUG("Additional Shadow Map Pass");
+
+                            additionalPass(
+                                data.reserveCB,
+                                data.reserveVB,
+                                passConstant2.data(),
+                                shadowMaps.data(),
+                                shadowMaps.size(),
+                                resources,
+                                ctx,
+                                allocator);
+
+                            ctx.EndEvent_DEBUG();
+                        }
+
+                        for (auto target : shadowMaps)
+                            ctx.AddResourceBarrier(target, DRS_DEPTHBUFFERWRITE, DRS_PixelShaderResource);
                     }
 				});
 

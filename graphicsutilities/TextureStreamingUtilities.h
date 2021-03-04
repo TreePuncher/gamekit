@@ -284,7 +284,7 @@ namespace FlexKit
 
 	struct TextureCacheDesc
 	{
-		const size_t textureCacheSize	= 64 * MEGABYTE;
+		const size_t textureCacheSize	= 512 * MEGABYTE;
 		const size_t blockSize			= GetTileByteSize();
 	};
 
@@ -340,9 +340,7 @@ namespace FlexKit
             TileID_t        tileID;
             ResourceHandle  resource            = InvalidHandle_t;
             uint8_t         state               = EBlockState::Free;
-            uint8_t         packed              = 0;
-            uint8_t         staleFrameCount     = 0;
-            uint8_t         packedLevelCount    = -1;
+            uint64_t        staleFrameCount     = 0;
             uint32_t        blockID;
 
             operator uint64_t() const

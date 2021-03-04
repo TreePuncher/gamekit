@@ -4614,11 +4614,15 @@ namespace FlexKit
 					coordinate.Y            = mapping.tileID.GetTileY();
 					coordinate.Z            = 0;
 
-					coordinates.push_back(coordinate);
-
-					offsets.push_back(mapping.heapOffset);
-					flags.push_back(flag);
-					tileRanges.push_back(1);
+                    if (mapping.tileID.bytes != -1)
+                    {
+                        coordinates.push_back(coordinate);
+                        offsets.push_back(mapping.heapOffset);
+                        flags.push_back(flag);
+                        tileRanges.push_back(1);
+                    }
+                    else
+                        FK_LOG_ERROR("Invalid virtual texture tileID received");
                 });
 
             if (coordinates.size())
@@ -4668,21 +4672,26 @@ namespace FlexKit
                         FK_LOG_INFO("Unmapping Tile { %u, %u, %u MIP } from Offset: { %u }", coordinate.X, coordinate.Y, coordinate.Subresource, mapping.heapOffset);
 #endif
 
-					coordinates.push_back(coordinate);
+                    if (mapping.tileID.bytes != -1)
+                    {
+                        coordinates.push_back(coordinate);
 
-					D3D12_TILE_REGION_SIZE regionSize;
-					regionSize.Depth    = 1;
-					regionSize.Height   = 1;
-					regionSize.Width    = 1;
+					    D3D12_TILE_REGION_SIZE regionSize;
+					    regionSize.Depth    = 1;
+					    regionSize.Height   = 1;
+					    regionSize.Width    = 1;
 
-					regionSize.NumTiles = 1;
-					regionSize.UseBox = false;
+					    regionSize.NumTiles = 1;
+					    regionSize.UseBox = false;
 
-					regionSizes.push_back(regionSize);
+					    regionSizes.push_back(regionSize);
 
-					offsets.push_back(mapping.heapOffset);
-					flags.push_back(flag);
-					tileRanges.push_back(1);
+					    offsets.push_back(mapping.heapOffset);
+					    flags.push_back(flag);
+					    tileRanges.push_back(1);
+                    }
+                    else
+                        FK_LOG_ERROR("Invalid virtual texture tile received");
 				}
 
 				I++;
@@ -4734,11 +4743,15 @@ namespace FlexKit
 
 		FK_LOG_9("Completed file mapping update");
 
+        /*/
         const auto counter = ++FenceCounter;
         if (auto HR = GraphicsQueue->Signal(Fence, counter); FAILED(HR))
             FK_LOG_ERROR("Failed to Signal");
 
         return { counter, Fence };
+        */
+
+        return {};
 	}
 
 
@@ -7513,7 +7526,12 @@ namespace FlexKit
 			HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS); FK_ASSERT(eventHandle != 0);
 			Fence->SetEventOnCompletion(pendingFrame, eventHandle);
 
-            const auto ret = WaitForSingleObject(eventHandle, INFINITY);
+            while (WaitForSingleObject(eventHandle, 1) == WAIT_TIMEOUT)
+            {
+                auto temp = Fence->GetCompletedValue();
+                int x = 0;
+            }
+
 			CloseHandle(eventHandle);
 		}
 	}

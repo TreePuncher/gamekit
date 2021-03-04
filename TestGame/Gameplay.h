@@ -10,8 +10,8 @@
 #include "MathUtils.h"
 #include "GameFramework.h"
 #include "FrameGraph.h"
+#include "Particles.h"
 #include "physicsutilities.h"
-
 
 #include <regex>
 
@@ -310,12 +310,12 @@ class GameWorld
 {
 public:
     GameWorld(EngineCore& IN_core) :
+        allocator       { static_cast<iAllocator&>(IN_core.GetBlockMemory()) },
         core            { IN_core },
         renderSystem    { IN_core.RenderSystem},
         objectPool      { IN_core.GetBlockMemory(), 8096 },
         pscene          { PhysXComponent::GetComponent().CreateScene() },
         gscene          { IN_core.GetBlockMemory() },
-        allocator       { static_cast<iAllocator&>(IN_core.GetBlockMemory()) },
         cubeShape       { PhysXComponent::GetComponent().CreateCubeShape({ 0.5f, 0.5f, 0.5f}) } {}
 
     ~GameWorld()
@@ -324,141 +324,14 @@ public:
     }
 
 
+
+    GameObject& AddLocalPlayer(MultiplayerPlayerID_t multiplayerID);
+    GameObject& AddRemotePlayer(MultiplayerPlayerID_t playerID, ConnectionHandle connection = InvalidHandle_t);
+    void        AddCube(float3 POS);
+
     GameObject& CreatePlayer(const PlayerDesc& desc);
-
-    GameObject& AddLocalPlayer(MultiplayerPlayerID_t multiplayerID)
-    {
-        return CreatePlayer(
-                    PlayerDesc{
-                        .player = multiplayerID,
-                        .pscene = pscene,
-                        .gscene = gscene,
-                        .h      = 0.5f,
-                        .r      = 0.5f
-                    });
-    }
-
-    GameObject& AddRemotePlayer(MultiplayerPlayerID_t playerID, ConnectionHandle connection = InvalidHandle_t)
-    {
-        auto& gameObject = objectPool.Allocate();
-
-        auto& player    = gameObject.AddView<PlayerView>(
-            PlayerState{
-                .gameObject         = &gameObject,
-                .playerID           = playerID,
-                .playerHealth       = 100.0f,
-                .maxCastingLevel    = 1 });
-
-        auto& dummy     = gameObject.AddView<RemotePlayerView>(
-            RemotePlayerData{
-                .gameObject         = &gameObject,
-                .playerGameState    = player.handle,
-                .connection         = connection,
-                .playerID           = playerID });
-
-        auto [triMesh, loaded] = FindMesh(playerModel);
-
-        if (!loaded)
-            triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), playerModel);
-
-        auto& characterController = gameObject.AddView<CharacterControllerView>(pscene, &gameObject, float3{0, 0, 0}, GetZeroedNode(), 1.0f, 1.0f);
-        gameObject.AddView<SceneNodeView<>>(characterController.GetNode());
-        gameObject.AddView<DrawableView>(triMesh, characterController.GetNode());
-
-        gscene.AddGameObject(gameObject, GetSceneNode(gameObject));
-
-        SetBoundingSphereFromMesh(gameObject);
-
-        return gameObject;
-    }
-
-    void AddCube(float3 POS)
-    {
-        auto [triMesh, loaded]  = FindMesh(cube1X1X1);
-
-        auto& gameObject = objectPool.Allocate();
-
-        if (!loaded)
-            triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), cube1X1X1);
-
-        gameObject.AddView<RigidBodyView>(cubeShape, pscene, POS);
-        gameObject.AddView<SceneNodeView<>>(GetRigidBodyNode(gameObject));
-        gameObject.AddView<DrawableView>(triMesh, GetSceneNode(gameObject));
-
-        gscene.AddGameObject(gameObject, GetSceneNode(gameObject));
-
-        SetBoundingSphereFromMesh(gameObject);
-    }
-
-    GameObject& CreateSpell(SpellData initial, float3 initialPosition, float3 initialVelocity)
-    {
-        auto& gameObject    = objectPool.Allocate();
-        auto& spellInstance = gameObject.AddView<SpellView>();
-        auto& spell         = spellInstance.GetData();
-
-
-        auto [triMesh, loaded] = FindMesh(spellModel);
-
-        if (!loaded)
-            triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), spellModel);
-
-        gameObject.AddView<SceneNodeView<>>();
-        gameObject.AddView<DrawableView>(triMesh, GetSceneNode(gameObject));
-
-        SetWorldPosition(gameObject, initialPosition);
-
-        gscene.AddGameObject(gameObject, GetSceneNode(gameObject));
-
-        SetBoundingSphereFromMesh(gameObject);
-
-        spell.caster        = initial.caster;
-        spell.card          = initial.card;
-        spell.duration      = initial.duration;
-        spell.life          = initial.life;
-        spell.gameObject    = &gameObject;
-
-        spell.position      = initialPosition;
-        spell.velocity      = initialVelocity;
-
-        return gameObject;
-    }
-
-    bool LoadScene(GUID_t assetID)
-    {
-        auto res = FlexKit::LoadScene(core, gscene, assetID);
-
-        auto& physics       = PhysXComponent::GetComponent();
-        auto& visibility    = SceneVisibilityComponent::GetComponent();
-
-        static std::regex pattern{"Cube"};
-        for (auto& entity : gscene.sceneEntities)
-        {
-            auto& go    = *visibility[entity].entity;
-            auto id     = GetStringID(go);
-
-            if (id && std::regex_search(id, pattern))
-            {
-                auto meshHandle = GetTriMesh(go);
-                auto mesh       = GetMeshResource(meshHandle);
-
-                AABB aabb{
-                    .Min = mesh->Info.Min,
-                    .Max = mesh->Info.Max };
-
-                const auto midPoint = aabb.MidPoint();
-                const auto dim      = aabb.Dim() / 2.0f;
-                const auto pos      = GetWorldPosition(go);
-                auto q              = GetOrientation(go);
-
-
-                PxShapeHandle shape = physics.CreateCubeShape(dim);
-
-                go.AddView<StaticBodyView>(pscene, shape, pos, q);
-            }
-        }
-
-        return res;
-    }
+    GameObject& CreateSpell(SpellData initial, float3 initialPosition, float3 initialVelocity);
+    bool        LoadScene(GUID_t assetID);
 
     void        UpdatePlayer        (const PlayerFrameState& playerState, const double);
     void        UpdateRemotePlayer  (const PlayerFrameState& playerState, const double);
@@ -469,6 +342,7 @@ public:
     {
 
     };
+
 
     Vector<GameEvent>       pendingEvents;
 
