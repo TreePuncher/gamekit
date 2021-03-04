@@ -4,7 +4,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2019 Robert May
+Copyright (c) 2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -243,7 +243,7 @@ public:
 
     void PostDrawUpdate(EngineCore& core, double dT) override
     {
-        renderWindow.Present(0, 0);
+        renderWindow.Present(1, 0);
     }
 
 

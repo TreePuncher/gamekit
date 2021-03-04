@@ -63,7 +63,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RESCOMPILERVERBOSE	ON
 #define TOOTLE				OFF
 #define AFTERMATH			OFF
-#define PIX                 ON
+#define PIX                 OFF
 #define ENABLEPROFILER      OFF
 
 #else
@@ -71,7 +71,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define USESTL ON
 #define PHYSX				ON
 #define PHYSX_PVD			OFF
-#define DEBUGALLOCATOR		OFF
+#define DEBUGALLOCATOR		ON
 #define DEBUGGRAPHICS		OFF
 #define DEBUGSHADERS		OFF
 #define ENABLEDRED		    OFF
@@ -85,7 +85,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RESCOMPILERVERBOSE	ON
 #define TOOTLE				OFF
 #define AFTERMATH			OFF
-#define PIX                 ON
+#define PIX                 OFF
 #define ENABLEPROFILER      OFF
 
 
@@ -96,7 +96,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RINOUT		 &
 
 #if USING(DEBUGALLOCATOR)
-#include <vld.h>
+
 #endif
 
 #if USING(DLLEXPORT)

@@ -1852,10 +1852,12 @@ namespace FlexKit
 
     void Context::BeginEvent_DEBUG(const char* str)
     {
+#if USING(PIX)
         wchar_t temp[64];
         mbstowcs(temp, str, 64);
 
         PIXBeginEvent(DeviceContext, PIX_COLOR_INDEX(rand() % 255), temp);
+#endif
     }
 
 
@@ -1864,7 +1866,9 @@ namespace FlexKit
 
     void Context::EndEvent_DEBUG()
     {
+#if USING(PIX)
         PIXEndEvent(DeviceContext);
+#endif
     }
 
 
