@@ -84,6 +84,20 @@ namespace FlexKit
         BVHVIS
     };
 
+    using AdditionalShadowMapPass =
+        TypeErasedCallable
+        <256, void,
+            ReserveConstantBufferFunction&,
+            ReserveVertexBufferFunction&,
+            ConstantBufferDataSet*,
+            ResourceHandle*,
+            const size_t,
+            const ResourceHandler&,
+            Context&,
+            iAllocator&>;
+
+
+    using AdditionalGbufferPass = TypeErasedCallable<256>;
 
     struct DrawSceneDescription
     {
@@ -106,7 +120,9 @@ namespace FlexKit
         UpdateTask&         cameraDependency;
 
         
-        Vector<UpdateTask*> sceneDependencies;
+        Vector<UpdateTask*>                         sceneDependencies;
+        static_vector<AdditionalGbufferPass>        additionalGbufferPass;
+        static_vector<AdditionalShadowMapPass>      additionalShadowPass;
     };
 
 
@@ -517,9 +533,12 @@ namespace FlexKit
 
 	struct LocalShadowMapPassData
 	{
-        const Vector<PointLightHandle>& pointLightShadows;
-		ShadowMapPassData&              sharedData;
-		ReserveConstantBufferFunction   reserveCB;
+        const Vector<PointLightHandle>&         pointLightShadows;
+		ShadowMapPassData&                      sharedData;
+		ReserveConstantBufferFunction           reserveCB;
+        ReserveVertexBufferFunction             reserveVB;
+
+        static_vector<AdditionalShadowMapPass>  additionalShadowPass;
 	};
 
     struct AcquireShadowMapResources
@@ -620,12 +639,13 @@ namespace FlexKit
 
 
 	inline ShadowMapPassData& ShadowMapPass(
-		FrameGraph&                     frameGraph,
-		const SceneDescription          sceneDesc,
-		const uint2                     screenWH,
-		ReserveConstantBufferFunction   reserveCB,
-		const double                    t,
-		iAllocator*                     allocator);
+		FrameGraph&                             frameGraph,
+		const SceneDescription                  sceneDesc,
+		ReserveConstantBufferFunction           reserveCB,
+        ReserveVertexBufferFunction             reserveVB,
+        static_vector<AdditionalShadowMapPass>& additional,
+		const double                            t,
+		iAllocator*                             allocator);
 
 
 	/************************************************************************************************/
@@ -652,6 +672,9 @@ namespace FlexKit
     {
         UpdateTaskTyped<GetPVSTaskData>& PVS;
     };
+
+
+    class ParticleSystemInterface;
 
 	class FLEXKITAPI WorldRender
 	{
@@ -778,7 +801,13 @@ namespace FlexKit
 		}
 
 
-        DrawOutputs& DrawScene(UpdateDispatcher& dispatcher, FrameGraph& frameGraph, DrawSceneDescription& drawSceneDesc, WorldRender_Targets targets, iAllocator* persistent, ThreadSafeAllocator& temporary);
+        DrawOutputs& DrawScene(
+            UpdateDispatcher&       dispatcher,
+            FrameGraph&             frameGraph,
+            DrawSceneDescription&   drawSceneDesc,
+            WorldRender_Targets     targets,
+            iAllocator*             persistent,
+            ThreadSafeAllocator&    temporary);
 
 
 		DepthPass& DepthPrePass(

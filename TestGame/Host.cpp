@@ -79,6 +79,9 @@ HostWorldStateMangager::~HostWorldStateMangager()
 }
 
 
+/************************************************************************************************/
+
+
 WorldStateUpdate HostWorldStateMangager::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
     ProfileFunction();
@@ -87,13 +90,10 @@ WorldStateUpdate HostWorldStateMangager::Update(EngineCore& core, UpdateDispatch
 
     WorldStateUpdate out;
 
-    struct HostWorldUpdate
-    {
-
-    };
+    struct _ {};
 
     auto& worldUpdate =
-        dispatcher.Add<HostWorldUpdate>(
+        dispatcher.Add<_>(
             [](UpdateDispatcher::UpdateBuilder& Builder, auto& data)
             {
             },
@@ -167,6 +167,17 @@ WorldStateUpdate HostWorldStateMangager::Update(EngineCore& core, UpdateDispatch
     out.update = &physicsUpdate;
 
     return out;
+}
+
+
+/************************************************************************************************/
+
+
+Vector<UpdateTask*> HostWorldStateMangager::DrawTasks(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+{
+    Vector<UpdateTask*> tasks{ core.GetTempMemory() };
+
+    return tasks;
 }
 
 

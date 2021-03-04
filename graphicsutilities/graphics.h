@@ -4522,7 +4522,7 @@ private:
 			vertexBuffer	{ buffer },
 			offsetBegin		{ buffer.GetOffset() }
 		{
-			vertexStride = sizeof(decltype(TransformVertex(initialData.front())));
+			vertexStride = sizeof(decltype(TransformVertex(initialData[0])));
 
 			for (const auto& vertex : initialData) {
 				auto transformedVertex = TransformVertex(vertex);
