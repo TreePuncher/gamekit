@@ -635,17 +635,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    void FrameGraph::_SubmitFrameGraph(iAllocator& persistentAllocator)
+    void FrameGraph::_SubmitFrameGraph(iAllocator& threadLocalAllocator)
     {
         ProfileFunction();
 
-        Vector<FrameGraphNodeWork> taskList{ &persistentAllocator };
+        Vector<FrameGraphNodeWork> taskList{ &threadLocalAllocator };
 
         for (auto& N : Nodes)
-            ProcessNode(&N, Resources, taskList, persistentAllocator);
+            ProcessNode(&N, Resources, taskList, threadLocalAllocator);
 
         auto& renderSystem = Resources.renderSystem;
-        Vector<Context*> contexts{ &persistentAllocator };
+        Vector<Context*> contexts{ &threadLocalAllocator };
 
         struct SubmissionWorkRange
         {
@@ -691,7 +691,7 @@ namespace FlexKit
             Context* ctx;
         };
 
-        FlexKit::WorkBarrier barrier{ threads, &persistentAllocator };
+        FlexKit::WorkBarrier barrier{ threads, &threadLocalAllocator };
         static_vector<RenderWorker*> workers;
 
         for (auto& work : workList)
@@ -704,7 +704,7 @@ namespace FlexKit
             context.SetDebugName(ID.c_str());
 #endif
 
-            auto& worker = SystemAllocator.allocate<RenderWorker>(work, &context, persistentAllocator);
+            auto& worker = threadLocalAllocator.allocate<RenderWorker>(work, &context, threadLocalAllocator);
             workers.push_back(&worker);
             barrier.AddWork(worker);
         }
@@ -755,7 +755,7 @@ namespace FlexKit
 			[=](SubmitData& data, iAllocator& threadAllocator)
 			{
                 ProfileFunction();
-				data.frameGraph->_SubmitFrameGraph(*persistentAllocator);
+				data.frameGraph->_SubmitFrameGraph(threadAllocator);
 			});
 	}
 

@@ -2721,12 +2721,12 @@ private:
 	{
 	public:
 		TextureStateTable(iAllocator* IN_allocator) :
-			Handles		        { SystemAllocator },
-			UserEntries	        { SystemAllocator },
-			Resources	        { SystemAllocator },
-			BufferedResources   { SystemAllocator },
-			delayRelease        { SystemAllocator },
-			allocator           { SystemAllocator } {}
+			Handles		        { IN_allocator },
+			UserEntries	        { IN_allocator },
+			Resources	        { IN_allocator },
+			BufferedResources   { IN_allocator },
+			delayRelease        { IN_allocator },
+			allocator           { IN_allocator } {}
 
 
 		~TextureStateTable()

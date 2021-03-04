@@ -71,7 +71,7 @@ struct VertexDepth_IN
 
 float4 ParticleMeshInstanceDepthVS(VertexDepth_IN In) : SV_POSITION
 {
-    return float4(0.4f, 0.4f, 0.4f, 1.0f) * float4(In.POS, 1) + In.instancePOS;
+    return float4(0.4f, 0.4f, 0.4f, 1.0f) * float4(In.POS, 1) + float4(In.instancePOS.xyz, 1);
 }
 
 struct ShadowMapData
