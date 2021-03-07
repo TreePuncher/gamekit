@@ -1702,10 +1702,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			static_vector<DeviceResourceState>		destinationState,
 			static_vector<size_t>					destinationoffset);
 
-		void AddIndexBuffer			(TriMesh* Mesh);
+		void AddIndexBuffer			(TriMesh* Mesh, uint32_t lod = 0);
 		void SetIndexBuffer         (VertexBufferEntry buffer, DeviceFormat format = DeviceFormat::R32_UINT);
 
-		void AddVertexBuffers		(TriMesh* Mesh, static_vector<VERTEXBUFFER_TYPE, 16> Buffers, VertexBufferList* InstanceBuffers = nullptr);
+		void AddVertexBuffers		(TriMesh* Mesh, uint32_t lod, static_vector<VERTEXBUFFER_TYPE, 16> Buffers, VertexBufferList* InstanceBuffers = nullptr);
 		void SetVertexBuffers		(VertexBufferList&	List);
 		void SetVertexBuffers		(VertexBufferList	List);
 		void SetVertexBuffers2		(static_vector<D3D12_VERTEX_BUFFER_VIEW>	List);
@@ -3947,69 +3947,15 @@ private:
 	{
 		TriMesh()
 		{
-			for (auto b : Buffers)
-				b = nullptr;
-
-			ID = nullptr;
-			AnimationData = EAD_None;
-			Memory = nullptr;
+			ID              = nullptr;
+			AnimationData   = EAD_None;
+			Memory          = nullptr;
 		}
 
 
-		TriMesh(const TriMesh& rhs)
-		{
-			memcpy(this, &rhs, sizeof(TriMesh));
-		}
-
-
-		bool HasTangents() const
-		{
-			for (auto view : Buffers)
-			{
-				if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT)
-					return true;
-			}
-
-			return false;
-		}
-
-		bool HasNormals() const
-		{
-			for (auto view : Buffers)
-			{
-				if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL)
-					return true;
-			}
-
-			return false;
-		}
-
-		VertexBufferView* GetNormals()
-		{
-			for (auto view : Buffers)
-			{
-				if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL)
-					return view;
-			}
-
-			return nullptr;
-		}
-
-
-		VertexBufferView* GetIndices()
-		{
-			for (auto view : Buffers)
-			{
-				if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX)
-					return view;
-			}
-
-			return nullptr;
-		}
-
+        TriMesh(const TriMesh& rhs) = default;
 
 		size_t AnimationData;
-		size_t IndexCount;
 		size_t TriMeshID;
 
 		struct SubDivInfo
@@ -4023,9 +3969,131 @@ private:
 		const char*                         ID;
 		SkinDeformer*                       SkinTable;
 		Skeleton*                           Skeleton;
-		static_vector<SubMesh, 32>          subMeshes;
-		static_vector<VertexBufferView*>    Buffers;
-		VertexBuffer		                VertexBuffer;
+
+        struct LOD_Runtime
+        {
+            LOD_Runtime() = default;
+
+            LOD_Runtime(const LOD_Runtime& rhs) :
+                buffers         { rhs.buffers       },
+                lodFileOffset   { rhs.lodFileOffset },
+                lodSize         { rhs.lodSize       },
+                state           { rhs.state.load()  },
+                subMeshes       { rhs.subMeshes     },
+                vertexBuffer    { rhs.vertexBuffer  } {}
+
+            LOD_Runtime& operator =(const LOD_Runtime& rhs)
+            {
+                buffers         = rhs.buffers;
+
+                lodFileOffset   = rhs.lodFileOffset;
+                lodSize         = rhs.lodSize;
+
+                state           = rhs.state.load();
+                subMeshes       = rhs.subMeshes;
+
+                vertexBuffer    = rhs.vertexBuffer;
+
+                return *this;
+            }
+
+            bool HasTangents() const
+		    {
+			    for (auto view : buffers)
+			    {
+				    if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT)
+					    return true;
+			    }
+
+			    return false;
+		    }
+
+		    bool HasNormals() const
+		    {
+			    for (auto view : buffers)
+			    {
+				    if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL)
+					    return true;
+			    }
+
+			    return false;
+		    }
+
+		    VertexBufferView* GetNormals()
+		    {
+			    for (auto view : buffers)
+			    {
+				    if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL)
+					    return view;
+			    }
+
+			    return nullptr;
+		    }
+
+
+		    VertexBufferView* GetIndices()
+		    {
+			    for (auto view : buffers)
+			    {
+				    if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX)
+					    return view;
+			    }
+
+			    return nullptr;
+		    }
+
+            size_t GetIndexBufferIndex() const
+            {
+                return vertexBuffer.MD.IndexBuffer_Index;
+            }
+
+            size_t GetIndexCount() const
+            {
+                return vertexBuffer.MD.InputElementCount;
+            }
+
+            size_t lodFileOffset;
+            size_t lodSize;
+
+            enum class LOD_State
+            {
+                Unloaded,
+                Loaded,
+                Loading,
+                GPUResourceEvicted
+            };
+
+            static_vector<VertexBufferView*>    buffers;
+            FlexKit::VertexBuffer		        vertexBuffer;
+
+            std::atomic<LOD_State>      state   = LOD_State::Unloaded;
+            static_vector<SubMesh, 32>  subMeshes;
+        };
+
+        const uint32_t GetHighestLoadedLodIdx() const
+        {
+            for (uint32_t I = 0; I < lods.size(); I++)
+            {
+                if (lods[I].state == LOD_Runtime::LOD_State::Loaded)
+                    return I;
+            }
+
+            return -1;
+        }
+
+        const LOD_Runtime&  GetHighestLoadedLod() const
+        {
+            for (auto& lod : lods)
+            {
+                if (lod.state == LOD_Runtime::LOD_State::Loaded)
+                    return lod;
+            }
+
+            return lods.back();
+        }
+
+        GUID_t                          assetHandle;
+        static_vector<LOD_Runtime>      lods;
 
 		struct RInfo
 		{
@@ -4627,13 +4695,13 @@ private:
 	/************************************************************************************************/
 
 
-	inline ID3D12Resource* GetBuffer(TriMesh* Mesh, size_t Buffer)	{ return Mesh->VertexBuffer[Buffer]; }
+	inline ID3D12Resource* GetBuffer(TriMesh* Mesh, size_t lod, size_t Buffer)	{ return Mesh->lods[lod].vertexBuffer[Buffer]; }
 
 
-	inline ID3D12Resource* FindBuffer(TriMesh* Mesh, VERTEXBUFFER_TYPE Type) 
+	inline ID3D12Resource* FindBuffer(TriMesh* Mesh, size_t lod, VERTEXBUFFER_TYPE Type)
 	{
 		ID3D12Resource* Buffer = nullptr;
-		auto& VertexBuffers = Mesh->VertexBuffer.VertexBuffers;
+		auto& VertexBuffers = Mesh->lods[lod].vertexBuffer.VertexBuffers;
 		auto RES = find(VertexBuffers, [Type](auto& V) -> bool {return V.Type == Type;});
 
 		if (RES != VertexBuffers.end())
@@ -4646,10 +4714,10 @@ private:
 	/************************************************************************************************/
 
 
-	inline VertexBuffer::BuffEntry* FindBufferEntry(TriMesh* Mesh, VERTEXBUFFER_TYPE Type) 
+	inline VertexBuffer::BuffEntry* FindBufferEntry(TriMesh* Mesh, size_t lod, VERTEXBUFFER_TYPE Type)
 	{
 		ID3D12Resource* Buffer = nullptr;
-		auto& VertexBuffers = Mesh->VertexBuffer.VertexBuffers;
+		auto& VertexBuffers = Mesh->lods[lod].vertexBuffer.VertexBuffers;
 		auto RES = find(VertexBuffers, [Type](auto& V) -> bool {return V.Type == Type;});
 
 		if (RES != VertexBuffers.end())
@@ -4662,11 +4730,11 @@ private:
 	/************************************************************************************************/
 
 
-	inline bool AddVertexBuffer(VERTEXBUFFER_TYPE Type, TriMesh* Mesh, static_vector<D3D12_VERTEX_BUFFER_VIEW>& out) 
+	inline bool AddVertexBuffer(VERTEXBUFFER_TYPE Type, TriMesh* Mesh, size_t lod, static_vector<D3D12_VERTEX_BUFFER_VIEW>& out) 
 	{
-		auto* VB = FindBufferEntry(Mesh, Type);
+		auto* VB = FindBufferEntry(Mesh, lod, Type);
 
-		if (VB == Mesh->VertexBuffer.VertexBuffers.end() || VB->Buffer == nullptr) {
+		if (VB == Mesh->lods[lod].vertexBuffer.VertexBuffers.end() || VB->Buffer == nullptr) {
 #ifdef _DBUG
 			return false;
 #else 
@@ -5078,7 +5146,7 @@ private:
 	/************************************************************************************************/
 
 
-	inline void ClearTriMeshVBVs(TriMesh* Mesh) { for (auto& buffer : Mesh->Buffers) buffer = nullptr; }
+    inline void ClearTriMeshVBVs(TriMesh* Mesh) { for (auto& lod : Mesh->lods) for (auto& buffer : lod.buffers) buffer = nullptr; }
 
 
 	/************************************************************************************************/

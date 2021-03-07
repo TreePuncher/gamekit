@@ -93,6 +93,9 @@ namespace FlexKit
         if (!loaded)
             triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), drawableComponent.resourceID);
 
+        if (triMesh == InvalidHandle_t)
+            return;
+
         gameObject.AddView<DrawableView>(triMesh, node);
         SetBoundingSphereFromMesh(gameObject);
     }
@@ -485,6 +488,72 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    ComputeLod_RES ComputeLOD(Drawable& e, const float3 CameraPosition, float maxZ)
+    {
+        auto drawablePosition = GetPositionW(e.Node);
+        auto distanceFromView = (CameraPosition - drawablePosition).magnitude();
+
+        auto* mesh                      = GetMeshResource(e.MeshHandle);
+        const auto maxLod               = mesh->lods.size() - 1;
+        const auto highestLoadedLod     = mesh->GetHighestLoadedLodIdx();
+
+        auto temp = pow((distanceFromView) / maxZ, 1.0f / 5.0f);
+
+        const uint32_t requestedLodLevel    = temp * maxLod;
+        const uint32_t usableLodLevel       = Max(requestedLodLevel, highestLoadedLod);
+
+        return ComputeLod_RES{
+            .requestedLOD   = requestedLodLevel,
+            .recommendedLOD = usableLodLevel,
+        };
+    }
+
+
+    /************************************************************************************************/
+
+
+    void PushPV(Drawable& e, PVS& pvs, const float3 CameraPosition, float maxZ)
+	{
+        auto drawablePosition = GetPositionW(e.Node);
+        auto distanceFromView = (CameraPosition - drawablePosition).magnitude();
+
+        auto* mesh = GetMeshResource(e.MeshHandle);
+
+        const auto maxLod               = mesh->lods.size() - 1;
+        const auto highestLoadedLod     = mesh->GetHighestLoadedLodIdx();
+
+        /*
+        const auto aabb = mesh->AABB;
+        const auto WT   = GetWT(e.Node);
+
+        const auto UpperRight   = WT * aabb.Max;
+        const auto LowerLeft    = WT * aabb.Min;
+
+        auto UpperRight_DC    = PV * UpperRight;
+        auto LowerLeft_DC     = PV * LowerLeft;
+
+        UpperRight_DC   /= UpperRight_DC.w;
+        LowerLeft_DC    /= LowerLeft_DC.w;
+
+        auto screenSpan = UpperRight_DC - LowerLeft;
+        auto screenArea = screenSpan.x * screenSpan.y;
+
+        const uint32_t requestedLodLevel    = maxLod - std::ceil(pow(screenArea, 2) * maxLod);
+        */
+
+        auto temp = pow((distanceFromView) / maxZ, 1.0f / 5.0f);
+            
+        const uint32_t requestedLodLevel    = temp * maxLod;
+        const uint32_t usableLodLevel       = Max(requestedLodLevel, highestLoadedLod);
+
+		if (e.MeshHandle != InvalidHandle_t)
+			pvs.push_back(PVEntry( e, 0, CreateSortingID(false, false, (size_t)distanceFromView), usableLodLevel));
+	}
+
+
+    /************************************************************************************************/
+
+
 	void GatherScene(GraphicScene* SM, CameraHandle Camera, PVS& out, PVS& T_out)
 	{
         ProfileFunction();
@@ -525,11 +594,11 @@ namespace FlexKit
 
 						if (!drawable.Skinned && Intersects(F, BS))
 						{
-							float distance = 0;
-							if (potentialVisible.transparent)
-								PushPV(drawable, T_out, POS);
-							else
-								PushPV(drawable, out, POS);
+                            if (potentialVisible.transparent) {
+                                PushPV(drawable, T_out, POS);
+                            }
+                            else
+                                PushPV(drawable, out, POS);
 						}
 					});
 			}
@@ -566,6 +635,52 @@ namespace FlexKit
 
 		return task;
 	}
+
+
+    /************************************************************************************************/
+
+
+    void LoadLodLevels(UpdateDispatcher& dispatcher, GatherTask& PVS, CameraHandle camera, RenderSystem& renderSystem, iAllocator& allocator)
+    {
+        struct _ {};
+
+        dispatcher.Add<_>(
+			[&](UpdateDispatcher::UpdateBuilder& builder, auto& data)
+			{
+                builder.AddInput(PVS);
+                builder.SetDebugString("Load LODs");
+			},
+			[&allocator = allocator, &PVS = PVS.GetData().solid, &renderSystem = renderSystem, camera = camera](_& data, iAllocator& threadAllocator)
+			{
+                ProfileFunction();
+
+                static std::mutex m;
+
+                if (!m.try_lock())
+                    return;
+
+                const float3 cameraPosition = GetPositionW(GetCameraNode(camera));
+                auto copyHandle = renderSystem.OpenUploadQueue();
+
+                for (auto& visable : PVS)
+                {
+                    auto res        = ComputeLOD(*visable.D, cameraPosition, 10'000);
+
+                    if (res.recommendedLOD != res.requestedLOD)
+                    {
+                        auto triMesh    = GetMeshResource(visable.D->MeshHandle);
+                        auto lodsLoaded = triMesh->GetHighestLoadedLodIdx();
+
+                        for (auto itr = lodsLoaded - 1; itr >= res.requestedLOD; itr--)
+                            LoadLOD(triMesh, itr, renderSystem, copyHandle, allocator);
+                    }
+
+                }
+
+                renderSystem.SubmitUploadQueues(SYNC_Graphics, &copyHandle);
+                m.unlock();
+			});
+    }
 
 
 	/************************************************************************************************/

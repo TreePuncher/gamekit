@@ -393,9 +393,10 @@ namespace FlexKit::ResourceBuilder
 		using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddWeightToken;
 		using fbxsdk::FbxLayerElement;
 
-		MeshDesc	out = {};
-        out.tokens      = FlexKit::MeshUtilityFunctions::TokenList{ SystemAllocator };
-        out.skeleton    = skeleton;
+		MeshDesc out = {};
+        out.skeleton = skeleton;
+
+        FlexKit::MeshUtilityFunctions::TokenList tokens{ SystemAllocator };
 
 		float3 MinV(INFINITY);
 		float3 MaxV(-INFINITY);
@@ -419,7 +420,7 @@ namespace FlexKit::ResourceBuilder
 				MaxV.z = Max(V2.z, MaxV.z);
 				R = Max(R, V2.magnitude());
 
-				AddVertexToken(V2, out.tokens);
+				AddVertexToken(V2, tokens);
 			}
 		}
 		{	// Get Normals
@@ -449,7 +450,7 @@ namespace FlexKit::ResourceBuilder
                     AddNormalToken(
                         TranslateToFloat3(Normals->GetDirectArray().GetAt(itr)),
                         TranslateToFloat3(Tangents->GetDirectArray().GetAt(itr)),
-                        out.tokens);
+                        tokens);
 
                 out.Tangents    = true;
                 out.Normals     = true;
@@ -459,7 +460,7 @@ namespace FlexKit::ResourceBuilder
                 for (int itr = 0; itr < NCount; ++itr)
                     AddNormalToken(
                         TranslateToFloat3(Normals->GetDirectArray().GetAt(itr)),
-                        out.tokens);
+                        tokens);
 
                 out.Tangents    = false;
                 out.Normals     = true;
@@ -472,7 +473,7 @@ namespace FlexKit::ResourceBuilder
 				auto size = UVElement->GetDirectArray().GetCount();
 				for (int I = 0; I < size; ++I) {
 					auto UV = UVElement->GetDirectArray().GetAt(I);
-					AddTexCordToken({ float(UV[0]), float(UV[1]), 0.0f }, out.tokens);
+					AddTexCordToken({ float(UV[0]), float(UV[1]), 0.0f }, tokens);
 				}
 			}
 		}	// Get Use-able Deformers
@@ -512,7 +513,7 @@ namespace FlexKit::ResourceBuilder
 			}
 
 			for (size_t I = 0; I < VCount; ++I)
-				AddWeightToken({ Weights[I].pFloats, boneIndices[I] }, out.tokens);
+				AddWeightToken({ Weights[I].pFloats, boneIndices[I] }, tokens);
 
 			out.Weights		= true;
 			skin.indices	= std::move(boneIndices);
@@ -548,9 +549,9 @@ namespace FlexKit::ResourceBuilder
                     const uint32_t NormalIndex3 = out.Normals ? GetNormalIndex(triID, 2, IndexCount + 2, mesh) : 0;
                     const uint32_t UVCordIndex3 = out.UV ? GetTexcordIndex(triID, 2, mesh) : 0;
 
-					AddIndexToken(VertexIndex1, NormalIndex1, NormalIndex1, UVCordIndex1, out.tokens);
-                    AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, out.tokens);
-                    AddIndexToken(VertexIndex2, NormalIndex2, NormalIndex2, UVCordIndex2, out.tokens);
+					AddIndexToken(VertexIndex1, NormalIndex1, NormalIndex1, UVCordIndex1, tokens);
+                    AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, tokens);
+                    AddIndexToken(VertexIndex2, NormalIndex2, NormalIndex2, UVCordIndex2, tokens);
 
 					IndexCount += 3;
                     ++faceCount;
@@ -576,10 +577,10 @@ namespace FlexKit::ResourceBuilder
 						auto NormalIndex4 = out.Normals ? GetNormalIndex(triID, 3, IndexCount + 3, mesh) : 0;
 						auto UVCordIndex4 = out.UV ? GetTexcordIndex(triID, 3, mesh) : 0;
 
-						AddIndexToken(VertexIndex1, NormalIndex1, UVCordIndex1, out.tokens);
-						AddIndexToken(VertexIndex2, NormalIndex2, UVCordIndex2, out.tokens);
-						AddIndexToken(VertexIndex3, NormalIndex3, UVCordIndex3, out.tokens);
-						AddIndexToken(VertexIndex4, NormalIndex4, UVCordIndex4, out.tokens);
+						AddIndexToken(VertexIndex1, NormalIndex1, UVCordIndex1, tokens);
+						AddIndexToken(VertexIndex2, NormalIndex2, UVCordIndex2, tokens);
+						AddIndexToken(VertexIndex3, NormalIndex3, UVCordIndex3, tokens);
+						AddIndexToken(VertexIndex4, NormalIndex4, UVCordIndex4, tokens);
 
 						IndexCount += 4;
 					}
@@ -601,13 +602,13 @@ namespace FlexKit::ResourceBuilder
 						auto NormalIndex4 = out.Normals ? GetNormalIndex(triID, 3, IndexCount + 3, mesh) : 0;
 						auto UVCordIndex4 = out.UV ? GetTexcordIndex(triID, 3, mesh) : 0;
 
-						AddIndexToken(VertexIndex1, NormalIndex1, NormalIndex1, UVCordIndex1, out.tokens);
-                        AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, out.tokens);
-                        AddIndexToken(VertexIndex2, NormalIndex2, NormalIndex2, UVCordIndex2, out.tokens);
+						AddIndexToken(VertexIndex1, NormalIndex1, NormalIndex1, UVCordIndex1, tokens);
+                        AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, tokens);
+                        AddIndexToken(VertexIndex2, NormalIndex2, NormalIndex2, UVCordIndex2, tokens);
 
-                        AddIndexToken(VertexIndex1, NormalIndex1, NormalIndex1, UVCordIndex1, out.tokens);
-                        AddIndexToken(VertexIndex4, NormalIndex4, NormalIndex4, UVCordIndex4, out.tokens);
-                        AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, out.tokens);
+                        AddIndexToken(VertexIndex1, NormalIndex1, NormalIndex1, UVCordIndex1, tokens);
+                        AddIndexToken(VertexIndex4, NormalIndex4, NormalIndex4, UVCordIndex4, tokens);
+                        AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, tokens);
 
 						IndexCount += 4;
                         faceCount += 2;
@@ -618,7 +619,8 @@ namespace FlexKit::ResourceBuilder
 				//if (SubDiv_Enabled)	AddPatchEndToken(out.tokens);
 			}
 
-			out.faceCount = faceCount;
+            out.tokens      = tokens;
+            out.faceCount   = faceCount;
 		}
 
 		out.MinV	= MinV;
@@ -911,8 +913,14 @@ namespace FlexKit::ResourceBuilder
                     auto skeleton       = CreateSkeletonResource(*Mesh, Name, MD);
                     MeshDesc meshDesc   = TranslateToTokens(*Mesh, skeleton, false);
 
+                    std::vector<LODLevel> lods = {
+                        LODLevel{
+                            .subMeshs = { std::move(meshDesc) }
+                        }
+                    };
+
                     const FbxAMatrix transform  = node->EvaluateGlobalTransform();
-                    MeshResource_ptr resource   = CreateMeshResource(&meshDesc, 1, Name, MD, false);
+                    MeshResource_ptr resource   = CreateMeshResource(lods, Name, MD, false);
 
                     resource->BakeTransform(FBXMATRIX_2_FLOAT4X4((transform)));
                     

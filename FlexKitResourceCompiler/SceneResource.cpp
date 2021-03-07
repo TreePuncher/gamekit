@@ -48,11 +48,13 @@ namespace FlexKit::ResourceBuilder
 #define DEBUGPASS 0
 #endif
 
+    std::optional<MeshResource_ptr> ExtractGeometry(tinygltf::Mesh& mesh)
+    {
+        return {};
+    }
+
     std::pair<ResourceList, std::vector<size_t>>  GatherGeometry(tinygltf::Model& model)
     {
-#if DEBUGPASS 
-        return {};
-#else
         using namespace tinygltf;
 
         ResourceList        resources;
@@ -60,14 +62,27 @@ namespace FlexKit::ResourceBuilder
 
         for (auto& mesh : model.meshes)
         {
-            std::vector<MeshDesc> subMeshes;
             uint64_t GUID = rand();
+            std::string LOD;
+
+            if (mesh.extras.Has("internal"))
+            {
+                meshMap.push_back(-1);
+                continue;
+            }
 
             if (mesh.extras.Has("ResourceID"))
             {
                 auto& resourceID = mesh.extras.Get("ResourceID");
                 if (resourceID.IsInt())
                     GUID = resourceID.Get<int>();
+            }
+
+            if (mesh.extras.Has("LOD"))
+            {
+                auto& LODproperty = mesh.extras.Get("LOD");
+                if (LODproperty.IsString())
+                    LOD = LODproperty.Get<std::string>();
             }
 
             if (auto res = std::find_if(
@@ -82,193 +97,241 @@ namespace FlexKit::ResourceBuilder
                 continue;
             }
 
-            for (auto& primitive : mesh.primitives)
+            std::vector<tinygltf::Mesh*> lodSources;
+            // Fetch LOD's
+
+            auto fetchLOD =
+                [&](const std::string lodMeshName, auto _THIS) -> void
+                {
+                    for (auto& mesh : model.meshes)
+                    {
+                        if (mesh.name == lodMeshName)
+                        {
+                            lodSources.push_back(&mesh);
+
+                            if (mesh.extras.Has("LOD"))
+                            {
+                                auto LODid = mesh.extras.Get("LOD").Get<std::string>();
+                                _THIS(LODid, _THIS);
+                            }
+                        }
+                    }
+                };
+
+            lodSources.push_back(&mesh);
+
+            if(LOD.size())
+                fetchLOD(LOD, fetchLOD);
+
+            for (auto& source : lodSources)
             {
-                MeshDesc newMesh;
-                newMesh.tokens = FlexKit::MeshUtilityFunctions::TokenList{ SystemAllocator };
-
-                for(auto& attribute : primitive.attributes)
+                if (source->primitives.size() != lodSources[0]->primitives.size())
                 {
-                    auto& bufferAcessor = model.accessors[attribute.second];
-                    auto& bufferView    = model.bufferViews[bufferAcessor.bufferView];
-                    auto* buffer        = model.buffers[bufferView.buffer].data.data() + bufferView.byteOffset;
-
-                    auto stride         = bufferView.byteStride == 0 ? GetComponentSizeInBytes(bufferAcessor.componentType) * GetNumComponentsInType(bufferAcessor.type) : bufferView.byteStride;
-                    auto elementCount   = bufferView.byteLength / stride;
-
-                    std::regex texcoordPattern  { R"(TEXCOORD_[0-9]+)" };
-                    std::regex jointPattern     { R"(JOINTS_[0-9]+)" };
-
-
-                    if (attribute.first == "POSITION")
-                    {
-                        for (size_t I = 0; I < elementCount; I++)
-                        {
-                            float3 xyz;
-
-                            memcpy(&xyz, buffer + stride * I, stride);
-                            MeshUtilityFunctions::OBJ_Tools::AddVertexToken(xyz, newMesh.tokens);
-                        }
-                            
-                        for (size_t i = 0; i < bufferAcessor.minValues.size(); i++)
-                        {
-                            newMesh.MinV[i] = (float)bufferAcessor.minValues[i];
-                            newMesh.MaxV[i] = (float)bufferAcessor.maxValues[i];
-                        }
-                    }
-                    else if (attribute.first == "NORMAL")
-                    {
-                        if (primitive.attributes.find("TANGENT") != primitive.attributes.end())
-                        {
-                            newMesh.Normals     = true;
-                            newMesh.Tangents    = true;
-
-                            auto& tangentAcessor    = model.accessors[primitive.attributes["TANGENT"]];
-                            auto& tangentView       = model.bufferViews[tangentAcessor.bufferView];
-                            auto* tangentbuffer     = model.buffers[tangentView.buffer].data.data() + tangentView.byteOffset;
-
-                            auto tangentStride      = tangentView.byteStride == 0 ? GetComponentSizeInBytes(tangentAcessor.componentType) * GetNumComponentsInType(tangentAcessor.type) : tangentView.byteStride;
-
-                            for (size_t I = 0; I < elementCount; I++)
-                            {
-                                float4 normal;
-                                float4 tangent;
-
-                                memcpy(&normal, buffer + stride * I, stride);
-                                memcpy(&tangent, tangentbuffer + tangentStride * I, tangentStride);
-
-                                tangent = float4{ tangent.xyz() * tangent.w, tangent.w };
-
-                                MeshUtilityFunctions::OBJ_Tools::AddNormalToken(normal.xyz(), tangent.xyz(), newMesh.tokens);
-                            }
-                        }
-                        else
-                        {
-                            newMesh.Normals = true;
-
-                            for (size_t I = 0; I < elementCount; I++)
-                            {
-                                float3 normal;
-
-                                memcpy(&normal, buffer + stride * I, stride);
-                                MeshUtilityFunctions::OBJ_Tools::AddNormalToken(normal, newMesh.tokens);
-                            }
-                        }
-                    }
-                    else if (std::regex_search(attribute.first, texcoordPattern))
-                    {
-                        newMesh.UV = true;
-
-                        uint32_t idx = 0; 
-                        static const std::regex idx_pattern{ R"([0-9]+)" };
-
-                        std::smatch results;
-                        auto res = std::regex_search(
-                            attribute.first,
-                            results, 
-                            idx_pattern);
-
-
-                        idx = res ? std::atoi(results.begin()->str().c_str()) : 0;
-
-
-                        for (size_t I = 0; I < elementCount; I++)
-                        {
-                            float3 coord;
-
-                            memcpy(&coord, buffer + stride * I, stride);
-                            MeshUtilityFunctions::OBJ_Tools::AddTexCordToken(coord, idx, newMesh.tokens);
-                        }
-                    }
-                    else if (std::regex_search(attribute.first, jointPattern))
-                    {
-                        newMesh.Weights = true;
-
-                        uint32_t idx = 0; 
-                        static const std::regex idx_pattern{ R"([0-9]+)" };
-
-                        std::smatch results;
-                        auto res = std::regex_search(
-                            attribute.first,
-                            results, 
-                            idx_pattern);
-
-                        idx = res ? std::atoi(results.begin()->str().c_str()) : 0;
-
-                        auto& weightsAcessor    = model.accessors[primitive.attributes[fmt::format("WEIGHTS_{0}", idx)]];
-                        auto& weightsView       = model.bufferViews[weightsAcessor.bufferView];
-                        auto* weightsbuffer     = model.buffers[weightsView.buffer].data.data() + weightsView.byteOffset;
-
-                        const auto weightsStride = weightsView.byteStride == 0 ? GetComponentSizeInBytes(weightsAcessor.componentType) * GetNumComponentsInType(weightsAcessor.type) : weightsView.byteStride;
-
-                        for (size_t I = 0; I < elementCount; I++)
-                        {
-                            uint4_16    joints;
-                            float3      weights;
-
-                            memcpy(&joints, buffer + stride * I, stride);
-                            memcpy(&weights, weightsbuffer + stride * I, weightsStride);
-                            MeshUtilityFunctions::OBJ_Tools::AddWeightToken({ weights, joints }, newMesh.tokens);
-                        }
-                    }
-
+                    std::cout << "Invalid Input LOD";
+                    return {};
                 }
-
-                auto& indexAccessor     = model.accessors[primitive.indices];
-                auto& indexBufferView   = model.bufferViews[indexAccessor.bufferView];
-                auto& indexBuffer       = model.buffers[indexBufferView.buffer];
-                     
-                const auto componentType    = indexAccessor.componentType;
-                const auto type             = indexAccessor.type;
-
-                const auto stride         = indexBufferView.byteStride == 0 ? GetComponentSizeInBytes(componentType) * GetNumComponentsInType(type) : indexBufferView.byteStride;
-                const auto elementCount   = indexBufferView.byteLength / stride;
-
-                auto* buffer = model.buffers[indexBufferView.buffer].data.data() + indexBufferView.byteOffset;
-
-                for (size_t I = 0; I < elementCount; I+=3)
-                {
-                    VertexToken tokens[3];
-
-                    for(size_t II = 0; II < 3; II++)
-                    {
-                        uint32_t idx = 0;
-                        memcpy(&idx, buffer + stride * (I + II), stride);
-
-                        tokens[II].vertex.push_back(VertexField{ idx, VertexField::Point });
-                        tokens[II].vertex.push_back(VertexField{ idx, VertexField::Normal });
-
-
-                        if (newMesh.Tangents)
-                            tokens[II].vertex.push_back(VertexField{ idx, VertexField::Tangent });
-
-                        if (newMesh.UV)
-                            tokens[II].vertex.push_back(VertexField{ idx, VertexField::TextureCoordinate });
-
-                        if (newMesh.Weights) {
-                            tokens[II].vertex.push_back(VertexField{ idx, VertexField::JointIndex });
-                            tokens[II].vertex.push_back(VertexField{ idx, VertexField::JointWeight });
-                        }
-
-                        std::sort(
-                            tokens[II].vertex.begin(), tokens[II].vertex.end(),
-                            [&](VertexField& lhs, VertexField& rhs)
-                            {
-                                return lhs.type < rhs.type;
-                            });
-
-
-                    }
-
-                    newMesh.tokens.push_back(tokens[0]);
-                    newMesh.tokens.push_back(tokens[2]);
-                    newMesh.tokens.push_back(tokens[1]);
-                }
-
-                subMeshes.push_back(newMesh);
             }
 
-            auto meshResource = CreateMeshResource(subMeshes.data(), subMeshes.size(), mesh.name, {}, false);
+            std::vector<LODLevel> lodLevels;
+
+            for(auto sourceMesh : lodSources)
+            {
+                auto&       primitives = sourceMesh->primitives;
+                auto        meshTokens = FlexKit::MeshUtilityFunctions::TokenList{ SystemAllocator };
+
+                LODLevel lod;
+
+                for(auto& primitive : primitives)
+                {
+                    MeshDesc newMesh;
+
+                    for(auto& attribute : primitive.attributes)
+                    {
+                        auto& bufferAcessor = model.accessors[attribute.second];
+                        auto& bufferView    = model.bufferViews[bufferAcessor.bufferView];
+                        auto* buffer        = model.buffers[bufferView.buffer].data.data() + bufferView.byteOffset;
+
+                        auto stride         = bufferView.byteStride == 0 ? GetComponentSizeInBytes(bufferAcessor.componentType) * GetNumComponentsInType(bufferAcessor.type) : bufferView.byteStride;
+                        auto elementCount   = bufferView.byteLength / stride;
+
+                        std::regex texcoordPattern  { R"(TEXCOORD_[0-9]+)" };
+                        std::regex jointPattern     { R"(JOINTS_[0-9]+)" };
+
+
+                        if (attribute.first == "POSITION")
+                        {
+                            for (size_t I = 0; I < elementCount; I++)
+                            {
+                                float3 xyz;
+
+                                memcpy(&xyz, buffer + stride * I, stride);
+                                MeshUtilityFunctions::OBJ_Tools::AddVertexToken(xyz, meshTokens);
+                            }
+                            
+                            for (size_t i = 0; i < bufferAcessor.minValues.size(); i++)
+                            {
+                                newMesh.MinV[i] = (float)bufferAcessor.minValues[i];
+                                newMesh.MaxV[i] = (float)bufferAcessor.maxValues[i];
+                            }
+                        }
+                        else if (attribute.first == "NORMAL")
+                        {
+                            if (primitive.attributes.find("TANGENT") != primitive.attributes.end())
+                            {
+                                newMesh.Normals     = true;
+                                newMesh.Tangents    = true;
+
+                                auto& tangentAcessor    = model.accessors[primitive.attributes["TANGENT"]];
+                                auto& tangentView       = model.bufferViews[tangentAcessor.bufferView];
+                                auto* tangentbuffer     = model.buffers[tangentView.buffer].data.data() + tangentView.byteOffset;
+
+                                auto tangentStride      = tangentView.byteStride == 0 ? GetComponentSizeInBytes(tangentAcessor.componentType) * GetNumComponentsInType(tangentAcessor.type) : tangentView.byteStride;
+
+                                for (size_t I = 0; I < elementCount; I++)
+                                {
+                                    float4 normal;
+                                    float4 tangent;
+
+                                    memcpy(&normal, buffer + stride * I, stride);
+                                    memcpy(&tangent, tangentbuffer + tangentStride * I, tangentStride);
+
+                                    tangent = float4{ tangent.xyz() * tangent.w, tangent.w };
+
+                                    MeshUtilityFunctions::OBJ_Tools::AddNormalToken(normal.xyz(), tangent.xyz(), meshTokens);
+                                }
+                            }
+                            else
+                            {
+                                newMesh.Normals = true;
+
+                                for (size_t I = 0; I < elementCount; I++)
+                                {
+                                    float3 normal;
+
+                                    memcpy(&normal, buffer + stride * I, stride);
+                                    MeshUtilityFunctions::OBJ_Tools::AddNormalToken(normal, meshTokens);
+                                }
+                            }
+                        }
+                        else if (std::regex_search(attribute.first, texcoordPattern))
+                        {
+                            newMesh.UV = true;
+
+                            uint32_t idx = 0; 
+                            static const std::regex idx_pattern{ R"([0-9]+)" };
+
+                            std::smatch results;
+                            auto res = std::regex_search(
+                                attribute.first,
+                                results, 
+                                idx_pattern);
+
+
+                            idx = res ? std::atoi(results.begin()->str().c_str()) : 0;
+
+
+                            for (size_t I = 0; I < elementCount; I++)
+                            {
+                                float3 coord;
+
+                                memcpy(&coord, buffer + stride * I, stride);
+                                MeshUtilityFunctions::OBJ_Tools::AddTexCordToken(coord, idx, meshTokens);
+                            }
+                        }
+                        else if (std::regex_search(attribute.first, jointPattern))
+                        {
+                            newMesh.Weights = true;
+
+                            uint32_t idx = 0; 
+                            static const std::regex idx_pattern{ R"([0-9]+)" };
+
+                            std::smatch results;
+                            auto res = std::regex_search(
+                                attribute.first,
+                                results, 
+                                idx_pattern);
+
+                            idx = res ? std::atoi(results.begin()->str().c_str()) : 0;
+
+                            auto& weightsAcessor    = model.accessors[primitive.attributes[fmt::format("WEIGHTS_{0}", idx)]];
+                            auto& weightsView       = model.bufferViews[weightsAcessor.bufferView];
+                            auto* weightsbuffer     = model.buffers[weightsView.buffer].data.data() + weightsView.byteOffset;
+
+                            const auto weightsStride = weightsView.byteStride == 0 ? GetComponentSizeInBytes(weightsAcessor.componentType) * GetNumComponentsInType(weightsAcessor.type) : weightsView.byteStride;
+
+                            for (size_t I = 0; I < elementCount; I++)
+                            {
+                                uint4_16    joints;
+                                float3      weights;
+
+                                memcpy(&joints, buffer + stride * I, stride);
+                                memcpy(&weights, weightsbuffer + stride * I, weightsStride);
+                                MeshUtilityFunctions::OBJ_Tools::AddWeightToken({ weights, joints }, meshTokens);
+                            }
+                        }
+
+                    }
+
+                    auto& indexAccessor     = model.accessors[primitive.indices];
+                    auto& indexBufferView   = model.bufferViews[indexAccessor.bufferView];
+                    auto& indexBuffer       = model.buffers[indexBufferView.buffer];
+                     
+                    const auto componentType  = indexAccessor.componentType;
+                    const auto type           = indexAccessor.type;
+
+                    const auto stride         = indexBufferView.byteStride == 0 ? GetComponentSizeInBytes(componentType) * GetNumComponentsInType(type) : indexBufferView.byteStride;
+                    const auto elementCount   = indexBufferView.byteLength / stride;
+
+                    auto* buffer = model.buffers[indexBufferView.buffer].data.data() + indexBufferView.byteOffset;
+
+                    for (size_t I = 0; I < elementCount; I+=3)
+                    {
+                        VertexToken tokens[3];
+
+                        for(size_t II = 0; II < 3; II++)
+                        {
+                            uint32_t idx = 0;
+                            memcpy(&idx, buffer + stride * (I + II), stride);
+
+                            tokens[II].vertex.push_back(VertexField{ idx, VertexField::Point });
+                            tokens[II].vertex.push_back(VertexField{ idx, VertexField::Normal });
+
+
+                            if (newMesh.Tangents)
+                                tokens[II].vertex.push_back(VertexField{ idx, VertexField::Tangent });
+
+                            if (newMesh.UV)
+                                tokens[II].vertex.push_back(VertexField{ idx, VertexField::TextureCoordinate });
+
+                            if (newMesh.Weights) {
+                                tokens[II].vertex.push_back(VertexField{ idx, VertexField::JointIndex });
+                                tokens[II].vertex.push_back(VertexField{ idx, VertexField::JointWeight });
+                            }
+
+                            std::sort(
+                                tokens[II].vertex.begin(), tokens[II].vertex.end(),
+                                [&](VertexField& lhs, VertexField& rhs)
+                                {
+                                    return lhs.type < rhs.type;
+                                });
+                        }
+
+                        meshTokens.push_back(tokens[0]);
+                        meshTokens.push_back(tokens[2]);
+                        meshTokens.push_back(tokens[1]);
+                    }
+
+                    newMesh.tokens      = std::move(meshTokens);
+                    newMesh.faceCount   = elementCount;
+
+                    lod.subMeshs.emplace_back(std::move(newMesh));
+                }
+
+                lodLevels.emplace_back(std::move(lod));
+            }
+
+            auto meshResource = CreateMeshResource(lodLevels,  mesh.name, {}, false);
+
             resources.push_back(meshResource);
 
 
@@ -278,8 +341,8 @@ namespace FlexKit::ResourceBuilder
         }
 
         return { resources, meshMap };
-#endif
     }
+
 
     ResourceList GatherScenes(tinygltf::Model& model, std::vector<size_t>& meshMap, std::map<int, Resource_ptr>& imageMap, std::vector<Resource_ptr>& skinMap)
     {
@@ -331,12 +394,11 @@ namespace FlexKit::ResourceBuilder
                     sceneNodeMap[nodeIdx] = nodeHndl;
 
                     SceneEntity entity;
-                    entity.id = node.name;
+                    entity.id   = node.name;
                     entity.Node = nodeHndl;
 
                     if (node.mesh != -1)
                     {
-
 #if DEBUGPASS
 #else
                         auto drawable = std::make_shared<DrawableComponent>(meshMap[node.mesh]);
@@ -476,7 +538,7 @@ namespace FlexKit::ResourceBuilder
         auto resource = std::make_shared<TextureResource>();
         resource->ID = image->name;
 
-        loader->resources.push_back(resource);
+        //loader->resources.push_back(resource);
         loader->imageMap[image_idx] = resource;
 
         std::cout << image_idx << "\n";

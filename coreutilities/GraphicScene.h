@@ -369,7 +369,7 @@ namespace FlexKit
 			    DrawableView&			drawable)
 			{
                 auto boundingSphere = drawable.GetBoundingSphere();
-                boundingSphere.w *= rScale;
+                boundingSphere.w   *= rScale;
 
 				visibility.SetBoundingSphere(boundingSphere);
 			});
@@ -562,6 +562,16 @@ namespace FlexKit
     using BuildBVHTask                  = UpdateTaskTyped<SceneBVHBuild>;
     using PointLightUpdate              = UpdateTaskTyped<PointLightUpdate_DATA>;
 
+    struct ComputeLod_RES
+    {
+        uint32_t    requestedLOD;
+        uint32_t    recommendedLOD;
+    };
+
+    ComputeLod_RES ComputeLOD(Drawable& e, const float3 CameraPosition, float maxZ);
+
+    void PushPV(Drawable& e, PVS& pvs, const float3 CameraPosition, float maxZ = 10'000.0f);
+
 	class GraphicScene
 	{
 	public:
@@ -646,14 +656,13 @@ namespace FlexKit
     FLEXKITAPI void         GatherScene(GraphicScene* SM, CameraHandle Camera, PVS& solid, PVS& transparent);
     FLEXKITAPI GatherTask&  GatherScene(UpdateDispatcher& dispatcher, GraphicScene* scene, CameraHandle C, iAllocator& allocator);
 
+    FLEXKITAPI void LoadLodLevels(UpdateDispatcher& dispatcher, GatherTask& PVS, CameraHandle camera, RenderSystem& renderSystem, iAllocator& allocator);
 
 	FLEXKITAPI void ReleaseGraphicScene				(GraphicScene* SM);
 	FLEXKITAPI void BindJoint						(GraphicScene* SM, JointHandle Joint, SceneEntityHandle Entity, NodeHandle TargetNode);
 
 	FLEXKITAPI bool LoadScene(RenderSystem* RS, GUID_t Guid,			GraphicScene& GS_out, iAllocator* allocator, iAllocator* Temp);
 	FLEXKITAPI bool LoadScene(RenderSystem* RS, const char* LevelName,	GraphicScene& GS_out, iAllocator* allocator, iAllocator* Temp);
-
-
 
 
     /************************************************************************************************/

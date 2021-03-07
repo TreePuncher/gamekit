@@ -381,75 +381,111 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool Asset2TriMesh(RenderSystem* RS, CopyContextHandle handle, AssetHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers)
+    bool LoadLOD(TriMesh* triMesh, uint level, RenderSystem& renderSystem, CopyContextHandle copyCtx, iAllocator& memory)
+    {
+        auto readCtx    = OpenReadContext(triMesh->assetHandle);
+        auto& lod       = triMesh->lods[level];
+
+        TriMesh::LOD_Runtime::LOD_State lodState = lod.state.load();
+
+        if (lodState != TriMesh::LOD_Runtime::LOD_State::Unloaded)
+            return false;
+
+        if (!lod.state.compare_exchange_strong(lodState, TriMesh::LOD_Runtime::LOD_State::Loading))
+            return false;
+
+        auto buffer     = (char*)memory.malloc(lod.lodSize);
+        auto lodHeader  = reinterpret_cast<FlexKit::LODlevel*>(buffer);
+
+        readCtx.Read(lodHeader, lod.lodSize, lod.lodFileOffset);
+
+		for (auto& vertexBuffer : lodHeader->descriptor.buffers)
+		{
+			if (vertexBuffer.size)
+			{
+                float* temp = (float*)(buffer + vertexBuffer.Begin);
+				auto View = new (memory._aligned_malloc(sizeof(VertexBufferView))) VertexBufferView((byte*)((char*)buffer + vertexBuffer.Begin), vertexBuffer.size);
+				View->SetTypeFormatSize((VERTEXBUFFER_TYPE)vertexBuffer.Type, (VERTEXBUFFER_FORMAT)vertexBuffer.Format, vertexBuffer.size / vertexBuffer.Format );
+				lod.buffers.push_back(View);
+			}
+		}
+
+        CreateVertexBuffer(renderSystem, copyCtx, lod.buffers, lod.buffers.size(), lod.vertexBuffer);
+
+        const size_t subMeshCount = lodHeader->descriptor.subMeshCount;
+        for (size_t I = 0; I < subMeshCount; I++)
+            lod.subMeshes.push_back(lodHeader->subMeshes[I]);
+
+        lod.state = TriMesh::LOD_Runtime::LOD_State::Loaded;
+
+        return true;
+    }
+
+
+
+	bool Asset2TriMesh(RenderSystem* RS, CopyContextHandle copyCtx, AssetHandle RHandle, iAllocator* Memory, TriMesh* triMesh, bool ClearBuffers)
 	{
 		Resource* R = GetAsset(RHandle);
 		if (R->State == Resource::EResourceState_LOADED && R->Type == EResource_TriMesh)
 		{
-			TriMeshAssetBlob* Blob = (TriMeshAssetBlob*)R;
-			size_t BufferCount        = 0;
+			TriMeshAssetBlob* Blob  = (TriMeshAssetBlob*)R;
+			size_t BufferCount      = 0;
 
-			Out->SkinTable	  = nullptr;
-			Out->SkeletonGUID = Blob->SkeletonGuid;
-			Out->Skeleton	  = nullptr;
-			Out->Info.Min.x   = Blob->Info.maxx;
-			Out->Info.Min.y   = Blob->Info.maxy;
-			Out->Info.Min.z   = Blob->Info.maxz;
-			Out->Info.Max.x   = Blob->Info.minx;
-			Out->Info.Max.y   = Blob->Info.miny;
-			Out->Info.Max.z   = Blob->Info.minz;
-			Out->IndexCount	  = Blob->IndexCount;
-			Out->Info.r		  = Blob->Info.r;
-			Out->Memory		  = Memory;
-			Out->VertexBuffer.clear();
-            Out->subMeshes    = Blob->submeshes;
+			triMesh->SkinTable	    = nullptr;
+			triMesh->SkeletonGUID   = Blob->header.SkeletonGuid;
+			triMesh->Skeleton	    = nullptr;
+			triMesh->Info.Min.x     = Blob->header.Info.maxx;
+			triMesh->Info.Min.y     = Blob->header.Info.maxy;
+			triMesh->Info.Min.z     = Blob->header.Info.maxz;
+			triMesh->Info.Max.x     = Blob->header.Info.minx;
+			triMesh->Info.Max.y     = Blob->header.Info.miny;
+			triMesh->Info.Max.z     = Blob->header.Info.minz;
+			triMesh->Info.r		    = Blob->header.Info.r;
+			triMesh->Memory		    = Memory;
+            triMesh->assetHandle    = Blob->header.GUID;
+            triMesh->TriMeshID      = R->GUID;
 
-			Out->BS			  = { { Blob->BS[0], Blob->BS[1], Blob->BS[2] },Blob->BS[3] };
-			Out->AABB		 = 
-			{ 
-				{ Blob->AABB[0], Blob->AABB[1], Blob->AABB[2] },
-				{ Blob->AABB[3], Blob->AABB[4], Blob->AABB[5] }
+            triMesh->BS     = { { Blob->header.BS[0], Blob->header.BS[1], Blob->header.BS[2] }, Blob->header.BS[3] };
+            triMesh->AABB   =
+            { 
+				{ Blob->header.AABB[0], Blob->header.AABB[1], Blob->header.AABB[2] },
+				{ Blob->header.AABB[3], Blob->header.AABB[4], Blob->header.AABB[5] }
 			};
 
-			if (strlen(Blob->ID))
-			{
-				Out->ID = (char*)Memory->malloc(64);
-				strcpy_s((char*)Out->ID, 64, Blob->ID);
-			} else
-				Out->ID = nullptr;
+            
+		    if (strlen(Blob->header.ID))
+		    {
+                triMesh->ID = (char*)Memory->malloc(64);
+			    strcpy_s((char*)triMesh->ID, 64, Blob->header.ID);
+		    } else
+                triMesh->ID = nullptr;
 
-			for (size_t I = 0; I < Blob->BufferCount; ++I)
-			{
-				auto b = Blob->Buffers[I];
-				if (b.size)
-				{
-					auto View = new (Memory->_aligned_malloc(sizeof(VertexBufferView))) VertexBufferView((byte*)(Blob->Memory + b.Begin), b.size);
-					View->SetTypeFormatSize((VERTEXBUFFER_TYPE)b.Type, (VERTEXBUFFER_FORMAT)b.Format, b.size/b.Format );
-					Out->Buffers.push_back(View);
-				}
-			}
 
-            // Generate Tangents if they weren't loaded
-            //if (!Out->HasTangents() && Out->HasNormals())
-            //    GenerateTangents(Out->Buffers, Memory);
+            auto lodCount = Blob->header.LODCount;
 
-			CreateVertexBuffer(RS, handle, Out->Buffers, Out->Buffers.size(), Out->VertexBuffer);
+            const size_t tableSize = lodCount * sizeof(LODEntry);
+            LODEntry* lodTable = reinterpret_cast<LODEntry*>(Memory->malloc(tableSize));
+            memcpy(lodTable, Blob->Memory, tableSize);
 
-			if (ClearBuffers)
-			{
-				for (size_t I = 0; I < 16; ++I)
-				{
-					if (Out->Buffers[I])
-						Memory->_aligned_free(Out->Buffers[I]);
-					Out->Buffers[I] = nullptr;
-				}
-				FreeAsset(RHandle);
-			}
-		
-			Out->TriMeshID = R->GUID;
-			return true;
+            for (size_t I = 0; I < lodCount; I++)
+            {
+                TriMesh::LOD_Runtime lod;
+                lod.lodFileOffset   = lodTable[I].offset;
+                lod.lodSize         = lodTable[I].size;
+                lod.state           = TriMesh::LOD_Runtime::LOD_State::Unloaded;
+
+                triMesh->lods.push_back(lod);
+            }
+
+            // Load lowest detail lod level
+            LoadLOD(triMesh, lodCount - 1, *RS, copyCtx, *Memory);
+
+            Memory->free(lodTable);
+
+            return true;
 		}
-		return false;
+        else
+		    return false;
 	}
 
 
@@ -536,6 +572,10 @@ namespace FlexKit
 
 	TriMeshHandle LoadTriMeshIntoTable(RenderSystem* RS, CopyContextHandle handle, size_t GUID)
 	{	// Make this atomic
+        auto Available = isAssetAvailable(GUID);
+        if (!Available)
+            return InvalidHandle_t;
+
 		TriMeshHandle Handle;
 
 		for (size_t idx = 0;
@@ -548,6 +588,8 @@ namespace FlexKit
 
 		if(!GeometryTable.FreeList.size())
 		{
+
+
 			auto Index	= GeometryTable.Geometry.size();
 			Handle		= GeometryTable.Handles.GetNewHandle();
 
@@ -556,9 +598,6 @@ namespace FlexKit
 			GeometryTable.Guids.push_back(0);
 			GeometryTable.ReferenceCounts.push_back	(0);
 			GeometryTable.Handle.push_back(Handle);
-
-			auto Available = isAssetAvailable(GUID);
-			FK_ASSERT(Available);
 
 			auto RHandle = LoadGameAsset(GUID);
 			auto GameRes = GetAsset(RHandle);

@@ -1085,6 +1085,8 @@ namespace FlexKit
         auto& pointLightUpdate      = scene.UpdatePointLights(dispatcher, sceneBVH, visablePointLights, temporary, persistent);
         auto& shadowMaps            = AcquireShadowMaps(dispatcher, frameGraph.GetRenderSystem(), RTPool, pointLightUpdate);
 
+        LoadLodLevels(dispatcher, PVS, drawSceneDesc.camera, renderSystem, *persistent);
+
         pointLightGather.AddInput(drawSceneDesc.transformDependency);
         pointLightGather.AddInput(drawSceneDesc.cameraDependency);
 
@@ -1250,21 +1252,23 @@ namespace FlexKit
                 TriMesh* prevMesh = nullptr;
                 for (const auto& drawable : data.drawables)
                 {
+                    const auto  lodIdx   = drawable.LODlevel;
                     auto* const triMesh = GetMeshResource(drawable.D->MeshHandle);
+                    const auto& lod     = triMesh->lods[lodIdx];
+
                     if (triMesh != prevMesh)
                     {
                         prevMesh = triMesh;
 
-                        ctx.AddIndexBuffer(triMesh);
+                        ctx.AddIndexBuffer(triMesh, lodIdx);
                         ctx.AddVertexBuffers(triMesh,
-                            { VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-                            });
+                            triMesh->GetHighestLoadedLodIdx(),
+                            { VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
                     }
 
-                    auto test = drawable.D->GetConstants();
-                    auto constants = ConstantBufferDataSet{ test, data.entityConstantsBuffer };
+                    auto constants = ConstantBufferDataSet{ drawable.D->GetConstants(), data.entityConstantsBuffer };
                     ctx.SetGraphicsConstantBufferView(2, constants);
-                    ctx.DrawIndexedInstanced(triMesh->IndexCount);
+                    ctx.DrawIndexedInstanced(lod.GetIndexCount());
                 }
 
                 ctx.EndEvent_DEBUG();
@@ -1619,7 +1623,8 @@ namespace FlexKit
 						prevMesh = triMesh;
 
 						ctx.AddIndexBuffer(triMesh);
-						ctx.AddVertexBuffers(triMesh,
+                        ctx.AddVertexBuffers(triMesh,
+                            triMesh->GetHighestLoadedLodIdx(),
 							{	VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
 								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
 								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
@@ -1630,7 +1635,7 @@ namespace FlexKit
 					auto proxy = CreateCBIterator<decltype(drawable.D->GetConstants())>(data.entityConstants)[itr];
 
 					ctx.SetGraphicsConstantBufferView(2, proxy);
-					ctx.DrawIndexedInstanced(triMesh->IndexCount, 0, 0, 1, 0);
+					ctx.DrawIndexedInstanced(triMesh->GetHighestLoadedLod().GetIndexCount(), 0, 0, 1, 0);
 				}
 			});
 
@@ -2225,8 +2230,11 @@ namespace FlexKit
                 size_t drawCallCount = 0;
                 for (auto& drawable : data.pvs)
                 {
-                    auto* triMesh = GetMeshResource(drawable.D->MeshHandle);
-                    drawCallCount += Max(triMesh->subMeshes.size(), 1);
+                    auto* triMesh       = GetMeshResource(drawable.D->MeshHandle);
+                    const auto lodIdx   = drawable.LODlevel;
+                    auto& detailLevel   = triMesh->lods[lodIdx];
+
+                    drawCallCount      += Max(detailLevel.subMeshes.size(), 1);
                 }
 
 
@@ -2276,7 +2284,8 @@ namespace FlexKit
 				ctx.SetGraphicsConstantBufferView(3, passConstants);
 
 				// submit draw calls
-				TriMesh* prevMesh = nullptr;
+				TriMesh*                    prevMesh = nullptr;
+                const TriMesh::LOD_Runtime* prevLOD  = nullptr;
 
                 ctx.BeginEvent_DEBUG("G-Buffer Pass");
 
@@ -2297,14 +2306,18 @@ namespace FlexKit
 				{
 					auto constants    = drawable.D->GetConstants();
 					auto* triMesh     = GetMeshResource(drawable.D->MeshHandle);
+                    auto  lodIdx      = drawable.LODlevel;
+                    auto  lod         = &triMesh->lods[lodIdx];
 
-					if (triMesh != prevMesh)
+					if (triMesh != prevMesh || prevLOD != lod)
 					{
-						prevMesh = triMesh;
+                        prevMesh    = triMesh;
+                        prevLOD     = lod;
 
-						ctx.AddIndexBuffer(triMesh);
+						ctx.AddIndexBuffer(triMesh, lodIdx);
 						ctx.AddVertexBuffers(
 							triMesh,
+                            lodIdx,
 							{
 								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
 								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
@@ -2316,7 +2329,7 @@ namespace FlexKit
 
                     auto& materials         = MaterialComponent::GetComponent();
                     const auto material     = MaterialComponent::GetComponent()[drawable.D->material];
-                    const auto subMeshCount = triMesh->subMeshes.size();
+                    const auto subMeshCount = lod->subMeshes.size();
 
                     if (material.SubMaterials.empty())
                     {
@@ -2344,13 +2357,13 @@ namespace FlexKit
                         constants.textureCount = (uint32_t)material.Textures.size();
 
                         ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
-                        ctx.DrawIndexed(triMesh->IndexCount);
+                        ctx.DrawIndexed(lod->GetIndexCount());
                     }
                     else
                     {
                         for (size_t I = 0; I < subMeshCount; I++)
                         {
-                            auto& subMesh           = triMesh->subMeshes[I];
+                            auto& subMesh           = triMesh->GetHighestLoadedLod().subMeshes[I];
                             const auto passMaterial = materials[material.SubMaterials[I]];
 
                             DescriptorHeap descHeap;
@@ -2394,9 +2407,10 @@ namespace FlexKit
 					{
 						prevMesh = triMesh;
 
-						ctx.AddIndexBuffer(triMesh);
+						ctx.AddIndexBuffer(triMesh, triMesh->GetHighestLoadedLodIdx());
 						ctx.AddVertexBuffers(
 							triMesh,
+                            triMesh->GetHighestLoadedLodIdx(),
 							{
 								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
 								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
@@ -2417,7 +2431,7 @@ namespace FlexKit
 					ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
 					ctx.SetGraphicsConstantBufferView(4, ConstantBufferDataSet(poses, poseBuffer));
 
-                    for (auto& subMesh : triMesh->subMeshes)
+                    for (auto& subMesh : triMesh->GetHighestLoadedLod().subMeshes)
                     {
                         ctx.DrawIndexed(subMesh.IndexCount, subMesh.BaseIndex);
                     }
@@ -2982,15 +2996,20 @@ namespace FlexKit
 
 					        for(size_t drawableIdx = 0; drawableIdx < drawables.size(); drawableIdx++)
 					        {
-						        auto* const triMesh = GetMeshResource(drawables[drawableIdx].D->MeshHandle);
+                                auto& drawable      = drawables[drawableIdx];
+                                const auto lodLevel = drawable.LODlevel;
+						        auto* const triMesh = GetMeshResource(drawable.D->MeshHandle);
+                                auto& lod           = triMesh->lods[lodLevel];
 
 						        ctx.SetGraphicsConstantBufferView(1, constants[drawableIdx]);
 
-						        ctx.AddIndexBuffer(triMesh);
+						        ctx.AddIndexBuffer(triMesh, lodLevel);
 						        ctx.AddVertexBuffers(triMesh,
+                                    lodLevel,
 							        { VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
 
-                                ctx.DrawIndexedInstanced(triMesh->IndexCount);
+                                
+                                ctx.DrawIndexedInstanced(triMesh->GetHighestLoadedLod().GetIndexCount());
 					        }
 
                             shadowMaps.push_back(depthTarget);

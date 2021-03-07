@@ -465,8 +465,8 @@ namespace FlexKit
                 for (auto& drawable : drawables)
                 {
                     auto* triMesh = GetMeshResource(drawable.D->MeshHandle);
-
-                    subDrawCount += triMesh->subMeshes.size();
+                    
+                    subDrawCount += triMesh->lods[drawable.LODlevel].subMeshes.size();
                 }
 
                 const size_t bufferSize =
@@ -519,9 +519,10 @@ namespace FlexKit
                     {
                         prevMesh = triMesh;
 
-                        ctx.AddIndexBuffer(triMesh);
+                        ctx.AddIndexBuffer(triMesh, visable.LODlevel);
                         ctx.AddVertexBuffers(
                             triMesh,
+                            visable.LODlevel,
                             {
                                 VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
                                 VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
@@ -533,17 +534,18 @@ namespace FlexKit
                         );
                     }
 
-                    const auto materialHandle = visable.D->material;
+                    const auto materialHandle   = visable.D->material;
+                    const auto& lod             = triMesh->lods[visable.LODlevel];
 
                     if (!materials[materialHandle].SubMaterials.empty())
                     {
-                        const auto subMeshCount = triMesh->subMeshes.size();
+                        const auto subMeshCount = lod.subMeshes.size();
                         auto material = MaterialComponent::GetComponent()[visable.D->material];
 
                         for (size_t I = 0; I < subMeshCount; I++)
                         {
-                            auto& subMesh       = triMesh->subMeshes[I];
-                            const auto passMaterial  = materials[material.SubMaterials[I]];
+                            auto& subMesh               = lod.subMeshes[I];
+                            const auto passMaterial     = materials[material.SubMaterials[I]];
 
                             DescriptorHeap srvHeap;
 
@@ -592,7 +594,7 @@ namespace FlexKit
                         const auto constants = ConstantBufferDataSet{ visable.D->GetConstants(), passConstantBuffer };
 
                         ctx.SetGraphicsConstantBufferView(1, constants);
-                        ctx.DrawIndexed(triMesh->IndexCount);
+                        ctx.DrawIndexed(lod.GetIndexCount());
                     }
                 }
 

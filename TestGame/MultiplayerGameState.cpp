@@ -118,7 +118,9 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
 
     auto& particleEmitter = worldState.CreateGameObject();
     particleEmitter.AddView<SceneNodeView<>>();
-    particleEmitter.AddView<ParticleEmitterView>(ParticleEmitterData{ &testParticleSystem, GetSceneNode(particleEmitter) });
+    //particleEmitter.AddView<ParticleEmitterView>(ParticleEmitterData{ &testParticleSystem, GetSceneNode(particleEmitter) });
+
+    Translate(particleEmitter, { 0, 10, 0 });
 }
 
 

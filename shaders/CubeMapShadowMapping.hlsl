@@ -1,5 +1,3 @@
-
-
 struct ShadowMapData
 {
     float4x4 ViewI;
@@ -8,7 +6,7 @@ struct ShadowMapData
 
 cbuffer PassConstants : register( b0 )
 {
-    ShadowMapData matrices[64];
+    ShadowMapData matrices[6];
 };
 
 cbuffer LocalConstants : register(b1)
