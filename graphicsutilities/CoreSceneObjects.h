@@ -158,11 +158,17 @@ namespace FlexKit
 	{
 		PVEntry() {}
 		PVEntry(Drawable& d) : OcclusionID(-1), D(&d){}
-		PVEntry(Drawable& d, size_t ID, size_t sortID) : OcclusionID(ID), D(&d), SortID(sortID) {}
+
+		PVEntry(Drawable& d, size_t ID, size_t sortID, uint32_t lodIdx) :
+            OcclusionID { ID },
+            D           { &d },
+            SortID      { sortID },
+            LODlevel    { lodIdx }  {}
 
 		size_t		SortID          = 0;
 		size_t		OcclusionID     = 0;
-		Drawable*	    D               = nullptr;
+        uint32_t    LODlevel        = 0;
+		Drawable*	D               = nullptr;
 
 		operator Drawable* ()   { return D; } 
 		operator size_t ()      { return SortID; }
@@ -177,15 +183,6 @@ namespace FlexKit
 	typedef Vector<PVEntry> PVS;
 
     size_t CreateSortingID(bool Posed, bool Textured, size_t Depth);
-
-	inline void PushPV(Drawable& e, PVS& pvs, const float3 CameraPosition)
-	{
-        auto drawablePosition = GetPositionW(e.Node);
-        auto distanceFromView = (CameraPosition - drawablePosition).magnitude();
-
-		if (e.MeshHandle != InvalidHandle_t)
-			pvs.push_back(PVEntry( e, 0, CreateSortingID(false, false, (size_t)distanceFromView)));
-	}
 
 	FLEXKITAPI void SortPVS				(PVS* PVS_, Camera* C);
 	FLEXKITAPI void SortPVSTransparent	(PVS* PVS_, Camera* C);

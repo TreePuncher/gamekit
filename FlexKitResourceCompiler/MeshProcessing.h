@@ -4,7 +4,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Geometry.h"
 #include "Animation.h"
 #include "ResourceIDs.h"
+#include "ResourceUtilities.h"
 
 #include <array>
 #include <optional>
@@ -79,10 +80,11 @@ namespace FlexKit::ResourceBuilder
 
 		size_t          ID      = (uint32_t)rand();
 
-		size_t			                   faceCount = 0;
 		SkinDeformer                       skin;
 		SkeletonResource_ptr               skeleton;
-		MeshUtilityFunctions::TokenList    tokens;
+
+		MeshUtilityFunctions::TokenList     tokens;
+        size_t                              faceCount;
 	};
 
 
@@ -91,68 +93,120 @@ namespace FlexKit::ResourceBuilder
 
 	using MeshKDBTree_ptr = std::shared_ptr<FlexKit::MeshUtilityFunctions::MeshKDBTree>;
 
+    struct SubMeshResource
+    {
+        uint32_t    BaseIndex;
+        uint32_t    IndexCount;
+        AABB        aabb;
+    };
+
+
+    struct LevelOfDetail
+    {
+        static_vector<SubMesh, 32>          submeshes;
+        static_vector<VertexBufferView*>    buffers;
+
+        size_t IndexCount;
+        size_t IndexBuffer_Idx;
+    };
 
 	struct MeshResource : public iResource
 	{
 		ResourceBlob CreateBlob() override
 		{ 
-			size_t bufferSize		= CalculateResourceSize();
-			TriMeshAssetBlob* blob	= reinterpret_cast<TriMeshAssetBlob*>(malloc(bufferSize));
+			TriMeshAssetBlob::TriMeshAssetHeader header;
 
-			blob->GUID				= TriMeshID;
-			blob->HasAnimation		= AnimationData > 0;
-			blob->HasIndexBuffer	= true;
-			blob->BufferCount		= 0;
-			blob->SkeletonGuid		= SkeletonGUID;
-			blob->Type				= EResourceType::EResource_TriMesh;
-			blob->ResourceSize		= bufferSize;
+            std::vector<Blob>   blobs;
+			header.GUID				= TriMeshID;
+			header.HasAnimation		= AnimationData > 0;
+			header.HasIndexBuffer	= true;
+			header.SkeletonGuid		= SkeletonGUID;
+			header.Type				= EResourceType::EResource_TriMesh;
+			header.ResourceSize		= -1;
+            header.LODCount         = LODs.size();
 
-			blob->IndexCount	= IndexCount;
-			blob->IndexBuffer	= IndexBuffer_Idx;
-			blob->Info.minx		= Info.Min.x;
-			blob->Info.miny		= Info.Min.y;
-			blob->Info.minz		= Info.Min.z;
-			blob->Info.maxx		= Info.Max.x;
-			blob->Info.maxy		= Info.Max.y;
-			blob->Info.maxz		= Info.Max.z;
-			blob->Info.r		= Info.r;
-	
-			memcpy(blob->BS, &BS, sizeof(BoundingSphere));
-			blob->AABB[0] = AABB.Min[0];
-			blob->AABB[1] = AABB.Min[1];
-			blob->AABB[2] = AABB.Min[2];
-			blob->AABB[3] = AABB.Max[0];
-			blob->AABB[4] = AABB.Max[1];
-			blob->AABB[5] = AABB.Max[2];
+			header.Info.minx		= Info.Min.x;
+			header.Info.miny		= Info.Min.y;
+			header.Info.minz		= Info.Min.z;
+			header.Info.maxx		= Info.Max.x;
+			header.Info.maxy		= Info.Max.y;
+			header.Info.maxz		= Info.Max.z;
+			header.Info.r		    = Info.r;
+			memcpy(header.BS, &BS, sizeof(BoundingSphere));
+			header.AABB[0] = AABB.Min[0];
+			header.AABB[1] = AABB.Min[1];
+			header.AABB[2] = AABB.Min[2];
+			header.AABB[3] = AABB.Max[0];
+			header.AABB[4] = AABB.Max[1];
+			header.AABB[5] = AABB.Max[2];
+            
+			strcpy_s(header.ID, ID_LENGTH > ID.size() ? ID_LENGTH : ID.size(), ID.c_str());
 
-			strcpy_s(blob->ID, ID_LENGTH > ID.size() ? ID_LENGTH : ID.size(), ID.c_str());
+            std::vector<Blob> lodblobs;
 
-            blob->submeshes = submeshes;
+            for (auto& lod : LODs)
+            {
+                Blob        lodSubMeshTable;
+                Blob        lodVertexBuffer;
+                LODlevel    lodLevel;
 
-			size_t bufferPosition = 0;
-			for (size_t I = 0; I < 16; ++I)
-			{
-				if (buffers[I])
-				{
-					memcpy(blob->Memory + bufferPosition, buffers[I]->GetBuffer(), buffers[I]->GetBufferSizeRaw());
+                lodLevel.descriptor.subMeshCount = lod.submeshes.size();
 
-					auto View = buffers[I];
-					blob->Buffers[I].Begin  = bufferPosition;
-					blob->Buffers[I].Format = (uint16_t)buffers[I]->GetElementSize();
-					blob->Buffers[I].Type   = (uint16_t)buffers[I]->GetBufferType();
-					blob->Buffers[I].size   = (size_t)buffers[I]->GetBufferSizeRaw();
-					bufferPosition		  += buffers[I]->GetBufferSizeRaw();
+                for (auto& subMesh : lod.submeshes)
+                    lodSubMeshTable += Blob(subMesh);
 
-					blob->BufferCount++;
-				}
-			}
+                const size_t headerSize = sizeof(LODlevel::LODlevelDesciption);
+
+			    for (auto& buffer : lod.buffers)
+			    {
+                    Blob vertexBufferBlob{ (const char*)buffer->GetBuffer() , buffer->GetBufferSizeRaw() };
+
+                    LODlevel::Buffer fileBuffer;
+                    fileBuffer.Begin  = headerSize + lodSubMeshTable.size() + lodVertexBuffer.size();
+                    fileBuffer.Format = (uint16_t)buffer->GetElementSize();
+                    fileBuffer.Type   = (uint16_t)buffer->GetBufferType();
+                    fileBuffer.size   = (size_t)buffer->GetBufferSizeRaw();
+
+                    lodLevel.descriptor.buffers.push_back(fileBuffer);
+                    lodVertexBuffer += vertexBufferBlob;
+			    }
+
+
+                lodblobs.push_back(Blob{ lodLevel } + lodSubMeshTable + lodVertexBuffer);
+            }
+
+            // Generate LOD table
+
+            Blob lodTable;
+            Blob body;
+
+            const size_t lodTableSize   = sizeof(LODEntry) * lodblobs.size();
+            const size_t headerSize     = sizeof(TriMeshAssetBlob::header) + lodTableSize;
+
+            for(auto& lod : lodblobs)
+            {
+                LODEntry entry{
+                    .size   = lod.size(),
+                    .offset = headerSize + body.size()
+                };
+
+                lodTable    += Blob{ entry };
+                body        += lod;
+            }
+
+            header.ResourceSize = sizeof(header) + lodTable.size() + body.size();
+
+            Blob headerBlob{ header };
+            Blob file = headerBlob + lodTable + body;
+
+            auto [_ptr, size] = file.Release();
 
 			ResourceBlob        out;
 			out.GUID			= TriMeshID;
 			out.ID				= ID;
 			out.resourceType	= EResourceType::EResource_TriMesh;
-			out.buffer			= reinterpret_cast<char*>(blob);
-			out.bufferSize		= bufferSize;
+			out.buffer			= (char*)_ptr;
+			out.bufferSize		= size;
 
 			return out;
 		}
@@ -161,6 +215,7 @@ namespace FlexKit::ResourceBuilder
 		const std::string& GetResourceID()      const override { return ID; }
 		const uint64_t     GetResourceGUID()    const override { return TriMeshID; }
 
+        /*
         std::optional<VertexBufferView*> GetBuffer(VERTEXBUFFER_TYPE type) const
         {
             for (auto buffer : buffers)
@@ -178,22 +233,12 @@ namespace FlexKit::ResourceBuilder
 
             return -1;
         }
+        */
 
-		size_t CalculateResourceSize()
-		{
-			size_t Size = 0;
-			for (auto B : buffers)
-				Size += B ? B->GetBufferSizeRaw() : 0;
-
-			return Size + sizeof(TriMeshAssetBlob);
-		}
 
 		size_t AnimationData;
-		size_t IndexCount;
 		size_t TriMeshID;
-		size_t IndexBuffer_Idx;
 
-        static_vector<FlexKit::SubMesh, 32> submeshes;
 
 		struct SubDivInfo
 		{
@@ -216,6 +261,7 @@ namespace FlexKit::ResourceBuilder
 		void BakeTransform(const float4x4 transform)
 		{
 			return;
+        /*
 			for (auto view : buffers)
 			{
 				if (view)
@@ -258,8 +304,8 @@ namespace FlexKit::ResourceBuilder
 					}
 				}
 			}
+        */
 		}
-
 
 		// Visibility Information
 		MeshKDBTree_ptr kdbTree;
@@ -269,8 +315,9 @@ namespace FlexKit::ResourceBuilder
 		SkeletonResource_ptr	Skeleton;
 		size_t					SkeletonGUID;
 
-		std::vector<SubDivInfo>				subDivs;
-		std::array<VertexBufferView*, 16>	buffers;
+
+		std::vector<LevelOfDetail>			LODs;
+        std::vector<SubDivInfo>				subDivs;
 	};
 
 
@@ -282,8 +329,12 @@ namespace FlexKit::ResourceBuilder
 	/************************************************************************************************/
 
 
+    struct LODLevel
+    {
+        std::vector<MeshDesc> subMeshs;
+    };
 	
-	MeshResource_ptr	CreateMeshResource	(MeshDesc*, const size_t meshCount, const std::string& ID, const MetaDataList& MD = MetaDataList{}, const bool EnableSubDiv = false);
+	MeshResource_ptr	CreateMeshResource(std::vector<LODLevel>& lods, const std::string& ID, const MetaDataList& MD = MetaDataList{}, const bool EnableSubDiv = false);
 
 
 	/************************************************************************************************/

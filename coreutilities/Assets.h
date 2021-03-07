@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Fonts.h"
 #include "ResourceHandles.h"
 #include "TextureUtilities.h"
+#include "intersection.h"
 
 #define WINDOW_LEAN_AND_MEAN
 
@@ -228,54 +229,84 @@ namespace FlexKit
 
     struct SubMesh
     {
-        uint32_t BaseIndex;
-        uint32_t IndexCount;
+        uint32_t    BaseIndex;
+        uint32_t    IndexCount;
+        AABB        aabb;
     };
+
+    struct LODlevel
+    {
+        struct Buffer
+        {
+            uint16_t Format;
+            uint16_t Type;
+            size_t	 Begin;
+            size_t	 size;
+        };
+
+        struct LODlevelDesciption
+        {
+            size_t  bufferOffset    = 0;
+            size_t  subMeshCount    = 0;
+
+            static_vector<Buffer> buffers;
+        } descriptor;
+
+        SubMesh subMeshes[];
+    };
+
+    struct LODEntry
+    {
+        size_t size;
+        size_t offset;
+    };
+
+    struct LODTable
+    {
+        size_t      LODcount;
+        LODEntry    lodOffsets[];
+    };
+
 
 	struct TriMeshAssetBlob
 	{
-		size_t			ResourceSize;
-		EResourceType	Type;
-		GUID_t			GUID;
-		size_t			Pad;
+        struct TriMeshAssetHeader
+        {
+            size_t			ResourceSize;
+            EResourceType	Type;
+            GUID_t			GUID;
+            size_t			Pad;
 
-		char	ID[FlexKit::ID_LENGTH];
-		bool	HasAnimation;
-		bool	HasIndexBuffer;
+            char	ID[FlexKit::ID_LENGTH];
+            bool	HasAnimation;
+            bool	HasIndexBuffer;
 
-		size_t	BufferCount;
-		size_t	IndexCount;
-		size_t	IndexBuffer;
-		size_t	SkeletonGuid;
-		GUID_t	ColliderGuid;
+            size_t	SkeletonGuid;
+            GUID_t	ColliderGuid;
 
-		struct RInfo
-		{
-			float minx; 
-			float miny; 
-			float minz;
-			float maxx;
-			float maxy;
-			float maxz;
-			float r;
-			byte   _PAD[12];
-		}Info;
+            struct RInfo
+            {
+                float minx;
+                float miny;
+                float minz;
+                float maxx;
+                float maxy;
+                float maxz;
+                float r;
+                byte   _PAD[12];
+            }Info;
 
-		float  BS[4];// Uses Float Array instead of float4, float4 requires alignment 
-		float  AABB[6];
+            float  BS[4];// Uses Float Array instead of float4, float4 requires alignment 
+            float  AABB[6];
 
-		struct Buffer
-		{
-			uint16_t Format;
-			uint16_t Type;
-			size_t	 Begin;
-			size_t	 size;
-		}Buffers[16];
-
-        static_vector<SubMesh, 32> submeshes;
+            size_t LODCount;
+        }   header;
 
 		char Memory[];
 	};
+
+
+    bool LoadLOD(TriMesh* triMesh, uint level, RenderSystem& renderSystem, CopyContextHandle copyCtx, iAllocator& memory);
 
 
 	/************************************************************************************************/
@@ -563,7 +594,7 @@ namespace FlexKit
         RAC_ASSET_NOT_FOUND,
     };
 
-    /*
+#if 0 // Use std file io
     struct ReadContext
     {
         ReadContext() = default;
@@ -624,7 +655,8 @@ namespace FlexKit
 
         operator bool() { return file != nullptr; }
     };
-    */
+
+#else // Win32 IO
 
     struct ReadContext
     {
@@ -708,6 +740,8 @@ namespace FlexKit
 
         operator bool() { return file != nullptr; }
     };
+
+#endif
 
     ReadContext         OpenReadContext(GUID_t guid);
     ReadAsset_RC        ReadAsset(ReadContext& readContext, GUID_t Asset, void* _ptr, size_t readSize, size_t readOffset = 0);

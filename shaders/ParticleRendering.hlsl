@@ -22,7 +22,7 @@ Forward_VS_OUT ParticleMeshInstanceVS(Vertex In)
 {
     Forward_VS_OUT Out;
 
-    Out.WPOS	    = float4(0.2f, 0.2f, 0.2f, 1.0f) * In.POS + In.instancePOS;
+    Out.WPOS	    = In.POS + In.instancePOS;
     Out.POS		    = mul(PV, float4(Out.WPOS, 1));
     Out.Normal      = mul(View, float4(In.Normal, 0.0f));
     Out.Tangent     = mul(View, float4(In.Tangent, 0.0f));
@@ -71,7 +71,7 @@ struct VertexDepth_IN
 
 float4 ParticleMeshInstanceDepthVS(VertexDepth_IN In) : SV_POSITION
 {
-    return float4(0.4f, 0.4f, 0.4f, 1.0f) * float4(In.POS, 1) + float4(In.instancePOS.xyz, 1);
+    return float4(In.POS + In.instancePOS.xyz, 1);
 }
 
 struct ShadowMapData
@@ -82,7 +82,7 @@ struct ShadowMapData
 
 cbuffer PassConstants : register( b1 )
 {
-    ShadowMapData matrices[64];
+    ShadowMapData matrices[6];
 };
 
 struct DepthVertex

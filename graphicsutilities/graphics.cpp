@@ -2128,13 +2128,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::AddIndexBuffer(TriMesh* Mesh)
+	void Context::AddIndexBuffer(TriMesh* Mesh, uint32_t lod)
 	{
-		size_t	IBIndex		= Mesh->VertexBuffer.MD.IndexBuffer_Index;
-		size_t	IndexCount	= Mesh->IndexCount;
+		const size_t	IBIndex		= Mesh->lods[lod].GetIndexBufferIndex();
+		const size_t	IndexCount	= Mesh->lods[lod].GetIndexCount();
 
 		D3D12_INDEX_BUFFER_VIEW		IndexView;
-		IndexView.BufferLocation	= GetBuffer(Mesh, IBIndex)->GetGPUVirtualAddress();
+		IndexView.BufferLocation	= GetBuffer(Mesh, lod, IBIndex)->GetGPUVirtualAddress();
 		IndexView.Format			= DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
 		IndexView.SizeInBytes		= IndexCount * 4;
 
@@ -2159,12 +2159,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::AddVertexBuffers(TriMesh* Mesh, static_vector<VERTEXBUFFER_TYPE, 16> Buffers, VertexBufferList* InstanceBuffers)
+	void Context::AddVertexBuffers(TriMesh* Mesh, uint32_t lod, static_vector<VERTEXBUFFER_TYPE, 16> Buffers, VertexBufferList* InstanceBuffers)
 	{
 		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
 
 		for(auto& I : Buffers)
-			FK_ASSERT(AddVertexBuffer(I, Mesh, VBViews));
+			FK_ASSERT(AddVertexBuffer(I, Mesh, lod, VBViews));
 
 		if (InstanceBuffers)
 		{
@@ -5501,6 +5501,7 @@ namespace FlexKit
 
 		for (uint32_t itr = 0; itr < BufferCount; ++itr)
 		{
+            auto& buffer = Buffers[itr];
 			if (nullptr != Buffers[itr] && Buffers[itr]->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX)
 			{
 				// Create the Vertex Buffer
@@ -5547,6 +5548,7 @@ namespace FlexKit
 				DVB_Out.VertexBuffers[itr].BufferStride			= Buffers[itr]->GetElementSize();
 				DVB_Out.VertexBuffers[itr].Type					= Buffers[itr]->GetBufferType();
 				DVB_Out.MD.IndexBuffer_Index					= itr;
+				DVB_Out.MD.InputElementCount                    = Buffers[itr]->GetBufferSize();
 			}
 			else if (Buffers[itr] && Buffers[itr]->GetBufferSize())
 			{
@@ -8389,10 +8391,11 @@ namespace FlexKit
 		//out.Buffers[01] = FlexKit::CreateVertexBufferView(NormalBuffer, NormalBufferSize);
 		//out.Buffers[15] = FlexKit::CreateVertexBufferView(IndexBuffer,  IndexBufferSize);
 
+        /*
 		out.Buffers[0]->Begin
 			( FlexKit::VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION
 			, FlexKit::VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32 );
-
+        
 
 		float3 Vmn = float3(0);
 		float3 Vmx = float3(0);
@@ -8527,7 +8530,8 @@ namespace FlexKit
 			//ClearTriMeshVBVs(&out);
 			TempSpace.clear();
 		}
-		return true;
+        */
+		return false;
 	}
 
 	
@@ -8537,16 +8541,18 @@ namespace FlexKit
 	void ReleaseTriMesh(TriMesh* T)
 	{
 		if(T->Memory){
-			Release(&T->VertexBuffer);
+            for (auto& details : T->lods) {
+                Release(&details.vertexBuffer);
+
+                for (auto& buffer : details.buffers)
+                {
+                    if (buffer)
+                        T->Memory->free(buffer);
+
+                    buffer = nullptr;
+                }
+            }
 			T->Memory->free((void*)T->ID);
-
-			for (auto& B : T->Buffers)
-			{
-				if(B)
-					T->Memory->free(B);
-
-				B = nullptr;
-			}
 		}
 	}
 
@@ -8556,18 +8562,22 @@ namespace FlexKit
 
 	void DelayedReleaseTriMesh(RenderSystem* RS, TriMesh* T)
 	{
-		DelayedRelease(RS, &T->VertexBuffer);
+        for (auto& detailLevel : T->lods)
+        {
+            DelayedRelease(RS, &detailLevel.vertexBuffer);
+
+            for (auto& B : detailLevel.buffers)
+            {
+                if (B)
+                    T->Memory->free(B);
+
+                B = nullptr;
+            }
+
+            detailLevel.vertexBuffer.clear();
+        }
+
 		T->Memory->free((void*)T->ID);
-
-		for (auto& B : T->Buffers)
-		{
-			if (B)
-				T->Memory->free(B);
-
-			B = nullptr;
-		}
-
-		T->VertexBuffer.clear();
 	}
 
 

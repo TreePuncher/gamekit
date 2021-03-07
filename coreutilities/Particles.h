@@ -4,33 +4,7 @@
 #include <random>
 
 namespace FlexKit
-{
-    struct EmitterProperties
-    {
-        float   maxLife             = 10.0f;
-        uint    emissionRate        = 100;
-        uint    emissionVariance    = 20;
-        float   initialVelocity     = 1.0f;
-        float   initialVariance     = 1.0f;
-
-        float2  emissionDirection           = float2(pi, pi);
-        float   emissionDirectionVariance   = 0.5f;
-    };
-
-    struct InitialParticleProperties
-    {
-        float3 position;
-        float3 velocity;
-        float  lifespan;
-    };
-
-    class ParticleSystemInterface
-    {
-    public:
-        virtual void Emit(double dT, EmitterProperties& properties, NodeHandle node) = 0;
-    };
-
-    /************************************************************************************************/
+{   /************************************************************************************************/
 
 
 	inline ID3D12PipelineState* CreateParticleMeshInstancedPSO(RenderSystem* RS)
@@ -79,6 +53,7 @@ namespace FlexKit
 
 		return PSO;
 	}
+
 
     /************************************************************************************************/
 
@@ -132,6 +107,38 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    struct EmitterProperties
+    {
+        float   maxLife             = 10.0f;
+        float   minEmissionRate     = 100;
+        float   maxEmissionRate     = 200;
+        float   emissionVariance    = 0.5f;
+        float   initialVelocity     = 1.0f;
+        float   initialVariance     = 1.0f;
+
+        float   emissionSpread              = pi / 4;
+        float   emissionDirectionVariance   = 0.3f;
+    };
+
+
+    struct InitialParticleProperties
+    {
+        float3 position;
+        float3 velocity;
+        float  lifespan;
+    };
+
+
+    class ParticleSystemInterface
+    {
+    public:
+        virtual void Emit(double dT, EmitterProperties& properties, NodeHandle node) = 0;
+    };
+
+
+    /************************************************************************************************/
+
+
     template<typename TY_ParticleData>
     class ParticleSystem : public ParticleSystemInterface
     {
@@ -162,33 +169,39 @@ namespace FlexKit
 
         void Emit(double dT, EmitterProperties& properties, NodeHandle node)
         {
-            const auto rate     = properties.emissionRate;
+            const auto minRate  = properties.minEmissionRate;
+            const auto maxRate  = properties.maxEmissionRate;
             const auto variance = properties.emissionVariance;
-
-            const float x = properties.emissionDirection.x;
-            const float y = properties.emissionDirection.y;
+            const float spread  = properties.emissionSpread;
 
             std::random_device                      generator;
-            std::uniform_real_distribution<float>   normalDistro(0, pi);
-            std::uniform_real_distribution<float>   realDistro(rate * (1.0f - variance), rate * (1.0f + variance));
+            std::uniform_real_distribution<float>   thetaspreadDistro(0.0f, 1.0f);
+            std::normal_distribution<float>         gammaspreadDistro(-1.0f, 1.0f);
+            std::normal_distribution<float>         realDistro(minRate, maxRate);
             std::uniform_real_distribution<float>   velocityDistro( properties.initialVelocity * (1.0f - properties.initialVariance),
                                                                     properties.initialVelocity * (1.0f + properties.initialVariance));
             const auto emitterPOS           = GetPositionW(node);
-            const auto emitterOrientation   = GetPositionW(node);
+            const auto emitterOrientation   = GetOrientation(node);
             const auto emissionCount        = realDistro(generator) * dT;
 
             for (size_t I = 0; I < emissionCount; I++)
             {
-                const auto theta    = 2.0f * (float)pi * normalDistro(generator);
-                const auto phi      = normalDistro(generator);
+                const float theta       = 2 * float(pi) * thetaspreadDistro(generator);
+                const float gamma       = pi / 2.0f - (float(pi) * abs(gammaspreadDistro(generator)));
 
-                const auto x_POS    = std::sin(phi) * std::cos(theta);
-                const auto y_POS    = abs(std::sin(phi) * std::sin(theta));
-                const auto z_POS    = std::cos(phi);
+                const float sinTheta = sin(theta);
+                const float cosTheta = cos(theta);
+                const float cosGamma = cos(gamma);
+
+
+                const float y_velocity  = sin(gamma);
+                const float x_velocity  = sinTheta * cosGamma;
+                const float z_velocity  = cosTheta * cosGamma;
+
 
                 particles.push_back(InitialParticleProperties{
-                        .position   = float3{ x_POS, y_POS, z_POS } + emitterPOS,
-                        .velocity   = (float3{ x_POS, y_POS, z_POS }).normal() * 10,
+                        .position   = emitterPOS,
+                        .velocity   = (emitterOrientation * float3{ x_velocity, y_velocity, z_velocity }) * 10,
                         .lifespan   = properties.maxLife,
                     });
             }
@@ -290,12 +303,13 @@ namespace FlexKit
 
                     ctx.AddIndexBuffer(mesh);
                     ctx.AddVertexBuffers(mesh,
+                        mesh->GetHighestLoadedLodIdx(),
                         {   VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
                             VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
                             VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT },
                         &instancedBuffer);
 
-                    ctx.DrawIndexedInstanced(mesh->IndexCount, 0, 0, particles.size(), 0);
+                    ctx.DrawIndexedInstanced(mesh->lods[0].GetIndexCount(), 0, 0, particles.size(), 0);
                 });
         }
 
@@ -349,6 +363,7 @@ namespace FlexKit
 
             ctx.AddIndexBuffer(meshResource);
             ctx.AddVertexBuffers(meshResource,
+                meshResource->GetHighestLoadedLodIdx(),
                 {   VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION   },
                 &instancedBuffer);
 
@@ -368,7 +383,7 @@ namespace FlexKit
 
                 ctx.SetScissorAndViewports({ depthTarget[I] });
                 ctx.SetRenderTargets({}, true, depthTarget[I]);
-                ctx.DrawIndexedInstanced(meshResource->IndexCount, 0, 0, particles.size(), 0);
+                ctx.DrawIndexedInstanced(meshResource->lods[0].GetIndexCount(), 0, 0, particles.size(), 0);
             }
         }
 

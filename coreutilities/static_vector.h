@@ -169,14 +169,21 @@ namespace FlexKit
 		{
 			return Elements[size() - 1];
 		}
+
+        const TY_& back() const
+        {
+            return Elements[size() - 1];
+        }
  
-		void push_back( const TY_& in )
+		size_t push_back( const TY_& in )
 		{
 			if (!full())
 			{
 				new(&Elements[Size]) TY_( in );
-				Size++;
+				return Size++;
 			}
+
+            return -1;
 		}
 
 
@@ -271,7 +278,7 @@ namespace FlexKit
 		{
 			return Elements[0];
 		}
- 
+
 		size_t size() const
 		{
 			return Size;
