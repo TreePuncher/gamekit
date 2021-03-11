@@ -1,5 +1,6 @@
 #pragma once
 #include "ResourceUtilities.h"
+#include "SceneResource.h"
 
 namespace FlexKit::ResourceBuilder
 {

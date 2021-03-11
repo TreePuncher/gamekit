@@ -604,22 +604,35 @@ namespace FlexKit::ResourceBuilder
                 for (auto _ : skin.joints)
                     parentLinkage.push_back((uint32_t)INVALIDHANDLE);
 
+                for (auto _ : skin.joints)
+                    jointPoses.emplace_back();
+
                 for (uint32_t I = 0; I < skin.joints.size(); I++)
                     nodeMap[skin.joints[I]] = I;
 
-                for (auto& joint :skin.joints)
+                GUID_t ID = rand();
+
+                const auto bufferViewIdx    = model.accessors[skin.inverseBindMatrices].bufferView;
+                const auto& bufferView      = model.bufferViews[bufferViewIdx];
+                const auto& buffer          = model.buffers[bufferView.buffer];
+
+                const auto  inverseMatrices     = reinterpret_cast<const FlexKit::float4x4*>(buffer.data.data() + bufferView.byteOffset);
+
+                for (auto& joint : skin.joints)
                 {
-                    auto node = model.nodes[joint];
+                    auto& node = model.nodes[joint];
 
                     Joint j;
                     j.mID = node.name.c_str();
 
+                    /*
                     JointPose pose;
                     if (node.translation.size())
                     {
                         pose.ts.x = (float)node.translation[0];
                         pose.ts.y = (float)node.translation[1];
                         pose.ts.z = (float)node.translation[2];
+                        pose.ts.w = 1.0f;
                     }
                     else
                         pose.ts = float4{ 0, 0, 0, 1 };
@@ -629,28 +642,37 @@ namespace FlexKit::ResourceBuilder
                         pose.r[0] = (float)node.rotation[0];
                         pose.r[1] = (float)node.rotation[1];
                         pose.r[2] = (float)node.rotation[2];
-                        pose.r[2] = (float)node.rotation[3];
+                        pose.r[3] = (float)node.rotation[3];
                     }
                     else
                         pose.r = Quaternion{ 0, 0, 0, 1 };
+                    auto m = inverseMatrices[joint];
 
-                    jointPoses.push_back(GetPoseTransform(pose));
+                    jointPoses[nodeMap[joint]] = GetPoseTransform(pose);
+                    */
+
+
+                    if (node.extras.Has("ResourceID") && node.extras.Get("ResourceID").IsInt())
+                        ID = node.extras.Get("ResourceID").GetNumberAsInt();
 
                     auto jointIdx = nodeMap[joint];
                     for (auto& child : node.children)
                         parentLinkage[nodeMap[child]] = jointIdx;
+
                 }
 
                 auto skeleton   = std::make_shared<SkeletonResource>();
-                skeleton->guid  = rand();
+                skeleton->guid  = ID;
                 skeleton->ID    = skin.name + ".skeleton";
+
 
                 for (size_t I = 0; I < parentLinkage.size(); I++)
                 {
                     auto parent         = JointHandle(parentLinkage[I]);
-                    auto jointPose      = GetPose(Float4x4ToXMMATIRX(jointPoses[I]));
-                    auto parentPose     = parent != 0xffff ? jointPoses[parent] : float4x4::Identity();
-                    auto inversePose    = DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(jointPoses[I]));
+                    //auto jointPose      = GetPose(Float4x4ToXMMATIRX(jointPoses[I]));
+                    //auto parentPose     = parent != 0xffff ? jointPoses[parent] : float4x4::Identity();
+                    //auto pose           = parentPose * jointPoses[I];
+                    auto inversePose    = Float4x4ToXMMATIRX(inverseMatrices[I]);
 
                     SkeletonJoint joint;
                     joint.mParent = parent;

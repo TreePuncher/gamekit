@@ -97,10 +97,12 @@ bool HandleEvents(PlayerInputState& keyState, Event evt)
 
 LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerInterface& IN_worldState, BaseState& IN_base) :
         FrameworkState      { IN_framework  },
+        base                { IN_base },
         worldState          { IN_worldState },
         testParticleSystem  { IN_framework.core.GetBlockMemory() },
         emitters            { IN_framework.core.GetBlockMemory() },
-        base                { IN_base }
+        testAnimation       { IN_worldState.CreateGameObject() }
+
 {
     //base.renderWindow.ToggleMouseCapture();
     auto& renderSystem = framework.core.RenderSystem;
@@ -118,9 +120,22 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
 
     auto& particleEmitter = worldState.CreateGameObject();
     particleEmitter.AddView<SceneNodeView<>>();
-    //particleEmitter.AddView<ParticleEmitterView>(ParticleEmitterData{ &testParticleSystem, GetSceneNode(particleEmitter) });
+    //auto& emitter = particleEmitter.AddView<ParticleEmitterView>(ParticleEmitterData{ &testParticleSystem, GetSceneNode(particleEmitter) });
+    //emitter.GetData().properties.emissionSpread = 0.5f;
 
     Translate(particleEmitter, { 0, 10, 0 });
+
+    auto& scene = worldState.GetScene();
+
+    playerCharacterModel = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), 9990);
+
+    testAnimation.AddView<SceneNodeView<>>();
+    testAnimation.AddView<DrawableView>(playerCharacterModel, GetSceneNode(testAnimation));
+    testAnimation.AddView<SkeletonView>(playerCharacterModel, 9991);
+
+    scene.AddGameObject(testAnimation, GetSceneNode(testAnimation));
+
+    SetBoundingSphereFromMesh(testAnimation);
 }
 
 
@@ -160,6 +175,10 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 
     CameraHandle activeCamera = worldState.GetActiveCamera();
     SetCameraAspectRatio(activeCamera, base.renderWindow.GetAspectRatio());
+
+    
+    auto& gatherSkinned = GatherSkinned(dispatcher, worldState.GetScene(), worldState.GetActiveCamera(), core.GetTempMemoryMT());
+    auto& updatePoses   = UpdatePoses(dispatcher, gatherSkinned, core.GetTempMemoryMT());
 
     auto& scene             = worldState.GetScene();
     auto& transforms        = QueueTransformUpdateTask(dispatcher);
@@ -279,6 +298,57 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
                                 reserveCB,
                                 reserveVB);
     }
+
+    // Draw Skeleton overlay
+    auto Skeleton = GetSkeleton(testAnimation);
+    auto pose     = GetPoseState(testAnimation);
+    auto node     = GetSceneNode(testAnimation);
+
+    //RotateJoint(*gameObject, JointHandle(0), Quaternion{ 0, T, 0 });
+
+    for (size_t I = 0; I < 5; I++)
+    {
+        JointHandle joint{ I };
+
+        //auto jointPose = GetJointPose(testAnimation, joint);
+        //jointPose.r = Quaternion{ 0, 0, (float)(T) * 90 };
+        //SetJointPose(*gameObject, joint, jointPose);
+    }
+
+    if (!Skeleton)
+        return nullptr;
+
+
+    const auto PV       = GetCameraConstants(activeCamera).PV;
+    //LineSegments lines  = DEBUG_DrawPoseState(*pose, node, core.GetTempMemory());
+    LineSegments lines  = BuildSkeletonLineSet(Skeleton, node, core.GetTempMemory());
+
+    // Transform to Device Coords
+    for (auto& line : lines)
+    {
+        const auto tempA = PV * float4{ line.A, 1 };
+        const auto tempB = PV * float4{ line.B, 1 };
+
+        if (tempA.w <= 0 || tempB.w <= 0)
+        {
+            line.A = { 0, 0, 0 };
+            line.B = { 0, 0, 0 };
+        }
+        else
+        {
+            line.A = tempA.xyz() / tempA.w;
+            line.B = tempB.xyz() / tempB.w;
+        }
+    }
+
+    DrawShapes(
+        DRAW_LINE_PSO,
+        frameGraph,
+        reserveVB,
+        reserveCB,
+        targets.RenderTarget,
+        core.GetTempMemory(),
+        LineShape{ lines });
 
     PresentBackBuffer(frameGraph, base.renderWindow);
 

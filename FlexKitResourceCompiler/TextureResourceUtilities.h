@@ -7,7 +7,7 @@
 #include "ResourceUtilities.h"
 
 #include "Compressonator.h"
-
+#include <filesystem>
 
 
 namespace FlexKit::ResourceBuilder

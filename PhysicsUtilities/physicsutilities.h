@@ -1077,7 +1077,7 @@ namespace FlexKit
     void            SetCameraControllerCameraBackOffset(GameObject& GO, const float offset);
 
 
-    auto& UpdateThirdPersonCameraControllers(UpdateDispatcher& dispatcher, float2 mouseInput, const double dT)
+    inline auto& UpdateThirdPersonCameraControllers(UpdateDispatcher& dispatcher, float2 mouseInput, const double dT)
     {
         struct TPC_Update {};
 
