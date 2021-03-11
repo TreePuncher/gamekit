@@ -1088,9 +1088,9 @@ namespace FlexKit
 
         const float4 debugLines[] =
         {
-            { 1, 0, 0, 1 },
-            { 0, 1, 0, 1 },
-            { 0, 0, 1, 1 }
+            { 0.1f, 0.0f, 0.0f, 1.0f },
+            { 0.0f, 0.1f, 0.0f, 1.0f },
+            { 0.0f, 0.0f, 0.1f, 1.0f }
         };
 
         const float4 Colors[] =
@@ -1103,19 +1103,21 @@ namespace FlexKit
 
 		for (size_t I = 1; I < S->JointCount; ++I)
 		{
-			float4x4 PT = (S->Joints[I].mParent != InvalidHandle_t) ? M[S->Joints[I].mParent] : float4x4::Identity();
+            auto parent = S->Joints[I].mParent;
+			float4x4 PT = (parent != 0xffff) ? M[parent] : float4x4::Identity();
+            
 
-			auto J  = S->JointPoses[I];
-			auto JT = S->GetInversePose(JointHandle(I)) * GetPoseTransform(J);
+            const float4x4 IT   = S->GetInversePose(JointHandle(I));
+            const float4x4 P_T  = XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(IT)));
+			const float4x4 JT   = P_T;
 
-            const auto temp = (JT * Zero);
             const float4 VA = (WT * (JT * Zero));
             const float4 VB = (WT * (PT * Zero));
 
             const float3 A = VA.xyz();
             const float3 B = VB.xyz();
 
-			M[I] = JT;
+			M[I] = P_T;
 
             if (VA.w <= 0 || VB.w <= 0)
                 continue;
@@ -1125,7 +1127,7 @@ namespace FlexKit
             for (size_t itr = 0; itr < sizeof(debugLines) / sizeof(debugLines[0]); ++itr)
             {
                 const float4 V      = WT * (PT * debugLines[itr]);
-                const auto& color   = Colors[itr];
+                const float4 color  = Colors[itr];
                 lines.emplace_back(B, color.xyz(), V.xyz(), color.xyz());
             }
 		}

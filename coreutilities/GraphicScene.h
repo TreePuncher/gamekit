@@ -119,50 +119,13 @@ namespace FlexKit
 	};
 
 
-	inline TriMeshHandle GetTriMesh(GameObject& go)
-	{
-		return Apply(go,
-			[&](DrawableView& drawable)
-			{
-				return drawable.GetTriMesh();
-			}, 
-			[]() -> TriMeshHandle
-			{
-				return TriMeshHandle{ InvalidHandle_t };
-			});
-	}
-
-
     /************************************************************************************************/
 
 
-    inline void SetMaterialParams(GameObject& go, float3 albedo, float kS, float IOR, float anisotropic, float roughness, float metallic)
-    {
-        return Apply(go,
-            [&](DrawableView& drawable)
-            {
-                auto& drawableData = drawable.GetDrawable();
-                drawableData.MatProperties.albedo         = albedo;
-                drawableData.MatProperties.kS             = kS;
-                drawableData.MatProperties.IOR            = IOR;
-                drawableData.MatProperties.anisotropic    = anisotropic;
-                drawableData.MatProperties.roughness      = roughness;
-                drawableData.MatProperties.metallic       = metallic;
-            });
-    }
+    TriMeshHandle GetTriMesh(GameObject& go);
 
-
-    /************************************************************************************************/
-
-
-    inline void ToggleSkinned(GameObject& go, bool enabled)
-    {
-        return Apply(go,
-            [&](DrawableView& drawable)
-            {
-                drawable.GetDrawable().Skinned = enabled;
-            });
-    }
+    void SetMaterialParams(GameObject& go, float3 albedo, float kS, float IOR, float anisotropic, float roughness, float metallic);
+    void ToggleSkinned(GameObject& go, bool enabled);
 
 
 	/************************************************************************************************/

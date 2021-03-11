@@ -176,7 +176,7 @@ namespace FlexKit
 
             std::random_device                      generator;
             std::uniform_real_distribution<float>   thetaspreadDistro(0.0f, 1.0f);
-            std::normal_distribution<float>         gammaspreadDistro(-1.0f, 1.0f);
+            std::uniform_real_distribution<float>   gammaspreadDistro(std::lerp(1.0f, 0.0f, spread), 1.0f);
             std::normal_distribution<float>         realDistro(minRate, maxRate);
             std::uniform_real_distribution<float>   velocityDistro( properties.initialVelocity * (1.0f - properties.initialVariance),
                                                                     properties.initialVelocity * (1.0f + properties.initialVariance));
@@ -187,7 +187,7 @@ namespace FlexKit
             for (size_t I = 0; I < emissionCount; I++)
             {
                 const float theta       = 2 * float(pi) * thetaspreadDistro(generator);
-                const float gamma       = pi / 2.0f - (float(pi) * abs(gammaspreadDistro(generator)));
+                const float gamma       = lerp(-(float(pi) / 2.0f), (float(pi) / 2.0f), abs(gammaspreadDistro(generator)));
 
                 const float sinTheta = sin(theta);
                 const float cosTheta = cos(theta);

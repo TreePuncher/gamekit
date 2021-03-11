@@ -223,7 +223,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    FLEXKITAPI auto& QueueTransformUpdateTask(UpdateDispatcher& Dispatcher)
+    FLEXKITAPI inline auto& QueueTransformUpdateTask(UpdateDispatcher& Dispatcher)
     {
         struct TransformUpdateData
         {};

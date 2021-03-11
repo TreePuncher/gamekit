@@ -161,6 +161,10 @@ public:
 
     BaseState&                      base;
     WorldStateMangagerInterface&    worldState;
+
+    GameObject&                     testAnimation;
+
+    TriMeshHandle                   playerCharacterModel;
 };
 
 

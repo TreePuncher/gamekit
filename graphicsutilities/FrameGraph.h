@@ -815,7 +815,7 @@ namespace FlexKit
 	};
 
 
-	auto MakePred(FrameResourceHandle handle, const PassObjectList& resources)
+	inline auto MakePred(FrameResourceHandle handle, const PassObjectList& resources)
 	{
 		return [handle](FrameObjectLink& lhs)
 		{
@@ -824,7 +824,7 @@ namespace FlexKit
 	}
 
 
-	auto MakePred(ResourceHandle handle, const PassObjectList& resources)
+    inline auto MakePred(ResourceHandle handle, const PassObjectList& resources)
 	{
 		return [handle, &resources](FrameObjectLink& lhs)
 		{
@@ -833,7 +833,7 @@ namespace FlexKit
 	}
 
 
-	auto MakePred(SOResourceHandle handle, const PassObjectList& resources)
+    inline auto MakePred(SOResourceHandle handle, const PassObjectList& resources)
 	{
 		return [handle, &resources](FrameObjectLink& lhs)
 		{
@@ -1705,7 +1705,7 @@ namespace FlexKit
 				float4x4::Identity()
 			};
 
-            auto constantBuffer = reserveCB(256);
+            auto constantBuffer = reserveCB(AlignedSize<Constants>());
 			ConstantBufferDataSet constants{ CB_Data, constantBuffer };
 			DrawList.push_back({ ShapeDraw::RenderMode::Line, constants, vertices, 2 * Lines.size() });
 		}
@@ -1839,37 +1839,36 @@ namespace FlexKit
 			ReserveConstantBufferFunction&  reserveCB,
 			FrameResources&			        resources) override
 		{
-			/*
 			Constants CB_Data = {
 			float4(1, 1, 1, 1),
 			float4(1, 1, 1, 1),
 			float4x4::Identity() };
 
-			auto CBOffset = BeginNewConstantBuffer(CB, resources);
-			PushConstantBufferData(CB_Data, CB, resources);
+            auto constantBuffer = reserveCB(sizeof(CB_Data));
+            auto constants      = ConstantBufferDataSet{CB_Data, constantBuffer };
+            auto vertexBuffer   = reserveVB(sizeof(CB_Data) * 6 * rects.size());
 
-			const size_t VBOffset = resources.GetVertexBufferOffset(pushBuffer, sizeof(ShapeVert));
-			size_t vertexOffset = 0;
+            auto vertices = VertexBufferDataSet(
+                SET_TRANSFORM_OP, rects,
+                [](auto& rect, auto& buffer)
+                {
+                    float2 rectUpperLeft	= rect.Position;
+				    float2 rectBottomRight	= rect.Position + rect.WH;
+				    float2 rectUpperRight	= { rectBottomRight.x,	rectUpperLeft.y };
+				    float2 rectBottomLeft	= { rectUpperLeft.x,	rectBottomRight.y };
 
-			for(auto rect : rects)
-			{
-				float2 rectUpperLeft	= rect.Position;
-				float2 rectBottomRight	= rect.Position + rect.WH;
-				float2 rectUpperRight	= { rectBottomRight.x,	rectUpperLeft.y };
-				float2 rectBottomLeft	= { rectUpperLeft.x,	rectBottomRight.y };
+				    buffer.Push(ShapeVert{ Position2SS(rectUpperLeft),	    { 0.0f, 1.0f }, rect.Color });
+				    buffer.Push(ShapeVert{ Position2SS(rectBottomRight),	{ 1.0f, 0.0f }, rect.Color });
+				    buffer.Push(ShapeVert{ Position2SS(rectBottomLeft),	    { 0.0f, 1.0f }, rect.Color });
 
-				PushVertex(ShapeVert{ Position2SS(rectUpperLeft),	{ 0.0f, 1.0f }, rect.Color }, pushBuffer, resources);
-				PushVertex(ShapeVert{ Position2SS(rectBottomRight),	{ 1.0f, 0.0f }, rect.Color }, pushBuffer, resources);
-				PushVertex(ShapeVert{ Position2SS(rectBottomLeft),	{ 0.0f, 1.0f }, rect.Color }, pushBuffer, resources);
+				    buffer.Push(ShapeVert{ Position2SS(rectUpperLeft),	    { 0.0f, 1.0f }, rect.Color });
+				    buffer.Push(ShapeVert{ Position2SS(rectUpperRight),	    { 1.0f, 1.0f }, rect.Color });
+				    buffer.Push(ShapeVert{ Position2SS(rectBottomRight),	{ 1.0f, 0.0f }, rect.Color });
 
-				PushVertex(ShapeVert{ Position2SS(rectUpperLeft),	{ 0.0f, 1.0f }, rect.Color }, pushBuffer, resources);
-				PushVertex(ShapeVert{ Position2SS(rectUpperRight),	{ 1.0f, 1.0f }, rect.Color }, pushBuffer, resources);
-				PushVertex(ShapeVert{ Position2SS(rectBottomRight),	{ 1.0f, 0.0f }, rect.Color }, pushBuffer, resources);
+                    return ShapeVert{};
+                }, vertexBuffer);
 
-				drawList.push_back({ ShapeDraw::RenderMode::Triangle, CBOffset, VBOffset, 6, vertexOffset });
-				vertexOffset += 6;
-			}
-			*/
+            drawList.push_back({ ShapeDraw::RenderMode::Triangle, constants, vertices, 6 * rects.size() });
 		}
 
 		Vector<FlexKit::Rectangle> rects;
@@ -1947,33 +1946,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline void AddShapes(
-		DrawList&				        List, 
-		ReserveVertexBufferFunction&    reserveCB,
-		ReserveConstantBufferFunction&  reserveVB,
-		FrameResources&			        Resources) {}
-
-
-	/************************************************************************************************/
-
-
-	template<typename TY_1, typename ... TY_OTHER_SHAPES>
-	void AddShapes(
-		DrawList&				        List, 
-		ReserveVertexBufferFunction&    reserveVB,
-		ReserveConstantBufferFunction&  reserveCB,
-		FrameResources&			        Resources,
-		TY_1&					        Shape, 
-		TY_OTHER_SHAPES ...		        ShapePack)
-	{
-		Shape.AddShapeDraw(List, reserveVB, reserveCB, Resources);
-		AddShapes(List, reserveVB, reserveCB, Resources, std::forward<TY_OTHER_SHAPES&&>(ShapePack)...);
-	}
-
-
-	/************************************************************************************************/
-
-
 	template<typename ... TY_OTHER>
 	void DrawShapes(
 		PSOHandle                       state, 
@@ -1982,65 +1954,50 @@ namespace FlexKit
 		ReserveConstantBufferFunction   reserveCB,
 		ResourceHandle                  renderTarget, 
 		iAllocator*                     allocator, 
-		TY_OTHER ... Args)
+		TY_OTHER ...                    args)
 	{
-        /*
 		struct ShapeParams
 		{
 			ReserveVertexBufferFunction     reserveVB;
 			ReserveConstantBufferFunction   reserveCB;
-			PSOHandle				        State;
-			FrameResourceHandle		        RenderTarget;
-			DrawList				        Draws;
+			PSOHandle				        state;
+			DrawList				        draws;
+
+			FrameResourceHandle		        renderTarget;
 		};
-        */
-        struct temp {};
 
-        FK_ASSERT(0);
-
-        auto& pass = frameGraph.AddNode<temp>({}, [](FrameGraphNodeBuilder& Builder, temp& Data) {}, [](const temp& Data, const ResourceHandler& frameResources, Context& context, iAllocator& allocator) {});
-
-
-        /*
 		auto& Pass = frameGraph.AddNode<ShapeParams>(
 			ShapeParams{
 				reserveVB,
 				reserveCB,
 				state,
+                DrawList{ allocator },
 			},
-            */
-
-        /*
-        auto& pass = frameGraph.AddNode<temp>(
-            temp{},
-			[&](FrameGraphNodeBuilder& Builder, temp& Data)
+			[&](FrameGraphNodeBuilder& Builder, ShapeParams& data)
 			{
 				// Single Thread Section
 				// All Rendering Data Must be pushed into buffers here in advance, or allocated in advance
 				// for thread safety
+				data.renderTarget	= Builder.RenderTarget(renderTarget);
 
-				//Data.RenderTarget	= Builder.WriteRenderTarget(renderTarget);
-				//Data.Draws			= DrawList(allocator);
-
-				//AddShapes(Data.Draws, reserveVB, reserveCB, frameGraph.Resources, std::forward<TY_OTHER&&>(Args)...);
+                (args.AddShapeDraw(data.draws, reserveVB, reserveCB, frameGraph.Resources), ...);
 			},
-			[=](const temp& Data, const ResourceHandler& frameResources, Context& context, iAllocator& allocator)
+			[=](const ShapeParams& data, const ResourceHandler& frameResources, Context& context, iAllocator& allocator)
 			{	// Multi-threadable Section
-                /*
-				auto WH = frameResources.GetTextureWH(Data.RenderTarget);
+				auto WH = frameResources.GetTextureWH(data.renderTarget);
 
-				context.SetScissorAndViewports({ frameResources.GetRenderTarget(Data.RenderTarget)} );
+				context.SetScissorAndViewports({ frameResources.GetRenderTarget(data.renderTarget)} );
 				context.SetRenderTargets(
-					{ frameResources.GetRenderTarget(Data.RenderTarget) },
+					{ frameResources.GetRenderTarget(data.renderTarget) },
 					false);
 
 				context.SetRootSignature		(frameResources.renderSystem().Library.RS6CBVs4SRVs);
-				context.SetPipelineState		(frameResources.GetPipelineState(Data.State));
+				context.SetPipelineState		(frameResources.GetPipelineState(data.state));
 				context.SetPrimitiveTopology	(EInputTopology::EIT_TRIANGLE);
 
 				size_t TextureDrawCount = 0;
 				ShapeDraw::RenderMode PreviousMode = ShapeDraw::RenderMode::Triangle;
-				for (auto D : Data.Draws)
+				for (auto D : data.draws)
 				{
 
 					switch (D.Mode) {
@@ -2074,7 +2031,6 @@ namespace FlexKit
 					PreviousMode = D.Mode;
 				}
 			});
-        */
 	} 
 
 
