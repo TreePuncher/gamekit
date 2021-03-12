@@ -207,6 +207,42 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    inline JointHandle GetJointParent(GameObject& gameObject, JointHandle jointID)
+    {
+        return Apply(
+            gameObject,
+            [&](SkeletonView& skeleton) -> JointHandle
+            {
+                return skeleton.GetSkeleton()->Joints[jointID].mParent;
+            },
+            []() -> JointHandle
+            {
+                return InvalidHandle_t;
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    inline size_t GetJointCount(GameObject& gameObject)
+    {
+        return Apply(
+            gameObject,
+            [&](SkeletonView& skeleton) -> size_t
+            {
+                return skeleton.GetSkeleton()->JointCount;
+            },
+            []() -> size_t
+            {
+                return 0;
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
     inline JointPose GetJointPose(GameObject& gameObject, JointHandle jointID)
     {
         return Apply(
@@ -240,6 +276,7 @@ namespace FlexKit
     {
         Drawable*   drawable;
         PoseState*  pose;
+        uint32_t    lodLevel;
     };
 
 
@@ -259,7 +296,6 @@ namespace FlexKit
 
     struct UpdatePosesTaskData
     {
-        StackAllocator	            taskMemory;
         const PosedDrawableList*	skinned;
 
         UpdateTask*         task;
@@ -271,10 +307,10 @@ namespace FlexKit
 
     void                GatherSkinned   (GraphicScene* SM, CameraHandle Camera, PosedDrawableList& out_skinned);
     GatherSkinnedTask&  GatherSkinned   (UpdateDispatcher& dispatcher, GraphicScene* scene, CameraHandle C, iAllocator* allocator);
-    UpdatePoseTask&     UpdatePoses     (UpdateDispatcher& dispatcher, GatherSkinnedTask& skinnedObjects, iAllocator* allocator);
+    UpdatePoseTask&     UpdatePoses     (UpdateDispatcher& dispatcher, GatherSkinnedTask& skinnedObjects);
 
 
-    void UpdatePose(PoseState& pose, iAllocator* );
+    void UpdatePose(PoseState& pose);
 
 
 }	/************************************************************************************************/

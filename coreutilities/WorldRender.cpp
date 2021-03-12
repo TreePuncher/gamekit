@@ -1091,7 +1091,7 @@ namespace FlexKit
         pointLightGather.AddInput(drawSceneDesc.cameraDependency);
 
         auto& skinnedObjects    = GatherSkinned(dispatcher, scene, camera, temporary);
-        auto& updatedPoses      = UpdatePoses(dispatcher, skinnedObjects, temporary);
+        auto& updatedPoses      = UpdatePoses(dispatcher, skinnedObjects);
 
         // [skinned Objects] -> [update Poses] 
         skinnedObjects.AddInput(drawSceneDesc.cameraDependency);
@@ -2216,7 +2216,7 @@ namespace FlexKit
 
 				struct EntityPoses
 				{
-					float4x4 transforms[128];
+					float4x4 transforms[512];
 
 					auto& operator [](size_t idx)
 					{
@@ -2235,6 +2235,15 @@ namespace FlexKit
                     auto& detailLevel   = triMesh->lods[lodIdx];
 
                     drawCallCount      += Max(detailLevel.subMeshes.size(), 1);
+                }
+
+                for (auto& skinnedDraw : data.skinned)
+                {
+                    auto* triMesh       = GetMeshResource(skinnedDraw.drawable->MeshHandle);
+                    const auto lodIdx   = skinnedDraw.lodLevel;
+                    auto& detailLevel   = triMesh->lods[lodIdx];
+
+                    drawCallCount += Max(detailLevel.subMeshes.size(), 1);
                 }
 
 
@@ -2398,7 +2407,6 @@ namespace FlexKit
 
 				auto& poses = allocator.allocate<EntityPoses>();
 
-                if (0)
 				for (const auto& skinnedDraw : data.skinned)
 				{
 					const auto constants    = skinnedDraw.drawable->GetConstants();

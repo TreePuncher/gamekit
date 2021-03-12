@@ -37,8 +37,12 @@ namespace FlexKit
                         SkeletonView& skeleton)
 					{
                         auto& drawable = drawView.GetDrawable();
-						if (drawable.Skinned && Intersects(F, BS))
-                            out_skinned.push_back({ &drawable, &skeleton.GetPoseState() });
+
+                        if (drawable.Skinned && Intersects(F, BS))
+                        {
+                            const auto res = ComputeLOD(drawable, POS, 10'000.0f);
+                            out_skinned.push_back({ &drawable, &skeleton.GetPoseState(), res.recommendedLOD });
+                        }
 					});
 			}
 		}
@@ -77,7 +81,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void UpdatePose(PoseState& pose, iAllocator* allocator)
+    void UpdatePose(PoseState& pose)
     {
         Skeleton* skeleton      = pose.Sk;
         const size_t jointCount = skeleton->JointCount;
@@ -98,13 +102,11 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    UpdatePoseTask& UpdatePoses(UpdateDispatcher& dispatcher, GatherSkinnedTask& skinnedObjects, iAllocator* allocator)
+    UpdatePoseTask& UpdatePoses(UpdateDispatcher& dispatcher, GatherSkinnedTask& skinnedObjects)
     {
         auto& task = dispatcher.Add<UpdatePosesTaskData>(
 			[&](auto& builder, UpdatePosesTaskData& data)
 			{
-				size_t taskMemorySize = KILOBYTE * 2048;
-				data.taskMemory.Init((byte*)allocator->malloc(taskMemorySize), taskMemorySize);
 				data.skinned        = &skinnedObjects.GetData().skinned;
 
                 builder.SetDebugString("Update Poses");
@@ -114,10 +116,7 @@ namespace FlexKit
                 FK_LOG_9("Start Pose Updates.\n");
 
                 for (auto& skinnedObject : *data.skinned)
-                {
-                    UpdatePose(*skinnedObject.pose, data.taskMemory);
-                    data.taskMemory.clear();
-                }
+                    UpdatePose(*skinnedObject.pose);
 
                 FK_LOG_9("End Pose Updates.\n");
 			});
