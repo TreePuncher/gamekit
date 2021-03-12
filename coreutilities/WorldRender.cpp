@@ -2398,6 +2398,7 @@ namespace FlexKit
 
 				auto& poses = allocator.allocate<EntityPoses>();
 
+                if (0)
 				for (const auto& skinnedDraw : data.skinned)
 				{
 					const auto constants    = skinnedDraw.drawable->GetConstants();
@@ -2426,15 +2427,13 @@ namespace FlexKit
 					auto skeleton   = pose->Sk;
 
 					for(size_t I = 0; I < pose->JointCount; I++)
-						poses[I] = XMMatrixToFloat4x4(skeleton->IPose[I] * pose->CurrentPose[I]);
+						poses[I] = skeleton->IPose[I] * pose->CurrentPose[I];
 
 					ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
 					ctx.SetGraphicsConstantBufferView(4, ConstantBufferDataSet(poses, poseBuffer));
 
                     for (auto& subMesh : triMesh->GetHighestLoadedLod().subMeshes)
-                    {
                         ctx.DrawIndexed(subMesh.IndexCount, subMesh.BaseIndex);
-                    }
 
 				}
 

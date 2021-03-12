@@ -29,7 +29,7 @@ namespace FlexKit
 			J.mParent	= joints[I].Parent;
 			strcpy_s((char*)J.mID, 64, joints[I].ID);
 
-			S->AddJoint(J, *(XMMATRIX*)&IP);
+			S->AddJoint(J, IP);
 		}
 
 		FreeAsset(RHandle);
@@ -86,22 +86,25 @@ namespace FlexKit
 
 		size_t JointCount = skeleton.JointCount;
 
-        PoseState poseState;
-        poseState.Joints		= (JointPose*)	allocator->_aligned_malloc(sizeof(JointPose) * JointCount, 0x40);
-        poseState.CurrentPose	= (XMMATRIX*)	allocator->_aligned_malloc(sizeof(XMMATRIX) * JointCount, 0x40);
-        poseState.JointCount	= JointCount;
-        poseState.Sk			= &skeleton;
+        PoseState pose;
+        pose.Joints		    = (JointPose*)	allocator->_aligned_malloc(sizeof(JointPose) * JointCount, 0x40);
+        pose.CurrentPose	= (float4x4*)	allocator->_aligned_malloc(sizeof(float4x4) * JointCount, 0x40);
+        pose.JointCount	    = JointCount;
+        pose.Sk			    = &skeleton;
 
 		for (size_t I = 0; I < JointCount; ++I)
-            poseState.Joints[I] = JointPose(Quaternion{ 0, 0, 0, 1 },float4{0, 0, 0, 1});
-		
-		for (size_t I = 0; I < poseState.JointCount; ++I)
+            pose.Joints[I] = JointPose(Quaternion{ 0, 0, 0, 1 },float4{0, 0, 0, 1});
+
+		for (size_t I = 0; I < pose.JointCount; ++I)
 		{
-			auto P = (skeleton.Joints[I].mParent != 0xFFFF) ? poseState.CurrentPose[skeleton.Joints[I].mParent] : XMMatrixIdentity();
-            poseState.CurrentPose[I] = P * Float4x4ToXMMATIRX(GetPoseTransform(skeleton.JointPoses[I]));
+            const auto skeletonT    = GetPoseTransform(skeleton.JointPoses[I]);
+            const auto parent       = skeleton.Joints[I].mParent;
+            const auto P            = (parent != 0xFFFF) ? pose.CurrentPose[parent] : float4x4::Identity();
+
+            pose.CurrentPose[I]     = skeletonT * P;
 		}
 
-		return poseState;
+		return pose;
 	}
 
 
@@ -841,7 +844,7 @@ namespace FlexKit
 		using DirectX::XMMatrixIdentity;
 		auto S = DPS->Sk;
 
-		XMMATRIX* M = (XMMATRIX*)TEMP->_aligned_malloc(S->JointCount * sizeof(float4x4));
+		float4x4* M = (float4x4*)TEMP->_aligned_malloc(S->JointCount * sizeof(float4x4));
 
 		if (!M)
 			return EPLAY_ANIMATION_RES::EPLAY_FAILED;
@@ -850,21 +853,20 @@ namespace FlexKit
 			auto BasePose	= S->JointPoses[I];
 			auto JointPose	= DPS->Joints[I];
 			
-			M[I] = Float4x4ToXMMATIRX(GetPoseTransform(JointPose) * GetPoseTransform(BasePose));
+			M[I] = GetPoseTransform(JointPose) * GetPoseTransform(BasePose);
 		}
 
 
-		{
-			for (size_t I = 0; I < S->JointCount; ++I) {
-				auto P = (S->Joints[I].mParent != 0xFFFF) ? M[S->Joints[I].mParent] : XMMatrixIdentity();
-				M[I] = M[I] * P;
-			}
-
-			for (size_t I = 0; I < DPS->JointCount; ++I)
-				DPS->CurrentPose[I] = M[I];
-
-			DPS->Dirty = true;
+		for (size_t I = 0; I < S->JointCount; ++I)
+        {
+			auto P = (S->Joints[I].mParent != 0xFFFF) ? M[S->Joints[I].mParent] : float4x4::Identity();
+			M[I] = M[I] * P;
 		}
+
+		for (size_t I = 0; I < DPS->JointCount; ++I)
+			DPS->CurrentPose[I] = M[I];
+
+		DPS->Dirty = true;
 
 		return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
 	}
@@ -1036,8 +1038,9 @@ namespace FlexKit
 
 	float4x4 GetJointPosed_WT(JointHandle Joint, NodeHandle Node, PoseState* DPS)
 	{
-		float4x4 WT; GetTransform(Node, &WT);
-		float4x4 JT = XMMatrixToFloat4x4(DPS->CurrentPose + Joint);
+		const float4x4 WT = GetWT(Node);
+		const float4x4 JT = DPS->CurrentPose[Joint];
+
 		return	JT * WT;
 	}
 
@@ -1149,22 +1152,18 @@ namespace FlexKit
 
 		for (size_t I = 1; I < S->JointCount; ++I)
 		{
-			float3 A, B;
+			const float4x4 PT   = (S->Joints[I].mParent != 0XFFFF) ?
+                                    poseState.CurrentPose[S->Joints[I].mParent]:
+                                    float4x4::Identity();
 
-			float4x4 PT;
-			if (S->Joints[I].mParent != 0XFFFF)
-				PT = XMMatrixToFloat4x4(poseState.CurrentPose + S->Joints[I].mParent);
-			else
-				PT = float4x4::Identity();
+			const auto JT   = poseState.CurrentPose[I];
 
-			auto JT = XMMatrixToFloat4x4(poseState.CurrentPose + I);
+			const float3 A = (WT * (JT * Zero)).xyz();
+			const float3 B = (WT * (PT * Zero)).xyz();
 
-			A = (WT * (JT * Zero)).xyz();
-			B = (WT * (PT * Zero)).xyz();
-
-			float3 X = (WT * (PT * float4{ 1, 0, 0, 1 })).xyz();
-			float3 Y = (WT * (PT * float4{ 0, 1, 0, 1 })).xyz();
-			float3 Z = (WT * (PT * float4{ 0, 0, 1, 1 })).xyz();
+			const float3 X = (WT * (PT * float4{ 0.1f, 0.0f, 0.0f, 1.0f })).xyz();
+			const float3 Y = (WT * (PT * float4{ 0.0f, 0.1f, 0.0f, 1.0f })).xyz();
+			const float3 Z = (WT * (PT * float4{ 0.0f, 0.0f, 0.1f, 1.0f })).xyz();
 
 			lines.push_back({ A, WHITE,	B, PURPLE	});
 			lines.push_back({ B, RED,	X, RED		});
@@ -1181,7 +1180,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

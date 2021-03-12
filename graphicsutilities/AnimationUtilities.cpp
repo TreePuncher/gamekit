@@ -6,10 +6,9 @@ namespace FlexKit
 
 	float4x4 GetPoseTransform(JointPose P)
 	{
-        
-		auto Rotation = DirectX::XMMatrixRotationQuaternion(DirectX::XMQuaternionNormalize(P.r));
-		auto Scaling = DirectX::XMMatrixScalingFromVector(DirectX::XMVectorSet(P.ts[3], P.ts[3], P.ts[3], 1.0f));
-		auto Translation = DirectX::XMMatrixTranslationFromVector(DirectX::XMVectorSet(P.ts[0], P.ts[1], P.ts[2], 1.0f));
+		const auto Rotation       = DirectX::XMMatrixRotationQuaternion(DirectX::XMQuaternionNormalize(P.r));
+		const auto Scaling        = DirectX::XMMatrixScalingFromVector(DirectX::XMVectorSet(P.ts[3], P.ts[3], P.ts[3], 1.0f));
+		const auto Translation    = DirectX::XMMatrixTranslationFromVector(DirectX::XMVectorSet(P.ts[0], P.ts[1], P.ts[2], 1.0f));
 
 		return XMMatrixToFloat4x4((Scaling * Rotation) * Translation);
 	}
@@ -20,8 +19,19 @@ namespace FlexKit
 		auto Q = DirectX::XMQuaternionRotationMatrix(M);
 		auto P = M.r[3];
 
-		return{ Q, float4(P, 1) };
+		return{ Q, float4(P, 1.0f) };
 	}
+
+    JointPose GetPose(const float4x4 M)
+    {
+        const auto Q = DirectX::XMQuaternionRotationMatrix(Float4x4ToXMMATIRX(M));
+        const auto P = M[3];
+
+        return JointPose{
+                    Quaternion  { Q },
+                    float4      { P[0], P[1], P[2], 1.0f }
+        };
+    }
 
 
 	/************************************************************************************************/
@@ -33,14 +43,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	JointHandle Skeleton::AddJoint(Joint J, XMMATRIX& I)
+	JointHandle Skeleton::AddJoint(Joint J, const float4x4& I)
 	{
 		Joints		[JointCount] = J;
 		IPose		[JointCount] = I;
 
-		auto Temp = DirectX::XMMatrixInverse(nullptr, I) * Float4x4ToXMMATIRX(GetInversePose(J.mParent));
-		auto Pose = GetPose(Temp);
-		JointPoses[JointCount] = Pose;
+        const auto parentI = GetInversePose(J.mParent);
+
+		const auto localTransform   = XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(I))) * parentI;
+		const auto jointPose        = GetPose(localTransform);
+
+		JointPoses[JointCount] = jointPose;
 
 		return (JointHandle)JointCount++;
 	}
@@ -70,7 +83,7 @@ namespace FlexKit
 
 	float4x4 Skeleton::GetInversePose(JointHandle H)
 	{
-		return H != InvalidHandle_t ? XMMatrixToFloat4x4(IPose[H]) : float4x4::Identity();
+		return H != InvalidHandle_t ? IPose[H] : float4x4::Identity();
 	}
 
 
@@ -83,14 +96,14 @@ namespace FlexKit
 		Animations	= nullptr;
 		JointCount	= 0;
 		Joints		= (Joint*)		Allocator->_aligned_malloc(sizeof(Joint)	 * JC, 0x40);
-		IPose		= (XMMATRIX*)	Allocator->_aligned_malloc(sizeof(XMMATRIX)  * JC, 0x40); // Inverse Global Space Pose
+		IPose		= (float4x4*)	Allocator->_aligned_malloc(sizeof(float4x4)  * JC, 0x40); // Inverse Global Space Pose
 		JointPoses	= (JointPose*)	Allocator->_aligned_malloc(sizeof(JointPose) * JC, 0x40); // Local Space Pose
 		Memory		= Allocator;
 		FK_ASSERT(Joints);
 
 		for (auto I = 0; I < JointCount; I++)
 		{
-			IPose[I]			= DirectX::XMMatrixIdentity();
+			IPose[I]			= float4x4::Identity();
 			Joints[I].mID		= nullptr;
 			Joints[I].mParent	= JointHandle();
 		}

@@ -669,9 +669,6 @@ namespace FlexKit::ResourceBuilder
                 for (size_t I = 0; I < parentLinkage.size(); I++)
                 {
                     auto parent         = JointHandle(parentLinkage[I]);
-                    //auto jointPose      = GetPose(Float4x4ToXMMATIRX(jointPoses[I]));
-                    //auto parentPose     = parent != 0xffff ? jointPoses[parent] : float4x4::Identity();
-                    //auto pose           = parentPose * jointPoses[I];
                     auto inversePose    = Float4x4ToXMMATIRX(inverseMatrices[I]);
 
                     SkeletonJoint joint;
