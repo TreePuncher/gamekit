@@ -179,9 +179,6 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
     SetCameraAspectRatio(activeCamera, base.renderWindow.GetAspectRatio());
 
 
-    auto& gatherSkinned = GatherSkinned(dispatcher, worldState.GetScene(), worldState.GetActiveCamera(), core.GetTempMemoryMT());
-    auto& updatePoses   = UpdatePoses(dispatcher, gatherSkinned, core.GetTempMemoryMT());
-    
     auto& scene             = worldState.GetScene();
     auto& transforms        = QueueTransformUpdateTask(dispatcher);
     auto& cameras           = CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
@@ -309,13 +306,18 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
     //RotateJoint(testAnimation, JointHandle{ 0 }, Quaternion{ (float)dT, (float)dT, 0.0f });
 
     static double T = 0.0f;
-    for (size_t I = 0; I < 3; I++)
+    const size_t jointCount = GetJointCount(testAnimation);
+    for (size_t I = 0; I < jointCount; I++)
     {
         JointHandle joint{ I };
+        const auto jointParent = GetJointParent(testAnimation, joint);
 
-        auto jointPose = GetJointPose(testAnimation, joint);
-        jointPose.r = Quaternion{ 0, (float)(T) * 90, 0 };
-        SetJointPose(testAnimation, joint, jointPose);
+        if (jointParent == InvalidHandle_t)
+        {
+            auto jointPose = GetJointPose(testAnimation, joint);
+            jointPose.r = Quaternion{ 0, 0, (float)(T) * 90 };
+            SetJointPose(testAnimation, joint, jointPose);
+        }
     }
 
     T += dT;
@@ -325,7 +327,6 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 
 
     const auto PV       = GetCameraConstants(activeCamera).PV;
-    //LineSegments lines  = BuildSkeletonLineSet(Skeleton, node, core.GetTempMemory());
     LineSegments lines  = DEBUG_DrawPoseState(*pose, node, core.GetTempMemory());
 
     // Transform to Device Coords

@@ -28,7 +28,7 @@ cbuffer ShadingConstants : register(b2)
 
 cbuffer Poses : register(b3)
 {
-    float4x4 Poses[128];
+    float4x4 Poses[512];
 }
 
 Texture2D<float4> albedoTexture  : register(t0);
@@ -126,15 +126,9 @@ Forward_VS_OUT ForwardSkinned_VS(VertexSkinned In)
 	[unroll(4)]
 	for (uint I = 0; I < 4; ++I)
 	{
-        #if 0
-        V += mul(float4(In.POS, 1),     MTs[I]) * W[I];
-        N += mul(float4(In.Normal, 0),  MTs[I]) * W[I];
-        T += mul(float4(In.Tangent, 0), MTs[I]) * W[I];
-        #else
         V += mul(MTs[I], float4(In.POS, 1)) * W[I];
         N += mul(MTs[I], float4(In.Normal, 0)) * W[I];
         T += mul(MTs[I], float4(In.Tangent, 0)) * W[I];
-        #endif
     }
     
     Forward_VS_OUT Out;

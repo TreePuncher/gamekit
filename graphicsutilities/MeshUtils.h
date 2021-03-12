@@ -292,8 +292,13 @@ namespace FlexKit
             Vector<float3>		        normals     { SystemAllocator };
             Vector<float3>		        tangents    { SystemAllocator };
 
+            struct VertexWeight
+            {
+                float weights[3];
+            };
+
             Vector<float2>              textureCoordinates  { SystemAllocator };
-            Vector<float3>		        jointWeights        { SystemAllocator };
+            Vector<VertexWeight>		jointWeights        { SystemAllocator };
             Vector<uint4_16>	        jointIndexes        { SystemAllocator };
 
             Vector<uint32_t>	        indexes{ SystemAllocator };

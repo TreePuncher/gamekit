@@ -228,7 +228,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 	//return float4(T.xyz, 1);
 	//return float4(N.xyz, 1);
     //return pow(float4(roughness, metallic, 0, 0), 2.2f);
-    //return float4(N.xyz / 2 + 0.5f, 1);
+    return float4(N.xyz / 2 + 0.5f, 1);
 	//return float4(T.xyz / 2 + 0.5f, 1);
     
     //return pow(UV.y, 1.0f); 

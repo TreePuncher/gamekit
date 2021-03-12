@@ -262,11 +262,14 @@ namespace FlexKit::ResourceBuilder
                             for (size_t I = 0; I < elementCount; I++)
                             {
                                 uint4_16    joints;
-                                float3      weights;
+                                float4      weights;
 
                                 memcpy(&joints, buffer + stride * I, stride);
-                                memcpy(&weights, weightsbuffer + stride * I, weightsStride);
-                                MeshUtilityFunctions::OBJ_Tools::AddWeightToken({ weights, joints }, meshTokens);
+                                memcpy(&weights, weightsbuffer + weightsStride * I, weightsStride);
+
+                                const float sum = weights[0] + weights[1] + weights[2] + weights[3];
+
+                                MeshUtilityFunctions::OBJ_Tools::AddWeightToken({ weights.xyz(), joints }, meshTokens);
                             }
                         }
 
@@ -624,33 +627,6 @@ namespace FlexKit::ResourceBuilder
 
                     Joint j;
                     j.mID = node.name.c_str();
-
-                    /*
-                    JointPose pose;
-                    if (node.translation.size())
-                    {
-                        pose.ts.x = (float)node.translation[0];
-                        pose.ts.y = (float)node.translation[1];
-                        pose.ts.z = (float)node.translation[2];
-                        pose.ts.w = 1.0f;
-                    }
-                    else
-                        pose.ts = float4{ 0, 0, 0, 1 };
-
-                    if (node.rotation.size())
-                    {
-                        pose.r[0] = (float)node.rotation[0];
-                        pose.r[1] = (float)node.rotation[1];
-                        pose.r[2] = (float)node.rotation[2];
-                        pose.r[3] = (float)node.rotation[3];
-                    }
-                    else
-                        pose.r = Quaternion{ 0, 0, 0, 1 };
-                    auto m = inverseMatrices[joint];
-
-                    jointPoses[nodeMap[joint]] = GetPoseTransform(pose);
-                    */
-
 
                     if (node.extras.Has("ResourceID") && node.extras.Get("ResourceID").IsInt())
                         ID = node.extras.Get("ResourceID").GetNumberAsInt();

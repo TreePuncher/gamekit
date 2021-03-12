@@ -421,7 +421,7 @@ namespace FlexKit
                     case VertexField::Material:
                         break;
                     case VertexField::JointWeight:
-                        jointWeights.push_back(ctx.mesh.jointWeights[field.idx].xyz());
+                        jointWeights.push_back({ ctx.mesh.jointWeights[field.idx][0], ctx.mesh.jointWeights[field.idx][1], ctx.mesh.jointWeights[field.idx][2] });
                         break;
                     case VertexField::JointIndex:
                         jointIndexes.push_back(ctx.mesh.jointIndexes[field.idx]);
