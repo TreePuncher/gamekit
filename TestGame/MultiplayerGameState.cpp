@@ -127,11 +127,11 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
 
     auto& scene = worldState.GetScene();
 
-    playerCharacterModel = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), 9990);
+    playerCharacterModel = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), 9000);
 
     testAnimation.AddView<SceneNodeView<>>();
     auto& drawable   = testAnimation.AddView<DrawableView>(playerCharacterModel, GetSceneNode(testAnimation));
-    auto& skeleton  = testAnimation.AddView<SkeletonView>(playerCharacterModel, 9991);
+    auto& skeleton  = testAnimation.AddView<SkeletonView>(playerCharacterModel, 9001);
 
     drawable.GetDrawable().Skinned = true;
 
@@ -298,63 +298,55 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
                                 reserveVB);
     }
 
-    // Draw Skeleton overlay
-    auto Skeleton = GetSkeleton(testAnimation);
-    auto pose     = GetPoseState(testAnimation);
-    auto node     = GetSceneNode(testAnimation);
 
-    //RotateJoint(testAnimation, JointHandle{ 0 }, Quaternion{ (float)dT, (float)dT, 0.0f });
-
-    static double T = 0.0f;
-    const size_t jointCount = GetJointCount(testAnimation);
-    for (size_t I = 0; I < jointCount; I++)
+    if(0)
     {
-        JointHandle joint{ I };
-        const auto jointParent = GetJointParent(testAnimation, joint);
+        // Draw Skeleton overlay
+        auto Skeleton = GetSkeleton(testAnimation);
+        auto pose     = GetPoseState(testAnimation);
+        auto node     = GetSceneNode(testAnimation);
 
-        if (jointParent == InvalidHandle_t)
+
+        static double T = 0.0f;
+        const size_t jointCount = GetJointCount(testAnimation);
+        for (size_t I = 0; I < jointCount; I++)
+            RotateJoint(testAnimation, JointHandle{ I }, Quaternion{ 0.0f, float(45.0f * dT), 0.0f });
+
+        T += dT;
+
+        if (!Skeleton)
+            return nullptr;
+
+        const auto PV       = GetCameraConstants(activeCamera).PV;
+        LineSegments lines  = DEBUG_DrawPoseState(*pose, node, core.GetTempMemory());
+
+        // Transform to Device Coords
+        for (auto& line : lines)
         {
-            auto jointPose = GetJointPose(testAnimation, joint);
-            jointPose.r = Quaternion{ 0, 0, (float)(T) * 90 };
-            SetJointPose(testAnimation, joint, jointPose);
+            const auto tempA = PV * float4{ line.A, 1 };
+            const auto tempB = PV * float4{ line.B, 1 };
+
+            if (tempA.w <= 0 || tempB.w <= 0)
+            {
+                line.A = { 0, 0, 0 };
+                line.B = { 0, 0, 0 };
+            }
+            else
+            {
+                line.A = tempA.xyz() / tempA.w;
+                line.B = tempB.xyz() / tempB.w;
+            }
         }
+
+        DrawShapes(
+            DRAW_LINE_PSO,
+            frameGraph,
+            reserveVB,
+            reserveCB,
+            targets.RenderTarget,
+            core.GetTempMemory(),
+            LineShape{ lines });
     }
-
-    T += dT;
-
-    if (!Skeleton)
-        return nullptr;
-
-
-    const auto PV       = GetCameraConstants(activeCamera).PV;
-    LineSegments lines  = DEBUG_DrawPoseState(*pose, node, core.GetTempMemory());
-
-    // Transform to Device Coords
-    for (auto& line : lines)
-    {
-        const auto tempA = PV * float4{ line.A, 1 };
-        const auto tempB = PV * float4{ line.B, 1 };
-
-        if (tempA.w <= 0 || tempB.w <= 0)
-        {
-            line.A = { 0, 0, 0 };
-            line.B = { 0, 0, 0 };
-        }
-        else
-        {
-            line.A = tempA.xyz() / tempA.w;
-            line.B = tempB.xyz() / tempB.w;
-        }
-    }
-
-    DrawShapes(
-        DRAW_LINE_PSO,
-        frameGraph,
-        reserveVB,
-        reserveCB,
-        targets.RenderTarget,
-        core.GetTempMemory(),
-        LineShape{ lines });
 
     PresentBackBuffer(frameGraph, base.renderWindow);
 

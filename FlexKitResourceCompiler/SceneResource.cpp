@@ -264,7 +264,20 @@ namespace FlexKit::ResourceBuilder
                                 uint4_16    joints;
                                 float4      weights;
 
-                                memcpy(&joints, buffer + stride * I, stride);
+
+                                if(stride == 4)
+                                {
+                                    uint8_t joints_small[4];
+                                    memcpy(joints_small, buffer + stride * I, 4);
+
+                                    joints[0] = joints_small[0];
+                                    joints[1] = joints_small[1];
+                                    joints[2] = joints_small[2];
+                                    joints[3] = joints_small[3];
+                                }
+                                else if (stride == 8)
+                                    memcpy(&joints, buffer + stride * I, stride);
+
                                 memcpy(&weights, weightsbuffer + weightsStride * I, weightsStride);
 
                                 const float sum = weights[0] + weights[1] + weights[2] + weights[3];
