@@ -182,18 +182,18 @@ namespace FlexKit
 
 		void			InitiateSkeleton	(iAllocator* Allocator, size_t jointCount = 64);
 
-		JointHandle		AddJoint			(Joint J, XMMATRIX& I);
+		JointHandle		AddJoint			(Joint J, const float4x4& I);
 		void			AddAnimationClip	(AnimationClip, iAllocator* allocator);
 
 		float4x4		GetInversePose		(JointHandle H);
 		JointHandle		FindJoint			(const char*);
 
-		DirectX::XMMATRIX*	IPose		= nullptr; // Global Inverse Space Pose
-		Joint*				Joints		= nullptr;
-		JointPose*			JointPoses	= nullptr;
-		size_t				JointCount	= 0;
-		GUID_t				guid		= INVALIDHANDLE;
-		iAllocator*			Memory		= nullptr;
+		float4x4*	    IPose		= nullptr; // Global Inverse Space Pose
+		Joint*			Joints		= nullptr;
+		JointPose*		JointPoses	= nullptr;
+		size_t			JointCount	= 0;
+		GUID_t			guid		= INVALIDHANDLE;
+		iAllocator*		Memory		= nullptr;
 
 		struct AnimationList
 		{

@@ -215,10 +215,11 @@ namespace FlexKit::ResourceBuilder
 
         void AddJoint(const SkeletonJoint joint, const XMMATRIX IPose)
         {
-            auto pose = DirectX::XMMatrixInverse(nullptr, IPose);
+            const auto parentIPose  = joint.mParent != InvalidHandle_t ? IPoses[joint.mParent] : DirectX::XMMatrixIdentity();
+            const auto pose         = DirectX::XMMatrixInverse(nullptr, IPose);
 
             IPoses.push_back(IPose);
-            jointPoses.push_back(GetPose(pose));
+            jointPoses.push_back(GetPose(pose * parentIPose));
             joints.push_back(joint);
             jointIDs.push_back("");
 

@@ -1704,10 +1704,11 @@ namespace FlexKit
 		}
 
 		Vect<ROW>&		operator[] (const int i)		{ return *((Vect<ROW>*)matrix[i]); }
-		const float*	operator[] (const int i) const	{ return matrix[i]; }
+        Vect<ROW>&      operator[] (const int i) const  { return *((Vect<ROW>*)matrix[i]); }
 
         Vect<ROW>&		operator[] (const size_t i)		    { return *((Vect<ROW>*)matrix[i]); }
-		const float*	operator[] (const size_t i) const	{ return matrix[i]; }
+        Vect<ROW>&		operator[] (const size_t i) const   { return *((Vect<ROW>*)matrix[i]); }
+		//const float*	operator[] (const size_t i) const	{ return matrix[i]; }
 
 		static inline Matrix<ROW, COL> Identity()
 		{

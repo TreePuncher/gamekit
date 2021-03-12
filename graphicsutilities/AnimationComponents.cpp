@@ -82,16 +82,15 @@ namespace FlexKit
         Skeleton* skeleton      = pose.Sk;
         const size_t jointCount = skeleton->JointCount;
 
-        float4x4* M = (float4x4*)allocator->_aligned_malloc(jointCount * sizeof(float4x4));
-
-        for (size_t I = 0; I < jointCount; ++I)
-            M[I] = GetPoseTransform(pose.Joints[I]) * GetPoseTransform(skeleton->JointPoses[I]);
-
         for (size_t I = 0; I < jointCount; ++I)
         {
-            auto P              = (skeleton->Joints[I].mParent != 0xFFFF) ? M[skeleton->Joints[I].mParent] : float4x4::Identity();
-            M[I]                = M[I] * P;
-            pose.CurrentPose[I] = Float4x4ToXMMATIRX(M[I]);
+            const auto poseT        = GetPoseTransform(pose.Joints[I]);
+            const auto skeletonT    = GetPoseTransform(skeleton->JointPoses[I]);
+
+            const auto parent       = skeleton->Joints[I].mParent;
+            const auto P            = (parent != 0xFFFF) ? pose.CurrentPose[parent] : float4x4::Identity();
+
+            pose.CurrentPose[I]     = poseT * skeletonT * P;
         }
     }
 

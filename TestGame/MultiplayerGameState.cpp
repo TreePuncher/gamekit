@@ -130,8 +130,10 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     playerCharacterModel = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), 9990);
 
     testAnimation.AddView<SceneNodeView<>>();
-    testAnimation.AddView<DrawableView>(playerCharacterModel, GetSceneNode(testAnimation));
-    testAnimation.AddView<SkeletonView>(playerCharacterModel, 9991);
+    auto& drawable   = testAnimation.AddView<DrawableView>(playerCharacterModel, GetSceneNode(testAnimation));
+    auto& skeleton  = testAnimation.AddView<SkeletonView>(playerCharacterModel, 9991);
+
+    drawable.GetDrawable().Skinned = true;
 
     scene.AddGameObject(testAnimation, GetSceneNode(testAnimation));
 
@@ -176,10 +178,10 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
     CameraHandle activeCamera = worldState.GetActiveCamera();
     SetCameraAspectRatio(activeCamera, base.renderWindow.GetAspectRatio());
 
-    
+
     auto& gatherSkinned = GatherSkinned(dispatcher, worldState.GetScene(), worldState.GetActiveCamera(), core.GetTempMemoryMT());
     auto& updatePoses   = UpdatePoses(dispatcher, gatherSkinned, core.GetTempMemoryMT());
-
+    
     auto& scene             = worldState.GetScene();
     auto& transforms        = QueueTransformUpdateTask(dispatcher);
     auto& cameras           = CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
@@ -304,24 +306,27 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
     auto pose     = GetPoseState(testAnimation);
     auto node     = GetSceneNode(testAnimation);
 
-    //RotateJoint(*gameObject, JointHandle(0), Quaternion{ 0, T, 0 });
+    //RotateJoint(testAnimation, JointHandle{ 0 }, Quaternion{ (float)dT, (float)dT, 0.0f });
 
-    for (size_t I = 0; I < 5; I++)
+    static double T = 0.0f;
+    for (size_t I = 0; I < 3; I++)
     {
         JointHandle joint{ I };
 
-        //auto jointPose = GetJointPose(testAnimation, joint);
-        //jointPose.r = Quaternion{ 0, 0, (float)(T) * 90 };
-        //SetJointPose(*gameObject, joint, jointPose);
+        auto jointPose = GetJointPose(testAnimation, joint);
+        jointPose.r = Quaternion{ 0, (float)(T) * 90, 0 };
+        SetJointPose(testAnimation, joint, jointPose);
     }
+
+    T += dT;
 
     if (!Skeleton)
         return nullptr;
 
 
     const auto PV       = GetCameraConstants(activeCamera).PV;
-    //LineSegments lines  = DEBUG_DrawPoseState(*pose, node, core.GetTempMemory());
-    LineSegments lines  = BuildSkeletonLineSet(Skeleton, node, core.GetTempMemory());
+    //LineSegments lines  = BuildSkeletonLineSet(Skeleton, node, core.GetTempMemory());
+    LineSegments lines  = DEBUG_DrawPoseState(*pose, node, core.GetTempMemory());
 
     // Transform to Device Coords
     for (auto& line : lines)
