@@ -49,49 +49,19 @@ namespace FlexKit
 		return Number;
 	}
 
+
 	Quaternion GrassManProduct(const Quaternion& P, const Quaternion& Q) noexcept
 	{
-#if 1
 		float3 PV = P.XYZ();
 		float3 QV = Q.XYZ();
 
 		float3 OP = PV.cross(QV);
 		float  IP = DotProduct3(PV, QV);
 
-		float3  Vout = OP + PV * Q.w + QV * P.w;
-		float   Wout = IP + P.w * Q.w;
+		float3  Vout = (PV * Q.w) + (QV * P.w) + OP;
+		float   Wout = P.w * Q.w - IP;
 		
 		return Quaternion{Vout, Wout};
-#else
-		__m128 lhs = in_1.XYZ();
-		__m128 rhs = in_2.XYZ();
-		__m128 XP  = CrossProduct( lhs, rhs);
-		float  DP  = DotProduct(lhs, rhs);
-
-		
-		auto temp1 = _mm_mul_ps(rhs, _mm_set1_ps(lhs.m128_f32[3]));
-		auto temp2 = _mm_mul_ps(lhs, _mm_set1_ps(rhs.m128_f32[3]));
-		
-		__m128 out;
-
-#if 1 
-		
-		out = _mm_add_ps(temp1, XP);
-		out = _mm_add_ps(out, temp2);
-
-#else
-
-		out.floats.m128_f32[0] = temp1.m128_f32[0] + temp2.m128_f32[0] + out.floats.m128_f32[0];
-		out.floats.m128_f32[1] = temp1.m128_f32[1] + temp2.m128_f32[1] + out.floats.m128_f32[1];
-		out.floats.m128_f32[2] = temp1.m128_f32[2] + temp2.m128_f32[2] + out.floats.m128_f32[2];
-
-#endif
-
-		float w = rhs.m128_f32[3] * rhs.m128_f32[3] - DP;
-		out.m128_f32[3] = w;
-
-		return out;
-#endif
 	}
 
 

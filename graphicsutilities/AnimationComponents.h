@@ -197,7 +197,7 @@ namespace FlexKit
             {
                 auto pose = skeleton.GetPose(jointID);
 
-                pose.r = pose.r.normalized() * Q.normalized();
+                pose.r = pose.r * Q;
 
                 skeleton.SetPose(jointID, pose);
             });
