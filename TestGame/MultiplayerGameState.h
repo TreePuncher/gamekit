@@ -159,10 +159,12 @@ public:
 
     void OnGameEnd();
 
+    AnimationResource*              testAnimationResource = nullptr;
     BaseState&                      base;
     WorldStateMangagerInterface&    worldState;
 
     GameObject&                     testAnimation;
+    GameObject&                     particleEmitter;
 
     TriMeshHandle                   playerCharacterModel;
 };

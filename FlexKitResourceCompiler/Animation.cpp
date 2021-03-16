@@ -67,12 +67,146 @@ namespace FlexKit::ResourceBuilder
     }
 
 
+    /************************************************************************************************/
+
+
+    ResourceBlob AnimationResource::CreateBlob()
+    {
+        AnimationResourceBlob::AnimationResourceHeader header = {
+            .Type       = EResourceType::EResource_Animation,
+            .GUID       = (uint64_t)rand(),
+            .trackCount = (uint32_t)tracks.size(),
+        };
+
+        strncpy_s(header.ID, ID.c_str(), ID.size());
+
+        Blob resourceBlob;
+
+        for (auto& track : tracks)
+        {
+            Blob keyFrameBlob;
+
+            for (auto& frame : track.KeyFrames)
+                keyFrameBlob += Blob{ frame };
+
+            AnimationTrackHeader trackHeader = {
+                .frameCount = (uint32_t)track.KeyFrames.size(),
+                .byteSize   = (uint32_t)(sizeof(trackHeader) + keyFrameBlob.size()),
+            };
+
+            auto& target    = track.targetChannel.Target;
+            auto& trackName = track.targetChannel.Channel;
+            strncpy_s(trackHeader.target,       target.c_str(),     target.size());
+            strncpy_s(trackHeader.trackName,    trackName.c_str(),  trackName.size());
+
+            resourceBlob += Blob{ trackHeader } + keyFrameBlob;
+        }
+
+        header.ResourceSize = sizeof(header) + resourceBlob.size();
+
+        ResourceBlob out;
+        auto [buffer_ptr, bufferSize] = (Blob{ header } + resourceBlob).Release();
+        out.buffer          = (char*)buffer_ptr;
+        out.bufferSize      = bufferSize;
+        out.resourceType    = EResourceType::EResource_Animation;
+        out.GUID            = guid;
+        out.ID              = ID;
+
+        return out;
+    }
+
+
+    /************************************************************************************************/
+
+
+    ResourceBlob SkeletonResource::CreateBlob()
+    {
+        Blob jointBlob;
+        for (size_t jointIdx = 0; jointIdx < joints.size(); ++jointIdx)
+        {
+            SkeletonResourceBlob::JointEntry jointOut;
+            auto& jointLinkage = joints[jointIdx];
+
+                
+            jointOut.IPose     = FlexKit::XMMatrixToFloat4x4(&IPoses[jointIdx]);
+            jointOut.Parent    = jointLinkage.mParent;
+            jointOut.Pose      = jointPoses[jointIdx];
+            strncpy_s(jointOut.ID, jointLinkage.mID.c_str(), jointLinkage.mID.size());
+
+            jointBlob += jointOut;
+        }
+
+        SkeletonResourceBlob::Header header;
+
+        header.GUID         = guid;
+        strncpy_s(header.ID, ID.c_str(), ID.size());
+        header.JointCount   = joints.size();
+        header.ResourceSize = sizeof(header) + jointBlob.size();
+        header.Type         = EResourceType::EResource_Skeleton;
+
+        Blob resource = Blob{ header } + jointBlob;
+        ResourceBlob out;
+
+        out.buffer          = (char*)malloc(resource.size());
+        out.bufferSize      = resource.size();
+        out.resourceType    = EResourceType::EResource_SkeletalAnimation;
+        out.GUID            = guid;
+        out.ID              = ID;
+
+        memcpy(out.buffer, resource.data(), resource.size());
+
+        return out;
+    }
+
+
+    /************************************************************************************************/
+
+
+    JointHandle	SkeletonResource::FindJoint(const std::string& id) const noexcept
+    {
+        for (size_t itr = 0; itr < joints.size(); itr++)
+        {
+            auto& joint = joints[itr];
+
+            if (joint.mID == id)
+                return JointHandle(itr);
+        }
+
+        return InvalidHandle_t;
+    }
+
+
+    /************************************************************************************************/
+
+
+    void SkeletonResource::AddJoint(const SkeletonJoint joint, const XMMATRIX IPose)
+    {
+        const auto parentIPose  = joint.mParent != InvalidHandle_t ? IPoses[joint.mParent] : DirectX::XMMatrixIdentity();
+        const auto pose         = DirectX::XMMatrixInverse(nullptr, IPose);
+
+        IPoses.push_back(IPose);
+        jointPoses.push_back(GetPose(pose * parentIPose));
+        joints.push_back(joint);
+        jointIDs.push_back("");
+
+        JointCount++;
+    }
+
+
+    /************************************************************************************************/
+
+
+    void SkeletonResource::SetJointID(JointHandle joint, std::string& ID)
+    {
+        jointIDs[joint] = ID;
+    }
+
 }   /************************************************************************************************/
 
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2012 Robert May
+Copyright (c) 2015 - 2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

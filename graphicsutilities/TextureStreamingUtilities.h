@@ -241,6 +241,8 @@ namespace FlexKit
 
 
     inline const PSOHandle TEXTUREFEEDBACKPASS                  = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKPASS));
+    inline const PSOHandle TEXTUREFEEDBACKANIMATEDPASS          = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKANIMATEDPASS));
+
     inline const PSOHandle TEXTUREFEEDBACKCOMPRESSOR            = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKCOMPRESSOR));
     inline const PSOHandle TEXTUREFEEDBACKMERGEBLOCKS           = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKMERGEBLOCKS));
     inline const PSOHandle TEXTUREFEEDBACKPREFIXSUMBLOCKSIZES   = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKPREFIXSUMBLOCKSIZES));
@@ -248,6 +250,8 @@ namespace FlexKit
 
 
     ID3D12PipelineState* CreateTextureFeedbackPassPSO(RenderSystem* RS);
+    ID3D12PipelineState* CreateTextureFeedbackAnimatedPassPSO(RenderSystem* RS);
+
     ID3D12PipelineState* CreateTextureFeedbackCompressorPSO(RenderSystem* RS);
     ID3D12PipelineState* CreateTextureFeedbackBlockSizePreFixSum(RenderSystem* RS);
     ID3D12PipelineState* CreateTextureFeedbackMergeBlocks(RenderSystem* RS);
@@ -261,6 +265,7 @@ namespace FlexKit
     {
         CameraHandle                    camera;
         GatherTask&                     pvs;
+        GatherSkinnedTask&              skinnedModels;
         ReserveConstantBufferFunction   reserveCB;
 
         FrameResourceHandle             feedbackBuffers[2];
@@ -401,6 +406,7 @@ namespace FlexKit
             CameraHandle                        camera,
             uint2                               renderTargetWH,
             UpdateTaskTyped<GetPVSTaskData>&    sceneGather,
+            GatherSkinnedTask&                  skinnedModelsGather,
             ReserveConstantBufferFunction&      reserveCB,
             ReserveVertexBufferFunction&        reserveVB);
 

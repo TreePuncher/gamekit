@@ -101,7 +101,11 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
         worldState          { IN_worldState },
         testParticleSystem  { IN_framework.core.GetBlockMemory() },
         emitters            { IN_framework.core.GetBlockMemory() },
-        testAnimation       { IN_worldState.CreateGameObject() }
+        testAnimation       { IN_worldState.CreateGameObject() },
+        particleEmitter     { IN_worldState.CreateGameObject() },
+
+        testAnimationResource   { LoadAnimation("TestAnimation", IN_framework.core.GetBlockMemory()) }
+
 
 {
     //base.renderWindow.ToggleMouseCapture();
@@ -118,20 +122,23 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     );
 
 
-    auto& particleEmitter = worldState.CreateGameObject();
     particleEmitter.AddView<SceneNodeView<>>();
-    //auto& emitter = particleEmitter.AddView<ParticleEmitterView>(ParticleEmitterData{ &testParticleSystem, GetSceneNode(particleEmitter) });
-    //emitter.GetData().properties.emissionSpread = 0.5f;
+    auto& emitter = particleEmitter.AddView<ParticleEmitterView>(ParticleEmitterData{ &testParticleSystem, GetSceneNode(particleEmitter) });
+    emitter.GetData().properties.emissionSpread     = 0.5f;
+    emitter.GetData().properties.maxEmissionRate    = 300;
 
     Translate(particleEmitter, { 0, 10, 0 });
 
     auto& scene = worldState.GetScene();
 
-    playerCharacterModel = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), 9000);
+    playerCharacterModel = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), 8000);
 
     testAnimation.AddView<SceneNodeView<>>();
-    auto& drawable   = testAnimation.AddView<DrawableView>(playerCharacterModel, GetSceneNode(testAnimation));
-    auto& skeleton  = testAnimation.AddView<SkeletonView>(playerCharacterModel, 9001);
+    auto& drawable  = testAnimation.AddView<DrawableView>(playerCharacterModel, GetSceneNode(testAnimation));
+    auto& skeleton  = testAnimation.AddView<SkeletonView>(playerCharacterModel, 8001);
+    auto& animator  = testAnimation.AddView<AnimatorView>(testAnimation);
+
+    animator.Play(*testAnimationResource, true);
 
     drawable.GetDrawable().Skinned = true;
 
@@ -160,6 +167,11 @@ UpdateTask* LocalGameState::Update(EngineCore& core, UpdateDispatcher& dispatche
     base.Update(core, dispatcher, dT);
 
     auto tasks = worldState.Update(core, dispatcher, dT);
+
+    static float t = 0.0f;
+    SetWorldPosition(particleEmitter, float3{ 100.0f * sin(t), 20, 100.0f * cos(t) });
+
+    t += dT;
 
     return tasks.update;
 }
@@ -287,19 +299,20 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
                                 targets,
                                 core.GetBlockMemory(),
                                 core.GetTempMemoryMT());
-
+        
         base.streamingEngine.TextureFeedbackPass(
                                 dispatcher,
                                 frameGraph,
                                 activeCamera,
                                 base.renderWindow.GetWH(),
                                 drawnScene.PVS,
+                                drawnScene.skinnedDraws,
                                 reserveCB,
                                 reserveVB);
     }
 
 
-    if(0)
+    if(1)
     {
         // Draw Skeleton overlay
         auto Skeleton = GetSkeleton(testAnimation);
@@ -309,8 +322,16 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 
         static double T = 0.0f;
         const size_t jointCount = GetJointCount(testAnimation);
-        for (size_t I = 0; I < jointCount; I++)
-            RotateJoint(testAnimation, JointHandle{ I }, Quaternion{ 0.0f, float(45.0f * dT), 0.0f });
+        for (size_t I = 0; I < 0; I++)
+        {
+            auto jointPose = GetJointPose(testAnimation, JointHandle{ I });
+
+            float i = sin(T) / 2.0f + 0.5f;
+            jointPose.r = Qlerp( Quaternion{ 0, 0, 0 }, Quaternion{ 0, 90, 0 }, i );
+
+            SetJointPose(testAnimation, JointHandle{ I }, jointPose);
+            //RotateJoint(testAnimation, JointHandle{ I }, Quaternion{ 0.0f, float(45.0f * dT), 0.0f });
+        }
 
         T += dT;
 

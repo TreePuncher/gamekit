@@ -1090,12 +1090,15 @@ namespace FlexKit
         pointLightGather.AddInput(drawSceneDesc.transformDependency);
         pointLightGather.AddInput(drawSceneDesc.cameraDependency);
 
+        auto& animationUpdate   = UpdateAnimations(dispatcher, drawSceneDesc.dt);
         auto& skinnedObjects    = GatherSkinned(dispatcher, scene, camera, temporary);
         auto& updatedPoses      = UpdatePoses(dispatcher, skinnedObjects);
 
-        // [skinned Objects] -> [update Poses] 
+        // [skinned Objects] -> [update Poses]
+        updatedPoses.AddInput(drawSceneDesc.transformDependency);
         skinnedObjects.AddInput(drawSceneDesc.cameraDependency);
         updatedPoses.AddInput(skinnedObjects);
+        updatedPoses.AddInput(animationUpdate);
 
         const SceneDescription sceneDesc = {
             drawSceneDesc.camera,
@@ -1188,7 +1191,7 @@ namespace FlexKit
                 temporary);
         }
 
-        auto& outputs = temporary.allocate<DrawOutputs>(PVS);
+        auto& outputs = temporary.allocate<DrawOutputs>(PVS, skinnedObjects);
 
         return outputs;
     }
@@ -1337,7 +1340,7 @@ namespace FlexKit
 
 				ctx.SetRootSignature(frameResources.renderSystem().Library.RSDefault);
 				ctx.SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS));
-				ctx.SetGraphicsDescriptorTable(4, descHeap);
+				ctx.SetGraphicsDescriptorTable(5, descHeap);
 
 				ctx.SetScissorAndViewports({ renderTarget });
 				ctx.SetRenderTargets({ frameResources.GetResource({ data.renderTargetObject }) }, false, {});
@@ -1424,7 +1427,7 @@ namespace FlexKit
 
 				ctx.SetRootSignature(renderSystem.Library.RSDefault);
 				ctx.SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS));
-				ctx.SetGraphicsDescriptorTable(3, descHeap);
+				ctx.SetGraphicsDescriptorTable(5, descHeap);
 
 				ctx.SetScissorAndViewports({ renderTarget });
 				ctx.SetRenderTargets({ frameResources.GetResource(data.renderTargetObject) }, false);
@@ -1511,7 +1514,7 @@ namespace FlexKit
 
 				ctx.SetRootSignature(frameResources.renderSystem().Library.RSDefault);
 				ctx.SetPipelineState(frameResources.GetPipelineState(BILATERALBLURPASSHORIZONTAL));
-				ctx.SetGraphicsDescriptorTable(3, descHeap);
+				ctx.SetGraphicsDescriptorTable(5, descHeap);
 
 				ctx.SetScissorAndViewports({ destination });
 				ctx.SetRenderTargets({ frameResources.GetResource(data.TempObject1), frameResources.GetResource(data.TempObject2) }, false);
@@ -1529,7 +1532,7 @@ namespace FlexKit
 				descHeap2.SetSRV(ctx, 3, frameResources.Transition(data.TempObject2, DRS_PixelShaderResource, ctx));
 
 				ctx.SetPipelineState(frameResources.GetPipelineState(BILATERALBLURPASSVERTICAL));
-				ctx.SetGraphicsDescriptorTable(3, descHeap2);
+				ctx.SetGraphicsDescriptorTable(5, descHeap2);
 				ctx.SetRenderTargets({ frameResources.GetResource(data.DestinationObject) }, false);
 				ctx.Draw(6);
 			});
@@ -2118,8 +2121,8 @@ namespace FlexKit
                     UAVHeap.SetUAVStructured(ctx, 0, resources.GetResource(data.indirectArgs), sizeof(uint32_t[4]), 0);
                     UAVHeap.NullFill(ctx, 2);
 
-                    ctx.SetComputeDescriptorTable(3, descHeap);
-                    ctx.SetComputeDescriptorTable(4, UAVHeap);
+                    ctx.SetComputeDescriptorTable(4, descHeap);
+                    ctx.SetComputeDescriptorTable(5, UAVHeap);
 
                     ctx.Dispatch(debugClusterArgsVISPSO, { 1, 1, 1 });
                 };
@@ -2142,8 +2145,8 @@ namespace FlexKit
                 ctx.SetGraphicsConstantBufferView(2, constants);
 
                 ctx.SetPrimitiveTopology(EIT_POINT);
-                ctx.SetGraphicsDescriptorTable(3, descHeap);
-                ctx.SetGraphicsDescriptorTable(4, nullHeap);
+                ctx.SetGraphicsDescriptorTable(4, descHeap);
+                ctx.SetGraphicsDescriptorTable(5, nullHeap);
 
                 size_t accumlator   = 0;
                 size_t nodeCount    = std::ceilf(float(lightCount) / BVH_ELEMENT_COUNT);
@@ -2605,7 +2608,7 @@ namespace FlexKit
 				ctx.SetVertexBuffers({ VertexBufferDataSet{ vertices, data.passVertices } });
 				ctx.SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
 				ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
-				ctx.SetGraphicsDescriptorTable(3, descHeap);
+				ctx.SetGraphicsDescriptorTable(4, descHeap);
 
                 ctx.BeginEvent_DEBUG("Clustered Shading");
 

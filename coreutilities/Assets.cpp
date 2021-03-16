@@ -492,29 +492,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TextureSet* Asset2TextureSet(AssetHandle RHandle, iAllocator* Memory)
-	{	
-		using FlexKit::TextureSet;
-
-		TextureSet* NewTextureSet	= &Memory->allocate<TextureSet>();
-		TextureSetBlob* Blob		= (TextureSetBlob*)GetAsset(RHandle);
-
-		if (!Blob)
-			return nullptr;
-
-		for (size_t I = 0; I < 2; ++I) {
-			memcpy(NewTextureSet->TextureLocations[I].Directory, Blob->Textures[I].Directory, 64);
-			NewTextureSet->TextureGuids[I] = Blob->Textures[I].guid;
-		}
-
-		FreeAsset(RHandle);
-		return NewTextureSet;
-	}
-
-    
-    /************************************************************************************************/
-
-
     Vector<TextureBuffer> LoadCubeMapAsset(GUID_t resourceID, size_t& OUT_MIPCount, uint2& OUT_WH, DeviceFormat& OUT_format, iAllocator* allocator)
     {
         Vector<TextureBuffer> textureArray{ allocator };
@@ -545,26 +522,6 @@ namespace FlexKit
 
         return textureArray;
     }
-
-
-	/************************************************************************************************/
-
-
-	TextureSet* LoadTextureSet(GUID_t ID, iAllocator* Memory)
-	{
-		bool Available = isAssetAvailable(ID);
-		TextureSet* Set = nullptr;
-
-		if (Available)
-		{
-			auto Handle = LoadGameAsset(ID);
-			if (Handle != INVALIDHANDLE) {
-				Set = Asset2TextureSet(Handle, Memory);
-			}
-		}
-
-		return Set;
-	}
 
 
 	/************************************************************************************************/

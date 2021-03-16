@@ -12,23 +12,37 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	constexpr ComponentID AnimatorComponentID = GetTypeGUID(Animator);
-	using AnimatorHandle = Handle_t<32, AnimatorComponentID>;
+    struct AnimationTrack
+    {
+        Vector<AnimationKeyFrame>   keyFrames;
 
-	class AnimatorComponent : public FlexKit::Component<AnimatorComponent, AnimatorComponentID>
-	{
-	public:
-		AnimatorComponent(iAllocator* allocator) : 
-			animators{ allocator } {}
+        TrackType                   type;
+        std::string                 trackName;
+        std::string                 target;
+    };
 
-		struct AnimatorState
-		{
-			AnimationStateMachine ASM;
-		};
+    struct AnimationResource
+    {
+        AnimationResource(iAllocator& IN_allocator) :
+            tracks{ &IN_allocator } {}
 
-		Vector<AnimatorState>							animators;
-		HandleUtilities::HandleTable<AnimatorHandle>	handles;
-	};
+        Vector<AnimationTrack> tracks;
+    };
+
+
+    struct AnimationState
+    {
+        AnimationResource* animation;
+    };
+
+
+    AnimationResource* LoadAnimation(GUID_t resourceId, iAllocator& allocator)
+    {
+        return nullptr;
+    }
+
+
+    AnimationResource* LoadAnimation(const char* resourceName, iAllocator& allocator);
 
 
 	/************************************************************************************************/
@@ -125,6 +139,7 @@ namespace FlexKit
 
         SkeletonHandle handle;
     };
+
 
 	/************************************************************************************************/
 
@@ -313,13 +328,312 @@ namespace FlexKit
     void UpdatePose(PoseState& pose);
 
 
+    /************************************************************************************************/
+    
+
+	constexpr ComponentID AnimatorComponentID = GetTypeGUID(Animator);
+	using AnimatorHandle = Handle_t<32, AnimatorComponentID>;
+
+    using PlayID_t = uint32_t;
+
+    struct AnimationStateField
+    {
+        uint32_t    fieldID;
+        void*       data;
+    };
+
+
+    template<Animatable TY>
+    struct StateField_t : public AnimationStateField
+    {
+        StateField_t(TY& field)
+        {
+            data    = &field;
+            fieldID = TY::GetAnimationFieldID();
+        }
+
+        static TY*          GetField(AnimationStateField& field)    { return reinterpret_cast<TY*>(field.data); }
+        static uint32_t     GetFieldID()                            { return TY::GetFieldID(); }
+    };
+
+	class AnimatorComponent : public FlexKit::Component<AnimatorComponent, AnimatorComponentID>
+	{
+	public:
+        class AnimatorView : public FlexKit::ComponentView_t<AnimatorComponent>
+        {
+        public:
+            AnimatorView(GameObject& IN_gameObject, AnimatorHandle IN_animatorHandle = InvalidHandle_t) :
+                animator{ IN_animatorHandle != InvalidHandle_t ? IN_animatorHandle : GetComponent().Create(IN_gameObject) } {}
+
+            PlayID_t Play(AnimationResource& anim, bool loop = false)
+            {
+                auto&           componentData   = GetComponent()[animator];
+                const uint32_t  ID              = rand();
+
+                auto& allocator = GetComponent().allocator;
+                Vector<AnimationState::TrackState> tracks{ &allocator };
+
+
+                auto& gameObject    = *componentData.gameObject;
+                auto  skeleton      = GetSkeleton(gameObject);
+
+                for (auto& track : anim.tracks)
+                {
+                    switch (track.type)
+                    {
+                    case TrackType::Skeletal:
+                    {
+                        auto joint = skeleton->FindJoint(track.target.c_str());
+
+                        if (track.trackName == "translation")
+                        {
+                            AnimationState::TrackState trackState;
+                            trackState.target   = &allocator.allocate<AnimationState::JointTranslationTarget>(joint);
+                            trackState.track    = &track;
+                            tracks.push_back(trackState);
+                        }
+                        else if (track.trackName == "rotation")
+                        {
+                            AnimationState::TrackState trackState;
+                            trackState.target   = &allocator.allocate<AnimationState::JointRotationTarget>(joint);
+                            trackState.track    = &track;
+                            tracks.push_back(trackState);
+                        }
+                        else if (track.trackName == "scale")
+                        {
+                            AnimationState::TrackState trackState;
+                            trackState.target   = &allocator.allocate<AnimationState::JointScaleTarget>(joint);
+                            trackState.track    = &track;
+                            tracks.push_back(trackState);
+                        }
+                    }   break;
+                    }  
+                }
+
+                AnimationState animState{
+                    .T          = 0.0f,
+                    .ID         = ID,
+                    .state      = loop ? AnimationState::State::Looping : AnimationState::State::Playing,
+                    .tracks     = std::move(tracks),
+                    .resource   = &anim,
+                };
+
+                componentData.animations.emplace_back(std::move(animState));
+
+                return ID;
+            }
+
+            AnimatorHandle animator;
+        };
+
+		AnimatorComponent(iAllocator& IN_allocator) :
+            allocator   {  IN_allocator },
+            handles     { &IN_allocator },
+			animators   { &IN_allocator } {}
+
+        AnimatorHandle Create(GameObject& gameObject)
+        {
+            auto handle     = handles.GetNewHandle();
+            handles[handle] = animators.emplace_back(&gameObject, Vector<AnimationState>{ &allocator });
+
+            return handle;
+        }
+
+
+        struct AnimationStateContext
+        {
+            AnimationStateContext(iAllocator& allocator) :
+                fields{ &allocator } {}
+
+            template<Animatable Field_TY>
+            void AddField(Field_TY& field)
+            {
+                fields.emplace_back(StateField_t{ field });
+            }
+
+            template<Animatable Field_TY>
+            Field_TY* FindField()
+            {
+                auto res = std::find_if(fields.begin(), fields.end(),
+                    [&](auto& e) -> bool
+                    {
+                        return e.fieldID == Field_TY::GetAnimationFieldID();
+                    });
+
+                if (res != fields.end())
+                    return StateField_t<Field_TY>::GetField(*res);
+                else
+                    return nullptr;
+            }
+
+            Vector<AnimationStateField> fields;
+        };
+
+        struct AnimationState
+        {
+            float       T;
+            uint32_t    ID;
+
+            enum class State
+            {
+                Paused,
+                Playing,
+                Finished,
+                Looping
+            }   state = State::Playing;
+
+            struct ITrackTarget
+            {
+                virtual void Apply(AnimationKeyFrame& frame, float t, AnimationStateContext& ctx) = 0;
+            };
+
+            struct JointRotationTarget : public ITrackTarget
+            {
+                JointRotationTarget(JointHandle in_Joint) : joint { in_Joint }{}
+
+                void Apply(AnimationKeyFrame& frame, float t, AnimationStateContext& ctx) final override
+                {
+                    if (auto res = ctx.FindField<PoseState>(); res)
+                        res->Joints[joint].r = Quaternion{ frame.Value[0], frame.Value[1], frame.Value[2], frame.Value[3] };
+                }
+
+                JointHandle joint;
+            };
+
+            struct JointTranslationTarget : public ITrackTarget
+            {
+                JointTranslationTarget(JointHandle in_Joint) : joint{ in_Joint } {}
+
+                void Apply(AnimationKeyFrame& frame, float t, AnimationStateContext& ctx) final override
+                {
+                    if (auto res = ctx.FindField<PoseState>(); res)
+                    {
+                        auto defaultPose = res->Sk->JointPoses[joint];
+                        res->Joints[joint].ts += frame.Value.xyz() - defaultPose.ts.xyz();
+                    }
+                }
+
+                JointHandle joint;
+            };
+
+            struct JointScaleTarget : public ITrackTarget
+            {
+                JointScaleTarget(JointHandle in_Joint) : joint{ in_Joint } {}
+
+                void Apply(AnimationKeyFrame& frame, float t, AnimationStateContext& ctx) final override
+                {
+                    if (auto res = ctx.FindField<PoseState>(); res) {
+
+                        res->Joints[joint].ts.w = frame.Value.w;
+                    }
+                }
+
+                JointHandle joint;
+            };
+
+            struct TrackState
+            {
+                AnimationKeyFrame* FindFrame(double T)
+                {
+                    for (auto& frame : track->keyFrames)
+                    {
+                        if (frame.Begin <= T && frame.End > T)
+                            return { &frame };
+                    }
+
+                    return nullptr;
+                }
+
+                AnimationTrack* track;
+                ITrackTarget*   target;
+            };
+
+            State Update(AnimationStateContext& ctx, double dT)
+            {
+                T += dT;
+                bool animationPlayed = false;
+
+                if (state == State::Paused || state == State::Finished)
+                    return state;
+
+                for (auto& track : tracks)
+                {
+                    if (auto frame = track.FindFrame(T); frame)
+                    {
+                        track.target->Apply(*frame, T, ctx);
+                        animationPlayed = true;
+                    }
+                }
+
+
+
+                if (state == State::Playing && !animationPlayed)
+                    state = State::Finished;
+
+                if (state == State::Looping && !animationPlayed)
+                    T = 0.0;
+
+                return state;
+            }
+
+            Vector<TrackState>  tracks;
+            AnimationResource*  resource;
+        };
+
+		struct AnimatorState
+		{
+            GameObject*             gameObject;
+            Vector<AnimationState>  animations;
+			AnimationStateMachine   ASM;
+		};
+
+        AnimatorState& operator [](AnimatorHandle handle)
+        {
+            return animators[handles[handle]];
+        }
+
+		Vector<AnimatorState>							animators;
+		HandleUtilities::HandleTable<AnimatorHandle>	handles;
+        iAllocator&                                     allocator;
+	};
+
+
+    UpdateTask& UpdateAnimations(UpdateDispatcher& updateTask, double dT)
+    {
+        struct _ {};
+        return updateTask.Add<_>(
+            [](auto&, auto&) {},
+            [dT = dT](auto&, auto& temporaryAllocator)
+            {
+                auto& animator = AnimatorComponent::GetComponent();
+
+                for (AnimatorComponent::AnimatorState& animator : animator.animators)
+                {
+                    AnimatorComponent::AnimationStateContext context{ temporaryAllocator };
+
+                    Apply(*animator.gameObject,
+                        [&](SkeletonView& poseView)
+                        {
+                            auto& pose = poseView.GetPoseState();
+                            context.AddField(pose);
+                        });
+
+                    for (auto& animation : animator.animations)
+                        animation.Update(context, dT);
+                }
+            });
+    }
+
+
+    using AnimatorView = AnimatorComponent::AnimatorView;
+
 }	/************************************************************************************************/
 #endif
 
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2020 Robert May
+Copyright (c) 2015 - 2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

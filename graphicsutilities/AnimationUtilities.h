@@ -133,17 +133,54 @@ namespace FlexKit
 
     /************************************************************************************************/
 
+    struct AnimationInterpolator
+    {
+        enum class InterpolatorType
+        {
+            Constant,
+            Linear,
+            Bezier,
+            Hermite
+        } Type;
+    };
+
+
+    struct AnimationKeyFrame
+    {
+        float Begin;
+        float End;
+
+        enum class KeyFrameType
+        {
+            FLOAT,
+            FLOAT2,
+            FLOAT3,
+            FLOAT4,
+            QUAT,
+        };
+
+        AnimationInterpolator   interpolator;
+        float4                  Value;
+    };
+
+    enum class TrackType
+    {
+        Skeletal
+    };
+
+    struct AnimationTrackHeader
+    {
+        char        trackName[32];
+        char        target[32];
+
+        TrackType   type;
+
+        uint32_t    frameCount;
+        uint32_t    byteSize;
+    };
 
     struct AnimationResourceBlob
 	{
-        struct FrameEntry
-        {
-            size_t JointCount;
-            size_t PoseCount;
-            size_t JointStarts;
-            size_t PoseStarts;
-        };
-
         struct AnimationResourceHeader
         {
             size_t			ResourceSize;
@@ -155,13 +192,11 @@ namespace FlexKit
 
             char   ID[FlexKit::ID_LENGTH];
 
-            GUID_t Skeleton;
-            size_t FrameCount;
-            size_t FPS;
-            bool   IsLooping;
+            uint32_t trackCount;
 
             static size_t size() noexcept { return sizeof(AnimationResourceHeader); }
-        }       header;
+        }   header;
+
 		char	Buffer[];
 	};
 

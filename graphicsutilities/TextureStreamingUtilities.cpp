@@ -212,6 +212,55 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    ID3D12PipelineState* CreateTextureFeedbackAnimatedPassPSO(RenderSystem* RS)
+    {
+        auto VShader = RS->LoadShader("ForwardSkinned_VS",  "vs_6_0", "assets\\shaders\\forwardRender.hlsl");
+        auto PShader = RS->LoadShader("TextureFeedback_PS", "ps_6_0", "assets\\shaders\\TextureFeedback.hlsl");
+
+        D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+            { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "NORMAL",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "TANGENT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 2, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 3, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+
+            { "BLENDWEIGHT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    4, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "BLENDINDICES",	0, DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_UINT,  5, 0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        };
+
+
+        D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);    // enable conservative rast
+
+        if(RS->features.conservativeRast == RenderSystem::AvailableFeatures::ConservativeRast_AVAILABLE)
+            Rast_Desc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
+
+        D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+        Depth_Desc.DepthEnable      = true;
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = { 0 };
+        PSO_Desc.pRootSignature         = RS->Library.RSDefault;
+        PSO_Desc.VS                     = VShader;
+        PSO_Desc.PS                     = PShader;
+        PSO_Desc.BlendState             = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+        PSO_Desc.SampleMask             = UINT_MAX;
+        PSO_Desc.RasterizerState        = Rast_Desc;
+        PSO_Desc.DepthStencilState      = Depth_Desc;
+        PSO_Desc.InputLayout            = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
+        PSO_Desc.PrimitiveTopologyType  = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        PSO_Desc.NumRenderTargets       = 0;
+        PSO_Desc.DSVFormat              = DXGI_FORMAT_D32_FLOAT;
+        PSO_Desc.SampleDesc             = { 1, 0 };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+        FK_ASSERT(SUCCEEDED(HR));
+
+        return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
     ID3D12PipelineState* CreateTextureFeedbackCompressorPSO(RenderSystem* RS)
     {
         auto computeShader = RS->LoadShader(
@@ -324,6 +373,10 @@ namespace FlexKit
             { &renderSystem.Library.RSDefault, CreateTextureFeedbackPassPSO });
 
         renderSystem.RegisterPSOLoader(
+            TEXTUREFEEDBACKANIMATEDPASS,
+            { &renderSystem.Library.RSDefault, CreateTextureFeedbackAnimatedPassPSO });
+
+        renderSystem.RegisterPSOLoader(
             TEXTUREFEEDBACKCOMPRESSOR,
             { &renderSystem.Library.RSDefault, CreateTextureFeedbackCompressorPSO });
 
@@ -352,6 +405,8 @@ namespace FlexKit
             });
 
         renderSystem.QueuePSOLoad(TEXTUREFEEDBACKPASS);
+        renderSystem.QueuePSOLoad(TEXTUREFEEDBACKANIMATEDPASS);
+
         renderSystem.QueuePSOLoad(TEXTUREFEEDBACKCOMPRESSOR);
         renderSystem.QueuePSOLoad(TEXTUREFEEDBACKPREFIXSUMBLOCKSIZES);
         renderSystem.QueuePSOLoad(TEXTUREFEEDBACKMERGEBLOCKS);
@@ -387,6 +442,7 @@ namespace FlexKit
             CameraHandle                        camera,
             uint2                               renderTargetWH,
             UpdateTaskTyped<GetPVSTaskData>&    sceneGather,
+            GatherSkinnedTask&                  skinnedModelsGather,
             ReserveConstantBufferFunction&      reserveCB,
             ReserveVertexBufferFunction&        reserveVB)
     {
@@ -399,6 +455,7 @@ namespace FlexKit
             TextureFeedbackPass_Data{
                 camera,
                 sceneGather,
+                skinnedModelsGather,
                 reserveCB,
             },
             [&](FrameGraphNodeBuilder& builder, TextureFeedbackPass_Data& data)
@@ -425,8 +482,9 @@ namespace FlexKit
             {
                 ctx.BeginEvent_DEBUG("Texture Feedback");
 
-                auto& drawables = data.pvs.GetData().solid;
-                auto& materials = MaterialComponent::GetComponent();
+                auto& drawables         = data.pvs.GetData().solid;
+                auto& materials         = MaterialComponent::GetComponent();
+                auto& skinnedDraws      = data.skinnedModels.GetData().skinned;
 
                 if (!drawables.size()) {
                     updateInProgress = false;
@@ -458,6 +516,11 @@ namespace FlexKit
                     { 0.0f }
                 };
 
+                struct alignas(512) animationConstantsLayout
+                {
+                    float4x4 m[512];
+                };
+
 
                 memset(constants.zeroBlock, 0, sizeof(constants.zeroBlock));
 
@@ -469,12 +532,22 @@ namespace FlexKit
                     subDrawCount += triMesh->lods[drawable.LODlevel].subMeshes.size();
                 }
 
+                for (auto& skinnedDraw : skinnedDraws)
+                {
+                    const auto LODlevel = skinnedDraw.lodLevel;
+                    const auto drawable = skinnedDraw.drawable;
+                    auto* triMesh       = GetMeshResource(drawable->MeshHandle);
+
+                    subDrawCount += triMesh->lods[LODlevel].subMeshes.size();
+                }
+
                 const size_t bufferSize =
                     AlignedSize<Drawable::VConstantsLayout>() * subDrawCount +
                     AlignedSize<constantBufferLayout>() +
                     AlignedSize<Camera::ConstantBuffer>();
 
-                CBPushBuffer passConstantBuffer  { data.reserveCB(bufferSize) };
+                CBPushBuffer passConstantBuffer     { data.reserveCB(bufferSize) };
+                CBPushBuffer skinnedConstantsBuffer { data.reserveCB(sizeof(animationConstantsLayout) * skinnedDraws.size()) };
 
                 const auto passConstants    = ConstantBufferDataSet{ constants, passConstantBuffer };
                 const auto cameraConstants  = ConstantBufferDataSet{ GetCameraConstants(camera), passConstantBuffer };
@@ -497,7 +570,7 @@ namespace FlexKit
                     resources.Transition(data.feedbackCounters, DRS_UAV, ctx),
                     sizeof(uint2), 0);
 
-                ctx.SetGraphicsDescriptorTable(4, uavHeap);
+                ctx.SetGraphicsDescriptorTable(5, uavHeap);
                 ctx.SetGraphicsConstantBufferView(0, cameraConstants);
                 ctx.SetGraphicsConstantBufferView(2, passConstants);
 
@@ -505,9 +578,10 @@ namespace FlexKit
                 MaterialHandle prevMaterial = InvalidHandle_t;
 
                 ctx.TimeStamp(timeStats, 0);
-                ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKPASS));
 
                 ctx.BeginEvent_DEBUG("Texture Feedback Pass");
+
+                auto BindTextures = []() {};
 
                 size_t element = 0;
                 for (size_t J = element; J < drawables.size(); J++)
@@ -542,6 +616,21 @@ namespace FlexKit
                         const auto subMeshCount = lod.subMeshes.size();
                         auto material = MaterialComponent::GetComponent()[visable.D->material];
 
+                        bool animated = false;
+                        if (animated)
+                        {
+                            animationConstantsLayout constants;
+                            auto skinnedConstants = ConstantBufferDataSet{ constants, passConstantBuffer };
+
+                            ctx.SetGraphicsConstantBufferView(2, passConstants);
+
+                            ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKANIMATEDPASS));
+                        }
+                        else
+                            ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKPASS));
+
+
+
                         for (size_t I = 0; I < subMeshCount; I++)
                         {
                             auto& subMesh               = lod.subMeshes[I];
@@ -569,7 +658,7 @@ namespace FlexKit
                             const auto constants = ConstantBufferDataSet{ constantData, passConstantBuffer };
 
                             ctx.SetGraphicsConstantBufferView(1, constants);
-                            ctx.SetGraphicsDescriptorTable(3, srvHeap);
+                            ctx.SetGraphicsDescriptorTable(4, srvHeap);
                             ctx.DrawIndexed(subMesh.IndexCount, subMesh.BaseIndex);
                         }
                     }
@@ -581,7 +670,7 @@ namespace FlexKit
 
                             DescriptorHeap srvHeap;
                             srvHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), textures.size(), &allocator);
-                            ctx.SetGraphicsDescriptorTable(3, srvHeap);
+                            ctx.SetGraphicsDescriptorTable(4, srvHeap);
 
                             for (size_t I = 0; I < textures.size(); I++)
                                 srvHeap.SetSRV(ctx, I, textures[I]);
@@ -615,7 +704,7 @@ namespace FlexKit
 
                     ctx.SetComputeRootSignature(resources.renderSystem().Library.RSDefault);
 
-                    ctx.SetComputeDescriptorTable(4, uavCompressHeap);
+                    ctx.SetComputeDescriptorTable(5, uavCompressHeap);
                     ctx.Dispatch(resources.GetPipelineState(TEXTUREFEEDBACKCOMPRESSOR), { blockCount, 1, 1 });
 
                     ctx.EndEvent_DEBUG();
@@ -634,8 +723,8 @@ namespace FlexKit
                     uavPreFixSumHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 1, &allocator);
                     uavPreFixSumHeap.SetUAVStructured(ctx, 0, resources.Transition(data.feedbackBlockOffsets, DRS_UAV, ctx), sizeof(uint32_t));
 
-                    ctx.SetComputeDescriptorTable(3, srvPreFixSumHeap);
-                    ctx.SetComputeDescriptorTable(4, uavPreFixSumHeap);
+                    ctx.SetComputeDescriptorTable(4, srvPreFixSumHeap);
+                    ctx.SetComputeDescriptorTable(5, uavPreFixSumHeap);
                     ctx.Dispatch(resources.GetPipelineState(TEXTUREFEEDBACKPREFIXSUMBLOCKSIZES), { 1 , 1, 1 });
 
                     ctx.EndEvent_DEBUG();
@@ -653,8 +742,8 @@ namespace FlexKit
                     uavMergeHeap.SetUAVStructured(ctx, 0, resources.Transition(Destination,         DRS_UAV, ctx), sizeof(uint2));
                     uavMergeHeap.SetUAVBuffer(ctx, 1, resources.Transition(data.feedbackCounters,   DRS_UAV, ctx), sizeof(uint));
 
-                    ctx.SetComputeDescriptorTable(3, srvMergeHeap);
-                    ctx.SetComputeDescriptorTable(4, uavMergeHeap);
+                    ctx.SetComputeDescriptorTable(4, srvMergeHeap);
+                    ctx.SetComputeDescriptorTable(5, uavMergeHeap);
 
                     ctx.AddUAVBarrier();
 

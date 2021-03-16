@@ -4,6 +4,56 @@
 namespace FlexKit
 {   /************************************************************************************************/
 
+    
+    AnimationResource* LoadAnimation(const char* resourceName, iAllocator& allocator)
+    {
+        auto asset = LoadGameAsset(resourceName);
+
+        if (asset != -1)
+        {
+            auto animationBlob  = (AnimationResourceBlob*)GetAsset(asset);
+            auto& animation     = allocator.allocate<AnimationResource>(allocator);
+
+            const size_t trackCount     = animationBlob->header.trackCount;
+            size_t currentFileOffset    = 0;
+
+            for (size_t I = 0; I < trackCount; ++I)
+            {
+                const AnimationTrackHeader* header      = reinterpret_cast<AnimationTrackHeader*>(animationBlob->Buffer + currentFileOffset);
+                const AnimationKeyFrame*    keyFrames   = reinterpret_cast<AnimationKeyFrame*>(animationBlob->Buffer + currentFileOffset + sizeof(AnimationTrackHeader));
+                const uint32_t              frameCount  = header->frameCount;
+
+                Vector<AnimationKeyFrame> frames{ &allocator, frameCount };
+
+
+                for (uint32_t J = 0; J < frameCount; ++J)
+                {
+                    AnimationKeyFrame inputFrame;
+                    memcpy(&inputFrame, &keyFrames[J], sizeof(inputFrame));
+                    frames.emplace_back(inputFrame);
+                }
+
+                AnimationTrack track{
+                    .keyFrames  = std::move(frames),
+                    .type       = header->type,
+                    .trackName  = header->trackName,
+                    .target     = header->target,
+                };
+
+                currentFileOffset += header->byteSize;
+
+                animation.tracks.emplace_back(std::move(track));
+            }
+
+            return &animation;
+        }
+
+        return nullptr;
+    }
+
+
+    /************************************************************************************************/
+
 
     void GatherSkinned(GraphicScene* SM, CameraHandle Camera, PosedDrawableList& out_skinned)
     {
