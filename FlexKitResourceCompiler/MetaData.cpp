@@ -89,22 +89,6 @@ namespace FlexKit::ResourceBuilder
 		Resource* Result = nullptr;
 		switch (Meta->type)
 		{
-		case MetaData::EMETAINFOTYPE::EMI_TEXTURESET:
-		{
-			TextureSet_MetaData* TextureSet = (TextureSet_MetaData*)Meta;
-			auto& NewTextureSet = Mem->allocate<TextureSetBlob>();
-
-			NewTextureSet.GUID = TextureSet->Guid;
-			NewTextureSet.ResourceSize = sizeof(TextureSetBlob);
-
-			for (size_t I = 0; I < 2; ++I) {
-				memcpy(NewTextureSet.Textures[I].Directory, TextureSet->Textures.TextureLocation[I].Directory, 64);
-				NewTextureSet.Textures[I].guid = TextureSet->Textures.TextureID[I];
-			}
-
-			Result = (Resource*)&NewTextureSet;
-			break;
-		}
 		default:
 			break;
 		}
@@ -557,51 +541,6 @@ namespace FlexKit::ResourceBuilder
 	/************************************************************************************************/
 
 
-	MetaData* ParseTextureSet(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
-	{
-		FK_ASSERT(0);
-
-		auto AssetID	  = tokens[begin - 2];
-		auto AssetGUID	  = FindValue(values, "AssetGUID");
-		auto Albedo		  = FindValue(values, "Albedo");
-		auto AlbedoID	  = FindValue(values, "AlbedoGUID");
-		auto RoughMetal	  = FindValue(values, "RoughMetal");
-		auto RoughMetalID = FindValue(values, "RoughMetalGUID");
-
-		TextureSet_MetaData* TextureSet_Meta = new TextureSet_MetaData;
-
-		if (AssetGUID && AssetGUID->Type == ValueType::INT)
-			TextureSet_Meta->Guid = AssetGUID->Data.I;
-
-		if (Albedo && Albedo->Type == ValueType::STRING){
-			//auto dest = TextureSet_Meta->Textures.TextureLocation[ETT_ALBEDO].Directory;
-			//strncpy(dest, Albedo->Data.S.S, Albedo->Data.S.size);
-		}
-
-		if (AlbedoID && AlbedoID->Type == ValueType::INT) {
-			//TextureSet_Meta->Textures.TextureID[ETT_ALBEDO] = AlbedoID->Data.I;
-		} else {
-			//TextureSet_Meta->Textures.TextureID[ETT_ALBEDO] = INVALIDHANDLE;
-		}
-
-		if (RoughMetal && RoughMetal->Type == ValueType::STRING){
-			//auto dest = TextureSet_Meta->Textures.TextureLocation[ETT_ROUGHSMOOTH].Directory;
-			//strncpy(dest, RoughMetal->Data.S.S, RoughMetal->Data.S.size);
-		}
-
-		if (RoughMetalID && RoughMetalID->Type == ValueType::INT) {
-			//TextureSet_Meta->Textures.TextureID[ETT_ROUGHSMOOTH] = RoughMetalID->Data.I;
-		} else {
-			//TextureSet_Meta->Textures.TextureID[ETT_ROUGHSMOOTH] = INVALIDHANDLE;
-		}
-
-		return TextureSet_Meta;
-	}
-
-
-	/************************************************************************************************/
-
-
 	MetaData* ParseFontSet(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
 		auto AssetID			= tokens[begin - 2];
@@ -938,8 +877,6 @@ namespace FlexKit::ResourceBuilder
 				std::cout << "Animation Clip\n";		break;
 			case MetaData::EMETAINFOTYPE::EMI_ANIMATIONEVENT:		
 				std::cout << "Animation Event\n";		break;
-			case MetaData::EMETAINFOTYPE::EMI_TEXTURESET:			
-				std::cout << "TexureSet\n";				break;
 			case MetaData::EMETAINFOTYPE::EMI_TEXTURE:
 				std::cout << MetaData->ID << " Texure\n"; break;
 

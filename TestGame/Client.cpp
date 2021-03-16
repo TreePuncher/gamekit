@@ -143,8 +143,9 @@ WorldStateUpdate ClientWorldStateMangager::Update(EngineCore& core, UpdateDispat
             }
         );
 
-    auto& physicsUpdate = base.physics.Update(dispatcher, dT);
-    auto& spellUpdate   = world.UpdateSpells(dispatcher, world.objectPool, dT);
+    auto& physicsUpdate     = base.physics.Update(dispatcher, dT);
+    auto& spellUpdate       = world.UpdateSpells(dispatcher, world.objectPool, dT);
+    auto& animationUpdate   = UpdateAnimations(dispatcher, dT);
 
     spellUpdate.AddInput(worldUpdate);
     physicsUpdate.AddInput(worldUpdate);

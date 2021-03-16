@@ -157,8 +157,8 @@ WorldStateUpdate HostWorldStateMangager::Update(EngineCore& core, UpdateDispatch
                     });
             });
 
-    auto& physicsUpdate = base.physics.Update(dispatcher, dT);
-    auto& spellUpdate   = world.UpdateSpells(dispatcher, world.objectPool, dT);
+    auto& physicsUpdate     = base.physics.Update(dispatcher, dT);
+    auto& spellUpdate       = world.UpdateSpells(dispatcher, world.objectPool, dT);
 
     spellUpdate.AddInput(worldUpdate);
     physicsUpdate.AddInput(worldUpdate);

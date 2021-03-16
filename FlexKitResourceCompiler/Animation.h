@@ -85,65 +85,31 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
-    struct AnimationKeyFrame
+    struct AnimationTrackTarget
     {
-        size_t FrameNumber  = 0;
-        size_t JointCount   = 0;
-        double T            = 0;
+        std::string Channel;
+        std::string Target;
 
-
-        void AddJointPose(const JointHandle joint, const JointPose pose)
-        {
-            joints.push_back(joint);
-            poses.push_back(pose);
-        }
-
-
-        bool hasJoint(const JointHandle joint) const noexcept
-        {
-            return joints.end() != 
-                std::find_if(
-                    joints.begin(),
-                    joints.end(),
-                    [&](const auto& ajoint)
-                    {
-                        return ajoint == joint;
-                    });
-        }
-
-        std::vector<JointHandle>	joints;
-        std::vector<JointPose>		poses;
+        TrackType   type;
     };
 
-
-    /************************************************************************************************/
-
-
-    struct AnimationClipResource : public iResource
+    struct AnimationTrack
     {
-        ResourceBlob CreateBlob() override
-        {
-            FK_ASSERT(0);
+        AnimationTrackTarget            targetChannel;
+        std::vector<AnimationKeyFrame>  KeyFrames;
+    };
 
-            return {};
-        }
-        
+    struct AnimationResource : public iResource
+    {
+        ResourceBlob        CreateBlob();
 
-        void AddKeyFrame(AnimationKeyFrame keyFrame, double dt)
-        {
-            Frames.push_back(keyFrame);
-        }
+        const std::string&  GetResourceID()     const { return ID; }
+        const uint64_t      GetResourceGUID()   const { return guid; }
+        const ResourceID_t  GetResourceTypeID() const { return EResourceType::EResource_Animation; }
 
-        static const ResourceID_t    resourceID = GetTypeGUID(AnimationClipResource);
-
-        const ResourceID_t GetResourceTypeID() const override { return resourceID; }
-
-        std::vector<AnimationKeyFrame>	Frames;
-        uint32_t						FPS				= 0;
-        size_t							guid			= 0;
-        size_t							skeletonGuid	= 0;
-        std::string						mID				= "";
-        bool							isLooping		= false;
+        std::string                 ID;
+        GUID_t                      guid = rand();
+        std::vector<AnimationTrack> tracks;
     };
 
 
@@ -152,86 +118,13 @@ namespace FlexKit::ResourceBuilder
 
     struct SkeletonResource : public iResource
     {
-        ResourceBlob CreateBlob() override
-        {
-            Blob jointBlob;
-            for (size_t jointIdx = 0; jointIdx < joints.size(); ++jointIdx)
-            {
-                SkeletonResourceBlob::JointEntry jointOut;
-                auto& jointLinkage = joints[jointIdx];
-
-                
-                jointOut.IPose     = FlexKit::XMMatrixToFloat4x4(&IPoses[jointIdx]);
-                jointOut.Parent    = jointLinkage.mParent;
-                jointOut.Pose      = jointPoses[jointIdx];
-
-                strncpy_s(jointOut.ID, jointLinkage.mID.c_str(), jointLinkage.mID.size());
-
-                jointBlob += jointOut;
-            }
-
-            SkeletonResourceBlob::Header header;
-
-            header.GUID         = guid;
-            strncpy_s(header.ID, ID.c_str(), ID.size());
-            header.JointCount   = joints.size();
-            header.ResourceSize = sizeof(header) + jointBlob.size();
-            header.Type         = EResourceType::EResource_Skeleton;
-
-            Blob resource = Blob{ header } + jointBlob;
-            ResourceBlob out;
-
-            out.buffer          = (char*)malloc(resource.size());
-            out.bufferSize      = resource.size();
-            out.resourceType    = EResourceType::EResource_SkeletalAnimation;
-            out.GUID            = guid;
-            out.ID              = ID;
-
-            memcpy(out.buffer, resource.data(), resource.size());
-
-            return out;
-        }
+        ResourceBlob CreateBlob() override;
 
 
-        JointHandle	FindJoint(const std::string& id) const noexcept
-        {
-            for (size_t itr = 0; itr < joints.size(); itr++)
-            {
-                auto& joint = joints[itr];
+        JointHandle	FindJoint(const std::string& id) const noexcept;
 
-                if (joint.mID == id)
-                    return JointHandle(itr);
-            }
-
-            return InvalidHandle_t;
-        }
-
-
-        void AddAnimationClip(AnimationClipResource clip)
-        {
-            animations.push_back(clip);
-        }
-
-
-        void AddJoint(const SkeletonJoint joint, const XMMATRIX IPose)
-        {
-            const auto parentIPose  = joint.mParent != InvalidHandle_t ? IPoses[joint.mParent] : DirectX::XMMatrixIdentity();
-            const auto pose         = DirectX::XMMatrixInverse(nullptr, IPose);
-
-            IPoses.push_back(IPose);
-            jointPoses.push_back(GetPose(pose * parentIPose));
-            joints.push_back(joint);
-            jointIDs.push_back("");
-
-            JointCount++;
-        }
-
-
-        void SetJointID(JointHandle joint, std::string& ID)
-        {
-            jointIDs[joint] = ID;
-        }
-
+        void AddJoint(const SkeletonJoint joint, const XMMATRIX IPose);
+        void SetJointID(JointHandle joint, std::string& ID);
 
         const std::string&  GetResourceID()     const override { return ID; }
         const uint64_t      GetResourceGUID()   const override { return guid; }
@@ -245,7 +138,6 @@ namespace FlexKit::ResourceBuilder
         std::vector<SkeletonJoint>			joints;
         std::vector<std::string>			jointIDs;
         std::vector<JointPose>				jointPoses;
-        std::vector<AnimationClipResource>	animations;
         MetaDataList                        metaData;
     };
 
@@ -272,7 +164,7 @@ namespace FlexKit::ResourceBuilder
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

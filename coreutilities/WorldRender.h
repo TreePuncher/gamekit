@@ -670,7 +670,8 @@ namespace FlexKit
 
     struct DrawOutputs
     {
-        UpdateTaskTyped<GetPVSTaskData>& PVS;
+        GatherTask&         PVS;
+        GatherSkinnedTask&  skinnedDraws;
     };
 
 

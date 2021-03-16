@@ -183,6 +183,8 @@ public:
                 (iRayTracer&)IN_Framework.core.GetBlockMemory().allocate<RTX_RayTracer>(IN_Framework.core.RenderSystem, IN_Framework.core.GetBlockMemory()) :
                 (iRayTracer&)IN_Framework.core.GetBlockMemory().allocate<NullRayTracer>() },
 
+            // Components
+            animations          { framework.core.GetBlockMemory() },
 			cameras		        { framework.core.GetBlockMemory() },
 			ids			        { framework.core.GetBlockMemory() },
 			drawables	        { framework.core.GetBlockMemory(), IN_Framework.GetRenderSystem() },
@@ -328,6 +330,7 @@ public:
     SoundSystem			        sounds;
 
 	// Components
+    AnimatorComponent               animations;
 	SceneNodeComponent			    transforms;
 	CameraComponent				    cameras;
 	StringIDComponent			    ids;

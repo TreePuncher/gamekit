@@ -3057,8 +3057,9 @@ namespace FlexKit
 			RS->Library.RSDefault.SetParameterAsCBV				(0, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
 			RS->Library.RSDefault.SetParameterAsCBV				(1, 1, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
 			RS->Library.RSDefault.SetParameterAsCBV				(2, 2, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			RS->Library.RSDefault.SetParameterAsDescriptorTable	(3, DescriptorHeapSRV, -1, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			RS->Library.RSDefault.SetParameterAsDescriptorTable	(4, DescriptorHeapUAV, -1, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			RS->Library.RSDefault.SetParameterAsCBV				(3, 3, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			RS->Library.RSDefault.SetParameterAsDescriptorTable	(4, DescriptorHeapSRV, -1, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			RS->Library.RSDefault.SetParameterAsDescriptorTable	(5, DescriptorHeapUAV, -1, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
 			RS->Library.RSDefault.Build(RS, TempMemory);
 
 			SETDEBUGNAME(RS->Library.RSDefault, "RSDefault");

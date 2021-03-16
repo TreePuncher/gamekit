@@ -2096,7 +2096,7 @@ namespace FlexKit
 
 	inline std::ostream& operator << (std::ostream& stream, Quaternion q)
 	{
-		stream << "{ i * " << q.x << ", k * " << q.y << ", k * " << q.z << ", " << q.w << " }";
+		stream << "{ i * " << q.x << ", j * " << q.y << ", k * " << q.z << ", " << q.w << " }";
 		return stream;
 	}
 

@@ -326,8 +326,6 @@ int main(int argc, char* argv[])
 					std::cout << " Type: Texture" << "\n";				break;
 					case EResourceType::EResource_TriMesh:
 					std::cout << " Type: TriangleMesh" << "\n";			break;
-					case EResourceType::EResource_TextureSet:
-					std::cout << " Type: TextureSet" << "\n";			break;
 					case EResourceType::EResource_TerrainCollider:
 					std::cout << " Type: TerrainCollider" << "\n";		break;
                     case EResourceType::EResource_CubeMapTexture:

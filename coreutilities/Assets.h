@@ -63,8 +63,8 @@ namespace FlexKit
 		EResource_TriMesh,
 		EResource_TerrainCollider,
 		EResource_Texture,
-        EResource_TextureSet,
         EResource_CubeMapTexture,
+        EResource_Animation,
 	};
 
 	struct Resource
@@ -326,42 +326,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct TextureSet_Locations
-	{
-		GUID_t TextureID[16];
-		struct {
-			char Directory[64];
-		}TextureLocation[16];
-	};
-
-
-	struct TextureSetBlob
-	{
-		TextureSetBlob()
-		{
-			ResourceSize	= sizeof(TextureSetBlob);
-			Type			= EResourceType::EResource_TextureSet;
-			State			= Resource::ResourceState::EResourceState_UNLOADED;		// Runtime Member
-		}
-
-		size_t					ResourceSize;
-		EResourceType			Type;
-		GUID_t					GUID;
-		Resource::ResourceState	State;		// Runtime Member
-		uint32_t				RefCount;	// Runtime Member
-
-		char	ID[ID_LENGTH];
-		struct TextureEntry
-		{
-			GUID_t	guid;
-			char	Directory[64];
-		}Textures[16];
-	};
-
-
-	/************************************************************************************************/
-
-
 	struct CompiledScene
 	{
 		struct SceneNode
@@ -488,7 +452,6 @@ namespace FlexKit
 
 
 	FLEXKITAPI bool				        Asset2TriMesh		( RenderSystem* RS, CopyContextHandle handle, AssetHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers = true );
-	FLEXKITAPI TextureSet*		        Asset2TextureSet	( AssetHandle RHandle, iAllocator* Memory );
     FLEXKITAPI Vector<TextureBuffer>    LoadCubeMapAsset    ( GUID_t resourceID, size_t& OUT_MIPCount, uint2& OUT_WH, DeviceFormat& OUT_format, iAllocator* );
 
 	FLEXKITAPI TextureSet*		LoadTextureSet	 ( GUID_t ID, iAllocator* Memory );

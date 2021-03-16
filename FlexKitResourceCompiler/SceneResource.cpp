@@ -593,6 +593,153 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
+    ResourceList GatherDeformers(tinygltf::Model& model)
+    {
+        ResourceList resources;
+
+        for (auto& skin : model.skins)
+        {
+            std::vector<uint32_t>           parentLinkage;
+            std::map<uint32_t, uint32_t>    nodeMap;
+            std::vector<float4x4>           jointPoses;
+
+            // Build linkage
+            for (auto _ : skin.joints)
+                parentLinkage.push_back((uint32_t)INVALIDHANDLE);
+
+            for (auto _ : skin.joints)
+                jointPoses.emplace_back();
+
+            for (uint32_t I = 0; I < skin.joints.size(); I++)
+                nodeMap[skin.joints[I]] = I;
+
+            GUID_t ID = rand();
+
+            const auto bufferViewIdx    = model.accessors[skin.inverseBindMatrices].bufferView;
+            const auto& bufferView      = model.bufferViews[bufferViewIdx];
+            const auto& buffer          = model.buffers[bufferView.buffer];
+
+            const auto  inverseMatrices     = reinterpret_cast<const FlexKit::float4x4*>(buffer.data.data() + bufferView.byteOffset);
+
+            // Fetch properties
+            for (auto& joint : skin.joints)
+            {
+                auto& node = model.nodes[joint];
+
+                if (node.extras.Has("ResourceID") && node.extras.Get("ResourceID").IsInt())
+                    ID = node.extras.Get("ResourceID").GetNumberAsInt();
+
+                auto jointIdx = nodeMap[joint];
+                for (auto& child : node.children)
+                    parentLinkage[nodeMap[child]] = jointIdx;
+
+            }
+
+            auto skeleton   = std::make_shared<SkeletonResource>();
+            skeleton->guid  = ID;
+            skeleton->ID    = skin.name + ".skeleton";
+
+            // Fetch Bind Pose
+            for (size_t I = 0; I < parentLinkage.size(); I++)
+            {
+                auto parent         = JointHandle(parentLinkage[I]);
+                auto inversePose    = Float4x4ToXMMATIRX(inverseMatrices[I]);
+
+                SkeletonJoint joint;
+                joint.mParent   = parent;
+                joint.mID       = model.nodes[skin.joints[I]].name;
+                skeleton->AddJoint(joint, inversePose);
+            }
+
+            resources.push_back(skeleton);
+        }
+
+        return resources;
+    }
+
+
+    ResourceList GatherAnimations(tinygltf::Model& model)
+    {
+        ResourceList resources;
+
+        for (auto& animation : model.animations)
+        {
+            auto animationResource  = std::make_shared<AnimationResource>();
+
+            animationResource->ID   = animation.name;
+            auto& channels          = animation.channels;
+            auto& samplers          = animation.samplers;
+
+            for (auto& channel : channels)
+            {
+                AnimationTrack track;
+
+                auto& sampler = samplers[channel.sampler];
+
+                auto& input     = model.accessors[sampler.input];
+                auto& output    = model.accessors[sampler.output];
+
+                auto& inputView     = model.bufferViews[input.bufferView];
+                auto& outputView    = model.bufferViews[output.bufferView];
+
+                auto name = model.nodes[channel.target_node].name;
+
+                track.targetChannel = AnimationTrackTarget{
+                                        .Channel    = channel.target_path,
+                                        .Target     = name,
+                                        .type       = TrackType::Skeletal };
+
+                union float3Value
+                {
+                    float floats[3];
+                };
+
+
+
+                const size_t    frameCount          = outputView.byteLength / 16;
+                float*          startTime           = (float*)(model.buffers[inputView.buffer].data.data() + inputView.byteOffset);
+                float3Value*    float3Channel       = (float3Value*)(model.buffers[outputView.buffer].data.data() + outputView.byteOffset);
+                Quaternion*     roatationChannel    = (Quaternion*)(model.buffers[outputView.buffer].data.data() + outputView.byteOffset);
+
+                const uint channelID =  channel.target_path == "rotation" ? 0 :
+                                        channel.target_path == "translation" ? 1 :
+                                        channel.target_path == "scale" ? 2 : -1;
+                                    
+
+                for (size_t I = 0; I < frameCount; ++I)
+                {
+                    AnimationKeyFrame keyFrame;
+                    keyFrame.Begin          = startTime[I];
+                    keyFrame.End            = startTime[I + 1];
+                    keyFrame.interpolator   = AnimationInterpolator{ .Type = AnimationInterpolator::InterpolatorType::Linear };
+
+                    switch(channelID)
+                    {
+                    case 0:
+                    {
+                        auto& outputValue   = roatationChannel[I];
+                        keyFrame.Value      = float4{ outputValue[0], outputValue[1], outputValue[2], outputValue[3] };
+                    }   break;
+                    case 1:
+                    {
+                        auto& outputValue   = float3Channel[I];
+                        keyFrame.Value      = float4{ outputValue.floats[0], outputValue.floats[1], outputValue.floats[2], 0 };
+                    }   break;
+                    }
+
+                    track.KeyFrames.emplace_back(keyFrame);
+                }
+
+                animationResource->tracks.emplace_back(std::move(track));
+            }
+
+            resources.emplace_back(animationResource);
+        }
+
+        return resources;
+    }
+
+
     ResourceList CreateSceneFromGlTF(const std::filesystem::path& fileDir, MetaDataList& MD)
     {
         using namespace tinygltf;
@@ -603,75 +750,24 @@ namespace FlexKit::ResourceBuilder
 
         ResourceList                resources;
         std::map<int, Resource_ptr> imageMap;
-        std::vector<Resource_ptr>   skinMap;
 
         ImageLoaderDesc imageLoader{ model, resources, imageMap };
         loader.SetImageLoader(loadImage, &imageLoader);
 
         if (auto res = loader.LoadBinaryFromFile(&model, &err, &warn, fileDir.string()); res == true)
         {
-            // Gather Skins
-            for (auto& skin : model.skins)
-            {
-                std::vector<uint32_t>           parentLinkage;
-                std::map<uint32_t, uint32_t>    nodeMap;
-                std::vector<float4x4>           jointPoses;
 
-                for (auto _ : skin.joints)
-                    parentLinkage.push_back((uint32_t)INVALIDHANDLE);
+            auto deformers                  = GatherDeformers(model);
+            auto animations                 = GatherAnimations(model);
+            auto [meshResources, meshMap]   = GatherGeometry(model);
 
-                for (auto _ : skin.joints)
-                    jointPoses.emplace_back();
+            auto scenes = GatherScenes(model, meshMap, imageMap, deformers);
 
-                for (uint32_t I = 0; I < skin.joints.size(); I++)
-                    nodeMap[skin.joints[I]] = I;
+            for (auto resource : animations)
+                resources.push_back(resource);
 
-                GUID_t ID = rand();
-
-                const auto bufferViewIdx    = model.accessors[skin.inverseBindMatrices].bufferView;
-                const auto& bufferView      = model.bufferViews[bufferViewIdx];
-                const auto& buffer          = model.buffers[bufferView.buffer];
-
-                const auto  inverseMatrices     = reinterpret_cast<const FlexKit::float4x4*>(buffer.data.data() + bufferView.byteOffset);
-
-                for (auto& joint : skin.joints)
-                {
-                    auto& node = model.nodes[joint];
-
-                    Joint j;
-                    j.mID = node.name.c_str();
-
-                    if (node.extras.Has("ResourceID") && node.extras.Get("ResourceID").IsInt())
-                        ID = node.extras.Get("ResourceID").GetNumberAsInt();
-
-                    auto jointIdx = nodeMap[joint];
-                    for (auto& child : node.children)
-                        parentLinkage[nodeMap[child]] = jointIdx;
-
-                }
-
-                auto skeleton   = std::make_shared<SkeletonResource>();
-                skeleton->guid  = ID;
-                skeleton->ID    = skin.name + ".skeleton";
-
-
-                for (size_t I = 0; I < parentLinkage.size(); I++)
-                {
-                    auto parent         = JointHandle(parentLinkage[I]);
-                    auto inversePose    = Float4x4ToXMMATIRX(inverseMatrices[I]);
-
-                    SkeletonJoint joint;
-                    joint.mParent = parent;
-                    skeleton->AddJoint(joint, inversePose);
-                }
-
-                resources.push_back(skeleton);
-
-                skinMap.push_back(skeleton);
-            }
-
-            auto [meshResources, meshMap] = GatherGeometry(model);
-            auto scenes = GatherScenes(model, meshMap, imageMap, skinMap);
+            for (auto resource : deformers)
+                resources.push_back(resource);
 
             for (auto resource : meshResources)
                 resources.push_back(resource);

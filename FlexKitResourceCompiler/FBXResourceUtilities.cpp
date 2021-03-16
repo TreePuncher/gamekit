@@ -812,6 +812,7 @@ namespace FlexKit::ResourceBuilder
             const auto begin	= (size_t)(cut.T_Start);
             const auto end		= (size_t)(cut.T_End);
 
+            /*
             AnimationClipResource clip;
             clip.FPS		= 60;
             clip.mID		= cut.ID;
@@ -837,7 +838,7 @@ namespace FlexKit::ResourceBuilder
 
                 clip.AddKeyFrame(keyFrame, frame * 1.0 / 60.0f);
             }
-
+            */
             //clip.Compress();
         }
 

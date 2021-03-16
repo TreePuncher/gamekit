@@ -60,8 +60,8 @@ namespace FlexKit
 
 	inline ID3D12PipelineState* CreateParticleMeshInstancedDepthPSO(RenderSystem* RS)
 	{
-        auto VShader = RS->LoadShader("ParticleMeshInstanceDepthVS", "vs_6_0", "assets\\shaders\\ParticleRendering.hlsl");
-        auto GShader = RS->LoadShader("ParticleMeshInstanceDepthGS", "gs_6_0", "assets\\shaders\\ParticleRendering.hlsl");
+        auto VShader = RS->LoadShader("ParticleMeshInstanceDepthVS", "vs_6_0", "assets\\shaders\\ParticleShadowMapping.hlsl");
+        auto GShader = RS->LoadShader("ParticleMeshInstanceDepthGS", "gs_6_0", "assets\\shaders\\ParticleShadowMapping.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	    0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	                D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -284,8 +284,8 @@ namespace FlexKit
                     ctx.SetPipelineState(resources.GetPipelineState(INSTANCEPARTICLEDPASS));
 
                     ctx.SetGraphicsConstantBufferView(0, constants);
-                    ctx.SetGraphicsDescriptorTable(3, descHeap1);
-                    ctx.SetGraphicsDescriptorTable(4, descHeap2);
+                    ctx.SetGraphicsDescriptorTable(4, descHeap1);
+                    ctx.SetGraphicsDescriptorTable(5, descHeap2);
 
                     ctx.SetScissorAndViewports({
                         resources.GetResource(local.albedoTarget),
@@ -356,8 +356,8 @@ namespace FlexKit
             ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
             ctx.SetPipelineState(resources.GetPipelineState(INSTANCEPARTICLEDEPTHDPASS));
 
-            ctx.SetGraphicsDescriptorTable(3, descHeap1);
-            ctx.SetGraphicsDescriptorTable(4, descHeap2);
+            ctx.SetGraphicsDescriptorTable(4, descHeap1);
+            ctx.SetGraphicsDescriptorTable(5, descHeap2);
 
             ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 

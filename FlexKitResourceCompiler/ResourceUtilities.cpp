@@ -109,63 +109,6 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
-    size_t CalculateAnimationSize(AnimationClip* AC)
-    {
-        size_t Size = 0;
-        Size += AC->FrameCount * sizeof(AnimationResourceBlob::FrameEntry);
-        Size += strlen(AC->mID);
-
-        for (size_t I = 0; I < AC->FrameCount; ++I)
-        {
-            Size += AC->Frames[I].JointCount * sizeof(JointHandle);
-            Size += AC->Frames[I].JointCount * sizeof(JointPose);
-        }
-
-        return Size;
-    }
-
-    Resource* CreateSkeletalAnimationResourceBlob(AnimationClip* AC, GUID_t Skeleton, iAllocator* MemoryOut)
-    {
-        size_t Size = CalculateAnimationSize(AC);
-        Size += sizeof(AnimationResourceBlob);
-
-        AnimationResourceBlob* R = (AnimationResourceBlob*)MemoryOut->_aligned_malloc(Size);
-        R->header.Skeleton		= Skeleton;
-        R->header.FrameCount	= AC->FrameCount;
-        R->header.FPS			= AC->FPS;
-        R->header.GUID			= AC->guid;
-        R->header.IsLooping	    = AC->isLooping;
-        R->header.Type			= EResourceType::EResource_SkeletalAnimation;
-        R->header.ResourceSize  = Size;
-        strcpy_s(R->header.ID, AC->mID);
-
-        AnimationResourceBlob::FrameEntry*	Frames = (AnimationResourceBlob::FrameEntry*)R->Buffer;
-        size_t Position = sizeof(AnimationResourceBlob::FrameEntry) * R->header.FrameCount;
-
-        for (size_t I = 0; I < R->header.FrameCount; ++I)
-        {
-            Frames[I].JointCount  = AC->Frames[I].JointCount;
-            
-            JointHandle* Joints   = (JointHandle*)(R->Buffer + Position);
-            Frames[I].JointStarts = Position;
-            Position += sizeof(JointHandle) * AC->Frames[I].JointCount;
-            memcpy(Joints, AC->Frames[I].Joints, sizeof(JointHandle) * AC->Frames[I].JointCount);
-        
-            JointPose* Poses      = (JointPose*)(Joints + AC->Frames[I].JointCount);
-            Frames[I].PoseStarts  = Position;
-            Position += sizeof(JointPose) * AC->Frames[I].JointCount;
-            memcpy(Poses, AC->Frames[I].Poses, sizeof(JointPose) * AC->Frames[I].JointCount);
-
-            int x = 0;// Debug Point
-        }
-
-        return (Resource*)R;
-    }
-
-
-    /************************************************************************************************/
-
-
     Resource* CreateColliderResourceBlob(char* Buffer, size_t BufferSize, GUID_t ColliderID, const char* AssetID, iAllocator* MemoryOut)
     {
         size_t ResourceSize = BufferSize + sizeof(ColliderResourceBlob);

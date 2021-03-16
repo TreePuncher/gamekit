@@ -51,7 +51,6 @@ namespace FlexKit::ResourceBuilder
 			EMI_ANIMATIONCLIP,
 			EMI_ANIMATIONEVENT,
 			EMI_TERRAINCOLLIDER,
-            EMI_TEXTURESET,
             EMI_CUBEMAPTEXTURE,
             EMI_TEXTURE,
 		};
@@ -283,23 +282,6 @@ namespace FlexKit::ResourceBuilder
 		GUID_t	Guid;
 		std::string	FontID;
 		std::string	FontFile;
-	};
-
-
-	/************************************************************************************************/
-
-
-	struct TextureSet_MetaData : public MetaData
-	{
-		TextureSet_MetaData() {
-			UserType = MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
-			type     = MetaData::EMETAINFOTYPE::EMI_TEXTURESET;
-			Guid     = 0;
-			memset(&Textures, 0, sizeof(Textures));
-		}
-
-		GUID_t Guid;
-		FlexKit::TextureSet_Locations Textures;
 	};
 
 

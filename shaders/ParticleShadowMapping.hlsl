@@ -1,53 +1,44 @@
-#include "common.hlsl"
-
-struct ParticleMeshInstanceVS_Input
+struct ParticleMeshInstanceDepthVS_IN
 {
-    float3 POS		: POSITION;
-    float3 Normal	: NORMAL;
-    float3 Tangent	: Tangent;
-
+    float3 POS		        : POSITION;
     float4 instancePosition : INSTANCEPOS;
     float4 instanceArgs     : INSTANCEARGS; 
 };
 
-struct ParticleVertex
+float4 ParticleMeshInstanceDepthVS(ParticleMeshInstanceDepthVS_IN input) : SV_POSITION
 {
-    centroid    float4 POS		: SV_POSITION;
-                float3 WPOS		: POSITION;
-                float3 Normal	: NORMAL;
-                float3 Tangent	: Tangent;
-};
-
-ParticleVertex ParticleMeshInstanceVS(ParticleMeshInstanceVS_Input input)
-{
-    ParticleVertex output;
-    output.WPOS     = input.POS + input.instancePosition;
-    output.POS      = mul(PV, float4(output.WPOS, 1));
-    output.Normal   = mul(PV, input.Normal); 
-    output.Tangent  = mul(PV, input.Tangent);
-
-    return output;
+    return float4(input.POS + input.instancePosition.xyz, 0);
 }
 
-struct PS_Out
+cbuffer PassConstants : register( b0 )
 {
-    float4  Albedo  : SV_TARGET0;
-    float4  MRIA    : SV_TARGET1;
-    float4  Normal  : SV_TARGET2;
-
-    float   Depth   : SV_DepthLessEqual;
+    float4x4 matrices[6];
 };
 
-PS_Out ParticleMeshInstancePS(ParticleVertex input)
+struct GS_Out
 {
-    PS_Out output;
+    float4  pos                 : SV_POSITION;
+    uint    arrayTargetIndex    : SV_RENDERTARGETARRAYINDEX;
+};
 
-    output.Albedo = float4(1.0f, 1.0f, 1.0f, 0.5f);
-    output.MRIA   = float4(0.0f, 0.5f, 0.0f, 0.0f);
-    output.Normal = float4(normalize(input.Normal), 1);
-    output.Depth  = length(CameraPOS - input.WPOS) / MaxZ;
+[maxvertexcount(18)]
+void ParticleMeshInstanceDepthGS(
+    triangle float4 vertices[3] : SV_POSITION,
+    inout TriangleStream<GS_Out> renderTarget)
+{
+    for (uint face_ID = 0; face_ID < 6; face_ID++) // Loop over faces
+    {
+        for(uint triangle_ID = 0; triangle_ID < 3; triangle_ID++)
+        {
+            GS_Out Out;
+            Out.pos                 = mul(matrices[face_ID], vertices[triangle_ID]);
+            Out.arrayTargetIndex    = face_ID;
 
-    return output;
+            renderTarget.Append(Out);
+        }
+
+        renderTarget.RestartStrip();
+    }
 }
 
 

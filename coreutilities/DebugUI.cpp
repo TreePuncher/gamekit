@@ -347,7 +347,7 @@ namespace FlexKit
 					    heap.Init2( ctx, rootSig.GetDescHeap(0), 1, &allocator );
 					    heap.SetSRV(ctx, 0, texture);
 
-					    ctx.SetGraphicsDescriptorTable(3, heap);
+					    ctx.SetGraphicsDescriptorTable(4, heap);
 					    ctx.SetScissorRects({ r });
 					    ctx.DrawIndexed(cmd.ElemCount, cmd.IdxOffset, cmd.VtxOffset);
 				    }

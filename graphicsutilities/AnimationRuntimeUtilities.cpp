@@ -40,37 +40,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	AnimationClip Resource2AnimationClip(Resource* R, iAllocator* Memory)
-	{
-		AnimationResourceBlob* Anim = (AnimationResourceBlob*)R;
-		AnimationClip	AC;// = &Memory->allocate_aligned<AnimationClip, 0x10>();
-		AC.FPS             = (uint32_t)Anim->header.FPS;
-		AC.FrameCount      = Anim->header.FrameCount;
-		AC.isLooping       = Anim->header.IsLooping;
-		AC.guid			   = Anim->header.GUID;
-		size_t StrSize     = 1 + strlen(Anim->header.ID);
-		AC.mID	           = (char*)Memory->malloc(strlen(Anim->header.ID));
-		strcpy_s(AC.mID, StrSize, Anim->header.ID);
-		AC.Frames		   = (AnimationClip::KeyFrame*)Memory->_aligned_malloc(sizeof(AnimationClip::KeyFrame) * AC.FrameCount);
-		
-		AnimationResourceBlob::FrameEntry* Frames = (AnimationResourceBlob::FrameEntry*)(Anim->Buffer);
-		for (size_t I = 0; I < AC.FrameCount; ++I)
-		{
-			size_t jointcount       = Frames[I].JointCount;
-			AC.Frames[I].JointCount = jointcount;
-			AC.Frames[I].Joints     = (JointHandle*)	Memory->_aligned_malloc(sizeof(JointHandle) * jointcount, 0x10);
-			AC.Frames[I].Poses      = (JointPose*)		Memory->_aligned_malloc(sizeof(JointPose)   * jointcount, 0x10);
-			memcpy(AC.Frames[I].Joints, Anim->Buffer + Frames[I].JointStarts,  sizeof(JointHandle)  * jointcount);
-			memcpy(AC.Frames[I].Poses,  Anim->Buffer + Frames[I].PoseStarts,   sizeof(JointPose)    * jointcount);
-		}
-
-		return AC;
-	}
-
-
-	/************************************************************************************************/
-
-
 	using DirectX::XMMatrixRotationQuaternion;
 	using DirectX::XMMatrixScalingFromVector;
 	using DirectX::XMMatrixTranslationFromVector;
