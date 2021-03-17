@@ -589,6 +589,8 @@ namespace FlexKit
                     auto& visable = drawables[J];
                     auto* triMesh = GetMeshResource(visable.D->MeshHandle);
 
+                    ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKPASS));
+
                     if (triMesh != prevMesh)
                     {
                         prevMesh = triMesh;
