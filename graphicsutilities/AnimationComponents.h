@@ -365,63 +365,7 @@ namespace FlexKit
             AnimatorView(GameObject& IN_gameObject, AnimatorHandle IN_animatorHandle = InvalidHandle_t) :
                 animator{ IN_animatorHandle != InvalidHandle_t ? IN_animatorHandle : GetComponent().Create(IN_gameObject) } {}
 
-            PlayID_t Play(AnimationResource& anim, bool loop = false)
-            {
-                auto&           componentData   = GetComponent()[animator];
-                const uint32_t  ID              = rand();
-
-                auto& allocator = GetComponent().allocator;
-                Vector<AnimationState::TrackState> tracks{ &allocator };
-
-
-                auto& gameObject    = *componentData.gameObject;
-                auto  skeleton      = GetSkeleton(gameObject);
-
-                for (auto& track : anim.tracks)
-                {
-                    switch (track.type)
-                    {
-                    case TrackType::Skeletal:
-                    {
-                        auto joint = skeleton->FindJoint(track.target.c_str());
-
-                        if (track.trackName == "translation")
-                        {
-                            AnimationState::TrackState trackState;
-                            trackState.target   = &allocator.allocate<AnimationState::JointTranslationTarget>(joint);
-                            trackState.track    = &track;
-                            tracks.push_back(trackState);
-                        }
-                        else if (track.trackName == "rotation")
-                        {
-                            AnimationState::TrackState trackState;
-                            trackState.target   = &allocator.allocate<AnimationState::JointRotationTarget>(joint);
-                            trackState.track    = &track;
-                            tracks.push_back(trackState);
-                        }
-                        else if (track.trackName == "scale")
-                        {
-                            AnimationState::TrackState trackState;
-                            trackState.target   = &allocator.allocate<AnimationState::JointScaleTarget>(joint);
-                            trackState.track    = &track;
-                            tracks.push_back(trackState);
-                        }
-                    }   break;
-                    }  
-                }
-
-                AnimationState animState{
-                    .T          = 0.0f,
-                    .ID         = ID,
-                    .state      = loop ? AnimationState::State::Looping : AnimationState::State::Playing,
-                    .tracks     = std::move(tracks),
-                    .resource   = &anim,
-                };
-
-                componentData.animations.emplace_back(std::move(animState));
-
-                return ID;
-            }
+            PlayID_t Play(AnimationResource& anim, bool loop = false);
 
             AnimatorHandle animator;
         };
@@ -497,35 +441,7 @@ namespace FlexKit
             {
                 JointRotationTarget(JointHandle in_Joint) : joint { in_Joint }{}
 
-                void Apply(FrameRange range, float t, AnimationStateContext& ctx) final override
-                {
-                    if (auto res = ctx.FindField<PoseState>(); res) {
-                        auto beginKey   = range.begin->Value;
-                        auto endKey     = range.end->Value;
-
-                        auto interpolate =
-                            [&]() -> Quaternion
-                            {
-                                const auto timepointBegin   = range.begin->Begin;
-                                const auto timepointEnd     = range.end->Begin;
-                                const auto timeRange        = timepointEnd - timepointBegin;
-
-                                const auto I = (t - range.begin->Begin) / timeRange;
-
-                                const auto& AValue = range.begin->Value;
-                                const auto& BValue = range.end->Value;
-
-                                const auto A = Quaternion{ AValue[0], AValue[1], AValue[2], AValue[3] };
-                                const auto B = Quaternion{ BValue[0], BValue[1], BValue[2], BValue[3] };
-
-                                return Qlerp(A, B, I);
-                            };
-
-                        const auto value        = range.begin->Begin == range.end->Begin ? range.begin->Value : interpolate();
-
-                        res->Joints[joint].r = Quaternion{ value[0], value[1], value[2], value[3] };
-                    }
-                }
+                void Apply(FrameRange range, float t, AnimationStateContext& ctx) final override;
 
                 JointHandle joint;
             };
@@ -563,54 +479,15 @@ namespace FlexKit
 
             struct TrackState
             {
-                AnimationKeyFrame* FindFrame(double T)
-                {
-                    for (auto& frame : track->keyFrames)
-                    {
-                        if (frame.Begin <= T && frame.End > T)
-                            return &frame;
-                    }
-
-                    return nullptr;
-                }
-
-                AnimationKeyFrame* FindNextFrame(AnimationKeyFrame* frame)
-                {
-                    if (frame + 1 < track->keyFrames.end())
-                        return frame + 1;
-                    else
-                        return frame;
-                }
+                AnimationKeyFrame* FindFrame(double T);
+                AnimationKeyFrame* FindNextFrame(AnimationKeyFrame* frame);
 
                 AnimationTrack* track;
                 ITrackTarget*   target;
             };
 
-            State Update(AnimationStateContext& ctx, double dT)
-            {
-                T += 1.0f / 600.0f;
-                bool animationPlayed = false;
 
-                if (state == State::Paused || state == State::Finished)
-                    return state;
-
-                for (auto& track : tracks)
-                {
-                    if (auto frame = track.FindFrame(T); frame)
-                    {
-                        track.target->Apply({ frame, track.FindNextFrame(frame) }, T, ctx);
-                        animationPlayed = true;
-                    }
-                }
-
-                if (state == State::Looping && !animationPlayed)
-                    T = 0.0;
-
-                if (state == State::Playing && !animationPlayed)
-                    state = State::Finished;
-
-                return state;
-            }
+            State Update(AnimationStateContext& ctx, double dT);
 
             Vector<TrackState>  tracks;
             AnimationResource*  resource;
@@ -634,31 +511,7 @@ namespace FlexKit
 	};
 
 
-    UpdateTask& UpdateAnimations(UpdateDispatcher& updateTask, double dT)
-    {
-        struct _ {};
-        return updateTask.Add<_>(
-            [](auto&, auto&) {},
-            [dT = dT](auto&, auto& temporaryAllocator)
-            {
-                auto& animator = AnimatorComponent::GetComponent();
-
-                for (AnimatorComponent::AnimatorState& animator : animator.animators)
-                {
-                    AnimatorComponent::AnimationStateContext context{ temporaryAllocator };
-
-                    Apply(*animator.gameObject,
-                        [&](SkeletonView& poseView)
-                        {
-                            auto& pose = poseView.GetPoseState();
-                            context.AddField(pose);
-                        });
-
-                    for (auto& animation : animator.animations)
-                        animation.Update(context, dT);
-                }
-            });
-    }
+    UpdateTask& UpdateAnimations(UpdateDispatcher& updateTask, double dT);
 
 
     using AnimatorView = AnimatorComponent::AnimatorView;

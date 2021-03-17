@@ -25,6 +25,39 @@ float4 VS_Main(float3 POS : POSITION) : SV_POSITION
     return mul(WT, float4(POS, 1));
 }
 
+struct Skinned_Vertex
+{
+    float3 POS		: POSITION;
+    float3 Weights  : BLENDWEIGHT;
+    uint4  Indices  : BLENDINDICES;
+};
+
+cbuffer PoseConstants : register(b3)
+{
+    float4x4 transforms[256];
+}
+
+float4 VS_Skinned_Main(Skinned_Vertex IN) : SV_POSITION
+{
+	float3 V = float3(0, 0, 0);
+    const float4 W = float4(IN.Weights.xyz, 1 - IN.Weights.x - IN.Weights.y - IN.Weights.z);
+    
+	float4x4 MTs[4] =
+	{
+		transforms[IN.Indices[0]],
+		transforms[IN.Indices[1]],
+		transforms[IN.Indices[2]],
+		transforms[IN.Indices[3]],
+    };
+
+    V += (mul(MTs[0], float4(IN.POS, 1)) * W[0]).xyz;
+    V += (mul(MTs[1], float4(IN.POS, 1)) * W[1]).xyz;
+    V += (mul(MTs[2], float4(IN.POS, 1)) * W[2]).xyz;
+    V += (mul(MTs[3], float4(IN.POS, 1)) * W[3]).xyz;
+
+    return mul(WT, float4(V.xyz, 1));
+}
+
 struct Vertex
 {
     float4 pos              : SV_POSITION;

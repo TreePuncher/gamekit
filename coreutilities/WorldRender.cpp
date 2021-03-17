@@ -2788,6 +2788,67 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+	ID3D12PipelineState* CreateShadowMapAnimatedPass(RenderSystem* RS)
+	{
+		auto VShader = RS->LoadShader("VS_Skinned_Main",    "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
+		auto GShader = RS->LoadShader("GS_Main",            "gs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
+
+		/*
+		typedef struct D3D12_INPUT_ELEMENT_DESC
+		{
+		LPCSTR SemanticName;
+		UINT SemanticIndex;
+		DXGI_FORMAT Format;
+		UINT InputSlot;
+		UINT AlignedByteOffset;
+		D3D12_INPUT_CLASSIFICATION InputSlotClass;
+		UINT InstanceDataStepRate;
+		} 	D3D12_INPUT_ELEMENT_DESC;
+		*/
+
+		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+                { "POSITION",	    0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+                { "BLENDWEIGHT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    1, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+                { "BLENDINDICES",	0, DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_UINT,  2, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		};
+
+
+		D3D12_RASTERIZER_DESC Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		Rast_Desc.FillMode = D3D12_FILL_MODE_SOLID;
+		Rast_Desc.CullMode = D3D12_CULL_MODE_BACK;
+
+		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+		Depth_Desc.DepthEnable	= true;
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+			PSO_Desc.pRootSignature        = RS->Library.RSDefault;
+			PSO_Desc.VS                    = VShader;
+			PSO_Desc.GS                    = GShader;
+			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask            = UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSO_Desc.NumRenderTargets      = 0;
+			PSO_Desc.SampleDesc.Count      = 1;
+			PSO_Desc.SampleDesc.Quality    = 0;
+			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
+			PSO_Desc.DepthStencilState     = Depth_Desc;
+			PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
+			PSO_Desc.RasterizerState       = Rast_Desc;
+		}
+
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		return PSO;
+	}
+
+
 	/************************************************************************************************/
 
 
@@ -2938,21 +2999,10 @@ namespace FlexKit
 					        if (!visables.size())
 						        return;
 
-					        struct PassConstants
-					        {
-						        struct PlaneMatrices
-						        {
-							        float4x4 ViewI;
-							        float4x4 PV;
-						        }matrices[6];
-					        };
 
-					        CBPushBuffer passConstantBuffer = data.reserveCB(
-						        AlignedSize<PassConstants>());
+                            PVS                 drawables      { &allocator, visables.size() };
+                            Vector<GameObject*> animatedDraws  { &allocator, visables.size() };
 
-					        CBPushBuffer localConstantBuffer = data.reserveCB(AlignedSize<Drawable::VConstantsLayout>() * visables.size());
-
-                            PVS  drawables{ &allocator, visables.size() };
                             for (auto& visable : visables)
                             {
                                 auto entity = visibilityComponent[visable].entity;
@@ -2960,9 +3010,33 @@ namespace FlexKit
                                 Apply(*entity,
                                     [&](DrawableView& view)
                                     {
-                                        PushPV(view.GetDrawable(), drawables, pointLightPosition);
+                                        if (!view.GetDrawable().Skinned)
+                                            PushPV(view.GetDrawable(), drawables, pointLightPosition);
+                                        else
+                                            animatedDraws.push_back(entity);
                                     });
                             }
+
+                            struct PassConstants
+                            {
+                                struct PlaneMatrices
+                                {
+                                    float4x4 ViewI;
+                                    float4x4 PV;
+                                }matrices[6];
+                            };
+
+                            struct PoseConstants
+                            {
+                                float4x4 M[256];
+                            };
+
+
+                            CBPushBuffer passConstantBuffer = data.reserveCB(
+                                AlignedSize<PassConstants>());
+
+                            CBPushBuffer localConstantBuffer        = data.reserveCB(AlignedSize<Drawable::VConstantsLayout>() * visables.size());
+                            CBPushBuffer animatedConstantBuffer     = data.reserveCB(AlignedSize<Drawable::VConstantsLayout>() * animatedDraws.size() + AlignedSize<PoseConstants>() * animatedDraws.size());
 
                             for (auto& drawable : drawables)
                                 ConstantBufferDataSet{ drawable.D->GetConstants(), localConstantBuffer };
@@ -3021,6 +3095,57 @@ namespace FlexKit
                                 
                                 ctx.DrawIndexedInstanced(triMesh->GetHighestLoadedLod().GetIndexCount());
 					        }
+
+
+                            auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS);
+                            ctx.SetPipelineState(PSOAnimated);
+                            ctx.SetScissorAndViewports({ depthTarget });
+                            ctx.SetRenderTargets2({}, 0, DSV_desc);
+                            ctx.SetGraphicsConstantBufferView(0, passConstants);
+                            ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
+
+                            for (auto& drawable : animatedDraws)
+                            {
+                                Apply(*drawable,
+                                    [&](DrawableView&  drawView,
+                                        SkeletonView&  poseView)
+                                    {
+                                        auto& draw      = drawView.GetDrawable();
+                                        auto& pose      = poseView.GetPoseState();
+                                        auto& skeleton  = *pose.Sk;
+
+                                        struct poses
+                                        {
+                                            float4x4 M[256];
+                                        }poseTemp;
+
+                                        const size_t end = pose.JointCount;
+                                        for (size_t I = 0; I < end; ++I)
+                                            poseTemp.M[I] = skeleton.IPose[I] * pose.CurrentPose[I];
+
+                                        const auto constants        = ConstantBufferDataSet{ draw.GetConstants(), animatedConstantBuffer };
+                                        const auto poseConstants    = ConstantBufferDataSet{ poseTemp, animatedConstantBuffer };
+
+                                        ctx.SetGraphicsConstantBufferView(1, constants);
+                                        ctx.SetGraphicsConstantBufferView(2, poseConstants);
+                                        ctx.SetGraphicsConstantBufferView(3, poseConstants);
+
+                                        auto triMesh            = GetMeshResource(draw.MeshHandle);
+                                        const auto lodLevelIdx  = triMesh->GetHighestLoadedLodIdx();
+                                        const auto lodLevel     = triMesh->GetHighestLoadedLod();
+
+                                        ctx.AddIndexBuffer(triMesh, lodLevelIdx);
+						                ctx.AddVertexBuffers(triMesh,
+                                            lodLevelIdx,
+							                {   VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+                                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
+                                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
+                                            });
+
+                                
+                                        ctx.DrawIndexedInstanced(triMesh->GetHighestLoadedLod().GetIndexCount());
+                                    });
+                            }
 
                             shadowMaps.push_back(depthTarget);
 
