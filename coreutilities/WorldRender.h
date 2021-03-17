@@ -174,8 +174,9 @@ namespace FlexKit
 	static const PSOHandle TEXTURE2CUBEMAP_GGX         = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP_GGX));
 
 
-	static const PSOHandle SHADOWMAPPASS = PSOHandle(GetTypeGUID(SHADOWMAPPASS));
-    static const PSOHandle DEBUG_DrawBVH = PSOHandle(GetTypeGUID(DEBUG_DrawBVH1));
+    static const PSOHandle SHADOWMAPPASS            = PSOHandle(GetTypeGUID(SHADOWMAPPASS));
+    static const PSOHandle SHADOWMAPANIMATEDPASS    = PSOHandle(GetTypeGUID(SHADOWMAPANIMATEDPASS));
+    static const PSOHandle DEBUG_DrawBVH            = PSOHandle(GetTypeGUID(DEBUG_DrawBVH1));
 
 
 	/************************************************************************************************/
@@ -214,6 +215,9 @@ namespace FlexKit
 	ID3D12PipelineState* CreateBilaterialBlurVerticalPSO    (RenderSystem* RS);
 
 	ID3D12PipelineState* CreateShadowMapPass                (RenderSystem* RS);
+    ID3D12PipelineState* CreateShadowMapAnimatedPass        (RenderSystem* RS);
+
+    
 
     ID3D12PipelineState* CreateDEBUGBVHVIS                  (RenderSystem* RS);
 
@@ -701,6 +705,7 @@ namespace FlexKit
 			RS_IN.RegisterPSOLoader(LIGHTPREPASS,			    { &RS_IN.Library.ComputeSignature,  CreateLightPassPSO			  });
 			RS_IN.RegisterPSOLoader(DEPTHPREPASS,			    { &RS_IN.Library.RS6CBVs4SRVs,      CreateDepthPrePassPSO         });
             RS_IN.RegisterPSOLoader(SHADOWMAPPASS,              { &RS_IN.Library.RS6CBVs4SRVs,      CreateShadowMapPass           });
+            RS_IN.RegisterPSOLoader(SHADOWMAPANIMATEDPASS,      { &RS_IN.Library.RS6CBVs4SRVs,      CreateShadowMapAnimatedPass   });
 
 
 			RS_IN.RegisterPSOLoader(GBUFFERPASS,			    { &RS_IN.Library.RS6CBVs4SRVs,      CreateGBufferPassPSO          });
