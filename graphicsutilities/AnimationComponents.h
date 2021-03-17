@@ -482,19 +482,49 @@ namespace FlexKit
                 Looping
             }   state = State::Playing;
 
+            struct FrameRange
+            {
+                AnimationKeyFrame* begin;
+                AnimationKeyFrame* end;
+            };
+
             struct ITrackTarget
             {
-                virtual void Apply(AnimationKeyFrame& frame, float t, AnimationStateContext& ctx) = 0;
+                virtual void Apply(FrameRange range, float t, AnimationStateContext& ctx) = 0;
             };
 
             struct JointRotationTarget : public ITrackTarget
             {
                 JointRotationTarget(JointHandle in_Joint) : joint { in_Joint }{}
 
-                void Apply(AnimationKeyFrame& frame, float t, AnimationStateContext& ctx) final override
+                void Apply(FrameRange range, float t, AnimationStateContext& ctx) final override
                 {
-                    if (auto res = ctx.FindField<PoseState>(); res)
-                        res->Joints[joint].r = Quaternion{ frame.Value[0], frame.Value[1], frame.Value[2], frame.Value[3] };
+                    if (auto res = ctx.FindField<PoseState>(); res) {
+                        auto beginKey   = range.begin->Value;
+                        auto endKey     = range.end->Value;
+
+                        auto interpolate =
+                            [&]() -> Quaternion
+                            {
+                                const auto timepointBegin   = range.begin->Begin;
+                                const auto timepointEnd     = range.end->Begin;
+                                const auto timeRange        = timepointEnd - timepointBegin;
+
+                                const auto I = (t - range.begin->Begin) / timeRange;
+
+                                const auto& AValue = range.begin->Value;
+                                const auto& BValue = range.end->Value;
+
+                                const auto A = Quaternion{ AValue[0], AValue[1], AValue[2], AValue[3] };
+                                const auto B = Quaternion{ BValue[0], BValue[1], BValue[2], BValue[3] };
+
+                                return Qlerp(A, B, I);
+                            };
+
+                        const auto value        = range.begin->Begin == range.end->Begin ? range.begin->Value : interpolate();
+
+                        res->Joints[joint].r = Quaternion{ value[0], value[1], value[2], value[3] };
+                    }
                 }
 
                 JointHandle joint;
@@ -504,12 +534,12 @@ namespace FlexKit
             {
                 JointTranslationTarget(JointHandle in_Joint) : joint{ in_Joint } {}
 
-                void Apply(AnimationKeyFrame& frame, float t, AnimationStateContext& ctx) final override
+                void Apply(FrameRange range, float t, AnimationStateContext& ctx) final override
                 {
                     if (auto res = ctx.FindField<PoseState>(); res)
                     {
                         auto defaultPose = res->Sk->JointPoses[joint];
-                        res->Joints[joint].ts += frame.Value.xyz() - defaultPose.ts.xyz();
+                        res->Joints[joint].ts += range.begin->Value.xyz() - defaultPose.ts.xyz();
                     }
                 }
 
@@ -520,11 +550,11 @@ namespace FlexKit
             {
                 JointScaleTarget(JointHandle in_Joint) : joint{ in_Joint } {}
 
-                void Apply(AnimationKeyFrame& frame, float t, AnimationStateContext& ctx) final override
+                void Apply(FrameRange range, float t, AnimationStateContext& ctx) final override
                 {
-                    if (auto res = ctx.FindField<PoseState>(); res) {
-
-                        res->Joints[joint].ts.w = frame.Value.w;
+                    if (auto res = ctx.FindField<PoseState>(); res)
+                    {
+                        res->Joints[joint].ts.w = range.begin->Value.w;
                     }
                 }
 
@@ -538,10 +568,18 @@ namespace FlexKit
                     for (auto& frame : track->keyFrames)
                     {
                         if (frame.Begin <= T && frame.End > T)
-                            return { &frame };
+                            return &frame;
                     }
 
                     return nullptr;
+                }
+
+                AnimationKeyFrame* FindNextFrame(AnimationKeyFrame* frame)
+                {
+                    if (frame + 1 < track->keyFrames.end())
+                        return frame + 1;
+                    else
+                        return frame;
                 }
 
                 AnimationTrack* track;
@@ -550,7 +588,7 @@ namespace FlexKit
 
             State Update(AnimationStateContext& ctx, double dT)
             {
-                T += dT;
+                T += 1.0f / 600.0f;
                 bool animationPlayed = false;
 
                 if (state == State::Paused || state == State::Finished)
@@ -560,18 +598,16 @@ namespace FlexKit
                 {
                     if (auto frame = track.FindFrame(T); frame)
                     {
-                        track.target->Apply(*frame, T, ctx);
+                        track.target->Apply({ frame, track.FindNextFrame(frame) }, T, ctx);
                         animationPlayed = true;
                     }
                 }
 
-
+                if (state == State::Looping && !animationPlayed)
+                    T = 0.0;
 
                 if (state == State::Playing && !animationPlayed)
                     state = State::Finished;
-
-                if (state == State::Looping && !animationPlayed)
-                    T = 0.0;
 
                 return state;
             }
