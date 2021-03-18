@@ -687,6 +687,82 @@ namespace FlexKit
 		return MakeSharedRef<SynchronizedOperation<TY_OP>>(allocator, operation);
 	}
 
+
+    /************************************************************************************************/
+
+
+    template<typename ITERATOR_TY, typename FN_TY>
+    void Parallel_For(
+        ThreadManager&  threads,
+        iAllocator&     allocator,
+        ITERATOR_TY     begin,
+        ITERATOR_TY     end,
+        const size_t    blockSize,
+        FN_TY           task)
+    {
+        const size_t        taskCount   = std::distance(begin, end);
+        const size_t        threadCount = Max(taskCount / blockSize, 1);
+
+        struct Task : public iWork
+        {
+            using ITERATOR = ITERATOR_TY;
+
+            ITERATOR begin   = 0;
+            ITERATOR end     = 0;
+
+            FN_TY*      task_FN = nullptr;
+
+            Task() : iWork{ nullptr } {}
+
+            Task(
+                ITERATOR IN_begin, ITERATOR IN_end, FN_TY* IN_FN) :
+                    iWork   { nullptr },
+                    begin   { IN_begin  },
+                    end     { IN_end    },
+                    task_FN { IN_FN     }
+            {}
+
+            ~Task(){}
+
+            void Run(iAllocator& threadLocalAllocator) final
+            {
+                std::for_each(begin, end,
+                    [&](auto& element)
+                    {
+                        (*task_FN)(element, threadLocalAllocator);
+                    });
+            }
+
+            void Release() final
+            {
+            }
+        };
+
+        if (threadCount > 1)
+        {
+            WorkBarrier barrier{threads, &allocator};
+            Vector<Task*> tasks{&allocator, threadCount};
+
+            for (size_t I = 0; I < threadCount; ++I)
+                tasks.emplace_back(
+                    &allocator.allocate<Task>(
+                        begin + I * threadCount,
+                        Min(begin + (I + 1) * threadCount, end),
+                        &task));
+
+            for (auto& task : tasks)
+                threads.AddWork(task);
+
+            barrier.Wait();
+        }
+        else
+            std::for_each(begin, end,
+                [&](auto& element)
+                {
+                    task(element, allocator);
+                });
+    }
+
 	/************************************************************************************************/
 }	// namespace FlexKit
 
