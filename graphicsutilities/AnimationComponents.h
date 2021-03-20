@@ -137,6 +137,12 @@ namespace FlexKit
         }
 
 
+        JointHandle FindJoint(const char* jointID)
+        {
+            auto& poseState = GetPoseState();
+            return poseState.Sk->FindJoint(jointID);
+        }
+
         SkeletonHandle handle;
     };
 
@@ -378,7 +384,7 @@ namespace FlexKit
         AnimatorHandle Create(GameObject& gameObject)
         {
             auto handle     = handles.GetNewHandle();
-            handles[handle] = animators.emplace_back(&gameObject, Vector<AnimationState>{ &allocator });
+            handles[handle] = (index_t)animators.emplace_back(&gameObject, Vector<AnimationState>{ &allocator });
 
             return handle;
         }
@@ -452,10 +458,10 @@ namespace FlexKit
 
                 void Apply(FrameRange range, float t, AnimationStateContext& ctx) final override
                 {
-                    if (auto res = ctx.FindField<PoseState>(); res)
+                    if (auto res = ctx.FindField<PoseState::Pose>(); res)
                     {
-                        auto defaultPose = res->Sk->JointPoses[joint];
-                        res->Joints[joint].ts += range.begin->Value.xyz() - defaultPose.ts.xyz();
+                        auto defaultPose = res->sk->JointPoses[joint];
+                        res->jointPose[joint].ts += range.begin->Value.xyz() - defaultPose.ts.xyz();
                     }
                 }
 
@@ -468,9 +474,9 @@ namespace FlexKit
 
                 void Apply(FrameRange range, float t, AnimationStateContext& ctx) final override
                 {
-                    if (auto res = ctx.FindField<PoseState>(); res)
+                    if (auto res = ctx.FindField<PoseState::Pose>(); res)
                     {
-                        res->Joints[joint].ts.w = range.begin->Value.w;
+                        res->jointPose[joint].ts.w = range.begin->Value.w;
                     }
                 }
 
@@ -510,11 +516,132 @@ namespace FlexKit
         iAllocator&                                     allocator;
 	};
 
+    using AnimatorView = AnimatorComponent::AnimatorView;
 
     UpdateTask& UpdateAnimations(UpdateDispatcher& updateTask, double dT);
 
+    constexpr ComponentID FABRIKComponentID         = GetTypeGUID(FABRIK);
+    constexpr ComponentID FABRIKTargetComponentID   = GetTypeGUID(FABRIKTarget);
 
-    using AnimatorView = AnimatorComponent::AnimatorView;
+    using FABRIKHandle          = Handle_t<32, FABRIKComponentID>;
+    using FABRIKTargetHandle    = Handle_t<32, FABRIKTargetComponentID>;
+
+    struct FABRIKTarget
+    {
+        FABRIKTarget(NodeHandle IN_node = InvalidHandle_t, iAllocator* IN_allocator = nullptr) :
+            node    { IN_node },
+            users   { IN_allocator }{}
+
+        ~FABRIKTarget();
+
+        NodeHandle              node;
+        Vector<FABRIKHandle>    users;
+    };
+
+    using FABRIKTargetComponent = BasicComponent_t<FABRIKTarget, FABRIKTargetHandle, FABRIKTargetComponentID>;
+    using FABRIKTargetView      = FABRIKTargetComponent::View;
+
+    class FABRIKComponent : public FlexKit::Component<FABRIKComponent, FABRIKComponentID>
+    {
+    public:
+        struct FABRIK;
+
+        class FABRIKView : public FlexKit::ComponentView_t<FABRIKComponent>
+        {
+        public:
+            FABRIKView(GameObject& IN_gameObject) :
+                ikHandle{ GetComponent().Create(IN_gameObject) } {}
+
+
+
+            void AddTarget(GameObject& gameObject) 
+            {
+                Apply(
+                    gameObject,
+                    [&](FABRIKTargetView& view)
+                    {
+                        view->users.push_back(ikHandle);
+                        GetComponent()[ikHandle].AddTarget(view->node);
+                    });
+            }
+
+            FABRIK* operator -> ()
+            {
+                return &GetComponent()[ikHandle];
+            }
+
+
+            void SetEndEffector(JointHandle endEffector)
+            {
+                GetComponent()[ikHandle].endEffector = endEffector;
+            }
+
+            FABRIKHandle ikHandle;
+        };
+
+
+        FABRIKComponent(iAllocator& IN_allocator) :
+            instances   { &IN_allocator },
+            handles     { &IN_allocator },
+            allocator   { IN_allocator } {}
+
+        FABRIKHandle Create(GameObject& gameObject)
+        {
+            auto handle     = handles.GetNewHandle();
+            handles[handle] = (index_t)instances.emplace_back(allocator, gameObject);
+
+            return handle;
+        }
+
+
+        struct FABRIK
+        {
+            FABRIK(iAllocator& allocator, GameObject& gameObject) :
+                targets     { &allocator },
+                gameObject  { &gameObject },
+                Debug       { &allocator } {}
+
+            struct Target
+            {
+                NodeHandle target;
+            };
+
+
+            void AddTarget(NodeHandle target)
+            {
+                targets.emplace_back(target);
+            }
+
+            void RemoveTarget(NodeHandle target)
+            {
+
+            }
+
+            Vector<Target>  targets;
+            GameObject*     gameObject;
+
+            JointHandle     endEffector     = InvalidHandle_t;
+            size_t          iterationCount  = 5;
+
+            Vector<float3>  Debug;
+        };
+
+
+        FABRIK& operator [](FABRIKHandle handle)
+        {
+            return instances[handles[handle]];
+        }
+
+        Vector<FABRIK>                              instances;
+        HandleUtilities::HandleTable<FABRIKHandle>  handles;
+        iAllocator&                                 allocator;
+    };
+
+
+    UpdateTask& UpdateIKControllers(UpdateDispatcher& dispatcher, double dt);
+
+    using FABRIKView = FABRIKComponent::FABRIKView;
+
 
 }	/************************************************************************************************/
 #endif

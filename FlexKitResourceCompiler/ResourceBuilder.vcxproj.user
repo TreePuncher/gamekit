@@ -6,7 +6,7 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LocalDebuggerCommandArguments>-c  -tf assets\multiplayerScene.glb -o assets\multiplayerAssets.gameres</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-c  -f assets\testAssets.fbx -o assets\multiplayerAssets.gameres</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <LocalDebuggerWorkingDirectory>..\builds\Debug</LocalDebuggerWorkingDirectory>
   </PropertyGroup>

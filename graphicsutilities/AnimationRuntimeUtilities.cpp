@@ -48,48 +48,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PoseState CreatePoseState(Skeleton& skeleton, iAllocator* allocator)
-	{
-		using DirectX::XMMATRIX;
-		using DirectX::XMMatrixIdentity;
-
-		size_t JointCount = skeleton.JointCount;
-
-        PoseState pose;
-        pose.Joints		    = (JointPose*)	allocator->_aligned_malloc(sizeof(JointPose) * JointCount, 0x40);
-        pose.CurrentPose	= (float4x4*)	allocator->_aligned_malloc(sizeof(float4x4) * JointCount, 0x40);
-        pose.JointCount	    = JointCount;
-        pose.Sk			    = &skeleton;
-
-		for (size_t I = 0; I < JointCount; ++I)
-            pose.Joints[I] = JointPose(Quaternion{ 0, 0, 0, 1 },float4{0, 0, 0, 1});
-
-		for (size_t I = 0; I < pose.JointCount; ++I)
-		{
-            const auto skeletonT    = GetPoseTransform(skeleton.JointPoses[I]);
-            const auto parent       = skeleton.Joints[I].mParent;
-            const auto P            = (parent != 0xFFFF) ? pose.CurrentPose[parent] : float4x4::Identity();
-
-            pose.CurrentPose[I]     = skeletonT * P;
-		}
-
-		return pose;
-	}
-
-
-	/************************************************************************************************/
-
-
-	bool InitiatePoseState(RenderSystem* RS, PoseState* EAS, PoseState_DESC& Desc, VShaderJoint* InitialState)
-	{
-		size_t ResourceSize = Desc.JointCount * sizeof(VShaderJoint) * 2;
-		return true;
-	}
-
-
-	/************************************************************************************************/
-
-
 	AnimationStateMachine::AnimationState SetDefaultState()
 	{
 		AnimationStateMachine::AnimationState State;

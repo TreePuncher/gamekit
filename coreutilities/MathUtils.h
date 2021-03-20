@@ -154,7 +154,7 @@ namespace FlexKit
 
 
     FLEXKITAPI template<typename TY>
-    bool VectorCompare(TY A, TY B, float E) noexcept { return (A - B).magnitudesquared() < E * E; }
+    bool VectorCompare(TY A, TY B, float E) noexcept { return (A - B).magnitudeSq() < E * E; }
 
 	
     FLEXKITAPI inline const float& GetElement(const __m128& V, const size_t idx) noexcept { return V.m128_f32[idx]; }
@@ -543,6 +543,17 @@ namespace FlexKit
         return V_out;
     }
 
+    FLEXKITAPI template<typename TY_Vs, size_t ELEMENT_COUNT = 1>
+        Vect<ELEMENT_COUNT, TY_Vs> operator - (const Vect<ELEMENT_COUNT, TY_Vs>& v)// 
+    {
+        TY_Vs V_out;
+
+        for (size_t I = 0; I < ELEMENT_COUNT; ++I)
+            V_out[I] = -v[I];
+
+        return V_out;
+    }
+
 
 	/************************************************************************************************/
 
@@ -660,7 +671,7 @@ namespace FlexKit
 		}
 
 
-        float magnitudesquared() const noexcept
+        float magnitudeSq() const noexcept
         {
             return (*this * *this).Sum();
         }
@@ -962,7 +973,7 @@ namespace FlexKit
         }
 
 
-        inline float magnitudesquared() const
+        inline float magnitudeSq() const
         {
 #if USING(FASTMATH)
             __m128 r = _mm_mul_ps(pfloats, pfloats);
@@ -1798,6 +1809,17 @@ namespace FlexKit
 		return sum;
 	}
 
+    FLEXKITAPI inline float4x4 FastInverse(const float4x4 m)
+    {
+        float4x4 inverseRotation = m;
+        inverseRotation[0][3]   = 0.0f;
+        inverseRotation[1][3]   = 0.0f;
+        inverseRotation[2][3]   = 0.0f;
+        inverseRotation[3]      = Vect4{ -m[0][3], -m[1][3], -m[2][3], 1};
+        inverseRotation         = inverseRotation.Transpose();
+
+        return inverseRotation;
+    }
 
 
 	/************************************************************************************************/

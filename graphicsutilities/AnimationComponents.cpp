@@ -119,7 +119,7 @@ namespace FlexKit
 
     void AnimatorComponent::AnimationState::JointRotationTarget::Apply(AnimatorComponent::AnimationState::FrameRange range, float t, AnimationStateContext& ctx)
     {
-        if (auto res = ctx.FindField<PoseState>(); res) {
+        if (auto res = ctx.FindField<PoseState::Pose>(); res) {
             auto beginKey   = range.begin->Value;
             auto endKey     = range.end->Value;
 
@@ -141,9 +141,9 @@ namespace FlexKit
                     return Qlerp(A, B, I);
                 };
 
-            const auto value        = range.begin->Begin == range.end->Begin ? range.begin->Value : interpolate();
+            const auto value = range.begin->Begin == range.end->Begin ? range.begin->Value : interpolate();
 
-            res->Joints[joint].r = Quaternion{ value[0], value[1], value[2], value[3] };
+            res->jointPose[joint].r *= Quaternion{ value[0], value[1], value[2], value[3] };
         }
     }
 
@@ -213,11 +213,11 @@ namespace FlexKit
         struct _ {};
         return updateTask.Add<_>(
             [](auto&, auto&) {},
-            [dT = dT](auto&, auto& temporaryAllocator)
+            [dT = dT](auto&, iAllocator& temporaryAllocator)
             {
-                auto& animator = AnimatorComponent::GetComponent();
+                auto& animatorComponent = AnimatorComponent::GetComponent();
 
-                for (AnimatorComponent::AnimatorState& animator : animator.animators)
+                for (AnimatorComponent::AnimatorState& animator : animatorComponent.animators)
                 {
                     AnimatorComponent::AnimationStateContext context{ temporaryAllocator };
 
@@ -225,6 +225,18 @@ namespace FlexKit
                         [&](SkeletonView& poseView)
                         {
                             auto& pose = poseView.GetPoseState();
+
+                            if (auto res = pose.FindPose(GetTypeGUID(AnimationPose)); res)
+                            {
+                                res->Clear(pose.JointCount);
+                                context.AddField(*res);
+                            }
+                            else
+                            {
+                                auto& subPose = pose.CreateSubPose(GetTypeGUID(AnimationPose), animatorComponent.allocator);
+                                context.AddField(subPose);
+                            }
+
                             context.AddField(pose);
                         });
 
@@ -314,10 +326,28 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void UpdatePose(PoseState& pose)
+    void UpdatePose(PoseState& pose, iAllocator& tempMemory)
     {
         Skeleton* skeleton      = pose.Sk;
         const size_t jointCount = skeleton->JointCount;
+
+        auto temp = (JointPose*)tempMemory._aligned_malloc(sizeof(PoseState) * pose.JointCount);
+        for (size_t I = 0; I < pose.JointCount; ++I)
+            temp[I] = JointPose{ { 0, 0, 0, 1 }, { 0, 0, 0 , 1 } };
+
+        // Add all poses up
+        for (auto& subPose : pose.poses)
+        {
+            for (size_t I = 0; I < pose.JointCount; ++I)
+            {
+                temp[I].r       *= subPose.jointPose[I].r;
+                //temp[I].ts.w    *= subPose.jointPose[I].ts.w;
+                temp[I].ts      += subPose.jointPose[I].ts.xyz();
+            }
+        }
+
+        for (size_t I = 0; I < pose.JointCount; ++I)
+            pose.Joints[I] = temp[I];
 
         for (size_t I = 0; I < jointCount; ++I)
         {
@@ -349,7 +379,7 @@ namespace FlexKit
                 FK_LOG_9("Start Pose Updates.\n");
 
                 for (auto& skinnedObject : *data.skinned)
-                    UpdatePose(*skinnedObject.pose);
+                    UpdatePose(*skinnedObject.pose, threadAllocator);
 
                 FK_LOG_9("End Pose Updates.\n");
 			});
@@ -376,12 +406,229 @@ namespace FlexKit
 
     /************************************************************************************************/
 
-}
+
+
+    FABRIKTarget::~FABRIKTarget()
+    {
+        auto& IKComponent = FABRIKComponent::GetComponent();
+
+        for (auto& user : users)
+            IKComponent[user].RemoveTarget(node);
+    }
+
+
+    /************************************************************************************************/
+
+
+    UpdateTask& UpdateIKControllers(UpdateDispatcher& dispatcher, double dt)
+    {
+        struct _ {};
+        return dispatcher.Add<_>(
+            [](auto&, auto&) {},
+            [&](auto&, iAllocator& allocator)
+            {
+                auto& IKControllers = FABRIKComponent::GetComponent();
+                using IKInstance    = FABRIKComponent::FABRIK;
+
+                Parallel_For(
+                    *dispatcher.threads,
+                    allocator,
+                    IKControllers.instances.begin(),
+                    IKControllers.instances.end(), 
+                    1,
+                    [&](IKInstance& IKController, iAllocator& allocator)
+                    {
+                        auto*           poseState   = GetPoseState(*IKController.gameObject);
+
+                        if (poseState == nullptr || IKController.endEffector == InvalidHandle_t || IKController.targets.size() == 0)
+                            return;
+
+                        auto GetParentJoint = [&](JointHandle joint)
+                            {
+                                return poseState->Sk->Joints[joint].mParent;
+                            };
+
+
+                        auto GetParentPosition = [&](JointHandle joint)
+                            {
+                                const auto parent = GetParentJoint(joint);
+
+                                if (parent != InvalidHandle_t)
+                                    return (poseState->CurrentPose[parent] * float4{ 0, 0, 0, 1 }).xyz();
+                                else
+                                    return float3{ 0, 0, 0 };
+                            };
+
+                        auto GetRootPosition = [&]
+                            {
+                                JointHandle itr = IKController.endEffector;
+
+                                while (GetParentJoint(itr) != InvalidHandle_t, itr = GetParentJoint(itr));
+
+                                return (poseState->CurrentPose[itr] * float4{ 0, 0, 0, 1 }).xyz();
+                            };
+
+
+                        const float4x4  WT              = GetWT(*IKController.gameObject);
+                        const float4x4  IT              = FastInverse(WT);
+                        const float3    targetPosition  = (IT * float4{ GetPositionW(IKController.targets.front().target), 1 }).xyz();
+                        const float3    rootPosition    = GetRootPosition();
+
+
+                        Vector<float3>      jointPositions{ &allocator, poseState->JointCount };
+                        Vector<float>       boneLengths{ &allocator, poseState->JointCount };
+                        Vector<JointHandle> joints{ &allocator, poseState->JointCount };
+
+                        // Get Initial Position in pose space
+                        for(auto joint = IKController.endEffector; GetParentJoint(joint) != InvalidHandle_t; joint = GetParentJoint(joint))
+                        {
+                            const float3        jointPosition   = (poseState->CurrentPose[joint] * float4{ 0, 0, 0, 1 }).xyz();
+                            const JointHandle   parent          = GetParentJoint(joint);
+                            const float3        parentPosition  = GetParentPosition(joint);
+                            const float         boneLength      = (parentPosition - jointPosition).magnitude();
+
+                            jointPositions.emplace_back(parentPosition);
+                            boneLengths.emplace_back(boneLength);
+                            joints.push_back(parent);
+                        }
+
+                        const float chainLength = std::accumulate(boneLengths.begin(), boneLengths.end(), 0.0f);
+
+                        if (const float D = (jointPositions.back() - targetPosition).magnitude(); D > chainLength)
+                        {// Target farther than reach of chain
+
+                        }
+                        else
+                        {
+                            const size_t jointCount     = poseState->JointCount;
+                            const size_t iterationCount = IKController.iterationCount;
+
+                            for (size_t I = 0; I < iterationCount; ++I)
+                            {
+                                // Forward
+                                for (size_t J = 0; J < jointCount - 1; ++J)
+                                {
+                                    const float3 position         = jointPositions[J];
+                                    const float3 boneOrientation  = (position - jointPositions[J - 1]).normal();
+
+
+                                    auto test = (position - targetPosition).normal().dot(boneOrientation);
+
+                                    float3 boneTarget{ 0 };
+
+                                    if (J == 0)
+                                    {
+                                        float3 span             = position - targetPosition;
+                                        float3 boneTargetAdj    = { 0 };
+
+                                        const auto temp = span.normal().dot(boneOrientation);
+
+                                        if ( span.magnitudeSq() == 0.0f ||
+                                             span.normal().dot(boneOrientation) < 0.0001f)
+                                                boneTargetAdj += float3{ 0.00001f, 0.00001f, 0.00001f };
+
+                                        boneTarget = targetPosition + boneTargetAdj;
+                                    }
+                                    else
+                                        boneTarget = jointPositions[J - 1];
+
+                                    const float3 boneLength     = boneLengths[J];
+                                    const float3 span           = boneTarget - position;
+
+                                    const float3 orientation    = span.normal();
+                                    const float3 D              = span.magnitude();
+
+                                    const float3 newPosition    = position + orientation * (D - boneLength);
+
+                                    
+                                    if (std::isnan(newPosition.x))
+                                        DebugBreak();
+
+                                    jointPositions[J]           = newPosition;
+                                }
+
+                                // DEBUG
+                                {
+                                    float D = 0.0f;
+                                    for (size_t J = 0; J < jointCount - 2; ++J)
+                                    {
+                                        float3 A = jointPositions[J];
+                                        float3 B = jointPositions[J + 1];
+
+                                        D += (A - B).magnitude();
+                                    }
+
+                                    D += 2.0f;
+
+                                    constexpr float e = 0.0001f;
+                                    if (!((D - chainLength) < e))
+                                        DebugBreak();
+                                }
+                                // Backward
+                                for (int J = jointPositions.size() - 1; J > 0; --J)
+                                {
+                                    const float3 boneTarget   = jointCount - 2 ? rootPosition : jointPositions[J - 1];
+                                    const float3 position     = J == 1 ? targetPosition : jointPositions[J];
+                                    const float3 span         = boneTarget - position;
+                                    const float3 orientation  = span.normal();
+                                    const float  boneLength   = J == (jointCount - 2) ? 0.0f : boneLengths[J];
+                                    const float  D            = span.magnitude();
+
+                                    const auto newPosition  = position + orientation * (D - boneLength);
+
+                                    //if (std::isnan(newPosition.x))
+                                    //    DebugBreak();
+
+                                    if(D != 0.0f)
+                                        jointPositions[J] = newPosition;
+                                }
+
+                                // DEBUG
+                                {
+                                    float D = 0.0f;
+                                    for (size_t J = 0; J < jointCount - 2; ++J)
+                                    {
+                                        float3 A = jointPositions[J];
+                                        float3 B = jointPositions[J];
+
+                                        D += (A - B).magnitude();
+                                    }
+
+                                    D += 2.0f;
+
+                                    constexpr float e = 0.0001f;
+                                    if (!((D - chainLength) < e))
+                                        DebugBreak();
+                                }
+                            }
+
+                            for (size_t I = 0; I < jointCount; ++I)
+                            {
+
+                            }
+                        }
+
+                        Vector<float3> temp{ &allocator, poseState->JointCount };
+                        const float3 T = (targetPosition - jointPositions.front()).normal();
+                        const float3 tail = jointPositions.front() + T * boneLengths.front();
+
+                        temp.emplace_back(tail);
+                        temp += jointPositions;
+
+                        IKController.Debug = temp;
+                        // Write changes back to pose
+                        // ...
+                    });
+            });
+    }
+
+
+}   /************************************************************************************************/
 
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2020 Robert May
+Copyright (c) 2015 - 2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

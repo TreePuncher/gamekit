@@ -531,12 +531,19 @@ namespace FlexKit
     }
 
 
+    inline float4x4 GetWT(GameObject& go)
+    {
+        return GetWT(GetSceneNode(go));
+    }
+
+
     inline void SetOrientation(GameObject& go, const Quaternion q)
     {
         return Apply(go,
             [&](SceneNodeView<>& view)
             { SetOrientation(view.node, q); });
     }
+
 
 }	/************************************************************************************************/
 

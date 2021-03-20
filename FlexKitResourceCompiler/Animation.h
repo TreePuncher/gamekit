@@ -43,8 +43,8 @@ namespace FlexKit::ResourceBuilder
     struct SkeletonJoint
     {
         std::string         mID;
-        JointHandle			mParent = JointHandle(0);
-        char				mPad[6] = {};
+        JointHandle			mParent     = JointHandle(0);
+        float               limbLength  = 0.0f;
     };
 
 

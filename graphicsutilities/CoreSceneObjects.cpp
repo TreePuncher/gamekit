@@ -50,7 +50,7 @@ namespace FlexKit
 			auto E = v.D;
 			auto P = FlexKit::GetPositionW( E->Node );
 
-			auto Depth = (size_t)abs(float3(CP - P).magnitudesquared() * 10000);
+			auto Depth = (size_t)abs(float3(CP - P).magnitudeSq() * 10000);
 			auto SortID = CreateSortingID(false, E->Textured, Depth);
 			v.SortID = SortID;
 		}
@@ -75,7 +75,7 @@ namespace FlexKit
 		{
 			auto E = v.D;
 			auto P = FlexKit::GetPositionW( E->Node );
-			float D = float3( CP - P ).magnitudesquared() * ( E->DrawLast ? -1.0 : 1.0 );
+			float D = float3( CP - P ).magnitudeSq() * ( E->DrawLast ? -1.0 : 1.0 );
 			v.SortID = D;
 		}
 

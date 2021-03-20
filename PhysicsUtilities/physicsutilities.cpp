@@ -1064,7 +1064,7 @@ namespace FlexKit
                 velocity += movementVector * acceleration * (float)deltaTime;
             }
             
-            if (velocity.magnitudesquared() < 0.1f || velocity.isNaN())
+            if (velocity.magnitudeSq() < 0.1f || velocity.isNaN())
                 velocity = 0.0f;
 
             PxControllerState state;
@@ -1094,7 +1094,7 @@ namespace FlexKit
             const float3    postPos     = pxVec3ToFloat3(pxPostPos);
             const auto      deltaPos    = prevPos - postPos;
 
-            if (desiredMove.magnitudesquared() * 0.5f >= deltaPos.magnitude())
+            if (desiredMove.magnitudeSq() * 0.5f >= deltaPos.magnitude())
                 velocity = 0;
 
             const float3 footPosition   = pxVec3ToFloat3(controllerImpl.controller->getFootPosition());

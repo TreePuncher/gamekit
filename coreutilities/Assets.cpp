@@ -478,7 +478,7 @@ namespace FlexKit
             }
 
             // Load lowest detail lod level
-            LoadLOD(triMesh, lodCount - 1, *RS, copyCtx, *Memory);
+            LoadLOD(triMesh, uint(lodCount - 1), *RS, copyCtx, *Memory);
 
             Memory->free(lodTable);
 

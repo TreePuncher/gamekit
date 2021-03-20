@@ -103,8 +103,9 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
         emitters            { IN_framework.core.GetBlockMemory() },
         testAnimation       { IN_worldState.CreateGameObject() },
         particleEmitter     { IN_worldState.CreateGameObject() },
+        IKTarget            { IN_worldState.CreateGameObject() },
 
-        testAnimationResource   { LoadAnimation("TestAnimation", IN_framework.core.GetBlockMemory()) }
+        testAnimationResource   { LoadAnimation("TestRigAction", IN_framework.core.GetBlockMemory()) }
 
 
 {
@@ -131,18 +132,30 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
 
     auto& scene = worldState.GetScene();
 
-    playerCharacterModel = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), 8000);
+    playerCharacterModel    = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), 8000);
+    auto model              = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), 7894);
+
+    IKTarget.AddView<SceneNodeView<>>();
+    IKTarget.AddView<DrawableView>(model,   GetSceneNode(IKTarget));
+    IKTarget.AddView<FABRIKTargetView>(FABRIKTarget{ GetSceneNode(IKTarget), (iAllocator*)framework.core.GetBlockMemory() });
+
+
+    //Translate(IKTarget, { 0, 5.5f, 0 });
 
     testAnimation.AddView<SceneNodeView<>>();
-    auto& drawable  = testAnimation.AddView<DrawableView>(playerCharacterModel, GetSceneNode(testAnimation));
-    auto& skeleton  = testAnimation.AddView<SkeletonView>(playerCharacterModel, 8001);
-    auto& animator  = testAnimation.AddView<AnimatorView>(testAnimation);
+    auto& drawable      = testAnimation.AddView<DrawableView>(playerCharacterModel, GetSceneNode(testAnimation));
+    auto& skeleton      = testAnimation.AddView<SkeletonView>(playerCharacterModel, 8001);
+    //auto& animator      = testAnimation.AddView<AnimatorView>(testAnimation);
+    auto& IKController  = testAnimation.AddView<FABRIKView>(testAnimation);
 
-    animator.Play(*testAnimationResource, true);
+    IKController.AddTarget(IKTarget);
+    IKController.SetEndEffector(skeleton.FindJoint("EndEffector"));
+    //animator.Play(*testAnimationResource, true);
 
     drawable.GetDrawable().Skinned = true;
 
     scene.AddGameObject(testAnimation, GetSceneNode(testAnimation));
+    scene.AddGameObject(IKTarget, GetSceneNode(IKTarget));
 
     SetBoundingSphereFromMesh(testAnimation);
 }
@@ -170,6 +183,8 @@ UpdateTask* LocalGameState::Update(EngineCore& core, UpdateDispatcher& dispatche
 
     static float t = 0.0f;
     SetWorldPosition(particleEmitter, float3{ 100.0f * sin(t), 20, 100.0f * cos(t) });
+    SetWorldPosition(IKTarget, float3{ 3.0f * cos(t), 4.0, 3.0f * sin(t) });
+
 
     t += dT;
 
@@ -340,6 +355,27 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 
         const auto PV       = GetCameraConstants(activeCamera).PV;
         LineSegments lines  = DEBUG_DrawPoseState(*pose, node, core.GetTempMemory());
+
+        Apply(testAnimation,
+            [&](FABRIKView& view)
+            {
+                auto& jointPositions = view->Debug;
+
+                if(jointPositions.size())
+                    for (size_t J = 0; J < 3; ++J)
+                    {
+                        float3 A = jointPositions[J];
+                        float3 B = jointPositions[J + 1];
+
+                        LineSegment line;
+                        line.A          = A;
+                        line.AColour    = float3(1, 1, 1);
+                        line.B          = B;
+                        line.BColour    = float3(1, 1, 1);
+
+                        lines.push_back(line);
+                    }
+            });
 
         // Transform to Device Coords
         for (auto& line : lines)

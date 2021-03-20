@@ -185,6 +185,8 @@ public:
 
             // Components
             animations          { framework.core.GetBlockMemory() },
+            IK                  { framework.core.GetBlockMemory() },
+            IKTargets           { framework.core.GetBlockMemory() },
 			cameras		        { framework.core.GetBlockMemory() },
 			ids			        { framework.core.GetBlockMemory() },
 			drawables	        { framework.core.GetBlockMemory(), IN_Framework.GetRenderSystem() },
@@ -331,6 +333,8 @@ public:
 
 	// Components
     AnimatorComponent               animations;
+    FABRIKComponent                 IK;
+    FABRIKTargetComponent           IKTargets;
 	SceneNodeComponent			    transforms;
 	CameraComponent				    cameras;
 	StringIDComponent			    ids;

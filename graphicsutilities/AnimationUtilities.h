@@ -179,6 +179,10 @@ namespace FlexKit
         uint32_t    byteSize;
     };
 
+
+    /************************************************************************************************/
+
+
     struct AnimationResourceBlob
 	{
         struct AnimationResourceHeader
@@ -200,6 +204,71 @@ namespace FlexKit
 		char	Buffer[];
 	};
 
+    	struct PoseState_DESC
+	{
+		size_t JointCount;
+	};
+
+    using AnimationFieldID_t = uint32_t;
+
+    template<typename T>
+    concept Animatable = requires () { T::GetAnimationFieldID(); };
+
+
+    /************************************************************************************************/
+
+
+	struct PoseState
+	{
+		JointPose*	Joints		= nullptr;
+		float4x4*	CurrentPose	= nullptr;
+		Skeleton*	Sk			= nullptr;
+		size_t		JointCount	= 0;
+		size_t		Dirty		= 0;
+		size_t		padding[2];
+
+
+        struct Pose
+        {
+            void Clear(size_t jointCount)
+            {
+                for (size_t I = 0; I < jointCount; ++I)
+                    jointPose[I] = JointPose{ Quaternion(0, 0, 0, 1), float4(0, 0, 0, 1) };
+            }
+
+            JointPose*  jointPose;
+            Skeleton*   sk;
+            uint32_t    poseID;
+
+            static AnimationFieldID_t GetAnimationFieldID() { return GetTypeGUID(Pose); }
+        };
+
+        Pose& CreateSubPose(uint32_t ID, iAllocator& allocator)
+        {
+            Pose newSubPose;
+            newSubPose.jointPose    = (JointPose*)allocator.malloc(sizeof(JointPose) * JointCount);
+            newSubPose.sk           = Sk;
+            newSubPose.poseID       = ID;
+
+            poses.emplace_back(newSubPose);
+
+            return poses.back();
+        }
+
+        Pose* FindPose(uint32_t poseID)
+        {
+            auto res = std::find_if(
+                poses.begin(), poses.end(),
+                [&](auto e) { return e.poseID == poseID; });
+
+            return res != poses.end() ? res : nullptr;
+        }
+
+        Vector<Pose> poses;
+
+        static AnimationFieldID_t GetAnimationFieldID() { return GetTypeGUID(PoseState); }
+	};
+
 
 	/************************************************************************************************/
 
@@ -215,10 +284,12 @@ namespace FlexKit
 
 		Joint&			operator [] (JointHandle hndl);
 
-		void			InitiateSkeleton	(iAllocator* Allocator, size_t jointCount = 64);
+		void			InitiateSkeleton(iAllocator* Allocator, size_t jointCount = 64);
 
 		JointHandle		AddJoint			(Joint J, const float4x4& I);
 		void			AddAnimationClip	(AnimationClip, iAllocator* allocator);
+
+        PoseState       CreatePoseState(iAllocator& allocator);
 
 		float4x4		GetInversePose		(JointHandle H);
 		JointHandle		FindJoint			(const char*);
@@ -239,6 +310,14 @@ namespace FlexKit
 
 		AnimationList* Animations		= nullptr;
 	};
+
+
+    
+	/************************************************************************************************/
+
+
+    PoseState   CreatePoseState(Skeleton& skeleton, iAllocator* allocator);
+    bool        InitiatePoseState(RenderSystem* RS, PoseState* EAS, PoseState_DESC& Desc, VShaderJoint* InitialState);
 
 
 }	/************************************************************************************************/

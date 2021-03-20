@@ -1090,11 +1090,14 @@ namespace FlexKit
         pointLightGather.AddInput(drawSceneDesc.transformDependency);
         pointLightGather.AddInput(drawSceneDesc.cameraDependency);
 
+        auto& IKUpdate          = UpdateIKControllers(dispatcher, drawSceneDesc.dt);
         auto& animationUpdate   = UpdateAnimations(dispatcher, drawSceneDesc.dt);
         auto& skinnedObjects    = GatherSkinned(dispatcher, scene, camera, temporary);
         auto& updatedPoses      = UpdatePoses(dispatcher, skinnedObjects);
 
         // [skinned Objects] -> [update Poses]
+        IKUpdate.AddInput(drawSceneDesc.transformDependency);
+        updatedPoses.AddInput(IKUpdate);
         updatedPoses.AddInput(drawSceneDesc.transformDependency);
         skinnedObjects.AddInput(drawSceneDesc.cameraDependency);
         updatedPoses.AddInput(skinnedObjects);
@@ -1119,6 +1122,7 @@ namespace FlexKit
         frameGraph.AddMemoryPool(&UAVPool);
         frameGraph.AddMemoryPool(&UAVTexturePool);
         frameGraph.AddMemoryPool(&RTPool);
+        frameGraph.dataDependencies.push_back(&IKUpdate);
 
         ClearGBuffer(gbuffer, frameGraph);
 
