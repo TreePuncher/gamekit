@@ -165,6 +165,7 @@ public:
 
     GameObject&                     testAnimation;
     GameObject&                     particleEmitter;
+    GameObject&                     IKTarget;
 
     TriMeshHandle                   playerCharacterModel;
 };

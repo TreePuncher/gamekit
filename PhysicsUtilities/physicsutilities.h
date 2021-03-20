@@ -788,7 +788,7 @@ namespace FlexKit
 
             controller->setUserData(gameObject);
 
-            handles[newHandle] = idx;
+            handles[newHandle] = (index_t)idx;
 
             return newHandle;
         }
@@ -941,6 +941,7 @@ namespace FlexKit
                 controller.SetOrientation(q);
             });
     }
+
 
     /************************************************************************************************/
 

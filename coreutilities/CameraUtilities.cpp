@@ -86,7 +86,7 @@ namespace FlexKit
 		if (keyStates.KeyPressed())
 			velocity += movementVector * acceleration * dt;
 
-        if (velocity.magnitudesquared() > 0.01f) {
+        if (velocity.magnitudeSq() > 0.01f) {
             velocity -= velocity * drag * dt;
             TranslateWorld(velocity * dt);
         }

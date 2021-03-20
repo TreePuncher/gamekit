@@ -344,6 +344,10 @@ namespace FlexKit::ResourceBuilder
 			fbxsdk::FbxStatus S;
 			auto D		= mesh.GetDeformer(I, &S);
 			auto Type	= D->GetDeformerType();
+
+            for (auto property = D->GetFirstProperty(); property.IsValid(); property = D->GetNextProperty(property))
+                std::cout << property.GetName() << "\n";
+
 			switch ( Type ) 
 			{
 			case fbxsdk::FbxDeformer::EDeformerType::eSkin:
@@ -690,9 +694,14 @@ namespace FlexKit::ResourceBuilder
             const auto D = mesh.GetDeformer(I);
             if (D->GetDeformerType() == FbxDeformer::EDeformerType::eSkin)
             {
-                const auto Skin = (FbxSkin*)D;
-                auto root = Skin->GetCluster(0);
-                auto rootLinkMatrix = FbxAMatrix{};
+                const auto Skin         = (FbxSkin*)D;
+                auto root               = Skin->GetCluster(0);
+                auto rootLinkMatrix     = FbxAMatrix{};
+
+                std::cout << Skin->GetName() << " properties: \n";
+
+                for (auto property = Skin->GetFirstProperty(); property.IsValid(); property = Skin->GetNextProperty(property))
+                    std::cout << "\t" << property.GetName() << "\n";
 
                 FbxAMatrix G = GetGeometryTransformation(root->GetLink());
                 root->GetTransformLinkMatrix(rootLinkMatrix);
@@ -702,10 +711,20 @@ namespace FlexKit::ResourceBuilder
                     const auto Cluster  = Skin->GetCluster(II);
                     const auto ID       = Cluster->GetLink()->GetName();
 
+                    std::cout << "Skin Cluster properties: " << Cluster->GetName() << "\n";
+
+                    for (auto property = Cluster->GetFirstProperty(); property.IsValid(); property = Cluster->GetNextProperty(property))
+                        std::cout << "\t" << property.GetName() << "\n";
+
                     JointHandle Handle              = GetJoint(Out, ID);
                     FbxAMatrix G                    = GetGeometryTransformation(Cluster->GetLink());
                     FbxAMatrix transformMatrix;
                     FbxAMatrix transformLinkMatrix;
+
+                    std::cout << "Cluster Node properties: \n";
+
+                    for (auto property = Cluster->GetLink()->GetFirstProperty(); property.IsValid(); property = Cluster->GetLink()->GetNextProperty(property))
+                        std::cout << "\t" << property.GetName() << "\n";
 
                     Cluster->GetTransformLinkMatrix(transformLinkMatrix);
                     Cluster->GetTransformMatrix(transformMatrix);
@@ -765,6 +784,76 @@ namespace FlexKit::ResourceBuilder
             NewJoint.mID	    = N->GetName();
             NewJoint.mParent	= JointHandle(Parent);
 
+
+            const size_t attributeCount = N->GetNodeAttributeCount();
+            for (size_t I = 0; I < attributeCount; ++I)
+            {
+                auto attribute = N->GetNodeAttribute();
+                switch (attribute->GetAttributeType())
+                {
+                case fbxsdk::FbxNodeAttribute::eUnknown:
+                    std::cout << "eUnknown\n"; break;
+                case fbxsdk::FbxNodeAttribute::eNull:
+                    std::cout << "eNull\n"; break;
+                case fbxsdk::FbxNodeAttribute::eMarker:
+                    std::cout << "eMarker\n"; break;
+                case fbxsdk::FbxNodeAttribute::eSkeleton:
+                {
+                    std::cout << "eSkeleton\n";
+
+                    const fbxsdk::FbxSkeleton* skeleton = static_cast<const fbxsdk::FbxSkeleton*>(attribute);
+                    auto typeskeleton = skeleton->GetSkeletonType();
+
+                    for (auto property = skeleton->GetFirstProperty(); property.IsValid(); property = skeleton->GetNextProperty(property))
+                    {
+                        std::cout << "\t" << property.GetName() << "\n";
+
+                        if (property.GetName() == "LimbLength")
+                        {
+                            auto limbLength     = property.Get<double>();
+                            NewJoint.limbLength = limbLength;
+                        }
+                    }
+                }break;
+                case fbxsdk::FbxNodeAttribute::eMesh:
+                    std::cout << "eMesh\n"; break;
+                case fbxsdk::FbxNodeAttribute::eNurbs:
+                    std::cout << "eNurbs\n"; break;
+                case fbxsdk::FbxNodeAttribute::ePatch:
+                    std::cout << "ePatch\n"; break;
+                case fbxsdk::FbxNodeAttribute::eCamera:
+                    std::cout << "eCamera\n"; break;
+                case fbxsdk::FbxNodeAttribute::eCameraStereo:
+                    std::cout << "eCameraStereo\n"; break;
+                case fbxsdk::FbxNodeAttribute::eCameraSwitcher:
+                    std::cout << "eCameraSwitcher\n"; break;
+                case fbxsdk::FbxNodeAttribute::eLight:
+                    std::cout << "eLight\n"; break;
+                case fbxsdk::FbxNodeAttribute::eOpticalReference:
+                    std::cout << "eOpticalReference\n"; break;
+                case fbxsdk::FbxNodeAttribute::eOpticalMarker:
+                    std::cout << "eOpticalMarker\n"; break;
+                case fbxsdk::FbxNodeAttribute::eNurbsCurve:
+                    std::cout << "eNurbsCurve\n"; break;
+                case fbxsdk::FbxNodeAttribute::eTrimNurbsSurface:
+                    std::cout << "eTrimNurbsSurface\n"; break;
+                case fbxsdk::FbxNodeAttribute::eBoundary:
+                    std::cout << "eBoundary\n"; break;
+                case fbxsdk::FbxNodeAttribute::eNurbsSurface:
+                    std::cout << "eNurbsSurface\n"; break;
+                case fbxsdk::FbxNodeAttribute::eShape:
+                    std::cout << "eShape\n"; break;
+                case fbxsdk::FbxNodeAttribute::eLODGroup:
+                    std::cout << "eLODGroup\n"; break;
+                case fbxsdk::FbxNodeAttribute::eSubDiv:
+                    std::cout << "eSubDiv\n"; break;
+                case fbxsdk::FbxNodeAttribute::eCachedEffect:
+                    std::cout << "eCachedEffect\n"; break;
+                case fbxsdk::FbxNodeAttribute::eLine:
+                    std::cout << "eLine\n"; break;
+                }
+            }
+
             Out.emplace_back(SkeletonJointInfo{ { NewJoint }, GetJointAnimation(N), DirectX::XMMatrixIdentity() });
 
             for ( int I = 0; I < ChildCount; ++I )
@@ -781,6 +870,9 @@ namespace FlexKit::ResourceBuilder
         using FlexKit::AnimationClip;
         using FlexKit::Skeleton;
 
+        if (mesh.GetDeformerCount() == 0)
+            return nullptr;
+
         auto skeleton = std::make_unique<SkeletonResource>();
 
         // Gather MetaData
@@ -788,9 +880,9 @@ namespace FlexKit::ResourceBuilder
         auto SkeletonInfo	= GetSkeletonMetaData(MD);
         skeleton->metaData  = Related;
 
-        auto root	= FindSkeletonRoot(mesh);
-        if (!root || !SkeletonInfo)
-            return nullptr;
+        auto root	    = FindSkeletonRoot(mesh);
+
+        std::cout << "NodeRoot -> {" << root->GetName() << "}\n";
 
         std::vector<SkeletonJointInfo> joints;
         FindAllJoints		(joints, root);
@@ -798,10 +890,18 @@ namespace FlexKit::ResourceBuilder
 
         for (auto j : joints)
             skeleton->AddJoint(j.Joint, j.Inverse);
-        
-        const std::string ID = SkeletonInfo->SkeletonID;
-        skeleton->guid  = SkeletonInfo->SkeletonGUID;
-        skeleton->ID    = ID;
+
+        auto deformer = mesh.GetDeformer(0);
+
+        for (auto property = deformer->GetFirstProperty(); property.IsValid(); property = deformer->GetNextProperty(property))
+            std::cout << "\t" << property.GetName() << "\n";
+
+        for (auto property = root->GetFirstProperty(); property.IsValid(); property = root->GetNextProperty(property))
+            std::cout << "\t" << property.GetName() << "\n";
+
+        const std::string ID    = deformer->GetName();
+        skeleton->guid          = deformer->GetUniqueID();
+        skeleton->ID            = ID;
 
         for (size_t joint = 0; joint < joints.size(); ++joint)
             skeleton->joints[joint].mID = skeleton->joints[joint].mID;
@@ -812,33 +912,22 @@ namespace FlexKit::ResourceBuilder
             const auto begin	= (size_t)(cut.T_Start);
             const auto end		= (size_t)(cut.T_End);
 
-            /*
-            AnimationClipResource clip;
-            clip.FPS		= 60;
-            clip.mID		= cut.ID;
-            clip.guid		= cut.guid;
-            clip.isLooping	= false;
-
             const size_t clipFrameCount = end - begin;
 
-            for (size_t frame = 0; frame < clipFrameCount; ++frame)
+            for (size_t jointIdx = 0; jointIdx < joints.size(); ++jointIdx)
             {
-                AnimationKeyFrame keyFrame;
-                keyFrame.FrameNumber = frame;
+                AnimationTrack translationTrack;
+                AnimationTrack rotationTrack;
+                AnimationTrack scaleTrack;
 
-                for (size_t jointIdx = 0; jointIdx < joints.size(); ++jointIdx)
+                for (size_t frame = 0; frame < clipFrameCount; ++frame)
                 {
-                    const auto& joint       = joints[jointIdx];
-                    const auto  inverse		= DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(GetPoseTransform(skeleton->jointPoses[jointIdx])));
-                    const auto  pose		= Float4x4ToXMMATIRX(GetPoseTransform(joints[jointIdx].Animation.Poses[(frame + begin) % (joint.Animation.FrameCount - 1)].JPose));
-                    const auto  localPose   = GetPose(pose * inverse);
-
-                    keyFrame.AddJointPose(JointHandle(jointIdx), localPose);
+                    const auto& joint   = joints[jointIdx];
+                    const auto  pose	= GetPoseTransform(joints[jointIdx].Animation.Poses[(frame + begin) % (joint.Animation.FrameCount - 1)].JPose);
+                    //const auto  inverse		= DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(GetPoseTransform(skeleton->jointPoses[jointIdx])));
+                    //const auto  localPose   = GetPose(pose * inverse);
                 }
-
-                clip.AddKeyFrame(keyFrame, frame * 1.0 / 60.0f);
             }
-            */
             //clip.Compress();
         }
 
@@ -877,42 +966,60 @@ namespace FlexKit::ResourceBuilder
         using FlexKit::Skeleton;
 
         auto AttributeCount = node->GetNodeAttributeCount();
+        std::cout << node->GetName() << "\n";
+
+        auto property = node->GetFirstProperty();
+        while (property.IsValid())
+        {
+            property = node->GetNextProperty(property);
+            std::cout << property.GetName() << "\n";
+        }
 
         for (int itr = 0; itr < AttributeCount; ++itr)
         {
             auto Attr		= node->GetNodeAttributeByIndex(itr);
             auto nodeName	= node->GetName();
 
+            std::cout << Attr->GetName() << "\n";
+
             switch (Attr->GetAttributeType())
             {
             case fbxsdk::FbxNodeAttribute::EType::eMesh:
             {
-                const char* MeshName    = node->GetName();
+                const char* nodeName    = node->GetName();
                 auto Mesh		        = (fbxsdk::FbxMesh*)Attr;
                 bool found		        = false;
                 bool LoadMesh	        = false;
                 size_t uniqueID	        = (size_t)Mesh->GetUniqueID();
                 auto Geo		        = FindGeoByID(geometry, uniqueID);
 
+                auto property = Mesh->GetFirstProperty();
+                while (property.IsValid())
+                {
+                    property = Mesh->GetNextProperty(property);
+                    std::cout << property.GetName() << "\n";
+                }
+
                 MetaDataList RelatedMetaData;
 
-    #if USING(RESCOMPILERVERBOSE)
-                std::cout << "Found Mesh: " << MeshName << "\n";
-    #endif
-                RelatedMetaData = FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_MESH, MeshName);
+                const auto MeshInfo     = GetMeshMetaData(RelatedMetaData);
+                const auto meshName     = MeshInfo ? MeshInfo->MeshID : Mesh->GetName();
+
+                RelatedMetaData = FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_MESH, meshName);
 
                 if(!RelatedMetaData.size())
                     LoadMesh = true;
 
-                const auto MeshInfo	= GetMeshMetaData(RelatedMetaData);
-                const auto Name		= MeshInfo ? MeshInfo->MeshID : Mesh->GetName();
+#if USING(RESCOMPILERVERBOSE)
+                std::cout << "Found Mesh: " << meshName << "\n";
+#endif
 
                 if (!IDPresentInTable(Mesh->GetUniqueID(), Table))
                 {
-                    std::cout << "Building Mesh: " << MeshName << "\n";
+                    std::cout << "Building Mesh: " << meshName << "\n";
 
-                    auto skeleton       = CreateSkeletonResource(*Mesh, Name, MD);
-                    MeshDesc meshDesc   = TranslateToTokens(*Mesh, skeleton, false);
+                    auto skeleton       = CreateSkeletonResource(*Mesh, meshName, MD);
+                    MeshDesc meshDesc   = TranslateToTokens(*Mesh, nullptr, false);
 
                     std::vector<LODLevel> lods = {
                         LODLevel{
@@ -921,7 +1028,7 @@ namespace FlexKit::ResourceBuilder
                     };
 
                     const FbxAMatrix transform  = node->EvaluateGlobalTransform();
-                    MeshResource_ptr resource   = CreateMeshResource(lods, Name, MD, false);
+                    MeshResource_ptr resource   = CreateMeshResource(lods, meshName, MD, false);
 
                     resource->BakeTransform(FBXMATRIX_2_FLOAT4X4((transform)));
                     
@@ -939,7 +1046,7 @@ namespace FlexKit::ResourceBuilder
                     Table.push_back({ Mesh->GetUniqueID(), resource->TriMeshID });
 
                     if constexpr (USING(RESCOMPILERVERBOSE))
-                        std::cout << "Compiled Resource: " << Name << "\n";
+                        std::cout << "Compiled Resource: " << meshName << "\n";
 
                     geometry.push_back(resource);
                 }
@@ -1188,9 +1295,16 @@ namespace FlexKit::ResourceBuilder
         IDTranslationTable& translationTable,
         ResourceList&       Out)
     {
-        const auto nodeName = Node->GetName();
-        const auto RelatedMetaData = FindRelatedMetaData(MetaData, MetaData::EMETA_RECIPIENT_TYPE::EMR_NODE, Node->GetName());
-        const auto NodeCount = Node->GetChildCount();
+        const auto nodeName         = Node->GetName();
+        const auto RelatedMetaData  = FindRelatedMetaData(MetaData, MetaData::EMETA_RECIPIENT_TYPE::EMR_NODE, Node->GetName());
+        const auto NodeCount        = Node->GetChildCount();
+
+        auto property = Node->GetFirstProperty();
+        while (property.IsValid())
+        {
+            property = Node->GetNextProperty(property);
+            std::cout << property.GetName() << "\n";
+        }
 
         if (RelatedMetaData.size())
         {
@@ -1257,6 +1371,15 @@ namespace FlexKit::ResourceBuilder
 
         auto [res, scene] = LoadFBXScene(file, Manager, Settings);
 
+
+        auto property = scene->GetFirstProperty();
+        while (property.IsValid())
+        {
+            property = scene->GetNextProperty(property);
+            auto type = property.GetPropertyDataType();
+            std::cout << property.GetName() << "\n";
+        }
+
 	    Manager->SetIOSettings(Settings);
 
         if (res)
@@ -1320,6 +1443,8 @@ namespace FlexKit::ResourceBuilder
             printf("Error Returned: %s\n", importer->GetStatus().GetErrorString());
             return{ false, nullptr };
         }
+
+        auto sceneInfo = importer->GetSceneInfo();
 
         fbxsdk::FbxScene* scene = FbxScene::Create(lSdkManager, "Scene");
         if (!importer->Import(scene))

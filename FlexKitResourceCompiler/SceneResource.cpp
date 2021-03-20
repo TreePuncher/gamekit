@@ -619,7 +619,7 @@ namespace FlexKit::ResourceBuilder
             const auto& bufferView      = model.bufferViews[bufferViewIdx];
             const auto& buffer          = model.buffers[bufferView.buffer];
 
-            const auto  inverseMatrices     = reinterpret_cast<const FlexKit::float4x4*>(buffer.data.data() + bufferView.byteOffset);
+            const auto inverseMatrices  = reinterpret_cast<const FlexKit::float4x4*>(buffer.data.data() + bufferView.byteOffset);
 
             // Fetch properties
             for (auto& joint : skin.joints)
@@ -630,6 +630,7 @@ namespace FlexKit::ResourceBuilder
                     ID = node.extras.Get("ResourceID").GetNumberAsInt();
 
                 auto jointIdx = nodeMap[joint];
+
                 for (auto& child : node.children)
                     parentLinkage[nodeMap[child]] = jointIdx;
 
@@ -656,6 +657,9 @@ namespace FlexKit::ResourceBuilder
 
         return resources;
     }
+
+
+    /************************************************************************************************/
 
 
     ResourceList GatherAnimations(tinygltf::Model& model)

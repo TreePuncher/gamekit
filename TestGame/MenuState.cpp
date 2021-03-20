@@ -90,6 +90,11 @@ UpdateTask* MenuState::Update(EngineCore& core, UpdateDispatcher& dispatcher, do
             mode = MenuMode::JoinInProgress;
         }
 
+        ImGui::SameLine();
+
+        if (ImGui::Button("Back"))
+            mode = MenuMode::MainMenu;
+
         ImGui::End();
     }   break;
     case MenuMode::JoinInProgress:

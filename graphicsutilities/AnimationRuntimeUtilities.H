@@ -85,28 +85,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct PoseState_DESC
-	{
-		size_t JointCount;
-	};
-
-    using AnimationFieldID_t = uint32_t;
-
-    template<typename T>
-    concept Animatable = requires () { T::GetAnimationFieldID(); };
-
-	struct PoseState
-	{
-		JointPose*	Joints		= nullptr;
-		float4x4*	CurrentPose	= nullptr;
-		Skeleton*	Sk			= nullptr;
-		size_t		JointCount	= 0;
-		size_t		Dirty		= 0;
-		size_t		padding[2];
-
-        static AnimationFieldID_t GetAnimationFieldID() { return GetTypeGUID(AnimationFieldID_t); }
-	};
-
 	struct AnimationStateEntry
 	{
 		AnimationClip*	Clip;

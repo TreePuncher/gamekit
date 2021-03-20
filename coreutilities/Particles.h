@@ -116,7 +116,7 @@ namespace FlexKit
         float   initialVelocity     = 1.0f;
         float   initialVariance     = 1.0f;
 
-        float   emissionSpread              = pi / 4;
+        float   emissionSpread              = (float)(pi / 4);
         float   emissionDirectionVariance   = 0.3f;
     };
 

@@ -521,7 +521,7 @@ namespace FlexKit
             for (const auto& leaf : tree)
             {
                 auto midPoint = leaf->aabb.MidPoint();
-                auto d = (midPoint - meshMidPoint).magnitudesquared();
+                auto d = (midPoint - meshMidPoint).magnitudeSq();
 
                 if (d >= distance)
                 {
