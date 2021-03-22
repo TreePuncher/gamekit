@@ -81,7 +81,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	float4x4 Skeleton::GetInversePose(JointHandle H)
+	float4x4 Skeleton::GetInversePose(const JointHandle H)
 	{
 		return H != InvalidHandle_t ? IPose[H] : float4x4::Identity();
 	}

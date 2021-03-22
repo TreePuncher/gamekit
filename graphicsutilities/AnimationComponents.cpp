@@ -419,6 +419,14 @@ namespace FlexKit
 
     /************************************************************************************************/
 
+    FLEXKITAPI inline float4x4 Inverse(const float4x4 m)
+    {
+        const float4x4 MI = XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(m)));
+
+        return MI;
+    }
+
+
 
     UpdateTask& UpdateIKControllers(UpdateDispatcher& dispatcher, double dt)
     {
@@ -438,12 +446,13 @@ namespace FlexKit
                     1,
                     [&](IKInstance& IKController, iAllocator& allocator)
                     {
-                        auto*           poseState   = GetPoseState(*IKController.gameObject);
+                        auto* poseState   = GetPoseState(*IKController.gameObject);
+                        auto* skeleton    = poseState->Sk;
 
                         if (poseState == nullptr || IKController.endEffector == InvalidHandle_t || IKController.targets.size() == 0)
                             return;
 
-                        auto GetParentJoint = [&](JointHandle joint)
+                        auto GetParentJoint = [&](JointHandle joint) -> JointHandle
                             {
                                 return poseState->Sk->Joints[joint].mParent;
                             };
@@ -454,7 +463,10 @@ namespace FlexKit
                                 const auto parent = GetParentJoint(joint);
 
                                 if (parent != InvalidHandle_t)
-                                    return (poseState->CurrentPose[parent] * float4{ 0, 0, 0, 1 }).xyz();
+                                {
+                                    //return (poseState->CurrentPose[parent] * float4{ 0, 0, 0, 1 }).xyz();
+                                    return (Inverse(skeleton->GetInversePose(parent)) * float4 { 0, 0, 0, 1 }).xyz();
+                                }
                                 else
                                     return float3{ 0, 0, 0 };
                             };
@@ -482,7 +494,8 @@ namespace FlexKit
                         // Get Initial Position in pose space
                         for(auto joint = IKController.endEffector; GetParentJoint(joint) != InvalidHandle_t; joint = GetParentJoint(joint))
                         {
-                            const float3        jointPosition   = (poseState->CurrentPose[joint] * float4{ 0, 0, 0, 1 }).xyz();
+                            //const float3        jointPosition   = (poseState->CurrentPose[joint] * float4{ 0, 0, 0, 1 }).xyz();
+                            const float3        jointPosition   = (Inverse(skeleton->IPose[joint]) * float4{ 0, 0, 0, 1 }).xyz();
                             const JointHandle   parent          = GetParentJoint(joint);
                             const float3        parentPosition  = GetParentPosition(joint);
                             const float         boneLength      = (parentPosition - jointPosition).magnitude();
@@ -511,9 +524,6 @@ namespace FlexKit
                                     const float3 position         = jointPositions[J];
                                     const float3 boneOrientation  = (position - jointPositions[J - 1]).normal();
 
-
-                                    auto test = (position - targetPosition).normal().dot(boneOrientation);
-
                                     float3 boneTarget{ 0 };
 
                                     if (J == 0)
@@ -539,36 +549,15 @@ namespace FlexKit
                                     const float3 D              = span.magnitude();
 
                                     const float3 newPosition    = position + orientation * (D - boneLength);
-
                                     
-                                    if (std::isnan(newPosition.x))
-                                        DebugBreak();
-
                                     jointPositions[J]           = newPosition;
                                 }
 
-                                // DEBUG
-                                {
-                                    float D = 0.0f;
-                                    for (size_t J = 0; J < jointCount - 2; ++J)
-                                    {
-                                        float3 A = jointPositions[J];
-                                        float3 B = jointPositions[J + 1];
-
-                                        D += (A - B).magnitude();
-                                    }
-
-                                    D += 2.0f;
-
-                                    constexpr float e = 0.0001f;
-                                    if (!((D - chainLength) < e))
-                                        DebugBreak();
-                                }
                                 // Backward
-                                for (int J = jointPositions.size() - 1; J > 0; --J)
+                                for (int J = jointPositions.size() - 1; J >= 0; --J)
                                 {
-                                    const float3 boneTarget   = jointCount - 2 ? rootPosition : jointPositions[J - 1];
-                                    const float3 position     = J == 1 ? targetPosition : jointPositions[J];
+                                    const float3 boneTarget   = J == (jointPositions.size() - 1) ? rootPosition : jointPositions[J + 1];
+                                    const float3 position     = jointPositions[J];
                                     const float3 span         = boneTarget - position;
                                     const float3 orientation  = span.normal();
                                     const float  boneLength   = J == (jointCount - 2) ? 0.0f : boneLengths[J];
@@ -576,48 +565,63 @@ namespace FlexKit
 
                                     const auto newPosition  = position + orientation * (D - boneLength);
 
-                                    //if (std::isnan(newPosition.x))
-                                    //    DebugBreak();
-
                                     if(D != 0.0f)
                                         jointPositions[J] = newPosition;
                                 }
-
-                                // DEBUG
-                                {
-                                    float D = 0.0f;
-                                    for (size_t J = 0; J < jointCount - 2; ++J)
-                                    {
-                                        float3 A = jointPositions[J];
-                                        float3 B = jointPositions[J];
-
-                                        D += (A - B).magnitude();
-                                    }
-
-                                    D += 2.0f;
-
-                                    constexpr float e = 0.0001f;
-                                    if (!((D - chainLength) < e))
-                                        DebugBreak();
-                                }
-                            }
-
-                            for (size_t I = 0; I < jointCount; ++I)
-                            {
-
                             }
                         }
 
-                        Vector<float3> temp{ &allocator, poseState->JointCount };
-                        const float3 T = (targetPosition - jointPositions.front()).normal();
-                        const float3 tail = jointPositions.front() + T * boneLengths.front();
+                        Vector<float3> solution{ &allocator, poseState->JointCount };
+                        const float3 T      = (targetPosition - jointPositions.front()).normal();
+                        const float3 tail   = jointPositions.front() + T * boneLengths.front();
 
-                        temp.emplace_back(tail);
-                        temp += jointPositions;
+                        solution.emplace_back(tail);
+                        solution += jointPositions;
 
-                        IKController.Debug = temp;
-                        // Write changes back to pose
-                        // ...
+
+                        Vector<float4x4> transforms{ &allocator, poseState->JointCount };
+
+                        auto GetParentTransform =
+                            [&](JointHandle node)
+                            {
+                                const auto parent = skeleton->Joints[node].mParent;
+                                if (parent != InvalidHandle_t)
+                                    return transforms[parent];
+                                else
+                                    return float4x4::Identity();
+                            };
+
+                        auto* pose = poseState->FindPose(IKController.poseID);
+                        if (!pose)
+                            return;
+
+                        for (size_t I = 0; I < 3; I++)
+                        {
+                            const float4x4 parentT = GetParentTransform(JointHandle{ I });
+                            const float4x4 parentI = Inverse(parentT);
+                            const float4x4 IP      = skeleton->IPose[I];
+
+                            const float3 L  = (parentI * float4{ 1, 0, 0, 0 }).xyz();
+                            const float3 F  = (parentI * float4{ 0, 0, 1, 0 }).xyz();
+
+                            const float3 A  = (parentI * float4(solution[solution.size() - 2 - I], 0)).xyz();
+                            const float3 B  = (parentI * float4(solution[solution.size() - 1 - I], 0)).xyz();
+
+                            const float3 U          = (A - B).normal();
+                            const float3 left       = U.cross(F).normal();
+                            const float3 forward    = left.cross(U).normal();
+
+                            const float temp = left.magnitude();
+                            const float tmep2 = forward.magnitude();
+
+                            const Quaternion q = Vector2Quaternion(left, U, forward);
+
+                            transforms.push_back(Quaternion2Matrix(q) * parentT);
+                            pose->jointPose[I].r = q;
+                        }
+
+
+                        IKController.Debug = solution;
                     });
             });
     }
