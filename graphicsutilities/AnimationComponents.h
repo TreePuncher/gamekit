@@ -588,7 +588,10 @@ namespace FlexKit
         FABRIKHandle Create(GameObject& gameObject)
         {
             auto handle     = handles.GetNewHandle();
-            handles[handle] = (index_t)instances.emplace_back(allocator, gameObject);
+            auto index      = (index_t)instances.emplace_back(allocator, gameObject);
+            handles[handle] = index;
+
+            GetPoseState(gameObject)->CreateSubPose(instances[index].poseID, allocator);
 
             return handle;
         }
@@ -622,6 +625,7 @@ namespace FlexKit
 
             JointHandle     endEffector     = InvalidHandle_t;
             size_t          iterationCount  = 5;
+            size_t          poseID          = rand();
 
             Vector<float3>  Debug;
         };

@@ -250,6 +250,9 @@ namespace FlexKit
             newSubPose.sk           = Sk;
             newSubPose.poseID       = ID;
 
+            for (size_t I = 0; I < JointCount; I++)
+                newSubPose.jointPose[I] = JointPose{Quaternion{ 0, 0, 0, 1 }, float4(0, 0, 0, 1)};
+
             poses.emplace_back(newSubPose);
 
             return poses.back();
@@ -291,7 +294,7 @@ namespace FlexKit
 
         PoseState       CreatePoseState(iAllocator& allocator);
 
-		float4x4		GetInversePose		(JointHandle H);
+		float4x4		GetInversePose		(const JointHandle H);
 		JointHandle		FindJoint			(const char*);
 
 		float4x4*	    IPose		= nullptr; // Global Inverse Space Pose
