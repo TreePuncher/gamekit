@@ -192,9 +192,7 @@ namespace FlexKit
 
 		[[nodiscard]] std::optional<TY_E> pop_back() noexcept // FILO
 		{
-            std::scoped_lock lock{ m };
-
-			const auto back  = backCounter.fetch_sub(1) - 1;
+			const auto back  = backCounter.fetch_sub(1, std::memory_order_acq_rel) - 1;
 			const auto front = frontCounter.load();
 
 			if (front <= back)
@@ -225,10 +223,8 @@ namespace FlexKit
 
 		[[nodiscard]] std::optional<TY_E> Steal() noexcept // FIFO
 		{
-            std::scoped_lock lock{ m };
-
-			auto front = frontCounter.load(std::memory_order_seq_cst);
-			auto back  = backCounter.load(std::memory_order_seq_cst);
+			auto front = frontCounter.load(std::memory_order_acquire);
+			auto back  = backCounter.load(std::memory_order_acquire);
 
 			if (front < back)
 			{
@@ -246,8 +242,6 @@ namespace FlexKit
 	
 		void push_back(TY_E element) noexcept
 		{
-            std::scoped_lock lock{ m };
-
 			if (queueArraySize < size() + 1)
 				_Expand();
 
@@ -255,7 +249,7 @@ namespace FlexKit
 
 			std::atomic_thread_fence(std::memory_order_release);
 
-			backCounter.fetch_add(1); // publish push
+			backCounter.fetch_add(1, std::memory_order_acq_rel); // publish push
 		}
 
 
@@ -600,45 +594,34 @@ namespace FlexKit
 
 
 	// Thread safe lazy object constructor, returns callable that returns the same object everytime, for every calling thread.  Will block during construction.
-	template<typename TY, typename FN_Constructor>
-	auto MakeLazyObject(iAllocator* allocator, FN_Constructor FN_Construct)
+	template<typename TY, typename FN_Constructor> 
+    [[nodiscard]] auto MakeLazyObject(iAllocator* allocator, FN_Constructor FN_Construct)
 	{
 		struct _State
 		{
-			atomic_bool inProgress	= false;
-			atomic_bool ready		= false;
+			TY			constructable;
+			atomic_bool ready = false;
+            std::mutex  m;
 
-			std::condition_variable		cv;
-			TY							constructable;
 		};
 
-		auto lazyConstructor = [FN_Construct, _state = MakeSharedRef<_State>(allocator)](auto&& ... args) mutable
-		{
-			if (!_state.Get().ready)
-			{
-				if (!_state.Get().inProgress)
-				{
-					_state.Get().inProgress		= true;
+        return
+            [FN_Construct = FN_Construct, _state = MakeSharedRef<_State>(allocator)](auto&& ... args) mutable -> TY&
+		    {
+			    if (!_state.Get().ready)
+			    {
+				    if (_state.Get().m.try_lock())
+				    {
+					    _state.Get().constructable	= FN_Construct(std::forward<decltype(args)>(args)...);
+					    _state.Get().ready			= true;
+                        _state.Get().m.unlock();
+				    }
+				    else
+                        while(!_state.Get().ready);
+			    }
 
-					_state.Get().constructable	= FN_Construct(std::forward<decltype(args)>(args)...);
-
-					_state.Get().inProgress		= false;
-					_state.Get().ready			= true;
-					_state.Get().cv.notify_all();
-				}
-				else
-				{
-					std::mutex m;
-					std::unique_lock ul{ m };
-
-					_state.Get().cv.wait(ul, [&]() -> bool { return _state.Get().ready; });
-				}
-			}
-
-			return _state.Get().constructable;
-		};
-
-		return lazyConstructor;
+			    return _state.Get().constructable;
+		    };
 	}
 
 

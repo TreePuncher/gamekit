@@ -164,7 +164,7 @@ public:
         uint2 WH    = { 1920, 1080 }) :
 			App				    { IN_App },
 			FrameworkState	    { IN_Framework },
-			depthBuffer		    { IN_Framework.core.RenderSystem.CreateDepthBuffer(renderWindow.GetWH(),	true) },
+			depthBuffer		    { IN_Framework.core.RenderSystem, renderWindow.GetWH() },
 
 			vertexBuffer	    { IN_Framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 1, false) },
 			constantBuffer	    { IN_Framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 128, false) },
@@ -227,9 +227,9 @@ public:
 	{
 		framework.GetRenderSystem().ReleaseVB(vertexBuffer);
 		framework.GetRenderSystem().ReleaseCB(constantBuffer);
-        framework.GetRenderSystem().ReleaseResource(depthBuffer);
         framework.core.GetBlockMemory().release_allocation(rtEngine);
 
+        depthBuffer.Release();
         renderWindow.Release();
 	}
 
@@ -247,6 +247,7 @@ public:
 
     void PostDrawUpdate(EngineCore& core, double dT) override
     {
+        depthBuffer.Increment();
         renderWindow.Present(1, 0);
     }
 
@@ -260,9 +261,7 @@ public:
         auto adjustedWH     = uint2{ Max(8u, WH[0]), Max(8u, WH[1]) };
 
         renderWindow.Resize(adjustedWH);
-
-        renderSystem.ReleaseResource(depthBuffer);
-        depthBuffer = renderSystem.CreateDepthBuffer(adjustedWH, true);
+        depthBuffer.Resize(adjustedWH);
         gbuffer.Resize(adjustedWH);
     }
 
@@ -326,7 +325,7 @@ public:
     Win32RenderWindow           renderWindow;
 	WorldRender					render;
     GBuffer                     gbuffer;
-	ResourceHandle				depthBuffer;
+    DepthBuffer				    depthBuffer;
 	VertexBufferHandle			vertexBuffer;
 	ConstantBufferHandle		constantBuffer;
     SoundSystem			        sounds;

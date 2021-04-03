@@ -9,6 +9,12 @@
 #include "Compressonator.h"
 #include <filesystem>
 
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/base_object.hpp>
+#include <boost/serialization/binary_object.hpp>
+#include <boost/serialization/string.hpp>
+#include "../flxEditor/Serialization.h"
+
 
 namespace FlexKit::ResourceBuilder
 {   /************************************************************************************************/
@@ -106,9 +112,30 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
-    class TextureResource : public iResource
+    class TextureResource : public FlexKit::ResourceBuilder::iResource
     {
     public:
+        friend class boost::serialization::access;
+
+        template<class Archive>
+        void serialize(Archive& ar, const unsigned int version)
+        {
+            ar & boost::serialization::base_object<FlexKit::ResourceBuilder::iResource>(*this);
+            ar & ID;
+            ar & assetHandle;
+            ar & format;
+            ar & mipLevels;
+            ar & mipOffsets;
+            ar & WH;
+
+            ar & bufferSize;
+
+            if constexpr (Archive::is_loading::value)
+                buffer = malloc(bufferSize);
+
+            ar & boost::serialization::make_binary_object(buffer, bufferSize);
+        }
+
         TextureResource() {}
 
         const std::string&  GetResourceID() const override      { return ID; }
@@ -117,15 +144,15 @@ namespace FlexKit::ResourceBuilder
 
         ResourceBlob CreateBlob() override;
 
-        std::string             ID;
-        GUID_t                  assetHandle;
-        FlexKit::DeviceFormat   format;
-        uint32_t                mipLevels;
-        uint32_t                mipOffsets[15];
-        uint2                   WH;
+        std::string             ID              = "";
+        GUID_t                  assetHandle     = -1;
+        FlexKit::DeviceFormat   format          = FlexKit::DeviceFormat::UNKNOWN;
+        uint32_t                mipLevels       = 0;
+        uint32_t                mipOffsets[15]  = { 0 };
+        uint2                   WH              = { 0, 0 };
 
-        void*     buffer;
-        size_t    bufferSize;
+        void*     buffer        = nullptr;
+        size_t    bufferSize    = 0;
     };
 
 
@@ -136,8 +163,8 @@ namespace FlexKit::ResourceBuilder
 
     std::shared_ptr<iResource>  CreateTextureResource(const std::filesystem::path& path, const std::string& formatString);
     std::shared_ptr<iResource>  CreateTextureResource(std::shared_ptr<Texture_MetaData> metaData);
-
     std::shared_ptr<iResource>  CreateTextureResource(FlexKit::TextureBuffer& textureBuffer, std::string format);
+    std::shared_ptr<iResource>  CreateCompressedTextureResource(FlexKit::TextureBuffer& textureBuffer, std::string format);
 
 
 }    /************************************************************************************************/

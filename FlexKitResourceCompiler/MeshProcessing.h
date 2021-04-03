@@ -118,6 +118,7 @@ namespace FlexKit::ResourceBuilder
 		const std::string& GetResourceID()      const override { return ID; }
 		const uint64_t     GetResourceGUID()    const override { return TriMeshID; }
 
+
         /*
         std::optional<VertexBufferView*> GetBuffer(VERTEXBUFFER_TYPE type) const
         {

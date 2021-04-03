@@ -67,9 +67,11 @@ namespace FlexKit
 		};
 
 
-		FustrumPoints			GetFrustumPoints	(float3 XYZ, Quaternion Q);
-		ConstantBuffer			GetConstants		();
-		float4x4				GetPV				();
+		FustrumPoints			    GetFrustumPoints(float3 XYZ, Quaternion Q);
+
+		ConstantBuffer			    GetConstants() const;
+        ConstantBuffer			    GetCameraPreviousConstants() const;
+		float4x4				    GetPV();
 		NodeHandle				Node;
 
 		float FOV;
@@ -86,6 +88,20 @@ namespace FlexKit
 		float4x4 PV;	// Projection x View
 		float4x4 IV;	// Inverse Transform
 
+
+        struct PreviousFrameState
+        {
+            float4x4 View   = float4x4::Identity();
+            float4x4 Proj   = float4x4::Identity();
+            float4x4 WT     = float4x4::Identity();	// World Transform
+            float4x4 PV     = float4x4::Identity();	// Projection x View
+            float4x4 IV     = float4x4::Identity();	// Inverse Transform
+
+            float FOV           = 1.0f;
+            float aspectRatio   = 1.0f;
+            float nearClip      = 0.01f;
+            float farClip       = 10000.0f;
+        }   previous;
 
 		void UpdateMatrices();
 

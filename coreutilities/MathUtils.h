@@ -1648,6 +1648,21 @@ namespace FlexKit
         Matrix()                                            = default;
         Matrix(const THIS_TYPE& initial)                    = default;
 
+
+        /*
+        Matrix(std::initializer_list<Vect<COL, Ty>> initial) noexcept
+        {
+            size_t I    = 0;
+            auto v      = initial.begin();
+
+            for (; I < ROW && v != initial.end(); I++, v++)
+            {
+                matrix[I] = *v;
+                I++;
+            }
+        }
+        */
+
 		Matrix<ROW, COL> operator*(const float rhs)
 		{
 			Matrix<ROW, COL> out = *this;

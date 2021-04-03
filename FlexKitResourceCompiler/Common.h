@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AnimationUtilities.h"
 #include "ResourceIDs.h"
 
+#include <boost/serialization/serialization.hpp>
 #include <DirectXMath.h>
 
 
@@ -155,6 +156,10 @@ namespace FlexKit::ResourceBuilder
     class iResource
     {
     public:
+        friend class boost::serialization::access;
+
+        void serialize(auto& ar, const unsigned int version) {}
+
         virtual ResourceBlob        CreateBlob() = 0;
         virtual const std::string&  GetResourceID()     const { const static std::string _temp{ "resource" };  return _temp; }
         virtual const uint64_t      GetResourceGUID()   const { return -1; }

@@ -671,6 +671,20 @@ namespace FlexKit
 			return UAVBuffer;
 		}
 
+        ResourceHandle Transition(const FrameResourceHandle resource, DeviceResourceState state, uint32_t subresource, Context& ctx) const
+		{
+			auto currentState   = GetObjectState(resource);
+			auto UAVBuffer      = globalResources.Resources[resource].shaderResource;
+
+			if (state != currentState)
+			{
+				ctx.AddResourceBarrier(UAVBuffer, currentState, state, subresource);
+				_FindSubNodeResource(resource).currentState = state;
+			}
+
+			return UAVBuffer;
+		}
+
 
 		ResourceHandle CopyDest(FrameResourceHandle resource, Context& ctx)
 		{
@@ -1084,6 +1098,8 @@ namespace FlexKit
 
 		size_t							GetDescriptorTableSize			(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
 		const DesciptorHeapLayout<16>&	GetDescriptorTableLayout		(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
+
+        RenderSystem& GetRenderSystem() { return Resources->renderSystem; }
 
 		operator FrameResources&	() const	{ return *Resources; }
 		operator RenderSystem&		()			{ return *Resources->renderSystem;}

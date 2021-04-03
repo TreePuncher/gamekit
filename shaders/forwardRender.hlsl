@@ -105,7 +105,7 @@ struct VertexSkinned
     float3 Tangent	: Tangent;
     float2 UV		: TEXCOORD;
     float3 Weights  : BLENDWEIGHT;
-    uint4  Indices  : BLENDINDICES;
+    uint4  Indices  : BLENDINDICES; 
 };
 
 Forward_VS_OUT ForwardSkinned_VS(VertexSkinned In)

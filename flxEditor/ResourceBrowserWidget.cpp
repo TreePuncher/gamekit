@@ -8,6 +8,8 @@
 #include "graphics.h"
 #include "memoryutilities.h"
 
+#include "../FlexKitResourceCompiler/TextureResourceUtilities.h"
+
 
 /************************************************************************************************/
 
@@ -60,63 +62,41 @@ void ResourceBrowserWidget::resizeEvent(QResizeEvent* evt)
 /************************************************************************************************/
 
 
+void ResourceBrowserWidget::AddResourceViewer(ResourceViewer_ptr viewer_ptr)
+{
+    resourceViewers[viewer_ptr->resourceID] = viewer_ptr;
+}
+
+
+/************************************************************************************************/
+
+
 void ResourceBrowserWidget::ShowContextMenu(const QPoint& pos)
 {
-
     auto index = table->indexAt(pos);
 
     if (index.isValid())
     {
         QMenu contextMenu(tr("Context menu"), this);
 
+        std::vector<QAction> actions;
+
         auto type = model.GetResourceType(index.row());
 
-        switch (type)
-        {
-        case MeshResourceTypeID:
-        {
-
-        }   break;
-        case TextureResourceTypeID:
-        {
-            QAction viewTexture("View Texture", this);
-            connect(
-                &viewTexture,
-                &QAction::triggered, this,
-                [&, resource = model.GetResource(index.row())]
-                {   // Create 2D Texture viewer
-                    auto&   renderSystem = renderer.framework.GetRenderSystem();
-                    auto    textureBlob  = resource.get()->CreateBlob();
-
-                    char* textureBuffer         = textureBlob.buffer;
-                    auto textureResourceBlob    = reinterpret_cast<FlexKit::TextureResourceBlob*>(textureBuffer);
-                    
-                    const auto format       = textureResourceBlob->format;
-                    const auto WH           = textureResourceBlob->WH;
-
-                    memset((char*)textureResourceBlob->GetBuffer(), 0xf, 128);
-
-                    FlexKit::TextureBuffer  uploadBuffer{ WH, (byte*)textureResourceBlob->GetBuffer(), textureResourceBlob->GetBufferSize(), 16, nullptr };
-
-                    auto queue      = renderSystem.GetImmediateUploadQueue();
-                    auto texture    = FlexKit::MoveTextureBufferToVRAM(renderSystem, queue, &uploadBuffer, format);
-
-                    auto docklet        = new QDockWidget{};
-                    auto textureViewer  = new TextureViewer(renderer, nullptr, texture);
-
-                    docklet->setWidget(textureViewer);
-                    docklet->resize({ 400, 300 });
-                    docklet->setFloating("true");
-                    docklet->show();
+        if (auto res = resourceViewers.find(type); res != resourceViewers.end()) {
+            contextMenu.addAction("View", [&, index = index, type = type, resource = model.GetResource(index.row())]
+                {
+                    (*resourceViewers[type])(resource);
                 });
-
-            contextMenu.addAction(&viewTexture);
-            contextMenu.exec(table->viewport()->mapToGlobal(pos));
-        }   break;
-        default:
-            break;
         }
 
+        contextMenu.addAction("Remove", [&, index = index, resource = model.GetResource(index.row())]
+            {
+                model.removeRow(index.row());
+                model.Remove(resource);
+            });
+
+        contextMenu.exec(table->viewport()->mapToGlobal(pos));
     }
 }
 
@@ -209,11 +189,20 @@ QVariant ResourceItemModel::data(const QModelIndex& index, int role) const
 /************************************************************************************************/
 
 
+void ResourceItemModel::Remove(FlexKit::ResourceBuilder::Resource_ptr resource)
+{
+    project.RemoveResource(resource);
+}
+
+
+/************************************************************************************************/
+
+
 void ResourceItemModel::RefreshTable()
 {
     if (rowCount())
     {
-        QModelIndex topLeft = createIndex(0, 0);
+        QModelIndex topLeft     = createIndex(0, 0);
         QModelIndex bottomRight = createIndex(project.resources.size(), 0);
 
         if (project.resources.size() != rows)
@@ -228,6 +217,17 @@ void ResourceItemModel::RefreshTable()
         }
         else
             emit dataChanged(topLeft, bottomRight, { Qt::DisplayRole });
+    }
+    else
+    {
+        if (rows != 0)
+        {
+            beginInsertRows(QModelIndex{}, rows, 0);
+            endInsertRows();
+
+            rows = 0;
+            emit layoutChanged();
+        }
     }
 
     timer->start();

@@ -60,7 +60,8 @@
       </AdditionalDependencies>
     </QtMoc>
     <Link>
-      <AdditionalLibraryDirectories>$(Qt_LIBPATH_);..\Dependencies\libs\debug;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\lib\vs2017\x64\debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(Qt_LIBPATH_);..\Dependencies\libs\debug;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\lib\vs2017\x64\debug;..\vcpkg_installed\x64-windows\debug\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(Qt_LIBS_);Qt5Guid.lib;Qt5Cored.lib;qtmaind.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -82,6 +83,7 @@
     </QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
     <QtLibrarySearchPath>debug\lib</QtLibrarySearchPath>
+    <QtVars>$(QMake_DEFINES_);$(QMake_INCLUDEPATH_);$(QMake_LIBPATH_)</QtVars>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
     <QtInstall>qt5</QtInstall>
@@ -133,13 +135,13 @@
     <ClCompile Include="EditorConfig.cpp" />
     <ClCompile Include="EditorOperators.cpp" />
     <ClCompile Include="EditorOutputWindow.cpp" />
+    <ClCompile Include="EditorRenderer.cpp" />
     <ClCompile Include="EditorRenderer.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="EditorMainWindow.cpp" />
     <ClCompile Include="EditorProject.cpp" />
-    <ClCompile Include="EditorRenderThread.cpp" />
     <ClCompile Include="EditorResources.cpp" />
     <ClCompile Include="EditorScriptEngine.cpp" />
     <ClCompile Include="EditorTaskList.cpp" />
@@ -153,6 +155,7 @@
     <ClCompile Include="ResourceBrowserWidget.cpp" />
     <ClCompile Include="TaskManager.cpp" />
     <ClCompile Include="TextureViewer.cpp" />
+    <ClCompile Include="EditorViewport.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="DXRenderWindow.h" />
@@ -165,6 +168,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EditorApplication.h" />
+    <ClInclude Include="Serialization.h" />
+    <QtMoc Include="EditorViewport.h" />
     <QtMoc Include="ModelViewerWidget.h" />
     <QtMoc Include="EditorCodeEditor.h" />
     <ClInclude Include="EditorConfig.h" />
@@ -176,7 +181,6 @@
     <QtMoc Include="TextureViewer.h" />
     <QtMoc Include="TaskManager.h" />
     <QtMoc Include="ResourceBrowserWidget.h" />
-    <QtMoc Include="EditorRenderThread.h" />
     <QtMoc Include="EditorMainWindow.h" />
     <ClInclude Include="EditorImport.h" />
     <ClInclude Include="EditorOperators.h" />
@@ -189,6 +193,7 @@
     <QtUic Include="ResourceBrowserWidget.ui" />
     <QtUic Include="TaskManager.ui" />
     <QtUic Include="TextureViewer.ui" />
+    <QtUic Include="EditorViewport.ui" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

@@ -1,93 +1,36 @@
 #pragma once
 #include <GameFramework.h>
 #include <QtWidgets/qapplication>
+
+#include "AnimationComponents.h"
 #include "DXRenderWindow.h"
-#include "TextureStreamingUtilities.h"
+#include "Materials.h"
 #include "WorldRender.h"
+#include "TextureStreamingUtilities.h"
+#include "GraphicScene.h"
+
+#include "../FlexKitResourceCompiler/MeshProcessing.h"
 
 class QWidget;
-
 
 class EditorRenderer : public FlexKit::FrameworkState
 {
 public:
-    EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FKApplication& IN_application, QApplication& IN_QtApplication) :
-        FrameworkState  { IN_framework      },
-        QtApplication   { IN_QtApplication  },
-        application     { IN_application    },
-        vertexBuffer    { IN_framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 1, false)        },
-        constantBuffer  { IN_framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 128, false)    },
-        textureEngine   { IN_framework.core.RenderSystem, IN_framework.core.GetBlockMemory() },
-        worldRender     { IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory() }
-    {
-        auto& renderSystem = framework.GetRenderSystem();
-        renderSystem.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_PSO, { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateTexturedTriStatePSO });
-    }
+    EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FKApplication& IN_application, QApplication& IN_QtApplication);
 
-    ~EditorRenderer()
-    {
-        auto& renderSystem = framework.GetRenderSystem();
+    ~EditorRenderer();
 
-        renderSystem.ReleaseCB(constantBuffer);
-        renderSystem.ReleaseVB(vertexBuffer);
-    }
+    void DrawOneFrame();
 
-    void DrawOneFrame()
-    {
-        application.DrawOneFrame(0.0);
-    }
+    DXRenderWindow* CreateRenderWindow(QWidget* parent = nullptr);
+    void DrawRenderWindow(DXRenderWindow* renderWindow);
 
-    DXRenderWindow* CreateRenderWindow(QWidget* parent = nullptr)
-    {
-        auto viewPortWidget = new DXRenderWindow{ application.GetFramework().GetRenderSystem(), parent };
-        renderWindows.push_back(viewPortWidget);
-
-        return viewPortWidget;
-    }
-
-    void DrawRenderWindow(DXRenderWindow* renderWindow)
-    {
-        if (drawInProgress)
-            return;
-
-        return; // Causes crash for now
-    }
-
+    FlexKit::TriMeshHandle LoadMesh(FlexKit::ResourceBuilder::MeshResource& mesh);
 protected:
-    void Update(FlexKit::EngineCore& Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT) override
-    {
-        renderWindows.erase(std::remove_if(std::begin(renderWindows), std::end(renderWindows),
-            [](auto& I)
-            {
-                return !I->isValid();
-            }),
-            std::end(renderWindows));
-    }
+    FlexKit::UpdateTask* Update (FlexKit::EngineCore& Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT) override;
+    FlexKit::UpdateTask* Draw   (FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph) override;
 
-
-    void Draw(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph) override
-    {
-        drawInProgress = true;
-
-        FlexKit::ClearVertexBuffer(frameGraph, vertexBuffer);
-
-        TemporaryBuffers temporaries{
-            FlexKit::CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory()),
-            FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory())
-        };
-
-        for (auto renderWindow : renderWindows)
-            renderWindow->Draw(core, temporaries, dispatcher, dT, frameGraph);
-    }
-
-
-    void PostDrawUpdate(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT) override
-    {
-        for (auto renderWindow : renderWindows)
-            renderWindow->Present();
-
-        drawInProgress = false;
-    }
+    void PostDrawUpdate(FlexKit::EngineCore& core, double dT) override;
 
     std::atomic_bool                drawInProgress = false;
 
@@ -100,6 +43,16 @@ private:
     // Temp Buffers
     FlexKit::VertexBufferHandle		vertexBuffer;
     FlexKit::ConstantBufferHandle	constantBuffer;
+
+    // Components
+    FlexKit::SceneNodeComponent         sceneNodes;
+    FlexKit::DrawableComponent          drawComponent;
+    FlexKit::StringIDComponent          stringIDComponent;
+    FlexKit::MaterialComponent          materialComponent;
+    FlexKit::CameraComponent            cameraComponent;
+    FlexKit::SceneVisibilityComponent   visibilityComponent;
+    FlexKit::SkeletonComponent          skeletonComponent;
+    FlexKit::AnimatorComponent          animatorComponent;
 
     QApplication&                   QtApplication;
     FlexKit::FKApplication&         application;

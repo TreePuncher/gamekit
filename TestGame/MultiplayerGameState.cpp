@@ -140,7 +140,7 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     IKTarget.AddView<FABRIKTargetView>(FABRIKTarget{ GetSceneNode(IKTarget), (iAllocator*)framework.core.GetBlockMemory() });
 
 
-    //Translate(IKTarget, { 0, 5.5f, 0 });
+    Translate(IKTarget, { 0, 6.0f, 0 });
 
     testAnimation.AddView<SceneNodeView<>>();
     auto& drawable      = testAnimation.AddView<DrawableView>(playerCharacterModel, GetSceneNode(testAnimation));
@@ -183,8 +183,7 @@ UpdateTask* LocalGameState::Update(EngineCore& core, UpdateDispatcher& dispatche
 
     static float t = 0.0f;
     SetWorldPosition(particleEmitter, float3{ 100.0f * sin(t), 20, 100.0f * cos(t) });
-    SetWorldPosition(IKTarget, float3{ 3.0f * cos(t), 4.0, 3.0f * sin(t) });
-
+    SetWorldPosition(IKTarget, float3{ 2.0f * cos(t), 4.0f * sin(t / 2.0f) + 8.0f, 4.0f * sin(t) });
 
     t += dT;
 
@@ -200,7 +199,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
     ProfileFunction();
 
     frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
-    frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
+    frameGraph.Resources.AddDepthBuffer(base.depthBuffer.Get());
 
     CameraHandle activeCamera = worldState.GetActiveCamera();
     SetCameraAspectRatio(activeCamera, base.renderWindow.GetAspectRatio());
@@ -234,7 +233,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 
     ClearVertexBuffer   (frameGraph, base.vertexBuffer);
     ClearBackBuffer     (frameGraph, targets.RenderTarget, {0.0f, 0.0f, 0.0f, 0.0f});
-    ClearDepthBuffer    (frameGraph, base.depthBuffer, 1.0f);
+    ClearDepthBuffer    (frameGraph, base.depthBuffer.Get(), 1.0f);
 
     auto reserveVB = FlexKit::CreateVertexBufferReserveObject(base.vertexBuffer, core.RenderSystem, core.GetTempMemory());
     auto reserveCB = FlexKit::CreateConstantBufferReserveObject(base.constantBuffer, core.RenderSystem, core.GetTempMemory());
@@ -280,7 +279,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
                             reserveVB,
                             activeCamera,
                             base.gbuffer,
-                            targets.DepthTarget);
+                            targets.DepthTarget.Get());
                 }},
             .additionalShadowPass = {
                     [&, triMesh = triMesh](

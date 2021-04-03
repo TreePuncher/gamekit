@@ -77,6 +77,18 @@ namespace FlexKit
 
 	using DirectX::XMMATRIX;
 
+
+    /************************************************************************************************/
+
+     
+    FLEXKITAPI inline float4x4 Inverse(const float4x4 m)
+    {
+        const float4x4 MI = XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(m)));
+
+        return MI;
+    }
+
+
 	/************************************************************************************************/
 
 #pragma warning(disable:4067)
@@ -663,35 +675,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	struct DepthBuffer_Desc
-	{
-		size_t BufferCount;
-		bool InverseDepth;
-		bool Float32;	// When True stores as float
-	};
-
-	struct DepthBuffer
-	{
-		Texture2D					Buffer[MaxBufferedSize];
-		size_t						CurrentBuffer;
-		size_t						BufferCount;
-		bool						Inverted;
-	};
-
-
-	inline void IncrementCurrent(DepthBuffer* DB) {
-		DB->CurrentBuffer = (++DB->CurrentBuffer) % DB->BufferCount;
-	}
-
-
-	inline Texture2D GetCurrent(DepthBuffer* DB) {
-		return DB->Buffer[DB->CurrentBuffer];
-	}
-
-
-	/************************************************************************************************/
-
-
 	enum EInputTopology
 	{
 		EIT_LINE,
@@ -1045,15 +1028,21 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		bool SetCBV					(Context& ctx, size_t idx, ConstantBufferHandle, size_t offset, size_t bufferSize);
         bool SetCBV                 (Context& ctx, size_t idx, ResourceHandle, size_t offset, size_t bufferSize);
 
-		bool SetSRV					(Context& ctx, size_t idx, ResourceHandle		Handle);
-		bool SetSRV					(Context& ctx, size_t idx, ResourceHandle		Handle, DeviceFormat format);
+		bool SetSRV					(Context& ctx, size_t idx, ResourceHandle);
+		bool SetSRV					(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
+        bool SetSRV                 (Context& ctx, size_t idx, ResourceHandle, uint MipOffset, DeviceFormat format);
+
 		//bool SetSRV					(Context& ctx, size_t idx, ResourceHandle		Handle);
 		//bool SetSRV					(Context& ctx, size_t idx, ResourceHandle	Handle);
 		bool SetSRVCubemap          (Context& ctx, size_t idx, ResourceHandle		Handle);
 		bool SetSRVCubemap          (Context& ctx, size_t idx, ResourceHandle		Handle, DeviceFormat format);
 
 		bool SetUAVBuffer			(Context& ctx, size_t idx, ResourceHandle, size_t   offset = 0);
+
 		bool SetUAVTexture			(Context& ctx, size_t idx, ResourceHandle);
+
+		bool SetUAVTexture			(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
+        bool SetUAVTexture          (Context& ctx, size_t idx, size_t mipLevel, ResourceHandle, DeviceFormat format);
 
 		bool SetUAVStructured       (Context& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset = 0);
 		bool SetUAVStructured       (Context& ctx, size_t idx, ResourceHandle resource, ResourceHandle counter, size_t stride, size_t Offset);
@@ -1598,12 +1587,12 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
         void DiscardResource(ResourceHandle resource);
 
 		void AddAliasingBarrier (ResourceHandle before, ResourceHandle after);
-		void AddUAVBarrier      (ResourceHandle Handle = InvalidHandle_t);
+		void AddUAVBarrier      (ResourceHandle Handle = InvalidHandle_t, uint32_t subresource = -1);
 
 		void AddPresentBarrier			(ResourceHandle Handle,	DeviceResourceState Before);
 		void AddRenderTargetBarrier		(ResourceHandle Handle,	DeviceResourceState Before, DeviceResourceState State = DeviceResourceState::DRS_RenderTarget);
 		void AddStreamOutBarrier		(SOResourceHandle,		DeviceResourceState Before, DeviceResourceState State);
-		void AddResourceBarrier	        (ResourceHandle Handle,	DeviceResourceState Before, DeviceResourceState State);
+		void AddResourceBarrier	        (ResourceHandle Handle,	DeviceResourceState Before, DeviceResourceState State, uint32_t subResource = -1);
 
 		void AddCopyResourceBarrier (ResourceHandle Handle, DeviceResourceState Before, DeviceResourceState State);
 
@@ -1823,6 +1812,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
                 ResourceHandle		aliasedResources[2];
 			};
+
+            uint32_t subResource = -1;
 		};
 
 
@@ -2376,7 +2367,7 @@ private:
 
 				TextureDimension::Texture2D, // dimensions
 				1, // mip count
-				3, // buffere count
+				3, // buffer count
 
 				IN_WH, IN_format
 			};
@@ -2399,7 +2390,7 @@ private:
 
 				TextureDimension::Texture2D, // dimensions
 				1, // mip count
-				3, // buffere count
+				3, // buffer count
 
 				IN_WH, IN_format, arraySize
 			};
@@ -2500,7 +2491,7 @@ private:
         }
 
 
-        static GPUResourceDesc UAVTexture(const uint2 IN_WH, const DeviceFormat IN_format, bool renderTarget = false)
+        static GPUResourceDesc UAVTexture(const uint2 IN_WH, const DeviceFormat IN_format, bool renderTarget = false, uint32_t mipCount = 1)
 		{
 			return {
 				false,  // render target flag
@@ -2515,7 +2506,7 @@ private:
 				ResourceAllocationType::Committed,
 				
 				TextureDimension::Texture2D, // dimensions
-				1, // mip count
+                (uint8_t)mipCount, // mip count
 				3, // buffered count
 
 				IN_WH, IN_format
@@ -3640,13 +3631,13 @@ private:
 
 		struct RootSigLibrary
 		{
-			RootSigLibrary(iAllocator* Memory) :
-				RSDefault{ Memory },
-				ShadingRTSig{ Memory },
-				RS4CBVs_SO{ Memory },
-				RS6CBVs4SRVs{ Memory },
-				RS2UAVs4SRVs4CBs{ Memory },
-				ComputeSignature{ Memory }{}
+			RootSigLibrary(iAllocator* allocator) :
+				RSDefault           { allocator },
+				ShadingRTSig        { allocator },
+				RS4CBVs_SO          { allocator },
+				RS6CBVs4SRVs        { allocator },
+				RS2UAVs4SRVs4CBs    { allocator },
+				ComputeSignature    { allocator } {}
 
 			void Initiate(RenderSystem* RS, iAllocator* TempMemory);
 
@@ -3887,13 +3878,18 @@ private:
 
 	[[deprecated]]
 	FLEXKITAPI DescHeapPOS PushTextureToDescHeap	    (RenderSystem* RS, Texture2D tex, DescHeapPOS POS);
+
 	FLEXKITAPI DescHeapPOS PushTextureToDescHeap        (RenderSystem* RS, DXGI_FORMAT format, ResourceHandle handle, DescHeapPOS POS);
+    FLEXKITAPI DescHeapPOS PushTextureToDescHeap        (RenderSystem* RS, DXGI_FORMAT format, uint32_t highestMipLevel, ResourceHandle handle, DescHeapPOS POS);
 
 
 	FLEXKITAPI DescHeapPOS PushCubeMapTextureToDescHeap (RenderSystem* RS, Texture2D tex, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushCubeMapTextureToDescHeap (RenderSystem* RS, ResourceHandle resource, DescHeapPOS POS, DeviceFormat format);
+
     FLEXKITAPI DescHeapPOS PushUAV1DToDescHeap          (RenderSystem* RS, ID3D12Resource* resource, DXGI_FORMAT format, uint mip, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushUAV2DToDescHeap		    (RenderSystem* RS, Texture2D tex, DescHeapPOS POS);
+    FLEXKITAPI DescHeapPOS PushUAV2DToDescHeap          (RenderSystem* RS, Texture2D tex, uint32_t mipLevel, DescHeapPOS POS);
+
 	FLEXKITAPI DescHeapPOS PushUAVBufferToDescHeap	    (RenderSystem* RS, UAVBuffer buffer, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushUAVBufferToDescHeap2	    (RenderSystem* RS, UAVBuffer buffer, ID3D12Resource* counter, DescHeapPOS POS);
 
@@ -4091,6 +4087,9 @@ private:
 
             return lods.back();
         }
+
+        const uint32_t      GetLowestLodIdx()       const { return uint32_t(lods.size() - 1); }
+        const LOD_Runtime&  GetLowestLoadedLod()    const { return lods.back(); }
 
         GUID_t                          assetHandle;
         static_vector<LOD_Runtime>      lods;
@@ -4306,7 +4305,7 @@ private:
 		}
 
 		template<typename _TY>
-		size_t Push(_TY& data)
+		size_t Push(const _TY& data)
 		{
 			constexpr size_t alignedSize = CalculateOffset<_TY>();
 			if (pushBufferUsed + alignedSize > pushBufferSize)
@@ -4492,19 +4491,19 @@ private:
 
 		template<typename TY>
 		ConstantBufferDataSet(const TY& initialData, CBPushBuffer& buffer) :
-			constantBuffer	{ buffer },
-			constantsOffset	{ buffer.Push(initialData) },
-            size            { AlignedSize<TY>() } {}
+			constantBuffer	{ buffer                    },
+			constantsOffset	{ buffer.Push(initialData)  },
+            size            { AlignedSize<TY>()         } {}
 
 		explicit ConstantBufferDataSet(const size_t& IN_offset, ConstantBufferHandle IN_buffer, size_t IN_size = 0) :
 			constantBuffer  { IN_buffer },
 			constantsOffset { IN_offset },
-            size            { IN_size } {} 
+            size            { IN_size   } {} 
 
 		explicit ConstantBufferDataSet(char* initialData, const size_t bufferSize, CBPushBuffer& buffer) :
-			constantBuffer  { buffer },
-			constantsOffset { buffer.Push(initialData, bufferSize) },
-            size            { AlignedSize(bufferSize) } {}
+			constantBuffer  { buffer                                },
+			constantsOffset { buffer.Push(initialData, bufferSize)  },
+            size            { AlignedSize(bufferSize)               } {}
 
 		~ConstantBufferDataSet() = default;
 
@@ -5174,14 +5173,26 @@ private:
 			[=](const size_t reserveSize) -> CBPushBuffer
 			{
 				auto push = CBPushBuffer(constantBuffer, reserveSize, *renderSystem);
-				//std::cout << "reserveSize: " << reserveSize << ", offset: " << push.begin() << "\n";
 				return std::move(push);
 			},
 			allocator);
 	}
 
+
 	using ReserveVertexBufferFunction   = decltype(CreateVertexBufferReserveObject(InvalidHandle_t, nullptr, nullptr));
 	using ReserveConstantBufferFunction = decltype(CreateConstantBufferReserveObject(InvalidHandle_t, nullptr, nullptr));
+
+    inline auto CreateOnceReserveBuffer(ReserveConstantBufferFunction& reserveConstants, iAllocator* allocator)
+    {
+        return MakeLazyObject<CBPushBuffer>(
+            allocator,
+            [reserveConstants = reserveConstants](size_t reserveSize) mutable
+            {
+                return reserveConstants(reserveSize);
+            });
+    }
+
+    using CreateOnceReserveBufferFunction = decltype(CreateOnceReserveBuffer(*((ReserveConstantBufferFunction*)nullptr), nullptr));
 
 
 }	/************************************************************************************************/

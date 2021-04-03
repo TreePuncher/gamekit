@@ -105,7 +105,7 @@ namespace FlexKit::ResourceBuilder
 
         const std::string&  GetResourceID()     const { return ID; }
         const uint64_t      GetResourceGUID()   const { return guid; }
-        const ResourceID_t  GetResourceTypeID() const { return EResourceType::EResource_Animation; }
+        const ResourceID_t  GetResourceTypeID() const { return AnimationResourceTypeID; }
 
         std::string                 ID;
         GUID_t                      guid = rand();
