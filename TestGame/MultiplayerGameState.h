@@ -226,15 +226,15 @@ public:
     {
         WorldRender_Targets targets = {
             base.renderWindow.GetBackBuffer(),
-            base.depthBuffer
+            base.depthBuffer.Get()
         };
 
-        frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
-        frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
+        frameGraph.Resources.AddBackBuffer(targets.RenderTarget);
+        frameGraph.Resources.AddDepthBuffer(targets.DepthTarget);
 
         ClearVertexBuffer   (frameGraph, base.vertexBuffer);
         ClearBackBuffer     (frameGraph, targets.RenderTarget, 0.0f);
-        ClearDepthBuffer    (frameGraph, base.depthBuffer, 1.0f);
+        ClearDepthBuffer    (frameGraph, targets.DepthTarget, 1.0f);
 
         OnDraw(core, dispatcher, frameGraph, dT);
 
@@ -254,6 +254,7 @@ public:
 
         PresentBackBuffer(frameGraph, base.renderWindow);
     }
+
 
     void PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
     {

@@ -5,6 +5,7 @@
 #include "TextureUtilities.h"
 #include "ThreadUtilities.h"
 #include "GraphicScene.h"
+#include "AnimationComponents.h"
 
 namespace FlexKit
 {   /************************************************************************************************/

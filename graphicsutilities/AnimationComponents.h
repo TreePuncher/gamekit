@@ -36,7 +36,7 @@ namespace FlexKit
     };
 
 
-    AnimationResource* LoadAnimation(GUID_t resourceId, iAllocator& allocator)
+    inline AnimationResource* LoadAnimation(GUID_t resourceId, iAllocator& allocator)
     {
         return nullptr;
     }
@@ -119,7 +119,6 @@ namespace FlexKit
             return GetComponent()[handle].poseState;
         }
 
-
         auto GetSkeleton()
         {
             return GetComponent()[handle].skeleton;
@@ -174,120 +173,17 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    inline bool hasSkeletonLoaded(GameObject& gameObject)
-    {
-        return Apply(
-            gameObject,
-            [](SkeletonView& skeleton){ return true; },
-            []{ return false; });
-    }
+    Skeleton*   GetSkeleton     (GameObject& gameObject);
+    PoseState*  GetPoseState    (GameObject& gameObject);
+    size_t      GetJointCount   (GameObject& gameObject);
 
+    JointPose   GetJointPose    (GameObject& gameObject, JointHandle jointID);
+    JointHandle GetJointParent  (GameObject& gameObject, JointHandle jointID);
 
-    /************************************************************************************************/
+    void        SetJointPose    (GameObject& gameObject, JointHandle jointID, JointPose pose);
 
-
-    inline Skeleton* GetSkeleton(GameObject& gameObject)
-    {
-        return Apply(
-            gameObject,
-            [](SkeletonView& view) -> Skeleton* { return view.GetSkeleton(); },
-            []() -> Skeleton* { return nullptr; });
-    }
-
-
-    /************************************************************************************************/
-
-
-    inline PoseState* GetPoseState(GameObject& gameObject)
-    {
-        return Apply(
-            gameObject,
-            [](SkeletonView& view) -> PoseState* { return &view.GetPoseState(); },
-            []() -> PoseState* { return nullptr; });
-    }
-
-
-    /************************************************************************************************/
-
-
-    inline void RotateJoint(GameObject& gameObject, JointHandle jointID, const Quaternion Q)
-    {
-        Apply(
-            gameObject,
-            [&](SkeletonView& skeleton)
-            {
-                auto pose = skeleton.GetPose(jointID);
-
-                pose.r = pose.r * Q;
-
-                skeleton.SetPose(jointID, pose);
-            });
-    }
-
-
-    /************************************************************************************************/
-
-
-    inline JointHandle GetJointParent(GameObject& gameObject, JointHandle jointID)
-    {
-        return Apply(
-            gameObject,
-            [&](SkeletonView& skeleton) -> JointHandle
-            {
-                return skeleton.GetSkeleton()->Joints[jointID].mParent;
-            },
-            []() -> JointHandle
-            {
-                return InvalidHandle_t;
-            });
-    }
-
-
-    /************************************************************************************************/
-
-
-    inline size_t GetJointCount(GameObject& gameObject)
-    {
-        return Apply(
-            gameObject,
-            [&](SkeletonView& skeleton) -> size_t
-            {
-                return skeleton.GetSkeleton()->JointCount;
-            },
-            []() -> size_t
-            {
-                return 0;
-            });
-    }
-
-
-    /************************************************************************************************/
-
-
-    inline JointPose GetJointPose(GameObject& gameObject, JointHandle jointID)
-    {
-        return Apply(
-            gameObject,
-            [&](SkeletonView& skeleton) -> JointPose
-            {
-                return skeleton.GetPose(jointID);
-            },
-            [] { return JointPose{}; });
-    }
-
-
-    /************************************************************************************************/
-
-
-    inline void SetJointPose(GameObject& gameObject, JointHandle jointID, JointPose pose)
-    {
-        Apply(
-            gameObject,
-            [&](SkeletonView& skeleton)
-            {
-                skeleton.SetPose(jointID, pose);
-            });
-    }
+    void        RotateJoint         (GameObject& gameObject, JointHandle jointID, const Quaternion Q);
+    bool        hasSkeletonLoaded   (GameObject& gameObject);
 
 
     /************************************************************************************************/
@@ -624,8 +520,9 @@ namespace FlexKit
             GameObject*     gameObject;
 
             JointHandle     endEffector     = InvalidHandle_t;
-            size_t          iterationCount  = 5;
-            size_t          poseID          = rand();
+            JointHandle     ikRoot          = InvalidHandle_t;
+            uint32_t        iterationCount  = 5;
+            uint32_t        poseID          = rand();
 
             Vector<float3>  Debug;
         };

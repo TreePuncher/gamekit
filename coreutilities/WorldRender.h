@@ -99,6 +99,75 @@ namespace FlexKit
 
     using AdditionalGbufferPass = TypeErasedCallable<256>;
 
+    struct DepthBuffer
+    {
+        DepthBuffer(RenderSystem& IN_renderSystem, uint2 IN_WH, bool useFloatFormat = true) :
+            floatingPoint   { useFloatFormat    },
+            renderSystem    { IN_renderSystem   },
+            WH              { IN_WH             }
+        {
+            buffers.push_back(renderSystem.CreateDepthBuffer(WH, useFloatFormat, 1));
+            buffers.push_back(renderSystem.CreateDepthBuffer(WH, useFloatFormat, 1));
+            buffers.push_back(renderSystem.CreateDepthBuffer(WH, useFloatFormat, 1));
+
+            renderSystem.SetDebugName(buffers[0], "DepthBuffer0");
+            renderSystem.SetDebugName(buffers[1], "DepthBuffer1");
+            renderSystem.SetDebugName(buffers[2], "DepthBuffer2");
+        }
+
+        ~DepthBuffer()
+        {
+            Release();
+        }
+
+
+        DepthBuffer(const DepthBuffer& rhs)     = delete;
+        DepthBuffer(const DepthBuffer&& rhs)    = delete;
+
+
+        DepthBuffer& operator = (const DepthBuffer& rhs)    = delete;
+        DepthBuffer& operator = (DepthBuffer&& rhs)         = delete;
+
+
+        ResourceHandle Get() const
+        {
+            return buffers[idx];
+        }
+
+        ResourceHandle GetPrevious() const
+        {
+            auto previousIdx = (idx + 2) % 3;
+            return buffers[previousIdx];
+        }
+
+        void Resize(uint2 WH)
+        {
+            Release();
+
+            buffers.push_back(renderSystem.CreateDepthBuffer(WH, floatingPoint, 1));
+            buffers.push_back(renderSystem.CreateDepthBuffer(WH, floatingPoint, 1));
+            buffers.push_back(renderSystem.CreateDepthBuffer(WH, floatingPoint, 1));
+        }
+
+        void Release()
+        {
+            renderSystem.ReleaseResource(buffers.pop_back());
+            renderSystem.ReleaseResource(buffers.pop_back());
+            renderSystem.ReleaseResource(buffers.pop_back());
+        }
+
+        void Increment()
+        {
+            idx = (idx + 1) % 3;
+        }
+
+        RenderSystem&                       renderSystem;
+        uint                                idx = 0;
+        bool                                floatingPoint;
+        uint2                               WH;
+        CircularBuffer<ResourceHandle, 3>   buffers;
+    };
+
     struct DrawSceneDescription
     {
         CameraHandle        camera;
@@ -108,6 +177,7 @@ namespace FlexKit
 
         // Resources
         GBuffer&                        gbuffer;
+
         ReserveVertexBufferFunction     reserveVB;
         ReserveConstantBufferFunction   reserveCB;
 
@@ -118,7 +188,6 @@ namespace FlexKit
         // Inputs
         UpdateTask&         transformDependency;
         UpdateTask&         cameraDependency;
-
         
         Vector<UpdateTask*>                         sceneDependencies;
         static_vector<AdditionalGbufferPass>        additionalGbufferPass;
@@ -167,16 +236,19 @@ namespace FlexKit
     constexpr PSOHandle RESOLUTIONMATCHSHADOWMAPS   = PSOHandle(GetTypeGUID(RESOLUTIONMATCHSHADOWMAPS));
     constexpr PSOHandle CLEARSHADOWRESOLUTIONBUFFER = PSOHandle(GetTypeGUID(CLEARSHADOWRESOLUTIONBUFFER));
 
-    static const PSOHandle DEPTHPREPASS                = PSOHandle(GetTypeGUID(DEPTHPREPASS));
-	static const PSOHandle FORWARDDRAWINSTANCED	       = PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
-	static const PSOHandle FORWARDDRAW_OCCLUDE		   = PSOHandle(GetTypeGUID(FORWARDDRAW_OCCLUDE));
-	static const PSOHandle TEXTURE2CUBEMAP_IRRADIANCE  = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP_IRRADIANCE));
-	static const PSOHandle TEXTURE2CUBEMAP_GGX         = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP_GGX));
+    constexpr PSOHandle DEPTHPREPASS                = PSOHandle(GetTypeGUID(DEPTHPREPASS));
+    constexpr PSOHandle FORWARDDRAWINSTANCED	    = PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
+    constexpr PSOHandle FORWARDDRAW_OCCLUDE		    = PSOHandle(GetTypeGUID(FORWARDDRAW_OCCLUDE));
+    constexpr PSOHandle TEXTURE2CUBEMAP_IRRADIANCE  = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP_IRRADIANCE));
+    constexpr PSOHandle TEXTURE2CUBEMAP_GGX         = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP_GGX));
 
 
-    static const PSOHandle SHADOWMAPPASS            = PSOHandle(GetTypeGUID(SHADOWMAPPASS));
-    static const PSOHandle SHADOWMAPANIMATEDPASS    = PSOHandle(GetTypeGUID(SHADOWMAPANIMATEDPASS));
-    static const PSOHandle DEBUG_DrawBVH            = PSOHandle(GetTypeGUID(DEBUG_DrawBVH1));
+    constexpr PSOHandle SHADOWMAPPASS            = PSOHandle(GetTypeGUID(SHADOWMAPPASS));
+    constexpr PSOHandle SHADOWMAPANIMATEDPASS    = PSOHandle(GetTypeGUID(SHADOWMAPANIMATEDPASS));
+    constexpr PSOHandle DEBUG_DrawBVH            = PSOHandle(GetTypeGUID(DEBUG_DrawBVH1));
+
+    constexpr PSOHandle ZPYRAMIDBUILDLEVEL  = PSOHandle(GetTypeGUID(ZPYRAMIDBUILDLEVEL));
+    constexpr PSOHandle DEPTHCOPY           = PSOHandle(GetTypeGUID(DEPTHCOPY));
 
 
 	/************************************************************************************************/
@@ -217,10 +289,11 @@ namespace FlexKit
 	ID3D12PipelineState* CreateShadowMapPass                (RenderSystem* RS);
     ID3D12PipelineState* CreateShadowMapAnimatedPass        (RenderSystem* RS);
 
-    
 
     ID3D12PipelineState* CreateDEBUGBVHVIS                  (RenderSystem* RS);
 
+    ID3D12PipelineState* CreateBuildZLayer      (RenderSystem* RS);
+    ID3D12PipelineState* CreateDepthBufferCopy  (RenderSystem* RS);
 
 
     /************************************************************************************************/
@@ -228,8 +301,8 @@ namespace FlexKit
 
 	struct WorldRender_Targets
 	{
-		ResourceHandle RenderTarget;
-		ResourceHandle DepthTarget;
+		ResourceHandle  RenderTarget;
+		DepthBuffer&    DepthTarget;
 	};
 
 
@@ -655,8 +728,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-#define SHADOWMAPPING OFF
-
     struct LightCluster
     {
         float4 Min;
@@ -671,22 +742,46 @@ namespace FlexKit
         float BVHConstruction   = 0;
     };
 
+    struct EntityConstants
+    {
+        CreateOnceReserveBufferFunction getConstantBuffer;
+        GatherTask&                     sceneGather;
+
+        CBPushBuffer&                   GetConstants()
+        {
+            auto reserveSize = sceneGather.GetData().solid.size() * AlignedSize<Drawable::VConstantsLayout>();
+            return getConstantBuffer(reserveSize);
+        }
+    };
+
+    struct OcclusionCullingResults
+    {
+        GatherTask&                     sceneGather;
+        EntityConstants&                entityConstants;
+        ReserveConstantBufferFunction   reserveCB;
+
+        FrameResourceHandle             depthBuffer;
+        FrameResourceHandle             ZPyramid;
+    };
 
     struct DrawOutputs
     {
         GatherTask&         PVS;
         GatherSkinnedTask&  skinnedDraws;
+        EntityConstants&    entityConstants;
+        FrameResourceHandle visibilityBuffer;
     };
 
 
     class ParticleSystemInterface;
+
 
 	class FLEXKITAPI WorldRender
 	{
 	public:
 		WorldRender(RenderSystem& RS_IN, TextureStreamingEngine& IN_streamingEngine, iAllocator* persistent) :
 			renderSystem                { RS_IN },
-			OcclusionCulling	        { false	},
+			enableOcclusionCulling	    { false	},
 
             UAVPool                     { renderSystem, 64 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
             UAVTexturePool              { renderSystem, 64 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent },
@@ -706,7 +801,6 @@ namespace FlexKit
 			RS_IN.RegisterPSOLoader(DEPTHPREPASS,			    { &RS_IN.Library.RS6CBVs4SRVs,      CreateDepthPrePassPSO         });
             RS_IN.RegisterPSOLoader(SHADOWMAPPASS,              { &RS_IN.Library.RS6CBVs4SRVs,      CreateShadowMapPass           });
             RS_IN.RegisterPSOLoader(SHADOWMAPANIMATEDPASS,      { &RS_IN.Library.RS6CBVs4SRVs,      CreateShadowMapAnimatedPass   });
-
 
 			RS_IN.RegisterPSOLoader(GBUFFERPASS,			    { &RS_IN.Library.RS6CBVs4SRVs,      CreateGBufferPassPSO          });
 			RS_IN.RegisterPSOLoader(GBUFFERPASS_SKINNED,	    { &RS_IN.Library.RS6CBVs4SRVs,      CreateGBufferSkinnedPassPSO   });
@@ -732,7 +826,10 @@ namespace FlexKit
             RS_IN.RegisterPSOLoader(RESOLUTIONMATCHSHADOWMAPS,      { &RS_IN.Library.RSDefault, CreateResolutionMatch_PSO });
             RS_IN.RegisterPSOLoader(CLEARSHADOWRESOLUTIONBUFFER,    { &RS_IN.Library.RSDefault, CreateClearResolutionMatch_PSO});
 
-            RS_IN.RegisterPSOLoader(DEBUG_DrawBVH, { &RS_IN.Library.RSDefault, CreateDEBUGBVHVIS });
+            RS_IN.RegisterPSOLoader(ZPYRAMIDBUILDLEVEL, { &RS_IN.Library.RSDefault, CreateBuildZLayer });
+            RS_IN.RegisterPSOLoader(DEPTHCOPY,          { &RS_IN.Library.RSDefault, CreateDepthBufferCopy });
+
+            RS_IN.RegisterPSOLoader(DEBUG_DrawBVH,      { &RS_IN.Library.RSDefault, CreateDEBUGBVHVIS });
 
 			RS_IN.QueuePSOLoad(GBUFFERPASS);
 			RS_IN.QueuePSOLoad(GBUFFERPASS_SKINNED);
@@ -748,6 +845,7 @@ namespace FlexKit
             RS_IN.QueuePSOLoad(CLEARCOUNTERSPSO);
             RS_IN.QueuePSOLoad(RESOLUTIONMATCHSHADOWMAPS);
             RS_IN.QueuePSOLoad(CLEARSHADOWRESOLUTIONBUFFER);
+            RS_IN.QueuePSOLoad(ZPYRAMIDBUILDLEVEL);
 
             RS_IN.QueuePSOLoad(DEBUG_DrawBVH);
 
@@ -808,12 +906,31 @@ namespace FlexKit
 
 
         DrawOutputs& DrawScene(
-            UpdateDispatcher&       dispatcher,
-            FrameGraph&             frameGraph,
-            DrawSceneDescription&   drawSceneDesc,
-            WorldRender_Targets     targets,
-            iAllocator*             persistent,
-            ThreadSafeAllocator&    temporary);
+                UpdateDispatcher&               dispatcher,
+                FrameGraph&                     frameGraph,
+                DrawSceneDescription&           drawSceneDesc,
+                WorldRender_Targets             targets,
+                iAllocator*                     persistent,
+                ThreadSafeAllocator&            temporary);
+
+
+        EntityConstants& BuildEntityConstantsBuffer(
+                FrameGraph&                     frameGraph,
+                UpdateDispatcher&               dispatcher,
+                GatherTask&                     pvs,
+                ReserveConstantBufferFunction&  reserveConstants,
+                iAllocator&                     allocator);
+
+
+        OcclusionCullingResults& OcclusionCulling(
+                UpdateDispatcher&               dispatcher,
+                FrameGraph&                     frameGraph,
+                EntityConstants&                entityConstants,
+                GatherTask&                     pvs,
+                CameraHandle                    camera,
+                ReserveConstantBufferFunction&  reserveConstants,
+                DepthBuffer&                    depthBuffer,
+                ThreadSafeAllocator&            temporary);
 
 
 		DepthPass& DepthPrePass(
@@ -822,10 +939,10 @@ namespace FlexKit
 				const CameraHandle              camera,
 				GatherTask&                     pvs,
 				const ResourceHandle            depthBufferTarget,
-				ReserveConstantBufferFunction,
-				iAllocator*);
+				ReserveConstantBufferFunction   reserveCB,
+				iAllocator*                     tempAllocator);
 
-		
+
 		BackgroundEnvironmentPass& BackgroundPass(
 				UpdateDispatcher&               dispatcher,
 				FrameGraph&                     frameGraph,
@@ -863,61 +980,61 @@ namespace FlexKit
 
 
 		BackgroundEnvironmentPass& RenderPBR_IBL_Deferred(
-			UpdateDispatcher&               dispatcher,
-			FrameGraph&                     frameGraph,
-			const SceneDescription&         sceneDescription,
-			const CameraHandle              camera,
-			const ResourceHandle            renderTarget,
-			const ResourceHandle            depthTarget,
-			GBuffer&                        gbuffer,
-			ReserveConstantBufferFunction   reserveCB,
-			ReserveVertexBufferFunction     reserveVB,
-			const float                     t,
-			iAllocator*                     tempMemory);
+			    UpdateDispatcher&               dispatcher,
+			    FrameGraph&                     frameGraph,
+			    const SceneDescription&         sceneDescription,
+			    const CameraHandle              camera,
+			    const ResourceHandle            renderTarget,
+			    const ResourceHandle            depthTarget,
+			    GBuffer&                        gbuffer,
+			    ReserveConstantBufferFunction   reserveCB,
+			    ReserveVertexBufferFunction     reserveVB,
+			    const float                     t,
+			    iAllocator*                     tempMemory);
 
 
-		BilateralBlurPass& BilateralBlur(
-			FrameGraph&,
-			const ResourceHandle            source,
-			const ResourceHandle            temp1,
-			const ResourceHandle            temp2,
-			const ResourceHandle            temp3,
-			const ResourceHandle            destination,
-			GBuffer&                        gbuffer,
-			const ResourceHandle            depthBuffer,
-			ReserveConstantBufferFunction   reserveCB,
-			ReserveVertexBufferFunction     reserveVB,
-			iAllocator*                     tempMemory);
+		BilateralBlurPass&  BilateralBlur(
+			    FrameGraph&                     frameGraph,
+			    const ResourceHandle            source,
+			    const ResourceHandle            temp1,
+			    const ResourceHandle            temp2,
+			    const ResourceHandle            temp3,
+			    const ResourceHandle            destination,
+			    GBuffer&                        gbuffer,
+			    const ResourceHandle            depthBuffer,
+			    ReserveConstantBufferFunction   reserveCB,
+			    ReserveVertexBufferFunction     reserveVB,
+			    iAllocator*                     tempMemory);
 
 
 		GBufferPass&        RenderPBR_GBufferPass(
-			UpdateDispatcher&               dispatcher,
-			FrameGraph&                     frameGraph,
-			const SceneDescription&         sceneDescription,
-			const CameraHandle              camera,
-			GBuffer&                        gbuffer,
-			ResourceHandle                  depthTarget,
-			ReserveConstantBufferFunction   reserveCB,
-			iAllocator*                     allocator);
+			    UpdateDispatcher&               dispatcher,
+			    FrameGraph&                     frameGraph,
+			    const SceneDescription&         sceneDescription,
+			    const CameraHandle              camera,
+			    GBuffer&                        gbuffer,
+			    ResourceHandle                  depthTarget,
+			    ReserveConstantBufferFunction   reserveCB,
+			    iAllocator*                     allocator);
 
 
 		TiledDeferredShade& RenderPBR_DeferredShade(
-			UpdateDispatcher&               dispatcher,
-			FrameGraph&                     frameGraph,
-			const SceneDescription&         sceneDescription,
-			PointLightGatherTask&           gather,
-			GBuffer&                        gbuffer,
-			ResourceHandle                  depthTarget,
-			ResourceHandle                  renderTarget,
-			ShadowMapPassData&              shadowMaps,
-			LightBufferUpdate&              lightPass,
-			ReserveConstantBufferFunction   reserveCB,
-			ReserveVertexBufferFunction     reserveVB,
-			float                           t,
-			iAllocator*                     allocator);
+			    UpdateDispatcher&               dispatcher,
+			    FrameGraph&                     frameGraph,
+			    const SceneDescription&         sceneDescription,
+			    PointLightGatherTask&           gather,
+			    GBuffer&                        gbuffer,
+			    ResourceHandle                  depthTarget,
+			    ResourceHandle                  renderTarget,
+			    ShadowMapPassData&              shadowMaps,
+			    LightBufferUpdate&              lightPass,
+			    ReserveConstantBufferFunction   reserveCB,
+			    ReserveVertexBufferFunction     reserveVB,
+			    float                           t,
+			    iAllocator*                     allocator);
 
 
-        DEBUGVIS_DrawBVH& DEBUGVIS_DrawLightBVH(
+        DEBUGVIS_DrawBVH&   DEBUGVIS_DrawLightBVH(
 				UpdateDispatcher&               dispatcher,
 				FrameGraph&                     frameGraph,
 				const CameraHandle              camera,
@@ -929,17 +1046,19 @@ namespace FlexKit
 
 
         void DEBUGVIS_BVH(
-			UpdateDispatcher&               dispatcher,
-			FrameGraph&                     frameGraph,
-            SceneBVH&                       bvh,
-            CameraHandle                    camera,
-			ResourceHandle                  renderTarget,
-			ReserveConstantBufferFunction   reserveCB,
-			ReserveVertexBufferFunction     reserveVB,
-            BVHVisMode                      mode,
-			iAllocator*                     allocator);
+			    UpdateDispatcher&               dispatcher,
+			    FrameGraph&                     frameGraph,
+                SceneBVH&                       bvh,
+                CameraHandle                    camera,
+			    ResourceHandle                  renderTarget,
+			    ReserveConstantBufferFunction   reserveCB,
+			    ReserveVertexBufferFunction     reserveVB,
+                BVHVisMode                      mode,
+			    iAllocator*                     allocator);
 
         DEBUG_WorldRenderTimingValues GetTimingValues() const { return timingValues; }
+
+
 	private:
 		RenderSystem&			renderSystem;
 
@@ -953,7 +1072,7 @@ namespace FlexKit
         CircularBuffer<ReadBackResourceHandle, 6> readBackBuffers;
 
 		TextureStreamingEngine&	streamingEngine;
-		bool                    OcclusionCulling;
+		bool                    enableOcclusionCulling;
 
         FlexKit::IndirectLayout createClusterLightListLayout;
         FlexKit::IndirectLayout createDebugDrawLayout;

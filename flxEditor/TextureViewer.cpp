@@ -1,6 +1,7 @@
 #include "TextureViewer.h"
 #include "EditorRenderer.h"
 #include <QtWidgets/qboxlayout.h>
+#include <QtWidgets/qtextedit.h>
 #include <qevent.h>
 
 /************************************************************************************************/
@@ -19,15 +20,15 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setMenuBar(menuBar);
 
-    setMinimumSize(200, 200);
+    setMinimumSize(100, 100);
     setMaximumSize({ 1024 * 16, 1024 * 16 });
 
     auto file   = menuBar->addMenu("file");
     auto select = file->addAction("Select Texture");
 
     menuBar->show();
-    
-    renderWindow = renderer.CreateRenderWindow(this);
+
+    renderWindow = renderer.CreateRenderWindow();
     renderWindow->SetOnDraw(
         [&](FlexKit::UpdateDispatcher& Dispatcher, double dT, TemporaryBuffers& temporary, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget)
         {
@@ -46,7 +47,6 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
             };
 
 
-            if(false)
             auto& draw = frameGraph.AddNode<DrawTexture>(
                 DrawTexture{
                     FlexKit::InvalidHandle_t,
@@ -54,7 +54,7 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
                     temporary.ReserveVertexBuffer },
                 [&](FlexKit::FrameGraphNodeBuilder& Builder, DrawTexture& data)
                 {
-                    data.renderTarget = Builder.WriteRenderTarget(renderTarget);
+                    data.renderTarget = Builder.RenderTarget(renderTarget);
                 },
                 [=](DrawTexture& data, const FlexKit::ResourceHandler& frameResources, FlexKit::Context& context, FlexKit::iAllocator& allocator)
                 {
@@ -117,6 +117,8 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
                 });
 
         });
+
+
     layout->addWidget(renderWindow);
 
     show();
@@ -147,8 +149,6 @@ void TextureViewer::closeEvent(QCloseEvent* event)
 void TextureViewer::resizeEvent(QResizeEvent* event)
 {
     QWidget::resizeEvent(event);
-
-    auto layout = findChild<QBoxLayout*>("verticalLayout");
 }
 
 

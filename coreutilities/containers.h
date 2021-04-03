@@ -1024,6 +1024,11 @@ namespace FlexKit
 			return at(idx);
 		}
 
+        Ty  operator [](size_t idx) const
+        {
+            return at(idx);
+        }
+
 		Ty& at(size_t idx)
 		{
 			idx = (_Head - idx - 1) % SIZE;

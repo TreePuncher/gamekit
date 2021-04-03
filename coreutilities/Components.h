@@ -219,9 +219,57 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    struct ComponentViewContainer
+    {
+        ComponentViewContainer() = default;
+
+        template<typename TY, typename... TY_ARGS>
+        [[nodiscard]]
+        static ComponentViewContainer Create(iAllocator& allocator, TY_ARGS&& ... args)
+        {
+            ComponentViewContainer component;
+            component.componentSize = sizeof(TY);
+
+            if (component.componentSize > sizeof(component.buffer))
+                component._ptr = &allocator.allocate<TY>(std::forward<TY_ARGS>(args)...);
+            else
+                new(component.buffer) TY(std::forward<TY_ARGS>(args)...);
+
+            component.ID = component.Get()->ID;
+
+            return component;
+        }
+
+        ComponentViewBase* operator -> () { return Get(); }
+        operator ComponentViewBase* () { return Get(); }
+
+        ComponentViewBase* Get()
+        {
+            if (componentSize > sizeof(buffer))
+                return _ptr;
+            else
+                return (ComponentViewBase*)&(buffer[0]);
+        }
+
+        void Release(iAllocator* allocator)
+        {
+           if (componentSize > componentSize)
+               allocator->release(_ptr);
+        }
+
+        ComponentID ID;
+        uint32_t    componentSize;
+        union
+        {
+            ComponentViewBase* _ptr;
+            char                buffer[24];
+        };
+    };
+
+
 	class GameObject
 	{
-	public:
+    public:
 		GameObject(iAllocator* IN_allocator = SystemAllocator) :
 			allocator{ IN_allocator }
 			//behaviors{ allocator } 
@@ -246,11 +294,9 @@ namespace FlexKit
 		{
 			static_assert(std::is_base_of<ComponentViewBase, TY_View>(), "You can only add view types!");
 
-			views.push_back({
-					&allocator->allocate<TY_View>(std::forward<TY_args>(args)...),
-					TY_View::GetComponentID() });
+            views.push_back(ComponentViewContainer::Create<TY_View>(*allocator, std::forward<TY_args>(args)...));
 
-            return *static_cast<TY_View*>(views.back().first);
+            return *static_cast<TY_View*>(views.back().Get());
 		}
 
 
@@ -259,9 +305,8 @@ namespace FlexKit
 			auto const id = view.ID;
 			for (auto itr = views.begin(); itr < views.end(); itr++)
 			{
-				if (std::get<1>(*itr) == id) {
-					auto _ptr = std::get<0>(*itr);
-					allocator->release(_ptr);
+				if ((*itr).ID == id) {
+					itr->Release(allocator);
 					views.remove_unstable(itr);
 				}
 			}
@@ -277,8 +322,7 @@ namespace FlexKit
 		void Release()
 		{
 			for (auto& view : views) {
-				auto view_ptr = std::get<0>(view);
-				allocator->release(view_ptr);
+				view.Release(allocator);
 			}
 
 			views.clear();
@@ -293,9 +337,9 @@ namespace FlexKit
 
 		ComponentViewBase* GetView(ComponentID id)
 		{
-			for (auto view : views)
-				if (std::get<1>(view) == id)
-					return std::get<0>(view);
+			for (auto& view : views)
+				if (view.ID == id)
+					return view;
 
 			return nullptr;
 		}
@@ -303,8 +347,8 @@ namespace FlexKit
 
 		bool hasView(ComponentID id)
 		{
-			for (auto view : views)
-				if (std::get<1>(view) == id)
+			for (auto& view : views)
+				if (view.ID == id)
 					return true;
 
 			return false;
@@ -312,8 +356,10 @@ namespace FlexKit
 
 
 	private:
-		static_vector<std::pair<ComponentViewBase*, ComponentID>, 16>	views;	// component + Code
-		iAllocator*						        					allocator;
+
+
+        static_vector<ComponentViewContainer, 16>	views;	        // component + Code
+		iAllocator*						        	allocator;
     };
 
 

@@ -995,10 +995,8 @@ namespace FlexKit
 		}
 
 		template<typename ... TY_Args>
-		decltype(auto) operator ()(TY_Args ... args)
+		decltype(auto) operator ()(TY_Args ... args) requires(std::is_invocable_v<TY, TY_Args>)
 		{
-			//static_assert(std::is_invocable_v<TY>);
-
 			return Get()(std::forward<TY_Args>(args)...);
 		}
 

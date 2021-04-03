@@ -10,13 +10,16 @@
 #include <qsettings.h>
 #include <QtWidgets/qfiledialog.h>
 #include <QtWidgets/qmenubar.h>
+#include <QtWidgets/qtabwidget.h>
 
 #include "ResourceBrowserWidget.h"
 #include "EditorImport.h"
 #include "EditorRenderer.h"
 #include "EditorProject.h"
 #include "EditorGadgetInterface.h"
+#include "EditorViewport.h"
 #include "TextureViewer.h"
+
 #include "ModelViewerWidget.h"
 
 
@@ -24,6 +27,8 @@
 
 class TextureResource;
 class EditorScriptEngine;
+class EditorViewport;
+
 
 /************************************************************************************************/
 
@@ -57,6 +62,12 @@ public:
     void                    AddModelViewer();
     TextureViewer*          AddTextureViewer(TextureResource* res = nullptr);
 
+    void AddFileAction(const std::string& name, auto callable)
+    {
+        auto action = fileMenu->addAction(name.c_str());
+        connect(action, &QAction::triggered, this, callable);
+    }
+
 
     void RegisterGadget(iEditorGadget* gadget);
 
@@ -77,6 +88,8 @@ private:
 
     SelectionContext    selectionContext;
 
+    QTabWidget*         tabBar;
+    EditorViewport*     viewport;
     QApplication&       QtApplication;
     EditorProject&      project;
     EditorRenderer&     renderer;

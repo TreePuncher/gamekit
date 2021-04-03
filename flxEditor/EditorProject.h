@@ -3,9 +3,10 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <GraphicScene.h>
 
+#include "GraphicScene.h"
 #include "..\FlexKitResourceCompiler\SceneResource.h"
+
 
 
 class ProjectWidget
@@ -37,6 +38,13 @@ public:
 class ProjectResource
 {
 public:
+    template<class Archive>
+    void serialize(Archive& ar, const unsigned int version)
+    {
+        ar & resource;
+    }
+
+
     FlexKit::ResourceBuilder::Resource_ptr resource;
 };
 
@@ -44,16 +52,30 @@ public:
 /************************************************************************************************/
 
 
-class ProjectScene
+using GameObject_ptr = std::shared_ptr<FlexKit::GameObject>;
+
+
+class EditorScene
 {
 public:
-    ProjectScene(FlexKit::ResourceBuilder::SceneResource_ptr IN_scene = nullptr) : sceneResource{ IN_scene } {}
+    EditorScene(FlexKit::ResourceBuilder::SceneResource_ptr IN_scene = nullptr) : sceneResource{ IN_scene } {}
+
+    void LoadScene();
+
+    FlexKit::ResourceBuilder::Resource_ptr FindSceneResource(uint64_t resourceID);
+
+
 
     FlexKit::ResourceBuilder::SceneResource_ptr sceneResource;
-    FlexKit::GraphicScene                       scene{ FlexKit::SystemAllocator };
 
     std::string sceneName;
+
+    std::vector<ProjectResource>    sceneResources;
+    std::vector<GameObject_ptr>     sceneObjects;
 };
+
+
+using EditorScene_ptr = std::shared_ptr<EditorScene>;
 
 
 /************************************************************************************************/
@@ -62,9 +84,9 @@ public:
 class EditorProject
 {
 public:
-    void AddScene(FlexKit::ResourceBuilder::SceneResource_ptr scene)
+    void AddScene(EditorScene_ptr scene)
     {
-        scenes.emplace_back(ProjectScene{ scene });
+        scenes.emplace_back(scene);
     }
 
     void AddResource(FlexKit::ResourceBuilder::Resource_ptr resource)
@@ -82,10 +104,23 @@ public:
         return out;
     }
 
-    std::vector<ProjectScene>       scenes;
+    void RemoveResource(FlexKit::ResourceBuilder::Resource_ptr resource)
+    {
+        std::erase_if(resources, [&](auto& res) -> bool { return (res.resource == resource); });
+    }
+
+
+    bool LoadProject(const std::string& projectDir);
+    bool SaveProject(const std::string& projectDir);
+
+
+    std::vector<EditorScene_ptr>    scenes;
     std::vector<ProjectResource>    resources;
     ProjectLayout                   layout;
 };
+
+
+/************************************************************************************************/
 
 
 /**********************************************************************

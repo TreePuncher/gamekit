@@ -4,7 +4,126 @@
 namespace FlexKit
 {   /************************************************************************************************/
 
-    
+
+    bool hasSkeletonLoaded(GameObject& gameObject)
+    {
+        return Apply(
+            gameObject,
+            [](SkeletonView& skeleton){ return true; },
+            []{ return false; });
+    }
+
+
+    /************************************************************************************************/
+
+
+    Skeleton* GetSkeleton(GameObject& gameObject)
+    {
+        return Apply(
+            gameObject,
+            [](SkeletonView& view) -> Skeleton* { return view.GetSkeleton(); },
+            []() -> Skeleton* { return nullptr; });
+    }
+
+
+    /************************************************************************************************/
+
+
+    PoseState* GetPoseState(GameObject& gameObject)
+    {
+        return Apply(
+            gameObject,
+            [](SkeletonView& view) -> PoseState* { return &view.GetPoseState(); },
+            []() -> PoseState* { return nullptr; });
+    }
+
+
+    /************************************************************************************************/
+
+
+    void RotateJoint(GameObject& gameObject, JointHandle jointID, const Quaternion Q)
+    {
+        Apply(
+            gameObject,
+            [&](SkeletonView& skeleton)
+            {
+                auto pose = skeleton.GetPose(jointID);
+
+                pose.r = pose.r * Q;
+
+                skeleton.SetPose(jointID, pose);
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    JointHandle GetJointParent(GameObject& gameObject, JointHandle jointID)
+    {
+        return Apply(
+            gameObject,
+            [&](SkeletonView& skeleton) -> JointHandle
+            {
+                return skeleton.GetSkeleton()->Joints[jointID].mParent;
+            },
+            []() -> JointHandle
+            {
+                return InvalidHandle_t;
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    size_t GetJointCount(GameObject& gameObject)
+    {
+        return Apply(
+            gameObject,
+            [&](SkeletonView& skeleton) -> size_t
+            {
+                return skeleton.GetSkeleton()->JointCount;
+            },
+            []() -> size_t
+            {
+                return 0;
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    JointPose GetJointPose(GameObject& gameObject, JointHandle jointID)
+    {
+        return Apply(
+            gameObject,
+            [&](SkeletonView& skeleton) -> JointPose
+            {
+                return skeleton.GetPose(jointID);
+            },
+            [] { return JointPose{}; });
+    }
+
+
+    /************************************************************************************************/
+
+
+    void SetJointPose(GameObject& gameObject, JointHandle jointID, JointPose pose)
+    {
+        Apply(
+            gameObject,
+            [&](SkeletonView& skeleton)
+            {
+                skeleton.SetPose(jointID, pose);
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
     AnimationResource* LoadAnimation(const char* resourceName, iAllocator& allocator)
     {
         auto asset = LoadGameAsset(resourceName);
@@ -419,14 +538,6 @@ namespace FlexKit
 
     /************************************************************************************************/
 
-    FLEXKITAPI inline float4x4 Inverse(const float4x4 m)
-    {
-        const float4x4 MI = XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(m)));
-
-        return MI;
-    }
-
-
 
     UpdateTask& UpdateIKControllers(UpdateDispatcher& dispatcher, double dt)
     {
@@ -452,6 +563,8 @@ namespace FlexKit
                         if (poseState == nullptr || IKController.endEffector == InvalidHandle_t || IKController.targets.size() == 0)
                             return;
 
+                        auto ikRoot = IKController.ikRoot;
+
                         auto GetParentJoint = [&](JointHandle joint) -> JointHandle
                             {
                                 return poseState->Sk->Joints[joint].mParent;
@@ -464,8 +577,8 @@ namespace FlexKit
 
                                 if (parent != InvalidHandle_t)
                                 {
-                                    //return (poseState->CurrentPose[parent] * float4{ 0, 0, 0, 1 }).xyz();
-                                    return (Inverse(skeleton->GetInversePose(parent)) * float4 { 0, 0, 0, 1 }).xyz();
+                                    return (poseState->CurrentPose[parent] * float4{ 0, 0, 0, 1 }).xyz();
+                                    //return (Inverse(skeleton->GetInversePose(parent)) * float4 { 0, 0, 0, 1 }).xyz();
                                 }
                                 else
                                     return float3{ 0, 0, 0 };
@@ -473,11 +586,16 @@ namespace FlexKit
 
                         auto GetRootPosition = [&]
                             {
-                                JointHandle itr = IKController.endEffector;
-
-                                while (GetParentJoint(itr) != InvalidHandle_t, itr = GetParentJoint(itr));
-
-                                return (poseState->CurrentPose[itr] * float4{ 0, 0, 0, 1 }).xyz();
+                                if(ikRoot != InvalidHandle_t)
+                                {
+                                    return (poseState->CurrentPose[ikRoot] * float4{ 0, 0, 0, 1 }).xyz();
+                                }
+                                else
+                                {
+                                    JointHandle itr = IKController.endEffector;
+                                    while (GetParentJoint(itr) != InvalidHandle_t, itr = GetParentJoint(itr));
+                                    return (poseState->CurrentPose[itr] * float4{ 0, 0, 0, 1 }).xyz();
+                                }
                             };
 
 
@@ -485,35 +603,45 @@ namespace FlexKit
                         const float4x4  IT              = FastInverse(WT);
                         const float3    targetPosition  = (IT * float4{ GetPositionW(IKController.targets.front().target), 1 }).xyz();
                         const float3    rootPosition    = GetRootPosition();
+                        const size_t    jointCount      = poseState->JointCount;
 
 
-                        Vector<float3>      jointPositions{ &allocator, poseState->JointCount };
-                        Vector<float>       boneLengths{ &allocator, poseState->JointCount };
-                        Vector<JointHandle> joints{ &allocator, poseState->JointCount };
+                        Vector<float3>      jointPositions  { &allocator, poseState->JointCount };
+                        Vector<float>       boneLengths     { &allocator, poseState->JointCount };
+                        Vector<JointHandle> joints          { &allocator, poseState->JointCount };
 
                         // Get Initial Position in pose space
                         for(auto joint = IKController.endEffector; GetParentJoint(joint) != InvalidHandle_t; joint = GetParentJoint(joint))
                         {
-                            //const float3        jointPosition   = (poseState->CurrentPose[joint] * float4{ 0, 0, 0, 1 }).xyz();
-                            const float3        jointPosition   = (Inverse(skeleton->IPose[joint]) * float4{ 0, 0, 0, 1 }).xyz();
+                            const float3        jointPosition   = (poseState->CurrentPose[joint] * float4{ 0, 0, 0, 1 }).xyz();
+                            //const float3        jointPosition   = (Inverse(skeleton->IPose[joint]) * float4{ 0, 0, 0, 1 }).xyz();
                             const JointHandle   parent          = GetParentJoint(joint);
                             const float3        parentPosition  = GetParentPosition(joint);
                             const float         boneLength      = (parentPosition - jointPosition).magnitude();
 
                             jointPositions.emplace_back(parentPosition);
                             boneLengths.emplace_back(boneLength);
-                            joints.push_back(parent);
+                            joints.emplace_back(parent);
                         }
 
                         const float chainLength = std::accumulate(boneLengths.begin(), boneLengths.end(), 0.0f);
 
                         if (const float D = (jointPositions.back() - targetPosition).magnitude(); D > chainLength)
                         {// Target farther than reach of chain
+                            const size_t jointCount     = poseState->JointCount;
+                            const float3 targetVector   = (targetPosition - rootPosition).normal();
+                            float3 positionOffset       = 0.0f;
 
+                            for (size_t I = 0; I < jointPositions.size(); I++)
+                            {
+                                jointPositions[jointPositions.size() - I - 1] = rootPosition + positionOffset;
+
+                                const auto boneVector = targetVector * boneLengths[jointPositions.size() - I - 1];
+                                positionOffset += boneVector;
+                            }
                         }
                         else
                         {
-                            const size_t jointCount     = poseState->JointCount;
                             const size_t iterationCount = IKController.iterationCount;
 
                             for (size_t I = 0; I < iterationCount; ++I)
@@ -530,8 +658,6 @@ namespace FlexKit
                                     {
                                         float3 span             = position - targetPosition;
                                         float3 boneTargetAdj    = { 0 };
-
-                                        const auto temp = span.normal().dot(boneOrientation);
 
                                         if ( span.magnitudeSq() == 0.0f ||
                                              span.normal().dot(boneOrientation) < 0.0001f)
@@ -554,7 +680,7 @@ namespace FlexKit
                                 }
 
                                 // Backward
-                                for (int J = jointPositions.size() - 1; J >= 0; --J)
+                                for (int J = (int)jointPositions.size() - 1; J >= 0; --J)
                                 {
                                     const float3 boneTarget   = J == (jointPositions.size() - 1) ? rootPosition : jointPositions[J + 1];
                                     const float3 position     = jointPositions[J];
@@ -571,6 +697,7 @@ namespace FlexKit
                             }
                         }
 
+                        // convert solution to joint transforms
                         Vector<float3> solution{ &allocator, poseState->JointCount };
                         const float3 T      = (targetPosition - jointPositions.front()).normal();
                         const float3 tail   = jointPositions.front() + T * boneLengths.front();
@@ -595,9 +722,9 @@ namespace FlexKit
                         if (!pose)
                             return;
 
-                        for (size_t I = 0; I < 3; I++)
+                        for (size_t I = 0; I < jointCount; I++)
                         {
-                            const float4x4 parentT = GetParentTransform(JointHandle{ I });
+                            const float4x4 parentT = GetParentTransform(JointHandle{ (uint32_t)I });
                             const float4x4 parentI = Inverse(parentT);
                             const float4x4 IP      = skeleton->IPose[I];
 
@@ -610,13 +737,9 @@ namespace FlexKit
                             const float3 U          = (A - B).normal();
                             const float3 left       = U.cross(F).normal();
                             const float3 forward    = left.cross(U).normal();
+                            const Quaternion q      = Vector2Quaternion(left, U, forward);
 
-                            const float temp = left.magnitude();
-                            const float tmep2 = forward.magnitude();
-
-                            const Quaternion q = Vector2Quaternion(left, U, forward);
-
-                            transforms.push_back(Quaternion2Matrix(q) * parentT);
+                            transforms.emplace_back(Quaternion2Matrix(q) * parentT);
                             pose->jointPose[I].r = q;
                         }
 

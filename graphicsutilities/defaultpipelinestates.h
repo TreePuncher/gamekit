@@ -63,40 +63,6 @@ namespace FlexKit
 	// TODO: move this to a frame graph function
 
 
-	FLEXKITAPI struct OcclusionCuller
-	{
-		/*
-		OcclusionCuller(OcclusionCuller& rhs) :
-			Head(rhs.Head),
-			Max(rhs.Max),
-			Heap(rhs.Heap),
-			Predicates(rhs.Predicates) {}
-		*/
-
-		uint32_t Head;
-        uint32_t Max;
-        uint32_t Idx;
-
-		ID3D12QueryHeap*		Heap[3];
-		FrameBufferedResource	Predicates;
-		DepthBuffer				OcclusionBuffer;
-		uint2					HW;
-
-		ID3D12PipelineState*	PSO;
-
-		ID3D12Resource* Get();
-        uint32_t		GetNext();
-
-		void Clear();
-		void Increment();
-		void Release();
-
-	};
-
-
-	/************************************************************************************************/
-
-
 	//FLEXKITAPI OcclusionCuller	CreateOcclusionCuller	( RenderSystem* RS, size_t Count, uint2 OcclusionBufferSize, bool UseFloat = true );
 	//FLEXKITAPI void				OcclusionPass			( RenderSystem* RS, PVS* Set, OcclusionCuller* OC, ID3D12GraphicsCommandList* CL, GeometryTable* GT, Camera* C );
 }

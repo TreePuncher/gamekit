@@ -214,14 +214,15 @@ namespace FlexKit
 
 		virtual ~FrameworkState() {}
 
-		virtual UpdateTask* Update			(                       EngineCore&, UpdateDispatcher&, double dT) { return nullptr; }
-		virtual UpdateTask* Draw			(UpdateTask* update,    EngineCore&, UpdateDispatcher&, double dT, FrameGraph& frameGraph) { return nullptr;}
+		virtual UpdateTask* Update	(                       EngineCore&, UpdateDispatcher&, double dT) { return nullptr; }
+		virtual UpdateTask* Draw	(UpdateTask* update,    EngineCore&, UpdateDispatcher&, double dT, FrameGraph& frameGraph) { return nullptr;}
 
-		virtual void        PostDrawUpdate	(EngineCore&, double dT) {}
+		virtual void PostDrawUpdate	(EngineCore&, double dT) {}
 
 		virtual bool EventHandler	(Event evt) { return false;}
 
 		GameFramework&	framework;
+
 	protected:
 
 		FrameworkState(GameFramework& in_framework) : framework(in_framework) {}

@@ -147,6 +147,7 @@ void EditorScriptEngine::LoadModules()
                 {
                     // Error!
                     // TODO: log to script error window
+                    continue;
                 }
 
                 auto asModule = builder.GetModule();

@@ -309,6 +309,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+    /*
 
 	OcclusionCuller CreateOcclusionCuller(RenderSystem* RS, uint32_t count, uint2 OcclusionBufferSize, bool Float)
 	{
@@ -345,6 +346,7 @@ namespace FlexKit
 		Tex2D_Desc.Write			= false;
 		*/
 
+        /*
 		DepthBuffer DB;
 		FlexKit::DepthBuffer_Desc Depth_Desc;
 		Depth_Desc.BufferCount		= 3;
@@ -367,17 +369,17 @@ namespace FlexKit
 		Out.OcclusionBuffer = DB;
 		Out.HW              = OcclusionBufferSize;
 
-		return Out;
+        return {};
 	}
-
+    */
 
 	/************************************************************************************************/
 
 
+        /*
 	void OcclusionPass(RenderSystem* RS, PVS* Set, OcclusionCuller* OC, ID3D12GraphicsCommandList* CL, Camera* C)
 	{
 		FK_ASSERT(0);
-        /*
 		auto OCHeap = OC->Heap[OC->Idx];
 		auto DSV	= RS->_ReserveDSVHeap(1);
 
@@ -457,42 +459,8 @@ namespace FlexKit
 
 		CL->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(OC->Predicates.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT));
+	}
         */
-	}
-
-
-	/************************************************************************************************/
-
-
-    uint32_t OcclusionCuller::GetNext() {
-		return Head++;
-	}
-
-	void OcclusionCuller::Clear() {
-		Head = 0;
-	}
-
-	void OcclusionCuller::Release()
-	{
-		for (auto& H : Heap) {
-			H->Release();
-			H = nullptr;
-		}
-	
-		Predicates.Release();
-	}
-
-	ID3D12Resource* OcclusionCuller::Get()
-	{
-		return Predicates.Get();
-	}
-
-	void OcclusionCuller::Increment()
-	{
-		IncrementCurrent(&OcclusionBuffer);
-		Predicates.IncrementCounter();
-		Clear();
-	}
 
 
     /************************************************************************************************/

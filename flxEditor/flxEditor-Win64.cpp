@@ -18,7 +18,6 @@
 #include "EditorProject.h"
 #include "EditorConfig.h"
 #include "EditorMainWindow.h"
-#include "EditorRenderer.h"
 #include "EditorApplication.h"
 
 #include <allsourcefiles.cpp>
@@ -27,6 +26,8 @@
 #include "..\FlexKitResourceCompiler\SceneResource.cpp"
 #include "..\FlexKitResourceCompiler\TextureResourceUtilities.cpp"
 #include "..\FlexKitResourceCompiler\ResourceUtilities.cpp"
+#include "..\FlexKitResourceCompiler\Animation.cpp"
+
 #include <angelscript/scriptbuilder/scriptbuilder.cpp>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -42,9 +43,8 @@ int main(int argc, char* argv[])
 {
     auto qtApplication      = new QApplication{ argc, argv };
     auto editor             = new EditorApplication{ *qtApplication };
-    auto returnValue        = qtApplication->exec();
 
-    return returnValue;
+    return qtApplication->exec();
 }
 
 

@@ -465,6 +465,31 @@ namespace FlexKit::ResourceBuilder
 
     std::shared_ptr<iResource>  CreateTextureResource(FlexKit::TextureBuffer& textureBuffer, std::string formatStr)
     {
+        if (textureBuffer.Buffer == nullptr)
+            return {};
+
+        auto resource = std::make_shared<TextureResource>();
+
+        void* buffer = malloc(textureBuffer.BufferSize());
+        memcpy(buffer, textureBuffer.Buffer, textureBuffer.BufferSize());
+
+        resource->ID          = "";
+        resource->WH          = textureBuffer.WH;
+        resource->assetHandle = rand();
+        resource->buffer      = buffer;
+        resource->bufferSize  = textureBuffer.BufferSize();
+        resource->format      = FormatStringToDeviceFormat(formatStr);
+        resource->mipLevels   = 1;
+
+        return resource;
+    }
+
+
+    /************************************************************************************************/
+
+
+    std::shared_ptr<iResource>  CreateCompressedTextureResource(FlexKit::TextureBuffer& textureBuffer, std::string formatStr)
+    {
         FK_ASSERT(false, "Not Implemented");
 
         std::printf("building texture resource\n");
@@ -568,7 +593,7 @@ namespace FlexKit::ResourceBuilder
 
         resource->ID          = "";
         resource->WH          = { dstMipSet.m_nWidth, dstMipSet.m_nHeight };
-        resource->assetHandle = 0;
+        resource->assetHandle = rand();
         resource->buffer      = temp;
         resource->bufferSize  = bufferSize;
         resource->format      = FormatStringToDeviceFormat(formatStr);

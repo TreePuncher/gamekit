@@ -600,6 +600,31 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    bool DescriptorHeap::SetSRV(Context& ctx, size_t idx, ResourceHandle handle, uint MipOffset, DeviceFormat format)
+    {
+        if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
+			return false;
+
+		FillState[idx] = true;
+
+		auto dxFormat = TextureFormat2DXGIFormat(format);
+
+		PushTextureToDescHeap(
+			ctx.renderSystem,
+			dxFormat,
+            MipOffset,
+			handle,
+			IncrementHeapPOS(
+				descriptorHeap,
+				ctx.renderSystem->DescriptorCBVSRVUAVSize,
+				idx));
+
+		return true;
+    }
+
 
 	/************************************************************************************************/
 
@@ -727,6 +752,61 @@ namespace FlexKit
 
 		return true;
 	}
+
+
+    /************************************************************************************************/
+
+
+    bool DescriptorHeap::SetUAVTexture(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
+    {
+        if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
+			return false;
+
+		FillState[idx] = true;
+
+        Texture2D tex;
+        tex.WH          = ctx.renderSystem->GetTextureWH(handle);
+        tex.Texture     = ctx.renderSystem->GetDeviceResource(handle);
+        tex.Format      = TextureFormat2DXGIFormat(format);
+
+		PushUAV2DToDescHeap(
+			ctx.renderSystem,
+			tex, 
+			IncrementHeapPOS(
+				descriptorHeap,
+				ctx.renderSystem->DescriptorCBVSRVUAVSize,
+				idx));
+
+        return true;
+    }
+
+
+    /************************************************************************************************/
+
+
+    bool DescriptorHeap::SetUAVTexture(Context& ctx, size_t idx, size_t mipLevel, ResourceHandle handle, DeviceFormat format)
+    {
+        if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
+			return false;
+
+		FillState[idx] = true;
+
+        Texture2D tex;
+        tex.WH          = ctx.renderSystem->GetTextureWH(handle);
+        tex.Texture     = ctx.renderSystem->GetDeviceResource(handle);
+        tex.Format      = TextureFormat2DXGIFormat(format);
+
+        PushUAV2DToDescHeap(
+			ctx.renderSystem,
+			tex,
+            mipLevel,
+			IncrementHeapPOS(
+				descriptorHeap,
+				ctx.renderSystem->DescriptorCBVSRVUAVSize,
+				idx));
+
+        return true;
+    }
 
 
     /************************************************************************************************/
@@ -1187,6 +1267,8 @@ namespace FlexKit
             barrier.Type                = Barrier::Type::Aliasing;
             barrier.aliasedResources[0] = res->aliasedResources[0] == InvalidHandle_t ? before : res->aliasedResources[0];
             barrier.aliasedResources[1] = res->aliasedResources[1] == InvalidHandle_t ? after  : res->aliasedResources[1];
+
+            PendingBarriers.push_back(barrier);
         }
 	}
 
@@ -1194,7 +1276,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void Context::AddUAVBarrier(ResourceHandle handle)
+    void Context::AddUAVBarrier(ResourceHandle handle, uint32_t subresource)
     {
         auto res = find(PendingBarriers,
             [&](Barrier& rhs) -> bool
@@ -1209,6 +1291,7 @@ namespace FlexKit
             Barrier barrier;
             barrier.Type            = Barrier::Type::UAV;
             barrier.resourceHandle  = handle;
+            barrier.subResource     = subresource;
 
             PendingBarriers.push_back(barrier);
         }
@@ -1253,6 +1336,7 @@ namespace FlexKit
 			NewBarrier.NewState		= State;
 			NewBarrier.Type			= Barrier::Type::StreamOut;
 			NewBarrier.streamOut	= streamOut;
+
 			PendingBarriers.push_back(NewBarrier);
 		}
 	}
@@ -1261,7 +1345,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::AddResourceBarrier(ResourceHandle resource, DeviceResourceState Before, DeviceResourceState State)
+	void Context::AddResourceBarrier(ResourceHandle resource, DeviceResourceState Before, DeviceResourceState State, uint32_t subResource)
 	{
 		auto res = find(PendingBarriers, 
 			[&](Barrier& rhs) -> bool
@@ -1290,6 +1374,7 @@ namespace FlexKit
 			NewBarrier.NewState			= State;
 			NewBarrier.Type				= Barrier::Type::Resource;
 			NewBarrier.resourceHandle	= resource;
+
 			PendingBarriers.push_back(NewBarrier);
 		}
 	}
@@ -1318,6 +1403,7 @@ namespace FlexKit
 			NewBarrier.NewState         = State;
 			NewBarrier.Type             = Barrier::Type::Resource;
 			NewBarrier.resourceHandle   = resource;
+
 			PendingBarriers.push_back(NewBarrier);
 		}
 	}
@@ -2758,10 +2844,10 @@ namespace FlexKit
 						auto newSOState			= DRS2D3DState((B.NewState == DeviceResourceState::DRS_STREAMOUTCLEAR) ? DeviceResourceState::DRS_STREAMOUT : B.NewState);
 
 						if (B.OldState != B.NewState)
-							Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(resource,	currentState, newState));
+							Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(resource,	currentState, newState, B.subResource));
 
 						if(currentSOState != newSOState)
-							Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(SOresource, currentSOState, newSOState));
+							Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(SOresource, currentSOState, newSOState, B.subResource));
 					}
 					else
 					{
@@ -2771,7 +2857,7 @@ namespace FlexKit
 						auto newState			= DRS2D3DState(B.NewState);
 
 						if (B.OldState != B.NewState)
-							Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(resource, currentState, newState));
+							Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(resource, currentState, newState, B.subResource));
 					}
 				}	break;
                 case Barrier::Type::Generic:
@@ -2790,7 +2876,7 @@ namespace FlexKit
 
 					if (B.OldState != B.NewState)
 						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-							resource, currentState, newState));
+							resource, currentState, newState, B.subResource));
 				}	break;
                 case Barrier::Type::Resource:
 				{
@@ -2800,7 +2886,7 @@ namespace FlexKit
 
 					if (B.OldState != B.NewState)
 						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-							resource, currentState, newState));
+							resource, currentState, newState, B.subResource));
 				}	break;
                 case Barrier::Type::Aliasing:
 				{
@@ -3830,15 +3916,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Release(DepthBuffer* DB)
-	{
-		for(auto R : DB->Buffer)if(R) R->Release();
-	}
-
-
-	/************************************************************************************************/
-
-
 	void RenderSystem::Release()
 	{
 		if (!Memory)
@@ -4269,7 +4346,10 @@ namespace FlexKit
 
 	ResourceHandle RenderSystem::CreateDepthBuffer( const uint2 WH, const bool UseFloat, const size_t bufferCount)
 	{
-		auto resource = CreateGPUResource(GPUResourceDesc::DepthTarget(WH, UseFloat ? DeviceFormat::D32_FLOAT : DeviceFormat::D24_UNORM_S8_UINT));
+        auto resourceDesc           = GPUResourceDesc::DepthTarget(WH, UseFloat ? DeviceFormat::D32_FLOAT : DeviceFormat::D24_UNORM_S8_UINT);
+        resourceDesc.bufferCount    = bufferCount;
+
+		auto resource = CreateGPUResource(resourceDesc);
 		SetDebugName(resource, "DepthBuffer");
 
 		return resource;
@@ -6094,6 +6174,10 @@ namespace FlexKit
 			return;
 
 		const auto UserIdx	= Handles[handle];
+
+        if (UserIdx == -1)
+            return;
+
 		auto& UserEntry		= UserEntries[UserIdx];
 		const auto ResIdx	= UserEntry.ResourceIdx;
 		auto& resource		= Resources[ResIdx];
@@ -8216,6 +8300,32 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    DescHeapPOS PushTextureToDescHeap(RenderSystem* RS, DXGI_FORMAT format, uint32_t highestMipLevel, ResourceHandle handle, DescHeapPOS POS)
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC ViewDesc = {}; {
+			const auto mipCount     = RS->GetTextureMipCount(handle);
+			const auto arraySize    = RS->GetTextureArraySize(handle);
+
+			ViewDesc.Format                             = format;
+			ViewDesc.Shader4ComponentMapping            = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			ViewDesc.ViewDimension                      = D3D12_SRV_DIMENSION_TEXTURE2D;
+			ViewDesc.Texture2DArray.MipLevels           = Max(mipCount - highestMipLevel, 1);
+			ViewDesc.Texture2DArray.MostDetailedMip     = highestMipLevel;
+			ViewDesc.Texture2DArray.PlaneSlice          = 0;
+			ViewDesc.Texture2DArray.ResourceMinLODClamp = 0;
+			ViewDesc.Texture2DArray.ArraySize           = arraySize;
+		}
+
+		auto debug = RS->GetDeviceResource(handle);
+		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(handle), &ViewDesc, POS);
+
+		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
+	}
+
+
 	/************************************************************************************************/
 
 
@@ -8245,6 +8355,23 @@ namespace FlexKit
 		UAVDesc.Format               = tex.Format;
 		UAVDesc.ViewDimension        = D3D12_UAV_DIMENSION_TEXTURE2D;
 		UAVDesc.Texture2D.MipSlice   = 0;
+		UAVDesc.Texture2D.PlaneSlice = 0;
+
+		RS->pDevice->CreateUnorderedAccessView(tex, nullptr, &UAVDesc, POS);
+		
+		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
+	}
+
+
+    /************************************************************************************************/
+
+
+	DescHeapPOS PushUAV2DToDescHeap(RenderSystem* RS, Texture2D tex, uint32_t mipLevel, DescHeapPOS POS)
+	{
+		D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc;
+		UAVDesc.Format               = tex.Format;
+		UAVDesc.ViewDimension        = D3D12_UAV_DIMENSION_TEXTURE2D;
+		UAVDesc.Texture2D.MipSlice   = mipLevel;
 		UAVDesc.Texture2D.PlaneSlice = 0;
 
 		RS->pDevice->CreateUnorderedAccessView(tex, nullptr, &UAVDesc, POS);

@@ -2,6 +2,7 @@
 #include "DXRenderWindow.h"
 #include "EditorCodeEditor.h"
 #include "EditorOutputWindow.h"
+#include "EditorViewport.h"
 
 #include <QtWidgets/qmenubar.h>
 #include <chrono>
@@ -18,12 +19,17 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
     QtApplication   { IN_application    },
     project         { IN_project        },
     renderer        { IN_renderer       },
-    scriptEngine    { IN_scriptEngine   }
+    scriptEngine    { IN_scriptEngine   },
+    viewport        { new EditorViewport{ IN_renderer, this } },
+    tabBar          { new QTabWidget{} }
 {
-    resize({ 800, 600 });
     fileMenu       = menuBar()->addMenu("File");
     importMenu     = fileMenu->addMenu("Import");
     exportMenu     = fileMenu->addMenu("Export");
+
+    tabBar->addTab(viewport, "Scene View");
+
+    setCentralWidget(tabBar);
 
     auto quitAction = fileMenu->addAction("Quit");
     quitAction->setShortcut(tr("CTRL+Q"));
@@ -76,7 +82,7 @@ QTextEdit* EditorMainWindow::AddTextView()
     textDocklet->setFloating(true);
     textDocklet->show();
 
-    addDockWidget(Qt::LeftDockWidgetArea, textDocklet);
+    addDockWidget(Qt::RightDockWidgetArea, textDocklet);
 
     return textEditor;
 }
@@ -94,7 +100,7 @@ void EditorMainWindow::AddEditorView()
     docklet->setWidget(textEditor);
     docklet->show();
 
-    addDockWidget(Qt::LeftDockWidgetArea, docklet);
+    addDockWidget(Qt::RightDockWidgetArea, docklet);
 }
 
 
@@ -199,7 +205,7 @@ DXRenderWindow* EditorMainWindow::AddViewPort()
     docklet->setWidget(viewPortWidget);
     docklet->show();
 
-    addDockWidget(Qt::LeftDockWidgetArea, docklet);
+    addDockWidget(Qt::RightDockWidgetArea, docklet);
 
     return viewPortWidget;
 }
@@ -219,7 +225,7 @@ ResourceBrowserWidget* EditorMainWindow::AddResourceList()
     docklet->setWidget(resourceBrowser);
     docklet->show();
 
-    addDockWidget(Qt::LeftDockWidgetArea, docklet);
+    addDockWidget(Qt::RightDockWidgetArea, docklet);
 
     return resourceBrowser;
 }
@@ -239,7 +245,7 @@ void EditorMainWindow::AddModelViewer()
     docklet->setWidget(modelViewer);
     docklet->show();
 
-    addDockWidget(Qt::LeftDockWidgetArea, docklet);
+    addDockWidget(Qt::RightDockWidgetArea, docklet);
 }
 
 
@@ -249,13 +255,12 @@ void EditorMainWindow::AddModelViewer()
 TextureViewer* EditorMainWindow::AddTextureViewer(TextureResource* res)
 {
     auto docklet        = new QDockWidget{ this };
-    auto textureViewer  = new TextureViewer{ renderer, nullptr };
+    auto textureViewer  = new TextureViewer{ renderer, this };
 
     docklet->setWidget(textureViewer);
     docklet->setWindowTitle("TextureViewer");
-    docklet->resize({800, 600});
     docklet->show();
-
+    
     return textureViewer;
 }
 

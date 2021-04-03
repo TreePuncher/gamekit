@@ -284,7 +284,12 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::PixelShaderResource(ResourceHandle handle)
 	{
-		return AddReadableResource(handle, DeviceResourceState::DRS_PixelShaderResource);
+        if (auto frameResource = AddReadableResource(handle, DeviceResourceState::DRS_PixelShaderResource); frameResource != InvalidHandle_t)
+            return frameResource;
+
+        Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
+
+        return AddReadableResource(handle, DeviceResourceState::DRS_PixelShaderResource);
 	}
 
 
@@ -293,6 +298,11 @@ namespace FlexKit
 
     FrameResourceHandle FrameGraphNodeBuilder::NonPixelShaderResource(ResourceHandle handle)
     {
+        if (auto frameResource = AddReadableResource(handle, DeviceResourceState::DRS_NonPixelShaderResource); frameResource != InvalidHandle_t)
+            return frameResource;
+
+        Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
+
         return AddReadableResource(handle, DeviceResourceState::DRS_NonPixelShaderResource);
     }
 
@@ -300,9 +310,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle FrameGraphNodeBuilder::CopySource(ResourceHandle  handle)
+	FrameResourceHandle FrameGraphNodeBuilder::CopySource(ResourceHandle handle)
 	{
-		return AddReadableResource(handle, DeviceResourceState::DRS_CopySrc);
+        if (auto frameResource = AddReadableResource(handle, DeviceResourceState::DRS_CopySrc); frameResource != InvalidHandle_t)
+            return frameResource;
+
+        Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
+
+        return AddReadableResource(handle, DeviceResourceState::DRS_CopySrc);
 	}
 
     /************************************************************************************************/
@@ -310,6 +325,11 @@ namespace FlexKit
 
     FrameResourceHandle FrameGraphNodeBuilder::CopyDest(ResourceHandle  handle)
     {
+        if (auto frameResource = AddWriteableResource(handle, DeviceResourceState::DRS_CopyDest); frameResource != InvalidHandle_t)
+            return frameResource;
+
+        Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
+
         return AddWriteableResource(handle, DeviceResourceState::DRS_CopyDest);
     }
 
@@ -708,6 +728,9 @@ namespace FlexKit
             workers.push_back(&worker);
             barrier.AddWork(worker);
         }
+
+        if (!contexts.size())
+            return;
 
         auto& ctx = *contexts.front();
         for (auto acquired : acquiredResources)

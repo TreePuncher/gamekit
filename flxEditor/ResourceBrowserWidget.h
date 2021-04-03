@@ -35,6 +35,8 @@ public:
     FlexKit::ResourceBuilder::Resource_ptr  GetResource(const uint64_t index);
     void                                    RefreshTable();
 
+    void                                    Remove(FlexKit::ResourceBuilder::Resource_ptr);
+
 private:
 
     size_t          rows = 0;
@@ -46,6 +48,20 @@ private:
 /************************************************************************************************/
 
 
+using ResourceViewID = uint32_t;
+
+struct IResourceViewer
+{
+    IResourceViewer(ResourceViewID IN_ID) : resourceID{ IN_ID } {}
+
+    ResourceViewID resourceID = -1;
+
+    virtual void operator () (FlexKit::ResourceBuilder::Resource_ptr) = 0;
+};
+
+using ResourceViewer_ptr    = std::shared_ptr<IResourceViewer>;
+using ResourceViewMap       = std::map<ResourceViewID, std::shared_ptr<IResourceViewer>>;
+
 class ResourceBrowserWidget : public QWidget
 {
 	Q_OBJECT
@@ -55,6 +71,7 @@ public:
 	~ResourceBrowserWidget();
 
     void resizeEvent(QResizeEvent* event) override;
+    static void AddResourceViewer(ResourceViewer_ptr);
 
 public slots:
 
@@ -65,6 +82,8 @@ private:
     ResourceItemModel           model;
     EditorRenderer&             renderer;
 	Ui::ResourceBrowserWidget   ui;
+
+    inline static ResourceViewMap      resourceViewers;
 };
 
 

@@ -10,15 +10,24 @@ DXRenderWindow::DXRenderWindow(FlexKit::RenderSystem& renderSystem, QWidget *par
     QWidget         { parent },
     renderWindow    { FlexKit::CreateWin32RenderWindowFromHWND(renderSystem, (HWND)winId()).first }
 {
+    hide();
+
     QPalette pal = palette();
     pal.setColor(QPalette::Window, Qt::black);
     setAutoFillBackground(true);
     setPalette(pal);
 
+    setMinimumSize(100, 100);
+
     setFocusPolicy(Qt::StrongFocus);
     setAttribute(Qt::WA_NativeWindow);
     setAttribute(Qt::WA_PaintOnScreen);
     setAttribute(Qt::WA_NoSystemBackground);
+    setContentsMargins(0, 0, 0, 0);
+
+    adjustSize();
+
+    show();
 }
 
 
@@ -116,6 +125,7 @@ void DXRenderWindow::resizeSwapChain(int width, int height)
 void DXRenderWindow::resizeEvent(QResizeEvent* evt)
 {
     QWidget::resizeEvent(evt);
+
 
     const auto widgetSize = size();
     const auto width      = widgetSize.width();

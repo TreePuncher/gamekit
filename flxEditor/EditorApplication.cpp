@@ -80,9 +80,8 @@ void EditorProjectScriptConnector::Register(EditorScriptEngine& engine)
 
 void EditorProjectScriptConnector::CreateTexture2DResource(FlexKit::TextureBuffer* buffer, uint32_t resourceID, std::string* resourceName, std::string* format)
 {
-    stbi_write_png("temp.png", (int)buffer->WH[0], (int)buffer->WH[1], 4, buffer->Buffer, 4096);
-    auto newResource = FlexKit::ResourceBuilder::CreateTextureResource("temp.png", *format);
-    auto texture = std::static_pointer_cast<FlexKit::ResourceBuilder::TextureResource>(newResource);
+    auto newResource    = FlexKit::ResourceBuilder::CreateTextureResource(*buffer, *format);
+    auto texture        = std::static_pointer_cast<FlexKit::ResourceBuilder::TextureResource>(newResource);
 
     texture->ID             = *resourceName;
     texture->assetHandle    = resourceID;

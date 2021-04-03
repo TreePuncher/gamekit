@@ -150,6 +150,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    Camera::ConstantBuffer CameraComponent::GetCameraPreviousConstants(CameraHandle handle)
+    {
+        return GetCamera(handle).GetCameraPreviousConstants();
+    }
+
+
+    /************************************************************************************************/
+
+
 	Camera::ConstantBuffer CameraComponent::GetCameraConstants(CameraHandle handle)
 	{
 		return GetCamera(handle).GetConstants();

@@ -160,7 +160,7 @@ namespace FlexKit::ResourceBuilder
 
 		return out;
 	}
-    
+
 
 	MeshResource_ptr CreateMeshResource(std::vector<LODLevel>& lods, const std::string& ID, const MetaDataList& metaData, const bool enableSubDiv)
 	{
@@ -273,6 +273,7 @@ namespace FlexKit::ResourceBuilder
 			}
 		}
 #endif
+
 		meshOut->Skeleton			= lods[0].subMeshs[0].skeleton;
 		meshOut->AnimationData		= lods[0].subMeshs[0].Weights ? EAnimationData::EAD_Skin : 0;
 		meshOut->Info.Max			= aabb.Max;

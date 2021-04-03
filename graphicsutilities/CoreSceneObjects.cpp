@@ -314,7 +314,13 @@ namespace FlexKit
 		XMProj		= CreatePerspective(this, invert);
 		XMPV		= XMMatrixTranspose(XMMatrixTranspose(XMProj) * XMView);
 		XMIV		= XMMatrixTranspose(XMMatrixInverse(nullptr, XMMatrixTranspose(CreatePerspective(this, invert)) * XMView));
-		
+
+        previous.WT     = WT;
+        previous.View   = View;
+        previous.PV     = PV;
+        previous.Proj   = Proj;
+        previous.IV     = IV;
+
 		WT		= XMMatrixToFloat4x4(&XMWT);
 		View	= XMMatrixToFloat4x4(&XMView);
 		PV		= XMMatrixToFloat4x4(&XMPV);
@@ -326,7 +332,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Camera::ConstantBuffer Camera::GetConstants()
+	Camera::ConstantBuffer Camera::GetConstants() const
 	{
 		DirectX::XMMATRIX XMWT   = Float4x4ToXMMATIRX(&WT);
 		DirectX::XMMATRIX XMView = DirectX::XMMatrixInverse(nullptr, XMWT);
@@ -339,8 +345,6 @@ namespace FlexKit
 		NewData.PVI             = XMMatrixToFloat4x4(XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, XMMatrixTranspose(Float4x4ToXMMATIRX(NewData.Proj)) * XMView)));
 		NewData.MinZ            = Near;
 		NewData.MaxZ            = Far;
-
-		PV = NewData.PV;
 
 		NewData.WPOS[0]         = WT[0][3];
 		NewData.WPOS[1]         = WT[1][3];
@@ -361,6 +365,41 @@ namespace FlexKit
 
 		return NewData;
 	}
+
+
+    Camera::ConstantBuffer Camera::GetCameraPreviousConstants() const
+    {
+        DirectX::XMMATRIX XMWT   = Float4x4ToXMMATIRX(&previous.WT);
+		DirectX::XMMATRIX XMView = DirectX::XMMatrixInverse(nullptr, XMWT);
+
+		Camera::ConstantBuffer NewData;
+		NewData.Proj            = previous.Proj;
+		NewData.View			= previous.View.Transpose();
+		NewData.ViewI           = previous.WT.Transpose();
+		NewData.PV              = XMMatrixToFloat4x4(XMMatrixTranspose(XMMatrixTranspose(Float4x4ToXMMATIRX(NewData.Proj)) * XMView));
+		NewData.PVI             = XMMatrixToFloat4x4(XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, XMMatrixTranspose(Float4x4ToXMMATIRX(NewData.Proj)) * XMView)));
+		NewData.MinZ            = previous.nearClip;
+		NewData.MaxZ            = previous.farClip;
+
+		NewData.WPOS[0]         = previous.WT[0][3];
+		NewData.WPOS[1]         = previous.WT[1][3];
+		NewData.WPOS[2]         = previous.WT[2][3];
+		NewData.WPOS[3]         = 0;
+
+		const float Y = tan(previous.FOV / 2);
+		const float X = Y * previous.aspectRatio;
+
+		NewData.TLCorner_VS = float3(-X, Y, -1);
+		NewData.TRCorner_VS = float3(X, Y, -1);
+
+		NewData.BLCorner_VS = float3(-X, -Y, -1);
+		NewData.BRCorner_VS = float3(X, -Y, -1);
+
+		NewData.FOV         = previous.FOV;
+		NewData.AspectRatio = previous.aspectRatio;
+
+		return NewData;
+    }
 
 
 	float4x4 Camera::GetPV()
