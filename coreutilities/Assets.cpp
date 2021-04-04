@@ -384,6 +384,10 @@ namespace FlexKit
     bool LoadLOD(TriMesh* triMesh, uint level, RenderSystem& renderSystem, CopyContextHandle copyCtx, iAllocator& memory)
     {
         auto readCtx    = OpenReadContext(triMesh->assetHandle);
+
+        if (!readCtx)
+            return false;
+
         auto& lod       = triMesh->lods[level];
 
         TriMesh::LOD_Runtime::LOD_State lodState = lod.state.load();
@@ -422,6 +426,121 @@ namespace FlexKit
     }
 
 
+    /************************************************************************************************/
+
+
+    bool LoadAllLODFromMemory(TriMesh* triMesh, const char* buffer, const size_t bufferSize, RenderSystem& renderSystem, CopyContextHandle copyCtx, iAllocator& memory)
+    {
+        const size_t lodCount = triMesh->lods.size();
+        for (auto& lod : triMesh->lods)
+        {
+            TriMesh::LOD_Runtime::LOD_State lodState = lod.state.load();
+
+            if (lodState != TriMesh::LOD_Runtime::LOD_State::Unloaded)
+                return false;
+
+            if (!lod.state.compare_exchange_strong(lodState, TriMesh::LOD_Runtime::LOD_State::Loading))
+                return false;
+
+            auto lodBuffer  = (char*)memory.malloc(lod.lodSize);
+
+            FlexKit::LODlevel lodHeader;
+            memcpy(&lodHeader, buffer + lod.lodFileOffset, sizeof(LODlevel));
+
+            auto buffer2 = (char*)memory.malloc(lod.lodSize);
+            memcpy(buffer2, buffer + lod.lodFileOffset, lod.lodSize);
+
+
+		    for (auto& vertexBuffer : lodHeader.descriptor.buffers)
+		    {
+			    if (vertexBuffer.size)
+			    {
+                    float* temp = (float*)(buffer2 + vertexBuffer.Begin);
+				    auto View   = new (memory._aligned_malloc(sizeof(VertexBufferView))) VertexBufferView((byte*)((char*)buffer2 + vertexBuffer.Begin), vertexBuffer.size);
+				    View->SetTypeFormatSize((VERTEXBUFFER_TYPE)vertexBuffer.Type, (VERTEXBUFFER_FORMAT)vertexBuffer.Format, vertexBuffer.size / vertexBuffer.Format );
+				    lod.buffers.push_back(View);
+			    }
+		    }
+
+            CreateVertexBuffer(renderSystem, copyCtx, lod.buffers, lod.buffers.size(), lod.vertexBuffer);
+
+            const size_t subMeshCount = lodHeader.descriptor.subMeshCount;
+            for (size_t I = 0; I < subMeshCount; I++)
+                lod.subMeshes.push_back(lodHeader.subMeshes[I]);
+
+            lod.state = TriMesh::LOD_Runtime::LOD_State::Loaded;
+        }
+
+        return true;
+    }
+
+
+    /************************************************************************************************/
+
+
+    bool Buffer2TriMesh(RenderSystem* RS, CopyContextHandle copyCtx, const char* buffer, size_t bufferSize, iAllocator* Memory, TriMesh* triMesh, bool ClearBuffers)
+    {
+		TriMeshAssetBlob* Blob  = (TriMeshAssetBlob*)buffer;
+		size_t BufferCount      = 0;
+
+		triMesh->SkinTable	    = nullptr;
+		triMesh->SkeletonGUID   = Blob->header.SkeletonGuid;
+		triMesh->Skeleton	    = nullptr;
+		triMesh->Info.Min.x     = Blob->header.Info.maxx;
+		triMesh->Info.Min.y     = Blob->header.Info.maxy;
+		triMesh->Info.Min.z     = Blob->header.Info.maxz;
+		triMesh->Info.Max.x     = Blob->header.Info.minx;
+		triMesh->Info.Max.y     = Blob->header.Info.miny;
+		triMesh->Info.Max.z     = Blob->header.Info.minz;
+		triMesh->Info.r		    = Blob->header.Info.r;
+		triMesh->Memory		    = Memory;
+        triMesh->assetHandle    = Blob->header.GUID;
+        triMesh->TriMeshID      = Blob->header.GUID;
+
+        triMesh->BS     = { { Blob->header.BS[0], Blob->header.BS[1], Blob->header.BS[2] }, Blob->header.BS[3] };
+        triMesh->AABB   =
+        { 
+			{ Blob->header.AABB[0], Blob->header.AABB[1], Blob->header.AABB[2] },
+			{ Blob->header.AABB[3], Blob->header.AABB[4], Blob->header.AABB[5] }
+		};
+
+            
+		if (strlen(Blob->header.ID))
+		{
+            triMesh->ID = (char*)Memory->malloc(64);
+			strcpy_s((char*)triMesh->ID, 64, Blob->header.ID);
+		} else
+            triMesh->ID = nullptr;
+
+
+        auto lodCount = Blob->header.LODCount;
+
+        const size_t tableSize = lodCount * sizeof(LODEntry);
+        LODEntry* lodTable = reinterpret_cast<LODEntry*>(Memory->malloc(tableSize));
+        memcpy(lodTable, Blob->Memory, tableSize);
+
+        for (size_t I = 0; I < lodCount; I++)
+        {
+            TriMesh::LOD_Runtime lod;
+            lod.lodFileOffset   = lodTable[I].offset;
+            lod.lodSize         = lodTable[I].size;
+            lod.state           = TriMesh::LOD_Runtime::LOD_State::Unloaded;
+
+            triMesh->lods.push_back(lod);
+        }
+
+        // Load lowest detail lod level
+        if (!LoadLOD(triMesh, uint(lodCount - 1), *RS, copyCtx, *Memory))
+            LoadAllLODFromMemory(triMesh, buffer, bufferSize, *RS, copyCtx, *Memory);// not able to stream lods, load all now
+
+        Memory->free(lodTable);
+
+        return true;
+    }
+
+
+    /************************************************************************************************/
+
 
 	bool Asset2TriMesh(RenderSystem* RS, CopyContextHandle copyCtx, AssetHandle RHandle, iAllocator* Memory, TriMesh* triMesh, bool ClearBuffers)
 	{
@@ -429,60 +548,7 @@ namespace FlexKit
 		if (R->State == Resource::EResourceState_LOADED && R->Type == EResource_TriMesh)
 		{
 			TriMeshAssetBlob* Blob  = (TriMeshAssetBlob*)R;
-			size_t BufferCount      = 0;
-
-			triMesh->SkinTable	    = nullptr;
-			triMesh->SkeletonGUID   = Blob->header.SkeletonGuid;
-			triMesh->Skeleton	    = nullptr;
-			triMesh->Info.Min.x     = Blob->header.Info.maxx;
-			triMesh->Info.Min.y     = Blob->header.Info.maxy;
-			triMesh->Info.Min.z     = Blob->header.Info.maxz;
-			triMesh->Info.Max.x     = Blob->header.Info.minx;
-			triMesh->Info.Max.y     = Blob->header.Info.miny;
-			triMesh->Info.Max.z     = Blob->header.Info.minz;
-			triMesh->Info.r		    = Blob->header.Info.r;
-			triMesh->Memory		    = Memory;
-            triMesh->assetHandle    = Blob->header.GUID;
-            triMesh->TriMeshID      = R->GUID;
-
-            triMesh->BS     = { { Blob->header.BS[0], Blob->header.BS[1], Blob->header.BS[2] }, Blob->header.BS[3] };
-            triMesh->AABB   =
-            { 
-				{ Blob->header.AABB[0], Blob->header.AABB[1], Blob->header.AABB[2] },
-				{ Blob->header.AABB[3], Blob->header.AABB[4], Blob->header.AABB[5] }
-			};
-
-            
-		    if (strlen(Blob->header.ID))
-		    {
-                triMesh->ID = (char*)Memory->malloc(64);
-			    strcpy_s((char*)triMesh->ID, 64, Blob->header.ID);
-		    } else
-                triMesh->ID = nullptr;
-
-
-            auto lodCount = Blob->header.LODCount;
-
-            const size_t tableSize = lodCount * sizeof(LODEntry);
-            LODEntry* lodTable = reinterpret_cast<LODEntry*>(Memory->malloc(tableSize));
-            memcpy(lodTable, Blob->Memory, tableSize);
-
-            for (size_t I = 0; I < lodCount; I++)
-            {
-                TriMesh::LOD_Runtime lod;
-                lod.lodFileOffset   = lodTable[I].offset;
-                lod.lodSize         = lodTable[I].size;
-                lod.state           = TriMesh::LOD_Runtime::LOD_State::Unloaded;
-
-                triMesh->lods.push_back(lod);
-            }
-
-            // Load lowest detail lod level
-            LoadLOD(triMesh, uint(lodCount - 1), *RS, copyCtx, *Memory);
-
-            Memory->free(lodTable);
-
-            return true;
+            return Buffer2TriMesh(RS, copyCtx, (const char*)R, R->ResourceSize, Memory, triMesh, ClearBuffers);
 		}
         else
 		    return false;
@@ -672,6 +738,57 @@ namespace FlexKit
 
 		return Handle;
 	}
+
+
+    /************************************************************************************************/
+
+
+    TriMeshHandle LoadTriMeshIntoTable(RenderSystem* RS, CopyContextHandle handle, const char* buffer, const size_t bufferSize)
+    {
+        TriMeshHandle Handle;
+        TriMeshAssetBlob* Blob = (TriMeshAssetBlob*)buffer;
+
+		if(!GeometryTable.FreeList.size())
+		{
+			auto Index	= GeometryTable.Geometry.size();
+			Handle		= GeometryTable.Handles.GetNewHandle();
+
+			GeometryTable.Geometry.push_back		(TriMesh());
+			GeometryTable.GeometryIDs.push_back		(nullptr);
+			GeometryTable.Guids.push_back			(0);
+			GeometryTable.ReferenceCounts.push_back	(0);
+
+
+			if(Buffer2TriMesh(RS, handle, buffer, bufferSize, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
+			{
+				GeometryTable.Handles[Handle]			= (index_t)Index;
+				GeometryTable.GeometryIDs[Index]		= Blob->header.ID;
+				GeometryTable.Guids[Index]				= Blob->header.GUID;
+				GeometryTable.ReferenceCounts[Index]	= 1;
+			}
+			else
+				Handle = InvalidHandle_t;
+		}
+		else
+		{
+			auto Index	= GeometryTable.FreeList.back();
+			GeometryTable.FreeList.pop_back();
+
+			Handle		= GeometryTable.Handles.GetNewHandle();
+
+			if(Buffer2TriMesh(RS, handle, buffer, bufferSize, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
+			{
+				GeometryTable.Handles[Handle]			= Index;
+				GeometryTable.GeometryIDs[Index]		= Blob->header.ID;
+				GeometryTable.Guids[Index]				= Blob->header.GUID;
+				GeometryTable.ReferenceCounts[Index]	= 1;
+			}
+			else
+				Handle = InvalidHandle_t;
+		}
+
+		return Handle;
+    }
 
 
 	/************************************************************************************************/

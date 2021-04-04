@@ -212,7 +212,7 @@ namespace FlexKit::ResourceBuilder
 		}
 
 		// Visibility Information
-		MeshKDBTree_ptr kdbTree;
+		MeshKDBTree_ptr kdbTree_0;
 		AABB			AABB;
 		BoundingSphere	BS;
 

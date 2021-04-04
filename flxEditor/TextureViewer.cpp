@@ -30,7 +30,7 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
 
     renderWindow = renderer.CreateRenderWindow();
     renderWindow->SetOnDraw(
-        [&](FlexKit::UpdateDispatcher& Dispatcher, double dT, TemporaryBuffers& temporary, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget)
+        [&](FlexKit::UpdateDispatcher& Dispatcher, double dT, TemporaryBuffers& temporary, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator)
         {
             FlexKit::ClearBackBuffer(frameGraph, renderTarget, { 1, 0, 1, 1 });
             FlexKit::PresentBackBuffer(frameGraph, renderTarget);

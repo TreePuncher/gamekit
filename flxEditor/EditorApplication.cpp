@@ -66,7 +66,7 @@ void EditorProjectScriptConnector::Register(EditorScriptEngine& engine)
 	c = scriptEngine->RegisterObjectBehaviour("TextureBuffer", asBEHAVE_CONSTRUCT,  "void f(uint width, uint height, uint format)", asFunctionPtr(CreateTextureBuffer), asCALL_CDECL_OBJLAST);          assert(c >= 0);
 	c = scriptEngine->RegisterObjectBehaviour("TextureBuffer", asBEHAVE_DESTRUCT,   "void f()", asFunctionPtr(ReleaseTextureBuffer), asCALL_CDECL_OBJLAST);                                             assert(c >= 0);
     c = scriptEngine->RegisterObjectMethod("TextureBuffer", "void WritePixel(uint x, uint y, float, float, float, float)", asFunctionPtr(WritePixel), asCALL_CDECL_OBJLAST);                            assert(c >= 0);
-    c = scriptEngine->RegisterObjectMethod("TextureBuffer", "void opAssign(const TextureBuffer& in)", asFunctionPtr(OpAssignTextureBuffer), asCALL_CDECL_OBJLAST);                                            assert(c >= 0);
+    c = scriptEngine->RegisterObjectMethod("TextureBuffer", "void opAssign(const TextureBuffer& in)", asFunctionPtr(OpAssignTextureBuffer), asCALL_CDECL_OBJLAST);                                      assert(c >= 0);
 
     // Register Global project functions
     c = scriptEngine->RegisterGlobalFunction(

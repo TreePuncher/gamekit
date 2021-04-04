@@ -111,6 +111,8 @@ namespace FlexKit
 	inline Camera::ConstantBuffer			GetCameraPreviousConstants  (CameraHandle camera) { return CameraComponent::GetComponent().GetCameraPreviousConstants(camera);  }
 	inline float4x4							GetCameraPV				    (CameraHandle camera) { return CameraComponent::GetComponent().GetCameraPV(camera);				    }
 
+    inline void                             MarkCameraDirty             (CameraHandle camera) { return CameraComponent::GetComponent().MarkDirty(camera); }
+
     
 
 

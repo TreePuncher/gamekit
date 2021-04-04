@@ -233,7 +233,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     
     //return pow(UV.y, 1.0f); 
     //return pow(1 - UV.y, 2.2f); 
-#if 0
+#if 1
     float4 Colors[] = {
         float4(0, 0, 0, 0), 
         float4(1, 0, 0, 0), 

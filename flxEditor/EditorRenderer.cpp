@@ -24,6 +24,8 @@ EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FK
 {
     auto& renderSystem = framework.GetRenderSystem();
     renderSystem.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_PSO, { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateTexturedTriStatePSO });
+
+    allocator.Init((byte*)temporaryBuffer->buffer, sizeof(TempBuffer));
 }
 
 
@@ -125,11 +127,11 @@ FlexKit::UpdateTask* EditorRenderer::Draw(FlexKit::UpdateTask* update, FlexKit::
 
     TemporaryBuffers temporaries{
         FlexKit::CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory()),
-        FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory())
+        FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory()),
     };
 
     for (auto renderWindow : renderWindows)
-        renderWindow->Draw(core, temporaries, dispatcher, dT, frameGraph);
+        renderWindow->Draw(core, temporaries, dispatcher, dT, frameGraph, threadedAllocator);
 
     return nullptr;
 }

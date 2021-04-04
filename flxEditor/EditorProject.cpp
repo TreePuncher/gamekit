@@ -12,72 +12,11 @@
 /************************************************************************************************/
 
 
-void EditorScene::LoadScene()
-{
-    FlexKit::GraphicScene scene{ FlexKit::SystemAllocator };
-
-    std::vector<FlexKit::NodeHandle> nodes;
-
-    for (auto node : sceneResource->nodes)
-    {
-        auto newNode = FlexKit::GetZeroedNode();
-        nodes.push_back(newNode);
-
-        const auto position = node.position;
-        const auto q = node.Q;
-
-        FlexKit::SetOrientationL(newNode, q);
-        FlexKit::SetPositionL(newNode, position);
-    }
-
-    for (auto& entity : sceneResource->entities)
-    {
-        GameObject_ptr gameObject = std::make_shared<FlexKit::GameObject>();
-        sceneObjects.push_back(gameObject);
-
-        if (entity.Node != -1)
-            gameObject->AddView<FlexKit::SceneNodeView<>>(nodes[entity.Node]);
-
-        for (auto& component : entity.components)
-        {
-            switch (component->id)
-            {
-            case FlexKit::TransformComponentID:
-            {
-
-            }   break;
-            case FlexKit::DrawableComponentID:
-            {
-                auto drawableComponent = std::static_pointer_cast<FlexKit::ResourceBuilder::DrawableComponent>(component);
-
-                if (drawableComponent)
-                {
-                    auto res = FindSceneResource(drawableComponent->MeshGuid);
-
-                    if (res)
-                    {
-                        auto meshResource   = std::static_pointer_cast<FlexKit::ResourceBuilder::MeshResource>(res);
-                        auto optimizedMesh  = FlexKit::MeshUtilityFunctions::CreateOptimizedMesh(*meshResource->kdbTree);
-                    }
-                }
-            }   break;
-            default:
-            {
-            }   break;
-            }
-        }
-    }
-}
-
-
-/************************************************************************************************/
-
-
-FlexKit::ResourceBuilder::Resource_ptr EditorScene::FindSceneResource(uint64_t resourceID)
+ProjectResource_ptr EditorScene::FindSceneResource(uint64_t resourceID)
 {
     for (auto& resource : sceneResources)
-        if (resource.resource->GetResourceGUID() == resourceID)
-            return resource.resource;
+        if (resource->resource->GetResourceGUID() == resourceID)
+            return resource;
 
     return nullptr;
 }
