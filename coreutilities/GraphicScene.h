@@ -40,7 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace FlexKit
 {
     // IDs
-    constexpr ComponentID DrawableComponentID       = GetTypeGUID(DrawableID);
+    constexpr ComponentID DrawableComponentID    = GetTypeGUID(DrawableComponent);
     constexpr ComponentID PointLightShadowMapID  = GetTypeGUID(PointLighShadowCaster);
 
     // Handles
@@ -221,7 +221,7 @@ namespace FlexKit
         static void OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
     };
 
-	constexpr ComponentID PointLightComponentID	= GetTypeGUID(PointLightID);
+	constexpr ComponentID PointLightComponentID	= GetTypeGUID(PointLight);
 	using PointLightComponent					= BasicComponent_t<PointLight, PointLightHandle, PointLightComponentID, PointLightEventHandler>;
 
 

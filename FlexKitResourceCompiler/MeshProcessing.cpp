@@ -184,6 +184,8 @@ namespace FlexKit::ResourceBuilder
 
         FlexKit::AABB aabb = {};
 
+        meshOut->kdbTree_0 = std::make_shared<MeshKDBTree>( lods[0].subMeshs[0].tokens );
+
         for(auto& lod : lods)
         {
             LevelOfDetail newLod;

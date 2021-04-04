@@ -264,8 +264,9 @@ namespace FlexKit::ResourceBuilder
 
     struct SceneEntity
     {
-        uint32_t	    Node;
+        uint64_t        objectID = rand();
         std::string		id;
+        uint32_t	    Node;
         ComponentVector components;
         MetaDataList	metaData;
     };
@@ -315,7 +316,7 @@ namespace FlexKit::ResourceBuilder
             return idx;
         }
 
-        const ResourceID_t GetResourceTypeID() const override { return SkeletonResourceTypeID; }
+        const ResourceID_t GetResourceTypeID() const override { return SceneResourceTypeID; }
 
         IDTranslationTable			    translationTable;
         std::vector<ScenePointLight>	pointLights;

@@ -6,8 +6,34 @@
 #include "EditorRenderer.h"
 #include "EditorProject.h"
 #include "GraphicsComponents.h"
-
+#include <qt>
 class QMenuBar;
+
+
+/************************************************************************************************/
+
+
+struct ViewportGameObject
+{
+    FlexKit::GameObject gameObject;
+    uint64_t            objectID;
+};
+
+using ViewportGameObject_ptr = std::shared_ptr<ViewportGameObject>;
+
+struct ViewportScene
+{
+    ViewportScene(EditorScene_ptr IN_sceneResource) :
+            sceneResource   { IN_sceneResource  } {}
+
+    EditorScene_ptr                     sceneResource;
+    std::vector<ViewportGameObject_ptr> sceneObjects;
+    FlexKit::GraphicScene               scene           { FlexKit::SystemAllocator };
+    FlexKit::PhysXSceneHandle           physicsLayer    = FlexKit::InvalidHandle_t;
+};
+
+/************************************************************************************************/
+
 
 class EditorViewport : public QWidget
 {
@@ -21,24 +47,41 @@ public:
 
     void SetScene(EditorScene_ptr scene);
 
+    void keyPressEvent(QKeyEvent* event) override;
+    void keyReleaseEvent(QKeyEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+
 
     std::shared_ptr<FlexKit::TriMesh> BuildTriMesh(FlexKit::MeshUtilityFunctions::OptimizedMesh& mesh) const;
 
-
 private:
 
+    void Render(FlexKit::UpdateDispatcher& Dispatcher, double dT, TemporaryBuffers&, FlexKit::FrameGraph& graph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator);
 
-    void Render(FlexKit::FrameGraph& frameGraph);
+    double                          T = 0.0f;
 
-	Ui::EditorViewport ui;
+    enum class InputState {
+        None,
+        Pan,
+        Orbit
+    } state = InputState::None;
 
-    DXRenderWindow*         renderWindow;
-    EditorRenderer&         renderer;
-    QMenuBar*               menuBar;
+    FlexKit::int2                   previousMousePosition{ -160000, -160000 };
+    float                           panSpeed = 10.0f;
 
-    FlexKit::GBuffer        gbuffer;
-    FlexKit::DepthBuffer    depthBuffer;
+	Ui::EditorViewport              ui;
 
-    EditorScene_ptr         scene;
-    FlexKit::CameraHandle   viewportCamera;
+    DXRenderWindow*                 renderWindow;
+    EditorRenderer&                 renderer;
+    QMenuBar*                       menuBar;
+
+    FlexKit::GBuffer                gbuffer;
+    FlexKit::DepthBuffer            depthBuffer;
+    FlexKit::CameraHandle           viewportCamera;
+
+    std::shared_ptr<ViewportScene>  scene;
 };
+
+
+/************************************************************************************************/

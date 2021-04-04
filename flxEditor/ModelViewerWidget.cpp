@@ -18,7 +18,7 @@ ModelViewerWidget::ModelViewerWidget(EditorRenderer& IN_renderer, QWidget* paren
     layout->addWidget(&renderWindow);
 
     renderWindow.SetOnDraw(
-        [&](FlexKit::UpdateDispatcher& dispatcher, double dT, TemporaryBuffers& temporaries, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget)
+        [&](FlexKit::UpdateDispatcher& dispatcher, double dT, TemporaryBuffers& temporaries, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator)
         {
             OnDraw(dispatcher, dT, temporaries, frameGraph, renderTarget);
         });

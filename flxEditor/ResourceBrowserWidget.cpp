@@ -94,6 +94,7 @@ void ResourceBrowserWidget::ShowContextMenu(const QPoint& pos)
             {
                 model.removeRow(index.row());
                 model.Remove(resource);
+                model.RefreshTable();
             });
 
         contextMenu.exec(table->viewport()->mapToGlobal(pos));
@@ -129,9 +130,29 @@ int ResourceItemModel::rowCount(const QModelIndex& parent) const
 
 int ResourceItemModel::columnCount(const QModelIndex& parent) const
 {
-    return 2;
+    return 3;
 }
 
+
+QVariant ResourceItemModel::headerData(int section, Qt::Orientation orientation, int role) const 
+{
+    if (role == Qt::DisplayRole)
+    {
+        switch (section)
+        {
+        case 0:
+            return QString("ResourceID");
+        case 1:
+            return QString("ResourceType");
+        case 2:
+            return QString("User Count");
+        default:
+            return QString("Header #%1").arg(section);
+        }
+    }
+
+    return{};
+}
 
 /************************************************************************************************/
 
@@ -177,6 +198,8 @@ QVariant ResourceItemModel::data(const QModelIndex& index, int role) const
 
             return QVariant{ "Unknown Type" };
         }
+        case 2:
+            return QVariant{ std::to_string(project.resources[index.row()].resource.use_count() - 1).c_str() };
         default:
             return QVariant{ tr("Datass!") };
         }

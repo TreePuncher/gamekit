@@ -52,13 +52,13 @@ void DXRenderWindow::Release()
 /************************************************************************************************/
 
 
-void DXRenderWindow::Draw(FlexKit::EngineCore& Engine, TemporaryBuffers& temporaries, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
+void DXRenderWindow::Draw(FlexKit::EngineCore& Engine, TemporaryBuffers& temporaries, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& frameGraph, FlexKit::ThreadSafeAllocator& threadSafeAllocator)
 {
     dirty = true;
 
     if (onDraw)
     {
-        onDraw(Dispatcher, dT, temporaries, frameGraph, renderWindow.GetBackBuffer());
+        onDraw(Dispatcher, dT, temporaries, frameGraph, renderWindow.GetBackBuffer(), threadSafeAllocator);
     }
     else
     {

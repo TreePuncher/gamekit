@@ -40,6 +40,17 @@ public:
     FlexKit::WorldRender            worldRender;
 
 private:
+    struct TempBuffer
+    {
+        char buffer[MEGABYTE * 32];
+    };
+
+
+    std::unique_ptr<TempBuffer>     temporaryBuffer = std::make_unique<TempBuffer>();
+
+    FlexKit::StackAllocator         allocator;
+    FlexKit::ThreadSafeAllocator    threadedAllocator{ allocator };
+
     // Temp Buffers
     FlexKit::VertexBufferHandle		vertexBuffer;
     FlexKit::ConstantBufferHandle	constantBuffer;

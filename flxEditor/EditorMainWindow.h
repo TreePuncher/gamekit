@@ -68,9 +68,10 @@ public:
         connect(action, &QAction::triggered, this, callable);
     }
 
+    EditorViewport& Get3DView() { return *viewport; }
 
     void RegisterGadget(iEditorGadget* gadget);
-
+    
     void CloseEvent(QCloseEvent* event);
     void Close();
     void timerEvent(QTimerEvent* event);

@@ -1989,6 +1989,7 @@ namespace FlexKit
                 else
                     data.readBackHandle = InvalidHandle_t;
 
+                /*
                 builder.SetDebugName(data.clusterBufferObject,  "ClusterBufferObject");
                 builder.SetDebugName(data.indexBufferObject,    "indexBufferObject");
                 builder.SetDebugName(data.lightListObject,      "lightListObject");
@@ -1998,6 +1999,7 @@ namespace FlexKit
                 builder.SetDebugName(data.lightCounterObject,   "lightCounterObject");
                 builder.SetDebugName(data.counterObject,        "counterObject");
                 builder.SetDebugName(data.argumentBufferObject, "argumentBufferObject");
+                */
 
 				builder.AddDataDependency(sceneDescription.lights);
 				builder.AddDataDependency(sceneDescription.cameras);
@@ -2809,8 +2811,8 @@ namespace FlexKit
 				const auto cameraConstants  = GetCameraConstants(camera);
 				const auto pointLightCount  = (uint32_t)visableLights.size();
 
-                if (!pointLightCount)
-                    return;
+                //if (!pointLightCount)
+                //    return;
 
 				struct
 				{

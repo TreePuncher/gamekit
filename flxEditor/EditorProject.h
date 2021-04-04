@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <any>
 
 #include "GraphicScene.h"
 #include "..\FlexKitResourceCompiler\SceneResource.h"
@@ -35,6 +36,8 @@ public:
 /************************************************************************************************/
 
 
+using ResourcePropertyID = uint32_t;
+
 class ProjectResource
 {
 public:
@@ -44,15 +47,16 @@ public:
         ar & resource;
     }
 
-
-    FlexKit::ResourceBuilder::Resource_ptr resource;
+    FlexKit::ResourceBuilder::Resource_ptr  resource;
+    std::map<ResourcePropertyID, std::any>  properties;
 };
 
 
 /************************************************************************************************/
 
 
-using GameObject_ptr = std::shared_ptr<FlexKit::GameObject>;
+using GameObject_ptr        = std::shared_ptr<FlexKit::GameObject>;
+using ProjectResource_ptr   = std::shared_ptr<ProjectResource>;
 
 
 class EditorScene
@@ -60,18 +64,11 @@ class EditorScene
 public:
     EditorScene(FlexKit::ResourceBuilder::SceneResource_ptr IN_scene = nullptr) : sceneResource{ IN_scene } {}
 
-    void LoadScene();
+    ProjectResource_ptr                         FindSceneResource(uint64_t resourceID);
 
-    FlexKit::ResourceBuilder::Resource_ptr FindSceneResource(uint64_t resourceID);
-
-
-
+    std::string                                 sceneName;
     FlexKit::ResourceBuilder::SceneResource_ptr sceneResource;
-
-    std::string sceneName;
-
-    std::vector<ProjectResource>    sceneResources;
-    std::vector<GameObject_ptr>     sceneObjects;
+    std::vector<ProjectResource_ptr>            sceneResources;
 };
 
 

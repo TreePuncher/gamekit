@@ -33,11 +33,15 @@ public:
             {
                 EditorScene_ptr gameScene = std::make_shared<EditorScene>();
 
+                gameScene->sceneResource = std::static_pointer_cast<FlexKit::ResourceBuilder::SceneResource>(resource);
+
                 for (auto& dependentResource : resources)
                     if (dependentResource != resource)
-                        gameScene->sceneResources.push_back({ dependentResource });
+                        gameScene->sceneResources.push_back(std::make_shared<ProjectResource>(dependentResource));
+
 
                 project.AddScene(gameScene);
+                project.AddResource(resource);
             }
 			else
 				project.AddResource(resource);
@@ -138,6 +142,27 @@ struct TextureResourceViewer : public IResourceViewer
     }
 };
 
+struct SceneResourceViewer : public IResourceViewer
+{
+    SceneResourceViewer(EditorRenderer& IN_renderer, EditorProject& IN_project, EditorMainWindow& IN_mainWindow) :
+        IResourceViewer { SceneResourceTypeID   },
+        project         { IN_project            },
+        renderer        { IN_renderer           },
+        mainWindow      { IN_mainWindow         } {}
+
+    void operator () (FlexKit::ResourceBuilder::Resource_ptr resource) override
+    {
+        auto& view = mainWindow.Get3DView();
+
+        for(auto& scene : project.scenes)
+            if(scene->sceneResource == resource)
+                view.SetScene(scene);
+    }
+
+    EditorProject&      project;
+    EditorRenderer&     renderer;
+    EditorMainWindow&   mainWindow;
+};
 
 class EditorApplication
 {
@@ -146,8 +171,15 @@ public:
 		qtApp               { IN_qtApp },
 		editorRenderer      { fkApplication.PushState<EditorRenderer>(fkApplication, IN_qtApp) },
 		mainWindow          { editorRenderer, scripts, project, qtApp },
-		visibilityComponent { FlexKit::SystemAllocator },
-		pointLights         { FlexKit::SystemAllocator },
+
+		visibilityComponent     { FlexKit::SystemAllocator },
+		pointLights             { FlexKit::SystemAllocator },
+        cameras                 { FlexKit::SystemAllocator },
+        pointLightShadowMaps    { FlexKit::SystemAllocator },
+
+        ikTargetComponent       { FlexKit::SystemAllocator },
+        ikComponent             { FlexKit::SystemAllocator },
+
 		gltfImporter        { project },
         gameResExporter     { project },
 		projectConnector    { project }
@@ -173,6 +205,7 @@ public:
             });
 
         ResourceBrowserWidget::AddResourceViewer(std::make_shared<TextureResourceViewer>(editorRenderer, (QWidget*)&mainWindow));
+        ResourceBrowserWidget::AddResourceViewer(std::make_shared<SceneResourceViewer>(editorRenderer, project, mainWindow));
 
 		// connect script gadgets
 		for (auto& gadget : scripts.GetGadgets())
@@ -184,56 +217,15 @@ public:
 		fkApplication.Release();
 	}
 
-	void LoadSceneResource(const std::string& file)
-	{
-
-	}
-
-	void LoadSceneResource(FlexKit::GraphicScene& sceneOut, FlexKit::ResourceBuilder::SceneResource& sceneResource)
-	{
-		std::vector<FlexKit::NodeHandle> nodes;
-
-		for (const auto node : sceneResource.nodes)
-		{
-			auto handle = FlexKit::GetNewNode();
-			SetPositionL(handle, node.position);
-			SetOrientationL(handle, node.Q);
-
-			if (node.parent != -1)
-				SetParentNode(handle, nodes[node.parent]);
-		}
-
-		for (const auto entity : sceneResource.entities)
-		{
-			auto newEntity = new FlexKit::GameObject;
-			sceneOut.AddGameObject(*newEntity, nodes[entity.Node]);
-
-			for (auto component : entity.components)
-			{
-				switch (component->id)
-				{
-				case FlexKit::TransformComponentID:
-				{
-					newEntity->AddView<FlexKit::SceneNodeView<>>(nodes[entity.Node]);
-				}   break;
-				default:
-				{
-					auto Blob               = component->GetBlob();
-					auto& componentSystem   = FlexKit::GetComponent(component->id);
-
-					componentSystem.AddComponentView(*newEntity, Blob, Blob.size(), FlexKit::SystemAllocator);
-				}   break;
-				}
-			}
-		}
-	}
-
-
 	QApplication&                       qtApp;
 	FlexKit::FKApplication              fkApplication{ FlexKit::CreateEngineMemory() };
 	FlexKit::SceneNodeComponent         sceneNodes;
 	FlexKit::SceneVisibilityComponent   visibilityComponent;
 	FlexKit::PointLightComponent        pointLights;
+    FlexKit::CameraComponent            cameras;
+    FlexKit::PointLightShadowMap        pointLightShadowMaps;
+    FlexKit::FABRIKTargetComponent      ikTargetComponent;
+    FlexKit::FABRIKComponent            ikComponent;
 
 	EditorScriptEngine                  scripts;
 

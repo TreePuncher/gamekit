@@ -370,7 +370,13 @@ namespace FlexKit
 
 	FrameResourceHandle	FrameGraphNodeBuilder::DepthTarget(ResourceHandle handle)
 	{
-		return AddWriteableResource(handle, DeviceResourceState::DRS_DEPTHBUFFERWRITE);
+        if (auto frameObject = AddWriteableResource(handle, DeviceResourceState::DRS_DEPTHBUFFERWRITE); frameObject == InvalidHandle_t)
+        {
+            Resources->AddResource(handle, true);
+            return DepthTarget(handle);
+        }
+        else
+            return frameObject;
 	}
 
 
