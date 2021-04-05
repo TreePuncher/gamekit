@@ -167,7 +167,7 @@ void EditorViewport::keyPressEvent(QKeyEvent* event)
     auto keyCode = event->key();
 
     if (keyCode == Qt::Key_Alt)
-        state = InputState::Pan;
+        state = InputState::PanOrbit;
 }
 
 
@@ -191,11 +191,11 @@ void EditorViewport::keyReleaseEvent(QKeyEvent* event)
 
 void EditorViewport::mouseMoveEvent(QMouseEvent* event)
 {
-    if (event->buttons().testFlag(Qt::LeftButton))
+    switch (state)
     {
-        switch (state)
+    case InputState::PanOrbit:
+        if (event->buttons().testFlag(Qt::LeftButton))
         {
-        case InputState::Pan:
             if (previousMousePosition == FlexKit::int2{ -160000, -160000 })
                 previousMousePosition = { event->pos().x(), event->pos().y() };
             else
@@ -212,7 +212,8 @@ void EditorViewport::mouseMoveEvent(QMouseEvent* event)
                 previousMousePosition = newPosition;
             }
             break;
-        case InputState::Orbit:
+        }
+        else if(event->buttons().testFlag(Qt::MiddleButton))
         {
             if (previousMousePosition == FlexKit::int2{ -160000, -160000 })
                 previousMousePosition = { event->pos().x(), event->pos().y() };
@@ -221,19 +222,39 @@ void EditorViewport::mouseMoveEvent(QMouseEvent* event)
                 FlexKit::int2 newPosition{ event->pos().x(), event->pos().y() };
                 FlexKit::int2 deltaPosition = previousMousePosition - newPosition;
 
-                FlexKit::GetCameraNode(viewportCamera);
+                auto node   = FlexKit::GetCameraNode(viewportCamera);
+                auto q      = FlexKit::GetOrientation(node);
+
+                auto x  = float(deltaPosition[0]);
+                FlexKit::Yaw(node, float(deltaPosition[0]) / 1000.0f);
+                FlexKit::Pitch(node, float(deltaPosition[1]) / 1000.0f);
+
                 MarkCameraDirty(viewportCamera);
 
                 previousMousePosition = newPosition;
             }
-        }   break;
-        default:
-            break;
         }
+        else
+            previousMousePosition = FlexKit::int2{ -160000, -160000 };
+    default:
+        break;
     }
-    else
-        previousMousePosition = FlexKit::int2{ -160000, -160000 };
 }
+
+
+/************************************************************************************************/
+
+
+void EditorViewport::wheelEvent(QWheelEvent* event)
+{
+    auto node = FlexKit::GetCameraNode(viewportCamera);
+    auto q = FlexKit::GetOrientation(node);
+
+    FlexKit::TranslateWorld(node, q * float3(0, 0, event->angleDelta().x() / -10.0f));
+    MarkCameraDirty(viewportCamera);
+}
+
+/************************************************************************************************/
 
 
 void EditorViewport::mouseReleaseEvent(QMouseEvent* event)

@@ -51,6 +51,7 @@ public:
     void keyReleaseEvent(QKeyEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
+    void wheelEvent(QWheelEvent* event) override;
 
 
     std::shared_ptr<FlexKit::TriMesh> BuildTriMesh(FlexKit::MeshUtilityFunctions::OptimizedMesh& mesh) const;
@@ -63,8 +64,8 @@ private:
 
     enum class InputState {
         None,
-        Pan,
-        Orbit
+        PanOrbit,
+        Select
     } state = InputState::None;
 
     FlexKit::int2                   previousMousePosition{ -160000, -160000 };
