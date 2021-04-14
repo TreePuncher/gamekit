@@ -110,6 +110,12 @@
     <ClCompile Include="EditorRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SelectionContext.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ViewportScene.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -143,6 +149,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Serialization.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SelectionContext.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ViewportScene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

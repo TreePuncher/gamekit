@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "MathUtils.h"
 #include "containers.h"
+#include <optional>
 
 namespace FlexKit
 {
@@ -131,9 +132,9 @@ namespace FlexKit
 	struct Plane
 	{
 		Plane(float2 D = float2(0.0, 0.0), float3 P = {0.0f, 0.0f, 0.0f}, float3 UpV = { 0.0f, 1.0f, 0.0f }) :
-			Dimensions(D), 
-			Position(P),
-			UpVector(UpV){}
+            Dimensions  { D },
+			Position    { P },
+			UpVector    { UpV } {}
 
 		float2		Dimensions;
 		float3		Position;
@@ -150,15 +151,7 @@ namespace FlexKit
 		float3 D;// Direction
 		float3 O;// Origin
 
-		Ray(){}
-
-		Ray(float3 origin, float3 dir)
-		{
-			O = origin;
-			D = dir.normal();
-		}
-
-		float3 R(float t) { return D*t + O; }
+		float3 R(float t) { return D * t + O; }
 		float3 operator * (float k) { return O + D*k; }
 	};
 
@@ -280,6 +273,13 @@ namespace FlexKit
                 (a.Min.y <= a.Max.y && b.Min.y <= a.Max.y) &&
                 (a.Min.z <= a.Max.z && b.Min.z <= a.Max.z);
 	}
+
+
+    /************************************************************************************************/
+
+
+    std::optional<float> Intersects(const Ray r, const AABB b);
+    std::optional<float> Intersects(const Ray r, const BoundingSphere b);
 
 
 	/************************************************************************************************/

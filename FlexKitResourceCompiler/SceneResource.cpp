@@ -18,12 +18,6 @@ namespace FlexKit::ResourceBuilder
 {   /************************************************************************************************/
 
 
-#ifdef _DEBUG
-#define DEBUGPASS 0
-#else
-#define DEBUGPASS 0
-#endif
-
     std::optional<MeshResource_ptr> ExtractGeometry(tinygltf::Mesh& mesh)
     {
         return {};
@@ -391,10 +385,8 @@ namespace FlexKit::ResourceBuilder
 
                     if (node.mesh != -1)
                     {
-#if DEBUGPASS
-#else
                         auto drawable = std::make_shared<DrawableComponent>(meshMap[node.mesh]);
-#endif
+
                         for (auto& subEntity : model.meshes[node.mesh].primitives)
                         {
                             DrawableMaterial newMaterial;
@@ -440,15 +432,9 @@ namespace FlexKit::ResourceBuilder
                                     newMaterial.textures.push_back(imageMap.at(idx)->GetResourceGUID());
                                 }
                             }
-#if DEBUGPASS
-#else
                             drawable->material.subMaterials.push_back(newMaterial);
-#endif
                         }
-#if DEBUGPASS
-#else
                         entity.components.push_back(drawable);
-#endif
                     }
 
                     if (node.skin != -1)
@@ -526,17 +512,6 @@ namespace FlexKit::ResourceBuilder
     {
         ImageLoaderDesc* loader = reinterpret_cast<ImageLoaderDesc*>(user_ptr);
 
-#if DEBUGPASS
-        auto resource = std::make_shared<TextureResource>();
-        resource->ID = image->name;
-
-        //loader->resources.push_back(resource);
-        loader->imageMap[image_idx] = resource;
-
-        std::cout << image_idx << "\n";
-
-        return true;
-#else
 
         int x = 0;
         int y = 0;
@@ -559,8 +534,6 @@ namespace FlexKit::ResourceBuilder
 
         loader->resources.push_back(resource);
         loader->imageMap[image_idx] = resource;
-
-#endif
 
         return true;
     }
@@ -720,6 +693,9 @@ namespace FlexKit::ResourceBuilder
     }
 
 
+    /************************************************************************************************/
+
+
     ResourceList CreateSceneFromGlTF(const std::filesystem::path& fileDir, MetaDataList& MD)
     {
         using namespace tinygltf;
@@ -806,7 +782,7 @@ namespace FlexKit::ResourceBuilder
 
             for (auto& component : entity.components)
             {
-                if (component->id == GetTypeGUID(DrawableComponent))
+                if (component->id == GetTypeGUID(Drawable))
                 {
                     auto drawableComponent = std::dynamic_pointer_cast<DrawableComponent>(component);
                     const auto ID = TranslateID(drawableComponent->MeshGuid, translationTable);

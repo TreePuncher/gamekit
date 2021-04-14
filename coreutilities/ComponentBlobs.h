@@ -97,7 +97,7 @@ namespace FlexKit
            0,
            EntityComponent,
            sizeof(PointLightComponentBlob),
-           GetTypeGUID(PointLightID)
+           GetTypeGUID(PointLight)
         };
 
         float2 IR;
@@ -115,7 +115,7 @@ namespace FlexKit
            0,
            EntityComponent,
            sizeof(DrawableComponentBlob),
-           GetTypeGUID(DrawableID)
+           GetTypeGUID(Drawable)
         };
 
         GUID_t                          resourceID;

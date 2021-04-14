@@ -20,7 +20,7 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
     project         { IN_project        },
     renderer        { IN_renderer       },
     scriptEngine    { IN_scriptEngine   },
-    viewport        { new EditorViewport{ IN_renderer, this } },
+    viewport        { new EditorViewport{ IN_renderer, selectionContext, this } },
     tabBar          { new QTabWidget{} }
 {
     fileMenu       = menuBar()->addMenu("File");
@@ -157,14 +157,34 @@ void EditorMainWindow::AddExporter(iEditorExporter* exporter)
             const auto fileDir      = QFileDialog::getSaveFileName(this, tr(importText.c_str()), QDir::currentPath(), fileMenuText.c_str());
             const auto fileStr      = fileDir.toStdString();
 
-            auto selectedResources  = selectionContext.GetSelectedResources().value_or(ResourceList{});
+            if(selectionContext.GetSelectionType() == ViewportObjectList_ID)
+            {
+                auto selections = selectionContext.GetSelection<ViewportObjectList>();
 
-            if(!selectedResources.size())
-                selectedResources = project.GetResources();
+                using Resource_ptr = FlexKit::ResourceBuilder::Resource_ptr;
 
-            if (fileDir.size() && selectedResources.size() && !exporter->Export(fileStr, selectedResources))
-            {   // Log Error
-                FK_LOG_ERROR("Export Failed!");
+                std::vector<FlexKit::ResourceBuilder::Resource_ptr> selectedResources{};
+
+                for (auto& selection : selections)
+                    for (auto& dependency : selection->resourceDependencies)
+                        selectedResources.emplace_back(dependency->resource);
+
+                std::sort(
+                    std::begin(selectedResources),
+                    std::end(selectedResources),
+                    [](Resource_ptr& lhs, Resource_ptr& rhs) { return lhs.get() < rhs.get(); });
+
+                std::unique(
+                    std::begin(selectedResources),
+                    std::end(selectedResources));
+
+                if (fileDir.size() && selectedResources.size() && !exporter->Export(fileStr, selectedResources))
+                {   // Log Error
+                    const auto fileDir = QFileDialog::getOpenFileName(this, tr(importText.c_str()), QDir::currentPath(), fileMenuText.c_str());
+                    const auto fileStr = fileDir.toStdString();
+
+                    FK_LOG_ERROR("Export Failed!");
+                }
             }
         });
 }

@@ -9,13 +9,14 @@
 /************************************************************************************************/
 
 
-EditorViewport::EditorViewport(EditorRenderer& IN_renderer, QWidget *parent)
+EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN_context, QWidget *parent)
     :   QWidget{ parent }
-    ,   menuBar         { new QMenuBar{ this } }
-    ,   renderer        { IN_renderer }
-    ,   gbuffer         { { 100, 200 }, IN_renderer.framework.GetRenderSystem() }
-    ,   depthBuffer     { IN_renderer.framework.GetRenderSystem(), { 100, 200 } }
-    ,   viewportCamera  { FlexKit::CameraComponent::GetComponent().CreateCamera() }
+    ,   menuBar             { new QMenuBar{ this } }
+    ,   renderer            { IN_renderer }
+    ,   gbuffer             { { 100, 200 }, IN_renderer.framework.GetRenderSystem() }
+    ,   depthBuffer         { IN_renderer.framework.GetRenderSystem(), { 100, 200 } }
+    ,   viewportCamera      { FlexKit::CameraComponent::GetComponent().CreateCamera() }
+    ,   selectionContext    { IN_context }
 {
 	ui.setupUi(this);
 
@@ -96,6 +97,8 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
 
         FlexKit::SetOrientationL(newNode, q);
         FlexKit::SetPositionL(newNode, position);
+
+        SetFlag(newNode, FlexKit::SceneNodes::StateFlags::SCALE);
     }
 
     for (auto& entity : scene->sceneResource->entities)
@@ -180,8 +183,52 @@ void EditorViewport::keyReleaseEvent(QKeyEvent* event)
 
     if (keyCode == Qt::Key_Alt)
     {
-        state = InputState::None;
+        state = InputState::ClickSelect;
         previousMousePosition = FlexKit::int2{ -160000, -160000 };
+    }
+}
+
+
+/************************************************************************************************/
+
+
+void EditorViewport::mousePressEvent(QMouseEvent* event)
+{
+    if (!scene)
+        return;
+
+    switch (state)
+    {
+    case InputState::ClickSelect:
+    {
+        if (event->button() == Qt::MouseButton::LeftButton)
+        {
+            auto qPos = event->localPos();
+
+            const FlexKit::uint2 XY = FlexKit::uint2{ (uint32_t)qPos.x(), (uint32_t)qPos.y() };
+            const FlexKit::uint2 screenWH = depthBuffer.WH;
+
+            const FlexKit::float2 UV{ XY[0] / float(screenWH[0]), XY[1] / float(screenWH[1]) };
+            const FlexKit::float2 ScreenCoord{ FlexKit::float2{ 2, -2 } * UV + FlexKit::float2{ -1.0f, 1.0f } };
+
+            const auto cameraConstants      = FlexKit::GetCameraConstants(viewportCamera);
+            const auto cameraOrientation    = FlexKit::GetOrientation(FlexKit::GetCameraNode(viewportCamera));
+
+            const FlexKit::float3 v_dir = cameraOrientation * ((Inverse(Inverse(cameraConstants.Proj)) * FlexKit::float4(ScreenCoord.x, ScreenCoord.y,  1.0f, 1.0f)).xyz()).normal();
+            const FlexKit::float3 v_o   = cameraConstants.WPOS.xyz();
+
+            auto results = scene->RayCast(
+                FlexKit::Ray{
+                            .D = v_dir.normal(),
+                            .O = v_o,});
+
+            for(auto& sceneObject : results)
+                FlexKit::SetVisable(sceneObject->gameObject, false);
+
+            selectionContext.selection  = std::move(results);
+            selectionContext.type       = ViewportObjectList_ID;
+        }
+    }   break;
     }
 }
 
@@ -194,7 +241,8 @@ void EditorViewport::mouseMoveEvent(QMouseEvent* event)
     switch (state)
     {
     case InputState::PanOrbit:
-        if (event->buttons().testFlag(Qt::LeftButton))
+    {
+        if (event->buttons().testFlag(Qt::MiddleButton))
         {
             if (previousMousePosition == FlexKit::int2{ -160000, -160000 })
                 previousMousePosition = { event->pos().x(), event->pos().y() };
@@ -211,9 +259,8 @@ void EditorViewport::mouseMoveEvent(QMouseEvent* event)
                 MarkCameraDirty(viewportCamera);
                 previousMousePosition = newPosition;
             }
-            break;
         }
-        else if(event->buttons().testFlag(Qt::MiddleButton))
+        else if(event->buttons().testFlag(Qt::LeftButton))
         {
             if (previousMousePosition == FlexKit::int2{ -160000, -160000 })
                 previousMousePosition = { event->pos().x(), event->pos().y() };
@@ -236,6 +283,7 @@ void EditorViewport::mouseMoveEvent(QMouseEvent* event)
         }
         else
             previousMousePosition = FlexKit::int2{ -160000, -160000 };
+    }   break;
     default:
         break;
     }
@@ -309,10 +357,23 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
             .additionalShadowPass   = {}
         };
 
-        renderer.worldRender.DrawScene(dispatcher, frameGraph, sceneDesc, targets, FlexKit::SystemAllocator, allocator);
+        auto drawnScene = renderer.worldRender.DrawScene(dispatcher, frameGraph, sceneDesc, targets, FlexKit::SystemAllocator, allocator);
+
+        renderer.textureEngine.TextureFeedbackPass(
+            dispatcher,
+            frameGraph,
+            viewportCamera,
+            depthBuffer.WH,
+            drawnScene.PVS,
+            drawnScene.skinnedDraws,
+            temporaries.ReserveConstantBuffer,
+            temporaries.ReserveVertexBuffer);
     }
     else
         FlexKit::ClearBackBuffer(frameGraph, renderTarget, { 1, 0, 1, 0 });
+
+
+    FlexKit::PresentBackBuffer(frameGraph, renderTarget);
 
     T += dT;
 }
@@ -325,3 +386,28 @@ std::shared_ptr<FlexKit::TriMesh> EditorViewport::BuildTriMesh(FlexKit::MeshUtil
 {
     return {};
 }
+
+
+/**********************************************************************
+
+Copyright (c) 2021 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

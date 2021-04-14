@@ -176,6 +176,7 @@ public:
 		pointLights             { FlexKit::SystemAllocator },
         cameras                 { FlexKit::SystemAllocator },
         pointLightShadowMaps    { FlexKit::SystemAllocator },
+        materials               { editorRenderer.framework.GetRenderSystem(), editorRenderer.textureEngine, FlexKit::SystemAllocator },
 
         ikTargetComponent       { FlexKit::SystemAllocator },
         ikComponent             { FlexKit::SystemAllocator },
@@ -184,6 +185,7 @@ public:
         gameResExporter     { project },
 		projectConnector    { project }
 	{
+        
 		mainWindow.AddImporter(&gltfImporter);
         mainWindow.AddExporter(&gameResExporter);
 
@@ -219,25 +221,27 @@ public:
 
 	QApplication&                       qtApp;
 	FlexKit::FKApplication              fkApplication{ FlexKit::CreateEngineMemory() };
-	FlexKit::SceneNodeComponent         sceneNodes;
+
+	EditorScriptEngine                  scripts;
+
+	EditorProject                   project;
+	EditorRenderer&                 editorRenderer;
+
+	EditorProjectScriptConnector    projectConnector;
+
+    gltfImporter                    gltfImporter;
+    GameResExporter                 gameResExporter;
+
+    FlexKit::SceneNodeComponent         sceneNodes;
 	FlexKit::SceneVisibilityComponent   visibilityComponent;
 	FlexKit::PointLightComponent        pointLights;
     FlexKit::CameraComponent            cameras;
     FlexKit::PointLightShadowMap        pointLightShadowMaps;
     FlexKit::FABRIKTargetComponent      ikTargetComponent;
     FlexKit::FABRIKComponent            ikComponent;
+    FlexKit::MaterialComponent          materials;
 
-	EditorScriptEngine                  scripts;
-
-
-	EditorProject                   project;
-	EditorRenderer&                 editorRenderer;
-	EditorMainWindow                mainWindow;
-
-	EditorProjectScriptConnector    projectConnector;
-
-    gltfImporter                    gltfImporter;
-    GameResExporter                 gameResExporter;
+    EditorMainWindow                mainWindow;
 };
 
 

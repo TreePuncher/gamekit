@@ -5,6 +5,73 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
+    std::optional<float> Intersects(const Ray r, const AABB aabb)
+    {
+        const auto Normals = static_vector<float3, 3>(
+            {   float3{ 1, 0, 0 },
+                float3{ 0, 1, 0 },
+                float3{ 0, 0, 1 } });
+
+        float t_min = -INFINITY;
+        float t_max = +INFINITY;
+
+        const float3 P = aabb.MidPoint() - r.O;
+        const float3 H = aabb.Span() / 2.0f;
+
+        for (size_t I = 0; I < 3; ++I)
+		{
+			auto e = Normals[I].dot(P);
+			auto f = Normals[I].dot(r.D);
+
+			if (abs(f) > 0.00)
+			{
+				float t_1 = (e + H[I]) / f;
+				float t_2 = (e - H[I]) / f;
+
+				if (t_1 > t_2)// Swap
+					std::swap(t_1, t_2);
+
+				if (t_1 > t_min) t_min = t_1;
+				if (t_2 < t_max) t_max = t_2;
+                if (t_min > t_max)	return {};
+                if (t_max < 0)		return {};
+			}
+            else if (-e - H[I] > 0 || -e + H[I] < 0) return {};
+		}
+
+		if (t_min > 0)
+			return t_min;
+		else
+			return t_max;
+    }
+
+
+    std::optional<float> Intersects(const Ray r, const BoundingSphere bs)
+    {
+        auto Origin = r.O;
+		auto R      = bs.w;
+		auto R2     = R * R;
+		auto S      = r.D.dot(r.D);
+		auto S2     = S * S;
+		auto L2     = r.D.dot(r.D);
+		auto M2     = L2 - S2;
+
+        if (S < 0 && L2 > R2)
+            return {}; // Miss
+
+		if(M2 > R2)
+            return {}; // Miss
+
+		auto Q = sqrt(R2 - M2);
+
+		float T = 0;
+
+		T = (L2 > R2) ? T = S - Q : T = S + Q;
+
+        return T;
+    }
+
+
 	bool Intersects(const Frustum F, const BoundingSphere BS)
 	{
 		bool Bottom = false;
