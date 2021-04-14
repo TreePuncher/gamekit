@@ -228,8 +228,9 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 	//return float4(T.xyz, 1);
 	//return float4(N.xyz, 1);
     //return pow(float4(roughness, metallic, 0, 0), 2.2f);
-    //return float4(N.xyz / 2 + 0.5f, 1);
+    return float4(N.xyz / 2 + 0.5f, 1);
 	//return float4(T.xyz / 2 + 0.5f, 1);
+	//return float4(Albedo.xyz, 1);
     
     //return pow(UV.y, 1.0f); 
     //return pow(1 - UV.y, 2.2f); 
@@ -252,8 +253,8 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
         //return pow(Colors[GetSliceIdx(-positionVS.z) % 6], 1.0f);
         //return (float(localLightCount) / float(lightCount));
         //return float4(-positionVS.z, -positionVS.z, -positionVS.z, 1);
-        return color = float4(N / 2.0f + 0.5f);
-    color = Albedo;
+        //return color = float4(N / 2.0f + 0.5f);
+    //return Albedo * Albedo;
 #endif
 	return pow(color, 2.1f);
 }

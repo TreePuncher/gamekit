@@ -438,7 +438,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    SceneBVH SceneBVH::Build(GraphicScene& scene, iAllocator& allocator)
+    SceneBVH SceneBVH::Build(const GraphicScene& scene, iAllocator& allocator)
     {
         ProfileFunction();
 
@@ -1039,8 +1039,8 @@ namespace FlexKit
                 }
                 else
                 {
-                    bvh->TraverseBVH(frustum,
-                        [&](VisibilityHandle intersector)
+                    bvh->Traverse(frustum,
+                        [&](VisibilityHandle intersector, auto& intersionResult)
                         {
                             GameObject& go = *visabilityComponent[intersector].entity;
                             Apply(go,
@@ -1088,8 +1088,8 @@ namespace FlexKit
 
                 Vector<VisibilityHandle> PVS{ &threadLocalAllocator };
 
-                bvh.TraverseBVH(lightAABB,
-                    [&](VisibilityHandle visable)
+                bvh.Traverse(lightAABB,
+                    [&](VisibilityHandle visable, auto& intersionResult)
                     {
                         PVS.push_back(visable);
                     });
@@ -1202,6 +1202,33 @@ namespace FlexKit
                 }
 			}
 		);
+    }
+
+
+    /************************************************************************************************/
+
+
+    Vector<GraphicSceneRayCastResult> GraphicScene::RayCast(FlexKit::Ray v, iAllocator& allocator) const
+    {
+        Vector<GraphicSceneRayCastResult> results{ &allocator };
+
+        if (!bvh.Valid())
+            const_cast<SceneBVH&>(bvh) = bvh.Build(*this, allocator);
+
+        bvh.Traverse(v,
+            [&](auto& visable, auto& intersectionResult)
+            {
+                results.emplace_back(visable, intersectionResult.value());
+            });
+
+        std::sort(
+            results.begin(), results.end(),
+            [](auto& lhs, auto& rhs)
+            {
+                return lhs.d < rhs.d;
+            });
+
+        return results;
     }
 
 

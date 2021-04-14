@@ -99,6 +99,7 @@ namespace FlexKit
 
     using AdditionalGbufferPass = TypeErasedCallable<256>;
 
+
     struct DepthBuffer
     {
         DepthBuffer(RenderSystem& IN_renderSystem, uint2 IN_WH, bool useFloatFormat = true) :
@@ -140,9 +141,11 @@ namespace FlexKit
             return buffers[previousIdx];
         }
 
-        void Resize(uint2 WH)
+        void Resize(uint2 newWH)
         {
             Release();
+
+            WH = newWH;
 
             buffers.push_back(renderSystem.CreateDepthBuffer(WH, floatingPoint, 1));
             buffers.push_back(renderSystem.CreateDepthBuffer(WH, floatingPoint, 1));
@@ -167,6 +170,7 @@ namespace FlexKit
         uint2                               WH;
         CircularBuffer<ResourceHandle, 3>   buffers;
     };
+
 
     struct DrawSceneDescription
     {

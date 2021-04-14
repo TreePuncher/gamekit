@@ -1,6 +1,33 @@
+#include "ViewportScene.h"
+
+
+ViewportObjectList  ViewportScene::RayCast(FlexKit::Ray v) const
+{
+    auto& visables = FlexKit::SceneVisibilityComponent::GetComponent();
+
+    const auto rayCastResults = scene.RayCast(v, FlexKit::SystemAllocator);
+
+    ViewportObjectList results;
+    for (auto& result : rayCastResults)
+    {
+        auto res = std::find_if(
+            sceneObjects.begin(), sceneObjects.end(),
+            [&](auto& object)
+            {
+                return &object->gameObject == visables[result.visibileObject].entity;
+            });
+
+        if (res != sceneObjects.end())
+            results.emplace_back(*res);
+    }
+
+    return results;
+}
+
+
 /**********************************************************************
 
-Copyright (c) 2015 - 2018 Robert May
+Copyright (c) 2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -21,29 +48,3 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
-
-#ifndef RESOURCEHANDLES_H_INCLUDED
-#define RESOURCEHANDLES_H_INCLUDED
-
-#include "Handle.h"
-#include "type.h"
-
-namespace FlexKit
-{
-	typedef Handle_t<32u, GetTypeGUID(ConstantBuffer)>			ConstantBufferHandle;
-	typedef Handle_t<32u, GetTypeGUID(VertexBuffer)>			VertexBufferHandle;
-    typedef Handle_t<32u, GetTypeGUID(ResourceHandle)>		    ResourceHandle;
-    typedef Handle_t<32u, GetTypeGUID(ReadBackResourceHandle)>  ReadBackResourceHandle;
-	typedef Handle_t<32u, GetTypeGUID(StreamTexture2DHandle)>	StreamingTexture2DHandle;
-    typedef Handle_t<32u, GetTypeGUID(ShaderResourceHandle)>	ShaderResourceHandle;
-	typedef Handle_t<32u, GetTypeGUID(SOResourceHandle)>		SOResourceHandle;
-	typedef Handle_t<32u, GetTypeGUID(QueryBuffer)>				QueryHandle;
-	typedef Handle_t<16u, GetTypeGUID(TriMesh)>					TriMeshHandle;
-    typedef Handle_t<32u, GetTypeGUID(CopyContextHandle)>		CopyContextHandle;
-    typedef Handle_t<32u, GetTypeGUID(DeviceHeapHandle)>        DeviceHeapHandle;
-
-    constexpr uint32_t MaterialComponentID = GetTypeGUID(Material);
-    using MaterialHandle = Handle_t <32, MaterialComponentID>;
-}
-
-#endif

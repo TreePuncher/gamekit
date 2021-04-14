@@ -19,6 +19,7 @@
 #include "EditorGadgetInterface.h"
 #include "EditorViewport.h"
 #include "TextureViewer.h"
+#include "SelectionContext.h"
 
 #include "ModelViewerWidget.h"
 
@@ -32,13 +33,9 @@ class EditorViewport;
 
 /************************************************************************************************/
 
+
 using FlexKit::ResourceBuilder::ResourceList;
 
-class SelectionContext
-{
-public:
-    std::optional<ResourceList> GetSelectedResources() { return {}; }
-};
 
 /************************************************************************************************/
 

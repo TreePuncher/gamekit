@@ -136,18 +136,21 @@ int ResourceItemModel::columnCount(const QModelIndex& parent) const
 
 QVariant ResourceItemModel::headerData(int section, Qt::Orientation orientation, int role) const 
 {
-    if (role == Qt::DisplayRole)
+    if (orientation == Qt::Orientation::Horizontal)
     {
-        switch (section)
+        if (role == Qt::DisplayRole)
         {
-        case 0:
-            return QString("ResourceID");
-        case 1:
-            return QString("ResourceType");
-        case 2:
-            return QString("User Count");
-        default:
-            return QString("Header #%1").arg(section);
+            switch (section)
+            {
+            case 0:
+                return QString("ResourceID");
+            case 1:
+                return QString("ResourceType");
+            case 2:
+                return QString("User Count");
+            default:
+                return QString("Header #%1").arg(section);
+            }
         }
     }
 

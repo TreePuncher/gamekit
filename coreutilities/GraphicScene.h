@@ -40,12 +40,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace FlexKit
 {
     // IDs
-    constexpr ComponentID DrawableComponentID    = GetTypeGUID(DrawableComponent);
+    constexpr ComponentID DrawableComponentID    = GetTypeGUID(Drawable);
     constexpr ComponentID PointLightShadowMapID  = GetTypeGUID(PointLighShadowCaster);
 
     // Handles
     using DrawableHandle            = Handle_t<32, DrawableComponentID>;
-    using PointLightHandle          = Handle_t<32, GetTypeGUID(PointLightID)>;
+    using PointLightHandle          = Handle_t<32, GetTypeGUID(PointLight)>;
     using PointLightShadowHandle    = Handle_t<32, PointLightShadowMapID>;
     using SceneHandle               = Handle_t<32, GetTypeGUID(SceneID)>;
     using VisibilityHandle          = Handle_t<32, GetTypeGUID(DrawableID)>;
@@ -262,7 +262,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	constexpr ComponentID SceneVisibilityComponentID	= GetTypeGUID(SceneVisibilityComponentID);
+	constexpr ComponentID SceneVisibilityComponentID	= GetTypeGUID(SceneVisibility);
 
 	struct VisibilityFields
 	{
@@ -429,19 +429,18 @@ namespace FlexKit
 
 
         SceneBVH() = default;
-        SceneBVH(const SceneBVH& ) = default;
-
 
         SceneBVH(iAllocator& allocator) :
             elements    { &allocator },
             nodes       { &allocator },
             allocator   { &allocator } {}
 
-        SceneBVH(SceneBVH&& rhs) = default;
-        SceneBVH& operator = (SceneBVH&& rhs) = default;
-        SceneBVH& operator = (const SceneBVH& rhs) = default;
+        SceneBVH(SceneBVH&& rhs)                    = default;
+        SceneBVH(const SceneBVH& )                  = default;
+        SceneBVH& operator = (SceneBVH&& rhs)       = default;
+        SceneBVH& operator = (const SceneBVH& rhs)  = default;
 
-        static SceneBVH Build(GraphicScene& scene, iAllocator& allocator);
+        static SceneBVH Build(const GraphicScene& scene, iAllocator& allocator);
 
         void Release()
         {
@@ -449,7 +448,7 @@ namespace FlexKit
         }
 
         template<typename TY_BV, typename TY_FN_OnIntersection>
-        void TraverseBVHNode(const BVHNode& node, const TY_BV& bv, TY_FN_OnIntersection& IntersectionHandler)
+        void TraverseBVHNode(const BVHNode& node, const TY_BV& bv, TY_FN_OnIntersection& IntersectionHandler) const
         {
             static auto& visabilityComponent = SceneVisibilityComponent::GetComponent();
 
@@ -465,8 +464,8 @@ namespace FlexKit
                     const auto child    = elements[childIdx];
                     const auto aabb     = visabilityComponent[child.handle].GetAABB();
 
-                    if (Intersects(bv, aabb))
-                        IntersectionHandler(child.handle);
+                    if (auto res = Intersects(bv, aabb); res)
+                        IntersectionHandler(child.handle, res);
                 }
             }
             else
@@ -480,7 +479,7 @@ namespace FlexKit
 
 
         template<typename TY_BV, typename TY_FN_OnIntersection>
-        void TraverseBVH(const TY_BV& bv, TY_FN_OnIntersection IntersectionHandler)
+        void Traverse(const TY_BV& bv, TY_FN_OnIntersection IntersectionHandler) const
         {
             if(nodes.size())
                 TraverseBVHNode(nodes[root], bv, IntersectionHandler);
@@ -535,6 +534,13 @@ namespace FlexKit
 
     void PushPV(Drawable& e, PVS& pvs, const float3 CameraPosition, float maxZ = 10'000.0f);
 
+    struct GraphicSceneRayCastResult
+    {
+        VisibilityHandle    visibileObject;
+        float               d;
+    };
+
+
 	class GraphicScene
 	{
 	public:
@@ -564,6 +570,8 @@ namespace FlexKit
 
         PointLightShadowGatherTask& GetVisableLights(UpdateDispatcher&, CameraHandle, BuildBVHTask&, iAllocator* tempMemory) const;
         PointLightUpdate&           UpdatePointLights(UpdateDispatcher&, BuildBVHTask&, PointLightShadowGatherTask&, iAllocator* temporaryMemory, iAllocator* persistentMemory) const;
+
+        Vector<GraphicSceneRayCastResult>    RayCast(FlexKit::Ray v, iAllocator& allocator) const;
 
         auto begin()    { return sceneEntities.begin(); }
         auto end()      { return sceneEntities.end(); }

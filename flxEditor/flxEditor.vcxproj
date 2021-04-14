@@ -155,9 +155,11 @@
     </ClCompile>
     <ClCompile Include="ModelViewerWidget.cpp" />
     <ClCompile Include="ResourceBrowserWidget.cpp" />
+    <ClCompile Include="SelectionContext.cpp" />
     <ClCompile Include="TaskManager.cpp" />
     <ClCompile Include="TextureViewer.cpp" />
     <ClCompile Include="EditorViewport.cpp" />
+    <ClCompile Include="ViewportScene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="DXRenderWindow.h" />
@@ -170,7 +172,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EditorApplication.h" />
+    <ClInclude Include="SelectionContext.h" />
     <ClInclude Include="Serialization.h" />
+    <ClInclude Include="ViewportScene.h" />
     <QtMoc Include="EditorViewport.h" />
     <QtMoc Include="ModelViewerWidget.h" />
     <QtMoc Include="EditorCodeEditor.h" />
