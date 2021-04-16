@@ -22,8 +22,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#ifndef GraphicScene_H
-#define GraphicScene_H
+#ifndef Scene_H
+#define Scene_H
 
 #include "buildsettings.h"
 #include "Assets.h"
@@ -40,15 +40,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace FlexKit
 {
     // IDs
-    constexpr ComponentID DrawableComponentID    = GetTypeGUID(Drawable);
-    constexpr ComponentID PointLightShadowMapID  = GetTypeGUID(PointLighShadowCaster);
+    constexpr ComponentID BrushComponentID          = GetTypeGUID(Brush);
+    constexpr ComponentID PointLightShadowMapID     = GetTypeGUID(PointLighShadowCaster);
 
     // Handles
-    using DrawableHandle            = Handle_t<32, DrawableComponentID>;
+    using BrushHandle               = Handle_t<32, BrushComponentID>;
     using PointLightHandle          = Handle_t<32, GetTypeGUID(PointLight)>;
     using PointLightShadowHandle    = Handle_t<32, PointLightShadowMapID>;
     using SceneHandle               = Handle_t<32, GetTypeGUID(SceneID)>;
-    using VisibilityHandle          = Handle_t<32, GetTypeGUID(DrawableID)>;
+    using VisibilityHandle          = Handle_t<32, GetTypeGUID(BrushID)>;
 
 
 	//Forward Declarations 
@@ -58,7 +58,7 @@ namespace FlexKit
 	typedef size_t SpotLightHandle;
 	typedef Pair<bool, int64_t> GSPlayAnimation_RES;
 
-	class  GraphicScene;
+	class  Scene;
 	struct SceneNodeComponentSystem;
 
 	enum class QuadTreeNodeLocation: int
@@ -72,50 +72,50 @@ namespace FlexKit
 	const float MinNodeSize = 1;
 
 
-    struct DrawableComponentEventHandler
+    struct BrushComponentEventHandler
     {
-        DrawableComponentEventHandler(RenderSystem& IN_renderSystem) : renderSystem{ IN_renderSystem }{}
+        BrushComponentEventHandler(RenderSystem& IN_renderSystem) : renderSystem{ IN_renderSystem }{}
 
         void OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
 
         RenderSystem& renderSystem;
     };
 
-	using DrawableComponent = BasicComponent_t<Drawable, DrawableHandle, DrawableComponentID, DrawableComponentEventHandler>;
+	using BrushComponent = BasicComponent_t<Brush, BrushHandle, BrushComponentID, BrushComponentEventHandler>;
 
-	class DrawableView : public ComponentView_t<DrawableComponent>
+	class BrushView : public ComponentView_t<BrushComponent>
 	{
 	public:
-		DrawableView(TriMeshHandle	triMesh, NodeHandle node)
+		BrushView(TriMeshHandle	triMesh, NodeHandle node)
 		{
-			GetComponent()[drawable].MeshHandle = triMesh;
-			GetComponent()[drawable].Node		= node;
+			GetComponent()[brush].MeshHandle = triMesh;
+			GetComponent()[brush].Node		= node;
 		}
 
 		TriMeshHandle GetTriMesh()
 		{
-			return GetComponent()[drawable].MeshHandle;
+			return GetComponent()[brush].MeshHandle;
 		}
 
-        Drawable& GetDrawable()
+        Brush& GetBrush()
         {
-            return GetComponent()[drawable];
+            return GetComponent()[brush];
         }
 
-		operator Drawable& ()
+		operator Brush& ()
 		{
-			return GetComponent()[drawable];
+			return GetComponent()[brush];
 		}
 
 		BoundingSphere GetBoundingSphere()
 		{
-			auto meshHandle = GetComponent()[drawable].MeshHandle;
+			auto meshHandle = GetComponent()[brush].MeshHandle;
 			auto mesh		= GetMeshResource(meshHandle);
 
 			return mesh->BS;
 		}
 
-		DrawableHandle	drawable = GetComponent().Create(Drawable{});
+		BrushHandle	brush = GetComponent().Create(Brush{});
 	};
 
 
@@ -329,14 +329,18 @@ namespace FlexKit
 		Apply(
 			go,
 			[&]( SceneVisibilityView&	visibility,
-			    DrawableView&			drawable)
+			    BrushView&			    brush)
 			{
-                auto boundingSphere = drawable.GetBoundingSphere();
+                auto boundingSphere = brush.GetBoundingSphere();
                 boundingSphere.w   *= rScale;
 
 				visibility.SetBoundingSphere(boundingSphere);
 			});
 	}
+
+
+    /************************************************************************************************/
+
 
     inline void SetBoundingSphereRadius(GameObject& go, const float radius)
     {
@@ -347,6 +351,10 @@ namespace FlexKit
                 visibility.SetBoundingSphere(BoundingSphere{ 0, 0, 0, radius });
             });
     }
+
+
+    /************************************************************************************************/
+
 
 	inline void SetBoundingSphereFromLight(GameObject& go)
 	{
@@ -360,6 +368,8 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
 
     inline BoundingSphere GetBoundingSphereFromMesh(GameObject& go)
     {
@@ -371,11 +381,11 @@ namespace FlexKit
 
         return Apply(
             go,
-            [&](SceneVisibilityView& visibility,
-                DrawableView& drawable)
+            [&](SceneVisibilityView&    visibility,
+                BrushView&              brushView)
             {
-                auto boundingSphere = drawable.GetBoundingSphere();
-                auto pos            = GetPositionW(drawable.GetDrawable().Node);
+                auto boundingSphere = brushView.GetBoundingSphere();
+                auto pos            = GetPositionW(brushView.GetBrush().Node);
 
                 return BoundingSphere{ pos, boundingSphere.w * rScale };
             },
@@ -385,19 +395,20 @@ namespace FlexKit
             });
     }
 
+
 	/************************************************************************************************/
 
 
 	struct PointLightGather
 	{
 		Vector<PointLightHandle>	pointLights;
-		const GraphicScene*			scene;
+		const Scene*			scene;
 	};
 
     struct PointLightShadowGather
     {
         Vector<PointLightHandle>	pointLightShadows;
-        const GraphicScene*         scene;
+        const Scene*         scene;
     };
 
     struct alignas(64) SceneBVH
@@ -440,7 +451,7 @@ namespace FlexKit
         SceneBVH& operator = (SceneBVH&& rhs)       = default;
         SceneBVH& operator = (const SceneBVH& rhs)  = default;
 
-        static SceneBVH Build(const GraphicScene& scene, iAllocator& allocator);
+        static SceneBVH Build(const Scene& scene, iAllocator& allocator);
 
         void Release()
         {
@@ -530,28 +541,28 @@ namespace FlexKit
         uint32_t    recommendedLOD;
     };
 
-    ComputeLod_RES ComputeLOD(Drawable& e, const float3 CameraPosition, float maxZ);
+    ComputeLod_RES ComputeLOD(Brush& e, const float3 CameraPosition, float maxZ);
 
-    void PushPV(Drawable& e, PVS& pvs, const float3 CameraPosition, float maxZ = 10'000.0f);
+    void PushPV(Brush& e, PVS& pvs, const float3 CameraPosition, float maxZ = 10'000.0f);
 
-    struct GraphicSceneRayCastResult
+    struct SceneRayCastResult
     {
         VisibilityHandle    visibileObject;
         float               d;
     };
 
 
-	class GraphicScene
+	class Scene
 	{
 	public:
-		GraphicScene(iAllocator* in_allocator = SystemAllocator) :
+		Scene(iAllocator* in_allocator = SystemAllocator) :
 				allocator					{ in_allocator	},
 				HandleTable					{ in_allocator	},
 				sceneID						{ rand()		},
                 ownedGameObjects            { in_allocator  },
 				sceneEntities				{ in_allocator	} {}
 				
-		~GraphicScene()
+		~Scene()
 		{
 			ClearScene();
 		}
@@ -571,7 +582,7 @@ namespace FlexKit
         PointLightShadowGatherTask& GetVisableLights(UpdateDispatcher&, CameraHandle, BuildBVHTask&, iAllocator* tempMemory) const;
         PointLightUpdate&           UpdatePointLights(UpdateDispatcher&, BuildBVHTask&, PointLightShadowGatherTask&, iAllocator* temporaryMemory, iAllocator* persistentMemory) const;
 
-        Vector<GraphicSceneRayCastResult>    RayCast(FlexKit::Ray v, iAllocator& allocator) const;
+        Vector<SceneRayCastResult>    RayCast(FlexKit::Ray v, iAllocator& allocator) const;
 
         auto begin()    { return sceneEntities.begin(); }
         auto end()      { return sceneEntities.end(); }
@@ -585,14 +596,14 @@ namespace FlexKit
         SceneBVH                        bvh;
 		iAllocator*						allocator       = nullptr;
 
-		operator GraphicScene* () { return this; }
+		operator Scene* () { return this; }
 	};
 
 
     /************************************************************************************************/
 
 
-    std::pair<GameObject*, bool> FindGameObject(GraphicScene& scene, const char* id);
+    std::pair<GameObject*, bool> FindGameObject(Scene& scene, const char* id);
 
 
 	/************************************************************************************************/
@@ -601,7 +612,7 @@ namespace FlexKit
 	struct GetPVSTaskData
 	{
 		CameraHandle	camera;
-		GraphicScene*	scene; // Source Scene
+		Scene*	scene; // Source Scene
 		PVS				solid;
 		PVS				transparent;
 
@@ -616,24 +627,24 @@ namespace FlexKit
 
     using GatherTask = UpdateTaskTyped<GetPVSTaskData>;
 
-    FLEXKITAPI void DEBUG_ListSceneObjects(GraphicScene& scene);
+    FLEXKITAPI void DEBUG_ListSceneObjects(Scene& scene);
 
 
-	FLEXKITAPI void UpdateGraphicScene				(GraphicScene* SM);
-	FLEXKITAPI void UpdateAnimationsGraphicScene	(GraphicScene* SM, double dt);
-	FLEXKITAPI void UpdateGraphicScenePoseTransform	(GraphicScene* SM );
-	FLEXKITAPI void UpdateShadowCasters				(GraphicScene* SM);
+	FLEXKITAPI void UpdateScene				    (Scene* SM);
+	FLEXKITAPI void UpdateAnimationsScene	    (Scene* SM, double dt);
+	FLEXKITAPI void UpdateScenePoseTransform	(Scene* SM );
+	FLEXKITAPI void UpdateShadowCasters			(Scene* SM);
 
-    FLEXKITAPI void         GatherScene(GraphicScene* SM, CameraHandle Camera, PVS& solid, PVS& transparent);
-    FLEXKITAPI GatherTask&  GatherScene(UpdateDispatcher& dispatcher, GraphicScene* scene, CameraHandle C, iAllocator& allocator);
+    FLEXKITAPI void         GatherScene(Scene* SM, CameraHandle Camera, PVS& solid, PVS& transparent);
+    FLEXKITAPI GatherTask&  GatherScene(UpdateDispatcher& dispatcher, Scene* scene, CameraHandle C, iAllocator& allocator);
 
     FLEXKITAPI void LoadLodLevels(UpdateDispatcher& dispatcher, GatherTask& PVS, CameraHandle camera, RenderSystem& renderSystem, iAllocator& allocator);
 
-	FLEXKITAPI void ReleaseGraphicScene				(GraphicScene* SM);
-	FLEXKITAPI void BindJoint						(GraphicScene* SM, JointHandle Joint, SceneEntityHandle Entity, NodeHandle TargetNode);
+	FLEXKITAPI void ReleaseScene				(Scene* SM);
+	FLEXKITAPI void BindJoint					(Scene* SM, JointHandle Joint, SceneEntityHandle Entity, NodeHandle TargetNode);
 
-	FLEXKITAPI bool LoadScene(RenderSystem* RS, GUID_t Guid,			GraphicScene& GS_out, iAllocator* allocator, iAllocator* Temp);
-	FLEXKITAPI bool LoadScene(RenderSystem* RS, const char* LevelName,	GraphicScene& GS_out, iAllocator* allocator, iAllocator* Temp);
+	FLEXKITAPI bool LoadScene(RenderSystem* RS, GUID_t Guid,			Scene& GS_out, iAllocator* allocator, iAllocator* Temp);
+	FLEXKITAPI bool LoadScene(RenderSystem* RS, const char* LevelName,	Scene& GS_out, iAllocator* allocator, iAllocator* Temp);
 
 
     /************************************************************************************************/

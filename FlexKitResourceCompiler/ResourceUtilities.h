@@ -52,7 +52,7 @@ using FlexKit::EResourceType;
 using FlexKit::float2;
 using FlexKit::float3;
 using FlexKit::ID_LENGTH;
-using FlexKit::Drawable;
+using FlexKit::Brush;
 using FlexKit::Quaternion;
 using FlexKit::Pair;
 using FlexKit::Resource;

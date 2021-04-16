@@ -189,7 +189,7 @@ public:
             IKTargets           { framework.core.GetBlockMemory() },
 			cameras		        { framework.core.GetBlockMemory() },
 			ids			        { framework.core.GetBlockMemory() },
-			drawables	        { framework.core.GetBlockMemory(), IN_Framework.GetRenderSystem() },
+			brushes 	        { framework.core.GetBlockMemory(), IN_Framework.GetRenderSystem() },
             materials           { IN_Framework.core.RenderSystem, streamingEngine, framework.core.GetBlockMemory() },
 			visables	        { framework.core.GetBlockMemory() },
 			pointLights	        { framework.core.GetBlockMemory() },
@@ -337,7 +337,7 @@ public:
 	SceneNodeComponent			    transforms;
 	CameraComponent				    cameras;
 	StringIDComponent			    ids;
-	DrawableComponent			    drawables;
+	BrushComponent			        brushes;
     MaterialComponent               materials;
 	SceneVisibilityComponent	    visables;
 	PointLightComponent			    pointLights;

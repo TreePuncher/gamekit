@@ -4,7 +4,7 @@
 #include "Memoryutilities.h"
 #include "TextureUtilities.h"
 #include "ThreadUtilities.h"
-#include "GraphicScene.h"
+#include "Scene.h"
 #include "AnimationComponents.h"
 
 namespace FlexKit
@@ -499,7 +499,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2020 Robert May
+Copyright (c) 2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

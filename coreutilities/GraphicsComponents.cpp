@@ -1,4 +1,4 @@
-#include "GraphicScene.h"
+#include "Scene.h"
 
 namespace FlexKit
 {

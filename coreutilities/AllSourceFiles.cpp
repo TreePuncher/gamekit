@@ -35,7 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "EngineCore.cpp"
 #include "GameFramework.cpp"
 #include "GraphicsComponents.cpp"
-#include "GraphicScene.cpp"
+#include "Scene.cpp"
 #include "Handle.cpp"
 #include "intersection.cpp"
 #include "logging.cpp"

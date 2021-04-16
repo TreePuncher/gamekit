@@ -38,7 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "graphics.h"
 #include "CoreSceneObjects.h"
 #include "AnimationComponents.h"
-#include "GraphicScene.h"
+#include "Scene.h"
 
 #include <DXProgrammableCapture.h>
 
@@ -130,12 +130,12 @@ namespace FlexKit
         DepthBuffer& operator = (DepthBuffer&& rhs)         = delete;
 
 
-        ResourceHandle Get() const
+        ResourceHandle Get() const noexcept
         {
             return buffers[idx];
         }
 
-        ResourceHandle GetPrevious() const
+        ResourceHandle GetPrevious() const noexcept
         {
             auto previousIdx = (idx + 2) % 3;
             return buffers[previousIdx];
@@ -159,7 +159,7 @@ namespace FlexKit
             renderSystem.ReleaseResource(buffers.pop_back());
         }
 
-        void Increment()
+        void Increment() noexcept
         {
             idx = (idx + 1) % 3;
         }
@@ -175,7 +175,7 @@ namespace FlexKit
     struct DrawSceneDescription
     {
         CameraHandle        camera;
-        GraphicScene&       scene;
+        Scene&       scene;
         const double        dt;  // time since last frame
         const double        t;  // running time
 
@@ -356,7 +356,7 @@ namespace FlexKit
 		float2			splitSpan;
 		size_t			sceneLightCount;
 		CameraHandle	camera;
-		GraphicScene*	scene;
+		Scene*	        scene;
 
 		TextureBuffer				lightMapBuffer;
 		Vector<uint32_t>			lightLists;
@@ -422,10 +422,10 @@ namespace FlexKit
 
 	struct DepthPass
 	{
-		DepthPass(const PVS& IN_drawables) :
-			drawables{ IN_drawables } {}
+		DepthPass(const PVS& IN_brushes) :
+			brushes{ IN_brushes } {}
 
-		const PVS&          drawables;
+		const PVS&          brushes;
 		ResourceHandle      depthPassTarget;
 		FrameResourceHandle depthBufferObject;
 
@@ -450,7 +450,7 @@ namespace FlexKit
 			const PVS&                  IN_PVS,
 			const CBPushBuffer&         IN_entityConstants) :
 				pointLights     { IN_lights },
-				drawables       { IN_PVS    },
+				brushes         { IN_PVS    },
 				entityConstants { IN_entityConstants } {}
 
 
@@ -468,7 +468,7 @@ namespace FlexKit
 		const CBPushBuffer&         entityConstants;
 
 		const PointLightHandleList& pointLights;
-		const PVS&                  drawables;
+		const PVS&                  brushes;
 	};
 
 
@@ -561,7 +561,7 @@ namespace FlexKit
 	{
 		GBuffer&                    gbuffer;
 		const PVS&                  pvs;
-		const PosedDrawableList&    skinned;
+		const PosedBrushList&       skinned;
 
 		ReserveConstantBufferFunction   reserveCB;
 
@@ -753,7 +753,7 @@ namespace FlexKit
 
         CBPushBuffer&                   GetConstants()
         {
-            auto reserveSize = sceneGather.GetData().solid.size() * AlignedSize<Drawable::VConstantsLayout>();
+            const auto reserveSize = sceneGather.GetData().solid.size() * AlignedSize<Brush::VConstantsLayout>();
             return getConstantBuffer(reserveSize);
         }
     };
@@ -975,7 +975,7 @@ namespace FlexKit
 				UpdateDispatcher&               dispatcher,
 				FrameGraph&                     frameGraph,
 				const CameraHandle              camera,
-				const GraphicScene&             scene,
+				const Scene&                    scene,
 				const SceneDescription&         desc,
                 ResourceHandle                  depthBuffer,
 				ReserveConstantBufferFunction   reserveCB,

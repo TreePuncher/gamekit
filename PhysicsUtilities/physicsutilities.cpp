@@ -163,7 +163,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PhysXSceneHandle PhysXComponent::CreateScene()
+	LayerHandle PhysXComponent::CreateLayer()
 	{
 		physx::PxSceneDesc desc(physxAPI->getTolerancesScale());
 		desc.gravity		     = physx::PxVec3(0.0f, -9.81f, 0.0f);
@@ -180,7 +180,7 @@ namespace FlexKit
 		auto pScene			= physxAPI->createScene(desc);
 		auto Idx			= scenes.emplace_back(pScene, *this, allocator);
 
-		return PhysXSceneHandle(Idx);
+		return LayerHandle(Idx);
 	}
 
 
@@ -188,13 +188,13 @@ namespace FlexKit
 
 
     StaticBodyHandle PhysXComponent::CreateStaticCollider(
-        const PhysXSceneHandle  sceneHndl,
+        const LayerHandle       layerHandle,
         const PxShapeHandle     shape,
         const float3            pos,
         const Quaternion        q)
 	{
-        auto& scene = GetScene_ref(sceneHndl);
-		return scene.CreateStaticCollider(shapes[shape], pos, q);
+        auto& layer = GetLayer_ref(layerHandle);
+		return layer.CreateStaticCollider(shapes[shape], pos, q);
 	}
 
 
@@ -202,13 +202,13 @@ namespace FlexKit
 
 
     RigidBodyHandle PhysXComponent::CreateRigidBodyCollider(
-        const PhysXSceneHandle  sceneHndl,
+        const LayerHandle       layerHandle,
         const PxShapeHandle     shape,
         const float3            pos,
         const Quaternion        q)
 	{
-        auto& scene = GetScene_ref(sceneHndl);
-		return scene.CreateRigidBodyCollider(shapes[shape], pos, q);
+        auto& layer = GetLayer_ref(layerHandle);
+		return layer.CreateRigidBodyCollider(shapes[shape], pos, q);
 	}
 
 
@@ -244,9 +244,9 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    PhysXScene& PhysXComponent::GetScene_ref(PhysXSceneHandle handle)
+    PhysicsLayer& PhysXComponent::GetLayer_ref(LayerHandle layer)
     {
-        return scenes[handle];
+        return scenes[layer];
     }
 
 
@@ -255,7 +255,7 @@ namespace FlexKit
 
 	void PhysXComponent::Simulate(double dt, WorkBarrier* barrier, iAllocator* temp_allocator)
 	{
-		for (PhysXScene& scene : scenes)
+		for (PhysicsLayer& scene : scenes)
 			scene.Update(dt, barrier, temp_allocator);
 	}
 
@@ -345,7 +345,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PhysXComponent::ReleaseScene(PhysXSceneHandle handle)
+	void PhysXComponent::ReleaseScene(LayerHandle handle)
 	{
 		scenes[handle.INDEX].Release();
 	}
@@ -386,7 +386,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-	void PhysXScene::Update(double dT, WorkBarrier* barrier, iAllocator* temp_allocator)
+	void PhysicsLayer::Update(double dT, WorkBarrier* barrier, iAllocator* temp_allocator)
 	{
 		EXITSCOPE( T += dT; );
 
@@ -422,7 +422,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PhysXScene::UpdateColliders(WorkBarrier* barrier, iAllocator* temp_allocator)
+	void PhysicsLayer::UpdateColliders(WorkBarrier* barrier, iAllocator* temp_allocator)
 	{
 		staticColliders.UpdateColliders(barrier, temp_allocator);
 		rbColliders.UpdateColliders(barrier, temp_allocator);
@@ -432,7 +432,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	StaticBodyHandle PhysXScene::CreateStaticCollider(Shape shape, float3 initialPosition, Quaternion initialQ)
+	StaticBodyHandle PhysicsLayer::CreateStaticCollider(Shape shape, float3 initialPosition, Quaternion initialQ)
 	{
 		physx::PxTransform pxInitialPose =
 			physx::PxTransform{ PxMat44(PxIdentity) };
@@ -455,7 +455,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    RigidBodyHandle PhysXScene::CreateRigidBodyCollider(Shape shape, float3 initialPosition, Quaternion initialQ)
+    RigidBodyHandle PhysicsLayer::CreateRigidBodyCollider(Shape shape, float3 initialPosition, Quaternion initialQ)
 	{
         auto node = GetZeroedNode();
 		SetOrientation	(node, initialQ);
@@ -484,7 +484,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void PhysXScene::ReleaseCollider(RigidBodyHandle handle)
+    void PhysicsLayer::ReleaseCollider(RigidBodyHandle handle)
     {
         scene->removeActor(*rbColliders.colliders[handle].actor);
     }
@@ -493,7 +493,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void PhysXScene::ReleaseCollider(StaticBodyHandle handle)
+    void PhysicsLayer::ReleaseCollider(StaticBodyHandle handle)
     {
         scene->removeActor(*staticColliders.colliders[handle].actor);
     }
@@ -502,7 +502,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PhysXScene::SetPosition(RigidBodyHandle collider, float3 xyz)
+	void PhysicsLayer::SetPosition(RigidBodyHandle collider, float3 xyz)
 	{
 		auto& colliderIMPL	= rbColliders.colliders[collider.INDEX];
 		auto pose			= colliderIMPL.actor->getGlobalPose();
@@ -515,7 +515,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PhysXScene::SetMass(RigidBodyHandle collider, float m)
+	void PhysicsLayer::SetMass(RigidBodyHandle collider, float m)
 	{
 		auto& colliderIMPL = rbColliders.colliders[collider.INDEX];
 		colliderIMPL.actor->setMass(m);
@@ -525,7 +525,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void PhysXScene::ApplyForce(RigidBodyHandle rbHandle, float3 xyz)
+    void PhysicsLayer::ApplyForce(RigidBodyHandle rbHandle, float3 xyz)
     {
         auto actor = rbColliders[rbHandle].actor;
         actor->addForce({ xyz.x, xyz.y, xyz.z }, PxForceMode::eIMPULSE);
@@ -535,7 +535,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void PhysXScene::SetRigidBodyPosition(RigidBodyHandle rbHandle, const float3 xyz)
+    void PhysicsLayer::SetRigidBodyPosition(RigidBodyHandle rbHandle, const float3 xyz)
     {
         auto actor  = rbColliders[rbHandle].actor;
         auto pose   = actor->getGlobalPose();
@@ -631,9 +631,9 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    GameObject& CreateThirdPersonCameraController(GameObject& gameObject, PhysXSceneHandle scene, iAllocator& allocator, const float R, const float H)
+    GameObject& CreateThirdPersonCameraController(GameObject& gameObject, LayerHandle layer, iAllocator& allocator, const float R, const float H)
     {
-        gameObject.AddView<CharacterControllerView>(scene, &gameObject, float3{ 0, 10, 0 });
+        gameObject.AddView<CharacterControllerView>(layer, &gameObject, float3{ 0, 10, 0 });
 
         gameObject.AddView<CameraControllerView>(
             CameraControllerComponent::GetComponent().Create(
@@ -816,7 +816,7 @@ namespace FlexKit
 
     NodeHandle RigidBodyView::GetNode() const
     {
-        return GetComponent().GetScene(scene)[staticBody].node;
+        return GetComponent().GetLayer(layer)[staticBody].node;
     }
 
 
@@ -838,7 +838,7 @@ namespace FlexKit
     {
         Apply(GO, [&](RigidBodyView& rigidBody)
             {
-                PhysXComponent::GetComponent().GetScene_ref(rigidBody.scene).SetRigidBodyPosition(rigidBody.staticBody, worldPOS);
+                PhysXComponent::GetComponent().GetLayer_ref(rigidBody.layer).SetRigidBodyPosition(rigidBody.staticBody, worldPOS);
             });
     }
 
@@ -850,7 +850,7 @@ namespace FlexKit
     {
         Apply(GO, [&](RigidBodyView& rigidBody)
             {
-                PhysXComponent::GetComponent().GetScene_ref(rigidBody.scene).ApplyForce(rigidBody.staticBody, force);
+                PhysXComponent::GetComponent().GetLayer_ref(rigidBody.layer).ApplyForce(rigidBody.staticBody, force);
             });
     }
 
@@ -1099,7 +1099,7 @@ namespace FlexKit
 
             const float3 footPosition   = pxVec3ToFloat3(controllerImpl.controller->getFootPosition());
 
-            auto& scene = PhysXComponent::GetComponent().GetScene_ref(controllerImpl.scene);
+            auto& scene = PhysXComponent::GetComponent().GetLayer_ref(controllerImpl.layer);
 
             const float3 origin1    = footPosition + up * 3 + 2.0f * -forward;
             const float3 ray1       = -forward.normal();

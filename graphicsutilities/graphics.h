@@ -4904,7 +4904,7 @@ private:
 	};
 	
 
-	StaticObjectHandle CreateDrawable(StaticScene* Scene, NodeHandle node, size_t GeometryIndex = 0);
+	StaticObjectHandle CreateBrush(StaticScene* Scene, NodeHandle node, size_t GeometryIndex = 0);
 
 	// TODO: re-implement StaticMeshBatcher
 	struct FLEXKITAPI StaticMeshBatcher

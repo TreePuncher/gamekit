@@ -141,8 +141,8 @@ struct FireBall : public CardInterface
 struct PlayerDesc
 {
     MultiplayerPlayerID_t   player;
-    PhysXSceneHandle        pscene;
-    GraphicScene&           gscene;  
+    LayerHandle             layer;
+    Scene&                  scene;  
 
     float h = 1.0f;
     float r = 1.0f;
@@ -314,13 +314,13 @@ public:
         core            { IN_core },
         renderSystem    { IN_core.RenderSystem},
         objectPool      { IN_core.GetBlockMemory(), 8096 },
-        pscene          { PhysXComponent::GetComponent().CreateScene() },
-        gscene          { IN_core.GetBlockMemory() },
+        layer           { PhysXComponent::GetComponent().CreateLayer() },
+        scene           { IN_core.GetBlockMemory() },
         cubeShape       { PhysXComponent::GetComponent().CreateCubeShape({ 0.5f, 0.5f, 0.5f}) } {}
 
     ~GameWorld()
     {
-        gscene.ClearScene();
+        scene.ClearScene();
     }
 
 
@@ -354,8 +354,8 @@ public:
     EngineCore&             core;
     RenderSystem&           renderSystem;
 
-    GraphicScene            gscene;
-    PhysXSceneHandle        pscene;
+    Scene                   scene;
+    LayerHandle             layer;
 
     ObjectPool<GameObject>  objectPool;
     iAllocator&             allocator;

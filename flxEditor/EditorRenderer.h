@@ -7,7 +7,7 @@
 #include "Materials.h"
 #include "WorldRender.h"
 #include "TextureStreamingUtilities.h"
-#include "GraphicScene.h"
+#include "Scene.h"
 
 #include "../FlexKitResourceCompiler/MeshProcessing.h"
 
@@ -57,13 +57,14 @@ private:
 
     // Components
     FlexKit::SceneNodeComponent         sceneNodes;
-    FlexKit::DrawableComponent          drawComponent;
+    FlexKit::BrushComponent             brushComponent;
     FlexKit::StringIDComponent          stringIDComponent;
     FlexKit::MaterialComponent          materialComponent;
     FlexKit::CameraComponent            cameraComponent;
     FlexKit::SceneVisibilityComponent   visibilityComponent;
     FlexKit::SkeletonComponent          skeletonComponent;
     FlexKit::AnimatorComponent          animatorComponent;
+    FlexKit::PointLightComponent        pointLightComponent;
 
     QApplication&                   QtApplication;
     FlexKit::FKApplication&         application;

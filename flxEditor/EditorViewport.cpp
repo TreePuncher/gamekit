@@ -117,13 +117,13 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
                 if (entity.Node != -1)
                     viewObject->gameObject.AddView<FlexKit::SceneNodeView<>>(nodes[entity.Node]);
             }   break;
-            case FlexKit::DrawableComponentID:
+            case FlexKit::BrushComponentID:
             {
-                auto drawableComponent = std::static_pointer_cast<FlexKit::ResourceBuilder::DrawableComponent>(componentEntry);
+                auto brushComponent = std::static_pointer_cast<FlexKit::ResourceBuilder::BrushComponent>(componentEntry);
 
-                if (drawableComponent)
+                if (brushComponent)
                 {
-                    auto res = scene->FindSceneResource(drawableComponent->MeshGuid);
+                    auto res = scene->FindSceneResource(brushComponent->MeshGuid);
 
                     if (!res) // TODO: Mesh not found, use placeholder model?
                         continue;
@@ -133,7 +133,7 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
                     {
                         FlexKit::TriMeshHandle handle = std::any_cast<FlexKit::TriMeshHandle>(prop->second);
 
-                        viewObject->gameObject.AddView<FlexKit::DrawableView>(handle, nodes[entity.Node]);
+                        viewObject->gameObject.AddView<FlexKit::BrushView>(handle, nodes[entity.Node]);
                     }
                     else
                     {
@@ -142,7 +142,7 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
 
                         res->properties[GetCRCGUID(TriMeshHandle)] = std::any{ handle };
 
-                        viewObject->gameObject.AddView<FlexKit::DrawableView>(handle, nodes[entity.Node]);
+                        viewObject->gameObject.AddView<FlexKit::BrushView>(handle, nodes[entity.Node]);
                     }
 
                     viewportScene->scene.AddGameObject(viewObject->gameObject, nodes[entity.Node]);
@@ -203,9 +203,9 @@ void EditorViewport::mousePressEvent(QMouseEvent* event)
     {
         if (event->button() == Qt::MouseButton::LeftButton)
         {
-            auto qPos = event->localPos();
+            auto qPos = renderWindow->mapFromGlobal(event->globalPos());
 
-            const FlexKit::uint2 XY = FlexKit::uint2{ (uint32_t)qPos.x(), (uint32_t)qPos.y() };
+            const FlexKit::uint2 XY{ (uint32_t)qPos.x(), (uint32_t)qPos.y() };
             const FlexKit::uint2 screenWH = depthBuffer.WH;
 
             const FlexKit::float2 UV{ XY[0] / float(screenWH[0]), XY[1] / float(screenWH[1]) };
@@ -214,7 +214,7 @@ void EditorViewport::mousePressEvent(QMouseEvent* event)
             const auto cameraConstants      = FlexKit::GetCameraConstants(viewportCamera);
             const auto cameraOrientation    = FlexKit::GetOrientation(FlexKit::GetCameraNode(viewportCamera));
 
-            const FlexKit::float3 v_dir = cameraOrientation * ((Inverse(Inverse(cameraConstants.Proj)) * FlexKit::float4(ScreenCoord.x, ScreenCoord.y,  1.0f, 1.0f)).xyz()).normal();
+            const FlexKit::float3 v_dir = cameraOrientation * (Inverse(cameraConstants.Proj) * FlexKit::float4(ScreenCoord.x, ScreenCoord.y,  1.0f, 1.0f)).xyz().normal();
             const FlexKit::float3 v_o   = cameraConstants.WPOS.xyz();
 
             auto results = scene->RayCast(

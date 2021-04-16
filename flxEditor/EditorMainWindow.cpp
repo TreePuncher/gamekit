@@ -174,8 +174,10 @@ void EditorMainWindow::AddExporter(iEditorExporter* exporter)
                     std::end(selectedResources),
                     [](Resource_ptr& lhs, Resource_ptr& rhs) { return lhs.get() < rhs.get(); });
 
-                std::unique(
-                    std::begin(selectedResources),
+                selectedResources.erase(
+                    std::unique(
+                        std::begin(selectedResources),
+                        std::end(selectedResources)),
                     std::end(selectedResources));
 
                 if (fileDir.size() && selectedResources.size() && !exporter->Export(fileStr, selectedResources))

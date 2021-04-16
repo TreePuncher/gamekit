@@ -44,7 +44,7 @@ namespace FlexKit
 	using JointHandle = FlexKit::Handle_t<16, GetTypeGUID(JointHandle)>;
 
 	// PreDeclarations
-	struct	Drawable;
+	struct	Brush;
 	struct	Skeleton;
 
 	struct Joint

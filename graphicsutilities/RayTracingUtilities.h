@@ -2,7 +2,7 @@
 
 #include "memoryutilities.h"
 #include "graphics.h"
-#include "GraphicScene.h"
+#include "Scene.h"
 #include "WorldRender.h"
 
 namespace FlexKit

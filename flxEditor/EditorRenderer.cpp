@@ -14,13 +14,14 @@ EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FK
     worldRender     { IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory() },
 
 
-    drawComponent       { IN_framework.core.GetBlockMemory(), IN_framework.core.RenderSystem },
+    brushComponent      { IN_framework.core.GetBlockMemory(), IN_framework.core.RenderSystem },
     stringIDComponent   { IN_framework.core.GetBlockMemory() },
     materialComponent   { IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory() },
     cameraComponent     { IN_framework.core.GetBlockMemory() },
     visibilityComponent { IN_framework.core.GetBlockMemory() },
     skeletonComponent   { IN_framework.core.GetBlockMemory() },
-    animatorComponent   { IN_framework.core.GetBlockMemory() }
+    animatorComponent   { IN_framework.core.GetBlockMemory() },
+    pointLightComponent { IN_framework.core.GetBlockMemory() }
 {
     auto& renderSystem = framework.GetRenderSystem();
     renderSystem.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_PSO, { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateTexturedTriStatePSO });

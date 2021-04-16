@@ -5,7 +5,7 @@
 #include <memory>
 #include <any>
 
-#include "GraphicScene.h"
+#include "Scene.h"
 #include "..\FlexKitResourceCompiler\SceneResource.h"
 
 

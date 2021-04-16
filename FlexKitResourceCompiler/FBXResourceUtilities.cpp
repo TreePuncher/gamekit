@@ -1223,9 +1223,9 @@ namespace FlexKit::ResourceBuilder
 #if USING(RESCOMPILERVERBOSE)
                 std::cout << "Entity Found: " << Node->GetName() << "\n";
 #endif
-                auto FBXMesh = static_cast<fbxsdk::FbxMesh*>(Attr);
-                auto UniqueID = FBXMesh->GetUniqueID();
-                auto name = Node->GetName();
+                auto FBXMesh    = static_cast<fbxsdk::FbxMesh*>(Attr);
+                auto UniqueID   = FBXMesh->GetUniqueID();
+                auto name       = Node->GetName();
 
                 const auto materialCount = Node->GetMaterialCount();
                 const auto shadingMode = Node->GetShadingMode();
@@ -1241,7 +1241,7 @@ namespace FlexKit::ResourceBuilder
                 }
 
                 SceneEntity entity;
-                entity.components.push_back(std::make_shared<DrawableComponent>(UniqueID));
+                entity.components.push_back(std::make_shared<BrushComponent>(UniqueID));
                 entity.Node = Nodehndl;
                 entity.id = name;
                 entity.id = std::string(name);
@@ -1417,10 +1417,10 @@ namespace FlexKit::ResourceBuilder
         {
             for (auto& component : entity.components)
             {
-                if (component->id == GetTypeGUID(DrawableComponent))
+                if (component->id == GetTypeGUID(BrushComponent))
                 {
-                    auto drawable = std::dynamic_pointer_cast<DrawableComponent>(component);
-                    drawable->MeshGuid = TranslateID(drawable->MeshGuid, translationTable);
+                    auto brush = std::dynamic_pointer_cast<BrushComponent>(component);
+                    brush->MeshGuid = TranslateID(brush->MeshGuid, translationTable);
                 }
             }
         }

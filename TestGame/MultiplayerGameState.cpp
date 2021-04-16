@@ -136,23 +136,23 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     auto model              = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), 7894);
 
     IKTarget.AddView<SceneNodeView<>>();
-    IKTarget.AddView<DrawableView>(model,   GetSceneNode(IKTarget));
+    IKTarget.AddView<BrushView>(model,   GetSceneNode(IKTarget));
     IKTarget.AddView<FABRIKTargetView>(FABRIKTarget{ GetSceneNode(IKTarget), (iAllocator*)framework.core.GetBlockMemory() });
 
 
     Translate(IKTarget, { 0, 6.0f, 0 });
 
     testAnimation.AddView<SceneNodeView<>>();
-    auto& drawable      = testAnimation.AddView<DrawableView>(playerCharacterModel, GetSceneNode(testAnimation));
-    auto& skeleton      = testAnimation.AddView<SkeletonView>(playerCharacterModel, 8001);
-    //auto& animator      = testAnimation.AddView<AnimatorView>(testAnimation);
+    auto& brushView     = testAnimation.AddView<BrushView>(playerCharacterModel, GetSceneNode(testAnimation));
+    auto& skeletonView  = testAnimation.AddView<SkeletonView>(playerCharacterModel, 8001);
+    //auto& animatorView    = testAnimation.AddView<AnimatorView>(testAnimation);
     auto& IKController  = testAnimation.AddView<FABRIKView>(testAnimation);
 
     IKController.AddTarget(IKTarget);
-    IKController.SetEndEffector(skeleton.FindJoint("EndEffector"));
+    IKController.SetEndEffector(skeletonView.FindJoint("EndEffector"));
     //animator.Play(*testAnimationResource, true);
 
-    drawable.GetDrawable().Skinned = true;
+    brushView.GetBrush().Skinned = true;
 
     scene.AddGameObject(testAnimation, GetSceneNode(testAnimation));
     scene.AddGameObject(IKTarget, GetSceneNode(IKTarget));

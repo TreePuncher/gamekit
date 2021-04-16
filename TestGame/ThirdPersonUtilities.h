@@ -4,7 +4,7 @@
 #include "CameraUtilities.h"
 #include "Components.h"
 #include "GraphicsComponents.h"
-#include "GraphicScene.h"
+#include "Scene.h"
 
 
 /************************************************************************************************/

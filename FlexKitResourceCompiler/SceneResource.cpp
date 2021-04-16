@@ -385,11 +385,11 @@ namespace FlexKit::ResourceBuilder
 
                     if (node.mesh != -1)
                     {
-                        auto drawable = std::make_shared<DrawableComponent>(meshMap[node.mesh]);
+                        auto brush = std::make_shared<BrushComponent>(meshMap[node.mesh]);
 
                         for (auto& subEntity : model.meshes[node.mesh].primitives)
                         {
-                            DrawableMaterial newMaterial;
+                            BrushMaterial newMaterial;
 
                             if (subEntity.material != -1)
                             {
@@ -432,9 +432,9 @@ namespace FlexKit::ResourceBuilder
                                     newMaterial.textures.push_back(imageMap.at(idx)->GetResourceGUID());
                                 }
                             }
-                            drawable->material.subMaterials.push_back(newMaterial);
+                            brush->material.subMaterials.push_back(newMaterial);
                         }
-                        entity.components.push_back(drawable);
+                        entity.components.push_back(brush);
                     }
 
                     if (node.skin != -1)
@@ -782,15 +782,16 @@ namespace FlexKit::ResourceBuilder
 
             for (auto& component : entity.components)
             {
-                if (component->id == GetTypeGUID(Drawable))
+                if (component->id == GetTypeGUID(Brush))
                 {
-                    auto drawableComponent = std::dynamic_pointer_cast<DrawableComponent>(component);
-                    const auto ID = TranslateID(drawableComponent->MeshGuid, translationTable);
-                    componentBlock += CreateDrawableComponent(ID,
-                                        drawableComponent->material.albedo,
-                                        drawableComponent->material.specular);
+                    auto brushComponent = std::dynamic_pointer_cast<BrushComponent>(component);
+                    const auto ID       = TranslateID(brushComponent->MeshGuid, translationTable);
 
-                    componentBlock += CreateMaterialComponent(drawableComponent->material);
+                    componentBlock += CreateBrushComponent(ID,
+                                        brushComponent->material.albedo,
+                                        brushComponent->material.specular);
+
+                    componentBlock += CreateMaterialComponent(brushComponent->material);
                 }
                 else
                     componentBlock += component->GetBlob();
@@ -847,20 +848,18 @@ namespace FlexKit::ResourceBuilder
     }
 
 
-    Blob CreateDrawableComponent(GUID_t meshGUID, const float4 albedo, const float4 specular)
+    Blob CreateBrushComponent(GUID_t meshGUID, const float4 albedo, const float4 specular)
     {
-        DrawableComponentBlob drawableComponent;
-        drawableComponent.resourceID        = meshGUID;
-        drawableComponent.albedo_smoothness = albedo;
-        drawableComponent.specular_metal    = specular;
+        BrushComponentBlob brushComponent;
+        brushComponent.resourceID        = meshGUID;
+        brushComponent.albedo_smoothness = albedo;
+        brushComponent.specular_metal    = specular;
 
-        
-
-        return { drawableComponent };
+        return { brushComponent };
     }
 
 
-    Blob CreateMaterialComponent(DrawableMaterial material)
+    Blob CreateMaterialComponent(BrushMaterial material)
     {
         MaterialComponentBlob materialComponent;
 

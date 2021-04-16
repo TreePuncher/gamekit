@@ -47,11 +47,11 @@ namespace FlexKit
 		auto CP = FlexKit::GetPositionW( C->Node );
 		for( auto& v : *PVS_ )
 		{
-			auto E = v.D;
-			auto P = FlexKit::GetPositionW( E->Node );
+			auto b = v.brush;
+			auto P = FlexKit::GetPositionW( b->Node );
 
 			auto Depth = (size_t)abs(float3(CP - P).magnitudeSq() * 10000);
-			auto SortID = CreateSortingID(false, E->Textured, Depth);
+			auto SortID = CreateSortingID(false, b->Textured, Depth);
 			v.SortID = SortID;
 		}
 		
@@ -73,9 +73,9 @@ namespace FlexKit
 		auto CP = FlexKit::GetPositionW( C->Node );
 		for( auto& v : *PVS_ )
 		{
-			auto E = v.D;
-			auto P = FlexKit::GetPositionW( E->Node );
-			float D = float3( CP - P ).magnitudeSq() * ( E->DrawLast ? -1.0 : 1.0 );
+			auto b = v.brush;
+			auto P = FlexKit::GetPositionW( b->Node );
+			float D = float3( CP - P ).magnitudeSq() * ( b->DrawLast ? -1.0 : 1.0 );
 			v.SortID = D;
 		}
 

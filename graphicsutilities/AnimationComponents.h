@@ -5,7 +5,7 @@
 #include "AnimationRuntimeUtilities.h"
 
 #include "Components.h"
-#include "GraphicScene.h"
+#include "Scene.h"
 #include "Transforms.h"
 
 namespace FlexKit
@@ -189,22 +189,22 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    struct PosedDrawable
+    struct PosedBrush
     {
-        Drawable*   drawable;
+        Brush*      brush;
         PoseState*  pose;
         uint32_t    lodLevel;
     };
 
 
-    using PosedDrawableList = Vector<PosedDrawable>;
+    using PosedBrushList = Vector<PosedBrush>;
 
     struct GatherSkinnedTaskData
     {
         CameraHandle	    camera;
-        GraphicScene*       scene; // Source Scene
+        Scene*              scene; // Source Scene
         StackAllocator	    taskMemory;
-        PosedDrawableList	skinned;
+        PosedBrushList	    skinned;
 
         UpdateTask*         task;
 
@@ -213,7 +213,7 @@ namespace FlexKit
 
     struct UpdatePosesTaskData
     {
-        const PosedDrawableList*	skinned;
+        const PosedBrushList*	skinned;
 
         UpdateTask*         task;
         operator UpdateTask* () { return task; }
@@ -222,8 +222,8 @@ namespace FlexKit
     using GatherSkinnedTask = UpdateTaskTyped<GatherSkinnedTaskData>&;
     using UpdatePoseTask    = UpdateTaskTyped<UpdatePosesTaskData>&;
 
-    void                GatherSkinned   (GraphicScene* SM, CameraHandle Camera, PosedDrawableList& out_skinned);
-    GatherSkinnedTask&  GatherSkinned   (UpdateDispatcher& dispatcher, GraphicScene* scene, CameraHandle C, iAllocator* allocator);
+    void                GatherSkinned   (Scene* SM, CameraHandle Camera, PosedBrushList& out_skinned);
+    GatherSkinnedTask&  GatherSkinned   (UpdateDispatcher& dispatcher, Scene* scene, CameraHandle C, iAllocator* allocator);
     UpdatePoseTask&     UpdatePoses     (UpdateDispatcher& dispatcher, GatherSkinnedTask& skinnedObjects);
 
 

@@ -25,8 +25,8 @@ struct ViewportScene
 
     EditorScene_ptr                     sceneResource;
     std::vector<ViewportGameObject_ptr> sceneObjects;
-    FlexKit::GraphicScene               scene           { FlexKit::SystemAllocator };
-    FlexKit::PhysXSceneHandle           physicsLayer    = FlexKit::InvalidHandle_t;
+    FlexKit::Scene                      scene           { FlexKit::SystemAllocator };
+    FlexKit::LayerHandle                physicsLayer    = FlexKit::InvalidHandle_t;
 };
 
 

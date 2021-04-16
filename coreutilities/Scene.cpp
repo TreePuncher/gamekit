@@ -1,4 +1,4 @@
-#include "GraphicScene.h"
+#include "Scene.h"
 #include "GraphicsComponents.h"
 #include "intersection.h"
 
@@ -14,7 +14,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    std::pair<GameObject*, bool> FindGameObject(GraphicScene& scene, const char* id)
+    std::pair<GameObject*, bool> FindGameObject(Scene& scene, const char* id)
     {
         auto& visableComponent = SceneVisibilityComponent::GetComponent();
 
@@ -42,7 +42,7 @@ namespace FlexKit
     }
 
 
-    void DEBUG_ListSceneObjects(GraphicScene& scene)
+    void DEBUG_ListSceneObjects(Scene& scene)
     {
         auto& visableComponent = SceneVisibilityComponent::GetComponent();
 
@@ -79,24 +79,24 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void DrawableComponentEventHandler::OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    void BrushComponentEventHandler::OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
         auto node = GetSceneNode(gameObject);
         if (node == InvalidHandle_t)
             return;
 
-        DrawableComponentBlob drawableComponent;
-        memcpy(&drawableComponent, buffer, bufferSize);
+        BrushComponentBlob brushComponent;
+        memcpy(&brushComponent, buffer, bufferSize);
 
-        auto [triMesh, loaded] = FindMesh(drawableComponent.resourceID);
+        auto [triMesh, loaded] = FindMesh(brushComponent.resourceID);
 
         if (!loaded)
-            triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), drawableComponent.resourceID);
+            triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), brushComponent.resourceID);
 
         if (triMesh == InvalidHandle_t)
             return;
 
-        gameObject.AddView<DrawableView>(triMesh, node);
+        gameObject.AddView<BrushView>(triMesh, node);
         SetBoundingSphereFromMesh(gameObject);
     }
 
@@ -120,7 +120,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-	void GraphicScene::AddGameObject(GameObject& go, NodeHandle node)
+	void Scene::AddGameObject(GameObject& go, NodeHandle node)
 	{
 		go.AddView<SceneVisibilityView>(go, node, sceneID);
 
@@ -136,7 +136,7 @@ namespace FlexKit
 
 
 
-	void GraphicScene::RemoveEntity(GameObject& go)
+	void Scene::RemoveEntity(GameObject& go)
 	{
 		Apply(go, 
 		[&, allocator = this->allocator](SceneVisibilityView& vis) 
@@ -153,7 +153,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GraphicScene::ClearScene()
+	void Scene::ClearScene()
 	{
 		auto&	visables	= SceneVisibilityComponent::GetComponent();
 		auto	visableID	= SceneVisibilityComponent::GetComponentID();
@@ -183,9 +183,9 @@ namespace FlexKit
     TriMeshHandle GetTriMesh(GameObject& go)
 	{
 		return Apply(go,
-			[&](DrawableView& drawable)
+			[&](BrushView& brush)
 			{
-				return drawable.GetTriMesh();
+				return brush.GetTriMesh();
 			}, 
 			[]() -> TriMeshHandle
 			{
@@ -200,15 +200,15 @@ namespace FlexKit
     void SetMaterialParams(GameObject& go, float3 albedo, float kS, float IOR, float anisotropic, float roughness, float metallic)
     {
         return Apply(go,
-            [&](DrawableView& drawable)
+            [&](BrushView& brushView)
             {
-                auto& drawableData = drawable.GetDrawable();
-                drawableData.MatProperties.albedo         = albedo;
-                drawableData.MatProperties.kS             = kS;
-                drawableData.MatProperties.IOR            = IOR;
-                drawableData.MatProperties.anisotropic    = anisotropic;
-                drawableData.MatProperties.roughness      = roughness;
-                drawableData.MatProperties.metallic       = metallic;
+                auto& brushData                     = brushView.GetBrush();
+                brushData.MatProperties.albedo      = albedo;
+                brushData.MatProperties.kS          = kS;
+                brushData.MatProperties.IOR         = IOR;
+                brushData.MatProperties.anisotropic = anisotropic;
+                brushData.MatProperties.roughness   = roughness;
+                brushData.MatProperties.metallic    = metallic;
             });
     }
 
@@ -219,190 +219,11 @@ namespace FlexKit
     void ToggleSkinned(GameObject& go, bool enabled)
     {
         return Apply(go,
-            [&](DrawableView& drawable)
+            [&](BrushView& brushView)
             {
-                drawable.GetDrawable().Skinned = enabled;
+                brushView.GetBrush().Skinned = enabled;
             });
     }
-
-
-    /************************************************************************************************/
-
-
-	//Drawable&	GraphicScene::GetDrawable(SceneEntityHandle EHandle) 
-	//{ 
-	//	return Drawables.at(HandleTable[EHandle]); 
-	//}
-
-
-	/************************************************************************************************/
-
-
-	//BoundingSphere	GraphicScene::GetBoundingSphere(SceneEntityHandle EHandle)
-	//{
-	//	BoundingSphere out;
-	//
-	//	float3		position		= GetEntityPosition(EHandle);
-	//	Quaternion	orientation		= GetOrientation(EHandle);
-	//	auto BS = GetMeshBoundingSphere(GetMeshHandle(EHandle));
-	//
-	//	return BoundingSphere{ orientation * position + BS.xyz(), BS.w };
-	//}
-
-
-	/************************************************************************************************/
-
-	//bool LoadAnimation(GraphicScene* GS, SceneEntityHandle EHandle, ResourceHandle RHndl, TriMeshHandle MeshHandle, float w = 1.0f)
-	//{
-		/*
-		auto Resource = GetAsset(RHndl);
-		if (Resource->Type == EResourceType::EResource_SkeletalAnimation)
-		{
-			auto AC = Resource2AnimationClip(Resource, GS->Memory);
-			FreeAsset(RHndl);// No longer in memory once loaded
-
-			auto mesh				= GetMeshResource(MeshHandle);
-			AC.Skeleton				= mesh->Skeleton;
-			mesh->AnimationData    |= EAnimationData::EAD_Skin;
-
-			if (AC.Skeleton->Animations)
-			{
-				auto I = AC.Skeleton->Animations;
-				while (I->Next)
-					I = I->Next;
-
-				I->Next				= &GS->Memory->allocate_aligned<Skeleton::AnimationList, 0x10>();
-				I->Next->Clip		= AC;
-				I->Next->Memory		= GS->Memory;
-				I->Next->Next		= nullptr;
-			}
-			else
-			{
-				AC.Skeleton->Animations			= &GS->Memory->allocate_aligned<Skeleton::AnimationList, 0x10>();
-				AC.Skeleton->Animations->Clip	= AC;
-				AC.Skeleton->Animations->Next	= nullptr;
-				AC.Skeleton->Animations->Memory = GS->Memory;
-			}
-
-			return true;
-		}
-		return false;
-		*/
-	//}
-
-
-	/************************************************************************************************/
-
-	/*
-	GSPlayAnimation_RES GraphicScene::EntityPlayAnimation(SceneEntityHandle EHandle, GUID_t Guid, float W, bool Loop)
-	{
-		auto MeshHandle		= GetDrawable(EHandle).MeshHandle;
-		bool SkeletonLoaded = IsSkeletonLoaded(MeshHandle);
-		if (!SkeletonLoaded)
-			return { false, -1 };
-
-		if (SkeletonLoaded)
-		{
-			auto S = FlexKit::GetSkeleton(MeshHandle);
-			Skeleton::AnimationList* I = S->Animations;
-			bool AnimationLoaded = false;
-
-			// Find if Animation is Already Loaded
-			{
-				
-				while (I)
-				{
-					if (I->Clip.guid == Guid) {
-						AnimationLoaded = true;
-						break;
-					}
-					
-					I = I->Next;
-				}
-			}
-			if (!AnimationLoaded)
-			{
-				// Search Resources for Animation
-				if (isAssetAvailable(Guid))
-				{
-					auto RHndl = LoadGameAsset(Guid);
-					auto Res = LoadAnimation(this, EHandle, RHndl, MeshHandle, W);
-					if(!Res)
-						return{ false, -1 };
-				}
-				else
-					return{ false, -1 };
-			}
-
-			int64_t ID = INVALIDHANDLE;
-			auto Res = PlayAnimation(&GetDrawable(EHandle), Guid, Memory, Loop, W, ID);
-			if(Res == EPLAY_ANIMATION_RES::EPLAY_SUCCESS)
-				return { true, ID };
-
-			return{ false, -1};
-		}
-		return{ false, -1 };
-	}
-	*/
-
-	/************************************************************************************************/
-
-	/*
-	GSPlayAnimation_RES GraphicScene::EntityPlayAnimation(SceneEntityHandle EHandle, const char* Animation, float W, bool Loop)
-	{
-		auto MeshHandle		= GetDrawable(EHandle).MeshHandle;
-		bool SkeletonLoaded = IsSkeletonLoaded(MeshHandle);
-		if (!SkeletonLoaded)
-			return { false, -1 };
-
-		if (SkeletonLoaded && HasAnimationData(MeshHandle))
-		{
-			// TODO: Needs to Iterate Over Clips
-			auto S = FlexKit::GetSkeleton(MeshHandle);
-			if (!strcmp(S->Animations->Clip.mID, Animation))
-			{
-				int64_t AnimationID = -1;
-				if(PlayAnimation(&GetDrawable(EHandle), Animation, Memory, Loop, W, &AnimationID))
-					return { true, AnimationID };
-				return{ false, -1 };
-			}
-		}
-
-		// Search Resources for Animation
-		if(isAssetAvailable(Animation))
-		{
-			auto RHndl = LoadGameAsset(Animation);
-			int64_t AnimationID = -1;
-			if (LoadAnimation(this, EHandle, RHndl, MeshHandle, W)) {
-				if(PlayAnimation(&GetDrawable(EHandle), Animation, Memory, Loop, W, &AnimationID) == EPLAY_SUCCESS)
-					return { true, AnimationID };
-				return{ false, -1};
-			}
-			else
-				return { false, -1 };
-		}
-		return { false, -1 };
-	}
-	*/
-
-	/************************************************************************************************/
-
-
-	/*
-	void UpdateGraphicScenePoseTransform(GraphicScene* SM)
-	{
-		for(auto Tag : SM->TaggedJoints)
-		{
-			auto Entity = SM->GetDrawable(Tag.Source);
-
-			auto WT		= GetJointPosed_WT(Tag.Joint, Entity.Node, Entity.PoseState);
-			auto WT_t	= Float4x4ToXMMATIRX(&WT.Transpose());
-
-			FlexKit::SetWT		(Tag.Target, &WT_t);
-			FlexKit::SetFlag	(Tag.Target, SceneNodes::StateFlags::UPDATED);
-		}
-	}
-	*/
 
 
 	/************************************************************************************************/
@@ -438,7 +259,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    SceneBVH SceneBVH::Build(const GraphicScene& scene, iAllocator& allocator)
+    SceneBVH SceneBVH::Build(const Scene& scene, iAllocator& allocator)
     {
         ProfileFunction();
 
@@ -537,10 +358,10 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    ComputeLod_RES ComputeLOD(Drawable& e, const float3 CameraPosition, float maxZ)
+    ComputeLod_RES ComputeLOD(Brush& e, const float3 CameraPosition, float maxZ)
     {
-        auto drawablePosition = GetPositionW(e.Node);
-        auto distanceFromView = (CameraPosition - drawablePosition).magnitude();
+        auto brushPosition      = GetPositionW(e.Node);
+        auto distanceFromView   = (CameraPosition - brushPosition).magnitude();
 
         auto* mesh                      = GetMeshResource(e.MeshHandle);
         const auto maxLod               = mesh->lods.size() - 1;
@@ -561,17 +382,18 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void PushPV(Drawable& e, PVS& pvs, const float3 CameraPosition, float maxZ)
+    void PushPV(Brush& brush, PVS& pvs, const float3 CameraPosition, float maxZ)
 	{
-        auto drawablePosition = GetPositionW(e.Node);
-        auto distanceFromView = (CameraPosition - drawablePosition).magnitude();
+        auto brushPosition      = GetPositionW(brush.Node);
+        auto distanceFromView   = (CameraPosition - brushPosition).magnitude();
 
-        auto* mesh = GetMeshResource(e.MeshHandle);
+        auto* mesh = GetMeshResource(brush.MeshHandle);
 
         const auto maxLod               = mesh->lods.size() - 1;
         const auto highestLoadedLod     = mesh->GetHighestLoadedLodIdx();
 
         /*
+        // Alternate, screen space size based LOD selection 
         const auto aabb = mesh->AABB;
         const auto WT   = GetWT(e.Node);
 
@@ -590,20 +412,20 @@ namespace FlexKit
         const uint32_t requestedLodLevel    = maxLod - std::ceil(pow(screenArea, 2) * maxLod);
         */
 
-        auto temp = pow((distanceFromView) / maxZ, 1.0f / 5.0f);
+        const auto normalizedAdjustedDistance = pow((distanceFromView) / maxZ, 1.0f / 5.0f);
             
-        const uint32_t requestedLodLevel    = temp * maxLod;
+        const uint32_t requestedLodLevel    = normalizedAdjustedDistance * maxLod;
         const uint32_t usableLodLevel       = Max(requestedLodLevel, highestLoadedLod);
 
-		if (e.MeshHandle != InvalidHandle_t)
-			pvs.push_back(PVEntry( e, 0, CreateSortingID(false, false, (size_t)distanceFromView), usableLodLevel));
+		if (brush.MeshHandle != InvalidHandle_t)
+			pvs.push_back(PVEntry(brush, 0, CreateSortingID(false, false, (size_t)distanceFromView), usableLodLevel));
 	}
 
 
     /************************************************************************************************/
 
 
-	void GatherScene(GraphicScene* SM, CameraHandle Camera, PVS& out, PVS& T_out)
+	void GatherScene(Scene* SM, CameraHandle Camera, PVS& out, PVS& T_out)
 	{
         ProfileFunction();
 
@@ -627,7 +449,7 @@ namespace FlexKit
 			const auto potentialVisible = Visibles[handle];
 
 			if(	potentialVisible.visable && 
-				potentialVisible.entity->hasView(DrawableComponent::GetComponentID()))
+				potentialVisible.entity->hasView(BrushComponent::GetComponentID()))
 			{
 				auto Ls	= GetLocalScale		(potentialVisible.node).x;
 				auto Pw	= GetPositionW		(potentialVisible.node);
@@ -637,17 +459,17 @@ namespace FlexKit
 					Ls * potentialVisible.boundingSphere.w };
 
 				Apply(*potentialVisible.entity,
-					[&](DrawableView& view)
+					[&](BrushView& view)
 					{
-                        auto& drawable = view.GetDrawable();
+                        auto& brush = view.GetBrush();
 
-						if (!drawable.Skinned && Intersects(F, BS))
+						if (!brush.Skinned && Intersects(F, BS))
 						{
                             if (potentialVisible.transparent) {
-                                PushPV(drawable, T_out, POS);
+                                PushPV(brush, T_out, POS);
                             }
                             else
-                                PushPV(drawable, out, POS);
+                                PushPV(brush, out, POS);
 						}
 					});
 			}
@@ -658,7 +480,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    UpdateTaskTyped<GetPVSTaskData>& GatherScene(UpdateDispatcher& dispatcher, GraphicScene* scene, CameraHandle C, iAllocator& allocator)
+    UpdateTaskTyped<GetPVSTaskData>& GatherScene(UpdateDispatcher& dispatcher, Scene* scene, CameraHandle C, iAllocator& allocator)
 	{
 		auto& task = dispatcher.Add<GetPVSTaskData>(
 			[&](auto& builder, auto& data)
@@ -713,11 +535,11 @@ namespace FlexKit
 
                 for (auto& visable : PVS)
                 {
-                    auto res        = ComputeLOD(*visable.D, cameraPosition, 10'000);
+                    auto res        = ComputeLOD(*visable.brush, cameraPosition, 10'000);
 
                     if (res.recommendedLOD != res.requestedLOD)
                     {
-                        auto triMesh    = GetMeshResource(visable.D->MeshHandle);
+                        auto triMesh    = GetMeshResource(visable.brush->MeshHandle);
                         auto lodsLoaded = triMesh->GetHighestLoadedLodIdx();
 
                         for (auto itr = lodsLoaded - 1; itr >= res.requestedLOD; itr--)
@@ -751,7 +573,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void BindJoint(GraphicScene* SM, JointHandle Joint, SceneEntityHandle Entity, NodeHandle TargetNode)
+	void BindJoint(Scene* SM, JointHandle Joint, SceneEntityHandle Entity, NodeHandle TargetNode)
 	{
 		//SM->TaggedJoints.push_back({ Entity, Joint, TargetNode });
 	}
@@ -760,7 +582,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool LoadScene(RenderSystem* RS, GUID_t Guid, GraphicScene& GS_out, iAllocator* allocator, iAllocator* temp)
+	bool LoadScene(RenderSystem* RS, GUID_t Guid, Scene& GS_out, iAllocator* allocator, iAllocator* temp)
 	{
 		bool Available = isAssetAvailable(Guid);
 		if (Available)
@@ -899,7 +721,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool LoadScene(RenderSystem* RS, const char* LevelName, GraphicScene& GS_out, iAllocator* allocator, iAllocator* Temp)
+	bool LoadScene(RenderSystem* RS, const char* LevelName, Scene& GS_out, iAllocator* allocator, iAllocator* Temp)
 	{
 		if (isAssetAvailable(LevelName))
 		{
@@ -921,7 +743,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Vector<PointLightHandle> GraphicScene::FindPointLights(const Frustum &f, iAllocator* tempMemory) const
+	Vector<PointLightHandle> Scene::FindPointLights(const Frustum &f, iAllocator* tempMemory) const
 	{
 		Vector<PointLightHandle> lights{tempMemory};
 
@@ -948,7 +770,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    BuildBVHTask& GraphicScene::UpdateSceneBVH(UpdateDispatcher& dispatcher, UpdateTask& transformDependency, iAllocator* allocator)
+    BuildBVHTask& Scene::UpdateSceneBVH(UpdateDispatcher& dispatcher, UpdateTask& transformDependency, iAllocator* allocator)
     {
         return dispatcher.Add<SceneBVHBuild>(
             [&](UpdateDispatcher::UpdateBuilder& builder, SceneBVHBuild& data)
@@ -971,7 +793,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    PointLightGatherTask& GraphicScene::GetPointLights(UpdateDispatcher& dispatcher, iAllocator* tempMemory) const
+    PointLightGatherTask& Scene::GetPointLights(UpdateDispatcher& dispatcher, iAllocator* tempMemory) const
 	{
 		return dispatcher.Add<PointLightGather>(
 			[&](UpdateDispatcher::UpdateBuilder& builder, PointLightGather& data)
@@ -1009,7 +831,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    PointLightShadowGatherTask& GraphicScene::GetVisableLights(UpdateDispatcher& dispatcher, CameraHandle camera, BuildBVHTask& bvh, iAllocator* temporaryMemory) const
+    PointLightShadowGatherTask& Scene::GetVisableLights(UpdateDispatcher& dispatcher, CameraHandle camera, BuildBVHTask& bvh, iAllocator* temporaryMemory) const
     {
         return dispatcher.Add<PointLightShadowGather>(
 			[&](UpdateDispatcher::UpdateBuilder& builder, PointLightShadowGather& data)
@@ -1060,7 +882,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    PointLightUpdate& GraphicScene::UpdatePointLights(UpdateDispatcher& dispatcher, BuildBVHTask& bvh, PointLightShadowGatherTask& visablePointLights, iAllocator* temporaryMemory, iAllocator* persistentMemory) const
+    PointLightUpdate& Scene::UpdatePointLights(UpdateDispatcher& dispatcher, BuildBVHTask& bvh, PointLightShadowGatherTask& visablePointLights, iAllocator* temporaryMemory, iAllocator* persistentMemory) const
     {
         class Task : public iWork
         {
@@ -1208,15 +1030,15 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    Vector<GraphicSceneRayCastResult> GraphicScene::RayCast(FlexKit::Ray v, iAllocator& allocator) const
+    Vector<SceneRayCastResult> Scene::RayCast(FlexKit::Ray v, iAllocator& allocator) const
     {
-        Vector<GraphicSceneRayCastResult> results{ &allocator };
+        Vector<SceneRayCastResult> results{ &allocator };
 
         if (!bvh.Valid())
             const_cast<SceneBVH&>(bvh) = bvh.Build(*this, allocator);
 
         bvh.Traverse(v,
-            [&](auto& visable, auto& intersectionResult)
+            [&](auto& visable, const auto& intersectionResult)
             {
                 results.emplace_back(visable, intersectionResult.value());
             });
@@ -1235,7 +1057,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-	size_t	GraphicScene::GetPointLightCount()
+	size_t	Scene::GetPointLightCount()
 	{
 		auto& visables		= SceneVisibilityComponent::GetComponent();
 		size_t lightCount	= 0;
@@ -1251,28 +1073,28 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Drawable::VConstantsLayout Drawable::GetConstants() const
+	Brush::VConstantsLayout Brush::GetConstants() const
 	{
 		DirectX::XMMATRIX WT;
 		FlexKit::GetTransform(Node, &WT);
 
-		Drawable::VConstantsLayout	Constants;
+		Brush::VConstantsLayout	constants;
 
-		Constants.MP        = MatProperties;
-		Constants.Transform = XMMatrixToFloat4x4(WT).Transpose();
+        constants.MP        = MatProperties;
+        constants.Transform = XMMatrixToFloat4x4(WT).Transpose();
 
         if (material != InvalidHandle_t)
         {
             auto textures           = MaterialComponent::GetComponent()[material].Textures;
-            Constants.textureCount  = (uint32_t)textures.size();
+            constants.textureCount  = (uint32_t)textures.size();
 
             for (auto& texture : textures)
-                Constants.textureHandles[std::distance(std::begin(textures), &texture)] = uint4{ 256, 256, texture.to_uint() };
+                constants.textureHandles[std::distance(std::begin(textures), &texture)] = uint4{ 256, 256, texture.to_uint() };
         }
         else
-            Constants.textureCount = 0;
+            constants.textureCount = 0;
 
-		return Constants;
+		return constants;
 	}
 
 

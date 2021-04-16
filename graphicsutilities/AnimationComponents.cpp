@@ -369,7 +369,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void GatherSkinned(GraphicScene* SM, CameraHandle Camera, PosedDrawableList& out_skinned)
+    void GatherSkinned(Scene* SM, CameraHandle Camera, PosedBrushList& out_skinned)
     {
 		FK_ASSERT(Camera	!= CameraHandle{(unsigned int)INVALIDHANDLE});
 		FK_ASSERT(SM		!= nullptr);
@@ -387,7 +387,7 @@ namespace FlexKit
 			const auto potentialVisible = Visibles[handle];
 
 			if(	potentialVisible.visable && 
-				potentialVisible.entity->hasView(DrawableComponent::GetComponentID()))
+				potentialVisible.entity->hasView(BrushComponent::GetComponentID()))
 			{
 				auto Ls	= GetLocalScale		(potentialVisible.node).x;
 				auto Pw	= GetPositionW		(potentialVisible.node);
@@ -397,15 +397,15 @@ namespace FlexKit
 					Ls * potentialVisible.boundingSphere.w };
 
 				Apply(*potentialVisible.entity,
-					[&](DrawableView& drawView,
+					[&](BrushView& drawView,
                         SkeletonView& skeleton)
 					{
-                        auto& drawable = drawView.GetDrawable();
+                        auto& brush = drawView.GetBrush();
 
-                        if (drawable.Skinned && Intersects(F, BS))
+                        if (brush.Skinned && Intersects(F, BS))
                         {
-                            const auto res = ComputeLOD(drawable, POS, 10'000.0f);
-                            out_skinned.push_back({ &drawable, &skeleton.GetPoseState(), res.recommendedLOD });
+                            const auto res = ComputeLOD(brush, POS, 10'000.0f);
+                            out_skinned.push_back({ &brush, &skeleton.GetPoseState(), res.recommendedLOD });
                         }
 					});
 			}
@@ -416,7 +416,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    GatherSkinnedTask& GatherSkinned(UpdateDispatcher& dispatcher, GraphicScene* scene, CameraHandle C, iAllocator* allocator)
+    GatherSkinnedTask& GatherSkinned(UpdateDispatcher& dispatcher, Scene* scene, CameraHandle C, iAllocator* allocator)
     {
         auto& task = dispatcher.Add<GatherSkinnedTaskData>(
 			[&](auto& builder, GatherSkinnedTaskData& data)
@@ -424,7 +424,7 @@ namespace FlexKit
 				size_t taskMemorySize = KILOBYTE * 2048;
 				data.taskMemory.Init((byte*)allocator->malloc(taskMemorySize), taskMemorySize);
 				data.scene			= scene;
-				data.skinned        = PosedDrawableList{ data.taskMemory };
+				data.skinned        = PosedBrushList{ data.taskMemory };
 				data.camera			= C;
 
                 builder.SetDebugString("Gather Scene");
@@ -460,7 +460,7 @@ namespace FlexKit
             for (size_t I = 0; I < pose.JointCount; ++I)
             {
                 temp[I].r       *= subPose.jointPose[I].r;
-                //temp[I].ts.w    *= subPose.jointPose[I].ts.w;
+                temp[I].ts.w    *= subPose.jointPose[I].ts.w;
                 temp[I].ts      += subPose.jointPose[I].ts.xyz();
             }
         }
@@ -576,10 +576,7 @@ namespace FlexKit
                                 const auto parent = GetParentJoint(joint);
 
                                 if (parent != InvalidHandle_t)
-                                {
                                     return (poseState->CurrentPose[parent] * float4{ 0, 0, 0, 1 }).xyz();
-                                    //return (Inverse(skeleton->GetInversePose(parent)) * float4 { 0, 0, 0, 1 }).xyz();
-                                }
                                 else
                                     return float3{ 0, 0, 0 };
                             };
@@ -614,7 +611,6 @@ namespace FlexKit
                         for(auto joint = IKController.endEffector; GetParentJoint(joint) != InvalidHandle_t; joint = GetParentJoint(joint))
                         {
                             const float3        jointPosition   = (poseState->CurrentPose[joint] * float4{ 0, 0, 0, 1 }).xyz();
-                            //const float3        jointPosition   = (Inverse(skeleton->IPose[joint]) * float4{ 0, 0, 0, 1 }).xyz();
                             const JointHandle   parent          = GetParentJoint(joint);
                             const float3        parentPosition  = GetParentPosition(joint);
                             const float         boneLength      = (parentPosition - jointPosition).magnitude();
