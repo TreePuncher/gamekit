@@ -1286,10 +1286,10 @@ namespace FlexKit
             [](EntityConstants& data, const ResourceHandler& resourecs, Context& ctx, iAllocator& allocator)
             {
                 auto& constantBuffer    = data.GetConstants();
-                auto& drawables         = data.sceneGather.GetData().solid;
+                auto& brushes           = data.sceneGather.GetData().solid;
 
-                for (auto& drawable : drawables)
-                    constantBuffer.Push(drawable.D->GetConstants());
+                for (auto& brush : brushes)
+                    constantBuffer.Push(brush->GetConstants());
             });
     }
 
@@ -1356,15 +1356,15 @@ namespace FlexKit
                 ctx.NullGraphicsConstantBufferView(6);
 
                 TriMesh* prevMesh           = nullptr;
-                const auto& drawables       = data.sceneGather.GetData().solid;
-                const size_t drawableCount  = drawables.size();
+                const auto& brushes         = data.sceneGather.GetData().solid;
+                const size_t brushCount     = brushes.size();
 
-                auto drawbleConstants = CreateCBIterator<Drawable::VConstantsLayout>(constants);
+                auto brushConstants = CreateCBIterator<Brush::VConstantsLayout>(constants);
 
-                for (size_t I = 0; I < drawableCount; I++)
+                for (size_t I = 0; I < brushCount; I++)
                 {
-                    auto& drawable      = drawables[I];
-                    auto* const triMesh = GetMeshResource(drawable.D->MeshHandle);
+                    auto& brush         = brushes[I];
+                    auto* const triMesh = GetMeshResource(brush.brush->MeshHandle);
                     const auto& lod     = triMesh->GetLowestLoadedLod();
                     const auto& lodIdx  = triMesh->GetLowestLodIdx();
 
@@ -1378,7 +1378,7 @@ namespace FlexKit
                             { VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
                     }
                     
-                    ctx.SetGraphicsConstantBufferView(2, drawbleConstants[I]);
+                    ctx.SetGraphicsConstantBufferView(2, brushConstants[I]);
                     ctx.DrawIndexedInstanced(lod.GetIndexCount());
                 }
 
@@ -1532,10 +1532,10 @@ namespace FlexKit
                 ctx.BeginEvent_DEBUG("Z-PrePass");
 
                 TriMesh* prevMesh = nullptr;
-                for (const auto& drawable : data.drawables)
+                for (const auto& brush : data.brushes)
                 {
-                    const auto  lodIdx   = drawable.LODlevel;
-                    auto* const triMesh = GetMeshResource(drawable.D->MeshHandle);
+                    const auto  lodIdx  = brush.LODlevel;
+                    auto* const triMesh = GetMeshResource(brush->MeshHandle);
                     const auto& lod     = triMesh->lods[lodIdx];
 
                     if (triMesh != prevMesh)
@@ -1548,7 +1548,7 @@ namespace FlexKit
                             { VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
                     }
 
-                    auto constants = ConstantBufferDataSet{ drawable.D->GetConstants(), data.entityConstantsBuffer };
+                    auto constants = ConstantBufferDataSet{ brush->GetConstants(), data.entityConstantsBuffer };
                     ctx.SetGraphicsConstantBufferView(2, constants);
                     ctx.DrawIndexedInstanced(lod.GetIndexCount());
                 }
@@ -1837,23 +1837,23 @@ namespace FlexKit
 	{
 		const size_t MaxEntityDrawCount = 10000;
 
-		typedef Vector<ForwardPlusPass> ForwardDrawableList;
+		typedef Vector<ForwardPlusPass> ForwardBrushList;
 		
         FK_ASSERT(0, "NOT FULLY IMPLEMENTED!");
 
 		auto& pass = frameGraph.AddNode<ForwardPlusPass>(
 			ForwardPlusPass{
 				desc.lights.GetData().pointLights,
-				depthPass.drawables,
+				depthPass.brushes,
 				depthPass.entityConstantsBuffer },
 			[&](FrameGraphNodeBuilder& builder, ForwardPlusPass& data)
 			{
 				builder.AddDataDependency(desc.PVS);
 				builder.AddDataDependency(desc.cameras);
 
-				data.BackBuffer			    = builder.RenderTarget(Targets.RenderTarget);
-				data.DepthBuffer            = builder.DepthTarget(Targets.DepthTarget.Get());
-				size_t localBufferSize      = Max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
+				data.BackBuffer			        = builder.RenderTarget(Targets.RenderTarget);
+				data.DepthBuffer                = builder.DepthTarget(Targets.DepthTarget.Get());
+				const size_t localBufferSize    = Max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
 
 				data.passConstantsBuffer    = std::move(reserveCB(localBufferSize * 2));
 
@@ -1895,10 +1895,10 @@ namespace FlexKit
 
 				TriMesh* prevMesh = nullptr;
 
-				for (size_t itr = 0; itr < data.drawables.size(); ++itr)
+				for (size_t itr = 0; itr < data.brushes.size(); ++itr)
 				{
-					auto& drawable = data.drawables[itr];
-					TriMesh* triMesh = GetMeshResource(drawable.D->MeshHandle);
+					auto& brush         = data.brushes[itr];
+					TriMesh* triMesh    = GetMeshResource(brush->MeshHandle);
 
 					if (triMesh != prevMesh)
 					{
@@ -1914,7 +1914,7 @@ namespace FlexKit
 							});
 					}
 
-					auto proxy = CreateCBIterator<decltype(drawable.D->GetConstants())>(data.entityConstants)[itr];
+					auto proxy = CreateCBIterator<decltype(brush->GetConstants())>(data.entityConstants)[itr];
 
 					ctx.SetGraphicsConstantBufferView(2, proxy);
 					ctx.DrawIndexedInstanced(triMesh->GetHighestLoadedLod().GetIndexCount(), 0, 0, 1, 0);
@@ -1927,6 +1927,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+    
     struct alignas(16) BVH_Node
     {
         float4 MinPoint;
@@ -1945,7 +1946,7 @@ namespace FlexKit
 		UpdateDispatcher&		        dispatcher,
 		FrameGraph&				        graph,
 		const CameraHandle	            camera,
-		const GraphicScene&	            scene,
+		const Scene&	                scene,
 		const SceneDescription&         sceneDescription,
         ResourceHandle                  depthBuffer,
 		ReserveConstantBufferFunction   reserveCB,
@@ -1989,7 +1990,6 @@ namespace FlexKit
                 else
                     data.readBackHandle = InvalidHandle_t;
 
-                /*
                 builder.SetDebugName(data.clusterBufferObject,  "ClusterBufferObject");
                 builder.SetDebugName(data.indexBufferObject,    "indexBufferObject");
                 builder.SetDebugName(data.lightListObject,      "lightListObject");
@@ -1999,7 +1999,6 @@ namespace FlexKit
                 builder.SetDebugName(data.lightCounterObject,   "lightCounterObject");
                 builder.SetDebugName(data.counterObject,        "counterObject");
                 builder.SetDebugName(data.argumentBufferObject, "argumentBufferObject");
-                */
 
 				builder.AddDataDependency(sceneDescription.lights);
 				builder.AddDataDependency(sceneDescription.cameras);
@@ -2046,8 +2045,7 @@ namespace FlexKit
 				CBPushBuffer    constantBuffer = data.reserveCB(
 					AlignedSize( sizeof(FlexKit::GPUPointLight) * data.visableLights.size() ) +
                     AlignedSize<ConstantsLayout>() * (1 + nodeReservation) +
-                    AlignedSize<Camera::ConstantBuffer>()
-				);
+                    AlignedSize<Camera::ConstantBuffer>());
 
                 auto constantBuffer2ReserveSize = AlignedSize<ConstantsLayout>() * (1 + nodeReservation);
                 CBPushBuffer    constantBuffer2 = data.reserveCB(constantBuffer2ReserveSize);
@@ -2320,6 +2318,8 @@ namespace FlexKit
 
 		return lightBufferData;
 	}
+
+
     /************************************************************************************************/
 
 
@@ -2511,28 +2511,28 @@ namespace FlexKit
 				if (!data.pvs.size())
 					return;
 
-                size_t drawCallCount = 0;
-                for (auto& drawable : data.pvs)
+                size_t brushCount = 0;
+                for (auto& brush : data.pvs)
                 {
-                    auto* triMesh       = GetMeshResource(drawable.D->MeshHandle);
-                    const auto lodIdx   = drawable.LODlevel;
+                    auto* triMesh       = GetMeshResource(brush->MeshHandle);
+                    const auto lodIdx   = brush.LODlevel;
                     auto& detailLevel   = triMesh->lods[lodIdx];
 
-                    drawCallCount      += Max(detailLevel.subMeshes.size(), 1);
+                    brushCount += Max(detailLevel.subMeshes.size(), 1);
                 }
 
-                for (auto& skinnedDraw : data.skinned)
+                for (auto& skinnedBrushes : data.skinned)
                 {
-                    auto* triMesh       = GetMeshResource(skinnedDraw.drawable->MeshHandle);
-                    const auto lodIdx   = skinnedDraw.lodLevel;
+                    auto* triMesh       = GetMeshResource(skinnedBrushes.brush->MeshHandle);
+                    const auto lodIdx   = skinnedBrushes.lodLevel;
                     auto& detailLevel   = triMesh->lods[lodIdx];
 
-                    drawCallCount += Max(detailLevel.subMeshes.size(), 1);
+                    brushCount += Max(detailLevel.subMeshes.size(), 1);
                 }
 
 
 				const size_t entityBufferSize =
-					AlignedSize<Drawable::VConstantsLayout>() * drawCallCount;
+					AlignedSize<Brush::VConstantsLayout>() * brushCount;
 
 				constexpr size_t passBufferSize =
 					AlignedSize<Camera::ConstantBuffer>() +
@@ -2595,11 +2595,11 @@ namespace FlexKit
                 defaultHeap.NullFill(ctx);
 
 				// unskinned models
-				for (auto& drawable : data.pvs)
+				for (auto& brush : data.pvs)
 				{
-					auto constants    = drawable.D->GetConstants();
-					auto* triMesh     = GetMeshResource(drawable.D->MeshHandle);
-                    auto  lodIdx      = drawable.LODlevel;
+					auto constants    = brush->GetConstants();
+					auto* triMesh     = GetMeshResource(brush->MeshHandle);
+                    auto  lodIdx      = brush.LODlevel;
                     auto  lod         = &triMesh->lods[lodIdx];
 
 					if (triMesh != prevMesh || prevLOD != lod)
@@ -2621,7 +2621,7 @@ namespace FlexKit
 					}
 
                     auto& materials         = MaterialComponent::GetComponent();
-                    const auto material     = MaterialComponent::GetComponent()[drawable.D->material];
+                    const auto material     = MaterialComponent::GetComponent()[brush->material];
                     const auto subMeshCount = lod->subMeshes.size();
 
                     if (material.SubMaterials.empty())
@@ -2691,10 +2691,10 @@ namespace FlexKit
 
 				auto& poses = allocator.allocate<EntityPoses>();
 
-				for (const auto& skinnedDraw : data.skinned)
+				for (const auto& skinnedBrush : data.skinned)
 				{
-					const auto constants    = skinnedDraw.drawable->GetConstants();
-					auto* triMesh           = GetMeshResource(skinnedDraw.drawable->MeshHandle);
+					const auto constants    = skinnedBrush.brush->GetConstants();
+					auto* triMesh           = GetMeshResource(skinnedBrush.brush->MeshHandle);
 
 					if (triMesh != prevMesh)
 					{
@@ -2715,7 +2715,7 @@ namespace FlexKit
 						);
 					}
 
-					auto pose       = skinnedDraw.pose;
+					auto pose       = skinnedBrush.pose;
 					auto skeleton   = pose->Sk;
 
 					for(size_t I = 0; I < pose->JointCount; I++)
@@ -2726,7 +2726,6 @@ namespace FlexKit
 
                     for (auto& subMesh : triMesh->GetHighestLoadedLod().subMeshes)
                         ctx.DrawIndexed(subMesh.IndexCount, subMesh.BaseIndex);
-
 				}
 
                 ctx.EndEvent_DEBUG();
@@ -3045,20 +3044,20 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = RS->Library.RSDefault;
-			PSO_Desc.VS                    = VShader;
-			PSO_Desc.GS                    = GShader;
-			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-			PSO_Desc.SampleMask            = UINT_MAX;
-			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-			PSO_Desc.NumRenderTargets      = 0;
-			PSO_Desc.SampleDesc.Count      = 1;
-			PSO_Desc.SampleDesc.Quality    = 0;
-			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
-			PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
-			PSO_Desc.DepthStencilState     = Depth_Desc;
+			PSO_Desc.pRootSignature                         = RS->Library.RSDefault;
+			PSO_Desc.VS                                     = VShader;
+			PSO_Desc.GS                                     = GShader;
+			PSO_Desc.BlendState                             = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask                             = UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType                  = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSO_Desc.NumRenderTargets                       = 0;
+			PSO_Desc.SampleDesc.Count                       = 1;
+			PSO_Desc.SampleDesc.Quality                     = 0;
+			PSO_Desc.DSVFormat                              = DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout                            = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
+			PSO_Desc.DepthStencilState                      = Depth_Desc;
 			PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
-			PSO_Desc.RasterizerState       = Rast_Desc;
+			PSO_Desc.RasterizerState                        = Rast_Desc;
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
@@ -3106,20 +3105,20 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = RS->Library.RSDefault;
-			PSO_Desc.VS                    = VShader;
-			PSO_Desc.GS                    = GShader;
-			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-			PSO_Desc.SampleMask            = UINT_MAX;
-			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-			PSO_Desc.NumRenderTargets      = 0;
-			PSO_Desc.SampleDesc.Count      = 1;
-			PSO_Desc.SampleDesc.Quality    = 0;
-			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
-			PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
-			PSO_Desc.DepthStencilState     = Depth_Desc;
+			PSO_Desc.pRootSignature                         = RS->Library.RSDefault;
+			PSO_Desc.VS                                     = VShader;
+			PSO_Desc.GS                                     = GShader;
+			PSO_Desc.BlendState                             = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask                             = UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType                  = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSO_Desc.NumRenderTargets                       = 0;
+			PSO_Desc.SampleDesc.Count                       = 1;
+			PSO_Desc.SampleDesc.Quality                     = 0;
+			PSO_Desc.DSVFormat                              = DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout                            = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
+			PSO_Desc.DepthStencilState                      = Depth_Desc;
 			PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
-			PSO_Desc.RasterizerState       = Rast_Desc;
+			PSO_Desc.RasterizerState                        = Rast_Desc;
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
@@ -3157,11 +3156,10 @@ namespace FlexKit
 
 		for (size_t I = 0; I < 6; I++)
 		{
-			const XMMATRIX ViewI        = ViewOrientations[I] * DirectX::XMMatrixTranslationFromVector(pos);
-
-			const XMMATRIX View           = DirectX::XMMatrixInverse(nullptr, ViewI);
-			const XMMATRIX perspective    = DirectX::XMMatrixPerspectiveFovRH(float(-pi/2), 1, 0.1f, r);
-			const XMMATRIX PV             = XMMatrixTranspose(perspective) * XMMatrixTranspose(View);
+			const XMMATRIX ViewI            = ViewOrientations[I] * DirectX::XMMatrixTranslationFromVector(pos);
+			const XMMATRIX View             = DirectX::XMMatrixInverse(nullptr, ViewI);
+			const XMMATRIX perspective      = DirectX::XMMatrixPerspectiveFovRH(float(-pi/2), 1, 0.1f, r);
+			const XMMATRIX PV               = XMMatrixTranspose(perspective) * XMMatrixTranspose(View);
 
 			out.PV[I]       = XMMatrixToFloat4x4(PV).Transpose();
 			out.ViewI[I]    = XMMatrixToFloat4x4(ViewI);
@@ -3189,6 +3187,7 @@ namespace FlexKit
 
         return pi * pr * pr;
     }
+
 
     /************************************************************************************************/
 
@@ -3258,8 +3257,8 @@ namespace FlexKit
                     auto& visableLights = data.pointLightShadows;
                     auto& pointLights   = PointLightComponent::GetComponent();
                     
-                    Vector<ResourceHandle>          shadowMaps          { &allocator, visableLights.size() };
-                    Vector<ConstantBufferDataSet>   passConstant2       { &allocator, visableLights.size() };
+                    Vector<ResourceHandle>          shadowMaps      { &allocator, visableLights.size() };
+                    Vector<ConstantBufferDataSet>   passConstant2   { &allocator, visableLights.size() };
 
                     for (size_t I = 0; I < visableLights.size(); I++)
                     {
@@ -3281,20 +3280,20 @@ namespace FlexKit
 						        return;
 
 
-                            PVS                 drawables      { &allocator, visables.size() };
-                            Vector<GameObject*> animatedDraws  { &allocator, visables.size() };
+                            PVS                 brushes         { &allocator, visables.size() };
+                            Vector<GameObject*> animatedBrushes { &allocator, visables.size() };
 
                             for (auto& visable : visables)
                             {
                                 auto entity = visibilityComponent[visable].entity;
 
                                 Apply(*entity,
-                                    [&](DrawableView& view)
+                                    [&](BrushView& view)
                                     {
-                                        if (!view.GetDrawable().Skinned)
-                                            PushPV(view.GetDrawable(), drawables, pointLightPosition);
+                                        if (!view.GetBrush().Skinned)
+                                            PushPV(view.GetBrush(), brushes, pointLightPosition);
                                         else
-                                            animatedDraws.push_back(entity);
+                                            animatedBrushes.push_back(entity);
                                     });
                             }
 
@@ -3316,13 +3315,13 @@ namespace FlexKit
                             CBPushBuffer passConstantBuffer = data.reserveCB(
                                 AlignedSize<PassConstants>());
 
-                            CBPushBuffer localConstantBuffer        = data.reserveCB(AlignedSize<Drawable::VConstantsLayout>() * visables.size());
-                            CBPushBuffer animatedConstantBuffer     = data.reserveCB(AlignedSize<Drawable::VConstantsLayout>() * animatedDraws.size() + AlignedSize<PoseConstants>() * animatedDraws.size());
+                            CBPushBuffer localConstantBuffer        = data.reserveCB(AlignedSize<Brush::VConstantsLayout>() * visables.size());
+                            CBPushBuffer animatedConstantBuffer     = data.reserveCB(AlignedSize<Brush::VConstantsLayout>() * animatedBrushes.size() + AlignedSize<PoseConstants>() * animatedBrushes.size());
 
-                            for (auto& drawable : drawables)
-                                ConstantBufferDataSet{ drawable.D->GetConstants(), localConstantBuffer };
+                            for (auto& brush : brushes)
+                                ConstantBufferDataSet{ brush->GetConstants(), localConstantBuffer };
 
-					        auto constants  = CreateCBIterator<Drawable::VConstantsLayout>(localConstantBuffer);
+					        auto constants  = CreateCBIterator<Brush::VConstantsLayout>(localConstantBuffer);
 					        auto PSO        = resources.GetPipelineState(SHADOWMAPPASS);
 
 					        ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
@@ -3359,14 +3358,14 @@ namespace FlexKit
                             if (auto state = resources.renderSystem().GetObjectState(depthTarget); state != DRS_DEPTHBUFFERWRITE)
                                 ctx.AddResourceBarrier(depthTarget, state, DRS_DEPTHBUFFERWRITE);
 
-					        for(size_t drawableIdx = 0; drawableIdx < drawables.size(); drawableIdx++)
+					        for(size_t brushIdx = 0; brushIdx < brushes.size(); brushIdx++)
 					        {
-                                auto& drawable      = drawables[drawableIdx];
-                                const auto lodLevel = drawable.LODlevel;
-						        auto* const triMesh = GetMeshResource(drawable.D->MeshHandle);
+                                auto& brush         = brushes[brushIdx];
+                                const auto lodLevel = brush.LODlevel;
+						        auto* const triMesh = GetMeshResource(brush->MeshHandle);
                                 auto& lod           = triMesh->lods[lodLevel];
 
-						        ctx.SetGraphicsConstantBufferView(1, constants[drawableIdx]);
+						        ctx.SetGraphicsConstantBufferView(1, constants[brushIdx]);
 
 						        ctx.AddIndexBuffer(triMesh, lodLevel);
 						        ctx.AddVertexBuffers(triMesh,
@@ -3385,13 +3384,13 @@ namespace FlexKit
                             ctx.SetGraphicsConstantBufferView(0, passConstants);
                             ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 
-                            for (auto& drawable : animatedDraws)
+                            for (auto& brush : animatedBrushes)
                             {
-                                Apply(*drawable,
-                                    [&](DrawableView&  drawView,
-                                        SkeletonView&  poseView)
+                                Apply(*brush,
+                                    [&](BrushView&      brushView,
+                                        SkeletonView&   poseView)
                                     {
-                                        auto& draw      = drawView.GetDrawable();
+                                        auto& draw      = brushView.GetBrush();
                                         auto& pose      = poseView.GetPoseState();
                                         auto& skeleton  = *pose.Sk;
 

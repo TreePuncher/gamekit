@@ -75,7 +75,7 @@ HostWorldStateMangager::~HostWorldStateMangager()
     packetHandlers.clear();
 
     localPlayer.Release();
-    world.gscene.ClearScene();
+    world.scene.ClearScene();
 }
 
 
@@ -213,9 +213,9 @@ bool HostWorldStateMangager::EventHandler(Event evt)
 /************************************************************************************************/
 
 
-GraphicScene& HostWorldStateMangager::GetScene()
+Scene& HostWorldStateMangager::GetScene()
 {
-    return world.gscene;
+    return world.scene;
 }
 
 

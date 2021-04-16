@@ -78,7 +78,7 @@ public:
 
     virtual bool                EventHandler(Event evt) = 0;
     virtual CameraHandle        GetActiveCamera() const = 0;
-    virtual GraphicScene&       GetScene() = 0;
+    virtual Scene&              GetScene() = 0;
 
     virtual GameObject&         CreateGameObject() = 0;
 

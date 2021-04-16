@@ -77,7 +77,7 @@ FireBall::FireBall() : CardInterface{
 GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
 {
     GameObject& gameObject = objectPool.Allocate();
-    CreateThirdPersonCameraController(gameObject, desc.pscene, allocator, desc.r, desc.h);
+    CreateThirdPersonCameraController(gameObject, desc.layer, allocator, desc.r, desc.h);
 
     static const GUID_t meshID = 7896;
 
@@ -105,9 +105,9 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
     auto node = GetCameraControllerNode(gameObject);
 
     gameObject.AddView<SceneNodeView<>>(node);
-    gameObject.AddView<DrawableView>(triMesh, node);
+    gameObject.AddView<BrushView>(triMesh, node);
 
-    desc.gscene.AddGameObject(gameObject, node);
+    desc.scene.AddGameObject(gameObject, node);
 
     return gameObject;
 }
@@ -121,8 +121,8 @@ GameObject& GameWorld::AddLocalPlayer(MultiplayerPlayerID_t multiplayerID)
     return CreatePlayer(
                 PlayerDesc{
                     .player = multiplayerID,
-                    .pscene = pscene,
-                    .gscene = gscene,
+                    .layer  = layer,
+                    .scene  = scene,
                     .h      = 0.5f,
                     .r      = 0.5f
                 });
@@ -154,11 +154,11 @@ GameObject& GameWorld::AddRemotePlayer(MultiplayerPlayerID_t playerID, Connectio
     if (!loaded)
         triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), playerModel);
 
-    auto& characterController = gameObject.AddView<CharacterControllerView>(pscene, &gameObject, float3{0, 0, 0}, GetZeroedNode(), 1.0f, 1.0f);
+    auto& characterController = gameObject.AddView<CharacterControllerView>(layer, &gameObject, float3{0, 0, 0}, GetZeroedNode(), 1.0f, 1.0f);
     gameObject.AddView<SceneNodeView<>>(characterController.GetNode());
-    gameObject.AddView<DrawableView>(triMesh, characterController.GetNode());
+    gameObject.AddView<BrushView>(triMesh, characterController.GetNode());
 
-    gscene.AddGameObject(gameObject, GetSceneNode(gameObject));
+    scene.AddGameObject(gameObject, GetSceneNode(gameObject));
 
     SetBoundingSphereFromMesh(gameObject);
 
@@ -178,11 +178,11 @@ void GameWorld::AddCube(float3 POS)
     if (!loaded)
         triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), cube1X1X1);
 
-    gameObject.AddView<RigidBodyView>(cubeShape, pscene, POS);
+    gameObject.AddView<RigidBodyView>(cubeShape, layer, POS);
     gameObject.AddView<SceneNodeView<>>(GetRigidBodyNode(gameObject));
-    gameObject.AddView<DrawableView>(triMesh, GetSceneNode(gameObject));
+    gameObject.AddView<BrushView>(triMesh, GetSceneNode(gameObject));
 
-    gscene.AddGameObject(gameObject, GetSceneNode(gameObject));
+    scene.AddGameObject(gameObject, GetSceneNode(gameObject));
 
     SetBoundingSphereFromMesh(gameObject);
 }
@@ -204,11 +204,11 @@ GameObject& GameWorld::CreateSpell(SpellData initial, float3 initialPosition, fl
         triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), spellModel);
 
     gameObject.AddView<SceneNodeView<>>();
-    gameObject.AddView<DrawableView>(triMesh, GetSceneNode(gameObject));
+    gameObject.AddView<BrushView>(triMesh, GetSceneNode(gameObject));
 
     SetWorldPosition(gameObject, initialPosition);
 
-    gscene.AddGameObject(gameObject, GetSceneNode(gameObject));
+    scene.AddGameObject(gameObject, GetSceneNode(gameObject));
 
     SetBoundingSphereFromMesh(gameObject);
 
@@ -230,13 +230,13 @@ GameObject& GameWorld::CreateSpell(SpellData initial, float3 initialPosition, fl
 
 bool GameWorld::LoadScene(GUID_t assetID)
 {
-    auto res = FlexKit::LoadScene(core, gscene, assetID);
+    auto res = FlexKit::LoadScene(core, scene, assetID);
 
     auto& physics       = PhysXComponent::GetComponent();
     auto& visibility    = SceneVisibilityComponent::GetComponent();
 
     static std::regex pattern{"Cube"};
-    for (auto& entity : gscene.sceneEntities)
+    for (auto& entity : scene.sceneEntities)
     {
         auto& go    = *visibility[entity].entity;
         auto id     = GetStringID(go);
@@ -258,7 +258,7 @@ bool GameWorld::LoadScene(GUID_t assetID)
 
             PxShapeHandle shape = physics.CreateCubeShape(dim);
 
-            go.AddView<StaticBodyView>(pscene, shape, pos, q);
+            go.AddView<StaticBodyView>(layer, shape, pos, q);
         }
     }
 
@@ -278,7 +278,7 @@ void CreateMultiplayerScene(GameWorld& world)
     auto& floorCollider = world.objectPool.Allocate();
     auto floorShape     = physics.CreateCubeShape({ 200, 1, 200 });
 
-    floorCollider.AddView<StaticBodyView>(world.pscene, floorShape, float3{ 0, -1.0f, 0 });
+    floorCollider.AddView<StaticBodyView>(world.layer, floorShape, float3{ 0, -1.0f, 0 });
 }
 
 
@@ -373,7 +373,7 @@ UpdateTask& GameWorld::UpdateSpells(FlexKit::UpdateDispatcher& dispathcer, Objec
 
             Vector<GameObject*> freeList{ &allocator };
 
-            auto scene = PhysXComponent::GetComponent().GetScene_ref(pscene).scene;
+            auto scene = PhysXComponent::GetComponent().GetLayer_ref(layer).scene;
 
             for (auto& spellInstance : spellComponent)
             {

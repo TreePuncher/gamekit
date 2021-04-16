@@ -78,7 +78,7 @@
     <ClInclude Include="..\coreutilities\GameFramework.h">
       <Filter>Headers\coreutilities</Filter>
     </ClInclude>
-    <ClInclude Include="..\coreutilities\GraphicScene.h">
+    <ClInclude Include="..\coreutilities\Scene.h">
       <Filter>Headers\coreutilities</Filter>
     </ClInclude>
     <ClInclude Include="..\coreutilities\GraphicsComponents.h">
@@ -299,7 +299,7 @@
     <ClCompile Include="..\coreutilities\GameFramework.cpp">
       <Filter>Source\coreutilities</Filter>
     </ClCompile>
-    <ClCompile Include="..\coreutilities\GraphicScene.cpp">
+    <ClCompile Include="..\coreutilities\Scene.cpp">
       <Filter>Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\GraphicsComponents.cpp">

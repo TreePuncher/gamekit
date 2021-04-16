@@ -112,13 +112,13 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
-    struct DrawableMaterial
+    struct BrushMaterial
     {
         float4 albedo;
         float4 specular;
 
         std::vector<uint64_t>           textures;
-        std::vector<DrawableMaterial>   subMaterials;
+        std::vector<BrushMaterial>   subMaterials;
     };
 
 
@@ -127,32 +127,32 @@ namespace FlexKit::ResourceBuilder
 
     Blob CreateSceneNodeComponent   (uint32_t nodeIdx);
     Blob CreateIDComponent          (std::string& string);
-    Blob CreateDrawableComponent    (GUID_t meshGUID, const float4 albedo, const float4 specular);
-    Blob CreateMaterialComponent    (DrawableMaterial material);
+    Blob CreateBrushComponent    (GUID_t meshGUID, const float4 albedo, const float4 specular);
+    Blob CreateMaterialComponent    (BrushMaterial material);
     Blob CreatePointLightComponent  (float3 K, float2 IR);
 
 
     /************************************************************************************************/
 
 
-    class DrawableComponent : public EntityComponent
+    class BrushComponent : public EntityComponent
     {
     public:
-        DrawableComponent(GUID_t IN_MGUID = INVALIDHANDLE, float4 IN_albedo = { 0, 1, 0, 0.5f }, float4 specular = { 1, 0, 1, 0 }) :
-            EntityComponent { GetTypeGUID(Drawable) },
+        BrushComponent(GUID_t IN_MGUID = INVALIDHANDLE, float4 IN_albedo = { 0, 1, 0, 0.5f }, float4 specular = { 1, 0, 1, 0 }) :
+            EntityComponent { GetTypeGUID(Brush) },
             MeshGuid        { IN_MGUID }
         {
         }
 
         Blob GetBlob() override
         {
-            return CreateDrawableComponent(MeshGuid, material.albedo, material.specular);
+            return CreateBrushComponent(MeshGuid, material.albedo, material.specular);
         }
 
         GUID_t MeshGuid = INVALIDHANDLE;
         GUID_t Collider = INVALIDHANDLE;
 
-        DrawableMaterial material;
+        BrushMaterial material;
     };
 
 
@@ -205,7 +205,7 @@ namespace FlexKit::ResourceBuilder
     };
 
 
-    using DrawableComponent_ptr = std::shared_ptr<DrawableComponent>;
+    using BrushComponent_ptr = std::shared_ptr<BrushComponent>;
 
 
     /************************************************************************************************/

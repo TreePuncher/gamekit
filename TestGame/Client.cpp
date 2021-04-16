@@ -188,9 +188,9 @@ bool ClientWorldStateMangager::EventHandler(Event evt)
 /************************************************************************************************/
 
 
-GraphicScene& ClientWorldStateMangager::GetScene()
+Scene& ClientWorldStateMangager::GetScene()
 {
-    return world.gscene;
+    return world.scene;
 }
 
 

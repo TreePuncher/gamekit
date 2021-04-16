@@ -38,7 +38,7 @@ public:
     void SendFrameState(const MultiplayerPlayerID_t ID, const PlayerFrameState& state, const ConnectionHandle connection);
     bool EventHandler(Event evt) final;
 
-    GraphicScene&   GetScene() final;
+    Scene&          GetScene() final;
     CameraHandle    GetActiveCamera() const final;
 
     GameObject&     CreateGameObject() final { return world.objectPool.Allocate(); };

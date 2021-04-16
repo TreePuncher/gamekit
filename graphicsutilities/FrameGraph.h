@@ -2408,14 +2408,14 @@ namespace FlexKit
 				Data.CB				        = constants;
 
 
-				Drawable::VConstantsLayout DrawableConstants = {	
-					Drawable::MaterialProperties{},
-					float4x4::Identity()
+				Brush::VConstantsLayout brushConstants{	
+					.MP         = Brush::MaterialProperties{},
+					.Transform  = float4x4::Identity()
 				};
 
 				CBPushBuffer cbPushBuffer(
 					constants,
-					AlignedSize<Drawable::VConstantsLayout>() + AlignedSize<Camera::ConstantBuffer>(),
+					AlignedSize<Brush::VConstantsLayout>() + AlignedSize<Camera::ConstantBuffer>(),
 					frameGraph.GetRenderSystem());
 
 				Data.passConstants      = ConstantBufferDataSet(constants, cbPushBuffer);

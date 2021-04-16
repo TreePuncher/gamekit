@@ -38,7 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Events.h"
 #include "FrameGraph.h"
 #include "Graphics.h"
-#include "GraphicScene.h"
+#include "Scene.h"
 #include "GraphicsComponents.h"
 #include "Logging.h"
 #include "SSReflections.h"
@@ -234,8 +234,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool LoadScene		 (EngineCore& Engine, GraphicScene& Scene, const char* SceneName);
-	bool LoadScene		 (EngineCore& Engine, GraphicScene& Scene, GUID_t SceneID);
+	bool LoadScene		 (EngineCore& Engine, Scene& Scene, const char* SceneName);
+	bool LoadScene		 (EngineCore& Engine, Scene& Scene, GUID_t SceneID);
  
 	void PushSubState	 (GameFramework& _ptr, FrameworkState& SS);
 	void PopSubState	 (GameFramework& _ptr);

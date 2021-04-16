@@ -1,5 +1,5 @@
 #include "Materials.h"
-#include "GraphicScene.h"
+#include "Scene.h"
 #include "TextureStreamingUtilities.h"
 
 namespace FlexKit
@@ -162,9 +162,9 @@ namespace FlexKit
     {
         Apply(
             go,
-            [&](DrawableView& drawable)
+            [&](BrushView& brush)
             {
-                drawable.GetDrawable().material = material;
+                brush.GetBrush().material = material;
             });
     }
 

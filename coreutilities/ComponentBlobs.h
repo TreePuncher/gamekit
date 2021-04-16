@@ -109,13 +109,13 @@ namespace FlexKit
         static_vector<uint64_t>  textures;
     };
 
-    struct DrawableComponentBlob
+    struct BrushComponentBlob
     {
         ComponentBlock::Header  header = {
            0,
            EntityComponent,
-           sizeof(DrawableComponentBlob),
-           GetTypeGUID(Drawable)
+           sizeof(BrushComponentBlob),
+           GetTypeGUID(Brush)
         };
 
         GUID_t                          resourceID;

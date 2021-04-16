@@ -115,7 +115,7 @@
     <ClInclude Include="..\coreutilities\Events.h" />
     <ClInclude Include="..\coreutilities\GUIInputState.h" />
     <ClInclude Include="..\coreutilities\GameFramework.h" />
-    <ClInclude Include="..\coreutilities\GraphicScene.h" />
+    <ClInclude Include="..\coreutilities\Scene.h" />
     <ClInclude Include="..\coreutilities\GraphicsComponents.h" />
     <ClInclude Include="..\coreutilities\Handle.h" />
     <ClInclude Include="..\coreutilities\Input.h" />
@@ -218,7 +218,7 @@
     <ClCompile Include="..\coreutilities\GameFramework.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\coreutilities\GraphicScene.cpp">
+    <ClCompile Include="..\coreutilities\Scene.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\coreutilities\GraphicsComponents.cpp">

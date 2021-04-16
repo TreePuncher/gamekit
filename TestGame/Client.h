@@ -42,7 +42,7 @@ public:
             net.Send(packet.header, remotePlayer.componentData.connection);
     }
 
-    GraphicScene&   GetScene() final;
+    Scene&          GetScene() final;
     CameraHandle    GetActiveCamera() const final;
 
     GameObject&     CreateGameObject() final { return world.objectPool.Allocate(); };
@@ -80,7 +80,7 @@ public:
 
     GameEventHandler                gameEventHandler;
 
-    GraphicScene    scene;
+    Scene           scene;
     BaseState&      base;
     NetworkState&   net;
 };

@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "components.h"
 #include "containers.h"
 #include "Events.h"
-#include "graphicScene.h"
+#include "Scene.h"
 #include "mathUtils.h"
 #include "memoryutilities.h"
 #include "threadUtilities.h"
@@ -63,7 +63,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace FlexKit
 {
 	// Forward Declarations
-	class PhysXScene;
+	class PhysicsLayer;
 	class PhysXComponent;
 	class StaticColliderSystem;
 
@@ -146,7 +146,7 @@ namespace FlexKit
 
 	typedef Handle_t<16, GetCRCGUID(StaticBodyHandle)>	StaticBodyHandle;
 	typedef Handle_t<16, GetCRCGUID(RigidBodyHandle)>	RigidBodyHandle;
-	typedef Handle_t<16, GetCRCGUID(PhysXSceneHandle)>	PhysXSceneHandle;
+	typedef Handle_t<16, GetCRCGUID(LayerHandle)>	    LayerHandle;
     typedef Handle_t<16, GetCRCGUID(PxShapeHandle)>		PxShapeHandle;
 
 
@@ -165,8 +165,8 @@ namespace FlexKit
 	class StaticColliderSystem
 	{
 	public:
-		StaticColliderSystem(PhysXScene& IN_scene, iAllocator* IN_memory) :
-			parentScene	{ &IN_scene	},
+		StaticColliderSystem(PhysicsLayer& IN_layer, iAllocator* IN_memory) :
+            layer       { &IN_layer },
 			colliders	{ IN_memory },
             dirtyFlags  { IN_memory, 128 }
 		{
@@ -186,9 +186,9 @@ namespace FlexKit
 		StaticColliderSystem(StaticColliderSystem&& IN_staticColliders) : 
 			colliders{ std::move(IN_staticColliders.colliders) }
 		{
-			parentScene = IN_staticColliders.parentScene;
+            layer = IN_staticColliders.layer;
 
-			IN_staticColliders.parentScene = nullptr;
+			IN_staticColliders.layer = nullptr;
 		}
 
 
@@ -251,7 +251,7 @@ namespace FlexKit
 
         Vector<StaticColliderObject>	colliders;
         Vector<bool>	                dirtyFlags;
-        PhysXScene*				        parentScene;
+        PhysicsLayer*				    layer;
 	};
 
 
@@ -261,8 +261,8 @@ namespace FlexKit
 	class RigidBodyColliderSystem
 	{
 	public:
-		RigidBodyColliderSystem(PhysXScene& IN_scene, iAllocator* IN_memory) :
-			parentScene	{ IN_scene  },
+		RigidBodyColliderSystem(PhysicsLayer& IN_layer, iAllocator* IN_memory) :
+            layer       { IN_layer  },
 			colliders	{ IN_memory } {}
 
 
@@ -282,7 +282,7 @@ namespace FlexKit
         rbColliderObject GetAPIObject(const RigidBodyHandle collider);
 
 		Vector<rbColliderObject>	colliders;
-        PhysXScene&				    parentScene;
+        PhysicsLayer&				layer;
 	};
 
 
@@ -290,10 +290,10 @@ namespace FlexKit
 
 
 
-	class PhysXScene
+	class PhysicsLayer
 	{
 	public:
-        PhysXScene(physx::PxScene* IN_scene, PhysXComponent& IN_system, iAllocator* IN_memory) :
+        PhysicsLayer(physx::PxScene* IN_scene, PhysXComponent& IN_system, iAllocator* IN_memory) :
 			scene			    { IN_scene			},
 			system			    { IN_system			},
 			memory			    { IN_memory			},
@@ -311,7 +311,7 @@ namespace FlexKit
 		}
 
 
-        PhysXScene(PhysXScene&& IN_scene) :
+        PhysicsLayer(PhysicsLayer&& IN_scene) :
 			staticColliders		{ std::move(IN_scene.staticColliders)	},
 			rbColliders			{ std::move(IN_scene.rbColliders)		},
 			scene				{ IN_scene.scene						},
@@ -320,19 +320,19 @@ namespace FlexKit
 			system				{ IN_scene.system						},
 			memory				{ IN_scene.memory						}
 		{
-			staticColliders.parentScene = this;
+			staticColliders.layer = this;
 		}
 
 
-		~PhysXScene()
+		~PhysicsLayer()
 		{
 			Release();
 		}
 
 
         // uncopyable
-        PhysXScene(const PhysXScene& scene)                 = delete;
-        PhysXScene& operator = (const PhysXScene& scene)    = delete;
+        PhysicsLayer(const PhysicsLayer& scene)                 = delete;
+        PhysicsLayer& operator = (const PhysicsLayer& scene)    = delete;
 
 
 		void Release()
@@ -473,27 +473,27 @@ namespace FlexKit
 		~PhysXComponent();
 
 		void							Release();
-		void							ReleaseScene				(PhysXSceneHandle);
+		void							ReleaseScene				(LayerHandle);
 
         UpdateTask&                     Update(UpdateDispatcher&, const double dt);
 		void							Simulate( const double dt, WorkBarrier* barrier = nullptr, iAllocator* temp_allocator = nullptr);
 
-        [[nodiscard]] PhysXSceneHandle	CreateScene();
-        [[nodiscard]] StaticBodyHandle	CreateStaticCollider	(const PhysXSceneHandle, const PxShapeHandle shape, const float3 pos = { 0, 0, 0 }, const Quaternion q = { 0, 0, 0, 1 });
-        [[nodiscard]] RigidBodyHandle	CreateRigidBodyCollider	(const PhysXSceneHandle, const PxShapeHandle shape, const float3 pos = { 0, 0, 0 }, const Quaternion q = { 0, 0, 0, 1 });
+        [[nodiscard]] LayerHandle	    CreateLayer();
+        [[nodiscard]] StaticBodyHandle	CreateStaticCollider	(const LayerHandle, const PxShapeHandle shape, const float3 pos = { 0, 0, 0 }, const Quaternion q = { 0, 0, 0, 1 });
+        [[nodiscard]] RigidBodyHandle	CreateRigidBodyCollider	(const LayerHandle, const PxShapeHandle shape, const float3 pos = { 0, 0, 0 }, const Quaternion q = { 0, 0, 0, 1 });
 
         [[nodiscard]] PxShapeHandle     CreateCubeShape         (const float3 dimensions);
         [[nodiscard]] PxShapeHandle     CreateSphereShape       (const float radius);
 
 
-        PhysXScene&                     GetScene_ref(PhysXSceneHandle handle);
+        PhysicsLayer&                   GetLayer_ref(LayerHandle handle);
         physx::PxMaterial*              GetDefaultMaterial() const { return defaultMaterial;}
 
 
 		template<typename TY>
-		PhysXScene&	GetOwningScene(TY handle)
+		PhysicsLayer&	GetOwningLayer(TY handle)
 		{
-			return scenes[GetByType<PhysXSceneHandle>(handle)];
+			return scenes[GetByType<LayerHandle>(handle)];
 		}
 
 		operator PhysXComponent* () { return this; }
@@ -586,11 +586,11 @@ namespace FlexKit
 
         Vector<Shape>               shapes;
 
-		Vector<PhysXScene>			scenes;
+		Vector<PhysicsLayer>			scenes;
 		iAllocator*					allocator;
 		ThreadManager&				threads;
 
-		friend PhysXScene;
+		friend PhysicsLayer;
 	};
 
 
@@ -609,9 +609,9 @@ namespace FlexKit
         }
 
 
-        StaticBodyHandle Create(PhysXSceneHandle scene, PxShapeHandle shape, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 })
+        StaticBodyHandle Create(LayerHandle layer, PxShapeHandle shape, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 })
         {
-            return physx.CreateStaticCollider(scene, shape, pos, q);
+            return physx.CreateStaticCollider(layer, shape, pos, q);
         }
 
         void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
@@ -625,9 +625,9 @@ namespace FlexKit
         }
 
 
-        auto& GetScene(PhysXSceneHandle sceneHandle)
+        auto& GetLayer(LayerHandle layer)
         {
-            return physx.GetScene_ref(sceneHandle);
+            return physx.GetLayer_ref(layer);
         }
 
 
@@ -644,21 +644,21 @@ namespace FlexKit
     class StaticBodyView : public ComponentView_t<StaticBodyComponent>
     {
     public:
-        StaticBodyView(StaticBodyHandle IN_staticBody, PhysXSceneHandle IN_handle) :
+        StaticBodyView(StaticBodyHandle IN_staticBody, LayerHandle IN_layer) :
             staticBody  { IN_staticBody },
-            scene       { IN_handle     } {}
+            layer       { IN_layer } {}
 
-        StaticBodyView(PhysXSceneHandle scene, PxShapeHandle shape, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 }) :
-            staticBody  { GetComponent().Create(scene, shape, pos, q) },
-            scene       { scene } {}
+        StaticBodyView(LayerHandle IN_layer, PxShapeHandle shape, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 }) :
+            staticBody  { GetComponent().Create(layer, shape, pos, q) },
+            layer       { IN_layer } {}
 
         NodeHandle GetNode() const
         {
-            return GetComponent().GetScene(scene)[staticBody].node;
+            return GetComponent().GetLayer(layer)[staticBody].node;
         }
 
-        const PhysXSceneHandle scene;
-        const StaticBodyHandle staticBody;
+        const LayerHandle       layer;
+        const StaticBodyHandle  staticBody;
     };
 
 
@@ -679,9 +679,9 @@ namespace FlexKit
             physx{ IN_physx } {}
 
 
-        RigidBodyHandle CreateRigidBody(PxShapeHandle shape, PhysXSceneHandle scene, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 })
+        RigidBodyHandle CreateRigidBody(PxShapeHandle shape, LayerHandle layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 })
         {
-            return physx.CreateRigidBodyCollider(scene, shape, pos, q);
+            return physx.CreateRigidBodyCollider(layer, shape, pos, q);
         }
 
         void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
@@ -691,9 +691,9 @@ namespace FlexKit
 
         void Remove(RigidBodyView& rigidBody);
 
-        auto& GetScene(PhysXSceneHandle sceneHandle)
+        auto& GetLayer(LayerHandle layer)
         {
-            return physx.GetScene_ref(sceneHandle);
+            return physx.GetLayer_ref(layer);
         }
 
 
@@ -708,18 +708,18 @@ namespace FlexKit
     class RigidBodyView : public ComponentView_t<RigidBodyComponent>
     {
     public:
-        RigidBodyView(RigidBodyHandle IN_staticBody, PhysXSceneHandle IN_scene) :
+        RigidBodyView(RigidBodyHandle IN_staticBody, LayerHandle IN_layer) :
             staticBody  { IN_staticBody },
-            scene       { IN_scene} {}
+            layer       { IN_layer      } {}
 
-        RigidBodyView(PxShapeHandle shape, PhysXSceneHandle IN_scene, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 }) :
-            staticBody  { GetComponent().CreateRigidBody(shape, IN_scene, pos, q) },
-            scene       { IN_scene } {}
+        RigidBodyView(PxShapeHandle shape, LayerHandle IN_layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 }) :
+            staticBody  { GetComponent().CreateRigidBody(shape, IN_layer, pos, q) },
+            layer       { IN_layer } {}
 
         NodeHandle GetNode() const;
 
-        const PhysXSceneHandle    scene;
-        const RigidBodyHandle     staticBody;
+        const LayerHandle       layer;
+        const RigidBodyHandle   staticBody;
     };
 
 
@@ -740,7 +740,7 @@ namespace FlexKit
         CharacterControllerHandle   handle;
         NodeHandle                  node;
         GameObject*                 gameObject;
-        PhysXSceneHandle            scene;
+        LayerHandle                 layer;
 
         physx::PxController*        controller;
 
@@ -760,9 +760,9 @@ namespace FlexKit
             controllers { allocator } {}
 
 
-        CharacterControllerHandle Create(const PhysXSceneHandle scene, GameObject* gameObject, const NodeHandle node = GetZeroedNode(), const float3 initialPosition = {}, const float R = 1, const float H = 1)
+        CharacterControllerHandle Create(const LayerHandle layer, GameObject* gameObject, const NodeHandle node = GetZeroedNode(), const float3 initialPosition = {}, const float R = 1, const float H = 1)
         {
-            auto& manager = physx.GetScene_ref(scene).GetCharacterController();
+            auto& manager = physx.GetLayer_ref(layer).GetCharacterController();
 
             SetPositionW(node, initialPosition + float3{0, H / 2, 0});
 
@@ -782,7 +782,7 @@ namespace FlexKit
                     newHandle,
                     node,
                     gameObject,
-                    scene,
+                    layer,
                     controller
                 });
 
@@ -814,9 +814,9 @@ namespace FlexKit
         }
 
 
-        auto& GetScene(PhysXSceneHandle sceneHandle)
+        auto& GetLayer(LayerHandle layer)
         {
-            return physx.GetScene_ref(sceneHandle);
+            return physx.GetLayer_ref(layer);
         }
 
 
@@ -840,13 +840,13 @@ namespace FlexKit
     {
     public:
         CharacterControllerView(
-            PhysXSceneHandle    scene,
+            LayerHandle         layer,
             GameObject*         gameObject,
             const float3        initialPosition = { 0, 0, 0 },
             NodeHandle          node            = GetZeroedNode(),
             const float         R               = 1.0f,
             const float         H               = 1.0f) :
-                controller{ GetComponent().Create(scene, gameObject, node, initialPosition) }
+                controller{ GetComponent().Create(layer, gameObject, node, initialPosition) }
         {
             GetComponent()[controller].controller->getActor()->userData = gameObject;
             GetComponent()[controller].controller->setUserData(gameObject);
@@ -969,12 +969,12 @@ namespace FlexKit
 
         static physx::PxFilterFlags Test(
             physx::PxFilterObjectAttributes attributes0,
-            physx::PxFilterData filterData0,
+            physx::PxFilterData             filterData0,
             physx::PxFilterObjectAttributes attributes1,
-            physx::PxFilterData filterData1,
-            physx::PxPairFlags& pairFlags,
-            const byte* constantBlock,
-            physx::PxU32 constantBlockSize);
+            physx::PxFilterData             filterData1,
+            physx::PxPairFlags&             pairFlags,
+            const byte*                     constantBlock,
+            physx::PxU32                    constantBlockSize);
 
 
         ThirdPersonCamera(const ThirdPersonCamera&) = default;
@@ -1060,7 +1060,7 @@ namespace FlexKit
 
 
     CameraHandle    GetCameraControllerCamera(GameObject& GO);
-    GameObject&     CreateThirdPersonCameraController(GameObject& gameObject, PhysXSceneHandle scene, iAllocator& allocator, const float R = 1, const float H = 1);
+    GameObject&     CreateThirdPersonCameraController(GameObject& gameObject, LayerHandle layer, iAllocator& allocator, const float R = 1, const float H = 1);
 
     float3          GetCameraControllerHeadPosition(GameObject& GO);
     float3          GetCameraControllerForwardVector(GameObject& GO);
@@ -1069,8 +1069,6 @@ namespace FlexKit
 
     float3          GetCameraControllerModelPosition(GameObject& GO);
     Quaternion      GetCameraControllerModelOrientation(GameObject& GO);
-
-
 
     void            YawCameraController(GameObject& GO, float rad);
 

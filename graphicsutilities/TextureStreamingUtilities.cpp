@@ -482,11 +482,11 @@ namespace FlexKit
             {
                 ctx.BeginEvent_DEBUG("Texture Feedback");
 
-                auto& drawables         = data.pvs.GetData().solid;
+                auto& brushes           = data.pvs.GetData().solid;
                 auto& materials         = MaterialComponent::GetComponent();
-                auto& skinnedDraws      = data.skinnedModels.GetData().skinned;
+                auto& skinnedBrushes    = data.skinnedModels.GetData().skinned;
 
-                if (!drawables.size()) {
+                if (!brushes.size()) {
                     updateInProgress = false;
                     return;
                 }
@@ -524,30 +524,30 @@ namespace FlexKit
 
                 memset(constants.zeroBlock, 0, sizeof(constants.zeroBlock));
 
-                size_t subDrawCount = 0;
-                for (auto& drawable : drawables)
+                size_t totalDrawCallCount = 0;
+                for (auto& brush : brushes)
                 {
-                    auto* triMesh = GetMeshResource(drawable.D->MeshHandle);
+                    auto* triMesh = GetMeshResource(brush->MeshHandle);
                     
-                    subDrawCount += triMesh->lods[drawable.LODlevel].subMeshes.size();
+                    totalDrawCallCount += triMesh->lods[brush.LODlevel].subMeshes.size();
                 }
 
-                for (auto& skinnedDraw : skinnedDraws)
+                for (auto& skinnedDraw : skinnedBrushes)
                 {
                     const auto LODlevel = skinnedDraw.lodLevel;
-                    const auto drawable = skinnedDraw.drawable;
-                    auto* triMesh       = GetMeshResource(drawable->MeshHandle);
+                    const auto brush    = skinnedDraw.brush;
+                    auto* triMesh       = GetMeshResource(brush->MeshHandle);
 
-                    subDrawCount += triMesh->lods[LODlevel].subMeshes.size();
+                    totalDrawCallCount += triMesh->lods[LODlevel].subMeshes.size();
                 }
 
                 const size_t bufferSize =
-                    AlignedSize<Drawable::VConstantsLayout>() * subDrawCount +
+                    AlignedSize<Brush::VConstantsLayout>() * totalDrawCallCount +
                     AlignedSize<constantBufferLayout>() +
                     AlignedSize<Camera::ConstantBuffer>();
 
                 CBPushBuffer passConstantBuffer     { data.reserveCB(bufferSize) };
-                CBPushBuffer skinnedConstantsBuffer { data.reserveCB(sizeof(animationConstantsLayout) * skinnedDraws.size()) };
+                CBPushBuffer skinnedConstantsBuffer { data.reserveCB(sizeof(animationConstantsLayout) * skinnedBrushes.size()) };
 
                 const auto passConstants    = ConstantBufferDataSet{ constants, passConstantBuffer };
                 const auto cameraConstants  = ConstantBufferDataSet{ GetCameraConstants(camera), passConstantBuffer };
@@ -581,13 +581,11 @@ namespace FlexKit
 
                 ctx.BeginEvent_DEBUG("Texture Feedback Pass");
 
-                auto BindTextures = []() {};
-
                 size_t element = 0;
-                for (size_t J = element; J < drawables.size(); J++)
+                for (size_t J = element; J < brushes.size(); J++)
                 {
-                    auto& visable = drawables[J];
-                    auto* triMesh = GetMeshResource(visable.D->MeshHandle);
+                    auto& brush     = brushes[J];
+                    auto* triMesh   = GetMeshResource(brush->MeshHandle);
 
                     ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKPASS));
 
@@ -595,10 +593,10 @@ namespace FlexKit
                     {
                         prevMesh = triMesh;
 
-                        ctx.AddIndexBuffer(triMesh, visable.LODlevel);
+                        ctx.AddIndexBuffer(triMesh, brush.LODlevel);
                         ctx.AddVertexBuffers(
                             triMesh,
-                            visable.LODlevel,
+                            brush.LODlevel,
                             {
                                 VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
                                 VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
@@ -610,13 +608,13 @@ namespace FlexKit
                         );
                     }
 
-                    const auto materialHandle   = visable.D->material;
-                    const auto& lod             = triMesh->lods[visable.LODlevel];
+                    const auto materialHandle   = brush->material;
+                    const auto& lod             = triMesh->lods[brush.LODlevel];
 
                     if (!materials[materialHandle].SubMaterials.empty())
                     {
                         const auto subMeshCount = lod.subMeshes.size();
-                        auto material = MaterialComponent::GetComponent()[visable.D->material];
+                        auto material = MaterialComponent::GetComponent()[brush->material];
 
                         bool animated = false;
                         if (animated)
@@ -647,7 +645,7 @@ namespace FlexKit
                                 resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
                                 &allocator);
 
-                            auto constantData = visable.D->GetConstants();
+                            auto constantData = brush->GetConstants();
                             constantData.textureCount = textures.size();
 
                             for (size_t I = 0; I < textures.size(); I++) {
@@ -682,7 +680,7 @@ namespace FlexKit
 
                         prevMaterial = materialHandle;
 
-                        const auto constants = ConstantBufferDataSet{ visable.D->GetConstants(), passConstantBuffer };
+                        const auto constants = ConstantBufferDataSet{ brush->GetConstants(), passConstantBuffer };
 
                         ctx.SetGraphicsConstantBufferView(1, constants);
                         ctx.DrawIndexed(lod.GetIndexCount());
@@ -757,6 +755,7 @@ namespace FlexKit
                 };
 
                 ctx.BeginEvent_DEBUG("Texture feedback stream compression");
+
                 const size_t passCount = 4;
                 for (size_t itr = 0; itr < passCount; itr++)
                     CompressionPass(data.feedbackBuffers[itr % 2], data.feedbackBuffers[(itr + 1) % 2]);

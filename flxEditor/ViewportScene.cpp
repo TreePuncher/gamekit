@@ -1,7 +1,7 @@
 #include "ViewportScene.h"
 
 
-ViewportObjectList  ViewportScene::RayCast(FlexKit::Ray v) const
+ViewportObjectList ViewportScene::RayCast(FlexKit::Ray v) const
 {
     auto& visables = FlexKit::SceneVisibilityComponent::GetComponent();
 
