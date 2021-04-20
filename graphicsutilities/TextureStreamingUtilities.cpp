@@ -437,14 +437,14 @@ namespace FlexKit
 
 
     void TextureStreamingEngine::TextureFeedbackPass(
-            UpdateDispatcher&                   dispatcher,
-            FrameGraph&                         frameGraph,
-            CameraHandle                        camera,
-            uint2                               renderTargetWH,
-            UpdateTaskTyped<GetPVSTaskData>&    sceneGather,
-            GatherSkinnedTask&                  skinnedModelsGather,
-            ReserveConstantBufferFunction&      reserveCB,
-            ReserveVertexBufferFunction&        reserveVB)
+            UpdateDispatcher&               dispatcher,
+            FrameGraph&                     frameGraph,
+            CameraHandle                    camera,
+            uint2                           renderTargetWH,
+            GatherTask&                     sceneGather,
+            GatherSkinnedTask&              skinnedModelsGather,
+            ReserveConstantBufferFunction&  reserveCB,
+            ReserveVertexBufferFunction&    reserveVB)
     {
         if (updateInProgress)
             return;

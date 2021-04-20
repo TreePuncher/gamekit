@@ -1039,7 +1039,7 @@ namespace FlexKit
 	{
 	public:
 		FrameGraphNodeBuilder(
-			Vector<UpdateTask*>&	    IN_DataDependencies,
+			Vector<UpdateTask*>&        IN_DataDependencies,
 			FrameResources*				IN_Resources, 
 			FrameGraphNode&				IN_Node,
 			FrameGraphResourceContext&	IN_context,
@@ -1567,13 +1567,13 @@ namespace FlexKit
 	class Range
 	{
 	public:
-		Range begin()
+		Range begin() const 
 		{
 			return { 0, end_, step_ };
 		}
 
 
-		Range end()
+		Range end() const
 		{
 			return { end_, end_, step_ };
 		}
@@ -1585,12 +1585,12 @@ namespace FlexKit
 		}
 
 
-		bool operator == (Range& rhs)
+		bool operator == (const Range& rhs) const 
 		{
 			return  (rhs.itr == itr) && (rhs.end_ == end_) && (rhs.step_ == step_);
 		}
 
-        bool operator != (Range& rhs)
+        bool operator != (const Range& rhs) const
         {
             return  !(*this == rhs);
         }
@@ -1599,7 +1599,7 @@ namespace FlexKit
 		Range operator ++ ()
 		{
 			itr++;
-			return *this;
+            return *this;
 		}
 
 		size_t front() const
@@ -2464,7 +2464,7 @@ namespace FlexKit
 				descHeap.NullFill(ctx);
 
 				ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
-				//ctx.SetPipelineState(resources.GetPipelineState(DRAW_LINE3D_PSO));
+				ctx.SetPipelineState(resources.GetPipelineState(DRAW_LINE3D_PSO));
 
 				ctx.SetScissorAndViewports({ resources.GetRenderTarget(Data.RenderTarget) });
 				ctx.SetRenderTargets(

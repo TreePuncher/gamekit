@@ -6,6 +6,12 @@
 #include <QtWidgets/qmenubar.h>
 
 
+using FlexKit::float2;
+using FlexKit::float3;
+using FlexKit::float4;
+using FlexKit::float4x4;
+
+
 /************************************************************************************************/
 
 
@@ -45,6 +51,9 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
     FlexKit::SetCameraNode(viewportCamera, FlexKit::GetZeroedNode());
 
     show();
+
+    auto& RS = IN_renderer.GetRenderSystem();
+    RS.RegisterPSOLoader(FlexKit::DRAW_LINE3D_PSO, { &RS.Library.RS6CBVs4SRVs, FlexKit::CreateDraw2StatePSO });
 }
 
 
@@ -85,18 +94,20 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
 
     std::vector<FlexKit::NodeHandle> nodes;
 
-    this->scene = viewportScene;
-
     for (auto node : scene->sceneResource->nodes)
     {
         auto newNode = FlexKit::GetZeroedNode();
         nodes.push_back(newNode);
 
         const auto position = node.position;
-        const auto q = node.Q;
+        const auto q        = node.Q;
 
+        FlexKit::SetScale(newNode, float3{ node.scale.x, node.scale.x, node.scale.x });
         FlexKit::SetOrientationL(newNode, q);
         FlexKit::SetPositionL(newNode, position);
+
+        if(node.parent != -1)
+            FlexKit::SetParentNode(nodes[node.parent], newNode);
 
         SetFlag(newNode, FlexKit::SceneNodes::StateFlags::SCALE);
     }
@@ -108,14 +119,19 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
 
         viewportScene->sceneObjects.emplace_back(viewObject);
 
+        if (entity.Node != -1)
+            viewObject->gameObject.AddView<FlexKit::SceneNodeView<>>(nodes[entity.Node]);
+
         for (auto& componentEntry : entity.components)
         {
+            bool addedToScene = false;
+
             switch (componentEntry->id)
             {
             case FlexKit::TransformComponentID:
             {
-                if (entity.Node != -1)
-                    viewObject->gameObject.AddView<FlexKit::SceneNodeView<>>(nodes[entity.Node]);
+                //if (entity.Node != -1)
+                //    viewObject->gameObject.AddView<FlexKit::SceneNodeView<>>(nodes[entity.Node]);
             }   break;
             case FlexKit::BrushComponentID:
             {
@@ -145,10 +161,19 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
                         viewObject->gameObject.AddView<FlexKit::BrushView>(handle, nodes[entity.Node]);
                     }
 
-                    viewportScene->scene.AddGameObject(viewObject->gameObject, nodes[entity.Node]);
+                    if(!addedToScene)
+                        viewportScene->scene.AddGameObject(viewObject->gameObject, nodes[entity.Node]);
+
+                    addedToScene = true;
+
                     FlexKit::SetBoundingSphereFromMesh(viewObject->gameObject);
                 }
             }   break;
+            case FlexKit::PointLightComponentID:
+                if (!addedToScene)
+                    viewportScene->scene.AddGameObject(viewObject->gameObject, nodes[entity.Node]);
+
+                addedToScene = true;
             default:
             {
                 auto  blob      = componentEntry->GetBlob();
@@ -159,6 +184,9 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
             }
         }
     }
+
+
+    this->scene = viewportScene;
 }
 
 
@@ -222,10 +250,10 @@ void EditorViewport::mousePressEvent(QMouseEvent* event)
                             .D = v_dir.normal(),
                             .O = v_o,});
 
-            for(auto& sceneObject : results)
-                FlexKit::SetVisable(sceneObject->gameObject, false);
+            ViewportObjectList selection;
+            selection.push_back(results.front());
 
-            selectionContext.selection  = std::move(results);
+            selectionContext.selection  = std::move(selection);
             selectionContext.type       = ViewportObjectList_ID;
         }
     }   break;
@@ -295,8 +323,8 @@ void EditorViewport::mouseMoveEvent(QMouseEvent* event)
 
 void EditorViewport::wheelEvent(QWheelEvent* event)
 {
-    auto node = FlexKit::GetCameraNode(viewportCamera);
-    auto q = FlexKit::GetOrientation(node);
+    auto node   = FlexKit::GetCameraNode(viewportCamera);
+    auto q      = FlexKit::GetOrientation(node);
 
     FlexKit::TranslateWorld(node, q * float3(0, 0, event->angleDelta().x() / -10.0f));
     MarkCameraDirty(viewportCamera);
@@ -357,17 +385,29 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
             .additionalShadowPass   = {}
         };
 
-        auto drawnScene = renderer.worldRender.DrawScene(dispatcher, frameGraph, sceneDesc, targets, FlexKit::SystemAllocator, allocator);
+        auto drawSceneRes = renderer.worldRender.DrawScene(dispatcher, frameGraph, sceneDesc, targets, FlexKit::SystemAllocator, allocator);
+
+        EditorViewport::DrawSceneOverlay_Desc desc{
+            .brushes        = drawSceneRes.PVS.GetData().solid,
+            .lights         = drawSceneRes.pointLights,
+
+            .buffers        = temporaries,
+            .renderTarget   = renderTarget,
+            .allocator      = allocator
+        };
+
+        DrawSceneOverlay(dispatcher, frameGraph, desc);
 
         renderer.textureEngine.TextureFeedbackPass(
             dispatcher,
             frameGraph,
             viewportCamera,
             depthBuffer.WH,
-            drawnScene.PVS,
-            drawnScene.skinnedDraws,
+            drawSceneRes.PVS,
+            drawSceneRes.skinnedDraws,
             temporaries.ReserveConstantBuffer,
             temporaries.ReserveVertexBuffer);
+
     }
     else
         FlexKit::ClearBackBuffer(frameGraph, renderTarget, { 1, 0, 1, 0 });
@@ -376,6 +416,258 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
     FlexKit::PresentBackBuffer(frameGraph, renderTarget);
 
     T += dT;
+}
+
+
+/************************************************************************************************/
+
+
+void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, EditorViewport::DrawSceneOverlay_Desc& desc)
+{
+    struct DrawOverlay
+    {
+        const FlexKit::PVS&                     brushes;
+        FlexKit::PointLightShadowGatherTask&    lights;
+
+        FlexKit::ReserveVertexBufferFunction    ReserveVertexBuffer;
+        FlexKit::ReserveConstantBufferFunction  ReserveConstantBuffer;
+
+        FlexKit::FrameResourceHandle    renderTarget;
+    };
+
+    frameGraph.AddNode<DrawOverlay>(
+        DrawOverlay{
+            desc.brushes,
+            desc.lights,
+
+            desc.buffers.ReserveVertexBuffer,
+            desc.buffers.ReserveConstantBuffer,
+        },
+        [&](FlexKit::FrameGraphNodeBuilder& builder, DrawOverlay& data)
+        {
+            data.renderTarget = builder.RenderTarget(desc.renderTarget);
+            builder.AddDataDependency(data.lights);
+        },
+        [&, viewportCamera = viewportCamera](DrawOverlay& data, FlexKit::ResourceHandler& resources, FlexKit::Context& ctx, auto& allocator)
+        {
+            struct Vertex
+            {
+                float3 Position;
+                float3 Color;
+            };
+
+            auto& PVS           = data.brushes;
+            auto& pointLights   = data.lights.GetData().pointLightShadows;
+
+            auto& visibilityComponent   = FlexKit::SceneVisibilityComponent::GetComponent();
+            auto& pointLightComponnet   = FlexKit::PointLightComponent::GetComponent();
+
+            FlexKit::DescriptorHeap descHeap;
+			descHeap.Init(
+				ctx,
+				resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
+				&allocator);
+			descHeap.NullFill(ctx);
+
+			ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
+			ctx.SetPipelineState(resources.GetPipelineState(FlexKit::DRAW_LINE3D_PSO));
+
+			ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
+			ctx.SetRenderTargets({ resources.GetRenderTarget(data.renderTarget) }, false);
+
+			ctx.SetPrimitiveTopology(FlexKit::EInputTopology::EIT_LINE);
+
+			ctx.SetGraphicsDescriptorTable(0, descHeap);
+
+			ctx.NullGraphicsConstantBufferView(3);
+			ctx.NullGraphicsConstantBufferView(4);
+			ctx.NullGraphicsConstantBufferView(5);
+			ctx.NullGraphicsConstantBufferView(6);
+
+            struct PassConstants {
+                FlexKit::float4x4 x;
+            } passConstantData;
+
+            auto constantBuffer = data.ReserveConstantBuffer(
+                FlexKit::AlignedSize<FlexKit::Camera::ConstantBuffer>() + 
+                FlexKit::AlignedSize<PassConstants>());
+
+            
+            FlexKit::ConstantBufferDataSet cameraConstants  { FlexKit::GetCameraConstants(viewportCamera), constantBuffer };
+            FlexKit::ConstantBufferDataSet passConstants    { passConstantData, constantBuffer };
+
+            auto viewportObjects = selectionContext.GetSelectionType() == ViewportObjectList_ID ? selectionContext.GetSelection<ViewportObjectList>() : ViewportObjectList{};
+
+            // Draw Point Lights
+            for (auto& lightHandle : pointLights)
+            {
+                bool selectedLight = false;
+                for (auto& viewportObject : viewportObjects)
+                {
+                    FlexKit::PointLightHandle pointlight = FlexKit::GetPointLight(viewportObject->gameObject);
+                    if (pointlight == lightHandle)
+                        selectedLight = true;
+                }
+
+                struct Vertex
+                {
+                    FlexKit::float4 position;
+                    FlexKit::float4 color;
+                    FlexKit::float2 UV;
+                };
+
+                const auto temp = pointLightComponnet[lightHandle].Position;
+                const float3 position   = FlexKit::GetPositionW(pointLightComponnet[lightHandle].Position);
+                const float radius      = pointLightComponnet[lightHandle].R;
+
+                const size_t divisions  = 64;
+                FlexKit::VBPushBuffer VBBuffer   = data.ReserveVertexBuffer(sizeof(Vertex) * 6 * divisions);
+
+			    const float Step = 2.0f * (float)FlexKit::pi / divisions;
+                const auto range = FlexKit::MakeRange(0, divisions);
+                const float4 color = selectedLight ? float4{ 1, 1, 1, 1 } : float4{ 0, 0, 0, 1 };
+
+			    const FlexKit::VertexBufferDataSet vertices{
+                    FlexKit::SET_TRANSFORM_OP,
+                    range,
+				    [&](const size_t I, auto& pushBuffer) -> Vertex
+				    {
+					    const float3 V1 = { radius * cos(Step * (I + 1)),	0.0f, (radius * sin(Step * (I + 1))) };
+					    const float3 V2 = { radius * cos(Step * I),		    0.0f, (radius * sin(Step * I)) };
+
+                        pushBuffer.Push(Vertex{ float4{ V1, 1 }, color, float2{ 0, 0 } });
+                        pushBuffer.Push(Vertex{ float4{ V2, 1 }, color, float2{ 1, 1 } });
+
+                        pushBuffer.Push(Vertex{ float4{ V1.x, V1.z, 0, 1 }, color, float2{ 0, 0 } });
+                        pushBuffer.Push(Vertex{ float4{ V2.x, V2.z, 0, 1 }, color, float2{ 1, 1 } });
+
+                        
+                        pushBuffer.Push(Vertex{ float4{ 0, V1.x, V1.z, 1 }, color, float2{ 0, 0 } });
+                        pushBuffer.Push(Vertex{ float4{ 0, V2.x, V2.z, 1 }, color, float2{ 1, 1 } });
+
+                        return {};
+				    },                                                  
+				    VBBuffer };
+
+                ctx.SetVertexBuffers({ vertices });
+
+                struct {
+                    float4     unused1;
+                    float4     unused2;
+                    float4x4   transform;
+                } CB_Data {
+				    .unused1    = float4{ 1, 1, 1, 1 },
+				    .unused2    = float4{ 1, 1, 1, 1 },
+				    .transform  = FlexKit::TranslationMatrix(position)
+			    };
+
+                auto constantBuffer = data.ReserveConstantBuffer(256);
+                FlexKit::ConstantBufferDataSet constants{ CB_Data, constantBuffer };
+
+                ctx.SetGraphicsConstantBufferView(1, cameraConstants);
+                ctx.SetGraphicsConstantBufferView(2, constants);
+
+                ctx.Draw(divisions * 6);
+            }
+
+
+            // Draw Selection
+            if(selectionContext.GetSelectionType() == ViewportObjectList_ID)
+            {
+                for (auto& object : viewportObjects)
+                {
+                    if (!object->gameObject.hasView(FlexKit::BrushComponentID))
+                        continue;
+
+                    struct Vertex
+                    {
+                        FlexKit::float4 position;
+                        FlexKit::float4 color;
+                        FlexKit::float2 UV;
+                    };
+
+                    const auto      node        = FlexKit::GetSceneNode(object->gameObject);
+                    const auto      BS          = FlexKit::GetBoundingSphere(object->gameObject);
+                    const auto      radius      = BS.w;
+                    const float3    position    = FlexKit::GetPositionW(node);
+                    const size_t    divisions   = 64;
+
+                    FlexKit::VBPushBuffer VBBuffer = data.ReserveVertexBuffer(sizeof(Vertex) * 24);
+
+			        const float Step = 2.0f * (float)FlexKit::pi / divisions;
+                    const auto range = FlexKit::MakeRange(0, divisions);
+
+                    Vertex vertices[] = {
+                        // Top
+                        { float4{ -radius,  radius,  radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{  radius,  radius,  radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+
+                        { float4{ -radius,  radius, -radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{  radius,  radius, -radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+
+                        { float4{ -radius,  radius,  radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{ -radius,  radius, -radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+
+
+                        { float4{  radius,  radius,  radius, 1 }, float4{  1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{  radius,  radius, -radius, 1 }, float4{  1, 1, 1, 1 }, float2{ 0, 0 } },
+
+                        // Bottom
+                        { float4{ -radius, -radius,  radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{  radius, -radius,  radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+
+                        { float4{ -radius, -radius, -radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{  radius, -radius, -radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+
+                        { float4{ -radius, -radius,  radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{ -radius, -radius, -radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+
+                        { float4{  radius, -radius,  radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{  radius, -radius, -radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+
+                        // Sides
+                        { float4{  radius,  radius,  radius, 1 }, float4{ 1, 1,  1, 1 }, float2{ 0, 0 } },
+                        { float4{  radius, -radius,  radius, 1 }, float4{ 1, 1,  1, 1 }, float2{ 0, 0 } },
+
+                        { float4{  radius,  radius, -radius, 1 }, float4{ 1, 1,  1, 1 }, float2{ 0, 0 } },
+                        { float4{  radius, -radius, -radius, 1 }, float4{ 1, 1,  1, 1 }, float2{ 0, 0 } },
+
+
+                        { float4{ -radius,  radius,  radius, 1 }, float4{ 1, 1,  1, 1 }, float2{ 0, 0 } },
+                        { float4{ -radius, -radius,  radius, 1 }, float4{ 1, 1,  1, 1 }, float2{ 0, 0 } },
+
+
+                        { float4{ -radius,  radius, -radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{ -radius, -radius, -radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                    };
+
+                    FlexKit::VertexBufferDataSet vbDataSet{
+                            vertices,
+                            sizeof(vertices),
+                            VBBuffer };
+
+                    ctx.SetVertexBuffers({ vbDataSet });
+
+                    struct {
+                        float4     unused1;
+                        float4     unused2;
+                        float4x4   transform;
+                    } CB_Data {
+				        .unused1    = float4{ 1, 1, 1, 1 },
+				        .unused2    = float4{ 1, 1, 1, 1 },
+				        .transform  = FlexKit::TranslationMatrix(position)
+			        };
+
+                    auto constantBuffer = data.ReserveConstantBuffer(256);
+                    FlexKit::ConstantBufferDataSet constants{ CB_Data, constantBuffer };
+
+                    ctx.SetGraphicsConstantBufferView(1, cameraConstants);
+                    ctx.SetGraphicsConstantBufferView(2, constants);
+
+                    ctx.Draw(24);
+                }
+            }
+        });
 }
 
 

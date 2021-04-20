@@ -1260,6 +1260,7 @@ namespace FlexKit
                             PVS,
                             skinnedObjects,
                             entityConstants,
+                            visablePointLights,
                             occlutionConstants.ZPyramid);
 
         return outputs;

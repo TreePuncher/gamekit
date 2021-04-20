@@ -4600,7 +4600,7 @@ private:
 
 
 		template<typename TY_CONTAINER, typename FN_TransformVertex>
-		VertexBufferDataSet(const SET_TRANSFORM_t, TY_CONTAINER& initialData, const FN_TransformVertex& TransformVertex, VBPushBuffer& buffer) :
+		VertexBufferDataSet(const SET_TRANSFORM_t, const TY_CONTAINER& initialData, const FN_TransformVertex& TransformVertex, VBPushBuffer& buffer) :
 			vertexBuffer	{ buffer },
 			offsetBegin		{ buffer.GetOffset() }
 		{

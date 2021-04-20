@@ -259,6 +259,21 @@ namespace FlexKit
 	};
 
 
+    inline PointLightHandle GetPointLight(GameObject& go)
+    {
+        return Apply(
+            go,
+            [](PointLightView& pointLight) -> PointLightHandle
+            {
+                return pointLight;
+            },
+            []() -> PointLightHandle
+            {
+                return InvalidHandle_t;
+            });
+    }
+
+
 	/************************************************************************************************/
 
 
@@ -296,6 +311,12 @@ namespace FlexKit
 			vis_ref.node	= node;
 			vis_ref.scene	= scene;
 		}
+
+
+        BoundingSphere GetBoundingSphere() const
+        {
+            return GetComponent()[visibility].boundingSphere;
+        }
 
 
 		void SetBoundingSphere(const BoundingSphere boundingSphere)
@@ -395,6 +416,26 @@ namespace FlexKit
             });
     }
 
+    inline BoundingSphere GetBoundingSphere(GameObject& go)
+    {
+        const auto Scale = GetScale(go);
+
+        float rScale = 1;
+        for (size_t I = 0; I < 3; ++I)
+            rScale = Max(rScale, Scale[I]);
+
+        return Apply(
+            go,
+            [&](SceneVisibilityView&    visibility)
+            {
+                return visibility.GetBoundingSphere();
+            },
+            []()
+            {
+                return BoundingSphere{ 0, 0, 0, 0 };
+            });
+    }
+
 
 	/************************************************************************************************/
 
@@ -402,13 +443,13 @@ namespace FlexKit
 	struct PointLightGather
 	{
 		Vector<PointLightHandle>	pointLights;
-		const Scene*			scene;
+		const Scene*			    scene;
 	};
 
     struct PointLightShadowGather
     {
         Vector<PointLightHandle>	pointLightShadows;
-        const Scene*         scene;
+        const Scene*                scene;
     };
 
     struct alignas(64) SceneBVH
