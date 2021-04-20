@@ -862,7 +862,7 @@ namespace FlexKit
                 else
                 {
                     bvh->Traverse(frustum,
-                        [&](VisibilityHandle intersector, auto& intersionResult)
+                        [&](VisibilityHandle intersector, auto& intersectionResult)
                         {
                             GameObject& go = *visabilityComponent[intersector].entity;
                             Apply(go,

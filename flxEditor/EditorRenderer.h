@@ -26,6 +26,8 @@ public:
     void DrawRenderWindow(DXRenderWindow* renderWindow);
 
     FlexKit::TriMeshHandle LoadMesh(FlexKit::ResourceBuilder::MeshResource& mesh);
+
+    FlexKit::RenderSystem& GetRenderSystem() { return framework.core.RenderSystem; }
 protected:
     FlexKit::UpdateTask* Update (FlexKit::EngineCore& Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT) override;
     FlexKit::UpdateTask* Draw   (FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph) override;

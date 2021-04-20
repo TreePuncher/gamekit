@@ -770,10 +770,11 @@ namespace FlexKit
 
     struct DrawOutputs
     {
-        GatherTask&         PVS;
-        GatherSkinnedTask&  skinnedDraws;
-        EntityConstants&    entityConstants;
-        FrameResourceHandle visibilityBuffer;
+        GatherTask&                 PVS;
+        GatherSkinnedTask&          skinnedDraws;
+        EntityConstants&            entityConstants;
+        PointLightShadowGatherTask& pointLights;
+        FrameResourceHandle         visibilityBuffer;
     };
 
 

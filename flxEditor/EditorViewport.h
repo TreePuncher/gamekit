@@ -19,6 +19,7 @@ class QMenuBar;
 /************************************************************************************************/
 
 
+
 class EditorViewport : public QWidget
 {
 	Q_OBJECT
@@ -42,7 +43,19 @@ protected:
 
 private:
 
-    void Render(FlexKit::UpdateDispatcher& Dispatcher, double dT, TemporaryBuffers&, FlexKit::FrameGraph& graph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator);
+    struct DrawSceneOverlay_Desc
+    {
+        const FlexKit::PVS&                     brushes;
+        FlexKit::PointLightShadowGatherTask&    lights;
+
+        TemporaryBuffers&               buffers;
+        FlexKit::ResourceHandle         renderTarget;
+        FlexKit::ThreadSafeAllocator&   allocator;
+    };
+
+
+    void Render             (FlexKit::UpdateDispatcher& Dispatcher, double dT, TemporaryBuffers&, FlexKit::FrameGraph& graph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator);
+    void DrawSceneOverlay   (FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, DrawSceneOverlay_Desc& desc);
 
     double                          T = 0.0f;
 

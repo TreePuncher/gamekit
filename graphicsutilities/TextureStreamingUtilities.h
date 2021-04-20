@@ -265,8 +265,8 @@ namespace FlexKit
     struct TextureFeedbackPass_Data
     {
         CameraHandle                    camera;
-        GatherTask&                     pvs;
-        GatherSkinnedTask&              skinnedModels;
+        const GatherTask&               pvs;
+        const GatherSkinnedTask&        skinnedModels;
         ReserveConstantBufferFunction   reserveCB;
 
         FrameResourceHandle             feedbackBuffers[2];
@@ -402,14 +402,14 @@ namespace FlexKit
 
 
         void TextureFeedbackPass(
-            UpdateDispatcher&                   dispatcher,
-            FrameGraph&                         frameGraph,
-            CameraHandle                        camera,
-            uint2                               renderTargetWH,
-            UpdateTaskTyped<GetPVSTaskData>&    sceneGather,
-            GatherSkinnedTask&                  skinnedModelsGather,
-            ReserveConstantBufferFunction&      reserveCB,
-            ReserveVertexBufferFunction&        reserveVB);
+            UpdateDispatcher&               dispatcher,
+            FrameGraph&                     frameGraph,
+            CameraHandle                    camera,
+            uint2                           renderTargetWH,
+            GatherTask&                     sceneGather,
+            GatherSkinnedTask&              skinnedModelsGather,
+            ReserveConstantBufferFunction&  reserveCB,
+            ReserveVertexBufferFunction&    reserveVB);
 
 
         struct TextureStreamUpdate : public FlexKit::iWork
