@@ -135,6 +135,7 @@
     <ClCompile Include="EditorApplication.cpp" />
     <ClCompile Include="EditorCodeEditor.cpp" />
     <ClCompile Include="EditorConfig.cpp" />
+    <ClCompile Include="EditorInspectorView.cpp" />
     <ClCompile Include="EditorOperators.cpp" />
     <ClCompile Include="EditorOutputWindow.cpp" />
     <ClCompile Include="EditorRenderer.cpp" />
@@ -172,6 +173,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EditorApplication.h" />
+    <QtMoc Include="EditorInspectorView.h" />
     <ClInclude Include="SelectionContext.h" />
     <ClInclude Include="Serialization.h" />
     <ClInclude Include="ViewportScene.h" />
@@ -194,6 +196,7 @@
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="EditorCodeEditor.ui" />
+    <QtUic Include="EditorInspectorView.ui" />
     <QtUic Include="EditorOutputWindow.ui" />
     <QtUic Include="ModelViewerWidget.ui" />
     <QtUic Include="ResourceBrowserWidget.ui" />

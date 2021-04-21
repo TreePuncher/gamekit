@@ -251,6 +251,11 @@ namespace FlexKit
                 return (ComponentViewBase*)&(buffer[0]);
         }
 
+        ComponentViewBase& Get_ref()
+        {
+            return *Get();
+        }
+
         void Release(iAllocator* allocator)
         {
            if (componentSize > componentSize)
@@ -354,6 +359,12 @@ namespace FlexKit
 			return false;
 		}
 
+
+        auto begin()    { return views.begin(); }
+        auto end()      { return views.end(); }
+
+        auto begin()    const { return views.begin(); }
+        auto end()      const { return views.end(); }
 
 	private:
 

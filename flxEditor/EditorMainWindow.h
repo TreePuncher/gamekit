@@ -22,7 +22,7 @@
 #include "SelectionContext.h"
 
 #include "ModelViewerWidget.h"
-
+#include "EditorInspectorView.h"
 
 /************************************************************************************************/
 
@@ -58,6 +58,7 @@ public:
     void                    AddOutputView();
     void                    AddModelViewer();
     TextureViewer*          AddTextureViewer(TextureResource* res = nullptr);
+    void                    AddInspector();
 
     void AddFileAction(const std::string& name, auto callable)
     {
