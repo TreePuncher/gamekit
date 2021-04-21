@@ -19,7 +19,6 @@ class QMenuBar;
 /************************************************************************************************/
 
 
-
 class EditorViewport : public QWidget
 {
 	Q_OBJECT

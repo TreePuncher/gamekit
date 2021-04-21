@@ -27,7 +27,7 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
 	ui.setupUi(this);
 
     auto layout = findChild<QBoxLayout*>("verticalLayout");
-    layout->setContentsMargins(0, 4, 0, 2);
+    layout->setContentsMargins(0, 0, 0, 0);
     layout->setMenuBar(menuBar);
 
     setMinimumSize(100, 100);
@@ -410,7 +410,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 
     }
     else
-        FlexKit::ClearBackBuffer(frameGraph, renderTarget, { 1, 0, 1, 0 });
+        FlexKit::ClearBackBuffer(frameGraph, renderTarget, { 0.25f, 0.25f, 0.25f, 0 });
 
 
     FlexKit::PresentBackBuffer(frameGraph, renderTarget);
@@ -424,6 +424,9 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 
 void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, EditorViewport::DrawSceneOverlay_Desc& desc)
 {
+    if (!isVisible())
+        return;
+
     struct DrawOverlay
     {
         const FlexKit::PVS&                     brushes;
@@ -574,17 +577,20 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
             // Draw Selection
             if(selectionContext.GetSelectionType() == ViewportObjectList_ID)
             {
+                struct Vertex
+                {
+                    FlexKit::float4 position;
+                    FlexKit::float4 color;
+                    FlexKit::float2 UV;
+                };
+
+                FlexKit::VBPushBuffer VBBuffer = data.ReserveVertexBuffer(sizeof(Vertex) * 24 * viewportObjects.size());
+
                 for (auto& object : viewportObjects)
                 {
                     if (!object->gameObject.hasView(FlexKit::BrushComponentID))
                         continue;
 
-                    struct Vertex
-                    {
-                        FlexKit::float4 position;
-                        FlexKit::float4 color;
-                        FlexKit::float2 UV;
-                    };
 
                     const auto      node        = FlexKit::GetSceneNode(object->gameObject);
                     const auto      BS          = FlexKit::GetBoundingSphere(object->gameObject);
@@ -592,7 +598,6 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
                     const float3    position    = FlexKit::GetPositionW(node);
                     const size_t    divisions   = 64;
 
-                    FlexKit::VBPushBuffer VBBuffer = data.ReserveVertexBuffer(sizeof(Vertex) * 24);
 
 			        const float Step = 2.0f * (float)FlexKit::pi / divisions;
                     const auto range = FlexKit::MakeRange(0, divisions);

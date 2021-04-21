@@ -42,7 +42,7 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
     auto AddTextView = viewMenu->addAction("Add Text View");
     connect(AddTextView, &QAction::triggered, this, &EditorMainWindow::AddTextView);
 
-    auto addResourceView = viewMenu->addAction("Add Resource View");
+    auto addResourceView = viewMenu->addAction("Add Resource List");
     connect(addResourceView, &QAction::triggered, this, &EditorMainWindow::AddResourceList);
 
     auto addTextureView = viewMenu->addAction("Add Texture View");
@@ -53,6 +53,9 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
 
     auto addTextOutput = viewMenu->addAction("Add text Output");
     connect(addTextOutput, &QAction::triggered, this, [&] { AddOutputView(); });
+
+    auto addInspector = viewMenu->addAction("Add Inspector");
+    connect(addInspector, &QAction::triggered, this, [&] { AddInspector(); });
 
     auto tools = menuBar()->addMenu("Tools");
     gadgetMenu = tools->addMenu("Scripts");
@@ -284,6 +287,20 @@ TextureViewer* EditorMainWindow::AddTextureViewer(TextureResource* res)
     docklet->show();
     
     return textureViewer;
+}
+
+
+/************************************************************************************************/
+
+
+void EditorMainWindow::AddInspector()
+{
+    auto docklet    = new QDockWidget{ this };
+    auto inspector  = new EditorInspectorView{ selectionContext, this };
+
+    docklet->setWidget(inspector);
+    docklet->setWindowTitle("Inspector");
+    docklet->show();
 }
 
 
