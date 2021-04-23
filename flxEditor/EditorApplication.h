@@ -10,8 +10,14 @@
 #include "EditorMainWindow.h"
 #include "EditorViewport.h"
 
+#include "SceneInspectors.h"
+
 #include "..\FlexKitResourceCompiler\SceneResource.h"
 #include "..\FlexKitResourceCompiler\TextureResourceUtilities.h"
+
+
+/************************************************************************************************/
+
 
 class gltfImporter : public iEditorImportor
 {
@@ -64,6 +70,9 @@ public:
 };
 
 
+/************************************************************************************************/
+
+
 class GameResExporter : public iEditorExporter
 {
 public:
@@ -89,6 +98,9 @@ public:
 };
 
 
+/************************************************************************************************/
+
+
 class EditorProjectScriptConnector
 {
 public:
@@ -106,6 +118,9 @@ private:
 
     void CreateTexture2DResource(FlexKit::TextureBuffer* buffer, uint32_t resourceID, std::string* resourceName, std::string* format);
 };
+
+
+/************************************************************************************************/
 
 
 struct TextureResourceViewer : public IResourceViewer
@@ -142,6 +157,10 @@ struct TextureResourceViewer : public IResourceViewer
     }
 };
 
+
+/************************************************************************************************/
+
+
 struct SceneResourceViewer : public IResourceViewer
 {
     SceneResourceViewer(EditorRenderer& IN_renderer, EditorProject& IN_project, EditorMainWindow& IN_mainWindow) :
@@ -163,6 +182,10 @@ struct SceneResourceViewer : public IResourceViewer
     EditorRenderer&     renderer;
     EditorMainWindow&   mainWindow;
 };
+
+
+/************************************************************************************************/
+
 
 class EditorApplication
 {
@@ -212,6 +235,12 @@ public:
 		// connect script gadgets
 		for (auto& gadget : scripts.GetGadgets())
 			mainWindow.RegisterGadget(gadget);
+
+        EditorInspectorView::AddComponentInspector<TransformInspector>();
+        EditorInspectorView::AddComponentInspector<VisibilityInspector>();
+        EditorInspectorView::AddComponentInspector<PointLightInspector>();
+        EditorInspectorView::AddComponentInspector<PointLightShadowInspector>();
+        EditorInspectorView::AddComponentInspector<SceneBrushInspector>();
 	}
 
 	~EditorApplication()

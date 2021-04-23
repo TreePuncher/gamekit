@@ -313,14 +313,14 @@ namespace FlexKit
 		wt.r[1].m128_f32[3] = in.y;
 		wt.r[2].m128_f32[3] = in.z;
 
-		SetWT(node, &wt);
 		// Set New Local Position
-		LT_Entry Local(GetLocal(node));
+		LT_Entry Local = GetLocal(node);
 
 		Local.T.m128_f32[0] = lPosition[0];
 		Local.T.m128_f32[1] = lPosition[1];
 		Local.T.m128_f32[2] = lPosition[2];
 
+        SetWT       (node, &wt);
 		SetLocal	(node, &Local);
 		SetFlag		(node, SceneNodes::DIRTY);
 #endif

@@ -68,6 +68,9 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
     setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowTabbedDocks | QMainWindow::AllowNestedDocks);
     tabPosition(Qt::TopDockWidgetArea);
 
+    AddInspector();
+    AddResourceList();
+
     show();
 }
 
@@ -301,6 +304,8 @@ void EditorMainWindow::AddInspector()
     docklet->setWidget(inspector);
     docklet->setWindowTitle("Inspector");
     docklet->show();
+
+    addDockWidget(Qt::RightDockWidgetArea, docklet);
 }
 
 

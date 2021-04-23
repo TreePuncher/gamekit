@@ -814,6 +814,23 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    UpdateTask& UpdateThirdPersonCameraControllers(UpdateDispatcher& dispatcher, float2 mouseInput, const double dT)
+    {
+        struct TPC_Update {};
+
+        return dispatcher.Add<TPC_Update>(
+            [&](auto& builder, auto& data){},
+            [mouseInput, dT](TPC_Update& data, iAllocator& threadAllocator)
+            {
+                for (auto& controller : CameraControllerComponent::GetComponent())
+                    controller.componentData.Update(mouseInput, dT);
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
     NodeHandle RigidBodyView::GetNode() const
     {
         return GetComponent().GetLayer(layer)[staticBody].node;
@@ -866,6 +883,63 @@ namespace FlexKit
                 return staticBody.GetNode();
             },
             [] { return (NodeHandle)InvalidHandle_t; });
+    }
+
+
+    /************************************************************************************************/
+
+
+    
+    NodeHandle GetControllerNode(GameObject& GO)
+    {
+        return Apply(GO, [](CharacterControllerView& controller)
+            {
+                return controller.GetNode();
+            },
+            []
+            {
+                return (NodeHandle)InvalidHandle_t;
+            });
+    }
+
+
+    CharacterControllerHandle GetControllerHandle(GameObject& GO)
+    {
+        return Apply(GO, [](CharacterControllerView& controller)
+            {
+                return controller.controller;
+            },
+            []
+            {
+                return (CharacterControllerHandle)InvalidHandle_t;
+            });
+    }
+
+
+    float3 GetControllerPosition(GameObject& GO)
+    {
+        return Apply(GO, [&](CharacterControllerView& controller)
+            {
+                return controller.GetPosition();
+            }, [] { return float3{ 0, 0, 0 };  });
+    }
+
+
+    void SetControllerPosition(GameObject& GO, const float3 xyz)
+    {
+        Apply(GO, [&](CharacterControllerView& controller)
+            {
+                controller.SetPosition(xyz);
+            });
+    }
+
+
+    void SetControllerOrientation(GameObject& GO, const Quaternion q)
+    {
+        Apply(GO, [&](CharacterControllerView& controller)
+            {
+                controller.SetOrientation(q);
+            });
     }
 
 
@@ -927,7 +1001,6 @@ namespace FlexKit
 
     void ThirdPersonCamera::SetRotation(const float3 xyz)
     {
-
         if (xyz[0] != 0.0f)
             FlexKit::SetOrientationL(pitchNode, Quaternion{ RadToDegree(xyz[0]), 0, 0 });
         
@@ -1099,14 +1172,14 @@ namespace FlexKit
 
             const float3 footPosition   = pxVec3ToFloat3(controllerImpl.controller->getFootPosition());
 
-            auto& scene = PhysXComponent::GetComponent().GetLayer_ref(controllerImpl.layer);
+            auto& layer = PhysXComponent::GetComponent().GetLayer_ref(controllerImpl.layer);
 
             const float3 origin1    = footPosition + up * 3 + 2.0f * -forward;
             const float3 ray1       = -forward.normal();
 
             float cameraZ = cameraDistance;
 
-            scene.RayCast(origin1, ray1, 10,
+            layer.RayCast(origin1, ray1, 10,
                 [&](auto hit)
                 {
                     cameraZ = Min(hit.distance + 1.0f, cameraDistance);
@@ -1115,9 +1188,9 @@ namespace FlexKit
 
             const float3 origin2 = footPosition - forward * cameraZ + up * 10.0f;
             const float3 ray2    = (-up).normal();
-
             float cameraMinY     = 0;
-            scene.RayCast(origin2, ray2, 100,
+
+            layer.RayCast(origin2, ray2, 100,
                 [&](auto hit)
                 {
                     cameraMinY = hit.distance - origin2.y + 1;

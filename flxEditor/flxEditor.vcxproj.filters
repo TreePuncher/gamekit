@@ -163,6 +163,9 @@
     <ClInclude Include="ViewportScene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SceneInspectors.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="ResourceBrowserWidget.ui">
