@@ -893,54 +893,11 @@ namespace FlexKit
     };
 
 
-    inline NodeHandle GetControllerNode(GameObject& GO)
-    {
-        return Apply(GO, [](CharacterControllerView& controller)
-            {
-                return controller.GetNode();
-            },
-            []
-            {
-                return (NodeHandle)InvalidHandle_t;
-            });
-    }
-
-
-    inline CharacterControllerHandle GetControllerHandle(GameObject& GO)
-    {
-        return Apply(GO, [](CharacterControllerView& controller)
-            {
-                return controller.controller;
-            },
-            []
-            {
-                return (CharacterControllerHandle)InvalidHandle_t;
-            });
-    }
-
-    inline float3 GetControllerPosition(GameObject& GO)
-    {
-        return Apply(GO, [&](CharacterControllerView& controller)
-            {
-                return controller.GetPosition();
-            }, [] { return float3{ 0, 0, 0 };  });
-    }
-
-    inline void SetControllerPosition(GameObject& GO, const float3 xyz)
-    {
-        Apply(GO, [&](CharacterControllerView& controller)
-            {
-                controller.SetPosition(xyz);
-            });
-    }
-
-    inline void SetControllerOrientation(GameObject& GO, const Quaternion q)
-    {
-        Apply(GO, [&](CharacterControllerView& controller)
-            {
-                controller.SetOrientation(q);
-            });
-    }
+    NodeHandle                  GetControllerNode(GameObject& GO);
+    CharacterControllerHandle   GetControllerHandle(GameObject& GO);
+    float3                      GetControllerPosition(GameObject& GO);
+    void                        SetControllerPosition(GameObject& GO, const float3 xyz);
+    void                        SetControllerOrientation(GameObject& GO, const Quaternion q);
 
 
     /************************************************************************************************/
@@ -1076,18 +1033,7 @@ namespace FlexKit
     void            SetCameraControllerCameraBackOffset(GameObject& GO, const float offset);
 
 
-    inline auto& UpdateThirdPersonCameraControllers(UpdateDispatcher& dispatcher, float2 mouseInput, const double dT)
-    {
-        struct TPC_Update {};
-
-        return dispatcher.Add<TPC_Update>(
-            [&](auto& builder, auto& data){},
-            [mouseInput, dT](TPC_Update& data, iAllocator& threadAllocator)
-            {
-                for (auto& controller : CameraControllerComponent::GetComponent())
-                    controller.componentData.Update(mouseInput, dT);
-            });
-    }
+    UpdateTask&     UpdateThirdPersonCameraControllers(UpdateDispatcher& dispatcher, float2 mouseInput, const double dT);
 
 
     /************************************************************************************************/

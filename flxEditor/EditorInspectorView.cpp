@@ -2,11 +2,105 @@
 #include "ViewportScene.h"
 #include <qtimer>
 #include <QtWidgets\qtextedit.h>
-#include <QtWidgets\qlabel.h>
 #include <QtWidgets\qboxlayout.h>
+#include <QtWidgets\qlabel.h>
+
+/************************************************************************************************/
+
+
+ComponentViewPanelContext::ComponentViewPanelContext(QBoxLayout* panel, std::vector<QWidget*>& items_out, std::vector<QBoxLayout*>& layouts) :
+    propertyItems   { items_out },
+    subLayouts      { layouts }
+{
+    layoutStack.push_back(panel);
+}
 
 
 /************************************************************************************************/
+
+
+QLabel* ComponentViewPanelContext::AddHeader(std::string txt)
+{
+    auto label = new QLabel{ txt.c_str() };
+    layoutStack.back()->addWidget(label, 0, Qt::AlignHCenter);
+
+    propertyItems.push_back(label);
+
+    return label;
+}
+
+
+/************************************************************************************************/
+
+
+QLabel* ComponentViewPanelContext::AddText(std::string txt)
+{
+    auto label = new QLabel{ txt.c_str() };
+    layoutStack.back()->addWidget(label);
+
+    propertyItems.push_back(label);
+
+    return label;
+}
+
+/************************************************************************************************/
+
+
+void ComponentViewPanelContext::AddInputBox(std::string txt, std::string initial, FieldChangeCallback callback)
+{
+    auto label      = new QLabel{ txt.c_str() };
+    auto inputBox   = new QTextEdit{ initial.c_str() };
+
+    inputBox->connect(
+        inputBox,
+        &QTextEdit::textChanged,
+        [=] { callback(inputBox->toPlainText().toStdString()); });
+
+    PushHorizontalLayout();
+
+    layoutStack.back()->addWidget(label);
+    layoutStack.back()->addWidget(inputBox);
+
+    Pop();
+
+    propertyItems.push_back(label);
+    propertyItems.push_back(inputBox);
+}
+
+
+/************************************************************************************************/
+
+
+void ComponentViewPanelContext::PushVerticalLayout()
+{
+    auto layout = new QBoxLayout{ QBoxLayout::Down };
+    layoutStack.back()->addLayout(layout);
+    layoutStack.push_back(layout);
+}
+
+
+/************************************************************************************************/
+
+
+void ComponentViewPanelContext::PushHorizontalLayout()
+{
+    auto layout = new QBoxLayout{ QBoxLayout::LeftToRight };
+    layoutStack.back()->addLayout(layout);
+    layoutStack.push_back(layout);
+}
+
+
+/************************************************************************************************/
+
+
+void ComponentViewPanelContext::Pop()
+{
+    layoutStack.pop_back();
+}
+
+
+/************************************************************************************************/
+
 
 
 EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, QWidget *parent) :
@@ -90,12 +184,14 @@ void EditorInspectorView::OnUpdate()
 
             for (auto& componentView : gameObject)
             {
-                auto layout = new QBoxLayout{ QBoxLayout::LeftToRight };
+                auto layout = new QBoxLayout{ QBoxLayout::Down };
+                layout->setSpacing(0);
+
                 properties.push_back(layout);
                 layout->setObjectName("Properties");
                 ui.verticalLayout->addLayout(layout);
 
-                ComponentViewPanelContext context{ layout, propertyItems };
+                ComponentViewPanelContext context{ layout, propertyItems, properties };
 
                 if (auto res = componentInspectors.find(componentView.ID); res != componentInspectors.end())
                 {
@@ -108,7 +204,7 @@ void EditorInspectorView::OnUpdate()
 
                     label->setObjectName("PropertyItem");
                     label->setText("No Component Inspector Available");
-                    layout->addWidget(componentLabel);
+                    layout->addWidget(componentLabel, 0, Qt::AlignHCenter);
                     layout->addWidget(label);
 
                     propertyItems.push_back(label);
@@ -131,8 +227,6 @@ void EditorInspectorView::OnUpdate()
                     child->setParent(nullptr);
                     delete child;
                 }
-                auto temp = children().size();
-                int x = 0;
             }
         }
 

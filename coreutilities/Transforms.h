@@ -366,7 +366,7 @@ namespace FlexKit
 
         float3	GetPositionL() const
         {
-            return FlexKit::GetPositionW(node);
+            return FlexKit::GetPositionL(node);
         }
 
         float3	GetScale() const noexcept
@@ -379,7 +379,6 @@ namespace FlexKit
             return FlexKit::GetOrientation(node);
         }
 
-
         void SetScale(float3 scale)
         {
             FlexKit::SetScale(node, scale);
@@ -388,6 +387,11 @@ namespace FlexKit
         void Parent(NodeHandle child)
         {
             FlexKit::SetParentNode(node, child);
+        }
+
+        void SetPosition(const float3 xyz)
+        {
+            FlexKit::SetPositionW(node, xyz);
         }
 
         NodeHandle node;

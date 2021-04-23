@@ -242,6 +242,21 @@ namespace FlexKit
 			return GetComponent()[light].R;
 		}
 
+        void SetRadius(float r) noexcept
+        {
+            GetComponent()[light].R = r;
+        }
+
+        float GetIntensity()
+        {
+            return GetComponent()[light].I;
+        }
+
+        void SetIntensity(float I)
+        {
+            GetComponent()[light].I = I;
+        }
+
 		void SetNode(NodeHandle node) const noexcept
 		{
 			GetComponent()[light].Position = node;
