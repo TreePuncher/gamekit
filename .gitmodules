@@ -37,3 +37,6 @@
 [submodule "Dependencies/sdks/crunch"]
 	path = Dependencies/sdks/crunch
 	url = https://github.com/BinomialLLC/crunch.git
+[submodule "ThirdParty/ImGuizmo"]
+	path = ThirdParty/ImGuizmo
+	url = https://github.com/CedricGuillemet/ImGuizmo
