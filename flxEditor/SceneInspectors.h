@@ -25,18 +25,26 @@ public:
     {
         auto& sceneNodeView = static_cast<FlexKit::SceneNodeView<>&>(component);
 
-        const auto position     = sceneNodeView.GetPosition();
+        const auto initialPos   = sceneNodeView.GetPosition();
         const auto scale        = sceneNodeView.GetScale();
         const auto orientation  = sceneNodeView.GetOrientation();
 
         panelCtx.AddHeader("Transform");
-        auto positionTxt = panelCtx.AddText(fmt::format("Position: \t[{}, {}, {}]", position.x, position.y, position.z));
+
+        panelCtx.PushHorizontalLayout();
+
+        panelCtx.AddText(fmt::format("Node: {}", sceneNodeView.node.to_uint()));
+        panelCtx.AddText(fmt::format("Parent: {}", sceneNodeView.GetParentNode().to_uint()));
+
+        panelCtx.Pop();
+
+        auto positionTxt = panelCtx.AddText(fmt::format("Position: \t[{}, {}, {}]", initialPos.x, initialPos.y, initialPos.z));
 
         panelCtx.PushHorizontalLayout();
 
         panelCtx.AddInputBox(
             "X",
-            fmt::format("{}", position.x),
+            fmt::format("{}", initialPos.x),
             [&, positionTxt = positionTxt](const std::string& txt)
             {
                 char* p;
@@ -53,7 +61,7 @@ public:
 
         panelCtx.AddInputBox(
             "Y",
-            fmt::format("{}", position.y),
+            fmt::format("{}", initialPos.y),
             [&, positionTxt = positionTxt](const std::string& txt)
             {
                 char* p;
@@ -70,7 +78,7 @@ public:
 
         panelCtx.AddInputBox(
             "Z",
-            fmt::format("{}", position.z),
+            fmt::format("{}", initialPos.z),
             [&, positionTxt = positionTxt](const std::string& txt)
             {
                 char* p;
@@ -143,7 +151,6 @@ private:
 /************************************************************************************************/
 
 
-
 class PointLightInspector : public IComponentInspector
 {
 public:
@@ -158,6 +165,8 @@ public:
         auto& pointLight = static_cast<FlexKit::PointLightView&>(component);
 
         panelCtx.AddHeader("Point Light");
+
+        panelCtx.AddText(fmt::format("Node: {}", pointLight.GetNode().to_uint()));
 
         panelCtx.AddInputBox(
             "Radius",
@@ -210,6 +219,9 @@ public:
         panelCtx.AddText("No Fields!");
     }
 };
+
+
+/************************************************************************************************/
 
 
 class SceneBrushInspector : public IComponentInspector

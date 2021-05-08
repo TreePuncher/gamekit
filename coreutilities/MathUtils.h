@@ -178,6 +178,14 @@ namespace FlexKit
 	class Vect
 	{
 		typedef Vect<SIZE, TY> THISTYPE;
+
+        template<typename TY_tuple, int ... ints>
+        void helper(TY_tuple&& tuple, std::integer_sequence<int, ints...> x) noexcept
+        {
+            ((Vector[ints] = static_cast<TY>(std::get<ints>(tuple))), ...);
+        }
+
+
 	public:
 		Vect() noexcept {}
 
@@ -190,13 +198,25 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		Vect( Vect<SIZE, TY_2> in) noexcept
+		Vect(Vect<SIZE, TY_2> in) noexcept
 		{
 			for (size_t I=0; I<SIZE; ++I)
 				Vector[I] = in[I];
 		}
 
 
+        template<typename ... TY_ARGS>
+        Vect(TY_ARGS ... args) noexcept
+        {
+            static_assert(sizeof ... (args) <= SIZE, "Input value count must be less than container size!");
+
+            const auto tuple      = std::make_tuple(args...);
+            const auto indexes    = std::make_integer_sequence<int, sizeof...(args)>{};
+
+            helper(tuple, indexes);
+        }
+
+        /*
 		Vect( std::initializer_list<TY> il ) noexcept
 		{
 			size_t itr = 0;
@@ -207,7 +227,7 @@ namespace FlexKit
 					return;
 			}
 		}
-
+        */
 
 		TY* begin() noexcept
 		{
@@ -1866,34 +1886,30 @@ namespace FlexKit
 
 	inline float4 operator * (const float4x4& LHS, const float4 rhs)
 	{// TODO: FAST PATH
-		Vect<4, float> out;
-		Vect4 Temp = rhs;
+		const Vect4 temp    = rhs;
+		const auto T        = LHS.Transpose();
 
-		auto T = LHS.Transpose();
-		for (size_t i = 0; i < 4; ++i)
-		{
-			const auto v = T[i];
-			out[i] = v.Dot(Temp);
-		}
-
-		return Conversion::Vect4To<float4>(out);
+        return Conversion::Vect4To<float4>(
+            {   T[0].Dot(temp),
+                T[1].Dot(temp),
+                T[2].Dot(temp),
+                T[3].Dot(temp),
+            });
 	}
 
 
     inline float3 operator * (const float3x3& LHS, const float3 rhs)
     {// TODO: FAST PATH
-        Vect<3, float> out;
-        Vect3 Temp = rhs;
+        const Vect3   temp    = rhs;
+        const auto    T       = LHS.Transpose();
 
-        auto T = LHS.Transpose();
-        for (size_t i = 0; i < 4; ++i)
-        {
-            const auto v = T[i];
-            out[i] = v.Dot(Temp);
-        }
-
-        return Conversion::Vect3To<float3>(out);
+        return Conversion::Vect3To<float3>(
+            {   T[0].Dot(temp),
+                T[1].Dot(temp),
+                T[2].Dot(temp),
+            });
     }
+
 
 	/************************************************************************************************/
 
@@ -1930,22 +1946,6 @@ namespace FlexKit
 		return DotProduct4(lhs, rhs);
 	}
 
-
-	/************************************************************************************************/
-
-
-	/*
-	inline FlexKit::float4x4 TranslationMatrix(float3 XYZ)
-	{
-		FlexKit::float4x4 out(float4x4::Identity());
-		out[3][0] = XYZ.x;
-		out[3][1] = XYZ.y;
-		out[3][2] = XYZ.z;
-		out[3][3] = 1.0f;
-
-		return out;
-	}
-	*
 
 	/************************************************************************************************/
 

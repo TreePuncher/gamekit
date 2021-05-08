@@ -3,9 +3,8 @@
 
 ViewportObjectList ViewportScene::RayCast(FlexKit::Ray v) const
 {
-    auto& visables = FlexKit::SceneVisibilityComponent::GetComponent();
-
-    const auto rayCastResults = scene.RayCast(v, FlexKit::SystemAllocator);
+    auto&       visables        = FlexKit::SceneVisibilityComponent::GetComponent();
+    const auto  rayCastResults  = scene.RayCast(v, FlexKit::SystemAllocator);
 
     ViewportObjectList results;
     for (auto& result : rayCastResults)

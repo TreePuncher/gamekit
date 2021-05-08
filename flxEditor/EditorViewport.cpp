@@ -242,7 +242,7 @@ void EditorViewport::mousePressEvent(QMouseEvent* event)
             const auto cameraConstants      = FlexKit::GetCameraConstants(viewportCamera);
             const auto cameraOrientation    = FlexKit::GetOrientation(FlexKit::GetCameraNode(viewportCamera));
 
-            const FlexKit::float3 v_dir = cameraOrientation * (Inverse(cameraConstants.Proj) * FlexKit::float4(ScreenCoord.x, ScreenCoord.y,  1.0f, 1.0f)).xyz().normal();
+            const FlexKit::float3 v_dir = cameraOrientation * (Inverse(cameraConstants.Proj) * FlexKit::float4{ ScreenCoord.x, ScreenCoord.y,  1.0f, 1.0f }).xyz().normal();
             const FlexKit::float3 v_o   = cameraConstants.WPOS.xyz();
 
             auto results = scene->RayCast(
@@ -279,8 +279,8 @@ void EditorViewport::mouseMoveEvent(QMouseEvent* event)
                 FlexKit::int2 newPosition{ event->pos().x(), event->pos().y() };
                 FlexKit::int2 deltaPosition = previousMousePosition - newPosition;
 
-                auto node   = FlexKit::GetCameraNode(viewportCamera);
-                auto q      = FlexKit::GetOrientation(node);
+                const auto node   = FlexKit::GetCameraNode(viewportCamera);
+                const auto q      = FlexKit::GetOrientation(node);
 
                 FlexKit::TranslateWorld(node, q * float3(deltaPosition[0] * 1.0f / 60.0f * panSpeed, -deltaPosition[1] * 1.0f / 60.0f * panSpeed, 0));
 
@@ -294,15 +294,16 @@ void EditorViewport::mouseMoveEvent(QMouseEvent* event)
                 previousMousePosition = { event->pos().x(), event->pos().y() };
             else
             {
-                FlexKit::int2 newPosition{ event->pos().x(), event->pos().y() };
-                FlexKit::int2 deltaPosition = previousMousePosition - newPosition;
+                const FlexKit::int2 newPosition{ event->pos().x(), event->pos().y() };
+                const FlexKit::int2 deltaPosition = previousMousePosition - newPosition;
 
-                auto node   = FlexKit::GetCameraNode(viewportCamera);
-                auto q      = FlexKit::GetOrientation(node);
+                const auto  node   = FlexKit::GetCameraNode(viewportCamera);
+                const auto  q      = FlexKit::GetOrientation(node);
+                const float x      = float(deltaPosition[0]);
+                const float y      = float(deltaPosition[1]);
 
-                auto x  = float(deltaPosition[0]);
-                FlexKit::Yaw(node, float(deltaPosition[0]) / 1000.0f);
-                FlexKit::Pitch(node, float(deltaPosition[1]) / 1000.0f);
+                FlexKit::Yaw(node, x / 1000.0f);
+                FlexKit::Pitch(node, y / 1000.0f);
 
                 MarkCameraDirty(viewportCamera);
 
@@ -323,12 +324,13 @@ void EditorViewport::mouseMoveEvent(QMouseEvent* event)
 
 void EditorViewport::wheelEvent(QWheelEvent* event)
 {
-    auto node   = FlexKit::GetCameraNode(viewportCamera);
-    auto q      = FlexKit::GetOrientation(node);
+    const auto node   = FlexKit::GetCameraNode(viewportCamera);
+    const auto q      = FlexKit::GetOrientation(node);
 
-    FlexKit::TranslateWorld(node, q * float3(0, 0, event->angleDelta().x() / -10.0f));
+    FlexKit::TranslateWorld(node, q * float3{ 0, 0, event->angleDelta().x() / -10.0f });
     MarkCameraDirty(viewportCamera);
 }
+
 
 /************************************************************************************************/
 
@@ -430,7 +432,7 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
     struct DrawOverlay
     {
         const FlexKit::PVS&                     brushes;
-        FlexKit::PointLightShadowGatherTask&    lights;
+        const FlexKit::PointLightHandleList&    lights;
 
         FlexKit::ReserveVertexBufferFunction    ReserveVertexBuffer;
         FlexKit::ReserveConstantBufferFunction  ReserveConstantBuffer;
@@ -441,7 +443,7 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
     frameGraph.AddNode<DrawOverlay>(
         DrawOverlay{
             desc.brushes,
-            desc.lights,
+            desc.lights.GetData().pointLightShadows,
 
             desc.buffers.ReserveVertexBuffer,
             desc.buffers.ReserveConstantBuffer,
@@ -449,7 +451,7 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
         [&](FlexKit::FrameGraphNodeBuilder& builder, DrawOverlay& data)
         {
             data.renderTarget = builder.RenderTarget(desc.renderTarget);
-            builder.AddDataDependency(data.lights);
+            builder.AddDataDependency(desc.lights);
         },
         [&, viewportCamera = viewportCamera](DrawOverlay& data, FlexKit::ResourceHandler& resources, FlexKit::Context& ctx, auto& allocator)
         {
@@ -460,7 +462,7 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
             };
 
             auto& PVS           = data.brushes;
-            auto& pointLights   = data.lights.GetData().pointLightShadows;
+            auto& pointLights   = data.lights;
 
             auto& visibilityComponent   = FlexKit::SceneVisibilityComponent::GetComponent();
             auto& pointLightComponnet   = FlexKit::PointLightComponent::GetComponent();
@@ -646,7 +648,7 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
                         { float4{ -radius, -radius, -radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
                     };
 
-                    FlexKit::VertexBufferDataSet vbDataSet{
+                    const FlexKit::VertexBufferDataSet vbDataSet{
                             vertices,
                             sizeof(vertices),
                             VBBuffer };
@@ -664,7 +666,7 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 			        };
 
                     auto constantBuffer = data.ReserveConstantBuffer(256);
-                    FlexKit::ConstantBufferDataSet constants{ CB_Data, constantBuffer };
+                    const FlexKit::ConstantBufferDataSet constants{ CB_Data, constantBuffer };
 
                     ctx.SetGraphicsConstantBufferView(1, cameraConstants);
                     ctx.SetGraphicsConstantBufferView(2, constants);
