@@ -1662,26 +1662,47 @@ namespace FlexKit
 	template< const int ROW, const int COL, typename Ty = float >
 	union alignas(16) Matrix
 	{
+    private:
+        template<typename TY_tuple, int ... ints>
+        void helper(TY_tuple&& tuple, std::integer_sequence<int, ints...> x) noexcept
+        {
+            Ty* flatArray = &matrix[0][0];
+            ((flatArray[ints] = static_cast<Ty>(std::get<ints>(tuple))), ...);
+        }
+
+        template<typename TY_vect, int ... ints>
+        auto extractVect(TY_vect& vect, std::integer_sequence<int, ints...> x) noexcept
+        {
+            return std::make_tuple(vect[ints]...);
+        }
+
+        template<size_t vectorSize>
+        auto BuildTuple(Vect<vectorSize, Ty> vect)
+        {
+            return extractVect(vect, std::make_integer_sequence<int, vectorSize>());
+        }
+
+        template<typename TY_value> 
+        auto BuildTuple(TY_value value)
+        {
+            return std::tuple{ value };
+        }
+
+
+        template<typename TY_Value, typename ... TY_args>
+        auto BuildTuple(TY_Value value, TY_args ... args)
+        {
+            return std::tuple_cat(BuildTuple(value), BuildTuple(args...));
+        }
+
+
 	public:
         using THIS_TYPE = const Matrix<ROW, COL, Ty>;
+
 
         Matrix()                                            = default;
         Matrix(const THIS_TYPE& initial)                    = default;
 
-
-        /*
-        Matrix(std::initializer_list<Vect<COL, Ty>> initial) noexcept
-        {
-            size_t I    = 0;
-            auto v      = initial.begin();
-
-            for (; I < ROW && v != initial.end(); I++, v++)
-            {
-                matrix[I] = *v;
-                I++;
-            }
-        }
-        */
 
 		Matrix<ROW, COL> operator*(const float rhs)
 		{
@@ -1693,6 +1714,25 @@ namespace FlexKit
 
 			return out;
 		}
+
+
+        template<typename ... TY_ARGS>
+        explicit Matrix(TY_ARGS ... args) noexcept
+        {
+            const std::tuple tuple      = BuildTuple(args...);
+
+            constexpr size_t valueCount = std::tuple_size_v<decltype(tuple)>;
+            const auto indexes          = std::make_integer_sequence<int, valueCount>{};
+
+            static_assert(valueCount <= ROW * COL, "Input value count must be less than container size!");
+
+            helper(tuple, indexes);
+
+            Ty* flatArray = &matrix[0][0];
+
+            for (size_t I = valueCount; I < ROW * COL; I++)
+                flatArray[I] = 0.0f;
+        }
 
 
 		template< const int RHS_COL >
@@ -1713,6 +1753,7 @@ namespace FlexKit
 			}
 			return out;
 		}
+
 
 		Matrix<3, 3> operator*(const Matrix<3, 3>& rhs) const
 		{
@@ -1749,12 +1790,13 @@ namespace FlexKit
 			return out;
 		}
 
+
 		Vect<ROW>&		operator[] (const int i)		{ return *((Vect<ROW>*)matrix[i]); }
         Vect<ROW>&      operator[] (const int i) const  { return *((Vect<ROW>*)matrix[i]); }
 
         Vect<ROW>&		operator[] (const size_t i)		    { return *((Vect<ROW>*)matrix[i]); }
         Vect<ROW>&		operator[] (const size_t i) const   { return *((Vect<ROW>*)matrix[i]); }
-		//const float*	operator[] (const size_t i) const	{ return matrix[i]; }
+
 
 		static inline Matrix<ROW, COL> Identity()
 		{
@@ -2098,13 +2140,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline Quaternion PointAt(float3 A, float3 B)
+	inline Quaternion PointAt(float3 A, float3 B, const float3 UpV = { 0.0f, 1.0f, 0.0f })
 	{
-		float3 Dir		= (B - A).magnitude();
-		Dir = {Dir.z, Dir.y, -Dir.x};
-
-		float3 UpV		= (0.0f, 1.0f, 0.0f);
-		float3 DirXUpV	= Dir.cross(UpV);
+		float3 Dir		        = (B - A).normal();
+		Dir                     = {Dir.z, Dir.y, -Dir.x};
+		const float3 DirXUpV	= Dir.cross(UpV);
 
 		return Vector2Quaternion(Dir, DirXUpV.cross(Dir), DirXUpV);
 	}
