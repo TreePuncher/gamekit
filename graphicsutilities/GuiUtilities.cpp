@@ -558,17 +558,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	void LayoutEngine::PushRect(Draw_RECT Rect)	{
-		float3 Offset;
-		{
-			float2 Temp2 = GetCurrentPosition();
-			Offset = { Temp2.x, Temp2.y, 0.0f };
-		}
+		const float3 Offset = 
+		    [&]{
+			    float2 Temp2 = GetCurrentPosition();
+			    return float3{ Temp2.x, Temp2.y, 0.0f };
+		    }();
 
-		float3 CurrentDrawArea;  
-		{
-			float2 Temp2 = GetDrawArea();
-			CurrentDrawArea = { Temp2.x, Temp2.y, 0.0f };
-		}
+        float3 CurrentDrawArea = 
+            [&]{
+			    float2 Temp2 = GetDrawArea();
+			    return float3{ Temp2.x, Temp2.y, 0.0f };
+            }();
 
 		Rect.XY = Rect.XY * CurrentDrawArea + Offset;
 		Rect.WH = Rect.WH * CurrentDrawArea;

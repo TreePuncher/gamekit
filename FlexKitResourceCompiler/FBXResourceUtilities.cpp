@@ -810,8 +810,8 @@ namespace FlexKit::ResourceBuilder
 
                         if (property.GetName() == "LimbLength")
                         {
-                            auto limbLength     = property.Get<double>();
-                            NewJoint.limbLength = limbLength;
+                            const auto limbLength   = (float)property.Get<double>();
+                            NewJoint.limbLength     = limbLength;
                         }
                     }
                 }break;
