@@ -1096,7 +1096,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			Release();
 		}
 
-		operator ID3D12RootSignature* () { return Signature; }
+		operator ID3D12RootSignature* () const { return Signature; }
 
 		void Release()
 		{
@@ -1602,8 +1602,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void ClearUAVTextureUint    (ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
 		void ClearUAV               (ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
 
-		void SetRootSignature		    (RootSignature& RS);
-		void SetComputeRootSignature    (RootSignature& RS);
+		void SetRootSignature		    (const RootSignature& RS);
+		void SetComputeRootSignature    (const RootSignature& RS);
 		void SetPipelineState		    (ID3D12PipelineState* PSO);
 
 		void SetRenderTargets		    (const static_vector<ResourceHandle> RTs, bool DepthStecil, ResourceHandle DepthStencil = InvalidHandle_t, const size_t MIPMapOffset = 0);

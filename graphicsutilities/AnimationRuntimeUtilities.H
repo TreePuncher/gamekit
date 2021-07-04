@@ -308,9 +308,10 @@ namespace FlexKit
 		if (!PS)
 			return;
 
-		if (J != InvalidHandle_t) {
-			float4 xyz(xyz, 0);
-			PS->Joints[J].ts = PS->Joints[J].ts + xyz;
+		if (J != InvalidHandle_t)
+        {
+            const float4 xyzw{ xyz, 0 };
+			PS->Joints[J].ts = PS->Joints[J].ts + xyzw;
 			PS->Dirty = true;
 		}
 	}

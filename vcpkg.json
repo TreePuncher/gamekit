@@ -12,15 +12,17 @@
         },
         "boost",
         "cppcoro",
+        "directxmesh",
         "directxtk12",
         "imgui",
         "implot",
         "physx",
         "fmt",
-        "slikenet", 
+        "slikenet",
         "stb",
         "tinygltf",
-        "qt5", 
-        "range-v3"
+        "qt5",
+        "range-v3",
+        "gainput"
     ]
 }
