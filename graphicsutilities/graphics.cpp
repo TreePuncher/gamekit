@@ -25,6 +25,9 @@
 
 #pragma warning( disable :4267 )
 
+extern "C" __declspec(dllexport) DWORD  NvOptimusEnablement = 1;
+extern "C" __declspec(dllexport) int    AmdPowerXpressRequestHighPerformance = 1;
+
 namespace FlexKit
 {
 	void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size)
@@ -1412,7 +1415,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::SetRootSignature(RootSignature& RS)
+	void Context::SetRootSignature(const RootSignature& RS)
 	{
 		DeviceContext->SetGraphicsRootSignature(RS);
 	}
@@ -1421,7 +1424,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::SetComputeRootSignature(RootSignature& RS)
+	void Context::SetComputeRootSignature(const RootSignature& RS)
 	{
 		DeviceContext->SetComputeRootSignature(RS);
 	}

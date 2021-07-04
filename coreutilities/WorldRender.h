@@ -227,6 +227,7 @@ namespace FlexKit
     constexpr PSOHandle LIGHTPREPASS		    = PSOHandle(GetTypeGUID(LIGHTPREPASS));
 
     constexpr PSOHandle CREATECLUSTERS          = PSOHandle(GetTypeGUID(CREATECLUSTERS));
+    constexpr PSOHandle CREATECLUSTERBUFFER     = PSOHandle(GetTypeGUID(CREATECLUSTERBUFFER));
     constexpr PSOHandle CLEARCOUNTERSPSO        = PSOHandle(GetTypeGUID(CLEARCOUNTERSPSO));
     constexpr PSOHandle CREATECLUSTERLIGHTLISTS = PSOHandle(GetTypeGUID(CREATECLUSTERLIGHTLISTS));
 
@@ -285,6 +286,7 @@ namespace FlexKit
     ID3D12PipelineState* CreateClearResolutionMatch_PSO     (RenderSystem* RS);
 
     ID3D12PipelineState* CreateClustersPSO                  (RenderSystem* RS);
+    ID3D12PipelineState* CreateClusterBufferPSO             (RenderSystem* RS);
     ID3D12PipelineState* CreateClearClusterCountersPSO      (RenderSystem* RS);
 
 	ID3D12PipelineState* CreateBilaterialBlurHorizontalPSO  (RenderSystem* RS);
@@ -402,6 +404,9 @@ namespace FlexKit
         FrameResourceHandle	depthBufferObject;
         FrameResourceHandle	indexBufferObject;
         FrameResourceHandle argumentBufferObject;
+
+        FrameResourceHandle clusterBuffer;
+        FrameResourceHandle lightLists;
 	};
 
     struct DEBUGVIS_DrawBVH
@@ -651,6 +656,8 @@ namespace FlexKit
 
 		FrameResourceHandle		pointLightBufferObject;
 		FrameResourceHandle     renderTargetObject;
+
+        FrameResourceHandle     lightLists;
 	};
 
 
@@ -815,6 +822,7 @@ namespace FlexKit
 			RS_IN.RegisterPSOLoader(COMPUTETILEDSHADINGPASS,    { &RS_IN.Library.RSDefault,         CreateComputeTiledDeferredPSO });
 
             RS_IN.RegisterPSOLoader(CREATECLUSTERS,             { &RS_IN.Library.ComputeSignature,  CreateClustersPSO               });
+            RS_IN.RegisterPSOLoader(CREATECLUSTERBUFFER,        { &RS_IN.Library.ComputeSignature,  CreateClusterBufferPSO          });
             RS_IN.RegisterPSOLoader(CREATECLUSTERLIGHTLISTS,    { &RS_IN.Library.ComputeSignature,  CreateClusterLightListsPSO      });
             RS_IN.RegisterPSOLoader(CREATELIGHTBVH_PHASE1,      { &RS_IN.Library.ComputeSignature,  CreateLightBVH_PHASE1_PSO       });
             RS_IN.RegisterPSOLoader(CREATELIGHTBVH_PHASE2,      { &RS_IN.Library.ComputeSignature,  CreateLightBVH_PHASE2_PSO       });
@@ -835,6 +843,8 @@ namespace FlexKit
             RS_IN.RegisterPSOLoader(DEPTHCOPY,          { &RS_IN.Library.RSDefault, CreateDepthBufferCopy });
 
             RS_IN.RegisterPSOLoader(DEBUG_DrawBVH,      { &RS_IN.Library.RSDefault, CreateDEBUGBVHVIS });
+
+            RS_IN.QueuePSOLoad(CREATECLUSTERBUFFER);
 
 			RS_IN.QueuePSOLoad(GBUFFERPASS);
 			RS_IN.QueuePSOLoad(GBUFFERPASS_SKINNED);
@@ -905,8 +915,11 @@ namespace FlexKit
 
 		}
 
+
 		void Release()
 		{
+            if (clusterBuffer != InvalidHandle_t)
+                renderSystem.ReleaseResource(clusterBuffer);
 		}
 
 
@@ -1065,6 +1078,13 @@ namespace FlexKit
 
 
 	private:
+
+        void CreateClusterBuffer(uint2 WH, CameraHandle camera);
+
+        using RenderTask = FlexKit::TypeErasedCallable<48, void, FrameGraph&>;
+
+        static_vector<RenderTask> pendingGPUTasks; // Tasks must be completed prior to rendering
+
 		RenderSystem&			renderSystem;
 
         MemoryPoolAllocator     UAVPool;
@@ -1073,6 +1093,8 @@ namespace FlexKit
 
         QueryHandle             timeStats;
         ReadBackResourceHandle  timingReadBack;
+
+        ResourceHandle          clusterBuffer = InvalidHandle_t;
 
         CircularBuffer<ReadBackResourceHandle, 6> readBackBuffers;
 

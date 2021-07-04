@@ -30,7 +30,7 @@ Texture2D<float>  DepthBuffer       : register(t4);
 
 // light and shadow map resources
 Texture2D<uint> 			    clusterIndex : register(t5);
-StructuredBuffer<Cluster> 		clusters     : register(t6);
+StructuredBuffer<uint2> 		clusterLists : register(t6);
 StructuredBuffer<uint> 		    lightLists   : register(t7);
 StructuredBuffer<PointLight> 	pointLights	 : register(t8);
 TextureCube<float> 				shadowMaps[] : register(t10);
@@ -79,6 +79,7 @@ ENVIRONMENT_PS passthrough_VS(float4 position : POSITION)
 #define MAX_ENV_LOD 2.0
 #define MAX_CUBEMAP_SAMPLES 8
 #define SEED_SCALE 1000000
+#define NUMSLICES 24
 
 float RandUniform(float seed)
 {
@@ -92,7 +93,7 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 
 uint GetSliceIdx(float z)
 {            
-    const float numSlices   = 24;                                      
+    const float numSlices   = NUMSLICES;                                      
     const float MinOverMax  = MaxZ / MinZ;
     const float LogMoM      = log(MinOverMax);
 
@@ -104,7 +105,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     const float2 SampleCoord    = IN.Position;
     const float2 UV             = SampleCoord.xy / (WH); // [0;1]
     const float  depth          = DepthBuffer.Sample(NearestPoint, UV);
-    const uint2  px             = IN.Position.xy;//UV * WH;
+    const uint2  px             = IN.Position.xy; // UV * WH;
 
     if (depth == 1.0f) 
         return float4(0.5f, 0.5f, 0.6f, 1);
@@ -126,14 +127,19 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     const float Kd              = (1.0 - Ks) * (1.0 - metallic);
     const float NdotV           = saturate(dot(N.xyz, V));
 
-    const uint clusterKey = clusterIndex.Load(uint3(px.xy, 0));
+    const uint2 clusterWH   = GetTextureWH(DepthBuffer) / 32;
+    const uint2 clusterXY   = px / 32;
+    const uint  slice       = GetSliceIdx(-positionVS.z);
+    const uint2 rowPitch    = clusterWH.x;
+    const uint2 slicePitch  = clusterWH.x * clusterWH.y;
+    const uint  clusterIdx  = slicePitch * slice + rowPitch * clusterXY.y / 32 + clusterXY.x;
 
-    if(clusterKey == -1)
+    const uint2 lightList       = clusterLists[clusterIdx];
+    const uint  localLightCount = asuint(lightList.x);
+    const uint  localLightList  = asuint(lightList.y);
+
+    if(localLightCount == 0)
         discard;
-
-    const Cluster localCluster  = clusters[clusterKey];
-    const uint localLightCount  = asuint(localCluster.Max.w);
-    const uint localLightList   = asuint(localCluster.Min.w);
 
     float4 color = float4(albedo * ambientLight, 1);
     for(uint I = 0; I < localLightCount; I++)
@@ -256,6 +262,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
         //return color = float4(N / 2.0f + 0.5f);
     //return Albedo * Albedo;
 #endif
+
 	return pow(color, 2.1f);
 }
 

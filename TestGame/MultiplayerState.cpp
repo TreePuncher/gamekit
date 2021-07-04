@@ -1,9 +1,17 @@
 #include "MultiplayerState.h"
 
+
+/************************************************************************************************/
+
+
 namespace SLNet{
     const SystemAddress UNASSIGNED_SYSTEM_ADDRESS;
     const RakNetGUID    UNASSIGNED_RAKNET_GUID(-1);
 }
+
+
+/************************************************************************************************/
+
 
 NetworkState::~NetworkState()
 {
@@ -75,12 +83,12 @@ UpdateTask* NetworkState::Update(EngineCore& core, UpdateDispatcher& dispatcher,
             FK_LOG_INFO("New incoming connection!");
 
 			std::random_device random;
-            const uint32_t id = random();
-            openConnections.push_back(openSocket{
-                                        0,
-                                        0,
-                                        packet->systemAddress,
-                                        ConnectionHandle{ id }});
+            const uint64_t id = random();
+            openConnections.emplace_back(
+                0u,
+                0u,
+                packet->systemAddress,
+                ConnectionHandle{ id });
 
             raknet.Ping(packet->systemAddress);
 
