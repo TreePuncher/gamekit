@@ -176,16 +176,6 @@ float3 GetViewSpacePosition(float2 UV, float D)
     return V;
 }
 
-uint2 GetTextureWH(Texture2D<float> texture)
-{
-    uint width;
-    uint height;
-    uint numLevels;
-    texture.GetDimensions(0, width, height, numLevels);
-
-    return uint2(width, height);
-}
-
 /*
 float3 GetWorldSpacePositionAndViewDir(float3 UVW, out float3 VWS)
 {
@@ -215,12 +205,10 @@ float3 GetWorldSpacePositionAndViewDir(float3 UVW, out float3 VWS)
 }
 */
 
-// PBR Utility Functions
-
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

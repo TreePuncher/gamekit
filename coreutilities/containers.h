@@ -2090,7 +2090,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	template<unsigned int storage = 64 - sizeof(void*) * 2, typename TY_return = void, typename ... TY_ARGS>
+	template<unsigned int storage = 64 - sizeof(void*) * 3, typename TY_return = void, typename ... TY_ARGS>
 	class TypeErasedCallable
 	{
 	public:
@@ -2113,22 +2113,14 @@ namespace FlexKit
 		}
 
 
-		TypeErasedCallable(TypeErasedCallable&& callable) noexcept
-		{
-			memcpy(buffer, callable.buffer, sizeof(buffer));
-
-			proxy       = callable.proxy;
-			destructor  = callable.destructor;
-
-			callable.proxy      = nullptr;
-			callable.destructor = nullptr;
-		}
-
-
 		~TypeErasedCallable()
 		{
 			if (destructor)
 				destructor(buffer);
+
+            copy        = nullptr;
+            proxy       = nullptr;
+            destructor  = nullptr;
 		}
 
 
@@ -2144,17 +2136,35 @@ namespace FlexKit
 		}
 
 
-		TypeErasedCallable& operator = (TypeErasedCallable&) = delete;
+        TypeErasedCallable& operator = (const TypeErasedCallable& rhs)
+        {
+            if(destructor)
+                destructor(buffer);
+
+            rhs.copy(buffer, rhs.buffer, false);
+
+            copy        = rhs.copy;
+            proxy       = rhs.proxy;
+            destructor  = rhs.destructor;
+
+            return *this;
+        }
 
 
 		TypeErasedCallable& operator = (TypeErasedCallable&& rhs)
 		{
-			if (destructor)
-				destructor(buffer);
+            if (destructor)
+                destructor(buffer);
 
-			memcpy(buffer, rhs.buffer, sizeof(buffer));
-			proxy       = rhs.proxy;
-			destructor  = rhs.destructor;
+            rhs.copy(buffer, rhs.buffer, true);
+
+            copy        = rhs.copy;
+            proxy       = rhs.proxy;
+            destructor  = rhs.destructor;
+
+            rhs.copy        = nullptr;
+            rhs.proxy       = nullptr;
+            rhs.destructor  = nullptr;
 
 			return *this;
 		}
@@ -2171,6 +2181,17 @@ namespace FlexKit
 			};
 
 			new(buffer) data{ callable };
+
+
+            copy = [](char* lhs_ptr, char* rhs_ptr, bool move) -> TY_return
+            {
+                data* rhs = reinterpret_cast<data*>(rhs_ptr);
+
+                if (move)
+                    new(lhs_ptr) data(std::move(*rhs));
+                else
+                    new(lhs_ptr) data(*rhs);
+            };
 
 			proxy = [](char* _ptr, TY_ARGS ... args) -> TY_return
 				{
@@ -2193,9 +2214,11 @@ namespace FlexKit
 
 
 	private:
+        typedef TY_return(*fnCopy)(char* lhs, char* rhs, bool);
 		typedef TY_return(*fnProxy)(char*, TY_ARGS ... args);
 		typedef void (*fnDestructor)(char*);
 
+        fnCopy          copy        = nullptr;
 		fnProxy         proxy       = nullptr;
 		fnDestructor    destructor  = nullptr;
 		char            buffer[storage];

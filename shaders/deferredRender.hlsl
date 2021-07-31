@@ -29,11 +29,11 @@ Texture2D<float4> NormalBuffer      : register(t2);
 Texture2D<float>  DepthBuffer       : register(t4);
 
 // light and shadow map resources
-Texture2D<uint> 			    clusterIndex : register(t5);
-StructuredBuffer<uint2> 		clusterLists : register(t6);
-StructuredBuffer<uint> 		    lightLists   : register(t7);
-StructuredBuffer<PointLight> 	pointLights	 : register(t8);
-TextureCube<float> 				shadowMaps[] : register(t10);
+Texture2D<uint> 			    lightMap        : register(t5);
+StructuredBuffer<uint2> 	    lightLists	    : register(t6);
+StructuredBuffer<uint> 		    lightListBuffer : register(t7);
+StructuredBuffer<PointLight> 	pointLights	    : register(t8);
+TextureCube<float> 				shadowMaps[]    : register(t10);
 
 sampler BiLinear     : register(s0); // Nearest point
 sampler NearestPoint : register(s1); // Nearest point
@@ -79,7 +79,6 @@ ENVIRONMENT_PS passthrough_VS(float4 position : POSITION)
 #define MAX_ENV_LOD 2.0
 #define MAX_CUBEMAP_SAMPLES 8
 #define SEED_SCALE 1000000
-#define NUMSLICES 24
 
 float RandUniform(float seed)
 {
@@ -93,7 +92,7 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 
 uint GetSliceIdx(float z)
 {            
-    const float numSlices   = NUMSLICES;                                      
+    const float numSlices   = 24;                                      
     const float MinOverMax  = MaxZ / MinZ;
     const float LogMoM      = log(MinOverMax);
 
@@ -105,7 +104,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     const float2 SampleCoord    = IN.Position;
     const float2 UV             = SampleCoord.xy / (WH); // [0;1]
     const float  depth          = DepthBuffer.Sample(NearestPoint, UV);
-    const uint2  px             = IN.Position.xy; // UV * WH;
+    const uint2  px             = IN.Position.xy;//UV * WH;
 
     if (depth == 1.0f) 
         return float4(0.5f, 0.5f, 0.6f, 1);
@@ -127,24 +126,27 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     const float Kd              = (1.0 - Ks) * (1.0 - metallic);
     const float NdotV           = saturate(dot(N.xyz, V));
 
-    const uint2 clusterWH   = GetTextureWH(DepthBuffer) / 32;
-    const uint2 clusterXY   = px / 32;
-    const uint  slice       = GetSliceIdx(-positionVS.z);
-    const uint2 rowPitch    = clusterWH.x;
-    const uint2 slicePitch  = clusterWH.x * clusterWH.y;
-    const uint  clusterIdx  = slicePitch * slice + rowPitch * clusterXY.y / 32 + clusterXY.x;
+    const uint lightListKey     = lightMap.Load(uint3(px.xy, 0));
 
-    const uint2 lightList       = clusterLists[clusterIdx];
-    const uint  localLightCount = asuint(lightList.x);
-    const uint  localLightList  = asuint(lightList.y);
-
-    if(localLightCount == 0)
+    if(lightListKey == -1)
         discard;
 
+    const uint2 lightList       = lightLists[lightListKey];
+    const uint localLightCount  = lightList.x;
+    const uint localLightList   = lightList.y;
+
+    if(localLightList == -2)
+        return float4(1, 0, 1, 1);
+
     float4 color = float4(albedo * ambientLight, 1);
+    
     for(uint I = 0; I < localLightCount; I++)
     {
-        const uint pointLightIdx    = lightLists[localLightList + I];
+        const uint pointLightIdx    = lightListBuffer[localLightList + I];
+
+        if(pointLightIdx >= lightCount)
+            return float4(1, 0, 0, 1);
+
         const PointLight light      = pointLights[pointLightIdx];
 
         const float3 Lc			= light.KI.rgb;
@@ -257,13 +259,12 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     //else
         //return pow(Colors[clusterKey % 8], 1.0f);
         //return pow(Colors[GetSliceIdx(-positionVS.z) % 6], 1.0f);
-        //return (float(localLightCount) / float(lightCount));
+        return (float(localLightCount) / float(lightCount));
         //return float4(-positionVS.z, -positionVS.z, -positionVS.z, 1);
         //return color = float4(N / 2.0f + 0.5f);
     //return Albedo * Albedo;
 #endif
-
-	return pow(color, 2.1f);
+	return color;
 }
 
 

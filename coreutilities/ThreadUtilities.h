@@ -64,8 +64,10 @@ namespace FlexKit
 	class ThreadManager;
 
 
+    /************************************************************************************************/
+
+
 	typedef TypeErasedCallable<64, void> OnCompletionEvent;
-	//typedef std::function<void()> OnCompletionEvent;
 
 
 	/************************************************************************************************/
@@ -74,35 +76,25 @@ namespace FlexKit
 	class iWork
 	{
 	public:
-		iWork& operator = (iWork& rhs)  = delete;
-		iWork& operator = (iWork&& rhs) = delete;
+        iWork(iAllocator* Memory = nullptr) : _debugID{ "UNIDENTIFIED!" } { }
 
-		iWork(iAllocator* Memory = nullptr) :
-			_debugID	{ "UNIDENTIFIED!" }
-			//: subscribers{Memory}
-		{
-			//subscribers.reserve(8);
-		}
+        virtual ~iWork() {}
 
+		iWork& operator = (const iWork&)    = delete;
+		iWork& operator = (iWork&&)         = delete;
 
-		virtual ~iWork()					
-		{ 
-			//subscribers.Release();
-		}
+        iWork(const iWork&) = delete;
+        iWork(iWork&&)      = delete;
+
+		virtual void Run(iAllocator& threadLocalAllocatoDDr) { FK_ASSERT(0); }
+        virtual void Release() {}
 
 
-		virtual void Run(iAllocator& threadLocalAllocator) { FK_ASSERT(0); }
-		virtual void Release()	= 0;
-
-
-		void NotifyWatchers()
-		{
-			for (auto& watcher : subscribers)
-				watcher();
-
-            subscribers.clear();
-		}
-
+        void DoWork(iAllocator& threadLocalAllocator)
+        {
+            Run(threadLocalAllocator);
+            ReleaseAndNotifyWatchers();
+        }
 
 		template<typename TY_Callable>
 		void Subscribe(TY_Callable subscriber)
@@ -116,6 +108,17 @@ namespace FlexKit
 		const char*         _debugID;
 
 	protected:
+
+        void ReleaseAndNotifyWatchers()
+        {
+            static_vector<OnCompletionEvent, 8>	tempSubs{ std::move(subscribers) };
+
+            Release();
+
+            for (auto& sub : tempSubs)
+                sub();
+        }
+
 	private:
 		static_vector<OnCompletionEvent, 8>	subscribers;
 	};
@@ -269,6 +272,7 @@ namespace FlexKit
 		{
 			if (queue)
 				allocator->_aligned_free(queue);
+
 			queue = nullptr;
 		}
 
@@ -359,7 +363,6 @@ namespace FlexKit
 		~_WorkerThread()
 		{
 			workQueue.Release();
-			buffer = std::unique_ptr<std::array<byte, MEGABYTE * 16>>(nullptr);
 
 			if (Thread.joinable())
 				Thread.join();
@@ -379,8 +382,6 @@ namespace FlexKit
 
 		auto&   GetQueue() { return workQueue; }
 
-		//iAllocator& GetThreadLocalAllocator() { return localAllocator; }
-
 		static ThreadManager*	Manager;
 
 	private:
@@ -397,9 +398,6 @@ namespace FlexKit
 		std::mutex					    exclusive;
 		CircularStealingQueue<iWork*>   workQueue;
 		std::thread					    Thread;
-
-		//StackAllocator                                  localAllocator;
-		std::unique_ptr<std::array<byte, MEGABYTE * 16>> buffer;
 	};
 
 
@@ -432,9 +430,7 @@ namespace FlexKit
             localAllocators.pop_back();
         }
 
-		work.Run(*allocator);
-		work.NotifyWatchers();
-		work.Release();
+        work.DoWork(*allocator);
 
         allocator->clear();
 

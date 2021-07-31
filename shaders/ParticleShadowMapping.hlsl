@@ -5,9 +5,9 @@ struct ParticleMeshInstanceDepthVS_IN
     float4 instanceArgs     : INSTANCEARGS; 
 };
 
-float4 ParticleMeshInstanceDepthVS(ParticleMeshInstanceDepthVS_IN input) : SV_POSITION
+float3 ParticleMeshInstanceDepthVS(ParticleMeshInstanceDepthVS_IN input) : POSITION
 {
-    return float4(input.POS + input.instancePosition.xyz, 0);
+    return input.POS + input.instancePosition.xyz;
 }
 
 cbuffer PassConstants : register( b0 )
@@ -23,17 +23,19 @@ struct GS_Out
 
 [maxvertexcount(18)]
 void ParticleMeshInstanceDepthGS(
-    triangle float4 vertices[3] : SV_POSITION,
+    triangle float3 vertices[3] : POSITION,
     inout TriangleStream<GS_Out> renderTarget)
 {
     for (uint face_ID = 0; face_ID < 6; face_ID++) // Loop over faces
     {
-        for(uint triangle_ID = 0; triangle_ID < 3; triangle_ID++)
-        {
-            GS_Out Out;
-            Out.pos                 = mul(matrices[face_ID], vertices[triangle_ID]);
-            Out.arrayTargetIndex    = face_ID;
+        uint temp[] = { 1, 0, 5, 3, 4, 2 }; // (R.M): WTF?
+        //uint temp[] = { 0, 1, 2, 3, 4, 5 }; // (R.M): WTF?
+        GS_Out Out;
+        Out.arrayTargetIndex    = face_ID;
 
+        for(uint vertex_ID = 0; vertex_ID < 3; vertex_ID++)
+        {
+            Out.pos = mul(matrices[temp[face_ID]], float4(vertices[vertex_ID], 1));
             renderTarget.Append(Out);
         }
 

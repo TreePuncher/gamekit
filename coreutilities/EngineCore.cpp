@@ -49,7 +49,8 @@ namespace FlexKit
 	{
         Success = false;
 
-        auto* Memory = new(_aligned_malloc(sizeof(EngineMemory), 0x40)) EngineMemory{};
+        const auto preallocationSize = sizeof(EngineMemory);
+        auto* Memory = new(_aligned_malloc(preallocationSize, 0x40)) EngineMemory{};
 
 		FK_ASSERT(Memory != nullptr, "Memory Allocation Error!");
 

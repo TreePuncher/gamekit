@@ -211,5 +211,8 @@ namespace FlexKit {
 
 #define NOMINMAX
 
+#include <Windows.h>
+#include <debugapi.h>
+
 
 #endif//BUILDSETTING_H

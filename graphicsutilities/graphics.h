@@ -1653,8 +1653,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetComputeDescriptorTable		(size_t idx, const DescriptorHeap& DH);
 		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferHandle, size_t offset);
 		void SetComputeConstantBufferView   (size_t idx, const ConstantBufferDataSet& CB);
+        void SetComputeConstantBufferView   (size_t idx, ResourceHandle, size_t offset = 0, size_t bufferSize = 256);
 		void SetComputeShaderResourceView	(size_t idx, Texture2D&			Texture);
 		void SetComputeUnorderedAccessView	(size_t idx, ResourceHandle& Texture);
+
 
 		void BeginQuery	(QueryHandle query, size_t idx);
 		void EndQuery	(QueryHandle query, size_t idx);
@@ -1665,6 +1667,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
         void BeginEvent_DEBUG(const char* str);
         void EndEvent_DEBUG();
+
+        void CopyResource(ResourceHandle dest, ResourceHandle src);
 
 		void CopyBufferRegion(
 			static_vector<ID3D12Resource*>		sources,
@@ -3174,7 +3178,7 @@ private:
 			auto event      = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
 			auto handle     = handles.GetNewHandle();
 
-			auto index      = (index_t)readBackBuffers.push_back({ BufferSize, handle, resource });
+			auto index      = (index_t)readBackBuffers.emplace_back(BufferSize, handle, resource);
 			handles[handle] = index;
 
 			readBackBuffers[index].event = event;
@@ -4231,6 +4235,26 @@ private:
 
 	/************************************************************************************************/
 
+    	
+	constexpr size_t AlignedSize(const size_t unalignedSize)
+	{
+		const auto alignment        = 256;
+		const auto mask             = alignment - 1;
+		const auto offset           = unalignedSize & mask;
+		const auto adjustedOffset   = offset != 0 ? 256 - offset : 0;
+
+		return unalignedSize + adjustedOffset;
+	}
+
+	template<typename TY>
+	constexpr size_t AlignedSize()
+	{
+		return AlignedSize(sizeof(TY));
+	}
+
+
+    /************************************************************************************************/
+
 
 	class CBPushBuffer
 	{
@@ -4320,12 +4344,12 @@ private:
 
 		size_t Push(char* _ptr, const size_t size)
 		{
-			if (pushBufferUsed + CalculateOffset(size) > pushBufferSize)
+			if (pushBufferUsed + AlignedSize(size) > pushBufferSize)
 				return -1;
 
 			const size_t offset = pushBufferUsed;
 			memcpy(buffer + pushBufferBegin + offset, _ptr, size);
-			pushBufferUsed += CalculateOffset(offset);
+			pushBufferUsed += AlignedSize(size);
 
 			return offset + pushBufferBegin;
 		}
@@ -4465,23 +4489,6 @@ private:
 
 	/************************************************************************************************/
 
-
-	
-	constexpr size_t AlignedSize(const size_t unalignedSize)
-	{
-		const auto alignment        = 256;
-		const auto mask             = alignment - 1;
-		const auto offset           = unalignedSize & mask;
-		const auto adjustedOffset   = offset != 0 ? 256 - offset : 0;
-
-		return unalignedSize + adjustedOffset;
-	}
-
-	template<typename TY>
-	constexpr size_t AlignedSize()
-	{
-		return AlignedSize(sizeof(TY));
-	}
 
 
 	class ConstantBufferDataSet

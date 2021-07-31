@@ -1867,6 +1867,18 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    void Context::SetComputeConstantBufferView(size_t idx, ResourceHandle resource, size_t offset, size_t bufferSize)
+    {
+        auto deviceResource     = renderSystem->GetDeviceResource(resource);
+        auto gpuAddress         = deviceResource->GetGPUVirtualAddress();
+
+        DeviceContext->SetComputeRootConstantBufferView(idx, gpuAddress + offset);
+    }
+
+
 	/************************************************************************************************/
 
 
@@ -1958,6 +1970,19 @@ namespace FlexKit
 #if USING(PIX)
         PIXEndEvent(DeviceContext);
 #endif
+    }
+
+
+    /************************************************************************************************/
+
+
+    void Context::CopyResource(ResourceHandle dest, ResourceHandle src)
+    {
+        FlushBarriers();
+
+        DeviceContext->CopyResource(
+            renderSystem->GetDeviceResource(dest),
+            renderSystem->GetDeviceResource(src));
     }
 
 

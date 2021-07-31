@@ -108,21 +108,16 @@ namespace FlexKit
             BAdesc.LargeBlock   = BLOCKALLOCSIZE / 2;
 
             BlockAllocator.Init(BAdesc);
-            TempAllocator.Init(TempMem, TEMPBUFFERSIZE);
+            TempAllocator.Init((byte*)_aligned_malloc(TEMPBUFFERSIZE, 0x10), TEMPBUFFERSIZE);
         }
 
 		BlockAllocator	    BlockAllocator;
 		StackAllocator	    TempAllocator;
         ThreadSafeAllocator TempAllocatorMT;
 
-		auto GetBlockMemory() -> decltype(BlockAllocator)&	    { return BlockAllocator; }
-		auto GetTempMemory()  -> decltype(TempAllocator)&	    { return TempAllocator; }
-		auto GetTempMemoryMT()  -> decltype(TempAllocatorMT)&	{ return TempAllocatorMT; }
-
-
-		// Memory Pools
-		byte*	BlockMem = (byte*)_aligned_malloc(BLOCKALLOCSIZE, 16);
-		byte*	TempMem  = (byte*)_aligned_malloc(TEMPBUFFERSIZE, 16);
+		auto GetBlockMemory() -> auto&	    { return BlockAllocator;    }
+		auto GetTempMemory()  -> auto&	    { return TempAllocator;     }
+		auto GetTempMemoryMT()  -> auto&	{ return TempAllocatorMT;   }
 	};
 
 

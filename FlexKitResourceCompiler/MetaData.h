@@ -73,7 +73,7 @@ namespace FlexKit::ResourceBuilder
 	using MetaData_ptr = std::shared_ptr<MetaData>;
 	using MetaDataList = std::vector<MetaData_ptr>;
 
-	auto SkeletonFilter = [](MetaData* const in) -> bool{
+	inline auto SkeletonFilter = [](MetaData* const in) -> bool{
 		return (in->type == MetaData::EMETAINFOTYPE::EMI_SKELETAL);
 	};
 

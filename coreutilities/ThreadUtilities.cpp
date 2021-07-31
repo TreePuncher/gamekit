@@ -331,9 +331,7 @@ namespace FlexKit
         {
             auto work = localWorkQueue->pop_back().value_or(nullptr);
             if (work)
-            {
                 RunTask(*work);
-            }
             else break;
 		}
 

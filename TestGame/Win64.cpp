@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
     try
     {
         FlexKit::FKApplication app{ allocator, Max(std::thread::hardware_concurrency(), 1u) - 1 };
-        app.GetCore().FrameLock = false;
+        app.GetCore().FrameLock = true;
 
 
         auto& base      = app.PushState<BaseState>(app, WH);
