@@ -194,8 +194,8 @@ namespace FlexKit
         UpdateTask&         cameraDependency;
         
         Vector<UpdateTask*>                         sceneDependencies;
-        static_vector<AdditionalGbufferPass>        additionalGbufferPass;
-        static_vector<AdditionalShadowMapPass>      additionalShadowPass;
+        static_vector<AdditionalGbufferPass>        additionalGbufferPasses;
+        static_vector<AdditionalShadowMapPass>      additionalShadowPasses;
     };
 
 
@@ -241,6 +241,12 @@ namespace FlexKit
     constexpr PSOHandle RESOLUTIONMATCHSHADOWMAPS   = PSOHandle(GetTypeGUID(RESOLUTIONMATCHSHADOWMAPS));
     constexpr PSOHandle CLEARSHADOWRESOLUTIONBUFFER = PSOHandle(GetTypeGUID(CLEARSHADOWRESOLUTIONBUFFER));
 
+    constexpr PSOHandle CREATEINITIALLUMANANCELEVEL = PSOHandle(GetTypeGUID(CREATEINITIALLUMANANCELEVEL));
+    constexpr PSOHandle CREATELUMANANCELEVEL        = PSOHandle(GetTypeGUID(CREATELUMANANCELEVEL));
+
+    constexpr PSOHandle OITDRAW             = PSOHandle(GetTypeGUID(OITDRAW));
+    constexpr PSOHandle OITDRAWANIMATED     = PSOHandle(GetTypeGUID(OITDRAWANIMATED));
+
     constexpr PSOHandle DEPTHPREPASS                = PSOHandle(GetTypeGUID(DEPTHPREPASS));
     constexpr PSOHandle FORWARDDRAWINSTANCED	    = PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
     constexpr PSOHandle FORWARDDRAW_OCCLUDE		    = PSOHandle(GetTypeGUID(FORWARDDRAW_OCCLUDE));
@@ -285,6 +291,9 @@ namespace FlexKit
     ID3D12PipelineState* CreateResolutionMatch_PSO          (RenderSystem* RS);
     ID3D12PipelineState* CreateClearResolutionMatch_PSO     (RenderSystem* RS);
 
+    ID3D12PipelineState* CreateInitialLumananceLevel        (RenderSystem* rs);
+    ID3D12PipelineState* CreateLumananceLevel               (RenderSystem* rs);
+
     ID3D12PipelineState* CreateClustersPSO                  (RenderSystem* RS);
     ID3D12PipelineState* CreateClusterBufferPSO             (RenderSystem* RS);
     ID3D12PipelineState* CreateClearClusterCountersPSO      (RenderSystem* RS);
@@ -295,6 +304,8 @@ namespace FlexKit
 	ID3D12PipelineState* CreateShadowMapPass                (RenderSystem* RS);
     ID3D12PipelineState* CreateShadowMapAnimatedPass        (RenderSystem* RS);
 
+    ID3D12PipelineState* CreatePBROITDrawPSO                (RenderSystem* RS);
+    ID3D12PipelineState* CreatePBROITDrawAnimatedPSO        (RenderSystem* RS);
 
     ID3D12PipelineState* CreateDEBUGBVHVIS                  (RenderSystem* RS);
 
@@ -389,8 +400,9 @@ namespace FlexKit
 
         const size_t counterOffset = 0;
 
-		ResourceHandle	    lightListBuffer;
-		FrameResourceHandle	lightListObject;
+        FrameResourceHandle	lightLists;
+
+		FrameResourceHandle	lightListBuffer;
 		FrameResourceHandle	lightBufferObject;
         FrameResourceHandle	lightBVH;
         FrameResourceHandle	lightLookupObject;
@@ -400,13 +412,11 @@ namespace FlexKit
         ReadBackResourceHandle  readBackHandle;
 
         FrameResourceHandle	clusterBufferObject;
+
         FrameResourceHandle	counterObject;
         FrameResourceHandle	depthBufferObject;
         FrameResourceHandle	indexBufferObject;
         FrameResourceHandle argumentBufferObject;
-
-        FrameResourceHandle clusterBuffer;
-        FrameResourceHandle lightLists;
 	};
 
     struct DEBUGVIS_DrawBVH
@@ -650,15 +660,42 @@ namespace FlexKit
 		FrameResourceHandle     NormalTargetObject;     // RGBA16Float
 		FrameResourceHandle     MRIATargetObject;
 		FrameResourceHandle     depthBufferTargetObject;
-        FrameResourceHandle     clusterIndexBufferObject;
-        FrameResourceHandle     clusterBufferObject;
-        FrameResourceHandle     lightListsObject;
+        FrameResourceHandle     lightMapObject;
+        FrameResourceHandle     lightListBuffer;
+        FrameResourceHandle     lightLists;
 
 		FrameResourceHandle		pointLightBufferObject;
 		FrameResourceHandle     renderTargetObject;
-
-        FrameResourceHandle     lightLists;
 	};
+
+    struct OITPass
+	{
+
+		const PointLightGatherTask&         lights;
+		const LightBufferUpdate&            lightPass;
+		const PointLightShadowGatherTask&   pointLightShadowMaps;
+		const ShadowMapPassData&            shadowMaps;
+		const Vector<PointLightHandle>&     pointLightHandles;
+
+        ReserveConstantBufferFunction       reserveCB;
+
+        const PVS&                          pvs;
+
+        CameraHandle            camera;
+		FrameResourceHandle     renderTargetObject;
+	};
+
+
+    /************************************************************************************************/
+
+
+    struct ToneMap
+    {
+        FrameResourceHandle     outputTarget;
+        FrameResourceHandle     sourceTarget;
+        FrameResourceHandle     temp1Buffer;
+        FrameResourceHandle     temp2Buffer;
+    };
 
 
 	/************************************************************************************************/
@@ -791,136 +828,11 @@ namespace FlexKit
 	class FLEXKITAPI WorldRender
 	{
 	public:
-		WorldRender(RenderSystem& RS_IN, TextureStreamingEngine& IN_streamingEngine, iAllocator* persistent) :
-			renderSystem                { RS_IN },
-			enableOcclusionCulling	    { false	},
+        WorldRender(RenderSystem&, TextureStreamingEngine&, iAllocator* persistent);
+		~WorldRender();
 
-            UAVPool                     { renderSystem, 256 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
-            UAVTexturePool              { renderSystem, 256 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent },
-            RTPool                      { renderSystem, 256 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::RenderTarget, persistent },
-
-            timeStats                   { renderSystem.CreateTimeStampQuery(256) },
-            timingReadBack              { renderSystem.CreateReadBackBuffer(512) },
-
-			streamingEngine		        { IN_streamingEngine },
-            createClusterLightListLayout{ renderSystem.CreateIndirectLayout({ ILE_DispatchCall }, persistent) },
-            createDebugDrawLayout       { renderSystem.CreateIndirectLayout({ ILE_DrawCall }, persistent) }
-		{
-			RS_IN.RegisterPSOLoader(FORWARDDRAW,			    { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawPSO,		  });
-			RS_IN.RegisterPSOLoader(FORWARDDRAWINSTANCED,	    { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO });
-
-			RS_IN.RegisterPSOLoader(LIGHTPREPASS,			    { &RS_IN.Library.ComputeSignature,  CreateLightPassPSO			  });
-			RS_IN.RegisterPSOLoader(DEPTHPREPASS,			    { &RS_IN.Library.RS6CBVs4SRVs,      CreateDepthPrePassPSO         });
-            RS_IN.RegisterPSOLoader(SHADOWMAPPASS,              { &RS_IN.Library.RS6CBVs4SRVs,      CreateShadowMapPass           });
-            RS_IN.RegisterPSOLoader(SHADOWMAPANIMATEDPASS,      { &RS_IN.Library.RS6CBVs4SRVs,      CreateShadowMapAnimatedPass   });
-
-			RS_IN.RegisterPSOLoader(GBUFFERPASS,			    { &RS_IN.Library.RS6CBVs4SRVs,      CreateGBufferPassPSO          });
-			RS_IN.RegisterPSOLoader(GBUFFERPASS_SKINNED,	    { &RS_IN.Library.RS6CBVs4SRVs,      CreateGBufferSkinnedPassPSO   });
-
-			RS_IN.RegisterPSOLoader(SHADINGPASS,			    { &RS_IN.Library.RS6CBVs4SRVs,      CreateDeferredShadingPassPSO  });
-			RS_IN.RegisterPSOLoader(ENVIRONMENTPASS,            { &RS_IN.Library.RS6CBVs4SRVs,      CreateEnvironmentPassPSO      });
-			RS_IN.RegisterPSOLoader(COMPUTETILEDSHADINGPASS,    { &RS_IN.Library.RSDefault,         CreateComputeTiledDeferredPSO });
-
-            RS_IN.RegisterPSOLoader(CREATECLUSTERS,             { &RS_IN.Library.ComputeSignature,  CreateClustersPSO               });
-            RS_IN.RegisterPSOLoader(CREATECLUSTERBUFFER,        { &RS_IN.Library.ComputeSignature,  CreateClusterBufferPSO          });
-            RS_IN.RegisterPSOLoader(CREATECLUSTERLIGHTLISTS,    { &RS_IN.Library.ComputeSignature,  CreateClusterLightListsPSO      });
-            RS_IN.RegisterPSOLoader(CREATELIGHTBVH_PHASE1,      { &RS_IN.Library.ComputeSignature,  CreateLightBVH_PHASE1_PSO       });
-            RS_IN.RegisterPSOLoader(CREATELIGHTBVH_PHASE2,      { &RS_IN.Library.ComputeSignature,  CreateLightBVH_PHASE2_PSO       });
-            RS_IN.RegisterPSOLoader(CREATELIGHTLISTARGS_PSO,    { &RS_IN.Library.ComputeSignature,  CreateLightListArgs_PSO         });
-            RS_IN.RegisterPSOLoader(CLEARCOUNTERSPSO,           { &RS_IN.Library.ComputeSignature,  CreateClearClusterCountersPSO   });
-                
-			RS_IN.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL, { &RS_IN.Library.RSDefault, CreateBilaterialBlurHorizontalPSO });
-			RS_IN.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,   { &RS_IN.Library.RSDefault, CreateBilaterialBlurVerticalPSO   });
-
-			RS_IN.RegisterPSOLoader(LIGHTBVH_DEBUGVIS_PSO,          { &RS_IN.Library.RSDefault, CreateLightBVH_DEBUGVIS_PSO });
-			RS_IN.RegisterPSOLoader(CLUSTER_DEBUGVIS_PSO,           { &RS_IN.Library.RSDefault, CreateCluster_DEBUGVIS_PSO });
-			RS_IN.RegisterPSOLoader(CLUSTER_DEBUGARGSVIS_PSO,       { &RS_IN.Library.RSDefault, CreateCluster_DEBUGARGSVIS_PSO });
-            RS_IN.RegisterPSOLoader(CREATELIGHTDEBUGVIS_PSO,        { &RS_IN.Library.RSDefault, CreateLight_DEBUGARGSVIS_PSO });
-            RS_IN.RegisterPSOLoader(RESOLUTIONMATCHSHADOWMAPS,      { &RS_IN.Library.RSDefault, CreateResolutionMatch_PSO });
-            RS_IN.RegisterPSOLoader(CLEARSHADOWRESOLUTIONBUFFER,    { &RS_IN.Library.RSDefault, CreateClearResolutionMatch_PSO});
-
-            RS_IN.RegisterPSOLoader(ZPYRAMIDBUILDLEVEL, { &RS_IN.Library.RSDefault, CreateBuildZLayer });
-            RS_IN.RegisterPSOLoader(DEPTHCOPY,          { &RS_IN.Library.RSDefault, CreateDepthBufferCopy });
-
-            RS_IN.RegisterPSOLoader(DEBUG_DrawBVH,      { &RS_IN.Library.RSDefault, CreateDEBUGBVHVIS });
-
-            RS_IN.QueuePSOLoad(CREATECLUSTERBUFFER);
-
-			RS_IN.QueuePSOLoad(GBUFFERPASS);
-			RS_IN.QueuePSOLoad(GBUFFERPASS_SKINNED);
-			RS_IN.QueuePSOLoad(DEPTHPREPASS);
-			RS_IN.QueuePSOLoad(LIGHTPREPASS);
-			RS_IN.QueuePSOLoad(FORWARDDRAW);
-			RS_IN.QueuePSOLoad(FORWARDDRAWINSTANCED);
-			RS_IN.QueuePSOLoad(SHADINGPASS);
-			RS_IN.QueuePSOLoad(COMPUTETILEDSHADINGPASS);
-			RS_IN.QueuePSOLoad(BILATERALBLURPASSHORIZONTAL);
-			RS_IN.QueuePSOLoad(BILATERALBLURPASSVERTICAL);
-            RS_IN.QueuePSOLoad(SHADOWMAPPASS);
-            RS_IN.QueuePSOLoad(CLEARCOUNTERSPSO);
-            RS_IN.QueuePSOLoad(RESOLUTIONMATCHSHADOWMAPS);
-            RS_IN.QueuePSOLoad(CLEARSHADOWRESOLUTIONBUFFER);
-            RS_IN.QueuePSOLoad(ZPYRAMIDBUILDLEVEL);
-
-            RS_IN.QueuePSOLoad(DEBUG_DrawBVH);
-
-            RS_IN.QueuePSOLoad(CREATELIGHTBVH_PHASE1);
-            RS_IN.QueuePSOLoad(CREATELIGHTBVH_PHASE2);
-
-            RS_IN.SetReadBackEvent(
-                timingReadBack,
-                [&](ReadBackResourceHandle resource)
-                {
-                    auto [buffer, bufferSize] = RS_IN.OpenReadBackBuffer(resource);
-                    EXITSCOPE(RS_IN.CloseReadBackBuffer(resource));
-
-                    if(buffer){
-                        size_t timePoints[64];
-                        memcpy(timePoints, (char*)buffer, sizeof(timePoints));
-
-                        UINT64 timeStampFreq;
-                        RS_IN.GraphicsQueue->GetTimestampFrequency(&timeStampFreq);
-
-                        float durations[32];
-
-                        for (size_t I = 0; I < 4; I++)
-                            durations[I] = float(timePoints[2 * I + 1] - timePoints[2 * I + 0]) / timeStampFreq * 1000;
-
-                        timingValues.gBufferPass        = durations[0];
-                        timingValues.ClusterCreation    = durations[1];
-                        timingValues.shadingPass        = durations[2];
-                        timingValues.BVHConstruction    = durations[3];
-                    }
-                });
-
-            readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
-            /*
-            readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
-            readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
-            readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
-            readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
-            readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
-            */
-		}
-
-
-		~WorldRender()
-		{
-			Release();
-		}
-
-
-		void HandleTextures()
-		{
-
-		}
-
-
-		void Release()
-		{
-            if (clusterBuffer != InvalidHandle_t)
-                renderSystem.ReleaseResource(clusterBuffer);
-		}
+        void HandleTextures();
+        void Release();
 
 
         DrawOutputs& DrawScene(
@@ -1052,6 +964,30 @@ namespace FlexKit
 			    iAllocator*                     allocator);
 
 
+        OITPass& RenderPBR_OITPass(
+			    UpdateDispatcher&               dispatcher,
+			    FrameGraph&                     frameGraph,
+			    const SceneDescription&         sceneDescription,
+			    const PointLightGatherTask&     gather,
+			    ResourceHandle                  depthTarget,
+			    FrameResourceHandle             renderTarget,
+			    const ShadowMapPassData&        shadowMaps,
+			    const LightBufferUpdate&        lightPass,
+			    ReserveConstantBufferFunction   reserveCB,
+			    iAllocator*                     allocator);
+
+
+        ToneMap& RenderPBR_ToneMapping(
+			    UpdateDispatcher&               dispatcher,
+			    FrameGraph&                     frameGraph,
+                FrameResourceHandle             source,
+			    ResourceHandle                  target,
+			    ReserveConstantBufferFunction   reserveCB,
+			    ReserveVertexBufferFunction     reserveVB,
+			    float                           t,
+			    iAllocator*                     allocator);
+
+
         DEBUGVIS_DrawBVH&   DEBUGVIS_DrawLightBVH(
 				UpdateDispatcher&               dispatcher,
 				FrameGraph&                     frameGraph,
@@ -1074,16 +1010,15 @@ namespace FlexKit
                 BVHVisMode                      mode,
 			    iAllocator*                     allocator);
 
+
         DEBUG_WorldRenderTimingValues GetTimingValues() const { return timingValues; }
 
 
 	private:
 
-        void CreateClusterBuffer(uint2 WH, CameraHandle camera);
 
-        using RenderTask = FlexKit::TypeErasedCallable<48, void, FrameGraph&>;
+        void CreateClusterBuffer(uint2 WH, CameraHandle camera, ReserveConstantBufferFunction& reserveCB);
 
-        static_vector<RenderTask> pendingGPUTasks; // Tasks must be completed prior to rendering
 
 		RenderSystem&			renderSystem;
 
@@ -1095,6 +1030,10 @@ namespace FlexKit
         ReadBackResourceHandle  timingReadBack;
 
         ResourceHandle          clusterBuffer = InvalidHandle_t;
+
+        using RenderTask = FlexKit::TypeErasedCallable<48, void, FrameGraph&>;
+
+        static_vector<RenderTask> pendingGPUTasks; // Tasks must be completed prior to rendering
 
         CircularBuffer<ReadBackResourceHandle, 6> readBackBuffers;
 

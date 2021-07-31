@@ -388,18 +388,19 @@ namespace FlexKit
 		}
 
 
-		template< typename TY_i >
-		Vect<3, TY>	Cross( Vect<3, TY_i> rhs ) noexcept
+		template<typename TY_i>
+        [[nodiscard]] Vect<3, TY>	Cross( Vect<3, TY_i> rhs ) noexcept
 		{
 			Vect<SIZE, TY> out;
 			for( size_t i = 0; i < SIZE; ++i )
 				out[i] = ( Vector[(1+i)%SIZE] * rhs[(2+i)%SIZE] ) - ( rhs[(1+i)%SIZE] * Vector[(2+i)%SIZE] );
+
 			return out;
 		}
 
 
-		template< typename TY_i >
-		TY Dot( const Vect<SIZE, TY_i>& rhs ) const noexcept
+		template<typename TY_i>
+        [[nodiscard]] TY Dot( const Vect<SIZE, TY_i>& rhs ) const noexcept
 		{
 			TY dotproduct = 0;
 			for( size_t i = 0; i < SIZE; ++i )
@@ -409,8 +410,8 @@ namespace FlexKit
 		}
 
 
-		template< typename TY_i >
-		TY Dot(const Vect<SIZE, TY_i>* rhs_ptr) noexcept
+		template<typename TY_i>
+        [[nodiscard]] TY Dot(const Vect<SIZE, TY_i>* rhs_ptr) noexcept
 		{
 			auto& rhs = *rhs_ptr;
 			Vect<SIZE> products;
@@ -421,7 +422,7 @@ namespace FlexKit
 		}
 
 
-		TY Norm(unsigned int exp = 2) noexcept
+        [[nodiscard]] TY Norm(unsigned int exp = 2) noexcept
 		{
 			TY sum = 0;
 			for( auto element : Vector )
@@ -436,7 +437,7 @@ namespace FlexKit
 		}
 
 
-		TY Magnitude() noexcept
+        [[nodiscard]] TY Magnitude() noexcept
 		{
 			TY sum = 0;
 			for( auto element : Vector )
@@ -471,7 +472,7 @@ namespace FlexKit
         }
 
 
-		TY Sum() const noexcept
+        [[nodiscard]] constexpr TY Sum() const noexcept
 		{
 			TY sum = 0;
 			for( auto element : Vector )
@@ -479,8 +480,53 @@ namespace FlexKit
 			return sum;
 		}
 
+        template<int ... ints> 
+        constexpr inline auto _ceil_helper(const std::integer_sequence<int, ints...> x) const noexcept
+        {
+            return Vect{ ::ceil(Vector[ints])... };
+        }
 
-		TY Product() const noexcept
+        [[nodiscard]] constexpr inline auto Ceil() const noexcept requires(std::is_floating_point_v<TY>)
+        {
+            const auto indexes = std::make_integer_sequence<int, SIZE>{};
+
+            return _ceil_helper(indexes);
+        }
+
+        template<int ... ints>
+        constexpr inline auto _floor_helper(const std::integer_sequence<int, ints...> x) const noexcept
+        {
+            return Vect{ ::floor(Vector[ints])... };
+        }
+
+        [[nodiscard]] constexpr inline auto Floor() const noexcept requires(std::is_floating_point_v<TY>)
+        {
+            const auto indexes = std::make_integer_sequence<int, SIZE>{};
+
+            return _floor_helper(indexes);
+        }
+
+        [[nodiscard]] constexpr inline auto Min() const noexcept
+        {
+            TY min = std::numeric_limits<TY>::max();
+
+            for (const auto& v : Vector)
+                min = min < v ? min : v;
+
+            return min;
+        }
+
+        [[nodiscard]] constexpr inline auto Max() const noexcept
+        {
+            TY max = std::numeric_limits<TY>::min();
+
+            for (const auto& v : Vector)
+                max = (max < v) ? max : v;
+
+            return max;
+        }
+
+        [[nodiscard]] constexpr TY Product() const noexcept
 		{
 			TY Product = 1;
 			for( auto element : Vector )

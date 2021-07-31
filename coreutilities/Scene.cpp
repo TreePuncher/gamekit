@@ -973,10 +973,7 @@ namespace FlexKit
                 light.shadowState->visableObjects = PVS;
             }
 
-            void Release()
-            {
-
-            }
+            void Release() {}
 
             iAllocator&             persistentMemory;
             SceneBVH&               bvh;
@@ -1014,7 +1011,7 @@ namespace FlexKit
                     threads.AddWork(task);
 
                 barrier.Join();
-
+                
                 auto& lights = PointLightComponent::GetComponent();
                 for (auto visableLight : visablePointLights)
                 {

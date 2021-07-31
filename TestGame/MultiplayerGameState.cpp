@@ -124,9 +124,12 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
 
 
     particleEmitter.AddView<SceneNodeView<>>();
-    auto& emitter = particleEmitter.AddView<ParticleEmitterView>(ParticleEmitterData{ &testParticleSystem, GetSceneNode(particleEmitter) });
-    emitter.GetData().properties.emissionSpread     = 0.5f;
-    emitter.GetData().properties.maxEmissionRate    = 300;
+    auto& emitterView       = particleEmitter.AddView<ParticleEmitterView>(ParticleEmitterData{ &testParticleSystem, GetSceneNode(particleEmitter) });
+    auto& emitterProperties = emitterView.GetData().properties;
+
+    emitterProperties.emissionSpread    = 0.01f;
+    emitterProperties.minEmissionRate   = 0;
+    emitterProperties.maxEmissionRate   = 0;
 
     Translate(particleEmitter, { 0, 10, 0 });
 
@@ -158,6 +161,9 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     scene.AddGameObject(IKTarget, GetSceneNode(IKTarget));
 
     SetBoundingSphereFromMesh(testAnimation);
+
+    SetWorldPosition(particleEmitter, float3{ 0.0f, 40, 0.0f });
+    Pitch(particleEmitter, pi / 2);
 }
 
 
@@ -182,7 +188,7 @@ UpdateTask* LocalGameState::Update(EngineCore& core, UpdateDispatcher& dispatche
     auto tasks = worldState.Update(core, dispatcher, dT);
 
     static float t = 0.0f;
-    SetWorldPosition(particleEmitter, float3{ 100.0f * sin(t), 20, 100.0f * cos(t) });
+    //SetWorldPosition(particleEmitter, float3{ 100.0f * sin(t), 20, 100.0f * cos(t) });
     SetWorldPosition(IKTarget, float3{ 2.0f * cos(t), 4.0f * sin(t / 2.0f) + 8.0f, 4.0f * sin(t) });
 
     t += dT;
@@ -220,11 +226,13 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 
     cameras.AddInput(transforms);
 
+    /*
     auto& emitterTask            = UpdateParticleEmitters(dispatcher, dT);
     auto& particleSystemUpdate   = testParticleSystem.Update(dT, core.Threads, dispatcher);
 
     emitterTask.AddInput(transforms);
     emitterTask.AddOutput(particleSystemUpdate);
+    */
 
     WorldRender_Targets targets = {
         base.renderWindow.GetBackBuffer(),
@@ -266,7 +274,8 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
             .transformDependency    = transforms,
             .cameraDependency       = cameras,
 
-            .additionalGbufferPass  = {
+            /*
+            .additionalGbufferPasses  = {
                 [&]()
                 {
                     auto& particlePass  = testParticleSystem.DrawInstanceMesh(
@@ -281,7 +290,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
                             base.gbuffer,
                             targets.DepthTarget.Get());
                 }},
-            .additionalShadowPass = {
+            .additionalShadowPasses = {
                     [&, triMesh = triMesh](
                         ReserveConstantBufferFunction&  reserveCB,
                         ReserveVertexBufferFunction&    reserveVB,
@@ -304,6 +313,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
                             allocator);
                     }
                 }
+            */
         };
 
         auto& drawnScene = base.render.DrawScene(
@@ -313,7 +323,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
                                 targets,
                                 core.GetBlockMemory(),
                                 core.GetTempMemoryMT());
-        
+
         base.streamingEngine.TextureFeedbackPass(
                                 dispatcher,
                                 frameGraph,
@@ -326,7 +336,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
     }
 
 
-    if(1)
+    if(0)
     {
         // Draw Skeleton overlay
         auto Skeleton = GetSkeleton(testAnimation);
@@ -456,6 +466,11 @@ bool LocalGameState::EventHandler(Event evt)
                 {
                 case KC_M:
                     base.renderWindow.ToggleMouseCapture();
+                    return true;
+                case KC_R:
+                    framework.GetRenderSystem().QueuePSOLoad(SHADINGPASS);
+                    framework.GetRenderSystem().QueuePSOLoad(CREATECLUSTERLIGHTLISTS);
+                    framework.GetRenderSystem().QueuePSOLoad(CREATECLUSTERS);
                     return true;
                 case KC_ESC:
                     framework.quit = true;

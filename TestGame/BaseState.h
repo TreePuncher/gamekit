@@ -248,7 +248,7 @@ public:
     void PostDrawUpdate(EngineCore& core, double dT) override
     {
         depthBuffer.Increment();
-        renderWindow.Present(0, 0);
+        renderWindow.Present(core.FrameLock ? 1 : 0, 0);
     }
 
 

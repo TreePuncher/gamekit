@@ -904,8 +904,8 @@ namespace FlexKit
 			{
 			public:
 				UpdateThreadTask(UpdateTaskBase* IN_task, ThreadManager* threads, iAllocator* memory) :
-					iWork	{ memory					},
-					task	{ IN_task					}{}
+					iWork	{ memory    },
+					task	{ IN_task	}{}
 
 				// No Copy
 				UpdateThreadTask				(const UpdateThreadTask&) = delete;
@@ -918,9 +918,7 @@ namespace FlexKit
 					task->Run(threadAllocator);
 				}
 
-				void Release() override
-				{
-				}
+                void Release() override {}
 			}threadTask;
 
 

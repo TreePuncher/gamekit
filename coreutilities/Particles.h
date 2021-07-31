@@ -174,6 +174,9 @@ namespace FlexKit
             const auto variance = properties.emissionVariance;
             const float spread  = properties.emissionSpread;
 
+            if (maxRate == minRate == 0.0f)
+                return;
+
             std::random_device                      generator;
             std::uniform_real_distribution<float>   thetaspreadDistro(0.0f, 1.0f);
             std::uniform_real_distribution<float>   gammaspreadDistro(std::lerp(1.0f, 0.0f, spread), 1.0f);
@@ -324,6 +327,8 @@ namespace FlexKit
             Context&                        ctx,
             iAllocator&                     allocator)
         {
+            ctx.BeginEvent_DEBUG("Particle Shadow Map Pass");
+
             if (!particles.size())
                 return;
 
@@ -367,24 +372,21 @@ namespace FlexKit
                 {   VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION   },
                 &instancedBuffer);
 
-            struct PassConstants
-            {
-                struct PlaneMatrices
-                {
-                    float4x4 ViewI;
-                    float4x4 PV;
-                }matrices[6];
-            };
-
             for (size_t I = 0; I < depthTargetCount; I++)
             {
                 ctx.SetGraphicsConstantBufferView(0, passConstants[I]);
                 ctx.SetGraphicsConstantBufferView(1, passConstants[I]);
 
+                const DepthStencilView_Options DSV_desc = {
+                                0, 0,
+                                depthTarget[I] };
+
                 ctx.SetScissorAndViewports({ depthTarget[I] });
-                ctx.SetRenderTargets({}, true, depthTarget[I]);
+                ctx.SetRenderTargets2({}, 0, DSV_desc);
                 ctx.DrawIndexedInstanced(meshResource->lods[0].GetIndexCount(), 0, 0, particles.size(), 0);
             }
+
+            ctx.EndEvent_DEBUG();
         }
 
 

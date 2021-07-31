@@ -652,7 +652,7 @@ namespace FlexKit
         Shader computeShader = RS->LoadShader("CreateClustersLightLists", "cs_6_0", R"(assets\shaders\lightListConstruction.hlsl)");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-            RS->Library.ComputeSignature,
+            RS->Library.RSDefault,
             computeShader
         };
 
@@ -732,7 +732,7 @@ namespace FlexKit
 
     ID3D12PipelineState* CreateClusterBufferPSO(RenderSystem* RS)
     {
-        Shader computeShader = RS->LoadShader("CreateClusterBuffer", "cs_6_0", R"(assets\shaders\ClusteredRendering.hlsl)");
+        Shader computeShader = RS->LoadShader("CreateClusterBuffer", "cs_6_0", R"(assets\shaders\ClusterBuffer.hlsl)");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
             RS->Library.ComputeSignature,
@@ -1126,6 +1126,134 @@ namespace FlexKit
 
     /************************************************************************************************/
 
+    WorldRender::WorldRender(RenderSystem& RS_IN, TextureStreamingEngine& IN_streamingEngine, iAllocator* persistent) :
+			renderSystem                { RS_IN },
+			enableOcclusionCulling	    { false	},
+
+            UAVPool                     { renderSystem, 256 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
+            UAVTexturePool              { renderSystem, 256 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent },
+            RTPool                      { renderSystem, 256 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::RenderTarget, persistent },
+
+            timeStats                   { renderSystem.CreateTimeStampQuery(256) },
+            timingReadBack              { renderSystem.CreateReadBackBuffer(512) },
+
+			streamingEngine		        { IN_streamingEngine },
+            createClusterLightListLayout{ renderSystem.CreateIndirectLayout({ ILE_DispatchCall }, persistent) },
+            createDebugDrawLayout       { renderSystem.CreateIndirectLayout({ ILE_DrawCall }, persistent) }
+	{
+		RS_IN.RegisterPSOLoader(FORWARDDRAW,			    { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawPSO,		  });
+		RS_IN.RegisterPSOLoader(FORWARDDRAWINSTANCED,	    { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO });
+
+		RS_IN.RegisterPSOLoader(LIGHTPREPASS,			    { &RS_IN.Library.ComputeSignature,  CreateLightPassPSO			  });
+		RS_IN.RegisterPSOLoader(DEPTHPREPASS,			    { &RS_IN.Library.RS6CBVs4SRVs,      CreateDepthPrePassPSO         });
+        RS_IN.RegisterPSOLoader(SHADOWMAPPASS,              { &RS_IN.Library.RS6CBVs4SRVs,      CreateShadowMapPass           });
+        RS_IN.RegisterPSOLoader(SHADOWMAPANIMATEDPASS,      { &RS_IN.Library.RS6CBVs4SRVs,      CreateShadowMapAnimatedPass   });
+
+		RS_IN.RegisterPSOLoader(GBUFFERPASS,			    { &RS_IN.Library.RS6CBVs4SRVs,      CreateGBufferPassPSO          });
+		RS_IN.RegisterPSOLoader(GBUFFERPASS_SKINNED,	    { &RS_IN.Library.RS6CBVs4SRVs,      CreateGBufferSkinnedPassPSO   });
+
+		RS_IN.RegisterPSOLoader(SHADINGPASS,			    { &RS_IN.Library.RS6CBVs4SRVs,      CreateDeferredShadingPassPSO  });
+		RS_IN.RegisterPSOLoader(ENVIRONMENTPASS,            { &RS_IN.Library.RS6CBVs4SRVs,      CreateEnvironmentPassPSO      });
+		RS_IN.RegisterPSOLoader(COMPUTETILEDSHADINGPASS,    { &RS_IN.Library.RSDefault,         CreateComputeTiledDeferredPSO });
+
+        RS_IN.RegisterPSOLoader(CREATECLUSTERS,             { &RS_IN.Library.ComputeSignature,  CreateClustersPSO               });
+        RS_IN.RegisterPSOLoader(CREATECLUSTERBUFFER,        { &RS_IN.Library.ComputeSignature,  CreateClusterBufferPSO });
+        RS_IN.RegisterPSOLoader(CREATECLUSTERLIGHTLISTS,    { &RS_IN.Library.ComputeSignature,  CreateClusterLightListsPSO      });
+        RS_IN.RegisterPSOLoader(CREATELIGHTBVH_PHASE1,      { &RS_IN.Library.ComputeSignature,  CreateLightBVH_PHASE1_PSO       });
+        RS_IN.RegisterPSOLoader(CREATELIGHTBVH_PHASE2,      { &RS_IN.Library.ComputeSignature,  CreateLightBVH_PHASE2_PSO       });
+        RS_IN.RegisterPSOLoader(CREATELIGHTLISTARGS_PSO,    { &RS_IN.Library.ComputeSignature,  CreateLightListArgs_PSO         });
+        RS_IN.RegisterPSOLoader(CLEARCOUNTERSPSO,           { &RS_IN.Library.ComputeSignature,  CreateClearClusterCountersPSO   });
+                
+		RS_IN.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL, { &RS_IN.Library.RSDefault, CreateBilaterialBlurHorizontalPSO });
+		RS_IN.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,   { &RS_IN.Library.RSDefault, CreateBilaterialBlurVerticalPSO   });
+
+		RS_IN.RegisterPSOLoader(LIGHTBVH_DEBUGVIS_PSO,          { &RS_IN.Library.RSDefault, CreateLightBVH_DEBUGVIS_PSO });
+		RS_IN.RegisterPSOLoader(CLUSTER_DEBUGVIS_PSO,           { &RS_IN.Library.RSDefault, CreateCluster_DEBUGVIS_PSO });
+		RS_IN.RegisterPSOLoader(CLUSTER_DEBUGARGSVIS_PSO,       { &RS_IN.Library.RSDefault, CreateCluster_DEBUGARGSVIS_PSO });
+        RS_IN.RegisterPSOLoader(CREATELIGHTDEBUGVIS_PSO,        { &RS_IN.Library.RSDefault, CreateLight_DEBUGARGSVIS_PSO });
+        RS_IN.RegisterPSOLoader(RESOLUTIONMATCHSHADOWMAPS,      { &RS_IN.Library.RSDefault, CreateResolutionMatch_PSO });
+        RS_IN.RegisterPSOLoader(CLEARSHADOWRESOLUTIONBUFFER,    { &RS_IN.Library.RSDefault, CreateClearResolutionMatch_PSO});
+
+        RS_IN.RegisterPSOLoader(ZPYRAMIDBUILDLEVEL, { &RS_IN.Library.RSDefault, CreateBuildZLayer });
+        RS_IN.RegisterPSOLoader(DEPTHCOPY,          { &RS_IN.Library.RSDefault, CreateDepthBufferCopy });
+
+        RS_IN.RegisterPSOLoader(DEBUG_DrawBVH,      { &RS_IN.Library.RSDefault, CreateDEBUGBVHVIS });
+
+        RS_IN.RegisterPSOLoader(OITDRAW,            { &RS_IN.Library.RSDefault, CreatePBROITDrawPSO });
+        RS_IN.RegisterPSOLoader(OITDRAWANIMATED,    { &RS_IN.Library.RSDefault, CreatePBROITDrawAnimatedPSO });
+
+        RS_IN.RegisterPSOLoader(CREATEINITIALLUMANANCELEVEL,    { &RS_IN.Library.RSDefault, CreateInitialLumananceLevel });
+        RS_IN.RegisterPSOLoader(CREATELUMANANCELEVEL,           { &RS_IN.Library.RSDefault, CreateLumananceLevel });
+
+		RS_IN.QueuePSOLoad(GBUFFERPASS);
+		RS_IN.QueuePSOLoad(GBUFFERPASS_SKINNED);
+		RS_IN.QueuePSOLoad(DEPTHPREPASS);
+		RS_IN.QueuePSOLoad(LIGHTPREPASS);
+		RS_IN.QueuePSOLoad(FORWARDDRAW);
+		RS_IN.QueuePSOLoad(FORWARDDRAWINSTANCED);
+		RS_IN.QueuePSOLoad(SHADINGPASS);
+		RS_IN.QueuePSOLoad(COMPUTETILEDSHADINGPASS);
+		RS_IN.QueuePSOLoad(BILATERALBLURPASSHORIZONTAL);
+		RS_IN.QueuePSOLoad(BILATERALBLURPASSVERTICAL);
+        RS_IN.QueuePSOLoad(SHADOWMAPPASS);
+        RS_IN.QueuePSOLoad(CLEARCOUNTERSPSO);
+        RS_IN.QueuePSOLoad(RESOLUTIONMATCHSHADOWMAPS);
+        RS_IN.QueuePSOLoad(CLEARSHADOWRESOLUTIONBUFFER);
+        RS_IN.QueuePSOLoad(ZPYRAMIDBUILDLEVEL);
+
+        RS_IN.QueuePSOLoad(DEBUG_DrawBVH);
+
+        RS_IN.QueuePSOLoad(CREATELIGHTBVH_PHASE1);
+        RS_IN.QueuePSOLoad(CREATELIGHTBVH_PHASE2);
+
+        RS_IN.SetReadBackEvent(
+            timingReadBack,
+            [&](ReadBackResourceHandle resource)
+            {
+                auto [buffer, bufferSize] = RS_IN.OpenReadBackBuffer(resource);
+                EXITSCOPE(RS_IN.CloseReadBackBuffer(resource));
+
+                if(buffer){
+                    size_t timePoints[64];
+                    memcpy(timePoints, (char*)buffer, sizeof(timePoints));
+
+                    UINT64 timeStampFreq;
+                    RS_IN.GraphicsQueue->GetTimestampFrequency(&timeStampFreq);
+
+                    float durations[32];
+
+                    for (size_t I = 0; I < 4; I++)
+                        durations[I] = float(timePoints[2 * I + 1] - timePoints[2 * I + 0]) / timeStampFreq * 1000;
+
+                    timingValues.gBufferPass        = durations[0];
+                    timingValues.ClusterCreation    = durations[1];
+                    timingValues.shadingPass        = durations[2];
+                    timingValues.BVHConstruction    = durations[3];
+                }
+            });
+
+        readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
+	}
+
+
+    WorldRender::~WorldRender()
+	{
+        Release();
+    }
+
+
+	void WorldRender::HandleTextures()
+	{
+
+	}
+
+
+	void WorldRender::Release()
+	{
+        if(clusterBuffer != InvalidHandle_t)
+            renderSystem.ReleaseResource(clusterBuffer);
+	}
+
 
     DrawOutputs& WorldRender::DrawScene(UpdateDispatcher& dispatcher, FrameGraph& frameGraph, DrawSceneDescription& drawSceneDesc, WorldRender_Targets targets, iAllocator* persistent, ThreadSafeAllocator& temporary)
     {
@@ -1137,8 +1265,8 @@ namespace FlexKit
         auto&       depthTarget     = targets.DepthTarget;
         auto        renderTarget    = targets.RenderTarget;
 
-        if (clusterBuffer == InvalidHandle_t)
-            CreateClusterBuffer(frameGraph.GetRenderSystem().GetTextureWH(renderTarget), camera);
+        //if (clusterBuffer == InvalidHandle_t)
+        //    CreateClusterBuffer(frameGraph.GetRenderSystem().GetTextureWH(renderTarget), camera, drawSceneDesc.reserveCB);
 
         auto& PVS = GatherScene(dispatcher, &scene, camera, temporary);
 
@@ -1190,20 +1318,20 @@ namespace FlexKit
         frameGraph.AddMemoryPool(&RTPool);
         frameGraph.dataDependencies.push_back(&IKUpdate);
 
-        ClearGBuffer(gbuffer, frameGraph);
-
         for (auto& task : pendingGPUTasks)
             task(frameGraph);
 
         pendingGPUTasks.clear();
 
-        auto& entityConstants = BuildEntityConstantsBuffer(
-            frameGraph,
-            dispatcher,
-            PVS,
-            drawSceneDesc.reserveCB,
-            temporary);
+        ClearGBuffer(gbuffer, frameGraph);
 
+        auto& entityConstants =
+            BuildEntityConstantsBuffer(
+                frameGraph,
+                dispatcher,
+                PVS,
+                drawSceneDesc.reserveCB,
+                temporary);
 
         auto& occlutionConstants =
             OcclusionCulling(
@@ -1216,48 +1344,77 @@ namespace FlexKit
                 depthTarget,
                 temporary);
 
-        RenderPBR_GBufferPass(
-            dispatcher,
-            frameGraph,
-            sceneDesc,
-            sceneDesc.camera,
-            gbuffer,
-            depthTarget.Get(),
-            reserveCB,
-            temporary);
+        auto& gbufferPass =
+            RenderPBR_GBufferPass(
+                dispatcher,
+                frameGraph,
+                sceneDesc,
+                sceneDesc.camera,
+                gbuffer,
+                depthTarget.Get(),
+                reserveCB,
+                temporary);
 
-        for (auto& pass : drawSceneDesc.additionalGbufferPass)
+        for (auto& pass : drawSceneDesc.additionalGbufferPasses)
             pass();
 
-        auto& lightPass = UpdateLightBuffers(
-            dispatcher,
-            frameGraph,
-            camera,
-            scene,
-            sceneDesc,
-            depthTarget.Get(),
-            reserveCB,
-            temporary,
-            drawSceneDesc.debugDisplay != DebugVisMode::ClusterVIS);
+        auto& lightPass =
+            UpdateLightBuffers(
+                dispatcher,
+                frameGraph,
+                camera,
+                scene,
+                sceneDesc,
+                depthTarget.Get(),
+                reserveCB,
+                temporary,
+                drawSceneDesc.debugDisplay != DebugVisMode::ClusterVIS);
 
-        auto& shadowMapPass = ShadowMapPass(
-            frameGraph,
-            sceneDesc,
-            reserveCB,
-            reserveVB,
-            drawSceneDesc.additionalShadowPass,
-            t,
-            &temporary);
+        auto& shadowMapPass =
+            ShadowMapPass(
+                frameGraph,
+                sceneDesc,
+                reserveCB,
+                reserveVB,
+                drawSceneDesc.additionalShadowPasses,
+                t,
+                &temporary);
 
-        RenderPBR_DeferredShade(
-            dispatcher,
-            frameGraph,
-            sceneDesc,
-            pointLightGather,
-            gbuffer, depthTarget.Get(), renderTarget, shadowMapPass, lightPass,
-            reserveCB, reserveVB,
-            t,
-            temporary);
+        auto& deferredPass =
+            RenderPBR_DeferredShade(
+                dispatcher,
+                frameGraph,
+                sceneDesc,
+                pointLightGather,
+                gbuffer, depthTarget.Get(), renderTarget, shadowMapPass, lightPass,
+                reserveCB, reserveVB,
+                t,
+                temporary);
+
+        auto& OIT_pass =
+            RenderPBR_OITPass(
+                dispatcher,
+                frameGraph,
+                sceneDesc,
+                pointLightGather,
+                depthTarget.Get(),
+                deferredPass.renderTargetObject,
+                shadowMapPass,
+                lightPass,
+                reserveCB,
+                temporary);
+
+        auto& toneMapped =
+            RenderPBR_ToneMapping(
+                dispatcher,
+                frameGraph,
+                OIT_pass.renderTargetObject,
+                renderTarget,
+                reserveCB,
+                reserveVB,
+                drawSceneDesc.dt,
+                temporary);
+
 
         if (drawSceneDesc.debugDisplay == DebugVisMode::ClusterVIS)
         {
@@ -1354,7 +1511,6 @@ namespace FlexKit
             [camera = camera](OcclusionCullingResults& data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
                 return;
-
                 ctx.BeginEvent_DEBUG("Occlusion Culling");
                 ctx.BeginEvent_DEBUG("Occluder Pass");
 
@@ -1473,14 +1629,14 @@ namespace FlexKit
                 auto copySource     = resources.GetPipelineState(DEPTHCOPY);
                 auto buildZLevel    = resources.GetPipelineState(ZPYRAMIDBUILDLEVEL);
 
-                ctx.Dispatch(copySource,    { dispatchWH / 2, 1 });
+                ctx.Dispatch(copySource,    { dispatchWH[0], dispatchWH[1], 1 });
 
                 ctx.AddUAVBarrier(ZPyramid);
 
-                const uint64_t mipCount = 5;
-                const uint64_t end      = mipCount - 1;
+                const uint mipCount = 5;
+                const uint end      = mipCount - 1;
 
-                for (uint64_t I = 0; I < end; I++)
+                for (uint32_t I = 0; I < end; I++)
                 {
                     ctx.Dispatch(buildZLevel, { dispatchWH[0], dispatchWH[1], 1 });
 
@@ -1495,15 +1651,11 @@ namespace FlexKit
                     ctx.SetComputeDescriptorTable(4, SRVHeap);
                     ctx.SetComputeDescriptorTable(5, UAVHeap);
 
-                    ctx.Dispatch(buildZLevel, { dispatchWH / (2 << I), 1 });
+                    ctx.Dispatch(buildZLevel, { dispatchWH[0], dispatchWH[1], 1 });
                     ctx.AddUAVBarrier(ZPyramid);
                 }
 
                 ctx.EndEvent_DEBUG();
-
-                ctx.BeginEvent_DEBUG("BV Queries");
-                ctx.EndEvent_DEBUG();
-
                 ctx.EndEvent_DEBUG();
             });
 
@@ -1960,6 +2112,91 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    void WorldRender::CreateClusterBuffer(uint2 WH, CameraHandle camera, ReserveConstantBufferFunction& reserveCB)
+    {
+        pendingGPUTasks.emplace_back(
+            [&, camera = camera, WH = WH](FrameGraph& frameGraph)
+            {
+                if (clusterBuffer != InvalidHandle_t)
+                    UAVPool.Release(clusterBuffer, false, false);
+
+                struct GPUCluster { float4 min, max; };
+
+                const uint2 XY          { (Vect2{ WH } / 32.0f).Ceil() };
+                const uint bufferSize   { XY.Product() * sizeof(GPUCluster) * 24 };
+                const uint2 dim         { (Vect2{ XY } / 32.0f).Ceil() };
+
+                auto [resource, overlap] = UAVPool.Acquire(GPUResourceDesc::UAVResource(bufferSize), false);
+
+                clusterBuffer = resource;
+
+                renderSystem.SetDebugName(resource, "ClusterBuffer");
+
+                struct _CreateClusterBuffer_Desc
+                {
+                    ReserveConstantBufferFunction   reserveCB;
+                    FrameResourceHandle             clusterBuffer;
+                };
+
+                frameGraph.AddNode<_CreateClusterBuffer_Desc>(
+                    _CreateClusterBuffer_Desc
+                    {   reserveCB   },
+                    [&](FrameGraphNodeBuilder& builder, _CreateClusterBuffer_Desc& data)
+                    {
+                        data.clusterBuffer = builder.UnorderedAccess(resource);
+                    },
+                    [=](_CreateClusterBuffer_Desc& data, ResourceHandler& resources, Context& ctx, iAllocator& tempAllocator)
+                    {
+                        ctx.BeginEvent_DEBUG("Create Cluster");
+
+                        auto  cameraValues    = GetCameraConstants(camera);
+
+                        struct
+                        {
+                            float4x4    iproj;
+                            float4x4    pad;
+                            uint2       WH;
+                            uint2       Dim;
+                            uint        rowPitch;
+                            uint        slicePitch;
+                        } constantValues = {
+                                Inverse(cameraValues.Proj),
+                                float4x4{},
+                                WH,
+                                XY,
+                                XY[0],
+                                XY.Product(),
+                        };
+
+                        auto constantBuffer     = data.reserveCB(AlignedSize(sizeof(cameraValues)) + AlignedSize(sizeof(constantValues)));
+                        auto passConstants      = FlexKit::ConstantBufferDataSet{ constantValues, constantBuffer };
+                        auto cameraConstants    = FlexKit::ConstantBufferDataSet{ cameraValues, constantBuffer };
+
+                        const auto PSO      = resources.GetPipelineState(CREATECLUSTERBUFFER);
+                        const auto& rootSig = resources.renderSystem().Library.ComputeSignature;
+
+                        DescriptorHeap heap;
+                        heap.Init2(ctx, rootSig.GetDescHeap(0), 10, &tempAllocator);
+                        heap.SetUAVStructured(ctx, 0, resources.UAV(data.clusterBuffer, ctx), sizeof(GPUCluster));
+                        heap.SetCBV(ctx, 8, passConstants);
+                        heap.NullFill(ctx, 10);
+
+                        ctx.SetComputeRootSignature(rootSig);
+                        ctx.SetComputeDescriptorTable(0, heap);
+
+
+                        ctx.AddAliasingBarrier(overlap, resource);
+                        ctx.DiscardResource(resources.GetResource(data.clusterBuffer));
+                        ctx.Dispatch(PSO, { dim, 24 });
+
+                        ctx.EndEvent_DEBUG();
+                    });
+            });
+    }
+
 	/************************************************************************************************/
 
     
@@ -2003,13 +2240,10 @@ namespace FlexKit
 				auto& renderSystem          = graph.GetRenderSystem();
 
                 // Output Objects
-                data.clusterBufferObject	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1 * MEGABYTE), DRS_UAV, false);
-
-                data.clusterBuffer          = builder.NonPixelShaderResource(clusterBuffer);
-                data.lightLists             = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1 * MEGABYTE), DRS_UAV, false);
-
+                data.clusterBufferObject	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1 * MEGABYTE), DRS_UAV);
+                data.lightLists             = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(2 * MEGABYTE), DRS_UAV, false);
                 data.indexBufferObject      = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture({ WH }, DeviceFormat::R32_UINT), DRS_UAV, false);
-				data.lightListObject	    = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1024 * KILOBYTE), DRS_UAV, false);
+				data.lightListBuffer        = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1024 * KILOBYTE), DRS_UAV, false);
                 data.lightBufferObject      = builder.AcquireVirtualResource(GPUResourceDesc::StructuredResource(512 * KILOBYTE), DRS_CopyDest, false);
 
                 // Temporaries
@@ -2031,7 +2265,7 @@ namespace FlexKit
 
                 builder.SetDebugName(data.clusterBufferObject,  "ClusterBufferObject");
                 builder.SetDebugName(data.indexBufferObject,    "indexBufferObject");
-                builder.SetDebugName(data.lightListObject,      "lightListObject");
+                builder.SetDebugName(data.lightListBuffer,      "lightListBuffer");
                 builder.SetDebugName(data.lightBufferObject,    "lightBufferObject");
                 builder.SetDebugName(data.lightBVH,             "lightBVH");
                 builder.SetDebugName(data.lightLookupObject,    "lightLookupObject");
@@ -2071,7 +2305,7 @@ namespace FlexKit
                     uint32_t nodeCount;
                     uint32_t nodeOffset;
                 }constantsValues = {
-                    Inverse(cameraConstants.Proj),
+                    XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(cameraConstants.Proj))),
 					cameraConstants.View,
                     { 0, 0 },
 					(uint32_t)lightCount
@@ -2092,20 +2326,7 @@ namespace FlexKit
                 const ConstantBufferDataSet constants{ constantsValues, constantBuffer };
                 const ConstantBufferDataSet cameraConstantsBuffer{ GetCameraConstants(data.camera), constantBuffer };
 
-				Vector<FlexKit::GPUPointLight>      pointLightValues{ &allocator };
-
-                /*
-                PointLightHandleList                pointLightHandles{ &allocator };
-
-                pointLightHandles = data.visableLights;
-
-                std::sort(
-                    pointLightHandles.begin(), pointLightHandles.end(),
-                    [](const PointLightHandle lhs, const PointLightHandle rhs) -> bool
-                    {
-                        return lhs.to_uint() < rhs.to_uint();
-                    });
-                    */
+				Vector<FlexKit::GPUPointLight> pointLightValues{ &allocator };
 
 				for (const auto light : data.visableLights)
 				{
@@ -2124,9 +2345,10 @@ namespace FlexKit
 
                 ctx.ClearUAVTextureUint(resources.UAV(data.indexBufferObject, ctx), uint4{(uint)-1, 0, 0, 0});
                 ctx.DiscardResource(resources.GetResource(data.clusterBufferObject));
-                ctx.DiscardResource(resources.GetResource(data.lightListObject));
+                ctx.DiscardResource(resources.GetResource(data.lightListBuffer));
                 ctx.DiscardResource(resources.GetResource(data.lightBufferObject));
 
+                ctx.DiscardResource(resources.GetResource(data.lightLists));
                 ctx.DiscardResource(resources.GetResource(data.lightBVH));
                 ctx.DiscardResource(resources.GetResource(data.lightLookupObject));
                 ctx.DiscardResource(resources.GetResource(data.lightCounterObject));
@@ -2156,9 +2378,7 @@ namespace FlexKit
                 ctx.Dispatch(ClearCounters, uint3{ 1, 1, 1 });
                 ctx.AddUAVBarrier(resources[data.counterObject]);
 
-                const uint2 threadsWH = (resources.GetTextureWH(data.depthBufferObject) / 32) + uint2{ 1, 1 };
 
-                /*
 				DescriptorHeap clusterCreationResources;
                 clusterCreationResources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
 
@@ -2176,10 +2396,10 @@ namespace FlexKit
 
                 ctx.TimeStamp(timeStats, 2);
                 
-                //ctx.SetComputeDescriptorTable(0, clusterCreationResources);
-                //ctx.Dispatch(CreateClusters, { threadsWH, 1 });
+                const auto threadsWH = resources.GetTextureWH(data.depthBufferObject) / 32;
+                ctx.SetComputeDescriptorTable(0, clusterCreationResources);
+                ctx.Dispatch(CreateClusters, uint3{ 60, 34, 1 });
                 ctx.AddUAVBarrier(resources[data.lightBVH]);
-                */
 
                 ctx.TimeStamp(timeStats, 3);
 
@@ -2223,6 +2443,7 @@ namespace FlexKit
 
                         const ConstantBufferDataSet constantSet{ constantValues, constantBuffer2 };
 
+
                         DescriptorHeap BVH_Phase2_Resources;
                         BVH_Phase2_Resources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
                         BVH_Phase2_Resources.SetUAVStructured(ctx, 0,       resources.UAV(data.lightBVH, ctx), sizeof(BVH_Node), 0);
@@ -2239,9 +2460,9 @@ namespace FlexKit
                         ctx.EndEvent_DEBUG();
                     };
 
-                uint32_t offset             = 0;
-                uint32_t nodeCount          = std::ceilf(float(lightCount) / BVH_ELEMENT_COUNT);
-                const uint32_t passCount    = std::floor(std::log(lightCount) / std::log(BVH_ELEMENT_COUNT));
+                uint32_t offset       = 0;
+                uint32_t nodeCount    = std::ceilf(float(lightCount) / BVH_ELEMENT_COUNT);
+                const uint32_t passCount = std::floor(std::log(lightCount) / std::log(BVH_ELEMENT_COUNT));
 
                 for (uint32_t I = 0; I < passCount; I++)
                 {
@@ -2251,10 +2472,7 @@ namespace FlexKit
                 }
 
                 ctx.EndEvent_DEBUG();
-                ctx.BeginEvent_DEBUG("Create Light Lists");
 
-
-                /*
                 DescriptorHeap createArgumentResources;
                 createArgumentResources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
                 createArgumentResources.SetUAVStructured(ctx, 0, resources.Transition(data.argumentBufferObject, DRS_UAV, ctx), sizeof(uint4), 0);
@@ -2262,48 +2480,50 @@ namespace FlexKit
                 createArgumentResources.SetStructuredResource(ctx, 4, resources.Transition(data.counterObject, DRS_NonPixelShaderResource, ctx), sizeof(uint32_t));
                 createArgumentResources.NullFill(ctx);
 
+                ctx.BeginEvent_DEBUG("Create Light Lists");
+
+                ctx.AddUAVBarrier();
                 ctx.SetComputeDescriptorTable(0, createArgumentResources);
                 ctx.Dispatch(CreateLightListArguments, { 1, 1, 1 });
-                */
-
                 ctx.AddUAVBarrier();
 
                 struct LightListConstructionConstants
                 {
                     float4x4 View;
-                    uint2    WH;
                     uint32_t rootNode;
                 } lightListConstants {
                     cameraConstants.View,
-                    threadsWH,
                     offset
                 };
 
                 // Build Light Lists
-                CBPushBuffer            constantBuffer3 = data.reserveCB(AlignedSize<LightListConstructionConstants>());
+                CBPushBuffer constantBuffer3 = data.reserveCB(AlignedSize<LightListConstructionConstants>());
+
                 ConstantBufferDataSet   lightListConstantSet{ lightListConstants, constantBuffer3 };
 
+                DescriptorHeap createLightList_ShaderResources;
+                createLightList_ShaderResources.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), 4, &allocator);
+                createLightList_ShaderResources.SetStructuredResource(ctx, 0, resources.Transition(data.lightBVH,               DRS_NonPixelShaderResource, ctx), sizeofBVH_Node);
+                createLightList_ShaderResources.SetStructuredResource(ctx, 1, resources.Transition(data.lightLookupObject,      DRS_NonPixelShaderResource, ctx), sizeof(uint32_t));
+                createLightList_ShaderResources.SetStructuredResource(ctx, 2, resources.Transition(data.lightBufferObject,      DRS_NonPixelShaderResource, ctx), sizeof(GPUPointLight));
+                createLightList_ShaderResources.SetStructuredResource(ctx, 3, resources.Transition(data.clusterBufferObject,    DRS_NonPixelShaderResource, ctx), sizeof(GPUCluster), 0);
 
-                DescriptorHeap createLightListResources;
-                createLightListResources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
+                DescriptorHeap createLightList_UAVResources;
+                createLightList_UAVResources.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 3, &allocator);
+                createLightList_UAVResources.SetUAVStructured(ctx, 0, resources.Transition(data.lightLists,             DRS_UAV, ctx), sizeof(uint2), 0);
+                createLightList_UAVResources.SetUAVStructured(ctx, 1, resources.Transition(data.lightListBuffer,        DRS_UAV, ctx), sizeof(uint32_t), 0);
+                createLightList_UAVResources.SetUAVStructured(ctx, 2, resources.Transition(data.lightCounterObject,     DRS_UAV, ctx), sizeof(uint32_t), 0);
 
-                createLightListResources.SetUAVStructured(ctx, 0, resources.Transition(data.lightLists,             DRS_UAV, ctx), sizeof(uint2));
-                createLightListResources.SetUAVStructured(ctx, 1, resources.Transition(data.lightListObject,        DRS_UAV, ctx), sizeof(uint32_t), 0);
-                createLightListResources.SetUAVStructured(ctx, 2, resources.Transition(data.lightCounterObject,     DRS_UAV, ctx), sizeof(uint32_t), 0);
+                ctx.SetComputeRootSignature(resources.renderSystem().Library.RSDefault);
+                ctx.SetPipelineState(CreateLightLists);
 
-                createLightListResources.SetStructuredResource(ctx, 4, resources.Transition(data.lightBVH,          DRS_NonPixelShaderResource, ctx), sizeof(BVH_Node));
-                createLightListResources.SetStructuredResource(ctx, 5, resources.Transition(data.lightLookupObject, DRS_NonPixelShaderResource, ctx), sizeof(uint32_t));
-                createLightListResources.SetStructuredResource(ctx, 6, resources.Transition(data.lightBufferObject, DRS_NonPixelShaderResource, ctx), sizeof(GPUPointLight));
-                createLightListResources.SetStructuredResource(ctx, 7, resources.Transition(data.clusterBuffer,     DRS_NonPixelShaderResource, ctx), sizeof(GPUCluster));
+                ctx.SetComputeConstantBufferView(0, lightListConstantSet);
+                ctx.SetComputeConstantBufferView(1, resources.Transition(data.counterObject, DRS_NonPixelShaderResource, ctx), 0, 256);
 
-                createLightListResources.SetCBV(ctx, 8, lightListConstantSet);
-                createLightListResources.NullFill(ctx);
+                ctx.SetComputeDescriptorTable(4, createLightList_ShaderResources);
+                ctx.SetComputeDescriptorTable(5, createLightList_UAVResources);
 
-                ctx.SetComputeDescriptorTable(0, createLightListResources);
-
-                //ctx.ExecuteIndirect(resources.Transition(data.argumentBufferObject, DRS_INDIRECTARGS, ctx), data.indirectLayout);
-
-                ctx.Dispatch(CreateLightLists, uint3{ threadsWH, 24 });
+                ctx.ExecuteIndirect(resources.Transition(data.argumentBufferObject, DRS_INDIRECTARGS, ctx), data.indirectLayout);
 
                 ctx.TimeStamp(timeStats, 7);
 
@@ -2324,19 +2544,21 @@ namespace FlexKit
                         resources.GetTextureWH(data.depthBufferObject)
                     };
 
-                    CBPushBuffer                constantBuffer4 = data.reserveCB(AlignedSize<Constants>());
-                    const ConstantBufferDataSet lightListConstantSet{ constants, constantBuffer4 };
+                    // Build Light Lists
+                    CBPushBuffer constantBuffer4 = data.reserveCB(AlignedSize<Constants>());
+                    ConstantBufferDataSet   lightListConstantSet{ constants, constantBuffer4 };
 
                     DescriptorHeap resolutionMatchShadowMaps;
                     resolutionMatchShadowMaps.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
 
                     resolutionMatchShadowMaps.SetUAVStructured(ctx, 0,      resources.Transition(data.lightResolutionObject,    DRS_UAV, ctx), 4, 0);
                     resolutionMatchShadowMaps.SetStructuredResource(ctx, 4, resources.Transition(data.clusterBufferObject,      DRS_NonPixelShaderResource, ctx), sizeof(GPUCluster), 0);
-                    resolutionMatchShadowMaps.SetStructuredResource(ctx, 5, resources.Transition(data.lightListObject,          DRS_NonPixelShaderResource, ctx), sizeof(uint32_t), 0);
+                    resolutionMatchShadowMaps.SetStructuredResource(ctx, 5, resources.Transition(data.lightListBuffer,          DRS_NonPixelShaderResource, ctx), sizeof(uint32_t), 0);
                     resolutionMatchShadowMaps.SetStructuredResource(ctx, 6, resources.Transition(data.lightBufferObject,        DRS_NonPixelShaderResource, ctx), sizeof(GPUPointLight));
                     resolutionMatchShadowMaps.SetStructuredResource(ctx, 7, resources.Transition(data.counterObject,            DRS_NonPixelShaderResource, ctx), sizeof(uint32_t));
 
                     resolutionMatchShadowMaps.SetCBV(ctx, 8, lightListConstantSet);
+
                     resolutionMatchShadowMaps.NullFill(ctx);
 
                     ctx.SetComputeDescriptorTable(0, resolutionMatchShadowMaps);
@@ -2843,23 +3065,24 @@ namespace FlexKit
 				data.NormalTargetObject         = builder.PixelShaderResource(gbuffer.normal);
 				data.MRIATargetObject           = builder.PixelShaderResource(gbuffer.MRIA);
 				data.depthBufferTargetObject    = builder.PixelShaderResource(depthTarget);
-                data.clusterIndexBufferObject   = builder.ReadTransition(lightPass.indexBufferObject,     DRS_PixelShaderResource);
-                data.clusterBufferObject        = builder.ReadTransition(lightPass.clusterBufferObject,   DRS_PixelShaderResource);
-                data.lightListsObject           = builder.ReadTransition(lightPass.lightListObject,       DRS_PixelShaderResource);
+                data.lightMapObject             = builder.ReadTransition(lightPass.indexBufferObject,       DRS_PixelShaderResource);
+                data.lightListBuffer            = builder.ReadTransition(lightPass.lightListBuffer,         DRS_PixelShaderResource);
+                data.lightLists                 = builder.ReadTransition(lightPass.lightLists,              DRS_PixelShaderResource);
 
-				data.renderTargetObject         = builder.RenderTarget(renderTarget);
-				data.pointLightBufferObject     = builder.ReadTransition(lightPass.lightBufferObject,     DRS_PixelShaderResource);
+				data.renderTargetObject         = builder.AcquireVirtualResource(
+                                                    GPUResourceDesc::RenderTarget(
+                                                        builder.GetRenderSystem().GetTextureWH(renderTarget),
+                                                        DeviceFormat::R16G16B16A16_FLOAT), FlexKit::DRS_RenderTarget, false);//builder.RenderTarget(renderTarget);
+
+				data.pointLightBufferObject     = builder.ReadTransition(lightPass.lightBufferObject,       DRS_PixelShaderResource);
 
 				data.passConstants              = reserveCB(128 * KILOBYTE);
 				data.passVertices               = reserveVB(sizeof(float4) * 6);
 
-                data.lightLists                 = builder.ReadTransition(lightPass.lightLists, DRS_PixelShaderResource);
-
-                builder.ReleaseVirtualResource(lightPass.clusterBufferObject);
-                builder.ReleaseVirtualResource(lightPass.indexBufferObject);
-                builder.ReleaseVirtualResource(lightPass.lightListObject);
-                builder.ReleaseVirtualResource(lightPass.lightBufferObject);
                 builder.ReleaseVirtualResource(lightPass.lightLists);
+                builder.ReleaseVirtualResource(lightPass.indexBufferObject);
+                builder.ReleaseVirtualResource(lightPass.lightListBuffer);
+                builder.ReleaseVirtualResource(lightPass.lightBufferObject);
 			},
 			[camera = sceneDescription.camera, renderTarget, t, timingReadBack = timingReadBack, timeStats = timeStats]
 			(TiledDeferredShade& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
@@ -2910,13 +3133,13 @@ namespace FlexKit
 					float4 Position;
 				}   vertices[] =
 				{
-                    float4{ -1,   1, 0, 1 },
-                    float4{  1,   1, 0, 1 },
-                    float4{ -1,  -1, 0, 1 },
+					float4(-1,   1, 0, 1),
+					float4( 1,   1, 0, 1),
+					float4(-1,  -1, 0, 1),
 
-                    float4{ -1,  -1, 0, 1 },
-                    float4{  1,   1, 0, 1 },
-                    float4{  1,  -1, 0, 1 },
+					float4(-1,  -1, 0, 1),
+					float4( 1,   1, 0, 1),
+					float4( 1,  -1, 0, 1),
 				};
 
 
@@ -2928,19 +3151,21 @@ namespace FlexKit
 				descHeap.SetSRV(ctx, 1, resources.GetResource(data.MRIATargetObject));
 				descHeap.SetSRV(ctx, 2, resources.GetResource(data.NormalTargetObject));
 				descHeap.SetSRV(ctx, 4, resources.GetResource(data.depthBufferTargetObject), DeviceFormat::R32_FLOAT);
-                descHeap.SetSRV(ctx, 5, resources.GetResource(data.clusterIndexBufferObject));
-
-                descHeap.SetStructuredResource(ctx, 6, resources.GetResource(data.lightLists),          sizeof(uint2));
-                descHeap.SetStructuredResource(ctx, 7, resources.GetResource(data.lightListsObject),    sizeof(uint32_t));
+                descHeap.SetSRV(ctx, 5, resources.GetResource(data.lightMapObject));
+                descHeap.SetStructuredResource(ctx, 6, resources.GetResource(data.lightLists), sizeof(uint2));
+                descHeap.SetStructuredResource(ctx, 7, resources.GetResource(data.lightListBuffer), sizeof(uint32_t));
 				descHeap.SetStructuredResource(ctx, 8, resources.Transition(data.pointLightBufferObject, DRS_PixelShaderResource, ctx), sizeof(GPUPointLight));
+
 
 				for (size_t shadowMapIdx = 0; shadowMapIdx < pointLightCount; shadowMapIdx++)
 				{
-                    const auto shadowMap = lightComponent[visableLights[shadowMapIdx]].shadowMap;
+                    auto shadowMap = lightComponent[visableLights[shadowMapIdx]].shadowMap;
 					descHeap.SetSRVCubemap(ctx, 10 + shadowMapIdx, shadowMap, DeviceFormat::R32_FLOAT);
 				}
 
 				descHeap.NullFill(ctx, descriptorTableSize);
+
+                ctx.ClearRenderTarget(resources.GetResource({ data.renderTargetObject }));
 
 				ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
 				ctx.SetPipelineState(resources.GetPipelineState(SHADINGPASS));
@@ -2967,6 +3192,244 @@ namespace FlexKit
 
 		return pass;
 	}
+
+
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* CreatePBROITDrawPSO(RenderSystem* RS)
+    {
+        auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\OIT.hlsl");
+		auto PShader = RS->LoadShader("PMain", "ps_6_0", "assets\\shaders\\OIT.hlsl");
+
+		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		};
+
+		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		Depth_Desc.DepthFunc	                = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+		Depth_Desc.DepthEnable	                = false;
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+			PSO_Desc.pRootSignature        = RS->Library.RSDefault;
+			PSO_Desc.VS                    = VShader;
+			PSO_Desc.PS                    = PShader;
+			PSO_Desc.RasterizerState       = Rast_Desc;
+			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask            = UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSO_Desc.NumRenderTargets      = 1;
+			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+			PSO_Desc.SampleDesc.Count      = 1;
+			PSO_Desc.SampleDesc.Quality    = 0;
+			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
+			PSO_Desc.DepthStencilState     = Depth_Desc;
+		}
+
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		return PSO;
+    }
+
+
+    ID3D12PipelineState* CreatePBROITDrawAnimatedPSO(RenderSystem* RS)
+    {
+        return nullptr;
+    }
+
+
+    OITPass& WorldRender::RenderPBR_OITPass(
+		UpdateDispatcher&               dispatcher,
+		FrameGraph&                     frameGraph,
+		const SceneDescription&         sceneDesc,
+		const PointLightGatherTask&     pointLightGather,
+		ResourceHandle                  depthTarget,
+		FrameResourceHandle             renderTarget,
+		const ShadowMapPassData&        shadowMaps,
+		const LightBufferUpdate&        lightPass,
+		ReserveConstantBufferFunction   reserveCB,
+		iAllocator*                     allocator)
+    {
+        return frameGraph.AddNode<OITPass>(
+            OITPass{
+                pointLightGather,
+                lightPass,
+                sceneDesc.pointLightMaps,
+                shadowMaps,
+                sceneDesc.lights.GetData().pointLights,
+
+                reserveCB,
+
+                sceneDesc.PVS.GetData().transparent,
+                sceneDesc.camera
+            },
+			[&](FrameGraphNodeBuilder& builder, OITPass& data)
+			{
+                data.renderTargetObject = renderTarget;
+			},
+            [=](OITPass& data, ResourceHandler& resources, Context& ctx, iAllocator& tempAllocator)
+            {
+                const RootSignature&    rootSig     = resources.renderSystem().Library.RSDefault;
+                auto&                   materials   = MaterialComponent::GetComponent();
+
+                ctx.SetRootSignature(rootSig);
+
+                TriMeshHandle   previous        = InvalidHandle_t;
+                TriMesh*        triMesh         = nullptr;
+                MaterialHandle  prevMaterial    = InvalidHandle_t;
+
+                ctx.SetPipelineState(resources.GetPipelineState(OITDRAW));
+
+                CBPushBuffer constantBuffer{
+                    data.reserveCB(
+                        AlignedSize<Brush::VConstantsLayout>() * data.pvs.size() +
+                        AlignedSize<Camera::ConstantBuffer>() )};
+
+                const auto cameraConstantValues = GetCameraConstants(data.camera);
+                const ConstantBufferDataSet cameraConstants{ cameraConstantValues, constantBuffer };
+
+                ctx.SetGraphicsConstantBufferView(0, cameraConstants);
+
+                for (auto& draw : data.pvs)
+                {
+                    const auto mesh         = draw.brush->MeshHandle;
+                    const auto material     = draw.brush->material;
+
+                    if (mesh != previous)
+                    {
+                        previous    = mesh;
+                        triMesh     = GetMeshResource(mesh);
+
+                        auto& lod = triMesh->lods[draw.LODlevel];
+                        
+                        ctx.AddIndexBuffer(
+                            triMesh,
+                            draw.LODlevel);
+
+                        ctx.AddVertexBuffers(
+                            triMesh,
+                            draw.LODlevel,
+                            {
+                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
+                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
+                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+                            }
+                        );
+                    }
+
+
+                    if (material != prevMaterial)
+                    {
+                        const auto& textures = materials[material].Textures;
+
+                        DescriptorHeap heap;
+
+                        heap.Init2(ctx, rootSig.GetDescHeap(0), textures.size(), &tempAllocator);
+
+                        for (size_t I = 0; I < textures.size(); ++I)
+                            heap.SetSRV(ctx, I, textures[I]);
+
+                        ctx.SetGraphicsDescriptorTable(4, heap);
+                    }
+
+                    const auto textureCount     = materials[material].Textures.size();
+                    const auto constantValues   = draw.brush->GetConstants();
+
+                    const ConstantBufferDataSet localConstants{ constantValues, constantBuffer };
+
+                    ctx.SetGraphicsConstantBufferView(1, localConstants);
+
+                    for (auto& subMesh : triMesh->GetHighestLoadedLod().subMeshes)
+                        ctx.DrawIndexed(
+                            subMesh.IndexCount,
+                            subMesh.BaseIndex);
+                }
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* CreateInitialLumananceLevel(RenderSystem* renderSystem)
+    {
+        return nullptr;
+    }
+
+    ID3D12PipelineState* CreateLumananceLevel(RenderSystem* renderSystem)
+    {
+        return nullptr;
+    }
+
+
+    /************************************************************************************************/
+
+    // TODO: Do actual tone mapping
+    ToneMap& WorldRender::RenderPBR_ToneMapping(
+			    UpdateDispatcher&               dispatcher,
+			    FrameGraph&                     frameGraph,
+                FrameResourceHandle             source,
+			    ResourceHandle                  target,
+			    ReserveConstantBufferFunction   reserveCB,
+			    ReserveVertexBufferFunction     reserveVB,
+			    float                           t,
+			    iAllocator*                     allocator)
+    {
+        // Does a simple resource copy for the moment
+        return frameGraph.AddNode<ToneMap>(
+            ToneMap{},
+			[&](FrameGraphNodeBuilder& builder, ToneMap& data)
+			{
+                const auto WH = frameGraph.GetRenderSystem().GetTextureWH(target) / 2;
+
+                data.outputTarget   = builder.CopyDest(target);
+                data.sourceTarget   = builder.ReadTransition(source, DRS_CopySrc);
+
+                //data.outputTarget = builder.RenderTarget(target);
+                //data.sourceTarget   = builder.ReadTransition(source, DRS_NonPixelShaderResource);
+                //data.temp1Buffer    = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT), DRS_UAV);
+                //data.temp2Buffer    = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT), DRS_UAV);
+
+                builder.ReleaseVirtualResource(source);
+            },
+			[]
+			(ToneMap& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+            {
+
+                ctx.CopyResource(resources.GetResource(data.outputTarget), resources.GetResource(data.sourceTarget));
+
+                /*
+                auto& rootSig = resources.renderSystem().Library.RSDefault;
+
+                DescriptorHeap heap1{};
+                heap1.Init2(ctx, rootSig.GetDescHeap(0), 3, &allocator);
+
+                DescriptorHeap heap2{};
+                heap2.Init2(ctx, rootSig.GetDescHeap(1), 3, &allocator);
+
+                ID3D12PipelineState* createInitialLevel = nullptr;
+                ID3D12PipelineState* createLumananceLevel = nullptr;
+
+                const uint2 WH = resources.GetTextureWH(data.sourceTarget);
+
+                ctx.SetComputeRootSignature(rootSig);
+                ctx.SetComputeDescriptorTable(0, heap1);
+                ctx.SetComputeDescriptorTable(1, heap2);
+                ctx.Dispatch(createInitialLevel, { WH, 0 });
+
+                for (uint I = 0; I < log2(ceil(WH.Max())); I++)
+                {
+
+                    ctx.Dispatch(createLumananceLevel, { WH, 0 });
+                }
+                */
+            });
+    }
 
 
     /************************************************************************************************/
@@ -3068,67 +3531,6 @@ namespace FlexKit
                 ctx.SetVertexBuffers({ vertices });
 
                 ctx.Draw(verts.size());
-            });
-    }
-
-
-    /************************************************************************************************/
-
-
-    void WorldRender::CreateClusterBuffer(uint2 WH, CameraHandle camera)
-    {
-        pendingGPUTasks.emplace_back(
-            [&, camera = camera, WH = WH](FrameGraph& frameGraph)
-            {
-                if (clusterBuffer != InvalidHandle_t)
-                    UAVPool.Release(clusterBuffer, false, false);
-
-                struct GPUCluster { float4 min, max; };
-
-                auto [resource, overlap] = UAVPool.Acquire(GPUResourceDesc::UAVResource((WH / 32).Product() * sizeof(GPUCluster)), false);
-
-                clusterBuffer = resource;
-
-                struct _CreateClusterBuffer_Desc
-                {
-                    FrameResourceHandle clusterBuffer;
-                };
-
-                frameGraph.AddNode<_CreateClusterBuffer_Desc>(
-                    _CreateClusterBuffer_Desc{},
-                    [&](FrameGraphNodeBuilder& builder, _CreateClusterBuffer_Desc& data)
-                    {
-                        data.clusterBuffer = builder.UnorderedAccess(resource);
-                    },
-                    [=](_CreateClusterBuffer_Desc& data, ResourceHandler& resources, Context& ctx, iAllocator& tempAllocator)
-                    {
-                        const auto cameraConstants = GetCameraConstants(camera);
-
-                        struct
-                        {
-                            float4x4 iproj;
-                            float4x4 view;
-                        } constantsValues = {
-                                Inverse(cameraConstants.Proj),
-                                cameraConstants.View,
-                        };
-
-                        const auto PSO  = resources.GetPipelineState(CREATECLUSTERBUFFER);
-                        const auto XY   = uint2{ (float2{ (float)WH[0], (float)WH[1] } / 32.0f).ceil() };
-
-                        const auto& rootSig = resources.renderSystem().Library.ComputeSignature;
-
-                        ctx.AddAliasingBarrier(overlap, resource);
-
-                        DescriptorHeap heap;
-                        heap.Init2(ctx, rootSig.GetDescHeap(0), 10, &tempAllocator);
-                        heap.NullFill(ctx, 10);
-
-                        ctx.DiscardResource(resources.GetResource(data.clusterBuffer));
-                        ctx.SetComputeRootSignature(rootSig);
-
-                        ctx.Dispatch(PSO, { (float2{ (float)XY[0], (float)XY[1] } / 32.0f).ceil(), 24 });
-                    });
             });
     }
 
@@ -3258,16 +3660,16 @@ namespace FlexKit
 
 	ShadowPassMatrices CalculateShadowMapMatrices(const float3 pos, const float r, const float T)
 	{
-		const auto M1 = DirectX::XMMatrixRotationY((float) pi / 2.0f) * DirectX::XMMatrixRotationX((float)pi); // left Face
-		const auto M2 = DirectX::XMMatrixRotationY((float)-pi / 2.0f) * DirectX::XMMatrixRotationX((float)pi); // right
+		static const auto M1 = DirectX::XMMatrixRotationY((float) pi / 2.0f) * DirectX::XMMatrixRotationX((float)pi); // left Face
+        static const auto M2 = DirectX::XMMatrixRotationY((float)-pi / 2.0f) * DirectX::XMMatrixRotationX((float)pi); // right
 
-		const auto M3 = DirectX::XMMatrixRotationX((float) pi / 2.0f); // Top Face
-		const auto M4 = DirectX::XMMatrixRotationX((float)-pi / 2.0f); // Bottom Face
+        static const auto M3 = DirectX::XMMatrixRotationX((float) pi / 2.0f); // Top Face
+        static const auto M4 = DirectX::XMMatrixRotationX((float)-pi / 2.0f); // Bottom Face
 
-		const auto M5 = Float4x4ToXMMATIRX(Quaternion2Matrix(Quaternion(0, 180, 180)));
-		const auto M6 = DirectX::XMMatrixRotationY(0) * DirectX::XMMatrixRotationZ((float)pi); // backward
+        static const auto M5 = Float4x4ToXMMATIRX(Quaternion2Matrix(Quaternion(0, 180, 180)));
+        static const auto M6 = DirectX::XMMatrixRotationY(0) * DirectX::XMMatrixRotationZ((float)pi); // backward
 
-		const XMMATRIX ViewOrientations[] = {
+		static const XMMATRIX ViewOrientations[] = {
 			M1,
 			M2,
 			M3,
@@ -3589,7 +3991,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2019-2021 Robert May
+Copyright (c) 2019-2020 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

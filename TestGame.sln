@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.0.31410.414
+VisualStudioVersion = 17.0.31423.177
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ResourceBuilder", "FlexKitResourceCompiler\ResourceBuilder.vcxproj", "{5438D81A-C0C3-45DF-C9D4-C8D335DFA1DF}"
 EndProject
@@ -36,7 +36,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		Qt5Version = qt5
 		SolutionGuid = {4F8D44AA-933C-484E-B443-E8BC15140F28}
+		Qt5Version = qt5
 	EndGlobalSection
 EndGlobal
