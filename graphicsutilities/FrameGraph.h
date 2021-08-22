@@ -1074,6 +1074,7 @@ namespace FlexKit
 
 		FrameResourceHandle	Present             (ResourceHandle);
 
+        FrameResourceHandle DepthRead           (ResourceHandle);
 		FrameResourceHandle	DepthTarget         (ResourceHandle);
 
 		FrameResourceHandle AcquireVirtualResource(const GPUResourceDesc desc, DeviceResourceState initialState, bool temp = true);

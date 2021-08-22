@@ -115,6 +115,17 @@ namespace FlexKit
 			return mesh->BS;
 		}
 
+        void SetTransparent(const bool transparent)
+        {
+            GetComponent()[brush].Transparent = transparent;
+        }
+
+        bool GetTransparent() const
+        {
+            return GetComponent()[brush].Transparent;
+        }
+
+
 		BrushHandle	brush = GetComponent().Create(Brush{});
 	};
 
@@ -345,6 +356,11 @@ namespace FlexKit
             GetComponent()[visibility].visable = v;
         }
 
+        void SetTransparency(bool t)
+        {
+            GetComponent()[visibility].transparent = t;
+        }
+
 		operator VisibilityHandle() { return visibility; }
 
 		VisibilityHandle visibility;
@@ -402,6 +418,16 @@ namespace FlexKit
 				visibility.SetBoundingSphere({ 0, 0, 0, pointLight.GetRadius() });
 			});
 	}
+
+    inline void SetTransparent(GameObject& go, const bool tranparent)
+    {
+        Apply(
+            go,
+            [&](SceneVisibilityView& visibility)
+            {
+                visibility.SetTransparency(tranparent);
+            });
+    }
 
 
     /************************************************************************************************/

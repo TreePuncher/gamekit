@@ -12,6 +12,7 @@ namespace FlexKit
     enum class DeviceFormat
     {
         R8_UINT,
+        R16_FLOAT,
         R16_UINT,
         R16G16_UINT,
         R32_UINT,
@@ -25,6 +26,10 @@ namespace FlexKit
         D24_UNORM_S8_UINT,
         R32_FLOAT,
         D32_FLOAT,
+
+        R10G10B10A2_UNORM,
+        R10G10B10A2_UINT,
+
         R16G16_FLOAT,
         R16G16B16A16_FLOAT,
         R32G32_FLOAT,
@@ -375,7 +380,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2019-2020 Robert May
+Copyright (c) 2019-2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
