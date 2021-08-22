@@ -682,7 +682,10 @@ namespace FlexKit
         const PVS&                          pvs;
 
         CameraHandle            camera;
-		FrameResourceHandle     renderTargetObject;
+        FrameResourceHandle     renderTargetObject;
+        FrameResourceHandle     transparencyTargetObject;
+        FrameResourceHandle     counterObject;
+        FrameResourceHandle     depthTarget;
 	};
 
 
@@ -835,7 +838,7 @@ namespace FlexKit
         void Release();
 
 
-        DrawOutputs& DrawScene(
+        DrawOutputs DrawScene(
                 UpdateDispatcher&               dispatcher,
                 FrameGraph&                     frameGraph,
                 DrawSceneDescription&           drawSceneDesc,

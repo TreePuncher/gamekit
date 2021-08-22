@@ -2448,7 +2448,8 @@ namespace FlexKit
 
 	void Context::ClearUAVTextureUint(ResourceHandle UAV, uint4 clearColor)
 	{
-		auto view       = _ReserveSRVLocal(1);
+        auto CPUview    = _ReserveSRVLocal(1);
+        auto GPUview    = _ReserveSRV(1);
 		auto resource   = renderSystem->GetDeviceResource(UAV);
 
         Texture2D tex{
@@ -2461,10 +2462,15 @@ namespace FlexKit
 		PushUAV2DToDescHeap(
 			renderSystem,
 			tex,
-			view);
+			CPUview);
 
-		auto CPUHandle = view.Get<0>();
-		auto GPUHandle = view.Get<1>();
+        PushUAV2DToDescHeap(
+            renderSystem,
+            tex,
+            GPUview);
+
+		auto CPUHandle = CPUview.Get<0>();
+		auto GPUHandle = GPUview.Get<1>();
 
 		FlushBarriers();
 
@@ -2972,11 +2978,9 @@ namespace FlexKit
 	DescHeapPOS Context::_ReserveDSV(size_t count)
 	{
 		auto currentCPU = DSV_CPU;
-		auto currentGPU = DSV_GPU;
 		DSV_CPU.ptr = DSV_CPU.ptr + renderSystem->DescriptorDSVSize * count;
-		DSV_GPU.ptr = DSV_GPU.ptr + renderSystem->DescriptorDSVSize * count;
 
-		return { currentCPU, currentGPU };
+		return { currentCPU, 0 };
 	}
 
 
@@ -3000,11 +3004,9 @@ namespace FlexKit
 	DescHeapPOS Context::_ReserveSRVLocal(size_t count)
 	{
 		auto currentCPU = SRV_LOCAL_CPU;
-		auto currentGPU = SRV_LOCAL_GPU;
 		SRV_LOCAL_CPU.ptr = SRV_LOCAL_CPU.ptr + renderSystem->DescriptorCBVSRVUAVSize * count;
-		SRV_LOCAL_GPU.ptr = SRV_LOCAL_GPU.ptr + renderSystem->DescriptorCBVSRVUAVSize * count;
 
-		return { currentCPU, currentGPU };
+		return { currentCPU, 0 };
 	}
 
 
@@ -3014,11 +3016,9 @@ namespace FlexKit
 	DescHeapPOS Context::_ReserveRTV(size_t count)
 	{
 		auto currentCPU = RTV_CPU;
-		auto currentGPU = RTV_GPU;
 		RTV_CPU.ptr = RTV_CPU.ptr + renderSystem->DescriptorRTVSize * count;
-		RTV_GPU.ptr = RTV_GPU.ptr + renderSystem->DescriptorRTVSize * count;
 
-		return { currentCPU, currentGPU };
+		return { currentCPU, 0 };
 	}
 
 
@@ -3028,7 +3028,6 @@ namespace FlexKit
 	void Context::_ResetRTV()
 	{
 		RTV_CPU = descHeapRTV->GetCPUDescriptorHandleForHeapStart();
-		RTV_GPU = descHeapRTV->GetGPUDescriptorHandleForHeapStart();
 
 		renderTargetViews.clear();
 	}
@@ -3040,7 +3039,6 @@ namespace FlexKit
 	void Context::_ResetDSV()
 	{
 		DSV_CPU = descHeapDSV->GetCPUDescriptorHandleForHeapStart();
-		DSV_GPU = descHeapDSV->GetGPUDescriptorHandleForHeapStart();
 
 		depthStencilViews.clear();
 	}
@@ -3055,7 +3053,7 @@ namespace FlexKit
 		SRV_GPU = descHeapSRV->GetGPUDescriptorHandleForHeapStart();
 
 		SRV_LOCAL_CPU = descHeapSRVLocal->GetCPUDescriptorHandleForHeapStart();
-		SRV_LOCAL_GPU = descHeapSRVLocal->GetGPUDescriptorHandleForHeapStart();
+        //descHeapSRVLocal->GetGPUDescriptorHandleForHeapStart();
 	}
 
 
@@ -5190,6 +5188,8 @@ namespace FlexKit
 	{
 		switch (F)
 		{
+        case FlexKit::DeviceFormat::R16_FLOAT:
+            return DXGI_FORMAT::DXGI_FORMAT_R16_FLOAT;
 		case FlexKit::DeviceFormat::R16_UINT:
 			return DXGI_FORMAT::DXGI_FORMAT_R16_UINT;
 		case FlexKit::DeviceFormat::R16G16_UINT:

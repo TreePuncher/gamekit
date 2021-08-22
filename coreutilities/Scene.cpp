@@ -465,7 +465,7 @@ namespace FlexKit
 
 						if (!brush.Skinned && Intersects(F, BS))
 						{
-                            if (potentialVisible.transparent) {
+                            if (brush.Transparent) {
                                 PushPV(brush, T_out, POS);
                             }
                             else

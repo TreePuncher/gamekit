@@ -106,8 +106,6 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
         IKTarget            { IN_worldState.CreateGameObject() },
 
         testAnimationResource   { LoadAnimation("TestRigAction", IN_framework.core.GetBlockMemory()) }
-
-
 {
     //base.renderWindow.ToggleMouseCapture();
     auto& renderSystem = framework.core.RenderSystem;
@@ -138,9 +136,9 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     playerCharacterModel    = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), 8000);
     auto model              = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), 7894);
 
-    IKTarget.AddView<SceneNodeView<>>();
-    IKTarget.AddView<BrushView>(model,   GetSceneNode(IKTarget));
-    IKTarget.AddView<FABRIKTargetView>(FABRIKTarget{ GetSceneNode(IKTarget), (iAllocator*)framework.core.GetBlockMemory() });
+    auto& ikNodeView    = IKTarget.AddView<SceneNodeView<>>();
+    auto& ikBrushView   = IKTarget.AddView<BrushView>(model, GetSceneNode(IKTarget));
+    auto& ikTargetView  = IKTarget.AddView<FABRIKTargetView>(FABRIKTarget{ GetSceneNode(IKTarget), (iAllocator*)framework.core.GetBlockMemory() });
 
 
     Translate(IKTarget, { 0, 6.0f, 0 });
@@ -148,14 +146,31 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     testAnimation.AddView<SceneNodeView<>>();
     auto& brushView     = testAnimation.AddView<BrushView>(playerCharacterModel, GetSceneNode(testAnimation));
     auto& skeletonView  = testAnimation.AddView<SkeletonView>(playerCharacterModel, 8001);
-    //auto& animatorView    = testAnimation.AddView<AnimatorView>(testAnimation);
     auto& IKController  = testAnimation.AddView<FABRIKView>(testAnimation);
+    //auto& animatorView    = testAnimation.AddView<AnimatorView>(testAnimation);
+
+    SetTransparent(testAnimation, true);
+    brushView.SetTransparent(true);
+
+    for (size_t I = 0; I < 10; I++)
+    {
+        auto& transparentObject = worldState.CreateGameObject();
+        transparentObject.AddView<SceneNodeView<>>(float3{ 10, 0, 0 } + float3{ I * 5.0f, 0, 0 });
+        transparentObject.AddView<BrushView>(
+            playerCharacterModel,
+            GetSceneNode(transparentObject)).SetTransparent(true);
+
+        scene.AddGameObject(
+            transparentObject,
+            GetSceneNode(transparentObject));
+    }
 
     IKController.AddTarget(IKTarget);
     IKController.SetEndEffector(skeletonView.FindJoint("EndEffector"));
     //animator.Play(*testAnimationResource, true);
 
-    brushView.GetBrush().Skinned = true;
+    brushView.GetBrush().Transparent    = true;
+    //brushView.GetBrush().Skinned        = true;
 
     scene.AddGameObject(testAnimation, GetSceneNode(testAnimation));
     scene.AddGameObject(IKTarget, GetSceneNode(IKTarget));
@@ -163,7 +178,7 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     SetBoundingSphereFromMesh(testAnimation);
 
     SetWorldPosition(particleEmitter, float3{ 0.0f, 40, 0.0f });
-    Pitch(particleEmitter, pi / 2);
+    Pitch(particleEmitter, float(pi / 2.0f));
 }
 
 
@@ -316,7 +331,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
             */
         };
 
-        auto& drawnScene = base.render.DrawScene(
+        auto drawnScene = base.render.DrawScene(
                                 dispatcher,
                                 frameGraph,
                                 sceneDesc,
@@ -324,7 +339,8 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
                                 core.GetBlockMemory(),
                                 core.GetTempMemoryMT());
 
-        base.streamingEngine.TextureFeedbackPass(
+        if(false)
+        auto& feedbackPass = base.streamingEngine.TextureFeedbackPass(
                                 dispatcher,
                                 frameGraph,
                                 activeCamera,
@@ -350,7 +366,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
         {
             auto jointPose = GetJointPose(testAnimation, JointHandle{ I });
 
-            float i = sin(T) / 2.0f + 0.5f;
+            const float i = sin(T) / 2.0f + 0.5f;
             jointPose.r = Qlerp( Quaternion{ 0, 0, 0 }, Quaternion{ 0, 90, 0 }, i );
 
             SetJointPose(testAnimation, JointHandle{ I }, jointPose);

@@ -436,7 +436,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void TextureStreamingEngine::TextureFeedbackPass(
+    TextureFeedbackPass_Data& TextureStreamingEngine::TextureFeedbackPass(
             UpdateDispatcher&               dispatcher,
             FrameGraph&                     frameGraph,
             CameraHandle                    camera,
@@ -446,12 +446,9 @@ namespace FlexKit
             ReserveConstantBufferFunction&  reserveCB,
             ReserveVertexBufferFunction&    reserveVB)
     {
-        if (updateInProgress)
-            return;
-
         updateInProgress = true;
 
-        frameGraph.AddNode<TextureFeedbackPass_Data>(
+        return frameGraph.AddNode<TextureFeedbackPass_Data>(
             TextureFeedbackPass_Data{
                 camera,
                 sceneGather,

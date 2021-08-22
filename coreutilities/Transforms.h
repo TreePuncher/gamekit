@@ -208,9 +208,14 @@ namespace FlexKit
             SceneNodeTable.Release();
         }
 
-        NodeHandle GetZeroedNode()
+        NodeHandle CreateZeroedNode()
         {
             return FlexKit::GetZeroedNode();
+        }
+
+        NodeHandle CreateNode()
+        {
+            return FlexKit::GetNewNode();
         }
 
         NodeHandle GetRoot() 
@@ -266,8 +271,18 @@ namespace FlexKit
         public Overrides_TY
     {
     public:
-        SceneNodeView(NodeHandle IN_Node = GetComponent().GetZeroedNode()) :
-            node{ IN_Node } {}
+
+        SceneNodeView(const float3 XYZ) :
+            node{ GetComponent().CreateNode() }
+        {
+            SetPosition(XYZ);
+        }
+
+
+        SceneNodeView(NodeHandle IN_Node = GetComponent().CreateZeroedNode()) :
+            node{ IN_Node }
+        {
+        }
 
 
         ~SceneNodeView()
@@ -291,6 +306,7 @@ namespace FlexKit
 
             return *this;
         }
+
 
         SceneNodeView               (SceneNodeView&) = delete;
         SceneNodeView& operator =	(SceneNodeView&) = delete;

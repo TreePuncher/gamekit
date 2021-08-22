@@ -283,6 +283,14 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		case DXGI_FORMAT_R11G11B10_FLOAT:
 			throw; // unimplemented argument
 			return -1;
+        case DXGI_FORMAT_R16_TYPELESS:
+        case DXGI_FORMAT_R16_FLOAT:
+        case DXGI_FORMAT_D16_UNORM:
+        case DXGI_FORMAT_R16_UNORM:
+        case DXGI_FORMAT_R16_UINT:
+        case DXGI_FORMAT_R16_SNORM:
+        case DXGI_FORMAT_R16_SINT:
+            return 2;
 		case DXGI_FORMAT_R8G8B8A8_TYPELESS:
 		case DXGI_FORMAT_R8G8B8A8_UNORM:
 		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
@@ -320,13 +328,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		case DXGI_FORMAT_R8G8_UINT:
 		case DXGI_FORMAT_R8G8_SNORM:
 		case DXGI_FORMAT_R8G8_SINT:
-		case DXGI_FORMAT_R16_TYPELESS:
-		case DXGI_FORMAT_R16_FLOAT:
-		case DXGI_FORMAT_D16_UNORM:
-		case DXGI_FORMAT_R16_UNORM:
-		case DXGI_FORMAT_R16_UINT:
-		case DXGI_FORMAT_R16_SNORM:
-		case DXGI_FORMAT_R16_SINT:
 		case DXGI_FORMAT_R8_TYPELESS:
 		case DXGI_FORMAT_R8_UNORM:
 		case DXGI_FORMAT_R8_UINT:
@@ -1453,13 +1454,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			renderSystem			= RHS.renderSystem;
 
 			RTV_CPU = RHS.RTV_CPU;
-			RTV_GPU = RHS.RTV_GPU;
 
 			SRV_CPU = RHS.SRV_CPU;
 			SRV_GPU = RHS.SRV_GPU;
 
 			DSV_CPU = RHS.DSV_CPU;
-			DSV_GPU = RHS.DSV_GPU;
 
 			descHeapRTV = RHS.descHeapRTV;
 			descHeapSRV = RHS.descHeapSRV;
@@ -1491,13 +1490,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			RHS.PendingBarriers.clear();
 
 			RHS.RTV_CPU = { 0 };
-			RHS.RTV_GPU = { 0 };
 
 			RHS.SRV_CPU = { 0 };
 			RHS.SRV_GPU = { 0 };
 
 			RHS.DSV_CPU = { 0 };
-			RHS.DSV_GPU = { 0 };
 
 			RHS.descHeapRTV = nullptr;
 			RHS.descHeapSRV = nullptr;
@@ -1518,13 +1515,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			renderSystem			= RHS.renderSystem;
 
 			RTV_CPU = RHS.RTV_CPU;
-			RTV_GPU = RHS.RTV_GPU;
 
 			SRV_CPU = RHS.SRV_CPU;
 			SRV_GPU = RHS.SRV_GPU;
 
 			DSV_CPU = RHS.DSV_CPU;
-			DSV_GPU = RHS.DSV_GPU;
 
 			descHeapRTV = RHS.descHeapRTV;
 			descHeapSRV = RHS.descHeapSRV;
@@ -1555,13 +1550,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			RHS.PendingBarriers.clear();
 
 			RHS.RTV_CPU = { 0 };
-			RHS.RTV_GPU = { 0 };
 
 			RHS.SRV_CPU = { 0 };
 			RHS.SRV_GPU = { 0 };
 
 			RHS.DSV_CPU = { 0 };
-			RHS.DSV_GPU = { 0 };
 
 			RHS.descHeapRTV = nullptr;
 			RHS.descHeapSRV = nullptr;
@@ -1836,19 +1829,16 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		ID3D12DescriptorHeap*           descHeapDSV             = nullptr;
 
 		D3D12_CPU_DESCRIPTOR_HANDLE RTV_CPU;
-		D3D12_GPU_DESCRIPTOR_HANDLE RTV_GPU;
 
 		D3D12_CPU_DESCRIPTOR_HANDLE SRV_CPU;
 		D3D12_GPU_DESCRIPTOR_HANDLE SRV_GPU;
 
 		D3D12_CPU_DESCRIPTOR_HANDLE DSV_CPU;
-		D3D12_GPU_DESCRIPTOR_HANDLE DSV_GPU;
 
 		D3D12_CPU_DESCRIPTOR_HANDLE RTVPOSCPU;
 		D3D12_CPU_DESCRIPTOR_HANDLE DSVPOSCPU;
 
 		D3D12_CPU_DESCRIPTOR_HANDLE SRV_LOCAL_CPU;
-		D3D12_GPU_DESCRIPTOR_HANDLE SRV_LOCAL_GPU;
 
 		size_t	RenderTargetCount;
 		bool	DepthStencilEnabled;
@@ -5206,7 +5196,7 @@ private:
 
 /**********************************************************************
 
-Copyright (c) 2014-2020 Robert May
+Copyright (c) 2014-2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
