@@ -385,6 +385,7 @@ UpdateTask& GameWorld::UpdateSpells(FlexKit::UpdateDispatcher& dispathcer, Objec
                 OverlappCallback callback(
                     [&](const physx::PxOverlapHit* buffer, physx::PxU32 nbHits) -> bool
                     {
+                        /*
                         for (size_t I = 0; I < nbHits; I++)
                         {
                             if (buffer[I].actor && buffer[I].actor->userData) {
@@ -398,6 +399,7 @@ UpdateTask& GameWorld::UpdateSpells(FlexKit::UpdateDispatcher& dispathcer, Objec
                                     });
                             }
                         }
+                        */
                         return false;
                     },
                     []() {}

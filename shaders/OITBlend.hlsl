@@ -1,51 +1,34 @@
-struct ParticleMeshInstanceDepthVS_IN
-{
-    float3 POS		        : POSITION;
-    float4 instancePosition : INSTANCEPOS;
-    float4 instanceArgs     : INSTANCEARGS; 
-};
+Texture2D<float4>   Accum   : register(t0);
+Texture2D<float>    Counter : register(t1);
 
-float3 ParticleMeshInstanceDepthVS(ParticleMeshInstanceDepthVS_IN input) : POSITION
+float4 VMain(const uint vertexID : SV_VertexID) : SV_POSITION
 {
-    return input.POS + input.instancePosition.xyz;
+    float4 verts[] = {
+        float4(-1,  1, 1, 1),
+        float4( 1, -1, 1, 1),
+        float4(-1, -1, 0, 1),
+
+        float4(-1,  1, 1, 1),
+        float4( 1,  1, 1, 1),
+        float4( 1, -1, 1, 1),
+    };
+
+    return verts[vertexID];
 }
 
-struct ShadowMapData
+float4 BlendMain(float4 pixelCord : SV_POSITION) : SV_TARGET
 {
-    float4x4 ViewI;
-    float4x4 PV;
-};
+    const float4    accum   = Accum.Load(int3(pixelCord.xy, 0));
+    const float     n       = Counter.Load(int3(pixelCord.xy, 0));
 
-cbuffer PassConstants : register( b0 )
-{
-    ShadowMapData matrices[6];
-};
+    if (n == 0.0f)
+        discard;
 
-struct GS_Out
-{
-    float4  pos                 : SV_POSITION;
-    uint    arrayTargetIndex    : SV_RENDERTARGETARRAYINDEX;
-};
+    const float3 W_c = accum.xyz / max(accum.a, 0.00001);  // Color
+    const float  W_a = pow(max(1 - accum.w / n, 0.0), n); // weighted alpha
 
-[maxvertexcount(18)]
-void ParticleMeshInstanceDepthGS(
-    triangle float3 vertices[3] : POSITION,
-    inout TriangleStream<GS_Out> renderTarget)
-{
-    for (uint face_ID = 0; face_ID < 6; face_ID++) // Loop over faces
-    {
-        GS_Out Out;
-        Out.arrayTargetIndex    = face_ID;
-
-        for(uint vertex_ID = 0; vertex_ID < 3; vertex_ID++)
-        {
-            Out.pos = mul(matrices[face_ID].PV, float4(vertices[vertex_ID], 1));
-            renderTarget.Append(Out);
-        }
-
-        renderTarget.RestartStrip();
-    }
-}
+    return float4(W_c, W_a);
+} 
 
 
 /**********************************************************************
