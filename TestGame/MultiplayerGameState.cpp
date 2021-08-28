@@ -160,6 +160,7 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
 
             brushView.SetTransparent(true);
             brushView.GetBrush().MatProperties.albedo = float3{ 1.0f / 20 * X, 1.0f / 20 * X, 1.0f / 40 * X * Y };
+            //brushView.GetBrush().MatProperties.albedo = float3{ 0.1f, 0.0f, 0.0f };
 
             scene.AddGameObject(
                 transparentObject,
@@ -481,9 +482,14 @@ bool LocalGameState::EventHandler(Event evt)
                     base.renderWindow.ToggleMouseCapture();
                     return true;
                 case KC_R:
+                    /*
                     framework.GetRenderSystem().QueuePSOLoad(SHADINGPASS);
                     framework.GetRenderSystem().QueuePSOLoad(CREATECLUSTERLIGHTLISTS);
                     framework.GetRenderSystem().QueuePSOLoad(CREATECLUSTERS);
+                    */
+                    framework.GetRenderSystem().QueuePSOLoad(OITBLEND);
+                    framework.GetRenderSystem().QueuePSOLoad(OITDRAW);
+
                     return true;
                 case KC_ESC:
                     framework.quit = true;

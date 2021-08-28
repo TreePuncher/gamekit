@@ -42,21 +42,26 @@ struct input_Vertex
 struct output_Vertex
 {
     float4 pos : SV_Position;
-    float3 pos_WT : POSITION;
+    float3 pos_VS : POSITION;
     float3 normal : NORMAL;
     float3 tangent : TANGENT;
     float2 UV : TEXCOORD;
+    float  depth : DEPTH;
+    float  w : W_VS_Depth;
 };
 
 output_Vertex VMain(input_Vertex input)
 {
     output_Vertex outV;
 
-    outV.pos_WT     = mul(WT, float4(input.pos, 1));
-    outV.pos		= mul(PV, float4(outV.pos_WT.xyz, 1));
-    outV.normal     = float3(0, 0, 0);
-    outV.tangent    = float3(0, 0, 0);
-    outV.UV         = float2(0, 0);
+    const float4 pos_WS = mul(WT,   float4(input.pos, 1));
+    outV.pos_VS         = mul(View, float4(pos_WS.xyz, 1));
+    outV.pos		    = mul(PV,   float4(pos_WS.xyz, 1));
+    outV.normal         = mul(View, float4(input.normal, 0));
+    outV.tangent        = float3(0, 0, 0);
+    outV.UV             = float2(0, 0);
+    outV.depth          = length(outV.pos_VS);
+    outV.w              = mul(View, float4(pos_WS.xyz, 1)).w;
 
     return outV;
 }
@@ -64,18 +69,40 @@ output_Vertex VMain(input_Vertex input)
 struct output_Pixel
 {
     float4 Color0       : SV_TARGET0;
-    float4 Count        : SV_TARGET1;
+    float4 Revealage    : SV_TARGET1;
 
     float Depth : SV_Depth;
 };
 
+float D(const float Z)
+{
+    return ((MinZ * MaxZ) / (Z - MaxZ)) / (MinZ - MaxZ);
+}
+
+float DepthWeight(const float Z, const float A)
+{
+    //const float weight = 10.0f / (0.00001f +  pow(abs(Z) / 1, 3) + pow(abs(Z) / 200, 6));
+    //return A * max(0.001f, min(10000.0f, weight));
+
+    return A * max(0.001f, 1000 * pow(1 - D(Z), 3));
+}
+
 output_Pixel PassMain(output_Vertex vertex)
 {
-    output_Pixel Out;
+    const float3 view_VS = normalize(vertex.pos_VS);
+    const float3 up_VS   = normalize(float3(0, 0, 1));
 
-    Out.Color0  = float4(Albedo.xyz, 0.1f);
-    Out.Count   = 1.0f;
-    Out.Depth   = length(vertex.pos_WT - CameraPOS.xyz) / MaxZ;
+    const float zi  = vertex.depth;
+    const float ai  = 0.5f;
+    const float i   = dot(normalize(vertex.normal), up_VS);
+    const float3 ci = saturate(Albedo.xyz * i) * ai;
+
+    const float w   = DepthWeight(-vertex.w, ai);
+
+    output_Pixel Out;
+    Out.Color0      = float4(ci, ai) * w;
+    Out.Revealage   = ai;
+    Out.Depth       = vertex.depth / MaxZ;
 
     return Out;
 }
