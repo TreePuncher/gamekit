@@ -1132,7 +1132,7 @@ namespace FlexKit
 
             UAVPool                     { renderSystem, 256 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
             UAVTexturePool              { renderSystem, 256 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent },
-            RTPool                      { renderSystem, 256 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::RenderTarget, persistent },
+            RTPool                      { renderSystem, 512 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::RenderTarget, persistent },
 
             timeStats                   { renderSystem.CreateTimeStampQuery(256) },
             timingReadBack              { renderSystem.CreateReadBackBuffer(512) },
@@ -1179,8 +1179,9 @@ namespace FlexKit
 
         RS_IN.RegisterPSOLoader(DEBUG_DrawBVH,      { &RS_IN.Library.RSDefault, CreateDEBUGBVHVIS });
 
-        RS_IN.RegisterPSOLoader(OITDRAW,            { &RS_IN.Library.RSDefault, CreatePBROITDrawPSO });
-        RS_IN.RegisterPSOLoader(OITDRAWANIMATED,    { &RS_IN.Library.RSDefault, CreatePBROITDrawAnimatedPSO });
+        RS_IN.RegisterPSOLoader(OITBLEND,           { &RS_IN.Library.RSDefault, CreateOITBlendPSO });
+        RS_IN.RegisterPSOLoader(OITDRAW,            { &RS_IN.Library.RSDefault, CreateOITDrawPSO });
+        RS_IN.RegisterPSOLoader(OITDRAWANIMATED,    { &RS_IN.Library.RSDefault, CreateOITDrawAnimatedPSO });
 
         RS_IN.RegisterPSOLoader(CREATEINITIALLUMANANCELEVEL,    { &RS_IN.Library.RSDefault, CreateInitialLumananceLevel });
         RS_IN.RegisterPSOLoader(CREATELUMANANCELEVEL,           { &RS_IN.Library.RSDefault, CreateLumananceLevel });
@@ -1503,6 +1504,9 @@ namespace FlexKit
 
                 data.depthBuffer    = builder.AcquireVirtualResource(GPUResourceDesc::DepthTarget(WH, DeviceFormat::D32_FLOAT), DRS_DEPTHBUFFERWRITE);
                 data.ZPyramid       = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT, true, MipLevels), DRS_UAV);
+
+                builder.SetDebugName(data.depthBuffer, "depthBuffer");
+                builder.SetDebugName(data.ZPyramid, "ZPyramid");
             },
             [camera = camera](OcclusionCullingResults& data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
@@ -2247,7 +2251,6 @@ namespace FlexKit
                 data.lightLookupObject      = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512 * KILOBYTE),  DRS_UAV, releaseTemporaries);
                 data.lightCounterObject     = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512),             DRS_UAV, releaseTemporaries);
                 data.lightResolutionObject  = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(64 * KILOBYTE),   DRS_UAV);
-
                 data.counterObject          = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DRS_UAV, releaseTemporaries);
                 data.argumentBufferObject   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DRS_UAV, releaseTemporaries);
 
@@ -2259,15 +2262,18 @@ namespace FlexKit
                 else
                     data.readBackHandle = InvalidHandle_t;
 
-                builder.SetDebugName(data.clusterBufferObject,  "ClusterBufferObject");
-                builder.SetDebugName(data.indexBufferObject,    "indexBufferObject");
-                builder.SetDebugName(data.lightListBuffer,      "lightListBuffer");
-                builder.SetDebugName(data.lightBufferObject,    "lightBufferObject");
-                builder.SetDebugName(data.lightBVH,             "lightBVH");
-                builder.SetDebugName(data.lightLookupObject,    "lightLookupObject");
-                builder.SetDebugName(data.lightCounterObject,   "lightCounterObject");
-                builder.SetDebugName(data.counterObject,        "counterObject");
-                builder.SetDebugName(data.argumentBufferObject, "argumentBufferObject");
+
+                builder.SetDebugName(data.clusterBufferObject,      "ClusterBufferObject");
+                builder.SetDebugName(data.lightLists,               "lightLists");
+                builder.SetDebugName(data.indexBufferObject,        "indexBufferObject");
+                builder.SetDebugName(data.lightListBuffer,          "lightListBuffer");
+                builder.SetDebugName(data.lightBufferObject,        "lightBufferObject");
+                builder.SetDebugName(data.lightBVH,                 "lightBVH");
+                builder.SetDebugName(data.lightLookupObject,        "lightLookupObject");
+                builder.SetDebugName(data.lightCounterObject,       "lightCounterObject");
+                builder.SetDebugName(data.lightResolutionObject,    "lightResolutionObject");
+                builder.SetDebugName(data.counterObject,            "counterObject");
+                builder.SetDebugName(data.argumentBufferObject,     "argumentBufferObject");
 
 				builder.AddDataDependency(sceneDescription.lights);
 				builder.AddDataDependency(sceneDescription.cameras);
@@ -2626,6 +2632,8 @@ namespace FlexKit
                 data.pointLights    = builder.ReadTransition(lightBufferUpdate.lightBufferObject, DRS_NonPixelShaderResource);
                 data.camera         = camera;
 
+
+                builder.SetDebugName(data.indirectArgs, "indirectArgs");
 
                 builder.ReleaseVirtualResource(lightBufferUpdate.counterObject);
                 builder.ReleaseVirtualResource(lightBufferUpdate.lightBVH);
@@ -3016,7 +3024,6 @@ namespace FlexKit
 	}
 
 
-
 	/************************************************************************************************/
 
 
@@ -3075,6 +3082,8 @@ namespace FlexKit
 
 				data.passConstants              = reserveCB(128 * KILOBYTE);
 				data.passVertices               = reserveVB(sizeof(float4) * 6);
+
+                builder.SetDebugName(data.renderTargetObject, "renderTargetObject");
 
                 builder.ReleaseVirtualResource(lightPass.lightLists);
                 builder.ReleaseVirtualResource(lightPass.indexBufferObject);
@@ -3194,10 +3203,10 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    ID3D12PipelineState* CreatePBROITDrawPSO(RenderSystem* RS)
+    ID3D12PipelineState* CreateOITDrawPSO(RenderSystem* RS)
     {
-        auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\OIT.hlsl");
-		auto PShader = RS->LoadShader("PMain", "ps_6_0", "assets\\shaders\\OIT.hlsl");
+        auto VShader = RS->LoadShader("VMain",      "vs_6_0", "assets\\shaders\\OITPass.hlsl");
+		auto PShader = RS->LoadShader("PassMain",   "ps_6_0", "assets\\shaders\\OITPass.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
             { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -3237,10 +3246,10 @@ namespace FlexKit
             PSO_Desc.BlendState.RenderTarget[0].BlendOpAlpha    = D3D12_BLEND_OP_ADD;
 
             PSO_Desc.BlendState.RenderTarget[0].DestBlend       = D3D12_BLEND_INV_SRC_ALPHA;
-            PSO_Desc.BlendState.RenderTarget[0].DestBlendAlpha  = D3D12_BLEND_ZERO;
+            PSO_Desc.BlendState.RenderTarget[0].DestBlendAlpha  = D3D12_BLEND_INV_SRC_ALPHA;
 
             PSO_Desc.BlendState.RenderTarget[0].SrcBlend        = D3D12_BLEND_SRC_ALPHA;
-            PSO_Desc.BlendState.RenderTarget[0].SrcBlendAlpha   = D3D12_BLEND_ZERO;
+            PSO_Desc.BlendState.RenderTarget[0].SrcBlendAlpha   = D3D12_BLEND_SRC_ALPHA;
 
             PSO_Desc.BlendState.RenderTarget[1].BlendEnable     = true;
             PSO_Desc.BlendState.RenderTarget[1].BlendOp         = D3D12_BLEND_OP_ADD;
@@ -3261,10 +3270,73 @@ namespace FlexKit
     }
 
 
-    ID3D12PipelineState* CreatePBROITDrawAnimatedPSO(RenderSystem* RS)
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* CreateOITDrawAnimatedPSO(RenderSystem* RS)
     {
         return nullptr;
     }
+
+
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* CreateOITBlendPSO(RenderSystem* RS)
+    {
+        auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\OITBlend.hlsl");
+		auto PShader = RS->LoadShader("BlendMain", "ps_6_0", "assets\\shaders\\OITBlend.hlsl");
+
+		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+            { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "NORMAL",	    0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    1, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "TANGENT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    2, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,       3, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		};
+
+		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+
+		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		Depth_Desc.DepthFunc	                = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+		Depth_Desc.DepthEnable	                = false;
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+			PSO_Desc.pRootSignature        = RS->Library.RSDefault;
+			PSO_Desc.VS                    = VShader;
+			PSO_Desc.PS                    = PShader;
+			PSO_Desc.RasterizerState       = Rast_Desc;
+			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask            = UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSO_Desc.NumRenderTargets      = 1;
+			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+			PSO_Desc.SampleDesc.Count      = 1;
+			PSO_Desc.SampleDesc.Quality    = 0;
+			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
+			PSO_Desc.DepthStencilState     = Depth_Desc;
+
+            PSO_Desc.BlendState.IndependentBlendEnable          = true;
+            PSO_Desc.BlendState.RenderTarget[0].BlendEnable     = true;
+            PSO_Desc.BlendState.RenderTarget[0].BlendOp         = D3D12_BLEND_OP_ADD;
+            PSO_Desc.BlendState.RenderTarget[0].BlendOpAlpha    = D3D12_BLEND_OP_ADD;
+
+            PSO_Desc.BlendState.RenderTarget[0].DestBlend       = D3D12_BLEND_SRC_ALPHA;
+            PSO_Desc.BlendState.RenderTarget[0].DestBlendAlpha  = D3D12_BLEND_ONE;
+
+            PSO_Desc.BlendState.RenderTarget[0].SrcBlend        = D3D12_BLEND_INV_SRC_ALPHA;
+            PSO_Desc.BlendState.RenderTarget[0].SrcBlendAlpha   = D3D12_BLEND_ONE;
+		}
+
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		return PSO;
+    }
+
+
+    /************************************************************************************************/
 
 
     OITPass& WorldRender::RenderPBR_OITPass(
@@ -3298,11 +3370,15 @@ namespace FlexKit
 
                 data.depthTarget                = builder.DepthRead(depthTarget);
                 data.renderTargetObject         = renderTarget;
-                //data.transparencyTargetObject   = builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT),   DRS_RenderTarget);
-                data.counterObject              = builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16_FLOAT),       DRS_RenderTarget);
+                data.transparencyTargetObject   = builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT),   DRS_RenderTarget);
+                data.counterObject              = builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16_FLOAT),            DRS_RenderTarget);
+
+                builder.SetDebugName(data.counterObject, "counterObject");
 			},
             [=](OITPass& data, ResourceHandler& resources, Context& ctx, iAllocator& tempAllocator)
             {
+                ctx.BeginEvent_DEBUG("OIT");
+
                 const RootSignature&    rootSig     = resources.renderSystem().Library.RSDefault;
                 auto&                   materials   = MaterialComponent::GetComponent();
 
@@ -3322,24 +3398,27 @@ namespace FlexKit
                 const auto cameraConstantValues = GetCameraConstants(data.camera);
                 const ConstantBufferDataSet cameraConstants{ cameraConstantValues, constantBuffer };
 
-                //ctx.ClearRenderTarget(resources.GetRenderTarget(data.transparencyTargetObject));
+                ctx.ClearRenderTarget(resources.GetRenderTarget(data.transparencyTargetObject));
                 ctx.ClearRenderTarget(resources.GetRenderTarget(data.counterObject));
 
                 ctx.SetGraphicsConstantBufferView(0, cameraConstants);
 
                 ctx.SetScissorAndViewports({
-                        resources.GetRenderTarget(data.renderTargetObject),
+                        resources.GetRenderTarget(data.transparencyTargetObject),
                         resources.GetRenderTarget(data.counterObject),
                     });
 
                 ctx.SetRenderTargets(
                     {
-                        resources.GetRenderTarget(data.renderTargetObject),
+                        resources.GetRenderTarget(data.transparencyTargetObject),
                         resources.GetRenderTarget(data.counterObject),
                     },
                     true,
                     resources.GetRenderTarget(data.depthTarget)
                 );
+
+                ctx.BeginEvent_DEBUG("OIT Pass");
+
                 for (auto& draw : data.pvs)
                 {
                     const auto mesh         = draw.brush->MeshHandle;
@@ -3396,6 +3475,31 @@ namespace FlexKit
                             subMesh.BaseIndex);
 
                 }
+
+                ctx.EndEvent_DEBUG();
+                ctx.BeginEvent_DEBUG("OIT Blend");
+
+                ctx.SetPipelineState(resources.GetPipelineState(OITBLEND));
+
+                auto& descHeapLayout = rootSig.GetDescHeap(0);
+                DescriptorHeap descHeap;
+
+                descHeap.Init2(ctx, descHeapLayout, 2, &tempAllocator);
+                descHeap.SetSRV(ctx, 0, resources.PixelShaderResource(data.transparencyTargetObject, ctx));
+                descHeap.SetSRV(ctx, 1, resources.PixelShaderResource(data.counterObject, ctx));
+
+                ctx.SetGraphicsDescriptorTable(4, descHeap);
+
+                ctx.SetRenderTargets(
+                    {
+                        resources.GetRenderTarget(data.renderTargetObject),
+                    },
+                    false);
+
+                ctx.Draw(6);
+
+                ctx.EndEvent_DEBUG();
+                ctx.EndEvent_DEBUG();
             });
     }
 

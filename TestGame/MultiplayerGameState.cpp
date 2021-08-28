@@ -125,9 +125,9 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     auto& emitterView       = particleEmitter.AddView<ParticleEmitterView>(ParticleEmitterData{ &testParticleSystem, GetSceneNode(particleEmitter) });
     auto& emitterProperties = emitterView.GetData().properties;
 
-    emitterProperties.emissionSpread    = 0.01f;
+    emitterProperties.emissionSpread    = 1.0f;
     emitterProperties.minEmissionRate   = 0;
-    emitterProperties.maxEmissionRate   = 0;
+    emitterProperties.maxEmissionRate   = 1000;
 
     Translate(particleEmitter, { 0, 10, 0 });
 
@@ -140,7 +140,6 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     auto& ikBrushView   = IKTarget.AddView<BrushView>(model, GetSceneNode(IKTarget));
     auto& ikTargetView  = IKTarget.AddView<FABRIKTargetView>(FABRIKTarget{ GetSceneNode(IKTarget), (iAllocator*)framework.core.GetBlockMemory() });
 
-
     Translate(IKTarget, { 0, 6.0f, 0 });
 
     testAnimation.AddView<SceneNodeView<>>();
@@ -152,25 +151,29 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     SetTransparent(testAnimation, true);
     brushView.SetTransparent(true);
 
-    for (size_t I = 0; I < 10; I++)
-    {
-        auto& transparentObject = worldState.CreateGameObject();
-        transparentObject.AddView<SceneNodeView<>>(float3{ 10, 0, 0 } + float3{ I * 5.0f, 0, 0 });
-        transparentObject.AddView<BrushView>(
-            playerCharacterModel,
-            GetSceneNode(transparentObject)).SetTransparent(true);
+    for (size_t Y = 0; Y < 20; Y++)
+        for (size_t X = 0; X < 20; X++)
+        {
+            auto& transparentObject = worldState.CreateGameObject();
+            auto& sceneNodeView     = transparentObject.AddView<SceneNodeView<>>(float3{ 10, 0, 0 } + float3{ X * 1.0f,  0.0f, Y * 1.0f });
+            auto& brushView         = transparentObject.AddView<BrushView>(playerCharacterModel,GetSceneNode(transparentObject));
 
-        scene.AddGameObject(
-            transparentObject,
-            GetSceneNode(transparentObject));
-    }
+            brushView.SetTransparent(true);
+            brushView.GetBrush().MatProperties.albedo = float3{ 1.0f / 20 * X, 1.0f / 20 * X, 1.0f / 40 * X * Y };
+
+            scene.AddGameObject(
+                transparentObject,
+                GetSceneNode(transparentObject));
+
+            SetBoundingSphereFromMesh(transparentObject);
+        }
 
     IKController.AddTarget(IKTarget);
     IKController.SetEndEffector(skeletonView.FindJoint("EndEffector"));
-    //animator.Play(*testAnimationResource, true);
+    //animatorView.Play(*testAnimationResource, true);
 
     brushView.GetBrush().Transparent    = true;
-    //brushView.GetBrush().Skinned        = true;
+    brushView.GetBrush().Skinned        = true;
 
     scene.AddGameObject(testAnimation, GetSceneNode(testAnimation));
     scene.AddGameObject(IKTarget, GetSceneNode(IKTarget));
@@ -203,7 +206,7 @@ UpdateTask* LocalGameState::Update(EngineCore& core, UpdateDispatcher& dispatche
     auto tasks = worldState.Update(core, dispatcher, dT);
 
     static float t = 0.0f;
-    //SetWorldPosition(particleEmitter, float3{ 100.0f * sin(t), 20, 100.0f * cos(t) });
+    SetWorldPosition(particleEmitter, float3{ 100.0f * sin(t), 20, 100.0f * cos(t) });
     SetWorldPosition(IKTarget, float3{ 2.0f * cos(t), 4.0f * sin(t / 2.0f) + 8.0f, 4.0f * sin(t) });
 
     t += dT;
@@ -222,9 +225,8 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
     frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
     frameGraph.Resources.AddDepthBuffer(base.depthBuffer.Get());
 
-    CameraHandle activeCamera = worldState.GetActiveCamera();
+    const CameraHandle activeCamera = worldState.GetActiveCamera();
     SetCameraAspectRatio(activeCamera, base.renderWindow.GetAspectRatio());
-
 
     auto& scene             = worldState.GetScene();
     auto& transforms        = QueueTransformUpdateTask(dispatcher);
@@ -241,13 +243,11 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 
     cameras.AddInput(transforms);
 
-    /*
     auto& emitterTask            = UpdateParticleEmitters(dispatcher, dT);
     auto& particleSystemUpdate   = testParticleSystem.Update(dT, core.Threads, dispatcher);
 
     emitterTask.AddInput(transforms);
     emitterTask.AddOutput(particleSystemUpdate);
-    */
 
     WorldRender_Targets targets = {
         base.renderWindow.GetBackBuffer(),
@@ -289,7 +289,6 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
             .transformDependency    = transforms,
             .cameraDependency       = cameras,
 
-            /*
             .additionalGbufferPasses  = {
                 [&]()
                 {
@@ -328,7 +327,6 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
                             allocator);
                     }
                 }
-            */
         };
 
         auto drawnScene = base.render.DrawScene(
@@ -339,7 +337,6 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
                                 core.GetBlockMemory(),
                                 core.GetTempMemoryMT());
 
-        if(false)
         auto& feedbackPass = base.streamingEngine.TextureFeedbackPass(
                                 dispatcher,
                                 frameGraph,
@@ -355,9 +352,9 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
     if(0)
     {
         // Draw Skeleton overlay
-        auto Skeleton = GetSkeleton(testAnimation);
-        auto pose     = GetPoseState(testAnimation);
-        auto node     = GetSceneNode(testAnimation);
+        const auto Skeleton = GetSkeleton(testAnimation);
+        const auto pose     = GetPoseState(testAnimation);
+        const auto node     = GetSceneNode(testAnimation);
 
 
         static double T = 0.0f;

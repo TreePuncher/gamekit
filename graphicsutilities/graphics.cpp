@@ -6120,7 +6120,8 @@ namespace FlexKit
 		}
 
 		for (auto& resource : delayRelease)
-			resource.resource->Release();
+            if(resource.resource)
+			    resource.resource->Release();
 
 		delayRelease.Release();
 		UserEntries.Release();
@@ -9046,7 +9047,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2014-2020 Robert May
+Copyright (c) 2014-2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

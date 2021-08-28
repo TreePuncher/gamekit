@@ -702,6 +702,16 @@ namespace FlexKit
             return Transition(resource, DRS_UAV, ctx);
 		}
 
+        ResourceHandle PixelShaderResource(const FrameResourceHandle resource, Context& ctx) const
+        {
+            return Transition(resource, DRS_PixelShaderResource, ctx);
+        }
+
+        ResourceHandle NonPixelShaderResource(const FrameResourceHandle resource, Context& ctx) const
+        {
+            return Transition(resource, DRS_NonPixelShaderResource, ctx);
+        }
+
 		DeviceResourceState GetObjectState(FrameResourceHandle handle) const
 		{
 			auto res = find(SubNodeTracking,

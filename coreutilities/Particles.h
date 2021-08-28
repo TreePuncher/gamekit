@@ -174,7 +174,7 @@ namespace FlexKit
             const auto variance = properties.emissionVariance;
             const float spread  = properties.emissionSpread;
 
-            if (maxRate == minRate == 0.0f)
+            if (maxRate == minRate && minRate == 0.0f)
                 return;
 
             std::random_device                      generator;

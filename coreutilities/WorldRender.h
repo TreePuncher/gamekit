@@ -244,8 +244,9 @@ namespace FlexKit
     constexpr PSOHandle CREATEINITIALLUMANANCELEVEL = PSOHandle(GetTypeGUID(CREATEINITIALLUMANANCELEVEL));
     constexpr PSOHandle CREATELUMANANCELEVEL        = PSOHandle(GetTypeGUID(CREATELUMANANCELEVEL));
 
-    constexpr PSOHandle OITDRAW             = PSOHandle(GetTypeGUID(OITDRAW));
-    constexpr PSOHandle OITDRAWANIMATED     = PSOHandle(GetTypeGUID(OITDRAWANIMATED));
+    constexpr PSOHandle OITBLEND                    = PSOHandle(GetTypeGUID(OITBLEND));
+    constexpr PSOHandle OITDRAW                     = PSOHandle(GetTypeGUID(OITDRAW));
+    constexpr PSOHandle OITDRAWANIMATED             = PSOHandle(GetTypeGUID(OITDRAWANIMATED));
 
     constexpr PSOHandle DEPTHPREPASS                = PSOHandle(GetTypeGUID(DEPTHPREPASS));
     constexpr PSOHandle FORWARDDRAWINSTANCED	    = PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
@@ -304,13 +305,14 @@ namespace FlexKit
 	ID3D12PipelineState* CreateShadowMapPass                (RenderSystem* RS);
     ID3D12PipelineState* CreateShadowMapAnimatedPass        (RenderSystem* RS);
 
-    ID3D12PipelineState* CreatePBROITDrawPSO                (RenderSystem* RS);
-    ID3D12PipelineState* CreatePBROITDrawAnimatedPSO        (RenderSystem* RS);
+    ID3D12PipelineState* CreateOITBlendPSO                  (RenderSystem* RS);
+    ID3D12PipelineState* CreateOITDrawPSO                   (RenderSystem* RS);
+    ID3D12PipelineState* CreateOITDrawAnimatedPSO           (RenderSystem* RS);
 
     ID3D12PipelineState* CreateDEBUGBVHVIS                  (RenderSystem* RS);
 
-    ID3D12PipelineState* CreateBuildZLayer      (RenderSystem* RS);
-    ID3D12PipelineState* CreateDepthBufferCopy  (RenderSystem* RS);
+    ID3D12PipelineState* CreateBuildZLayer                  (RenderSystem* RS);
+    ID3D12PipelineState* CreateDepthBufferCopy              (RenderSystem* RS);
 
 
     /************************************************************************************************/
