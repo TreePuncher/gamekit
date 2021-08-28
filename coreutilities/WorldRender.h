@@ -685,7 +685,7 @@ namespace FlexKit
 
         CameraHandle            camera;
         FrameResourceHandle     renderTargetObject;
-        FrameResourceHandle     transparencyTargetObject;
+        FrameResourceHandle     accumalatorObject;
         FrameResourceHandle     counterObject;
         FrameResourceHandle     depthTarget;
 	};
