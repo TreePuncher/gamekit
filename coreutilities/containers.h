@@ -554,7 +554,11 @@ namespace FlexKit
 
 		void reserve(size_t NewSize)
 		{
-			if (!A || Max < NewSize)
+            if (!NewSize)
+            {
+                clear();
+            }
+            else if (!A || Max < NewSize)
 			{// Increase Size
 				FK_ASSERT(Allocator);
 				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * NewSize);

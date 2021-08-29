@@ -10,11 +10,16 @@ namespace FlexKit
     {
         const auto idx = handles[material];
 
-        materials[idx].refCount--;
+        if(materials[idx].refCount)
+            materials[idx].refCount--;
 
         if (materials[idx].refCount == 0)
         {
             auto& textures = materials[idx].Textures;
+            auto parent = materials[idx].parent;
+
+            if (parent != InvalidHandle_t)
+                ReleaseMaterial(parent);
 
             for (auto& texture : textures)
                 ReleaseTexture(texture);
@@ -66,6 +71,12 @@ namespace FlexKit
     {
         const auto clone = (index_t)materials.push_back(materials[handles[sourceMaterial]]);
         materials[clone].refCount = 0;
+
+        auto& material = materials[clone];
+        material.refCount = 0;
+
+        if (material.parent != InvalidHandle_t)
+            AddRef(material.parent);
 
         const auto handle = handles.GetNewHandle();
         handles[handle] = clone;
@@ -133,6 +144,8 @@ namespace FlexKit
 
         auto newMaterial = CreateMaterial();
         auto rdCtx = ReadContext{};
+
+        Add2Pass(newMaterial, PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED)});
 
         if (materialBlob.materials.size() > 1)
         {

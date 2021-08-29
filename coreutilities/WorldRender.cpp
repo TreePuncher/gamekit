@@ -2765,7 +2765,7 @@ namespace FlexKit
 		auto& pass = frameGraph.AddNode<GBufferPass>(
 			GBufferPass{
 				gbuffer,
-				sceneDescription.PVS.GetData().solid,
+				sceneDescription.PVS,
 				sceneDescription.skinned.GetData().skinned,
 				reserveCB,
 			},
@@ -2794,11 +2794,23 @@ namespace FlexKit
 					}
 				};
 
-				if (!data.pvs.size())
+                auto& passes = data.pvs.GetData().passes;
+                const PVS* pvs = nullptr;
+                if (auto res = std::find_if(passes.begin(), passes.end(),
+                    [](auto& pass) -> bool
+                    {
+                        return pass.pass == PassHandle{GetCRCGUID(PBR_CLUSTERED_DEFERRED)};
+                    }); res != passes.end())
+                {
+                    pvs = &res->pvs;
+                }
+                else return;
+
+				if (!pvs->size())
 					return;
 
                 size_t brushCount = 0;
-                for (auto& brush : data.pvs)
+                for (auto& brush : *pvs)
                 {
                     auto* triMesh       = GetMeshResource(brush->MeshHandle);
                     const auto lodIdx   = brush.LODlevel;
@@ -2881,7 +2893,7 @@ namespace FlexKit
                 defaultHeap.NullFill(ctx);
 
 				// unskinned models
-				for (auto& brush : data.pvs)
+				for (auto& brush : *pvs)
 				{
 					auto constants    = brush->GetConstants();
 					auto* triMesh     = GetMeshResource(brush->MeshHandle);
@@ -3362,11 +3374,13 @@ namespace FlexKit
 
                 reserveCB,
 
-                sceneDesc.PVS.GetData().transparent,
+                sceneDesc.PVS,
                 sceneDesc.camera
             },
 			[&](FrameGraphNodeBuilder& builder, OITPass& data)
 			{
+                builder.AddDataDependency(sceneDesc.PVS);
+
                 const auto WH = builder.GetRenderSystem().GetTextureWH(depthTarget);
 
                 data.depthTarget                = builder.DepthRead(depthTarget);
@@ -3392,9 +3406,24 @@ namespace FlexKit
 
                 ctx.SetPipelineState(resources.GetPipelineState(OITDRAW));
 
+                auto& passes    = data.PVS.GetData().passes;
+                const PVS* pvs  = nullptr;
+                if (auto res = std::find_if(passes.begin(), passes.end(),
+                    [](auto& pass) -> bool
+                    {
+                        return pass.pass == PassHandle{GetCRCGUID(OIT_MCGUIRE)};
+                    }); res != passes.end())
+                {
+                    pvs = &res->pvs;
+                }
+                else return;
+
+                if (!pvs->size())
+                    return;
+
                 CBPushBuffer constantBuffer{
                     data.reserveCB(
-                        AlignedSize<Brush::VConstantsLayout>() * data.pvs.size() +
+                        AlignedSize<Brush::VConstantsLayout>() * pvs->size() +
                         AlignedSize<Camera::ConstantBuffer>() )};
 
                 const auto cameraConstantValues = GetCameraConstants(data.camera);
@@ -3421,7 +3450,7 @@ namespace FlexKit
 
                 ctx.BeginEvent_DEBUG("OIT Pass");
 
-                for (auto& draw : data.pvs)
+                for (auto& draw : *pvs)
                 {
                     const auto mesh         = draw.brush->MeshHandle;
                     const auto material     = draw.brush->material;

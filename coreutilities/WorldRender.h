@@ -576,9 +576,9 @@ namespace FlexKit
 
 	struct GBufferPass
 	{
-		GBuffer&                    gbuffer;
-		const PVS&                  pvs;
-		const PosedBrushList&       skinned;
+		GBuffer&                            gbuffer;
+        UpdateTaskTyped<GetPVSTaskData>&    pvs;
+		const PosedBrushList&               skinned;
 
 		ReserveConstantBufferFunction   reserveCB;
 
@@ -681,7 +681,7 @@ namespace FlexKit
 
         ReserveConstantBufferFunction       reserveCB;
 
-        const PVS&                          pvs;
+        UpdateTaskTyped<GetPVSTaskData>&    PVS;
 
         CameraHandle            camera;
         FrameResourceHandle     renderTargetObject;
