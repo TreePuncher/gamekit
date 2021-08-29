@@ -219,8 +219,9 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
 
 Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 {
-    const float4 albedo     = textureCount >= 1 ? SampleVirtualTexture(albedoTexture, BiLinear, IN.UV) : float4(1, 1, 1, 1);
-    
+    const float4 albedo     = textureCount >= 1 ? SampleVirtualTexture(albedoTexture, BiLinear, IN.UV) : Albedo;
+
+    /*
     if(albedo.w < 0.5f)
     {   
         Deferred_OUT gbuffer;
@@ -231,6 +232,7 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
         
         return gbuffer;
     }
+    */
 
     Deferred_OUT gbuffer;
 

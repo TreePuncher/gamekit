@@ -152,13 +152,18 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     brushView.SetTransparent(true);
 
     auto& materials = MaterialComponent::GetComponent();
+    auto testAnimationMaterial = materials.CreateMaterial();
+    materials.Add2Pass(testAnimationMaterial, PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
+    testAnimation.AddView<MaterialComponentView>(testAnimationMaterial);
+    SetMaterialHandle(testAnimation, testAnimationMaterial);
+
+
     auto parentMaterial     = materials.CreateMaterial();
     auto defaultMaterial    = materials.CreateMaterial(parentMaterial);
 
-    materials.Add2Pass(parentMaterial, GetCRCGUID(Deferred));
-    materials.Add2Pass(parentMaterial, GetCRCGUID(Forward));
+    materials.Add2Pass(parentMaterial, PassHandle{ GetCRCGUID(OIT_MCGUIRE) });
 
-    materials.SetProperty(parentMaterial,   GetCRCGUID(PBR_ALBEDO),     float4{ 0.5f, 0.5f, 0.5f, 0.1f });
+    materials.SetProperty(parentMaterial,   GetCRCGUID(PBR_ALBEDO),     float4{ 0.5f, 0.0f, 0.5f, 0.1f });
     materials.SetProperty(parentMaterial,   GetCRCGUID(PBR_SPECULAR),   float4{ 0.9f, 0.9f, 0.9f, 0.0f });
 
     for (size_t Y = 0; Y < 20; Y++)
@@ -171,7 +176,7 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
 
 
             brushView.SetTransparent(true);
-            materialView.SetProperty(GetCRCGUID(PBR_ALBEDO), float4{ 1.0f / 20 * X, 1.0f / 20 * X, 1.0f / 40 * X * Y, 0.1f });
+            //materialView.SetProperty(GetCRCGUID(PBR_ALBEDO), float4{ 1.0f / 20 * X, 1.0f / 20 * X, 1.0f / 40 * X * Y, 0.1f });
 
             SetMaterialHandle(transparentObject, materialView.handle);
 
