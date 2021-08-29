@@ -107,6 +107,14 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
     gameObject.AddView<SceneNodeView<>>(node);
     gameObject.AddView<BrushView>(triMesh, node);
 
+    auto& materials = MaterialComponent::GetComponent();
+    auto material = materials.CreateMaterial();
+    materials.Add2Pass(material, PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
+    auto& materialView = gameObject.AddView<MaterialComponentView>(material);
+    SetMaterialHandle(gameObject, material);
+
+    materialView.SetProperty(GetCRCGUID(PBR_ALBEDO), float4{ 1, 0, 0, 0.5f });
+
     desc.scene.AddGameObject(gameObject, node);
 
     return gameObject;

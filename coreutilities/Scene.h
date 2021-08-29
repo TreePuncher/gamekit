@@ -622,9 +622,9 @@ namespace FlexKit
         uint32_t    recommendedLOD;
     };
 
-    ComputeLod_RES ComputeLOD(Brush& e, const float3 CameraPosition, float maxZ);
+    ComputeLod_RES ComputeLOD(const Brush& e, const float3 CameraPosition, const float maxZ);
 
-    void PushPV(Brush& e, PVS& pvs, const float3 CameraPosition, float maxZ = 10'000.0f);
+    void PushPV(const Brush& e, PVS& pvs, const float3 CameraPosition, float maxZ = 10'000.0f);
 
     struct SceneRayCastResult
     {
@@ -690,14 +690,23 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    struct PassPVS
+    {
+        PassHandle  pass;
+        PVS         pvs;
+    };
+
+    
+
 	struct GetPVSTaskData
 	{
 		CameraHandle	camera;
-		Scene*	scene; // Source Scene
+		Scene*	        scene; // Source Scene
 		PVS				solid;
 		PVS				transparent;
 
 		UpdateTask*		task;
+        Vector<PassPVS> passes;
 
 		operator UpdateTask*() { return task; }
 	};
@@ -716,7 +725,7 @@ namespace FlexKit
 	FLEXKITAPI void UpdateScenePoseTransform	(Scene* SM );
 	FLEXKITAPI void UpdateShadowCasters			(Scene* SM);
 
-    FLEXKITAPI void         GatherScene(Scene* SM, CameraHandle Camera, PVS& solid, PVS& transparent);
+    FLEXKITAPI void         GatherScene(Scene* SM, CameraHandle Camera, PVS& solid);
     FLEXKITAPI GatherTask&  GatherScene(UpdateDispatcher& dispatcher, Scene* scene, CameraHandle C, iAllocator& allocator);
 
     FLEXKITAPI void LoadLodLevels(UpdateDispatcher& dispatcher, GatherTask& PVS, CameraHandle camera, RenderSystem& renderSystem, iAllocator& allocator);
