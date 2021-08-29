@@ -113,7 +113,6 @@ namespace FlexKit
 
 	struct BrushAnimationState;
 	struct PoseState;
-	struct TextureSet;
 
 	struct FLEXKITAPI Brush
 	{
@@ -138,7 +137,7 @@ namespace FlexKit
             float   roughness   = 0.5f;
             float   anisotropic = 0.0f;
             float   metallic    = 0.0f;
-		}MatProperties;	// 32 
+		};	// 32 
 
 		struct alignas(256) VConstantsLayout
 		{

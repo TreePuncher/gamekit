@@ -151,16 +151,29 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     SetTransparent(testAnimation, true);
     brushView.SetTransparent(true);
 
+    auto& materials = MaterialComponent::GetComponent();
+    auto parentMaterial     = materials.CreateMaterial();
+    auto defaultMaterial    = materials.CreateMaterial(parentMaterial);
+
+    materials.Add2Pass(parentMaterial, GetCRCGUID(Deferred));
+    materials.Add2Pass(parentMaterial, GetCRCGUID(Forward));
+
+    materials.SetProperty(parentMaterial,   GetCRCGUID(PBR_ALBEDO),     float4{ 0.5f, 0.5f, 0.5f, 0.1f });
+    materials.SetProperty(parentMaterial,   GetCRCGUID(PBR_SPECULAR),   float4{ 0.9f, 0.9f, 0.9f, 0.0f });
+
     for (size_t Y = 0; Y < 20; Y++)
         for (size_t X = 0; X < 20; X++)
         {
             auto& transparentObject = worldState.CreateGameObject();
             auto& sceneNodeView     = transparentObject.AddView<SceneNodeView<>>(float3{ 10, 0, 0 } + float3{ X * 1.0f,  0.0f, Y * 1.0f });
             auto& brushView         = transparentObject.AddView<BrushView>(playerCharacterModel,GetSceneNode(transparentObject));
+            auto& materialView      = transparentObject.AddView<MaterialComponentView>(materials.CloneMaterial(defaultMaterial));
+
 
             brushView.SetTransparent(true);
-            brushView.GetBrush().MatProperties.albedo = float3{ 1.0f / 20 * X, 1.0f / 20 * X, 1.0f / 40 * X * Y };
-            //brushView.GetBrush().MatProperties.albedo = float3{ 0.1f, 0.0f, 0.0f };
+            materialView.SetProperty(GetCRCGUID(PBR_ALBEDO), float4{ 1.0f / 20 * X, 1.0f / 20 * X, 1.0f / 40 * X * Y, 0.1f });
+
+            SetMaterialHandle(transparentObject, materialView.handle);
 
             scene.AddGameObject(
                 transparentObject,
