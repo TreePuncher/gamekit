@@ -72,7 +72,8 @@ namespace FlexKit
             renderSystem    { IN_renderSystem },
             materials       { allocator },
             textures        { allocator },
-            handles         { allocator }
+            handles         { allocator },
+            activePasses    { allocator }
         {
             materials.reserve(256);
         }
@@ -90,7 +91,10 @@ namespace FlexKit
             std::scoped_lock lock{ m };
 
             const auto handle         = handles.GetNewHandle();
-            const auto materialIdx    = (index_t)materials.push_back({ 1, handle, IN_parent, {}, {}, {}, {}  });
+            const auto materialIdx    = (index_t)materials.push_back({ 0, handle, IN_parent, {}, {}, {}, {}  });
+
+            if(IN_parent != InvalidHandle_t)
+                AddRef(IN_parent);
 
             handles[handle] = materialIdx;
 
@@ -146,7 +150,7 @@ namespace FlexKit
             }
 
 
-            void Add2Pass(const uint32_t ID)
+            void Add2Pass(const PassHandle ID)
             {
                 GetComponent().Add2Pass(handle, ID);
             }
@@ -216,9 +220,9 @@ namespace FlexKit
         void AddTexture(GUID_t textureAsset, MaterialHandle material, ReadContext& readContext, const bool LoadLowest = false);
         void AddComponentView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 
-        void Add2Pass(MaterialHandle& material, const uint32_t ID)
+        void Add2Pass(MaterialHandle& material, const PassHandle ID)
         {
-            if (materials[handles[material]].refCount != 1)
+            if (materials[handles[material]].refCount > 1)
             {
                 auto newHandle = GetComponent().CloneMaterial(material);
                 GetComponent().ReleaseMaterial(material);
@@ -228,32 +232,57 @@ namespace FlexKit
 
             auto& passes = materials[handles[material]].Passes;
             passes.emplace_back(ID);
+
+            if (auto res = std::find(activePasses.begin(), activePasses.end(), ID); res == activePasses.end())
+                activePasses.push_back(ID);
         }
 
-        static_vector<PassHandle> GetPasses(MaterialHandle& material)
+        static_vector<PassHandle>   GetPasses(MaterialHandle material) const
         {
+            if (material == InvalidHandle_t)
+                return {};
+
             auto& materialData = materials[handles[material]];
             if (materialData.Passes.size())
                 return materialData.Passes;
 
-            if(materialData.parent != InvalidHandle_t)
+            if (materialData.parent != InvalidHandle_t)
                 return GetPasses(materialData.parent);
+            else
+                return {};
+        }
+
+        Vector<PassHandle>          GetActivePasses(iAllocator& allocator) const
+        {
+            Vector<PassHandle> passes{ &allocator };
+            passes = activePasses;
+
+            return passes;
         }
 
 
         template<typename TY>
         void SetProperty(MaterialHandle& material, const uint32_t ID, TY value)
         {
-            if (materials[handles[material]].refCount != 1)
+            if (materials[handles[material]].refCount > 1)
             {
-                auto newHandle = GetComponent().CloneMaterial(material);
-                GetComponent().ReleaseMaterial(material);
+                auto newHandle = CloneMaterial(material);
+                ReleaseMaterial(material);
 
                 material = newHandle;
             }
 
             auto& properties = materials[handles[material]].Properties;
-            properties.emplace_back(ID, value);
+
+            if (MaterialProperty* prop = std::find_if(
+                    properties.begin(), properties.end(),
+                    [&](auto& prop) { return prop.ID == ID;});
+                prop != properties.end())
+            {
+                prop->value = value;
+            }
+            else
+                properties.emplace_back(ID, value);
         }
 
 
@@ -282,11 +311,14 @@ namespace FlexKit
                 return {};
         }
 
+
         RenderSystem&                   renderSystem;
         TextureStreamingEngine&         streamEngine;
 
         Vector<MaterialComponentData>                   materials;
         Vector<MaterialTextureEntry>                    textures;
+        Vector<PassHandle>                              activePasses;
+
         HandleUtilities::HandleTable<MaterialHandle>    handles;
         std::mutex                                      m;
     };
@@ -303,7 +335,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2020 Robert May
+Copyright (c) 2015 - 2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

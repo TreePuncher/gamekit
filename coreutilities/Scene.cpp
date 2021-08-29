@@ -339,12 +339,12 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    ComputeLod_RES ComputeLOD(Brush& e, const float3 CameraPosition, float maxZ)
+    ComputeLod_RES ComputeLOD(const Brush& brush, const float3 CameraPosition, const float maxZ)
     {
-        auto brushPosition      = GetPositionW(e.Node);
+        auto brushPosition      = GetPositionW(brush.Node);
         auto distanceFromView   = (CameraPosition - brushPosition).magnitude();
 
-        auto* mesh                      = GetMeshResource(e.MeshHandle);
+        auto* mesh                      = GetMeshResource(brush.MeshHandle);
         const auto maxLod               = mesh->lods.size() - 1;
         const auto highestLoadedLod     = mesh->GetHighestLoadedLodIdx();
 
@@ -363,7 +363,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void PushPV(Brush& brush, PVS& pvs, const float3 CameraPosition, float maxZ)
+    void PushPV(const Brush& brush, PVS& pvs, const float3 CameraPosition, float maxZ)
 	{
         auto brushPosition      = GetPositionW(brush.Node);
         auto distanceFromView   = (CameraPosition - brushPosition).magnitude();
@@ -406,15 +406,13 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-	void GatherScene(Scene* SM, CameraHandle Camera, PVS& out, PVS& T_out)
+	void GatherScene(Scene* SM, CameraHandle Camera, PVS& pvs)
 	{
         ProfileFunction();
 
-		FK_ASSERT(&out		!= &T_out);
 		FK_ASSERT(Camera	!= CameraHandle{(unsigned int)INVALIDHANDLE});
 		FK_ASSERT(SM		!= nullptr);
-		FK_ASSERT(&out		!= nullptr);
-		FK_ASSERT(&T_out	!= nullptr);
+		FK_ASSERT(&pvs      != nullptr);
 
 
 		auto& cameraComponent = CameraComponent::GetComponent();
@@ -442,16 +440,10 @@ namespace FlexKit
 				Apply(*potentialVisible.entity,
 					[&](BrushView& view)
 					{
-                        auto& brush = view.GetBrush();
+                        const auto& brush = view.GetBrush();
 
-						if (!brush.Skinned && Intersects(F, BS))
-						{
-                            if (brush.Transparent) {
-                                PushPV(brush, T_out, POS);
-                            }
-                            else
-                                PushPV(brush, out, POS);
-						}
+						if (Intersects(F, BS))
+                            PushPV(brush, pvs, POS);
 					});
 			}
 		}
@@ -471,18 +463,43 @@ namespace FlexKit
 
                 builder.SetDebugString("Gather Scene");
 			},
-			[&allocator = allocator](GetPVSTaskData& data, iAllocator& threadAllocator)
+			[&allocator = allocator, &threads = *dispatcher.threads](GetPVSTaskData& data, iAllocator& threadAllocator)
 			{
                 ProfileFunction();
 
-                PVS solid       { &threadAllocator };
-                PVS transparent { &threadAllocator };
+                PVS pvs{ &threadAllocator };
 
-                GatherScene(data.scene, data.camera, solid, transparent);
-				SortPVS(&solid, &CameraComponent::GetComponent().GetCamera(data.camera));
+                auto activePasses = MaterialComponent::GetComponent().GetActivePasses(threadAllocator);
 
-                data.solid          = solid.Copy(allocator);
-                data.transparent    = transparent.Copy(allocator);
+                GatherScene(data.scene, data.camera, pvs);
+				SortPVS(&pvs, &CameraComponent::GetComponent().GetCamera(data.camera));
+
+                Vector<PassPVS> passes{ &allocator };
+
+                for (auto& pass : activePasses)
+                    passes.emplace_back(pass, &allocator);
+
+                Parallel_For(
+                    threads, threadAllocator,
+                    passes.begin(), passes.end(), 2,
+                    [&](PassPVS& pass, iAllocator& threadAllocator)
+                    {
+                        const auto passID = pass.pass;
+                        auto& materials = MaterialComponent::GetComponent();
+
+                        pass.pvs.reserve(128);
+
+                        for (auto& visable: pvs)
+                        {
+                            const auto passes = materials.GetPasses(visable.brush->material);
+
+                            if (std::find(passes.begin(), passes.end(), passID) != passes.end())
+                                pass.pvs.push_back(visable);
+                        }
+                    });
+
+                data.solid  = pvs.Copy(allocator);
+                data.passes = std::move(passes);
 			});
 
 		return task;

@@ -172,24 +172,24 @@ namespace FlexKit
 	struct PVEntry
 	{
 		PVEntry() {}
-		PVEntry(Brush& b) : OcclusionID(-1), brush(&b){}
+		PVEntry(const Brush& b) : OcclusionID(-1), brush(&b){}
 
-		PVEntry(Brush& b, size_t ID, size_t sortID, uint32_t lodIdx) :
+		PVEntry(const Brush& b, size_t ID, size_t sortID, uint32_t lodIdx) :
             OcclusionID { ID },
             brush       { &b },
             SortID      { sortID },
             LODlevel    { lodIdx }  {}
 
-		size_t		SortID          = 0;
-		size_t		OcclusionID     = 0;
-        uint32_t    LODlevel        = 0;
-		Brush*	    brush           = nullptr;
+		size_t		    SortID          = 0;
+		size_t		    OcclusionID     = 0;
+        uint32_t        LODlevel        = 0;
+		const Brush*	brush           = nullptr;
 
-        Brush* operator -> ()       { return brush; }
-        Brush* operator -> () const { return brush; }
+        const Brush* operator -> ()       { return brush; }
+        const Brush* operator -> () const { return brush; }
 
-		operator Brush* () { return brush; }
-		operator size_t () { return SortID; }
+		operator const Brush* ()    { return brush; }
+		operator size_t ()          { return SortID; }
 
 		bool operator < (PVEntry rhs)
 		{
