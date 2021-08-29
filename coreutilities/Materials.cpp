@@ -65,7 +65,7 @@ namespace FlexKit
     MaterialHandle MaterialComponent::CloneMaterial(MaterialHandle sourceMaterial)
     {
         const auto clone = (index_t)materials.push_back(materials[handles[sourceMaterial]]);
-        materials[clone].refCount = 1;
+        materials[clone].refCount = 0;
 
         const auto handle = handles.GetNewHandle();
         handles[handle] = clone;

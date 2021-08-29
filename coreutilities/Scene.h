@@ -135,7 +135,6 @@ namespace FlexKit
 
     TriMeshHandle GetTriMesh(GameObject& go);
 
-    void SetMaterialParams(GameObject& go, float3 albedo, float kS, float IOR, float anisotropic, float roughness, float metallic);
     void ToggleSkinned(GameObject& go, bool enabled);
 
 

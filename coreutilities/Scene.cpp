@@ -197,25 +197,6 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void SetMaterialParams(GameObject& go, float3 albedo, float kS, float IOR, float anisotropic, float roughness, float metallic)
-    {
-        return Apply(go,
-            [&](BrushView& brushView)
-            {
-                auto& brushData                     = brushView.GetBrush();
-                brushData.MatProperties.albedo      = albedo;
-                brushData.MatProperties.kS          = kS;
-                brushData.MatProperties.IOR         = IOR;
-                brushData.MatProperties.anisotropic = anisotropic;
-                brushData.MatProperties.roughness   = roughness;
-                brushData.MatProperties.metallic    = metallic;
-            });
-    }
-
-
-    /************************************************************************************************/
-
-
     void ToggleSkinned(GameObject& go, bool enabled)
     {
         return Apply(go,
@@ -1077,7 +1058,25 @@ namespace FlexKit
 
 		Brush::VConstantsLayout	constants;
 
-        constants.MP        = MatProperties;
+        auto& materials = MaterialComponent::GetComponent();
+
+        if (material != InvalidHandle_t)
+        {
+            const auto albedo   = materials.GetProperty<float4>(material, GetCRCGUID(PBR_ALBEDO)).value_or(float4{ 0.0, 0.5, 0.0, 0.1f });
+            const auto specular = materials.GetProperty<float4>(material, GetCRCGUID(PBR_SPECULAR)).value_or(float4{ 0.9, 0.9, 0.9, 0.0f });
+
+            constants.MP.albedo     = albedo.xyz();
+            constants.MP.kS         = specular.a;
+            constants.MP.metallic   = specular.w;
+        }
+        else
+        {
+            constants.MP.albedo     = float3{ 1.0, 0.0, 1.0 };
+            constants.MP.kS         = 0.9f;
+            constants.MP.metallic   = 0.0f;
+        }
+
+        //constants.MP        = MatProperties;
         constants.Transform = XMMatrixToFloat4x4(WT).Transpose();
 
         if (material != InvalidHandle_t)
