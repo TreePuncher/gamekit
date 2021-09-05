@@ -1135,7 +1135,7 @@ namespace FlexKit
             RTPool                      { renderSystem, 512 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::RenderTarget, persistent },
 
             voxelBuffer                 { renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(64 * MEGABYTE)) },
-            octreeBuffer                { renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(64 * MEGABYTE)) },
+            octreeBuffer                { renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(512 * MEGABYTE)) },
 
             timeStats                   { renderSystem.CreateTimeStampQuery(256) },
             timingReadBack              { renderSystem.CreateReadBackBuffer(512) },
@@ -1249,9 +1249,6 @@ namespace FlexKit
                 }
             });
 
-        voxelVolumes[0] = renderSystem.CreateGPUResource(GPUResourceDesc::UAVTexture3D({ 128, 128, 128 }, DeviceFormat::R8G8B8A8_UNORM, false, 3));
-        voxelVolumes[1] = renderSystem.CreateGPUResource(GPUResourceDesc::UAVTexture3D({ 128, 128, 128 }, DeviceFormat::R8G8B8A8_UNORM, false, 3));
-
         pendingGPUTasks.emplace_back(
             [&](FrameGraph& frameGraph)
             {
@@ -1261,8 +1258,6 @@ namespace FlexKit
         readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
 
 
-        renderSystem.SetDebugName(voxelVolumes[0], "VoxelVolume_0");
-        renderSystem.SetDebugName(voxelVolumes[1], "VoxelVolume_1");
         renderSystem.SetDebugName(voxelBuffer, "VoxelBuffer");
         renderSystem.SetDebugName(octreeBuffer, "Octree");
 	}
@@ -3450,6 +3445,9 @@ namespace FlexKit
                 TriMesh*        triMesh         = nullptr;
                 MaterialHandle  prevMaterial    = InvalidHandle_t;
 
+                ctx.ClearRenderTarget(resources.GetRenderTarget(data.accumalatorObject));
+                ctx.ClearRenderTarget(resources.GetRenderTarget(data.counterObject), float4{ 1, 1, 1, 1 });
+
 
                 auto& passes    = data.PVS.GetData().passes;
                 const PVS* pvs  = nullptr;
@@ -3467,6 +3465,7 @@ namespace FlexKit
                 if (!pvs->size())
                     return;
 
+
                 ctx.BeginEvent_DEBUG("OIT - PASS");
 
                 ctx.SetRootSignature(rootSig);
@@ -3480,8 +3479,6 @@ namespace FlexKit
                 const auto cameraConstantValues = GetCameraConstants(data.camera);
                 const ConstantBufferDataSet cameraConstants{ cameraConstantValues, constantBuffer };
 
-                ctx.ClearRenderTarget(resources.GetRenderTarget(data.accumalatorObject));
-                ctx.ClearRenderTarget(resources.GetRenderTarget(data.counterObject), float4{ 1, 1, 1, 1 });
 
                 ctx.SetGraphicsConstantBufferView(0, cameraConstants);
                 ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
@@ -3879,8 +3876,6 @@ namespace FlexKit
 			[&](FrameGraphNodeBuilder& builder, UpdateVoxelVolume& data)
 			{
                 data.depthTarget        = builder.NonPixelShaderResource(depthTarget);
-                data.primaryVolume      = builder.UnorderedAccess(voxelVolumes[primaryVolume]);
-                data.secondaryVolume    = builder.UnorderedAccess(voxelVolumes[(primaryVolume + 1) % 2]);
                 data.voxelBuffer        = builder.UnorderedAccess(voxelBuffer);
                 data.octree             = builder.UnorderedAccess(octreeBuffer);
                 data.counters           = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(8192), DRS_UAV);
@@ -3895,7 +3890,7 @@ namespace FlexKit
 
                 const auto WH = resources.GetTextureWH(data.depthTarget);
 
-                auto updateVolumes          = resources.GetPipelineState(VXGI_CLEANUPVOXELVOLUMES);
+                //auto updateVolumes          = resources.GetPipelineState(VXGI_CLEANUPVOXELVOLUMES);
                 auto sampleInjection        = resources.GetPipelineState(VXGI_SAMPLEINJECTION);
                 auto gatherDispatchArgs     = resources.GetPipelineState(VXGI_GATHERARGS1);
                 auto gatherSubDRequests     = resources.GetPipelineState(VXGI_GATHERSUBDIVISIONREQUESTS);
@@ -3921,15 +3916,8 @@ namespace FlexKit
                 resourceHeap.Init2(ctx, rootSig.GetDescHeap(0), 1, &allocator);
                 resourceHeap.SetSRV(ctx, 0, resources.GetResource(data.depthTarget), DeviceFormat::R32_FLOAT);
 
-                DescriptorHeap uavHeap;
-                uavHeap.Init2(ctx, rootSig.GetDescHeap(1), 2, &allocator);
-                uavHeap.SetUAVTexture3D(ctx, 0, resources.GetResource(data.primaryVolume), DeviceFormat::R8G8B8A8_UNORM);
-                uavHeap.SetUAVTexture3D(ctx, 1, resources.GetResource(data.secondaryVolume), DeviceFormat::R8G8B8A8_UNORM);
-
                 ctx.SetComputeDescriptorTable(4, resourceHeap);
-                ctx.SetComputeDescriptorTable(5, uavHeap);
 
-                //ctx.Dispatch(updateVolumes, uint3(128 / blockSize, 128 / blockSize, 128 / blockSize));
                 ctx.EndEvent_DEBUG();
 
                 ctx.BeginEvent_DEBUG("SampleInjection");
@@ -3942,14 +3930,12 @@ namespace FlexKit
                     uint    flags;
                 };
 
-                DescriptorHeap uavHeap2;
-                uavHeap2.Init2(ctx, rootSig.GetDescHeap(1), 4, &allocator);
-                uavHeap2.SetUAVTexture3D(ctx, 0, resources.UAV(data.primaryVolume, ctx),    DeviceFormat::R8G8B8A8_UNORM);
-                uavHeap2.SetUAVTexture3D(ctx, 1, resources.UAV(data.secondaryVolume, ctx),  DeviceFormat::R8G8B8A8_UNORM);
-                uavHeap2.SetUAVStructured(ctx, 2, resources.UAV(data.voxelBuffer, ctx),     resources.GetResource(data.counters),   32, 0);
-                uavHeap2.SetUAVStructured(ctx, 3, resources.UAV(data.octree, ctx),          resources.GetResource(data.octree),     sizeof(OctTreeNode), 0);
+                DescriptorHeap uavHeap0;
+                uavHeap0.Init2(ctx, rootSig.GetDescHeap(1), 4, &allocator);
+                uavHeap0.SetUAVStructured(ctx, 0, resources.UAV(data.voxelBuffer, ctx),     resources.GetResource(data.counters),   32, 0);
+                uavHeap0.SetUAVStructured(ctx, 1, resources.UAV(data.octree, ctx),          resources.GetResource(data.octree),     sizeof(OctTreeNode), 0);
 
-                ctx.SetComputeDescriptorTable(5, uavHeap2);
+                ctx.SetComputeDescriptorTable(5, uavHeap0);
                 ctx.AddUAVBarrier(resources.GetResource(data.counters));
 
                 const auto XY = uint2{ float2{  WH[0] / 128.0f, WH[1] / 128.0f }.ceil() };
@@ -3973,7 +3959,7 @@ namespace FlexKit
                 ctx.SetPipelineState(gatherSubDRequests);
                 ctx.SetComputeConstantBufferView(0, cameraConstants);
                 ctx.SetComputeDescriptorTable(4, resourceHeap);
-                ctx.SetComputeDescriptorTable(5, uavHeap2);
+                ctx.SetComputeDescriptorTable(5, uavHeap0);
 
                 ctx.ExecuteIndirect(
                     resources.IndirectArgs(data.indirectArgs, ctx),
@@ -3992,7 +3978,7 @@ namespace FlexKit
                 ctx.SetPipelineState(processSubDRequests);
                 ctx.SetComputeConstantBufferView(0, cameraConstants);
                 ctx.SetComputeDescriptorTable(4, resourceHeap);
-                ctx.SetComputeDescriptorTable(5, uavHeap2);
+                ctx.SetComputeDescriptorTable(5, uavHeap0);
 
                 ctx.ExecuteIndirect(
                     resources.IndirectArgs(data.indirectArgs, ctx),
@@ -4087,7 +4073,6 @@ namespace FlexKit
                 data.counter        = target.counterObject;
                 data.depthTarget    = target.depthTarget;
 
-                data.volume         = builder.NonPixelShaderResource(voxelVolumes[primaryVolume]);
                 data.indirectArgs   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DRS_UAV);
                 data.octree         = builder.NonPixelShaderResource(octreeBuffer);
             },
