@@ -1429,16 +1429,6 @@ namespace FlexKit
                 reserveCB,
                 temporary);
 
-        auto& volumeVis =
-            DEBUGVIUS_DrawVoxelVolume(
-                dispatcher,
-                frameGraph,
-                camera,
-                deferredPass.renderTargetObject,
-                depthTarget.Get(),
-                reserveCB,
-                temporary);
-
         auto& OIT_pass =
             RenderPBR_OITPass(
                 dispatcher,
@@ -1450,6 +1440,22 @@ namespace FlexKit
                 shadowMapPass,
                 lightPass,
                 reserveCB,
+                temporary);
+
+        auto& volumeVis =
+            DEBUGVIUS_DrawVoxelVolume(
+                dispatcher,
+                frameGraph,
+                camera,
+                OIT_pass,
+                reserveCB,
+                temporary);
+
+        auto& OIT_blend =
+            RenderPBR_OITBlend(
+                dispatcher,
+                frameGraph,
+                OIT_pass,
                 temporary);
 
         auto& toneMapped =
@@ -3427,8 +3433,8 @@ namespace FlexKit
 
                 data.depthTarget                = builder.DepthRead(depthTarget);
                 data.renderTargetObject         = renderTarget;
-                data.accumalatorObject          = builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DRS_RenderTarget);
-                data.counterObject              = builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DRS_RenderTarget);
+                data.accumalatorObject          = builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DRS_RenderTarget, false);
+                data.counterObject              = builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DRS_RenderTarget, false);
 
                 builder.SetDebugName(data.accumalatorObject,    "Accumalator");
                 builder.SetDebugName(data.counterObject,        "counterObject");
@@ -3461,7 +3467,7 @@ namespace FlexKit
                 if (!pvs->size())
                     return;
 
-                ctx.BeginEvent_DEBUG("OIT");
+                ctx.BeginEvent_DEBUG("OIT - PASS");
 
                 ctx.SetRootSignature(rootSig);
                 ctx.SetPipelineState(resources.GetPipelineState(OITDRAW));
@@ -3493,8 +3499,6 @@ namespace FlexKit
                     true,
                     resources.GetRenderTarget(data.depthTarget)
                 );
-
-                ctx.BeginEvent_DEBUG("Pass");
 
                 for (auto& draw : *pvs)
                 {
@@ -3554,10 +3558,36 @@ namespace FlexKit
                 }
 
                 ctx.EndEvent_DEBUG();
-                ctx.BeginEvent_DEBUG("Blend");
+            });
+    }
+
+
+
+    OITBlend& WorldRender::RenderPBR_OITBlend(
+        UpdateDispatcher&               dispatcher,
+        FrameGraph&                     frameGraph,
+        OITPass&                        OITPass,
+        iAllocator*                     allocator)
+    {
+        return frameGraph.AddNode<OITBlend>(
+            OITBlend{},
+            [&](FrameGraphNodeBuilder& builder, OITBlend& data)
+            {
+                data.renderTargetObject = builder.WriteTransition(OITPass.renderTargetObject, DRS_RenderTarget);
+                data.accumalatorObject  = OITPass.accumalatorObject;
+                data.counterObject      = OITPass.counterObject;
+
+                builder.ReleaseVirtualResource(OITPass.accumalatorObject);
+                builder.ReleaseVirtualResource(OITPass.counterObject);
+            },
+            [=](OITBlend& data, ResourceHandler& resources, Context& ctx, iAllocator& tempAllocator)
+            {
+                ctx.BeginEvent_DEBUG("OIT - Blend");
 
                 ctx.SetPipelineState(resources.GetPipelineState(OITBLEND));
+                ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 
+                const RootSignature& rootSig = resources.renderSystem().Library.RSDefault;
                 auto& descHeapLayout = rootSig.GetDescHeap(0);
                 DescriptorHeap descHeap;
 
@@ -3565,6 +3595,7 @@ namespace FlexKit
                 descHeap.SetSRV(ctx, 0, resources.PixelShaderResource(data.accumalatorObject, ctx));
                 descHeap.SetSRV(ctx, 1, resources.PixelShaderResource(data.counterObject, ctx));
 
+                ctx.SetRootSignature(rootSig);
                 ctx.SetGraphicsDescriptorTable(4, descHeap);
 
                 ctx.SetRenderTargets(
@@ -3575,7 +3606,6 @@ namespace FlexKit
 
                 ctx.Draw(6);
 
-                ctx.EndEvent_DEBUG();
                 ctx.EndEvent_DEBUG();
             });
     }
@@ -3987,6 +4017,8 @@ namespace FlexKit
 
 	    D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	    Depth_Desc.DepthFunc	                = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+        Depth_Desc.DepthEnable                  = true;
+        Depth_Desc.DepthWriteMask               = D3D12_DEPTH_WRITE_MASK_ZERO;
 
 	    D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 		    PSO_Desc.pRootSignature        = RS->Library.RSDefault;
@@ -3997,8 +4029,9 @@ namespace FlexKit
 		    PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		    PSO_Desc.SampleMask            = UINT_MAX;
 		    PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-		    PSO_Desc.NumRenderTargets      = 1;
-		    PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+		    PSO_Desc.NumRenderTargets      = 2;
+			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+			PSO_Desc.RTVFormats[1]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // count
 		    PSO_Desc.SampleDesc.Count      = 1;
 		    PSO_Desc.SampleDesc.Quality    = 0;
 		    PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
@@ -4006,15 +4039,26 @@ namespace FlexKit
 		    PSO_Desc.DepthStencilState     = Depth_Desc;
 
             PSO_Desc.BlendState.IndependentBlendEnable          = true;
+
             PSO_Desc.BlendState.RenderTarget[0].BlendEnable     = true;
             PSO_Desc.BlendState.RenderTarget[0].BlendOp         = D3D12_BLEND_OP_ADD;
             PSO_Desc.BlendState.RenderTarget[0].BlendOpAlpha    = D3D12_BLEND_OP_ADD;
 
-            PSO_Desc.BlendState.RenderTarget[0].SrcBlend        = D3D12_BLEND_SRC_ALPHA;
+            PSO_Desc.BlendState.RenderTarget[0].SrcBlend        = D3D12_BLEND_ONE;
             PSO_Desc.BlendState.RenderTarget[0].SrcBlendAlpha   = D3D12_BLEND_ONE;
 
-            PSO_Desc.BlendState.RenderTarget[0].DestBlend       = D3D12_BLEND_INV_SRC_ALPHA;
+            PSO_Desc.BlendState.RenderTarget[0].DestBlend       = D3D12_BLEND_ONE;
             PSO_Desc.BlendState.RenderTarget[0].DestBlendAlpha  = D3D12_BLEND_ONE;
+
+            PSO_Desc.BlendState.RenderTarget[1].BlendEnable     = true;
+            PSO_Desc.BlendState.RenderTarget[1].BlendOp         = D3D12_BLEND_OP_ADD;
+            PSO_Desc.BlendState.RenderTarget[1].BlendOpAlpha    = D3D12_BLEND_OP_ADD;
+
+            PSO_Desc.BlendState.RenderTarget[1].SrcBlend        = D3D12_BLEND_ZERO;
+            PSO_Desc.BlendState.RenderTarget[1].SrcBlendAlpha   = D3D12_BLEND_ZERO;
+
+            PSO_Desc.BlendState.RenderTarget[1].DestBlend       = D3D12_BLEND_INV_SRC_ALPHA;
+            PSO_Desc.BlendState.RenderTarget[1].DestBlendAlpha  = D3D12_BLEND_INV_SRC_ALPHA;
 	    }
 
 	    ID3D12PipelineState* PSO = nullptr;
@@ -4029,8 +4073,7 @@ namespace FlexKit
 			    UpdateDispatcher&               dispatcher,
 			    FrameGraph&                     frameGraph,
 			    const CameraHandle              camera,
-			    FrameResourceHandle             renderTarget,
-			    ResourceHandle                  depthTarget,
+                OITPass&                        target,
 			    ReserveConstantBufferFunction   reserveCB,
 			    iAllocator*                     allocator)
     {
@@ -4040,8 +4083,10 @@ namespace FlexKit
             },
 			[&](FrameGraphNodeBuilder& builder, DEBUGVIS_VoxelVolume& data)
 			{
-                data.renderTarget   = builder.WriteTransition(renderTarget, DRS_RenderTarget);
-                data.depthTarget    = builder.DepthTarget(depthTarget);
+                data.accumlator     = target.accumalatorObject;
+                data.counter        = target.counterObject;
+                data.depthTarget    = target.depthTarget;
+
                 data.volume         = builder.NonPixelShaderResource(voxelVolumes[primaryVolume]);
                 data.indirectArgs   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DRS_UAV);
                 data.octree         = builder.NonPixelShaderResource(octreeBuffer);
@@ -4063,6 +4108,7 @@ namespace FlexKit
                 uavHeap.Init2(ctx, rootSig.GetDescHeap(1), 2, &allocator);
                 uavHeap.SetUAVStructured(ctx, 0, resources.UAV(data.octree, ctx), 4);
                 uavHeap.SetUAVStructured(ctx, 1, resources.UAV(data.indirectArgs, ctx), 16, 0);
+
 
                 ctx.SetComputeDescriptorTable(5, uavHeap);
                 ctx.Dispatch(gatherDrawArgs, { 1, 1, 1 });
@@ -4088,22 +4134,26 @@ namespace FlexKit
                 resourceHeap.Init2(ctx, rootSig.GetDescHeap(0), 2, &allocator);
                 resourceHeap.SetStructuredResource(ctx, 0, resources.NonPixelShaderResource(data.octree, ctx), sizeof(OctTreeNode), 4096 / sizeof(OctTreeNode));
 
+
                 ctx.SetGraphicsConstantBufferView(0, cameraConstants);
                 ctx.SetPrimitiveTopology(EInputTopology::EIT_POINT);
 
                 ctx.SetScissorAndViewports({
-                        resources.GetRenderTarget(data.renderTarget),
+                        resources.GetRenderTarget(data.accumlator),
+                        resources.GetRenderTarget(data.counter),
                     });
+
+
 
                 ctx.SetRenderTargets(
                     {
-                        resources.GetRenderTarget(data.renderTarget),
+                        resources.GetRenderTarget(data.accumlator),
+                        resources.GetRenderTarget(data.counter),
                     },
                     true,
                     resources.GetResource(data.depthTarget));
 
                 ctx.SetGraphicsDescriptorTable(4, resourceHeap);
-
                 ctx.ExecuteIndirect(resources.IndirectArgs(data.indirectArgs, ctx), draw);
 
                 ctx.EndEvent_DEBUG();

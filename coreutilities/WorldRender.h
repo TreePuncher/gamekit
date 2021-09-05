@@ -721,6 +721,18 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    struct OITBlend
+	{
+        FrameResourceHandle     renderTargetObject;
+        FrameResourceHandle     accumalatorObject;
+        FrameResourceHandle     counterObject;
+        FrameResourceHandle     depthTarget;
+	};
+
+
+    /************************************************************************************************/
+
+
     struct UpdateVoxelVolume
     {
         ReserveConstantBufferFunction   reserveCB;
@@ -746,9 +758,11 @@ namespace FlexKit
 
         FrameResourceHandle     depthTarget;
         FrameResourceHandle     volume;
-        FrameResourceHandle     renderTarget;
         FrameResourceHandle     indirectArgs;
         FrameResourceHandle     octree;
+
+        FrameResourceHandle     counter;
+        FrameResourceHandle     accumlator;
     };
 
 
@@ -1042,6 +1056,11 @@ namespace FlexKit
 			    ReserveConstantBufferFunction   reserveCB,
 			    iAllocator*                     allocator);
 
+        OITBlend& RenderPBR_OITBlend(
+			    UpdateDispatcher&               dispatcher,
+			    FrameGraph&                     frameGraph,
+                OITPass&                        OITPass,
+			    iAllocator*                     allocator);
 
         ToneMap& RenderPBR_ToneMapping(
 			    UpdateDispatcher&               dispatcher,
@@ -1069,8 +1088,7 @@ namespace FlexKit
 			    UpdateDispatcher&               dispatcher,
 			    FrameGraph&                     frameGraph,
 			    const CameraHandle              camera,
-                FrameResourceHandle             renderTarget,
-			    ResourceHandle                  depthTarget,
+                OITPass&                        target,
 			    ReserveConstantBufferFunction   reserveCB,
 			    iAllocator*                     allocator);
 
