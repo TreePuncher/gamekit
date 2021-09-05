@@ -1079,21 +1079,24 @@ namespace FlexKit
 
         if (material != InvalidHandle_t)
         {
-            const auto albedo   = materials.GetProperty<float4>(material, GetCRCGUID(PBR_ALBEDO)).value_or(float4{ 0.0, 0.5, 0.0, 0.1f });
-            const auto specular = materials.GetProperty<float4>(material, GetCRCGUID(PBR_SPECULAR)).value_or(float4{ 0.9, 0.9, 0.9, 0.0f });
+            const auto albedo       = materials.GetProperty<float4>(material, GetCRCGUID(PBR_ALBEDO)).value_or(float4{ 0.0, 0.5, 0.0, 0.1f });
+            const auto specular     = materials.GetProperty<float4>(material, GetCRCGUID(PBR_SPECULAR)).value_or(float4{ 1.0, 0.9, 0.9, 0.0f });
+            const auto roughness    = materials.GetProperty<float>(material, GetCRCGUID(PBR_ROUGHNESS)).value_or(0.3f);
+            const auto metal        = materials.GetProperty<float>(material, GetCRCGUID(PBR_METAL)).value_or(1.0f);
 
             constants.MP.albedo     = albedo.xyz();
-            constants.MP.kS         = specular.a;
-            constants.MP.metallic   = specular.w;
+            constants.MP.roughness  = roughness;
+            constants.MP.kS         = specular.x;
+            constants.MP.metallic   = metal;
         }
         else
         {
             constants.MP.albedo     = float3{ 1.0, 0.0, 1.0 };
-            constants.MP.kS         = 0.9f;
-            constants.MP.metallic   = 0.0f;
+            constants.MP.roughness  = 0.5f;
+            constants.MP.kS         = 1.0f;
+            constants.MP.metallic   = 1.0f;
         }
 
-        //constants.MP        = MatProperties;
         constants.Transform = XMMatrixToFloat4x4(WT).Transpose();
 
         if (material != InvalidHandle_t)

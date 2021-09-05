@@ -42,8 +42,8 @@ PS_Out ParticleMeshInstancePS(ParticleVertex input)
 {
     PS_Out output;
 
-    output.Albedo = float4(1.0f, 1.0f, 1.0f, 0.5f);
-    output.MRIA   = float4(0.0f, 0.5f, 0.0f, 0.0f);
+    output.Albedo = float4(1.0f, 1.0f, 1.0f, 1.0f);
+    output.MRIA   = float4(1.0f, 0.1f, 0.0f, 0.0f);
     output.Normal = float4(normalize(input.Normal), 1);
     output.Depth  = length(CameraPOS - input.WPOS) / MaxZ;
 

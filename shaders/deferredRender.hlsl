@@ -35,8 +35,8 @@ StructuredBuffer<uint> 		    lightListBuffer : register(t7);
 StructuredBuffer<PointLight> 	pointLights	    : register(t8);
 TextureCube<float> 				shadowMaps[]    : register(t10);
 
-sampler BiLinear     : register(s0); // Nearest point
-sampler NearestPoint : register(s1); // Nearest point
+sampler BiLinear     : register(s0);
+sampler NearestPoint : register(s1); 
 
 struct Vertex
 {
@@ -138,7 +138,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     if(localLightList == -2)
         return float4(1, 0, 1, 1);
 
-    float4 color = float4(albedo * ambientLight, 1);
+    float4 color = float4(0, 0, 0, 1);
     
     for(uint I = 0; I < localLightCount; I++)
     {

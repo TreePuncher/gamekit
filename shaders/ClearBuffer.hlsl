@@ -1,32 +1,19 @@
-Texture2D<float4>   Accum       : register(t0);
-Texture2D<float>    Revealage   : register(t1);
 
-float4 VMain(const uint vertexID : SV_VertexID) : SV_POSITION
+cbuffer LocalConstants : register(b0)
 {
-    float4 verts[] = {
-        float4(-1,  1, 1, 1),
-        float4( 1, -1, 1, 1),
-        float4(-1, -1, 0, 1),
+    uint clearValueX;
+    uint clearValueY;
+    uint clearValueZ;
+    uint clearValueW;
+};
 
-        float4(-1,  1, 1, 1),
-        float4( 1,  1, 1, 1),
-        float4( 1, -1, 1, 1),
-    };
+RWByteAddressBuffer ClearTarget : register(u0);
 
-    return verts[vertexID];
+[numthreads(1024, 1, 1)]
+void Clear(uint3 threadID : SV_DispatchThreadID)
+{
+    ClearTarget.Store4(threadID.x * 16, uint4(clearValueX, clearValueY, clearValueZ, clearValueW));
 }
-
-float4 BlendMain(float4 pixelCord : SV_POSITION) : SV_TARGET
-{
-    const float4    accum   = Accum.Load(int3(pixelCord.xy, 0));
-    const float     r       = Revealage.Load(int3(pixelCord.xy, 0));
-
-    const float3 W_c = accum.rgb / clamp(accum.a, 1e-4, 5e4);
-    const float  W_a = r;
-
-
-    return float4(W_c, W_a);
-} 
 
 
 /**********************************************************************

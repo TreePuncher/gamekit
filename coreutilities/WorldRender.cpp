@@ -1134,12 +1134,16 @@ namespace FlexKit
             UAVTexturePool              { renderSystem, 256 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent },
             RTPool                      { renderSystem, 512 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::RenderTarget, persistent },
 
+            voxelBuffer                 { renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(64 * MEGABYTE)) },
+            octreeBuffer                { renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(64 * MEGABYTE)) },
+
             timeStats                   { renderSystem.CreateTimeStampQuery(256) },
             timingReadBack              { renderSystem.CreateReadBackBuffer(512) },
 
 			streamingEngine		        { IN_streamingEngine },
-            createClusterLightListLayout{ renderSystem.CreateIndirectLayout({ ILE_DispatchCall }, persistent) },
-            createDebugDrawLayout       { renderSystem.CreateIndirectLayout({ ILE_DrawCall }, persistent) }
+            
+            dispatch                    { renderSystem.CreateIndirectLayout({ ILE_DispatchCall },   persistent) },
+            draw                        { renderSystem.CreateIndirectLayout({ ILE_DrawCall },       persistent) }
 	{
 		RS_IN.RegisterPSOLoader(FORWARDDRAW,			    { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawPSO,		  });
 		RS_IN.RegisterPSOLoader(FORWARDDRAWINSTANCED,	    { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO });
@@ -1173,6 +1177,18 @@ namespace FlexKit
         RS_IN.RegisterPSOLoader(CREATELIGHTDEBUGVIS_PSO,        { &RS_IN.Library.RSDefault, CreateLight_DEBUGARGSVIS_PSO });
         RS_IN.RegisterPSOLoader(RESOLUTIONMATCHSHADOWMAPS,      { &RS_IN.Library.RSDefault, CreateResolutionMatch_PSO });
         RS_IN.RegisterPSOLoader(CLEARSHADOWRESOLUTIONBUFFER,    { &RS_IN.Library.RSDefault, CreateClearResolutionMatch_PSO});
+
+
+        // Voxel GI stuff
+        RS_IN.RegisterPSOLoader(VXGI_CLEANUPVOXELVOLUMES,       { &RS_IN.Library.RSDefault, CreateUpdateVoxelVolumesPSO });
+        RS_IN.RegisterPSOLoader(VXGI_DRAWVOLUMEVISUALIZATION,   { &RS_IN.Library.RSDefault, CreateUpdateVolumeVisualizationPSO});
+        RS_IN.RegisterPSOLoader(VXGI_SAMPLEINJECTION,           { &RS_IN.Library.RSDefault, CreateInjectVoxelSamplesPSO });
+        RS_IN.RegisterPSOLoader(VXGI_GATHERARGS1,               { &RS_IN.Library.RSDefault, CreateVXGIGatherArgs1PSO });
+        RS_IN.RegisterPSOLoader(VXGI_GATHERARGS2,               { &RS_IN.Library.RSDefault, CreateVXGIGatherArgs2PSO });
+        RS_IN.RegisterPSOLoader(VXGI_GATHERSUBDIVISIONREQUESTS, { &RS_IN.Library.RSDefault, CreateVXGIGatherSubDRequestsPSO });
+        RS_IN.RegisterPSOLoader(VXGI_PROCESSSUBDREQUESTS,       { &RS_IN.Library.RSDefault, CreateVXGIProcessSubDRequestsPSO });
+        RS_IN.RegisterPSOLoader(VXGI_INITOCTREE,                { &RS_IN.Library.RSDefault, CreateVXGI_InitOctree });
+
 
         RS_IN.RegisterPSOLoader(ZPYRAMIDBUILDLEVEL, { &RS_IN.Library.RSDefault, CreateBuildZLayer });
         RS_IN.RegisterPSOLoader(DEPTHCOPY,          { &RS_IN.Library.RSDefault, CreateDepthBufferCopy });
@@ -1233,7 +1249,22 @@ namespace FlexKit
                 }
             });
 
+        voxelVolumes[0] = renderSystem.CreateGPUResource(GPUResourceDesc::UAVTexture3D({ 128, 128, 128 }, DeviceFormat::R8G8B8A8_UNORM, false, 3));
+        voxelVolumes[1] = renderSystem.CreateGPUResource(GPUResourceDesc::UAVTexture3D({ 128, 128, 128 }, DeviceFormat::R8G8B8A8_UNORM, false, 3));
+
+        pendingGPUTasks.emplace_back(
+            [&](FrameGraph& frameGraph)
+            {
+                RenderPBR_GI_InitializeOctree(frameGraph);
+            });
+
         readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
+
+
+        renderSystem.SetDebugName(voxelVolumes[0], "VoxelVolume_0");
+        renderSystem.SetDebugName(voxelVolumes[1], "VoxelVolume_1");
+        renderSystem.SetDebugName(voxelBuffer, "VoxelBuffer");
+        renderSystem.SetDebugName(octreeBuffer, "Octree");
 	}
 
 
@@ -1389,6 +1420,25 @@ namespace FlexKit
                 t,
                 temporary);
 
+        auto& updateVolumes =
+            RenderPBR_GI_UpdateVoxelVolumes(
+                dispatcher,
+                frameGraph,
+                camera,
+                depthTarget.Get(),
+                reserveCB,
+                temporary);
+
+        auto& volumeVis =
+            DEBUGVIUS_DrawVoxelVolume(
+                dispatcher,
+                frameGraph,
+                camera,
+                deferredPass.renderTargetObject,
+                depthTarget.Get(),
+                reserveCB,
+                temporary);
+
         auto& OIT_pass =
             RenderPBR_OITPass(
                 dispatcher,
@@ -1412,7 +1462,6 @@ namespace FlexKit
                 reserveVB,
                 drawSceneDesc.dt,
                 temporary);
-
 
         if (drawSceneDesc.debugDisplay == DebugVisMode::ClusterVIS)
         {
@@ -2233,7 +2282,7 @@ namespace FlexKit
 					sceneDescription.pointLightMaps.GetData().pointLightShadows,
 					camera,
 					reserveCB,
-                    createClusterLightListLayout
+                    dispatch
 			},
 			[&, this](FrameGraphNodeBuilder& builder, LightBufferUpdate& data)
 			{
@@ -2735,7 +2784,7 @@ namespace FlexKit
 
                 case ClusterDebugDrawMode::Clusters:
                     ctx.SetPipelineState(debugClusterVISPSO);
-                    ctx.ExecuteIndirect(resources.Transition(data.indirectArgs, DRS_INDIRECTARGS, ctx), createDebugDrawLayout);
+                    ctx.ExecuteIndirect(resources.Transition(data.indirectArgs, DRS_INDIRECTARGS, ctx), draw);
                     break;
 
                 case ClusterDebugDrawMode::Lights:
@@ -3300,13 +3349,6 @@ namespace FlexKit
         auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\OITBlend.hlsl");
 		auto PShader = RS->LoadShader("BlendMain", "ps_6_0", "assets\\shaders\\OITBlend.hlsl");
 
-		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
-            { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "NORMAL",	    0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    1, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "TANGENT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    2, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,       3, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		};
-
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -3326,7 +3368,7 @@ namespace FlexKit
 			PSO_Desc.SampleDesc.Count      = 1;
 			PSO_Desc.SampleDesc.Quality    = 0;
 			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
-			PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
+			PSO_Desc.InputLayout           = { nullptr, 0 };
 			PSO_Desc.DepthStencilState     = Depth_Desc;
 
             PSO_Desc.BlendState.IndependentBlendEnable          = true;
@@ -3393,18 +3435,15 @@ namespace FlexKit
 			},
             [=](OITPass& data, ResourceHandler& resources, Context& ctx, iAllocator& tempAllocator)
             {
-                ctx.BeginEvent_DEBUG("OIT");
 
                 const RootSignature&    rootSig     = resources.renderSystem().Library.RSDefault;
                 auto&                   materials   = MaterialComponent::GetComponent();
 
-                ctx.SetRootSignature(rootSig);
 
                 TriMeshHandle   previous        = InvalidHandle_t;
                 TriMesh*        triMesh         = nullptr;
                 MaterialHandle  prevMaterial    = InvalidHandle_t;
 
-                ctx.SetPipelineState(resources.GetPipelineState(OITDRAW));
 
                 auto& passes    = data.PVS.GetData().passes;
                 const PVS* pvs  = nullptr;
@@ -3416,10 +3455,16 @@ namespace FlexKit
                 {
                     pvs = &res->pvs;
                 }
-                else return;
+                else
+                    return;
 
                 if (!pvs->size())
                     return;
+
+                ctx.BeginEvent_DEBUG("OIT");
+
+                ctx.SetRootSignature(rootSig);
+                ctx.SetPipelineState(resources.GetPipelineState(OITDRAW));
 
                 CBPushBuffer constantBuffer{
                     data.reserveCB(
@@ -3433,6 +3478,7 @@ namespace FlexKit
                 ctx.ClearRenderTarget(resources.GetRenderTarget(data.counterObject), float4{ 1, 1, 1, 1 });
 
                 ctx.SetGraphicsConstantBufferView(0, cameraConstants);
+                ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 
                 ctx.SetScissorAndViewports({
                         resources.GetRenderTarget(data.accumalatorObject),
@@ -3448,7 +3494,7 @@ namespace FlexKit
                     resources.GetRenderTarget(data.depthTarget)
                 );
 
-                ctx.BeginEvent_DEBUG("OIT Pass");
+                ctx.BeginEvent_DEBUG("Pass");
 
                 for (auto& draw : *pvs)
                 {
@@ -3508,7 +3554,7 @@ namespace FlexKit
                 }
 
                 ctx.EndEvent_DEBUG();
-                ctx.BeginEvent_DEBUG("OIT Blend");
+                ctx.BeginEvent_DEBUG("Blend");
 
                 ctx.SetPipelineState(resources.GetPipelineState(OITBLEND));
 
@@ -3551,7 +3597,7 @@ namespace FlexKit
 
     /************************************************************************************************/
 
-    // TODO: Do actual tone mapping
+    // TODO(@RobertMay): Do actual tone mapping
     ToneMap& WorldRender::RenderPBR_ToneMapping(
 			    UpdateDispatcher&               dispatcher,
 			    FrameGraph&                     frameGraph,
@@ -3610,6 +3656,457 @@ namespace FlexKit
                     ctx.Dispatch(createLumananceLevel, { WH, 0 });
                 }
                 */
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* CreateUpdateVoxelVolumesPSO(RenderSystem* RS)
+    {
+        Shader computeShader = RS->LoadShader("UpdateVoxelVolumes", "cs_6_0", R"(assets\shaders\VXGI.hlsl)");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+            RS->Library.RSDefault,
+            computeShader
+        };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+
+        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+        return PSO;
+    }
+
+
+    ID3D12PipelineState* CreateInjectVoxelSamplesPSO(RenderSystem* RS)
+    {
+        Shader computeShader = RS->LoadShader("Injection", "cs_6_0", R"(assets\shaders\VXGI.hlsl)");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+            RS->Library.RSDefault,
+            computeShader
+        };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+
+        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+        return PSO;
+    }
+
+
+    ID3D12PipelineState* CreateVXGIGatherArgs1PSO(RenderSystem* RS)
+    {
+        Shader computeShader = RS->LoadShader("CreateIndirectArgs", "cs_6_0", R"(assets\shaders\VXGI_DispatchArgs.hlsl)");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+            RS->Library.RSDefault,
+            computeShader
+        };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+
+        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+        return PSO;
+    }
+    
+    ID3D12PipelineState* CreateVXGIGatherArgs2PSO(RenderSystem* RS)
+    {
+        Shader computeShader = RS->LoadShader("CreateDrawArgs", "cs_6_0", R"(assets\shaders\VXGI_DrawArgs.hlsl)");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+            RS->Library.RSDefault,
+            computeShader
+        };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+
+        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+        return PSO;
+    }
+
+    ID3D12PipelineState*CreateVXGIGatherSubDRequestsPSO(RenderSystem* RS)
+    {
+        Shader computeShader = RS->LoadShader("GatherSubdivionRequests", "cs_6_0", R"(assets\shaders\VXGI.hlsl)");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+            RS->Library.RSDefault,
+            computeShader
+        };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+
+        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+        return PSO;
+    }
+
+
+    ID3D12PipelineState* CreateVXGIProcessSubDRequestsPSO(RenderSystem* RS)
+    {
+        Shader computeShader = RS->LoadShader("ProcessSubdivionRquests", "cs_6_0", R"(assets\shaders\VXGI.hlsl)");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+            RS->Library.RSDefault,
+            computeShader
+        };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+
+        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+        return PSO;
+    }
+
+
+    ID3D12PipelineState* CreateVXGI_InitOctree(RenderSystem* RS)
+    {
+        Shader computeShader = RS->LoadShader("Init", "cs_6_0", R"(assets\shaders\VXGI_InitOctree.hlsl)");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+            RS->Library.RSDefault,
+            computeShader
+        };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+
+        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+        return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
+    void WorldRender::RenderPBR_GI_InitializeOctree(FrameGraph& frameGraph)
+    {
+        struct InitOctree
+        {
+            FrameResourceHandle             octree;
+        };
+
+        frameGraph.AddNode<InitOctree>(
+            InitOctree{},
+            [&](FrameGraphNodeBuilder& builder, InitOctree& data)
+            {
+                data.octree = builder.UnorderedAccess(octreeBuffer);
+            },
+            [](InitOctree& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+            {
+                ctx.BeginEvent_DEBUG("Init Octree");
+
+                auto Init       = resources.GetPipelineState(VXGI_INITOCTREE);
+                auto& rootSig   = resources.renderSystem().Library.RSDefault;
+
+                struct alignas(64) OctTreeNode
+                {
+                    uint    nodes[8];
+                    uint4   volumeCord;
+                    uint    data;
+                    uint    flags;
+                };
+
+                DescriptorHeap heap;
+                heap.Init2(ctx, rootSig.GetDescHeap(1), 1, &allocator);
+                heap.SetUAVStructured(ctx, 0, resources.UAV(data.octree, ctx), resources.UAV(data.octree, ctx), sizeof(OctTreeNode), 0);
+
+                ctx.SetComputeRootSignature(rootSig);
+                ctx.SetComputeDescriptorTable(5, heap);
+                ctx.Dispatch(Init, { 1, 1, 1 });
+
+                ctx.EndEvent_DEBUG();
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    UpdateVoxelVolume& WorldRender::RenderPBR_GI_UpdateVoxelVolumes(
+			    UpdateDispatcher&               dispatcher,
+			    FrameGraph&                     frameGraph,
+			    const CameraHandle              camera,
+			    ResourceHandle                  depthTarget,
+			    ReserveConstantBufferFunction   reserveCB,
+			    iAllocator*                     allocator)
+    {
+        return frameGraph.AddNode<UpdateVoxelVolume>(
+            UpdateVoxelVolume{
+                reserveCB, camera
+            },
+			[&](FrameGraphNodeBuilder& builder, UpdateVoxelVolume& data)
+			{
+                data.depthTarget        = builder.NonPixelShaderResource(depthTarget);
+                data.primaryVolume      = builder.UnorderedAccess(voxelVolumes[primaryVolume]);
+                data.secondaryVolume    = builder.UnorderedAccess(voxelVolumes[(primaryVolume + 1) % 2]);
+                data.voxelBuffer        = builder.UnorderedAccess(voxelBuffer);
+                data.octree             = builder.UnorderedAccess(octreeBuffer);
+                data.counters           = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(8192), DRS_UAV);
+                data.indirectArgs       = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DRS_UAV);
+
+                builder.SetDebugName(data.counters,     "counters");
+                builder.SetDebugName(data.indirectArgs, "IndirectArgs");
+            },
+            [&dispatch = dispatch](UpdateVoxelVolume& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+            {
+                ctx.BeginEvent_DEBUG("VXGI");
+
+                const auto WH = resources.GetTextureWH(data.depthTarget);
+
+                auto updateVolumes          = resources.GetPipelineState(VXGI_CLEANUPVOXELVOLUMES);
+                auto sampleInjection        = resources.GetPipelineState(VXGI_SAMPLEINJECTION);
+                auto gatherDispatchArgs     = resources.GetPipelineState(VXGI_GATHERARGS1);
+                auto gatherSubDRequests     = resources.GetPipelineState(VXGI_GATHERSUBDIVISIONREQUESTS);
+                auto processSubDRequests    = resources.GetPipelineState(VXGI_PROCESSSUBDREQUESTS);
+
+                const uint32_t blockSize = 8;
+                auto& rootSig = resources.renderSystem().Library.RSDefault;
+
+                CBPushBuffer constantBuffer{ data.reserveCB(AlignedSize<Camera::ConstantBuffer>()) };
+
+                const auto cameraConstantValues = GetCameraConstants(data.camera);
+                const ConstantBufferDataSet cameraConstants{ cameraConstantValues, constantBuffer };
+
+                ctx.DiscardResource(resources.GetResource(data.counters));
+                ctx.ClearUAVBuffer(resources.GetResource(data.counters), uint4{ 0, 0, 312, 213 });
+                
+                ctx.BeginEvent_DEBUG("SampleCleanup");
+
+                ctx.SetComputeRootSignature(rootSig);
+                ctx.SetComputeConstantBufferView(0, cameraConstants);
+
+                DescriptorHeap resourceHeap;
+                resourceHeap.Init2(ctx, rootSig.GetDescHeap(0), 1, &allocator);
+                resourceHeap.SetSRV(ctx, 0, resources.GetResource(data.depthTarget), DeviceFormat::R32_FLOAT);
+
+                DescriptorHeap uavHeap;
+                uavHeap.Init2(ctx, rootSig.GetDescHeap(1), 2, &allocator);
+                uavHeap.SetUAVTexture3D(ctx, 0, resources.GetResource(data.primaryVolume), DeviceFormat::R8G8B8A8_UNORM);
+                uavHeap.SetUAVTexture3D(ctx, 1, resources.GetResource(data.secondaryVolume), DeviceFormat::R8G8B8A8_UNORM);
+
+                ctx.SetComputeDescriptorTable(4, resourceHeap);
+                ctx.SetComputeDescriptorTable(5, uavHeap);
+
+                //ctx.Dispatch(updateVolumes, uint3(128 / blockSize, 128 / blockSize, 128 / blockSize));
+                ctx.EndEvent_DEBUG();
+
+                ctx.BeginEvent_DEBUG("SampleInjection");
+
+                struct alignas(64) OctTreeNode
+                {
+                    uint    nodes[8];
+                    uint4   volumeCord;
+                    uint    data;
+                    uint    flags;
+                };
+
+                DescriptorHeap uavHeap2;
+                uavHeap2.Init2(ctx, rootSig.GetDescHeap(1), 4, &allocator);
+                uavHeap2.SetUAVTexture3D(ctx, 0, resources.UAV(data.primaryVolume, ctx),    DeviceFormat::R8G8B8A8_UNORM);
+                uavHeap2.SetUAVTexture3D(ctx, 1, resources.UAV(data.secondaryVolume, ctx),  DeviceFormat::R8G8B8A8_UNORM);
+                uavHeap2.SetUAVStructured(ctx, 2, resources.UAV(data.voxelBuffer, ctx),     resources.GetResource(data.counters),   32, 0);
+                uavHeap2.SetUAVStructured(ctx, 3, resources.UAV(data.octree, ctx),          resources.GetResource(data.octree),     sizeof(OctTreeNode), 0);
+
+                ctx.SetComputeDescriptorTable(5, uavHeap2);
+                ctx.AddUAVBarrier(resources.GetResource(data.counters));
+
+                const auto XY = uint2{ float2{  WH[0] / 128.0f, WH[1] / 128.0f }.ceil() };
+                ctx.Dispatch(sampleInjection, { XY, 1 });
+
+                // Create Dispatch args
+                ctx.DiscardResource(resources.GetResource(data.indirectArgs));
+                ctx.ClearUAVBuffer(resources.GetResource(data.indirectArgs));
+
+                ctx.AddUAVBarrier(resources.GetResource(data.counters));
+                ctx.AddUAVBarrier(resources.GetResource(data.indirectArgs));
+
+                DescriptorHeap uavHeap3;
+                uavHeap3.Init2(ctx, rootSig.GetDescHeap(1), 3, &allocator);
+                uavHeap3.SetUAVStructured(ctx, 0, resources.GetResource(data.counters), 4, 0);
+                uavHeap3.SetUAVStructured(ctx, 1, resources.GetResource(data.indirectArgs), 16, 0);
+
+                ctx.SetComputeDescriptorTable(5, uavHeap3);
+                ctx.Dispatch(gatherDispatchArgs, { 1, 1, 1 });
+
+                ctx.SetPipelineState(gatherSubDRequests);
+                ctx.SetComputeConstantBufferView(0, cameraConstants);
+                ctx.SetComputeDescriptorTable(4, resourceHeap);
+                ctx.SetComputeDescriptorTable(5, uavHeap2);
+
+                ctx.ExecuteIndirect(
+                    resources.IndirectArgs(data.indirectArgs, ctx),
+                    dispatch);
+
+                ctx.AddUAVBarrier(resources.GetResource(data.octree));
+
+                DescriptorHeap uavHeap4;
+                uavHeap4.Init2(ctx, rootSig.GetDescHeap(1), 3, &allocator);
+                uavHeap4.SetUAVStructured(ctx, 0, resources.UAV(data.octree, ctx), 4);
+                uavHeap4.SetUAVStructured(ctx, 1, resources.UAV(data.indirectArgs, ctx), 16, 0);
+
+                ctx.SetComputeDescriptorTable(5, uavHeap4);
+                ctx.Dispatch(gatherDispatchArgs, { 1, 1, 1 });
+
+                ctx.SetPipelineState(processSubDRequests);
+                ctx.SetComputeConstantBufferView(0, cameraConstants);
+                ctx.SetComputeDescriptorTable(4, resourceHeap);
+                ctx.SetComputeDescriptorTable(5, uavHeap2);
+
+                ctx.ExecuteIndirect(
+                    resources.IndirectArgs(data.indirectArgs, ctx),
+                    dispatch);
+
+                ctx.EndEvent_DEBUG();
+                ctx.EndEvent_DEBUG();
+            });
+    }
+
+
+    /************************************************************************************************/
+
+    
+    ID3D12PipelineState* CreateUpdateVolumeVisualizationPSO(RenderSystem* RS)
+    {
+        auto VShader = RS->LoadShader("VolumePoint_VS", "vs_6_0", "assets\\shaders\\VoxelDebugVis.hlsl");
+	    auto GShader = RS->LoadShader("VoxelDebug_GS",  "gs_6_0", "assets\\shaders\\VoxelDebugVis.hlsl");
+	    auto PShader = RS->LoadShader("VoxelDebug_PS",  "ps_6_0", "assets\\shaders\\VoxelDebugVis.hlsl");
+
+	    D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+
+	    D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+	    Depth_Desc.DepthFunc	                = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+
+	    D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+		    PSO_Desc.pRootSignature        = RS->Library.RSDefault;
+		    PSO_Desc.VS                    = VShader;
+		    PSO_Desc.GS                    = GShader;
+		    PSO_Desc.PS                    = PShader;
+		    PSO_Desc.RasterizerState       = Rast_Desc;
+		    PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		    PSO_Desc.SampleMask            = UINT_MAX;
+		    PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+		    PSO_Desc.NumRenderTargets      = 1;
+		    PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+		    PSO_Desc.SampleDesc.Count      = 1;
+		    PSO_Desc.SampleDesc.Quality    = 0;
+		    PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+		    PSO_Desc.InputLayout           = { nullptr, 0 };
+		    PSO_Desc.DepthStencilState     = Depth_Desc;
+
+            PSO_Desc.BlendState.IndependentBlendEnable          = true;
+            PSO_Desc.BlendState.RenderTarget[0].BlendEnable     = true;
+            PSO_Desc.BlendState.RenderTarget[0].BlendOp         = D3D12_BLEND_OP_ADD;
+            PSO_Desc.BlendState.RenderTarget[0].BlendOpAlpha    = D3D12_BLEND_OP_ADD;
+
+            PSO_Desc.BlendState.RenderTarget[0].SrcBlend        = D3D12_BLEND_SRC_ALPHA;
+            PSO_Desc.BlendState.RenderTarget[0].SrcBlendAlpha   = D3D12_BLEND_ONE;
+
+            PSO_Desc.BlendState.RenderTarget[0].DestBlend       = D3D12_BLEND_INV_SRC_ALPHA;
+            PSO_Desc.BlendState.RenderTarget[0].DestBlendAlpha  = D3D12_BLEND_ONE;
+	    }
+
+	    ID3D12PipelineState* PSO = nullptr;
+	    auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+	    FK_ASSERT(SUCCEEDED(HR));
+
+	    return PSO;
+    }
+
+
+    DEBUGVIS_VoxelVolume& WorldRender::DEBUGVIUS_DrawVoxelVolume(
+			    UpdateDispatcher&               dispatcher,
+			    FrameGraph&                     frameGraph,
+			    const CameraHandle              camera,
+			    FrameResourceHandle             renderTarget,
+			    ResourceHandle                  depthTarget,
+			    ReserveConstantBufferFunction   reserveCB,
+			    iAllocator*                     allocator)
+    {
+        return frameGraph.AddNode<DEBUGVIS_VoxelVolume>(
+            DEBUGVIS_VoxelVolume{
+                reserveCB, camera
+            },
+			[&](FrameGraphNodeBuilder& builder, DEBUGVIS_VoxelVolume& data)
+			{
+                data.renderTarget   = builder.WriteTransition(renderTarget, DRS_RenderTarget);
+                data.depthTarget    = builder.DepthTarget(depthTarget);
+                data.volume         = builder.NonPixelShaderResource(voxelVolumes[primaryVolume]);
+                data.indirectArgs   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DRS_UAV);
+                data.octree         = builder.NonPixelShaderResource(octreeBuffer);
+            },
+			[&draw = draw](DEBUGVIS_VoxelVolume& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+            {
+                ctx.BeginEvent_DEBUG("VXGI_DrawVolume");
+
+                auto state                  = resources.GetPipelineState(VXGI_DRAWVOLUMEVISUALIZATION);
+                auto gatherDrawArgs         = resources.GetPipelineState(VXGI_GATHERARGS2);
+
+                const uint32_t blockSize    = 8;
+                auto& rootSig               = resources.renderSystem().Library.RSDefault;
+
+                ctx.SetComputeRootSignature(rootSig);
+                ctx.SetPipelineState(gatherDrawArgs);
+
+                DescriptorHeap uavHeap;
+                uavHeap.Init2(ctx, rootSig.GetDescHeap(1), 2, &allocator);
+                uavHeap.SetUAVStructured(ctx, 0, resources.UAV(data.octree, ctx), 4);
+                uavHeap.SetUAVStructured(ctx, 1, resources.UAV(data.indirectArgs, ctx), 16, 0);
+
+                ctx.SetComputeDescriptorTable(5, uavHeap);
+                ctx.Dispatch(gatherDrawArgs, { 1, 1, 1 });
+
+                ctx.SetRootSignature(rootSig);
+                ctx.SetPipelineState(state);
+
+                CBPushBuffer constantBuffer{ data.reserveCB(AlignedSize<Camera::ConstantBuffer>()) };
+
+                const auto cameraConstantValues = GetCameraConstants(data.camera);
+                const ConstantBufferDataSet cameraConstants{ cameraConstantValues, constantBuffer };
+
+                struct alignas(64) OctTreeNode
+                {
+                    uint    nodes[8];
+                    uint4   volumeCord;
+                    uint    data;
+                    uint    flags;
+                };
+
+
+                DescriptorHeap resourceHeap;
+                resourceHeap.Init2(ctx, rootSig.GetDescHeap(0), 2, &allocator);
+                resourceHeap.SetStructuredResource(ctx, 0, resources.NonPixelShaderResource(data.octree, ctx), sizeof(OctTreeNode), 4096 / sizeof(OctTreeNode));
+
+                ctx.SetGraphicsConstantBufferView(0, cameraConstants);
+                ctx.SetPrimitiveTopology(EInputTopology::EIT_POINT);
+
+                ctx.SetScissorAndViewports({
+                        resources.GetRenderTarget(data.renderTarget),
+                    });
+
+                ctx.SetRenderTargets(
+                    {
+                        resources.GetRenderTarget(data.renderTarget),
+                    },
+                    true,
+                    resources.GetResource(data.depthTarget));
+
+                ctx.SetGraphicsDescriptorTable(4, resourceHeap);
+
+                ctx.ExecuteIndirect(resources.IndirectArgs(data.indirectArgs, ctx), draw);
+
+                ctx.EndEvent_DEBUG();
             });
     }
 

@@ -224,43 +224,53 @@ namespace FlexKit
 	static const PSOHandle BILATERALBLURPASSHORIZONTAL = PSOHandle(GetTypeGUID(BILATERALBLURPASSHORIZONTAL));
 	static const PSOHandle BILATERALBLURPASSVERTICAL   = PSOHandle(GetTypeGUID(BILATERALBLURPASSVERTICAL));
 
-    constexpr PSOHandle LIGHTPREPASS		    = PSOHandle(GetTypeGUID(LIGHTPREPASS));
+    constexpr PSOHandle LIGHTPREPASS		            = PSOHandle(GetTypeGUID(LIGHTPREPASS));
 
-    constexpr PSOHandle CREATECLUSTERS          = PSOHandle(GetTypeGUID(CREATECLUSTERS));
-    constexpr PSOHandle CREATECLUSTERBUFFER     = PSOHandle(GetTypeGUID(CREATECLUSTERBUFFER));
-    constexpr PSOHandle CLEARCOUNTERSPSO        = PSOHandle(GetTypeGUID(CLEARCOUNTERSPSO));
-    constexpr PSOHandle CREATECLUSTERLIGHTLISTS = PSOHandle(GetTypeGUID(CREATECLUSTERLIGHTLISTS));
+    constexpr PSOHandle CREATECLUSTERS                  = PSOHandle(GetTypeGUID(CREATECLUSTERS));
+    constexpr PSOHandle CREATECLUSTERBUFFER             = PSOHandle(GetTypeGUID(CREATECLUSTERBUFFER));
+    constexpr PSOHandle CLEARCOUNTERSPSO                = PSOHandle(GetTypeGUID(CLEARCOUNTERSPSO));
+    constexpr PSOHandle CREATECLUSTERLIGHTLISTS         = PSOHandle(GetTypeGUID(CREATECLUSTERLIGHTLISTS));
 
-    constexpr PSOHandle CREATELIGHTBVH_PHASE1       = PSOHandle(GetTypeGUID(CREATELIGHTPVH1123));
-    constexpr PSOHandle CREATELIGHTBVH_PHASE2       = PSOHandle(GetTypeGUID(CREATELIGHTPVH2));
-    constexpr PSOHandle LIGHTBVH_DEBUGVIS_PSO       = PSOHandle(GetTypeGUID(LIGHTBVH_DEBUGVIS_PSO));
-    constexpr PSOHandle CLUSTER_DEBUGVIS_PSO        = PSOHandle(GetTypeGUID(CLUSTER_DEBUGVIS_PSO));
-    constexpr PSOHandle CLUSTER_DEBUGARGSVIS_PSO    = PSOHandle(GetTypeGUID(CLUSTER_DEBUGARGSVIS_PSO));
-    constexpr PSOHandle CREATELIGHTLISTARGS_PSO     = PSOHandle(GetTypeGUID(CREATELIGHTLISTARGS_POS));
-    constexpr PSOHandle CREATELIGHTDEBUGVIS_PSO     = PSOHandle(GetTypeGUID(CREATELIGHTDEBUGVIS_PSO));
-    constexpr PSOHandle RESOLUTIONMATCHSHADOWMAPS   = PSOHandle(GetTypeGUID(RESOLUTIONMATCHSHADOWMAPS));
-    constexpr PSOHandle CLEARSHADOWRESOLUTIONBUFFER = PSOHandle(GetTypeGUID(CLEARSHADOWRESOLUTIONBUFFER));
+    constexpr PSOHandle CREATELIGHTBVH_PHASE1           = PSOHandle(GetTypeGUID(CREATELIGHTPVH1123));
+    constexpr PSOHandle CREATELIGHTBVH_PHASE2           = PSOHandle(GetTypeGUID(CREATELIGHTPVH2));
+    constexpr PSOHandle LIGHTBVH_DEBUGVIS_PSO           = PSOHandle(GetTypeGUID(LIGHTBVH_DEBUGVIS_PSO));
+    constexpr PSOHandle CLUSTER_DEBUGVIS_PSO            = PSOHandle(GetTypeGUID(CLUSTER_DEBUGVIS_PSO));
+    constexpr PSOHandle CLUSTER_DEBUGARGSVIS_PSO        = PSOHandle(GetTypeGUID(CLUSTER_DEBUGARGSVIS_PSO));
+    constexpr PSOHandle CREATELIGHTLISTARGS_PSO         = PSOHandle(GetTypeGUID(CREATELIGHTLISTARGS_POS));
+    constexpr PSOHandle CREATELIGHTDEBUGVIS_PSO         = PSOHandle(GetTypeGUID(CREATELIGHTDEBUGVIS_PSO));
+    constexpr PSOHandle RESOLUTIONMATCHSHADOWMAPS       = PSOHandle(GetTypeGUID(RESOLUTIONMATCHSHADOWMAPS));
+    constexpr PSOHandle CLEARSHADOWRESOLUTIONBUFFER     = PSOHandle(GetTypeGUID(CLEARSHADOWRESOLUTIONBUFFER));
 
-    constexpr PSOHandle CREATEINITIALLUMANANCELEVEL = PSOHandle(GetTypeGUID(CREATEINITIALLUMANANCELEVEL));
-    constexpr PSOHandle CREATELUMANANCELEVEL        = PSOHandle(GetTypeGUID(CREATELUMANANCELEVEL));
+    constexpr PSOHandle CREATEINITIALLUMANANCELEVEL     = PSOHandle(GetTypeGUID(CREATEINITIALLUMANANCELEVEL));
+    constexpr PSOHandle CREATELUMANANCELEVEL            = PSOHandle(GetTypeGUID(CREATELUMANANCELEVEL));
 
-    constexpr PSOHandle OITBLEND                    = PSOHandle(GetTypeGUID(OITBLEND));
-    constexpr PSOHandle OITDRAW                     = PSOHandle(GetTypeGUID(OITDRAW));
-    constexpr PSOHandle OITDRAWANIMATED             = PSOHandle(GetTypeGUID(OITDRAWANIMATED));
+    constexpr PSOHandle OITBLEND                        = PSOHandle(GetTypeGUID(OITBLEND));
+    constexpr PSOHandle OITDRAW                         = PSOHandle(GetTypeGUID(OITDRAW));
+    constexpr PSOHandle OITDRAWANIMATED                 = PSOHandle(GetTypeGUID(OITDRAWANIMATED));
 
-    constexpr PSOHandle DEPTHPREPASS                = PSOHandle(GetTypeGUID(DEPTHPREPASS));
-    constexpr PSOHandle FORWARDDRAWINSTANCED	    = PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
-    constexpr PSOHandle FORWARDDRAW_OCCLUDE		    = PSOHandle(GetTypeGUID(FORWARDDRAW_OCCLUDE));
-    constexpr PSOHandle TEXTURE2CUBEMAP_IRRADIANCE  = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP_IRRADIANCE));
-    constexpr PSOHandle TEXTURE2CUBEMAP_GGX         = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP_GGX));
+    constexpr PSOHandle DEPTHPREPASS                    = PSOHandle(GetTypeGUID(DEPTHPREPASS));
+    constexpr PSOHandle FORWARDDRAWINSTANCED	        = PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
+    constexpr PSOHandle FORWARDDRAW_OCCLUDE		        = PSOHandle(GetTypeGUID(FORWARDDRAW_OCCLUDE));
+    constexpr PSOHandle TEXTURE2CUBEMAP_IRRADIANCE      = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP_IRRADIANCE));
+    constexpr PSOHandle TEXTURE2CUBEMAP_GGX             = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP_GGX));
 
+    constexpr PSOHandle SHADOWMAPPASS                   = PSOHandle(GetTypeGUID(SHADOWMAPPASS));
+    constexpr PSOHandle SHADOWMAPANIMATEDPASS           = PSOHandle(GetTypeGUID(SHADOWMAPANIMATEDPASS));
+    constexpr PSOHandle DEBUG_DrawBVH                   = PSOHandle(GetTypeGUID(DEBUG_DrawBVH1));
 
-    constexpr PSOHandle SHADOWMAPPASS            = PSOHandle(GetTypeGUID(SHADOWMAPPASS));
-    constexpr PSOHandle SHADOWMAPANIMATEDPASS    = PSOHandle(GetTypeGUID(SHADOWMAPANIMATEDPASS));
-    constexpr PSOHandle DEBUG_DrawBVH            = PSOHandle(GetTypeGUID(DEBUG_DrawBVH1));
+    constexpr PSOHandle ZPYRAMIDBUILDLEVEL              = PSOHandle(GetTypeGUID(ZPYRAMIDBUILDLEVEL));
+    constexpr PSOHandle DEPTHCOPY                       = PSOHandle(GetTypeGUID(DEPTHCOPY));
 
-    constexpr PSOHandle ZPYRAMIDBUILDLEVEL  = PSOHandle(GetTypeGUID(ZPYRAMIDBUILDLEVEL));
-    constexpr PSOHandle DEPTHCOPY           = PSOHandle(GetTypeGUID(DEPTHCOPY));
+    constexpr PSOHandle VXGI_INITOCTREE                 = PSOHandle(GetTypeGUID(VXGI_INITOCTREE));
+    constexpr PSOHandle VXGI_CLEAR                      = PSOHandle(GetTypeGUID(VXGI_CLEAR));
+
+    constexpr PSOHandle VXGI_CLEANUPVOXELVOLUMES        = PSOHandle(GetTypeGUID(VXGI_CLEANUPVOXELVOLUMES));
+    constexpr PSOHandle VXGI_SAMPLEINJECTION            = PSOHandle(GetTypeGUID(VXGI_SAMPLEINJECTION));
+    constexpr PSOHandle VXGI_DRAWVOLUMEVISUALIZATION    = PSOHandle(GetTypeGUID(VXGI_DRAWVOLUMEVISUALIZATION));
+    constexpr PSOHandle VXGI_GATHERARGS1                = PSOHandle(GetTypeGUID(VXGI_GATHERARGS1));
+    constexpr PSOHandle VXGI_GATHERARGS2                = PSOHandle(GetTypeGUID(VXGI_GATHERARGS2));
+    constexpr PSOHandle VXGI_GATHERSUBDIVISIONREQUESTS  = PSOHandle(GetTypeGUID(VXGI_GATHERSUBDIVISIONREQUESTS));
+    constexpr PSOHandle VXGI_PROCESSSUBDREQUESTS        = PSOHandle(GetTypeGUID(VXGI_PROCESSSUBDREQUESTS));
 
 
 	/************************************************************************************************/
@@ -313,6 +323,19 @@ namespace FlexKit
 
     ID3D12PipelineState* CreateBuildZLayer                  (RenderSystem* RS);
     ID3D12PipelineState* CreateDepthBufferCopy              (RenderSystem* RS);
+
+
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* CreateVXGI_InitOctree              (RenderSystem* RS);
+    ID3D12PipelineState* CreateInjectVoxelSamplesPSO        (RenderSystem* RS);
+    ID3D12PipelineState* CreateUpdateVoxelVolumesPSO        (RenderSystem* RS);
+    ID3D12PipelineState* CreateUpdateVolumeVisualizationPSO (RenderSystem* RS);
+    ID3D12PipelineState* CreateVXGIGatherArgs1PSO           (RenderSystem* RS);
+    ID3D12PipelineState* CreateVXGIGatherArgs2PSO           (RenderSystem* RS);
+    ID3D12PipelineState* CreateVXGIGatherSubDRequestsPSO    (RenderSystem* RS);
+    ID3D12PipelineState* CreateVXGIProcessSubDRequestsPSO   (RenderSystem* RS);
 
 
     /************************************************************************************************/
@@ -670,6 +693,10 @@ namespace FlexKit
 		FrameResourceHandle     renderTargetObject;
 	};
 
+
+    /************************************************************************************************/
+
+
     struct OITPass
 	{
 
@@ -689,6 +716,40 @@ namespace FlexKit
         FrameResourceHandle     counterObject;
         FrameResourceHandle     depthTarget;
 	};
+
+
+    /************************************************************************************************/
+
+
+    struct UpdateVoxelVolume
+    {
+        ReserveConstantBufferFunction   reserveCB;
+        CameraHandle                    camera;
+
+        FrameResourceHandle     primaryVolume;
+        FrameResourceHandle     secondaryVolume;
+        FrameResourceHandle     depthTarget;
+        FrameResourceHandle     voxelBuffer;
+        FrameResourceHandle     counters;
+        FrameResourceHandle     octree;
+        FrameResourceHandle     indirectArgs;
+    };
+
+
+    /************************************************************************************************/
+
+
+    struct DEBUGVIS_VoxelVolume
+    {
+        ReserveConstantBufferFunction   reserveCB;
+        CameraHandle                    camera;
+
+        FrameResourceHandle     depthTarget;
+        FrameResourceHandle     volume;
+        FrameResourceHandle     renderTarget;
+        FrameResourceHandle     indirectArgs;
+        FrameResourceHandle     octree;
+    };
 
 
     /************************************************************************************************/
@@ -992,6 +1053,27 @@ namespace FlexKit
 			    float                           t,
 			    iAllocator*                     allocator);
 
+        void RenderPBR_GI_InitializeOctree(
+			    FrameGraph&                     frameGraph);
+
+        UpdateVoxelVolume&        RenderPBR_GI_UpdateVoxelVolumes(
+			    UpdateDispatcher&               dispatcher,
+			    FrameGraph&                     frameGraph,
+			    const CameraHandle              camera,
+			    ResourceHandle                  depthTarget,
+			    ReserveConstantBufferFunction   reserveCB,
+			    iAllocator*                     allocator);
+
+
+        DEBUGVIS_VoxelVolume&     DEBUGVIUS_DrawVoxelVolume(
+			    UpdateDispatcher&               dispatcher,
+			    FrameGraph&                     frameGraph,
+			    const CameraHandle              camera,
+                FrameResourceHandle             renderTarget,
+			    ResourceHandle                  depthTarget,
+			    ReserveConstantBufferFunction   reserveCB,
+			    iAllocator*                     allocator);
+
 
         DEBUGVIS_DrawBVH&   DEBUGVIS_DrawLightBVH(
 				UpdateDispatcher&               dispatcher,
@@ -1036,6 +1118,14 @@ namespace FlexKit
 
         ResourceHandle          clusterBuffer = InvalidHandle_t;
 
+        IndirectLayout          dispatch;
+        IndirectLayout          draw;
+
+        ResourceHandle          voxelVolumes[2] = { InvalidHandle_t, InvalidHandle_t };
+        ResourceHandle          voxelBuffer;
+        ResourceHandle          octreeBuffer;
+        uint8_t                 primaryVolume = 0;
+
         using RenderTask = FlexKit::TypeErasedCallable<48, void, FrameGraph&>;
 
         static_vector<RenderTask> pendingGPUTasks; // Tasks must be completed prior to rendering
@@ -1045,8 +1135,6 @@ namespace FlexKit
 		TextureStreamingEngine&	streamingEngine;
 		bool                    enableOcclusionCulling;
 
-        FlexKit::IndirectLayout createClusterLightListLayout;
-        FlexKit::IndirectLayout createDebugDrawLayout;
 
         DEBUG_WorldRenderTimingValues timingValues;
 	};
