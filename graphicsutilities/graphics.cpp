@@ -629,6 +629,36 @@ namespace FlexKit
     }
 
 
+    /************************************************************************************************/
+
+
+    bool DescriptorHeap::SetSRV3D(Context& ctx, size_t idx, ResourceHandle resource)
+    {
+        if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
+			return false;
+
+		FillState[idx] = true;
+
+        const uint32_t  mipCount    = ctx.renderSystem->GetTextureMipCount(resource);
+        const auto      format      = ctx.renderSystem->GetTextureFormat(resource);
+		const auto      dxFormat    = TextureFormat2DXGIFormat(format);
+
+        PushTexture3DToDescHeap(
+            ctx.renderSystem,
+            dxFormat,
+            mipCount,
+            0,
+            0,
+            resource,
+            IncrementHeapPOS(
+                descriptorHeap,
+                ctx.renderSystem->DescriptorCBVSRVUAVSize,
+                idx));
+
+		return true;
+    }
+
+
 	/************************************************************************************************/
 
 
@@ -815,6 +845,34 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    bool DescriptorHeap::SetUAVTexture3D(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
+    {
+        if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
+			return false;
+
+		FillState[idx] = true;
+
+        Texture2D tex;
+        tex.WH          = ctx.renderSystem->GetTextureWH(handle);
+        tex.Texture     = ctx.renderSystem->GetDeviceResource(handle);
+        tex.Format      = TextureFormat2DXGIFormat(format);
+
+        PushUAV3DToDescHeap(
+			ctx.renderSystem,
+			tex,
+            tex.WH[0],
+			IncrementHeapPOS(
+				descriptorHeap,
+				ctx.renderSystem->DescriptorCBVSRVUAVSize,
+				idx));
+
+        return true;
+    }
+
+
+    /************************************************************************************************/
+
+
     bool DescriptorHeap::SetUAVStructured(Context& ctx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
     {
         if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
@@ -843,8 +901,8 @@ namespace FlexKit
     bool DescriptorHeap::SetUAVStructured(
         Context&            ctx,
         size_t              idx,
-        ResourceHandle	resource,
-        ResourceHandle   counter,
+        ResourceHandle	    resource,
+        ResourceHandle      counter,
         size_t              stride,
         size_t              counterOffset)
     {
@@ -855,7 +913,7 @@ namespace FlexKit
 
         UAVBuffer uavDesc{ *ctx.renderSystem, resource, stride, 0 };
         uavDesc.counterOffset   = counterOffset;
-        uavDesc.offset          = resource == counter ? Max(sizeof(uint32_t) / stride, 1) : 0;
+        uavDesc.offset          = resource == counter ? Max(4096 / stride, 1) : 0;
 
         PushUAVBufferToDescHeap2(
             ctx.renderSystem,
@@ -976,6 +1034,14 @@ namespace FlexKit
 
 			switch (I.Type)
 			{
+            case RootSignatureEntryType::UINT:
+            {
+                Param.InitAsConstants(
+                    I.UINTConstant.size,
+                    I.UINTConstant.Register,
+                    I.UINTConstant.RegisterSpace,
+                    PipelineDest2ShaderVis(I.UINTConstant.Accessibility));
+            }   break;
 			case RootSignatureEntryType::DescriptorHeap:
 			{
 				auto  HeapIdx = I.DescriptorHeap.HeapIdx;
@@ -1417,6 +1483,7 @@ namespace FlexKit
 
 	void Context::SetRootSignature(const RootSignature& RS)
 	{
+        CurrentRootSignature = &RS;
 		DeviceContext->SetGraphicsRootSignature(RS);
 	}
 
@@ -1426,6 +1493,7 @@ namespace FlexKit
 
 	void Context::SetComputeRootSignature(const RootSignature& RS)
 	{
+        CurrentComputeRootSignature = &RS;
 		DeviceContext->SetComputeRootSignature(RS);
 	}
 
@@ -2502,6 +2570,30 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    void Context::ClearUAVBuffer(ResourceHandle UAV, uint4 clearColor)
+    {
+        UpdateResourceStates();
+
+        auto PSO = renderSystem->GetPSO(CLEARBUFFERPSO);
+        DeviceContext->SetComputeRootSignature(renderSystem->Library.ClearBuffer);
+        DeviceContext->SetPipelineState(PSO);
+        DeviceContext->SetComputeRoot32BitConstants(0, 4, &clearColor, 0);
+        DeviceContext->SetComputeRootUnorderedAccessView(1, renderSystem->GetDeviceResource(UAV)->GetGPUVirtualAddress());
+
+        auto resourceSize = renderSystem->GetResourceSize(UAV);
+        DeviceContext->Dispatch(UINT(ceil(resourceSize / 1024.0f)), 1, 1);
+
+        if(CurrentComputeRootSignature)
+            DeviceContext->SetComputeRootSignature(*CurrentComputeRootSignature);
+
+        if(CurrentPipelineState)
+            DeviceContext->SetPipelineState(CurrentPipelineState);
+    }
+
+
 	/************************************************************************************************/
 
 
@@ -2558,6 +2650,13 @@ namespace FlexKit
 		UpdateResourceStates();
 		DeviceContext->DrawInstanced(VertexCount, 1, BaseVertex, 0);
 	}
+
+
+    void Context::DrawInstanced(size_t vertexCount, size_t baseVertex, size_t instanceCount, size_t instanceOffset )
+    {
+        UpdateResourceStates();
+        DeviceContext->DrawInstanced(vertexCount, instanceCount, baseVertex, instanceOffset);
+    }
 
 
 	void Context::DrawIndexed(size_t IndexCount, size_t IndexOffet, size_t BaseVertex)
@@ -3189,6 +3288,13 @@ namespace FlexKit
 
 			SETDEBUGNAME(RS->Library.ShadingRTSig, "ComputeSignature");
 		}
+        {
+            RS->Library.ClearBuffer.SetParameterAsUINT(0, 4, 0, 0, PIPELINE_DEST_CS);
+            RS->Library.ClearBuffer.SetParameterAsUAV(1, 0, 0, PIPELINE_DEST_CS);
+            RS->Library.ClearBuffer.Build(RS, TempMemory);
+
+			SETDEBUGNAME(RS->Library.ClearBuffer, "ClearBuffer");
+		}
 	}
 
 
@@ -3726,6 +3832,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    ID3D12PipelineState* CreateClearBufferPSO(RenderSystem* RS)
+    {
+        Shader computeShader = RS->LoadShader("Clear", "cs_6_0", R"(assets\shaders\ClearBuffer.hlsl)");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+            RS->Library.ClearBuffer,
+            computeShader
+        };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+
+        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+        return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
 	bool RenderSystem::Initiate(Graphics_Desc* in)
 	{
 		Vector<ID3D12DeviceChild*> ObjectsCreated(in->Memory);
@@ -3932,11 +4059,13 @@ namespace FlexKit
 		FreeList.Allocator = in->Memory;
 		DefaultTexture = _CreateDefaultTexture();
 
+        RegisterPSOLoader(CLEARBUFFERPSO, { &Library.ClearBuffer, CreateClearBufferPSO });
+        QueuePSOLoad(CLEARBUFFERPSO);
+
 		SetDebugName(DefaultTexture, "Default Texture");
 
 		return InitiateComplete;
 	}
-
 
 
 	/************************************************************************************************/
@@ -6435,9 +6564,22 @@ namespace FlexKit
 
 	uint2 TextureStateTable::GetWH(ResourceHandle Handle) const
 	{
-		auto UserIdx = Handles[Handle];
-		return Resources[UserEntries[UserIdx].ResourceIdx].WH;
+        auto UserIdx = Handles[Handle];
+        return Resources[UserEntries[UserIdx].ResourceIdx].WH;
 	}
+
+
+    /************************************************************************************************/
+
+
+    uint3 TextureStateTable::GetXYZ(ResourceHandle Handle) const
+    {
+        auto UserIdx    = Handles[Handle];
+        auto& user      = UserEntries[UserIdx];
+        auto& resource  = Resources[UserEntries[UserIdx].ResourceIdx];
+
+        return { resource.WH, user.arraySize };
+    }
 
 
 	/************************************************************************************************/
@@ -8355,6 +8497,30 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    DescHeapPOS PushTexture3DToDescHeap(RenderSystem* RS, DXGI_FORMAT format, uint32_t mipCount, uint32_t highestDetailMip, uint32_t minLODClamp, ResourceHandle handle, DescHeapPOS POS)
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC ViewDesc = {}; {
+			const auto mipCount     = RS->GetTextureMipCount(handle);
+			const auto arraySize    = RS->GetTextureArraySize(handle);
+
+			ViewDesc.Format                             = format;
+			ViewDesc.Shader4ComponentMapping            = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			ViewDesc.ViewDimension                      = D3D12_SRV_DIMENSION_TEXTURE3D;
+			ViewDesc.Texture3D.MipLevels                = mipCount;
+			ViewDesc.Texture3D.MostDetailedMip          = highestDetailMip;
+			ViewDesc.Texture3D.ResourceMinLODClamp      = minLODClamp;
+		}
+
+		auto debug = RS->GetDeviceResource(handle);
+		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(handle), &ViewDesc, POS);
+
+		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
+	}
+
+
 	/************************************************************************************************/
 
 
@@ -8402,6 +8568,21 @@ namespace FlexKit
 		UAVDesc.ViewDimension        = D3D12_UAV_DIMENSION_TEXTURE2D;
 		UAVDesc.Texture2D.MipSlice   = mipLevel;
 		UAVDesc.Texture2D.PlaneSlice = 0;
+
+		RS->pDevice->CreateUnorderedAccessView(tex, nullptr, &UAVDesc, POS);
+		
+		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
+	}
+
+
+    DescHeapPOS PushUAV3DToDescHeap(RenderSystem* RS, Texture2D tex, uint32_t width, DescHeapPOS POS)
+	{
+		D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc;
+		UAVDesc.Format                  = tex.Format;
+		UAVDesc.ViewDimension           = D3D12_UAV_DIMENSION_TEXTURE3D;
+		UAVDesc.Texture3D.MipSlice      = 0;
+		UAVDesc.Texture3D.FirstWSlice   = 0;
+		UAVDesc.Texture3D.WSize         = width;
 
 		RS->pDevice->CreateUnorderedAccessView(tex, nullptr, &UAVDesc, POS);
 		

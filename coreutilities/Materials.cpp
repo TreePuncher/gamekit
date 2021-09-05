@@ -146,13 +146,16 @@ namespace FlexKit
         auto rdCtx = ReadContext{};
 
         Add2Pass(newMaterial, PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED)});
-
+        SetProperty(newMaterial, GetCRCGUID(PBR_ALBEDO), float4(0.5, 0.5f, 0.5f, 0.0f));
+        SetProperty(newMaterial, GetCRCGUID(PBR_SPECULAR), float4(0.9, 0.9f, 0.9f, 0.0f));
+        
         if (materialBlob.materials.size() > 1)
         {
             for (auto& subMaterial : materialBlob.materials)
             {
-                auto newSubMaterial = CreateMaterial();
+                auto newSubMaterial = CreateMaterial(newMaterial);
                 AddSubMaterial(newMaterial, newSubMaterial);
+
 
                 for (auto& texture : subMaterial.textures)
                     AddTexture(texture, newSubMaterial, rdCtx);

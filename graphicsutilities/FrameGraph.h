@@ -685,12 +685,10 @@ namespace FlexKit
 			return UAVBuffer;
 		}
 
-
 		ResourceHandle CopyDest(FrameResourceHandle resource, Context& ctx)
 		{
             return Transition(resource, DRS_CopyDest, ctx);
 		}
-
 
         ResourceHandle CopySrc(FrameResourceHandle resource, Context& ctx)
         {
@@ -710,6 +708,11 @@ namespace FlexKit
         ResourceHandle NonPixelShaderResource(const FrameResourceHandle resource, Context& ctx) const
         {
             return Transition(resource, DRS_NonPixelShaderResource, ctx);
+        }
+
+        ResourceHandle IndirectArgs(const FrameResourceHandle resource, Context& ctx) const
+        {
+            return Transition(resource, DRS_INDIRECTARGS, ctx);
         }
 
 		DeviceResourceState GetObjectState(FrameResourceHandle handle) const

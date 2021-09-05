@@ -237,7 +237,7 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
     Deferred_OUT gbuffer;
 
     const float3 biTangent          = normalize(IN.Bitangent);
-    const float4 roughMetal         = textureCount >= 3 ? SampleVirtualTexture(roughnessMetalTexture, BiLinear, IN.UV) : float4(0.7, 0.5f, 0, 0);
+    const float4 roughMetal         = textureCount >= 3 ? SampleVirtualTexture(roughnessMetalTexture, BiLinear, IN.UV) : float4(IOR, Roughness, Metallic, Anisotropic);
     const float3 normalSample       = textureCount >= 2 ? SampleVirtualTexture(normalTexture, BiLinear, IN.UV).xyz : float3(0.5f, 0.5f, 1.0f);
     const float3 normalCorrected    = float3(normalSample.x, normalSample.y, normalSample.z);
     

@@ -305,7 +305,6 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 
             .transformDependency    = transforms,
             .cameraDependency       = cameras,
-
             .additionalGbufferPasses  = {
                 [&]()
                 {
@@ -502,9 +501,14 @@ bool LocalGameState::EventHandler(Event evt)
                     framework.GetRenderSystem().QueuePSOLoad(SHADINGPASS);
                     framework.GetRenderSystem().QueuePSOLoad(CREATECLUSTERLIGHTLISTS);
                     framework.GetRenderSystem().QueuePSOLoad(CREATECLUSTERS);
-                    */
                     framework.GetRenderSystem().QueuePSOLoad(OITBLEND);
                     framework.GetRenderSystem().QueuePSOLoad(OITDRAW);
+                    */
+
+                    
+                    framework.GetRenderSystem().QueuePSOLoad(VXGI_DRAWVOLUMEVISUALIZATION);
+                    framework.GetRenderSystem().QueuePSOLoad(VXGI_CLEANUPVOXELVOLUMES);
+                    framework.GetRenderSystem().QueuePSOLoad(VXGI_SAMPLEINJECTION);
 
                     return true;
                 case KC_ESC:

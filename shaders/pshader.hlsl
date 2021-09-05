@@ -105,10 +105,6 @@ float4 DrawTextureCoordinates(PS_IN IN) : SV_Target
 	return float4(Offset, Page);
 }
 
-GBuffer DebugPaint(PS_IN IN)
-{
-}
-
 
 /************************************************************************************************/
 

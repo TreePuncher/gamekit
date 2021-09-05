@@ -858,6 +858,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		ConstantBuffer,
 		StructuredBuffer,
 		UnorderedAcess,
+        UINT,
 		Error
 	};
 
@@ -1033,6 +1034,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		bool SetSRV					(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
         bool SetSRV                 (Context& ctx, size_t idx, ResourceHandle, uint MipOffset, DeviceFormat format);
 
+        bool SetSRV3D               (Context& ctx, size_t idx, ResourceHandle);
+
 		//bool SetSRV					(Context& ctx, size_t idx, ResourceHandle		Handle);
 		//bool SetSRV					(Context& ctx, size_t idx, ResourceHandle	Handle);
 		bool SetSRVCubemap          (Context& ctx, size_t idx, ResourceHandle		Handle);
@@ -1044,6 +1047,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		bool SetUAVTexture			(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
         bool SetUAVTexture          (Context& ctx, size_t idx, size_t mipLevel, ResourceHandle, DeviceFormat format);
+
+        bool SetUAVTexture3D        (Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
+
 
 		bool SetUAVStructured       (Context& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset = 0);
 		bool SetUAVStructured       (Context& ctx, size_t idx, ResourceHandle resource, ResourceHandle counter, size_t stride, size_t Offset);
@@ -1107,6 +1113,30 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			Signature = nullptr;
 			Heaps.Release();
 		}
+
+
+        bool SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL)
+        {
+            RootEntry Desc;
+			Desc.Type							= RootSignatureEntryType::UINT;
+            Desc.UINTConstant.size              = size;
+			Desc.UINTConstant.Register		    = cbRegister;
+            Desc.UINTConstant.RegisterSpace     = registerSpace;
+			Desc.UINTConstant.Accessibility	    = AccessableStages;
+
+            if (RootEntries.size() <= Index)
+			{
+				if (!RootEntries.full())
+					RootEntries.resize(Index + 1);
+				else
+					return false;
+			}
+
+            RootEntries[Index]  = Desc;
+            Tags[Index]         = -1;
+
+            return true;
+        }
 
 
 		template<size_t SIZE>
@@ -1243,6 +1273,15 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			RootSignatureEntryType Type = RootSignatureEntryType::Error;
 			union 
 			{
+                struct
+                {
+                    uint32_t				HeapIdx;
+                    uint32_t                size;
+                    uint32_t				Register;
+                    uint32_t				RegisterSpace;
+                    PIPELINE_DESTINATION	Accessibility;
+                }UINTConstant;
+
 				struct DH
 				{
 					size_t					HeapIdx;
@@ -1594,6 +1633,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void ClearUAVTextureFloat   (ResourceHandle UAV, float4 clearColor = float4(0, 0, 0, 0));
 		void ClearUAVTextureUint    (ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
 		void ClearUAV               (ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
+        void ClearUAVBuffer         (ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
 
 		void SetRootSignature		    (const RootSignature& RS);
 		void SetComputeRootSignature    (const RootSignature& RS);
@@ -1699,6 +1739,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetSOTargets		(static_vector<D3D12_STREAM_OUTPUT_BUFFER_VIEW, 4> SOViews);
 
 		void Draw					(size_t VertexCount, size_t BaseVertex = 0);
+		void DrawInstanced			(size_t VertexCount, size_t BaseVertex = 0, size_t instanceCount = 0, size_t instanceOffset = 0);
 		void DrawIndexed			(size_t IndexCount, size_t IndexOffet = 0, size_t BaseVertex = 0);
 		void DrawIndexedInstanced	(size_t IndexCount, size_t IndexOffet = 0, size_t BaseVertex = 0, size_t InstanceCount = 1, size_t InstanceOffset = 0);
 		void Clear					();
@@ -1820,8 +1861,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		ID3D12CommandAllocator*         commandAllocator        = nullptr;
 		ID3D12GraphicsCommandList4*		DeviceContext			= nullptr;
 
-		RootSignature*					CurrentRootSignature	= nullptr;
-		ID3D12PipelineState*			CurrentPipelineState	= nullptr;
+		const RootSignature*			CurrentRootSignature	    = nullptr;
+		const RootSignature*			CurrentComputeRootSignature	= nullptr;
+		ID3D12PipelineState*			CurrentPipelineState	    = nullptr;
 
 		ID3D12DescriptorHeap*           descHeapRTV             = nullptr;
 		ID3D12DescriptorHeap*           descHeapSRV             = nullptr;
@@ -2415,6 +2457,29 @@ private:
 			};
 		}
 
+        static GPUResourceDesc ShaderResource3D(uint3 IN_XYZ, DeviceFormat IN_format, uint8_t mipCount = 1, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
+        {
+            return {
+                false, // render target flag
+                false, // depth target flag
+                false, // UAV Resource flag
+                false, // buffered flag
+                false, // shader resource flag
+                false, // structured flag
+                false, // clear value
+                false, // back buffer
+                false, // PreCreated
+                allocationType,
+
+                TextureDimension::Texture3D,          // dimensions
+                mipCount,   // mip count
+                1,          // buffer count
+
+                { IN_XYZ[0], IN_XYZ[1] }, IN_format,
+                (uint8_t)IN_XYZ[2],  // buffer count
+            };
+        }
+
 
 		static GPUResourceDesc StructuredResource(const uint32_t bufferSize)
 		{
@@ -2507,6 +2572,29 @@ private:
 			};
 		}
 
+
+        static GPUResourceDesc UAVTexture3D(const uint3 IN_XYZ, const DeviceFormat IN_format, bool renderTarget = false, uint32_t mipCount = 1)
+		{
+			return {
+				false,  // render target flag
+				false,  // depth target flag
+				true,   // UAV Resource flag
+				false,  // buffered flag
+				false,  // shader resource flag
+				true,   // structured flag
+				false,  // clear value
+				false,  // back buffer
+				false,  // created
+				ResourceAllocationType::Committed,
+				
+                TextureDimension::Texture3D,          // dimensions
+                (uint8_t)mipCount,   // mip count
+                1,          // buffer count
+
+                { IN_XYZ[0], IN_XYZ[1] }, IN_format,
+                (uint8_t)IN_XYZ[2],  // buffer count
+			};
+		}
 
 		static GPUResourceDesc BackBuffered(uint2 WH, DeviceFormat format, ID3D12Resource** sources, const uint8_t resourceCount)
 		{
@@ -2734,7 +2822,8 @@ private:
         void			    SetDebug        (ResourceHandle Handle, const char* string);
 
         const char*         GetDebug(ResourceHandle Handle);
-		uint2			    GetWH(ResourceHandle Handle) const;
+        uint2			    GetWH(ResourceHandle Handle) const;
+        uint3			    GetXYZ(ResourceHandle Handle) const;
 		size_t			    GetFrameGraphIndex(ResourceHandle Texture, size_t FrameID) const;
 		void			    SetFrameGraphIndex(ResourceHandle Texture, size_t FrameID, size_t Index);
 
@@ -3384,6 +3473,8 @@ private:
         //}
     }
 
+    constexpr PSOHandle CLEARBUFFERPSO = PSOHandle(GetTypeGUID(CLEARBUFFERPSO));
+
 	FLEXKITAPI class RenderSystem
 	{
 	public:
@@ -3631,7 +3722,8 @@ private:
 				RS4CBVs_SO          { allocator },
 				RS6CBVs4SRVs        { allocator },
 				RS2UAVs4SRVs4CBs    { allocator },
-				ComputeSignature    { allocator } {}
+				ComputeSignature    { allocator },
+                ClearBuffer         { allocator } {}
 
 			void Initiate(RenderSystem* RS, iAllocator* TempMemory);
 
@@ -3650,7 +3742,8 @@ private:
 			RootSignature RS4CBVs_SO;			// Stream Out Enabled
 			RootSignature ShadingRTSig;			// Signature For Compute Based Deferred Shading
 			RootSignature RSDefault;			// Default Signature for Rasting
-			RootSignature ComputeSignature;		// 
+			RootSignature ComputeSignature;		//
+            RootSignature ClearBuffer;
 		}Library;
 
 		Vector<Context>             Contexts;
@@ -3876,6 +3969,7 @@ private:
 	FLEXKITAPI DescHeapPOS PushTextureToDescHeap        (RenderSystem* RS, DXGI_FORMAT format, ResourceHandle handle, DescHeapPOS POS);
     FLEXKITAPI DescHeapPOS PushTextureToDescHeap        (RenderSystem* RS, DXGI_FORMAT format, uint32_t highestMipLevel, ResourceHandle handle, DescHeapPOS POS);
 
+    FLEXKITAPI DescHeapPOS PushTexture3DToDescHeap      (RenderSystem* RS, DXGI_FORMAT format, uint32_t mipCount, uint32_t highestDetailMip, uint32_t minLODClamp, ResourceHandle handle, DescHeapPOS POS);
 
 	FLEXKITAPI DescHeapPOS PushCubeMapTextureToDescHeap (RenderSystem* RS, Texture2D tex, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushCubeMapTextureToDescHeap (RenderSystem* RS, ResourceHandle resource, DescHeapPOS POS, DeviceFormat format);
@@ -3883,6 +3977,7 @@ private:
     FLEXKITAPI DescHeapPOS PushUAV1DToDescHeap          (RenderSystem* RS, ID3D12Resource* resource, DXGI_FORMAT format, uint mip, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushUAV2DToDescHeap		    (RenderSystem* RS, Texture2D tex, DescHeapPOS POS);
     FLEXKITAPI DescHeapPOS PushUAV2DToDescHeap          (RenderSystem* RS, Texture2D tex, uint32_t mipLevel, DescHeapPOS POS);
+    FLEXKITAPI DescHeapPOS PushUAV3DToDescHeap          (RenderSystem* RS, Texture2D tex, uint32_t width, DescHeapPOS POS);
 
 	FLEXKITAPI DescHeapPOS PushUAVBufferToDescHeap	    (RenderSystem* RS, UAVBuffer buffer, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushUAVBufferToDescHeap2	    (RenderSystem* RS, UAVBuffer buffer, ID3D12Resource* counter, DescHeapPOS POS);
