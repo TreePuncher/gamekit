@@ -28,11 +28,8 @@ enum NODE_FLAGS
     LEAF                = 1 << 2,
 };
 
-RWTexture3D<float4> primary   : register(u0);
-RWTexture3D<float4> secondary : register(u1);
-
-RWStructuredBuffer<VoxelSample> voxelSampleBuffer   : register(u2);
-RWStructuredBuffer<OctTreeNode> octree              : register(u3);
+RWStructuredBuffer<VoxelSample> voxelSampleBuffer   : register(u0);
+RWStructuredBuffer<OctTreeNode> octree              : register(u1);
 
 void InitNode(uint idx, uint4 volumeCord)
 {
@@ -49,9 +46,10 @@ void InitNode(uint idx, uint4 volumeCord)
     octree[idx] = n;
 }
 
-#define VOLUME_SIZE         uint3(128, 128, 128)
-#define VOLUME_RESOLUTION   float3(128, 128, 128)
-#define MAX_DEPTH           8
+#define VOLUMESIDE_LENGTH   64
+#define VOLUME_SIZE         uint3(VOLUMESIDE_LENGTH, VOLUMESIDE_LENGTH, VOLUMESIDE_LENGTH)
+#define MAX_DEPTH           9
+#define VOLUME_RESOLUTION   float3(1 << MAX_DEPTH, 1 << MAX_DEPTH, 1 << MAX_DEPTH)
 
 struct OctreeNodeVolume
 {
@@ -61,18 +59,18 @@ struct OctreeNodeVolume
 
 float3 GetVoxelPoint(uint4 volumeID)
 {
-    const uint   depth       = volumeID.w;
-    const uint3  volumeDIM   = VOLUME_SIZE >> depth;
-    const float3 voxelSize   = float3(volumeDIM);
-    const float3 xyz         = voxelSize * volumeID.xyz;
+    const uint      depth           = volumeID.w;
+    const float     voxelSideLength = float(VOLUMESIDE_LENGTH) / float(1 << depth);
+    const float3    xyz             = voxelSideLength * volumeID.xyz;
 
     return xyz;
 }
 
 OctreeNodeVolume GetVolume(uint3 xyz, uint depth)
 {
-    const uint3  volumeDIM   = VOLUME_SIZE >> depth;
-    const float3 voxelSize   = float3(volumeDIM);
+    const float     voxelSideLength = float(VOLUMESIDE_LENGTH) / float(1 << depth);
+    const float3    volumeDIM       = float3(voxelSideLength, voxelSideLength, voxelSideLength);
+    const float3    voxelSize       = float3(volumeDIM);
 
     const float3 min    = voxelSize * xyz;
     const float3 max    = min + voxelSize;
@@ -103,8 +101,7 @@ float3 VolumeCord2WS(const uint3 cord, const float3 volumePOS_ws, const float3 v
 
 uint3 WS2VolumeCord(const float3 pos_WS, const float3 volumePOS_ws, const float3 volumeSize)
 {
-    const float3 temp = volumeSize / 128.0f;
-    const float3 UVW = (pos_WS - volumePOS_ws) / volumeSize * 128.0f;
+    const float3 UVW = ((pos_WS - volumePOS_ws) / volumeSize) * VOLUME_RESOLUTION;
 
     return uint3(UVW);
 }
@@ -129,14 +126,14 @@ bool InsideVolume(float3 pos_WT, const float3 volumePOS_ws, const float3 volumeS
         pos_WT.z <= volumePOS_ws.z + volumeSize.z );
 }
 
+/*
 [numthreads(8, 8, 8)]
 void UpdateVoxelVolumes(uint3 threadID : SV_DispatchThreadID)
 {
-    const float3 volumePosition = float3(0, 0, 0);
-    const float3 volumeSize     = float3(12.8f, 12.8f, 12.8f) * 2;
-    const float3 voxelPOS_ws    = VolumeCord2WS(threadID, volumePosition, volumeSize);
-    const float4 temp = mul(PV, float4(voxelPOS_ws, 1));
-    const float3 deviceCord = temp.xyz / temp.w;
+    const float3 volumePosition     = float3(0, 0, 0);
+    const float3 voxelPOS_ws        = VolumeCord2WS(threadID, volumePosition, VOLUME_SIZE);
+    const float4 temp               = mul(PV, float4(voxelPOS_ws, 1));
+    const float3 deviceCord         = temp.xyz / temp.w;
 
 
     if (OnScreen(deviceCord.xy))
@@ -153,11 +150,9 @@ void UpdateVoxelVolumes(uint3 threadID : SV_DispatchThreadID)
         const bool cull = abs(l - d) > 0.8f;
 
         const float4 element = primary[threadID];
-
-        primary[threadID] = float4(float3(threadID) / float3(128, 128, 128), cull ? 0.0f : element.w);
-        //secondary[threadID] = float4(float3(threadID) / float3(128, 128, 128), cull ? 0.0f : 1.0f);
     }
 }
+*/
 
 [numthreads(32, 32, 1)]
 void Injection(uint3 threadID : SV_DispatchThreadID)
@@ -172,7 +167,7 @@ void Injection(uint3 threadID : SV_DispatchThreadID)
     const float depthSample = depth.Load(uint3(4 * threadID.xy, 0));
 
     const float3 volumePosition = float3(0, 0, 0);
-    const float3 volumeSize     = float3(128, 128, 128);
+    const float3 volumeSize     = VOLUME_SIZE;
     const float3 pos_WS         = GetWorldSpacePosition(UV, depthSample);
 
     if (InsideVolume(pos_WS, volumePosition, volumeSize))
@@ -180,11 +175,8 @@ void Injection(uint3 threadID : SV_DispatchThreadID)
         const uint3 volumeCord = WS2VolumeCord(pos_WS, volumePosition, volumeSize);
 
         VoxelSample v;
-        v.volumeID  = uint4(volumeCord.x, volumeCord.y, volumeCord.z, 7);
+        v.volumeID  = uint4(volumeCord.x, volumeCord.y, volumeCord.z, MAX_DEPTH);
         v.color     = float4(5, 0, 5, 0);
-
-        //v.volumeID  = uint4(volumeCord, 7);
-        //v.color     = float4(pos_WS,1);
 
         const uint  idx         = voxelSampleBuffer.IncrementCounter();
         voxelSampleBuffer[idx] = v;
@@ -211,7 +203,7 @@ TraverseResult TraverseOctree(const uint4 volumeID)
     const float3    voxelPoint = GetVoxelPoint(volumeID);
     uint            nodeID     = 0;
 
-    for (uint depth = 0; depth < 8; depth++)
+    for (uint depth = 0; depth <= MAX_DEPTH; depth++)
     {
         OctTreeNode             n           = octree[nodeID];
         const OctreeNodeVolume  volume      = GetVolume(n.volumeCord.xyz, n.volumeCord.w);

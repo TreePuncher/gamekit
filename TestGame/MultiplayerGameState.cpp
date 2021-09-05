@@ -166,7 +166,7 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     materials.SetProperty(parentMaterial,   GetCRCGUID(PBR_ALBEDO),     float4{ 0.5f, 0.0f, 0.5f, 0.1f });
     materials.SetProperty(parentMaterial,   GetCRCGUID(PBR_SPECULAR),   float4{ 0.9f, 0.9f, 0.9f, 0.0f });
 
-    for (size_t Y = 0; Y < 20; Y++)
+    for (size_t Y = 0; Y < 0; Y++)
         for (size_t X = 0; X < 20; X++)
         {
             auto& transparentObject = worldState.CreateGameObject();

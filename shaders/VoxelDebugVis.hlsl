@@ -58,17 +58,17 @@ struct OctreeNodeVolume
     float3 min;
     float3 max;
 };
-
-#define VOLUME_SIZE         uint3(128, 128, 128)
-#define VOLUME_RESOLUTION   float3(128, 128, 128)
-#define MAX_DEPTH           8
+#define VOLUMESIDE_LENGTH   64
+#define VOLUME_SIZE         uint3(VOLUMESIDE_LENGTH, VOLUMESIDE_LENGTH, VOLUMESIDE_LENGTH)
+#define MAX_DEPTH           9
+#define VOLUME_RESOLUTION   float3(1 << MAX_DEPTH, 1 << MAX_DEPTH, 1 << MAX_DEPTH)
 
 OctreeNodeVolume GetVolume(uint4 volumeID)
 {
-    const uint      depth      = volumeID.w;
-    const uint      sideLength = 128 >> depth;
-    const uint3     volumeDIM  = uint3(sideLength, sideLength, sideLength);
-    const float3    voxelSize  = float3(volumeDIM);
+    const uint      depth           = volumeID.w;
+    const float     voxelSideLength = float(VOLUMESIDE_LENGTH) / float(1 << depth);
+    const float3    volumeDIM       = float3(voxelSideLength, voxelSideLength, voxelSideLength);
+    const float3    voxelSize       = float3(volumeDIM);
 
     const float3 min = voxelSize * volumeID;
     const float3 max = min + voxelSize;
@@ -101,8 +101,8 @@ void VoxelDebug_GS(point uint input[1] : NODEINDEX, inout TriangleStream<PS_Inpu
     const OctTreeNode       node    = octree[input[0]];
     const OctreeNodeVolume  volume  = GetVolume(node.volumeCord);
 
-    const bool leaf         = node.volumeCord.w == 7;
-    const float4 color      = leaf ? float4(0, 1, 0, 0.05f) : float4(1, 0, 0, 0.01f);
+    const bool leaf         = node.volumeCord.w == MAX_DEPTH;
+    const float4 color      = leaf ? float4(0, 0, 1, 0.05f) : float4(1, 0, 0, 0.005f);
     const float3 edgeSpan   = volume.max.x - volume.min.x;
 
     //if (leaf)
@@ -289,7 +289,6 @@ void VoxelDebug_GS(point uint input[1] : NODEINDEX, inout TriangleStream<PS_Inpu
         {
             PS_Input v;
 
-            const float scaleFactor = 0.9f;
             const float3 pos_WT     = (edgeSpan * (1.0f + verts[3 * triangleID + vertexID]) / 2 + volume.min) ;
 
             v.position  = mul(PV, float4(pos_WT, 1));

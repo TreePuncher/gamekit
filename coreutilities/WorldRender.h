@@ -738,8 +738,6 @@ namespace FlexKit
         ReserveConstantBufferFunction   reserveCB;
         CameraHandle                    camera;
 
-        FrameResourceHandle     primaryVolume;
-        FrameResourceHandle     secondaryVolume;
         FrameResourceHandle     depthTarget;
         FrameResourceHandle     voxelBuffer;
         FrameResourceHandle     counters;
@@ -757,7 +755,6 @@ namespace FlexKit
         CameraHandle                    camera;
 
         FrameResourceHandle     depthTarget;
-        FrameResourceHandle     volume;
         FrameResourceHandle     indirectArgs;
         FrameResourceHandle     octree;
 
@@ -1139,7 +1136,6 @@ namespace FlexKit
         IndirectLayout          dispatch;
         IndirectLayout          draw;
 
-        ResourceHandle          voxelVolumes[2] = { InvalidHandle_t, InvalidHandle_t };
         ResourceHandle          voxelBuffer;
         ResourceHandle          octreeBuffer;
         uint8_t                 primaryVolume = 0;
