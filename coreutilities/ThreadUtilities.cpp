@@ -18,25 +18,25 @@ namespace FlexKit
     thread_local iAllocator*                    _localAllocator = nullptr;
 
 
-    FLEXKITAPI inline void PushToLocalQueue(iWork& work)
+    FLEXKITAPI void PushToLocalQueue(iWork& work)
     {
         localWorkQueue->push_back(&work);
     }
 
 
-    FLEXKITAPI inline CircularStealingQueue<iWork*>& _GetThreadLocalQueue()
+    FLEXKITAPI CircularStealingQueue<iWork*>& _GetThreadLocalQueue()
     {
         return *localWorkQueue;
     }
 
 
-    FLEXKITAPI inline void _SetThreadLocalQueue(CircularStealingQueue<iWork*>& localQueue)
+    FLEXKITAPI void _SetThreadLocalQueue(CircularStealingQueue<iWork*>& localQueue)
     {
         localWorkQueue = &localQueue;
     }
 
 
-    FLEXKITAPI inline _WorkerThread& GetLocalThread()
+    FLEXKITAPI _WorkerThread& GetLocalThread()
     {
         return *_localThread;
     }

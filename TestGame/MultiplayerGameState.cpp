@@ -358,7 +358,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
                                 frameGraph,
                                 activeCamera,
                                 base.renderWindow.GetWH(),
-                                drawnScene.PVS,
+                                drawnScene.passes,
                                 drawnScene.skinnedDraws,
                                 reserveCB,
                                 reserveVB);

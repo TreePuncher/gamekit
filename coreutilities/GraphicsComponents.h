@@ -17,6 +17,10 @@ namespace FlexKit
 
 	constexpr ComponentID CameraComponentID = GetTypeGUID(CameraComponentID);
 
+    struct _CameraUpdate {};
+
+    using CameraUpdateTask = UpdateTaskTyped<_CameraUpdate>;
+
 	class CameraComponent : public Component<CameraComponent, CameraComponentID>
 	{
 	public:
@@ -59,10 +63,7 @@ namespace FlexKit
 
 		auto&	QueueCameraUpdate(UpdateDispatcher& dispatcher)
         {
-		    struct UpdateData
-		    {};
-
-		    auto& task = dispatcher.Add<UpdateData>(
+		    auto& task = dispatcher.Add<_CameraUpdate>(
 			    [&](UpdateDispatcher::UpdateBuilder& Builder, auto& Data)
 			    {
 				    Builder.SetDebugString("QueueCameraUpdate");
@@ -93,6 +94,7 @@ namespace FlexKit
 		HandleUtilities::HandleTable<CameraHandle>	handles;
 	};
 
+
 	/************************************************************************************************/
 
 
@@ -112,15 +114,6 @@ namespace FlexKit
 	inline float4x4							GetCameraPV				    (CameraHandle camera) { return CameraComponent::GetComponent().GetCameraPV(camera);				    }
 
     inline void                             MarkCameraDirty             (CameraHandle camera) { return CameraComponent::GetComponent().MarkDirty(camera); }
-
-    
-
-
-    inline void GetCameraMatrices(CameraHandle camera)
-    {
-        //CameraComponent::GetComponent().GetCamera(camera).UpdateMatrices();
-    }
-
 
 
     /************************************************************************************************/

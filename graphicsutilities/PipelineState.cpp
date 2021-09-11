@@ -409,7 +409,7 @@ namespace FlexKit
 
 		while (true)
 		{
-			auto loader = PSO->loader;
+			auto& loader = PSO->loader;
 			PSO->stale	= false;
 
 			if (!loader) // No Loader Registered!

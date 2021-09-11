@@ -441,7 +441,7 @@ namespace FlexKit
             FrameGraph&                     frameGraph,
             CameraHandle                    camera,
             uint2                           renderTargetWH,
-            GatherTask&                     sceneGather,
+            GatherPassesTask&                     sceneGather,
             GatherSkinnedTask&              skinnedModelsGather,
             ReserveConstantBufferFunction&  reserveCB,
             ReserveVertexBufferFunction&    reserveVB)

@@ -50,14 +50,16 @@ namespace FlexKit
 	class PipelineStateTable;
 
 
-	typedef ID3D12PipelineState* LOADSTATE_FN(RenderSystem* RS);
+    using LOADSTATE_FN = FlexKit::TypeErasedCallable<16, ID3D12PipelineState*, RenderSystem*>;
+
+	//typedef ID3D12PipelineState* LOADSTATE_FN(RenderSystem* RS);
 
 	/************************************************************************************************/
 
 	struct PipelineStateDescription
 	{
 		RootSignature*	rootSignature;
-		LOADSTATE_FN*	loadState;
+		LOADSTATE_FN	loadState;
 	};
 
 
@@ -89,7 +91,7 @@ namespace FlexKit
 		std::atomic<PSO_States>				state	= PSO_States::Unloaded;
 		PipelineStateObject*				next	= nullptr;
 		RootSignature*						rootSignature;
-		LOADSTATE_FN*						loader	= nullptr;
+		LOADSTATE_FN						loader;
 		std::condition_variable				CV;
 	};
 

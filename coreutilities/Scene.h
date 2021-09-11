@@ -715,7 +715,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    using GatherTask = UpdateTaskTyped<GetPVSTaskData>;
+    using GatherPassesTask = UpdateTaskTyped<GetPVSTaskData>;
 
     FLEXKITAPI void DEBUG_ListSceneObjects(Scene& scene);
 
@@ -725,10 +725,10 @@ namespace FlexKit
 	FLEXKITAPI void UpdateScenePoseTransform	(Scene* SM );
 	FLEXKITAPI void UpdateShadowCasters			(Scene* SM);
 
-    FLEXKITAPI void         GatherScene(Scene* SM, CameraHandle Camera, PVS& solid);
-    FLEXKITAPI GatherTask&  GatherScene(UpdateDispatcher& dispatcher, Scene* scene, CameraHandle C, iAllocator& allocator);
+    FLEXKITAPI void                 GatherScene(Scene* SM, CameraHandle Camera, PVS& solid);
+    FLEXKITAPI GatherPassesTask&    GatherScene(UpdateDispatcher& dispatcher, Scene* scene, CameraHandle C, iAllocator& allocator);
 
-    FLEXKITAPI void LoadLodLevels(UpdateDispatcher& dispatcher, GatherTask& PVS, CameraHandle camera, RenderSystem& renderSystem, iAllocator& allocator);
+    FLEXKITAPI void LoadLodLevels(UpdateDispatcher& dispatcher, GatherPassesTask& PVS, CameraHandle camera, RenderSystem& renderSystem, iAllocator& allocator);
 
 	FLEXKITAPI void ReleaseScene				(Scene* SM);
 	FLEXKITAPI void BindJoint					(Scene* SM, JointHandle Joint, SceneEntityHandle Entity, NodeHandle TargetNode);

@@ -4764,7 +4764,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	IndirectLayout RenderSystem::CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator)
+	IndirectLayout RenderSystem::CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, RootSignature* rootSignature)
 	{
 		ID3D12CommandSignature* signature = nullptr;
 		
@@ -4795,6 +4795,19 @@ namespace FlexKit
                     layout.push_back(ILE_DispatchCall);
                     entryStride += sizeof(D3D12_DISPATCH_ARGUMENTS); // uses 4 8byte values
 			    }   break;
+                case ILE_RootDescriptorUINT:
+                {
+                    D3D12_INDIRECT_ARGUMENT_DESC desc = {};
+                    desc.Type                               = D3D12_INDIRECT_ARGUMENT_TYPE::D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+                    desc.Constant.DestOffsetIn32BitValues   = entries[itr].description.constantValue.destinationOffset;
+                    desc.Constant.Num32BitValuesToSet       = entries[itr].description.constantValue.numValues;
+                    desc.Constant.RootParameterIndex        = entries[itr].description.constantValue.rootParameterIdx;
+
+                    signatureEntries.push_back(desc);
+                    layout.push_back(ILE_RootDescriptorUINT);
+
+                    entryStride += desc.Constant.Num32BitValuesToSet * sizeof(uint32_t);
+                }   break;
 		    }
         }
 
@@ -4806,7 +4819,7 @@ namespace FlexKit
 
 		auto HR = pDevice->CreateCommandSignature(
 			&desc,
-            nullptr,
+            rootSignature ? *rootSignature : nullptr,
 			IID_PPV_ARGS(&signature));
 
 		CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE CONSTANT BUFFER"));

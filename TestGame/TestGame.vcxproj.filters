@@ -258,6 +258,18 @@
     <ClInclude Include="..\coreutilities\Particles.h">
       <Filter>Headers\coreutilities</Filter>
     </ClInclude>
+    <ClInclude Include="..\graphicsutilities\SVOGI.h">
+      <Filter>Headers\graphicsutilities</Filter>
+    </ClInclude>
+    <ClInclude Include="..\graphicsutilities\ClusteredRendering.h">
+      <Filter>Headers\graphicsutilities</Filter>
+    </ClInclude>
+    <ClInclude Include="..\graphicsutilities\ShadowMapping.h">
+      <Filter>Headers\graphicsutilities</Filter>
+    </ClInclude>
+    <ClInclude Include="..\graphicsutilities\Transparency.h">
+      <Filter>Headers\graphicsutilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\coreutilities\AllSourceFiles.cpp">
@@ -439,6 +451,18 @@
     </ClCompile>
     <ClCompile Include="..\coreutilities\Particles.cpp">
       <Filter>Source\coreutilities</Filter>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\SVOGI.cpp">
+      <Filter>Source\graphicsutilities</Filter>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\ClusteredRendering.cpp">
+      <Filter>Source\graphicsutilities</Filter>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\ShadowMapping.cpp">
+      <Filter>Source\graphicsutilities</Filter>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\Transparency.cpp">
+      <Filter>Source\graphicsutilities</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
