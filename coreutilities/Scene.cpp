@@ -453,7 +453,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    UpdateTaskTyped<GetPVSTaskData>& GatherScene(UpdateDispatcher& dispatcher, Scene* scene, CameraHandle C, iAllocator& allocator)
+    GatherPassesTask& GatherScene(UpdateDispatcher& dispatcher, Scene* scene, CameraHandle C, iAllocator& allocator)
 	{
 		auto& task = dispatcher.Add<GetPVSTaskData>(
 			[&](auto& builder, auto& data)
@@ -509,7 +509,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void LoadLodLevels(UpdateDispatcher& dispatcher, GatherTask& PVS, CameraHandle camera, RenderSystem& renderSystem, iAllocator& allocator)
+    void LoadLodLevels(UpdateDispatcher& dispatcher, GatherPassesTask& PVS, CameraHandle camera, RenderSystem& renderSystem, iAllocator& allocator)
     {
         struct _ {};
 

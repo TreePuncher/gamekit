@@ -2094,9 +2094,24 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	template<unsigned int storage = 64 - sizeof(void*) * 3, typename TY_return = void, typename ... TY_ARGS>
+	template<unsigned int STORAGESIZE = 64, typename TY_return = void, typename ... TY_ARGS>
 	class TypeErasedCallable
 	{
+    private:
+
+        typedef void        (*fnCopy)(char* lhs, const char* rhs);
+        typedef void        (*fnMove)(char* lhs, char* rhs);
+        typedef TY_return   (*fnProxy)(char*, TY_ARGS ... args);
+        typedef void        (*fnDestructor)(char*);
+
+        struct VTable
+        {
+            fnCopy          copy;
+            fnMove          move;
+            fnProxy         proxy;
+            fnDestructor    destructor;
+        };
+
 	public:
 		TypeErasedCallable() = default;
 
@@ -2107,32 +2122,45 @@ namespace FlexKit
 			Assign(callable);
 		}
 
+        
+        typedef TY_return FN_PTR(TY_ARGS...);
 
+        TypeErasedCallable(FN_PTR* fn_ptr) noexcept
+        {
+            auto thunk = [fn_ptr](TY_ARGS... args)
+            {
+                return fn_ptr(args...);
+            };
+
+            Assign(thunk);
+        }
+        
 		TypeErasedCallable(const TypeErasedCallable& callable) noexcept
 		{
-			memcpy(buffer, callable.buffer, sizeof(buffer));
+            if (vtable)
+                vtable->destructor(buffer);
 
-			proxy       = callable.proxy;
-			destructor  = callable.destructor;
+            if (callable.vtable)
+                callable.vtable->copy(buffer, callable.buffer);
+
+            vtable = callable.vtable;
 		}
 
 
 		~TypeErasedCallable()
 		{
-			if (destructor)
-				destructor(buffer);
+			if (vtable && vtable->destructor)
+                vtable->destructor(buffer);
 
-            copy        = nullptr;
-            proxy       = nullptr;
-            destructor  = nullptr;
+            vtable = nullptr;
 		}
 
 
 		template<typename TY_CALLABLE>
 		TypeErasedCallable& operator = (TY_CALLABLE callable)
 		{
-			if (destructor)
-				destructor(buffer);
+			if (vtable && vtable->destructor)
+                vtable->destructor(buffer);
 
 			Assign(callable);
 
@@ -2142,14 +2170,12 @@ namespace FlexKit
 
         TypeErasedCallable& operator = (const TypeErasedCallable& rhs)
         {
-            if(destructor)
-                destructor(buffer);
+            if(vtable && vtable->destructor)
+                vtable->destructor(buffer);
 
-            rhs.copy(buffer, rhs.buffer, false);
+            rhs.vtable->copy(buffer, rhs.buffer);
 
-            copy        = rhs.copy;
-            proxy       = rhs.proxy;
-            destructor  = rhs.destructor;
+            vtable = rhs.vtable;
 
             return *this;
         }
@@ -2157,27 +2183,34 @@ namespace FlexKit
 
 		TypeErasedCallable& operator = (TypeErasedCallable&& rhs)
 		{
-            if (destructor)
-                destructor(buffer);
+            if (vtable && vtable->destructor)
+                vtable->destructor(buffer);
 
-            rhs.copy(buffer, rhs.buffer, true);
+            if(rhs.vtable)
+                rhs.vtable->move(buffer, rhs.buffer);
 
-            copy        = rhs.copy;
-            proxy       = rhs.proxy;
-            destructor  = rhs.destructor;
-
-            rhs.copy        = nullptr;
-            rhs.proxy       = nullptr;
-            rhs.destructor  = nullptr;
+            vtable      = rhs.vtable;
+            rhs.vtable  = nullptr;
 
 			return *this;
 		}
 
+        auto operator()(TY_ARGS... args)
+        {
+            return vtable->proxy(buffer, std::forward<TY_ARGS>(args)...);
+        }
+
+        operator bool() const
+        {
+            return vtable != nullptr;
+        }
+
+    private:
 
 		template<typename TY_CALLABLE>
 		void Assign(TY_CALLABLE& callable)
 		{
-			static_assert(sizeof(TY_CALLABLE) <= storage, "Callable object too large for this TypeErasedCallable!");
+			static_assert(sizeof(TY_CALLABLE) <= STORAGESIZE, "Callable object too large for this TypeErasedCallable!");
 
 			struct data
 			{
@@ -2186,46 +2219,42 @@ namespace FlexKit
 
 			new(buffer) data{ callable };
 
+            static const VTable sVTable{
+                .copy =
+                    [](char* lhs_ptr, const char* rhs_ptr)
+                    {
+                        const data* rhs = reinterpret_cast<const data*>(rhs_ptr);
+                        new(lhs_ptr) data(*rhs);
+                    },
 
-            copy = [](char* lhs_ptr, char* rhs_ptr, bool move) -> TY_return
-            {
-                data* rhs = reinterpret_cast<data*>(rhs_ptr);
+                .move =
+                    [](char* lhs_ptr, char* rhs_ptr)
+                    {
+                        data* rhs = reinterpret_cast<data*>(rhs_ptr);
+                        new(lhs_ptr) data(std::move(*rhs));
+                    },
 
-                if (move)
-                    new(lhs_ptr) data(std::move(*rhs));
-                else
-                    new(lhs_ptr) data(*rhs);
+                .proxy =
+                    [](char* _ptr, TY_ARGS ... args) -> TY_return
+				    {
+					    auto functor = reinterpret_cast<data*>(_ptr);
+					    return functor->callable(args...);
+				    },
+
+                .destructor =
+                    [](char* _ptr)
+                    {
+                        auto functor = reinterpret_cast<data*>(_ptr);
+                        functor->~data();
+                    }
             };
 
-			proxy = [](char* _ptr, TY_ARGS ... args) -> TY_return
-				{
-					auto functor = reinterpret_cast<data*>(_ptr);
-					return functor->callable(args...);
-				};
-
-			destructor = [](char* _ptr)
-				{
-					auto functor = reinterpret_cast<data*>(_ptr);
-					functor->~data();
-				};
+            vtable = &sVTable;
 		}
 
 
-		auto operator()(TY_ARGS... args)
-		{
-			return proxy(buffer, std::forward<TY_ARGS>(args)...);
-		}
-
-
-	private:
-        typedef TY_return(*fnCopy)(char* lhs, char* rhs, bool);
-		typedef TY_return(*fnProxy)(char*, TY_ARGS ... args);
-		typedef void (*fnDestructor)(char*);
-
-        fnCopy          copy        = nullptr;
-		fnProxy         proxy       = nullptr;
-		fnDestructor    destructor  = nullptr;
-		char            buffer[storage];
+        const VTable*   vtable = nullptr;
+		char            buffer[STORAGESIZE - sizeof(void*)];
 	};
 
 

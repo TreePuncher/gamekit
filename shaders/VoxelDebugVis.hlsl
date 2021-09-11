@@ -1,4 +1,5 @@
 #include "common.hlsl"
+#include "VXGI_common.hlsl"
 
 
 /*
@@ -44,41 +45,7 @@ float4 SampleVoxel(const float3 position, const float3 volumePosition, const flo
 }
 */
 
-struct OctTreeNode
-{
-    uint    nodes[8];
-    uint4   volumeCord;
-    uint    data;
-    uint    flags;
-    uint    pad[2];
-};
 
-struct OctreeNodeVolume
-{
-    float3 min;
-    float3 max;
-};
-#define VOLUMESIDE_LENGTH   64
-#define VOLUME_SIZE         uint3(VOLUMESIDE_LENGTH, VOLUMESIDE_LENGTH, VOLUMESIDE_LENGTH)
-#define MAX_DEPTH           9
-#define VOLUME_RESOLUTION   float3(1 << MAX_DEPTH, 1 << MAX_DEPTH, 1 << MAX_DEPTH)
-
-OctreeNodeVolume GetVolume(uint4 volumeID)
-{
-    const uint      depth           = volumeID.w;
-    const float     voxelSideLength = float(VOLUMESIDE_LENGTH) / float(1 << depth);
-    const float3    volumeDIM       = float3(voxelSideLength, voxelSideLength, voxelSideLength);
-    const float3    voxelSize       = float3(volumeDIM);
-
-    const float3 min = voxelSize * volumeID;
-    const float3 max = min + voxelSize;
-
-    OctreeNodeVolume outVolume;
-    outVolume.min = min;
-    outVolume.max = max;
-
-    return outVolume;
-}
 
 StructuredBuffer<OctTreeNode> octree    : register(t0);
 
@@ -95,19 +62,27 @@ struct PS_Input
     float  w : W_VS_Depth;
 };
 
+
+
 [maxvertexcount(36)]
 void VoxelDebug_GS(point uint input[1] : NODEINDEX, inout TriangleStream<PS_Input> outputStream)
 {
     const OctTreeNode       node    = octree[input[0]];
-    const OctreeNodeVolume  volume  = GetVolume(node.volumeCord);
+    const OctreeNodeVolume  volume  = GetVolume(node.volumeCord.xyz, node.volumeCord.w);
 
     const bool leaf         = node.volumeCord.w == MAX_DEPTH;
-    const float4 color      = leaf ? float4(0, 0, 1, 0.05f) : float4(1, 0, 0, 0.005f);
+    const bool markedErase  = node.flags & NODE_FLAGS::DELETE;
+
+    const float4 color      = markedErase ? float4(1, 0, 0, 0.05f) : float4(0, 0, 1, 0.05f);
     const float3 edgeSpan   = volume.max.x - volume.min.x;
 
-    //if (leaf)
-    //    return;
+    if (!leaf || markedErase)
+        return;
 
+    const float4 temp = mul(PV, float4(volume.min, 1));
+    const float3 deviceCord = temp.xyz / temp.w;
+    if (!OnScreen(deviceCord.xy))
+        return;
     /*
     PS_Input A, B;
     A.color     = color;
@@ -289,7 +264,7 @@ void VoxelDebug_GS(point uint input[1] : NODEINDEX, inout TriangleStream<PS_Inpu
         {
             PS_Input v;
 
-            const float3 pos_WT     = (edgeSpan * (1.0f + verts[3 * triangleID + vertexID]) / 2 + volume.min) ;
+            const float3 pos_WT     = (edgeSpan * (1.0f + verts[3 * triangleID + vertexID]) / 2 + volume.min);
 
             v.position  = mul(PV, float4(pos_WT, 1));
             v.color     = color;

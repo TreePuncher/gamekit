@@ -404,10 +404,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI inline void                              PushToLocalQueue(iWork& work);
+	FLEXKITAPI extern void PushToLocalQueue(iWork& work);
 
-	FLEXKITAPI inline CircularStealingQueue<iWork*>&    _GetThreadLocalQueue();
-	FLEXKITAPI inline void                              _SetThreadLocalQueue(CircularStealingQueue<iWork*>& localQueue);
+	FLEXKITAPI CircularStealingQueue<iWork*>&    _GetThreadLocalQueue();
+	FLEXKITAPI void                              _SetThreadLocalQueue(CircularStealingQueue<iWork*>& localQueue);
 
 	FLEXKITAPI inline _WorkerThread&                    GetLocalThread();
 
@@ -558,7 +558,7 @@ namespace FlexKit
 		WorkBarrier(const WorkBarrier&)					= delete;
 		WorkBarrier& operator = (const WorkBarrier&)	= delete;
 
-		size_t  GetDependentCount		() { return tasksInProgress; }
+		size_t  GetDependentCount		() const { return tasksInProgress; }
 		void    AddWork                 (iWork& Work);
 		void    AddOnCompletionEvent	(OnCompletionEvent Callback);
 		void    Wait					();

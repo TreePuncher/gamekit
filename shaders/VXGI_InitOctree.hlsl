@@ -1,10 +1,4 @@
-struct OctTreeNode
-{
-    uint    nodes[8];
-    uint4   volumeCord;
-    uint    data;
-    uint    flags;
-};
+#include "VXGI_common.hlsl"
 
 RWStructuredBuffer<OctTreeNode>    octree  : register(u0);
 
@@ -18,7 +12,9 @@ void Init(uint3 threadID : SV_DispatchThreadID)
 
     root.volumeCord = uint4(0, 0, 0, 0);
     root.data       = -1;
-    root.flags      = 1 << 2;
+    root.flags      = LEAF;
+    root.parent     = -1;
+    root.pad        = -1;
 
     octree[0] = root;
     octree.IncrementCounter();

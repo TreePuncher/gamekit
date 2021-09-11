@@ -1092,11 +1092,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	{
 	public:
 		RootSignature(iAllocator* Memory) :
-			Signature(nullptr),
-			Heaps(Memory)
-		{
-		}
-
+            Signature   { nullptr },
+            Heaps       { Memory } {}
 
 		~RootSignature()
 		{
@@ -1353,15 +1350,30 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		ILE_DrawCall,
         ILE_DispatchCall,
 		ILE_UpdateVBBindings,
+        ILE_RootDescriptorUINT,
 		ILE_UNKNOWN,
 	};
 
 	class IndirectDrawDescription
 	{
 	public:
+        struct Constant
+        {
+            uint32_t rootParameterIdx;
+            uint32_t destinationOffset;
+            uint32_t numValues;
+        };
+
 		IndirectDrawDescription(IndirectLayoutEntryType IN_type = ILE_UNKNOWN) : type{IN_type} {}
+        IndirectDrawDescription(IndirectLayoutEntryType IN_type, Constant IN_constant) : type{ IN_type }, description{ IN_constant } {}
 
 		IndirectLayoutEntryType type;
+
+
+        union 
+        {
+            Constant constantValue;
+        } description = {};
 	};
 
 
@@ -3584,7 +3596,7 @@ private:
         [[nodiscard]] SOResourceHandle		    CreateStreamOutResource		(size_t bufferHandle, bool tripleBuffer = true);
         [[nodiscard]] QueryHandle				CreateSOQuery				(size_t SOIndex, size_t count);
         [[nodiscard]] QueryHandle				CreateTimeStampQuery		(size_t count);
-        [[nodiscard]] IndirectLayout			CreateIndirectLayout		(static_vector<IndirectDrawDescription> entries, iAllocator* allocator);
+        [[nodiscard]] IndirectLayout			CreateIndirectLayout		(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, RootSignature* signature = nullptr);
         [[nodiscard]] ReadBackResourceHandle    CreateReadBackBuffer        (const size_t bufferSize);
 
 		void                        SetReadBackEvent    (ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler);

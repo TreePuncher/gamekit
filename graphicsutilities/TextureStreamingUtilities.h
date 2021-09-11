@@ -265,7 +265,7 @@ namespace FlexKit
     struct TextureFeedbackPass_Data
     {
         CameraHandle                    camera;
-        const GatherTask&               pvs;
+        const GatherPassesTask&         pvs;
         const GatherSkinnedTask&        skinnedModels;
         ReserveConstantBufferFunction   reserveCB;
 
@@ -406,7 +406,7 @@ namespace FlexKit
             FrameGraph&                     frameGraph,
             CameraHandle                    camera,
             uint2                           renderTargetWH,
-            GatherTask&                     sceneGather,
+            GatherPassesTask&               passes,
             GatherSkinnedTask&              skinnedModelsGather,
             ReserveConstantBufferFunction&  reserveCB,
             ReserveVertexBufferFunction&    reserveVB);

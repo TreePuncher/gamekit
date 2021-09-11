@@ -71,6 +71,7 @@
       <AdditionalOptions>/MDd /bigobj %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -93,6 +94,7 @@
       <StringPooling>true</StringPooling>
       <AdditionalOptions>/MD /bigobj %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -144,6 +146,7 @@
     <ClInclude Include="..\graphicsutilities\AnimationComponents.h" />
     <ClInclude Include="..\graphicsutilities\AnimationRuntimeUtilities.H" />
     <ClInclude Include="..\graphicsutilities\AnimationUtilities.h" />
+    <ClInclude Include="..\graphicsutilities\ClusteredRendering.h" />
     <ClInclude Include="..\graphicsutilities\CoreSceneObjects.h" />
     <ClInclude Include="..\graphicsutilities\DDSUtilities.h" />
     <ClInclude Include="..\graphicsutilities\Fonts.h" />
@@ -153,12 +156,15 @@
     <ClInclude Include="..\graphicsutilities\MeshUtils.h" />
     <ClInclude Include="..\graphicsutilities\PipelineState.h" />
     <ClInclude Include="..\graphicsutilities\RayTracingUtilities.h" />
+    <ClInclude Include="..\graphicsutilities\ShadowMapping.h" />
     <ClInclude Include="..\graphicsutilities\SSReflections.h" />
     <ClInclude Include="..\graphicsutilities\SceneManager.h" />
+    <ClInclude Include="..\graphicsutilities\SVOGI.h" />
     <ClInclude Include="..\graphicsutilities\TerrainRendering.h" />
     <ClInclude Include="..\graphicsutilities\TextRendering.h" />
     <ClInclude Include="..\graphicsutilities\TextureStreamingUtilities.h" />
     <ClInclude Include="..\graphicsutilities\TextureUtilities.h" />
+    <ClInclude Include="..\graphicsutilities\Transparency.h" />
     <ClInclude Include="..\graphicsutilities\VertexBuffer.h" />
     <ClInclude Include="..\graphicsutilities\defaultpipelinestates.h" />
     <ClInclude Include="..\graphicsutilities\graphics.h" />
@@ -278,6 +284,7 @@
     <ClCompile Include="..\graphicsutilities\AnimationUtilities.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\graphicsutilities\ClusteredRendering.cpp" />
     <ClCompile Include="..\graphicsutilities\CoreSceneObjects.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
@@ -306,9 +313,11 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\graphicsutilities\ShadowMapping.cpp" />
     <ClCompile Include="..\graphicsutilities\SSReflections.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\graphicsutilities\SVOGI.cpp" />
     <ClCompile Include="..\graphicsutilities\TerrainRendering.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
@@ -327,6 +336,7 @@
     <ClCompile Include="..\graphicsutilities\graphics.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\graphicsutilities\Transparency.cpp" />
     <ClCompile Include="..\physicsutilities\physicsutilities.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
