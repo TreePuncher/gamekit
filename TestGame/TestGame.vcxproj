@@ -335,6 +335,7 @@
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\graphics.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\Transparency.cpp" />
     <ClCompile Include="..\physicsutilities\physicsutilities.cpp">

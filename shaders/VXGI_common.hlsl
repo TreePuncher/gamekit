@@ -1,13 +1,14 @@
 
+/************************************************************************************************/
 
 struct OctTreeNode
 {
-    uint    nodes[8];
+    uint    children[8];
     uint4   volumeCord;
     uint    data;
     uint    parent;
     uint    flags;
-    uint    pad;
+    uint    newNode;
 };
 
 
@@ -17,9 +18,13 @@ struct OctreeNodeVolume
     float3 max;
 };
 
-#define VOLUMESIDE_LENGTH   512
+
+/************************************************************************************************/
+
+
+#define VOLUMESIDE_LENGTH   32
 #define VOLUME_SIZE         uint3(VOLUMESIDE_LENGTH, VOLUMESIDE_LENGTH, VOLUMESIDE_LENGTH)
-#define MAX_DEPTH           11
+#define MAX_DEPTH           4
 #define VOLUME_RESOLUTION   float3(1 << MAX_DEPTH, 1 << MAX_DEPTH, 1 << MAX_DEPTH)
 
 enum NODE_FLAGS
@@ -28,16 +33,17 @@ enum NODE_FLAGS
     SUBDIVISION_REQUEST = 1 << 0,
     UNITIALISED         = 1 << 1,
     LEAF                = 1 << 2,
-    DELETE              = 1 << 3,
-    FREE                = 1 << 4,
+    BRANCH              = 1 << 3,
+    DELETE              = 1 << 4,
+    FREE                = 1 << 5,
 };
 
 
 float3 GetVoxelPoint(uint4 volumeID)
 {
-    const uint      depth = volumeID.w;
+    const uint      depth           = volumeID.w;
     const float     voxelSideLength = float(VOLUMESIDE_LENGTH) / float(1 << depth);
-    const float3    xyz = voxelSideLength * volumeID.xyz;
+    const float3    xyz             = voxelSideLength * volumeID.xyz;
 
     return xyz;
 }
@@ -123,9 +129,27 @@ TraverseResult TraverseOctree(const uint4 volumeID, in RWStructuredBuffer<OctTre
 
     for (uint depth = 0; depth <= MAX_DEPTH; depth++)
     {
+        if (nodeID == -1)
+        {
+            TraverseResult res;
+            res.node    = nodeID;
+            res.flags   = TRAVERSE_RESULT_CODES::NODE_FOUND;
+
+            return res;
+        }
+
         OctTreeNode             n           = octree[nodeID];
         const OctreeNodeVolume  volume      = GetVolume(n.volumeCord.xyz, n.volumeCord.w);
         const bool              volumeCheck = IsInVolume(voxelPoint, volume);
+
+        if (n.flags == NODE_FLAGS::CLEAR)
+        {
+            TraverseResult res;
+            res.node    = nodeID;
+            res.flags   = TRAVERSE_RESULT_CODES::NODE_NOT_ALLOCATED;
+
+            return res;
+        }
 
         if(volumeCheck)
         {
@@ -163,16 +187,26 @@ TraverseResult TraverseOctree(const uint4 volumeID, in RWStructuredBuffer<OctTre
                         uint4(1, 1, 1, 0)
                     };
 
-                    for (uint childID = 0; childID < 8; childID++)
+                    uint childID = 0;
+                    for (;childID < 8; childID++)
                     {
                         const uint4 childVID            = childCords + childVIDOffsets[childID];
                         const OctreeNodeVolume volume   = GetVolume(childVID.xyz, childVID.w);
 
                         if (IsInVolume(voxelPoint, volume))
                         {
-                            nodeID = n.nodes[childID];
+                            nodeID = n.children[childID];
                             break;
                         }
+                    }
+
+                    if (childID == 8)
+                    {
+                        TraverseResult res;
+                        res.node = -1;
+                        res.flags = TRAVERSE_RESULT_CODES::ERROR;
+
+                        return res;
                     }
                 }
             }

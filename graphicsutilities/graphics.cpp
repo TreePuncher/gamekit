@@ -1958,9 +1958,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::SetComputeUnorderedAccessView(size_t idx, ResourceHandle& UAVResource)
+	void Context::SetComputeUnorderedAccessView(size_t idx, ResourceHandle UAVresource)
 	{
-		auto resource = renderSystem->GetDeviceResource(UAVResource);
+		auto resource = renderSystem->GetDeviceResource(UAVresource);
 		DeviceContext->SetComputeRootUnorderedAccessView(idx, resource->GetGPUVirtualAddress());
 	}
 
@@ -2575,6 +2575,8 @@ namespace FlexKit
 
     void Context::ClearUAVBuffer(ResourceHandle UAV, uint4 clearColor)
     {
+        BeginEvent_DEBUG("ClearUAVBuffer");
+
         UpdateResourceStates();
 
         auto PSO = renderSystem->GetPSO(CLEARBUFFERPSO);
@@ -2591,6 +2593,42 @@ namespace FlexKit
 
         if(CurrentPipelineState)
             DeviceContext->SetPipelineState(CurrentPipelineState);
+
+        EndEvent_DEBUG();
+    }
+
+
+    /************************************************************************************************/
+
+
+    void Context::ClearUAVBufferRange(ResourceHandle UAV, uint begin, uint end, uint4 clearColor)
+    {
+        FK_ASSERT(begin % 16 == 0, "Begin must be 16-byte aligned");
+        FK_ASSERT(end % 16 == 0, "End must be 16-byte aligned");
+
+        BeginEvent_DEBUG("ClearUAVBuffer");
+
+        UpdateResourceStates();
+
+        uint2 range{ begin / 16, end / 16};
+
+        auto PSO = renderSystem->GetPSO(CLEARBUFFERPSO);
+        DeviceContext->SetComputeRootSignature(renderSystem->Library.ClearBuffer);
+        DeviceContext->SetPipelineState(PSO);
+        DeviceContext->SetComputeRoot32BitConstants(0, 4, &clearColor, 0);
+        DeviceContext->SetComputeRoot32BitConstants(0, 2, &range, 4);
+        DeviceContext->SetComputeRootUnorderedAccessView(1, renderSystem->GetDeviceResource(UAV)->GetGPUVirtualAddress());
+
+        auto resourceSize = renderSystem->GetResourceSize(UAV);
+        DeviceContext->Dispatch(UINT(ceil(Min(resourceSize, end - begin)/ 1024.0f)), 1, 1);
+
+        if(CurrentComputeRootSignature)
+            DeviceContext->SetComputeRootSignature(*CurrentComputeRootSignature);
+
+        if(CurrentPipelineState)
+            DeviceContext->SetPipelineState(CurrentPipelineState);
+
+        EndEvent_DEBUG();
     }
 
 
@@ -2635,6 +2673,7 @@ namespace FlexKit
 	void Context::ExecuteIndirect(ResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset, size_t executionCount)
 	{
 		UpdateResourceStates();
+
 		DeviceContext->ExecuteIndirect(
 			layout.signature, 
 			Min(layout.entries.size(), executionCount), 
@@ -3289,7 +3328,7 @@ namespace FlexKit
 			SETDEBUGNAME(RS->Library.ShadingRTSig, "ComputeSignature");
 		}
         {
-            RS->Library.ClearBuffer.SetParameterAsUINT(0, 4, 0, 0, PIPELINE_DEST_CS);
+            RS->Library.ClearBuffer.SetParameterAsUINT(0, 6, 0, 0, PIPELINE_DEST_CS);
             RS->Library.ClearBuffer.SetParameterAsUAV(1, 0, 0, PIPELINE_DEST_CS);
             RS->Library.ClearBuffer.Build(RS, TempMemory);
 
@@ -4793,7 +4832,7 @@ namespace FlexKit
 
                     signatureEntries.push_back(desc);
                     layout.push_back(ILE_DispatchCall);
-                    entryStride += sizeof(D3D12_DISPATCH_ARGUMENTS); // uses 4 8byte values
+                    entryStride += sizeof(uint4); // uses 4 8byte values
 			    }   break;
                 case ILE_RootDescriptorUINT:
                 {

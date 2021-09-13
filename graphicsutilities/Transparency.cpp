@@ -168,16 +168,15 @@ namespace FlexKit
 
                 const auto WH = builder.GetRenderSystem().GetTextureWH(depthTarget);
 
-                data.depthTarget                = builder.DepthRead(depthTarget);
-                data.accumalatorObject          = builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DRS_RenderTarget, false);
-                data.counterObject              = builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DRS_RenderTarget, false);
+                data.depthTarget        = builder.DepthRead(depthTarget);
+                data.accumalatorObject  = builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DRS_RenderTarget, false);
+                data.counterObject      = builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DRS_RenderTarget, false);
 
                 builder.SetDebugName(data.accumalatorObject,    "Accumalator");
                 builder.SetDebugName(data.counterObject,        "counterObject");
 			},
             [=](OITPass& data, ResourceHandler& resources, Context& ctx, iAllocator& tempAllocator)
             {
-
                 const RootSignature&    rootSig     = resources.renderSystem().Library.RSDefault;
                 auto&                   materials   = MaterialComponent::GetComponent();
 
@@ -188,7 +187,6 @@ namespace FlexKit
 
                 ctx.ClearRenderTarget(resources.GetRenderTarget(data.accumalatorObject));
                 ctx.ClearRenderTarget(resources.GetRenderTarget(data.counterObject), float4{ 1, 1, 1, 1 });
-
 
                 auto& passes    = data.PVS.GetData().passes;
                 const PVS* pvs  = nullptr;
@@ -205,7 +203,6 @@ namespace FlexKit
 
                 if (!pvs->size())
                     return;
-
 
                 ctx.BeginEvent_DEBUG("OIT - PASS");
 

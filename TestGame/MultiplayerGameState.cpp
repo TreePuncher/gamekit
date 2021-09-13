@@ -152,10 +152,14 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     brushView.SetTransparent(true);
 
     auto& materials = MaterialComponent::GetComponent();
-    auto testAnimationMaterial = materials.CreateMaterial();
-    materials.Add2Pass(testAnimationMaterial, PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
-    testAnimation.AddView<MaterialComponentView>(testAnimationMaterial);
-    SetMaterialHandle(testAnimation, testAnimationMaterial);
+    auto defaultPBRMaterial = materials.CreateMaterial();
+    materials.Add2Pass(defaultPBRMaterial, PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
+    testAnimation.AddView<MaterialComponentView>(defaultPBRMaterial);
+    SetMaterialHandle(testAnimation, defaultPBRMaterial);
+
+
+    IKTarget.AddView<MaterialComponentView>(defaultPBRMaterial);
+    SetMaterialHandle(IKTarget, defaultPBRMaterial);
 
 
     auto parentMaterial     = materials.CreateMaterial();
@@ -224,7 +228,7 @@ UpdateTask* LocalGameState::Update(EngineCore& core, UpdateDispatcher& dispatche
 
     static float t = 0.0f;
     SetWorldPosition(particleEmitter, float3{ 100.0f * sin(t), 20, 100.0f * cos(t) });
-    SetWorldPosition(IKTarget, float3{ 2.0f * cos(t), 4.0f * sin(t / 2.0f) + 8.0f, 4.0f * sin(t) });
+    SetWorldPosition(IKTarget, float3{ 2.0f * cos(t), 4.0f * sin(t / 2.0f) + 8.0f, 4.0f * sin(t) } + float3{ 30.0f, 0.0f, 10.0f });
 
     t += dT;
 
@@ -305,6 +309,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 
             .transformDependency    = transforms,
             .cameraDependency       = cameras,
+            /*
             .additionalGbufferPasses  = {
                 [&]()
                 {
@@ -343,6 +348,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
                             allocator);
                     }
                 }
+            */
         };
 
         auto drawnScene = base.render.DrawScene(
@@ -507,8 +513,9 @@ bool LocalGameState::EventHandler(Event evt)
 
                     
                     framework.GetRenderSystem().QueuePSOLoad(VXGI_DRAWVOLUMEVISUALIZATION);
-                    framework.GetRenderSystem().QueuePSOLoad(VXGI_CLEANUPVOXELVOLUMES);
-                    framework.GetRenderSystem().QueuePSOLoad(VXGI_SAMPLEINJECTION);
+                    framework.GetRenderSystem().QueuePSOLoad(VXGI_REMOVENODES);
+                    framework.GetRenderSystem().QueuePSOLoad(VXGI_MARKERASE);
+                    //framework.GetRenderSystem().QueuePSOLoad(VXGI_SAMPLEINJECTION);
 
                     return true;
                 case KC_ESC:

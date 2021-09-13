@@ -1646,6 +1646,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void ClearUAVTextureUint    (ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
 		void ClearUAV               (ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
         void ClearUAVBuffer         (ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
+        void ClearUAVBufferRange    (ResourceHandle UAV, uint begin, uint end, uint4 clearColor = uint4{ 0, 0, 0, 0 });
 
 		void SetRootSignature		    (const RootSignature& RS);
 		void SetComputeRootSignature    (const RootSignature& RS);
@@ -1699,8 +1700,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferHandle, size_t offset);
 		void SetComputeConstantBufferView   (size_t idx, const ConstantBufferDataSet& CB);
         void SetComputeConstantBufferView   (size_t idx, ResourceHandle, size_t offset = 0, size_t bufferSize = 256);
-		void SetComputeShaderResourceView	(size_t idx, Texture2D&			Texture);
-		void SetComputeUnorderedAccessView	(size_t idx, ResourceHandle& Texture);
+		void SetComputeShaderResourceView	(size_t idx, Texture2D&		texture);
+		void SetComputeUnorderedAccessView	(size_t idx, ResourceHandle resource);
 
 
 		void BeginQuery	(QueryHandle query, size_t idx);

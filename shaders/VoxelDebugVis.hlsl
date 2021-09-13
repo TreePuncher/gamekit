@@ -62,28 +62,42 @@ struct PS_Input
     float  w : W_VS_Depth;
 };
 
-
+#define WIREFRAME 0
 
 [maxvertexcount(36)]
+
+#if WIREFRAME
+void VoxelDebug_GS(point uint input[1] : NODEINDEX, inout LineStream<PS_Input> outputStream)
+#else
 void VoxelDebug_GS(point uint input[1] : NODEINDEX, inout TriangleStream<PS_Input> outputStream)
+#endif
 {
     const OctTreeNode       node    = octree[input[0]];
     const OctreeNodeVolume  volume  = GetVolume(node.volumeCord.xyz, node.volumeCord.w);
 
-    const bool leaf         = node.volumeCord.w == MAX_DEPTH;
-    const bool markedErase  = node.flags & NODE_FLAGS::DELETE;
+    const bool free         = node.flags == NODE_FLAGS::CLEAR;
+    const bool leaf         = node.flags & NODE_FLAGS::LEAF;
+    const bool branch       = node.flags & NODE_FLAGS::BRANCH;
 
-    const float4 color      = markedErase ? float4(1, 0, 0, 0.05f) : float4(0, 0, 1, 0.05f);
+    const float4 color      =
+        free    ? float4(1, 0, 0, 0.01f) : float4(0, 0, 0, 0) +
+        branch  ? float4(0, 1, 0, 0.01f) : float4(0, 0, 0, 0) +
+        leaf    ? float4(0, 0, 1, 0.01f) : float4(0, 0, 0, 0) +
+        (!free && !branch && !leaf) ? float4(0.5f, 0.25f, 0.15f, 0.5f) : float4(0, 0, 0, 0);
+
     const float3 edgeSpan   = volume.max.x - volume.min.x;
 
-    if (!leaf || markedErase)
+    const float4 temp       = mul(PV, float4(volume.min, 1));
+    const float3 deviceCord = temp.xyz / temp.w;
+
+    const uint level = 8;
+    if (node.volumeCord.w < level|| node.volumeCord.w > level)
         return;
 
-    const float4 temp = mul(PV, float4(volume.min, 1));
-    const float3 deviceCord = temp.xyz / temp.w;
-    if (!OnScreen(deviceCord.xy))
-        return;
-    /*
+    //if (!OnScreen(deviceCord.xy))
+    //    return;
+
+#if WIREFRAME
     PS_Input A, B;
     A.color     = color;
     A.depth     = length(CameraPOS - volume.min);
@@ -206,8 +220,7 @@ void VoxelDebug_GS(point uint input[1] : NODEINDEX, inout TriangleStream<PS_Inpu
     outputStream.Append(B);
 
     outputStream.RestartStrip();
-    */
-
+#else
     const float3 verts[] = {
         float3(-1,  1, 1),
         float3( 1, -1, 1),
@@ -276,6 +289,7 @@ void VoxelDebug_GS(point uint input[1] : NODEINDEX, inout TriangleStream<PS_Inpu
 
         outputStream.RestartStrip();
     }
+#endif
 }
 
 struct PS_output

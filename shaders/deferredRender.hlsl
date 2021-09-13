@@ -107,7 +107,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     const uint2  px             = IN.Position.xy;//UV * WH;
 
     if (depth == 1.0f) 
-        return float4(0.5f, 0.5f, 0.6f, 1);
+        return float4(0.0f, 0.0f, 0.0f, 1);
     
     const float4 Albedo         = AlbedoBuffer.Sample(NearestPoint, UV);
     const float4 N              = NormalBuffer.Sample(NearestPoint, UV);
