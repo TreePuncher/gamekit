@@ -1,6 +1,9 @@
 #include "common.hlsl"
 #include "VXGI_common.hlsl"
 
+/************************************************************************************************/
+
+
 sampler BiLinear        : register(s0);
 sampler NearestPoint    : register(s1);
 
@@ -12,10 +15,13 @@ struct VoxelSample
     float4  color;
 };
 
-
 RWStructuredBuffer<VoxelSample> voxelSampleBuffer   : register(u0);
 RWStructuredBuffer<OctTreeNode> octree              : register(u1);
 RWStructuredBuffer<uint>        freeList            : register(u2);
+
+
+/************************************************************************************************/
+
 
 void InitNode(uint idx, uint4 volumeCord)
 {
@@ -27,97 +33,14 @@ void InitNode(uint idx, uint4 volumeCord)
     n.pad           = 0;
 
     for (uint I = 0; I < 8; I++)
-        n.nodes[I] = -1;
+        n.children[I] = -1;
 
     octree[idx] = n;
 }
 
 
-[numthreads(1024, 1, 1)]
-void MarkEraseNodes(uint3 threadID : SV_DispatchThreadID)
-{
-    uint nodeIdx        = threadID.x;
-    OctTreeNode node    = octree[nodeIdx];
+/************************************************************************************************/
 
-    if (node.flags & NODE_FLAGS::LEAF && !(NODE_FLAGS::DELETE))
-    {
-        const float3 voxelPOS_ws        = GetVoxelPoint(node.volumeCord);
-        const float4 temp               = mul(PV, float4(voxelPOS_ws, 1));
-        const float3 deviceCord         = temp.xyz / temp.w;
-
-        uint Width, Height, _;
-        depth.GetDimensions(0, Width, Height, _);
-
-        if (OnScreen(deviceCord.xy))
-        {
-            const float3 cord = float3(deviceCord.x / 2.0f + 0.5f, 1 - (0.5f + deviceCord.y / 2.0f), 0);
-
-            if (cord.y < 0.0f || cord.y > 1.0f ||
-                cord.x < 0.0f || cord.x > 1.0f)
-                return;
-
-            const float d = depth.Load(cord * uint3(Width, Height, 1)) * MaxZ;
-            const float l = length(voxelPOS_ws - CameraPOS.xyz);
-
-            const bool cull = d > (l + 2.0f);
-
-            if (cull)
-                InterlockedOr(octree[threadID.x].flags, NODE_FLAGS::DELETE);
-        }
-    }
-    else
-    {
-        bool Keep       = false;
-        uint newNodeIdx = nodeIdx;
-
-        for (uint I = 0; I < 8; I++)
-        {
-            const uint childIdx     = node.nodes[childIdx];
-            OctTreeNode childNode   = octree[childIdx];
-
-            Keep |= !(childNode.flags & DELETE);
-
-            newNodeIdx = min(newNodeIdx, childIdx);
-        }
-
-        if (Keep && newNodeIdx != nodeIdx)
-        {
-            OctTreeNode parent = octree[node.parent];
-            for (uint II = 0; II < 8; II++)
-            {
-                const uint childIdx = parent.nodes[childIdx];
-
-                if (childIdx == nodeIdx)
-                {
-                    octree[node.parent].nodes[II] = newNodeIdx;
-                    break;
-                }
-            }
-
-            octree[newNodeIdx] = node;
-        }
-        else if (!Keep)
-        {
-            for (uint childIdx = 0; childIdx < 8; childIdx++)
-            {
-                const uint idx          = node.nodes[childIdx];
-                const uint freeListIdx  = freeList.IncrementCounter();
-                freeList[freeListIdx]   = idx;
-
-                octree[threadID.x].flags = NODE_FLAGS::DELETE;
-                node.nodes[childIdx] = -1;
-            }
-
-            node.flags       = NODE_FLAGS::LEAF;
-            octree[nodeIdx]  = node;
-        }
-    }
-}
-
-[numthreads(1024, 1, 1)]
-void ReleaseNodes(uint3 threadID : SV_DispatchThreadID)
-{
-}
 
 [numthreads(32, 32, 1)]
 void Injection(uint3 threadID : SV_DispatchThreadID)
@@ -152,10 +75,18 @@ void Injection(uint3 threadID : SV_DispatchThreadID)
     }
 }
 
+
+/************************************************************************************************/
+
+
 void FlagForSubdivion(uint nodeIdx)
 {
     InterlockedOr(octree[nodeIdx].flags, NODE_FLAGS::SUBDIVISION_REQUEST);
 }
+
+
+/************************************************************************************************/
+
 
 [numthreads(1024, 1, 1)]
 void GatherSubdivionRequests(uint3 threadID : SV_DispatchThreadID)
@@ -172,6 +103,10 @@ void GatherSubdivionRequests(uint3 threadID : SV_DispatchThreadID)
     if (result.flags == TRAVERSE_RESULT_CODES::NODE_NOT_ALLOCATED)
         FlagForSubdivion(result.node);
 }
+
+
+/************************************************************************************************/
+
 
 [numthreads(1024, 1, 1)]
 void ProcessSubdivionRquests(uint3 threadID : SV_DispatchThreadID)
@@ -200,7 +135,7 @@ void ProcessSubdivionRquests(uint3 threadID : SV_DispatchThreadID)
             OctTreeNode childNode;
 
             for (uint I = 0; I < 8; I++)
-                childNode.nodes[I] = -1;
+                childNode.children[I] = -1;
 
             const uint4 VIDoffset = childVIDOffsets[childIdx];
 
@@ -219,11 +154,11 @@ void ProcessSubdivionRquests(uint3 threadID : SV_DispatchThreadID)
             if(idx < numStructs)
             {
                 octree[idx]             = childNode;
-                node.nodes[childIdx]    = idx;
+                node.children[childIdx] = idx;
             }
         }
 
-        node.flags          = CLEAR;
+        node.flags          = NODE_FLAGS::BRANCH;
         octree[threadID.x]  = node;
     }
 }

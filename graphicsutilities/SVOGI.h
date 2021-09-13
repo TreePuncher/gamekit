@@ -12,12 +12,14 @@ namespace FlexKit
 
     constexpr PSOHandle VXGI_INITOCTREE                 = PSOHandle(GetTypeGUID(VXGI_INITOCTREE));
     constexpr PSOHandle VXGI_CLEAR                      = PSOHandle(GetTypeGUID(VXGI_CLEAR));
-    constexpr PSOHandle VXGI_FREENODES                  = PSOHandle(GetTypeGUID(VXGI_FREENODES));
-    constexpr PSOHandle VXGI_CLEANUPVOXELVOLUMES        = PSOHandle(GetTypeGUID(VXGI_CLEANUPVOXELVOLUMES));
+    constexpr PSOHandle VXGI_REMOVENODES                = PSOHandle(GetTypeGUID(VXGI_REMOVENODES));
+    constexpr PSOHandle VXGI_DECREMENTCOUNTER           = PSOHandle(GetTypeGUID(VXGI_DECREMENTCOUNTER));
+    constexpr PSOHandle VXGI_MARKERASE                  = PSOHandle(GetTypeGUID(VXGI_MARKERASE));
     constexpr PSOHandle VXGI_SAMPLEINJECTION            = PSOHandle(GetTypeGUID(VXGI_SAMPLEINJECTION));
     constexpr PSOHandle VXGI_DRAWVOLUMEVISUALIZATION    = PSOHandle(GetTypeGUID(VXGI_DRAWVOLUMEVISUALIZATION));
-    constexpr PSOHandle VXGI_GATHERARGS1                = PSOHandle(GetTypeGUID(VXGI_GATHERARGS1));
-    constexpr PSOHandle VXGI_GATHERARGS2                = PSOHandle(GetTypeGUID(VXGI_GATHERARGS2));
+    constexpr PSOHandle VXGI_GATHERDISPATCHARGS         = PSOHandle(GetTypeGUID(VXGI_GATHERSISPATCHARGS));
+    constexpr PSOHandle VXGI_GATHERREMOVEARGS           = PSOHandle(GetTypeGUID(VXGI_GATHERREMOVEARGS));
+    constexpr PSOHandle VXGI_GATHERDRAWARGS             = PSOHandle(GetTypeGUID(VXGI_GATHERDRAWARGS));
     constexpr PSOHandle VXGI_GATHERSUBDIVISIONREQUESTS  = PSOHandle(GetTypeGUID(VXGI_GATHERSUBDIVISIONREQUESTS));
     constexpr PSOHandle VXGI_PROCESSSUBDREQUESTS        = PSOHandle(GetTypeGUID(VXGI_PROCESSSUBDREQUESTS));
 
@@ -31,11 +33,12 @@ namespace FlexKit
         CameraHandle                    camera;
 
         FrameResourceHandle     depthTarget;
-        FrameResourceHandle     voxelBuffer;
         FrameResourceHandle     counters;
         FrameResourceHandle     octree;
         FrameResourceHandle     indirectArgs;
         FrameResourceHandle     freeList;
+        FrameResourceHandle     scratchPad;
+        FrameResourceHandle     sampleBuffer;
     };
 
 
@@ -90,27 +93,50 @@ namespace FlexKit
 
     private:
 
+        struct alignas(64) OctTreeNode
+        {
+            uint    nodes[8];
+            uint4   volumeCord;
+            uint    data;
+            uint    flags;
+        };
+
+
+        void CleanUpPhase(UpdateVoxelVolume& data, ResourceHandler& resources, Context&, iAllocator& temp);
+        void CreateNodePhase(UpdateVoxelVolume& data, ResourceHandler& resources, Context&, iAllocator& temp);
+
+        void _GatherArgs(FrameResourceHandle source, FrameResourceHandle argsBuffer, ResourceHandler& resources, Context& ctx);
+        void _GatherArgs2(FrameResourceHandle freeList, FrameResourceHandle octree, FrameResourceHandle argsBuffer, ResourceHandler& resources, Context& ctx);
+
         RenderSystem& renderSystem;
 
-        ResourceHandle voxelBuffer;
-        ResourceHandle octreeBuffer;
-        ResourceHandle freeList;
+        ResourceHandle  octreeBuffer[2];
+        uint32_t        primaryBuffer = 0;
 
         IndirectLayout dispatch;
-        IndirectLayout gather;
         IndirectLayout draw;
 
-        RootSignature testSignature;
+        IndirectLayout remove;
+
         RootSignature gatherSignature;
         RootSignature dispatchSignature;
 
+        RootSignature removeSignature;
+
+
+        ID3D12PipelineState* gatherDispatchArgs;
+        ID3D12PipelineState* gatherDispatchArgs2;
+
+        ID3D12PipelineState* CreateRemovePSO                    (RenderSystem* RS);
+        ID3D12PipelineState* CreateVXGIGatherDispatchArgsPSO    (RenderSystem* RS);
+        ID3D12PipelineState* CreateVXGIEraseDispatchArgsPSO     (RenderSystem* RS);
+        ID3D12PipelineState* CreateVXGIDecrementDispatchArgsPSO (RenderSystem* RS);
+
         static ID3D12PipelineState* CreateVXGI_InitOctree              (RenderSystem* RS);
         static ID3D12PipelineState* CreateInjectVoxelSamplesPSO        (RenderSystem* RS);
-        static ID3D12PipelineState* CreateUpdateVoxelVolumesPSO        (RenderSystem* RS);
-        static ID3D12PipelineState* CreateReleaseVoxelNodesPSO         (RenderSystem* RS);
+        static ID3D12PipelineState* CreateMarkErasePSO                  (RenderSystem* RS);
         static ID3D12PipelineState* CreateUpdateVolumeVisualizationPSO (RenderSystem* RS);
-        static ID3D12PipelineState* CreateVXGIGatherArgs1PSO           (RenderSystem* RS);
-        static ID3D12PipelineState* CreateVXGIGatherArgs2PSO           (RenderSystem* RS);
+        static ID3D12PipelineState* CreateVXGIGatherDrawArgsPSO        (RenderSystem* RS);
         static ID3D12PipelineState* CreateVXGIGatherSubDRequestsPSO    (RenderSystem* RS);
         static ID3D12PipelineState* CreateVXGIProcessSubDRequestsPSO   (RenderSystem* RS);
     };

@@ -802,7 +802,6 @@ namespace FlexKit
                 t,
                 temporary);
 
-
         auto& OIT_pass =
             transparency.OIT_WB_Pass(
                 dispatcher,
@@ -813,26 +812,23 @@ namespace FlexKit
                 reserveCB,
                 temporary);
 
-        if(0)
-        {
-            auto& updateVolumes =
-                lightingEngine.UpdateVoxelVolumes(
-                    dispatcher,
-                    frameGraph,
-                    camera,
-                    depthTarget.Get(),
-                    reserveCB,
-                    temporary);
+        auto& updateVolumes =
+            lightingEngine.UpdateVoxelVolumes(
+                dispatcher,
+                frameGraph,
+                camera,
+                depthTarget.Get(),
+                reserveCB,
+                temporary);
 
-            auto& volumeVis =
-                lightingEngine.DrawVoxelVolume(
-                    dispatcher,
-                    frameGraph,
-                    camera,
-                    OIT_pass,
-                    reserveCB,
-                    temporary);
-        }
+        auto& volumeVis =
+            lightingEngine.DrawVoxelVolume(
+                dispatcher,
+                frameGraph,
+                camera,
+                OIT_pass,
+                reserveCB,
+                temporary);
 
         auto& OIT_blend =
             transparency.OIT_WB_Blend(
