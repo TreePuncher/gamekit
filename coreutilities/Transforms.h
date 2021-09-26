@@ -272,14 +272,14 @@ namespace FlexKit
     {
     public:
 
-        SceneNodeView(const float3 XYZ) :
+        SceneNodeView(GameObject& gameObject, const float3 XYZ) :
             node{ GetComponent().CreateNode() }
         {
             SetPosition(XYZ);
         }
 
 
-        SceneNodeView(NodeHandle IN_Node = GetComponent().CreateZeroedNode()) :
+        SceneNodeView(GameObject& gameObject, NodeHandle IN_Node = GetComponent().CreateZeroedNode()) :
             node{ IN_Node }
         {
         }

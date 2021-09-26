@@ -1745,6 +1745,8 @@ namespace FlexKit
 					Element.~TY();
 				});
 
+
+            FreeObjectList.clear();
 			Allocator->free(Pool);
 		}
 

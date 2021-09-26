@@ -12,9 +12,8 @@ namespace FlexKit
 
     constexpr PSOHandle VXGI_INITOCTREE                 = PSOHandle(GetTypeGUID(VXGI_INITOCTREE));
     constexpr PSOHandle VXGI_CLEAR                      = PSOHandle(GetTypeGUID(VXGI_CLEAR));
-    constexpr PSOHandle VXGI_REMOVENODES                = PSOHandle(GetTypeGUID(VXGI_REMOVENODES));
+    constexpr PSOHandle VXGI_ALLOCATENODES              = PSOHandle(GetTypeGUID(VXGI_ALLOCATENODES));
     constexpr PSOHandle VXGI_DECREMENTCOUNTER           = PSOHandle(GetTypeGUID(VXGI_DECREMENTCOUNTER));
-    constexpr PSOHandle VXGI_MARKERASE                  = PSOHandle(GetTypeGUID(VXGI_MARKERASE));
     constexpr PSOHandle VXGI_SAMPLEINJECTION            = PSOHandle(GetTypeGUID(VXGI_SAMPLEINJECTION));
     constexpr PSOHandle VXGI_DRAWVOLUMEVISUALIZATION    = PSOHandle(GetTypeGUID(VXGI_DRAWVOLUMEVISUALIZATION));
     constexpr PSOHandle VXGI_GATHERDISPATCHARGS         = PSOHandle(GetTypeGUID(VXGI_GATHERSISPATCHARGS));
@@ -22,6 +21,11 @@ namespace FlexKit
     constexpr PSOHandle VXGI_GATHERDRAWARGS             = PSOHandle(GetTypeGUID(VXGI_GATHERDRAWARGS));
     constexpr PSOHandle VXGI_GATHERSUBDIVISIONREQUESTS  = PSOHandle(GetTypeGUID(VXGI_GATHERSUBDIVISIONREQUESTS));
     constexpr PSOHandle VXGI_PROCESSSUBDREQUESTS        = PSOHandle(GetTypeGUID(VXGI_PROCESSSUBDREQUESTS));
+
+    constexpr PSOHandle SVO_Voxelize                    = PSOHandle(GetTypeGUID(SVO_Voxelize));
+    constexpr PSOHandle SVO_SortSingleBlock             = PSOHandle(GetTypeGUID(SVO_SortSingleBlock));
+    constexpr PSOHandle SVO_SortMultiBlock              = PSOHandle(GetTypeGUID(SVO_SortMultiBlock));
+    constexpr PSOHandle SVO_GatherArguments             = PSOHandle(GetTypeGUID(SVO_GATHERARGS));
 
 
     /************************************************************************************************/
@@ -32,13 +36,12 @@ namespace FlexKit
         ReserveConstantBufferFunction   reserveCB;
         CameraHandle                    camera;
 
-        FrameResourceHandle     depthTarget;
-        FrameResourceHandle     counters;
-        FrameResourceHandle     octree;
-        FrameResourceHandle     indirectArgs;
-        FrameResourceHandle     freeList;
-        FrameResourceHandle     scratchPad;
-        FrameResourceHandle     sampleBuffer;
+        FrameResourceHandle octree;
+
+        FrameResourceHandle depthTarget;
+        FrameResourceHandle counters;
+        FrameResourceHandle indirectArgs;
+        FrameResourceHandle sampleBuffer;
     };
 
 
@@ -50,13 +53,69 @@ namespace FlexKit
         ReserveConstantBufferFunction   reserveCB;
         CameraHandle                    camera;
 
-        FrameResourceHandle     depthTarget;
-        FrameResourceHandle     indirectArgs;
-        FrameResourceHandle     octree;
+        FrameResourceHandle depthTarget;
+        FrameResourceHandle renderTarget;
 
-        FrameResourceHandle     counter;
-        FrameResourceHandle     accumlator;
+        FrameResourceHandle indirectArgs;
+        FrameResourceHandle octree;
+        FrameResourceHandle brickBuffer;
     };
+
+
+    /************************************************************************************************/
+
+
+    class StaticVoxelizer
+    {
+    public:
+        StaticVoxelizer(RenderSystem& renderSystem, iAllocator& allocator);
+
+        
+        // No Copy
+                            StaticVoxelizer (const StaticVoxelizer&) = delete;
+        StaticVoxelizer&    operator =      (const StaticVoxelizer&) = delete;
+
+        // No Move
+                            StaticVoxelizer (StaticVoxelizer&&) = delete;
+        StaticVoxelizer&   operator =       (StaticVoxelizer&&) = delete;
+
+        struct VoxelizePass
+        {
+            GatherPassesTask&               passes;
+            ReserveConstantBufferFunction   reserveCB;
+
+            FrameResourceHandle             sampleBuffer;
+            FrameResourceHandle             sortedBuffer;
+            FrameResourceHandle             argBuffer;
+        };
+
+
+        VoxelizePass& VoxelizeScene(
+            FrameGraph&                     frameGraph,
+            Scene&                          scene,
+            uint3                           XYZ,
+            GatherPassesTask&               passes,
+            ReserveConstantBufferFunction   reserveCB);
+
+        void GatherArgs(FrameResourceHandle argBuffer, FrameResourceHandle sampleBuffer, ResourceHandler& resources, Context& ctx);
+
+    private:
+
+        ID3D12PipelineState* CreateVoxelizerPSO         (RenderSystem* RS);
+        ID3D12PipelineState* CreateSortPSO              (RenderSystem* RS);
+        ID3D12PipelineState* CreateMultiBlockSortPSO    (RenderSystem* RS);
+        ID3D12PipelineState* CreateGatherArgsPSO        (RenderSystem* RS);
+
+
+        RootSignature voxelizeSignature;
+        RootSignature sortingSignature;
+
+        IndirectLayout dispatch;
+    };
+
+
+    /************************************************************************************************/
+
 
     class GILightingEngine
     {
@@ -75,6 +134,13 @@ namespace FlexKit
 
         void InitializeOctree(FrameGraph& frameGraph);
 
+
+        StaticVoxelizer::VoxelizePass& VoxelizeScene(
+                FrameGraph&                     frameGraph,
+                Scene&                          scene,
+                ReserveConstantBufferFunction   reserveCB,
+                GatherPassesTask&               passes);
+
         UpdateVoxelVolume&        UpdateVoxelVolumes(
 			    UpdateDispatcher&               dispatcher,
 			    FrameGraph&                     frameGraph,
@@ -87,7 +153,8 @@ namespace FlexKit
 			    UpdateDispatcher&               dispatcher,
 			    FrameGraph&                     frameGraph,
 			    const CameraHandle              camera,
-                OITPass&                        target,
+                ResourceHandle                  depthTarget,
+                FrameResourceHandle             renderTarget, 
 			    ReserveConstantBufferFunction   reserveCB,
 			    iAllocator*                     allocator);
 
@@ -95,10 +162,11 @@ namespace FlexKit
 
         struct alignas(64) OctTreeNode
         {
-            uint    nodes[8];
-            uint4   volumeCord;
-            uint    data;
-            uint    flags;
+            uint parent;
+            uint children;
+            uint flags;
+            //uint RGBA[8];
+            uint padding;
         };
 
 
@@ -110,8 +178,7 @@ namespace FlexKit
 
         RenderSystem& renderSystem;
 
-        ResourceHandle  octreeBuffer[2];
-        uint32_t        primaryBuffer = 0;
+        ResourceHandle  octreeBuffer;
 
         IndirectLayout dispatch;
         IndirectLayout draw;
@@ -123,11 +190,13 @@ namespace FlexKit
 
         RootSignature removeSignature;
 
+        StaticVoxelizer staticVoxelizer;
 
         ID3D12PipelineState* gatherDispatchArgs;
         ID3D12PipelineState* gatherDispatchArgs2;
 
-        ID3D12PipelineState* CreateRemovePSO                    (RenderSystem* RS);
+        ID3D12PipelineState* CreateAllocatePSO                  (RenderSystem* RS);
+        ID3D12PipelineState* CreateTransferPSO                  (RenderSystem* RS);
         ID3D12PipelineState* CreateVXGIGatherDispatchArgsPSO    (RenderSystem* RS);
         ID3D12PipelineState* CreateVXGIEraseDispatchArgsPSO     (RenderSystem* RS);
         ID3D12PipelineState* CreateVXGIDecrementDispatchArgsPSO (RenderSystem* RS);
@@ -141,6 +210,7 @@ namespace FlexKit
         static ID3D12PipelineState* CreateVXGIProcessSubDRequestsPSO   (RenderSystem* RS);
     };
 }
+
 
 /**********************************************************************
 

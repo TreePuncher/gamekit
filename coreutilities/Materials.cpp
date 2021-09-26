@@ -132,6 +132,119 @@ namespace FlexKit
             materials[handles[material]].Textures.push_back(res->texture);
         }
     }
+    /************************************************************************************************/
+
+
+    MaterialComponent::MaterialView::MaterialView(GameObject & gameObject, MaterialHandle IN_handle) noexcept :
+        handle{ IN_handle }
+    {
+        GetComponent().AddRef(handle);
+
+        SetMaterialHandle(gameObject, handle);
+    }
+
+    MaterialComponent::MaterialView::MaterialView(GameObject& gameObject) noexcept : handle{ GetComponent().CreateMaterial() }
+    {
+        GetComponent().AddRef(handle);
+
+        SetMaterialHandle(gameObject, handle);
+    }
+
+    /************************************************************************************************/
+
+
+    MaterialComponent::MaterialView::~MaterialView()
+    {
+        GetComponent().ReleaseMaterial(handle);
+    }
+
+
+    /************************************************************************************************/
+
+
+    MaterialComponentData MaterialComponent::MaterialView::GetData() const
+    {
+        return GetComponent()[handle];
+    }
+
+
+    /************************************************************************************************/
+
+
+    bool MaterialComponent::MaterialView::Shared() const
+    {
+        return GetComponent()[handle].refCount > 1;
+    }
+
+
+    /************************************************************************************************/
+
+
+    void MaterialComponent::MaterialView::Add2Pass(const PassHandle ID)
+    {
+        GetComponent().Add2Pass(handle, ID);
+    }
+
+
+    /************************************************************************************************/
+
+
+    static_vector<PassHandle> MaterialComponent::MaterialView::GetPasses() const
+    {
+        return GetComponent().GetPasses(handle);
+    }
+
+
+    /************************************************************************************************/
+
+
+    void MaterialComponent::MaterialView::AddTexture(GUID_t textureAsset, bool LoadLowest)
+    {
+        if (Shared())
+        {
+            auto newHandle = GetComponent().CloneMaterial(handle);
+            GetComponent().ReleaseMaterial(handle);
+
+            handle = newHandle;
+        }
+
+        ReadContext rdCtx{};
+        GetComponent().AddTexture(textureAsset, handle, rdCtx, LoadLowest);
+    }
+
+
+    /************************************************************************************************/
+
+
+    bool MaterialComponent::MaterialView::HasSubMaterials() const
+    {
+        return !GetComponent()[handle].SubMaterials.empty();
+    }
+
+
+    /************************************************************************************************/
+
+
+    MaterialHandle MaterialComponent::MaterialView::CreateSubMaterial()
+    {
+        auto& materials = GetComponent();
+
+        if (Shared())
+        {
+            auto newHandle = GetComponent().CloneMaterial(handle);
+            GetComponent().ReleaseMaterial(handle);
+
+            handle = newHandle;
+        }
+
+        if (GetComponent()[handle].SubMaterials.full())
+            return InvalidHandle_t;
+
+        auto subMaterial = materials.CreateMaterial();
+        materials.AddSubMaterial(handle, subMaterial);
+
+        return subMaterial;
+    }
 
 
     /************************************************************************************************/
@@ -142,13 +255,19 @@ namespace FlexKit
         MaterialComponentBlob materialBlob;
         memcpy(&materialBlob, buffer, Min(sizeof(materialBlob), bufferSize));
 
-        auto newMaterial = CreateMaterial();
-        auto rdCtx = ReadContext{};
+        const static auto newMaterial = [&]() {
+            auto newMaterial = CreateMaterial();
 
-        Add2Pass(newMaterial, PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED)});
-        SetProperty(newMaterial, GetCRCGUID(PBR_ALBEDO), float4(0.5, 0.5f, 0.5f, 0.0f));
-        SetProperty(newMaterial, GetCRCGUID(PBR_SPECULAR), float4(0.9, 0.9f, 0.9f, 0.0f));
+            Add2Pass(newMaterial, PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
+            Add2Pass(newMaterial, PassHandle{ GetCRCGUID(VXGI_STATIC) });
+
+            SetProperty(newMaterial, GetCRCGUID(PBR_ALBEDO), float4(0.5f, 0.5f, 0.5f, 0.3f));
+            SetProperty(newMaterial, GetCRCGUID(PBR_SPECULAR), float4(0.9f, 0.9f, 0.9f, 0.0f));
+
+            return newMaterial;
+        }();
         
+        auto rdCtx          = ReadContext{};
         if (materialBlob.materials.size() > 1)
         {
             for (auto& subMaterial : materialBlob.materials)
@@ -174,7 +293,7 @@ namespace FlexKit
 
 
 
-    void SetMaterialHandle(GameObject& go, MaterialHandle material)
+    void SetMaterialHandle(GameObject& go, MaterialHandle material) noexcept
     {
         Apply(
             go,
@@ -185,7 +304,7 @@ namespace FlexKit
     }
 
 
-    MaterialHandle GetMaterialHandle(GameObject& go)
+    MaterialHandle GetMaterialHandle(GameObject& go) noexcept
     {
         return Apply(
             go,

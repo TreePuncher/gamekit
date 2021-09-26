@@ -579,9 +579,9 @@ namespace FlexKit
 
     CameraHandle GetCameraControllerCamera(GameObject& GO)
     {
-        return Apply(GO, [](CameraControllerView& cameraController)
+        return Apply(GO, [](CameraView& cameraView)
             {
-                return cameraController.GetData().camera;
+                return cameraView.camera;
             },
             []
             {
@@ -633,6 +633,8 @@ namespace FlexKit
 
     GameObject& CreateThirdPersonCameraController(GameObject& gameObject, LayerHandle layer, iAllocator& allocator, const float R, const float H)
     {
+        gameObject.AddView<OrbitCameraBehavior>();
+        /*
         gameObject.AddView<CharacterControllerView>(layer, &gameObject, float3{ 0, 10, 0 });
 
         gameObject.AddView<CameraControllerView>(
@@ -640,7 +642,7 @@ namespace FlexKit
                 ThirdPersonCamera(
                     GetControllerHandle(gameObject),
                     GetControllerNode(gameObject))));
-
+        */
         return gameObject;
     }
 

@@ -644,11 +644,11 @@ namespace FlexKit
     class StaticBodyView : public ComponentView_t<StaticBodyComponent>
     {
     public:
-        StaticBodyView(StaticBodyHandle IN_staticBody, LayerHandle IN_layer) :
+        StaticBodyView(GameObject& gameObject, StaticBodyHandle IN_staticBody, LayerHandle IN_layer) :
             staticBody  { IN_staticBody },
             layer       { IN_layer } {}
 
-        StaticBodyView(LayerHandle IN_layer, PxShapeHandle shape, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 }) :
+        StaticBodyView(GameObject& gameObject, LayerHandle IN_layer, PxShapeHandle shape, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 }) :
             staticBody  { GetComponent().Create(layer, shape, pos, q) },
             layer       { IN_layer } {}
 
@@ -708,11 +708,11 @@ namespace FlexKit
     class RigidBodyView : public ComponentView_t<RigidBodyComponent>
     {
     public:
-        RigidBodyView(RigidBodyHandle IN_staticBody, LayerHandle IN_layer) :
+        RigidBodyView(GameObject& gameObject, RigidBodyHandle IN_staticBody, LayerHandle IN_layer) :
             staticBody  { IN_staticBody },
             layer       { IN_layer      } {}
 
-        RigidBodyView(PxShapeHandle shape, LayerHandle IN_layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 }) :
+        RigidBodyView(GameObject& gameObject, PxShapeHandle shape, LayerHandle IN_layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 }) :
             staticBody  { GetComponent().CreateRigidBody(shape, IN_layer, pos, q) },
             layer       { IN_layer } {}
 
@@ -840,21 +840,27 @@ namespace FlexKit
     {
     public:
         CharacterControllerView(
+            GameObject&         gameObject,
             LayerHandle         layer,
-            GameObject*         gameObject,
             const float3        initialPosition = { 0, 0, 0 },
             NodeHandle          node            = GetZeroedNode(),
             const float         R               = 1.0f,
             const float         H               = 1.0f) :
-                controller{ GetComponent().Create(layer, gameObject, node, initialPosition) }
+                controller{ GetComponent().Create(layer, &gameObject, node, initialPosition) }
         {
-            GetComponent()[controller].controller->getActor()->userData = gameObject;
-            GetComponent()[controller].controller->setUserData(gameObject);
+            auto& controller_ref = GetComponent()[controller];
+
+            controller_ref.controller->getActor()->userData = &gameObject;
+            controller_ref.controller->setUserData(&gameObject);
+
+            gameObject.AddView<CameraView>();
         }
 
 
-        CharacterControllerView(CharacterControllerHandle IN_controller) :
-            controller  { IN_controller } {}
+        CharacterControllerView(
+            GameObject&                 gameObject,
+            CharacterControllerHandle   IN_controller) :
+                controller  { IN_controller } {}
 
 
         ~CharacterControllerView()

@@ -93,7 +93,7 @@ output_Pixel PassMain(output_Vertex vertex)
     const float3 up_VS   = normalize(float3(0, 0, 1));
 
     const float zi  = vertex.depth;
-    const float ai  = 0.5f;
+    const float ai  = 0.1f;
     const float i   = dot(normalize(vertex.normal), up_VS);
     const float3 ci = saturate(Albedo.xyz * i) * ai;
 

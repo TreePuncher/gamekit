@@ -86,10 +86,10 @@ namespace FlexKit
 	class BrushView : public ComponentView_t<BrushComponent>
 	{
 	public:
-		BrushView(TriMeshHandle	triMesh, NodeHandle node)
+		BrushView(GameObject& gameObject, TriMeshHandle	triMesh, NodeHandle node)
 		{
-			GetComponent()[brush].MeshHandle = triMesh;
-			GetComponent()[brush].Node		= node;
+			GetComponent()[brush].MeshHandle    = triMesh;
+			GetComponent()[brush].Node		    = node;
 		}
 
 		TriMeshHandle GetTriMesh()
@@ -238,7 +238,7 @@ namespace FlexKit
 	class PointLightView : public ComponentView_t<PointLightComponent>
 	{
 	public:
-		PointLightView(float3 color, float intensity, float radius, NodeHandle node) : light{ GetComponent().Create() } 
+		PointLightView(GameObject& gameObject, float3 color, float intensity, float radius, NodeHandle node) : light{ GetComponent().Create() }
 		{
 			auto& poingLight        = GetComponent()[light];
 			poingLight.K			= color;

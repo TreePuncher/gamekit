@@ -115,10 +115,10 @@ struct CardInterface
     const char*   cardName              = "!!!!!";
     const char*   description           = "!!!!!";
 
-    uint          requiredPowerLevel    = 0;
+    uint16_t      requiredPowerLevel    = 0;
 
-    std::function<void (GameWorld& world, GameObject& player)> OnCast   = [](GameWorld& world, GameObject& player){};
-    std::function<void (GameWorld& world, GameObject& player)> OnHit    = [](GameWorld& world, GameObject& player){};
+    TypeErasedCallable<16, void, GameWorld&, GameObject&> OnCast    = [](GameWorld& world, GameObject& player){};
+    TypeErasedCallable<16, void, GameWorld&, GameObject&> OnHit     = [](GameWorld& world, GameObject& player) {};
 };
 
 
@@ -320,10 +320,15 @@ public:
 
     ~GameWorld()
     {
-        scene.ClearScene();
+        Release();
     }
 
+    void Release()
+    {
+        scene.ClearScene();
 
+        objectPool.~ObjectPool();
+    }
 
     GameObject& AddLocalPlayer(MultiplayerPlayerID_t multiplayerID);
     GameObject& AddRemotePlayer(MultiplayerPlayerID_t playerID, ConnectionHandle connection = InvalidHandle_t);

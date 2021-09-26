@@ -21,7 +21,6 @@ PowerCard::PowerCard() : CardInterface{
                     player.GetData().maxCastingLevel++;
                 });
         };
-
 }
 
 FireBall::FireBall() : CardInterface{
@@ -36,7 +35,7 @@ FireBall::FireBall() : CardInterface{
             Apply(playerGameObject,
                 [&](PlayerView& player)
                 {
-                    if (player->mana < 1)
+                    if (player->mana < 1 && false)
                     {
                         FK_LOG_INFO("Cast Failed: Not enough managa!");
                         return;
@@ -162,7 +161,7 @@ GameObject& GameWorld::AddRemotePlayer(MultiplayerPlayerID_t playerID, Connectio
     if (!loaded)
         triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), playerModel);
 
-    auto& characterController = gameObject.AddView<CharacterControllerView>(layer, &gameObject, float3{0, 0, 0}, GetZeroedNode(), 1.0f, 1.0f);
+    auto& characterController = gameObject.AddView<CharacterControllerView>(layer, float3{0, 0, 0}, GetZeroedNode(), 1.0f, 1.0f);
     gameObject.AddView<SceneNodeView<>>(characterController.GetNode());
     gameObject.AddView<BrushView>(triMesh, characterController.GetNode());
 
@@ -211,13 +210,36 @@ GameObject& GameWorld::CreateSpell(SpellData initial, float3 initialPosition, fl
     if (!loaded)
         triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), spellModel);
 
+    auto& materials = MaterialComponent::GetComponent();
+
+    const static auto materialClass = [&]()
+        {
+            auto particleMaterial   = materials.CreateMaterial();
+
+            materials.Add2Pass(particleMaterial, PassHandle{ GetCRCGUID(OIT_MCGUIRE) });
+
+            materials.SetProperty(particleMaterial, GetCRCGUID(PBR_ALBEDO), float4{ 0.5f, 0.0f, 0.5f, 0.5f });
+            materials.SetProperty(particleMaterial, GetCRCGUID(PBR_SPECULAR), float4{ 0.9f, 0.9f, 0.9f, 0.5f });
+
+            materials.AddRef(particleMaterial);
+
+            return particleMaterial;
+        }();
+
+
+    auto particleMaterial = materials.CreateMaterial(materialClass);
+
     gameObject.AddView<SceneNodeView<>>();
     gameObject.AddView<BrushView>(triMesh, GetSceneNode(gameObject));
+    gameObject.AddView<MaterialComponentView>(particleMaterial);
+
+    SetMaterialHandle(gameObject, particleMaterial);
 
     SetWorldPosition(gameObject, initialPosition);
 
     scene.AddGameObject(gameObject, GetSceneNode(gameObject));
 
+    SetVisable(gameObject, true);
     SetBoundingSphereFromMesh(gameObject);
 
     spell.caster        = initial.caster;
@@ -243,7 +265,8 @@ bool GameWorld::LoadScene(GUID_t assetID)
     auto& physics       = PhysXComponent::GetComponent();
     auto& visibility    = SceneVisibilityComponent::GetComponent();
 
-    static std::regex pattern{"Cube"};
+    static const std::regex pattern{"Cube"};
+
     for (auto& entity : scene.sceneEntities)
     {
         auto& go    = *visibility[entity].entity;
@@ -285,7 +308,7 @@ void CreateMultiplayerScene(GameWorld& world)
     auto& physics       = PhysXComponent::GetComponent();
     auto& floorCollider = world.objectPool.Allocate();
     auto floorShape     = physics.CreateCubeShape({ 200, 1, 200 });
-
+    
     floorCollider.AddView<StaticBodyView>(world.layer, floorShape, float3{ 0, -1.0f, 0 });
 }
 
@@ -301,7 +324,7 @@ void GameWorld::UpdatePlayer(const PlayerFrameState& playerState, const double d
         *gameObject,
         [&](PlayerView& player)
         {
-            player->mana = Min(player->mana + dT / 5.0, player->maxCastingLevel);
+            player->mana = Min(player->mana + dT, player->maxCastingLevel);
         });
 
     if (gameObject) {
@@ -393,26 +416,21 @@ UpdateTask& GameWorld::UpdateSpells(FlexKit::UpdateDispatcher& dispathcer, Objec
                 OverlappCallback callback(
                     [&](const physx::PxOverlapHit* buffer, physx::PxU32 nbHits) -> bool
                     {
-                        /*
                         for (size_t I = 0; I < nbHits; I++)
                         {
                             if (buffer[I].actor && buffer[I].actor->userData) {
 
-                                auto* gameObject = reinterpret_cast<GameObject*>(buffer[I].actor->userData);
+                                auto& gameObject = *reinterpret_cast<GameObject*>(buffer[I].actor->userData);
 
-                                Apply(*gameObject,
-                                    [&](PlayerView& player)
-                                    {
-                                        spell.card.OnHit(*this, *player->gameObject);
-                                    });
+                                if (gameObject.hasView(PlayerView::GetComponentID()))
+                                    spell.card.OnHit(*this, gameObject);
                             }
                         }
-                        */
+
                         return false;
                     },
                     []() {}
                 );
-
                 auto boundingSphere = GetBoundingSphereFromMesh(*spell.gameObject);
 
                 physx::PxSphereGeometry geo     { 1 };
@@ -429,6 +447,8 @@ UpdateTask& GameWorld::UpdateSpells(FlexKit::UpdateDispatcher& dispathcer, Objec
         });
 
 }
+
+
 /************************************************************************************************/
 
 

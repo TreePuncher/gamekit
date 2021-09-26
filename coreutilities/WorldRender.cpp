@@ -567,20 +567,20 @@ namespace FlexKit
             clusteredRender             { renderSystem, *persistent },
             transparency                { renderSystem }
 	{
-		RS_IN.RegisterPSOLoader(FORWARDDRAW,			    { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawPSO,		  });
-		RS_IN.RegisterPSOLoader(FORWARDDRAWINSTANCED,	    { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO });
+		RS_IN.RegisterPSOLoader(FORWARDDRAW,			        { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawPSO,		  });
+		RS_IN.RegisterPSOLoader(FORWARDDRAWINSTANCED,	        { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO });
 
-		RS_IN.RegisterPSOLoader(LIGHTPREPASS,			    { &RS_IN.Library.ComputeSignature,  CreateLightPassPSO			  });
-		RS_IN.RegisterPSOLoader(DEPTHPREPASS,			    { &RS_IN.Library.RS6CBVs4SRVs,      CreateDepthPrePassPSO         });
+		RS_IN.RegisterPSOLoader(LIGHTPREPASS,			        { &RS_IN.Library.ComputeSignature,  CreateLightPassPSO			  });
+		RS_IN.RegisterPSOLoader(DEPTHPREPASS,			        { &RS_IN.Library.RS6CBVs4SRVs,      CreateDepthPrePassPSO         });
 
-		RS_IN.RegisterPSOLoader(ENVIRONMENTPASS,            { &RS_IN.Library.RS6CBVs4SRVs,      CreateEnvironmentPassPSO      });
+		RS_IN.RegisterPSOLoader(ENVIRONMENTPASS,                { &RS_IN.Library.RS6CBVs4SRVs,      CreateEnvironmentPassPSO      });
 
                 
-		RS_IN.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL, { &RS_IN.Library.RSDefault, CreateBilaterialBlurHorizontalPSO });
-		RS_IN.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,   { &RS_IN.Library.RSDefault, CreateBilaterialBlurVerticalPSO   });
+		RS_IN.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL,    { &RS_IN.Library.RSDefault, CreateBilaterialBlurHorizontalPSO });
+		RS_IN.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,      { &RS_IN.Library.RSDefault, CreateBilaterialBlurVerticalPSO   });
 
-        RS_IN.RegisterPSOLoader(ZPYRAMIDBUILDLEVEL, { &RS_IN.Library.RSDefault, CreateBuildZLayer });
-        RS_IN.RegisterPSOLoader(DEPTHCOPY,          { &RS_IN.Library.RSDefault, CreateDepthBufferCopy });
+        RS_IN.RegisterPSOLoader(ZPYRAMIDBUILDLEVEL,             { &RS_IN.Library.RSDefault, CreateBuildZLayer });
+        RS_IN.RegisterPSOLoader(DEPTHCOPY,                      { &RS_IN.Library.RSDefault, CreateDepthBufferCopy });
 
 
         RS_IN.RegisterPSOLoader(CREATEINITIALLUMANANCELEVEL,    { &RS_IN.Library.RSDefault, CreateInitialLumananceLevel });
@@ -634,7 +634,7 @@ namespace FlexKit
             });
 
         pendingGPUTasks.emplace_back(
-            [&](FrameGraph& frameGraph)
+            [&](FrameGraph& frameGraph, auto&)
             {
                 lightingEngine.InitializeOctree(frameGraph);
             });
@@ -722,8 +722,14 @@ namespace FlexKit
         frameGraph.AddMemoryPool(&RTPool);
         frameGraph.dataDependencies.push_back(&IKUpdate);
 
+        PassData data = {
+            .passes     = passes,
+            .reserveCB  = reserveCB,
+            .reserveVB  = reserveVB
+        };
+
         for (auto& task : pendingGPUTasks)
-            task(frameGraph);
+            task(frameGraph, data);
 
         pendingGPUTasks.clear();
 
@@ -826,7 +832,8 @@ namespace FlexKit
                 dispatcher,
                 frameGraph,
                 camera,
-                OIT_pass,
+                depthTarget.Get(),
+                shadingPass.renderTargetObject,
                 reserveCB,
                 temporary);
 

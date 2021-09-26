@@ -32,8 +32,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	OrbitCameraBehavior::OrbitCameraBehavior(CameraHandle handle, float movementSpeed, float3 initialPos) :
-		CameraView{ handle }
+	OrbitCameraBehavior::OrbitCameraBehavior(GameObject& go, CameraHandle handle, float movementSpeed, float3 initialPos) :
+		CameraView{ go, handle }
 	{
 		yawNode		= GetZeroedNode();
 		pitchNode	= GetZeroedNode();

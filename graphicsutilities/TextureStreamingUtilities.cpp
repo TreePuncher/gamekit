@@ -168,8 +168,8 @@ namespace FlexKit
 
     ID3D12PipelineState* CreateTextureFeedbackPassPSO(RenderSystem* RS)
     {
-        auto VShader = RS->LoadShader("Forward_VS", "vs_6_0", "assets\\shaders\\forwardRender.hlsl");
-        auto PShader = RS->LoadShader("TextureFeedback_PS",   "ps_6_0", "assets\\shaders\\TextureFeedback.hlsl");
+        auto VShader = RS->LoadShader("Forward_VS", "vs_6_6", "assets\\shaders\\forwardRender.hlsl");
+        auto PShader = RS->LoadShader("TextureFeedback_PS",   "ps_6_6", "assets\\shaders\\TextureFeedback.hlsl");
 
         D3D12_INPUT_ELEMENT_DESC InputElements[] = {
                 { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -195,7 +195,7 @@ namespace FlexKit
         PSO_Desc.SampleMask             = UINT_MAX;
         PSO_Desc.RasterizerState        = Rast_Desc;
         PSO_Desc.DepthStencilState      = Depth_Desc;
-        PSO_Desc.InputLayout            = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
+        PSO_Desc.InputLayout            = { InputElements, 4 };
         PSO_Desc.PrimitiveTopologyType  = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         PSO_Desc.NumRenderTargets       = 0;
         PSO_Desc.DSVFormat              = DXGI_FORMAT_D32_FLOAT;
@@ -769,8 +769,8 @@ namespace FlexKit
                     { DRS_CopyDest, DRS_CopyDest },
                     { DRS_CopyDest, DRS_CopyDest });
 
-                ctx.ResolveQuery(timeStats, 0, 4, resources.GetObjectResource(data.readbackBuffer), 8);
-                ctx.QueueReadBack(data.readbackBuffer);
+                //ctx.ResolveQuery(timeStats, 0, 4, resources.GetObjectResource(data.readbackBuffer), 8);
+                //ctx.QueueReadBack(data.readbackBuffer);
 
                 ctx.EndEvent_DEBUG();
                 ctx.EndEvent_DEBUG();

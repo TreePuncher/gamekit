@@ -74,16 +74,16 @@ public:
 
     FixedUpdate                 fixedUpdate{ 60 };
 
-    GameWorld                   world;
 
     PlayerInputState            currentInputState;
     Vector<PlayerFrameState>    pendingRemoteUpdates;
 
-
-    SpellComponent                      spellComponent;
     PlayerComponent                     playerComponent;        // players game state such as health, player deck, etc
     LocalPlayerComponent                localPlayerComponent;   // Handles local tasks such as input, and local state history
     RemotePlayerComponent               remotePlayerComponent;  // Updates remote player proxies
+    SpellComponent                      spellComponent;
+
+    GameWorld                           world;
 
     GameEventHandler                    gameEventHandler;
 

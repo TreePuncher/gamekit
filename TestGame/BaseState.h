@@ -155,6 +155,7 @@ inline FlexKit::UpdateTask* QueueSoundUpdate(FlexKit::UpdateDispatcher& Dispatch
 /************************************************************************************************/
 
 
+
 class BaseState : public FrameworkState
 {
 public:
@@ -215,6 +216,8 @@ public:
 		RS.QueuePSOLoad(DRAW_LINE3D_PSO);
 		RS.QueuePSOLoad(DRAW_TEXTURED_DEBUG_PSO);
 
+        RS.DEBUG_AttachPIX();
+
         EventNotifier<>::Subscriber sub;
         sub.Notify = &EventsWrapper;
         sub._ptr = &framework;
@@ -240,6 +243,8 @@ public:
         renderWindow.UpdateCapturedMouseInput(dT);
 
         t += dT;
+
+        BeginPixCapture();
 
         return nullptr;
     }
@@ -312,6 +317,47 @@ public:
     }
 
 
+    void PixCapture()
+    {
+        PIX_SingleFrameCapture = true;
+    }
+
+    void BeginPixCapture()
+    {
+        if (PIX_SingleFrameCapture && !PIX_CaptureInProgress)
+        {
+            framework.GetRenderSystem().DEBUG_BeginPixCapture();
+            std::this_thread::sleep_for(60ms);
+
+
+            PIX_CaptureInProgress = true;
+            PIX_frameCaptures =  2;
+        }
+        else if (PIX_SingleFrameCapture && PIX_CaptureInProgress)
+        {
+            if (PIX_frameCaptures == 0)
+            {
+                std::this_thread::sleep_for(200ms);
+
+                framework.GetRenderSystem().DEBUG_EndPixCapture();
+
+                PIX_SingleFrameCapture = false;
+                PIX_CaptureInProgress = false;
+            }
+            else
+                PIX_frameCaptures--;
+        }
+    }
+
+    void EndPixCapture()
+    {
+        if (PIX_SingleFrameCapture && PIX_CaptureInProgress)
+        {
+            
+        }
+
+    }
+
 
 	asIScriptEngine* asEngine;
 
@@ -321,6 +367,9 @@ public:
     float   t = 0.0f;
     size_t  counter = 0;
 
+    bool                        PIX_SingleFrameCapture  = false;
+    bool                        PIX_CaptureInProgress   = false;
+    uint32_t                    PIX_frameCaptures       = 0;
 
     Win32RenderWindow           renderWindow;
 	WorldRender					render;

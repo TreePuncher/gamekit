@@ -336,6 +336,8 @@ namespace FlexKit
                 ctx.SetRootSignature(rootSig);
                 ctx.SetGraphicsDescriptorTable(4, descHeap);
 
+                ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.renderTargetObject), });
+
                 ctx.SetRenderTargets(
                     {
                         resources.GetRenderTarget(data.renderTargetObject),

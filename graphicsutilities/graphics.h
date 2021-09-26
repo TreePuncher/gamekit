@@ -1102,6 +1102,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		operator ID3D12RootSignature* () const { return Signature; }
 
+        ID3D12RootSignature* Get_ptr() const { return Signature; };
+
 		void Release()
 		{
 			if (Signature)
@@ -1688,6 +1690,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetDepthStencil		(ResourceHandle DS);
 		void SetPrimitiveTopology	(EInputTopology Topology);
 
+        void SetGraphicsConstantValue(size_t idx, size_t valueCount, void* data_ptr, size_t offset = 0);
+
 		void NullGraphicsConstantBufferView	(size_t idx);
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0);
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferDataSet& CB);
@@ -1701,7 +1705,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetComputeConstantBufferView   (size_t idx, const ConstantBufferDataSet& CB);
         void SetComputeConstantBufferView   (size_t idx, ResourceHandle, size_t offset = 0, size_t bufferSize = 256);
 		void SetComputeShaderResourceView	(size_t idx, Texture2D&		texture);
-		void SetComputeUnorderedAccessView	(size_t idx, ResourceHandle resource);
+		void SetComputeUnorderedAccessView	(size_t idx, ResourceHandle resource, size_t offset = 0);
 
 
 		void BeginQuery	(QueryHandle query, size_t idx);

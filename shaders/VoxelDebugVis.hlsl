@@ -2,7 +2,6 @@
 #include "VXGI_common.hlsl"
 
 
-/*
 float4 FullScreenQuad_VS(const uint vertexID : SV_VertexID) : SV_POSITION
 {
     float4 verts[] = {
@@ -18,6 +17,9 @@ float4 FullScreenQuad_VS(const uint vertexID : SV_VertexID) : SV_POSITION
     return verts[vertexID];
 }
 
+StructuredBuffer<OctTreeNode> octree : register(t0);
+
+/*
 
 int4 VolumePoint_VS(const uint vertexID : SV_VertexID) : POINT_POSITION
 {
@@ -43,11 +45,8 @@ float4 SampleVoxel(const float3 position, const float3 volumePosition, const flo
 
     return volume[sampleIdx];
 }
-*/
 
 
-
-StructuredBuffer<OctTreeNode> octree    : register(t0);
 
 uint VolumePoint_VS(const uint vertexID : SV_VertexID) : NODEINDEX
 {
@@ -76,23 +75,27 @@ void VoxelDebug_GS(point uint input[1] : NODEINDEX, inout TriangleStream<PS_Inpu
     const OctreeNodeVolume  volume  = GetVolume(node.volumeCord.xyz, node.volumeCord.w);
 
     const bool free         = node.flags == NODE_FLAGS::CLEAR;
+    const bool remove       = node.flags & NODE_FLAGS::DELETE;
     const bool leaf         = node.flags & NODE_FLAGS::LEAF;
     const bool branch       = node.flags & NODE_FLAGS::BRANCH;
 
+    if ((!branch || free))
+        return;
+
     const float4 color      =
-        free    ? float4(1, 0, 0, 0.01f) : float4(0, 0, 0, 0) +
-        branch  ? float4(0, 1, 0, 0.01f) : float4(0, 0, 0, 0) +
-        leaf    ? float4(0, 0, 1, 0.01f) : float4(0, 0, 0, 0) +
-        (!free && !branch && !leaf) ? float4(0.5f, 0.25f, 0.15f, 0.5f) : float4(0, 0, 0, 0);
+        remove  ? float4(1, 0, 0, 0.1f) : float4(0, 0, 0, 0) +
+        branch  ? float4(1, 1, 1, 0.01f) : float4(0, 0, 0, 0) +
+        leaf    ? float4(0, 0, 1, 0.01f) : float4(0, 0, 0, 0);
+        //(!free && !branch && !leaf) ? float4(0.5f, 0.25f, 0.15f, 0.5f) : float4(0, 0, 0, 0);
 
     const float3 edgeSpan   = volume.max.x - volume.min.x;
 
     const float4 temp       = mul(PV, float4(volume.min, 1));
     const float3 deviceCord = temp.xyz / temp.w;
 
-    const uint level = 8;
-    if (node.volumeCord.w < level|| node.volumeCord.w > level)
-        return;
+    //const uint level = 9;
+    //if (node.volumeCord.w < level|| node.volumeCord.w > level)
+    //    return;
 
     //if (!OnScreen(deviceCord.xy))
     //    return;
@@ -324,6 +327,200 @@ PS_output VoxelDebug_PS(PS_Input vertex)
     return Out;
 }
 
+*/
+
+
+struct Ray
+{
+    float3 origin;
+    float3 dir;
+};
+
+bool intersection(const Ray r, const OctreeNodeVolume b)
+{
+    const float3 invD = rcp(r.dir);
+
+    const float3 t0s = (b.min - r.origin) * invD;
+    const float3 t1s = (b.max - r.origin) * invD;
+
+    const float3 tsmaller   = min(t0s, t1s);
+    const float3 tbigger    = max(t0s, t1s);
+
+    const float tmin = max(tsmaller[0], max(tsmaller[1], tsmaller[2]));
+    const float tmax = min(tbigger[0], min(tbigger[1], tbigger[2]));
+
+    return tmin > 0 && (tmin < tmax);
+}
+
+bool intersection(const Ray r, const OctreeNodeVolume b, out float d)
+{
+    const float3 invD = rcp(r.dir);
+
+    const float3 t0s = (b.min - r.origin) * invD;
+    const float3 t1s = (b.max - r.origin) * invD;
+
+    const float3 tsmaller = min(t0s, t1s);
+    const float3 tbigger = max(t0s, t1s);
+
+    const float tmin = max(tsmaller[0], max(tsmaller[1], tsmaller[2]));
+    const float tmax = min(tbigger[0], min(tbigger[1], tbigger[2]));
+
+    d = tmin;
+
+    return tmin > 0 && (tmin < tmax);
+}
+
+struct RayCastResult
+{
+    uint    node;
+    uint    flags;
+    float   distance;
+    uint    iterations;
+};
+
+enum RAYCAST_RESULT_CODES
+{
+    RAYCAST_ERROR               = -1,
+    RAYCAST_NODE_NOT_ALLOCATED  = -2,
+    RAYCAST_HIT                 = 1,
+    RAYCAST_MISS                = 2,
+};
+
+
+RayCastResult RayCastOctree(const Ray r, in StructuredBuffer<OctTreeNode> octree)
+{
+    static const uint4 childVIDOffsets[] = {
+        uint4(0, 0, 0, 0),
+        uint4(1, 0, 0, 0),
+        uint4(0, 0, 1, 0),
+        uint4(1, 0, 1, 0),
+
+        uint4(0, 1, 0, 0),
+        uint4(1, 1, 0, 0),
+        uint4(0, 1, 1, 0),
+        uint4(1, 1, 1, 0)
+    };
+            
+    uint    parent          = -1;
+
+    uint    nodeID      = 0;
+    uint    childID     = -1;
+    uint    flags       = octree[0].flags;
+    uint    children    = octree[0].children;
+    uint4   nodeCord    = uint4(0, 0, 0, 0);
+
+    float distance = 0;
+
+    uint node = 0;
+    //[allow_uav_condition]
+    for (uint i = 0; i < 200; i++)
+    {
+        if (flags & BRANCH)
+        {   // Push child
+            const uint4 childCoordinateBase = uint4(nodeCord.xyz * 2, nodeCord.w + 1);
+
+            for (uint childIdx = (childID != -1 ? childID : 0);
+                childIdx < 8;
+                childIdx++)
+            {                                                     
+                const uint childFlags   = GetChildFlags(childIdx, flags);
+
+                if (childFlags == CHILD_FLAGS::EMPTY)
+                    continue;
+
+                const uint4 childCoordinate         = childCoordinateBase + childVIDOffsets[childIdx];
+                const OctreeNodeVolume childVolume  = GetVolume(childCoordinate.xyz, childCoordinate.w);
+
+                if (intersection(r, childVolume, distance))
+                {   // Push child
+                    const uint newNode = octree[nodeID].children + childIdx;          
+                    
+                    parent      = nodeID;
+
+                    nodeID      = newNode;
+                    childID     = -1;
+                    flags       = octree[newNode].flags;
+                    children    = octree[newNode].children;
+                    nodeCord    = childCoordinate;           
+
+                    break;
+                }
+                else continue;
+            }
+
+
+            // All children miss go to next sibling       
+            if(childIdx == 8)
+            {
+                if(parent == -1) // No parent, miss
+                {
+                    RayCastResult res;
+                    res.node        = nodeID;
+                    res.flags       = RAYCAST_RESULT_CODES::RAYCAST_MISS;
+                    res.distance    = 10000;
+                    res.iterations  = i;
+                    return res;
+                }
+                else
+                {
+                    const uint parent_children = octree[parent].children;
+                    childID     = (nodeID - parent_children) + 1; // next sibling
+
+                    nodeID      = parent;
+                    flags       = octree[nodeID].flags;
+                    children    = parent_children;
+                    nodeCord    = uint4(nodeCord.xyz / 2, nodeCord.w - 1);
+                    parent      = octree[nodeID].parent;
+
+                    continue;
+                }
+            }
+        }
+        else if (flags & LEAF)
+        {
+            RayCastResult res;
+            res.node        = nodeID;
+            res.flags       = RAYCAST_RESULT_CODES::RAYCAST_HIT;
+            res.distance    = distance;
+            res.iterations = i;
+
+            return res;
+        }
+    }
+
+    RayCastResult res;
+    res.node        = -1;
+    res.flags       = RAYCAST_RESULT_CODES::RAYCAST_MISS;
+    res.iterations  = 32;
+
+    return res;
+}
+
+struct PS_output
+{
+    float4 Color    : SV_TARGET0;
+    float Depth : SV_Depth;
+};
+
+PS_output VoxelDebug_PS(const float4 pixelPosition : SV_POSITION)
+{
+    const float2 UV     = float2(pixelPosition.xy / float2(1920, 1080));
+    const float3 view   = GetViewVector(UV);
+
+    Ray r;
+    r.origin    = CameraPOS;
+    r.dir       = normalize(view);
+    RayCastResult result = RayCastOctree(r, octree);
+
+    //float3 position = r.origin + r.dir * result.distance;
+
+    PS_output Out;
+    //Out.Color = float4(position, 1);
+    Out.Color = result.flags == RAYCAST_HIT ? float4(0, 1 * result.iterations / 64.0f, 0, 1) : float4(1 * result.iterations / 64.0f, 0, 0, 0);
+    Out.Depth = result.flags == RAYCAST_HIT ? 0.0f : (result.flags == RAYCAST_MISS ? 1.0f : 0.0f);
+
+    return Out;
+}
 
 /**********************************************************************
 

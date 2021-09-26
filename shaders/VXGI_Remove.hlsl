@@ -4,10 +4,8 @@
 /************************************************************************************************/
 
 
-RWStructuredBuffer<OctTreeNode> octree      : register(u0);
-RWStructuredBuffer<uint>        freeList    : register(u1);
-RWStructuredBuffer<uint>        tempList    : register(u2);
-
+globallycoherent RWStructuredBuffer<OctTreeNode> StaleOctree : register(u0);
+RWStructuredBuffer<OctTreeNode> FreshOctree : register(u2);
 
 cbuffer constants : register(b0)
 {
@@ -20,54 +18,62 @@ cbuffer constants : register(b0)
 
 
 [numthreads(1024, 1, 1)]
-void ReleaseNodes(uint3 threadID : SV_DispatchThreadID)
+void ReleaseNodes(const uint3 threadID : SV_DispatchThreadID)
 {
-    if (threadID.x >= erasedCount)
+    if (threadID.x == 0)
+    {
+        StaleOctree[0].newNode = 0;
+    }
+    else if (threadID.x < nodeCount)
+    {
+        const uint flags = StaleOctree[threadID.x].flags;
+
+        if (flags != CLEAR)
+        {
+            const uint newIdx = FreshOctree.IncrementCounter();
+            StaleOctree[threadID.x].newNode = newIdx;
+        }
+        else
+            StaleOctree[threadID.x].newNode = -1;
+    }
+}
+
+
+/************************************************************************************************/
+
+
+[numthreads(1024, 1, 1)]
+void TransferNodes(uint3 threadID : SV_DispatchThreadID)
+{
+    if (threadID.x > nodeCount)
         return;
 
-    const uint nodeA_Idx = freeList[threadID.x];
-
-    if (nodeA_Idx < nodeCount - erasedCount - 1)
-    {   // Remove NodeA by moving NodeB from the end into NodeA
-        const uint nodeB_Idx = nodeCount - threadID.x - 1;
-
-        OctTreeNode nodeA = octree[nodeA_Idx];
-        OctTreeNode nodeB = octree[nodeB_Idx];
+    OctTreeNode node    = StaleOctree[threadID.x];
+    const uint newIdx   = node.newNode;
 
 
-        if (nodeA.volumeCord.w == 0 || nodeB.volumeCord.w == 0)
-            return;
+    if (node.flags == CLEAR)
+        return;
 
 
-        if (nodeB.flags == NODE_FLAGS::CLEAR)
-            return;
-
-
-        // Patch NodeB parent to point to new location
-        const uint siblings[8] = octree[nodeB.parent].children;
+    if (node.parent != -1)
+    {
+        const uint newParentIdx = StaleOctree[node.parent].newNode;
+        node.parent             = newParentIdx;
+    }
+    if (node.flags & BRANCH)
+    {
+        [unroll(8)]
         for (uint II = 0; II < 8; II++)
         {
-            if (siblings[II] == nodeB_Idx)
-            {
-                octree[nodeB.parent].children[II] = nodeA_Idx;
-                break;
-            }
-        }
+            const uint oldIdx = node.children[II];
 
-        octree[nodeA_Idx]       = nodeB;
-        octree[nodeB_Idx].flags = NODE_FLAGS::CLEAR;
-
-        const uint temp[8]          = { -1, -1, -1, -1, -1, -1, -1, -1 };
-        octree[nodeB_Idx].children  = temp;
-
-        if (nodeB.flags & NODE_FLAGS::BRANCH)
-        {
-            // Patch NodeB children
-            [unroll(8)]
-            for (uint I = 0; I < 8; I++)
-                octree[nodeB.children[I]].parent = nodeA_Idx;
+            if(oldIdx != -1)
+                node.children[II] = StaleOctree[oldIdx].newNode;
         }
     }
+
+    FreshOctree[newIdx] = node;
 }
 
 

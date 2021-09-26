@@ -35,6 +35,35 @@ void UpdateLocalPlayer(GameObject& gameObject, const PlayerInputState& currentIn
             player->forward     = (GetCameraControllerForwardVector(gameObject) * float3(1, 0, 1)).normal();
             player->position    = GetCameraControllerHeadPosition(gameObject);
         });
+
+    Apply(gameObject,
+        [&](OrbitCameraBehavior& orbitCamera)
+        {
+            orbitCamera.Yaw(currentInputState.mousedXY.x);
+            orbitCamera.Pitch(currentInputState.mousedXY.y);
+
+            auto forward    = orbitCamera.GetForwardVector();
+            auto right      = orbitCamera.GetRightVector();
+
+            if (currentInputState.forward > 0.0)
+                orbitCamera.TranslateWorld(forward * dT * 100);
+
+            if (currentInputState.right > 0.0)
+                orbitCamera.TranslateWorld(right * dT * 100);
+
+            if (currentInputState.backward > 0.0)
+                orbitCamera.TranslateWorld(-forward * dT * 100);
+
+            if (currentInputState.left > 0.0)
+                orbitCamera.TranslateWorld(-right * dT * 100);
+
+            if (currentInputState.up)
+                orbitCamera.TranslateWorld(float3(0, dT * 100, 0));
+
+            if (currentInputState.down)
+                orbitCamera.TranslateWorld(float3(0, dT * -100, 0));
+
+        });
 }
 
 
@@ -104,9 +133,12 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
         testAnimation       { IN_worldState.CreateGameObject() },
         particleEmitter     { IN_worldState.CreateGameObject() },
         IKTarget            { IN_worldState.CreateGameObject() },
+        runOnceDrawEvents   { IN_framework.core.GetBlockMemory() },
 
         testAnimationResource   { LoadAnimation("TestRigAction", IN_framework.core.GetBlockMemory()) }
 {
+    base.PixCapture();
+
     //base.renderWindow.ToggleMouseCapture();
     auto& renderSystem = framework.core.RenderSystem;
 
@@ -145,7 +177,7 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     testAnimation.AddView<SceneNodeView<>>();
     auto& brushView     = testAnimation.AddView<BrushView>(playerCharacterModel, GetSceneNode(testAnimation));
     auto& skeletonView  = testAnimation.AddView<SkeletonView>(playerCharacterModel, 8001);
-    auto& IKController  = testAnimation.AddView<FABRIKView>(testAnimation);
+    auto& IKController  = testAnimation.AddView<FABRIKView>();
     //auto& animatorView    = testAnimation.AddView<AnimatorView>(testAnimation);
 
     SetTransparent(testAnimation, true);
@@ -155,20 +187,16 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     auto defaultPBRMaterial = materials.CreateMaterial();
     materials.Add2Pass(defaultPBRMaterial, PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
     testAnimation.AddView<MaterialComponentView>(defaultPBRMaterial);
-    SetMaterialHandle(testAnimation, defaultPBRMaterial);
-
 
     IKTarget.AddView<MaterialComponentView>(defaultPBRMaterial);
-    SetMaterialHandle(IKTarget, defaultPBRMaterial);
-
 
     auto parentMaterial     = materials.CreateMaterial();
     auto defaultMaterial    = materials.CreateMaterial(parentMaterial);
 
     materials.Add2Pass(parentMaterial, PassHandle{ GetCRCGUID(OIT_MCGUIRE) });
 
-    materials.SetProperty(parentMaterial,   GetCRCGUID(PBR_ALBEDO),     float4{ 0.5f, 0.0f, 0.5f, 0.1f });
-    materials.SetProperty(parentMaterial,   GetCRCGUID(PBR_SPECULAR),   float4{ 0.9f, 0.9f, 0.9f, 0.0f });
+    materials.SetProperty(parentMaterial, GetCRCGUID(PBR_ALBEDO),     float4{ 0.5f, 0.0f, 0.5f, 0.1f });
+    materials.SetProperty(parentMaterial, GetCRCGUID(PBR_SPECULAR),   float4{ 0.9f, 0.9f, 0.9f, 0.0f });
 
     for (size_t Y = 0; Y < 0; Y++)
         for (size_t X = 0; X < 20; X++)
@@ -176,11 +204,9 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
             auto& transparentObject = worldState.CreateGameObject();
             auto& sceneNodeView     = transparentObject.AddView<SceneNodeView<>>(float3{ 10, 0, 0 } + float3{ X * 1.0f,  0.0f, Y * 1.0f });
             auto& brushView         = transparentObject.AddView<BrushView>(playerCharacterModel,GetSceneNode(transparentObject));
-            auto& materialView      = transparentObject.AddView<MaterialComponentView>(defaultMaterial);
+            auto& materialView      = transparentObject.AddView<MaterialComponentView>(materials.CreateMaterial(defaultMaterial));
 
             materialView.SetProperty(GetCRCGUID(PBR_ALBEDO), float4{ 1.0f / 20 * X, 1.0f / 20 * X, 1.0f / 40 * X * Y, 0.1f });
-
-            SetMaterialHandle(transparentObject, materialView.handle);
 
             scene.AddGameObject(
                 transparentObject,
@@ -203,6 +229,15 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
 
     SetWorldPosition(particleEmitter, float3{ 0.0f, 40, 0.0f });
     Pitch(particleEmitter, float(pi / 2.0f));
+
+    runOnceDrawEvents.emplace_back([&]()
+        {
+            base.render.AddTask(
+                [&](auto& frameGraph, auto& frameResources)
+                {
+                    base.render.VoxelizeScene(frameGraph, scene, frameResources.reserveCB, frameResources.passes);
+                });
+        });
 }
 
 
@@ -282,6 +317,11 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
     auto reserveVB = FlexKit::CreateVertexBufferReserveObject(base.vertexBuffer, core.RenderSystem, core.GetTempMemory());
     auto reserveCB = FlexKit::CreateConstantBufferReserveObject(base.constantBuffer, core.RenderSystem, core.GetTempMemory());
 
+    for (auto& event : runOnceDrawEvents)
+        event();
+
+    runOnceDrawEvents.clear();
+
     if (base.renderWindow.GetWH().Product() != 0)
     {
         auto& renderSystem = base.framework.core.RenderSystem;
@@ -348,7 +388,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
                             allocator);
                     }
                 }
-            */
+                */
         };
 
         auto drawnScene = base.render.DrawScene(
@@ -513,9 +553,6 @@ bool LocalGameState::EventHandler(Event evt)
 
                     
                     framework.GetRenderSystem().QueuePSOLoad(VXGI_DRAWVOLUMEVISUALIZATION);
-                    framework.GetRenderSystem().QueuePSOLoad(VXGI_REMOVENODES);
-                    framework.GetRenderSystem().QueuePSOLoad(VXGI_MARKERASE);
-                    //framework.GetRenderSystem().QueuePSOLoad(VXGI_SAMPLEINJECTION);
 
                     return true;
                 case KC_ESC:

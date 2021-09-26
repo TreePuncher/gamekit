@@ -102,9 +102,10 @@ namespace FlexKit
         }
 
 
-        void AddRef(MaterialHandle material)
+        void AddRef(MaterialHandle material) noexcept
         {
-            materials[handles[material]].refCount++;
+            if(material != InvalidHandle_t)
+                materials[handles[material]].refCount++;
         }
 
         void            AddSubMaterial(MaterialHandle material, MaterialHandle subMaterial)
@@ -121,40 +122,22 @@ namespace FlexKit
         // On Writes to the material, if it is shared, the MaterialView does a copy on write and creates a new instance of the material.
         struct MaterialView : public ComponentView_t<MaterialComponent>
         {
-            MaterialView(MaterialHandle IN_handle) :
-                handle{ IN_handle }
-            {
-                GetComponent().AddRef(handle);
-            }
+            MaterialView(GameObject& gameObject, MaterialHandle IN_handle) noexcept;
 
-            MaterialView() : handle{ GetComponent().CreateMaterial() }
-            {
-                int x = 0;
-            }
+            MaterialView(GameObject& gameObject) noexcept;
 
-            ~MaterialView() final override
-            {
-                GetComponent().ReleaseMaterial(handle);
-            }
+            ~MaterialView() final override;
 
 
-            MaterialComponentData GetData() const
-            {
-                return GetComponent()[handle];
-            }
+            MaterialComponentData GetData() const;
+
+            bool Shared() const;
 
 
-            bool Shared() const
-            {
-                return GetComponent()[handle].refCount > 1;
-            }
+            void Add2Pass(const PassHandle ID);
 
 
-            void Add2Pass(const PassHandle ID)
-            {
-                GetComponent().Add2Pass(handle, ID);
-            }
-
+            static_vector<PassHandle> GetPasses() const;
 
             template<typename TY>
             void SetProperty(const uint32_t ID, TY value)
@@ -169,47 +152,10 @@ namespace FlexKit
                 return GetComponent().GetProperty(handle, ID);
             }
 
-            void AddTexture(GUID_t textureAsset, bool LoadLowest = false)
-            {
-                if (Shared())
-                {
-                    auto newHandle = GetComponent().CloneMaterial(handle);
-                    GetComponent().ReleaseMaterial(handle);
+            void            AddTexture(GUID_t textureAsset, bool LoadLowest = false);
 
-                    handle = newHandle;
-                }
-
-                ReadContext rdCtx{};
-                GetComponent().AddTexture(textureAsset, handle, rdCtx, LoadLowest);
-            }
-
-
-            bool HasSubMaterials() const
-            {
-                return !GetComponent()[handle].SubMaterials.empty();
-            }
-
-
-            MaterialHandle CreateSubMaterial()
-            {
-                auto& materials = GetComponent();
-
-                if (Shared())
-                {
-                    auto newHandle = GetComponent().CloneMaterial(handle);
-                    GetComponent().ReleaseMaterial(handle);
-
-                    handle = newHandle;
-                }
-
-                if (GetComponent()[handle].SubMaterials.full())
-                    return InvalidHandle_t;
-
-                auto subMaterial = materials.CreateMaterial();
-                materials.AddSubMaterial(handle, subMaterial);
-
-                return subMaterial;
-            }
+            bool            HasSubMaterials() const;
+            MaterialHandle  CreateSubMaterial();
 
 
             MaterialHandle  handle;
@@ -327,8 +273,8 @@ namespace FlexKit
     using MaterialComponentView     = MaterialComponent::View;
 
 
-    void SetMaterialHandle(GameObject& go, MaterialHandle material);
-    MaterialHandle GetMaterialHandle(GameObject& go);
+    void SetMaterialHandle(GameObject& go, MaterialHandle material) noexcept;
+    MaterialHandle GetMaterialHandle(GameObject& go) noexcept;
 
 
 }   /************************************************************************************************/

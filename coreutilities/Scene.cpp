@@ -122,7 +122,7 @@ namespace FlexKit
 
 	void Scene::AddGameObject(GameObject& go, NodeHandle node)
 	{
-		go.AddView<SceneVisibilityView>(go, node, sceneID);
+		go.AddView<SceneVisibilityView>(node, sceneID);
 
 		Apply(go, 
 			[&](SceneVisibilityView& visibility)
@@ -1079,10 +1079,10 @@ namespace FlexKit
 
         if (material != InvalidHandle_t)
         {
-            const auto albedo       = materials.GetProperty<float4>(material, GetCRCGUID(PBR_ALBEDO)).value_or(float4{ 0.0, 0.5, 0.0, 0.1f });
-            const auto specular     = materials.GetProperty<float4>(material, GetCRCGUID(PBR_SPECULAR)).value_or(float4{ 1.0, 0.9, 0.9, 0.0f });
+            const auto albedo       = materials.GetProperty<float4>(material, GetCRCGUID(PBR_ALBEDO)).value_or(float4{ 0.0f, 0.5f, 0.0f, 0.1f });
+            const auto specular     = materials.GetProperty<float4>(material, GetCRCGUID(PBR_SPECULAR)).value_or(float4{ 1.0f, 0.9f, 0.9f, 0.0f });
             const auto roughness    = materials.GetProperty<float>(material, GetCRCGUID(PBR_ROUGHNESS)).value_or(0.3f);
-            const auto metal        = materials.GetProperty<float>(material, GetCRCGUID(PBR_METAL)).value_or(1.0f);
+            const auto metal        = materials.GetProperty<float>(material, GetCRCGUID(PBR_METAL)).value_or(0.0f);
 
             constants.MP.albedo     = albedo.xyz();
             constants.MP.roughness  = roughness;

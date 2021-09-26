@@ -136,7 +136,7 @@ namespace FlexKit
 		public DefaultCameraInteractor
 	{
 	public:
-		CameraView_t(CameraHandle IN_camera = CameraComponent::GetComponent().CreateCamera()) :
+		CameraView_t(GameObject& go, CameraHandle IN_camera = CameraComponent::GetComponent().CreateCamera()) :
 			camera{IN_camera}{}
 
 
