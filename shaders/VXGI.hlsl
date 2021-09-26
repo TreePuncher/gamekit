@@ -17,7 +17,7 @@ struct VoxelSample
 
 RWStructuredBuffer<VoxelSample> voxelSampleBuffer   : register(u0);
 RWStructuredBuffer<OctTreeNode> octree              : register(u1);
-RWStructuredBuffer<uint>        freeList            : register(u2);
+RWStructuredBuffer<uint>        octreeCounters      : register(u2);
 
 
 /************************************************************************************************/
@@ -26,16 +26,26 @@ RWStructuredBuffer<uint>        freeList            : register(u2);
 void InitNode(uint idx, uint4 volumeCord)
 {
     OctTreeNode n;
-    n.data          = -1;
     n.flags         = CLEAR;
-    n.volumeCord    = volumeCord;
     n.parent        = -1;
-    n.pad           = 0;
-
-    for (uint I = 0; I < 8; I++)
-        n.children[I] = -1;
+    n.children      = -1;
+    n.padding       = -1;
 
     octree[idx] = n;
+}
+
+
+/************************************************************************************************/
+
+/************************************************************************************************/
+
+
+void FlagForSubdivion(uint nodeIdx, uint childIdx)
+{
+    InterlockedOr(
+        octree[nodeIdx].flags,
+        NODE_FLAGS::SUBDIVISION_REQUEST |
+        SetChildFlags(childIdx, CHILD_FLAGS::FILLED));
 }
 
 
@@ -66,23 +76,22 @@ void Injection(uint3 threadID : SV_DispatchThreadID)
         v.volumeID  = uint4(volumeCord.x, volumeCord.y, volumeCord.z, MAX_DEPTH);
         v.color     = float4(5, 0, 5, 0);
 
-        uint numStructs, _;
-        voxelSampleBuffer.GetDimensions(numStructs, _);
-        const uint  idx         = voxelSampleBuffer.IncrementCounter();
+        const TraverseResult result = TraverseOctree(v.volumeID, octree);
 
-        if(idx < numStructs)
-            voxelSampleBuffer[idx] = v;
+        if (result.flags != TRAVERSE_RESULT_CODES::NODE_FOUND)
+        {
+            uint numStructs, _;
+            voxelSampleBuffer.GetDimensions(numStructs, _);
+
+            const uint idx = voxelSampleBuffer.IncrementCounter();
+
+            if (idx < numStructs)
+                voxelSampleBuffer[idx] = v;
+        }
     }
 }
 
 
-/************************************************************************************************/
-
-
-void FlagForSubdivion(uint nodeIdx)
-{
-    InterlockedOr(octree[nodeIdx].flags, NODE_FLAGS::SUBDIVISION_REQUEST);
-}
 
 
 /************************************************************************************************/
@@ -99,9 +108,14 @@ void GatherSubdivionRequests(uint3 threadID : SV_DispatchThreadID)
 
     VoxelSample v = voxelSampleBuffer[threadID.x];
     const TraverseResult result = TraverseOctree(v.volumeID, octree);
+    const uint childIdx = GetChildIdxFromChildOffset(uint3(v.volumeID.x % 2, v.volumeID.y % 2, v.volumeID.z % 2));
 
     if (result.flags == TRAVERSE_RESULT_CODES::NODE_NOT_ALLOCATED)
-        FlagForSubdivion(result.node);
+        FlagForSubdivion(result.node, childIdx);
+    else if(result.flags == TRAVERSE_RESULT_CODES::NODE_EMPTY)
+        InterlockedOr(
+            octree[result.node].flags,
+            SetChildFlags(result.childIdx, CHILD_FLAGS::FILLED));
 }
 
 
@@ -111,57 +125,39 @@ void GatherSubdivionRequests(uint3 threadID : SV_DispatchThreadID)
 [numthreads(1024, 1, 1)]
 void ProcessSubdivionRquests(uint3 threadID : SV_DispatchThreadID)
 {
-    const uint4 childVIDOffsets[] = {
-        uint4(0, 0, 0, 0),
-        uint4(1, 0, 0, 0),
-        uint4(0, 0, 1, 0),
-        uint4(1, 0, 1, 0),
-
-        uint4(0, 1, 0, 0),
-        uint4(1, 1, 0, 0),
-        uint4(0, 1, 1, 0),
-        uint4(1, 1, 1, 0)
-    };
-
     const uint nodeIdx  = threadID.x;
     OctTreeNode node    = octree[nodeIdx];
 
     if ((node.flags & NODE_FLAGS::SUBDIVISION_REQUEST) && (node.flags & NODE_FLAGS::LEAF))
     {
-        const uint4 VIDBase = uint4(node.volumeCord.xyz * 2, node.volumeCord.w + 1);
+        uint childBlock = -1;
+        InterlockedAdd(octreeCounters[0], 8, childBlock);
 
         for (uint childIdx = 0; childIdx < 8; childIdx++)
         {
             OctTreeNode childNode;
 
-            for (uint I = 0; I < 8; I++)
-                childNode.children[I] = -1;
-
-            const uint4 VIDoffset = childVIDOffsets[childIdx];
-
-            childNode.volumeCord    = VIDBase + VIDoffset;
-            childNode.flags         = NODE_FLAGS::LEAF;
-            childNode.data          = -1;
-            childNode.parent        = nodeIdx;
-            childNode.pad           = 0;
+            childNode.flags     = NODE_FLAGS::LEAF;
+            childNode.parent    = nodeIdx;
+            childNode.padding   = -1;
+            childNode.children  = -1;
 
             // Publish node
             uint numStructs, _;
             octree.GetDimensions(numStructs, _);
 
-            const uint idx = octree.IncrementCounter();
-
-            if(idx < numStructs)
-            {
-                octree[idx]             = childNode;
-                node.children[childIdx] = idx;
-            }
+            if(childBlock + childIdx < numStructs)
+                octree[childBlock + childIdx] = childNode;
         }
 
-        node.flags          = NODE_FLAGS::BRANCH;
-        octree[threadID.x]  = node;
+        node.children   = childBlock;
+        node.flags      = (node.flags | NODE_FLAGS::BRANCH) & ~(NODE_FLAGS::LEAF | NODE_FLAGS::SUBDIVISION_REQUEST);
+        octree[nodeIdx] = node;
     }
 }
+
+
+/************************************************************************************************/
 
 
 /**********************************************************************

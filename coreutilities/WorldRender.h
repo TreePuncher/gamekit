@@ -394,7 +394,9 @@ namespace FlexKit
 
 	class FLEXKITAPI WorldRender
 	{
-	public:
+    public:
+
+
         WorldRender(RenderSystem&, TextureStreamingEngine&, iAllocator* persistent);
 		~WorldRender();
 
@@ -489,6 +491,32 @@ namespace FlexKit
         DEBUG_WorldRenderTimingValues GetTimingValues() const { return timingValues; }
 
 
+        struct PassData
+        {
+            GatherPassesTask&               passes;
+            ReserveConstantBufferFunction&  reserveCB;
+            ReserveVertexBufferFunction&    reserveVB;
+        };
+
+
+        using RenderTask = FlexKit::TypeErasedCallable<48, void, FrameGraph&, PassData&>;
+
+
+        void AddTask(RenderTask&& task)
+        {
+            pendingGPUTasks.emplace_back(task);
+        }
+
+
+        void VoxelizeScene(
+            FrameGraph&                     frameGraph,
+            Scene&                          scene,
+            ReserveConstantBufferFunction   reserveCB,
+            GatherPassesTask&               passes)
+        {
+            lightingEngine.VoxelizeScene(frameGraph, scene, reserveCB, passes);
+        }
+
 	private:
 
 		RenderSystem&			renderSystem;
@@ -506,8 +534,6 @@ namespace FlexKit
         ShadowMapper            shadowMapping;
         GILightingEngine        lightingEngine;
         Transparency            transparency;
-
-        using RenderTask = FlexKit::TypeErasedCallable<48, void, FrameGraph&>;
 
         static_vector<RenderTask>   pendingGPUTasks; // Tasks must be completed prior to rendering
 

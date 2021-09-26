@@ -7,14 +7,10 @@ void Init(uint3 threadID : SV_DispatchThreadID)
 {
     OctTreeNode root;
 
-    for(uint I = 0; I < 8; I++)
-        root.children[I] = -1;
-
-    root.volumeCord = uint4(0, 0, 0, 0);
-    root.data       = -1;
+    root.children   = -1;
     root.flags      = LEAF;
     root.parent     = -1;
-    root.pad        = -1;
+    root.padding    = -1;
 
     octree[0]       = root;
     octree.IncrementCounter();

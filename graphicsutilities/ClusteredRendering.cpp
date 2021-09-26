@@ -1557,6 +1557,8 @@ namespace FlexKit
 			[camera = gbufferPass.camera, renderTarget, t]
 			(TiledDeferredShade& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
+                ctx.BeginEvent_DEBUG("Clustered Shading");
+
 				PointLightComponent&    lightComponent  = PointLightComponent::GetComponent();
                 const auto&             visableLights   = *data.pointLightHandles;
 
@@ -1648,16 +1650,14 @@ namespace FlexKit
 				ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
 				ctx.SetGraphicsDescriptorTable(4, descHeap);
 
-                ctx.BeginEvent_DEBUG("Clustered Shading");
 
                 //ctx.TimeStamp(timeStats, 4);
 				ctx.Draw(6);
                 //ctx.TimeStamp(timeStats, 5);
 
-                ctx.EndEvent_DEBUG();
-
                 //ctx.ResolveQuery(timeStats, 0, 8, resources.GetObjectResource(timingReadBack), 0);
                 //ctx.QueueReadBack(timingReadBack);
+                ctx.EndEvent_DEBUG();
 			});
 
 		return pass;

@@ -347,7 +347,7 @@ namespace FlexKit
 		Vect(Vect<SIZE, TY_2> in) noexcept
 		{
 			for (size_t I=0; I<SIZE; ++I)
-				Vector[I] = in[I];
+				Vector[I] = static_cast<TY>(in[I]);
 		}
 
 

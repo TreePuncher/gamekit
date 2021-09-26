@@ -5,8 +5,7 @@
 
 Texture2D<float> depth  : register(t0);
 
-RWStructuredBuffer<OctTreeNode> octree      : register(u1);
-RWStructuredBuffer<uint>        freeList    : register(u2);
+RWStructuredBuffer<OctTreeNode> octree      : register(u0);
 
 
 /************************************************************************************************/
@@ -23,9 +22,9 @@ void MarkEraseNodes(uint3 threadID : SV_DispatchThreadID)
         return;
     else if (node.flags & NODE_FLAGS::LEAF)
     {
-        const float3 voxelPOS_ws        = GetVoxelPoint(node.volumeCord);
-        const float4 temp               = mul(PV, float4(voxelPOS_ws, 1));
-        const float3 deviceCord         = temp.xyz / temp.w;
+        const float3 voxelPOS_ws = GetVoxelPoint(node.volumeCord);
+        const float4 temp = mul(PV, float4(voxelPOS_ws, 1));
+        const float3 deviceCord = temp.xyz / temp.w;
 
         uint Width, Height, _;
         depth.GetDimensions(0, Width, Height, _);
@@ -38,18 +37,19 @@ void MarkEraseNodes(uint3 threadID : SV_DispatchThreadID)
                 cord.x <= 0.0f || cord.x >= 1.0f)
                 return;
 
-            const float d   = depth.Load(cord * uint3(Width, Height, 1)) * MaxZ;
-            const float l   = length(voxelPOS_ws - CameraPOS.xyz);
+            const float d = depth.Load(cord * uint3(Width, Height, 1)) * MaxZ;
+            const float l = length(voxelPOS_ws - CameraPOS.xyz);
 
-            const bool cull = d > (l + 2.5f);
+            const bool cull = d > (l + 0.05f);
 
             if (cull)
+                //octree[threadID.x].flags = CLEAR;
                 InterlockedOr(octree[threadID.x].flags, NODE_FLAGS::DELETE);
         }
     }
-    else if(node.flags & NODE_FLAGS::BRANCH)
+    else if (node.flags & NODE_FLAGS::BRANCH)
     {
-        bool Keep       = false;
+        bool Keep = false;
         uint newNodeIdx = nodeIdx;
 
         [unroll(8)]
@@ -60,29 +60,43 @@ void MarkEraseNodes(uint3 threadID : SV_DispatchThreadID)
             if (childIdx == -1)
                 continue;
 
-            const uint flags    = octree[childIdx].flags;
+            const uint flags = octree[childIdx].flags;
 
-            Keep |= !(flags & DELETE);
+            Keep |= (flags & DELETE) == 0;
         }
 
-        if (!Keep)
+        if (Keep)
         {
+            node.flags = NODE_FLAGS::BRANCH;
+
             [unroll(8)]
-            for (uint II = 0; II < 8; II++)
+            for (uint I = 0; I < 8; I++)
             {
-                freeList[freeList.IncrementCounter()] = node.children[II];
-                //octree[node.children[II]].flags = NODE_FLAGS::CLEAR;
+                const uint childIdx = node.children[I];
+
+                if (childIdx == -1)
+                    continue;
+
+                octree[childIdx].flags &= ~NODE_FLAGS::DELETE;
             }
-
-            [unroll(8)]
-            for (uint III = 0; III < 8; III++)
-                node.children[III] = -1;
-
-            node.flags = NODE_FLAGS::LEAF;
-            octree[nodeIdx] = node;
         }
         else
-            node.flags = NODE_FLAGS::BRANCH;
+        {
+            [unroll(8)]
+            for (uint I = 0; I < 8; I++)
+            {
+                const uint childIdx = node.children[I];
+
+                if (childIdx == -1)
+                    continue;
+
+                octree[childIdx].flags = NODE_FLAGS::CLEAR;
+            }
+
+            node.flags = NODE_FLAGS::LEAF;
+        }
+
+        octree[nodeIdx] = node;
     }
 }
 

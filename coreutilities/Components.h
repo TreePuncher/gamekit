@@ -223,17 +223,16 @@ namespace FlexKit
     {
         ComponentViewContainer() = default;
 
-        template<typename TY, typename... TY_ARGS>
-        [[nodiscard]]
-        static ComponentViewContainer Create(iAllocator& allocator, TY_ARGS&& ... args)
+        template<typename TY, typename... TY_ARGS> [[nodiscard]]
+        static ComponentViewContainer Create(iAllocator& allocator, GameObject& gameObject, TY_ARGS&& ... args)
         {
             ComponentViewContainer component;
             component.componentSize = sizeof(TY);
 
             if (component.componentSize > sizeof(component.buffer))
-                component._ptr = &allocator.allocate<TY>(std::forward<TY_ARGS>(args)...);
+                component._ptr = &allocator.allocate<TY>(gameObject, std::forward<TY_ARGS>(args)...);
             else
-                new(component.buffer) TY(std::forward<TY_ARGS>(args)...);
+                new(component.buffer) TY(gameObject, std::forward<TY_ARGS>(args)...);
 
             component.ID = component.Get()->ID;
 
@@ -258,8 +257,15 @@ namespace FlexKit
 
         void Release(iAllocator* allocator)
         {
-           if (componentSize > componentSize)
-               allocator->release(_ptr);
+            if (ID == -1)
+                return;
+
+            Get()->~ComponentViewBase();
+
+            if (componentSize > componentSize)
+                allocator->release(_ptr);
+
+            ID = -1;
         }
 
         ComponentID ID;
@@ -299,7 +305,7 @@ namespace FlexKit
 		{
 			static_assert(std::is_base_of<ComponentViewBase, TY_View>(), "You can only add view types!");
 
-            views.push_back(ComponentViewContainer::Create<TY_View>(*allocator, std::forward<TY_args>(args)...));
+            views.emplace_back(ComponentViewContainer::Create<TY_View>(*allocator, *this, std::forward<TY_args>(args)...));
 
             return *static_cast<TY_View*>(views.back().Get());
 		}
@@ -493,11 +499,11 @@ namespace FlexKit
     public:
         using ComponentHandle_t = typename Handle_t<32, TY_Component::GetComponentID()>;
 
-        BasicComponentView_t(ComponentHandle_t IN_handle) : handle{ IN_handle } {}
+        BasicComponentView_t(GameObject& gameObject, ComponentHandle_t IN_handle) : handle{ IN_handle } {}
 
 
         template<typename ... TY_Args>
-        BasicComponentView_t(TY_Args ... args) : handle{ ComponentView_t<TY_Component>::GetComponent().Create(std::forward<TY_Args>(args)...) } {}
+        BasicComponentView_t(GameObject& gameObject, TY_Args ... args) : handle{ ComponentView_t<TY_Component>::GetComponent().Create(std::forward<TY_Args>(args)...) } {}
 
         virtual ~BasicComponentView_t() final
         {
@@ -687,7 +693,7 @@ namespace FlexKit
 	class StringIDView : public ComponentView_t<StringIDComponent>
 	{
 	public:
-        StringIDView(const char* id, size_t idLen) : ID{ GetComponent().Create(id, idLen) } {}
+        StringIDView(GameObject& gameObject, const char* id, size_t idLen) : ID{ GetComponent().Create(id, idLen) } {}
 
 		char* GetString()
 		{
@@ -801,7 +807,7 @@ namespace FlexKit
 	class SampleView : public ComponentView_t<SampleComponent>
 	{
 	public:
-		SampleView() :
+		SampleView(GameObject& gameObject) :
 			handle{ GetComponent().CreateComponent() } {}
 
 
@@ -824,7 +830,7 @@ namespace FlexKit
 	class SampleView2: public ComponentView_t<SampleComponent2>
 	{
 	public:
-		SampleView2() :
+		SampleView2(GameObject& gameObject) :
 			handle{ GetComponent().CreateComponent() } {}
 
 
@@ -847,7 +853,7 @@ namespace FlexKit
 	class SampleView3 : public ComponentView_t<SampleComponent3>
 	{
 	public:
-		SampleView3() :
+		SampleView3(GameObject& gameObject) :
 			handle{ GetComponent().CreateComponent() } {}
 
 

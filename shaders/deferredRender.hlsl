@@ -20,7 +20,7 @@ cbuffer LocalConstants : register(b1)
     uint   	lightCount;
     float4  ambientLight;
 
-	float4x4 pl_PV[1024];
+	float4x4 pl_PV[1022];
 }
 
 Texture2D<float4> AlbedoBuffer      : register(t0);
@@ -139,7 +139,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
         return float4(1, 0, 1, 1);
 
     float4 color = float4(0, 0, 0, 1);
-    
+
     for(uint I = 0; I < localLightCount; I++)
     {
         const uint pointLightIdx    = lightListBuffer[localLightList + I];

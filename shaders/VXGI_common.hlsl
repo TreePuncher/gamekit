@@ -1,14 +1,14 @@
 
 /************************************************************************************************/
 
+
 struct OctTreeNode
 {
-    uint    children[8];
-    uint4   volumeCord;
-    uint    data;
-    uint    parent;
-    uint    flags;
-    uint    newNode;
+    uint parent;
+    uint children;
+    uint flags;
+    //uint RGBA[8];
+    uint padding;
 };
 
 
@@ -22,21 +22,79 @@ struct OctreeNodeVolume
 /************************************************************************************************/
 
 
-#define VOLUMESIDE_LENGTH   32
+#define VOLUMESIDE_LENGTH   64
 #define VOLUME_SIZE         uint3(VOLUMESIDE_LENGTH, VOLUMESIDE_LENGTH, VOLUMESIDE_LENGTH)
-#define MAX_DEPTH           4
+#define MAX_DEPTH           8
 #define VOLUME_RESOLUTION   float3(1 << MAX_DEPTH, 1 << MAX_DEPTH, 1 << MAX_DEPTH)
 
 enum NODE_FLAGS
 {
     CLEAR               = 0,
     SUBDIVISION_REQUEST = 1 << 0,
-    UNITIALISED         = 1 << 1,
-    LEAF                = 1 << 2,
-    BRANCH              = 1 << 3,
-    DELETE              = 1 << 4,
-    FREE                = 1 << 5,
+    LEAF                = 1 << 1,
+    BRANCH              = 1 << 2,
 };
+
+
+enum CHILD_FLAGS
+{
+    EMPTY           = 0 << 0,
+    FILLED          = 1 << 0,
+    MASK            = 0x1
+};
+
+bool GetChildFlags(const uint childIdx, const uint flags)
+{
+    return (flags >> childIdx + 4) & CHILD_FLAGS::MASK;
+}
+
+
+/************************************************************************************************/
+
+
+uint SetChildFlags(const uint childIdx, const uint childFlags, const uint flags = 0)
+{
+    return (childFlags & CHILD_FLAGS::MASK) << (childIdx + 4) | flags;
+}
+
+
+/************************************************************************************************/
+
+
+
+uint GetChildIdxFromChildOffset(uint3 childIdx)
+{
+    return childIdx.x + childIdx.y * 4 + childIdx.z * 2;
+
+    /*
+
+    const uint4 childVIDOffsets[] = {
+                        uint4(0, 0, 0, 0),
+                        uint4(1, 0, 0, 0),
+                        uint4(0, 0, 1, 0),
+                        uint4(1, 0, 1, 0),
+
+                        uint4(0, 1, 0, 0),
+                        uint4(1, 1, 0, 0),
+                        uint4(0, 1, 1, 0),
+                        uint4(1, 1, 1, 0)
+    };
+
+
+    for (uint I = 0; I < 8; I++)
+    {
+        if (childIdx.x == childVIDOffsets[I].x &&
+            childIdx.y == childVIDOffsets[I].y &&
+            childIdx.z == childVIDOffsets[I].z)
+            return I;
+    }
+
+    return -1;
+    */
+}
+
+
+/************************************************************************************************/
 
 
 float3 GetVoxelPoint(uint4 volumeID)
@@ -47,6 +105,10 @@ float3 GetVoxelPoint(uint4 volumeID)
 
     return xyz;
 }
+
+
+/************************************************************************************************/
+
 
 OctreeNodeVolume GetVolume(uint3 xyz, uint depth)
 {
@@ -64,6 +126,10 @@ OctreeNodeVolume GetVolume(uint3 xyz, uint depth)
     return outVolume;
 }
 
+
+/************************************************************************************************/
+
+
 bool IsInVolume(float3 voxelPoint, OctreeNodeVolume volume)
 {
     return
@@ -76,10 +142,18 @@ bool IsInVolume(float3 voxelPoint, OctreeNodeVolume volume)
             volume.max.z >= voxelPoint.z);
 }
 
+
+/************************************************************************************************/
+
+
 float3 VolumeCord2WS(const uint3 cord, const float3 volumePOS_ws, const float3 volumeSize)
 {
     return float3(cord) / VOLUME_RESOLUTION * volumeSize + volumePOS_ws;
 }
+
+
+/************************************************************************************************/
+
 
 uint3 WS2VolumeCord(const float3 pos_WS, const float3 volumePOS_ws, const float3 volumeSize)
 {
@@ -87,6 +161,24 @@ uint3 WS2VolumeCord(const float3 pos_WS, const float3 volumePOS_ws, const float3
 
     return uint3(UVW);
 }
+
+
+/************************************************************************************************/
+
+
+uint3 WS2childIdx(const float3 pos_WS, const float3 volumePOS_ws, const float3 volumeSize, uint depth)
+{
+    const float3 UVW = ((pos_WS - volumePOS_ws) / volumeSize) * VOLUME_RESOLUTION;
+    const uint3 volumeID =  uint3(
+                                uint(UVW.x) >> (MAX_DEPTH - depth),
+                                uint(UVW.y) >> (MAX_DEPTH - depth),
+                                uint(UVW.z) >> (MAX_DEPTH - depth));
+
+    return uint3(volumeID.x % 2, volumeID.y % 2, volumeID.z % 2);
+}
+
+/************************************************************************************************/
+
 
 bool InsideVolume(float3 pos_WT, const float3 volumePOS_ws, const float3 volumeSize)
 {
@@ -101,6 +193,9 @@ bool InsideVolume(float3 pos_WT, const float3 volumePOS_ws, const float3 volumeS
 }
 
 
+/************************************************************************************************/
+
+
 bool OnScreen(float2 DC)
 {
     return ((DC.x >= -1.0f && DC.x <= 1.0f) &&
@@ -108,17 +203,23 @@ bool OnScreen(float2 DC)
 }
 
 
+/************************************************************************************************/
+
+
 struct TraverseResult
 {
-    uint node;
-    uint flags;
+    uint    node;
+    uint    flags;
+    uint    childIdx;
+    uint4   voxelID;
 };
 
 enum TRAVERSE_RESULT_CODES
 {
     ERROR = -1,
     NODE_NOT_ALLOCATED = -2,
-    NODE_FOUND
+    NODE_FOUND = 1,
+    NODE_EMPTY = 2,
 };
 
 
@@ -126,34 +227,17 @@ TraverseResult TraverseOctree(const uint4 volumeID, in RWStructuredBuffer<OctTre
 {
     const float3    voxelPoint = GetVoxelPoint(volumeID);
     uint            nodeID     = 0;
+    uint4           volumeCord = uint4(0, 0, 0, 0);
 
     for (uint depth = 0; depth <= MAX_DEPTH; depth++)
     {
-        if (nodeID == -1)
-        {
-            TraverseResult res;
-            res.node    = nodeID;
-            res.flags   = TRAVERSE_RESULT_CODES::NODE_FOUND;
-
-            return res;
-        }
-
         OctTreeNode             n           = octree[nodeID];
-        const OctreeNodeVolume  volume      = GetVolume(n.volumeCord.xyz, n.volumeCord.w);
+        const OctreeNodeVolume  volume      = GetVolume(volumeCord.xyz, volumeCord.w);
         const bool              volumeCheck = IsInVolume(voxelPoint, volume);
-
-        if (n.flags == NODE_FLAGS::CLEAR)
-        {
-            TraverseResult res;
-            res.node    = nodeID;
-            res.flags   = TRAVERSE_RESULT_CODES::NODE_NOT_ALLOCATED;
-
-            return res;
-        }
 
         if(volumeCheck)
         {
-            if (n.volumeCord.w == volumeID.w)
+            if (volumeCord.w == volumeID.w)
             {   // Node Found
                 TraverseResult res;
                 res.node    = nodeID;
@@ -168,12 +252,13 @@ TraverseResult TraverseOctree(const uint4 volumeID, in RWStructuredBuffer<OctTre
                     TraverseResult res;
                     res.node    = nodeID;
                     res.flags   = TRAVERSE_RESULT_CODES::NODE_NOT_ALLOCATED;
+                    res.voxelID = volumeCord;
 
                     return res;
                 }
                 else
                 {   // traverse to child
-                    const uint4 childCords = uint4(n.volumeCord.xyz * 2, depth + 1);
+                    const uint4 childCords = uint4(volumeCord.xyz * 2, depth + 1);
 
                     const uint4 childVIDOffsets[] = {
                         uint4(0, 0, 0, 0),
@@ -187,24 +272,41 @@ TraverseResult TraverseOctree(const uint4 volumeID, in RWStructuredBuffer<OctTre
                         uint4(1, 1, 1, 0)
                     };
 
-                    uint childID = 0;
+                    uint childID            = 0;
+                    const uint childOffset  = n.children;
+
                     for (;childID < 8; childID++)
                     {
+                        const uint childFlags = GetChildFlags(childID, n.flags);
+
                         const uint4 childVID            = childCords + childVIDOffsets[childID];
                         const OctreeNodeVolume volume   = GetVolume(childVID.xyz, childVID.w);
 
                         if (IsInVolume(voxelPoint, volume))
                         {
-                            nodeID = n.children[childID];
-                            break;
+                            if (childFlags == CHILD_FLAGS::EMPTY)
+                            {
+                                TraverseResult res;
+                                res.node        = nodeID;
+                                res.flags       = TRAVERSE_RESULT_CODES::NODE_EMPTY;
+                                res.childIdx    = childID;
+
+                                return res;
+                            }
+                            else
+                            {
+                                nodeID      = childOffset + childID;
+                                volumeCord  = childVID;
+                                break;
+                            }   
                         }
                     }
 
                     if (childID == 8)
                     {
                         TraverseResult res;
-                        res.node = -1;
-                        res.flags = TRAVERSE_RESULT_CODES::ERROR;
+                        res.node    = -1;
+                        res.flags   = TRAVERSE_RESULT_CODES::ERROR;
 
                         return res;
                     }

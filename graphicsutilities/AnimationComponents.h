@@ -109,10 +109,7 @@ namespace FlexKit
     class SkeletonView : public FlexKit::ComponentView_t<SkeletonComponent>
     {
     public:
-        SkeletonView(const TriMeshHandle triMesh, const AssetHandle asset) : handle{ GetComponent().Create(triMesh, asset) }
-        {
-
-        }
+        SkeletonView(GameObject& gameObject, const TriMeshHandle triMesh, const AssetHandle asset) : handle{ GetComponent().Create(triMesh, asset) } { }
 
         PoseState& GetPoseState()
         {

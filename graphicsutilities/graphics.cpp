@@ -28,6 +28,9 @@
 extern "C" __declspec(dllexport) DWORD  NvOptimusEnablement = 1;
 extern "C" __declspec(dllexport) int    AmdPowerXpressRequestHighPerformance = 1;
 
+extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 4; }
+extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath      = ".\\D3D12\\"; }
+
 namespace FlexKit
 {
 	void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size)
@@ -1165,6 +1168,9 @@ namespace FlexKit
 		SignatureBlob->Release(); 
 
 		DesciptorHeaps.clear();
+
+        Signature->AddRef();
+
 		return true;
 	}
 
@@ -1847,6 +1853,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    void Context::SetGraphicsConstantValue(size_t idx, size_t valueCount, void* data_ptr, size_t offset)
+    {
+        DeviceContext->SetGraphicsRoot32BitConstants(0, valueCount, data_ptr, offset);
+    }
+
+
+    /************************************************************************************************/
+
+
 	void Context::NullGraphicsConstantBufferView(size_t idx)
 	{
         DeviceContext->SetGraphicsRootConstantBufferView(idx, 0);
@@ -1958,10 +1973,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::SetComputeUnorderedAccessView(size_t idx, ResourceHandle UAVresource)
+	void Context::SetComputeUnorderedAccessView(size_t idx, ResourceHandle UAVresource, size_t offset)
 	{
 		auto resource = renderSystem->GetDeviceResource(UAVresource);
-		DeviceContext->SetComputeRootUnorderedAccessView(idx, resource->GetGPUVirtualAddress());
+
+		DeviceContext->SetComputeRootUnorderedAccessView(idx, resource->GetGPUVirtualAddress() + offset);
 	}
 
 
@@ -2586,6 +2602,10 @@ namespace FlexKit
         DeviceContext->SetComputeRootUnorderedAccessView(1, renderSystem->GetDeviceResource(UAV)->GetGPUVirtualAddress());
 
         auto resourceSize = renderSystem->GetResourceSize(UAV);
+
+        uint2 range{ 0, resourceSize / 16 };
+        DeviceContext->SetComputeRoot32BitConstants(0, 2, &range, 4);
+
         DeviceContext->Dispatch(UINT(ceil(resourceSize / 1024.0f)), 1, 1);
 
         if(CurrentComputeRootSignature)
@@ -4858,7 +4878,7 @@ namespace FlexKit
 
 		auto HR = pDevice->CreateCommandSignature(
 			&desc,
-            rootSignature ? *rootSignature : nullptr,
+            rootSignature ? rootSignature->Get_ptr() : nullptr,
 			IID_PPV_ARGS(&signature));
 
 		CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE CONSTANT BUFFER"));
@@ -7767,7 +7787,7 @@ namespace FlexKit
     {
 #if USING(PIX)
         if (pix)
-            pix->BeginCapture();
+            pix->EndCapture();
 
         return pix != nullptr;
 #else

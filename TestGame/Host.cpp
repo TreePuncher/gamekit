@@ -75,7 +75,7 @@ HostWorldStateMangager::~HostWorldStateMangager()
     packetHandlers.clear();
 
     localPlayer.Release();
-    world.scene.ClearScene();
+    world.Release();
 }
 
 
