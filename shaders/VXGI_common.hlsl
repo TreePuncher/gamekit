@@ -7,8 +7,8 @@ struct OctTreeNode
     uint parent;
     uint children;
     uint flags;
-    //uint RGBA[8];
     uint padding;
+    //uint RGBA[8];
 };
 
 
@@ -24,8 +24,9 @@ struct OctreeNodeVolume
 
 #define VOLUMESIDE_LENGTH   64
 #define VOLUME_SIZE         uint3(VOLUMESIDE_LENGTH, VOLUMESIDE_LENGTH, VOLUMESIDE_LENGTH)
-#define MAX_DEPTH           8
+#define MAX_DEPTH           5
 #define VOLUME_RESOLUTION   float3(1 << MAX_DEPTH, 1 << MAX_DEPTH, 1 << MAX_DEPTH)
+
 
 enum NODE_FLAGS
 {
@@ -42,6 +43,7 @@ enum CHILD_FLAGS
     FILLED          = 1 << 0,
     MASK            = 0x1
 };
+
 
 bool GetChildFlags(const uint childIdx, const uint flags)
 {
@@ -206,6 +208,124 @@ bool OnScreen(float2 DC)
 /************************************************************************************************/
 
 
+struct Ray
+{
+    float3 origin;
+    float3 dir;
+};
+
+bool Intersection(const Ray r, const OctreeNodeVolume b)
+{
+    const float3 invD = rcp(r.dir);
+
+    const float3 t0s = (b.min - r.origin) * invD;
+    const float3 t1s = (b.max - r.origin) * invD;
+
+    const float3 tsmaller   = min(t0s, t1s);
+    const float3 tbigger    = max(t0s, t1s);
+
+    const float tmin = max(tsmaller[0], max(tsmaller[1], tsmaller[2]));
+    const float tmax = min(tbigger[0], min(tbigger[1], tbigger[2]));
+
+    return (tmin < tmax);
+}
+
+bool Intersection(const Ray r, const OctreeNodeVolume b, out float d)
+{
+    const float3 invD = rcp(r.dir);
+
+    const float3 t0s = (b.min - r.origin) * invD;
+    const float3 t1s = (b.max - r.origin) * invD;
+
+    const float3 tsmaller = min(t0s, t1s);
+    const float3 tbigger = max(t0s, t1s);
+
+    const float tmin = max(tsmaller[0], max(tsmaller[1], tsmaller[2]));
+    const float tmax = min(tbigger[0], min(tbigger[1], tbigger[2]));
+
+    d = tmin;
+
+    return (tmin < tmax);
+}
+
+struct VoxelRayIntersectionResult
+{
+    bool intersects;
+    float distance;
+};
+
+VoxelRayIntersectionResult RayChildIntersection(const Ray r, const uint4 childCoordinate)
+{
+    const OctreeNodeVolume childVolume = GetVolume(childCoordinate.xyz, childCoordinate.w);
+    float traceDistance;
+
+    bool intersects = Intersection(r, childVolume, traceDistance);
+
+    VoxelRayIntersectionResult result;
+    result.intersects   = intersects;
+    result.distance     = traceDistance;
+
+    return result;
+}
+
+struct TraceChildrenResult
+{
+    float   nearestDistance;
+    uint    nearestChild;
+    uint4   nearestCoordinate;
+};
+
+TraceChildrenResult TraceChildren(const Ray r, const uint4 nodeCord, const uint flags, float r_min = -10000.0f)
+{
+    static const uint4 childVIDOffsets[] = {
+        uint4(0, 0, 0, 0),
+        uint4(1, 0, 0, 0),
+        uint4(0, 0, 1, 0),
+        uint4(1, 0, 1, 0),
+
+        uint4(0, 1, 0, 0),
+        uint4(1, 1, 0, 0),
+        uint4(0, 1, 1, 0),
+        uint4(1, 1, 1, 0)
+    };
+
+    const uint4 childCoordinateBase = uint4(nodeCord.xyz * 2, nodeCord.w + 1);
+
+    float   nearestDistance = 100000;
+    uint    nearestChild    = -1;
+    uint4   nearestCoordinate;
+
+    for (uint childIdx = 0; childIdx < 8; childIdx++)
+    {                                                     
+        const uint childFlags   = GetChildFlags(childIdx, flags);
+
+        if (childFlags == CHILD_FLAGS::EMPTY)
+            continue;
+
+        const uint4 childCoordinate = childCoordinateBase + childVIDOffsets[childIdx];
+        const VoxelRayIntersectionResult result = RayChildIntersection(r, childCoordinate);
+
+        if (result.intersects && result.distance > r_min && result.distance < nearestDistance)
+        {
+            nearestChild        = childIdx;
+            nearestDistance     = result.distance;
+            nearestCoordinate   = childCoordinate;
+        }
+        else continue;
+    }
+
+    TraceChildrenResult result;
+    result.nearestDistance      = nearestDistance;
+    result.nearestChild         = nearestChild;
+    result.nearestCoordinate    = nearestCoordinate;
+
+    return result;
+}
+
+
+/************************************************************************************************/
+
+
 struct TraverseResult
 {
     uint    node;
@@ -324,8 +444,8 @@ TraverseResult TraverseOctree(const uint4 volumeID, in RWStructuredBuffer<OctTre
     }
 
     TraverseResult res;
-    res.node = -1;
-    res.flags = TRAVERSE_RESULT_CODES::ERROR;
+    res.node    = -1;
+    res.flags   = TRAVERSE_RESULT_CODES::ERROR;
 
     return res;
 }

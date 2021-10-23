@@ -225,6 +225,8 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     scene.AddGameObject(testAnimation, GetSceneNode(testAnimation));
     scene.AddGameObject(IKTarget, GetSceneNode(IKTarget));
 
+    SetVisable(IKTarget, false);
+
     SetBoundingSphereFromMesh(testAnimation);
 
     SetWorldPosition(particleEmitter, float3{ 0.0f, 40, 0.0f });

@@ -7,7 +7,7 @@ namespace FlexKit
     GILightingEngine::GILightingEngine(RenderSystem& IN_renderSystem, iAllocator& allocator) :
             renderSystem    { IN_renderSystem },
 
-            octreeBuffer    { renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(512 * MEGABYTE)) },
+            octreeBuffer    { renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(1024 * MEGABYTE)) },
 
             gatherSignature     { &allocator },
             dispatchSignature   { &allocator },
