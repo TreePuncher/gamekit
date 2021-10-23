@@ -23,7 +23,7 @@ RWStructuredBuffer<uint>        octreeCounters      : register(u2);
 /************************************************************************************************/
 
 
-void InitNode(uint idx, uint4 volumeCord)
+void aa(uint idx, uint4 volumeCord)
 {
     OctTreeNode n;
     n.flags         = CLEAR;
@@ -67,8 +67,8 @@ void Injection(uint3 threadID : SV_DispatchThreadID)
     const float3 volumePosition = float3(0, 0, 0);
     const float3 volumeSize     = VOLUME_SIZE;
     const float3 pos_WS         = GetWorldSpacePosition(UV, depthSample);
-
-    if (InsideVolume(pos_WS, volumePosition, volumeSize))
+    
+    if (!InsideVolume(CameraPOS, volumePosition, volumeSize) && InsideVolume(pos_WS, volumePosition, volumeSize))
     {
         const uint3 volumeCord = WS2VolumeCord(pos_WS, volumePosition, volumeSize);
 
