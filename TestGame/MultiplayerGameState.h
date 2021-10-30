@@ -7,7 +7,7 @@
 #include "Components.h"
 #include "EngineCore.h"
 #include "ResourceHandles.h"
-
+#include "GameAssets.h"
 #include "BaseState.h"
 #include "Gameplay.h"
 #include "MultiplayerState.h"

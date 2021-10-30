@@ -3,6 +3,7 @@
 #include <limits>
 #include <regex>
 
+
 using FlexKit::GameFramework;
 
 
@@ -361,6 +362,7 @@ void HostState::HandleIncomingConnection(ConnectionHandle connectionhandle)
 
 }
 
+
 /************************************************************************************************/
 
 
@@ -433,6 +435,7 @@ void HostState::BroadCastMessage(std::string msg)
         net.Send(msgPkt.Header, player.connection);
     }
 }
+
 
 /************************************************************************************************/
 

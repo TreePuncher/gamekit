@@ -23,9 +23,9 @@ namespace FlexKit
     constexpr PSOHandle VXGI_PROCESSSUBDREQUESTS        = PSOHandle(GetTypeGUID(VXGI_PROCESSSUBDREQUESTS));
 
     constexpr PSOHandle SVO_Voxelize                    = PSOHandle(GetTypeGUID(SVO_Voxelize));
-    constexpr PSOHandle SVO_SortSingleBlock             = PSOHandle(GetTypeGUID(SVO_SortSingleBlock));
-    constexpr PSOHandle SVO_SortMultiBlock              = PSOHandle(GetTypeGUID(SVO_SortMultiBlock));
     constexpr PSOHandle SVO_GatherArguments             = PSOHandle(GetTypeGUID(SVO_GATHERARGS));
+    constexpr PSOHandle SVO_GATHERSUBDIVISIONREQUESTS   = PSOHandle(GetTypeGUID(SVO_GATHERSUBDIVISIONREQUESTS));
+    constexpr PSOHandle SVO_EXPANDNODES                 = PSOHandle(GetTypeGUID(SVO_EXPANDNODES));
 
 
     /************************************************************************************************/
@@ -85,30 +85,51 @@ namespace FlexKit
             ReserveConstantBufferFunction   reserveCB;
 
             FrameResourceHandle             sampleBuffer;
-            FrameResourceHandle             sortedBuffer;
             FrameResourceHandle             argBuffer;
+            FrameResourceHandle             tempBuffer;
+            FrameResourceHandle             octree;
+            FrameResourceHandle             counters;
         };
 
 
         VoxelizePass& VoxelizeScene(
             FrameGraph&                     frameGraph,
             Scene&                          scene,
+            ResourceHandle                  octreeBuffer,
             uint3                           XYZ,
             GatherPassesTask&               passes,
             ReserveConstantBufferFunction   reserveCB);
 
-        void GatherArgs(FrameResourceHandle argBuffer, FrameResourceHandle sampleBuffer, ResourceHandler& resources, Context& ctx);
 
     private:
 
+        struct CommonResources
+        {
+            const ConstantBufferDataSet cameraConstants;
+            const FrameResourceHandle   octree;
+            const FrameResourceHandle   sampleBuffer;
+            const FrameResourceHandle   argBuffer;
+            const FrameResourceHandle   tempBuffer;
+
+            ReserveConstantBufferFunction&  reserveCB;
+        };
+
+
+        void GatherArgs(FrameResourceHandle argBuffer, FrameResourceHandle sampleBuffer, ResourceHandler& resources, Context& ctx, iAllocator& TL_allocator, const size_t offset = 0);
+
+        void GatherSamples  (CommonResources&, Scene&, ResourceHandler&, Context&, iAllocator& TL_allocator);
+        void BuildTree      (CommonResources&, ResourceHandler& resources, Context& ctx, iAllocator& TL_allocator);
+        void BuildMIPLevels (CommonResources&, ResourceHandler& resources, Context& ctx, iAllocator& TL_allocator);
+
+
         ID3D12PipelineState* CreateVoxelizerPSO         (RenderSystem* RS);
-        ID3D12PipelineState* CreateSortPSO              (RenderSystem* RS);
-        ID3D12PipelineState* CreateMultiBlockSortPSO    (RenderSystem* RS);
         ID3D12PipelineState* CreateGatherArgsPSO        (RenderSystem* RS);
+        ID3D12PipelineState* CreateMarkNodesPSO         (RenderSystem* RS);
+        ID3D12PipelineState* CreateExpandNodesPSO       (RenderSystem* RS);
 
 
         RootSignature voxelizeSignature;
-        RootSignature sortingSignature;
+        RootSignature markSignature;
 
         IndirectLayout dispatch;
     };

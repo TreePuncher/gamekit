@@ -28,9 +28,6 @@
 #include <initializer_list>
 #include <extensions/PxDefaultAllocator.h>
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb_image_write.h>
-
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #define TINYGLTF_NO_INCLUDE_JSON
 #define TINYGLTF_IMPLEMENTATION
@@ -263,7 +260,7 @@ int main(int argc, char* argv[])
 
             for (const auto glTF_Asset : glTFAssets)
             {
-                const filesystem::path assetPath{ glTF_Asset };
+                const std::filesystem::path assetPath{ glTF_Asset };
 
                 if (!assetPath.empty() && (assetPath.extension() == ".glb"))
                 {

@@ -1926,6 +1926,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    void Context::SetComputeDescriptorTable(size_t idx)
+    {
+        DeviceContext->SetComputeRootDescriptorTable(idx, D3D12_GPU_DESCRIPTOR_HANDLE(0));
+    }
+
+
 	void Context::SetComputeDescriptorTable(size_t idx, const DescriptorHeap& DH)
 	{
 		DeviceContext->SetComputeRootDescriptorTable(idx, DH);
@@ -1969,6 +1975,16 @@ namespace FlexKit
 	{
 		DeviceContext->SetComputeRootShaderResourceView(idx, Texture->GetGPUVirtualAddress());
 	}
+
+
+    /************************************************************************************************/
+
+
+    void Context::SetComputeShaderResourceView(size_t idx, ResourceHandle resource, const size_t offset)
+    {
+        DeviceContext->SetComputeRootShaderResourceView(idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress() + offset);
+    }
+
 
 	/************************************************************************************************/
 
@@ -5671,7 +5687,9 @@ namespace FlexKit
 
         if (FAILED(HR2))
         {
-            result->Release();
+            if(result)
+                result->Release();
+
             return {};
         }
         else

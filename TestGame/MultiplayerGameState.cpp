@@ -165,8 +165,8 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
 
     auto& scene = worldState.GetScene();
 
-    playerCharacterModel    = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), 8000);
-    auto model              = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), 7894);
+    playerCharacterModel    = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), CharacterModelAsset);
+    auto model              = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), PlaceHolderAsset);
 
     auto& ikNodeView    = IKTarget.AddView<SceneNodeView<>>();
     auto& ikBrushView   = IKTarget.AddView<BrushView>(model, GetSceneNode(IKTarget));
@@ -176,7 +176,7 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
 
     testAnimation.AddView<SceneNodeView<>>();
     auto& brushView     = testAnimation.AddView<BrushView>(playerCharacterModel, GetSceneNode(testAnimation));
-    auto& skeletonView  = testAnimation.AddView<SkeletonView>(playerCharacterModel, 8001);
+    auto& skeletonView  = testAnimation.AddView<SkeletonView>(playerCharacterModel, CharacterSkeletonAsset);
     auto& IKController  = testAnimation.AddView<FABRIKView>();
     //auto& animatorView    = testAnimation.AddView<AnimatorView>(testAnimation);
 

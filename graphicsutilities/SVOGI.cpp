@@ -7,7 +7,7 @@ namespace FlexKit
     GILightingEngine::GILightingEngine(RenderSystem& IN_renderSystem, iAllocator& allocator) :
             renderSystem    { IN_renderSystem },
 
-            octreeBuffer    { renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(1024 * MEGABYTE)) },
+            octreeBuffer    { renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(768 * MEGABYTE)) },
 
             gatherSignature     { &allocator },
             dispatchSignature   { &allocator },
@@ -292,7 +292,7 @@ namespace FlexKit
         // Create Dispatch args
         ctx.DiscardResource(resources.GetResource(data.indirectArgs));
         ctx.ClearUAVBuffer(resources.GetResource(data.indirectArgs));
-
+        
         ctx.AddUAVBarrier(resources.GetResource(data.indirectArgs));
         ctx.AddUAVBarrier(resources.GetResource(data.counters));
 
@@ -340,7 +340,7 @@ namespace FlexKit
         ReserveConstantBufferFunction   reserveCB,
         GatherPassesTask&               passes)
     {
-        return staticVoxelizer.VoxelizeScene(frameGraph, scene, { 2048, 2048, 2048 }, passes, reserveCB);
+        return staticVoxelizer.VoxelizeScene(frameGraph, scene, octreeBuffer, { 2048, 2048, 2048 }, passes, reserveCB);
     }
 
 
@@ -411,10 +411,8 @@ namespace FlexKit
             {
                 ctx.BeginEvent_DEBUG("VXGI_DrawVolume");
 
-                auto state                  = resources.GetPipelineState(VXGI_DRAWVOLUMEVISUALIZATION);
+                auto debugVis               = resources.GetPipelineState(VXGI_DRAWVOLUMEVISUALIZATION);
                 auto gatherDrawArgs         = resources.GetPipelineState(VXGI_GATHERDRAWARGS);
-
-                const uint32_t blockSize    = 8;
                 auto& rootSig               = resources.renderSystem().Library.RSDefault;
 
                 ctx.SetComputeRootSignature(rootSig);
@@ -430,7 +428,7 @@ namespace FlexKit
                 ctx.Dispatch(gatherDrawArgs, { 1, 1, 1 });
 
                 ctx.SetRootSignature(rootSig);
-                ctx.SetPipelineState(state);
+                ctx.SetPipelineState(debugVis);
 
                 CBPushBuffer constantBuffer{ data.reserveCB(AlignedSize<Camera::ConstantBuffer>()) };
 
@@ -778,62 +776,39 @@ namespace FlexKit
     }
 
 
-    ID3D12PipelineState* StaticVoxelizer::CreateSortPSO(RenderSystem* RS)
-    {
-        Shader computeShader = RS->LoadShader("SortBlock", "cs_6_6", R"(assets\shaders\SVO_VoxelSortBlock.hlsl)");
-
-        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-            sortingSignature,
-            computeShader
-        };
-
-        ID3D12PipelineState* PSO = nullptr;
-        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
-
-        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
-
-        return PSO;
-    }
-
-
-    /************************************************************************************************/
-
-    ID3D12PipelineState* StaticVoxelizer::CreateMultiBlockSortPSO(RenderSystem* RS)
-    {
-        Shader computeShader = RS->LoadShader("SortBlock", "cs_6_6", R"(assets\shaders\SVO_VoxelSortMultipleBlock.hlsl)");
-
-        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-            sortingSignature,
-            computeShader
-        };
-
-        ID3D12PipelineState* PSO = nullptr;
-        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
-
-        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
-
-        return PSO;
-    }
-
-
     /************************************************************************************************/
 
 
     ID3D12PipelineState* StaticVoxelizer::CreateGatherArgsPSO(RenderSystem* RS)
     {
-        Shader computeShader = RS->LoadShader("Main", "cs_6_6", R"(assets\shaders\SVO_VoxelGatherArgs.hlsl)");
+        return LoadComputeShader(
+            RS->LoadShader("Main", "cs_6_6", R"(assets\shaders\SVO_VoxelGatherArgs.hlsl)"),
+            markSignature,
+            *RS);
+    }
 
-        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-            sortingSignature,
-            computeShader
-        };
 
-        ID3D12PipelineState* PSO = nullptr;
-        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+    /************************************************************************************************/
 
-        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-        return PSO;
+    ID3D12PipelineState* StaticVoxelizer::CreateMarkNodesPSO(RenderSystem* RS)
+    {
+        return LoadComputeShader(
+            RS->LoadShader("MarkNodes", "cs_6_6", R"(assets\shaders\Voxelizer_MarkNodes.hlsl)"),
+            markSignature,
+            *RS);
+    }
+
+
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* StaticVoxelizer::CreateExpandNodesPSO(RenderSystem* RS)
+    {
+        return LoadComputeShader(
+            RS->LoadShader("ExpandNodes", "cs_6_6", R"(assets\shaders\Voxelizer_ExpandNodes.hlsl)"),
+            markSignature,
+            *RS);
     }
 
 
@@ -841,8 +816,8 @@ namespace FlexKit
 
 
     StaticVoxelizer::StaticVoxelizer(RenderSystem& renderSystem, iAllocator& allocator) :
-        voxelizeSignature{ &allocator },
-        sortingSignature{ &allocator }
+        voxelizeSignature   { &allocator },
+        markSignature       { &allocator }
     {
         voxelizeSignature.AllowIA = true;
         voxelizeSignature.AllowSO = false;
@@ -855,14 +830,26 @@ namespace FlexKit
         voxelizeSignature.SetParameterAsDescriptorTable(2, layout, -1, PIPELINE_DEST_PS);
         voxelizeSignature.Build(renderSystem, &allocator);
 
-        sortingSignature.AllowIA = false;
-        sortingSignature.AllowSO = false;
+        DesciptorHeapLayout UAVLayout{};
+        UAVLayout.SetParameterAsShaderUAV(0, 0, 2, 0);
 
-        sortingSignature.SetParameterAsUAV(0, 0, 0, PIPELINE_DEST_CS);
-        sortingSignature.SetParameterAsUAV(1, 1, 0, PIPELINE_DEST_CS);
-        sortingSignature.SetParameterAsUINT(2, 4, 0, 0, PIPELINE_DEST_CS);
-        sortingSignature.SetParameterAsUINT(2, 4, 1, 0, PIPELINE_DEST_CS);
-        sortingSignature.Build(renderSystem, &allocator);
+        markSignature.AllowIA = false;
+        markSignature.AllowSO = false;
+
+        markSignature.SetParameterAsDescriptorTable(0, UAVLayout);
+        markSignature.SetParameterAsSRV(1, 0);
+        markSignature.SetParameterAsUINT(2, 4, 0, 0);
+        markSignature.Build(renderSystem, &allocator);
+
+        renderSystem.RegisterPSOLoader(
+            SVO_GatherArguments,
+            {
+                &voxelizeSignature,
+                [&](RenderSystem* RS)
+                {
+                    return CreateGatherArgsPSO(RS);
+                }
+            });
 
         renderSystem.RegisterPSOLoader(
             SVO_Voxelize,
@@ -875,36 +862,27 @@ namespace FlexKit
             });
 
         renderSystem.RegisterPSOLoader(
-            SVO_SortSingleBlock,
+            SVO_GATHERSUBDIVISIONREQUESTS,
             {
-                &sortingSignature,
+                &markSignature,
                 [&](RenderSystem* RS)
                 {
-                    return CreateSortPSO(RS);
+                    return CreateMarkNodesPSO(RS);
                 }
             });
 
         renderSystem.RegisterPSOLoader(
-            SVO_GatherArguments,
+            SVO_EXPANDNODES,
             {
-                &sortingSignature,
+                &markSignature,
                 [&](RenderSystem* RS)
                 {
-                    return CreateGatherArgsPSO(RS);
+                    return CreateExpandNodesPSO(RS);
                 }
             });
 
-        /*
-        renderSystem.QueuePSOLoad(SVO_Voxelize);
-        renderSystem.QueuePSOLoad(SVO_SortSingleBlock);
-        renderSystem.QueuePSOLoad(SVO_SortMultiBlock);
-        renderSystem.QueuePSOLoad(SVO_GatherArguments);
-        */
-
         dispatch = renderSystem.CreateIndirectLayout(
-            {
-                {
-                    ILE_RootDescriptorUINT,
+            {   {   ILE_RootDescriptorUINT,
                     IndirectDrawDescription::Constant{
                         .rootParameterIdx   = 2,
                         .destinationOffset  = 0,
@@ -912,7 +890,7 @@ namespace FlexKit
                 { ILE_DispatchCall }
             },
             &allocator,
-            &sortingSignature
+            &markSignature
         );
     }
 
@@ -920,14 +898,19 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void StaticVoxelizer::GatherArgs(FrameResourceHandle argBuffer, FrameResourceHandle sampleBuffer, ResourceHandler& resources, Context& ctx)
+    void StaticVoxelizer::GatherArgs(FrameResourceHandle argBuffer, FrameResourceHandle sampleBuffer, ResourceHandler& resources, Context& ctx, iAllocator& TL_allocator, const size_t offset)
     {
         static const auto gatherArgs = resources.GetPipelineState(SVO_GatherArguments);
-        ctx.SetComputeRootSignature(sortingSignature);
+        ctx.SetComputeRootSignature(markSignature);
         ctx.SetPipelineState(gatherArgs);
 
-        ctx.SetComputeUnorderedAccessView(0, resources.UAV(argBuffer, ctx));
-        ctx.SetComputeUnorderedAccessView(1, resources.UAV(sampleBuffer, ctx));
+        DescriptorHeap heap;
+        heap.Init2(ctx, markSignature.GetDescHeap(0), 2, &TL_allocator);
+        heap.SetUAVStructured(ctx, 0, resources.UAV(argBuffer, ctx), 32, offset);
+        heap.NullFill(ctx, 2);
+
+        ctx.SetComputeDescriptorTable(0, heap);
+        ctx.SetComputeShaderResourceView(1, resources.NonPixelShaderResource(sampleBuffer, ctx));
 
         ctx.Dispatch( uint3{ 1, 1, 1 } );
     }
@@ -936,121 +919,203 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    StaticVoxelizer::VoxelizePass& StaticVoxelizer::VoxelizeScene(FrameGraph& frameGraph, Scene& scene, uint3 XYZ, GatherPassesTask& passes, ReserveConstantBufferFunction reserveCB)
+    StaticVoxelizer::VoxelizePass& StaticVoxelizer::VoxelizeScene(FrameGraph& frameGraph, Scene& scene, ResourceHandle octreeBuffer, uint3 XYZ, GatherPassesTask& passes, ReserveConstantBufferFunction reserveCB)
     {
         return frameGraph.AddNode<VoxelizePass>(
             VoxelizePass{
                 passes,
                 reserveCB
             },
-            [](auto& builder, VoxelizePass& data)
+            [&](FrameGraphNodeBuilder& builder, VoxelizePass& data)
             {
                 data.sampleBuffer   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(8 * MEGABYTE), DRS_UAV);
-                data.sortedBuffer   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(8 * MEGABYTE), DRS_UAV);
+                data.tempBuffer     = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(MEGABYTE), DRS_UAV);
                 data.argBuffer      = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4096), DRS_UAV);
+                data.octree         = builder.UnorderedAccess(octreeBuffer);
             },
             [&scene, this](VoxelizePass& data, ResourceHandler& resources, Context& ctx, iAllocator& TL_allocator)
             {
-                return;
-                auto voxelize   = resources.GetPipelineState(SVO_Voxelize);
-                auto sort       = resources.GetPipelineState(SVO_SortSingleBlock);
-                auto multiSort  = resources.GetPipelineState(SVO_SortMultiBlock);
-
-                auto& visabilityComponent = SceneVisibilityComponent::GetComponent();
-                auto& brushComponent = BrushComponent::GetComponent();
-
-                Vector<BrushHandle> brushes{ &TL_allocator };
-                for (auto& entityHandle : scene.sceneEntities)
-                {
-                    Apply(*visabilityComponent[entityHandle].entity,
-                        [&](MaterialComponentView& material,
-                            BrushView& brush)
-                        {
-                            auto passes = material.GetPasses();
-
-                            if (std::find(passes.begin(), passes.end(), GetCRCGUID(VXGI_STATIC)))
-                                brushes.push_back(brush.brush);
-                        });
-                }
-
-                CBPushBuffer constantBuffer{ data.reserveCB(AlignedSize<float4x4>() * brushes.size()) };
-
                 ctx.BeginEvent_DEBUG("Static Voxelizer");
 
-                ctx.ClearUAVBufferRange(resources.UAV(data.sampleBuffer, ctx), 0, 1024);
-                ctx.AddUAVBarrier(resources.GetResource(data.sampleBuffer));
+                const ConstantBufferDataSet cameraConstants;
 
-                ctx.BeginEvent_DEBUG("Voxel Pass");
-
-                ctx.SetRootSignature(voxelizeSignature);
-                ctx.SetPipelineState(voxelize);
-
-                float4 values[] = {
-                    { 2048, 2048, 2048, 0 },
-                    { 2048, 2048, 2048, 0 },
-                    { -1024, -1024, -1024, 0 },
+                CommonResources voxelizerResources = {
+                    .cameraConstants    = cameraConstants,
+                    .octree             = data.octree,
+                    .sampleBuffer       = data.sampleBuffer,
+                    .argBuffer          = data.argBuffer,
+                    .tempBuffer         = data.tempBuffer,
+                    .reserveCB          = data.reserveCB,
                 };
 
-                ctx.SetViewports({ D3D12_VIEWPORT{ 0, 0, 2048, 2048, 0, 1.0f } });
-                ctx.SetScissorRects({ D3D12_RECT{ 0, 0, 2048, 2048 } });
-                ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
-                ctx.SetGraphicsConstantValue(0, 12, values);
-                
-                DescriptorHeap heap;
-                heap.Init(ctx, voxelizeSignature.GetDescHeap(0), &TL_allocator);
-                heap.SetUAVStructured(ctx, 0, resources.UAV(data.sampleBuffer, ctx), resources.UAV(data.sampleBuffer, ctx), 40, 0);
-                ctx.SetGraphicsDescriptorTable(2, heap);
+                GatherSamples(
+                    voxelizerResources,
+                    scene,
+                    resources,
+                    ctx,
+                    TL_allocator);
 
+                BuildTree(
+                    voxelizerResources,
+                    resources,
+                    ctx,
+                    TL_allocator);
 
-                for (const auto& brush : brushes)
-                {
-                    auto* const triMesh = GetMeshResource(brushComponent[brush].MeshHandle);
-                    auto lod            = triMesh->GetHighestLoadedLodIdx();
+                BuildMIPLevels(
+                    voxelizerResources,
+                    resources,
+                    ctx,
+                    TL_allocator);
 
-                    const float4x4 WT = GetWT(brushComponent[brush].Node);
-                    const ConstantBufferDataSet entityConstants{ WT, constantBuffer };
-
-                    ctx.SetGraphicsConstantBufferView(1, entityConstants);
-
-                    ctx.AddIndexBuffer(triMesh, lod);
-                    ctx.AddVertexBuffers(triMesh,
-                        lod,
-                        {   VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-                            VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
-                            VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV });
-
-                    ctx.DrawIndexed(triMesh->lods[lod].GetIndexCount());
-                }
-
-                ctx.EndEvent_DEBUG();
-
-                ctx.BeginEvent_DEBUG("Sort");
-
-                ctx.AddUAVBarrier(resources.GetResource(data.argBuffer));
-
-                GatherArgs(data.argBuffer, data.sampleBuffer, resources, ctx);
-
-                ctx.SetComputeRootSignature(sortingSignature);
-
-                ctx.SetComputeUnorderedAccessView(0, resources.GetResource(data.sampleBuffer), 4096);
-
-                ctx.SetPipelineState(sort);
-                ctx.ExecuteIndirect(
-                    resources.IndirectArgs(data.argBuffer, ctx),
-                    dispatch);
-
-                ctx.AddUAVBarrier(resources.GetResource(data.argBuffer));
-
-                ctx.SetPipelineState(multiSort);
-                ctx.ExecuteIndirect(
-                    resources.IndirectArgs(data.argBuffer, ctx),
-                    dispatch);
-
-                ctx.AddUAVBarrier(resources.GetResource(data.argBuffer));
-
-                ctx.EndEvent_DEBUG();
                 ctx.EndEvent_DEBUG();
             });
+    }
+
+
+    /************************************************************************************************/
+
+
+    void StaticVoxelizer::GatherSamples(CommonResources& resources, Scene& scene, ResourceHandler& resourcesHandler, Context& ctx, iAllocator& TL_allocator)
+    {
+        auto voxelize               = resourcesHandler.GetPipelineState(SVO_Voxelize);
+        auto& visabilityComponent   = SceneVisibilityComponent::GetComponent();
+        auto& brushComponent        = BrushComponent::GetComponent();
+
+        Vector<BrushHandle> brushes{ &TL_allocator };
+        for (auto& entityHandle : scene.sceneEntities)
+        {
+            Apply(*visabilityComponent[entityHandle].entity,
+                [&](MaterialComponentView& material,
+                    BrushView& brush)
+                {
+                    auto passes = material.GetPasses();
+
+                    if (std::find(passes.begin(), passes.end(), GetCRCGUID(VXGI_STATIC)))
+                        brushes.push_back(brush.brush);
+                });
+        }
+
+        CBPushBuffer constantBuffer{ resources.reserveCB(AlignedSize<float4x4>() * brushes.size()) };
+
+        ctx.BeginEvent_DEBUG("Voxel Pass");
+
+        ctx.ClearUAVBufferRange(resourcesHandler.UAV(resources.sampleBuffer, ctx), 0, 1024);
+        ctx.AddUAVBarrier(resourcesHandler.GetResource(resources.sampleBuffer));
+
+        ctx.SetRootSignature(voxelizeSignature);
+        ctx.SetPipelineState(voxelize);
+
+        float4 values[] = {
+            { 2048, 2048, 2048, 0 },
+            { 2048, 2048, 2048, 0 },
+            { -1024, -1024, -1024, 0 },
+        };
+
+        ctx.SetViewports({ D3D12_VIEWPORT{ 0, 0, 2048, 2048, 0, 1.0f } });
+        ctx.SetScissorRects({ D3D12_RECT{ 0, 0, 2048, 2048 } });
+        ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+        ctx.SetGraphicsConstantValue(0, 12, values);
+                
+        DescriptorHeap heap;
+        heap.Init(ctx, voxelizeSignature.GetDescHeap(0), &TL_allocator);
+        heap.SetUAVStructured(ctx, 0,
+            resourcesHandler.UAV(resources.sampleBuffer, ctx),
+            resourcesHandler.UAV(resources.sampleBuffer, ctx), 40, 0);
+
+        ctx.SetGraphicsDescriptorTable(2, heap);
+
+        for (const auto& brush : brushes)
+        {
+            auto* const triMesh = GetMeshResource(brushComponent[brush].MeshHandle);
+            const auto lod      = triMesh->GetHighestLoadedLodIdx();
+
+            const float4x4 WT = GetWT(brushComponent[brush].Node);
+            const ConstantBufferDataSet entityConstants{ WT, constantBuffer };
+
+            ctx.SetGraphicsConstantBufferView(1, entityConstants);
+
+            ctx.AddIndexBuffer(triMesh, lod);
+            ctx.AddVertexBuffers(triMesh,
+                lod,
+                {   VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+                    VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
+                    VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV });
+
+            ctx.DrawIndexed(triMesh->lods[lod].GetIndexCount());
+        }
+
+        ctx.EndEvent_DEBUG();
+    }
+
+
+    /************************************************************************************************/
+
+
+    void StaticVoxelizer::BuildTree(CommonResources& resources, ResourceHandler& resourceHandler, Context& ctx, iAllocator& TL_allocator)
+    {
+        auto gatherSubDRequests = resourceHandler.GetPipelineState(SVO_GATHERSUBDIVISIONREQUESTS);
+        auto expandNodes        = resourceHandler.GetPipelineState(SVO_EXPANDNODES);
+
+        ctx.BeginEvent_DEBUG("Build");
+
+        ctx.DiscardResource(resourceHandler.GetResource(resources.argBuffer));
+        ctx.ClearUAVBuffer(resourceHandler.GetResource(resources.argBuffer));
+
+        ctx.AddUAVBarrier(resourceHandler.GetResource(resources.argBuffer));
+
+        GatherArgs(resources.argBuffer, resources.sampleBuffer, resourceHandler, ctx, TL_allocator, 1);
+
+        ctx.AddUAVBarrier(resourceHandler.GetResource(resources.argBuffer));
+
+        for(size_t I = 0; I < 2; I++)
+        {
+            // Mark nodes
+            ctx.BeginEvent_DEBUG("Mark and expand Pass");
+
+            ctx.ClearUAVBufferRange(resourceHandler.UAV(resources.tempBuffer, ctx), 0, 4096);
+            ctx.AddUAVBarrier(resourceHandler.UAV(resources.tempBuffer, ctx));
+
+            DescriptorHeap UAVHeap{};
+            UAVHeap.Init2(ctx, markSignature.GetDescHeap(0), 2, &TL_allocator);
+            UAVHeap.SetUAVStructured(ctx, 0, resourceHandler.UAV(resources.tempBuffer, ctx), resourceHandler.UAV(resources.tempBuffer, ctx), 4, 0);
+            UAVHeap.SetUAVBuffer(ctx, 1, resourceHandler.UAV(resources.octree, ctx), 4096 / 4);
+            UAVHeap.NullFill(ctx, 2);
+
+            ctx.SetComputeRootSignature(markSignature);
+            ctx.SetPipelineState(gatherSubDRequests);
+            ctx.SetComputeDescriptorTable(0, UAVHeap);
+            ctx.SetComputeShaderResourceView(1, resourceHandler.NonPixelShaderResource(resources.sampleBuffer, ctx));
+
+            ctx.ExecuteIndirect(resourceHandler.IndirectArgs(resources.argBuffer, ctx), dispatch, 32);
+
+            // Expand Nodes
+            GatherArgs(resources.argBuffer, resources.tempBuffer, resourceHandler, ctx, TL_allocator);
+
+            DescriptorHeap UAVHeap2{};
+            UAVHeap2.Init2(ctx, markSignature.GetDescHeap(0), 2, &TL_allocator);
+            UAVHeap2.SetUAVBuffer(ctx, 0, resourceHandler.UAV(resources.octree, ctx), 4096 / 4);
+            UAVHeap2.SetUAVBuffer(ctx, 1, resourceHandler.UAV(resources.octree, ctx), 0);
+            UAVHeap2.NullFill(ctx, 2);
+
+            ctx.SetPipelineState(expandNodes);
+            ctx.SetComputeDescriptorTable(0, UAVHeap2);
+            ctx.SetComputeShaderResourceView(1, resourceHandler.NonPixelShaderResource(resources.tempBuffer, ctx), 4096);
+
+            ctx.ExecuteIndirect(resourceHandler.IndirectArgs(resources.argBuffer, ctx), dispatch);
+
+            ctx.EndEvent_DEBUG();
+        }
+
+        ctx.EndEvent_DEBUG();
+    }
+
+
+    /************************************************************************************************/
+
+
+    void StaticVoxelizer::BuildMIPLevels(CommonResources& resources, ResourceHandler& resourceHandler, Context& ctx, iAllocator& TL_allocator)
+    {
+
     }
 
 
