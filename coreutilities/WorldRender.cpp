@@ -818,6 +818,7 @@ namespace FlexKit
                 reserveCB,
                 temporary);
 
+        /*
         auto& updateVolumes =
             lightingEngine.UpdateVoxelVolumes(
                 dispatcher,
@@ -826,6 +827,7 @@ namespace FlexKit
                 depthTarget.Get(),
                 reserveCB,
                 temporary);
+        */
 
         auto& volumeVis =
             lightingEngine.DrawVoxelVolume(

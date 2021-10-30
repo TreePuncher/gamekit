@@ -12,6 +12,7 @@
 #include "FrameGraph.h"
 #include "Particles.h"
 #include "physicsutilities.h"
+#include "GameAssets.h"
 
 #include <regex>
 
@@ -313,7 +314,7 @@ public:
         allocator       { static_cast<iAllocator&>(IN_core.GetBlockMemory()) },
         core            { IN_core },
         renderSystem    { IN_core.RenderSystem},
-        objectPool      { IN_core.GetBlockMemory(), 8096 },
+        objectPool      { IN_core.GetBlockMemory(), 8196 },
         layer           { PhysXComponent::GetComponent().CreateLayer() },
         scene           { IN_core.GetBlockMemory() },
         cubeShape       { PhysXComponent::GetComponent().CreateCubeShape({ 0.5f, 0.5f, 0.5f}) } {}
@@ -350,10 +351,6 @@ public:
 
 
     Vector<GameEvent>       pendingEvents;
-
-    const GUID_t            playerModel = 7896;
-    const GUID_t            cube1X1X1   = 7895;
-    const GUID_t            spellModel  = 7894;
     const PxShapeHandle     cubeShape;
 
     EngineCore&             core;

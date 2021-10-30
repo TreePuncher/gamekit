@@ -24,7 +24,7 @@ struct OctreeNodeVolume
 
 #define VOLUMESIDE_LENGTH   64
 #define VOLUME_SIZE         uint3(VOLUMESIDE_LENGTH, VOLUMESIDE_LENGTH, VOLUMESIDE_LENGTH)
-#define MAX_DEPTH           5
+#define MAX_DEPTH           9
 #define VOLUME_RESOLUTION   float3(1 << MAX_DEPTH, 1 << MAX_DEPTH, 1 << MAX_DEPTH)
 
 
@@ -336,10 +336,10 @@ struct TraverseResult
 
 enum TRAVERSE_RESULT_CODES
 {
-    ERROR = -1,
-    NODE_NOT_ALLOCATED = -2,
-    NODE_FOUND = 1,
-    NODE_EMPTY = 2,
+    ERROR               = -1,
+    NODE_NOT_ALLOCATED  = -2,
+    NODE_FOUND          = 1,
+    NODE_EMPTY          = 2,
 };
 
 
@@ -367,68 +367,85 @@ TraverseResult TraverseOctree(const uint4 volumeID, in RWStructuredBuffer<OctTre
             }
             else
             {
-                if ((n.flags & NODE_FLAGS::LEAF) && volumeCheck)
-                {   // Closest node is leaf, node not allocated
-                    TraverseResult res;
-                    res.node    = nodeID;
-                    res.flags   = TRAVERSE_RESULT_CODES::NODE_NOT_ALLOCATED;
-                    res.voxelID = volumeCord;
-
-                    return res;
-                }
-                else
-                {   // traverse to child
-                    const uint4 childCords = uint4(volumeCord.xyz * 2, depth + 1);
-
+                if (volumeCheck)
+                {
                     const uint4 childVIDOffsets[] = {
-                        uint4(0, 0, 0, 0),
-                        uint4(1, 0, 0, 0),
-                        uint4(0, 0, 1, 0),
-                        uint4(1, 0, 1, 0),
+                            uint4(0, 0, 0, 0),
+                            uint4(1, 0, 0, 0),
+                            uint4(0, 0, 1, 0),
+                            uint4(1, 0, 1, 0),
 
-                        uint4(0, 1, 0, 0),
-                        uint4(1, 1, 0, 0),
-                        uint4(0, 1, 1, 0),
-                        uint4(1, 1, 1, 0)
+                            uint4(0, 1, 0, 0),
+                            uint4(1, 1, 0, 0),
+                            uint4(0, 1, 1, 0),
+                            uint4(1, 1, 1, 0)
                     };
 
-                    uint childID            = 0;
-                    const uint childOffset  = n.children;
-
-                    for (;childID < 8; childID++)
-                    {
-                        const uint childFlags = GetChildFlags(childID, n.flags);
-
-                        const uint4 childVID            = childCords + childVIDOffsets[childID];
-                        const OctreeNodeVolume volume   = GetVolume(childVID.xyz, childVID.w);
-
-                        if (IsInVolume(voxelPoint, volume))
-                        {
-                            if (childFlags == CHILD_FLAGS::EMPTY)
-                            {
-                                TraverseResult res;
-                                res.node        = nodeID;
-                                res.flags       = TRAVERSE_RESULT_CODES::NODE_EMPTY;
-                                res.childIdx    = childID;
-
-                                return res;
-                            }
-                            else
-                            {
-                                nodeID      = childOffset + childID;
-                                volumeCord  = childVID;
-                                break;
-                            }   
-                        }
-                    }
-
-                    if (childID == 8)
-                    {
+                    if ((n.flags & NODE_FLAGS::LEAF))
+                    {   // Closest node is leaf, node not allocated
                         TraverseResult res;
-                        res.node    = -1;
-                        res.flags   = TRAVERSE_RESULT_CODES::ERROR;
+                        res.node        = nodeID;
+                        res.flags       = TRAVERSE_RESULT_CODES::NODE_NOT_ALLOCATED;
+                        res.voxelID     = volumeCord;
+                        res.childIdx    = -1;
+
+                        const uint4 childCords = uint4(volumeCord.xyz * 2, depth + 1);
+                        for (uint childID = 0; childID < 8; childID++)
+                        {
+                            const uint4 childVID = childCords + childVIDOffsets[childID];
+                            const OctreeNodeVolume volume = GetVolume(childVID.xyz, childVID.w);
+
+                            if (!IsInVolume(voxelPoint, volume))
+                                continue;
+
+                            res.childIdx = childID;
+                            break;
+                        }
 
                         return res;
+                    }
+                    else
+                    {   // traverse to child
+                        const uint4 childCords = uint4(volumeCord.xyz * 2, depth + 1);
+
+                        uint childID = 0;
+                        const uint childOffset = n.children;
+
+                        for (; childID < 8; childID++)
+                        {
+                            const uint childFlags = GetChildFlags(childID, n.flags);
+
+                            const uint4 childVID = childCords + childVIDOffsets[childID];
+                            const OctreeNodeVolume volume = GetVolume(childVID.xyz, childVID.w);
+
+                            if (IsInVolume(voxelPoint, volume))
+                            {
+                                if (childFlags == CHILD_FLAGS::EMPTY)
+                                {
+                                    TraverseResult res;
+                                    res.node     = nodeID;
+                                    res.flags    = TRAVERSE_RESULT_CODES::NODE_EMPTY;
+                                    res.childIdx = childID;
+
+                                    return res;
+                                }
+                                else
+                                {
+                                    nodeID = childOffset + childID;
+                                    volumeCord = childVID;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (childID == 8)
+                        {
+                            TraverseResult res;
+                            res.node = -1;
+                            res.flags = TRAVERSE_RESULT_CODES::ERROR;
+
+                            return res;
+                        }
                     }
                 }
             }
@@ -449,6 +466,232 @@ TraverseResult TraverseOctree(const uint4 volumeID, in RWStructuredBuffer<OctTre
 
     return res;
 }
+
+
+/************************************************************************************************/
+
+
+struct RayCastResult
+{
+    uint    node;
+    uint    flags;
+    float   distance;
+    uint    iterations;
+};
+
+enum RAYCAST_RESULT_CODES
+{
+    RAYCAST_ERROR               = -1,
+    RAYCAST_NODE_NOT_ALLOCATED  = -2,
+    RAYCAST_HIT                 = 1,
+    RAYCAST_MISS                = 2,
+};
+
+
+RayCastResult RayCast_Miss_RES(uint iterations)
+{
+    RayCastResult res;
+    res.node        = -1;
+    res.flags       = RAYCAST_RESULT_CODES::RAYCAST_MISS;
+    res.distance    = -1;
+    res.iterations  = iterations;
+
+    return res;
+}
+
+
+RayCastResult RayCast_Hit_RES(uint nodeID, float distance, uint iterations)
+{
+    RayCastResult res;
+    res.node        = nodeID;
+    res.flags       = RAYCAST_RESULT_CODES::RAYCAST_HIT;
+    res.distance    = distance;
+    res.iterations  = iterations;
+
+    return res;
+}
+
+
+RayCastResult RayCast_Error_RES()
+{
+    RayCastResult err;
+    err.node        = -1;
+    err.flags       = RAYCAST_ERROR;
+    err.distance    = -1;
+    err.iterations  = -1;
+
+    return err;
+}
+
+
+struct StackVariables
+{
+    uint NodeID;
+    uint flags;
+    uint children;
+};
+
+
+StackVariables UnpackVars(uint4 stackFrame)
+{
+    StackVariables vars;
+    vars.NodeID     = stackFrame.x;
+    vars.flags      = stackFrame.y;
+    vars.children   = stackFrame.z;
+
+    return vars;
+}
+
+
+uint4 PackVars(uint nodeID, uint flags, uint children)
+{
+    return uint4(nodeID, flags, children, 0);
+}
+
+
+RayCastResult RayCastOctree(const Ray r, in StructuredBuffer<OctTreeNode> octree)
+{
+    uint4 stack[MAX_DEPTH + 1]; // { NodeID, Flags, children }
+    float distance      = -10000;
+    uint  stackIdx      = 0;
+    uint4 nodeCord      = uint4(0, 0, 0, 0);
+
+    stack[0] = PackVars(0, octree[0].flags, octree[0].children);
+
+    [allow_uav_condition]
+    for (uint i = 0; i < (MAX_DEPTH + 1) * (MAX_DEPTH + 1); i++)
+    {
+        const StackVariables stackFrame = UnpackVars(stack[stackIdx]);
+
+        if (stackFrame.flags & BRANCH)
+        {   // Push child
+            TraceChildrenResult result = TraceChildren(r, nodeCord, stackFrame.flags, 0);
+
+            if (result.nearestChild != -1)
+            {
+                const uint childNodeID      = stackFrame.children + result.nearestChild;
+                const uint4 childCoordinate = result.nearestCoordinate;
+                const OctTreeNode child     = octree[childNodeID];
+
+                stack[++stackIdx] = PackVars(childNodeID, child.flags, child.children);
+
+                distance    = result.nearestDistance;
+                nodeCord    = childCoordinate; 
+            }
+            else
+            {   // All children miss go to next sibling
+                
+                for(uint II = 0; II < MAX_DEPTH; II++)
+                {
+                    if(stackIdx == 0) // at root
+                    {
+                        const uint4 parentCord = uint4(0, 0, 0, 0);
+                        TraceChildrenResult nextChildResult = TraceChildren(r, parentCord, stack[stackIdx].y, distance);
+
+                        if(nextChildResult.nearestChild != -1)
+                        {   // Move to next sibling
+                            const uint newNodeID        = stackFrame.children + nextChildResult.nearestChild;
+                            const OctTreeNode sibling   = octree[newNodeID];
+
+                            stack[++stackIdx]   = PackVars(newNodeID, sibling.flags, sibling.children);
+                            nodeCord            = nextChildResult.nearestCoordinate;
+                            distance            = nextChildResult.nearestDistance;
+                            break;
+                        }
+                        else
+                            return RayCast_Miss_RES(i);
+                    }
+                    else
+                    {
+                        const StackVariables    parentFrame     = UnpackVars(stack[stackIdx - 1]);
+                        const uint4             parentCord      = uint4(nodeCord.xyz / 2, nodeCord.w - 1);
+
+                        const VoxelRayIntersectionResult result     = RayChildIntersection(r, parentCord);
+                        const TraceChildrenResult nextChildResult   = TraceChildren(r, parentCord, parentFrame.flags, max(result.distance, distance));
+
+                        if(nextChildResult.nearestChild != -1)
+                        {   // Move to next sibling
+                            const uint newNodeID        = parentFrame.children + nextChildResult.nearestChild;
+                            const OctTreeNode sibling   = octree[newNodeID];
+
+                            stack[stackIdx] = PackVars(newNodeID, sibling.flags, sibling.children);
+                            nodeCord        = nextChildResult.nearestCoordinate;
+                            distance        = max(nextChildResult.nearestDistance, distance);
+                            break;
+                        }
+                        else
+                        {   // missed all siblings, go to next parent
+                            stackIdx--;
+                            nodeCord = uint4(nodeCord.xyz / 2, nodeCord.w - 1);
+                            distance = max(result.distance, distance);
+                            continue;
+                        }
+                    }
+
+                    if (II + 1 == MAX_DEPTH)
+                        return RayCast_Error_RES();
+                }
+            }
+        }
+        else if (stackFrame.flags & LEAF)
+            return RayCast_Hit_RES(stackFrame.NodeID, distance, i);
+    }
+
+    return RayCast_Error_RES();
+}
+
+
+/************************************************************************************************/
+
+
+#define ComponentSize 20
+#define ComponentMask (1 << ComponentSize) - 1
+
+
+uint64_t CreateMortonCode64(const float3 XYZ)
+{
+    const uint64_t X = uint64_t(XYZ.x) & ComponentMask;
+    const uint64_t Y = uint64_t(XYZ.y) & ComponentMask;
+    const uint64_t Z = uint64_t(XYZ.z) & ComponentMask;
+
+    uint64_t  mortonCode = 0;
+
+    for (uint I = 0; I < ComponentSize; I++)
+    {
+        const uint64_t x_bit = X & (1 << I);
+        const uint64_t y_bit = Y & (1 << I);
+        const uint64_t z_bit = Z & (1 << I);
+
+        const uint64_t  XYZ = x_bit << 2 | y_bit << 0 | z_bit << 1;
+
+        mortonCode |= XYZ << I * 3;
+    }
+
+    return mortonCode;
+}
+
+
+/************************************************************************************************/
+
+
+uint4 MortonID2VoxelID(uint64_t mortonID)
+{
+    uint4 coordinate = uint4(0, 0, 0, MAX_DEPTH);
+    /*
+    [unroll(10)]
+    for (uint I = 0; I < 10; I++)
+    {
+        coordinate.x |= ((mortonID & (1 << (I + 2))) >> (I + 2)) << I;
+        coordinate.y |= ((mortonID & (1 << (I + 0))) >> (I + 0)) << I;
+        coordinate.z |= ((mortonID & (1 << (I + 1))) >> (I + 1)) << I;
+    }
+    */
+
+    return coordinate;
+}
+
+
+/************************************************************************************************/
 
 
 /**********************************************************************

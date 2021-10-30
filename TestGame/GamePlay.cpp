@@ -6,6 +6,9 @@
 using namespace FlexKit;
 
 
+/************************************************************************************************/
+
+
 PowerCard::PowerCard() : CardInterface{
         ID(),
         "PowerCard",
@@ -78,12 +81,10 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
     GameObject& gameObject = objectPool.Allocate();
     CreateThirdPersonCameraController(gameObject, desc.layer, allocator, desc.r, desc.h);
 
-    static const GUID_t meshID = 7896;
-
-    auto [triMesh, loaded] = FindMesh(meshID);
+    auto [triMesh, loaded] = FindMesh(playerModel);
 
     if (!loaded)
-        triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), meshID);
+        triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), playerModel);
 
     auto& player        = gameObject.AddView<PlayerView>(
         PlayerState{
@@ -106,10 +107,10 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
     gameObject.AddView<SceneNodeView<>>(node);
     gameObject.AddView<BrushView>(triMesh, node);
 
-    auto& materials = MaterialComponent::GetComponent();
-    auto material = materials.CreateMaterial();
+    auto& materials     = MaterialComponent::GetComponent();
+    auto material       = materials.CreateMaterial();
     materials.Add2Pass(material, PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
-    auto& materialView = gameObject.AddView<MaterialComponentView>(material);
+    auto& materialView  = gameObject.AddView<MaterialComponentView>(material);
     SetMaterialHandle(gameObject, material);
 
     materialView.SetProperty(GetCRCGUID(PBR_ALBEDO), float4{ 1, 0, 0, 0.5f });
@@ -134,6 +135,7 @@ GameObject& GameWorld::AddLocalPlayer(MultiplayerPlayerID_t multiplayerID)
                     .r      = 0.5f
                 });
 }
+
 
 /************************************************************************************************/
 
@@ -471,6 +473,7 @@ PlayerFrameState GetPlayerFrameState(GameObject& gameObject)
 
     return out;
 }
+
 
 /************************************************************************************************/
 

@@ -1,3 +1,5 @@
+#include "VXGI_common.hlsl"
+
 
 cbuffer constant1 : register(b0)
 {
@@ -48,6 +50,7 @@ VS_out voxelize_VS(VS_in vertex)
     return output;
 }
 
+
 float3 CalculateNormal(float3 V0, float3 V1, float3 V2)
 {
     float3 normal = cross(V2 - V0, V1 - V0);
@@ -62,6 +65,9 @@ enum EAxis
     Y = 1,
     Z = 2,
 };
+
+
+/************************************************************************************************/
 
 
 [maxvertexcount(3)]
@@ -111,31 +117,6 @@ void voxelize_GS(triangle VS_out input[3], inout TriangleStream<PS_in> outputStr
 }
 
 
-#define ComponentSize 20
-#define ComponentMask (1 << ComponentSize) - 1
-
-uint64_t CreateMortonCode64(const float3 XYZ)
-{
-    const uint64_t X = uint64_t(XYZ.x) & ComponentMask;
-    const uint64_t Y = uint64_t(XYZ.y) & ComponentMask;
-    const uint64_t Z = uint64_t(XYZ.z) & ComponentMask;
-
-    uint64_t  mortonCode = 0;
-
-    for (uint I = 0; I < ComponentSize; I++)
-    {
-        const uint64_t  x_bit = X & (1 << I);
-        const uint64_t  y_bit = Y & (1 << I);
-        const uint64_t  z_bit = Z & (1 << I);
-
-        const uint64_t  XYZ = x_bit << 2 | y_bit << 0 | z_bit << 1;
-
-        mortonCode |= XYZ << I * 3;
-    }
-
-    return mortonCode;
-}
-
 struct VoxelSample
 {
     uint64_t    mortonID;
@@ -143,17 +124,22 @@ struct VoxelSample
     float4      ColorR; // Color + roughness
 };
 
+
 AppendStructuredBuffer<VoxelSample> voxelSampleBuffer : register(u0);
+
 
 void voxelize_PS(PS_in input)
 {
     VoxelSample vx_sample;
     vx_sample.mortonID  = CreateMortonCode64(input.pos_WS - Offset.xyz);
-    vx_sample.ColorR    = float4(0.5f, 0.5f, 0.5f, 0.5f);
+    vx_sample.ColorR    = float4(input.UV, 0.5f, 0.5f);
     vx_sample.POS       = float4(input.pos_WS.xyz, 0.5f);
 
     voxelSampleBuffer.Append(vx_sample);
 }
+
+
+/************************************************************************************************/
 
 
 /**********************************************************************

@@ -583,8 +583,115 @@
     <FxCompile Include="..\shaders\CubeMapShadowMapping.hlsl">
       <Filter>Headers\shaders</Filter>
     </FxCompile>
+    <FxCompile Include="..\shaders\algorithms.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\ClearBuffer.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\ClusterArgsDebugVis.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\ClusterBuffer.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\ClusteredRendering.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\DebugVISBVH.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\HZB.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\LightBVH.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\lightBVH_DEBUGVIS.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\LightListArguementIndirect.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\lightListConstruction.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\OITBlend.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\OITPass.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\ParticleRendering.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\ParticleShadowMapping.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\ResolutionMatch.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\SVO_VoxelGatherArgs.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\SVO_VoxelSortBlock.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\SVO_VoxelSortMultipleBlock.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\TextureFeedbackBlockPreFixSum.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\TextureFeedbackMergeBlocks.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\ToneMapping.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\ToneMapping-CreatePyramid.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\VoxelDebugVis.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\Voxelizer.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\VXGI.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\VXGI_common.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\VXGI_DecrementCounter.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\VXGI_DispatchArgs.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\VXGI_DrawArgs.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\VXGI_Erase.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\VXGI_InitOctree.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\VXGI_Remove.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shaders\VXGI_RemoveArgs.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="GameAssets.h">
+      <Filter>Headers\TestGame</Filter>
+    </Text>
   </ItemGroup>
 </Project>

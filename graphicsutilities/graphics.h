@@ -1700,11 +1700,13 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetGraphicsShaderResourceView	(size_t idx, FrameBufferedResource* Resource, size_t Count, size_t ElementSize);
 		void SetGraphicsShaderResourceView	(size_t idx, Texture2D& Texture);
 
+        void SetComputeDescriptorTable      (size_t idx);
 		void SetComputeDescriptorTable		(size_t idx, const DescriptorHeap& DH);
 		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferHandle, size_t offset);
 		void SetComputeConstantBufferView   (size_t idx, const ConstantBufferDataSet& CB);
         void SetComputeConstantBufferView   (size_t idx, ResourceHandle, size_t offset = 0, size_t bufferSize = 256);
 		void SetComputeShaderResourceView	(size_t idx, Texture2D&		texture);
+		void SetComputeShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0);
 		void SetComputeUnorderedAccessView	(size_t idx, ResourceHandle resource, size_t offset = 0);
 
 
@@ -4261,8 +4263,8 @@ private:
 
 		}
 
-		operator bool() { return ( buffer != nullptr ); }
-		operator D3D12_SHADER_BYTECODE() { return{ (BYTE*)buffer, bufferSize }; }
+		operator bool() const { return ( buffer != nullptr ); }
+		operator D3D12_SHADER_BYTECODE() const { return{ (BYTE*)buffer, bufferSize }; }
 
 		Shader& operator = (const Shader& rhs)
 		{
@@ -4292,6 +4294,22 @@ private:
 
 		iAllocator* allocator = nullptr;
 	};
+
+
+    inline ID3D12PipelineState* LoadComputeShader(const Shader& computeShader, const RootSignature& rootSignature, RenderSystem& renderSystem)
+    {
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+            rootSignature,
+            computeShader
+        };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = renderSystem.pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+
+        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+        return PSO;
+    }
 
 
 	/************************************************************************************************/
