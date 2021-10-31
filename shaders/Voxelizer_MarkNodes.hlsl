@@ -27,7 +27,15 @@ void MarkNodes(const uint3 threadID : SV_DispatchThreadID)
         return;
 
     const VoxelSample voxelSample   = voxelSampleBuffer[threadIdx];
-    const uint4 voxelcord           = MortonID2VoxelID(voxelSample.mortonID);
+    //const uint4 voxelcord           = MortonID2VoxelID(voxelSample.mortonID);
+    if (voxelSample.POS.x >= VOLUMESIDE_LENGTH ||
+        voxelSample.POS.y >= VOLUMESIDE_LENGTH ||
+        voxelSample.POS.z >= VOLUMESIDE_LENGTH ||
+        voxelSample.POS.x < 0 ||
+        voxelSample.POS.y < 0 ||
+        voxelSample.POS.z < 0) return;
+
+    const uint4 voxelcord           = uint4(WS2VolumeCord(voxelSample.POS, float3(0, 0, 0), VOLUME_SIZE), MAX_DEPTH);
 
     const TraverseResult quearyResult = TraverseOctree(voxelcord, octree);
 

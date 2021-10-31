@@ -1,5 +1,8 @@
 #include "VXGI_common.hlsl"
 
+/************************************************************************************************/
+
+
 cbuffer range : register(b0)
 {
     uint sampleCount;
@@ -37,10 +40,10 @@ void ExpandNodes(const uint3 threadID : SV_DispatchThreadID)
     const uint childrenIdx  = GetChildrenIdx();
 
     OctTreeNode blankNode;
-    blankNode.children   = -1;
-    blankNode.flags      = LEAF;
-    blankNode.parent     = -1;
-    blankNode.padding    = -1;
+    blankNode.children  = -1;
+    blankNode.flags     = LEAF;
+    blankNode.RGBA      = Pack4(float4(0.5f, 2.0f / 4.0f, 2.0f / 4.0f, 4.0f / 4.0f));
+    blankNode.extra     = Pack4(float4(0, 1.0f / 8.0f, 3.0f / 8.0f, 5.0f / 7.0f));
 
     for (uint I = 0; I < 8; I++)
         octree[childrenIdx + I] = blankNode;

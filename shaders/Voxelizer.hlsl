@@ -84,9 +84,9 @@ void voxelize_GS(triangle VS_out input[3], inout TriangleStream<PS_in> outputStr
     [unroll(3)]
     for (uint I = 0; I < 3; I++)
     {
-        if (l < N[I])
+        if (l < abs(N[I]))
         {
-            l = N[I];
+            l = abs(N[I]);
             dominantAxis = I;
         }
     }
@@ -107,8 +107,13 @@ void voxelize_GS(triangle VS_out input[3], inout TriangleStream<PS_in> outputStr
 
     for (uint II = 0; II < 3; II++)
     {
+        //const float3 voxelCoordinate    = (10.0f * input[II].pos_WS - Offset.xyz) / XYZ_DIM.xyz;
+        const float3 voxelCoordinate    = (input[II].pos_WS - Offset.xyz) / XYZ_DIM.xyz;
+        const float3 deviceCoord        = mul(M[dominantAxis], voxelCoordinate).xyz * float3(2, -2, 0.0f) + float3(-1, 1, 0);
+        //const float3 deviceCoord        = voxelCoordinate * float3(2, -2, 0) + float3(-1, 1, 0);
+
         PS_in output;
-        output.pos      = float4(mul(dominantAxis, (input[II].pos_WS - Offset.xyz) / XYZ_DIM.xyz).xyz * float3(2, -2, 1) + float3(-1, 1, 0), 1);
+        output.pos      = float4(deviceCoord, 1);
         output.pos_WS   = input[II].pos_WS;
         output.UV       = input[II].UV;
 
