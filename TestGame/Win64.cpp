@@ -71,7 +71,6 @@ int main(int argc, char* argv[])
         auto& net       = app.PushState<NetworkState>(base);
         auto& menuState = app.PushState<MenuState>(base, net);
 
-
         try
         {
             FK_LOG_2("Running application.");

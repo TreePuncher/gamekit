@@ -340,7 +340,7 @@ namespace FlexKit
         ReserveConstantBufferFunction   reserveCB,
         GatherPassesTask&               passes)
     {
-        return staticVoxelizer.VoxelizeScene(frameGraph, scene, octreeBuffer, { 2048, 2048, 2048 }, passes, reserveCB);
+        return staticVoxelizer.VoxelizeScene(frameGraph, scene, octreeBuffer, { 64, 64, 64 }, passes, reserveCB);
     }
 
 
@@ -466,7 +466,7 @@ namespace FlexKit
 
     ID3D12PipelineState* GILightingEngine::CreateMarkErasePSO(RenderSystem* RS)
     {
-        Shader computeShader = RS->LoadShader("MarkEraseNodes", "cs_6_0", R"(assets\shaders\VXGI_Erase.hlsl)");
+        Shader computeShader = RS->LoadShader("MarkEraseNodes", "cs_6_6", R"(assets\shaders\VXGI_Erase.hlsl)");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
             RS->Library.RSDefault,
@@ -486,7 +486,7 @@ namespace FlexKit
 
     ID3D12PipelineState* GILightingEngine::CreateAllocatePSO(RenderSystem* RS)
     {
-        Shader computeShader = RS->LoadShader("ReleaseNodes", "cs_6_0", R"(assets\shaders\VXGI_Remove.hlsl)");
+        Shader computeShader = RS->LoadShader("ReleaseNodes", "cs_6_6", R"(assets\shaders\VXGI_Remove.hlsl)");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
             removeSignature,
@@ -507,7 +507,7 @@ namespace FlexKit
 
     ID3D12PipelineState* GILightingEngine::CreateTransferPSO(RenderSystem* RS)
     {
-        Shader computeShader = RS->LoadShader("TransferNodes", "cs_6_0", R"(assets\shaders\VXGI_Remove.hlsl)");
+        Shader computeShader = RS->LoadShader("TransferNodes", "cs_6_6", R"(assets\shaders\VXGI_Remove.hlsl)");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
             removeSignature,
@@ -528,7 +528,7 @@ namespace FlexKit
 
     ID3D12PipelineState* GILightingEngine::CreateInjectVoxelSamplesPSO(RenderSystem* RS)
     {
-        Shader computeShader = RS->LoadShader("Injection", "cs_6_0", R"(assets\shaders\VXGI.hlsl)");
+        Shader computeShader = RS->LoadShader("Injection", "cs_6_6", R"(assets\shaders\VXGI.hlsl)");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
             RS->Library.RSDefault,
@@ -549,7 +549,7 @@ namespace FlexKit
 
     ID3D12PipelineState* GILightingEngine::CreateVXGIGatherDispatchArgsPSO(RenderSystem* RS)
     {
-        Shader computeShader = RS->LoadShader("CreateIndirectArgs", "cs_6_0", R"(assets\shaders\VXGI_DispatchArgs.hlsl)");
+        Shader computeShader = RS->LoadShader("CreateIndirectArgs", "cs_6_6", R"(assets\shaders\VXGI_DispatchArgs.hlsl)");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
             gatherSignature,
@@ -570,7 +570,7 @@ namespace FlexKit
 
     ID3D12PipelineState* GILightingEngine::CreateVXGIEraseDispatchArgsPSO(RenderSystem* RS)
     {
-        Shader computeShader = RS->LoadShader("CreateRemoveArgs", "cs_6_0", R"(assets\shaders\VXGI_RemoveArgs.hlsl)");
+        Shader computeShader = RS->LoadShader("CreateRemoveArgs", "cs_6_6", R"(assets\shaders\VXGI_RemoveArgs.hlsl)");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
             gatherSignature,
@@ -591,7 +591,7 @@ namespace FlexKit
 
     ID3D12PipelineState* GILightingEngine::CreateVXGIDecrementDispatchArgsPSO(RenderSystem* RS)
     {
-        Shader computeShader = RS->LoadShader("CreateIndirectArgs", "cs_6_0", R"(assets\shaders\VXGI_DecrementCounter.hlsl)");
+        Shader computeShader = RS->LoadShader("CreateIndirectArgs", "cs_6_6", R"(assets\shaders\VXGI_DecrementCounter.hlsl)");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
             removeSignature,
@@ -612,7 +612,7 @@ namespace FlexKit
 
     ID3D12PipelineState* GILightingEngine::CreateVXGIGatherDrawArgsPSO(RenderSystem* RS)
     {
-        Shader computeShader = RS->LoadShader("CreateDrawArgs", "cs_6_0", R"(assets\shaders\VXGI_DrawArgs.hlsl)");
+        Shader computeShader = RS->LoadShader("CreateDrawArgs", "cs_6_6", R"(assets\shaders\VXGI_DrawArgs.hlsl)");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
             RS->Library.RSDefault,
@@ -633,7 +633,7 @@ namespace FlexKit
 
     ID3D12PipelineState* GILightingEngine::CreateVXGIGatherSubDRequestsPSO(RenderSystem* RS)
     {
-        Shader computeShader = RS->LoadShader("GatherSubdivionRequests", "cs_6_0", R"(assets\shaders\VXGI.hlsl)");
+        Shader computeShader = RS->LoadShader("GatherSubdivionRequests", "cs_6_6", R"(assets\shaders\VXGI.hlsl)");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
             RS->Library.RSDefault,
@@ -654,7 +654,7 @@ namespace FlexKit
 
     ID3D12PipelineState* GILightingEngine::CreateVXGIProcessSubDRequestsPSO(RenderSystem* RS)
     {
-        Shader computeShader = RS->LoadShader("ProcessSubdivionRquests", "cs_6_0", R"(assets\shaders\VXGI.hlsl)");
+        Shader computeShader = RS->LoadShader("ProcessSubdivionRquests", "cs_6_6", R"(assets\shaders\VXGI.hlsl)");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
             RS->Library.RSDefault,
@@ -675,7 +675,7 @@ namespace FlexKit
 
     ID3D12PipelineState* GILightingEngine::CreateVXGI_InitOctree(RenderSystem* RS)
     {
-        Shader computeShader = RS->LoadShader("Init", "cs_6_0", R"(assets\shaders\VXGI_InitOctree.hlsl)");
+        Shader computeShader = RS->LoadShader("Init", "cs_6_6", R"(assets\shaders\VXGI_InitOctree.hlsl)");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
             RS->Library.RSDefault,
@@ -696,8 +696,8 @@ namespace FlexKit
 
     ID3D12PipelineState* GILightingEngine::CreateUpdateVolumeVisualizationPSO(RenderSystem* RS)
     {
-        auto VShader = RS->LoadShader("FullScreenQuad_VS",  "vs_6_0", "assets\\shaders\\VoxelDebugVis.hlsl");
-	    auto PShader = RS->LoadShader("VoxelDebug_PS",      "ps_6_0", "assets\\shaders\\VoxelDebugVis.hlsl");
+        auto VShader = RS->LoadShader("FullScreenQuad_VS",  "vs_6_6", "assets\\shaders\\VoxelDebugVis.hlsl");
+	    auto PShader = RS->LoadShader("VoxelDebug_PS",      "ps_6_6", "assets\\shaders\\VoxelDebugVis.hlsl");
 
 	    D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 
@@ -736,12 +736,13 @@ namespace FlexKit
 
     ID3D12PipelineState* StaticVoxelizer::CreateVoxelizerPSO(RenderSystem* RS)
     {
-        auto VShader = RS->LoadShader("voxelize_VS", "vs_6_0", "assets\\shaders\\Voxelizer.hlsl");
-	    auto GShader = RS->LoadShader("voxelize_GS", "gs_6_0", "assets\\shaders\\Voxelizer.hlsl");
+        auto VShader = RS->LoadShader("voxelize_VS", "vs_6_6", "assets\\shaders\\Voxelizer.hlsl");
+	    auto GShader = RS->LoadShader("voxelize_GS", "gs_6_6", "assets\\shaders\\Voxelizer.hlsl");
 	    auto PShader = RS->LoadShader("voxelize_PS", "ps_6_6", "assets\\shaders\\Voxelizer.hlsl");
 
 	    D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
         Rast_Desc.ConservativeRaster            = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
+        Rast_Desc.CullMode                      = D3D12_CULL_MODE_NONE;
 
 	    D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
         Depth_Desc.DepthEnable = false;
@@ -1006,13 +1007,13 @@ namespace FlexKit
         ctx.SetPipelineState(voxelize);
 
         float4 values[] = {
-            { 2048, 2048, 2048, 0 },
-            { 2048, 2048, 2048, 0 },
-            { -1024, -1024, -1024, 0 },
+            { 1024, 1024, 1024, 0 },
+            { 1024, 1024, 1024, 0 },
+            { 0, 0, 0, 0 },
         };
 
-        ctx.SetViewports({ D3D12_VIEWPORT{ 0, 0, 2048, 2048, 0, 1.0f } });
-        ctx.SetScissorRects({ D3D12_RECT{ 0, 0, 2048, 2048 } });
+        ctx.SetViewports({ D3D12_VIEWPORT{ 0, 0, 1024, 1024, 0, 1.0f } });
+        ctx.SetScissorRects({ D3D12_RECT{ 0, 0, 1024, 1024 } });
         ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
         ctx.SetGraphicsConstantValue(0, 12, values);
                 
@@ -1029,7 +1030,7 @@ namespace FlexKit
             auto* const triMesh = GetMeshResource(brushComponent[brush].MeshHandle);
             const auto lod      = triMesh->GetHighestLoadedLodIdx();
 
-            const float4x4 WT = GetWT(brushComponent[brush].Node);
+            const float4x4 WT = GetWT(brushComponent[brush].Node).Transpose();
             const ConstantBufferDataSet entityConstants{ WT, constantBuffer };
 
             ctx.SetGraphicsConstantBufferView(1, entityConstants);
@@ -1067,7 +1068,7 @@ namespace FlexKit
 
         ctx.AddUAVBarrier(resourceHandler.GetResource(resources.argBuffer));
 
-        for(size_t I = 0; I < 2; I++)
+        for(size_t I = 0; I < 9; I++)
         {
             // Mark nodes
             ctx.BeginEvent_DEBUG("Mark and expand Pass");

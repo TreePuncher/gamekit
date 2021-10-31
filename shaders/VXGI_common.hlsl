@@ -2,13 +2,25 @@
 /************************************************************************************************/
 
 
+uint Pack4(const float4 RGBA)
+{
+    const float4 RGBAUnorm = saturate(RGBA);
+    const uint4 temp = uint4(255 * RGBAUnorm);
+
+    return temp.x << 24 | temp.y << 16 | temp.z << 8 | temp.w;
+}
+
+float4 UnPack4(const uint RGBA)
+{
+    return float4((RGBA >> 24) & 0xff, (RGBA >> 16) & 0xff, (RGBA >> 8) & 0xff, RGBA & 0xff) / 255.0f;
+}
+
 struct OctTreeNode
 {
-    uint parent;
-    uint children;
-    uint flags;
-    uint padding;
-    //uint RGBA[8];
+    uint    children;
+    uint    flags;
+    uint    RGBA;
+    uint    extra;
 };
 
 
@@ -22,7 +34,7 @@ struct OctreeNodeVolume
 /************************************************************************************************/
 
 
-#define VOLUMESIDE_LENGTH   64
+#define VOLUMESIDE_LENGTH   512
 #define VOLUME_SIZE         uint3(VOLUMESIDE_LENGTH, VOLUMESIDE_LENGTH, VOLUMESIDE_LENGTH)
 #define MAX_DEPTH           9
 #define VOLUME_RESOLUTION   float3(1 << MAX_DEPTH, 1 << MAX_DEPTH, 1 << MAX_DEPTH)
@@ -677,15 +689,14 @@ uint64_t CreateMortonCode64(const float3 XYZ)
 uint4 MortonID2VoxelID(uint64_t mortonID)
 {
     uint4 coordinate = uint4(0, 0, 0, MAX_DEPTH);
-    /*
+    
     [unroll(10)]
-    for (uint I = 0; I < 10; I++)
+    for (uint I = 0; I < 20; I++)
     {
-        coordinate.x |= ((mortonID & (1 << (I + 2))) >> (I + 2)) << I;
-        coordinate.y |= ((mortonID & (1 << (I + 0))) >> (I + 0)) << I;
-        coordinate.z |= ((mortonID & (1 << (I + 1))) >> (I + 1)) << I;
+        coordinate.x |= ((mortonID & (1 << (3 * I + 2))) >> (3 * I + 2)) << I;
+        coordinate.y |= ((mortonID & (1 << (3 * I + 0))) >> (3 * I + 0)) << I;
+        coordinate.z |= ((mortonID & (1 << (3 * I + 1))) >> (3 * I + 1)) << I;
     }
-    */
 
     return coordinate;
 }

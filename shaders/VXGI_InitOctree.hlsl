@@ -9,9 +9,8 @@ void Init(uint3 threadID : SV_DispatchThreadID)
 
     root.children   = -1;
     root.flags      = LEAF;
-    root.parent     = -1;
-    root.padding    = -1;
-
+    root.RGBA       = Pack4(float4(0, 1, 2, 3));
+    root.extra      = Pack4(float4(4, 5, 6, 7));
     octree[0]       = root;
     octree.IncrementCounter();
 }

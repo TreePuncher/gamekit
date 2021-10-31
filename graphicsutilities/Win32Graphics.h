@@ -808,7 +808,7 @@ namespace FlexKit
 		SwapChainDesc.BufferUsage		= DXGI_USAGE_RENDER_TARGET_OUTPUT;
 		SwapChainDesc.SwapEffect		= DXGI_SWAP_EFFECT_FLIP_DISCARD;
 		SwapChainDesc.SampleDesc.Count	= 1;
-		SwapChainDesc.Flags             = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+		SwapChainDesc.Flags               = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
         IDXGISwapChain1* NewSwapChain_ptr = nullptr;
         HRESULT HR = renderSystem.pGIFactory->CreateSwapChainForHwnd(
