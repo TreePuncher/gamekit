@@ -19,6 +19,7 @@ struct VoxelSample
 StructuredBuffer<uint>          dirtyNodes      : register(t0);
 RWStructuredBuffer<OctTreeNode> octree          : register(u0);
 RWStructuredBuffer<uint>        octreeCounter   : register(u1);
+RWStructuredBuffer<uint>        parentLinkage   : register(u2);
 
 uint GetChildrenIdx()
 {
@@ -47,6 +48,8 @@ void ExpandNodes(const uint3 threadID : SV_DispatchThreadID)
 
     for (uint I = 0; I < 8; I++)
         octree[childrenIdx + I] = blankNode;
+
+    parentLinkage[(childrenIdx - 1) / 8] = nodeIdx;
 
     OctTreeNode node      = octree[nodeIdx];
     node.children         = childrenIdx;

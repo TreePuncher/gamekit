@@ -828,6 +828,18 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    ID3D12PipelineState* StaticVoxelizer::CreateBuildMIPLevelPSO(RenderSystem* RS)
+    {
+        return LoadComputeShader(
+            RS->LoadShader("BuildLevel", "cs_6_6", R"(assets\shaders\Voxelizer_BuildMIPLevel.hlsl)"),
+            markSignature,
+            *RS);
+    }
+
+
+    /************************************************************************************************/
+
+
     StaticVoxelizer::StaticVoxelizer(RenderSystem& renderSystem, iAllocator& allocator) :
         voxelizeSignature   { &allocator },
         markSignature       { &allocator }
@@ -844,7 +856,7 @@ namespace FlexKit
         voxelizeSignature.Build(renderSystem, &allocator);
 
         DesciptorHeapLayout UAVLayout{};
-        UAVLayout.SetParameterAsShaderUAV(0, 0, 2, 0);
+        UAVLayout.SetParameterAsShaderUAV(0, 0, 3, 0);
 
         markSignature.AllowIA = false;
         markSignature.AllowSO = false;
@@ -852,6 +864,7 @@ namespace FlexKit
         markSignature.SetParameterAsDescriptorTable(0, UAVLayout);
         markSignature.SetParameterAsSRV(1, 0);
         markSignature.SetParameterAsUINT(2, 4, 0, 0);
+        markSignature.SetParameterAsSRV(3, 1);
         markSignature.Build(renderSystem, &allocator);
 
         renderSystem.RegisterPSOLoader(
@@ -904,6 +917,16 @@ namespace FlexKit
                 }
             });
 
+        renderSystem.RegisterPSOLoader(
+            SVO_BUILDMIPLEVEL,
+            {
+                &markSignature,
+                [&](RenderSystem* RS)
+                {
+                    return CreateBuildMIPLevelPSO(RS);
+                }
+            });
+
         dispatch = renderSystem.CreateIndirectLayout(
             {   {   ILE_RootDescriptorUINT,
                     IndirectDrawDescription::Constant{
@@ -951,9 +974,10 @@ namespace FlexKit
             },
             [&](FrameGraphNodeBuilder& builder, VoxelizePass& data)
             {
-                data.sampleBuffer   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(128 * MEGABYTE), DRS_UAV);
-                data.tempBuffer     = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(8 * MEGABYTE), DRS_UAV);
+                data.sampleBuffer   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(256 * MEGABYTE), DRS_UAV);
+                data.tempBuffer     = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(16 * MEGABYTE), DRS_UAV);
                 data.argBuffer      = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4096), DRS_UAV);
+                data.parentBuffer   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(16 * MEGABYTE), DRS_UAV);
                 data.octree         = builder.UnorderedAccess(octreeBuffer);
             },
             [&scene, this](VoxelizePass& data, ResourceHandler& resources, Context& ctx, iAllocator& TL_allocator)
@@ -965,6 +989,7 @@ namespace FlexKit
                 CommonResources voxelizerResources = {
                     .cameraConstants    = cameraConstants,
                     .octree             = data.octree,
+                    .parentBuffer       = data.parentBuffer,
                     .sampleBuffer       = data.sampleBuffer,
                     .argBuffer          = data.argBuffer,
                     .tempBuffer         = data.tempBuffer,
@@ -1122,9 +1147,10 @@ namespace FlexKit
             GatherArgs(resources.argBuffer, resources.tempBuffer, resourceHandler, ctx, TL_allocator);
 
             DescriptorHeap UAVHeap2{};
-            UAVHeap2.Init2(ctx, markSignature.GetDescHeap(0), 2, &TL_allocator);
+            UAVHeap2.Init2(ctx, markSignature.GetDescHeap(0), 3, &TL_allocator);
             UAVHeap2.SetUAVBuffer(ctx, 0, resourceHandler.UAV(resources.octree, ctx), 4096 / 4);
             UAVHeap2.SetUAVBuffer(ctx, 1, resourceHandler.UAV(resources.octree, ctx), 0);
+            UAVHeap2.SetUAVBuffer(ctx, 2, resourceHandler.UAV(resources.parentBuffer, ctx), 0);
 
             ctx.SetPipelineState(expandNodes);
             ctx.SetComputeDescriptorTable(0, UAVHeap2);
@@ -1140,12 +1166,14 @@ namespace FlexKit
         ctx.ClearUAVBufferRange(resourceHandler.UAV(resources.tempBuffer, ctx), 0, 4096);
         ctx.AddUAVBarrier(resourceHandler.UAV(resources.tempBuffer, ctx));
         ctx.AddUAVBarrier(resourceHandler.UAV(resources.octree, ctx));
+        ctx.AddUAVBarrier(resourceHandler.UAV(resources.parentBuffer, ctx));
 
         // Fill Highest level
         DescriptorHeap UAVHeap{};
-        UAVHeap.Init2(ctx, markSignature.GetDescHeap(0), 2, &TL_allocator);
+        UAVHeap.Init2(ctx, markSignature.GetDescHeap(0), 3, &TL_allocator);
         UAVHeap.SetUAVStructured(ctx, 0, resourceHandler.UAV(resources.tempBuffer, ctx), resourceHandler.UAV(resources.tempBuffer, ctx), 4, 0);
         UAVHeap.SetUAVBuffer(ctx, 1, resourceHandler.UAV(resources.octree, ctx), 4096 / 4);
+        UAVHeap.SetUAVBuffer(ctx, 2, resourceHandler.UAV(resources.parentBuffer, ctx));
 
         ctx.SetComputeRootSignature(markSignature);
         ctx.SetComputeDescriptorTable(0, UAVHeap);
@@ -1164,7 +1192,46 @@ namespace FlexKit
 
     void StaticVoxelizer::BuildMIPLevels(CommonResources& resources, ResourceHandler& resourceHandler, Context& ctx, iAllocator& TL_allocator)
     {
+        const auto buildLevel = resourceHandler.GetPipelineState(SVO_BUILDMIPLEVEL);
 
+        FrameResourceHandle tempBuffers[2] = {
+            resources.tempBuffer,
+            resources.sampleBuffer
+        };
+
+        ctx.BeginEvent_DEBUG("Build MIP Levels");
+
+        for(size_t I = 0; I < 11; I++)
+        {   // Mark nodes
+            ctx.BeginEvent_DEBUG("Build Level");
+
+            const auto source = tempBuffers[(I + 0u) % 2u];
+            const auto target = tempBuffers[(I + 1u) % 2u];
+
+            GatherArgs(resources.argBuffer, source, resourceHandler, ctx, TL_allocator);
+
+            ctx.ClearUAVBufferRange(resourceHandler.UAV(target, ctx), 0, 4096);
+            ctx.AddUAVBarrier(resourceHandler.UAV(target, ctx));
+
+            DescriptorHeap UAVHeap{};
+            UAVHeap.Init2(ctx, markSignature.GetDescHeap(0), 3, &TL_allocator);
+            UAVHeap.SetUAVStructured(ctx, 0,                                                                            // dirtyParents : register u0
+                resourceHandler.UAV(target, ctx),
+                resourceHandler.UAV(target, ctx), 4, 0);
+            UAVHeap.SetUAVBuffer(ctx, 1, resourceHandler.UAV(resources.octree, ctx), 4096 / 4);                         // octree  : register(u1)
+
+            ctx.SetComputeRootSignature(markSignature);
+            ctx.SetComputeDescriptorTable(0, UAVHeap);
+            ctx.SetComputeShaderResourceView(1, resourceHandler.NonPixelShaderResource(source, ctx), 4096);             // dirtyNodes   : register(t0)
+            ctx.SetComputeShaderResourceView(3, resourceHandler.NonPixelShaderResource(resources.parentBuffer, ctx));   // parents      : register(t1)
+            ctx.SetPipelineState(buildLevel);
+
+            ctx.ExecuteIndirect(resourceHandler.IndirectArgs(resources.argBuffer, ctx), dispatch);
+
+            ctx.EndEvent_DEBUG();
+        }
+
+        ctx.EndEvent_DEBUG();
     }
 
 

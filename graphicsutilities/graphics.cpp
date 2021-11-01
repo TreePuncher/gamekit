@@ -1031,7 +1031,7 @@ namespace FlexKit
 
 		static_vector<CD3DX12_ROOT_PARAMETER> Parameters;
 
-		for (auto& I : RootEntries)
+		for (const auto& I : RootEntries)
 		{
 			CD3DX12_ROOT_PARAMETER Param;
 
@@ -1047,8 +1047,8 @@ namespace FlexKit
             }   break;
 			case RootSignatureEntryType::DescriptorHeap:
 			{
-				auto  HeapIdx = I.DescriptorHeap.HeapIdx;
-				auto& HeapEntry = Heaps[HeapIdx];
+				const auto  HeapIdx = I.DescriptorHeap.HeapIdx;
+				const auto& HeapEntry = Heaps[HeapIdx];
 
 				DesciptorHeaps.push_back(Vector<CD3DX12_DESCRIPTOR_RANGE>(TempMemory));
 
@@ -1080,7 +1080,7 @@ namespace FlexKit
 					DesciptorHeaps.back().push_back(Range);
 				}
 
-				auto temp = DesciptorHeaps.back().size();
+				const auto temp = DesciptorHeaps.back().size();
 				Param.InitAsDescriptorTable(
 					DesciptorHeaps.back().size(), 
 					DesciptorHeaps.back().begin(), 
@@ -1107,8 +1107,7 @@ namespace FlexKit
 					I.ShaderResource.Register,
 					I.ShaderResource.RegisterSpace,
 					PipelineDest2ShaderVis(I.ConstantBuffer.Accessibility));
-			}break;
-
+			}   break;
 			default:
 				return false;
 				FK_ASSERT(false);

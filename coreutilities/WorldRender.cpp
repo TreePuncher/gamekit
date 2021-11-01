@@ -553,7 +553,7 @@ namespace FlexKit
 			renderSystem                { RS_IN },
 			enableOcclusionCulling	    { false	},
 
-            UAVPool                     { renderSystem, 256 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
+            UAVPool                     { renderSystem, 512 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
             UAVTexturePool              { renderSystem, 256 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent },
             RTPool                      { renderSystem, 512 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::RenderTarget, persistent },
 
