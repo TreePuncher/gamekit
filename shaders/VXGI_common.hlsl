@@ -44,9 +44,10 @@ enum NODE_FLAGS
 {
     CLEAR               = 0,
     SUBDIVISION_REQUEST = 1 << 0,
-    LEAF                = 1 << 1,
-    BRANCH              = 1 << 2,
-    COLOR               = 1 << 3,
+    MIPUPDATE_REQUEST   = 1 << 1,
+    LEAF                = 1 << 2,
+    BRANCH              = 1 << 3,
+    COLOR               = 1 << 4,
 };
 
 
@@ -60,7 +61,7 @@ enum CHILD_FLAGS
 
 bool GetChildFlags(const uint childIdx, const uint flags)
 {
-    return (flags >> childIdx + 4) & CHILD_FLAGS::MASK;
+    return (flags >> childIdx + 8) & CHILD_FLAGS::MASK;
 }
 
 
@@ -69,7 +70,7 @@ bool GetChildFlags(const uint childIdx, const uint flags)
 
 uint SetChildFlags(const uint childIdx, const uint childFlags, const uint flags = 0)
 {
-    return (childFlags & CHILD_FLAGS::MASK) << (childIdx + 4) | flags;
+    return (childFlags & CHILD_FLAGS::MASK) << (childIdx + 8) | flags;
 }
 
 
@@ -562,7 +563,7 @@ uint4 PackVars(uint nodeID, uint flags, uint children)
 }
 
 
-RayCastResult RayCastOctree(const Ray r, in StructuredBuffer<OctTreeNode> octree)
+RayCastResult RayCastOctree(const Ray r, in StructuredBuffer<OctTreeNode> octree, uint MIPLevel = 0)
 {
     uint4 stack[MAX_DEPTH + 1]; // { NodeID, Flags, children }
     float distance      = -10000;
@@ -572,12 +573,15 @@ RayCastResult RayCastOctree(const Ray r, in StructuredBuffer<OctTreeNode> octree
     stack[0] = PackVars(0, octree[0].flags, octree[0].children);
 
     [allow_uav_condition]
-    for (uint i = 0; i < 128; i++)
+    for (uint i = 0; i < 256; i++)
     {
         const StackVariables stackFrame = UnpackVars(stack[stackIdx]);
 
         if (stackFrame.flags & BRANCH)
         {   // Push child
+            if (MIPLevel != 0 && (MAX_DEPTH - MIPLevel == nodeCord.w))
+                return RayCast_Hit_RES(stackFrame.NodeID, distance, i);
+
             TraceChildrenResult result = TraceChildren(r, nodeCord, stackFrame.flags, 0);
 
             if (result.nearestChild != -1)

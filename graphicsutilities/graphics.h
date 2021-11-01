@@ -1228,7 +1228,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			Desc.ConstantBuffer.RegisterSpace	= (uint32_t)RegisterSpace;
 			Desc.ConstantBuffer.Accessibility	= AccessableStages;
 
-			if (RootEntries.size() < Index)
+			if (RootEntries.size() <= Index)
 			{
 				if (!RootEntries.full())
 					RootEntries.resize(Index + 1);

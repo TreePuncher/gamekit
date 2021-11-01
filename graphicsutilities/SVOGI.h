@@ -27,6 +27,7 @@ namespace FlexKit
     constexpr PSOHandle SVO_GATHERSUBDIVISIONREQUESTS   = PSOHandle(GetTypeGUID(SVO_GATHERSUBDIVISIONREQUESTS));
     constexpr PSOHandle SVO_EXPANDNODES                 = PSOHandle(GetTypeGUID(SVO_EXPANDNODES));
     constexpr PSOHandle SVO_FILLNODES                   = PSOHandle(GetTypeGUID(SVO_FILLNODES));
+    constexpr PSOHandle SVO_BUILDMIPLEVEL               = PSOHandle(GetTypeGUID(SVO_BUILDMIPLEVEL));
 
 
     /************************************************************************************************/
@@ -89,6 +90,7 @@ namespace FlexKit
             FrameResourceHandle             argBuffer;
             FrameResourceHandle             tempBuffer;
             FrameResourceHandle             octree;
+            FrameResourceHandle             parentBuffer;
             FrameResourceHandle             counters;
         };
 
@@ -108,6 +110,7 @@ namespace FlexKit
         {
             const ConstantBufferDataSet cameraConstants;
             const FrameResourceHandle   octree;
+            const FrameResourceHandle   parentBuffer;
             const FrameResourceHandle   sampleBuffer;
             const FrameResourceHandle   argBuffer;
             const FrameResourceHandle   tempBuffer;
@@ -128,6 +131,7 @@ namespace FlexKit
         ID3D12PipelineState* CreateMarkNodesPSO         (RenderSystem* RS);
         ID3D12PipelineState* CreateExpandNodesPSO       (RenderSystem* RS);
         ID3D12PipelineState* CreateFillAttributesPSO    (RenderSystem* RS);
+        ID3D12PipelineState* CreateBuildMIPLevelPSO     (RenderSystem* RS);
 
 
         RootSignature voxelizeSignature;

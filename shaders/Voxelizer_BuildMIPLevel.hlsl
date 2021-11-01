@@ -5,17 +5,11 @@ cbuffer range : register(b0)
     uint sampleCount;
 };
 
-struct VoxelSample
-{
-    float4 POS;    // Position + Color
-};
+StructuredBuffer<uint>              dirtyNodes      : register(t0);
+StructuredBuffer<uint>              parents         : register(t1);
 
-
-StructuredBuffer<VoxelSample>   voxelSampleBuffer   : register(t0);
-
-AppendStructuredBuffer<uint>        dirtynodes      : register(u0);
+AppendStructuredBuffer<uint>        dirtyParents    : register(u0);
 RWStructuredBuffer<OctTreeNode>     octree          : register(u1);
-RWStructuredBuffer<uint>            parents         : register(u2);
 
 bool FlagColor(const uint node)
 {
@@ -45,32 +39,45 @@ bool FlagParent(const uint parentIdx)
 }
 
 [numthreads(1024, 1, 1)]
-void FillNodes(const uint3 threadID : SV_DispatchThreadID)
+void BuildLevel(const uint3 threadID : SV_DispatchThreadID)
 {
     const uint threadIdx = threadID.x;
 
     if (threadIdx >= sampleCount)
         return;
 
-    const VoxelSample voxelSample   = voxelSampleBuffer[threadIdx];
-    const uint4 voxelcord           = uint4(WS2VolumeCord(voxelSample.POS, float3(0, 0, 0), VOLUME_SIZE), MAX_DEPTH);
+    const uint    nodeIdx  = dirtyNodes[threadIdx];
+    OctTreeNode   node     = octree[nodeIdx];
 
-    const TraverseResult quearyResult = TraverseOctree(voxelcord, octree);
+    uint a          = 0;
+    float4 color    = float4(0, 0, 0, 0);
 
-    if(quearyResult.flags == NODE_FOUND)
+    for (uint childIdx = 0; childIdx < 8; childIdx++)
     {
-        const uint parentIdx = GetParentIdx(quearyResult.node);
+        const uint childFlags = GetChildFlags(childIdx, node.flags);
 
-        if (FlagColor(quearyResult.node))
-        {
-            if (FlagParent(parentIdx))
-                dirtynodes.Append(parentIdx);
+        if (childFlags == CHILD_FLAGS::EMPTY)
+            continue;
 
-            octree[quearyResult.node].RGBA  = asuint(voxelSample.POS.w);
-            octree[quearyResult.node].extra = asuint(Pack4(float4(1, 0, 1, 0)));
-        }
+        a++;
+
+        const uint RGBA     = octree[node.children + childIdx].RGBA;
+        const uint extra    = octree[node.children + childIdx].extra;
+
+        color += UnPack4(RGBA);
     }
+
+    node.flags ^= NODE_FLAGS::MIPUPDATE_REQUEST | NODE_FLAGS::COLOR;
+    node.RGBA   = Pack4(color);
+
+    octree[nodeIdx] = node;
+
+    const uint parentIdx = GetParentIdx(nodeIdx);
+
+    if (FlagParent(parentIdx))
+        dirtyParents.Append(parentIdx);
 }
+
 
 
 /**********************************************************************
