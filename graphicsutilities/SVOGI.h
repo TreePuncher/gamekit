@@ -26,6 +26,7 @@ namespace FlexKit
     constexpr PSOHandle SVO_GatherArguments             = PSOHandle(GetTypeGUID(SVO_GATHERARGS));
     constexpr PSOHandle SVO_GATHERSUBDIVISIONREQUESTS   = PSOHandle(GetTypeGUID(SVO_GATHERSUBDIVISIONREQUESTS));
     constexpr PSOHandle SVO_EXPANDNODES                 = PSOHandle(GetTypeGUID(SVO_EXPANDNODES));
+    constexpr PSOHandle SVO_FILLNODES                   = PSOHandle(GetTypeGUID(SVO_FILLNODES));
 
 
     /************************************************************************************************/
@@ -126,6 +127,7 @@ namespace FlexKit
         ID3D12PipelineState* CreateGatherArgsPSO        (RenderSystem* RS);
         ID3D12PipelineState* CreateMarkNodesPSO         (RenderSystem* RS);
         ID3D12PipelineState* CreateExpandNodesPSO       (RenderSystem* RS);
+        ID3D12PipelineState* CreateFillAttributesPSO    (RenderSystem* RS);
 
 
         RootSignature voxelizeSignature;

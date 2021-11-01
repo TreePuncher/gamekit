@@ -34,9 +34,9 @@ struct OctreeNodeVolume
 /************************************************************************************************/
 
 
-#define VOLUMESIDE_LENGTH   512
+#define VOLUMESIDE_LENGTH   256
 #define VOLUME_SIZE         uint3(VOLUMESIDE_LENGTH, VOLUMESIDE_LENGTH, VOLUMESIDE_LENGTH)
-#define MAX_DEPTH           9
+#define MAX_DEPTH           11
 #define VOLUME_RESOLUTION   float3(1 << MAX_DEPTH, 1 << MAX_DEPTH, 1 << MAX_DEPTH)
 
 
@@ -46,6 +46,7 @@ enum NODE_FLAGS
     SUBDIVISION_REQUEST = 1 << 0,
     LEAF                = 1 << 1,
     BRANCH              = 1 << 2,
+    COLOR               = 1 << 3,
 };
 
 
@@ -361,7 +362,7 @@ TraverseResult TraverseOctree(const uint4 volumeID, in RWStructuredBuffer<OctTre
     uint            nodeID     = 0;
     uint4           volumeCord = uint4(0, 0, 0, 0);
 
-    for (uint depth = 0; depth <= MAX_DEPTH; depth++)
+    for (uint depth = 0; depth <= MAX_DEPTH + 1; depth++)
     {
         OctTreeNode             n           = octree[nodeID];
         const OctreeNodeVolume  volume      = GetVolume(volumeCord.xyz, volumeCord.w);
@@ -571,7 +572,7 @@ RayCastResult RayCastOctree(const Ray r, in StructuredBuffer<OctTreeNode> octree
     stack[0] = PackVars(0, octree[0].flags, octree[0].children);
 
     [allow_uav_condition]
-    for (uint i = 0; i < (MAX_DEPTH + 1) * (MAX_DEPTH + 1); i++)
+    for (uint i = 0; i < 128; i++)
     {
         const StackVariables stackFrame = UnpackVars(stack[stackIdx]);
 

@@ -816,6 +816,18 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    ID3D12PipelineState* StaticVoxelizer::CreateFillAttributesPSO(RenderSystem* RS)
+    {
+        return LoadComputeShader(
+            RS->LoadShader("FillNodes", "cs_6_6", R"(assets\shaders\Voxelizer_BuildHighestMipLevel.hlsl)"),
+            markSignature,
+            *RS);
+    }
+
+
+    /************************************************************************************************/
+
+
     StaticVoxelizer::StaticVoxelizer(RenderSystem& renderSystem, iAllocator& allocator) :
         voxelizeSignature   { &allocator },
         markSignature       { &allocator }
@@ -882,6 +894,16 @@ namespace FlexKit
                 }
             });
 
+        renderSystem.RegisterPSOLoader(
+            SVO_FILLNODES,
+            {
+                &markSignature,
+                [&](RenderSystem* RS)
+                {
+                    return CreateFillAttributesPSO(RS);
+                }
+            });
+
         dispatch = renderSystem.CreateIndirectLayout(
             {   {   ILE_RootDescriptorUINT,
                     IndirectDrawDescription::Constant{
@@ -929,8 +951,8 @@ namespace FlexKit
             },
             [&](FrameGraphNodeBuilder& builder, VoxelizePass& data)
             {
-                data.sampleBuffer   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(8 * MEGABYTE), DRS_UAV);
-                data.tempBuffer     = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(MEGABYTE), DRS_UAV);
+                data.sampleBuffer   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(128 * MEGABYTE), DRS_UAV);
+                data.tempBuffer     = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(8 * MEGABYTE), DRS_UAV);
                 data.argBuffer      = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4096), DRS_UAV);
                 data.octree         = builder.UnorderedAccess(octreeBuffer);
             },
@@ -1007,13 +1029,13 @@ namespace FlexKit
         ctx.SetPipelineState(voxelize);
 
         float4 values[] = {
-            { 1024, 1024, 1024, 0 },
-            { 1024, 1024, 1024, 0 },
-            { 0, 0, 0, 0 },
+            { 256, 256, 256, 128},
+            { 2048, 2048, 2048, 0 },
+            { -2, 0, -2, 0 },
         };
 
-        ctx.SetViewports({ D3D12_VIEWPORT{ 0, 0, 1024, 1024, 0, 1.0f } });
-        ctx.SetScissorRects({ D3D12_RECT{ 0, 0, 1024, 1024 } });
+        ctx.SetViewports({ D3D12_VIEWPORT{ 0, 0, 2048, 2048, 0, 1.0f } });
+        ctx.SetScissorRects({ D3D12_RECT{ 0, 0, 2048, 2048} });
         ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
         ctx.SetGraphicsConstantValue(0, 12, values);
                 
@@ -1021,7 +1043,7 @@ namespace FlexKit
         heap.Init(ctx, voxelizeSignature.GetDescHeap(0), &TL_allocator);
         heap.SetUAVStructured(ctx, 0,
             resourcesHandler.UAV(resources.sampleBuffer, ctx),
-            resourcesHandler.UAV(resources.sampleBuffer, ctx), 40, 0);
+            resourcesHandler.UAV(resources.sampleBuffer, ctx), 16, 0);
 
         ctx.SetGraphicsDescriptorTable(2, heap);
 
@@ -1030,8 +1052,16 @@ namespace FlexKit
             auto* const triMesh = GetMeshResource(brushComponent[brush].MeshHandle);
             const auto lod      = triMesh->GetHighestLoadedLodIdx();
 
-            const float4x4 WT = GetWT(brushComponent[brush].Node).Transpose();
-            const ConstantBufferDataSet entityConstants{ WT, constantBuffer };
+            const float4x4  WT      = GetWT(brushComponent[brush].Node).Transpose();
+            const float4    albedo  = GetMaterialProperty<float4>(brushComponent[brush].material, GetCRCGUID(PBR_ALBEDO)).value_or(float4{ 1.0f, 0.0f, 1.0f, 0.0f });
+
+            struct sVoxelConstants
+            {
+                float4x4    WT;
+                float4      albedo;
+            };
+
+            const ConstantBufferDataSet entityConstants{ sVoxelConstants{ WT, albedo }, constantBuffer };
 
             ctx.SetGraphicsConstantBufferView(1, entityConstants);
 
@@ -1054,8 +1084,9 @@ namespace FlexKit
 
     void StaticVoxelizer::BuildTree(CommonResources& resources, ResourceHandler& resourceHandler, Context& ctx, iAllocator& TL_allocator)
     {
-        auto gatherSubDRequests = resourceHandler.GetPipelineState(SVO_GATHERSUBDIVISIONREQUESTS);
-        auto expandNodes        = resourceHandler.GetPipelineState(SVO_EXPANDNODES);
+        const auto gatherSubDRequests = resourceHandler.GetPipelineState(SVO_GATHERSUBDIVISIONREQUESTS);
+        const auto expandNodes        = resourceHandler.GetPipelineState(SVO_EXPANDNODES);
+        const auto fillNodes          = resourceHandler.GetPipelineState(SVO_FILLNODES);
 
         ctx.BeginEvent_DEBUG("Build");
 
@@ -1068,9 +1099,8 @@ namespace FlexKit
 
         ctx.AddUAVBarrier(resourceHandler.GetResource(resources.argBuffer));
 
-        for(size_t I = 0; I < 9; I++)
-        {
-            // Mark nodes
+        for(size_t I = 0; I < 11; I++)
+        {   // Mark nodes
             ctx.BeginEvent_DEBUG("Mark and expand Pass");
 
             ctx.ClearUAVBufferRange(resourceHandler.UAV(resources.tempBuffer, ctx), 0, 4096);
@@ -1080,7 +1110,6 @@ namespace FlexKit
             UAVHeap.Init2(ctx, markSignature.GetDescHeap(0), 2, &TL_allocator);
             UAVHeap.SetUAVStructured(ctx, 0, resourceHandler.UAV(resources.tempBuffer, ctx), resourceHandler.UAV(resources.tempBuffer, ctx), 4, 0);
             UAVHeap.SetUAVBuffer(ctx, 1, resourceHandler.UAV(resources.octree, ctx), 4096 / 4);
-            UAVHeap.NullFill(ctx, 2);
 
             ctx.SetComputeRootSignature(markSignature);
             ctx.SetPipelineState(gatherSubDRequests);
@@ -1096,7 +1125,6 @@ namespace FlexKit
             UAVHeap2.Init2(ctx, markSignature.GetDescHeap(0), 2, &TL_allocator);
             UAVHeap2.SetUAVBuffer(ctx, 0, resourceHandler.UAV(resources.octree, ctx), 4096 / 4);
             UAVHeap2.SetUAVBuffer(ctx, 1, resourceHandler.UAV(resources.octree, ctx), 0);
-            UAVHeap2.NullFill(ctx, 2);
 
             ctx.SetPipelineState(expandNodes);
             ctx.SetComputeDescriptorTable(0, UAVHeap2);
@@ -1107,6 +1135,26 @@ namespace FlexKit
             ctx.EndEvent_DEBUG();
         }
 
+        ctx.BeginEvent_DEBUG("Fill Highest Level");
+
+        ctx.ClearUAVBufferRange(resourceHandler.UAV(resources.tempBuffer, ctx), 0, 4096);
+        ctx.AddUAVBarrier(resourceHandler.UAV(resources.tempBuffer, ctx));
+        ctx.AddUAVBarrier(resourceHandler.UAV(resources.octree, ctx));
+
+        // Fill Highest level
+        DescriptorHeap UAVHeap{};
+        UAVHeap.Init2(ctx, markSignature.GetDescHeap(0), 2, &TL_allocator);
+        UAVHeap.SetUAVStructured(ctx, 0, resourceHandler.UAV(resources.tempBuffer, ctx), resourceHandler.UAV(resources.tempBuffer, ctx), 4, 0);
+        UAVHeap.SetUAVBuffer(ctx, 1, resourceHandler.UAV(resources.octree, ctx), 4096 / 4);
+
+        ctx.SetComputeRootSignature(markSignature);
+        ctx.SetComputeDescriptorTable(0, UAVHeap);
+        ctx.SetComputeShaderResourceView(1, resourceHandler.NonPixelShaderResource(resources.sampleBuffer, ctx));
+        ctx.SetPipelineState(fillNodes);
+
+        ctx.ExecuteIndirect(resourceHandler.IndirectArgs(resources.argBuffer, ctx), dispatch, 32);
+
+        ctx.EndEvent_DEBUG();
         ctx.EndEvent_DEBUG();
     }
 

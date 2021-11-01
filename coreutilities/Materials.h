@@ -276,7 +276,17 @@ namespace FlexKit
     void SetMaterialHandle(GameObject& go, MaterialHandle material) noexcept;
     MaterialHandle GetMaterialHandle(GameObject& go) noexcept;
 
+    template<typename TY>
+    std::optional<TY> GetMaterialProperty(GameObject& go, const uint32_t ID) noexcept
+    {
+        return Apply(go, [&](MaterialComponentView& view){ return view.GetProperty<TY>(ID); });
+    }
 
+    template<typename TY>
+    std::optional<TY> GetMaterialProperty(const MaterialHandle material, const uint32_t ID) noexcept
+    {
+        return MaterialComponent::GetComponent().GetProperty<TY>(material, ID);
+    }
 }   /************************************************************************************************/
 
 /**********************************************************************
