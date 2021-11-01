@@ -7,9 +7,7 @@ cbuffer range : register(b0)
 
 struct VoxelSample
 {
-    //uint64_t    mortonID;
-    float4      POS;    // Position + ???
-    //float4      ColorR; // Color + roughness
+    float4 POS;    // Position + Color
 };
 
 
@@ -18,8 +16,19 @@ StructuredBuffer<VoxelSample>   voxelSampleBuffer   : register(t0);
 AppendStructuredBuffer<uint>        dirtynodes      : register(u0);
 RWStructuredBuffer<OctTreeNode>     octree          : register(u1);
 
+bool FlagColor(uint node)
+{
+    uint result = 0;
+    InterlockedOr(
+        octree[node].flags,
+        COLOR,
+        result);
+
+    return !(result & COLOR);
+}
+
 [numthreads(1024, 1, 1)]
-void MarkNodes(const uint3 threadID : SV_DispatchThreadID)
+void FillNodes(const uint3 threadID : SV_DispatchThreadID)
 {
     const uint threadIdx = threadID.x;
 
@@ -27,27 +36,17 @@ void MarkNodes(const uint3 threadID : SV_DispatchThreadID)
         return;
 
     const VoxelSample voxelSample   = voxelSampleBuffer[threadIdx];
-    //const uint4 voxelcord           = MortonID2VoxelID(voxelSample.mortonID);
     const uint4 voxelcord           = uint4(WS2VolumeCord(voxelSample.POS, float3(0, 0, 0), VOLUME_SIZE), MAX_DEPTH);
 
     const TraverseResult quearyResult = TraverseOctree(voxelcord, octree);
 
-    if(quearyResult.flags == NODE_NOT_ALLOCATED ||
-       quearyResult.flags == TRAVERSE_RESULT_CODES::NODE_EMPTY)
+    if(quearyResult.flags == NODE_FOUND)
     {
-        if (quearyResult.childIdx == -1)
-            return;
-
-        const uint childFlags = SetChildFlags(quearyResult.childIdx, CHILD_FLAGS::FILLED, 0);
-
-        uint result = 0;
-        InterlockedOr(
-            octree[quearyResult.node].flags,
-            SUBDIVISION_REQUEST | childFlags,
-            result);
-
-        if(!(result & SUBDIVISION_REQUEST))
-            dirtynodes.Append(quearyResult.node);
+        if (FlagColor(quearyResult.node))
+        {
+            octree[quearyResult.node].RGBA  = asuint(voxelSample.POS.w);
+            octree[quearyResult.node].extra = asuint(Pack4(float4(1, 0, 1, 0)));
+        }
     }
 }
 

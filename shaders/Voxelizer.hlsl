@@ -10,8 +10,8 @@ cbuffer constant1 : register(b0)
 
 cbuffer constant2 : register(b1)
 {
-    float4x4 WT;
-
+    float4x4    WT;
+    float4      albedo;
 };
 
 
@@ -107,10 +107,8 @@ void voxelize_GS(triangle VS_out input[3], inout TriangleStream<PS_in> outputStr
 
     for (uint II = 0; II < 3; II++)
     {
-        //const float3 voxelCoordinate    = (10.0f * input[II].pos_WS - Offset.xyz) / XYZ_DIM.xyz;
         const float3 voxelCoordinate    = (input[II].pos_WS - Offset.xyz) / XYZ_DIM.xyz;
         const float3 deviceCoord        = mul(M[dominantAxis], voxelCoordinate).xyz * float3(2, -2, 0.0f) + float3(-1, 1, 0);
-        //const float3 deviceCoord        = voxelCoordinate * float3(2, -2, 0) + float3(-1, 1, 0);
 
         PS_in output;
         output.pos      = float4(deviceCoord, 1);
@@ -124,9 +122,8 @@ void voxelize_GS(triangle VS_out input[3], inout TriangleStream<PS_in> outputStr
 
 struct VoxelSample
 {
-    uint64_t    mortonID;
-    float4      POS;    // Position + ???
-    float4      ColorR; // Color + roughness
+    //uint64_t    mortonID;
+    float4      POS;    // Position + albedo
 };
 
 
@@ -136,9 +133,17 @@ AppendStructuredBuffer<VoxelSample> voxelSampleBuffer : register(u0);
 void voxelize_PS(PS_in input)
 {
     VoxelSample vx_sample;
-    vx_sample.mortonID  = CreateMortonCode64(input.pos_WS - Offset.xyz);
-    vx_sample.ColorR    = float4(input.UV, 0.5f, 0.5f);
-    vx_sample.POS       = float4(input.pos_WS.xyz, 0.5f);
+    //vx_sample.mortonID  = CreateMortonCode64(input.pos_WS - Offset.xyz);
+    //vx_sample.ColorR    = float4(input.UV, 0.5f, 0.5f);
+    //vx_sample.POS       = float4(input.pos_WS.xyz + float3(2, 0, 2), 0.5f);
+    vx_sample.POS       = float4(input.pos_WS.xyz, asfloat(Pack4(albedo)));
+
+    if (vx_sample.POS.x >= VOLUMESIDE_LENGTH ||
+        vx_sample.POS.y >= VOLUMESIDE_LENGTH ||
+        vx_sample.POS.z >= VOLUMESIDE_LENGTH ||
+        vx_sample.POS.x < 0 ||
+        vx_sample.POS.y < 0 ||
+        vx_sample.POS.z < 0) discard;
 
     voxelSampleBuffer.Append(vx_sample);
 }

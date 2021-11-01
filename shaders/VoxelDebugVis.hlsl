@@ -39,24 +39,24 @@ PS_output VoxelDebug_PS(const float4 pixelPosition : SV_POSITION)
     const float3 view   = GetViewVector(UV);
 
     Ray r;
-    r.origin    = CameraPOS;
-    r.dir       = normalize(view);
-    RayCastResult result = RayCastOctree(r, octree);
-    OctTreeNode node = octree[result.node];
+    r.origin                = CameraPOS;
+    r.dir                   = normalize(view);
+    RayCastResult result    = RayCastOctree(r, octree);
+    OctTreeNode node        = octree[result.node];
 
-    //float3 position = r.origin + r.dir * result.distance;
+    const float3 position = r.origin + r.dir * result.distance;
 
     if (result.distance < 0.0f)
         discard;
 
-
     PS_output Out;
     //Out.Color = float4(position, 1);
     //Out.Color = result.flags == RAYCAST_HIT ? float4(0, 1 * result.iterations / 64.0f, 1 * result.iterations, 1) : float4(1 * result.iterations / 64.0f, 0, 0, 0);
-    Out.Color = result.flags == RAYCAST_HIT ? float4(UnPack4(node.RGBA).xyz, 1) : float4(1 * result.iterations / 64.0f, 0, 0, 0);
-    Out.Depth = result.flags == RAYCAST_HIT ? (result.distance) / 10000.0f : (result.flags == RAYCAST_MISS ? 1.0f : 1.0f);
+    Out.Color = result.flags == RAYCAST_HIT ? float4(UnPack4(node.RGBA).xyz * result.iterations / 64.0f, 1) : float4(1 * result.iterations / 64.0f, 0, 0, 0);
+    //Out.Color = result.flags == RAYCAST_HIT ? float4(position / 64, 1) : float4(1 * result.iterations / 64.0f, 0, 0, 0);
+    //Out.Depth = result.flags == RAYCAST_HIT ? (result.distance) / 10000.0f : (result.flags == RAYCAST_MISS ? 1.0f : 1.0f);
     //Out.Color = result.flags == RAYCAST_ERROR ? float4(0, 1, 0, 1) : float4(1 * result.iterations / 64.0f, 0, 0, 0);
-    //Out.Depth = result.flags == RAYCAST_HIT ? 0.0f : 1.0f;
+    Out.Depth = result.flags == RAYCAST_HIT ? 0.0f : 1.0f;
 
     return Out;
 }
