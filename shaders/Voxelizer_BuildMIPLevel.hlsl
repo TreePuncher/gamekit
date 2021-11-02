@@ -51,6 +51,7 @@ void BuildLevel(const uint3 threadID : SV_DispatchThreadID)
 
     uint a          = 0;
     float4 color    = float4(0, 0, 0, 0);
+    float4 normal   = float4(0, 0, 0, 0);
 
     for (uint childIdx = 0; childIdx < 8; childIdx++)
     {
@@ -62,13 +63,15 @@ void BuildLevel(const uint3 threadID : SV_DispatchThreadID)
         a++;
 
         const uint RGBA     = octree[node.children + childIdx].RGBA;
-        const uint extra    = octree[node.children + childIdx].extra;
+        const uint normalM  = octree[node.children + childIdx].NORMALX;
 
-        color += UnPack4(RGBA);
+        color   += UnPack4(RGBA);
+        normal  += UnPack4(normalM);
     }
 
     node.flags ^= NODE_FLAGS::MIPUPDATE_REQUEST | NODE_FLAGS::COLOR;
-    node.RGBA   = Pack4(color);
+    node.RGBA       = Pack4(color / a);
+    node.NORMALX    = Pack4(normal / a);
 
     octree[nodeIdx] = node;
 

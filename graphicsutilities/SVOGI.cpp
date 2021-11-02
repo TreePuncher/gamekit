@@ -393,7 +393,8 @@ namespace FlexKit
                 ResourceHandle                  depthTarget, 
                 FrameResourceHandle             renderTarget, 
 			    ReserveConstantBufferFunction   reserveCB,
-			    iAllocator*                     allocator)
+			    iAllocator*                     allocator,
+                uint32_t                        mipOffset)
     {
         return frameGraph.AddNode<DEBUGVIS_VoxelVolume>(
             DEBUGVIS_VoxelVolume{
@@ -407,7 +408,7 @@ namespace FlexKit
                 data.indirectArgs   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DRS_UAV);
                 data.octree         = builder.NonPixelShaderResource(octreeBuffer);
             },
-			[&draw = draw](DEBUGVIS_VoxelVolume& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[mipOffset](DEBUGVIS_VoxelVolume& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
                 ctx.BeginEvent_DEBUG("VXGI_DrawVolume");
 
@@ -430,16 +431,28 @@ namespace FlexKit
                 ctx.SetRootSignature(rootSig);
                 ctx.SetPipelineState(debugVis);
 
-                CBPushBuffer constantBuffer{ data.reserveCB(AlignedSize<Camera::ConstantBuffer>()) };
+                struct debugConstants
+                {
+                    uint32_t mipOffset;
+                } constantValues{
+                    .mipOffset = mipOffset,
+                };
+
+                CBPushBuffer constantBuffer = 
+                    data.reserveCB(
+                        AlignedSize<Camera::ConstantBuffer>() +
+                        AlignedSize<debugConstants>());
 
                 const auto cameraConstantValues = GetCameraConstants(data.camera);
-                const ConstantBufferDataSet cameraConstants{ cameraConstantValues, constantBuffer };
+                const ConstantBufferDataSet cameraConstants { cameraConstantValues, constantBuffer };
+                const ConstantBufferDataSet passConstants   { constantValues, constantBuffer };
 
                 DescriptorHeap resourceHeap;
                 resourceHeap.Init2(ctx, rootSig.GetDescHeap(0), 2, &allocator);
                 resourceHeap.SetStructuredResource(ctx, 0, resources.NonPixelShaderResource(data.octree, ctx), sizeof(OctTreeNode), 4096 / sizeof(OctTreeNode));
 
                 ctx.SetGraphicsConstantBufferView(0, cameraConstants);
+                ctx.SetGraphicsConstantBufferView(1, passConstants);
                 ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 
                 ctx.SetScissorAndViewports({
@@ -741,7 +754,7 @@ namespace FlexKit
 	    auto PShader = RS->LoadShader("voxelize_PS", "ps_6_6", "assets\\shaders\\Voxelizer.hlsl");
 
 	    D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-        Rast_Desc.ConservativeRaster            = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
+        Rast_Desc.ConservativeRaster            = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
         Rast_Desc.CullMode                      = D3D12_CULL_MODE_NONE;
 
 	    D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -974,10 +987,10 @@ namespace FlexKit
             },
             [&](FrameGraphNodeBuilder& builder, VoxelizePass& data)
             {
-                data.sampleBuffer   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(256 * MEGABYTE), DRS_UAV);
-                data.tempBuffer     = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(16 * MEGABYTE), DRS_UAV);
+                data.sampleBuffer   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource((256 + 128)* MEGABYTE ), DRS_UAV);
+                data.tempBuffer     = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(32 * MEGABYTE), DRS_UAV);
                 data.argBuffer      = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4096), DRS_UAV);
-                data.parentBuffer   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(16 * MEGABYTE), DRS_UAV);
+                data.parentBuffer   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(32 * MEGABYTE), DRS_UAV);
                 data.octree         = builder.UnorderedAccess(octreeBuffer);
             },
             [&scene, this](VoxelizePass& data, ResourceHandler& resources, Context& ctx, iAllocator& TL_allocator)
@@ -1053,14 +1066,17 @@ namespace FlexKit
         ctx.SetRootSignature(voxelizeSignature);
         ctx.SetPipelineState(voxelize);
 
+        constexpr int32_t VoxelEdgeLength = 256;
+        constexpr int32_t VoxelResolution = 2048;
+
         float4 values[] = {
-            { 256, 256, 256, 128},
-            { 2048, 2048, 2048, 0 },
-            { -2, 0, -2, 0 },
+            { VoxelEdgeLength, VoxelEdgeLength, VoxelEdgeLength, VoxelEdgeLength },
+            { VoxelResolution, VoxelResolution, VoxelResolution, 0 },
+            { VoxelEdgeLength / -2, VoxelEdgeLength / -2, VoxelEdgeLength / -2, 0 },
         };
 
-        ctx.SetViewports({ D3D12_VIEWPORT{ 0, 0, 2048, 2048, 0, 1.0f } });
-        ctx.SetScissorRects({ D3D12_RECT{ 0, 0, 2048, 2048} });
+        ctx.SetViewports({ D3D12_VIEWPORT{ 0, 0, VoxelResolution, VoxelResolution, 0, 1.0f } });
+        ctx.SetScissorRects({ D3D12_RECT{ 0, 0, VoxelResolution, VoxelResolution} });
         ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
         ctx.SetGraphicsConstantValue(0, 12, values);
                 

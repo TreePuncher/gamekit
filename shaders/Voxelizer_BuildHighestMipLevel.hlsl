@@ -66,8 +66,8 @@ void FillNodes(const uint3 threadID : SV_DispatchThreadID)
             if (FlagParent(parentIdx))
                 dirtynodes.Append(parentIdx);
 
-            octree[quearyResult.node].RGBA  = asuint(voxelSample.POS.w);
-            octree[quearyResult.node].extra = asuint(Pack4(float4(1, 0, 1, 0)));
+            octree[quearyResult.node].RGBA      = asuint(voxelSample.POS.w);
+            octree[quearyResult.node].NORMALX   = asuint(Pack4(float4(1, 0, 1, 0)));
         }
     }
 }

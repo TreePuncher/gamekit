@@ -838,6 +838,7 @@ namespace FlexKit
                 shadingPass.renderTargetObject,
                 reserveCB,
                 temporary);
+                //lerp(0, 6, (cos(t) / 2 + 0.5f)));
 
         auto& OIT_blend =
             transparency.OIT_WB_Blend(
