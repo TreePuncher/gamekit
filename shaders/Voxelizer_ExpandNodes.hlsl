@@ -44,7 +44,7 @@ void ExpandNodes(const uint3 threadID : SV_DispatchThreadID)
     blankNode.children  = -1;
     blankNode.flags     = LEAF;
     blankNode.RGBA      = 0xdeadbeef;
-    blankNode.extra     = 0xdeadbeef;
+    blankNode.NORMALX   = 0xdeadbeef;
 
     for (uint I = 0; I < 8; I++)
         octree[childrenIdx + I] = blankNode;

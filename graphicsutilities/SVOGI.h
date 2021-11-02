@@ -183,7 +183,8 @@ namespace FlexKit
                 ResourceHandle                  depthTarget,
                 FrameResourceHandle             renderTarget, 
 			    ReserveConstantBufferFunction   reserveCB,
-			    iAllocator*                     allocator);
+			    iAllocator*                     allocator,
+                uint32_t                        mipOffset = 0);
 
     private:
 

@@ -10,7 +10,7 @@ void Init(uint3 threadID : SV_DispatchThreadID)
     root.children   = -1;
     root.flags      = LEAF;
     root.RGBA       = 0xdeadbeef;
-    root.extra      = 0xdeadbeef;
+    root.NORMALX    = 0xdeadbeef;
     octree[0]       = root;
     octree.IncrementCounter();
 }

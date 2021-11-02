@@ -33,9 +33,10 @@ struct VS_out
 
 struct PS_in
 {
-    float4 pos      : SV_POSITION;
-    float3 pos_WS   : POSITION_WT;
-    float2 UV       : TEXCOORD;
+    float4 pos          : SV_POSITION;
+    float3 pos_WS       : POSITION_WT;
+    float2 UV           : TEXCOORD;
+    float3 normal_WS    : NORMAL;
 };
 
 
@@ -111,9 +112,10 @@ void voxelize_GS(triangle VS_out input[3], inout TriangleStream<PS_in> outputStr
         const float3 deviceCoord        = mul(M[dominantAxis], voxelCoordinate).xyz * float3(2, -2, 0.0f) + float3(-1, 1, 0);
 
         PS_in output;
-        output.pos      = float4(deviceCoord, 1);
-        output.pos_WS   = input[II].pos_WS;
-        output.UV       = input[II].UV;
+        output.pos          = float4(deviceCoord, 1);
+        output.pos_WS       = input[II].pos_WS - Offset.xyz;
+        output.UV           = input[II].UV;
+        output.normal_WS    = input[II].normal_WS;
 
         outputStream.Append(output);
     }
@@ -136,7 +138,8 @@ void voxelize_PS(PS_in input)
     //vx_sample.mortonID  = CreateMortonCode64(input.pos_WS - Offset.xyz);
     //vx_sample.ColorR    = float4(input.UV, 0.5f, 0.5f);
     //vx_sample.POS       = float4(input.pos_WS.xyz + float3(2, 0, 2), 0.5f);
-    vx_sample.POS       = float4(input.pos_WS.xyz, asfloat(Pack4(albedo)));
+    //vx_sample.POS       = float4(input.pos_WS.xyz, asfloat(Pack4(albedo)));
+    vx_sample.POS       = float4(input.pos_WS.xyz, asfloat(Pack4(float4(input.normal_WS / 2.0f + 0.5f, 0))));
 
     if (vx_sample.POS.x >= VOLUMESIDE_LENGTH ||
         vx_sample.POS.y >= VOLUMESIDE_LENGTH ||

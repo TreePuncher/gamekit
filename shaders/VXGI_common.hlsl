@@ -19,8 +19,8 @@ struct OctTreeNode
 {
     uint    children;
     uint    flags;
-    uint    RGBA;
-    uint    extra;
+    uint    RGBA;       // albedo + R
+    uint    NORMALX;    // normal + M
 };
 
 
@@ -257,9 +257,16 @@ bool Intersection(const Ray r, const OctreeNodeVolume b, out float d)
     const float tmin = max(tsmaller[0], max(tsmaller[1], tsmaller[2]));
     const float tmax = min(tbigger[0], min(tbigger[1], tbigger[2]));
 
-    d = tmin;
-
-    return (tmin < tmax);
+    if (IsInVolume(r.origin, b))
+    {
+        d = (tmin, 0.0f);
+        return true;
+    }
+    else
+    {
+        d = tmin;
+        return (tmin < tmax);
+    }
 }
 
 struct VoxelRayIntersectionResult
@@ -582,7 +589,7 @@ RayCastResult RayCastOctree(const Ray r, in StructuredBuffer<OctTreeNode> octree
             if (MIPLevel != 0 && (MAX_DEPTH - MIPLevel == nodeCord.w))
                 return RayCast_Hit_RES(stackFrame.NodeID, distance, i);
 
-            TraceChildrenResult result = TraceChildren(r, nodeCord, stackFrame.flags, 0);
+            TraceChildrenResult result = TraceChildren(r, nodeCord, stackFrame.flags, -1);
 
             if (result.nearestChild != -1)
             {
