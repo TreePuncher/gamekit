@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "stdafx.h"
 #include "MetaData.h"
 
-namespace FlexKit::ResourceBuilder
+namespace FlexKit
 {
 	/************************************************************************************************/
 
@@ -751,8 +751,9 @@ namespace FlexKit::ResourceBuilder
 		formatter = res2->second;
 
 		SceneComponentMeta* component = new SceneComponentMeta;
-		component->metaData		= ParseSubContainer(NodeParser, tokens, begin, end);
-		component->CreateBlob	= formatter;
+		component->metaData		        = ParseSubContainer(NodeParser, tokens, begin, end);
+		component->CreateBlob	        = formatter;
+        component->componentFormatID    = componentID;
 
 		return component;
 	}

@@ -1,17 +1,22 @@
 #pragma once
 
-#include "ui_EditorInspectorView.h"
 #include "SelectionContext.h"
 
 #include <map>
 #include <qtimer.h>
-#include <QtWidgets/qwidget.h>
 #include <functional>
+#include <QtWidgets/qwidget.h>
 
-class EditorInspectorView;
 class QLabel;
+class QBoxLayout;
+class QScrollArea;
+class QWidget;
+class QMenuBar;
+class EditorInspectorView;
 
-using FieldChangeCallback = std::function<void (const std::string& string)>;
+using FieldChangeCallback   = std::function<void (const std::string& string)>;
+using ButtonCallback        = std::function<void ()>;
+
 
 class ComponentViewPanelContext
 {
@@ -21,9 +26,10 @@ public:
     QLabel* AddHeader      (std::string txt);
     QLabel* AddText        (std::string txt);
     void    AddInputBox    (std::string label, std::string initial, FieldChangeCallback);
+    void    AddButton      (std::string label, ButtonCallback);
 
-    void PushVerticalLayout();
-    void PushHorizontalLayout();
+    void PushVerticalLayout     (std::string groupName = {}, bool goup = false);
+    void PushHorizontalLayout   (std::string groupName = {}, bool goup = false);
     void Pop();
 
     std::vector<QBoxLayout*>    layoutStack;
@@ -65,9 +71,15 @@ private:
     inline static std::map<FlexKit::ComponentID, std::unique_ptr<IComponentInspector>> componentInspectors;
 
     QTimer*                 timer = new QTimer{ this };
-	Ui::EditorInspectorView ui;
+    QMenuBar*               menu;
+
     SelectionContext&       selectionContext;
     uint64_t                selectedObject = -1;
+
+    QBoxLayout*     outerLayout;
+    QBoxLayout*     contentLayout;
+    QScrollArea*    scrollArea;
+    QWidget*        contentWidget;
 
     std::vector<QBoxLayout*>    properties;
     std::vector<QWidget*>       propertyItems;

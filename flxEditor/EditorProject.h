@@ -7,7 +7,7 @@
 
 #include "Scene.h"
 #include "..\FlexKitResourceCompiler\SceneResource.h"
-
+#include "Serialization.hpp"
 
 
 class ProjectWidget
@@ -41,13 +41,19 @@ using ResourcePropertyID = uint32_t;
 class ProjectResource
 {
 public:
-    template<class Archive>
-    void serialize(Archive& ar, const unsigned int version)
+
+
+    void Serialize(auto& ar)
     {
-        ar & resource;
+        std::string tag = "ProjectResource";
+        ar& tag;
+
+        ar& resource;
+        //ar& properties;
     }
 
-    FlexKit::ResourceBuilder::Resource_ptr  resource;
+
+    FlexKit::Resource_ptr  resource;
     std::map<ResourcePropertyID, std::any>  properties;
 };
 
@@ -62,12 +68,32 @@ using ProjectResource_ptr   = std::shared_ptr<ProjectResource>;
 class EditorScene
 {
 public:
-    EditorScene(FlexKit::ResourceBuilder::SceneResource_ptr IN_scene = nullptr) : sceneResource{ IN_scene } {}
+    EditorScene(FlexKit::SceneResource_ptr IN_scene = nullptr) : sceneResource{ IN_scene } {}
 
     ProjectResource_ptr                         FindSceneResource(uint64_t resourceID);
 
+    void Serialize(auto& archive)
+    {
+        archive& sceneName;
+        archive& sceneResources;
+
+        if (archive.Loading())
+        {
+            std::shared_ptr<FlexKit::iResource> resource;
+            archive& resource;
+
+            sceneResource = std::static_pointer_cast<FlexKit::SceneResource>(resource);
+        }
+        else
+        {
+            auto casted = std::static_pointer_cast<FlexKit::SceneResource>(sceneResource);
+            archive& casted;
+        }
+
+    }
+
     std::string                                 sceneName;
-    FlexKit::ResourceBuilder::SceneResource_ptr sceneResource;
+    FlexKit::SceneResource_ptr                  sceneResource;
     std::vector<ProjectResource_ptr>            sceneResources;
 };
 
@@ -81,31 +107,12 @@ using EditorScene_ptr = std::shared_ptr<EditorScene>;
 class EditorProject
 {
 public:
-    void AddScene(EditorScene_ptr scene)
-    {
-        scenes.emplace_back(scene);
-    }
+    void AddScene       (EditorScene_ptr scene);
+    void AddResource    (FlexKit::Resource_ptr resource);
 
-    void AddResource(FlexKit::ResourceBuilder::Resource_ptr resource)
-    {
-        resources.emplace_back(ProjectResource{ resource });
-    }
+    FlexKit::ResourceList GetResources() const;
 
-    FlexKit::ResourceBuilder::ResourceList GetResources() const
-    {
-        FlexKit::ResourceBuilder::ResourceList out;
-
-        for (auto& r : resources)
-            out.push_back(r.resource);
-
-        return out;
-    }
-
-    void RemoveResource(FlexKit::ResourceBuilder::Resource_ptr resource)
-    {
-        std::erase_if(resources, [&](auto& res) -> bool { return (res.resource == resource); });
-    }
-
+    void RemoveResource(FlexKit::Resource_ptr resource);
 
     bool LoadProject(const std::string& projectDir);
     bool SaveProject(const std::string& projectDir);

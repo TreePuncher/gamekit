@@ -142,6 +142,14 @@ OctreeNodeVolume GetVolume(uint3 xyz, uint depth)
     return outVolume;
 }
 
+/************************************************************************************************/
+
+
+float3 VoxelMidPoint(OctreeNodeVolume volume)
+{
+    return (volume.min + volume.max) / 2.0f;
+}
+
 
 /************************************************************************************************/
 
@@ -175,7 +183,7 @@ uint3 WS2VolumeCord(const float3 pos_WS, const float3 volumePOS_ws, const float3
 {
     const float3 UVW = ((pos_WS - volumePOS_ws) / volumeSize) * VOLUME_RESOLUTION;
 
-    return uint3(UVW);
+    return (UVW);
 }
 
 
@@ -257,16 +265,10 @@ bool Intersection(const Ray r, const OctreeNodeVolume b, out float d)
     const float tmin = max(tsmaller[0], max(tsmaller[1], tsmaller[2]));
     const float tmax = min(tbigger[0], min(tbigger[1], tbigger[2]));
 
-    if (IsInVolume(r.origin, b))
-    {
-        d = (tmin, 0.0f);
-        return true;
-    }
-    else
-    {
-        d = tmin;
-        return (tmin < tmax);
-    }
+    d = IsInVolume(r.origin, b) ? max(tmin, 0.0f) : tmin;
+    //d = tmin;
+
+    return (tmin < tmax);
 }
 
 struct VoxelRayIntersectionResult
@@ -311,6 +313,8 @@ TraceChildrenResult TraceChildren(const Ray r, const uint4 nodeCord, const uint 
     };
 
     const uint4 childCoordinateBase = uint4(nodeCord.xyz * 2, nodeCord.w + 1);
+    const float3 parentPosition     = nodeCord.xyz * float(VOLUMESIDE_LENGTH) / pow(2, nodeCord.w);
+    const float  childScale         = float(VOLUMESIDE_LENGTH) / pow(2, childCoordinateBase.w);
 
     float   nearestDistance = 100000;
     uint    nearestChild    = -1;
@@ -318,19 +322,21 @@ TraceChildrenResult TraceChildren(const Ray r, const uint4 nodeCord, const uint 
 
     for (uint childIdx = 0; childIdx < 8; childIdx++)
     {                                                     
-        const uint childFlags   = GetChildFlags(childIdx, flags);
-
-        if (childFlags == CHILD_FLAGS::EMPTY)
+        if (GetChildFlags(childIdx, flags) == CHILD_FLAGS::EMPTY)
             continue;
 
-        const uint4 childCoordinate = childCoordinateBase + childVIDOffsets[childIdx];
-        const VoxelRayIntersectionResult result = RayChildIntersection(r, childCoordinate);
+        const float3 childPosition = parentPosition + childVIDOffsets[childIdx] * childScale;
 
-        if (result.intersects && result.distance > r_min && result.distance < nearestDistance)
+        OctreeNodeVolume b;
+        b.min = parentPosition + childVIDOffsets[childIdx] * childScale;
+        b.max = b.min + float3(childScale, childScale, childScale);
+
+        float distance;
+        if (Intersection(r, b, distance) && distance > r_min && distance < nearestDistance)
         {
             nearestChild        = childIdx;
-            nearestDistance     = result.distance;
-            nearestCoordinate   = childCoordinate;
+            nearestDistance     = distance;
+            nearestCoordinate   = childVIDOffsets[childIdx];
         }
         else continue;
     }
@@ -338,7 +344,7 @@ TraceChildrenResult TraceChildren(const Ray r, const uint4 nodeCord, const uint 
     TraceChildrenResult result;
     result.nearestDistance      = nearestDistance;
     result.nearestChild         = nearestChild;
-    result.nearestCoordinate    = nearestCoordinate;
+    result.nearestCoordinate    = childCoordinateBase + nearestCoordinate;
 
     return result;
 }
@@ -553,7 +559,7 @@ struct StackVariables
 };
 
 
-StackVariables UnpackVars(uint4 stackFrame)
+StackVariables UnpackVars(uint3 stackFrame)
 {
     StackVariables vars;
     vars.NodeID     = stackFrame.x;
@@ -564,35 +570,43 @@ StackVariables UnpackVars(uint4 stackFrame)
 }
 
 
-uint4 PackVars(uint nodeID, uint flags, uint children)
+uint3 PackVars(uint nodeID, uint flags, uint children)
 {
-    return uint4(nodeID, flags, children, 0);
+    return uint3(nodeID, flags, children);
 }
 
 
-RayCastResult RayCastOctree(const Ray r, in StructuredBuffer<OctTreeNode> octree, uint MIPLevel = 0)
+RayCastResult RayCastOctree(const Ray r, in StructuredBuffer<OctTreeNode> octree, uint MIPLevel = 0, const float MaxDistance = 20)
 {
-    uint4 stack[MAX_DEPTH + 1]; // { NodeID, Flags, children }
+    uint3 stack[MAX_DEPTH + 1]; // { NodeID, Flags, children }
     float distance      = -10000;
     uint  stackIdx      = 0;
     uint4 nodeCord      = uint4(0, 0, 0, 0);
 
     stack[0] = PackVars(0, octree[0].flags, octree[0].children);
 
-    [allow_uav_condition]
-    for (uint i = 0; i < 256; i++)
+    for (uint I = 0; I < 64; I++)
     {
         const StackVariables stackFrame = UnpackVars(stack[stackIdx]);
 
         if (stackFrame.flags & BRANCH)
-        {   // Push child
-            if (MIPLevel != 0 && (MAX_DEPTH - MIPLevel == nodeCord.w))
-                return RayCast_Hit_RES(stackFrame.NodeID, distance, i);
+        {
+            // Intersect
+            if (MAX_DEPTH - MIPLevel < nodeCord.w)
+            {
+                if (MAX_DEPTH - MIPLevel == nodeCord.w)
+                {
+                    const VoxelRayIntersectionResult result = RayChildIntersection(r, nodeCord);
+                    return RayCast_Hit_RES(stackFrame.NodeID, result.distance, I);
+                }
+                else
+                    return RayCast_Hit_RES(stackFrame.NodeID, distance, I);
+            }
 
-            TraceChildrenResult result = TraceChildren(r, nodeCord, stackFrame.flags, -1);
+            TraceChildrenResult result = TraceChildren(r, nodeCord, stackFrame.flags, -0.1f);
 
             if (result.nearestChild != -1)
-            {
+            {   // Push child
                 const uint childNodeID      = stackFrame.children + result.nearestChild;
                 const uint4 childCoordinate = result.nearestCoordinate;
                 const OctTreeNode child     = octree[childNodeID];
@@ -604,61 +618,47 @@ RayCastResult RayCastOctree(const Ray r, in StructuredBuffer<OctTreeNode> octree
             }
             else
             {   // All children miss go to next sibling
-                
-                for(uint II = 0; II < MAX_DEPTH; II++)
+                for(uint II = 0; II < MAX_DEPTH; II++, I++)
                 {
-                    if(stackIdx == 0) // at root
-                    {
-                        const uint4 parentCord = uint4(0, 0, 0, 0);
-                        TraceChildrenResult nextChildResult = TraceChildren(r, parentCord, stack[stackIdx].y, distance);
+                    const StackVariables    parentFrame     = UnpackVars(stack[stackIdx - 1]);
+                    const uint4             parentCord      = uint4(nodeCord.xyz / 2, nodeCord.w - 1);
 
-                        if(nextChildResult.nearestChild != -1)
-                        {   // Move to next sibling
-                            const uint newNodeID        = stackFrame.children + nextChildResult.nearestChild;
-                            const OctTreeNode sibling   = octree[newNodeID];
+                    const VoxelRayIntersectionResult result     = RayChildIntersection(r, parentCord);
+                    const TraceChildrenResult nextChildResult   = TraceChildren(r, parentCord, parentFrame.flags, max(result.distance, distance));
 
-                            stack[++stackIdx]   = PackVars(newNodeID, sibling.flags, sibling.children);
-                            nodeCord            = nextChildResult.nearestCoordinate;
-                            distance            = nextChildResult.nearestDistance;
-                            break;
-                        }
-                        else
-                            return RayCast_Miss_RES(i);
+                    if(nextChildResult.nearestChild != -1)
+                    {   // Move to next sibling
+                        // Advance
+                        const uint newNodeID        = parentFrame.children + nextChildResult.nearestChild;
+                        const OctTreeNode sibling   = octree[newNodeID];
+
+                        stack[stackIdx] = PackVars(newNodeID, sibling.flags, sibling.children);
+                        nodeCord        = nextChildResult.nearestCoordinate;
+                        distance        = max(nextChildResult.nearestDistance, distance);
+                        break;
                     }
                     else
-                    {
-                        const StackVariables    parentFrame     = UnpackVars(stack[stackIdx - 1]);
-                        const uint4             parentCord      = uint4(nodeCord.xyz / 2, nodeCord.w - 1);
-
-                        const VoxelRayIntersectionResult result     = RayChildIntersection(r, parentCord);
-                        const TraceChildrenResult nextChildResult   = TraceChildren(r, parentCord, parentFrame.flags, max(result.distance, distance));
-
-                        if(nextChildResult.nearestChild != -1)
-                        {   // Move to next sibling
-                            const uint newNodeID        = parentFrame.children + nextChildResult.nearestChild;
-                            const OctTreeNode sibling   = octree[newNodeID];
-
-                            stack[stackIdx] = PackVars(newNodeID, sibling.flags, sibling.children);
-                            nodeCord        = nextChildResult.nearestCoordinate;
-                            distance        = max(nextChildResult.nearestDistance, distance);
-                            break;
-                        }
-                        else
-                        {   // missed all siblings, go to next parent
-                            stackIdx--;
-                            nodeCord = uint4(nodeCord.xyz / 2, nodeCord.w - 1);
-                            distance = max(result.distance, distance);
-                            continue;
-                        }
+                    {   // missed all siblings, go to next parent
+                        // Pop
+                        stackIdx--;
+                        nodeCord = uint4(nodeCord.xyz / 2, nodeCord.w - 1);
+                        distance = max(result.distance, distance);
+                        continue;
                     }
-
-                    if (II + 1 == MAX_DEPTH)
-                        return RayCast_Error_RES();
                 }
+
+                if (II + 1 == MAX_DEPTH)
+                    return RayCast_Error_RES();
             }
+
+            if (distance * 32.0f > (float(VOLUMESIDE_LENGTH) / pow(2.0f, MIPLevel)))
+                MIPLevel++;
         }
         else if (stackFrame.flags & LEAF)
-            return RayCast_Hit_RES(stackFrame.NodeID, distance, i);
+            return RayCast_Hit_RES(stackFrame.NodeID, distance, I);
+
+        if (distance > MaxDistance)
+            return RayCast_Miss_RES(I);
     }
 
     return RayCast_Error_RES();

@@ -401,7 +401,7 @@ namespace FlexKit
         ~TextureStreamingEngine();
 
 
-        TextureFeedbackPass_Data& TextureFeedbackPass(
+        void TextureFeedbackPass(
             UpdateDispatcher&               dispatcher,
             FrameGraph&                     frameGraph,
             CameraHandle                    camera,

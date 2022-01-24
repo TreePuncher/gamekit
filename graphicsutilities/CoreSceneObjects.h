@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "buildsettings.h"
 #include "MathUtils.h"
 #include "ResourceHandles.h"
+#include "Transforms.h"
 
 #include <DirectXMath.h>
 
@@ -72,21 +73,22 @@ namespace FlexKit
 		ConstantBuffer			    GetConstants() const;
         ConstantBuffer			    GetCameraPreviousConstants() const;
 		float4x4				    GetPV();
-		NodeHandle				Node;
 
-		float FOV;
-		float AspectRatio;
-		float Near;
-		float Far;
-		bool  invert;
-		float fStop;	// Future
-		float ISO;		// Future
+		NodeHandle	Node;
 
-		float4x4 View;
-		float4x4 Proj;
-		float4x4 WT;	// World Transform
-		float4x4 PV;	// Projection x View
-		float4x4 IV;	// Inverse Transform
+		float       FOV;
+		float       AspectRatio;
+		float       Near;
+		float       Far;
+		bool        invert;
+		float       fStop;	// Future
+		float       ISO;		// Future
+
+		float4x4    View;
+		float4x4    Proj;
+		float4x4    WT;	// World Transform
+		float4x4    PV;	// Projection x View
+		float4x4    IV;	// Inverse Transform
 
 
         struct PreviousFrameState

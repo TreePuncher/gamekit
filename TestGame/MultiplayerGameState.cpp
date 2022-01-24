@@ -137,10 +137,17 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
 
         testAnimationResource   { LoadAnimation("TestRigAction", IN_framework.core.GetBlockMemory()) }
 {
-    base.PixCapture();
-
+    //base.PixCapture();
     //base.renderWindow.ToggleMouseCapture();
+
     auto& renderSystem = framework.core.RenderSystem;
+    
+    D3D12_STATE_OBJECT_DESC stateObjects[] =
+    {
+        D3D12_STATE_OBJECT_DESC{}
+    };
+
+    //renderSystem.pDevice->CreateStateObject(stateObjects);
 
     renderSystem.RegisterPSOLoader(INSTANCEPARTICLEDPASS,       { &renderSystem.Library.RSDefault, CreateParticleMeshInstancedPSO });
     renderSystem.RegisterPSOLoader(INSTANCEPARTICLEDEPTHDPASS,  { &renderSystem.Library.RSDefault, CreateParticleMeshInstancedDepthPSO });
@@ -151,7 +158,6 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
             EventHandler(evt);
         }
     );
-
 
     particleEmitter.AddView<SceneNodeView<>>();
     auto& emitterView       = particleEmitter.AddView<ParticleEmitterView>(ParticleEmitterData{ &testParticleSystem, GetSceneNode(particleEmitter) });
@@ -237,7 +243,7 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
             base.render.AddTask(
                 [&](auto& frameGraph, auto& frameResources)
                 {
-                    base.render.VoxelizeScene(frameGraph, scene, frameResources.reserveCB, frameResources.passes);
+                    base.render.BuildSceneGI(frameGraph, scene, frameResources.passes, frameResources.reserveCB);
                 });
         });
 }
@@ -401,7 +407,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
                                 core.GetBlockMemory(),
                                 core.GetTempMemoryMT());
 
-        auto& feedbackPass = base.streamingEngine.TextureFeedbackPass(
+        base.streamingEngine.TextureFeedbackPass(
                                 dispatcher,
                                 frameGraph,
                                 activeCamera,
@@ -553,7 +559,7 @@ bool LocalGameState::EventHandler(Event evt)
                     framework.GetRenderSystem().QueuePSOLoad(OITDRAW);
                     */
 
-                    
+                    framework.GetRenderSystem().QueuePSOLoad(SHADINGPASS);
                     framework.GetRenderSystem().QueuePSOLoad(VXGI_DRAWVOLUMEVISUALIZATION);
 
                     return true;

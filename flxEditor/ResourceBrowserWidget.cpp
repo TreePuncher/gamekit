@@ -160,7 +160,7 @@ QVariant ResourceItemModel::headerData(int section, Qt::Orientation orientation,
 /************************************************************************************************/
 
 
-FlexKit::ResourceBuilder::Resource_ptr  ResourceItemModel::GetResource(const uint64_t index)
+FlexKit::Resource_ptr  ResourceItemModel::GetResource(const uint64_t index)
 {
     return project.resources[index].resource;
 }
@@ -215,7 +215,7 @@ QVariant ResourceItemModel::data(const QModelIndex& index, int role) const
 /************************************************************************************************/
 
 
-void ResourceItemModel::Remove(FlexKit::ResourceBuilder::Resource_ptr resource)
+void ResourceItemModel::Remove(FlexKit::Resource_ptr resource)
 {
     project.RemoveResource(resource);
 }

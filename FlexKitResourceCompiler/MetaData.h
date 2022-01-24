@@ -27,14 +27,25 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "memoryutilities.h"
 #include "Assets.h"
+#include "Serialization.hpp"
+
 
 using FlexKit::iAllocator;
 
-namespace FlexKit::ResourceBuilder
+
+namespace FlexKit
 {
 	// Resource Compiler Functions
-	struct MetaData
+	struct MetaData : public SerializableInterface<GetTypeGUID(MetaData)>
 	{
+        template<typename TY_Archive>
+        void Serialize(TY_Archive& archive)
+        {
+            archive& UserType;
+            archive& type;
+            archive& ID;
+        }
+
 		enum class EMETAINFOTYPE
 		{
 			EMI_STRING,
@@ -92,12 +103,21 @@ namespace FlexKit::ResourceBuilder
 	/************************************************************************************************/
 
 
-	struct Skeleton_MetaData : public MetaData
+	struct Skeleton_MetaData : public Serializable<Skeleton_MetaData, MetaData, GetTypeGUID(Skeleton_MetaData)>
 	{
 		Skeleton_MetaData(){
 			UserType	= MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETON;
 			type		= MetaData::EMETAINFOTYPE::EMI_SKELETAL;
 		}
+
+        template<typename TY_Archive>
+        void Serialize(TY_Archive& archive)
+        {
+            MetaData::Serialize(archive);
+
+            archive& SkeletonID;
+            archive& SkeletonGUID;
+        }
 
 		std::string	SkeletonID;
 		GUID_t		SkeletonGUID;			
@@ -109,12 +129,24 @@ namespace FlexKit::ResourceBuilder
 	/************************************************************************************************/
 
 
-	struct SkeletalAnimationClip_MetaData : public MetaData
+	struct SkeletalAnimationClip_MetaData : public Serializable<SkeletalAnimationClip_MetaData, MetaData, GetTypeGUID(SkeletalAnimationClip_MetaData)>
 	{
         SkeletalAnimationClip_MetaData() {
 			UserType = MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETON;
 			type	 = MetaData::EMETAINFOTYPE::EMI_SKELETALANIMATION;
 		}
+
+        template<typename TY_Archive>
+        void Serialize(TY_Archive& archive)
+        {
+            MetaData::Serialize(archive);
+
+            archive& ClipID;
+            archive& T_Start;
+            archive& T_End;
+            archive& frameRate;
+            archive& guid;
+        }
 
 		std::string	ClipID;// Mesh Name
 		double		T_Start;
@@ -127,12 +159,22 @@ namespace FlexKit::ResourceBuilder
 	/************************************************************************************************/
 
 
-	struct AnimationEvent_MetaData : public MetaData
+	struct AnimationEvent_MetaData : public Serializable<AnimationEvent_MetaData, MetaData, GetTypeGUID(AnimationEvent_MetaData)>
 	{
 		AnimationEvent_MetaData() {
 			UserType = MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETALANIMATION;
 			type	 = MetaData::EMETAINFOTYPE::EMI_ANIMATIONEVENT;
 		}
+
+        template<typename TY_Archive>
+        void Serialize(TY_Archive& archive)
+        {
+            MetaData::Serialize(archive);
+
+            archive& ClipID;
+            archive& EventID;
+            archive& EventT;
+        }
 
 		std::string	ClipID;//
 		uint32_t	EventID;//
@@ -143,12 +185,22 @@ namespace FlexKit::ResourceBuilder
 	/************************************************************************************************/
 
 	// Replaces provided GUID with a specific one
-	struct Mesh_MetaData : public MetaData
+	struct Mesh_MetaData : public Serializable<Mesh_MetaData, MetaData, GetTypeGUID(Mesh_MetaData)>
 	{
 		Mesh_MetaData(){
 			UserType	= MetaData::EMETA_RECIPIENT_TYPE::EMR_MESH;
 			type		= MetaData::EMETAINFOTYPE::EMI_MESH;
 		}
+
+        template<typename TY_Archive>
+        void Serialize(TY_Archive& archive)
+        {
+            MetaData::Serialize(archive);
+
+            archive& guid;
+            archive& ColliderGUID;
+            archive& MeshID;
+        }
 
 		GUID_t		guid;
 		GUID_t		ColliderGUID;
@@ -159,13 +211,23 @@ namespace FlexKit::ResourceBuilder
 	/************************************************************************************************/
 
 
-	struct Scene_MetaData : public MetaData
+	struct Scene_MetaData : public Serializable<Scene_MetaData, MetaData, GetTypeGUID(Scene_MetaData)>
 	{
 		Scene_MetaData(){
 			UserType	= MetaData::EMETA_RECIPIENT_TYPE::EMR_NODE;
 			type		= MetaData::EMETAINFOTYPE::EMI_SCENE;
 			Guid		= INVALIDHANDLE;
 		}
+
+        template<typename TY_Archive>
+        void Serialize(TY_Archive& archive)
+        {
+            MetaData::Serialize(archive);
+
+            archive& Guid;
+            archive& SceneID;
+            archive& sceneMetaData;
+        }
 
 		GUID_t		Guid;
 		std::string	SceneID;
@@ -177,11 +239,22 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
-    struct TextureCubeMapMipLevel_MetaData : public MetaData
+    struct TextureCubeMapMipLevel_MetaData : public Serializable<TextureCubeMapMipLevel_MetaData, MetaData, GetTypeGUID(TextureCubeMapMipLevel_MetaData)>
     {
         TextureCubeMapMipLevel_MetaData() {
             UserType    = MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
             type        = MetaData::EMETAINFOTYPE::EMI_CUBEMAPTEXTURE;
+        }
+
+        template<typename TY_Archive>
+        void Serialize(TY_Archive& archive)
+        {
+            MetaData::Serialize(archive);
+
+            archive& level;
+
+            for(auto& TextureFile : TextureFiles)
+                archive& TextureFile;
         }
 
         uint32_t        level;
@@ -197,6 +270,18 @@ namespace FlexKit::ResourceBuilder
 			Guid		= INVALIDHANDLE;
 		}
 
+        template<typename TY_Archive>
+        void Serialize(TY_Archive& archive)
+        {
+            MetaData::Serialize(archive);
+
+            archive& Guid;
+            archive& AssetID;
+            archive& ID;
+            archive& mipLevels;
+            archive& format;
+        }
+
 		GUID_t		           Guid;
         AssetHandle            AssetID;
         std::string            ID;
@@ -208,11 +293,21 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
-    struct TextureMipLevel_MetaData : public MetaData
+    struct TextureMipLevel_MetaData : public Serializable<TextureMipLevel_MetaData, MetaData, GetTypeGUID(TextureMipLevel_MetaData)>
     {
         TextureMipLevel_MetaData() {
             UserType = MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
             type = MetaData::EMETAINFOTYPE::EMI_CUBEMAPTEXTURE;
+        }
+
+        template<typename TY_Archive>
+        void Serialize(TY_Archive& archive)
+        {
+            MetaData::Serialize(archive);
+
+            archive& level;
+            archive& file;
+
         }
 
         uint32_t        level;
@@ -220,11 +315,27 @@ namespace FlexKit::ResourceBuilder
     };
 
 
-    struct Texture_MetaData : public MetaData
+    struct Texture_MetaData : public Serializable<Texture_MetaData, MetaData, GetTypeGUID(Texture_MetaData)>
     {
         Texture_MetaData() {
             UserType    = MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
             type        = MetaData::EMETAINFOTYPE::EMI_TEXTURE;
+        }
+
+        template<typename TY_Archive>
+        void Serialize(TY_Archive& archive)
+        {
+            MetaData::Serialize(archive);
+
+            archive& assetID;
+            archive& generateMipMaps;
+            archive& compressTexture;
+            archive& compressionQuality;
+            archive& stringID;
+            archive& mipLevels;
+            archive& format;
+            archive& file;
+
         }
 
         AssetHandle            assetID              = rand();
@@ -242,13 +353,23 @@ namespace FlexKit::ResourceBuilder
 	/************************************************************************************************/
 
 
-	struct Collider_MetaData : public MetaData
+	struct Collider_MetaData : public Serializable<Collider_MetaData, MetaData, GetTypeGUID(Collider_MetaData)>
 	{
 		Collider_MetaData(){
 			UserType		= MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
 			type			= MetaData::EMETAINFOTYPE::EMI_COLLIDER;
 			Guid			= INVALIDHANDLE;
 		}
+
+        template<typename TY_Archive>
+        void Serialize(TY_Archive& archive)
+        {
+            MetaData::Serialize(archive);
+
+            archive& Guid;
+            archive& ColliderID;
+
+        }
 
 		GUID_t		Guid;
 		std::string	ColliderID;
@@ -258,7 +379,7 @@ namespace FlexKit::ResourceBuilder
 	/************************************************************************************************/
 
 
-	struct TerrainCollider_MetaData : public MetaData
+	struct TerrainCollider_MetaData : public Serializable<TerrainCollider_MetaData, MetaData, GetTypeGUID(TerrainCollider_MetaData)>
 	{
 		TerrainCollider_MetaData() {
 			UserType	      = MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
@@ -266,6 +387,15 @@ namespace FlexKit::ResourceBuilder
 			Guid              = INVALIDHANDLE;
 		}
 
+        template<typename TY_Archive>
+        void Serialize(TY_Archive& archive)
+        {
+            MetaData::Serialize(archive);
+
+            archive& Guid;
+            archive& ColliderID;
+            archive& BitmapFileLoc;
+        }
 
 		GUID_t		Guid;
 		std::string	ColliderID;
@@ -277,8 +407,18 @@ namespace FlexKit::ResourceBuilder
 	/************************************************************************************************/
 
 
-	struct Font_MetaData : public MetaData
+	struct Font_MetaData : public Serializable<Font_MetaData, MetaData, GetTypeGUID(Font_MetaData)>
 	{
+        template<typename TY_Archive>
+        void Serialize(TY_Archive& archive)
+        {
+            MetaData::Serialize(archive);
+
+            archive& Guid;
+            archive& FontID;
+            archive& FontFile;
+        }
+
 		GUID_t	Guid;
 		std::string	FontID;
 		std::string	FontFile;
@@ -288,15 +428,30 @@ namespace FlexKit::ResourceBuilder
 	/************************************************************************************************/
 
 
-	class ScenePointLightMeta : public MetaData
+	class ScenePointLightMeta : public Serializable<ScenePointLightMeta, MetaData, GetTypeGUID(ScenePointLightMeta)>
 	{
 	public:
+
+        template<typename TY_Archive>
+        void Serialize(TY_Archive& archive)
+        {
+            MetaData::Serialize(archive);
+
+            archive& color;
+            archive& intensity;
+            archive& radius;
+        }
+
 		float3	color;
 		float	intensity;
 		float	radius;
 	};
 
-	class SceneElementMeta : public MetaData
+
+    /************************************************************************************************/
+
+
+	class SceneElementMeta : public Serializable<SceneElementMeta, MetaData, GetTypeGUID(SceneElementMeta)>
 	{
 	public:
 		static SceneElementMeta Node() {
@@ -314,6 +469,15 @@ namespace FlexKit::ResourceBuilder
 
 			return element;
 		}
+
+        template<typename TY_Archive>
+        void Serialize(TY_Archive& archive)
+        {
+            MetaData::Serialize(archive);
+
+            archive& id;
+            archive& metaData;
+        }
 
 		std::string		id = "";
 		MetaDataList	metaData;
@@ -342,11 +506,27 @@ namespace FlexKit::ResourceBuilder
 	};
 
 
-	class SceneComponentMeta : public MetaData
+	class SceneComponentMeta : public Serializable<SceneComponentMeta, MetaData, GetTypeGUID(SceneComponentMeta)>
 	{
 	public:
-		FNComponentBlobFormatter CreateBlob;
+        template<typename TY_archive>
+        void Serialize(TY_archive& archive)
+        {
+            archive& id;
+            archive& metaData;
+            archive& componentFormatID;
 
+            if (archive.Loading())
+            {
+                auto res2 = ComponentBlobFormatters.find(componentFormatID);
+                if (res2 != ComponentBlobFormatters.end())
+                    CreateBlob = res2->second;
+            }
+        }
+
+        FNComponentBlobFormatter CreateBlob;
+
+        uint32_t        componentFormatID = -1;
 		std::string		id = "";
 		MetaDataList	metaData;
 	};

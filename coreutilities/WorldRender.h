@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene.h"
 #include "ShadowMapping.h"
 #include "SVOGI.h"
+#include "GILightingUtilities.h"
 
 #include <DXProgrammableCapture.h>
 
@@ -395,8 +396,6 @@ namespace FlexKit
 	class FLEXKITAPI WorldRender
 	{
     public:
-
-
         WorldRender(RenderSystem&, TextureStreamingEngine&, iAllocator* persistent);
 		~WorldRender();
 
@@ -508,13 +507,13 @@ namespace FlexKit
         }
 
 
-        void VoxelizeScene(
+        void BuildSceneGI(
             FrameGraph&                     frameGraph,
             Scene&                          scene,
-            ReserveConstantBufferFunction   reserveCB,
-            GatherPassesTask&               passes)
+            GatherPassesTask&               passes,
+            ReserveConstantBufferFunction&  reserveCB)
         {
-            lightingEngine.VoxelizeScene(frameGraph, scene, reserveCB, passes);
+            lightingEngine.BuildScene(frameGraph, scene, passes, reserveCB);
         }
 
 	private:
@@ -530,10 +529,10 @@ namespace FlexKit
 
         ResourceHandle          clusterBuffer = InvalidHandle_t;
 
-        ClusteredRender         clusteredRender;
-        ShadowMapper            shadowMapping;
-        GILightingEngine        lightingEngine;
-        Transparency            transparency;
+        ClusteredRender             clusteredRender;
+        ShadowMapper                shadowMapping;
+        Transparency                transparency;
+        GlobalIlluminationEngine    lightingEngine;
 
         static_vector<RenderTask>   pendingGPUTasks; // Tasks must be completed prior to rendering
 

@@ -11,7 +11,7 @@
 
 #include "fbxsdk.h"
 
-namespace FlexKit::ResourceBuilder
+namespace FlexKit
 {   /************************************************************************************************/
 
     

@@ -16,7 +16,7 @@
 #include "../flxEditor/Serialization.h"
 
 
-namespace FlexKit::ResourceBuilder
+namespace FlexKit
 {   /************************************************************************************************/
 
 
@@ -112,15 +112,21 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
-    class TextureResource : public FlexKit::ResourceBuilder::iResource
+    class TextureResource : public FlexKit::iResource
     {
     public:
         friend class boost::serialization::access;
 
         template<class Archive>
+        void serialize(Archive& ar)
+        {
+        }
+
+        /*
+        template<class Archive>
         void serialize(Archive& ar, const unsigned int version)
         {
-            ar & boost::serialization::base_object<FlexKit::ResourceBuilder::iResource>(*this);
+            ar & boost::serialization::base_object<FlexKit::iResource>(*this);
             ar & ID;
             ar & assetHandle;
             ar & format;
@@ -135,6 +141,7 @@ namespace FlexKit::ResourceBuilder
 
             ar & boost::serialization::make_binary_object(buffer, bufferSize);
         }
+        */
 
         TextureResource() {}
 

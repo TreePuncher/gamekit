@@ -14,14 +14,19 @@ EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FK
     worldRender     { IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory() },
 
 
-    brushComponent      { IN_framework.core.GetBlockMemory(), IN_framework.core.RenderSystem },
-    stringIDComponent   { IN_framework.core.GetBlockMemory() },
-    materialComponent   { IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory() },
-    cameraComponent     { IN_framework.core.GetBlockMemory() },
-    visibilityComponent { IN_framework.core.GetBlockMemory() },
-    skeletonComponent   { IN_framework.core.GetBlockMemory() },
-    animatorComponent   { IN_framework.core.GetBlockMemory() },
-    pointLightComponent { IN_framework.core.GetBlockMemory() }
+    brushComponent          { IN_framework.core.GetBlockMemory(), IN_framework.core.RenderSystem },
+    stringIDComponent       { IN_framework.core.GetBlockMemory() },
+    materialComponent       { IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory() },
+    cameraComponent         { IN_framework.core.GetBlockMemory() },
+    visibilityComponent     { IN_framework.core.GetBlockMemory() },
+    skeletonComponent       { IN_framework.core.GetBlockMemory() },
+    animatorComponent       { IN_framework.core.GetBlockMemory() },
+
+    pointLightComponent     { IN_framework.core.GetBlockMemory() },
+    pointLightShadowMaps    { IN_framework.core.GetBlockMemory() },
+
+    ikTargetComponent       { IN_framework.core.GetBlockMemory() },
+    ikComponent             { IN_framework.core.GetBlockMemory() }
 {
     auto& renderSystem = framework.GetRenderSystem();
     renderSystem.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_PSO, { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateTexturedTriStatePSO });
@@ -45,9 +50,9 @@ EditorRenderer::~EditorRenderer()
 /************************************************************************************************/
 
 
-void EditorRenderer::DrawOneFrame()
+void EditorRenderer::DrawOneFrame(double dT)
 {
-    application.DrawOneFrame(0.0);
+    application.DrawOneFrame(dT);
 }
 
 
@@ -78,7 +83,7 @@ void EditorRenderer::DrawRenderWindow(DXRenderWindow* renderWindow)
 /************************************************************************************************/
 
 
-FlexKit::TriMeshHandle EditorRenderer::LoadMesh(FlexKit::ResourceBuilder::MeshResource& mesh)
+FlexKit::TriMeshHandle EditorRenderer::LoadMesh(FlexKit::MeshResource& mesh)
 {
     auto& renderSystem  = framework.GetRenderSystem();
     auto  copyContext   = renderSystem.GetImmediateUploadQueue();
@@ -90,7 +95,9 @@ FlexKit::TriMeshHandle EditorRenderer::LoadMesh(FlexKit::ResourceBuilder::MeshRe
         FlexKit::TriMesh::LOD_Runtime lodData;
 
         lodData.subMeshes   = lod.submeshes;
-        lodData.buffers     = lod.buffers;
+
+        for(size_t I = 0; I < lod.buffers.size(); I++)
+            lodData.buffers[I] = lod.buffers[I].get();
 
         FlexKit::CreateVertexBuffer(renderSystem, copyContext, lodData.buffers.data(), lodData.buffers.size(), lodData.vertexBuffer);
 

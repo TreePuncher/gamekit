@@ -555,14 +555,14 @@ namespace FlexKit
 
             UAVPool                     { renderSystem, 512 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
             UAVTexturePool              { renderSystem, 256 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent },
-            RTPool                      { renderSystem, 512 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::RenderTarget, persistent },
+            RTPool                      { renderSystem, 512 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget, persistent },
 
             timeStats                   { renderSystem.CreateTimeStampQuery(256) },
             timingReadBack              { renderSystem.CreateReadBackBuffer(512) }, 
 
 			streamingEngine		        { IN_streamingEngine },
 
-            lightingEngine              { renderSystem, *persistent },
+            lightingEngine              { renderSystem, *persistent, EGITECHNIQUE::DISABLE },
             shadowMapping               { renderSystem },
             clusteredRender             { renderSystem, *persistent },
             transparency                { renderSystem }
@@ -634,9 +634,9 @@ namespace FlexKit
             });
 
         pendingGPUTasks.emplace_back(
-            [&](FrameGraph& frameGraph, auto&)
+            [&](FrameGraph& frameGraph, auto& resources)
             {
-                lightingEngine.InitializeOctree(frameGraph);
+                lightingEngine.Init(frameGraph, resources.reserveCB);
             });
 
         readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
@@ -793,6 +793,17 @@ namespace FlexKit
                 t,
                 &temporary);
 
+        /*
+        auto& updateVolumes =
+            lightingEngine.UpdateVoxelVolumes(
+                dispatcher,
+                frameGraph,
+                camera,
+                depthTarget.Get(),
+                reserveCB,
+                temporary);
+        */
+
         auto& shadingPass =
             clusteredRender.ClusteredShading(
                 dispatcher,
@@ -808,6 +819,18 @@ namespace FlexKit
                 t,
                 temporary);
 
+        lightingEngine.RayTrace(
+                dispatcher,
+                frameGraph,
+                camera,
+                sceneDesc.passes,
+                depthTarget.Get(),
+                shadingPass.renderTargetObject,
+                gbuffer,
+                reserveCB,
+                temporary);
+
+        /*
         auto& OIT_pass =
             transparency.OIT_WB_Pass(
                 dispatcher,
@@ -818,28 +841,6 @@ namespace FlexKit
                 reserveCB,
                 temporary);
 
-        /*
-        auto& updateVolumes =
-            lightingEngine.UpdateVoxelVolumes(
-                dispatcher,
-                frameGraph,
-                camera,
-                depthTarget.Get(),
-                reserveCB,
-                temporary);
-        */
-
-        auto& volumeVis =
-            lightingEngine.DrawVoxelVolume(
-                dispatcher,
-                frameGraph,
-                camera,
-                depthTarget.Get(),
-                shadingPass.renderTargetObject,
-                reserveCB,
-                temporary);
-                //lerp(0, 6, (cos(t) / 2 + 0.5f)));
-
         auto& OIT_blend =
             transparency.OIT_WB_Blend(
                 dispatcher,
@@ -847,6 +848,7 @@ namespace FlexKit
                 OIT_pass,
                 shadingPass.renderTargetObject,
                 temporary);
+        */
 
         auto& toneMapped =
             RenderPBR_ToneMapping(
@@ -858,6 +860,7 @@ namespace FlexKit
                 reserveVB,
                 drawSceneDesc.dt,
                 temporary);
+
 
         if (drawSceneDesc.debugDisplay == DebugVisMode::ClusterVIS)
         {
@@ -884,6 +887,11 @@ namespace FlexKit
                 drawSceneDesc.BVHVisMode,
                 temporary);
         }
+
+        clusteredRender.ReleaseFrameResources(
+            frameGraph,
+            lightPass,
+            shadingPass);
 
         return DrawOutputs{
                     passes,
@@ -1493,13 +1501,10 @@ namespace FlexKit
                 //data.sourceTarget   = builder.ReadTransition(source, DRS_NonPixelShaderResource);
                 //data.temp1Buffer    = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT), DRS_UAV);
                 //data.temp2Buffer    = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT), DRS_UAV);
-
-                builder.ReleaseVirtualResource(source);
             },
 			[]
 			(ToneMap& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
-
                 ctx.CopyResource(resources.GetResource(data.outputTarget), resources.GetResource(data.sourceTarget));
 
                 /*

@@ -37,9 +37,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <array>
 #include <optional>
 
-namespace FlexKit::ResourceBuilder
-{   /************************************************************************************************/
+#include "../flxEditor/Serialization.h"
 
+
+namespace FlexKit
+{   /************************************************************************************************/
 
 
 	struct FBXVertexLayout
@@ -52,7 +54,7 @@ namespace FlexKit::ResourceBuilder
 	};
 
 
-	struct SkinDeformer
+	struct MeshSkinDeformer
 	{
 		struct BoneWeights
 		{
@@ -80,7 +82,7 @@ namespace FlexKit::ResourceBuilder
 
 		size_t          ID      = (uint32_t)rand();
 
-		SkinDeformer                       skin;
+        MeshSkinDeformer                   skin;
 		SkeletonResource_ptr               skeleton;
 
 		MeshUtilityFunctions::TokenList     tokens;
@@ -93,6 +95,7 @@ namespace FlexKit::ResourceBuilder
 
 	using MeshKDBTree_ptr = std::shared_ptr<FlexKit::MeshUtilityFunctions::MeshKDBTree>;
 
+
     struct SubMeshResource
     {
         uint32_t    BaseIndex;
@@ -100,18 +103,82 @@ namespace FlexKit::ResourceBuilder
         AABB        aabb;
     };
 
-
     struct LevelOfDetail
     {
-        static_vector<SubMesh, 32>          submeshes;
-        static_vector<VertexBufferView*>    buffers;
+        static_vector<SubMesh, 32>                          submeshes;
+        static_vector<std::shared_ptr<VertexBufferView>>    buffers;
 
         size_t IndexCount;
         size_t IndexBuffer_Idx;
     };
 
-	struct MeshResource : public iResource
+
+    /************************************************************************************************/
+
+
+    template<class Archive>
+    void Serialize(Archive& ar, FlexKit::AABB& aabb)
+    {
+        ar& aabb.Min;
+        ar& aabb.Max;
+    }
+
+
+    template<class Archive>
+    void Serialize(Archive& ar, TextureCoordinateToken& texcord)
+    {
+        ar& texcord.UV;
+        ar& texcord.index;
+    }
+
+
+    void Serialize(auto& arc, FlexKit::MeshUtilityFunctions::MeshKDBTree::KDBNode& unoptimizedMesh)
+    {
+        arc& unoptimizedMesh.left;
+        arc& unoptimizedMesh.right;
+
+        arc& unoptimizedMesh.aabb;
+
+        arc& unoptimizedMesh.begin;
+        arc& unoptimizedMesh.end;
+    }
+
+
+    void Serialize(auto& ar, FlexKit::MeshUtilityFunctions::MeshKDBTree& meshKDBTree)
+    {
+        ar& meshKDBTree.mesh;
+        ar& meshKDBTree.leafNodes;
+        ar& meshKDBTree.root;
+    }
+
+
+    template<class Archive>
+    void Serialize(Archive& ar, SubMesh& sm)
+    {
+        ar& sm.BaseIndex;
+        ar& sm.IndexCount;
+        ar& sm.aabb;
+    }
+
+
+    template<class Archive>
+    void Serialize(Archive& ar, LevelOfDetail& lod)
+    {
+        ar& lod.submeshes;
+        ar& lod.buffers;
+
+        ar& lod.IndexCount;
+        ar& lod.IndexBuffer_Idx;
+    }
+
+
+    /************************************************************************************************/
+
+
+	class MeshResource :
+        public Serializable<MeshResource, iResource, GetTypeGUID(MeshResource)>
 	{
+    public:
         ResourceBlob CreateBlob() override;
 
         const ResourceID_t GetResourceTypeID()  const override { return MeshResourceTypeID; }
@@ -150,6 +217,13 @@ namespace FlexKit::ResourceBuilder
 			size_t  numFaces;
 			int*	numVertsPerFace;
 			int*	IndicesPerFace;
+
+            template<class Archive>
+            void serialize(Archive& ar, const unsigned int version)
+            {
+                ar& numVertices;
+                ar& numFaces;
+            }
 		};
 
 		std::string			ID;
@@ -211,17 +285,40 @@ namespace FlexKit::ResourceBuilder
         */
 		}
 
+
+        template<class Archive>
+        void Serialize(Archive& ar)
+        {
+            ar& ID;
+
+            ar& Info.Offset;
+            ar& Info.Min;
+            ar& Info.Max;
+            ar& Info.r;
+
+            ar& kdbTree_0;
+            ar& AABB;
+            ar& BS;
+
+            ar& Skeleton;
+            ar& SkeletonGUID;
+
+            ar& LODs;
+            ar& subDivs;
+        }
+
+
 		// Visibility Information
-		MeshKDBTree_ptr kdbTree_0;
-		AABB			AABB;
-		BoundingSphere	BS;
+		MeshKDBTree_ptr             kdbTree_0;
+		AABB			            AABB;
+		BoundingSphere	            BS;
 
-		SkeletonResource_ptr	Skeleton;
-		size_t					SkeletonGUID;
+		SkeletonResource_ptr	    Skeleton;
+		size_t					    SkeletonGUID;
 
 
-		std::vector<LevelOfDetail>			LODs;
-        std::vector<SubDivInfo>				subDivs;
+		std::vector<LevelOfDetail>  LODs;
+        std::vector<SubDivInfo>		subDivs;
 	};
 
 

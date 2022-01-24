@@ -54,6 +54,9 @@
     <QtMoc Include="EditorInspectorView.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="SceneOutliner.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DXRenderWindow.cpp">
@@ -120,6 +123,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="EditorInspectorView.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SceneOutliner.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -189,8 +195,16 @@
     <QtUic Include="EditorViewport.ui">
       <Filter>Form Files</Filter>
     </QtUic>
-    <QtUic Include="EditorInspectorView.ui">
+    <QtUic Include="SceneOutliner.ui">
       <Filter>Form Files</Filter>
     </QtUic>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\coreutilities\Serialization.hpp">
+      <Filter>Header Files</Filter>
+    </Text>
+    <Text Include="..\coreutilities\Serialization.cpp">
+      <Filter>Source Files</Filter>
+    </Text>
   </ItemGroup>
 </Project>

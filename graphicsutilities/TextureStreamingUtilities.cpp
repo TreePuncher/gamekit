@@ -1,7 +1,7 @@
 #include "TextureStreamingUtilities.h"
 #include "ProfilingUtilities.h"
 #include "Graphics.h"
-#include <ranges>
+#include <range/v3/all.hpp>
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -168,8 +168,8 @@ namespace FlexKit
 
     ID3D12PipelineState* CreateTextureFeedbackPassPSO(RenderSystem* RS)
     {
-        auto VShader = RS->LoadShader("Forward_VS", "vs_6_6", "assets\\shaders\\forwardRender.hlsl");
-        auto PShader = RS->LoadShader("TextureFeedback_PS",   "ps_6_6", "assets\\shaders\\TextureFeedback.hlsl");
+        auto VShader = RS->LoadShader("Forward_VS", "vs_6_5", "assets\\shaders\\forwardRender.hlsl");
+        auto PShader = RS->LoadShader("TextureFeedback_PS",   "ps_6_5", "assets\\shaders\\TextureFeedback.hlsl");
 
         D3D12_INPUT_ELEMENT_DESC InputElements[] = {
                 { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -264,7 +264,7 @@ namespace FlexKit
     ID3D12PipelineState* CreateTextureFeedbackCompressorPSO(RenderSystem* RS)
     {
         auto computeShader = RS->LoadShader(
-            "CompressBlocks", "cs_6_0",
+            "CompressBlocks", "cs_6_5",
             "assets\\shaders\\TextureFeedbackCompressor.hlsl");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
@@ -287,7 +287,7 @@ namespace FlexKit
     ID3D12PipelineState* CreateTextureFeedbackBlockSizePreFixSum(RenderSystem* RS)
     {
         auto computeShader = RS->LoadShader(
-            "PreFixSumBlockSizes", "cs_6_0",
+            "PreFixSumBlockSizes", "cs_6_5",
             "assets\\shaders\\TextureFeedbackBlockPreFixSum.hlsl");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
@@ -310,7 +310,7 @@ namespace FlexKit
     ID3D12PipelineState* CreateTextureFeedbackMergeBlocks(RenderSystem* RS)
     {
         auto computeShader = RS->LoadShader(
-            "MergeBlocks", "cs_6_0",
+            "MergeBlocks", "cs_6_5",
             "assets\\shaders\\TextureFeedbackMergeBlocks.hlsl");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
@@ -333,7 +333,7 @@ namespace FlexKit
     ID3D12PipelineState* CreateTextureFeedbackSetBlockSizes(RenderSystem* RS)
     {
         auto computeShader = RS->LoadShader(
-            "SetBlockCounters", "cs_6_0",
+            "SetBlockCounters", "cs_6_5",
             "assets\\shaders\\TextureFeedbackMergeBlocks.hlsl");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
@@ -436,7 +436,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    TextureFeedbackPass_Data& TextureStreamingEngine::TextureFeedbackPass(
+    void TextureStreamingEngine::TextureFeedbackPass(
             UpdateDispatcher&               dispatcher,
             FrameGraph&                     frameGraph,
             CameraHandle                    camera,
@@ -446,9 +446,12 @@ namespace FlexKit
             ReserveConstantBufferFunction&  reserveCB,
             ReserveVertexBufferFunction&    reserveVB)
     {
+        if (updateInProgress)
+            return;
+
         updateInProgress = true;
 
-        return frameGraph.AddNode<TextureFeedbackPass_Data>(
+        frameGraph.AddNode<TextureFeedbackPass_Data>(
             TextureFeedbackPass_Data{
                 camera,
                 sceneGather,
@@ -488,7 +491,6 @@ namespace FlexKit
                     return;
                 }
 
-                ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
 
                 ctx.SetPrimitiveTopology(EIT_TRIANGLELIST);
                 ctx.ClearDepthBuffer(resources.GetRenderTarget(data.feedbackDepth), 1.0f);
@@ -549,15 +551,10 @@ namespace FlexKit
                 const auto passConstants    = ConstantBufferDataSet{ constants, passConstantBuffer };
                 const auto cameraConstants  = ConstantBufferDataSet{ GetCameraConstants(camera), passConstantBuffer };
 
-                ctx.CopyBufferRegion(
-                    { resources.GetObjectResource(passConstants.Handle()), resources.GetObjectResource(passConstants.Handle()), },
-                    { passConstants.Offset() + ((size_t)&constants.zeroBlock - (size_t)&constants), passConstants.Offset() + ((size_t)&constants.zeroBlock - (size_t)&constants) },
-                    { resources.GetObjectResource(resources.GetResource(data.feedbackCounters)), resources.GetObjectResource(resources.GetResource(data.feedbackCounters)) },
-                    { 0, 256 * sizeof(uint) },
-                    { sizeof(constants.zeroBlock), sizeof(constants.zeroBlock) },
-                    { DRS_UAV, DRS_UAV },
-                    { DRS_UAV, DRS_UAV }
-                );
+                ctx.ClearUAVBufferRange(resources.GetResource(data.feedbackCounters), 0, 4096);
+                ctx.AddUAVBarrier(resources.GetResource(data.feedbackCounters));
+
+                ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
 
                 DescriptorHeap uavHeap;
                 uavHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 1, &allocator);
@@ -565,14 +562,14 @@ namespace FlexKit
                     ctx, 0,
                     resources.Transition(data.feedbackBuffers[0], DRS_UAV, ctx),
                     resources.Transition(data.feedbackCounters, DRS_UAV, ctx),
-                    sizeof(uint2), 0);
+                    sizeof(uint64_t), 0);
 
                 ctx.SetGraphicsDescriptorTable(5, uavHeap);
                 ctx.SetGraphicsConstantBufferView(0, cameraConstants);
                 ctx.SetGraphicsConstantBufferView(2, passConstants);
 
-                TriMesh* prevMesh = nullptr;
-                MaterialHandle prevMaterial = InvalidHandle_t;
+                TriMesh*        prevMesh        = nullptr;
+                MaterialHandle  prevMaterial    = InvalidHandle_t;
 
                 ctx.TimeStamp(timeStats, 0);
 
@@ -626,8 +623,6 @@ namespace FlexKit
                         else
                             ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKPASS));
 
-
-
                         for (size_t I = 0; I < subMeshCount; I++)
                         {
                             auto& subMesh               = lod.subMeshes[I];
@@ -645,18 +640,22 @@ namespace FlexKit
                             auto constantData = brush->GetConstants();
                             constantData.textureCount = textures.size();
 
-                            for (size_t I = 0; I < textures.size(); I++) {
-                                srvHeap.SetSRV(ctx, I, textures[I]);
-                                constantData.textureHandles[I] = uint4{ 256, 256, textures[I].to_uint() };
+                            if(constantData.textureCount)
+                            {
+                                for (size_t I = 0; I < textures.size(); I++)
+                                {
+                                    srvHeap.SetSRV(ctx, I, textures[I]);
+                                    constantData.textureHandles[I] = uint4{ 256, 256, textures[I].to_uint() };
+                                }
+
+                                srvHeap.NullFill(ctx);
+
+                                const auto constants = ConstantBufferDataSet{ constantData, passConstantBuffer };
+
+                                ctx.SetGraphicsConstantBufferView(1, constants);
+                                ctx.SetGraphicsDescriptorTable(4, srvHeap);
+                                ctx.DrawIndexed(subMesh.IndexCount, subMesh.BaseIndex);
                             }
-
-                            srvHeap.NullFill(ctx);
-
-                            const auto constants = ConstantBufferDataSet{ constantData, passConstantBuffer };
-
-                            ctx.SetGraphicsConstantBufferView(1, constants);
-                            ctx.SetGraphicsDescriptorTable(4, srvHeap);
-                            ctx.DrawIndexed(subMesh.IndexCount, subMesh.BaseIndex);
                         }
                     }
                     else
@@ -665,12 +664,15 @@ namespace FlexKit
                         {
                             const auto& textures = materials[materialHandle].Textures;
 
-                            DescriptorHeap srvHeap;
-                            srvHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), textures.size(), &allocator);
-                            ctx.SetGraphicsDescriptorTable(4, srvHeap);
+                            if(textures.size())
+                            {
+                                DescriptorHeap srvHeap;
+                                srvHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), textures.size(), &allocator);
+                                ctx.SetGraphicsDescriptorTable(4, srvHeap);
 
-                            for (size_t I = 0; I < textures.size(); I++)
-                                srvHeap.SetSRV(ctx, I, textures[I]);
+                                for (size_t I = 0; I < textures.size(); I++)
+                                    srvHeap.SetSRV(ctx, I, textures[I]);
+                            }
                         }
 
                         const auto& textures = materials[materialHandle].Textures;
@@ -682,6 +684,8 @@ namespace FlexKit
                         ctx.SetGraphicsConstantBufferView(1, constants);
                         ctx.DrawIndexed(lod.GetIndexCount());
                     }
+
+                    ctx.AddUAVBarrier(resources.GetResource(data.feedbackBuffers[0]));
                 }
 
                 ctx.EndEvent_DEBUG();
@@ -694,19 +698,20 @@ namespace FlexKit
                     DescriptorHeap uavCompressHeap;
                     uavCompressHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 3, &allocator);
                     uavCompressHeap.SetUAVBuffer        (ctx, 0, resources.Transition(data.feedbackCounters, DRS_UAV, ctx));
-                    uavCompressHeap.SetUAVStructured    (ctx, 1, resources.GetResource(Source), sizeof(uint2));
+                    uavCompressHeap.SetUAVStructured    (ctx, 1, resources.GetResource(Source), sizeof(uint64_t));
                     uavCompressHeap.SetUAVBuffer        (ctx, 2, resources.Transition(data.feedbackBlockSizes, DRS_UAV, ctx));
 
-                    const uint32_t blockCount = (MEGABYTE * 4) / (1024 * sizeof(uint2));
+                    const uint32_t blockCount = (MEGABYTE * 4) / (1024 * sizeof(uint64_t));
 
                     ctx.SetComputeRootSignature(resources.renderSystem().Library.RSDefault);
+                    ctx.AddUAVBarrier();
+
 
                     ctx.SetComputeDescriptorTable(5, uavCompressHeap);
                     ctx.Dispatch(resources.GetPipelineState(TEXTUREFEEDBACKCOMPRESSOR), { blockCount, 1, 1 });
 
                     ctx.EndEvent_DEBUG();
                     ctx.BeginEvent_DEBUG("PreFixSum");
-
 
                     ctx.AddUAVBarrier(resources.GetResource(data.feedbackCounters));
                     ctx.AddUAVBarrier(resources.GetResource(data.feedbackBlockSizes));
@@ -730,14 +735,14 @@ namespace FlexKit
                     //  Merge partial blocks
                     DescriptorHeap srvMergeHeap;
                     srvMergeHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), 3, &allocator);
-                    srvMergeHeap.SetStructuredResource(ctx, 0, resources.Transition(Source,                     DRS_NonPixelShaderResource, ctx), sizeof(uint2));
+                    srvMergeHeap.SetStructuredResource(ctx, 0, resources.Transition(Source,                     DRS_NonPixelShaderResource, ctx), sizeof(uint64_t));
                     srvMergeHeap.SetStructuredResource(ctx, 1, resources.Transition(data.feedbackBlockSizes,    DRS_NonPixelShaderResource, ctx), sizeof(uint32_t));
                     srvMergeHeap.SetStructuredResource(ctx, 2, resources.Transition(data.feedbackBlockOffsets,  DRS_NonPixelShaderResource, ctx), sizeof(uint32_t));
 
                     DescriptorHeap uavMergeHeap;
                     uavMergeHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 2, &allocator);
-                    uavMergeHeap.SetUAVStructured(ctx, 0, resources.Transition(Destination,         DRS_UAV, ctx), sizeof(uint2));
-                    uavMergeHeap.SetUAVBuffer(ctx, 1, resources.Transition(data.feedbackCounters,   DRS_UAV, ctx), sizeof(uint));
+                    uavMergeHeap.SetUAVStructured(ctx, 0, resources.Transition(Destination,         DRS_UAV, ctx), sizeof(uint64_t));
+                    uavMergeHeap.SetUAVBuffer(ctx, 1, resources.Transition(data.feedbackCounters,   DRS_UAV, ctx), sizeof(uint32_t));
 
                     ctx.SetComputeDescriptorTable(4, srvMergeHeap);
                     ctx.SetComputeDescriptorTable(5, uavMergeHeap);
@@ -745,6 +750,7 @@ namespace FlexKit
                     ctx.AddUAVBarrier();
 
                     ctx.Dispatch(resources.GetPipelineState(TEXTUREFEEDBACKMERGEBLOCKS), { blockCount , 1, 1 });
+                    ctx.AddUAVBarrier();
                     ctx.Dispatch(resources.GetPipelineState(TEXTUREFEEDBACKSETBLOCKSIZES), { 1, 1, 1 });
 
                     ctx.AddUAVBarrier();
@@ -759,18 +765,18 @@ namespace FlexKit
 
                 // Write out
                 ctx.CopyBufferRegion(
-                    {   resources.GetObjectResource(resources.Transition(data.feedbackCounters,                 DRS_CopySrc, ctx)) ,
-                        resources.GetObjectResource(resources.Transition(data.feedbackBuffers[passCount % 2],   DRS_CopySrc, ctx)) },
+                    {   resources.GetDeviceResource(resources.Transition(data.feedbackCounters,                 DRS_CopySrc, ctx)) ,
+                        resources.GetDeviceResource(resources.Transition(data.feedbackBuffers[passCount % 2],   DRS_CopySrc, ctx)) },
                     { 0, 0 },
-                    {   resources.GetObjectResource(data.readbackBuffer),
-                        resources.GetObjectResource(data.readbackBuffer) },
+                    {   resources.GetDeviceResource(data.readbackBuffer),
+                        resources.GetDeviceResource(data.readbackBuffer) },
                     { 0, 64 },
                     { 8, 2048 * sizeof(uint2) },
                     { DRS_CopyDest, DRS_CopyDest },
                     { DRS_CopyDest, DRS_CopyDest });
 
                 //ctx.ResolveQuery(timeStats, 0, 4, resources.GetObjectResource(data.readbackBuffer), 8);
-                //ctx.QueueReadBack(data.readbackBuffer);
+                ctx.QueueReadBack(data.readbackBuffer);
 
                 ctx.EndEvent_DEBUG();
                 ctx.EndEvent_DEBUG();
@@ -796,8 +802,8 @@ namespace FlexKit
 
     void TextureStreamingEngine::TextureStreamUpdate::Run(iAllocator& threadLocalAllocator)
     {
-        uint32_t    requestCount = 0;
-        gpuTileID*  requests = nullptr;
+        uint32_t    requestCount    = 0;
+        gpuTileID*  requests        = nullptr;
 
         auto [buffer, bufferSize] = textureStreamEngine.renderSystem.OpenReadBackBuffer(resource);
         EXITSCOPE(textureStreamEngine.renderSystem.CloseReadBackBuffer(resource));
@@ -840,23 +846,8 @@ namespace FlexKit
             return;
 
 
-        const auto lg_comparitor = [](const gpuTileID lhs, const gpuTileID rhs) -> bool
-        {
-            /*
-            if (lhs.IsPacked() == rhs.IsPacked())
-                return (lhs.GetSortingID() < rhs.GetSortingID());
-            else if (lhs.tileID.GetMipLevel() == lhs.tileID.GetMipLevel())
-                return (lhs.GetSortingID() < rhs.GetSortingID());
-            else
-                return (lhs.tileID.GetMipLevel() > lhs.tileID.GetMipLevel());
-            */
-            return lhs.GetSortingID() < rhs.GetSortingID();
-        };
-
-        const auto eq_comparitor = [](const gpuTileID lhs, const gpuTileID rhs) -> bool
-        {
-            return lhs.GetSortingID() == rhs.GetSortingID();
-        };
+        const auto lg_comparitor = [](const gpuTileID lhs, const gpuTileID rhs) -> bool { return lhs.GetSortingID() <  rhs.GetSortingID(); };
+        const auto eq_comparitor = [](const gpuTileID lhs, const gpuTileID rhs) -> bool { return lhs.GetSortingID() == rhs.GetSortingID(); };
 
         FK_LOG_9("Request Size: %u / %u", requestCount, (bufferSize) / sizeof(uint2));
 
@@ -868,6 +859,12 @@ namespace FlexKit
         auto end            = std::unique(requests, requests + requestCount, eq_comparitor);
         auto uniqueCount    = (size_t)(end - requests);
         size_t itr          = 0;
+
+        while ((end - 1)->TextureID == -1 && uniqueCount) { end--; uniqueCount--; }
+
+        if (uniqueCount && (requests + uniqueCount - 1)->TextureID > 0x20)
+            return;
+        
 
         for (;itr < uniqueCount; ++itr)
         {
@@ -927,7 +924,6 @@ namespace FlexKit
 
         end            = std::unique(requests, requests + uniqueCount, eq_comparitor);
         uniqueCount    = (size_t)(end - requests);
-
 
         const auto stateUpdateRes     = textureStreamEngine.UpdateTileStates(requests, requests + uniqueCount, &threadLocalAllocator);
         const auto blockAllocations   = textureStreamEngine.AllocateTiles(stateUpdateRes.begin(), stateUpdateRes.end());
@@ -1296,7 +1292,7 @@ namespace FlexKit
 
     Vector<gpuTileID> TextureBlockAllocator::UpdateTileStates(const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator)
     {
-        auto pred = [](const auto& lhs, const auto& rhs)
+        auto pred = [](const uint64_t lhs, const uint64_t rhs) -> bool
         {
             return lhs < rhs;
         };
@@ -1305,7 +1301,6 @@ namespace FlexKit
 
         auto findInuse = [&](const gpuTileID gpuTile) -> TextureBlockAllocator::Block*
         {
-
             for (auto& tile : inuse)
                 if (tile.tileID.bytes == gpuTile.tileID.bytes &&
                     tile.resource == gpuTile.TextureID)
@@ -1386,9 +1381,9 @@ namespace FlexKit
         AllocatedBlockList packedBlocks         { allocator };
 
         std::sort(inuse.begin(), inuse.end(),
-            [&](auto lhs, auto rhs)
+            [&](const auto lhs, const auto rhs)
             {
-                return lhs > rhs;
+                return !(lhs < rhs);
             });
 
         std::sort(stale.begin(), stale.end(),

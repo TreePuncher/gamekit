@@ -45,6 +45,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <condition_variable>
 #include <random>
+#include <type_traits>
+#include <concepts>
 
 template<typename Ty>					using deque_t = std::deque<Ty>;
 template<typename Ty>					using vector_t = std::vector<Ty>;
@@ -1153,6 +1155,39 @@ namespace FlexKit
 			return true;
 		}
 
+        template<typename ... TY_ARGS>
+        bool emplace_back(TY_ARGS&& ... args) noexcept
+        {
+            if (_Size + 1 > SIZE)// Call Destructor on Tail
+                back().~Ty();
+
+            _Size       = Min(++_Size, SIZE);
+            size_t idx  = _Head++;
+            _Head       = _Head % SIZE;
+
+            new(Buffer + idx) Ty{ std::forward<TY_ARGS>(args)... };
+
+            return true;
+        }
+
+        template<typename ... TY>
+        bool emplace_back(TY&& ... args, std::invocable<Ty&> auto&& callOnTail) noexcept
+        {
+            _Size       = Min(++_Size, SIZE);
+            size_t idx  = _Head++;
+            _Head       = _Head % SIZE;
+
+            if (_Size + 1 > SIZE)// Call Destructor on Tail
+            {
+                callOnTail(back());
+                Buffer[idx].~Ty();
+            }
+
+            new(Buffer + idx) Ty{ std::forward<TY>(args)... };
+
+            return true;
+        }
+
 		Ty& front() noexcept
 		{
 			return Buffer[(SIZE + _Head - _Size) % SIZE];
@@ -1249,6 +1284,8 @@ namespace FlexKit
 		{
 			return{ this, _Size };
 		}
+
+        Ty* data() { return Buffer; }
 
 		int _Head, _Size;
 		Ty Buffer[SIZE];

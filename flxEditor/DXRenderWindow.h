@@ -57,6 +57,7 @@ private:
 
     bool            dirty = false;
 
+    double          t = 0.0f;
 
     FNRender_t                  onDraw;
     FNResize_t                  onResize;

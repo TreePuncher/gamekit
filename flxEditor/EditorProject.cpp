@@ -1,13 +1,9 @@
 #include "EditorProject.h"
 #include "../FlexKitResourceCompiler/MeshProcessing.h"
 #include <../FlexKitResourceCompiler/TextureResourceUtilities.h>
-
-#include <boost/archive/binary_oarchive.hpp>
-#include <boost/archive/binary_iarchive.hpp>
-#include <boost/serialization/vector.hpp>
-#include <boost/serialization/shared_ptr.hpp>
-
 #include <fstream>
+
+#include "Serialization.hpp"
 
 /************************************************************************************************/
 
@@ -27,15 +23,15 @@ ProjectResource_ptr EditorScene::FindSceneResource(uint64_t resourceID)
 
 bool EditorProject::LoadProject(const std::string& projectDir)
 {
-    std::ifstream ifs{ projectDir, std::ios::binary | std::ios::in };
+    auto f = fopen(projectDir.c_str(), "rb");
+    if (!f)
+        return false;
 
-    boost::archive::binary_iarchive archive{ ifs };
-    archive.register_type<FlexKit::ResourceBuilder::TextureResource>();
+    FlexKit::LoadArchiveContext archive{ f };
+    archive& resources;
+    archive& scenes;
 
-    archive >> resources;
-
-    ifs.close();
-
+    fclose(f);
 
     return true;
 }
@@ -44,18 +40,70 @@ bool EditorProject::LoadProject(const std::string& projectDir)
 /************************************************************************************************/
 
 
+
 bool EditorProject::SaveProject(const std::string& projectDir)
 {
-    std::ofstream ofs(projectDir, std::ios::binary | std::ios::out);
+    try
+    {
+        FlexKit::SaveArchiveContext archive;
+        archive& resources;
+        archive& scenes;
 
-    boost::archive::binary_oarchive archive{ ofs,  };
-    archive.register_type<FlexKit::ResourceBuilder::TextureResource>();
+        auto blob = archive.GetBlob();
 
-    archive << resources;
+        auto f = fopen(projectDir.c_str(), "wb");
+        WriteBlob(blob, f);
+        fclose(f);
 
-    ofs.close();
+        return true;
+    }
+    // swallow any exceptions
+    // TODO(R.M): log this?
+    catch (...) 
+    {
+        return false;
+    }
+}
 
-    return false;
+
+/************************************************************************************************/
+
+
+void EditorProject::AddScene(EditorScene_ptr scene)
+{
+    scenes.emplace_back(scene);
+}
+
+
+/************************************************************************************************/
+
+
+void EditorProject::AddResource(FlexKit::Resource_ptr resource)
+{
+    resources.emplace_back(ProjectResource{ resource });
+}
+
+
+/************************************************************************************************/
+
+
+FlexKit::ResourceList EditorProject::GetResources() const
+{
+    FlexKit::ResourceList out;
+
+    for (auto& r : resources)
+        out.push_back(r.resource);
+
+    return out;
+}
+
+
+/************************************************************************************************/
+
+
+void EditorProject::RemoveResource(FlexKit::Resource_ptr resource)
+{
+    std::erase_if(resources, [&](auto& res) -> bool { return (res.resource == resource); });
 }
 
 

@@ -44,7 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 #endif
 
-namespace FlexKit::ResourceBuilder
+namespace FlexKit
 {   /************************************************************************************************/
 
 
@@ -217,10 +217,11 @@ namespace FlexKit::ResourceBuilder
                 [&](const VERTEXBUFFER_TYPE type, const VERTEXBUFFER_FORMAT format, auto& source)
                 {
                     VertexBufferView* view;
-                    CreateBufferView((byte*)source.data(), source.size(), view,
+                    CreateBufferView(
+                        (byte*)source.data(), source.size(), view,
                         type, format, SystemAllocator);
 
-                    return newLod.buffers.push_back(view);
+                    return newLod.buffers.push_back(std::shared_ptr<VertexBufferView>{ view });
                 };
 
 

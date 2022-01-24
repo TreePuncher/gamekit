@@ -3,7 +3,7 @@
 #include "EditorCodeEditor.h"
 #include "EditorOutputWindow.h"
 #include "EditorViewport.h"
-
+#include "SceneOutliner.h"
 #include <QtWidgets/qmenubar.h>
 #include <chrono>
 
@@ -27,13 +27,10 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
     importMenu     = fileMenu->addMenu("Import");
     exportMenu     = fileMenu->addMenu("Export");
 
+
     tabBar->addTab(viewport, "Scene View");
 
     setCentralWidget(tabBar);
-
-    auto quitAction = fileMenu->addAction("Quit");
-    quitAction->setShortcut(tr("CTRL+Q"));
-    connect(quitAction, &QAction::triggered, this, &EditorMainWindow::Close, Qt::QueuedConnection);
 
     auto viewMenu   = menuBar()->addMenu("View");
     auto Add3DView  = viewMenu->addAction("Add 3D AddViewPort");
@@ -57,6 +54,9 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
     auto addInspector = viewMenu->addAction("Add Inspector");
     connect(addInspector, &QAction::triggered, this, [&] { AddInspector(); });
 
+    auto addOutliner= viewMenu->addAction("Add Scene Outliner");
+    connect(addOutliner, &QAction::triggered, this, [&] { AddSceneOutliner(); });
+
     auto tools = menuBar()->addMenu("Tools");
     gadgetMenu = tools->addMenu("Scripts");
 
@@ -68,8 +68,11 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
     setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowTabbedDocks | QMainWindow::AllowNestedDocks);
     tabPosition(Qt::TopDockWidgetArea);
 
+    AddSceneOutliner();
     AddInspector();
     AddResourceList();
+
+    showMaximized();
 
     show();
 }
@@ -167,9 +170,9 @@ void EditorMainWindow::AddExporter(iEditorExporter* exporter)
             {
                 auto selections = selectionContext.GetSelection<ViewportObjectList>();
 
-                using Resource_ptr = FlexKit::ResourceBuilder::Resource_ptr;
+                using Resource_ptr = FlexKit::Resource_ptr;
 
-                std::vector<FlexKit::ResourceBuilder::Resource_ptr> selectedResources{};
+                std::vector<FlexKit::Resource_ptr> selectedResources{};
 
                 for (auto& selection : selections)
                     for (auto& dependency : selection->resourceDependencies)
@@ -256,6 +259,22 @@ ResourceBrowserWidget* EditorMainWindow::AddResourceList()
     addDockWidget(Qt::RightDockWidgetArea, docklet);
 
     return resourceBrowser;
+}
+
+
+/************************************************************************************************/
+
+
+void EditorMainWindow::AddSceneOutliner()
+{
+    auto docklet    = new QDockWidget{ this };
+    auto outliner   = new SceneOutliner{ Get3DView(), this};
+
+    docklet->setWindowTitle("Outliner");
+    docklet->setWidget(outliner);
+    docklet->show();
+
+    addDockWidget(Qt::RightDockWidgetArea, docklet);
 }
 
 
@@ -352,7 +371,7 @@ EditorMainWindow::~EditorMainWindow()
 void EditorMainWindow::Update()
 {
     //OutputDebugString(L"Update!\n");
-    renderer.DrawOneFrame();
+    renderer.DrawOneFrame(1.0f);
 }
 
 

@@ -1256,6 +1256,135 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+    Context::Context(Context&& RHS)
+	{
+		DeviceContext			= RHS.DeviceContext;
+		CurrentRootSignature	= RHS.CurrentRootSignature;
+		CurrentPipelineState	= RHS.CurrentPipelineState;
+		renderSystem			= RHS.renderSystem;
+
+		RTV_CPU = RHS.RTV_CPU;
+
+		SRV_CPU = RHS.SRV_CPU;
+		SRV_GPU = RHS.SRV_GPU;
+
+		DSV_CPU = RHS.DSV_CPU;
+
+		descHeapRTV = RHS.descHeapRTV;
+		descHeapSRV = RHS.descHeapSRV;
+		descHeapDSV = RHS.descHeapDSV;
+
+		RenderTargetCount		= RHS.RenderTargetCount;
+		DepthStencilEnabled		= RHS.DepthStencilEnabled;
+
+		Viewports				= RHS.Viewports;
+		DesciptorHeaps			= RHS.DesciptorHeaps;
+		VBViews					= RHS.VBViews;
+		PendingBarriers			= RHS.PendingBarriers;
+		Memory					= RHS.Memory;
+		commandAllocator        = RHS.commandAllocator;
+
+
+		// Null out old Context
+		RHS.commandAllocator        = nullptr;
+		RHS.DeviceContext			= nullptr;
+		RHS.CurrentRootSignature	= nullptr;
+
+		RHS.RenderTargetCount	    = 0;
+		RHS.DepthStencilEnabled     = false;
+		RHS.Memory				    = nullptr;
+
+		RHS.Viewports.clear();
+		RHS.DesciptorHeaps.clear();
+		RHS.VBViews.clear();
+		RHS.PendingBarriers.clear();
+
+		RHS.RTV_CPU = { 0 };
+
+		RHS.SRV_CPU = { 0 };
+		RHS.SRV_GPU = { 0 };
+
+		RHS.DSV_CPU = { 0 };
+
+		RHS.descHeapRTV = nullptr;
+		RHS.descHeapSRV = nullptr;
+        RHS.descHeapDSV = nullptr;
+
+#if USING(AFTERMATH)
+        AFTERMATH_context       = RHS.AFTERMATH_context;
+        RHS.AFTERMATH_context   = nullptr;
+#endif
+	}
+
+
+    /************************************************************************************************/
+
+
+	Context& Context::operator = (Context&& RHS)// Moves only
+	{
+		DeviceContext			= RHS.DeviceContext;
+		CurrentRootSignature	= RHS.CurrentRootSignature;
+		CurrentPipelineState	= RHS.CurrentPipelineState;
+		renderSystem			= RHS.renderSystem;
+
+		RTV_CPU = RHS.RTV_CPU;
+
+		SRV_CPU = RHS.SRV_CPU;
+		SRV_GPU = RHS.SRV_GPU;
+
+		DSV_CPU = RHS.DSV_CPU;
+
+		descHeapRTV = RHS.descHeapRTV;
+		descHeapSRV = RHS.descHeapSRV;
+		descHeapDSV = RHS.descHeapDSV;
+
+		RenderTargetCount		= RHS.RenderTargetCount;
+		DepthStencilEnabled		= RHS.DepthStencilEnabled;
+
+		Viewports				= RHS.Viewports;
+		DesciptorHeaps			= RHS.DesciptorHeaps;
+		VBViews					= RHS.VBViews;
+		PendingBarriers			= RHS.PendingBarriers;
+		Memory					= RHS.Memory;
+		commandAllocator        = RHS.commandAllocator;
+
+		// Null out old Context
+		RHS.commandAllocator        = nullptr;
+		RHS.DeviceContext			= nullptr;
+		RHS.CurrentRootSignature	= nullptr;
+
+		RHS.RenderTargetCount	    = 0;
+		RHS.DepthStencilEnabled     = false;
+		RHS.Memory				    = nullptr;
+
+		RHS.Viewports.clear();
+		RHS.DesciptorHeaps.clear();
+		RHS.VBViews.clear();
+		RHS.PendingBarriers.clear();
+
+		RHS.RTV_CPU = { 0 };
+
+		RHS.SRV_CPU = { 0 };
+		RHS.SRV_GPU = { 0 };
+
+		RHS.DSV_CPU = { 0 };
+
+		RHS.descHeapRTV = nullptr;
+		RHS.descHeapSRV = nullptr;
+		RHS.descHeapDSV = nullptr;
+
+
+#if USING(AFTERMATH)
+        AFTERMATH_context       = RHS.AFTERMATH_context;
+        RHS.AFTERMATH_context   = nullptr;
+#endif
+
+		return *this;
+	}
+
+
+    /************************************************************************************************/
+
 
 	void Context::Release()
 	{
@@ -1298,6 +1427,42 @@ namespace FlexKit
     void Context::CreateAS(const AccelerationStructureDesc& asDesc, const TriMesh&)
     {
         FK_ASSERT(0);
+    }
+
+
+    void Context::BuildBLAS(VertexBuffer& vertexBuffer, ResourceHandle destination, ResourceHandle scratchSpace)
+    {
+        auto indexBuffer    = vertexBuffer.VertexBuffers[vertexBuffer.MD.IndexBuffer_Index];
+        auto positionBuffer = vertexBuffer.Find(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION);
+
+        D3D12_RAYTRACING_GEOMETRY_DESC desc;
+        desc.Type   = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+        desc.Flags  = D3D12_RAYTRACING_GEOMETRY_FLAGS::D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
+
+        desc.Triangles.Transform3x4 = 0;
+        desc.Triangles.IndexFormat  = DXGI_FORMAT_R32_UINT;
+        desc.Triangles.IndexBuffer  = indexBuffer.GetDevicePointer();
+        desc.Triangles.IndexCount   = indexBuffer.Size();
+
+        desc.Triangles.VertexFormat                 = DXGI_FORMAT_R32G32B32_FLOAT;
+        desc.Triangles.VertexBuffer.StartAddress    = positionBuffer->GetDevicePointer();
+        desc.Triangles.VertexBuffer.StrideInBytes   = positionBuffer->BufferStride;
+        desc.Triangles.VertexCount                  = positionBuffer->Size();
+
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC build_desc {
+                            .DestAccelerationStructureData = renderSystem->GetDeviceResource(destination)->GetGPUVirtualAddress(),
+                            .Inputs = {
+                                .Type           = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
+                                .Flags          = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE,
+                                .NumDescs       = 1,
+                                .DescsLayout    = D3D12_ELEMENTS_LAYOUT::D3D12_ELEMENTS_LAYOUT_ARRAY,
+                                .pGeometryDescs = &desc,
+                            },
+                            .ScratchAccelerationStructureData = renderSystem->GetDeviceResource(scratchSpace)->GetGPUVirtualAddress(),
+        };
+
+        UpdateResourceStates();
+        DeviceContext->BuildRaytracingAccelerationStructure(&build_desc, 0, nullptr);
     }
 
 
@@ -2768,14 +2933,17 @@ namespace FlexKit
 
     void Context::DispatchRays(uint3 WHD, const DispatchDesc desc)
     {
-        FK_ASSERT(0);
-
         UpdateResourceStates();
 
         D3D12_DISPATCH_RAYS_DESC dispatchDesc{};
         dispatchDesc.Width  = WHD[0];
         dispatchDesc.Height = WHD[1];
         dispatchDesc.Depth  = WHD[2];
+
+        dispatchDesc.CallableShaderTable        = desc.callableShaderTable;
+        dispatchDesc.HitGroupTable              = desc.hitGroupTable;
+        dispatchDesc.MissShaderTable            = desc.missTable;
+        dispatchDesc.RayGenerationShaderRecord  = desc.rayGenerationRecord;
 
         DeviceContext->DispatchRays(&dispatchDesc);
     }
@@ -2807,14 +2975,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::CopyBuffer(const UploadSegment src, const ResourceHandle destination)
+	void Context::CopyBuffer(const UploadSegment src, const ResourceHandle destination, const size_t destOffset)
 	{
 		const auto destinationResource	= renderSystem->GetDeviceResource(destination);
 		const auto sourceResource       = src.resource;
 
 		UpdateResourceStates();
 
-		DeviceContext->CopyBufferRegion(destinationResource, 0, sourceResource, src.offset, src.uploadSize);
+		DeviceContext->CopyBufferRegion(destinationResource, destOffset, sourceResource, src.offset, src.uploadSize);
 	}
 
 
@@ -3927,6 +4095,29 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    RenderSystem::RenderSystem(iAllocator* IN_allocator, ThreadManager* IN_Threads) :
+			Memory          { IN_allocator },
+			Library         { IN_allocator },
+			Queries         { IN_allocator, this },
+			Textures        { IN_allocator },
+			VertexBuffers   { IN_allocator },
+			ConstantBuffers { IN_allocator, this },
+			PipelineStates  { IN_allocator, this, IN_Threads },
+			PendingBarriers { IN_allocator },
+			StreamOutTable  { IN_allocator },
+			ReadBackTable   { IN_allocator },
+			threads         { *IN_Threads },
+			Syncs           { IN_allocator, 64 },
+			Contexts        { IN_allocator, 3 * (1 + IN_Threads->GetThreadCount()) },
+			heaps           { pDevice, IN_allocator }{}
+
+
+    RenderSystem::~RenderSystem() { Release(); }
+
+
+    /************************************************************************************************/
+
+
 	bool RenderSystem::Initiate(Graphics_Desc* in)
 	{
 		Vector<ID3D12DeviceChild*> ObjectsCreated(in->Memory);
@@ -3936,9 +4127,9 @@ namespace FlexKit
 		Settings.AASamples = 1;
 		UINT DeviceFlags   = 0;
 
-		ID3D12Device4*		Device;
-		ID3D12Debug*		Debug;
-		ID3D12DebugDevice*  DebugDevice;
+		ID3D12Device9*		Device;
+		ID3D12Debug5*		Debug;
+		ID3D12DebugDevice1* DebugDevice;
 
 
 #if USING(ENABLEDRED)
@@ -3957,9 +4148,15 @@ namespace FlexKit
 
 
         HRESULT HR;
-        HR = D3D12GetDebugInterface(__uuidof(ID3D12Debug), (void**)&Debug);			FK_ASSERT(SUCCEEDED(HR));
+        HR = D3D12GetDebugInterface(__uuidof(ID3D12Debug5), (void**)&Debug); FK_ASSERT(SUCCEEDED(HR));
 #if USING( DEBUGGRAPHICS )
         Debug->EnableDebugLayer();
+        Debug->SetEnableSynchronizedCommandQueueValidation(true);
+        Debug->SetEnableAutoName(true);
+
+#if USING(DEBUGGPUVALIDATION)
+        Debug->SetEnableGPUBasedValidation(true);
+#endif
 #else
         Debug = nullptr;
         DebugDevice = nullptr;
@@ -3967,7 +4164,7 @@ namespace FlexKit
 
         bool InitiateComplete = false;
 
-		HR = D3D12CreateDevice(nullptr,	D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&Device));
+		HR = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&Device));
 		if(FAILED(HR))
 		{
 			FK_LOG_ERROR("Failed to create A DX12 Device!");
@@ -4035,7 +4232,7 @@ namespace FlexKit
 #endif
 
 #if USING(DEBUGGRAPHICS)
-		HR =  Device->QueryInterface(__uuidof(ID3D12DebugDevice), (void**)&DebugDevice);
+		HR =  Device->QueryInterface(__uuidof(ID3D12DebugDevice1), (void**)&DebugDevice);
 #else
 		DebugDevice = nullptr;
 #endif
@@ -4216,8 +4413,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    void RenderSystem::BuildLibrary(PSOHandle State, const PipelineStateLibraryDesc)
+    void RenderSystem::BuildLibrary(PSOHandle State, const PipelineStateLibraryDesc desc)
     {
+
         FK_ASSERT(0);
         //CompileShader();
     }
@@ -4523,6 +4721,46 @@ namespace FlexKit
 	}
 
 
+
+    /************************************************************************************************/
+
+
+    BLAS_PreBuildInfo RenderSystem::GetBLASPreBuildInfo(VertexBuffer& vertexBuffer)
+    {
+        auto& indexBuffer    = vertexBuffer.VertexBuffers[vertexBuffer.MD.IndexBuffer_Index];
+        auto* positionBuffer = vertexBuffer.Find(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION);
+
+        D3D12_RAYTRACING_GEOMETRY_DESC desc;
+        desc.Type   = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+        desc.Flags  = D3D12_RAYTRACING_GEOMETRY_FLAGS::D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
+        desc.Triangles.IndexFormat  = DXGI_FORMAT_R32_UINT;
+        desc.Triangles.IndexBuffer  = indexBuffer.GetDevicePointer();
+        desc.Triangles.IndexCount   = indexBuffer.Size();
+
+        desc.Triangles.VertexFormat                 = DXGI_FORMAT_R32G32B32_FLOAT;
+        desc.Triangles.VertexBuffer.StartAddress    = positionBuffer->GetDevicePointer();
+        desc.Triangles.VertexBuffer.StrideInBytes   = positionBuffer->BufferStride;
+        desc.Triangles.VertexCount                  = positionBuffer->Size();
+
+
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs;
+        inputs.DescsLayout      = D3D12_ELEMENTS_LAYOUT::D3D12_ELEMENTS_LAYOUT_ARRAY;
+        inputs.Type             = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
+        inputs.pGeometryDescs   = &desc;
+        inputs.NumDescs         = 1u;
+        inputs.Flags            = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
+
+        D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info;
+        pDevice->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
+
+        return {
+            .BLAS_byteSize          = info.ResultDataMaxSizeInBytes,
+            .scratchPad_byteSize    = info.ScratchDataSizeInBytes,
+            .update_byteSize        = info.UpdateScratchDataSizeInBytes
+        };
+    }
+
+
 	/************************************************************************************************/
 
 
@@ -4646,8 +4884,9 @@ namespace FlexKit
 
 
 			D3D12_RESOURCE_STATES InitialState =
-				desc.renderTarget   ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RENDER_TARGET :
-				desc.depthTarget    ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_WRITE   :
+				desc.renderTarget       ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RENDER_TARGET :
+				desc.depthTarget        ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_WRITE   :
+                desc.rayTraceStructure  ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE : 
                 D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
 
 			ID3D12Resource* NewResource[3] = { nullptr, nullptr, nullptr };
@@ -4705,8 +4944,9 @@ namespace FlexKit
 			auto filledDesc = desc;
 
 			auto initialState =
-				filledDesc.renderTarget ? DRS_RenderTarget:
-				filledDesc.depthTarget  ? DRS_DEPTHBUFFERWRITE :
+				filledDesc.renderTarget         ? DRS_RenderTarget:
+				filledDesc.depthTarget          ? DRS_DEPTHBUFFERWRITE :
+                filledDesc.rayTraceStructure    ? DRS_ACCELERATIONSTRUCTURE :
 				DRS_Common;
 
 			filledDesc.resources    = NewResource;
@@ -4912,9 +5152,11 @@ namespace FlexKit
 		auto itr = begin;
 		while(itr < end)
 		{
-			auto& mappings                      = Textures._GetTileMappings(*itr);
-			auto deviceResource                 = GetDeviceResource(*itr);
-			const auto mipCount                 = Textures.GetMIPCount(*itr);
+            FK_ASSERT(*itr >= Textures.Handles.size(), "Invalid Handle Detected");
+
+			auto& mappings      = Textures._GetTileMappings(*itr);
+			auto deviceResource = GetDeviceResource(*itr);
+			const auto mipCount = Textures.GetMIPCount(*itr);
 
 			Vector<D3D12_TILED_RESOURCE_COORDINATE> coordinates { allocator };
 			Vector<D3D12_TILE_REGION_SIZE>          regionSizes { allocator };
@@ -5652,7 +5894,9 @@ namespace FlexKit
         wchar_t profileW[64];
 
         size_t fileWLength = 0;
-        mbstowcs(entryPointW, entryPoint, 64);
+        if(entryPoint != nullptr)
+            mbstowcs(entryPointW, entryPoint, 64);
+
         mbstowcs(profileW, profile, 64);
         mbstowcs(fileW, file, 256);
         mbstowcs(filenameW, filePath.filename().string().c_str(), 256);
@@ -5661,10 +5905,10 @@ namespace FlexKit
         IDxcBlobEncoding* blob;
         auto HR1 = hlslLibrary->CreateBlobFromFile(fileW, nullptr, &blob);
 
-        IDxcOperationResult* result = nullptr;
+
         IncludeHandler includeHandler;
-        includeHandler.includePath = parentPath;
-        includeHandler.handler = hlslIncludeHandler;
+        includeHandler.includePath      = parentPath;
+        includeHandler.handler          = hlslIncludeHandler;
 
 
         IDxcCompiler2* debugCompiler = nullptr;
@@ -5682,7 +5926,9 @@ namespace FlexKit
 #else
         const size_t argumentCount = 0;
 #endif
-        auto HR2 = hlslCompiler->Compile(blob, filenameW, entryPointW, profileW, arguments, argumentCount, nullptr, 0, &includeHandler, &result);
+
+        IDxcOperationResult* result = nullptr;
+        auto HR2 = hlslCompiler->Compile(blob, filenameW, entryPoint != nullptr ? entryPointW : nullptr, profileW, arguments, argumentCount, nullptr, 0, &includeHandler, &result);
 
         if (FAILED(HR2))
         {
@@ -6415,6 +6661,8 @@ namespace FlexKit
 
 	void TextureStateTable::ReleaseTexture(ResourceHandle handle)
 	{
+        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
         std::scoped_lock lock{ m };
 
 		if (handle == InvalidHandle_t)
@@ -6459,9 +6707,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::_ReleaseTextureForceRelease(ResourceHandle Handle)
+	void TextureStateTable::_ReleaseTextureForceRelease(ResourceHandle handle)
 	{
-		auto  UserIdx		= Handles[Handle];
+        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
+		auto  UserIdx		= Handles[handle];
 		auto& UserEntry		= UserEntries[UserIdx];
 		const auto ResIdx	= UserEntry.ResourceIdx;
 		auto& resource		= Resources[ResIdx];
@@ -6480,16 +6730,18 @@ namespace FlexKit
 		UserEntries.pop_back();
 		Resources.pop_back();
 
-		Handles.RemoveHandle(Handle);
+		Handles.RemoveHandle(handle);
 	}
 
 
 	/************************************************************************************************/
 
 
-	Texture2D TextureStateTable::operator[](ResourceHandle Handle)
+	Texture2D TextureStateTable::operator[](ResourceHandle handle)
 	{
-		const auto Idx		    = Handles[Handle];
+        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
+		const auto Idx		    = Handles[handle];
 		const auto resource     = Resources[UserEntries[Idx].ResourceIdx];
 
 		const auto Res		    = resource.GetAsset();
@@ -6504,9 +6756,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::SetState(ResourceHandle Handle, DeviceResourceState State)
+	void TextureStateTable::SetState(ResourceHandle handle, DeviceResourceState State)
 	{
-		auto UserIdx = Handles[Handle];
+        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
+		auto UserIdx = Handles[handle];
 		auto ResIdx  = UserEntries[UserIdx].ResourceIdx;
 
 		Resources[ResIdx].SetState(State);
@@ -6516,9 +6770,11 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void TextureStateTable::SetDebug(ResourceHandle Handle, const char* string)
+    void TextureStateTable::SetDebug(ResourceHandle handle, const char* string)
     {
-        auto UserIdx                    = Handles[Handle];
+        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
+        auto UserIdx                    = Handles[handle];
         UserEntries[UserIdx].userString = string;
     }
 
@@ -6528,6 +6784,8 @@ namespace FlexKit
 
 	void TextureStateTable::SetBufferedIdx(ResourceHandle handle, uint32_t idx)
 	{
+        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
 		auto UserIdx = Handles[handle];
 		auto Residx  = UserEntries[UserIdx].ResourceIdx;
 
@@ -6540,6 +6798,8 @@ namespace FlexKit
 
 	void TextureStateTable::SetDebugName(ResourceHandle handle, const char* str)
 	{
+        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
 		auto UserIdx    = Handles[handle];
 		auto resIdx     = UserEntries[UserIdx].ResourceIdx;
 		auto& resource  = Resources[resIdx];
@@ -6555,9 +6815,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t TextureStateTable::GetFrameGraphIndex(ResourceHandle Handle, size_t FrameID) const
+	size_t TextureStateTable::GetFrameGraphIndex(ResourceHandle handle, size_t FrameID) const
 	{
-		auto UserIdx	= Handles[Handle];
+        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
+		auto UserIdx	= Handles[handle];
 		auto FrameStamp	= UserEntries[UserIdx].FGI_FrameStamp;
 
 		if (FrameStamp < int(FrameID))
@@ -6570,9 +6832,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::SetFrameGraphIndex(ResourceHandle Handle, size_t FrameID, size_t Index)
+	void TextureStateTable::SetFrameGraphIndex(ResourceHandle handle, size_t FrameID, size_t Index)
 	{
-		auto UserIdx = Handles[Handle];
+        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
+		auto UserIdx = Handles[handle];
 		UserEntries[UserIdx].FGI_FrameStamp		= FrameID;
 		UserEntries[UserIdx].FrameGraphIndex	= Index;
 	}
@@ -6583,6 +6847,8 @@ namespace FlexKit
 
 	DXGI_FORMAT TextureStateTable::GetFormat(ResourceHandle handle) const
 	{
+        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
 		auto UserIdx = Handles[handle];
 		return UserEntries[UserIdx].Format;
 	}
@@ -6593,6 +6859,8 @@ namespace FlexKit
 
 	TextureDimension TextureStateTable::GetDimension(ResourceHandle handle) const
 	{
+        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
 		auto UserIdx = Handles[handle];
 		return UserEntries[UserIdx].dimension;
 	}
@@ -6603,6 +6871,8 @@ namespace FlexKit
 
 	size_t TextureStateTable::GetArraySize(ResourceHandle handle) const
 	{
+        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
 		auto UserIdx = Handles[handle];
 		return UserEntries[UserIdx].arraySize;
 	}
@@ -6613,6 +6883,8 @@ namespace FlexKit
 
     uint8_t TextureStateTable::GetMIPCount(ResourceHandle handle) const
 	{
+        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
 		auto UserIdx = Handles[handle];
 		return Resources[UserEntries[UserIdx].ResourceIdx].mipCount;
 	}
@@ -6623,6 +6895,8 @@ namespace FlexKit
 
     void TextureStateTable::SetExtra(ResourceHandle handle, GPUResourceExtra_t extra)
     {
+        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
         auto UserIdx = Handles[handle];
         UserEntries[UserIdx].extra = extra;
     }
@@ -6633,6 +6907,8 @@ namespace FlexKit
 
     GPUResourceExtra_t  TextureStateTable::GetExtra(ResourceHandle handle) const
     {
+        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
         auto UserIdx = Handles[handle];
         return UserEntries[UserIdx].extra;
     }
@@ -6641,9 +6917,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    const char* TextureStateTable::GetDebug(ResourceHandle Handle)
+    const char* TextureStateTable::GetDebug(ResourceHandle handle)
     {
-        auto UserIdx = Handles[Handle];
+        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
+        auto UserIdx = Handles[handle];
         return UserEntries[UserIdx].userString;
     }
 
@@ -6651,9 +6929,11 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-	uint2 TextureStateTable::GetWH(ResourceHandle Handle) const
+	uint2 TextureStateTable::GetWH(ResourceHandle handle) const
 	{
-        auto UserIdx = Handles[Handle];
+        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
+        auto UserIdx = Handles[handle];
         return Resources[UserEntries[UserIdx].ResourceIdx].WH;
 	}
 
@@ -6661,9 +6941,11 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    uint3 TextureStateTable::GetXYZ(ResourceHandle Handle) const
+    uint3 TextureStateTable::GetXYZ(ResourceHandle handle) const
     {
-        auto UserIdx    = Handles[Handle];
+        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
+        auto UserIdx    = Handles[handle];
         auto& user      = UserEntries[UserIdx];
         auto& resource  = Resources[UserEntries[UserIdx].ResourceIdx];
 
@@ -6678,6 +6960,8 @@ namespace FlexKit
 	{
 		if (handle == InvalidHandle_t)
 			return;
+
+        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
 		auto itr        = begin;
 		auto UserIdx    = Handles[handle];
@@ -6899,6 +7183,9 @@ namespace FlexKit
 
 	ID3D12Resource* TextureStateTable::GetResource(ResourceHandle Handle, ID3D12Device* device) const
 	{
+        if (Handle >= Handles.size())
+            return nullptr;
+
 		auto  Idx			= Handles[Handle];
 		auto  ResourceIdx	= UserEntries[Idx].ResourceIdx;
 		auto& resources     = Resources[ResourceIdx].Resources;
@@ -8431,7 +8718,6 @@ namespace FlexKit
 		DSVDesc.Texture2D.MipSlice	= 0;
 		DSVDesc.ViewDimension		= D3D12_DSV_DIMENSION::D3D12_DSV_DIMENSION_TEXTURE2D;
 
-		RS->MarkTextureUsed(Target);
 		RS->pDevice->CreateDepthStencilView(RS->GetDeviceResource(Target), &DSVDesc, POS);
 
 		return IncrementHeapPOS(POS, RS->DescriptorDSVSize, 1);
@@ -8448,7 +8734,6 @@ namespace FlexKit
 		DSVDesc.Texture2DArray.MipSlice         = MipSlice;
 		DSVDesc.ViewDimension                   = D3D12_DSV_DIMENSION::D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
 
-		RS->MarkTextureUsed(Target);
 		RS->pDevice->CreateDepthStencilView(RS->GetDeviceResource(Target), &DSVDesc, POS);
 
 		return IncrementHeapPOS(POS, RS->DescriptorDSVSize, 1);
@@ -9290,10 +9575,12 @@ namespace FlexKit
 
         if (res != std::end(allocations))
         {
+#if DEBUG
             if (res->offset > blockCount || res->offset + res->blockCount > blockCount)
                 __debugbreak();
-
+#endif
             std::scoped_lock localLock{ m };
+
 
             freeRanges.push_back(
                 {

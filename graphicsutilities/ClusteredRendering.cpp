@@ -903,7 +903,7 @@ namespace FlexKit
 
 				PointLightComponent& pointLights = PointLightComponent::GetComponent();
 
-                uint32_t nodeReservation = ceilf(std::logf(float(lightCount)) / std::logf(BVH_ELEMENT_COUNT));
+                const uint32_t nodeReservation = uint32_t(ceilf(std::logf(float(lightCount)) / std::logf(BVH_ELEMENT_COUNT)));
 
 				CBPushBuffer    constantBuffer = data.reserveCB(
 					AlignedSize( sizeof(FlexKit::GPUPointLight) * data.visableLights.size() ) +
@@ -948,9 +948,9 @@ namespace FlexKit
                 ctx.DiscardResource(resources.GetResource(data.argumentBufferObject));
 
 				ctx.CopyBufferRegion(
-					{ resources.GetObjectResource(pointLights_GPU.Handle()) },
+					{ resources.GetDeviceResource(pointLights_GPU.Handle()) },
 					{ pointLights_GPU.Offset() },
-					{ resources.GetObjectResource(resources.CopyDest(data.lightBufferObject, ctx)) },
+					{ resources.GetDeviceResource(resources.CopyDest(data.lightBufferObject, ctx)) },
 					{ 0 },
 					{ uploadSize },
 					{ DRS_CopyDest },
@@ -1051,15 +1051,16 @@ namespace FlexKit
                         ctx.EndEvent_DEBUG();
                     };
 
-                uint32_t offset       = 0;
-                uint32_t nodeCount    = std::ceilf(float(lightCount) / BVH_ELEMENT_COUNT);
-                const uint32_t passCount = std::floor(std::log(lightCount) / std::log(BVH_ELEMENT_COUNT));
+                uint32_t offset             = 0;
+                uint32_t nodeCount          = uint32_t(std::ceilf(float(lightCount) / BVH_ELEMENT_COUNT));
+                const uint32_t passCount    = uint32_t(std::floor(std::log(lightCount) / std::log(BVH_ELEMENT_COUNT)));
 
                 for (uint32_t I = 0; I < passCount; I++)
                 {
+
                     Phase2_Pass(offset, nodeCount);
                     offset      += nodeCount;
-                    nodeCount    = std::ceilf(float(nodeCount) / BVH_ELEMENT_COUNT);
+                    nodeCount   = uint32_t(std::ceilf(float(nodeCount) / BVH_ELEMENT_COUNT));
                 }
 
                 ctx.EndEvent_DEBUG();
@@ -1162,9 +1163,9 @@ namespace FlexKit
 
                     // Write out
                     ctx.CopyBufferRegion(
-                        { resources.GetObjectResource(resources.Transition(data.lightResolutionObject, DRS_CopySrc, ctx)) }, // Sources Offsets
+                        { resources.GetDeviceResource(resources.Transition(data.lightResolutionObject, DRS_CopySrc, ctx)) }, // Sources Offsets
                         { 0 },  // Source Offsets
-                        { resources.GetObjectResource(data.readBackHandle) }, // Destination
+                        { resources.GetDeviceResource(data.readBackHandle) }, // Destination
                         { 0 },  // Destination Offsets
                         { 64 * KILOBYTE },
                         { DRS_CopyDest },
@@ -1537,10 +1538,10 @@ namespace FlexKit
                 data.lightListBuffer            = builder.ReadTransition(lightPass.lightListBuffer,         DRS_PixelShaderResource);
                 data.lightLists                 = builder.ReadTransition(lightPass.lightLists,              DRS_PixelShaderResource);
 
-				data.renderTargetObject         = builder.AcquireVirtualResource(
-                                                    GPUResourceDesc::RenderTarget(
+                data.renderTargetObject         = builder.AcquireVirtualResource(
+                                                    GPUResourceDesc::UAVTexture(
                                                         builder.GetRenderSystem().GetTextureWH(renderTarget),
-                                                        DeviceFormat::R16G16B16A16_FLOAT), FlexKit::DRS_RenderTarget, false);//builder.RenderTarget(renderTarget);
+                                                        DeviceFormat::R16G16B16A16_FLOAT, true), FlexKit::DRS_RenderTarget, false);//builder.RenderTarget(renderTarget);
 
 				data.pointLightBufferObject     = builder.ReadTransition(lightPass.lightBufferObject,       DRS_PixelShaderResource);
 
@@ -1548,11 +1549,6 @@ namespace FlexKit
 				data.passVertices               = reserveVB(sizeof(float4) * 6);
 
                 builder.SetDebugName(data.renderTargetObject, "renderTargetObject");
-
-                builder.ReleaseVirtualResource(lightPass.lightLists);
-                builder.ReleaseVirtualResource(lightPass.indexBufferObject);
-                builder.ReleaseVirtualResource(lightPass.lightListBuffer);
-                builder.ReleaseVirtualResource(lightPass.lightBufferObject);
 			},
 			[camera = gbufferPass.camera, renderTarget, t]
 			(TiledDeferredShade& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
@@ -1663,6 +1659,30 @@ namespace FlexKit
 		return pass;
 	}
 
+
+    void ClusteredRender::ReleaseFrameResources(
+        FrameGraph&         frameGraph,
+        LightBufferUpdate&  lightPass,
+        TiledDeferredShade& TiledDeferredShade)
+    {
+        struct _{};
+        frameGraph.AddNode<_>(
+            _{},
+            [&](FrameGraphNodeBuilder& builder, _& data)
+            {
+                builder.ReleaseVirtualResource(TiledDeferredShade.renderTargetObject);
+
+                builder.ReleaseVirtualResource(lightPass.lightLists);
+                builder.ReleaseVirtualResource(lightPass.lightLists);
+                builder.ReleaseVirtualResource(lightPass.indexBufferObject);
+                builder.ReleaseVirtualResource(lightPass.lightListBuffer);
+                builder.ReleaseVirtualResource(lightPass.lightBufferObject);
+            },
+            [](_& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+            {
+
+            });
+    }
 
     /************************************************************************************************/
 
@@ -1775,14 +1795,14 @@ namespace FlexKit
                 ctx.SetGraphicsDescriptorTable(4, descHeap);
                 ctx.SetGraphicsDescriptorTable(5, nullHeap);
 
-                size_t accumlator   = 0;
-                size_t nodeCount    = std::ceilf(float(lightCount) / BVH_ELEMENT_COUNT);
+                size_t accumlator   = 0u;
+                size_t nodeCount    = uint32_t(std::ceilf(float(lightCount) / BVH_ELEMENT_COUNT));
 
-                const uint32_t passCount = std::floor(std::log(lightCount) / std::log(BVH_ELEMENT_COUNT));
+                const uint32_t passCount = uint32_t(std::floor(std::log(lightCount) / std::log(BVH_ELEMENT_COUNT)));
 
                 for (uint32_t I = 0; I < passCount; I++)
                 {
-                    nodeCount    = std::floor(float(nodeCount) / BVH_ELEMENT_COUNT);
+                    nodeCount    = uint32_t(std::floor(float(nodeCount) / BVH_ELEMENT_COUNT));
                     accumlator  += nodeCount;
                 }
 

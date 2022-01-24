@@ -14,7 +14,7 @@
 #include <stb_image.h>
 #include <stb_image_write.h>
 
-namespace FlexKit::ResourceBuilder
+namespace FlexKit
 {   /************************************************************************************************/
 
 
@@ -385,7 +385,7 @@ namespace FlexKit::ResourceBuilder
 
                     if (node.mesh != -1)
                     {
-                        auto brush = std::make_shared<BrushComponent>(meshMap[node.mesh]);
+                        auto brush = std::make_shared<EntityBrushComponent>(meshMap[node.mesh]);
 
                         for (auto& subEntity : model.meshes[node.mesh].primitives)
                         {
@@ -440,7 +440,7 @@ namespace FlexKit::ResourceBuilder
                     if (node.skin != -1)
                     {
                         auto assetID = skinMap[node.skin]->GetResourceGUID();
-                        auto skeletonComponent = std::make_shared<SkeletonEntityComponent>(assetID);
+                        auto skeletonComponent = std::make_shared<EntitySkeletonComponent>(assetID);
                         entity.components.push_back(skeletonComponent);
                     }
 
@@ -469,7 +469,7 @@ namespace FlexKit::ResourceBuilder
                                 GetNumber(color.Get(2)),
                             };
 
-                            const auto pointLight = std::make_shared<PointLightComponent>(K, float2{ intensity, range });
+                            const auto pointLight = std::make_shared<EntityPointLightComponent>(K, float2{ intensity, range });
                             entity.components.push_back(pointLight);
                         }
                     }
@@ -625,7 +625,7 @@ namespace FlexKit::ResourceBuilder
 
             for (auto& channel : channels)
             {
-                AnimationTrack track;
+                AnimationResource::Track track;
 
                 auto& sampler = samplers[channel.sampler];
 
@@ -772,7 +772,7 @@ namespace FlexKit::ResourceBuilder
         for (auto& entity : entities)
         {
             EntityBlock::Header entityHeader;
-            entityHeader.blockType         = SceneBlockType::Entity;
+            entityHeader.blockType         = SceneBlockType::EntityBlock;
             entityHeader.blockSize         = sizeof(EntityBlock);
             entityHeader.componentCount    = 2 + entity.components.size() + 1; // TODO: Create a proper material component
 
@@ -784,7 +784,7 @@ namespace FlexKit::ResourceBuilder
             {
                 if (component->id == GetTypeGUID(Brush))
                 {
-                    auto brushComponent = std::dynamic_pointer_cast<BrushComponent>(component);
+                    auto brushComponent = std::dynamic_pointer_cast<EntityBrushComponent>(component);
                     const auto ID       = TranslateID(brushComponent->MeshGuid, translationTable);
 
                     componentBlock += CreateBrushComponent(ID,
@@ -886,7 +886,7 @@ namespace FlexKit::ResourceBuilder
     }
 
 
-    Blob SkeletonEntityComponent::GetBlob()
+    Blob EntitySkeletonComponent::GetBlob()
     {
         SkeletonComponentBlob blob;
         blob.assetID = skeletonResourceID;

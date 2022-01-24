@@ -45,6 +45,7 @@ namespace FlexKit
             case DRS_UAV:
             case DRS_CopyDest:
             case DRS_CopySrc:
+            case DRS_ACCELERATIONSTRUCTURE:
 				ctx->AddResourceBarrier(
                     resourceObject.shaderResource,
 					BeforeState,
@@ -282,6 +283,17 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    FrameResourceHandle FrameGraphNodeBuilder::AccelerationStructure(ResourceHandle handle)
+    {
+        if (auto frameResource = AddWriteableResource(handle, DeviceResourceState::DRS_ACCELERATIONSTRUCTURE); frameResource != InvalidHandle_t)
+            return frameResource;
+
+        Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
+
+        return AddWriteableResource(handle, DeviceResourceState::DRS_ACCELERATIONSTRUCTURE);
+    }
+
+
 	FrameResourceHandle FrameGraphNodeBuilder::PixelShaderResource(ResourceHandle handle)
 	{
         if (auto frameResource = AddReadableResource(handle, DeviceResourceState::DRS_PixelShaderResource); frameResource != InvalidHandle_t)
@@ -303,6 +315,15 @@ namespace FlexKit
 
         Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
 
+        return AddReadableResource(handle, DeviceResourceState::DRS_NonPixelShaderResource);
+    }
+
+
+    /************************************************************************************************/
+
+
+    FrameResourceHandle FrameGraphNodeBuilder::NonPixelShaderResource(FrameResourceHandle handle)
+    {
         return AddReadableResource(handle, DeviceResourceState::DRS_NonPixelShaderResource);
     }
 
@@ -354,6 +375,15 @@ namespace FlexKit
 
 		return resourceHandle;
 	}
+
+
+    /************************************************************************************************/
+
+
+    FrameResourceHandle FrameGraphNodeBuilder::RenderTarget(FrameResourceHandle target)
+    {
+        return WriteTransition(target, DRS_RenderTarget);
+    }
 
 
 	/************************************************************************************************/

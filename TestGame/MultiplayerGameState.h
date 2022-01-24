@@ -164,7 +164,7 @@ public:
 
     Vector<RunOnceDrawEvent>        runOnceDrawEvents;
 
-    AnimationResource*              testAnimationResource = nullptr;
+    Animation*                      testAnimationResource = nullptr;
     BaseState&                      base;
     WorldStateMangagerInterface&    worldState;
 

@@ -54,18 +54,25 @@ void DXRenderWindow::Release()
 
 void DXRenderWindow::Draw(FlexKit::EngineCore& Engine, TemporaryBuffers& temporaries, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& frameGraph, FlexKit::ThreadSafeAllocator& threadSafeAllocator)
 {
-    dirty = true;
+    t += dT;
 
-    if (onDraw)
+    if(t >= 1.0f / 30.0f)
     {
-        onDraw(Dispatcher, dT, temporaries, frameGraph, renderWindow.GetBackBuffer(), threadSafeAllocator);
-    }
-    else
-    {
-        frameGraph.AddRenderTarget(renderWindow.backBuffer);
+        dirty = true;
 
-        FlexKit::ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), FlexKit::float4{ 0.0f, 0.0f, 0.0f, 1 });
-        FlexKit::PresentBackBuffer(frameGraph, renderWindow.GetBackBuffer());
+        if (onDraw)
+        {
+            onDraw(Dispatcher, t, temporaries, frameGraph, renderWindow.GetBackBuffer(), threadSafeAllocator);
+        }
+        else
+        {
+            frameGraph.AddRenderTarget(renderWindow.backBuffer);
+
+            FlexKit::ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), FlexKit::float4{ 0.0f, 0.0f, 0.0f, 1 });
+            FlexKit::PresentBackBuffer(frameGraph, renderWindow.GetBackBuffer());
+        }
+
+        t = 0.0f;
     }
 }
 
@@ -126,12 +133,11 @@ void DXRenderWindow::resizeEvent(QResizeEvent* evt)
 {
     QWidget::resizeEvent(evt);
 
-
     const auto widgetSize = size();
-    const auto width      = widgetSize.width();
-    const auto height     = widgetSize.height();
+    const auto width      = widgetSize.width() / 2;
+    const auto height     = widgetSize.height() / 2;
 
-    resizeSwapChain(evt->size().width(), evt->size().height());
+    resizeSwapChain(evt->size().width() / 2, evt->size().height() / 2);
 
     if (ResizeEventHandler)
         ResizeEventHandler(this);

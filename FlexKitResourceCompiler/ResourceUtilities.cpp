@@ -20,7 +20,7 @@
 
 using namespace FlexKit;
 
-namespace FlexKit::ResourceBuilder
+namespace FlexKit
 {   /************************************************************************************************/
 
 

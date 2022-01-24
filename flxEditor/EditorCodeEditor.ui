@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>622</width>
-    <height>515</height>
+    <width>911</width>
+    <height>761</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,17 +15,9 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QPushButton" name="run">
-     <property name="text">
-      <string>Run</string>
-     </property>
-    </widget>
-   </item>
-   <item>
     <widget class="QPlainTextEdit" name="plainTextEdit">
      <property name="font">
       <font>
-       <family>Consolas</family>
        <pointsize>12</pointsize>
       </font>
      </property>

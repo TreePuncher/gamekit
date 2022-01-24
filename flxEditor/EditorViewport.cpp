@@ -135,7 +135,7 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
             }   break;
             case FlexKit::BrushComponentID:
             {
-                auto brushComponent = std::static_pointer_cast<FlexKit::ResourceBuilder::BrushComponent>(componentEntry);
+                auto brushComponent = std::static_pointer_cast<FlexKit::EntityBrushComponent>(componentEntry);
 
                 if (brushComponent)
                 {
@@ -249,6 +249,9 @@ void EditorViewport::mousePressEvent(QMouseEvent* event)
                 FlexKit::Ray{
                             .D = v_dir.normal(),
                             .O = v_o,});
+
+            if (results.empty())
+                return;
 
             ViewportObjectList selection;
             selection.push_back(results.front());
@@ -383,14 +386,14 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
             .transformDependency    = transforms,
             .cameraDependency       = cameras,
 
-            .additionalGbufferPass  = {},
-            .additionalShadowPass   = {}
+            .additionalGbufferPasses    = {},
+            .additionalShadowPasses     = {}
         };
 
         auto drawSceneRes = renderer.worldRender.DrawScene(dispatcher, frameGraph, sceneDesc, targets, FlexKit::SystemAllocator, allocator);
 
         EditorViewport::DrawSceneOverlay_Desc desc{
-            .brushes        = drawSceneRes.PVS.GetData().solid,
+            .brushes        = drawSceneRes.passes.GetData().solid,
             .lights         = drawSceneRes.pointLights,
 
             .buffers        = temporaries,
@@ -405,7 +408,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
             frameGraph,
             viewportCamera,
             depthBuffer.WH,
-            drawSceneRes.PVS,
+            drawSceneRes.passes,
             drawSceneRes.skinnedDraws,
             temporaries.ReserveConstantBuffer,
             temporaries.ReserveVertexBuffer);

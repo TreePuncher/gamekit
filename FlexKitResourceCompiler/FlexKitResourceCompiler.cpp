@@ -35,7 +35,7 @@
 
 
 using namespace FlexKit;
-using namespace FlexKit::ResourceBuilder;
+using namespace FlexKit;
 
 
 class NullErrorCallback :
@@ -336,7 +336,9 @@ int main(int argc, char* argv[])
 	case TOOL_MODE::ETOOLMODE_HELP:
 	{	std::cout << "COMPILES RESOURCE FILES FOR RUNTIME ENGINE\n"
 			"compile or -c to set it to compile mode\n"
-			"target or -f Species a FBX file for COMPILING\n"
+            "out or -o to set output file\n"
+			"target or -f Specifies a FBX file for inclusion\n"
+			"gltf or -tf Specifies a gltf file for inclusion\n"
 			"list or -ls will Print the Targeted Resource File\n";
 	}	break;
 	default:

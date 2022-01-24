@@ -53,6 +53,7 @@ void FillNodes(const uint3 threadID : SV_DispatchThreadID)
         return;
 
     const VoxelSample voxelSample   = voxelSampleBuffer[threadIdx];
+    //const uint4 voxelcord           = uint4(voxelSample.POS.xyz, MAX_DEPTH); //uint4(WS2VolumeCord(voxelSample.POS, float3(0, 0, 0), VOLUME_SIZE), MAX_DEPTH);
     const uint4 voxelcord           = uint4(WS2VolumeCord(voxelSample.POS, float3(0, 0, 0), VOLUME_SIZE), MAX_DEPTH);
 
     const TraverseResult quearyResult = TraverseOctree(voxelcord, octree);

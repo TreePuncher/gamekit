@@ -642,7 +642,7 @@ namespace FlexKit
 							}
 						}	break;
 						case SceneBlockType::ComponentRequirementTable:
-						case SceneBlockType::Entity:
+						case SceneBlockType::EntityBlock:
 						{
 							FK_ASSERT(nodeBlock != nullptr, "No Node Block defined!");
 							//FK_ASSERT(componentRequirement != nullptr, "No Component Requirement Block defined!");
@@ -665,7 +665,7 @@ namespace FlexKit
                                 memcpy(&component, (std::byte*)block + sizeof(entityBlock) + componentOffset, sizeof(component));
 
                                 const ComponentID ID = component.componentID;
-                                if (component.blockType != EntityComponent) // malformed blob?
+                                if (component.blockType != EntityComponentBlock) // malformed blob?
                                     break;
                                 else if (ID == SceneNodeView<>::GetComponentID())
                                 {
@@ -695,7 +695,7 @@ namespace FlexKit
 
                             SetBoundingSphereFromMesh(gameObject);
 						}
-						case SceneBlockType::EntityComponent:
+						case SceneBlockType::EntityComponentBlock:
 							break;
 					default:
 						break;
@@ -947,7 +947,7 @@ namespace FlexKit
                             }
                             const auto flags = GetFlags(visables[PVS[I]].node);
 
-                            if (flags & (SceneNodes::UPDATED | SceneNodes::DIRTY))
+                            //if (flags & (SceneNodes::UPDATED | SceneNodes::DIRTY))
                             {
                                 markDirty();
                                 return;

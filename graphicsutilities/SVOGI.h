@@ -5,6 +5,7 @@
 #include "FrameGraph.h"
 #include "graphics.h"
 #include "Transparency.h"
+#include "ClusteredRendering.h"
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -50,13 +51,15 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    struct DEBUGVIS_VoxelVolume
+    struct SVO_RayTrace
     {
         ReserveConstantBufferFunction   reserveCB;
         CameraHandle                    camera;
 
         FrameResourceHandle depthTarget;
         FrameResourceHandle renderTarget;
+        FrameResourceHandle normals;
+        FrameResourceHandle albedo;
 
         FrameResourceHandle indirectArgs;
         FrameResourceHandle octree;
@@ -176,12 +179,13 @@ namespace FlexKit
 			    ReserveConstantBufferFunction   reserveCB,
 			    iAllocator*                     allocator);
 
-        DEBUGVIS_VoxelVolume&     DrawVoxelVolume(
+        SVO_RayTrace&           RayTrace(
 			    UpdateDispatcher&               dispatcher,
 			    FrameGraph&                     frameGraph,
 			    const CameraHandle              camera,
                 ResourceHandle                  depthTarget,
-                FrameResourceHandle             renderTarget, 
+                FrameResourceHandle             renderTarget,
+                GBuffer&                        gbuffer,
 			    ReserveConstantBufferFunction   reserveCB,
 			    iAllocator*                     allocator,
                 uint32_t                        mipOffset = 0);

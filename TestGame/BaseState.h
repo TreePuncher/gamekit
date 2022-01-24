@@ -65,28 +65,26 @@ public:
 	SoundSystem(ThreadManager& IN_Threads, iAllocator* memory) :
 		threads	{	IN_Threads	}
 	{
-        /*
 		result			= FMOD::System_Create(&system);
 		auto initres	= system->init(32, FMOD_INIT_NORMAL, nullptr);
 
 		auto& Work = CreateWorkItem(
-			[this]() {
+			[this](iAllocator&) {
 			//auto res = system->createSound("test.flac", FMOD_DEFAULT, 0, &sound1);
 			if(sound1)
 				system->playSound(sound1, nullptr, false, &channel);
 		}, memory, memory);
 
         Work._debugID = "FMOD: Play Sound";
-		threads.AddWork(Work, memory);
-        */
+		threads.AddWork(Work);
 	}
 
 
 	~SoundSystem()
 	{
-		//sound1->release();
-		//system->release();
-		//system = nullptr;
+		sound1->release();
+		system->release();
+		system = nullptr;
 	}
 
 
@@ -98,16 +96,14 @@ public:
 
 	void Update(iAllocator* memory)
 	{
-        /*
 		auto& Work = CreateWorkItem(
-			[this]() {
+			[this](iAllocator&) {
 				auto result = system->update();
 			}, 
 			memory);
 
         Work._debugID = "FMOD: Update Sound";
-		threads.AddWork(Work, memory);
-        */
+		threads.AddWork(Work);
 	}
 
 
@@ -322,6 +318,7 @@ public:
         PIX_SingleFrameCapture = true;
     }
 
+
     void BeginPixCapture()
     {
         if (PIX_SingleFrameCapture && !PIX_CaptureInProgress)
@@ -349,6 +346,7 @@ public:
         }
     }
 
+
     void EndPixCapture()
     {
         if (PIX_SingleFrameCapture && PIX_CaptureInProgress)
@@ -361,23 +359,24 @@ public:
 
 	asIScriptEngine* asEngine;
 
-	FKApplication& App;
+	FKApplication&  App;
 
     // counters, timers
-    float   t = 0.0f;
-    size_t  counter = 0;
+    float                       t           = 0.0f;
+    size_t                      counter     = 0;
 
+    // Pix capture
     bool                        PIX_SingleFrameCapture  = false;
     bool                        PIX_CaptureInProgress   = false;
     uint32_t                    PIX_frameCaptures       = 0;
 
+    // Graphics resources
     Win32RenderWindow           renderWindow;
 	WorldRender					render;
     GBuffer                     gbuffer;
     DepthBuffer				    depthBuffer;
 	VertexBufferHandle			vertexBuffer;
 	ConstantBufferHandle		constantBuffer;
-    SoundSystem			        sounds;
 
 	// Components
     AnimatorComponent               animations;
@@ -397,6 +396,8 @@ public:
     StaticBodyComponent             staticBodies;
     CharacterControllerComponent    characterControllers;
     CameraControllerComponent       orbitCameras;
+    SoundSystem			            sounds;
+
 
     ImGUIIntegrator                 debugUI;
 	TextureStreamingEngine		    streamingEngine;

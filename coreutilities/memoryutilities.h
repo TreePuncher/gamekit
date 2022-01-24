@@ -28,7 +28,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "buildsettings.h"
 #include "Logging.h"
 #include <atomic>
+#include <memory>
 #include <mutex>
+#include <type_traits>
+
 
 namespace FlexKit
 {
@@ -681,7 +684,7 @@ namespace FlexKit
 				Allocated	= 0x01,
 				UNUSED		= 0x02,
 				Aligned		= 0x04,
-				DEBUG		= 0x08
+				Debug		= 0x08
 			}state;
 			uint16_t Parent;
 			uint16_t AllocationSize;
@@ -1056,7 +1059,7 @@ namespace FlexKit
 	template<typename TY, typename ... TY_ARGS>
 	auto MakeSharedPtr(iAllocator* allocator, TY_ARGS ... constructor_args)
 	{
-		return shared_ptr<TY>(
+		return std::shared_ptr<TY>(
 				&allocator->allocate_aligned<TY>(std::forward<TY_ARGS>(constructor_args)..., 
 					[=](TY* _ptr)
 					{

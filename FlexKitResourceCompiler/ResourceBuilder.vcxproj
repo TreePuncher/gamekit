@@ -45,7 +45,7 @@
     <IntDir>obj\Debug\</IntDir>
     <TargetName>ResourceBuilder</TargetName>
     <TargetExt>.exe</TargetExt>
-    <LibraryPath>%COMPRESSONATOR_ROOT%\lib\VS2017\x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>%COMPRESSONATOR_ROOT%lib\VS2017\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -53,7 +53,7 @@
     <IntDir>obj\Release\</IntDir>
     <TargetName>ResourceBuilder</TargetName>
     <TargetExt>.exe</TargetExt>
-    <LibraryPath>%COMPRESSONATOR_ROOT%\lib\VS2017\x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>%COMPRESSONATOR_ROOT%lib\VS2017\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <VcpkgEnableManifest>true</VcpkgEnableManifest>
@@ -70,14 +70,14 @@
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <AdditionalOptions>/std:c++latest %(AdditionalOptions)</AdditionalOptions>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>..\Dependencies\libs\debug;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\lib\vs2017\x64\debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Compressonator_MDd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

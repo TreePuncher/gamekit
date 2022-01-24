@@ -4,8 +4,6 @@
 #pragma comment(lib, "dxguid.lib")
 #pragma comment(lib, "dxcompiler.lib")
 
-//#pragma comment(lib, "d3dcompiler.lib") // Old HLSL compiler
-
 #include "PipelineState.h"
 
 #include "..\PCH.h"
@@ -30,7 +28,7 @@
 #include <d3d12sdklayers.h>
 #include <DirectXMath.h>
 #include <dxgi1_6.h>
-
+#include <concepts>
 #include <tuple>
 #include <variant>
 #include <optional>
@@ -56,9 +54,13 @@
 #endif
 
 
+struct ID3D12Device9;
+struct ID3D12Debug5;
+struct ID3D12DebugDevice1;
+
+
 namespace FlexKit
-{
-	// Forward Declarations
+{   // Forward Declarations
 	struct Buffer;
 	struct RenderTargetDesc;
 	struct RenderWindowDesc;
@@ -143,7 +145,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		DRS_DEPTHBUFFERREAD         = 0x0030 | DRS_ReadFlag,
 		DRS_DEPTHBUFFERWRITE        = 0x0030 | DRS_WriteFlag,
 
-		DRS_PREDICATE		        = 0x0015, // Implied Read
+        DRS_ACCELERATIONSTRUCTURE   = 0x00B2 | DRS_ReadFlag | DRS_WriteFlag,
+
+        DRS_PREDICATE		        = 0x0015, // Implied Read
 		DRS_INDIRECTARGS	        = 0x0019, // Implied Read
 
         DRS_NonPixelShaderResource  = 0x0050 | DRS_WriteFlag,
@@ -200,8 +204,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
             return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_INDEX_BUFFER;
         case DeviceResourceState::DRS_GenericRead:
             return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_GENERIC_READ;
+        case DeviceResourceState::DRS_ACCELERATIONSTRUCTURE:
+            return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
 		case DeviceResourceState::DRS_UNKNOWN:
             FK_ASSERT(0);
+
 		}
 
 		return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
@@ -234,6 +241,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
             return DeviceResourceState::DRS_NonPixelShaderResource;
         case D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_INDEX_BUFFER:
             return DeviceResourceState::DRS_INDEXBUFFER;
+        case D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE:
+            return DeviceResourceState::DRS_ACCELERATIONSTRUCTURE;
 		}
 
         FK_ASSERT(0);
@@ -450,6 +459,56 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	constexpr DXGI_FORMAT   TextureFormat2DXGIFormat(DeviceFormat F) noexcept;
 	constexpr DeviceFormat	DXGIFormat2TextureFormat(DXGI_FORMAT F) noexcept;
 
+
+    /************************************************************************************************/
+
+
+    struct DevicePointer
+    {
+        D3D12_GPU_VIRTUAL_ADDRESS address = { 0 };
+
+        DevicePointer operator + (std::integral auto offset) const
+        {
+            return { address + offset };
+        }
+
+        DevicePointer operator - (std::integral auto offset) const
+        {
+            return { address - offset };
+        }
+
+        DevicePointer operator * (std::integral auto x) const
+        {
+            return { address * x };
+        }
+
+        operator D3D12_GPU_VIRTUAL_ADDRESS () const
+        {
+            return address;
+        }
+    };
+
+
+	struct DeviceAddressRange
+	{
+        D3D12_GPU_VIRTUAL_ADDRESS_RANGE range   = { 0, 0 };
+
+        operator D3D12_GPU_VIRTUAL_ADDRESS_RANGE () const
+        {
+            return range;
+        }
+	};
+
+
+	struct DeviceAddressRangeStride
+	{
+        D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE rangeStride = { 0, 0, 0 };
+
+        operator D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE () const
+        {
+            return rangeStride;
+        }
+	};
 
 
 	/************************************************************************************************/
@@ -740,6 +799,56 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	};
 
 
+    /************************************************************************************************/
+
+
+	typedef static_vector<D3D12_INPUT_ELEMENT_DESC, 16> InputDescription;
+
+	struct TriangleMeshMetaData
+	{
+		D3D12_INPUT_ELEMENT_DESC	InputLayout[16];
+		size_t						InputElementCount;
+		size_t						IndexBuffer_Index;
+	};
+
+
+	struct VertexBuffer
+	{
+		struct BuffEntry
+		{
+			ID3D12Resource*		Buffer;
+			uint32_t			BufferSizeInBytes;
+			uint32_t            BufferStride;
+			VERTEXBUFFER_TYPE	Type;
+
+            size_t Size() const { return BufferSizeInBytes / BufferStride; }
+
+            DevicePointer GetDevicePointer() { return { Buffer->GetGPUVirtualAddress() }; }
+
+			operator bool()	{ return Buffer != nullptr; }
+			operator ID3D12Resource* ()	{ return Buffer; }
+		};
+
+        auto Find(const VERTEXBUFFER_TYPE type)
+        {
+            return std::find_if(
+                VertexBuffers.begin(),
+                VertexBuffers.end(),
+                [&](auto& buffer)
+                {
+                    return buffer.Type == type;
+                });
+        }
+
+		void clear() { VertexBuffers.clear(); }
+
+
+		ID3D12Resource*	operator[](size_t idx)	{ return VertexBuffers[idx].Buffer; }
+		static_vector<BuffEntry, 16>	VertexBuffers;
+		TriangleMeshMetaData			MD;
+	};
+
+
 	/************************************************************************************************/
 
 
@@ -942,8 +1051,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			size_t BufferTag = -1)
 		{
 			HeapDescriptor Desc;
-			Desc.Register	= BaseRegister;
-			Desc.Space		= RegisterSpace;
+			Desc.Register	= uint32_t(BaseRegister);
+			Desc.Space		= uint32_t(RegisterSpace);
 			Desc.Type		= DescHeapEntryType::ShaderResource;
 			Desc.Count		= RegisterCount;
 
@@ -1463,27 +1572,20 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	};
 
 
-	struct AccelerationStructureDesc
-	{
-	};
+    /************************************************************************************************/
 
 
-	struct DevicePointer
-	{
-	};
-
-
-	struct DeviceRange
-	{
-	};
+    struct AccelerationStructureDesc
+    {
+    };
 
 
 	struct DispatchDesc
 	{
-		DeviceRange     callableShaderTable;
-		DeviceRange     hitGroupTable;
-		DeviceRange     missTable;
-		DevicePointer   rayGenerationRecord;
+		DeviceAddressRangeStride     callableShaderTable;
+		DeviceAddressRangeStride     hitGroupTable;
+		DeviceAddressRangeStride     missTable;
+        DeviceAddressRange           rayGenerationRecord;
 	};
 
 
@@ -1499,128 +1601,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		Context(RenderSystem*				renderSystem_IN	= nullptr, 
 				iAllocator*					allocator		= nullptr);
 			
-		Context(Context&& RHS)
-		{
-			DeviceContext			= RHS.DeviceContext;
-			CurrentRootSignature	= RHS.CurrentRootSignature;
-			CurrentPipelineState	= RHS.CurrentPipelineState;
-			renderSystem			= RHS.renderSystem;
-
-			RTV_CPU = RHS.RTV_CPU;
-
-			SRV_CPU = RHS.SRV_CPU;
-			SRV_GPU = RHS.SRV_GPU;
-
-			DSV_CPU = RHS.DSV_CPU;
-
-			descHeapRTV = RHS.descHeapRTV;
-			descHeapSRV = RHS.descHeapSRV;
-			descHeapDSV = RHS.descHeapDSV;
-
-			RenderTargetCount		= RHS.RenderTargetCount;
-			DepthStencilEnabled		= RHS.DepthStencilEnabled;
-
-			Viewports				= RHS.Viewports;
-			DesciptorHeaps			= RHS.DesciptorHeaps;
-			VBViews					= RHS.VBViews;
-			PendingBarriers			= RHS.PendingBarriers;
-			Memory					= RHS.Memory;
-			commandAllocator        = RHS.commandAllocator;
+        Context(Context&& RHS);
 
 
-			// Null out old Context
-			RHS.commandAllocator        = nullptr;
-			RHS.DeviceContext			= nullptr;
-			RHS.CurrentRootSignature	= nullptr;
-
-			RHS.RenderTargetCount	    = 0;
-			RHS.DepthStencilEnabled     = false;
-			RHS.Memory				    = nullptr;
-
-			RHS.Viewports.clear();
-			RHS.DesciptorHeaps.clear();
-			RHS.VBViews.clear();
-			RHS.PendingBarriers.clear();
-
-			RHS.RTV_CPU = { 0 };
-
-			RHS.SRV_CPU = { 0 };
-			RHS.SRV_GPU = { 0 };
-
-			RHS.DSV_CPU = { 0 };
-
-			RHS.descHeapRTV = nullptr;
-			RHS.descHeapSRV = nullptr;
-            RHS.descHeapDSV = nullptr;
-
-#if USING(AFTERMATH)
-            AFTERMATH_context       = RHS.AFTERMATH_context;
-            RHS.AFTERMATH_context   = nullptr;
-#endif
-		}
-
-
-		Context& operator = (Context&& RHS)// Moves only
-		{
-			DeviceContext			= RHS.DeviceContext;
-			CurrentRootSignature	= RHS.CurrentRootSignature;
-			CurrentPipelineState	= RHS.CurrentPipelineState;
-			renderSystem			= RHS.renderSystem;
-
-			RTV_CPU = RHS.RTV_CPU;
-
-			SRV_CPU = RHS.SRV_CPU;
-			SRV_GPU = RHS.SRV_GPU;
-
-			DSV_CPU = RHS.DSV_CPU;
-
-			descHeapRTV = RHS.descHeapRTV;
-			descHeapSRV = RHS.descHeapSRV;
-			descHeapDSV = RHS.descHeapDSV;
-
-			RenderTargetCount		= RHS.RenderTargetCount;
-			DepthStencilEnabled		= RHS.DepthStencilEnabled;
-
-			Viewports				= RHS.Viewports;
-			DesciptorHeaps			= RHS.DesciptorHeaps;
-			VBViews					= RHS.VBViews;
-			PendingBarriers			= RHS.PendingBarriers;
-			Memory					= RHS.Memory;
-			commandAllocator        = RHS.commandAllocator;
-
-			// Null out old Context
-			RHS.commandAllocator        = nullptr;
-			RHS.DeviceContext			= nullptr;
-			RHS.CurrentRootSignature	= nullptr;
-
-			RHS.RenderTargetCount	    = 0;
-			RHS.DepthStencilEnabled     = false;
-			RHS.Memory				    = nullptr;
-
-			RHS.Viewports.clear();
-			RHS.DesciptorHeaps.clear();
-			RHS.VBViews.clear();
-			RHS.PendingBarriers.clear();
-
-			RHS.RTV_CPU = { 0 };
-
-			RHS.SRV_CPU = { 0 };
-			RHS.SRV_GPU = { 0 };
-
-			RHS.DSV_CPU = { 0 };
-
-			RHS.descHeapRTV = nullptr;
-			RHS.descHeapSRV = nullptr;
-			RHS.descHeapDSV = nullptr;
-
-
-#if USING(AFTERMATH)
-            AFTERMATH_context       = RHS.AFTERMATH_context;
-            RHS.AFTERMATH_context   = nullptr;
-#endif
-
-			return *this;
-		}
+        Context& operator = (Context&& RHS);
 
 
 		Context				(const Context& RHS) = delete;
@@ -1629,6 +1613,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void Release();
 
 		void CreateAS(const AccelerationStructureDesc&, const TriMesh& );
+        void BuildBLAS(VertexBuffer& buffer, ResourceHandle destination, ResourceHandle scratchSpace);
 
         void DiscardResource(ResourceHandle resource);
 
@@ -1775,7 +1760,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void SetPredicate(bool Enable, QueryHandle Handle = {}, size_t = 0);
 
-		void CopyBuffer		(const UploadSegment src, const ResourceHandle destination);
+		void CopyBuffer		(const UploadSegment src, const ResourceHandle destination, const size_t destOffset = 0);
 		void CopyTexture2D	(const UploadSegment src, const ResourceHandle destination, const uint2 BufferSize);
 
         /*
@@ -1836,7 +1821,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
         void _AddBarrier(ID3D12Resource* resource, DeviceResourceState currentState, DeviceResourceState newState);
 
-	private:
+	//private:
 
         DescHeapPOS _GetDepthDesciptor(ResourceHandle resource);
 
@@ -2320,6 +2305,7 @@ private:
 
 
         size_t byteSize;
+        bool   rayTraceStructure = false;
 
         size_t CalculateByteSize() const
         {
@@ -2524,6 +2510,32 @@ private:
 		}
 
 
+        static GPUResourceDesc RayTracingStructure(const size_t bufferSize)
+        {
+            GPUResourceDesc desc{
+                false,  // render target flag
+                false,  // depth target flag
+                true,   // UAV Resource flag
+                false,  // buffered flag
+                false,  // shader resource flag
+                true,   // structured flag
+                false,  // clear value
+                false,  // back buffer
+                false,  // created
+                ResourceAllocationType::Committed,
+
+                TextureDimension::Buffer, // dimensions
+                1,      // mip count
+                3,      // buffered count
+
+                uint2{ (uint32_t)bufferSize, 1 }, DeviceFormat::UNKNOWN
+            };
+
+            desc.rayTraceStructure = true;
+
+            return desc;
+        }
+
 		static GPUResourceDesc UAVResource(const size_t bufferSize, DeviceFormat IN_format = DeviceFormat::UNKNOWN, bool renderTarget = false)
 		{
 			return {
@@ -2572,7 +2584,7 @@ private:
         static GPUResourceDesc UAVTexture(const uint2 IN_WH, const DeviceFormat IN_format, bool renderTarget = false, uint32_t mipCount = 1)
 		{
 			return {
-				false,  // render target flag
+                renderTarget,  // render target flag
 				false,  // depth target flag
 				true,   // UAV Resource flag
 				false,  // buffered flag
@@ -3467,6 +3479,14 @@ private:
 	};
 
 
+    struct PipelineStateLibrary
+    {
+    };
+
+
+    /************************************************************************************************/
+
+
     struct Barrier
     {
         ResourceHandle  handle;
@@ -3492,29 +3512,20 @@ private:
         //}
     }
 
+    struct BLAS_PreBuildInfo
+    {
+        size_t BLAS_byteSize;
+        size_t scratchPad_byteSize;
+        size_t update_byteSize;
+    };
+
     constexpr PSOHandle CLEARBUFFERPSO = PSOHandle(GetTypeGUID(CLEARBUFFERPSO));
 
 	FLEXKITAPI class RenderSystem
 	{
 	public:
-		RenderSystem(iAllocator* IN_allocator, ThreadManager* IN_Threads) :
-			Memory          { IN_allocator },
-			Library         { IN_allocator },
-			Queries         { IN_allocator, this },
-			Textures        { IN_allocator },
-			VertexBuffers   { IN_allocator },
-			ConstantBuffers { IN_allocator, this },
-			PipelineStates  { IN_allocator, this, IN_Threads },
-			PendingBarriers { IN_allocator },
-			StreamOutTable  { IN_allocator },
-			ReadBackTable   { IN_allocator },
-			threads         { *IN_Threads },
-			Syncs           { IN_allocator, 64 },
-			Contexts        { IN_allocator, 3 * (1 + IN_Threads->GetThreadCount()) },
-			heaps           { pDevice, IN_allocator }{}
-
-
-		~RenderSystem() { Release(); }
+        RenderSystem(iAllocator* IN_allocator, ThreadManager* IN_Threads);
+        ~RenderSystem();
 
 		RenderSystem(const RenderSystem&) = delete;
 		RenderSystem& operator =	(const RenderSystem&) = delete;
@@ -3535,6 +3546,7 @@ private:
 		ID3D12PipelineState*        GetPSO(PSOHandle StateID);
 		const RootSignature* const  GetPSORootSignature(PSOHandle StateID) const;
 
+
 		void BuildLibrary(PSOHandle State, const PipelineStateLibraryDesc);
 		void RegisterPSOLoader(PSOHandle State, PipelineStateDescription desc);
 		void QueuePSOLoad(PSOHandle State);
@@ -3552,12 +3564,13 @@ private:
 		size_t						GetVertexBufferSize(const VertexBufferHandle);
 		D3D12_GPU_VIRTUAL_ADDRESS	GetVertexBufferAddress(const VertexBufferHandle VB);
 		D3D12_GPU_VIRTUAL_ADDRESS	GetConstantBufferAddress(const ConstantBufferHandle CB);
+        BLAS_PreBuildInfo           GetBLASPreBuildInfo(VertexBuffer&);
 
 
 		size_t	GetTextureFrameGraphIndex(ResourceHandle);
 		void	SetTextureFrameGraphIndex(ResourceHandle, size_t);
 
-		void        MarkTextureUsed(ResourceHandle Handle);
+		void    MarkTextureUsed(ResourceHandle Handle);
 
         const size_t    GetResourceSize(ConstantBufferHandle handle) const noexcept;
         const size_t    GetResourceSize(ResourceHandle desc) const noexcept;
@@ -3575,7 +3588,6 @@ private:
         uint2           GetTextureTilingWH(ResourceHandle Handle, const uint mipLevel) const;
 
 
-
         SyncPoint           UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator);
 		void                UpdateTextureTileMappings(const ResourceHandle Handle, const TileMapList&);
 		const TileMapList&  GetTileMappings(const ResourceHandle Handle);
@@ -3589,6 +3601,8 @@ private:
 		void			UpdateResourceByUploadQueue(ID3D12Resource* Dest, CopyContextHandle, void* Data, size_t Size, size_t ByteSize, DeviceResourceState EndState);
 
 		Shader  LoadShader(const char* entryPoint, const char* ShaderType, const char* file);
+
+        PipelineStateLibraryDesc    CreatePipelibrary();
 
 		// Resource Creation and Destruction
         [[nodiscard]] DeviceHeapHandle          CreateHeap                  (const size_t heapSize, const uint32_t flags);
@@ -3705,7 +3719,7 @@ private:
 
 		operator RenderSystem* () { return this; }
 
-		ID3D12Device4*      pDevice         = nullptr;
+		ID3D12Device9*      pDevice         = nullptr;
 		ID3D12CommandQueue* GraphicsQueue   = nullptr;
 		ID3D12CommandQueue* ComputeQueue    = nullptr;
 
@@ -3829,8 +3843,8 @@ private:
 		IDxcCompiler*           hlslCompiler        = nullptr;
         IDxcIncludeHandler*     hlslIncludeHandler  = nullptr;
 
-		ID3D12Debug*			pDebug			= nullptr;
-		ID3D12DebugDevice*		pDebugDevice	= nullptr;
+		ID3D12Debug5*			pDebug			= nullptr;
+		ID3D12DebugDevice1*		pDebugDevice	= nullptr;
 		iAllocator*				Memory			= nullptr;
 
         std::mutex              crashM;
@@ -4013,40 +4027,6 @@ private:
 	/************************************************************************************************/
 
 
-	typedef static_vector<D3D12_INPUT_ELEMENT_DESC, 16> InputDescription;
-
-	struct TriangleMeshMetaData
-	{
-		D3D12_INPUT_ELEMENT_DESC	InputLayout[16];
-		size_t						InputElementCount;
-		size_t						IndexBuffer_Index;
-	};
-
-
-	struct VertexBuffer
-	{
-		struct BuffEntry
-		{
-			ID3D12Resource*		Buffer;
-			uint32_t			BufferSizeInBytes;
-			uint32_t            BufferStride;
-			VERTEXBUFFER_TYPE	Type;
-
-			operator bool()	{ return Buffer != nullptr; }
-			operator ID3D12Resource* ()	{ return Buffer; }
-		};
-
-		void clear() { VertexBuffers.clear(); }
-
-		ID3D12Resource*	operator[](size_t idx)	{ return VertexBuffers[idx].Buffer; }
-		static_vector<BuffEntry, 16>	VertexBuffers;
-		TriangleMeshMetaData			MD;
-	};
-
-
-	/************************************************************************************************/
-
-
 	struct TriMesh
 	{
 		TriMesh()
@@ -4169,6 +4149,7 @@ private:
 
             static_vector<VertexBufferView*>    buffers;
             FlexKit::VertexBuffer		        vertexBuffer;
+            D3D12_GPU_VIRTUAL_ADDRESS           blAS = -1; // TODO(Wrap this type)
 
             std::atomic<LOD_State>      state   = LOD_State::Unloaded;
             static_vector<SubMesh, 32>  subMeshes;
@@ -4186,6 +4167,17 @@ private:
         }
 
         const LOD_Runtime&  GetHighestLoadedLod() const
+        {
+            for (auto& lod : lods)
+            {
+                if (lod.state == LOD_Runtime::LOD_State::Loaded)
+                    return lod;
+            }
+
+            return lods.back();
+        }
+
+        LOD_Runtime& GetHighestLoadedLod()
         {
             for (auto& lod : lods)
             {
