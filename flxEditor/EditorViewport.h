@@ -30,6 +30,9 @@ public:
     void resizeEvent    (QResizeEvent* event) override;
     void SetScene       (EditorScene_ptr scene);
 
+    std::shared_ptr<ViewportScene>& GetScene()              { return scene; }
+    SelectionContext&               GetSelectionContext()   { return selectionContext; }
+
 protected:
     void keyPressEvent      (QKeyEvent* event) override;
     void keyReleaseEvent    (QKeyEvent* event) override;

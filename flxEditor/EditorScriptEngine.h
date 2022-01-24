@@ -77,6 +77,7 @@ public:
 
     asIScriptEngine*    GetScriptEngine()   { return scriptEngine; }
     const std::string&  GetTextBuffer()     { return outputTextBuffer; }
+    const std::string&  GetErrorBuffer()    { return errorTextBuffer; }
 
 private:
 
@@ -84,11 +85,17 @@ private:
 
     void RegisterGadget(asIScriptObject* gObj);
     void PrintToOutputWindow(std::string* str);
+    void PrintToErrorWindow(const char* str);
+
+protected:
+
+    static void MessageCallback(const asSMessageInfo* msg, EditorScriptEngine* param);
 
     asIScriptEngine*    scriptEngine    = nullptr;
     asIScriptContext*   scriptContext   = nullptr;
 
     std::string         outputTextBuffer;
+    std::string         errorTextBuffer;
 
     std::vector<AngelScriptGadget*> gadgets;
 };

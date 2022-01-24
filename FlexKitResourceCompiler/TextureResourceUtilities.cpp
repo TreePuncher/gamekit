@@ -11,7 +11,7 @@
 #endif
 #endif
 
-namespace FlexKit::ResourceBuilder
+namespace FlexKit
 {   /************************************************************************************************/
 
 

@@ -571,8 +571,13 @@ namespace FlexKit
 		/************************************************************************************************/
 
 		template<typename TY>
-		ID3D12Resource*         GetObjectResource(TY handle) const  { return globalResources.GetObjectResource(handle); }
-		ID3D12PipelineState*    GetPipelineState(PSOHandle state) const { return globalResources.GetPipelineState(state); }
+		ID3D12Resource*         GetDeviceResource   (TY handle) const                      { return globalResources.GetObjectResource(handle); }
+        ID3D12Resource*         GetDeviceResource   (FrameResourceHandle handle) const     { return globalResources.GetObjectResource(GetResource(handle)); }
+
+        template<typename TY>
+        DevicePointer           GetDevicePointer    (TY handle) const { return { GetDeviceResource(handle)->GetGPUVirtualAddress() }; }
+
+		ID3D12PipelineState*    GetPipelineState(PSOHandle state) const                 { return globalResources.GetPipelineState(state); }
 
 		size_t                  GetVertexBufferOffset(VertexBufferHandle handle, size_t vertexSize) { return globalResources.GetVertexBufferOffset(handle, vertexSize); }
 		size_t                  GetVertexBufferOffset(VertexBufferHandle handle) { return globalResources.GetVertexBufferOffset(handle); }
@@ -1077,13 +1082,19 @@ namespace FlexKit
 
 		void AddDataDependency(UpdateTask& task);
 
+        FrameResourceHandle AccelerationStructure   (ResourceHandle);
+
 		FrameResourceHandle PixelShaderResource	    (ResourceHandle);
+
 		FrameResourceHandle NonPixelShaderResource	(ResourceHandle);
+        FrameResourceHandle NonPixelShaderResource  (FrameResourceHandle);
+
 
 		FrameResourceHandle CopyDest            (ResourceHandle);
 		FrameResourceHandle CopySource          (ResourceHandle);
 
 		FrameResourceHandle RenderTarget	    (ResourceHandle);
+        FrameResourceHandle RenderTarget        (FrameResourceHandle);
 
 		FrameResourceHandle	Present             (ResourceHandle);
 

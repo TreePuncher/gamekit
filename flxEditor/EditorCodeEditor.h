@@ -6,6 +6,8 @@
 #include "QtWidgets/qplaintextedit.h"
 
 
+class BasicHighlighter;
+
 class EditorCodeEditor : public QWidget
 {
 	Q_OBJECT
@@ -15,8 +17,17 @@ public:
 	~EditorCodeEditor();
 
     void RunCode();
+    void LoadDocument();
+    void SaveDocument();
+    void SaveDocumentCopy();
 
 private:
+
+    QAction* undo;
+    QAction* redo;
+
+    std::string             fileDir;
+    BasicHighlighter*       highlighter = nullptr;
     QPlainTextEdit*         textEditor;
     EditorScriptEngine&     scriptEngine;
 	Ui::EditorCodeEditor    ui;

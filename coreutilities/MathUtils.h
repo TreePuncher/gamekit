@@ -7,14 +7,17 @@
 // Includes
 #include "buildsettings.h"
 
+#include <concepts>
+#include <initializer_list>
 #include <math.h>
-#include <stdint.h>
-#include <string>
+#include <ostream>
 #include <emmintrin.h>
 #include <smmintrin.h>
 #include <xmmintrin.h>
-#include <initializer_list>
-#include <ostream>
+#include <stdint.h>
+#include <string>
+#include <type_traits>
+
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -202,7 +205,7 @@ namespace FlexKit
 		inline float2 operator / ( const float   a ) const noexcept { return float2( this->x / a,	this->y / a );			}
 		inline float2 operator % ( const float2& a ) const noexcept { return float2( std::fmod(x, a.x), std::fmod(y, a.y));	}
 
-		inline float2 operator = (const float2& a) noexcept { x = a.x; y = a.y; return *this; }
+        inline float2& operator = (const float2& a) noexcept = default;// { x = a.x; y = a.y; return *this; }
 
 		inline float2 operator *= (const float2& a) noexcept
 		{ 
@@ -266,12 +269,14 @@ namespace FlexKit
 			return  sqrt(V_2.Sum());
 		}
 
-
         float magnitudeSq() const noexcept
         {
             return (*this * *this).Sum();
         }
 
+        void Serialize(auto& arc)
+        {
+        }
 
         struct
         {
@@ -1147,6 +1152,14 @@ namespace FlexKit
 			return float3(_mm_loadr_ps((float*)&temp));
 		}
 
+
+        void Serialize(auto& ar)
+        {
+            ar& x;
+            ar& y;
+            ar& z;
+        }
+
 		private:
 		static float3 SetVector(float in)
 		{
@@ -1410,6 +1423,14 @@ namespace FlexKit
 		operator Vect4 ()		{ return{ x, y, z, w }; };
 		operator Vect4 () const { return{ x, y, z, w }; };
 
+        void Serialize(auto& ar)
+        {
+            ar& x;
+            ar& y;
+            ar& z;
+            ar& w;
+        }
+
 		__m128 pFloats;
 	};
 
@@ -1635,6 +1656,14 @@ namespace FlexKit
 			Quaternion Q(0.0f, 0.0f, 0.0f, 1.0f);
 			return Q;
 		}
+
+        void Serialize(auto& ar)
+        {
+            ar& x;
+            ar& y;
+            ar& z;
+            ar& w;
+        }
 
 		struct
 		{

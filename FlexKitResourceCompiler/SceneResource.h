@@ -10,6 +10,7 @@
 #include <stb_image.h>
 #include <nlohmann\json.hpp>
 #include <tiny_gltf.h>
+#include <filesystem>
 
 #include "Common.h"
 #include "MetaData.h"
@@ -20,15 +21,15 @@
 #include "Assets.h"
 #include "AnimationUtilities.h"
 
-#include <filesystem>
+#include "Serialization.hpp"
 
 
-namespace FlexKit::ResourceBuilder
+namespace FlexKit
 {   /************************************************************************************************/
 
 
-    typedef FlexKit::Handle_t<16> SceneHandle;
-    typedef FlexKit::Handle_t<16> NodeHandle;
+    typedef FlexKit::Handle_t<16> ResSceneHandle;
+    typedef FlexKit::Handle_t<16> ResNodeHandle;
 
 
     /************************************************************************************************/
@@ -42,7 +43,7 @@ namespace FlexKit::ResourceBuilder
         size_t			    MaxSkeletonCount	= 0;
         iAllocator*		    SceneMemory			= nullptr;
         iAllocator*		    AssetMemory			= nullptr;
-        NodeHandle	        Root;
+        ResNodeHandle       Root;
         ShaderSetHandle     DefaultMaterial;
     };
 
@@ -66,7 +67,7 @@ namespace FlexKit::ResourceBuilder
 
     struct CompileSceneFromFBXFile_DESC
     {
-        NodeHandle				SceneRoot;
+        ResNodeHandle           SceneRoot;
 
         physx::PxCooking*		Cooker		= nullptr;
         physx::PxFoundation*	Foundation	= nullptr;
@@ -91,13 +92,22 @@ namespace FlexKit::ResourceBuilder
 
         std::string		id;
         MetaDataList	metaData;
+
+        void Serialize(auto& ar)
+        {
+            ar& Q;
+            ar& position;
+            ar& scale;
+            ar& parent;
+            ar& id;
+        }
     };
 
 
     /************************************************************************************************/
 
 
-    class EntityComponent
+    class EntityComponent : public SerializableInterface<GetTypeGUID(EntityComponent)>
     {
     public:
         EntityComponent(const uint32_t IN_id = -1) : id{ IN_id } {}
@@ -117,9 +127,18 @@ namespace FlexKit::ResourceBuilder
         float4 albedo;
         float4 specular;
 
-        std::vector<uint64_t>           textures;
-        std::vector<BrushMaterial>   subMaterials;
+        std::vector<uint64_t>       textures;
+        std::vector<BrushMaterial>  subMaterials;
     };
+
+
+    void Serialize(auto& ar, BrushMaterial& material)
+    {
+        ar& material.albedo;
+        ar& material.specular;
+        ar& material.textures;
+        ar& material.subMaterials;
+    }
 
 
     /************************************************************************************************/
@@ -127,7 +146,7 @@ namespace FlexKit::ResourceBuilder
 
     Blob CreateSceneNodeComponent   (uint32_t nodeIdx);
     Blob CreateIDComponent          (std::string& string);
-    Blob CreateBrushComponent    (GUID_t meshGUID, const float4 albedo, const float4 specular);
+    Blob CreateBrushComponent       (GUID_t meshGUID, const float4 albedo, const float4 specular);
     Blob CreateMaterialComponent    (BrushMaterial material);
     Blob CreatePointLightComponent  (float3 K, float2 IR);
 
@@ -135,13 +154,19 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
-    class BrushComponent : public EntityComponent
+    class EntityBrushComponent :
+        public Serializable<EntityBrushComponent, EntityComponent, GetTypeGUID(EntityBrushComponent)>
     {
     public:
-        BrushComponent(GUID_t IN_MGUID = INVALIDHANDLE, float4 IN_albedo = { 0, 1, 0, 0.5f }, float4 specular = { 1, 0, 1, 0 }) :
-            EntityComponent { GetTypeGUID(Brush) },
-            MeshGuid        { IN_MGUID }
+        EntityBrushComponent(GUID_t IN_MGUID = INVALIDHANDLE, float4 IN_albedo = { 0, 1, 0, 0.5f }, float4 specular = { 1, 0, 1, 0 }) :
+            Serializable    { GetTypeGUID(Brush) },
+            MeshGuid        { IN_MGUID } {}
+
+        void Serialize(auto& ar)
         {
+            ar& MeshGuid;
+            ar& Collider;
+            ar& material;
         }
 
         Blob GetBlob() override
@@ -160,12 +185,18 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
-    class SkeletonEntityComponent : public EntityComponent
+    class EntitySkeletonComponent :
+        public Serializable<EntitySkeletonComponent, EntityComponent, GetTypeGUID(EntitySkeletonComponent)>
     {
     public:
-        SkeletonEntityComponent(GUID_t IN_skeletonResourceID) :
-            EntityComponent     { GetTypeGUID(Skeleton) },
-            skeletonResourceID  { IN_skeletonResourceID }{}
+        EntitySkeletonComponent(GUID_t IN_skeletonResourceID = -1) :
+            Serializable        { GetTypeGUID(Skeleton) },
+            skeletonResourceID  { IN_skeletonResourceID } {}
+
+        void Serialize(auto& ar)
+        {
+            ar& skeletonResourceID;
+        }
 
         Blob GetBlob() override;
 
@@ -176,24 +207,34 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
-    struct Material
+    struct EntityMaterial
     {
         using MaterialProperty = std::variant<std::string, float4, float3, float2, float>;
 
         std::vector<MaterialProperty>   properties;
         std::vector<std::string>        propertyID;
         std::vector<uint32_t>           propertyGUID;
+
+        template<class Archive>
+        void Serialize(Archive& ar)
+        {
+            ar& properties;
+            ar& propertyID;
+            ar& propertyGUID;
+        }
+
     };
 
 
     /************************************************************************************************/
 
 
-    class MaterialComponent : public EntityComponent
+    class EntityMaterialComponent :
+        public Serializable<EntityMaterialComponent, EntityComponent, GetTypeGUID(EntityMaterialComponent)>
     {
     public:
-        MaterialComponent() :
-            EntityComponent{ GetTypeGUID(Material) } {}
+        EntityMaterialComponent() :
+            Serializable{ GetTypeGUID(Material) } {}
 
 
         Blob GetBlob() override
@@ -201,28 +242,43 @@ namespace FlexKit::ResourceBuilder
             return {};
         }
 
-        std::vector<Material> materials;
+        void Serialize(auto& ar)
+        {
+            ar& id;
+            ar& materials;
+        }
+
+        std::vector<EntityMaterial> materials;
     };
 
 
-    using BrushComponent_ptr = std::shared_ptr<BrushComponent>;
+    using BrushComponent_ptr = std::shared_ptr<EntityBrushComponent>;
 
 
     /************************************************************************************************/
 
 
-    class PointLightComponent : public EntityComponent
+    class EntityPointLightComponent : 
+        public Serializable<EntityPointLightComponent, EntityComponent, GetTypeGUID(EntityPointLightComponent)>
     {
     public:
-        PointLightComponent(const FlexKit::float3 IN_K, const float2 IR) :
-            EntityComponent { GetTypeGUID(PointLight) },
-            K               ( IN_K ),
+        EntityPointLightComponent(const FlexKit::float3 IN_K = {}, const float2 IR = {}) :
+            Serializable    { GetTypeGUID(PointLight) },
+            K               { IN_K },
             I               { IR.x },
             R               { IR.y } {}
 
         Blob GetBlob() override
         {
             return CreatePointLightComponent(K, float2{ I, R });
+        }
+
+        void Serialize(auto& ar)
+        {
+            ar& id;
+            ar& I;
+            ar& R;
+            ar& K;
         }
 
         float	I;
@@ -245,14 +301,41 @@ namespace FlexKit::ResourceBuilder
         uint32_t	    Node;
         ComponentVector components;
         MetaDataList	metaData;
+
+        void Serialize(auto& ar)
+        {
+            ar& objectID;
+            ar& id;
+            ar& Node;
+            ar& components;
+            //ar& metaData;
+        }
     };
 
+
+    template<class Archive>
+    void serialize(Archive& ar, SceneEntity& entity, const unsigned int version)
+    {
+        ar& entity.objectID;
+        ar& entity.id;
+        ar& entity.Node;
+        ar& entity.components;
+        //ar& metaData;
+    }
 
     struct ScenePointLight
     {
         float	I, R;
         float3	K;
         size_t	Node;
+
+        void Serialize(auto& ar)
+        {
+            ar& I;
+            ar& R;
+            ar& K;
+            ar& Node;
+        }
 
         operator CompiledScene::PointLight() const
         {
@@ -269,7 +352,7 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
-    class SceneResource : public iResource
+    class SceneResource : public FlexKit::Serializable<SceneResource, iResource, GetTypeGUID(SceneResource)>
     {
     public:
         ResourceBlob CreateBlob() override;
@@ -293,6 +376,22 @@ namespace FlexKit::ResourceBuilder
         }
 
         const ResourceID_t GetResourceTypeID() const override { return SceneResourceTypeID; }
+
+
+        template<class Archive>
+        void Serialize(Archive& ar)
+        {
+
+            ar& translationTable;
+            ar& pointLights;
+            ar& nodes;
+            ar& entities;
+            ar& staticEntities;
+
+            ar& GUID;
+            ar& ID;
+        }
+
 
         IDTranslationTable			    translationTable;
         std::vector<ScenePointLight>	pointLights;

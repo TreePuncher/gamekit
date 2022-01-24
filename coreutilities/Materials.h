@@ -33,6 +33,7 @@ namespace FlexKit
         std::variant<float, float2, float3, float4, uint, uint2, uint3, uint4, ResourceHandle>  value;
     };
 
+
     struct MaterialComponentData
     {
         uint32_t                            refCount;
@@ -44,6 +45,7 @@ namespace FlexKit
         static_vector<MaterialHandle, 32>   SubMaterials;
         static_vector<ResourceHandle, 32>   Textures;
     };
+
 
     struct MaterialTextureEntry
     {
@@ -78,6 +80,7 @@ namespace FlexKit
             materials.reserve(256);
         }
 
+
         MaterialComponentData operator [](const MaterialHandle handle) const
         {
             if(handle == InvalidHandle_t)
@@ -85,6 +88,7 @@ namespace FlexKit
 
             return materials[handles[handle]];
         }
+
 
         MaterialHandle CreateMaterial(MaterialHandle IN_parent = InvalidHandle_t)
         {
@@ -140,20 +144,14 @@ namespace FlexKit
             static_vector<PassHandle> GetPasses() const;
 
             template<typename TY>
-            void SetProperty(const uint32_t ID, TY value)
-            {
-                GetComponent().SetProperty(handle, ID, value);
-            }
+            void SetProperty(const uint32_t ID, TY value) { GetComponent().SetProperty(handle, ID, value); }
 
 
             template<typename TY>
-            std::optional<TY> GetProperty(const uint32_t ID) const
-            {
-                return GetComponent().GetProperty(handle, ID);
-            }
+            std::optional<TY> GetProperty(const uint32_t ID) const { return GetComponent().GetProperty(handle, ID); }
+
 
             void            AddTexture(GUID_t textureAsset, bool LoadLowest = false);
-
             bool            HasSubMaterials() const;
             MaterialHandle  CreateSubMaterial();
 
@@ -220,13 +218,11 @@ namespace FlexKit
 
             auto& properties = materials[handles[material]].Properties;
 
-            if (MaterialProperty* prop = std::find_if(
-                    properties.begin(), properties.end(),
-                    [&](auto& prop) { return prop.ID == ID;});
-                prop != properties.end())
-            {
+            if (MaterialProperty* prop =
+                    std::find_if(
+                        properties.begin(), properties.end(),
+                        [&](auto& prop) { return prop.ID == ID;}); prop != properties.end())
                 prop->value = value;
-            }
             else
                 properties.emplace_back(ID, value);
         }
@@ -239,12 +235,8 @@ namespace FlexKit
             auto& properties    = material.Properties;
 
             if (auto res = std::find_if(
-                properties.begin(),
-                properties.end(),
-                [&](const auto& prop) -> bool
-                {
-                    return prop.ID == ID;
-                }); res != properties.end())
+                    properties.begin(), properties.end(),
+                    [&](const auto& prop) -> bool { return prop.ID == ID; }); res != properties.end())
             {
                 if (auto* property = std::get_if<TY>(&res->value))
                     return { *property };

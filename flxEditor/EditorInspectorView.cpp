@@ -4,6 +4,11 @@
 #include <QtWidgets\qtextedit.h>
 #include <QtWidgets\qboxlayout.h>
 #include <QtWidgets\qlabel.h>
+#include <QtWidgets\qpushbutton.h>
+#include <QtWidgets\qmenubar.h>
+#include <QtWidgets\qgroupbox.h>
+#include <QtWidgets\qscrollarea.h>
+
 
 /************************************************************************************************/
 
@@ -36,6 +41,8 @@ QLabel* ComponentViewPanelContext::AddHeader(std::string txt)
 QLabel* ComponentViewPanelContext::AddText(std::string txt)
 {
     auto label = new QLabel{ txt.c_str() };
+    label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
     layoutStack.back()->addWidget(label);
 
     propertyItems.push_back(label);
@@ -50,6 +57,10 @@ void ComponentViewPanelContext::AddInputBox(std::string txt, std::string initial
 {
     auto label      = new QLabel{ txt.c_str() };
     auto inputBox   = new QTextEdit{ initial.c_str() };
+
+    label->setSizePolicy(QSizePolicy::Policy::Minimum, QSizePolicy::Policy::Minimum);
+    inputBox->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
+    inputBox->setSizeAdjustPolicy(QAbstractScrollArea::SizeAdjustPolicy::AdjustToContents);
 
     inputBox->connect(
         inputBox,
@@ -71,10 +82,43 @@ void ComponentViewPanelContext::AddInputBox(std::string txt, std::string initial
 /************************************************************************************************/
 
 
-void ComponentViewPanelContext::PushVerticalLayout()
+void ComponentViewPanelContext::AddButton(std::string label, ButtonCallback callback)
+{
+    auto button = new QPushButton();
+
+    button->connect(
+        button,
+        &QPushButton::pressed,
+        callback);
+
+    //button->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
+
+    layoutStack.back()->addWidget(button);
+}
+
+
+/************************************************************************************************/
+
+
+void ComponentViewPanelContext::PushVerticalLayout(std::string groupName, bool pushGroup)
 {
     auto layout = new QBoxLayout{ QBoxLayout::Down };
-    layoutStack.back()->addLayout(layout);
+    layout->setAlignment(Qt::AlignTop);
+
+    if(pushGroup)
+    {
+        auto group  = new QGroupBox{};
+
+        if (groupName.size())
+            group->setTitle("Hello");
+
+        group->setLayout(layout);
+
+        layoutStack.back()->addWidget(group);
+    }
+    else
+        layoutStack.back()->addLayout(layout);
+
     layoutStack.push_back(layout);
 }
 
@@ -82,10 +126,24 @@ void ComponentViewPanelContext::PushVerticalLayout()
 /************************************************************************************************/
 
 
-void ComponentViewPanelContext::PushHorizontalLayout()
+void ComponentViewPanelContext::PushHorizontalLayout(std::string groupName, bool pushGroup)
 {
     auto layout = new QBoxLayout{ QBoxLayout::LeftToRight };
-    layoutStack.back()->addLayout(layout);
+    layout->setAlignment(Qt::AlignLeft);
+
+    if(pushGroup)
+    {
+        auto group  = new QGroupBox{};
+
+        if(groupName.size())
+            group->setTitle(groupName.c_str());
+
+        group->setLayout(layout);
+        layoutStack.back()->addWidget(group);
+    }
+    else
+        layoutStack.back()->addLayout(layout);
+
     layoutStack.push_back(layout);
 }
 
@@ -95,6 +153,7 @@ void ComponentViewPanelContext::PushHorizontalLayout()
 
 void ComponentViewPanelContext::Pop()
 {
+    //layoutStack.back()->addStretch();
     layoutStack.pop_back();
 }
 
@@ -105,9 +164,32 @@ void ComponentViewPanelContext::Pop()
 
 EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, QWidget *parent) :
     QWidget             { parent },
-    selectionContext    { IN_selectionContext }
+    selectionContext    { IN_selectionContext },
+    menu                { new QMenuBar{} },
+    outerLayout         { new QVBoxLayout{} },
+    scrollArea          { new QScrollArea{} },
+    contentLayout       { new QVBoxLayout{} },
+    contentWidget       { new QWidget{} }
 {
-	ui.setupUi(this);
+    menu->setEnabled(false);
+
+    auto addComponentMenu   = menu->addMenu("Add");
+    auto testAction         = addComponentMenu->addAction("Hello!");
+
+    setLayout(outerLayout);
+    outerLayout->addWidget(scrollArea);
+    outerLayout->setMenuBar(menu);
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+    scrollArea->setWidget(contentWidget);
+    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAsNeeded);
+    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAsNeeded);
+
+    contentLayout->setSizeConstraint(QLayout::SizeConstraint::SetMinimumSize);
+    contentLayout->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+    contentWidget->setLayout(contentLayout);
+    
+    ComponentViewPanelContext context{ contentLayout, propertyItems, properties };
 
     timer->start(100);
 
@@ -147,6 +229,8 @@ void EditorInspectorView::OnUpdate()
         if (auto res = findChild<QLabel*>("Nothing Selected"); res)
         {
             res->setParent(nullptr);
+            menu->setEnabled(true);
+
             delete res;
         }
 
@@ -178,18 +262,17 @@ void EditorInspectorView::OnUpdate()
 
             header->setObjectName("PropertyItem");
 
-            ui.verticalLayout->addWidget(header);
+            contentLayout->addWidget(header);
             propertyItems.push_back(header);
 
 
             for (auto& componentView : gameObject)
             {
                 auto layout = new QBoxLayout{ QBoxLayout::Down };
-                layout->setSpacing(0);
 
                 properties.push_back(layout);
                 layout->setObjectName("Properties");
-                ui.verticalLayout->addLayout(layout);
+                contentLayout->addLayout(layout);
 
                 ComponentViewPanelContext context{ layout, propertyItems, properties };
 
@@ -217,11 +300,12 @@ void EditorInspectorView::OnUpdate()
     {
         auto res = findChild<QLabel*>("Nothing Selected");
 
-        if (!res && children().size() > 2)
+        auto childCount = contentLayout->children().size();
+
+        if (!res && contentLayout->children().size() > 2)
         {
-            while (children().size() > 2)
+            for(auto child : contentLayout->children())
             {
-                auto child = children().at(0);
                 if (child->isWidgetType())
                 {
                     child->setParent(nullptr);
@@ -236,8 +320,10 @@ void EditorInspectorView::OnUpdate()
             label->setText("Nothing Selected");
             label->setObjectName("Nothing Selected");
             label->setAccessibleName("Nothing Selected");
+            label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-            ui.verticalLayout->addWidget(label);
+            contentLayout->addWidget(label);
+            //contentLayout->addStretch();
         }
     }
 

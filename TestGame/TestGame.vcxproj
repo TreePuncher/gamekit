@@ -153,6 +153,7 @@
     <ClInclude Include="..\graphicsutilities\Fonts.h" />
     <ClInclude Include="..\graphicsutilities\FrameGraph.h" />
     <ClInclude Include="..\graphicsutilities\Geometry.h" />
+    <ClInclude Include="..\graphicsutilities\GILightingUtilities.h" />
     <ClInclude Include="..\graphicsutilities\GuiUtilities.h" />
     <ClInclude Include="..\graphicsutilities\MeshUtils.h" />
     <ClInclude Include="..\graphicsutilities\PipelineState.h" />
@@ -301,6 +302,7 @@
     <ClCompile Include="..\graphicsutilities\Geometry.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\graphicsutilities\GILightingUtilities.cpp" />
     <ClCompile Include="..\graphicsutilities\GuiUtilities.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>

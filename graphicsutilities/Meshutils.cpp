@@ -272,15 +272,17 @@ namespace FlexKit
 
         BoundingSphere MeshKDBTree::KDBNode::GetBoundingSphere(const UnoptimizedMesh& IN_mesh)
         {
-            const float3 midPoint = { 0, 0, 0 };// aabb.MidPoint();
+            const float3 midPoint = { 0, 0, 0 };
             float d = 0.0f;
 
+            
             std::for_each(
-                begin, end,
+                IN_mesh.tris.data() + begin, IN_mesh.tris.data() + end,
                 [&](const auto tri)
                 {
                     const float3 pos = IN_mesh.GetTrianglePosition(tri);
                     const float distance = (pos - midPoint).magnitude();
+
                     if (distance > d)
                         d = distance;
                 });
@@ -288,9 +290,10 @@ namespace FlexKit
             return { midPoint, d };
         }
 
+
         MeshKDBTree::MeshKDBTree(const UnoptimizedMesh& IN_mesh) :
             mesh{ IN_mesh },
-            root{ BuildNode(mesh.tris.begin(), mesh.tris.end()) } {}
+            root{ BuildNode(0, mesh.tris.size()) } {}
 
 
 
@@ -322,34 +325,38 @@ namespace FlexKit
         }
 
 
-        std::unique_ptr<MeshKDBTree::KDBNode> MeshKDBTree::BuildNode(Triangle* begin, Triangle* end)
+        std::shared_ptr<MeshKDBTree::KDBNode> MeshKDBTree::BuildNode(size_t begin, size_t end)
         {
-            const auto [midPoint, aabb] = GetMedianSplitPlaneAABB(begin, end);
+            const auto [midPoint, aabb] = GetMedianSplitPlaneAABB(mesh.tris.data() + begin, mesh.tris.data() + end);
             const auto splitPlane = SplitPlanes[aabb.LongestAxis()];
 
-            if (std::distance(begin, end) < 512)
+            if (end - begin < 512 || aabb.AABBArea() == 0.0f)
             {
-                auto node = std::make_unique<KDBNode>(KDBNode{ nullptr, nullptr, begin, end, aabb });
-                leafNodes.push_back(node.get());
+                auto node = std::make_shared<KDBNode>(KDBNode{ 0, 0, begin, end, aabb });
+                leafNodes.push_back(node);
+
                 return node;
             }
             else
             {
-                const auto mid = std::partition(
-                    begin,
-                    end,
-                    [&](const auto& tri) -> bool
-                    {
-                        const float3 pos = mesh.GetTrianglePosition(tri);
-                        const float d = (midPoint - pos).dot(splitPlane);
+                const auto mid =
+                        std::partition(
+                            mesh.tris.begin() + begin,
+                            mesh.tris.begin() + end,
+                            [&](const auto& tri) -> bool
+                            {
+                                const float3 pos = mesh.GetTrianglePosition(tri);
+                                const float d = (midPoint - pos).dot(splitPlane);
 
-                        return d >= 0;
-                    });
+                                return d >= 0;
+                            });
+
+                const auto midIdx = std::distance(mesh.tris.begin() + begin, mid);
 
                 return std::make_unique<KDBNode>(
                         KDBNode{
-                            BuildNode(begin, mid),
-                            BuildNode(mid, end),
+                            BuildNode(begin, midIdx),
+                            BuildNode(midIdx, end),
                             begin, end, aabb });
             }
         }
@@ -436,7 +443,7 @@ namespace FlexKit
         /************************************************************************************************/
 
 
-        void OptimizedMesh::PushTri(Triangle& tri, LocalBlockContext& ctx)
+        void OptimizedMesh::PushTri(const Triangle& tri, LocalBlockContext& ctx)
         {
             for (auto& v : tri.vertices)
             {
@@ -489,14 +496,14 @@ namespace FlexKit
                 };
 
 
-            moveFloat3s(points, buffer.points);
-            moveFloat3s(normals, buffer.normals);
-            moveFloat3s(tangents, buffer.tangents);
+            moveFloat3s(points,     buffer.points);
+            moveFloat3s(normals,    buffer.normals);
+            moveFloat3s(tangents,   buffer.tangents);
 
-            moveBuffer(textureCoordinates, buffer.textureCoordinates);
-            moveBuffer(jointWeights, buffer.jointWeights);
-            moveBuffer(jointIndexes, buffer.jointIndexes);
-            moveBuffer(indexes, buffer.indexes);
+            moveBuffer(textureCoordinates,  buffer.textureCoordinates);
+            moveBuffer(jointWeights,        buffer.jointWeights);
+            moveBuffer(jointIndexes,        buffer.jointIndexes);
+            moveBuffer(indexes,             buffer.indexes);
         }
 
 
@@ -510,7 +517,7 @@ namespace FlexKit
 
             for (const auto& leaf : tree)
                 for (auto I = leaf->begin; I < leaf->end; I++)
-                    optimized.PushTri(*I, context);
+                    optimized.PushTri(tree.mesh.tris[I], context);
 
 
             /*

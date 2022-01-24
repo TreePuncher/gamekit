@@ -20,12 +20,12 @@ public:
 
     ~EditorRenderer();
 
-    void DrawOneFrame();
+    void DrawOneFrame(double dT);
 
     DXRenderWindow* CreateRenderWindow(QWidget* parent = nullptr);
     void DrawRenderWindow(DXRenderWindow* renderWindow);
 
-    FlexKit::TriMeshHandle LoadMesh(FlexKit::ResourceBuilder::MeshResource& mesh);
+    FlexKit::TriMeshHandle LoadMesh(FlexKit::MeshResource& mesh);
 
     FlexKit::RenderSystem& GetRenderSystem() { return framework.core.RenderSystem; }
 protected:
@@ -67,6 +67,10 @@ private:
     FlexKit::SkeletonComponent          skeletonComponent;
     FlexKit::AnimatorComponent          animatorComponent;
     FlexKit::PointLightComponent        pointLightComponent;
+
+    FlexKit::PointLightShadowMap        pointLightShadowMaps;
+    FlexKit::FABRIKTargetComponent      ikTargetComponent;
+    FlexKit::FABRIKComponent            ikComponent;
 
     QApplication&                   QtApplication;
     FlexKit::FKApplication&         application;

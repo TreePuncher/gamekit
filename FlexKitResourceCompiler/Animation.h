@@ -8,7 +8,7 @@
 #include "XMMathConversion.h"
 
 
-namespace FlexKit::ResourceBuilder
+namespace FlexKit
 {   /************************************************************************************************/
 
 
@@ -93,31 +93,66 @@ namespace FlexKit::ResourceBuilder
         TrackType   type;
     };
 
-    struct AnimationTrack
-    {
-        AnimationTrackTarget            targetChannel;
-        std::vector<AnimationKeyFrame>  KeyFrames;
-    };
 
-    struct AnimationResource : public iResource
+    struct AnimationResource :
+        public Serializable<AnimationResource, iResource, GetTypeGUID(AnimationResource)>
     {
+        void Serialize(auto& ar)
+        {
+
+        }
+
         ResourceBlob        CreateBlob();
 
         const std::string&  GetResourceID()     const { return ID; }
         const uint64_t      GetResourceGUID()   const { return guid; }
         const ResourceID_t  GetResourceTypeID() const { return AnimationResourceTypeID; }
 
+        struct Track
+        {
+            AnimationTrackTarget            targetChannel;
+            std::vector<AnimationKeyFrame>  KeyFrames;
+        };
+
         std::string                 ID;
         GUID_t                      guid = rand();
-        std::vector<AnimationTrack> tracks;
+        std::vector<Track> tracks;
     };
 
 
     /************************************************************************************************/
 
 
-    struct SkeletonResource : public iResource
+    void Serialize(auto& ar, SkeletonJoint& joint)
     {
+        ar& joint.mID;
+        ar& joint.mParent;
+        ar& joint.limbLength;
+    }
+
+
+    void Serialize(auto& ar, JointPose& pose)
+    {
+        ar& pose.r;
+        ar& pose.ts;
+    }
+
+    struct SkeletonResource :
+        public Serializable<SkeletonResource, iResource, GetTypeGUID(SkeletonResource)>
+    {
+
+        void Serialize(auto& ar)
+        {
+            ar& JointCount;
+            ar& guid;
+            ar& ID;
+            ar& IPoses;
+            ar& joints;
+            ar& jointIDs;
+            ar& jointPoses;
+            ar& metaData;
+        }
+
         ResourceBlob CreateBlob() override;
 
 

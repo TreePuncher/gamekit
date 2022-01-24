@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -32,7 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Assets.h"
 #include "AnimationUtilities.h"
 #include "CoreSceneObjects.h"
-
+#include "graphics.h"
 
 #include <DirectXMath.h>
 #include <functional>
@@ -362,9 +362,9 @@ namespace FlexKit
 	//	Call After Updating PoseState
 	FLEXKITAPI float4x4 GetJointPosed_WT( JointHandle Joint, NodeHandle Node, PoseState* DPS );
 
-	FLEXKITAPI LineSegments BuildSkeletonLineSet            ( Skeleton* S,		NodeHandle Node, iAllocator* TEMP);
+	FLEXKITAPI LineSegments BuildSkeletonLineSet            ( Skeleton* S, NodeHandle Node, iAllocator* TEMP);
 
-    FLEXKITAPI LineSegments DEBUG_DrawPoseState             (PoseState&, NodeHandle, iAllocator*);
+    FLEXKITAPI LineSegments DEBUG_DrawPoseState             ( PoseState&, NodeHandle, iAllocator*);
 	FLEXKITAPI void         DEBUG_PrintSkeletonHierarchy	( Skeleton* S);
 
 

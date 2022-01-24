@@ -35,10 +35,10 @@ public:
 
     QVariant                                data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
     ResourceID_t                            GetResourceType(uint64_t index) const;
-    FlexKit::ResourceBuilder::Resource_ptr  GetResource(const uint64_t index);
+    FlexKit::Resource_ptr  GetResource(const uint64_t index);
     void                                    RefreshTable();
 
-    void                                    Remove(FlexKit::ResourceBuilder::Resource_ptr);
+    void                                    Remove(FlexKit::Resource_ptr);
 
 private:
 
@@ -59,7 +59,7 @@ struct IResourceViewer
 
     ResourceViewID resourceID = -1;
 
-    virtual void operator () (FlexKit::ResourceBuilder::Resource_ptr) = 0;
+    virtual void operator () (FlexKit::Resource_ptr) = 0;
 };
 
 using ResourceViewer_ptr    = std::shared_ptr<IResourceViewer>;

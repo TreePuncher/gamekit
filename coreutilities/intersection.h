@@ -106,6 +106,13 @@ namespace FlexKit
             auto span = Span();
             return { abs(span.x), abs(span.y), abs(span.z) };
         }
+
+        float AABBArea() const
+        {
+            auto span = Span();
+
+            return span.x * span.y * span.z;
+        }
     };
 
 

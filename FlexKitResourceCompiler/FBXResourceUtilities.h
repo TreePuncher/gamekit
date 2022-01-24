@@ -2,7 +2,7 @@
 #include "ResourceUtilities.h"
 #include "SceneResource.h"
 
-namespace FlexKit::ResourceBuilder
+namespace FlexKit
 {
     std::pair<ResourceList, std::shared_ptr<SceneResource>>     CreateSceneFromFBXFile2(std::string file, const CompileSceneFromFBXFile_DESC& Desc);
 }

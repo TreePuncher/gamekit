@@ -224,7 +224,7 @@ namespace FlexKit
         FLEXKITAPI class UnoptimizedMesh
         {
         public:
-
+            UnoptimizedMesh() = default;
             UnoptimizedMesh(const TokenList& tokens);
             UnoptimizedMesh(const UnoptimizedMesh&) = default;
 
@@ -235,22 +235,37 @@ namespace FlexKit
             bool        VertexCompare       (const uint32_t lhs, const uint32_t rhs) const;
             uint64_t    VertexHash          (const uint32_t v) const;
 
+
+            void Serialize(auto& archive)
+            {
+                archive& points;
+                archive& normals;
+                archive& tangents;
+                archive& textureCoordinates;
+                archive& jointWeights;
+                archive& jointIndexes;
+                archive& indexes;
+                archive& tris;
+            }
+
+
             using Point             = float3;
             using Normal            = float3;
             using TextureCoordinate = TextureCoordinateToken;
             using JointWeight       = float4;
             using JointIndexes      = uint4_16;
 
-            Vector<Point>		        points              { SystemAllocator };
-            Vector<Normal>		        normals             { SystemAllocator };
-            Vector<Normal>		        tangents            { SystemAllocator };
 
-            Vector<TextureCoordinate>   textureCoordinates  { SystemAllocator };
-            Vector<JointWeight>		    jointWeights        { SystemAllocator };
-            Vector<JointIndexes>	    jointIndexes        { SystemAllocator };
+            std::vector<float2>		        points              {};
+            std::vector<Normal>		        normals             {};
+            std::vector<Normal>		        tangents            {};
 
-            Vector<VertexIndexList>	    indexes { SystemAllocator };
-            Vector<Triangle>	        tris    { SystemAllocator };
+            std::vector<TextureCoordinate>  textureCoordinates  {};
+            std::vector<JointWeight>		jointWeights        {};
+            std::vector<JointIndexes>	    jointIndexes        {};
+
+            std::vector<VertexIndexList>	indexes;
+            std::vector<Triangle>	        tris;
         };
 
 
@@ -286,7 +301,7 @@ namespace FlexKit
             OptimizedMesh& operator += (OptimizedMesh& rhs);
 
             void PushVertex (uint32_t globalIdx, LocalBlockContext& ctx);
-            void PushTri    (Triangle& tri, LocalBlockContext& ctx);
+            void PushTri    (const Triangle& tri, LocalBlockContext& ctx);
 
             Vector<float3>		        points      { SystemAllocator };
             Vector<float3>		        normals     { SystemAllocator };
@@ -342,24 +357,25 @@ namespace FlexKit
 
             struct KDBNode
             {
-                std::unique_ptr<KDBNode> left;
-                std::unique_ptr<KDBNode> right;
+                std::shared_ptr<KDBNode> left;
+                std::shared_ptr<KDBNode> right;
 
-                Triangle* begin;
-                Triangle* end;
+                size_t begin;
+                size_t end;
 
                 AABB aabb;
 
                 BoundingSphere GetBoundingSphere(const UnoptimizedMesh& IN_mesh);
             };
 
+            MeshKDBTree() = default;
             MeshKDBTree(const UnoptimizedMesh& IN_mesh);
 
             auto begin() const;
             auto end() const;
 
-            auto GetMedianSplitPlaneAABB(const Triangle* begin, const Triangle* end) const;
-            std::unique_ptr<KDBNode> BuildNode(Triangle* begin, Triangle* end);
+            auto                        GetMedianSplitPlaneAABB(const Triangle* begin, const Triangle* end) const;
+            std::shared_ptr<KDBNode>    BuildNode(size_t begin, size_t end);
 
             inline static const float3 SplitPlanes[] = {
                 { 1, 0, 0 },
@@ -367,12 +383,11 @@ namespace FlexKit
                 { 0, 0, 1 }
             };
 
-        public:
-
-            UnoptimizedMesh             mesh;
-            std::vector<KDBNode*>       leafNodes;
-            std::unique_ptr<KDBNode>    root;
+            UnoptimizedMesh                         mesh;
+            std::vector<std::shared_ptr<KDBNode>>   leafNodes;
+            std::shared_ptr<KDBNode>                root;
         };
+
 
 
         /************************************************************************************************/

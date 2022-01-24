@@ -21,6 +21,7 @@
 #include "EditorApplication.h"
 
 #include <allsourcefiles.cpp>
+
 #include "..\FlexKitResourceCompiler\MetaData.cpp"
 #include "..\FlexKitResourceCompiler\MeshProcessing.cpp"
 #include "..\FlexKitResourceCompiler\SceneResource.cpp"
@@ -28,9 +29,15 @@
 #include "..\FlexKitResourceCompiler\ResourceUtilities.cpp"
 #include "..\FlexKitResourceCompiler\Animation.cpp"
 
+#include "..\graphicsutilities\ShadowMapping.cpp"
+#include "..\graphicsutilities\ClusteredRendering.cpp"
+#include "..\graphicsutilities\Transparency.cpp"
+#include "..\graphicsutilities\SVOGI.cpp"
+#include "..\graphicsutilities\GILightingUtilities.cpp"
+
 #include <angelscript/scriptbuilder/scriptbuilder.cpp>
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
+//#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
 #define TINYGLTF_NO_STB_IMAGE

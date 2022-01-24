@@ -663,7 +663,7 @@ namespace FlexKit
         PointLightShadowGatherTask& GetVisableLights(UpdateDispatcher&, CameraHandle, BuildBVHTask&, iAllocator* tempMemory) const;
         PointLightUpdate&           UpdatePointLights(UpdateDispatcher&, BuildBVHTask&, PointLightShadowGatherTask&, iAllocator* temporaryMemory, iAllocator* persistentMemory) const;
 
-        Vector<SceneRayCastResult>    RayCast(FlexKit::Ray v, iAllocator& allocator) const;
+        Vector<SceneRayCastResult>    RayCast(FlexKit::Ray v, iAllocator& allocator = SystemAllocator) const;
 
         auto begin()    { return sceneEntities.begin(); }
         auto end()      { return sceneEntities.end(); }

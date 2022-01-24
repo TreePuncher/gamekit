@@ -4,6 +4,7 @@
 #include <Transforms.h>
 #include <fmt/format.h>
 #include <QtWidgets\qlabel.h>
+#include <format>
 
 
 /************************************************************************************************/
@@ -29,9 +30,7 @@ public:
         const auto scale        = sceneNodeView.GetScale();
         const auto orientation  = sceneNodeView.GetOrientation();
 
-        panelCtx.AddHeader("Transform");
-
-        panelCtx.PushHorizontalLayout();
+        panelCtx.PushHorizontalLayout("Transform", true);
 
         panelCtx.AddText(fmt::format("Node: {}", sceneNodeView.node.to_uint()));
         panelCtx.AddText(fmt::format("Parent: {}", sceneNodeView.GetParentNode().to_uint()));
@@ -40,7 +39,7 @@ public:
 
         auto positionTxt = panelCtx.AddText(fmt::format("Position: \t[{}, {}, {}]", initialPos.x, initialPos.y, initialPos.z));
 
-        panelCtx.PushHorizontalLayout();
+        panelCtx.PushHorizontalLayout("", true);
 
         panelCtx.AddInputBox(
             "X",
@@ -250,3 +249,43 @@ public:
             panelCtx.AddText("Brush Animated");
     }
 };
+
+
+/************************************************************************************************/
+
+
+class MaterialInspector : public IComponentInspector
+{
+public:
+
+    FlexKit::ComponentID ComponentID() override
+    {
+        return FlexKit::BrushComponentID;
+    }
+
+    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override
+    {
+        auto& material = static_cast<FlexKit::MaterialComponentView&>(component);
+
+        panelCtx.AddHeader("Material");
+
+        auto passes = material.GetPasses();
+        panelCtx.AddText("Passes");
+
+        if (passes.size())
+        {
+            panelCtx.PushVerticalLayout();
+            for (auto& pass : passes)
+                panelCtx.AddText(std::string{} + std::format("{}", pass.to_uint()));
+
+            panelCtx.Pop();
+        }
+
+        panelCtx.AddText("Pass Count" + std::format("{}", passes.size()));
+        panelCtx.AddButton("Add Pass", [&]() {});
+    }
+};
+
+
+/************************************************************************************************/
+

@@ -152,7 +152,6 @@ UpdateTask* MenuState::Update(EngineCore& core, UpdateDispatcher& dispatcher, do
 
 UpdateTask* MenuState::Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
-
     auto renderTarget = base.renderWindow.GetBackBuffer();
 
     ClearVertexBuffer(frameGraph, base.vertexBuffer);

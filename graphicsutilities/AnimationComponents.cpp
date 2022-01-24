@@ -124,14 +124,14 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    AnimationResource* LoadAnimation(const char* resourceName, iAllocator& allocator)
+    Animation* LoadAnimation(const char* resourceName, iAllocator& allocator)
     {
         auto asset = LoadGameAsset(resourceName);
 
         if (asset != -1)
         {
             auto animationBlob  = (AnimationResourceBlob*)GetAsset(asset);
-            auto& animation     = allocator.allocate<AnimationResource>(allocator);
+            auto& animation     = allocator.allocate<Animation>(allocator);
 
             const size_t trackCount     = animationBlob->header.trackCount;
             size_t currentFileOffset    = 0;
@@ -174,7 +174,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    PlayID_t AnimatorComponent::AnimatorView::Play(AnimationResource& anim, bool loop)
+    PlayID_t AnimatorComponent::AnimatorView::Play(Animation& anim, bool loop)
     {
         auto&           componentData   = GetComponent()[animator];
         const uint32_t  ID              = rand();

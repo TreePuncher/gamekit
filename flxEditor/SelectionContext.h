@@ -6,7 +6,7 @@
 #include <any>
 #include <optional>
 
-using FlexKit::ResourceBuilder::ResourceList;
+using FlexKit::ResourceList;
 
 using SelectionTypeID = std::uint32_t;
 

@@ -2,7 +2,7 @@
 #include "Animation.h"
 
 
-namespace FlexKit::ResourceBuilder
+namespace FlexKit
 {   /************************************************************************************************/
 
 

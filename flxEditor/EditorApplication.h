@@ -14,6 +14,7 @@
 
 #include "..\FlexKitResourceCompiler\SceneResource.h"
 #include "..\FlexKitResourceCompiler\TextureResourceUtilities.h"
+#include <QtWidgets/qstylefactory.h>
 
 
 /************************************************************************************************/
@@ -30,8 +31,8 @@ public:
 		if (!std::filesystem::exists(fileDir))
 			return false;
 
-		FlexKit::ResourceBuilder::MetaDataList meta;
-		auto resources = FlexKit::ResourceBuilder::CreateSceneFromGlTF(fileDir, meta);
+		FlexKit::MetaDataList meta;
+		auto resources = FlexKit::CreateSceneFromGlTF(fileDir, meta);
 
 		for (auto& resource : resources)
 		{
@@ -39,7 +40,7 @@ public:
             {
                 EditorScene_ptr gameScene = std::make_shared<EditorScene>();
 
-                gameScene->sceneResource = std::static_pointer_cast<FlexKit::ResourceBuilder::SceneResource>(resource);
+                gameScene->sceneResource = std::static_pointer_cast<FlexKit::SceneResource>(resource);
 
                 for (auto& dependentResource : resources)
                     if (dependentResource != resource)
@@ -79,9 +80,9 @@ public:
     GameResExporter(EditorProject& IN_project) :
 		project         { IN_project }{}
 
-	bool Export(const std::string fileDir, const FlexKit::ResourceBuilder::ResourceList& resourceList) override
+	bool Export(const std::string fileDir, const FlexKit::ResourceList& resourceList) override
 	{
-        return FlexKit::ResourceBuilder::ExportGameRes(fileDir, resourceList);
+        return FlexKit::ExportGameRes(fileDir, resourceList);
 	}
 
 	std::string GetFileTypeName() override
@@ -101,13 +102,36 @@ public:
 /************************************************************************************************/
 
 
+struct SceneReference
+{
+    std::shared_ptr<ViewportScene>  scene;
+    std::atomic_int                 ref_count = 1;
+
+    static void Register(asIScriptEngine* engine);
+
+    static SceneReference*  Factory();
+
+    static void AddRef  (SceneReference*);
+    static void Release (SceneReference*);
+
+    static bool IsValid(SceneReference rhs);
+    static bool RayCast(float x, float y, float z, SceneReference scene);
+};
+
+
+/************************************************************************************************/
+
+
 class EditorProjectScriptConnector
 {
 public:
-	EditorProjectScriptConnector(EditorProject& project);
+	EditorProjectScriptConnector(EditorViewport* viewport, SelectionContext& ctx, EditorProject& project);
+
 	void Register(EditorScriptEngine& engine);
 
-	EditorProject& project;
+	EditorProject&      project;
+    SelectionContext&   ctx;
+    EditorViewport*     viewport = nullptr;
 
 private:
 
@@ -116,7 +140,19 @@ private:
 		return project.resources.size();
 	}
 
-    void CreateTexture2DResource(FlexKit::TextureBuffer* buffer, uint32_t resourceID, std::string* resourceName, std::string* format);
+
+    void            CreateTexture2DResource (FlexKit::TextureBuffer* buffer, uint32_t resourceID, std::string* resourceName, std::string* format);
+
+
+    SceneReference* GetEditorScene()
+    {
+        auto&& scene = viewport->GetScene();
+
+        auto ref = SceneReference::Factory();
+        ref->scene = scene;
+
+        return ref;
+    }
 };
 
 
@@ -133,9 +169,9 @@ struct TextureResourceViewer : public IResourceViewer
     EditorRenderer&     renderer;
     QWidget*            parent;
 
-    void operator () (FlexKit::ResourceBuilder::Resource_ptr resource) override
+    void operator () (FlexKit::Resource_ptr resource) override
     {
-        auto textureResource    = std::static_pointer_cast<FlexKit::ResourceBuilder::TextureResource>(resource);
+        auto textureResource    = std::static_pointer_cast<FlexKit::TextureResource>(resource);
 
         void* textureBuffer     = textureResource->buffer;
         const auto format       = textureResource->format;
@@ -152,7 +188,6 @@ struct TextureResourceViewer : public IResourceViewer
         auto textureViewer  = new TextureViewer(renderer, parent, texture);
 
         docklet->setWidget(textureViewer);
-        docklet->resize({ 400, 300 });
         docklet->show();
     }
 };
@@ -169,7 +204,7 @@ struct SceneResourceViewer : public IResourceViewer
         renderer        { IN_renderer           },
         mainWindow      { IN_mainWindow         } {}
 
-    void operator () (FlexKit::ResourceBuilder::Resource_ptr resource) override
+    void operator () (FlexKit::Resource_ptr resource) override
     {
         auto& view = mainWindow.Get3DView();
 
@@ -190,87 +225,23 @@ struct SceneResourceViewer : public IResourceViewer
 class EditorApplication
 {
 public:
-	EditorApplication(QApplication& IN_qtApp) :
-		qtApp               { IN_qtApp },
-		editorRenderer      { fkApplication.PushState<EditorRenderer>(fkApplication, IN_qtApp) },
-		mainWindow          { editorRenderer, scripts, project, qtApp },
+    EditorApplication(QApplication& IN_qtApp);
+    ~EditorApplication();
 
-		visibilityComponent     { FlexKit::SystemAllocator },
-		pointLights             { FlexKit::SystemAllocator },
-        cameras                 { FlexKit::SystemAllocator },
-        pointLightShadowMaps    { FlexKit::SystemAllocator },
-        materials               { editorRenderer.framework.GetRenderSystem(), editorRenderer.textureEngine, FlexKit::SystemAllocator },
+	QApplication&                   qtApp;
+	FlexKit::FKApplication          fkApplication{ FlexKit::CreateEngineMemory() };
 
-        ikTargetComponent       { FlexKit::SystemAllocator },
-        ikComponent             { FlexKit::SystemAllocator },
-
-		gltfImporter        { project },
-        gameResExporter     { project },
-		projectConnector    { project }
-	{
-        
-		mainWindow.AddImporter(&gltfImporter);
-        mainWindow.AddExporter(&gameResExporter);
-
-		projectConnector.Register(scripts);
-		scripts.LoadModules();
-
-        mainWindow.AddFileAction(
-            "Save",
-            [&]()
-            {
-                project.SaveProject("Test.proj");
-            });
-
-        mainWindow.AddFileAction(
-            "Load",
-            [&]()
-            {
-                project.LoadProject("Test.proj");
-            });
-
-        ResourceBrowserWidget::AddResourceViewer(std::make_shared<TextureResourceViewer>(editorRenderer, (QWidget*)&mainWindow));
-        ResourceBrowserWidget::AddResourceViewer(std::make_shared<SceneResourceViewer>(editorRenderer, project, mainWindow));
-
-		// connect script gadgets
-		for (auto& gadget : scripts.GetGadgets())
-			mainWindow.RegisterGadget(gadget);
-
-        EditorInspectorView::AddComponentInspector<TransformInspector>();
-        EditorInspectorView::AddComponentInspector<VisibilityInspector>();
-        EditorInspectorView::AddComponentInspector<PointLightInspector>();
-        EditorInspectorView::AddComponentInspector<PointLightShadowInspector>();
-        EditorInspectorView::AddComponentInspector<SceneBrushInspector>();
-	}
-
-	~EditorApplication()
-	{
-		fkApplication.Release();
-	}
-
-	QApplication&                       qtApp;
-	FlexKit::FKApplication              fkApplication{ FlexKit::CreateEngineMemory() };
-
-	EditorScriptEngine                  scripts;
-
-	EditorProject                   project;
-	EditorRenderer&                 editorRenderer;
-
-	EditorProjectScriptConnector    projectConnector;
 
     gltfImporter                    gltfImporter;
     GameResExporter                 gameResExporter;
 
-    FlexKit::SceneNodeComponent         sceneNodes;
-	FlexKit::SceneVisibilityComponent   visibilityComponent;
-	FlexKit::PointLightComponent        pointLights;
-    FlexKit::CameraComponent            cameras;
-    FlexKit::PointLightShadowMap        pointLightShadowMaps;
-    FlexKit::FABRIKTargetComponent      ikTargetComponent;
-    FlexKit::FABRIKComponent            ikComponent;
-    FlexKit::MaterialComponent          materials;
-
+	EditorProject                   project;
+	EditorRenderer&                 editorRenderer;
     EditorMainWindow                mainWindow;
+
+    EditorProjectScriptConnector    projectConnector;
+    EditorScriptEngine              scripts;
 };
 
 
+/************************************************************************************************/

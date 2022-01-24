@@ -27,11 +27,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define GEOMETRY_H_INCLUDED
 
 #include "buildsettings.h"
+#include "AnimationUtilities.h"
 #include "intersection.h"
 #include "MathUtils.h"
 #include "memoryutilities.h"
-#include "AnimationUtilities.h"
-
+#include "Serialization.hpp"
 
 namespace FlexKit
 {
@@ -274,7 +274,24 @@ namespace FlexKit
 		VERTEXBUFFER_FORMAT	GetBufferFormat()	const;
 		VERTEXBUFFER_TYPE	GetBufferType()		const;
 
+
 		void SetTypeFormatSize(VERTEXBUFFER_TYPE, VERTEXBUFFER_FORMAT, size_t count);
+
+        void Serialize(auto& ar)
+        {
+            auto _ptr = (void*)mBuffer;
+            RawBuffer rawBuffer{ _ptr, mBufferSize };
+
+            ar& rawBuffer;
+            ar& mBufferUsed;
+            ar& mBufferElementSize;
+            ar& mBufferFormat;
+            ar& mBufferType;
+            ar& mBufferinError;
+            ar& mBufferLock;
+
+            mBuffer = (byte*)_ptr;
+        }
 
 	private:
 		bool _combine(const VertexBufferView& LHS, const VertexBufferView& RHS, char* out);

@@ -255,7 +255,7 @@ namespace FlexKit
         MaterialComponentBlob materialBlob;
         memcpy(&materialBlob, buffer, Min(sizeof(materialBlob), bufferSize));
 
-        const static auto newMaterial = [&]() {
+        const static auto parentMaterial = [&]() {
             auto newMaterial = CreateMaterial();
 
             Add2Pass(newMaterial, PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
@@ -266,7 +266,9 @@ namespace FlexKit
 
             return newMaterial;
         }();
-        
+
+        auto newMaterial = CreateMaterial(parentMaterial);
+
         auto rdCtx          = ReadContext{};
         if (materialBlob.materials.size() > 1)
         {

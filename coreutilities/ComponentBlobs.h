@@ -12,8 +12,8 @@ namespace FlexKit
     {
         NodeTable = 1337,
         ComponentRequirementTable,
-        Entity,
-        EntityComponent,
+        EntityBlock,
+        EntityComponentBlock,
         MaterialComponentBlock,
     };
 
@@ -65,7 +65,7 @@ namespace FlexKit
         struct Header
         {
             uint32_t CRC32;
-            uint32_t blockType = EntityComponent;
+            uint32_t blockType = EntityComponentBlock;
             uint32_t blockSize;
             uint32_t componentID;
         } header;
@@ -79,7 +79,7 @@ namespace FlexKit
         struct Header
         {
             uint32_t CRC32;
-            uint32_t blockType = Entity;
+            uint32_t blockType = EntityComponentBlock;
             size_t	 blockSize;
 
             // Temporary Values
@@ -95,7 +95,7 @@ namespace FlexKit
     {
         ComponentBlock::Header  header = {
            0,
-           EntityComponent,
+           EntityComponentBlock,
            sizeof(PointLightComponentBlob),
            GetTypeGUID(PointLight)
         };
@@ -113,7 +113,7 @@ namespace FlexKit
     {
         ComponentBlock::Header  header = {
            0,
-           EntityComponent,
+           EntityComponentBlock,
            sizeof(BrushComponentBlob),
            GetTypeGUID(Brush)
         };
@@ -130,7 +130,7 @@ namespace FlexKit
     {
         ComponentBlock::Header  header = {
            0,
-           EntityComponent,
+           EntityComponentBlock,
            sizeof(MaterialComponentBlob),
            MaterialComponentID
         };
@@ -147,7 +147,7 @@ namespace FlexKit
     {
         ComponentBlock::Header  header = {
             0,
-            EntityComponent,
+            EntityComponentBlock,
             sizeof(IDComponentBlob),
             GetTypeGUID(StringID)
         };
@@ -160,7 +160,7 @@ namespace FlexKit
     {
         ComponentBlock::Header  header = {
             0,
-            EntityComponent,
+            EntityComponentBlock,
             sizeof(SceneNodeComponentBlob),
             GetTypeGUID(TransformComponent)
         };
@@ -174,7 +174,7 @@ namespace FlexKit
     {
         ComponentBlock::Header  header = {
             0,
-            EntityComponent,
+            EntityComponentBlock,
             sizeof(SkeletonComponentBlob),
             GetTypeGUID(Skeleton),
         };

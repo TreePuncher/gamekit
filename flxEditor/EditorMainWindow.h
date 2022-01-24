@@ -34,7 +34,7 @@ class EditorViewport;
 /************************************************************************************************/
 
 
-using FlexKit::ResourceBuilder::ResourceList;
+using FlexKit::ResourceList;
 
 
 /************************************************************************************************/
@@ -51,22 +51,25 @@ public:
     void                    AddImporter(iEditorImportor* importer);
     void                    AddExporter(iEditorExporter* exporter);
 
-    QTextEdit*              AddTextView();
-    DXRenderWindow*         AddViewPort();
-    ResourceBrowserWidget*  AddResourceList();
     void                    AddEditorView();
+    void                    AddInspector();
     void                    AddOutputView();
     void                    AddModelViewer();
+    ResourceBrowserWidget*  AddResourceList();
+    void                    AddSceneOutliner();
     TextureViewer*          AddTextureViewer(TextureResource* res = nullptr);
-    void                    AddInspector();
+    QTextEdit*              AddTextView();
+    DXRenderWindow*         AddViewPort();
 
-    void AddFileAction(const std::string& name, auto callable)
+    void AddFileAction(const std::string& name, auto&& callable)
     {
         auto action = fileMenu->addAction(name.c_str());
         connect(action, &QAction::triggered, this, callable);
     }
 
-    EditorViewport& Get3DView() { return *viewport; }
+    EditorViewport&     Get3DView()         { return *viewport; }
+    SelectionContext&   GetSelectionCtx()   { return selectionContext; };
+
 
     void RegisterGadget(iEditorGadget* gadget);
     
@@ -74,6 +77,8 @@ public:
     void Close();
     void timerEvent(QTimerEvent* event);
     void showEvent(QShowEvent* event) override {}
+
+    QMenu* GetFileMenu() { return fileMenu; }
 
 public slots:
 

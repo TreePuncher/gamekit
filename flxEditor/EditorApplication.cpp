@@ -4,11 +4,147 @@
 #include "../FlexKitResourceCompiler/TextureResourceUtilities.h"
 #include <stb_image_write.h>
 #include <filesystem>
+#include <QKeySequence>
 
-EditorProjectScriptConnector::EditorProjectScriptConnector(EditorProject& IN_project) :
-	project{ IN_project }
+using namespace std::chrono_literals;
+
+
+EditorApplication::EditorApplication(QApplication& IN_qtApp) :
+	qtApp               { IN_qtApp },
+	editorRenderer      { fkApplication.PushState<EditorRenderer>(fkApplication, IN_qtApp) },
+	mainWindow          { editorRenderer, scripts, project, qtApp },
+	gltfImporter        { project },
+    gameResExporter     { project },
+	projectConnector    { &mainWindow.Get3DView(), mainWindow.GetSelectionCtx(), project }
 {
+    qApp->setStyle(QStyleFactory::create("fusion"));
 
+    QPalette palette;
+    palette.setColor(QPalette::Window, QColor(53, 53, 53));
+    palette.setColor(QPalette::WindowText, Qt::white);
+    palette.setColor(QPalette::Base, QColor(15, 15, 15));
+    palette.setColor(QPalette::AlternateBase, QColor(53, 53, 53));
+    palette.setColor(QPalette::ToolTipBase, Qt::white);
+    palette.setColor(QPalette::ToolTipText, Qt::white);
+    palette.setColor(QPalette::Text, Qt::white);
+    palette.setColor(QPalette::Button, QColor(53, 53, 53));
+    palette.setColor(QPalette::ButtonText, Qt::white);
+    palette.setColor(QPalette::BrightText, Qt::red);
+
+    palette.setColor(QPalette::Highlight, QColor(142, 45, 197).lighter());
+    palette.setColor(QPalette::HighlightedText, Qt::black);
+
+    palette.setColor(QPalette::Disabled, QPalette::Text, Qt::darkGray);
+    palette.setColor(QPalette::Disabled, QPalette::ButtonText, Qt::darkGray);
+
+    qApp->setPalette(palette);
+
+
+	mainWindow.AddImporter(&gltfImporter);
+    mainWindow.AddExporter(&gameResExporter);
+
+	projectConnector.Register(scripts);
+	scripts.LoadModules();
+
+    mainWindow.AddFileAction(
+        "Save",
+        [&]()
+        {
+            project.SaveProject("Test.proj");
+        });
+
+    mainWindow.AddFileAction(
+        "Load",
+        [&]()
+        {
+            project.LoadProject("Test.proj");
+        });
+
+    auto quitAction = mainWindow.GetFileMenu()->addAction("Quit");
+    quitAction->setShortcut(QKeySequence::Quit);
+    
+    mainWindow.connect(quitAction, &QAction::triggered, &mainWindow, &EditorMainWindow::Close, Qt::QueuedConnection);
+
+    ResourceBrowserWidget::AddResourceViewer(std::make_shared<TextureResourceViewer>(editorRenderer, (QWidget*)&mainWindow));
+    ResourceBrowserWidget::AddResourceViewer(std::make_shared<SceneResourceViewer>(editorRenderer, project, mainWindow));
+
+	// connect script gadgets
+	for (auto& gadget : scripts.GetGadgets())
+		mainWindow.RegisterGadget(gadget);
+
+    EditorInspectorView::AddComponentInspector<TransformInspector>();
+    EditorInspectorView::AddComponentInspector<VisibilityInspector>();
+    EditorInspectorView::AddComponentInspector<PointLightInspector>();
+    EditorInspectorView::AddComponentInspector<PointLightShadowInspector>();
+    EditorInspectorView::AddComponentInspector<SceneBrushInspector>();
+}
+
+
+/************************************************************************************************/
+
+
+EditorApplication::~EditorApplication()
+{
+    fkApplication.Release();
+}
+
+
+/************************************************************************************************/
+
+
+void SceneReference::Register(asIScriptEngine* engine)
+{
+    int c = engine->RegisterObjectType("Scene", 0, asOBJ_REF);                   assert(c >= 0);
+
+    // Life Cycle behaviors
+    //c = engine->RegisterObjectBehaviour("Scene@", asBEHAVE_FACTORY,   "void f()", asFunctionPtr(SceneReference::Factory),   asCALL_CDECL_OBJLAST);    assert(c >= 0);
+
+    c = engine->RegisterObjectBehaviour("Scene", asBEHAVE_ADDREF,     "void f()", asFunctionPtr(SceneReference::AddRef),    asCALL_CDECL_OBJLAST);    assert(c >= 0);
+    c = engine->RegisterObjectBehaviour("Scene", asBEHAVE_RELEASE,    "void f()", asFunctionPtr(SceneReference::Release),   asCALL_CDECL_OBJLAST);    assert(c >= 0);
+
+    // Methods
+    c = engine->RegisterObjectMethod("Scene", "bool RayCast(float, float, float)",    asFunctionPtr(SceneReference::RayCast),     asCALL_CDECL_OBJLAST); assert(c >= 0);
+    c = engine->RegisterObjectMethod("Scene", "bool IsValid()",                       asFunctionPtr(SceneReference::IsValid),     asCALL_CDECL_OBJLAST); assert(c >= 0);
+}
+
+SceneReference* SceneReference::Factory()
+{
+    return new SceneReference{};
+}
+
+void SceneReference::AddRef(SceneReference* ref)
+{
+    ref->ref_count++;
+}
+
+void SceneReference::Release(SceneReference* ref)
+{
+    ref->ref_count--;
+
+    if (!ref->ref_count)
+        delete ref;
+}
+
+bool SceneReference::IsValid(SceneReference rhs)
+{
+    return rhs.scene != nullptr;
+}
+
+bool SceneReference::RayCast(float x, float y, float z, SceneReference scene)
+{
+    return false;
+}
+
+
+/************************************************************************************************/
+
+
+
+EditorProjectScriptConnector::EditorProjectScriptConnector(EditorViewport* IN_viewport, SelectionContext& IN_ctx, EditorProject& IN_project) :
+    ctx         { IN_ctx },
+	project     { IN_project },
+    viewport    { IN_viewport }
+{
 }
 
 void CreateTextureBufferDefault(void* _ptr)
@@ -54,6 +190,12 @@ void WritePixel(uint32_t x, uint32_t y, float r, float g, float b, float a, Flex
 /************************************************************************************************/
 
 
+void DoNothing(void* lhs, void* rhs)
+{
+
+}
+
+
 void EditorProjectScriptConnector::Register(EditorScriptEngine& engine)
 {
 	auto scriptEngine = engine.GetScriptEngine();
@@ -61,17 +203,23 @@ void EditorProjectScriptConnector::Register(EditorScriptEngine& engine)
 
 
 	// Register TextureBuffer Type
-	auto c = scriptEngine->RegisterObjectType("TextureBuffer", sizeof(FlexKit::TextureBuffer), asOBJ_VALUE | asGetTypeTraits<FlexKit::TextureBuffer>());                                                assert(c >= 0);
-	c = scriptEngine->RegisterObjectBehaviour("TextureBuffer", asBEHAVE_CONSTRUCT,  "void f()", asFunctionPtr(CreateTextureBufferDefault), asCALL_CDECL_OBJLAST);                                       assert(c >= 0);
-	c = scriptEngine->RegisterObjectBehaviour("TextureBuffer", asBEHAVE_CONSTRUCT,  "void f(uint width, uint height, uint format)", asFunctionPtr(CreateTextureBuffer), asCALL_CDECL_OBJLAST);          assert(c >= 0);
-	c = scriptEngine->RegisterObjectBehaviour("TextureBuffer", asBEHAVE_DESTRUCT,   "void f()", asFunctionPtr(ReleaseTextureBuffer), asCALL_CDECL_OBJLAST);                                             assert(c >= 0);
-    c = scriptEngine->RegisterObjectMethod("TextureBuffer", "void WritePixel(uint x, uint y, float, float, float, float)", asFunctionPtr(WritePixel), asCALL_CDECL_OBJLAST);                            assert(c >= 0);
-    c = scriptEngine->RegisterObjectMethod("TextureBuffer", "void opAssign(const TextureBuffer& in)", asFunctionPtr(OpAssignTextureBuffer), asCALL_CDECL_OBJLAST);                                      assert(c >= 0);
+	auto c = scriptEngine->RegisterObjectType("TextureBuffer", sizeof(FlexKit::TextureBuffer), asOBJ_VALUE | asGetTypeTraits<FlexKit::TextureBuffer>());                                               assert(c >= 0);
+	c = scriptEngine->RegisterObjectBehaviour("TextureBuffer", asBEHAVE_CONSTRUCT,  "void f()",                                     asFunctionPtr(CreateTextureBufferDefault),  asCALL_CDECL_OBJLAST); assert(c >= 0);
+	c = scriptEngine->RegisterObjectBehaviour("TextureBuffer", asBEHAVE_CONSTRUCT,  "void f(uint width, uint height, uint format)", asFunctionPtr(CreateTextureBuffer),         asCALL_CDECL_OBJLAST); assert(c >= 0);
+	c = scriptEngine->RegisterObjectBehaviour("TextureBuffer", asBEHAVE_DESTRUCT,   "void f()",                                     asFunctionPtr(ReleaseTextureBuffer),        asCALL_CDECL_OBJLAST); assert(c >= 0);
+    c = scriptEngine->RegisterObjectMethod("TextureBuffer", "void WritePixel(uint x, uint y, float, float, float, float)",          asFunctionPtr(WritePixel),                  asCALL_CDECL_OBJLAST); assert(c >= 0);
+    c = scriptEngine->RegisterObjectMethod("TextureBuffer", "void opAssign(const TextureBuffer& in)",                               asFunctionPtr(OpAssignTextureBuffer),       asCALL_CDECL_OBJLAST); assert(c >= 0);
+
+    SceneReference::Register(scriptEngine);
 
     // Register Global project functions
     c = scriptEngine->RegisterGlobalFunction(
         "void Create2DTextureResource(const TextureBuffer& in, uint ResourceID, string resourceName, string format)",
-        asMETHOD(EditorProjectScriptConnector, CreateTexture2DResource), asCALL_THISCALL_ASGLOBAL, this);
+        asMETHOD(EditorProjectScriptConnector, CreateTexture2DResource), asCALL_THISCALL_ASGLOBAL, this);       assert(c >= 0);
+
+    c = scriptEngine->RegisterGlobalFunction(
+        "Scene@ GetViewportScene()",
+        asMETHOD(EditorProjectScriptConnector, EditorProjectScriptConnector::GetEditorScene), asCALL_THISCALL_ASGLOBAL, this);    assert(c >= 0);
 }
 
 
@@ -80,8 +228,8 @@ void EditorProjectScriptConnector::Register(EditorScriptEngine& engine)
 
 void EditorProjectScriptConnector::CreateTexture2DResource(FlexKit::TextureBuffer* buffer, uint32_t resourceID, std::string* resourceName, std::string* format)
 {
-    auto newResource    = FlexKit::ResourceBuilder::CreateTextureResource(*buffer, *format);
-    auto texture        = std::static_pointer_cast<FlexKit::ResourceBuilder::TextureResource>(newResource);
+    auto newResource    = FlexKit::CreateTextureResource(*buffer, *format);
+    auto texture        = std::static_pointer_cast<FlexKit::TextureResource>(newResource);
 
     texture->ID             = *resourceName;
     texture->assetHandle    = resourceID;

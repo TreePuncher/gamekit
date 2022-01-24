@@ -80,7 +80,7 @@ namespace FlexKit
 		    renderSystem->WaitforGPU();
 		    renderSystem->_ForceReleaseTexture(backBuffer);
 
-		    const auto HR = swapChain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+		    const auto HR = swapChain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_R16G16B16A16_FLOAT, flags);
 		    if (FAILED(HR))
 		    {
 			    FK_ASSERT(0, "Failed to resize back buffer!");
@@ -256,6 +256,7 @@ namespace FlexKit
         ResourceHandle              backBuffer;
         DXGI_FORMAT					Format;
         HWND						hWindow;
+        UINT                        flags;
 
         uint2						WH; // Width-Height
         uint2						WindowCenterPosition;
@@ -755,7 +756,8 @@ namespace FlexKit
             return { {}, false };
 		}
 
-		renderWindow.swapChain = static_cast<IDXGISwapChain4*>(NewSwapChain_ptr);
+		renderWindow.swapChain  = static_cast<IDXGISwapChain4*>(NewSwapChain_ptr);
+        renderWindow.flags      = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
 		//CreateBackBuffer
 		ID3D12Resource* buffer[3];
@@ -808,7 +810,7 @@ namespace FlexKit
 		SwapChainDesc.BufferUsage		= DXGI_USAGE_RENDER_TARGET_OUTPUT;
 		SwapChainDesc.SwapEffect		= DXGI_SWAP_EFFECT_FLIP_DISCARD;
 		SwapChainDesc.SampleDesc.Count	= 1;
-		SwapChainDesc.Flags               = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
+		SwapChainDesc.Flags             = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
         IDXGISwapChain1* NewSwapChain_ptr = nullptr;
         HRESULT HR = renderSystem.pGIFactory->CreateSwapChainForHwnd(
@@ -823,7 +825,8 @@ namespace FlexKit
             return { {}, false };
         }
 
-        renderWindow.swapChain = static_cast<IDXGISwapChain4*>(NewSwapChain_ptr);
+        renderWindow.swapChain  = static_cast<IDXGISwapChain4*>(NewSwapChain_ptr);
+        renderWindow.flags      = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
         //CreateBackBuffer
         ID3D12Resource* buffer[3];

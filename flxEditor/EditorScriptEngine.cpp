@@ -22,21 +22,29 @@
 /************************************************************************************************/
 
 
-void MessageCallback(const asSMessageInfo* msg, EditorScriptEngine* param)
+void EditorScriptEngine::MessageCallback(const asSMessageInfo* msg, EditorScriptEngine* param)
 {
+    param->PrintToErrorWindow(msg->message);
+
+#ifdef DEBUG
+
     const auto strLen = strlen(msg->message);
     WCHAR*  strBuffer = new WCHAR[strLen + 1];
 
     auto mbsSize = mbstowcs(strBuffer, msg->message, strLen + 1);
 
+
     if (mbsSize != -1)
     {
+
         strBuffer[mbsSize] = '\0';
         OutputDebugString(strBuffer);
         OutputDebugString(L"\n");
     }
 
     delete[] strBuffer;
+
+#endif
 }
 
 
@@ -45,22 +53,16 @@ void MessageCallback(const asSMessageInfo* msg, EditorScriptEngine* param)
 
 void EditorScriptEngine::PrintToOutputWindow(std::string* str)
 {
-    /*
-    WCHAR* strBuffer = new WCHAR[str->size() + 1];
-
-    auto mbsSize = mbstowcs(strBuffer, str->data(), str->size() + 1);
-
-    if (mbsSize != -1)
-    {
-        strBuffer[mbsSize] = '\0';
-        OutputDebugString(strBuffer);
-        OutputDebugString(L"\n");
-    }
-
-    delete[] strBuffer;
-    */
-
     outputTextBuffer += *str + "\n";
+}
+
+
+/************************************************************************************************/
+
+
+void EditorScriptEngine::PrintToErrorWindow(const char* str)
+{
+    errorTextBuffer += str;
 }
 
 
@@ -71,7 +73,7 @@ EditorScriptEngine::EditorScriptEngine() :
     scriptEngine{ asCreateScriptEngine() }
 {
     scriptContext   = scriptEngine->CreateContext();
-    auto r          = scriptEngine->SetMessageCallback(asFUNCTION(MessageCallback), this, asCALL_CDECL); assert(r >= 0);
+    auto r          = scriptEngine->SetMessageCallback(asFUNCTION(EditorScriptEngine::MessageCallback), this, asCALL_CDECL); assert(r >= 0);
 
     RegisterAPI();
 }
@@ -102,12 +104,12 @@ void EditorScriptEngine::RegisterAPI()
     RegisterScriptMath(scriptEngine);
     RegisterScriptMathComplex(scriptEngine);
 
-    auto n = scriptEngine->RegisterInterface("iGadget"); assert(n >= 0);
-    n = scriptEngine->RegisterInterfaceMethod("iGadget", "void Execute()"); assert(n >= 0);
-    n = scriptEngine->RegisterInterfaceMethod("iGadget", "string GadgetID()");
+    auto n = scriptEngine->RegisterInterface("iGadget");                        assert(n >= 0);
+    n = scriptEngine->RegisterInterfaceMethod("iGadget", "void Execute()");     assert(n >= 0);
+    n = scriptEngine->RegisterInterfaceMethod("iGadget", "string GadgetID()");  assert(n >= 0);
 
-    n = scriptEngine->RegisterGlobalFunction("void RegisterGadget(iGadget@ gadget)", asMETHOD(EditorScriptEngine, RegisterGadget), asCALL_THISCALL_ASGLOBAL, this); assert(n >= 0);
-    n = scriptEngine->RegisterGlobalFunction("void Print(string text)", asMETHOD(EditorScriptEngine, PrintToOutputWindow), asCALL_THISCALL_ASGLOBAL, this); assert(n >= 0);
+    n = scriptEngine->RegisterGlobalFunction("void RegisterGadget(iGadget@ gadget)",    asMETHOD(EditorScriptEngine, RegisterGadget), asCALL_THISCALL_ASGLOBAL, this);      assert(n >= 0);
+    n = scriptEngine->RegisterGlobalFunction("void Print(string text)",                 asMETHOD(EditorScriptEngine, PrintToOutputWindow), asCALL_THISCALL_ASGLOBAL, this); assert(n >= 0);
 
     int x = 0;
 }
@@ -166,28 +168,36 @@ void EditorScriptEngine::LoadModules()
 
 void EditorScriptEngine::RunStdString(const std::string& string)
 {
-    CScriptBuilder builder{};
-    builder.StartNewModule(scriptEngine, "temp");
-    if (auto r = builder.AddSectionFromMemory("", string.c_str(), string.size()); r < 0)
+    try
     {
-        // TODO: show error in output window
-    }
+        CScriptBuilder builder{};
+        builder.StartNewModule(scriptEngine, "temp");
 
-    if (auto r = builder.BuildModule(); r < 0)
+        if (auto r = builder.AddSectionFromMemory("", string.c_str(), string.size()); r < 0)
+        {
+            // TODO: show error in output window
+        }
+
+        if (auto r = builder.BuildModule(); r < 0)
+        {
+            // TODO: show error in output window
+        }
+
+        auto asModule   = builder.GetModule();
+        auto func       = asModule->GetFunctionByDecl("void main()");
+
+        if (func)
+        {
+            scriptContext->Prepare(func);
+            scriptContext->Execute();
+        }
+
+        asModule->Discard();
+    }
+    catch (...)
     {
-        // TODO: show error in output window
+        OutputDebugString(L"Unknown error. Continuing as usual.\n");
     }
-
-    auto asModule   = builder.GetModule();
-    auto func       = asModule->GetFunctionByDecl("void main()");
-
-    if (func)
-    {
-        scriptContext->Prepare(func);
-        scriptContext->Execute();
-    }
-
-    asModule->Discard();
 }
 
 

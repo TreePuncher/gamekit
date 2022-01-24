@@ -47,7 +47,6 @@ VS_out voxelize_VS(VS_in vertex)
     output.normal_WS    = mul(WT, float4(vertex.normal_MS, 0));
     output.UV           = vertex.UV;
 
-
     return output;
 }
 
@@ -85,9 +84,10 @@ void voxelize_GS(triangle VS_out input[3], inout TriangleStream<PS_in> outputStr
     [unroll(3)]
     for (uint I = 0; I < 3; I++)
     {
-        if (l < abs(N[I]))
+        const float temp = abs(N[I]);
+        if (l < temp)
         {
-            l = abs(N[I]);
+            l = temp;
             dominantAxis = I;
         }
     }
@@ -139,7 +139,8 @@ void voxelize_PS(PS_in input)
     //vx_sample.ColorR    = float4(input.UV, 0.5f, 0.5f);
     //vx_sample.POS       = float4(input.pos_WS.xyz + float3(2, 0, 2), 0.5f);
     //vx_sample.POS       = float4(input.pos_WS.xyz, asfloat(Pack4(albedo)));
-    vx_sample.POS       = float4(input.pos_WS.xyz, asfloat(Pack4(float4(input.normal_WS / 2.0f + 0.5f, 0))));
+    vx_sample.POS       = float4(input.pos_WS.xyz * 1, asfloat(Pack4(float4(input.normal_WS / 2.0f + 0.5f, 0))));
+    //vx_sample.POS       = uint4(WS2VolumeCord(input.pos_WS.xyz, float3(0, 0, 0), VOLUME_SIZE), (Pack4(float4(input.normal_WS / 2.0f + 0.5f, 0))));
 
     if (vx_sample.POS.x >= VOLUMESIDE_LENGTH ||
         vx_sample.POS.y >= VOLUMESIDE_LENGTH ||

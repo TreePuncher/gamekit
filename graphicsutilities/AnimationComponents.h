@@ -21,9 +21,9 @@ namespace FlexKit
         std::string                 target;
     };
 
-    struct AnimationResource
+    struct Animation
     {
-        AnimationResource(iAllocator& IN_allocator) :
+        Animation(iAllocator& IN_allocator) :
             tracks{ &IN_allocator } {}
 
         Vector<AnimationTrack> tracks;
@@ -32,17 +32,17 @@ namespace FlexKit
 
     struct AnimationState
     {
-        AnimationResource* animation;
+        Animation* animation;
     };
 
 
-    inline AnimationResource* LoadAnimation(GUID_t resourceId, iAllocator& allocator)
+    inline Animation* LoadAnimation(GUID_t resourceId, iAllocator& allocator)
     {
         return nullptr;
     }
 
 
-    AnimationResource* LoadAnimation(const char* resourceName, iAllocator& allocator);
+    Animation* LoadAnimation(const char* resourceName, iAllocator& allocator);
 
 
 	/************************************************************************************************/
@@ -264,7 +264,7 @@ namespace FlexKit
             AnimatorView(GameObject& IN_gameObject, AnimatorHandle IN_animatorHandle = InvalidHandle_t) :
                 animator{ IN_animatorHandle != InvalidHandle_t ? IN_animatorHandle : GetComponent().Create(IN_gameObject) } {}
 
-            PlayID_t Play(AnimationResource& anim, bool loop = false);
+            PlayID_t Play(Animation& anim, bool loop = false);
 
             AnimatorHandle animator;
         };
@@ -389,7 +389,7 @@ namespace FlexKit
             State Update(AnimationStateContext& ctx, double dT);
 
             Vector<TrackState>  tracks;
-            AnimationResource*  resource;
+            Animation*          resource;
         };
 
 		struct AnimatorState

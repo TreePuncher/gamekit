@@ -270,6 +270,9 @@
     <ClInclude Include="..\graphicsutilities\Transparency.h">
       <Filter>Headers\graphicsutilities</Filter>
     </ClInclude>
+    <ClInclude Include="..\graphicsutilities\GILightingUtilities.h">
+      <Filter>Headers\graphicsutilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\coreutilities\AllSourceFiles.cpp">
@@ -462,6 +465,9 @@
       <Filter>Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\Transparency.cpp">
+      <Filter>Source\graphicsutilities</Filter>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\GILightingUtilities.cpp">
       <Filter>Source\graphicsutilities</Filter>
     </ClCompile>
   </ItemGroup>

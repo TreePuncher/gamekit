@@ -295,6 +295,7 @@ namespace FlexKit
 			                    ReserveConstantBufferFunction   reserveCB,
 			                    iAllocator*                     allocator);
 
+
         LightBufferUpdate& UpdateLightBuffers(
                                 UpdateDispatcher&		            dispatcher,
 		                        FrameGraph&				            graph,
@@ -305,6 +306,7 @@ namespace FlexKit
 		                        ReserveConstantBufferFunction       reserveCB,
 		                        iAllocator*				            tempMemory,
                                 bool                                releaseTemporaries = true);
+
 
 	    TiledDeferredShade& ClusteredShading(
                                 UpdateDispatcher&               dispatcher,
@@ -320,6 +322,13 @@ namespace FlexKit
 		                        ReserveVertexBufferFunction     reserveVB,
 		                        float                           t,
 		                        iAllocator*                     allocator);
+
+
+        void ReleaseFrameResources(
+                                FrameGraph&                     rameGraph,
+                                LightBufferUpdate&              lightPass,
+                                TiledDeferredShade&             TiledDeferredShade);
+
 
         DEBUGVIS_DrawBVH& DEBUGVIS_DrawLightBVH(
 			                    UpdateDispatcher&               dispatcher,

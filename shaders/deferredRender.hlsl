@@ -117,12 +117,12 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     const float3 positionVS     = GetViewSpacePosition(UV, depth);
     const float3 positionWS     = GetWorldSpacePosition(UV, depth);
 
-    const float roughness     = MRIA.g;
+    const float roughness     = 0.9f;//MRIA.g;
     const float ior           = MRIA.b;
 	const float metallic      = MRIA.r > 0.1f ? 1.0f : 0.0f;
-	const float3 albedo       = Albedo.rgb; 
+	const float3 albedo       = pow(Albedo.rgb, 1);
 
-    const float Ks              = lerp(0, 0.4f, saturate(Albedo.w));
+    const float Ks              = 0.4f;//lerp(0, 0.4f, saturate(Albedo.w));
     const float Kd              = (1.0 - Ks) * (1.0 - metallic);
     const float NdotV           = saturate(dot(N.xyz, V));
 
@@ -138,14 +138,16 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     if(localLightList == -2)
         return float4(1, 0, 1, 1);
 
-    float4 color = float4(0, 0, 0, 1);
-
+    float4 color = float4(ambientLight * albedo, 1);
     for(uint I = 0; I < localLightCount; I++)
     {
         const uint pointLightIdx    = lightListBuffer[localLightList + I];
 
         if(pointLightIdx >= lightCount)
             return float4(1, 0, 0, 1);
+
+        //if (pointLightIdx != 3)
+        //    continue;
 
         const PointLight light      = pointLights[pointLightIdx];
 
@@ -175,7 +177,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 
         #if 0   // Non shadowmapped pass
             const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
-            color += saturate(float4(colorSample, 0 ));
+            color += max(float4(colorSample, 0 ), 0.0f);
         #else
             const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
 
@@ -264,7 +266,8 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
         //return color = float4(N / 2.0f + 0.5f);
     //return Albedo * Albedo;
 #endif
-	return color;
+    
+	return pow(color, 2.2f);
 }
 
 

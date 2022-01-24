@@ -32,8 +32,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MeshUtils.h"
 #include "AnimationUtilities.h"
 #include "ResourceIDs.h"
+#include "Serialization.hpp"
 
-#include <boost/serialization/serialization.hpp>
 #include <DirectXMath.h>
 
 
@@ -57,7 +57,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 
-namespace FlexKit::ResourceBuilder
+namespace FlexKit
 {   /************************************************************************************************/
 
 
@@ -153,12 +153,12 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
-    class iResource
+    class iResource : public FlexKit::SerializableInterface<GetTypeGUID(iResource)>
     {
     public:
-        friend class boost::serialization::access;
 
-        void serialize(auto& ar, const unsigned int version) {}
+        virtual void                Restore(Archive*, void*) {}
+        virtual SerializableBase*   CloneSerializer() { return nullptr; }
 
         virtual ResourceBlob        CreateBlob() = 0;
         virtual const std::string&  GetResourceID()     const { const static std::string _temp{ "resource" };  return _temp; }
@@ -169,6 +169,7 @@ namespace FlexKit::ResourceBuilder
 
     using Resource_ptr = std::shared_ptr<iResource>;
     using ResourceList = std::vector<Resource_ptr>;
+
 
 }   /************************************************************************************************/
 
