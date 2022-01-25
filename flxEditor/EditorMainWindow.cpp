@@ -256,7 +256,7 @@ ResourceBrowserWidget* EditorMainWindow::AddResourceList()
     docklet->setWidget(resourceBrowser);
     docklet->show();
 
-    addDockWidget(Qt::RightDockWidgetArea, docklet);
+    addDockWidget(Qt::BottomDockWidgetArea, docklet);
 
     return resourceBrowser;
 }
@@ -274,7 +274,7 @@ void EditorMainWindow::AddSceneOutliner()
     docklet->setWidget(outliner);
     docklet->show();
 
-    addDockWidget(Qt::RightDockWidgetArea, docklet);
+    addDockWidget(Qt::LeftDockWidgetArea, docklet);
 }
 
 
