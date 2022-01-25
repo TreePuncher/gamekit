@@ -85,10 +85,9 @@ namespace FlexKit
         ImPlot::GetStyle().AntiAliasedLines = true;
 
         FlexKit::CopyContextHandle  uploadQueue = renderSystem.ImmediateUpload;
-        ImGuiIO& io         = ImGui::GetIO();
-        io.FontGlobalScale  = 1.5f;
-
-        io.KeyMap[ImGuiKey_Backspace] = VK_BACK;
+        ImGuiIO& io                     = ImGui::GetIO();
+        io.FontGlobalScale              = 1.5f;
+        io.KeyMap[ImGuiKey_Backspace]   = VK_BACK;
 
         renderSystem.RegisterPSOLoader(DRAW_imgui, { &renderSystem.Library.RSDefault, Create_DrawImGUI });
         renderSystem.QueuePSOLoad(DRAW_imgui);
@@ -120,6 +119,45 @@ namespace FlexKit
 
 
     /************************************************************************************************/
+
+    void ImGUIIntegrator::Update(uint2 MouseXY, uint2 WH, FlexKit::UpdateDispatcher& dispatcher, double dT)
+    {
+        ImGuiIO& io     = ImGui::GetIO();
+        io.DisplaySize  = ImVec2(WH[0], WH[1]);
+        io.DeltaTime    = dT;
+        io.MousePos     = { (float)MouseXY[0], (float)MouseXY[1] };
+
+        std::cout << MouseXY[0] << " : " << MouseXY[1] << "\n";
+
+	    if (io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange)
+		    return;
+
+	    ImGuiMouseCursor imgui_cursor = ImGui::GetMouseCursor();
+	    if (imgui_cursor == ImGuiMouseCursor_None || io.MouseDrawCursor)
+	    {
+		    // Hide OS mouse cursor if imgui is drawing it or if it wants no cursor
+		    ::SetCursor(NULL);
+	    }
+	    else
+	    {
+		    // Show OS mouse cursor
+		    LPTSTR win32_cursor = IDC_ARROW;
+		    switch (imgui_cursor)
+		    {
+		    case ImGuiMouseCursor_Arrow:        win32_cursor = IDC_ARROW; break;
+		    case ImGuiMouseCursor_TextInput:    win32_cursor = IDC_IBEAM; break;
+		    case ImGuiMouseCursor_ResizeAll:    win32_cursor = IDC_SIZEALL; break;
+		    case ImGuiMouseCursor_ResizeEW:     win32_cursor = IDC_SIZEWE; break;
+		    case ImGuiMouseCursor_ResizeNS:     win32_cursor = IDC_SIZENS; break;
+		    case ImGuiMouseCursor_ResizeNESW:   win32_cursor = IDC_SIZENESW; break;
+		    case ImGuiMouseCursor_ResizeNWSE:   win32_cursor = IDC_SIZENWSE; break;
+		    case ImGuiMouseCursor_Hand:         win32_cursor = IDC_HAND; break;
+		    case ImGuiMouseCursor_NotAllowed:   win32_cursor = IDC_NO; break;
+		    }
+		    ::SetCursor(::LoadCursor(NULL, win32_cursor));
+	    }
+    }
+
 
 
     void ImGUIIntegrator::Update(Win32RenderWindow& window, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)

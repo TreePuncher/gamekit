@@ -6,7 +6,7 @@
 #include "SelectionContext.h"
 #include "WorldRender.h"
 #include "ViewportScene.h"
-
+#include "DebugUI.h"
 #include "ui_EditorViewport.h"
 
 #include <QtWidgets/QWidget>
@@ -70,6 +70,7 @@ private:
     float                           panSpeed = 10.0f;
 
 	Ui::EditorViewport              ui;
+    FlexKit::ImGUIIntegrator        hud;
 
     DXRenderWindow*                 renderWindow;
     SelectionContext&               selectionContext;
