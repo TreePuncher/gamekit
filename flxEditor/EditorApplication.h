@@ -54,7 +54,7 @@ public:
 				project.AddResource(resource);
 		}
 
-		return false;
+		return true;
 	}
 
 	std::string GetFileTypeName() override
@@ -148,8 +148,8 @@ private:
     {
         auto&& scene = viewport->GetScene();
 
-        auto ref = SceneReference::Factory();
-        ref->scene = scene;
+        auto ref    = SceneReference::Factory();
+        ref->scene  = scene;
 
         return ref;
     }
@@ -183,7 +183,6 @@ struct TextureResourceViewer : public IResourceViewer
         auto queue          = renderSystem.GetImmediateUploadQueue();
         auto texture        = FlexKit::MoveTextureBufferToVRAM(renderSystem, queue, &uploadBuffer, format);
 
-                    
         auto docklet        = new QDockWidget{ parent };
         auto textureViewer  = new TextureViewer(renderer, parent, texture);
 

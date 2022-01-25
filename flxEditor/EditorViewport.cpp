@@ -4,7 +4,7 @@
 #include "qevent.h"
 
 #include <QtWidgets/qmenubar.h>
-
+#include <QShortcut>
 
 using FlexKit::float2;
 using FlexKit::float3;
@@ -33,8 +33,22 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
     setMinimumSize(100, 100);
     setMaximumSize({ 1024 * 16, 1024 * 16 });
 
-    auto file   = menuBar->addMenu("View");
-    auto select = file->addAction("Select Texture");
+    auto file           = menuBar->addMenu("Add");
+    auto addGameObject  = file->addAction("Empty GameObject");
+
+    addGameObject->connect(addGameObject, &QAction::triggered,
+        [&]
+        {
+            auto& scene = GetScene();
+
+            if (scene == nullptr)
+                return;
+
+            ViewportGameObject_ptr object   = std::make_shared<ViewportGameObject>();
+            object->objectID                = rand();
+
+            scene->sceneObjects.push_back(object);
+        });
 
     menuBar->show();
 
@@ -116,11 +130,13 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
     {
         auto viewObject = std::make_shared<ViewportGameObject>();
         viewObject->objectID = entity.objectID;
-
         viewportScene->sceneObjects.emplace_back(viewObject);
 
         if (entity.Node != -1)
             viewObject->gameObject.AddView<FlexKit::SceneNodeView<>>(nodes[entity.Node]);
+
+        if (entity.id.size())
+            viewObject->gameObject.AddView<FlexKit::StringIDView>(entity.id.c_str(), entity.id.size());
 
         for (auto& componentEntry : entity.components)
         {
@@ -170,10 +186,17 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
                 }
             }   break;
             case FlexKit::PointLightComponentID:
+            {
                 if (!addedToScene)
                     viewportScene->scene.AddGameObject(viewObject->gameObject, nodes[entity.Node]);
 
+                auto  blob      = componentEntry->GetBlob();
+                auto& component = FlexKit::ComponentBase::GetComponent(componentEntry->id);
+
+                component.AddComponentView(viewObject->gameObject, blob, blob.size(), FlexKit::SystemAllocator);
+
                 addedToScene = true;
+            }   break;
             default:
             {
                 auto  blob      = componentEntry->GetBlob();
@@ -199,6 +222,40 @@ void EditorViewport::keyPressEvent(QKeyEvent* event)
 
     if (keyCode == Qt::Key_Alt)
         state = InputState::PanOrbit;
+
+    if(keyCode == Qt::Key_F)
+    {
+        auto& scene = GetScene();
+        if (scene == nullptr)
+            return;
+
+        if (selectionContext.GetSelectionType() == ViewportObjectList_ID)
+        {
+            auto selection = selectionContext.GetSelection<ViewportObjectList>();
+
+            FlexKit::AABB aabb;
+            for (auto& object : selection)
+            {
+                auto boundingSphere = FlexKit::GetBoundingSphere(object->gameObject);
+                aabb = aabb + boundingSphere;
+            }
+
+            const FlexKit::Camera c = FlexKit::CameraComponent::GetComponent().GetCamera(viewportCamera);
+
+            const auto target           = aabb.MidPoint();
+            const auto desiredDistance  = (2.0f/ std::sqrt(2.0f)) *  aabb.Span().magnitude() / std::tan(c.FOV);
+
+            auto position_VS        = c.View.Transpose()    * float4{ target, 1 };
+            auto updatedPosition_WS = c.IV.Transpose()      * float4{ position_VS.x, position_VS.y, position_VS.z + desiredDistance, 1 };
+
+            const auto node         = FlexKit::GetCameraNode(viewportCamera);
+            Quaternion Q = GetOrientation(node);
+            auto forward = -(Q * float3(0, 0, 1)).normal();
+
+            FlexKit::SetPositionW(node, updatedPosition_WS.xyz());
+            FlexKit::MarkCameraDirty(viewportCamera);
+        }
+    }
 }
 
 

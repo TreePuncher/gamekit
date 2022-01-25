@@ -313,7 +313,7 @@ namespace FlexKit
 		XMView		= XMMatrixInverse(nullptr, XMWT);
 		XMProj		= CreatePerspective(this, invert);
 		XMPV		= XMMatrixTranspose(XMMatrixTranspose(XMProj) * XMView);
-		XMIV		= XMMatrixTranspose(XMMatrixInverse(nullptr, XMMatrixTranspose(CreatePerspective(this, invert)) * XMView));
+		XMIV		= XMWT;//XMMatrixTranspose(XMMatrixInverse(nullptr, XMMatrixTranspose(CreatePerspective(this, invert)) * XMView));
 
         previous.WT     = WT;
         previous.View   = View;

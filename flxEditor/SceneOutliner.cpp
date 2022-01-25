@@ -47,6 +47,7 @@ void SceneOutliner::Update()
     dataModel.scene = viewport.GetScene();
 
     ui.listView->update();
+    dataModel.layoutChanged();
 
     timer->start(500ms);
 }
@@ -57,11 +58,15 @@ void SceneOutliner::Update()
 
 void SceneOutliner::on_clicked()
 {
-    auto idx = ui.listView->currentIndex();
-    auto& selectionCtx = viewport.GetSelectionContext();
-    auto& object = dataModel.scene->sceneObjects[idx.row()];
+    auto idx            = ui.listView->currentIndex();
+    auto& selectionCtx  = viewport.GetSelectionContext();
+    auto& object        = dataModel.scene->sceneObjects[idx.row()];
 
-    ViewportObjectList selection;
+    auto modifiers = QApplication::queryKeyboardModifiers();
+
+    ViewportObjectList selection = ((Qt::ShiftModifier & modifiers) && (selectionCtx.type == ViewportObjectList_ID)) ?
+                                        selectionCtx.GetSelection<ViewportObjectList>() : ViewportObjectList{};
+
     selection.push_back(object);
 
     selectionCtx.selection  = std::move(selection);
