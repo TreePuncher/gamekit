@@ -2,9 +2,11 @@
 #include "DXRenderWindow.h"
 #include "EditorRenderer.h"
 #include "qevent.h"
+#include "DebugUI.cpp"
 
 #include <QtWidgets/qmenubar.h>
 #include <QShortcut>
+
 
 using FlexKit::float2;
 using FlexKit::float3;
@@ -17,6 +19,7 @@ using FlexKit::float4x4;
 
 EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN_context, QWidget *parent)
     :   QWidget{ parent }
+    ,   hud                 { IN_renderer.GetRenderSystem(), FlexKit::SystemAllocator }
     ,   menuBar             { new QMenuBar{ this } }
     ,   renderer            { IN_renderer }
     ,   gbuffer             { { 100, 200 }, IN_renderer.framework.GetRenderSystem() }
@@ -279,8 +282,35 @@ void EditorViewport::keyReleaseEvent(QKeyEvent* event)
 
 void EditorViewport::mousePressEvent(QMouseEvent* event)
 {
+
+    if (event->button() == Qt::MouseButton::LeftButton)
+    {
+        previousMousePosition = FlexKit::int2{ -160000, -160000 };
+
+        FlexKit::Event mouseEvent;
+        mouseEvent.InputSource  = FlexKit::Event::Mouse;
+        mouseEvent.Action       = FlexKit::Event::Pressed;
+        mouseEvent.mType        = FlexKit::Event::Input;
+
+        mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSELEFT;
+        hud.HandleInput(mouseEvent);
+    }
+    else if (event->button() == Qt::MouseButton::RightButton)
+    {
+        previousMousePosition = FlexKit::int2{ -160000, -160000 };
+
+        FlexKit::Event mouseEvent;
+        mouseEvent.InputSource  = FlexKit::Event::Mouse;
+        mouseEvent.Action       = FlexKit::Event::Pressed;
+        mouseEvent.mType        = FlexKit::Event::Input;
+
+        mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSERIGHT;
+        hud.HandleInput(mouseEvent);
+    }
+
     if (!scene)
         return;
+
 
     switch (state)
     {
@@ -308,7 +338,32 @@ void EditorViewport::mousePressEvent(QMouseEvent* event)
                             .O = v_o,});
 
             if (results.empty())
-                return;
+            {
+                if (event->button() == Qt::MouseButton::LeftButton)
+                {
+                    previousMousePosition = FlexKit::int2{ -160000, -160000 };
+
+                    FlexKit::Event mouseEvent;
+                    mouseEvent.InputSource  = FlexKit::Event::Mouse;
+                    mouseEvent.Action       = FlexKit::Event::Pressed;
+                    mouseEvent.mType        = FlexKit::Event::Input;
+
+                    mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSELEFT;
+                    hud.HandleInput(mouseEvent);
+                }
+                else if (event->button() == Qt::MouseButton::RightButton)
+                {
+                    previousMousePosition = FlexKit::int2{ -160000, -160000 };
+
+                    FlexKit::Event mouseEvent;
+                    mouseEvent.InputSource  = FlexKit::Event::Mouse;
+                    mouseEvent.Action       = FlexKit::Event::Pressed;
+                    mouseEvent.mType        = FlexKit::Event::Input;
+
+                    mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSERIGHT;
+                    hud.HandleInput(mouseEvent);
+                }
+            }
 
             ViewportObjectList selection;
             selection.push_back(results.front());
@@ -316,6 +371,9 @@ void EditorViewport::mousePressEvent(QMouseEvent* event)
             selectionContext.selection  = std::move(selection);
             selectionContext.type       = ViewportObjectList_ID;
         }
+    }   break;
+    default:
+    {
     }   break;
     }
 }
@@ -374,7 +432,8 @@ void EditorViewport::mouseMoveEvent(QMouseEvent* event)
             previousMousePosition = FlexKit::int2{ -160000, -160000 };
     }   break;
     default:
-        break;
+    {
+    }   break;
     }
 }
 
@@ -398,6 +457,31 @@ void EditorViewport::wheelEvent(QWheelEvent* event)
 void EditorViewport::mouseReleaseEvent(QMouseEvent* event)
 {
     previousMousePosition = FlexKit::int2{ -160000, -160000 };
+
+    if (event->button() == Qt::MouseButton::LeftButton)
+    {
+        previousMousePosition = FlexKit::int2{ -160000, -160000 };
+
+        FlexKit::Event mouseEvent;
+        mouseEvent.InputSource  = FlexKit::Event::Mouse;
+        mouseEvent.Action       = FlexKit::Event::Release;
+        mouseEvent.mType        = FlexKit::Event::Input;
+
+        mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSELEFT;
+        hud.HandleInput(mouseEvent);
+    }
+    else if (event->button() == Qt::MouseButton::RightButton)
+    {
+        previousMousePosition = FlexKit::int2{ -160000, -160000 };
+
+        FlexKit::Event mouseEvent;
+        mouseEvent.InputSource  = FlexKit::Event::Mouse;
+        mouseEvent.Action       = FlexKit::Event::Release;
+        mouseEvent.mType        = FlexKit::Event::Input;
+
+        mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSERIGHT;
+        hud.HandleInput(mouseEvent);
+    }
 }
 
 
@@ -406,6 +490,23 @@ void EditorViewport::mouseReleaseEvent(QMouseEvent* event)
 
 void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, TemporaryBuffers& temporaries, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator)
 {
+    const auto HW           = frameGraph.GetRenderSystem().GetTextureWH(renderTarget);
+    QPoint globalCursorPos  = QCursor::pos();
+    auto localPosition      = renderWindow->mapFromGlobal(globalCursorPos);
+
+
+    hud.Update({ (float)localPosition.x() * 1.5f, (float)localPosition.y() * 1.5f }, HW, dispatcher, dT);
+
+    ImGui::NewFrame();
+    if (ImGui::Begin("Test"))
+    {
+        ImGui::TextWrapped("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.");
+    }
+    ImGui::End();
+
+    ImGui::EndFrame();
+    ImGui::Render();
+
     if (scene)
     {
         allocator.clear();
@@ -474,7 +575,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
     else
         FlexKit::ClearBackBuffer(frameGraph, renderTarget, { 0.25f, 0.25f, 0.25f, 0 });
 
-
+    hud.DrawImGui(dT, dispatcher, frameGraph, temporaries.ReserveVertexBuffer, temporaries.ReserveConstantBuffer, renderTarget);
     FlexKit::PresentBackBuffer(frameGraph, renderTarget);
 
     T += dT;

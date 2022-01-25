@@ -18,6 +18,7 @@ namespace FlexKit
         ImGUIIntegrator(RenderSystem& renderSystem, iAllocator* memory);
         ~ImGUIIntegrator();
 
+        void Update(uint2 MouseXY, uint2 WH, FlexKit::UpdateDispatcher& dispatcher, double dT);
         void Update(Win32RenderWindow& window, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT);
         bool HandleInput(FlexKit::Event evt);
 
