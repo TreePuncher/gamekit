@@ -285,7 +285,7 @@ namespace FlexKit
         }
 
 
-        ~SceneNodeView()
+        ~SceneNodeView() override
         {
             if (node != InvalidHandle_t)
                 ReleaseNode(node);
@@ -413,156 +413,31 @@ namespace FlexKit
         NodeHandle node;
     };
 
-    inline void Translate(GameObject& go, const float3 xyz)
-    {
-        Apply(go,
-            [&](SceneNodeView<>& node)
-            {
-                node.TranslateWorld(xyz);
-            });
-    }
 
-    inline float3 GetLocalPosition(GameObject& go)
-    {
-        return Apply(go, 
-            [&](SceneNodeView<>& node)
-            {	return node.GetPositionL(); }, 
-            []
-            { return float3{ 0, 0, 0 }; });
-    }
-
-    inline float3 GetWorldPosition(GameObject& go)
-    {
-        return Apply(go,
-            [&](SceneNodeView<>& node)
-            {	return node.GetPosition(); },
-            []
-            { return float3{ 0, 0, 0 }; });
-    }
-
-
-    inline void SetWorldPosition(GameObject& go, const float3 pos)
-    {
-        return Apply(go,
-            [&](SceneNodeView<>& view)
-            {   SetPositionW(view.node, pos); });
-    }
-
-    inline float3 GetScale(GameObject& go)
-    {
-        return Apply(go,
-            [&](SceneNodeView<>& node)
-            { return node.GetScale(); },
-            []
-            { return float3{ 1, 1, 1 }; });
-    }
-
-    inline void ClearParent(GameObject& go)
-    {
-        return Apply(go,
-            [&](SceneNodeView<>& node)
-            {
-                return node.SetParentNode(node.GetComponent().GetRoot());
-            }
-        );
-    }
-
-    inline auto GetParentNode(GameObject& go)
-    {
-        return Apply(go,
-            [&](const SceneNodeView<>& node) -> NodeHandle
-            {
-                return node.GetParentNode();
-            },
-            []() -> NodeHandle
-            {
-                return InvalidHandle_t;
-            }
-        );
-    }
+    void    Translate(GameObject& go, const float3 xyz);
+    float3  GetLocalPosition(GameObject& go);
+    float3  GetWorldPosition(GameObject& go);
 
 
 
-    inline void EnableScale(GameObject& go, bool scale)
-    {
-        return Apply(go,
-            [&](SceneNodeView<>& node)
-            {
-                return node.ToggleScaling(scale);
-            });
-    }
+    void        ClearParent(GameObject& go);
 
+    float3      GetScale(GameObject& go);
+    NodeHandle  GetParentNode(GameObject& go);
+    void        EnableScale(GameObject& go, bool scale);
 
-    inline void SetScale(GameObject& go, float3 scale)
-    {
-        return Apply(go,
-            [&](SceneNodeView<>& node)
-            {
-                return node.SetScale(scale);
-            }
-            );
-    }
+    void Pitch(GameObject& go, float theta);
+    void Yaw(GameObject& go, float theta);
 
+    Quaternion  GetOrientation(GameObject& go);
+    NodeHandle  GetSceneNode(GameObject& go);
+    float4x4    GetWT(GameObject& go);
 
-    inline void Pitch(GameObject& go, float theta)
-    {
-        return Apply(go,
-            [&](SceneNodeView<>& node)
-            {
-                return node.Pitch(theta);
-            }
-        );
-    }
+    void SetWorldPosition(GameObject& go, const float3 pos);
+    void SetScale(GameObject& go, float3 scale);
 
-
-    inline void Yaw(GameObject& go, float theta)
-    {
-        return Apply(go,
-            [&](SceneNodeView<>& node)
-            {
-                return node.Yaw(theta);
-            }
-        );
-    }
-
-
-    inline Quaternion GetOrientation(GameObject& go)
-    {
-        return Apply(go,
-            [&](const SceneNodeView<>& node)
-            { return node.GetOrientation(); },
-            []
-            { return Quaternion{ 0, 0, 0, 1 }; });
-    }
-
-
-    inline NodeHandle GetSceneNode(GameObject& go)
-    {
-        return Apply(
-            go,
-            [](const SceneNodeView<>& node)
-            {
-                return node.node;
-            },
-            []
-            {
-                return NodeHandle(InvalidHandle_t);
-            });
-    }
-
-
-    inline float4x4 GetWT(GameObject& go)
-    {
-        return GetWT(GetSceneNode(go));
-    }
-
-
-    inline void SetOrientation(GameObject& go, const Quaternion q)
-    {
-        return Apply(go,
-            [&](SceneNodeView<>& view)
-            { SetOrientation(view.node, q); });
-    }
+    void SetWT(GameObject& go, const float4x4 newMatrix);
+    void SetOrientation(GameObject& go, const Quaternion q);
 
 
 }	/************************************************************************************************/

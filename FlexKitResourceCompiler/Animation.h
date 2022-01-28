@@ -94,19 +94,29 @@ namespace FlexKit
     };
 
 
+    void Serialize(auto& ar, AnimationTrackTarget& track)
+    {
+        ar& track.Channel;
+        ar& track.Target;
+        ar& track.type;
+    }
+
+
     struct AnimationResource :
         public Serializable<AnimationResource, iResource, GetTypeGUID(AnimationResource)>
     {
         void Serialize(auto& ar)
         {
-
+            ar& ID;
+            ar& guid;
+            ar& tracks;
         }
 
         ResourceBlob        CreateBlob();
 
-        const std::string&  GetResourceID()     const { return ID; }
-        const uint64_t      GetResourceGUID()   const { return guid; }
-        const ResourceID_t  GetResourceTypeID() const { return AnimationResourceTypeID; }
+        const std::string&  GetResourceID()     const noexcept { return ID; }
+        const uint64_t      GetResourceGUID()   const noexcept { return guid; }
+        const ResourceID_t  GetResourceTypeID() const noexcept { return AnimationResourceTypeID; }
 
         struct Track
         {
@@ -114,10 +124,18 @@ namespace FlexKit
             std::vector<AnimationKeyFrame>  KeyFrames;
         };
 
+
         std::string                 ID;
         GUID_t                      guid = rand();
-        std::vector<Track> tracks;
+        std::vector<Track>          tracks;
     };
+
+
+    void Serialize(auto& ar, AnimationResource::Track& track)
+    {
+        ar& track.targetChannel;
+        ar& track.KeyFrames;
+    }
 
 
     /************************************************************************************************/
@@ -161,9 +179,9 @@ namespace FlexKit
         void AddJoint(const SkeletonJoint joint, const XMMATRIX IPose);
         void SetJointID(JointHandle joint, std::string& ID);
 
-        const std::string&  GetResourceID()     const override { return ID; }
-        const uint64_t      GetResourceGUID()   const override { return guid; }
-        const ResourceID_t  GetResourceTypeID() const override { return SkeletonResourceTypeID; }
+        const std::string&  GetResourceID()     const noexcept override { return ID; }
+        const uint64_t      GetResourceGUID()   const noexcept override { return guid; }
+        const ResourceID_t  GetResourceTypeID() const noexcept override { return SkeletonResourceTypeID; }
 
         size_t								JointCount;
         GUID_t								guid;

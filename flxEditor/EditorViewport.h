@@ -11,6 +11,8 @@
 
 #include <QtWidgets/QWidget>
 #include <qt>
+#include <imgui.h>
+#include <ImGuizmo.h>
 
 
 class QMenuBar;
@@ -65,6 +67,8 @@ private:
         PanOrbit,
         ClickSelect
     } state = InputState::ClickSelect;
+
+    ImGuizmo::OPERATION manipulatorState = ImGuizmo::OPERATION::TRANSLATE;
 
     FlexKit::int2                   previousMousePosition{ -160000, -160000 };
     float                           panSpeed = 10.0f;

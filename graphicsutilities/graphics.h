@@ -83,16 +83,6 @@ namespace FlexKit
     /************************************************************************************************/
 
      
-    FLEXKITAPI inline float4x4 Inverse(const float4x4 m)
-    {
-        const float4x4 MI = XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(m)));
-
-        return MI;
-    }
-
-
-	/************************************************************************************************/
-
 #pragma warning(disable:4067)
 FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 //#ifdef USING(DEBUGGRAPHICS)

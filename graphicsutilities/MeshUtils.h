@@ -256,7 +256,7 @@ namespace FlexKit
             using JointIndexes      = uint4_16;
 
 
-            std::vector<float2>		        points              {};
+            std::vector<Point>		        points              {};
             std::vector<Normal>		        normals             {};
             std::vector<Normal>		        tangents            {};
 

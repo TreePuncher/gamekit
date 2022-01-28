@@ -127,8 +127,6 @@ namespace FlexKit
         io.DeltaTime    = dT;
         io.MousePos     = { (float)MouseXY[0], (float)MouseXY[1] };
 
-        std::cout << MouseXY[0] << " : " << MouseXY[1] << "\n";
-
 	    if (io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange)
 		    return;
 

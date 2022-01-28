@@ -16,6 +16,7 @@
         "directxtk12",
         "imgui",
         "implot",
+	"imguizmo",
         "physx",
         "fmt",
         "slikenet",

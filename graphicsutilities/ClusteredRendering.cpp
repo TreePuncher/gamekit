@@ -611,6 +611,10 @@ namespace FlexKit
 
 	void GBuffer::Resize(const uint2 WH)
 	{
+        auto previousWH = RS.GetTextureWH(albedo);
+        if (WH == previousWH)
+            return;
+
 		RS.ReleaseResource(albedo);
 		RS.ReleaseResource(MRIA);
 		RS.ReleaseResource(normal);
@@ -618,6 +622,8 @@ namespace FlexKit
 		albedo  = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM));
 		MRIA    = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT));
 		normal  = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT));
+
+        std::cout << "{ " << WH[0] << " , " << WH[1] << " }\n";
 
 		RS.SetDebugName(albedo,  "Albedo");
 		RS.SetDebugName(MRIA,    "MRIA");
@@ -866,7 +872,7 @@ namespace FlexKit
 				//builder.AddDataDependency(sceneDescription.lights);
 				//builder.AddDataDependency(sceneDescription.cameras);
 			},
-			[this](LightBufferUpdate& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[this, XY = WH / 32](LightBufferUpdate& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
                 ctx.BeginEvent_DEBUG("Update Light Buffers");
 
@@ -986,10 +992,12 @@ namespace FlexKit
                 clusterCreationResources.NullFill(ctx);
 
                 //ctx.TimeStamp(timeStats, 2);
+
                 
-                const auto threadsWH = resources.GetTextureWH(data.depthBufferObject) / 32;
+
+                const auto threadsWH = uint2{ (Vect2{ resources.GetTextureWH(data.depthBufferObject) } / 32.0f).Ceil() };
                 ctx.SetComputeDescriptorTable(0, clusterCreationResources);
-                ctx.Dispatch(CreateClusters, uint3{ 60, 34, 1 });
+                ctx.Dispatch(CreateClusters, uint3{ threadsWH, 1 });
                 ctx.AddUAVBarrier(resources[data.lightBVH]);
 
                 //ctx.TimeStamp(timeStats, 3);

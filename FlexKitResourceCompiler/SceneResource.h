@@ -356,7 +356,7 @@ namespace FlexKit
     {
     public:
         ResourceBlob CreateBlob() override;
-        const std::string& GetResourceID() const override { return ID;  }
+        const std::string& GetResourceID() const noexcept override { return ID;  }
 
         uint32_t AddSceneEntity(SceneEntity entity)
         {
@@ -375,7 +375,7 @@ namespace FlexKit
             return idx;
         }
 
-        const ResourceID_t GetResourceTypeID() const override { return SceneResourceTypeID; }
+        const ResourceID_t GetResourceTypeID() const noexcept override { return SceneResourceTypeID; }
 
 
         template<class Archive>

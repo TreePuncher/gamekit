@@ -9,11 +9,7 @@
 #include "Compressonator.h"
 #include <filesystem>
 
-#include <boost/serialization/serialization.hpp>
-#include <boost/serialization/base_object.hpp>
-#include <boost/serialization/binary_object.hpp>
-#include <boost/serialization/string.hpp>
-#include "../flxEditor/Serialization.h"
+#include "../coreutilities/Serialization.hpp"
 
 
 namespace FlexKit
@@ -51,7 +47,7 @@ namespace FlexKit
 
         ResourceBlob CreateBlob() override;
 
-        const ResourceID_t GetResourceTypeID() const override { return CubeMapResourceTypeID; }
+        const ResourceID_t GetResourceTypeID() const noexcept override { return CubeMapResourceTypeID; }
     };
 
 
@@ -112,42 +108,26 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    class TextureResource : public FlexKit::iResource
+    class TextureResource : public Serializable<TextureResource, iResource, GetTypeGUID(TextureResource)>
     {
     public:
-        friend class boost::serialization::access;
-
-        template<class Archive>
-        void serialize(Archive& ar)
+        void Serialize(auto& ar)
         {
-        }
-
-        /*
-        template<class Archive>
-        void serialize(Archive& ar, const unsigned int version)
-        {
-            ar & boost::serialization::base_object<FlexKit::iResource>(*this);
             ar & ID;
             ar & assetHandle;
             ar & format;
             ar & mipLevels;
             ar & mipOffsets;
             ar & WH;
-
             ar & bufferSize;
-
-            if constexpr (Archive::is_loading::value)
-                buffer = malloc(bufferSize);
-
-            ar & boost::serialization::make_binary_object(buffer, bufferSize);
+            ar & RawBuffer{ buffer, bufferSize };
         }
-        */
 
         TextureResource() {}
 
-        const std::string&  GetResourceID() const override      { return ID; }
-        const uint64_t      GetResourceGUID() const override    { return assetHandle; }
-        const ResourceID_t  GetResourceTypeID() const override  { return TextureResourceTypeID; }
+        const std::string&  GetResourceID()     const noexcept final { return ID; }
+        const uint64_t      GetResourceGUID()   const noexcept final { return assetHandle; }
+        const ResourceID_t  GetResourceTypeID() const noexcept final { return TextureResourceTypeID; }
 
         ResourceBlob CreateBlob() override;
 

@@ -779,5 +779,224 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
-}
+    /************************************************************************************************/
+
+
+    void Translate(GameObject& go, const float3 xyz)
+    {
+        Apply(go,
+            [&](SceneNodeView<>& node)
+            {
+                node.TranslateWorld(xyz);
+            });
+    }
+
+
+    /************************************************************************************************/
+
+    float3 GetLocalPosition(GameObject& go)
+    {
+        return Apply(go, 
+            [&](SceneNodeView<>& node)
+            {	return node.GetPositionL(); }, 
+            []
+            { return float3{ 0, 0, 0 }; });
+    }
+
+
+    /************************************************************************************************/
+
+
+    float3 GetWorldPosition(GameObject& go)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& node)
+            {	return node.GetPosition(); },
+            []
+            { return float3{ 0, 0, 0 }; });
+    }
+
+
+    /************************************************************************************************/
+
+
+    void SetWorldPosition(GameObject& go, const float3 pos)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& view)
+            {   SetPositionW(view.node, pos); });
+    }
+
+
+    /************************************************************************************************/
+
+
+    float3 GetScale(GameObject& go)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& node)
+            { return node.GetScale(); },
+            []
+            { return float3{ 1, 1, 1 }; });
+    }
+
+
+    /************************************************************************************************/
+
+
+    void ClearParent(GameObject& go)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& node)
+            {
+                return node.SetParentNode(node.GetComponent().GetRoot());
+            }
+        );
+    }
+
+
+    /************************************************************************************************/
+
+
+    NodeHandle GetParentNode(GameObject& go)
+    {
+        return Apply(go,
+            [&](const SceneNodeView<>& node) -> NodeHandle
+            {
+                return node.GetParentNode();
+            },
+            []() -> NodeHandle
+            {
+                return InvalidHandle_t;
+            }
+        );
+    }
+
+
+    /************************************************************************************************/
+
+
+    void EnableScale(GameObject& go, bool scale)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& node)
+            {
+                return node.ToggleScaling(scale);
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    void SetScale(GameObject& go, float3 scale)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& node)
+            {
+                return node.SetScale(scale);
+            }
+            );
+    }
+
+
+    /************************************************************************************************/
+
+
+    void Pitch(GameObject& go, float theta)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& node)
+            {
+                return node.Pitch(theta);
+            }
+        );
+    }
+
+
+    /************************************************************************************************/
+
+
+    void Yaw(GameObject& go, float theta)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& node)
+            {
+                return node.Yaw(theta);
+            }
+        );
+    }
+
+
+    /************************************************************************************************/
+
+
+    Quaternion GetOrientation(GameObject& go)
+    {
+        return Apply(go,
+            [&](const SceneNodeView<>& node)
+            { return node.GetOrientation(); },
+            []
+            { return Quaternion{ 0, 0, 0, 1 }; });
+    }
+
+
+    /************************************************************************************************/
+
+
+    NodeHandle GetSceneNode(GameObject& go)
+    {
+        return Apply(
+            go,
+            [](const SceneNodeView<>& node)
+            {
+                return node.node;
+            },
+            []
+            {
+                return NodeHandle(InvalidHandle_t);
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    float4x4 GetWT(GameObject& go)
+    {
+        return GetWT(GetSceneNode(go));
+    }
+
+
+    /************************************************************************************************/
+
+
+    void SetWT(GameObject& go, const float4x4 newMatrix)
+    {
+        const auto node     = GetSceneNode(go);
+        const auto parentWT = GetWT(FlexKit::GetParentNode(node));
+
+        auto PI         = Inverse(parentWT);
+        auto localT     = newMatrix * PI;
+
+        FlexKit::LT_Entry local = FlexKit::GetLocal(node);
+        local.R                 = Matrix2Quat(localT);
+        local.T                 = FlexKit::Vect4ToFloat4(localT[3]).xyz();
+
+        FlexKit::SetLocal(node, &local);
+        FlexKit::SetFlag(node, SceneNodes::StateFlags::UPDATED);
+    }
+
+
+    /************************************************************************************************/
+
+
+    void SetOrientation(GameObject& go, const Quaternion q)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& view)
+            { SetOrientation(view.node, q); });
+    }
+
+
+}   /************************************************************************************************/
