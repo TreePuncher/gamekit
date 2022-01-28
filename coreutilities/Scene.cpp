@@ -285,7 +285,7 @@ namespace FlexKit
 
             for (uint16_t II = 4 * I; II < end; II++) {
                 const uint16_t idx  = II;
-                auto& visable       =  visables[elements[idx].handle];
+                auto& visable       = elements[idx].handle;
                 const auto aabb     = visibilityComponent[visable].GetAABB();
                 node.boundingVolume += aabb;
             }

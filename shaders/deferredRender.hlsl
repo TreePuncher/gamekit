@@ -131,12 +131,12 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     const float3 positionVS     = GetViewSpacePosition(UV, depth);
     const float3 positionWS     = GetWorldSpacePosition(UV, depth);
 
-    const float roughness     = 0.9f;//MRIA.g;
+    const float roughness     = MRIA.g;
     const float ior           = MRIA.b;
-	const float metallic      = MRIA.r > 0.1f ? 1.0f : 0.0f;
-	const float3 albedo       = float3(0.7, 0.7, 0.7);//pow(Albedo.rgb, 1);
+    const float metallic      = MRIA.r > 0.1f ? 1.0f : 0.0f;
+	const float3 albedo       = float3(1.0, 1.0, 1.0);//pow(Albedo.rgb, 1);
 
-    const float Ks              = 0.4f;//lerp(0, 0.4f, saturate(Albedo.w));
+    const float Ks              = lerp(0, 0.4f, saturate(Albedo.w));
     const float Kd              = (1.0 - Ks) * (1.0 - metallic);
     const float NdotV           = saturate(dot(N.xyz, V));
 
@@ -258,7 +258,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     
     //return pow(UV.y, 1.0f); 
     //return pow(1 - UV.y, 2.2f); 
-#if 1
+#if 0
     float4 Colors[] = {
         float4(0, 0, 0, 0), 
         float4(1, 0, 0, 0), 

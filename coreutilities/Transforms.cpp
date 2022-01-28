@@ -977,7 +977,7 @@ namespace FlexKit
         const auto parentWT = GetWT(FlexKit::GetParentNode(node));
 
         auto PI         = Inverse(parentWT);
-        auto localT     = newMatrix * PI;
+        auto localT     = newMatrix * PI.Transpose();
 
         FlexKit::LT_Entry local = FlexKit::GetLocal(node);
         local.R                 = Matrix2Quat(localT);

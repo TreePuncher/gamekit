@@ -888,9 +888,6 @@ namespace FlexKit
                 const auto  cameraConstants     = GetCameraConstants(data.camera);
                 const auto  lightCount          = data.visableLights.size();
 
-                if (!lightCount)
-                    return;
-
 				struct ConstantsLayout
 				{
 					float4x4 iproj;
