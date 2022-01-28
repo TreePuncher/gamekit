@@ -115,6 +115,9 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
             object->gameObject.Release();
 
         FlexKit::SceneVisibilityComponent::GetComponent();
+
+        selectionContext.selection  = std::any{};
+        selectionContext.type       = -1;
     }
 
     auto viewportScene = std::make_shared<ViewportScene>(scene);
@@ -175,11 +178,28 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
                         continue;
 
 
+                    static FlexKit::MaterialHandle gbufferPass =
+                        []
+                        {
+                            auto& materials = FlexKit::MaterialComponent::GetComponent();
+                            auto material   = materials.CreateMaterial();
+
+                            materials.Add2Pass(material, FlexKit::PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
+                            materials.AddRef(material);
+
+                            return material;
+                        }();
+
+                    auto& materials = FlexKit::MaterialComponent::GetComponent();
+
                     if (auto prop = res->properties.find(GetCRCGUID(TriMeshHandle)); prop != res->properties.end())
                     {
                         FlexKit::TriMeshHandle handle = std::any_cast<FlexKit::TriMeshHandle>(prop->second);
 
-                        viewObject->gameObject.AddView<FlexKit::BrushView>(handle, nodes[entity.Node]);
+                        auto& view      = viewObject->gameObject.AddView<FlexKit::BrushView>(handle, nodes[entity.Node]);
+                        auto material   = materials.CreateMaterial(gbufferPass);
+
+                        view.GetBrush().material = material;
                     }
                     else
                     {
@@ -188,19 +208,10 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
 
                         res->properties[GetCRCGUID(TriMeshHandle)] = std::any{ handle };
 
-                        static FlexKit::MaterialHandle gbufferPass =
-                            []
-                            {
-                                auto& materials = FlexKit::MaterialComponent::GetComponent();
-                                auto material = materials.CreateMaterial();
-                                materials.Add2Pass(material, FlexKit::PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
+                        auto material   = materials.CreateMaterial(gbufferPass);
+                        auto& view      = viewObject->gameObject.AddView<FlexKit::BrushView>(handle, nodes[entity.Node]);
 
-                                return material;
-                            }();
-
-                        auto& view = viewObject->gameObject.AddView<FlexKit::BrushView>(handle, nodes[entity.Node]);
-                        view.GetBrush().material = gbufferPass;
-                        ;
+                        view.GetBrush().material = material;
                     }
 
                     if(!addedToScene)
