@@ -279,10 +279,8 @@ namespace FlexKit
 
         void Serialize(auto& ar)
         {
-            auto _ptr = (void*)mBuffer;
-            RawBuffer rawBuffer{ _ptr, mBufferSize };
-
-            ar& rawBuffer;
+            void* temp = mBuffer;
+            ar& RawBuffer{ temp, mBufferSize };
             ar& mBufferUsed;
             ar& mBufferElementSize;
             ar& mBufferFormat;
@@ -290,7 +288,7 @@ namespace FlexKit
             ar& mBufferinError;
             ar& mBufferLock;
 
-            mBuffer = (byte*)_ptr;
+            mBuffer = (byte*)temp;
         }
 
 	private:

@@ -181,9 +181,9 @@ namespace FlexKit
     public:
         ResourceBlob CreateBlob() override;
 
-        const ResourceID_t GetResourceTypeID()  const override { return MeshResourceTypeID; }
-		const std::string& GetResourceID()      const override { return ID; }
-		const uint64_t     GetResourceGUID()    const override { return TriMeshID; }
+        const ResourceID_t GetResourceTypeID()  const noexcept override { return MeshResourceTypeID; }
+		const std::string& GetResourceID()      const noexcept override { return ID; }
+		const uint64_t     GetResourceGUID()    const noexcept override { return TriMeshID; }
 
 
         /*
@@ -290,6 +290,9 @@ namespace FlexKit
         void Serialize(Archive& ar)
         {
             ar& ID;
+
+            ar& TriMeshID;
+            ar& AnimationData;
 
             ar& Info.Offset;
             ar& Info.Min;

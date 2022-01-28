@@ -1,17 +1,20 @@
 #include "common.hlsl"
 #include "pbr.hlsl"
 
+
 struct PointLight
 {
     float4 KI;	// Color + intensity in W
     float4 PR;	// XYZ + radius in W
 };
 
+
 struct Cluster
 {
     float4 Min;	// Min + Offset
     float4 Max;	// Max + Count
 };
+
 
 cbuffer LocalConstants : register(b1)
 {
@@ -22,6 +25,7 @@ cbuffer LocalConstants : register(b1)
 
 	float4x4 pl_PV[1022];
 }
+
 
 Texture2D<float4> AlbedoBuffer      : register(t0);
 Texture2D<float4> MRIABuffer        : register(t1); // metallic, roughness, IOR, anisotropic
@@ -38,6 +42,7 @@ TextureCube<float> 				shadowMaps[]    : register(t10);
 sampler BiLinear     : register(s0);
 sampler NearestPoint : register(s1); 
 
+
 struct Vertex
 {
     float3 POS		: POSITION;
@@ -47,12 +52,14 @@ struct Vertex
 
 };
 
+
 struct Deferred_PS_IN
 {
     float4 Position   : SV_Position;
     float2 PixelCoord : PIXELCOORD;
     float2 UV         : UVCOORD;
 };
+
 
 Deferred_PS_IN ShadingPass_VS(float4 position : POSITION)
 {
@@ -64,10 +71,12 @@ Deferred_PS_IN ShadingPass_VS(float4 position : POSITION)
     return OUT;
 }
 
+
 struct ENVIRONMENT_PS
 {
     float4 Position : SV_POSITION;
 };
+
 
 ENVIRONMENT_PS passthrough_VS(float4 position : POSITION)
 {
@@ -76,19 +85,23 @@ ENVIRONMENT_PS passthrough_VS(float4 position : POSITION)
     return OUT;
 }
 
+
 #define MAX_ENV_LOD 2.0
 #define MAX_CUBEMAP_SAMPLES 8
 #define SEED_SCALE 1000000
+
 
 float RandUniform(float seed)
 {
     return Hash(seed);
 }
 
+
 float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 {
 	return float4(1, 0, 1, 1.0);
 }
+
 
 uint GetSliceIdx(float z)
 {            
@@ -98,6 +111,7 @@ uint GetSliceIdx(float z)
 
     return (log(z) * numSlices / LogMoM) - (numSlices * log(MinZ) / LogMoM);
 }
+
 
 float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 {
@@ -120,7 +134,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     const float roughness     = 0.9f;//MRIA.g;
     const float ior           = MRIA.b;
 	const float metallic      = MRIA.r > 0.1f ? 1.0f : 0.0f;
-	const float3 albedo       = pow(Albedo.rgb, 1);
+	const float3 albedo       = float3(0.7, 0.7, 0.7);//pow(Albedo.rgb, 1);
 
     const float Ks              = 0.4f;//lerp(0, 0.4f, saturate(Albedo.w));
     const float Kd              = (1.0 - Ks) * (1.0 - metallic);
@@ -149,7 +163,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
         //if (pointLightIdx != 3)
         //    continue;
 
-        const PointLight light      = pointLights[pointLightIdx];
+        const PointLight light  = pointLights[pointLightIdx];
 
         const float3 Lc			= light.KI.rgb;
         const float3 Lp         = mul(View, float4(light.PR.xyz, 1));
@@ -175,7 +189,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
             const float3 specular = F_r(V, H, L, N.xyz, roughness);
         #endif
 
-        #if 0   // Non shadowmapped pass
+        #if 1   // Non shadowmapped pass
             const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
             color += max(float4(colorSample, 0 ), 0.0f);
         #else
@@ -244,7 +258,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     
     //return pow(UV.y, 1.0f); 
     //return pow(1 - UV.y, 2.2f); 
-#if 0
+#if 1
     float4 Colors[] = {
         float4(0, 0, 0, 0), 
         float4(1, 0, 0, 0), 
@@ -256,14 +270,17 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
         float4(1, 1, 1, 1), 
     };
 
+    //uint clusterKey = GetSliceIdx(depth * MaxZ);
+
     //if (px.x % (1920 / 38) == 0 || px.y % (1080 / 18) == 0)
     //    return color * color;
     //else
+        //return pow(Colors[lightListKey % 8], 1.0f);
         //return pow(Colors[clusterKey % 8], 1.0f);
         //return pow(Colors[GetSliceIdx(-positionVS.z) % 6], 1.0f);
-        return (float(localLightCount) / float(lightCount));
+        //return (float(localLightCount) / float(lightCount));
         //return float4(-positionVS.z, -positionVS.z, -positionVS.z, 1);
-        //return color = float4(N / 2.0f + 0.5f);
+        return color = float4(N / 2.0f + 0.5f);
     //return Albedo * Albedo;
 #endif
     
@@ -273,7 +290,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2020 Robert May
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

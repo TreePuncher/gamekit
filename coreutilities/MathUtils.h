@@ -1948,6 +1948,8 @@ namespace FlexKit
         Vect<ROW>& operator[] (const size_t i)          { return *((Vect<ROW>*)matrix[i]); }
         Vect<ROW>& operator[] (const size_t i) const    { return *((Vect<ROW>*)matrix[i]); }
 
+        operator        Ty* () noexcept { return (Ty*)matrix; }
+        operator const  Ty* () const noexcept { return (Ty*)matrix; }
 
 		static inline Matrix<ROW, COL> Identity() noexcept
 		{
@@ -2226,7 +2228,7 @@ namespace FlexKit
 		__m128 Temp5 = _mm_sub_ps(Temp3, Temp4);
 		__m128 res = SSE_CopySign(Temp5, Temp1);
 
-		return res;
+        return Quaternion{ res }.normalize();
 #else 
 
 		Quaternion Q

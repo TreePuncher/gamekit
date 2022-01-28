@@ -6,7 +6,6 @@
 
 namespace FlexKit
 {
-
     inline float4x4 XMMatrixToFloat4x4(const DirectX::XMMATRIX* const M)
     {
         float4x4 Mout;
@@ -34,6 +33,14 @@ namespace FlexKit
         memcpy(&Mout, &M, sizeof(Mout));
         return Mout;
     }
+
+    FLEXKITAPI inline float4x4 Inverse(const float4x4 m)
+    {
+        const float4x4 MI = XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(m)));
+
+        return MI;
+    }
+
 }
 
 #endif

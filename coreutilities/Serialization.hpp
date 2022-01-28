@@ -566,7 +566,7 @@ namespace FlexKit
         }
 
 
-        void operator & (RawBuffer& rhs)
+        void operator & (RawBuffer&& rhs)
         {
             dataBuffer.back() += rhs.bufferSize;
             dataBuffer.back() += Blob{ reinterpret_cast<const char*>(rhs.buffer), rhs.bufferSize};
@@ -928,7 +928,7 @@ namespace FlexKit
         }
 
 
-        void operator & (RawBuffer& rhs)
+        void operator & (RawBuffer&& rhs)
         {
             fread(&rhs.bufferSize, 1, sizeof(rhs.bufferSize), f);
 

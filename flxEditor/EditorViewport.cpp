@@ -6,6 +6,7 @@
 
 #include <QtWidgets/qmenubar.h>
 #include <QShortcut>
+#include <fmt/format.h>
 
 
 using FlexKit::float2;
@@ -89,12 +90,11 @@ void EditorViewport::resizeEvent(QResizeEvent* evt)
 {
     QWidget::resizeEvent(evt);
 
-    evt->size().width();
-    evt->size().height();
+    FlexKit::uint2 newWH = { evt->size().width() * 1.5, evt->size().height() * 1.5 };
 
-    renderWindow->resize({ evt->size().width(), evt->size().height() });
-    depthBuffer.Resize({ (uint32_t)evt->size().width(), (uint32_t)evt->size().height() });
-    gbuffer.Resize({ (uint32_t)evt->size().width(), (uint32_t)evt->size().height() });
+    renderWindow->resize(evt->size());
+    depthBuffer.Resize(newWH);
+    gbuffer.Resize(newWH);
 
     FlexKit::SetCameraAspectRatio(viewportCamera, float(evt->size().width())/ float(evt->size().height()));
     MarkCameraDirty(viewportCamera);
@@ -106,6 +106,17 @@ void EditorViewport::resizeEvent(QResizeEvent* evt)
 
 void EditorViewport::SetScene(EditorScene_ptr scene)
 {
+    if (this->scene)
+    {
+        this->scene->scene.bvh.Clear();
+        this->scene->scene.ClearScene();
+
+        for (auto& object : this->scene->sceneObjects)
+            object->gameObject.Release();
+
+        FlexKit::SceneVisibilityComponent::GetComponent();
+    }
+
     auto viewportScene = std::make_shared<ViewportScene>(scene);
     auto& renderSystem = renderer.framework.GetRenderSystem();
 
@@ -177,7 +188,19 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
 
                         res->properties[GetCRCGUID(TriMeshHandle)] = std::any{ handle };
 
-                        viewObject->gameObject.AddView<FlexKit::BrushView>(handle, nodes[entity.Node]);
+                        static FlexKit::MaterialHandle gbufferPass =
+                            []
+                            {
+                                auto& materials = FlexKit::MaterialComponent::GetComponent();
+                                auto material = materials.CreateMaterial();
+                                materials.Add2Pass(material, FlexKit::PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
+
+                                return material;
+                            }();
+
+                        auto& view = viewObject->gameObject.AddView<FlexKit::BrushView>(handle, nodes[entity.Node]);
+                        view.GetBrush().material = gbufferPass;
+                        ;
                     }
 
                     if(!addedToScene)
@@ -225,6 +248,15 @@ void EditorViewport::keyPressEvent(QKeyEvent* event)
 
     if (keyCode == Qt::Key_Alt)
         state = InputState::PanOrbit;
+
+    if (keyCode == Qt::Key_W)
+        manipulatorState = ImGuizmo::OPERATION::TRANSLATE;
+
+    if (keyCode == Qt::Key_E)
+        manipulatorState = ImGuizmo::OPERATION::SCALE;
+
+    if (keyCode == Qt::Key_R)
+        manipulatorState = ImGuizmo::OPERATION::ROTATE;
 
     if(keyCode == Qt::Key_F)
     {
@@ -318,35 +350,47 @@ void EditorViewport::mousePressEvent(QMouseEvent* event)
     {
         if (event->button() == Qt::MouseButton::LeftButton)
         {
-            auto qPos = renderWindow->mapFromGlobal(event->globalPos());
+            
+            if (!ImGuizmo::IsUsing() && !ImGuizmo::IsOver())
+            {
+                auto qPos = renderWindow->mapFromGlobal(event->globalPos());
 
-            const FlexKit::uint2 XY{ (uint32_t)qPos.x(), (uint32_t)qPos.y() };
-            const FlexKit::uint2 screenWH = depthBuffer.WH;
+                const FlexKit::uint2 XY{ (uint32_t)qPos.x(), (uint32_t)qPos.y() };
+                const FlexKit::uint2 screenWH = depthBuffer.WH;
 
-            const FlexKit::float2 UV{ XY[0] / float(screenWH[0]), XY[1] / float(screenWH[1]) };
-            const FlexKit::float2 ScreenCoord{ FlexKit::float2{ 2, -2 } * UV + FlexKit::float2{ -1.0f, 1.0f } };
+                const FlexKit::float2 UV{ XY[0] / float(screenWH[0]), XY[1] / float(screenWH[1]) };
+                const FlexKit::float2 ScreenCoord{ FlexKit::float2{ 2, -2 } * UV + FlexKit::float2{ -1.0f, 1.0f } };
 
-            const auto cameraConstants      = FlexKit::GetCameraConstants(viewportCamera);
-            const auto cameraOrientation    = FlexKit::GetOrientation(FlexKit::GetCameraNode(viewportCamera));
+                const auto cameraConstants      = FlexKit::GetCameraConstants(viewportCamera);
+                const auto cameraOrientation    = FlexKit::GetOrientation(FlexKit::GetCameraNode(viewportCamera));
 
-            const FlexKit::float3 v_dir = cameraOrientation * (Inverse(cameraConstants.Proj) * FlexKit::float4{ ScreenCoord.x, ScreenCoord.y,  1.0f, 1.0f }).xyz().normal();
-            const FlexKit::float3 v_o   = cameraConstants.WPOS.xyz();
+                const FlexKit::float3 v_dir = cameraOrientation * (Inverse(cameraConstants.Proj) * FlexKit::float4{ ScreenCoord.x, ScreenCoord.y,  1.0f, 1.0f }).xyz().normal();
+                const FlexKit::float3 v_o   = cameraConstants.WPOS.xyz();
 
-            auto results = scene->RayCast(
-                FlexKit::Ray{
-                            .D = v_dir.normal(),
-                            .O = v_o,});
+                auto results = scene->RayCast(
+                    FlexKit::Ray{
+                                .D = v_dir.normal(),
+                                .O = v_o,});
 
-            if (results.empty())
+                if(results.size())
+                {
+                    ViewportObjectList selection;
+                    selection.push_back(results.front());
+
+                    selectionContext.selection  = std::move(selection);
+                    selectionContext.type       = ViewportObjectList_ID;
+                }
+            }
+            else
             {
                 if (event->button() == Qt::MouseButton::LeftButton)
                 {
                     previousMousePosition = FlexKit::int2{ -160000, -160000 };
 
                     FlexKit::Event mouseEvent;
-                    mouseEvent.InputSource  = FlexKit::Event::Mouse;
-                    mouseEvent.Action       = FlexKit::Event::Pressed;
-                    mouseEvent.mType        = FlexKit::Event::Input;
+                    mouseEvent.InputSource = FlexKit::Event::Mouse;
+                    mouseEvent.Action = FlexKit::Event::Pressed;
+                    mouseEvent.mType = FlexKit::Event::Input;
 
                     mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSELEFT;
                     hud.HandleInput(mouseEvent);
@@ -356,20 +400,14 @@ void EditorViewport::mousePressEvent(QMouseEvent* event)
                     previousMousePosition = FlexKit::int2{ -160000, -160000 };
 
                     FlexKit::Event mouseEvent;
-                    mouseEvent.InputSource  = FlexKit::Event::Mouse;
-                    mouseEvent.Action       = FlexKit::Event::Pressed;
-                    mouseEvent.mType        = FlexKit::Event::Input;
+                    mouseEvent.InputSource = FlexKit::Event::Mouse;
+                    mouseEvent.Action = FlexKit::Event::Pressed;
+                    mouseEvent.mType = FlexKit::Event::Input;
 
                     mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSERIGHT;
                     hud.HandleInput(mouseEvent);
                 }
             }
-
-            ViewportObjectList selection;
-            selection.push_back(results.front());
-
-            selectionContext.selection  = std::move(selection);
-            selectionContext.type       = ViewportObjectList_ID;
         }
     }   break;
     default:
@@ -497,12 +535,74 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 
     hud.Update({ (float)localPosition.x() * 1.5f, (float)localPosition.y() * 1.5f }, HW, dispatcher, dT);
 
+
+
     ImGui::NewFrame();
+    ImGuizmo::BeginFrame();
+
     if (ImGui::Begin("Test"))
-    {
         ImGui::TextWrapped("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.");
-    }
     ImGui::End();
+
+    if (scene)
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
+
+        FlexKit::CameraComponent::GetComponent().GetCamera(viewportCamera).UpdateMatrices();
+        auto& camera        = FlexKit::CameraComponent::GetComponent().GetCamera(viewportCamera);
+        const float4x4 view       = camera.View.Transpose();
+        const float4x4 projection = camera.Proj;
+        const float4x4 grid       = float4x4{   1,   0,   0,   0,
+                                                0,   1,   0,   0,
+                                                0,   0,   1,   0,
+                                                0,   0,   0,   1};
+
+        ImGuizmo::DrawGrid(view, projection, grid, 10);
+
+
+        if (localPosition.x() >= 0 && localPosition.y() >= 0 && localPosition.x() < io.DisplaySize.x && localPosition.y() < io.DisplaySize.y &&
+            selectionContext.GetSelectionType() == ViewportObjectList_ID)
+        {
+            auto selectedObjects = selectionContext.GetSelectionType() == ViewportObjectList_ID ? selectionContext.GetSelection<ViewportObjectList>() : ViewportObjectList{};
+
+            if (selectedObjects.size())
+            {
+                auto& gameObject = selectedObjects.front()->gameObject;
+
+                float4x4 wt     = FlexKit::GetWT(gameObject).Transpose();
+                float4x4 delta  = float4x4::Identity();
+
+                auto string = fmt::format("initial WT\n{}, {}, {}, {}, \n{}, {}, {}, {}, \n{}, {}, {}, {},\n{}, {}, {}, {} ]\n",
+                    wt[0][0], wt[0][1], wt[0][2], wt[0][3],
+                    wt[1][0], wt[1][1], wt[1][2], wt[1][3],
+                    wt[2][0], wt[2][1], wt[2][2], wt[2][3],
+                    wt[3][0], wt[3][1], wt[3][2], wt[3][3]);
+
+                if (ImGuizmo::Manipulate(view, projection, manipulatorState, ImGuizmo::MODE::WORLD, wt, delta))
+                {
+                    //wt = wt.Transpose();
+                    FlexKit::SetWT(gameObject, wt);
+                }
+
+                string += fmt::format("\ndelta\n{}, {}, {}, {}, \n{}, {}, {}, {}, \n{}, {}, {}, {},\n{}, {}, {}, {} ]\n",
+                    delta[0][0], delta[0][1], delta[0][2], delta[0][3],
+                    delta[1][0], delta[1][1], delta[1][2], delta[1][3],
+                    delta[2][0], delta[2][1], delta[2][2], delta[2][3],
+                    delta[3][0], delta[3][1], delta[3][2], delta[3][3]);
+
+                string += fmt::format("\nWT\n{}, {}, {}, {}, \n{}, {}, {}, {}, \n{}, {}, {}, {},\n{}, {}, {}, {} ]\n",
+                    wt[0][0], wt[0][1], wt[0][2], wt[0][3],
+                    wt[1][0], wt[1][1], wt[1][2], wt[1][3],
+                    wt[2][0], wt[2][1], wt[2][2], wt[2][3],
+                    wt[3][0], wt[3][1], wt[3][2], wt[3][3]);
+
+                if (ImGui::Begin("Transform"))
+                    ImGui::Text(string.c_str());
+                ImGui::End();
+            }
+        }
+    }
 
     ImGui::EndFrame();
     ImGui::Render();
@@ -758,7 +858,7 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
                     const auto      node        = FlexKit::GetSceneNode(object->gameObject);
                     const auto      BS          = FlexKit::GetBoundingSphere(object->gameObject);
                     const auto      radius      = BS.w;
-                    const float3    position    = FlexKit::GetPositionW(node);
+                    const float3    position    = FlexKit::GetPositionW(node) + FlexKit::GetOrientation(node) * BS.xyz();
                     const size_t    divisions   = 64;
 
 

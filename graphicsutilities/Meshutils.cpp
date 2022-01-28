@@ -351,7 +351,10 @@ namespace FlexKit
                                 return d >= 0;
                             });
 
-                const auto midIdx = std::distance(mesh.tris.begin() + begin, mid);
+                const size_t midIdx = std::distance(mesh.tris.begin(), mid);
+
+                if (midIdx < begin)
+                    DebugBreak();
 
                 return std::make_unique<KDBNode>(
                         KDBNode{

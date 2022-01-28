@@ -338,6 +338,11 @@ namespace FlexKit
 		}
 
 
+        ~SceneVisibilityView() override
+        {
+            GetComponent().Remove(visibility);
+        }
+
         BoundingSphere GetBoundingSphere() const
         {
             return GetComponent()[visibility].boundingSphere;
@@ -591,6 +596,13 @@ namespace FlexKit
             copy.root       = root;
 
             return copy;
+        }
+
+        void Clear()
+        {
+            elements.clear();
+            nodes.clear();
+            root = 0;
         }
 
         Vector<BVHElement>    elements;
