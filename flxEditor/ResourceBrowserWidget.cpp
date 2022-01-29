@@ -1,5 +1,7 @@
 #include <QtWidgets/QTableWidget>
 #include <QtWidgets/qdockwidget>
+#include <QtWidgets/qmenubar.h>
+#include <memory>
 
 #include "ResourceBrowserWidget.h"
 #include "TextureViewer.h"
@@ -7,6 +9,7 @@
 #include "EditorRenderer.h"
 #include "graphics.h"
 #include "memoryutilities.h"
+#include "EditorProject.h"
 
 #include "../FlexKitResourceCompiler/TextureResourceUtilities.h"
 
@@ -17,9 +20,11 @@
 ResourceBrowserWidget::ResourceBrowserWidget(EditorProject& IN_project, EditorRenderer& IN_renderer, QWidget *parent) :
     QWidget     { parent },
     renderer    { IN_renderer },
-    model       { IN_project }
+    model       { IN_project },
+    menuBar     { new QMenuBar{ this } }
 {
 	ui.setupUi(this);
+    ui.verticalLayout->setMenuBar(menuBar);
 
     table = findChild<QTableView*>("tableView");
     table->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -28,6 +33,24 @@ ResourceBrowserWidget::ResourceBrowserWidget(EditorProject& IN_project, EditorRe
     connect(
         table, SIGNAL(customContextMenuRequested(const QPoint&)),
         SLOT(ShowContextMenu(const QPoint&)));
+
+    auto createDropDown = menuBar->addMenu("Create");
+    auto createScene    = createDropDown->addAction("Scene");
+
+    createScene->connect(createScene, &QAction::triggered,
+        [&]
+        {
+            auto scene = std::make_shared<FlexKit::SceneResource>();
+            auto editorScene = std::make_shared<EditorScene>(scene);
+
+            scene->ID               = "NewScene";
+            editorScene->sceneName  = "NewScene";
+            
+            IN_project.AddScene(editorScene);
+            IN_project.AddResource(std::static_pointer_cast<FlexKit::iResource>(scene));
+
+            model.layoutChanged();
+        });
 }
 
 
@@ -53,7 +76,6 @@ void ResourceBrowserWidget::resizeEvent(QResizeEvent* evt)
     resize(widgetSize);
 
     auto child = findChild<QTableView*>("tableView");
-
 
     child->resize(widgetSize);
 }

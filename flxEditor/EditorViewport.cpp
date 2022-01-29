@@ -54,6 +54,27 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
             scene->sceneObjects.push_back(object);
         });
 
+    auto addLight = file->addAction("Point Light");
+    addLight->connect(addLight, &QAction::triggered,
+        [&]
+        {
+            auto& scene = GetScene();
+
+            if (scene == nullptr)
+                return;
+
+            ViewportGameObject_ptr viewportObject = std::make_shared<ViewportGameObject>();
+            viewportObject->objectID = rand();
+
+            viewportObject->gameObject.AddView<FlexKit::SceneNodeView<>>();
+            viewportObject->gameObject.AddView<FlexKit::PointLightView>(float3{ 1, 1, 1 }, 100, 100);
+
+            scene->scene.AddGameObject(*viewportObject, FlexKit::GetSceneNode(*viewportObject));
+            scene->sceneObjects.push_back(viewportObject);
+
+            FlexKit::SetBoundingSphereFromLight(*viewportObject);
+        });
+
     menuBar->show();
 
     renderWindow = renderer.CreateRenderWindow();
@@ -294,9 +315,9 @@ void EditorViewport::keyPressEvent(QKeyEvent* event)
             auto position_VS        = c.View.Transpose()    * float4{ target, 1 };
             auto updatedPosition_WS = c.IV.Transpose()      * float4{ position_VS.x, position_VS.y, position_VS.z + desiredDistance, 1 };
 
-            const auto node         = FlexKit::GetCameraNode(viewportCamera);
-            Quaternion Q = GetOrientation(node);
-            auto forward = -(Q * float3(0, 0, 1)).normal();
+            const auto node     = FlexKit::GetCameraNode(viewportCamera);
+            const Quaternion Q  = GetOrientation(node);
+            auto forward        = -(Q * float3(0, 0, 1)).normal();
 
             FlexKit::SetPositionW(node, updatedPosition_WS.xyz());
             FlexKit::MarkCameraDirty(viewportCamera);
@@ -399,9 +420,9 @@ void EditorViewport::mousePressEvent(QMouseEvent* event)
                     previousMousePosition = FlexKit::int2{ -160000, -160000 };
 
                     FlexKit::Event mouseEvent;
-                    mouseEvent.InputSource = FlexKit::Event::Mouse;
-                    mouseEvent.Action = FlexKit::Event::Pressed;
-                    mouseEvent.mType = FlexKit::Event::Input;
+                    mouseEvent.InputSource  = FlexKit::Event::Mouse;
+                    mouseEvent.Action       = FlexKit::Event::Pressed;
+                    mouseEvent.mType        = FlexKit::Event::Input;
 
                     mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSELEFT;
                     hud.HandleInput(mouseEvent);
@@ -411,9 +432,9 @@ void EditorViewport::mousePressEvent(QMouseEvent* event)
                     previousMousePosition = FlexKit::int2{ -160000, -160000 };
 
                     FlexKit::Event mouseEvent;
-                    mouseEvent.InputSource = FlexKit::Event::Mouse;
-                    mouseEvent.Action = FlexKit::Event::Pressed;
-                    mouseEvent.mType = FlexKit::Event::Input;
+                    mouseEvent.InputSource  = FlexKit::Event::Mouse;
+                    mouseEvent.Action       = FlexKit::Event::Pressed;
+                    mouseEvent.mType        = FlexKit::Event::Input;
 
                     mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSERIGHT;
                     hud.HandleInput(mouseEvent);
