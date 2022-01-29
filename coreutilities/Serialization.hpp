@@ -635,10 +635,10 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    template<typename ... TY_types>
+    template<typename ... TY_Types>
     struct VariantDeserializationHelper
     {
-        static constexpr size_t TypeListLength = sizeof ... (TY_types);
+        static constexpr size_t TypeListLength = sizeof ... (TY_Types);
 
         template<size_t idx = 0, typename TY_Head, typename ... TY_Tail>
         static void _Construct(auto& archive, auto& variant_out, size_t I)
@@ -658,8 +658,8 @@ namespace FlexKit
 
         static void Construct(auto& archive, auto& variant_out, size_t idx)
         {
-            if(idx < sizeof ... (TY_types))
-                _Construct<0, TY_types ...>(archive, variant_out, idx);
+            if(idx < sizeof ... (TY_Types))
+                _Construct<0, TY_Types ...>(archive, variant_out, idx);
         }
     };
 
@@ -969,5 +969,6 @@ namespace FlexKit
         for (auto& element : vector)
             ar& element;
     }
+
 
 }   /************************************************************************************************/

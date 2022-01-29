@@ -10,6 +10,8 @@ struct ViewportGameObject
     FlexKit::GameObject gameObject;
     uint64_t            objectID;
 
+    operator FlexKit::GameObject& () { return gameObject; }
+
     std::vector<ProjectResource_ptr> resourceDependencies;
 };
 

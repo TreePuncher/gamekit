@@ -53,6 +53,8 @@ private:
 
 using ResourceViewID = uint32_t;
 
+class QMenuBar;
+
 struct IResourceViewer
 {
     IResourceViewer(ResourceViewID IN_ID) : resourceID{ IN_ID } {}
@@ -85,6 +87,7 @@ private:
     ResourceItemModel           model;
     EditorRenderer&             renderer;
 	Ui::ResourceBrowserWidget   ui;
+    QMenuBar*                   menuBar;
 
     inline static ResourceViewMap      resourceViewers;
 };

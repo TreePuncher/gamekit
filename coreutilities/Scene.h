@@ -238,13 +238,13 @@ namespace FlexKit
 	class PointLightView : public ComponentView_t<PointLightComponent>
 	{
 	public:
-		PointLightView(GameObject& gameObject, float3 color, float intensity, float radius, NodeHandle node) : light{ GetComponent().Create() }
+        PointLightView(GameObject& gameObject, float3 color = { 1, 1, 1 }, float intensity = 100, float radius = 100, NodeHandle node = InvalidHandle_t) : light{ GetComponent().Create() }
 		{
 			auto& poingLight        = GetComponent()[light];
 			poingLight.K			= color;
 			poingLight.I			= intensity;
 			poingLight.R			= radius;
-			poingLight.Position		= node;
+			poingLight.Position		= node != InvalidHandle_t ? node : FlexKit::GetSceneNode(gameObject);
 		}
 
 		float GetRadius() const noexcept
