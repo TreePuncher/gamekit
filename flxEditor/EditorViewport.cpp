@@ -38,7 +38,7 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
     setMaximumSize({ 1024 * 16, 1024 * 16 });
 
     auto scene      = menuBar->addMenu("Scene");
-    auto saveScene  = scene->addAction("Save Scene");
+    auto saveScene  = scene->addAction("Save");
     saveScene->connect(saveScene, &QAction::triggered, this, &EditorViewport::SaveScene);
 
     auto file           = menuBar->addMenu("Add");
@@ -586,10 +586,6 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
     ImGui::NewFrame();
     ImGuizmo::BeginFrame();
 
-    if (ImGui::Begin("Test"))
-        ImGui::TextWrapped("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.");
-    ImGui::End();
-
     if (scene)
     {
         ImGuiIO& io = ImGui::GetIO();
@@ -607,7 +603,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
         ImGuizmo::DrawGrid(view, projection, grid, 10);
 
 
-        if (localPosition.x() >= 0 && localPosition.y() >= 0 && localPosition.x() < io.DisplaySize.x && localPosition.y() < io.DisplaySize.y &&
+        if (localPosition.x() >= 0 && localPosition.y() >= 0 && localPosition.x() * 1.5f < io.DisplaySize.x  && localPosition.y() * 1.5f < io.DisplaySize.y &&
             selectionContext.GetSelectionType() == ViewportObjectList_ID)
         {
             auto selectedObjects = selectionContext.GetSelectionType() == ViewportObjectList_ID ? selectionContext.GetSelection<ViewportObjectList>() : ViewportObjectList{};
@@ -625,7 +621,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
                     wt[2][0], wt[2][1], wt[2][2], wt[2][3],
                     wt[3][0], wt[3][1], wt[3][2], wt[3][3]);
 
-                if (ImGuizmo::Manipulate(view, projection, manipulatorState, ImGuizmo::MODE::WORLD, wt, delta))
+                if (ImGuizmo::Manipulate(view, projection, manipulatorState, ImGuizmo::MODE::LOCAL, wt, delta))
                 {
                     //wt = wt.Transpose();
                     FlexKit::SetWT(gameObject, wt);
@@ -643,8 +639,10 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
                     wt[2][0], wt[2][1], wt[2][2], wt[2][3],
                     wt[3][0], wt[3][1], wt[3][2], wt[3][3]);
 
-                if (ImGui::Begin("Transform"))
+                if (ImGui::Begin("Transform")) {
+                    ImGui::SetWindowPos({ 0, 0 });
                     ImGui::Text(string.c_str());
+                }
                 ImGui::End();
             }
         }

@@ -53,8 +53,11 @@ QLabel* ComponentViewPanelContext::AddText(std::string txt)
 /************************************************************************************************/
 
 
-void ComponentViewPanelContext::AddInputBox(std::string txt, std::string initial, FieldChangeCallback callback)
+void ComponentViewPanelContext::AddInputBox(std::string txt, FieldUpdateCallback update, FieldChangeCallback change)
 {
+    std::string initial;
+    update(initial);
+
     auto label      = new QLabel{ txt.c_str() };
     auto inputBox   = new QTextEdit{ initial.c_str() };
 
@@ -65,7 +68,17 @@ void ComponentViewPanelContext::AddInputBox(std::string txt, std::string initial
     inputBox->connect(
         inputBox,
         &QTextEdit::textChanged,
-        [=] { callback(inputBox->toPlainText().toStdString()); });
+        [=] { change(inputBox->toPlainText().toStdString()); });
+
+    auto timer = new QTimer{ inputBox };
+    timer->start(250);
+    timer->connect(timer, &QTimer::timeout,
+        [=] {
+                std::string newText;
+                update(newText);
+
+                inputBox->setPlainText(newText.c_str());
+            });
 
     PushHorizontalLayout();
 
@@ -174,7 +187,17 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
     menu->setEnabled(false);
 
     auto addComponentMenu   = menu->addMenu("Add");
-    auto testAction         = addComponentMenu->addAction("Hello!");
+
+    for (auto& factory : availableComponents)
+    {
+        auto action = addComponentMenu->addAction(factory->ComponentName().c_str());
+        action->connect(action, &QAction::triggered,
+            [&]()
+            {
+                if (selectionContext.GetSelectionType() == ViewportObjectList_ID)
+                    factory->Construct(*selectionContext.GetSelection<ViewportObjectList>().front());
+            });
+    }
 
     setLayout(outerLayout);
     outerLayout->addWidget(scrollArea);
@@ -293,6 +316,13 @@ void EditorInspectorView::OnUpdate()
                     propertyItems.push_back(label);
                     propertyItems.push_back(componentLabel);
                 }
+            }
+        }
+        else
+        {
+            for (auto& property : propertyItems)
+            {
+
             }
         }
     }

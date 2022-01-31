@@ -14,9 +14,9 @@ class QWidget;
 class QMenuBar;
 class EditorInspectorView;
 
+using FieldUpdateCallback   = std::function<void (std::string& string)>;
 using FieldChangeCallback   = std::function<void (const std::string& string)>;
 using ButtonCallback        = std::function<void ()>;
-
 
 class ComponentViewPanelContext
 {
@@ -25,7 +25,7 @@ public:
 
     QLabel* AddHeader      (std::string txt);
     QLabel* AddText        (std::string txt);
-    void    AddInputBox    (std::string label, std::string initial, FieldChangeCallback);
+    void    AddInputBox    (std::string label, FieldUpdateCallback update, FieldChangeCallback change);
     void    AddButton      (std::string label, ButtonCallback);
 
     void PushVerticalLayout     (std::string groupName = {}, bool goup = false);
@@ -47,6 +47,17 @@ public:
     virtual void Inspect(ComponentViewPanelContext& layout, FlexKit::ComponentViewBase& component) = 0;
 };
 
+class ViewportGameObject;
+
+class IComponentFactory
+{
+public:
+    virtual ~IComponentFactory() {}
+
+    virtual void                    Construct(ViewportGameObject&)      = 0;
+    virtual const std::string&      ComponentName() const   noexcept    = 0;
+};
+
 
 class EditorInspectorView : public QWidget
 {
@@ -63,12 +74,19 @@ public:
         componentInspectors[componentInspector->ComponentID()] = std::move(componentInspector);
     }
 
+
+    static void AddComponentFactory(std::unique_ptr<IComponentFactory>&& factory)
+    {
+        availableComponents.emplace_back(std::move(factory));
+    }
+
 private:
 
     void    timerEvent(QTimerEvent*) override;
     void    OnUpdate();
 
-    inline static std::map<FlexKit::ComponentID, std::unique_ptr<IComponentInspector>> componentInspectors;
+    inline static std::map<FlexKit::ComponentID, std::unique_ptr<IComponentInspector>>  componentInspectors = {};
+    inline static std::vector<std::unique_ptr<IComponentFactory>>                       availableComponents = {};
 
     QTimer*                 timer = new QTimer{ this };
     QMenuBar*               menu;

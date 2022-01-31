@@ -43,7 +43,11 @@ public:
 
         panelCtx.AddInputBox(
             "X",
-            fmt::format("{}", initialPos.x),
+            [&](std::string& txt)
+            {
+                auto pos = sceneNodeView.GetPosition();
+                txt = fmt::format("{}", pos.x);
+            },
             [&, positionTxt = positionTxt](const std::string& txt)
             {
                 char* p;
@@ -60,7 +64,11 @@ public:
 
         panelCtx.AddInputBox(
             "Y",
-            fmt::format("{}", initialPos.y),
+            [&](std::string& txt)
+            {
+                auto pos = sceneNodeView.GetPosition();
+                txt = fmt::format("{}", pos.y);
+            },
             [&, positionTxt = positionTxt](const std::string& txt)
             {
                 char* p;
@@ -77,7 +85,11 @@ public:
 
         panelCtx.AddInputBox(
             "Z",
-            fmt::format("{}", initialPos.z),
+            [&](std::string& txt)
+            {
+                auto pos = sceneNodeView.GetPosition();
+                txt = fmt::format("{}", pos.z);
+            },
             [&, positionTxt = positionTxt](const std::string& txt)
             {
                 char* p;
@@ -103,6 +115,31 @@ private:
 };
 
 
+class TransformComponentFactory : public IComponentFactory
+{
+public:
+    ~TransformComponentFactory() {}
+
+    void Construct(ViewportGameObject& gameObject)
+    {
+        gameObject.gameObject.AddView<FlexKit::SceneNodeView<>>(FlexKit::GetZeroedNode());
+    }
+
+    const std::string& ComponentName() const noexcept { return name; }
+
+    inline static const std::string name = "Transform";
+
+    static bool Register()
+    {
+        EditorInspectorView::AddComponentFactory(std::make_unique<TransformComponentFactory>());
+        return true;
+    }
+
+    inline static bool _registered = Register();
+};
+
+
+
 /************************************************************************************************/
 
 
@@ -121,14 +158,16 @@ public:
     void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override
     {
         auto& visibility    = static_cast<FlexKit::SceneVisibilityView&>(component);
-        auto boundingSphere = visibility.GetBoundingSphere();
 
         panelCtx.AddHeader("Visibility");
         panelCtx.AddText("Bounding Volume type: Bounding Sphere");
 
         panelCtx.AddInputBox(
             "Bounding Sphere Radius",
-            fmt::format("{}", boundingSphere.w),
+            [&](std::string& str)
+            {
+                str = fmt::format("{}", visibility.GetBoundingSphere().w);
+            },
             [&](const std::string& txt)
             {
                 char* p;
@@ -169,7 +208,10 @@ public:
 
         panelCtx.AddInputBox(
             "Radius",
-            fmt::format("{}", pointLight.GetRadius()),
+            [&](std::string& txt)
+            {
+                txt = fmt::format("{}", pointLight.GetRadius());
+            },
             [&](const std::string& txt)
             {
                 char* p;
@@ -183,7 +225,9 @@ public:
 
         panelCtx.AddInputBox(
             "Intensity",
-            fmt::format("{}", pointLight.GetRadius()),
+            [&](std::string& string) {
+                string = fmt::format("{}", pointLight.GetRadius());
+            },
             [&](const std::string& txt)
             {
                 char* p;
