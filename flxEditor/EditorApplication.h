@@ -187,6 +187,7 @@ struct TextureResourceViewer : public IResourceViewer
         auto textureViewer  = new TextureViewer(renderer, parent, texture);
 
         docklet->setWidget(textureViewer);
+        docklet->setFloating(true);
         docklet->show();
     }
 };

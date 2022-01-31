@@ -307,6 +307,7 @@ TextureViewer* EditorMainWindow::AddTextureViewer(TextureResource* res)
     docklet->setWidget(textureViewer);
     docklet->setWindowTitle("TextureViewer");
     docklet->show();
+    docklet->setFloating(true);
     
     return textureViewer;
 }

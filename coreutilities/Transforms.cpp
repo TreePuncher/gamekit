@@ -487,6 +487,13 @@ namespace FlexKit
 		return q;
 	}
 
+    Quaternion GetOrientationLocal(NodeHandle node)
+    {
+        auto local = GetLocal(node);
+
+        return local.R;
+    }
+
 
 	/************************************************************************************************/
 

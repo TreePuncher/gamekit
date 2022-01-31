@@ -1,11 +1,12 @@
 #pragma once
+#include <variant>
 
 #include "Components.h"
 #include "ResourceHandles.h"
 #include "graphics.h"
 #include "Assets.h"
 #include "ComponentBlobs.h"
-#include <variant>
+#include "RuntimeComponentIDs.h"
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -17,7 +18,7 @@ namespace FlexKit
     /************************************************************************************************/
 
     
-    using PassHandle = Handle_t<32u, GetTypeGUID(PassHandle)>;
+    using PassHandle = Handle_t<32u, PassHandleID>;
 
 
     struct MaterialProperty

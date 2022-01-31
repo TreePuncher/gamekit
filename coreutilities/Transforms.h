@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MathUtils.h"
 #include "Handle.h"
 #include "Components.h"
+#include "RuntimeComponentIDs.h"
 
 #include "XMMathConversion.h"
 #include <DirectXMath.h>
@@ -196,7 +197,6 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    constexpr ComponentID TransformComponentID = GetTypeGUID(TransformComponent);
 
     class SceneNodeComponent : 
         public Component<SceneNodeComponent, TransformComponentID>

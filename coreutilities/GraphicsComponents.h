@@ -6,6 +6,7 @@
 #include "Transforms.h"
 #include "intersection.h"
 #include "CoreSceneObjects.h"
+#include "RuntimeComponentIDs.h"
 
 
 namespace FlexKit
@@ -14,8 +15,6 @@ namespace FlexKit
 
 
 	typedef Handle_t<32, GetCRCGUID(CameraHandle)> CameraHandle;
-
-	constexpr ComponentID CameraComponentID = GetTypeGUID(CameraComponentID);
 
     struct _CameraUpdate {};
 

@@ -1,4 +1,169 @@
 #include "ViewportScene.h"
+#include "AnimationComponents.h"
+
+
+/************************************************************************************************/
+
+
+class FlexKit::EntityComponent;
+
+
+struct ViewportSceneContext
+{
+    ViewportScene& scene;
+
+    struct Node
+    {
+        float3      position;
+        Quaternion  orientation;
+        float3      scale;
+        int         parent = -1;
+    };
+
+    int MapNode(FlexKit::NodeHandle node)
+    {
+        if (node == FlexKit::InvalidHandle_t)
+            return -1;
+
+        if (auto res = nodeMap.find(node); res != nodeMap.end())
+            return res->second;
+        else
+        {
+            auto parent             = MapNode(FlexKit::GetParentNode(node));
+            auto localPosition      = FlexKit::GetPositionL(node);
+            auto localOrientation   = FlexKit::GetOrientation(node);
+            auto localScale         = FlexKit::GetLocalScale(node);
+
+            auto idx = nodes.size();
+            nodes.emplace_back( localPosition, localOrientation, localScale );
+
+            nodeMap[node] = idx;
+            return idx;
+        }
+    }
+
+    std::map<FlexKit::NodeHandle, int>  nodeMap = { { FlexKit::NodeHandle{ 0 }, 0 } };
+    std::vector<Node>                   nodes   = { { { 0, 0, 0 }, { 0, 0, 0, 1 }, { 1, 1, 1 }, -1 }};
+};
+
+class IEntityComponentRuntimeUpdater
+{
+public:
+    inline static std::map<uint32_t, void (*)(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& runtime, ViewportSceneContext& scene)> updaters;
+
+    template<typename TY, size_t UpdaterID>
+    struct RegisterConstructorHelper
+    {
+        static bool Register()
+        {
+            IEntityComponentRuntimeUpdater::updaters[UpdaterID] = [](FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& runtime, ViewportSceneContext& scene)
+            {
+                TY::Update(component, runtime, scene);
+            };
+
+            return true;
+        }
+
+        inline static bool _registered = Register();
+    };
+
+
+    static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& runtime, ViewportSceneContext& scene)
+    {
+        if(updaters.find(runtime.ID) != updaters.end())
+            updaters[runtime.ID](component, runtime, scene);
+    }
+};
+
+
+struct EntityStringIDComponent
+{
+    static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& base, ViewportSceneContext& scene)
+    {
+        auto& stringID  = static_cast<FlexKit::EntityStringIDComponent&>(component);
+        auto& runtime   = static_cast<FlexKit::StringIDView&>(base);
+
+        stringID.stringID = runtime.GetString();
+    }
+
+    IEntityComponentRuntimeUpdater::RegisterConstructorHelper<EntityStringIDComponent, FlexKit::StringComponentID> _register;
+};
+
+
+struct TransformComponentUpdate
+{
+    static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& base, ViewportSceneContext& scene)
+    {
+        auto& sceneNode = static_cast<FlexKit::EntitySceneNodeComponent&>(component);
+        auto& runtime   = static_cast<FlexKit::SceneNodeView<>&>(base);
+
+        sceneNode.nodeIdx = scene.MapNode(runtime.node);
+
+    }
+
+    IEntityComponentRuntimeUpdater::RegisterConstructorHelper<TransformComponentUpdate, FlexKit::TransformComponentID> _register;
+};
+
+
+struct BrushComponentUpdate
+{
+    static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& base, ViewportSceneContext& scene)
+    {
+        auto& brush         = static_cast<FlexKit::EntityBrushComponent&>(component);
+        auto& runtime       = static_cast<FlexKit::BrushView&>(base);
+        auto& runtimeBrush  = runtime.GetBrush();
+
+        //brush.material = runtimeBrush.material; // TODO: update material component data
+        brush.MeshGuid  = FlexKit::GetMeshResource(runtimeBrush.MeshHandle)->assetHandle;
+    }
+
+    IEntityComponentRuntimeUpdater::RegisterConstructorHelper<BrushComponentUpdate, FlexKit::BrushComponentID> _register;
+};
+
+
+struct MaterialComponentUpdate
+{
+    static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& base, ViewportSceneContext& scene)
+    {
+        auto& material  = static_cast<FlexKit::EntityMaterialComponent&>(component);
+        auto& runtime   = static_cast<FlexKit::MaterialComponentView&>(base);
+    }
+
+    IEntityComponentRuntimeUpdater::RegisterConstructorHelper<MaterialComponentUpdate, FlexKit::MaterialComponentID> _register;
+};
+
+
+struct SkeletonComponentUpdate
+{
+    static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& base, ViewportSceneContext& scene)
+    {
+        auto& skeleton  = static_cast<FlexKit::EntitySkeletonComponent&>(component);
+        auto& runtime   = static_cast<FlexKit::SkeletonView&>(base);
+
+        skeleton.skeletonResourceID = runtime.GetSkeleton()->guid;
+    }
+
+    IEntityComponentRuntimeUpdater::RegisterConstructorHelper<SkeletonComponentUpdate, FlexKit::SkeletonComponentID> _register;
+};
+
+
+struct PointLightComponentUpdate
+{
+    static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& base, ViewportSceneContext& scene)
+    {
+        auto& pointlight    = static_cast<FlexKit::EntityPointLightComponent&>(component);
+        auto& runtime       = static_cast<FlexKit::PointLightView&>(base);
+
+        pointlight.I = runtime.GetIntensity();
+        pointlight.K = runtime.GetK();
+        pointlight.R = runtime.GetRadius();
+    }
+
+    IEntityComponentRuntimeUpdater::RegisterConstructorHelper<PointLightComponentUpdate, FlexKit::PointLightComponentID> _register;
+};
+
+
+/************************************************************************************************/
 
 
 ViewportObjectList ViewportScene::RayCast(FlexKit::Ray v) const
@@ -22,6 +187,78 @@ ViewportObjectList ViewportScene::RayCast(FlexKit::Ray v) const
 
     return results;
 }
+
+
+/************************************************************************************************/
+
+
+void ViewportScene::Update()
+{
+    auto& entities = sceneResource->sceneResource->entities; // TODO: make this not dumb
+    ViewportSceneContext ctx{ *this };
+
+    for (auto& object : sceneObjects)
+    {
+        auto res = std::find_if(entities.begin(), entities.end(),
+            [&](FlexKit::SceneEntity& entity)
+            {
+                return (entity.objectID == object->objectID);
+            });
+
+        if (res != entities.end())
+        {   // Update Data
+            for (auto& component : object->gameObject)
+            {
+                const auto id = component->ID;
+
+                auto res2 = std::find_if(
+                    std::begin(res->components),
+                    std::end(res->components),
+                    [&](FlexKit::EntityComponent_ptr& component)
+                    {
+                        return component->id == id;
+                    });
+
+                if(res2 != res->components.end())
+                    IEntityComponentRuntimeUpdater::Update((**res2), component.Get_ref(), ctx);
+            }
+        }
+        else
+        {   // Add GameObject
+            auto& entity = entities.emplace_back();
+
+            for (auto& component : object->gameObject)
+            {
+                if (auto entityComponent = FlexKit::EntityComponent::CreateComponent(component.ID); entityComponent)
+                {
+                    IEntityComponentRuntimeUpdater::Update(*entityComponent, component.Get_ref(), ctx);
+                    entity.components.emplace_back(entityComponent);
+                }
+                //else// TODO: ignore certain components that are runtime only
+                //    FK_LOG_WARNING("Failed to serialize component data! Component ID: %u", component.ID);
+
+            }
+        }
+
+    }
+
+    auto& nodes = sceneResource->sceneResource->nodes;
+    nodes.clear();
+
+    for (const auto& node : ctx.nodes)
+    {
+        FlexKit::SceneNode sceneNode;
+        sceneNode.scale         = node.scale;
+        sceneNode.orientation   = node.orientation;
+        sceneNode.position      = node.position;
+        sceneNode.parent        = node.parent;
+
+        nodes.emplace_back(sceneNode);
+    }
+}
+
+
+/************************************************************************************************/
 
 
 /**********************************************************************

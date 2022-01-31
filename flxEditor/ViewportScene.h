@@ -25,6 +25,9 @@ struct ViewportScene
 
     ViewportObjectList  RayCast(FlexKit::Ray v) const;
 
+
+    void Update();
+
     EditorScene_ptr                     sceneResource;
     std::vector<ViewportGameObject_ptr> sceneObjects;
     FlexKit::Scene                      scene           { FlexKit::SystemAllocator };
