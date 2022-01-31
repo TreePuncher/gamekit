@@ -5,8 +5,10 @@
 #include "AnimationRuntimeUtilities.h"
 
 #include "Components.h"
+#include "RuntimeComponentIDs.h"
 #include "Scene.h"
 #include "Transforms.h"
+
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -48,7 +50,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	constexpr ComponentID SkeletonComponentID = GetTypeGUID(Skeleton);
 	using SkeletonHandle = Handle_t<32, SkeletonComponentID>;
 
     class SkeletonComponent : public FlexKit::Component<SkeletonComponent, SkeletonComponentID>
@@ -146,7 +147,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	constexpr ComponentID BindPointComponentID = GetTypeGUID(BindPoint);
 	using BindPointHandle = Handle_t<32, BindPointComponentID>;
 
 	class BindPointComponent : public FlexKit::Component<BindPointComponent, BindPointComponentID>
@@ -230,7 +230,6 @@ namespace FlexKit
     /************************************************************************************************/
     
 
-	constexpr ComponentID AnimatorComponentID = GetTypeGUID(Animator);
 	using AnimatorHandle = Handle_t<32, AnimatorComponentID>;
 
     using PlayID_t = uint32_t;
@@ -412,9 +411,6 @@ namespace FlexKit
     using AnimatorView = AnimatorComponent::AnimatorView;
 
     UpdateTask& UpdateAnimations(UpdateDispatcher& updateTask, double dT);
-
-    constexpr ComponentID FABRIKComponentID         = GetTypeGUID(FABRIK);
-    constexpr ComponentID FABRIKTargetComponentID   = GetTypeGUID(FABRIKTarget);
 
     using FABRIKHandle          = Handle_t<32, FABRIKComponentID>;
     using FABRIKTargetHandle    = Handle_t<32, FABRIKTargetComponentID>;

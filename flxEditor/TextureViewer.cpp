@@ -4,8 +4,8 @@
 #include <QtWidgets/qtextedit.h>
 #include <qevent.h>
 
-/************************************************************************************************/
 
+/************************************************************************************************/
 
 
 TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexKit::ResourceHandle IN_resource) :
@@ -33,7 +33,6 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
         [&](FlexKit::UpdateDispatcher& Dispatcher, double dT, TemporaryBuffers& temporary, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator)
         {
             FlexKit::ClearBackBuffer(frameGraph, renderTarget, { 1, 0, 1, 1 });
-            FlexKit::PresentBackBuffer(frameGraph, renderTarget);
 
             if (texture == FlexKit::InvalidHandle_t)
                 return;
@@ -58,9 +57,13 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
                 },
                 [=](DrawTexture& data, const FlexKit::ResourceHandler& frameResources, FlexKit::Context& context, FlexKit::iAllocator& allocator)
                 {
+                    auto XY = frameResources.GetTextureWH(data.renderTarget);
+                    float aspectRatio = (XY[0]) / float(XY[1]);
+
                     FlexKit::float4 Color   { FlexKit::WHITE };
                     FlexKit::float2 POS     { 0, 0 };
-                    FlexKit::float2 WH      { 1, 1 };
+                    FlexKit::float2 WH      { 1, aspectRatio };
+
 
                     FlexKit::float2 RectUpperLeft   = POS;
                     FlexKit::float2 RectBottomRight = POS + WH;
@@ -93,6 +96,8 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
                     FlexKit::CBPushBuffer           constantBuffer = data.ReserveConstantBuffer(1024);
                     FlexKit::ConstantBufferDataSet  constantBufferSet{ constants, constantBuffer };
 
+                    context.ClearRenderTarget(frameResources.GetRenderTarget(data.renderTarget));
+
                     context.SetScissorAndViewports({ frameResources.GetRenderTarget(data.renderTarget) });
                     context.SetRenderTargets(
                         { frameResources.GetRenderTarget(data.renderTarget) },
@@ -116,6 +121,7 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
                     context.Draw(6, 0);
                 });
 
+            FlexKit::PresentBackBuffer(frameGraph, renderTarget);
         });
 
 
@@ -149,6 +155,8 @@ void TextureViewer::closeEvent(QCloseEvent* event)
 void TextureViewer::resizeEvent(QResizeEvent* event)
 {
     QWidget::resizeEvent(event);
+
+    renderWindow->resize(event->size());
 }
 
 

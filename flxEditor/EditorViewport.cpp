@@ -37,6 +37,10 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
     setMinimumSize(100, 100);
     setMaximumSize({ 1024 * 16, 1024 * 16 });
 
+    auto scene      = menuBar->addMenu("Scene");
+    auto saveScene  = scene->addAction("Save Scene");
+    saveScene->connect(saveScene, &QAction::triggered, this, &EditorViewport::SaveScene);
+
     auto file           = menuBar->addMenu("Add");
     auto addGameObject  = file->addAction("Empty GameObject");
 
@@ -151,11 +155,11 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
         auto newNode = FlexKit::GetZeroedNode();
         nodes.push_back(newNode);
 
-        const auto position = node.position;
-        const auto q        = node.Q;
+        const auto position     = node.position;
+        const auto orientation  = node.orientation;
 
         FlexKit::SetScale(newNode, float3{ node.scale.x, node.scale.x, node.scale.x });
-        FlexKit::SetOrientationL(newNode, q);
+        FlexKit::SetOrientationL(newNode, orientation);
         FlexKit::SetPositionL(newNode, position);
 
         if(node.parent != -1)
@@ -170,8 +174,8 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
         viewObject->objectID = entity.objectID;
         viewportScene->sceneObjects.emplace_back(viewObject);
 
-        if (entity.Node != -1)
-            viewObject->gameObject.AddView<FlexKit::SceneNodeView<>>(nodes[entity.Node]);
+        //if (entity.Node != -1)
+        //    viewObject->gameObject.AddView<FlexKit::SceneNodeView<>>(nodes[entity.Node]);
 
         if (entity.id.size())
             viewObject->gameObject.AddView<FlexKit::StringIDView>(entity.id.c_str(), entity.id.size());
@@ -184,8 +188,8 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
             {
             case FlexKit::TransformComponentID:
             {
-                //if (entity.Node != -1)
-                //    viewObject->gameObject.AddView<FlexKit::SceneNodeView<>>(nodes[entity.Node]);
+                auto nodeComponent = std::static_pointer_cast<FlexKit::EntitySceneNodeComponent>(componentEntry);
+                viewObject->gameObject.AddView<FlexKit::SceneNodeView<>>(nodes[nodeComponent->nodeIdx]);
             }   break;
             case FlexKit::BrushComponentID:
             {
@@ -217,7 +221,7 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
                     {
                         FlexKit::TriMeshHandle handle = std::any_cast<FlexKit::TriMeshHandle>(prop->second);
 
-                        auto& view      = viewObject->gameObject.AddView<FlexKit::BrushView>(handle, nodes[entity.Node]);
+                        auto& view      = viewObject->gameObject.AddView<FlexKit::BrushView>(handle, FlexKit::GetSceneNode(viewObject->gameObject));
                         auto material   = materials.CreateMaterial(gbufferPass);
 
                         view.GetBrush().material = material;
@@ -230,13 +234,13 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
                         res->properties[GetCRCGUID(TriMeshHandle)] = std::any{ handle };
 
                         auto material   = materials.CreateMaterial(gbufferPass);
-                        auto& view      = viewObject->gameObject.AddView<FlexKit::BrushView>(handle, nodes[entity.Node]);
+                        auto& view      = viewObject->gameObject.AddView<FlexKit::BrushView>(handle, FlexKit::GetSceneNode(viewObject->gameObject));
 
                         view.GetBrush().material = material;
                     }
 
                     if(!addedToScene)
-                        viewportScene->scene.AddGameObject(viewObject->gameObject, nodes[entity.Node]);
+                        viewportScene->scene.AddGameObject(viewObject->gameObject, FlexKit::GetSceneNode(viewObject->gameObject));
 
                     addedToScene = true;
 
@@ -246,12 +250,13 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
             case FlexKit::PointLightComponentID:
             {
                 if (!addedToScene)
-                    viewportScene->scene.AddGameObject(viewObject->gameObject, nodes[entity.Node]);
+                    viewportScene->scene.AddGameObject(viewObject->gameObject, FlexKit::GetSceneNode(viewObject->gameObject));
 
                 auto  blob      = componentEntry->GetBlob();
                 auto& component = FlexKit::ComponentBase::GetComponent(componentEntry->id);
 
                 component.AddComponentView(viewObject->gameObject, blob, blob.size(), FlexKit::SystemAllocator);
+                FlexKit::SetBoundingSphereFromLight(viewObject->gameObject);
 
                 addedToScene = true;
             }   break;
@@ -518,6 +523,15 @@ void EditorViewport::wheelEvent(QWheelEvent* event)
 
     FlexKit::TranslateWorld(node, q * float3{ 0, 0, event->angleDelta().x() / -10.0f });
     MarkCameraDirty(viewportCamera);
+}
+
+
+/************************************************************************************************/
+
+
+void EditorViewport::SaveScene()
+{
+    GetScene()->Update();
 }
 
 
@@ -823,7 +837,7 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 
 			    const float Step = 2.0f * (float)FlexKit::pi / divisions;
                 const auto range = FlexKit::MakeRange(0, divisions);
-                const float4 color = selectedLight ? float4{ 1, 1, 1, 1 } : float4{ 0, 0, 0, 1 };
+                const float4 color = selectedLight ? float4{ 1, 1, 0, 1 } : float4{ 1, 1, 1, 1 };
 
 			    const FlexKit::VertexBufferDataSet vertices{
                     FlexKit::SET_TRANSFORM_OP,

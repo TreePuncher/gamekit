@@ -22,6 +22,7 @@
 #include "AnimationUtilities.h"
 
 #include "Serialization.hpp"
+#include "RuntimeComponentIDs.h"
 
 
 namespace FlexKit
@@ -84,7 +85,7 @@ namespace FlexKit
 
     struct SceneNode
     {
-        Quaternion	Q;
+        Quaternion	orientation;
         float3		position;
         float3		scale;
         size_t		parent;
@@ -95,13 +96,14 @@ namespace FlexKit
 
         void Serialize(auto& ar)
         {
-            ar& Q;
+            ar& orientation;
             ar& position;
             ar& scale;
             ar& parent;
             ar& id;
         }
     };
+
 
 
     /************************************************************************************************/
@@ -113,9 +115,42 @@ namespace FlexKit
         EntityComponent(const uint32_t IN_id = -1) : id{ IN_id } {}
         ~EntityComponent() = default;
 
+
         virtual Blob GetBlob() { return {}; }
 
         uint32_t id;
+
+        static EntityComponent* CreateComponent(uint32_t ID)
+        {
+            if (constructors.find(ID) != constructors.end())
+                return constructors[ID]();
+            else
+                return nullptr;
+        }
+
+        void Serialize(auto& archive)
+        {
+            archive& id;
+        }
+
+    protected:
+        inline static std::map<uint32_t, EntityComponent* (*)()> constructors;
+
+        template<typename TY, size_t ConstructorID>
+        struct RegisterConstructorHelper
+        {
+            static bool Register()
+            {
+                EntityComponent::constructors[ConstructorID] = []() -> EntityComponent*
+                {
+                    return new TY();
+                };
+
+                return true;
+            }
+
+            inline static bool _registered = Register();
+        };
     };
 
 
@@ -154,6 +189,60 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    class EntityStringIDComponent :
+        public Serializable<EntityStringIDComponent, EntityComponent, FlexKit::StringComponentID>
+    {
+    public:
+        EntityStringIDComponent() :
+            Serializable{ FlexKit::StringComponentID } {}
+
+        void Serialize(auto& ar)
+        {
+            EntityComponent::Serialize(ar);
+
+            ar& stringID;
+        }
+
+        Blob GetBlob() override
+        {
+            return CreateIDComponent(stringID);
+        }
+
+        std::string stringID;
+
+        inline static RegisterConstructorHelper<EntityStringIDComponent, FlexKit::StringComponentID> registered{};
+    };
+
+    /************************************************************************************************/
+
+
+    class EntitySceneNodeComponent :
+        public Serializable<EntitySceneNodeComponent, EntityComponent, FlexKit::TransformComponentID>
+    {
+    public:
+        EntitySceneNodeComponent(size_t IN_nodeIdx = -1 ) :
+            Serializable    { FlexKit::TransformComponentID },
+            nodeIdx         { IN_nodeIdx } {}
+
+        void Serialize(auto& ar)
+        {
+            ar& nodeIdx;
+        }
+
+        Blob GetBlob() override
+        {
+            return CreateSceneNodeComponent(nodeIdx);
+        }
+
+        size_t nodeIdx;
+
+        inline static RegisterConstructorHelper<EntitySceneNodeComponent, FlexKit::TransformComponentID> registered{};
+    };
+
+
+    /************************************************************************************************/
+
+
     class EntityBrushComponent :
         public Serializable<EntityBrushComponent, EntityComponent, GetTypeGUID(EntityBrushComponent)>
     {
@@ -164,6 +253,8 @@ namespace FlexKit
 
         void Serialize(auto& ar)
         {
+            EntityComponent::Serialize(ar);
+
             ar& MeshGuid;
             ar& Collider;
             ar& material;
@@ -178,6 +269,8 @@ namespace FlexKit
         GUID_t Collider = INVALIDHANDLE;
 
         BrushMaterial material;
+
+        inline static RegisterConstructorHelper<EntityBrushComponent, FlexKit::BrushComponentID> registered{};
     };
 
 
@@ -195,12 +288,16 @@ namespace FlexKit
 
         void Serialize(auto& ar)
         {
+            EntityComponent::Serialize(ar);
+
             ar& skeletonResourceID;
         }
 
         Blob GetBlob() override;
 
         GUID_t skeletonResourceID;
+
+        inline static RegisterConstructorHelper<EntitySkeletonComponent, FlexKit::SkeletonComponentID> registered{};
     };
 
 
@@ -222,7 +319,6 @@ namespace FlexKit
             ar& propertyID;
             ar& propertyGUID;
         }
-
     };
 
 
@@ -244,11 +340,14 @@ namespace FlexKit
 
         void Serialize(auto& ar)
         {
-            ar& id;
+            EntityComponent::Serialize(ar);
+
             ar& materials;
         }
 
         std::vector<EntityMaterial> materials;
+
+        inline static RegisterConstructorHelper<EntityMaterialComponent, FlexKit::MaterialComponentID> registered{};
     };
 
 
@@ -275,15 +374,21 @@ namespace FlexKit
 
         void Serialize(auto& ar)
         {
-            ar& id;
+            EntityComponent::Serialize(ar);
+
             ar& I;
             ar& R;
             ar& K;
         }
 
+
         float	I;
         float   R;
         float3	K;
+
+    private:
+
+        inline static RegisterConstructorHelper<EntityPointLightComponent, FlexKit::PointLightComponentID> registered{};
     };
 
 
@@ -298,7 +403,7 @@ namespace FlexKit
     {
         uint64_t        objectID = rand();
         std::string		id;
-        uint32_t	    Node;
+        //uint32_t	    Node;
         ComponentVector components;
         MetaDataList	metaData;
 
@@ -306,22 +411,11 @@ namespace FlexKit
         {
             ar& objectID;
             ar& id;
-            ar& Node;
+            //ar& Node;
             ar& components;
             //ar& metaData;
         }
     };
-
-
-    template<class Archive>
-    void serialize(Archive& ar, SceneEntity& entity, const unsigned int version)
-    {
-        ar& entity.objectID;
-        ar& entity.id;
-        ar& entity.Node;
-        ar& entity.components;
-        //ar& metaData;
-    }
 
     struct ScenePointLight
     {

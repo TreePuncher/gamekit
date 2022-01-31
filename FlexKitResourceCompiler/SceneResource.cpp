@@ -361,9 +361,9 @@ namespace FlexKit
 
                 if (node.rotation.size())
                     for (size_t I = 0; I < 4; I++)
-                        newNode.Q[I] = (float)node.rotation[I];
+                        newNode.orientation[I] = (float)node.rotation[I];
                 else
-                    newNode.Q = Quaternion{ 0, 0, 0, 1 };
+                    newNode.orientation = Quaternion{ 0, 0, 0, 1 };
 
 
                 if (node.scale.size())
@@ -380,8 +380,10 @@ namespace FlexKit
                     sceneNodeMap[nodeIdx] = nodeHndl;
 
                     SceneEntity entity;
-                    entity.id   = node.name;
-                    entity.Node = nodeHndl;
+                    entity.id = node.name;
+
+                    auto nodeComponent = std::make_shared<EntitySceneNodeComponent>(nodeHndl);
+                    entity.components.push_back(nodeComponent);
 
                     if (node.mesh != -1)
                     {
@@ -751,7 +753,7 @@ namespace FlexKit
         for (auto& node : nodes)
         {
             SceneNodeBlock::SceneNode n;
-            n.orientation	= node.Q;
+            n.orientation	= node.orientation;
             n.position		= node.position;
             n.scale			= node.scale;
             n.parent		= node.parent;
@@ -778,7 +780,7 @@ namespace FlexKit
 
             Blob componentBlock;
             componentBlock      += CreateIDComponent(entity.id);
-            componentBlock      += CreateSceneNodeComponent(entity.Node);
+            //componentBlock      += CreateSceneNodeComponent(entity.);
 
             for (auto& component : entity.components)
             {

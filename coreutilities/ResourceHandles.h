@@ -42,8 +42,7 @@ namespace FlexKit
     typedef Handle_t<32u, GetTypeGUID(CopyContextHandle)>		CopyContextHandle;
     typedef Handle_t<32u, GetTypeGUID(DeviceHeapHandle)>        DeviceHeapHandle;
 
-    constexpr uint32_t MaterialComponentID = GetTypeGUID(Material);
-    using MaterialHandle = Handle_t <32, MaterialComponentID>;
+    using MaterialHandle = Handle_t <32, GetTypeGUID(Material)>;
 }
 
 #endif

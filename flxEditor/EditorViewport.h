@@ -47,6 +47,8 @@ protected:
 
 private:
 
+    void SaveScene();
+
     struct DrawSceneOverlay_Desc
     {
         const FlexKit::PVS&                     brushes;

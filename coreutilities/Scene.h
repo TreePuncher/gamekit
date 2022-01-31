@@ -34,15 +34,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "graphics.h"
 #include "CoreSceneObjects.h"
 #include "defaultpipelinestates.h"
+#include "RuntimeComponentIDs.h"
 
 #include "FrameGraph.h"
 
 namespace FlexKit
 {
-    // IDs
-    constexpr ComponentID BrushComponentID          = GetTypeGUID(Brush);
-    constexpr ComponentID PointLightShadowMapID     = GetTypeGUID(PointLighShadowCaster);
-
     // Handles
     using BrushHandle               = Handle_t<32, BrushComponentID>;
     using PointLightHandle          = Handle_t<32, GetTypeGUID(PointLight)>;
@@ -231,9 +228,7 @@ namespace FlexKit
         static void OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
     };
 
-	constexpr ComponentID PointLightComponentID	= GetTypeGUID(PointLight);
 	using PointLightComponent					= BasicComponent_t<PointLight, PointLightHandle, PointLightComponentID, PointLightEventHandler>;
-
 
 	class PointLightView : public ComponentView_t<PointLightComponent>
 	{
@@ -261,6 +256,12 @@ namespace FlexKit
         {
             return GetComponent()[light].I;
         }
+
+        float3 GetK()
+        {
+            return GetComponent()[light].K;
+        }
+
 
         void SetIntensity(float I)
         {
@@ -301,8 +302,6 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
-	constexpr ComponentID SceneVisibilityComponentID	= GetTypeGUID(SceneVisibility);
 
 	struct VisibilityFields
 	{
