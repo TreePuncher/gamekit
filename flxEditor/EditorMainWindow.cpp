@@ -256,7 +256,7 @@ ResourceBrowserWidget* EditorMainWindow::AddResourceList()
     docklet->setWidget(resourceBrowser);
     docklet->show();
 
-    addDockWidget(Qt::BottomDockWidgetArea, docklet);
+    addDockWidget(Qt::LeftDockWidgetArea, docklet);
 
     return resourceBrowser;
 }
