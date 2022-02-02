@@ -30,15 +30,6 @@ AppendStructuredBuffer<uint2>   UAVBuffer : register(u0);
 Texture2D<float4>               textures[16] : register(t0);
 SamplerState                    defaultSampler : register(s1);
 
-struct Forward_VS_OUT
-{
-    float4 POS 		: SV_POSITION;
-    float3 WPOS 	: POSITION;
-    float3 Normal	: NORMAL;
-    float3 Tangent	: TANGENT;
-    float2 UV		: TEXCOORD;
-};
-
 uint Packed(uint TextureIdx, const float2 UV, const uint lod)
 {
     const uint2 blockSize   = Textures[TextureIdx].xy;
@@ -107,6 +98,15 @@ bool CheckLoaded(Texture2D source, in sampler textureSampler, in float2 UV, uint
 
     return CheckAccessFullyMapped(state);
 }
+
+struct Forward_VS_OUT
+{
+    float4 POS      : SV_POSITION;
+    float  depth    : DEPTH;
+    float3 Normal	: NORMAL;
+    float3 Tangent	: TANGENT;
+    float2 UV		: TEXCOORD;
+};
 
 [earlydepthstencil]  
 void TextureFeedback_PS(Forward_VS_OUT IN)

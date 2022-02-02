@@ -351,14 +351,14 @@ namespace FlexKit
 		NewData.WPOS[2]         = WT[2][3];
 		NewData.WPOS[3]         = 0;
 
-		const float Y = tan(FOV / 2);
-		const float X = Y * AspectRatio;
+		const float Y = tan(FOV / 2) * Far;
+		const float X = Y * AspectRatio; 
 
-		NewData.TLCorner_VS = float3(-X, Y, -1);
-		NewData.TRCorner_VS = float3(X, Y, -1);
+		NewData.TLCorner_VS = float3(-X, Y, -Far);
+		NewData.TRCorner_VS = float3(X, Y, -Far);
 
-		NewData.BLCorner_VS = float3(-X, -Y, -1);
-		NewData.BRCorner_VS = float3(X, -Y, -1);
+		NewData.BLCorner_VS = float3(-X, -Y, -Far);
+		NewData.BRCorner_VS = float3(X, -Y, -Far);
 
 		NewData.FOV         = FOV;
 		NewData.AspectRatio = AspectRatio;
@@ -386,14 +386,14 @@ namespace FlexKit
 		NewData.WPOS[2]         = previous.WT[2][3];
 		NewData.WPOS[3]         = 0;
 
-		const float Y = tan(previous.FOV / 2);
+		const float Y = tan(previous.FOV / 2) * Far;
 		const float X = Y * previous.aspectRatio;
 
-		NewData.TLCorner_VS = float3(-X, Y, -1);
-		NewData.TRCorner_VS = float3(X, Y, -1);
+		NewData.TLCorner_VS = float3(-X, Y, -Far);
+		NewData.TRCorner_VS = float3(X, Y, -Far);
 
-		NewData.BLCorner_VS = float3(-X, -Y, -1);
-		NewData.BRCorner_VS = float3(X, -Y, -1);
+		NewData.BLCorner_VS = float3(-X, -Y, -Far);
+		NewData.BRCorner_VS = float3(X, -Y, -Far);
 
 		NewData.FOV         = previous.FOV;
 		NewData.AspectRatio = previous.aspectRatio;

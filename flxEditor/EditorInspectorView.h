@@ -49,13 +49,15 @@ public:
 
 class ViewportGameObject;
 
+class ViewportScene;
+
 class IComponentFactory
 {
 public:
     virtual ~IComponentFactory() {}
 
-    virtual void                    Construct(ViewportGameObject&)      = 0;
-    virtual const std::string&      ComponentName() const   noexcept    = 0;
+    virtual void                    Construct(ViewportGameObject&, ViewportScene& scene) = 0;
+    virtual const std::string&      ComponentName() const noexcept = 0;
 };
 
 

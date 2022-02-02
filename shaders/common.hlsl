@@ -132,7 +132,6 @@ float2 PixelCordToCameraCord(int2 UV, float2 WH)
 	return Out * 2 - 1.0;
 }
 
-
 //float2 GetTextureSpaceCord(float2 UV)
 //{
  //   return UV / float2(WindowWidth, WindowHeight);
@@ -142,7 +141,6 @@ float2 PixelCordToCameraCord(int2 UV, float2 WH)
 //{
 //   return float2((CoordDS.x + 1) / 2, (1 - CoordDS.y) / 2) * float2(WindowWidth, WindowHeight);
 //}
-
 
 float NormalizeAndRescaleZ(float Z_in, float Scale)
 {
@@ -160,21 +158,27 @@ float3 GetViewVector_VS(const float2 UV) // View Space Vector
 
 float3 GetViewVector(const float2 UV)
 {
-    float3 View_VS = GetViewVector_VS(UV);
+    const float3 View_VS = GetViewVector_VS(UV);
     return mul(ViewI, View_VS);
 }
 
+float3 GetViewSpacePosition(float2 UV, float D)
+{
+    const float3 LeftPoint  = lerp(TLCorner_VS, BLCorner_VS, UV.y); // Left Edge
+    const float3 RightPoint = lerp(TRCorner_VS, BRCorner_VS, UV.y); // Right Edge
+    const float3 V          = lerp(LeftPoint, RightPoint, UV.x) * D;
+
+    return V;
+}
+
+
 float3 GetWorldSpacePosition(float2 UV, float D) 
 {
-    const float3 V = GetViewVector_VS(UV) * MaxZ * D;
+    const float3 V = GetViewSpacePosition(UV, D);
+
     return mul(ViewI, float4(V, 1));
 }
 
-float3 GetViewSpacePosition(float2 UV, float D) 
-{
-    const float3 V = GetViewVector_VS(UV) * MaxZ * D;
-    return V;
-}
 
 /*
 float3 GetWorldSpacePositionAndViewDir(float3 UVW, out float3 VWS)

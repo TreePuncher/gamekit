@@ -164,13 +164,17 @@ namespace FlexKit
         }
 
         ownedGameObjects.clear();
-
+        /*
 		for (auto visHandle : sceneEntities)
 		{
+            if (!visHandle)
+                continue;
+
 			auto entity		= visables[visHandle].entity;
 			auto visable	= entity->GetView(visableID);
 			entity->RemoveView(visable);
 		}
+        */
 
 		sceneEntities.clear();
         bvh = SceneBVH(*allocator);

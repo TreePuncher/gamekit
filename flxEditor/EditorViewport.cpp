@@ -79,6 +79,14 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
             FlexKit::SetBoundingSphereFromLight(*viewportObject);
         });
 
+    auto debugMenu = menuBar->addMenu("Debug");
+    auto reloadShaders = debugMenu->addAction("ReloadShaders");
+    reloadShaders->connect(reloadShaders, &QAction::triggered,
+        [&]()
+        {
+            IN_renderer.framework.GetRenderSystem().QueuePSOLoad(FlexKit::SHADINGPASS);
+        });
+
     menuBar->show();
 
     renderWindow = renderer.CreateRenderWindow();
@@ -303,10 +311,10 @@ void EditorViewport::keyPressEvent(QKeyEvent* event)
 
         if (selectionContext.GetSelectionType() == ViewportObjectList_ID)
         {
-            auto selection = selectionContext.GetSelection<ViewportObjectList>();
+            auto selection = selectionContext.GetSelection<ViewportSelection>();
 
             FlexKit::AABB aabb;
-            for (auto& object : selection)
+            for (auto& object : selection.viewportObjects)
             {
                 auto boundingSphere = FlexKit::GetBoundingSphere(object->gameObject);
                 aabb = aabb + boundingSphere;
@@ -411,8 +419,9 @@ void EditorViewport::mousePressEvent(QMouseEvent* event)
 
                 if(results.size())
                 {
-                    ViewportObjectList selection;
-                    selection.push_back(results.front());
+                    ViewportSelection selection;
+                    selection.viewportObjects.push_back(results.front());
+                    selection.scene = GetScene().get();
 
                     selectionContext.selection  = std::move(selection);
                     selectionContext.type       = ViewportObjectList_ID;
@@ -606,11 +615,11 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
         if (localPosition.x() >= 0 && localPosition.y() >= 0 && localPosition.x() * 1.5f < io.DisplaySize.x  && localPosition.y() * 1.5f < io.DisplaySize.y &&
             selectionContext.GetSelectionType() == ViewportObjectList_ID)
         {
-            auto selectedObjects = selectionContext.GetSelectionType() == ViewportObjectList_ID ? selectionContext.GetSelection<ViewportObjectList>() : ViewportObjectList{};
+            auto selection = selectionContext.GetSelectionType() == ViewportObjectList_ID ? selectionContext.GetSelection<ViewportSelection>() : ViewportSelection{};
 
-            if (selectedObjects.size())
+            if (selection.viewportObjects.size())
             {
-                auto& gameObject = selectedObjects.front()->gameObject;
+                auto& gameObject = selection.viewportObjects.front()->gameObject;
 
                 float4x4 wt     = FlexKit::GetWT(gameObject).Transpose();
                 float4x4 delta  = float4x4::Identity();
@@ -806,13 +815,13 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
             FlexKit::ConstantBufferDataSet cameraConstants  { FlexKit::GetCameraConstants(viewportCamera), constantBuffer };
             FlexKit::ConstantBufferDataSet passConstants    { passConstantData, constantBuffer };
 
-            auto viewportObjects = selectionContext.GetSelectionType() == ViewportObjectList_ID ? selectionContext.GetSelection<ViewportObjectList>() : ViewportObjectList{};
+            auto selection = selectionContext.GetSelectionType() == ViewportObjectList_ID ? selectionContext.GetSelection<ViewportSelection>() : ViewportSelection{};
 
             // Draw Point Lights
             for (auto& lightHandle : pointLights)
             {
                 bool selectedLight = false;
-                for (auto& viewportObject : viewportObjects)
+                for (auto& viewportObject : selection.viewportObjects)
                 {
                     FlexKit::PointLightHandle pointlight = FlexKit::GetPointLight(viewportObject->gameObject);
                     if (pointlight == lightHandle)
@@ -891,9 +900,9 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
                     FlexKit::float2 UV;
                 };
 
-                FlexKit::VBPushBuffer VBBuffer = data.ReserveVertexBuffer(sizeof(Vertex) * 24 * viewportObjects.size());
+                FlexKit::VBPushBuffer VBBuffer = data.ReserveVertexBuffer(sizeof(Vertex) * 24 * selection.viewportObjects.size());
 
-                for (auto& object : viewportObjects)
+                for (auto& object : selection.viewportObjects)
                 {
                     if (!object->gameObject.hasView(FlexKit::BrushComponentID))
                         continue;

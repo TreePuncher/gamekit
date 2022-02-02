@@ -116,52 +116,53 @@ uint GetSliceIdx(float z)
 float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 {
     const float2 SampleCoord    = IN.Position;
-    const float2 UV             = SampleCoord.xy / (WH); // [0;1]
-    const float  depth          = DepthBuffer.Sample(NearestPoint, UV);
-    const uint2  px             = IN.Position.xy;//UV * WH;
+    const uint2  px             = IN.Position.xy;
+    const float2 UV             = SampleCoord.xy / float2(WH); // [0;1]
+    const float  depth          = DepthBuffer.Load(uint3(px.xy, 0));
 
     if (depth == 1.0f) 
-        return float4(0.0f, 0.0f, 0.0f, 1);
-    
-    const float4 Albedo         = AlbedoBuffer.Sample(NearestPoint, UV);
-    const float4 N              = NormalBuffer.Sample(NearestPoint, UV);
-	const float4 MRIA			= MRIABuffer.Sample(NearestPoint, UV);
+        discard;
+
+    const uint lightListKey     = lightMap.Load(uint3(px.xy, 0));
+    const uint2 lightList       = lightLists[lightListKey];
+    const uint localLightCount  = lightList.x;
+    const uint localLightList   = lightList.y;
+
+    if (lightListKey == -1)
+        discard;
+
+    const float4 Albedo         = AlbedoBuffer.Load(uint3(px.xy, 0));
+    const float4 N              = NormalBuffer.Load(uint3(px.xy, 0));
+	const float4 MRIA			= MRIABuffer.Load(uint3(px.xy, 0));
 
     const float3 V              = -GetViewVector_VS(UV);
     const float3 positionVS     = GetViewSpacePosition(UV, depth);
     const float3 positionWS     = GetWorldSpacePosition(UV, depth);
 
-    const float roughness     = MRIA.g;
+    const float roughness     = 0.4;//MRIA.g;
     const float ior           = MRIA.b;
     const float metallic      = MRIA.r > 0.1f ? 1.0f : 0.0f;
-	const float3 albedo       = float3(1.0, 1.0, 1.0);//pow(Albedo.rgb, 1);
+	const float3 albedo       = pow(Albedo.rgb, 2);
 
     const float Ks              = lerp(0, 0.4f, saturate(Albedo.w));
     const float Kd              = (1.0 - Ks) * (1.0 - metallic);
     const float NdotV           = saturate(dot(N.xyz, V));
 
-    const uint lightListKey     = lightMap.Load(uint3(px.xy, 0));
-
-    if(lightListKey == -1)
-        discard;
-
-    const uint2 lightList       = lightLists[lightListKey];
-    const uint localLightCount  = lightList.x;
-    const uint localLightList   = lightList.y;
-
+    //return NdotV;
+    /*
     if(localLightList == -2)
         return float4(1, 0, 1, 1);
+    */
 
-    float4 color = float4(ambientLight * albedo, 1);
+    float4 color = 0;// float4(ambientLight* albedo, 1);
     for(uint I = 0; I < localLightCount; I++)
     {
         const uint pointLightIdx    = lightListBuffer[localLightList + I];
 
+#if 0
         if(pointLightIdx >= lightCount)
             return float4(1, 0, 0, 1);
-
-        //if (pointLightIdx != 3)
-        //    continue;
+#endif
 
         const PointLight light  = pointLights[pointLightIdx];
 
@@ -169,11 +170,11 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
         const float3 Lp         = mul(View, float4(light.PR.xyz, 1));
         const float3 L		    = normalize(Lp - positionVS);
         const float  Ld			= length(positionVS - Lp);
-        const float  Li			= abs(light.KI.w);
-        const float  Lr			= abs(light.PR.w);
+        const float  Li			= light.KI.w * 5;
+        const float  Lr			= light.PR.w;
         const float  ld_2		= Ld * Ld;
         const float  La			= (Li / ld_2) * (1 - (pow(Ld, 10) / pow(Lr, 10)));
-        
+
         const float  NdotL      = saturate(dot(N.xyz, L));
         const float3 H          = normalize(V + L);
          
@@ -189,7 +190,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
             const float3 specular = F_r(V, H, L, N.xyz, roughness);
         #endif
 
-        #if 1   // Non shadowmapped pass
+        #if 0// skip shadowmaping
             const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
             color += max(float4(colorSample, 0 ), 0.0f);
         #else
@@ -270,17 +271,30 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
         float4(1, 1, 1, 1), 
     };
 
-    //uint clusterKey = GetSliceIdx(depth * MaxZ);
+    const uint clusterKey = GetSliceIdx(depth * MaxZ);
 
     //if (px.x % (1920 / 38) == 0 || px.y % (1080 / 18) == 0)
     //    return color * color;
     //else
-        //return pow(Colors[lightListKey % 8], 1.0f);
-        //return pow(Colors[clusterKey % 8], 1.0f);
-        //return pow(Colors[GetSliceIdx(-positionVS.z) % 6], 1.0f);
+    //
+    //if (px.x > WH.x / 2)
+        //return pow(float4(0, UV.y, 0, 1), 2);
+    
+        //return float4(positionWS * float3(0, 0, -0.01), 1);
+        //return float4(N);
+        return float4(positionWS, 1);
+        //return pow(depth * 100, 1.0f);
+        // 
+        //return pow(Colors[localLightCount % 8], 1.0f);
+        //return pow(Colors[lightListKey % 8] * color, 1.0f);
         //return (float(localLightCount) / float(lightCount));
-        //return float4(-positionVS.z, -positionVS.z, -positionVS.z, 1);
-        return color = float4(N / 2.0f + 0.5f);
+        // 
+        //return pow(Colors[clusterKey % 8], 1.0f);
+        //return pow(Colors[GetSliceIdx(-positionVS.z) % 8], 1.0f);
+        //
+        //return pow(-positionVS.z / 128, 10.0f);
+        //return depth;
+        //return float4(N / 2.0f + 0.5f);
     //return Albedo * Albedo;
 #endif
     

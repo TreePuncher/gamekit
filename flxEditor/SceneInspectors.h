@@ -120,7 +120,7 @@ class TransformComponentFactory : public IComponentFactory
 public:
     ~TransformComponentFactory() {}
 
-    void Construct(ViewportGameObject& gameObject)
+    void Construct(ViewportGameObject& gameObject, ViewportScene& scene)
     {
         gameObject.gameObject.AddView<FlexKit::SceneNodeView<>>(FlexKit::GetZeroedNode());
     }
@@ -137,7 +137,6 @@ public:
 
     inline static bool _registered = Register();
 };
-
 
 
 /************************************************************************************************/
@@ -242,6 +241,26 @@ public:
 };
 
 
+struct PointLightFactory : public IComponentFactory
+{
+    void Construct(ViewportGameObject& gameObject, ViewportScene& scene)
+    {
+        gameObject.gameObject.AddView<FlexKit::PointLightView>();
+    }
+
+    inline static const std::string name = "PointLight";
+    const std::string& ComponentName() const noexcept { return name; }
+
+    static bool Register()
+    {
+        EditorInspectorView::AddComponentFactory(std::make_unique<PointLightFactory>());
+        return true;
+    }
+
+    inline static bool _registered = Register();
+};
+
+
 /************************************************************************************************/
 
 
@@ -261,6 +280,29 @@ public:
         panelCtx.AddHeader("Point Light Shadow Map");
         panelCtx.AddText("No Fields!");
     }
+};
+
+
+struct CubicShadowMapFactory : public IComponentFactory
+{
+    void Construct(ViewportGameObject& viewportObject, ViewportScene& scene)
+    {
+        if(viewportObject.gameObject.GetView(FlexKit::PointLightComponent::GetComponentID()))
+            viewportObject.gameObject.AddView<FlexKit::PointLightShadowMapView>(
+                FlexKit::_PointLightShadowCaster{ FlexKit::GetPointLight(viewportObject.gameObject),
+                FlexKit::GetSceneNode(viewportObject.gameObject) } );
+    }
+
+    inline static const std::string name = "Cubic Shadow Map";
+    const std::string& ComponentName() const noexcept { return name; }
+
+    static bool Register()
+    {
+        EditorInspectorView::AddComponentFactory(std::make_unique<CubicShadowMapFactory>());
+        return true;
+    }
+
+    inline static bool _registered = Register();
 };
 
 
@@ -292,6 +334,26 @@ public:
         if (mesh_ptr->AnimationData)
             panelCtx.AddText("Brush Animated");
     }
+};
+
+
+struct SceneBrushFactory : public IComponentFactory
+{
+    void Construct(ViewportGameObject& viewportObject, ViewportScene& scene)
+    {
+        viewportObject.gameObject.AddView<FlexKit::BrushView>(FlexKit::InvalidHandle_t, FlexKit::GetSceneNode(viewportObject.gameObject));
+    }
+
+    inline static const std::string name = "Brush";
+    const std::string& ComponentName() const noexcept { return name; }
+
+    static bool Register()
+    {
+        EditorInspectorView::AddComponentFactory(std::make_unique<SceneBrushFactory>());
+        return true;
+    }
+
+    inline static bool _registered = Register();
 };
 
 
@@ -328,6 +390,27 @@ public:
         panelCtx.AddText("Pass Count" + std::format("{}", passes.size()));
         panelCtx.AddButton("Add Pass", [&]() {});
     }
+};
+
+
+struct MaterialFactory : public IComponentFactory
+{
+    void Construct(ViewportGameObject& viewportObject, ViewportScene& scene)
+    {
+        viewportObject.gameObject.AddView<FlexKit::MaterialComponentView>(FlexKit::MaterialComponent::GetComponent().CreateMaterial());
+        FlexKit::SetMaterialHandle(viewportObject.gameObject, FlexKit::GetMaterialHandle(viewportObject.gameObject));
+    }
+
+    inline static const std::string name = "Material";
+    const std::string& ComponentName() const noexcept { return name; }
+
+    static bool Register()
+    {
+        EditorInspectorView::AddComponentFactory(std::make_unique<MaterialFactory>());
+        return true;
+    }
+
+    inline static bool _registered = Register();
 };
 
 

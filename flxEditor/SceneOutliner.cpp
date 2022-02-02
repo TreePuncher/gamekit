@@ -64,10 +64,11 @@ void SceneOutliner::on_clicked()
 
     auto modifiers = QApplication::queryKeyboardModifiers();
 
-    ViewportObjectList selection = ((Qt::ShiftModifier & modifiers) && (selectionCtx.type == ViewportObjectList_ID)) ?
-                                        selectionCtx.GetSelection<ViewportObjectList>() : ViewportObjectList{};
+    ViewportSelection selection = ((Qt::ShiftModifier & modifiers) && (selectionCtx.type == ViewportObjectList_ID)) ?
+                                        selectionCtx.GetSelection<ViewportSelection>() : ViewportSelection{};
 
-    selection.push_back(object);
+    selection.viewportObjects.push_back(object);
+    selection.scene = dataModel.scene.get();
 
     selectionCtx.selection  = std::move(selection);
     selectionCtx.type       = ViewportObjectList_ID;
