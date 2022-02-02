@@ -559,8 +559,9 @@ bool LocalGameState::EventHandler(Event evt)
                     framework.GetRenderSystem().QueuePSOLoad(OITDRAW);
                     */
 
+                    framework.GetRenderSystem().QueuePSOLoad(GBUFFERPASS);
                     framework.GetRenderSystem().QueuePSOLoad(SHADINGPASS);
-                    framework.GetRenderSystem().QueuePSOLoad(VXGI_DRAWVOLUMEVISUALIZATION);
+                    //framework.GetRenderSystem().QueuePSOLoad(VXGI_DRAWVOLUMEVISUALIZATION);
 
                     return true;
                 case KC_ESC:

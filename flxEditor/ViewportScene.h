@@ -34,6 +34,12 @@ struct ViewportScene
     FlexKit::LayerHandle                physicsLayer    = FlexKit::InvalidHandle_t;
 };
 
+struct ViewportSelection
+{
+    ViewportObjectList  viewportObjects;
+    ViewportScene*      scene;
+};
+
 
 /**********************************************************************
 

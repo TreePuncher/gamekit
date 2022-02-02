@@ -340,6 +340,7 @@ namespace FlexKit
         ~SceneVisibilityView() override
         {
             GetComponent().Remove(visibility);
+            visibility = InvalidHandle_t;
         }
 
         BoundingSphere GetBoundingSphere() const

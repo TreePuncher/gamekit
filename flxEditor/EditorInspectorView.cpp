@@ -77,7 +77,8 @@ void ComponentViewPanelContext::AddInputBox(std::string txt, FieldUpdateCallback
                 std::string newText;
                 update(newText);
 
-                inputBox->setPlainText(newText.c_str());
+                if(newText != inputBox->toPlainText().toStdString())
+                    inputBox->setPlainText(newText.c_str());
             });
 
     PushHorizontalLayout();
@@ -195,13 +196,17 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
             [&]()
             {
                 if (selectionContext.GetSelectionType() == ViewportObjectList_ID)
-                    factory->Construct(*selectionContext.GetSelection<ViewportObjectList>().front());
+                {
+                    auto selection = selectionContext.GetSelection<ViewportSelection>();
+                    factory->Construct(*selection.viewportObjects.front(), *selection.scene);
+                }
             });
     }
 
     setLayout(outerLayout);
     outerLayout->addWidget(scrollArea);
     outerLayout->setMenuBar(menu);
+
     scrollArea->setWidgetResizable(true);
     scrollArea->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     scrollArea->setWidget(contentWidget);
@@ -244,18 +249,10 @@ void EditorInspectorView::OnUpdate()
 {
     if (selectionContext.GetSelectionType() == ViewportObjectList_ID)
     {
-        auto selection      = selectionContext.GetSelection<ViewportObjectList>().front();
+        auto selection      = selectionContext.GetSelection<ViewportSelection>().viewportObjects.front();
         uint64_t objectID   = selection->objectID;
         auto& gameObject    = selection->gameObject;
 
-        
-        if (auto res = findChild<QLabel*>("Nothing Selected"); res)
-        {
-            res->setParent(nullptr);
-            menu->setEnabled(true);
-
-            delete res;
-        }
 
         if(objectID != selectedObject)
         {
@@ -306,15 +303,17 @@ void EditorInspectorView::OnUpdate()
                 else
                 {
                     auto componentLabel = new QLabel{ QString{"Component ID#%1: "}.arg(componentView.ID) };
-                    auto label          = new QLabel{};
+                    propertyItems.push_back(componentLabel);
 
+                    /*
+                    auto label          = new QLabel{};
                     label->setObjectName("PropertyItem");
                     label->setText("No Component Inspector Available");
                     layout->addWidget(componentLabel, 0, Qt::AlignHCenter);
                     layout->addWidget(label);
 
                     propertyItems.push_back(label);
-                    propertyItems.push_back(componentLabel);
+                    */
                 }
             }
         }
@@ -352,8 +351,11 @@ void EditorInspectorView::OnUpdate()
             label->setAccessibleName("Nothing Selected");
             label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
+
             contentLayout->addWidget(label);
             //contentLayout->addStretch();
+
+            propertyItems.push_back(label);
         }
     }
 

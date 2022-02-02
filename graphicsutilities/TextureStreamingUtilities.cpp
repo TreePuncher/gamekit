@@ -168,8 +168,8 @@ namespace FlexKit
 
     ID3D12PipelineState* CreateTextureFeedbackPassPSO(RenderSystem* RS)
     {
-        auto VShader = RS->LoadShader("Forward_VS", "vs_6_5", "assets\\shaders\\forwardRender.hlsl");
-        auto PShader = RS->LoadShader("TextureFeedback_PS",   "ps_6_5", "assets\\shaders\\TextureFeedback.hlsl");
+        auto VShader = RS->LoadShader("Forward_VS",             "vs_6_5", "assets\\shaders\\forwardRender.hlsl");
+        auto PShader = RS->LoadShader("TextureFeedback_PS",     "ps_6_5", "assets\\shaders\\TextureFeedback.hlsl");
 
         D3D12_INPUT_ELEMENT_DESC InputElements[] = {
                 { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -685,7 +685,7 @@ namespace FlexKit
                         ctx.DrawIndexed(lod.GetIndexCount());
                     }
 
-                    ctx.AddUAVBarrier(resources.GetResource(data.feedbackBuffers[0]));
+                    //ctx.AddUAVBarrier(resources.GetResource(data.feedbackBuffers[0]));
                 }
 
                 ctx.EndEvent_DEBUG();

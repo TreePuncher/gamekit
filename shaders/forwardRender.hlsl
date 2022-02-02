@@ -77,7 +77,7 @@ struct Vertex
 struct Forward_VS_OUT
 {
     float4 POS 		: SV_POSITION;
-    float3 WPOS 	: POSITION;
+    float  depth    : DEPTH;
     float3 Normal	: NORMAL;
     float3 Tangent	: TANGENT;
     float2 UV		: TEXCOORD;
@@ -86,9 +86,12 @@ struct Forward_VS_OUT
 
 Forward_VS_OUT Forward_VS(Vertex In)
 {
+    const float3 POS_WS = mul(WT, float4(In.POS, 1));
+    const float3 POS_VS = mul(View, float4(POS_WS, 1));
+
     Forward_VS_OUT Out;
-    Out.WPOS	    = mul(WT, float4(In.POS, 1));
-    Out.POS		    = mul(PV, mul(WT, float4(In.POS, 1)));
+    Out.depth       = -POS_VS.z / MaxZ;
+    Out.POS		    = mul(PV, float4(POS_WS, 1));
     Out.Normal      = normalize(mul(WT, float4(In.Normal, 0.0f)));
     Out.Tangent     = normalize(mul(WT, float4(In.Tangent, 0.0f)));
     Out.Bitangent   = cross(Out.Tangent, Out.Normal);
@@ -130,9 +133,11 @@ Forward_VS_OUT ForwardSkinned_VS(VertexSkinned In)
         N += mul(MTs[I], float4(In.Normal, 0)) * W[I];
         T += mul(MTs[I], float4(In.Tangent, 0)) * W[I];
     }
-    
+
+    const float3 WPOS = mul(WT, float4(V.xyz, 1));
+
     Forward_VS_OUT Out;
-    Out.WPOS	    = mul(WT, float4(V.xyz, 1));
+    Out.depth       = -mul(View, float4(WPOS, 1)).z / MaxZ;
     Out.POS		    = mul(PV, mul(WT, float4(V.xyz, 1)));
     Out.Normal      = normalize(mul(WT, float4(N.xyz, 0.0f)));
     Out.Tangent     = normalize(mul(WT, float4(T.xyz, 0.0f)));
@@ -149,19 +154,19 @@ float4 DepthPass_VS(float3 POS : POSITION) : SV_POSITION
 
 struct Forward_PS_IN
 {
-    centroid  float4	POS : SV_POSITION;
-    float3	WPOS 	    : POSITION;
-    float3	Normal	    : NORMAL;
-    float3	Tangent	    : TANGENT;
-    float2	UV		    : TEXCOORD;
-    float3	Bitangent	: BITANGENT;
+    centroid    float4  POS         : SV_POSITION;
+                float   depth       : DEPTH;
+                float3	Normal	    : NORMAL;
+                float3	Tangent	    : TANGENT;
+                float2	UV		    : TEXCOORD;
+                float3	Bitangent	: BITANGENT;
 };
 
 struct Deferred_OUT
 {
-    float4 Albedo       : SV_TARGET0;
-    float4 MRIA         : SV_TARGET1;
-    float4 Normal       : SV_TARGET2;
+    float4 Albedo   : SV_TARGET0;
+    float4 MRIA     : SV_TARGET1;
+    float4 Normal   : SV_TARGET2;
 
     float Depth : SV_DepthLessEqual;
 };
@@ -248,7 +253,7 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
     gbuffer.Albedo      = float4(albedo.xyz, Ks);
     gbuffer.MRIA        = roughMetal.zyxx;
     gbuffer.Normal      = mul(View, float4(normalize(normal), 0));
-    gbuffer.Depth       = length(IN.WPOS - CameraPOS.xyz) / MaxZ;
+    gbuffer.Depth       = IN.depth;
 
     return gbuffer;
 }
