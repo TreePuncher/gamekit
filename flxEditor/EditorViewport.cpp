@@ -237,7 +237,7 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
                     else
                     {
                         auto meshBlob                   = res->resource->CreateBlob();
-                        FlexKit::TriMeshHandle handle   = FlexKit::LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), meshBlob.buffer, meshBlob.bufferSize);
+                        FlexKit::TriMeshHandle handle   = FlexKit::LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), meshBlob.buffer, meshBlob.bufferSize);
 
                         res->properties[GetCRCGUID(TriMeshHandle)] = std::any{ handle };
 
@@ -910,8 +910,9 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 
                     const auto      node        = FlexKit::GetSceneNode(object->gameObject);
                     const auto      BS          = FlexKit::GetBoundingSphere(object->gameObject);
-                    const auto      radius      = BS.w;
-                    const float3    position    = FlexKit::GetPositionW(node) + FlexKit::GetOrientation(node) * BS.xyz();
+                    const float     scale       = FlexKit::GetScale(node).Max();
+                    const auto      radius      = BS.w * scale;
+                    const float3    position    = FlexKit::GetPositionW(node) + FlexKit::GetOrientation(node) * BS.xyz() * scale;
                     const size_t    divisions   = 64;
 
 

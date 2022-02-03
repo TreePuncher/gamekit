@@ -180,7 +180,7 @@ namespace FlexKit
 	void GameFramework::Initiate()
 	{
 		InitiateAssetTable	    (core.GetBlockMemory());
-		InitiateGeometryTable	(core.GetBlockMemory());
+		InitiateGeometryTable	(&core.RenderSystem, core.GetBlockMemory());
 
 		quit						= false;
 		physicsUpdateTimer			= 0.0f;

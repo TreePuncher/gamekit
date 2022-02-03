@@ -91,7 +91,7 @@ namespace FlexKit
         auto [triMesh, loaded] = FindMesh(brushComponent.resourceID);
 
         if (!loaded)
-            triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), brushComponent.resourceID);
+            triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), brushComponent.resourceID);
 
         if (triMesh == InvalidHandle_t)
             return;
@@ -174,7 +174,6 @@ namespace FlexKit
             allocator->release(*gameObject);
         }
         ownedGameObjects.clear();
-
 
         bvh = SceneBVH(*allocator);
 	}

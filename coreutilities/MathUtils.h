@@ -1118,6 +1118,15 @@ namespace FlexKit
             pfloats = normal();
 		}
 
+        float Max() const noexcept
+        {
+            return FlexKit::Max(FlexKit::Max(x, y), z);
+        }
+
+        float Min() const noexcept
+        {
+            return FlexKit::Min(FlexKit::Min(x, y), z);
+        }
 
 		float3 normal() const noexcept
 		{
@@ -1404,6 +1413,16 @@ namespace FlexKit
 							std::fmod( z, a.z ),
 							std::fmod( w, a.w ) );
 		}
+
+        float Max() const noexcept
+        {
+            return FlexKit::Max(FlexKit::Max(x, y), FlexKit::Max(z, w));
+        }
+
+        float Min() const noexcept
+        {
+            return FlexKit::Min(FlexKit::Min(x, y), FlexKit::Max(z, w));
+        }
 
 		struct
 		{

@@ -84,7 +84,7 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
     auto [triMesh, loaded] = FindMesh(playerModel);
 
     if (!loaded)
-        triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), playerModel);
+        triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), playerModel);
 
     auto& player        = gameObject.AddView<PlayerView>(
         PlayerState{
@@ -161,7 +161,7 @@ GameObject& GameWorld::AddRemotePlayer(MultiplayerPlayerID_t playerID, Connectio
     auto [triMesh, loaded] = FindMesh(playerModel);
 
     if (!loaded)
-        triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), playerModel);
+        triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), playerModel);
 
     auto& characterController = gameObject.AddView<CharacterControllerView>(layer, float3{0, 0, 0}, GetZeroedNode(), 1.0f, 1.0f);
     gameObject.AddView<SceneNodeView<>>(characterController.GetNode());
@@ -185,7 +185,7 @@ void GameWorld::AddCube(float3 POS)
     auto& gameObject = objectPool.Allocate();
 
     if (!loaded)
-        triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), cube1X1X1);
+        triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), cube1X1X1);
 
     gameObject.AddView<RigidBodyView>(cubeShape, layer, POS);
     gameObject.AddView<SceneNodeView<>>(GetRigidBodyNode(gameObject));
@@ -210,7 +210,7 @@ GameObject& GameWorld::CreateSpell(SpellData initial, float3 initialPosition, fl
     auto [triMesh, loaded] = FindMesh(spellModel);
 
     if (!loaded)
-        triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), spellModel);
+        triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), spellModel);
 
     auto& materials = MaterialComponent::GetComponent();
 

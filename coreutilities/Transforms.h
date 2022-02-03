@@ -423,6 +423,8 @@ namespace FlexKit
     void        ClearParent(GameObject& go);
 
     float3      GetScale(GameObject& go);
+    float3      GetScale(NodeHandle node);
+
     NodeHandle  GetParentNode(GameObject& go);
     void        EnableScale(GameObject& go, bool scale);
 

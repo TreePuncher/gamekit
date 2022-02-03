@@ -422,6 +422,8 @@ namespace FlexKit
 
         lod.state = TriMesh::LOD_Runtime::LOD_State::Loaded;
 
+        memory.free(buffer);
+
         return true;
     }
 
@@ -593,7 +595,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TriMeshHandle LoadTriMeshIntoTable(RenderSystem* RS, CopyContextHandle handle, size_t GUID)
+	TriMeshHandle LoadTriMeshIntoTable(CopyContextHandle handle, size_t GUID)
 	{	// Make this atomic
         auto Available = isAssetAvailable(GUID);
         if (!Available)
@@ -624,7 +626,7 @@ namespace FlexKit
 
 			auto RHandle = LoadGameAsset(GUID);
 			auto GameRes = GetAsset(RHandle);
-			if( Asset2TriMesh(RS, handle, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
+			if( Asset2TriMesh(GeometryTable.renderSystem, handle, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
 			{
 				FreeAsset(RHandle);
 
@@ -651,7 +653,7 @@ namespace FlexKit
 			auto RHandle = LoadGameAsset(GUID);
 			auto GameRes = GetAsset(RHandle);
 			
-			if(Asset2TriMesh(RS, handle, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
+			if(Asset2TriMesh(GeometryTable.renderSystem, handle, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
 			{
 				FreeAsset(RHandle);
 
@@ -674,7 +676,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TriMeshHandle LoadTriMeshIntoTable(RenderSystem* RS, CopyContextHandle handle, const char* ID)
+	TriMeshHandle LoadTriMeshIntoTable(CopyContextHandle handle, const char* ID)
 	{	// Make this atomic
 		TriMeshHandle Handle;
 
@@ -694,7 +696,7 @@ namespace FlexKit
 			auto RHandle = LoadGameAsset(ID);
 			auto GameRes = GetAsset(RHandle);
 			
-			if(Asset2TriMesh(RS, handle, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
+			if(Asset2TriMesh(GeometryTable.renderSystem, handle, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
 			{
 				FreeAsset(RHandle);
 
@@ -721,7 +723,7 @@ namespace FlexKit
 			auto RHandle = LoadGameAsset(ID);
 			auto GameRes = GetAsset(RHandle);
 
-			if(Asset2TriMesh(RS, handle, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
+			if(Asset2TriMesh(GeometryTable.renderSystem, handle, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
 			{
 				FreeAsset(RHandle);
 
@@ -743,7 +745,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    TriMeshHandle LoadTriMeshIntoTable(RenderSystem* RS, CopyContextHandle handle, const char* buffer, const size_t bufferSize)
+    TriMeshHandle LoadTriMeshIntoTable(CopyContextHandle handle, const char* buffer, const size_t bufferSize)
     {
         TriMeshHandle Handle;
         TriMeshAssetBlob* Blob = (TriMeshAssetBlob*)buffer;
@@ -759,7 +761,7 @@ namespace FlexKit
 			GeometryTable.ReferenceCounts.push_back	(0);
 
 
-			if(Buffer2TriMesh(RS, handle, buffer, bufferSize, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
+			if(Buffer2TriMesh(GeometryTable.renderSystem, handle, buffer, bufferSize, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
 			{
 				GeometryTable.Handles[Handle]			= (index_t)Index;
 				GeometryTable.GeometryIDs[Index]		= Blob->header.ID;
@@ -776,7 +778,7 @@ namespace FlexKit
 
 			Handle		= GeometryTable.Handles.GetNewHandle();
 
-			if(Buffer2TriMesh(RS, handle, buffer, bufferSize, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
+			if(Buffer2TriMesh(GeometryTable.renderSystem, handle, buffer, bufferSize, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
 			{
 				GeometryTable.Handles[Handle]			= Index;
 				GeometryTable.GeometryIDs[Index]		= Blob->header.ID;
