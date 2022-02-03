@@ -23,7 +23,6 @@ cbuffer CameraConstants : register( b0 )
     float3   BRCorner_VS;
 };
 
-
 struct PS_IN
 {
 	float3 WPOS  : TEXCOORD0;
@@ -91,7 +90,6 @@ float Hash(float2 IN)// Thanks nVidia
                 (0.1 + abs(sin(13.0 * IN.y + IN.x))));
 }
 
-
 float Hash3D(float3 IN)// Thanks nVidia
 {
     return Hash(float2(Hash(IN.xy), IN.z));
@@ -101,13 +99,6 @@ float4 SampleVTexture(Texture2D OffsetTable, Texture2D TextureAtlas, float2 Coor
 {
 	return float4(0, 0, 0, 0);
 }
-
-/*
-float3 GetViewVectorWPOS(float3 pos)
-{
-	return normalize(pos - CameraPOS.xyz);
-}
-*/
 
 float3 GetVectorToBack(float3 pos)
 {
@@ -132,15 +123,15 @@ float2 PixelCordToCameraCord(int2 UV, float2 WH)
 	return Out * 2 - 1.0;
 }
 
-//float2 GetTextureSpaceCord(float2 UV)
-//{
- //   return UV / float2(WindowWidth, WindowHeight);
-//}
+float2 GetTextureSpaceCord(float2 UV, float2 WH)
+{
+    return UV / WH;
+}
 
-//float2 ViewToTextureSpace(float2 CoordDS)
-//{
-//   return float2((CoordDS.x + 1) / 2, (1 - CoordDS.y) / 2) * float2(WindowWidth, WindowHeight);
-//}
+float2 ViewToTextureSpace(float2 CoordDS, float2 WH)
+{
+   return float2((CoordDS.x + 1) / 2, (1 - CoordDS.y) / 2) * WH;
+}
 
 float NormalizeAndRescaleZ(float Z_in, float Scale)
 {
@@ -171,6 +162,15 @@ float3 GetViewSpacePosition(float2 UV, float D)
     return V;
 }
 
+void GetViewSpacePOSanDIR(float2 UV, float D, out float3 POS_VS, out float3 V)
+{
+    const float3 LeftPoint  = lerp(TLCorner_VS, BLCorner_VS, UV.y); // Left Edge
+    const float3 RightPoint = lerp(TRCorner_VS, BRCorner_VS, UV.y); // Right Edge
+    const float3 farPoint   = lerp(LeftPoint, RightPoint, UV.x);
+
+    POS_VS  = farPoint * D;
+    V = normalize(farPoint);
+}
 
 float3 GetWorldSpacePosition(float2 UV, float D) 
 {
@@ -179,35 +179,13 @@ float3 GetWorldSpacePosition(float2 UV, float D)
     return mul(ViewI, float4(V, 1));
 }
 
-
-/*
-float3 GetWorldSpacePositionAndViewDir(float3 UVW, out float3 VWS)
+void GetWorldSpacePositionAndViewDir(float2 UV, float D, out float3 POS_WS, out float3 VWS)
 {
-    #if 1
+    GetViewSpacePOSanDIR(UV, D, POS_WS, VWS);
 
-    VWS = GetViewVector(UVW.xy);
-    return CameraPOS + VWS * -UVW.z * MaxZ;
-    #else
-
-    /*
-    float3 Temp1    = lerp(WSTopLeft, WSBottomLeft, UVW.y);
-    float3 Temp2    = lerp(WSTopRight, WSBottomRight, UVW.y);
-    float3 FarPos   = lerp(Temp1, Temp2, UVW.x);
-
-    float3 Temp3    = lerp(WSTopLeft_Near, WSBottomLeft_Near, UVW.y);
-    float3 Temp4    = lerp(WSTopRight_Near, WSBottomRight_Near, UVW.y);
-    float3 NearPOS  = lerp(Temp3, Temp4, UVW.x);
-
-    VWS = normalize(NearPOS - FarPos);
-    return CameraPOS + VWS * UVW.z * MaxZ;
-    VWS = 0;
-    float4 POSVS = float4(PixelCordToCameraCord(UVW.xy), UVW.z, 1);
-    float4 POSWS = mul(ViewI, POSVS);
-
-    return POSWS;
-    #endif
+    POS_WS  = mul(ViewI, float4(POS_WS, 1));
+    VWS     = mul(ViewI, float4(VWS, 1));
 }
-*/
 
 
 /**********************************************************************

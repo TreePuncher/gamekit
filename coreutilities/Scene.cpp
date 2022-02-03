@@ -158,13 +158,6 @@ namespace FlexKit
 		auto&	visables	= SceneVisibilityComponent::GetComponent();
 		auto	visableID	= SceneVisibilityComponent::GetComponentID();
 
-        for (auto* gameObject : ownedGameObjects) {
-            gameObject->Release();
-            allocator->release(*gameObject);
-        }
-
-        ownedGameObjects.clear();
-        /*
 		for (auto visHandle : sceneEntities)
 		{
             if (!visHandle)
@@ -174,9 +167,15 @@ namespace FlexKit
 			auto visable	= entity->GetView(visableID);
 			entity->RemoveView(visable);
 		}
-        */
+        sceneEntities.clear();
 
-		sceneEntities.clear();
+        for (auto* gameObject : ownedGameObjects) {
+            gameObject->Release();
+            allocator->release(*gameObject);
+        }
+        ownedGameObjects.clear();
+
+
         bvh = SceneBVH(*allocator);
 	}
 
