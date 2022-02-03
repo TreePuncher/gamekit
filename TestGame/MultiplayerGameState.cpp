@@ -171,8 +171,8 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
 
     auto& scene = worldState.GetScene();
 
-    playerCharacterModel    = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), CharacterModelAsset);
-    auto model              = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), PlaceHolderAsset);
+    playerCharacterModel    = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), CharacterModelAsset);
+    auto model              = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), PlaceHolderAsset);
 
     auto& ikNodeView    = IKTarget.AddView<SceneNodeView<>>();
     auto& ikBrushView   = IKTarget.AddView<BrushView>(model, GetSceneNode(IKTarget));
@@ -337,7 +337,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
         auto [triMesh, loaded] = FindMesh(7894);
 
         if (!loaded)
-            triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), 7894);
+            triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), 7894);
 
 
         DrawSceneDescription sceneDesc =

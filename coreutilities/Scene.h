@@ -89,6 +89,15 @@ namespace FlexKit
 			GetComponent()[brush].Node		    = node;
 		}
 
+        ~BrushView()
+        {
+            auto& brush_ref = GetComponent()[brush];
+            ReleaseMesh(brush_ref.MeshHandle);
+            ReleaseMesh(brush_ref.Occluder);
+
+            GetComponent().Remove(brush);
+        }
+
 		TriMeshHandle GetTriMesh()
 		{
 			return GetComponent()[brush].MeshHandle;

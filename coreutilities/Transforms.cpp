@@ -847,6 +847,16 @@ namespace FlexKit
             { return float3{ 1, 1, 1 }; });
     }
 
+    float3 GetScale(NodeHandle node)
+    {
+        const float4x4 WT               = GetWT(node);
+        const Quaternion Q              = Matrix2Quat(WT);
+        const float4x4 InverseRotation  = Quaternion2Matrix(Q.Inverse());
+        const float4x4 scaleMatrix      = InverseRotation * WT;
+
+        return { scaleMatrix[0][0], scaleMatrix[1][1], scaleMatrix[2][2] };
+    }
+
 
     /************************************************************************************************/
 

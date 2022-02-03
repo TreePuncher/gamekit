@@ -4755,17 +4755,18 @@ private:
         Vector<TriMeshHandle>							Handle;
         Vector<size_t>									FreeList;
         iAllocator*                                     Memory;
+        RenderSystem*                                   renderSystem    = nullptr;
     }GeometryTable;
 
 
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void							InitiateGeometryTable	(iAllocator* memory = nullptr);
+	FLEXKITAPI void							InitiateGeometryTable	(RenderSystem* renderSystem, iAllocator* memory = nullptr);
 	FLEXKITAPI void							ReleaseGeometryTable	();
 
 	FLEXKITAPI void							AddRef					( TriMeshHandle  TMHandle );
-	FLEXKITAPI void							ReleaseMesh				( RenderSystem* RS, TriMeshHandle  TMHandle );
+	FLEXKITAPI void							ReleaseMesh				( TriMeshHandle  TMHandle );
 
 	FLEXKITAPI TriMeshHandle				LoadMesh				( GUID_t TMHandle );
 

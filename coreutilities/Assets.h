@@ -456,12 +456,12 @@ namespace FlexKit
 	FLEXKITAPI bool				        Buffer2TriMesh		( RenderSystem* RS, CopyContextHandle handle, const char* buffer, size_t bufferSize, iAllocator* Memory, TriMesh* Out, bool ClearBuffers = true );
     FLEXKITAPI Vector<TextureBuffer>    LoadCubeMapAsset    ( GUID_t resourceID, size_t& OUT_MIPCount, uint2& OUT_WH, DeviceFormat& OUT_format, iAllocator* );
 
-	FLEXKITAPI TextureSet*		LoadTextureSet	 ( GUID_t ID, iAllocator* Memory );
-	FLEXKITAPI void				LoadTriangleMesh ( GUID_t ID, iAllocator* Memory, TriMesh* out );
+	FLEXKITAPI TextureSet*		LoadTextureSet	 (GUID_t ID, iAllocator* Memory );
+	FLEXKITAPI void				LoadTriangleMesh (GUID_t ID, iAllocator* Memory, TriMesh* out );
 
-	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, CopyContextHandle handle, size_t guid );
-	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, CopyContextHandle handle, const char* ID );
-	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, CopyContextHandle handle, const char* buffer, const size_t bufferSize );
+	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable(CopyContextHandle handle, size_t guid );
+	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable(CopyContextHandle handle, const char* ID );
+	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable(CopyContextHandle handle, const char* buffer, const size_t bufferSize );
 
 	typedef Pair<size_t, SpriteFontAsset*> LoadFontResult;
 

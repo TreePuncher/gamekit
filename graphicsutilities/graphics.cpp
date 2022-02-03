@@ -7261,7 +7261,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InitiateGeometryTable(iAllocator* Memory)
+	void InitiateGeometryTable(RenderSystem* renderSystem, iAllocator* Memory)
 	{
 		GeometryTable.Handles.Initiate(Memory);
 		GeometryTable.Handle			= Vector<TriMeshHandle>(Memory);
@@ -7271,6 +7271,7 @@ namespace FlexKit
 		GeometryTable.GeometryIDs		= Vector<const char*>(Memory);
 		GeometryTable.FreeList			= Vector<size_t>(Memory);
 		GeometryTable.Memory			= Memory;
+        GeometryTable.renderSystem      = renderSystem;
 	}
 
 
@@ -7329,8 +7330,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ReleaseMesh(RenderSystem* RS, TriMeshHandle TMHandle)
+	void ReleaseMesh(TriMeshHandle TMHandle)
 	{
+        if (TMHandle == InvalidHandle_t)
+            return;
 		// TODO: MAKE ATOMIC
 		if (GeometryTable.Handles[TMHandle] == -1)
 			return;// Already Released
@@ -7342,7 +7345,7 @@ namespace FlexKit
 		{
 			auto G = GetMeshResource(TMHandle);
 
-			DelayedReleaseTriMesh(RS, G);
+			DelayedReleaseTriMesh(GeometryTable.renderSystem, G);
 
 			if (G->Skeleton)
 				CleanUpSkeleton(G->Skeleton);
@@ -7357,7 +7360,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TriMeshHandle GetMesh(RenderSystem* rs, GUID_t guid, CopyContextHandle copyCtx )
+	TriMeshHandle GetMesh(GUID_t guid, CopyContextHandle copyCtx )
 	{
 		if (IsMeshLoaded(guid))
 		{
@@ -7368,8 +7371,7 @@ namespace FlexKit
 		}
 
 		TriMeshHandle triMesh = LoadTriMeshIntoTable(
-			rs,
-			copyCtx == InvalidHandle_t ? rs->GetImmediateUploadQueue() : copyCtx, guid);
+			copyCtx == InvalidHandle_t ? GeometryTable.renderSystem->GetImmediateUploadQueue() : copyCtx, guid);
 
 		return triMesh;
 	}
@@ -7378,14 +7380,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TriMeshHandle GetMesh(RenderSystem* rs, const char* meshID, CopyContextHandle copyCtx )
+	TriMeshHandle GetMesh(const char* meshID, CopyContextHandle copyCtx )
 	{
 		auto [mesh, result] = FindMesh(meshID);
 
 		if(result)
 			return mesh;
 
-		return LoadTriMeshIntoTable(rs, copyCtx == InvalidHandle_t ? rs->GetImmediateUploadQueue() : copyCtx, meshID);
+		return LoadTriMeshIntoTable(copyCtx == InvalidHandle_t ? GeometryTable.renderSystem->GetImmediateUploadQueue() : copyCtx, meshID);
 	}
 
 
@@ -9604,7 +9606,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2014-2021 Robert May
+Copyright (c) 2014-2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
