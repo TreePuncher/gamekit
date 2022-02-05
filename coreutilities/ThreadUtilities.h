@@ -224,23 +224,26 @@ namespace FlexKit
 		}
 
 
-		[[nodiscard]] std::optional<TY_E> Steal() noexcept // FIFO
-		{
-			auto front = frontCounter.load(std::memory_order_acquire);
-			auto back  = backCounter.load(std::memory_order_acquire);
+        bool Steal(TY_E& out) noexcept // FIFO
+        {
+            auto front  = frontCounter.load(std::memory_order_acquire);
+            auto back   = backCounter.load(std::memory_order_acquire);
 
-			if (front < back)
-			{
-				auto job = *queue[front % queueArraySize];
+            if (front < back)
+            {
+                auto job = *queue[front % queueArraySize];
 
-				if (frontCounter.compare_exchange_strong(front, front + 1))
-					return job;
-				else
-					return {};
-			}
-			else
-				return {};
-		}
+                if (frontCounter.compare_exchange_strong(front, front + 1))
+                {
+                    out = job;
+                    return true;
+                }
+                else
+                    return false;
+            }
+            else
+                return false;
+        }
 
 	
 		void push_back(TY_E element) noexcept
@@ -315,8 +318,6 @@ namespace FlexKit
 
 		alignas(64) std::atomic_int64_t     backCounter    = 0;
 		alignas(64) std::atomic_int64_t     frontCounter   = 0;
-
-        std::mutex                          m;
 	};
 
 

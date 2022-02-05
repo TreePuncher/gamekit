@@ -176,48 +176,12 @@ namespace FlexKit
     struct PointLight
     {
         PointLight() = default;
+        ~PointLight();
 
-        ~PointLight()
-        {
-            if (shadowState)
-                shadowState->Release();
-        }
+        PointLight(PointLight&& rhs);
 
-        PointLight(PointLight&& rhs)
-        {
-            K = rhs.K;
-            I = rhs.I;
-            R = rhs.R;
-
-            Position    = rhs.Position;
-            shadowMap   = rhs.shadowMap;
-
-            forceDisableShadowMapping   = rhs.forceDisableShadowMapping;
-            state                       = rhs.state;
-            shadowState                 = rhs.shadowState;
-
-            rhs.shadowMap       = InvalidHandle_t;
-            rhs.shadowState     = nullptr;
-        }
-
-        PointLight& operator = (PointLight&& rhs)
-        {
-            K = rhs.K;
-            I = rhs.I;
-            R = rhs.R;
-
-            Position    = rhs.Position;
-            shadowMap   = rhs.shadowMap;
-
-            forceDisableShadowMapping   = rhs.forceDisableShadowMapping;
-            state                       = rhs.state;
-            shadowState                 = rhs.shadowState;
-
-            rhs.shadowMap       = InvalidHandle_t;
-            rhs.shadowState     = nullptr;
-
-            return *this;
-        }
+        PointLight& operator = (PointLight&& rhs);
+        PointLight& operator = (const PointLight& rhs) = delete;
 
         float3 K;
         float I, R;
@@ -242,51 +206,17 @@ namespace FlexKit
 	class PointLightView : public ComponentView_t<PointLightComponent>
 	{
 	public:
-        PointLightView(GameObject& gameObject, float3 color = { 1, 1, 1 }, float intensity = 100, float radius = 100, NodeHandle node = InvalidHandle_t) : light{ GetComponent().Create() }
-		{
-			auto& poingLight        = GetComponent()[light];
-			poingLight.K			= color;
-			poingLight.I			= intensity;
-			poingLight.R			= radius;
-			poingLight.Position		= node != InvalidHandle_t ? node : FlexKit::GetSceneNode(gameObject);
-		}
-
-		float GetRadius() const noexcept
-		{
-			return GetComponent()[light].R;
-		}
-
-        void SetRadius(float r) noexcept
-        {
-            GetComponent()[light].R = r;
-        }
-
-        float GetIntensity()
-        {
-            return GetComponent()[light].I;
-        }
-
-        float3 GetK()
-        {
-            return GetComponent()[light].K;
-        }
+        PointLightView(GameObject& gameObject, float3 color = { 1, 1, 1 }, float intensity = 100, float radius = 100, NodeHandle node = InvalidHandle_t);
 
 
-        void SetIntensity(float I)
-        {
-            GetComponent()[light].I = I;
-        }
+        float3      GetK();
+        float       GetIntensity();
+        NodeHandle  GetNode() const noexcept;
+        float       GetRadius() const noexcept;
 
-		void SetNode(NodeHandle node) const noexcept
-		{
-			GetComponent()[light].Position = node;
-		}
-
-        NodeHandle GetNode() const noexcept
-        {
-            return GetComponent()[light].Position;
-        }
-
+        void        SetIntensity    (float I);
+        void        SetNode         (NodeHandle node) const noexcept;
+        void        SetRadius       (float r) noexcept;
 
 		operator PointLightHandle () { return light; }
 
@@ -294,19 +224,7 @@ namespace FlexKit
 	};
 
 
-    inline PointLightHandle GetPointLight(GameObject& go)
-    {
-        return Apply(
-            go,
-            [](PointLightView& pointLight) -> PointLightHandle
-            {
-                return pointLight;
-            },
-            []() -> PointLightHandle
-            {
-                return InvalidHandle_t;
-            });
-    }
+    PointLightHandle GetPointLight(GameObject& go);
 
 
 	/************************************************************************************************/
@@ -385,20 +303,12 @@ namespace FlexKit
 
 	inline void SetBoundingSphereFromMesh(GameObject& go)
 	{
-        const auto Scale = GetScale(go);
-
-        float rScale = 1;
-        for (size_t I = 0; I < 3; ++I)
-            rScale = Max(rScale, Scale[I]);
-
 		Apply(
 			go,
 			[&]( SceneVisibilityView&	visibility,
 			    BrushView&			    brush)
 			{
                 auto boundingSphere = brush.GetBoundingSphere();
-                boundingSphere.w   *= rScale;
-
 				visibility.SetBoundingSphere(boundingSphere);
 			});
 	}
@@ -448,21 +358,16 @@ namespace FlexKit
 
     inline BoundingSphere GetBoundingSphereFromMesh(GameObject& go)
     {
-        const auto Scale = GetScale(go);
-
-        float rScale = 1;
-        for (size_t I = 0; I < 3; ++I)
-            rScale = Max(rScale, Scale[I]);
+        const auto Scale = GetScale(go).Max();
 
         return Apply(
             go,
-            [&](SceneVisibilityView&    visibility,
-                BrushView&              brushView)
+            [&](BrushView& brushView)
             {
                 auto boundingSphere = brushView.GetBoundingSphere();
                 auto pos            = GetPositionW(brushView.GetBrush().Node);
 
-                return BoundingSphere{ pos, boundingSphere.w * rScale };
+                return BoundingSphere{ pos * Scale, boundingSphere.w * Scale };
             },
             []()
             {
@@ -472,17 +377,16 @@ namespace FlexKit
 
     inline BoundingSphere GetBoundingSphere(GameObject& go)
     {
-        const auto Scale = GetScale(go);
-
-        float rScale = 1;
-        for (size_t I = 0; I < 3; ++I)
-            rScale = Max(rScale, Scale[I]);
 
         return Apply(
             go,
-            [&](SceneVisibilityView&    visibility)
+            [&](SceneVisibilityView& visibility)
             {
-                return visibility.GetBoundingSphere();
+                auto pos    = GetWorldPosition(go);
+                auto scale  = GetScale(go).Max();
+                auto bs     = visibility.GetBoundingSphere();
+
+                return BoundingSphere{bs.xyz() + pos, bs.w * scale };
             },
             []()
             {

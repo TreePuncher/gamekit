@@ -1,14 +1,14 @@
 #pragma once
-#include <boost/serialization/serialization.hpp>
-#include <boost/archive/binary_oarchive.hpp>
-#include <boost/archive/binary_iarchive.hpp>
 #include <fstream>
 #include <string>
+
 
 class EditorConfig
 {
 public:
+    /*
     friend class boost::serialization::access;
+
 
     template<class Archive>
     void serialize(Archive& ar, const unsigned int version)
@@ -32,12 +32,17 @@ public:
             return false;
         }
     }
+    */
+
+    bool SaveConfig(const std::string& fileDir)
+    {
+        return false;
+    }
 
     bool RestoreConfig(const std::string& fileDir)
     {
         return false;
     }
-
 
     std::string projectName;
 };

@@ -137,14 +137,14 @@ void EditorViewport::resizeEvent(QResizeEvent* evt)
 /************************************************************************************************/
 
 
-void EditorViewport::SetScene(EditorScene_ptr scene)
+void EditorViewport::SetScene(EditorScene_ptr newScene)
 {
-    if (this->scene)
+    if (scene)
     {
-        this->scene->scene.bvh.Clear();
-        this->scene->scene.ClearScene();
+        scene->scene.bvh.Clear();
+        scene->scene.ClearScene();
 
-        for (auto& object : this->scene->sceneObjects)
+        for (auto& object : scene->sceneObjects)
             object->gameObject.Release();
 
         FlexKit::SceneVisibilityComponent::GetComponent();
@@ -153,12 +153,12 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
         selectionContext.type       = -1;
     }
 
-    auto viewportScene = std::make_shared<ViewportScene>(scene);
+    auto viewportScene = std::make_shared<ViewportScene>(newScene);
     auto& renderSystem = renderer.framework.GetRenderSystem();
 
     std::vector<FlexKit::NodeHandle> nodes;
 
-    for (auto node : scene->sceneResource->nodes)
+    for (auto node : newScene->sceneResource->nodes)
     {
         auto newNode = FlexKit::GetZeroedNode();
         nodes.push_back(newNode);
@@ -176,7 +176,7 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
         SetFlag(newNode, FlexKit::SceneNodes::StateFlags::SCALE);
     }
 
-    for (auto& entity : scene->sceneResource->entities)
+    for (auto& entity : newScene->sceneResource->entities)
     {
         auto viewObject = std::make_shared<ViewportGameObject>();
         viewObject->objectID = entity.objectID;
@@ -205,7 +205,7 @@ void EditorViewport::SetScene(EditorScene_ptr scene)
 
                 if (brushComponent)
                 {
-                    auto res = scene->FindSceneResource(brushComponent->MeshGuid);
+                    auto res = newScene->FindSceneResource(brushComponent->MeshGuid);
 
                     if (!res) // TODO: Mesh not found, use placeholder model?
                         continue;
@@ -835,7 +835,6 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
                     FlexKit::float2 UV;
                 };
 
-                const auto temp = pointLightComponnet[lightHandle].Position;
                 const float3 position   = FlexKit::GetPositionW(pointLightComponnet[lightHandle].Position);
                 const float radius      = pointLightComponnet[lightHandle].R;
 
@@ -910,9 +909,8 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 
                     const auto      node        = FlexKit::GetSceneNode(object->gameObject);
                     const auto      BS          = FlexKit::GetBoundingSphere(object->gameObject);
-                    const float     scale       = FlexKit::GetScale(node).Max();
-                    const auto      radius      = BS.w * scale;
-                    const float3    position    = FlexKit::GetPositionW(node) + FlexKit::GetOrientation(node) * BS.xyz() * scale;
+                    const float3    position    = FlexKit::GetPositionW(node) + FlexKit::GetOrientation(node) * BS.xyz();
+                    const auto      radius      = BS.w;
                     const size_t    divisions   = 64;
 
 

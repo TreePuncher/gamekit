@@ -444,7 +444,7 @@ namespace FlexKit
 	DescriptorHeap& DescriptorHeap::NullFill(Context& ctx, const size_t end)
 	{
 		auto& Entries = Layout->Entries;
-		for (size_t I = 0, Idx = 0; I < FillState.size(); I++)
+		for (size_t I = 0, Idx = 0; I < Entries.size(); I++)
 		{
 			auto& e = Entries[I];
 			//

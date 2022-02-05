@@ -78,6 +78,123 @@ namespace FlexKit
 
     /************************************************************************************************/
 
+    PointLight::~PointLight()
+    {
+        if (shadowState)
+            shadowState->Release();
+    }
+
+
+    /************************************************************************************************/
+
+
+    PointLight::PointLight(PointLight&& rhs)
+    {
+        K = rhs.K;
+        I = rhs.I;
+        R = rhs.R;
+
+        Position    = rhs.Position;
+        shadowMap   = rhs.shadowMap;
+
+        forceDisableShadowMapping   = rhs.forceDisableShadowMapping;
+        state                       = rhs.state;
+        shadowState                 = rhs.shadowState;
+
+        rhs.shadowMap       = InvalidHandle_t;
+        rhs.shadowState     = nullptr;
+    }
+
+
+    /************************************************************************************************/
+
+
+    PointLight& PointLight::operator = (PointLight&& rhs)
+    {
+        K = rhs.K;
+        I = rhs.I;
+        R = rhs.R;
+
+        Position    = rhs.Position;
+        shadowMap   = rhs.shadowMap;
+
+        forceDisableShadowMapping   = rhs.forceDisableShadowMapping;
+        state                       = rhs.state;
+        shadowState                 = rhs.shadowState;
+
+        rhs.shadowMap       = InvalidHandle_t;
+        rhs.shadowState     = nullptr;
+
+        return *this;
+    }
+
+
+    PointLightView::PointLightView(GameObject& gameObject, float3 color, float intensity, float radius, NodeHandle node) : light{ GetComponent().Create() }
+	{
+		auto& poingLight        = GetComponent()[light];
+		poingLight.K			= color;
+		poingLight.I			= intensity;
+		poingLight.R			= radius;
+		poingLight.Position		= node != InvalidHandle_t ? node : FlexKit::GetSceneNode(gameObject);
+	}
+
+	float PointLightView::GetRadius() const noexcept
+	{
+		return GetComponent()[light].R;
+	}
+
+    void PointLightView::SetRadius(float r) noexcept
+    {
+        GetComponent()[light].R = r;
+    }
+
+    float PointLightView::GetIntensity()
+    {
+        return GetComponent()[light].I;
+    }
+
+    float3 PointLightView::GetK()
+    {
+        return GetComponent()[light].K;
+    }
+
+
+    void PointLightView::SetIntensity(float I)
+    {
+        GetComponent()[light].I = I;
+    }
+
+	void PointLightView::SetNode(NodeHandle node) const noexcept
+	{
+		GetComponent()[light].Position = node;
+	}
+
+    NodeHandle PointLightView::GetNode() const noexcept
+    {
+        return GetComponent()[light].Position;
+    }
+
+
+    /************************************************************************************************/
+
+
+    PointLightHandle GetPointLight(GameObject& go)
+    {
+        return Apply(
+            go,
+            [](PointLightView& pointLight) -> PointLightHandle
+            {
+                return pointLight;
+            },
+            []() -> PointLightHandle
+            {
+                return InvalidHandle_t;
+            });
+    }
+
+
+    /************************************************************************************************/
+
 
     void BrushComponentEventHandler::OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
@@ -1081,9 +1198,9 @@ namespace FlexKit
 
         if (material != InvalidHandle_t)
         {
-            const auto albedo       = materials.GetProperty<float4>(material, GetCRCGUID(PBR_ALBEDO)).value_or(float4{ 0.0f, 0.5f, 0.0f, 0.1f });
-            const auto specular     = materials.GetProperty<float4>(material, GetCRCGUID(PBR_SPECULAR)).value_or(float4{ 1.0f, 0.9f, 0.9f, 0.0f });
-            const auto roughness    = materials.GetProperty<float>(material, GetCRCGUID(PBR_ROUGHNESS)).value_or(0.3f);
+            const auto albedo       = materials.GetProperty<float4>(material, GetCRCGUID(PBR_ALBEDO)).value_or(float4{ 0.7f, 0.7f, 0.7f, 0.3f });
+            const auto specular     = materials.GetProperty<float4>(material, GetCRCGUID(PBR_SPECULAR)).value_or(float4{ 1.0f, 1.0f, 1.0f, 0.0f });
+            const auto roughness    = materials.GetProperty<float>(material, GetCRCGUID(PBR_ROUGHNESS)).value_or(0.6f);
             const auto metal        = materials.GetProperty<float>(material, GetCRCGUID(PBR_METAL)).value_or(0.0f);
 
             constants.MP.albedo     = albedo.xyz();
@@ -1093,10 +1210,10 @@ namespace FlexKit
         }
         else
         {
-            constants.MP.albedo     = float3{ 1.0, 0.0, 1.0 };
-            constants.MP.roughness  = 0.5f;
+            constants.MP.albedo     = float3{ 0.7, 0.7, 0.7 };
+            constants.MP.roughness  = 0.7f;
             constants.MP.kS         = 1.0f;
-            constants.MP.metallic   = 1.0f;
+            constants.MP.metallic   = 0.0f;
         }
 
         constants.Transform = XMMatrixToFloat4x4(WT).Transpose();
