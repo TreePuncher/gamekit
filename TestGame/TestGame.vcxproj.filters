@@ -703,4 +703,7 @@
       <Filter>Headers\TestGame</Filter>
     </Text>
   </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="containers.natvis" />
+  </ItemGroup>
 </Project>
