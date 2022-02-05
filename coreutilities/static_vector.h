@@ -60,7 +60,10 @@ namespace FlexKit
 
 			TY_* I;
 		};
+
+
 		typedef typename TY_* iterator;
+
 
 		class reverse_iterator_t
 		{
@@ -79,16 +82,16 @@ namespace FlexKit
 
 			TY_* I;
 		};
+
+
 		typedef typename reverse_iterator_t reverse_iterator;
+
 
 		static_vector()
 		{
-#ifdef _DEBUG
-			if constexpr(sizeof(Elements) <= sizeof(byte*))
-				memset(Elements, 0, sizeof(Elements));
-#endif
 			Size = 0;
 		}
+
 
 		static_vector(const std::initializer_list<TY_> list) : static_vector()
 		{
@@ -96,61 +99,105 @@ namespace FlexKit
 				push_back( e );
 		}
 
-		template< unsigned int RHSIZE = 10 >
+
+		template<unsigned int RHSIZE = 10 >
 		static_vector(const static_vector<TY_, RHSIZE>& in)
 		{
-			Size = 0;
- 
-			for (auto i : in)
-				if (Size != TSIZE)
-					push_back(i);
-				else
-					return;
+            if constexpr (std::is_trivially_copyable_v<TY_>)
+            {
+                Size = in.size();
+
+                memcpy(buffer, in.data(), in.size() * sizeof(TY_));
+            }
+            else
+            {
+			    Size = 0;
+
+			    for (auto i : in)
+				    if (Size != TSIZE)
+					    push_back(i);
+				    else
+					    return;
+            }
 		}
- 
-		template<typename TY_C>
-		static_vector& operator = (const TY_C& in)
+
+        ~static_vector() requires !std::is_trivially_destructible_v<TY_>
+        {
+            while (!empty())
+                pop_back();
+        }
+
+        ~static_vector() requires std::is_trivially_destructible_v<TY_> = default;
+
+		//template<typename TY_C>
+		static_vector& operator = (const TY_& in)
 		{
-			FK_ASSERT(TSIZE > in.size());
+            FK_ASSERT(TSIZE > in.size());
 
-			Size = 0;
+            if constexpr (std::is_trivially_copyable_v<TY_>)
+            {
+                Size = in.size();
 
-			for (auto i : in)
-				if (Size != TSIZE)
-					push_back(i);
-				else
-					break;
+                memcpy(buffer, in.buffer, in.size() * sizeof(TY_));
+            }
+            else
+            {
+                Size = 0;
+
+                for (auto i : in)
+                    if (Size != TSIZE)
+                        push_back(i);
+                    else
+                        break;
+            }
 
 			return *this;
 		}
 
-		operator TY_* () { return Elements; }
- 
-		TY_& operator [](size_t index)
-		{
-			return Elements[index];
-		}
 
-		const TY_& operator [](const size_t index) const
-		{
-			return Elements[index];
-		}
- 
+		operator TY_* () { return reinterpret_cast<TY_*>(buffer); }
+
+
+        TY_* at_ptr(size_t idx)
+        {
+            return reinterpret_cast<TY_*>(buffer) + idx;
+        }
+
+        const TY_* at_ptr(size_t idx) const
+        {
+            return reinterpret_cast<const TY_*>(buffer) + idx;
+        }
+
+
 		TY_& at(const size_t index)
 		{
-			return Elements[index];
+			return *at_ptr(index);
 		}
+
 
 		const TY_& at(const size_t index) const
 		{
-			return Elements[index];
+			return *at_ptr(index);
 		}
+
+
+        TY_& operator [](size_t index)
+        {
+            return at(index);
+        }
+
+        const TY_& operator [](size_t index) const
+        {
+            return at(index);
+        }
+
 
 		static_vector& operator+=(const TY_ in)
 		{
 			push_back(in);
 		}
- 
+
+
 		template< unsigned int RHSIZE>
 		static_vector& operator+=(const static_vector<TY_, RHSIZE>& in)
 		{
@@ -167,19 +214,21 @@ namespace FlexKit
 		
 		TY_& back()
 		{
-			return Elements[size() - 1];
+			return at(Size - 1);
 		}
+
 
         const TY_& back() const
         {
-            return Elements[size() - 1];
+            return at(Size - 1);
         }
- 
+
+
 		size_t push_back( const TY_& in )
 		{
 			if (!full())
 			{
-				new(&Elements[Size]) TY_( in );
+				new(at_ptr(Size)) TY_( in );
 				return Size++;
 			}
 
@@ -192,30 +241,35 @@ namespace FlexKit
 		{
 			if (!full())
 			{
-                new(&Elements[Size]) TY_{ std::forward<TY_ARGS>(in_args)...};
+                new(at_ptr(Size)) TY_{ std::forward<TY_ARGS>(in_args)...};
 				Size++;
 			}
 		}
- 
+
+
 		TY_* begin()
 		{
-			return Elements;
+			return at_ptr(0);
 		}
+
  
         TY_* end()
 		{
-			return Elements + Size;
+            return at_ptr(Size);
 		}
+
 
 		reverse_iterator rbegin()
 		{
-			return &Elements[Size - 1];
+			return at_ptr(Size - 1);
 		}
- 
+
+
 		reverse_iterator rend()
 		{
-			return Elements - 1;
+			return at_ptr(Size - 1);
 		}
+
 
 		void remove_unstable(iterator i)
 		{
@@ -258,12 +312,12 @@ namespace FlexKit
  
 		const TY_* begin() const
 		{
-			return Elements;
+			return at_ptr(0);
 		}
  
 		const TY_* end() const
 		{
-			return &Elements[Size];
+			return at_ptr(Size);
 		}
  
 		void pop_back()
@@ -271,13 +325,18 @@ namespace FlexKit
 			if (!Size)
 				return;
 			Size--;
-			(&Elements[Size])->~TY_();
+			(at_ptr(Size))->~TY_();
 		}
  
-		TY_ front()
+		TY_& front()
 		{
-			return Elements[0];
+			return at(0);
 		}
+
+        const TY_& front() const
+        {
+            return at(0);
+        }
 
 		size_t size() const
 		{
@@ -296,30 +355,42 @@ namespace FlexKit
  
 		void clear()
 		{
-			for (const auto& I : Elements)
-				pop_back();
+            if constexpr (std::is_trivial_v<TY_>)
+            {
+                Size = 0;
+            }
+            else
+            {
+                while(!empty())
+                    pop_back();
+            }
 		}
 
         TY_* data()
         {
-            return Elements;
+            return reinterpret_cast<TY_*>(buffer);
+        }
+
+        const TY_* data() const
+        {
+            return reinterpret_cast<const TY_*>(buffer);
         }
  
 		void resize(size_t NewSize)
 		{
-			if (NewSize > size())
+			if (NewSize < size())
 			{
-				size_t end = NewSize - size();
-				for (size_t I = 0; I < end; ++I) {
+				const size_t end = size() - NewSize;
+
+				for (size_t I = 0; I < end; ++I)
 					pop_back();
-				}
 			}
-			else if (NewSize < size())
+			else if (NewSize > size())
 			{
-				size_t end = size() - NewSize;
-				for (size_t I = 0; I < end; ++I) {
-					new(Elements + (I + size())) TY_();
-				}
+				const size_t end = NewSize - size();
+
+				for (size_t I = NewSize - 1; I < end; ++I)
+					new(at_ptr(I + size())) TY_();
 			}
 
 			Size = NewSize;
@@ -329,7 +400,7 @@ namespace FlexKit
 		{
 			while( !full() )
 			{
-				new(&Elements[Size]) TY_();
+                new(at_ptr(Size)) TY_();
 				++Size;
 			}
 		}
@@ -352,13 +423,11 @@ namespace FlexKit
 			std::sort(begin.I, end.I, PD);
 		}
 		
-
 		typedef TY_ TYPE;
 	private:
-		size_t          Size;							// Used Counter
-		char			Padding[0x10 - sizeof(size_t)];	// 8-Byte Pad to keep 16byte Alignment of Elements
-
-		TY_             Elements[TSIZE];
+		size_t  Size;							// Used Counter
+		char	Padding[0x10 - sizeof(size_t)];	// 8-Byte Pad to keep 16byte Alignment of Elements
+		char    buffer[TSIZE * sizeof(TY_)];
 	};
 }
 

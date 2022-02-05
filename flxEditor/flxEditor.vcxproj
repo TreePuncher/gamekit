@@ -59,6 +59,7 @@
       <PreprocessorDefinitions>DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <WarningLevel>Level1</WarningLevel>
+      <ShowIncludes>false</ShowIncludes>
     </ClCompile>
     <QtMoc>
       <AdditionalDependencies>
@@ -75,6 +76,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <AdditionalOptions>/Zc:__cplusplus  /std:c++latest %(AdditionalOptions) /MP</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <ShowIncludes>false</ShowIncludes>
     </ClCompile>
     <QtMoc>
       <AdditionalDependencies>

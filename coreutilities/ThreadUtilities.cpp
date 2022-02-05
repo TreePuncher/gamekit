@@ -180,7 +180,10 @@ namespace FlexKit
 	iWork* _WorkerThread::Steal() noexcept
 	{
 
-		return localWorkQueue->Steal().value_or(nullptr);
+        iWork* work = nullptr;
+		localWorkQueue->Steal(work);
+
+        return work;
 	}
 
 
@@ -517,13 +520,21 @@ namespace FlexKit
         for (size_t I = 0; I < workQueues.size(); ++I)
         {
             const size_t idx = (I + startingPoint) % workQueues.size();
-            if (auto res = workQueues[idx]->Steal(); res)
-                return res.value();
+
+            iWork* work = nullptr;
+
+            if (auto res = workQueues[idx]->Steal(work); res)
+                return work;
         }
 
-        return  stealBackground ?
-            backgroundQueue.GetQueue().Steal().value_or(nullptr) :
-            nullptr;
+        if (stealBackground)
+        {
+            iWork* work = nullptr;
+            backgroundQueue.GetQueue().Steal(work);
+            return work;
+        }
+        else
+            return nullptr;
 	}
 
 

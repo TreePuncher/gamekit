@@ -271,7 +271,7 @@ namespace FlexKit
 					        const auto depthTarget          = pointLight.shadowMap;
                             const float3 pointLightPosition = GetPositionW(pointLight.Position);
 
-					        ctx.ClearDepthBuffer(depthTarget, 2.0f);
+					        ctx.ClearDepthBuffer(depthTarget, 1.0f);
 
 					        if (!visables.size())
 						        return;
