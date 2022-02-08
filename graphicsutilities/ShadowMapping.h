@@ -66,10 +66,19 @@ namespace FlexKit
     {
     public:
 
-        ShadowMapper(RenderSystem& renderSystem)
+        ShadowMapper(RenderSystem& renderSystem, iAllocator& allocator) :
+            rootSignature{ &allocator }
         {
-            renderSystem.RegisterPSOLoader(SHADOWMAPPASS,          { &renderSystem.Library.RS6CBVs4SRVs, CreateShadowMapPass });
-            renderSystem.RegisterPSOLoader(SHADOWMAPANIMATEDPASS,  { &renderSystem.Library.RS6CBVs4SRVs, CreateShadowMapAnimatedPass });
+            rootSignature.AllowIA = true;
+            rootSignature.AllowSO = false;
+            rootSignature.SetParameterAsUINT(0, 20, 3, 0, PIPELINE_DEST_VS);
+            rootSignature.SetParameterAsCBV(1, 0, 0, PIPELINE_DEST_VS);
+            rootSignature.SetParameterAsCBV(2, 1, 0, PIPELINE_DEST_VS);
+            rootSignature.SetParameterAsCBV(3, 2, 0, PIPELINE_DEST_VS);
+            rootSignature.Build(renderSystem, &allocator);
+
+            renderSystem.RegisterPSOLoader(SHADOWMAPPASS,          { &renderSystem.Library.RS6CBVs4SRVs, [&](RenderSystem* rs) { return CreateShadowMapPass(rs); }});
+            renderSystem.RegisterPSOLoader(SHADOWMAPANIMATEDPASS,  { &renderSystem.Library.RS6CBVs4SRVs, [&](RenderSystem* rs) { return CreateShadowMapAnimatedPass(rs); } });
         }
 
         AcquireShadowMapTask& AcquireShadowMaps(
@@ -91,12 +100,11 @@ namespace FlexKit
 		                        const double                            t,
 		                        iAllocator*                             allocator);
 
+    private:
+        ID3D12PipelineState* CreateShadowMapPass(RenderSystem* RS);
+        ID3D12PipelineState* CreateShadowMapAnimatedPass(RenderSystem* RS);
 
-        static ID3D12PipelineState* CreateShadowMapPass(RenderSystem* RS);
-        static ID3D12PipelineState* CreateShadowMapAnimatedPass(RenderSystem* RS);
-
-
-
+        FlexKit::RootSignature rootSignature;
     };
 
 
