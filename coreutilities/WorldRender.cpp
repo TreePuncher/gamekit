@@ -555,7 +555,7 @@ namespace FlexKit
 
             UAVPool                     { renderSystem, 512 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
             UAVTexturePool              { renderSystem, 256 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent },
-            RTPool                      { renderSystem, 1024 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget, persistent },
+            RTPool                      { renderSystem, 2048 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget, persistent },
 
             timeStats                   { renderSystem.CreateTimeStampQuery(256) },
             timingReadBack              { renderSystem.CreateReadBackBuffer(512) }, 
@@ -563,7 +563,7 @@ namespace FlexKit
 			streamingEngine		        { IN_streamingEngine },
 
             lightingEngine              { renderSystem, *persistent, EGITECHNIQUE::DISABLE },
-            shadowMapping               { renderSystem },
+            shadowMapping               { renderSystem, *persistent },
             clusteredRender             { renderSystem, *persistent },
             transparency                { renderSystem }
 	{
@@ -830,7 +830,6 @@ namespace FlexKit
                 reserveCB,
                 temporary);
 
-        /*
         auto& OIT_pass =
             transparency.OIT_WB_Pass(
                 dispatcher,
@@ -848,7 +847,6 @@ namespace FlexKit
                 OIT_pass,
                 shadingPass.renderTargetObject,
                 temporary);
-        */
 
         auto& toneMapped =
             RenderPBR_ToneMapping(

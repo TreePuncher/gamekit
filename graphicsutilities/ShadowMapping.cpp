@@ -1,7 +1,7 @@
 #pragma once
 #include "ShadowMapping.h"
 #include "AnimationComponents.h"
-
+#include <fmt/format.h>
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -10,7 +10,6 @@ namespace FlexKit
 	ID3D12PipelineState* ShadowMapper::CreateShadowMapPass(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("VS_Main", "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
-		auto GShader = RS->LoadShader("GS_Main", "gs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
 
 		/*
 		typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -39,9 +38,8 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature                         = RS->Library.RSDefault;
+			PSO_Desc.pRootSignature                         = rootSignature;
 			PSO_Desc.VS                                     = VShader;
-			PSO_Desc.GS                                     = GShader;
 			PSO_Desc.BlendState                             = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask                             = UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType                  = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
@@ -68,8 +66,7 @@ namespace FlexKit
 
 	ID3D12PipelineState* ShadowMapper::CreateShadowMapAnimatedPass(RenderSystem* RS)
 	{
-		auto VShader = RS->LoadShader("VS_Skinned_Main",    "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
-		auto GShader = RS->LoadShader("GS_Main",            "gs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
+		auto VShader = RS->LoadShader("VS_Skinned_Main", "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
 
 		/*
 		typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -100,9 +97,8 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature                         = RS->Library.RSDefault;
+			PSO_Desc.pRootSignature                         = rootSignature;
 			PSO_Desc.VS                                     = VShader;
-			PSO_Desc.GS                                     = GShader;
 			PSO_Desc.BlendState                             = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask                             = UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType                  = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
@@ -153,7 +149,7 @@ namespace FlexKit
 		{
 			const XMMATRIX ViewI            = ViewOrientations[I] * DirectX::XMMatrixTranslationFromVector(pos);
 			const XMMATRIX View             = DirectX::XMMatrixInverse(nullptr, ViewI);
-			const XMMATRIX perspective      = DirectX::XMMatrixPerspectiveFovRH(float(-pi/2), 1, 0.1f, r);
+			const XMMATRIX perspective      = DirectX::XMMatrixPerspectiveFovRH(float(-pi/2), 1, 0.001f, r);
 			const XMMATRIX PV               = XMMatrixTranspose(perspective) * XMMatrixTranspose(View);
 
 			out.PV[I]       = XMMatrixToFloat4x4(PV).Transpose();
@@ -199,6 +195,7 @@ namespace FlexKit
             {
                 auto& lights = PointLightComponent::GetComponent();
 
+                size_t idx = 0;
                 for (auto lightHandle : dirtyList)
                 {
                     auto& light = lights[lightHandle];
@@ -208,9 +205,12 @@ namespace FlexKit
                         renderSystem.ReleaseResource(light.shadowMap);
                     }
 
-                    auto [shadowMap, _] = shadowMapAllocator.Acquire(GPUResourceDesc::DepthTarget({ 512, 512 }, DeviceFormat::D32_FLOAT, 6), false);
-                    renderSystem.SetDebugName(shadowMap, "Shadow Map");
+                    auto [shadowMap, _] = shadowMapAllocator.Acquire(GPUResourceDesc::DepthTarget({ 1024, 1024 }, DeviceFormat::D32_FLOAT, 6), false);
 
+#if USING(DEBUGGRAPHICS)
+                    auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.GetCurrentFrame(), idx++);
+                    renderSystem.SetDebugName(shadowMap, debugName.c_str());
+#endif
                     light.shadowMap = shadowMap;
                 }
 
@@ -321,7 +321,7 @@ namespace FlexKit
 					        auto constants  = CreateCBIterator<Brush::VConstantsLayout>(localConstantBuffer);
 					        auto PSO        = resources.GetPipelineState(SHADOWMAPPASS);
 
-					        ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
+					        ctx.SetRootSignature(rootSignature);
 					        ctx.SetPipelineState(PSO);
 					        ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 
@@ -340,20 +340,18 @@ namespace FlexKit
 
                             passConstant2.push_back(passConstants);
 
-                            const DepthStencilView_Options DSV_desc = {
-                                0, 0,
-                                depthTarget };
-
-
 					        ctx.SetScissorAndViewports({ depthTarget });
-					        ctx.SetRenderTargets2({}, 0, DSV_desc);
 
-					        ctx.SetGraphicsConstantBufferView(0, passConstants);
+					        ctx.SetGraphicsConstantBufferView(1, passConstants);
 
                             ctx.BeginEvent_DEBUG("Shadow Map Pass");
 
                             if (auto state = resources.renderSystem().GetObjectState(depthTarget); state != DRS_DEPTHBUFFERWRITE)
                                 ctx.AddResourceBarrier(depthTarget, state, DRS_DEPTHBUFFERWRITE);
+
+
+                            const DepthStencilView_Options DSV_desc = { 0, 0, depthTarget };
+                            ctx.SetRenderTargets2({}, 0, DSV_desc);
 
 					        for(size_t brushIdx = 0; brushIdx < brushes.size(); brushIdx++)
 					        {
@@ -362,15 +360,34 @@ namespace FlexKit
 						        auto* const triMesh = GetMeshResource(brush->MeshHandle);
                                 auto& lod           = triMesh->lods[lodLevel];
 
-						        ctx.SetGraphicsConstantBufferView(1, constants[brushIdx]);
+                                
+
+						        ctx.SetGraphicsConstantBufferView(2, constants[brushIdx]);
 
 						        ctx.AddIndexBuffer(triMesh, lodLevel);
 						        ctx.AddVertexBuffers(triMesh,
                                     lodLevel,
 							        { VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
 
-                                
-                                ctx.DrawIndexedInstanced(triMesh->GetHighestLoadedLod().GetIndexCount());
+                                const float4x4 WT   = GetWT(brush.brush->Node);
+                                const float4 POS_WT = WT * float4(triMesh->BS.xyz(), 1);
+
+                                for (uint32_t itr = 0; itr < 6; itr++)
+                                {
+                                    struct 
+                                    {
+                                        float4x4 PV;
+                                        uint32_t Idx;
+                                    }tempConstants = {.PV = passConstantData.matrices[itr].PV, .Idx = itr };
+
+                                    const float4 POS_VS = tempConstants.PV * POS_WT + WT * float4(triMesh->BS.xyz(), 0);
+
+                                    if (triMesh->BS.w + POS_VS.z > 0.0f)
+                                    {
+                                        ctx.SetGraphicsConstantValue(0, 17, &tempConstants);
+                                        ctx.DrawIndexedInstanced(triMesh->GetHighestLoadedLod().GetIndexCount());
+                                    }
+                                }
 					        }
 
 
@@ -378,7 +395,7 @@ namespace FlexKit
                             ctx.SetPipelineState(PSOAnimated);
                             ctx.SetScissorAndViewports({ depthTarget });
                             ctx.SetRenderTargets2({}, 0, DSV_desc);
-                            ctx.SetGraphicsConstantBufferView(0, passConstants);
+                            ctx.SetGraphicsConstantBufferView(1, passConstants);
                             ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 
                             for (auto& brush : animatedBrushes)
@@ -403,8 +420,7 @@ namespace FlexKit
                                         const auto constants        = ConstantBufferDataSet{ draw.GetConstants(), animatedConstantBuffer };
                                         const auto poseConstants    = ConstantBufferDataSet{ poseTemp, animatedConstantBuffer };
 
-                                        ctx.SetGraphicsConstantBufferView(1, constants);
-                                        ctx.SetGraphicsConstantBufferView(2, poseConstants);
+                                        ctx.SetGraphicsConstantBufferView(2, constants);
                                         ctx.SetGraphicsConstantBufferView(3, poseConstants);
 
                                         auto triMesh            = GetMeshResource(draw.MeshHandle);
@@ -419,8 +435,25 @@ namespace FlexKit
                                                 VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
                                             });
 
-                                
-                                        ctx.DrawIndexedInstanced(triMesh->GetHighestLoadedLod().GetIndexCount());
+                                        const float4x4 WT   = GetWT(draw.Node);
+                                        const float4 POS_WT = WT * float4(triMesh->BS.xyz(), 1);
+
+                                        for (uint32_t itr = 0; itr < 6; itr++)
+                                        {
+                                            struct 
+                                            {
+                                                float4x4 PV;
+                                                uint32_t Idx;
+                                            }tempConstants = {.PV = passConstantData.matrices[itr].PV, .Idx = itr };
+
+                                            const float4 POS_VS = tempConstants.PV * POS_WT + WT * float4(triMesh->BS.xyz(), 0);
+
+                                            if (triMesh->BS.w + POS_VS.z > 0.0f)
+                                            {
+                                                ctx.SetGraphicsConstantValue(0, 17, &tempConstants);
+                                                ctx.DrawIndexedInstanced(triMesh->GetHighestLoadedLod().GetIndexCount());
+                                            }
+                                        }
                                     });
                             }
 
