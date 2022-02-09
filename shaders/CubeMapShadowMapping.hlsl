@@ -11,6 +11,12 @@ cbuffer PassConstants : register(b0)
 
 cbuffer LocalConstants : register(b1)
 {
+    float4x4 WT;
+}
+
+/*
+cbuffer LocalConstants : register(b1)
+{
     float4	 Albedo;
 	float    Ks;
 	float    IOR;
@@ -19,7 +25,7 @@ cbuffer LocalConstants : register(b1)
 	float    Metallic;
     float4x4 WT;
 }
-
+*/
 cbuffer PoseConstants : register(b2)
 {
     float4x4 transforms[256];

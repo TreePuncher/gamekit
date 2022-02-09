@@ -49,11 +49,11 @@ namespace FlexKit
 		double T				= 0.0f;
 		double FPSTimer			= 0.0;
 		double dT				= 1.0 / 60.0f;
+        uint32_t fpsCounter     = 0;
 
 		while (!Core.End && framework.Running())
 		{
             profiler.BeginFrame();
-
 
 			Core.Time.Before();
 
@@ -71,6 +71,13 @@ namespace FlexKit
                 GameFramework::TimePoint{
                     .T          = framework.runningTime,
                     .duration   = double(std::chrono::duration_cast<std::chrono::microseconds>(updateDuration).count()) / 1000.0f});
+
+            if (FPSTimer >= 1.0f)
+            {
+                framework.stats.fps = fpsCounter;
+                fpsCounter = 0;
+                FPSTimer = 0.0f;
+            }
 
             if (Core.FrameLock)// FPS Locked
             {
@@ -108,6 +115,8 @@ namespace FlexKit
 			dT = double(totalDuration.count() ) / 1000000000.0;
             T += dT;
             framework.runningTime += dT;
+            framework.stats.dT = dT * 1000;
+            fpsCounter++;
 
 			Core.Time.After();
 			Core.Time.Update();

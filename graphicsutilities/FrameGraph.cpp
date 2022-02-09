@@ -107,19 +107,18 @@ namespace FlexKit
             acquiredObjects { IN_allocator  } {}
 
 
-    FrameGraphNode::FrameGraphNode(const FrameGraphNode& RHS) :
-			Sources			{ RHS.Sources		            },
-			InputObjects	{ RHS.InputObjects	            },
-			OutputObjects	{ RHS.OutputObjects	            },
-			Transitions		{ RHS.Transitions	            },
-			NodeAction		{ std::move(RHS.NodeAction)	    },
-			nodeData        { RHS.nodeData                  },
-			retiredObjects  { RHS.retiredObjects            },
-			subNodeTracking { RHS.subNodeTracking           },
-			Executed		{ false				            },
-            createdObjects  { std::move(RHS.createdObjects) },
-            acquiredObjects { std::move(RHS.acquiredObjects)} {}
-
+    FrameGraphNode::FrameGraphNode(FrameGraphNode&& RHS) :
+			Sources			{ std::move(RHS.Sources)	        },
+			InputObjects	{ std::move(RHS.InputObjects)	    },
+			OutputObjects	{ std::move(RHS.OutputObjects)      },
+			Transitions		{ std::move(RHS.Transitions)        },
+			NodeAction		{ std::move(RHS.NodeAction)	        },
+			nodeData        { std::move(RHS.nodeData)           },
+			retiredObjects  { std::move(RHS.retiredObjects)     },
+			subNodeTracking { std::move(RHS.subNodeTracking)    },
+			Executed		{ std::move(RHS.Executed)           },
+            createdObjects  { std::move(RHS.createdObjects)     },
+            acquiredObjects { std::move(RHS.acquiredObjects)    } {}
 
 
     /************************************************************************************************/
@@ -165,6 +164,8 @@ namespace FlexKit
 
 	void FrameGraphNode::RestoreResourceStates(Context* ctx, FrameResources& resources, LocallyTrackedObjectList& locallyTrackedObjects)
 	{
+        ProfileFunction();
+
 		for (auto& localResourceDescriptor : locallyTrackedObjects)
 		{
             auto currentState   = localResourceDescriptor.currentState;
@@ -255,6 +256,21 @@ namespace FlexKit
         for (auto acquire : acquiredResources)
             FrameGraph->acquiredResources.push_back(acquire.resource);
 
+
+        for (auto& object : Node.InputObjects)
+            if (object.Source != nullptr || object.Source != &Node)
+                Node.Sources.push_back(object.Source);
+
+        for (auto& object : Node.OutputObjects)
+            if(object.Source != nullptr || object.Source != &Node)
+                Node.Sources.push_back(object.Source);
+
+        if (Node.Sources.size())
+        {
+            std::sort(Node.Sources.begin(), Node.Sources.end());
+            auto res = std::unique(Node.Sources.begin(), Node.Sources.end());
+            Node.Sources.erase(res, Node.Sources.end());
+        }
 
         Node.Transitions        += Transitions;
         Node.acquiredObjects    += acquiredResources;
@@ -456,8 +472,29 @@ namespace FlexKit
 
         for(auto memoryPool = FindResourcePool(); memoryPool; memoryPool = FindResourcePool())
         {
-            auto [virtualResource, overlap] = memoryPool->Acquire(desc, temp);
+            auto allocationSize = Resources->renderSystem.GetAllocationSize(desc);
 
+#if 1
+            ResourceHandle virtualResource  = InvalidHandle_t;
+            ResourceHandle overlap          = InvalidHandle_t;
+
+            auto [reuseableResource, found] = Node.FindReuseableResource(*memoryPool, allocationSize, NeededFlags, *Resources);
+
+            if (found || reuseableResource != InvalidHandle_t)
+            {
+                auto reusedResource = Resources->Resources[reuseableResource].shaderResource;
+                auto deviceResource = Resources->renderSystem.GetHeapOffset(reusedResource);
+            }
+            else
+            {
+                auto [resource, _overlap] = memoryPool->Acquire(desc, temp);
+
+                virtualResource = resource;
+                overlap         = _overlap;
+            }
+#else
+            auto [virtualResource, overlap] = memoryPool->Acquire(desc, temp);
+#endif
             if (virtualResource == InvalidHandle_t)
                 return InvalidHandle_t;
 
@@ -509,6 +546,44 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    ResusableResourceQuery FrameGraphNode::FindReuseableResource(PoolAllocatorInterface& allocator, const size_t allocationSize, const uint32_t flags, FrameResources& handler)
+    {
+        for (auto sourceNode : Sources)
+        {
+            if (sourceNode->retiredObjects.size())
+            {
+                for (auto& retiredResource : sourceNode->retiredObjects)
+                {
+                    auto resourceObject = handler.GetAssetObject(retiredResource.handle);
+                    resourceObject->resourceFlags;
+
+                    if  (resourceObject->virtualState == VirtualResourceState::Virtual_Released &&
+                        (resourceObject->resourceFlags & flags) == flags)
+                    {   // Reusable candidate found!
+                        auto resourceSize = handler.renderSystem.GetResourceSize(resourceObject->shaderResource);
+
+                        if (resourceSize > allocationSize)
+                        {
+                            resourceObject->virtualState = VirtualResourceState::Virtual_Reused;
+                            return { retiredResource.handle, true };
+                        }
+                    }
+                    else continue;
+                }
+            }
+            else
+            {
+                const auto [resource, success] = sourceNode->FindReuseableResource(allocator, allocationSize, flags, handler);
+
+                if (success)
+                    return { resource, success };
+            }
+        }
+
+        return { InvalidHandle_t, false };
+    }
+
+
     FrameResourceHandle  FrameGraphNodeBuilder::AcquireVirtualResource(PoolAllocatorInterface& allocator, const GPUResourceDesc desc, DeviceResourceState initialState, bool temp)
 	{
         auto NeededFlags = 0;
@@ -529,16 +604,41 @@ namespace FlexKit
             return InvalidHandle_t;
         }
 
+
+#if 1
         auto [virtualResource, overlap] = allocator.Acquire(desc, temp);
 
         if (virtualResource == InvalidHandle_t)
             return InvalidHandle_t;
+#else
+        auto allocationSize = Resources->renderSystem.GetAllocationSize(desc);
+
+
+        ResourceHandle virtualResource  = InvalidHandle_t;
+        ResourceHandle overlap          = InvalidHandle_t;
+
+        auto [reuseableResource, found] = Node.FindReuseableResource(allocator, allocationSize, NeededFlags, *Resources);
+
+        if (found || reuseableResource != InvalidHandle_t)
+        {
+            auto reusedResource = Resources->Resources[reuseableResource].shaderResource;
+            auto deviceResource = Resources->renderSystem.GetHeapOffset(reusedResource);
+        }
+        else
+        {
+            auto [resource, _overlap] = allocator.Acquire(desc, temp);
+
+            virtualResource = resource;
+            overlap         = _overlap;
+        }
+#endif
 
 		FrameObject virtualObject       = FrameObject::VirtualObject();
 		virtualObject.shaderResource    = virtualResource;
 		virtualObject.State             = initialState;
         virtualObject.virtualState      = VirtualResourceState::Virtual_Temporary;
         virtualObject.pool              = &allocator;
+        virtualObject.resourceFlags     = NeededFlags;
 
         Resources->renderSystem.SetDebugName(virtualResource, "Un-named virtual resources");
 
@@ -724,7 +824,7 @@ namespace FlexKit
             Vector<FrameGraphNodeWork>::Iterator end;
         };
 
-        static const size_t workerCount = Min(taskList.size(), 4);
+        const size_t workerCount = Min(taskList.size(), 8);
         static_vector<SubmissionWorkRange> workList;
         for (size_t I = 0; I < workerCount; I++)
         {
@@ -750,9 +850,10 @@ namespace FlexKit
                 std::for_each(work.begin, work.end,
                     [&](auto& item)
                     {
+                        ProfileFunction();
+
                         item(ctx, tempAllocator);
                     });
-
                 ctx->FlushBarriers();
             }
 
@@ -790,7 +891,7 @@ namespace FlexKit
 		for (auto& worker : workers)
 			threads.AddWork(*worker);
 
-		barrier.JoinLocal();
+		barrier.Join();
 
 		UpdateResourceFinalState();
 
@@ -839,6 +940,8 @@ namespace FlexKit
 
 	void FrameGraph::UpdateResourceFinalState()
 	{
+        ProfileFunction();
+
 		auto Objects = Resources.Resources;
 
 		for (auto& I : Objects)

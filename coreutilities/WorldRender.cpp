@@ -664,6 +664,8 @@ namespace FlexKit
 
     DrawOutputs WorldRender::DrawScene(UpdateDispatcher& dispatcher, FrameGraph& frameGraph, DrawSceneDescription& drawSceneDesc, WorldRender_Targets targets, iAllocator* persistent, ThreadSafeAllocator& temporary)
     {
+        ProfileFunction();
+
         auto&       scene           = drawSceneDesc.scene;
         const auto  camera          = drawSceneDesc.camera;
         auto&       gbuffer         = drawSceneDesc.gbuffer;
@@ -961,6 +963,8 @@ namespace FlexKit
             },
             [camera = camera](OcclusionCullingResults& data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
+                ProfileFunction();
+
                 return;
                 ctx.BeginEvent_DEBUG("Occlusion Culling");
                 ctx.BeginEvent_DEBUG("Occluder Pass");
@@ -1503,6 +1507,8 @@ namespace FlexKit
 			[]
 			(ToneMap& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
+                ProfileFunction();
+
                 ctx.CopyResource(resources.GetResource(data.outputTarget), resources.GetResource(data.sourceTarget));
 
                 /*

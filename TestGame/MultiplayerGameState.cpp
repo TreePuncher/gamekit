@@ -238,7 +238,7 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     SetWorldPosition(particleEmitter, float3{ 0.0f, 40, 0.0f });
     Pitch(particleEmitter, float(pi / 2.0f));
 
-    runOnceDrawEvents.emplace_back([&]()
+    runOnceDrawEvents.push_back([&]()
         {
             base.render.AddTask(
                 [&](auto& frameGraph, auto& frameResources)
@@ -325,10 +325,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
     auto reserveVB = FlexKit::CreateVertexBufferReserveObject(base.vertexBuffer, core.RenderSystem, core.GetTempMemory());
     auto reserveCB = FlexKit::CreateConstantBufferReserveObject(base.constantBuffer, core.RenderSystem, core.GetTempMemory());
 
-    for (auto& event : runOnceDrawEvents)
-        event();
-
-    runOnceDrawEvents.clear();
+    runOnceDrawEvents.Process();
 
     if (base.renderWindow.GetWH().Product() != 0)
     {
@@ -497,6 +494,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
             LineShape{ lines });
     }
 
+    base.DrawDebugHUD(core, dispatcher, frameGraph, reserveVB, reserveCB, targets.RenderTarget, dT);
     PresentBackBuffer(frameGraph, base.renderWindow);
 
     return nullptr;
@@ -519,6 +517,11 @@ void LocalGameState::PostDrawUpdate(EngineCore& core, double dT)
 
 bool LocalGameState::EventHandler(Event evt)
 {
+    ProfileFunction();
+
+    if (base.enableHud)
+        base.debugUI.HandleInput(evt);
+
     if (worldState.EventHandler(evt))
         return true;
 

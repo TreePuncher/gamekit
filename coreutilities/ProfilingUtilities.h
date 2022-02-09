@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <chrono>
 #include <mutex>
 #include <memory>
+#include <source_location>
 
 
 /************************************************************************************************/
@@ -90,15 +91,27 @@ namespace FlexKit
 
 	struct ThreadProfiler
 	{
+        ThreadProfiler()
+        {
+            activeFrames.reserve(1024);
+            completedFrames.reserve(1024);
+        }
 
         void BeginFrame()
         {
+            std::scoped_lock lock(m);
+
             activeFrames.clear();
             completedFrames.clear();
         }
 
         void EndFrame()
         {
+            std::scoped_lock lock(m);
+
+            for (auto& frame : activeFrames)
+                Pop(frame.profileID, std::chrono::high_resolution_clock::now());
+
             std::sort(
                 completedFrames.begin(),
                 completedFrames.end(),
@@ -110,51 +123,39 @@ namespace FlexKit
 
         ThreadStats GetStats()
         {
-            return { completedFrames };
-        }
-
-        void Push(const char* func, uint64_t Id, TimePoint tp)
-        {
-            const auto parentID = activeFrames.size() ? activeFrames.back().profileID : -1;
-
-            if (activeFrames.size()) {
-                auto& parent = activeFrames.back();
-                parent.children.push_back(Id);
+            if (completedFrames.size())
+            {
+                std::vector<FrameTiming> temp{ std::move(completedFrames) };
+                completedFrames.reserve(1024);
+                return { std::move(temp) };
             }
-
-            FrameTiming timing{ 
-                .Function   = func,
-                .profileID  = Id,
-                .parentID   = parentID,
-                .begin      = tp,
-            };
-
-            activeFrames.push_back(timing);
+            else return {};
         }
 
-        void Pop(uint64_t Id, TimePoint tp)
+        void Clear()
         {
-            auto& frames = activeFrames;
+            activeFrames.clear();
+            completedFrames.clear();
 
-            if(!frames.size() || Id != frames.back().profileID) // Discard, frame changed
-                return;
-
-            auto currentFrame = frames.back();
-            frames.pop_back();
-
-            currentFrame.end = tp;
-            completedFrames.push_back(currentFrame);
+            activeFrames.reserve(1024);
+            completedFrames.reserve(1024);
         }
 
+        void Push(const char* func, uint64_t Id, TimePoint tp);
+        void Pop(uint64_t Id, TimePoint tp);
 
         void Release()
         {
             activeFrames.clear();
             completedFrames.clear();
+
+            activeFrames.reserve(1024);
+            completedFrames.reserve(1024);
         }
 
-        std::vector<FrameTiming> activeFrames{ 128 };
-        std::vector<FrameTiming> completedFrames{ 128 };
+        std::vector<FrameTiming> activeFrames{};
+        std::vector<FrameTiming> completedFrames{};
+        std::mutex              m;
 	};
 
 
@@ -195,7 +196,8 @@ namespace FlexKit
             for (auto& threadProfiler : threadProfilers)
                 frameStats->Threads.push_back(threadProfiler->GetStats());
 
-            stats.push_back(std::move(frameStats));
+            if (!paused)
+                stats.push_back(std::move(frameStats));
 #endif
         }
 
@@ -210,7 +212,7 @@ namespace FlexKit
         std::shared_ptr<ProfilingStats>  GetStats()
         {
             if(stats.size())
-                return stats.back();
+                return stats[stats.size() - 1 - frameOffset];
             else
                 return {};
         }
@@ -219,7 +221,9 @@ namespace FlexKit
 
         std::mutex m;
 
+        bool paused     = false;
         bool showLabels = true;
+        size_t frameOffset = 0;
 
         std::shared_ptr<ProfilingStats>                     pausedFrame;
         CircularBuffer<std::shared_ptr<ProfilingStats>>     stats;
@@ -250,7 +254,7 @@ namespace FlexKit
     public:
         _ProfileFunction(const char* FunctionName, uint64_t IN_profileID) :
             function    { FunctionName },
-            profileID   { IN_profileID }
+            profileID   { IN_profileID + rand() }
         {
             threadProfiler.Push(FunctionName, profileID, std::chrono::high_resolution_clock::now());
         }
@@ -275,11 +279,26 @@ namespace FlexKit
 #define GETLINEHASH(A) FlexKit::GenerateTypeGUID<sizeof(A)>(A)
 
 #if USING(ENABLEPROFILER)
-#define ProfileFunction() const auto PROFILELABEL_ = _ProfileFunction(__FUNCTION__, GETLINEHASH(STRINGIFY(__LINE__) __FUNCTION__))
+#define ProfileFunction()       const auto PROFILELABEL_ = _ProfileFunction(std::source_location::current().function_name().c_str() , GETLINEHASH(STRINGIFY(__LINE__) __FUNCTION__ ))
+#define ProfileFunction(LABEL)  const auto PROFILELABEL_##LABEL = _ProfileFunction(__FUNCTION__":"#LABEL, GETLINEHASH(STRINGIFY(__LINE__) __FUNCTION__ ))
 #else
 #define ProfileFunction()
 #endif
 #define TIMEBLOCK(A, B) _TimeBlock([&]{ return A(); }, B)
+
+
+    template<typename TY>
+    FLEXKITAPI decltype(auto) TimeFunction(TY&& function)
+    {
+        static const std::chrono::high_resolution_clock Clock;
+        const auto Before = Clock.now();
+
+        function();
+
+        const auto After = Clock.now();
+
+        return After - Before;
+    }
 }
 
 /************************************************************************************************/

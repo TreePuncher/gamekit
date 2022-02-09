@@ -186,6 +186,25 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    ID3D12PipelineState* ClusteredRender::CreateDeferredShadingPassComputePSO(RenderSystem* RS)
+    {
+        auto CShader = RS->LoadShader("ClusteredShading", "cs_6_0", "assets\\shaders\\ClusteredShading.hlsl");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_Desc = {};
+        PSO_Desc.pRootSignature = RS->Library.RSDefault;
+        PSO_Desc.CS             = CShader;
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateComputePipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+        FK_ASSERT(SUCCEEDED(HR));
+
+        return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
     ID3D12PipelineState* ClusteredRender::CreateClearClusterCountersPSO(RenderSystem* RS)
     {
         Shader computeShader = RS->LoadShader("ClearCounters", "cs_6_0", R"(assets\shaders\ClusteredRendering.hlsl)");
@@ -697,7 +716,8 @@ namespace FlexKit
 
         renderSystem.RegisterPSOLoader(GBUFFERPASS,			    { &renderSystem.Library.RS6CBVs4SRVs, CreateGBufferPassPSO          });
         renderSystem.RegisterPSOLoader(GBUFFERPASS_SKINNED,	    { &renderSystem.Library.RS6CBVs4SRVs, CreateGBufferSkinnedPassPSO   });
-        renderSystem.RegisterPSOLoader(SHADINGPASS,             { &renderSystem.Library.RS6CBVs4SRVs, CreateDeferredShadingPassPSO });
+        renderSystem.RegisterPSOLoader(SHADINGPASS,             { &renderSystem.Library.RS6CBVs4SRVs, CreateDeferredShadingPassPSO  });
+        renderSystem.RegisterPSOLoader(SHADINGPASSCOMPUTE,      { &renderSystem.Library.RS6CBVs4SRVs, CreateDeferredShadingPassComputePSO });
 
         renderSystem.RegisterPSOLoader(DEBUG_DrawBVH, { &renderSystem.Library.RSDefault, CreateDEBUGBVHVIS });
     }
@@ -743,6 +763,8 @@ namespace FlexKit
                     },
                     [=](_CreateClusterBuffer_Desc& data, ResourceHandler& resources, Context& ctx, iAllocator& tempAllocator)
                     {
+                        ProfileFunction();
+
                         ctx.BeginEvent_DEBUG("Create Cluster");
 
                         auto  cameraValues    = GetCameraConstants(camera);
@@ -874,6 +896,8 @@ namespace FlexKit
 			},
 			[this, XY = WH / 32](LightBufferUpdate& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
+                ProfileFunction();
+
                 ctx.BeginEvent_DEBUG("Update Light Buffers");
 
                 auto        CreateClusters              = resources.GetPipelineState(CREATECLUSTERS);
@@ -1231,6 +1255,7 @@ namespace FlexKit
 			},
 			[](GBufferPass& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
+                ProfileFunction();
 
 				struct EntityPoses
 				{
@@ -1558,6 +1583,8 @@ namespace FlexKit
 			[camera = gbufferPass.camera, renderTarget, t]
 			(TiledDeferredShade& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
+                ProfileFunction();
+
                 ctx.BeginEvent_DEBUG("Clustered Shading");
 
 				PointLightComponent&    lightComponent  = PointLightComponent::GetComponent();
@@ -1573,7 +1600,8 @@ namespace FlexKit
 
 				struct
 				{
-					float2      WH;
+                    float2      WH;
+                    float2      WH_I;
 					float       time;
 					uint32_t    lightCount;
                     float4      ambientLight;
@@ -1581,6 +1609,7 @@ namespace FlexKit
 				}passConstants =
                 {
                     {(float)WH[0], (float)WH[1]},
+                    {1.0f / (float)WH[0], 1.0f / (float)WH[1]},
                     t,
                     pointLightCount,
                     { 0.1f, 0.1f, 0.1f, 0 }
@@ -1618,6 +1647,8 @@ namespace FlexKit
 
 				const size_t descriptorTableSize = 20 + pointLightCount;
 
+                ctx.DiscardResource(resources.GetResource(data.renderTargetObject));
+
 				DescriptorHeap descHeap;
 				descHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), descriptorTableSize, &allocator);
 				descHeap.SetSRV(ctx, 0, resources.GetResource(data.AlbedoTargetObject));
@@ -1638,6 +1669,8 @@ namespace FlexKit
 
 				descHeap.NullFill(ctx, descriptorTableSize);
 
+#if 1
+
                 ctx.ClearRenderTarget(resources.GetResource({ data.renderTargetObject }));
 
 				ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
@@ -1651,6 +1684,31 @@ namespace FlexKit
 				ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
 				ctx.SetGraphicsDescriptorTable(4, descHeap);
 
+                ctx.Draw(6);
+#else
+                DescriptorHeap uavHeap;
+                uavHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 1, &allocator);
+                uavHeap.SetUAVTexture(ctx, 0, resources.UAV(data.renderTargetObject, ctx));
+
+                //ctx.ClearRenderTarget(resources.GetResource({ data.renderTargetObject }));
+
+                ctx.SetComputeRootSignature(resources.renderSystem().Library.RSDefault);
+                ctx.SetPipelineState(resources.GetPipelineState(SHADINGPASSCOMPUTE));
+                ctx.SetComputeConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
+                ctx.SetComputeConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
+                ctx.SetComputeDescriptorTable(4, descHeap);
+                ctx.SetComputeDescriptorTable(5, uavHeap);
+
+                //ctx.TimeStamp(timeStats, 4);
+                ctx.Dispatch({ WH[0] / 16, WH[0] / 16, 1 });
+                ctx.AddUAVBarrier(resources.GetResource(data.renderTargetObject));
+                //ctx.TimeStamp(timeStats, 5);
+
+                //ctx.ResolveQuery(timeStats, 0, 8, resources.GetObjectResource(timingReadBack), 0);
+                //ctx.QueueReadBack(timingReadBack);
+                ctx.EndEvent_DEBUG();
+                ctx.Dispatch({ WH[0] / 16, WH[0] / 16, 1 });
+#endif
 
                 //ctx.TimeStamp(timeStats, 4);
 				ctx.Draw(6);
@@ -1685,6 +1743,7 @@ namespace FlexKit
             },
             [](_& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
+                ProfileFunction();
 
             });
     }
@@ -1728,6 +1787,8 @@ namespace FlexKit
             },
             [&, mode = mode](DEBUGVIS_DrawBVH& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
+                ProfileFunction();
+
                 auto debugBVHVISPSO         = resources.GetPipelineState(LIGHTBVH_DEBUGVIS_PSO);
                 auto debugClusterVISPSO     = resources.GetPipelineState(CLUSTER_DEBUGVIS_PSO);
                 auto debugClusterArgsVISPSO = resources.GetPipelineState(CLUSTER_DEBUGARGSVIS_PSO);

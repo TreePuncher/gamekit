@@ -3,24 +3,61 @@
 #include <imgui.h>
 #include <Windows.h>
 #include <iostream>
+#include "MathUtils.h"
 
 namespace FlexKit
 {
 
+    void ThreadProfiler::Push(const char* func, uint64_t Id, TimePoint tp)
+    {
+        const auto parentID = activeFrames.size() ? activeFrames.back().profileID : -1;
+
+        if (activeFrames.size()) {
+            auto& parent = activeFrames.back();
+            parent.children.push_back(Id);
+        }
+
+        FrameTiming timing{ 
+            .Function   = func,
+            .profileID  = Id,
+            .parentID   = parentID,
+            .begin      = tp,
+        };
+
+        activeFrames.push_back(timing);
+    }
+
+
+    void ThreadProfiler::Pop(uint64_t Id, TimePoint tp)
+    {
+        auto& frames = activeFrames;
+
+        if (!frames.size() || Id != frames.back().profileID) // Discard, frame changed
+            return;
+
+        auto currentFrame = frames.back();
+        frames.pop_back();
+
+        currentFrame.end = tp;
+        completedFrames.push_back(currentFrame);
+    }
+
+
     void EngineProfiling::DrawProfiler(iAllocator& temp)
     {
 #if USING(ENABLEPROFILER)
-        if (auto stats = pausedFrame ? pausedFrame : profiler.GetStats(); stats)
+        if (auto stats = profiler.GetStats(); stats)
         {
             if (ImGui::Begin("Profiler"))
             {
                 if (ImGui::Button("Pause"))
-                {
-                    if (pausedFrame)
-                        pausedFrame = nullptr;
-                    else
-                        pausedFrame = stats;
-                }
+                    paused = !paused;
+
+                if (ImGui::Button("Next"))
+                    frameOffset = clamp(size_t(0), frameOffset + 1, this->stats.size() - 1);
+
+                if (ImGui::Button("Previous"))
+                    frameOffset = clamp(size_t(0), frameOffset - 1, this->stats.size() - 1);
 
                 ImGui::SameLine();
 
@@ -51,7 +88,7 @@ namespace FlexKit
                     const auto duration     = end - begin;
                     const double fDuration  = double(duration.count()) / 100000000.0;
 
-                    const int   maxDepth    = 4;
+                    const int   maxDepth    = 15;
                     const float barWidth    = 25.0f;
                     const float areaH       = stats->Threads.size() * maxDepth * barWidth;
 
@@ -79,8 +116,8 @@ namespace FlexKit
                             auto& thread = stats->Threads[threadID];
                             auto& profilings = thread.timePoints;
 
-                            if (!profilings.size())
-                                continue;
+                            //if (!profilings.size())
+                            //    continue;
 
                             ImColor color(1.0f, 1.0f, 1.0f, 1.0f);
 
@@ -106,9 +143,10 @@ namespace FlexKit
                             static const ImColor colors[] = {
                                 ImColor{11, 173, 181},
                                 ImColor{73, 127, 130},
+                                ImColor{56, 75,  65},
                             };
 
-                            draw_list->AddRectFilled(threadBoxMin, threadBoxMax, colors[threadOffsetCounter % 2], 0);
+                            draw_list->AddRectFilled(threadBoxMin, threadBoxMax, colors[threadOffsetCounter % 3], 0);
 
 
                             if (pMax.y > 0.0f)
@@ -143,8 +181,6 @@ namespace FlexKit
                                                 contentBegin.y + currentDepth * barWidth + threadOffset - scrollY };
 
                                             const ImColor textColor(0.0f, 0.0f, 0.0f, 1.0f);
-
-                                            
 
 
                                             // Visit Child Samples

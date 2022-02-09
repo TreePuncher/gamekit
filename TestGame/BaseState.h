@@ -140,6 +140,8 @@ inline FlexKit::UpdateTask* QueueSoundUpdate(FlexKit::UpdateDispatcher& Dispatch
 		},
 		[allocator](auto& Data, iAllocator& threadAllocator)
 		{
+            ProfileFunction();
+
 			FK_LOG_9("Sound Update");
 			Data.Sounds->Update(allocator);
 		});
@@ -238,6 +240,9 @@ public:
         UpdateInput();
         renderWindow.UpdateCapturedMouseInput(dT);
 
+        if(enableHud)
+            debugUI.Update(renderWindow, core, dispatcher, dT);
+
         t += dT;
 
         BeginPixCapture();
@@ -248,8 +253,10 @@ public:
 
     void PostDrawUpdate(EngineCore& core, double dT) override
     {
+        ProfileFunction();
+
         depthBuffer.Increment();
-        renderWindow.Present(core.FrameLock ? 1 : 0, 0);
+        renderWindow.Present(0, 0);
     }
 
 
@@ -267,12 +274,34 @@ public:
     }
 
 
+    void DrawDebugHUD(EngineCore& core, UpdateDispatcher& dispatcher, FrameGraph& frameGraph, ReserveVertexBufferFunction& reserveVB, ReserveConstantBufferFunction& reserveCB, ResourceHandle renderTarget, double dT)
+    {
+        ProfileFunction();
+
+        if (enableHud)
+        {
+            ImGui::NewFrame();
+
+            DEBUG_PrintDebugStats(core);
+
+            FlexKit::profiler.DrawProfiler(core.GetTempMemory());
+
+            ImGui::EndFrame();
+            ImGui::Render();
+
+            debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderTarget);
+        }
+    }
+
+
     void DEBUG_PrintDebugStats(EngineCore& core)
     {
+        ProfileFunction();
+
         const size_t bufferSize     = 1024;
         uint32_t VRamUsage	        = (uint32_t)(core.RenderSystem._GetVidMemUsage() / MEGABYTE);
 		char* TempBuffer	        = (char*)core.GetTempMemory().malloc(bufferSize);
-		auto DrawTiming		        = 0.0f;
+		auto updateTime             = framework.stats.dispatchTime;
         const char* RTFeatureStr    = core.RenderSystem.GetRTFeatureLevel() == RenderSystem::AvailableFeatures::Raytracing::RT_FeatureLevel_NOTAVAILABLE ? "Not Available" : "Available";
 
         const auto shadingStats         = render.GetTimingValues();
@@ -281,7 +310,8 @@ public:
 
         sprintf_s(TempBuffer, bufferSize,
 			"Current VRam Usage: %u MB\n"
-			"FPS: %u\n"
+            "FPS: %u\n"
+            "dT: %fms\n"
 			"Update/Draw Dispatch Time: %fms\n"
 			//"Objects Drawn: %u\n"
             "Hardware RT: %s\n"
@@ -297,7 +327,8 @@ public:
 
 			VRamUsage, 
 			(uint32_t)framework.stats.fps,
-			DrawTiming,
+            (float)framework.stats.dT,
+            updateTime,
 			//(uint32_t)framework.stats.objectsDrawnLastFrame,
             RTFeatureStr,
             shadingStats.gBufferPass,
@@ -308,6 +339,8 @@ public:
             textureUpdateTime);
 
         ImGui::Begin("Debug Stats");
+        ImGui::SetWindowPos({ 0, 0 });
+        ImGui::SetWindowSize({ 400, 500 });
         ImGui::Text(TempBuffer);
         ImGui::End();
     }
@@ -360,6 +393,10 @@ public:
 	asIScriptEngine* asEngine;
 
 	FKApplication&  App;
+
+
+    // Debug hud
+    bool                        enableHud = true;
 
     // counters, timers
     float                       t           = 0.0f;

@@ -286,7 +286,12 @@ namespace FlexKit
         auto updateTask = Update(dispatcher, dT);
 		auto drawTask   = Draw(updateTask, dispatcher, core.GetTempMemoryMT(), dT);
 
-        dispatcher.Execute();
+        typedef std::chrono::seconds sec;
+        typedef std::chrono::microseconds mms;
+        typedef std::chrono::duration<float> fsec;
+
+        fsec duration = std::chrono::duration_cast<mms>(TimeFunction([&] { dispatcher.Execute(); }));
+        stats.dispatchTime = duration.count() * 1000;
 
 		PostDraw(core.GetTempMemoryMT(), dT);
 

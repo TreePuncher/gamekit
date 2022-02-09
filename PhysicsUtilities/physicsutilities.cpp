@@ -368,6 +368,8 @@ namespace FlexKit
             [this, dt = dt, &dispatcher]
             (auto& Data, iAllocator& threadAllocator)
             {
+                ProfileFunction();
+
                 const auto updatePeriod = 1.0 / updateFrequency;
 
                 while (acc > updatePeriod)
@@ -824,6 +826,8 @@ namespace FlexKit
             [&](auto& builder, auto& data){},
             [mouseInput, dT](TPC_Update& data, iAllocator& threadAllocator)
             {
+                ProfileFunction();
+
                 for (auto& controller : CameraControllerComponent::GetComponent())
                     controller.componentData.Update(mouseInput, dT);
             });

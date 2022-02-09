@@ -173,8 +173,10 @@ namespace FlexKit
 
 		struct FrameStats
 		{
+            double dispatchTime;
 			double t;
 			double fpsT;
+            double dT;
 			size_t fps;
 			size_t fpsCounter;
 			size_t objectsDrawnLastFrame;

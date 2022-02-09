@@ -9,6 +9,45 @@
 using namespace std::chrono_literals;
 
 
+/************************************************************************************************/
+
+
+bool gltfImporter::Import(const std::string fileDir) 
+{
+    if (!std::filesystem::exists(fileDir))
+        return false;
+
+    FlexKit::MetaDataList meta;
+    auto resources = FlexKit::CreateSceneFromGlTF(fileDir, meta);
+
+    for (auto& resource : resources)
+    {
+        if (SceneResourceTypeID == resource->GetResourceTypeID())
+        {
+            EditorScene_ptr gameScene = std::make_shared<EditorScene>();
+
+            gameScene->sceneResource = std::static_pointer_cast<FlexKit::SceneResource>(resource);
+
+            for (auto& dependentResource : resources)
+                if (dependentResource != resource)
+                    gameScene->sceneResources.push_back(std::make_shared<ProjectResource>(dependentResource));
+
+
+            project.AddScene(gameScene);
+            project.AddResource(resource);
+        }
+        else
+            project.AddResource(resource);
+    }
+
+    return true;
+}
+
+
+/************************************************************************************************/
+
+
+
 EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 	qtApp               { IN_qtApp },
 	editorRenderer      { fkApplication.PushState<EditorRenderer>(fkApplication, IN_qtApp) },

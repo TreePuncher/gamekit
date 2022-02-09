@@ -416,8 +416,6 @@ namespace FlexKit
 
 	FLEXKITAPI inline void RunTask(iWork& work)
 	{
-        ProfileFunction();
-
         std::unique_ptr<StackAllocator> allocator;
 
         if (localAllocators.empty())
@@ -456,12 +454,15 @@ namespace FlexKit
 
 		void Release() noexcept
 		{
+            auto temp = allocator;
 			this->~LambdaWork();
-			allocator->free(this);
+            temp->free(this);
 		}
 
 		void Run(iAllocator& allocator) override
 		{
+            ProfileFunction();
+
 			Callback(allocator);
 		}
 
@@ -647,7 +648,6 @@ namespace FlexKit
 			operation = std::move(rhs.operation);
 		}
 
-
 		template<typename ... TY_ARGS>
 		decltype(auto) operator ()(TY_ARGS&& ... args)
 		{
@@ -680,8 +680,15 @@ namespace FlexKit
         const size_t    blockSize,
         FN_TY           task)
     {
-        const size_t        taskCount   = std::distance(begin, end);
-        const size_t        threadCount = Max(taskCount / blockSize, 1);
+        ProfileFunction();
+
+        const size_t taskCount = std::distance(begin, end);
+
+        const size_t temp           = taskCount / blockSize;
+        const size_t temp2          = taskCount % blockSize != 0;
+        const size_t threadCount    = Max(temp + temp2, 1);
+
+
 
         struct Task : public iWork
         {
@@ -690,27 +697,27 @@ namespace FlexKit
             ITERATOR begin   = 0;
             ITERATOR end     = 0;
 
-            FN_TY*      task_FN = nullptr;
+            FN_TY* task_FN;
 
             Task() : iWork{ nullptr } {}
 
-            Task(
-                ITERATOR IN_begin, ITERATOR IN_end, FN_TY* IN_FN) :
-                    iWork   { nullptr },
-                    begin   { IN_begin  },
-                    end     { IN_end    },
-                    task_FN { IN_FN     }
-            {}
+            Task(ITERATOR IN_begin, ITERATOR IN_end, FN_TY* IN_FN) :
+                    iWork       { nullptr },
+                    begin       { IN_begin  },
+                    end         { IN_end    },
+                    task_FN     { IN_FN     }
+            {
+                int x = 0;
+            }
 
             ~Task(){}
 
             void Run(iAllocator& threadLocalAllocator) final
             {
-                std::for_each(begin, end,
-                    [&](auto& element)
-                    {
-                        (*task_FN)(element, threadLocalAllocator);
-                    });
+                ProfileFunction();
+
+                for(auto I = begin; I < end; I++)
+                    (*task_FN)(*I, threadLocalAllocator);
             }
 
             void Release() final
@@ -724,16 +731,21 @@ namespace FlexKit
             Vector<Task*> tasks{&allocator, threadCount};
 
             for (size_t I = 0; I < threadCount; ++I)
-                tasks.emplace_back(
+            {
+                auto workItem =
                     &allocator.allocate<Task>(
-                        begin + I * threadCount,
-                        Min(begin + (I + 1) * threadCount, end),
-                        &task));
+                        begin + I * blockSize,
+                        begin + Min((I + 1) * blockSize, taskCount),
+                        &task);
+
+                tasks.emplace_back(workItem);
+                barrier.AddWork(*workItem);
+            }
 
             for (auto& task : tasks)
                 threads.AddWork(task);
 
-            barrier.Wait();
+            barrier.Join();
         }
         else
             std::for_each(begin, end,

@@ -301,98 +301,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline void SetBoundingSphereFromMesh(GameObject& go)
-	{
-		Apply(
-			go,
-			[&]( SceneVisibilityView&	visibility,
-			    BrushView&			    brush)
-			{
-                auto boundingSphere = brush.GetBoundingSphere();
-				visibility.SetBoundingSphere(boundingSphere);
-			});
-	}
-
-
-    /************************************************************************************************/
-
-
-    inline void SetBoundingSphereRadius(GameObject& go, const float radius)
-    {
-        Apply(
-            go,
-            [&](SceneVisibilityView& visibility)
-            {
-                visibility.SetBoundingSphere(BoundingSphere{ 0, 0, 0, radius });
-            });
-    }
-
-
-    /************************************************************************************************/
-
-
-	inline void SetBoundingSphereFromLight(GameObject& go)
-	{
-		Apply(
-			go,
-			[](	SceneVisibilityView&    visibility,
-				PointLightView&	        pointLight)
-			{
-				visibility.SetBoundingSphere({ 0, 0, 0, pointLight.GetRadius() });
-			});
-	}
-
-    inline void SetTransparent(GameObject& go, const bool tranparent)
-    {
-        Apply(
-            go,
-            [&](SceneVisibilityView& visibility)
-            {
-                visibility.SetTransparency(tranparent);
-            });
-    }
-
-
-    /************************************************************************************************/
-
-
-    inline BoundingSphere GetBoundingSphereFromMesh(GameObject& go)
-    {
-        const auto Scale = GetScale(go).Max();
-
-        return Apply(
-            go,
-            [&](BrushView& brushView)
-            {
-                auto boundingSphere = brushView.GetBoundingSphere();
-                auto pos            = GetPositionW(brushView.GetBrush().Node);
-
-                return BoundingSphere{ pos * Scale, boundingSphere.w * Scale };
-            },
-            []()
-            {
-                return BoundingSphere{ 0, 0, 0, 0 };
-            });
-    }
-
-    inline BoundingSphere GetBoundingSphere(GameObject& go)
-    {
-
-        return Apply(
-            go,
-            [&](SceneVisibilityView& visibility)
-            {
-                auto pos    = GetWorldPosition(go);
-                auto scale  = GetScale(go).Max();
-                auto bs     = visibility.GetBoundingSphere();
-
-                return BoundingSphere{bs.xyz() + pos, bs.w * scale };
-            },
-            []()
-            {
-                return BoundingSphere{ 0, 0, 0, 0 };
-            });
-    }
+    void             SetBoundingSphereFromMesh(GameObject& go);
+    void             SetBoundingSphereRadius(GameObject& go, const float radius);
+    void             SetBoundingSphereFromLight(GameObject& go);
+    void             SetTransparent(GameObject& go, const bool tranparent);
+    BoundingSphere   GetBoundingSphereFromMesh(GameObject& go);
+    BoundingSphere   GetBoundingSphere(GameObject& go);
 
 
 	/************************************************************************************************/
@@ -689,23 +603,7 @@ namespace FlexKit
     using PointLightShadowMapView   = PointLightShadowMap::View;
 
 
-    inline void EnablePointLightShadows(GameObject& gameObject)
-    {
-        if (!Apply(gameObject,
-            [](PointLightShadowMapView& pointLight){ return true; }, []{ return false; }))
-        {
-            Apply(gameObject,
-                [&](PointLightView& pointLight)
-                {
-                    gameObject.AddView<PointLightShadowMapView>(
-                        _PointLightShadowCaster{
-                            pointLight,
-                            pointLight.GetNode()
-                        }
-                    );
-                });
-        }
-    }
+    void EnablePointLightShadows(GameObject& gameObject);
 
 
 }	/************************************************************************************************/

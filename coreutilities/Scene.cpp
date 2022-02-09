@@ -196,6 +196,111 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    void SetBoundingSphereFromMesh(GameObject& go)
+	{
+		Apply(
+			go,
+			[&]( SceneVisibilityView&	visibility,
+			    BrushView&			    brush)
+			{
+                auto boundingSphere = brush.GetBoundingSphere();
+				visibility.SetBoundingSphere(boundingSphere);
+			});
+	}
+
+
+    /************************************************************************************************/
+
+
+    void SetBoundingSphereRadius(GameObject& go, const float radius)
+    {
+        Apply(
+            go,
+            [&](SceneVisibilityView& visibility)
+            {
+                visibility.SetBoundingSphere(BoundingSphere{ 0, 0, 0, radius });
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+	void SetBoundingSphereFromLight(GameObject& go)
+	{
+		Apply(
+			go,
+			[](	SceneVisibilityView&    visibility,
+				PointLightView&	        pointLight)
+			{
+				visibility.SetBoundingSphere({ 0, 0, 0, pointLight.GetRadius() });
+			});
+	}
+
+
+    /************************************************************************************************/
+
+
+    void SetTransparent(GameObject& go, const bool tranparent)
+    {
+        Apply(
+            go,
+            [&](SceneVisibilityView& visibility)
+            {
+                visibility.SetTransparency(tranparent);
+            });
+    }
+
+
+    /************************************************************************************************/
+
+    
+    BoundingSphere GetBoundingSphereFromMesh(GameObject& go)
+    {
+        const auto Scale = GetScale(go).Max();
+
+        return Apply(
+            go,
+            [&](BrushView& brushView)
+            {
+                auto boundingSphere = brushView.GetBoundingSphere();
+                auto pos            = GetPositionW(brushView.GetBrush().Node);
+
+                return BoundingSphere{ pos * Scale, boundingSphere.w * Scale };
+            },
+            []()
+            {
+                return BoundingSphere{ 0, 0, 0, 0 };
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    BoundingSphere GetBoundingSphere(GameObject& go)
+    {
+
+        return Apply(
+            go,
+            [&](SceneVisibilityView& visibility)
+            {
+                auto pos    = GetWorldPosition(go);
+                auto scale  = GetScale(go).Max();
+                auto bs     = visibility.GetBoundingSphere();
+
+                return BoundingSphere{bs.xyz() + pos, bs.w * scale };
+            },
+            []()
+            {
+                return BoundingSphere{ 0, 0, 0, 0 };
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
     void BrushComponentEventHandler::OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
         auto node = GetSceneNode(gameObject);
@@ -227,7 +332,7 @@ namespace FlexKit
 
         memcpy(&pointLight, buffer, sizeof(pointLight));
 
-        gameObject.AddView<PointLightView>(pointLight.K, pointLight.IR[0], pointLight.IR[1], GetSceneNode(gameObject));
+        gameObject.AddView<PointLightView>(pointLight.K, pointLight.IR[0], std::sqrt(pointLight.IR[0]), GetSceneNode(gameObject));
         SetBoundingSphereFromLight(gameObject);
 
         EnablePointLightShadows(gameObject);
@@ -1066,7 +1171,7 @@ namespace FlexKit
                             }
                             const auto flags = GetFlags(visables[PVS[I]].node);
 
-                            //if (flags & (SceneNodes::UPDATED | SceneNodes::DIRTY))
+                            if (flags & (SceneNodes::UPDATED | SceneNodes::DIRTY))
                             {
                                 markDirty();
                                 return;
@@ -1114,6 +1219,8 @@ namespace FlexKit
             ]
             (PointLightUpdate_DATA& data, iAllocator& threadAllocator)
 			{
+                ProfileFunction();
+
                 WorkBarrier     barrier{ threads, &threadAllocator };
                 Vector<Task*>   taskList{ &threadAllocator, visablePointLights.size() };
 
@@ -1130,6 +1237,7 @@ namespace FlexKit
                 barrier.Join();
                 
                 auto& lights = PointLightComponent::GetComponent();
+
                 for (auto visableLight : visablePointLights)
                 {
                     auto& light = lights[visableLight];
@@ -1220,7 +1328,7 @@ namespace FlexKit
 
         if (material != InvalidHandle_t)
         {
-            auto textures           = MaterialComponent::GetComponent()[material].Textures;
+            const auto& textures    = MaterialComponent::GetComponent()[material].Textures;
             constants.textureCount  = (uint32_t)textures.size();
 
             for (auto& texture : textures)
@@ -1244,6 +1352,28 @@ namespace FlexKit
 		EPS->Joints = nullptr;
 		EPS->CurrentPose = nullptr;
 	}
+
+
+    /************************************************************************************************/
+
+
+    void EnablePointLightShadows(GameObject& gameObject)
+    {
+        if (!Apply(gameObject,
+            [](PointLightShadowMapView& pointLight){ return true; }, []{ return false; }))
+        {
+            Apply(gameObject,
+                [&](PointLightView& pointLight)
+                {
+                    gameObject.AddView<PointLightShadowMapView>(
+                        _PointLightShadowCaster{
+                            pointLight,
+                            pointLight.GetNode()
+                        }
+                    );
+                });
+        }
+    }
 
 
 }	/************************************************************************************************/

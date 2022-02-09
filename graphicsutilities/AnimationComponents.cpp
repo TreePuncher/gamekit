@@ -334,6 +334,8 @@ namespace FlexKit
             [](auto&, auto&) {},
             [dT = dT](auto&, iAllocator& temporaryAllocator)
             {
+                ProfileFunction();
+
                 auto& animatorComponent = AnimatorComponent::GetComponent();
 
                 for (AnimatorComponent::AnimatorState& animator : animatorComponent.animators)
@@ -431,6 +433,8 @@ namespace FlexKit
 			},
 			[](GatherSkinnedTaskData& data, iAllocator& threadAllocator)
 			{
+                ProfileFunction();
+
                 FK_LOG_9("Start gather skinned objects.\n");
 
                 GatherSkinned(data.scene, data.camera, data.skinned);
@@ -447,6 +451,8 @@ namespace FlexKit
 
     void UpdatePose(PoseState& pose, iAllocator& tempMemory)
     {
+        ProfileFunction();
+
         Skeleton* skeleton      = pose.Sk;
         const size_t jointCount = skeleton->JointCount;
 
@@ -495,6 +501,8 @@ namespace FlexKit
 			},
 			[](UpdatePosesTaskData& data, iAllocator& threadAllocator)
 			{
+                ProfileFunction();
+
                 FK_LOG_9("Start Pose Updates.\n");
 
                 for (auto& skinnedObject : *data.skinned)
@@ -546,6 +554,8 @@ namespace FlexKit
             [](auto&, auto&) {},
             [&](auto&, iAllocator& allocator)
             {
+                ProfileFunction();
+
                 auto& IKControllers = FABRIKComponent::GetComponent();
                 using IKInstance    = FABRIKComponent::FABRIK;
 
@@ -557,6 +567,8 @@ namespace FlexKit
                     1,
                     [&](IKInstance& IKController, iAllocator& allocator)
                     {
+                        ProfileFunction();
+
                         auto* poseState   = GetPoseState(*IKController.gameObject);
                         auto* skeleton    = poseState->Sk;
 
