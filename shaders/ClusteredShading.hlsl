@@ -28,6 +28,9 @@ cbuffer LocalConstants : register(b1)
 }
 
 
+RWTexture2D<float4> renderTarget : register(u0);
+
+
 Texture2D<float4> AlbedoBuffer      : register(t0);
 Texture2D<float4> MRIABuffer        : register(t1); // metallic, roughness, IOR, anisotropic
 Texture2D<float4> NormalBuffer      : register(t2);
@@ -160,14 +163,15 @@ float3 SampleFocusedRay(float theta, float2 seed)
     return (cos(phi) * r, sin(phi) * r, u1 );
 }
 
-float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
+[numthreads(16, 16, 1)]
+void ClusteredShading(uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
 {
-    const float2 SampleCoord    = IN.Position;
-    const uint2  px             = IN.Position.xy;
+    const float2 SampleCoord    = ID.xy;
+    const uint2  px             = ID.xy;
     const float  depth          = DepthBuffer.Load(uint3(px.xy, 0));
 
     if (depth == 1.0f) 
-        discard;
+        return;
 
     const uint lightListKey     = lightMap.Load(uint3(px.xy, 0));
     const uint2 lightList       = lightLists[lightListKey];
@@ -177,7 +181,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     const float4 Albedo         = AlbedoBuffer.Load(uint3(px.xy, 0));
 
     if (lightListKey == -1)
-        return pow(float4(ambientLight * Albedo.xyz, 1), 2.2f);
+        return;// pow(float4(ambientLight * Albedo.xyz, 1), 2.2f);
 
     const float4 N              = NormalBuffer.Load(uint3(px.xy, 0));
 	const float4 MRIA			= MRIABuffer.Load(uint3(px.xy, 0));
@@ -227,7 +231,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
             const float3 specular = F_r(V, H, L, N.xyz, roughness);
         #endif
 
-        #if 0// skip shadowmaping
+        #if 1// skip shadowmaping
             const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
             color += max(float4(colorSample, 0 ), 0.0f);
         #else
@@ -250,7 +254,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 
             const float3x3 m = transpose(float3x3(R, Up, L));
 
-            const int sampleCount = 1;
+            const int sampleCount = 11;
             const float3 sampleVectors[] =
             {
                 float3( 0.00f, 0.00f, 1),
@@ -295,7 +299,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
                 const float shadowSample 		= shadowMaps[pointLightIdx].Sample(BiLinear, L_Offset);
                 const float depth 				= lightPosition_PS.z;
 
-                const float minBias             = 0.00000015f;
+                const float minBias             = 0.0000004f;
                 const float maxBias             = 0.00000750f;
                 const float bias                = maxBias * saturate(tan(acos(dot(N_WT, L_WS)))) + minBias;
 
@@ -366,8 +370,8 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     //return pow(UV.y, 1.0f); 
     //return pow(1 - UV.y, 2.2f); 
 #endif
-    
-	return pow(color, 2.2f);
+
+    renderTarget[px] = pow(color, 2.2f);
 }
 
 

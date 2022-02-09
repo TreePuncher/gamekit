@@ -61,9 +61,7 @@ MainMenu::MainMenu(
 /************************************************************************************************/
 
 
-void MainMenu::Update(
-	EngineCore& core,
-	UpdateDispatcher& dispatcher, 
+void MainMenu::Update(EngineCore& core, UpdateDispatcher& dispatcher, 
 	double dT)
 {
     FK_ASSERT(0);

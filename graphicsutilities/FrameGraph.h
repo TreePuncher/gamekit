@@ -96,6 +96,7 @@ namespace FlexKit
 		Virtual_Created,
         Virtual_Released,
         Virtual_Temporary,
+        Virtual_Reused,
 	};
 
 	struct FrameObject
@@ -112,6 +113,7 @@ namespace FlexKit
 		VirtualResourceState    virtualState    = VirtualResourceState::NonVirtual;
 		FrameGraphNode*         lastModifier    = nullptr;
         PoolAllocatorInterface* pool            = nullptr;
+        uint32_t                resourceFlags   = 0;
 
 		union
 		{
@@ -897,13 +899,22 @@ namespace FlexKit
         ResourceHandle overlap;
     };
 
+
+    struct ResusableResourceQuery
+    {
+        FrameResourceHandle object = InvalidHandle_t;
+        bool                success = false;
+    };
+
 	FLEXKITAPI class FrameGraphNode
 	{
 	public:
 		typedef void (*FN_NodeAction)(FrameGraphNode& node, FrameResources& Resources, Context& ctx, iAllocator& tempAllocator);
 
         FrameGraphNode(FN_NodeAction IN_action, void* IN_nodeData, iAllocator* IN_allocator = nullptr);
-        FrameGraphNode(const FrameGraphNode& RHS);
+        FrameGraphNode(FrameGraphNode&& RHS);
+
+        FrameGraphNode(const FrameGraphNode& RHS) = delete;
 
 		~FrameGraphNode() = default;
 
@@ -915,6 +926,8 @@ namespace FlexKit
 		void AcquireResources       (FrameResources& resources, Context& ctx);
 		void ReleaseResources       (FrameResources& resources, Context& ctx);
 
+
+        ResusableResourceQuery FindReuseableResource(PoolAllocatorInterface& allocator, size_t allocationSize, uint32_t flags, FrameResources& handler);
 
 		Vector<FrameGraphNode*>		GetNodeDependencies()	{ return (nullptr); } 
 
@@ -1284,6 +1297,8 @@ namespace FlexKit
 					Context&        ctx,
 					iAllocator&     tempAllocator)
 					{
+                        ProfileFunction();
+
 						NodeData& data = *reinterpret_cast<NodeData*>(node.nodeData);
 
 						node.HandleBarriers(resources, ctx);

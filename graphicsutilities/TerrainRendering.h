@@ -447,6 +447,8 @@ namespace FlexKit
 				},
 				[camera, maxPatchEdgeSize, this](TerrainUpdate& data, iAllocator& threadAllocator)
 				{
+                    ProfileFunction();
+
 					FK_LOG_9("Begin Terrain Patch Generation");
 
 					auto frustum	= GetFrustum(camera);

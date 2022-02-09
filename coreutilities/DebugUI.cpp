@@ -309,9 +309,15 @@ namespace FlexKit
                 reserveVB,
                 reserveCB,
                 WH },
-		    [](auto& builder, DrawImGui_data& data) {},
+		    [&](auto& builder, DrawImGui_data& data)
+            {
+                builder.RenderTarget(renderTarget);
+            },
 		    [drawData, renderTarget](DrawImGui_data& pass, FlexKit::ResourceHandler& frameResources, FlexKit::Context& ctx, auto& allocator)
 		    {
+                if (!drawData)
+                    return;
+
                 ctx.BeginEvent_DEBUG("ImGui");
 
 			    const auto cmdCount     = drawData->CmdListsCount;

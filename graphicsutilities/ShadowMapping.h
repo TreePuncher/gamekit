@@ -27,6 +27,8 @@ namespace FlexKit
 
 	struct LocalShadowMapPassData
 	{
+        size_t                                  threadIdx;
+        size_t                                  threadTotal;
         const Vector<PointLightHandle>&         pointLightShadows;
 		ShadowMapPassData&                      sharedData;
 		ReserveConstantBufferFunction           reserveCB;
@@ -71,10 +73,11 @@ namespace FlexKit
         {
             rootSignature.AllowIA = true;
             rootSignature.AllowSO = false;
+            rootSignature.SetParameterAsCBV(1,      0, 0, PIPELINE_DEST_VS);
+            rootSignature.SetParameterAsUINT(2, 16, 1, 0, PIPELINE_DEST_VS);
+            //rootSignature.SetParameterAsCBV(2,      1, 0, PIPELINE_DEST_VS);
+            rootSignature.SetParameterAsCBV(3,      2, 0, PIPELINE_DEST_VS);
             rootSignature.SetParameterAsUINT(0, 20, 3, 0, PIPELINE_DEST_VS);
-            rootSignature.SetParameterAsCBV(1, 0, 0, PIPELINE_DEST_VS);
-            rootSignature.SetParameterAsCBV(2, 1, 0, PIPELINE_DEST_VS);
-            rootSignature.SetParameterAsCBV(3, 2, 0, PIPELINE_DEST_VS);
             rootSignature.Build(renderSystem, &allocator);
 
             renderSystem.RegisterPSOLoader(SHADOWMAPPASS,          { &renderSystem.Library.RS6CBVs4SRVs, [&](RenderSystem* rs) { return CreateShadowMapPass(rs); }});

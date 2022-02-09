@@ -392,6 +392,8 @@ namespace FlexKit
 
 	void LoadTask::Run(iAllocator& threadLocalAllocator)
 	{
+        ProfileFunction();
+
 		std::chrono::system_clock Clock;
 		auto Before = Clock.now();
 

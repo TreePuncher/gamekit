@@ -101,9 +101,13 @@ WorldStateUpdate ClientWorldStateMangager::Update(EngineCore& core, UpdateDispat
             },
             [&, dT = dT](auto& data, iAllocator& threadAllocator)
             {
+                ProfileFunction();
+
                 fixedUpdate(dT,
                     [this, dT = dT](auto dT)
                     {
+                        ProfileFunction();
+
                         // Send Player Updates
                         PlayerFrameState localState = GetPlayerFrameState(localPlayer);
                         currentInputState.mousedXY  = base.renderWindow.mouseState.Normalized_dPos;

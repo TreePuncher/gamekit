@@ -143,6 +143,11 @@ namespace FlexKit
 
     struct LightBufferUpdate 
 	{
+        ~LightBufferUpdate()
+        {
+            ProfileFunction();
+        }
+
 		const Vector<PointLightHandle>&	visableLights;
 
 		CameraHandle			        camera;
@@ -237,6 +242,7 @@ namespace FlexKit
     constexpr PSOHandle GBUFFERPASS                     = PSOHandle(GetTypeGUID(GBUFFERPASS));
 	constexpr PSOHandle GBUFFERPASS_SKINNED             = PSOHandle(GetTypeGUID(GBUFFERPASS_SKINNED));
 	constexpr PSOHandle SHADINGPASS                     = PSOHandle(GetTypeGUID(SHADINGPASS));
+	constexpr PSOHandle SHADINGPASSCOMPUTE              = PSOHandle(GetTypeGUID(SHADINGPASSCOMPUTE));
 
     constexpr PSOHandle DEBUG_DrawBVH                   = PSOHandle(GetTypeGUID(DEBUG_DrawBVH1));
 
@@ -359,11 +365,12 @@ namespace FlexKit
         IndirectLayout gather;
         IndirectLayout draw;
 
-        static ID3D12PipelineState* CreateLightPassPSO              (RenderSystem* RS);
-        static ID3D12PipelineState* CreateGBufferPassPSO            (RenderSystem* RS);
-        static ID3D12PipelineState* CreateGBufferSkinnedPassPSO     (RenderSystem* RS);
-        static ID3D12PipelineState* CreateDeferredShadingPassPSO    (RenderSystem* RS);
-        static ID3D12PipelineState* CreateComputeTiledDeferredPSO   (RenderSystem* RS);
+        static ID3D12PipelineState* CreateLightPassPSO                  (RenderSystem* RS);
+        static ID3D12PipelineState* CreateGBufferPassPSO                (RenderSystem* RS);
+        static ID3D12PipelineState* CreateGBufferSkinnedPassPSO         (RenderSystem* RS);
+        static ID3D12PipelineState* CreateDeferredShadingPassPSO        (RenderSystem* RS);
+        static ID3D12PipelineState* CreateDeferredShadingPassComputePSO (RenderSystem* RS);
+        static ID3D12PipelineState* CreateComputeTiledDeferredPSO       (RenderSystem* RS);
 
         static ID3D12PipelineState* CreateLight_DEBUGARGSVIS_PSO    (RenderSystem* RS);
         static ID3D12PipelineState* CreateLightBVH_PHASE1_PSO       (RenderSystem* RS);

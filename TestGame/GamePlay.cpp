@@ -402,6 +402,8 @@ UpdateTask& GameWorld::UpdateSpells(FlexKit::UpdateDispatcher& dispathcer, Objec
         },
         [=, &objectPool = objectPool](auto& _, auto& allocator)
         {
+            ProfileFunction();
+
             auto& spellComponent = SpellComponent::GetComponent();
 
             Vector<GameObject*> freeList{ &allocator };

@@ -5,7 +5,7 @@
 #include "intersection.h"
 #include "MeshUtils.h"
 #include "DDSUtilities.h"
-
+#include "ThreadUtilities.h"
 
 #include "AnimationUtilities.h"
 #include "graphics.h"
@@ -2017,9 +2017,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    void Context::SetGraphicsConstantValue(size_t idx, size_t valueCount, void* data_ptr, size_t offset)
+    void Context::SetGraphicsConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset)
     {
-        DeviceContext->SetGraphicsRoot32BitConstants(0, valueCount, data_ptr, offset);
+        DeviceContext->SetGraphicsRoot32BitConstants(idx, valueCount, data_ptr, offset);
     }
 
 
@@ -4151,7 +4151,7 @@ namespace FlexKit
         HR = D3D12GetDebugInterface(__uuidof(ID3D12Debug5), (void**)&Debug); FK_ASSERT(SUCCEEDED(HR));
 #if USING( DEBUGGRAPHICS )
         Debug->EnableDebugLayer();
-        Debug->SetEnableSynchronizedCommandQueueValidation(true);
+        //Debug->SetEnableSynchronizedCommandQueueValidation(true);
         Debug->SetEnableAutoName(true);
 
 #if USING(DEBUGGPUVALIDATION)
@@ -4464,7 +4464,7 @@ namespace FlexKit
 	
 	void RenderSystem::_UpdateCounters()
 	{
-		Textures.UpdateLocks();
+		Textures.UpdateLocks(threads);
 
 		ConstantBuffers.DecrementLocks();
 
@@ -4662,6 +4662,15 @@ namespace FlexKit
         const auto tileSize = GetFormatTileSize(GetTextureFormat(handle));
 
         return WH / tileSize;
+    }
+
+
+    /************************************************************************************************/
+
+
+    uint2 RenderSystem::GetHeapOffset(ResourceHandle handle, uint subResourceID) const
+    {
+        return Textures.GetHeapOffset(handle, subResourceID);
     }
 
 
@@ -6613,7 +6622,8 @@ namespace FlexKit
 			TextureFormat2DXGIFormat(Desc.format),
 			Desc.MipLevels,
 			Desc.WH,
-			Handle
+			Handle,
+            { { Desc.placed.offset, 0 }, {}, {} }
 		};
 
         for (size_t I = 0; I < Desc.bufferCount; ++I) {
@@ -7128,14 +7138,26 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::UpdateLocks()
+	void TextureStateTable::UpdateLocks(ThreadManager& threads)
 	{
+        ProfileFunction();
+
+        Vector<ID3D12Resource*> freeList = { delayRelease.Allocator };
+
 		for (auto& res : delayRelease)
 		{
-			res.counter--;
-			if (!res.counter)
-				res.resource->Release();
+            if (!--res.counter)
+                freeList.push_back(res.resource);
 		}
+
+        auto& workItem = FlexKit::CreateWorkItem(
+            [freeList = std::move(freeList)](auto& threadLocalAllocator)
+            {
+                for (auto res : freeList)
+                    res->Release();
+            }, delayRelease.Allocator);
+
+        threads.AddBackgroundWork(workItem);
 
 		delayRelease.erase(
 			std::remove_if(
@@ -7202,6 +7224,17 @@ namespace FlexKit
     {
         auto  Idx			= Handles[Handle];
 		return UserEntries[Idx].resourceSize;
+    }
+
+
+    /************************************************************************************************/
+
+
+    uint2 TextureStateTable::GetHeapOffset(ResourceHandle Handle, uint subResourceIdx) const
+    {
+        auto Idx = Handles[Handle];
+
+        return Resources[UserEntries[Idx].resourceSize].heapRange[subResourceIdx];
     }
 
 
@@ -9426,6 +9459,9 @@ namespace FlexKit
 
     MemoryPoolAllocator::HeapAllocation MemoryPoolAllocator::GetMemory(const size_t requestBlockCount, const uint64_t frameID, const uint64_t flags)
     {
+        ProfileFunction();
+        std::scoped_lock localLock{ m };
+
         std::sort(freeRanges.begin(), freeRanges.end());
 
         auto _GetMemory = [&]() -> HeapAllocation {
@@ -9437,7 +9473,7 @@ namespace FlexKit
                 if (range.blockCount >= requestBlockCount)
                 {
                     if  (range.flags == Clear ||
-                        (range.flags | Locked && range.frameID + 3 < frameID) ||
+                        (range.flags == Locked && range.frameID + 3 < frameID) ||
                         (range.flags | AllowReallocation && range.frameID == frameID))
                     {
                         MemoryPoolAllocator::HeapAllocation heapAllocation = {
@@ -9512,12 +9548,12 @@ namespace FlexKit
 
     AcquireResult MemoryPoolAllocator::Acquire(GPUResourceDesc desc, bool temporary)
     {
-        std::scoped_lock localLock{ m };
+        ProfileFunction();
 
         auto frameIdx   = renderSystem.GetCurrentFrame();
         auto size       = renderSystem.GetAllocationSize(desc);
 
-        const size_t requestedBlockCount = size / blockSize;
+        const size_t requestedBlockCount = (size / blockSize) + ((size % blockSize == 0) ? 0 : 1);
         auto allocation = GetMemory(requestedBlockCount, frameIdx, Clear);
 
         if (allocation.offset / blockSize > blockCount) {
@@ -9540,6 +9576,7 @@ namespace FlexKit
         if (resource != InvalidHandle_t) {
             renderSystem.SetDebugName(resource, "Acquire");
 
+            std::scoped_lock localLock{ m };
             allocations.push_back({
                 (uint32_t)(allocation.offset / blockSize),
                 (uint32_t)(allocation.size / blockSize),
@@ -9557,6 +9594,76 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    AcquireResult MemoryPoolAllocator::Recycle(ResourceHandle resourceToRecycle, GPUResourceDesc desc)
+    {
+        ProfileFunction();
+
+        std::scoped_lock localLock{ m };
+
+        auto frameIdx                       = renderSystem.GetCurrentFrame();
+        auto size                           = renderSystem.GetAllocationSize(desc);
+        const size_t requestedBlockCount    = (size / blockSize) + (size % blockSize == 0) ? 0 : 1;
+
+        if (auto res = std::find_if(std::begin(freeRanges), std::end(freeRanges),
+            [&](auto r) { return r.priorAllocation == resourceToRecycle; }); res != std::end(freeRanges))
+        {
+            if (res->flags | AllowReallocation)
+            {
+                auto rangeDescriptor = *res;
+
+                if (res->blockCount == requestedBlockCount)
+                {
+                    freeRanges.remove_unstable(res);
+                }
+                else if(res->blockCount > requestedBlockCount)
+                {
+                    res->offset     += requestedBlockCount;
+                    res->blockCount -= requestedBlockCount;
+                }
+                else if (res->blockCount < requestedBlockCount)
+                    return { InvalidHandle_t, InvalidHandle_t }; // ERROR!?
+
+
+                MemoryPoolAllocator::HeapAllocation heapAllocation = {
+                        rangeDescriptor.offset * blockSize,
+                        requestedBlockCount * blockSize,
+                        (rangeDescriptor.priorAllocation != InvalidHandle_t &&
+                            rangeDescriptor.flags | AllowReallocation &&
+                            rangeDescriptor.frameID == frameIdx) ?
+                        rangeDescriptor.priorAllocation : InvalidHandle_t
+                };
+                
+                desc.bufferCount    = 1;
+                desc.allocationType = ResourceAllocationType::Placed;
+                desc.placed.heap    = heap;
+                desc.placed.offset  = heapAllocation.offset;
+
+                ResourceHandle resource = renderSystem.CreateGPUResource(desc);
+                if (resource != InvalidHandle_t) {
+                    renderSystem.SetDebugName(resource, "Acquire");
+
+                    allocations.push_back({
+                        (uint32_t)(rangeDescriptor.offset / blockSize),
+                        (uint32_t)(requestedBlockCount),
+                        frameIdx,
+                        Temporary,
+                        resource });
+                }
+                else
+                    __debugbreak();
+
+                return { resource, resourceToRecycle };
+
+            }
+        }
+
+        return { InvalidHandle_t, InvalidHandle_t };
+    }
+
+
+    /************************************************************************************************/
+
+
     uint32_t MemoryPoolAllocator::Flags() const
     {
         return flags;
@@ -9568,6 +9675,8 @@ namespace FlexKit
 
     void MemoryPoolAllocator::Release(ResourceHandle handle, const bool freeResourceImmedate, const bool allowImmediateReuse)
     {
+        std::scoped_lock localLock{ m };
+
         auto res = find(allocations,
             [&](auto& e)
             {
@@ -9581,7 +9690,6 @@ namespace FlexKit
             if (res->offset > blockCount || res->offset + res->blockCount > blockCount)
                 __debugbreak();
 #endif
-            std::scoped_lock localLock{ m };
 
 
             freeRanges.push_back(

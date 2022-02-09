@@ -276,6 +276,9 @@
     <ClInclude Include="..\coreutilities\RuntimeComponentIDs.h">
       <Filter>Headers\coreutilities</Filter>
     </ClInclude>
+    <ClInclude Include="Playground.hpp">
+      <Filter>Source\TestGame</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\coreutilities\AllSourceFiles.cpp">

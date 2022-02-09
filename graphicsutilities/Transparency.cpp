@@ -177,6 +177,8 @@ namespace FlexKit
 			},
             [=](OITPass& data, ResourceHandler& resources, Context& ctx, iAllocator& tempAllocator)
             {
+                ProfileFunction();
+
                 const RootSignature&    rootSig     = resources.renderSystem().Library.RSDefault;
                 auto&                   materials   = MaterialComponent::GetComponent();
 
@@ -320,6 +322,8 @@ namespace FlexKit
             },
             [=](OITBlend& data, ResourceHandler& resources, Context& ctx, iAllocator& tempAllocator)
             {
+                ProfileFunction();
+
                 ctx.BeginEvent_DEBUG("OIT - Blend");
 
                 ctx.SetPipelineState(resources.GetPipelineState(OITBLEND));

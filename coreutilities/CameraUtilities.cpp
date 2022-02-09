@@ -256,6 +256,8 @@ namespace FlexKit
 			},
 			[&orbitCamera](auto& data, iAllocator& threadAllocator)
 			{
+                ProfileFunction();
+
 				FK_LOG_9("OrbitCamera Update");
 
 				orbitCamera.Update(data.mouseState, data.dt);

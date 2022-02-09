@@ -110,8 +110,6 @@ bool HandleEvents(PlayerInputState& keyState, Event evt);
 /************************************************************************************************/
 
 
-using RunOnceDrawEvent = FlexKit::TypeErasedCallable<64, void>;
-
 
 class LocalGameState : public FrameworkState
 {
@@ -162,7 +160,7 @@ public:
 
     void OnGameEnd();
 
-    Vector<RunOnceDrawEvent>        runOnceDrawEvents;
+    RunOnceQueue                    runOnceDrawEvents;
 
     Animation*                      testAnimationResource = nullptr;
     BaseState&                      base;

@@ -5,6 +5,7 @@
 #include "Input.h"
 #include "graphics.h"
 #include <windows.h>
+#include "ProfilingUtilities.h"
 
 #pragma comment(lib, "Winmm.lib")
 
@@ -47,6 +48,8 @@ namespace FlexKit
 
         bool Present(const uint32_t syncInternal = 0, const uint32_t flags = 0) override
         {
+            ProfileFunction();
+
             if (!swapChain)
                 return false;
 

@@ -69,6 +69,8 @@ namespace FlexKit
 			    },
 			    [this](auto& Data, iAllocator& threadAllocator)
 			    {
+                    ProfileFunction();
+
 				    FK_LOG_9("Updating Cameras");
 
 				    size_t End = Cameras.size();

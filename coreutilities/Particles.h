@@ -155,6 +155,8 @@ namespace FlexKit
                 [this](auto& builder, auto& data){},
                 [&, &threads = threads, dT = dT](auto& data, auto& allocator)
                 {
+                    ProfileFunction();
+
                     Vector<TY_ParticleData> prev{ &allocator };
                     prev = particles;
                     particles.clear();
@@ -423,6 +425,8 @@ namespace FlexKit
             [](auto&, auto& data){},
             [=](auto&, auto& threadMemory)
             {
+                ProfileFunction();
+
                 auto& particleEmitters = ParticleEmitterComponent::GetComponent();
 
                 for (auto& emitter : particleEmitters)

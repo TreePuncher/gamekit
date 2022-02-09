@@ -921,6 +921,8 @@ namespace FlexKit
 
 				void Run(iAllocator& threadAllocator) override
 				{
+                    ProfileFunction();
+
 					task->Run(threadAllocator);
 				}
 
@@ -1034,7 +1036,7 @@ namespace FlexKit
                 if (node->isLeaf())
                     threads->AddWork(node->threadTask);
 
-			barrier.Join();
+			barrier.JoinLocal();
 
             nodes.clear();
             taskMap.clear();

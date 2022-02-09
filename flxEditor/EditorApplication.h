@@ -26,46 +26,10 @@ public:
 	gltfImporter(EditorProject& IN_project) :
 		project         { IN_project }{}
 
-	bool Import(const std::string fileDir) override
-	{
-		if (!std::filesystem::exists(fileDir))
-			return false;
+    bool Import(const std::string fileDir) override;
 
-		FlexKit::MetaDataList meta;
-		auto resources = FlexKit::CreateSceneFromGlTF(fileDir, meta);
-
-		for (auto& resource : resources)
-		{
-            if (SceneResourceTypeID == resource->GetResourceTypeID())
-            {
-                EditorScene_ptr gameScene = std::make_shared<EditorScene>();
-
-                gameScene->sceneResource = std::static_pointer_cast<FlexKit::SceneResource>(resource);
-
-                for (auto& dependentResource : resources)
-                    if (dependentResource != resource)
-                        gameScene->sceneResources.push_back(std::make_shared<ProjectResource>(dependentResource));
-
-
-                project.AddScene(gameScene);
-                project.AddResource(resource);
-            }
-			else
-				project.AddResource(resource);
-		}
-
-		return true;
-	}
-
-	std::string GetFileTypeName() override
-	{
-		return "glTF";
-	}
-
-	std::string GetFileExt() override
-	{
-		return "glb";
-	}
+	std::string GetFileTypeName()   override { return "glTF"; }
+	std::string GetFileExt()        override { return "glb"; }
 
 	EditorProject& project;
 };
@@ -206,11 +170,9 @@ struct SceneResourceViewer : public IResourceViewer
 
     void operator () (FlexKit::Resource_ptr resource) override
     {
-        auto& view = mainWindow.Get3DView();
-
-        for(auto& scene : project.scenes)
-            if(scene->sceneResource == resource)
-                view.SetScene(scene);
+        if (auto res = std::find_if(std::begin(project.scenes), std::end(project.scenes), [&](auto res) { return res->sceneResource == resource; });
+            res != std::end(project.scenes))
+                mainWindow.Get3DView().SetScene(*res);
     }
 
     EditorProject&      project;

@@ -480,6 +480,8 @@ namespace FlexKit
             },
             [=](TextureFeedbackPass_Data& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
+                ProfileFunction();
+
                 ctx.BeginEvent_DEBUG("Texture Feedback");
 
                 auto& brushes           = data.pvs.GetData().solid;
@@ -862,9 +864,10 @@ namespace FlexKit
 
         while ((end - 1)->TextureID == -1 && uniqueCount) { end--; uniqueCount--; }
 
-        if (uniqueCount && (requests + uniqueCount - 1)->TextureID > 0x20)
-            return;
-        
+#if 0// Doesn't seem to be an issue at the moment?
+        if (uniqueCount && (requests + uniqueCount - 1)->TextureID > 0xff)
+            DebugBreak();
+#endif   
 
         for (;itr < uniqueCount; ++itr)
         {

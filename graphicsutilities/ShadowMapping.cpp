@@ -188,32 +188,41 @@ namespace FlexKit
         return dispatcher.Add<AcquireShadowMapResources>(
             [&](UpdateDispatcher::UpdateBuilder& builder, AcquireShadowMapResources& data)
             {
+                ProfileFunction();
+
                 builder.AddInput(pointLightUpdate);
             },
             [&dirtyList = pointLightUpdate.GetData().dirtyList, &shadowMapAllocator = RTPool, &renderSystem = renderSystem]
             (AcquireShadowMapResources& data, iAllocator& threadAllocator)
             {
-                auto& lights = PointLightComponent::GetComponent();
+                ProfileFunction();
 
                 size_t idx = 0;
-                for (auto lightHandle : dirtyList)
-                {
-                    auto& light = lights[lightHandle];
 
-                    if (light.shadowMap != InvalidHandle_t) {
-                        shadowMapAllocator.Release(light.shadowMap, false, false);
-                        renderSystem.ReleaseResource(light.shadowMap);
-                    }
+                const auto begin = dirtyList.begin();
+                const auto end    = dirtyList.end();
 
-                    auto [shadowMap, _] = shadowMapAllocator.Acquire(GPUResourceDesc::DepthTarget({ 1024, 1024 }, DeviceFormat::D32_FLOAT, 6), false);
+                auto& lights = PointLightComponent::GetComponent();
+                Parallel_For(renderSystem.threads, threadAllocator, begin, end, 1,
+                    [&](auto lightHandle, iAllocator& threadAllocator)
+                    {
+                        ProfileFunction();
+
+                        auto& light = lights[lightHandle];
+
+                        if (light.shadowMap != InvalidHandle_t) {
+                            shadowMapAllocator.Release(light.shadowMap, false, false);
+                            renderSystem.ReleaseResource(light.shadowMap);
+                        }
+
+                        auto [shadowMap, _] = shadowMapAllocator.Acquire(GPUResourceDesc::DepthTarget({ 256, 256 }, DeviceFormat::D32_FLOAT, 6), false);
 
 #if USING(DEBUGGRAPHICS)
-                    auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.GetCurrentFrame(), idx++);
-                    renderSystem.SetDebugName(shadowMap, debugName.c_str());
+                        auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.GetCurrentFrame(), lightHandle);
+                        renderSystem.SetDebugName(shadowMap, debugName.c_str());
 #endif
-                    light.shadowMap = shadowMap;
-                }
-
+                        light.shadowMap = shadowMap;
+                    });
             });
     }
 
@@ -235,257 +244,260 @@ namespace FlexKit
 	{
 		auto& shadowMapPass = allocator->allocate<ShadowMapPassData>(ShadowMapPassData{ allocator->allocate<Vector<TemporaryFrameResourceHandle>>(allocator) });
 
-		frameGraph.AddNode<LocalShadowMapPassData>(
-				LocalShadowMapPassData{
-                    shadowMaps.GetData().pointLightShadows,
-					shadowMapPass,
-					reserveCB,
-                    reserveVB,
-                    additional
-				},
-				[&](FrameGraphNodeBuilder& builder, LocalShadowMapPassData& data)
-				{
-                    builder.AddDataDependency(cameraUpdate);
-                    builder.AddDataDependency(passes);
-                    builder.AddDataDependency(shadowMapAcquire);
-				},
-				[=](LocalShadowMapPassData& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
-				{
-                    auto& visableLights = data.pointLightShadows;
-                    auto& pointLights   = PointLightComponent::GetComponent();
+        constexpr size_t workerThreadCount = 3;
+        for(size_t I = 0; I < workerThreadCount; I++)
+		    frameGraph.AddNode<LocalShadowMapPassData>(
+				    LocalShadowMapPassData{
+                        I,
+                        workerThreadCount,
+                        shadowMaps.GetData().pointLightShadows,
+					    shadowMapPass,
+					    reserveCB,
+                        reserveVB,
+                        additional
+				    },
+				    [&](FrameGraphNodeBuilder& builder, LocalShadowMapPassData& data)
+				    {
+                        builder.AddDataDependency(cameraUpdate);
+                        builder.AddDataDependency(passes);
+                        builder.AddDataDependency(shadowMapAcquire);
+				    },
+				    [=](LocalShadowMapPassData& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+				    {
+                        ProfileFunction();
+
+                        auto& visableLights = data.pointLightShadows;
+                        auto& pointLights   = PointLightComponent::GetComponent();
                     
-                    Vector<ResourceHandle>          shadowMaps      { &allocator, visableLights.size() };
-                    Vector<ConstantBufferDataSet>   passConstant2   { &allocator, visableLights.size() };
+                        Vector<ResourceHandle>          shadowMaps      { &allocator, visableLights.size() };
+                        Vector<ConstantBufferDataSet>   passConstant2   { &allocator, visableLights.size() };
 
-                    for (size_t I = 0; I < visableLights.size(); I++)
-                    {
-                        auto& lightHandle   = visableLights[I];
-                        auto& pointLight    = pointLights[lightHandle];
+                        ctx.BeginEvent_DEBUG("Shadow Mapping");
 
-                        if (pointLight.state == LightStateFlags::Dirty && pointLight.shadowMap != InvalidHandle_t)
+                        const size_t workCount  = (visableLights.size() / data.threadTotal) + (visableLights.size() % data.threadTotal != 0 ? 1 : 0);
+                        const size_t begin      = workCount * data.threadIdx;
+                        const size_t end        = Min(begin + workCount, visableLights.size());
+
+                        for (size_t I = begin; I < end; I++)
                         {
-                            pointLight.state = LightStateFlags::Clean;
-
-                            const auto& visibilityComponent = SceneVisibilityComponent::GetComponent();
-                            const auto& visables            = pointLight.shadowState->visableObjects;
-					        const auto depthTarget          = pointLight.shadowMap;
-                            const float3 pointLightPosition = GetPositionW(pointLight.Position);
-
-					        ctx.ClearDepthBuffer(depthTarget, 1.0f);
-
-					        if (!visables.size())
-						        return;
-
-
-                            PVS                 brushes         { &allocator, visables.size() };
-                            Vector<GameObject*> animatedBrushes { &allocator, visables.size() };
-
-                            for (auto& visable : visables)
-                            {
-                                auto entity = visibilityComponent[visable].entity;
-
-                                Apply(*entity,
-                                    [&](BrushView& view)
-                                    {
-                                        if (!view.GetBrush().Skinned)
-                                            PushPV(view.GetBrush(), brushes, pointLightPosition);
-                                        else
-                                            animatedBrushes.push_back(entity);
-                                    });
-                            }
-
-                            struct PassConstants
-                            {
-                                struct PlaneMatrices
-                                {
-                                    float4x4 ViewI;
-                                    float4x4 PV;
-                                }matrices[6];
-                            };
-
-                            struct PoseConstants
-                            {
-                                float4x4 M[256];
-                            };
-
-
-                            CBPushBuffer passConstantBuffer = data.reserveCB(
-                                AlignedSize<PassConstants>());
-
-                            CBPushBuffer localConstantBuffer        = data.reserveCB(AlignedSize<Brush::VConstantsLayout>() * visables.size());
-                            CBPushBuffer animatedConstantBuffer     = data.reserveCB(AlignedSize<Brush::VConstantsLayout>() * animatedBrushes.size() + AlignedSize<PoseConstants>() * animatedBrushes.size());
-
-                            for (auto& brush : brushes)
-                                ConstantBufferDataSet{ brush->GetConstants(), localConstantBuffer };
-
-					        auto constants  = CreateCBIterator<Brush::VConstantsLayout>(localConstantBuffer);
-					        auto PSO        = resources.GetPipelineState(SHADOWMAPPASS);
-
-					        ctx.SetRootSignature(rootSignature);
-					        ctx.SetPipelineState(PSO);
-					        ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
-
-					        const float3 Position   = FlexKit::GetPositionW(pointLight.Position);
-					        const auto matrices     = CalculateShadowMapMatrices(Position, pointLight.R, t);
-
-					        PassConstants passConstantData;
-
-					        for(size_t I = 0; I < 6; I++)
-					        {
-						        passConstantData.matrices[I].ViewI  = matrices.ViewI[I];
-						        passConstantData.matrices[I].PV     = matrices.PV[I];
-					        }
-
-					        ConstantBufferDataSet passConstants{ passConstantData, passConstantBuffer };
-
-                            passConstant2.push_back(passConstants);
-
-					        ctx.SetScissorAndViewports({ depthTarget });
-
-					        ctx.SetGraphicsConstantBufferView(1, passConstants);
+                            ProfileFunction();
 
                             ctx.BeginEvent_DEBUG("Shadow Map Pass");
 
-                            if (auto state = resources.renderSystem().GetObjectState(depthTarget); state != DRS_DEPTHBUFFERWRITE)
-                                ctx.AddResourceBarrier(depthTarget, state, DRS_DEPTHBUFFERWRITE);
+                            auto& lightHandle   = visableLights[I];
+                            auto& pointLight    = pointLights[lightHandle];
+
+                            if (pointLight.state == LightStateFlags::Dirty && pointLight.shadowMap != InvalidHandle_t)
+                            {
+                                pointLight.state = LightStateFlags::Clean;
+
+                                const auto& visibilityComponent = SceneVisibilityComponent::GetComponent();
+                                const auto& visables            = pointLight.shadowState->visableObjects;
+					            const auto depthTarget          = pointLight.shadowMap;
+                                const float3 pointLightPosition = GetPositionW(pointLight.Position);
+
+					            ctx.ClearDepthBuffer(depthTarget, 1.0f);
+
+					            if (!visables.size())
+						            return;
+
+                                PVS                 brushes         { &allocator, visables.size() };
+                                Vector<GameObject*> animatedBrushes { &allocator, visables.size() };
+
+                                for (auto& visable : visables)
+                                {
+                                    ProfileFunction(VISIBILITY);
+
+                                    auto entity = visibilityComponent[visable].entity;
+
+                                    Apply(*entity,
+                                        [&](BrushView& view)
+                                        {
+                                            if (!view.GetBrush().Skinned)
+                                                PushPV(view.GetBrush(), brushes, pointLightPosition);
+                                            else
+                                                animatedBrushes.push_back(entity);
+                                        });
+                                }
+
+                                struct PassConstants
+                                {
+                                    struct PlaneMatrices
+                                    {
+                                        float4x4 ViewI;
+                                        float4x4 PV;
+                                    }matrices[6];
+                                } passConstantData;
+
+                                const float3 Position   = FlexKit::GetPositionW(pointLight.Position);
+                                const auto matrices     = CalculateShadowMapMatrices(Position, pointLight.R, t);
+
+                                for (size_t I = 0; I < 6; I++)
+                                {
+                                    passConstantData.matrices[I].ViewI   = matrices.ViewI[I];
+                                    passConstantData.matrices[I].PV     = matrices.PV[I];
+                                }
+
+                                struct PoseConstants
+                                {
+                                    float4x4 M[256];
+                                };
+
+                                CBPushBuffer animatedConstantBuffer = data.reserveCB(AlignedSize<Brush::VConstantsLayout>() * animatedBrushes.size() + AlignedSize<PoseConstants>() * animatedBrushes.size());
+
+					            auto PSO        = resources.GetPipelineState(SHADOWMAPPASS);
+
+					            ctx.SetRootSignature(rootSignature);
+					            ctx.SetPipelineState(PSO);
+					            ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
+
+					            ctx.SetScissorAndViewports({ depthTarget });
+
+                                if (auto state = resources.renderSystem().GetObjectState(depthTarget); state != DRS_DEPTHBUFFERWRITE)
+                                    ctx.AddResourceBarrier(depthTarget, state, DRS_DEPTHBUFFERWRITE);
 
 
-                            const DepthStencilView_Options DSV_desc = { 0, 0, depthTarget };
-                            ctx.SetRenderTargets2({}, 0, DSV_desc);
+                                const DepthStencilView_Options DSV_desc = { 0, 0, depthTarget };
+                                ctx.SetRenderTargets2({}, 0, DSV_desc);
 
-					        for(size_t brushIdx = 0; brushIdx < brushes.size(); brushIdx++)
-					        {
-                                auto& brush         = brushes[brushIdx];
-                                const auto lodLevel = brush.LODlevel;
-						        auto* const triMesh = GetMeshResource(brush->MeshHandle);
-                                auto& lod           = triMesh->lods[lodLevel];
-
+					            for(size_t brushIdx = 0; brushIdx < brushes.size(); brushIdx++)
+					            {
+                                    auto& brush         = brushes[brushIdx];
+                                    const auto lodLevel = brush.LODlevel;
+						            auto* const triMesh = GetMeshResource(brush->MeshHandle);
+                                    auto& lod           = triMesh->lods[lodLevel];
+                                    size_t indexCount   = triMesh->GetHighestLoadedLod().GetIndexCount();
                                 
 
-						        ctx.SetGraphicsConstantBufferView(2, constants[brushIdx]);
+                                    ctx.AddIndexBuffer(triMesh, lodLevel);
+                                    ctx.AddVertexBuffers(triMesh,
+                                        lodLevel,
+                                        { VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
 
-						        ctx.AddIndexBuffer(triMesh, lodLevel);
-						        ctx.AddVertexBuffers(triMesh,
-                                    lodLevel,
-							        { VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
+                                    const float4x4 WT   = GetWT(brush.brush->Node);
+                                    const float4 POS_WT = WT * float4(triMesh->BS.xyz(), 1);
 
-                                const float4x4 WT   = GetWT(brush.brush->Node);
-                                const float4 POS_WT = WT * float4(triMesh->BS.xyz(), 1);
+                                    ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
 
-                                for (uint32_t itr = 0; itr < 6; itr++)
+                                    for (uint32_t itr = 0; itr < 6; itr++)
+                                    {
+                                        struct 
+                                        {
+                                            float4x4 PV;
+                                            uint32_t Idx;
+                                        }tempConstants = {.PV = passConstantData.matrices[itr].PV, .Idx = itr };
+
+                                        const float4 POS_VS = tempConstants.PV * POS_WT + WT * float4(triMesh->BS.xyz(), 0);
+
+                                        if (triMesh->BS.w + POS_VS.z > 0.0f)
+                                        {
+                                            ctx.SetGraphicsConstantValue(0, 17, &tempConstants);
+                                            ctx.DrawIndexedInstanced(indexCount);
+                                        }
+                                    }
+					            }
+
+                                if(animatedBrushes.size())
                                 {
-                                    struct 
-                                    {
-                                        float4x4 PV;
-                                        uint32_t Idx;
-                                    }tempConstants = {.PV = passConstantData.matrices[itr].PV, .Idx = itr };
+                                    auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS);
+                                    ctx.SetPipelineState(PSOAnimated);
+                                    ctx.SetScissorAndViewports({ depthTarget });
+                                    ctx.SetRenderTargets2({}, 0, DSV_desc);
+                                    ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 
-                                    const float4 POS_VS = tempConstants.PV * POS_WT + WT * float4(triMesh->BS.xyz(), 0);
-
-                                    if (triMesh->BS.w + POS_VS.z > 0.0f)
+                                    for (auto& brush : animatedBrushes)
                                     {
-                                        ctx.SetGraphicsConstantValue(0, 17, &tempConstants);
-                                        ctx.DrawIndexedInstanced(triMesh->GetHighestLoadedLod().GetIndexCount());
+                                        Apply(*brush,
+                                            [&](SceneNodeView<>&    nodeView,
+                                                BrushView&          brushView,
+                                                SkeletonView&       poseView)
+                                            {
+                                                auto& draw      = brushView.GetBrush();
+                                                auto& pose      = poseView.GetPoseState();
+                                                auto& skeleton  = *pose.Sk;
+
+                                                struct poses
+                                                {
+                                                    float4x4 M[256];
+                                                }poseTemp;
+
+                                                const size_t end = pose.JointCount;
+                                                for (size_t I = 0; I < end; ++I)
+                                                    poseTemp.M[I] = skeleton.IPose[I] * pose.CurrentPose[I];
+
+                                                auto triMesh                    = GetMeshResource(draw.MeshHandle);
+                                                const auto      lodLevelIdx     = triMesh->GetHighestLoadedLodIdx();
+                                                const auto      lodLevel        = triMesh->GetHighestLoadedLod();
+                                                const size_t    indexCount      = triMesh->GetHighestLoadedLod().GetIndexCount();
+
+                                                ctx.AddIndexBuffer(triMesh, lodLevelIdx);
+						                        ctx.AddVertexBuffers(triMesh,
+                                                    lodLevelIdx,
+							                        {   VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+                                                        VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
+                                                        VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
+                                                    });
+
+                                                const auto poseConstants = ConstantBufferDataSet{ poseTemp, animatedConstantBuffer };
+
+                                                const float4x4 WT   = nodeView.GetWT();
+                                                const float4 POS_WT = WT * float4(triMesh->BS.xyz(), 1);
+
+                                                ctx.SetGraphicsConstantValue(2, 16, &WT);
+                                                ctx.SetGraphicsConstantBufferView(3, poseConstants);
+
+                                                for (uint32_t itr = 0; itr < 6; itr++)
+                                                {
+                                                    struct 
+                                                    {
+                                                        float4x4 PV;
+                                                        uint32_t Idx;
+                                                    }tempConstants = {.PV = passConstantData.matrices[itr].PV, .Idx = itr };
+
+                                                    const float4 POS_VS = tempConstants.PV * POS_WT + WT * float4(triMesh->BS.xyz(), 0);
+
+                                                    if (triMesh->BS.w + POS_VS.z > 0.0f)
+                                                    {
+                                                        ctx.SetGraphicsConstantValue(0, 17, &tempConstants);
+                                                        ctx.DrawIndexedInstanced(indexCount);
+                                                    }
+                                                }
+                                            });
                                     }
                                 }
-					        }
 
+                                shadowMaps.push_back(depthTarget);
 
-                            auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS);
-                            ctx.SetPipelineState(PSOAnimated);
-                            ctx.SetScissorAndViewports({ depthTarget });
-                            ctx.SetRenderTargets2({}, 0, DSV_desc);
-                            ctx.SetGraphicsConstantBufferView(1, passConstants);
-                            ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
-
-                            for (auto& brush : animatedBrushes)
-                            {
-                                Apply(*brush,
-                                    [&](BrushView&      brushView,
-                                        SkeletonView&   poseView)
-                                    {
-                                        auto& draw      = brushView.GetBrush();
-                                        auto& pose      = poseView.GetPoseState();
-                                        auto& skeleton  = *pose.Sk;
-
-                                        struct poses
-                                        {
-                                            float4x4 M[256];
-                                        }poseTemp;
-
-                                        const size_t end = pose.JointCount;
-                                        for (size_t I = 0; I < end; ++I)
-                                            poseTemp.M[I] = skeleton.IPose[I] * pose.CurrentPose[I];
-
-                                        const auto constants        = ConstantBufferDataSet{ draw.GetConstants(), animatedConstantBuffer };
-                                        const auto poseConstants    = ConstantBufferDataSet{ poseTemp, animatedConstantBuffer };
-
-                                        ctx.SetGraphicsConstantBufferView(2, constants);
-                                        ctx.SetGraphicsConstantBufferView(3, poseConstants);
-
-                                        auto triMesh            = GetMeshResource(draw.MeshHandle);
-                                        const auto lodLevelIdx  = triMesh->GetHighestLoadedLodIdx();
-                                        const auto lodLevel     = triMesh->GetHighestLoadedLod();
-
-                                        ctx.AddIndexBuffer(triMesh, lodLevelIdx);
-						                ctx.AddVertexBuffers(triMesh,
-                                            lodLevelIdx,
-							                {   VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-                                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
-                                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
-                                            });
-
-                                        const float4x4 WT   = GetWT(draw.Node);
-                                        const float4 POS_WT = WT * float4(triMesh->BS.xyz(), 1);
-
-                                        for (uint32_t itr = 0; itr < 6; itr++)
-                                        {
-                                            struct 
-                                            {
-                                                float4x4 PV;
-                                                uint32_t Idx;
-                                            }tempConstants = {.PV = passConstantData.matrices[itr].PV, .Idx = itr };
-
-                                            const float4 POS_VS = tempConstants.PV * POS_WT + WT * float4(triMesh->BS.xyz(), 0);
-
-                                            if (triMesh->BS.w + POS_VS.z > 0.0f)
-                                            {
-                                                ctx.SetGraphicsConstantValue(0, 17, &tempConstants);
-                                                ctx.DrawIndexedInstanced(triMesh->GetHighestLoadedLod().GetIndexCount());
-                                            }
-                                        }
-                                    });
                             }
 
-                            shadowMaps.push_back(depthTarget);
-
                             ctx.EndEvent_DEBUG();
                         }
-                    }
 
-                    if(shadowMaps.size())
-                    {
-                        for (auto& additionalPass : data.additionalShadowPass)
+                        if(shadowMaps.size())
                         {
-                            ctx.BeginEvent_DEBUG("Additional Shadow Map Pass");
+                            for (auto& additionalPass : data.additionalShadowPass)
+                            {
+                                ctx.BeginEvent_DEBUG("Additional Shadow Map Pass");
 
-                            additionalPass(
-                                data.reserveCB,
-                                data.reserveVB,
-                                passConstant2.data(),
-                                shadowMaps.data(),
-                                shadowMaps.size(),
-                                resources,
-                                ctx,
-                                allocator);
+                                additionalPass(
+                                    data.reserveCB,
+                                    data.reserveVB,
+                                    passConstant2.data(),
+                                    shadowMaps.data(),
+                                    shadowMaps.size(),
+                                    resources,
+                                    ctx,
+                                    allocator);
 
-                            ctx.EndEvent_DEBUG();
+                                ctx.EndEvent_DEBUG();
+                            }
+
+                            for (auto target : shadowMaps)
+                                ctx.AddResourceBarrier(target, DRS_DEPTHBUFFERWRITE, DRS_PixelShaderResource);
                         }
 
-                        for (auto target : shadowMaps)
-                            ctx.AddResourceBarrier(target, DRS_DEPTHBUFFERWRITE, DRS_PixelShaderResource);
-                    }
-				});
+                        ctx.EndEvent_DEBUG();
+				    });
 
 		return shadowMapPass;
 	}

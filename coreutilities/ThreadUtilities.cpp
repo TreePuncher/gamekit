@@ -103,7 +103,7 @@ namespace FlexKit
 
                         hasJob.store(false, std::memory_order_release);
                     }
-                    else if(I > 1)
+                    else if(I > 1) // Reduce thread contention a little
                     {
                         const auto beginTimePoint = std::chrono::high_resolution_clock::now();
 
@@ -292,9 +292,11 @@ namespace FlexKit
 
 	void WorkBarrier::Wait()
 	{
+        ProfileFunction();
+
 		do
 		{
-			if (!inProgress)
+			if (!inProgress.load(std::memory_order::acquire))
 				return;
 		} while (true);
 	}
@@ -305,12 +307,14 @@ namespace FlexKit
 
 	void WorkBarrier::Join()
 	{
-        if (!inProgress)
+        ProfileFunction();
+
+        if (!inProgress.load(std::memory_order::acquire))
             return;
 
 		do
 		{
-			if (!inProgress)
+			if (!inProgress.load(std::memory_order::acquire))
 				return;
 
 			for(auto work = threads.FindWork(); work; work = threads.FindWork())
@@ -327,11 +331,15 @@ namespace FlexKit
 
     void WorkBarrier::JoinLocal()
     {
-        if (!inProgress)
+        ProfileFunction();
+
+        if (!inProgress.load(std::memory_order::acquire))
             return;
 
-		while(inProgress)
+		while(inProgress.load(std::memory_order::acquire))
         {
+            ProfileFunction(Joined);
+
             auto work = localWorkQueue->pop_back().value_or(nullptr);
             if (work)
                 RunTask(*work);

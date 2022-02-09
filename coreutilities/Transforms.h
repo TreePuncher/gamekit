@@ -241,6 +241,8 @@ namespace FlexKit
             },
             [](auto& Data, iAllocator& threadAllocator)
             {
+                ProfileFunction();
+
                 FK_LOG_9("Transform Update");
                 UpdateTransforms();
             });
@@ -408,6 +410,11 @@ namespace FlexKit
         void SetPosition(const float3 xyz)
         {
             FlexKit::SetPositionW(node, xyz);
+        }
+
+        float4x4 GetWT() const
+        {
+            return FlexKit::GetWT(node);
         }
 
         NodeHandle node;

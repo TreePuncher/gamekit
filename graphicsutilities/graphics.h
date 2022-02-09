@@ -85,12 +85,12 @@ namespace FlexKit
      
 #pragma warning(disable:4067)
 FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
-//#ifdef USING(DEBUGGRAPHICS)
+#ifdef USING(DEBUGGRAPHICS)
 #define SETDEBUGNAME(RES, ID) {const char* NAME = ID; FlexKit::SetDebugName(RES, ID, strnlen(ID, 64));}
 
-//#else
-//#define SETDEBUGNAME(RES, ID) 
-//#endif
+#else
+#define SETDEBUGNAME(RES, ID) 
+#endif
 
 #define SAFERELEASE(RES) if(RES) {RES->Release(); RES = nullptr;}
 
@@ -1014,7 +1014,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		}
 
 		bool SetParameterAsCBV(
-			size_t Index, size_t BaseRegister, size_t RegisterCount, size_t RegisterSpace = 0,
+            uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0,
 			size_t BufferTag = -1)
 		{
 			HeapDescriptor Desc;
@@ -1037,7 +1037,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 
 		bool SetParameterAsSRV(
-			size_t Index, size_t BaseRegister, size_t RegisterCount, size_t RegisterSpace = 0,
+            uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0,
 			size_t BufferTag = -1)
 		{
 			HeapDescriptor Desc;
@@ -1061,7 +1061,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 
 		bool SetParameterAsShaderUAV(
-			size_t Index, size_t BaseRegister, size_t RegisterCount, size_t RegisterSpace = 0,
+            uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0,
 			size_t BufferTag = -1)
 		{
 			HeapDescriptor Desc;
@@ -1665,7 +1665,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetDepthStencil		(ResourceHandle DS);
 		void SetPrimitiveTopology	(EInputTopology Topology);
 
-        void SetGraphicsConstantValue(size_t idx, size_t valueCount, void* data_ptr, size_t offset = 0);
+        void SetGraphicsConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0);
 
 		void NullGraphicsConstantBufferView	(size_t idx);
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0);
@@ -2868,6 +2868,8 @@ private:
 		DeviceResourceState GetState	    (ResourceHandle Handle) const;
 		ID3D12Resource*		GetResource     (ResourceHandle Handle, ID3D12Device* device) const;
         size_t              GetResourceSize (ResourceHandle Handle) const;
+        uint2               GetHeapOffset   (ResourceHandle Handle, uint subResourceIdx) const;
+
 
         ResourceHandle      FindResourceHandle(ID3D12Resource* deviceResource) const;
 
@@ -2877,7 +2879,7 @@ private:
 		void ReleaseTexture	(ResourceHandle Handle);
 		void LockUntil		(size_t FrameID);
 
-		void UpdateLocks();
+		void UpdateLocks(ThreadManager& thread);
 		void SubmitTileUpdates(ID3D12CommandQueue* queue, RenderSystem& renderSystem, iAllocator* allocator_temp);
 
 		void _ReleaseTextureForceRelease(ResourceHandle Handle);
@@ -2915,6 +2917,7 @@ private:
 			uint8_t				mipCount;
 			uint2				WH;
 			ResourceHandle      owner           = InvalidHandle_t;
+            uint2               heapRange[3]    = { { 0, 0 }, { 0, 0 }, { 0, 0 } };
 
 #if USING(AFTERMATH)
             GFSDK_Aftermath_ResourceHandle  aftermathResource[3];
@@ -3326,6 +3329,8 @@ private:
 
 		void Update()
 		{
+            ProfileFunction();
+
 			for (ReadBackEntry& buffer : readBackBuffers)
 			{
 				if (buffer.queued)
@@ -3576,7 +3581,7 @@ private:
 		DXGI_FORMAT		GetTextureDeviceFormat(ResourceHandle Handle) const;
         uint8_t         GetTextureMipCount(ResourceHandle Handle) const;
         uint2           GetTextureTilingWH(ResourceHandle Handle, const uint mipLevel) const;
-
+        uint2           GetHeapOffset(ResourceHandle Handle, uint subResourceID = 0) const;
 
         SyncPoint           UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator);
 		void                UpdateTextureTileMappings(const ResourceHandle Handle, const TileMapList&);
@@ -3889,6 +3894,7 @@ private:
 		virtual ~PoolAllocatorInterface() {};
 
 		virtual AcquireResult   Acquire(GPUResourceDesc desc, bool temporary = false) = 0;
+        virtual AcquireResult   Recycle(ResourceHandle resource, GPUResourceDesc desc) = 0;
 		virtual void            Release(ResourceHandle handle, const bool freeResourceImmedate = true, const bool allowImmediateReuse = true) = 0;
 
         virtual uint32_t Flags() const = 0;
@@ -3925,7 +3931,8 @@ private:
 
 		
 		HeapAllocation  GetMemory(const size_t requestBlockCount, const uint64_t frameID, const uint64_t flags);
-        AcquireResult   Acquire(GPUResourceDesc desc, bool temporary = true) final override;
+        AcquireResult   Acquire(GPUResourceDesc desc, bool temporary) final override;
+        AcquireResult   Recycle(ResourceHandle resource, GPUResourceDesc desc) final override;
 
         uint32_t Flags() const final override;
 
@@ -5303,6 +5310,43 @@ private:
     }
 
     using CreateOnceReserveBufferFunction = decltype(CreateOnceReserveBuffer(*((ReserveConstantBufferFunction*)nullptr), nullptr));
+
+
+    /************************************************************************************************/
+
+
+    using RunOnceDrawEvent = FlexKit::TypeErasedCallable<64, void>;
+
+
+    class RunOnceQueue
+    {
+    public:
+        RunOnceQueue(iAllocator& allocator) : events{ &allocator } {}
+        ~RunOnceQueue() = default;
+
+        RunOnceQueue(const RunOnceQueue&)   = delete;
+        RunOnceQueue(RunOnceQueue&&)        = default;
+
+        RunOnceQueue& operator = (const RunOnceQueue&)  = delete;
+        RunOnceQueue& operator = (RunOnceQueue&&)       = default;
+
+
+        void push_back(RunOnceDrawEvent&& runOnce)
+        {
+            events.push_back(std::move(runOnce));
+        }
+
+
+        void Process()
+        {
+            for (auto& evt : events)
+                evt();
+
+            events.clear();
+        }
+    private:
+        Vector<RunOnceDrawEvent> events;
+    };
 
 
 }	/************************************************************************************************/
