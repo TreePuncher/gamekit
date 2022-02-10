@@ -215,7 +215,7 @@ namespace FlexKit
                             renderSystem.ReleaseResource(light.shadowMap);
                         }
 
-                        auto [shadowMap, _] = shadowMapAllocator.Acquire(GPUResourceDesc::DepthTarget({ 256, 256 }, DeviceFormat::D32_FLOAT, 6), false);
+                        auto [shadowMap, _] = shadowMapAllocator.Acquire(GPUResourceDesc::DepthTarget({ 1024, 1024 }, DeviceFormat::D32_FLOAT, 6), false);
 
 #if USING(DEBUGGRAPHICS)
                         auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.GetCurrentFrame(), lightHandle);
