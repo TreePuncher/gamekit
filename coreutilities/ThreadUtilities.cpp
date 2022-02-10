@@ -221,7 +221,7 @@ namespace FlexKit
         std::scoped_lock localLock{ lock };
         workList.push_back(work);
 
-        cv.notify_all();
+        cv.notify_one();
     }
 
 
@@ -433,7 +433,8 @@ namespace FlexKit
 	void ThreadManager::AddWork(iWork* newWork) noexcept
 	{
         PushToLocalQueue(*newWork);
-		workerWait.notify_all();
+
+		workerWait.notify_one();
 	}
 
 
@@ -509,7 +510,7 @@ namespace FlexKit
         std::mutex m;
         std::unique_lock l{ m };
 
-        workerWait.wait_for(l, 1ms);
+        workerWait.wait_for(l, 5ms);
 	}
 
 

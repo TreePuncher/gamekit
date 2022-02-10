@@ -824,7 +824,7 @@ namespace FlexKit
             Vector<FrameGraphNodeWork>::Iterator end;
         };
 
-        const size_t workerCount = Min(taskList.size(), 8);
+        const size_t workerCount = Min(taskList.size(), 4);
         static_vector<SubmissionWorkRange> workList;
         for (size_t I = 0; I < workerCount; I++)
         {

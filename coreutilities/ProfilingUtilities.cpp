@@ -53,8 +53,12 @@ namespace FlexKit
                 if (ImGui::Button("Pause"))
                     paused = !paused;
 
+                ImGui::SameLine();
+
                 if (ImGui::Button("Next"))
                     frameOffset = clamp(size_t(0), frameOffset + 1, this->stats.size() - 1);
+
+                ImGui::SameLine();
 
                 if (ImGui::Button("Previous"))
                     frameOffset = clamp(size_t(0), frameOffset - 1, this->stats.size() - 1);
@@ -63,6 +67,14 @@ namespace FlexKit
 
                 if (ImGui::Button("Toggle Labels"))
                     showLabels = !showLabels;
+
+                static float beginRange    = 0.0f;
+                static float endRange      = 1.0f;
+
+                ImGui::SliderFloat("Begin", &beginRange, 0, 1);
+                ImGui::SliderFloat("End", &endRange, 0, 1);
+
+                const float range = endRange - beginRange;
 
                 ImDrawList* draw_list       = ImGui::GetWindowDrawList();
                 const uint32_t threadCount  = (uint32_t)stats->Threads.size();
@@ -105,7 +117,7 @@ namespace FlexKit
                     Vector<imDrawText> textstack{ &temp };
                     size_t drawCount = 0;
 
-                    if(ImGui::BeginChild(GetCRCGUID("PROFILEGRAPH" + threadID++), ImVec2(windowSize.x, areaH)))
+                    if(ImGui::BeginChild(GetCRCGUID("PROFILEGRAPH" + threadID++), ImVec2(windowSize.x, areaH/2)))
                     {
                         const auto contentBegin = ImGui::GetCursorScreenPos();
 
@@ -113,11 +125,11 @@ namespace FlexKit
 
                         for (size_t threadID = 0; threadID < stats->Threads.size(); threadID++)
                         {
-                            auto& thread = stats->Threads[threadID];
-                            auto& profilings = thread.timePoints;
+                            auto& thread        = stats->Threads[threadID];
+                            auto& profilings    = thread.timePoints;
 
-                            //if (!profilings.size())
-                            //    continue;
+                            if (!profilings.size())
+                                continue;
 
                             ImColor color(1.0f, 1.0f, 1.0f, 1.0f);
 
@@ -148,7 +160,6 @@ namespace FlexKit
 
                             draw_list->AddRectFilled(threadBoxMin, threadBoxMax, colors[threadOffsetCounter % 3], 0);
 
-
                             if (pMax.y > 0.0f)
                             {
                                 auto VisitChildren =
@@ -156,8 +167,8 @@ namespace FlexKit
                                     {
                                         FrameTiming& node = GetChild(nodeID);
                                         // Render Current Profile Sample
-                                        const float fbegin  = node.GetRelativeTimePointBegin(begin, duration);
-                                        const float fend    = node.GetRelativeTimePointEnd(begin, duration);
+                                        const float fbegin  = node.GetRelativeTimePointBegin(begin, duration) / range - beginRange / range;
+                                        const float fend    = node.GetRelativeTimePointEnd(begin, duration) / range - beginRange / range;
 
                                         const ImVec2 pMin = ImVec2{
                                             contentBegin.x + windowSize.x * fbegin,
@@ -188,14 +199,47 @@ namespace FlexKit
                                                 for (uint64_t childID : node.children)
                                                     _Self(childID, _Self, maxDepth, currentDepth + 1);
 
-                                            //ImGui::CalcTextSize();
 
-                                            if(showLabels || ImGui::IsMouseHoveringRect(pMin, pMax, true))
+                                            auto txtSize = ImGui::CalcTextSize(node.Function);
+                                            if ((showLabels && txtSize.x <= (pMax.x - pMin.x)))
+                                            {
                                                 textstack.emplace_back(
                                                     pTxt,
                                                     textColor,
                                                     node.Function
                                                 );
+                                            }
+                                            else if (ImGui::IsMouseHoveringRect(pMin, pMax, true))
+                                            {
+                                                textstack.emplace_back(
+                                                    pTxt,
+                                                    textColor,
+                                                    node.Function
+                                                );
+
+                                                auto parentNode = node.parentID;
+                                                for (size_t I = 1; parentNode != uint64_t(-1); I++)
+                                                {
+                                                    auto& parentNode_ref = GetChild(parentNode);
+
+                                                    const float fbegin  = parentNode_ref.GetRelativeTimePointBegin(begin, duration) / range - beginRange / range;
+                                                    const float fend    = parentNode_ref.GetRelativeTimePointEnd(begin, duration) / range - beginRange / range;
+
+                                                    const ImVec2 pTxt = ImVec2{
+                                                        contentBegin.x + windowSize.x * fbegin,
+                                                        contentBegin.y + (currentDepth - I) * barWidth + threadOffset - scrollY };
+
+                                                    const auto size = windowSize.x * (fend - fbegin);
+                                                    const auto txtSize = ImGui::CalcTextSize(parentNode_ref.Function);
+                                                    if(txtSize.x > size)
+                                                        textstack.emplace_back(
+                                                            pTxt,
+                                                            textColor,
+                                                            parentNode_ref.Function);
+
+                                                    parentNode = parentNode_ref.parentID;
+                                                }
+                                            }
                                         }
                                     };
 

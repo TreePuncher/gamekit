@@ -250,7 +250,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 
             const float3x3 m = transpose(float3x3(R, Up, L));
 
-            const int sampleCount = 1;
+            const int sampleCount = 11;
             const float3 sampleVectors[] =
             {
                 float3( 0.00f, 0.00f, 1),
