@@ -48,7 +48,7 @@ namespace FlexKit
 	{
 		double T				= 0.0f;
 		double FPSTimer			= 0.0;
-		double dT				= 1.0 / 60.0f;
+		double dT				= 1.0 / double(Core.FPSLimit);
         uint32_t fpsCounter     = 0;
 
 		while (!Core.End && framework.Running())
@@ -64,7 +64,7 @@ namespace FlexKit
 
 			const auto frameEnd         = std::chrono::high_resolution_clock::now();
 			const auto updateDuration   = frameEnd - frameStart;
-            const auto desiredFrameTime = std::chrono::microseconds(1000000) / 60.0f;
+            const auto desiredFrameTime = std::chrono::microseconds(1000000) / float(Core.FPSLimit);
 
 
             framework.stats.frameTimes.push_back(
@@ -75,8 +75,8 @@ namespace FlexKit
             if (FPSTimer >= 1.0f)
             {
                 framework.stats.fps = fpsCounter;
-                fpsCounter = 0;
-                FPSTimer = 0.0f;
+                fpsCounter  = 0;
+                FPSTimer    = 0.0f;
             }
 
             if (Core.FrameLock)// FPS Locked
