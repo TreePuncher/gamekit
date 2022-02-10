@@ -69,7 +69,8 @@ namespace FlexKit
     public:
 
         ShadowMapper(RenderSystem& renderSystem, iAllocator& allocator) :
-            rootSignature{ &allocator }
+            rootSignature   { &allocator },
+            resourcePool    { &allocator }
         {
             rootSignature.AllowIA = true;
             rootSignature.AllowSO = false;
@@ -104,6 +105,19 @@ namespace FlexKit
 		                        iAllocator*                             allocator);
 
     private:
+
+        struct ResourceEntry
+        {
+            ResourceHandle  resource;
+            size_t          availibility;
+        };
+
+        ResourceHandle  GetResource(const size_t frameID);
+        void            AddResource(ResourceHandle, const size_t frameID);
+
+        std::mutex m;
+        Vector<ResourceEntry>  resourcePool;
+
         ID3D12PipelineState* CreateShadowMapPass(RenderSystem* RS);
         ID3D12PipelineState* CreateShadowMapAnimatedPass(RenderSystem* RS);
 

@@ -183,6 +183,33 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    ResourceHandle ShadowMapper::GetResource(const size_t frameID)
+    {
+        if (auto res = std::find_if(resourcePool.begin(), resourcePool.end(), [&](auto& res) { return frameID > (res.availibility + 3); }); res != resourcePool.end())
+        {
+            auto resource = res->resource;
+            resourcePool.remove_unstable(res);
+            return { resource };
+        }
+
+        return InvalidHandle_t;
+    }
+
+
+    /************************************************************************************************/
+
+
+    void ShadowMapper::AddResource(ResourceHandle shadowMap, const size_t frameID)
+    {
+        std::scoped_lock l{ m };
+
+        resourcePool.emplace_back(shadowMap, frameID);
+    }
+
+
+    /************************************************************************************************/
+
+
     AcquireShadowMapTask& ShadowMapper::AcquireShadowMaps(UpdateDispatcher& dispatcher, RenderSystem& renderSystem, MemoryPoolAllocator& RTPool, PointLightUpdate& pointLightUpdate)
     {
         return dispatcher.Add<AcquireShadowMapResources>(
@@ -192,36 +219,56 @@ namespace FlexKit
 
                 builder.AddInput(pointLightUpdate);
             },
-            [&dirtyList = pointLightUpdate.GetData().dirtyList, &shadowMapAllocator = RTPool, &renderSystem = renderSystem]
+            [&dirtyList = pointLightUpdate.GetData().dirtyList, &renderSystem = renderSystem, &shadowMapAllocator = RTPool, this]
             (AcquireShadowMapResources& data, iAllocator& threadAllocator)
             {
                 ProfileFunction();
 
                 size_t idx = 0;
 
-                const auto begin = dirtyList.begin();
-                const auto end    = dirtyList.end();
+                auto& lights        = PointLightComponent::GetComponent();
+                auto itr            = dirtyList.begin();
+                const auto end      = dirtyList.end();
+                const auto frameID  = renderSystem.GetCurrentFrame();
 
-                auto& lights = PointLightComponent::GetComponent();
-                Parallel_For(renderSystem.threads, threadAllocator, begin, end, 1,
+                for (;itr != end; itr++)
+                {
+                    auto lightHandle = *itr;
+                    auto& light = lights[lightHandle];
+
+                    if (light.shadowMap != InvalidHandle_t)
+                    {
+                        AddResource(light.shadowMap, frameID);
+                        light.shadowMap = InvalidHandle_t;
+                    }
+
+                    if (auto res = GetResource(frameID); res != InvalidHandle_t)
+                    {
+                        light.shadowMap = res;
+                    }
+                    else
+                        break;
+                }
+
+                Parallel_For(renderSystem.threads, threadAllocator, itr, end, 1,
                     [&](auto lightHandle, iAllocator& threadAllocator)
                     {
                         ProfileFunction();
 
                         auto& light = lights[lightHandle];
-
-                        if (light.shadowMap != InvalidHandle_t) {
-                            shadowMapAllocator.Release(light.shadowMap, false, false);
-                            renderSystem.ReleaseResource(light.shadowMap);
+                        if (light.shadowMap != InvalidHandle_t)
+                        {
+                            AddResource(light.shadowMap, frameID);
+                            light.shadowMap == InvalidHandle_t;
                         }
 
                         auto [shadowMap, _] = shadowMapAllocator.Acquire(GPUResourceDesc::DepthTarget({ 1024, 1024 }, DeviceFormat::D32_FLOAT, 6), false);
+                        light.shadowMap = shadowMap;
 
 #if USING(DEBUGGRAPHICS)
-                        auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.GetCurrentFrame(), lightHandle);
+                        auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.GetCurrentFrame(), light.shadowMap);
                         renderSystem.SetDebugName(shadowMap, debugName.c_str());
 #endif
-                        light.shadowMap = shadowMap;
                     });
             });
     }
@@ -296,7 +343,6 @@ namespace FlexKit
 					            const auto depthTarget          = pointLight.shadowMap;
                                 const float3 pointLightPosition = GetPositionW(pointLight.Position);
 
-					            ctx.ClearDepthBuffer(depthTarget, 1.0f);
 
 					            if (!visables.size())
 						            return;
@@ -347,15 +393,16 @@ namespace FlexKit
 
 					            auto PSO        = resources.GetPipelineState(SHADOWMAPPASS);
 
-					            ctx.SetRootSignature(rootSignature);
-					            ctx.SetPipelineState(PSO);
-					            ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
-
 					            ctx.SetScissorAndViewports({ depthTarget });
 
                                 if (auto state = resources.renderSystem().GetObjectState(depthTarget); state != DRS_DEPTHBUFFERWRITE)
                                     ctx.AddResourceBarrier(depthTarget, state, DRS_DEPTHBUFFERWRITE);
 
+                                ctx.ClearDepthBuffer(depthTarget, 1.0f);
+
+                                ctx.SetRootSignature(rootSignature);
+                                ctx.SetPipelineState(PSO);
+                                ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 
                                 const DepthStencilView_Options DSV_desc = { 0, 0, depthTarget };
                                 ctx.SetRenderTargets2({}, 0, DSV_desc);
