@@ -8225,7 +8225,7 @@ namespace FlexKit
 
 		const auto counter = ++FenceCounter;
 
-        static_vector<ID3D12CommandList*> cls;
+        static_vector<ID3D12CommandList*, 64> cls;
 
         if (PendingBarriers.size())
         {
@@ -8865,7 +8865,7 @@ namespace FlexKit
 
 			ViewDesc.Format                             = format;
 			ViewDesc.Shader4ComponentMapping            = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			ViewDesc.ViewDimension                      = D3D12_SRV_DIMENSION_TEXTURE2D;
+			ViewDesc.ViewDimension                      = arraySize > 1 ? D3D12_SRV_DIMENSION_TEXTURE2DARRAY : D3D12_SRV_DIMENSION_TEXTURE2D;
 			ViewDesc.Texture2DArray.MipLevels           = Max(mipCount, 1);
 			ViewDesc.Texture2DArray.MostDetailedMip     = 0;
 			ViewDesc.Texture2DArray.PlaneSlice          = 0;

@@ -220,7 +220,7 @@ public:
         sub.Notify = &EventsWrapper;
         sub._ptr = &framework;
         renderWindow.Handler->Subscribe(sub);
-        renderWindow.SetWindowTitle("Game Of Wizards");
+        renderWindow.SetWindowTitle("[S.P.A.R.]");
 	}
 
 

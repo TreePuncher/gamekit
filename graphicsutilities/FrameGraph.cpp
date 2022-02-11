@@ -824,14 +824,17 @@ namespace FlexKit
             Vector<FrameGraphNodeWork>::Iterator end;
         };
 
-        const size_t workerCount = Min(taskList.size(), 4);
-        static_vector<SubmissionWorkRange> workList;
+
+        const size_t workerCount    = Min(taskList.size(), renderSystem.threads.GetThreadCount());
+        const size_t blockSize      = taskList.size() / workerCount + taskList.size() % workerCount == 0 ? 0 : 1;
+
+        static_vector<SubmissionWorkRange, 64> workList;
         for (size_t I = 0; I < workerCount; I++)
         {
             workList.push_back(
                 {
-                    taskList.begin() + I * taskList.size() / workerCount,
-                    taskList.begin() + (I + 1) * taskList.size() / workerCount
+                    taskList.begin() + (I + 0) * blockSize,
+                    taskList.begin() + Min((I + 1) * blockSize, taskList.size())
                 });
         }
 
@@ -864,7 +867,7 @@ namespace FlexKit
         };
 
         FlexKit::WorkBarrier barrier{ threads, &threadLocalAllocator };
-        static_vector<RenderWorker*> workers;
+        static_vector<RenderWorker*, 64> workers;
 
         for (auto& work : workList)
         {
