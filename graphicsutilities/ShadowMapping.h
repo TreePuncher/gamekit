@@ -67,23 +67,7 @@ namespace FlexKit
     class ShadowMapper
     {
     public:
-
-        ShadowMapper(RenderSystem& renderSystem, iAllocator& allocator) :
-            rootSignature   { &allocator },
-            resourcePool    { &allocator }
-        {
-            rootSignature.AllowIA = true;
-            rootSignature.AllowSO = false;
-            rootSignature.SetParameterAsCBV(1,      0, 0, PIPELINE_DEST_VS);
-            rootSignature.SetParameterAsUINT(2, 16, 1, 0, PIPELINE_DEST_VS);
-            //rootSignature.SetParameterAsCBV(2,      1, 0, PIPELINE_DEST_VS);
-            rootSignature.SetParameterAsCBV(3,      2, 0, PIPELINE_DEST_VS);
-            rootSignature.SetParameterAsUINT(0, 20, 3, 0, PIPELINE_DEST_VS);
-            rootSignature.Build(renderSystem, &allocator);
-
-            renderSystem.RegisterPSOLoader(SHADOWMAPPASS,          { &renderSystem.Library.RS6CBVs4SRVs, [&](RenderSystem* rs) { return CreateShadowMapPass(rs); }});
-            renderSystem.RegisterPSOLoader(SHADOWMAPANIMATEDPASS,  { &renderSystem.Library.RS6CBVs4SRVs, [&](RenderSystem* rs) { return CreateShadowMapAnimatedPass(rs); } });
-        }
+        ShadowMapper(RenderSystem& renderSystem, iAllocator& allocator);
 
         AcquireShadowMapTask& AcquireShadowMaps(
                                 UpdateDispatcher&       dispatcher,
@@ -115,7 +99,6 @@ namespace FlexKit
         ResourceHandle  GetResource(const size_t frameID);
         void            AddResource(ResourceHandle, const size_t frameID);
 
-        std::mutex m;
         Vector<ResourceEntry>  resourcePool;
 
         ID3D12PipelineState* CreateShadowMapPass(RenderSystem* RS);

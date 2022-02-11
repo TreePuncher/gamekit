@@ -1664,7 +1664,7 @@ namespace FlexKit
 				for (size_t shadowMapIdx = 0; shadowMapIdx < pointLightCount; shadowMapIdx++)
 				{
                     auto shadowMap = lightComponent[visableLights[shadowMapIdx]].shadowMap;
-					descHeap.SetSRVCubemap(ctx, 10 + shadowMapIdx, shadowMap, DeviceFormat::R32_FLOAT);
+					descHeap.SetSRV(ctx, 10 + shadowMapIdx, shadowMap, DeviceFormat::R32_FLOAT);
 				}
 
 				descHeap.NullFill(ctx, descriptorTableSize);
@@ -1683,8 +1683,6 @@ namespace FlexKit
 				ctx.SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
 				ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
 				ctx.SetGraphicsDescriptorTable(4, descHeap);
-
-                ctx.Draw(6);
 #else
                 DescriptorHeap uavHeap;
                 uavHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 1, &allocator);

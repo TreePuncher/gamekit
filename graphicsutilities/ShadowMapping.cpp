@@ -150,7 +150,7 @@ namespace FlexKit
 			const XMMATRIX ViewI            = ViewOrientations[I] * DirectX::XMMatrixTranslationFromVector(pos);
 			const XMMATRIX View             = DirectX::XMMatrixInverse(nullptr, ViewI);
 			const XMMATRIX perspective      = DirectX::XMMatrixPerspectiveFovRH(float(-pi/2), 1, 0.001f, r);
-			const XMMATRIX PV               = XMMatrixTranspose(perspective) * XMMatrixTranspose(View);
+			const XMMATRIX PV               = DirectX::XMMatrixTranspose(perspective) * XMMatrixTranspose(View);
 
 			out.PV[I]       = XMMatrixToFloat4x4(PV).Transpose();
 			out.ViewI[I]    = XMMatrixToFloat4x4(ViewI);
@@ -201,13 +201,27 @@ namespace FlexKit
 
     void ShadowMapper::AddResource(ResourceHandle shadowMap, const size_t frameID)
     {
-        std::scoped_lock l{ m };
-
         resourcePool.emplace_back(shadowMap, frameID);
     }
 
 
     /************************************************************************************************/
+
+    ShadowMapper::ShadowMapper(RenderSystem& renderSystem, iAllocator& allocator) :
+        rootSignature   { &allocator },
+        resourcePool    { &allocator }
+    {
+        rootSignature.AllowIA = true;
+        rootSignature.AllowSO = false;
+        rootSignature.SetParameterAsUINT(   0, 20,  3, 0,   PIPELINE_DEST_VS);
+        rootSignature.SetParameterAsCBV(    1, 0,   0,      PIPELINE_DEST_VS);
+        rootSignature.SetParameterAsUINT(   2, 16,  1, 0,   PIPELINE_DEST_VS);
+        rootSignature.SetParameterAsCBV(    3, 2,   0,      PIPELINE_DEST_VS);
+        rootSignature.Build(renderSystem, &allocator);
+
+        renderSystem.RegisterPSOLoader(SHADOWMAPPASS,          { &renderSystem.Library.RS6CBVs4SRVs, [&](RenderSystem* rs) { return CreateShadowMapPass(rs); }});
+        renderSystem.RegisterPSOLoader(SHADOWMAPANIMATEDPASS,  { &renderSystem.Library.RS6CBVs4SRVs, [&](RenderSystem* rs) { return CreateShadowMapAnimatedPass(rs); } });
+    }
 
 
     AcquireShadowMapTask& ShadowMapper::AcquireShadowMaps(UpdateDispatcher& dispatcher, RenderSystem& renderSystem, MemoryPoolAllocator& RTPool, PointLightUpdate& pointLightUpdate)
@@ -220,7 +234,7 @@ namespace FlexKit
                 builder.AddInput(pointLightUpdate);
             },
             [&dirtyList = pointLightUpdate.GetData().dirtyList, &renderSystem = renderSystem, &shadowMapAllocator = RTPool, this]
-            (AcquireShadowMapResources& data, iAllocator& threadAllocator)
+            (AcquireShadowMapResources& data, iAllocator& threadLocalAllocator)
             {
                 ProfileFunction();
 
@@ -250,18 +264,26 @@ namespace FlexKit
                         break;
                 }
 
-                Parallel_For(renderSystem.threads, threadAllocator, itr, end, 1,
-                    [&](auto lightHandle, iAllocator& threadAllocator)
+                for (auto i = itr; i != end; i++)
+                {
+                    auto lightHandle    = *i;
+                    auto& light         = lights[lightHandle];
+
+                    if (light.shadowMap != InvalidHandle_t)
+                    {
+                        AddResource(light.shadowMap, frameID);
+                        light.shadowMap == InvalidHandle_t;
+                    }
+                }
+
+
+                Parallel_For(
+                    renderSystem.threads, threadLocalAllocator, itr, end, 1,
+                    [&](auto lightHandle, iAllocator& threadLocalAllocator)
                     {
                         ProfileFunction();
 
                         auto& light = lights[lightHandle];
-                        if (light.shadowMap != InvalidHandle_t)
-                        {
-                            AddResource(light.shadowMap, frameID);
-                            light.shadowMap == InvalidHandle_t;
-                        }
-
                         auto [shadowMap, _] = shadowMapAllocator.Acquire(GPUResourceDesc::DepthTarget({ 1024, 1024 }, DeviceFormat::D32_FLOAT, 6), false);
                         light.shadowMap = shadowMap;
 
@@ -391,39 +413,52 @@ namespace FlexKit
 
                                 CBPushBuffer animatedConstantBuffer = data.reserveCB(AlignedSize<Brush::VConstantsLayout>() * animatedBrushes.size() + AlignedSize<PoseConstants>() * animatedBrushes.size());
 
-					            auto PSO        = resources.GetPipelineState(SHADOWMAPPASS);
+                                auto PSO = resources.GetPipelineState(SHADOWMAPPASS);
 
-					            ctx.SetScissorAndViewports({ depthTarget });
 
                                 if (auto state = resources.renderSystem().GetObjectState(depthTarget); state != DRS_DEPTHBUFFERWRITE)
                                     ctx.AddResourceBarrier(depthTarget, state, DRS_DEPTHBUFFERWRITE);
 
                                 ctx.ClearDepthBuffer(depthTarget, 1.0f);
 
+                                const DepthStencilView_Options DSV_desc = { 0, 0, depthTarget };
+
                                 ctx.SetRootSignature(rootSignature);
                                 ctx.SetPipelineState(PSO);
                                 ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
-
-                                const DepthStencilView_Options DSV_desc = { 0, 0, depthTarget };
+                                ctx.SetScissorAndViewports({ depthTarget });
                                 ctx.SetRenderTargets2({}, 0, DSV_desc);
+
+                                TriMeshHandle   currentMesh     = InvalidHandle_t;
+                                size_t          currentLodIdx   = -1;
+                                size_t          indexCount      = 0;
+                                BoundingSphere  BS;
 
 					            for(size_t brushIdx = 0; brushIdx < brushes.size(); brushIdx++)
 					            {
-                                    auto& brush         = brushes[brushIdx];
-                                    const auto lodLevel = brush.LODlevel;
-						            auto* const triMesh = GetMeshResource(brush->MeshHandle);
-                                    auto& lod           = triMesh->lods[lodLevel];
-                                    size_t indexCount   = triMesh->GetHighestLoadedLod().GetIndexCount();
-                                
+                                    auto& PV            = brushes[brushIdx];
+                                    const auto lodLevel = PV.LODlevel;
 
-                                    ctx.AddIndexBuffer(triMesh, lodLevel);
-                                    ctx.AddVertexBuffers(triMesh,
-                                        lodLevel,
-                                        { VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
+                                    if( currentMesh     != PV.brush->MeshHandle ||
+                                        currentLodIdx   != lodLevel)
+                                    {
+                                        currentMesh     = PV.brush->MeshHandle;
 
-                                    const float4x4 WT   = GetWT(brush.brush->Node);
-                                    const float4 POS_WT = WT * float4(triMesh->BS.xyz(), 1);
+						                auto* const triMesh = GetMeshResource(currentMesh);
 
+                                        currentLodIdx       = Max(lodLevel, triMesh->GetHighestLoadedLodIdx());
+                                        auto& lod           = triMesh->lods[currentLodIdx];
+                                        indexCount          = lod.GetIndexCount();
+
+                                        ctx.AddIndexBuffer(triMesh, currentLodIdx);
+                                        ctx.AddVertexBuffers(triMesh,
+                                            currentLodIdx,
+                                            { VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
+                                        BS = triMesh->BS;
+                                    }
+
+                                    const float4x4 WT   = GetWT(PV.brush->Node);
+                                    const float4 POS_WT = WT * float4(BS.xyz(), 1);
                                     ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
 
                                     for (uint32_t itr = 0; itr < 6; itr++)
@@ -434,9 +469,9 @@ namespace FlexKit
                                             uint32_t Idx;
                                         }tempConstants = {.PV = passConstantData.matrices[itr].PV, .Idx = itr };
 
-                                        const float4 POS_VS = tempConstants.PV * POS_WT + WT * float4(triMesh->BS.xyz(), 0);
+                                        const float4 POS_VS = tempConstants.PV * POS_WT + WT * float4(BS.xyz(), 0);
 
-                                        if (triMesh->BS.w + POS_VS.z > 0.0f)
+                                        if (BS.w + POS_VS.z > 0.0f)
                                         {
                                             ctx.SetGraphicsConstantValue(0, 17, &tempConstants);
                                             ctx.DrawIndexedInstanced(indexCount);
@@ -444,6 +479,7 @@ namespace FlexKit
                                     }
 					            }
 
+                                if(0)
                                 if(animatedBrushes.size())
                                 {
                                     auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS);
@@ -493,7 +529,7 @@ namespace FlexKit
                                                 ctx.SetGraphicsConstantValue(2, 16, &WT);
                                                 ctx.SetGraphicsConstantBufferView(3, poseConstants);
 
-                                                for (uint32_t itr = 0; itr < 6; itr++)
+                                                for (uint32_t itr = 0; itr < 0; itr++)
                                                 {
                                                     struct 
                                                     {
@@ -539,8 +575,10 @@ namespace FlexKit
                                 ctx.EndEvent_DEBUG();
                             }
 
-                            for (auto target : shadowMaps)
+                            for (auto target : shadowMaps) {
                                 ctx.AddResourceBarrier(target, DRS_DEPTHBUFFERWRITE, DRS_PixelShaderResource);
+                                ctx.renderSystem->SetObjectState(target, DRS_PixelShaderResource);
+                            }
                         }
 
                         ctx.EndEvent_DEBUG();

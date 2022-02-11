@@ -168,8 +168,8 @@ namespace FlexKit
         io.DeltaTime    = dT;
 
 
-	    if (io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange)
-		    return;
+	    //if (io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange)
+		//    return;
 
 	    ImGuiMouseCursor imgui_cursor = ImGui::GetMouseCursor();
 	    if (imgui_cursor == ImGuiMouseCursor_None || io.MouseDrawCursor)
@@ -316,8 +316,10 @@ namespace FlexKit
 		    [drawData, renderTarget](DrawImGui_data& pass, FlexKit::ResourceHandler& frameResources, FlexKit::Context& ctx, auto& allocator)
 		    {
                 if (!drawData)
+                {
+                    std::cout << "IMGUI + SKIPPED!\n";
                     return;
-
+                }
                 ctx.BeginEvent_DEBUG("ImGui");
 
 			    const auto cmdCount     = drawData->CmdListsCount;

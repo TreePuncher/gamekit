@@ -4,6 +4,7 @@
 #include <Windows.h>
 #include <iostream>
 #include "MathUtils.h"
+#include "fmt/format.h"
 
 namespace FlexKit
 {
@@ -50,6 +51,8 @@ namespace FlexKit
         {
             if (ImGui::Begin("Profiler"))
             {
+                static int maxDepth = 15;
+
                 if (ImGui::Button("Pause"))
                     paused = !paused;
 
@@ -68,11 +71,17 @@ namespace FlexKit
                 if (ImGui::Button("Toggle Labels"))
                     showLabels = !showLabels;
 
+                ImGui::SameLine();
+
+                ImGui::SliderInt("Stack Depth", &maxDepth, 1, 15);
+
                 static float beginRange    = 0.0f;
                 static float endRange      = 1.0f;
 
-                ImGui::SliderFloat("Begin", &beginRange, 0, 1);
-                ImGui::SliderFloat("End", &endRange, 0, 1);
+
+                //ImGui::SliderFloat("Begin", &beginRange, 0, 1);
+                //ImGui::SliderFloat("End", &endRange, 0, 1);
+                ImGui::DragFloatRange2("Range", &beginRange,&endRange, 0.01, 0, 1);
 
                 const float range = endRange - beginRange;
 
@@ -98,20 +107,22 @@ namespace FlexKit
                     }
 
                     const auto duration     = end - begin;
-                    const double fDuration  = double(duration.count()) / 100000000.0;
+                    const double fDuration  = double(duration.count()) / 1000000.0;
 
-                    const int   maxDepth    = 15;
                     const float barWidth    = 25.0f;
                     const float areaH       = stats->Threads.size() * maxDepth * barWidth;
 
                     const ImVec2 windowPOS  = ImGui::GetWindowPos();
                     const ImVec2 windowSize = ImGui::GetWindowSize();
 
+                    ImGui::SameLine();
+                    ImGui::Text(fmt::format("Capture duration {}ms", fDuration).c_str());
+
                     struct imDrawText
                     {
                         ImVec2      pos;
                         ImColor     color;
-                        const char* string;
+                        std::string string;
                     };
 
                     Vector<imDrawText> textstack{ &temp };
@@ -206,7 +217,7 @@ namespace FlexKit
                                                 textstack.emplace_back(
                                                     pTxt,
                                                     textColor,
-                                                    node.Function
+                                                    fmt::format("{} [ {}.ms ]", node.Function, node.GetDurationDouble() * 100)
                                                 );
                                             }
                                             else if (ImGui::IsMouseHoveringRect(pMin, pMax, true))
@@ -214,7 +225,7 @@ namespace FlexKit
                                                 textstack.emplace_back(
                                                     pTxt,
                                                     textColor,
-                                                    node.Function
+                                                    fmt::format("{} [ {}.ms ]", node.Function, node.GetDurationDouble() * 100)
                                                 );
 
                                                 auto parentNode = node.parentID;
@@ -231,11 +242,11 @@ namespace FlexKit
 
                                                     const auto size = windowSize.x * (fend - fbegin);
                                                     const auto txtSize = ImGui::CalcTextSize(parentNode_ref.Function);
-                                                    if(txtSize.x > size)
+                                                    if (txtSize.x > size)
                                                         textstack.emplace_back(
                                                             pTxt,
                                                             textColor,
-                                                            parentNode_ref.Function);
+                                                            fmt::format("{} [ {}.ms ]", parentNode_ref.Function, parentNode_ref.GetDurationDouble() * 100));
 
                                                     parentNode = parentNode_ref.parentID;
                                                 }
@@ -251,7 +262,7 @@ namespace FlexKit
 
 
                         for(auto& txt : textstack)
-                            draw_list->AddText(txt.pos, txt.color, txt.string);
+                            draw_list->AddText(txt.pos, txt.color, txt.string.c_str());
 
                         ImGui::EndChild();
                     }

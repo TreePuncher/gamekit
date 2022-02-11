@@ -27,6 +27,7 @@ cbuffer LocalConstants : register(b1)
 	float4x4 pl_PV[1022];
 }
 
+#define ARRAY 1
 
 Texture2D<float4> AlbedoBuffer      : register(t0);
 Texture2D<float4> MRIABuffer        : register(t1); // metallic, roughness, IOR, anisotropic
@@ -38,7 +39,8 @@ Texture2D<uint> 			    lightMap        : register(t5);
 StructuredBuffer<uint2> 	    lightLists	    : register(t6);
 StructuredBuffer<uint> 		    lightListBuffer : register(t7);
 StructuredBuffer<PointLight> 	pointLights	    : register(t8);
-TextureCube<float> 				shadowMaps[]    : register(t10);
+Texture2DArray<float> 			shadowMaps[]    : register(t10);
+
 
 sampler BiLinear     : register(s0);
 sampler NearestPoint : register(s1); 
@@ -227,7 +229,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
             const float3 specular = F_r(V, H, L, N.xyz, roughness);
         #endif
 
-        #if 0// skip shadowmaping
+        #if 1// skip shadowmaping
             const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
             color += max(float4(colorSample, 0 ), 0.0f);
         #else
@@ -250,72 +252,68 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 
             const float3x3 m = transpose(float3x3(R, Up, L));
 
-            const int sampleCount = 11;
-            const float3 sampleVectors[] =
+            const float2 sampleVectors[] =
             {
-                float3( 0.00f, 0.00f, 1),
+                float2( 0.0f, 0.0f),
 
-                float3( 0.0000f, 0.0015f, 1),
-                float3( 0.0000f,-0.0015f, 1),
-                float3( 0.0015f, 0.000f, 1),
-                float3(-0.0015f, 0.000f, 1),
+                float2( 0, 1),
+                float2( 0,-1),
+                float2( 1, 0),
+                float2(-1, 0),
 
-                float3( 0.0015f, 0.0015f, 1),
-                float3(-0.0015f,-0.0015f, 1),
-                float3(-0.0015f, 0.0015f, 1),
-                float3( 0.0015f,-0.0015f, 1),
-                float3( 0.0015f,-0.0015f, 1),
-                float3(-0.0015f, 0.0015f, 1),
+                float2( 1, 1),
+                float2(-1,-1),
+                float2(-1, 1),
+                float2( 1,-1),
+                float2( 1,-1),
+                float2(-1, 1),
             };
 
+            const float3 sampleVector = normalize(mul(m, float3(0, 0, 1)));
 
-            float visibility = 0;
-            for(int i = 0; i < sampleCount; i++)
-            {
-                const float3 sampleVector = normalize(mul(m, sampleVectors[i]));
+            int fieldID = 0;
+            float a = -1.0f;
 
-                int fieldID = 0;
-                float a = -1.0f;
+            for (int II = 0; II < 6; II++) {
+                const float b = dot(mapVectors[II], mul(ViewI, -sampleVector));
 
-                for (int II = 0; II < 6; II++) {
-                    const float b = dot(mapVectors[II], mul(ViewI, -sampleVector));
-
-                    if (b > a) {
-                        fieldID = II;
-                        a = b;
-                    }
+                if (b > a)
+                {
+                    fieldID = II;
+                    a = b;
                 }
-
-                const float4 lightPosition_DC 	= mul(pl_PV[6 * pointLightIdx + fieldID], float4(positionWS.xyz, 1));
-                const float3 lightPosition_PS 	= lightPosition_DC / lightPosition_DC.a;
-
-                const float3 L_WS               = mul(ViewI, sampleVector) * float3(1, -1, -1);
-                const float3 L_Offset           = L_WS;
-
-                const float shadowSample 		= shadowMaps[pointLightIdx].Sample(BiLinear, L_Offset);
-                const float depth 				= lightPosition_PS.z;
-
-                const float minBias             = 0.00000015f;
-                const float maxBias             = 0.00000750f;
-                const float bias                = maxBias * saturate(tan(acos(dot(N_WT, L_WS)))) + minBias;
-
-                visibility += saturate(depth < (shadowSample + bias) ? 1.0f : 0.0f) / sampleCount;
             }
 
-            float4 Colors[] = {
-                float4(1, 0, 0, 0), 
-                float4(0, 1, 0, 0), 
-                float4(0, 0, 1, 0), 
-                float4(1, 1, 0, 1), 
-                float4(0, 1, 1, 1), 
-                float4(1, 0, 1, 1), 
+            const float4 lightPosition_DC 	= mul(pl_PV[6 * pointLightIdx + fieldID], float4(positionWS.xyz, 1));
+            const float3 lightPosition_PS 	= lightPosition_DC / lightPosition_DC.a;
+
+            const float3 L_WS               = mul(ViewI, sampleVector) * float3(1, -1, -1);
+            const float3 L_Offset           = L_WS;
+
+            const float2 shadowMapUV        = float2(0.5f + lightPosition_PS.x / 2.0f, 0.5f - lightPosition_PS.y / 2.0f);
+            const float shadowSample        = shadowMaps[pointLightIdx].Sample(NearestPoint, float3(shadowMapUV, fieldID));
+            const float depth               = lightPosition_PS.z;
+
+            const float minBias             = 0.0000015f;
+            const float maxBias             = 0.00000750f;
+            const float bias                = maxBias * saturate(tan(acos(dot(N_WT, L_WS)))) + minBias;
+
+            const float visibility = saturate(depth < (shadowSample + bias) ? 1.0f : 0.0f);
+
+            const float4 Colors[] = {
+                float4(1, 0, 0, 0),
+                float4(0, 1, 0, 0),
+                float4(0, 0, 1, 0),
+                float4(1, 1, 0, 1),
+                float4(0, 1, 1, 1),
+                float4(1, 0, 1, 1),
             };
 
             color += float4(saturate(colorSample * Lc * visibility), 0);
         #endif
     }
 
-#if 0
+#if 1
     float4 Colors[] = {
         float4(0, 0, 0, 0), 
         float4(1, 0, 0, 0), 
@@ -351,7 +349,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
         //return pow(-positionVS.z / 128, 10.0f);
         //return depth;
         //return float4(N / 2.0f + 0.5f);
-    //return Albedo * Albedo;
+    return Albedo * Albedo;
     //return float4(positionW, 0);
     //return pow(roughness, 2.2f);
     //return pow(MRIA, 2.2f);

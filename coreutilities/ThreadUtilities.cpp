@@ -434,7 +434,7 @@ namespace FlexKit
 	{
         PushToLocalQueue(*newWork);
 
-		workerWait.notify_one();
+		workerWait.notify_all();
 	}
 
 
