@@ -217,7 +217,7 @@ namespace FlexKit
                 return {};
         }
 
-        void DrawProfiler(iAllocator& temp);
+        void DrawProfiler(uint2 POS, uint2 WH, iAllocator& temp);
 
         std::mutex m;
 

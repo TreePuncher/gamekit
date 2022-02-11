@@ -44,13 +44,16 @@ namespace FlexKit
     }
 
 
-    void EngineProfiling::DrawProfiler(iAllocator& temp)
+    void EngineProfiling::DrawProfiler(uint2 POS, uint2 WH, iAllocator& temp)
     {
 #if USING(ENABLEPROFILER)
         if (auto stats = profiler.GetStats(); stats)
         {
             if (ImGui::Begin("Profiler"))
             {
+                ImGui::SetWindowPos({ (float)POS[0], (float)POS[1] });
+                ImGui::SetWindowSize({ (float)WH[0], (float)WH[1] });
+
                 static int maxDepth = 15;
 
                 if (ImGui::Button("Pause"))
@@ -211,13 +214,15 @@ namespace FlexKit
                                                     _Self(childID, _Self, maxDepth, currentDepth + 1);
 
 
-                                            auto txtSize = ImGui::CalcTextSize(node.Function);
+                                            auto txt        = fmt::format("{} [ {}.ms ]", node.Function, node.GetDurationDouble() * 100);
+                                            auto txtSize    = ImGui::CalcTextSize(txt.c_str());
+
                                             if ((showLabels && txtSize.x <= (pMax.x - pMin.x)))
                                             {
                                                 textstack.emplace_back(
                                                     pTxt,
                                                     textColor,
-                                                    fmt::format("{} [ {}.ms ]", node.Function, node.GetDurationDouble() * 100)
+                                                    txt.c_str()
                                                 );
                                             }
                                             else if (ImGui::IsMouseHoveringRect(pMin, pMax, true))
@@ -240,13 +245,15 @@ namespace FlexKit
                                                         contentBegin.x + windowSize.x * fbegin,
                                                         contentBegin.y + (currentDepth - I) * barWidth + threadOffset - scrollY };
 
-                                                    const auto size = windowSize.x * (fend - fbegin);
-                                                    const auto txtSize = ImGui::CalcTextSize(parentNode_ref.Function);
+                                                    const auto txt      = fmt::format("{} [ {}.ms ]", parentNode_ref.Function, parentNode_ref.GetDurationDouble() * 100);
+                                                    const auto size     = windowSize.x * (fend - fbegin);
+                                                    const auto txtSize  = ImGui::CalcTextSize(txt.c_str());
+
                                                     if (txtSize.x > size)
                                                         textstack.emplace_back(
                                                             pTxt,
                                                             textColor,
-                                                            fmt::format("{} [ {}.ms ]", parentNode_ref.Function, parentNode_ref.GetDurationDouble() * 100));
+                                                            txt.c_str());
 
                                                     parentNode = parentNode_ref.parentID;
                                                 }
