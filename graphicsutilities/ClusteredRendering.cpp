@@ -1641,13 +1641,9 @@ namespace FlexKit
 					float4 Position;
 				}   vertices[] =
 				{
-					float4(-1,   1, 0, 1),
-					float4( 1,   1, 0, 1),
+                    float4( 3,  -1, 0, 1),
 					float4(-1,  -1, 0, 1),
-
-					float4(-1,  -1, 0, 1),
-					float4( 1,   1, 0, 1),
-					float4( 1,  -1, 0, 1),
+					float4(-1,   3, 0, 1),
 				};
 
 
@@ -1715,7 +1711,7 @@ namespace FlexKit
 #endif
 
                 //ctx.TimeStamp(timeStats, 4);
-				ctx.Draw(6);
+				ctx.Draw(3);
                 //ctx.TimeStamp(timeStats, 5);
 
                 //ctx.ResolveQuery(timeStats, 0, 8, resources.GetObjectResource(timingReadBack), 0);
