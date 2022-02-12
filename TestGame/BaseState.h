@@ -286,7 +286,7 @@ public:
 
             auto wh = renderWindow.GetWH();
 
-            FlexKit::profiler.DrawProfiler(uint2{ 300, 0u }, uint2{ wh[0] - 300u, wh[1] }, core.GetTempMemory());
+            FlexKit::profiler.DrawProfiler(uint2{ 400, 0u }, uint2{ wh[0] - 400u, wh[1] }, core.GetTempMemory());
 
             ImGui::EndFrame();
             ImGui::Render();
@@ -342,7 +342,7 @@ public:
 
         ImGui::Begin("Debug Stats");
         ImGui::SetWindowPos({ 0, 0 });
-        ImGui::SetWindowSize({ 300, 400 });
+        ImGui::SetWindowSize({ 400, 350 });
         ImGui::Text(TempBuffer);
         ImGui::End();
     }

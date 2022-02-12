@@ -172,7 +172,7 @@ namespace FlexKit
                                 ImColor{56, 75,  65},
                             };
 
-                            draw_list->AddRectFilled(threadBoxMin, threadBoxMax, colors[threadOffsetCounter % 3], 0);
+                            draw_list->AddRectFilled(threadBoxMin, threadBoxMax, colors[threadOffsetCounter % 2], 0);
 
                             if (pMax.y > 0.0f)
                             {

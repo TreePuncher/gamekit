@@ -149,7 +149,7 @@ namespace FlexKit
 		{
 			const XMMATRIX ViewI            = ViewOrientations[I] * DirectX::XMMatrixTranslationFromVector(pos);
 			const XMMATRIX View             = DirectX::XMMatrixInverse(nullptr, ViewI);
-			const XMMATRIX perspective      = DirectX::XMMatrixPerspectiveFovRH(float(-pi/2), 1, 0.001f, r);
+			const XMMATRIX perspective      = DirectX::XMMatrixPerspectiveFovRH(float(pi/2), 1, 1.0f, r);
 			const XMMATRIX PV               = DirectX::XMMatrixTranspose(perspective) * XMMatrixTranspose(View);
 
 			out.PV[I]       = XMMatrixToFloat4x4(PV).Transpose();
@@ -479,7 +479,6 @@ namespace FlexKit
                                     }
 					            }
 
-                                if(0)
                                 if(animatedBrushes.size())
                                 {
                                     auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS);
@@ -529,7 +528,7 @@ namespace FlexKit
                                                 ctx.SetGraphicsConstantValue(2, 16, &WT);
                                                 ctx.SetGraphicsConstantBufferView(3, poseConstants);
 
-                                                for (uint32_t itr = 0; itr < 0; itr++)
+                                                for (uint32_t itr = 0; itr < 6; itr++)
                                                 {
                                                     struct 
                                                     {
