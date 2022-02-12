@@ -42,8 +42,9 @@ StructuredBuffer<PointLight> 	pointLights	    : register(t8);
 Texture2DArray<float> 			shadowMaps[]    : register(t10);
 
 
-sampler BiLinear     : register(s0);
-sampler NearestPoint : register(s1); 
+SamplerState BiLinear     : register(s0);
+SamplerState NearestPoint : register(s1);
+SamplerComparisonState ShadowSampler : register(s2);
 
 
 struct Vertex
@@ -159,7 +160,25 @@ float3 SampleFocusedRay(float theta, float2 seed)
 
     float r = sqrt(1.0f - u1 * u1);
     float phi = 2.0f * PI * u2;
+
     return (cos(phi) * r, sin(phi) * r, u1 );
+}
+
+float2 ComputeReceiverPlaneDepthBias(float3 texCoordDX, float3 texCoordDY)
+{
+    float2 biasUV;
+    biasUV.x = texCoordDY.y * texCoordDX.z - texCoordDX.y * texCoordDY.z;
+    biasUV.y = texCoordDX.x * texCoordDY.z - texCoordDY.x * texCoordDX.z;
+    biasUV *= 1.0f / ((texCoordDX.x * texCoordDY.y) - (texCoordDX.y * texCoordDY.x));
+    return biasUV;
+}
+
+float SampleShadowMap(in float2 base_uv, in float u, in float v, in float2 shadowMapSizeInv, in uint fieldID, in Texture2DArray<float> shadowMap, in float depth, in float2 receiverPlaneDepthBias)
+{
+    const float2 uv   = base_uv + float2(u, v) * shadowMapSizeInv;
+    const float z     = depth - 0.000015f;// + dot(float2(u, v) * shadowMapSizeInv, receiverPlaneDepthBias);
+
+    return saturate(shadowMap.SampleCmpLevelZero(ShadowSampler, float3(uv, fieldID), z));
 }
 
 float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
@@ -183,7 +202,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 
     const float4 N              = NormalBuffer.Load(uint3(px.xy, 0));
 	const float4 MRIA			= MRIABuffer.Load(uint3(px.xy, 0));
-    const float4 N_WT           = mul(ViewI, N.xyz);
+    const float4 N_WS           = mul(ViewI, N.xyz);
 
     const float2 UV             = SampleCoord * WH_I; // [0;1]
     const float3 V              = -GetViewVector_VS(UV);
@@ -193,7 +212,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     const float ior           = MRIA.b;
     const float metallic      = MRIA.r > 0.1f ? 1.0f : 0.0f;
 	const float3 albedo       = pow(Albedo.rgb, 2);
-    const float roughness     = 0.9;//MRIA.g;
+    const float roughness     = 1.0f;//MRIA.g;
 
     const float Ks              = lerp(0, 0.4f, saturate(Albedo.w));
     const float Kd              = (1.0 - Ks) * (1.0 - metallic);
@@ -209,7 +228,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
         const float3 Lp         = mul(View, float4(light.PR.xyz, 1));
         const float3 L		    = normalize(Lp - positionVS);
         const float  Ld			= length(positionVS - Lp);
-        const float  Li			= light.KI.w;
+        const float  Li			= light.KI.w * 3;
         const float  Lr			= light.PR.w;
         const float  ld_2		= Ld * Ld;
         const float  La			= (Li / ld_2) * (1 - (pow(Ld, 10) / pow(Lr, 10)));
@@ -231,7 +250,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 
         #if 0// skip shadowmaping
             const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
-            color += max(float4(colorSample, 0 ), 0.0f);
+            color += max(float4(colorSample, 0), 0.0f);
         #else
             const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
 
@@ -244,38 +263,15 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
                 float3( 0,  0, -1), // backward
             };
 
-            float3 temp = dot(L, float3(1, 0, 0)) < 0.9f ?
-                cross(L, float3(0, 1, 0)) : cross(L, float3(1, 0, 0));
-
-            const float3 R  = cross(L, temp);
-            const float3 Up = cross(L, R);
-
-            const float3x3 m = transpose(float3x3(R, Up, L));
-
-            const float2 sampleVectors[] =
-            {
-                float2( 0.0f, 0.0f),
-
-                float2( 0, 1),
-                float2( 0,-1),
-                float2( 1, 0),
-                float2(-1, 0),
-
-                float2( 1, 1),
-                float2(-1,-1),
-                float2(-1, 1),
-                float2( 1,-1),
-                float2( 1,-1),
-                float2(-1, 1),
-            };
-
-            const float3 sampleVector = normalize(mul(m, float3(0, 0, 1)));
+            const float2 pixelSize = float2(1.0f, 1.0f) / float2(1024, 1024);
 
             int fieldID = 0;
             float a = -1.0f;
 
-            for (int II = 0; II < 6; II++) {
-                const float b = dot(mapVectors[II], mul(ViewI, -sampleVector));
+            const float3 L_WS = mul(ViewI, -L);
+            for (int II = 0; II < 6; II++)
+            {
+                const float b = dot(mapVectors[II], L_WS);
 
                 if (b > a)
                 {
@@ -286,35 +282,75 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 
             const float4 lightPosition_DC 	= mul(pl_PV[6 * pointLightIdx + fieldID], float4(positionWS.xyz, 1));
             const float3 lightPosition_PS 	= lightPosition_DC / lightPosition_DC.a;
+            const float lightDepth          = lightPosition_PS.z;
 
-            const float3 L_WS               = mul(ViewI, sampleVector) * float3(1, -1, -1);
-            const float3 L_Offset           = L_WS;
+            const float2 shadowMapUV    = float2(0.5f + lightPosition_PS.x / 2.0f, 0.5f - lightPosition_PS.y / 2.0f);
 
-            const float2 shadowMapUV        = float2(0.5f + lightPosition_PS.x / 2.0f, 0.5f - lightPosition_PS.y / 2.0f);
-            const float shadowSample        = shadowMaps[pointLightIdx].Sample(NearestPoint, float3(shadowMapUV, fieldID));
-            const float depth               = lightPosition_PS.z;
+            const float2 resolution     = 1024.0f;
+            const float2 resolution_INV = 1.0f / resolution;
 
-            const float minBias             = 0.0000015f;
-            const float maxBias             = 0.00000750f;
-            const float bias                = maxBias * saturate(tan(acos(dot(N_WT, L_WS)))) + minBias;
+            const float2 uv = shadowMapUV * resolution;
+            float2 base_uv;
+            base_uv.x = floor(uv.x + 0.5);
+            base_uv.y = floor(uv.y + 0.5);
 
-            const float visibility = saturate(depth < (shadowSample + bias) ? 1.0f : 0.0f);
+            float s = (uv.x + 0.5 - base_uv.x);
+            float t = (uv.y + 0.5 - base_uv.y);
 
-            const float4 Colors[] = {
-                float4(1, 0, 0, 0),
-                float4(0, 1, 0, 0),
-                float4(0, 0, 1, 0),
-                float4(1, 1, 0, 1),
-                float4(0, 1, 1, 1),
-                float4(1, 0, 1, 1),
-            };
+            base_uv -= 0.5f;
+            base_uv *= resolution_INV;
 
-            color += float4(saturate(colorSample * Lc * visibility), 0);
+            const float uw0 = (5 * s - 6);
+            const float uw1 = (11 * s - 28);
+            const float uw2 = -(11 * s + 17);
+            const float uw3 = -(5 * s + 1);
+
+            const float u0 = (4 * s - 5) / uw0 - 3;
+            const float u1 = (4 * s - 16) / uw1 - 1;
+            const float u2 = -(7 * s + 5) / uw2 + 1;
+            const float u3 = -s / uw3 + 3;
+
+            const float vw0 = (5 * t - 6);
+            const float vw1 = (11 * t - 28);
+            const float vw2 = -(11 * t + 17);
+            const float vw3 = -(5 * t + 1);
+
+            const float v0 = (4 * t - 5) / vw0 - 3;
+            const float v1 = (4 * t - 16) / vw1 - 1;
+            const float v2 = -(7 * t + 5) / vw2 + 1;
+            const float v3 = -t / vw3 + 3;
+
+            const float3 shadowPosDX = ddx_fine(positionWS);
+            const float3 shadowPosDY = ddy_fine(positionWS);
+            const float2 receiverPlaneDepthBias = ComputeReceiverPlaneDepthBias(shadowPosDX, shadowPosDY);
+
+            float sum = 0;
+            sum += uw0 * vw0 * SampleShadowMap(base_uv, u0, v0, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
+            sum += uw1 * vw0 * SampleShadowMap(base_uv, u1, v0, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
+            sum += uw2 * vw0 * SampleShadowMap(base_uv, u2, v0, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
+            sum += uw3 * vw0 * SampleShadowMap(base_uv, u3, v0, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
+
+            sum += uw0 * vw1 * SampleShadowMap(base_uv, u0, v1, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
+            sum += uw1 * vw1 * SampleShadowMap(base_uv, u1, v1, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
+            sum += uw2 * vw1 * SampleShadowMap(base_uv, u2, v1, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
+            sum += uw3 * vw1 * SampleShadowMap(base_uv, u3, v1, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
+
+            sum += uw0 * vw2 * SampleShadowMap(base_uv, u0, v2, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
+            sum += uw1 * vw2 * SampleShadowMap(base_uv, u1, v2, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
+            sum += uw2 * vw2 * SampleShadowMap(base_uv, u2, v2, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
+            sum += uw3 * vw2 * SampleShadowMap(base_uv, u3, v2, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
+
+            sum += uw0 * vw3 * SampleShadowMap(base_uv, u0, v3, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
+            sum += uw1 * vw3 * SampleShadowMap(base_uv, u1, v3, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
+            sum += uw2 * vw3 * SampleShadowMap(base_uv, u2, v3, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
+            sum += uw3 * vw3 * SampleShadowMap(base_uv, u3, v3, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
+
+            color += float4(saturate(colorSample * Lc * sum * 1.0f / 2704.0f), 0);
         #endif
     }
 
 #if 0
-    float4 Colors[] = {
+    static float4 Colors[] = {
         float4(0, 0, 0, 0), 
         float4(1, 0, 0, 0), 
         float4(0, 1, 0, 0), 
