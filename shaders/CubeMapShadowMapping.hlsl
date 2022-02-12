@@ -34,19 +34,28 @@ cbuffer PoseConstants : register(b2)
 cbuffer DrawConstants : register(b3)
 {
     float4x4    PV;
+    float4x4    View;
     uint        arrayTarget;
+    float       maxZ;
 };
 
 struct Vertex
 {
     float4 pos              : SV_POSITION;
+    float3 pos_VS           : POSITION;
     uint   arrayTargetIndex : SV_RenderTargetArrayIndex;
 };
 
 Vertex VS_Main(float3 POS : POSITION)
 {
+    const float3 POS_WT = mul(WT, float4(POS, 1)).xyz;
+    const float4 POS_DC = mul(PV, float4(POS_WT, 1));
+    const float4 POS_VS = mul(View, float4(POS_WT, 1));
+
     Vertex Out;
-    Out.pos                 = mul(PV, mul(WT, float4(POS, 1)));
+    Out.pos                 = POS_DC;//float4(POS_DC.xy / POS_DC.w, -POS_VS.z / maxZ, 1);
+    Out.pos_VS              = POS_VS;
+    //Out.pos                 = mul(PV, mul(WT, float4(POS, 1)));
     Out.arrayTargetIndex    = arrayTarget;
 
     return Out;
@@ -78,10 +87,21 @@ Vertex VS_Skinned_Main(Skinned_Vertex IN)
     V += (mul(MTs[3], float4(IN.POS, 1)) * W[3]).xyz;
 
     const float3 POS_WT = mul(WT, float4(V.xyz, 1)).xyz;
+    const float4 POS_DC = mul(PV, float4(POS_WT, 1));
+    const float4 POS_VS = mul(View, float4(POS_WT, 1));
 
     Vertex Out;
-    Out.pos                 = mul(PV, float4(POS_WT, 1));
+    Out.pos                 = float4(POS_DC.xy, POS_VS.z / maxZ, 1);
     Out.arrayTargetIndex    = arrayTarget;
 
     return Out;
+}
+
+
+float PS_Main(Vertex IN, const bool frontFacing : SV_IsFrontFace) : SV_DEPTH
+{
+    if (frontFacing)
+        return (-IN.pos_VS.z / maxZ) + 0.015f;
+    else
+        return (-IN.pos_VS.z / maxZ) - 0.00015f;
 }
