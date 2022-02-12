@@ -64,17 +64,13 @@ struct Vertex
 struct Deferred_PS_IN
 {
     float4 Position   : SV_Position;
-    float2 PixelCoord : PIXELCOORD;
-    float2 UV         : UVCOORD;
 };
 
 Deferred_PS_IN ShadingPass_VS(float4 position : POSITION)
 {
     Deferred_PS_IN OUT;
-    OUT.Position        = position;
-    OUT.PixelCoord      = ((float2(position.xy) + float2(1, 1)) / 2) * WH;
-    OUT.PixelCoord.y    = WH.y - OUT.PixelCoord.y - 1;
-    
+    OUT.Position = position;
+
     return OUT;
 }
 
@@ -185,10 +181,10 @@ float SampleShadowMap(in float2 base_uv, in float u, in float v, in float2 shado
     return saturate(shadowMap.SampleCmpLevelZero(ShadowSampler, float3(uv, fieldID), depth));
 }
 
-float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
+float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 {
-    const float2 SampleCoord    = IN.Position;
-    const uint2  px             = IN.Position.xy;
+    const float2 SampleCoord    = Position;
+    const uint2  px             = Position.xy;
     const float  depth          = DepthBuffer.Load(uint3(px.xy, 0));
 
     if (depth == 1.0f) 
