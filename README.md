@@ -25,6 +25,8 @@ Hit F7 to build. Vcpkg will grab all other dependencies.
 ![PBR Shading](/screenshots/sponza.jpg)
 ### Clustered light culling
 ![Clustered Light Culling](/screenshots/CLC.jpg)
+### PCF Shadow Mapping
+![PCF Shadow Mapping](/screenshots/PCFShadowMapping.jpg)
 ### Streaming Tiled Textures
 ![TextureStreaming And Tiled Resources](/screenshots/StreamingTiledTextures.jpg)
 ### Basic Profiler
