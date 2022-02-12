@@ -1598,6 +1598,12 @@ namespace FlexKit
                 //if (!pointLightCount)
                 //    return;
 
+                struct ShadowMap
+                {
+                    float4x4 PV;
+                    float4x4 View;
+                };
+
 				struct
 				{
                     float2      WH;
@@ -1605,7 +1611,7 @@ namespace FlexKit
 					float       time;
 					uint32_t    lightCount;
                     float4      ambientLight;
-					float4x4    PV[1024];
+                    ShadowMap   PV[256];
 				}passConstants =
                 {
                     {(float)WH[0], (float)WH[1]},
@@ -1624,7 +1630,7 @@ namespace FlexKit
                         const auto matrices     = CalculateShadowMapMatrices(position, light.R, t);
 
                         for (size_t II = 0; II < 6; II++)
-                            passConstants.PV[6 * lightID + II] = matrices.PV[II];
+                            passConstants.PV[6 * lightID + II] = { .PV = matrices.PV[II], .View = matrices.View[II] };
 
                         lightID++;
                     }

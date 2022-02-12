@@ -46,6 +46,7 @@ namespace FlexKit
 
     struct ShadowPassMatrices
     {
+        float4x4 View[6];
         float4x4 ViewI[6];
         float4x4 PV[6];
     };

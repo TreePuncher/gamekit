@@ -8,6 +8,11 @@ struct PointLight
     float4 PR;	// XYZ + radius in W
 };
 
+struct ShadowMap
+{
+    float4x4 PV;
+    float4x4 V;
+};
 
 struct Cluster
 {
@@ -24,7 +29,7 @@ cbuffer LocalConstants : register(b1)
     uint   	lightCount;
     float4  ambientLight;
 
-	float4x4 pl_PV[1022];
+    ShadowMap pl[256];
 }
 
 #define ARRAY 1
@@ -176,9 +181,8 @@ float2 ComputeReceiverPlaneDepthBias(float3 texCoordDX, float3 texCoordDY)
 float SampleShadowMap(in float2 base_uv, in float u, in float v, in float2 shadowMapSizeInv, in uint fieldID, in Texture2DArray<float> shadowMap, in float depth, in float2 receiverPlaneDepthBias)
 {
     const float2 uv   = base_uv + float2(u, v) * shadowMapSizeInv;
-    const float z     = depth - 0.000015f;// + dot(float2(u, v) * shadowMapSizeInv, receiverPlaneDepthBias);
 
-    return saturate(shadowMap.SampleCmpLevelZero(ShadowSampler, float3(uv, fieldID), z));
+    return saturate(shadowMap.SampleCmpLevelZero(ShadowSampler, float3(uv, fieldID), depth));
 }
 
 float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
@@ -210,15 +214,15 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     const float3 positionWS     = GetWorldSpacePosition(UV, depth);
 
     const float ior           = MRIA.b;
-    const float metallic      = MRIA.r > 0.1f ? 1.0f : 0.0f;
+    const float metallic      = MRIA.r > 0.1f ? 1.0f : 0.0f; 
 	const float3 albedo       = pow(Albedo.rgb, 2);
-    const float roughness     = 1.0f;//MRIA.g;
+    const float roughness     = 0.9f;//MRIA.g;
 
     const float Ks              = lerp(0, 0.4f, saturate(Albedo.w));
     const float Kd              = (1.0 - Ks) * (1.0 - metallic);
     const float NdotV           = saturate(dot(N.xyz, V));
 
-    float4 color = float4(ambientLight * albedo, 1);
+    float4 color = float4(ambientLight * albedo * 3.0f, 1);
     for(uint I = 0; I < localLightCount; I++)
     {
         const uint pointLightIdx    = lightListBuffer[localLightList + I];
@@ -228,7 +232,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
         const float3 Lp         = mul(View, float4(light.PR.xyz, 1));
         const float3 L		    = normalize(Lp - positionVS);
         const float  Ld			= length(positionVS - Lp);
-        const float  Li			= light.KI.w * 3;
+        const float  Li			= light.KI.w * 2;
         const float  Lr			= light.PR.w;
         const float  ld_2		= Ld * Ld;
         const float  La			= (Li / ld_2) * (1 - (pow(Ld, 10) / pow(Lr, 10)));
@@ -263,8 +267,6 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
                 float3( 0,  0, -1), // backward
             };
 
-            const float2 pixelSize = float2(1.0f, 1.0f) / float2(1024, 1024);
-
             int fieldID = 0;
             float a = -1.0f;
 
@@ -280,16 +282,18 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
                 }
             }
 
-            const float4 lightPosition_DC 	= mul(pl_PV[6 * pointLightIdx + fieldID], float4(positionWS.xyz, 1));
+            const float4 lightPosition_DC 	= mul(pl[6 * pointLightIdx + fieldID].PV,   float4(positionWS.xyz, 1));
+            const float4 lightPosition_VS 	= mul(pl[6 * pointLightIdx + fieldID].V,    float4(positionWS.xyz, 1));
             const float3 lightPosition_PS 	= lightPosition_DC / lightPosition_DC.a;
-            const float lightDepth          = lightPosition_PS.z;
+            const float lightDepth          = -lightPosition_VS.z / Lr;
 
             const float2 shadowMapUV    = float2(0.5f + lightPosition_PS.x / 2.0f, 0.5f - lightPosition_PS.y / 2.0f);
 
-            const float2 resolution     = 1024.0f;
+            float Elements;
+            float2 resolution;
+            shadowMaps[pointLightIdx].GetDimensions(resolution.x, resolution.y, Elements);
             const float2 resolution_INV = 1.0f / resolution;
-
-            const float2 uv = shadowMapUV * resolution;
+            const float2 uv             = shadowMapUV * resolution;
             float2 base_uv;
             base_uv.x = floor(uv.x + 0.5);
             base_uv.y = floor(uv.y + 0.5);

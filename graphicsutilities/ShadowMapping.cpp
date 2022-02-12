@@ -9,7 +9,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* ShadowMapper::CreateShadowMapPass(RenderSystem* RS)
 	{
-		auto VShader = RS->LoadShader("VS_Main", "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
+        auto VShader = RS->LoadShader("VS_Main", "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
+        auto PShader = RS->LoadShader("PS_Main", "ps_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
 
 		/*
 		typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -31,7 +32,7 @@ namespace FlexKit
 
 		D3D12_RASTERIZER_DESC Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		Rast_Desc.FillMode = D3D12_FILL_MODE_SOLID;
-		Rast_Desc.CullMode = D3D12_CULL_MODE_BACK;
+		Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
@@ -40,6 +41,7 @@ namespace FlexKit
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature                         = rootSignature;
 			PSO_Desc.VS                                     = VShader;
+			PSO_Desc.PS                                     = PShader;
 			PSO_Desc.BlendState                             = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask                             = UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType                  = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
@@ -153,7 +155,8 @@ namespace FlexKit
 			const XMMATRIX PV               = DirectX::XMMatrixTranspose(perspective) * XMMatrixTranspose(View);
 
 			out.PV[I]       = XMMatrixToFloat4x4(PV).Transpose();
-			out.ViewI[I]    = XMMatrixToFloat4x4(ViewI);
+            out.ViewI[I]    = XMMatrixToFloat4x4(ViewI);
+            out.View[I]     = XMMatrixToFloat4x4(View);
 		}
 
 		return out;
@@ -213,10 +216,10 @@ namespace FlexKit
     {
         rootSignature.AllowIA = true;
         rootSignature.AllowSO = false;
-        rootSignature.SetParameterAsUINT(   0, 20,  3, 0,   PIPELINE_DEST_VS);
-        rootSignature.SetParameterAsCBV(    1, 0,   0,      PIPELINE_DEST_VS);
-        rootSignature.SetParameterAsUINT(   2, 16,  1, 0,   PIPELINE_DEST_VS);
-        rootSignature.SetParameterAsCBV(    3, 2,   0,      PIPELINE_DEST_VS);
+        rootSignature.SetParameterAsUINT(   0, 40,  3, 0,   PIPELINE_DEST_ALL);
+        rootSignature.SetParameterAsCBV(    1, 0,   0,      PIPELINE_DEST_ALL);
+        rootSignature.SetParameterAsUINT(   2, 16,  1, 0,   PIPELINE_DEST_ALL);
+        rootSignature.SetParameterAsCBV(    3, 2,   0,      PIPELINE_DEST_ALL);
         rootSignature.Build(renderSystem, &allocator);
 
         renderSystem.RegisterPSOLoader(SHADOWMAPPASS,          { &renderSystem.Library.RS6CBVs4SRVs, [&](RenderSystem* rs) { return CreateShadowMapPass(rs); }});
@@ -284,7 +287,7 @@ namespace FlexKit
                         ProfileFunction();
 
                         auto& light = lights[lightHandle];
-                        auto [shadowMap, _] = shadowMapAllocator.Acquire(GPUResourceDesc::DepthTarget({ 1024, 1024 }, DeviceFormat::D32_FLOAT, 6), false);
+                        auto [shadowMap, _] = shadowMapAllocator.Acquire(GPUResourceDesc::DepthTarget({ 512, 512 }, DeviceFormat::D32_FLOAT, 6), false);
                         light.shadowMap = shadowMap;
 
 #if USING(DEBUGGRAPHICS)
@@ -388,23 +391,7 @@ namespace FlexKit
                                         });
                                 }
 
-                                struct PassConstants
-                                {
-                                    struct PlaneMatrices
-                                    {
-                                        float4x4 ViewI;
-                                        float4x4 PV;
-                                    }matrices[6];
-                                } passConstantData;
-
                                 const float3 Position   = FlexKit::GetPositionW(pointLight.Position);
-                                const auto matrices     = CalculateShadowMapMatrices(Position, pointLight.R, t);
-
-                                for (size_t I = 0; I < 6; I++)
-                                {
-                                    passConstantData.matrices[I].ViewI   = matrices.ViewI[I];
-                                    passConstantData.matrices[I].PV     = matrices.PV[I];
-                                }
 
                                 struct PoseConstants
                                 {
@@ -459,6 +446,8 @@ namespace FlexKit
 
                                     const float4x4 WT   = GetWT(PV.brush->Node);
                                     const float4 POS_WT = WT * float4(BS.xyz(), 1);
+                                    const auto matrices = CalculateShadowMapMatrices(Position, pointLight.R, t);
+
                                     ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
 
                                     for (uint32_t itr = 0; itr < 6; itr++)
@@ -466,20 +455,26 @@ namespace FlexKit
                                         struct 
                                         {
                                             float4x4 PV;
+                                            float4x4 View;
                                             uint32_t Idx;
-                                        }tempConstants = {.PV = passConstantData.matrices[itr].PV, .Idx = itr };
+                                            float    maxZ;
+                                        }tempConstants = {
+                                                .PV     = matrices.PV[itr],
+                                                .View   = matrices.View[itr],
+                                                .Idx    = itr,
+                                                .maxZ   = pointLight.R };
 
                                         const float4 POS_VS = tempConstants.PV * POS_WT + WT * float4(BS.xyz(), 0);
 
                                         if (BS.w + POS_VS.z > 0.0f)
                                         {
-                                            ctx.SetGraphicsConstantValue(0, 17, &tempConstants);
+                                            ctx.SetGraphicsConstantValue(0, 34, &tempConstants);
                                             ctx.DrawIndexedInstanced(indexCount);
                                         }
                                     }
 					            }
 
-                                if(animatedBrushes.size())
+                                if(animatedBrushes.size() && false)
                                 {
                                     auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS);
                                     ctx.SetPipelineState(PSOAnimated);
@@ -527,20 +522,28 @@ namespace FlexKit
 
                                                 ctx.SetGraphicsConstantValue(2, 16, &WT);
                                                 ctx.SetGraphicsConstantBufferView(3, poseConstants);
+                                                const auto matrices = CalculateShadowMapMatrices(Position, pointLight.R, t);
 
                                                 for (uint32_t itr = 0; itr < 6; itr++)
                                                 {
                                                     struct 
                                                     {
-                                                        float4x4 PV;
-                                                        uint32_t Idx;
-                                                    }tempConstants = {.PV = passConstantData.matrices[itr].PV, .Idx = itr };
+                                                        float4x4    PV;
+                                                        float4x4    View;
+                                                        uint32_t    Idx;
+                                                        float       maxZ;
+                                                    }tempConstants = {
+                                                            .PV     = matrices.PV[itr],
+                                                            .View   = matrices.View[itr],
+                                                            .Idx    = itr,
+                                                            .maxZ   = pointLight.R
+                                                    };
 
                                                     const float4 POS_VS = tempConstants.PV * POS_WT + WT * float4(triMesh->BS.xyz(), 0);
 
                                                     if (triMesh->BS.w + POS_VS.z > 0.0f)
                                                     {
-                                                        ctx.SetGraphicsConstantValue(0, 17, &tempConstants);
+                                                        ctx.SetGraphicsConstantValue(0, 40, &tempConstants);
                                                         ctx.DrawIndexedInstanced(indexCount);
                                                     }
                                                 }
