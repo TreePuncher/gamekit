@@ -112,7 +112,7 @@ namespace FlexKit
             ar& tracks;
         }
 
-        ResourceBlob        CreateBlob();
+        ResourceBlob        CreateBlob() const override;
 
         const std::string&  GetResourceID()     const noexcept { return ID; }
         const uint64_t      GetResourceGUID()   const noexcept { return guid; }
@@ -171,7 +171,7 @@ namespace FlexKit
             ar& metaData;
         }
 
-        ResourceBlob CreateBlob() override;
+        ResourceBlob CreateBlob() const override;
 
 
         JointHandle	FindJoint(const std::string& id) const noexcept;

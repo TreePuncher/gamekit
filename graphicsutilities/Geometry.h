@@ -87,15 +87,18 @@ namespace FlexKit
 	{
 	public:
 		VertexBufferView();
+        VertexBufferView(const VertexBufferView&) = delete;
+        VertexBufferView(VertexBufferView&&) = delete;
+
 		VertexBufferView(FlexKit::byte* _ptr, size_t size);
         VertexBufferView(FlexKit::byte* _ptr, size_t size, VERTEXBUFFER_FORMAT format, VERTEXBUFFER_TYPE type);
 
 		~VertexBufferView();
 
-		VertexBufferView  operator += (const VertexBufferView& RHS);
+		//VertexBufferView& operator += (const VertexBufferView& RHS);
 
 		VertexBufferView& operator = (const VertexBufferView& RHS);	// Assignment Operator
-		//VertexBuffer& operator = ( const VertexBuffer&& RHS );	// Movement Operator
+        VertexBufferView& operator = (VertexBufferView&& RHS );	// Movement Operator
 
 
 		template<typename Ty>

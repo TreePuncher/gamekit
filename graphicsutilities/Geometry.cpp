@@ -83,7 +83,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	VertexBufferView VertexBufferView::operator += ( const VertexBufferView& RHS )
+    /*
+	VertexBufferView& VertexBufferView::operator += ( const VertexBufferView& RHS )
 	{	//TODO: THIS FUNCTION
         FK_ASSERT(RHS.GetBufferType() == GetBufferType() && GetBufferFormat() == RHS.GetBufferFormat());
 
@@ -91,6 +92,7 @@ namespace FlexKit
 
 		return *this;
 	}
+    */
 
 
 	/************************************************************************************************/
@@ -108,6 +110,32 @@ namespace FlexKit
 		}
 		return *this;
 	}
+
+
+    /************************************************************************************************/
+
+
+    VertexBufferView& VertexBufferView::operator = (VertexBufferView&& RHS)
+    {
+        if( &RHS != this )
+		{
+			mBufferFormat      = RHS.GetBufferFormat();
+			mBufferType        = RHS.GetBufferType();
+			mBufferElementSize = RHS.GetElementSize();
+			mBufferinError     = false;
+			mBuffer            = RHS.GetBuffer();
+		}
+
+        RHS.mBuffer             = nullptr;
+        RHS.mBufferElementSize  = 0;
+        RHS.mBufferinError      = true;
+        RHS.mBufferLock         = false;
+        RHS.mBufferSize         = 0;
+        RHS.mBufferUsed         = 0;
+
+		return *this;
+    }
+
 
 
 	/************************************************************************************************/

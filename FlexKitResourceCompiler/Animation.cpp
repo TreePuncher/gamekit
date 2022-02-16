@@ -70,7 +70,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    ResourceBlob AnimationResource::CreateBlob()
+    ResourceBlob AnimationResource::CreateBlob() const
     {
         AnimationResourceBlob::AnimationResourceHeader header = {
             .Type       = EResourceType::EResource_Animation,
@@ -119,7 +119,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    ResourceBlob SkeletonResource::CreateBlob()
+    ResourceBlob SkeletonResource::CreateBlob() const
     {
         Blob jointBlob;
         for (size_t jointIdx = 0; jointIdx < joints.size(); ++jointIdx)

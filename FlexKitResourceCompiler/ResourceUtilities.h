@@ -107,7 +107,7 @@ namespace FlexKit
     typedef std::vector<IDTranslation> IDTranslationTable;
 
 
-    inline GUID_t	TranslateID(size_t FBXID, IDTranslationTable& Table)
+    inline GUID_t	TranslateID(const size_t FBXID, const IDTranslationTable& Table)
     {
         for (auto ID : Table)
             if (ID.FBXID == FBXID)
@@ -116,7 +116,7 @@ namespace FlexKit
         return FBXID;
     }
 
-    inline bool IDPresentInTable(size_t FBXID, IDTranslationTable& Table)
+    inline bool IDPresentInTable(const size_t FBXID, const IDTranslationTable& Table)
     {
         for (auto ID : Table)
             if (ID.FBXID == FBXID)

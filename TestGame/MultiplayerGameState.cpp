@@ -567,7 +567,11 @@ bool LocalGameState::EventHandler(Event evt)
                     framework.GetRenderSystem().QueuePSOLoad(SHADINGPASS);
                     framework.GetRenderSystem().QueuePSOLoad(SHADOWMAPPASS);
                     framework.GetRenderSystem().QueuePSOLoad(SHADOWMAPANIMATEDPASS);
-                    
+
+                    framework.GetRenderSystem().QueuePSOLoad(AVERAGELUMINANCE_BLOCK);
+                    framework.GetRenderSystem().QueuePSOLoad(AVERAGELUMANANCE_GLOBAL);
+                    framework.GetRenderSystem().QueuePSOLoad(TONEMAP);
+
                     //framework.GetRenderSystem().QueuePSOLoad(VXGI_DRAWVOLUMEVISUALIZATION);
 
                     return true;

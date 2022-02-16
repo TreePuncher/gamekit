@@ -211,7 +211,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 
     const float ior           = MRIA.b;
     const float metallic      = MRIA.r > 0.1f ? 1.0f : 0.0f; 
-	const float3 albedo       = pow(Albedo.rgb, 2);
+	const float3 albedo       = pow(Albedo.rgb, 2.2);
     const float roughness     = 0.9f;//MRIA.g;
 
     const float Ks              = lerp(0, 0.4f, saturate(Albedo.w));
@@ -345,11 +345,11 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
             sum += uw2 * vw3 * SampleShadowMap(base_uv, u2, v3, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
             sum += uw3 * vw3 * SampleShadowMap(base_uv, u3, v3, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
 
-            color += float4(saturate(colorSample * Lc * sum * 1.0f / 2704.0f), 0);
+            color += max(float4(colorSample * Lc * sum * 1.0f / 2704.0f, 0), 0);
         #endif
     }
 
-#if 0
+#if 1
     static float4 Colors[] = {
         float4(0, 0, 0, 0), 
         float4(1, 0, 0, 0), 
@@ -385,7 +385,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
         //return pow(-positionVS.z / 128, 10.0f);
         //return depth;
         //return float4(N / 2.0f + 0.5f);
-    return Albedo * Albedo;
+    //return Albedo * Albedo;
     //return float4(positionW, 0);
     //return pow(roughness, 2.2f);
     //return pow(MRIA, 2.2f);
@@ -394,14 +394,10 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
     //return float4(N.xyz, 1);
     //return pow(float4(roughness, metallic, 0, 0), 2.2f);
     //return float4(N.xyz / 2 + 0.5f, 1);
-    //return float4(T.xyz / 2 + 0.5f, 1);
     //return float4(Albedo.xyz, 1);
-
-    //return pow(UV.y, 1.0f); 
-    //return pow(1 - UV.y, 2.2f); 
 #endif
     
-	return pow(color, 2.2f);
+	return color;
 }
 
 

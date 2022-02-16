@@ -1674,6 +1674,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorHeap& DH);
 		void SetGraphicsShaderResourceView	(size_t idx, FrameBufferedResource* Resource, size_t Count, size_t ElementSize);
 		void SetGraphicsShaderResourceView	(size_t idx, Texture2D& Texture);
+        void SetGraphicsUnorderedAccessView (size_t idx, ResourceHandle resource, size_t offset = 0);
+
 
         void SetComputeDescriptorTable      (size_t idx);
 		void SetComputeDescriptorTable		(size_t idx, const DescriptorHeap& DH);
@@ -1683,6 +1685,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetComputeShaderResourceView	(size_t idx, Texture2D&		texture);
 		void SetComputeShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0);
 		void SetComputeUnorderedAccessView	(size_t idx, ResourceHandle resource, size_t offset = 0);
+        void SetComputeConstantValue        (size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0);
 
 
 		void BeginQuery	(QueryHandle query, size_t idx);

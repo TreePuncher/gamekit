@@ -707,6 +707,11 @@ namespace FlexKit
             return Transition(resource, DRS_UAV, ctx);
 		}
 
+        ResourceHandle RenderTarget(const FrameResourceHandle resource, Context& ctx) const
+        {
+            return Transition(resource, DRS_RenderTarget, ctx);
+        }
+
         ResourceHandle PixelShaderResource(const FrameResourceHandle resource, Context& ctx) const
         {
             return Transition(resource, DRS_PixelShaderResource, ctx);

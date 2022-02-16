@@ -835,7 +835,7 @@ namespace FlexKit
                 else
                     DeserializeValue(value);
 
-                vector.emplace_back(value);
+                vector.emplace_back(std::move(value));
             }
         }
 

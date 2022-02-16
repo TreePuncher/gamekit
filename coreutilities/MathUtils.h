@@ -190,6 +190,14 @@ namespace FlexKit
 
 		explicit float2(const float in_f) noexcept { x = in_f; y = in_f; }
 
+        template<typename TY>
+        float2(const TY& vect) noexcept
+        {
+            x = vect[0];
+            y = vect[1];
+        }
+
+
 		inline bool		operator == ( const float2& rhs ) const { return ( rhs.x == x && rhs.y == y ) ? true : false; }
 
 		inline float&   operator[] (const size_t i) noexcept        { FK_ASSERT(i < 2); return i ? y : x; }

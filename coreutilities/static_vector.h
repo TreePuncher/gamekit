@@ -87,10 +87,7 @@ namespace FlexKit
 		typedef typename reverse_iterator_t reverse_iterator;
 
 
-		static_vector()
-		{
-			Size = 0;
-		}
+        static_vector() = default;
 
 
 		static_vector(const std::initializer_list<TY_> list) : static_vector()
@@ -100,26 +97,49 @@ namespace FlexKit
 		}
 
 
-		template<unsigned int RHSIZE = 10 >
+		template<unsigned int RHSIZE = 10> requires std::is_trivially_copyable_v<TY_>
 		static_vector(const static_vector<TY_, RHSIZE>& in)
 		{
-            if constexpr (std::is_trivially_copyable_v<TY_>)
-            {
-                Size = in.size();
-
-                memcpy(buffer, in.data(), in.size() * sizeof(TY_));
-            }
-            else
-            {
-			    Size = 0;
-
-			    for (auto i : in)
-				    if (Size != TSIZE)
-					    push_back(i);
-				    else
-					    return;
-            }
+            Size = in.size();
+            memcpy(buffer, in.data(), in.size() * sizeof(TY_));
 		}
+
+
+        template<unsigned int RHSIZE = 10> requires std::is_trivially_copyable_v<TY_>
+        static_vector(static_vector<TY_, RHSIZE>&& in)
+        {
+            Size = in.size();
+            memcpy(buffer, in.data(), in.size() * sizeof(TY_));
+
+            in.Size = 0;
+        }
+
+
+        template<unsigned int RHSIZE = 10> requires !std::is_trivially_copyable_v<TY_>
+        static_vector(static_vector<TY_, RHSIZE>&& in)
+        {
+            for (auto&& i : in)
+                if (Size != TSIZE)
+                    emplace_back(std::move(i));
+                else
+                    return;
+
+            in.Size = 0;
+        }
+
+
+        template<unsigned int RHSIZE = 10>
+        static_vector(const static_vector<TY_, RHSIZE>& in)
+        {
+            clear();
+
+            for (auto i : in)
+                if (Size != TSIZE)
+                    push_back(i);
+                else
+                    return;
+        }
+
 
         ~static_vector() requires !std::is_trivially_destructible_v<TY_>
         {
@@ -127,9 +147,10 @@ namespace FlexKit
                 pop_back();
         }
 
+
         ~static_vector() requires std::is_trivially_destructible_v<TY_> = default;
 
-		//template<typename TY_C>
+
 		static_vector& operator = (const TY_& in)
 		{
             FK_ASSERT(TSIZE > in.size());
@@ -389,7 +410,7 @@ namespace FlexKit
 			{
 				const size_t end = NewSize - size();
 
-				for (size_t I = NewSize - 1; I < end; ++I)
+				for (size_t I = size(); I < end; ++I)
 					new(at_ptr(I + size())) TY_();
 			}
 
@@ -425,7 +446,7 @@ namespace FlexKit
 		
 		typedef TY_ TYPE;
 	private:
-		size_t  Size;							// Used Counter
+		size_t  Size = 0;                       // Used Counter
 		char	Padding[0x10 - sizeof(size_t)];	// 8-Byte Pad to keep 16byte Alignment of Elements
 		char    buffer[TSIZE * sizeof(TY_)];
 	};

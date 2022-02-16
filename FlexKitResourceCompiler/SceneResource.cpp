@@ -317,11 +317,9 @@ namespace FlexKit
             }
 
             auto meshResource = CreateMeshResource(lodLevels,  mesh.name, {}, false);
-
-            resources.push_back(meshResource);
-
-
             meshResource->TriMeshID = GUID;
+
+            resources.emplace_back(std::move(meshResource));
 
             meshMap.push_back(GUID);
         }
@@ -741,7 +739,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    ResourceBlob SceneResource::CreateBlob()
+    ResourceBlob SceneResource::CreateBlob() const
     { 
         // Create Scene Node Table
         SceneNodeBlock::Header sceneNodeHeader;
@@ -841,7 +839,7 @@ namespace FlexKit
     }
 
 
-    Blob CreateIDComponent(std::string& string)
+    Blob CreateIDComponent(const std::string& string)
     {
         IDComponentBlob IDblob;
         strncpy_s(IDblob.ID, 64, string.c_str(), string.size());
