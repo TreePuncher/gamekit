@@ -187,8 +187,8 @@ namespace FlexKit
         }
 
 
-        operator byte* ()	{ return Buffer; }
-        size_t BufferSize() { return Size; }
+        operator byte* ()	        { return Buffer; }
+        size_t BufferSize() const   { return Size; }
 
 
         byte*		Buffer			= nullptr;

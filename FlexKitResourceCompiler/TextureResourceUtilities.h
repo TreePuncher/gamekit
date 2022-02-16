@@ -26,7 +26,7 @@ namespace FlexKit
     {
         std::vector<FlexKit::TextureBuffer> mipLevels;
 
-        Blob CreateBlob();
+        Blob CreateBlob() const;
     };
 
 
@@ -45,7 +45,7 @@ namespace FlexKit
         size_t                      Height  = 0;
 
 
-        ResourceBlob CreateBlob() override;
+        ResourceBlob CreateBlob() const override;
 
         const ResourceID_t GetResourceTypeID() const noexcept override { return CubeMapResourceTypeID; }
     };
@@ -129,7 +129,7 @@ namespace FlexKit
         const uint64_t      GetResourceGUID()   const noexcept final { return assetHandle; }
         const ResourceID_t  GetResourceTypeID() const noexcept final { return TextureResourceTypeID; }
 
-        ResourceBlob CreateBlob() override;
+        ResourceBlob CreateBlob() const override;
 
         std::string             ID              = "";
         GUID_t                  assetHandle     = -1;

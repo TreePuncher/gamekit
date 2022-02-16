@@ -188,9 +188,10 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
         if (entity.id.size())
             viewObject->gameObject.AddView<FlexKit::StringIDView>(entity.id.c_str(), entity.id.size());
 
+        bool addedToScene = false;
+
         for (auto& componentEntry : entity.components)
         {
-            bool addedToScene = false;
 
             switch (componentEntry->id)
             {
@@ -280,7 +281,7 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
     }
 
 
-    this->scene = viewportScene;
+    scene = viewportScene;
 }
 
 
@@ -909,7 +910,7 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 
                     const auto      node        = FlexKit::GetSceneNode(object->gameObject);
                     const auto      BS          = FlexKit::GetBoundingSphere(object->gameObject);
-                    const float3    position    = FlexKit::GetPositionW(node) + FlexKit::GetOrientation(node) * BS.xyz();
+                    const float3    position    = FlexKit::GetPositionW(node);// + FlexKit::GetOrientation(node) * BS.xyz();
                     const auto      radius      = BS.w;
                     const size_t    divisions   = 64;
 

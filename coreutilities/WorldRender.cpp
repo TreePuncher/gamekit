@@ -565,8 +565,21 @@ namespace FlexKit
             lightingEngine              { renderSystem, *persistent, EGITECHNIQUE::DISABLE },
             shadowMapping               { renderSystem, *persistent },
             clusteredRender             { renderSystem, *persistent },
-            transparency                { renderSystem }
+            transparency                { renderSystem },
+
+            rootSignatureToneMapping    { persistent }
 	{
+        FlexKit::DesciptorHeapLayout layout{};
+        layout.SetParameterAsSRV(0, 0, 2, 0);
+        layout.SetParameterAsShaderUAV(1, 1, 1, 0);
+
+        rootSignatureToneMapping.AllowIA = true;
+        rootSignatureToneMapping.SetParameterAsDescriptorTable(0, layout);
+        rootSignatureToneMapping.SetParameterAsUAV(1, 0, 0, PIPELINE_DEST_ALL);
+        rootSignatureToneMapping.SetParameterAsUINT(2, 16, 0, 0);
+        rootSignatureToneMapping.Build(renderSystem, persistent);
+
+
 		RS_IN.RegisterPSOLoader(FORWARDDRAW,			        { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawPSO,		  });
 		RS_IN.RegisterPSOLoader(FORWARDDRAWINSTANCED,	        { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO });
 
@@ -582,9 +595,9 @@ namespace FlexKit
         RS_IN.RegisterPSOLoader(ZPYRAMIDBUILDLEVEL,             { &RS_IN.Library.RSDefault, CreateBuildZLayer });
         RS_IN.RegisterPSOLoader(DEPTHCOPY,                      { &RS_IN.Library.RSDefault, CreateDepthBufferCopy });
 
-
-        RS_IN.RegisterPSOLoader(CREATEINITIALLUMANANCELEVEL,    { &RS_IN.Library.RSDefault, CreateInitialLumananceLevel });
-        RS_IN.RegisterPSOLoader(CREATELUMANANCELEVEL,           { &RS_IN.Library.RSDefault, CreateLumananceLevel });
+        RS_IN.RegisterPSOLoader(AVERAGELUMINANCE_BLOCK,         { &RS_IN.Library.RSDefault, [&](auto renderSystem){ return CreateAverageLumanceLocal(renderSystem); } });
+        RS_IN.RegisterPSOLoader(AVERAGELUMANANCE_GLOBAL,        { &RS_IN.Library.RSDefault, [&](auto renderSystem){ return CreateAverageLumanceGlobal(renderSystem); } });
+        RS_IN.RegisterPSOLoader(TONEMAP,                        { &RS_IN.Library.RSDefault, [&](auto renderSystem){ return CreateToneMapping(renderSystem); } });
 
 		RS_IN.QueuePSOLoad(GBUFFERPASS);
 		RS_IN.QueuePSOLoad(GBUFFERPASS_SKINNED);
@@ -1465,14 +1478,68 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    ID3D12PipelineState* CreateInitialLumananceLevel(RenderSystem* renderSystem)
+    ID3D12PipelineState* WorldRender::CreateAverageLumanceLocal(RenderSystem* renderSystem)
     {
-        return nullptr;
+        auto lightPassShader = renderSystem->LoadShader("LuminanceAverage", "cs_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_desc = {};
+        PSO_desc.CS             = lightPassShader;
+        PSO_desc.pRootSignature = rootSignatureToneMapping;
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = renderSystem->pDevice->CreateComputePipelineState(&PSO_desc, IID_PPV_ARGS(&PSO));
+        FK_ASSERT(SUCCEEDED(HR));
+
+        return PSO;
     }
 
-    ID3D12PipelineState* CreateLumananceLevel(RenderSystem* renderSystem)
+    ID3D12PipelineState* WorldRender::CreateAverageLumanceGlobal(RenderSystem* renderSystem)
     {
-        return nullptr;
+        auto lightPassShader = renderSystem->LoadShader("AverageLuminance", "cs_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_desc = {};
+        PSO_desc.CS             = lightPassShader;
+        PSO_desc.pRootSignature = rootSignatureToneMapping;
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = renderSystem->pDevice->CreateComputePipelineState(&PSO_desc, IID_PPV_ARGS(&PSO));
+        FK_ASSERT(SUCCEEDED(HR));
+
+        return PSO;
+    }
+
+    ID3D12PipelineState* WorldRender::CreateToneMapping(RenderSystem* renderSystem)
+    {
+		auto VShader = renderSystem->LoadShader("FullScreen", "vs_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
+		auto PShader = renderSystem->LoadShader("ToneMap", "ps_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
+
+
+		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		Depth_Desc.DepthEnable	= false;
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+			PSO_Desc.pRootSignature        = rootSignatureToneMapping;
+			PSO_Desc.VS                    = VShader;
+			PSO_Desc.PS                    = PShader;
+			PSO_Desc.RasterizerState       = Rast_Desc;
+			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask            = UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSO_Desc.NumRenderTargets      = 1;
+			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+			PSO_Desc.SampleDesc.Count      = 1;
+			PSO_Desc.SampleDesc.Quality    = 0;
+			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout           = { nullptr, 0 };
+			PSO_Desc.DepthStencilState     = Depth_Desc;
+		}
+
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		return PSO;
     }
 
 
@@ -1489,53 +1556,61 @@ namespace FlexKit
 			    float                           t,
 			    iAllocator*                     allocator)
     {
-        // Does a simple resource copy for the moment
         return frameGraph.AddNode<ToneMap>(
             ToneMap{},
 			[&](FrameGraphNodeBuilder& builder, ToneMap& data)
 			{
                 const auto WH = frameGraph.GetRenderSystem().GetTextureWH(target) / 2;
 
-                data.outputTarget   = builder.CopyDest(target);
-                data.sourceTarget   = builder.ReadTransition(source, DRS_CopySrc);
+                data.outputTarget   = builder.RenderTarget(target);
+                data.sourceTarget   = builder.NonPixelShaderResource(source);
 
                 //data.outputTarget = builder.RenderTarget(target);
                 //data.sourceTarget   = builder.ReadTransition(source, DRS_NonPixelShaderResource);
-                //data.temp1Buffer    = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT), DRS_UAV);
+                data.temp1Buffer    = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(2048, DeviceFormat::R32_FLOAT), DRS_UAV);
                 //data.temp2Buffer    = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT), DRS_UAV);
             },
-			[]
+			[&]
 			(ToneMap& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
                 ProfileFunction();
 
-                ctx.CopyResource(resources.GetResource(data.outputTarget), resources.GetResource(data.sourceTarget));
+                ctx.BeginEvent_DEBUG("Tone Mapping");
 
-                /*
-                auto& rootSig = resources.renderSystem().Library.RSDefault;
+                //ctx.CopyResource(resources.GetResource(data.outputTarget), resources.GetResource(data.sourceTarget));
 
-                DescriptorHeap heap1{};
-                heap1.Init2(ctx, rootSig.GetDescHeap(0), 3, &allocator);
-
-                DescriptorHeap heap2{};
-                heap2.Init2(ctx, rootSig.GetDescHeap(1), 3, &allocator);
-
-                ID3D12PipelineState* createInitialLevel = nullptr;
-                ID3D12PipelineState* createLumananceLevel = nullptr;
+                ID3D12PipelineState* createInitialLevel = resources.GetPipelineState(AVERAGELUMINANCE_BLOCK);
+                ID3D12PipelineState* averageLuminance   = resources.GetPipelineState(AVERAGELUMANANCE_GLOBAL);
+                ID3D12PipelineState* toneMap            = resources.GetPipelineState(TONEMAP);
 
                 const uint2 WH = resources.GetTextureWH(data.sourceTarget);
+                const uint2 XY = (float2{ (float)WH[0], (float)WH[1] } / 512.0f).ceil();
 
-                ctx.SetComputeRootSignature(rootSig);
+                DescriptorHeap heap1{};
+                heap1.Init(ctx, rootSignatureToneMapping.GetDescHeap(0), &allocator);
+                heap1.SetSRV(ctx, 0, resources.NonPixelShaderResource(data.sourceTarget, ctx));
+
+                ctx.SetComputeRootSignature(rootSignatureToneMapping);
                 ctx.SetComputeDescriptorTable(0, heap1);
-                ctx.SetComputeDescriptorTable(1, heap2);
-                ctx.Dispatch(createInitialLevel, { WH, 0 });
+                ctx.SetComputeUnorderedAccessView(1, resources.UAV(data.temp1Buffer, ctx));
+                ctx.SetComputeConstantValue(2, 2, &XY, 0);
+                ctx.Dispatch(createInitialLevel, { XY, 1 });
 
-                for (uint I = 0; I < log2(ceil(WH.Max())); I++)
-                {
+                ctx.AddUAVBarrier(resources.GetResource(data.temp1Buffer));
+                ctx.Dispatch(averageLuminance, { 1, 1, 1 });
+                ctx.AddUAVBarrier(resources.GetResource(data.temp1Buffer));
 
-                    ctx.Dispatch(createLumananceLevel, { WH, 0 });
-                }
-                */
+                ctx.SetRootSignature(rootSignatureToneMapping);
+                ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+                ctx.SetPipelineState(toneMap);
+                ctx.SetGraphicsDescriptorTable(0, heap1);
+                ctx.SetGraphicsUnorderedAccessView(1, resources.UAV(data.temp1Buffer, ctx));
+                ctx.SetGraphicsConstantValue(2, 2, &XY, 0);
+                ctx.SetScissorAndViewports({  resources.GetResource(data.outputTarget) });
+                ctx.SetRenderTargets({ resources.RenderTarget(data.outputTarget, ctx) }, false);
+                ctx.Draw(3, 0);
+
+                ctx.EndEvent_DEBUG();
             });
     }
 

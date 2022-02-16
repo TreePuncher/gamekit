@@ -36,7 +36,7 @@ namespace FlexKit
 
     /************************************************************************************************/
 
-    Blob CubeMapFace::CreateBlob()
+    Blob CubeMapFace::CreateBlob() const
     {
         size_t currentOffset = sizeof(size_t) + sizeof(size_t) * mipLevels.size() * 2;
         const size_t mipCount = mipLevels.size();
@@ -65,7 +65,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    ResourceBlob CubeMapTexture::CreateBlob()
+    ResourceBlob CubeMapTexture::CreateBlob() const
     {
         struct Header
         {
@@ -146,7 +146,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    ResourceBlob TextureResource::CreateBlob()
+    ResourceBlob TextureResource::CreateBlob() const
     {
         TextureResourceBlob headerData;
 

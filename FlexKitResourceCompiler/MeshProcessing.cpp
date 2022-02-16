@@ -62,7 +62,7 @@ namespace FlexKit
 
 
 
-    ResourceBlob MeshResource::CreateBlob()
+    ResourceBlob MeshResource::CreateBlob() const
 	{ 
 		TriMeshAssetBlob::TriMeshAssetHeader header;
 
@@ -242,7 +242,7 @@ namespace FlexKit
                 AddSubMeshBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R16G16B16A16, optimizedBuffer.jointIndexes);
             }
 
-            const auto indexBuffer = AddSubMeshBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32, optimizedBuffer.indexes);
+            const auto indexBuffer  = AddSubMeshBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32, optimizedBuffer.indexes);
 
             newLod.IndexBuffer_Idx  = indexBuffer;
             newLod.IndexCount       = optimizedBuffer.indexes.size() / 4;
@@ -287,7 +287,7 @@ namespace FlexKit
 		meshOut->SkeletonGUID		= lods[0].subMeshs[0].skeleton ? lods[0].subMeshs[0].skeleton->guid : -1;
 		meshOut->BS					= { aabb.MidPoint(), (aabb.Max - aabb.Min).magnitude() / 2 };
   		meshOut->AABB				= aabb;
-        meshOut->LODs               = LODs;
+        meshOut->LODs               = std::move(LODs);
 
 		return meshOut;
 	}

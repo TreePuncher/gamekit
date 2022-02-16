@@ -63,11 +63,11 @@ float ColorStrength(in float3 col)
     return (col.r + col.g + col.b) * 0.33333;
 }
 
-HorizontalOut BilateralBlurHorizontal_PS(Blur_PS_IN input)
+HorizontalOut BilateralBlurHorizontal_PS(float4 position : SV_Position)
 {
     HorizontalOut output;
 
-    uint3 coord = uint3(input.PixelCoord, 0);
+    uint3 coord = uint3(position.xy, 0);
     float depth = DepthBuffer.Load(coord).r;
 
     float dp0 = DepthBuffer.Load(uint3(coord.x - 1, coord.y, 0)).x;
@@ -126,10 +126,10 @@ HorizontalOut BilateralBlurHorizontal_PS(Blur_PS_IN input)
 }
 
 
-float4 BilateralBlurVertical_PS(Blur_PS_IN input) : SV_TARGET
+float4 BilateralBlurVertical_PS(float4 position : SV_Position) : SV_TARGET
 {   
     #if 0
-    uint3 coord = uint3(input.PixelCoord, 0);
+    uint3 coord = uint3(position.xy, 0);
     float depth = DepthBuffer.Load(coord).x;
 
 
@@ -148,7 +148,7 @@ float4 BilateralBlurVertical_PS(Blur_PS_IN input) : SV_TARGET
     #else
 
     float3 color = float3(0, 0, 0);
-    uint2 pixelCoord = uint2(input.PixelCoord);
+    uint2 pixelCoord = uint2(position.xy);
 
     float depth = DepthBuffer.Load(uint3(pixelCoord, 0)).r;
 

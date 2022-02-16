@@ -642,8 +642,6 @@ namespace FlexKit
 		MRIA    = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT));
 		normal  = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT));
 
-        std::cout << "{ " << WH[0] << " , " << WH[1] << " }\n";
-
 		RS.SetDebugName(albedo,  "Albedo");
 		RS.SetDebugName(MRIA,    "MRIA");
 		RS.SetDebugName(normal,  "Normal");
@@ -1672,7 +1670,6 @@ namespace FlexKit
 				descHeap.NullFill(ctx, descriptorTableSize);
 
 #if 1
-
                 ctx.ClearRenderTarget(resources.GetResource({ data.renderTargetObject }));
 
 				ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
@@ -1685,6 +1682,8 @@ namespace FlexKit
 				ctx.SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
 				ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
 				ctx.SetGraphicsDescriptorTable(4, descHeap);
+
+                ctx.Draw(3);
 #else
                 DescriptorHeap uavHeap;
                 uavHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 1, &allocator);
@@ -1711,7 +1710,6 @@ namespace FlexKit
 #endif
 
                 //ctx.TimeStamp(timeStats, 4);
-				ctx.Draw(3);
                 //ctx.TimeStamp(timeStats, 5);
 
                 //ctx.ResolveQuery(timeStats, 0, 8, resources.GetObjectResource(timingReadBack), 0);

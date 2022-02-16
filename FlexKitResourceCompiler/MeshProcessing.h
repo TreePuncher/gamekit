@@ -98,9 +98,9 @@ namespace FlexKit
 
     struct SubMeshResource
     {
-        uint32_t    BaseIndex;
-        uint32_t    IndexCount;
-        AABB        aabb;
+        uint32_t    BaseIndex   = 0;
+        uint32_t    IndexCount  = 0;
+        AABB        aabb        = AABB{};
     };
 
     struct LevelOfDetail
@@ -108,8 +108,8 @@ namespace FlexKit
         static_vector<SubMesh, 32>                          submeshes;
         static_vector<std::shared_ptr<VertexBufferView>>    buffers;
 
-        size_t IndexCount;
-        size_t IndexBuffer_Idx;
+        size_t IndexCount       = 0;
+        size_t IndexBuffer_Idx  = 0;
     };
 
 
@@ -179,7 +179,7 @@ namespace FlexKit
         public Serializable<MeshResource, iResource, GetTypeGUID(MeshResource)>
 	{
     public:
-        ResourceBlob CreateBlob() override;
+        ResourceBlob CreateBlob() const override;
 
         const ResourceID_t GetResourceTypeID()  const noexcept override { return MeshResourceTypeID; }
 		const std::string& GetResourceID()      const noexcept override { return ID; }

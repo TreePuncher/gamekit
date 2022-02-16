@@ -160,7 +160,7 @@ namespace FlexKit
         virtual void                Restore(Archive*, void*) {}
         virtual SerializableBase*   CloneSerializer() { return nullptr; }
 
-        virtual ResourceBlob        CreateBlob() = 0;
+        virtual ResourceBlob        CreateBlob() const = 0;
         virtual const std::string&  GetResourceID()     const noexcept { const static std::string _temp{ "resource" };  return _temp; }
         virtual const uint64_t      GetResourceGUID()   const noexcept { return -1; }
         virtual const ResourceID_t  GetResourceTypeID() const noexcept = 0;// { return -1; }

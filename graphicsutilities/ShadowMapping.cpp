@@ -151,7 +151,7 @@ namespace FlexKit
 		{
 			const XMMATRIX ViewI            = ViewOrientations[I] * DirectX::XMMatrixTranslationFromVector(pos);
 			const XMMATRIX View             = DirectX::XMMatrixInverse(nullptr, ViewI);
-			const XMMATRIX perspective      = DirectX::XMMatrixPerspectiveFovRH(float(pi/2), 1, 1.0f, r);
+			const XMMATRIX perspective      = DirectX::XMMatrixPerspectiveFovRH(float(pi/2), 1, 0.01f, r);
 			const XMMATRIX PV               = DirectX::XMMatrixTranspose(perspective) * XMMatrixTranspose(View);
 
 			out.PV[I]       = XMMatrixToFloat4x4(PV).Transpose();

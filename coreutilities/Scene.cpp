@@ -332,7 +332,7 @@ namespace FlexKit
 
         memcpy(&pointLight, buffer, sizeof(pointLight));
 
-        gameObject.AddView<PointLightView>(pointLight.K, pointLight.IR[0], std::sqrt(pointLight.IR[0]), GetSceneNode(gameObject));
+        gameObject.AddView<PointLightView>(pointLight.K, pointLight.IR[0], pointLight.IR[1], GetSceneNode(gameObject));
         SetBoundingSphereFromLight(gameObject);
 
         EnablePointLightShadows(gameObject);

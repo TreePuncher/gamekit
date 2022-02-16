@@ -178,16 +178,15 @@ namespace FlexKit
 	constexpr PSOHandle BILATERALBLURPASSHORIZONTAL     = PSOHandle(GetTypeGUID(BILATERALBLURPASSHORIZONTAL));
 	constexpr PSOHandle BILATERALBLURPASSVERTICAL       = PSOHandle(GetTypeGUID(BILATERALBLURPASSVERTICAL));
 
-    constexpr PSOHandle CREATEINITIALLUMANANCELEVEL     = PSOHandle(GetTypeGUID(CREATEINITIALLUMANANCELEVEL));
-    constexpr PSOHandle CREATELUMANANCELEVEL            = PSOHandle(GetTypeGUID(CREATELUMANANCELEVEL));
+    constexpr PSOHandle AVERAGELUMINANCE_BLOCK          = PSOHandle(GetTypeGUID(AVERAGELUMINANCE_BLOCK));
+    constexpr PSOHandle AVERAGELUMANANCE_GLOBAL         = PSOHandle(GetTypeGUID(AVERAGELUMANANCE_GLOBAL));
+    constexpr PSOHandle TONEMAP                         = PSOHandle(GetTypeGUID(TONEMAP));
 
     constexpr PSOHandle DEPTHPREPASS                    = PSOHandle(GetTypeGUID(DEPTHPREPASS));
     constexpr PSOHandle FORWARDDRAWINSTANCED	        = PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
     constexpr PSOHandle FORWARDDRAW_OCCLUDE		        = PSOHandle(GetTypeGUID(FORWARDDRAW_OCCLUDE));
     constexpr PSOHandle TEXTURE2CUBEMAP_IRRADIANCE      = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP_IRRADIANCE));
     constexpr PSOHandle TEXTURE2CUBEMAP_GGX             = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP_GGX));
-
-
 
     constexpr PSOHandle ZPYRAMIDBUILDLEVEL              = PSOHandle(GetTypeGUID(ZPYRAMIDBUILDLEVEL));
     constexpr PSOHandle DEPTHCOPY                       = PSOHandle(GetTypeGUID(DEPTHCOPY));
@@ -204,9 +203,6 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateTexture2CubeMapIrradiancePSO (RenderSystem* RS);
 	ID3D12PipelineState* CreateTexture2CubeMapGGXPSO        (RenderSystem* RS);
-
-    ID3D12PipelineState* CreateInitialLumananceLevel        (RenderSystem* rs);
-    ID3D12PipelineState* CreateLumananceLevel               (RenderSystem* rs);
 
 	ID3D12PipelineState* CreateBilaterialBlurHorizontalPSO  (RenderSystem* RS);
 	ID3D12PipelineState* CreateBilaterialBlurVerticalPSO    (RenderSystem* RS);
@@ -517,6 +513,10 @@ namespace FlexKit
         }
 
 	private:
+        ID3D12PipelineState* CreateAverageLumanceLocal(RenderSystem* rs);
+        ID3D12PipelineState* CreateAverageLumanceGlobal(RenderSystem* rs);
+        ID3D12PipelineState* CreateToneMapping(RenderSystem* rs);
+
 
 		RenderSystem&			renderSystem;
 
@@ -541,6 +541,7 @@ namespace FlexKit
 		TextureStreamingEngine&	    streamingEngine;
 		bool                        enableOcclusionCulling;
 
+        FlexKit::RootSignature      rootSignatureToneMapping;
 
         DEBUG_WorldRenderTimingValues timingValues;
 	};

@@ -46,6 +46,7 @@
 #define TINYGLTF_IMPLEMENTATION
 #include <tiny_gltf.h>
 
+
 int main(int argc, char* argv[])
 {
     auto qtApplication      = new QApplication{ argc, argv };

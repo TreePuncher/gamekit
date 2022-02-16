@@ -180,7 +180,7 @@ namespace FlexKit
 
 
     Blob CreateSceneNodeComponent   (uint32_t nodeIdx);
-    Blob CreateIDComponent          (std::string& string);
+    Blob CreateIDComponent          (const std::string& string);
     Blob CreateBrushComponent       (GUID_t meshGUID, const float4 albedo, const float4 specular);
     Blob CreateMaterialComponent    (BrushMaterial material);
     Blob CreatePointLightComponent  (float3 K, float2 IR);
@@ -449,7 +449,7 @@ namespace FlexKit
     class SceneResource : public FlexKit::Serializable<SceneResource, iResource, GetTypeGUID(SceneResource)>
     {
     public:
-        ResourceBlob CreateBlob() override;
+        ResourceBlob CreateBlob() const override;
         const std::string& GetResourceID() const noexcept override { return ID;  }
 
         uint32_t AddSceneEntity(SceneEntity entity)

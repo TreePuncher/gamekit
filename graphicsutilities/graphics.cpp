@@ -2093,6 +2093,17 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    void Context::SetGraphicsUnorderedAccessView(size_t idx, ResourceHandle UAVresource, size_t offset)
+    {
+        auto resource = renderSystem->GetDeviceResource(UAVresource);
+
+        DeviceContext->SetGraphicsRootUnorderedAccessView(idx, resource->GetGPUVirtualAddress() + offset);
+    }
+
+
 	/************************************************************************************************/
 
 
@@ -2165,6 +2176,15 @@ namespace FlexKit
 
 		DeviceContext->SetComputeRootUnorderedAccessView(idx, resource->GetGPUVirtualAddress() + offset);
 	}
+
+
+    /************************************************************************************************/
+
+
+    void Context::SetComputeConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset)
+    {
+        DeviceContext->SetComputeRoot32BitConstants(idx, valueCount, data_ptr, offset);
+    }
 
 
 	/************************************************************************************************/
