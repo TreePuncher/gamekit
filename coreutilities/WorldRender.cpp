@@ -1567,7 +1567,7 @@ namespace FlexKit
 
                 //data.outputTarget = builder.RenderTarget(target);
                 //data.sourceTarget   = builder.ReadTransition(source, DRS_NonPixelShaderResource);
-                data.temp1Buffer    = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(2048, DeviceFormat::R32_FLOAT), DRS_UAV);
+                //data.temp1Buffer    = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(2048, DeviceFormat::R32_FLOAT), DRS_UAV);
                 //data.temp2Buffer    = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT), DRS_UAV);
             },
 			[&]
@@ -1577,18 +1577,16 @@ namespace FlexKit
 
                 ctx.BeginEvent_DEBUG("Tone Mapping");
 
-                //ctx.CopyResource(resources.GetResource(data.outputTarget), resources.GetResource(data.sourceTarget));
-
-                ID3D12PipelineState* createInitialLevel = resources.GetPipelineState(AVERAGELUMINANCE_BLOCK);
-                ID3D12PipelineState* averageLuminance   = resources.GetPipelineState(AVERAGELUMANANCE_GLOBAL);
-                ID3D12PipelineState* toneMap            = resources.GetPipelineState(TONEMAP);
-
                 const uint2 WH = resources.GetTextureWH(data.sourceTarget);
                 const uint2 XY = (float2{ (float)WH[0], (float)WH[1] } / 512.0f).ceil();
 
                 DescriptorHeap heap1{};
                 heap1.Init(ctx, rootSignatureToneMapping.GetDescHeap(0), &allocator);
                 heap1.SetSRV(ctx, 0, resources.NonPixelShaderResource(data.sourceTarget, ctx));
+
+#if 0
+                ID3D12PipelineState* createInitialLevel = resources.GetPipelineState(AVERAGELUMINANCE_BLOCK);
+                ID3D12PipelineState* averageLuminance = resources.GetPipelineState(AVERAGELUMANANCE_GLOBAL);
 
                 ctx.SetComputeRootSignature(rootSignatureToneMapping);
                 ctx.SetComputeDescriptorTable(0, heap1);
@@ -1599,6 +1597,8 @@ namespace FlexKit
                 ctx.AddUAVBarrier(resources.GetResource(data.temp1Buffer));
                 ctx.Dispatch(averageLuminance, { 1, 1, 1 });
                 ctx.AddUAVBarrier(resources.GetResource(data.temp1Buffer));
+#endif
+                ID3D12PipelineState* toneMap            = resources.GetPipelineState(TONEMAP);
 
                 ctx.SetRootSignature(rootSignatureToneMapping);
                 ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
@@ -1619,7 +1619,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2019-2020 Robert May
+Copyright (c) 2019-2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

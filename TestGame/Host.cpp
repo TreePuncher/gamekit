@@ -21,7 +21,7 @@ HostWorldStateMangager::HostWorldStateMangager(MultiplayerPlayerID_t IN_player, 
     localPlayerID           { IN_player },
     localPlayer             { world.AddLocalPlayer(IN_player) },
 
-    spellComponent          { IN_base.framework.core.GetBlockMemory() },
+    gadgetComponent         { IN_base.framework.core.GetBlockMemory() },
     playerComponent         { IN_base.framework.core.GetBlockMemory() },
     localPlayerComponent    { IN_base.framework.core.GetBlockMemory() },
     remotePlayerComponent   { IN_base.framework.core.GetBlockMemory() },
@@ -163,7 +163,7 @@ WorldStateUpdate HostWorldStateMangager::Update(EngineCore& core, UpdateDispatch
             });
 
     auto& physicsUpdate     = base.physics.Update(dispatcher, dT);
-    auto& spellUpdate       = world.UpdateSpells(dispatcher, world.objectPool, dT);
+    auto& spellUpdate       = world.UpdateGadgets(dispatcher, world.objectPool, dT);
 
     spellUpdate.AddInput(worldUpdate);
     physicsUpdate.AddInput(worldUpdate);

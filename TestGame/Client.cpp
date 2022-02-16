@@ -14,7 +14,7 @@ ClientWorldStateMangager::ClientWorldStateMangager(ConnectionHandle IN_server, M
 
     pendingRemoteUpdates    { IN_base.framework.core.GetBlockMemory() },
 
-    spellComponent          { IN_base.framework.core.GetBlockMemory() },
+    gadgetComponent         { IN_base.framework.core.GetBlockMemory() },
     playerComponent         { IN_base.framework.core.GetBlockMemory() },
     localPlayerComponent    { IN_base.framework.core.GetBlockMemory() },
     remotePlayerComponent   { IN_base.framework.core.GetBlockMemory() },
@@ -148,7 +148,7 @@ WorldStateUpdate ClientWorldStateMangager::Update(EngineCore& core, UpdateDispat
         );
 
     auto& physicsUpdate     = base.physics.Update(dispatcher, dT);
-    auto& spellUpdate       = world.UpdateSpells(dispatcher, world.objectPool, dT);
+    auto& spellUpdate       = world.UpdateGadgets(dispatcher, world.objectPool, dT);
     auto& animationUpdate   = UpdateAnimations(dispatcher, dT);
 
     spellUpdate.AddInput(worldUpdate);
@@ -327,7 +327,7 @@ void ClientState::RequestPlayerList()
 /************************************************************************************************/
 
 
-void ClientState::SendSpellbookUpdate(std::vector<CardInterface*>& spellbook)
+void ClientState::SendGadgetUpdate(std::vector<GadgetInterface*>& spellbook)
 {
     SpellBookUpdatePacket packet{ clientID };
 

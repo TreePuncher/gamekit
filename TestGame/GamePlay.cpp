@@ -9,66 +9,15 @@ using namespace FlexKit;
 /************************************************************************************************/
 
 
-PowerCard::PowerCard() : CardInterface{
+FlashLight::FlashLight() : GadgetInterface{
         ID(),
-        "PowerCard",
-        "Use to increase current level, allows for more powerful spell casting",
+        "Flashlight",
+        "Banish the darkness.",
         0 }
 {
-    OnCast =
+    OnActivate =
         [](GameWorld& world, GameObject& player)
         {
-            Apply(player,
-                [](PlayerView& player)
-                {
-                    player.GetData().maxCastingLevel++;
-                });
-        };
-}
-
-FireBall::FireBall() : CardInterface{
-        ID(),
-        "FireBall",
-        "Throws a small ball a fire, burns on contact.\n"
-        "Required casting level is 1" }
-{
-    OnCast =
-        [&](GameWorld& world, GameObject& playerGameObject)
-        {
-            Apply(playerGameObject,
-                [&](PlayerView& player)
-                {
-                    if (player->mana < 1 && false)
-                    {
-                        FK_LOG_INFO("Cast Failed: Not enough managa!");
-                        return;
-                    }
-
-                    player->mana -= 1;
-
-                    SpellData initial;
-                    initial.card     = FireBall();
-                    initial.caster   = player->playerID;
-                    initial.duration = 3.0f;
-                    initial.life     = 0.0f;
-
-                    auto velocity    = player->forward * 50.0f;
-                    auto position    = player->position + player->forward * 2.0f;
-
-                    std::cout << "Particle Created at: " << position << " with Velocity: " << velocity << "\n";
-
-                    world.CreateSpell(initial, position, velocity);
-                });
-        };
-
-    OnHit =
-        [](GameWorld& world, GameObject& player)
-        {
-            Apply(player,
-                [](PlayerView& player)
-                {
-                    player->ApplyDamage(100);
-                });
         };
 }
 
@@ -90,8 +39,6 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
         PlayerState{
             .gameObject         = &gameObject,
             .playerID           = desc.player,
-            .playerHealth       = 100.0f,
-            .maxCastingLevel    = 1
         });
 
     auto& localplayer   = gameObject.AddView<LocalPlayerView>(
@@ -148,8 +95,7 @@ GameObject& GameWorld::AddRemotePlayer(MultiplayerPlayerID_t playerID, Connectio
         PlayerState{
             .gameObject         = &gameObject,
             .playerID           = playerID,
-            .playerHealth       = 100.0f,
-            .maxCastingLevel    = 1 });
+        });
 
     auto& dummy     = gameObject.AddView<RemotePlayerView>(
         RemotePlayerData{
@@ -194,66 +140,6 @@ void GameWorld::AddCube(float3 POS)
     scene.AddGameObject(gameObject, GetSceneNode(gameObject));
 
     SetBoundingSphereFromMesh(gameObject);
-}
-
-
-/************************************************************************************************/
-
-
-GameObject& GameWorld::CreateSpell(SpellData initial, float3 initialPosition, float3 initialVelocity)
-{
-    auto& gameObject    = objectPool.Allocate();
-    auto& spellInstance = gameObject.AddView<SpellView>();
-    auto& spell         = spellInstance.GetData();
-
-
-    auto [triMesh, loaded] = FindMesh(spellModel);
-
-    if (!loaded)
-        triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), spellModel);
-
-    auto& materials = MaterialComponent::GetComponent();
-
-    const static auto materialClass = [&]()
-        {
-            auto particleMaterial   = materials.CreateMaterial();
-
-            materials.Add2Pass(particleMaterial, PassHandle{ GetCRCGUID(OIT_MCGUIRE) });
-
-            materials.SetProperty(particleMaterial, GetCRCGUID(PBR_ALBEDO), float4{ 0.5f, 0.0f, 0.5f, 0.5f });
-            materials.SetProperty(particleMaterial, GetCRCGUID(PBR_SPECULAR), float4{ 0.9f, 0.9f, 0.9f, 0.5f });
-
-            materials.AddRef(particleMaterial);
-
-            return particleMaterial;
-        }();
-
-
-    auto particleMaterial = materials.CreateMaterial(materialClass);
-
-    gameObject.AddView<SceneNodeView<>>();
-    gameObject.AddView<BrushView>(triMesh, GetSceneNode(gameObject));
-    gameObject.AddView<MaterialComponentView>(particleMaterial);
-
-    SetMaterialHandle(gameObject, particleMaterial);
-
-    SetWorldPosition(gameObject, initialPosition);
-
-    scene.AddGameObject(gameObject, GetSceneNode(gameObject));
-
-    SetVisable(gameObject, true);
-    SetBoundingSphereFromMesh(gameObject);
-
-    spell.caster        = initial.caster;
-    spell.card          = initial.card;
-    spell.duration      = initial.duration;
-    spell.life          = initial.life;
-    spell.gameObject    = &gameObject;
-
-    spell.position      = initialPosition;
-    spell.velocity      = initialVelocity;
-
-    return gameObject;
 }
 
 
@@ -326,7 +212,6 @@ void GameWorld::UpdatePlayer(const PlayerFrameState& playerState, const double d
         *gameObject,
         [&](PlayerView& player)
         {
-            player->mana = Min(player->mana + dT, player->maxCastingLevel);
         });
 
     if (gameObject) {
@@ -339,9 +224,6 @@ void GameWorld::UpdatePlayer(const PlayerFrameState& playerState, const double d
             case PlayerInputState::Event::Action3:
             case PlayerInputState::Event::Action4:
             {
-                FireBall fireball;
-
-                fireball.OnCast(*this, *gameObject);
             }   break;
             default:
                 break;
@@ -393,7 +275,7 @@ public:
 };
 
 
-UpdateTask& GameWorld::UpdateSpells(FlexKit::UpdateDispatcher& dispathcer, ObjectPool<GameObject>& objectPool, const double dt)
+UpdateTask& GameWorld::UpdateGadgets(FlexKit::UpdateDispatcher& dispathcer, ObjectPool<GameObject>& objectPool, const double dt)
 {
     struct _ {};
     return dispathcer.Add<_>(
@@ -404,46 +286,15 @@ UpdateTask& GameWorld::UpdateSpells(FlexKit::UpdateDispatcher& dispathcer, Objec
         {
             ProfileFunction();
 
-            auto& spellComponent = SpellComponent::GetComponent();
+            auto& gadgetComponent = GadgetComponent::GetComponent();
 
             Vector<GameObject*> freeList{ &allocator };
 
             auto scene = PhysXComponent::GetComponent().GetLayer_ref(layer).scene;
 
-            for (auto& spellInstance : spellComponent)
+            for (auto& gadgetInstance : gadgetComponent)
             {
-                auto& spell = spellInstance.componentData;
-
-                spell.life      += dt;
-                spell.position  += spell.velocity * dt;
-
-                OverlappCallback callback(
-                    [&](const physx::PxOverlapHit* buffer, physx::PxU32 nbHits) -> bool
-                    {
-                        for (size_t I = 0; I < nbHits; I++)
-                        {
-                            if (buffer[I].actor && buffer[I].actor->userData) {
-
-                                auto& gameObject = *reinterpret_cast<GameObject*>(buffer[I].actor->userData);
-
-                                if (gameObject.hasView(PlayerView::GetComponentID()))
-                                    spell.card.OnHit(*this, gameObject);
-                            }
-                        }
-
-                        return false;
-                    },
-                    []() {}
-                );
-                auto boundingSphere = GetBoundingSphereFromMesh(*spell.gameObject);
-
-                physx::PxSphereGeometry geo     { 1 };
-                physx::PxTransform      pose    { Float3TopxVec3(spell.position) };
-
-                if (spell.life > spell.duration || scene->overlap(geo, pose, callback))
-                    freeList.push_back(spell.gameObject);
-                else
-                    SetWorldPosition(*spell.gameObject, spell.position);
+                auto& gadget = gadgetInstance.componentData;
             }
 
             for (auto object : freeList)

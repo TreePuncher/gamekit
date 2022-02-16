@@ -96,7 +96,7 @@ float4 ToneMap(float4 position : SV_POSITION) : SV_TARGET
 
     const float4 mapped     = hdrColor / (hdrColor + 1.0); // reinhardt
 
-    const float sceneExposure = 1.0f / Output[0];
+    //const float sceneExposure = 1.0f / Output[0];
     //const float4 mapped     = 1.0 - exp(-hdrColor * clamp(sceneExposure * 0.5f, 0.1f, 10.0f));
 
     return pow(mapped, 2.2f);

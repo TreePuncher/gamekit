@@ -45,7 +45,7 @@ public:
     UpdateTask* Draw    (UpdateTask*, EngineCore&, UpdateDispatcher&, double dT, FrameGraph&)  override;
 
     bool        DrawChatRoom        (EngineCore&, UpdateDispatcher&, double dT);
-    void        DrawSpellbookEditor (EngineCore&, UpdateDispatcher&, double dT);
+    void        DrawEquipmentEditor (EngineCore&, UpdateDispatcher&, double dT);
 
 
     void PostDrawUpdate (EngineCore&, double dT) override;
@@ -62,7 +62,8 @@ public:
 
 
     bool host       = false;
-    int  selection2 = 0;
+    int  selection2         = 0;
+    int  selectionEquipped  = 0;
 
 
     std::function<void   (std::string)>  OnSendMessage;
@@ -72,10 +73,36 @@ public:
     std::function<void ()>               OnGameStart     = [] {};
     std::function<void ()>               OnReady         = [] {};
 
-    std::function<void()>                OnApplySpellbookChanges    = [] {};
+    std::function<void()>                OnApplyEquipmentChanges    = [] {};
+
+    struct EquipmentType
+    {
+        std::string gadgetName  = "!!!";
+        std::string Description = "!!!";
+
+        size_t  gadgetCount = 0;
+        std::function<GadgetInterface* (iAllocator& allocator)> CreateItem =
+            [](auto& allocator) -> GadgetInterface* 
+            {
+                return nullptr;
+            };
+    };
+
+    std::vector<EquipmentType> available =
+    {
+        {
+            "TestItem",
+            "This is a test item, it does nothing!",
+            1,
+            [](iAllocator& allocator) -> GadgetInterface*
+            {
+                return &allocator.allocate<FlashLight>();
+            }
+        }
+    };
 
 
-    std::vector<CardInterface*> localPlayerCards;
+    std::vector<GadgetInterface*>   equipped;
 
     std::vector<Player> players;
     std::string         chatHistory;
@@ -88,6 +115,6 @@ public:
 
 
 /************************************************************************************************/
-
+ 
 
 #endif

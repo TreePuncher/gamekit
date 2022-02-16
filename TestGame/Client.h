@@ -66,7 +66,7 @@ public:
 
     PlayerInputState                currentInputState;
 
-    SpellComponent                  spellComponent;
+    GadgetComponent                 gadgetComponent;
     PlayerComponent                 playerComponent;
     LocalPlayerComponent            localPlayerComponent;
     RemotePlayerComponent           remotePlayerComponent;
@@ -97,7 +97,7 @@ public:
     void SendChatMessage(std::string msg);
     void RequestPlayerList();
 
-    void SendSpellbookUpdate(std::vector<CardInterface*>& spellbook);
+    void SendGadgetUpdate(std::vector<GadgetInterface*>& spellbook);
 
     UpdateTask* Update(EngineCore&, UpdateDispatcher&, double dT) override;
     UpdateTask* Draw(UpdateTask* update, EngineCore&, UpdateDispatcher&, double dT, FrameGraph& frameGraph)  override;
