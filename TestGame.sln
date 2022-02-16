@@ -30,13 +30,14 @@ Global
 		{31EBEF0D-793C-4B4D-84A1-EAF0AE305B60}.Debug|x64.ActiveCfg = Debug|x64
 		{31EBEF0D-793C-4B4D-84A1-EAF0AE305B60}.Debug|x86.ActiveCfg = Debug|x64
 		{31EBEF0D-793C-4B4D-84A1-EAF0AE305B60}.Release|x64.ActiveCfg = Release|x64
+		{31EBEF0D-793C-4B4D-84A1-EAF0AE305B60}.Release|x64.Build.0 = Release|x64
 		{31EBEF0D-793C-4B4D-84A1-EAF0AE305B60}.Release|x86.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {4F8D44AA-933C-484E-B443-E8BC15140F28}
 		Qt5Version = qt5
+		SolutionGuid = {4F8D44AA-933C-484E-B443-E8BC15140F28}
 	EndGlobalSection
 EndGlobal

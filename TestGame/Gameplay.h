@@ -110,7 +110,7 @@ using CardTypeID_t = uint32_t;
 
 class GameWorld;
 
-struct CardInterface
+struct GadgetInterface
 {
     CardTypeID_t  CardID                = (CardTypeID_t)-1;
     const char*   cardName              = "!!!!!";
@@ -118,24 +118,15 @@ struct CardInterface
 
     uint16_t      requiredPowerLevel    = 0;
 
-    TypeErasedCallable<16, void, GameWorld&, GameObject&> OnCast    = [](GameWorld& world, GameObject& player){};
-    TypeErasedCallable<16, void, GameWorld&, GameObject&> OnHit     = [](GameWorld& world, GameObject& player) {};
+    TypeErasedCallable<16, void, GameWorld&, GameObject&> OnActivate    = [](GameWorld& world, GameObject& player){};
 };
 
 
-struct PowerCard : public CardInterface
+struct FlashLight : public GadgetInterface
 {
-    PowerCard();
+    FlashLight();
 
-    static CardTypeID_t ID() { return GetTypeGUID(PowerCard); };
-};
-
-
-struct FireBall : public CardInterface
-{
-    FireBall();
-
-    static CardTypeID_t ID() { return GetTypeGUID(FireBall); };
+    static CardTypeID_t ID() { return GetTypeGUID(FlashLight); };
 };
 
 
@@ -150,18 +141,12 @@ struct PlayerDesc
 };
 
 
-struct SpellData
+struct GadgetData
 {
     GameObject*             gameObject;
 
-    uint32_t                caster;
-    CardInterface           card;
-
-    float                   life;
-    float                   duration;
-
-    float3                  position;
-    float3                  velocity;
+    uint32_t                owner;
+    GadgetInterface*        gadgetState;
 };
 
 struct PlayerInputState
@@ -205,8 +190,6 @@ struct PlayerState
     GameObject*             gameObject;
     MultiplayerPlayerID_t   playerID;
     float                   playerHealth    = 100.0f;
-    uint32_t                maxCastingLevel = 1;
-    float                   mana            = 0.0f;
 
     float3                  forward;
     float3                  position;
@@ -300,11 +283,11 @@ using RemotePlayerHandle     = Handle_t<32, RemotePlayerComponentID>; // this is
 using RemotePlayerComponent  = BasicComponent_t<RemotePlayerData, RemotePlayerHandle, RemotePlayerComponentID>; // This defines a new component
 using RemotePlayerView       = RemotePlayerComponent::View; // This defines an interface to access data in the component in a easy manner 
 
-inline static const ComponentID SpellComponentID = GetTypeGUID(SpellComponent);
+inline static const ComponentID GadgetComponentID = GetTypeGUID(GadgetComponent);
 
-using SpellHandle       = Handle_t<32, SpellComponentID>;
-using SpellComponent    = BasicComponent_t<SpellData, SpellHandle, SpellComponentID>;
-using SpellView         = SpellComponent::View;
+using GadgetHandle       = Handle_t<32, GadgetComponentID>;
+using GadgetComponent    = BasicComponent_t<GadgetData, GadgetHandle, GadgetComponentID>;
+using GadgetView         = GadgetComponent::View;
 
 
 class GameWorld
@@ -336,12 +319,11 @@ public:
     void        AddCube(float3 POS);
 
     GameObject& CreatePlayer(const PlayerDesc& desc);
-    GameObject& CreateSpell(SpellData initial, float3 initialPosition, float3 initialVelocity);
     bool        LoadScene(GUID_t assetID);
 
     void        UpdatePlayer        (const PlayerFrameState& playerState, const double);
     void        UpdateRemotePlayer  (const PlayerFrameState& playerState, const double);
-    UpdateTask& UpdateSpells(UpdateDispatcher& dispathcer, ObjectPool<GameObject>& objectPool, const double dt);
+    UpdateTask& UpdateGadgets       (UpdateDispatcher& dispathcer, ObjectPool<GameObject>& objectPool, const double dt);
 
 
     struct GameEvent

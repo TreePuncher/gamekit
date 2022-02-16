@@ -11,17 +11,11 @@ LobbyState::LobbyState(GameFramework& framework, BaseState& IN_base, NetworkStat
 {
     memset(inputBuffer, '\0', 512);
     chatHistory += "Lobby Created\n";
-
-    for (size_t I = 0; I < 25; ++I)
-        localPlayerCards.push_back(&base.framework.core.GetBlockMemory().allocate<PowerCard>());
-
-    for (size_t I = 0; I < 25; ++I)
-        localPlayerCards.push_back(&base.framework.core.GetBlockMemory().allocate<FireBall>());
 }
 
 LobbyState::~LobbyState()
 {
-    for (auto card : localPlayerCards)
+    for (auto card : equipped)
         base.framework.core.GetBlockMemory().release_allocation(*card);
 }
 
@@ -42,7 +36,7 @@ UpdateTask* LobbyState::Update(EngineCore& core, UpdateDispatcher& dispatcher, d
     if (DrawChatRoom(core, dispatcher, dT))
         return nullptr;
 
-    DrawSpellbookEditor(core, dispatcher, dT);
+    DrawEquipmentEditor(core, dispatcher, dT);
 
     return nullptr;
 }
@@ -105,22 +99,52 @@ bool LobbyState::DrawChatRoom(EngineCore&, UpdateDispatcher&, double dT)
 /************************************************************************************************/
 
 
-void LobbyState::DrawSpellbookEditor(EngineCore&, UpdateDispatcher&, double dT)
+void LobbyState::DrawEquipmentEditor(EngineCore& core, UpdateDispatcher&, double dT)
 {
-    ImGui::Begin("Spellbook");
+    ImGui::Begin("Equipment");
+    
+    Vector<const char*> availableNames  { core.GetTempMemory() };
+    Vector<const char*> equippedNames   { core.GetTempMemory() };
 
-    const char* cardNames[50];
+    for (auto& gadget : available)
+        availableNames.emplace_back(gadget.gadgetName.c_str());
 
-    for (size_t I = 0; I < localPlayerCards.size(); ++I)
-        cardNames[I] = localPlayerCards[I]->cardName;
+    for (auto& gadget : equipped)
+        equippedNames.emplace_back(gadget->cardName);
 
-    ImGui::ListBox("Spell list", &selection2, cardNames, (uint)localPlayerCards.size());
+    ImGui::ListBox("Available Equipment list", &selection2, availableNames.data(), (uint)availableNames.size());
 
-    auto str = const_cast<char*>(localPlayerCards[selection2]->description);
-    ImGui::InputTextMultiline("Spell Description", str, strnlen(str, 64), { 0, 0 }, ImGuiInputTextFlags_ReadOnly);
+    if (available.size() > selection2)
+    {
+        auto str = const_cast<char*>(available[selection2].Description.c_str());
+
+        ImGui::InputTextMultiline(
+            "Gadget Description", str, strnlen(str, 64),
+            { 0, 0 },
+            ImGuiInputTextFlags_ReadOnly);
+
+
+        if (ImGui::Button("Add"))
+            equipped.push_back(available[selection2].CreateItem(core.GetBlockMemory()));
+    }
+
+    if (!equipped.size())
+        ImGui::Text("Nothing Equipped");
+    else
+        ImGui::ListBox("Equipped list", &selectionEquipped, equippedNames.data(), (uint)equippedNames.size());
+
+    if (equipped.size() > selectionEquipped)
+    {
+        auto str = const_cast<char*>(equipped[selectionEquipped]->description);
+
+        ImGui::InputTextMultiline(
+            "Gadget Description", str, strnlen(str, 64),
+            { 0, 0 },
+            ImGuiInputTextFlags_ReadOnly);
+    }
 
     if (ImGui::Button("Apply"))
-        OnApplySpellbookChanges();
+        OnApplyEquipmentChanges();
 
     ImGui::End();
 }
