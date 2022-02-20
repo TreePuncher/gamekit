@@ -1604,7 +1604,7 @@ namespace FlexKit
                 ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
                 ctx.SetPipelineState(toneMap);
                 ctx.SetGraphicsDescriptorTable(0, heap1);
-                ctx.SetGraphicsUnorderedAccessView(1, resources.UAV(data.temp1Buffer, ctx));
+                //ctx.SetGraphicsUnorderedAccessView(1, resources.UAV(data.temp1Buffer, ctx));
                 ctx.SetGraphicsConstantValue(2, 2, &XY, 0);
                 ctx.SetScissorAndViewports({  resources.GetResource(data.outputTarget) });
                 ctx.SetRenderTargets({ resources.RenderTarget(data.outputTarget, ctx) }, false);

@@ -92,9 +92,10 @@ namespace FlexKit
         Resource() = default;
 	};
 
-	/************************************************************************************************/
 
+    /************************************************************************************************/
 
+    
 	struct ResourceEntry
 	{
 		GUID_t					GUID;
@@ -112,41 +113,11 @@ namespace FlexKit
 		ResourceEntry	Entries[];
 	};
 
-	/************************************************************************************************/
-
-
-
-	struct ResourceDirectory
-	{
-		char str[256];
-	};
-	
-	struct GlobalResourceTable
-	{
-		~GlobalResourceTable()
-		{
-			Tables.A			= nullptr;
-			ResourceFiles.A		= nullptr;
-			ResourcesLoaded.A	= nullptr;
-			ResourceGUIDs.A		= nullptr;
-
-			Tables.Allocator			= nullptr;
-			ResourceFiles.Allocator		= nullptr;
-			ResourcesLoaded.Allocator	= nullptr;
-			ResourceGUIDs.Allocator		= nullptr;
-
-        }
-
-		Vector<ResourceTable*>		Tables;
-		Vector<ResourceDirectory>	ResourceFiles;
-		Vector<Resource*>			ResourcesLoaded;
-		Vector<GUID_t>				ResourceGUIDs;
-		iAllocator*					ResourceMemory;
-	}inline Resources;
-
 
 	/************************************************************************************************/
 
+
+    struct ResourceTable;
 
 	FLEXKITAPI void			InitiateAssetTable	(iAllocator* Memory);
 	FLEXKITAPI void			ReleaseAssetTable	();
@@ -155,15 +126,16 @@ namespace FlexKit
 	FLEXKITAPI size_t		ReadAssetSize		    (FILE* F, ResourceTable* Table, size_t Index);
 
 	FLEXKITAPI void					AddAssetFile	(const char* FILELOC);
+	FLEXKITAPI AssetHandle			AddAssetBuffer	(Resource*);            // Will increment resource refcount
 	FLEXKITAPI Resource*			GetAsset		(AssetHandle RHandle);
 	FLEXKITAPI Pair<GUID_t, bool>	FindAssetGUID	(const char* Str);
 
 
 	FLEXKITAPI bool			ReadAssetTable	(FILE* F, ResourceTable* Out, size_t TableSize);
-	FLEXKITAPI bool			ReadResource		(FILE* F, ResourceTable* Table, size_t Index, Resource* out);
+	FLEXKITAPI bool			ReadResource	(FILE* F, ResourceTable* Table, size_t Index, Resource* out);
 
-	FLEXKITAPI AssetHandle LoadGameAsset (const char* ID);
-	FLEXKITAPI AssetHandle LoadGameAsset (GUID_t GUID);
+	FLEXKITAPI AssetHandle LoadGameAsset (const char* ID);  // Asset refcount starts at 1
+	FLEXKITAPI AssetHandle LoadGameAsset (GUID_t GUID);     // Asset refcount starts at 1
 
 	FLEXKITAPI void FreeAsset			    (AssetHandle RHandle);
 	FLEXKITAPI void FreeAllAssets		();
@@ -472,87 +444,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline size_t ReadAssetTableSize(FILE* F)
-	{
-		byte Buffer[128];
-
-		const int       seek_res = fseek(F, 0, SEEK_SET);
-		const size_t    read_res = fread(Buffer, 1, 128, F);
-
-		const ResourceTable* table  = (ResourceTable*)Buffer;
-		return table->ResourceCount * sizeof(ResourceEntry) + sizeof(ResourceTable);
-	}
-
-
-	/************************************************************************************************/
-
-
-	inline bool ReadAssetTable(FILE* F, ResourceTable* Out, size_t TableSize)
-	{
-        const int seek_res    = fseek(F, 0, SEEK_SET);
-        const size_t read_res = fread(Out, 1, TableSize, F);
-
-		return (read_res == TableSize);
-	}
-
-
-	/************************************************************************************************/
-
-
-	inline size_t ReadAssetSize(FILE* F, ResourceTable* Table, size_t Index)
-	{
-		byte Buffer[64];
-
-		const int seek_res      = fseek(F, (long)Table->Entries[Index].ResourcePosition, SEEK_SET);
-		const size_t read_res   = fread(Buffer, 1, 64, F);
-
-		Resource* resource = (Resource*)Buffer;
-		return resource->ResourceSize;
-	}
-
-
-	/************************************************************************************************/
-
-
-	inline bool ReadResource(FILE* F, ResourceTable* Table, size_t Index, Resource* out)
-	{
-        FK_LOG_INFO( "Loading Resource: %s : ResourceID: %u", Table->Entries[Index].ID, Table->Entries[Index].GUID);
-#if _DEBUG
-		std::chrono::system_clock Clock;
-		auto Before = Clock.now();
-		FINALLY
-			auto After = Clock.now();
-			auto Duration = std::chrono::duration_cast<std::chrono::microseconds>( After - Before );
-            FK_LOG_INFO("Loading Resource: %s took %u microseconds", Table->Entries[Index].ID, Duration.count());
-		FINALLYOVER
-#endif
-
-        if(!F)
-            return false;
-
-        fseek(F, 0, SEEK_END);
-        const size_t resourceFileSize = ftell(F) + 1;
-        rewind(F);
-
-        const size_t position   = Table->Entries[Index].ResourcePosition;
-		int seek_res            = fseek(F, (long)position, SEEK_SET);
-
-        size_t resourceSize = 0;
-		size_t read_res     = fread(&resourceSize, 1, 8, F);
-
-        if (!(resourceSize + position < resourceFileSize))
-            return false;
-
-		seek_res                = fseek(F, (long)position, SEEK_SET);
-		const size_t readSize   = fread(out, 1, resourceSize, F);
-
-		return (readSize == out->ResourceSize);
-	}
-
-
-    /************************************************************************************************/
-
-
     enum ReadAsset_RC
     {
         RAC_OK,
@@ -624,11 +515,27 @@ namespace FlexKit
 
 #else // Win32 IO
 
-    struct ReadContext
+    struct ReadContextInterface
     {
-        ReadContext() = default;
+        ReadContextInterface() = default;
 
-        ReadContext(const char* IN_fileDir, size_t IN_offset)
+        virtual ~ReadContextInterface() {}
+
+        ReadContextInterface                (const ReadContextInterface& rhs) = delete;
+        ReadContextInterface& operator =    (const ReadContextInterface& rhs) = delete;
+
+        virtual void Close()                                                    = 0;
+        virtual void Read(void* dst_ptr, size_t readSize, size_t readOffset)    = 0;
+        virtual void SetOffset(size_t readOffset)                               = 0;
+        virtual bool IsValid() const noexcept                                   = 0;
+    };
+
+
+    struct FileContext : public ReadContextInterface
+    {
+        FileContext() = default;
+
+        FileContext(const char* IN_fileDir, size_t IN_offset)
         {
             WCHAR wFileDir[256];
             memset(wFileDir, 0, sizeof(wFileDir));
@@ -654,38 +561,38 @@ namespace FlexKit
             offset  = IN_offset;
         }
 
-        ~ReadContext() { Close(); }
+        ~FileContext() { Close(); }
 
         HANDLE          file    = INVALID_HANDLE_VALUE;
         const char*     fileDir = nullptr;
         size_t          offset  = 0;
 
         // Non-copyable
-        ReadContext(const ReadContext& rhs) = delete;
-        ReadContext& operator = (const ReadContext& rhs) = delete;
+        FileContext(const FileContext& rhs)                 = delete;
+        FileContext& operator = (const FileContext& rhs)    = delete;
 
-        ReadContext& operator = (ReadContext&& rhs) noexcept
+        FileContext& operator = (FileContext&& rhs) noexcept
         {
             Close();
 
-            file = rhs.file;
-            fileDir = rhs.fileDir;
-            offset = rhs.offset;
+            file        = rhs.file;
+            fileDir     = rhs.fileDir;
+            offset      = rhs.offset;
 
-            rhs.file = INVALID_HANDLE_VALUE;
-            rhs.fileDir = nullptr;
-            rhs.offset = 0;
+            rhs.file        = INVALID_HANDLE_VALUE;
+            rhs.fileDir     = nullptr;
+            rhs.offset      = 0;
 
             return *this;
         }
 
-        void Close()
+        void Close() final
         {
             if(file != INVALID_HANDLE_VALUE)
                 CloseHandle(file);
         }
 
-        void Read(void* dst_ptr, size_t readSize, size_t readOffset)
+        void Read(void* dst_ptr, size_t readSize, size_t readOffset) final
         {
             if (file != INVALID_HANDLE_VALUE)
             {
@@ -700,17 +607,130 @@ namespace FlexKit
                     //__debugbreak();
                 }
             }
-
         }
 
+        void SetOffset(size_t readOffset) final
+        {
+            offset = readOffset;
+        }
 
-        operator bool() { return file != INVALID_HANDLE_VALUE; }
+        bool IsValid() const noexcept
+        {
+            return file != INVALID_HANDLE_VALUE;
+        }
     };
+
+
+    struct BufferContext : public ReadContextInterface
+    {
+        BufferContext(byte* IN_buffer, size_t IN_bufferSize, size_t IN_offset) :
+            buffer      { IN_buffer },
+            bufferSize  { IN_bufferSize },
+            offset      { IN_offset } {}
+
+        void Close() final {}
+
+        void Read(void* dst_ptr, size_t readSize, size_t readOffset) final
+        {
+            if(readOffset + offset + readSize <= bufferSize)
+                memcpy(dst_ptr, buffer + readOffset + offset, readSize);
+        }
+
+        void SetOffset(size_t readOffset) final
+        {
+            offset = readOffset;
+        }
+
+        bool IsValid() const noexcept final
+        {
+            return (buffer != nullptr && bufferSize > 0);
+        }
+
+        byte*   buffer      = nullptr;
+        size_t  bufferSize  = 0;
+        size_t  offset      = 0;
+    };
+
 
 #endif
 
-    ReadContext         OpenReadContext(GUID_t guid);
-    ReadAsset_RC        ReadAsset(ReadContext& readContext, GUID_t Asset, void* _ptr, size_t readSize, size_t readOffset = 0);
+
+    struct ReadContext
+    {
+        ReadContext(GUID_t IN_guid = INVALIDHANDLE, ReadContextInterface* IN_ctx = nullptr, iAllocator* IN_allocator = nullptr) :
+            guid        { IN_guid   },
+            pimpl       { IN_ctx    },
+            allocator   { IN_allocator }{}
+
+        ~ReadContext()
+        {
+            Release();
+        }
+
+        ReadContext             (const ReadContext& rhs) = delete;
+        ReadContext& operator = (const ReadContext& rhs) = delete;
+
+        ReadContext& operator = (ReadContext&& rhs) noexcept
+        {
+            if (pimpl)
+                Release();
+
+            pimpl       = rhs.pimpl;
+            allocator   = rhs.allocator;
+            guid        = rhs.guid;
+
+            rhs.pimpl       = nullptr;
+            rhs.allocator   = nullptr;
+            rhs.guid        = INVALIDHANDLE;
+
+            return *this;
+        }
+
+        void Close()
+        {
+            if (pimpl)
+                pimpl->Close();
+        }
+
+        void Read(void* dst_ptr, size_t readSize, size_t readOffset)
+        {
+            if (pimpl)
+                pimpl->Read(dst_ptr, readSize, readOffset);
+        }
+
+        void SetOffset(size_t offset)
+        {
+            if (pimpl)
+                pimpl->SetOffset(offset);
+        }
+
+        void Release()
+        {
+            if (pimpl)
+                allocator->release(*pimpl);
+
+            pimpl       = nullptr;
+            allocator   = nullptr;
+            guid        = INVALIDHANDLE;
+        }
+
+        operator bool() const noexcept
+        {
+            if (pimpl)
+                return pimpl->IsValid();
+
+            return false;
+        }
+
+
+        GUID_t                  guid; // Currently read asset
+        ReadContextInterface*   pimpl;
+        iAllocator*             allocator;
+    };
+
+
+    ReadContext     OpenReadContext(GUID_t guid);
+    ReadAsset_RC    ReadAsset(ReadContext& readContext, GUID_t Asset, void* _ptr, size_t readSize, size_t readOffset = 0);
 
 
     const char*         GetResourceStringID(GUID_t guid);

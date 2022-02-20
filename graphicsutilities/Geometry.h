@@ -237,10 +237,10 @@ namespace FlexKit
 		}
 
 
-		template<typename Ty>
-		inline bool Push(vector_t<Ty> static_vector)
+		template<template<typename TY_> class TY_V, typename Ty>
+		inline bool Push(TY_V<Ty> static_vector)
 		{
-			if (mBufferUsed + sizeof(Ty)*static_vector.size() > mBufferSize)
+			if (mBufferUsed + sizeof(Ty) * static_vector.size() > mBufferSize)
 				return false;
 
 			for (auto in : static_vector)

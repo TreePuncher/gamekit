@@ -1,4 +1,6 @@
+#include "PCH.h"
 #include "DXRenderWindow.h"
+
 #include <fmt/format.h>
 #include <qevent.h>
 

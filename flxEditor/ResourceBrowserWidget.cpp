@@ -1,3 +1,5 @@
+#include "PCH.h"
+
 #include <QtWidgets/QTableWidget>
 #include <QtWidgets/qdockwidget>
 #include <QtWidgets/qmenubar.h>

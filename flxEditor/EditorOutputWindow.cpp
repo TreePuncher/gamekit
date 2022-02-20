@@ -1,3 +1,4 @@
+#include "PCH.h"
 #include "EditorOutputWindow.h"
 #include <QtWidgets/qcombobox.h>
 #include <QtWidgets/qtextbrowser.h>

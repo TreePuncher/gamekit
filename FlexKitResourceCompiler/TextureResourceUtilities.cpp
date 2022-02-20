@@ -240,7 +240,13 @@ namespace FlexKit
 
         if (auto res = CMP_LoadTexture(path.string().c_str(), &mipSet); res != CMP_OK)
         {
-            std::printf("Error %d: Loading source file!\n", res);
+            fmt::print("Error {}: Loading source file!\n", res);
+
+            if (path.string().empty())
+                fmt::print("Invalid directory string!\n");
+            else
+                fmt::print("File: {} not found!\n", path.string());
+
             return {};
         }
 
@@ -365,7 +371,13 @@ namespace FlexKit
 
         if (auto res = CMP_LoadTexture(metaData->file.c_str(), &mipSet); res != CMP_OK)
         {
-            std::printf("Error %d: Loading source file!\n", res);
+            fmt::print("Error {}: Loading source file!\n", res);
+
+            if(!metaData->file.empty())
+                fmt::print("Invalid directory string!\n");
+            else
+                fmt::print("File: {} not found!\n", metaData->file);
+
             return {};
         }
 
@@ -402,6 +414,7 @@ namespace FlexKit
             kernel_options.format = CMP_FORMAT_BC7;
             break;
         default:
+            std::cout << "Unrecognized format!\n";
             return {};
         }
 
@@ -466,7 +479,10 @@ namespace FlexKit
     std::shared_ptr<iResource>  CreateTextureResource(FlexKit::TextureBuffer& textureBuffer, std::string formatStr)
     {
         if (textureBuffer.Buffer == nullptr)
+        {
+            std::cout << "CreateTextureResource failed. Invalid Parameter!\n";
             return {};
+        }
 
         auto resource = std::make_shared<TextureResource>();
 

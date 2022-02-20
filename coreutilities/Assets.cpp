@@ -26,7 +26,37 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "graphics.h"
 
 namespace FlexKit
-{
+{   /************************************************************************************************/
+
+
+	struct ResourceDirectory
+	{
+		char str[256];
+	};
+	
+	struct GlobalResourceTable
+	{
+		~GlobalResourceTable()
+		{
+			Tables.A			= nullptr;
+			ResourceFiles.A		= nullptr;
+			ResourcesLoaded.A	= nullptr;
+			ResourceGUIDs.A		= nullptr;
+
+			Tables.Allocator			= nullptr;
+			ResourceFiles.Allocator		= nullptr;
+			ResourcesLoaded.Allocator	= nullptr;
+			ResourceGUIDs.Allocator		= nullptr;
+        }
+
+		Vector<ResourceTable*>		Tables;
+		Vector<ResourceDirectory>	ResourceFiles;
+		Vector<Resource*>			ResourcesLoaded;
+		Vector<GUID_t>				ResourceGUIDs;
+		iAllocator*					ResourceMemory;
+	}inline Resources;
+
+
 	/************************************************************************************************/
 
 
@@ -58,6 +88,8 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
 
 	void AddAssetFile(const char* FILELOC)
 	{
@@ -81,6 +113,19 @@ namespace FlexKit
 		else
 			Resources.ResourceMemory->_aligned_free(Table);
 	}
+
+    /************************************************************************************************/
+
+
+    AssetHandle AddAssetBuffer(Resource* buffer)
+    {
+        buffer->RefCount++;
+
+        return Resources.ResourcesLoaded.push_back((Resource*)buffer);
+    }
+
+
+    /************************************************************************************************/
 
 
 	Pair<GUID_t, bool>	FindAssetGUID(const char* Str)
@@ -159,13 +204,26 @@ namespace FlexKit
     ReadContext OpenReadContext(GUID_t guid)
     {
         AssetHandle RHandle = INVALIDHANDLE;
+
+        for (auto resource : Resources.ResourcesLoaded)
+        {
+            if (resource->GUID == guid)
+            {
+                auto& bufferCtx = Resources.ResourceMemory->allocate<BufferContext>((byte*)resource, resource->ResourceSize, 0);
+                return ReadContext{ guid, &bufferCtx, Resources.ResourceMemory };
+            }
+        }
+
 		for (size_t TI = 0; TI < Resources.Tables.size(); ++TI)
 		{
 			auto& t = Resources.Tables[TI];
 			for (size_t I = 0; I < t->ResourceCount; ++I)
 			{
-				if (t->Entries[I].GUID == guid)
-                    return ReadContext{ Resources.ResourceFiles[TI].str, t->Entries[I].ResourcePosition };
+                if (t->Entries[I].GUID == guid)
+                {
+                    auto& fileCtx = Resources.ResourceMemory->allocate<FileContext>(Resources.ResourceFiles[TI].str, t->Entries[I].ResourcePosition);
+                    return ReadContext{ guid, &fileCtx, Resources.ResourceMemory };
+                }
 			}
 		}
 
@@ -188,10 +246,11 @@ namespace FlexKit
 				{
                     size_t resourceOffset = t->Entries[I].ResourcePosition;
 
-                    if (readContext.fileDir != Resources.ResourceFiles[TI].str)
-                        readContext = ReadContext{ Resources.ResourceFiles[TI].str, resourceOffset };
+                    //if (readContext.fileDir != Resources.ResourceFiles[TI].str)
+                    if (readContext.guid != guid)
+                        readContext = OpenReadContext(guid);// ReadContext{ Resources.ResourceFiles[TI].str, resourceOffset };
 
-                    readContext.offset = resourceOffset;
+                    readContext.SetOffset(resourceOffset);
                     readContext.Read(_ptr, readSize, readOffset);
 
                     return RAC_OK;
@@ -333,6 +392,87 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    size_t ReadAssetTableSize(FILE* F)
+	{
+		byte Buffer[128];
+
+		const int       seek_res = fseek(F, 0, SEEK_SET);
+		const size_t    read_res = fread(Buffer, 1, 128, F);
+
+		const ResourceTable* table  = (ResourceTable*)Buffer;
+		return table->ResourceCount * sizeof(ResourceEntry) + sizeof(ResourceTable);
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool ReadAssetTable(FILE* F, ResourceTable* Out, size_t TableSize)
+	{
+        const int seek_res    = fseek(F, 0, SEEK_SET);
+        const size_t read_res = fread(Out, 1, TableSize, F);
+
+		return (read_res == TableSize);
+	}
+
+
+	/************************************************************************************************/
+
+
+	size_t ReadAssetSize(FILE* F, ResourceTable* Table, size_t Index)
+	{
+		byte Buffer[64];
+
+		const int seek_res      = fseek(F, (long)Table->Entries[Index].ResourcePosition, SEEK_SET);
+		const size_t read_res   = fread(Buffer, 1, 64, F);
+
+		Resource* resource = (Resource*)Buffer;
+		return resource->ResourceSize;
+	}
+
+
+    /************************************************************************************************/
+
+
+	bool ReadResource(FILE* F, ResourceTable* Table, size_t Index, Resource* out)
+	{
+        FK_LOG_INFO( "Loading Resource: %s : ResourceID: %u", Table->Entries[Index].ID, Table->Entries[Index].GUID);
+#if _DEBUG
+		std::chrono::system_clock Clock;
+		auto Before = Clock.now();
+		FINALLY
+			auto After = Clock.now();
+			auto Duration = std::chrono::duration_cast<std::chrono::microseconds>( After - Before );
+            FK_LOG_INFO("Loading Resource: %s took %u microseconds", Table->Entries[Index].ID, Duration.count());
+		FINALLYOVER
+#endif
+
+        if(!F)
+            return false;
+
+        fseek(F, 0, SEEK_END);
+        const size_t resourceFileSize = ftell(F) + 1;
+        rewind(F);
+
+        const size_t position   = Table->Entries[Index].ResourcePosition;
+		int seek_res            = fseek(F, (long)position, SEEK_SET);
+
+        size_t resourceSize = 0;
+		size_t read_res     = fread(&resourceSize, 1, 8, F);
+
+        if (!(resourceSize + position < resourceFileSize))
+            return false;
+
+		seek_res                = fseek(F, (long)position, SEEK_SET);
+		const size_t readSize   = fread(out, 1, resourceSize, F);
+
+		return (readSize == out->ResourceSize);
+	}
+
+
 	/************************************************************************************************/
 
 
@@ -383,7 +523,7 @@ namespace FlexKit
 
     bool LoadLOD(TriMesh* triMesh, uint level, RenderSystem& renderSystem, CopyContextHandle copyCtx, iAllocator& memory)
     {
-        auto readCtx    = OpenReadContext(triMesh->assetHandle);
+        auto readCtx = OpenReadContext(triMesh->assetHandle);
 
         if (!readCtx)
             return false;

@@ -1,3 +1,4 @@
+#include "PCH.h"
 #include "TaskManager.h"
 
 TaskManager::TaskManager(QWidget *parent)

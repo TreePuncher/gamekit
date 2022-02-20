@@ -94,7 +94,8 @@ private:
     QMenuBar*               menu;
 
     SelectionContext&       selectionContext;
-    uint64_t                selectedObject = -1;
+    uint64_t                selectedObject  = -1;
+    uint64_t                propertyCount   = 0;
 
     QBoxLayout*     outerLayout;
     QBoxLayout*     contentLayout;

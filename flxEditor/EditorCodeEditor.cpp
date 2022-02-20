@@ -1,3 +1,4 @@
+#include "PCH.h"
 #include "EditorCodeEditor.h"
 #include "QtWidgets/qabstractbutton.h"
 #include "QtWidgets/qmenubar.h"

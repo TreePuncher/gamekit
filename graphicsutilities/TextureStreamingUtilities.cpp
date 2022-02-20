@@ -93,15 +93,6 @@ namespace FlexKit
         const auto   reservation            = ctx.Reserve(allocationSize, 512);
         const size_t sourceRowPitch         = blockSize * columnCount;
 
-        /*
-        for (size_t row = 0; row < rowCount; row++)
-            ReadAsset(
-                readCtx,
-                asset,
-                reservation.buffer + row * destinationRowPitch,
-                columnCount * blockSize,
-                mipLevelOffset + (row * sourceRowPitch));
-        */
         if (buffer)
         {
             for (size_t row = 0; row < rowCount; row++) {
@@ -865,6 +856,7 @@ namespace FlexKit
         while ((end - 1)->TextureID == -1 && uniqueCount) { end--; uniqueCount--; }
 
 #if 0// Doesn't seem to be an issue at the moment?
+        // TODO: MORE TESTING NEEDED HERE. 
         if (uniqueCount && (requests + uniqueCount - 1)->TextureID > 0xff)
             DebugBreak();
 #endif   

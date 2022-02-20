@@ -410,26 +410,43 @@ namespace FlexKit
                                             newMaterial.textures.push_back(assetGUID);
                                         }
                                         else
+                                        {
                                             std::cout << "Texture Not Found!\n" << "Failed to find: " << string << "\n";
+                                        }
                                     }
                                 };
 
 
                                 if (material.pbrMetallicRoughness.baseColorTexture.index != -1)
                                 {
-                                    auto idx = model.textures[material.pbrMetallicRoughness.baseColorTexture.index].source;
-                                    newMaterial.textures.push_back(imageMap.at(idx)->GetResourceGUID());
+                                    if (model.textures.size() > material.pbrMetallicRoughness.baseColorTexture.index)
+                                    {
+                                        auto idx = model.textures[material.pbrMetallicRoughness.baseColorTexture.index].source;
+
+                                        if (imageMap.size() > idx && imageMap.at(idx) != nullptr)
+                                            newMaterial.textures.push_back(imageMap.at(idx)->GetResourceGUID());
+                                    }
                                 }
                                 if (material.normalTexture.index != -1)
                                 {
-                                    auto idx = model.textures[material.normalTexture.index].source;
-                                    newMaterial.textures.push_back(imageMap.at(idx)->GetResourceGUID());
+                                    if (model.textures.size() > material.normalTexture.index)
+                                    {
+                                        auto idx = model.textures[material.normalTexture.index].source;
+
+                                        if (imageMap.size() > idx && imageMap.at(idx) != nullptr)
+                                            newMaterial.textures.push_back(imageMap.at(idx)->GetResourceGUID());
+                                    }
                                 }
 
                                 if (material.pbrMetallicRoughness.metallicRoughnessTexture.index != -1)
                                 {
-                                    auto idx = model.textures[material.pbrMetallicRoughness.metallicRoughnessTexture.index].source;
-                                    newMaterial.textures.push_back(imageMap.at(idx)->GetResourceGUID());
+                                    if (model.textures.size() > material.pbrMetallicRoughness.metallicRoughnessTexture.index)
+                                    {
+                                        auto idx = model.textures[material.pbrMetallicRoughness.metallicRoughnessTexture.index].source;
+
+                                        if (imageMap.size() > idx && imageMap.at(idx) != nullptr)
+                                            newMaterial.textures.push_back(imageMap.at(idx)->GetResourceGUID());
+                                    }
                                 }
                             }
                             brush->material.subMaterials.push_back(newMaterial);
@@ -512,21 +529,32 @@ namespace FlexKit
     {
         ImageLoaderDesc* loader = reinterpret_cast<ImageLoaderDesc*>(user_ptr);
 
+        if (!std::filesystem::exists("tmp"))
+            std::filesystem::create_directory("tmp");
 
-        int x = 0;
-        int y = 0;
-        int comp = 0;
+        fmt::print("Saving image to disk, {}\n", image->name.c_str());
+        std::string tempLocation = "tmp\\" + image->name;
+
+        int x       = 0;
+        int y       = 0;
+        int comp    = 0;
 
         auto datass = stbi_load_from_memory(bytes, size, &x, &y, &comp, 3);
-        auto res    = stbi_write_png(image->name.c_str(), x, y, comp, datass, comp * x);
+        auto res    = stbi_write_png(tempLocation.c_str(), x, y, comp, datass, comp * x);
+
+        if (!res)
+        {
+            fmt::print("Failed to save image to disk, {}\n", tempLocation);
+            return false;
+        }
 
         stbi_image_free(datass);
         float* floats = (float*)datass;
 
-
-        std::filesystem::path path{ image->name };
+        std::filesystem::path path{ tempLocation };
 
         auto resource = CreateTextureResource(path,std::string("DXT7"));
+        resource->SetResourceID(image->name);
 
         std::filesystem::remove(path);
 

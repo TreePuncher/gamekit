@@ -1,18 +1,15 @@
+#include "PCH.h"
+
 #include "EditorScriptEngine.h"
 #include "EditorGadgetInterface.h"
 
-#include <filesystem>
-#include <regex>
 #include <angelscript/scriptbuilder/scriptbuilder.h>
 #include <angelscript/scriptany/scriptany.h>
-#include <angelscript/scriptany/scriptany.cpp>
 #include <angelscript/scriptarray/scriptarray.h>
-#include <angelscript/scriptarray/scriptarray.cpp>
 #include <angelscript/scriptstdstring/scriptstdstring.h>
-#include <angelscript/scriptstdstring/scriptstdstring.cpp>
-#include <angelscript/scriptstdstring/scriptstdstring_utils.cpp>
-#include <angelscript/scriptmath/scriptmath.cpp>
-#include <angelscript/scriptmath/scriptmathcomplex.cpp>
+#include <angelscript/scriptmath/scriptmath.h>
+#include <angelscript/scriptmath/scriptmathcomplex.h>
+
 #include <assert.h>
 
 #define WIN32_LEAN_AND_MEAN 
@@ -97,8 +94,8 @@ void EditorScriptEngine::RegisterGadget(asIScriptObject* gObj)
 
 void EditorScriptEngine::RegisterAPI()
 {
-    RegisterScriptArray_Native(scriptEngine);
-    RegisterScriptAny_Native(scriptEngine);
+    RegisterScriptArray(scriptEngine, true);
+    RegisterScriptAny(scriptEngine);
     RegisterStdString(scriptEngine);
     RegisterStdStringUtils(scriptEngine);
     RegisterScriptMath(scriptEngine);

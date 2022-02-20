@@ -349,7 +349,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
         #endif
     }
 
-#if 1
+#if 0
     static float4 Colors[] = {
         float4(0, 0, 0, 0), 
         float4(1, 0, 0, 0), 
@@ -393,7 +393,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
     //return float4(T.xyz, 1);
     //return float4(N.xyz, 1);
     //return pow(float4(roughness, metallic, 0, 0), 2.2f);
-    //return float4(N.xyz / 2 + 0.5f, 1);
+    return float4(N.xyz / 2 + 0.5f, 1);
     //return float4(Albedo.xyz, 1);
 #endif
     
@@ -403,7 +403,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2022 Robert May
+Copyright (c) 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
