@@ -4,8 +4,8 @@
 #include "Events.h"
 #include "Input.h"
 #include "graphics.h"
-#include <windows.h>
 #include "ProfilingUtilities.h"
+#include <windows.h>
 
 #pragma comment(lib, "Winmm.lib")
 

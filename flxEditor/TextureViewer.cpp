@@ -1,3 +1,4 @@
+#include "PCH.h"
 #include "TextureViewer.h"
 #include "EditorRenderer.h"
 #include <QtWidgets/qboxlayout.h>

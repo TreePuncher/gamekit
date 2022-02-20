@@ -9,6 +9,7 @@
 
 #include <concepts>
 #include <initializer_list>
+#include <limits>
 #include <math.h>
 #include <ostream>
 #include <emmintrin.h>

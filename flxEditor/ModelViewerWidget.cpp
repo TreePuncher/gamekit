@@ -1,3 +1,4 @@
+#include "PCH.h"
 #include "ModelViewerWidget.h"
 #include "DXRenderWindow.h"
 #include "EditorRenderer.h"

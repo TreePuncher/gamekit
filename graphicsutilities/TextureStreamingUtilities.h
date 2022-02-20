@@ -170,11 +170,11 @@ namespace FlexKit
             if (MIPlevel == currentLevel && asset == currentAsset)
                 return true;
 
-            auto textureAvailable   = isAssetAvailable(asset);
+            if (!isAssetAvailable(asset))
+                return false;
 
             TextureResourceBlob textureHeader;
             ReadAsset(readContext, asset, &textureHeader, sizeof(textureHeader));
-
 
             if (IsDDS((DeviceFormat)textureHeader.format))
             {
@@ -184,10 +184,10 @@ namespace FlexKit
 
                 FK_ASSERT(res, "Failed to create texture asset decompressor!");
 
-                decompressor = res.value_or(nullptr);
-                format = decompressor->GetFormat(); // TODO: correctly extract the format
-                currentLevel = MIPlevel;
-                currentAsset = asset;
+                decompressor    = res.value_or(nullptr);
+                format          = decompressor->GetFormat(); // TODO: correctly extract the format
+                currentLevel    = MIPlevel;
+                currentAsset    = asset;
 
                 return res.has_value();
             }
@@ -466,7 +466,6 @@ namespace FlexKit
             {
                 return resource.to_uint();
             }
-
 
             uint64_t GetID() const
             {

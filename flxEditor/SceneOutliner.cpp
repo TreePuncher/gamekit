@@ -1,3 +1,4 @@
+#include "PCH.h"
 #include "SceneOutliner.h"
 #include <qtimer.h>
 #include <chrono>

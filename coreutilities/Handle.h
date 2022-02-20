@@ -161,11 +161,9 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
 	typedef Handle_t<32>					Handle;
-	typedef list_t<Handle>					Handle_list;
-	typedef vector_t<Handle>				Handle_vector;
-	typedef map_t<Handle, Handle_vector>	Handle_child_map;
-	
 	template<size_t SIZE>	using Handle_static_vector = static_vector<Handle, SIZE>;
 
 	namespace HandleUtilities

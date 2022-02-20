@@ -1,3 +1,4 @@
+#include "PCH.h"
 #include "EditorApplication.h"
 #include "TextureUtilities.h"
 #include "angelscript.h"
@@ -22,6 +23,9 @@ bool gltfImporter::Import(const std::string fileDir)
 
     for (auto& resource : resources)
     {
+        if (resource == nullptr)
+            continue;
+
         if (SceneResourceTypeID == resource->GetResourceTypeID())
         {
             EditorScene_ptr gameScene = std::make_shared<EditorScene>();

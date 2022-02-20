@@ -77,6 +77,8 @@
       <AdditionalOptions>/Zc:__cplusplus  /std:c++latest %(AdditionalOptions) /MP</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ShowIncludes>false</ShowIncludes>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>PCH.h</PrecompiledHeaderFile>
     </ClCompile>
     <QtMoc>
       <AdditionalDependencies>
@@ -131,17 +133,20 @@
     <ClCompile>
       <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <DebugInformationFormat>None</DebugInformationFormat>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>MaxSpeed</Optimization>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>false</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="angelScriptTU.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="EditorApplication.cpp" />
     <ClCompile Include="EditorCodeEditor.cpp" />
     <ClCompile Include="EditorConfig.cpp" />
@@ -165,6 +170,10 @@
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
     </ClCompile>
     <ClCompile Include="ModelViewerWidget.cpp" />
+    <ClCompile Include="PCH.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PCH.h</PrecompiledHeaderFile>
+    </ClCompile>
     <ClCompile Include="ResourceBrowserWidget.cpp" />
     <ClCompile Include="SceneOutliner.cpp" />
     <ClCompile Include="SelectionContext.cpp" />
@@ -185,6 +194,7 @@
   <ItemGroup>
     <ClInclude Include="EditorApplication.h" />
     <QtMoc Include="EditorInspectorView.h" />
+    <ClInclude Include="PCH.h" />
     <ClInclude Include="SceneInspectors.h" />
     <QtMoc Include="SceneOutliner.h" />
     <ClInclude Include="SelectionContext.h" />

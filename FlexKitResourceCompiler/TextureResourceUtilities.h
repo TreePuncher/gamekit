@@ -129,6 +129,9 @@ namespace FlexKit
         const uint64_t      GetResourceGUID()   const noexcept final { return assetHandle; }
         const ResourceID_t  GetResourceTypeID() const noexcept final { return TextureResourceTypeID; }
 
+        void                SetResourceID(std::string& IN_ID) final { ID = IN_ID; }
+
+
         ResourceBlob CreateBlob() const override;
 
         std::string             ID              = "";

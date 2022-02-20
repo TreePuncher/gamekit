@@ -34,9 +34,6 @@
     <Filter Include="Source\physicsutilities">
       <UniqueIdentifier>{6421A7BE-D058-EF55-D962-53794519164F}</UniqueIdentifier>
     </Filter>
-    <Filter Include="graphicsutilities">
-      <UniqueIdentifier>{720BB25D-DE21-B0F3-2799-3B1593EE807B}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\coreutilities\Application.h">
@@ -149,9 +146,6 @@
     </ClInclude>
     <ClInclude Include="..\graphicsutilities\AnimationComponents.h">
       <Filter>Headers\graphicsutilities</Filter>
-    </ClInclude>
-    <ClInclude Include="..\graphicsutilities\AnimationRuntimeUtilities.H">
-      <Filter>graphicsutilities</Filter>
     </ClInclude>
     <ClInclude Include="..\graphicsutilities\AnimationUtilities.h">
       <Filter>Headers\graphicsutilities</Filter>
@@ -278,6 +272,9 @@
     </ClInclude>
     <ClInclude Include="Playground.hpp">
       <Filter>Source\TestGame</Filter>
+    </ClInclude>
+    <ClInclude Include="..\graphicsutilities\AnimationRuntimeUtilities.H">
+      <Filter>Headers\graphicsutilities</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -1,3 +1,4 @@
+#include "PCH.h"
 #include "EditorInspectorView.h"
 #include "ViewportScene.h"
 #include <qtimer>
@@ -185,8 +186,6 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
     contentLayout       { new QVBoxLayout{} },
     contentWidget       { new QWidget{} }
 {
-    menu->setEnabled(false);
-
     auto addComponentMenu   = menu->addMenu("Add");
 
     for (auto& factory : availableComponents)
@@ -252,11 +251,13 @@ void EditorInspectorView::OnUpdate()
         auto selection      = selectionContext.GetSelection<ViewportSelection>().viewportObjects.front();
         uint64_t objectID   = selection->objectID;
         auto& gameObject    = selection->gameObject;
+        auto gameObjectPropertyCount = std::distance(gameObject.begin(), gameObject.end());
 
-
-        if(objectID != selectedObject)
+        if( objectID != selectedObject ||
+            propertyCount != gameObjectPropertyCount)
         {
-            selectedObject = objectID;
+            selectedObject  = objectID;
+            propertyCount   = gameObjectPropertyCount;
 
             for (auto& layout : properties)
             {
@@ -305,7 +306,6 @@ void EditorInspectorView::OnUpdate()
                     auto componentLabel = new QLabel{ QString{"Component ID#%1: "}.arg(componentView.ID) };
                     propertyItems.push_back(componentLabel);
 
-                    /*
                     auto label          = new QLabel{};
                     label->setObjectName("PropertyItem");
                     label->setText("No Component Inspector Available");
@@ -313,7 +313,6 @@ void EditorInspectorView::OnUpdate()
                     layout->addWidget(label);
 
                     propertyItems.push_back(label);
-                    */
                 }
             }
         }

@@ -48,10 +48,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <type_traits>
 #include <concepts>
 
-template<typename Ty>					using deque_t = std::deque<Ty>;
-template<typename Ty>					using vector_t = std::vector<Ty>;
-template<typename Ty, typename Ty_key>	using map_t = std::map<Ty, Ty_key>;
-template<typename Ty>					using list_t = std::list<Ty>;
 
 namespace FlexKit
 {   /************************************************************************************************/
