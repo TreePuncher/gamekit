@@ -6,7 +6,6 @@
 #include "memoryutilities.h"
 #include "AnimationUtilities.h"
 
-#include "Scenes.h"
 #include "MeshProcessing.h"
 
 #include <string>

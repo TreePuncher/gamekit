@@ -224,7 +224,7 @@ namespace FlexKit
             static_vector<Buffer> buffers;
         } descriptor;
 
-        SubMesh subMeshes[];
+        //SubMesh subMeshes[];
     };
 
     struct LODEntry
