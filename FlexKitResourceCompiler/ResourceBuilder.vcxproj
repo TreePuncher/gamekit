@@ -112,7 +112,6 @@
     <ClInclude Include="ResourceIDs.h" />
     <ClInclude Include="ResourceUtilities.h" />
     <ClInclude Include="SceneResource.h" />
-    <ClInclude Include="Scenes.h" />
     <ClInclude Include="TTFontLoader.h" />
     <ClInclude Include="TextureResourceUtilities.h" />
     <ClInclude Include="stdafx.h" />
@@ -143,9 +142,6 @@
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="SceneResource.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Scenes.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="TTFontLoader.cpp">

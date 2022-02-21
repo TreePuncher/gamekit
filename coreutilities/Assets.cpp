@@ -236,6 +236,20 @@ namespace FlexKit
 
     ReadAsset_RC ReadAsset(ReadContext& readContext, GUID_t guid, void* _ptr, size_t readSize, size_t readOffset)
     {
+        for (auto resource : Resources.ResourcesLoaded)
+        {
+            if (resource->GUID == guid)
+            {
+                auto& bufferCtx = Resources.ResourceMemory->allocate<BufferContext>((byte*)resource, resource->ResourceSize, 0);
+                readContext = ReadContext{ guid, &bufferCtx, Resources.ResourceMemory };
+
+                readContext.Read(_ptr, readSize, readOffset);
+
+                return RAC_OK;
+            }
+        }
+
+
         AssetHandle RHandle = INVALIDHANDLE;
 		for (size_t TI = 0; TI < Resources.Tables.size(); ++TI)
 		{
@@ -558,7 +572,12 @@ namespace FlexKit
 
         const size_t subMeshCount = lodHeader->descriptor.subMeshCount;
         for (size_t I = 0; I < subMeshCount; I++)
-            lod.subMeshes.push_back(lodHeader->subMeshes[I]);
+        {
+            SubMesh subMesh;
+            memcpy(&subMesh, buffer + lod.lodFileOffset + sizeof(LODlevel) + sizeof(SubMesh) * I, sizeof(SubMesh));
+            
+            lod.subMeshes.push_back(subMesh);
+        }
 
         lod.state = TriMesh::LOD_Runtime::LOD_State::Loaded;
 
@@ -608,7 +627,12 @@ namespace FlexKit
 
             const size_t subMeshCount = lodHeader.descriptor.subMeshCount;
             for (size_t I = 0; I < subMeshCount; I++)
-                lod.subMeshes.push_back(lodHeader.subMeshes[I]);
+            {
+                SubMesh subMesh;
+                memcpy(&subMesh, buffer + lod.lodFileOffset + sizeof(LODlevel) + sizeof(SubMesh) * I, sizeof(SubMesh));
+
+                lod.subMeshes.push_back(subMesh);
+            }
 
             lod.state = TriMesh::LOD_Runtime::LOD_State::Loaded;
         }

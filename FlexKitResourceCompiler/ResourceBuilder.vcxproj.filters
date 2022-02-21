@@ -30,9 +30,6 @@
     <ClInclude Include="SceneResource.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Scenes.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
     <ClInclude Include="TTFontLoader.h">
       <Filter>Headers</Filter>
     </ClInclude>
@@ -75,9 +72,6 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="SceneResource.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Scenes.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="TTFontLoader.cpp">

@@ -507,7 +507,6 @@ namespace FlexKit
     ResourceList CreateSceneFromGlTF(const std::filesystem::path& fileDir, MetaDataList&);
 
 
-
 }   /************************************************************************************************/
 
 

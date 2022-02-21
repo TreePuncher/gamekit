@@ -157,8 +157,22 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
     auto viewportScene = std::make_shared<ViewportScene>(newScene);
     auto& renderSystem = renderer.framework.GetRenderSystem();
 
-    std::vector<FlexKit::NodeHandle> nodes;
 
+    for (auto& dependantResource : newScene->sceneResources)
+    {
+        if (TextureResourceTypeID == dependantResource->resource->GetResourceTypeID())
+        {
+            auto blob   = dependantResource->resource->CreateBlob();
+            auto buffer = blob.buffer;
+
+            blob.buffer     = nullptr;
+            blob.bufferSize = 0;
+
+            FlexKit::AddAssetBuffer((Resource*)buffer);
+        }
+    }
+
+    std::vector<FlexKit::NodeHandle> nodes;
     for (auto node : newScene->sceneResource->nodes)
     {
         auto newNode = FlexKit::GetZeroedNode();
@@ -226,14 +240,23 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
                         }();
 
                     auto& materials = FlexKit::MaterialComponent::GetComponent();
+                    auto material   = materials.CreateMaterial(gbufferPass);
+
+                    for (auto& subMaterialData : brushComponent->material.subMaterials)
+                    {
+                        auto subMaterial = materials.CreateMaterial();
+                        materials.AddSubMaterial(material, subMaterial);
+
+                        FlexKit::ReadContext rdCtx{};
+                        for (auto texture : subMaterialData.textures)
+                            materials.AddTexture(texture, subMaterial, rdCtx);
+                    }
 
                     if (auto prop = res->properties.find(GetCRCGUID(TriMeshHandle)); prop != res->properties.end())
                     {
                         FlexKit::TriMeshHandle handle = std::any_cast<FlexKit::TriMeshHandle>(prop->second);
 
                         auto& view      = viewObject->gameObject.AddView<FlexKit::BrushView>(handle, FlexKit::GetSceneNode(viewObject->gameObject));
-                        auto material   = materials.CreateMaterial(gbufferPass);
-
                         view.GetBrush().material = material;
                     }
                     else
@@ -243,7 +266,6 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
 
                         res->properties[GetCRCGUID(TriMeshHandle)] = std::any{ handle };
 
-                        auto material   = materials.CreateMaterial(gbufferPass);
                         auto& view      = viewObject->gameObject.AddView<FlexKit::BrushView>(handle, FlexKit::GetSceneNode(viewObject->gameObject));
 
                         view.GetBrush().material = material;
@@ -589,10 +611,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
     QPoint globalCursorPos  = QCursor::pos();
     auto localPosition      = renderWindow->mapFromGlobal(globalCursorPos);
 
-
     hud.Update({ (float)localPosition.x() * 1.5f, (float)localPosition.y() * 1.5f }, HW, dispatcher, dT);
-
-
 
     ImGui::NewFrame();
     ImGuizmo::BeginFrame();
