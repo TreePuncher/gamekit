@@ -52,13 +52,17 @@ public:
             [&, positionTxt = positionTxt](const std::string& txt)
             {
                 char* p;
-                float x = strtof(txt.c_str(), &p);
+                const float x = strtof(txt.c_str(), &p);
                 if (!*p)
                 {
                     auto position = sceneNodeView.GetPosition();
-                    position.x = x;
 
-                    sceneNodeView.SetPosition(position);
+                    if (position.x != x)
+                    {
+                        position.x = x;
+                        sceneNodeView.SetPosition(position);
+                    }
+
                     positionTxt->setText(fmt::format("Position: \t[{}, {}, {}]", position.x, position.y, position.z).c_str());
                 }
             });
@@ -73,13 +77,17 @@ public:
             [&, positionTxt = positionTxt](const std::string& txt)
             {
                 char* p;
-                float y = strtof(txt.c_str(), &p);
+                const float y = strtof(txt.c_str(), &p);
                 if (!*p)
                 {
                     auto position = sceneNodeView.GetPosition();
-                    position.y = y;
 
-                    sceneNodeView.SetPosition(position);
+                    if (position.y != y)
+                    {
+                        position.y = y;
+                        sceneNodeView.SetPosition(position);
+                    }
+
                     positionTxt->setText(fmt::format("Position: \t[{}, {}, {}]", position.x, position.y, position.z).c_str());
                 }
             });
@@ -94,13 +102,16 @@ public:
             [&, positionTxt = positionTxt](const std::string& txt)
             {
                 char* p;
-                float z = strtof(txt.c_str(), &p);
+                const float z = strtof(txt.c_str(), &p);
                 if (!*p)
                 {
                     auto position = sceneNodeView.GetPosition();
-                    position.z = z;
 
-                    sceneNodeView.SetPosition(position);
+                    if (position.z != z)
+                    {
+                        position.z = z;
+                        sceneNodeView.SetPosition(position);
+                    }
                     positionTxt->setText(fmt::format("Position: \t[{}, {}, {}]", position.x, position.y, position.z).c_str());
                 }
             });

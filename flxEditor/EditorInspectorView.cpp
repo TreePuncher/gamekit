@@ -325,6 +325,7 @@ void EditorInspectorView::OnUpdate()
                 {
                     context.PushVerticalLayout(QString{ "Component ID#%1: " }.arg(componentView.ID).toStdString(), true);
                     context.AddText("No Component Inspector Available");
+                    context.Pop();
                 }
             }
         }
