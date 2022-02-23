@@ -35,9 +35,10 @@ class ComponentViewPanelContext
 public:
     ComponentViewPanelContext(QBoxLayout* panel, std::vector<QWidget*>& items_out, std::vector<QBoxLayout*>&);
 
-    QLabel* AddHeader      (std::string txt);
-    QLabel* AddText        (std::string txt);
-    void    AddInputBox    (std::string label, FieldUpdateCallback update, FieldChangeCallback change);
+    QLabel* AddHeader           (std::string txt);
+    QLabel* AddText             (std::string txt);
+    void    AddInputBox         (std::string txt, FieldUpdateCallback update, FieldChangeCallback change);
+
     void    AddButton      (std::string label, ButtonCallback);
     void    AddList         (ListSizeUpdateCallback, ListContentUpdateCallback, ListEventCallback);
 
