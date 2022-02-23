@@ -44,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // FBX Loading
 #pragma comment	(lib,	"libfbxsdk.lib")
 
+/*
 // PhysX Cooking Deps
 #ifdef _DEBUG
 #pragma comment(lib,	"PhysXFoundation_64.lib"	)
@@ -55,7 +56,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma comment(lib,	"PhysXCommon_64.lib"		)
 #pragma comment(lib,	"PhysXCooking_64.lib"		)
 #endif
-
+*/
 
 namespace FlexKit
 {   /************************************************************************************************/

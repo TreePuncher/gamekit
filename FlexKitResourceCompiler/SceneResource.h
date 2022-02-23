@@ -70,8 +70,8 @@ namespace FlexKit
     {
         ResNodeHandle           SceneRoot;
 
-        physx::PxCooking*		Cooker		= nullptr;
-        physx::PxFoundation*	Foundation	= nullptr;
+        //physx::PxCooking*		Cooker		= nullptr;
+        //physx::PxFoundation*	Foundation	= nullptr;
 
         bool					 SUBDIVEnabled;
         bool					 CloseFBX;

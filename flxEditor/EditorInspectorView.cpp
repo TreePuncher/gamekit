@@ -9,14 +9,14 @@
 #include <QtWidgets\qmenubar.h>
 #include <QtWidgets\qgroupbox.h>
 #include <QtWidgets\qscrollarea.h>
+#include <QtWidgets\qlistwidget.h>
 
 
 /************************************************************************************************/
 
 
 ComponentViewPanelContext::ComponentViewPanelContext(QBoxLayout* panel, std::vector<QWidget*>& items_out, std::vector<QBoxLayout*>& layouts) :
-    propertyItems   { items_out },
-    subLayouts      { layouts }
+    propertyItems   { items_out }
 {
     layoutStack.push_back(panel);
 }
@@ -63,8 +63,10 @@ void ComponentViewPanelContext::AddInputBox(std::string txt, FieldUpdateCallback
     auto inputBox   = new QTextEdit{ initial.c_str() };
 
     label->setSizePolicy(QSizePolicy::Policy::Minimum, QSizePolicy::Policy::Minimum);
-    inputBox->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
+    inputBox->setSizePolicy(QSizePolicy::Policy::MinimumExpanding, QSizePolicy::Policy::Fixed);
     inputBox->setSizeAdjustPolicy(QAbstractScrollArea::SizeAdjustPolicy::AdjustToContents);
+    inputBox->setBaseSize(QSize{ 10, 20 });
+    inputBox->setFixedHeight(28);
 
     inputBox->connect(
         inputBox,
@@ -72,6 +74,7 @@ void ComponentViewPanelContext::AddInputBox(std::string txt, FieldUpdateCallback
         [=] { change(inputBox->toPlainText().toStdString()); });
 
     auto timer = new QTimer{ inputBox };
+
     timer->start(250);
     timer->connect(timer, &QTimer::timeout,
         [=] {
@@ -125,7 +128,7 @@ void ComponentViewPanelContext::PushVerticalLayout(std::string groupName, bool p
         auto group  = new QGroupBox{};
 
         if (groupName.size())
-            group->setTitle("Hello");
+            group->setTitle(groupName.c_str());
 
         group->setLayout(layout);
 
@@ -154,6 +157,8 @@ void ComponentViewPanelContext::PushHorizontalLayout(std::string groupName, bool
             group->setTitle(groupName.c_str());
 
         group->setLayout(layout);
+
+        //propertyItems.push_back(group);
         layoutStack.back()->addWidget(group);
     }
     else
@@ -175,6 +180,26 @@ void ComponentViewPanelContext::Pop()
 
 /************************************************************************************************/
 
+
+void ComponentViewPanelContext::AddList(ListSizeUpdateCallback size, ListContentUpdateCallback content, ListEventCallback evt)
+{
+    auto list = new QListWidget();
+
+    const auto end = size();
+    for (size_t itr = 0; itr < end; ++itr)
+    {
+        QListWidgetItem* item = new QListWidgetItem;
+        content(itr, item);
+        list->addItem(item);
+    }
+
+    list->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+    list->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
+    layoutStack.back()->addWidget(list);
+}
+
+
+/************************************************************************************************/
 
 
 EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, QWidget *parent) :
@@ -259,17 +284,12 @@ void EditorInspectorView::OnUpdate()
             selectedObject  = objectID;
             propertyCount   = gameObjectPropertyCount;
 
-            for (auto& layout : properties)
-            {
-                layout->setParent(nullptr);
-                delete layout;
-            }
+            auto children = contentWidget->children();
+            for (auto child : children)
+                if (child != contentLayout)
+                    delete child;
 
-            for (auto& items : propertyItems)
-            {
-                items->setParent(nullptr);
-                delete items;
-            }
+            auto children2 = contentWidget->children();
 
             properties.clear();
             propertyItems.clear();
@@ -303,24 +323,9 @@ void EditorInspectorView::OnUpdate()
                 }
                 else
                 {
-                    auto componentLabel = new QLabel{ QString{"Component ID#%1: "}.arg(componentView.ID) };
-                    propertyItems.push_back(componentLabel);
-
-                    auto label          = new QLabel{};
-                    label->setObjectName("PropertyItem");
-                    label->setText("No Component Inspector Available");
-                    layout->addWidget(componentLabel, 0, Qt::AlignHCenter);
-                    layout->addWidget(label);
-
-                    propertyItems.push_back(label);
+                    context.PushVerticalLayout(QString{ "Component ID#%1: " }.arg(componentView.ID).toStdString(), true);
+                    context.AddText("No Component Inspector Available");
                 }
-            }
-        }
-        else
-        {
-            for (auto& property : propertyItems)
-            {
-
             }
         }
     }

@@ -134,6 +134,12 @@
     <ClCompile Include="angelScriptTU.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CSGComponent.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CSGRendering.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -179,6 +185,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="PCH.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CSGComponent.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CSGRendering.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

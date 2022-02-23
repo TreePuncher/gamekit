@@ -5,6 +5,7 @@
 #include <fmt/format.h>
 #include <QtWidgets\qlabel.h>
 #include <format>
+#include <CSGComponent.h>
 
 
 /************************************************************************************************/

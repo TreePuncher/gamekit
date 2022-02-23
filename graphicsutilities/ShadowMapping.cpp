@@ -377,7 +377,7 @@ namespace FlexKit
 
                                 for (auto& visable : visables)
                                 {
-                                    ProfileFunction(VISIBILITY);
+                                    ProfileFunctionLabled(VISIBILITY);
 
                                     auto entity = visibilityComponent[visable].entity;
 

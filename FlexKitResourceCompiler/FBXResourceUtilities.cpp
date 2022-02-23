@@ -6,7 +6,6 @@
 
 #include "AnimationUtilities.h"
 
-#include "Scenes.h"
 #include "MeshProcessing.h"
 
 #include "fbxsdk.h"
@@ -336,7 +335,7 @@ namespace FlexKit
 
 	SkinDeformer CreateSkin(const fbxsdk::FbxMesh& mesh)
 	{	// Get Weights
-		SkinDeformer	Out = {};
+		SkinDeformer Out = {};
 
 		const auto DeformerCount  = mesh.GetDeformerCount();
 		for ( int I = 0; I < DeformerCount; ++I )
@@ -354,8 +353,9 @@ namespace FlexKit
 			{
 				auto Skin			= (FbxSkin*)D;
 				auto ClusterCount	= Skin->GetClusterCount();
-				
-				Out.bones.reserve(ClusterCount);
+
+				//Out.bones.reserve(ClusterCount);
+
 				for ( int II = 0; II < ClusterCount; ++II)
 				{
 					const auto Cluster			= Skin->GetCluster( II );
@@ -367,16 +367,16 @@ namespace FlexKit
 					auto* const fbxBone			= Cluster->GetLink();
 					const auto	fbxBoneAttrib	= fbxBone->GetNodeAttribute();
 
-					SkinDeformer::BoneWeights bone;
-					bone.name = ClusterName;
+					//SkinDeformer::BoneWeights bone;
+					//bone.name = ClusterName;
 
-					for ( size_t III = 0; III < CPICount; ++III )
-					{
-						bone.weights.push_back((float)Weights[III]);
-						bone.indices.push_back(CPIndices[III]);
-					}
+					//for ( size_t III = 0; III < CPICount; ++III )
+					//{
+					//	bone.weights.push_back((float)Weights[III]);
+					//	bone.indices.push_back(CPIndices[III]);
+					//}
 
-					Out.bones.emplace_back(std::move(bone));
+					//Out.bones.emplace_back(std::move(bone));
 				}
 			}	break;
 			}

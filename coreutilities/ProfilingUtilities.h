@@ -279,10 +279,11 @@ namespace FlexKit
 #define GETLINEHASH(A) FlexKit::GenerateTypeGUID<sizeof(A)>(A)
 
 #if USING(ENABLEPROFILER)
-#define ProfileFunction()       const auto PROFILELABEL_ = _ProfileFunction(std::source_location::current().function_name().c_str() , GETLINEHASH(STRINGIFY(__LINE__) __FUNCTION__ ))
-#define ProfileFunction(LABEL)  const auto PROFILELABEL_##LABEL = _ProfileFunction(__FUNCTION__":"#LABEL, GETLINEHASH(STRINGIFY(__LINE__) __FUNCTION__ ))
+#define ProfileFunction() const auto PROFILELABEL_ = _ProfileFunction(std::source_location::current().function_name().c_str() , GETLINEHASH(STRINGIFY(__LINE__) __FUNCTION__ ))
+#define ProfileFunctionLabled(LABEL)  const auto PROFILELABEL_##LABEL = _ProfileFunction(__FUNCTION__":"#LABEL, GETLINEHASH(STRINGIFY(__LINE__) __FUNCTION__ ))
 #else
 #define ProfileFunction()
+#define ProfileFunctionLabled(LABEL)
 #endif
 #define TIMEBLOCK(A, B) _TimeBlock([&]{ return A(); }, B)
 

@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GraphicsComponents.h"
 #include "containers.h"
 #include "Components.h"
-
+#include "defaultpipelinestates.h"
 #include <type_traits>
 
 
@@ -331,13 +331,18 @@ namespace FlexKit
 		{
 			DeviceResourceState initialState = renderSystem.GetObjectState(handle);
 
-			Resources.push_back(
-				FrameObject::TextureObject(handle, initialState));
+            if (auto res = FindFrameResource(handle); res != InvalidHandle_t)
+                return res;
+            else
+            {
+                Resources.push_back(
+                    FrameObject::TextureObject(handle, initialState));
 
-            auto resourceHandle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
-			Resources.back().Handle = resourceHandle;
+                auto resourceHandle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
+                Resources.back().Handle = resourceHandle;
 
-            return resourceHandle;
+                return resourceHandle;
+            }
 		}
 
 
