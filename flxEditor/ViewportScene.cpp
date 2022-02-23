@@ -1,80 +1,9 @@
 #include "PCH.h"
 #include "ViewportScene.h"
 #include "AnimationComponents.h"
-
+#include "CSGComponent.h"
 
 /************************************************************************************************/
-
-
-class FlexKit::EntityComponent;
-
-
-struct ViewportSceneContext
-{
-    ViewportScene& scene;
-
-    struct Node
-    {
-        float3      position;
-        Quaternion  orientation;
-        float3      scale;
-        int         parent = -1;
-    };
-
-    int MapNode(FlexKit::NodeHandle node)
-    {
-        if (node == FlexKit::InvalidHandle_t)
-            return -1;
-
-        if (auto res = nodeMap.find(node); res != nodeMap.end())
-            return res->second;
-        else
-        {
-            auto parent             = MapNode(FlexKit::GetParentNode(node));
-            auto localPosition      = FlexKit::GetPositionL(node);
-            auto localOrientation   = FlexKit::GetOrientation(node);
-            auto localScale         = FlexKit::GetLocalScale(node);
-
-            auto idx = nodes.size();
-            nodes.emplace_back( localPosition, localOrientation, localScale );
-
-            nodeMap[node] = idx;
-            return idx;
-        }
-    }
-
-    std::map<FlexKit::NodeHandle, int>  nodeMap = { { FlexKit::NodeHandle{ 0 }, 0 } };
-    std::vector<Node>                   nodes   = { { { 0, 0, 0 }, { 0, 0, 0, 1 }, { 1, 1, 1 }, -1 }};
-};
-
-class IEntityComponentRuntimeUpdater
-{
-public:
-    inline static std::map<uint32_t, void (*)(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& runtime, ViewportSceneContext& scene)> updaters;
-
-    template<typename TY, size_t UpdaterID>
-    struct RegisterConstructorHelper
-    {
-        static bool Register()
-        {
-            IEntityComponentRuntimeUpdater::updaters[UpdaterID] = [](FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& runtime, ViewportSceneContext& scene)
-            {
-                TY::Update(component, runtime, scene);
-            };
-
-            return true;
-        }
-
-        inline static bool _registered = Register();
-    };
-
-
-    static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& runtime, ViewportSceneContext& scene)
-    {
-        if(updaters.find(runtime.ID) != updaters.end())
-            updaters[runtime.ID](component, runtime, scene);
-    }
-};
 
 
 struct EntityStringIDComponent

@@ -5,6 +5,10 @@
 #include "physicsutilities.h"
 #include "intersection.h"
 
+
+/************************************************************************************************/
+
+
 struct ViewportGameObject
 {
     FlexKit::GameObject gameObject;
@@ -17,6 +21,7 @@ struct ViewportGameObject
 
 using ViewportGameObject_ptr    = std::shared_ptr<ViewportGameObject>;
 using ViewportObjectList        = std::vector<ViewportGameObject_ptr>;
+
 
 struct ViewportScene
 {
@@ -41,6 +46,83 @@ struct ViewportSelection
 };
 
 
+/************************************************************************************************/
+
+
+class FlexKit::EntityComponent;
+
+struct ViewportSceneContext
+{
+    ViewportScene& scene;
+
+    struct Node
+    {
+        float3      position;
+        Quaternion  orientation;
+        float3      scale;
+        int         parent = -1;
+    };
+
+    int MapNode(FlexKit::NodeHandle node)
+    {
+        if (node == FlexKit::InvalidHandle_t)
+            return -1;
+
+        if (auto res = nodeMap.find(node); res != nodeMap.end())
+            return res->second;
+        else
+        {
+            auto parent             = MapNode(FlexKit::GetParentNode(node));
+            auto localPosition      = FlexKit::GetPositionL(node);
+            auto localOrientation   = FlexKit::GetOrientation(node);
+            auto localScale         = FlexKit::GetLocalScale(node);
+
+            auto idx = nodes.size();
+            nodes.emplace_back( localPosition, localOrientation, localScale );
+
+            nodeMap[node] = idx;
+            return idx;
+        }
+    }
+
+    std::map<FlexKit::NodeHandle, int>  nodeMap = { { FlexKit::NodeHandle{ 0 }, 0 } };
+    std::vector<Node>                   nodes   = { { { 0, 0, 0 }, { 0, 0, 0, 1 }, { 1, 1, 1 }, -1 }};
+};
+
+
+/************************************************************************************************/
+
+
+class IEntityComponentRuntimeUpdater
+{
+public:
+    inline static std::map<uint32_t, void (*)(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& runtime, ViewportSceneContext& scene)> updaters;
+
+    template<typename TY, size_t UpdaterID>
+    struct RegisterConstructorHelper
+    {
+        static bool Register()
+        {
+            IEntityComponentRuntimeUpdater::updaters[UpdaterID] = [](FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& runtime, ViewportSceneContext& scene)
+            {
+                TY::Update(component, runtime, scene);
+            };
+
+            return true;
+        }
+
+        inline static bool _registered = Register();
+    };
+
+
+    static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& runtime, ViewportSceneContext& scene)
+    {
+        if(updaters.find(runtime.ID) != updaters.end())
+            updaters[runtime.ID](component, runtime, scene);
+    }
+};
+
+
 /**********************************************************************
 
 Copyright (c) 2021 Robert May
@@ -61,6 +143,6 @@ MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
 CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS```````````````````````````````````````````````````````````````````````````````````````````````````````````````` IN THE SOFTWARE.
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/

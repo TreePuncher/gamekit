@@ -1,19 +1,18 @@
+#pragma once
+
 #include "buildsettings.h"
 #include "containers.h"
 #include "Handle.h"
 #include "logging.h"
 #include "MathUtils.h"
 #include "MemoryUtilities.h"
+#include "RuntimeComponentIDs.h"
 #include "ThreadUtilities.h"
 #include "type.h"
-
 
 #include <iostream>
 #include <type_traits>
 #include <tuple>
-
-#ifndef COMPONENT_H
-#define COMPONENT_H
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -573,6 +572,7 @@ namespace FlexKit
 
         using View = BasicComponentView_t<BasicComponent_t<TY, TY_Handle, ID>>;
 
+
 		TY_Handle Create(const TY& initial)
 		{
 			auto handle		= handles.GetNewHandle();
@@ -580,6 +580,7 @@ namespace FlexKit
 
 			return handle;
 		}
+
 
         TY_Handle Create(TY&& initial)
         {
@@ -656,7 +657,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	constexpr ComponentID StringComponentID = GetTypeGUID(StringID);
 	using StringIDHandle = Handle_t <32, GetTypeGUID(StringID)>;
 
 	class StringIDComponent : public Component<StringIDComponent, StringComponentID>
@@ -1198,5 +1198,3 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
-
-#endif

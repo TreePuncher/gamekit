@@ -79,6 +79,7 @@
       <ShowIncludes>false</ShowIncludes>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>PCH.h</PrecompiledHeaderFile>
+      <EnableModules>false</EnableModules>
     </ClCompile>
     <QtMoc>
       <AdditionalDependencies>
@@ -147,6 +148,8 @@
     <ClCompile Include="angelScriptTU.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="CSGComponent.cpp" />
+    <ClCompile Include="CSGRendering.cpp" />
     <ClCompile Include="EditorApplication.cpp" />
     <ClCompile Include="EditorCodeEditor.cpp" />
     <ClCompile Include="EditorConfig.cpp" />
@@ -192,6 +195,8 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CSGComponent.h" />
+    <ClInclude Include="CSGRendering.h" />
     <ClInclude Include="EditorApplication.h" />
     <QtMoc Include="EditorInspectorView.h" />
     <ClInclude Include="PCH.h" />

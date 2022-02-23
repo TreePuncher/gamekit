@@ -119,7 +119,7 @@ namespace FlexKit
 
     AssetHandle AddAssetBuffer(Resource* buffer)
     {
-        buffer->RefCount++;
+        buffer->RefCount = 1;
 
         return Resources.ResourcesLoaded.push_back((Resource*)buffer);
     }

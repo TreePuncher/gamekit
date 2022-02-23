@@ -34,7 +34,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Assets.h"
 #include "AnimationUtilities.h"
 #include "Serialization.hpp"
-#include <PxPhysicsAPI.h>
 
 #include <random>
 #include <limits>

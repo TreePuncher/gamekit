@@ -554,7 +554,7 @@ void EditorViewport::wheelEvent(QWheelEvent* event)
     const auto node   = FlexKit::GetCameraNode(viewportCamera);
     const auto q      = FlexKit::GetOrientation(node);
 
-    FlexKit::TranslateWorld(node, q * float3{ 0, 0, event->angleDelta().x() / -10.0f });
+    FlexKit::TranslateWorld(node, q * float3{ 0, 0, event->angleDelta().x() / -100.0f });
     MarkCameraDirty(viewportCamera);
 }
 
@@ -630,7 +630,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
                                                 0,   0,   1,   0,
                                                 0,   0,   0,   1};
 
-        ImGuizmo::DrawGrid(view, projection, grid, 10);
+        //ImGuizmo::DrawGrid(view, projection, grid, 10);
 
 
         if (localPosition.x() >= 0 && localPosition.y() >= 0 && localPosition.x() * 1.5f < io.DisplaySize.x  && localPosition.y() * 1.5f < io.DisplaySize.y &&
@@ -734,6 +734,13 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
         };
 
         DrawSceneOverlay(dispatcher, frameGraph, desc);
+
+        renderer.csgRender.Render(
+            dispatcher, frameGraph,
+            temporaries.ReserveConstantBuffer,
+            temporaries.ReserveVertexBuffer,
+            frameGraph.Resources.AddResource(targets.RenderTarget, true),
+            dT);
 
         renderer.textureEngine.TextureFeedbackPass(
             dispatcher,
@@ -929,8 +936,9 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 
 
                     const auto      node        = FlexKit::GetSceneNode(object->gameObject);
-                    const auto      BS          = FlexKit::GetBoundingSphere(object->gameObject);
-                    const float3    position    = FlexKit::GetPositionW(node);// + FlexKit::GetOrientation(node) * BS.xyz();
+                    const auto      BS          = FlexKit::GetBoundingSphereFromMesh(object->gameObject);
+                    const auto      Q           = FlexKit::GetOrientation(node);
+                    const float4    position    = float4(BS.xyz(), 0);
                     const auto      radius      = BS.w;
                     const size_t    divisions   = 64;
 
@@ -940,46 +948,46 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 
                     Vertex vertices[] = {
                         // Top
-                        { float4{ -radius,  radius,  radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-                        { float4{  radius,  radius,  radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{ -radius,  radius,  radius, 1 } + position, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{  radius,  radius,  radius, 1 } + position, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
 
-                        { float4{ -radius,  radius, -radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-                        { float4{  radius,  radius, -radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{ -radius,  radius, -radius, 1 } + position, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{  radius,  radius, -radius, 1 } + position, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
 
-                        { float4{ -radius,  radius,  radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-                        { float4{ -radius,  radius, -radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{ -radius,  radius,  radius, 1 } + position, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{ -radius,  radius, -radius, 1 } + position, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
 
 
-                        { float4{  radius,  radius,  radius, 1 }, float4{  1, 1, 1, 1 }, float2{ 0, 0 } },
-                        { float4{  radius,  radius, -radius, 1 }, float4{  1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{  radius,  radius,  radius, 1 } + position, float4{  1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{  radius,  radius, -radius, 1 } + position, float4{  1, 1, 1, 1 }, float2{ 0, 0 } },
 
                         // Bottom
-                        { float4{ -radius, -radius,  radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-                        { float4{  radius, -radius,  radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{ -radius, -radius,  radius, 1 } + position, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{  radius, -radius,  radius, 1 } + position, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
 
-                        { float4{ -radius, -radius, -radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-                        { float4{  radius, -radius, -radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{ -radius, -radius, -radius, 1 } + position, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{  radius, -radius, -radius, 1 } + position, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
 
-                        { float4{ -radius, -radius,  radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-                        { float4{ -radius, -radius, -radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{ -radius, -radius,  radius, 1 } + position, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{ -radius, -radius, -radius, 1 } + position, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
 
-                        { float4{  radius, -radius,  radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-                        { float4{  radius, -radius, -radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{  radius, -radius,  radius, 1 } + position, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{  radius, -radius, -radius, 1 } + position, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
 
                         // Sides
-                        { float4{  radius,  radius,  radius, 1 }, float4{ 1, 1,  1, 1 }, float2{ 0, 0 } },
-                        { float4{  radius, -radius,  radius, 1 }, float4{ 1, 1,  1, 1 }, float2{ 0, 0 } },
+                        { float4{  radius,  radius,  radius, 1 } + position, float4{ 1, 1,  1, 1 }, float2{ 0, 0 } },
+                        { float4{  radius, -radius,  radius, 1 } + position, float4{ 1, 1,  1, 1 }, float2{ 0, 0 } },
 
-                        { float4{  radius,  radius, -radius, 1 }, float4{ 1, 1,  1, 1 }, float2{ 0, 0 } },
-                        { float4{  radius, -radius, -radius, 1 }, float4{ 1, 1,  1, 1 }, float2{ 0, 0 } },
-
-
-                        { float4{ -radius,  radius,  radius, 1 }, float4{ 1, 1,  1, 1 }, float2{ 0, 0 } },
-                        { float4{ -radius, -radius,  radius, 1 }, float4{ 1, 1,  1, 1 }, float2{ 0, 0 } },
+                        { float4{  radius,  radius, -radius, 1 } + position, float4{ 1, 1,  1, 1 }, float2{ 0, 0 } },
+                        { float4{  radius, -radius, -radius, 1 } + position, float4{ 1, 1,  1, 1 }, float2{ 0, 0 } },
 
 
-                        { float4{ -radius,  radius, -radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-                        { float4{ -radius, -radius, -radius, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{ -radius,  radius,  radius, 1 } + position, float4{ 1, 1,  1, 1 }, float2{ 0, 0 } },
+                        { float4{ -radius, -radius,  radius, 1 } + position, float4{ 1, 1,  1, 1 }, float2{ 0, 0 } },
+
+
+                        { float4{ -radius,  radius, -radius, 1 } + position, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
+                        { float4{ -radius, -radius, -radius, 1 } + position, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
                     };
 
                     const FlexKit::VertexBufferDataSet vbDataSet{
@@ -996,7 +1004,9 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
                     } CB_Data {
 				        .unused1    = float4{ 1, 1, 1, 1 },
 				        .unused2    = float4{ 1, 1, 1, 1 },
-				        .transform  = FlexKit::TranslationMatrix(position)
+                        //.transform  = FlexKit::TranslationMatrix(FlexKit::GetPositionW(node))// GetWT(node),
+                        .transform  = GetWT(node).Transpose()
+                        //.transform  = (FlexKit::TranslationMatrix(position) * FlexKit::Quaternion2Matrix(Q))
 			        };
 
                     auto constantBuffer = data.ReserveConstantBuffer(256);

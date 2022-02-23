@@ -610,7 +610,6 @@ namespace FlexKit
 
                 for (auto& child : node.children)
                     parentLinkage[nodeMap[child]] = jointIdx;
-
             }
 
             auto skeleton   = std::make_shared<SkeletonResource>();

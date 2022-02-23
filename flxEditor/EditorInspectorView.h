@@ -18,6 +18,18 @@ using FieldUpdateCallback   = std::function<void (std::string& string)>;
 using FieldChangeCallback   = std::function<void (const std::string& string)>;
 using ButtonCallback        = std::function<void ()>;
 
+class ListUpdateCtx;
+class ListEvt;
+class QListWidgetItem;
+
+using ListSizeUpdateCallback    = std::function<size_t()>;
+using ListContentUpdateCallback = std::function<void (size_t, QListWidgetItem*)>;
+using ListEventCallback         = std::function<void (ListEvt&)>;
+
+
+/************************************************************************************************/
+
+
 class ComponentViewPanelContext
 {
 public:
@@ -27,6 +39,7 @@ public:
     QLabel* AddText        (std::string txt);
     void    AddInputBox    (std::string label, FieldUpdateCallback update, FieldChangeCallback change);
     void    AddButton      (std::string label, ButtonCallback);
+    void    AddList         (ListSizeUpdateCallback, ListContentUpdateCallback, ListEventCallback);
 
     void PushVerticalLayout     (std::string groupName = {}, bool goup = false);
     void PushHorizontalLayout   (std::string groupName = {}, bool goup = false);
@@ -34,8 +47,9 @@ public:
 
     std::vector<QBoxLayout*>    layoutStack;
     std::vector<QWidget*>&      propertyItems;
-    std::vector<QBoxLayout*>&   subLayouts;
 };
+
+/************************************************************************************************/
 
 
 class IComponentInspector
@@ -48,7 +62,6 @@ public:
 };
 
 class ViewportGameObject;
-
 class ViewportScene;
 
 class IComponentFactory
@@ -59,6 +72,9 @@ public:
     virtual void                    Construct(ViewportGameObject&, ViewportScene& scene) = 0;
     virtual const std::string&      ComponentName() const noexcept = 0;
 };
+
+
+/************************************************************************************************/
 
 
 class EditorInspectorView : public QWidget

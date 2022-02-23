@@ -167,36 +167,28 @@ void EditorMainWindow::AddExporter(iEditorExporter* exporter)
             const auto fileDir      = QFileDialog::getSaveFileName(this, tr(importText.c_str()), QDir::currentPath(), fileMenuText.c_str());
             const auto fileStr      = fileDir.toStdString();
 
-            if(selectionContext.GetSelectionType() == ViewportObjectList_ID)
-            {
-                auto selections = selectionContext.GetSelection<ViewportObjectList>();
+            std::vector<FlexKit::Resource_ptr> selectedResources{};
 
-                using Resource_ptr = FlexKit::Resource_ptr;
+            for (auto& resource : project.GetResources())
+                    selectedResources.emplace_back(resource);
 
-                std::vector<FlexKit::Resource_ptr> selectedResources{};
+            std::sort(
+                std::begin(selectedResources),
+                std::end(selectedResources),
+                [](FlexKit::Resource_ptr& lhs, FlexKit::Resource_ptr& rhs) { return lhs->GetResourceGUID() < rhs->GetResourceGUID(); });
 
-                for (auto& selection : selections)
-                    for (auto& dependency : selection->resourceDependencies)
-                        selectedResources.emplace_back(dependency->resource);
-
-                std::sort(
+            selectedResources.erase(
+                std::unique(
                     std::begin(selectedResources),
-                    std::end(selectedResources),
-                    [](Resource_ptr& lhs, Resource_ptr& rhs) { return lhs.get() < rhs.get(); });
+                    std::end(selectedResources)),
+                std::end(selectedResources));
 
-                selectedResources.erase(
-                    std::unique(
-                        std::begin(selectedResources),
-                        std::end(selectedResources)),
-                    std::end(selectedResources));
+            if (fileDir.size() && selectedResources.size() && !exporter->Export(fileStr, selectedResources))
+            {   // Log Error
+                const auto fileDir = QFileDialog::getOpenFileName(this, tr(importText.c_str()), QDir::currentPath(), fileMenuText.c_str());
+                const auto fileStr = fileDir.toStdString();
 
-                if (fileDir.size() && selectedResources.size() && !exporter->Export(fileStr, selectedResources))
-                {   // Log Error
-                    const auto fileDir = QFileDialog::getOpenFileName(this, tr(importText.c_str()), QDir::currentPath(), fileMenuText.c_str());
-                    const auto fileStr = fileDir.toStdString();
-
-                    FK_LOG_ERROR("Export Failed!");
-                }
+                FK_LOG_ERROR("Export Failed!");
             }
         });
 }

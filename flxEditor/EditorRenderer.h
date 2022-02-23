@@ -8,6 +8,8 @@
 #include "WorldRender.h"
 #include "TextureStreamingUtilities.h"
 #include "Scene.h"
+#include "CSGComponent.h"
+#include "CSGRendering.h"
 
 #include "../FlexKitResourceCompiler/MeshProcessing.h"
 
@@ -26,8 +28,8 @@ public:
     void DrawRenderWindow(DXRenderWindow* renderWindow);
 
     FlexKit::TriMeshHandle LoadMesh(FlexKit::MeshResource& mesh);
-
     FlexKit::RenderSystem& GetRenderSystem() { return framework.core.RenderSystem; }
+
 protected:
     FlexKit::UpdateTask* Update (FlexKit::EngineCore& Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT) override;
     FlexKit::UpdateTask* Draw   (FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph) override;
@@ -40,6 +42,7 @@ protected:
 public:
     FlexKit::TextureStreamingEngine textureEngine;
     FlexKit::WorldRender            worldRender;
+    CSGRender                       csgRender;
 
 private:
     struct TempBuffer
@@ -71,6 +74,10 @@ private:
     FlexKit::PointLightShadowMap        pointLightShadowMaps;
     FlexKit::FABRIKTargetComponent      ikTargetComponent;
     FlexKit::FABRIKComponent            ikComponent;
+
+    // Editor Only Components
+    CSGComponent csg;
+
 
     QApplication&                   QtApplication;
     FlexKit::FKApplication&         application;

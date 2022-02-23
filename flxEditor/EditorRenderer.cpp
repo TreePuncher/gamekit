@@ -14,7 +14,7 @@ EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FK
     textureEngine   { IN_framework.core.RenderSystem, IN_framework.core.GetBlockMemory() },
     worldRender     { IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory() },
 
-
+    csg                     { IN_framework.core.GetBlockMemory() },
     brushComponent          { IN_framework.core.GetBlockMemory(), IN_framework.core.RenderSystem },
     stringIDComponent       { IN_framework.core.GetBlockMemory() },
     materialComponent       { IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory() },
