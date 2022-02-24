@@ -412,6 +412,11 @@ namespace FlexKit
             FlexKit::SetPositionW(node, xyz);
         }
 
+        void SetPositionL(const float3 xyz)
+        {
+            FlexKit::SetPositionL(node, xyz);
+        }
+
         float4x4 GetWT() const
         {
             return FlexKit::GetWT(node);

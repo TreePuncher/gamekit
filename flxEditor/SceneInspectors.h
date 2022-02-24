@@ -6,7 +6,7 @@
 #include <QtWidgets\qlabel.h>
 #include <format>
 #include <CSGComponent.h>
-
+#include <ViewportScene.h>
 
 /************************************************************************************************/
 
@@ -23,105 +23,7 @@ public:
         return FlexKit::TransformComponentID;
     }
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override
-    {
-        auto& sceneNodeView = static_cast<FlexKit::SceneNodeView<>&>(component);
-
-        const auto initialPos   = sceneNodeView.GetPosition();
-        const auto scale        = sceneNodeView.GetScale();
-        const auto orientation  = sceneNodeView.GetOrientation();
-
-        panelCtx.PushHorizontalLayout("Transform", true);
-
-        panelCtx.AddText(fmt::format("Node: {}", sceneNodeView.node.to_uint()));
-        panelCtx.AddText(fmt::format("Parent: {}", sceneNodeView.GetParentNode().to_uint()));
-
-        panelCtx.Pop();
-
-        auto positionTxt = panelCtx.AddText(fmt::format("Position: \t[{}, {}, {}]", initialPos.x, initialPos.y, initialPos.z));
-
-        panelCtx.PushHorizontalLayout("", true);
-
-        panelCtx.AddInputBox(
-            "X",
-            [&](std::string& txt)
-            {
-                auto pos = sceneNodeView.GetPosition();
-                txt = fmt::format("{}", pos.x);
-            },
-            [&, positionTxt = positionTxt](const std::string& txt)
-            {
-                char* p;
-                const float x = strtof(txt.c_str(), &p);
-                if (!*p)
-                {
-                    auto position = sceneNodeView.GetPosition();
-
-                    if (position.x != x)
-                    {
-                        position.x = x;
-                        sceneNodeView.SetPosition(position);
-                    }
-
-                    positionTxt->setText(fmt::format("Position: \t[{}, {}, {}]", position.x, position.y, position.z).c_str());
-                }
-            });
-
-        panelCtx.AddInputBox(
-            "Y",
-            [&](std::string& txt)
-            {
-                auto pos = sceneNodeView.GetPosition();
-                txt = fmt::format("{}", pos.y);
-            },
-            [&, positionTxt = positionTxt](const std::string& txt)
-            {
-                char* p;
-                const float y = strtof(txt.c_str(), &p);
-                if (!*p)
-                {
-                    auto position = sceneNodeView.GetPosition();
-
-                    if (position.y != y)
-                    {
-                        position.y = y;
-                        sceneNodeView.SetPosition(position);
-                    }
-
-                    positionTxt->setText(fmt::format("Position: \t[{}, {}, {}]", position.x, position.y, position.z).c_str());
-                }
-            });
-
-        panelCtx.AddInputBox(
-            "Z",
-            [&](std::string& txt)
-            {
-                auto pos = sceneNodeView.GetPosition();
-                txt = fmt::format("{}", pos.z);
-            },
-            [&, positionTxt = positionTxt](const std::string& txt)
-            {
-                char* p;
-                const float z = strtof(txt.c_str(), &p);
-                if (!*p)
-                {
-                    auto position = sceneNodeView.GetPosition();
-
-                    if (position.z != z)
-                    {
-                        position.z = z;
-                        sceneNodeView.SetPosition(position);
-                    }
-                    positionTxt->setText(fmt::format("Position: \t[{}, {}, {}]", position.x, position.y, position.z).c_str());
-                }
-            });
-
-        panelCtx.Pop();
-
-        panelCtx.AddText(fmt::format("Scale: \t[{}, {}, {}]", scale.x, scale.y, scale.z));
-        panelCtx.AddText(fmt::format("Orientation: \t[{}, {}, {}]", orientation.x, orientation.y, orientation.z));
-    }
-
+    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override;
 private:
 
 };
@@ -166,31 +68,7 @@ public:
         return FlexKit::SceneVisibilityComponentID;
     }
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override
-    {
-        auto& visibility    = static_cast<FlexKit::SceneVisibilityView&>(component);
-
-        panelCtx.AddHeader("Visibility");
-        panelCtx.AddText("Bounding Volume type: Bounding Sphere");
-
-        panelCtx.AddInputBox(
-            "Bounding Sphere Radius",
-            [&](std::string& str)
-            {
-                str = fmt::format("{}", visibility.GetBoundingSphere().w);
-            },
-            [&](const std::string& txt)
-            {
-                char* p;
-                float r = strtof(txt.c_str(), &p);
-                if (!*p)
-                {
-                    auto BS = visibility.GetBoundingSphere();
-                    BS.w = r;
-                    visibility.SetBoundingSphere(BS);
-                }
-            });
-    }
+    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override;
 
 private:
 
@@ -209,47 +87,7 @@ public:
         return FlexKit::PointLightComponentID;
     }
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override
-    {
-        auto& pointLight = static_cast<FlexKit::PointLightView&>(component);
-
-        panelCtx.AddHeader("Point Light");
-
-        panelCtx.AddText(fmt::format("Node: {}", pointLight.GetNode().to_uint()));
-
-        panelCtx.AddInputBox(
-            "Radius",
-            [&](std::string& txt)
-            {
-                txt = fmt::format("{}", pointLight.GetRadius());
-            },
-            [&](const std::string& txt)
-            {
-                char* p;
-                float r = strtof(txt.c_str(), &p);
-                if (!*p)
-                {
-                    auto radius = pointLight.GetRadius();
-                    pointLight.SetRadius(r);
-                }
-            });
-
-        panelCtx.AddInputBox(
-            "Intensity",
-            [&](std::string& string) {
-                string = fmt::format("{}", pointLight.GetRadius());
-            },
-            [&](const std::string& txt)
-            {
-                char* p;
-                float i = strtof(txt.c_str(), &p);
-                if (!*p)
-                {
-                    auto radius = pointLight.GetIntensity();
-                    pointLight.SetIntensity(i);
-                }
-            });
-    }
+    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override;
 };
 
 
@@ -330,22 +168,7 @@ public:
         return FlexKit::BrushComponentID;
     }
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override
-    {
-        auto& brush = static_cast<FlexKit::BrushView&>(component);
-
-        panelCtx.AddHeader("Brush");
-
-        auto mesh_ptr = FlexKit::GetMeshResource(brush.GetTriMesh());
-
-        if(mesh_ptr->ID)
-            panelCtx.AddText(fmt::format("Tri Mesh Resource: {}", mesh_ptr->ID));
-
-        panelCtx.AddText(fmt::format("Tri Mesh AssetHandle: {}", mesh_ptr->assetHandle));
-
-        if (mesh_ptr->AnimationData)
-            panelCtx.AddText("Brush Animated");
-    }
+    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override;
 };
 
 
@@ -381,27 +204,7 @@ public:
         return FlexKit::BrushComponentID;
     }
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override
-    {
-        auto& material = static_cast<FlexKit::MaterialComponentView&>(component);
-
-        panelCtx.AddHeader("Material");
-
-        auto passes = material.GetPasses();
-        panelCtx.AddText("Passes");
-
-        if (passes.size())
-        {
-            panelCtx.PushVerticalLayout();
-            for (auto& pass : passes)
-                panelCtx.AddText(std::string{} + std::format("{}", pass.to_uint()));
-
-            panelCtx.Pop();
-        }
-
-        panelCtx.AddText("Pass Count" + std::format("{}", passes.size()));
-        panelCtx.AddButton("Add Pass", [&]() {});
-    }
+    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override;
 };
 
 

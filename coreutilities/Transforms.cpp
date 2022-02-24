@@ -287,31 +287,18 @@ namespace FlexKit
 
 	void SetPositionW(NodeHandle node, float3 in) // Sets Position in World Space
 	{
-#if 0
-		using DirectX::XMQuaternionConjugate;
-		using DirectX::XMQuaternionMultiply;
-		using DirectX::XMVectorSubtract;
+        DirectX::XMMATRIX wt;
+        DirectX::XMMATRIX parentWT;
 
-		// Set New Local Position
-		LT_Entry Local;
-		WT_Entry Parent;
-
-		// Gather
-		GetLocal(Nodes, node, &Local);
-		GetTransform(Nodes, GetParentNode(Nodes, node), &Parent);
-
-		// Calculate
-		Local.T = XMVectorSubtract( Parent.World.T, in.pfloats );
-		SetLocal(Nodes, node, &Local);
-#else
-		DirectX::XMMATRIX wt;
 		GetTransform(node, &wt);
-		auto tmp =  DirectX::XMMatrixInverse(nullptr, wt) * DirectX::XMMatrixTranslation(in[0], in[1], in[2] );
-		float3 lPosition = float3( tmp.r[3].m128_f32[0], tmp.r[3].m128_f32[1], tmp.r[3].m128_f32[2] );
+        GetTransform(GetParentNode(node), &parentWT);
 
-		wt.r[0].m128_f32[3] = in.x;
-		wt.r[1].m128_f32[3] = in.y;
-		wt.r[2].m128_f32[3] = in.z;
+        wt.r[0].m128_f32[3] = in.x;
+        wt.r[1].m128_f32[3] = in.y;
+        wt.r[2].m128_f32[3] = in.z;
+
+		auto tmp = DirectX::XMMatrixInverse(nullptr, parentWT) * wt;
+		float3 lPosition = float3( tmp.r[0].m128_f32[3], tmp.r[1].m128_f32[3], tmp.r[2].m128_f32[3] );
 
 		// Set New Local Position
 		LT_Entry Local = GetLocal(node);
@@ -323,7 +310,6 @@ namespace FlexKit
         SetWT       (node, &wt);
 		SetLocal	(node, &Local);
 		SetFlag		(node, SceneNodes::DIRTY);
-#endif
 	}
 
 

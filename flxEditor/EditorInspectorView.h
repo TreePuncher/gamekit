@@ -12,6 +12,8 @@ class QBoxLayout;
 class QScrollArea;
 class QWidget;
 class QMenuBar;
+class QListWidget;
+
 class EditorInspectorView;
 
 using FieldUpdateCallback   = std::function<void (std::string& string)>;
@@ -24,7 +26,7 @@ class QListWidgetItem;
 
 using ListSizeUpdateCallback    = std::function<size_t()>;
 using ListContentUpdateCallback = std::function<void (size_t, QListWidgetItem*)>;
-using ListEventCallback         = std::function<void (ListEvt&)>;
+using ListEventCallback         = std::function<void (QListWidget*)>;
 
 
 /************************************************************************************************/
@@ -40,7 +42,7 @@ public:
     void    AddInputBox         (std::string txt, FieldUpdateCallback update, FieldChangeCallback change);
 
     void    AddButton      (std::string label, ButtonCallback);
-    void    AddList         (ListSizeUpdateCallback, ListContentUpdateCallback, ListEventCallback);
+    void    AddList        (ListSizeUpdateCallback, ListContentUpdateCallback, ListEventCallback);
 
     void PushVerticalLayout     (std::string groupName = {}, bool goup = false);
     void PushHorizontalLayout   (std::string groupName = {}, bool goup = false);
