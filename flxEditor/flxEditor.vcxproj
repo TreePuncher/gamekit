@@ -178,6 +178,7 @@
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PCH.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="ResourceBrowserWidget.cpp" />
+    <ClCompile Include="SceneInspectors.cpp" />
     <ClCompile Include="SceneOutliner.cpp" />
     <ClCompile Include="SelectionContext.cpp" />
     <ClCompile Include="TaskManager.cpp" />

@@ -102,7 +102,7 @@ void ComponentViewPanelContext::AddInputBox(std::string txt, FieldUpdateCallback
 
 void ComponentViewPanelContext::AddButton(std::string label, ButtonCallback callback)
 {
-    auto button = new QPushButton();
+    auto button = new QPushButton(label.c_str());
 
     button->connect(
         button,
@@ -193,8 +193,33 @@ void ComponentViewPanelContext::AddList(ListSizeUpdateCallback size, ListContent
         list->addItem(item);
     }
 
-    list->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+    list->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Minimum);
     list->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
+
+    list->connect(list, &QListWidget::itemSelectionChanged, [=]() { evt(list); });
+    list->setSelectionMode(QAbstractItemView::SelectionMode::SingleSelection);
+
+    auto timer = new QTimer{ list };
+
+    timer->connect(
+        timer,
+        &QTimer::timeout,
+        [=]() mutable
+        {
+            list->clear();
+
+            const auto end = size();
+            for (size_t itr = 0; itr < end; ++itr)
+            {
+                QListWidgetItem* item = new QListWidgetItem;
+                content(itr, item);
+                list->addItem(item);
+            }
+
+            timer->start(250);
+        });
+
+    timer->start(250);
     layoutStack.back()->addWidget(list);
 }
 

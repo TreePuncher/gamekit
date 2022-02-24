@@ -3,6 +3,7 @@
 #include "ViewportScene.h"
 #include "EditorInspectorView.h"
 #include "qlistwidget.h"
+#include <QtWidgets\qlistwidget.h>
 
 
 /************************************************************************************************/
@@ -32,24 +33,48 @@ public:
         return CSGComponentID;
     }
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override
+    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& view) override
     {
+        CSGView& csgView = static_cast<CSGView&>(view);
+
         panelCtx.PushVerticalLayout("CSG", true);
+
+        panelCtx.AddButton("Add",
+            [&]()
+            {
+                CSGNode newNode;
+                newNode.op = CSG_OP::CSG_ADD;
+                csgView.GetData().nodes.emplace_back(newNode);
+            });
 
         panelCtx.AddList(
             [&]() -> size_t
             {    // Update Size
-                return 1;
+                return csgView.GetData().nodes.size();
             }, 
             [&](auto idx, QListWidgetItem* item)
             {   // Update Contents
-                item->setData(Qt::DisplayRole, "Testing");
+                auto op = csgView.GetData().nodes[idx].op;
+
+                std::string label = op == CSG_OP::CSG_ADD ? "Add" :
+                                    op == CSG_OP::CSG_SUB ? "Sub" : "";
+
+                item->setData(Qt::DisplayRole, label.c_str());
             },             
-            [&](auto& evt)
+            [&](QListWidget* listWidget)
             {   // On Event
+                listWidget->setSelectionMode(QAbstractItemView::SelectionMode::SingleSelection);
+                std::cout << "Changed\n";
             }              
         );
 
+        panelCtx.PushHorizontalLayout();
+
+        auto* label1 = panelCtx.AddText("Hello");
+        auto* label2 = panelCtx.AddText("Hello");
+        auto* label3 = panelCtx.AddText("Hello");
+
+        panelCtx.Pop();
         panelCtx.Pop();
     }
 };

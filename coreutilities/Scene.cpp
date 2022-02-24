@@ -264,7 +264,6 @@ namespace FlexKit
             [&](BrushView& brushView)
             {
                 auto boundingSphere = brushView.GetBoundingSphere();
-                auto pos            = GetPositionW(brushView.GetBrush().Node);
 
                 return BoundingSphere{ boundingSphere.xyz() * Scale, boundingSphere.w * Scale};
             },
@@ -289,7 +288,7 @@ namespace FlexKit
                 auto scale  = GetScale(go).Max();
                 auto bs     = visibility.GetBoundingSphere();
 
-                return BoundingSphere{bs.xyz(), bs.w * scale };
+                return BoundingSphere{ bs.xyz() + pos, bs.w * scale };
             },
             []()
             {

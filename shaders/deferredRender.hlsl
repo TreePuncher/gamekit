@@ -248,7 +248,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
             const float3 specular = F_r(V, H, L, N.xyz, roughness);
         #endif
 
-        #if 1// skip shadowmaping
+        #if 0// skip shadowmaping
             const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
             color += max(float4(colorSample, 0), 0.0f);
         #else
@@ -349,7 +349,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
         #endif
     }
 
-#if 1
+#if 0
     static float4 Colors[] = {
         float4(0, 0, 0, 0), 
         float4(1, 0, 0, 0), 

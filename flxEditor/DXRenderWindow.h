@@ -43,6 +43,8 @@ public:
         onResize = resize;
     }
 
+    FlexKit::uint2 WH() const { return renderWindow.GetWH(); }
+
 public slots:
     void OnFrame();
 
@@ -69,7 +71,7 @@ private:
 
 /**********************************************************************
 
-Copyright (c) 2019-2021 Robert May
+Copyright (c) 2021-2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
