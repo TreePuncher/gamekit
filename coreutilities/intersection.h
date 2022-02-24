@@ -46,7 +46,7 @@ namespace FlexKit
         float3 Min = { inf, inf, inf };
         float3 Max = { -inf, -inf, -inf };
 
-        Axis LongestAxis() const
+        Axis LongestAxis() const noexcept
         {
             Axis axis = Axis::Axis_count;
             float d = 0.0f;
@@ -67,7 +67,7 @@ namespace FlexKit
             return axis;
         }
 
-        AABB operator + (const AABB& rhs) const
+        AABB operator + (const AABB& rhs) const noexcept
         {
             AABB aabb = *this;
 
@@ -80,7 +80,7 @@ namespace FlexKit
             return aabb;
         }
 
-        AABB operator += (const AABB& rhs)
+        AABB operator += (const AABB& rhs) noexcept
         {
             for (size_t I = 0; I < Axis::Axis_count; I++)
             {
@@ -91,23 +91,23 @@ namespace FlexKit
             return (*this);
         }
 
-        float3 MidPoint() const
+        float3 MidPoint() const noexcept
         {
             return (Min + Max) / 2;
         }
 
-        float3 Span() const
+        float3 Span() const noexcept
         {
             return Max - Min;
         }
 
-        float3 Dim() const
+        float3 Dim() const noexcept
         {
             auto span = Span();
             return { abs(span.x), abs(span.y), abs(span.z) };
         }
 
-        float AABBArea() const
+        float AABBArea() const noexcept
         {
             auto span = Span();
 
@@ -119,7 +119,7 @@ namespace FlexKit
 	typedef float4 BoundingSphere;
 
 
-    inline AABB operator + (const AABB& lhs, const BoundingSphere& rhs)
+    inline AABB operator + (const AABB& lhs, const BoundingSphere& rhs) noexcept
     {
         auto lowerBound = rhs.xyz() -= rhs.w;
         auto upperBound = rhs.xyz() += rhs.w;
@@ -168,7 +168,7 @@ namespace FlexKit
 	/************************************************************************************************/
 	// Intersection Distance from Origin to Plane Surface
 
-	inline float IntesectTestPR(Ray R, Plane P)
+	inline float IntesectTestPR(Ray R, Plane P) noexcept
 	{
 		float3 N;
 		float3 w;
@@ -217,8 +217,8 @@ namespace FlexKit
 
 	union FustrumPoints
 	{
-		FustrumPoints() {}
-		FustrumPoints(const FustrumPoints& rhs)
+		FustrumPoints() noexcept {}
+		FustrumPoints(const FustrumPoints& rhs) noexcept
 		{
 			for (size_t I = 0; I < 8; ++I) {
 				Points[I] = rhs.Points[I];
@@ -250,7 +250,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline bool Intersects(const Frustum frustum, const AABB aabb)
+	inline bool Intersects(const Frustum frustum, const AABB aabb) noexcept
 	{
 		int Result = 1;
 
@@ -274,7 +274,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    inline bool Intersects(const AABB a, const AABB b)
+    inline bool Intersects(const AABB a, const AABB b) noexcept
 	{
         return  (a.Min.x <= a.Max.x && b.Min.x <= a.Max.x) &&
                 (a.Min.y <= a.Max.y && b.Min.y <= a.Max.y) &&
@@ -292,7 +292,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI inline float3 DirectionVector(float3 A, float3 B) {return float3{ B - A }.normal();}
+	FLEXKITAPI inline float3 DirectionVector(float3 A, float3 B) noexcept { return float3{ B - A }.normal(); }
 
 
 	/************************************************************************************************/

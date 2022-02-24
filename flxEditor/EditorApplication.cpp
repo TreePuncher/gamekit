@@ -120,6 +120,8 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
     EditorInspectorView::AddComponentInspector<PointLightInspector>();
     EditorInspectorView::AddComponentInspector<PointLightShadowInspector>();
     EditorInspectorView::AddComponentInspector<SceneBrushInspector>();
+
+    RegisterComponentInspector(mainWindow.Get3DView());
 }
 
 

@@ -354,15 +354,21 @@ namespace FlexKit
 			return at(0);
 		}
 
-        const TY_& front() const
+        const TY_& front() const noexcept
         {
             return at(0);
         }
 
-		size_t size() const
+		size_t size() const noexcept
 		{
 			return Size;
 		}
+
+        size_t ByteSize() const noexcept
+        {
+            return sizeof(buffer);
+        }
+
  
 		bool full() const
 		{
