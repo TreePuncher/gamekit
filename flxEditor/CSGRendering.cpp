@@ -3,66 +3,6 @@
 #include "defaultpipelinestates.h"
 
 
-auto CreateWireframeCube(const float halfW)
-{
-    using FlexKit::float2;
-    using FlexKit::float3;
-    using FlexKit::float4;
-
-    struct Vertex
-    {
-        float4 Position;
-        float4 Color;
-        float2 UV;
-    };
-
-    const static_vector<Vertex> vertices = {
-        // Top
-        { float4{ -halfW,  halfW,  halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-        { float4{  halfW,  halfW,  halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-
-        { float4{ -halfW,  halfW, -halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-        { float4{  halfW,  halfW, -halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-
-        { float4{ -halfW,  halfW,  halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-        { float4{ -halfW,  halfW, -halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-
-
-        { float4{  halfW,  halfW,  halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-        { float4{  halfW,  halfW, -halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-
-        // Bottom
-        { float4{ -halfW, -halfW,  halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-        { float4{  halfW, -halfW,  halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-
-        { float4{ -halfW, -halfW, -halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-        { float4{  halfW, -halfW, -halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-
-        { float4{ -halfW, -halfW,  halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-        { float4{ -halfW, -halfW, -halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-
-        { float4{  halfW, -halfW,  halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-        { float4{  halfW, -halfW, -halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-
-        // Sides
-        { float4{  halfW,  halfW,  halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-        { float4{  halfW, -halfW,  halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-
-        { float4{  halfW,  halfW, -halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-        { float4{  halfW, -halfW, -halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-
-
-        { float4{ -halfW,  halfW,  halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-        { float4{ -halfW, -halfW,  halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-
-
-        { float4{ -halfW,  halfW, -halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-        { float4{ -halfW, -halfW, -halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
-    };
-
-    return vertices;
-}
-
 CSGRender::CSGRenderData& CSGRender::Render(
     FlexKit::UpdateDispatcher&              dispatcher,
     FlexKit::FrameGraph&                    frameGraph,
@@ -97,6 +37,7 @@ CSGRender::CSGRenderData& CSGRender::Render(
         },
         [&](CSGRenderData& data, FlexKit::ResourceHandler& resourceStates, FlexKit::Context& ctx, FlexKit::iAllocator& threadLocal)
         {
+            return;
             using FlexKit::float3;
             using FlexKit::float4;
 
@@ -130,8 +71,8 @@ CSGRender::CSGRenderData& CSGRender::Render(
                         VBBuffer
                     };
 
-                    ctx.SetVertexBuffers({ vbDataSet });
-                    ctx.Draw(24);
+                    //ctx.SetVertexBuffers({ vbDataSet });
+                    //ctx.Draw(24);
                 }
             }
         });

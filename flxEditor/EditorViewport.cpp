@@ -19,10 +19,6 @@ using FlexKit::float4x4;
 /************************************************************************************************/
 
 
-
-/************************************************************************************************/
-
-
 EditorVewportTranslationMode::EditorVewportTranslationMode(
     SelectionContext&           IN_selectionContext,
     DXRenderWindow*             IN_renderWindow,
@@ -58,9 +54,9 @@ void EditorVewportTranslationMode::mousePressEvent(QMouseEvent* event)
         previousMousePosition = FlexKit::int2{ -160000, -160000 };
 
         FlexKit::Event mouseEvent;
-        mouseEvent.InputSource = FlexKit::Event::Mouse;
-        mouseEvent.Action = FlexKit::Event::Pressed;
-        mouseEvent.mType = FlexKit::Event::Input;
+        mouseEvent.InputSource  = FlexKit::Event::Mouse;
+        mouseEvent.Action       = FlexKit::Event::Pressed;
+        mouseEvent.mType        = FlexKit::Event::Input;
 
         mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSELEFT;
         hud.HandleInput(mouseEvent);
@@ -70,9 +66,9 @@ void EditorVewportTranslationMode::mousePressEvent(QMouseEvent* event)
         previousMousePosition = FlexKit::int2{ -160000, -160000 };
 
         FlexKit::Event mouseEvent;
-        mouseEvent.InputSource = FlexKit::Event::Mouse;
-        mouseEvent.Action = FlexKit::Event::Pressed;
-        mouseEvent.mType = FlexKit::Event::Input;
+        mouseEvent.InputSource  = FlexKit::Event::Mouse;
+        mouseEvent.Action       = FlexKit::Event::Pressed;
+        mouseEvent.mType        = FlexKit::Event::Input;
 
         mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSERIGHT;
         hud.HandleInput(mouseEvent);
@@ -153,7 +149,7 @@ void EditorVewportTranslationMode::DrawImguI()
                 wt[2][0], wt[2][1], wt[2][2], wt[2][3],
                 wt[3][0], wt[3][1], wt[3][2], wt[3][3]);
 
-            if (ImGui::Begin("Transform")) {
+            if (ImGui::Begin("Transform", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {
                 ImGui::SetWindowPos({ 0, 0 });
                 ImGui::Text(text.c_str());
             }
@@ -220,11 +216,13 @@ EditorVewportPanMode::EditorVewportPanMode(
     SelectionContext&               IN_selection,
     std::shared_ptr<ViewportScene>& IN_scene,
     DXRenderWindow*                 IN_window,
-    FlexKit::CameraHandle           IN_camera) :
+    FlexKit::CameraHandle           IN_camera,
+    ViewportMode_ptr                IN_previous) :
         selectionContext    { IN_selection  },
         scene               { IN_scene      },
         viewportCamera      { IN_camera     },
-        renderWindow        { IN_window     } {}
+        renderWindow        { IN_window     },
+        previous{ IN_previous }  {}
 
 
 void EditorVewportPanMode::keyPressEvent(QKeyEvent* event)
@@ -327,6 +325,13 @@ void EditorVewportPanMode::wheelEvent(QWheelEvent* event)
 
     FlexKit::TranslateWorld(node, q * float3{ 0, 0, event->angleDelta().x() / -100.0f });
     MarkCameraDirty(viewportCamera);
+}
+
+
+void EditorVewportPanMode::Draw(FlexKit::UpdateDispatcher& dispatcher, FlexKit::FrameGraph& frameGraph, TemporaryBuffers& temps, FlexKit::ResourceHandle renderTarget)
+{
+    if (previous)
+        previous->Draw(dispatcher, frameGraph, temps, renderTarget);
 }
 
 
@@ -625,6 +630,29 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
 /************************************************************************************************/
 
 
+FlexKit::Ray EditorViewport::GetMouseRay() const
+{
+    const auto qPos = renderWindow->mapFromGlobal(QCursor::pos());
+
+    const FlexKit::uint2 XY{ (uint32_t)qPos.x(), (uint32_t)qPos.y() };
+    const FlexKit::uint2 screenWH = renderWindow->WH();
+
+    const FlexKit::float2 UV{ XY[0] / float(screenWH[0]), XY[1] / float(screenWH[1]) };
+    const FlexKit::float2 ScreenCoord{ FlexKit::float2{ 2, -2 } * UV + FlexKit::float2{ -1.0f, 1.0f } };
+
+    const auto cameraConstants      = FlexKit::GetCameraConstants(viewportCamera);
+    const auto cameraOrientation    = FlexKit::GetOrientation(FlexKit::GetCameraNode(viewportCamera));
+
+    const FlexKit::float3 v_dir = cameraOrientation * (Inverse(cameraConstants.Proj) * FlexKit::float4{ ScreenCoord.x, ScreenCoord.y,  1.0f, 1.0f }).xyz().normal();
+    const FlexKit::float3 v_o   = cameraConstants.WPOS.xyz();
+
+    return { .D = v_dir, .O = v_o };
+}
+
+
+/************************************************************************************************/
+
+
 void EditorViewport::keyPressEvent(QKeyEvent* evt)
 {
     if (!scene)
@@ -752,7 +780,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
             !(mode.size() && mode.back()->GetModeID() == VewportPanModeID))
     {
         mode.emplace_back(std::static_pointer_cast<IEditorViewportMode>(
-            std::make_shared<EditorVewportPanMode>(selectionContext, scene, renderWindow, viewportCamera)));
+            std::make_shared<EditorVewportPanMode>(selectionContext, scene, renderWindow, viewportCamera, mode.size() ? mode.back() : nullptr)));
     }
     const auto HW           = frameGraph.GetRenderSystem().GetTextureWH(renderTarget);
     QPoint globalCursorPos  = QCursor::pos();
@@ -810,6 +838,13 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
             .additionalShadowPasses     = {}
         };
 
+        renderer.csgRender.Render(
+            dispatcher, frameGraph,
+            temporaries.ReserveConstantBuffer,
+            temporaries.ReserveVertexBuffer,
+            frameGraph.Resources.AddResource(targets.RenderTarget, true),
+            dT);
+
         auto drawSceneRes = renderer.worldRender.DrawScene(dispatcher, frameGraph, sceneDesc, targets, FlexKit::SystemAllocator, allocator);
 
         EditorViewport::DrawSceneOverlay_Desc desc{
@@ -823,12 +858,8 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 
         DrawSceneOverlay(dispatcher, frameGraph, desc);
 
-        renderer.csgRender.Render(
-            dispatcher, frameGraph,
-            temporaries.ReserveConstantBuffer,
-            temporaries.ReserveVertexBuffer,
-            frameGraph.Resources.AddResource(targets.RenderTarget, true),
-            dT);
+        if (mode.size())
+            mode.back()->Draw(dispatcher, frameGraph, temporaries, renderTarget);
 
         renderer.textureEngine.TextureFeedbackPass(
             dispatcher,
@@ -885,6 +916,8 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
         },
         [&, viewportCamera = viewportCamera](DrawOverlay& data, FlexKit::ResourceHandler& resources, FlexKit::Context& ctx, auto& allocator)
         {
+            ctx.BeginEvent_DEBUG("Editor HUD");
+
             struct Vertex
             {
                 float3 Position;
@@ -932,6 +965,8 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
             FlexKit::ConstantBufferDataSet passConstants    { passConstantData, constantBuffer };
 
             auto selection = selectionContext.GetSelectionType() == ViewportObjectList_ID ? selectionContext.GetSelection<ViewportSelection>() : ViewportSelection{};
+
+            ctx.SetGraphicsConstantBufferView(1, cameraConstants);
 
             // Draw Point Lights
             for (auto& lightHandle : pointLights)
@@ -998,7 +1033,6 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
                 auto constantBuffer = data.ReserveConstantBuffer(256);
                 FlexKit::ConstantBufferDataSet constants{ CB_Data, constantBuffer };
 
-                ctx.SetGraphicsConstantBufferView(1, cameraConstants);
                 ctx.SetGraphicsConstantBufferView(2, constants);
 
                 ctx.Draw(divisions * 6);
@@ -1028,11 +1062,6 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
                     const auto      Q           = FlexKit::GetOrientation(node);
                     const float4    position    = float4(BS.xyz(), 0);
                     const auto      radius      = BS.w;
-                    const size_t    divisions   = 64;
-
-
-			        const float Step = 2.0f * (float)FlexKit::pi / divisions;
-                    const auto range = FlexKit::MakeRange(0, divisions);
 
                     Vertex vertices[] = {
                         // Top
@@ -1092,20 +1121,19 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
                     } CB_Data {
 				        .unused1    = float4{ 1, 1, 1, 1 },
 				        .unused2    = float4{ 1, 1, 1, 1 },
-                        //.transform  = FlexKit::TranslationMatrix(FlexKit::GetPositionW(node))// GetWT(node),
                         .transform  = GetWT(node).Transpose()
-                        //.transform  = (FlexKit::TranslationMatrix(position) * FlexKit::Quaternion2Matrix(Q))
 			        };
 
                     auto constantBuffer = data.ReserveConstantBuffer(256);
                     const FlexKit::ConstantBufferDataSet constants{ CB_Data, constantBuffer };
 
-                    ctx.SetGraphicsConstantBufferView(1, cameraConstants);
                     ctx.SetGraphicsConstantBufferView(2, constants);
 
                     ctx.Draw(24);
                 }
             }
+
+            ctx.EndEvent_DEBUG();
         });
 }
 

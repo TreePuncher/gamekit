@@ -23,6 +23,7 @@ class QMenuBar;
 
 using ViewportModeID = uint32_t;
 
+
 class IEditorViewportMode
 {
 public:
@@ -38,8 +39,8 @@ public:
     virtual void mouseReleaseEvent  (QMouseEvent* event) {};
     virtual void wheelEvent         (QWheelEvent* event) {};
 
-    virtual void DrawImguI() {};
-    virtual void Draw(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, TemporaryBuffers& temps) {};
+    virtual void DrawImguI() {}
+    virtual void Draw(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, TemporaryBuffers& temps, FlexKit::ResourceHandle renderTarget) {};
 };
 
 using ViewportMode_ptr = std::shared_ptr<IEditorViewportMode>;
@@ -49,6 +50,7 @@ using ViewportMode_ptr = std::shared_ptr<IEditorViewportMode>;
 
 
 constexpr ViewportModeID VewportSelectionModeID = GetTypeGUID(EditorVewportSelectionMode);
+
 
 class EditorVewportSelectionMode : public IEditorViewportMode
 {
@@ -72,10 +74,11 @@ public:
 
 constexpr ViewportModeID VewportPanModeID = GetTypeGUID(IEditorVewportPanMode);
 
+
 class EditorVewportPanMode : public IEditorViewportMode
 {
 public:
-    EditorVewportPanMode(SelectionContext&, std::shared_ptr<ViewportScene>&, DXRenderWindow* window, FlexKit::CameraHandle camera);
+    EditorVewportPanMode(SelectionContext&, std::shared_ptr<ViewportScene>&, DXRenderWindow* window, FlexKit::CameraHandle camera, ViewportMode_ptr IN_previous = nullptr);
 
     ViewportModeID GetModeID() const override { return VewportPanModeID; };
 
@@ -85,6 +88,9 @@ public:
     void mouseReleaseEvent  (QMouseEvent* event) override;
     void wheelEvent         (QWheelEvent* event) override;
 
+    void Draw(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, TemporaryBuffers& temps, FlexKit::ResourceHandle renderTarget) override;
+
+    ViewportMode_ptr        previous;
     DXRenderWindow*         renderWindow;
     FlexKit::CameraHandle   viewportCamera;
 
@@ -140,10 +146,23 @@ public:
 
     void resizeEvent    (QResizeEvent* event) override;
     void SetScene       (EditorScene_ptr scene);
-    void SetMode        (IEditorViewportMode* mode);
 
     std::shared_ptr<ViewportScene>& GetScene()              { return scene; }
     SelectionContext&               GetSelectionContext()   { return selectionContext; }
+
+    void PushMode(ViewportMode_ptr newMode)
+    {
+        mode.push_back(newMode);
+    }
+
+    FlexKit::ImGUIIntegrator& GetHUD()
+    {
+        return hud;
+    }
+
+    FlexKit::CameraHandle GetViewportCamera() const noexcept { return viewportCamera; }
+
+    FlexKit::Ray GetMouseRay() const;
 
 protected:
     void keyPressEvent      (QKeyEvent* event) override;
