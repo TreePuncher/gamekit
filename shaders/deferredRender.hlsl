@@ -349,7 +349,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
         #endif
     }
 
-#if 0
+#if 1
     static float4 Colors[] = {
         float4(0, 0, 0, 0), 
         float4(1, 0, 0, 0), 

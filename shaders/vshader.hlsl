@@ -165,6 +165,24 @@ RectPoint_PS V10Main( VIN10 In )
 /************************************************************************************************/
 
 
+DrawFlatTri3D_IN V11Main(VIN10 In)
+{
+    const float3 POS_WT = mul(WT, In.POS);
+    const float4 POS_VS = mul(View, float4(POS_WT, 1));
+
+    DrawFlatTri3D_IN Out;
+    Out.POS     = mul(mul(PV, WT), In.POS);
+    Out.Depth   = -POS_VS.z / MaxZ;
+    Out.UV      = In.UV;
+    Out.Color   = In.Color;
+
+    return Out;
+}
+
+
+/************************************************************************************************/
+
+
 float4 FullScreeQuad(int ID : SV_VertexID) : SV_Position
 {
     float4 Out;

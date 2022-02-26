@@ -49,6 +49,15 @@ struct RectPoint_PS
 	float4 POS 		: SV_POSITION;
 };
 
+struct DrawFlatTri3D_IN
+{
+    float4 Color	: COLOR;
+    float2 UV		: TEXCOORD;
+    float4 POS 		: SV_POSITION;
+    float  Depth    : DEPTH;
+};
+
+
 struct PS_Colour_IN
 {
 	float3 WPOS 	: TEXCOORD0;

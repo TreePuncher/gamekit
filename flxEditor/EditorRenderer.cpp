@@ -30,7 +30,12 @@ EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FK
     ikComponent             { IN_framework.core.GetBlockMemory() }
 {
     auto& renderSystem = framework.GetRenderSystem();
-    renderSystem.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_PSO, { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateTexturedTriStatePSO });
+    renderSystem.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_PSO,  { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateTexturedTriStatePSO });
+    renderSystem.RegisterPSOLoader(FlexKit::DRAW_3D_PSO,        { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateDrawTriStatePSO });
+    renderSystem.RegisterPSOLoader(FlexKit::DRAW_TRI3D_PSO,     { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateDrawTri3DStatePSO });
+
+    renderSystem.QueuePSOLoad(FlexKit::DRAW_3D_PSO);
+    renderSystem.QueuePSOLoad(FlexKit::DRAW_TRI3D_PSO);
 
     allocator.Init((byte*)temporaryBuffer->buffer, sizeof(TempBuffer));
 }
