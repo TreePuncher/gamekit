@@ -1,6 +1,8 @@
+#pragma once
+
 /**********************************************************************
 
-Copyright (c) 2014-2020 Robert May
+Copyright (c) 2014-2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -21,9 +23,6 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
-
-#ifndef INTERSECTION_H
-#define INTERSECTION_H
 
 #include "MathUtils.h"
 #include "containers.h"
@@ -46,73 +45,18 @@ namespace FlexKit
         float3 Min = { inf, inf, inf };
         float3 Max = { -inf, -inf, -inf };
 
-        Axis LongestAxis() const noexcept
-        {
-            Axis axis = Axis::Axis_count;
-            float d = 0.0f;
+        Axis LongestAxis() const noexcept;
 
-            const auto span = Min - Max;
+        AABB operator + (const AABB& rhs) const noexcept;
+        AABB operator +=(const AABB& rhs) noexcept;
+        AABB operator +=(const float3& rhs) noexcept;
 
-            for (size_t I = 0; I < Axis::Axis_count; I++)
-            {
-                const float axisLength = fabs(span[I]);
+        float3 MidPoint() const noexcept;
+        float3 Span() const noexcept;
+        float3 Dim() const noexcept;
 
-                if (d < axisLength)
-                {
-                    d = axisLength;
-                    axis = (Axis)I;
-                }
-            }
-
-            return axis;
-        }
-
-        AABB operator + (const AABB& rhs) const noexcept
-        {
-            AABB aabb = *this;
-
-            for (size_t I = 0; I < Axis::Axis_count; I++)
-            {
-                aabb.Min[I] = FlexKit::Min(rhs.Min[I], Min[I]);
-                aabb.Max[I] = FlexKit::Max(rhs.Max[I], Max[I]);
-            }
-
-            return aabb;
-        }
-
-        AABB operator += (const AABB& rhs) noexcept
-        {
-            for (size_t I = 0; I < Axis::Axis_count; I++)
-            {
-                Min[I] = FlexKit::Min(rhs.Min[I], Min[I]);
-                Max[I] = FlexKit::Max(rhs.Max[I], Max[I]);
-            }
-
-            return (*this);
-        }
-
-        float3 MidPoint() const noexcept
-        {
-            return (Min + Max) / 2;
-        }
-
-        float3 Span() const noexcept
-        {
-            return Max - Min;
-        }
-
-        float3 Dim() const noexcept
-        {
-            auto span = Span();
-            return { abs(span.x), abs(span.y), abs(span.z) };
-        }
-
-        float AABBArea() const noexcept
-        {
-            auto span = Span();
-
-            return span.x * span.y * span.z;
-        }
+        AABB    Offset(const float3 offset) const noexcept;
+        float   AABBArea() const noexcept;
     };
 
 
@@ -138,15 +82,8 @@ namespace FlexKit
 
 	struct Plane
 	{
-		Plane(float2 D = float2(0.0, 0.0), float3 P = {0.0f, 0.0f, 0.0f}, float3 UpV = { 0.0f, 1.0f, 0.0f }) :
-            Dimensions  { D },
-			Position    { P },
-			UpVector    { UpV } {}
-
-		float2		Dimensions;
-		float3		Position;
-		float3		UpVector;
-		Quaternion	q;// Orientation
+		float3 n; // normal
+        float3 o; // origin
 	};
 
 
@@ -158,8 +95,8 @@ namespace FlexKit
 		float3 D;// Direction
 		float3 O;// Origin
 
-		float3 R(float t) { return D * t + O; }
-		float3 operator * (float k) { return O + D*k; }
+		float3 R(float t)           const noexcept { return D * t + O; }
+		float3 operator * (float k) const noexcept { return O + D*k; }
 	};
 
 
@@ -173,24 +110,22 @@ namespace FlexKit
 		float3 N;
 		float3 w;
 
-		N = P.q * P.UpVector;
-		w = P.Position - R.O;
+		N = P.n;
+		w = P.o - R.O;
 
 		return w.dot(N) / R.D.dot(N);
 	}
+
+    inline float Intesects(Ray R, Plane P) noexcept
+    {
+        return IntesectTestPR(R, P);
+    }
 
 
 	/************************************************************************************************/
 
 
-	struct FrustumFPlane
-	{
-		float3 Normal;
-		float3 Orgin;
-	};
-
-
-	enum EPlane
+    enum EPlane
 	{
 		EPlane_FAR		= 0,
 		EPlane_NEAR		= 1,
@@ -203,7 +138,7 @@ namespace FlexKit
 
 	struct Frustum
 	{
-		FrustumFPlane Planes[6];
+        Plane Planes[6];
 	};
 
 
@@ -256,12 +191,12 @@ namespace FlexKit
 
 		for (int I = 0; I < 6; ++I)
 		{
-			float px = (frustum.Planes[I].Normal.x >= 0.0f) ? aabb.Min.x : aabb.Max.x;
-			float py = (frustum.Planes[I].Normal.y >= 0.0f) ? aabb.Min.y : aabb.Max.y;
-			float pz = (frustum.Planes[I].Normal.z >= 0.0f) ? aabb.Min.z : aabb.Max.z;
+			float px = (frustum.Planes[I].n.x >= 0.0f) ? aabb.Min.x : aabb.Max.x;
+			float py = (frustum.Planes[I].n.y >= 0.0f) ? aabb.Min.y : aabb.Max.y;
+			float pz = (frustum.Planes[I].n.z >= 0.0f) ? aabb.Min.z : aabb.Max.z;
 
-			float3 pV = float3{ px, py, pz } -frustum.Planes[I].Orgin;
-			float dP = dot(frustum.Planes[I].Normal, pV);
+			float3 pV = float3{ px, py, pz } -frustum.Planes[I].o;
+			float dP = dot(frustum.Planes[I].n, pV);
 
 			if (dP >= 0)
 				return false;
@@ -276,9 +211,9 @@ namespace FlexKit
 
     inline bool Intersects(const AABB a, const AABB b) noexcept
 	{
-        return  (a.Min.x <= a.Max.x && b.Min.x <= a.Max.x) &&
-                (a.Min.y <= a.Max.y && b.Min.y <= a.Max.y) &&
-                (a.Min.z <= a.Max.z && b.Min.z <= a.Max.z);
+        return  (a.Min.x <= b.Max.x && b.Min.x <= a.Max.x) &&
+                (a.Min.y <= b.Max.y && b.Min.y <= a.Max.y) &&
+                (a.Min.z <= b.Max.z && b.Min.z <= a.Max.z);
 	}
 
 
@@ -304,7 +239,7 @@ namespace FlexKit
 		const float Far,
 		const float FOV,
 		float3 Position,
-		Quaternion Q);
+		Quaternion Q) noexcept;
 
 
 	Frustum GetSubFrustum(
@@ -315,11 +250,10 @@ namespace FlexKit
 		float3		Position,
 		Quaternion	Q,
 		float2		TopLeft,
-		float2		BottomRight);
+		float2		BottomRight) noexcept;
 
 
 	/************************************************************************************************/
 
 }
 
-#endif //INTERSECTION_H

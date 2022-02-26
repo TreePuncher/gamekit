@@ -40,7 +40,7 @@ public:
     virtual void wheelEvent         (QWheelEvent* event) {};
 
     virtual void DrawImguI() {}
-    virtual void Draw(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, TemporaryBuffers& temps, FlexKit::ResourceHandle renderTarget) {};
+    virtual void Draw(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, TemporaryBuffers& temps, FlexKit::ResourceHandle renderTarget, FlexKit::ResourceHandle depthBuffer) {};
 };
 
 using ViewportMode_ptr = std::shared_ptr<IEditorViewportMode>;
@@ -88,7 +88,7 @@ public:
     void mouseReleaseEvent  (QMouseEvent* event) override;
     void wheelEvent         (QWheelEvent* event) override;
 
-    void Draw(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, TemporaryBuffers& temps, FlexKit::ResourceHandle renderTarget) override;
+    void Draw(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, TemporaryBuffers& temps, FlexKit::ResourceHandle renderTarget, FlexKit::ResourceHandle depthBuffer) override;
 
     ViewportMode_ptr        previous;
     DXRenderWindow*         renderWindow;
@@ -152,7 +152,8 @@ public:
 
     void PushMode(ViewportMode_ptr newMode)
     {
-        mode.push_back(newMode);
+        if(mode.empty() || newMode->GetModeID() != mode.back()->GetModeID())
+            mode.push_back(newMode);
     }
 
     FlexKit::ImGUIIntegrator& GetHUD()

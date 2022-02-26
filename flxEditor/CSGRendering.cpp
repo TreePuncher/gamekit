@@ -24,7 +24,7 @@ CSGRender::CSGRenderData& CSGRender::Render(
 
             for (auto& csgObject : csg)
             {   // Do stuff
-                csgObject.componentData.nodes;
+                csgObject.componentData.brushes;
             }
         });
 
@@ -56,9 +56,9 @@ CSGRender::CSGRenderData& CSGRender::Render(
 
             for (auto& csgObject : csg)
             {
-                for (auto& csgNode : csgObject.componentData.nodes)
+                for (auto& csgBrush: csgObject.componentData.brushes)
                 {
-                    const auto volume   = csgNode.shape.GetBoundingVolume();
+                    const auto volume   = csgBrush.shape.GetBoundingVolume();
                     const float radius  = volume.w;
 
                     const auto vertices = CreateWireframeCube(radius);

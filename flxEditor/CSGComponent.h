@@ -13,36 +13,41 @@
 constexpr uint32_t CSGComponentID = GetTypeGUID(CSGComponentID);
 
 
-struct CSGPlane
-{
-    FlexKit::float3     position;
-    FlexKit::float3     size;
-    FlexKit::Quaternion orientation;
-
-    void Serialize(auto& ar)
-    {
-        ar& position;
-        ar& size;
-        ar& orientation;
-    }
-};
-
 struct Triangle
 {
     FlexKit::float3 position[3];
+
+
+
+    void Serialize(auto& ar)
+    {
+        ar& position[0];
+        ar& position[1];
+        ar& position[2];
+    }
+
+            FlexKit::float3& operator [] (size_t idx) noexcept;
+    const   FlexKit::float3& operator [] (size_t idx) const noexcept;
+    Triangle        Offset(FlexKit::float3) const noexcept;
+    FlexKit::AABB   GetAABB() const noexcept;
+    const float3    Normal() const noexcept;
+    const float3    TriPoint() const noexcept;
 };
 
 struct CSGShape
 {
-    std::vector<CSGPlane>   planes;
+    std::vector<Triangle> tris;
 
-    FlexKit::AABB           GetAABB() const noexcept;
-    std::vector<Triangle>   GetTris() const noexcept;
-    FlexKit::BoundingSphere GetBoundingVolume() const noexcept;
+    FlexKit::AABB                   GetAABB(const float3 pos) const noexcept;
+    const std::vector<Triangle>&    GetTris() const noexcept;
+    FlexKit::BoundingSphere         GetBoundingVolume() const noexcept;
+
+    bool dirty = false;
+
 
     void Serialize(auto& ar)
     {
-        ar& planes;
+        ar& tris;
     }
 };
 
@@ -57,19 +62,30 @@ enum class CSG_OP
 };
 
 
-struct CSGNode
+struct CSGBrush
 {
     CSGShape                    shape;
     CSG_OP                      op;
+    bool                        dirty = false;
 
     FlexKit::float3             position;
     FlexKit::Quaternion         orientation;
     FlexKit::float3             scale;
 
-    std::shared_ptr<CSGNode>    left;
-    std::shared_ptr<CSGNode>    right;
+    std::shared_ptr<CSGBrush>   left;
+    std::shared_ptr<CSGBrush>   right;
 
+    struct TrianglePair
+    {
+        Triangle A;
+        Triangle B;
+    };
+
+    std::vector<TrianglePair> intersections;
+
+    bool                        IsLeaf() const noexcept;
     FlexKit::AABB               GetAABB() const noexcept;
+    void                        Rebuild() noexcept;
 
     void Serialize(auto& ar)
     {
@@ -97,7 +113,7 @@ public:
     {
         EntityComponent::Serialize(ar);
 
-        ar& nodes;
+        ar& brushes;
     }
 
     FlexKit::Blob GetBlob() override
@@ -105,7 +121,7 @@ public:
         return {};
     }
 
-    std::vector<CSGNode>    nodes;
+    std::vector<CSGBrush>   brushes;
 };
 
 
@@ -114,8 +130,8 @@ public:
 
 struct CSGComponentData
 {
-    std::vector<CSGNode>    nodes;
-    int32_t                 selectedNode = -1;
+    std::vector<CSGBrush>   brushes;
+    int32_t                 selectedBrush = -1;
 };
 
 

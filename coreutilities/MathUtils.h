@@ -926,10 +926,10 @@ namespace FlexKit
         float operator[]  (const size_t index)	const noexcept { return GetElement(pfloats, index); }
 
         // Operator Overloads
-        float3 operator - ()	noexcept { return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
-        float3 operator - ()	const noexcept { return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
-        float3 operator + (const float& rhs)	const noexcept { return _mm_add_ps(pfloats, _mm_set_ps1(rhs)); }
-        float3 operator + (const float3& rhs)	const noexcept { return _mm_add_ps(pfloats, rhs); }
+        float3 operator - ()	noexcept                        { return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
+        float3 operator - ()	const noexcept                  { return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
+        float3 operator + (const float& rhs)	const noexcept  { return _mm_add_ps(pfloats, _mm_set_ps1(rhs)); }
+        float3 operator + (const float3& rhs)	const noexcept  { return _mm_add_ps(pfloats, rhs); }
 
 
         float3& operator += (const float3& rhs)
@@ -1152,7 +1152,9 @@ namespace FlexKit
         static float3 Zero() { return float3{ 0 }; }
 
 		operator __m128 () const	 { return pfloats; }
-		inline float* toFloat3_ptr() { return reinterpret_cast<float*>( &pfloats ); }
+
+		inline float* toFloat3_ptr() noexcept   { return reinterpret_cast<float*>( &pfloats ); }
+        operator float* () noexcept             { return toFloat3_ptr(); }
 
 		operator Vect3 () const		 { return { x, y, z }; }
 		operator float2() const		 { return { x, y }; }
@@ -1221,6 +1223,16 @@ namespace FlexKit
 
 		return out;
 	}
+
+
+    /************************************************************************************************/
+
+
+    inline float3 TripleProduct(const float3& A, const float3& B, const float3& C) noexcept
+    {
+        return (B - A).cross(C - A).normal();
+    }
+
 
 
 	/************************************************************************************************/

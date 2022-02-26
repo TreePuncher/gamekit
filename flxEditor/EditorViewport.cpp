@@ -138,22 +138,20 @@ void EditorVewportTranslationMode::DrawImguI()
             if (ImGuizmo::Manipulate(view, projection, manipulatorState, mode, wt, delta))
                 FlexKit::SetWT(gameObject, wt);
 
-            const std::string text = fmt::format("\ndelta\n{}, {}, {}, {}, \n{}, {}, {}, {}, \n{}, {}, {}, {},\n{}, {}, {}, {} ]\n",
-                delta[0][0], delta[0][1], delta[0][2], delta[0][3],
-                delta[1][0], delta[1][1], delta[1][2], delta[1][3],
-                delta[2][0], delta[2][1], delta[2][2], delta[2][3],
-                delta[3][0], delta[3][1], delta[3][2], delta[3][3])
-                + fmt::format("\nWT\n{}, {}, {}, {}, \n{}, {}, {}, {}, \n{}, {}, {}, {},\n{}, {}, {}, {} ]\n",
-                wt[0][0], wt[0][1], wt[0][2], wt[0][3],
-                wt[1][0], wt[1][1], wt[1][2], wt[1][3],
-                wt[2][0], wt[2][1], wt[2][2], wt[2][3],
-                wt[3][0], wt[3][1], wt[3][2], wt[3][3]);
+            const std::string text = fmt::format("\nWT\n{}, {}, {}, {}, \n{}, {}, {}, {}, \n{}, {}, {}, {},\n{}, {}, {}, {} ]\n",
+                                        wt[0][0], wt[0][1], wt[0][2], wt[0][3],
+                                        wt[1][0], wt[1][1], wt[1][2], wt[1][3],
+                                        wt[2][0], wt[2][1], wt[2][2], wt[2][3],
+                                        wt[3][0], wt[3][1], wt[3][2], wt[3][3]);
 
-            if (ImGui::Begin("Transform", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {
-                ImGui::SetWindowPos({ 0, 0 });
-                ImGui::Text(text.c_str());
+            if (0)
+            {
+                if (ImGui::Begin("Transform", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {
+                    ImGui::SetWindowPos({ 0, 0 });
+                    ImGui::Text(text.c_str());
+                }
+                ImGui::End();
             }
-            ImGui::End();
         }
     }
 }
@@ -328,10 +326,10 @@ void EditorVewportPanMode::wheelEvent(QWheelEvent* event)
 }
 
 
-void EditorVewportPanMode::Draw(FlexKit::UpdateDispatcher& dispatcher, FlexKit::FrameGraph& frameGraph, TemporaryBuffers& temps, FlexKit::ResourceHandle renderTarget)
+void EditorVewportPanMode::Draw(FlexKit::UpdateDispatcher& dispatcher, FlexKit::FrameGraph& frameGraph, TemporaryBuffers& temps, FlexKit::ResourceHandle renderTarget, FlexKit::ResourceHandle depthBuffer)
 {
     if (previous)
-        previous->Draw(dispatcher, frameGraph, temps, renderTarget);
+        previous->Draw(dispatcher, frameGraph, temps, renderTarget, depthBuffer);
 }
 
 
@@ -677,15 +675,21 @@ void EditorViewport::keyPressEvent(QKeyEvent* evt)
     case Qt::Key_E:
     case Qt::Key_R:
     {
+        if (mode.size() != 0 && !(mode.back()->GetModeID() == VewportSelectionModeID || mode.back()->GetModeID() == VewportPanModeID))
+            goto A;
         if ((mode.size() && mode.back()->GetModeID() == TranslationModeID))
             mode.back()->keyPressEvent(evt);
         else if (mode.size() == 0 || !(mode.size() && mode.back()->GetModeID() != TranslationModeID))
             mode.emplace_back(std::static_pointer_cast<IEditorViewportMode>(
                 std::make_shared<EditorVewportTranslationMode>(selectionContext, renderWindow, viewportCamera, hud)));
+
     }   break;
     default:
+    {
+        A:
         if (mode.size())
             mode.back()->keyPressEvent(evt);
+    }   break;
     }
 }
 
@@ -859,7 +863,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
         DrawSceneOverlay(dispatcher, frameGraph, desc);
 
         if (mode.size())
-            mode.back()->Draw(dispatcher, frameGraph, temporaries, renderTarget);
+            mode.back()->Draw(dispatcher, frameGraph, temporaries, renderTarget, depthBuffer.Get());
 
         renderer.textureEngine.TextureFeedbackPass(
             dispatcher,

@@ -208,11 +208,14 @@ public:
 		RS.RegisterPSOLoader(DRAW_TEXTURED_PSO,		    { &RS.Library.RS6CBVs4SRVs, CreateTexturedTriStatePSO		});
 		//RS.RegisterPSOLoader(DRAW_TEXTURED_DEBUG_PSO,	{ &RS.Library.RS6CBVs4SRVs, CreateTexturedTriStateDEBUGPSO	});
 		RS.RegisterPSOLoader(DRAW_LINE_PSO,			    { &RS.Library.RS6CBVs4SRVs, CreateDrawLineStatePSO			});
+
 		RS.RegisterPSOLoader(DRAW_LINE3D_PSO,			{ &RS.Library.RS6CBVs4SRVs, CreateDraw2StatePSO				});
+		RS.RegisterPSOLoader(DRAW_TRI3D_PSO,			{ &RS.Library.RS6CBVs4SRVs, CreateDrawTriStatePSO           });
 
 		RS.QueuePSOLoad(DRAW_PSO);
 		RS.QueuePSOLoad(DRAW_LINE3D_PSO);
-		RS.QueuePSOLoad(DRAW_TEXTURED_DEBUG_PSO);
+        RS.QueuePSOLoad(DRAW_TEXTURED_DEBUG_PSO);
+        RS.QueuePSOLoad(DRAW_TRI3D_PSO);
 
         RS.DEBUG_AttachPIX();
 

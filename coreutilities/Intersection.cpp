@@ -5,6 +5,143 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
+    AABB::Axis AABB::LongestAxis() const noexcept
+    {
+        Axis axis = Axis::Axis_count;
+        float d = 0.0f;
+
+        const auto span = Min - Max;
+
+        for (size_t I = 0; I < Axis::Axis_count; I++)
+        {
+            const float axisLength = fabs(span[I]);
+
+            if (d < axisLength)
+            {
+                d       = axisLength;
+                axis    = (Axis)I;
+            }
+        }
+
+        return axis;
+    }
+
+
+    /************************************************************************************************/
+
+
+    AABB AABB::operator + (const AABB& rhs) const noexcept
+    {
+        AABB aabb = *this;
+
+
+//#if USING(FASTMATH)
+//        aabb.Min = _mm_cmple_ps(Min, rhs.Min);
+//        aabb.Max = _mm_cmpge_ps(Max, rhs.Max);
+//#else
+        for (size_t I = 0; I < Axis::Axis_count; I++)
+        {
+            aabb.Min[I] = FlexKit::Min(rhs.Min[I], Min[I]);
+            aabb.Max[I] = FlexKit::Max(rhs.Max[I], Max[I]);
+        }
+//#endif
+        return aabb;
+    }
+
+
+    /************************************************************************************************/
+
+
+    AABB AABB::operator += (const AABB& rhs) noexcept
+    {
+//#if USING(FASTMATH)
+//        Min = _mm_cmple_ps(Min, rhs.Min);
+//        Max = _mm_cmpge_ps(Max, rhs.Max);
+//#else
+        for (size_t I = 0; I < Axis::Axis_count; I++)
+        {
+            Min[I] = FlexKit::Min(rhs.Min[I], Min[I]);
+            Max[I] = FlexKit::Max(rhs.Max[I], Max[I]);
+        }
+//#endif
+        return (*this);
+    }
+
+
+    /************************************************************************************************/
+
+
+    AABB AABB::operator += (const float3& rhs) noexcept
+    {
+//#if USING(FASTMATH)
+//        Min = _mm_cmple_ps(Min, rhs);
+//        Max = _mm_cmpge_ps(Max, rhs);
+//#else
+        for (size_t I = 0; I < Axis::Axis_count; I++)
+        {
+            Min[I] = FlexKit::Min(rhs[I], Min[I]);
+            Max[I] = FlexKit::Max(rhs[I], Max[I]);
+        }
+//#endif
+        return (*this);
+    }
+
+
+    /************************************************************************************************/
+
+
+    float3 AABB::MidPoint() const noexcept
+    {
+        return (Min + Max) / 2;
+    }
+
+
+    /************************************************************************************************/
+
+
+    float3 AABB::Span() const noexcept
+    {
+        return Max - Min;
+    }
+
+
+    /************************************************************************************************/
+
+
+    float3 AABB::Dim() const noexcept
+    {
+        auto span = Span();
+        return { abs(span.x), abs(span.y), abs(span.z) };
+    }
+
+
+    /************************************************************************************************/
+
+
+    AABB AABB::Offset(const float3 offset) const noexcept
+    {
+        AABB out = *this;
+        out.Min += offset;
+        out.Max += offset;
+
+        return out;
+    }
+
+
+    /************************************************************************************************/
+
+
+    float AABB::AABBArea() const noexcept
+    {
+        auto span = Span();
+
+        return span.x * span.y * span.z;
+    }
+
+
+    /************************************************************************************************/
+
+
     std::optional<float> Intersects(const Ray r, const AABB aabb)
     {
         const auto Normals = static_vector<float3, 3>(
@@ -46,15 +183,18 @@ namespace FlexKit
     }
 
 
+    /************************************************************************************************/
+
+
     std::optional<float> Intersects(const Ray r, const BoundingSphere bs)
     {
-        auto Origin = r.O;
-		auto R      = bs.w;
-		auto R2     = R * R;
-		auto S      = r.D.dot(r.D);
-		auto S2     = S * S;
-		auto L2     = r.D.dot(r.D);
-		auto M2     = L2 - S2;
+        const auto Origin = r.O;
+		const auto R      = bs.w;
+		const auto R2     = R * R;
+		const auto S      = r.D.dot(r.D);
+		const auto S2     = S * S;
+		const auto L2     = r.D.dot(r.D);
+		const auto M2     = L2 - S2;
 
         if (S < 0 && L2 > R2)
             return {}; // Miss
@@ -62,14 +202,13 @@ namespace FlexKit
 		if(M2 > R2)
             return {}; // Miss
 
-		auto Q = sqrt(R2 - M2);
+		const auto Q    = sqrt(R2 - M2);
 
-		float T = 0;
-
-		T = (L2 > R2) ? T = S - Q : T = S + Q;
-
-        return T;
+		return (L2 > R2) ? S - Q : S + Q;
     }
+
+
+    /************************************************************************************************/
 
 
 	bool Intersects(const Frustum F, const BoundingSphere BS)
@@ -84,54 +223,52 @@ namespace FlexKit
 		const float  r = BS.w;
 
 		{
-			auto P = V - F.Planes[EPlane_FAR].Orgin;
-			auto N = F.Planes[EPlane_FAR].Normal;
+			const auto P = V - F.Planes[EPlane_FAR].o;
+			const auto N = F.Planes[EPlane_FAR].n;
 
-			float NdP	= N.dot(P);
-			float D		= NdP - r;
-			Far			= D <= 0;
+			const float NdP	= N.dot(P);
+			const float D	= NdP - r;
+			Far			    = D <= 0;
 		}
 		{
-			auto P = V - F.Planes[EPlane_NEAR].Orgin;
-			auto N = F.Planes[EPlane_NEAR].Normal;
+			const auto P = V - F.Planes[EPlane_NEAR].o;
+			const auto N = F.Planes[EPlane_NEAR].n;
 
-			float NdP	= N.dot(P);
-			float D		= NdP - r;
-			Near		= D <= 0;
+			const float NdP	= N.dot(P);
+			const float D	= NdP - r;
+			Near		    = D <= 0;
 		}
 		{
-			auto P = V - F.Planes[EPlane_TOP].Orgin;
-			auto N = F.Planes[EPlane_TOP].Normal;
+			const auto P = V - F.Planes[EPlane_TOP].o;
+			const auto N = F.Planes[EPlane_TOP].n;
 
-			float NdP	= N.dot(P);
-			float D		= NdP - r;
-			Top			= D <= 0;
+			const float NdP	= N.dot(P);
+			const float D	= NdP - r;
+			Top			    = D <= 0;
 		}
 		{
-			auto P = V - F.Planes[EPlane_BOTTOM].Orgin;
-			auto N = F.Planes[EPlane_BOTTOM].Normal;
+			const auto P = V - F.Planes[EPlane_BOTTOM].o;
+			const auto N = F.Planes[EPlane_BOTTOM].n;
 
-			float NdP	= N.dot(P);
-			float D		= NdP - r;
-			Bottom		= D <= 0;
+			const float NdP	= N.dot(P);
+			const float D	= NdP - r;
+			Bottom		    = D <= 0;
 		}
 		{
-			auto P = V - F.Planes[EPlane_LEFT].Orgin;
-			auto N = F.Planes[EPlane_LEFT].Normal;
+			auto P = V - F.Planes[EPlane_LEFT].o;
+			auto N = F.Planes[EPlane_LEFT].n;
 
-			float NdP	= N.dot(P);
-			float D		= NdP - r;
-			Left		= D <= 0;
-			int x = 0; 
+			const float NdP	= N.dot(P);
+			const float D	= NdP - r;
+			Left		    = D <= 0;
 		}
 		{
-			auto P = V - F.Planes[EPlane_RIGHT].Orgin;
-			auto N = F.Planes[EPlane_RIGHT].Normal;
+			const auto P = V - F.Planes[EPlane_RIGHT].o;
+			const auto N = F.Planes[EPlane_RIGHT].n;
 
-			float NdP	= N.dot(P);
-			float D		= NdP - r;
-			Right		= D <= 0;
-			int x = 0;
+			const float NdP	= N.dot(P);
+			const float D	= NdP - r;
+			Right		    = D <= 0;
 		}
 
 		return (Bottom & Near & Far & Left & Right & Top);
@@ -147,7 +284,7 @@ namespace FlexKit
 		const float Near, 
 		const float Far, 
 		float3 Position, 
-		Quaternion Q)
+		Quaternion Q) noexcept
 	{
 		float3 FTL(0);
 		float3 FTR(0);
@@ -191,40 +328,40 @@ namespace FlexKit
 			float3 N1 = DirectionVector(FTL, FTR);
 			float3 N2 = DirectionVector(FTL, FBL);
 
-			Out.Planes[EPlane_FAR].Orgin	= (FBL + FTR) / 2;
-			Out.Planes[EPlane_FAR].Normal	= N1.cross(N2).normal();
+			Out.Planes[EPlane_FAR].o = (FBL + FTR) / 2;
+			Out.Planes[EPlane_FAR].n = N1.cross(N2).normal();
 		}
 		{
-			Out.Planes[EPlane_NEAR].Orgin	= (NBL + NTR) / 2;
-			Out.Planes[EPlane_NEAR].Normal	= -Out.Planes[EPlane_FAR].Normal;
+			Out.Planes[EPlane_NEAR].o = (NBL + NTR) / 2;
+			Out.Planes[EPlane_NEAR].n = -Out.Planes[EPlane_FAR].n;
 		}
 		{
 			float3 N1 = DirectionVector(FTL, FTR);
 			float3 N2 = DirectionVector(FTL, NTL);
 
-			Out.Planes[EPlane_TOP].Orgin	= ((FTL + FTR) / 2 + (NTL + NTR) / 2) / 2;
-			Out.Planes[EPlane_TOP].Normal	= -N1.cross(N2).normal();
+			Out.Planes[EPlane_TOP].o = ((FTL + FTR) / 2 + (NTL + NTR) / 2) / 2;
+			Out.Planes[EPlane_TOP].n = -N1.cross(N2).normal();
 		}
 		{
 			float3 N1 = DirectionVector(FBL, FBR);
 			float3 N2 = DirectionVector(FBL, NBL);
 
-			Out.Planes[EPlane_BOTTOM].Orgin	    = (FBL + NBR) / 2;
-			Out.Planes[EPlane_BOTTOM].Normal	= N1.cross(N2).normal();
+			Out.Planes[EPlane_BOTTOM].o = (FBL + NBR) / 2;
+			Out.Planes[EPlane_BOTTOM].n = N1.cross(N2).normal();
 		}
 		{
 			float3 N1 = DirectionVector(FTL, FBL);
 			float3 N2 = DirectionVector(FTL, NTL);
 
-			Out.Planes[EPlane_LEFT].Orgin	= ((FTL + FBL) / 2 + (NTL + NBL) / 2) / 2;
-			Out.Planes[EPlane_LEFT].Normal	= N1.cross(N2).normal();
+			Out.Planes[EPlane_LEFT].o = ((FTL + FBL) / 2 + (NTL + NBL) / 2) / 2;
+			Out.Planes[EPlane_LEFT].n = N1.cross(N2).normal();
 		}
 		{
 			float3 N1 = DirectionVector(FBR, FTR);
 			float3 N2 = DirectionVector(FTR, NTR);
 
-			Out.Planes[EPlane_RIGHT].Orgin	= ((FTR + FBR) / 2 + (NTR + NBR) / 2) / 2;
-			Out.Planes[EPlane_RIGHT].Normal	= N1.cross(N2).normal();
+			Out.Planes[EPlane_RIGHT].o = ((FTR + FBR) / 2 + (NTR + NBR) / 2) / 2;
+			Out.Planes[EPlane_RIGHT].n = N1.cross(N2).normal();
 		}
 
 		return Out;
@@ -242,7 +379,7 @@ namespace FlexKit
 		float3		Position,
 		Quaternion	Q,
 		float2		TopLeft,
-		float2		BottomRight)
+		float2		BottomRight) noexcept
 	{
 		float3 FTL(0);
 		float3 FTR(0);
@@ -330,40 +467,40 @@ namespace FlexKit
 			float3 N1 = DirectionVector(FTL, FTR);
 			float3 N2 = DirectionVector(FTL, FBL);
 
-			Out.Planes[EPlane_FAR].Orgin	= (FBL + FTR) / 2;
-			Out.Planes[EPlane_FAR].Normal	= N1.cross(N2).normal();
+			Out.Planes[EPlane_FAR].o = (FBL + FTR) / 2;
+			Out.Planes[EPlane_FAR].n = N1.cross(N2).normal();
 		}
 		{
-			Out.Planes[EPlane_NEAR].Orgin	= (NBL + NTR) / 2;
-			Out.Planes[EPlane_NEAR].Normal	= -Out.Planes[EPlane_FAR].Normal;
+			Out.Planes[EPlane_NEAR].o = (NBL + NTR) / 2;
+			Out.Planes[EPlane_NEAR].n = -Out.Planes[EPlane_FAR].n;
 		}
 		{
 			float3 N1 = DirectionVector(FTL, FTR);
 			float3 N2 = DirectionVector(FTL, NTL);
 
-			Out.Planes[EPlane_TOP].Orgin	= ((FTL + FTR) / 2 + (NTL + NTR) / 2) / 2;
-			Out.Planes[EPlane_TOP].Normal	= -N1.cross(N2).normal();
+			Out.Planes[EPlane_TOP].o = ((FTL + FTR) / 2 + (NTL + NTR) / 2) / 2;
+			Out.Planes[EPlane_TOP].n = -N1.cross(N2).normal();
 		}
 		{
 			float3 N1 = DirectionVector(FBL, FBR);
 			float3 N2 = DirectionVector(FBL, NBL);
 
-			Out.Planes[EPlane_BOTTOM].Orgin	 = (FBL + NBR) / 2;
-			Out.Planes[EPlane_BOTTOM].Normal = N1.cross(N2).normal();
+			Out.Planes[EPlane_BOTTOM].o = (FBL + NBR) / 2;
+			Out.Planes[EPlane_BOTTOM].n = N1.cross(N2).normal();
 		}
 		{
 			float3 N1 = DirectionVector(FTL, FBL);
 			float3 N2 = DirectionVector(FTL, NTL);
 
-			Out.Planes[EPlane_LEFT].Orgin	= ((FTL + FBL) / 2 + (NTL + NBL) / 2) / 2;
-			Out.Planes[EPlane_LEFT].Normal	= N1.cross(N2).normal();
+			Out.Planes[EPlane_LEFT].o = ((FTL + FBL) / 2 + (NTL + NBL) / 2) / 2;
+			Out.Planes[EPlane_LEFT].n = N1.cross(N2).normal();
 		}
 		{
 			float3 N1 = DirectionVector(FBR, FTR);
 			float3 N2 = DirectionVector(FTR, NTR);
 
-			Out.Planes[EPlane_RIGHT].Orgin	= ((FTR + FBR) / 2 + (NTR + NBR) / 2) / 2;
-			Out.Planes[EPlane_RIGHT].Normal	= N1.cross(N2).normal();
+			Out.Planes[EPlane_RIGHT].o = ((FTR + FBR) / 2 + (NTR + NBR) / 2) / 2;
+			Out.Planes[EPlane_RIGHT].n = N1.cross(N2).normal();
 		}
 
 		return Out;
