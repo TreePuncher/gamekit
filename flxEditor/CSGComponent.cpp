@@ -122,6 +122,7 @@ std::vector<Vertex> CreateWireframeCube2(const float halfW)
 
 /************************************************************************************************/
 
+
 Triangle Triangle::Offset(FlexKit::float3 offset) const noexcept
 {
     Triangle tri_out;
@@ -154,7 +155,7 @@ FlexKit::AABB Triangle::GetAABB() const noexcept
 
 const float3 Triangle::Normal() const noexcept
 {
-    return (position[1] - position[0]).cross(position[2] - position[0]).normal();
+    return FlexKit::TripleProduct(position[0], position[1], position[2]);
 }
 
 const float3 Triangle::TriPoint() const noexcept
@@ -284,12 +285,45 @@ struct IntersectionPoints
     float3 B;
 };
 
+
 float ProjectPointOntoRay(const FlexKit::float3& vector, const FlexKit::Ray& r) noexcept
 {
     return (vector - r.O).dot(r.D);
 }
 
-bool Intersects(const Triangle& A, const Triangle& B, IntersectionPoints&& out = IntersectionPoints{})
+
+bool Intersects(const float2 A_0, const float2 A_1, const float2 B_0, const float2 B_1, float2& intersection) noexcept
+{
+    const auto S0 = (A_1 - A_0);
+    const auto S1 = (B_1 - B_0);
+
+    if ((S1.y / S1.x - S0.y / S0.x) < 0.000001f)
+        return false; // Parallel
+
+    const float C = S0.x * S1.y - S1.y + S1.x;
+    const float A = A_0.x * A_1.y - A_0.y * A_1.x;
+    const float B = B_0.x * B_1.y - B_0.y * B_1.x;
+
+    const float x = A * S1.x - B * S0.x;
+    const float y = A * S1.y - B * S0.y;
+
+    intersection = { x, y };
+
+    return( x >= FlexKit::Min(A_0.x, A_1.x) &&
+            x <= FlexKit::Max(A_0.x, A_1.x) &&
+            y >= FlexKit::Min(A_0.y, A_1.y) &&
+            y <= FlexKit::Max(A_0.y, A_1.y));
+}
+
+
+bool Intersects(const float2 A_0, const float2 A_1, const float2 B_0, const float2 B_1) noexcept
+{
+    float2 _;
+    return Intersects(A_0, A_1, B_0, B_1, _);
+}
+
+
+bool Intersects(const Triangle& A, const Triangle& B) noexcept
 {
     const auto A_n = A.Normal();
     const auto A_p = A.TriPoint();
@@ -298,13 +332,23 @@ bool Intersects(const Triangle& A, const Triangle& B, IntersectionPoints&& out =
 
     bool infront    = false;
     bool behind     = false;
+
+    float3 distances_A;
     float3 distances_B;
+
     for (size_t idx = 0; idx < 3; ++idx)
     {
-        const auto dp = distances_B[idx] = (B[idx] - A_p).dot(A_n);
-        infront |= dp >= 0.0f;
-        behind  |= dp <= 0.0f;
+        const auto t1       = B[idx] - A_p;
+        const auto dp1      = t1.dot(A_n);
+        const auto t2       = A[idx] - B_p;
+        const auto dp2      = t2.dot(B_n);
+
+        distances_B[idx] = dp1;
+        distances_A[idx] = dp2;
     }
+
+    infront = (distances_B[0] > 0.0f) | (distances_B[1] > 0.0f) | (distances_B[2] > 0.0);
+    behind  = (distances_B[0] < 0.0f) | (distances_B[1] < 0.0f) | (distances_B[2] < 0.0);
 
     if(!(infront && behind))
         return false;
@@ -312,13 +356,8 @@ bool Intersects(const Triangle& A, const Triangle& B, IntersectionPoints&& out =
     infront = false;
     behind  = false;
 
-    float3 distances_A;
-    for (size_t idx = 0; idx < 3; ++idx)
-    {
-        const auto dp = distances_A[idx] = (A[idx] - B_p).dot(B_n);
-        infront |= dp >= 0.0f;
-        behind  |= dp <= 0.0f;
-    }
+    infront = distances_A[0] > 0.0f | distances_A[1] > 0.0f | distances_A[2] > 0.0;
+    behind  = distances_A[0] < 0.0f | distances_A[1] < 0.0f | distances_A[2] < 0.0;
 
     if (!(infront && behind))
         return false;
@@ -328,7 +367,86 @@ bool Intersects(const Triangle& A, const Triangle& B, IntersectionPoints&& out =
 
     if (M_a < 0.00001f || M_b < 0.00001f)
     {   // Coplanar
+        const float3 n = FlexKit::SSE_ABS(A_n);
+        int i0, i1;
 
+        if (n[0] > n[1])
+        {
+            if (n[0] > n[2])
+            {
+                i0 = 1;
+                i1 = 2;
+            }
+            else
+            {
+                i0 = 0;
+                i1 = 1;
+            }
+        }
+        else
+        {
+            if (n[2] > n[1])
+            {
+                i0 = 0;
+                i1 = 1;
+            }
+            else
+            {
+                i0 = 0;
+                i1 = 2;
+            }
+        }
+
+        const float2 XY_A[3] =
+        {
+            { A[0][i0], A[0][i1] },
+            { A[1][i0], A[1][i1] },
+            { A[2][i0], A[2][i1] }
+        };
+
+        const float2 XY_B[3] =
+        {
+            { B[0][i0], B[0][i1] },
+            { B[1][i0], B[1][i1] },
+            { B[2][i0], B[2][i1] }
+        };
+
+        // Edge to edge intersection testing
+
+        bool res = false;
+        for (size_t idx = 0; idx < 3; idx++)
+        {
+            for (size_t idx2 = 0; idx2 < 3; idx2++)
+            {
+                res |= Intersects(
+                    XY_A[(idx + idx2 + 0) % 3],
+                    XY_A[(idx + idx2 + 1) % 3],
+                    XY_B[(idx + idx2 + 0) % 3],
+                    XY_B[(idx + idx2 + 1) % 3]);
+            }
+        }
+
+
+        if (!res)
+        {
+            const auto P1 = XY_B[0];
+
+            const auto sign = [](auto& p1, auto& p2, auto& p3)
+            {
+                return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
+            };
+
+            const float S0 = sign(P1, XY_A[0], XY_A[1]);
+            const float S1 = sign(P1, XY_A[1], XY_A[2]);
+            const float S2 = sign(P1, XY_A[2], XY_A[0]);
+
+            const bool neg = S0 < 0.0f || S1 < 0.0f || S2 < 0.0f;
+            const bool pos = S0 > 0.0f || S1 > 0.0f || S2 > 0.0f;
+
+            return !(neg && pos);
+        }
+        else
+            return res;
     }
     else
     {   // Non-Planar
@@ -340,19 +458,29 @@ bool Intersects(const Triangle& A, const Triangle& B, IntersectionPoints&& out =
             { (A[2] - A[1]).normal(), A[1] },
             { (A[0] - A[2]).normal(), A[2] } };
 
+        const auto w0 = p.o - r[0].O;
+        const auto w1 = p.o - r[1].O;
+        const auto w2 = p.o - r[2].O;
+
+        const float3 W_dp = { w0.dot(p.n),      w1.dot(p.n),    w2.dot(p.n) };
+        const float3 V_dp = { r[0].D.dot(p.n),  r[1].D.dot(p.n), r[2].D.dot(p.n) };
+
+        const float3 i = W_dp / V_dp;
+
+        /*
         const float i[] =
         {
-            FlexKit::Intesects(r[1], p),
-            FlexKit::Intesects(r[2], p),
-            FlexKit::Intesects(r[3], p)
+            FlexKit::Intersects(r[0], p),
+            FlexKit::Intersects(r[1], p),
+            FlexKit::Intersects(r[2], p)
         };
-
+        */
         size_t idx = 0;
         float d = INFINITY;
 
         for (size_t I = 0; I < 3; I++)
         {
-            if (!std::isnan(i[I]) && !std::isinf(i[I]))
+            //if (!std::isnan(i[I]) && !std::isinf(i[I]))
             {
                 if (i[I] < d)
                 {
@@ -382,13 +510,9 @@ bool Intersects(const Triangle& A, const Triangle& B, IntersectionPoints&& out =
         const float b_min = B_L.Min();
         const float b_max = B_L.Max();
 
-        const auto res = (a_min <= b_max && b_min <= a_max);
-        return res;
+        return (a_min < b_max) & (b_min < a_max);
     }
-
-    return false;
 }
-
 
 void CSGBrush::Rebuild() noexcept
 {
@@ -471,6 +595,102 @@ void CSGBrush::Rebuild() noexcept
 
     //for (auto triangle : finalSet)
     //    shape.tris.push_back(triangle->Offset(-position));
+}
+
+
+struct RayTriIntersection_Res
+{
+    bool    res;
+    float   d;
+    float3  cord_bc;
+
+    operator bool() const noexcept { return res; }
+};
+
+RayTriIntersection_Res Intersects(const FlexKit::Ray& r, const Triangle& tri) noexcept
+{
+    auto position   = tri.TriPoint();
+    auto normal     = tri.Normal();
+
+    auto d = FlexKit::Intersects(
+        r,
+        FlexKit::Plane{
+            .n = normal,
+            .o = position
+        });
+
+    const auto p = r.R(d);
+
+    return {
+
+    };
+}
+
+std::optional<CSGShape::RayCast_result> CSGShape::RayCast(const FlexKit::Ray& r) const noexcept
+{
+    float           d            = INFINITY;
+    size_t          triangleIdx  = 0;
+    FlexKit::float3 hitLocation;
+
+    for (auto& tri : tris)
+    {
+        auto [hit, distance, hit_cord] = Intersects(r, tri);
+        if (hit && distance < d)
+        {
+            d           = distance;
+            triangleIdx = tris.data() - &tri;
+            hitLocation = hit_cord;
+        }
+    }
+
+    return RayCast_result{
+        .hitLocation    = hitLocation,
+        .distance       = d,
+        .triangleIdx    = triangleIdx
+    };
+}
+
+
+std::optional<CSGBrush::RayCast_result> CSGBrush::RayCast(const FlexKit::Ray& r) const noexcept
+{
+    float                       d     = INFINITY;
+    std::shared_ptr<CSGBrush>   brush;
+
+    if (left)
+    {
+        if (auto res = FlexKit::Intersects(r, left->GetAABB()); res)
+        {
+            d       = res.value();
+            brush   = left;
+        }
+    }
+
+    if (right)
+    {
+        if (auto res = FlexKit::Intersects(r, right->GetAABB()); res)
+        {
+            if (res.value() < d)
+                brush = right;
+        }
+    }
+
+    if (brush)
+        return brush->RayCast(r);
+    else
+    {
+        auto res = shape.RayCast(r);
+
+        if (res)
+        {
+            return RayCast_result{
+                .shape              = const_cast<CSGShape*>(&shape),
+                .triIdx             = res->triangleIdx,
+                .BaryCentricResult  = res->hitLocation,
+            };
+        }
+        else
+            return {};
+    }
 }
 
 
@@ -881,6 +1101,7 @@ public:
 
                     if (auto res = FlexKit::Intersects(r, AABB); res && res.value() < minDistance && res.value() > 0.0f)
                     {
+                        brush.RayCast(r);
                     }
                 }
             }   break;
@@ -932,6 +1153,41 @@ public:
 /************************************************************************************************/
 
 
+void UpdateCSGComponent(CSGComponentData& brushComponent)
+{
+    auto itr1 = brushComponent.brushes.begin();
+    auto itr2 = brushComponent.brushes.begin();
+
+    for (; itr1 != brushComponent.brushes.end();)
+    {
+        for (; itr2 != brushComponent.brushes.end();)
+        {
+            auto& brush_b = *itr2;
+            if (itr2 != itr1 && FlexKit::Intersects(itr1->GetAABB(), itr2->GetAABB()))
+            {
+                auto lhsBrush = std::make_shared<CSGBrush>();
+                auto rhsBrush = std::make_shared<CSGBrush>();
+
+                *lhsBrush = *itr1;
+                *rhsBrush = *itr2;
+
+                itr1->left = lhsBrush;
+                itr1->right = rhsBrush;
+
+                itr1->Rebuild();
+
+                itr2 = brushComponent.brushes.erase(itr2);
+            }
+            else
+                itr2++;
+        }
+    }
+}
+
+
+/************************************************************************************************/
+
+
 class CSGInspector : public IComponentInspector
 {
 public:
@@ -954,6 +1210,30 @@ public:
             [&]
             {
                 viewport.PushMode(std::make_shared<CSGEditMode>(viewport.GetHUD(), csgView, viewport));
+            });
+
+        panelCtx.AddButton(
+            "Test",
+            [&]
+            {
+                auto& csg = csgView.GetData();
+                CSGBrush brush1;
+                brush1.op       = CSG_OP::CSG_ADD;
+                brush1.shape    = CreateCubeCSGShape();
+                brush1.position = FlexKit::float3{ 0.5f, 0.5f, 0.5f };
+                brush1.dirty    = true;
+
+                CSGBrush brush2;
+                brush2.op       = CSG_OP::CSG_ADD;
+                brush2.shape    = CreateCubeCSGShape();
+                brush2.position = FlexKit::float3{ 0.5f, 0.5f, 0.5f };
+                brush2.dirty    = true;
+
+                csg.brushes.push_back(brush1);
+                csg.brushes.push_back(brush2);
+
+                UpdateCSGComponent(csg);
+
             });
 
         panelCtx.AddList(
@@ -1007,23 +1287,15 @@ struct CSGComponentFactory : public IComponentFactory
         return true;
     }
 
-    inline static bool _registered = Register();
-};
-
-
-
-/************************************************************************************************/
-
-
-struct CSGComponentUpdate
-{
     static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& base, ViewportSceneContext& scene)
     {
         auto& editorCSGComponent = static_cast<EditorComponentCSG&>(component);
 
     }
 
-    IEntityComponentRuntimeUpdater::RegisterConstructorHelper<CSGComponentUpdate, CSGComponentID> _register;
+    inline static IEntityComponentRuntimeUpdater::RegisterConstructorHelper<CSGComponentFactory, CSGComponentID> _register;
+
+    inline static bool _registered = Register();
 };
 
 

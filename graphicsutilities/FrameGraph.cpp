@@ -825,7 +825,7 @@ namespace FlexKit
         };
 
 
-        const size_t workerCount    = 1;//Min(taskList.size(), renderSystem.threads.GetThreadCount());
+        const size_t workerCount    = Min(taskList.size(), renderSystem.threads.GetThreadCount());
         const size_t blockSize      = (taskList.size() / workerCount) + (taskList.size() % workerCount == 0 ? 0 : 1);
 
         static_vector<SubmissionWorkRange, 64> workList;

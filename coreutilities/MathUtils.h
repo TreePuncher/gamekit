@@ -846,8 +846,9 @@ namespace FlexKit
     FLEXKITAPI inline float DotProduct3(const __m128& lhs, const __m128& rhs) noexcept
 	{
 #if USING(FASTMATH)
-		__m128 res = _mm_dp_ps(lhs, rhs, 0xFF);
-		return GetFirst(res);
+		__m128 res = _mm_dp_ps(lhs, rhs, 0xEE);
+		return _mm_cvtss_f32(res);
+
 #else
 		return ( lhs.m128_f32[0] * rhs.m128_f32[0] ) + ( lhs.m128_f32[1] * rhs.m128_f32[1] ) + ( lhs.m128_f32[2] * rhs.m128_f32[2] );
 #endif
@@ -879,7 +880,6 @@ namespace FlexKit
 		__m128 temp1 = _mm_mul_ps(_mm_shuffle_ps(a, a, 0x01 | 0x02 << 2 | 0x00 << 4 | 0x00 << 6), _mm_shuffle_ps(b, b, 0x02 | 0x00 << 2 | 0x01 << 4 | 0x00 << 6));
 		__m128 temp2 = _mm_mul_ps(_mm_shuffle_ps(a, a, 0x02 | 0x00 << 2 | 0x01 << 4 | 0x00 << 6), _mm_shuffle_ps(b, b, 0x01 | 0x02 << 2 | 0x00 << 4 | 0x00 << 6));
 		__m128 res	 = _mm_sub_ps(temp1, temp2);
-		SetLast(res, 0.0f);
 
 		return res;
 #else
@@ -899,7 +899,7 @@ namespace FlexKit
         float3() noexcept {}
 
         float3(float val)	noexcept { pfloats = _mm_set_ps1(val); }
-        float3(float X, float Y, float Z)	noexcept { pfloats = _mm_set_ps(0.0f, Z, Y, X); }
+        float3(float X, float Y, float Z)	    noexcept { pfloats = _mm_set_ps(0.0f, Z, Y, X); }
         float3(const float2 in, float Z = 0)	noexcept { pfloats = _mm_setr_ps(in.x, in.y, Z, 0.0f); }
         float3(const float3& a) noexcept { pfloats = a.pfloats; }
         float3(const __m128& in) noexcept { pfloats = in; }
@@ -922,53 +922,39 @@ namespace FlexKit
         }
 
 
-        float& operator[] (const size_t index)	noexcept { return *GetElement_ptr(pfloats, index); }
-        float operator[]  (const size_t index)	const noexcept { return GetElement(pfloats, index); }
+        float& operator[] (const size_t index)	        noexcept { return *GetElement_ptr(pfloats, index); }
+        float operator[]  (const size_t index)	const   noexcept { return GetElement(pfloats, index); }
 
         // Operator Overloads
-        float3 operator - ()	noexcept                        { return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
-        float3 operator - ()	const noexcept                  { return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
+        float3 operator - ()	        noexcept                { return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
+        float3 operator - ()	const   noexcept                { return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
         float3 operator + (const float& rhs)	const noexcept  { return _mm_add_ps(pfloats, _mm_set_ps1(rhs)); }
         float3 operator + (const float3& rhs)	const noexcept  { return _mm_add_ps(pfloats, rhs); }
 
 
-        float3& operator += (const float3& rhs)
+        float3& operator += (const float3& rhs) noexcept
         {
-#if USING(FASTMATH)
             pfloats = _mm_add_ps(pfloats, rhs);
-#else
-            x += rhs.x;
-            y += rhs.y;
-            z += rhs.z;
-#endif
+
             return *this;
         }
 
 
-        float3 operator - (const float rhs) const
+        float3 operator - (const float rhs) const noexcept
         {
-#if USING(FASTMATH)
             return _mm_sub_ps(pfloats, _mm_set1_ps(rhs));
-#else
-            return float3(x - rhs, y - rhs, z - rhs);
-#endif
         }
 
 
-        float3& operator -= (const float3& rhs)
+        float3& operator -= (const float3& rhs) noexcept
         {
-#if USING(FASTMATH)
             pfloats = _mm_sub_ps(pfloats, rhs.pfloats);
-#else
-            x -= rhs.x;
-            y -= rhs.y;
-            z -= rhs.z;
-#endif
+
             return *this;
         }
 
 
-        bool operator == (const float3& rhs) const
+        bool operator == (const float3& rhs) const noexcept
         {
             if (rhs.x == x)
                 if (rhs.y == y)
@@ -978,22 +964,18 @@ namespace FlexKit
         }
 
 
-        float3 operator - (const float3& a) const
+        float3 operator - (const float3& a) const noexcept
         {
-#if USING(FASTMATH)
             return _mm_sub_ps(pfloats, a);
-#else
-            return float3(x - a.x, y - a.y, z - a.z);
-#endif
         }
 
-        static bool Compare(const float3& lhs, const float3& rhs, float ep = 0.001f)
+        static bool Compare(const float3& lhs, const float3& rhs, float ep = 0.001f) noexcept
         {
             float3 temp = lhs - rhs;
             return (temp.x < ep) && (temp.y < ep) && (temp.z < ep);
         }
 
-        float3 operator *	(const float3& a)	const
+        float3 operator *	(const float3& a) const noexcept
         {
 #if USING(FASTMATH)
             return _mm_mul_ps(a.pfloats, pfloats);
@@ -1003,7 +985,7 @@ namespace FlexKit
         }
 
 
-        float3 operator *	(const float a) const
+        float3 operator *	(const float a) const noexcept
         {
 #if USING(FASTMATH)
             return _mm_mul_ps(_mm_set1_ps(a), pfloats);
@@ -1014,50 +996,42 @@ namespace FlexKit
         }
 
 
-        float3& operator *=	(const float3& a)
+        float3& operator *=	(const float3& a) noexcept
         {
-            x *= a.x;
-            y *= a.y;
-            z *= a.z;
+            pfloats = _mm_mul_ps(pfloats, a);
+
             return *this;
         }
 
 
-        float3& operator *=	(float a)
+        float3& operator *=	(float a) noexcept
         {
-            x *= a;
-            y *= a;
-            z *= a;
+            pfloats = _mm_mul_ps(pfloats, _mm_set1_ps(a));
+
             return *this;
         }
 
 
-        float3 operator / (const float& a) const
+        float3 operator / (const float& a) const noexcept
         {
-            return float3(x / a, y / a, z / a);
+            return _mm_div_ps(pfloats, _mm_set1_ps(a));
         }
 
-        float3 operator / (const float3& a) const
+        float3 operator / (const float3& a) const noexcept
         {
             return _mm_div_ps(pfloats, a);
         }
 
-        float3& Scale(float S)
+        float3& Scale(float S) noexcept
         {
-#if USING(FASTMATH)
             pfloats = _mm_mul_ps(pfloats, _mm_set1_ps(S));
-#else
-            (*this)[0] *= S;
-            (*this)[1] *= S;
-            (*this)[2] *= S;
-#endif
             return *this;
         }
 
 
         const float3 inverse() const noexcept
         {
-            return float3(-x, -y, -z);
+            return _mm_mul_ps(pfloats, _mm_set1_ps(-1));
         }
 
         // Identities
@@ -1068,7 +1042,7 @@ namespace FlexKit
 
         const float3 distance(const float3& b) const noexcept
         {
-            return b.magnitude() - magnitude();
+            return (*this - b).magnitude();
         }
 
 
@@ -1086,35 +1060,25 @@ namespace FlexKit
 
         float magnitude() const noexcept
         {
-#if USING(FASTMATH)
-            __m128 r = _mm_mul_ps(pfloats, pfloats);
-            r = _mm_hadd_ps(r, r);
-            r = _mm_hadd_ps(r, r);
-            float x = GetFirst(r);
+            auto sq    = _mm_mul_ps(pfloats, pfloats);
+            auto temp1 = _mm_movehdup_ps(sq);
+            auto temp2 = _mm_add_ps(sq, temp1);
+            auto temp3 = _mm_movehl_ps(sq, sq);
+            auto temp4 = _mm_add_ps(temp2, temp3);
 
-            return sqrt(x);
-            //return _mm_mul_ps(_mm_rsqrt_ps(r), _mm_set1_ps(r.m128_f32[0])).m128_f32[0];
-
-            auto M      = _mm_mul_ps(_mm_rsqrt_ps(r), _mm_set1_ps(x));
-            float Res   = GetLast(M);
-
-            return Res;
-#else
-            return ::std::sqrt((x * x) + (y * y) + (z * z));
-#endif
+            return _mm_cvtss_f32(_mm_sqrt_ps(temp4));
         }
 
 
         inline float magnitudeSq() const
         {
-#if USING(FASTMATH)
-            __m128 r = _mm_mul_ps(pfloats, pfloats);
-            r = _mm_hadd_ps(r, r);
-            r = _mm_hadd_ps(r, r);
-            return GetLast(r);
-#else		
-            return (x * x) + (y * y) + (z * z);
-#endif
+            auto sq    = _mm_mul_ps(pfloats, pfloats);
+            auto temp1 = _mm_movehdup_ps(sq);
+            auto temp2 = _mm_add_ps(sq, temp1);
+            auto temp3 = _mm_movehl_ps(sq, sq);
+            auto temp4 = _mm_add_ps(temp2, temp3);
+
+            return _mm_cvtss_f32(temp4);
         }
 
         bool isNaN() const
@@ -1129,24 +1093,34 @@ namespace FlexKit
 
         float Max() const noexcept
         {
-            return FlexKit::Max(FlexKit::Max(x, y), z);
+            auto temp1 = _mm_movehdup_ps(pfloats);
+            auto temp2 = _mm_max_ps(pfloats, temp1);
+            auto temp3 = _mm_movehl_ps(pfloats, pfloats);
+            auto temp4 = _mm_max_ps(temp2, temp3);
+
+            return _mm_cvtss_f32(temp4);
         }
 
         float Min() const noexcept
         {
-            return FlexKit::Min(FlexKit::Min(x, y), z);
+            auto temp1 = _mm_movehdup_ps(pfloats);
+            auto temp2 = _mm_min_ps(pfloats, temp1);
+            auto temp3 = _mm_movehl_ps(pfloats, pfloats);
+            auto temp4 = _mm_min_ps(temp2, temp3);
+
+            return _mm_cvtss_f32(temp4);
         }
 
 		float3 normal() const noexcept
 		{
-            return _mm_div_ps(pfloats, _mm_set_ps1(magnitude()));
-            /*
-			__m128 sq = _mm_mul_ps(pfloats, pfloats);
-			sq = _mm_hadd_ps(sq, sq);
-			sq = _mm_hadd_ps(sq, sq);
-			sq = _mm_mul_ps(_mm_rsqrt_ps(sq), pfloats);
-			return sq;
-            */
+            auto sq     = _mm_mul_ps(pfloats, pfloats);
+            auto temp1  = _mm_movehdup_ps(sq);
+            auto temp2  = _mm_add_ps(sq, temp1);
+            auto temp3  = _mm_movehl_ps(sq, sq);
+            auto temp4  = _mm_add_ps(temp2, temp3);
+            auto m      = _mm_shuffle_ps(temp4, temp4, _MM_SHUFFLE(0, 0, 0, 0));
+            
+            return _mm_mul_ps(pfloats, _mm_rsqrt_ps(m));
 		}
 
         static float3 Zero() { return float3{ 0 }; }
@@ -1183,11 +1157,7 @@ namespace FlexKit
 		private:
 		static float3 SetVector(float in)
 		{
-			float3 V;
-			V.x = in;
-			V.y = in;
-			V.z = in;
-			return V;
+			return _mm_set1_ps(in);
 		}
 
 	};
@@ -1228,7 +1198,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    inline float3 TripleProduct(const float3& A, const float3& B, const float3& C) noexcept
+    inline float3 TripleProduct(const float3 A, const float3 B, const float3 C) noexcept
     {
         return (B - A).cross(C - A).normal();
     }

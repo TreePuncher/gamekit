@@ -42,6 +42,16 @@ struct CSGShape
     const std::vector<Triangle>&    GetTris() const noexcept;
     FlexKit::BoundingSphere         GetBoundingVolume() const noexcept;
 
+    struct RayCast_result
+    {
+        float3 hitLocation; // barycentric intersection cordinate
+        float  distance;
+        size_t triangleIdx;
+    };
+
+    std::optional<RayCast_result>   RayCast(const FlexKit::Ray& r) const noexcept;
+
+
     bool dirty = false;
 
 
@@ -58,7 +68,8 @@ struct CSGShape
 enum class CSG_OP
 {
     CSG_ADD,
-    CSG_SUB
+    CSG_SUB,
+    CSG_INTERSECTION,
 };
 
 
@@ -80,6 +91,15 @@ struct CSGBrush
         Triangle A;
         Triangle B;
     };
+
+    struct RayCast_result
+    {
+        CSGShape*       shape;
+        size_t          triIdx;
+        FlexKit::float3 BaryCentricResult;
+    };
+
+    std::optional<RayCast_result> RayCast(const FlexKit::Ray& r) const noexcept;
 
     std::vector<TrianglePair> intersections;
 
