@@ -6,6 +6,7 @@
 #include <qtimer.h>
 #include <functional>
 #include <QtWidgets/qwidget.h>
+#include <QObject>
 
 class QLabel;
 class QBoxLayout;

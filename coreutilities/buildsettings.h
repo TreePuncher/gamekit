@@ -50,7 +50,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define PHYSX				ON
 #define PHYSX_PVD			ON
 #define DEBUGALLOCATOR		OFF
-#define DEBUGGRAPHICS		ON
+#define DEBUGGRAPHICS		OFF
 #define DEBUGSHADERS		OFF
 #define DEBUGGPUVALIDATION  OFF
 #define ENABLEDRED		    OFF
@@ -64,7 +64,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RESCOMPILERVERBOSE	ON
 #define TOOTLE				OFF
 #define AFTERMATH			OFF
-#define PIX                 ON
+#define PIX                 OFF
 #define ENABLEPROFILER      OFF
 
 #else
@@ -87,7 +87,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RESCOMPILERVERBOSE	ON
 #define TOOTLE				OFF
 #define AFTERMATH			OFF
-#define PIX                 ON
+#define PIX                 OFF
 #define ENABLEPROFILER      OFF
 
 

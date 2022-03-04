@@ -105,22 +105,12 @@ namespace FlexKit
 	/************************************************************************************************/
 	// Intersection Distance from Origin to Plane Surface
 
-	inline float IntesectTestPR(Ray R, Plane P) noexcept
+	inline float Intersects(const Ray& R, const Plane& P) noexcept
 	{
-		float3 N;
-		float3 w;
+		const auto w = P.o - R.O;
 
-		N = P.n;
-		w = P.o - R.O;
-
-		return w.dot(N) / R.D.dot(N);
+		return w.dot(P.n) / R.D.dot(P.n);
 	}
-
-    inline float Intesects(Ray R, Plane P) noexcept
-    {
-        return IntesectTestPR(R, P);
-    }
-
 
 	/************************************************************************************************/
 
