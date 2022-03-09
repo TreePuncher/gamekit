@@ -183,7 +183,7 @@ void GMain2(
         float4(1, 0, 1, 0),
     };
 
-    const float4 color = colors[lightCount % 6];
+    const float4 color = colors[2];// colors[lightCount % 6];
 
     FrontTopLeft.Color  = color;
     FrontTopRight.Color = color;

@@ -695,10 +695,15 @@ namespace FlexKit
 	public:
         StringIDView(GameObject& gameObject, const char* id, size_t idLen) : ID{ GetComponent().Create(id, idLen) } {}
 
-		char* GetString()
+		char* GetString() const
 		{
 			return GetComponent()[ID];
 		}
+
+        void SetString(const char* string)
+        {
+            strncpy_s(GetComponent()[ID], 64, string, 64);
+        }
 
 		StringIDHandle ID;
 	};

@@ -833,7 +833,7 @@ namespace FlexKit
         {
             workList.push_back(
                 {
-                    taskList.begin() + (I + 0) * blockSize,
+                    taskList.begin() + Min((I + 0) * blockSize, taskList.size()),
                     taskList.begin() + Min((I + 1) * blockSize, taskList.size())
                 });
         }

@@ -57,7 +57,7 @@ HostWorldStateMangager::HostWorldStateMangager(MultiplayerPlayerID_t IN_player, 
     eventMap.MapKeyToEvent(KEYCODES::KC_3, PLAYER_ACTION3);
     eventMap.MapKeyToEvent(KEYCODES::KC_4, PLAYER_ACTION4);
 
-    SetControllerPosition(localPlayer, { -30, 5, -30 });
+    SetControllerPosition(localPlayer, { -0, 5, -0 });
 
     CreateMultiplayerScene(world);
 }
@@ -481,7 +481,7 @@ void HostState::SendGameStart()
 
 void PushHostState(GameInfo& info, GameFramework& framework, BaseState& base, NetworkState& net)
 {
-    AddAssetFile("assets\\multiplayerAssets.gameres");
+    AddAssetFile("assets\\testAssets.gameres");
 
     auto& host  = framework.PushState<HostState>(info, base, net);
     auto& lobby = framework.PushState<LobbyState>(base, net);

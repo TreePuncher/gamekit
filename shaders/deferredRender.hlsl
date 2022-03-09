@@ -104,12 +104,16 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 
 
 uint GetSliceIdx(float z)
-{            
+{
+#if 1
     const float numSlices   = 24;                                      
     const float MinOverMax  = MaxZ / MinZ;
     const float LogMoM      = log(MinOverMax);
 
     return (log(z) * numSlices / LogMoM) - (numSlices * log(MinZ) / LogMoM);
+#else
+    return z / MaxZ * 24;
+#endif
 }
 
 float rand_1_05(in float2 uv)
@@ -212,7 +216,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
     const float ior           = MRIA.b;
     const float metallic      = MRIA.r > 0.1f ? 1.0f : 0.0f; 
 	const float3 albedo       = pow(Albedo.rgb, 2.2);
-    const float roughness     = 0.9f;//MRIA.g;
+    const float roughness     = MRIA.g;
 
     const float Ks              = lerp(0, 0.4f, saturate(Albedo.w));
     const float Kd              = (1.0 - Ks) * (1.0 - metallic);
@@ -228,7 +232,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
         const float3 Lp         = mul(View, float4(light.PR.xyz, 1));
         const float3 L		    = normalize(Lp - positionVS);
         const float  Ld			= length(positionVS - Lp);
-        const float  Li			= light.KI.w * 2;
+        const float  Li			= light.KI.w;
         const float  Lr			= light.PR.w;
         const float  ld_2		= Ld * Ld;
         const float  La			= (Li / ld_2) * (1 - (pow(Ld, 10) / pow(Lr, 10)));
@@ -351,7 +355,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 
 #if 0
     static float4 Colors[] = {
-        float4(0, 0, 0, 0), 
+        float4(0.5f, 0.5f, 0.5f, 0), 
         float4(1, 0, 0, 0), 
         float4(0, 1, 0, 0), 
         float4(0, 0, 1, 0), 
@@ -363,10 +367,6 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 
     const uint clusterKey = GetSliceIdx(depth * MaxZ);
 
-    //if (px.x % (1920 / 38) == 0 || px.y % (1080 / 18) == 0)
-    //    return color * color;
-    //else
-    //
     //if (px.x > WH.x / 2)
         //return pow(float4(0, UV.y, 0, 1), 2);
     
@@ -375,8 +375,10 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
         //return float4(positionWS, 1);
         //return pow(depth * 100, 1.0f);
         // 
-        //return pow(Colors[localLightCount % 8], 1.0f);
+        //return pow(Colors[localLightCount % 8], 2.0f) * color;
         //return pow(Colors[lightListKey % 8] * color, 1.0f);
+        //return pow(Colors[clusterKey % 8] * (float(localLightCount) / float(lightCount)), 1.0f);
+        //return color * (float(localLightCount) / float(lightCount));
         //return (float(localLightCount) / float(lightCount));
         // 
         //return pow(Colors[clusterKey % 8], 1.0f);
@@ -394,7 +396,9 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
     //return float4(N.xyz, 1);
     //return pow(float4(roughness, metallic, 0, 0), 2.2f);
     //return float4(N.xyz / 2 + 0.5f, 1);
-    return float4(albedo, 1);
+    //return float4(N.xyz / 2 + 0.5f, 1) * (float(localLightCount) / float(lightCount));
+    return lerp(float4(0, 0, 0, 0), float4(1, 1, 1, 0), float(localLightCount) / float(lightCount));
+    //return float4(albedo, 1);
 #endif
     
 	return color;

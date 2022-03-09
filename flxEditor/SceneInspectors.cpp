@@ -5,6 +5,31 @@
 /************************************************************************************************/
 
 
+void StringIDInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component)
+{
+    auto& stringIDView = static_cast<FlexKit::StringIDView&>(component);
+
+    panelCtx.PushHorizontalLayout("", true);
+
+    panelCtx.AddInputBox(
+        "ID",
+        [&](std::string& txt)
+        {
+            txt = fmt::format("{}", stringIDView.GetString());
+        },
+        [&](const std::string& txt)
+        {
+            if (txt != stringIDView.GetString())
+                stringIDView.SetString(txt.c_str());
+        });
+
+    panelCtx.Pop();
+}
+
+
+/************************************************************************************************/
+
+
 void TransformInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component)
 {
     auto& sceneNodeView = static_cast<FlexKit::SceneNodeView<>&>(component);
@@ -14,190 +39,369 @@ void TransformInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::C
     const auto scale            = sceneNodeView.GetScale();
     const auto orientation      = sceneNodeView.GetOrientation();
 
-    panelCtx.PushHorizontalLayout("Transform", true);
+    panelCtx.PushVerticalLayout("", true);
+    {
+        panelCtx.PushHorizontalLayout("Transform", true);
 
-    panelCtx.AddText(fmt::format("Node: {}", sceneNodeView.node.to_uint()));
-    panelCtx.AddText(fmt::format("Parent: {}", sceneNodeView.GetParentNode().to_uint()));
+        panelCtx.AddText(fmt::format("Node: {}", sceneNodeView.node.to_uint()));
+        panelCtx.AddText(fmt::format("Parent: {}", sceneNodeView.GetParentNode().to_uint()));
+        panelCtx.AddButton(
+            "DisconnectNode",
+            [&]()
+            {
+                sceneNodeView.SetParentNode(FlexKit::NodeHandle{ 0 });
+            });
 
-    panelCtx.Pop();
+        panelCtx.AddButton(
+            "Clear",
+            [&]()
+            {
+                sceneNodeView.SetParentNode(FlexKit::NodeHandle{ 0 });
+                sceneNodeView.SetOrientation({ 0, 0, 0, 1 });
+                sceneNodeView.SetPosition({ 0, 0, 0 });
+                sceneNodeView.SetScale({ 1, 1, 1 });
+                sceneNodeView.SetWT(FlexKit::float4x4::Identity());
+            });
+
+
+        panelCtx.Pop();
+    }
 
     auto positionTxt = panelCtx.AddText(fmt::format("Global: [{}, {}, {}]", initialPos.x, initialPos.y, initialPos.z));
+    {
+        panelCtx.PushVerticalLayout("", true);
 
-    panelCtx.PushHorizontalLayout("", true);
-
-    panelCtx.AddInputBox(
-        "X",
-        [&](std::string& txt)
-        {
-            auto pos = sceneNodeView.GetPosition();
-            txt = fmt::format("{}", pos.x);
-        },
-        [&, positionTxt = positionTxt](const std::string& txt)
-        {
-            char* p;
-            const float x = strtof(txt.c_str(), &p);
-            if (!*p)
+        panelCtx.AddInputBox(
+            "X",
+            [&](std::string& txt)
             {
-                auto position = sceneNodeView.GetPosition();
-
-                if (position.x != x)
-                {
-                    position.x = x;
-                    sceneNodeView.SetPosition(position);
-                    positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
-                }
-            }
-        });
-
-    panelCtx.AddInputBox(
-        "Y",
-        [&](std::string& txt)
-        {
-            auto pos = sceneNodeView.GetPosition();
-            txt = fmt::format("{}", pos.y);
-        },
-        [&, positionTxt = positionTxt](const std::string& txt)
-        {
-            char* p;
-            const float y = strtof(txt.c_str(), &p);
-            if (!*p)
+                auto pos = sceneNodeView.GetPosition();
+                txt = fmt::format("{}", pos.x);
+            },
+            [&, positionTxt = positionTxt](const std::string& txt)
             {
-                auto position = sceneNodeView.GetPosition();
-
-                if (position.y != y)
+                char* p;
+                const float x = strtof(txt.c_str(), &p);
+                if (!*p)
                 {
-                    position.y = y;
-                    sceneNodeView.SetPosition(position);
-                    positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
-                }
-            }
-        });
+                    auto position = sceneNodeView.GetPosition();
 
-    panelCtx.AddInputBox(
-        "Z",
-        [&](std::string& txt)
-        {
-            auto pos = sceneNodeView.GetPosition();
-            txt = fmt::format("{}", pos.z);
-        },
-        [&, positionTxt = positionTxt](const std::string& txt)
-        {
-            char* p;
-            const float z = strtof(txt.c_str(), &p);
-            if (!*p)
+                    if (position.x != x)
+                    {
+                        position.x = x;
+                        sceneNodeView.SetPosition(position);
+                        positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
+                    }
+                }
+            });
+
+        panelCtx.AddInputBox(
+            "Y",
+            [&](std::string& txt)
             {
-                auto position = sceneNodeView.GetPosition();
-
-                if (position.z != z)
+                auto pos = sceneNodeView.GetPosition();
+                txt = fmt::format("{}", pos.y);
+            },
+            [&, positionTxt = positionTxt](const std::string& txt)
+            {
+                char* p;
+                const float y = strtof(txt.c_str(), &p);
+                if (!*p)
                 {
-                    position.z = z;
-                    sceneNodeView.SetPosition(position);
-                    positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
-                }
-            }
-        });
+                    auto position = sceneNodeView.GetPosition();
 
+                    if (position.y != y)
+                    {
+                        position.y = y;
+                        sceneNodeView.SetPosition(position);
+                        positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
+                    }
+                }
+            });
+
+        panelCtx.AddInputBox(
+            "Z",
+            [&](std::string& txt)
+            {
+                auto pos = sceneNodeView.GetPosition();
+                txt = fmt::format("{}", pos.z);
+            },
+            [&, positionTxt = positionTxt](const std::string& txt)
+            {
+                char* p;
+                const float z = strtof(txt.c_str(), &p);
+                if (!*p)
+                {
+                    auto position = sceneNodeView.GetPosition();
+
+                    if (position.z != z)
+                    {
+                        position.z = z;
+                        sceneNodeView.SetPosition(position);
+                        positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
+                    }
+                }
+            });
+
+        panelCtx.Pop();
+    }
+    {
+        auto lclPosTxt = panelCtx.AddText(fmt::format("Local: [{}, {}, {}]", initialPosLcl.x, initialPosLcl.y, initialPosLcl.z));
+
+        panelCtx.PushHorizontalLayout("", true);
+
+        panelCtx.AddInputBox(
+            "X",
+            [&](std::string& txt)
+            {
+                auto pos = sceneNodeView.GetPositionL();
+                txt = fmt::format("{}", pos.x);
+            },
+            [&, positionTxt = positionTxt](const std::string& txt)
+            {
+                char* p;
+                const float x = strtof(txt.c_str(), &p);
+                if (!*p)
+                {
+                    auto position = sceneNodeView.GetPositionL();
+
+                    if (position.x != x)
+                    {
+                        position.x = x;
+                        sceneNodeView.SetPositionL(position);
+                        positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
+                    }
+                }
+            });
+
+        panelCtx.AddInputBox(
+            "Y",
+            [&](std::string& txt)
+            {
+                auto pos = sceneNodeView.GetPositionL();
+                txt = fmt::format("{}", pos.y);
+            },
+            [&, positionTxt = positionTxt](const std::string& txt)
+            {
+                char* p;
+                const float y = strtof(txt.c_str(), &p);
+                if (!*p)
+                {
+                    auto position = sceneNodeView.GetPositionL();
+
+                    if (position.y != y)
+                    {
+                        position.y = y;
+                        sceneNodeView.SetPositionL(position);
+                        positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
+                    }
+                }
+            });
+
+        panelCtx.AddInputBox(
+            "Z",
+            [&](std::string& txt)
+            {
+                auto pos = sceneNodeView.GetPositionL();
+                txt = fmt::format("{}", pos.z);
+            },
+            [&, positionTxt = positionTxt](const std::string& txt)
+            {
+                char* p;
+                const float z = strtof(txt.c_str(), &p);
+                if (!*p)
+                {
+                    auto position = sceneNodeView.GetPositionL();
+
+                    if (position.z != z)
+                    {
+                        position.z = z;
+                        sceneNodeView.SetPositionL(position);
+                        positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
+                    }
+                }
+            });
+
+        panelCtx.Pop();
+    }
+    {
+        panelCtx.PushHorizontalLayout("Scale", true);
+
+        panelCtx.AddInputBox(
+            "X",
+            [&](std::string& txt)
+            {
+                auto scale = sceneNodeView.GetScale();
+                txt = fmt::format("{}", scale.x);
+            },
+            [&, positionTxt = positionTxt](const std::string& txt)
+            {
+                char* p;
+                const float x = strtof(txt.c_str(), &p);
+                if (!*p)
+                {
+                    auto scale = sceneNodeView.GetScale();
+
+                    if (scale.x != x)
+                    {
+                        scale.x = x;
+                        sceneNodeView.SetScale(scale);
+                        positionTxt->setText(fmt::format("Scale: [{}, {}, {}]", scale.x, scale.y, scale.z).c_str());
+                    }
+                }
+            });
+
+        panelCtx.AddInputBox(
+            "Y",
+            [&](std::string& txt)
+            {
+                auto scale = sceneNodeView.GetScale();
+                txt = fmt::format("{}", scale.y);
+            },
+            [&, positionTxt = positionTxt](const std::string& txt)
+            {
+                char* p;
+                const float y = strtof(txt.c_str(), &p);
+                if (!*p)
+                {
+                    auto scale = sceneNodeView.GetPositionL();
+
+                    if (scale.y != y)
+                    {
+                        scale.y = y;
+                        sceneNodeView.SetScale(scale);
+                        positionTxt->setText(fmt::format("Scale: [{}, {}, {}]", scale.x, scale.y, scale.z).c_str());
+                    }
+                }
+            });
+
+        panelCtx.AddInputBox(
+            "Z",
+            [&](std::string& txt)
+            {
+                auto scale = sceneNodeView.GetScale();
+                txt = fmt::format("{}", scale.z);
+            },
+            [&, positionTxt = positionTxt](const std::string& txt)
+            {
+                char* p;
+                const float z = strtof(txt.c_str(), &p);
+                if (!*p)
+                {
+                    auto scale = sceneNodeView.GetPositionL();
+
+                    if (scale.z != z)
+                    {
+                        scale.z = z;
+                        sceneNodeView.SetScale(scale);
+                        positionTxt->setText(fmt::format("Scale: [{}, {}, {}]", scale.x, scale.y, scale.z).c_str());
+                    }
+                }
+            });
+
+        panelCtx.Pop();
+    }
+    {
+        panelCtx.PushHorizontalLayout("Orientation", true);
+
+        panelCtx.AddInputBox(
+            "X",
+            [&](std::string& txt)
+            {
+                auto q = sceneNodeView.GetOrientation();
+                txt = fmt::format("{}", q.x);
+            },
+            [&, positionTxt = positionTxt](const std::string& txt)
+            {
+                char* p;
+                const float x = strtof(txt.c_str(), &p);
+                if (!*p)
+                {
+                    auto q = sceneNodeView.GetOrientation();
+
+                    if (q.x != x)
+                    {
+                        q.x = x;
+                        sceneNodeView.SetOrientation(q);
+                        positionTxt->setText(fmt::format("Scale: [{}, {}, {}, {}]", q.x, q.y, q.z, q.w).c_str());
+                    }
+                }
+            });
+
+        panelCtx.AddInputBox(
+            "Y",
+            [&](std::string& txt)
+            {
+                auto q = sceneNodeView.GetOrientation();
+                txt = fmt::format("{}", q.y);
+            },
+            [&, positionTxt = positionTxt](const std::string& txt)
+            {
+                char* p;
+                const float y = strtof(txt.c_str(), &p);
+                if (!*p)
+                {
+                    auto q = sceneNodeView.GetOrientation();
+                    if (q.y != y)
+                    {
+                        q.y = y;
+                        sceneNodeView.SetOrientation(q);
+                        positionTxt->setText(fmt::format("Scale: [{}, {}, {}, {}]", q.x, q.y, q.z, q.w).c_str());
+                    }
+                }
+            });
+
+        panelCtx.AddInputBox(
+            "Z",
+            [&](std::string& txt)
+            {
+                auto q = sceneNodeView.GetOrientation();
+                txt = fmt::format("{}", q.z);
+            },
+            [&, positionTxt = positionTxt](const std::string& txt)
+            {
+                char* p;
+                const float z = strtof(txt.c_str(), &p);
+                if (!*p)
+                {
+                    auto q = sceneNodeView.GetOrientation();
+
+                    if (q.z != z)
+                    {
+                        q.z = z;
+                        sceneNodeView.SetOrientation(q);
+                        positionTxt->setText(fmt::format("Scale: [{}, {}, {}, {}]", q.x, q.y, q.z, q.w).c_str());
+                    }
+                }
+            });
+
+        panelCtx.AddInputBox(
+            "W",
+            [&](std::string& txt)
+            {
+                auto q = sceneNodeView.GetOrientation();
+                txt = fmt::format("{}", q.w);
+            },
+            [&, positionTxt = positionTxt](const std::string& txt)
+            {
+                char* p;
+                const float w = strtof(txt.c_str(), &p);
+                if (!*p)
+                {
+                    auto q = sceneNodeView.GetOrientation();
+
+                    if (q.w != w)
+                    {
+                        q.w = w;
+                        sceneNodeView.SetOrientation(q);
+                        positionTxt->setText(fmt::format("Scale: [{}, {}, {}, {}]", q.x, q.y, q.z, q.w).c_str());
+                    }
+                }
+            });
+
+        panelCtx.Pop();
+    }
     panelCtx.Pop();
-
-    auto lclPosTxt = panelCtx.AddText(fmt::format("Local: [{}, {}, {}]", initialPosLcl.x, initialPosLcl.y, initialPosLcl.z));
-
-    panelCtx.PushHorizontalLayout("", true);
-
-    panelCtx.AddInputBox(
-        "X",
-        [&](std::string& txt)
-        {
-            auto pos = sceneNodeView.GetPositionL();
-            txt = fmt::format("{}", pos.x);
-        },
-        [&, positionTxt = positionTxt](const std::string& txt)
-        {
-            char* p;
-            const float x = strtof(txt.c_str(), &p);
-            if (!*p)
-            {
-                auto position = sceneNodeView.GetPositionL();
-
-                if (position.x != x)
-                {
-                    position.x = x;
-                    sceneNodeView.SetPositionL(position);
-                    positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
-                }
-            }
-        });
-
-    panelCtx.AddInputBox(
-        "Y",
-        [&](std::string& txt)
-        {
-            auto pos = sceneNodeView.GetPositionL();
-            txt = fmt::format("{}", pos.y);
-        },
-        [&, positionTxt = positionTxt](const std::string& txt)
-        {
-            char* p;
-            const float y = strtof(txt.c_str(), &p);
-            if (!*p)
-            {
-                auto position = sceneNodeView.GetPositionL();
-
-                if (position.y != y)
-                {
-                    position.y = y;
-                    sceneNodeView.SetPositionL(position);
-                    positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
-                }
-            }
-        });
-
-    panelCtx.AddInputBox(
-        "Z",
-        [&](std::string& txt)
-        {
-            auto pos = sceneNodeView.GetPositionL();
-            txt = fmt::format("{}", pos.z);
-        },
-        [&, positionTxt = positionTxt](const std::string& txt)
-        {
-            char* p;
-            const float z = strtof(txt.c_str(), &p);
-            if (!*p)
-            {
-                auto position = sceneNodeView.GetPositionL();
-
-                if (position.z != z)
-                {
-                    position.z = z;
-                    sceneNodeView.SetPositionL(position);
-                    positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
-                }
-            }
-        });
-
-    panelCtx.Pop();
-
-    auto scaleLabel = panelCtx.AddText(fmt::format("Scale: [{}, {}, {}]", scale.x, scale.y, scale.z));
-    auto timer = new QTimer{ scaleLabel };
-
-    timer->start(250);
-    timer->connect(timer, &QTimer::timeout,
-        [=, &sceneNodeView]
-        {
-            const auto scale = sceneNodeView.GetScale();
-            scaleLabel->setText(fmt::format("Scale: [{}, {}, {}]", scale.x, scale.y, scale.z).c_str());
-        });
-
-    panelCtx.PushHorizontalLayout("Orientation", true);
-    auto orientationLabel = panelCtx.AddText(fmt::format("Quaternion: [{}, {}, {}, {}]", orientation.x, orientation.y, orientation.z, orientation.w));
-
-    timer->start(250);
-    timer->connect(timer, &QTimer::timeout,
-        [=, &sceneNodeView]
-        {
-            const auto orientation = sceneNodeView.GetOrientation();
-            orientationLabel->setText(fmt::format("Quaternion: [{}, {}, {}, {}]", orientation.x, orientation.y, orientation.z, orientation.w).c_str());
-        });
 }
 
 
@@ -254,15 +458,17 @@ void PointLightInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::
             float r = strtof(txt.c_str(), &p);
             if (!*p)
             {
-                auto radius = pointLight.GetRadius();
-                pointLight.SetRadius(r);
+                auto currentRadius = pointLight.GetRadius();
+
+                if (currentRadius != r)
+                    pointLight.SetRadius(r);
             }
         });
 
     panelCtx.AddInputBox(
         "Intensity",
         [&](std::string& string) {
-            string = fmt::format("{}", pointLight.GetRadius());
+            string = fmt::format("{}", pointLight.GetIntensity());
         },
         [&](const std::string& txt)
         {
@@ -270,8 +476,10 @@ void PointLightInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::
             float i = strtof(txt.c_str(), &p);
             if (!*p)
             {
-                auto radius = pointLight.GetIntensity();
-                pointLight.SetIntensity(i);
+                auto currentIntensity = pointLight.GetIntensity();
+
+                if (currentIntensity != i)
+                    pointLight.SetIntensity(i);
             }
         });
 }

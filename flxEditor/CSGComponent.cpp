@@ -163,6 +163,22 @@ const float3 Triangle::TriPoint() const noexcept
     return (position[0] + position[1] + position[2]) / 3;
 }
 
+
+FlexKit::AABB CSGShape::GetAABB() const noexcept
+{
+    FlexKit::AABB aabb;
+
+    for (const auto& v : tris)
+    {
+        aabb += v.position[0];
+        aabb += v.position[1];
+        aabb += v.position[2];
+    }
+
+    return aabb;
+}
+
+
 FlexKit::AABB CSGShape::GetAABB(const float3 pos) const noexcept
 {
     FlexKit::AABB aabb;
@@ -514,6 +530,10 @@ bool Intersects(const Triangle& A, const Triangle& B) noexcept
     }
 }
 
+
+/************************************************************************************************/
+
+
 void CSGBrush::Rebuild() noexcept
 {
     if (left == nullptr && right == nullptr)
@@ -598,6 +618,9 @@ void CSGBrush::Rebuild() noexcept
 }
 
 
+/************************************************************************************************/
+
+
 struct RayTriIntersection_Res
 {
     bool    res;
@@ -607,27 +630,58 @@ struct RayTriIntersection_Res
     operator bool() const noexcept { return res; }
 };
 
+
+/************************************************************************************************/
+
+
 RayTriIntersection_Res Intersects(const FlexKit::Ray& r, const Triangle& tri) noexcept
 {
-    auto position   = tri.TriPoint();
-    auto normal     = tri.Normal();
+    static const float epsilon = 0.000001f;
 
-    auto d = FlexKit::Intersects(
-        r,
-        FlexKit::Plane{
-            .n = normal,
-            .o = position
-        });
+    const auto edge1    = tri[1] - tri[0];
+    const auto edge2    = tri[2] - tri[0];
+    const auto h        = r.D.cross(edge2);
+    const auto a        = edge1.dot(h);
 
-    const auto p = r.R(d);
+    if (abs(a) < epsilon)
+        return { false };
 
-    return {
+    const auto f = 1.0f / a;
+    const auto s = r.O - tri[0];
+    const auto u = f * s.dot(h);
 
-    };
+    if (u < 0.0f || u > 1.0f)
+        return { false };
+
+    const auto q = s.cross(edge1);
+    const auto v = f * r.D.dot(q);
+
+    if (v < 0.0f || u + v > 1.0f)
+        return { false };
+
+    const auto t = f * edge2.dot(q);
+
+    if (t > epsilon)
+    {
+        const auto w = tri[0] - r.O;
+        const auto n = edge1.cross(edge2).normal();
+        const auto d = w.dot(n) / r.D.dot(n);
+
+        return { true, d, { u, v, 1.0f - u - v } };
+    }
+    else
+        return { false };
 }
+
+
+/************************************************************************************************/
+
 
 std::optional<CSGShape::RayCast_result> CSGShape::RayCast(const FlexKit::Ray& r) const noexcept
 {
+    if (!Intersects(r, GetAABB()))
+        return {};
+
     float           d            = INFINITY;
     size_t          triangleIdx  = 0;
     FlexKit::float3 hitLocation;
@@ -649,6 +703,9 @@ std::optional<CSGShape::RayCast_result> CSGShape::RayCast(const FlexKit::Ray& r)
         .triangleIdx    = triangleIdx
     };
 }
+
+
+/************************************************************************************************/
 
 
 std::optional<CSGBrush::RayCast_result> CSGBrush::RayCast(const FlexKit::Ray& r) const noexcept
@@ -678,13 +735,17 @@ std::optional<CSGBrush::RayCast_result> CSGBrush::RayCast(const FlexKit::Ray& r)
         return brush->RayCast(r);
     else
     {
-        auto res = shape.RayCast(r);
+        auto localR = r;
+        localR.O -= position;
+
+        auto res = shape.RayCast(localR);
 
         if (res)
         {
             return RayCast_result{
                 .shape              = const_cast<CSGShape*>(&shape),
                 .triIdx             = res->triangleIdx,
+                .distance           = res->distance,
                 .BaryCentricResult  = res->hitLocation,
             };
         }
@@ -1046,7 +1107,26 @@ public:
             {
             case CSGEditMode::Mode::Selection:
             {
+                size_t selectedIdx = -1;
+                float  minDistance = 10000.0f;
+                const auto r        = viewport.GetMouseRay();
 
+                CSGBrush::RayCast_result result;
+
+                for (const auto& brush : selection.GetData().brushes)
+                {
+                    const auto AABB = brush.GetAABB();
+                    auto res = FlexKit::Intersects(r, AABB);
+                    if (res&& res.value() < minDistance&& res.value() > 0.0f)
+                    {
+                        if (auto res = brush.RayCast(r); res)
+                        {
+                            if (res->distance < minDistance)
+                                result = res.value();
+                        }
+
+                    }
+                }
             }   break;
             case CSGEditMode::Mode::Manipulator:
                 break;
@@ -1091,19 +1171,6 @@ public:
             {
             case CSGEditMode::Mode::Selection:
             {
-                size_t selectedIdx  = -1;
-                float  minDistance  = 10000.0f;
-                const auto r        = viewport.GetMouseRay();
-
-                for (const auto& brush : selection.GetData().brushes)
-                {
-                    const auto AABB = brush.GetAABB();
-
-                    if (auto res = FlexKit::Intersects(r, AABB); res && res.value() < minDistance && res.value() > 0.0f)
-                    {
-                        brush.RayCast(r);
-                    }
-                }
             }   break;
             case CSGEditMode::Mode::Manipulator:
                 break;

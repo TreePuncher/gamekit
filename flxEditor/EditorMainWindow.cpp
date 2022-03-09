@@ -66,7 +66,7 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
     timer->setTimerType(Qt::PreciseTimer);
     timer->start(1ms);
 
-    setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowTabbedDocks | QMainWindow::AllowNestedDocks);
+    setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowTabbedDocks | QMainWindow::AllowNestedDocks | QMainWindow::VerticalTabs);
     tabPosition(Qt::TopDockWidgetArea);
 
     AddSceneOutliner();
@@ -157,14 +157,14 @@ void EditorMainWindow::AddImporter(iEditorImportor* importer)
 
 void EditorMainWindow::AddExporter(iEditorExporter* exporter)
 {
-    auto importAction = exportMenu->addAction(exporter->GetFileTypeName().c_str());
+    auto exportAction = exportMenu->addAction(exporter->GetFileTypeName().c_str());
 
-    connect(importAction, &QAction::triggered, this,
+    connect(exportAction, &QAction::triggered, this,
         [=]
         {
-            const auto importText   = std::string{ "Export" } + exporter->GetFileTypeName();
+            const auto exportLabel  = std::string{ "Export" } + exporter->GetFileTypeName();
             const auto fileMenuText = std::string{ "Files (*." } + exporter->GetFileExt() + ")";
-            const auto fileDir      = QFileDialog::getSaveFileName(this, tr(importText.c_str()), QDir::currentPath(), fileMenuText.c_str());
+            const auto fileDir      = QFileDialog::getSaveFileName(this, tr(exportLabel.c_str()), QDir::currentPath(), fileMenuText.c_str());
             const auto fileStr      = fileDir.toStdString();
 
             std::vector<FlexKit::Resource_ptr> selectedResources{};
@@ -185,7 +185,7 @@ void EditorMainWindow::AddExporter(iEditorExporter* exporter)
 
             if (fileDir.size() && selectedResources.size() && !exporter->Export(fileStr, selectedResources))
             {   // Log Error
-                const auto fileDir = QFileDialog::getOpenFileName(this, tr(importText.c_str()), QDir::currentPath(), fileMenuText.c_str());
+                const auto fileDir = QFileDialog::getOpenFileName(this, tr(exportLabel.c_str()), QDir::currentPath(), fileMenuText.c_str());
                 const auto fileStr = fileDir.toStdString();
 
                 FK_LOG_ERROR("Export Failed!");
@@ -227,9 +227,10 @@ DXRenderWindow* EditorMainWindow::AddViewPort()
 
     auto docklet = new QDockWidget{};
     docklet->setWidget(viewPortWidget);
+    docklet->setFeatures(docklet->features() | QDockWidget::DockWidgetFeature::DockWidgetVerticalTitleBar);
     docklet->show();
 
-    addDockWidget(Qt::RightDockWidgetArea, docklet);
+    addDockWidget(Qt::RightDockWidgetArea, docklet, Qt::Orientation::Vertical);
 
     return viewPortWidget;
 }
@@ -247,9 +248,10 @@ ResourceBrowserWidget* EditorMainWindow::AddResourceList()
 
     docklet->setWindowTitle("Resource List");
     docklet->setWidget(resourceBrowser);
+    docklet->setFeatures(docklet->features() | QDockWidget::DockWidgetFeature::DockWidgetVerticalTitleBar);
     docklet->show();
 
-    addDockWidget(Qt::LeftDockWidgetArea, docklet);
+    addDockWidget(Qt::LeftDockWidgetArea, docklet, Qt::Orientation::Vertical);
 
     return resourceBrowser;
 }
@@ -265,9 +267,10 @@ void EditorMainWindow::AddSceneOutliner()
 
     docklet->setWindowTitle("Outliner");
     docklet->setWidget(outliner);
+    docklet->setFeatures(docklet->features() | QDockWidget::DockWidgetFeature::DockWidgetVerticalTitleBar);
     docklet->show();
 
-    addDockWidget(Qt::LeftDockWidgetArea, docklet);
+    addDockWidget(Qt::LeftDockWidgetArea, docklet, Qt::Orientation::Vertical);
 }
 
 
@@ -283,9 +286,9 @@ void EditorMainWindow::AddModelViewer()
 
     docklet->setWindowTitle("Model Viewer");
     docklet->setWidget(modelViewer);
+    docklet->setFeatures(docklet->features() | QDockWidget::DockWidgetFeature::DockWidgetVerticalTitleBar);
+    docklet->setFloating(true);
     docklet->show();
-
-    addDockWidget(Qt::RightDockWidgetArea, docklet);
 }
 
 
@@ -299,8 +302,9 @@ TextureViewer* EditorMainWindow::AddTextureViewer(TextureResource* res)
 
     docklet->setWidget(textureViewer);
     docklet->setWindowTitle("TextureViewer");
-    docklet->show();
+    docklet->setFeatures(docklet->features() | QDockWidget::DockWidgetFeature::DockWidgetVerticalTitleBar);
     docklet->setFloating(true);
+    docklet->show();
     
     return textureViewer;
 }
@@ -316,9 +320,10 @@ void EditorMainWindow::AddInspector()
 
     docklet->setWidget(inspector);
     docklet->setWindowTitle("Inspector");
+    docklet->setFeatures(docklet->features() | QDockWidget::DockWidgetFeature::DockWidgetVerticalTitleBar);
     docklet->show();
 
-    addDockWidget(Qt::RightDockWidgetArea, docklet);
+    addDockWidget(Qt::RightDockWidgetArea, docklet, Qt::Orientation::Vertical);
 }
 
 

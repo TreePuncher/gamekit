@@ -93,6 +93,9 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
         "Save",
         [&]()
         {
+            if(auto& scene = mainWindow.Get3DView().GetScene(); scene)
+                scene->Update();
+
             project.SaveProject("Test.proj");
         });
 

@@ -13,8 +13,8 @@ cbuffer CameraConstants : register( b0 )
 	float4   CameraPOS;
 	float  	 MinZ;
 	float  	 MaxZ;
-    float   AspectRatio;
-    float   FOV;
+    float    AspectRatio;
+    float    FOV;
     
     float3   TLCorner_VS;
     float3   TRCorner_VS;

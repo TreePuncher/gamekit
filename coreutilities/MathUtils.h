@@ -299,8 +299,17 @@ namespace FlexKit
 
     /************************************************************************************************/
 
+    constexpr unsigned floorlog2(unsigned x)
+    {
+        return x == 1 ? 0 : 1 + floorlog2(x >> 1);
+    }
 
-    FLEXKITAPI template< unsigned int SIZE, typename TY = float >
+    constexpr unsigned ceillog2(unsigned x)
+    {
+        return x == 1 ? 0 : floorlog2(x - 1) + 1;
+    }
+    
+    FLEXKITAPI template<unsigned int SIZE, typename TY = float>
 	class Vect
 	{
 		typedef Vect<SIZE, TY> THISTYPE;
@@ -694,6 +703,12 @@ namespace FlexKit
 
 		operator TY* () noexcept { return Vector; }
 
+        operator __m128 ()  noexcept
+        {
+            auto temp = _mm_loadu_ps(Vector);
+            return _mm_loadr_ps((float*)&temp);
+        }
+
 		TY Vector[SIZE];
 	};
 
@@ -846,7 +861,7 @@ namespace FlexKit
     FLEXKITAPI inline float DotProduct3(const __m128& lhs, const __m128& rhs) noexcept
 	{
 #if USING(FASTMATH)
-		__m128 res = _mm_dp_ps(lhs, rhs, 0xEE);
+		__m128 res = _mm_dp_ps(lhs, rhs, 0x77);
 		return _mm_cvtss_f32(res);
 
 #else

@@ -123,52 +123,37 @@ bool Intersects(const float2 A_0, const float2 A_1, const float2 B_0, const floa
 
 bool Intersects(const Triangle& A, const Triangle& B) noexcept
 {
-    float3 distances_B;
     const auto A_n = A.Normal();
     const auto A_p = A.TriPoint();
+    const auto B_n = B.Normal();
+    const auto B_p = B.TriPoint();
 
+
+    float3 distances_A;
+    float3 distances_B;
     for (size_t idx = 0; idx < 3; ++idx)
     {
-        const auto t1       = B[idx] - A_p;
-        const auto dp1      = t1.dot(A_n);
+        const auto t2   = A[idx] - B_p;
+        const auto t1   = B[idx] - A_p;
+        const auto dp1  = t1.dot(A_n);
+        const auto dp2  = t2.dot(B_n);
 
+        distances_A[idx] = dp2;
         distances_B[idx] = dp1;
     }
 
-    bool infront = false;
-    bool behind = false;
+    const bool infront1   = ((distances_B[0] >= 0.0f) | (distances_B[1] >= 0.0f) | (distances_B[2] >= 0.0));
+    const bool behind1    = ((distances_B[0] <= 0.0f) | (distances_B[1] <= 0.0f) | (distances_B[2] <= 0.0));
+    const bool infront2   = ((distances_A[0] >= 0.0f) | (distances_A[1] >= 0.0f) | (distances_A[2] >= 0.0));
+    const bool behind2    = ((distances_A[0] <= 0.0f) | (distances_A[1] <= 0.0f) | (distances_A[2] <= 0.0));
 
-    infront = (distances_B[0] > 0.0f) || (distances_B[1] > 0.0f) || (distances_B[2] > 0.0);
-    behind  = (distances_B[0] < 0.0f) || (distances_B[1] < 0.0f) || (distances_B[2] < 0.0);
-
-    if(!(infront && behind))
-        return false;
-
-    infront = false;
-    behind  = false;
-
-    float3 distances_A;
-    const auto B_n = B.Normal();
-    const auto B_p = B.TriPoint();
-    for (size_t idx = 0; idx < 3; ++idx)
-    {
-        const auto t2 = A[idx] - B_p;
-        const auto dp2 = t2.dot(B_n);
-
-        distances_A[idx] = dp2;
-    }
-
-
-    infront = (distances_A[0] > 0.0f || distances_A[1] > 0.0f || distances_A[2] > 0.0);
-    behind  = (distances_A[0] < 0.0f || distances_A[1] < 0.0f || distances_A[2] < 0.0);
-
-    if (!(infront && behind))
+    if(!(infront1 && behind1) || !(infront2 && behind2))
         return false;
 
     const auto M_a = distances_A.Max();
     const auto M_b = distances_B.Max();
 
-    if ((M_a < 0.00001f) || (M_b < 0.00001f))
+    if ((fabs(M_a) < 0.00001f) || (fabs(M_b) < 0.00001f))
     {   // Coplanar
         const float3 n = FlexKit::SSE_ABS(A_n);
         int i0, i1;
@@ -229,7 +214,6 @@ bool Intersects(const Triangle& A, const Triangle& B) noexcept
             }
         }
 
-
         if (!res)
         {
             const auto P1 = XY_B[0];
@@ -270,14 +254,6 @@ bool Intersects(const Triangle& A, const Triangle& B) noexcept
 
         const float3 i = W_dp / V_dp;
 
-        /*
-        const float i[] =
-        {
-            FlexKit::Intersects(r[0], p),
-            FlexKit::Intersects(r[1], p),
-            FlexKit::Intersects(r[2], p)
-        };
-        */
         size_t idx = 0;
         float d = INFINITY;
 
@@ -363,6 +339,13 @@ int main()
     auto res5 = Intersects(A, F); // true
     //auto res6 = Intersects(A, G); // false
 
+
+    assert(res1 == true);
+    assert(res2 == true);
+    assert(res3 == false);
+    assert(res4 == false);
+    assert(res5 == true);
+
     const size_t batchIncrement = 4096;
     const size_t runCount = 1;
 
@@ -391,7 +374,7 @@ int main()
 
     std::cout << "Benchmark starting\n";
 
-    for(size_t II = 0; II < 1000000; II++)
+    for(size_t II = 0; II < 100000; II++)
     {
         for (size_t I = 0; I < runCount; I++)
         {

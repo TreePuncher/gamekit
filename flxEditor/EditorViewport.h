@@ -50,87 +50,8 @@ using ViewportMode_ptr = std::shared_ptr<IEditorViewportMode>;
 
 
 constexpr ViewportModeID VewportSelectionModeID = GetTypeGUID(EditorVewportSelectionMode);
-
-
-class EditorVewportSelectionMode : public IEditorViewportMode
-{
-public:
-    EditorVewportSelectionMode(SelectionContext&, std::shared_ptr<ViewportScene>&, DXRenderWindow* window, FlexKit::CameraHandle camera);
-
-    ViewportModeID GetModeID() const override { return VewportSelectionModeID; };
-
-    void mousePressEvent    (QMouseEvent* event) override;
-
-    DXRenderWindow*         renderWindow;
-    FlexKit::CameraHandle   viewportCamera;
-
-    SelectionContext&               selectionContext;
-    std::shared_ptr<ViewportScene>  scene;
-};
-
-
-/************************************************************************************************/
-
-
-constexpr ViewportModeID VewportPanModeID = GetTypeGUID(IEditorVewportPanMode);
-
-
-class EditorVewportPanMode : public IEditorViewportMode
-{
-public:
-    EditorVewportPanMode(SelectionContext&, std::shared_ptr<ViewportScene>&, DXRenderWindow* window, FlexKit::CameraHandle camera, ViewportMode_ptr IN_previous = nullptr);
-
-    ViewportModeID GetModeID() const override { return VewportPanModeID; };
-
-    void keyPressEvent      (QKeyEvent* event) override;
-
-    void mouseMoveEvent     (QMouseEvent* event) override;
-    void mouseReleaseEvent  (QMouseEvent* event) override;
-    void wheelEvent         (QWheelEvent* event) override;
-
-    void Draw(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, TemporaryBuffers& temps, FlexKit::ResourceHandle renderTarget, FlexKit::ResourceHandle depthBuffer) override;
-
-    ViewportMode_ptr        previous;
-    DXRenderWindow*         renderWindow;
-    FlexKit::CameraHandle   viewportCamera;
-
-    SelectionContext&               selectionContext;
-    std::shared_ptr<ViewportScene>  scene;
-
-    FlexKit::int2 previousMousePosition = FlexKit::int2{ -160000, -160000 };
-    float panSpeed = 10.0f;
-};
-
-
-/************************************************************************************************/
-
-
-constexpr ViewportModeID TranslationModeID = GetTypeGUID(EditorVewportTranslationMode);
-
-
-class EditorVewportTranslationMode : public IEditorViewportMode
-{
-public:
-    EditorVewportTranslationMode(SelectionContext&, DXRenderWindow*, FlexKit::CameraHandle, FlexKit::ImGUIIntegrator& hud);
-
-    ViewportModeID GetModeID() const override { return TranslationModeID; };
-
-    void keyPressEvent      (QKeyEvent* event) override;
-
-    void mousePressEvent    (QMouseEvent* event) override;
-    void mouseReleaseEvent  (QMouseEvent* event) override;
-
-    void DrawImguI  () override;
-
-    DXRenderWindow*             renderWindow;
-    SelectionContext&           selectionContext;
-    FlexKit::CameraHandle       viewportCamera;
-    FlexKit::ImGUIIntegrator&   hud;
-
-    FlexKit::int2 previousMousePosition     = FlexKit::int2{ -160000, -160000 };
-    ImGuizmo::OPERATION manipulatorState    = ImGuizmo::OPERATION::TRANSLATE;
-    ImGuizmo::MODE mode                     = ImGuizmo::MODE::LOCAL;
-};
+constexpr ViewportModeID VewportPanModeID       = GetTypeGUID(IEditorVewportPanMode);
+constexpr ViewportModeID TranslationModeID      = GetTypeGUID(EditorVewportTranslationMode);
 
 
 /************************************************************************************************/
@@ -164,6 +85,9 @@ public:
     FlexKit::CameraHandle GetViewportCamera() const noexcept { return viewportCamera; }
 
     FlexKit::Ray GetMouseRay() const;
+
+
+    FlexKit::uint2 WH() const noexcept { return renderWindow->WH(); }
 
 protected:
     void keyPressEvent      (QKeyEvent* event) override;

@@ -162,15 +162,15 @@ public:
 
     RunOnceQueue                    runOnceDrawEvents;
 
-    Animation*                      testAnimationResource = nullptr;
+    //Animation*                      testAnimationResource = nullptr;
     BaseState&                      base;
     WorldStateMangagerInterface&    worldState;
 
-    GameObject&                     testAnimation;
-    GameObject&                     particleEmitter;
-    GameObject&                     IKTarget;
+    //GameObject&                     testAnimation;
+    //GameObject&                     particleEmitter;
+    //GameObject&                     IKTarget;
 
-    TriMeshHandle                   playerCharacterModel;
+    //TriMeshHandle                   playerCharacterModel;
 };
 
 

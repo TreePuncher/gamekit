@@ -145,7 +145,7 @@ namespace FlexKit
 
     void PointLightView::SetRadius(float r) noexcept
     {
-        GetComponent()[light].R = r;
+        GetComponent()[light].R = Max(r, 0.1f);
     }
 
     float PointLightView::GetIntensity()
@@ -814,7 +814,8 @@ namespace FlexKit
 			EXITSCOPE(FreeAsset(RHandle));
 
 			if (R != nullptr) {
-				SceneResourceBlob* sceneBlob = (SceneResourceBlob*)R;
+                SceneResourceBlob* sceneBlob = (SceneResourceBlob*)R;
+                char* buffer = (char*)R;
 
 				const auto blockCount = sceneBlob->blockCount;
 				
@@ -827,7 +828,7 @@ namespace FlexKit
 
 				while (offset < sceneBlob->ResourceSize && currentBlock < blockCount)
 				{
-					SceneBlock* block = reinterpret_cast<SceneBlock*>(sceneBlob->Buffer + offset);
+					SceneBlock* block = reinterpret_cast<SceneBlock*>(buffer + sizeof(SceneResourceBlob) + offset);
 					switch (block->blockType)
 					{
 						case SceneBlockType::NodeTable:
@@ -847,10 +848,13 @@ namespace FlexKit
 								Quaternion	orientation;
 								float3		scale;
 
-								auto sceneNode = &nodeBlock->nodes[itr];
-								memcpy(&position,		&sceneNode->position, sizeof(float3));
-								memcpy(&orientation,	&sceneNode->orientation, sizeof(orientation));
-								memcpy(&scale,			&sceneNode->scale, sizeof(float3));
+								//auto sceneNode = &nodeBlock->nodes[itr];
+                                SceneNodeBlock::SceneNode nodeData;
+                                memcpy(&nodeData, ((char*)block) + sizeof(SceneNodeBlock::Header) + sizeof(SceneNodeBlock::SceneNode) * itr, sizeof(SceneNodeBlock::SceneNode));
+
+								memcpy(&position,		&nodeData.position, sizeof(float3));
+								memcpy(&orientation,	&nodeData.orientation, sizeof(orientation));
+								memcpy(&scale,			&nodeData.scale, sizeof(float3));
 
 								auto newNode = GetNewNode();
 								SetOrientationL	(newNode, orientation);
@@ -858,8 +862,8 @@ namespace FlexKit
 								SetScale		(newNode, { scale[0], scale[0], scale[0] }); // Engine only supports uniform scaling, still stores all 3 for future stuff
 								SetFlag			(newNode, SceneNodes::StateFlags::SCALE);
 
-								if (sceneNode->parent != INVALIDHANDLE)
-									SetParentNode(nodes[sceneNode->parent], newNode);
+								if (nodeData.parent != INVALIDHANDLE)
+									SetParentNode(nodes[nodeData.parent], newNode);
 
 								nodes.push_back(newNode);
 							}
@@ -879,9 +883,9 @@ namespace FlexKit
                             size_t componentOffset      = 0;
                             const size_t componentCount = entityBlock.componentCount;
 
-                            while(true)
+                            while(itr < componentCount)
                             {
-                                if (block->buffer + componentOffset >= reinterpret_cast<byte*>(block) + entityBlock.blockSize)
+                                if (((char*)&entityBlock) + componentOffset >= ((char*)&entityBlock) + entityBlock.blockSize)
                                     break;
 
                                 ComponentBlock::Header component;

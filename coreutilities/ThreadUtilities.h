@@ -756,6 +756,87 @@ namespace FlexKit
     }
 
 
+        template<typename ITERATOR_TY, typename FN_TY>
+    void Parallel_For2(
+        ThreadManager&  threads,
+        iAllocator&     allocator,
+        ITERATOR_TY     begin,
+        ITERATOR_TY     end,
+        const size_t    blockSize,
+        FN_TY           task)
+    {
+        ProfileFunction();
+
+        const size_t taskCount = std::distance(begin, end);
+
+        const size_t temp           = taskCount / blockSize;
+        const size_t temp2          = taskCount % blockSize != 0;
+        const size_t threadCount    = Max(temp + temp2, 1);
+
+
+
+        struct Task : public iWork
+        {
+            using ITERATOR = ITERATOR_TY;
+
+            ITERATOR    begin   = 0;
+            ITERATOR    end     = 0;
+            size_t      dispatchID;
+
+            FN_TY* task_FN;
+
+            Task() : iWork{ nullptr } {}
+
+            Task(ITERATOR IN_begin, ITERATOR IN_end, size_t IN_dispatchID, FN_TY* IN_FN) :
+                    iWork       { nullptr },
+                    begin       { IN_begin  },
+                    end         { IN_end    },
+                    task_FN     { IN_FN     },
+                    dispatchID  { IN_dispatchID } {}
+
+            ~Task(){}
+
+            void Run(iAllocator& threadLocalAllocator) final
+            {
+                ProfileFunction();
+
+                (*task_FN)(begin, end, dispatchID, threadLocalAllocator);
+            }
+
+            void Release() final
+            {
+            }
+        };
+
+        if (threadCount > 1)
+        {
+            WorkBarrier barrier{threads, &allocator};
+            Vector<Task*> tasks{&allocator, threadCount};
+
+            for (size_t I = 0; I < threadCount; ++I)
+            {
+                auto workItem =
+                    &allocator.allocate<Task>(
+                        begin + I * blockSize,
+                        begin + Min((I + 1) * blockSize, taskCount),
+                        I,
+                        &task);
+
+                tasks.emplace_back(workItem);
+                barrier.AddWork(*workItem);
+            }
+
+            for (auto& task : tasks)
+                threads.AddWork(task);
+
+            barrier.Join();
+        }
+        else
+            task(begin, end, 0, allocator);
+    }
+
+
+
 	/************************************************************************************************/
 }	// namespace FlexKit
 

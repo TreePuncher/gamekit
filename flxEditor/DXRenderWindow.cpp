@@ -136,10 +136,10 @@ void DXRenderWindow::resizeEvent(QResizeEvent* evt)
     QWidget::resizeEvent(evt);
 
     const auto widgetSize = size();
-    const auto width      = widgetSize.width() / 2;
-    const auto height     = widgetSize.height() / 2;
+    const auto width      = widgetSize.width();
+    const auto height     = widgetSize.height();
 
-    resizeSwapChain(evt->size().width() / 2, evt->size().height() / 2);
+    resizeSwapChain(evt->size().width(), evt->size().height());
 
     if (ResizeEventHandler)
         ResizeEventHandler(this);

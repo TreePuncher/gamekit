@@ -273,8 +273,6 @@ namespace FlexKit
 
             size_t LODCount;
         }   header;
-
-		char Memory[];
 	};
 
 
@@ -370,7 +368,6 @@ namespace FlexKit
 		char	ID[ID_LENGTH];
 
 		size_t	blockCount;
-		char	Buffer[];
 	};
 
 
@@ -386,7 +383,6 @@ namespace FlexKit
 		uint32_t				RefCount;	// Runtime Member
 
 		char ID[ID_LENGTH];
-		byte Buffer[];
 	};
 
 

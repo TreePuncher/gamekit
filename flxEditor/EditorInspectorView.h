@@ -16,14 +16,14 @@ class QMenuBar;
 class QListWidget;
 
 class EditorInspectorView;
+class ListUpdateCtx;
+class ListEvt;
+class QListWidgetItem;
 
 using FieldUpdateCallback   = std::function<void (std::string& string)>;
 using FieldChangeCallback   = std::function<void (const std::string& string)>;
 using ButtonCallback        = std::function<void ()>;
 
-class ListUpdateCtx;
-class ListEvt;
-class QListWidgetItem;
 
 using ListSizeUpdateCallback    = std::function<size_t()>;
 using ListContentUpdateCallback = std::function<void (size_t, QListWidgetItem*)>;
@@ -52,6 +52,7 @@ public:
     std::vector<QBoxLayout*>    layoutStack;
     std::vector<QWidget*>&      propertyItems;
 };
+
 
 /************************************************************************************************/
 

@@ -4,6 +4,7 @@
 #include "EditorProject.h"
 #include "physicsutilities.h"
 #include "intersection.h"
+#include <any>
 
 
 /************************************************************************************************/
@@ -13,10 +14,11 @@ struct ViewportGameObject
 {
     FlexKit::GameObject gameObject;
     uint64_t            objectID;
-
+    
     operator FlexKit::GameObject& () { return gameObject; }
 
-    std::vector<ProjectResource_ptr> resourceDependencies;
+    std::vector<ProjectResource_ptr>    resourceDependencies;
+    std::any                            editorData;
 };
 
 using ViewportGameObject_ptr    = std::shared_ptr<ViewportGameObject>;
@@ -30,13 +32,19 @@ struct ViewportScene
 
     ViewportObjectList  RayCast(FlexKit::Ray v) const;
 
-
     void Update();
+
+    ViewportGameObject_ptr  CreateObject();
+    ViewportGameObject_ptr  FindObject(uint64_t);
+    ViewportGameObject_ptr  FindObject(FlexKit::NodeHandle);
+    void                    RemoveObject(ViewportGameObject_ptr);
+
 
     EditorScene_ptr                     sceneResource;
     std::vector<ViewportGameObject_ptr> sceneObjects;
     FlexKit::Scene                      scene           { FlexKit::SystemAllocator };
     FlexKit::LayerHandle                physicsLayer    = FlexKit::InvalidHandle_t;
+    std::vector<uint64_t>               markedForDeletion;
 };
 
 struct ViewportSelection
@@ -63,27 +71,7 @@ struct ViewportSceneContext
         int         parent = -1;
     };
 
-    int MapNode(FlexKit::NodeHandle node)
-    {
-        if (node == FlexKit::InvalidHandle_t)
-            return -1;
-
-        if (auto res = nodeMap.find(node); res != nodeMap.end())
-            return res->second;
-        else
-        {
-            auto parent             = MapNode(FlexKit::GetParentNode(node));
-            auto localPosition      = FlexKit::GetPositionL(node);
-            auto localOrientation   = FlexKit::GetOrientation(node);
-            auto localScale         = FlexKit::GetLocalScale(node);
-
-            auto idx = nodes.size();
-            nodes.emplace_back( localPosition, localOrientation, localScale );
-
-            nodeMap[node] = idx;
-            return idx;
-        }
-    }
+    int MapNode(FlexKit::NodeHandle node) noexcept;
 
     std::map<FlexKit::NodeHandle, int>  nodeMap = { { FlexKit::NodeHandle{ 0 }, 0 } };
     std::vector<Node>                   nodes   = { { { 0, 0, 0 }, { 0, 0, 0, 1 }, { 1, 1, 1 }, -1 }};

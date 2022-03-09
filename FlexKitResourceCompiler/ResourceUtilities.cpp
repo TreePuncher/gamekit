@@ -113,7 +113,7 @@ namespace FlexKit
         size_t ResourceSize = BufferSize + sizeof(ColliderResourceBlob);
         ColliderResourceBlob* R = (ColliderResourceBlob*)MemoryOut->_aligned_malloc(ResourceSize);
         
-        memcpy(R->Buffer, Buffer, BufferSize);
+        memcpy(R + 1, Buffer, BufferSize);
         R->GUID			= ColliderID;
         R->ResourceSize = ResourceSize;
         R->RefCount		= 0;
