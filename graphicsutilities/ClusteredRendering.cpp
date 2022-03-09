@@ -939,7 +939,7 @@ namespace FlexKit
                 CBPushBuffer    constantBuffer2 = data.reserveCB(constantBuffer2ReserveSize);
 
                 const ConstantBufferDataSet constants{ constantsValues, constantBuffer };
-                const ConstantBufferDataSet cameraConstantsBuffer{ GetCameraConstants(data.camera), constantBuffer };
+                const ConstantBufferDataSet cameraConstantsBuffer{ cameraConstants, constantBuffer };
 
 				Vector<FlexKit::GPUPointLight> pointLightValues{ &allocator };
 

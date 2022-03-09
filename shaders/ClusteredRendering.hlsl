@@ -11,7 +11,6 @@ cbuffer Constants : register(b1)
     float4x4 IProj;
 };
 
-
 RWTexture2D<uint>               indexBuffer     : register(u1); // in-out
 RWStructuredBuffer<uint>        counters        : register(u2); // in-out
 Texture2D<float>                depthBuffer     : register(t0); // in
@@ -32,8 +31,10 @@ uint2 GetTextureWH(Texture2D<float> texture)
     return uint2(width, height);
 }
 
+
 #define NEARZ 0.1f
 #define MAXZ 10000.0f
+
 
 [numthreads(128, 1, 1)]
 void ClearCounters(uint threadID : SV_GroupIndex)
@@ -57,66 +58,36 @@ float GetSliceDepth(float slice)
     return MinZ * pow(MaxZ / MinZ, floor(slice) / numSlices);
 }
 
-float2 UV2Clip(float2 UV)
-{
-    return 2 * float2(UV.x, 1.0f - UV.y) - 1.0f;
-}
-
-float4 Clip2View(float4 DC){
-    //View space transform
-    const float4 view = mul(IProj, DC);
-
-    //Perspective projection
-    return view / view.w;
-}
-
-float3 lineIntersectionToZPlane(float3 A, float3 B, float zDistance){
-    //all clusters planes are aligned in the same z direction
-    float3 normal = float3(0.0, 0.0, 1.0);
-    //getting the line from the eye to the tile
-    float3 ab =  B - A;
-    //Computing the intersection length for the line and the plane
-    float t = (zDistance - dot(normal, A)) / dot(normal, ab);
-    //Computing the actual xyz position of the point along the line
-    float3 result = A + t * ab;
-    return result;
-}
-
-
 Cluster CreateCluster(const uint clusterID)
 {
-    const uint X            = (clusterID >> 16) & 0xff;
-    const uint Y            = (clusterID >> 8) & 0xff;
-    const uint SliceIdx     = (clusterID >> 00) & 0xff;
+    const uint2 XY          = uint2((clusterID >> 16) & 0xff, (clusterID >> 8) & 0xff);
+    const uint SliceIdx     = clusterID & 0xff;
 
-    const float minZ = GetSliceDepth(SliceIdx);
-    const float maxZ = GetSliceDepth(SliceIdx + 1);
+    const float minZ        = GetSliceDepth(SliceIdx + 0) / MaxZ;
+    const float maxZ        = GetSliceDepth(SliceIdx + 1) / MaxZ;
 
-    const uint2 WH          = GetTextureWH(depthBuffer);
-    const uint2 TileSize    = uint2(32, 32);
-    const float2 TileWHDim  = (float2(WH) / TileSize);
+    const float2 WH         = GetTextureWH(depthBuffer);
+    const float2 TileSize   = float2(32, 32);
+    const float2 TileWHDim  = ceil(WH / TileSize);
 
-    const uint2 Temp = uint2(X, Y);
-    const float2 XY1 = float2(Temp.x, Temp.y) / TileWHDim; // {{ -1 -> 1 }, {1 -> -1}}
-    const float2 XY2 = float2(Temp.x + 1, Temp.y + 1) / TileWHDim; // {{ -1 -> 1 },  {1 -> -1}}
+    const float2 leftPoint  = (float2(XY + 0) / TileWHDim);
+    const float2 rightPoint = (float2(XY + 1) / TileWHDim);
 
-    const float2 Clip_Min = UV2Clip(XY1);
-    const float2 Clip_Max = UV2Clip(XY2);
+    const float3 MinPointNear   = GetViewSpacePosition(leftPoint, minZ);
+    const float3 MinPointFar    = GetViewSpacePosition(leftPoint, maxZ);
 
-    const float3 VS_Min = Clip2View(float4(Clip_Min, 1, 1)); // View Vector
-    const float3 VS_Max = Clip2View(float4(Clip_Max, 1, 1)); // View Vector
+    const float3 MaxPointNear   = GetViewSpacePosition(rightPoint, minZ);
+    const float3 MaxPointFar    = GetViewSpacePosition(rightPoint, maxZ);
 
-    const float3 center = float3(0, 0,-1);
-    const float3 eye    = float3(0, 0, 0);
+    const float3 ClusterMin =
+        min(
+            min(MinPointNear, MinPointFar),
+            min(MaxPointNear, MaxPointFar));
 
-    const float3 MinPointNear   = lineIntersectionToZPlane(eye, VS_Min, -minZ);
-    const float3 MinPointFar    = lineIntersectionToZPlane(eye, VS_Min,  -maxZ);
-
-    const float3 MaxPointNear = lineIntersectionToZPlane(eye, VS_Max, -minZ);
-    const float3 MaxPointFar  = lineIntersectionToZPlane(eye, VS_Max, -maxZ);
-
-    const float3 ClusterMin = min(min(MinPointNear, MinPointFar), min(MaxPointNear, MaxPointFar));
-    const float3 ClusterMax = max(max(MinPointNear, MinPointFar), max(MaxPointNear, MaxPointFar));
+    const float3 ClusterMax =
+        max(
+            max(MinPointNear, MinPointFar),
+            max(MaxPointNear, MaxPointFar));
 
     Cluster cluster;
     cluster.MinPoint = float4(ClusterMin, asfloat(0));
@@ -124,6 +95,7 @@ Cluster CreateCluster(const uint clusterID)
 
     return cluster;
 }
+
 
 groupshared uint sliceBitfield;
 groupshared uint clusterIndexes[24];
@@ -144,12 +116,11 @@ void CreateClusters(
 
     GroupMemoryBarrierWithGroupSync();
 
-    const uint2     WH      = GetTextureWH(depthBuffer);
+    const float2    WH      = GetTextureWH(depthBuffer);
     const float2    UV      = float2(globalThreadID.xy) / WH;
     const float     depth   = depthBuffer.Load(uint3(globalThreadID.xy, 0)); // Normalized View Space Depth
-    const float3    POS_VS  = GetViewSpacePosition(UV, depth);
 
-    const uint slice            = GetSliceIdx(-POS_VS.z);
+    const uint slice            = GetSliceIdx(depth * MaxZ);
     const uint X                = groupID.x;
     const uint Y                = groupID.y;
     const uint sliceBitID       = 0x01 << slice;

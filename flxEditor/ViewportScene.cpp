@@ -3,6 +3,33 @@
 #include "AnimationComponents.h"
 #include "CSGComponent.h"
 
+
+/************************************************************************************************/
+
+
+int ViewportSceneContext::MapNode(FlexKit::NodeHandle node) noexcept
+{
+    if (node == FlexKit::InvalidHandle_t || node == FlexKit::NodeHandle{ 0 })
+        return -1;
+
+    if (auto res = nodeMap.find(node); res != nodeMap.end())
+        return res->second;
+    else
+    {
+        auto parent             = MapNode(FlexKit::GetParentNode(node));
+        auto localPosition      = FlexKit::GetPositionL(node);
+        auto localOrientation   = FlexKit::GetOrientation(node);
+        auto localScale         = FlexKit::GetLocalScale(node);
+
+        auto idx = nodes.size();
+        nodes.emplace_back(localPosition, localOrientation, localScale, parent);
+
+        nodeMap[node] = idx;
+        return idx;
+    }
+}
+
+
 /************************************************************************************************/
 
 
@@ -122,6 +149,78 @@ ViewportObjectList ViewportScene::RayCast(FlexKit::Ray v) const
 /************************************************************************************************/
 
 
+ViewportGameObject_ptr ViewportScene::CreateObject()
+{
+    auto obj = std::make_shared<ViewportGameObject>();
+    obj->objectID = rand();
+
+    sceneObjects.push_back(obj);
+
+    return obj;
+}
+
+
+/************************************************************************************************/
+
+
+ViewportGameObject_ptr  ViewportScene::FindObject(uint64_t ID)
+{
+    auto res = std::find_if(
+        std::begin(sceneObjects),
+        std::end(sceneObjects),
+        [&](auto& obj)
+        {
+            return obj->objectID == ID;
+        });
+
+    return res != std::end(sceneObjects) ? *res : nullptr;
+}
+
+
+/************************************************************************************************/
+
+
+ViewportGameObject_ptr  ViewportScene::FindObject(FlexKit::NodeHandle node)
+{
+    auto res = std::find_if(
+        std::begin(sceneObjects),
+        std::end(sceneObjects),
+        [&](auto& obj)
+        {
+            if (obj->gameObject.hasView(FlexKit::TransformComponentID))
+                return FlexKit::GetSceneNode(obj->gameObject) == node;
+            else
+                return false;
+        });
+
+    return res != std::end(sceneObjects) ? *res : nullptr;
+}
+
+
+/************************************************************************************************/
+
+
+void ViewportScene::RemoveObject(ViewportGameObject_ptr object)
+{
+    if (!object)
+        return;
+
+    markedForDeletion.push_back(object->objectID);
+    scene.RemoveEntity(object->gameObject);
+
+    std::erase_if(sceneObjects,
+        [&](auto& obj)
+        {
+            return obj == object;
+        });
+
+    object->gameObject.Release();
+}
+
+
+/************************************************************************************************/
+
+
 void ViewportScene::Update()
 {
     auto& entities = sceneResource->sceneResource->entities; // TODO: make this not dumb
@@ -129,33 +228,37 @@ void ViewportScene::Update()
 
     for (auto& object : sceneObjects)
     {
-        auto res = std::find_if(entities.begin(), entities.end(),
+        auto entity_res = std::find_if(entities.begin(), entities.end(),
             [&](FlexKit::SceneEntity& entity)
             {
                 return (entity.objectID == object->objectID);
             });
 
-        if (res != entities.end())
+        if (entity_res != entities.end())
         {   // Update Data
             for (auto& component : object->gameObject)
             {
-                const auto id = component->ID;
+                auto component_res = entity_res->FindComponent(component.ID);
 
-                auto res2 = std::find_if(
-                    std::begin(res->components),
-                    std::end(res->components),
-                    [&](FlexKit::EntityComponent_ptr& component)
-                    {
-                        return component->id == id;
-                    });
+                if (!component_res)
+                {
+                    auto entityComponent = FlexKit::EntityComponent::CreateComponent(component.ID);
 
-                if(res2 != res->components.end())
-                    IEntityComponentRuntimeUpdater::Update((**res2), component.Get_ref(), ctx);
+                    if (!entityComponent)
+                        continue;
+
+                    entity_res->components.emplace_back(FlexKit::EntityComponent_ptr(entityComponent));
+
+                    IEntityComponentRuntimeUpdater::Update(*entityComponent, component.Get_ref(), ctx);
+                }
+                else
+                    IEntityComponentRuntimeUpdater::Update(*component_res, component.Get_ref(), ctx);
             }
         }
         else
         {   // Add GameObject
-            auto& entity = entities.emplace_back();
+            auto& entity    = entities.emplace_back();
+            entity.objectID = object->objectID;
 
             for (auto& component : object->gameObject)
             {
@@ -185,6 +288,26 @@ void ViewportScene::Update()
 
         nodes.emplace_back(sceneNode);
     }
+
+    auto newEnd = std::remove_if(
+        entities.begin(),
+        entities.end(),
+        [&](auto& entity)
+        {
+            auto res = std::find_if(
+                markedForDeletion.begin(),
+                markedForDeletion.end(),
+                [&](auto& id)
+                {
+                    return entity.objectID == id;
+                });
+
+            return res != markedForDeletion.end();
+        });
+
+    entities.erase(newEnd, entities.end());
+
+    markedForDeletion.clear();
 }
 
 

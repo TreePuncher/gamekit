@@ -128,14 +128,13 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
         FrameworkState      { IN_framework  },
         base                { IN_base },
         worldState          { IN_worldState },
-        testParticleSystem  { IN_framework.core.GetBlockMemory() },
-        emitters            { IN_framework.core.GetBlockMemory() },
-        testAnimation       { IN_worldState.CreateGameObject() },
-        particleEmitter     { IN_worldState.CreateGameObject() },
-        IKTarget            { IN_worldState.CreateGameObject() },
-        runOnceDrawEvents   { IN_framework.core.GetBlockMemory() },
-
-        testAnimationResource   { LoadAnimation("TestRigAction", IN_framework.core.GetBlockMemory()) }
+        testParticleSystem  { IN_framework.core.GetBlockMemory() }
+    ,   emitters            { IN_framework.core.GetBlockMemory() }
+    //,   testAnimation       { IN_worldState.CreateGameObject() }
+    //, particleEmitter     { IN_worldState.CreateGameObject() }
+    //,   IKTarget            { IN_worldState.CreateGameObject() }
+    ,   runOnceDrawEvents   { IN_framework.core.GetBlockMemory() }//
+    //,   testAnimationResource   { LoadAnimation("TestRigAction", IN_framework.core.GetBlockMemory()) }
 {
     //base.PixCapture();
     //base.renderWindow.ToggleMouseCapture();
@@ -159,51 +158,52 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
         }
     );
 
-    particleEmitter.AddView<SceneNodeView<>>();
-    auto& emitterView       = particleEmitter.AddView<ParticleEmitterView>(ParticleEmitterData{ &testParticleSystem, GetSceneNode(particleEmitter) });
-    auto& emitterProperties = emitterView.GetData().properties;
+    //particleEmitter.AddView<SceneNodeView<>>();
+    //auto& emitterView       = particleEmitter.AddView<ParticleEmitterView>(ParticleEmitterData{ &testParticleSystem, GetSceneNode(particleEmitter) });
+    //auto& emitterProperties = emitterView.GetData().properties;
 
-    emitterProperties.emissionSpread    = 1.0f;
-    emitterProperties.minEmissionRate   = 0;
-    emitterProperties.maxEmissionRate   = 1000;
+    //emitterProperties.emissionSpread    = 1.0f;
+    //emitterProperties.minEmissionRate   = 0;
+    //emitterProperties.maxEmissionRate   = 1000;
 
-    Translate(particleEmitter, { 0, 10, 0 });
+    //Translate(particleEmitter, { 0, 10, 0 });
 
     auto& scene = worldState.GetScene();
 
-    playerCharacterModel    = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), CharacterModelAsset);
-    auto model              = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), PlaceHolderAsset);
+    //playerCharacterModel    = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), CharacterModelAsset);
+    //auto model              = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), PlaceHolderAsset);
 
-    auto& ikNodeView    = IKTarget.AddView<SceneNodeView<>>();
-    auto& ikBrushView   = IKTarget.AddView<BrushView>(model, GetSceneNode(IKTarget));
-    auto& ikTargetView  = IKTarget.AddView<FABRIKTargetView>(FABRIKTarget{ GetSceneNode(IKTarget), (iAllocator*)framework.core.GetBlockMemory() });
+    //auto& ikNodeView    = IKTarget.AddView<SceneNodeView<>>();
+    //auto& ikBrushView   = IKTarget.AddView<BrushView>(model, GetSceneNode(IKTarget));
+    //auto& ikTargetView  = IKTarget.AddView<FABRIKTargetView>(FABRIKTarget{ GetSceneNode(IKTarget), (iAllocator*)framework.core.GetBlockMemory() });
 
-    Translate(IKTarget, { 0, 6.0f, 0 });
+    //Translate(IKTarget, { 0, 6.0f, 0 });
 
-    testAnimation.AddView<SceneNodeView<>>();
-    auto& brushView     = testAnimation.AddView<BrushView>(playerCharacterModel, GetSceneNode(testAnimation));
-    auto& skeletonView  = testAnimation.AddView<SkeletonView>(playerCharacterModel, CharacterSkeletonAsset);
-    auto& IKController  = testAnimation.AddView<FABRIKView>();
+    //testAnimation.AddView<SceneNodeView<>>();
+    //auto& brushView     = testAnimation.AddView<BrushView>(playerCharacterModel, GetSceneNode(testAnimation));
+    //auto& skeletonView  = testAnimation.AddView<SkeletonView>(playerCharacterModel, CharacterSkeletonAsset);
+    //auto& IKController  = testAnimation.AddView<FABRIKView>();
     //auto& animatorView    = testAnimation.AddView<AnimatorView>(testAnimation);
 
-    SetTransparent(testAnimation, true);
-    brushView.SetTransparent(true);
+    //SetTransparent(testAnimation, true);
+    //brushView.SetTransparent(true);
 
-    auto& materials = MaterialComponent::GetComponent();
-    auto defaultPBRMaterial = materials.CreateMaterial();
-    materials.Add2Pass(defaultPBRMaterial, PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
-    testAnimation.AddView<MaterialComponentView>(defaultPBRMaterial);
+    //auto& materials = MaterialComponent::GetComponent();
+    //auto defaultPBRMaterial = materials.CreateMaterial();
+    //materials.Add2Pass(defaultPBRMaterial, PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
+    //testAnimation.AddView<MaterialComponentView>(defaultPBRMaterial);
 
-    IKTarget.AddView<MaterialComponentView>(defaultPBRMaterial);
+    //IKTarget.AddView<MaterialComponentView>(defaultPBRMaterial);
 
-    auto parentMaterial     = materials.CreateMaterial();
-    auto defaultMaterial    = materials.CreateMaterial(parentMaterial);
+    //auto parentMaterial     = materials.CreateMaterial();
+    //auto defaultMaterial    = materials.CreateMaterial(parentMaterial);
 
-    materials.Add2Pass(parentMaterial, PassHandle{ GetCRCGUID(OIT_MCGUIRE) });
+    //materials.Add2Pass(parentMaterial, PassHandle{ GetCRCGUID(OIT_MCGUIRE) });
 
-    materials.SetProperty(parentMaterial, GetCRCGUID(PBR_ALBEDO),     float4{ 0.5f, 0.0f, 0.5f, 0.1f });
-    materials.SetProperty(parentMaterial, GetCRCGUID(PBR_SPECULAR),   float4{ 0.9f, 0.9f, 0.9f, 0.0f });
+    //materials.SetProperty(parentMaterial, GetCRCGUID(PBR_ALBEDO),     float4{ 0.5f, 0.0f, 0.5f, 0.1f });
+    //materials.SetProperty(parentMaterial, GetCRCGUID(PBR_SPECULAR),   float4{ 0.9f, 0.9f, 0.9f, 0.0f });
 
+    /*
     for (size_t Y = 0; Y < 0; Y++)
         for (size_t X = 0; X < 20; X++)
         {
@@ -237,7 +237,7 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
 
     SetWorldPosition(particleEmitter, float3{ 0.0f, 40, 0.0f });
     Pitch(particleEmitter, float(pi / 2.0f));
-
+    */
     runOnceDrawEvents.push_back([&]()
         {
             base.render.AddTask(
@@ -270,8 +270,8 @@ UpdateTask* LocalGameState::Update(EngineCore& core, UpdateDispatcher& dispatche
     auto tasks = worldState.Update(core, dispatcher, dT);
 
     static float t = 0.0f;
-    SetWorldPosition(particleEmitter, float3{ 100.0f * sin(t), 20, 100.0f * cos(t) });
-    SetWorldPosition(IKTarget, float3{ 2.0f * cos(t), 4.0f * sin(t / 2.0f) + 8.0f, 4.0f * sin(t) } + float3{ 30.0f, 0.0f, 10.0f });
+    //SetWorldPosition(particleEmitter, float3{ 100.0f * sin(t), 20, 100.0f * cos(t) });
+    //SetWorldPosition(IKTarget, float3{ 2.0f * cos(t), 4.0f * sin(t / 2.0f) + 8.0f, 4.0f * sin(t) } + float3{ 30.0f, 0.0f, 10.0f });
 
     t += dT;
 
@@ -350,7 +350,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 
             .debugDisplay   = DebugVisMode::Disabled,
             .BVHVisMode     = BVHVisMode::BVH,
-            .debugDrawMode  = ClusterDebugDrawMode::BVH,
+            .debugDrawMode  = ClusterDebugDrawMode::Clusters,
 
             .transformDependency    = transforms,
             .cameraDependency       = cameras,
@@ -418,6 +418,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 
     if(0)
     {
+#if 0
         // Draw Skeleton overlay
         const auto Skeleton = GetSkeleton(testAnimation);
         const auto pose     = GetPoseState(testAnimation);
@@ -492,6 +493,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
             targets.RenderTarget,
             core.GetTempMemory(),
             LineShape{ lines });
+#endif
     }
 
     base.DrawDebugHUD(core, dispatcher, frameGraph, reserveVB, reserveCB, targets.RenderTarget, dT);
@@ -556,14 +558,13 @@ bool LocalGameState::EventHandler(Event evt)
                 case KC_R:
                     /*
                     framework.GetRenderSystem().QueuePSOLoad(SHADINGPASS);
-                    framework.GetRenderSystem().QueuePSOLoad(CREATECLUSTERLIGHTLISTS);
-                    framework.GetRenderSystem().QueuePSOLoad(CREATECLUSTERS);
                     framework.GetRenderSystem().QueuePSOLoad(OITBLEND);
                     framework.GetRenderSystem().QueuePSOLoad(OITDRAW);
                     */
 
+                    framework.GetRenderSystem().QueuePSOLoad(CREATECLUSTERS);
+                    framework.GetRenderSystem().QueuePSOLoad(CREATECLUSTERLIGHTLISTS);
                     framework.GetRenderSystem().QueuePSOLoad(GBUFFERPASS);
-                    framework.GetRenderSystem().QueuePSOLoad(SHADINGPASS);
                     framework.GetRenderSystem().QueuePSOLoad(SHADINGPASS);
                     framework.GetRenderSystem().QueuePSOLoad(SHADOWMAPPASS);
                     framework.GetRenderSystem().QueuePSOLoad(SHADOWMAPANIMATEDPASS);

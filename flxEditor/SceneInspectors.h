@@ -8,6 +8,53 @@
 #include <CSGComponent.h>
 #include <ViewportScene.h>
 
+
+/************************************************************************************************/
+
+
+class StringIDInspector : public IComponentInspector
+{
+public:
+
+    StringIDInspector() {}
+    ~StringIDInspector() {}
+
+    FlexKit::ComponentID ComponentID() override
+    {
+        return FlexKit::StringComponentID;
+    }
+
+    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override;
+
+private:
+};
+
+class StringIDFactory : public IComponentFactory
+{
+public:
+    ~StringIDFactory() {}
+
+    void Construct(ViewportGameObject& gameObject, ViewportScene& scene)
+    {
+        gameObject.gameObject.AddView<FlexKit::StringIDView>(nullptr, 0);
+    }
+
+    const std::string& ComponentName() const noexcept { return name; }
+
+    inline static const std::string name = "StringID";
+
+    static bool Register()
+    {
+        EditorInspectorView::AddComponentFactory(std::make_unique<StringIDFactory>());
+        EditorInspectorView::AddComponentInspector<StringIDInspector>();
+
+        return true;
+    }
+
+    inline static bool _registered = Register();
+};
+
+
 /************************************************************************************************/
 
 
@@ -34,9 +81,14 @@ class TransformComponentFactory : public IComponentFactory
 public:
     ~TransformComponentFactory() {}
 
-    void Construct(ViewportGameObject& gameObject, ViewportScene& scene)
+    static void ConstructNode(ViewportGameObject& gameObject, ViewportScene& scene)
     {
         gameObject.gameObject.AddView<FlexKit::SceneNodeView<>>(FlexKit::GetZeroedNode());
+    }
+
+    void Construct(ViewportGameObject& gameObject, ViewportScene& scene)
+    {
+        ConstructNode(gameObject, scene);
     }
 
     const std::string& ComponentName() const noexcept { return name; }
@@ -93,9 +145,20 @@ public:
 
 struct PointLightFactory : public IComponentFactory
 {
-    void Construct(ViewportGameObject& gameObject, ViewportScene& scene)
+    static void ConstructPointLight(ViewportGameObject& viewportGameObject, ViewportScene& viewportScene) noexcept
     {
-        gameObject.gameObject.AddView<FlexKit::PointLightView>();
+        viewportGameObject.gameObject.AddView<FlexKit::PointLightView>();
+
+        if (!viewportGameObject.gameObject.hasView(FlexKit::TransformComponentID))
+            viewportGameObject.gameObject.AddView<FlexKit::SceneNodeView<>>();
+
+        if (!viewportGameObject.gameObject.hasView(FlexKit::SceneVisibilityComponentID))
+            viewportScene.scene.AddGameObject(viewportGameObject.gameObject, FlexKit::GetSceneNode(viewportGameObject.gameObject));
+    }
+
+    void Construct(ViewportGameObject& viewportGameObject, ViewportScene& viewportScene)
+    {
+        ConstructPointLight(viewportGameObject, viewportScene);
     }
 
     inline static const std::string name = "PointLight";

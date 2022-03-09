@@ -30,10 +30,10 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
     GameObject& gameObject = objectPool.Allocate();
     CreateThirdPersonCameraController(gameObject, desc.layer, allocator, desc.r, desc.h);
 
-    auto [triMesh, loaded] = FindMesh(playerModel);
+    //auto [triMesh, loaded] = FindMesh(playerModel);
 
-    if (!loaded)
-        triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), playerModel);
+    //if (!loaded)
+    //    triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), playerModel);
 
     auto& player        = gameObject.AddView<PlayerView>(
         PlayerState{
@@ -52,15 +52,15 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
     auto node = GetCameraControllerNode(gameObject);
 
     gameObject.AddView<SceneNodeView<>>(node);
-    gameObject.AddView<BrushView>(triMesh, node);
+    //gameObject.AddView<BrushView>(triMesh, node);
 
-    auto& materials     = MaterialComponent::GetComponent();
-    auto material       = materials.CreateMaterial();
-    materials.Add2Pass(material, PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
-    auto& materialView  = gameObject.AddView<MaterialComponentView>(material);
-    SetMaterialHandle(gameObject, material);
+    //auto& materials     = MaterialComponent::GetComponent();
+    //auto material       = materials.CreateMaterial();
+    //materials.Add2Pass(material, PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
+    //auto& materialView  = gameObject.AddView<MaterialComponentView>(material);
+    //SetMaterialHandle(gameObject, material);
 
-    materialView.SetProperty(GetCRCGUID(PBR_ALBEDO), float4{ 1, 0, 0, 0.5f });
+    //materialView.SetProperty(GetCRCGUID(PBR_ALBEDO), float4{ 1, 0, 0, 0.5f });
 
     desc.scene.AddGameObject(gameObject, node);
 
@@ -165,7 +165,7 @@ bool GameWorld::LoadScene(GUID_t assetID)
             auto meshHandle = GetTriMesh(go);
             auto mesh       = GetMeshResource(meshHandle);
 
-            AABB aabb{
+            const AABB aabb{
                 .Min = mesh->Info.Min,
                 .Max = mesh->Info.Max };
 

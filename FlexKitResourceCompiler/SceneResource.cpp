@@ -800,8 +800,8 @@ namespace FlexKit
         {
             EntityBlock::Header entityHeader;
             entityHeader.blockType         = SceneBlockType::EntityBlock;
-            entityHeader.blockSize         = sizeof(EntityBlock);
-            entityHeader.componentCount    = 2 + entity.components.size() + 1; // TODO: Create a proper material component
+            entityHeader.blockSize         = sizeof(EntityBlock::Header);
+            entityHeader.componentCount    = 1;//2 + entity.components.size() + 1; // TODO: Create a proper material component
 
             Blob componentBlock;
             componentBlock      += CreateIDComponent(entity.id);
@@ -819,9 +819,14 @@ namespace FlexKit
                                         brushComponent->material.specular);
 
                     componentBlock += CreateMaterialComponent(brushComponent->material);
+
+                    entityHeader.componentCount+= 2;
                 }
                 else
+                {
                     componentBlock += component->GetBlob();
+                    entityHeader.componentCount++;
+                }
             }
 
             entityHeader.blockSize += componentBlock.size();
@@ -854,6 +859,20 @@ namespace FlexKit
 
 
     /************************************************************************************************/
+
+
+    EntityComponent_ptr SceneEntity::FindComponent(ComponentID id)
+    {
+        auto res = std::find_if(
+            std::begin(components),
+            std::end(components),
+            [&](FlexKit::EntityComponent_ptr& component)
+            {
+                return component->id == id;
+            });
+
+        return res != std::end(components) ? *res : nullptr;
+    }
 
 
     Blob CreateSceneNodeComponent(uint32_t nodeIdx)

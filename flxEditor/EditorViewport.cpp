@@ -19,6 +19,78 @@ using FlexKit::float4x4;
 /************************************************************************************************/
 
 
+class EditorVewportSelectionMode : public IEditorViewportMode
+{
+public:
+    EditorVewportSelectionMode(SelectionContext&, std::shared_ptr<ViewportScene>&, DXRenderWindow* window, FlexKit::CameraHandle camera);
+
+    ViewportModeID GetModeID() const override { return VewportSelectionModeID; };
+
+    void mousePressEvent    (QMouseEvent* event) override;
+
+    DXRenderWindow*         renderWindow;
+    FlexKit::CameraHandle   viewportCamera;
+
+    SelectionContext&               selectionContext;
+    std::shared_ptr<ViewportScene>  scene;
+};
+
+
+class EditorVewportPanMode : public IEditorViewportMode
+{
+public:
+    EditorVewportPanMode(SelectionContext&, std::shared_ptr<ViewportScene>&, DXRenderWindow* window, FlexKit::CameraHandle camera, ViewportMode_ptr IN_previous = nullptr);
+
+    ViewportModeID GetModeID() const override { return VewportPanModeID; };
+
+    void keyPressEvent      (QKeyEvent* event) override;
+
+    void mouseMoveEvent     (QMouseEvent* event) override;
+    void mouseReleaseEvent  (QMouseEvent* event) override;
+    void wheelEvent         (QWheelEvent* event) override;
+
+    void Draw(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, TemporaryBuffers& temps, FlexKit::ResourceHandle renderTarget, FlexKit::ResourceHandle depthBuffer) override;
+
+    ViewportMode_ptr        previous;
+    DXRenderWindow*         renderWindow;
+    FlexKit::CameraHandle   viewportCamera;
+
+    SelectionContext&               selectionContext;
+    std::shared_ptr<ViewportScene>  scene;
+
+    FlexKit::int2 previousMousePosition = FlexKit::int2{ -160000, -160000 };
+    float panSpeed = 10.0f;
+};
+
+
+class EditorVewportTranslationMode : public IEditorViewportMode
+{
+public:
+    EditorVewportTranslationMode(SelectionContext&, DXRenderWindow*, FlexKit::CameraHandle, FlexKit::ImGUIIntegrator& hud);
+
+    ViewportModeID GetModeID() const override { return TranslationModeID; };
+
+    void keyPressEvent      (QKeyEvent* event) override;
+
+    void mousePressEvent    (QMouseEvent* event) override;
+    void mouseReleaseEvent  (QMouseEvent* event) override;
+
+    void DrawImguI  () override;
+
+    DXRenderWindow*             renderWindow;
+    SelectionContext&           selectionContext;
+    FlexKit::CameraHandle       viewportCamera;
+    FlexKit::ImGUIIntegrator&   hud;
+
+    FlexKit::int2 previousMousePosition     = FlexKit::int2{ -160000, -160000 };
+    ImGuizmo::OPERATION manipulatorState    = ImGuizmo::OPERATION::TRANSLATE;
+    ImGuizmo::MODE mode                     = ImGuizmo::MODE::LOCAL;
+};
+
+
+/************************************************************************************************/
+
+
 EditorVewportTranslationMode::EditorVewportTranslationMode(
     SelectionContext&           IN_selectionContext,
     DXRenderWindow*             IN_renderWindow,
@@ -370,10 +442,7 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
             if (scene == nullptr)
                 return;
 
-            ViewportGameObject_ptr object   = std::make_shared<ViewportGameObject>();
-            object->objectID                = rand();
-
-            scene->sceneObjects.push_back(object);
+            scene->CreateObject();
         });
 
     auto addLight = file->addAction("Point Light");
@@ -385,14 +454,12 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
             if (scene == nullptr)
                 return;
 
-            ViewportGameObject_ptr viewportObject = std::make_shared<ViewportGameObject>();
-            viewportObject->objectID = rand();
+            ViewportGameObject_ptr viewportObject = scene->CreateObject();
 
             viewportObject->gameObject.AddView<FlexKit::SceneNodeView<>>();
-            viewportObject->gameObject.AddView<FlexKit::PointLightView>(float3{ 1, 1, 1 }, 100, 100);
+            viewportObject->gameObject.AddView<FlexKit::PointLightView>(float3{ 1, 1, 1 }, 10, 10);
 
             scene->scene.AddGameObject(*viewportObject, FlexKit::GetSceneNode(*viewportObject));
-            scene->sceneObjects.push_back(viewportObject);
 
             FlexKit::SetBoundingSphereFromLight(*viewportObject);
         });
@@ -403,6 +470,9 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
         [&]()
         {
             IN_renderer.framework.GetRenderSystem().QueuePSOLoad(FlexKit::SHADINGPASS);
+            IN_renderer.framework.GetRenderSystem().QueuePSOLoad(FlexKit::CREATECLUSTERLIGHTLISTS);
+            IN_renderer.framework.GetRenderSystem().QueuePSOLoad(FlexKit::CREATECLUSTERBUFFER);
+            IN_renderer.framework.GetRenderSystem().QueuePSOLoad(FlexKit::CREATECLUSTERS);
         });
 
     menuBar->show();
@@ -832,8 +902,8 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
             .reserveCB  = temporaries.ReserveConstantBuffer,
 
             .debugDisplay   = FlexKit::DebugVisMode::Disabled,
-            .BVHVisMode     = FlexKit::BVHVisMode::BVH,
-            .debugDrawMode  = FlexKit::ClusterDebugDrawMode::BVH,
+            .BVHVisMode     = FlexKit::BVHVisMode::BoundingVolumes,
+            .debugDrawMode  = FlexKit::ClusterDebugDrawMode::Clusters,
 
             .transformDependency    = transforms,
             .cameraDependency       = cameras,

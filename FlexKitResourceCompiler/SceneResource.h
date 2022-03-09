@@ -407,6 +407,8 @@ namespace FlexKit
         ComponentVector components;
         MetaDataList	metaData;
 
+        EntityComponent_ptr FindComponent(ComponentID id);
+
         void Serialize(auto& ar)
         {
             ar& objectID;

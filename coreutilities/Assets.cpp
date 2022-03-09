@@ -553,7 +553,7 @@ namespace FlexKit
             return false;
 
         auto buffer     = (char*)memory.malloc(lod.lodSize);
-        auto lodHeader  = reinterpret_cast<FlexKit::LODlevel*>(buffer);
+        auto lodHeader  = new(buffer) FlexKit::LODlevel;
 
         readCtx.Read(lodHeader, lod.lodSize, lod.lodFileOffset);
 
@@ -581,6 +581,7 @@ namespace FlexKit
 
         lod.state = TriMesh::LOD_Runtime::LOD_State::Loaded;
 
+        lodHeader->~LODlevel();
         memory.free(buffer);
 
         return true;
@@ -646,50 +647,52 @@ namespace FlexKit
 
     bool Buffer2TriMesh(RenderSystem* RS, CopyContextHandle copyCtx, const char* buffer, size_t bufferSize, iAllocator* Memory, TriMesh* triMesh, bool ClearBuffers)
     {
-		TriMeshAssetBlob* Blob  = (TriMeshAssetBlob*)buffer;
+        TriMeshAssetBlob Blob;
+        memcpy(&Blob, buffer, sizeof(Blob));
+
 		size_t BufferCount      = 0;
 
 		triMesh->SkinTable	    = nullptr;
-		triMesh->SkeletonGUID   = Blob->header.SkeletonGuid;
+		triMesh->SkeletonGUID   = Blob.header.SkeletonGuid;
 		triMesh->Skeleton	    = nullptr;
-		triMesh->Info.Min.x     = Blob->header.Info.maxx;
-		triMesh->Info.Min.y     = Blob->header.Info.maxy;
-		triMesh->Info.Min.z     = Blob->header.Info.maxz;
-		triMesh->Info.Max.x     = Blob->header.Info.minx;
-		triMesh->Info.Max.y     = Blob->header.Info.miny;
-		triMesh->Info.Max.z     = Blob->header.Info.minz;
-		triMesh->Info.r		    = Blob->header.Info.r;
+		triMesh->Info.Min.x     = Blob.header.Info.maxx;
+		triMesh->Info.Min.y     = Blob.header.Info.maxy;
+		triMesh->Info.Min.z     = Blob.header.Info.maxz;
+		triMesh->Info.Max.x     = Blob.header.Info.minx;
+		triMesh->Info.Max.y     = Blob.header.Info.miny;
+		triMesh->Info.Max.z     = Blob.header.Info.minz;
+		triMesh->Info.r		    = Blob.header.Info.r;
 		triMesh->Memory		    = Memory;
-        triMesh->assetHandle    = Blob->header.GUID;
-        triMesh->TriMeshID      = Blob->header.GUID;
+        triMesh->assetHandle    = Blob.header.GUID;
+        triMesh->TriMeshID      = Blob.header.GUID;
 
-        triMesh->BS     = { { Blob->header.BS[0], Blob->header.BS[1], Blob->header.BS[2] }, Blob->header.BS[3] };
+        triMesh->BS     = { { Blob.header.BS[0], Blob.header.BS[1], Blob.header.BS[2] }, Blob.header.BS[3] };
         triMesh->AABB   =
         { 
-			{ Blob->header.AABB[0], Blob->header.AABB[1], Blob->header.AABB[2] },
-			{ Blob->header.AABB[3], Blob->header.AABB[4], Blob->header.AABB[5] }
+			{ Blob.header.AABB[0], Blob.header.AABB[1], Blob.header.AABB[2] },
+			{ Blob.header.AABB[3], Blob.header.AABB[4], Blob.header.AABB[5] }
 		};
 
             
-		if (strlen(Blob->header.ID))
+		if (strlen(Blob.header.ID))
 		{
             triMesh->ID = (char*)Memory->malloc(64);
-			strcpy_s((char*)triMesh->ID, 64, Blob->header.ID);
+			strcpy_s((char*)triMesh->ID, 64, Blob.header.ID);
 		} else
             triMesh->ID = nullptr;
 
 
-        auto lodCount = Blob->header.LODCount;
-
-        const size_t tableSize = lodCount * sizeof(LODEntry);
-        LODEntry* lodTable = reinterpret_cast<LODEntry*>(Memory->malloc(tableSize));
-        memcpy(lodTable, Blob->Memory, tableSize);
+        const size_t lodCount   = Blob.header.LODCount;
+        const size_t tableSize  = lodCount * sizeof(LODEntry);
 
         for (size_t I = 0; I < lodCount; I++)
         {
+            LODEntry lodTable;
+            memcpy(&lodTable, buffer + sizeof(TriMeshAssetBlob::header) + sizeof(LODEntry) * I, tableSize);
+
             TriMesh::LOD_Runtime lod;
-            lod.lodFileOffset   = lodTable[I].offset;
-            lod.lodSize         = lodTable[I].size;
+            lod.lodFileOffset   = lodTable.offset;
+            lod.lodSize         = lodTable.size;
             lod.state           = TriMesh::LOD_Runtime::LOD_State::Unloaded;
 
             triMesh->lods.push_back(lod);
@@ -698,8 +701,6 @@ namespace FlexKit
         // Load lowest detail lod level
         if (!LoadLOD(triMesh, uint(lodCount - 1), *RS, copyCtx, *Memory))
             LoadAllLODFromMemory(triMesh, buffer, bufferSize, *RS, copyCtx, *Memory);// not able to stream lods, load all now
-
-        Memory->free(lodTable);
 
         return true;
     }

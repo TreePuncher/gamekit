@@ -323,66 +323,66 @@ namespace FlexKit
         }
 
 
-        void SetParentNode(NodeHandle Parent)
+        void SetParentNode(NodeHandle Parent) noexcept
         {
             FlexKit::SetParentNode(Parent, node);
             Overrides_TY::SetDirty(static_cast<typename Overrides_TY::Parent_TY*>(this));
         }
 
 
-        void Yaw(float r)
+        void Yaw(float r) noexcept
         {
             FlexKit::Yaw(node, r);
             Overrides_TY::SetDirty(static_cast<typename Overrides_TY::Parent_TY*>(this));
         }
 
 
-        void Roll(float r)
+        void Roll(float r) noexcept
         {
             FlexKit::Roll(node, r);
             Overrides_TY::SetDirty(static_cast<typename Overrides_TY::Parent_TY*>(this));
         }
 
 
-        void Pitch(float r)
+        void Pitch(float r) noexcept
         {
             FlexKit::Pitch(node, r);
             Overrides_TY::SetDirty(static_cast<typename Overrides_TY::Parent_TY*>(this));
         }
 
-        void Scale(float3 xyz)
+        void Scale(float3 xyz) noexcept
         {
             FlexKit::Scale(node, xyz);
             Overrides_TY::SetDirty(static_cast<typename Overrides_TY::Parent_TY*>(this));
         }
 
 
-        void TranslateLocal(float3 xyz)
+        void TranslateLocal(float3 xyz) noexcept
         {
             FlexKit::TranslateLocal(node, xyz);
             Overrides_TY::SetDirty(static_cast<typename Overrides_TY::Parent_TY*>(this));
         }
 
 
-        void TranslateWorld(float3 xyz)
+        void TranslateWorld(float3 xyz) noexcept
         {
             FlexKit::TranslateWorld(node, xyz);
             Overrides_TY::SetDirty(static_cast<typename Overrides_TY::Parent_TY*>(this));
         }
 
 
-        void ToggleScaling(bool scalable)
+        void ToggleScaling(bool scalable) noexcept
         {
             SetFlag(node, SceneNodes::SCALE);
         }
 
 
-        float3	GetPosition() const
+        float3	GetPosition() const noexcept
         {
             return FlexKit::GetPositionW(node);
         }
 
-        float3	GetPositionL() const
+        float3	GetPositionL() const noexcept
         {
             return FlexKit::GetPositionL(node);
         }
@@ -397,30 +397,46 @@ namespace FlexKit
             return FlexKit::GetOrientation(node);
         }
 
-        void SetScale(float3 scale)
+        float4x4 GetWT() const noexcept
+        {
+            return FlexKit::GetWT(node);
+        }
+
+        void SetScale(float3 scale) noexcept
         {
             FlexKit::SetScale(node, scale);
         }
 
-        void Parent(NodeHandle child)
+        void Parent(NodeHandle child) noexcept
         {
             FlexKit::SetParentNode(node, child);
         }
 
-        void SetPosition(const float3 xyz)
+        void SetPosition(const float3 xyz) noexcept
         {
             FlexKit::SetPositionW(node, xyz);
         }
 
-        void SetPositionL(const float3 xyz)
+        void SetPositionL(const float3 xyz) noexcept
         {
             FlexKit::SetPositionL(node, xyz);
         }
 
-        float4x4 GetWT() const
+        void SetOrientation(const Quaternion q) noexcept
         {
-            return FlexKit::GetWT(node);
+            FlexKit::SetOrientation(node, q);
         }
+
+        void SetOrientationL(const Quaternion q) noexcept
+        {
+            FlexKit::SetOrientationL(q);
+        }
+
+        void SetWT(const float4x4& wt) noexcept
+        {
+            FlexKit::SetWT(node, wt);
+        }
+
 
         NodeHandle node;
     };

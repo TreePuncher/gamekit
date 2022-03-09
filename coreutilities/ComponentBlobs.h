@@ -23,7 +23,6 @@ namespace FlexKit
         uint32_t CRC32;
         uint32_t blockType;
         uint32_t blockSize;
-        byte	 buffer[];
     };
 
     // SceneNodeBlock must always be defined before any entity Blocks
@@ -45,7 +44,7 @@ namespace FlexKit
             float3		scale;			// 16
             size_t		parent;			// 8
             size_t		pad;			// 8
-        }nodes[];
+        };
     };
 
 
@@ -56,7 +55,6 @@ namespace FlexKit
         uint32_t blockSize;
 
         uint32_t count;
-        uint32_t componentID[];
     };
 
 
@@ -69,8 +67,6 @@ namespace FlexKit
             uint32_t blockSize;
             uint32_t componentID;
         } header;
-
-        char buffer[];
     };
 
 
@@ -87,7 +83,6 @@ namespace FlexKit
 
             size_t componentCount = 0;
         } header;
-        char buffer[]; // Components stored here
     };
 
 
@@ -118,8 +113,7 @@ namespace FlexKit
            GetTypeGUID(Brush)
         };
 
-        GUID_t                          resourceID;
-        static_vector<SubMaterial, 32>  materials;
+        GUID_t resourceID;
 
         float4 albedo_smoothness;
         float4 specular_metal;

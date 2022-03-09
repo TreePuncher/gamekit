@@ -38,6 +38,7 @@ struct CSGShape
 {
     std::vector<Triangle> tris;
 
+    FlexKit::AABB                   GetAABB() const noexcept;
     FlexKit::AABB                   GetAABB(const float3 pos) const noexcept;
     const std::vector<Triangle>&    GetTris() const noexcept;
     FlexKit::BoundingSphere         GetBoundingVolume() const noexcept;
@@ -96,6 +97,7 @@ struct CSGBrush
     {
         CSGShape*       shape;
         size_t          triIdx;
+        float           distance;
         FlexKit::float3 BaryCentricResult;
     };
 

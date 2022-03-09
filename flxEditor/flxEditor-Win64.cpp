@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
 {
     auto qtApplication      = new QApplication{ argc, argv };
     auto editor             = new EditorApplication{ *qtApplication };
-    
+
     return qtApplication->exec();
 }
 

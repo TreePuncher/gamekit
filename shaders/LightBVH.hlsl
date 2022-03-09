@@ -160,27 +160,6 @@ void CreateLightBVH_PHASE1(const uint threadID : SV_GroupIndex)
     //      calculated Min Max for lights
     //      create based on normalized position
 
-    //float3 range;
-    //float3 offset;
-
-        if(threadID == 0)
-    {
-        minX = 1000000000;
-        minY = 1000000000;
-        minZ = 1000000000;
-
-        maxX = -1000000000;
-        maxY = -1000000000;
-        maxZ = -1000000000;
-    }
-
-    //  Create Sortables
-    //      calculated Min Max for lights
-    //      create based on normalized position
-
-    //float3 range;
-    //float3 offset;
-
 	PointLight localLight;
 
 	if(threadID < lightCount)
@@ -240,9 +219,6 @@ void CreateLightBVH_PHASE1(const uint threadID : SV_GroupIndex)
 
             minXYZ = min(VS_P - R, minXYZ);
             maxXYZ = max(VS_P + R, maxXYZ);
-
-            //minXYZ = min(PR.xyz - R, minXYZ);
-            //maxXYZ = max(PR.xyz + R, maxXYZ);
         }
 
         BVH_Node node;

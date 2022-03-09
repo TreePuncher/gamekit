@@ -50,6 +50,7 @@ StructuredBuffer<uint>        LightLookup       : register(t1);
 StructuredBuffer<PointLight>  PointLights       : register(t2); 
 StructuredBuffer<Cluster>     ClusterBuffer     : register(t3); 
 
+
 AABB GetClusterAABB(Cluster C)
 {
     AABB aabb;
@@ -58,6 +59,7 @@ AABB GetClusterAABB(Cluster C)
 
     return aabb;
 }
+
 
 AABB GetBVHAABB(BVH_Node n)
 {
@@ -68,16 +70,40 @@ AABB GetBVHAABB(BVH_Node n)
     return aabb;
 }
 
+
 AABB GetPointLightAABB(uint lightID)
 {
     PointLight pointLight = PointLights[lightID];
-    float3 VS_pos = mul(View, float4(pointLight.PR.xyz, 1));
+    const float3 pos_VS = mul(View, float4(pointLight.PR.xyz, 1));
 
     AABB aabb;
-    aabb.MinPoint = VS_pos - pointLight.PR.w;
-    aabb.MaxPoint = VS_pos + pointLight.PR.w;
+    aabb.MinPoint = pos_VS - pointLight.PR.w;
+    aabb.MaxPoint = pos_VS + pointLight.PR.w;
 
     return aabb;
+}
+
+
+float4 GetPointLightBS(uint lightID)
+{
+    PointLight pointLight = PointLights[lightID];
+    const float4 pos_WS = float4(pointLight.PR.xyz, 1);
+    const float3 pos_VS = mul(View, pos_WS);
+
+    return float4(pos_VS, pointLight.PR.w);
+}
+
+
+bool CompareBSToAABB(const float4 BS, const AABB aabb)
+{
+    const float radiusSquared = BS.w * BS.w;
+    const float3 closestPoint = clamp(BS.xyz, aabb.MinPoint, aabb.MaxPoint);
+
+    const float3 ab  = closestPoint - BS.xyz;
+    const float3 ab2 = (ab * ab);
+    const float d2  = ab2.x + ab2.y + ab2.z; 
+
+    return  d2 < radiusSquared;
 }
 
 
@@ -100,6 +126,7 @@ uint GetFirstChild(const BVH_Node node)
     return node.Offset;
 }
 
+
 uint GetChildCount(const BVH_Node node)
 {
     return node.Count;
@@ -115,6 +142,7 @@ groupshared uint lights[lightBufferSize];
 groupshared uint lightCount;
 groupshared uint offset;
 
+/*
 void CmpSwap(const uint const lhs, const uint rhs, const uint op)
 { 
     const uint LValue = lights[lhs]; 
@@ -148,6 +176,7 @@ void SortLights(const uint localThreadID)
         for(int J = I; J >= 0; J--)
         	BitonicPass(localThreadID, I, J);
 } 
+*/
 
 void InitStack()
 {
@@ -208,28 +237,6 @@ void CreateClustersLightLists(const uint threadID : SV_GroupIndex, const uint3 g
 
         GroupMemoryBarrierWithGroupSync();
 
-        #if 0
-
-        if(threadID == 0)
-        {
-            for(uint I = 0; I < 5; I++)
-            {
-                const AABB lightAABB = GetPointLightAABB(I);
-                if(CompareAABBToAABB(aabb, lightAABB))
-                    PushLight(I);
-            }
-
-            uint offset = 0;
-            InterlockedAdd(lightListCounter[0], lightCount, offset);
-
-            for(uint I = 0; I < lightCount; I++)
-                lightListBuffer[offset + I] = lights[I];
-
-            lightList[groupIdx] = uint2(lightCount, offset);
-        }       
-
-        #else
-
         do
         {
             const BVH_Node parent = BVHNodes[parentIdx];
@@ -241,9 +248,9 @@ void CreateClustersLightLists(const uint threadID : SV_GroupIndex, const uint3 g
                 {
                     const uint idx      = GetFirstChild(parent) + threadID;
                     const uint lightID  = LightLookup[idx];
-                    const AABB b        = GetPointLightAABB(lightID);
 
-                    if(CompareAABBToAABB(aabb, b))
+                    const float4 bs     = GetPointLightBS(lightID);
+                    if (CompareBSToAABB(bs, aabb))
                         PushLight(lightID);
                 }
                 else
@@ -293,8 +300,6 @@ void CreateClustersLightLists(const uint threadID : SV_GroupIndex, const uint3 g
 
             GroupMemoryBarrierWithGroupSync();
         }
-
-        #endif
     }
 }
 
