@@ -572,7 +572,7 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
         FlexKit::SetOrientationL(newNode, orientation);
         FlexKit::SetPositionL(newNode, position);
 
-        if(node.parent != -1)
+        if(node.parent != -1 || node.parent != 0)
             FlexKit::SetParentNode(nodes[node.parent], newNode);
 
         SetFlag(newNode, FlexKit::SceneNodes::StateFlags::SCALE);
