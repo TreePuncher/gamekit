@@ -35,6 +35,7 @@ struct ViewportScene
     void Update();
 
     ViewportGameObject_ptr  CreateObject();
+    ViewportGameObject_ptr  CreatePointLight();
     ViewportGameObject_ptr  FindObject(uint64_t);
     ViewportGameObject_ptr  FindObject(FlexKit::NodeHandle);
     void                    RemoveObject(ViewportGameObject_ptr);

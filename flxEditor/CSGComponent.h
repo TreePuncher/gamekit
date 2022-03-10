@@ -17,8 +17,6 @@ struct Triangle
 {
     FlexKit::float3 position[3];
 
-
-
     void Serialize(auto& ar)
     {
         ar& position[0];
@@ -28,6 +26,7 @@ struct Triangle
 
             FlexKit::float3& operator [] (size_t idx) noexcept;
     const   FlexKit::float3& operator [] (size_t idx) const noexcept;
+
     Triangle        Offset(FlexKit::float3) const noexcept;
     FlexKit::AABB   GetAABB() const noexcept;
     const float3    Normal() const noexcept;
@@ -36,7 +35,47 @@ struct Triangle
 
 struct CSGShape
 {
-    std::vector<Triangle> tris;
+    struct wVertex
+    {
+        float3                  point;
+        std::vector<uint32_t>   edges;
+
+        uint32_t FindEdge(uint32_t V1, uint32_t V2) const;
+    };
+
+    struct wEdge // Half Edge, directed structure
+    {
+        uint32_t vertices[2];
+        uint32_t oppositeNeighbor;
+        uint32_t next;
+        uint32_t previous;
+    };
+
+    struct wFace
+    {
+        uint32_t                edgeStart;
+        std::vector<uint32_t>   polys;
+    };
+
+    using wEdgeList = std::vector<uint32_t>;
+
+    std::vector<wVertex>    wVertices;
+    std::vector<wEdgeList>  wVerticeEdges;
+    std::vector<wEdge>      wEdges;
+    std::vector<wFace>      wFaces;
+
+    std::vector<Triangle>   tris; // Generated from the wing mesh representation
+
+    uint32_t QueryEdge(uint32_t V1, uint32_t V2) const;
+
+    uint32_t AddVertex    (FlexKit::float3 point);
+    uint32_t AddEdge      (uint32_t V1, uint32_t V2);
+    uint32_t AddTri       (uint32_t V1, uint32_t V2, uint32_t V3);
+    uint32_t AddPolygon   (uint32_t* tri_start, uint32_t* tri_end);
+
+    Triangle GetTri(uint32_t polyId) const;
+
+    void Build();
 
     FlexKit::AABB                   GetAABB() const noexcept;
     FlexKit::AABB                   GetAABB(const float3 pos) const noexcept;
