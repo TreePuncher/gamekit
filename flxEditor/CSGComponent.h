@@ -31,14 +31,14 @@ struct Triangle
     FlexKit::AABB   GetAABB() const noexcept;
     const float3    Normal() const noexcept;
     const float3    TriPoint() const noexcept;
+    const float3    TriPoint(const FlexKit::float3 BaryCentricPoint) const noexcept;
 };
 
 struct CSGShape
 {
     struct wVertex
     {
-        float3                  point;
-        std::vector<uint32_t>   edges;
+        float3   point;
 
         uint32_t FindEdge(uint32_t V1, uint32_t V2) const;
     };
@@ -73,7 +73,8 @@ struct CSGShape
     uint32_t AddTri       (uint32_t V1, uint32_t V2, uint32_t V3);
     uint32_t AddPolygon   (uint32_t* tri_start, uint32_t* tri_end);
 
-    Triangle GetTri(uint32_t polyId) const;
+    Triangle    GetTri      (uint32_t triId) const;
+    void        SplitTri    (uint32_t triId, const float3 BaryCentricPoint = float3{ 1.0f/3.0f });
 
     void Build();
 

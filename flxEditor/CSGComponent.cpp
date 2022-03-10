@@ -15,6 +15,7 @@ uint32_t CSGShape::AddVertex(FlexKit::float3 point)
 {
     const auto idx = wVertices.size();
     wVertices.emplace_back(point);
+    wVerticeEdges.emplace_back();
 
     return idx;
 }
@@ -25,7 +26,15 @@ uint32_t CSGShape::AddVertex(FlexKit::float3 point)
 
 uint32_t CSGShape::QueryEdge(uint32_t V1, uint32_t V2) const
 {
-    for (size_t idx = 0; idx < wEdges.size(); ++idx)
+    for (auto idx : wVerticeEdges[V1])
+    {
+        auto& halfEdge = wEdges[idx];
+
+        if (halfEdge.vertices[0] == V2 && halfEdge.vertices[1] == V1)
+            return idx;
+    }
+
+    for (auto idx : wVerticeEdges[V2])
     {
         auto& halfEdge = wEdges[idx];
 
@@ -39,16 +48,14 @@ uint32_t CSGShape::QueryEdge(uint32_t V1, uint32_t V2) const
 
 uint32_t CSGShape::AddEdge(uint32_t V1, uint32_t V2)
 {
-    const auto idx = wEdges.size();
-    wVertices[V1].edges.push_back(idx);
-    wVertices[V2].edges.push_back(idx);
-
-    wVerticeEdges.emplace_back();
-    wVerticeEdges.emplace_back();
-
+    const auto idx              = wEdges.size();
     const uint32_t opposingEdge = QueryEdge(V1, V2);
+
     if(opposingEdge != -1u)
         wEdges[opposingEdge].oppositeNeighbor = wEdges.size();
+
+    wVerticeEdges[V1].push_back(idx);
+    wVerticeEdges[V2].push_back(idx);
 
     wEdges.emplace_back(wEdge{ { V1, V2 }, opposingEdge, -1u, -1u });
 
@@ -105,6 +112,84 @@ Triangle CSGShape::GetTri(uint32_t polyId) const
     auto P3 = wVertices[wEdges[E3].vertices[0]].point;
 
     return Triangle{ P1, P2, P3 };
+}
+
+
+void CSGShape::SplitTri(uint32_t triId, const float3 BaryCentricPoint)
+{
+    const auto newPoint = GetTri(triId).TriPoint(BaryCentricPoint);
+
+    const auto E0 = wFaces[triId].edgeStart;
+    const auto E1 = wEdges[E0].next;
+    const auto E2 = wEdges[E1].next;
+
+    const auto V0 = wEdges[E0].vertices[0];
+    const auto V1 = wEdges[E1].vertices[0];
+    const auto V2 = wEdges[E2].vertices[0];
+    const auto V3 = AddVertex(newPoint);
+
+    const auto E3 = (uint32_t)wEdges.size();    wEdges.emplace_back();
+    const auto E4 = E3 + 1;                     wEdges.emplace_back();
+    const auto E5 = E3 + 2;                     wEdges.emplace_back();
+    const auto E6 = E3 + 3;                     wEdges.emplace_back();
+    const auto E7 = E3 + 4;                     wEdges.emplace_back();
+    const auto E8 = E3 + 5;                     wEdges.emplace_back();
+
+    wEdges[E0].next = E5;
+    wEdges[E1].next = E8;
+    wEdges[E2].next = E3;
+
+    wEdges[E3].next         = E4;
+    wEdges[E3].vertices[0]  = V0;
+    wEdges[E3].vertices[1]  = V3;
+
+    wEdges[E4].next         = E2;
+    wEdges[E4].vertices[0]  = V3;
+    wEdges[E4].vertices[1]  = V2;
+
+    wEdges[E5].next         = E6;
+    wEdges[E5].vertices[0]  = V1;
+    wEdges[E5].vertices[1]  = V3;
+
+    wEdges[E6].next         = E0;
+    wEdges[E6].vertices[0]  = V3;
+    wEdges[E6].vertices[1]  = V0;
+
+    wEdges[E7].next         = E1;
+    wEdges[E7].vertices[0]  = V3;
+    wEdges[E7].vertices[1]  = V1;
+
+
+    wEdges[E8].next         = E7;
+    wEdges[E8].vertices[0]  = V2;
+    wEdges[E8].vertices[1]  = V3;
+
+    wEdges[E3].oppositeNeighbor = E6;
+    wEdges[E4].oppositeNeighbor = E8;
+    wEdges[E5].oppositeNeighbor = E7;
+    wEdges[E6].oppositeNeighbor = E3;
+    wEdges[E7].oppositeNeighbor = E5;
+    wEdges[E8].oppositeNeighbor = E4;
+
+    wVerticeEdges[V0].push_back(E3);
+
+    wVerticeEdges[V1].push_back(E5);
+    wVerticeEdges[V1].push_back(E7);
+
+    wVerticeEdges[V2].push_back(E4);
+    wVerticeEdges[V2].push_back(E8);
+
+    wVerticeEdges[V3].push_back(E3);
+    wVerticeEdges[V3].push_back(E4);
+    wVerticeEdges[V3].push_back(E5);
+    wVerticeEdges[V3].push_back(E6);
+    wVerticeEdges[V3].push_back(E7);
+    wVerticeEdges[V3].push_back(E8);
+
+    wFaces.push_back({E1});
+    wFaces.push_back({E2});
+
+    Build();
 }
 
 
@@ -275,6 +360,15 @@ const float3 Triangle::Normal() const noexcept
 const float3 Triangle::TriPoint() const noexcept
 {
     return (position[0] + position[1] + position[2]) / 3;
+}
+
+
+const float3 Triangle::TriPoint(const FlexKit::float3 BaryCentricPoint) const noexcept
+{
+    return 
+        position[0] * BaryCentricPoint[0] +
+        position[1] * BaryCentricPoint[1] +
+        position[2] * BaryCentricPoint[2];
 }
 
 
@@ -812,7 +906,7 @@ RayTriIntersection_Res Intersects(const FlexKit::Ray& r, const Triangle& tri) no
         const auto n = edge1.cross(edge2).normal();
         const auto d = w.dot(n) / r.D.dot(n);
 
-        return { true, d, { u, v, 1.0f - u - v } };
+        return { true, d, {  1.0f - u - v, u, v, } };
     }
     else
         return { false };
@@ -1024,9 +1118,10 @@ public:
     {
         if (selectionContext.selectedPrimitives.size())
         {
+            ImGui::SetNextWindowPos({ 0, 400 });
+
             if (ImGui::Begin("Selection Debug", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
             {
-                ImGui::SetWindowPos({ 0, ImGui::GetCursorPosY() });
                 ImGui::SetWindowSize({ 400, 400 });
 
                 ImGui::Text(fmt::format("Selection Count: {}", selectionContext.selectedPrimitives.size()).c_str());
@@ -1034,13 +1129,19 @@ public:
                 for (size_t I = 0; I < selectionContext.selectedPrimitives.size(); I++)
                 {
                     auto& primitive = selectionContext.selectedPrimitives[I];
-                    ImGui::Text(fmt::format("Selection: {}, IntersectionPoint, [{}, {}, {}]",
+                    ImGui::Text(fmt::format("{}: [{}, {}, {}]",
                         I,
                         primitive.BaryCentricResult[0],
                         primitive.BaryCentricResult[1],
                         primitive.BaryCentricResult[2]).c_str());
                 }
 
+
+                if (ImGui::Button("Split"))
+                {
+                    auto triIdx = selectionContext.selectedPrimitives[0].triIdx;
+                    selectionContext.brush->shape.SplitTri(triIdx, selectionContext.selectedPrimitives[0].BaryCentricResult);
+                }
             }
             ImGui::End();
         }
