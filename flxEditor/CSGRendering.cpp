@@ -40,7 +40,7 @@ CSGRender::CSGRenderData& CSGRender::Render(
             return;
             using FlexKit::float3;
             using FlexKit::float4;
-
+            
             auto& csg = CSGComponent::GetComponent();
 
             struct Vertex
