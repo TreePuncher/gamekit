@@ -271,7 +271,7 @@ uint32_t CSGShape::_SplitEdge(uint32_t edgeId, const uint32_t V4)
     wEdges[E4].prev             = E1;
     wEdges[E4].next             = E3;
     wEdges[E4].face             = oldFaceIdx;
-    wEdges[E4].oppositeNeighbor = E6;
+    wEdges[E4].oppositeNeighbor = E5;
 
     wFaces[oldFaceIdx].edgeStart = E1;
 
@@ -305,7 +305,7 @@ uint32_t CSGShape::_SplitEdge(uint32_t edgeId, const uint32_t V4)
     auto T1 = GetTri(0);
     auto T2 = GetTri(1);
 
-    return E5;
+    return E6;
 }
 
 
@@ -645,7 +645,6 @@ CSGShape CreateCubeCSGShape() noexcept
     cubeShape.AddTri(V1, V2, V3);
     cubeShape.AddTri(V1, V3, V4);
 
-    /*
     // Bottom
     cubeShape.AddTri(V8, V6, V5);
     cubeShape.AddTri(V6, V8, V7);
@@ -665,7 +664,6 @@ CSGShape CreateCubeCSGShape() noexcept
     // Front
     cubeShape.AddTri(V4, V7, V8);
     cubeShape.AddTri(V4, V3, V7);
-    */
 
     cubeShape.Build();
 
@@ -1454,9 +1452,23 @@ public:
                     FlexKit::VBPushBuffer LBBuffer  = data.ReserveVertexBuffer(sizeof(Vertex) * 1024 * brushes.size());
 
                     size_t idx = 0;
+
+                    static const FlexKit::float4 colors[] =
+                    {
+                        { 185 / 255.0f, 131 / 255.0f, 255 / 255.0f, 1.0f },
+                        { 148 / 255.0f, 179 / 255.0f, 253 / 255.0f, 1.0f },
+                        { 148 / 255.0f, 218 / 255.0f, 255 / 255.0f, 1.0f },
+                        { 153 / 255.0f, 254 / 255.0f, 255 / 255.0f, 1.0f },
+
+                        { 137 / 255.0f, 181 / 255.0f, 175 / 255.0f, 1.0f },
+                        { 150 / 255.0f, 199 / 255.0f, 193 / 255.0f, 1.0f },
+                        { 222 / 255.0f, 217 / 255.0f, 196 / 255.0f, 1.0f },
+                        { 208 / 255.0f, 202 / 255.0f, 178 / 255.0f, 1.0f },
+                    };
+
+
                     for (const auto& brush : brushes)
                     {
-                        FlexKit::float4 Color = (idx == selectedNodeIdx) ? FlexKit::float4{ 0.8f, 0.8f, 0.8f, 1.0f } : FlexKit::float4{ 0.25f, 0.25f, 0.25f, 1.0f };
 
                         const auto aabb     = brush.GetAABB();
                         const float r       = aabb.Dim()[aabb.LongestAxis()];
@@ -1466,6 +1478,8 @@ public:
 
                         for (size_t triIdx = 0; triIdx < brush.shape.tris.size(); triIdx++)
                         {
+                            FlexKit::float4 Color = colors[triIdx % 8];
+
                             Vertex v;
                             auto& tri = brush.shape.tris[triIdx];
 
@@ -1940,8 +1954,10 @@ public:
 
                 CSGShape& shape = csg.brushes.back().shape;
                 shape = CreateCubeCSGShape();
-                shape.SplitEdge(2);
-                shape.SplitEdge(2);
+
+                for(size_t I = 0; I < 32; I++)
+                    shape.SplitEdge(rand() % shape.wEdges.size());
+
                 shape.Build();
 
                 csg.debugVal1++;
