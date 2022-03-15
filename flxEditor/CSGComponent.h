@@ -75,8 +75,14 @@ struct CSGShape
     uint32_t _AddEdge   ();
     uint32_t _AddVertex ();
 
-    uint32_t _SplitEdge                 (const uint32_t edgeId,     const uint32_t vertexIdx);
-    void     _RemoveVertexEdgeNeighbor  (const uint32_t vertexIdx,  const uint32_t edgeIdx);
+    struct _SplitEdgeRes
+    {
+        uint32_t lowerEdge;
+        uint32_t upperEdge;
+    };
+
+    uint32_t    _SplitEdge                 (const uint32_t edgeId,     const uint32_t vertexIdx);
+    void        _RemoveVertexEdgeNeighbor  (const uint32_t vertexIdx,  const uint32_t edgeIdx);
 
     FlexKit::LineSegment    GetEdgeSegment  (uint32_t edgeId) const;
     Triangle                GetTri          (uint32_t triId) const;
