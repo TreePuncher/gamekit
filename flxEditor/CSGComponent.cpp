@@ -2,10 +2,7 @@
 #include "CSGComponent.h"
 #include "ViewportScene.h"
 #include "EditorInspectorView.h"
-#include "qlistwidget.h"
 #include "EditorViewport.h"
-#include <QtWidgets\qlistwidget.h>
-#include <ImGuizmo.h>
 
 
 /************************************************************************************************/
@@ -24,7 +21,7 @@ uint32_t CSGShape::AddVertex(FlexKit::float3 point)
 /************************************************************************************************/
 
 
-uint32_t CSGShape::QueryEdge(uint32_t V1, uint32_t V2) const
+uint32_t CSGShape::FindOpposingEdge(uint32_t V1, uint32_t V2) const noexcept
 {
     for (auto idx : wVerticeEdges[V1])
     {
@@ -46,10 +43,10 @@ uint32_t CSGShape::QueryEdge(uint32_t V1, uint32_t V2) const
 }
 
 
-uint32_t CSGShape::AddEdge(uint32_t V1, uint32_t V2)
+uint32_t CSGShape::AddEdge(uint32_t V1, uint32_t V2, uint32_t owningFace)
 {
     const auto idx              = wEdges.size();
-    const uint32_t opposingEdge = QueryEdge(V1, V2);
+    const uint32_t opposingEdge = FindOpposingEdge(V1, V2);
 
     if(opposingEdge != -1u)
         wEdges[opposingEdge].oppositeNeighbor = wEdges.size();
@@ -57,7 +54,7 @@ uint32_t CSGShape::AddEdge(uint32_t V1, uint32_t V2)
     wVerticeEdges[V1].push_back(idx);
     wVerticeEdges[V2].push_back(idx);
 
-    wEdges.emplace_back(wEdge{ { V1, V2 }, opposingEdge, -1u, -1u });
+    wEdges.emplace_back(wEdge{ { V1, V2 }, opposingEdge, -1u, -1u, owningFace });
 
     return idx;
 }
@@ -70,19 +67,17 @@ uint32_t CSGShape::AddTri(uint32_t V1, uint32_t V2, uint32_t V3)
 {
     const auto idx = wFaces.size();
 
-    uint32_t edges[3] = { -1u, -1u, -1u };
-
-    auto E1 = AddEdge(V1, V2);
-    auto E2 = AddEdge(V2, V3);
-    auto E3 = AddEdge(V3, V1);
+    auto E1 = AddEdge(V1, V2, idx);
+    auto E2 = AddEdge(V2, V3, idx);
+    auto E3 = AddEdge(V3, V1, idx);
 
     wEdges[E1].next = E2;
     wEdges[E2].next = E3;
     wEdges[E3].next = E1;
 
-    wEdges[E1].previous = E3;
-    wEdges[E2].previous = E2;
-    wEdges[E3].previous = E1;
+    wEdges[E1].prev = E3;
+    wEdges[E2].prev = E2;
+    wEdges[E3].prev = E1;
 
     wFaces.emplace_back(wFace{ E1, {} });
 
@@ -93,11 +88,42 @@ uint32_t CSGShape::AddTri(uint32_t V1, uint32_t V2, uint32_t V3)
 /************************************************************************************************/
 
 
+uint32_t CSGShape::_AddEdge()
+{
+    const uint32_t idx = wEdges.size();
+    wEdges.emplace_back(wEdge{ { -1u, -1u }, -1u, -1u });
+
+    return idx;
+}
+
+
+uint32_t CSGShape::_AddVertex()
+{
+    const uint32_t idx = wVertices.size();
+    wVertices.emplace_back();
+    wVerticeEdges.emplace_back();
+
+    return idx;
+}
+
+
 uint32_t CSGShape::AddPolygon(uint32_t* tri_start, uint32_t* tri_end)
 {
     // TODO
     return -1;
 }
+
+
+FlexKit::LineSegment CSGShape::GetEdgeSegment(uint32_t edgeId) const
+{
+    const auto vertices = wEdges[edgeId].vertices;
+
+    return {
+        .A = wVertices[vertices[0]].point,
+        .B = wVertices[vertices[1]].point,
+    };
+}
+
 
 Triangle CSGShape::GetTri(uint32_t polyId) const
 {
@@ -112,6 +138,25 @@ Triangle CSGShape::GetTri(uint32_t polyId) const
     auto P3 = wVertices[wEdges[E3].vertices[0]].point;
 
     return Triangle{ P1, P2, P3 };
+}
+
+
+uint32_t CSGShape::NextEdge(const uint32_t edgeIdx) const
+{
+    return wEdges[edgeIdx].next;
+}
+
+
+void CSGShape::_RemoveVertexEdgeNeighbor(const uint32_t vertexIdx, const uint32_t edgeIdx)
+{
+    auto& vertexNeighbor = wVerticeEdges[vertexIdx];
+
+    vertexNeighbor.erase(
+        std::remove_if(
+            vertexNeighbor.begin(),
+            vertexNeighbor.end(),
+            [&](auto& lhs) { return lhs == edgeIdx; }),
+        vertexNeighbor.end());
 }
 
 
@@ -143,23 +188,27 @@ void CSGShape::SplitTri(uint32_t triId, const float3 BaryCentricPoint)
     wEdges[E3].vertices[0]  = V0;
     wEdges[E3].vertices[1]  = V3;
 
+    wEdges[E4].prev         = E3;
     wEdges[E4].next         = E2;
     wEdges[E4].vertices[0]  = V3;
     wEdges[E4].vertices[1]  = V2;
 
+    wEdges[E5].prev         = E0;
     wEdges[E5].next         = E6;
     wEdges[E5].vertices[0]  = V1;
     wEdges[E5].vertices[1]  = V3;
 
+    wEdges[E6].prev         = E5;
     wEdges[E6].next         = E0;
     wEdges[E6].vertices[0]  = V3;
     wEdges[E6].vertices[1]  = V0;
 
+    wEdges[E7].prev         = E8;
     wEdges[E7].next         = E1;
     wEdges[E7].vertices[0]  = V3;
     wEdges[E7].vertices[1]  = V1;
 
-
+    wEdges[E8].prev         = E1;
     wEdges[E8].next         = E7;
     wEdges[E8].vertices[0]  = V2;
     wEdges[E8].vertices[1]  = V3;
@@ -190,6 +239,97 @@ void CSGShape::SplitTri(uint32_t triId, const float3 BaryCentricPoint)
     wFaces.push_back({E2});
 
     Build();
+}
+
+
+uint32_t CSGShape::_SplitEdge(uint32_t edgeId, const uint32_t V4)
+{
+    const uint32_t E1 = edgeId;
+    const uint32_t E2 = wEdges[E1].next;
+    const uint32_t E3 = wEdges[E2].next;
+    const uint32_t E4 = _AddEdge();
+    const uint32_t E5 = _AddEdge();
+    const uint32_t E6 = _AddEdge();
+
+    const uint32_t V1 = wEdges[E1].vertices[0];
+    const uint32_t V2 = wEdges[E2].vertices[0];
+    const uint32_t V3 = wEdges[E3].vertices[0];
+
+    const uint32_t oldFaceIdx = wEdges[E1].face;
+    const uint32_t newFaceIdx = wFaces.size();
+
+    // Lower triangle
+    // { V1, V4, V3 }
+    _RemoveVertexEdgeNeighbor(wEdges[E1].vertices[1], E1);
+    wEdges[E1].vertices[1]  = V4; // { V1, V4 }
+    wEdges[E1].next         = E4;
+
+    wEdges[E3].prev         = E4;
+
+    wEdges[E4].vertices[0]      = V4;
+    wEdges[E4].vertices[1]      = V3;
+    wEdges[E4].prev             = E1;
+    wEdges[E4].next             = E3;
+    wEdges[E4].face             = oldFaceIdx;
+    wEdges[E4].oppositeNeighbor = E6;
+
+    wFaces[oldFaceIdx].edgeStart = E1;
+
+    // Upper triangle
+    // From Split point to top of triangle
+    wEdges[E2].prev = E6;
+    wEdges[E2].next = E5;
+    wEdges[E2].face = newFaceIdx;
+
+    wEdges[E5].vertices[0]      = V3;
+    wEdges[E5].vertices[1]      = V4;
+    wEdges[E5].prev             = E2;
+    wEdges[E5].next             = E6;
+    wEdges[E5].oppositeNeighbor = E4;
+    wEdges[E5].face             = newFaceIdx;
+
+
+    wEdges[E6].vertices[0]      = V4;
+    wEdges[E6].vertices[1]      = V2;
+    wEdges[E6].prev             = E5;
+    wEdges[E6].next             = E2;
+    wEdges[E6].face             = newFaceIdx;
+
+    wVerticeEdges[V4].push_back(E1);
+    wVerticeEdges[V4].push_back(E4);
+    wVerticeEdges[V4].push_back(E5);
+    wVerticeEdges[V4].push_back(E6);
+
+    wFaces.push_back(wFace{ E2, {} });
+
+    auto T1 = GetTri(0);
+    auto T2 = GetTri(1);
+
+    return E5;
+}
+
+
+void CSGShape::SplitEdge(uint32_t edgeIdx, const float U)
+{
+    const uint32_t V1   = wEdges[edgeIdx].vertices[0];
+    const uint32_t V2   = wEdges[edgeIdx].vertices[1];
+    const float3 A      = wVertices[V1].point;
+    const float3 B      = wVertices[V2].point;
+    const float3 C      = FlexKit::Lerp(A, B, U);
+    const uint32_t V4   = _AddVertex();
+    wVertices[V4].point = C;
+
+    const auto E1 = _SplitEdge(edgeIdx, V4);
+
+    if (auto neighbor = wEdges[edgeIdx].oppositeNeighbor; neighbor != -1u)
+    {
+        auto E2 = _SplitEdge(neighbor, V4);
+
+        wEdges[edgeIdx].oppositeNeighbor    = E2;
+        wEdges[neighbor].oppositeNeighbor   = E1;
+        wEdges[E1].oppositeNeighbor         = neighbor;
+        wEdges[E2].oppositeNeighbor         = edgeIdx;
+    }
 }
 
 
@@ -501,14 +641,31 @@ CSGShape CreateCubeCSGShape() noexcept
     const uint32_t V7 = cubeShape.AddVertex({  1, -1, -1 });
     const uint32_t V8 = cubeShape.AddVertex({ -1, -1, -1 });
 
-
     // Top
-    const uint32_t T1 = cubeShape.AddTri(V1, V2, V3);
-    const uint32_t T2 = cubeShape.AddTri(V1, V3, V4);
+    cubeShape.AddTri(V1, V2, V3);
+    cubeShape.AddTri(V1, V3, V4);
+
+    /*
+    // Bottom
+    cubeShape.AddTri(V8, V6, V5);
+    cubeShape.AddTri(V6, V8, V7);
 
     // Right
-    const uint32_t T3 = cubeShape.AddTri(V3, V2, V6);
-    const uint32_t T4 = cubeShape.AddTri(V3, V6, V7);
+    cubeShape.AddTri(V3, V2, V6);
+    cubeShape.AddTri(V3, V6, V7);
+
+    // Left 
+    cubeShape.AddTri(V1, V4, V5);
+    cubeShape.AddTri(V5, V4, V8);
+
+    // Rear
+    cubeShape.AddTri(V2, V1, V6); // top triangle
+    cubeShape.AddTri(V6, V1, V5); // bottom triangle
+
+    // Front
+    cubeShape.AddTri(V4, V7, V8);
+    cubeShape.AddTri(V4, V3, V7);
+    */
 
     cubeShape.Build();
 
@@ -795,36 +952,32 @@ void CSGBrush::Rebuild() noexcept
     std::vector<Triangle*>          intersectSetB;
     std::vector<Triangle*>          finalSet;
 
+    const auto AABB_A = left->GetAABB();
+
+    for (auto& B : RHS_tris)
     {
-        const auto AABB_A = left->GetAABB();
+        auto AABB_B = B.GetAABB().Offset(right->position);
 
-        for (auto& B : RHS_tris)
+        if (!FlexKit::Intersects(AABB_A, AABB_B))
         {
-            auto AABB_B = B.GetAABB().Offset(right->position);
-
-            if (!FlexKit::Intersects(AABB_A, AABB_B))
-            {
-                shape.tris.push_back(B.Offset(right->position - position));
-            }
-            else
-                intersectSetB.push_back(&B);
+            shape.tris.push_back(B.Offset(right->position - position));
         }
+        else
+            intersectSetB.push_back(&B);
     }
 
+    const auto AABB_B = right->GetAABB();
+
+    for (auto& A : LHS_tris)
     {
-        const auto AABB_B = right->GetAABB();
+        auto AABB_A = A.GetAABB().Offset(left->position);
 
-        for (auto& A : LHS_tris)
+        if (!FlexKit::Intersects(AABB_A, AABB_B))
         {
-            auto AABB_A = A.GetAABB().Offset(left->position);
-
-            if (!FlexKit::Intersects(AABB_A, AABB_B))
-            {
-                shape.tris.push_back(A.Offset(left->position - position));
-            }
-            else
-                intersectSetA.push_back(&A);
+            shape.tris.push_back(A.Offset(left->position - position));
         }
+        else
+            intersectSetA.push_back(&A);
     }
 
 
@@ -1110,12 +1263,17 @@ public:
 
                 ImGui::Text(fmt::format("Tri count: {}", brush.shape.tris.size()).c_str());
             }
+
+            if (ImGui::Button("draw normals"))
+                drawNormals = !drawNormals;
         }
         ImGui::End();
     }
 
     void DrawSelectionDebugUI()
     {
+        auto& csgComponent = CSGComponent::GetComponent();
+
         if (selectionContext.selectedPrimitives.size())
         {
             ImGui::SetNextWindowPos({ 0, 400 });
@@ -1136,17 +1294,33 @@ public:
                         primitive.BaryCentricResult[2]).c_str());
                 }
 
+                ImGui::Text("debugVal1: %i", selection->debugVal1);
 
                 if (ImGui::Button("Split"))
                 {
-                    auto triIdx = selectionContext.selectedPrimitives[0].triIdx;
-                    selectionContext.brush->shape.SplitTri(triIdx, selectionContext.selectedPrimitives[0].BaryCentricResult);
+                    switch(selectionContext.mode)
+                    {
+                    case SelectionPrimitive::Edge:
+                    {
+                        auto edgeIdx = selectionContext.selectedEdge;
+                        if (edgeIdx != -1u)
+                        {
+                            selectionContext.brush->shape.SplitEdge(edgeIdx);
+                            selectionContext.brush->shape.Build();
+                        }
+                    }   break;
+                    case SelectionPrimitive::Triangle:
+                    {
+                        auto triIdx = selectionContext.selectedPrimitives[0].triIdx;
+                        selectionContext.brush->shape.SplitTri(triIdx, selectionContext.selectedPrimitives[0].BaryCentricResult);
+                    }   break;
+                    }
                 }
             }
             ImGui::End();
         }
     }
-
+    
     void DrawObjectManipulatorWidget() const
     {
         const auto selectedIdx  = selection.GetData().selectedBrush;
@@ -1210,7 +1384,6 @@ public:
 
     void Draw(FlexKit::UpdateDispatcher& dispatcher, FlexKit::FrameGraph& frameGraph, TemporaryBuffers& temps, FlexKit::ResourceHandle renderTarget, FlexKit::ResourceHandle depthBuffer) final
     {
-
         struct DrawHUD
         {
             FlexKit::ReserveVertexBufferFunction    ReserveVertexBuffer;
@@ -1277,12 +1450,13 @@ public:
                     ctx.SetGraphicsConstantBufferView(1, cameraConstants);
 
                     const size_t selectedNodeIdx    = selection.GetData().selectedBrush;
-                    FlexKit::VBPushBuffer VBBuffer  = data.ReserveVertexBuffer(sizeof(Vertex) * 1024 * brushes.size());
+                    FlexKit::VBPushBuffer TBBuffer  = data.ReserveVertexBuffer(sizeof(Vertex) * 1024 * brushes.size());
+                    FlexKit::VBPushBuffer LBBuffer  = data.ReserveVertexBuffer(sizeof(Vertex) * 1024 * brushes.size());
 
                     size_t idx = 0;
                     for (const auto& brush : brushes)
                     {
-                        FlexKit::float4 Color = (idx == selectedNodeIdx) ? FlexKit::float4{ 1, 1, 1, 1.0f } : FlexKit::float4{ 0.25f, 0.25f, 0.25f, 1.0f };
+                        FlexKit::float4 Color = (idx == selectedNodeIdx) ? FlexKit::float4{ 0.8f, 0.8f, 0.8f, 1.0f } : FlexKit::float4{ 0.25f, 0.25f, 0.25f, 1.0f };
 
                         const auto aabb     = brush.GetAABB();
                         const float r       = aabb.Dim()[aabb.LongestAxis()];
@@ -1290,9 +1464,12 @@ public:
 
                         std::vector<Vertex> verts;
 
-                        for (auto& tri : brush.shape.tris)
+                        for (size_t triIdx = 0; triIdx < brush.shape.tris.size(); triIdx++)
                         {
                             Vertex v;
+                            auto& tri = brush.shape.tris[triIdx];
+
+
                             v.Color     = Color;
                             v.UV        = FlexKit::float2(1, 1);
 
@@ -1301,20 +1478,13 @@ public:
                                 v.Position = FlexKit::float4(tri[idx], 1);
                                 verts.emplace_back(v);
                             }
-                            /*
-                            v.Position = FlexKit::float4(tri[0], 1);
-                            verts.emplace_back(v);
-                            v.Position = FlexKit::float4(tri[1], 1);
-                            verts.emplace_back(v);
-                            v.Position = FlexKit::float4(tri[1], 1);
-                            verts.emplace_back(v);
-                            v.Position = FlexKit::float4(tri[2], 1);
-                            verts.emplace_back(v);
-                            v.Position = FlexKit::float4(tri[2], 1);
-                            verts.emplace_back(v);
-                            v.Position = FlexKit::float4(tri[0], 1);
-                            verts.emplace_back(v);
-                            */
+                        }
+
+                        if (selectionContext.brush == &brush)
+                        {
+                            verts[selectionContext.selectedPrimitives[0].triIdx * 3 + 0].Color = FlexKit::float4{ 0.8, 0, 0, 1 };
+                            verts[selectionContext.selectedPrimitives[0].triIdx * 3 + 1].Color = FlexKit::float4{ 0.8, 0, 0, 1 };
+                            verts[selectionContext.selectedPrimitives[0].triIdx * 3 + 2].Color = FlexKit::float4{ 0.8, 0, 0, 1 };
                         }
 
                         for (auto& intersection : brush.intersections)
@@ -1328,46 +1498,17 @@ public:
                                 v.Position = FlexKit::float4(intersection.A[idx], 1);
                                 verts.emplace_back(v);
                             }
+
                             for (size_t idx = 0; idx < 3; idx++)
                             {
                                 v.Position = FlexKit::float4(intersection.B[idx], 1);
                                 verts.emplace_back(v);
                             }
-                            /*
-                            v.Position = FlexKit::float4(intersection.A[0], 1);
-                            verts.emplace_back(v);
-                            v.Position = FlexKit::float4(intersection.A[1], 1);
-                            verts.emplace_back(v);
-                            v.Position = FlexKit::float4(intersection.A[1], 1);
-                            verts.emplace_back(v);
-                            v.Position = FlexKit::float4(intersection.A[2], 1);
-                            verts.emplace_back(v);
-                            v.Position = FlexKit::float4(intersection.A[2], 1);
-                            verts.emplace_back(v);
-                            v.Position = FlexKit::float4(intersection.A[0], 1);
-                            verts.emplace_back(v);
-
-
-                            v.Position = FlexKit::float4(intersection.B[0], 1);
-                            verts.emplace_back(v);
-                            v.Position = FlexKit::float4(intersection.B[1], 1);
-                            verts.emplace_back(v);
-                            v.Position = FlexKit::float4(intersection.B[1], 1);
-                            verts.emplace_back(v);
-                            v.Position = FlexKit::float4(intersection.B[2], 1);
-                            verts.emplace_back(v);
-                            v.Position = FlexKit::float4(intersection.B[2], 1);
-                            verts.emplace_back(v);
-                            v.Position = FlexKit::float4(intersection.B[0], 1);
-                            verts.emplace_back(v);
-                            */
                         }
-
-                        selectionContext.GetSelectionUIGeometry(verts);
 
                         const FlexKit::VertexBufferDataSet vbDataSet{
                             verts,
-                            VBBuffer };
+                            TBBuffer };
 
                         ctx.SetVertexBuffers({ vbDataSet });
 
@@ -1385,6 +1526,66 @@ public:
 
                         ++idx;
 
+                    }
+
+
+                    for (const auto& brush : brushes)
+                    {
+                        ctx.SetPipelineState(resources.GetPipelineState(FlexKit::DRAW_LINE3D_PSO));
+                        ctx.SetPrimitiveTopology(FlexKit::EInputTopology::EIT_LINE);
+
+                        Vertex v;
+                        v.Color = FlexKit::float4{ 0, 0, 0, 0 };
+                        v.UV    = FlexKit::float2{ 1, 1 };
+
+                        auto& shape = brush.shape;
+
+                        std::vector<Vertex> verts;
+
+                        for (uint32_t faceIdx = 0; faceIdx < shape.wFaces.size(); faceIdx++)
+                        {
+                            auto& face      = shape.wFaces[faceIdx];
+                            auto edgeIdx    = face.edgeStart;
+
+                            for(size_t i = 0; i < 3; i++)
+                            {
+                                const CSGShape::wEdge& edge = shape.wEdges[edgeIdx];
+
+                                v.Position = FlexKit::float4{ shape.wVertices[edge.vertices[0]].point, 1 };
+                                verts.emplace_back(v);
+
+                                v.Position = FlexKit::float4{ shape.wVertices[edge.vertices[1]].point, 1 };
+                                verts.emplace_back(v);
+
+                                edgeIdx = edge.next;
+                            }
+
+                            if (drawNormals)
+                            {
+                                const auto tri  = shape.GetTri(faceIdx).Offset(brush.position);
+                                const auto A    = tri.TriPoint();
+                                const auto B    = A + tri.Normal().normal();
+
+                                verts.push_back(
+                                    Vertex{
+                                        .Position   = A,
+                                        .Color      = FlexKit::float4{ 1, 1, 1, 1 },
+                                        .UV         = FlexKit::float2{ 0, 0 }
+                                    });
+
+                                verts.push_back(
+                                    Vertex{
+                                        .Position   = B,
+                                        .Color      = FlexKit::float4{ 1, 1, 1, 1 },
+                                        .UV         = FlexKit::float2{ 1, 1 }
+                                    });
+                            }
+                        }
+
+                        const FlexKit::VertexBufferDataSet vbDataSet{ verts, TBBuffer };
+
+                        ctx.SetVertexBuffers({ vbDataSet });
+                        ctx.Draw(verts.size());
                     }
 
                     ctx.EndEvent_DEBUG();
@@ -1430,6 +1631,57 @@ public:
             {
                 switch (selectionContext.mode)
                 {
+                case SelectionPrimitive::Edge:
+                {
+                    size_t selectedIdx  = -1;
+                    float  minDistance  = 10000.0f;
+                    const auto r        = viewport.GetMouseRay();
+
+                    for (const auto& brush : selection.GetData().brushes)
+                    {
+                        const auto AABB = brush.GetAABB();
+                        auto res = FlexKit::Intersects(r, AABB);
+                        if (res && res.value() < minDistance && res.value() > 0.0f)
+                        {
+                            if (auto res = brush.RayCast(r); res)
+                            {
+                                if (res->distance < minDistance)
+                                {
+                                    selectionContext.selectedPrimitives.clear();
+                                    selectionContext.selectedPrimitives.push_back(*res);
+                                    selectionContext.brush = const_cast<CSGBrush*>(&brush);
+                                    selectionContext.shape = const_cast<CSGShape*>(&brush.shape);
+
+                                    const auto point_BC = res->BaryCentricResult;
+
+                                    if (FlexKit::Min(point_BC.x, 0.5f) + FlexKit::Min(point_BC.y, 0.5f) > 0.75f)
+                                    {
+                                        const auto edge1 = res->shape->wFaces[res->triIdx].edgeStart;
+
+                                        selectionContext.selectedEdge = edge1;
+                                    }
+                                    else if (point_BC.y + point_BC.z > 0.75f)
+                                    {
+                                        const auto edge1 = res->shape->wFaces[res->triIdx].edgeStart;
+                                        const auto edge2 = res->shape->NextEdge(edge1);
+
+                                        selectionContext.selectedEdge = edge2;
+                                    }
+                                    else if (point_BC.x + point_BC.z > 0.75f)
+                                    {
+                                        const auto edge1 = res->shape->wFaces[res->triIdx].edgeStart;
+                                        const auto edge2 = res->shape->NextEdge(edge1);
+                                        const auto edge3 = res->shape->NextEdge(edge2);
+
+                                        selectionContext.selectedEdge = edge3;
+                                    }
+
+                                }
+                            }
+                        }
+                    }
+                    return;
+                }   break;
                 case SelectionPrimitive::Triangle:
                 {
                     size_t selectedIdx = -1;
@@ -1552,8 +1804,9 @@ public:
     {
         SelectionPrimitive mode = SelectionPrimitive::Disabled;
 
-        CSGBrush*   brush   = nullptr;
-        CSGShape*   shape   = nullptr;
+        CSGBrush*   brush       = nullptr;
+        CSGShape*   shape       = nullptr;
+        uint32_t selectedEdge   = -1;
 
         std::vector<CSGBrush::RayCast_result> selectedPrimitives;
 
@@ -1595,6 +1848,8 @@ public:
 
     ImGuizmo::MODE      space       = ImGuizmo::MODE::WORLD;
     ImGuizmo::OPERATION operation   = ImGuizmo::OPERATION::TRANSLATE;
+
+    bool drawNormals = false;
 
     EditorViewport&             viewport;
     CSGView&                    selection;
@@ -1670,23 +1925,26 @@ public:
             [&]
             {
                 auto& csg = csgView.GetData();
-                CSGBrush brush1;
-                brush1.op       = CSG_OP::CSG_ADD;
-                brush1.shape    = CreateCubeCSGShape();
-                brush1.position = FlexKit::float3{ 0.5f, 0.5f, 0.5f };
-                brush1.dirty    = true;
 
-                CSGBrush brush2;
-                brush2.op       = CSG_OP::CSG_ADD;
-                brush2.shape    = CreateCubeCSGShape();
-                brush2.position = FlexKit::float3{ 0.5f, 0.5f, 0.5f };
-                brush2.dirty    = true;
+                if(csg.brushes.size() == 0)
+                {
+                    CSGBrush brush1;
+                    brush1.op       = CSG_OP::CSG_ADD;
+                    brush1.shape    = CreateCubeCSGShape();
+                    brush1.position = FlexKit::float3{ 0 };
+                    brush1.shape.Build();
 
-                csg.brushes.push_back(brush1);
-                csg.brushes.push_back(brush2);
+                    csg.brushes.emplace_back(std::move(brush1));
+                    csg.selectedBrush = -1;
+                }
 
-                UpdateCSGComponent(csg);
+                CSGShape& shape = csg.brushes.back().shape;
+                shape = CreateCubeCSGShape();
+                shape.SplitEdge(2);
+                shape.SplitEdge(2);
+                shape.Build();
 
+                csg.debugVal1++;
             });
 
         panelCtx.AddList(

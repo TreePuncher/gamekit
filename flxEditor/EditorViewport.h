@@ -68,6 +68,7 @@ public:
     void resizeEvent    (QResizeEvent* event) override;
     void SetScene       (EditorScene_ptr scene);
 
+
     std::shared_ptr<ViewportScene>& GetScene()              { return scene; }
     SelectionContext&               GetSelectionContext()   { return selectionContext; }
 
@@ -75,6 +76,12 @@ public:
     {
         if(mode.empty() || newMode->GetModeID() != mode.back()->GetModeID())
             mode.push_back(newMode);
+    }
+
+    void ClearMode()
+    {
+        while (mode.size())
+            mode.pop_back();
     }
 
     FlexKit::ImGUIIntegrator& GetHUD()

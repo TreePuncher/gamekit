@@ -385,6 +385,7 @@ void SceneOutliner::ShowContextMenu(const QPoint& point)
             {
                 auto currentItem = static_cast<HierarchyItem*>(treeWidget.currentItem());
 
+                viewport.ClearMode(); // Mode needs to be cleared since deleting actively selected object may cause a crash
                 viewport.GetScene()->RemoveObject(currentItem->viewportObject);
                 treeWidget.removeItemWidget(currentItem, 0);
 

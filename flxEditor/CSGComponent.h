@@ -39,8 +39,6 @@ struct CSGShape
     struct wVertex
     {
         float3   point;
-
-        uint32_t FindEdge(uint32_t V1, uint32_t V2) const;
     };
 
     struct wEdge // Half Edge, directed structure
@@ -48,7 +46,8 @@ struct CSGShape
         uint32_t vertices[2];
         uint32_t oppositeNeighbor;
         uint32_t next;
-        uint32_t previous;
+        uint32_t prev;
+        uint32_t face;
     };
 
     struct wFace
@@ -66,15 +65,26 @@ struct CSGShape
 
     std::vector<Triangle>   tris; // Generated from the wing mesh representation
 
-    uint32_t QueryEdge(uint32_t V1, uint32_t V2) const;
+    uint32_t FindOpposingEdge(uint32_t V1, uint32_t V2) const noexcept;
 
     uint32_t AddVertex    (FlexKit::float3 point);
-    uint32_t AddEdge      (uint32_t V1, uint32_t V2);
+    uint32_t AddEdge      (uint32_t V1, uint32_t V2, uint32_t owningFace);
     uint32_t AddTri       (uint32_t V1, uint32_t V2, uint32_t V3);
     uint32_t AddPolygon   (uint32_t* tri_start, uint32_t* tri_end);
 
-    Triangle    GetTri      (uint32_t triId) const;
+    uint32_t _AddEdge   ();
+    uint32_t _AddVertex ();
+
+    uint32_t _SplitEdge                 (const uint32_t edgeId,     const uint32_t vertexIdx);
+    void     _RemoveVertexEdgeNeighbor  (const uint32_t vertexIdx,  const uint32_t edgeIdx);
+
+    FlexKit::LineSegment    GetEdgeSegment  (uint32_t edgeId) const;
+    Triangle                GetTri          (uint32_t triId) const;
+
+    uint32_t    NextEdge(const uint32_t edgeIdx) const;
+
     void        SplitTri    (uint32_t triId, const float3 BaryCentricPoint = float3{ 1.0f/3.0f });
+    void        SplitEdge   (uint32_t edgeId, const float U = 0.5f);
 
     void Build();
 
@@ -194,6 +204,7 @@ struct CSGComponentData
 {
     std::vector<CSGBrush>   brushes;
     int32_t                 selectedBrush = -1;
+    int                     debugVal1 = 0;
 };
 
 

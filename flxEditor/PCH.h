@@ -26,6 +26,10 @@
 #include <qdebug>
 #include <qevent.h>
 #include <fmt/format.h>
+#include "qlistwidget.h"
+#include <QtWidgets\qlistwidget.h>
 
 #include <Win32Graphics.h>
 #include <Windows.h>
+#include <imgui.h>
+#include <ImGuizmo.h>

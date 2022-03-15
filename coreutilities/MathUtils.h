@@ -1215,7 +1215,7 @@ namespace FlexKit
 
     inline float3 TripleProduct(const float3 A, const float3 B, const float3 C) noexcept
     {
-        return (B - A).cross(C - A).normal();
+        return (B - A).cross(C - A);
     }
 
 
