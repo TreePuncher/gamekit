@@ -97,6 +97,9 @@ uint32_t CSGShape::_AddEdge()
 }
 
 
+/************************************************************************************************/
+
+
 uint32_t CSGShape::_AddVertex()
 {
     const uint32_t idx = wVertices.size();
@@ -107,11 +110,17 @@ uint32_t CSGShape::_AddVertex()
 }
 
 
+/************************************************************************************************/
+
+
 uint32_t CSGShape::AddPolygon(uint32_t* tri_start, uint32_t* tri_end)
 {
     // TODO
     return -1;
 }
+
+
+/************************************************************************************************/
 
 
 FlexKit::LineSegment CSGShape::GetEdgeSegment(uint32_t edgeId) const
@@ -123,6 +132,9 @@ FlexKit::LineSegment CSGShape::GetEdgeSegment(uint32_t edgeId) const
         .B = wVertices[vertices[1]].point,
     };
 }
+
+
+/************************************************************************************************/
 
 
 Triangle CSGShape::GetTri(uint32_t polyId) const
@@ -141,10 +153,16 @@ Triangle CSGShape::GetTri(uint32_t polyId) const
 }
 
 
+/************************************************************************************************/
+
+
 uint32_t CSGShape::NextEdge(const uint32_t edgeIdx) const
 {
     return wEdges[edgeIdx].next;
 }
+
+
+/************************************************************************************************/
 
 
 void CSGShape::_RemoveVertexEdgeNeighbor(const uint32_t vertexIdx, const uint32_t edgeIdx)
@@ -158,6 +176,9 @@ void CSGShape::_RemoveVertexEdgeNeighbor(const uint32_t vertexIdx, const uint32_
             [&](auto& lhs) { return lhs == edgeIdx; }),
         vertexNeighbor.end());
 }
+
+
+/************************************************************************************************/
 
 
 void CSGShape::SplitTri(uint32_t triId, const float3 BaryCentricPoint)
@@ -242,7 +263,10 @@ void CSGShape::SplitTri(uint32_t triId, const float3 BaryCentricPoint)
 }
 
 
-uint32_t CSGShape::_SplitEdge(uint32_t edgeId, const uint32_t V4)
+/************************************************************************************************/
+
+
+uint32_t CSGShape::_SplitEdge(const uint32_t edgeId, const uint32_t V4)
 {
     const uint32_t E1 = edgeId;
     const uint32_t E2 = wEdges[E1].next;
@@ -309,7 +333,10 @@ uint32_t CSGShape::_SplitEdge(uint32_t edgeId, const uint32_t V4)
 }
 
 
-void CSGShape::SplitEdge(uint32_t edgeIdx, const float U)
+/************************************************************************************************/
+
+
+void CSGShape::SplitEdge(const uint32_t edgeIdx, const float U)
 {
     const uint32_t V1   = wEdges[edgeIdx].vertices[0];
     const uint32_t V2   = wEdges[edgeIdx].vertices[1];
@@ -331,6 +358,70 @@ void CSGShape::SplitEdge(uint32_t edgeIdx, const float U)
         wEdges[E2].oppositeNeighbor         = edgeIdx;
     }
 }
+
+
+/************************************************************************************************/
+
+
+void CSGShape::RotateEdgeCCW(const uint32_t E1)
+{
+    if (wEdges[E1].oppositeNeighbor == -1)
+        return;
+
+    const auto E2 = wEdges[E1].next;
+    const auto E3 = wEdges[E2].next;
+    const auto E4 = wEdges[E1].oppositeNeighbor;
+    const auto E5 = wEdges[E4].next;
+    const auto E6 = wEdges[E5].next;
+
+    const auto V1 = wEdges[E1].vertices[0];
+    const auto V2 = wEdges[E2].vertices[0];
+    const auto V3 = wEdges[E3].vertices[0];
+    const auto V4 = wEdges[E6].vertices[0];
+
+    const auto P1 = wEdges[E1].face;
+    const auto P2 = wEdges[E4].face;
+
+    _RemoveVertexEdgeNeighbor(wEdges[E1].vertices[0], E1);
+    _RemoveVertexEdgeNeighbor(wEdges[E1].vertices[1], E1);
+    wEdges[E1].vertices[0]  = V4;
+    wEdges[E1].vertices[1]  = V3;
+    wEdges[E1].next         = E3;
+    wEdges[E1].prev         = E5;
+    wVerticeEdges[V2].push_back(E1);
+    wVerticeEdges[V4].push_back(E1);
+
+    wEdges[E3].prev = E1;
+    wEdges[E3].next = E5;
+    wEdges[E3].face = P1;
+
+    wEdges[E5].prev = E5;
+    wEdges[E5].next = E1;
+    wEdges[E5].face = P1;
+
+    _RemoveVertexEdgeNeighbor(wEdges[E4].vertices[0], E4);
+    _RemoveVertexEdgeNeighbor(wEdges[E4].vertices[1], E4);
+    wEdges[E4].vertices[0]  = V3;
+    wEdges[E4].vertices[1]  = V4;
+    wEdges[E4].next         = E6;
+    wEdges[E4].prev         = E2;
+    wVerticeEdges[V2].push_back(E4);
+    wVerticeEdges[V4].push_back(E4);
+
+    wEdges[E6].prev = E4;
+    wEdges[E6].next = E2;
+    wEdges[E6].face = P2;
+
+    wEdges[E2].prev = E6;
+    wEdges[E2].next = E4;
+    wEdges[E2].face = P2;
+
+    wFaces[P1].edgeStart = E1;
+    wFaces[P2].edgeStart = E4;
+}
+
+
+/************************************************************************************************/
 
 
 void CSGShape::Build()
@@ -645,6 +736,7 @@ CSGShape CreateCubeCSGShape() noexcept
     cubeShape.AddTri(V1, V2, V3);
     cubeShape.AddTri(V1, V3, V4);
 
+    /*
     // Bottom
     cubeShape.AddTri(V8, V6, V5);
     cubeShape.AddTri(V6, V8, V7);
@@ -664,6 +756,7 @@ CSGShape CreateCubeCSGShape() noexcept
     // Front
     cubeShape.AddTri(V4, V7, V8);
     cubeShape.AddTri(V4, V3, V7);
+    */
 
     cubeShape.Build();
 
@@ -1313,6 +1406,14 @@ public:
                         selectionContext.brush->shape.SplitTri(triIdx, selectionContext.selectedPrimitives[0].BaryCentricResult);
                     }   break;
                     }
+                }
+
+                if ( ImGui::Button("Rotate Edge") &&
+                    (selectionContext.mode == SelectionPrimitive::Edge) &&
+                    (selectionContext.selectedEdge != -1))
+                {
+                    selectionContext.brush->shape.RotateEdgeCCW(selectionContext.selectedEdge);
+                    selectionContext.brush->shape.Build();
                 }
             }
             ImGui::End();
