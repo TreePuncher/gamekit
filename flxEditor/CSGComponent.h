@@ -89,8 +89,9 @@ struct CSGShape
 
     uint32_t    NextEdge(const uint32_t edgeIdx) const;
 
-    void        SplitTri    (uint32_t triId, const float3 BaryCentricPoint = float3{ 1.0f/3.0f });
-    void        SplitEdge   (uint32_t edgeId, const float U = 0.5f);
+    void        SplitTri        (const uint32_t triId, const float3 BaryCentricPoint = float3{ 1.0f/3.0f });
+    void        SplitEdge       (const uint32_t edgeId, const float U = 0.5f);
+    void        RotateEdgeCCW   (const uint32_t edgeId);
 
     void Build();
 
