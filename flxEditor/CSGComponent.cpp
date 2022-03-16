@@ -156,6 +156,21 @@ Triangle CSGShape::GetTri(uint32_t polyId) const
 /************************************************************************************************/
 
 
+uint32_t CSGShape::GetVertexFromFaceLocalIdx(uint32_t faceIdx, uint32_t vertexIdx) const
+{
+    const auto start = wFaces[faceIdx].edgeStart;
+    auto edge = start;
+
+    for(size_t I = 0; I < vertexIdx && (I == 0 || edge != start); ++I)
+        edge = wEdges[edge].next;
+
+    return wEdges[edge].vertices[0];
+}
+
+
+/************************************************************************************************/
+
+
 uint32_t CSGShape::NextEdge(const uint32_t edgeIdx) const
 {
     return wEdges[edgeIdx].next;
@@ -381,7 +396,7 @@ void CSGShape::RotateEdgeCCW(const uint32_t E1)
 
     const auto P1 = wEdges[E1].face;
     const auto P2 = wEdges[E4].face;
-
+    
     _RemoveVertexEdgeNeighbor(wEdges[E1].vertices[0], E1);
     _RemoveVertexEdgeNeighbor(wEdges[E1].vertices[1], E1);
     wEdges[E1].vertices[0]  = V4;
@@ -736,7 +751,6 @@ CSGShape CreateCubeCSGShape() noexcept
     cubeShape.AddTri(V1, V2, V3);
     cubeShape.AddTri(V1, V3, V4);
 
-    /*
     // Bottom
     cubeShape.AddTri(V8, V6, V5);
     cubeShape.AddTri(V6, V8, V7);
@@ -756,7 +770,6 @@ CSGShape CreateCubeCSGShape() noexcept
     // Front
     cubeShape.AddTri(V4, V7, V8);
     cubeShape.AddTri(V4, V3, V7);
-    */
 
     cubeShape.Build();
 
@@ -1313,6 +1326,7 @@ public:
                 "Edge",
                 "Triangle",
                 "Polygon",
+                "Object",
                 "Disabled",
             };
 
@@ -1327,6 +1341,8 @@ public:
                 if (ImGui::Selectable(selectionStr[3]))
                     selectionContext.mode = SelectionPrimitive::Polygon;
                 if (ImGui::Selectable(selectionStr[4]))
+                    selectionContext.mode = SelectionPrimitive::Object;
+                if (ImGui::Selectable(selectionStr[5]))
                     selectionContext.mode = SelectionPrimitive::Disabled;
 
                 ImGui::EndCombo();
@@ -1393,7 +1409,7 @@ public:
                     {
                     case SelectionPrimitive::Edge:
                     {
-                        auto edgeIdx = selectionContext.selectedEdge;
+                        auto edgeIdx = selectionContext.selectedElement;
                         if (edgeIdx != -1u)
                         {
                             selectionContext.brush->shape.SplitEdge(edgeIdx);
@@ -1410,17 +1426,17 @@ public:
 
                 if ( ImGui::Button("Rotate Edge") &&
                     (selectionContext.mode == SelectionPrimitive::Edge) &&
-                    (selectionContext.selectedEdge != -1))
+                    (selectionContext.selectedElement != -1))
                 {
-                    selectionContext.brush->shape.RotateEdgeCCW(selectionContext.selectedEdge);
+                    selectionContext.brush->shape.RotateEdgeCCW(selectionContext.selectedElement);
                     selectionContext.brush->shape.Build();
                 }
             }
             ImGui::End();
         }
     }
-    
-    void DrawObjectManipulatorWidget() const
+
+    void ObjectManipulatorMode() const
     {
         const auto selectedIdx  = selection.GetData().selectedBrush;
         if (selectedIdx == -1)
@@ -1478,6 +1494,71 @@ public:
                 else
                     itr++;
             }
+        }
+    }
+
+    void VertexManipulatorMode() const
+    {
+        if (selectionContext.selectedElement == -1)
+            return;
+
+        const auto selectedIdx = selection.GetData().selectedBrush;
+        if (selectedIdx == -1)
+            return;
+
+        auto& brushes   = selection.GetData().brushes;
+        auto& brush     = brushes[selectedIdx];
+
+        if (brushes.size() < selectedIdx)
+            return;
+
+        ImGuiIO& io = ImGui::GetIO();
+        ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
+
+        const auto camera = viewport.GetViewportCamera();
+        FlexKit::CameraComponent::GetComponent().GetCamera(camera).UpdateMatrices();
+        auto& cameraData = FlexKit::CameraComponent::GetComponent().GetCamera(camera);
+
+        const auto vertexIdx    = selectionContext.selectedElement;
+        float3 point            = selectionContext.shape->wVertices[vertexIdx].point;
+
+                FlexKit::float4x4 m             = FlexKit::TranslationMatrix(point);
+                FlexKit::float4x4 delta         = FlexKit::float4x4::Identity();
+
+        const   FlexKit::float4x4 view          = cameraData.View.Transpose();
+        const   FlexKit::float4x4 projection    = cameraData.Proj;
+
+        if (ImGuizmo::Manipulate(view, projection, operation, space, m, delta))
+        {
+            FlexKit::float3 rotation;
+            FlexKit::float3 scale;
+            ImGuizmo::DecomposeMatrixToComponents(m, point, rotation, scale);
+
+            selectionContext.shape->wVertices[vertexIdx].point = point;
+            selectionContext.shape->Build();
+        }
+
+        ImGui::SetNextWindowPos({ 0, 400 });
+        if (ImGui::Begin("Vertex Manipulator", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
+        {
+            ImGui::SetWindowSize({ 400, 400 });
+            ImGui::InputFloat3("XYZ", point);
+        }
+        ImGui::End();
+    }
+
+    void DrawObjectManipulatorWidget() const
+    {
+        switch (selectionContext.mode)
+        {
+        case SelectionPrimitive::Vertex:
+            VertexManipulatorMode();
+            return;
+        case SelectionPrimitive::Object:
+            ObjectManipulatorMode();
+            return;
+        default:
+            break;
         }
     }
 
@@ -1709,6 +1790,121 @@ public:
         }
     }
 
+    void RayCast(const FlexKit::Ray& R, auto OnHit)
+    {
+        size_t selectedIdx  = -1;
+        float  minDistance  = 10000.0f;
+        const auto r        = viewport.GetMouseRay();
+
+        const CSGBrush*             hitBrush;
+        CSGBrush::RayCast_result    hitResult;
+
+        for (const auto& brush : selection.GetData().brushes)
+        {
+            const auto AABB = brush.GetAABB();
+            auto res = FlexKit::Intersects(r, AABB);
+            if (res && res.value() < minDistance && res.value() > 0.0f)
+            {
+                if (auto res = brush.RayCast(r); res)
+                {
+                    if (res->distance < minDistance)
+                    {
+                        minDistance = res->distance;
+                        hitResult   = res.value();
+                        hitBrush    = &brush;
+                    }
+                }
+            }
+        }
+
+        if (minDistance < 10'000.0f)
+            OnHit(hitResult, *hitBrush);
+    }
+
+    void EdgeSelectionMode(QMouseEvent* evt)
+    {
+        const auto r = viewport.GetMouseRay();
+
+        RayCast(
+            r,
+            [&](CSGBrush::RayCast_result& hit, const CSGBrush& brush)
+            {
+                const auto point_BC     = hit.BaryCentricResult;
+                uint32_t selectedEdge   = -1;
+
+                if (FlexKit::Min(point_BC.x, 0.5f) + FlexKit::Min(point_BC.y, 0.5f) > 0.75f)
+                {
+                    const auto edge1 = hit.shape->wFaces[hit.triIdx].edgeStart;
+
+                    selectedEdge = edge1;
+                }
+                else if (point_BC.y + point_BC.z > 0.75f)
+                {
+                    const auto edge1 = hit.shape->wFaces[hit.triIdx].edgeStart;
+                    const auto edge2 = hit.shape->NextEdge(edge1);
+
+                    selectedEdge = edge2;
+                }
+                else if (point_BC.x + point_BC.z > 0.75f)
+                {
+                    const auto edge1 = hit.shape->wFaces[hit.triIdx].edgeStart;
+                    const auto edge2 = hit.shape->NextEdge(edge1);
+                    const auto edge3 = hit.shape->NextEdge(edge2);
+
+                    selectedEdge = edge3;
+                }
+
+                selectionContext.SetSelectedEdge(
+                    hit,
+                    const_cast<CSGBrush&>(brush),
+                    const_cast<CSGShape&>(brush.shape),
+                    selectedEdge);
+            });
+    }
+
+    void TriangleSelectionMode(QMouseEvent* evt)
+    {
+        const auto r = viewport.GetMouseRay();
+
+        RayCast(
+            r,
+            [&](CSGBrush::RayCast_result& hit, const CSGBrush& brush)
+            {
+                selectionContext.SetSelectedTriangle(
+                    hit,
+                    const_cast<CSGBrush&>(brush),
+                    const_cast<CSGShape&>(brush.shape));
+            });
+    }
+
+    void VertexSelectionMode(QMouseEvent* evt)
+    {
+        const auto r = viewport.GetMouseRay();
+
+        RayCast(
+            r,
+            [&](CSGBrush::RayCast_result& hit, const CSGBrush& brush)
+            {
+                const auto point_BC = hit.BaryCentricResult;
+                uint32_t faceVertex = -1;
+
+                if (point_BC.x > 0.65)
+                    faceVertex = 0;
+                else if (point_BC.y > 0.65)
+                    faceVertex = 1;
+                else if (point_BC.z > 0.65)
+                    faceVertex = 2;
+
+                auto selectedVertex = hit.shape->GetVertexFromFaceLocalIdx(hit.triIdx, faceVertex);
+
+                selectionContext.SetSelectedVertex(
+                    hit,
+                    const_cast<CSGBrush&>(brush),
+                    const_cast<CSGShape&>(brush.shape),
+                    selectedVertex);
+            });
+    }
+
     void mousePressEvent(QMouseEvent* evt) final 
     {
         if(ImGui::IsAnyItemHovered() || mode == CSGEditMode::Mode::Manipulator)
@@ -1746,82 +1942,17 @@ public:
             {
                 switch (selectionContext.mode)
                 {
+                case SelectionPrimitive::Vertex:
+                {
+                    VertexSelectionMode(evt);
+                }   break;
                 case SelectionPrimitive::Edge:
                 {
-                    size_t selectedIdx  = -1;
-                    float  minDistance  = 10000.0f;
-                    const auto r        = viewport.GetMouseRay();
-
-                    for (const auto& brush : selection.GetData().brushes)
-                    {
-                        const auto AABB = brush.GetAABB();
-                        auto res = FlexKit::Intersects(r, AABB);
-                        if (res && res.value() < minDistance && res.value() > 0.0f)
-                        {
-                            if (auto res = brush.RayCast(r); res)
-                            {
-                                if (res->distance < minDistance)
-                                {
-                                    selectionContext.selectedPrimitives.clear();
-                                    selectionContext.selectedPrimitives.push_back(*res);
-                                    selectionContext.brush = const_cast<CSGBrush*>(&brush);
-                                    selectionContext.shape = const_cast<CSGShape*>(&brush.shape);
-
-                                    const auto point_BC = res->BaryCentricResult;
-
-                                    if (FlexKit::Min(point_BC.x, 0.5f) + FlexKit::Min(point_BC.y, 0.5f) > 0.75f)
-                                    {
-                                        const auto edge1 = res->shape->wFaces[res->triIdx].edgeStart;
-
-                                        selectionContext.selectedEdge = edge1;
-                                    }
-                                    else if (point_BC.y + point_BC.z > 0.75f)
-                                    {
-                                        const auto edge1 = res->shape->wFaces[res->triIdx].edgeStart;
-                                        const auto edge2 = res->shape->NextEdge(edge1);
-
-                                        selectionContext.selectedEdge = edge2;
-                                    }
-                                    else if (point_BC.x + point_BC.z > 0.75f)
-                                    {
-                                        const auto edge1 = res->shape->wFaces[res->triIdx].edgeStart;
-                                        const auto edge2 = res->shape->NextEdge(edge1);
-                                        const auto edge3 = res->shape->NextEdge(edge2);
-
-                                        selectionContext.selectedEdge = edge3;
-                                    }
-
-                                }
-                            }
-                        }
-                    }
-                    return;
+                    EdgeSelectionMode(evt);
                 }   break;
                 case SelectionPrimitive::Triangle:
                 {
-                    size_t selectedIdx = -1;
-                    float  minDistance = 10000.0f;
-                    const auto r = viewport.GetMouseRay();
-
-                    for (const auto& brush : selection.GetData().brushes)
-                    {
-                        const auto AABB = brush.GetAABB();
-                        auto res = FlexKit::Intersects(r, AABB);
-                        if (res && res.value() < minDistance && res.value() > 0.0f)
-                        {
-                            if (auto res = brush.RayCast(r); res)
-                            {
-                                if (res->distance < minDistance)
-                                {
-                                    selectionContext.selectedPrimitives.clear();
-                                    selectionContext.selectedPrimitives.push_back(*res);
-                                    selectionContext.brush = const_cast<CSGBrush*>(&brush);
-                                    selectionContext.shape = const_cast<CSGShape*>(&brush.shape);
-                                }
-                            }
-                        }
-                    }
-                    return;
+                    TriangleSelectionMode(evt);
                 }   break;
                 default:
                     break;
@@ -1885,16 +2016,16 @@ public:
         switch (evt->key())
         {
         case Qt::Key_W:
+            mode        = (mode != Mode::Manipulator) ? mode = Mode::Manipulator : mode = Mode::Selection;
             operation   = ImGuizmo::OPERATION::TRANSLATE;
-            mode        = Mode::Manipulator;
             break;
         case Qt::Key_E:
+            mode        = (mode != Mode::Manipulator) ? mode = Mode::Manipulator : mode = Mode::Selection;
             operation   = ImGuizmo::OPERATION::SCALE;
-            mode        = Mode::Manipulator;
             break;
         case Qt::Key_R:
+            mode        = (mode != Mode::Manipulator) ? mode = Mode::Manipulator : mode = Mode::Selection;
             operation   = ImGuizmo::OPERATION::ROTATE;
-            mode        = Mode::Manipulator;
             break;
         case Qt::Key_T:
         {
@@ -1912,6 +2043,7 @@ public:
         Edge,
         Triangle,
         Polygon,
+        Object,
         Disabled
     };
 
@@ -1919,11 +2051,44 @@ public:
     {
         SelectionPrimitive mode = SelectionPrimitive::Disabled;
 
-        CSGBrush*   brush       = nullptr;
-        CSGShape*   shape       = nullptr;
-        uint32_t selectedEdge   = -1;
+        CSGBrush*   brush           = nullptr;
+        CSGShape*   shape           = nullptr;
+        uint32_t selectedElement    = -1;
 
         std::vector<CSGBrush::RayCast_result> selectedPrimitives;
+
+        void SetSelectedEdge(CSGBrush::RayCast_result& hit, CSGBrush& IN_brush, CSGShape& IN_shape, const uint32_t edgeIdx)
+        {
+            selectedPrimitives.clear();
+
+            selectedPrimitives.push_back(hit);
+            selectedElement     = edgeIdx;
+            mode                = SelectionPrimitive::Edge;
+            brush               = const_cast<CSGBrush*>(&IN_brush);
+            shape               = const_cast<CSGShape*>(&IN_shape);
+        }
+
+        void SetSelectedTriangle(CSGBrush::RayCast_result& hit, CSGBrush& IN_brush, CSGShape& IN_shape)
+        {
+            selectedPrimitives.clear();
+
+            selectedPrimitives.push_back(hit);
+            selectedElement = hit.triIdx;
+            mode            = SelectionPrimitive::Triangle;
+            brush           = const_cast<CSGBrush*>(&IN_brush);
+            shape           = const_cast<CSGShape*>(&IN_shape);
+        }
+
+        void SetSelectedVertex(CSGBrush::RayCast_result& hit, CSGBrush& IN_brush, CSGShape& IN_shape, const uint32_t vertexIdx)
+        {
+            selectedPrimitives.clear();
+
+            selectedPrimitives.push_back(hit);
+            selectedElement = vertexIdx;
+            mode            = SelectionPrimitive::Vertex;
+            brush           = const_cast<CSGBrush*>(&IN_brush);
+            shape           = const_cast<CSGShape*>(&IN_shape);
+        }
 
         void GetSelectionUIGeometry(std::vector<Vertex>& verts) const
         {
@@ -2056,8 +2221,9 @@ public:
                 CSGShape& shape = csg.brushes.back().shape;
                 shape = CreateCubeCSGShape();
 
-                for(size_t I = 0; I < 32; I++)
-                    shape.SplitEdge(rand() % shape.wEdges.size());
+                const auto end = shape.wFaces.size();
+                for (uint32_t faceIdx = 0; faceIdx < end; faceIdx++)
+                    shape.SplitTri(faceIdx);
 
                 shape.Build();
 
