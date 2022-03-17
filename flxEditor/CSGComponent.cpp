@@ -113,10 +113,46 @@ uint32_t CSGShape::_AddVertex()
 /************************************************************************************************/
 
 
-uint32_t CSGShape::AddPolygon(uint32_t* tri_start, uint32_t* tri_end)
+uint32_t CSGShape::AddPolygon(const uint32_t* vertexStart, const uint32_t* vertexEnd)
 {
-    // TODO
-    return -1;
+    uint32_t firstEdge      = -1;
+    uint32_t previousEdge   = -1;
+    const auto faceIdx = wFaces.size();
+
+    for (auto itr = vertexStart; itr != vertexEnd; itr++)
+    {
+        uint32_t edge = -1u;
+        if (itr + 1 != vertexEnd)
+        {
+            edge = AddEdge(itr[0], itr[1], faceIdx);
+            wEdges[edge].prev = previousEdge;
+
+            if (previousEdge != -1)
+                wEdges[previousEdge].next = edge;
+            else
+                firstEdge = edge;
+        }
+        else
+        {
+            edge = AddEdge(
+                wEdges[previousEdge].vertices[1],
+                wEdges[firstEdge].vertices[0],
+                faceIdx);
+
+            wEdges[edge].prev           = previousEdge;
+            wEdges[edge].next           = firstEdge;
+
+            wEdges[firstEdge].prev      = edge;
+            wEdges[previousEdge].next   = edge;
+        }
+
+        previousEdge = edge;
+    }
+
+
+    wFaces.emplace_back(wFace{ firstEdge, {} });
+
+    return faceIdx;
 }
 
 
@@ -137,34 +173,101 @@ FlexKit::LineSegment CSGShape::GetEdgeSegment(uint32_t edgeId) const
 /************************************************************************************************/
 
 
-Triangle CSGShape::GetTri(uint32_t polyId) const
+std::vector<Triangle> CSGShape::GetFaceGeometry(uint32_t faceIdx) const
 {
-    const auto& face = wFaces[polyId];
+    std::vector<Triangle> geometry;
 
-    const auto E1 = face.edgeStart;
-    const auto E2 = wEdges[E1].next;
-    const auto E3 = wEdges[E2].next;
+    const auto& face = wFaces[faceIdx];
 
-    auto P1 = wVertices[wEdges[E1].vertices[0]].point;
-    auto P2 = wVertices[wEdges[E2].vertices[0]].point;
-    auto P3 = wVertices[wEdges[E3].vertices[0]].point;
+    const auto E1   = face.edgeStart;
+    auto P1         = wVertices[wEdges[E1].vertices[0]].point;
 
-    return Triangle{ P1, P2, P3 };
+    ConstFaceIterator itr{ this, face.edgeStart };
+    ConstFaceIterator end{ this, face.edgeStart };
+
+    end = end - 2;
+
+    while(itr != end)
+    {
+        const auto E2 = itr->next;
+        const auto E3 = wEdges[E2].next;
+
+        auto P2 = wVertices[wEdges[E2].vertices[0]].point;
+        auto P3 = wVertices[wEdges[E3].vertices[0]].point;
+
+        geometry.emplace_back(Triangle{ P1, P2, P3 });
+        itr++;
+    }
+
+    return geometry;
 }
 
 
 /************************************************************************************************/
 
 
-uint32_t CSGShape::GetVertexFromFaceLocalIdx(uint32_t faceIdx, uint32_t vertexIdx) const
+uint32_t CSGShape::GetVertexFromFaceLocalIdx(uint32_t faceIdx, uint32_t faceSubIdx, uint32_t vertexIdx) const
 {
+    const auto& face = wFaces[faceIdx];
+
+    const auto E1   = face.edgeStart;
+    auto P1         = wEdges[E1].vertices[0];
+
+    ConstFaceIterator itr{ this, face.edgeStart };
+    
+    itr += faceSubIdx;
+    const auto E2 = itr->next;
+    const auto E3 = wEdges[E2].next;
+
+    uint32_t vertices[3] =
+    {
+        P1,
+        vertices[1] = wEdges[E2].vertices[0],
+        vertices[2] = wEdges[E3].vertices[0],
+    };
+
+    return vertices[vertexIdx];
+}
+
+
+/************************************************************************************************/
+
+
+std::vector<uint32_t> CSGShape::GetFaceVertices(uint32_t faceIdx) const
+{
+
     const auto start = wFaces[faceIdx].edgeStart;
     auto edge = start;
 
-    for(size_t I = 0; I < vertexIdx && (I == 0 || edge != start); ++I)
+    std::vector<uint32_t> out;
+    for (size_t I = 0; (I == 0 || edge != start); ++I)
+    {
         edge = wEdges[edge].next;
+        out.push_back(wEdges[edge].vertices[0]);
+    }
 
-    return wEdges[edge].vertices[0];
+    return out;
+}
+
+
+/************************************************************************************************/
+
+
+FlexKit::float3 CSGShape::GetFaceCenterPoint(uint32_t faceIdx) const
+{
+    FlexKit::float3 point{ 0 };
+    size_t vertexCount = 0;
+
+    
+    ConstFaceIterator itr{ this, wFaces[faceIdx].edgeStart };
+    while (!itr.end())
+    {
+        point += itr.GetPoint(0);
+        vertexCount++;
+        itr++;
+    }
+
+    return point / vertexCount;
 }
 
 
@@ -196,9 +299,33 @@ void CSGShape::_RemoveVertexEdgeNeighbor(const uint32_t vertexIdx, const uint32_
 /************************************************************************************************/
 
 
+uint32_t CSGShape::DuplicateFace(const uint32_t faceIdx)
+{
+    std::vector<uint32_t> vertices;
+
+    auto& face = wFaces[faceIdx];
+
+    for(FaceIterator itr{ this, face.edgeStart }; !itr.end(); itr++)
+        vertices.push_back(itr->vertices[0]);
+
+    std::vector<uint32_t> newVertices;
+    for (auto vidx : vertices)
+    {
+        auto newVertex = _AddVertex();
+        newVertices.push_back(newVertex);
+    }
+
+    return AddPolygon(newVertices.data(), newVertices.data() + newVertices.size());
+}
+
+
+/************************************************************************************************/
+
+
 void CSGShape::SplitTri(uint32_t triId, const float3 BaryCentricPoint)
 {
-    const auto newPoint = GetTri(triId).TriPoint(BaryCentricPoint);
+    const auto geometry = GetFaceGeometry(triId);
+    const auto newPoint = geometry.front().TriPoint(BaryCentricPoint);
 
     const auto E0 = wFaces[triId].edgeStart;
     const auto E1 = wEdges[E0].next;
@@ -341,9 +468,6 @@ uint32_t CSGShape::_SplitEdge(const uint32_t edgeId, const uint32_t V4)
 
     wFaces.push_back(wFace{ E2, {} });
 
-    auto T1 = GetTri(0);
-    auto T2 = GetTri(1);
-
     return E6;
 }
 
@@ -444,7 +568,12 @@ void CSGShape::Build()
     tris.clear();
 
     for (size_t faceIdx = 0; faceIdx < wFaces.size(); faceIdx++)
-        tris.emplace_back(GetTri(faceIdx));
+    {
+        auto geometry = GetFaceGeometry(faceIdx);
+
+        for(auto t : geometry)
+            tris.emplace_back(t);
+    }
 }
 
 
@@ -648,91 +777,6 @@ FlexKit::AABB CSGShape::GetAABB(const float3 pos) const noexcept
 }
 
 
-/*
-CSGShape CreateCubeCSGShape() noexcept
-{
-    CSGShape shape;
-
-    const float3 dimensions = float3{ 1.0f, 1.0f, 1.0f } / 2.0f;
-    // Top
-    shape.tris.push_back(
-        {   float3{ dimensions.x, dimensions.y, dimensions.z },
-            float3{-dimensions.x, dimensions.y,-dimensions.z },
-            float3{-dimensions.x, dimensions.y, dimensions.z },
-        });
-    shape.tris.push_back(
-        {   float3{ dimensions.x, dimensions.y, dimensions.z },
-            float3{ dimensions.x, dimensions.y,-dimensions.z },
-            float3{-dimensions.x, dimensions.y,-dimensions.z },
-        });
-
-    // Bottom
-    shape.tris.push_back(
-        {   float3{  dimensions.x,-dimensions.y, dimensions.z },
-            float3{ -dimensions.x,-dimensions.y, dimensions.z },
-            float3{ -dimensions.x,-dimensions.y,-dimensions.z },
-        });
-    shape.tris.push_back(
-        {   float3{  dimensions.x,-dimensions.y, dimensions.z },
-            float3{ -dimensions.x,-dimensions.y,-dimensions.z },
-            float3{  dimensions.x,-dimensions.y,-dimensions.z },
-        });
-
-    // Right
-    shape.tris.push_back(
-        {   float3{-dimensions.x, dimensions.y, dimensions.z },
-            float3{-dimensions.x, dimensions.y,-dimensions.z },
-            float3{-dimensions.x,-dimensions.y,-dimensions.z }
-        });
-    shape.tris.push_back(
-        {   float3{ -dimensions.x, dimensions.y, dimensions.z },
-            float3{ -dimensions.x,-dimensions.y,-dimensions.z },
-            float3{ -dimensions.x,-dimensions.y, dimensions.z }
-        });
-
-    // Left
-    shape.tris.push_back(
-        {   float3{ dimensions.x, dimensions.y, dimensions.z },
-            float3{ dimensions.x,-dimensions.y,-dimensions.z },
-            float3{ dimensions.x, dimensions.y,-dimensions.z }
-        });
-    shape.tris.push_back(
-        {   float3{ dimensions.x, dimensions.y, dimensions.z },
-            float3{ dimensions.x,-dimensions.y, dimensions.z },
-            float3{ dimensions.x,-dimensions.y,-dimensions.z }
-        });
-
-    // Front
-    shape.tris.push_back(
-        {   float3{ dimensions.x, dimensions.y, -dimensions.z },
-            float3{ dimensions.x,-dimensions.y, -dimensions.z },
-            float3{-dimensions.x,-dimensions.y, -dimensions.z }
-        }
-    );
-    shape.tris.push_back(
-        {   float3{ dimensions.x, dimensions.y, -dimensions.z },
-            float3{-dimensions.x,-dimensions.y, -dimensions.z },
-            float3{-dimensions.x, dimensions.y, -dimensions.z }
-        });
-
-    // Back
-    shape.tris.push_back(
-        {   float3{  dimensions.x,-dimensions.y, dimensions.z },
-            float3{  dimensions.x, dimensions.y, dimensions.z },
-            float3{ -dimensions.x,-dimensions.y, dimensions.z }
-        }
-    );
-    shape.tris.push_back(
-        {   float3{ -dimensions.x,-dimensions.y, dimensions.z },
-            float3{  dimensions.x, dimensions.y, dimensions.z },
-            float3{ -dimensions.x, dimensions.y, dimensions.z }
-        });
-
-    return shape;
-}
-*/
-
-
 CSGShape CreateCubeCSGShape() noexcept
 {
     CSGShape cubeShape;
@@ -747,6 +791,14 @@ CSGShape CreateCubeCSGShape() noexcept
     const uint32_t V7 = cubeShape.AddVertex({  1, -1, -1 });
     const uint32_t V8 = cubeShape.AddVertex({ -1, -1, -1 });
 
+
+    uint32_t points[] = {
+        V1, V2, V3, V4
+    };
+
+    cubeShape.AddPolygon(points, points + 4);
+
+    /*
     // Top
     cubeShape.AddTri(V1, V2, V3);
     cubeShape.AddTri(V1, V3, V4);
@@ -770,6 +822,7 @@ CSGShape CreateCubeCSGShape() noexcept
     // Front
     cubeShape.AddTri(V4, V7, V8);
     cubeShape.AddTri(V4, V3, V7);
+    */
 
     cubeShape.Build();
 
@@ -1178,26 +1231,35 @@ std::optional<CSGShape::RayCast_result> CSGShape::RayCast(const FlexKit::Ray& r)
     if (!Intersects(r, GetAABB()))
         return {};
 
-    float           d            = INFINITY;
-    size_t          triangleIdx  = 0;
+    float           d           = INFINITY;
+    uint32_t        faceIdx     = 0;
+    uint32_t        faceSubIdx  = 0;
     FlexKit::float3 hitLocation;
 
-    for (size_t triIdx = 0; triIdx < wFaces.size(); triIdx++)
+    for (uint32_t triIdx = 0; triIdx < wFaces.size(); triIdx++)
     {
-        const auto tri = GetTri(triIdx);
-        auto [hit, distance, hit_cord] = Intersects(r, tri);
-        if (hit && distance < d)
+        const auto geometry = GetFaceGeometry(triIdx);
+
+        for(uint32_t subIdx = 0; subIdx < geometry.size(); subIdx++)
         {
-            d           = distance;
-            triangleIdx = triIdx;
-            hitLocation = hit_cord;
+            const auto tri = geometry[subIdx];
+
+            auto [hit, distance, hit_cord] = Intersects(r, tri);
+            if (hit && distance < d)
+            {
+                d           = distance;
+                faceIdx     = triIdx;
+                faceSubIdx  = subIdx;
+                hitLocation = hit_cord;
+            }
         }
     }
 
     return RayCast_result{
         .hitLocation    = hitLocation,
         .distance       = d,
-        .triangleIdx    = triangleIdx
+        .faceIdx        = faceIdx,
+        .faceSubIdx     = faceSubIdx
     };
 }
 
@@ -1241,7 +1303,8 @@ std::optional<CSGBrush::RayCast_result> CSGBrush::RayCast(const FlexKit::Ray& r)
         {
             return RayCast_result{
                 .shape              = const_cast<CSGShape*>(&shape),
-                .triIdx             = res->triangleIdx,
+                .faceIdx            = res->faceIdx,
+                .faceSubIdx         = res->faceSubIdx,
                 .distance           = res->distance,
                 .BaryCentricResult  = res->hitLocation,
             };
@@ -1348,19 +1411,6 @@ public:
                 ImGui::EndCombo();
             }
 
-            if (ImGui::Button("Create Square"))
-            {
-                auto& csg = selection.GetData();
-                CSGBrush newBrush;
-                newBrush.op         = op;
-                newBrush.shape      = CreateCubeCSGShape();
-                newBrush.position   = FlexKit::float3{ 0, 0, 0 };
-                newBrush.dirty      = true;
-
-                csg.brushes.push_back(newBrush);
-                csg.selectedBrush = -1;
-            }
-
             const auto selectedIdx = selection.GetData().selectedBrush;
 
             if (selectedIdx != -1)
@@ -1418,8 +1468,8 @@ public:
                     }   break;
                     case SelectionPrimitive::Triangle:
                     {
-                        auto triIdx = selectionContext.selectedPrimitives[0].triIdx;
-                        selectionContext.brush->shape.SplitTri(triIdx, selectionContext.selectedPrimitives[0].BaryCentricResult);
+                        auto faceIdx = selectionContext.selectedPrimitives[0].faceIdx;
+                        selectionContext.brush->shape.SplitTri(faceIdx, selectionContext.selectedPrimitives[0].BaryCentricResult);
                     }   break;
                     }
                 }
@@ -1439,23 +1489,12 @@ public:
     void ObjectManipulatorMode() const
     {
         const auto selectedIdx  = selection.GetData().selectedBrush;
-        if (selectedIdx == -1)
-            return;
-
-        auto& brushes   = selection.GetData().brushes;
-        auto& brush     = brushes[selectedIdx];
-
-
-        if (brushes.size() < selectedIdx)
-            return;
-
-        ImGuiIO& io = ImGui::GetIO();
-        ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
+        auto& brushes           = selection.GetData().brushes;
+        auto& brush             = brushes[selectedIdx];
 
         const auto camera = viewport.GetViewportCamera();
         FlexKit::CameraComponent::GetComponent().GetCamera(camera).UpdateMatrices();
         auto& cameraData = FlexKit::CameraComponent::GetComponent().GetCamera(camera);
-
 
                 FlexKit::float4x4 m             = FlexKit::TranslationMatrix(brushes[selectedIdx].position);
                 FlexKit::float4x4 delta         = FlexKit::float4x4::Identity();
@@ -1497,24 +1536,106 @@ public:
         }
     }
 
+    void EdgeManipulatorMode() const
+    {
+        const auto camera = viewport.GetViewportCamera();
+        FlexKit::CameraComponent::GetComponent().GetCamera(camera).UpdateMatrices();
+        auto& cameraData = FlexKit::CameraComponent::GetComponent().GetCamera(camera);
+
+        auto& shape             = *selectionContext.shape;
+        const auto edgeIdx      = selectionContext.selectedElement;
+        auto& vertices          = shape.wEdges[edgeIdx].vertices;
+        FlexKit::float3 point   = (shape.wVertices[vertices[0]].point + shape.wVertices[vertices[1]].point) / 2.0f;
+
+                FlexKit::float4x4 m             = FlexKit::TranslationMatrix(point);
+                FlexKit::float4x4 delta         = FlexKit::float4x4::Identity();
+
+        const   FlexKit::float4x4 view          = cameraData.View.Transpose();
+        const   FlexKit::float4x4 projection    = cameraData.Proj;
+
+        FlexKit::float3 deltapos;
+        if (ImGuizmo::Manipulate(view, projection, operation, space, m, delta))
+        {
+            FlexKit::float3 rotation;
+            FlexKit::float3 scale;
+            ImGuizmo::DecomposeMatrixToComponents(delta, deltapos, rotation, scale);
+
+            FlexKit::float4 p1{ shape.wVertices[vertices[0]].point, 1 };
+            FlexKit::float4 p2{ shape.wVertices[vertices[1]].point, 1 };
+
+            shape.wVertices[vertices[0]].point = (delta * p1).xyz();
+            shape.wVertices[vertices[1]].point = (delta * p2).xyz();
+            selectionContext.shape->Build();
+        }
+
+        ImGui::SetNextWindowPos({ 0, 400 });
+        if (ImGui::Begin("Edge Manipulator", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
+        {
+            ImGui::SetWindowSize({ 400, 400 });
+
+            FlexKit::float3 newPos = point;
+            if (ImGui::InputFloat3("XYZ", newPos))
+            {
+                auto deltaP = newPos - point;
+                shape.wVertices[vertices[0]].point += deltaP;
+                shape.wVertices[vertices[1]].point += deltaP;
+                selectionContext.shape->Build();
+            }
+        }
+        ImGui::End();
+    }
+
+    void TriangleManipulatorMode() const
+    {
+        const auto camera = viewport.GetViewportCamera();
+        FlexKit::CameraComponent::GetComponent().GetCamera(camera).UpdateMatrices();
+        auto& cameraData = FlexKit::CameraComponent::GetComponent().GetCamera(camera);
+
+        auto& shape             = *selectionContext.shape;
+        const auto edgeIdx      = selectionContext.selectedElement;
+        auto& vertices          = shape.wEdges[edgeIdx].vertices;
+        FlexKit::float3 point   = (shape.wVertices[vertices[0]].point + shape.wVertices[vertices[1]].point) / 2.0f;
+
+                FlexKit::float4x4 m             = FlexKit::TranslationMatrix(point);
+                FlexKit::float4x4 delta         = FlexKit::float4x4::Identity();
+
+        const   FlexKit::float4x4 view          = cameraData.View.Transpose();
+        const   FlexKit::float4x4 projection    = cameraData.Proj;
+
+        FlexKit::float3 deltapos;
+        if (ImGuizmo::Manipulate(view, projection, operation, space, m, delta))
+        {
+            FlexKit::float3 rotation;
+            FlexKit::float3 scale;
+            ImGuizmo::DecomposeMatrixToComponents(delta, deltapos, rotation, scale);
+
+            FlexKit::float4 p1{ shape.wVertices[vertices[0]].point, 1 };
+            FlexKit::float4 p2{ shape.wVertices[vertices[1]].point, 1 };
+
+            shape.wVertices[vertices[0]].point = (delta * p1).xyz();
+            shape.wVertices[vertices[1]].point = (delta * p2).xyz();
+            selectionContext.shape->Build();
+        }
+
+        ImGui::SetNextWindowPos({ 0, 400 });
+        if (ImGui::Begin("Edge Manipulator", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
+        {
+            ImGui::SetWindowSize({ 400, 400 });
+
+            FlexKit::float3 newPos = point;
+            if (ImGui::InputFloat3("XYZ", newPos))
+            {
+                auto deltaP = newPos - point;
+                shape.wVertices[vertices[0]].point += deltaP;
+                shape.wVertices[vertices[1]].point += deltaP;
+                selectionContext.shape->Build();
+            }
+        }
+        ImGui::End();
+    }
+
     void VertexManipulatorMode() const
     {
-        if (selectionContext.selectedElement == -1)
-            return;
-
-        const auto selectedIdx = selection.GetData().selectedBrush;
-        if (selectedIdx == -1)
-            return;
-
-        auto& brushes   = selection.GetData().brushes;
-        auto& brush     = brushes[selectedIdx];
-
-        if (brushes.size() < selectedIdx)
-            return;
-
-        ImGuiIO& io = ImGui::GetIO();
-        ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
-
         const auto camera = viewport.GetViewportCamera();
         FlexKit::CameraComponent::GetComponent().GetCamera(camera).UpdateMatrices();
         auto& cameraData = FlexKit::CameraComponent::GetComponent().GetCamera(camera);
@@ -1542,15 +1663,39 @@ public:
         if (ImGui::Begin("Vertex Manipulator", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
         {
             ImGui::SetWindowSize({ 400, 400 });
-            ImGui::InputFloat3("XYZ", point);
+
+            if (ImGui::InputFloat3("XYZ", point))
+            {
+                selectionContext.shape->wVertices[vertexIdx].point = point;
+                selectionContext.shape->Build();
+            }
         }
         ImGui::End();
     }
 
     void DrawObjectManipulatorWidget() const
     {
+        if (selectionContext.selectedElement == -1)
+            return;
+
+        const auto selectedIdx = selection.GetData().selectedBrush;
+        if (selectedIdx == -1)
+            return;
+
+        auto& brushes = selection.GetData().brushes;
+        auto& brush = brushes[selectedIdx];
+
+        if (brushes.size() < selectedIdx)
+            return;
+
+        ImGuiIO& io = ImGui::GetIO();
+        ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
+
         switch (selectionContext.mode)
         {
+        case SelectionPrimitive::Edge:
+            EdgeManipulatorMode();
+            return;
         case SelectionPrimitive::Vertex:
             VertexManipulatorMode();
             return;
@@ -1651,7 +1796,6 @@ public:
 
                     for (const auto& brush : brushes)
                     {
-
                         const auto aabb     = brush.GetAABB();
                         const float r       = aabb.Dim()[aabb.LongestAxis()];
                         const auto offset   = aabb.MidPoint();
@@ -1678,9 +1822,9 @@ public:
 
                         if (selectionContext.brush == &brush)
                         {
-                            verts[selectionContext.selectedPrimitives[0].triIdx * 3 + 0].Color = FlexKit::float4{ 0.8, 0, 0, 1 };
-                            verts[selectionContext.selectedPrimitives[0].triIdx * 3 + 1].Color = FlexKit::float4{ 0.8, 0, 0, 1 };
-                            verts[selectionContext.selectedPrimitives[0].triIdx * 3 + 2].Color = FlexKit::float4{ 0.8, 0, 0, 1 };
+                            verts[selectionContext.selectedPrimitives[0].faceIdx * 3 + 0].Color = FlexKit::float4{ 0.8, 0, 0, 1 };
+                            verts[selectionContext.selectedPrimitives[0].faceIdx * 3 + 1].Color = FlexKit::float4{ 0.8, 0, 0, 1 };
+                            verts[selectionContext.selectedPrimitives[0].faceIdx * 3 + 2].Color = FlexKit::float4{ 0.8, 0, 0, 1 };
                         }
 
                         for (auto& intersection : brush.intersections)
@@ -1758,7 +1902,9 @@ public:
 
                             if (drawNormals)
                             {
-                                const auto tri  = shape.GetTri(faceIdx).Offset(brush.position);
+                                const auto geometry = shape.GetFaceGeometry(faceIdx);
+                                const auto tri      = geometry.front().Offset(brush.position);
+                                //const auto tri  = shape.GetTri(faceIdx).Offset(brush.position);
                                 const auto A    = tri.TriPoint();
                                 const auto B    = A + tri.Normal().normal();
 
@@ -1831,25 +1977,27 @@ public:
             {
                 const auto point_BC     = hit.BaryCentricResult;
                 uint32_t selectedEdge   = -1;
+                
+                ConstFaceIterator iterator = ConstFaceIterator{ hit.shape, hit.shape->wFaces[hit.faceIdx].edgeStart } + hit.faceSubIdx;
 
                 if (FlexKit::Min(point_BC.x, 0.5f) + FlexKit::Min(point_BC.y, 0.5f) > 0.75f)
                 {
-                    const auto edge1 = hit.shape->wFaces[hit.triIdx].edgeStart;
+                    const auto edge1 = iterator.current;
 
                     selectedEdge = edge1;
                 }
                 else if (point_BC.y + point_BC.z > 0.75f)
                 {
-                    const auto edge1 = hit.shape->wFaces[hit.triIdx].edgeStart;
-                    const auto edge2 = hit.shape->NextEdge(edge1);
+                    const auto edge1 = iterator.current;
+                    const auto edge2 = (iterator + 1).current;
 
                     selectedEdge = edge2;
                 }
                 else if (point_BC.x + point_BC.z > 0.75f)
                 {
-                    const auto edge1 = hit.shape->wFaces[hit.triIdx].edgeStart;
-                    const auto edge2 = hit.shape->NextEdge(edge1);
-                    const auto edge3 = hit.shape->NextEdge(edge2);
+                    const auto edge1 = iterator.current;
+                    const auto edge2 = (iterator + 1).current;
+                    const auto edge3 = (iterator + 2).current;
 
                     selectedEdge = edge3;
                 }
@@ -1895,13 +2043,30 @@ public:
                 else if (point_BC.z > 0.65)
                     faceVertex = 2;
 
-                auto selectedVertex = hit.shape->GetVertexFromFaceLocalIdx(hit.triIdx, faceVertex);
+                if (faceVertex == -1u)
+                    return;
+
+                auto selectedVertex = hit.shape->GetVertexFromFaceLocalIdx(hit.faceIdx, hit.faceSubIdx, faceVertex);
 
                 selectionContext.SetSelectedVertex(
                     hit,
                     const_cast<CSGBrush&>(brush),
                     const_cast<CSGShape&>(brush.shape),
                     selectedVertex);
+            });
+    }
+
+    void FaceSelectionMode(QMouseEvent* evt)
+    {
+        const auto r = viewport.GetMouseRay();
+
+        RayCast(
+            r,
+            [&](CSGBrush::RayCast_result& hit, const CSGBrush& brush)
+            {
+                selectionContext.SetSelectedFace(
+                    hit,
+                    const_cast<CSGBrush&>(brush));
             });
     }
 
@@ -2015,6 +2180,21 @@ public:
     {
         switch (evt->key())
         {
+        case Qt::Key_1:
+            selectionContext.mode = SelectionPrimitive::Vertex;
+            break;
+        case Qt::Key_2:
+            selectionContext.mode = SelectionPrimitive::Edge;
+            break;
+        case Qt::Key_3:
+            selectionContext.mode = SelectionPrimitive::Triangle;
+            break;
+        case Qt::Key_4:
+            selectionContext.mode = SelectionPrimitive::Polygon;
+            break;
+        case Qt::Key_5:
+            selectionContext.mode = SelectionPrimitive::Object;
+            break;
         case Qt::Key_W:
             mode        = (mode != Mode::Manipulator) ? mode = Mode::Manipulator : mode = Mode::Selection;
             operation   = ImGuizmo::OPERATION::TRANSLATE;
@@ -2033,9 +2213,27 @@ public:
                 space = space == ImGuizmo::MODE::WORLD ? ImGuizmo::MODE::LOCAL: ImGuizmo::MODE::WORLD;
         }   break;
         default:
-            break;
+        {
+            ImGuiIO& io = ImGui::GetIO();
+            auto str = evt->text().toStdString();
+
+            for (auto c : str) {
+                io.AddInputCharacter(c);
+                io.KeysDown[c] = true;
+            }
+        }   break;
         }
     }
+
+    void keyReleaseEvent(QKeyEvent* evt) final
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        auto str = evt->text().toStdString();
+
+        for (auto c : str)
+            io.KeysDown[c] = false;
+    }
+
 
     enum class SelectionPrimitive
     {
@@ -2073,7 +2271,7 @@ public:
             selectedPrimitives.clear();
 
             selectedPrimitives.push_back(hit);
-            selectedElement = hit.triIdx;
+            selectedElement = hit.faceIdx;
             mode            = SelectionPrimitive::Triangle;
             brush           = const_cast<CSGBrush*>(&IN_brush);
             shape           = const_cast<CSGShape*>(&IN_shape);
@@ -2090,6 +2288,17 @@ public:
             shape           = const_cast<CSGShape*>(&IN_shape);
         }
 
+        void SetSelectedFace(CSGBrush::RayCast_result& hit, CSGBrush& IN_brush)
+        {
+            selectedPrimitives.clear();
+            
+            selectedPrimitives.push_back(hit);
+            selectedElement = hit.faceIdx;
+            mode            = SelectionPrimitive::Polygon;
+            brush           = const_cast<CSGBrush*>(&IN_brush);
+            shape           = const_cast<CSGShape*>(hit.shape);
+        }
+
         void GetSelectionUIGeometry(std::vector<Vertex>& verts) const
         {
             if (!shape)
@@ -2104,11 +2313,12 @@ public:
             {
             }   break;
             case SelectionPrimitive::Triangle:
-            case SelectionPrimitive::Polygon:
             {
                 for (auto& primitive : selectedPrimitives)
                 {
-                    auto tri = primitive.shape->GetTri(primitive.triIdx).Offset(brush->position);
+                    const auto geometry = primitive.shape->GetFaceGeometry(primitive.faceIdx);
+                    auto tri = geometry[selectedPrimitives.front().faceSubIdx].Offset(brush->position);
+
                     tri = tri.Offset(tri.Normal() * 0.01f);
 
                     Vertex v;
@@ -2119,6 +2329,28 @@ public:
                     {
                         v.Position = FlexKit::float4(tri[idx], 1);
                         verts.emplace_back(v);
+                    }
+                }
+            }   break;
+            case SelectionPrimitive::Polygon:
+            {
+                for (auto& primitive : selectedPrimitives)
+                {
+                    const auto geometry = primitive.shape->GetFaceGeometry(primitive.faceIdx);
+
+                    for (auto tri : geometry)
+                    {
+                        tri = tri.Offset(tri.Normal() * 0.01f + brush->position);
+
+                        Vertex v;
+                        v.Color = FlexKit::float4(1, 0, 0, 1);
+                        v.UV = FlexKit::float2(1, 1);
+
+                        for (size_t idx = 0; idx < 3; idx++)
+                        {
+                            v.Position = FlexKit::float4(tri[idx], 1);
+                            verts.emplace_back(v);
+                        }
                     }
                 }
             }   break;
@@ -2198,6 +2430,31 @@ public:
             [&]
             {
                 viewport.PushMode(std::make_shared<CSGEditMode>(viewport.GetHUD(), csgView, viewport));
+            });
+
+        panelCtx.AddButton(
+            "Add Brush",
+            [&]
+            {
+                CSGBrush newBrush;
+                newBrush.op         = CSG_OP::CSG_ADD;
+                newBrush.shape      = CreateCubeCSGShape();
+                newBrush.position   = FlexKit::float3{ 0, 0, 0 };
+                newBrush.dirty      = true;
+
+                csgView->brushes.push_back(newBrush);
+                csgView->selectedBrush = csgView->brushes.size() - 1;
+            });
+
+        panelCtx.AddButton(
+            "Remove",
+            [&]
+            {
+                if (csgView->selectedBrush != -1)
+                {
+                    csgView->brushes.erase(csgView->brushes.begin() + csgView->selectedBrush);
+                    csgView->selectedBrush = -1;
+                }
             });
 
         panelCtx.AddButton(
