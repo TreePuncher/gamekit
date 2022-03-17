@@ -625,7 +625,7 @@ uint32_t CSGShape::DuplicateFace(const uint32_t faceIdx)
     std::vector<uint32_t> newVertices;
     for (auto vidx : vertices)
     {
-        auto newVertex = _AddVertex();
+        auto newVertex = AddVertex(wVertices[vidx].point);
         newVertices.push_back(newVertex);
     }
 
@@ -1797,12 +1797,32 @@ public:
                     }
                 }
 
-                if ( ImGui::Button("Rotate Edge") &&
+                if (ImGui::Button("Rotate Edge") &&
                     (selectionContext.mode == SelectionPrimitive::Edge) &&
                     (selectionContext.selectedElement != -1))
                 {
                     selectionContext.brush->shape.RotateEdgeCCW(selectionContext.selectedElement);
                     selectionContext.brush->shape.Build();
+                }
+
+                if ((selectionContext.mode == SelectionPrimitive::Polygon) &&
+                     ImGui::Button("Duplicate Face"))
+                {
+                    auto selected = selectionContext.selectedPrimitives;
+                    selectionContext.selectedPrimitives.clear();
+
+                    for (auto& primitive : selected)
+                    {
+                        auto face = primitive.shape->DuplicateFace(primitive.faceIdx);
+
+                        CSGBrush::RayCast_result selection;
+                        selection.BaryCentricResult = float3{ 1 / 3.0f };
+                        selection.distance          = 0.0f;
+                        selection.faceIdx           = face;
+                        selection.faceSubIdx        = 0;
+                        selection.shape             = primitive.shape;
+                        selectionContext.SetSelectedFace(selection, *selectionContext.brush);
+                    }
                 }
             }
             ImGui::End();
@@ -2688,9 +2708,10 @@ public:
             shape           = const_cast<CSGShape*>(&IN_shape);
         }
 
-        void SetSelectedFace(CSGBrush::RayCast_result& hit, CSGBrush& IN_brush)
+        void SetSelectedFace(CSGBrush::RayCast_result& hit, CSGBrush& IN_brush, bool add = false)
         {
-            selectedPrimitives.clear();
+            if(!add)
+                selectedPrimitives.clear();
             
             selectedPrimitives.push_back(hit);
             selectedElement = hit.faceIdx;
