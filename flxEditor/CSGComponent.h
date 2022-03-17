@@ -70,7 +70,7 @@ struct CSGShape
     uint32_t AddVertex    (FlexKit::float3 point);
     uint32_t AddEdge      (uint32_t V1, uint32_t V2, uint32_t owningFace);
     uint32_t AddTri       (uint32_t V1, uint32_t V2, uint32_t V3);
-    uint32_t AddPolygon   (uint32_t* tri_start, uint32_t* tri_end);
+    uint32_t AddPolygon   (const uint32_t* tri_start, const uint32_t* tri_end);
 
     uint32_t _AddEdge   ();
     uint32_t _AddVertex ();
@@ -86,10 +86,15 @@ struct CSGShape
     void        _RemoveVertexEdgeNeighbor  (const uint32_t vertexIdx,  const uint32_t edgeIdx);
 
     FlexKit::LineSegment    GetEdgeSegment  (uint32_t edgeId) const;
-    Triangle                GetTri          (uint32_t triId) const;
-    uint32_t                GetVertexFromFaceLocalIdx(uint32_t faceIdx, uint32_t vertexIdx) const;
+    std::vector<Triangle>   GetFaceGeometry (uint32_t faceIdx) const;
+
+    uint32_t                GetVertexFromFaceLocalIdx   (uint32_t faceIdx, uint32_t faceSubIdx, uint32_t vertexIdx) const;
+    std::vector<uint32_t>   GetFaceVertices             (uint32_t faceIdx) const;
+    FlexKit::float3         GetFaceCenterPoint          (uint32_t faceIdx) const;
 
     uint32_t    NextEdge(const uint32_t edgeIdx) const;
+
+    uint32_t    DuplicateFace(const uint32_t triId);
 
     void        SplitTri        (const uint32_t triId, const float3 BaryCentricPoint = float3{ 1.0f/3.0f });
     void        SplitEdge       (const uint32_t edgeId, const float U = 0.5f);
@@ -104,9 +109,10 @@ struct CSGShape
 
     struct RayCast_result
     {
-        float3 hitLocation; // barycentric intersection cordinate
-        float  distance;
-        size_t triangleIdx;
+        float3      hitLocation; // barycentric intersection cordinate
+        float       distance;
+        uint32_t    faceIdx;
+        uint32_t    faceSubIdx;
     };
 
     std::optional<RayCast_result>   RayCast(const FlexKit::Ray& r) const noexcept;
@@ -121,6 +127,145 @@ struct CSGShape
     }
 };
 
+
+/************************************************************************************************/
+
+
+class FaceIterator
+{
+public:
+    FaceIterator(CSGShape* IN_shape, uint32_t IN_end) noexcept
+        : shape     { IN_shape }
+        , endIdx    { IN_end }
+        , current   { IN_end }
+        , itr       { 0 } {}
+
+    CSGShape*   shape;
+    uint32_t    endIdx;
+    uint32_t    current;
+    uint32_t    itr;
+
+    bool end() noexcept
+    {
+        return !(itr == 0 || current != endIdx);
+    }
+
+    auto* operator -> () noexcept
+    {
+        return &shape->wEdges[current];
+    }
+
+
+    FaceIterator& operator ++(int) noexcept
+    {
+        itr++;
+        current = shape->wEdges[current].next;
+        return *this;
+    }
+
+    FaceIterator& operator --(int) noexcept
+    {
+        itr--;
+        current = shape->wEdges[current].prev;
+        return *this;
+    }
+};
+
+
+class ConstFaceIterator
+{
+public:
+    ConstFaceIterator(const CSGShape* IN_shape, uint32_t IN_end) noexcept
+        : shape     { IN_shape }
+        , endIdx    { IN_end }
+        , current   { IN_end }
+        , itr       { 0 } {}
+
+    const CSGShape*   shape;
+    uint32_t    endIdx;
+    uint32_t    current;
+    uint32_t    itr;
+
+    float3 GetPoint(uint32_t vertex) const
+    {
+        return shape->wVertices[vertex].point;
+    }
+
+    bool end() noexcept
+    {
+        return !(itr == 0 || current != endIdx);
+    }
+
+    bool operator == (const ConstFaceIterator& rhs) const noexcept
+    {
+        return current == rhs.current && shape == rhs.shape;
+    }
+
+    const auto* operator -> () noexcept
+    {
+        return &shape->wEdges[current];
+    }
+
+    ConstFaceIterator operator + (int rhs) const noexcept
+    {
+        ConstFaceIterator out{ shape, endIdx };
+
+        for(size_t itr = 0; itr < rhs; itr++)
+            out++;
+
+        return out;
+    }
+
+    ConstFaceIterator& operator += (int rhs) noexcept
+    {
+        for (size_t itr = 0; itr < rhs; itr++)
+            Next();
+
+        return *this;
+    }
+
+    ConstFaceIterator operator - (int rhs) const noexcept
+    {
+        ConstFaceIterator out{ shape, endIdx };
+
+        for (size_t itr = 0; itr < rhs; itr++)
+            out--;
+
+        return out;
+    }
+
+    ConstFaceIterator& operator -= (int rhs) noexcept
+    {
+        for (size_t itr = 0; itr < rhs; itr++)
+            Prev();
+
+        return *this;
+    }
+
+    void Next() noexcept
+    {
+        itr++;
+        current = shape->wEdges[current].next;
+    }
+
+    void Prev() noexcept
+    {
+        itr--;
+        current = shape->wEdges[current].prev;
+    }
+
+    ConstFaceIterator& operator ++(int) noexcept
+    {
+        Next();
+        return *this;
+    }
+
+    ConstFaceIterator& operator --(int) noexcept
+    {
+        Prev();
+        return *this;
+    }
+};
 
 /************************************************************************************************/
 
@@ -155,7 +300,8 @@ struct CSGBrush
     struct RayCast_result
     {
         CSGShape*       shape;
-        size_t          triIdx;
+        uint32_t        faceIdx;
+        uint32_t        faceSubIdx;
         float           distance;
         FlexKit::float3 BaryCentricResult;
     };

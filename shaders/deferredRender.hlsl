@@ -222,7 +222,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
     const float Kd              = (1.0 - Ks) * (1.0 - metallic);
     const float NdotV           = saturate(dot(N.xyz, V));
 
-    float4 color = float4(ambientLight * albedo * 3.0f, 1);
+    float4 color = float4(ambientLight * albedo, 1);
     for(uint I = 0; I < localLightCount; I++)
     {
         const uint pointLightIdx    = lightListBuffer[localLightList + I];
