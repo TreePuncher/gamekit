@@ -2153,24 +2153,13 @@ namespace FlexKit
 	FLEXKITAPI void printQuaternion(const Quaternion in);
 
 
-    FLEXKITAPI template<typename TY>
-	inline float dot(const TY lhs, const TY rhs)
-	{
-		static_assert(false, "NO DOT PRODUCT AVAILABLE FOR THIS COMBINATION!");
-
-		return 0;
-	}
-
-
-    FLEXKITAPI template<>
-	inline float dot<float3>(const float3 lhs, const float3 rhs)
+	inline float dot(const float3 lhs, const float3 rhs)
 	{
 		return DotProduct3(lhs, rhs);
 	}
 
 
-    FLEXKITAPI template<>
-	inline float dot<float4>(const float4 lhs, const float4 rhs)
+	inline float dot(const float4 lhs, const float4 rhs)
 	{
 		return DotProduct4(lhs, rhs);
 	}
