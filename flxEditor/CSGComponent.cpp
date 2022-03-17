@@ -500,7 +500,7 @@ FlexKit::float3 CSGShape::GetFaceNormal(uint32_t faceIdx) const
 /************************************************************************************************/
 
 
-CSGShape::SubFace CSGShape::GetSubFaceVertices(uint32_t faceIdx, uint32_t faceSubIdx) const
+CSGShape::SubFace CSGShape::GetSubFace(uint32_t faceIdx, uint32_t faceSubIdx) const
 {
     const auto& face = wFaces[faceIdx];
 
@@ -516,7 +516,7 @@ CSGShape::SubFace CSGShape::GetSubFaceVertices(uint32_t faceIdx, uint32_t faceSu
     const auto P2 = wEdges[E2].vertices[0];
     const auto P3 = wEdges[E3].vertices[0];
 
-    return { P1, P2, P3 };
+    return { { P1, P2, P3 }, { E1, E2, E3 } };
 }
 
 
@@ -1108,11 +1108,18 @@ CSGShape CreateCubeCSGShape() noexcept
     const uint32_t V7 = cubeShape.AddVertex({  1, -1, -1 });
     const uint32_t V8 = cubeShape.AddVertex({ -1, -1, -1 });
 
-    uint32_t points[] = {
+    uint32_t top[] = {
         V1, V2, V3, V4, V5
     };
 
-    cubeShape.AddPolygon(points, points + 5);
+    cubeShape.AddPolygon(top, top + 4);
+
+
+    uint32_t bottom[] = {
+        V8, V7, V6, V5
+    };
+
+    //cubeShape.AddPolygon(bottom, bottom + 4);
 
     /*
     // Top
@@ -1910,7 +1917,7 @@ public:
         auto& shape             = *selectionContext.shape;
         const auto& selection   = selectionContext.selectedPrimitives.front();
 
-        auto subFace            = shape.GetSubFaceVertices(selection.faceIdx, selection.faceSubIdx);
+        auto subFace            = shape.GetSubFace(selection.faceIdx, selection.faceSubIdx);
 
         FlexKit::float3 point   = (
             shape.wVertices[subFace.vertices[0]].point +
@@ -2382,29 +2389,14 @@ public:
                 const auto point_BC     = hit.BaryCentricResult;
                 uint32_t selectedEdge   = -1;
                 
-                ConstFaceIterator iterator = ConstFaceIterator{ hit.shape, hit.shape->wFaces[hit.faceIdx].edgeStart } + hit.faceSubIdx;
+                auto subFace = hit.shape->GetSubFace(hit.faceIdx, hit.faceSubIdx);
 
                 if (FlexKit::Min(point_BC.x, 0.5f) + FlexKit::Min(point_BC.y, 0.5f) > 0.75f)
-                {
-                    const auto edge1 = iterator.current;
-
-                    selectedEdge = edge1;
-                }
+                    selectedEdge = subFace.edges[0];
                 else if (point_BC.y + point_BC.z > 0.75f)
-                {
-                    const auto edge1 = iterator.current;
-                    const auto edge2 = (iterator + 1).current;
-
-                    selectedEdge = edge2;
-                }
+                    selectedEdge = subFace.edges[1];
                 else if (point_BC.x + point_BC.z > 0.75f)
-                {
-                    const auto edge1 = iterator.current;
-                    const auto edge2 = (iterator + 1).current;
-                    const auto edge3 = (iterator + 2).current;
-
-                    selectedEdge = edge3;
-                }
+                    selectedEdge = subFace.edges[2];
 
                 selectionContext.SetSelectedEdge(
                     hit,

@@ -54,6 +54,7 @@ struct CSGShape
     struct SubFace
     {
         uint32_t vertices[3];
+        uint32_t edges[3];
     };
 
     struct wFace
@@ -176,7 +177,7 @@ struct CSGShape
     std::vector<Triangle>   GetFaceGeometry (uint32_t faceIdx) const;
     FlexKit::float3         GetFaceNormal   (uint32_t faceIdx) const;
 
-    SubFace                 GetSubFaceVertices          (uint32_t faceIdx, uint32_t faceSubIdx) const;
+    SubFace                 GetSubFace                  (uint32_t faceIdx, uint32_t faceSubIdx) const;
     uint32_t                GetVertexFromFaceLocalIdx   (uint32_t faceIdx, uint32_t faceSubIdx, uint32_t vertexIdx) const;
     std::vector<uint32_t>   GetFaceVertices             (uint32_t faceIdx) const;
     FlexKit::float3         GetFaceCenterPoint          (uint32_t faceIdx) const;
