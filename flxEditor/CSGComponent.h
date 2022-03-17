@@ -153,6 +153,10 @@ struct CSGShape
 
     std::vector<Triangle>   tris; // Generated from the wing mesh representation
 
+    std::vector<uint32_t> freeEdges;
+    std::vector<uint32_t> freeFaces;
+
+
     uint32_t FindOpposingEdge(uint32_t V1, uint32_t V2) const noexcept;
 
     uint32_t AddVertex    (FlexKit::float3 point);
@@ -185,6 +189,7 @@ struct CSGShape
     uint32_t    NextEdge(const uint32_t edgeIdx) const;
 
     uint32_t    DuplicateFace(const uint32_t triId);
+    void        RemoveFace(const uint32_t triId);
 
     void        SplitTri        (const uint32_t triId, const float3 BaryCentricPoint = float3{ 1.0f/3.0f });
     void        SplitEdge       (const uint32_t edgeId, const float U = 0.5f);

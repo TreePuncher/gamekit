@@ -436,6 +436,9 @@ std::vector<Triangle> CSGShape::GetFaceGeometry(uint32_t faceIdx) const
 
     const auto& face = wFaces[faceIdx];
 
+    if (face.edgeStart == -1)
+        return {};
+
     ConstFaceIterator itr = face.begin(this);
     ConstFaceIterator end = face.end(this);
 
@@ -630,6 +633,22 @@ uint32_t CSGShape::DuplicateFace(const uint32_t faceIdx)
     }
 
     return AddPolygon(newVertices.data(), newVertices.data() + newVertices.size());
+}
+
+
+/************************************************************************************************/
+
+
+void CSGShape::RemoveFace(const uint32_t faceIdx)
+{
+    freeFaces.push_back(faceIdx);
+
+    auto itr = wFaces[faceIdx].begin(this);
+
+    for(;!itr.end(); itr++)
+        freeEdges.push_back(itr.current);
+
+    wFaces[faceIdx].edgeStart = -1;
 }
 
 
@@ -1644,6 +1663,39 @@ std::optional<CSGBrush::RayCast_result> CSGBrush::RayCast(const FlexKit::Ray& r)
 constexpr ViewportModeID CSGEditModeID = GetTypeGUID(CSGEditMode);
 
 
+uint32_t ExtrudeFace(uint32_t faceIdx, float z, CSGShape& shape)
+{
+    auto extrudedFace   = shape.DuplicateFace(faceIdx);
+    auto normal         = shape.GetFaceNormal(extrudedFace);
+
+    for (auto itr = shape.wFaces[extrudedFace].begin(&shape);!itr.end();itr++)
+        shape.wVertices[itr->vertices[0]].point += normal * z;
+
+
+    auto itr1 = shape.wFaces[faceIdx].begin(&shape);
+    auto itr2 = shape.wFaces[extrudedFace].begin(&shape);
+
+    while (!itr1.end())
+    {
+        uint32_t points[] = {
+            itr1->vertices[0],
+            itr1->vertices[1],
+            itr2->vertices[1],
+            itr2->vertices[0],
+        };
+
+        shape.AddPolygon(points, points + 4);
+
+        itr1++;
+        itr2++;
+    }
+
+    shape.RemoveFace(faceIdx);
+
+    return extrudedFace;
+}
+
+
 class CSGEditMode : public IEditorViewportMode
 {
 public:
@@ -1668,7 +1720,7 @@ public:
         switch (mode)
         {
         case CSGEditMode::Mode::Selection:
-            DrawSelectionDebugUI();
+            DrawEditUI();
             break;
         case CSGEditMode::Mode::Manipulator:
             DrawObjectManipulatorWidget();
@@ -1750,7 +1802,7 @@ public:
         ImGui::End();
     }
 
-    void DrawSelectionDebugUI()
+    void DrawEditUI()
     {
         auto& csgComponent = CSGComponent::GetComponent();
 
@@ -1758,7 +1810,7 @@ public:
         {
             ImGui::SetNextWindowPos({ 0, 400 });
 
-            if (ImGui::Begin("Selection Debug", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
+            if (ImGui::Begin("Edit mode", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
             {
                 ImGui::SetWindowSize({ 400, 400 });
 
@@ -1805,8 +1857,7 @@ public:
                     selectionContext.brush->shape.Build();
                 }
 
-                if ((selectionContext.mode == SelectionPrimitive::Polygon) &&
-                     ImGui::Button("Duplicate Face"))
+                if ((selectionContext.mode == SelectionPrimitive::Polygon) && ImGui::Button("Duplicate Face"))
                 {
                     auto selected = selectionContext.selectedPrimitives;
                     selectionContext.selectedPrimitives.clear();
@@ -1814,6 +1865,25 @@ public:
                     for (auto& primitive : selected)
                     {
                         auto face = primitive.shape->DuplicateFace(primitive.faceIdx);
+
+                        CSGBrush::RayCast_result selection;
+                        selection.BaryCentricResult = float3{ 1 / 3.0f };
+                        selection.distance          = 0.0f;
+                        selection.faceIdx           = face;
+                        selection.faceSubIdx        = 0;
+                        selection.shape             = primitive.shape;
+                        selectionContext.SetSelectedFace(selection, *selectionContext.brush);
+                    }
+                }
+
+                if ((selectionContext.mode == SelectionPrimitive::Polygon) && ImGui::Button("Extrude Face"))
+                {
+                    auto selected = selectionContext.selectedPrimitives;
+                    selectionContext.selectedPrimitives.clear();
+
+                    for (auto& primitive : selected)
+                    {
+                        auto face = ExtrudeFace(primitive.faceIdx, 1.0f, *primitive.shape);
 
                         CSGBrush::RayCast_result selection;
                         selection.BaryCentricResult = float3{ 1 / 3.0f };
@@ -2316,6 +2386,9 @@ public:
                             auto& face      = shape.wFaces[faceIdx];
                             auto edgeIdx    = face.edgeStart;
 
+                            if (edgeIdx == -1)
+                                continue;
+
                             for(size_t i = 0; i < 3; i++)
                             {
                                 const CSGShape::wEdge& edge = shape.wEdges[edgeIdx];
@@ -2616,15 +2689,21 @@ public:
             selectionContext.mode = SelectionPrimitive::Object;
             break;
         case Qt::Key_W:
-            mode        = (mode != Mode::Manipulator) ? mode = Mode::Manipulator : mode = Mode::Selection;
+            if (operation == ImGuizmo::OPERATION::TRANSLATE)
+                mode        = (mode != Mode::Manipulator) ? mode = Mode::Manipulator : mode = Mode::Selection;
+
             operation   = ImGuizmo::OPERATION::TRANSLATE;
             break;
         case Qt::Key_E:
-            mode        = (mode != Mode::Manipulator) ? mode = Mode::Manipulator : mode = Mode::Selection;
+            if(operation == ImGuizmo::OPERATION::SCALE)
+                mode        = (mode != Mode::Manipulator) ? mode = Mode::Manipulator : mode = Mode::Selection;
+
             operation   = ImGuizmo::OPERATION::SCALE;
             break;
         case Qt::Key_R:
-            mode        = (mode != Mode::Manipulator) ? mode = Mode::Manipulator : mode = Mode::Selection;
+            if (operation == ImGuizmo::OPERATION::ROTATE)
+                mode        = (mode != Mode::Manipulator) ? mode = Mode::Manipulator : mode = Mode::Selection;
+
             operation   = ImGuizmo::OPERATION::ROTATE;
             break;
         case Qt::Key_T:
