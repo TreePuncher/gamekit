@@ -5,6 +5,263 @@
 #include "EditorViewport.h"
 
 
+
+/************************************************************************************************/
+
+
+float3 CSGShape::ConstFaceIterator::GetPoint(uint32_t vertex) const
+{
+    return shape->wVertices[shape->wEdges[current].vertices[vertex]].point;
+}
+
+
+/************************************************************************************************/
+
+
+bool CSGShape::ConstFaceIterator::end() noexcept
+{
+    return !(itr == 0 || current != endIdx);
+}
+
+
+/************************************************************************************************/
+
+
+bool CSGShape::ConstFaceIterator::operator == (const ConstFaceIterator& rhs) const noexcept
+{
+    return current == rhs.current && shape == rhs.shape;
+}
+
+
+/************************************************************************************************/
+
+
+const CSGShape::wEdge* CSGShape::ConstFaceIterator::operator -> () noexcept
+{
+    return &shape->wEdges[current];
+}
+
+
+/************************************************************************************************/
+
+
+CSGShape::ConstFaceIterator CSGShape::ConstFaceIterator::operator + (int rhs) const noexcept
+{
+    CSGShape::ConstFaceIterator out{ shape, endIdx };
+
+    for(size_t itr = 0; itr < rhs; itr++)
+        out++;
+
+    return out;
+}
+
+
+/************************************************************************************************/
+
+
+CSGShape::ConstFaceIterator& CSGShape::ConstFaceIterator::operator += (int rhs) noexcept
+{
+    for (size_t itr = 0; itr < rhs; itr++)
+        Next();
+
+    return *this;
+}
+
+
+/************************************************************************************************/
+
+
+CSGShape::ConstFaceIterator CSGShape::ConstFaceIterator::operator - (int rhs) const noexcept
+{
+    CSGShape::ConstFaceIterator out{ shape, endIdx };
+
+    for (size_t itr = 0; itr < rhs; itr++)
+        out--;
+
+    return out;
+}
+
+
+/************************************************************************************************/
+
+
+CSGShape::ConstFaceIterator& CSGShape::ConstFaceIterator::operator -= (int rhs) noexcept
+{
+    for (size_t itr = 0; itr < rhs; itr++)
+        Prev();
+
+    return *this;
+}
+
+
+/************************************************************************************************/
+
+
+void CSGShape::ConstFaceIterator::Next() noexcept
+{
+    itr++;
+    current = shape->wEdges[current].next;
+}
+
+
+/************************************************************************************************/
+
+
+void CSGShape::ConstFaceIterator::Prev() noexcept
+{
+    itr--;
+    current = shape->wEdges[current].prev;
+}
+
+
+/************************************************************************************************/
+
+
+CSGShape::ConstFaceIterator& CSGShape::ConstFaceIterator::operator ++(int) noexcept
+{
+    Next();
+    return *this;
+}
+
+
+/************************************************************************************************/
+
+
+CSGShape::ConstFaceIterator& CSGShape::ConstFaceIterator::operator --(int) noexcept
+{
+    Prev();
+    return *this;
+}
+
+
+/************************************************************************************************/
+
+
+float3 CSGShape::FaceIterator::GetPoint(uint32_t vertex) const
+{
+    return shape->wVertices[vertex].point;
+}
+
+
+/************************************************************************************************/
+
+
+bool CSGShape::FaceIterator::end() noexcept
+{
+    return !(itr == 0 || current != endIdx);
+}
+
+
+/************************************************************************************************/
+
+
+bool CSGShape::FaceIterator::operator == (const FaceIterator& rhs) const noexcept
+{
+    return current == rhs.current && shape == rhs.shape;
+}
+
+
+/************************************************************************************************/
+
+
+const CSGShape::wEdge* CSGShape::FaceIterator::operator -> () noexcept
+{
+    return &shape->wEdges[current];
+}
+
+
+/************************************************************************************************/
+
+
+CSGShape::FaceIterator CSGShape::FaceIterator::operator + (int rhs) const noexcept
+{
+    FaceIterator out{ shape, endIdx };
+
+    for(size_t itr = 0; itr < rhs; itr++)
+        out++;
+
+    return out;
+}
+
+
+/************************************************************************************************/
+
+
+CSGShape::FaceIterator& CSGShape::FaceIterator::operator += (int rhs) noexcept
+{
+    for (size_t itr = 0; itr < rhs; itr++)
+        Next();
+
+    return *this;
+}
+
+
+/************************************************************************************************/
+
+
+CSGShape::FaceIterator CSGShape::FaceIterator::operator - (int rhs) const noexcept
+{
+    FaceIterator out{ shape, endIdx };
+
+    for (size_t itr = 0; itr < rhs; itr++)
+        out--;
+
+    return out;
+}
+
+
+/************************************************************************************************/
+
+
+CSGShape::FaceIterator& CSGShape::FaceIterator::operator -= (int rhs) noexcept
+{
+    for (size_t itr = 0; itr < rhs; itr++)
+        Prev();
+
+    return *this;
+}
+
+
+/************************************************************************************************/
+
+
+void CSGShape::FaceIterator::Next() noexcept
+{
+    itr++;
+    current = shape->wEdges[current].next;
+}
+
+
+/************************************************************************************************/
+
+
+void CSGShape::FaceIterator::Prev() noexcept
+{
+    itr--;
+    current = shape->wEdges[current].prev;
+}
+
+
+/************************************************************************************************/
+
+
+CSGShape::FaceIterator& CSGShape::FaceIterator::operator ++(int) noexcept
+{
+    Next();
+    return *this;
+}
+
+
+/************************************************************************************************/
+
+
+CSGShape::FaceIterator& CSGShape::FaceIterator::operator --(int) noexcept
+{
+    Prev();
+    return *this;
+}
+
+
 /************************************************************************************************/
 
 
@@ -179,18 +436,18 @@ std::vector<Triangle> CSGShape::GetFaceGeometry(uint32_t faceIdx) const
 
     const auto& face = wFaces[faceIdx];
 
-    const auto E1   = face.edgeStart;
+    ConstFaceIterator itr = face.begin(this);
+    ConstFaceIterator end = face.end(this);
+
+    const auto E1   = itr.current;
     auto P1         = wVertices[wEdges[E1].vertices[0]].point;
 
-    ConstFaceIterator itr{ this, face.edgeStart };
-    ConstFaceIterator end{ this, face.edgeStart };
-
-    end = end - 2;
+    itr++;
 
     while(itr != end)
     {
-        const auto E2 = itr->next;
-        const auto E3 = wEdges[E2].next;
+        const auto E2 = itr.current;
+        const auto E3 = itr->next;
 
         auto P2 = wVertices[wEdges[E2].vertices[0]].point;
         auto P3 = wVertices[wEdges[E3].vertices[0]].point;
@@ -204,6 +461,63 @@ std::vector<Triangle> CSGShape::GetFaceGeometry(uint32_t faceIdx) const
 
 
 /************************************************************************************************/
+
+
+FlexKit::float3 CSGShape::GetFaceNormal(uint32_t faceIdx) const
+{
+    const auto& face = wFaces[faceIdx];
+
+    const auto E1   = face.edgeStart;
+    auto P1         = wVertices[wEdges[E1].vertices[0]].point;
+
+    ConstFaceIterator itr{ this, face.edgeStart };
+    ConstFaceIterator end{ this, face.edgeStart };
+
+    end = end - 2;
+    size_t N = 0;
+
+    FlexKit::float3 normal{ 0 };
+
+    while(itr != end)
+    {
+        const auto E2 = itr->next;
+        const auto E3 = wEdges[E2].next;
+
+        auto P2 = wVertices[wEdges[E2].vertices[0]].point;
+        auto P3 = wVertices[wEdges[E3].vertices[0]].point;
+
+        Triangle T1{ P1, P2, P3 };
+        normal += T1.Normal();
+
+        itr++;
+        N++;
+    }
+
+    return normal / N;
+}
+
+
+/************************************************************************************************/
+
+
+CSGShape::SubFace CSGShape::GetSubFaceVertices(uint32_t faceIdx, uint32_t faceSubIdx) const
+{
+    const auto& face = wFaces[faceIdx];
+
+    const auto E1   = face.edgeStart;
+    auto P1         = wEdges[E1].vertices[0];
+
+    ConstFaceIterator itr{ this, face.edgeStart };
+    
+    itr += faceSubIdx;
+    const auto E2 = itr->next;
+    const auto E3 = wEdges[E2].next;
+
+    const auto P2 = wEdges[E2].vertices[0];
+    const auto P3 = wEdges[E3].vertices[0];
+
+    return { P1, P2, P3 };
+}
 
 
 uint32_t CSGShape::GetVertexFromFaceLocalIdx(uint32_t faceIdx, uint32_t faceSubIdx, uint32_t vertexIdx) const
@@ -777,6 +1091,9 @@ FlexKit::AABB CSGShape::GetAABB(const float3 pos) const noexcept
 }
 
 
+/************************************************************************************************/
+
+
 CSGShape CreateCubeCSGShape() noexcept
 {
     CSGShape cubeShape;
@@ -791,12 +1108,11 @@ CSGShape CreateCubeCSGShape() noexcept
     const uint32_t V7 = cubeShape.AddVertex({  1, -1, -1 });
     const uint32_t V8 = cubeShape.AddVertex({ -1, -1, -1 });
 
-
     uint32_t points[] = {
-        V1, V2, V3, V4
+        V1, V2, V3, V4, V5
     };
 
-    cubeShape.AddPolygon(points, points + 4);
+    cubeShape.AddPolygon(points, points + 5);
 
     /*
     // Top
@@ -1592,9 +1908,14 @@ public:
         auto& cameraData = FlexKit::CameraComponent::GetComponent().GetCamera(camera);
 
         auto& shape             = *selectionContext.shape;
-        const auto edgeIdx      = selectionContext.selectedElement;
-        auto& vertices          = shape.wEdges[edgeIdx].vertices;
-        FlexKit::float3 point   = (shape.wVertices[vertices[0]].point + shape.wVertices[vertices[1]].point) / 2.0f;
+        const auto& selection   = selectionContext.selectedPrimitives.front();
+
+        auto subFace            = shape.GetSubFaceVertices(selection.faceIdx, selection.faceSubIdx);
+
+        FlexKit::float3 point   = (
+            shape.wVertices[subFace.vertices[0]].point +
+            shape.wVertices[subFace.vertices[1]].point +
+            shape.wVertices[subFace.vertices[2]].point) / 3.0f;
 
                 FlexKit::float4x4 m             = FlexKit::TranslationMatrix(point);
                 FlexKit::float4x4 delta         = FlexKit::float4x4::Identity();
@@ -1609,16 +1930,18 @@ public:
             FlexKit::float3 scale;
             ImGuizmo::DecomposeMatrixToComponents(delta, deltapos, rotation, scale);
 
-            FlexKit::float4 p1{ shape.wVertices[vertices[0]].point, 1 };
-            FlexKit::float4 p2{ shape.wVertices[vertices[1]].point, 1 };
+            FlexKit::float4 p1{ shape.wVertices[subFace.vertices[0]].point, 1 };
+            FlexKit::float4 p2{ shape.wVertices[subFace.vertices[1]].point, 1 };
+            FlexKit::float4 p3{ shape.wVertices[subFace.vertices[2]].point, 1 };
 
-            shape.wVertices[vertices[0]].point = (delta * p1).xyz();
-            shape.wVertices[vertices[1]].point = (delta * p2).xyz();
+            shape.wVertices[subFace.vertices[0]].point = (delta * p1).xyz();
+            shape.wVertices[subFace.vertices[1]].point = (delta * p2).xyz();
+            shape.wVertices[subFace.vertices[2]].point = (delta * p3).xyz();
             selectionContext.shape->Build();
         }
 
         ImGui::SetNextWindowPos({ 0, 400 });
-        if (ImGui::Begin("Edge Manipulator", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
+        if (ImGui::Begin("Vertex Manipulator", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
         {
             ImGui::SetWindowSize({ 400, 400 });
 
@@ -1626,8 +1949,68 @@ public:
             if (ImGui::InputFloat3("XYZ", newPos))
             {
                 auto deltaP = newPos - point;
-                shape.wVertices[vertices[0]].point += deltaP;
-                shape.wVertices[vertices[1]].point += deltaP;
+                shape.wVertices[subFace.vertices[0]].point += deltaP;
+                shape.wVertices[subFace.vertices[1]].point += deltaP;
+                shape.wVertices[subFace.vertices[2]].point += deltaP;
+                selectionContext.shape->Build();
+            }
+        }
+        ImGui::End();
+    }
+
+    void FaceManipulatorMode() const
+    {
+        const auto camera = viewport.GetViewportCamera();
+        FlexKit::CameraComponent::GetComponent().GetCamera(camera).UpdateMatrices();
+        auto& cameraData = FlexKit::CameraComponent::GetComponent().GetCamera(camera);
+
+        auto& shape             = *selectionContext.shape;
+        const auto& selection   = selectionContext.selectedPrimitives.front();
+
+        FlexKit::float3 point   = shape.GetFaceCenterPoint(selection.faceIdx);
+
+                FlexKit::float4x4 m             = FlexKit::TranslationMatrix(point);
+                FlexKit::float4x4 delta         = FlexKit::float4x4::Identity();
+
+        const   FlexKit::float4x4 view          = cameraData.View.Transpose();
+        const   FlexKit::float4x4 projection    = cameraData.Proj;
+
+        FlexKit::float3 deltapos;
+        if (ImGuizmo::Manipulate(view, projection, operation, space, m, delta))
+        {
+            FlexKit::float3 rotation;
+            FlexKit::float3 scale;
+            ImGuizmo::DecomposeMatrixToComponents(delta, deltapos, rotation, scale);
+
+            auto itr = shape.wFaces[selection.faceIdx].begin(&shape);
+
+            for (;!itr.end(); itr++)
+            {
+                FlexKit::float4 p{ shape.wVertices[itr->vertices[0]].point, 1 };
+                shape.wVertices[itr->vertices[0]].point = (delta * p).xyz();
+            }
+
+            selectionContext.shape->Build();
+        }
+
+        ImGui::SetNextWindowPos({ 0, 400 });
+        if (ImGui::Begin("Vertex Manipulator", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
+        {
+            ImGui::SetWindowSize({ 400, 400 });
+
+            FlexKit::float3 newPos = point;
+            if (ImGui::InputFloat3("XYZ", newPos))
+            {
+                auto deltaP = newPos - point;
+                auto itr    = shape.wFaces[selection.faceIdx].begin(&shape);
+                auto end    = shape.wFaces[selection.faceIdx].end(&shape);
+
+                for (; itr != end; itr++)
+                {
+                    FlexKit::float4 p{ shape.wVertices[itr->vertices[0]].point, 1 };
+                    shape.wVertices[itr->vertices[0]].point += deltaP;
+                }
+
                 selectionContext.shape->Build();
             }
         }
@@ -1694,11 +2077,13 @@ public:
         switch (selectionContext.mode)
         {
         case SelectionPrimitive::Edge:
-            EdgeManipulatorMode();
-            return;
+            return EdgeManipulatorMode();
         case SelectionPrimitive::Vertex:
-            VertexManipulatorMode();
-            return;
+            return VertexManipulatorMode();
+        case SelectionPrimitive::Triangle:
+            return TriangleManipulatorMode();
+        case SelectionPrimitive::Polygon:
+            return FaceManipulatorMode();
         case SelectionPrimitive::Object:
             ObjectManipulatorMode();
             return;
@@ -1802,29 +2187,46 @@ public:
 
                         std::vector<Vertex> verts;
 
-                        for (size_t triIdx = 0; triIdx < brush.shape.tris.size(); triIdx++)
+                        for (size_t faceIdx = 0; faceIdx < brush.shape.wFaces.size(); faceIdx++)
                         {
-                            FlexKit::float4 Color = colors[triIdx % 8];
+                            auto& face = brush.shape.wFaces[faceIdx];
+                            FlexKit::float4 Color = colors[faceIdx % 8];
+
 
                             Vertex v;
-                            auto& tri = brush.shape.tris[triIdx];
+                            v.UV = FlexKit::float2(1, 1);
+                            auto temp = brush.shape.GetFaceGeometry(faceIdx);
 
-
-                            v.Color     = Color;
-                            v.UV        = FlexKit::float2(1, 1);
-
-                            for (size_t idx = 0; idx < 3; idx++)
+                            for (size_t triIdx = 0; triIdx < temp.size(); triIdx++)
                             {
-                                v.Position = FlexKit::float4(tri[idx], 1);
-                                verts.emplace_back(v);
-                            }
-                        }
+                                auto& vertex = temp[triIdx];
 
-                        if (selectionContext.brush == &brush)
-                        {
-                            verts[selectionContext.selectedPrimitives[0].faceIdx * 3 + 0].Color = FlexKit::float4{ 0.8, 0, 0, 1 };
-                            verts[selectionContext.selectedPrimitives[0].faceIdx * 3 + 1].Color = FlexKit::float4{ 0.8, 0, 0, 1 };
-                            verts[selectionContext.selectedPrimitives[0].faceIdx * 3 + 2].Color = FlexKit::float4{ 0.8, 0, 0, 1 };
+                                v.Color = Color;
+
+                                if (selectionContext.selectedPrimitives.size())
+                                {
+                                    switch (selectionContext.mode)
+                                    {
+                                    case  SelectionPrimitive::Polygon:
+                                        if (selectionContext.selectedPrimitives[0].faceIdx == faceIdx)
+                                            v.Color = FlexKit::float4{ 0.8, 0, 0, 1 };
+                                        else
+                                        break;
+                                    case  SelectionPrimitive::Triangle:
+                                        if (selectionContext.selectedPrimitives[0].faceIdx == faceIdx &&
+                                            selectionContext.selectedPrimitives[0].faceSubIdx == triIdx)
+                                            v.Color = FlexKit::float4{ 0.8, 0, 0, 1 };
+                                        break;
+                                    }
+                                }
+
+                                for (size_t idx = 0; idx < 3; idx++)
+                                {
+                                    v.Position = FlexKit::float4(vertex[idx], 1);
+                                    verts.emplace_back(v);
+                                }
+                            }
+
                         }
 
                         for (auto& intersection : brush.intersections)
@@ -1903,24 +2305,26 @@ public:
                             if (drawNormals)
                             {
                                 const auto geometry = shape.GetFaceGeometry(faceIdx);
-                                const auto tri      = geometry.front().Offset(brush.position);
-                                //const auto tri  = shape.GetTri(faceIdx).Offset(brush.position);
-                                const auto A    = tri.TriPoint();
-                                const auto B    = A + tri.Normal().normal();
+                                for(auto triangle : geometry)
+                                {
+                                    const auto tri      = triangle.Offset(brush.position);
+                                    const auto A        = triangle.TriPoint();
+                                    const auto B        = A + triangle.Normal();
 
-                                verts.push_back(
-                                    Vertex{
-                                        .Position   = A,
-                                        .Color      = FlexKit::float4{ 1, 1, 1, 1 },
-                                        .UV         = FlexKit::float2{ 0, 0 }
-                                    });
+                                    verts.push_back(
+                                        Vertex{
+                                            .Position   = A,
+                                            .Color      = FlexKit::float4{ 1, 1, 1, 1 },
+                                            .UV         = FlexKit::float2{ 0, 0 }
+                                        });
 
-                                verts.push_back(
-                                    Vertex{
-                                        .Position   = B,
-                                        .Color      = FlexKit::float4{ 1, 1, 1, 1 },
-                                        .UV         = FlexKit::float2{ 1, 1 }
-                                    });
+                                    verts.push_back(
+                                        Vertex{
+                                            .Position   = B,
+                                            .Color      = FlexKit::float4{ 1, 1, 1, 1 },
+                                            .UV         = FlexKit::float2{ 1, 1 }
+                                        });
+                                }
                             }
                         }
 
@@ -2118,6 +2522,10 @@ public:
                 case SelectionPrimitive::Triangle:
                 {
                     TriangleSelectionMode(evt);
+                }   break;
+                case SelectionPrimitive::Polygon:
+                {
+                    FaceSelectionMode(evt);
                 }   break;
                 default:
                     break;
@@ -2319,7 +2727,7 @@ public:
                     const auto geometry = primitive.shape->GetFaceGeometry(primitive.faceIdx);
                     auto tri = geometry[selectedPrimitives.front().faceSubIdx].Offset(brush->position);
 
-                    tri = tri.Offset(tri.Normal() * 0.01f);
+                    tri = tri.Offset(tri.Normal() * 0.001f + brush->position);
 
                     Vertex v;
                     v.Color = FlexKit::float4(1, 0, 0, 1);
@@ -2337,10 +2745,11 @@ public:
                 for (auto& primitive : selectedPrimitives)
                 {
                     const auto geometry = primitive.shape->GetFaceGeometry(primitive.faceIdx);
+                    auto n              = primitive.shape->GetFaceNormal(primitive.faceIdx);
 
                     for (auto tri : geometry)
                     {
-                        tri = tri.Offset(tri.Normal() * 0.01f + brush->position);
+                        tri = tri.Offset(n * 0.001f + brush->position);
 
                         Vertex v;
                         v.Color = FlexKit::float4(1, 0, 0, 1);

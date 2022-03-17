@@ -343,7 +343,7 @@ namespace FlexKit
     }
 
     template<typename TY_FORMAT = Vect<4, uint8_t>, typename FN_Sampler = decltype(AverageSampler<>)>
-    TextureBuffer BuildMipMap(TextureBuffer& sourceMap, iAllocator* memory, FN_Sampler sampler = AverageSampler<>)
+    TextureBuffer BuildMipMap(TextureBuffer& sourceMap, iAllocator* memory, FN_Sampler sampler = FN_Sampler{})
     {
         const size_t    elementSize = sizeof(TY_FORMAT);
         const uint2     WH          = sourceMap.WH / 2;

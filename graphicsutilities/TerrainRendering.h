@@ -34,7 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "memoryutilities.h"
 #include "graphics.h"
 #include "DDSUtilities.h"
-
+#include "TextureUtilities.h"
 #include <DirectXMath.h>
 
 
@@ -379,10 +379,10 @@ namespace FlexKit
 				Textures.push_back(TextureBuffer{});
 				LoadBMP(heightMap, tempMemory, &Textures.back());
 				
-				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
-				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
-				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
-				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
+				Textures.push_back(BuildMipMap(Textures.back(), tempMemory, AverageSampler<>));
+				Textures.push_back(BuildMipMap(Textures.back(), tempMemory, AverageSampler<>));
+				Textures.push_back(BuildMipMap(Textures.back(), tempMemory, AverageSampler<>));
+				Textures.push_back(BuildMipMap(Textures.back(), tempMemory, AverageSampler<>));
 
 
                 FK_ASSERT(0);

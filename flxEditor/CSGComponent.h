@@ -34,6 +34,7 @@ struct Triangle
     const float3    TriPoint(const FlexKit::float3 BaryCentricPoint) const noexcept;
 };
 
+
 struct CSGShape
 {
     struct wVertex
@@ -50,10 +51,96 @@ struct CSGShape
         uint32_t face;
     };
 
+    struct SubFace
+    {
+        uint32_t vertices[3];
+    };
+
     struct wFace
     {
         uint32_t                edgeStart;
         std::vector<uint32_t>   polys;
+
+        auto begin(const CSGShape* shape) const
+        {
+            return ConstFaceIterator{ shape, edgeStart };
+        }
+
+        auto end(const CSGShape* shape) const
+        {
+            auto end = ConstFaceIterator{ shape, edgeStart };
+            end--;
+
+            return end;
+        }
+
+        auto begin  (CSGShape* shape) { return FaceIterator{ shape, edgeStart }; }
+        auto end    (CSGShape* shape)   { auto end = FaceIterator{ shape, edgeStart }; end--; return end; }
+    };
+
+    class ConstFaceIterator
+    {
+    public:
+        ConstFaceIterator(const CSGShape* IN_shape, uint32_t IN_end) noexcept
+            : shape     { IN_shape }
+            , endIdx    { IN_end }
+            , current   { IN_end }
+            , itr       { 0 } {}
+
+        const CSGShape* shape;
+        uint32_t    endIdx;
+        uint32_t    current;
+        int32_t     itr;
+
+        float3  GetPoint(uint32_t vertex) const;
+        bool    end() noexcept;
+        bool    operator == (const ConstFaceIterator& rhs) const noexcept;
+        const   wEdge* operator -> () noexcept;
+
+        ConstFaceIterator   operator +  (int rhs) const noexcept;
+        ConstFaceIterator&  operator += (int rhs) noexcept;
+        ConstFaceIterator   operator -  (int rhs) const noexcept;
+        ConstFaceIterator&  operator -= (int rhs) noexcept;
+
+        void Next() noexcept;
+        void Prev() noexcept;
+
+        ConstFaceIterator& operator ++(int) noexcept;
+        ConstFaceIterator& operator --(int) noexcept;
+    };
+
+    class FaceIterator
+    {
+    public:
+        FaceIterator(CSGShape* IN_shape, uint32_t IN_end) noexcept
+            : shape     { IN_shape }
+            , endIdx    { IN_end }
+            , current   { IN_end }
+            , itr       { 0 } {}
+
+        CSGShape*     shape;
+        uint32_t      endIdx;
+        uint32_t      current;
+        uint32_t      itr;
+
+        float3  GetPoint(uint32_t vertex) const;
+        bool    end() noexcept;
+
+        bool            operator == (const FaceIterator& rhs) const noexcept;
+        const wEdge*    operator -> ()              noexcept;
+        FaceIterator    operator +  (int rhs) const noexcept;
+        FaceIterator&   operator += (int rhs)       noexcept;
+        FaceIterator    operator -  (int rhs) const noexcept;
+        FaceIterator&   operator -= (int rhs)       noexcept;
+
+
+        void Next() noexcept;
+        void Prev() noexcept;
+
+
+        FaceIterator& operator ++(int) noexcept;
+        FaceIterator& operator --(int) noexcept;
+
     };
 
     using wEdgeList = std::vector<uint32_t>;
@@ -87,7 +174,9 @@ struct CSGShape
 
     FlexKit::LineSegment    GetEdgeSegment  (uint32_t edgeId) const;
     std::vector<Triangle>   GetFaceGeometry (uint32_t faceIdx) const;
+    FlexKit::float3         GetFaceNormal   (uint32_t faceIdx) const;
 
+    SubFace                 GetSubFaceVertices          (uint32_t faceIdx, uint32_t faceSubIdx) const;
     uint32_t                GetVertexFromFaceLocalIdx   (uint32_t faceIdx, uint32_t faceSubIdx, uint32_t vertexIdx) const;
     std::vector<uint32_t>   GetFaceVertices             (uint32_t faceIdx) const;
     FlexKit::float3         GetFaceCenterPoint          (uint32_t faceIdx) const;
@@ -128,144 +217,8 @@ struct CSGShape
 };
 
 
-/************************************************************************************************/
-
-
-class FaceIterator
-{
-public:
-    FaceIterator(CSGShape* IN_shape, uint32_t IN_end) noexcept
-        : shape     { IN_shape }
-        , endIdx    { IN_end }
-        , current   { IN_end }
-        , itr       { 0 } {}
-
-    CSGShape*   shape;
-    uint32_t    endIdx;
-    uint32_t    current;
-    uint32_t    itr;
-
-    bool end() noexcept
-    {
-        return !(itr == 0 || current != endIdx);
-    }
-
-    auto* operator -> () noexcept
-    {
-        return &shape->wEdges[current];
-    }
-
-
-    FaceIterator& operator ++(int) noexcept
-    {
-        itr++;
-        current = shape->wEdges[current].next;
-        return *this;
-    }
-
-    FaceIterator& operator --(int) noexcept
-    {
-        itr--;
-        current = shape->wEdges[current].prev;
-        return *this;
-    }
-};
-
-
-class ConstFaceIterator
-{
-public:
-    ConstFaceIterator(const CSGShape* IN_shape, uint32_t IN_end) noexcept
-        : shape     { IN_shape }
-        , endIdx    { IN_end }
-        , current   { IN_end }
-        , itr       { 0 } {}
-
-    const CSGShape*   shape;
-    uint32_t    endIdx;
-    uint32_t    current;
-    uint32_t    itr;
-
-    float3 GetPoint(uint32_t vertex) const
-    {
-        return shape->wVertices[vertex].point;
-    }
-
-    bool end() noexcept
-    {
-        return !(itr == 0 || current != endIdx);
-    }
-
-    bool operator == (const ConstFaceIterator& rhs) const noexcept
-    {
-        return current == rhs.current && shape == rhs.shape;
-    }
-
-    const auto* operator -> () noexcept
-    {
-        return &shape->wEdges[current];
-    }
-
-    ConstFaceIterator operator + (int rhs) const noexcept
-    {
-        ConstFaceIterator out{ shape, endIdx };
-
-        for(size_t itr = 0; itr < rhs; itr++)
-            out++;
-
-        return out;
-    }
-
-    ConstFaceIterator& operator += (int rhs) noexcept
-    {
-        for (size_t itr = 0; itr < rhs; itr++)
-            Next();
-
-        return *this;
-    }
-
-    ConstFaceIterator operator - (int rhs) const noexcept
-    {
-        ConstFaceIterator out{ shape, endIdx };
-
-        for (size_t itr = 0; itr < rhs; itr++)
-            out--;
-
-        return out;
-    }
-
-    ConstFaceIterator& operator -= (int rhs) noexcept
-    {
-        for (size_t itr = 0; itr < rhs; itr++)
-            Prev();
-
-        return *this;
-    }
-
-    void Next() noexcept
-    {
-        itr++;
-        current = shape->wEdges[current].next;
-    }
-
-    void Prev() noexcept
-    {
-        itr--;
-        current = shape->wEdges[current].prev;
-    }
-
-    ConstFaceIterator& operator ++(int) noexcept
-    {
-        Next();
-        return *this;
-    }
-
-    ConstFaceIterator& operator --(int) noexcept
-    {
-        Prev();
-        return *this;
-    }
-};
+using FaceIterator      = CSGShape::FaceIterator;
+using ConstFaceIterator = CSGShape::ConstFaceIterator;
 
 /************************************************************************************************/
 

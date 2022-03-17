@@ -385,11 +385,11 @@ namespace FlexKit
         std::vector<PointerValue>   pointerTable;
 
 
-        template<typename TY>
-        void _Serialize(TY& value)
-        {
-            static_assert(false, "Unable to serialize a value. Please add a void ::Serialize(type&) overload, or inherit from Serializable, or SerializableInterface");
-        }
+        //template<typename TY>
+        //void _Serialize(TY& value)
+       // {
+        //    static_assert(false, "Unable to serialize a value. Please add a void ::Serialize(type&) overload, or inherit from Serializable, or SerializableInterface");
+       // }
 
 
         void _Serialize(SerializableInterfacePointer auto& value)
@@ -705,11 +705,11 @@ namespace FlexKit
 
         constexpr bool Loading() const noexcept { return true; }
 
-        template<typename TY>
-        void _Deserialize(TY& value)
-        {
-            static_assert(false, "Unable to deserialize a value. Please add a void ::Serialize(type&) overload, or inherit from Serializable, or SerializableInterface");
-        }
+        //template<typename TY>
+        //void _Deserialize(TY& value)
+        //{
+        //    static_assert(false, "Unable to deserialize a value. Please add a void ::Serialize(type&) overload, or inherit from Serializable, or SerializableInterface");
+        //}
 
 
         template<typename TY>
