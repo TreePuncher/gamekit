@@ -9,904 +9,37 @@
 /************************************************************************************************/
 
 
-float3 CSGShape::ConstFaceIterator::GetPoint(uint32_t vertex) const
+uint32_t ExtrudeFace(uint32_t faceIdx, float z, ModifiableShape& shape)
 {
-    return shape->wVertices[shape->wEdges[current].vertices[vertex]].point;
-}
+    auto extrudedFace   = shape.DuplicateFace(faceIdx);
+    auto normal         = shape.GetFaceNormal(extrudedFace);
 
+    for (auto itr = shape.wFaces[extrudedFace].begin(&shape);!itr.end();itr++)
+        shape.wVertices[itr->vertices[0]].point += normal * z;
 
-/************************************************************************************************/
 
+    auto itr1 = shape.wFaces[faceIdx].begin(&shape);
+    auto itr2 = shape.wFaces[extrudedFace].begin(&shape);
 
-bool CSGShape::ConstFaceIterator::end() noexcept
-{
-    return !(itr == 0 || current != endIdx);
-}
-
-
-/************************************************************************************************/
-
-
-bool CSGShape::ConstFaceIterator::operator == (const ConstFaceIterator& rhs) const noexcept
-{
-    return current == rhs.current && shape == rhs.shape;
-}
-
-
-/************************************************************************************************/
-
-
-const CSGShape::wEdge* CSGShape::ConstFaceIterator::operator -> () noexcept
-{
-    return &shape->wEdges[current];
-}
-
-
-/************************************************************************************************/
-
-
-CSGShape::ConstFaceIterator CSGShape::ConstFaceIterator::operator + (int rhs) const noexcept
-{
-    CSGShape::ConstFaceIterator out{ shape, endIdx };
-
-    for(size_t itr = 0; itr < rhs; itr++)
-        out++;
-
-    return out;
-}
-
-
-/************************************************************************************************/
-
-
-CSGShape::ConstFaceIterator& CSGShape::ConstFaceIterator::operator += (int rhs) noexcept
-{
-    for (size_t itr = 0; itr < rhs; itr++)
-        Next();
-
-    return *this;
-}
-
-
-/************************************************************************************************/
-
-
-CSGShape::ConstFaceIterator CSGShape::ConstFaceIterator::operator - (int rhs) const noexcept
-{
-    CSGShape::ConstFaceIterator out{ shape, endIdx };
-
-    for (size_t itr = 0; itr < rhs; itr++)
-        out--;
-
-    return out;
-}
-
-
-/************************************************************************************************/
-
-
-CSGShape::ConstFaceIterator& CSGShape::ConstFaceIterator::operator -= (int rhs) noexcept
-{
-    for (size_t itr = 0; itr < rhs; itr++)
-        Prev();
-
-    return *this;
-}
-
-
-/************************************************************************************************/
-
-
-void CSGShape::ConstFaceIterator::Next() noexcept
-{
-    itr++;
-    current = shape->wEdges[current].next;
-}
-
-
-/************************************************************************************************/
-
-
-void CSGShape::ConstFaceIterator::Prev() noexcept
-{
-    itr--;
-    current = shape->wEdges[current].prev;
-}
-
-
-/************************************************************************************************/
-
-
-CSGShape::ConstFaceIterator& CSGShape::ConstFaceIterator::operator ++(int) noexcept
-{
-    Next();
-    return *this;
-}
-
-
-/************************************************************************************************/
-
-
-CSGShape::ConstFaceIterator& CSGShape::ConstFaceIterator::operator --(int) noexcept
-{
-    Prev();
-    return *this;
-}
-
-
-/************************************************************************************************/
-
-
-float3 CSGShape::FaceIterator::GetPoint(uint32_t vertex) const
-{
-    return shape->wVertices[vertex].point;
-}
-
-
-/************************************************************************************************/
-
-
-bool CSGShape::FaceIterator::end() noexcept
-{
-    return !(itr == 0 || current != endIdx);
-}
-
-
-/************************************************************************************************/
-
-
-bool CSGShape::FaceIterator::operator == (const FaceIterator& rhs) const noexcept
-{
-    return current == rhs.current && shape == rhs.shape;
-}
-
-
-/************************************************************************************************/
-
-
-const CSGShape::wEdge* CSGShape::FaceIterator::operator -> () noexcept
-{
-    return &shape->wEdges[current];
-}
-
-
-/************************************************************************************************/
-
-
-CSGShape::FaceIterator CSGShape::FaceIterator::operator + (int rhs) const noexcept
-{
-    FaceIterator out{ shape, endIdx };
-
-    for(size_t itr = 0; itr < rhs; itr++)
-        out++;
-
-    return out;
-}
-
-
-/************************************************************************************************/
-
-
-CSGShape::FaceIterator& CSGShape::FaceIterator::operator += (int rhs) noexcept
-{
-    for (size_t itr = 0; itr < rhs; itr++)
-        Next();
-
-    return *this;
-}
-
-
-/************************************************************************************************/
-
-
-CSGShape::FaceIterator CSGShape::FaceIterator::operator - (int rhs) const noexcept
-{
-    FaceIterator out{ shape, endIdx };
-
-    for (size_t itr = 0; itr < rhs; itr++)
-        out--;
-
-    return out;
-}
-
-
-/************************************************************************************************/
-
-
-CSGShape::FaceIterator& CSGShape::FaceIterator::operator -= (int rhs) noexcept
-{
-    for (size_t itr = 0; itr < rhs; itr++)
-        Prev();
-
-    return *this;
-}
-
-
-/************************************************************************************************/
-
-
-void CSGShape::FaceIterator::Next() noexcept
-{
-    itr++;
-    current = shape->wEdges[current].next;
-}
-
-
-/************************************************************************************************/
-
-
-void CSGShape::FaceIterator::Prev() noexcept
-{
-    itr--;
-    current = shape->wEdges[current].prev;
-}
-
-
-/************************************************************************************************/
-
-
-CSGShape::FaceIterator& CSGShape::FaceIterator::operator ++(int) noexcept
-{
-    Next();
-    return *this;
-}
-
-
-/************************************************************************************************/
-
-
-CSGShape::FaceIterator& CSGShape::FaceIterator::operator --(int) noexcept
-{
-    Prev();
-    return *this;
-}
-
-
-/************************************************************************************************/
-
-
-uint32_t CSGShape::AddVertex(FlexKit::float3 point)
-{
-    const auto idx = wVertices.size();
-    wVertices.emplace_back(point);
-    wVerticeEdges.emplace_back();
-
-    return idx;
-}
-
-
-/************************************************************************************************/
-
-
-uint32_t CSGShape::FindOpposingEdge(uint32_t V1, uint32_t V2) const noexcept
-{
-    for (auto idx : wVerticeEdges[V1])
+    while (!itr1.end())
     {
-        auto& halfEdge = wEdges[idx];
+        uint32_t points[] = {
+            itr1->vertices[0],
+            itr1->vertices[1],
+            itr2->vertices[1],
+            itr2->vertices[0],
+        };
 
-        if (halfEdge.vertices[0] == V2 && halfEdge.vertices[1] == V1)
-            return idx;
+        shape.AddPolygon(points, points + 4);
+
+        itr1++;
+        itr2++;
     }
 
-    for (auto idx : wVerticeEdges[V2])
-    {
-        auto& halfEdge = wEdges[idx];
+    shape.RemoveFace(faceIdx);
+    shape.Build();
 
-        if (halfEdge.vertices[0] == V2 && halfEdge.vertices[1] == V1)
-            return idx;
-    }
-
-    return -1u;
-}
-
-
-uint32_t CSGShape::AddEdge(uint32_t V1, uint32_t V2, uint32_t owningFace)
-{
-    const auto idx              = wEdges.size();
-    const uint32_t opposingEdge = FindOpposingEdge(V1, V2);
-
-    if(opposingEdge != -1u)
-        wEdges[opposingEdge].oppositeNeighbor = wEdges.size();
-
-    wVerticeEdges[V1].push_back(idx);
-    wVerticeEdges[V2].push_back(idx);
-
-    wEdges.emplace_back(wEdge{ { V1, V2 }, opposingEdge, -1u, -1u, owningFace });
-
-    return idx;
-}
-
-
-/************************************************************************************************/
-
-
-uint32_t CSGShape::AddTri(uint32_t V1, uint32_t V2, uint32_t V3)
-{
-    const auto idx = wFaces.size();
-
-    auto E1 = AddEdge(V1, V2, idx);
-    auto E2 = AddEdge(V2, V3, idx);
-    auto E3 = AddEdge(V3, V1, idx);
-
-    wEdges[E1].next = E2;
-    wEdges[E2].next = E3;
-    wEdges[E3].next = E1;
-
-    wEdges[E1].prev = E3;
-    wEdges[E2].prev = E2;
-    wEdges[E3].prev = E1;
-
-    wFaces.emplace_back(wFace{ E1, {} });
-
-    return idx;
-}
-
-
-/************************************************************************************************/
-
-
-uint32_t CSGShape::_AddEdge()
-{
-    const uint32_t idx = wEdges.size();
-    wEdges.emplace_back(wEdge{ { -1u, -1u }, -1u, -1u });
-
-    return idx;
-}
-
-
-/************************************************************************************************/
-
-
-uint32_t CSGShape::_AddVertex()
-{
-    const uint32_t idx = wVertices.size();
-    wVertices.emplace_back();
-    wVerticeEdges.emplace_back();
-
-    return idx;
-}
-
-
-/************************************************************************************************/
-
-
-uint32_t CSGShape::AddPolygon(const uint32_t* vertexStart, const uint32_t* vertexEnd)
-{
-    uint32_t firstEdge      = -1;
-    uint32_t previousEdge   = -1;
-    const auto faceIdx = wFaces.size();
-
-    for (auto itr = vertexStart; itr != vertexEnd; itr++)
-    {
-        uint32_t edge = -1u;
-        if (itr + 1 != vertexEnd)
-        {
-            edge = AddEdge(itr[0], itr[1], faceIdx);
-            wEdges[edge].prev = previousEdge;
-
-            if (previousEdge != -1)
-                wEdges[previousEdge].next = edge;
-            else
-                firstEdge = edge;
-        }
-        else
-        {
-            edge = AddEdge(
-                wEdges[previousEdge].vertices[1],
-                wEdges[firstEdge].vertices[0],
-                faceIdx);
-
-            wEdges[edge].prev           = previousEdge;
-            wEdges[edge].next           = firstEdge;
-
-            wEdges[firstEdge].prev      = edge;
-            wEdges[previousEdge].next   = edge;
-        }
-
-        previousEdge = edge;
-    }
-
-
-    wFaces.emplace_back(wFace{ firstEdge, {} });
-
-    return faceIdx;
-}
-
-
-/************************************************************************************************/
-
-
-FlexKit::LineSegment CSGShape::GetEdgeSegment(uint32_t edgeId) const
-{
-    const auto vertices = wEdges[edgeId].vertices;
-
-    return {
-        .A = wVertices[vertices[0]].point,
-        .B = wVertices[vertices[1]].point,
-    };
-}
-
-
-/************************************************************************************************/
-
-
-std::vector<Triangle> CSGShape::GetFaceGeometry(uint32_t faceIdx) const
-{
-    std::vector<Triangle> geometry;
-
-    const auto& face = wFaces[faceIdx];
-
-    if (face.edgeStart == -1)
-        return {};
-
-    ConstFaceIterator itr = face.begin(this);
-    ConstFaceIterator end = face.end(this);
-
-    const auto E1   = itr.current;
-    auto P1         = wVertices[wEdges[E1].vertices[0]].point;
-
-    itr++;
-
-    while(itr != end)
-    {
-        const auto E2 = itr.current;
-        const auto E3 = itr->next;
-
-        auto P2 = wVertices[wEdges[E2].vertices[0]].point;
-        auto P3 = wVertices[wEdges[E3].vertices[0]].point;
-
-        geometry.emplace_back(Triangle{ P1, P2, P3 });
-        itr++;
-    }
-
-    return geometry;
-}
-
-
-/************************************************************************************************/
-
-
-FlexKit::float3 CSGShape::GetFaceNormal(uint32_t faceIdx) const
-{
-    const auto& face = wFaces[faceIdx];
-
-    const auto E1   = face.edgeStart;
-    auto P1         = wVertices[wEdges[E1].vertices[0]].point;
-
-    ConstFaceIterator itr{ this, face.edgeStart };
-    ConstFaceIterator end{ this, face.edgeStart };
-
-    end = end - 2;
-    size_t N = 0;
-
-    FlexKit::float3 normal{ 0 };
-
-    while(itr != end)
-    {
-        const auto E2 = itr->next;
-        const auto E3 = wEdges[E2].next;
-
-        auto P2 = wVertices[wEdges[E2].vertices[0]].point;
-        auto P3 = wVertices[wEdges[E3].vertices[0]].point;
-
-        Triangle T1{ P1, P2, P3 };
-        normal += T1.Normal();
-
-        itr++;
-        N++;
-    }
-
-    return normal / N;
-}
-
-
-/************************************************************************************************/
-
-
-CSGShape::SubFace CSGShape::GetSubFace(uint32_t faceIdx, uint32_t faceSubIdx) const
-{
-    const auto& face = wFaces[faceIdx];
-
-    const auto E1   = face.edgeStart;
-    auto P1         = wEdges[E1].vertices[0];
-
-    ConstFaceIterator itr{ this, face.edgeStart };
-    
-    itr += faceSubIdx;
-    const auto E2 = itr->next;
-    const auto E3 = wEdges[E2].next;
-
-    const auto P2 = wEdges[E2].vertices[0];
-    const auto P3 = wEdges[E3].vertices[0];
-
-    return { { P1, P2, P3 }, { E1, E2, E3 } };
-}
-
-
-uint32_t CSGShape::GetVertexFromFaceLocalIdx(uint32_t faceIdx, uint32_t faceSubIdx, uint32_t vertexIdx) const
-{
-    const auto& face = wFaces[faceIdx];
-
-    const auto E1   = face.edgeStart;
-    auto P1         = wEdges[E1].vertices[0];
-
-    ConstFaceIterator itr{ this, face.edgeStart };
-    
-    itr += faceSubIdx;
-    const auto E2 = itr->next;
-    const auto E3 = wEdges[E2].next;
-
-    uint32_t vertices[3] =
-    {
-        P1,
-        vertices[1] = wEdges[E2].vertices[0],
-        vertices[2] = wEdges[E3].vertices[0],
-    };
-
-    return vertices[vertexIdx];
-}
-
-
-/************************************************************************************************/
-
-
-std::vector<uint32_t> CSGShape::GetFaceVertices(uint32_t faceIdx) const
-{
-
-    const auto start = wFaces[faceIdx].edgeStart;
-    auto edge = start;
-
-    std::vector<uint32_t> out;
-    for (size_t I = 0; (I == 0 || edge != start); ++I)
-    {
-        edge = wEdges[edge].next;
-        out.push_back(wEdges[edge].vertices[0]);
-    }
-
-    return out;
-}
-
-
-/************************************************************************************************/
-
-
-FlexKit::float3 CSGShape::GetFaceCenterPoint(uint32_t faceIdx) const
-{
-    FlexKit::float3 point{ 0 };
-    size_t vertexCount = 0;
-
-    
-    ConstFaceIterator itr{ this, wFaces[faceIdx].edgeStart };
-    while (!itr.end())
-    {
-        point += itr.GetPoint(0);
-        vertexCount++;
-        itr++;
-    }
-
-    return point / vertexCount;
-}
-
-
-/************************************************************************************************/
-
-
-uint32_t CSGShape::NextEdge(const uint32_t edgeIdx) const
-{
-    return wEdges[edgeIdx].next;
-}
-
-
-/************************************************************************************************/
-
-
-void CSGShape::_RemoveVertexEdgeNeighbor(const uint32_t vertexIdx, const uint32_t edgeIdx)
-{
-    auto& vertexNeighbor = wVerticeEdges[vertexIdx];
-
-    vertexNeighbor.erase(
-        std::remove_if(
-            vertexNeighbor.begin(),
-            vertexNeighbor.end(),
-            [&](auto& lhs) { return lhs == edgeIdx; }),
-        vertexNeighbor.end());
-}
-
-
-/************************************************************************************************/
-
-
-uint32_t CSGShape::DuplicateFace(const uint32_t faceIdx)
-{
-    std::vector<uint32_t> vertices;
-
-    auto& face = wFaces[faceIdx];
-
-    for(FaceIterator itr{ this, face.edgeStart }; !itr.end(); itr++)
-        vertices.push_back(itr->vertices[0]);
-
-    std::vector<uint32_t> newVertices;
-    for (auto vidx : vertices)
-    {
-        auto newVertex = AddVertex(wVertices[vidx].point);
-        newVertices.push_back(newVertex);
-    }
-
-    return AddPolygon(newVertices.data(), newVertices.data() + newVertices.size());
-}
-
-
-/************************************************************************************************/
-
-
-void CSGShape::RemoveFace(const uint32_t faceIdx)
-{
-    freeFaces.push_back(faceIdx);
-
-    auto itr = wFaces[faceIdx].begin(this);
-
-    for(;!itr.end(); itr++)
-        freeEdges.push_back(itr.current);
-
-    wFaces[faceIdx].edgeStart = -1;
-}
-
-
-/************************************************************************************************/
-
-
-void CSGShape::SplitTri(uint32_t triId, const float3 BaryCentricPoint)
-{
-    const auto geometry = GetFaceGeometry(triId);
-    const auto newPoint = geometry.front().TriPoint(BaryCentricPoint);
-
-    const auto E0 = wFaces[triId].edgeStart;
-    const auto E1 = wEdges[E0].next;
-    const auto E2 = wEdges[E1].next;
-
-    const auto V0 = wEdges[E0].vertices[0];
-    const auto V1 = wEdges[E1].vertices[0];
-    const auto V2 = wEdges[E2].vertices[0];
-    const auto V3 = AddVertex(newPoint);
-
-    const auto E3 = (uint32_t)wEdges.size();    wEdges.emplace_back();
-    const auto E4 = E3 + 1;                     wEdges.emplace_back();
-    const auto E5 = E3 + 2;                     wEdges.emplace_back();
-    const auto E6 = E3 + 3;                     wEdges.emplace_back();
-    const auto E7 = E3 + 4;                     wEdges.emplace_back();
-    const auto E8 = E3 + 5;                     wEdges.emplace_back();
-
-    wEdges[E0].next = E5;
-    wEdges[E1].next = E8;
-    wEdges[E2].next = E3;
-
-    wEdges[E3].next         = E4;
-    wEdges[E3].vertices[0]  = V0;
-    wEdges[E3].vertices[1]  = V3;
-
-    wEdges[E4].prev         = E3;
-    wEdges[E4].next         = E2;
-    wEdges[E4].vertices[0]  = V3;
-    wEdges[E4].vertices[1]  = V2;
-
-    wEdges[E5].prev         = E0;
-    wEdges[E5].next         = E6;
-    wEdges[E5].vertices[0]  = V1;
-    wEdges[E5].vertices[1]  = V3;
-
-    wEdges[E6].prev         = E5;
-    wEdges[E6].next         = E0;
-    wEdges[E6].vertices[0]  = V3;
-    wEdges[E6].vertices[1]  = V0;
-
-    wEdges[E7].prev         = E8;
-    wEdges[E7].next         = E1;
-    wEdges[E7].vertices[0]  = V3;
-    wEdges[E7].vertices[1]  = V1;
-
-    wEdges[E8].prev         = E1;
-    wEdges[E8].next         = E7;
-    wEdges[E8].vertices[0]  = V2;
-    wEdges[E8].vertices[1]  = V3;
-
-    wEdges[E3].oppositeNeighbor = E6;
-    wEdges[E4].oppositeNeighbor = E8;
-    wEdges[E5].oppositeNeighbor = E7;
-    wEdges[E6].oppositeNeighbor = E3;
-    wEdges[E7].oppositeNeighbor = E5;
-    wEdges[E8].oppositeNeighbor = E4;
-
-    wVerticeEdges[V0].push_back(E3);
-
-    wVerticeEdges[V1].push_back(E5);
-    wVerticeEdges[V1].push_back(E7);
-
-    wVerticeEdges[V2].push_back(E4);
-    wVerticeEdges[V2].push_back(E8);
-
-    wVerticeEdges[V3].push_back(E3);
-    wVerticeEdges[V3].push_back(E4);
-    wVerticeEdges[V3].push_back(E5);
-    wVerticeEdges[V3].push_back(E6);
-    wVerticeEdges[V3].push_back(E7);
-    wVerticeEdges[V3].push_back(E8);
-
-    wFaces.push_back({E1});
-    wFaces.push_back({E2});
-
-    Build();
-}
-
-
-/************************************************************************************************/
-
-
-uint32_t CSGShape::_SplitEdge(const uint32_t edgeId, const uint32_t V4)
-{
-    const uint32_t E1 = edgeId;
-    const uint32_t E2 = wEdges[E1].next;
-    const uint32_t E3 = wEdges[E2].next;
-    const uint32_t E4 = _AddEdge();
-    const uint32_t E5 = _AddEdge();
-    const uint32_t E6 = _AddEdge();
-
-    const uint32_t V1 = wEdges[E1].vertices[0];
-    const uint32_t V2 = wEdges[E2].vertices[0];
-    const uint32_t V3 = wEdges[E3].vertices[0];
-
-    const uint32_t oldFaceIdx = wEdges[E1].face;
-    const uint32_t newFaceIdx = wFaces.size();
-
-    // Lower triangle
-    // { V1, V4, V3 }
-    _RemoveVertexEdgeNeighbor(wEdges[E1].vertices[1], E1);
-    wEdges[E1].vertices[1]  = V4; // { V1, V4 }
-    wEdges[E1].next         = E4;
-
-    wEdges[E3].prev         = E4;
-
-    wEdges[E4].vertices[0]      = V4;
-    wEdges[E4].vertices[1]      = V3;
-    wEdges[E4].prev             = E1;
-    wEdges[E4].next             = E3;
-    wEdges[E4].face             = oldFaceIdx;
-    wEdges[E4].oppositeNeighbor = E5;
-
-    wFaces[oldFaceIdx].edgeStart = E1;
-
-    // Upper triangle
-    // From Split point to top of triangle
-    wEdges[E2].prev = E6;
-    wEdges[E2].next = E5;
-    wEdges[E2].face = newFaceIdx;
-
-    wEdges[E5].vertices[0]      = V3;
-    wEdges[E5].vertices[1]      = V4;
-    wEdges[E5].prev             = E2;
-    wEdges[E5].next             = E6;
-    wEdges[E5].oppositeNeighbor = E4;
-    wEdges[E5].face             = newFaceIdx;
-
-
-    wEdges[E6].vertices[0]      = V4;
-    wEdges[E6].vertices[1]      = V2;
-    wEdges[E6].prev             = E5;
-    wEdges[E6].next             = E2;
-    wEdges[E6].face             = newFaceIdx;
-
-    wVerticeEdges[V4].push_back(E1);
-    wVerticeEdges[V4].push_back(E4);
-    wVerticeEdges[V4].push_back(E5);
-    wVerticeEdges[V4].push_back(E6);
-
-    wFaces.push_back(wFace{ E2, {} });
-
-    return E6;
-}
-
-
-/************************************************************************************************/
-
-
-void CSGShape::SplitEdge(const uint32_t edgeIdx, const float U)
-{
-    const uint32_t V1   = wEdges[edgeIdx].vertices[0];
-    const uint32_t V2   = wEdges[edgeIdx].vertices[1];
-    const float3 A      = wVertices[V1].point;
-    const float3 B      = wVertices[V2].point;
-    const float3 C      = FlexKit::Lerp(A, B, U);
-    const uint32_t V4   = _AddVertex();
-    wVertices[V4].point = C;
-
-    const auto E1 = _SplitEdge(edgeIdx, V4);
-
-    if (auto neighbor = wEdges[edgeIdx].oppositeNeighbor; neighbor != -1u)
-    {
-        auto E2 = _SplitEdge(neighbor, V4);
-
-        wEdges[edgeIdx].oppositeNeighbor    = E2;
-        wEdges[neighbor].oppositeNeighbor   = E1;
-        wEdges[E1].oppositeNeighbor         = neighbor;
-        wEdges[E2].oppositeNeighbor         = edgeIdx;
-    }
-}
-
-
-/************************************************************************************************/
-
-
-void CSGShape::RotateEdgeCCW(const uint32_t E1)
-{
-    if (wEdges[E1].oppositeNeighbor == -1)
-        return;
-
-    const auto E2 = wEdges[E1].next;
-    const auto E3 = wEdges[E2].next;
-    const auto E4 = wEdges[E1].oppositeNeighbor;
-    const auto E5 = wEdges[E4].next;
-    const auto E6 = wEdges[E5].next;
-
-    const auto V1 = wEdges[E1].vertices[0];
-    const auto V2 = wEdges[E2].vertices[0];
-    const auto V3 = wEdges[E3].vertices[0];
-    const auto V4 = wEdges[E6].vertices[0];
-
-    const auto P1 = wEdges[E1].face;
-    const auto P2 = wEdges[E4].face;
-    
-    _RemoveVertexEdgeNeighbor(wEdges[E1].vertices[0], E1);
-    _RemoveVertexEdgeNeighbor(wEdges[E1].vertices[1], E1);
-    wEdges[E1].vertices[0]  = V4;
-    wEdges[E1].vertices[1]  = V3;
-    wEdges[E1].next         = E3;
-    wEdges[E1].prev         = E5;
-    wVerticeEdges[V2].push_back(E1);
-    wVerticeEdges[V4].push_back(E1);
-
-    wEdges[E3].prev = E1;
-    wEdges[E3].next = E5;
-    wEdges[E3].face = P1;
-
-    wEdges[E5].prev = E5;
-    wEdges[E5].next = E1;
-    wEdges[E5].face = P1;
-
-    _RemoveVertexEdgeNeighbor(wEdges[E4].vertices[0], E4);
-    _RemoveVertexEdgeNeighbor(wEdges[E4].vertices[1], E4);
-    wEdges[E4].vertices[0]  = V3;
-    wEdges[E4].vertices[1]  = V4;
-    wEdges[E4].next         = E6;
-    wEdges[E4].prev         = E2;
-    wVerticeEdges[V2].push_back(E4);
-    wVerticeEdges[V4].push_back(E4);
-
-    wEdges[E6].prev = E4;
-    wEdges[E6].next = E2;
-    wEdges[E6].face = P2;
-
-    wEdges[E2].prev = E6;
-    wEdges[E2].next = E4;
-    wEdges[E2].face = P2;
-
-    wFaces[P1].edgeStart = E1;
-    wFaces[P2].edgeStart = E4;
-}
-
-
-/************************************************************************************************/
-
-
-void CSGShape::Build()
-{
-    tris.clear();
-
-    for (size_t faceIdx = 0; faceIdx < wFaces.size(); faceIdx++)
-    {
-        auto geometry = GetFaceGeometry(faceIdx);
-
-        for(auto t : geometry)
-            tris.emplace_back(t);
-    }
+    return extrudedFace;
 }
 
 
@@ -1080,7 +213,7 @@ const float3 Triangle::TriPoint(const FlexKit::float3 BaryCentricPoint) const no
 }
 
 
-FlexKit::AABB CSGShape::GetAABB() const noexcept
+FlexKit::AABB ModifiableShape::GetAABB() const noexcept
 {
     FlexKit::AABB aabb;
 
@@ -1095,7 +228,7 @@ FlexKit::AABB CSGShape::GetAABB() const noexcept
 }
 
 
-FlexKit::AABB CSGShape::GetAABB(const float3 pos) const noexcept
+FlexKit::AABB ModifiableShape::GetAABB(const float3 pos) const noexcept
 {
     FlexKit::AABB aabb;
 
@@ -1113,9 +246,9 @@ FlexKit::AABB CSGShape::GetAABB(const float3 pos) const noexcept
 /************************************************************************************************/
 
 
-CSGShape CreateCubeCSGShape() noexcept
+ModifiableShape CreateCubeCSGShape() noexcept
 {
-    CSGShape cubeShape;
+    ModifiableShape cubeShape;
 
     const uint32_t V1 = cubeShape.AddVertex({ -1,  1,  1 }); 
     const uint32_t V2 = cubeShape.AddVertex({  1,  1,  1 }); 
@@ -1131,14 +264,12 @@ CSGShape CreateCubeCSGShape() noexcept
         V1, V2, V3, V4, V5
     };
 
-    cubeShape.AddPolygon(top, top + 4);
+    cubeShape.AddPolygon(top, top + 5);
 
 
     uint32_t bottom[] = {
         V8, V7, V6, V5
     };
-
-    //cubeShape.AddPolygon(bottom, bottom + 4);
 
     /*
     // Top
@@ -1568,7 +699,7 @@ RayTriIntersection_Res Intersects(const FlexKit::Ray& r, const Triangle& tri) no
 /************************************************************************************************/
 
 
-std::optional<CSGShape::RayCast_result> CSGShape::RayCast(const FlexKit::Ray& r) const noexcept
+std::optional<ModifiableShape::RayCast_result> ModifiableShape::RayCast(const FlexKit::Ray& r) const noexcept
 {
     if (!Intersects(r, GetAABB()))
         return {};
@@ -1644,7 +775,7 @@ std::optional<CSGBrush::RayCast_result> CSGBrush::RayCast(const FlexKit::Ray& r)
         if (res)
         {
             return RayCast_result{
-                .shape              = const_cast<CSGShape*>(&shape),
+                .shape              = const_cast<ModifiableShape*>(&shape),
                 .faceIdx            = res->faceIdx,
                 .faceSubIdx         = res->faceSubIdx,
                 .distance           = res->distance,
@@ -1657,43 +788,11 @@ std::optional<CSGBrush::RayCast_result> CSGBrush::RayCast(const FlexKit::Ray& r)
 }
 
 
+
 /************************************************************************************************/
 
 
 constexpr ViewportModeID CSGEditModeID = GetTypeGUID(CSGEditMode);
-
-
-uint32_t ExtrudeFace(uint32_t faceIdx, float z, CSGShape& shape)
-{
-    auto extrudedFace   = shape.DuplicateFace(faceIdx);
-    auto normal         = shape.GetFaceNormal(extrudedFace);
-
-    for (auto itr = shape.wFaces[extrudedFace].begin(&shape);!itr.end();itr++)
-        shape.wVertices[itr->vertices[0]].point += normal * z;
-
-
-    auto itr1 = shape.wFaces[faceIdx].begin(&shape);
-    auto itr2 = shape.wFaces[extrudedFace].begin(&shape);
-
-    while (!itr1.end())
-    {
-        uint32_t points[] = {
-            itr1->vertices[0],
-            itr1->vertices[1],
-            itr2->vertices[1],
-            itr2->vertices[0],
-        };
-
-        shape.AddPolygon(points, points + 4);
-
-        itr1++;
-        itr2++;
-    }
-
-    shape.RemoveFace(faceIdx);
-
-    return extrudedFace;
-}
 
 
 class CSGEditMode : public IEditorViewportMode
@@ -1966,20 +1065,55 @@ public:
         const   FlexKit::float4x4 view          = cameraData.View.Transpose();
         const   FlexKit::float4x4 projection    = cameraData.Proj;
 
-        FlexKit::float3 deltapos;
-        if (ImGuizmo::Manipulate(view, projection, operation, space, m, delta))
+
+        switch (operation)
         {
-            FlexKit::float3 rotation;
-            FlexKit::float3 scale;
-            ImGuizmo::DecomposeMatrixToComponents(delta, deltapos, rotation, scale);
+        case ImGuizmo::OPERATION::SCALE:
+        {
+            static FlexKit::float3 P1{ 0 };
+            static FlexKit::float3 P2{ 0 };
+            static FlexKit::float3 scale{ 1, 1, 1 };
 
-            FlexKit::float4 p1{ shape.wVertices[vertices[0]].point, 1 };
-            FlexKit::float4 p2{ shape.wVertices[vertices[1]].point, 1 };
+            m[0][0] = scale[0];
+            m[1][1] = scale[1];
+            m[2][2] = scale[2];
 
-            shape.wVertices[vertices[0]].point = (delta * p1).xyz();
-            shape.wVertices[vertices[1]].point = (delta * p2).xyz();
-            selectionContext.shape->Build();
+            if (!ImGuizmo::Manipulate(view, projection, operation, ImGuizmo::WORLD, m, delta))
+            {
+                P1      = shape.wVertices[vertices[0]].point;
+                P2      = shape.wVertices[vertices[1]].point;
+                scale   = FlexKit::float3{ 1, 1, 1 };
+            }
+            else
+            {
+                // TODO(R.M): I need a different way of handling the scaling.
+                // Storage of the original edge seems to be required to do this correctly.
+                FlexKit::float3 deltapos;
+                FlexKit::float3 rotation;
+                ImGuizmo::DecomposeMatrixToComponents(m, deltapos, rotation, scale);
+
+                auto newPos1 = (P1 - point) * scale;
+                auto newPos2 = (P2 - point) * scale;
+
+                shape.wVertices[vertices[0]].point = newPos1 + point;
+                shape.wVertices[vertices[1]].point = newPos2 + point;
+                selectionContext.shape->Build();
+            }
+            break;
         }
+        default:
+            if (ImGuizmo::Manipulate(view, projection, operation, space, m, delta))
+            {
+                FlexKit::float4 p1{ shape.wVertices[vertices[0]].point, 1 };
+                FlexKit::float4 p2{ shape.wVertices[vertices[1]].point, 1 };
+
+                shape.wVertices[vertices[0]].point = (delta * p1).xyz();
+                shape.wVertices[vertices[1]].point = (delta * p2).xyz();
+                selectionContext.shape->Build();
+            }   break;
+        }
+
+
 
         ImGui::SetNextWindowPos({ 0, 400 });
         if (ImGui::Begin("Edge Manipulator", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
@@ -2155,12 +1289,26 @@ public:
 
     void DrawObjectManipulatorWidget() const
     {
+        auto drawNoSelectionWindow =
+            []
+            {
+                ImGui::SetNextWindowPos({ 0, 400 });
+                if (ImGui::Begin("Manipulator", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize))
+                {
+                    ImGui::SetWindowSize({ 400, 400 });
+                    ImGui::Text("Nothing Selected");
+                }
+
+                ImGui::End();
+            };
+
+
         if (selectionContext.selectedElement == -1)
-            return;
+            return drawNoSelectionWindow();
 
         const auto selectedIdx = selection.GetData().selectedBrush;
         if (selectedIdx == -1)
-            return;
+            return drawNoSelectionWindow();
 
         auto& brushes = selection.GetData().brushes;
         auto& brush = brushes[selectedIdx];
@@ -2383,20 +1531,23 @@ public:
 
                         for (uint32_t faceIdx = 0; faceIdx < shape.wFaces.size(); faceIdx++)
                         {
-                            auto& face      = shape.wFaces[faceIdx];
-                            auto edgeIdx    = face.edgeStart;
+                            const auto& face        = shape.wFaces[faceIdx];
+
+                            auto edgeIdx            = face.edgeStart;
 
                             if (edgeIdx == -1)
                                 continue;
 
+                            const auto faceNormal = shape.GetFaceNormal(faceIdx);
+
                             for(size_t i = 0; i < 3; i++)
                             {
-                                const CSGShape::wEdge& edge = shape.wEdges[edgeIdx];
+                                const ModifiableShape::wEdge& edge = shape.wEdges[edgeIdx];
 
-                                v.Position = FlexKit::float4{ shape.wVertices[edge.vertices[0]].point, 1 };
+                                v.Position = FlexKit::float4{ shape.wVertices[edge.vertices[0]].point + faceNormal * 0.001f, 1 };
                                 verts.emplace_back(v);
 
-                                v.Position = FlexKit::float4{ shape.wVertices[edge.vertices[1]].point, 1 };
+                                v.Position = FlexKit::float4{ shape.wVertices[edge.vertices[1]].point + faceNormal * 0.001f, 1 };
                                 verts.emplace_back(v);
 
                                 edgeIdx = edge.next;
@@ -2494,7 +1645,7 @@ public:
                 selectionContext.SetSelectedEdge(
                     hit,
                     const_cast<CSGBrush&>(brush),
-                    const_cast<CSGShape&>(brush.shape),
+                    const_cast<ModifiableShape&>(brush.shape),
                     selectedEdge);
             });
     }
@@ -2510,7 +1661,7 @@ public:
                 selectionContext.SetSelectedTriangle(
                     hit,
                     const_cast<CSGBrush&>(brush),
-                    const_cast<CSGShape&>(brush.shape));
+                    const_cast<ModifiableShape&>(brush.shape));
             });
     }
 
@@ -2540,7 +1691,7 @@ public:
                 selectionContext.SetSelectedVertex(
                     hit,
                     const_cast<CSGBrush&>(brush),
-                    const_cast<CSGShape&>(brush.shape),
+                    const_cast<ModifiableShape&>(brush.shape),
                     selectedVertex);
             });
     }
@@ -2559,7 +1710,7 @@ public:
             });
     }
 
-    void mousePressEvent(QMouseEvent* evt) final 
+    bool ImGUI_MousePress(QMouseEvent* evt)
     {
         if(ImGui::IsAnyItemHovered() || mode == CSGEditMode::Mode::Manipulator)
         {
@@ -2587,8 +1738,46 @@ public:
                 mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSERIGHT;
                 hud.HandleInput(mouseEvent);
             }
+            return true;
         }
-        else
+        else return false;
+    }
+
+    bool ImGUI_MouseRelease(QMouseEvent* evt)
+    {
+        if (ImGui::IsAnyItemHovered() || mode == CSGEditMode::Mode::Manipulator)
+        {
+            if (evt->button() == Qt::MouseButton::LeftButton)
+            {
+                previousMousePosition = FlexKit::int2{ -160000, -160000 };
+
+                FlexKit::Event mouseEvent;
+                mouseEvent.InputSource  = FlexKit::Event::Mouse;
+                mouseEvent.Action       = FlexKit::Event::Release;
+                mouseEvent.mType        = FlexKit::Event::Input;
+
+                mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSELEFT;
+                hud.HandleInput(mouseEvent);
+            }
+            else if (evt->button() == Qt::MouseButton::RightButton)
+            {
+                previousMousePosition = FlexKit::int2{ -160000, -160000 };
+
+                FlexKit::Event mouseEvent;
+                mouseEvent.InputSource  = FlexKit::Event::Mouse;
+                mouseEvent.Action       = FlexKit::Event::Release;
+                mouseEvent.mType        = FlexKit::Event::Input;
+
+                mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSERIGHT;
+                hud.HandleInput(mouseEvent);
+            }
+            return true;
+        } else return false;
+    }
+
+    void mousePressEvent(QMouseEvent* evt) final 
+    {
+        if(!ImGUI_MousePress(evt))
         {
             switch (mode)
             {
@@ -2627,34 +1816,8 @@ public:
 
     void mouseReleaseEvent(QMouseEvent* evt) final 
     {
-        if (ImGui::IsAnyItemHovered() || mode == CSGEditMode::Mode::Manipulator)
-        {
-            if (evt->button() == Qt::MouseButton::LeftButton)
-            {
-                previousMousePosition = FlexKit::int2{ -160000, -160000 };
 
-                FlexKit::Event mouseEvent;
-                mouseEvent.InputSource  = FlexKit::Event::Mouse;
-                mouseEvent.Action       = FlexKit::Event::Release;
-                mouseEvent.mType        = FlexKit::Event::Input;
-
-                mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSELEFT;
-                hud.HandleInput(mouseEvent);
-            }
-            else if (evt->button() == Qt::MouseButton::RightButton)
-            {
-                previousMousePosition = FlexKit::int2{ -160000, -160000 };
-
-                FlexKit::Event mouseEvent;
-                mouseEvent.InputSource  = FlexKit::Event::Mouse;
-                mouseEvent.Action       = FlexKit::Event::Release;
-                mouseEvent.mType        = FlexKit::Event::Input;
-
-                mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSERIGHT;
-                hud.HandleInput(mouseEvent);
-            }
-        }
-        else
+        if(!ImGUI_MouseRelease(evt))
         {
             switch (mode)
             {
@@ -2749,12 +1912,12 @@ public:
         SelectionPrimitive mode = SelectionPrimitive::Disabled;
 
         CSGBrush*   brush           = nullptr;
-        CSGShape*   shape           = nullptr;
+        ModifiableShape*   shape           = nullptr;
         uint32_t selectedElement    = -1;
 
         std::vector<CSGBrush::RayCast_result> selectedPrimitives;
 
-        void SetSelectedEdge(CSGBrush::RayCast_result& hit, CSGBrush& IN_brush, CSGShape& IN_shape, const uint32_t edgeIdx)
+        void SetSelectedEdge(CSGBrush::RayCast_result& hit, CSGBrush& IN_brush, ModifiableShape& IN_shape, const uint32_t edgeIdx)
         {
             selectedPrimitives.clear();
 
@@ -2762,10 +1925,10 @@ public:
             selectedElement     = edgeIdx;
             mode                = SelectionPrimitive::Edge;
             brush               = const_cast<CSGBrush*>(&IN_brush);
-            shape               = const_cast<CSGShape*>(&IN_shape);
+            shape               = const_cast<ModifiableShape*>(&IN_shape);
         }
 
-        void SetSelectedTriangle(CSGBrush::RayCast_result& hit, CSGBrush& IN_brush, CSGShape& IN_shape)
+        void SetSelectedTriangle(CSGBrush::RayCast_result& hit, CSGBrush& IN_brush, ModifiableShape& IN_shape)
         {
             selectedPrimitives.clear();
 
@@ -2773,10 +1936,10 @@ public:
             selectedElement = hit.faceIdx;
             mode            = SelectionPrimitive::Triangle;
             brush           = const_cast<CSGBrush*>(&IN_brush);
-            shape           = const_cast<CSGShape*>(&IN_shape);
+            shape           = const_cast<ModifiableShape*>(&IN_shape);
         }
 
-        void SetSelectedVertex(CSGBrush::RayCast_result& hit, CSGBrush& IN_brush, CSGShape& IN_shape, const uint32_t vertexIdx)
+        void SetSelectedVertex(CSGBrush::RayCast_result& hit, CSGBrush& IN_brush, ModifiableShape& IN_shape, const uint32_t vertexIdx)
         {
             selectedPrimitives.clear();
 
@@ -2784,7 +1947,7 @@ public:
             selectedElement = vertexIdx;
             mode            = SelectionPrimitive::Vertex;
             brush           = const_cast<CSGBrush*>(&IN_brush);
-            shape           = const_cast<CSGShape*>(&IN_shape);
+            shape           = const_cast<ModifiableShape*>(&IN_shape);
         }
 
         void SetSelectedFace(CSGBrush::RayCast_result& hit, CSGBrush& IN_brush, bool add = false)
@@ -2796,7 +1959,7 @@ public:
             selectedElement = hit.faceIdx;
             mode            = SelectionPrimitive::Polygon;
             brush           = const_cast<CSGBrush*>(&IN_brush);
-            shape           = const_cast<CSGShape*>(hit.shape);
+            shape           = const_cast<ModifiableShape*>(hit.shape);
         }
 
         void GetSelectionUIGeometry(std::vector<Vertex>& verts) const
@@ -2870,6 +2033,49 @@ public:
     FlexKit::int2               previousMousePosition = FlexKit::int2{ -160000, -160000 };
 };
 
+
+/************************************************************************************************/
+
+
+constexpr ViewportModeID CSGSliceModeID = GetTypeGUID(CSGEditMode);
+
+
+class CSGSliceMode : public IEditorViewportMode
+{
+public:
+    CSGSliceMode(CSGEditMode& IN_CSGMode, FlexKit::ImGUIIntegrator& IN_hud, CSGView& IN_selection, EditorViewport& IN_viewport) :
+        CSGMode     { IN_CSGMode    },
+        hud         { IN_hud        },
+        selection   { IN_selection  },
+        viewport    { IN_viewport   } {}
+
+    ViewportModeID GetModeID() const override { return CSGSliceModeID; };
+
+    void Draw(FlexKit::UpdateDispatcher& dispatcher, FlexKit::FrameGraph& frameGraph, TemporaryBuffers& temps, FlexKit::ResourceHandle renderTarget, FlexKit::ResourceHandle depthBuffer) final
+    {
+
+    }
+
+    void mousePressEvent(QMouseEvent* evt) final
+    {
+    }
+
+    void keyPressEvent(QKeyEvent* evt) final
+    {
+        CSGMode.keyPressEvent(evt);
+    }
+
+    void keyReleaseEvent(QKeyEvent* evt) final
+    {
+        CSGMode.keyReleaseEvent(evt);
+    }
+
+    CSGEditMode&                CSGMode;
+    EditorViewport&             viewport;
+    CSGView&                    selection;
+    FlexKit::ImGUIIntegrator&   hud;
+    FlexKit::int2               previousMousePosition = FlexKit::int2{ -160000, -160000 };
+};
 
 /************************************************************************************************/
 
@@ -2976,7 +2182,7 @@ public:
                     csg.selectedBrush = -1;
                 }
 
-                CSGShape& shape = csg.brushes.back().shape;
+                ModifiableShape& shape = csg.brushes.back().shape;
                 shape = CreateCubeCSGShape();
 
                 const auto end = shape.wFaces.size();
@@ -3021,6 +2227,35 @@ public:
 /************************************************************************************************/
 
 
+FlexKit::Blob EditorComponentCSG::GetBlob()
+{
+    FlexKit::SaveArchiveContext archive;
+
+    Serialize(archive);
+
+    return archive.GetBlob();
+}
+
+
+/************************************************************************************************/
+
+
+void CSGComponentEventHandler::OnCreateView(FlexKit::GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+{
+    std::vector<CSGBrush>   brushes;
+
+    FlexKit::Blob blob{ (const char*)buffer, bufferSize };
+    FlexKit::LoadBlobArchiveContext archive(blob);
+
+
+    auto& csgView = gameObject.AddView<CSGView>();
+
+    EditorComponentCSG csgComponent;
+    archive& csgComponent;
+
+    csgView->brushes = std::move(csgComponent.brushes);
+}
+
 struct CSGComponentFactory : public IComponentFactory
 {
     void Construct(ViewportGameObject& viewportObject, ViewportScene& scene)
@@ -3041,8 +2276,10 @@ struct CSGComponentFactory : public IComponentFactory
 
     static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& base, ViewportSceneContext& scene)
     {
-        auto& editorCSGComponent = static_cast<EditorComponentCSG&>(component);
+        auto& editorCSGComponent    = static_cast<EditorComponentCSG&>(component);
+        auto& csgView               = static_cast<CSGView&>(base);
 
+        editorCSGComponent.brushes  = csgView->brushes;
     }
 
     inline static IEntityComponentRuntimeUpdater::RegisterConstructorHelper<CSGComponentFactory, CSGComponentID> _register;
@@ -3054,24 +2291,32 @@ struct CSGComponentFactory : public IComponentFactory
 /************************************************************************************************/
 
 
-const std::vector<Triangle>& CSGShape::GetTris() const noexcept
-{
-    return tris;
-}
-
-FlexKit::BoundingSphere CSGShape::GetBoundingVolume() const noexcept
-{
-    return { 0, 0, 0, 1 };
-}
-
-
-/************************************************************************************************/
-
-
-void RegisterComponentInspector(EditorViewport& viewport)
+void RegisterCSGInspector(EditorViewport& viewport)
 {
     EditorInspectorView::AddComponentInspector<CSGInspector>(viewport);
 }
 
 
-/************************************************************************************************/
+/**********************************************************************
+
+Copyright (c) 2022 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

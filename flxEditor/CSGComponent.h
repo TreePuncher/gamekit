@@ -1,232 +1,15 @@
 #pragma once
-
-
 #include <vector>
 #include "type.h"
 #include "..\FlexKitResourceCompiler\SceneResource.h"
 #include "..\coreutilities\Components.h"
+#include "ModifiableShape.h"
 
 
 /************************************************************************************************/
 
 
 constexpr uint32_t CSGComponentID = GetTypeGUID(CSGComponentID);
-
-
-struct Triangle
-{
-    FlexKit::float3 position[3];
-
-    void Serialize(auto& ar)
-    {
-        ar& position[0];
-        ar& position[1];
-        ar& position[2];
-    }
-
-            FlexKit::float3& operator [] (size_t idx) noexcept;
-    const   FlexKit::float3& operator [] (size_t idx) const noexcept;
-
-    Triangle        Offset(FlexKit::float3) const noexcept;
-    FlexKit::AABB   GetAABB() const noexcept;
-    const float3    Normal() const noexcept;
-    const float3    TriPoint() const noexcept;
-    const float3    TriPoint(const FlexKit::float3 BaryCentricPoint) const noexcept;
-};
-
-
-struct CSGShape
-{
-    struct wVertex
-    {
-        float3   point;
-    };
-
-    struct wEdge // Half Edge, directed structure
-    {
-        uint32_t vertices[2];
-        uint32_t oppositeNeighbor;
-        uint32_t next;
-        uint32_t prev;
-        uint32_t face;
-    };
-
-    struct SubFace
-    {
-        uint32_t vertices[3];
-        uint32_t edges[3];
-    };
-
-    struct wFace
-    {
-        uint32_t                edgeStart;
-        std::vector<uint32_t>   polys;
-
-        auto begin(const CSGShape* shape) const
-        {
-            return ConstFaceIterator{ shape, edgeStart };
-        }
-
-        auto end(const CSGShape* shape) const
-        {
-            auto end = ConstFaceIterator{ shape, edgeStart };
-            end--;
-
-            return end;
-        }
-
-        auto begin  (CSGShape* shape) { return FaceIterator{ shape, edgeStart }; }
-        auto end    (CSGShape* shape)   { auto end = FaceIterator{ shape, edgeStart }; end--; return end; }
-    };
-
-    class ConstFaceIterator
-    {
-    public:
-        ConstFaceIterator(const CSGShape* IN_shape, uint32_t IN_end) noexcept
-            : shape     { IN_shape }
-            , endIdx    { IN_end }
-            , current   { IN_end }
-            , itr       { 0 } {}
-
-        const CSGShape* shape;
-        uint32_t    endIdx;
-        uint32_t    current;
-        int32_t     itr;
-
-        float3  GetPoint(uint32_t vertex) const;
-        bool    end() noexcept;
-        bool    operator == (const ConstFaceIterator& rhs) const noexcept;
-        const   wEdge* operator -> () noexcept;
-
-        ConstFaceIterator   operator +  (int rhs) const noexcept;
-        ConstFaceIterator&  operator += (int rhs) noexcept;
-        ConstFaceIterator   operator -  (int rhs) const noexcept;
-        ConstFaceIterator&  operator -= (int rhs) noexcept;
-
-        void Next() noexcept;
-        void Prev() noexcept;
-
-        ConstFaceIterator& operator ++(int) noexcept;
-        ConstFaceIterator& operator --(int) noexcept;
-    };
-
-    class FaceIterator
-    {
-    public:
-        FaceIterator(CSGShape* IN_shape, uint32_t IN_end) noexcept
-            : shape     { IN_shape }
-            , endIdx    { IN_end }
-            , current   { IN_end }
-            , itr       { 0 } {}
-
-        CSGShape*     shape;
-        uint32_t      endIdx;
-        uint32_t      current;
-        uint32_t      itr;
-
-        float3  GetPoint(uint32_t vertex) const;
-        bool    end() noexcept;
-
-        bool            operator == (const FaceIterator& rhs) const noexcept;
-        const wEdge*    operator -> ()              noexcept;
-        FaceIterator    operator +  (int rhs) const noexcept;
-        FaceIterator&   operator += (int rhs)       noexcept;
-        FaceIterator    operator -  (int rhs) const noexcept;
-        FaceIterator&   operator -= (int rhs)       noexcept;
-
-
-        void Next() noexcept;
-        void Prev() noexcept;
-
-
-        FaceIterator& operator ++(int) noexcept;
-        FaceIterator& operator --(int) noexcept;
-
-    };
-
-    using wEdgeList = std::vector<uint32_t>;
-
-    std::vector<wVertex>    wVertices;
-    std::vector<wEdgeList>  wVerticeEdges;
-    std::vector<wEdge>      wEdges;
-    std::vector<wFace>      wFaces;
-
-    std::vector<Triangle>   tris; // Generated from the wing mesh representation
-
-    std::vector<uint32_t> freeEdges;
-    std::vector<uint32_t> freeFaces;
-
-
-    uint32_t FindOpposingEdge(uint32_t V1, uint32_t V2) const noexcept;
-
-    uint32_t AddVertex    (FlexKit::float3 point);
-    uint32_t AddEdge      (uint32_t V1, uint32_t V2, uint32_t owningFace);
-    uint32_t AddTri       (uint32_t V1, uint32_t V2, uint32_t V3);
-    uint32_t AddPolygon   (const uint32_t* tri_start, const uint32_t* tri_end);
-
-    uint32_t _AddEdge   ();
-    uint32_t _AddVertex ();
-
-
-    struct _SplitEdgeRes
-    {
-        uint32_t lowerEdge;
-        uint32_t upperEdge;
-    };
-
-    uint32_t    _SplitEdge                 (const uint32_t edgeId,     const uint32_t vertexIdx);
-    void        _RemoveVertexEdgeNeighbor  (const uint32_t vertexIdx,  const uint32_t edgeIdx);
-
-    FlexKit::LineSegment    GetEdgeSegment  (uint32_t edgeId) const;
-    std::vector<Triangle>   GetFaceGeometry (uint32_t faceIdx) const;
-    FlexKit::float3         GetFaceNormal   (uint32_t faceIdx) const;
-
-    SubFace                 GetSubFace                  (uint32_t faceIdx, uint32_t faceSubIdx) const;
-    uint32_t                GetVertexFromFaceLocalIdx   (uint32_t faceIdx, uint32_t faceSubIdx, uint32_t vertexIdx) const;
-    std::vector<uint32_t>   GetFaceVertices             (uint32_t faceIdx) const;
-    FlexKit::float3         GetFaceCenterPoint          (uint32_t faceIdx) const;
-
-    uint32_t    NextEdge(const uint32_t edgeIdx) const;
-
-    uint32_t    DuplicateFace(const uint32_t triId);
-    void        RemoveFace(const uint32_t triId);
-
-    void        SplitTri        (const uint32_t triId, const float3 BaryCentricPoint = float3{ 1.0f/3.0f });
-    void        SplitEdge       (const uint32_t edgeId, const float U = 0.5f);
-    void        RotateEdgeCCW   (const uint32_t edgeId);
-
-    void Build();
-
-    FlexKit::AABB                   GetAABB() const noexcept;
-    FlexKit::AABB                   GetAABB(const float3 pos) const noexcept;
-    const std::vector<Triangle>&    GetTris() const noexcept;
-    FlexKit::BoundingSphere         GetBoundingVolume() const noexcept;
-
-    struct RayCast_result
-    {
-        float3      hitLocation; // barycentric intersection cordinate
-        float       distance;
-        uint32_t    faceIdx;
-        uint32_t    faceSubIdx;
-    };
-
-    std::optional<RayCast_result>   RayCast(const FlexKit::Ray& r) const noexcept;
-
-
-    bool dirty = false;
-
-
-    void Serialize(auto& ar)
-    {
-        ar& tris;
-    }
-};
-
-
-using FaceIterator      = CSGShape::FaceIterator;
-using ConstFaceIterator = CSGShape::ConstFaceIterator;
-
-/************************************************************************************************/
 
 
 enum class CSG_OP
@@ -239,7 +22,7 @@ enum class CSG_OP
 
 struct CSGBrush
 {
-    CSGShape                    shape;
+    ModifiableShape             shape;
     CSG_OP                      op;
     bool                        dirty = false;
 
@@ -258,11 +41,11 @@ struct CSGBrush
 
     struct RayCast_result
     {
-        CSGShape*       shape;
-        uint32_t        faceIdx;
-        uint32_t        faceSubIdx;
-        float           distance;
-        FlexKit::float3 BaryCentricResult;
+        ModifiableShape*    shape;
+        uint32_t            faceIdx;
+        uint32_t            faceSubIdx;
+        float               distance;
+        FlexKit::float3     BaryCentricResult;
     };
 
     std::optional<RayCast_result> RayCast(const FlexKit::Ray& r) const noexcept;
@@ -295,6 +78,9 @@ class EditorComponentCSG :
     public FlexKit::Serializable<EditorComponentCSG, FlexKit::EntityComponent, CSGComponentID>
 {
 public:
+    EditorComponentCSG() :
+        Serializable{ CSGComponentID } {}
+
     void Serialize(auto& ar)
     {
         EntityComponent::Serialize(ar);
@@ -302,12 +88,11 @@ public:
         ar& brushes;
     }
 
-    FlexKit::Blob GetBlob() override
-    {
-        return {};
-    }
+    FlexKit::Blob GetBlob() override;
 
     std::vector<CSGBrush>   brushes;
+
+    inline static RegisterConstructorHelper<EditorComponentCSG, CSGComponentID> registered{};
 };
 
 
@@ -321,9 +106,13 @@ struct CSGComponentData
     int                     debugVal1 = 0;
 };
 
+struct CSGComponentEventHandler
+{
+    static void OnCreateView(FlexKit::GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
+};
 
 using CSGHandle     = FlexKit::Handle_t<32, CSGComponentID>;
-using CSGComponent  = FlexKit::BasicComponent_t<CSGComponentData, CSGHandle, CSGComponentID>;
+using CSGComponent  = FlexKit::BasicComponent_t<CSGComponentData, CSGHandle, CSGComponentID, CSGComponentEventHandler>;
 using CSGView       = CSGComponent::View;
 
 
@@ -340,8 +129,30 @@ struct Vertex
 };
 
 
-void                        RegisterComponentInspector(EditorViewport& viewport);
+void                        RegisterCSGInspector(EditorViewport& viewport);
 static_vector<Vertex, 24>   CreateWireframeCube(const float halfW);
 
 
-/************************************************************************************************/
+/**********************************************************************
+
+Copyright (c) 2022 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

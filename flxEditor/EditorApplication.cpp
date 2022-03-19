@@ -6,6 +6,7 @@
 #include <stb_image_write.h>
 #include <filesystem>
 #include <QKeySequence>
+#include "EditorColliderComponent.h"
 
 using namespace std::chrono_literals;
 
@@ -124,7 +125,8 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
     EditorInspectorView::AddComponentInspector<PointLightShadowInspector>();
     EditorInspectorView::AddComponentInspector<SceneBrushInspector>();
 
-    RegisterComponentInspector(mainWindow.Get3DView());
+    RegisterCSGInspector(mainWindow.Get3DView());
+    RegisterColliderInspector(mainWindow.Get3DView(), project);
 }
 
 

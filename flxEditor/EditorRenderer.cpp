@@ -26,6 +26,11 @@ EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FK
     pointLightComponent     { IN_framework.core.GetBlockMemory() },
     pointLightShadowMaps    { IN_framework.core.GetBlockMemory() },
 
+    physX                   { IN_framework.core.Threads, IN_framework.core.GetBlockMemory() },
+    staticBodies            { physX },
+    rigidBodies             { physX },
+    characterControllers    { physX, IN_framework.core.GetBlockMemory() },
+
     ikTargetComponent       { IN_framework.core.GetBlockMemory() },
     ikComponent             { IN_framework.core.GetBlockMemory() }
 {
@@ -111,6 +116,15 @@ FlexKit::TriMeshHandle EditorRenderer::LoadMesh(FlexKit::MeshResource& mesh)
     }
 
     return FlexKit::InvalidHandle_t;
+}
+
+
+/************************************************************************************************/
+
+
+FlexKit::UpdateTask& EditorRenderer::UpdatePhysx(FlexKit::UpdateDispatcher& dispatcher, double dT)
+{
+    return physX.Update(dispatcher, dT);
 }
 
 

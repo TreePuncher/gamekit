@@ -221,6 +221,18 @@ void ViewportScene::RemoveObject(ViewportGameObject_ptr object)
 /************************************************************************************************/
 
 
+FlexKit::LayerHandle ViewportScene::GetLayer()
+{
+    if(physicsLayer == FlexKit::InvalidHandle_t)
+        physicsLayer = FlexKit::PhysXComponent::GetComponent().CreateLayer(true);
+
+    return physicsLayer;
+}
+
+
+/************************************************************************************************/
+
+
 void ViewportScene::Update()
 {
     auto& entities = sceneResource->sceneResource->entities; // TODO: make this not dumb

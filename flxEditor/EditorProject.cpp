@@ -29,7 +29,7 @@ bool EditorProject::LoadProject(const std::string& projectDir)
         return false;
 
     {
-        FlexKit::LoadArchiveContext archive{ f };
+        FlexKit::LoadFileArchiveContext archive{ f };
         archive& resources;
         archive& scenes;
     }

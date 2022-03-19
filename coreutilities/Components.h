@@ -570,7 +570,7 @@ namespace FlexKit
 			TY				componentData;
 		};
 
-        using View = BasicComponentView_t<BasicComponent_t<TY, TY_Handle, ID>>;
+        using View = BasicComponentView_t<BasicComponent_t<TY, TY_Handle, ID, TY_EventHandler>>;
 
 
 		TY_Handle Create(const TY& initial)

@@ -133,7 +133,7 @@ void GameWorld::AddCube(float3 POS)
     if (!loaded)
         triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), cube1X1X1);
 
-    gameObject.AddView<RigidBodyView>(cubeShape, layer, POS);
+    gameObject.AddView<RigidBodyView>(layer, cubeShape, POS);
     gameObject.AddView<SceneNodeView<>>(GetRigidBodyNode(gameObject));
     gameObject.AddView<BrushView>(triMesh, GetSceneNode(gameObject));
 

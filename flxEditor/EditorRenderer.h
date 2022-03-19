@@ -30,6 +30,8 @@ public:
     FlexKit::TriMeshHandle LoadMesh(FlexKit::MeshResource& mesh);
     FlexKit::RenderSystem& GetRenderSystem() { return framework.core.RenderSystem; }
 
+    FlexKit::UpdateTask& UpdatePhysx(FlexKit::UpdateDispatcher& dispatcher, double dT);
+
 protected:
     FlexKit::UpdateTask* Update (FlexKit::EngineCore& Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT) override;
     FlexKit::UpdateTask* Draw   (FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph) override;
@@ -70,10 +72,16 @@ private:
     FlexKit::SkeletonComponent          skeletonComponent;
     FlexKit::AnimatorComponent          animatorComponent;
     FlexKit::PointLightComponent        pointLightComponent;
-
     FlexKit::PointLightShadowMap        pointLightShadowMaps;
+
     FlexKit::FABRIKTargetComponent      ikTargetComponent;
     FlexKit::FABRIKComponent            ikComponent;
+
+    // physX components
+    FlexKit::PhysXComponent                 physX;
+    FlexKit::StaticBodyComponent            staticBodies;
+    FlexKit::RigidBodyComponent             rigidBodies;
+    FlexKit::CharacterControllerComponent   characterControllers;
 
     // Editor Only Components
     CSGComponent csg;

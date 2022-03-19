@@ -6,7 +6,6 @@
 #include "intersection.h"
 #include <any>
 
-
 /************************************************************************************************/
 
 
@@ -39,7 +38,7 @@ struct ViewportScene
     ViewportGameObject_ptr  FindObject(uint64_t);
     ViewportGameObject_ptr  FindObject(FlexKit::NodeHandle);
     void                    RemoveObject(ViewportGameObject_ptr);
-
+    FlexKit::LayerHandle    GetLayer();
 
     EditorScene_ptr                     sceneResource;
     std::vector<ViewportGameObject_ptr> sceneObjects;
