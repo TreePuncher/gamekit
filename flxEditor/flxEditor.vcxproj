@@ -148,6 +148,7 @@
     <ClCompile Include="angelScriptTU.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="EditorColliderComponent.cpp" />
     <ClCompile Include="CSGComponent.cpp" />
     <ClCompile Include="CSGRendering.cpp" />
     <ClCompile Include="EditorApplication.cpp" />
@@ -173,6 +174,7 @@
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
     </ClCompile>
     <ClCompile Include="ModelViewerWidget.cpp" />
+    <ClCompile Include="ModifiableShape.cpp" />
     <ClCompile Include="PCH.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PCH.h</PrecompiledHeaderFile>
@@ -196,10 +198,12 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="EditorColliderComponent.h" />
     <ClInclude Include="CSGComponent.h" />
     <ClInclude Include="CSGRendering.h" />
     <ClInclude Include="EditorApplication.h" />
     <QtMoc Include="EditorInspectorView.h" />
+    <ClInclude Include="ModifiableShape.h" />
     <ClInclude Include="PCH.h" />
     <ClInclude Include="SceneInspectors.h" />
     <QtMoc Include="SceneOutliner.h" />

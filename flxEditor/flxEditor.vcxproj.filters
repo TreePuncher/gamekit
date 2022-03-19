@@ -143,6 +143,12 @@
     <ClCompile Include="SceneInspectors.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="EditorColliderComponent.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ModifiableShape.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -194,6 +200,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CSGRendering.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorColliderComponent.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ModifiableShape.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

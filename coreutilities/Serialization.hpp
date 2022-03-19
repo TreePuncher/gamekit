@@ -120,14 +120,16 @@ namespace FlexKit
 
 
     class SaveArchiveContext;
-    class LoadArchiveContext;
+    class LoadFileArchiveContext;
+    class LoadBlobArchiveContext;
 
     class SerializableBase
     {
     public:
 
         virtual void _Serialize(SaveArchiveContext& archive) {}
-        virtual void _Serialize(LoadArchiveContext& archive) {}
+        virtual void _Serialize(LoadFileArchiveContext& archive) {}
+        virtual void _Serialize(LoadBlobArchiveContext& archive) {}
 
         virtual TypeID_t GetTypeID() const noexcept { return -1; }
 
@@ -172,7 +174,12 @@ namespace FlexKit
             static_cast<TY*>(this)->Serialize(archive);
         }
 
-        void _Serialize(LoadArchiveContext& archive) final
+        void _Serialize(LoadFileArchiveContext& archive) final
+        {
+            static_cast<TY*>(this)->Serialize(archive);
+        }
+
+        void _Serialize(LoadBlobArchiveContext& archive) final
         {
             static_cast<TY*>(this)->Serialize(archive);
         }
@@ -664,11 +671,11 @@ namespace FlexKit
     };
 
 
-    class LoadArchiveContext
+    class LoadFileArchiveContext
     {
     public:
 
-        LoadArchiveContext(FILE* file) : f { file } 
+        LoadFileArchiveContext(FILE* file) : f { file } 
         {
             PointerTableHeader pointerHeader;
 
@@ -688,7 +695,7 @@ namespace FlexKit
         }
 
 
-        ~LoadArchiveContext()
+        ~LoadFileArchiveContext()
         {
             if(f)
                 fclose(f);
@@ -697,23 +704,16 @@ namespace FlexKit
         }
 
 
-        LoadArchiveContext              (const LoadArchiveContext&) = delete;
-        LoadArchiveContext& operator =  (const LoadArchiveContext&) = delete;
+        LoadFileArchiveContext              (const LoadFileArchiveContext&) = delete;
+        LoadFileArchiveContext& operator =  (const LoadFileArchiveContext&) = delete;
 
-        LoadArchiveContext              (LoadArchiveContext&&) = delete;
-        LoadArchiveContext& operator =  (LoadArchiveContext&&) = delete;
+        LoadFileArchiveContext              (LoadFileArchiveContext&&) = delete;
+        LoadFileArchiveContext& operator =  (LoadFileArchiveContext&&) = delete;
 
         constexpr bool Loading() const noexcept { return true; }
 
-        //template<typename TY>
-        //void _Deserialize(TY& value)
-        //{
-        //    static_assert(false, "Unable to deserialize a value. Please add a void ::Serialize(type&) overload, or inherit from Serializable, or SerializableInterface");
-        //}
-
-
         template<typename TY>
-        requires TrivialCopy<TY, LoadArchiveContext>
+        requires TrivialCopy<TY, LoadFileArchiveContext>
         void _Deserialize(TY& value)
         {
             fread(&value, 1, sizeof(TY), f);
@@ -731,7 +731,7 @@ namespace FlexKit
         }
 
         template<typename TY>
-        requires SerializableValue<TY, LoadArchiveContext>
+        requires SerializableValue<TY, LoadFileArchiveContext>
         void _Deserialize(TY& value)
         {
             Serialize(*this, value);
@@ -756,7 +756,7 @@ namespace FlexKit
 
 
         template<typename TY>
-        requires SerializableStruct<TY, LoadArchiveContext> && !std::is_trivially_copyable_v<TY>
+        requires SerializableStruct<TY, LoadFileArchiveContext> && !std::is_trivially_copyable_v<TY>
         void _Deserialize(TY& value)
         {
             value.Serialize(*this);
@@ -948,6 +948,288 @@ namespace FlexKit
 
         size_t offset   = 16;
         FILE* f         = nullptr;
+    };
+
+
+    /************************************************************************************************/
+
+
+    class LoadBlobArchiveContext
+    {
+    public:
+
+
+        void Read(void* dest, size_t size) noexcept
+        {
+            memcpy(dest, blob.data() + offset, size);
+            offset += size;
+        }
+
+
+        void Seek(size_t pos) noexcept
+        {
+            offset = pos;
+        }
+
+        size_t Tell() const noexcept
+        {
+            return offset;
+        }
+
+
+        LoadBlobArchiveContext(Blob& IN_blob) : blob { IN_blob } 
+        {
+            PointerTableHeader pointerHeader;
+
+            Read(&pointerHeader, sizeof(pointerHeader));
+
+            for (size_t I = 0; I < pointerHeader.size; I++)
+            {
+                PointerValue e;
+                Read(&e, sizeof(e));
+
+                pointerTable[e.ID] = { e.offset };
+            }
+        }
+
+
+        ~LoadBlobArchiveContext() = default;
+
+
+        LoadBlobArchiveContext              (const LoadBlobArchiveContext&) = delete;
+        LoadBlobArchiveContext& operator =  (const LoadFileArchiveContext&) = delete;
+
+        LoadBlobArchiveContext              (LoadBlobArchiveContext&&) = delete;
+        LoadBlobArchiveContext& operator =  (LoadBlobArchiveContext&&) = delete;
+
+        constexpr bool Loading() const noexcept { return true; }
+
+        template<typename TY>
+        requires TrivialCopy<TY, LoadBlobArchiveContext>
+        void _Deserialize(TY& value)
+        {
+            Read(&value, sizeof(TY));
+        }
+
+        template<typename ... TY_Types>
+        void _Deserialize(std::variant<TY_Types...>& variant)
+        {
+            size_t i = -1;
+            Read(&i, sizeof(i));
+
+            if (i != std::variant_npos)
+                VariantDeserializationHelper<TY_Types...>::Construct(
+                    *this, variant, i);
+        }
+
+        template<typename TY>
+        requires SerializableValue<TY, LoadBlobArchiveContext>
+        void _Deserialize(TY& value)
+        {
+            Serialize(*this, value);
+        }
+
+
+        void _Deserialize(std::string& value)
+        {
+            StringHeader header;
+            Read(&header, sizeof(header));
+
+            value.resize(header.stringSize);
+
+            Read(value.data(), header.stringSize);
+        }
+
+
+        void _Deserialize(SerializableInterfacePointer auto& value)
+        {
+            value._Serialize(*this);
+        }
+
+
+        template<typename TY>
+        requires SerializableStruct<TY, LoadBlobArchiveContext> && !std::is_trivially_copyable_v<TY> && !SerializableInterfacePointer<TY>
+        void _Deserialize(TY& value)
+        {
+            value.Serialize(*this);
+        }
+
+
+        template<typename TY_Key, typename TY_Value>
+        void _Deserialize(std::map<TY_Key, TY_Value>& value_map)
+        {
+            using namespace SerializeableUtilities;
+
+            MapHeader header{};
+            Read(&header, sizeof(header));
+
+            for (size_t I = 0; I < header.size; I++)
+            {
+                TY_Key      key;
+                TY_Value    value;
+
+                _Deserialize(key);
+                _Deserialize(value);
+
+                value_map[key] = std::move(value);
+            }
+        }
+
+
+        template<typename TY>
+        void DeserializeValue(TY& value)
+        {
+            using namespace SerializeableUtilities;
+
+            _Deserialize(value);
+        }
+
+
+        template<typename TY>
+        void DeserializeValue(std::vector<TY>& vector)
+        {
+            using namespace SerializeableUtilities;
+
+            const auto& typeID = typeid(TY).hash_code();
+
+            auto temp = Tell();
+
+            VectorHeader header = { 0, 0 };
+            Read(&header, sizeof(header));
+
+            assert(typeID == header.type);
+
+            vector.reserve(header.size);
+
+            for (size_t I = 0; I < header.size; I++)
+            {
+                TY value;
+
+                if constexpr (is_pointer<TY>())
+                {
+                    if (value == nullptr)
+                    {
+                        if constexpr (SerializeableUtilities::is_smart_ptr<TY>())
+                            value = std::make_shared<SerializeableUtilities::is_smart_ptr<TY>::type>();
+                    }
+                    DeserializePointer(value);
+                }
+                else
+                    DeserializeValue(value);
+
+                vector.emplace_back(std::move(value));
+            }
+        }
+
+
+        template<typename TY>
+        requires std::is_base_of_v<FlexKit::SerializableInterfaceBase, TY>
+        void DeserializePointer(std::shared_ptr<TY>& value)
+        {
+            using namespace SerializeableUtilities;
+
+            PointerHeader header;
+            Read(&header, sizeof(header));
+
+            if (header.pointerID == 0)
+                return;
+
+            if (pointerTable[header.pointerID]._ptr.has_value())
+            {
+                value = std::any_cast<std::shared_ptr<TY>>(pointerTable[header.pointerID]._ptr);
+            }
+            else
+            {
+                auto temp   = Tell();
+                auto offset = static_cast<long>(pointerTable[header.pointerID].offset);
+
+                Seek(offset);
+
+                TypeID_t typeID;
+                Read(&typeID, sizeof(typeID));
+
+                assert(typeID == header.typeID);
+
+                auto newValue = FlexKit::SerializableBase::Construct(typeID);
+                newValue->_Serialize(*this);
+
+                value = std::shared_ptr<TY>(dynamic_cast<TY*>(newValue));
+
+                pointerTable[header.pointerID]._ptr = value;
+
+                Seek(temp);
+            }
+        }
+
+
+        template<typename TY>
+        void DeserializePointer(std::shared_ptr<TY>& value)
+        {
+            using namespace SerializeableUtilities;
+
+            uint64_t pointerValue[2];
+            Read(pointerValue, sizeof(pointerValue));
+
+            if (pointerTable[pointerValue[1]]._ptr.has_value())
+            {
+                auto& any_ptr = pointerTable[pointerValue[1]]._ptr;
+                value = std::any_cast<std::shared_ptr<TY>>(any_ptr);
+            }
+            else if(pointerValue[1] != 0)
+            {
+                assert(pointerTable.find(pointerValue[1]) != pointerTable.end());
+
+                auto temp   = Tell();
+                auto offset = static_cast<long>(pointerTable[pointerValue[1]].offset);
+
+                Seek(offset);
+
+                if (value == nullptr)
+                    value = std::make_shared<TY>();
+
+                pointerTable[pointerValue[1]]._ptr = value;
+
+                _Deserialize(*value);
+
+                Seek(temp);
+            }
+        }
+
+
+        template<typename TY>
+        void operator & (TY& rhs)
+        {
+            using namespace SerializeableUtilities;
+
+            if constexpr (is_pointer<TY>())
+            {
+                DeserializePointer(rhs);
+            }
+            else
+                DeserializeValue(rhs);
+        }
+
+
+        void operator & (RawBuffer&& rhs)
+        {
+            Read(&rhs.bufferSize, sizeof(rhs.bufferSize));
+
+            rhs.buffer = malloc(rhs.bufferSize);
+
+            Read(rhs.buffer, rhs.bufferSize);
+        }
+
+    private:
+        struct PointerMapping
+        {
+            uint64_t    offset  = 0;
+            std::any    _ptr;
+        };
+
+        std::map<uint64_t, PointerMapping> pointerTable;
+
+        size_t offset = 0;
+        Blob& blob;
     };
 
 

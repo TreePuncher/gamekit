@@ -4,6 +4,7 @@
 #include "EditorRenderer.h"
 #include "qevent.h"
 #include "DebugUI.cpp"
+#include "physicsutilities.h"
 
 #include <QtWidgets/qmenubar.h>
 #include <QShortcut>
@@ -572,7 +573,7 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
         FlexKit::SetOrientationL(newNode, orientation);
         FlexKit::SetPositionL(newNode, position);
 
-        if(node.parent != -1 || node.parent != 0)
+        if(node.parent != -1)
             FlexKit::SetParentNode(nodes[node.parent], newNode);
 
         SetFlag(newNode, FlexKit::SceneNodes::StateFlags::SCALE);
@@ -875,10 +876,12 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
     {
         allocator.clear();
 
+        auto& physXUpdate       = renderer.UpdatePhysx(dispatcher, dT);
         auto& transforms        = QueueTransformUpdateTask(dispatcher);
         auto& cameras           = FlexKit::CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
         auto& cameraConstants   = FlexKit::MakeHeapCopy(FlexKit::Camera::ConstantBuffer{}, allocator);
 
+        transforms.AddInput(physXUpdate);
         depthBuffer.Increment();
 
         FlexKit::ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
@@ -1112,6 +1115,127 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
                 ctx.Draw(divisions * 6);
             }
 
+
+            {
+                auto& physX  = FlexKit::PhysXComponent::GetComponent();
+                auto& pscene = physX.GetLayer_ref(scene->GetLayer()).scene;
+
+                struct Vertex
+                {
+                    FlexKit::float4 position;
+                    FlexKit::float4 color;
+                    FlexKit::float2 UV;
+                };
+
+                static std::vector<Vertex> lines;
+
+                if(pscene->checkResults())
+                {
+                    auto& renderBuffer = pscene->getRenderBuffer();
+
+                    if (renderBuffer.getNbLines())
+                    {
+                        lines.clear();
+
+                        Vertex v;
+                        v.color = float4(1, 1, 1, 1);
+
+                        auto lineCount = renderBuffer.getNbLines();
+                        for (uint32_t i = 0; i < lineCount; i++)
+                        {
+
+                            /*
+                            PxVec3	pos0;
+                            PxU32	color0;
+                            PxVec3	pos1;
+                            PxU32	color1;
+                            */
+                            const auto& line = renderBuffer.getLines()[i];
+
+                            v.position.x = line.pos0.x;
+                            v.position.y = line.pos0.y;
+                            v.position.z = line.pos0.z;
+                            v.position.w = 1.0f;
+                            lines.push_back(v);
+
+                            v.position.x = line.pos1.x;
+                            v.position.y = line.pos1.y;
+                            v.position.z = line.pos1.z;
+                            v.position.w = 1.0f;
+                            lines.push_back(v);
+                        }
+                    }
+
+                    if (renderBuffer.getNbTriangles())
+                    {
+                        Vertex v;
+                        v.color = float4(1, 1, 1, 1);
+
+                        auto triCount = renderBuffer.getNbTriangles();
+                        for (uint32_t i = 0; i < triCount; i++)
+                        {
+
+                            /*
+	                        PxVec3	pos0;
+	                        PxU32	color0;
+	                        PxVec3	pos1;
+	                        PxU32	color1;
+	                        PxVec3	pos2;
+	                        PxU32	color2;
+                            */
+                            const auto& tri = renderBuffer.getTriangles()[i];
+
+                            v.position.x = tri.pos0.x;
+                            v.position.y = tri.pos0.y;
+                            v.position.z = tri.pos0.z;
+                            v.position.w = 1.0f;
+                            lines.push_back(v);
+
+                            v.position.x = tri.pos1.x;
+                            v.position.y = tri.pos1.y;
+                            v.position.z = tri.pos1.z;
+                            v.position.w = 1.0f;
+                            lines.push_back(v);
+
+                            v.position.x = tri.pos1.x;
+                            v.position.y = tri.pos1.y;
+                            v.position.z = tri.pos1.z;
+                            v.position.w = 1.0f;
+                            lines.push_back(v);
+
+                            v.position.x = tri.pos2.x;
+                            v.position.y = tri.pos2.y;
+                            v.position.z = tri.pos2.z;
+                            v.position.w = 1.0f;
+                            lines.push_back(v);
+
+                            v.position.x = tri.pos0.x;
+                            v.position.y = tri.pos0.y;
+                            v.position.z = tri.pos0.z;
+                            v.position.w = 1.0f;
+                            lines.push_back(v);
+
+                            v.position.x = tri.pos2.x;
+                            v.position.y = tri.pos2.y;
+                            v.position.z = tri.pos2.z;
+                            v.position.w = 1.0f;
+                            lines.push_back(v);
+                        }
+                    }
+
+                }
+
+                if(lines.size())
+                {
+                    ctx.BeginEvent_DEBUG("PhysX Debug");
+                    FlexKit::VBPushBuffer VBBuffer = data.ReserveVertexBuffer(sizeof(Vertex) * lines.size());
+                    const FlexKit::VertexBufferDataSet vertexBuffer{ lines, VBBuffer };
+
+                    ctx.SetVertexBuffers({ vertexBuffer });
+                    ctx.Draw(lines.size());
+                    ctx.EndEvent_DEBUG();
+                }
+            }
 
             // Draw Selection
             if(selectionContext.GetSelectionType() == ViewportObjectList_ID)

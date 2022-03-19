@@ -4,6 +4,7 @@
 #include <PxFoundation.h>
 #include <PxPhysics.h>
 #include <extensions/PxExtensionsAPI.h>
+#include <cooking/PxCooking.h>
 
 using namespace physx;
 
@@ -163,7 +164,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LayerHandle PhysXComponent::CreateLayer()
+	LayerHandle PhysXComponent::CreateLayer(bool bebugVis)
 	{
 		physx::PxSceneDesc desc(physxAPI->getTolerancesScale());
 		desc.gravity		     = physx::PxVec3(0.0f, -9.81f, 0.0f);
@@ -174,11 +175,23 @@ namespace FlexKit
         desc.gpuDynamicsConfig.forceStreamCapacity      *= 4;
         desc.gpuDynamicsConfig.patchStreamSize          = 8096 * sizeof(PxContactPatch);
 
+
+
         if(cudaContextmanager != nullptr)
             desc.flags              |= PxSceneFlag::eENABLE_GPU_DYNAMICS;
 
 		auto pScene			= physxAPI->createScene(desc);
 		auto Idx			= scenes.emplace_back(pScene, *this, allocator);
+
+        if (bebugVis)
+        {
+            pScene->setVisualizationParameter(PxVisualizationParameter::eSCALE, 1.0f);
+            pScene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_EDGES, 1.0f);
+            pScene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_SHAPES, 1.0f);
+            pScene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_AABBS, 1.0f);
+            pScene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_STATIC, 1.0f);
+            pScene->setVisualizationParameter(PxVisualizationParameter::eACTOR_AXES, 2.0f);
+        }
 
 		return LayerHandle(Idx);
 	}
@@ -188,13 +201,15 @@ namespace FlexKit
 
 
     StaticBodyHandle PhysXComponent::CreateStaticCollider(
+        GameObject*             gameObject,
         const LayerHandle       layerHandle,
+
         const PxShapeHandle     shape,
         const float3            pos,
         const Quaternion        q)
 	{
         auto& layer = GetLayer_ref(layerHandle);
-		return layer.CreateStaticCollider(shapes[shape], pos, q);
+		return layer.CreateStaticCollider(shapes[shape], gameObject, pos, q);
 	}
 
 
@@ -202,13 +217,14 @@ namespace FlexKit
 
 
     RigidBodyHandle PhysXComponent::CreateRigidBodyCollider(
+        GameObject*             gameObject,
         const LayerHandle       layerHandle,
         const PxShapeHandle     shape,
         const float3            pos,
         const Quaternion        q)
 	{
         auto& layer = GetLayer_ref(layerHandle);
-		return layer.CreateRigidBodyCollider(shapes[shape], pos, q);
+		return layer.CreateRigidBodyCollider(shapes[shape], gameObject, pos, q);
 	}
 
 
@@ -247,6 +263,162 @@ namespace FlexKit
     PhysicsLayer& PhysXComponent::GetLayer_ref(LayerHandle layer)
     {
         return scenes[layer];
+    }
+
+
+    /************************************************************************************************/
+
+
+    physx::PxCooking* PhysXComponent::GetCooker()
+    {
+        if (!cooker)
+        {
+            physx::PxCookingParams params{ physx::PxTolerancesScale() };
+
+            params.meshPreprocessParams |= PxMeshPreprocessingFlag::eDISABLE_CLEAN_MESH;
+            params.meshPreprocessParams |= PxMeshPreprocessingFlag::eDISABLE_ACTIVE_EDGES_PRECOMPUTE;
+
+            cooker = PxCreateCooking(PX_PHYSICS_VERSION, *foundation, params);
+        }
+
+        return cooker;
+    }
+
+
+    /************************************************************************************************/
+
+
+    PxShapeHandle PhysXComponent::CookMesh(float3* geometry, size_t geometrySize, uint32_t* indices, size_t indexCount)
+    {
+        physx::PxTriangleMeshDesc meshDesc;
+        meshDesc.points.count   = geometrySize;
+        meshDesc.points.stride  = sizeof(FlexKit::float3);
+        meshDesc.points.data    = geometry;
+
+        meshDesc.triangles.count    = indexCount / 3;
+        meshDesc.triangles.stride   = 3 * sizeof(uint32_t);
+        meshDesc.triangles.data     = indices;
+
+        auto res = GetCooker()->validateTriangleMesh(meshDesc);
+
+        {
+            auto triangleMesh   = cooker->createTriangleMesh(meshDesc, physxAPI->getPhysicsInsertionCallback());
+
+            if (!triangleMesh)
+                return InvalidHandle_t;
+
+            auto pxShape        = physxAPI->createShape(PxTriangleMeshGeometry(triangleMesh), *defaultMaterial);
+
+            Shape shape;
+            shape._ptr = pxShape;
+            return PxShapeHandle{ shapes.push_back({ shape }) };
+        }
+
+        return InvalidHandle_t;
+    }
+
+
+    /************************************************************************************************/
+
+
+    class BlobStream : public physx::PxOutputStream
+    {
+    public:
+        virtual ~BlobStream() { }
+
+        uint32_t write(const void* src, uint32_t count) override
+        {
+            blob += Blob{ (char*)src, count };
+
+            return count;
+        }
+
+        Blob blob;
+    };
+
+    Blob PhysXComponent::CookMesh2(float3* geometry, size_t geometrySize, uint32_t* indices, size_t indexCount)
+    {
+        physx::PxTriangleMeshDesc meshDesc;
+        meshDesc.points.count   = geometrySize;
+        meshDesc.points.stride  = sizeof(FlexKit::float3);
+        meshDesc.points.data    = geometry;
+
+        meshDesc.triangles.count    = indexCount / 3;
+        meshDesc.triangles.stride   = 3 * sizeof(uint32_t);
+        meshDesc.triangles.data     = indices;
+
+        auto oven = GetCooker()->validateTriangleMesh(meshDesc);
+
+        BlobStream ouputStream;
+        auto res = cooker->cookTriangleMesh(meshDesc, ouputStream);
+
+        if (res)
+            return ouputStream.blob;
+        else
+            return {};
+    }
+
+
+    /************************************************************************************************/
+
+
+    class BlobInputStream : public PxInputData
+    {
+    public:
+        BlobInputStream(const Blob& IN_blob) : blob{ IN_blob } {}
+        virtual ~BlobInputStream() {}
+
+        uint32_t getLength() const
+        {
+            return blob.size();
+        }
+
+        uint32_t read(void* dest, uint32_t count) override
+        {
+            memcpy(dest, blob.buffer.data() + offset, count);
+            offset += count;
+
+            return count;
+        }
+
+        void seek(uint32_t newOffset) override
+        {
+            offset = newOffset;
+        }
+
+        uint32_t tell() const override
+        {
+            return offset;
+        }
+
+        size_t offset = 0;
+        const Blob& blob;
+    };
+
+    PxShapeHandle PhysXComponent::LoadTriMeshShape(const Blob& blob)
+    {
+        BlobInputStream stream{ blob };
+
+        auto triangleMesh = physxAPI->createTriangleMesh(stream);
+
+        if (!triangleMesh)
+            return InvalidHandle_t;
+
+        auto pxShape = physxAPI->createShape(PxTriangleMeshGeometry(triangleMesh), *defaultMaterial);
+
+        Shape shape;
+        shape._ptr = pxShape;
+
+        return PxShapeHandle{ shapes.push_back({ shape }) };
+    }
+
+
+    /************************************************************************************************/
+
+
+    physx::PxShape* PhysXComponent::_GetShape(PxShapeHandle shape)
+    {
+        return shapes[shape]._ptr;
     }
 
 
@@ -434,7 +606,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	StaticBodyHandle PhysicsLayer::CreateStaticCollider(Shape shape, float3 initialPosition, Quaternion initialQ)
+	StaticBodyHandle PhysicsLayer::CreateStaticCollider(Shape shape, GameObject* go, float3 initialPosition, Quaternion initialQ)
 	{
 		physx::PxTransform pxInitialPose =
 			physx::PxTransform{ PxMat44(PxIdentity) };
@@ -446,7 +618,7 @@ namespace FlexKit
 
         rigidStaticActor->attachShape(*shape._ptr);
 
-		size_t handleIdx		= staticColliders.push_back({ GetZeroedNode(), rigidStaticActor }, true);
+		size_t handleIdx		= staticColliders.push_back({ GetZeroedNode(), rigidStaticActor, shape._ptr, go }, true);
 
 		scene->addActor(*rigidStaticActor);
 
@@ -457,7 +629,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    RigidBodyHandle PhysicsLayer::CreateRigidBodyCollider(Shape shape, float3 initialPosition, Quaternion initialQ)
+    RigidBodyHandle PhysicsLayer::CreateRigidBodyCollider(Shape shape, GameObject* go, float3 initialPosition, Quaternion initialQ)
 	{
         auto node = GetZeroedNode();
 		SetOrientation	(node, initialQ);
@@ -1217,10 +1389,68 @@ namespace FlexKit
         }
     }
 
+    /************************************************************************************************/
+
+
+    StaticBodyView::StaticBodyView(GameObject& gameObject, StaticBodyHandle IN_staticBody, LayerHandle IN_layer) :
+            staticBody  { IN_staticBody },
+            layer       { IN_layer } {}
+
+    StaticBodyView::StaticBodyView(GameObject& gameObject, LayerHandle IN_layer, PxShapeHandle shape, float3 pos, Quaternion q) :
+            staticBody  { GetComponent().Create(&gameObject, layer, shape, pos, q) },
+            layer       { IN_layer } {}
+
+    NodeHandle StaticBodyView::GetNode() const
+    {
+        return GetComponent().GetLayer(layer)[staticBody].node;
+    }
+
+    GameObject& StaticBodyView::GetGameObject() const
+    {
+        return *GetComponent().GetLayer(layer)[staticBody].gameObject;
+    }
+
+    void StaticBodyView::SetShape(PxShapeHandle shape)
+    {
+        auto& staticBody_data = GetComponent().GetLayer(layer)[staticBody];
+        staticBody_data.actor->detachShape(*staticBody_data.shape);
+
+        auto newShape = PhysXComponent::GetComponent()._GetShape(shape);
+        staticBody_data.actor->attachShape(*newShape);
+    }
+
+
+    /************************************************************************************************/
+
+
+    RigidBodyComponent::RigidBodyComponent(PhysXComponent& IN_physx) :
+        physx{ IN_physx } {}
+
+
+    RigidBodyHandle RigidBodyComponent::CreateRigidBody(GameObject* gameObject, PxShapeHandle shape, LayerHandle layer, float3 pos, Quaternion q)
+    {
+        return physx.CreateRigidBodyCollider(gameObject, layer, shape, pos, q);
+    }
+
+    void RigidBodyComponent::AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    {
+        FK_ASSERT(0);
+    }
+
+    void RigidBodyComponent::Remove(RigidBodyView& rigidBody)
+    {
+
+    }
+
+    PhysicsLayer& RigidBodyComponent::GetLayer(LayerHandle layer)
+    {
+        return physx.GetLayer_ref(layer);
+    }
+
 
     /**********************************************************************
 
-    Copyright (c) 2015 - 2021 Robert May
+    Copyright (c) 2015 - 2022 Robert May
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
