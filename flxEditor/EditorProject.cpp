@@ -81,9 +81,12 @@ void EditorProject::AddScene(EditorScene_ptr scene)
 /************************************************************************************************/
 
 
-void EditorProject::AddResource(FlexKit::Resource_ptr resource)
+ProjectResource_ptr EditorProject::AddResource(FlexKit::Resource_ptr resource)
 {
-    resources.emplace_back(std::make_shared<ProjectResource>(resource));
+    auto projectResource = std::make_shared<ProjectResource>(resource);
+    resources.emplace_back(projectResource);
+
+    return projectResource;
 }
 
 

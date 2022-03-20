@@ -1655,7 +1655,9 @@ namespace FlexKit
             }   break;
             case StaticBodyType::TriangleMesh:
             {
-                Resource* resource = GetAsset(triMeshShape.triMeshResource);
+                auto assetHandle    = LoadGameAsset(triMeshShape.triMeshResource);
+                Resource* resource  = GetAsset(assetHandle);
+
                 Blob triMeshBlob{ ((char*)resource) + sizeof(Resource), resource->ResourceSize - sizeof(Resource) };
                 shape = physX.LoadTriMeshShape(triMeshBlob);
             }   break;

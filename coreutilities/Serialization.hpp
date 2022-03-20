@@ -96,6 +96,10 @@ namespace FlexKit
             return { _ptr, size };
         }
 
+        void Serialize(auto& ar)
+        {
+            ar& buffer;
+        }
 
         std::vector<std::byte> buffer;
     };
@@ -312,13 +316,13 @@ namespace FlexKit
 
 
     template<typename TY, typename TY_archive>
-    concept SerializableValue = requires(TY t, TY_archive ar) 
+    concept SerializableValue = requires(TY t, TY_archive& ar) 
     {
         Serialize(ar, t);
     };
 
     template<typename TY, typename TY_archive>
-    concept SerializableStruct = requires(TY t, TY_archive ar)
+    concept SerializableStruct = requires(TY t, TY_archive& ar)
     {
         t.Serialize(ar);
     };
@@ -417,7 +421,7 @@ namespace FlexKit
 
 
         template<typename TY>
-        requires SerializableValue<TY, SaveArchiveContext>
+        //requires SerializableValue<TY, SaveArchiveContext>
         void _Serialize(TY& value)
         {
             Serialize(*this, value);
