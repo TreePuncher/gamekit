@@ -24,7 +24,7 @@ public:
         return FlexKit::StringComponentID;
     }
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override;
+    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
 
 private:
 };
@@ -70,7 +70,7 @@ public:
         return FlexKit::TransformComponentID;
     }
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override;
+    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
 private:
 
 };
@@ -120,7 +120,7 @@ public:
         return FlexKit::SceneVisibilityComponentID;
     }
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override;
+    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
 
 private:
 
@@ -139,7 +139,7 @@ public:
         return FlexKit::PointLightComponentID;
     }
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override;
+    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
 };
 
 
@@ -186,7 +186,7 @@ public:
         return FlexKit::PointLightShadowMapID;
     }
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override
+    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override
     {
         auto& cubeShadowMapView = static_cast<FlexKit::PointLightShadowMapView&>(component);
 
@@ -225,13 +225,17 @@ struct CubicShadowMapFactory : public IComponentFactory
 class SceneBrushInspector : public IComponentInspector
 {
 public:
+    SceneBrushInspector(EditorProject&, EditorViewport&);
 
     FlexKit::ComponentID ComponentID() override
     {
         return FlexKit::BrushComponentID;
     }
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override;
+    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
+
+    EditorViewport& viewport;
+    EditorProject&  project;
 };
 
 
@@ -239,6 +243,9 @@ struct SceneBrushFactory : public IComponentFactory
 {
     void Construct(ViewportGameObject& viewportObject, ViewportScene& scene)
     {
+        if (!viewportObject.gameObject.hasView(FlexKit::TransformComponentID))
+            viewportObject.gameObject.AddView<FlexKit::SceneNodeView<>>();
+
         viewportObject.gameObject.AddView<FlexKit::BrushView>(FlexKit::InvalidHandle_t, FlexKit::GetSceneNode(viewportObject.gameObject));
     }
 
@@ -267,7 +274,7 @@ public:
         return FlexKit::BrushComponentID;
     }
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component) override;
+    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
 };
 
 

@@ -6,6 +6,27 @@
 #include "..\coreutilities\Components.h"
 #include "physicsutilities.h"
 
+struct Collider
+{
+    uint64_t    colliderAsset;
+    float3      initialPosition;
+    float3      initialScale;
+    Quaternion  initialOrientation;
+
+    void Serialize(auto& ar)
+    {
+        ar& colliderAsset;
+        ar& initialPosition;
+        ar& initialScale;
+        ar& initialOrientation;
+    }
+};
+
+struct StaticColliderEditorData
+{
+    std::vector<Collider> colliders;
+};
+
 class EditorColliderComponent :
     public FlexKit::Serializable<EditorColliderComponent, FlexKit::EntityComponent, FlexKit::StaticBodyComponentID>
 {
@@ -16,11 +37,13 @@ public:
     void Serialize(auto& ar)
     {
         EntityComponent::Serialize(ar);
+
+        ar& colliders;
     }
 
     FlexKit::Blob GetBlob() override;
 
-    FlexKit::ResourceHandle ColliderResourceID;
+    std::vector<Collider> colliders;
 
     inline static RegisterConstructorHelper<EditorColliderComponent, FlexKit::StaticBodyComponentID> registered{};
 };

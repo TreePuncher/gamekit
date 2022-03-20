@@ -186,7 +186,7 @@ QVariant ResourceItemModel::headerData(int section, Qt::Orientation orientation,
 
 FlexKit::Resource_ptr  ResourceItemModel::GetResource(const uint64_t index)
 {
-    return project.resources[index].resource;
+    return project.resources[index]->resource;
 }
 
 
@@ -195,7 +195,7 @@ FlexKit::Resource_ptr  ResourceItemModel::GetResource(const uint64_t index)
 
 ResourceID_t  ResourceItemModel::GetResourceType(uint64_t index) const
 {
-    return project.resources[index].resource->GetResourceTypeID();
+    return project.resources[index]->resource->GetResourceTypeID();
 }
 
 
@@ -209,7 +209,7 @@ QVariant ResourceItemModel::data(const QModelIndex& index, int role) const
         switch (index.column())
         {
         case 0:
-            return QVariant{ project.resources[index.row()].resource->GetResourceID().c_str() };
+            return QVariant{ project.resources[index.row()]->resource->GetResourceID().c_str() };
         case 1:
         {
             static const std::map<ResourceID_t, const char*> IDTypeMap = {
@@ -220,13 +220,13 @@ QVariant ResourceItemModel::data(const QModelIndex& index, int role) const
 
             const auto editorResource = project.resources[index.row()];
 
-            if (auto res = IDTypeMap.find(editorResource.resource->GetResourceTypeID()); res != IDTypeMap.end())
+            if (auto res = IDTypeMap.find(editorResource->resource->GetResourceTypeID()); res != IDTypeMap.end())
                 return QVariant{ res->second };
 
             return QVariant{ "Unknown Type" };
         }
         case 2:
-            return QVariant{ std::to_string(project.resources[index.row()].resource.use_count() - 1).c_str() };
+            return QVariant{ std::to_string(project.resources[index.row()]->resource.use_count() - 1).c_str() };
         default:
             return QVariant{ tr("Datass!") };
         }

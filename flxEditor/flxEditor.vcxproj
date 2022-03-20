@@ -164,6 +164,7 @@
     </ClCompile>
     <ClCompile Include="EditorMainWindow.cpp" />
     <ClCompile Include="EditorProject.cpp" />
+    <ClCompile Include="EditorResourcePickerDialog.cpp" />
     <ClCompile Include="EditorResources.cpp" />
     <ClCompile Include="EditorScriptEngine.cpp" />
     <ClCompile Include="EditorTaskList.cpp" />
@@ -203,6 +204,7 @@
     <ClInclude Include="CSGRendering.h" />
     <ClInclude Include="EditorApplication.h" />
     <QtMoc Include="EditorInspectorView.h" />
+    <QtMoc Include="EditorResourcePickerDialog.h" />
     <ClInclude Include="ModifiableShape.h" />
     <ClInclude Include="PCH.h" />
     <ClInclude Include="SceneInspectors.h" />
@@ -230,6 +232,7 @@
   <ItemGroup>
     <QtUic Include="EditorCodeEditor.ui" />
     <QtUic Include="EditorOutputWindow.ui" />
+    <QtUic Include="EditorResourcePickerDialog.ui" />
     <QtUic Include="ModelViewerWidget.ui" />
     <QtUic Include="ResourceBrowserWidget.ui" />
     <QtUic Include="SceneOutliner.ui" />

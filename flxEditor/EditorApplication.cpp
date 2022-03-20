@@ -123,7 +123,7 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
     EditorInspectorView::AddComponentInspector<VisibilityInspector>();
     EditorInspectorView::AddComponentInspector<PointLightInspector>();
     EditorInspectorView::AddComponentInspector<PointLightShadowInspector>();
-    EditorInspectorView::AddComponentInspector<SceneBrushInspector>();
+    EditorInspectorView::AddComponentInspector<SceneBrushInspector>(project, mainWindow.Get3DView());
 
     RegisterCSGInspector(mainWindow.Get3DView());
     RegisterColliderInspector(mainWindow.Get3DView(), project);

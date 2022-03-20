@@ -175,7 +175,7 @@ bool GameWorld::LoadScene(GUID_t assetID)
             auto q              = GetOrientation(go);
 
 
-            PxShapeHandle shape = physics.CreateCubeShape(dim);
+            auto shape = physics.CreateCubeShape(dim);
 
             go.AddView<StaticBodyView>(layer, shape, pos, q);
         }
