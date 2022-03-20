@@ -107,8 +107,8 @@ using EditorScene_ptr = std::shared_ptr<EditorScene>;
 class EditorProject
 {
 public:
-    void AddScene       (EditorScene_ptr scene);
-    void AddResource    (FlexKit::Resource_ptr resource);
+    void                    AddScene       (EditorScene_ptr scene);
+    ProjectResource_ptr     AddResource    (FlexKit::Resource_ptr resource);
 
     FlexKit::ResourceList GetResources() const;
 

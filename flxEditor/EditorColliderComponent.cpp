@@ -12,26 +12,43 @@
 
 /************************************************************************************************/
 
-
 class StaticColliderResource :
     public FlexKit::Serializable<StaticColliderResource, FlexKit::iResource, GetTypeGUID(MeshResource)>
 {
 public:
-
     const ResourceID_t GetResourceTypeID()  const noexcept override { return TriMeshColliderTypeID; }
     const std::string& GetResourceID()      const noexcept override { return stringID; }
     const uint64_t     GetResourceGUID()    const noexcept override { return resourceID; }
 
-    FlexKit::ResourceBlob CreateBlob()      const override
-    {
-        return {};
-    }
 
+    FlexKit::ResourceBlob CreateBlob() const
+    {
+        FlexKit::ColliderResourceBlob header;
+        FlexKit::Blob blob;
+
+        header.GUID         = resourceID;
+        header.ResourceSize = sizeof(header) + colliderBlob.size();
+        header.Type         = EResourceType::EResource_Collider;
+
+        blob += header;
+        blob += colliderBlob;
+
+        auto [data, size] = blob.Release();
+
+        FlexKit::ResourceBlob out;
+        out.buffer          = (char*)data;
+        out.bufferSize      = size;
+        out.GUID            = resourceID;
+        out.ID              = stringID;
+        out.resourceType    = EResourceType::EResource_Collider;
+        return out;
+    }
 
     void Serialize(auto& archive)
     {
         archive& stringID;
         archive& resourceID;
+        archive& colliderBlob;
     }
 
     FlexKit::Blob   colliderBlob;
@@ -96,7 +113,8 @@ public:
                         if(shape)
                             staticBody.AddShape(shape);
 
-                        project.AddResource(resource);
+                        auto projectResource = project.AddResource(resource);
+                        viewport.GetScene()->sceneResource->sceneResources.push_back(projectResource);
                     });
             });
 

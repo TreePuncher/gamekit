@@ -303,7 +303,7 @@ namespace FlexKit
 	AssetHandle LoadGameAsset(GUID_t guid)
 	{
 		for (size_t I = 0; I < Resources.ResourcesLoaded.size(); ++I)
-			if (Resources.ResourceGUIDs[I] == guid)
+			if (Resources.ResourcesLoaded[I]->GUID == guid)
 				return I;
 
         AssetHandle RHandle = INVALIDHANDLE;

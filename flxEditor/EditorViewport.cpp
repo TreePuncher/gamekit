@@ -590,16 +590,13 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
 
     for (auto& dependantResource : newScene->sceneResources)
     {
-        if (TextureResourceTypeID == dependantResource->resource->GetResourceTypeID())
-        {
-            auto blob   = dependantResource->resource->CreateBlob();
-            auto buffer = blob.buffer;
+        auto blob   = dependantResource->resource->CreateBlob();
+        auto buffer = blob.buffer;
 
-            blob.buffer     = nullptr;
-            blob.bufferSize = 0;
+        blob.buffer     = nullptr;
+        blob.bufferSize = 0;
 
-            FlexKit::AddAssetBuffer((Resource*)buffer);
-        }
+        FlexKit::AddAssetBuffer((Resource*)buffer);
     }
 
     std::vector<FlexKit::NodeHandle> nodes;
