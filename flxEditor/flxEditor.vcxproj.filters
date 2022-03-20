@@ -57,6 +57,9 @@
     <QtMoc Include="SceneOutliner.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="EditorResourcePickerDialog.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DXRenderWindow.cpp">
@@ -149,6 +152,9 @@
     <ClCompile Include="ModifiableShape.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="EditorResourcePickerDialog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -232,6 +238,9 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="SceneOutliner.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="EditorResourcePickerDialog.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>

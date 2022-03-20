@@ -51,7 +51,7 @@ public:
         return FlexKit::StaticBodyComponentID;
     }
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& view) override
+    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& view) override
     {
         panelCtx.PushVerticalLayout("Static Collider", true);
 
@@ -60,11 +60,15 @@ public:
             [&]()
             {
                 auto& staticBody = static_cast<FlexKit::StaticBodyView&>(view);
+                auto* editorData = (StaticColliderEditorData*)staticBody.GetUserData();
                 auto& gameObject = staticBody.GetGameObject();
 
                 FlexKit::Apply(gameObject,
                     [&](CSGView& csg)
                     {
+                        if (!csg->brushes.size())
+                            return;
+
                         auto& physx     = FlexKit::PhysXComponent::GetComponent();
                         auto geometry   = csg->brushes.front().shape.CreateIndexedMesh();
 
@@ -78,9 +82,10 @@ public:
                         resource->colliderBlob  = newShape;
 
                         auto shape = physx.LoadTriMeshShape(newShape);
+                        editorData->colliders.push_back({ resource->resourceID });
 
-                        if(shape != FlexKit::InvalidHandle_t)
-                            staticBody.SetShape(shape);
+                        if(shape)
+                            staticBody.AddShape(shape);
 
                         project.AddResource(resource);
                     });
@@ -102,6 +107,83 @@ public:
             "Add Box Collider",
             [&]()
             {
+            });
+
+
+
+        auto& list = *panelCtx.AddList(
+            [&]() -> size_t 
+            {   // Size update
+                auto& staticBody = static_cast<FlexKit::StaticBodyView&>(view);
+                auto* editorData = (StaticColliderEditorData*)staticBody.GetUserData();
+
+                return editorData->colliders.size();
+            },
+            [&](auto idx, QListWidgetItem* item)
+            {   // Update Contents
+                auto& staticBody = static_cast<FlexKit::StaticBodyView&>(view);
+                auto* editorData = (StaticColliderEditorData*)staticBody.GetUserData();
+
+                std::string label{ std::format("{}",editorData->colliders[idx].colliderAsset)};
+
+                item->setData(Qt::DisplayRole, label.c_str());
+            },
+            [&](QListWidget* listWidget)
+            {   // On Event
+                auto item   = listWidget->currentItem();
+                auto idx    = listWidget->indexFromItem(item);
+
+                listWidget->setCurrentIndex(idx);
+            }
+        );
+
+        panelCtx.AddButton(
+            "Remove Collider",
+            [&]()
+            {
+                auto item           = list.currentItem();
+                auto idx            = list.indexFromItem(item).row();
+                auto& staticBody    = static_cast<FlexKit::StaticBodyView&>(view);
+
+                staticBody.RemoveShape(idx);
+            });
+
+        panelCtx.AddButton(
+            "Update Collider From CSG",
+            [&]()
+            {
+                auto& staticBody = static_cast<FlexKit::StaticBodyView&>(view);
+                auto& gameObject = staticBody.GetGameObject();
+
+                FlexKit::Apply(gameObject,
+                    [&](CSGView& csg)
+                    {
+                        if (!csg->brushes.size())
+                            return;
+
+                        auto* editorData    = (StaticColliderEditorData*)staticBody.GetUserData();
+                        auto item           = list.currentItem();
+                        auto idx            = list.indexFromItem(item).row();
+
+                        auto& physx         = FlexKit::PhysXComponent::GetComponent();
+                        auto geometry       = csg->brushes.front().shape.CreateIndexedMesh();
+
+                        auto newShape = physx.CookMesh2(
+                            geometry.points.data(), geometry.points.size(),
+                            geometry.indices.data(), geometry.indices.size());
+
+                        auto shape = physx.LoadTriMeshShape(newShape);
+                        if (shape)
+                        {
+                            auto& staticBody    = static_cast<FlexKit::StaticBodyView&>(view);
+                            auto resource       = std::static_pointer_cast<StaticColliderResource>(project.FindProjectResource(editorData->colliders[idx].colliderAsset)->resource);
+
+                            resource->colliderBlob = newShape;
+
+                            staticBody.RemoveShape(idx);
+                            staticBody.AddShape(shape);
+                        }
+                    });
             });
 
         panelCtx.Pop();
@@ -127,9 +209,20 @@ public:
         return FlexKit::RigidBodyComponentID;
     }
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& view) override
+    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& view) override
     {
         panelCtx.PushVerticalLayout("Rigid Body Collider", true);
+
+        panelCtx.AddButton(
+            "Add Cube Rigid Body",
+            [&]()
+            {
+                auto& physx     = FlexKit::PhysXComponent::GetComponent();
+                auto cubeShape  = physx.CreateCubeShape({ 1, 1, 1 });
+
+
+            });
+
         panelCtx.Pop();
     }
 
@@ -148,9 +241,13 @@ struct ColliderComponentFactory : public IComponentFactory
         auto& physx = FlexKit::PhysXComponent::GetComponent();
         auto layer  = scene.GetLayer();
 
-        const static auto defaultCube = physx.CreateCubeShape(float3{ 1, 1, 1 });
+        const static auto defaultCube   = physx.CreateCubeShape(float3{ 1, 1, 1 });
+        auto editorData                 = new StaticColliderEditorData{};
+        editorData->colliders.push_back({ -1u });
 
-        viewportObject.gameObject.AddView<FlexKit::StaticBodyView>(layer, defaultCube);
+        auto& staticBody = viewportObject.gameObject.AddView<FlexKit::StaticBodyView>(layer, defaultCube);
+        
+        staticBody.SetUserData(editorData);
     }
 
     inline static const std::string name = "Static Collider";
@@ -167,7 +264,10 @@ struct ColliderComponentFactory : public IComponentFactory
     static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& base, ViewportSceneContext& scene)
     {
         auto& colliderComponent = static_cast<EditorColliderComponent&>(component);
+        auto& colliderView      = static_cast<FlexKit::StaticBodyView&>(base);
+        auto* editorData        = static_cast<StaticColliderEditorData*>(colliderView.GetUserData());
 
+        colliderComponent.colliders = editorData->colliders;
     }
 
     inline static IEntityComponentRuntimeUpdater::RegisterConstructorHelper<ColliderComponentFactory, FlexKit::StaticBodyComponentID> _register;
@@ -204,7 +304,7 @@ struct RigidBodyComponentFactory : public IComponentFactory
 
     static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& base, ViewportSceneContext& scene)
     {
-        auto& editorCSGComponent = static_cast<EditorComponentCSG&>(component);
+        auto& colliderComponent = static_cast<EditorRigidBodyComponent&>(component);
     }
 
     inline static IEntityComponentRuntimeUpdater::RegisterConstructorHelper<ColliderComponentFactory, FlexKit::StaticBodyComponentID> _register;
@@ -237,7 +337,7 @@ void RegisterRigidBodyInspector(EditorViewport& viewport, EditorProject& project
 FlexKit::Blob EditorColliderComponent::GetBlob()
 {
     FlexKit::SaveArchiveContext archive;
-    archive& ColliderResourceID;
+    archive& colliders;
 
     return archive.GetBlob();
 }

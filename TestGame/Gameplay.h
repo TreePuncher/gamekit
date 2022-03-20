@@ -333,7 +333,7 @@ public:
 
 
     Vector<GameEvent>       pendingEvents;
-    const PxShapeHandle     cubeShape;
+    const Shape             cubeShape;
 
     EngineCore&             core;
     RenderSystem&           renderSystem;

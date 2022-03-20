@@ -1,11 +1,14 @@
 #include "PCH.h"
-#include <SceneInspectors.h>
+#include "SceneInspectors.h"
+#include "EditorResourcePickerDialog.h"
+#include "..\FlexKitResourceCompiler\ResourceIDs.h"
+#include "EditorViewport.h"
 
 
 /************************************************************************************************/
 
 
-void StringIDInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component)
+void StringIDInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
 {
     auto& stringIDView = static_cast<FlexKit::StringIDView&>(component);
 
@@ -30,7 +33,7 @@ void StringIDInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::Co
 /************************************************************************************************/
 
 
-void TransformInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component)
+void TransformInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
 {
     auto& sceneNodeView = static_cast<FlexKit::SceneNodeView<>&>(component);
 
@@ -408,7 +411,7 @@ void TransformInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::C
 /************************************************************************************************/
 
 
-void VisibilityInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component)
+void VisibilityInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
 {
     auto& visibility = static_cast<FlexKit::SceneVisibilityView&>(component);
 
@@ -438,7 +441,7 @@ void VisibilityInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::
 /************************************************************************************************/
 
 
-void PointLightInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component)
+void PointLightInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
 {
     auto& pointLight = static_cast<FlexKit::PointLightView&>(component);
 
@@ -488,28 +491,74 @@ void PointLightInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::
 /************************************************************************************************/
 
 
-void SceneBrushInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component)
+SceneBrushInspector::SceneBrushInspector(EditorProject& IN_project, EditorViewport& IN_viewport)
+    : project   { IN_project }
+    , viewport  { IN_viewport } {}
+
+
+void SceneBrushInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& component)
 {
     auto& brush = static_cast<FlexKit::BrushView&>(component);
 
-    panelCtx.AddHeader("Brush");
+    panelCtx.PushVerticalLayout("Brush", true);
 
-    auto mesh_ptr = FlexKit::GetMeshResource(brush.GetTriMesh());
 
-    if (mesh_ptr->ID)
-        panelCtx.AddText(fmt::format("Tri Mesh Resource: {}", mesh_ptr->ID));
 
-    panelCtx.AddText(fmt::format("Tri Mesh AssetHandle: {}", mesh_ptr->assetHandle));
+    panelCtx.AddButton("Select Mesh",
+        [&]()
+        {
+            auto resourcePicker = new EditorResourcePickerDialog(MeshResourceTypeID, project, viewport);
 
-    if (mesh_ptr->AnimationData)
-        panelCtx.AddText("Brush Animated");
+            resourcePicker->OnSelection(
+                [&](ProjectResource_ptr resource_ptr)
+                {
+                    if (resource_ptr->resource->GetResourceTypeID() == MeshResourceTypeID)
+                    {
+                        auto trimesh = viewport.LoadTriMeshResource(resource_ptr);
+                        brush.SetMesh(trimesh);
+
+                        if (brush.GetMaterial() == FlexKit::InvalidHandle_t)
+                        {
+                            auto& materials     = FlexKit::MaterialComponent::GetComponent();
+                            auto newMaterial    = materials.CreateMaterial(viewport.gbufferPass);
+
+                            brush.SetMaterial(newMaterial);
+                        }
+
+                        viewport.GetScene()->scene.AddGameObject(gameObject, FlexKit::GetSceneNode(gameObject));
+                    }
+                });
+
+            resourcePicker->show();
+        });
+
+    auto mesh = brush.GetTriMesh();
+    if (mesh == FlexKit::InvalidHandle_t)
+    {
+        panelCtx.AddText(fmt::format("No Mesh Set"));
+
+    }
+    else
+    {
+        auto mesh_ptr = FlexKit::GetMeshResource(mesh);
+
+        if (mesh_ptr->ID)
+            panelCtx.AddText(fmt::format("Tri Mesh Resource: {}", mesh_ptr->ID));
+
+        panelCtx.AddText(fmt::format("Tri Mesh AssetHandle: {}", mesh_ptr->assetHandle));
+
+        if (mesh_ptr->AnimationData)
+            panelCtx.AddText("Brush Animated");
+    }
+
+    panelCtx.Pop();
 }
 
 
 /************************************************************************************************/
 
 
-void MaterialInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& component)
+void MaterialInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
 {
     auto& material = static_cast<FlexKit::MaterialComponentView&>(component);
 

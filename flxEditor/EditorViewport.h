@@ -96,6 +96,9 @@ public:
 
     FlexKit::uint2 WH() const noexcept { return renderWindow->WH(); }
 
+    FlexKit::TriMeshHandle LoadTriMeshResource(ProjectResource_ptr res);
+
+    FlexKit::MaterialHandle gbufferPass;
 protected:
     void keyPressEvent      (QKeyEvent* event) override;
     void keyReleaseEvent    (QKeyEvent* event) override;

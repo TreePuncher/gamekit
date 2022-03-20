@@ -98,35 +98,60 @@ namespace FlexKit
             GetComponent().Remove(brush);
         }
 
-		TriMeshHandle GetTriMesh()
+		TriMeshHandle GetTriMesh() noexcept
 		{
 			return GetComponent()[brush].MeshHandle;
 		}
 
-        Brush& GetBrush()
+        Brush& GetBrush() noexcept
         {
             return GetComponent()[brush];
         }
 
-		operator Brush& ()
+        MaterialHandle GetMaterial() noexcept
+        {
+            return GetComponent()[brush].material;
+        }
+
+        void SetMaterial(MaterialHandle material) noexcept
+        {
+            GetComponent()[brush].material = material;
+        }
+
+		operator Brush& () noexcept
 		{
 			return GetComponent()[brush];
 		}
 
-		BoundingSphere GetBoundingSphere()
+		BoundingSphere GetBoundingSphere() noexcept
 		{
 			auto meshHandle = GetComponent()[brush].MeshHandle;
-			auto mesh		= GetMeshResource(meshHandle);
 
-			return mesh->BS;
+            if (meshHandle == InvalidHandle_t)
+                return {};
+            else
+                return GetMeshResource(meshHandle)->BS;
 		}
 
-        void SetTransparent(const bool transparent)
+        void SetTransparent(const bool transparent) noexcept
         {
             GetComponent()[brush].Transparent = transparent;
         }
 
-        bool GetTransparent() const
+        void SetMesh(TriMeshHandle mesh) noexcept
+        {
+            auto& currentMesh = GetComponent()[brush].MeshHandle;
+
+            if (mesh == currentMesh)
+                return;
+
+            ReleaseMesh(currentMesh);
+
+            AddRef(mesh);
+            currentMesh = mesh;
+        }
+
+        bool GetTransparent() const noexcept
         {
             return GetComponent()[brush].Transparent;
         }

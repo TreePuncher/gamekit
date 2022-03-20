@@ -181,7 +181,7 @@ void ComponentViewPanelContext::Pop()
 /************************************************************************************************/
 
 
-void ComponentViewPanelContext::AddList(ListSizeUpdateCallback size, ListContentUpdateCallback content, ListEventCallback evt)
+QListWidget* ComponentViewPanelContext::AddList(ListSizeUpdateCallback size, ListContentUpdateCallback content, ListEventCallback evt)
 {
     auto list = new QListWidget();
 
@@ -197,7 +197,7 @@ void ComponentViewPanelContext::AddList(ListSizeUpdateCallback size, ListContent
     list->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContents);
 
     list->connect(list, &QListWidget::itemSelectionChanged, [=]() { evt(list); });
-    list->setSelectionMode(QAbstractItemView::SelectionMode::SingleSelection);
+    list->setSelectionMode(QAbstractItemView::SelectionMode::ExtendedSelection);
 
     auto timer = new QTimer{ list };
 
@@ -221,6 +221,8 @@ void ComponentViewPanelContext::AddList(ListSizeUpdateCallback size, ListContent
 
     timer->start(250);
     layoutStack.back()->addWidget(list);
+
+    return list;
 }
 
 
@@ -344,7 +346,7 @@ void EditorInspectorView::OnUpdate()
 
                 if (auto res = componentInspectors.find(componentView.ID); res != componentInspectors.end())
                 {
-                    res->second->Inspect(context, componentView.Get_ref());
+                    res->second->Inspect(context, gameObject, componentView.Get_ref());
                 }
                 else
                 {

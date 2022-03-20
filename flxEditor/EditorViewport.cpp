@@ -494,6 +494,18 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
 
     auto& RS = IN_renderer.GetRenderSystem();
     RS.RegisterPSOLoader(FlexKit::DRAW_LINE3D_PSO, { &RS.Library.RS6CBVs4SRVs, FlexKit::CreateDraw2StatePSO });
+
+    gbufferPass =
+        []
+        {
+            auto& materials = FlexKit::MaterialComponent::GetComponent();
+            auto material = materials.CreateMaterial();
+
+            materials.Add2Pass(material, FlexKit::PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
+            materials.AddRef(material);
+
+            return material;
+        }();
 }
 
 
@@ -524,6 +536,28 @@ void EditorViewport::resizeEvent(QResizeEvent* evt)
 
 
 /************************************************************************************************/
+
+
+FlexKit::TriMeshHandle EditorViewport::LoadTriMeshResource(ProjectResource_ptr res)
+{
+    if (auto prop = res->properties.find(GetCRCGUID(TriMeshHandle)); prop != res->properties.end())
+    {
+        FlexKit::TriMeshHandle handle = std::any_cast<FlexKit::TriMeshHandle>(prop->second);
+
+        return handle;
+    }
+    else
+    {
+        auto& renderSystem = renderer.framework.GetRenderSystem();
+
+        auto meshBlob = res->resource->CreateBlob();
+        FlexKit::TriMeshHandle handle = FlexKit::LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), meshBlob.buffer, meshBlob.bufferSize);
+
+        res->properties[GetCRCGUID(TriMeshHandle)] = std::any{ handle };
+        return handle;
+    }
+}
+
 
 
 void EditorViewport::SetScene(EditorScene_ptr newScene)
@@ -615,18 +649,6 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
                         continue;
 
 
-                    static FlexKit::MaterialHandle gbufferPass =
-                        []
-                        {
-                            auto& materials = FlexKit::MaterialComponent::GetComponent();
-                            auto material   = materials.CreateMaterial();
-
-                            materials.Add2Pass(material, FlexKit::PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
-                            materials.AddRef(material);
-
-                            return material;
-                        }();
-
                     auto& materials = FlexKit::MaterialComponent::GetComponent();
                     auto material   = materials.CreateMaterial(gbufferPass);
 
@@ -640,24 +662,11 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
                             materials.AddTexture(texture, subMaterial, rdCtx);
                     }
 
-                    if (auto prop = res->properties.find(GetCRCGUID(TriMeshHandle)); prop != res->properties.end())
-                    {
-                        FlexKit::TriMeshHandle handle = std::any_cast<FlexKit::TriMeshHandle>(prop->second);
+                    FlexKit::TriMeshHandle handle = LoadTriMeshResource(res);
 
-                        auto& view      = viewObject->gameObject.AddView<FlexKit::BrushView>(handle, FlexKit::GetSceneNode(viewObject->gameObject));
-                        view.GetBrush().material = material;
-                    }
-                    else
-                    {
-                        auto meshBlob                   = res->resource->CreateBlob();
-                        FlexKit::TriMeshHandle handle   = FlexKit::LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), meshBlob.buffer, meshBlob.bufferSize);
+                    auto& view = viewObject->gameObject.AddView<FlexKit::BrushView>(handle, FlexKit::GetSceneNode(viewObject->gameObject));
 
-                        res->properties[GetCRCGUID(TriMeshHandle)] = std::any{ handle };
-
-                        auto& view      = viewObject->gameObject.AddView<FlexKit::BrushView>(handle, FlexKit::GetSceneNode(viewObject->gameObject));
-
-                        view.GetBrush().material = material;
-                    }
+                    view.GetBrush().material = material;
 
                     if(!addedToScene)
                         viewportScene->scene.AddGameObject(viewObject->gameObject, FlexKit::GetSceneNode(viewObject->gameObject));
@@ -1116,125 +1125,18 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
             }
 
 
+            auto& physX = FlexKit::PhysXComponent::GetComponent();
+            auto& layer = physX.GetLayer_ref(scene->GetLayer());
+
+            if(layer.debugGeometry.size())
             {
-                auto& physX  = FlexKit::PhysXComponent::GetComponent();
-                auto& pscene = physX.GetLayer_ref(scene->GetLayer()).scene;
+                ctx.BeginEvent_DEBUG("PhysX Debug");
+                FlexKit::VBPushBuffer VBBuffer = data.ReserveVertexBuffer(sizeof(FlexKit::PhysicsLayer::DebugVertex) * layer.debugGeometry.size());
+                const FlexKit::VertexBufferDataSet vertexBuffer{ layer.debugGeometry, VBBuffer };
 
-                struct Vertex
-                {
-                    FlexKit::float4 position;
-                    FlexKit::float4 color;
-                    FlexKit::float2 UV;
-                };
-
-                static std::vector<Vertex> lines;
-
-                if(pscene->checkResults())
-                {
-                    auto& renderBuffer = pscene->getRenderBuffer();
-
-                    if (renderBuffer.getNbLines())
-                    {
-                        lines.clear();
-
-                        Vertex v;
-                        v.color = float4(1, 1, 1, 1);
-
-                        auto lineCount = renderBuffer.getNbLines();
-                        for (uint32_t i = 0; i < lineCount; i++)
-                        {
-
-                            /*
-                            PxVec3	pos0;
-                            PxU32	color0;
-                            PxVec3	pos1;
-                            PxU32	color1;
-                            */
-                            const auto& line = renderBuffer.getLines()[i];
-
-                            v.position.x = line.pos0.x;
-                            v.position.y = line.pos0.y;
-                            v.position.z = line.pos0.z;
-                            v.position.w = 1.0f;
-                            lines.push_back(v);
-
-                            v.position.x = line.pos1.x;
-                            v.position.y = line.pos1.y;
-                            v.position.z = line.pos1.z;
-                            v.position.w = 1.0f;
-                            lines.push_back(v);
-                        }
-                    }
-
-                    if (renderBuffer.getNbTriangles())
-                    {
-                        Vertex v;
-                        v.color = float4(1, 1, 1, 1);
-
-                        auto triCount = renderBuffer.getNbTriangles();
-                        for (uint32_t i = 0; i < triCount; i++)
-                        {
-
-                            /*
-	                        PxVec3	pos0;
-	                        PxU32	color0;
-	                        PxVec3	pos1;
-	                        PxU32	color1;
-	                        PxVec3	pos2;
-	                        PxU32	color2;
-                            */
-                            const auto& tri = renderBuffer.getTriangles()[i];
-
-                            v.position.x = tri.pos0.x;
-                            v.position.y = tri.pos0.y;
-                            v.position.z = tri.pos0.z;
-                            v.position.w = 1.0f;
-                            lines.push_back(v);
-
-                            v.position.x = tri.pos1.x;
-                            v.position.y = tri.pos1.y;
-                            v.position.z = tri.pos1.z;
-                            v.position.w = 1.0f;
-                            lines.push_back(v);
-
-                            v.position.x = tri.pos1.x;
-                            v.position.y = tri.pos1.y;
-                            v.position.z = tri.pos1.z;
-                            v.position.w = 1.0f;
-                            lines.push_back(v);
-
-                            v.position.x = tri.pos2.x;
-                            v.position.y = tri.pos2.y;
-                            v.position.z = tri.pos2.z;
-                            v.position.w = 1.0f;
-                            lines.push_back(v);
-
-                            v.position.x = tri.pos0.x;
-                            v.position.y = tri.pos0.y;
-                            v.position.z = tri.pos0.z;
-                            v.position.w = 1.0f;
-                            lines.push_back(v);
-
-                            v.position.x = tri.pos2.x;
-                            v.position.y = tri.pos2.y;
-                            v.position.z = tri.pos2.z;
-                            v.position.w = 1.0f;
-                            lines.push_back(v);
-                        }
-                    }
-
-                }
-
-                if(lines.size())
-                {
-                    ctx.BeginEvent_DEBUG("PhysX Debug");
-                    FlexKit::VBPushBuffer VBBuffer = data.ReserveVertexBuffer(sizeof(Vertex) * lines.size());
-                    const FlexKit::VertexBufferDataSet vertexBuffer{ lines, VBBuffer };
-
-                    ctx.SetVertexBuffers({ vertexBuffer });
-                    ctx.Draw(lines.size());
-                    ctx.EndEvent_DEBUG();
-                }
+                ctx.SetVertexBuffers({ vertexBuffer });
+                ctx.Draw(layer.debugGeometry.size());
+                ctx.EndEvent_DEBUG();
             }
 
             // Draw Selection

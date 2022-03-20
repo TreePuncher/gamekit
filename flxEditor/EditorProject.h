@@ -112,15 +112,16 @@ public:
 
     FlexKit::ResourceList GetResources() const;
 
-    void RemoveResource(FlexKit::Resource_ptr resource);
+    void                    RemoveResource(FlexKit::Resource_ptr resource);
+    ProjectResource_ptr     FindProjectResource(uint64_t assetID);
 
     bool LoadProject(const std::string& projectDir);
     bool SaveProject(const std::string& projectDir);
 
 
-    std::vector<EditorScene_ptr>    scenes;
-    std::vector<ProjectResource>    resources;
-    ProjectLayout                   layout;
+    std::vector<EditorScene_ptr>        scenes;
+    std::vector<ProjectResource_ptr>    resources;
+    ProjectLayout                       layout;
 };
 
 

@@ -42,8 +42,8 @@ public:
     QLabel* AddText             (std::string txt);
     void    AddInputBox         (std::string txt, FieldUpdateCallback update, FieldChangeCallback change);
 
-    void    AddButton      (std::string label, ButtonCallback);
-    void    AddList        (ListSizeUpdateCallback, ListContentUpdateCallback, ListEventCallback);
+    void            AddButton      (std::string label, ButtonCallback);
+    QListWidget*    AddList        (ListSizeUpdateCallback, ListContentUpdateCallback, ListEventCallback);
 
     void PushVerticalLayout     (std::string groupName = {}, bool goup = false);
     void PushHorizontalLayout   (std::string groupName = {}, bool goup = false);
@@ -63,7 +63,7 @@ public:
     virtual ~IComponentInspector() {}
     virtual FlexKit::ComponentID ComponentID() = 0;
 
-    virtual void Inspect(ComponentViewPanelContext& layout, FlexKit::ComponentViewBase& component) = 0;
+    virtual void Inspect(ComponentViewPanelContext& layout, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) = 0;
 };
 
 class ViewportGameObject;

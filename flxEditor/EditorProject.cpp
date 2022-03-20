@@ -83,7 +83,7 @@ void EditorProject::AddScene(EditorScene_ptr scene)
 
 void EditorProject::AddResource(FlexKit::Resource_ptr resource)
 {
-    resources.emplace_back(ProjectResource{ resource });
+    resources.emplace_back(std::make_shared<ProjectResource>(resource));
 }
 
 
@@ -95,7 +95,7 @@ FlexKit::ResourceList EditorProject::GetResources() const
     FlexKit::ResourceList out;
 
     for (auto& r : resources)
-        out.push_back(r.resource);
+        out.push_back(r->resource);
 
     return out;
 }
@@ -106,7 +106,28 @@ FlexKit::ResourceList EditorProject::GetResources() const
 
 void EditorProject::RemoveResource(FlexKit::Resource_ptr resource)
 {
-    std::erase_if(resources, [&](auto& res) -> bool { return (res.resource == resource); });
+    std::erase_if(resources, [&](auto& res) -> bool { return (res->resource == resource); });
+}
+
+
+/************************************************************************************************/
+
+
+ProjectResource_ptr EditorProject::FindProjectResource(uint64_t assetID)
+{
+    auto res = std::find_if(
+        resources.begin(),
+        resources.end(),
+        [&](ProjectResource_ptr& resource)
+        {
+            return resource->resource->GetResourceGUID() == assetID;
+        }
+    );
+
+    if (res != resources.end())
+        return (*res);
+    else
+        return nullptr;
 }
 
 

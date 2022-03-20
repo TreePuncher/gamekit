@@ -13,6 +13,16 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
+    RigidBodyColliderSystem::RigidBodyColliderSystem(RigidBodyColliderSystem&& IN_staticColliders) :
+        layer { IN_staticColliders.layer }
+    {
+        colliders = std::move(IN_staticColliders.colliders);
+    }
+
+
+    /************************************************************************************************/
+
+
     void RigidBodyColliderSystem::Release()
     {
         for (auto& collider : colliders)
@@ -203,13 +213,12 @@ namespace FlexKit
     StaticBodyHandle PhysXComponent::CreateStaticCollider(
         GameObject*             gameObject,
         const LayerHandle       layerHandle,
-
-        const PxShapeHandle     shape,
+        const Shape             shape,
         const float3            pos,
         const Quaternion        q)
 	{
         auto& layer = GetLayer_ref(layerHandle);
-		return layer.CreateStaticCollider(shapes[shape], gameObject, pos, q);
+		return layer.CreateStaticCollider(shape, gameObject, pos, q);
 	}
 
 
@@ -219,40 +228,40 @@ namespace FlexKit
     RigidBodyHandle PhysXComponent::CreateRigidBodyCollider(
         GameObject*             gameObject,
         const LayerHandle       layerHandle,
-        const PxShapeHandle     shape,
+        const Shape             shape,
         const float3            pos,
         const Quaternion        q)
 	{
         auto& layer = GetLayer_ref(layerHandle);
-		return layer.CreateRigidBodyCollider(shapes[shape], gameObject, pos, q);
+		return layer.CreateRigidBodyCollider(shape, gameObject, pos, q);
 	}
 
 
     /************************************************************************************************/
 
 
-    PxShapeHandle   PhysXComponent::CreateCubeShape(const float3 dimensions)
+    Shape PhysXComponent::CreateCubeShape(const float3 dimensions)
     {
         auto shape = physxAPI->createShape(
             physx::PxBoxGeometry(dimensions.x, dimensions.y, dimensions.z),
             *defaultMaterial,
             false);
 
-        return PxShapeHandle{ shapes.push_back({ shape }) };
+        return { shape };
     }
 
 
     /************************************************************************************************/
 
 
-    PxShapeHandle   PhysXComponent::CreateSphereShape(const float radius)
+    Shape PhysXComponent::CreateSphereShape(const float radius)
     {
         auto shape = physxAPI->createShape(
             physx::PxSphereGeometry(radius),
             *defaultMaterial,
             false);
 
-        return PxShapeHandle{ shapes.push_back({ shape }) };
+        return { shape };
     }
 
 
@@ -288,7 +297,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    PxShapeHandle PhysXComponent::CookMesh(float3* geometry, size_t geometrySize, uint32_t* indices, size_t indexCount)
+    Shape PhysXComponent::CookMesh(float3* geometry, size_t geometrySize, uint32_t* indices, size_t indexCount)
     {
         physx::PxTriangleMeshDesc meshDesc;
         meshDesc.points.count   = geometrySize;
@@ -301,20 +310,14 @@ namespace FlexKit
 
         auto res = GetCooker()->validateTriangleMesh(meshDesc);
 
-        {
-            auto triangleMesh   = cooker->createTriangleMesh(meshDesc, physxAPI->getPhysicsInsertionCallback());
+        auto triangleMesh   = cooker->createTriangleMesh(meshDesc, physxAPI->getPhysicsInsertionCallback());
 
-            if (!triangleMesh)
-                return InvalidHandle_t;
+        if (!triangleMesh)
+            return {};
 
-            auto pxShape        = physxAPI->createShape(PxTriangleMeshGeometry(triangleMesh), *defaultMaterial);
+        auto pxShape        = physxAPI->createShape(PxTriangleMeshGeometry(triangleMesh), *defaultMaterial);
 
-            Shape shape;
-            shape._ptr = pxShape;
-            return PxShapeHandle{ shapes.push_back({ shape }) };
-        }
-
-        return InvalidHandle_t;
+        return { pxShape };
     }
 
 
@@ -335,6 +338,7 @@ namespace FlexKit
 
         Blob blob;
     };
+
 
     Blob PhysXComponent::CookMesh2(float3* geometry, size_t geometrySize, uint32_t* indices, size_t indexCount)
     {
@@ -395,34 +399,25 @@ namespace FlexKit
         const Blob& blob;
     };
 
-    PxShapeHandle PhysXComponent::LoadTriMeshShape(const Blob& blob)
+    Shape PhysXComponent::LoadTriMeshShape(const Blob& blob)
     {
         BlobInputStream stream{ blob };
 
         auto triangleMesh = physxAPI->createTriangleMesh(stream);
 
         if (!triangleMesh)
-            return InvalidHandle_t;
+            return { nullptr };
 
         auto pxShape = physxAPI->createShape(PxTriangleMeshGeometry(triangleMesh), *defaultMaterial);
 
         Shape shape;
         shape._ptr = pxShape;
 
-        return PxShapeHandle{ shapes.push_back({ shape }) };
+        return shape;
     }
 
 
     /************************************************************************************************/
-
-
-    physx::PxShape* PhysXComponent::_GetShape(PxShapeHandle shape)
-    {
-        return shapes[shape]._ptr;
-    }
-
-
-	/************************************************************************************************/
 
 
 	void PhysXComponent::Simulate(double dt, WorkBarrier* barrier, iAllocator* temp_allocator)
@@ -560,6 +555,238 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    StaticColliderSystem::StaticColliderSystem(StaticColliderSystem&& IN_staticColliders) :
+		colliders{ std::move(IN_staticColliders.colliders) }
+	{
+        layer = IN_staticColliders.layer;
+
+		IN_staticColliders.layer = nullptr;
+	}
+
+
+	void StaticColliderSystem::Release()
+	{
+		for (auto& collider : colliders)
+			collider.actor->release();
+
+		colliders.Release();
+        dirtyFlags.Release();
+	}
+
+
+	void StaticColliderSystem::UpdateColliders(WorkBarrier* barrier, iAllocator* temp_iAllocator)
+	{
+		for (size_t itr = 0; itr < dirtyFlags.size(); ++itr) 
+		{
+            if (dirtyFlags[itr])
+            {
+                auto& collider = colliders[itr];
+				physx::PxTransform pose     = collider.actor->getGlobalPose();
+				Quaternion	orientation		= Quaternion{pose.q.x, pose.q.y, pose.q.z, pose.q.w};
+				float3		position		= float3(pose.p.x, pose.p.y, pose.p.z);
+
+				FlexKit::SetPositionW	(collider.node, position);
+				FlexKit::SetOrientation	(collider.node, orientation);
+
+                dirtyFlags[itr] = false;
+            }
+		}
+	}
+
+
+    /************************************************************************************************/
+
+
+    size_t StaticColliderSystem::push_back(const StaticColliderObject& object, bool initialDirtyFlag)
+    {
+        dirtyFlags.push_back(initialDirtyFlag);
+        return colliders.push_back(object);
+    }
+
+
+    StaticColliderSystem::StaticColliderObject StaticColliderSystem::GetAPIObject(StaticBodyHandle collider)
+    {
+        return colliders[collider];
+    }
+
+
+    /************************************************************************************************/
+
+
+    void PhysicsLayer::Release()
+	{
+        // Drain updates first
+		while (updateColliders)
+		{
+			if (scene->checkResults())
+			{
+				updateColliders = false;
+
+				if (scene->fetchResults(true)) {
+					UpdateColliders();
+				}
+			}
+		}
+
+		staticColliders.Release();
+		rbColliders.Release();
+
+        if (controllerManager)
+            controllerManager->release();
+		if(scene)
+			scene->release();
+
+		scene				= nullptr;
+		controllerManager	= nullptr;
+	}
+
+
+    /************************************************************************************************/
+
+    RigidBodyColliderSystem::rbColliderObject& PhysicsLayer::operator[] (const RigidBodyHandle collider)
+    {
+        return rbColliders[collider];
+    }
+
+
+    /************************************************************************************************/
+
+
+    StaticColliderSystem::StaticColliderObject& PhysicsLayer::operator[] (const StaticBodyHandle collider)
+    {
+        return staticColliders[collider];
+    }
+
+
+    /************************************************************************************************/
+
+
+    PhysicsLayer::PhysicsLayer(physx::PxScene* IN_scene, PhysXComponent& IN_system, iAllocator* IN_memory) :
+		scene			    { IN_scene			},
+		system			    { IN_system			},
+		memory			    { IN_memory			},
+		staticColliders	    { *this, IN_memory	},
+		rbColliders		    { *this, IN_memory	},
+        debugGeometry       { IN_memory },
+        controllerManager   { PxCreateControllerManager(*IN_scene) }
+	{
+		FK_ASSERT(scene && memory, "INVALID ARGUEMENT");
+
+		if (!scene)
+			FK_ASSERT(0, "FAILED TO CREATE PSCENE!");
+
+		updateColliders		= false;
+		CID					= scene->createClient();
+	}
+
+
+    /************************************************************************************************/
+
+
+    PhysicsLayer::PhysicsLayer(PhysicsLayer&& IN_scene) :
+		staticColliders		{ std::move(IN_scene.staticColliders)	},
+		rbColliders			{ std::move(IN_scene.rbColliders)		},
+		scene				{ IN_scene.scene						},
+		controllerManager	{ IN_scene.controllerManager			},
+		CID					{ IN_scene.CID							},
+		system				{ IN_scene.system						},
+		memory				{ IN_scene.memory						},
+        debugGeometry       { std::move(IN_scene.debugGeometry)     }
+	{
+		staticColliders.layer = this;
+	}
+
+
+    /************************************************************************************************/
+
+
+    PhysicsLayer::~PhysicsLayer()
+    {
+        Release();
+    }
+
+
+    /************************************************************************************************/
+
+
+    void PhysicsLayer::UpdateDebugGeometry()
+    {
+        auto& renderBuffer = scene->getRenderBuffer();
+
+
+        if (renderBuffer.getNbLines())
+        {
+            debugGeometry.clear();
+
+            DebugVertex v;
+            v.color = float4(1, 1, 1, 1);
+
+            auto lineCount = renderBuffer.getNbLines();
+            for (uint32_t i = 0; i < lineCount; i++)
+            {
+                const auto& line = renderBuffer.getLines()[i];
+
+                v.position.x = line.pos0.x;
+                v.position.y = line.pos0.y;
+                v.position.z = line.pos0.z;
+                v.position.w = 1.0f;
+                debugGeometry.push_back(v);
+
+                v.position.x = line.pos1.x;
+                v.position.y = line.pos1.y;
+                v.position.z = line.pos1.z;
+                v.position.w = 1.0f;
+                debugGeometry.push_back(v);
+            }
+
+            auto triCount = renderBuffer.getNbTriangles();
+            for (uint32_t i = 0; i < triCount; i++)
+            {
+                const auto& tri = renderBuffer.getTriangles()[i];
+
+                v.position.x = tri.pos0.x;
+                v.position.y = tri.pos0.y;
+                v.position.z = tri.pos0.z;
+                v.position.w = 1.0f;
+                debugGeometry.push_back(v);
+
+                v.position.x = tri.pos1.x;
+                v.position.y = tri.pos1.y;
+                v.position.z = tri.pos1.z;
+                v.position.w = 1.0f;
+                debugGeometry.push_back(v);
+
+                v.position.x = tri.pos1.x;
+                v.position.y = tri.pos1.y;
+                v.position.z = tri.pos1.z;
+                v.position.w = 1.0f;
+                debugGeometry.push_back(v);
+
+                v.position.x = tri.pos2.x;
+                v.position.y = tri.pos2.y;
+                v.position.z = tri.pos2.z;
+                v.position.w = 1.0f;
+                debugGeometry.push_back(v);
+
+                v.position.x = tri.pos0.x;
+                v.position.y = tri.pos0.y;
+                v.position.z = tri.pos0.z;
+                v.position.w = 1.0f;
+                debugGeometry.push_back(v);
+
+                v.position.x = tri.pos2.x;
+                v.position.y = tri.pos2.y;
+                v.position.z = tri.pos2.z;
+                v.position.w = 1.0f;
+                debugGeometry.push_back(v);
+            }
+        }
+    }
+
+
+    /************************************************************************************************/
+
+
 	void PhysicsLayer::Update(double dT, WorkBarrier* barrier, iAllocator* temp_allocator)
 	{
 		EXITSCOPE( T += dT; );
@@ -579,6 +806,8 @@ namespace FlexKit
 				{
 					UpdateColliders(barrier, temp_allocator);
 					updateColliders = false;
+
+                    UpdateDebugGeometry();
 
                     if (barrier)
                         barrier->JoinLocal();
@@ -618,7 +847,15 @@ namespace FlexKit
 
         rigidStaticActor->attachShape(*shape._ptr);
 
-		size_t handleIdx		= staticColliders.push_back({ GetZeroedNode(), rigidStaticActor, shape._ptr, go }, true);
+        auto node = GetSceneNode(*go);
+
+        if (node == InvalidHandle_t)
+        {
+            node = GetZeroedNode();
+            go->AddView<SceneNodeView<>>(node);
+        }
+
+		size_t handleIdx = staticColliders.push_back({ node, rigidStaticActor, go }, true);
 
 		scene->addActor(*rigidStaticActor);
 
@@ -1014,7 +1251,6 @@ namespace FlexKit
         return GetComponent().GetLayer(layer)[staticBody].node;
     }
 
-
     inline NodeHandle GetRigidBodyNode(GameObject& GO)
     {
         return Apply(GO,
@@ -1396,7 +1632,7 @@ namespace FlexKit
             staticBody  { IN_staticBody },
             layer       { IN_layer } {}
 
-    StaticBodyView::StaticBodyView(GameObject& gameObject, LayerHandle IN_layer, PxShapeHandle shape, float3 pos, Quaternion q) :
+    StaticBodyView::StaticBodyView(GameObject& gameObject, LayerHandle IN_layer, Shape shape, float3 pos, Quaternion q) :
             staticBody  { GetComponent().Create(&gameObject, layer, shape, pos, q) },
             layer       { IN_layer } {}
 
@@ -1410,15 +1646,34 @@ namespace FlexKit
         return *GetComponent().GetLayer(layer)[staticBody].gameObject;
     }
 
-    void StaticBodyView::SetShape(PxShapeHandle shape)
+    void StaticBodyView::AddShape(Shape shape)
     {
         auto& staticBody_data = GetComponent().GetLayer(layer)[staticBody];
-        staticBody_data.actor->detachShape(*staticBody_data.shape);
 
-        auto newShape = PhysXComponent::GetComponent()._GetShape(shape);
-        staticBody_data.actor->attachShape(*newShape);
+        staticBody_data.actor->attachShape(*shape._ptr);
     }
 
+    void StaticBodyView::RemoveShape(uint32_t idx)
+    {
+        auto& staticBody_data = GetComponent().GetLayer(layer)[staticBody];
+
+        PxShape* shape = nullptr;
+
+        staticBody_data.actor->getShapes(&shape, sizeof(PxShape*), idx);
+        staticBody_data.actor->detachShape(*shape);
+    }
+
+    void StaticBodyView::SetUserData(void* _ptr) noexcept
+    {
+        auto& staticBody_data = GetComponent().GetLayer(layer)[staticBody];
+        staticBody_data.User = _ptr;
+    }
+
+    void* StaticBodyView::GetUserData() noexcept
+    {
+        auto& staticBody_data = GetComponent().GetLayer(layer)[staticBody];
+        return staticBody_data.User;
+    }
 
     /************************************************************************************************/
 
@@ -1427,7 +1682,7 @@ namespace FlexKit
         physx{ IN_physx } {}
 
 
-    RigidBodyHandle RigidBodyComponent::CreateRigidBody(GameObject* gameObject, PxShapeHandle shape, LayerHandle layer, float3 pos, Quaternion q)
+    RigidBodyHandle RigidBodyComponent::CreateRigidBody(GameObject* gameObject, Shape shape, LayerHandle layer, float3 pos, Quaternion q)
     {
         return physx.CreateRigidBodyCollider(gameObject, layer, shape, pos, q);
     }
