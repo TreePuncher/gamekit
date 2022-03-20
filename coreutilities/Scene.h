@@ -73,7 +73,7 @@ namespace FlexKit
     {
         BrushComponentEventHandler(RenderSystem& IN_renderSystem) : renderSystem{ IN_renderSystem }{}
 
-        void OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
+        void OnCreateView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
 
         RenderSystem& renderSystem;
     };
@@ -83,10 +83,12 @@ namespace FlexKit
 	class BrushView : public ComponentView_t<BrushComponent>
 	{
 	public:
-		BrushView(GameObject& gameObject, TriMeshHandle	triMesh, NodeHandle node)
+		BrushView(GameObject& gameObject, TriMeshHandle	triMesh)
 		{
+            auto node = GetSceneNode(gameObject);
+
 			GetComponent()[brush].MeshHandle    = triMesh;
-			GetComponent()[brush].Node		    = node;
+			GetComponent()[brush].Node		    = node != InvalidHandle_t ? node : GetZeroedNode();
 		}
 
         ~BrushView()
@@ -223,7 +225,7 @@ namespace FlexKit
     class PointLightEventHandler
     {
     public:
-        static void OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
+        static void OnCreateView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
     };
 
 	using PointLightComponent					= BasicComponent_t<PointLight, PointLightHandle, PointLightComponentID, PointLightEventHandler>;
@@ -239,6 +241,7 @@ namespace FlexKit
         NodeHandle  GetNode() const noexcept;
         float       GetRadius() const noexcept;
 
+        void        SetK            (float3 color);
         void        SetIntensity    (float I);
         void        SetNode         (NodeHandle node) const noexcept;
         void        SetRadius       (float r) noexcept;
@@ -597,8 +600,10 @@ namespace FlexKit
 	FLEXKITAPI void ReleaseScene				(Scene* SM);
 	FLEXKITAPI void BindJoint					(Scene* SM, JointHandle Joint, SceneEntityHandle Entity, NodeHandle TargetNode);
 
-	FLEXKITAPI bool LoadScene(RenderSystem* RS, GUID_t Guid,			Scene& GS_out, iAllocator* allocator, iAllocator* Temp);
-	FLEXKITAPI bool LoadScene(RenderSystem* RS, const char* LevelName,	Scene& GS_out, iAllocator* allocator, iAllocator* Temp);
+    struct SceneLoadingContext;
+
+	FLEXKITAPI bool LoadScene(RenderSystem* RS, SceneLoadingContext& ctx, GUID_t Guid,              iAllocator* allocator, iAllocator* Temp);
+	FLEXKITAPI bool LoadScene(RenderSystem* RS, SceneLoadingContext& ctx, const char* LevelName,	iAllocator* allocator, iAllocator* Temp);
 
 
     /************************************************************************************************/

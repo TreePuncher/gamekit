@@ -485,18 +485,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool LoadScene(EngineCore& core, Scene& scene, const char* sceneName)
+	bool LoadScene(EngineCore& core, SceneLoadingContext& ctx, const char* sceneName)
 	{
-		return LoadScene(core.RenderSystem, sceneName, scene, core.GetBlockMemory(), core.GetTempMemory());
+		return LoadScene(core.RenderSystem, ctx, sceneName, core.GetBlockMemory(), core.GetTempMemory());
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool LoadScene(EngineCore& core, Scene& scene, GUID_t sceneID)
+	bool LoadScene(EngineCore& core, SceneLoadingContext& ctx, GUID_t sceneID)
 	{
-		return LoadScene(core.RenderSystem, sceneID, scene, core.GetBlockMemory(), core.GetTempMemory());
+		return LoadScene(core.RenderSystem, ctx, sceneID, core.GetBlockMemory(), core.GetTempMemory());
 	}
 
 

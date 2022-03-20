@@ -5,9 +5,9 @@
 #include <PxPhysics.h>
 #include <extensions/PxExtensionsAPI.h>
 #include <cooking/PxCooking.h>
+#include "..\coreutilities\SceneLoadingContext.h"
 
 using namespace physx;
-
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -213,12 +213,11 @@ namespace FlexKit
     StaticBodyHandle PhysXComponent::CreateStaticCollider(
         GameObject*             gameObject,
         const LayerHandle       layerHandle,
-        const Shape             shape,
         const float3            pos,
         const Quaternion        q)
 	{
         auto& layer = GetLayer_ref(layerHandle);
-		return layer.CreateStaticCollider(shape, gameObject, pos, q);
+		return layer.CreateStaticCollider(gameObject, pos, q);
 	}
 
 
@@ -228,12 +227,11 @@ namespace FlexKit
     RigidBodyHandle PhysXComponent::CreateRigidBodyCollider(
         GameObject*             gameObject,
         const LayerHandle       layerHandle,
-        const Shape             shape,
         const float3            pos,
         const Quaternion        q)
 	{
         auto& layer = GetLayer_ref(layerHandle);
-		return layer.CreateRigidBodyCollider(shape, gameObject, pos, q);
+		return layer.CreateRigidBodyCollider(gameObject, pos, q);
 	}
 
 
@@ -835,7 +833,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	StaticBodyHandle PhysicsLayer::CreateStaticCollider(Shape shape, GameObject* go, float3 initialPosition, Quaternion initialQ)
+	StaticBodyHandle PhysicsLayer::CreateStaticCollider(GameObject* go, float3 initialPosition, Quaternion initialQ)
 	{
 		physx::PxTransform pxInitialPose =
 			physx::PxTransform{ PxMat44(PxIdentity) };
@@ -844,8 +842,6 @@ namespace FlexKit
 		pxInitialPose.p = physx::PxVec3{ initialPosition.x, initialPosition.y, initialPosition.z };
 
 		auto rigidStaticActor	= system.physxAPI->createRigidStatic(pxInitialPose);
-
-        rigidStaticActor->attachShape(*shape._ptr);
 
         auto node = GetSceneNode(*go);
 
@@ -866,7 +862,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    RigidBodyHandle PhysicsLayer::CreateRigidBodyCollider(Shape shape, GameObject* go, float3 initialPosition, Quaternion initialQ)
+    RigidBodyHandle PhysicsLayer::CreateRigidBodyCollider(GameObject* go, float3 initialPosition, Quaternion initialQ)
 	{
         auto node = GetZeroedNode();
 		SetOrientation	(node, initialQ);
@@ -879,12 +875,8 @@ namespace FlexKit
 
 		PxRigidDynamic* rigidBodyActor = system.physxAPI->createRigidDynamic(pxInitialPose);
 
-
-        rigidBodyActor->attachShape(*shape._ptr);
-
 		size_t handleIdx = rbColliders.colliders.push_back({	node,
 																rigidBodyActor });
-
 		rigidBodyActor->setMass(1.0f);
 		scene->addActor(*rigidBodyActor);
 
@@ -1251,7 +1243,13 @@ namespace FlexKit
         return GetComponent().GetLayer(layer)[staticBody].node;
     }
 
-    inline NodeHandle GetRigidBodyNode(GameObject& GO)
+    void RigidBodyView::AddShape(Shape shape)
+    {
+        GetComponent().GetLayer(layer)[staticBody].actor->attachShape(*shape._ptr);
+    }
+
+
+    NodeHandle GetRigidBodyNode(GameObject& GO)
     {
         return Apply(GO,
             [](RigidBodyView& staticBody) -> NodeHandle
@@ -1628,12 +1626,77 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    void StaticBodyComponent::AddComponentView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    {
+        StaticBodyHeaderBlob header;
+        memcpy(&header, (void*)buffer, sizeof(header));
+
+        SceneLoadingContext* ctx = static_cast<SceneLoadingContext*>(user_ptr);
+
+        auto& staticBody = gameObject.hasView(StaticBodyComponentID) ? static_cast<StaticBodyView&>(*gameObject.GetView(StaticBodyComponentID)) : gameObject.AddView<StaticBodyView>(ctx->layer);
+
+        for (size_t I = 0; I < header.shapeCount; I++)
+        {
+            StaticBodyShape triMeshShape;
+            memcpy(&triMeshShape, buffer + sizeof(header) + I * sizeof(triMeshShape), sizeof(triMeshShape));
+
+            Shape shape;
+            auto& physX = PhysXComponent::GetComponent();
+
+            switch (triMeshShape.type)
+            {
+            case StaticBodyType::Cube:
+            {
+                shape = physX.CreateCubeShape(float3{ triMeshShape.cube.dimensions[0], triMeshShape.cube.dimensions[1], triMeshShape.cube.dimensions[2] });
+            }   break;
+            case StaticBodyType::Sphere:
+            {
+                shape = physX.CreateSphereShape(triMeshShape.sphere.radius);
+            }   break;
+            case StaticBodyType::TriangleMesh:
+            {
+                Resource* resource = GetAsset(triMeshShape.triMeshResource);
+                Blob triMeshBlob{ ((char*)resource) + sizeof(Resource), resource->ResourceSize - sizeof(Resource) };
+                shape = physX.LoadTriMeshShape(triMeshBlob);
+            }   break;
+            default:
+                break;
+            };
+
+            auto localPose = shape._ptr->getLocalPose();
+
+            localPose.p = PxVec3{
+                triMeshShape.position.x,
+                triMeshShape.position.y,
+                triMeshShape.position.z };
+
+            localPose.q = PxQuat{
+                triMeshShape.orientation.x,
+                triMeshShape.orientation.y,
+                triMeshShape.orientation.z,
+                triMeshShape.orientation.w };
+
+            shape._ptr->setLocalPose(localPose);
+
+            staticBody.AddShape(shape);
+        }
+    }
+
+
+    void StaticBodyComponent::Remove() noexcept
+    {
+    }
+
+
+    /************************************************************************************************/
+
+
     StaticBodyView::StaticBodyView(GameObject& gameObject, StaticBodyHandle IN_staticBody, LayerHandle IN_layer) :
             staticBody  { IN_staticBody },
             layer       { IN_layer } {}
 
-    StaticBodyView::StaticBodyView(GameObject& gameObject, LayerHandle IN_layer, Shape shape, float3 pos, Quaternion q) :
-            staticBody  { GetComponent().Create(&gameObject, layer, shape, pos, q) },
+    StaticBodyView::StaticBodyView(GameObject& gameObject, LayerHandle IN_layer, float3 pos, Quaternion q) :
+            staticBody  { GetComponent().Create(&gameObject, layer, pos, q) },
             layer       { IN_layer } {}
 
     NodeHandle StaticBodyView::GetNode() const
@@ -1663,6 +1726,23 @@ namespace FlexKit
         staticBody_data.actor->detachShape(*shape);
     }
 
+    physx::PxShape* StaticBodyView::GetShape(size_t idx)
+    {
+        auto& staticBody_data = GetComponent().GetLayer(layer)[staticBody];
+
+        physx::PxShape* shape;
+        staticBody_data.actor->getShapes(&shape, sizeof(shape), idx);
+
+        return shape;
+    }
+
+    size_t StaticBodyView::GetShapeCount() const noexcept
+    {
+        auto& staticBody_data = GetComponent().GetLayer(layer)[staticBody];
+
+        return staticBody_data.actor->getNbShapes();
+    }
+
     void StaticBodyView::SetUserData(void* _ptr) noexcept
     {
         auto& staticBody_data = GetComponent().GetLayer(layer)[staticBody];
@@ -1682,12 +1762,12 @@ namespace FlexKit
         physx{ IN_physx } {}
 
 
-    RigidBodyHandle RigidBodyComponent::CreateRigidBody(GameObject* gameObject, Shape shape, LayerHandle layer, float3 pos, Quaternion q)
+    RigidBodyHandle RigidBodyComponent::CreateRigidBody(GameObject* gameObject, LayerHandle layer, float3 pos, Quaternion q)
     {
-        return physx.CreateRigidBodyCollider(gameObject, layer, shape, pos, q);
+        return physx.CreateRigidBodyCollider(gameObject, layer, pos, q);
     }
 
-    void RigidBodyComponent::AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    void RigidBodyComponent::AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
         FK_ASSERT(0);
     }

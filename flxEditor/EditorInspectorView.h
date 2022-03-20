@@ -74,8 +74,9 @@ class IComponentFactory
 public:
     virtual ~IComponentFactory() {}
 
-    virtual void                    Construct(ViewportGameObject&, ViewportScene& scene) = 0;
-    virtual const std::string&      ComponentName() const noexcept = 0;
+    virtual FlexKit::ComponentViewBase& Construct(ViewportGameObject&, ViewportScene& scene) = 0;
+    virtual const std::string&          ComponentName() const noexcept = 0;
+    virtual FlexKit::ComponentID        ComponentID() const noexcept = 0;
 };
 
 
@@ -102,6 +103,8 @@ public:
     {
         availableComponents.emplace_back(std::move(factory));
     }
+
+    static FlexKit::ComponentViewBase& ConstructComponent(uint32_t ComponentID, ViewportGameObject& gameObject, ViewportScene& scene);
 
 private:
 

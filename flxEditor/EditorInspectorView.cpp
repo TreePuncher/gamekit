@@ -276,6 +276,18 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
 }
 
 
+FlexKit::ComponentViewBase& EditorInspectorView::ConstructComponent(uint32_t componentID, ViewportGameObject& gameObject, ViewportScene& scene)
+{
+    for (auto& component : availableComponents)
+    {
+        if (component->ComponentID() == componentID)
+            return component->Construct(gameObject, scene);
+     }
+
+    throw std::runtime_error("Unknown Component");
+}
+
+
 /************************************************************************************************/
 
 

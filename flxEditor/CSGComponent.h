@@ -108,7 +108,7 @@ struct CSGComponentData
 
 struct CSGComponentEventHandler
 {
-    static void OnCreateView(FlexKit::GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
+    static void OnCreateView(FlexKit::GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
 };
 
 using CSGHandle     = FlexKit::Handle_t<32, CSGComponentID>;

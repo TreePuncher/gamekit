@@ -36,7 +36,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void StringIDComponent::AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    void StringIDComponent::AddComponentView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
         IDComponentBlob blob;
         std::memcpy(&blob, buffer, sizeof(blob));
@@ -45,7 +45,10 @@ namespace FlexKit
 
         const size_t IDLen = strnlen(blob.ID, sizeof(blob.ID));
 
-        GO.AddView<StringIDView>(blob.ID, IDLen);
+        if (!gameObject.hasView(StringComponentID))
+            gameObject.AddView<StringIDView>(blob.ID, IDLen);
+        else
+            SetStringID(gameObject, blob.ID);
     }
 
 

@@ -29,17 +29,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Handle.h"
 #include "Components.h"
 #include "RuntimeComponentIDs.h"
-
+#include "ResourceHandles.h"
 #include "XMMathConversion.h"
 #include <DirectXMath.h>
 
 namespace FlexKit
 {
-    const	size_t											NodeHandleSize = 32;
-    typedef Handle_t<NodeHandleSize, GetCRCGUID(SCENENODE)>	NodeHandle;
-    typedef Handle_t<16, GetCRCGUID(TextureSet)>			TextureSetHandle;
-    typedef static_vector<NodeHandle, 32>					ChildrenVector;
-
+    typedef static_vector<NodeHandle, 32> ChildrenVector;
 
     struct Node
     {

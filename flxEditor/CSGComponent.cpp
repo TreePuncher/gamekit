@@ -2126,7 +2126,7 @@ public:
         return CSGComponentID;
     }
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::ComponentViewBase& view) override
+    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& view) override
     {
         CSGView& csgView = static_cast<CSGView&>(view);
 
@@ -2240,15 +2240,14 @@ FlexKit::Blob EditorComponentCSG::GetBlob()
 /************************************************************************************************/
 
 
-void CSGComponentEventHandler::OnCreateView(FlexKit::GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+void CSGComponentEventHandler::OnCreateView(FlexKit::GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
 {
     std::vector<CSGBrush>   brushes;
 
     FlexKit::Blob blob{ (const char*)buffer, bufferSize };
     FlexKit::LoadBlobArchiveContext archive(blob);
 
-
-    auto& csgView = gameObject.AddView<CSGView>();
+    auto& csgView = !gameObject.hasView(CSGComponentID) ? gameObject.AddView<CSGView>() : static_cast<CSGView&>(*gameObject.GetView(CSGComponentID));
 
     EditorComponentCSG csgComponent;
     archive& csgComponent;
@@ -2258,14 +2257,15 @@ void CSGComponentEventHandler::OnCreateView(FlexKit::GameObject& gameObject, con
 
 struct CSGComponentFactory : public IComponentFactory
 {
-    void Construct(ViewportGameObject& viewportObject, ViewportScene& scene)
+    FlexKit::ComponentViewBase& Construct(ViewportGameObject& viewportObject, ViewportScene& scene)
     {
-        viewportObject.gameObject.AddView<CSGView>();
+        return viewportObject.gameObject.AddView<CSGView>();
     }
 
     inline static const std::string name = "CSG";
 
-    const std::string& ComponentName() const noexcept { return name; }
+    const std::string&      ComponentName() const noexcept { return name; }
+    FlexKit::ComponentID    ComponentID() const noexcept { return CSGComponentID; }
 
     static bool Register()
     {

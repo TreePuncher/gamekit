@@ -1,6 +1,8 @@
+#pragma once
+
 /**********************************************************************
 
-Copyright (c) 2015 - 2018 Robert May
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -22,27 +24,27 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#ifndef RESOURCEHANDLES_H_INCLUDED
-#define RESOURCEHANDLES_H_INCLUDED
-
 #include "Handle.h"
 #include "type.h"
 
 namespace FlexKit
 {
-	typedef Handle_t<32u, GetTypeGUID(ConstantBuffer)>			ConstantBufferHandle;
-	typedef Handle_t<32u, GetTypeGUID(VertexBuffer)>			VertexBufferHandle;
-    typedef Handle_t<32u, GetTypeGUID(ResourceHandle)>		    ResourceHandle;
-    typedef Handle_t<32u, GetTypeGUID(ReadBackResourceHandle)>  ReadBackResourceHandle;
-	typedef Handle_t<32u, GetTypeGUID(StreamTexture2DHandle)>	StreamingTexture2DHandle;
-    typedef Handle_t<32u, GetTypeGUID(ShaderResourceHandle)>	ShaderResourceHandle;
-	typedef Handle_t<32u, GetTypeGUID(SOResourceHandle)>		SOResourceHandle;
-	typedef Handle_t<32u, GetTypeGUID(QueryBuffer)>				QueryHandle;
-	typedef Handle_t<16u, GetTypeGUID(TriMesh)>					TriMeshHandle;
-    typedef Handle_t<32u, GetTypeGUID(CopyContextHandle)>		CopyContextHandle;
-    typedef Handle_t<32u, GetTypeGUID(DeviceHeapHandle)>        DeviceHeapHandle;
+	using ConstantBufferHandle      = Handle_t<32u, GetTypeGUID(ConstantBuffer)>;
+    using CopyContextHandle         = Handle_t<32u, GetTypeGUID(CopyContextHandle)>;		
+    using DeviceHeapHandle          = Handle_t<32u, GetTypeGUID(DeviceHeapHandle)>;     
+    using LayerHandle               = Handle_t<16u, GetTypeGUID(LayerHandle)>;
+    using MaterialHandle            = Handle_t<32u, GetTypeGUID(Material)>;
+	using QueryHandle               = Handle_t<32u, GetTypeGUID(QueryBuffer)>;			
+    using ReadBackResourceHandle    = Handle_t<32u, GetTypeGUID(ReadBackResourceHandle)>;
+    using RigidBodyHandle           = Handle_t<16u, GetTypeGUID(RigidBodyHandle)>;
+    using StreamingTexture2DHandle  = Handle_t<32u, GetTypeGUID(StreamTexture2DHandle)>;
+    using ShaderResourceHandle      = Handle_t<32u, GetTypeGUID(ShaderResourceHandle)>;
+	using SOResourceHandle          = Handle_t<32u, GetTypeGUID(SOResourceHandle)>;
+    using StaticBodyHandle          = Handle_t<16u, GetTypeGUID(StaticBodyHandle)>;
+    using ResourceHandle            = Handle_t<32u, GetTypeGUID(ResourceHandle)>;	    
+	using TriMeshHandle             = Handle_t<16u, GetTypeGUID(TriMesh)>;		
+	using VertexBufferHandle        = Handle_t<32u, GetTypeGUID(VertexBuffer)>;
 
-    using MaterialHandle = Handle_t <32, GetTypeGUID(Material)>;
+    const size_t NodeHandleSize = 32;
+    using NodeHandle = Handle_t<NodeHandleSize, GetTypeGUID(SCENENODE)>;
 }
-
-#endif

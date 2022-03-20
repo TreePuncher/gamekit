@@ -236,8 +236,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool LoadScene		 (EngineCore& Engine, Scene& Scene, const char* SceneName);
-	bool LoadScene		 (EngineCore& Engine, Scene& Scene, GUID_t SceneID);
+    struct SceneLoadingContext;
+
+	bool LoadScene		 (EngineCore& Engine, SceneLoadingContext& ctx, const char* SceneName);
+	bool LoadScene		 (EngineCore& Engine, SceneLoadingContext& ctx, GUID_t SceneID);
  
 	void PushSubState	 (GameFramework& _ptr, FrameworkState& SS);
 	void PopSubState	 (GameFramework& _ptr);
