@@ -1,7 +1,7 @@
 #include "Gameplay.h"
 #include "containers.h"
+#include "SceneLoadingContext.h"
 #include <algorithm>
-
 
 using namespace FlexKit;
 
@@ -133,9 +133,11 @@ void GameWorld::AddCube(float3 POS)
     if (!loaded)
         triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), cube1X1X1);
 
-    gameObject.AddView<RigidBodyView>(layer, cubeShape, POS);
-    gameObject.AddView<SceneNodeView<>>(GetRigidBodyNode(gameObject));
-    gameObject.AddView<BrushView>(triMesh, GetSceneNode(gameObject));
+    auto& rigidBody = gameObject.AddView<RigidBodyView>(layer, POS);
+    auto& sceneNode = gameObject.AddView<SceneNodeView<>>(GetRigidBodyNode(gameObject));
+    auto& brushView = gameObject.AddView<BrushView>(triMesh, GetSceneNode(gameObject));
+
+    rigidBody.AddShape(cubeShape);
 
     scene.AddGameObject(gameObject, GetSceneNode(gameObject));
 
@@ -148,7 +150,14 @@ void GameWorld::AddCube(float3 POS)
 
 bool GameWorld::LoadScene(GUID_t assetID)
 {
-    auto res = FlexKit::LoadScene(core, scene, assetID);
+    SceneLoadingContext ctx
+    {
+        .scene = scene,
+        .layer = layer,
+        .nodes = Vector<NodeHandle>(core.GetTempMemory())
+    };
+
+    auto res = FlexKit::LoadScene(core, ctx, assetID);
 
     auto& physics       = PhysXComponent::GetComponent();
     auto& visibility    = SceneVisibilityComponent::GetComponent();
@@ -177,7 +186,8 @@ bool GameWorld::LoadScene(GUID_t assetID)
 
             auto shape = physics.CreateCubeShape(dim);
 
-            go.AddView<StaticBodyView>(layer, shape, pos, q);
+            auto& staticBodyView = go.AddView<StaticBodyView>(layer, pos, q);
+            staticBodyView.AddShape(shape);
         }
     }
 
@@ -197,7 +207,8 @@ void CreateMultiplayerScene(GameWorld& world)
     auto& floorCollider = world.objectPool.Allocate();
     auto floorShape     = physics.CreateCubeShape({ 200, 1, 200 });
     
-    floorCollider.AddView<StaticBodyView>(world.layer, floorShape, float3{ 0, -1.0f, 0 });
+    auto& staticBody = floorCollider.AddView<StaticBodyView>(world.layer, float3{ 0, -1.0f, 0 });
+    staticBody.AddShape(floorShape);
 }
 
 

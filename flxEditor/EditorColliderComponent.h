@@ -6,19 +6,16 @@
 #include "..\coreutilities\Components.h"
 #include "physicsutilities.h"
 
+
 struct Collider
 {
-    uint64_t    colliderAsset;
-    float3      initialPosition;
-    float3      initialScale;
-    Quaternion  initialOrientation;
+    FlexKit::StaticBodyShape    shape;
+    std::string                 shapeName;
 
     void Serialize(auto& ar)
     {
-        ar& colliderAsset;
-        ar& initialPosition;
-        ar& initialScale;
-        ar& initialOrientation;
+        ar& shape;
+        ar& shapeName;
     }
 };
 

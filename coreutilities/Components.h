@@ -118,7 +118,7 @@ namespace FlexKit
 		}
 
 
-        virtual void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) {};
+        virtual void AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) {};
 
 
 		inline static static_vector<ComponentEntry, 128> Components = static_vector<ComponentBase::ComponentEntry, 128>();
@@ -182,7 +182,7 @@ namespace FlexKit
 			return component != nullptr;
 		}
 
-        virtual void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override {}
+        virtual void AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override {}
 	};
 
 
@@ -537,7 +537,7 @@ namespace FlexKit
 
     struct BasicComponentEventHandler
     {
-        static void OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+        static void OnCreateView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
         {
         }
     };
@@ -600,9 +600,9 @@ namespace FlexKit
         }
 
 
-        void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
+        void AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
         {
-            eventHandler.OnCreateView(GO, buffer, bufferSize, allocator);
+            eventHandler.OnCreateView(GO, user_ptr, buffer, bufferSize, allocator);
         }
 
 
@@ -680,7 +680,7 @@ namespace FlexKit
 
 		char* operator[] (StringIDHandle handle) { return IDs[handles[handle]].ID; }
 
-        void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
+        void AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 
 		HandleUtilities::HandleTable<StringIDHandle>	handles;
 		Vector<StringID>								IDs;
@@ -709,9 +709,9 @@ namespace FlexKit
 	};
 
 
-    inline const char* GetStringID(GameObject& go)
+    inline const char* GetStringID(GameObject& gameObject)
     {
-        return Apply(go,
+        return Apply(gameObject,
             [](StringIDView& ID) -> const char*
             {
                 return ID.GetString();
@@ -722,6 +722,15 @@ namespace FlexKit
             });
     }
 
+
+    inline void SetStringID(GameObject& gameObject, const char* str)
+    {
+        Apply(gameObject,
+            [&](StringIDView& ID)
+            {
+                strncpy_s(ID.GetString(), 64, str, 64);
+            });
+    }
 	
 	/************************************************************************************************/
 

@@ -6,6 +6,7 @@
 #include "componentBlobs.h"
 #include "AnimationRuntimeUtilities.H"
 #include "ProfilingUtilities.h"
+#include "SceneLoadingContext.h"
 
 #include <cmath>
 
@@ -158,6 +159,10 @@ namespace FlexKit
         return GetComponent()[light].K;
     }
 
+    void PointLightView::SetK(float3 color)
+    {
+        GetComponent()[light].K = color;
+    }
 
     void PointLightView::SetIntensity(float I)
     {
@@ -300,7 +305,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void BrushComponentEventHandler::OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    void BrushComponentEventHandler::OnCreateView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
         auto node = GetSceneNode(gameObject);
         if (node == InvalidHandle_t)
@@ -317,7 +322,11 @@ namespace FlexKit
         if (triMesh == InvalidHandle_t)
             return;
 
-        gameObject.AddView<BrushView>(triMesh, node);
+        if (gameObject.hasView(FlexKit::BrushComponentID))
+            gameObject.AddView<BrushView>(triMesh);
+        else
+            static_cast<BrushView*>(gameObject.GetView(BrushComponentID))->SetMesh(triMesh);
+
         SetBoundingSphereFromMesh(gameObject);
     }
 
@@ -325,13 +334,23 @@ namespace FlexKit
     /************************************************************************************************/
 
     
-    void PointLightEventHandler::OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    void PointLightEventHandler::OnCreateView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
         PointLightComponentBlob pointLight;
 
         memcpy(&pointLight, buffer, sizeof(pointLight));
 
-        gameObject.AddView<PointLightView>(pointLight.K, pointLight.IR[0], pointLight.IR[1], GetSceneNode(gameObject));
+        if(!gameObject.hasView(PointLightComponentID))
+            gameObject.AddView<PointLightView>(pointLight.K, pointLight.IR[0], pointLight.IR[1], GetSceneNode(gameObject));
+        else
+        {
+            auto* pointLightView = static_cast<PointLightView*>(gameObject.GetView(PointLightComponentID));
+            pointLightView->SetK(pointLight.K);
+            pointLightView->SetIntensity(pointLight.IR[0]);
+            pointLightView->SetRadius(pointLight.IR[1]);
+            pointLightView->SetNode(GetSceneNode(gameObject));
+        }
+
         SetBoundingSphereFromLight(gameObject);
 
         EnablePointLightShadows(gameObject);
@@ -803,7 +822,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool LoadScene(RenderSystem* RS, GUID_t Guid, Scene& GS_out, iAllocator* allocator, iAllocator* temp)
+	bool LoadScene(RenderSystem* RS, SceneLoadingContext& ctx, GUID_t Guid, iAllocator* allocator, iAllocator* temp)
 	{
 		bool Available = isAssetAvailable(Guid);
 		if (Available)
@@ -823,8 +842,6 @@ namespace FlexKit
 				size_t						currentBlock            = 0;
 				SceneNodeBlock*				nodeBlock               = nullptr;
 				ComponentRequirementBlock*	componentRequirement    = nullptr;
-				Vector<NodeHandle>			nodes{ temp };
-
 
 				while (offset < sceneBlob->ResourceSize && currentBlock < blockCount)
 				{
@@ -839,7 +856,7 @@ namespace FlexKit
 							nodeBlock = reinterpret_cast<SceneNodeBlock*>(block);
 
 							const auto nodeCount = nodeBlock->header.nodeCount;
-							nodes.reserve(nodeCount);
+                            ctx.nodes.reserve(nodeCount);
 
 
 							for (size_t itr = 0; itr < nodeCount; ++itr)
@@ -863,9 +880,9 @@ namespace FlexKit
 								SetFlag			(newNode, SceneNodes::StateFlags::SCALE);
 
 								if (nodeData.parent != INVALIDHANDLE)
-									SetParentNode(nodes[nodeData.parent], newNode);
+									SetParentNode(ctx.nodes[nodeData.parent], newNode);
 
-								nodes.push_back(newNode);
+                                ctx.nodes.push_back(newNode);
 							}
 						}	break;
 						case SceneBlockType::ComponentRequirementTable:
@@ -877,7 +894,7 @@ namespace FlexKit
                             EntityBlock::Header entityBlock;
                             memcpy(&entityBlock, block, sizeof(entityBlock));
 							auto& gameObject = allocator->allocate<GameObject>(allocator);
-                            GS_out.ownedGameObjects.push_back(&gameObject);
+                            ctx.scene.ownedGameObjects.push_back(&gameObject);
 
                             size_t itr                  = 0;
                             size_t componentOffset      = 0;
@@ -899,16 +916,17 @@ namespace FlexKit
                                     SceneNodeComponentBlob blob;
                                     memcpy(&blob, (std::byte*)block + sizeof(entityBlock) + componentOffset, sizeof(blob));
 
-                                    auto node = nodes[blob.nodeIdx];
+                                    auto node = ctx.nodes[blob.nodeIdx];
                                     gameObject.AddView<SceneNodeView<>>(node);
 
                                     if (!blob.excludeFromScene)
-                                        GS_out.AddGameObject(gameObject, node);
+                                        ctx.scene.AddGameObject(gameObject, node);
                                 }
                                 else if (ComponentAvailability(ID) == true)
                                 {
                                     GetComponent(ID).AddComponentView(
                                                         gameObject,
+                                                        &ctx,
                                                         (std::byte*)(block) + sizeof(entityBlock) + componentOffset,
                                                         component.blockSize,
                                                         allocator);
@@ -946,7 +964,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool LoadScene(RenderSystem* RS, const char* LevelName, Scene& GS_out, iAllocator* allocator, iAllocator* Temp)
+	bool LoadScene(RenderSystem* RS, SceneLoadingContext& ctx, const char* LevelName, iAllocator* allocator, iAllocator* Temp)
 	{
 		if (isAssetAvailable(LevelName))
 		{
@@ -959,7 +977,7 @@ namespace FlexKit
 			}
 			FINALLYOVER
 
-			return LoadScene(RS, R->GUID, GS_out, allocator, Temp);
+			return LoadScene(RS, ctx, R->GUID, allocator, Temp);
 		}
 		return false;
 	}

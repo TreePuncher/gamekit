@@ -133,6 +133,7 @@
     <ClInclude Include="..\coreutilities\Particles.h" />
     <ClInclude Include="..\coreutilities\ProfilingUtilities.h" />
     <ClInclude Include="..\coreutilities\ResourceHandles.h" />
+    <ClInclude Include="..\coreutilities\SceneLoadingContext.h" />
     <ClInclude Include="..\coreutilities\Signal.h" />
     <ClInclude Include="..\coreutilities\ThreadUtilities.h" />
     <ClInclude Include="..\coreutilities\Transforms.h" />

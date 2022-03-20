@@ -10,7 +10,7 @@ static const ResourceID_t TextureResourceTypeID     = GetCRCGUID(TextureResource
 static const ResourceID_t SceneResourceTypeID       = GetTypeGUID(SceneResource);
 static const ResourceID_t SkeletonResourceTypeID    = GetTypeGUID(SkeletonResource);
 static const ResourceID_t AnimationResourceTypeID   = GetTypeGUID(AnimationResourceTypeID);
-static const ResourceID_t TriMeshColliderTypeID     = GetTypeGUID(AnimationResourceTypeID);
+static const ResourceID_t TriMeshColliderTypeID     = GetTypeGUID(TriMeshColliderTypeID);
 
 /**********************************************************************
 

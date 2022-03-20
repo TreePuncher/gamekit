@@ -5,6 +5,8 @@
 #include "qevent.h"
 #include "DebugUI.cpp"
 #include "physicsutilities.h"
+#include "SceneLoadingContext.h"
+#include "EditorInspectorView.h"
 
 #include <QtWidgets/qmenubar.h>
 #include <QShortcut>
@@ -578,7 +580,13 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
 
     auto viewportScene = std::make_shared<ViewportScene>(newScene);
     auto& renderSystem = renderer.framework.GetRenderSystem();
-
+    
+    
+    FlexKit::SceneLoadingContext ctx{
+        .scene = viewportScene->scene,
+        .layer = viewportScene->GetLayer(),
+        .nodes = Vector<FlexKit::NodeHandle>(FlexKit::SystemAllocator)
+    };
 
     for (auto& dependantResource : newScene->sceneResources)
     {
@@ -664,7 +672,7 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
 
                     FlexKit::TriMeshHandle handle = LoadTriMeshResource(res);
 
-                    auto& view = viewObject->gameObject.AddView<FlexKit::BrushView>(handle, FlexKit::GetSceneNode(viewObject->gameObject));
+                    auto& view = (FlexKit::BrushView&)EditorInspectorView::ConstructComponent(FlexKit::BrushComponentID, *viewObject, *viewportScene);
 
                     view.GetBrush().material = material;
 
@@ -681,20 +689,22 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
                 if (!addedToScene)
                     viewportScene->scene.AddGameObject(viewObject->gameObject, FlexKit::GetSceneNode(viewObject->gameObject));
 
-                auto  blob      = componentEntry->GetBlob();
-                auto& component = FlexKit::ComponentBase::GetComponent(componentEntry->id);
+                auto  blob          = componentEntry->GetBlob();
+                auto& component     = FlexKit::ComponentBase::GetComponent(componentEntry->id);
+                auto& componentView = EditorInspectorView::ConstructComponent(componentEntry->id, *viewObject, *viewportScene);
 
-                component.AddComponentView(viewObject->gameObject, blob, blob.size(), FlexKit::SystemAllocator);
+                component.AddComponentView(viewObject->gameObject, &ctx, blob, blob.size(), FlexKit::SystemAllocator);
                 FlexKit::SetBoundingSphereFromLight(viewObject->gameObject);
 
                 addedToScene = true;
             }   break;
             default:
             {
-                auto  blob      = componentEntry->GetBlob();
-                auto& component = FlexKit::ComponentBase::GetComponent(componentEntry->id);
+                auto  blob              = componentEntry->GetBlob();
+                auto& componentView     = EditorInspectorView::ConstructComponent(componentEntry->id, *viewObject, *viewportScene);
+                auto& component         = FlexKit::ComponentBase::GetComponent(componentEntry->id);
 
-                component.AddComponentView(viewObject->gameObject, blob, blob.size(), FlexKit::SystemAllocator);
+                component.AddComponentView(viewObject->gameObject, &ctx, blob, blob.size(), FlexKit::SystemAllocator);
             }   break;
             }
         }

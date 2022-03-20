@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "mathUtils.h"
 #include "memoryutilities.h"
 #include "threadUtilities.h"
+#include "ResourceHandles.h"
 
 #include <PxPhysicsAPI.h>
 #include <characterkinematic/PxController.h>
@@ -140,14 +141,6 @@ namespace FlexKit
 		float h;
 		float3 FootPos;
 	};
-
-
-    /************************************************************************************************/
-
-
-	typedef Handle_t<16, GetCRCGUID(StaticBodyHandle)>	StaticBodyHandle;
-	typedef Handle_t<16, GetCRCGUID(RigidBodyHandle)>	RigidBodyHandle;
-	typedef Handle_t<16, GetCRCGUID(LayerHandle)>	    LayerHandle;
 
 
 	/************************************************************************************************/
@@ -283,8 +276,8 @@ namespace FlexKit
 		void DebugDraw				(FrameGraph* FGraph, iAllocator* TempMemory);
         void UpdateDebugGeometry();
 
-        [[nodiscard]] StaticBodyHandle  CreateStaticCollider    (const Shape shape, GameObject* go, const float3 initialPosition, const Quaternion initialQ);
-        [[nodiscard]] RigidBodyHandle	CreateRigidBodyCollider (const Shape shape, GameObject* go, const float3 initialPosition, const Quaternion initialQ);
+        [[nodiscard]] StaticBodyHandle  CreateStaticCollider    (GameObject* go, const float3 initialPosition, const Quaternion initialQ);
+        [[nodiscard]] RigidBodyHandle	CreateRigidBodyCollider (GameObject* go, const float3 initialPosition, const Quaternion initialQ);
 
 
         void ReleaseCollider(const StaticBodyHandle);
@@ -391,8 +384,8 @@ namespace FlexKit
 		void							Simulate( const double dt, WorkBarrier* barrier = nullptr, iAllocator* temp_allocator = nullptr);
 
         [[nodiscard]] LayerHandle	    CreateLayer(bool DebugVis = false);
-        [[nodiscard]] StaticBodyHandle	CreateStaticCollider	(GameObject* go, const LayerHandle, const Shape shape, const float3 pos = { 0, 0, 0 }, const Quaternion q = { 0, 0, 0, 1 });
-        [[nodiscard]] RigidBodyHandle	CreateRigidBodyCollider	(GameObject* go, const LayerHandle, const Shape shape, const float3 pos = { 0, 0, 0 }, const Quaternion q = { 0, 0, 0, 1 });
+        [[nodiscard]] StaticBodyHandle	CreateStaticCollider	(GameObject* go, const LayerHandle, const float3 pos = { 0, 0, 0 }, const Quaternion q = { 0, 0, 0, 1 });
+        [[nodiscard]] RigidBodyHandle	CreateRigidBodyCollider	(GameObject* go, const LayerHandle, const float3 pos = { 0, 0, 0 }, const Quaternion q = { 0, 0, 0, 1 });
 
         [[nodiscard]] Shape             CreateCubeShape         (const float3 dimensions);
         [[nodiscard]] Shape             CreateSphereShape       (const float radius);
@@ -516,38 +509,73 @@ namespace FlexKit
 
     constexpr ComponentID StaticBodyComponentID  = GetTypeGUID(StaticBodyComponentID);
 
+    enum class StaticBodyType
+    {
+        TriangleMesh,
+        Cube,
+        Sphere,
+    };
+
+    struct CubeCollider
+    {
+        float dimensions[3];
+    };
+
+    struct SphereCollider
+    {
+        float radius;
+    };
+
+    struct StaticBodyShape
+    {
+        StaticBodyShape() = default;
+
+        StaticBodyType  type;
+
+        union
+        {
+            uint64_t        triMeshResource;
+            CubeCollider    cube;
+            SphereCollider  sphere;
+        };
+
+        float3          position;
+        Quaternion      orientation;
+
+        void Serialize(auto& ar)
+        {
+            ar& position;
+            ar& orientation;
+            ar& cube;
+            ar& type;
+        }
+    };
+
+
+    struct StaticBodyHeaderBlob
+    {
+        uint32_t shapeCount;
+    };
+
     class StaticBodyComponent : public Component<StaticBodyComponent, StaticBodyComponentID>
     {
     public:
         StaticBodyComponent(PhysXComponent& IN_physx) :
-            physx{ IN_physx }
-        {
+            physx{ IN_physx } {}
 
+        StaticBodyHandle Create(GameObject* gameObject, LayerHandle layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 })
+        {
+            return physx.CreateStaticCollider(gameObject, layer, pos, q);
         }
 
-        StaticBodyHandle Create(GameObject* gameObject, LayerHandle layer, Shape shape, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 })
-        {
-            return physx.CreateStaticCollider(gameObject, layer, shape, pos, q);
-        }
-
-        void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
-        {
-        }
-
-
-        void Remove()
-        {
-            //instance.scene.ReleaseCollider(instance.handle);
-        }
+        void AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
+        void Remove() noexcept;
 
 
         auto& GetLayer(LayerHandle layer)
         {
             return physx.GetLayer_ref(layer);
         }
-
-
-
 
     private:
         PhysXComponent& physx;
@@ -561,13 +589,16 @@ namespace FlexKit
     {
     public:
         StaticBodyView(GameObject& gameObject, StaticBodyHandle IN_staticBody, LayerHandle IN_layer);
-        StaticBodyView(GameObject& gameObject, LayerHandle IN_layer, Shape shape, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 });
+        StaticBodyView(GameObject& gameObject, LayerHandle IN_layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 });
 
         NodeHandle  GetNode() const;
         GameObject& GetGameObject() const;
 
         void AddShape(Shape shape);
         void RemoveShape(uint32_t);
+
+        physx::PxShape* GetShape(size_t);
+        size_t          GetShapeCount() const noexcept;
 
         void    SetUserData(void*) noexcept;
         void*   GetUserData() noexcept;
@@ -592,8 +623,8 @@ namespace FlexKit
     public:
         RigidBodyComponent(PhysXComponent& IN_physx);
 
-        RigidBodyHandle CreateRigidBody(GameObject* gameObject, Shape shape, LayerHandle layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 });
-        void            AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
+        RigidBodyHandle CreateRigidBody(GameObject* gameObject, LayerHandle layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 });
+        void            AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 
         void            Remove(RigidBodyView& rigidBody);
         PhysicsLayer&   GetLayer(LayerHandle layer);
@@ -613,11 +644,12 @@ namespace FlexKit
             staticBody  { IN_rigidBody },
             layer       { IN_layer      } {}
 
-        RigidBodyView(GameObject& gameObject, LayerHandle IN_layer, Shape shape, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 }) :
-            staticBody  { GetComponent().CreateRigidBody(&gameObject, shape, IN_layer, pos, q) },
+        RigidBodyView(GameObject& gameObject, LayerHandle IN_layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 }) :
+            staticBody  { GetComponent().CreateRigidBody(&gameObject, IN_layer, pos, q) },
             layer       { IN_layer } {}
 
-        NodeHandle GetNode() const;
+        NodeHandle      GetNode() const;
+        void            AddShape(Shape shape);
 
         const LayerHandle       layer;
         const RigidBodyHandle   staticBody;
@@ -695,7 +727,7 @@ namespace FlexKit
         }
 
 
-        void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
+        void AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
         {
             FK_ASSERT(0);
         }
