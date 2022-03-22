@@ -263,6 +263,19 @@ namespace FlexKit
     }
 
 
+    /************************************************************************************************/
+
+
+    Shape PhysXComponent::CreateCapsuleShape(const float radius, const float halfHeight)
+    {
+        auto shape = physxAPI->createShape(
+            physx::PxCapsuleGeometry(radius, halfHeight),
+            *defaultMaterial,
+            false);
+
+        return { shape };
+    }
+
 
     /************************************************************************************************/
 
@@ -1623,6 +1636,7 @@ namespace FlexKit
         }
     }
 
+
     /************************************************************************************************/
 
 
@@ -1648,6 +1662,10 @@ namespace FlexKit
             case StaticBodyType::Cube:
             {
                 shape = physX.CreateCubeShape(float3{ triMeshShape.cube.dimensions[0], triMeshShape.cube.dimensions[1], triMeshShape.cube.dimensions[2] });
+            }   break;
+            case StaticBodyType::Capsule:
+            {
+                shape = physX.CreateCapsuleShape(triMeshShape.capsule.radius, triMeshShape.capsule.height);
             }   break;
             case StaticBodyType::Sphere:
             {

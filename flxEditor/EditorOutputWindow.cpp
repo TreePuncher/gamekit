@@ -3,6 +3,7 @@
 #include <QtWidgets/qcombobox.h>
 #include <QtWidgets/qtextbrowser.h>
 #include <chrono>
+#include "qscrollbar.h"
 
 using namespace std::literals::chrono_literals;
 
@@ -17,7 +18,6 @@ EditorOutputWindow::EditorOutputWindow(QWidget* parent)
 
     timer->setInterval(100ms);
     timer->start();
-
 }
 
 EditorOutputWindow::~EditorOutputWindow()
@@ -38,6 +38,12 @@ void EditorOutputWindow::UpdateText()
         auto    textBrowser     = findChild<QTextBrowser*>("outputWindow");
         auto&   text            = sources[mode]();
         auto    outputText     = QString::fromStdString(text);
-        textBrowser->setText(outputText);
+
+        if (QApplication::focusWidget() != textBrowser)
+        {
+            auto value = textBrowser->verticalScrollBar()->value();
+            textBrowser->setText(outputText);
+            textBrowser->verticalScrollBar()->setValue(value);
+        }
     }
 }

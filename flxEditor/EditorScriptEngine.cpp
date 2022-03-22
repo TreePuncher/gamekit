@@ -10,6 +10,8 @@
 #include <angelscript/scriptmath/scriptmath.h>
 #include <angelscript/scriptmath/scriptmathcomplex.h>
 
+#include <angelscript/debugger/debugger.cpp>
+
 #include <assert.h>
 
 #define WIN32_LEAN_AND_MEAN 
@@ -67,14 +69,21 @@ void EditorScriptEngine::PrintToErrorWindow(const char* str)
 
 
 EditorScriptEngine::EditorScriptEngine() :
-    scriptEngine{ asCreateScriptEngine() }
+    scriptEngine    { asCreateScriptEngine() }
+    //debugger        { new CDebugger{} }
 {
     scriptContext   = scriptEngine->CreateContext();
     auto r          = scriptEngine->SetMessageCallback(asFUNCTION(EditorScriptEngine::MessageCallback), this, asCALL_CDECL); assert(r >= 0);
 
+    //scriptContext->SetLineCallback(asMETHOD(CDebugger, LineCallback), debugger, asCALL_THISCALL);
+
     RegisterAPI();
 }
 
+
+EditorScriptEngine::~EditorScriptEngine()
+{
+}
 
 /************************************************************************************************/
 
@@ -170,7 +179,7 @@ void EditorScriptEngine::RunStdString(const std::string& string)
         CScriptBuilder builder{};
         builder.StartNewModule(scriptEngine, "temp");
 
-        if (auto r = builder.AddSectionFromMemory("", string.c_str(), string.size()); r < 0)
+        if (auto r = builder.AddSectionFromMemory("Memory", string.c_str(), string.size()); r < 0)
         {
             // TODO: show error in output window
         }
