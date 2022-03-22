@@ -12,18 +12,16 @@
 
 /************************************************************************************************/
 
-
 using OnSelectionCallback = std::function<void (ProjectResource_ptr)>;
 
 class EditorProject;
-class EditorViewport;
 
 class EditorResourcePickerDialog : public QDialog
 {
 	Q_OBJECT
 
 public:
-	EditorResourcePickerDialog(ResourceID_t resourceType, EditorProject&, EditorViewport&, QWidget *parent = Q_NULLPTR);
+	EditorResourcePickerDialog(ResourceID_t resourceType, EditorProject&, QWidget *parent = Q_NULLPTR);
 	~EditorResourcePickerDialog();
 
     void OnSelection(OnSelectionCallback);
@@ -33,7 +31,6 @@ private:
     OnSelectionCallback                 onAccept;
 	Ui::EditorResourcePickerDialog      ui;
     EditorProject&                      project;
-    EditorViewport&                     viewport;
 };
 
 

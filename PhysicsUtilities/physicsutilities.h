@@ -389,6 +389,7 @@ namespace FlexKit
 
         [[nodiscard]] Shape             CreateCubeShape         (const float3 dimensions);
         [[nodiscard]] Shape             CreateSphereShape       (const float radius);
+        [[nodiscard]] Shape             CreateCapsuleShape      (const float radius, const float halfRadius);
 
 
         PhysicsLayer&                   GetLayer_ref(LayerHandle handle);
@@ -513,6 +514,7 @@ namespace FlexKit
     {
         TriangleMesh,
         Cube,
+        Capsule,
         Sphere,
     };
 
@@ -526,6 +528,12 @@ namespace FlexKit
         float radius;
     };
 
+    struct CapsuleCollider
+    {
+        float radius;
+        float height;
+    };
+
     struct StaticBodyShape
     {
         StaticBodyShape() = default;
@@ -534,9 +542,10 @@ namespace FlexKit
 
         union
         {
-            uint64_t        triMeshResource;
-            CubeCollider    cube;
-            SphereCollider  sphere;
+            uint64_t            triMeshResource;
+            CubeCollider        cube;
+            SphereCollider      sphere;
+            CapsuleCollider     capsule;
         };
 
         float3          position;

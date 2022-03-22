@@ -122,7 +122,7 @@ public:
             "Add TriMesh Collider",
             [&]()
             {
-                auto resourcePicker = new EditorResourcePickerDialog(TriMeshColliderTypeID, project, viewport);
+                auto resourcePicker = new EditorResourcePickerDialog(TriMeshColliderTypeID, project);
 
                 resourcePicker->OnSelection(
                     [&](ProjectResource_ptr resource)

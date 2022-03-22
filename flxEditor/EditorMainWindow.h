@@ -29,6 +29,7 @@
 class TextureResource;
 class EditorScriptEngine;
 class EditorViewport;
+class EditorAnimationEditor;
 
 
 /************************************************************************************************/
@@ -92,11 +93,12 @@ private:
 
     SelectionContext    selectionContext;
 
-    QTabWidget*         tabBar;
-    EditorViewport*     viewport;
-    QApplication&       QtApplication;
-    EditorProject&      project;
-    EditorRenderer&     renderer;
+    QTabWidget*             tabBar;
+    EditorViewport*         viewport;
+    EditorAnimationEditor*  animationEditor;
+    QApplication&           QtApplication;
+    EditorProject&          project;
+    EditorRenderer&         renderer;
 
     EditorScriptEngine& scriptEngine;
 

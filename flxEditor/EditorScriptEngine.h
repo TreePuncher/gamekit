@@ -4,6 +4,12 @@
 #include "EditorGadgetInterface.h"
 #include <vector>
 
+
+class CDebugger;
+
+/************************************************************************************************/
+
+
 class EditorModule
 {
 public:
@@ -62,11 +68,23 @@ public:
 /************************************************************************************************/
 
 
+struct BreakPoint
+{
+    int line;
+
+
+    bool operator < (const BreakPoint& rhs) const noexcept
+    {
+        return line < rhs.line;
+    }
+};
+
 class EditorScriptEngine
 {
 public:
 
     EditorScriptEngine();
+    ~EditorScriptEngine();
 
     std::vector<AngelScriptGadget*> GetGadgets() { return gadgets; };
     
@@ -79,7 +97,7 @@ public:
     const std::string&  GetTextBuffer()     { return outputTextBuffer; }
     const std::string&  GetErrorBuffer()    { return errorTextBuffer; }
 
-private:
+//private:
 
     void RegisterAPI();
 
@@ -87,7 +105,7 @@ private:
     void PrintToOutputWindow(std::string* str);
     void PrintToErrorWindow(const char* str);
 
-protected:
+//protected:
 
     static void MessageCallback(const asSMessageInfo* msg, EditorScriptEngine* param);
 

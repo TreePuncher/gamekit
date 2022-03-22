@@ -4,10 +4,9 @@
 /************************************************************************************************/
 
 
-EditorResourcePickerDialog::EditorResourcePickerDialog(ResourceID_t resourceType, EditorProject& IN_project, EditorViewport& IN_viewport, QWidget *parent)
+EditorResourcePickerDialog::EditorResourcePickerDialog(ResourceID_t resourceType, EditorProject& IN_project, QWidget *parent)
 	: QDialog(parent, Qt::Dialog)
     , project     { IN_project }
-    , viewport    { IN_viewport }
 {
 	ui.setupUi(this);
 

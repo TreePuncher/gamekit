@@ -1,9 +1,12 @@
 #include "PCH.h"
 #include "EditorMainWindow.h"
 #include "DXRenderWindow.h"
+
+#include "EditorAnimationEditor.h"
 #include "EditorCodeEditor.h"
 #include "EditorOutputWindow.h"
 #include "EditorViewport.h"
+
 #include "SceneOutliner.h"
 #include <QtWidgets/qmenubar.h>
 #include <chrono>
@@ -18,6 +21,7 @@ using namespace std::chrono_literals;
 EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngine& IN_scriptEngine, EditorProject& IN_project, QApplication& IN_application, QWidget* parent) :
     QMainWindow     { parent            },
     QtApplication   { IN_application    },
+    animationEditor { new EditorAnimationEditor{ IN_scriptEngine, IN_renderer, IN_project } },
     project         { IN_project        },
     renderer        { IN_renderer       },
     scriptEngine    { IN_scriptEngine   },
@@ -29,7 +33,8 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
     exportMenu     = fileMenu->addMenu("Export");
 
 
-    tabBar->addTab(viewport, "Scene View");
+    tabBar->addTab(viewport, "Scene Editor");
+    tabBar->addTab(animationEditor, "Animation");
 
     setCentralWidget(tabBar);
 
@@ -376,7 +381,7 @@ void EditorMainWindow::Update()
 
 /**********************************************************************
 
-Copyright (c) 2019-2021 Robert May
+Copyright (c) 2019-2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

@@ -148,11 +148,23 @@
     <ClCompile Include="angelScriptTU.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="EditorAnimationEditor.cpp">
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
+    </ClCompile>
+    <ClCompile Include="EditorAnimatorComponent.cpp" />
     <ClCompile Include="EditorColliderComponent.cpp" />
     <ClCompile Include="CSGComponent.cpp" />
     <ClCompile Include="CSGRendering.cpp" />
     <ClCompile Include="EditorApplication.cpp" />
-    <ClCompile Include="EditorCodeEditor.cpp" />
+    <ClCompile Include="EditorCodeEditor.cpp">
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
+    </ClCompile>
     <ClCompile Include="EditorConfig.cpp" />
     <ClCompile Include="EditorInspectorView.cpp" />
     <ClCompile Include="EditorOperators.cpp" />
@@ -199,6 +211,8 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <QtMoc Include="EditorAnimationEditor.h" />
+    <ClInclude Include="EditorAnimatorComponent.h" />
     <ClInclude Include="EditorColliderComponent.h" />
     <ClInclude Include="CSGComponent.h" />
     <ClInclude Include="CSGRendering.h" />
@@ -230,6 +244,7 @@
     <ClInclude Include="EditorProject.h" />
   </ItemGroup>
   <ItemGroup>
+    <QtUic Include="EditorAnimationEditor.ui" />
     <QtUic Include="EditorCodeEditor.ui" />
     <QtUic Include="EditorOutputWindow.ui" />
     <QtUic Include="EditorResourcePickerDialog.ui" />

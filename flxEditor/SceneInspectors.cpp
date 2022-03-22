@@ -507,7 +507,7 @@ void SceneBrushInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::
     panelCtx.AddButton("Select Mesh",
         [&]()
         {
-            auto resourcePicker = new EditorResourcePickerDialog(MeshResourceTypeID, project, viewport);
+            auto resourcePicker = new EditorResourcePickerDialog(MeshResourceTypeID, project);
 
             resourcePicker->OnSelection(
                 [&](ProjectResource_ptr resource_ptr)
