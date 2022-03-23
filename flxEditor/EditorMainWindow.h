@@ -92,15 +92,15 @@ signals:
 private:
 
     SelectionContext    selectionContext;
+    EditorScriptEngine& scriptEngine;
 
     QTabWidget*             tabBar;
     EditorViewport*         viewport;
-    EditorAnimationEditor*  animationEditor;
     QApplication&           QtApplication;
     EditorProject&          project;
     EditorRenderer&         renderer;
 
-    EditorScriptEngine& scriptEngine;
+    EditorAnimationEditor*  animationEditor;
 
     QMenu*              fileMenu    = nullptr;
     QMenu*              importMenu  = nullptr;

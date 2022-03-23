@@ -1,26 +1,46 @@
-#pragma once
-#include "Components.h"
-#include "..\FlexKitResourceCompiler\SceneResource.h"
-#include "Serialization.hpp"
+#include "EditorScriptObject.h"
+#include "..\FlexKitResourceCompiler\ResourceIDs.h"
 
-constexpr FlexKit::ComponentID EditorAnimatorComponentID = GetTypeGUID(EditorAnimatorComponentID);
 
-class EditorAnimatorComponent :
-    public FlexKit::Serializable<EditorAnimatorComponent, FlexKit::EntityComponent, EditorAnimatorComponentID>
+/************************************************************************************************/
+
+
+FlexKit::ResourceBlob ScriptResource::CreateBlob() const
 {
-public:
-    EditorAnimatorComponent() :
-        Serializable{ EditorAnimatorComponentID } {}
+    return {};
+}
 
-    FlexKit::Blob GetBlob() override;
 
-    void Serialize(auto& ar)
-    {
-        EntityComponent::Serialize(ar);
-    }
+/************************************************************************************************/
 
-    inline static RegisterConstructorHelper<EditorAnimatorComponent, EditorAnimatorComponentID> registered{};
-};
+
+const std::string& ScriptResource::GetResourceID() const noexcept
+{
+    return ID;
+}
+
+
+/************************************************************************************************/
+
+
+const uint64_t ScriptResource::GetResourceGUID() const noexcept
+{
+    return resourceId;
+}
+
+
+/************************************************************************************************/
+
+
+const ResourceID_t ScriptResource::GetResourceTypeID() const noexcept
+{
+    return ScriptResourceTypeID;
+}
+
+void ScriptResource::SetResourceID(std::string& id) { ID = id; }
+
+
+/************************************************************************************************/
 
 
 /**********************************************************************

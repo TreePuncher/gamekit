@@ -193,6 +193,8 @@ public:
 	QApplication&                   qtApp;
 	FlexKit::FKApplication          fkApplication{ FlexKit::CreateEngineMemory() };
 
+    EditorProjectScriptConnector    projectConnector;
+    EditorScriptEngine              scripts;
 
     gltfImporter                    gltfImporter;
     GameResExporter                 gameResExporter;
@@ -200,9 +202,6 @@ public:
 	EditorProject                   project;
 	EditorRenderer&                 editorRenderer;
     EditorMainWindow                mainWindow;
-
-    EditorProjectScriptConnector    projectConnector;
-    EditorScriptEngine              scripts;
 };
 
 

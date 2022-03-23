@@ -3,6 +3,9 @@
 #include "QtWidgets/qabstractbutton.h"
 #include "QtWidgets/qmenubar.h"
 #include "QtWidgets/qlistwidget.h"
+#include "EditorProject.h"
+#include "EditorResourcePickerDialog.h"
+#include "EditorScriptObject.h"
 
 #include <qsyntaxhighlighter.h>
 #include <qregularexpression.h>
@@ -14,7 +17,6 @@
 #include <qpainter.h>
 #include <qscrollbar.h>
 #include <angelscript/debugger/debugger.h>
-
 
 /************************************************************************************************/
 
@@ -147,10 +149,7 @@ class LineNumberArea : public QWidget
 public:
     LineNumberArea(EditorTextEditorWidget* editor)
         : QWidget       { editor }
-        , codeEditor    { editor }
-    {
-        breakPoints.push_back({ 0 });
-    }
+        , codeEditor    { editor } { }
 
     QSize sizeHint() const override
     {
@@ -197,8 +196,8 @@ protected:
 
 private:
 
-    std::vector<BreakPoint> breakPoints;
-    EditorTextEditorWidget* codeEditor;
+    std::vector<BreakPoint>     breakPoints;
+    EditorTextEditorWidget*     codeEditor;
 };
 
 
@@ -211,7 +210,6 @@ EditorTextEditorWidget::EditorTextEditorWidget(QWidget* parent)
 {
     auto temp = tabStopDistance();
     setTabStopDistance(tabStopDistance() / 3);
-
 
     connect(this, &QPlainTextEdit::blockCountChanged,       this, &EditorTextEditorWidget::UpdateLineNumberAreaWidth);
     connect(this, &QPlainTextEdit::updateRequest,           this, &EditorTextEditorWidget::UpdateLineNumberArea);
@@ -278,7 +276,7 @@ void EditorTextEditorWidget::PaintBreakPoint(BreakPoint* itr, BreakPoint* end, Q
     QPainter painter(lineNumberArea);
 
     QTextBlock block            = firstVisibleBlock();
-    auto format                 =  block.blockFormat();
+    auto format                 = block.blockFormat();
     const auto firstVisableLine = block.firstLineNumber();
 
     QFontMetrics fontMetrics(font());
@@ -328,6 +326,16 @@ int EditorTextEditorWidget::GetLine(QPoint point)
     return cursor.block().firstLineNumber();
 }
 
+void EditorTextEditorWidget::AddWarningLine(std::string msg, int line)
+{
+    lineMessages.emplace_back(msg, line);
+}
+
+void EditorTextEditorWidget::ClearWarnings()
+{
+    lineMessages.clear();
+}
+
 
 /************************************************************************************************/
 
@@ -339,7 +347,7 @@ void EditorTextEditorWidget::HighlightCurrentLine()
     if (!isReadOnly()) {
         QTextEdit::ExtraSelection selection;
 
-        QColor lineColor = QColor(Qt::darkGray);
+        QColor lineColor = QColor(Qt::darkGreen);
 
         selection.format.setBackground(lineColor);
         selection.format.setProperty(QTextFormat::FullWidthSelection, true);
@@ -370,11 +378,14 @@ void EditorTextEditorWidget::UpdateLineNumberArea(const QRect& rect, int dy)
 /************************************************************************************************/
 
 
-EditorCodeEditor::EditorCodeEditor(EditorScriptEngine& IN_scriptEngine, QWidget *parent)
+EditorCodeEditor::EditorCodeEditor(EditorProject& IN_project, EditorScriptEngine& IN_scriptEngine, QWidget *parent)
     : QWidget               { parent            }
     , scriptEngine          { IN_scriptEngine   }
     , callStackWidget       { new QListWidget{} }
     , variableListWidget    { new QListWidget{} }
+    , errorListWidget       { new QListWidget{} }
+    , scriptContext         { IN_scriptEngine.GetScriptEngine()->CreateContext() }
+    , project               { IN_project }
 {
 	ui.setupUi(this);
     ui.verticalLayout->setContentsMargins(0, 0, 0, 0);
@@ -386,6 +397,7 @@ EditorCodeEditor::EditorCodeEditor(EditorScriptEngine& IN_scriptEngine, QWidget 
     tabBar->addTab(textEditor, "Code Editor");
     tabBar->addTab(callStackWidget, "CallStack");
     tabBar->addTab(variableListWidget, "Variables");
+    tabBar->addTab(errorListWidget, "Errors");
 
     highlighter = new BasicHighlighter{ textEditor->document() };
 
@@ -395,6 +407,37 @@ EditorCodeEditor::EditorCodeEditor(EditorScriptEngine& IN_scriptEngine, QWidget 
 
     auto fileMenu               = menuBar->addMenu("File");
 
+    auto newResource = fileMenu->addAction("New Script Resource");
+    newResource->connect(newResource, &QAction::triggered,
+        [&]()
+        {
+            if (currentResource)
+                textEditor->document()->clear();
+
+            currentResource = new ScriptResource();
+
+            project.AddResource(FlexKit::Resource_ptr{ currentResource });
+        });
+
+    auto selectResource = fileMenu->addAction("Select Resource");
+    selectResource->connect(selectResource, &QAction::triggered,
+        [&, textEditor]()
+        {
+            auto resourcePicker = new EditorResourcePickerDialog{ ScriptResourceTypeID, project, this };
+            resourcePicker->OnSelection(
+                [&](ProjectResource_ptr resource)
+                {
+                    if (currentResource)
+                        textEditor->document()->clear();
+
+                    currentResource = static_cast<ScriptResource*>(resource->resource.get());
+
+                    textEditor->document()->setPlainText(currentResource->source.c_str());
+                });
+
+            resourcePicker->show();
+        });
+
     auto fileLoad               = fileMenu->addAction("Load File");
     fileLoad->connect(fileLoad, &QAction::triggered, this, &EditorCodeEditor::LoadDocument);
 
@@ -402,8 +445,7 @@ EditorCodeEditor::EditorCodeEditor(EditorScriptEngine& IN_scriptEngine, QWidget 
     fileSave->connect(fileSave, &QAction::triggered, this, &EditorCodeEditor::SaveDocument);
 
     auto fileSaveCopy            = fileMenu->addAction("Save File Copy");
-    fileSave->connect(fileSave, &QAction::triggered, this, &EditorCodeEditor::SaveDocumentCopy);
-
+    fileSave->connect(fileSaveCopy, &QAction::triggered, this, &EditorCodeEditor::SaveDocumentCopy);
 
     auto editMenu               = menuBar->addMenu("Edit");
     undo = editMenu->addAction("Undo");
@@ -428,15 +470,17 @@ EditorCodeEditor::EditorCodeEditor(EditorScriptEngine& IN_scriptEngine, QWidget 
                 highlighter->enabled = !highlighter->enabled;
         });
 
-    auto debugMenu = menuBar->addMenu("Debug");
+    auto debugMenu  = menuBar->addMenu("Debug");
     auto run        = debugMenu->addAction("Run");
+
     run->connect(run, &QAction::triggered, [&] { RunCode(); });
     auto debug      = debugMenu->addAction("Resume");
     debug->connect(debug, &QAction::triggered, [&] { Resume(); });
 
+    auto stop = debugMenu->addAction("Stop");
+    stop->connect(stop, &QAction::triggered, [&] { Stop(); });
 
     boxLayout->setMenuBar(menuBar);
-
 
     // HotKeys
     auto loadHotKey = new QShortcut(QKeySequence(tr("Ctrl+O", "File|Open")), parent);
@@ -519,17 +563,26 @@ void EditorCodeEditor::SaveDocument()
 {
     auto textEditor = static_cast<QPlainTextEdit*>(tabBar->currentWidget());
 
-    if(fileDir.empty())
+    if (currentResource)
     {
-        const auto importText   = std::string{ "Save Text File" };
-        const auto fileMenuText = std::string{ "Files (*.*)" };
-        const auto qfileDir     = QFileDialog::getSaveFileName(this, tr(importText.c_str()), QDir::currentPath(), fileMenuText.c_str());
+        auto document = textEditor->document();
+        currentResource->source = document->toRawText().toStdString();;
 
-        fileDir = qfileDir.toStdString();
     }
+    else
+    {
+        if(fileDir.empty())
+        {
+            const auto importText   = std::string{ "Save Text File" };
+            const auto fileMenuText = std::string{ "Files (*.*)" };
+            const auto qfileDir     = QFileDialog::getSaveFileName(this, tr(importText.c_str()), QDir::currentPath(), fileMenuText.c_str());
 
-    QTextDocumentWriter writer{ QString(fileDir.c_str()) };
-    writer.write(textEditor->document());
+            fileDir = qfileDir.toStdString();
+        }
+
+        QTextDocumentWriter writer{ QString(fileDir.c_str()) };
+        writer.write(textEditor->document());
+    }
 }
 
 
@@ -540,9 +593,9 @@ void EditorCodeEditor::SaveDocumentCopy()
 {
     auto textEditor = static_cast<QPlainTextEdit*>(tabBar->currentWidget());
 
-    const auto importText = std::string{ "Save Text File" };
+    const auto importText   = std::string{ "Save Text File" };
     const auto fileMenuText = std::string{ "Files (*.*)" };
-    const auto qfileDir = QFileDialog::getSaveFileName(this, tr(importText.c_str()), QDir::currentPath(), fileMenuText.c_str());
+    const auto qfileDir     = QFileDialog::getSaveFileName(this, tr(importText.c_str()), QDir::currentPath(), fileMenuText.c_str());
 
     fileDir = qfileDir.toStdString();
 
@@ -556,6 +609,7 @@ void EditorCodeEditor::SaveDocumentCopy()
 
 EditorCodeEditor::~EditorCodeEditor()
 {
+    scriptContext->Release();
 }
 
 
@@ -564,9 +618,28 @@ EditorCodeEditor::~EditorCodeEditor()
 
 void EditorCodeEditor::Resume()
 {
-    if (scriptEngine.scriptContext->GetState() == asEContextState::asEXECUTION_SUSPENDED)
+    if (scriptContext->GetState() == asEContextState::asEXECUTION_SUSPENDED)
     {
-        scriptEngine.scriptContext->Execute();
+        begin = std::chrono::system_clock::now();
+        scriptContext->SetLineCallback(asMETHOD(EditorCodeEditor, LineCallback), this, asCALL_THISCALL);
+
+        scriptContext->Execute();
+        callStackWidget->clear();
+        variableListWidget->clear();
+
+        scriptContext->ClearLineCallback();
+    }
+}
+
+
+/************************************************************************************************/
+
+
+void EditorCodeEditor::Stop()
+{
+    if (scriptContext->GetState() == asEContextState::asEXECUTION_SUSPENDED)
+    {
+        scriptContext->Abort();
         callStackWidget->clear();
         variableListWidget->clear();
     }
@@ -578,17 +651,48 @@ void EditorCodeEditor::Resume()
 
 void EditorCodeEditor::RunCode()
 {
-    if (scriptEngine.scriptContext->GetState() == asEContextState::asEXECUTION_SUSPENDED)
+    if (scriptContext->GetState() == asEContextState::asEXECUTION_SUSPENDED)
         return;
 
     auto textEditor = static_cast<EditorTextEditorWidget*>(tabBar->currentWidget());
     auto code       = textEditor->toPlainText().toStdString();
 
-    scriptEngine.scriptContext->SetLineCallback(asMETHOD(EditorCodeEditor, LineCallback), this, asCALL_THISCALL);
+    scriptContext->SetLineCallback(asMETHOD(EditorCodeEditor, LineCallback), this, asCALL_THISCALL);
 
-    scriptEngine.RunStdString(code);
+    begin = std::chrono::system_clock::now();
 
-    scriptEngine.scriptContext->ClearLineCallback();
+    errorListWidget->clear();
+    QList<QTextEdit::ExtraSelection> extraSelections;
+    bool errorFound = false;
+    auto errorHandler =
+        [&](int row, int col, const char* msg, const char* segment, int errorType)
+        {
+            if (!textEditor->isReadOnly()) {
+                errorFound = true;
+
+                QTextEdit::ExtraSelection selection;
+
+                QColor lineColor = QColor(Qt::darkRed);
+
+                selection.format.setBackground(lineColor);
+                selection.format.setProperty(QTextFormat::FullWidthSelection, true);
+                selection.cursor = textEditor->textCursor();
+                selection.cursor.movePosition(QTextCursor::Start);
+                selection.cursor.movePosition(QTextCursor::Down, QTextCursor::MoveAnchor, row - 1);
+                selection.cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 0);
+                selection.cursor.clearSelection();
+                extraSelections.append(selection);
+
+                errorListWidget->addItem(new QListWidgetItem(fmt::format("{}, {}: {}", row, col, msg).c_str()));
+            }
+        };
+
+    scriptEngine.RunStdString(code, scriptContext, errorHandler);
+
+    if(errorFound)
+        textEditor->setExtraSelections(extraSelections);
+
+    scriptContext->ClearLineCallback();
 }
 
 
@@ -603,6 +707,36 @@ void EditorCodeEditor::LineCallback(asIScriptContext* ctx)
     const char* scriptSection;
     int line = ctx->GetLineNumber(0, 0, &scriptSection);
 
+    auto now = std::chrono::system_clock::now();
+
+    if ((now - begin) > std::chrono::seconds(1))
+    {
+        textEditor->AddWarningLine("Infinite Loop Detected!", line);
+
+        QList<QTextEdit::ExtraSelection> extraSelections;
+
+        if (!textEditor->isReadOnly()) {
+            QTextEdit::ExtraSelection selection;
+
+            QColor lineColor = QColor(Qt::darkRed);
+
+            selection.format.setBackground(lineColor);
+            selection.format.setProperty(QTextFormat::FullWidthSelection, true);
+            selection.cursor = textEditor->textCursor();
+            selection.cursor.movePosition(QTextCursor::Start);
+            selection.cursor.movePosition(QTextCursor::Down,    QTextCursor::MoveAnchor, line - 1);
+            selection.cursor.movePosition(QTextCursor::Right,   QTextCursor::MoveAnchor, 0);
+            selection.cursor.clearSelection();
+            extraSelections.append(selection);
+        }
+
+        textEditor->setExtraSelections(extraSelections);
+
+        ctx->Suspend();
+        return;
+    }
+
+
     if (strncmp(scriptSection, "Memory", 7) == 0 &&
         std::find_if(breakPoints.begin(), breakPoints.end(), [&](auto item) { return item.line + 1 == line; }) != breakPoints.end())
     {
@@ -613,13 +747,12 @@ void EditorCodeEditor::LineCallback(asIScriptContext* ctx)
 
         for (asUINT stackLevel = 0; stackLevel < ctx->GetCallstackSize(); stackLevel++)
         {
-            asIScriptFunction* func;
             const char* scriptSection;
-            int line, column;
-            func = ctx->GetFunction(stackLevel);
-            line = ctx->GetLineNumber(stackLevel, &column, &scriptSection);
 
-            QListWidgetItem* item = new QListWidgetItem(fmt::format("{}:{}:{},{}", scriptSection, func->GetDeclaration(), line, column).c_str());
+            asIScriptFunction*  func = ctx->GetFunction(stackLevel);
+            int                 line = ctx->GetLineNumber(stackLevel, nullptr, &scriptSection);
+
+            QListWidgetItem* item = new QListWidgetItem(fmt::format("{}:{}:{}", scriptSection, func->GetDeclaration(), line).c_str());
             callStackWidget->addItem(item);
 
             int numVars = ctx->GetVarCount(stackLevel);
@@ -628,12 +761,59 @@ void EditorCodeEditor::LineCallback(asIScriptContext* ctx)
                 int typeId          = ctx->GetVarTypeId(variableIdx, stackLevel);
                 auto variableDecl   = ctx->GetVarDeclaration(variableIdx, stackLevel);
 
-                QListWidgetItem* variable = new QListWidgetItem(fmt::format("{}", variableDecl).c_str());
-                variableListWidget->addItem(variable);
+
+                switch (typeId)
+                {
+                case asTYPEID_FLOAT:
+                {
+                    auto* var = (float*)ctx->GetAddressOfVar(variableIdx, stackLevel);
+                    QListWidgetItem* variable = new QListWidgetItem(fmt::format("{} : {}", variableDecl, *var).c_str());
+                    variableListWidget->addItem(variable);
+                }   break;
+                case asTYPEID_INT32:
+                {
+                    auto* var = (uint32_t*)ctx->GetAddressOfVar(variableIdx, stackLevel);
+                    QListWidgetItem* variable = new QListWidgetItem(fmt::format("{} : {}", variableDecl, *var).c_str());
+                    variableListWidget->addItem(variable);
+                }   break;
+                default:
+                {
+                    if (ctx->GetEngine()->GetTypeInfoByDecl("string"))
+                    {
+                        auto* var = (std::string*)ctx->GetAddressOfVar(variableIdx, stackLevel);
+                        QListWidgetItem* variable = new QListWidgetItem(fmt::format("{} : {}", variableDecl, *var).c_str());
+                        variableListWidget->addItem(variable);
+                    }
+                }   break;
+                }
+
+
             }
         }
     }
 }
 
 
-/************************************************************************************************/
+/**********************************************************************
+
+Copyright (c) 2021 - 2022 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

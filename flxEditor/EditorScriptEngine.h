@@ -1,19 +1,18 @@
 #pragma once
 
-#include <angelscript.h>
 #include "EditorGadgetInterface.h"
 #include <vector>
 
 
-class CDebugger;
-
 /************************************************************************************************/
 
 
-class EditorModule
-{
-public:
-};
+class asIScriptContext;
+class asIScriptEngine;
+class asIScriptFunction;
+class asIScriptObject;
+class AngelScriptGadget;
+struct asSMessageInfo;
 
 
 /************************************************************************************************/
@@ -22,46 +21,16 @@ public:
 class AngelScriptGadget : public iEditorGadget
 {
 public:
-    AngelScriptGadget(
-        asIScriptObject*    IN_object   = nullptr,
-        asIScriptContext*   IN_context  = nullptr) :
-            object      { IN_object },
-            context     { IN_context }
-    {
-        object->AddRef();
+    AngelScriptGadget(asIScriptObject*, asIScriptContext* IN_context = nullptr);
+    ~AngelScriptGadget();
 
-        asfnExecute = object->GetObjectType()->GetMethodByDecl("void Execute()");
-        asfnGetID   = object->GetObjectType()->GetMethodByDecl("string GadgetID()");
-
-    }
-
-    ~AngelScriptGadget()
-    {
-        object->Release();
-    }
+    void        Execute() override;
+    std::string GadgetID() override;
 
     asIScriptObject*    object       = nullptr;
     asIScriptFunction*  asfnExecute  = nullptr;
     asIScriptFunction*  asfnGetID    = nullptr;
     asIScriptContext*   context      = nullptr;
-
-
-    void Execute() override
-    {
-        context->Prepare(asfnExecute);
-        context->SetObject(object);
-        context->Execute();
-    }
-
-
-    std::string GadgetID() override
-    {
-        context->Prepare(asfnGetID);
-        context->SetObject(object);
-        context->Execute();
-
-        return *(std::string*)context->GetReturnObject();
-    }
 };
 
 
@@ -79,6 +48,8 @@ struct BreakPoint
     }
 };
 
+using ErrorCallbackFN = std::function<void(int, int, const char*, const char*, int)>;
+
 class EditorScriptEngine
 {
 public:
@@ -90,7 +61,7 @@ public:
     
     void LoadModules();
 
-    void RunStdString(const std::string& string);
+    void RunStdString(const std::string& string, asIScriptContext* ctx, ErrorCallbackFN errorCallback = [](int, int, const char*, const char*, int) {});
 
 
     asIScriptEngine*    GetScriptEngine()   { return scriptEngine; }
@@ -120,7 +91,7 @@ public:
 
 /**********************************************************************
 
-Copyright (c) 2019-2021 Robert May
+Copyright (c) 2019-2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
