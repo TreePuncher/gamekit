@@ -1,9 +1,9 @@
 #pragma once
 #include <vector>
-#include "type.h"
-#include "..\FlexKitResourceCompiler\SceneResource.h"
-#include "..\coreutilities\Components.h"
+#include "Components.h"
 #include "ModifiableShape.h"
+#include "SceneResource.h"
+#include "type.h"
 
 
 /************************************************************************************************/

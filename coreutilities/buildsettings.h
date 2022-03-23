@@ -205,10 +205,10 @@ constexpr size_t DefaultWorkerCount = 2; // should be safe for a quad core cpu
 const size_t INVALIDHANDLE          = size_t(-1);
 
 namespace FlexKit {
-    using byte = uint8_t;
-
-	typedef uint64_t AssetHandle;
-	typedef uint64_t GUID_t;
+    using byte          = uint8_t;
+    using ComponentID   = uint32_t;
+	using AssetHandle   = uint64_t;
+    using GUID_t        = uint64_t;
 }
 
 #define NOMINMAX

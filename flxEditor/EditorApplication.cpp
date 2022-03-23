@@ -2,7 +2,7 @@
 #include "EditorApplication.h"
 #include "TextureUtilities.h"
 #include "angelscript.h"
-#include "../FlexKitResourceCompiler/TextureResourceUtilities.h"
+#include "TextureResourceUtilities.h"
 #include <stb_image_write.h>
 #include <filesystem>
 #include <QKeySequence>

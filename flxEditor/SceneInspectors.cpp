@@ -1,7 +1,7 @@
 #include "PCH.h"
 #include "SceneInspectors.h"
 #include "EditorResourcePickerDialog.h"
-#include "..\FlexKitResourceCompiler\ResourceIDs.h"
+#include "ResourceIDs.h"
 #include "EditorViewport.h"
 
 

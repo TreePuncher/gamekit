@@ -1,5 +1,5 @@
 #include "EditorScriptObject.h"
-#include "..\FlexKitResourceCompiler\ResourceIDs.h"
+#include "ResourceIDs.h"
 
 
 /************************************************************************************************/

@@ -1,7 +1,7 @@
 #include "TextureResourceUtilities.h"
 #include <filesystem>
 #include <numeric>
-
+#include <fmt\format.h>
 
 #ifdef _DEBUG
 #pragma comment(lib, "CMP_Framework_MDd.lib")
@@ -231,7 +231,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    inline std::shared_ptr<iResource> CreateTextureResource(const std::filesystem::path& path, const std::string& formatString)
+    std::shared_ptr<iResource> CreateTextureResource(const std::filesystem::path& path, const std::string& formatString)
     {
         std::printf("building texture resource\n");
 

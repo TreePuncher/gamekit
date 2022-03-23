@@ -1,8 +1,7 @@
 #pragma once
 
-#include "Components.h"
-#include "..\FlexKitResourceCompiler\Common.h"
-#include "..\FlexKitResourceCompiler\SceneResource.h"
+#include "Common.h"
+#include "SceneResource.h"
 #include "Serialization.hpp"
 
 
@@ -40,7 +39,6 @@ public:
 
 class EditorScriptComponent :
     public FlexKit::Serializable<EditorScriptComponent, FlexKit::EntityComponent, EditorScriptComponentID>
-
 {
 public:
     EditorScriptComponent() :
@@ -53,7 +51,7 @@ public:
         EntityComponent::Serialize(ar);
     }
 
-    uint64_t resource;
+    uint64_t resource = -1;
 
     inline static RegisterConstructorHelper<EditorScriptComponent, EditorScriptComponentID> registered{};
 };

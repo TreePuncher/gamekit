@@ -663,8 +663,8 @@ void EditorCodeEditor::RunCode()
 
     errorListWidget->clear();
     QList<QTextEdit::ExtraSelection> extraSelections;
-    bool errorFound = false;
-    auto errorHandler =
+    bool errorFound     = false;
+    auto errorHandler   =
         [&](int row, int col, const char* msg, const char* segment, int errorType)
         {
             if (!textEditor->isReadOnly()) {

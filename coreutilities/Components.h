@@ -17,7 +17,7 @@
 namespace FlexKit
 {	/************************************************************************************************/
 
-	using ComponentID = uint32_t;
+
 	constexpr ComponentID InvalidComponentID = -1;
 
     class GameObject;

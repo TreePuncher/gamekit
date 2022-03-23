@@ -1,15 +1,16 @@
-#include "EditorAnimationEditor.h"
+#include "AnimationComponents.h"
+#include "AnimationObject.h"
 #include "DXRenderWindow.h"
+#include "EditorAnimationEditor.h"
+#include "EditorAnimatorComponent.h"
+#include "EditorCodeEditor.h"
 #include "EditorRenderer.h"
+#include "EditorResourcePickerDialog.h"
 #include "qboxlayout.h"
 #include "qevent.h"
-#include "EditorRenderer.h"
 #include "qmenubar.h"
-#include "EditorAnimatorComponent.h"
-#include "AnimationComponents.h"
-#include "EditorResourcePickerDialog.h"
-#include "..\FlexKitResourceCompiler\ResourceIDs.h"
-#include "EditorCodeEditor.h"
+#include "SelectionContext.h"
+#include "ResourceIDs.h"
 
 
 /************************************************************************************************/
@@ -19,11 +20,6 @@ class AnimatorSelectionContext
 {
 public:
 
-    struct AnimationObject
-    {
-        FlexKit::GameObject gameObject;
-    };
-
 
     void CreateObject()
     {
@@ -31,10 +27,14 @@ public:
         selectedObject = objects.size() - 1;
     }
 
-
     void CreateAnimator()
     {
+    }
 
+    AnimationObject* GetSelection()
+    {
+        if(objects.size() && selectedObject != -1)
+            return objects[selectedObject].get();
     }
 
     std::vector<std::unique_ptr<AnimationObject>>   objects;
@@ -96,13 +96,15 @@ private:
 /************************************************************************************************/
 
 
-EditorAnimationEditor::EditorAnimationEditor(EditorScriptEngine& IN_engine, EditorRenderer& IN_renderer, EditorProject& IN_project, QWidget* parent)
-    : QWidget       { parent }
-    , project       { IN_project }
-    , previewWindow { new EditorAnimationPreview{ IN_renderer, selection } }
-    , menubar       { new QMenuBar{} }
-    , selection     { new AnimatorSelectionContext{} }
-    , codeEditor    { new EditorCodeEditor{ IN_project, IN_engine, this } }
+EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, EditorScriptEngine& IN_engine, EditorRenderer& IN_renderer, EditorProject& IN_project, QWidget* parent)
+    : QWidget           { parent }
+    , project           { IN_project }
+    , previewWindow     { new EditorAnimationPreview{ IN_renderer, localSelection } }
+    , menubar           { new QMenuBar{} }
+    , localSelection    { new AnimatorSelectionContext{} }
+    , codeEditor        { new EditorCodeEditor{ IN_project, IN_engine, this } }
+    , globalSelection   { IN_selection }
+    , renderer          { IN_renderer }
 {
     ui.setupUi(this);
     ui.horizontalLayout->setMenuBar(menubar);
@@ -116,14 +118,17 @@ EditorAnimationEditor::EditorAnimationEditor(EditorScriptEngine& IN_engine, Edit
     ui.animationPreview->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(previewWindow);
 
-    auto fileMenu           = menubar->addMenu("Create");
-    auto createObject       = fileMenu->addAction("Object");
+    auto fileMenu     = menubar->addMenu("Create");
+    auto createObject = fileMenu->addAction("Object");
 
     connect(
         createObject, &QAction::triggered,
         [&]()
         {
-            selection->CreateObject();
+            localSelection->CreateObject();
+            auto obj                    = localSelection->GetSelection();
+            globalSelection.type        = AnimatorObject_ID;
+            globalSelection.selection   = std::any{ obj };
         });
 
     auto createAnimator = fileMenu->addAction("Animator");
@@ -133,30 +138,43 @@ EditorAnimationEditor::EditorAnimationEditor(EditorScriptEngine& IN_engine, Edit
         createAnimator, &QAction::triggered,
         [&]()
         {
-            selection->CreateAnimator();
+            localSelection->CreateAnimator();
         });
 
     auto createScript = fileMenu->addAction("AnimatorScript");
     createScript->setEnabled(false);
 
-    auto objectMenu         = menubar->addMenu("Object");
-    auto loadObject         = objectMenu->addAction("Load");
+    auto objectMenu = menubar->addMenu("Object");
+    auto loadObject = objectMenu->addAction("Load");
 
     connect(
         loadObject, &QAction::triggered,
         [&]()
         {
-            auto meshPicker = new EditorResourcePickerDialog(MeshResourceTypeID, IN_project, this);
-            meshPicker->OnSelection(
-                [&](auto resource)
-                {
-                    auto skeletonPicker = new EditorResourcePickerDialog(SkeletonResourceTypeID, IN_project, this);
+            if (auto selection = localSelection->GetSelection(); selection && !selection->gameObject.hasView(FlexKit::BrushComponentID))
+            {
+                auto meshPicker = new EditorResourcePickerDialog(MeshResourceTypeID, IN_project, this);
+                meshPicker->OnSelection(
+                    [&](ProjectResource_ptr resource)
+                    {
+                        auto meshResource   = std::static_pointer_cast<FlexKit::MeshResource>(resource->resource);
+                        auto mesh           = renderer.LoadMesh(*meshResource);
+                        auto selection      = localSelection->GetSelection();
 
-                    meshPicker->OnSelection(
-                        [&](auto resource)
-                        {
-                        });
-                });
+                        selection->gameObject.AddView<FlexKit::BrushView>(mesh);
+
+                        auto blob       = meshResource->Skeleton->CreateBlob();
+                        auto buffer     = blob.buffer;
+                        blob.buffer     = 0;
+                        blob.bufferSize = 0;
+
+                        FlexKit::AddAssetBuffer((FlexKit::Resource*)buffer);
+
+                        selection->gameObject.AddView<FlexKit::SkeletonView>(mesh, meshResource->Skeleton->GetID());
+                    });
+
+                meshPicker->show();
+            }
         });
 }
 
@@ -166,7 +184,7 @@ EditorAnimationEditor::EditorAnimationEditor(EditorScriptEngine& IN_engine, Edit
 
 EditorAnimationEditor::~EditorAnimationEditor()
 {
-    delete selection;
+    delete localSelection;
 }
 
 

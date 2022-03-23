@@ -1,16 +1,13 @@
 #pragma once
 
-#include "../FlexKitResourceCompiler/Common.h"
-#include "EditorProject.h"
-
+#include <type.h>
 #include <any>
 #include <optional>
-
-using FlexKit::ResourceList;
 
 using SelectionTypeID = std::uint32_t;
 
 constexpr SelectionTypeID ViewportObjectList_ID = GetCRCGUID(ViewportObjectList);
+constexpr SelectionTypeID AnimatorObject_ID     = GetCRCGUID(AnimatorObject);
 
 class SelectionContext
 {

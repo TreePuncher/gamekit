@@ -21,7 +21,7 @@ using namespace std::chrono_literals;
 EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngine& IN_scriptEngine, EditorProject& IN_project, QApplication& IN_application, QWidget* parent) :
     QMainWindow     { parent            },
     QtApplication   { IN_application    },
-    animationEditor { new EditorAnimationEditor{ IN_scriptEngine, IN_renderer, IN_project } },
+    animationEditor { new EditorAnimationEditor{ selectionContext, IN_scriptEngine, IN_renderer, IN_project } },
     project         { IN_project        },
     renderer        { IN_renderer       },
     scriptEngine    { IN_scriptEngine   },

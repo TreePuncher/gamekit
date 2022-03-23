@@ -6,7 +6,7 @@
 
 #include "ui_ResourceBrowserWidget.h"
 #include "EditorProject.h"
-#include "../FlexKitResourceCompiler/ResourceIDs.h"
+#include "ResourceIDs.h"
 
 #include <QtWidgets/QWidget>
 #include <QtCore/QTimer>

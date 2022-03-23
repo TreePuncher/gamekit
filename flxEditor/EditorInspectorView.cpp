@@ -1,15 +1,7 @@
 #include "PCH.h"
 #include "EditorInspectorView.h"
+#include "AnimationObject.h"
 #include "ViewportScene.h"
-#include <qtimer>
-#include <QtWidgets\qtextedit.h>
-#include <QtWidgets\qboxlayout.h>
-#include <QtWidgets\qlabel.h>
-#include <QtWidgets\qpushbutton.h>
-#include <QtWidgets\qmenubar.h>
-#include <QtWidgets\qgroupbox.h>
-#include <QtWidgets\qscrollarea.h>
-#include <QtWidgets\qlistwidget.h>
 
 
 /************************************************************************************************/
@@ -50,6 +42,7 @@ QLabel* ComponentViewPanelContext::AddText(std::string txt)
 
     return label;
 }
+
 
 /************************************************************************************************/
 
@@ -109,8 +102,6 @@ void ComponentViewPanelContext::AddButton(std::string label, ButtonCallback call
         &QPushButton::pressed,
         callback);
 
-    //button->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
-
     layoutStack.back()->addWidget(button);
 }
 
@@ -158,7 +149,6 @@ void ComponentViewPanelContext::PushHorizontalLayout(std::string groupName, bool
 
         group->setLayout(layout);
 
-        //propertyItems.push_back(group);
         layoutStack.back()->addWidget(group);
     }
     else
@@ -173,7 +163,6 @@ void ComponentViewPanelContext::PushHorizontalLayout(std::string groupName, bool
 
 void ComponentViewPanelContext::Pop()
 {
-    //layoutStack.back()->addStretch();
     layoutStack.pop_back();
 }
 
@@ -246,10 +235,15 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
         action->connect(action, &QAction::triggered,
             [&]()
             {
-                if (selectionContext.GetSelectionType() == ViewportObjectList_ID)
+                switch(selectionContext.GetSelectionType())
+                {
+                case ViewportObjectList_ID:
                 {
                     auto selection = selectionContext.GetSelection<ViewportSelection>();
                     factory->Construct(*selection.viewportObjects.front(), *selection.scene);
+                }   break;
+                default:
+                    break;
                 }
             });
     }
@@ -308,68 +302,119 @@ void EditorInspectorView::timerEvent(QTimerEvent*)
 /************************************************************************************************/
 
 
-void EditorInspectorView::OnUpdate()
+void EditorInspectorView::UpdatePropertiesViewportObjectInspector()
 {
-    if (selectionContext.GetSelectionType() == ViewportObjectList_ID)
+
+    auto selection                  = selectionContext.GetSelection<ViewportSelection>().viewportObjects.front();
+    uint64_t objectID               = selection->objectID;
+
+    auto& gameObject                = selection->gameObject;
+    auto gameObjectPropertyCount    = std::distance(gameObject.begin(), gameObject.end());
+
+    if( objectID        = selectedObject ||
+        propertyCount   != gameObjectPropertyCount)
     {
-        auto selection      = selectionContext.GetSelection<ViewportSelection>().viewportObjects.front();
-        uint64_t objectID   = selection->objectID;
-        auto& gameObject    = selection->gameObject;
-        auto gameObjectPropertyCount = std::distance(gameObject.begin(), gameObject.end());
+        menu->setEnabled(true);
 
-        if( objectID != selectedObject ||
-            propertyCount != gameObjectPropertyCount)
+        selectedObject  = objectID;
+        propertyCount   = gameObjectPropertyCount;
+
+        UpdateUI(gameObject);
+    }
+}
+
+
+/************************************************************************************************/
+
+
+void EditorInspectorView::UpdateAnimatorObjectInspector()
+{
+
+    auto selection      = selectionContext.GetSelection<AnimationObject*>();
+    uint64_t objectID   = selection->ID;
+    auto& gameObject    = selection->gameObject;
+
+    auto gameObjectPropertyCount = std::distance(gameObject.begin(), gameObject.end());
+
+    if (objectID        != selectedObject ||
+        propertyCount   != gameObjectPropertyCount)
+    {
+        menu->setEnabled(false);
+
+        selectedObject  = objectID;
+        propertyCount   = gameObjectPropertyCount;
+
+        UpdateUI(gameObject);
+    }
+}
+
+
+/************************************************************************************************/
+
+
+void EditorInspectorView::UpdateUI(FlexKit::GameObject& gameObject)
+{
+    auto children = contentWidget->children();
+    for (auto child : children)
+        if (child != contentLayout)
+            delete child;
+
+    auto children2 = contentWidget->children();
+
+    properties.clear();
+    propertyItems.clear();
+
+    const char* ID      = FlexKit::GetStringID(gameObject);
+    const size_t ID_len = strnlen_s(ID, 32);
+
+    QLabel* header = (ID_len) ?
+        new QLabel{ QString{"GameObject: %1"}.arg(ID) } :
+        new QLabel{ QString{"GameObject#%1"}.arg(selectedObject) };
+
+    header->setObjectName("PropertyItem");
+
+    contentLayout->addWidget(header);
+    propertyItems.push_back(header);
+
+
+    for (auto& componentView : gameObject)
+    {
+        auto layout = new QBoxLayout{ QBoxLayout::Down };
+
+        properties.push_back(layout);
+        layout->setObjectName("Properties");
+        contentLayout->addLayout(layout);
+
+        ComponentViewPanelContext context{ layout, propertyItems, properties };
+
+        if (auto res = componentInspectors.find(componentView.ID); res != componentInspectors.end())
         {
-            selectedObject  = objectID;
-            propertyCount   = gameObjectPropertyCount;
-
-            auto children = contentWidget->children();
-            for (auto child : children)
-                if (child != contentLayout)
-                    delete child;
-
-            auto children2 = contentWidget->children();
-
-            properties.clear();
-            propertyItems.clear();
-
-            const char* ID      = FlexKit::GetStringID(gameObject);
-            const size_t ID_len = strnlen_s(ID, 32);
-
-            QLabel* header = (ID_len) ?
-                new QLabel{ QString{"GameObject: %1"}.arg(ID) } :
-                new QLabel{ QString{"GameObject#%1"}.arg(selectedObject) };
-
-            header->setObjectName("PropertyItem");
-
-            contentLayout->addWidget(header);
-            propertyItems.push_back(header);
-
-
-            for (auto& componentView : gameObject)
-            {
-                auto layout = new QBoxLayout{ QBoxLayout::Down };
-
-                properties.push_back(layout);
-                layout->setObjectName("Properties");
-                contentLayout->addLayout(layout);
-
-                ComponentViewPanelContext context{ layout, propertyItems, properties };
-
-                if (auto res = componentInspectors.find(componentView.ID); res != componentInspectors.end())
-                {
-                    res->second->Inspect(context, gameObject, componentView.Get_ref());
-                }
-                else
-                {
-                    context.PushVerticalLayout(QString{ "Component ID#%1: " }.arg(componentView.ID).toStdString(), true);
-                    context.AddText("No Component Inspector Available");
-                    context.Pop();
-                }
-            }
+            res->second->Inspect(context, gameObject, componentView.Get_ref());
+        }
+        else
+        {
+            context.PushVerticalLayout(QString{ "Component ID#%1: " }.arg(componentView.ID).toStdString(), true);
+            context.AddText("No Component Inspector Available");
+            context.Pop();
         }
     }
-    else
+}
+
+
+/************************************************************************************************/
+
+
+void EditorInspectorView::OnUpdate()
+{
+    switch(selectionContext.GetSelectionType())
+    {
+    case ViewportObjectList_ID:
+        UpdatePropertiesViewportObjectInspector();
+        break;
+    case AnimatorObject_ID:
+        UpdateAnimatorObjectInspector();
+        break;
+    default:
     {
         auto res = findChild<QLabel*>("Nothing Selected");
 
@@ -397,11 +442,11 @@ void EditorInspectorView::OnUpdate()
 
 
             contentLayout->addWidget(label);
-            //contentLayout->addStretch();
 
             propertyItems.push_back(label);
         }
-    }
+    }   break;
+    };
 
     timer->start(100);
 }
