@@ -109,7 +109,7 @@ QTextEdit* EditorMainWindow::AddTextView()
 void EditorMainWindow::AddEditorView()
 {
     auto docklet = new QDockWidget{};
-    EditorCodeEditor* textEditor    = new EditorCodeEditor{ scriptEngine ,docklet };
+    EditorCodeEditor* textEditor = new EditorCodeEditor{ project, scriptEngine ,docklet };
 
     docklet->setWindowTitle("Code Editor");
     docklet->setWidget(textEditor);

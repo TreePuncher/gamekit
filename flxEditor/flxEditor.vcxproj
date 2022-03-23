@@ -179,6 +179,7 @@
     <ClCompile Include="EditorResourcePickerDialog.cpp" />
     <ClCompile Include="EditorResources.cpp" />
     <ClCompile Include="EditorScriptEngine.cpp" />
+    <ClCompile Include="EditorScriptObject.cpp" />
     <ClCompile Include="EditorTaskList.cpp" />
     <ClCompile Include="flxEditor-Win64.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
@@ -219,6 +220,7 @@
     <ClInclude Include="EditorApplication.h" />
     <QtMoc Include="EditorInspectorView.h" />
     <QtMoc Include="EditorResourcePickerDialog.h" />
+    <ClInclude Include="EditorScriptObject.h" />
     <ClInclude Include="ModifiableShape.h" />
     <ClInclude Include="PCH.h" />
     <ClInclude Include="SceneInspectors.h" />

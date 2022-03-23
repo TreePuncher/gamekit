@@ -3,6 +3,8 @@
 #include "EditorScriptEngine.h"
 #include "EditorGadgetInterface.h"
 
+#include <angelscript.h>
+
 #include <angelscript/scriptbuilder/scriptbuilder.h>
 #include <angelscript/scriptany/scriptany.h>
 #include <angelscript/scriptarray/scriptarray.h>
@@ -17,6 +19,55 @@
 #define WIN32_LEAN_AND_MEAN 
 #include <Windows.h>
 
+
+/************************************************************************************************/
+
+
+AngelScriptGadget::AngelScriptGadget(
+    asIScriptObject*    IN_object,
+    asIScriptContext*   IN_context) :
+        object  { IN_object },
+        context { IN_context }
+{
+    object->AddRef();
+
+    asfnExecute = object->GetObjectType()->GetMethodByDecl("void Execute()");
+    asfnGetID = object->GetObjectType()->GetMethodByDecl("string GadgetID()");
+
+}
+
+
+/************************************************************************************************/
+
+
+AngelScriptGadget::~AngelScriptGadget()
+{
+    object->Release();
+}
+
+
+/************************************************************************************************/
+
+
+void AngelScriptGadget::Execute()
+{
+    context->Prepare(asfnExecute);
+    context->SetObject(object);
+    context->Execute();
+}
+
+
+/************************************************************************************************/
+
+
+std::string AngelScriptGadget::GadgetID()
+{
+    context->Prepare(asfnGetID);
+    context->SetObject(object);
+    context->Execute();
+
+    return *(std::string*)context->GetReturnObject();
+}
 
 /************************************************************************************************/
 
@@ -171,13 +222,19 @@ void EditorScriptEngine::LoadModules()
 
 /************************************************************************************************/
 
+void RunSTDStringMessageHandler(const asSMessageInfo* msg, ErrorCallbackFN* callback)
+{
+    (*callback)(msg->col, msg->row, msg->message, msg->section, msg->type);
+}
 
-void EditorScriptEngine::RunStdString(const std::string& string)
+void EditorScriptEngine::RunStdString(const std::string& string, asIScriptContext* ctx, ErrorCallbackFN errorCallback)
 {
     try
     {
         CScriptBuilder builder{};
         builder.StartNewModule(scriptEngine, "temp");
+
+        scriptEngine->SetMessageCallback(asFUNCTION(RunSTDStringMessageHandler), &errorCallback, asCALL_CDECL);
 
         if (auto r = builder.AddSectionFromMemory("Memory", string.c_str(), string.size()); r < 0)
         {
@@ -189,13 +246,14 @@ void EditorScriptEngine::RunStdString(const std::string& string)
             // TODO: show error in output window
         }
 
+        auto r          = scriptEngine->SetMessageCallback(asFUNCTION(EditorScriptEngine::MessageCallback), this, asCALL_CDECL); assert(r >= 0);
         auto asModule   = builder.GetModule();
         auto func       = asModule->GetFunctionByDecl("void main()");
 
         if (func)
         {
-            scriptContext->Prepare(func);
-            scriptContext->Execute();
+            ctx->Prepare(func);
+            ctx->Execute();
         }
 
         asModule->Discard();
@@ -207,13 +265,9 @@ void EditorScriptEngine::RunStdString(const std::string& string)
 }
 
 
-/************************************************************************************************/
-
-
-
 /**********************************************************************
 
-Copyright (c) 2021 Robert May
+Copyright (c) 2021 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
