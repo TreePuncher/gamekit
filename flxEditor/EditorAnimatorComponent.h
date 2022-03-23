@@ -1,6 +1,6 @@
 #pragma once
 #include "Components.h"
-#include "..\FlexKitResourceCompiler\SceneResource.h"
+#include "SceneResource.h"
 #include "Serialization.hpp"
 
 constexpr FlexKit::ComponentID EditorAnimatorComponentID = GetTypeGUID(EditorAnimatorComponentID);

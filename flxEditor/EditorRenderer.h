@@ -11,7 +11,7 @@
 #include "CSGComponent.h"
 #include "CSGRendering.h"
 
-#include "../FlexKitResourceCompiler/MeshProcessing.h"
+#include "MeshProcessing.h"
 
 class QWidget;
 

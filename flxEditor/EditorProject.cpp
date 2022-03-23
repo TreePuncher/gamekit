@@ -1,7 +1,7 @@
 #include "PCH.h"
 #include "EditorProject.h"
-#include "../FlexKitResourceCompiler/MeshProcessing.h"
-#include <../FlexKitResourceCompiler/TextureResourceUtilities.h>
+#include "MeshProcessing.h"
+#include "TextureResourceUtilities.h"
 #include <fstream>
 
 #include "Serialization.hpp"

@@ -12,8 +12,8 @@
 
 #include "SceneInspectors.h"
 
-#include "..\FlexKitResourceCompiler\SceneResource.h"
-#include "..\FlexKitResourceCompiler\TextureResourceUtilities.h"
+#include "SceneResource.h"
+#include "TextureResourceUtilities.h"
 #include <QtWidgets/qstylefactory.h>
 
 

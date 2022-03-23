@@ -30,6 +30,12 @@ using ListContentUpdateCallback = std::function<void (size_t, QListWidgetItem*)>
 using ListEventCallback         = std::function<void (QListWidget*)>;
 
 
+namespace FlexKit
+{
+    class GameObject;
+    class ComponentViewBase;
+}
+
 /************************************************************************************************/
 
 
@@ -108,8 +114,13 @@ public:
 
 private:
 
-    void    timerEvent(QTimerEvent*) override;
-    void    OnUpdate();
+    void UpdatePropertiesViewportObjectInspector();
+    void UpdateAnimatorObjectInspector();
+    void UpdateUI(FlexKit::GameObject&);
+
+
+    void timerEvent(QTimerEvent*) override;
+    void OnUpdate();
 
     inline static std::map<FlexKit::ComponentID, std::unique_ptr<IComponentInspector>>  componentInspectors = {};
     inline static std::vector<std::unique_ptr<IComponentFactory>>                       availableComponents = {};
@@ -129,3 +140,6 @@ private:
     std::vector<QBoxLayout*>    properties;
     std::vector<QWidget*>       propertyItems;
 };
+
+
+/************************************************************************************************/

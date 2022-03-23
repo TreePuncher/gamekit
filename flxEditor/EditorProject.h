@@ -6,7 +6,7 @@
 #include <any>
 
 #include "Scene.h"
-#include "..\FlexKitResourceCompiler\SceneResource.h"
+#include "SceneResource.h"
 #include "Serialization.hpp"
 
 

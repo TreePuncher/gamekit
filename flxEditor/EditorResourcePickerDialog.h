@@ -1,11 +1,11 @@
 #pragma once
 
-#include <QWidget>
 #include "ui_EditorResourcePickerDialog.h"
-#include "..\FlexKitResourceCompiler\ResourceIDs.h"
-#include "..\FlexKitResourceCompiler\Common.h"
+#include "Common.h"
 #include "EditorProject.h"
+#include "ResourceIDs.h"
 
+#include <QWidget>
 #include <functional>
 #include <qdialog.h>
 #include <vector>

@@ -14,10 +14,9 @@ class EditorProject;
 class EditorCodeEditor;
 class QMenuBar;
 class EditorScriptEngine;
-
+class SelectionContext;
 
 /************************************************************************************************/
-
 
 
 class EditorAnimationEditor : public QWidget
@@ -25,15 +24,17 @@ class EditorAnimationEditor : public QWidget
 	Q_OBJECT
 
 public:
-	EditorAnimationEditor(EditorScriptEngine& engine, EditorRenderer& IN_renderer, EditorProject& IN_project, QWidget *parent = Q_NULLPTR);
+	EditorAnimationEditor(SelectionContext& IN_selection, EditorScriptEngine& engine, EditorRenderer& IN_renderer, EditorProject& IN_project, QWidget *parent = Q_NULLPTR);
 	~EditorAnimationEditor();
 
 private:
+    SelectionContext&                       globalSelection;
     QMenuBar*                               menubar;
-    AnimatorSelectionContext*               selection;
+    AnimatorSelectionContext*               localSelection;
     EditorAnimationPreview*                 previewWindow;
     EditorProject&                          project;
     EditorCodeEditor*                       codeEditor;
+    EditorRenderer&                         renderer;
 	Ui::EditorAnimationEditor               ui;
 };
 

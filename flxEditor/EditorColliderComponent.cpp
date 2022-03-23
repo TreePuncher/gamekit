@@ -6,7 +6,7 @@
 #include "CSGComponent.h"
 #include "physicsutilities.h"
 #include "Serialization.hpp"
-#include "..\FlexKitResourceCompiler\ResourceIDs.h"
+#include "ResourceIDs.h"
 #include "EditorResourcePickerDialog.h"
 
 

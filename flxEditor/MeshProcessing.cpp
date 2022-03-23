@@ -2,7 +2,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2020 Robert May
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -24,7 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "stdafx.h"
+#include "PCH.h"
 #include "buildsettings.h"
 
 #include "MeshProcessing.h"
@@ -46,6 +46,24 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {   /************************************************************************************************/
+
+
+    using FlexKit::MeshUtilityFunctions::IndexList;
+    using FlexKit::MeshUtilityFunctions::CombinedVertexBuffer;
+
+    inline uint32_t		FetchIndex2			(uint32_t itr, const IndexList* IL)				    { return IL->at(itr);								}
+    inline float3		FetchVertexPOS		(uint32_t itr, const CombinedVertexBuffer* Buff)    { return Buff->at(itr).POS;							}
+    inline float3		FetchWeights		(uint32_t itr, const CombinedVertexBuffer* Buff)    { return Buff->at(itr).WEIGHTS;						}
+    inline float3		FetchVertexNormal	(uint32_t itr, const CombinedVertexBuffer* Buff)    { return Buff->at(itr).NORMAL;						}
+    inline float3		FetchVertexTangent  (uint32_t itr, const CombinedVertexBuffer* Buff)    { return Buff->at(itr).TANGENT;						}
+    inline float3		FetchFloat3ZERO		(uint32_t itr, const CombinedVertexBuffer* Buff)    { return{ 0.0f, 0.0f, 0.0f };						}
+    inline float2		FetchVertexUV		(uint32_t itr, const CombinedVertexBuffer* Buff)    { auto temp = Buff->at(itr).TEXCOORD.xy(); return {temp.x, temp.y};	    }
+    inline uint4_16		FetchWeightIndices	(size_t itr, const CombinedVertexBuffer* Buff)	    { return Buff->at(itr).WIndices;					}
+    inline uint32_t		WriteIndex			(uint32_t in)								        { return in;										}
+    inline float3		WriteVertex			(float3 in)									        { return float3(in);								}
+    inline float2		WriteUV				(float2 in)									        { return in;										}
+    inline uint4_16		Writeuint4			(uint4_16 in);
+
 
 
     uint4_16 Writeuint4(uint4_16 in)

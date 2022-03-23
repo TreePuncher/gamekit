@@ -101,21 +101,10 @@ FlexKit::TriMeshHandle EditorRenderer::LoadMesh(FlexKit::MeshResource& mesh)
 
     TriMesh newMesh;
 
-    for (auto& lod : mesh.LODs)
-    {
-        FlexKit::TriMesh::LOD_Runtime lodData;
+    auto meshBlob = mesh.CreateBlob();
+    FlexKit::TriMeshHandle handle = FlexKit::LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), meshBlob.buffer, meshBlob.bufferSize);
 
-        lodData.subMeshes   = lod.submeshes;
-
-        for(size_t I = 0; I < lod.buffers.size(); I++)
-            lodData.buffers[I] = lod.buffers[I].get();
-
-        FlexKit::CreateVertexBuffer(renderSystem, copyContext, lodData.buffers.data(), lodData.buffers.size(), lodData.vertexBuffer);
-
-        newMesh.lods.push_back(lodData);
-    }
-
-    return FlexKit::InvalidHandle_t;
+    return handle;
 }
 
 
@@ -179,7 +168,7 @@ void EditorRenderer::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 
 /**********************************************************************
 
-Copyright (c) 2019-2021 Robert May
+Copyright (c) 2019-2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

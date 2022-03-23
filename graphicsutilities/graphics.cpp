@@ -13,8 +13,6 @@
 #include <algorithm>
 #include <d3d12.h>
 #include <d3dcompiler.h>
-#include <d3d11sdklayers.h>
-#include <d3d11shader.h>
 #include <filesystem>
 #include <fstream>
 #include <memory>

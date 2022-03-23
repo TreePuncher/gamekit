@@ -13,7 +13,7 @@
 #include "memoryutilities.h"
 #include "EditorProject.h"
 
-#include "../FlexKitResourceCompiler/TextureResourceUtilities.h"
+#include "TextureResourceUtilities.h"
 
 
 /************************************************************************************************/

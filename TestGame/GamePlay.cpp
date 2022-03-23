@@ -111,7 +111,7 @@ GameObject& GameWorld::AddRemotePlayer(MultiplayerPlayerID_t playerID, Connectio
 
     auto& characterController = gameObject.AddView<CharacterControllerView>(layer, float3{0, 0, 0}, GetZeroedNode(), 1.0f, 1.0f);
     gameObject.AddView<SceneNodeView<>>(characterController.GetNode());
-    gameObject.AddView<BrushView>(triMesh, characterController.GetNode());
+    gameObject.AddView<BrushView>(triMesh);
 
     scene.AddGameObject(gameObject, GetSceneNode(gameObject));
 
@@ -135,7 +135,7 @@ void GameWorld::AddCube(float3 POS)
 
     auto& rigidBody = gameObject.AddView<RigidBodyView>(layer, POS);
     auto& sceneNode = gameObject.AddView<SceneNodeView<>>(GetRigidBodyNode(gameObject));
-    auto& brushView = gameObject.AddView<BrushView>(triMesh, GetSceneNode(gameObject));
+    auto& brushView = gameObject.AddView<BrushView>(triMesh);
 
     rigidBody.AddShape(cubeShape);
 
@@ -371,7 +371,7 @@ GameObject* FindPlayer(MultiplayerPlayerID_t ID)
 
 /**********************************************************************
 
-Copyright (c) 2021 Robert May
+Copyright (c) 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

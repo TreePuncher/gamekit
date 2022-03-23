@@ -1,10 +1,10 @@
 #pragma once
 
 #include <vector>
-#include "type.h"
-#include "..\FlexKitResourceCompiler\SceneResource.h"
-#include "..\coreutilities\Components.h"
+#include "Components.h"
 #include "physicsutilities.h"
+#include "SceneResource.h"
+#include "type.h"
 
 
 struct Collider

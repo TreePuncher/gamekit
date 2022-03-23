@@ -4,7 +4,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2021 Robert May
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MetaData.h"
 #include "Geometry.h"
 #include "Animation.h"
+#include "MeshUtils.h"
 #include "ResourceIDs.h"
 #include "ResourceUtilities.h"
 
@@ -38,6 +39,20 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <optional>
 
 #include "../flxEditor/Serialization.h"
+
+
+
+
+using FlexKit::float2;
+using FlexKit::float3;
+using FlexKit::float4;
+using FlexKit::float4x4;
+using FlexKit::uint4_16;
+using FlexKit::uint4_32;
+using FlexKit::iAllocator;
+
+using FlexKit::MeshUtilityFunctions::IndexList;
+using FlexKit::MeshUtilityFunctions::CombinedVertexBuffer;
 
 
 namespace FlexKit
