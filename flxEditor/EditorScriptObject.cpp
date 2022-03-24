@@ -1,3 +1,4 @@
+#include "PCH.h"
 #include "EditorScriptObject.h"
 #include "ResourceIDs.h"
 

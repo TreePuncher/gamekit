@@ -166,7 +166,8 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    TriMeshHandle GetTriMesh(GameObject& go);
+    TriMeshHandle   GetTriMesh(GameObject& go) noexcept;
+    Brush*          GetBrush(GameObject& go) noexcept;
 
     void ToggleSkinned(GameObject& go, bool enabled);
 

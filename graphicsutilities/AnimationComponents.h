@@ -224,7 +224,7 @@ namespace FlexKit
     UpdatePoseTask&     UpdatePoses     (UpdateDispatcher& dispatcher, GatherSkinnedTask& skinnedObjects);
 
 
-    void UpdatePose(PoseState& pose);
+    void UpdatePose(PoseState& pose, iAllocator& tempMemory);
 
 
     /************************************************************************************************/
