@@ -1,3 +1,4 @@
+#include "PCH.h"
 #include "SceneResource.h"
 #include "ComponentBlobs.h"
 #include "MeshUtils.h"

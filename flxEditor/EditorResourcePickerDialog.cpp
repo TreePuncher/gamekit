@@ -1,3 +1,4 @@
+#include "PCH.h"
 #include "EditorResourcePickerDialog.h"
 #include "qpushbutton.h"
 

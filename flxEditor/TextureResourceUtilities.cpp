@@ -1,3 +1,4 @@
+#include "PCH.h"
 #include "TextureResourceUtilities.h"
 #include <filesystem>
 #include <numeric>

@@ -422,9 +422,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    TriMeshHandle GetTriMesh(GameObject& go)
+    TriMeshHandle GetTriMesh(GameObject& gameObject) noexcept
 	{
-		return Apply(go,
+		return Apply(gameObject,
 			[&](BrushView& brush)
 			{
 				return brush.GetTriMesh();
@@ -434,6 +434,20 @@ namespace FlexKit
 				return TriMeshHandle{ InvalidHandle_t };
 			});
 	}
+
+
+    Brush* GetBrush(GameObject& gameObject) noexcept
+    {
+        return Apply(gameObject,
+            [&](BrushView& brush) -> Brush*
+            {
+                return &brush.GetBrush();
+            },
+            []() -> Brush*
+            {
+                return nullptr;
+            });
+    }
 
 
     /************************************************************************************************/

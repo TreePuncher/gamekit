@@ -1,3 +1,4 @@
+#include "PCH.h"
 #include <angelscript/scriptbuilder/scriptbuilder.cpp>
 #include <angelscript/scriptany/scriptany.cpp>
 #include <angelscript/scriptarray/scriptarray.cpp>

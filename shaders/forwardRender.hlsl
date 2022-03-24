@@ -134,11 +134,12 @@ Forward_VS_OUT ForwardSkinned_VS(VertexSkinned In)
         T += mul(MTs[I], float4(In.Tangent, 0)) * W[I];
     }
 
-    const float3 WPOS = mul(WT, float4(V.xyz, 1));
+    const float3 POS_WS = mul(WT, float4(V.xyz, 1));
+    const float3 POS_VS = mul(View, float4(POS_WS, 1));
 
     Forward_VS_OUT Out;
-    Out.depth       = -mul(View, float4(WPOS, 1)).z / MaxZ;
-    Out.POS		    = mul(PV, mul(WT, float4(V.xyz, 1)));
+    Out.depth       = -POS_VS.z / MaxZ;
+    Out.POS		    = mul(PV, float4(POS_WS, 1));
     Out.Normal      = normalize(mul(WT, float4(N.xyz, 0.0f)));
     Out.Tangent     = normalize(mul(WT, float4(T.xyz, 0.0f)));
     Out.Bitangent   = cross(Out.Tangent, Out.Normal);
