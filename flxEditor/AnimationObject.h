@@ -8,6 +8,7 @@ struct AnimationObject
 {
     FlexKit::GameObject         gameObject;
     uint64_t                    ID = rand();
+    uint64_t                    resourceID;
     ScriptedAnimationObject*    script;
 };
 

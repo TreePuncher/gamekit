@@ -44,6 +44,35 @@ void ScriptResource::SetResourceID(std::string& id) { ID = id; }
 /************************************************************************************************/
 
 
+FlexKit::ResourceBlob   ScriptedGameObjectResource::CreateBlob()        const
+{
+    return {};
+}
+
+const std::string&      ScriptedGameObjectResource::GetResourceID()     const noexcept
+{
+    return ID;
+}
+
+const uint64_t          ScriptedGameObjectResource::GetResourceGUID()   const noexcept
+{
+    return resourceId;
+}
+
+const ResourceID_t      ScriptedGameObjectResource::GetResourceTypeID() const noexcept
+{
+    return ScriptedObjectTypeID;
+}
+
+void                    ScriptedGameObjectResource::SetResourceID(std::string& newID)
+{
+    ID = newID;
+}
+
+
+/************************************************************************************************/
+
+
 /**********************************************************************
 
 Copyright (c) 2021 - 2022 Robert May

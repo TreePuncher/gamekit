@@ -40,24 +40,40 @@ using ScriptResource_ptr = std::shared_ptr<ScriptResource>;
 /************************************************************************************************/
 
 
-class EditorScriptComponent :
-    public FlexKit::Serializable<EditorScriptComponent, FlexKit::EntityComponent, EditorScriptComponentID>
+class ScriptedGameObjectResource :
+    public FlexKit::Serializable<ScriptedGameObjectResource, FlexKit::iResource, GetTypeGUID(ScriptedGameObjectResource)>
 {
 public:
-    EditorScriptComponent() :
-        Serializable{ EditorScriptComponentID } {}
+    FlexKit::ResourceBlob   CreateBlob()        const           override;
+    const std::string&      GetResourceID()     const noexcept  override;
+    const uint64_t          GetResourceGUID()   const noexcept  override;
+    const ResourceID_t      GetResourceTypeID() const noexcept  override;
 
-    FlexKit::Blob GetBlob() override { return {}; }
+    void                    SetResourceID(std::string& id) override;
 
     void Serialize(auto& ar)
     {
-        EntityComponent::Serialize(ar);
+        ar& resourceId;
+        ar& ID;
+
+        ar& scriptId;
+        ar& skeletonId;
+        ar& triMeshId;
     }
 
-    uint64_t resource = -1;
+    uint64_t    resourceId  = rand();
+    std::string ID          = "ScriptedObject";
 
-    inline static RegisterConstructorHelper<EditorScriptComponent, EditorScriptComponentID> registered{};
+    uint64_t    scriptId;
+    uint64_t    skeletonId;
+    uint64_t    triMeshId;
 };
+
+
+using ScriptGameObjectResource_ptr = std::shared_ptr<ScriptedGameObjectResource>;
+
+
+/************************************************************************************************/
 
 
 /**********************************************************************
