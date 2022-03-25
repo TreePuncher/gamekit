@@ -47,6 +47,8 @@ ID3D12PipelineState* CreateFlatSkinnedPassPSO(RenderSystem* RS)
 
 
 	D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    Rast_Desc.FillMode = D3D12_FILL_MODE_WIREFRAME;
+
 	D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
 	Depth_Desc.DepthEnable	= false;
@@ -184,7 +186,7 @@ public:
                 AnimationObject* mainObj = selection->GetSelection();
 
                 if(mainObj->script)
-                    mainObj->script->Update(mainObj);
+                    mainObj->script->Update(mainObj, dT);
             });
 
         cameras.AddInput(transforms);

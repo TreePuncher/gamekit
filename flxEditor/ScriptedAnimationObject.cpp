@@ -9,7 +9,7 @@
 /************************************************************************************************/
 
 
-void ScriptedAnimationObject::Update(AnimationObject* animatedObj)
+void ScriptedAnimationObject::Update(AnimationObject* animatedObj, double dT)
 {
     auto api_obj = static_cast<asIScriptObject*>(obj);
 
@@ -21,6 +21,7 @@ void ScriptedAnimationObject::Update(AnimationObject* animatedObj)
     ctx->Prepare(method);
     ctx->SetObject(obj);
     ctx->SetArgAddress(0, animatedObj);
+    ctx->SetArgDouble(1, dT);
     ctx->Execute();
 }
 
@@ -76,17 +77,9 @@ bool ScriptedAnimationObject::RegisterInterface(EditorScriptEngine& engine)
     res = api->RegisterObjectMethod("AnimationPose", "void SetBoneScale(int, float3)",              asFUNCTION(SetBoneScale),       asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
     res = api->RegisterObjectMethod("AnimationPose", "void SetBoneOrientation(int, Quaternion)",    asFUNCTION(SetBoneOrientation), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
     */
-    /*
-    res = api->RegisterObjectMethod("GameObject", "bool HasTransformComponent()",       asFUNCTION(GetBone), asCALL_CDECL_OBJFIRST);                                   FK_ASSERT(res > 0);
-    res = api->RegisterObjectMethod("GameObject", "float3 GetPositionW()",              asFUNCTION(GetBone), asCALL_CDECL_OBJFIRST);                                   FK_ASSERT(res > 0);
-    res = api->RegisterObjectMethod("GameObject", "float3 GetPositionL()",              asFUNCTION(GetBone), asCALL_CDECL_OBJFIRST);                                   FK_ASSERT(res > 0);
-    res = api->RegisterObjectMethod("GameObject", "float3 GetOrientation()",            asFUNCTION(GetBone), asCALL_CDECL_OBJFIRST);                                   FK_ASSERT(res > 0);
-    res = api->RegisterObjectMethod("GameObject", "float3 GetOrientationL()",           asFUNCTION(GetBone), asCALL_CDECL_OBJFIRST);                                   FK_ASSERT(res > 0);
-    res = api->RegisterObjectMethod("GameObject", "int    GetParentNode()",             asFUNCTION(GetBone), asCALL_CDECL_OBJFIRST);                                   FK_ASSERT(res > 0);
 
     res = api->RegisterInterface("AnimatorInterface");                                                                                           FK_ASSERT(res > 0);
-    res = api->RegisterInterfaceMethod("AnimatorInterface", "void Update(GameObject@ object)");                                                  FK_ASSERT(res > 0);
-    */
+    res = api->RegisterInterfaceMethod("AnimatorInterface", "void Update(GameObject@ object, double dt)");                                       FK_ASSERT(res > 0);
 
     return true;
 }

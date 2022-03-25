@@ -139,8 +139,8 @@ namespace FlexKit
         {
             Constant,
             Linear,
-            Bezier,
-            Hermite
+            Bezier, // FUTURE
+            Hermite // FUTURE
         } Type;
     };
 
