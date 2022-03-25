@@ -1570,7 +1570,8 @@ namespace FlexKit
 
 		inline Quaternion& operator = (const Quaternion& rhs )
 		{
-			floats = rhs.floats;
+            memcpy(&floats, &rhs, sizeof(floats));
+			//floats = rhs.floats;
 			return (*this);
 		}
 

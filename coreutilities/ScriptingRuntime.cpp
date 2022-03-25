@@ -2,6 +2,8 @@
 #include "AnimationComponents.h"
 #include "MathUtils.h"
 #include "ScriptingRuntime.h"
+#include "RuntimeComponentIDs.h"
+
 #include <angelscript.h>
 
 namespace FlexKit
@@ -42,19 +44,101 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    int GetBone(GameObject* obj, const std::string* ref)
+    bool QueryForComponent(GameObject* obj, ComponentID id)
     {
-        return GetJoint(*obj, ref->c_str());
+        return obj->hasView(id);
     }
 
-    int GetPoseCount(GameObject* obj)
+
+    /************************************************************************************************/
+
+
+    FlexKit::PoseState* GetPoseState_AS(GameObject* obj)
+    {
+        return Apply(*obj,
+            [](SkeletonView& view) -> FlexKit::PoseState*
+            {
+                return &view.GetPoseState();
+            },
+            []() -> FlexKit::PoseState*
+            {
+                return nullptr;
+            }
+        );
+    }
+
+    AnimatorView* GetAnimator_AS(GameObject * obj)
+    {
+        return Apply(*obj,
+            [](AnimatorView& view) -> AnimatorView*
+            {
+                return &view;
+            },
+            []() -> AnimatorView*
+            {
+                return nullptr;
+            }
+            );
+    }
+
+
+    /************************************************************************************************/
+
+
+    int GetBone(FlexKit::PoseState* obj, const std::string* ref)
+    {
+        return obj->Sk->FindJoint(ref->c_str());
+    }
+
+    int PoseStatePoseCount(FlexKit::PoseState* poseState)
     {
         return 0;
     }
 
-    void* GetPose(GameObject* obj)
+    PoseState::Pose* PoseStateGetPose(FlexKit::PoseState* poseState, int idx)
     {
-        return nullptr;
+        return &poseState->poses[idx];
+    }
+
+
+    /************************************************************************************************/
+
+
+    JointPose* PoseGetJointPose(FlexKit::PoseState::Pose* pose, int idx)
+    {
+        return pose->jointPose + idx;
+    }
+
+
+    /************************************************************************************************/
+
+
+    Quaternion JointPoseGetOrientation(JointPose* jp)
+    {
+        return jp->r;
+    }
+
+    void JointPoseSetOrientation(JointPose* jp, const Quaternion& Q)
+    {
+        jp->r = Q;
+    }
+
+
+    /************************************************************************************************/
+
+
+    Animation* LoadAnimation_AS(GUID_t handle, iAllocator* allocator)
+    {
+        return LoadAnimation(handle, *allocator);
+    }
+
+
+    /************************************************************************************************/
+
+
+    PlayID_t AnimatorPlay_AS(AnimatorView* animator, Animation* animation, bool loop)
+    {
+        return animator->Play(*animation, loop);
     }
 
 
@@ -64,20 +148,77 @@ namespace FlexKit
     void RegisterGameObjectCore(asIScriptEngine* scriptEngine)
     {
         int res = 0;
-        res = scriptEngine->RegisterObjectType("GameObject", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                         FK_ASSERT(res >= 0);
-        res = scriptEngine->RegisterObjectMethod("GameObject", "int             GetBone(string)",               asFUNCTION(GetBone),        asCALL_CDECL_OBJFIRST); FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterTypedef("ComponentID_t", "uint32");
+        res = scriptEngine->RegisterTypedef("BoneHandle", "uint32");
+        res = scriptEngine->RegisterTypedef("AssetHandle", "uint64");
+        res = scriptEngine->RegisterTypedef("PlayID", "uint32");
 
-        /*
-        res = scriptEngine->RegisterObjectMethod("GameObject", "bool            HasAnimationComponent(string)", asFUNCTION(GetBone),        asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-        res = scriptEngine->RegisterObjectMethod("GameObject", "int             GetPoseCount()",                asFUNCTION(GetPoseCount),   asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-        res = scriptEngine->RegisterObjectMethod("GameObject", "AnimationPose@  GetPose(int)",                  asFUNCTION(GetPose),        asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-        res = scriptEngine->RegisterObjectMethod("GameObject", "bool            HasTransformComponent()",       asFUNCTION(GetBone),        asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-        res = scriptEngine->RegisterObjectMethod("GameObject", "float3          GetPositionW()",                asFUNCTION(GetBone),        asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-        res = scriptEngine->RegisterObjectMethod("GameObject", "float3          GetPositionL()",                asFUNCTION(GetBone),        asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-        res = scriptEngine->RegisterObjectMethod("GameObject", "float3          GetOrientation()",              asFUNCTION(GetBone),        asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-        res = scriptEngine->RegisterObjectMethod("GameObject", "float3          GetOrientationL()",             asFUNCTION(GetBone),        asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-        res = scriptEngine->RegisterObjectMethod("GameObject", "int             GetParentNode()",               asFUNCTION(GetBone),        asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-        */
+
+        /************************************************************************************************/
+
+
+        res = scriptEngine->RegisterEnum("ComponentID");
+
+        res = scriptEngine->RegisterEnumValue("ComponentID", "AnimatorComponentID",           AnimatorComponentID);           FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("ComponentID", "BindPointComponentID",          BindPointComponentID);          FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("ComponentID", "BrushComponentID",              BrushComponentID);              FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("ComponentID", "CameraComponentID",             CameraComponentID);             FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("ComponentID", "FABRIKComponentID",             FABRIKComponentID);             FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("ComponentID", "FABRIKTargetComponentID",       FABRIKTargetComponentID);       FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("ComponentID", "MaterialComponentID",           MaterialComponentID);           FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("ComponentID", "PointLightShadowMapID",         PointLightShadowMapID);         FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("ComponentID", "PointLightComponentID",         PointLightComponentID);         FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("ComponentID", "SceneVisibilityComponentID",    SceneVisibilityComponentID);    FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("ComponentID", "SkeletonComponentID",           SkeletonComponentID);           FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("ComponentID", "StringComponentID",             StringComponentID);             FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("ComponentID", "TransformComponentID",          TransformComponentID);          FK_ASSERT(res >= 0);
+
+
+        /************************************************************************************************/
+
+
+        res = scriptEngine->RegisterObjectType("AllocatorHandle", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                        FK_ASSERT(res >= 0);
+
+        res = scriptEngine->RegisterObjectType("JointPose", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                              FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterObjectMethod("JointPose", "void SetOrientation(Quaternion& in)",    asFUNCTION(JointPoseSetOrientation), asCALL_CDECL_OBJFIRST);    FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("JointPose", "Quaternion GetOrientation()",            asFUNCTION(JointPoseGetOrientation), asCALL_CDECL_OBJFIRST);    FK_ASSERT(res > 0);
+
+        /************************************************************************************************/
+
+
+        res = scriptEngine->RegisterObjectType("Pose", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                                   FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterObjectMethod("Pose", "JointPose@ GetJointPose(int)", asFUNCTION(PoseGetJointPose),    asCALL_CDECL_OBJFIRST);                       FK_ASSERT(res > 0);
+
+
+        /************************************************************************************************/
+
+
+        res = scriptEngine->RegisterObjectType("PoseState", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                              FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterObjectMethod("PoseState", "int GetPoseCount()",             asFUNCTION(PoseStatePoseCount),     asCALL_CDECL_OBJFIRST);             FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("PoseState", "Pose@ GetPose(int)",             asFUNCTION(PoseStateGetPose),       asCALL_CDECL_OBJFIRST);             FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("PoseState", "BoneHandle FindBone(string)",    asFUNCTION(GetBone),                asCALL_CDECL_OBJFIRST);             FK_ASSERT(res > 0);
+
+
+        /************************************************************************************************/
+
+
+        res = scriptEngine->RegisterObjectType("Animation", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                              FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterGlobalFunction("Animation@ LoadAnimation(AssetHandle, AllocatorHandle@)",   asFUNCTION(LoadAnimation_AS), asCALL_CDECL);   FK_ASSERT(res > 0);
+
+        /************************************************************************************************/
+
+
+        res = scriptEngine->RegisterObjectType("Animator", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                               FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterObjectMethod("Animator", "PlayID Play(Animation@)",    asFUNCTION(PoseStatePoseCount), asCALL_CDECL_OBJFIRST);         FK_ASSERT(res > 0);
+
+
+        /************************************************************************************************/
+
+
+        res = scriptEngine->RegisterObjectType("GameObject", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                             FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterObjectMethod("GameObject", "bool            Query(ComponentID_t)",  asFUNCTION(QueryForComponent), asCALL_CDECL_OBJFIRST);          FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("GameObject", "PoseState@      GetPoseState()",        asFUNCTION(GetPoseState_AS),   asCALL_CDECL_OBJFIRST);          FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("GameObject", "Animator@       GetAnimator()",         asFUNCTION(GetAnimator_AS),   asCALL_CDECL_OBJFIRST);          FK_ASSERT(res > 0);
 
         int x = 0;
     }
@@ -102,6 +243,11 @@ namespace FlexKit
     void ConstructQuaternion_2(float x, float y, float z, float w, void* _ptr)
     {
         new(_ptr) Quaternion(x, y, z, w);
+    }
+
+    void ConstructQuaternion_3(float x, float y, float z, void* _ptr)
+    {
+        new(_ptr) Quaternion(x, y, z);
     }
 
     float3 QMULF3(Quaternion* lhs, float3& rhs)
@@ -222,6 +368,7 @@ namespace FlexKit
 
         res = scriptEngine->RegisterObjectType("Quaternion", sizeof(Quaternion), asOBJ_VALUE | asOBJ_APP_CLASS_ALLFLOATS | asOBJ_APP_CLASS_C | asOBJ_POD);                                                  FK_ASSERT(res > 0);
         res = scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void ConstructQuat(float, float, float, float)", asFUNCTION(ConstructQuaternion_2), asCALL_CDECL_OBJLAST);           FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void ConstructQuat(float, float, float)",        asFUNCTION(ConstructQuaternion_3), asCALL_CDECL_OBJLAST);           FK_ASSERT(res > 0);
         res = scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void ConstructQuat()",                           asFUNCTION(ConstructQuaternion), asCALL_CDECL_OBJLAST);             FK_ASSERT(res > 0);
 
         res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion  opMul(Quaternion)",   asMETHODPR(Quaternion, operator *, (const Quaternion) const, Quaternion), asCALL_THISCALL);               FK_ASSERT(res > 0);

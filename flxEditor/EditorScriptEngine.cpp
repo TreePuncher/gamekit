@@ -3,6 +3,7 @@
 #include "EditorScriptEngine.h"
 #include "EditorGadgetInterface.h"
 #include "ScriptingRuntime.h"
+#include "memoryutilities.h"
 
 #include <angelscript.h>
 
@@ -171,6 +172,9 @@ void EditorScriptEngine::RegisterGadgetAPI()
 }
 
 
+/************************************************************************************************/
+
+
 void EditorScriptEngine::RegisterAPI()
 {
     RegisterScriptArray(scriptEngine, true);
@@ -182,6 +186,8 @@ void EditorScriptEngine::RegisterAPI()
 
     RegisterCoreTypesAPI();
     RegisterGadgetAPI();
+
+    scriptEngine->RegisterGlobalProperty("AllocatorHandle@ SystemAllocator", (FlexKit::iAllocator*)FlexKit::SystemAllocator);
 }
 
 

@@ -17,7 +17,7 @@ public:
     Module              scriptModule = nullptr;
     ScriptContext       ctx;
 
-    void Update(AnimationObject* obj);
+    void Update(AnimationObject* obj, double dT);
     void Reload(EditorScriptEngine& engine, AnimationObject* obj);
 
     static bool RegisterInterface(EditorScriptEngine& engine);
