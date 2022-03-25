@@ -7,41 +7,11 @@
 #include "EditorCodeEditor.h"
 #include "EditorRenderer.h"
 #include "EditorResourcePickerDialog.h"
-#include "qboxlayout.h"
-#include "qevent.h"
-#include "qmenubar.h"
+#include "EditorScriptObject.h"
+#include "EditorScriptEngine.h"
 #include "SelectionContext.h"
 #include "ResourceIDs.h"
-
-
-/************************************************************************************************/
-
-
-class AnimatorSelectionContext
-{
-public:
-
-    void CreateObject()
-    {
-        objects.emplace_back(std::make_unique<AnimationObject>());
-        selectedObject = objects.size() - 1;
-    }
-
-    void CreateAnimator()
-    {
-    }
-
-    AnimationObject* GetSelection()
-    {
-        if(objects.size() && selectedObject != -1)
-            return objects[selectedObject].get();
-
-        return nullptr;
-    }
-
-    std::vector<std::unique_ptr<AnimationObject>>   objects;
-    int                                             selectedObject = -1;
-};
+#include "ScriptedAnimationObject.h"
 
 
 /************************************************************************************************/
@@ -110,6 +80,36 @@ ID3D12PipelineState* CreateFlatSkinnedPassPSO(RenderSystem* RS)
 /************************************************************************************************/
 
 
+class AnimatorSelectionContext
+{
+public:
+
+    void CreateObject()
+    {
+        objects.emplace_back(std::make_unique<AnimationObject>());
+        selectedObject = objects.size() - 1;
+    }
+
+    void CreateAnimator()
+    {
+    }
+
+    AnimationObject* GetSelection()
+    {
+        if (objects.size() && selectedObject != -1)
+            return objects[selectedObject].get();
+
+        return nullptr;
+    }
+
+    std::vector<std::unique_ptr<AnimationObject>>   objects;
+    int                                             selectedObject = -1;
+};
+
+
+/************************************************************************************************/
+
+
 constexpr FlexKit::PSOHandle FLATSKINNED_PSO = FlexKit::PSOHandle(GetTypeGUID(FlatSkinned));
 
 
@@ -170,7 +170,25 @@ public:
         auto& transforms        = FlexKit::QueueTransformUpdateTask(dispatcher);
         auto& cameras           = FlexKit::CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
 
+
+        struct AnimationUpdate
+        {
+        };
+
+        auto& scriptedAnimationUpdate = dispatcher.Add<AnimationUpdate>(
+            [&](auto&, auto&)
+            {
+            },
+            [dT = dT, this](auto&, iAllocator& temporaryAllocator)
+            {
+                AnimationObject* mainObj = selection->GetSelection();
+
+                if(mainObj->script)
+                    mainObj->script->Update(mainObj);
+            });
+
         cameras.AddInput(transforms);
+        animationUpdate.AddOutput(scriptedAnimationUpdate);
 
         frameGraph.AddNode<Pass>(
             Pass{
@@ -184,6 +202,7 @@ public:
 
                 builder.AddDataDependency(cameras);
                 builder.AddDataDependency(animationUpdate);
+                builder.AddDataDependency(scriptedAnimationUpdate);
             },
             [=, &gameObject](Pass& data, const FlexKit::ResourceHandler& frameResources, FlexKit::Context& ctx, FlexKit::iAllocator& allocator)
             {
@@ -292,6 +311,7 @@ public:
     {
         FlexKit::ClearBackBuffer(frameGraph, renderTarget, FlexKit::float4{ 0, 0, 0, 0 });
         FlexKit::ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
+
         if (selection->selectedObject != -1)
         {
             auto& object = selection->objects[selection->selectedObject];
@@ -353,13 +373,29 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
     , codeEditor        { new EditorCodeEditor{ IN_project, IN_engine, this } }
     , globalSelection   { IN_selection }
     , renderer          { IN_renderer }
+    , scriptEngine      { IN_engine }
 {
+    static auto _REGISTERED = ScriptedAnimationObject::RegisterInterface(scriptEngine);
+
     ui.setupUi(this);
     ui.horizontalLayout->setMenuBar(menubar);
     ui.horizontalLayout->setContentsMargins(0, 0, 0, 0);
     ui.verticalLayout->setContentsMargins(0, 0, 0, 0);
     ui.verticalLayout->addWidget(codeEditor);
     ui.editorSection->setContentsMargins(0, 0, 0, 0);
+
+    auto codeEditorMenu = codeEditor->GetMenuBar();
+    auto animationMenu  = codeEditorMenu->addMenu("Animator");
+    auto reloadObject = animationMenu->addAction("Reload Object");
+
+    connect(reloadObject, &QAction::triggered,
+        [&]()
+        {
+            codeEditor->SaveDocument();
+
+            if(auto obj = localSelection->GetSelection(); obj && obj->script)
+                obj->script->Reload(scriptEngine, obj);
+        });
 
     auto layout = new QVBoxLayout{};
     ui.animationPreview->setLayout(layout);
@@ -369,14 +405,39 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
     auto fileMenu     = menubar->addMenu("Create");
     auto createObject = fileMenu->addAction("Object");
 
+    auto createScript = fileMenu->addAction("AnimatorScript");
+    connect(
+        createScript, &QAction::triggered,
+        [&]()
+        {
+            if(auto obj = localSelection->GetSelection(); obj)
+            {
+                auto scriptResource = std::make_shared<ScriptResource>();
+                auto scriptObject   = new ScriptedAnimationObject{};
+                auto context        = scriptEngine.BuildModule(scriptResource->source);
+
+                scriptObject->script = scriptResource;
+
+                obj->script = scriptObject;
+
+                project.AddResource(scriptResource);
+                codeEditor->SetResource(scriptResource);
+                localSelection->GetSelection()->script = scriptObject;
+            }
+        });
+
+    createScript->setEnabled(false);
+
     connect(
         createObject, &QAction::triggered,
-        [&]()
+        [&, createScript = createScript]()
         {
             localSelection->CreateObject();
             auto obj                    = localSelection->GetSelection();
             globalSelection.type        = AnimatorObject_ID;
             globalSelection.selection   = std::any{ obj };
+
+            createScript->setEnabled(true);
         });
 
     auto createAnimator = fileMenu->addAction("Animator");
@@ -388,9 +449,6 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
         {
             localSelection->CreateAnimator();
         });
-
-    auto createScript = fileMenu->addAction("AnimatorScript");
-    createScript->setEnabled(false);
 
     auto objectMenu = menubar->addMenu("Object");
     auto loadObject = objectMenu->addAction("Load");

@@ -175,6 +175,7 @@ namespace FlexKit
     size_t      GetJointCount   (GameObject& gameObject);
 
     JointPose   GetJointPose    (GameObject& gameObject, JointHandle jointID);
+    JointHandle GetJoint        (GameObject& gameObject, const char*);
     JointHandle GetJointParent  (GameObject& gameObject, JointHandle jointID);
 
     void        SetJointPose    (GameObject& gameObject, JointHandle jointID, JointPose pose);

@@ -82,6 +82,8 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>PCH.h</PrecompiledHeaderFile>
       <EnableModules>false</EnableModules>
+      <PreprocessorDefinitions>
+      </PreprocessorDefinitions>
     </ClCompile>
     <QtMoc>
       <AdditionalDependencies>
@@ -222,6 +224,7 @@
     <ClCompile Include="SceneResource.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="ScriptedAnimationObject.cpp" />
     <ClCompile Include="SelectionContext.cpp" />
     <ClCompile Include="TaskManager.cpp" />
     <ClCompile Include="TextureResourceUtilities.cpp">
@@ -262,11 +265,13 @@
     <ClInclude Include="MetaData.h" />
     <ClInclude Include="ModifiableShape.h" />
     <ClInclude Include="PCH.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="ResourceIDs.h" />
     <ClInclude Include="ResourceUtilities.h" />
     <ClInclude Include="SceneInspectors.h" />
     <QtMoc Include="SceneOutliner.h" />
     <ClInclude Include="SceneResource.h" />
+    <ClInclude Include="ScriptedAnimationObject.h" />
     <ClInclude Include="SelectionContext.h" />
     <ClInclude Include="Serialization.h" />
     <ClInclude Include="TextureResourceUtilities.h" />
@@ -304,6 +309,9 @@
   <ItemGroup>
     <Text Include="..\coreutilities\Serialization.cpp" />
     <Text Include="..\coreutilities\Serialization.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="flxEditor.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

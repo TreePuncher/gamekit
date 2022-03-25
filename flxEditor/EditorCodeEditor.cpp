@@ -6,6 +6,7 @@
 #include "EditorProject.h"
 #include "EditorResourcePickerDialog.h"
 #include "EditorScriptObject.h"
+#include "EditorScriptEngine.h"
 
 #include <qsyntaxhighlighter.h>
 #include <qregularexpression.h>
@@ -28,7 +29,7 @@ public:
     {
         HighlightingRule rule;
 
-        keywordFormat.setForeground(Qt::darkBlue);
+        keywordFormat.setForeground(Qt::yellow);
         keywordFormat.setFontWeight(QFont::Bold);
         const QString keywordPatterns[] = {
             QStringLiteral("\\bchar\\b"),       QStringLiteral("\\bclass\\b"),      QStringLiteral("\\bconst\\b"),
@@ -56,13 +57,13 @@ public:
         rule.format     = classFormat;
         highlightingRules.append(rule);
 
-        quotationFormat.setForeground(Qt::darkGreen);
+        quotationFormat.setForeground(Qt::darkGray);
         rule.pattern    = QRegularExpression(QStringLiteral("\".*\""));
         rule.format     = quotationFormat;
         highlightingRules.append(rule);
 
         functionFormat.setFontItalic(true);
-        functionFormat.setForeground(Qt::blue);
+        functionFormat.setForeground(Qt::cyan);
         rule.pattern    = QRegularExpression(QStringLiteral("\\b[A-Za-z0-9_]+(?=\\()"));
         rule.format     = functionFormat;
         highlightingRules.append(rule);
@@ -347,7 +348,7 @@ void EditorTextEditorWidget::HighlightCurrentLine()
     if (!isReadOnly()) {
         QTextEdit::ExtraSelection selection;
 
-        QColor lineColor = QColor(Qt::darkGreen);
+        QColor lineColor = QColor(Qt::darkGreen).darker(200);
 
         selection.format.setBackground(lineColor);
         selection.format.setProperty(QTextFormat::FullWidthSelection, true);
@@ -386,6 +387,8 @@ EditorCodeEditor::EditorCodeEditor(EditorProject& IN_project, EditorScriptEngine
     , errorListWidget       { new QListWidget{} }
     , scriptContext         { IN_scriptEngine.GetScriptEngine()->CreateContext() }
     , project               { IN_project }
+    , menuBar               { new QMenuBar() }
+    , textEditor            { new EditorTextEditorWidget{ this } }
 {
 	ui.setupUi(this);
     ui.verticalLayout->setContentsMargins(0, 0, 0, 0);
@@ -393,19 +396,17 @@ EditorCodeEditor::EditorCodeEditor(EditorProject& IN_project, EditorScriptEngine
     auto boxLayout  = findChild<QBoxLayout*>("verticalLayout");
     tabBar          = findChild<QTabWidget*>("tabWidget");
 
-    auto textEditor = new EditorTextEditorWidget{ this };
-    tabBar->addTab(textEditor, "Code Editor");
-    tabBar->addTab(callStackWidget, "CallStack");
-    tabBar->addTab(variableListWidget, "Variables");
-    tabBar->addTab(errorListWidget, "Errors");
+    tabBar->addTab(textEditor,          "Code Editor");
+    tabBar->addTab(callStackWidget,     "CallStack");
+    tabBar->addTab(variableListWidget,  "Variables");
+    tabBar->addTab(errorListWidget,     "Errors");
 
     highlighter = new BasicHighlighter{ textEditor->document() };
 
     // Setup Menu
-    auto menuBar                = new QMenuBar();
     menuBar->setVisible(true);
 
-    auto fileMenu               = menuBar->addMenu("File");
+    auto fileMenu    = menuBar->addMenu("File");
 
     auto newResource = fileMenu->addAction("New Script Resource");
     newResource->connect(newResource, &QAction::triggered,
@@ -414,14 +415,14 @@ EditorCodeEditor::EditorCodeEditor(EditorProject& IN_project, EditorScriptEngine
             if (currentResource)
                 textEditor->document()->clear();
 
-            currentResource = new ScriptResource();
+            currentResource = std::make_shared<ScriptResource>();
 
             project.AddResource(FlexKit::Resource_ptr{ currentResource });
         });
 
     auto selectResource = fileMenu->addAction("Select Resource");
     selectResource->connect(selectResource, &QAction::triggered,
-        [&, textEditor]()
+        [&]()
         {
             auto resourcePicker = new EditorResourcePickerDialog{ ScriptResourceTypeID, project, this };
             resourcePicker->OnSelection(
@@ -430,7 +431,7 @@ EditorCodeEditor::EditorCodeEditor(EditorProject& IN_project, EditorScriptEngine
                     if (currentResource)
                         textEditor->document()->clear();
 
-                    currentResource = static_cast<ScriptResource*>(resource->resource.get());
+                    currentResource = std::static_pointer_cast<ScriptResource>(resource->resource);
 
                     textEditor->document()->setPlainText(currentResource->source.c_str());
                 });
@@ -539,8 +540,6 @@ EditorCodeEditor::EditorCodeEditor(EditorProject& IN_project, EditorScriptEngine
 
 void EditorCodeEditor::LoadDocument()
 {
-    auto textEditor = static_cast<QPlainTextEdit*>(tabBar->currentWidget());
-
     textEditor->document()->clear();
 
     const auto importText   = std::string{ "Load Text File" };
@@ -561,13 +560,11 @@ void EditorCodeEditor::LoadDocument()
 
 void EditorCodeEditor::SaveDocument()
 {
-    auto textEditor = static_cast<QPlainTextEdit*>(tabBar->currentWidget());
-
     if (currentResource)
     {
         auto document = textEditor->document();
-        currentResource->source = document->toRawText().toStdString();;
-
+        currentResource->source = document->toPlainText().toStdString();
+        std::cout << currentResource->source << "\n";
     }
     else
     {
@@ -589,10 +586,20 @@ void EditorCodeEditor::SaveDocument()
 /************************************************************************************************/
 
 
+void EditorCodeEditor::SetResource(ScriptResource_ptr resource)
+{
+    textEditor->document()->clear();
+    textEditor->setPlainText(resource->source.c_str());
+
+    currentResource = resource;
+}
+
+
+/************************************************************************************************/
+
+
 void EditorCodeEditor::SaveDocumentCopy()
 {
-    auto textEditor = static_cast<QPlainTextEdit*>(tabBar->currentWidget());
-
     const auto importText   = std::string{ "Save Text File" };
     const auto fileMenuText = std::string{ "Files (*.*)" };
     const auto qfileDir     = QFileDialog::getSaveFileName(this, tr(importText.c_str()), QDir::currentPath(), fileMenuText.c_str());
@@ -601,6 +608,15 @@ void EditorCodeEditor::SaveDocumentCopy()
 
     QTextDocumentWriter writer{ qfileDir };
     writer.write(textEditor->document());
+}
+
+
+/************************************************************************************************/
+
+
+QMenuBar* EditorCodeEditor::GetMenuBar() noexcept
+{
+    return menuBar;
 }
 
 
@@ -654,7 +670,6 @@ void EditorCodeEditor::RunCode()
     if (scriptContext->GetState() == asEContextState::asEXECUTION_SUSPENDED)
         return;
 
-    auto textEditor = static_cast<EditorTextEditorWidget*>(tabBar->currentWidget());
     auto code       = textEditor->toPlainText().toStdString();
 
     scriptContext->SetLineCallback(asMETHOD(EditorCodeEditor, LineCallback), this, asCALL_THISCALL);
@@ -701,7 +716,6 @@ void EditorCodeEditor::RunCode()
 
 void EditorCodeEditor::LineCallback(asIScriptContext* ctx)
 {
-    auto textEditor     = static_cast<EditorTextEditorWidget*>(tabBar->currentWidget());
     auto& breakPoints   = textEditor->lineNumberArea->GetBreakponts();
 
     const char* scriptSection;
@@ -778,10 +792,43 @@ void EditorCodeEditor::LineCallback(asIScriptContext* ctx)
                 }   break;
                 default:
                 {
-                    if (ctx->GetEngine()->GetTypeInfoByDecl("string"))
+                    if (ctx->GetEngine()->GetTypeInfoByDecl("string")->GetTypeId() == typeId)
                     {
                         auto* var = (std::string*)ctx->GetAddressOfVar(variableIdx, stackLevel);
                         QListWidgetItem* variable = new QListWidgetItem(fmt::format("{} : {}", variableDecl, *var).c_str());
+                        variableListWidget->addItem(variable);
+                    }
+                    else if (ctx->GetEngine()->GetTypeInfoByDecl("float3")->GetTypeId() == typeId)
+                    {
+                        auto* var = (FlexKit::float3*)ctx->GetAddressOfVar(variableIdx, stackLevel);
+                        QListWidgetItem* variable = new QListWidgetItem(fmt::format("{} : {}, {} , {}", variableDecl, var->x, var->y, var->z).c_str());
+                        variableListWidget->addItem(variable);
+                    }
+                    else if (ctx->GetEngine()->GetTypeInfoByDecl("float4")->GetTypeId() == typeId)
+                    {
+                        auto& var = *((FlexKit::float4*)ctx->GetAddressOfVar(variableIdx, stackLevel));
+                        QListWidgetItem* variable = new QListWidgetItem(fmt::format("{} : [ {}, {} , {}, {} ]", variableDecl, var[0], var[1], var[2], var[2]).c_str());
+                        variableListWidget->addItem(variable);
+                    }
+                    else if (ctx->GetEngine()->GetTypeInfoByDecl("float4x4")->GetTypeId() == typeId)
+                    {
+                        auto& var = *(FlexKit::float4x4*)ctx->GetAddressOfVar(variableIdx, stackLevel);
+                        QListWidgetItem* variable = new QListWidgetItem(
+                            fmt::format(
+                                "{} [{}, {}, {}, {}]\n[{}, {}, {}, {}]\n[{}, {}, {}, {}]\n[{}, {}, {}, {}]\n",
+                                variableDecl,
+                                var[0][0], var[0][1], var[0][2], var[0][3],
+                                var[1][0], var[1][1], var[1][2], var[1][3],
+                                var[2][0], var[2][1], var[2][2], var[2][3],
+                                var[3][0], var[3][1], var[3][2], var[3][3]
+                            ).c_str());
+
+                        variableListWidget->addItem(variable);
+                    }
+                    else if (ctx->GetEngine()->GetTypeInfoByDecl("Quaternion")->GetTypeId() == typeId)
+                    {
+                        auto& var = *(FlexKit::Quaternion*)ctx->GetAddressOfVar(variableIdx, stackLevel);
+                        QListWidgetItem* variable = new QListWidgetItem(fmt::format("{} : [ I*{}, J*{} , K*{}, {} ]", variableDecl, var[0], var[1], var[2], var[2]).c_str());
                         variableListWidget->addItem(variable);
                     }
                 }   break;

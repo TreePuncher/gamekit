@@ -2,6 +2,7 @@
 
 #include "EditorScriptEngine.h"
 #include "EditorGadgetInterface.h"
+#include "ScriptingRuntime.h"
 
 #include <angelscript.h>
 
@@ -152,6 +153,24 @@ void EditorScriptEngine::RegisterGadget(asIScriptObject* gObj)
 /************************************************************************************************/
 
 
+void EditorScriptEngine::RegisterCoreTypesAPI()
+{
+    FlexKit::RegisterMathTypes(scriptEngine);
+    FlexKit::RegisterGameObjectCore(scriptEngine);
+}
+
+
+void EditorScriptEngine::RegisterGadgetAPI()
+{
+    auto n = scriptEngine->RegisterInterface("iGadget");                        assert(n >= 0);
+    n = scriptEngine->RegisterInterfaceMethod("iGadget", "void Execute()");     assert(n >= 0);
+    n = scriptEngine->RegisterInterfaceMethod("iGadget", "string GadgetID()");  assert(n >= 0);
+
+    n = scriptEngine->RegisterGlobalFunction("void RegisterGadget(iGadget@ gadget)",    asMETHOD(EditorScriptEngine, RegisterGadget), asCALL_THISCALL_ASGLOBAL, this);      assert(n >= 0);
+    n = scriptEngine->RegisterGlobalFunction("void Print(string text)",                 asMETHOD(EditorScriptEngine, PrintToOutputWindow), asCALL_THISCALL_ASGLOBAL, this); assert(n >= 0);
+}
+
+
 void EditorScriptEngine::RegisterAPI()
 {
     RegisterScriptArray(scriptEngine, true);
@@ -161,14 +180,8 @@ void EditorScriptEngine::RegisterAPI()
     RegisterScriptMath(scriptEngine);
     RegisterScriptMathComplex(scriptEngine);
 
-    auto n = scriptEngine->RegisterInterface("iGadget");                        assert(n >= 0);
-    n = scriptEngine->RegisterInterfaceMethod("iGadget", "void Execute()");     assert(n >= 0);
-    n = scriptEngine->RegisterInterfaceMethod("iGadget", "string GadgetID()");  assert(n >= 0);
-
-    n = scriptEngine->RegisterGlobalFunction("void RegisterGadget(iGadget@ gadget)",    asMETHOD(EditorScriptEngine, RegisterGadget), asCALL_THISCALL_ASGLOBAL, this);      assert(n >= 0);
-    n = scriptEngine->RegisterGlobalFunction("void Print(string text)",                 asMETHOD(EditorScriptEngine, PrintToOutputWindow), asCALL_THISCALL_ASGLOBAL, this); assert(n >= 0);
-
-    int x = 0;
+    RegisterCoreTypesAPI();
+    RegisterGadgetAPI();
 }
 
 
@@ -222,10 +235,76 @@ void EditorScriptEngine::LoadModules()
 
 /************************************************************************************************/
 
+
 void RunSTDStringMessageHandler(const asSMessageInfo* msg, ErrorCallbackFN* callback)
 {
-    (*callback)(msg->col, msg->row, msg->message, msg->section, msg->type);
+    if(callback)
+        (*callback)(msg->col, msg->row, msg->message, msg->section, msg->type);
 }
+
+
+/************************************************************************************************/
+
+
+Module EditorScriptEngine::BuildModule(const std::string& string, ErrorCallbackFN errorCallback)
+{
+    try
+    {
+        CScriptBuilder builder{};
+        builder.StartNewModule(scriptEngine, "temp");
+
+        scriptEngine->SetMessageCallback(asFUNCTION(RunSTDStringMessageHandler), &errorCallback, asCALL_CDECL);
+
+        if (auto r = builder.AddSectionFromMemory("Memory", string.c_str(), string.size()); r < 0)
+            return nullptr;
+
+        if (auto r = builder.BuildModule(); r < 0)
+            return nullptr;
+
+        auto r          = scriptEngine->SetMessageCallback(asFUNCTION(EditorScriptEngine::MessageCallback), this, asCALL_CDECL); assert(r >= 0);
+        auto asModule   = builder.GetModule();
+
+        return asModule;
+    }
+    catch (...)
+    {
+        OutputDebugString(L"Unknown error. Continuing as usual.\n");
+    }
+
+    return nullptr;
+}
+
+
+/************************************************************************************************/
+
+
+void EditorScriptEngine::ReleaseModule(Module module)
+{
+    if(module)
+        module->Discard();
+}
+
+
+/************************************************************************************************/
+
+
+ScriptContext EditorScriptEngine::CreateContext()
+{
+    return scriptEngine->CreateContext();
+}
+
+
+/************************************************************************************************/
+
+
+void EditorScriptEngine::ReleaseContext(ScriptContext context)
+{
+    context->Release();
+}
+
+
+/************************************************************************************************/
+
 
 void EditorScriptEngine::RunStdString(const std::string& string, asIScriptContext* ctx, ErrorCallbackFN errorCallback)
 {
@@ -264,6 +343,41 @@ void EditorScriptEngine::RunStdString(const std::string& string, asIScriptContex
     }
 }
 
+
+
+bool RunScriptFunction(ScriptContext ctx, Module module, const std::string_view view)
+{
+    if (!module)
+        return false;
+
+    auto r = ctx->GetEngine()->SetMessageCallback(asFUNCTION(RunSTDStringMessageHandler), nullptr, asCALL_CDECL); assert(r >= 0);
+
+    auto func = module->GetFunctionByName(view.data());
+    if (!func)
+        return false;
+
+    ctx->Prepare(func);
+    auto res = ctx->Execute();
+
+    return res >= 0;
+}
+
+
+void* GetReturnObject(ScriptContext ctx)
+{
+    return ctx->GetReturnObject();
+}
+
+
+void SetArg(ScriptContext ctx, uint32_t idx, void* obj)
+{
+    ctx->SetArgObject(idx, obj);
+}
+
+void SetArgAddress(ScriptContext ctx, uint32_t idx, void* obj)
+{
+    ctx->SetArgAddress(idx, obj);
+}
 
 /**********************************************************************
 

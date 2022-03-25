@@ -279,6 +279,9 @@
     <ClInclude Include="..\coreutilities\SceneLoadingContext.h">
       <Filter>Headers\coreutilities</Filter>
     </ClInclude>
+    <ClInclude Include="..\coreutilities\ScriptingRuntime.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\coreutilities\AllSourceFiles.cpp">
@@ -475,6 +478,9 @@
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\GILightingUtilities.cpp">
       <Filter>Source\graphicsutilities</Filter>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\ScriptingRuntime.cpp">
+      <Filter>Headers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -36,6 +36,7 @@ private:
     EditorProject&                          project;
     EditorCodeEditor*                       codeEditor;
     EditorRenderer&                         renderer;
+    EditorScriptEngine&                     scriptEngine;
 	Ui::EditorAnimationEditor               ui;
 };
 

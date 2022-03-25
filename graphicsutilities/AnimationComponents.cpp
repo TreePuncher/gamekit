@@ -59,6 +59,24 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    JointHandle GetJoint(GameObject& gameObject, const char* ID)
+    {
+        return Apply(
+            gameObject,
+            [&](SkeletonView& skeleton) -> JointHandle
+            {
+                return skeleton.GetSkeleton()->FindJoint(ID);
+            },
+            []() -> JointHandle
+            {
+                return InvalidHandle_t;
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
     JointHandle GetJointParent(GameObject& gameObject, JointHandle jointID)
     {
         return Apply(

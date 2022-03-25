@@ -13,7 +13,7 @@
 /************************************************************************************************/
 
 class StaticColliderResource :
-    public FlexKit::Serializable<StaticColliderResource, FlexKit::iResource, GetTypeGUID(MeshResource)>
+    public FlexKit::Serializable<StaticColliderResource, FlexKit::iResource, TriMeshColliderTypeID>
 {
 public:
     const ResourceID_t GetResourceTypeID()  const noexcept override { return TriMeshColliderTypeID; }

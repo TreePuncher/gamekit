@@ -11,6 +11,7 @@ class asIScriptContext;
 class asIScriptEngine;
 class asIScriptFunction;
 class asIScriptObject;
+class asIScriptModule;
 class AngelScriptGadget;
 struct asSMessageInfo;
 
@@ -50,6 +51,9 @@ struct BreakPoint
 
 using ErrorCallbackFN = std::function<void(int, int, const char*, const char*, int)>;
 
+using Module = asIScriptModule*;
+using ScriptContext = asIScriptContext*;
+
 class EditorScriptEngine
 {
 public:
@@ -61,14 +65,19 @@ public:
     
     void LoadModules();
 
-    void RunStdString(const std::string& string, asIScriptContext* ctx, ErrorCallbackFN errorCallback = [](int, int, const char*, const char*, int) {});
+    Module  BuildModule(const std::string& string, ErrorCallbackFN errorCallback = [](int, int, const char*, const char*, int) {});
+    void    ReleaseModule(Module);
 
+    void    RunStdString(const std::string& string, asIScriptContext* ctx, ErrorCallbackFN errorCallback = [](int, int, const char*, const char*, int) {});
+
+    ScriptContext   CreateContext();
+    void            ReleaseContext(ScriptContext);
 
     asIScriptEngine*    GetScriptEngine()   { return scriptEngine; }
     const std::string&  GetTextBuffer()     { return outputTextBuffer; }
     const std::string&  GetErrorBuffer()    { return errorTextBuffer; }
 
-//private:
+private:
 
     void RegisterAPI();
 
@@ -76,8 +85,11 @@ public:
     void PrintToOutputWindow(std::string* str);
     void PrintToErrorWindow(const char* str);
 
-//protected:
+protected:
 
+
+    void        RegisterCoreTypesAPI();
+    void        RegisterGadgetAPI();
     static void MessageCallback(const asSMessageInfo* msg, EditorScriptEngine* param);
 
     asIScriptEngine*    scriptEngine    = nullptr;
@@ -88,6 +100,13 @@ public:
 
     std::vector<AngelScriptGadget*> gadgets;
 };
+
+
+bool    RunScriptFunction   (ScriptContext, Module, const std::string_view view);
+void*   GetReturnObject     (ScriptContext);
+void    SetArg              (ScriptContext ctx, uint32_t idx, void* obj);
+void    SetArgAddress       (ScriptContext ctx, uint32_t idx, void* obj);
+
 
 /**********************************************************************
 
