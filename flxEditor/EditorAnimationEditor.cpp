@@ -48,6 +48,7 @@ ID3D12PipelineState* CreateFlatSkinnedPassPSO(RenderSystem* RS)
 
 	D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
     Rast_Desc.FillMode = D3D12_FILL_MODE_WIREFRAME;
+    Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
 
 	D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
@@ -145,8 +146,8 @@ public:
 
         auto size = evt->size();
 
-        renderWindow->resize(size.width(), size.height());
-        depthBuffer.Resize({ size.width(), size.height() });
+        renderWindow->resize(size.width() * 1.5, size.height() * 1.5);
+        depthBuffer.Resize({ size.width() * 1.5, size.height() * 1.5 });
     }
 
     void RenderAnimatedModel(
@@ -404,42 +405,129 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
     ui.animationPreview->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(previewWindow);
 
-    auto fileMenu     = menubar->addMenu("Create");
-    auto createObject = fileMenu->addAction("Object");
-
-    auto createScript = fileMenu->addAction("AnimatorScript");
-    connect(
-        createScript, &QAction::triggered,
-        [&]()
-        {
-            if(auto obj = localSelection->GetSelection(); obj)
-            {
-                auto scriptResource = std::make_shared<ScriptResource>();
-                auto scriptObject   = new ScriptedAnimationObject{};
-                auto context        = scriptEngine.BuildModule(scriptResource->source);
-
-                scriptObject->script = scriptResource;
-
-                obj->script = scriptObject;
-
-                project.AddResource(scriptResource);
-                codeEditor->SetResource(scriptResource);
-                localSelection->GetSelection()->script = scriptObject;
-            }
-        });
-
-    createScript->setEnabled(false);
+    auto fileMenu       = menubar->addMenu("Object");
+    auto createObject   = fileMenu->addAction("Create");
 
     connect(
         createObject, &QAction::triggered,
-        [&, createScript = createScript]()
+        [&]
         {
-            localSelection->CreateObject();
-            auto obj                    = localSelection->GetSelection();
-            globalSelection.type        = AnimatorObject_ID;
-            globalSelection.selection   = std::any{ obj };
+            auto meshPicker = new EditorResourcePickerDialog(MeshResourceTypeID, IN_project, this);
+            meshPicker->OnSelection(
+                [&](ProjectResource_ptr resource)
+                {
+                    auto skeletonPicker = new EditorResourcePickerDialog(SkeletonResourceTypeID, IN_project, this);
 
-            createScript->setEnabled(true);
+                    skeletonPicker->OnSelection(
+                        [&, resource](ProjectResource_ptr skeleton)
+                        {
+                            localSelection->CreateObject();
+                            auto obj            = localSelection->GetSelection();
+
+                            // Load Tri Mesh
+                            auto meshResource   = std::static_pointer_cast<FlexKit::MeshResource>(resource->resource);
+                            auto mesh           = renderer.LoadMesh(*meshResource);
+                            auto& gameObject    = obj->gameObject;
+
+                            // Load Skeleton
+                            auto blob           = skeleton->resource->CreateBlob();
+                            auto buffer         = blob.buffer;
+                            blob.buffer         = 0;
+                            blob.bufferSize     = 0;
+
+                            FlexKit::AddAssetBuffer((FlexKit::Resource*)buffer);
+
+                            // Create Script Object
+                            auto scriptResource = std::make_shared<ScriptResource>();
+                            auto scriptObject   = new ScriptedAnimationObject{};
+                            auto context        = scriptEngine.BuildModule(scriptResource->source);
+
+                            scriptObject->script    = scriptResource;
+                            obj->script             = scriptObject;
+
+                            project.AddResource(scriptResource);
+                            codeEditor->SetResource(scriptResource);
+
+                            // Build Editor object
+                            gameObject.AddView<FlexKit::BrushView>(mesh);
+                            gameObject.AddView<FlexKit::SkeletonView>(mesh, skeleton->resource->GetResourceGUID());
+                            gameObject.AddView<FlexKit::AnimatorView>();
+
+                            // serialize object
+                            ScriptGameObjectResource_ptr objectResource = std::make_shared<ScriptedGameObjectResource>();
+                            project.AddResource(objectResource);
+                            objectResource->triMeshId   = meshResource->GetResourceGUID();
+                            objectResource->skeletonId  = skeleton->resource->GetResourceGUID();
+                            objectResource->scriptId    = scriptResource->GetResourceGUID();
+                            obj->resourceID             = objectResource->GetResourceGUID();
+
+                            // Set Selection
+                            globalSelection.type        = AnimatorObject_ID;
+                            globalSelection.selection   = std::any{ obj };
+                        });
+
+                    skeletonPicker->show();
+                });
+
+            meshPicker->show();
+        });
+
+    auto loadObject     = fileMenu->addAction("Load");
+    connect(
+        loadObject, &QAction::triggered,
+        [&]
+        {
+            auto resourcePicker = new EditorResourcePickerDialog(ScriptedObjectTypeID, IN_project, this);
+            resourcePicker->OnSelection(
+                [&](ProjectResource_ptr projectObj)
+                {
+                    localSelection->CreateObject();
+                    auto obj = localSelection->GetSelection();
+
+                    auto scriptedObjectRes = std::static_pointer_cast<ScriptedGameObjectResource>(projectObj->resource);
+
+                    auto mesh       = project.FindProjectResource(scriptedObjectRes->triMeshId);
+                    auto skeleton   = project.FindProjectResource(scriptedObjectRes->skeletonId);
+                    auto scriptRes = project.FindProjectResource(scriptedObjectRes->scriptId);
+
+
+                    // Load Tri Mesh
+                    auto meshResource   = std::static_pointer_cast<FlexKit::MeshResource>(mesh->resource);
+                    auto meshHandle     = renderer.LoadMesh(*meshResource);
+                    auto& gameObject    = obj->gameObject;
+
+                    // Load Skeleton
+                    auto blob   = skeleton->resource->CreateBlob();
+                    auto buffer = blob.buffer;
+                    blob.buffer = 0;
+                    blob.bufferSize = 0;
+
+                    FlexKit::AddAssetBuffer((FlexKit::Resource*)buffer);
+
+                    // Build Editor object
+                    gameObject.AddView<FlexKit::BrushView>(meshHandle);
+                    gameObject.AddView<FlexKit::SkeletonView>(meshHandle, skeleton->resource->GetResourceGUID());
+                    gameObject.AddView<FlexKit::AnimatorView>();
+
+                    // Load script
+                    ScriptResource_ptr scriptObjectRes = std::static_pointer_cast<ScriptResource>(scriptRes->resource);
+                    codeEditor->SetResource(scriptObjectRes);
+
+                    auto scriptObject   = new ScriptedAnimationObject{};
+                    obj->resourceID     = scriptedObjectRes->GetResourceGUID();
+
+                    scriptObject->script    = scriptObjectRes;
+                    obj->script             = scriptObject;
+
+                    scriptObject->Reload(scriptEngine, obj);
+
+
+                    // Set Selection
+                    globalSelection.type        = AnimatorObject_ID;
+                    globalSelection.selection   = std::any{ obj };
+                });
+
+            resourcePicker->show();
         });
 
     auto createAnimator = fileMenu->addAction("Animator");
@@ -452,48 +540,6 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
             localSelection->CreateAnimator();
         });
 
-    auto objectMenu = menubar->addMenu("Object");
-    auto loadObject = objectMenu->addAction("Load");
-
-    connect(
-        loadObject, &QAction::triggered,
-        [&]()
-        {
-            if (auto selection = localSelection->GetSelection(); selection && !selection->gameObject.hasView(FlexKit::BrushComponentID))
-            {
-                auto meshPicker = new EditorResourcePickerDialog(MeshResourceTypeID, IN_project, this);
-                meshPicker->OnSelection(
-                    [&](ProjectResource_ptr resource)
-                    {
-                        auto skeletonPicker = new EditorResourcePickerDialog(SkeletonResourceTypeID, IN_project, this);
-
-                        skeletonPicker->OnSelection(
-                            [=, &selection](ProjectResource_ptr skeleton)
-                            {
-                                auto meshResource   = std::static_pointer_cast<FlexKit::MeshResource>(resource->resource);
-                                auto mesh           = renderer.LoadMesh(*meshResource);
-                                auto selection      = localSelection->GetSelection();
-                                auto& gameObject    = selection->gameObject;
-
-                                gameObject.AddView<FlexKit::BrushView>(mesh);
-
-                                auto blob       = skeleton->resource->CreateBlob();
-                                auto buffer     = blob.buffer;
-                                blob.buffer     = 0;
-                                blob.bufferSize = 0;
-
-                                FlexKit::AddAssetBuffer((FlexKit::Resource*)buffer);
-
-                                gameObject.AddView<FlexKit::SkeletonView>(mesh, skeleton->resource->GetResourceGUID());
-                                gameObject.AddView<FlexKit::AnimatorView>();
-                            });
-
-                        skeletonPicker->show();
-                    });
-
-                meshPicker->show();
-            }
-        });
 
     auto viewMenu   = menubar->addMenu("View");
     auto centerView = viewMenu->addAction("Center View On Object");

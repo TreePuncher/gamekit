@@ -43,7 +43,10 @@ void ScriptedAnimationObject::Reload(EditorScriptEngine& engine, AnimationObject
 
     scriptModule = engine.BuildModule(script->source);
     if (!scriptModule)
+    {
         obj = nullptr;
+        return;
+    }
 
     auto func = scriptModule->GetFunctionByName("InitiateModule");
 

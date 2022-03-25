@@ -113,6 +113,15 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    int PoseGetJointCount(FlexKit::PoseState::Pose* pose)
+    {
+        return pose->sk->JointCount;
+    }
+
+
+    /************************************************************************************************/
+
+
     Quaternion JointPoseGetOrientation(JointPose* jp)
     {
         return jp->r;
@@ -187,7 +196,8 @@ namespace FlexKit
 
 
         res = scriptEngine->RegisterObjectType("Pose", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                                   FK_ASSERT(res >= 0);
-        res = scriptEngine->RegisterObjectMethod("Pose", "JointPose@ GetJointPose(int)", asFUNCTION(PoseGetJointPose),    asCALL_CDECL_OBJFIRST);                       FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("Pose", "JointPose@ GetJointPose(int)", asFUNCTION(PoseGetJointPose),  asCALL_CDECL_OBJFIRST);                         FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("Pose", "int GetJointCount()",          asFUNCTION(PoseGetJointCount), asCALL_CDECL_OBJFIRST);                         FK_ASSERT(res > 0);
 
 
         /************************************************************************************************/
