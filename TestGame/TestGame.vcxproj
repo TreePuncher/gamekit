@@ -134,6 +134,7 @@
     <ClInclude Include="..\coreutilities\ProfilingUtilities.h" />
     <ClInclude Include="..\coreutilities\ResourceHandles.h" />
     <ClInclude Include="..\coreutilities\SceneLoadingContext.h" />
+    <ClInclude Include="..\coreutilities\ScriptingRuntime.h" />
     <ClInclude Include="..\coreutilities\Signal.h" />
     <ClInclude Include="..\coreutilities\ThreadUtilities.h" />
     <ClInclude Include="..\coreutilities\Transforms.h" />
@@ -259,6 +260,7 @@
     <ClCompile Include="..\coreutilities\ProfilingUtilities.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\coreutilities\ScriptingRuntime.cpp" />
     <ClCompile Include="..\coreutilities\ThreadUtilities.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>

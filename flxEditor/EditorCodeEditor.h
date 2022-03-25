@@ -4,6 +4,7 @@
 #include "ui_EditorCodeEditor.h"
 #include "EditorScriptEngine.h"
 #include "QtWidgets/qplaintextedit.h"
+#include "EditorScriptObject.h"
 #include <chrono>
 
 
@@ -80,18 +81,22 @@ public:
     void LoadDocument();
     void SaveDocument();
     void SaveDocumentCopy();
+    void SetResource(ScriptResource_ptr);
 
+    QMenuBar* GetMenuBar() noexcept;
 private:
 
     void LineCallback(asIScriptContext* ctx);
 
     EditorProject&          project;
-    ScriptResource*         currentResource = nullptr;
+    ScriptResource_ptr      currentResource = nullptr;
     QAction*                undo;
     QAction*                redo;
     QListWidget*            callStackWidget;
     QListWidget*            variableListWidget;
     QListWidget*            errorListWidget;
+    QMenuBar*               menuBar;
+    EditorTextEditorWidget* textEditor;
 
     std::string             fileDir;
     BasicHighlighter*       highlighter = nullptr;

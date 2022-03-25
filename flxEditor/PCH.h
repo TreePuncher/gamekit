@@ -17,7 +17,6 @@
 #include <QtWidgets/qmainwindow>
 #include <QtWidgets/qdockwidget.h>
 
-
 #include <qtimer>
 #include <QtWidgets\qtextedit.h>
 #include <QtWidgets\qlabel.h>
