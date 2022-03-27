@@ -280,7 +280,7 @@
       <Filter>Headers\coreutilities</Filter>
     </ClInclude>
     <ClInclude Include="..\coreutilities\ScriptingRuntime.h">
-      <Filter>Headers</Filter>
+      <Filter>Headers\coreutilities</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -480,7 +480,7 @@
       <Filter>Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\ScriptingRuntime.cpp">
-      <Filter>Headers</Filter>
+      <Filter>Source\coreutilities</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

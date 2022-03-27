@@ -58,7 +58,7 @@ class EditorScriptEngine
 {
 public:
 
-    EditorScriptEngine();
+    EditorScriptEngine(FlexKit::iAllocator* allocator = FlexKit::SystemAllocator);
     ~EditorScriptEngine();
 
     std::vector<AngelScriptGadget*> GetGadgets() { return gadgets; };
@@ -79,7 +79,7 @@ public:
 
 private:
 
-    void RegisterAPI();
+    void RegisterAPI(FlexKit::iAllocator*);
 
     void RegisterGadget(asIScriptObject* gObj);
     void PrintToOutputWindow(std::string* str);
@@ -88,7 +88,7 @@ private:
 protected:
 
 
-    void        RegisterCoreTypesAPI();
+    void        RegisterCoreTypesAPI(FlexKit::iAllocator* allocator);
     void        RegisterGadgetAPI();
     static void MessageCallback(const asSMessageInfo* msg, EditorScriptEngine* param);
 
