@@ -6,10 +6,14 @@ class asIScriptFunction;
 class asIScriptObject;
 class asIScriptModule;
 
+
+
 namespace FlexKit
 {
+    class iAllocator;
+
     void RegisterGameObjectCore(asIScriptEngine*);
-    void RegisterMathTypes(asIScriptEngine*);
+    void RegisterMathTypes(asIScriptEngine*, iAllocator* allocator);
 }
 
 

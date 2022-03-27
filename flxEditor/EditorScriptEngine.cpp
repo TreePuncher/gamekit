@@ -121,7 +121,7 @@ void EditorScriptEngine::PrintToErrorWindow(const char* str)
 /************************************************************************************************/
 
 
-EditorScriptEngine::EditorScriptEngine() :
+EditorScriptEngine::EditorScriptEngine(FlexKit::iAllocator* allocator) :
     scriptEngine    { asCreateScriptEngine() }
     //debugger        { new CDebugger{} }
 {
@@ -130,7 +130,7 @@ EditorScriptEngine::EditorScriptEngine() :
 
     //scriptContext->SetLineCallback(asMETHOD(CDebugger, LineCallback), debugger, asCALL_THISCALL);
 
-    RegisterAPI();
+    RegisterAPI(allocator);
 }
 
 
@@ -154,9 +154,9 @@ void EditorScriptEngine::RegisterGadget(asIScriptObject* gObj)
 /************************************************************************************************/
 
 
-void EditorScriptEngine::RegisterCoreTypesAPI()
+void EditorScriptEngine::RegisterCoreTypesAPI(FlexKit::iAllocator* allocator)
 {
-    FlexKit::RegisterMathTypes(scriptEngine);
+    FlexKit::RegisterMathTypes(scriptEngine, allocator);
     FlexKit::RegisterGameObjectCore(scriptEngine);
 }
 
@@ -175,7 +175,7 @@ void EditorScriptEngine::RegisterGadgetAPI()
 /************************************************************************************************/
 
 
-void EditorScriptEngine::RegisterAPI()
+void EditorScriptEngine::RegisterAPI(FlexKit::iAllocator* allocator)
 {
     RegisterScriptArray(scriptEngine, true);
     RegisterScriptAny(scriptEngine);
@@ -184,7 +184,7 @@ void EditorScriptEngine::RegisterAPI()
     RegisterScriptMath(scriptEngine);
     RegisterScriptMathComplex(scriptEngine);
 
-    RegisterCoreTypesAPI();
+    RegisterCoreTypesAPI(allocator);
     RegisterGadgetAPI();
 
     scriptEngine->RegisterGlobalProperty("AllocatorHandle@ SystemAllocator", (FlexKit::iAllocator*)FlexKit::SystemAllocator);

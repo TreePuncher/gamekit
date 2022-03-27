@@ -322,7 +322,7 @@ namespace FlexKit
         if (triMesh == InvalidHandle_t)
             return;
 
-        if (gameObject.hasView(FlexKit::BrushComponentID))
+        if (!gameObject.hasView(FlexKit::BrushComponentID))
             gameObject.AddView<BrushView>(triMesh);
         else
             static_cast<BrushView*>(gameObject.GetView(BrushComponentID))->SetMesh(triMesh);

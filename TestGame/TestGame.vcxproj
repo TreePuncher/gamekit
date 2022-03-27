@@ -260,7 +260,10 @@
     <ClCompile Include="..\coreutilities\ProfilingUtilities.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\coreutilities\ScriptingRuntime.cpp" />
+    <ClCompile Include="..\coreutilities\ScriptingRuntime.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\coreutilities\ThreadUtilities.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>

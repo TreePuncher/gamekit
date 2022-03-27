@@ -268,7 +268,7 @@ namespace FlexKit
         }
 
         ComponentID ID;
-        uint32_t    componentSize;
+        uint16_t    componentSize;
         union
         {
             ComponentViewBase* _ptr;
