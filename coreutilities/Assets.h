@@ -598,10 +598,7 @@ namespace FlexKit
                 overlapped.Offset       = static_cast<DWORD>(readOffset + offset);
 
                 if (bool res = ReadFile(file, dst_ptr, static_cast<DWORD>(readSize), &bytesRead, &overlapped); res != true)
-                {
-                    auto error = GetLastError();
-                    //__debugbreak();
-                }
+                    throw std::runtime_error("Failed to read");
             }
         }
 

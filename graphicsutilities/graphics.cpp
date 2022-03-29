@@ -2107,7 +2107,7 @@ namespace FlexKit
 
     void Context::SetComputeDescriptorTable(size_t idx)
     {
-        DeviceContext->SetComputeRootDescriptorTable(idx, D3D12_GPU_DESCRIPTOR_HANDLE(0));
+        DeviceContext->SetComputeRootDescriptorTable(idx, D3D12_GPU_DESCRIPTOR_HANDLE{ 0 });
     }
 
 
@@ -2329,7 +2329,7 @@ namespace FlexKit
 				_AddBarrier(resource, DeviceResourceState::DRS_CopyDest, state);
 
 			prevResource	= resource;
-			prevState		= prevState;
+            prevState       = state;
 		}
 	}
 
@@ -2365,7 +2365,7 @@ namespace FlexKit
 				_AddBarrier(resource, state, DeviceResourceState::DRS_CopyDest);
 
 			prevResource	= resource;
-			prevState		= prevState;
+			prevState		= state;
 		}
 
 		FlushBarriers();
@@ -2757,8 +2757,8 @@ namespace FlexKit
             tex,
             GPUview);
 
-		auto CPUHandle = CPUview.Get<0>();
-		auto GPUHandle = GPUview.Get<1>();
+        const auto CPUHandle = CPUview.Get<0>();
+		const auto GPUHandle = GPUview.Get<1>();
 
 		FlushBarriers();
 
@@ -2771,18 +2771,14 @@ namespace FlexKit
 
 	void Context::ClearUAV(ResourceHandle resource, uint4 clearColor)
 	{
-		auto view               = _ReserveSRVLocal(1);
-		auto deviceResource     = renderSystem->GetDeviceResource(resource);
-		auto deviceFormat       = renderSystem->GetTextureDeviceFormat(resource);
+		const auto view               = _ReserveSRVLocal(1);
+		const auto deviceResource     = renderSystem->GetDeviceResource(resource);
+		const auto deviceFormat       = renderSystem->GetTextureDeviceFormat(resource);
 
         PushUAV1DToDescHeap(renderSystem, deviceResource, deviceFormat, 0, view);
-        //auto UAV        = renderSystem->GetUAVBufferLayout(resource);
-        //FlexKit::UAVBuffer viewDesc{ *renderSystem, resource, 4, 9 };
-        //PushUAVBufferToDescHeap(renderSystem, viewDesc, view);
 
-
-		auto CPUHandle = view.Get<0>();
-		auto GPUHandle = view.Get<1>();
+		const auto CPUHandle = view.Get<0>();
+		const auto GPUHandle = view.Get<1>();
 
 		FlushBarriers();
 

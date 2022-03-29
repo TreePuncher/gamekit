@@ -564,10 +564,9 @@ namespace FlexKit
 		};
 
 
-		const auto GetArguments = [&](auto Itr) -> TokenRange
+		const auto GetArguments = [&](auto itr) -> TokenRange
 		{
-			auto Begin = (SyntaxType == ConsoleSyntax::ARGUEMENTSBEGIN) 
-				? (Itr + 1) : Itr;
+			auto Begin = (itr->SyntaxType == ConsoleSyntax::ARGUEMENTSBEGIN) ? (itr + 1) : itr;
 
 			do
 			{
@@ -577,7 +576,7 @@ namespace FlexKit
 				}
 			} while (true);
 
-			return {Itr, Itr};
+			return { itr, itr };
 		};
 
 

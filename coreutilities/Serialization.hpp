@@ -421,7 +421,7 @@ namespace FlexKit
 
 
         template<typename TY>
-        //requires SerializableValue<TY, SaveArchiveContext>
+        requires(SerializableValue<TY, SaveArchiveContext>)
         void _Serialize(TY& value)
         {
             Serialize(*this, value);
@@ -429,9 +429,9 @@ namespace FlexKit
 
 
         template<typename TY>
-        requires    SerializableStruct<TY, SaveArchiveContext> &&
+        requires(   SerializableStruct<TY, SaveArchiveContext> &&
                     !std::is_trivially_copyable_v<TY> &&
-                    !SerializableInterfacePointer<TY>
+                    !SerializableInterfacePointer<TY>)
 
         void _Serialize(TY& value)
         {
@@ -440,7 +440,7 @@ namespace FlexKit
 
 
         template<typename TY>
-        requires SerializableStruct<TY, SaveArchiveContext> && !std::is_trivially_copyable_v<TY>
+        requires(SerializableStruct<TY, SaveArchiveContext> && !std::is_trivially_copyable_v<TY>)
         void _Serialize(TY* value)
         {
             dataBuffer.emplace_back();
@@ -595,7 +595,10 @@ namespace FlexKit
 
                 for (auto& d : temp)
                 {
-                    pointerTable.emplace_back(uint64_t(d.first), dataBuffer.back().size());
+                    pointerTable.emplace_back(
+                        PointerValue{
+                            reinterpret_cast<uint64_t>(d.first),
+                            static_cast<uint64_t>(dataBuffer.back().size()) });
 
                     d.second(*this);
                 }
@@ -717,7 +720,7 @@ namespace FlexKit
         constexpr bool Loading() const noexcept { return true; }
 
         template<typename TY>
-        requires TrivialCopy<TY, LoadFileArchiveContext>
+        requires(TrivialCopy<TY, LoadFileArchiveContext>)
         void _Deserialize(TY& value)
         {
             fread(&value, 1, sizeof(TY), f);
@@ -735,7 +738,7 @@ namespace FlexKit
         }
 
         template<typename TY>
-        requires SerializableValue<TY, LoadFileArchiveContext>
+        requires(SerializableValue<TY, LoadFileArchiveContext>)
         void _Deserialize(TY& value)
         {
             Serialize(*this, value);
@@ -760,7 +763,7 @@ namespace FlexKit
 
 
         template<typename TY>
-        requires SerializableStruct<TY, LoadFileArchiveContext> && !std::is_trivially_copyable_v<TY>
+        requires(SerializableStruct<TY, LoadFileArchiveContext> && !std::is_trivially_copyable_v<TY>)
         void _Deserialize(TY& value)
         {
             value.Serialize(*this);
@@ -845,7 +848,7 @@ namespace FlexKit
 
 
         template<typename TY>
-        requires std::is_base_of_v<FlexKit::SerializableInterfaceBase, TY>
+        requires(std::is_base_of_v<FlexKit::SerializableInterfaceBase, TY>)
         void DeserializePointer(std::shared_ptr<TY>& value)
         {
             using namespace SerializeableUtilities;
@@ -1027,7 +1030,7 @@ namespace FlexKit
         }
 
         template<typename TY>
-        requires SerializableValue<TY, LoadBlobArchiveContext>
+        requires(SerializableValue<TY, LoadBlobArchiveContext>)
         void _Deserialize(TY& value)
         {
             Serialize(*this, value);
@@ -1052,7 +1055,7 @@ namespace FlexKit
 
 
         template<typename TY>
-        requires SerializableStruct<TY, LoadBlobArchiveContext> && !std::is_trivially_copyable_v<TY> && !SerializableInterfacePointer<TY>
+        requires(SerializableStruct<TY, LoadBlobArchiveContext> && !std::is_trivially_copyable_v<TY> && !SerializableInterfacePointer<TY>)
         void _Deserialize(TY& value)
         {
             value.Serialize(*this);

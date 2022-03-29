@@ -131,7 +131,7 @@ namespace FlexKit
 
             MaterialView(GameObject& gameObject) noexcept;
 
-            ~MaterialView() final override;
+            ~MaterialView() override;
 
 
             MaterialComponentData GetData() const;

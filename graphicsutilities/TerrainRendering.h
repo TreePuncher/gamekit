@@ -109,10 +109,10 @@ namespace FlexKit
 		};
 
 
-		template<size_t size = 0>
+		template<uint8_t size = 0>
 		TileID(const TerrainTileBitSection ID[size]) : 
-			tileDepth		{ size													},
-			tileIDBitField	{ _GenerateBitField(static_cast<uint8_t*>(ID, size))	}
+			tileDepth		{ size 										            },
+			tileIDBitField	{ _GenerateBitField(static_cast<uint8_t*>(ID), size)    }
 		{
 			static_assert(size < sBitFields, "Too many bit fields!");
 
@@ -133,11 +133,11 @@ namespace FlexKit
 
 		TileID CreateChildID(const TerrainTileBitSection localID) const
 		{
-			uint64_t temp = tileIDBitField;
+            uint8_t temp = tileIDBitField;
 			temp <<= 2;
 			temp |= localID;
 
-			return { temp, tileDepth + 1u };
+			return { temp, (uint8_t)(tileDepth + 1) };
 		}
 
 		TileID GetParentID() const
@@ -145,7 +145,7 @@ namespace FlexKit
 			uint64_t temp = tileIDBitField;
 			return { _GenerateBitField(
 						reinterpret_cast<uint8_t*>(&temp), tileDepth - 1), 
-						isRoot() ? 0u : tileDepth - 1u };
+                        isRoot() ? uint8_t(0u) : uint8_t(tileDepth - 1u)};
 		}
 
 		bool isRoot() const
@@ -379,10 +379,10 @@ namespace FlexKit
 				Textures.push_back(TextureBuffer{});
 				LoadBMP(heightMap, tempMemory, &Textures.back());
 				
-				Textures.push_back(BuildMipMap(Textures.back(), tempMemory, AverageSampler<>));
-				Textures.push_back(BuildMipMap(Textures.back(), tempMemory, AverageSampler<>));
-				Textures.push_back(BuildMipMap(Textures.back(), tempMemory, AverageSampler<>));
-				Textures.push_back(BuildMipMap(Textures.back(), tempMemory, AverageSampler<>));
+				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
+				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
+				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
+				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
 
 
                 FK_ASSERT(0);
@@ -618,7 +618,7 @@ namespace FlexKit
 			{
 				builder.AddDataDependency(gatherPatches);
 
-				data.renderTarget = builder.WriteRenderTarget(renderTarget);
+				data.renderTarget = builder.RenderTarget(renderTarget);
 
 				data.heap.Init(
 					frameGraph.GetRenderSystem(),
@@ -674,10 +674,10 @@ namespace FlexKit
 				ConstantBufferDataSet localConstants	= ConstantBufferDataSet{ LocalConstants{}, data.constants };
 				ConstantBufferDataSet cameraConstants	= data.GetConstants(data.constants);
 
-				ctx->SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
+				ctx->SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
 
 				ctx->SetPipelineState(resources.GetPipelineState(DRAW_LINE3D_PSO));
-				ctx->SetRenderTargets({ resources.GetRenderTargetDescHeapEntry(data.renderTarget) }, false);
+				ctx->SetRenderTargets({ resources.GetRenderTarget(data.renderTarget) }, false);
 
 				ctx->SetPrimitiveTopology(EInputTopology::EIT_LINE);
 				ctx->SetVertexBuffers({ vertices });
@@ -775,8 +775,8 @@ namespace FlexKit
 				},
 				[&](FrameGraphNodeBuilder& builder, _RenderTerrainForward& data)
 				{
-					data.renderTarget	= builder.WriteRenderTarget(renderTarget);
-					data.depthTarget	= builder.WriteDepthBuffer(depthTarget);
+					data.renderTarget	= builder.RenderTarget(renderTarget);
+					data.depthTarget	= builder.DepthTarget(depthTarget);
 				},
 				[=](_RenderTerrainForward& data, const FrameResources& resources, Context* ctx)
 				{
@@ -787,9 +787,9 @@ namespace FlexKit
 					//ctx->SetPipelineState();
 					ctx->SetPrimitiveTopology(EInputTopology::EIT_PATCH_CP_1);
 					ctx->SetRenderTargets(
-						{ resources.GetRenderTargetDescHeapEntry(data.renderTarget) }, 
+						{ resources.GetRenderTarget(data.renderTarget) }, 
 						true, 
-						resources.GetRenderTargetDescHeapEntry(data.depthTarget));
+						resources.GetRenderTarget(data.depthTarget));
 				});
 
 			return renderStage;

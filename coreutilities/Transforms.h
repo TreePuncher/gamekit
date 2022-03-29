@@ -425,7 +425,7 @@ namespace FlexKit
 
         void SetOrientationL(const Quaternion q) noexcept
         {
-            FlexKit::SetOrientationL(q);
+            FlexKit::SetOrientationL(node, q);
         }
 
         void SetWT(const float4x4& wt) noexcept
