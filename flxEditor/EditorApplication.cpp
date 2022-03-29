@@ -97,14 +97,24 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
             if(auto& scene = mainWindow.Get3DView().GetScene(); scene)
                 scene->Update();
 
-            project.SaveProject("Test.proj");
+            const auto saveText     = std::string{ "Save Project" };
+            const auto fileMenuText = std::string{ "Files (*.proj)" };
+            const auto fileDir      = QFileDialog::getOpenFileName(nullptr, saveText.c_str(), QDir::currentPath(), fileMenuText.c_str());
+            const auto fileStr      = fileDir.toStdString();
+
+            project.SaveProject(fileStr);
         });
 
     mainWindow.AddFileAction(
         "Load",
         [&]()
         {
-            project.LoadProject("Test.proj");
+            const auto loadText     = std::string{ "Load Project" };
+            const auto fileMenuText = std::string{ "Files (*.proj)" };
+            const auto fileDir      = QFileDialog::getOpenFileName(nullptr, loadText.c_str(), QDir::currentPath(), fileMenuText.c_str());
+            const auto fileStr      = fileDir.toStdString();
+
+            project.LoadProject(fileStr);
         });
 
     auto quitAction = mainWindow.GetFileMenu()->addAction("Quit");

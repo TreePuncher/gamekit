@@ -209,6 +209,14 @@ void CreateMultiplayerScene(GameWorld& world)
     
     auto& staticBody = floorCollider.AddView<StaticBodyView>(world.layer, float3{ 0, -1.0f, 0 });
     staticBody.AddShape(floorShape);
+
+
+    auto& layer = PhysXComponent::GetComponent().GetLayer_ref(world.layer);
+    layer.AddUpdateCallback(
+        [&](WorkBarrier& barrier, iAllocator&, double dT)
+        {
+            UpdateThirdPersonCameraControllers({}, dT);
+        });
 }
 
 

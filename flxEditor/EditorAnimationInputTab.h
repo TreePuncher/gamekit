@@ -1,29 +1,32 @@
 #pragma once
-#include "Components.h"
-#include "SceneResource.h"
-#include "Serialization.hpp"
 
-constexpr FlexKit::ComponentID EditorAnimatorComponentID = GetTypeGUID(EditorAnimatorComponentID);
-
-class EditorAnimatorComponent :
-    public FlexKit::Serializable<EditorAnimatorComponent, FlexKit::EntityComponent, EditorAnimatorComponentID>
-{
-public:
-    EditorAnimatorComponent() :
-        Serializable{ EditorAnimatorComponentID } {}
-
-    FlexKit::Blob GetBlob() override;
-
-    void Serialize(auto& ar)
-    {
-        EntityComponent::Serialize(ar);
-    }
-
-    inline static RegisterConstructorHelper<EditorAnimatorComponent, EditorAnimatorComponentID> registered{};
-};
+#include <QWidget>
+#include "ui_EditorAnimationInputTab.h"
+#include <functional>
 
 
 /************************************************************************************************/
+
+
+using OnCreationEventFN = std::function<void (uint32_t TypeID, const std::string& ID)>;
+using ReadEntryData     = std::function<void (uint32_t TypeID, const std::string& ID, const std::string& Value)>;
+
+
+class EditorAnimationInputTab : public QWidget
+{
+	Q_OBJECT
+
+public:
+	EditorAnimationInputTab(QWidget *parent = Q_NULLPTR);
+	~EditorAnimationInputTab();
+
+    void Update(const uint32_t tableCount, ReadEntryData);
+    void SetOnCreateEvent(OnCreationEventFN&& in);
+
+private:
+	Ui::EditorAnimationInputTab ui;
+    OnCreationEventFN           callback = [](auto, auto&){};
+};
 
 
 /**********************************************************************

@@ -12,6 +12,7 @@
 #include "SelectionContext.h"
 #include "ResourceIDs.h"
 #include "ScriptedAnimationObject.h"
+#include "EditorAnimationInputTab.h"
 
 
 /************************************************************************************************/
@@ -20,7 +21,7 @@
 ID3D12PipelineState* CreateFlatSkinnedPassPSO(RenderSystem* RS)
 {
 	auto DrawRectVShader = RS->LoadShader("ForwardSkinned_VS",  "vs_6_0", "assets\\shaders\\forwardRender.hlsl");
-	auto DrawRectPShader = RS->LoadShader("FlatWhite",          "ps_6_0", "assets\\shaders\\forwardRender.hlsl");
+	auto DrawRectPShader = RS->LoadShader("ColoredPolys",        "ps_6_0", "assets\\shaders\\forwardRender.hlsl");
 
 	/*
 	typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -47,12 +48,12 @@ ID3D12PipelineState* CreateFlatSkinnedPassPSO(RenderSystem* RS)
 
 
 	D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-    Rast_Desc.FillMode = D3D12_FILL_MODE_WIREFRAME;
-    Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
+    //Rast_Desc.FillMode = D3D12_FILL_MODE_WIREFRAME;
+    //Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
 
 	D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
-	Depth_Desc.DepthEnable	= false;
+	Depth_Desc.DepthEnable	= true;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 		PSO_Desc.pRootSignature        = RS->Library.RS6CBVs4SRVs;
@@ -145,9 +146,13 @@ public:
         QWidget::resizeEvent(evt);
 
         auto size = evt->size();
+        FlexKit::uint2 newWH = { evt->size().width() * 1.5, evt->size().height() * 1.5 };
 
-        renderWindow->resize(size.width() * 1.5, size.height() * 1.5);
-        depthBuffer.Resize({ size.width() * 1.5, size.height() * 1.5 });
+
+        renderWindow->resize(evt->size());
+        depthBuffer.Resize(newWH);
+
+        FlexKit::SetCameraAspectRatio(previewCamera, float(evt->size().width()) / float(evt->size().height()));
     }
 
     void RenderAnimatedModel(
@@ -339,8 +344,8 @@ public:
             auto boundingSphere     = resource->BS;
             const FlexKit::Camera c = FlexKit::CameraComponent::GetComponent().GetCamera(previewCamera);
 
-            const auto target           = float3(0, 0, 0);
-            const auto desiredDistance  = (2.0f / std::sqrt(2.0f)) * boundingSphere.w / std::tan(c.FOV);
+            const auto target           = boundingSphere.xyz();
+            const auto desiredDistance  = 5 * boundingSphere.w / std::tan(c.FOV);
 
             auto position_VS        = c.View.Transpose() * float4 { target, 1 };
             auto updatedPosition_WS = c.IV.Transpose() * float4 { position_VS.x, position_VS.y, position_VS.z + desiredDistance, 1 };
@@ -377,8 +382,11 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
     , globalSelection   { IN_selection }
     , renderer          { IN_renderer }
     , scriptEngine      { IN_engine }
+    , inputVariables    { new EditorAnimationInputTab }
 {
     static auto _REGISTERED = ScriptedAnimationObject::RegisterInterface(scriptEngine);
+
+    codeEditor->GetTabs()->addTab(inputVariables, "Input Variables");
 
     ui.setupUi(this);
     ui.horizontalLayout->setMenuBar(menubar);
@@ -464,6 +472,8 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
                             // Set Selection
                             globalSelection.type        = AnimatorObject_ID;
                             globalSelection.selection   = std::any{ obj };
+
+                            previewWindow->CenterCamera();
                         });
 
                     skeletonPicker->show();
@@ -525,6 +535,8 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
                     // Set Selection
                     globalSelection.type        = AnimatorObject_ID;
                     globalSelection.selection   = std::any{ obj };
+
+                    previewWindow->CenterCamera();
                 });
 
             resourcePicker->show();

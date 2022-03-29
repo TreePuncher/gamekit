@@ -15,7 +15,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    std::pair<GameObject*, bool> FindGameObject(Scene& scene, const char* id)
+    std::optional<GameObject*> FindGameObject(Scene& scene, const char* id)
     {
         auto& visableComponent = SceneVisibilityComponent::GetComponent();
 
@@ -36,10 +36,10 @@ namespace FlexKit
                 { return false; });
 
             if (res)
-                return { &gameObject, true };
+                return &gameObject;
         }
 
-        return { nullptr, false };
+        return {};
     }
 
 

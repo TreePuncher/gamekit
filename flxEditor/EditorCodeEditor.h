@@ -83,7 +83,8 @@ public:
     void SaveDocumentCopy();
     void SetResource(ScriptResource_ptr);
 
-    QMenuBar* GetMenuBar() noexcept;
+    QMenuBar*   GetMenuBar() noexcept;
+    QTabWidget* GetTabs() noexcept;
 private:
 
     void LineCallback(asIScriptContext* ctx);

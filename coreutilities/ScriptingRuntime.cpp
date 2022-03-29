@@ -302,16 +302,16 @@ namespace FlexKit
         return out;
     }
 
-    Quaternion* QuatAssign_AS(Quaternion* lhs, float3* rhs)
+    Quaternion& QuatAssign_AS(Quaternion* lhs, float3* rhs)
     {
         *lhs = *rhs;
-        return lhs;
+        return *lhs;
     }
 
-    Quaternion* QuatMulAssign_AS(Quaternion* lhs, Quaternion* rhs)
+    Quaternion& QuatMulAssign_AS(Quaternion* lhs, Quaternion* rhs)
     {
         *lhs *= *rhs;
-        return lhs;
+        return *lhs;
     }
 
     Quaternion* QuatConjugate_AS(Quaternion* lhs)
@@ -690,14 +690,9 @@ namespace FlexKit
     }
 
 
-    Vect4* VectorIndexFloat4x4(const float4x4* m, int row)
+    Vect4& VectorIndexFloat4x4(const float4x4* m, int row)
     {
-        //auto temp = new(allocator->_aligned_malloc(16)) Vect4();
-        //*temp = (*m)[row];
-
-        //return temp;
-
-        return &(*m)[row];
+        return (*m)[row];
     }
 
 
@@ -830,8 +825,8 @@ namespace FlexKit
         res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion@  opMul(Quaternion& in)",   asFUNCTION(QuaternionMul),   asCALL_CDECL_OBJFIRST);                                                 FK_ASSERT(res > 0);
         res = scriptEngine->RegisterObjectMethod("Quaternion", "float3@      opMul(float3& in)",       asFUNCTION(QMULF3),          asCALL_CDECL_OBJFIRST);                                                 FK_ASSERT(res > 0);
 
-        res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion@ opAssign(Quaternion& in)",    asFUNCTION(QuatAssign_AS), asCALL_CDECL_OBJFIRST);                                                FK_ASSERT(res > 0);
-        res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion@ opMulAssign(Quaternion& in)", asFUNCTION(QuatMulAssign_AS), asCALL_CDECL_OBJFIRST);                                             FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion& opAssign(Quaternion& in)",    asFUNCTION(QuatAssign_AS), asCALL_CDECL_OBJFIRST);                                                FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion& opMulAssign(Quaternion& in)", asFUNCTION(QuatMulAssign_AS), asCALL_CDECL_OBJFIRST);                                             FK_ASSERT(res > 0);
 
         res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion@  Conjugate()",              asFUNCTION(QuatConjugate_AS), asCALL_CDECL_OBJFIRST);                                               FK_ASSERT(res > 0);
         res = scriptEngine->RegisterObjectMethod("Quaternion", "float Dot(Quaternion& in)",             asFUNCTION(QuatDot_AS), asCALL_CDECL_OBJFIRST);                                                     FK_ASSERT(res > 0);

@@ -32,7 +32,7 @@ namespace FlexKit
 
 		D3D12_RASTERIZER_DESC Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		Rast_Desc.FillMode = D3D12_FILL_MODE_SOLID;
-		Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
+		Rast_Desc.CullMode = D3D12_CULL_MODE_BACK;
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
@@ -92,7 +92,7 @@ namespace FlexKit
 
 		D3D12_RASTERIZER_DESC Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		Rast_Desc.FillMode = D3D12_FILL_MODE_SOLID;
-		Rast_Desc.CullMode = D3D12_CULL_MODE_BACK;
+		Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
@@ -464,9 +464,18 @@ namespace FlexKit
                                                 .Idx    = itr,
                                                 .maxZ   = pointLight.R };
 
-                                        const float4 POS_VS = tempConstants.PV * POS_WT + WT * float4(BS.xyz(), 0);
+                                        static const float3 mapVectors[] = {
+                                            float3( 1,  0,  0), // right
+                                            float3(-1,  0,  0), // left
+                                            float3( 0,  1,  0), // top
+                                            float3( 0, -1,  0), // bottom
+                                            float3( 0,  0,  1), // forward
+                                            float3( 0,  0, -1), // backward
+                                        };
 
-                                        if (BS.w + POS_VS.z > 0.0f)
+                                        const float z = mapVectors[itr].dot(POS_WT.xyz() - pointLightPosition);
+
+                                        if (z >= -BS.w)
                                         {
                                             ctx.SetGraphicsConstantValue(0, 34, &tempConstants);
                                             ctx.DrawIndexedInstanced(indexCount);
@@ -474,7 +483,7 @@ namespace FlexKit
                                     }
 					            }
 
-                                if(animatedBrushes.size() && false)
+                                if(animatedBrushes.size())
                                 {
                                     auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS);
                                     ctx.SetPipelineState(PSOAnimated);
@@ -539,7 +548,7 @@ namespace FlexKit
                                                             .maxZ   = pointLight.R
                                                     };
 
-                                                    const float4 POS_VS = tempConstants.PV * POS_WT + WT * float4(triMesh->BS.xyz(), 0);
+                                                    const float4 POS_VS = tempConstants.PV * POS_WT;// +WT * float4(triMesh->BS.xyz(), 0);
 
                                                     if (triMesh->BS.w + POS_VS.z > 0.0f)
                                                     {

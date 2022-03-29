@@ -166,6 +166,8 @@ public:
     BaseState&                      base;
     WorldStateMangagerInterface&    worldState;
 
+    GameObject*                     pointLight1 = nullptr;
+
     //GameObject&                     testAnimation;
     //GameObject&                     particleEmitter;
     //GameObject&                     IKTarget;

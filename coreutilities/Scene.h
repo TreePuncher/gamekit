@@ -552,7 +552,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    std::pair<GameObject*, bool> FindGameObject(Scene& scene, const char* id);
+    std::optional<GameObject*> FindGameObject(Scene& scene, const char* id);
 
 
 	/************************************************************************************************/

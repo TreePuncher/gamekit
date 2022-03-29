@@ -55,6 +55,21 @@ public:
             FlexKit::GetSceneNode(viewportObject->gameObject));
     }
 
+    void ClearChildren(ViewportScene& scene)
+    {
+        const auto end = childCount();
+
+        auto children = takeChildren();
+        for (int itr = 0; itr < end; itr++)
+        {
+            auto currentItem = static_cast<HierarchyItem*>(children[itr]);
+            currentItem->ClearChildren(scene);
+
+            scene.RemoveObject(currentItem->viewportObject);
+            delete currentItem;
+        }
+    }
+
     void SetParent(HierarchyItem* newParent, ViewportScene& scene, int idx)
     {
         auto currentParent  = parent();
@@ -383,9 +398,12 @@ void SceneOutliner::ShowContextMenu(const QPoint& point)
         auto removeAction = contextMenu.addAction("Remove",
             [&, row = index.row()]()
             {
-                auto currentItem = static_cast<HierarchyItem*>(treeWidget.currentItem());
-
                 viewport.ClearMode(); // Mode needs to be cleared since deleting actively selected object may cause a crash
+                viewport.ClearSelection();
+
+                auto currentItem = static_cast<HierarchyItem*>(treeWidget.currentItem());
+                currentItem->ClearChildren(*viewport.GetScene());
+
                 viewport.GetScene()->RemoveObject(currentItem->viewportObject);
                 treeWidget.removeItemWidget(currentItem, 0);
 

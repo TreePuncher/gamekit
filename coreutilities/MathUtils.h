@@ -1093,7 +1093,8 @@ namespace FlexKit
 
         float dot(const float3& b) const noexcept
         {
-            return DotProduct3(pfloats, b.pfloats);
+            __m128 res = _mm_dp_ps(pfloats, b.pfloats, 0b1110110);
+            return _mm_cvtss_f32(res);
         }
 
 
@@ -1165,7 +1166,7 @@ namespace FlexKit
             auto temp4  = _mm_add_ps(temp2, temp3);
             auto m      = _mm_shuffle_ps(temp4, temp4, _MM_SHUFFLE(0, 0, 0, 0));
             
-            return _mm_mul_ps(pfloats, _mm_rsqrt_ps(m));
+            return _mm_div_ps(pfloats, _mm_sqrt_ps(m));
 		}
 
         static float3 Zero() { return float3{ 0 }; }

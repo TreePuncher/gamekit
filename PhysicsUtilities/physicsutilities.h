@@ -248,6 +248,8 @@ namespace FlexKit
 
     /************************************************************************************************/
 
+    using PhysicsLayerUpdateCallback = FlexKit::TypeErasedCallable<64, void, WorkBarrier&, iAllocator&, double>;
+
 
 	class PhysicsLayer
 	{
@@ -272,6 +274,8 @@ namespace FlexKit
 
 		void Update(const double dT, WorkBarrier* barrier = nullptr, iAllocator* temp_allocator = nullptr);
 		void UpdateColliders(WorkBarrier* barrier = nullptr, iAllocator* temp_allocator = nullptr);
+        void CallUserUpdates(WorkBarrier& barrier, iAllocator& allocator, double dT);
+
 
 		void DebugDraw				(FrameGraph* FGraph, iAllocator* TempMemory);
         void UpdateDebugGeometry();
@@ -288,6 +292,8 @@ namespace FlexKit
 		void SetPosition	        (const RigidBodyHandle, float3 xyz);
 		void SetMass                (const RigidBodyHandle, float m);
         void SetRigidBodyPosition   (const RigidBodyHandle, const float3 xyz);
+
+        void AddUpdateCallback(PhysicsLayerUpdateCallback&& callback);
 
         struct RayCastHit
         {
@@ -352,9 +358,11 @@ namespace FlexKit
             FlexKit::float2 UV;
         };
 
-        Vector<DebugVertex>         debugGeometry;
-		StaticColliderSystem		staticColliders;
-		RigidBodyColliderSystem		rbColliders;
+
+        Vector<PhysicsLayerUpdateCallback>  userCallback;
+        Vector<DebugVertex>                 debugGeometry;
+		StaticColliderSystem		        staticColliders;
+		RigidBodyColliderSystem		        rbColliders;
 
         PhysXComponent&				system;
 
@@ -794,8 +802,6 @@ namespace FlexKit
 
             controller_ref.controller->getActor()->userData = &gameObject;
             controller_ref.controller->setUserData(&gameObject);
-
-            gameObject.AddView<CameraView>();
         }
 
 
@@ -862,6 +868,7 @@ namespace FlexKit
         float  pitch;
         float  roll;
     };
+
 
     struct ThirdPersonCamera
     {
@@ -959,8 +966,14 @@ namespace FlexKit
 
     /************************************************************************************************/
 
+    struct ThirdPersonEventHandler
+    {
+        void OnCreateView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+        {
+        }
+    };
 
-    using CameraControllerComponent     = BasicComponent_t<ThirdPersonCamera, CameraControllerHandle, CameraControllerComponentID>;
+    using CameraControllerComponent     = BasicComponent_t<ThirdPersonCamera, CameraControllerHandle, CameraControllerComponentID, ThirdPersonEventHandler>;
     using CameraControllerView          = CameraControllerComponent::View;
 
 
@@ -981,7 +994,8 @@ namespace FlexKit
     void            SetCameraControllerCameraBackOffset(GameObject& GO, const float offset);
 
 
-    UpdateTask&     UpdateThirdPersonCameraControllers(UpdateDispatcher& dispatcher, float2 mouseInput, const double dT);
+    void            UpdateThirdPersonCameraControllers(const float2& mouseInput, const double dT);
+    UpdateTask&     QueueThirdPersonCameraControllers(UpdateDispatcher& dispatcher, float2 mouseInput, const double dT);
 
 
     /************************************************************************************************/

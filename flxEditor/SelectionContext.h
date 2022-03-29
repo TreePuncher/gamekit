@@ -23,6 +23,12 @@ public:
         return std::any_cast<TY>(selection);
     }
 
+    void Clear()
+    {
+        selection.reset();
+        type = -1u;
+    }
+
     std::any        selection;
     SelectionTypeID type;
 };

@@ -62,6 +62,9 @@ namespace FlexKit
 
         SkeletonHandle Create(const TriMeshHandle triMesh, const AssetHandle asset)
         {
+            if (triMesh == InvalidHandle_t)
+                return InvalidHandle_t;
+
             auto mesh = GetMeshResource(triMesh);
             if (!mesh)
                 return InvalidHandle_t;
