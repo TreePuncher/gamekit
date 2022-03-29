@@ -90,8 +90,8 @@ namespace FlexKit
         VertexBufferView(const VertexBufferView&) = delete;
         VertexBufferView(VertexBufferView&&) = delete;
 
-		VertexBufferView(FlexKit::byte* _ptr, size_t size);
-        VertexBufferView(FlexKit::byte* _ptr, size_t size, VERTEXBUFFER_FORMAT format, VERTEXBUFFER_TYPE type);
+		VertexBufferView(char* _ptr, size_t size);
+        VertexBufferView(char* _ptr, size_t size, VERTEXBUFFER_FORMAT format, VERTEXBUFFER_TYPE type);
 
 		~VertexBufferView();
 
@@ -106,7 +106,7 @@ namespace FlexKit
 		{
 			typedef Typed_Iteration<Ty> This_Type;
 		public:
-			Typed_Iteration(FlexKit::byte* _ptr, size_t Size) : m_position((Ty*)(_ptr)), m_size(Size) {}
+			Typed_Iteration(char* _ptr, size_t Size) : m_position((Ty*)(_ptr)), m_size(Size) {}
 
 			class Typed_iterator
 			{
@@ -181,7 +181,7 @@ namespace FlexKit
 
 			char* Val = (char*)&in;
 			for (size_t itr = 0; itr < bytesize; itr++)
-				mBuffer.push_back(Val[itr]);
+				mBuffer[mBufferUsed++] = Val[itr];
 
 			return !mBufferinError;
 		}
@@ -221,7 +221,7 @@ namespace FlexKit
 				memcpy(Val, &in, mBufferFormat);
 
 				for (size_t itr = 0; itr < static_cast<uint32_t>(mBufferFormat); itr++)
-					mBuffer.push_back(Val[itr]);
+					mBuffer[mBufferUsed++] = Val[itr];
 			}
 			return !mBufferinError;
 		}
@@ -269,7 +269,7 @@ namespace FlexKit
 		bool				LoadBuffer();
 		bool				UnloadBuffer();
 
-		byte*				GetBuffer()			const;
+		char*				GetBuffer()			const;
 		size_t				GetElementSize()	const;
 		size_t				GetBufferSize()		const;
 		size_t				GetBufferSizeUsed()	const;
@@ -291,14 +291,14 @@ namespace FlexKit
             ar& mBufferinError;
             ar& mBufferLock;
 
-            mBuffer = (byte*)temp;
+            mBuffer = reinterpret_cast<char*>(temp);
         }
 
 	private:
 		bool _combine(const VertexBufferView& LHS, const VertexBufferView& RHS, char* out);
 
 		void				SetElementSize(size_t) {}
-		byte*				mBuffer;
+		char*				mBuffer;
 		size_t				mBufferSize;
 		size_t				mBufferUsed;
 		size_t				mBufferElementSize;
@@ -332,7 +332,7 @@ namespace FlexKit
     inline void CreateBufferView(byte* buffer, size_t bufferSize, VertexBufferView*& View, VERTEXBUFFER_TYPE T, VERTEXBUFFER_FORMAT F, iAllocator* allocator)
     {
         size_t blobSize = bufferSize + sizeof(VertexBufferView);
-        byte* blob = (byte*)allocator->malloc(blobSize);
+        char* blob = (char*)allocator->malloc(blobSize);
 
         View = new(blob) VertexBufferView(blob + sizeof(VertexBufferView), bufferSize, F, T);
 

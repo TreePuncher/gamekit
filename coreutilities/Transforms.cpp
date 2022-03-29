@@ -267,7 +267,10 @@ namespace FlexKit
 		DirectX::XMMATRIX wt;
 		GetTransform(node, &wt);
 
-		return float3( wt.r[0].m128_f32[3], wt.r[1].m128_f32[3], wt.r[2].m128_f32[3] );
+		return float3(
+            FlexKit::GetArray_ptr(wt.r[0])[3],
+            FlexKit::GetArray_ptr(wt.r[1])[3],
+            FlexKit::GetArray_ptr(wt.r[2])[3] );
 	}
 
 
@@ -293,19 +296,22 @@ namespace FlexKit
 		GetTransform(node, &wt);
         GetTransform(GetParentNode(node), &parentWT);
 
-        wt.r[0].m128_f32[3] = in.x;
-        wt.r[1].m128_f32[3] = in.y;
-        wt.r[2].m128_f32[3] = in.z;
+        GetArray_ptr(wt.r[0])[3] = in.x;
+        GetArray_ptr(wt.r[1])[3] = in.y;
+        GetArray_ptr(wt.r[2])[3] = in.z;
 
 		auto tmp = DirectX::XMMatrixInverse(nullptr, parentWT) * wt;
-		float3 lPosition = float3( tmp.r[0].m128_f32[3], tmp.r[1].m128_f32[3], tmp.r[2].m128_f32[3] );
+		float3 lPosition = float3(
+            FlexKit::GetArray_ptr(tmp.r[0])[3],
+            FlexKit::GetArray_ptr(tmp.r[1])[3],
+            FlexKit::GetArray_ptr(tmp.r[2])[3] );
 
 		// Set New Local Position
 		LT_Entry Local = GetLocal(node);
 
-		Local.T.m128_f32[0] = lPosition[0];
-		Local.T.m128_f32[1] = lPosition[1];
-		Local.T.m128_f32[2] = lPosition[2];
+		FlexKit::GetArray_ptr(Local.T)[0] = lPosition[0];
+		FlexKit::GetArray_ptr(Local.T)[1] = lPosition[1];
+		FlexKit::GetArray_ptr(Local.T)[2] = lPosition[2];
 
         SetWT       (node, &wt);
 		SetLocal	(node, &Local);
@@ -403,9 +409,9 @@ namespace FlexKit
 	{
 		LT_Entry Local(GetLocal(Node));
 
-		Local.S.m128_f32[0] = XYZ.pfloats.m128_f32[0];
-		Local.S.m128_f32[1] = XYZ.pfloats.m128_f32[1];
-		Local.S.m128_f32[2] = XYZ.pfloats.m128_f32[2];
+		FlexKit::GetArray_ptr(Local.S)[0] = XYZ[0];
+		FlexKit::GetArray_ptr(Local.S)[1] = XYZ[1];
+		FlexKit::GetArray_ptr(Local.S)[2] = XYZ[2];
 
 		SetLocal(Node, &Local);
 	}
@@ -677,9 +683,9 @@ namespace FlexKit
 	{
 		LT_Entry Local(GetLocal(node));
 
-		Local.S.m128_f32[0] *= XYZ.pfloats.m128_f32[0];
-		Local.S.m128_f32[1] *= XYZ.pfloats.m128_f32[1];
-		Local.S.m128_f32[2] *= XYZ.pfloats.m128_f32[2];
+		FlexKit::GetArray_ptr(Local.S)[0] *= XYZ[0];
+		FlexKit::GetArray_ptr(Local.S)[1] *= XYZ[1];
+		FlexKit::GetArray_ptr(Local.S)[2] *= XYZ[2];
 
 		SetLocal(node, &Local);
 	}
@@ -692,9 +698,9 @@ namespace FlexKit
 	{
 		LT_Entry Local(GetLocal(node));
 
-		Local.T.m128_f32[0] += XYZ.pfloats.m128_f32[0];
-		Local.T.m128_f32[1] += XYZ.pfloats.m128_f32[1];
-		Local.T.m128_f32[2] += XYZ.pfloats.m128_f32[2];
+		FlexKit::GetArray_ptr(Local.T)[0] += XYZ[0];
+		FlexKit::GetArray_ptr(Local.T)[1] += XYZ[1];
+		FlexKit::GetArray_ptr(Local.T)[2] += XYZ[2];
 
 		SetLocal(node, &Local);
 	}
@@ -720,10 +726,10 @@ namespace FlexKit
 	void Yaw(NodeHandle Node, float r)
 	{
 		DirectX::XMVECTOR rot;
-		rot.m128_f32[0] = 0;
-		rot.m128_f32[1] = std::sin(r / 2);
-		rot.m128_f32[2] = 0;
-		rot.m128_f32[3] = std::cos(r / 2);
+		FlexKit::GetArray_ptr(rot)[0] = 0;
+		FlexKit::GetArray_ptr(rot)[1] = std::sin(r / 2);
+		FlexKit::GetArray_ptr(rot)[2] = 0;
+		FlexKit::GetArray_ptr(rot)[3] = std::cos(r / 2);
 
 		FlexKit::LT_Entry Local(FlexKit::GetLocal(Node));
 
@@ -740,10 +746,10 @@ namespace FlexKit
 	void Pitch(NodeHandle Node, float r)
 	{
 		DirectX::XMVECTOR rot;
-		rot.m128_f32[0] = std::sin(r / 2);;
-		rot.m128_f32[1] = 0;
-		rot.m128_f32[2] = 0;
-		rot.m128_f32[3] = std::cos(r / 2);
+		FlexKit::GetArray_ptr(rot)[0] = std::sin(r / 2);;
+		FlexKit::GetArray_ptr(rot)[1] = 0;
+		FlexKit::GetArray_ptr(rot)[2] = 0;
+		FlexKit::GetArray_ptr(rot)[3] = std::cos(r / 2);
 
 		FlexKit::LT_Entry Local(FlexKit::GetLocal(Node));
 
@@ -759,10 +765,10 @@ namespace FlexKit
 	void Roll(NodeHandle Node, float r)
 	{
 		DirectX::XMVECTOR rot;
-		rot.m128_f32[0] = 0;
-		rot.m128_f32[1] = 0;
-		rot.m128_f32[2] = std::sin(r / 2);
-		rot.m128_f32[3] = std::cos(r / 2);
+		FlexKit::GetArray_ptr(rot)[0] = 0;
+		FlexKit::GetArray_ptr(rot)[1] = 0;
+		FlexKit::GetArray_ptr(rot)[2] = std::sin(r / 2);
+		FlexKit::GetArray_ptr(rot)[3] = std::cos(r / 2);
 
 		FlexKit::LT_Entry Local(FlexKit::GetLocal(Node));
 

@@ -47,7 +47,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	VertexBufferView::VertexBufferView(FlexKit::byte* _ptr, size_t size )
+	VertexBufferView::VertexBufferView(char* _ptr, size_t size )
 	{
 		mBufferinError     = true;
 		mBufferFormat      = VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_UNKNOWN;
@@ -60,7 +60,7 @@ namespace FlexKit
 	}
 
 
-    VertexBufferView::VertexBufferView(FlexKit::byte* _ptr, size_t size, VERTEXBUFFER_FORMAT format, VERTEXBUFFER_TYPE type)
+    VertexBufferView::VertexBufferView(char* _ptr, size_t size, VERTEXBUFFER_FORMAT format, VERTEXBUFFER_TYPE type)
     {
         mBufferinError     = false;
 		mBufferFormat      = format;
@@ -173,7 +173,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FlexKit::byte* VertexBufferView::GetBuffer() const
+	char* VertexBufferView::GetBuffer() const
 	{
 		return mBuffer;
 	}
@@ -251,7 +251,7 @@ namespace FlexKit
 
 	FLEXKITAPI VertexBufferView* CreateVertexBufferView(iAllocator* allocator, const size_t BufferLength )
 	{
-        auto Memory = (FlexKit::byte*)allocator->_aligned_malloc(BufferLength);
+        auto Memory = (char*)allocator->_aligned_malloc(BufferLength);
 		return new (Memory) VertexBufferView( Memory + sizeof(VertexBufferView), BufferLength - sizeof(VertexBufferView));
 	}
 	

@@ -505,11 +505,11 @@ namespace FlexKit
 	{
 	public:
 		Scene(iAllocator* in_allocator = SystemAllocator) :
-				allocator					{ in_allocator	},
-				HandleTable					{ in_allocator	},
-				sceneID						{ rand()		},
-                ownedGameObjects            { in_allocator  },
-				sceneEntities				{ in_allocator	} {}
+				allocator					{ in_allocator	    },
+				HandleTable					{ in_allocator	    },
+				sceneID						{ (size_t)rand()    },
+                ownedGameObjects            { in_allocator      },
+				sceneEntities				{ in_allocator	    } {}
 				
 		~Scene()
 		{

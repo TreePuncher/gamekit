@@ -94,8 +94,6 @@ namespace FlexKit
 
 		    DXGI_SWAP_CHAIN_DESC1 desc;
             swapChain->GetDesc1(&desc);
-		    desc.Height;
-		    desc.Width;
 
 		    const auto bufferCount = desc.BufferCount;
 

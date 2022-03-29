@@ -39,6 +39,9 @@ namespace FlexKit
 	class static_vector
 	{
 	public:
+        using value_type    = TY_;
+        using iterator      = TY_*;
+
 		class iterator_t
 		{
 		public:
@@ -60,10 +63,6 @@ namespace FlexKit
 
 			TY_* I;
 		};
-
-
-		typedef typename TY_* iterator;
-
 
 		class reverse_iterator_t
 		{
@@ -97,7 +96,7 @@ namespace FlexKit
 		}
 
 
-		template<unsigned int RHSIZE = 10> requires std::is_trivially_copyable_v<TY_>
+		template<unsigned int RHSIZE = 10> requires(std::is_trivially_copyable_v<TY_>)
 		static_vector(const static_vector<TY_, RHSIZE>& in)
 		{
             Size = in.size();
@@ -105,7 +104,7 @@ namespace FlexKit
 		}
 
 
-        template<unsigned int RHSIZE = 10> requires std::is_trivially_copyable_v<TY_>
+        template<unsigned int RHSIZE = 10> requires(std::is_trivially_copyable_v<TY_>)
         static_vector(static_vector<TY_, RHSIZE>&& in)
         {
             Size = in.size();
@@ -115,7 +114,7 @@ namespace FlexKit
         }
 
 
-        template<unsigned int RHSIZE = 10> requires !std::is_trivially_copyable_v<TY_>
+        template<unsigned int RHSIZE = 10> requires(!std::is_trivially_copyable_v<TY_>)
         static_vector(static_vector<TY_, RHSIZE>&& in)
         {
             for (auto&& i : in)
@@ -141,15 +140,14 @@ namespace FlexKit
         }
 
 
-        ~static_vector() requires !std::is_trivially_destructible_v<TY_>
+        ~static_vector()
         {
-            while (!empty())
-                pop_back();
+            if constexpr (!std::is_trivially_destructible_v<TY_>)
+            {
+                while (!empty())
+                    pop_back();
+            }
         }
-
-
-        ~static_vector() requires std::is_trivially_destructible_v<TY_> = default;
-
 
 		static_vector& operator = (const TY_& in)
 		{
@@ -307,7 +305,7 @@ namespace FlexKit
 			while (count)
 			{
 				if (count && i < end()){
-					i.I->~TY_();
+					i->~value_type();
 					*i++ = back();
 					pop_back();
 					count--;
@@ -439,15 +437,10 @@ namespace FlexKit
 			return *((static_vector<TY_OUT*>*)(this));
 		}
 
-		static void Sort(iterator begin, iterator end)
-		{
-			std::sort(begin.I, end.I);
-		}
-
 		template<typename Pre_>
 		static void Sort(iterator begin, iterator end, Pre_ PD)
 		{
-			std::sort(begin.I, end.I, PD);
+			std::sort(begin, end, PD);
 		}
 		
 		typedef TY_ TYPE;

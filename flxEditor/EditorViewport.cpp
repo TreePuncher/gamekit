@@ -706,6 +706,8 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
                     brush.material      = material;
                     brush.MeshHandle    = handle;
 
+                    viewObject->gameObject.AddView<FlexKit::MaterialComponentView>(material);
+
                     if(!addedToScene)
                         viewportScene->scene.AddGameObject(viewObject->gameObject, FlexKit::GetSceneNode(viewObject->gameObject));
 

@@ -176,7 +176,7 @@ namespace FlexKit
 
 		float GetCameraFov()
 		{
-			return GetComponent().GetCameraFOV();
+			return GetComponent().GetCameraFOV(camera);
 		}
 
 

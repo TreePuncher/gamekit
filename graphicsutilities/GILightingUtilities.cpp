@@ -145,9 +145,9 @@ namespace FlexKit
             uint32_t end;
         };
 
-        CircularBuffer<FrameRange, 3>       frameRanges;
-        IdentifierBuffer::CircularIterator  frameBegin;
-        IdentifierBuffer                    buffer;
+        CircularBuffer<FrameRange, 3>               frameRanges;
+        typename IdentifierBuffer::CircularIterator frameBegin;
+        IdentifierBuffer                            buffer;
     };
 
 
@@ -171,9 +171,9 @@ namespace FlexKit
 
             uint32_t size() const { return end - begin; }
 
-            static friend bool operator < (const AllocatedRange& lhs, const AllocatedRange& rhs)
+            bool operator < (const AllocatedRange& rhs) noexcept
             {
-                return lhs.size() < rhs.size();
+                return size() < rhs.size();
             }
         };
 

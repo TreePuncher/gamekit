@@ -140,7 +140,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	template<typename TY, ComponentID ID = -1>
+	template<typename TY, ComponentID ID = -1u>
 	class Component : public ComponentBase
 	{
 	public:
@@ -746,7 +746,7 @@ namespace FlexKit
 
         SampleHandle CreateComponent()
 		{
-			return SampleHandle{ unsigned int(entities.push_back({})) };
+			return SampleHandle{ static_cast<unsigned int>(entities.push_back({})) };
 		}
 
 		void ReleaseEntity(SampleHandle handle)
@@ -774,7 +774,7 @@ namespace FlexKit
 
         Sample2Handle CreateComponent()
 		{
-			return Sample2Handle{ unsigned int(entities.push_back({})) };
+			return Sample2Handle{ static_cast<unsigned int>(entities.push_back({})) };
 		}
 
 		void ReleaseEntity(Sample2Handle handle)
@@ -801,7 +801,7 @@ namespace FlexKit
 
         Sample3Handle CreateComponent()
 		{
-			return Sample3Handle{ unsigned int(entities.push_back({})) };
+			return Sample3Handle{ static_cast<unsigned int>(entities.push_back({})) };
 		}
 
 		void ReleaseEntity(Sample3Handle handle)

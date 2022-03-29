@@ -215,10 +215,10 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 
     const float ior           = MRIA.b;
     const float metallic      = MRIA.r > 0.1f ? 1.0f : 0.0f; 
-	const float3 albedo       = pow(Albedo.rgb, 2.2);
-    const float roughness     = MRIA.g;
+	const float3 albedo       = pow(Albedo.rgb, 2.2f);
+    const float roughness     = 0.3f;//MRIA.g;
 
-    const float Ks              = lerp(0, 0.4f, saturate(Albedo.w));
+    const float Ks              = 0.05f;lerp(0, 0.4f, saturate(Albedo.w));
     const float Kd              = (1.0 - Ks) * (1.0 - metallic);
     const float NdotV           = saturate(dot(N.xyz, V));
 

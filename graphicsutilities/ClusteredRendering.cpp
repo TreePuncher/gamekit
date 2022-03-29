@@ -737,8 +737,8 @@ namespace FlexKit
                 struct GPUCluster { float4 min, max; };
 
                 const uint2 XY          { (Vect2{ WH } / 32.0f).Ceil() };
-                const uint bufferSize   { XY.Product() * sizeof(GPUCluster) * 24 };
                 const uint2 dim         { (Vect2{ XY } / 32.0f).Ceil() };
+                const uint bufferSize   = XY.Product() * sizeof(GPUCluster) * 24;
 
                 auto [resource, overlap] = UAVPool.Acquire(GPUResourceDesc::UAVResource(bufferSize), false);
 

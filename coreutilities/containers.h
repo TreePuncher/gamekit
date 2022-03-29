@@ -663,11 +663,11 @@ namespace FlexKit
 	{
 		typedef Pair<Ty_1, Ty_2> ThisType;
 
-        template<typename Ty_Get, typename Ty_2>	static  inline const auto& _GetByType(const Pair<Ty_Get, Ty_2>& in) { return in.V1; }
-        template<typename Ty_Get, typename Ty_2>	static  inline const auto& _GetByType(const Pair<Ty_2, Ty_Get>& in) { return in.V2; }
+        template<typename Ty_Get, typename Ty_V>	static  inline const auto& _GetByType(const Pair<Ty_Get, Ty_V>& in) { return in.V1; }
+        template<typename Ty_Get, typename Ty_V>	static  inline const auto& _GetByType(const Pair<Ty_V, Ty_Get>& in) { return in.V2; }
 
-		template<typename Ty_Get, typename Ty_2>	static  inline Ty_Get& _GetByType(Pair<Ty_Get, Ty_2>&     in)   { return in.V1; }
-		template<typename Ty_Get, typename Ty_2>	static  inline Ty_Get& _GetByType(Pair<Ty_2, Ty_Get>&     in)   { return in.V2; }
+		template<typename Ty_Get, typename Ty_V>	static  inline Ty_Get& _GetByType(Pair<Ty_Get, Ty_V>&     in)   { return in.V1; }
+		template<typename Ty_Get, typename Ty_V>	static  inline Ty_Get& _GetByType(Pair<Ty_V, Ty_Get>&     in)   { return in.V2; }
 		template<typename Ty_Get>					static  inline auto&   _GetByType(Pair<Ty_Get, Ty_Get>&	in)     { static_assert(!std::is_same_v<Ty_1, Ty_2>, "NON_UNIQUE TYPES IN Pair!");  return in.V2; }
 
         template<typename Ty_Get>							inline auto&  GetByType() const { return _GetByType<Ty_Get>(*this); }
@@ -1728,6 +1728,7 @@ namespace FlexKit
 			DequeNode_MT*	right;
 			uint32_t		flag;
 
+            /*
 			bool try_LockLeft(uint32_t flag)
 			{
 				return !left->Lock(flag);
@@ -1737,7 +1738,7 @@ namespace FlexKit
 			{
 				return !right->Lock(flag);
 			}
-
+            */
 			bool isLocked()
 			{
 				return flag != 0;

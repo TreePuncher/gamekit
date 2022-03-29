@@ -317,7 +317,7 @@ namespace FlexKit
     };
 
     template<typename TY_VIEW = TextureBufferView<Vect<4, uint8_t>>>
-    auto AverageSampler (TY_VIEW& view, uint2 xy) noexcept
+    auto AverageSampler (const TY_VIEW& view, uint2 xy) noexcept
     {
         auto Sample1 = view[xy + uint2{ 0, 0 }];
         auto Sample2 = view[xy + uint2{ 0, 1 }];
@@ -342,8 +342,8 @@ namespace FlexKit
         return TY_sample(0, 0, 0, 0);
     }
 
-    template<typename TY_FORMAT = Vect<4, uint8_t>, typename FN_Sampler = decltype(AverageSampler<>)>
-    TextureBuffer BuildMipMap(TextureBuffer& sourceMap, iAllocator* memory, FN_Sampler sampler = FN_Sampler{})
+    template<typename TY_FORMAT = Vect<4, uint8_t>>
+    TextureBuffer BuildMipMap(TextureBuffer& sourceMap, iAllocator* memory)
     {
         const size_t    elementSize = sizeof(TY_FORMAT);
         const uint2     WH          = sourceMap.WH / 2;
@@ -368,6 +368,38 @@ namespace FlexKit
                 const uint2 out_Cord  = { X, Y };
 
                 DestiView[out_Cord] = AverageSampler(InputView, in_Cord);
+            }
+        }
+
+        return NewMIP;
+    }
+
+    template<typename TY_FORMAT = Vect<4, uint8_t>>
+    TextureBuffer BuildMipMap(TextureBuffer& sourceMap, iAllocator* memory, auto sampler)
+    {
+        const size_t    elementSize = sizeof(TY_FORMAT);
+        const uint2     WH = sourceMap.WH / 2;
+
+        auto GetRowPitch = [&]
+        {
+            const auto offset = WH[0] * sizeof(TY_FORMAT) % 256;
+
+            return (offset == 0) ? WH[0] * elementSize : WH[0] * elementSize + (256 - offset);
+        };
+
+        size_t                  RowPitch = GetRowPitch();
+        TextureBuffer		    NewMIP = TextureBuffer(WH, sizeof(TY_FORMAT), WH[1] * RowPitch, memory);
+        TextureBufferView	    DestiView = TextureBufferView<TY_FORMAT>(NewMIP, RowPitch);
+        const TextureBufferView	InputView = TextureBufferView<TY_FORMAT>(sourceMap);
+
+        for (uint32_t Y = 0; Y < WH[1]; Y++)
+        {
+            for (uint32_t X = 0; X < WH[0]; X++)
+            {
+                const uint2 in_Cord = { X * 2, Y * 2 };
+                const uint2 out_Cord = { X, Y };
+
+                DestiView[out_Cord] = sampler(InputView, in_Cord);
             }
         }
 

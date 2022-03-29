@@ -2181,8 +2181,8 @@ namespace FlexKit
 				for (auto& dep : dependencies)
 					builder.AddDataDependency(*dep);
 
-				data.renderTarget	= builder.WriteRenderTarget(desc.RenderTarget);
-				data.depthBuffer	= desc.enableDepthBuffer ? builder.WriteDepthBuffer(desc.DepthBuffer) : InvalidHandle_t;
+				data.renderTarget	= builder.RenderTarget(desc.RenderTarget);
+				data.depthBuffer	= desc.enableDepthBuffer ? builder.DepthTarget(desc.DepthBuffer) : InvalidHandle_t;
 
 				size_t MaxElementSize = 0;
 				for (auto& i : constantData)
@@ -2211,8 +2211,8 @@ namespace FlexKit
 
 				ctx->SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
 				ctx->SetRenderTargets(
-					{	resources.GetRenderTargetObject(data.renderTarget) }, true,
-						resources.GetRenderTargetObject(data.depthBuffer));
+					{	resources.GetRenderTarget(data.renderTarget) }, true,
+						resources.GetRenderTarget(data.depthBuffer));
 
 				// Bind resources
 				VertexBufferList instancedBuffers;

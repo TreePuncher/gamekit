@@ -159,13 +159,16 @@ namespace FlexKit
     FLEXKITAPI template<typename TY>
     bool VectorCompare(TY A, TY B, float E) noexcept { return (A - B).magnitudeSq() < E * E; }
 
-	
-    FLEXKITAPI inline const float& GetElement(const __m128& V, const size_t idx) noexcept { return V.m128_f32[idx]; }
 
-    FLEXKITAPI inline float* GetElement_ptr(__m128& V, const size_t idx ) noexcept { return &V.m128_f32[idx]; }
-    FLEXKITAPI inline float& GetElement_ref(__m128& V, const size_t idx)  noexcept { return V.m128_f32[idx]; }
+    FLEXKITAPI inline const float* GetArray_ptr_const(const __m128& V)  noexcept { return reinterpret_cast<const float*>(&V); }
+    FLEXKITAPI inline       float* GetArray_ptr(__m128& V)              noexcept { return reinterpret_cast<float*>(&V); }
 
-    FLEXKITAPI inline void SetElement   (__m128& V, float X, const size_t idx) noexcept { V.m128_f32[idx] = X;	}
+    FLEXKITAPI inline const float& GetElement(const __m128& V, const size_t idx) noexcept { return GetArray_ptr_const(V)[idx]; }
+
+    FLEXKITAPI inline float* GetElement_ptr(__m128& V, const size_t idx ) noexcept { return GetArray_ptr(V) + idx; }
+    FLEXKITAPI inline float& GetElement_ref(__m128& V, const size_t idx)  noexcept { return GetArray_ptr(V)[idx]; }
+
+    FLEXKITAPI inline void SetElement   (__m128& V, float X, const size_t idx) noexcept { GetArray_ptr(V)[idx] = X;	}
 
     FLEXKITAPI inline float GetFirst	(const __m128& V) noexcept { return GetElement(V, 0); } // Should Return the X Component
     FLEXKITAPI inline float GetLast	    (const __m128& V) noexcept { return GetElement(V, 2); } // SHould Return the W Component
@@ -328,8 +331,8 @@ namespace FlexKit
         }
 
 
-        template<typename TY>
-        static auto BuildTuple(const TY value) noexcept
+        template<typename TY_V>
+        static auto BuildTuple(const TY_V value) noexcept
         {
             return std::tuple{ value };
         }
@@ -1808,7 +1811,7 @@ namespace FlexKit
     FLEXKITAPI inline Vect3	    Float3ToVect3(const float3 R3) noexcept { return {R3[0], R3[1], R3[2]}; }
 	
     FLEXKITAPI inline float4	Vect4ToFloat4(const Vect4  R4) noexcept { return {R4[0], R4[1], R4[2], R4[3]}; }
-	FLEXKITAPI inline Vect4	    Float4ToVect4(const float3 R4) noexcept { return {R4[0], R4[1], R4[2], R4[3]}; }
+	FLEXKITAPI inline Vect4	    Float4ToVect4(const float4 R4) noexcept { return {R4[0], R4[1], R4[2], R4[3]}; }
 
 
 	/************************************************************************************************/
@@ -2087,7 +2090,7 @@ namespace FlexKit
 	{
 		float4x4 Out = float4x4::Identity();
 		
-		Out[3] = float4(POS, 1);
+        Out[3] = Float4ToVect4(float4(POS, 1));
 
 		return Out;
 	}
@@ -2128,7 +2131,7 @@ namespace FlexKit
 	namespace Conversion
 	{
 		template< typename Ty >
-		static float3 toVector3( Ty& Convert ) { return Vect3( Convert.x, Convert.y, Convert.z ); }
+		static Vect3 toVector3( Ty& Convert ) { return Vect3( Convert.x, Convert.y, Convert.z ); }
 
 		template< typename Ty > Ty Vect3To( const Vect3& Convert )	{ return Ty{Convert[0], Convert[1], Convert[2]}; }
 		template< typename Ty >	Ty Vect4To( const Vect4& Convert )	{ return Ty{Convert[0], Convert[1], Convert[2], Convert[3]}; }
@@ -2335,10 +2338,10 @@ namespace FlexKit
 	inline float4x4 Q2M(Quaternion Q)
 	{
 		float4x4 out;
-		out[0] = float4{ 1 - Q.y*Q.y - 2 * Q.z*Q.z, 2 * Q.x*Q.y + 2 * Q.z*Q.w, 2 * Q.x * Q.z - 2 * Q.y * Q.w, 0  };
-		out[1] = float4{ 2 * Q.x*Q.y - 2 * Q.z*Q.w, 1 - Q.x*Q.x - 2 * Q.z*Q.z, 2 * Q.y * Q.z - 2 * Q.x * Q.w, 0  };
-		out[2] = float4{ 2*Q.x*Q.z + 2*Q.y*Q.w, 2*Q.y*Q.z - 2*Q.x*Q.w, 1 - 2 * Q.x * Q.x - 2 * Q.y*Q.y,		 0	 };
-		out[3] = float4{ 0,						0,						0,								1		 };
+		out[0] = Float4ToVect4(float4{ 1 - Q.y*Q.y - 2 * Q.z*Q.z, 2 * Q.x*Q.y + 2 * Q.z*Q.w, 2 * Q.x * Q.z - 2 * Q.y * Q.w, 0  });
+		out[1] = Float4ToVect4(float4{ 2 * Q.x*Q.y - 2 * Q.z*Q.w, 1 - Q.x*Q.x - 2 * Q.z*Q.z, 2 * Q.y * Q.z - 2 * Q.x * Q.w, 0  });
+		out[2] = Float4ToVect4(float4{ 2*Q.x*Q.z + 2*Q.y*Q.w, 2*Q.y*Q.z - 2*Q.x*Q.w, 1 - 2 * Q.x * Q.x - 2 * Q.y*Q.y,		 0 });
+		out[3] = Float4ToVect4(float4{ 0,						0,						0,								1	   });
 
 		return out;
 	}
