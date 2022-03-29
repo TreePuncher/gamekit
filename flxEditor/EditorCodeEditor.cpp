@@ -623,6 +623,15 @@ QMenuBar* EditorCodeEditor::GetMenuBar() noexcept
 /************************************************************************************************/
 
 
+QTabWidget* EditorCodeEditor::GetTabs() noexcept
+{
+    return tabBar;
+}
+
+
+/************************************************************************************************/
+
+
 EditorCodeEditor::~EditorCodeEditor()
 {
     scriptContext->Release();

@@ -161,6 +161,7 @@
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
     </ClCompile>
+    <ClCompile Include="EditorAnimationInputTab.cpp" />
     <ClCompile Include="EditorAnimatorComponent.cpp" />
     <ClCompile Include="EditorColliderComponent.cpp" />
     <ClCompile Include="CSGComponent.cpp" />
@@ -252,6 +253,7 @@
     <ClInclude Include="Animation.h" />
     <ClInclude Include="AnimationObject.h" />
     <ClInclude Include="Common.h" />
+    <QtMoc Include="EditorAnimationInputTab.h" />
     <ClInclude Include="EditorAnimatorComponent.h" />
     <ClInclude Include="EditorColliderComponent.h" />
     <ClInclude Include="CSGComponent.h" />
@@ -296,6 +298,7 @@
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="EditorAnimationEditor.ui" />
+    <QtUic Include="EditorAnimationInputTab.ui" />
     <QtUic Include="EditorCodeEditor.ui" />
     <QtUic Include="EditorOutputWindow.ui" />
     <QtUic Include="EditorResourcePickerDialog.ui" />

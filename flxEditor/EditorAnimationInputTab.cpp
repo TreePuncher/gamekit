@@ -1,29 +1,55 @@
-#pragma once
-#include "Components.h"
-#include "SceneResource.h"
-#include "Serialization.hpp"
-
-constexpr FlexKit::ComponentID EditorAnimatorComponentID = GetTypeGUID(EditorAnimatorComponentID);
-
-class EditorAnimatorComponent :
-    public FlexKit::Serializable<EditorAnimatorComponent, FlexKit::EntityComponent, EditorAnimatorComponentID>
-{
-public:
-    EditorAnimatorComponent() :
-        Serializable{ EditorAnimatorComponentID } {}
-
-    FlexKit::Blob GetBlob() override;
-
-    void Serialize(auto& ar)
-    {
-        EntityComponent::Serialize(ar);
-    }
-
-    inline static RegisterConstructorHelper<EditorAnimatorComponent, EditorAnimatorComponentID> registered{};
-};
+#include "pch.h"
+#include "EditorAnimationInputTab.h"
 
 
 /************************************************************************************************/
+
+
+EditorAnimationInputTab::EditorAnimationInputTab(QWidget *parent)
+	: QWidget(parent)
+{
+	ui.setupUi(this);
+
+    auto verticalHeader     = ui.tableView->verticalHeader();
+    auto horizontalHeader   = ui.tableView->horizontalHeader();
+
+    horizontalHeader->setVisible(true);
+    verticalHeader->setVisible(true);
+
+    connect(ui.pushButton, &QPushButton::pressed,
+        [&]()
+        {
+            callback(ui.comboBox->currentIndex(), ui.lineEdit->text().toStdString());
+        });
+}
+
+
+/************************************************************************************************/
+
+
+EditorAnimationInputTab::~EditorAnimationInputTab()
+{
+}
+
+
+/************************************************************************************************/
+
+
+void EditorAnimationInputTab::Update(const uint32_t tableCount, ReadEntryData fetchData)
+{
+    for (uint32_t I = 0; I < tableCount; I++)
+    {
+    }
+}
+
+
+/************************************************************************************************/
+
+
+void EditorAnimationInputTab::SetOnCreateEvent(OnCreationEventFN&& IN_callback)
+{
+    callback = IN_callback;
+}
 
 
 /**********************************************************************

@@ -84,6 +84,12 @@ public:
             mode.pop_back();
     }
 
+    void ClearSelection()
+    {
+        selectionContext.Clear();
+    }
+
+
     FlexKit::ImGUIIntegrator& GetHUD()
     {
         return hud;

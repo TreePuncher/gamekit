@@ -228,11 +228,14 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
         const uint pointLightIdx    = lightListBuffer[localLightList + I];
         const PointLight light      = pointLights[pointLightIdx];
 
+        //if (pointLightIdx != 0)
+        //    continue;
+
         const float3 Lc			= light.KI.rgb;
         const float3 Lp         = mul(View, float4(light.PR.xyz, 1));
         const float3 L		    = normalize(Lp - positionVS);
         const float  Ld			= length(positionVS - Lp);
-        const float  Li			= light.KI.w;
+        const float  Li			= light.KI.w * 10;
         const float  Lr			= light.PR.w;
         const float  ld_2		= Ld * Ld;
         const float  La			= (Li / ld_2) * (1 - (pow(Ld, 10) / pow(Lr, 10)));
@@ -252,7 +255,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
             const float3 specular = F_r(V, H, L, N.xyz, roughness);
         #endif
 
-        #if 1// skip shadowmaping
+        #if 0// skip shadowmaping
             const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
             color += max(float4(colorSample, 0), 0.0f);
         #else
@@ -350,7 +353,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
             sum += uw3 * vw3 * SampleShadowMap(base_uv, u3, v3, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
 
             color += max(float4(colorSample * Lc * sum * 1.0f / 2704.0f, 0), 0);
-        #endif
+        #endif 
     }
 
 #if 0
@@ -386,7 +389,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
         //
         //return pow(-positionVS.z / 128, 10.0f);
         //return depth;
-        //return float4(N / 2.0f + 0.5f);
+        return float4(N / 2.0f + 0.5f);
     //return Albedo * Albedo;
     //return float4(positionW, 0);
     //return pow(roughness, 2.2f);
@@ -397,7 +400,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
     //return pow(float4(roughness, metallic, 0, 0), 2.2f);
     //return float4(N.xyz / 2 + 0.5f, 1);
     //return float4(N.xyz / 2 + 0.5f, 1) * (float(localLightCount) / float(lightCount));
-    return lerp(float4(0, 0, 0, 0), float4(1, 1, 1, 0), float(localLightCount) / float(lightCount));
+    //return lerp(float4(0, 0, 0, 0), float4(1, 1, 1, 0), float(localLightCount) / float(lightCount));
     //return float4(albedo, 1);
 #endif
     

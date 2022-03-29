@@ -679,6 +679,7 @@ namespace FlexKit
 		staticColliders	    { *this, IN_memory	},
 		rbColliders		    { *this, IN_memory	},
         debugGeometry       { IN_memory },
+        userCallback        { IN_memory },
         controllerManager   { PxCreateControllerManager(*IN_scene) }
 	{
 		FK_ASSERT(scene && memory, "INVALID ARGUEMENT");
@@ -818,6 +819,8 @@ namespace FlexKit
 					UpdateColliders(barrier, temp_allocator);
 					updateColliders = false;
 
+                    CallUserUpdates(*barrier, *temp_allocator, stepSize);
+
                     UpdateDebugGeometry();
 
                     if (barrier)
@@ -831,6 +834,16 @@ namespace FlexKit
 			}
 		} while ((T > stepSize));
 	}
+
+
+    /************************************************************************************************/
+
+
+    void PhysicsLayer::CallUserUpdates(WorkBarrier& barrier, iAllocator& allocator, double dT)
+    {
+        for (auto& callback : userCallback)
+            callback(barrier, allocator, dT);
+    }
 
 
 	/************************************************************************************************/
@@ -964,6 +977,15 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    void PhysicsLayer::AddUpdateCallback(PhysicsLayerUpdateCallback&& callback)
+    {
+        userCallback.emplace_back(std::move(callback));
+    }
+
+
+    /************************************************************************************************/
+
+
     Quaternion	ThirdPersonCamera::GetOrientation() const
     {
         return FlexKit::GetOrientation(pitchNode);
@@ -1049,16 +1071,20 @@ namespace FlexKit
 
     GameObject& CreateThirdPersonCameraController(GameObject& gameObject, LayerHandle layer, iAllocator& allocator, const float R, const float H)
     {
+#if 0
         gameObject.AddView<OrbitCameraBehavior>();
-        /*
-        gameObject.AddView<CharacterControllerView>(layer, &gameObject, float3{ 0, 10, 0 });
+#else
+        auto& characterController = gameObject.AddView<CharacterControllerView>(layer, float3{ 0, 10, 0 });
 
-        gameObject.AddView<CameraControllerView>(
+        auto& cameraController = gameObject.AddView<CameraControllerView>(
             CameraControllerComponent::GetComponent().Create(
                 ThirdPersonCamera(
                     GetControllerHandle(gameObject),
                     GetControllerNode(gameObject))));
-        */
+
+        gameObject.AddView<CameraView>(cameraController.GetData().camera);
+
+#endif
         return gameObject;
     }
 
@@ -1232,7 +1258,17 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    UpdateTask& UpdateThirdPersonCameraControllers(UpdateDispatcher& dispatcher, float2 mouseInput, const double dT)
+    void UpdateThirdPersonCameraControllers(const float2& mouseInput, const double dT)
+    {
+        for (auto& controller : CameraControllerComponent::GetComponent())
+            controller.componentData.Update(mouseInput, dT);
+    }
+
+
+    /************************************************************************************************/
+
+
+    UpdateTask& QueueThirdPersonCameraControllers(UpdateDispatcher& dispatcher, float2 mouseInput, const double dT)
     {
         struct TPC_Update {};
 
@@ -1242,8 +1278,7 @@ namespace FlexKit
             {
                 ProfileFunction();
 
-                for (auto& controller : CameraControllerComponent::GetComponent())
-                    controller.componentData.Update(mouseInput, dT);
+                UpdateThirdPersonCameraControllers(mouseInput, dT);
             });
     }
 
@@ -1528,7 +1563,7 @@ namespace FlexKit
         const float cameraDistance  = controllerImpl.cameraDistance;
 
         const double deltaTime = 1.0 / 60.0f;
-        while(controllerImpl.updateTimer >= deltaTime)
+        //while(controllerImpl.updateTimer >= deltaTime)
         {
             controllerImpl.updateTimer -= deltaTime;
 

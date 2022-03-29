@@ -36,6 +36,7 @@ void UpdateLocalPlayer(GameObject& gameObject, const PlayerInputState& currentIn
             player->position    = GetCameraControllerHeadPosition(gameObject);
         });
 
+    /*
     Apply(gameObject,
         [&](OrbitCameraBehavior& orbitCamera)
         {
@@ -64,6 +65,7 @@ void UpdateLocalPlayer(GameObject& gameObject, const PlayerInputState& currentIn
                 orbitCamera.TranslateWorld(float3(0, dT * -100, 0));
 
         });
+    */
 }
 
 
@@ -157,6 +159,8 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
             EventHandler(evt);
         }
     );
+
+    pointLight1 = FlexKit::FindGameObject(worldState.GetScene(), "PointLight1").value_or(nullptr);
 
     //particleEmitter.AddView<SceneNodeView<>>();
     //auto& emitterView       = particleEmitter.AddView<ParticleEmitterView>(ParticleEmitterData{ &testParticleSystem, GetSceneNode(particleEmitter) });
@@ -270,6 +274,9 @@ UpdateTask* LocalGameState::Update(EngineCore& core, UpdateDispatcher& dispatche
     auto tasks = worldState.Update(core, dispatcher, dT);
 
     static float t = 0.0f;
+    if(pointLight1)
+        SetWorldPosition(*pointLight1, float3{ 10.0f * sin(t), 2, 10.0f * cos(t) + 10 });
+
     //SetWorldPosition(particleEmitter, float3{ 100.0f * sin(t), 20, 100.0f * cos(t) });
     //SetWorldPosition(IKTarget, float3{ 2.0f * cos(t), 4.0f * sin(t / 2.0f) + 8.0f, 4.0f * sin(t) } + float3{ 30.0f, 0.0f, 10.0f });
 
@@ -291,6 +298,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 
     const CameraHandle activeCamera = worldState.GetActiveCamera();
     SetCameraAspectRatio(activeCamera, base.renderWindow.GetAspectRatio());
+
 
     auto& scene             = worldState.GetScene();
     auto& transforms        = QueueTransformUpdateTask(dispatcher);

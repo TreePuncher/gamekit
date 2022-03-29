@@ -15,7 +15,7 @@ class EditorCodeEditor;
 class QMenuBar;
 class EditorScriptEngine;
 class SelectionContext;
-
+class EditorAnimationInputTab;
 
 /************************************************************************************************/
 
@@ -33,6 +33,7 @@ private:
     QMenuBar*                               menubar;
     AnimatorSelectionContext*               localSelection;
     EditorAnimationPreview*                 previewWindow;
+    EditorAnimationInputTab*                inputVariables;
     EditorProject&                          project;
     EditorCodeEditor*                       codeEditor;
     EditorRenderer&                         renderer;

@@ -253,7 +253,7 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 
     gbuffer.Albedo      = float4(albedo.xyz, Ks);
     gbuffer.MRIA        = roughMetal.zyxx;
-    gbuffer.Normal      = mul(View, float4(normalize(normal), 0));
+    gbuffer.Normal      = mul(View, float4(normalize(IN.Normal), 0));
     gbuffer.Depth       = IN.depth;
 
     return gbuffer;
@@ -268,6 +268,27 @@ float4 Forward_PS(Forward_PS_IN IN) : SV_TARGET
 float4 FlatWhite(Forward_PS_IN IN) : SV_TARGET
 {
     return float4(1, 1, 1, 1);
+}
+
+/************************************************************************************************/
+
+
+float4 ColoredPolys(Forward_PS_IN IN, uint test : SV_PrimitiveID) : SV_TARGET
+{
+    static const float4 colors[] =
+    {
+        { 185 / 255.0f, 131 / 255.0f, 255 / 255.0f, 1.0f },
+        { 148 / 255.0f, 179 / 255.0f, 253 / 255.0f, 1.0f },
+        { 148 / 255.0f, 218 / 255.0f, 255 / 255.0f, 1.0f },
+        { 153 / 255.0f, 254 / 255.0f, 255 / 255.0f, 1.0f },
+
+        { 137 / 255.0f, 181 / 255.0f, 175 / 255.0f, 1.0f },
+        { 150 / 255.0f, 199 / 255.0f, 193 / 255.0f, 1.0f },
+        { 222 / 255.0f, 217 / 255.0f, 196 / 255.0f, 1.0f },
+        { 208 / 255.0f, 202 / 255.0f, 178 / 255.0f, 1.0f },
+    };
+
+    return colors[test % 3] * saturate(dot(float3(0, 0, 1), mul(View, IN.Normal)));
 }
 
 

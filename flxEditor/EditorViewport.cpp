@@ -30,6 +30,7 @@ public:
     ViewportModeID GetModeID() const override { return VewportSelectionModeID; };
 
     void mousePressEvent    (QMouseEvent* event) override;
+    void DrawImguI();
 
     DXRenderWindow*         renderWindow;
     FlexKit::CameraHandle   viewportCamera;
@@ -52,6 +53,7 @@ public:
     void mouseReleaseEvent  (QMouseEvent* event) override;
     void wheelEvent         (QWheelEvent* event) override;
 
+    void DrawImguI() override;
     void Draw(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, TemporaryBuffers& temps, FlexKit::ResourceHandle renderTarget, FlexKit::ResourceHandle depthBuffer) override;
 
     ViewportMode_ptr        previous;
@@ -266,7 +268,7 @@ void EditorVewportSelectionMode::mousePressEvent(QMouseEvent* event)
 
         auto results = scene->RayCast(
             FlexKit::Ray{
-                        .D = v_dir.normal(),
+                        .D = v_dir,
                         .O = v_o,});
 
         if(results.size())
@@ -275,10 +277,23 @@ void EditorVewportSelectionMode::mousePressEvent(QMouseEvent* event)
             selection.viewportObjects.push_back(results.front());
             selection.scene = scene.get();
 
-            selectionContext.selection  = std::move(selection);
+            selectionContext.selection  = std::move(selection); 
             selectionContext.type       = ViewportObjectList_ID;
         }
     }
+}
+
+
+/************************************************************************************************/
+
+
+void EditorVewportSelectionMode::DrawImguI()
+{
+    if (ImGui::Begin("SelectionMode", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {
+        ImGui::SetWindowPos({ 0, 0 });
+        ImGui::SetWindowSize({ 400, 400 });
+    }
+    ImGui::End();
 }
 
 
@@ -316,8 +331,6 @@ void EditorVewportPanMode::keyPressEvent(QKeyEvent* event)
             {
                 auto boundingSphere = FlexKit::GetBoundingSphere(object->gameObject);
                 aabb = aabb + boundingSphere;
-
-                fmt::print("{}, {}, {}\n", boundingSphere.x, boundingSphere.y, boundingSphere.z);
             }
 
             const FlexKit::Camera c = FlexKit::CameraComponent::GetComponent().GetCamera(viewportCamera);
@@ -327,10 +340,7 @@ void EditorVewportPanMode::keyPressEvent(QKeyEvent* event)
 
             auto position_VS        = c.View.Transpose() * float4 { target, 1 };
             auto updatedPosition_WS = c.IV.Transpose() * float4 { position_VS.x, position_VS.y, position_VS.z + desiredDistance, 1 };
-
-            const auto node     = FlexKit::GetCameraNode(viewportCamera);
-            const Quaternion Q  = GetOrientation(node);
-            auto forward        = (Q * float3{ 0.0f, 0.0f, -1.0f}).normal();
+            const auto node         = FlexKit::GetCameraNode(viewportCamera);
 
             FlexKit::SetPositionW(node, updatedPosition_WS.xyz());
             FlexKit::MarkCameraDirty(viewportCamera);
@@ -398,6 +408,13 @@ void EditorVewportPanMode::wheelEvent(QWheelEvent* event)
 
     FlexKit::TranslateWorld(node, q * float3{ 0, 0, event->angleDelta().x() / -100.0f });
     MarkCameraDirty(viewportCamera);
+}
+
+
+void EditorVewportPanMode::DrawImguI()
+{
+    if (previous)
+        previous->DrawImguI();
 }
 
 
@@ -657,21 +674,37 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
                     auto& materials = FlexKit::MaterialComponent::GetComponent();
                     auto material   = materials.CreateMaterial(gbufferPass);
 
-                    for (auto& subMaterialData : brushComponent->material.subMaterials)
+
+                    //TODO: Seems the issue if further up the asset pipeline. Improve material generation?
+                    if (brushComponent->material.subMaterials.size() > 1)
                     {
-                        auto subMaterial = materials.CreateMaterial();
-                        materials.AddSubMaterial(material, subMaterial);
+                        for (auto& subMaterialData : brushComponent->material.subMaterials)
+                        {
+                            auto subMaterial = materials.CreateMaterial();
+                            materials.AddSubMaterial(material, subMaterial);
+
+                            FlexKit::ReadContext rdCtx{};
+                            for (auto texture : subMaterialData.textures)
+                                materials.AddTexture(texture, subMaterial, rdCtx);
+                        }
+                    }
+                    else if(brushComponent->material.subMaterials.size() == 1)
+                    {
+                        auto& subMaterialData = brushComponent->material.subMaterials[0];
 
                         FlexKit::ReadContext rdCtx{};
+
                         for (auto texture : subMaterialData.textures)
-                            materials.AddTexture(texture, subMaterial, rdCtx);
+                            materials.AddTexture(texture, material, rdCtx);
                     }
 
                     FlexKit::TriMeshHandle handle = LoadTriMeshResource(res);
 
                     auto& view = (FlexKit::BrushView&)EditorInspectorView::ConstructComponent(FlexKit::BrushComponentID, *viewObject, *viewportScene);
 
-                    view.GetBrush().material = material;
+                    auto& brush         = view.GetBrush();
+                    brush.material      = material;
+                    brush.MeshHandle    = handle;
 
                     if(!addedToScene)
                         viewportScene->scene.AddGameObject(viewObject->gameObject, FlexKit::GetSceneNode(viewObject->gameObject));
@@ -698,7 +731,7 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
             default:
             {
                 auto  blob              = componentEntry->GetBlob();
-                auto& componentView     = EditorInspectorView::ConstructComponent(componentEntry->id, *viewObject, *viewportScene);
+                //auto& componentView     = EditorInspectorView::ConstructComponent(componentEntry->id, *viewObject, *viewportScene);
                 auto& component         = FlexKit::ComponentBase::GetComponent(componentEntry->id);
 
                 component.AddComponentView(viewObject->gameObject, &ctx, blob, blob.size(), FlexKit::SystemAllocator);

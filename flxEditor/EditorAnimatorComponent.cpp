@@ -1,11 +1,67 @@
 #include "PCH.h"
+#include "AnimationComponents.h"
 #include "EditorAnimatorComponent.h"
-
+#include "EditorInspectorView.h"
+#include "EditorProject.h"
+#include "EditorViewport.h"
 
 FlexKit::Blob EditorAnimatorComponent::GetBlob()
 {
     return {};
 }
+
+/************************************************************************************************/
+
+
+class SkeletonInspector : public IComponentInspector
+{
+public:
+    SkeletonInspector(EditorProject& IN_project, EditorViewport& IN_viewport)
+        : viewport  { IN_viewport }
+        , project   { IN_project }{}
+
+
+    FlexKit::ComponentID ComponentID() override
+    {
+        return FlexKit::SkeletonComponentID;
+    }
+
+    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override
+    {
+        panelCtx.PushVerticalLayout("Skeleton", true);
+        panelCtx.AddText("TODO: ME!");
+        panelCtx.Pop();
+    }
+
+    EditorViewport& viewport;
+    EditorProject& project;
+};
+
+
+struct SkeletonFactory : public IComponentFactory
+{
+    FlexKit::ComponentViewBase& Construct(ViewportGameObject& viewportObject, ViewportScene& scene)
+    {
+        if (!viewportObject.gameObject.hasView(FlexKit::SkeletonComponentID))
+            return viewportObject.gameObject.AddView<FlexKit::SkeletonView>(FlexKit::GetBrush(viewportObject.gameObject)->MeshHandle, -1u);
+        else
+            return *viewportObject.gameObject.GetView(FlexKit::SkeletonComponentID);
+    }
+
+    inline static const std::string name = "Skeleton";
+    const std::string& ComponentName() const noexcept { return name; }
+    FlexKit::ComponentID    ComponentID()   const noexcept { return FlexKit::SkeletonComponentID; }
+
+    static bool Register()
+    {
+        EditorInspectorView::AddComponentFactory(std::make_unique<SkeletonFactory>());
+
+        return true;
+    }
+
+    inline static bool _registered = Register();
+};
+
 
 
 /**********************************************************************

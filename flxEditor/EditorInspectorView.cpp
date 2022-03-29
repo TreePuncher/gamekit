@@ -311,7 +311,7 @@ void EditorInspectorView::UpdatePropertiesViewportObjectInspector()
     auto& gameObject                = selection->gameObject;
     auto gameObjectPropertyCount    = std::distance(gameObject.begin(), gameObject.end());
 
-    if( objectID        = selectedObject ||
+    if( objectID        != selectedObject ||
         propertyCount   != gameObjectPropertyCount)
     {
         menu->setEnabled(true);

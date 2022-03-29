@@ -68,8 +68,9 @@ public:
         connect(action, &QAction::triggered, this, callable);
     }
 
-    EditorViewport&     Get3DView()         { return *viewport; }
-    SelectionContext&   GetSelectionCtx()   { return selectionContext; };
+    EditorViewport&         Get3DView()         { return *viewport; }
+    SelectionContext&       GetSelectionCtx()   { return selectionContext; };
+    EditorAnimationEditor*  GetAnimationEditor(){ return animationEditor; };
 
 
     void RegisterGadget(iEditorGadget* gadget);
