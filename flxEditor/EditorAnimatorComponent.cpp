@@ -5,6 +5,9 @@
 #include "EditorProject.h"
 #include "EditorViewport.h"
 
+
+/************************************************************************************************/
+
 FlexKit::Blob EditorAnimatorComponent::GetBlob()
 {
     return {};
@@ -49,7 +52,8 @@ struct SkeletonFactory : public IComponentFactory
     }
 
     inline static const std::string name = "Skeleton";
-    const std::string& ComponentName() const noexcept { return name; }
+
+    const std::string&      ComponentName() const noexcept { return name; }
     FlexKit::ComponentID    ComponentID()   const noexcept { return FlexKit::SkeletonComponentID; }
 
     static bool Register()

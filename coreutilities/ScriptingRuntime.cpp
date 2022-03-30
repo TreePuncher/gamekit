@@ -13,6 +13,10 @@ namespace FlexKit
     iAllocator* allocator;
 
 
+    //float2* ConstructFloat2();
+    float3* ConstructFloat3() noexcept;
+    float4* ConstructFloat4() noexcept;
+
     /************************************************************************************************/
 
 
@@ -51,6 +55,101 @@ namespace FlexKit
                 return nullptr;
             }
             );
+    }
+
+
+    /************************************************************************************************/
+
+    int AnimatorViewGetInputType_AS(AnimatorView* view, uint32_t idx)
+    {
+        return (int)view->GetInputType(idx).value();
+    }
+
+    void AnimatorSetFloat1_AS(AnimatorView* view, uint32_t idx, float value)
+    {
+        if (auto res = view->GetInputValue(idx); res.has_value())
+        {
+            auto animatorValue = res.value();
+            animatorValue->x = value;
+        }
+    }
+
+    void AnimatorSetFloat2_AS(AnimatorView* view, uint32_t idx, float2& value)
+    {
+        if (auto res = view->GetInputValue(idx); res.has_value())
+        {
+            auto animatorValue = res.value();
+            animatorValue->xy = value;
+        }
+    }
+
+    void AnimatorSetFloat3_AS(AnimatorView* view, uint32_t idx, float3& value)
+    {
+        if (auto res = view->GetInputValue(idx); res.has_value())
+        {
+            auto animatorValue = res.value();
+            animatorValue->xyz = value;
+        }
+    }
+
+    void AnimatorSetFloat4_AS(AnimatorView* view, uint32_t idx, float4& value)
+    {
+        if (auto res = view->GetInputValue(idx); res.has_value())
+        {
+            auto animatorValue  = res.value();
+            animatorValue->xyzw = value;
+        }
+    }
+
+    float AnimatorGetFloat1_AS(AnimatorView* view, uint32_t idx)
+    {
+        if (auto res = view->GetInputValue(idx); res.has_value())
+        {
+            auto animatorValue = res.value();
+            return animatorValue->x;
+        }
+        else return NAN;
+    }
+
+    /*
+    float2* AnimatorGetFloat2_AS(AnimatorView* view, uint32_t idx)
+    {
+        if (auto res = view->GetInputValue(idx); res.has_value())
+        {
+            auto outValue       = ConstructFloat2();
+            auto animatorValue  = res.value();
+
+            *outValue = animatorValue->xy;
+            return outValue;
+        }
+        else return nullptr;
+    }
+    */
+
+    float3* AnimatorGetFloat3_AS(AnimatorView* view, uint32_t idx)
+    {
+        if (auto res = view->GetInputValue(idx); res.has_value())
+        {
+            auto outValue = ConstructFloat3();
+            auto animatorValue = res.value();
+
+            *outValue = animatorValue->xyz;
+            return outValue;
+        }
+        else return nullptr;
+    }
+
+    float4* AnimatorGetFloat4_AS(AnimatorView* view, uint32_t idx)
+    {
+        if (auto res = view->GetInputValue(idx); res.has_value())
+        {
+            auto outValue = ConstructFloat4();
+            auto animatorValue = res.value();
+
+            *outValue = animatorValue->xyzw;
+            return outValue;
+        }
+        else return nullptr;
     }
 
 
@@ -197,6 +296,19 @@ namespace FlexKit
 
         /************************************************************************************************/
 
+        res = scriptEngine->RegisterEnum("AnimatorValueType");
+        res = scriptEngine->RegisterEnumValue("AnimatorValueType", "Float1", (int32_t)AnimatorInputType::Float);        FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("AnimatorValueType", "Float2", (int32_t)AnimatorInputType::Float2);       FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("AnimatorValueType", "Float3", (int32_t)AnimatorInputType::Float3);       FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("AnimatorValueType", "Float4", (int32_t)AnimatorInputType::Float4);       FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("AnimatorValueType", "Uint1", (int32_t)AnimatorInputType::Uint);          FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("AnimatorValueType", "Uint2", (int32_t)AnimatorInputType::Uint2);         FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("AnimatorValueType", "Uint3", (int32_t)AnimatorInputType::Uint3);         FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("AnimatorValueType", "Uint4", (int32_t)AnimatorInputType::Uint4);         FK_ASSERT(res >= 0);
+
+
+        /************************************************************************************************/
+
 
         res = scriptEngine->RegisterObjectType("AllocatorHandle", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                        FK_ASSERT(res >= 0);
 
@@ -237,7 +349,17 @@ namespace FlexKit
 
 
         res = scriptEngine->RegisterObjectType("Animator", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                               FK_ASSERT(res >= 0);
-        res = scriptEngine->RegisterObjectMethod("Animator", "PlayID Play(Animation@)",                         asFUNCTION(PoseStatePoseCount), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("Animator", "uint ValueType(uint)",            asFUNCTION(AnimatorViewGetInputType_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("Animator", "void SetFloat(uint, float)",      asFUNCTION(AnimatorSetFloat1_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+        //res = scriptEngine->RegisterObjectMethod("Animator", "void SetFloat2(idx, float2)",    asFUNCTION(AnimatorSetFloat2_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("Animator", "void SetFloat3(uint, float3 &in)",asFUNCTION(AnimatorSetFloat3_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("Animator", "void SetFloat4(uint, float4 &in)",asFUNCTION(AnimatorSetFloat4_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("Animator", "float  GetFloat(uint)",           asFUNCTION(AnimatorGetFloat1_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+        //res = scriptEngine->RegisterObjectMethod("Animator", "float2@ GetFloat2(idx)",           asFUNCTION(AnimatorGetFloat2_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("Animator", "float3@ GetFloat3(uint)",          asFUNCTION(AnimatorGetFloat3_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("Animator", "float4@ GetFloat4(uint)",          asFUNCTION(AnimatorGetFloat4_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+        
+        //res = scriptEngine->RegisterObjectMethod("Animator", "PlayID Play(Animation@)",                         asFUNCTION(PoseStatePoseCount), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
 
 
         /************************************************************************************************/
@@ -260,7 +382,7 @@ namespace FlexKit
         allocator->_aligned_free(s);
     }
 
-    float3* ConstructFloat3()
+    float3* ConstructFloat3() noexcept
     {
         return new(allocator->_aligned_malloc(sizeof(float3))) float3{};
     }

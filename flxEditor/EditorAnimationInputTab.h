@@ -26,6 +26,7 @@ public:
     void SetOnCreateEvent(OnCreationEventFN&& in);
     void SetOnChangeEvent(WriteEntryDataFN&& in);
 
+    void AddInput(const std::string& name, uint32_t type); // Doesn't Trigger callback
 private:
 
 	Ui::EditorAnimationInputTab ui;
