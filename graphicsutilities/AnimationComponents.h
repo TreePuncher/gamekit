@@ -258,20 +258,21 @@ namespace FlexKit
         static uint32_t     GetFieldID()                            { return TY::GetFieldID(); }
     };
 
+    enum class AnimatorInputType : uint32_t
+    {
+        Float,
+        Float2,
+        Float3,
+        Float4,
+        Uint,
+        Uint2,
+        Uint3,
+        Uint4
+    };
+
 	class AnimatorComponent : public FlexKit::Component<AnimatorComponent, AnimatorComponentID>
 	{
 	public:
-        class AnimatorView : public FlexKit::ComponentView_t<AnimatorComponent>
-        {
-        public:
-            AnimatorView(GameObject& IN_gameObject, AnimatorHandle IN_animatorHandle = InvalidHandle_t) :
-                animator{ IN_animatorHandle != InvalidHandle_t ? IN_animatorHandle : GetComponent().Create(IN_gameObject) } {}
-
-            PlayID_t Play(Animation& anim, bool loop = false);
-
-            AnimatorHandle animator;
-        };
-
 		AnimatorComponent(iAllocator& IN_allocator) :
             allocator   {  IN_allocator },
             handles     { &IN_allocator },
@@ -280,7 +281,7 @@ namespace FlexKit
         AnimatorHandle Create(GameObject& gameObject)
         {
             auto handle     = handles.GetNewHandle();
-            handles[handle] = (index_t)animators.emplace_back(&gameObject, Vector<AnimationState>{ &allocator });
+            handles[handle] = (index_t)animators.emplace_back(&gameObject, allocator);
 
             return handle;
         }
@@ -395,12 +396,93 @@ namespace FlexKit
             Animation*          resource;
         };
 
+        struct InputID
+        {
+            InputID() {}
+
+            InputID(const InputID& rhs)
+            {
+                memcpy(this, &rhs, sizeof(InputID));
+            }
+
+            InputID& operator = (const InputID& rhs)
+            {
+                memcpy(this, &rhs, sizeof(InputID));
+
+                return *this;
+            }
+
+            AnimatorInputType type;
+
+            uint32_t    IDHash;
+            char        stringID[32];
+        };
+
+        struct InputValue
+        {
+            InputValue() {}
+
+            InputValue(const InputValue& rhs) noexcept
+            {
+                memcpy(this, &rhs, sizeof(InputValue));
+            }
+
+            InputValue& operator =(const InputValue& rhs) noexcept
+            {
+                memcpy(this, &rhs, sizeof(InputValue));
+
+                return *this;
+            }
+
+
+            union
+            {
+                float           x;
+                FlexKit::float2 xy;
+                FlexKit::float3 xyz;
+                FlexKit::float4 xyzw;
+
+                uint32_t        a;
+                FlexKit::uint2  ab;
+                FlexKit::uint3  abc;
+                FlexKit::uint4  abcd;
+            };
+        };
+
 		struct AnimatorState
 		{
-            GameObject*             gameObject;
-            Vector<AnimationState>  animations;
-			AnimationStateMachine   ASM;
+            AnimatorState() = default;
+
+            AnimatorState(GameObject* IN_gameObject, iAllocator& allocator)
+                : gameObject    { IN_gameObject }
+                , animations    { &allocator    }
+                , inputValues   { &allocator    }
+                , inputIDs      { &allocator    } {}
+
+
+            GameObject*                 gameObject;
+            Vector<AnimationState>      animations;
+            Vector<InputValue>          inputValues;
+            Vector<InputID>             inputIDs;
+			AnimationStateMachine       ASM;
 		};
+
+        class AnimatorView : public FlexKit::ComponentView_t<AnimatorComponent>
+        {
+        public:
+            AnimatorView(GameObject& IN_gameObject, AnimatorHandle IN_animatorHandle = InvalidHandle_t) :
+                animator{ IN_animatorHandle != InvalidHandle_t ? IN_animatorHandle : GetComponent().Create(IN_gameObject) } {}
+
+            PlayID_t Play(Animation& anim, bool loop = false);
+
+            std::optional<InputValue*>          GetInputValue(uint32_t idx) noexcept;
+            std::optional<AnimatorInputType>    GetInputType(uint32_t idx) noexcept;
+            AnimatorState&                      GetState() noexcept;
+
+            uint32_t                            AddInput(const char* name, AnimatorInputType type) noexcept;
+
+            AnimatorHandle animator;
+        };
 
         AnimatorState& operator [](AnimatorHandle handle)
         {
@@ -410,6 +492,8 @@ namespace FlexKit
 		Vector<AnimatorState>							animators;
 		HandleUtilities::HandleTable<AnimatorHandle>	handles;
         iAllocator&                                     allocator;
+
+
 	};
 
     using AnimatorView = AnimatorComponent::AnimatorView;

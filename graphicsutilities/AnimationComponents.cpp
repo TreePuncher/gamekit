@@ -254,6 +254,42 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    std::optional<AnimatorComponent::InputValue*> AnimatorComponent::AnimatorView::GetInputValue(uint32_t idx) noexcept
+    {
+        auto& state = GetState();
+        return &state.inputValues[idx];
+    }
+
+
+    std::optional<AnimatorInputType> AnimatorComponent::AnimatorView::GetInputType(uint32_t idx) noexcept
+    {
+        auto& state = GetState();
+        return state.inputIDs[idx].type;
+    }
+
+
+    AnimatorComponent::AnimatorState& AnimatorComponent::AnimatorView::GetState() noexcept
+    {
+        return GetComponent()[animator];
+    }
+
+
+    uint32_t AnimatorComponent::AnimatorView::AddInput(const char* name, AnimatorInputType type) noexcept
+    {
+        auto& state = GetState();
+
+        InputID ID;
+        ID.type = type;
+        strncpy_s(ID.stringID, name, 32);
+
+        state.inputIDs.push_back(ID);
+        return state.inputValues.emplace_back();
+    }
+
+
+    /************************************************************************************************/
+
+
     void AnimatorComponent::AnimationState::JointRotationTarget::Apply(AnimatorComponent::AnimationState::FrameRange range, float t, AnimationStateContext& ctx)
     {
         if (auto res = ctx.FindField<PoseState::Pose>(); res) {

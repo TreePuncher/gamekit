@@ -450,7 +450,7 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
                             auto scriptObject   = new ScriptedAnimationObject{};
                             auto context        = scriptEngine.BuildModule(scriptResource->source);
 
-                            scriptObject->script    = scriptResource;
+                            scriptObject->resource  = scriptResource;
                             obj->script             = scriptObject;
 
                             project.AddResource(scriptResource);
@@ -517,7 +517,7 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
                     // Build Editor object
                     gameObject.AddView<FlexKit::BrushView>(meshHandle);
                     gameObject.AddView<FlexKit::SkeletonView>(meshHandle, skeleton->resource->GetResourceGUID());
-                    gameObject.AddView<FlexKit::AnimatorView>();
+                    auto& view = gameObject.AddView<FlexKit::AnimatorView>();
 
                     // Load script
                     ScriptResource_ptr scriptObjectRes = std::static_pointer_cast<ScriptResource>(scriptRes->resource);
@@ -526,11 +526,13 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
                     auto scriptObject   = new ScriptedAnimationObject{};
                     obj->resourceID     = scriptedObjectRes->GetResourceGUID();
 
-                    scriptObject->script    = scriptObjectRes;
+                    scriptObject->resource  = scriptObjectRes;
                     obj->script             = scriptObject;
 
-                    scriptObject->Reload(scriptEngine, obj);
+                    for (auto& input : scriptObjectRes->inputs)
+                        view.AddInput(input.stringID.c_str(), (FlexKit::AnimatorInputType)input.type);
 
+                    scriptObject->Reload(scriptEngine, obj);
 
                     // Set Selection
                     globalSelection.type        = AnimatorObject_ID;
@@ -569,11 +571,8 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
         {
             if (auto selection = localSelection->GetSelection(); selection)
             {
-                AnimationInput value;
-                value.type = (AnimationInput::InputType)typeID;
-                strncpy_s(value.stringID, ID.data(), ID.size());
-
-                selection->script->inputs.push_back(value);
+                auto& gameObject = selection->gameObject;
+                selection->script->AddInputValue(gameObject, ID, typeID);
             }
         });
 
@@ -582,25 +581,11 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
         {
             if (auto selection = localSelection->GetSelection(); selection)
             {
-                auto& inputs        = selection->script->inputs;
+                auto& inputs        = selection->script->resource->inputs;
                 auto& valueEntry    = inputs[idx];
+                valueEntry.stringID = ID;
 
-                strncpy_s(valueEntry.stringID, ID.data(), ID.size());
-                valueEntry.StringToValue(value);
-
-                /*
-                auto res = std::find_if(
-                    inputs.begin(),
-                    inputs.end(),
-                    [&](AnimationInput& value)
-                    {
-                        std::string_view str(value.stringID, strnlen_s(value.stringID, 32));
-
-                        return (str == ID);
-                    });
-                if (res != inputs.end())
-                    res->StringToValue(value);
-                */
+                selection->script->UpdateValue(selection->gameObject, idx, value);
             }
         });
 
@@ -610,14 +595,15 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
         {
             if (auto selection = localSelection->GetSelection(); selection)
             {
-                if (auto inputs = selection->script->inputs.size(); inputs)
+                if (auto inputs = selection->script->resource->inputs.size(); inputs)
                 {
                     inputVariables->Update(
                         inputs,
                         [&](size_t idx, std::string& ID, std::string& value)
                         {
-                            ID      = selection->script->inputs[idx].stringID;
-                            value   = selection->script->inputs[idx].ValueToString();
+                            auto& inputID   = selection->script->resource->inputs[idx];
+                            ID              = inputID.stringID;
+                            value           = selection->script->ValueString(selection->gameObject, idx, (uint32_t)inputID.type);
                         });
                 }
             }

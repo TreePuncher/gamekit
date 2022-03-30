@@ -10,6 +10,33 @@
 
 constexpr FlexKit::ComponentID EditorScriptComponentID = GetTypeGUID(EditorScriptComponentID);
 
+
+struct AnimationInput
+{
+    enum class InputType : uint32_t
+    {
+        Float,
+        Float2,
+        Float3,
+        Float4,
+        Uint,
+        Uint2,
+        Uint3,
+        Uint4
+    } type;
+
+    uint32_t    IDHash;
+    std::string stringID;
+
+    void Serialize(auto& ar)
+    {
+        ar& type;
+        ar& IDHash;
+        ar& stringID;
+    }
+};
+
+
 class ScriptResource :
     public FlexKit::Serializable<ScriptResource, FlexKit::iResource, GetTypeGUID(ScriptResource)>
 {
@@ -26,11 +53,13 @@ public:
         ar& resourceId;
         ar& source;
         ar& ID;
+        ar& inputs;
     }
 
-    uint64_t    resourceId  = rand();
+    uint64_t    resourceId      = rand();
+    std::vector<AnimationInput> inputs;
+    std::string ID              = "ScriptObject";
     std::string source;
-    std::string ID          = "ScriptObject";
 };
 
 

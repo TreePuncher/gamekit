@@ -10,68 +10,23 @@ class AnimationObject;
 class ScriptResource;
 
 
-struct AnimationInput
-{
-    AnimationInput() {}
-
-    AnimationInput(const AnimationInput& rhs)
-    {
-        memcpy(this, &rhs, sizeof(AnimationInput));
-    }
-
-    AnimationInput& operator = (const AnimationInput& rhs)
-    {
-        memcpy(this, &rhs, sizeof(AnimationInput));
-    }
-
-    enum class InputType : uint32_t
-    {
-        Float,
-        Float2,
-        Float3,
-        Float4,
-        Uint,
-        Uint2,
-        Uint3,
-        Uint4
-    } type;
-
-    union
-    {
-        float           x;
-        FlexKit::float2 xy;
-        FlexKit::float3 xyz;
-        FlexKit::float4 xyzw;
-
-        uint32_t        a;
-        FlexKit::uint2  ab;
-        FlexKit::uint3  abc;
-        FlexKit::uint4  abcd;
-    };
-
-    std::string ValueToString() const noexcept;
-    void StringToValue(const std::string& in) noexcept;
-
-    uint32_t    IDHash;
-    char        stringID[32];
-};
-
-
 /************************************************************************************************/
 
 
 class ScriptedAnimationObject
 {
 public:
-    ScriptResource_ptr  script;
+    ScriptResource_ptr  resource;
     void*               obj;
     Module              scriptModule = nullptr;
     ScriptContext       ctx;
 
-    std::vector<AnimationInput> inputs;
+    void        Update(AnimationObject* obj, double dT);
+    void        Reload(EditorScriptEngine& engine, AnimationObject* obj);
 
-    void Update(AnimationObject* obj, double dT);
-    void Reload(EditorScriptEngine& engine, AnimationObject* obj);
+    uint32_t    AddInputValue(FlexKit::GameObject& obj, const std::string& name, uint32_t valueType);
+    std::string ValueString(FlexKit::GameObject& obj, uint32_t idx, uint32_t valueType);
+    void        UpdateValue(FlexKit::GameObject& obj, uint32_t idx, const std::string& value);
 
     static bool RegisterInterface(EditorScriptEngine& engine);
 };

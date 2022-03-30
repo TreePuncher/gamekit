@@ -61,6 +61,9 @@ void EditorAnimationInputTab::Update(const uint32_t rowCount, ReadEntryDataFN fe
         std::string name;
         fetchData(row, name, value);
 
+        if (value.size() == 0)
+            value = "0";
+
         if (!ui.tableWidget->item(row, 1) || ui.tableWidget->item(row, 1)->text().size() == 0 || ui.tableWidget->item(row, 1)->text().toStdString() != value)
         {
             QTableWidgetItem* nameItem  = new QTableWidgetItem(name.c_str());
@@ -88,6 +91,12 @@ void EditorAnimationInputTab::SetOnCreateEvent(OnCreationEventFN&& IN_callback)
 void EditorAnimationInputTab::SetOnChangeEvent(WriteEntryDataFN&& in)
 {
     writeData = in;
+}
+
+
+void EditorAnimationInputTab::AddInput(const std::string& name, uint32_t type)
+{
+
 }
 
 
