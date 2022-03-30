@@ -16,6 +16,8 @@ class QMenuBar;
 class EditorScriptEngine;
 class SelectionContext;
 class EditorAnimationInputTab;
+class QTimer;
+
 
 /************************************************************************************************/
 
@@ -29,6 +31,7 @@ public:
 	~EditorAnimationEditor();
 
 private:
+	Ui::EditorAnimationEditor               ui;
     SelectionContext&                       globalSelection;
     QMenuBar*                               menubar;
     AnimatorSelectionContext*               localSelection;
@@ -38,7 +41,7 @@ private:
     EditorCodeEditor*                       codeEditor;
     EditorRenderer&                         renderer;
     EditorScriptEngine&                     scriptEngine;
-	Ui::EditorAnimationEditor               ui;
+    QTimer*                                 timer;
 };
 
 /**********************************************************************

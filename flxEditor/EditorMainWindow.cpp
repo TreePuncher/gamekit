@@ -69,7 +69,7 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
     auto timer = new QTimer{ this };
     connect(timer, &QTimer::timeout, this, &EditorMainWindow::Update);
     timer->setTimerType(Qt::PreciseTimer);
-    timer->start(1ms);
+    timer->start(16ms);
 
     setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowTabbedDocks | QMainWindow::AllowNestedDocks | QMainWindow::VerticalTabs);
     tabPosition(Qt::TopDockWidgetArea);

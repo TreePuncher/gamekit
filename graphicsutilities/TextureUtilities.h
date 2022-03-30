@@ -342,37 +342,6 @@ namespace FlexKit
         return TY_sample(0, 0, 0, 0);
     }
 
-    template<typename TY_FORMAT = Vect<4, uint8_t>>
-    TextureBuffer BuildMipMap(TextureBuffer& sourceMap, iAllocator* memory)
-    {
-        const size_t    elementSize = sizeof(TY_FORMAT);
-        const uint2     WH          = sourceMap.WH / 2;
-
-        auto GetRowPitch = [&]
-        {
-            const auto offset = WH[0] * sizeof(TY_FORMAT) % 256;
-
-            return (offset == 0) ? WH[0] * elementSize : WH[0] * elementSize + (256 - offset);
-        };
-
-        size_t                  RowPitch  = GetRowPitch();
-        TextureBuffer		    NewMIP	  = TextureBuffer(WH, sizeof(TY_FORMAT), WH[1] * RowPitch , memory );
-        TextureBufferView	    DestiView = TextureBufferView<TY_FORMAT>(NewMIP, RowPitch);
-        const TextureBufferView	InputView = TextureBufferView<TY_FORMAT>(sourceMap);
-
-        for (uint32_t Y = 0; Y < WH[1]; Y++)
-        {
-            for (uint32_t X = 0; X < WH[0]; X++)
-            {
-                const uint2 in_Cord   = { X * 2, Y * 2 };
-                const uint2 out_Cord  = { X, Y };
-
-                DestiView[out_Cord] = AverageSampler(InputView, in_Cord);
-            }
-        }
-
-        return NewMIP;
-    }
 
     template<typename TY_FORMAT = Vect<4, uint8_t>>
     TextureBuffer BuildMipMap(TextureBuffer& sourceMap, iAllocator* memory, auto sampler)
@@ -387,10 +356,10 @@ namespace FlexKit
             return (offset == 0) ? WH[0] * elementSize : WH[0] * elementSize + (256 - offset);
         };
 
-        size_t                  RowPitch = GetRowPitch();
-        TextureBuffer		    NewMIP = TextureBuffer(WH, sizeof(TY_FORMAT), WH[1] * RowPitch, memory);
-        TextureBufferView	    DestiView = TextureBufferView<TY_FORMAT>(NewMIP, RowPitch);
-        const TextureBufferView	InputView = TextureBufferView<TY_FORMAT>(sourceMap);
+        size_t                  RowPitch    = GetRowPitch();
+        TextureBuffer		    NewMIP      = TextureBuffer(WH, sizeof(TY_FORMAT), WH[1] * RowPitch, memory);
+        TextureBufferView	    DestiView   = TextureBufferView<TY_FORMAT>(NewMIP, RowPitch);
+        const TextureBufferView	InputView   = TextureBufferView<TY_FORMAT>(sourceMap);
 
         for (uint32_t Y = 0; Y < WH[1]; Y++)
         {
@@ -404,6 +373,12 @@ namespace FlexKit
         }
 
         return NewMIP;
+    }
+
+    template<typename TY_FORMAT = Vect<4, uint8_t>>
+    TextureBuffer BuildMipMap(TextureBuffer& sourceMap, iAllocator* memory)
+    {
+        return BuildMipMap(sourceMap, memory, AverageSampler<TextureBufferView<TY_FORMAT>>);
     }
 
     Vector<TextureBuffer> LoadHDR(const char* str, size_t MIPCount = 8, iAllocator* scratchSpace = SystemAllocator);

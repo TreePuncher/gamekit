@@ -8,9 +8,11 @@
 /************************************************************************************************/
 
 
-using OnCreationEventFN = std::function<void (uint32_t TypeID, const std::string& ID)>;
-using ReadEntryData     = std::function<void (uint32_t TypeID, const std::string& ID, const std::string& Value)>;
+using OnCreationEventFN     = std::function<void (uint32_t TypeID, const std::string& ID)>;
+using ReadEntryDataFN       = std::function<void (uint32_t TypeID, std::string& ID, std::string& Value)>;
+using WriteEntryDataFN      = std::function<void (size_t idx, const std::string& ID, const std::string& Value)>;
 
+class QTimer;
 
 class EditorAnimationInputTab : public QWidget
 {
@@ -20,12 +22,17 @@ public:
 	EditorAnimationInputTab(QWidget *parent = Q_NULLPTR);
 	~EditorAnimationInputTab();
 
-    void Update(const uint32_t tableCount, ReadEntryData);
+    void Update(const uint32_t tableCount, ReadEntryDataFN);
     void SetOnCreateEvent(OnCreationEventFN&& in);
+    void SetOnChangeEvent(WriteEntryDataFN&& in);
 
 private:
+
 	Ui::EditorAnimationInputTab ui;
-    OnCreationEventFN           callback = [](auto, auto&){};
+    OnCreationEventFN           callback    = [](auto, auto&){};
+    ReadEntryDataFN             readData    = [](auto, auto&, auto&) {};
+    WriteEntryDataFN            writeData   = [](size_t, auto&, auto&){};
+    QTimer*                     timer = nullptr;
 };
 
 

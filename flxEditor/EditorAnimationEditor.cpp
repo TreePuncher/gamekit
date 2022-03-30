@@ -397,7 +397,7 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
 
     auto codeEditorMenu = codeEditor->GetMenuBar();
     auto animationMenu  = codeEditorMenu->addMenu("Animator");
-    auto reloadObject = animationMenu->addAction("Reload Object");
+    auto reloadObject   = animationMenu->addAction("Reload Object");
 
     connect(reloadObject, &QAction::triggered,
         [&]()
@@ -563,6 +563,70 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
             if(localSelection->GetSelection())
                 previewWindow->CenterCamera();
         });
+
+    inputVariables->SetOnCreateEvent(
+        [&](uint32_t typeID, const std::string& ID)
+        {
+            if (auto selection = localSelection->GetSelection(); selection)
+            {
+                AnimationInput value;
+                value.type = (AnimationInput::InputType)typeID;
+                strncpy_s(value.stringID, ID.data(), ID.size());
+
+                selection->script->inputs.push_back(value);
+            }
+        });
+
+    inputVariables->SetOnChangeEvent(
+        [&](const size_t idx, const std::string& ID, const std::string& value)
+        {
+            if (auto selection = localSelection->GetSelection(); selection)
+            {
+                auto& inputs        = selection->script->inputs;
+                auto& valueEntry    = inputs[idx];
+
+                strncpy_s(valueEntry.stringID, ID.data(), ID.size());
+                valueEntry.StringToValue(value);
+
+                /*
+                auto res = std::find_if(
+                    inputs.begin(),
+                    inputs.end(),
+                    [&](AnimationInput& value)
+                    {
+                        std::string_view str(value.stringID, strnlen_s(value.stringID, 32));
+
+                        return (str == ID);
+                    });
+                if (res != inputs.end())
+                    res->StringToValue(value);
+                */
+            }
+        });
+
+    timer = new QTimer{ this };
+    connect(timer, &QTimer::timeout,
+        [&]()
+        {
+            if (auto selection = localSelection->GetSelection(); selection)
+            {
+                if (auto inputs = selection->script->inputs.size(); inputs)
+                {
+                    inputVariables->Update(
+                        inputs,
+                        [&](size_t idx, std::string& ID, std::string& value)
+                        {
+                            ID      = selection->script->inputs[idx].stringID;
+                            value   = selection->script->inputs[idx].ValueToString();
+                        });
+                }
+            }
+
+            timer->start(500ms);
+        });
+
+    timer->setTimerType(Qt::PreciseTimer);
+    timer->start(500ms);
 }
 
 

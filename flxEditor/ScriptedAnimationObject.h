@@ -12,7 +12,19 @@ class ScriptResource;
 
 struct AnimationInput
 {
-    enum class InputType
+    AnimationInput() {}
+
+    AnimationInput(const AnimationInput& rhs)
+    {
+        memcpy(this, &rhs, sizeof(AnimationInput));
+    }
+
+    AnimationInput& operator = (const AnimationInput& rhs)
+    {
+        memcpy(this, &rhs, sizeof(AnimationInput));
+    }
+
+    enum class InputType : uint32_t
     {
         Float,
         Float2,
@@ -36,6 +48,9 @@ struct AnimationInput
         FlexKit::uint3  abc;
         FlexKit::uint4  abcd;
     };
+
+    std::string ValueToString() const noexcept;
+    void StringToValue(const std::string& in) noexcept;
 
     uint32_t    IDHash;
     char        stringID[32];

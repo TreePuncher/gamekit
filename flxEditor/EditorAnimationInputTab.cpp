@@ -10,16 +10,35 @@ EditorAnimationInputTab::EditorAnimationInputTab(QWidget *parent)
 {
 	ui.setupUi(this);
 
-    auto verticalHeader     = ui.tableView->verticalHeader();
-    auto horizontalHeader   = ui.tableView->horizontalHeader();
+    auto verticalHeader     = ui.tableWidget->verticalHeader();
+    auto horizontalHeader   = ui.tableWidget->horizontalHeader();
 
     horizontalHeader->setVisible(true);
     verticalHeader->setVisible(true);
+
+    ui.tableWidget->setHorizontalHeaderLabels({ "Name", "Type", "Value" });
 
     connect(ui.pushButton, &QPushButton::pressed,
         [&]()
         {
             callback(ui.comboBox->currentIndex(), ui.lineEdit->text().toStdString());
+        });
+
+    connect(ui.tableWidget, &QTableWidget::itemChanged,
+        [&](QTableWidgetItem* item)
+        {
+            const auto row = item->row();
+
+            auto name   = ui.tableWidget->item(row, 0);
+            auto value  = ui.tableWidget->item(row, 1);
+
+            if (name && value)
+            {
+                auto nameString     = name->text().toStdString();
+                auto valueString    = value->text().toStdString();
+
+                writeData((size_t) row, nameString, valueString);
+            }
         });
 }
 
@@ -31,14 +50,25 @@ EditorAnimationInputTab::~EditorAnimationInputTab()
 {
 }
 
-
-/************************************************************************************************/
-
-
-void EditorAnimationInputTab::Update(const uint32_t tableCount, ReadEntryData fetchData)
+void EditorAnimationInputTab::Update(const uint32_t rowCount, ReadEntryDataFN fetchData)
 {
-    for (uint32_t I = 0; I < tableCount; I++)
+    ui.tableWidget->setRowCount(rowCount);
+    ui.tableWidget->setColumnCount(2);
+
+    for (uint32_t row = 0; row < rowCount; row++)
     {
+        std::string value;
+        std::string name;
+        fetchData(row, name, value);
+
+        if (!ui.tableWidget->item(row, 1) || ui.tableWidget->item(row, 1)->text().size() == 0 || ui.tableWidget->item(row, 1)->text().toStdString() != value)
+        {
+            QTableWidgetItem* nameItem  = new QTableWidgetItem(name.c_str());
+            QTableWidgetItem* valueItem = new QTableWidgetItem(value.c_str());
+
+            ui.tableWidget->setItem(row, 0, nameItem);
+            ui.tableWidget->setItem(row, 1, valueItem);
+        }
     }
 }
 
@@ -49,6 +79,15 @@ void EditorAnimationInputTab::Update(const uint32_t tableCount, ReadEntryData fe
 void EditorAnimationInputTab::SetOnCreateEvent(OnCreationEventFN&& IN_callback)
 {
     callback = IN_callback;
+}
+
+
+/************************************************************************************************/
+
+
+void EditorAnimationInputTab::SetOnChangeEvent(WriteEntryDataFN&& in)
+{
+    writeData = in;
 }
 
 

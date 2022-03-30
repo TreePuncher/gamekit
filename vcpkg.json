@@ -22,8 +22,8 @@
         	"fmt",
         	"slikenet",
         	"stb",
+		"scnlib",
         	"tinygltf",
-        	"qt5",
         	"range-v3",
         	"gainput"
     	]
