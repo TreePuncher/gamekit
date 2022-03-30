@@ -30,7 +30,7 @@
     <widget class="QLineEdit" name="lineEdit_2"/>
    </item>
    <item>
-    <widget class="QTableView" name="tableView">
+    <widget class="QTableWidget" name="tableWidget">
      <property name="frameShape">
       <enum>QFrame::NoFrame</enum>
      </property>
@@ -46,9 +46,9 @@
      <property name="sortingEnabled">
       <bool>true</bool>
      </property>
-     <attribute name="horizontalHeaderCascadingSectionResizes">
-      <bool>false</bool>
-     </attribute>
+     <property name="columnCount">
+      <number>0</number>
+     </property>
     </widget>
    </item>
    <item>

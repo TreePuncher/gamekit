@@ -10,7 +10,6 @@
 #include <qheaderview.h>
 #include <qmimedata.h>
 
-using namespace std::chrono_literals;
 
 /************************************************************************************************/
 

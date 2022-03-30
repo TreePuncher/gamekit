@@ -4,6 +4,81 @@
 #include "AnimationObject.h"
 #include "AnimationUtilities.h"
 #include "AnimationComponents.h"
+#include <fmt/format.h>
+#include <scn/scn.h>
+
+/************************************************************************************************/
+
+
+std::string AnimationInput::ValueToString() const noexcept
+{
+    switch (type)
+    {
+        case InputType::Float:
+            return fmt::format("{}", x);
+        case InputType::Float2:
+            return fmt::format("{}, {}", xy[0], xy[1]);
+        case InputType::Float3:
+            return fmt::format("{}, {}, {}", xyz[0], xyz[1], xyz[2]);
+        case InputType::Float4:
+            return fmt::format("{}, {}, {}", xyzw[0], xyzw[1], xyzw[2], xyzw[3]);
+        case InputType::Uint:
+            return fmt::format("{}", a);
+        case InputType::Uint2:
+            return fmt::format("{}, {}", ab[0], ab[1]);
+        case InputType::Uint3:
+            return fmt::format("{}, {}, {}", abc[0], abc[1], abc[2]);
+        case InputType::Uint4:
+            return fmt::format("{}, {}, {}, {}", abcd[0], abcd[1], abcd[2], abcd[3]);
+        default:
+            return "";
+    }
+}
+
+
+/************************************************************************************************/
+
+
+void AnimationInput::StringToValue(const std::string& in) noexcept
+{
+    switch (type)
+    {
+    case InputType::Float:
+    {
+        scn::scan(in, "{}", x);
+    }   break;
+    case InputType::Float2:
+    {
+        scn::scan(in, "{}, {}", xy.x, xy.y);
+    }   break;
+    case InputType::Float3:
+    {
+        scn::scan(in, "{}, {}, {}", xyz.x, xyz.y, xyz.z);
+    }   break;
+    case InputType::Float4:
+    {
+        scn::scan(in, "{}, {}, {}, {}", xyzw.x, xyzw.y, xyzw.z, xyzw.w);
+    }   break;
+    case InputType::Uint:
+    {
+        scn::scan(in, "{}", a);
+    }   break;
+    case InputType::Uint2:
+    {
+        scn::scan(in, "{}, {}", ab[0], ab[1]);
+    }   break;
+    case InputType::Uint3:
+    {
+        scn::scan(in, "{}, {}, {}", abc[0], abc[1], abc[2]);
+    }   break;
+    case InputType::Uint4:
+    {
+        scn::scan(in, "{}, {}, {}, {}", abcd[0], abcd[1], abcd[2], abcd[3]);
+    }   break;
+    default:
+        return;
+    }
+}
 
 
 /************************************************************************************************/
