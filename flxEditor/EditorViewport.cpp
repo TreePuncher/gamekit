@@ -277,6 +277,7 @@ void EditorVewportSelectionMode::mousePressEvent(QMouseEvent* event)
             selection.viewportObjects.push_back(results.front());
             selection.scene = scene.get();
 
+            selectionContext.Clear();
             selectionContext.selection  = std::move(selection); 
             selectionContext.type       = ViewportObjectList_ID;
         }
@@ -562,6 +563,7 @@ FlexKit::TriMeshHandle EditorViewport::LoadTriMeshResource(ProjectResource_ptr r
     if (auto prop = res->properties.find(GetCRCGUID(TriMeshHandle)); prop != res->properties.end())
     {
         FlexKit::TriMeshHandle handle = std::any_cast<FlexKit::TriMeshHandle>(prop->second);
+        AddRef(handle);
 
         return handle;
     }
@@ -591,6 +593,7 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
 
         FlexKit::SceneVisibilityComponent::GetComponent();
 
+        selectionContext.Clear();
         selectionContext.selection  = std::any{};
         selectionContext.type       = -1;
     }

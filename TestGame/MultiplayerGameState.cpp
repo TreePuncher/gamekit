@@ -160,7 +160,8 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
         }
     );
 
-    pointLight1 = FlexKit::FindGameObject(worldState.GetScene(), "PointLight1").value_or(nullptr);
+    pointLight1 = FlexKit::FindGameObject(worldState.GetScene(), "Light").value_or(nullptr);
+    smolina     = FlexKit::FindGameObject(worldState.GetScene(), "smolina").value_or(nullptr);
 
     //particleEmitter.AddView<SceneNodeView<>>();
     //auto& emitterView       = particleEmitter.AddView<ParticleEmitterView>(ParticleEmitterData{ &testParticleSystem, GetSceneNode(particleEmitter) });
@@ -273,14 +274,23 @@ UpdateTask* LocalGameState::Update(EngineCore& core, UpdateDispatcher& dispatche
 
     auto tasks = worldState.Update(core, dispatcher, dT);
 
-    static float t = 0.0f;
-    if(pointLight1)
-        SetWorldPosition(*pointLight1, float3{ 10.0f * sin(t), 2, 10.0f * cos(t) + 10 });
+    if (pointLight1 && move)
+    {
+        static float t = 0.0f;
+        static float3 XZ = GetWorldPosition(*pointLight1);
+
+        if(mode)
+            SetWorldPosition(*pointLight1, float3{ XZ.x, 10 * sin(t) + 20, XZ.z });
+        else
+            SetWorldPosition(*pointLight1, float3{ 15.0f * sin(t), 2, 15.0f * cos(t) });
+
+        t += dT;
+    }
+
 
     //SetWorldPosition(particleEmitter, float3{ 100.0f * sin(t), 20, 100.0f * cos(t) });
     //SetWorldPosition(IKTarget, float3{ 2.0f * cos(t), 4.0f * sin(t / 2.0f) + 8.0f, 4.0f * sin(t) } + float3{ 30.0f, 0.0f, 10.0f });
 
-    t += dT;
 
     return tasks.update;
 }
@@ -424,8 +434,9 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
     }
 
 
-    if(0)
+    if(false)
     {
+        LineSegments lines(core.GetTempMemory());
 #if 0
         // Draw Skeleton overlay
         const auto Skeleton = GetSkeleton(testAnimation);
@@ -451,7 +462,6 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
         if (!Skeleton)
             return nullptr;
 
-        const auto PV       = GetCameraConstants(activeCamera).PV;
         LineSegments lines  = DEBUG_DrawPoseState(*pose, node, core.GetTempMemory());
 
         Apply(testAnimation,
@@ -474,6 +484,156 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
                         lines.push_back(line);
                     }
             });
+
+#endif
+        const size_t divisions      = 64;
+        const auto boundingSphere   = GetBoundingSphere(*smolina);
+        const auto POS              = boundingSphere.xyz();
+        const auto radius           = boundingSphere.w;
+        const float Step            = 2.0f * (float)FlexKit::pi / divisions;
+
+        auto lightHandle                = GetPointLight(*pointLight1);
+        const auto& light               = PointLightComponent::GetComponent()[lightHandle];
+        const auto pointLightPosition   = GetPositionW(light.Position);
+
+        auto f = GetFrustum(1.0f, pi / 2, 0.1, light.R, pointLightPosition, Quaternion{ 0,  90, 0 });
+        auto r = Intersects(f, boundingSphere);
+
+        for (size_t I = 0; I < divisions; I++)
+        {
+            const float3 V1 = { radius * cos(Step * (I + 1)),	0.0f, (radius * sin(Step * (I + 1))) };
+			const float3 V2 = { radius * cos(Step * I),		    0.0f, (radius * sin(Step * I)) };
+
+            auto color = r ? float3{ 1, 0, 1 } : float3{ 1, 1, 1 };
+
+            LineSegment L1;
+            L1.A        =  V1 + POS;
+            L1.B        =  V2 + POS;
+            L1.AColour  = color;
+            L1.BColour  = color;
+
+            LineSegment L2;
+            L2.A        = float3{ V1.x, V1.z, 0 } + POS;
+            L2.B        = float3{ V2.x, V2.z, 0 } + POS;
+            L2.AColour  = color;
+            L2.BColour  = color;
+
+            LineSegment L3;
+            L3.A        = float3{ 0, V1.x, V1.z } + POS;
+            L3.B        = float3{ 0, V2.x, V2.z } + POS;
+            L3.AColour  = color;
+            L3.BColour  = color;
+
+            lines.push_back(L1);
+            lines.push_back(L2);
+            lines.push_back(L3);
+        }
+
+
+        static const Quaternion Orientations[6] = {
+            Quaternion{   0,  90, 0 }, // Right
+            Quaternion{   0, -90, 0 }, // Left
+            Quaternion{ -90,   0, 0 }, // Top
+            Quaternion{  90,   0, 0 }, // Bottom
+            Quaternion{   0, 180, 0 }, // Backward
+            Quaternion{   0,   0, 0 }, // Forward
+        };
+
+        for(size_t I = 0; I < 6; I++)
+            [&](float AspectRatio, float FOV, float Near, float Far, float3 Position, Quaternion Q)
+            {
+                float3 FTL(0);
+                float3 FTR(0);
+                float3 FBL(0);
+                float3 FBR(0);
+
+                FTL.z = -Far;
+                FTL.y = tan(FOV / 2) * Far;
+                FTL.x = -FTL.y * AspectRatio;
+
+                FTR = { -FTL.x,  FTL.y, FTL.z };
+                FBL = { FTL.x, -FTL.y, FTL.z };
+                FBR = { -FTL.x, -FTL.y, FTL.z };
+
+                float3 NTL(0);
+                float3 NTR(0);
+                float3 NBL(0);
+                float3 NBR(0);
+
+                NTL.z = -Near;
+                NTL.y = tan(FOV / 2) * Near;
+                NTL.x = -NTL.y * AspectRatio;
+
+                NTR = { -NTL.x,  NTL.y, NTL.z };
+                NBL = {  NTL.x, -NTL.y, NTL.z };
+                NBR = {  NTR.x, -NTR.y, NTR.z };
+
+                FTL = Position + Q * FTL;
+                FTR = Position + Q * FTR;
+                FBL = Position + Q * FBL;
+                FBR = Position + Q * FBR;
+
+                NTL = Position + Q * NTL;
+                NTR = Position + Q * NTR;
+                NBL = Position + Q * NBL;
+                NBR = Position + Q * NBR;
+
+                LineSegment L1;
+                L1.AColour = float3{ 1, 1, 1 };
+                L1.BColour = float3{ 1, 1, 1 };
+
+                L1.A = FTL;
+                L1.B = FTR;
+                lines.push_back(L1);
+
+                L1.A = FBL;
+                L1.B = FBR;
+                lines.push_back(L1);
+
+
+                L1.A = NTL;
+                L1.B = NTR;
+                lines.push_back(L1);
+
+                L1.A = NBL;
+                L1.B = NBR;
+                lines.push_back(L1);
+
+                L1.A = NBL;
+                L1.B = NTL;
+                lines.push_back(L1);
+
+                L1.A = NBR;
+                L1.B = NTR;
+                lines.push_back(L1);
+
+                L1.A = FBL;
+                L1.B = FTL;
+                lines.push_back(L1);
+
+                L1.A = FBR;
+                L1.B = FTR;
+                lines.push_back(L1);
+
+                L1.A = FTL;
+                L1.B = NTL;
+                lines.push_back(L1);
+
+                L1.A = FBL;
+                L1.B = NBL;
+                lines.push_back(L1);
+
+                L1.A = FTR;
+                L1.B = NTR;
+                lines.push_back(L1);
+
+                L1.A = FBR;
+                L1.B = NBR;
+                lines.push_back(L1);
+            }(1.0f, pi / 2, 0.1, 20, pointLightPosition, Orientations[I]);
+
+
+        const auto PV = GetCameraConstants(activeCamera).PV;
 
         // Transform to Device Coords
         for (auto& line : lines)
@@ -501,7 +661,6 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
             targets.RenderTarget,
             core.GetTempMemory(),
             LineShape{ lines });
-#endif
     }
 
     base.DrawDebugHUD(core, dispatcher, frameGraph, reserveVB, reserveCB, targets.RenderTarget, dT);
@@ -560,6 +719,12 @@ bool LocalGameState::EventHandler(Event evt)
             if (evt.Action == Event::Release)
                 switch (evt.mData1.mKC[0])
                 {
+                case KC_C:
+                    mode = !mode;
+                    return true;
+                case KC_V:
+                    move = !move;
+                    return true;
                 case KC_M:
                     base.renderWindow.ToggleMouseCapture();
                     return true;

@@ -140,7 +140,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	template<typename TY, ComponentID ID = -1u>
+	template<typename TY, ComponentID ID = -1>
 	class Component : public ComponentBase
 	{
 	public:

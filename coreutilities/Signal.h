@@ -2,7 +2,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2021 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -24,156 +24,104 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+
 #include "buildsettings.h"
 #include "type.h"
+#include "memoryutilities.h"
+#include "containers.h"
 #include <algorithm>
 #include <functional>
+
 
 namespace FlexKit
 {
 	using FlexKit::Type_t;
 
 
-	template<typename ... FNDef>
+	template<typename FNDef = void ()>
 	class Signal
 	{
 	public:
 		class Slots
 		{
 		public:
+            Slots() {}
+
 			~Slots()
 			{
-				for( auto Entry : m_Signals )
-					Entry.Ptr->Disconnect( this, Entry.ID );
+				for( auto entry : signalTable )
+                    entry.signal->Disconnect( this, entry.ID );
 			}
 
-			void release( Signal* Ptr )
+			void Release(Signal* signal)
 			{
-#if USING(STL)
-				//m_Signals.erase( std::remove_if( m_Signals.begin(), m_Signals.end(), [=]( const Signal_Entry& in ) -> bool
-				//{
-				//	return ( in.Ptr == Ptr );
-				//} ), m_Signals.end() );
-#endif
-				auto i	 = m_Signals.begin();
-				auto end = m_Signals.end();
-				for (; i < end; ++i)
+				for (auto entry : signalTable)
 				{
-					if ((*i).Ptr == Ptr)
+					if (entry.signal == signal)
 					{
-						(*i).Ptr->Disconnect(this, (*i).ID);
-						break;
+                        entry.signal->Disconnect(this, entry.ID);
+                        signalTable.erase(&entry);
+                        return;
 					}
 				}
-
-				if (i != m_Signals.end())
-					m_Signals.erase(i);
 			}
 
-			void NotifyOnDestruction( Signal* _ptr, unsigned int id )
+			void NotifyOnDestruction( Signal* _ptr, uint64_t id )
 			{
-				m_Signals.push_back( Signal_Entry( _ptr, id ) );
+                signalTable.push_back( Signal_Entry( _ptr, id ) );
 			}
 		private:
 
 			struct Signal_Entry
 			{
-				Signal_Entry() {}
-				Signal_Entry( Signal* signal_in, unsigned int id ) : ID( id ), Ptr( signal_in ) {}
-				Signal*								Ptr;
-				unsigned int						ID;
+				Signal*		signal;
+                uint64_t    ID;
 			};
-			static_vector<Signal_Entry>	m_Signals;
+
+			static_vector<Signal_Entry>	signalTable;
 		};
 
-		typedef void   (FN)(Slots*, FNDef...);
-		typedef FN*		FN_PTR;
 
 	private:
 		struct Slot_Entry
 		{
-			Slot_Entry() {}
-			Slot_Entry(FN_PTR in, unsigned int id, Slots* Ptr_in ) : FN{ in }, ID{ id }, Ptr{ Ptr_in } {}
-
-			FN_PTR			FN;
-			Slots*			Ptr;
-			unsigned int	ID;
+            TypeErasedCallable<FNDef, 48>   callable;
+            uint64_t                        ID;
+			Slots*			                Ptr;
 		};
 
 	public:
-		Signal() {}
+		Signal(iAllocator* allocator = SystemAllocator) : outputSlots{ allocator } {}
+
 		~Signal( void )
 		{
 			DiconnectAll();
 		}
 
-		void operator()()
+        template<typename ... TY_args>
+		void operator()(TY_args&& ... args)
 		{
-			for( auto slot : mOutputSlots )
-			{
-				slot.FN(slot.Ptr);
-			}
-		}
-		template< typename Ty_1 >
-		void operator()( Ty_1 in )
-		{
-			for( auto slot : mOutputSlots )
-			{
-				slot.FN(slot.Ptr, in1 );
-			}
-		}
-		template< typename Ty_1, typename Ty_2 >
-		void operator()( Ty_1 in_1, Ty_2 in_2 )
-		{
-			for( auto slot : mOutputSlots )
-			{
-				slot.FN(slot.Ptr, in1, in_2 );
-			}
+			for( auto slot : outputSlots )
+				slot.callable(std::forward<TY_args>(args)...);
 		}
 
-		template< typename Ty_1, typename Ty_2, typename Ty_3 >
-		void operator()( Ty_1 in_1, Ty_2 in_2, Ty_3 in_3 )
+        template<typename TY_Callable>
+		void Connect(Slots& slot, TY_Callable callable)
 		{
-			for( auto slot : mOutputSlots )
-			{
-				slot.FN(slot.Ptr, in1, in_2, in_3 );
-			}
+            slot.NotifyOnDestruction(this, outputSlots.size() );
+            outputSlots.emplace_back(Slot_Entry{ callable, outputSlots.size(), &slot });
 		}
 
-		template< typename Ty_1, typename Ty_2, typename Ty_3, typename Ty_4 >
-		void operator()( Ty_1 in_1, Ty_2 in_2, Ty_3 in_3, Ty_4 in_4 )
+		void Disconnect(Slots* _ptr, unsigned int ID )
 		{
-			for( auto slot : mOutputSlots )
-			{
-				slot.FN( slot.Ptr, in1, in_2, in_3, in_4 );
-			}
-		}
+			auto end = outputSlots.end();
 
-		template< typename Ty_1, typename Ty_2, typename Ty_3, typename Ty_4, typename Ty_5 >
-		void operator()( Ty_1 in_1, Ty_2 in_2, Ty_3 in_3, Ty_4 in_4, Ty_5 in_5 )
-		{
-			for( auto slot : mOutputSlots )
-			{
-				slot.FN( slot.Ptr, in1, in_2, in_3, in_4, in_5 );
-			}
-		}
-
-		void Connect( Slots* _ptr, FN_PTR FN_In )
-		{
-			_ptr->NotifyOnDestruction( this, mOutputSlots.size() );
-			mOutputSlots.push_back( Slot_Entry(FN_In, mOutputSlots.size(), _ptr ) );
-		}
-
-		void Disconnect( Slots* _ptr, unsigned int ID )
-		{
-			auto end = mOutputSlots.end();
-
-			for( auto itr = mOutputSlots.begin(); itr != end; itr++ )
+			for( auto itr = outputSlots.begin(); itr != end; itr++ )
 			{
 				auto entry = *itr;
 				if( entry.Ptr == _ptr && entry.ID == ID )
 				{
-					mOutputSlots.erase( itr );
+					outputSlots.remove_unstable(itr);
 					break;
 				}
 			}
@@ -181,17 +129,13 @@ namespace FlexKit
 
 		void DiconnectAll()
 		{
-			for( auto entry : mOutputSlots )
-				entry.Ptr->release( this );
+			for( auto entry : outputSlots )
+				entry.Ptr->Release( this );
 
-			mOutputSlots.clear();
+			outputSlots.clear();
 		}
 
 	private:
-#ifdef _DEBUG
-		bool	mVerify;
-		Type_t	mSignature;
-#endif
-		static_vector<Slot_Entry> mOutputSlots;
+		Vector<Slot_Entry> outputSlots;
 	};
 }

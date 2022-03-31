@@ -6,6 +6,7 @@
 #include <regex>
 #include <string>
 #include <vector>
+#include <Signal.h>
 
 
 #include <QtWidgets/qboxlayout.h>

@@ -282,7 +282,7 @@ namespace FlexKit
         ClusteredRender(RenderSystem&, iAllocator& persistent);
 
 
-        FlexKit::TypeErasedCallable<48, void, FrameGraph&>
+        FlexKit::TypeErasedCallable<void (FrameGraph&), 48>
             CreateClusterBuffer(
                                 RenderSystem&                   renderSystem,
                                 uint2                           WH,

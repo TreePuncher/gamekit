@@ -1,13 +1,13 @@
 #pragma once
 
 #include "SelectionContext.h"
-
 #include <map>
 #include <qtimer.h>
 #include <functional>
 #include <QtWidgets/qwidget.h>
 #include <QObject>
 
+class QObject;
 class QLabel;
 class QBoxLayout;
 class QScrollArea;
@@ -42,7 +42,7 @@ namespace FlexKit
 class ComponentViewPanelContext
 {
 public:
-    ComponentViewPanelContext(QBoxLayout* panel, std::vector<QWidget*>& items_out, std::vector<QBoxLayout*>&);
+    ComponentViewPanelContext(QBoxLayout* panel, std::vector<QObject*>& items_out, std::vector<QBoxLayout*>&, EditorInspectorView*);
 
     QLabel* AddHeader           (std::string txt);
     QLabel* AddText             (std::string txt);
@@ -55,8 +55,9 @@ public:
     void PushHorizontalLayout   (std::string groupName = {}, bool goup = false);
     void Pop();
 
+    EditorInspectorView*        inspector;
     std::vector<QBoxLayout*>    layoutStack;
-    std::vector<QWidget*>&      propertyItems;
+    std::vector<QObject*>&      propertyItems;
 };
 
 
@@ -112,13 +113,14 @@ public:
 
     static FlexKit::ComponentViewBase& ConstructComponent(uint32_t ComponentID, ViewportGameObject& gameObject, ViewportScene& scene);
 
+     SelectionContext* GetSelectionContext() { return &selectionContext; }
 private:
 
     void UpdatePropertiesViewportObjectInspector();
     void UpdateAnimatorObjectInspector();
     void UpdateUI(FlexKit::GameObject&);
 
-
+    void ClearPanel();
     void timerEvent(QTimerEvent*) override;
     void OnUpdate();
 
@@ -137,8 +139,10 @@ private:
     QScrollArea*    scrollArea;
     QWidget*        contentWidget;
 
+    FlexKit::Signal<void()>::Slots slot;
+
     std::vector<QBoxLayout*>    properties;
-    std::vector<QWidget*>       propertyItems;
+    std::vector<QObject*>       propertyItems;
 };
 
 

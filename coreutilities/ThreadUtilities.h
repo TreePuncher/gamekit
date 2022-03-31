@@ -67,7 +67,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-	typedef TypeErasedCallable<64, void> OnCompletionEvent;
+	typedef TypeErasedCallable<void ()> OnCompletionEvent;
 
 
 	/************************************************************************************************/

@@ -127,7 +127,7 @@ namespace FlexKit
         CircularBuffer<ResourceHandle, 3>   buffers;
     };
 
-    using AdditionalGbufferPass = TypeErasedCallable<256>;
+    using AdditionalGbufferPass = TypeErasedCallable<void (), 256>;
 
     struct DrawSceneDescription
     {
@@ -494,7 +494,7 @@ namespace FlexKit
         };
 
 
-        using RenderTask = FlexKit::TypeErasedCallable<48, void, FrameGraph&, PassData&>;
+        using RenderTask = FlexKit::TypeErasedCallable<void (FrameGraph&, PassData&), 48>;
 
 
         void AddTask(RenderTask&& task)

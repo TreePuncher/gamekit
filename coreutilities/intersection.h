@@ -137,6 +137,9 @@ namespace FlexKit
 		float3 Min, Max;
 	};
 
+    Frustum OffsetFustrum(const Frustum&, const float3);
+
+
 	/************************************************************************************************/
 
 
@@ -169,7 +172,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool Intersects(const Frustum F, const BoundingSphere BS);
+	bool Intersects(const Frustum& F, const BoundingSphere BS);
 
 
 	/************************************************************************************************/
@@ -225,18 +228,18 @@ namespace FlexKit
 
 	Frustum GetFrustum(
 		const float AspectRatio,
+		const float FOV,
 		const float Near,
 		const float Far,
-		const float FOV,
-		float3 Position,
-		Quaternion Q) noexcept;
+		float3      Position,
+		Quaternion  Q) noexcept;
 
 
 	Frustum GetSubFrustum(
 		const float AspectRatio,
+		const float FOV,
 		const float Near,
 		const float Far,
-		const float FOV,
 		float3		Position,
 		Quaternion	Q,
 		float2		TopLeft,

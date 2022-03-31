@@ -149,7 +149,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="angelScriptTU.cpp">
+    <ClCompile Include="ExtraDependencies.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Animation.cpp">
@@ -226,7 +226,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="ScriptedAnimationObject.cpp" />
-    <ClCompile Include="SelectionContext.cpp" />
     <ClCompile Include="TaskManager.cpp" />
     <ClCompile Include="TextureResourceUtilities.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>

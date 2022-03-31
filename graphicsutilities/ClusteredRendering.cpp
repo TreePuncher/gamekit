@@ -726,7 +726,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    FlexKit::TypeErasedCallable<48, void, FrameGraph&> ClusteredRender::CreateClusterBuffer(RenderSystem& renderSystem, uint2 WH, CameraHandle camera, MemoryPoolAllocator& UAVPool, ReserveConstantBufferFunction& reserveCB)
+    FlexKit::TypeErasedCallable<void (FrameGraph&), 48> ClusteredRender::CreateClusterBuffer(RenderSystem& renderSystem, uint2 WH, CameraHandle camera, MemoryPoolAllocator& UAVPool, ReserveConstantBufferFunction& reserveCB)
     {
         return
             [&, camera = camera, WH = WH](FrameGraph& frameGraph)

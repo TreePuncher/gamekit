@@ -1582,7 +1582,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-    using ReadBackEventHandler = TypeErasedCallable<64, void, ReadBackResourceHandle>;
+    using ReadBackEventHandler = TypeErasedCallable<void (ReadBackResourceHandle), 64>;
 
 
 	FLEXKITAPI class Context
@@ -3251,7 +3251,7 @@ private:
 
 	/************************************************************************************************/
 
-	using ReadBackEventHandler = TypeErasedCallable<64, void, ReadBackResourceHandle>;
+	using ReadBackEventHandler = TypeErasedCallable<void (ReadBackResourceHandle), 64>;
 
 	struct MappedReadBackBuffer
 	{
@@ -5318,7 +5318,7 @@ private:
     /************************************************************************************************/
 
 
-    using RunOnceDrawEvent = FlexKit::TypeErasedCallable<64, void>;
+    using RunOnceDrawEvent = FlexKit::TypeErasedCallable<void ()>;
 
 
     class RunOnceQueue

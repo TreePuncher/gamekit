@@ -10,7 +10,7 @@ namespace FlexKit
 
     using AdditionalShadowMapPass =
         TypeErasedCallable
-        <256, void,
+        <void (
             ReserveConstantBufferFunction&,
             ReserveVertexBufferFunction&,
             ConstantBufferDataSet*,
@@ -18,7 +18,7 @@ namespace FlexKit
             const size_t,
             const ResourceHandler&,
             Context&,
-            iAllocator&>;
+            iAllocator&), 256>;
 
     struct ShadowMapPassData
 	{

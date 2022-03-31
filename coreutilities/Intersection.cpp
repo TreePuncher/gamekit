@@ -211,7 +211,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-	bool Intersects(const Frustum F, const BoundingSphere BS)
+	bool Intersects(const Frustum& F, const BoundingSphere BS)
 	{
 		bool Bottom = false;
 		bool Near	= false;
@@ -227,48 +227,43 @@ namespace FlexKit
 			const auto N = F.Planes[EPlane_FAR].n;
 
 			const float NdP	= N.dot(P);
-			const float D	= NdP - r;
-			Far			    = D <= 0;
+			Far			    = NdP <= r;
 		}
 		{
 			const auto P = V - F.Planes[EPlane_NEAR].o;
 			const auto N = F.Planes[EPlane_NEAR].n;
 
 			const float NdP	= N.dot(P);
-			const float D	= NdP - r;
-			Near		    = D <= 0;
+			Near		    = NdP <= r;
 		}
 		{
 			const auto P = V - F.Planes[EPlane_TOP].o;
 			const auto N = F.Planes[EPlane_TOP].n;
 
 			const float NdP	= N.dot(P);
-			const float D	= NdP - r;
-			Top			    = D <= 0;
+			Top			    = NdP <= r;
 		}
 		{
 			const auto P = V - F.Planes[EPlane_BOTTOM].o;
 			const auto N = F.Planes[EPlane_BOTTOM].n;
 
+            const auto temp = N.magnitude();
 			const float NdP	= N.dot(P);
-			const float D	= NdP - r;
-			Bottom		    = D <= 0;
+			Bottom		    = NdP <= r;
 		}
 		{
 			auto P = V - F.Planes[EPlane_LEFT].o;
 			auto N = F.Planes[EPlane_LEFT].n;
 
 			const float NdP	= N.dot(P);
-			const float D	= NdP - r;
-			Left		    = D <= 0;
+			Left		    = NdP <= r;
 		}
 		{
 			const auto P = V - F.Planes[EPlane_RIGHT].o;
 			const auto N = F.Planes[EPlane_RIGHT].n;
 
 			const float NdP	= N.dot(P);
-			const float D	= NdP - r;
-			Right		    = D <= 0;
+			Right		    = NdP <= r;
 		}
 
 		return (Bottom & Near & Far & Left & Right & Top);
@@ -276,6 +271,20 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+    Frustum OffsetFustrum(const Frustum& f, const float3 offset)
+    {
+        auto out = f;
+
+        for (auto p : out.Planes)
+            p.o += offset;
+
+        return out;
+    }
+
+
+    /************************************************************************************************/
 
 
 	Frustum GetFrustum(
@@ -286,41 +295,41 @@ namespace FlexKit
 		float3 Position, 
 		Quaternion Q) noexcept
 	{
-		float3 FTL(0);
-		float3 FTR(0);
-		float3 FBL(0);
-		float3 FBR(0);
+        float3 FTL(0);
+        float3 FTR(0);
+        float3 FBL(0);
+        float3 FBR(0);
 
-		FTL.z = -Far;
-		FTL.y = tan(FOV) * Far;
-		FTL.x = -FTL.y * AspectRatio;
+        FTL.z = -Far;
+        FTL.y = tan(FOV / 2) * Far;
+        FTL.x = -FTL.y * AspectRatio;
 
-		FTR ={ -FTL.x,  FTL.y, FTL.z };
-		FBL ={  FTL.x, -FTL.y, FTL.z };
-		FBR ={ -FTL.x, -FTL.y, FTL.z };
+        FTR = { -FTL.x,  FTL.y, FTL.z };
+        FBL = { FTL.x, -FTL.y, FTL.z };
+        FBR = { -FTL.x, -FTL.y, FTL.z };
 
-		float3 NTL(0);
-		float3 NTR(0);
-		float3 NBL(0);
-		float3 NBR(0);
+        float3 NTL(0);
+        float3 NTR(0);
+        float3 NBL(0);
+        float3 NBR(0);
 
-		NTL.z = -Near;
-		NTL.y = tan(FOV / 2) * Near;
-		NTL.x = NTL.y * AspectRatio;
+        NTL.z = -Near;
+        NTL.y = tan(FOV / 2) * Near;
+        NTL.x = -NTL.y * AspectRatio;
 
-		NTR ={ -NTL.x,  NTL.y, NTL.z };
-		NBL ={ -NTL.x, -NTL.y, NTL.z };
-		NBR ={ NTL.x, -NTL.y, NTL.z };
+        NTR = { -NTL.x,  NTL.y, NTL.z };
+        NBL = {  NTL.x, -NTL.y, NTL.z };
+        NBR = {  NTR.x, -NTR.y, NTR.z };
 
-		FTL = Position + Q * FTL;
-		FTR = Position + Q * FTR;
-		FBL = Position + Q * FBL;
-		FBR = Position + Q * FBR;
+        FTL = Position + Q * FTL;
+        FTR = Position + Q * FTR;
+        FBL = Position + Q * FBL;
+        FBR = Position + Q * FBR;
 
-		NTL = Position + Q * NTL;
-		NTR = Position + Q * NTR;
-		NBL = Position + Q * NBL;
-		NBR = Position + Q * NBR;
+        NTL = Position + Q * NTL;
+        NTR = Position + Q * NTR;
+        NBL = Position + Q * NBL;
+        NBR = Position + Q * NBR;
 
 		Frustum Out;
 
@@ -339,28 +348,28 @@ namespace FlexKit
 			float3 N1 = DirectionVector(FTL, FTR);
 			float3 N2 = DirectionVector(FTL, NTL);
 
-			Out.Planes[EPlane_TOP].o = ((FTL + FTR) / 2 + (NTL + NTR) / 2) / 2;
+			Out.Planes[EPlane_TOP].o = Position;
 			Out.Planes[EPlane_TOP].n = -N1.cross(N2).normal();
 		}
 		{
 			float3 N1 = DirectionVector(FBL, FBR);
 			float3 N2 = DirectionVector(FBL, NBL);
 
-			Out.Planes[EPlane_BOTTOM].o = (FBL + NBR) / 2;
+			Out.Planes[EPlane_BOTTOM].o = Position;
 			Out.Planes[EPlane_BOTTOM].n = N1.cross(N2).normal();
 		}
 		{
 			float3 N1 = DirectionVector(FTL, FBL);
 			float3 N2 = DirectionVector(FTL, NTL);
 
-			Out.Planes[EPlane_LEFT].o = ((FTL + FBL) / 2 + (NTL + NBL) / 2) / 2;
+			Out.Planes[EPlane_LEFT].o = Position;
 			Out.Planes[EPlane_LEFT].n = N1.cross(N2).normal();
 		}
 		{
 			float3 N1 = DirectionVector(FBR, FTR);
 			float3 N2 = DirectionVector(FTR, NTR);
 
-			Out.Planes[EPlane_RIGHT].o = ((FTR + FBR) / 2 + (NTR + NBR) / 2) / 2;
+			Out.Planes[EPlane_RIGHT].o = Position;
 			Out.Planes[EPlane_RIGHT].n = N1.cross(N2).normal();
 		}
 
@@ -398,7 +407,7 @@ namespace FlexKit
 			float3 FBR_FULL(0);
 
 			FTL_FULL.z = -Far;
-			FTL_FULL.y = tan(FOV) * Far;
+			FTL_FULL.y = tan(FOV / 2) * Far;
 			FTL_FULL.x = -FTL_FULL.y * AspectRatio;
 
 			FTR_FULL = { -FTL_FULL.x,  FTL_FULL.y, FTL_FULL.z };

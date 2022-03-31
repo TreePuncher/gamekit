@@ -340,6 +340,7 @@ void SceneOutliner::on_clicked()
     selection.viewportObjects.clear();
     selection.viewportObjects.push_back(selectedItem->viewportObject);
 
+    selectionCtx.Clear();
     selectionCtx.selection  = std::move(selection);
     selectionCtx.type       = ViewportObjectList_ID;
 }
