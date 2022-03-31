@@ -328,7 +328,6 @@ namespace FlexKit
         std::shared_ptr<MeshKDBTree::KDBNode> MeshKDBTree::BuildNode(size_t begin, size_t end)
         {
             const auto [midPoint, aabb] = GetMedianSplitPlaneAABB(mesh.tris.data() + begin, mesh.tris.data() + end);
-            const auto splitPlane = SplitPlanes[aabb.LongestAxis()];
 
             if (end - begin < 512 || aabb.AABBArea() == 0.0f)
             {
@@ -339,28 +338,38 @@ namespace FlexKit
             }
             else
             {
-                const auto mid =
+                auto plane = aabb.LongestAxis();
+                while (true)
+                {
+                    auto splitPlane = SplitPlanes[plane];
+
+                    const auto mid =
                         std::partition(
                             mesh.tris.begin() + begin,
                             mesh.tris.begin() + end,
                             [&](const auto& tri) -> bool
                             {
-                                const float3 pos = mesh.GetTrianglePosition(tri);
-                                const float d = (midPoint - pos).dot(splitPlane);
+                                const float3 pos    = mesh.GetTrianglePosition(tri);
+                                const float d       = (midPoint - pos).dot(splitPlane);
 
                                 return d >= 0;
                             });
 
-                const size_t midIdx = std::distance(mesh.tris.begin(), mid);
+                    const size_t midIdx = std::distance(mesh.tris.begin(), mid);
 
-                if (midIdx < begin)
-                    DebugBreak();
+                    if (begin == midIdx || midIdx == end)
+                    {
+                        DebugBreak();
+                        //plane = (AABB::Axis)((plane + 1) % AABB::Axis::Axis_count);
+                        continue;
+                    }
 
-                return std::make_unique<KDBNode>(
+                    return std::make_unique<KDBNode>(
                         KDBNode{
                             BuildNode(begin, midIdx),
                             BuildNode(midIdx, end),
                             begin, end, aabb });
+                }
             }
         }
 

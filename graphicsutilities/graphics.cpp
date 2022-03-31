@@ -7447,10 +7447,19 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TriMesh* GetMeshResource(TriMeshHandle TMHandle){
+	TriMesh* GetMeshResource(TriMeshHandle TMHandle)
+    {
 		FK_ASSERT(TMHandle != InvalidHandle_t);
 
-		return &GeometryTable.Geometry[GeometryTable.Handles[TMHandle]];
+#if USING(DEBUGGRAPHICS)
+        if (GeometryTable.Handles[TMHandle] == -1)
+        {
+            DebugBreak();
+            return nullptr;
+
+        }
+#endif
+        return &GeometryTable.Geometry[GeometryTable.Handles[TMHandle]];
 	}
 	
 

@@ -32,7 +32,7 @@ namespace FlexKit
 
 		D3D12_RASTERIZER_DESC Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		Rast_Desc.FillMode = D3D12_FILL_MODE_SOLID;
-		Rast_Desc.CullMode = D3D12_CULL_MODE_BACK;
+		Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
@@ -127,22 +127,13 @@ namespace FlexKit
 
 	ShadowPassMatrices CalculateShadowMapMatrices(const float3 pos, const float r, const float T)
 	{
-		static const auto M1 = DirectX::XMMatrixRotationY((float) pi / 2.0f) * DirectX::XMMatrixRotationX((float)pi); // left Face
-        static const auto M2 = DirectX::XMMatrixRotationY((float)-pi / 2.0f) * DirectX::XMMatrixRotationX((float)pi); // right
-
-        static const auto M3 = DirectX::XMMatrixRotationX((float) pi / 2.0f); // Top Face
-        static const auto M4 = DirectX::XMMatrixRotationX((float)-pi / 2.0f); // Bottom Face
-
-        static const auto M5 = Float4x4ToXMMATIRX(Quaternion2Matrix(Quaternion(0, 180, 180)));
-        static const auto M6 = DirectX::XMMatrixRotationY(0) * DirectX::XMMatrixRotationZ((float)pi); // backward
-
 		static const XMMATRIX ViewOrientations[] = {
-			M1,
-			M2,
-			M3,
-			M4,
-			M5,
-			M6,
+            DirectX::XMMatrixRotationY((float)-pi / 2.0f),  // Right Face
+            DirectX::XMMatrixRotationY((float) pi / 2.0f),  // Left Face,
+            DirectX::XMMatrixRotationX((float) pi / 2.0f),  // Bottom
+            DirectX::XMMatrixRotationX((float)-pi / 2.0f),  // Top
+            DirectX::XMMatrixRotationY((float) pi),         // Backward
+            DirectX::XMMatrixIdentity(),                    // Foward
 		};
 
 		ShadowPassMatrices out;
@@ -368,13 +359,32 @@ namespace FlexKit
 					            const auto depthTarget          = pointLight.shadowMap;
                                 const float3 pointLightPosition = GetPositionW(pointLight.Position);
 
-
 					            if (!visables.size())
 						            return;
 
+
+                                static const Quaternion Orientations[6] = {
+                                    Quaternion{   0,  90, 0 }, // Right
+                                    Quaternion{   0, -90, 0 }, // Left
+                                    Quaternion{ -90,   0, 0 }, // Top
+                                    Quaternion{  90,   0, 0 }, // Bottom
+                                    Quaternion{   0, 180, 0 }, // Backward
+                                    Quaternion{   0,   0, 0 }, // Forward
+                                };
+
+                                const Frustum fustrum[] =
+                                {
+                                    GetFrustum(1.0f, pi / 2, 0.1, pointLight.R, pointLightPosition, Orientations[0]),
+                                    GetFrustum(1.0f, pi / 2, 0.1, pointLight.R, pointLightPosition, Orientations[1]),
+                                    GetFrustum(1.0f, pi / 2, 0.1, pointLight.R, pointLightPosition, Orientations[2]),
+                                    GetFrustum(1.0f, pi / 2, 0.1, pointLight.R, pointLightPosition, Orientations[3]),
+                                    GetFrustum(1.0f, pi / 2, 0.1, pointLight.R, pointLightPosition, Orientations[4]),
+                                    GetFrustum(1.0f, pi / 2, 0.1, pointLight.R, pointLightPosition, Orientations[5]),
+                                };
+
                                 PVS                 brushes         { &allocator, visables.size() };
                                 Vector<GameObject*> animatedBrushes { &allocator, visables.size() };
-
+                                 
                                 for (auto& visable : visables)
                                 {
                                     ProfileFunctionLabled(VISIBILITY);
@@ -444,41 +454,51 @@ namespace FlexKit
                                         BS = triMesh->BS;
                                     }
 
+
                                     const float4x4 WT   = GetWT(PV.brush->Node);
-                                    const float4 POS_WT = WT * float4(BS.xyz(), 1);
-                                    const auto matrices = CalculateShadowMapMatrices(Position, pointLight.R, t);
+                                    const float3 POS    = GetPositionW(PV.brush->Node);
+                                    const float4 POS_WT = POS + (WT * float4(BS.xyz(), 0)).xyz();
+                                    const float scale   = Max(WT[0][0], Max(WT[1][1], WT[2][2]));
 
-                                    ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
-
-                                    for (uint32_t itr = 0; itr < 6; itr++)
+                                    auto brushBoundingSphere = BoundingSphere{ POS_WT.xyz(), BS.w * scale };
+                                    bool intersections[] =
                                     {
-                                        struct 
+                                        Intersects(fustrum[0], brushBoundingSphere), // Left
+                                        Intersects(fustrum[1], brushBoundingSphere), // Right
+                                        Intersects(fustrum[2], brushBoundingSphere), // Top
+                                        Intersects(fustrum[3], brushBoundingSphere), // Bottom
+                                        Intersects(fustrum[4], brushBoundingSphere), // Forward
+                                        Intersects(fustrum[5], brushBoundingSphere), // Backward
+                                    };
+
+                                    if (intersections[0] || intersections[1] || intersections[2] ||
+                                        intersections[3] || intersections[4] || intersections[5])
+                                    {
+                                        ProfileFunctionLabled(SUBMISSION);
+
+                                        const auto matrices = CalculateShadowMapMatrices(Position, pointLight.R, t);
+
+                                        ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
+
+                                        for (uint32_t itr = 0; itr < 6; itr++)
                                         {
-                                            float4x4 PV;
-                                            float4x4 View;
-                                            uint32_t Idx;
-                                            float    maxZ;
-                                        }tempConstants = {
-                                                .PV     = matrices.PV[itr],
-                                                .View   = matrices.View[itr],
-                                                .Idx    = itr,
-                                                .maxZ   = pointLight.R };
+                                            if (intersections[itr])
+                                            {
+                                                struct
+                                                {
+                                                    float4x4 PV;
+                                                    float4x4 View;
+                                                    uint32_t Idx;
+                                                    float    maxZ;
+                                                }tempConstants = {
+                                                        .PV = matrices.PV[itr],
+                                                        .View = matrices.View[itr],
+                                                        .Idx = itr,
+                                                        .maxZ = pointLight.R };
 
-                                        static const float3 mapVectors[] = {
-                                            float3( 1,  0,  0), // right
-                                            float3(-1,  0,  0), // left
-                                            float3( 0,  1,  0), // top
-                                            float3( 0, -1,  0), // bottom
-                                            float3( 0,  0,  1), // forward
-                                            float3( 0,  0, -1), // backward
-                                        };
-
-                                        const float z = mapVectors[itr].dot(POS_WT.xyz() - pointLightPosition);
-
-                                        if (z >= -BS.w)
-                                        {
-                                            ctx.SetGraphicsConstantValue(0, 34, &tempConstants);
-                                            ctx.DrawIndexedInstanced(indexCount);
+                                                ctx.SetGraphicsConstantValue(0, 34, &tempConstants);
+                                                ctx.DrawIndexedInstanced(indexCount);
+                                            }
                                         }
                                     }
 					            }
@@ -526,8 +546,8 @@ namespace FlexKit
 
                                                 const auto poseConstants = ConstantBufferDataSet{ poseTemp, animatedConstantBuffer };
 
-                                                const float4x4 WT   = nodeView.GetWT();
-                                                const float4 POS_WT = WT * float4(triMesh->BS.xyz(), 1);
+                                                const float4x4 WT           = nodeView.GetWT();
+                                                const float4 brushPOS_WT    = WT * float4(triMesh->BS.xyz(), 1);
 
                                                 ctx.SetGraphicsConstantValue(2, 16, &WT);
                                                 ctx.SetGraphicsConstantBufferView(3, poseConstants);
@@ -548,9 +568,7 @@ namespace FlexKit
                                                             .maxZ   = pointLight.R
                                                     };
 
-                                                    const float4 POS_VS = tempConstants.PV * POS_WT;// +WT * float4(triMesh->BS.xyz(), 0);
-
-                                                    if (triMesh->BS.w + POS_VS.z > 0.0f)
+                                                    if (FlexKit::Intersects(fustrum[itr], float4{ brushPOS_WT.xyz(), triMesh->BS.w }))
                                                     {
                                                         ctx.SetGraphicsConstantValue(0, 40, &tempConstants);
                                                         ctx.DrawIndexedInstanced(indexCount);

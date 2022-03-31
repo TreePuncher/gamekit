@@ -50,7 +50,7 @@ namespace FlexKit
 	class PipelineStateTable;
 
 
-    using LOADSTATE_FN = FlexKit::TypeErasedCallable<16, ID3D12PipelineState*, RenderSystem*>;
+    using LOADSTATE_FN = FlexKit::TypeErasedCallable<ID3D12PipelineState* (RenderSystem*), 16>;
 
 	//typedef ID3D12PipelineState* LOADSTATE_FN(RenderSystem* RS);
 

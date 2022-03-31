@@ -4,6 +4,8 @@
 #include <any>
 #include <optional>
 
+#include "..\coreutilities\Signal.h"
+
 using SelectionTypeID = std::uint32_t;
 
 constexpr SelectionTypeID ViewportObjectList_ID = GetCRCGUID(ViewportObjectList);
@@ -27,9 +29,13 @@ public:
     {
         selection.reset();
         type = -1u;
+
+        OnChange();
     }
 
     std::any        selection;
     SelectionTypeID type;
+
+    FlexKit::Signal<void ()> OnChange;
 };
 

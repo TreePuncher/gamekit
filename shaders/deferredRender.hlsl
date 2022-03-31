@@ -262,8 +262,8 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
             const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
 
             const float3 mapVectors[] = {
-                float3(-1,  0,  0), // left
                 float3( 1,  0,  0), // right
+                float3(-1,  0,  0), // left
                 float3( 0,  1,  0), // top
                 float3( 0, -1,  0), // bottom
                 float3( 0,  0,  1), // forward
@@ -351,6 +351,15 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
             sum += uw1 * vw3 * SampleShadowMap(base_uv, u1, v3, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
             sum += uw2 * vw3 * SampleShadowMap(base_uv, u2, v3, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
             sum += uw3 * vw3 * SampleShadowMap(base_uv, u3, v3, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
+
+            static float4 Colors[] = {
+                float4(1, 0, 0, 0),
+                float4(0, 1, 0, 0),
+                float4(0, 0, 1, 0),
+                float4(1, 1, 0, 1),
+                float4(0, 1, 1, 1),
+                float4(1, 0, 1, 1),
+            };
 
             color += max(float4(colorSample * Lc * sum * 1.0f / 2704.0f, 0), 0);
         #endif 

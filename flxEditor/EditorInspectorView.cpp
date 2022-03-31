@@ -7,8 +7,9 @@
 /************************************************************************************************/
 
 
-ComponentViewPanelContext::ComponentViewPanelContext(QBoxLayout* panel, std::vector<QWidget*>& items_out, std::vector<QBoxLayout*>& layouts) :
-    propertyItems   { items_out }
+ComponentViewPanelContext::ComponentViewPanelContext(QBoxLayout* panel, std::vector<QObject*>& items_out, std::vector<QBoxLayout*>& layouts, EditorInspectorView* IN_inspector)
+    : inspector     { IN_inspector }
+    , propertyItems { items_out }
 {
     layoutStack.push_back(panel);
 }
@@ -70,13 +71,14 @@ void ComponentViewPanelContext::AddInputBox(std::string txt, FieldUpdateCallback
 
     timer->start(250);
     timer->connect(timer, &QTimer::timeout,
-        [=] {
-                std::string newText;
-                update(newText);
+        [=]
+        {
+            std::string newText;
+            update(newText);
 
-                if(newText != inputBox->toPlainText().toStdString())
-                    inputBox->setPlainText(newText.c_str());
-            });
+            if(newText != inputBox->toPlainText().toStdString())
+                inputBox->setPlainText(newText.c_str());
+        });
 
     PushHorizontalLayout();
 
@@ -87,6 +89,7 @@ void ComponentViewPanelContext::AddInputBox(std::string txt, FieldUpdateCallback
 
     propertyItems.push_back(label);
     propertyItems.push_back(inputBox);
+    propertyItems.push_back(timer);
 }
 
 
@@ -103,6 +106,7 @@ void ComponentViewPanelContext::AddButton(std::string label, ButtonCallback call
         callback);
 
     layoutStack.back()->addWidget(button);
+    propertyItems.push_back(button);
 }
 
 
@@ -123,6 +127,7 @@ void ComponentViewPanelContext::PushVerticalLayout(std::string groupName, bool p
 
         group->setLayout(layout);
 
+        propertyItems.push_back(group);
         layoutStack.back()->addWidget(group);
     }
     else
@@ -149,6 +154,7 @@ void ComponentViewPanelContext::PushHorizontalLayout(std::string groupName, bool
 
         group->setLayout(layout);
 
+        propertyItems.push_back(group);
         layoutStack.back()->addWidget(group);
     }
     else
@@ -211,6 +217,10 @@ QListWidget* ComponentViewPanelContext::AddList(ListSizeUpdateCallback size, Lis
     timer->start(250);
     layoutStack.back()->addWidget(list);
 
+    propertyItems.push_back(timer);
+    propertyItems.push_back(list);
+
+
     return list;
 }
 
@@ -262,11 +272,18 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
     contentLayout->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     contentWidget->setLayout(contentLayout);
     
-    ComponentViewPanelContext context{ contentLayout, propertyItems, properties };
+    ComponentViewPanelContext context{ contentLayout, propertyItems, properties, this };
 
     timer->start(100);
 
     connect(timer, &QTimer::timeout, this, &EditorInspectorView::OnUpdate);
+
+    selectionContext.OnChange.Connect(
+        slot,
+        [&]()
+        {
+            ClearPanel();
+        });
 }
 
 
@@ -329,7 +346,6 @@ void EditorInspectorView::UpdatePropertiesViewportObjectInspector()
 
 void EditorInspectorView::UpdateAnimatorObjectInspector()
 {
-
     auto selection      = selectionContext.GetSelection<AnimationObject*>();
     uint64_t objectID   = selection->ID;
     auto& gameObject    = selection->gameObject;
@@ -346,6 +362,64 @@ void EditorInspectorView::UpdateAnimatorObjectInspector()
 
         UpdateUI(gameObject);
     }
+}
+
+
+/************************************************************************************************/
+
+
+void EditorInspectorView::ClearPanel()
+{
+    if (selectedObject == -1)
+        return;
+
+    auto res = findChild<QLabel*>("Nothing Selected");
+
+    auto childCount = contentLayout->children().size();
+
+    while(propertyItems.size())
+    {
+        auto object = propertyItems.back();
+        propertyItems.erase(std::remove(propertyItems.begin(), propertyItems.end(), object), propertyItems.end());
+
+        delete object;
+    }
+    propertyItems.clear();
+
+    if (!res && contentLayout->children().size() > 2)
+    {
+        for (auto child : contentLayout->children())
+        {
+            if (child->isWidgetType())
+            {
+                contentLayout->removeWidget((QWidget*)child);
+                child->setParent(nullptr);
+                delete child;
+
+            }
+            else
+                delete child;
+        }
+    }
+
+
+
+    if (!res)
+    {
+        QLabel* label = new QLabel{};
+        label->setText("Nothing Selected");
+        label->setObjectName("Nothing Selected");
+        label->setAccessibleName("Nothing Selected");
+        label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+
+        contentLayout->addWidget(label);
+
+        propertyItems.push_back(label);
+    }
+
+    selectedObject  = -1;
+    propertyCount   = 0;
 }
 
 
@@ -385,7 +459,7 @@ void EditorInspectorView::UpdateUI(FlexKit::GameObject& gameObject)
         layout->setObjectName("Properties");
         contentLayout->addLayout(layout);
 
-        ComponentViewPanelContext context{ layout, propertyItems, properties };
+        ComponentViewPanelContext context{ layout, propertyItems, properties, this };
 
         if (auto res = componentInspectors.find(componentView.ID); res != componentInspectors.end())
         {
@@ -416,35 +490,7 @@ void EditorInspectorView::OnUpdate()
         break;
     default:
     {
-        auto res = findChild<QLabel*>("Nothing Selected");
-
-        auto childCount = contentLayout->children().size();
-
-        if (!res && contentLayout->children().size() > 2)
-        {
-            for(auto child : contentLayout->children())
-            {
-                if (child->isWidgetType())
-                {
-                    child->setParent(nullptr);
-                    delete child;
-                }
-            }
-        }
-
-        if (!res)
-        {
-            QLabel* label = new QLabel{};
-            label->setText("Nothing Selected");
-            label->setObjectName("Nothing Selected");
-            label->setAccessibleName("Nothing Selected");
-            label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-
-            contentLayout->addWidget(label);
-
-            propertyItems.push_back(label);
-        }
+        ClearPanel();
     }   break;
     };
 

@@ -248,7 +248,7 @@ namespace FlexKit
 
     /************************************************************************************************/
 
-    using PhysicsLayerUpdateCallback = FlexKit::TypeErasedCallable<64, void, WorkBarrier&, iAllocator&, double>;
+    using PhysicsLayerUpdateCallback = FlexKit::TypeErasedCallable<void (WorkBarrier&, iAllocator&, double), 64>;
 
 
 	class PhysicsLayer

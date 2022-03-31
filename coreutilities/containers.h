@@ -1,28 +1,3 @@
-/**********************************************************************
-
-Copyright (c) 2015 - 2019 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
-
 #ifndef CONTAINERS_H
 #define CONTAINERS_H
 
@@ -2124,29 +2099,94 @@ namespace FlexKit
 		private:
 			TY_Element* first	= nullptr;
 			TY_Element* last	= nullptr;
-	};
+    };
 
 
-	/************************************************************************************************/
+    /************************************************************************************************/
 
 
-	template<unsigned int STORAGESIZE = 64, typename TY_return = void, typename ... TY_ARGS>
+	template<typename FuncSig, unsigned int STORAGESIZE = 64>
 	class TypeErasedCallable
 	{
     private:
 
-        typedef void        (*fnCopy)(char* lhs, const char* rhs);
-        typedef void        (*fnMove)(char* lhs, char* rhs);
-        typedef TY_return   (*fnProxy)(char*, TY_ARGS ... args);
-        typedef void        (*fnDestructor)(char*);
+        template<typename>
+        struct ProxyTypeGenerator {};
 
-        struct VTable
+        template<typename TY_R, typename ... TY_args>
+        struct ProxyTypeGenerator<TY_R (TY_args...)>
         {
-            fnCopy          copy;
-            fnMove          move;
-            fnProxy         proxy;
-            fnDestructor    destructor;
+            using TY_Return = TY_R;
+
+            using fnCopy        = void (*)(char* lhs, const char* rhs);
+            using fnMove        = void (*)(char* lhs, char* rhs);
+            using fnProxy       = TY_R (*)(char*, TY_args... args);
+            using fnDestructor  = void (*)(char*);
+
+            struct VTable
+            {
+                fnCopy          copy;
+                fnMove          move;
+                fnProxy         proxy;
+                fnDestructor    destructor;
+            };
+
+            template<typename TY_CALLABLE>
+		    static auto Assign(void* buffer, TY_CALLABLE& callable)
+		    {
+			    static_assert(sizeof(TY_CALLABLE) <= STORAGESIZE, "Callable object too large for this TypeErasedCallable!");
+
+			    struct data
+			    {
+				    TY_CALLABLE callable;
+			    };
+
+			    new(buffer) data{ callable };
+
+                static const VTable sVTable{
+                    .copy =
+                        [](char* lhs_ptr, const char* rhs_ptr)
+                        {
+                            const data* rhs = reinterpret_cast<const data*>(rhs_ptr);
+                            new(lhs_ptr) data(*rhs);
+                        },
+
+                    .move =
+                        [](char* lhs_ptr, char* rhs_ptr)
+                        {
+                            data* rhs = reinterpret_cast<data*>(rhs_ptr);
+                            new(lhs_ptr) data(std::move(*rhs));
+                        },
+
+                    .proxy =
+                        [](char* _ptr, TY_args ... args) -> TY_Return
+				        {
+					        auto functor = reinterpret_cast<data*>(_ptr);
+					        return functor->callable(std::forward<TY_args>(args)...);
+				        },
+
+                    .destructor =
+                        [](char* _ptr)
+                        {
+                            auto functor = reinterpret_cast<data*>(_ptr);
+                            functor->~data();
+                        }
+                };
+
+                return &sVTable;
+		    }
         };
+
+        using Generator = ProxyTypeGenerator<FuncSig>;
+
+        using TY_Return = Generator::TY_Return;
+        using FN_PTR    = FuncSig;
+        using VTable    = Generator::VTable;
+
+        using fnCopy        = void (*)(char* lhs, const char* rhs);
+        using fnMove        = void (*)(char* lhs, char* rhs);
+        using fnProxy       = Generator::fnProxy;
+        using fnDestructor  = void (*)(char*);
 
 	public:
 		TypeErasedCallable() = default;
@@ -2158,12 +2198,9 @@ namespace FlexKit
 			Assign(callable);
 		}
 
-        
-        typedef TY_return FN_PTR(TY_ARGS...);
-
         TypeErasedCallable(FN_PTR* fn_ptr) noexcept
         {
-            auto thunk = [fn_ptr](TY_ARGS... args)
+            auto thunk = [fn_ptr](auto&&... args)
             {
                 return fn_ptr(args...);
             };
@@ -2231,9 +2268,10 @@ namespace FlexKit
 			return *this;
 		}
 
-        auto operator()(TY_ARGS... args)
+        template<typename ... TY_args>
+        auto operator()(TY_args&& ... args)
         {
-            return vtable->proxy(buffer, std::forward<TY_ARGS>(args)...);
+            return vtable->proxy(buffer, std::forward<TY_args>(args)...);
         }
 
         operator bool() const
@@ -2248,49 +2286,12 @@ namespace FlexKit
 		{
 			static_assert(sizeof(TY_CALLABLE) <= STORAGESIZE, "Callable object too large for this TypeErasedCallable!");
 
-			struct data
-			{
-				TY_CALLABLE callable;
-			};
-
-			new(buffer) data{ callable };
-
-            static const VTable sVTable{
-                .copy =
-                    [](char* lhs_ptr, const char* rhs_ptr)
-                    {
-                        const data* rhs = reinterpret_cast<const data*>(rhs_ptr);
-                        new(lhs_ptr) data(*rhs);
-                    },
-
-                .move =
-                    [](char* lhs_ptr, char* rhs_ptr)
-                    {
-                        data* rhs = reinterpret_cast<data*>(rhs_ptr);
-                        new(lhs_ptr) data(std::move(*rhs));
-                    },
-
-                .proxy =
-                    [](char* _ptr, TY_ARGS ... args) -> TY_return
-				    {
-					    auto functor = reinterpret_cast<data*>(_ptr);
-					    return functor->callable(args...);
-				    },
-
-                .destructor =
-                    [](char* _ptr)
-                    {
-                        auto functor = reinterpret_cast<data*>(_ptr);
-                        functor->~data();
-                    }
-            };
-
-            vtable = &sVTable;
+            vtable = Generator::Assign(buffer, callable);
 		}
 
 
         const VTable*   vtable = nullptr;
-		char            buffer[STORAGESIZE - sizeof(void*)];
+		char            buffer[STORAGESIZE - sizeof(VTable*)];
 	};
 
 
@@ -2298,3 +2299,29 @@ namespace FlexKit
 	/************************************************************************************************/
 #endif
 #endif
+
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2022 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/
+

@@ -122,9 +122,6 @@
     <ClCompile Include="EditorRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SelectionContext.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="ViewportScene.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -137,7 +134,7 @@
     <ClCompile Include="PCH.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="angelScriptTU.cpp">
+    <ClCompile Include="ExtraDependencies.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CSGComponent.cpp">

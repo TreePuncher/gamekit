@@ -166,7 +166,10 @@ public:
     BaseState&                      base;
     WorldStateMangagerInterface&    worldState;
 
+    bool                            mode        = false;
+    bool                            move        = false;
     GameObject*                     pointLight1 = nullptr;
+    GameObject*                     smolina     = nullptr;
 
     //GameObject&                     testAnimation;
     //GameObject&                     particleEmitter;

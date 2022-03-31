@@ -118,7 +118,7 @@ struct GadgetInterface
 
     uint16_t      requiredPowerLevel    = 0;
 
-    TypeErasedCallable<16, void, GameWorld&, GameObject&> OnActivate    = [](GameWorld& world, GameObject& player){};
+    TypeErasedCallable<void (GameWorld&, GameObject&), 16> OnActivate    = [](GameWorld& world, GameObject& player){};
 };
 
 

@@ -1096,7 +1096,8 @@ namespace FlexKit
 
         float dot(const float3& b) const noexcept
         {
-            __m128 res = _mm_dp_ps(pfloats, b.pfloats, 0b1110110);
+            __m128 res = _mm_dp_ps(pfloats, b.pfloats, 0b01110001);
+
             return _mm_cvtss_f32(res);
         }
 
