@@ -9502,7 +9502,7 @@ namespace FlexKit
                 if (range.blockCount >= requestBlockCount)
                 {
                     if  (range.flags == Clear ||
-                        (range.flags == Locked && range.frameID + 3 < frameID) ||
+                        (range.flags == Locked && range.frameID + 4 < frameID) ||
                         (range.flags | AllowReallocation && range.frameID == frameID))
                     {
                         MemoryPoolAllocator::HeapAllocation heapAllocation = {
@@ -9561,8 +9561,8 @@ namespace FlexKit
         while (I + 1 < freeRanges.size())
         {
             if (freeRanges[I].offset + freeRanges[I].blockCount == freeRanges[I + 1].offset &&
-                freeRanges[I].frameID + 3 < frameID &&
-                freeRanges[I + 1].frameID + 3 < frameID)
+                freeRanges[I].frameID + 4 < frameID &&
+                freeRanges[I + 1].frameID + 4 < frameID)
             {
                 freeRanges[I].blockCount += freeRanges[I + 1].blockCount;
                 freeRanges.remove_stable(freeRanges.begin() + I + 1);

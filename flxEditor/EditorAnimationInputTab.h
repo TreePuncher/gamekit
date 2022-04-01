@@ -8,9 +8,9 @@
 /************************************************************************************************/
 
 
-using OnCreationEventFN     = std::function<void (uint32_t TypeID, const std::string& ID)>;
-using ReadEntryDataFN       = std::function<void (uint32_t TypeID, std::string& ID, std::string& Value)>;
-using WriteEntryDataFN      = std::function<void (size_t idx, const std::string& ID, const std::string& Value)>;
+using OnCreationEventFN     = std::function<void (size_t TypeID, const std::string& ID)>;
+using ReadEntryDataFN       = std::function<void (size_t TypeID, std::string& ID, std::string& Value, std::string& defaultValue)>;
+using WriteEntryDataFN      = std::function<void (size_t idx, const std::string& ID, const std::string& Value, std::string& defaultValue)>;
 
 class QTimer;
 
@@ -26,13 +26,12 @@ public:
     void SetOnCreateEvent(OnCreationEventFN&& in);
     void SetOnChangeEvent(WriteEntryDataFN&& in);
 
-    void AddInput(const std::string& name, uint32_t type); // Doesn't Trigger callback
 private:
 
 	Ui::EditorAnimationInputTab ui;
     OnCreationEventFN           callback    = [](auto, auto&){};
-    ReadEntryDataFN             readData    = [](auto, auto&, auto&) {};
-    WriteEntryDataFN            writeData   = [](size_t, auto&, auto&){};
+    ReadEntryDataFN             readData    = [](auto, auto&, auto&, auto&) {};
+    WriteEntryDataFN            writeData   = [](auto, auto&, auto&, auto&){};
     QTimer*                     timer = nullptr;
 };
 

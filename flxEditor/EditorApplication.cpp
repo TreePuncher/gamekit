@@ -99,7 +99,7 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 
             const auto saveText     = std::string{ "Save Project" };
             const auto fileMenuText = std::string{ "Files (*.proj)" };
-            const auto fileDir      = QFileDialog::getOpenFileName(nullptr, saveText.c_str(), QDir::currentPath(), fileMenuText.c_str());
+            const auto fileDir      = QFileDialog::getSaveFileName(nullptr, saveText.c_str(), QDir::currentPath(), fileMenuText.c_str());
             const auto fileStr      = fileDir.toStdString();
 
             project.SaveProject(fileStr);

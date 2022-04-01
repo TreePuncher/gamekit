@@ -27,12 +27,14 @@ struct AnimationInput
 
     uint32_t    IDHash;
     std::string stringID;
+    char        defaultValue[16];
 
     void Serialize(auto& ar)
     {
         ar& type;
         ar& IDHash;
         ar& stringID;
+        ar& defaultValue;
     }
 };
 

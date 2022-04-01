@@ -167,8 +167,8 @@ namespace FlexKit
 				if (t_1 > t_2)// Swap
 					std::swap(t_1, t_2);
 
-                t_min = Min(t_1, t_min);
-                t_max = Max(t_2, t_max);
+                if (t_1 > t_min) t_min = t_1;
+                if (t_2 < t_max) t_max = t_2;
 
                 if (t_min > t_max)	return {};
                 if (t_max < 0)		return {};

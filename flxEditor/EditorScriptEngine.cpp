@@ -312,6 +312,40 @@ void EditorScriptEngine::ReleaseContext(ScriptContext context)
 /************************************************************************************************/
 
 
+void EditorScriptEngine::CompileString(const std::string& string, asIScriptContext* ctx, ErrorCallbackFN errorCallback)
+{
+    try
+    {
+        CScriptBuilder builder{};
+        auto temp = fmt::format("{}", rand());
+        builder.StartNewModule(scriptEngine, temp.c_str());
+
+        scriptEngine->SetMessageCallback(asFUNCTION(RunSTDStringMessageHandler), &errorCallback, asCALL_CDECL);
+
+        if (auto r = builder.AddSectionFromMemory(temp.c_str(), string.c_str(), string.size()); r < 0)
+        {
+            // TODO: show error in output window
+        }
+
+        if (auto r = builder.BuildModule(); r < 0)
+        {
+            // TODO: show error in output window
+        }
+
+        auto r          = scriptEngine->SetMessageCallback(asFUNCTION(EditorScriptEngine::MessageCallback), this, asCALL_CDECL); assert(r >= 0);
+        auto asModule   = builder.GetModule();
+        asModule->Discard();
+    }
+    catch (...)
+    {
+        OutputDebugString(L"Unknown error. Continuing as usual.\n");
+    }
+}
+
+
+/************************************************************************************************/
+
+
 void EditorScriptEngine::RunStdString(const std::string& string, asIScriptContext* ctx, ErrorCallbackFN errorCallback)
 {
     try

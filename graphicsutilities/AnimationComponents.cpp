@@ -274,7 +274,7 @@ namespace FlexKit
     }
 
 
-    uint32_t AnimatorComponent::AnimatorView::AddInput(const char* name, AnimatorInputType type) noexcept
+    uint32_t AnimatorComponent::AnimatorView::AddInput(const char* name, AnimatorInputType type, void* _ptr) noexcept
     {
         auto& state = GetState();
 
@@ -283,7 +283,12 @@ namespace FlexKit
         strncpy_s(ID.stringID, name, 32);
 
         state.inputIDs.push_back(ID);
-        return state.inputValues.emplace_back();
+        auto idx = state.inputValues.emplace_back();
+
+        if(_ptr)
+            memcpy(&state.inputValues[idx], _ptr, sizeof(16));
+
+        return idx;
     }
 
 

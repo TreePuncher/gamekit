@@ -409,7 +409,7 @@ EditorCodeEditor::EditorCodeEditor(EditorProject& IN_project, EditorScriptEngine
     auto fileMenu    = menuBar->addMenu("File");
 
     auto newResource = fileMenu->addAction("New Script Resource");
-    newResource->connect(newResource, &QAction::triggered,
+    connect(newResource, &QAction::triggered,
         [&]()
         {
             if (currentResource)
@@ -421,7 +421,7 @@ EditorCodeEditor::EditorCodeEditor(EditorProject& IN_project, EditorScriptEngine
         });
 
     auto selectResource = fileMenu->addAction("Select Resource");
-    selectResource->connect(selectResource, &QAction::triggered,
+    connect(selectResource, &QAction::triggered,
         [&]()
         {
             auto resourcePicker = new EditorResourcePickerDialog{ ScriptResourceTypeID, project, this };
@@ -440,13 +440,13 @@ EditorCodeEditor::EditorCodeEditor(EditorProject& IN_project, EditorScriptEngine
         });
 
     auto fileLoad               = fileMenu->addAction("Load File");
-    fileLoad->connect(fileLoad, &QAction::triggered, this, &EditorCodeEditor::LoadDocument);
+    connect(fileLoad, &QAction::triggered, this, &EditorCodeEditor::LoadDocument);
 
     auto fileSave               = fileMenu->addAction("Save File");
-    fileSave->connect(fileSave, &QAction::triggered, this, &EditorCodeEditor::SaveDocument);
+    connect(fileSave, &QAction::triggered, this, &EditorCodeEditor::SaveDocument);
 
     auto fileSaveCopy            = fileMenu->addAction("Save File Copy");
-    fileSave->connect(fileSaveCopy, &QAction::triggered, this, &EditorCodeEditor::SaveDocumentCopy);
+    connect(fileSaveCopy, &QAction::triggered, this, &EditorCodeEditor::SaveDocumentCopy);
 
     auto editMenu               = menuBar->addMenu("Edit");
     undo = editMenu->addAction("Undo");
@@ -458,8 +458,8 @@ EditorCodeEditor::EditorCodeEditor(EditorProject& IN_project, EditorScriptEngine
     textEditor->document()->connect(textEditor->document(), &QTextDocument::redoAvailable, redo, &QAction::setEnabled);
     textEditor->document()->connect(textEditor->document(), &QTextDocument::undoAvailable, undo, &QAction::setEnabled);
 
-    undo->connect(undo, &QAction::triggered, textEditor, &QPlainTextEdit::undo);
-    redo->connect(redo, &QAction::triggered, textEditor, &QPlainTextEdit::redo);
+    connect(undo, &QAction::triggered, textEditor, &QPlainTextEdit::undo);
+    connect(redo, &QAction::triggered, textEditor, &QPlainTextEdit::redo);
 
     auto viewMenu               = menuBar->addMenu("View");
     auto syntaxHightlightToggle = viewMenu->addAction("Toggle Hightlighing");
@@ -473,13 +473,16 @@ EditorCodeEditor::EditorCodeEditor(EditorProject& IN_project, EditorScriptEngine
 
     auto debugMenu  = menuBar->addMenu("Debug");
     auto run        = debugMenu->addAction("Run");
+    connect(run, &QAction::triggered, [&] { Run(); });
 
-    run->connect(run, &QAction::triggered, [&] { RunCode(); });
     auto debug      = debugMenu->addAction("Resume");
-    debug->connect(debug, &QAction::triggered, [&] { Resume(); });
+    connect(debug, &QAction::triggered, [&] { Resume(); });
+
+    auto compile    = debugMenu->addAction("Compile");
+    connect(compile, &QAction::triggered, [&] { Compile(); });
 
     auto stop = debugMenu->addAction("Stop");
-    stop->connect(stop, &QAction::triggered, [&] { Stop(); });
+    connect(stop, &QAction::triggered, [&] { Stop(); });
 
     boxLayout->setMenuBar(menuBar);
 
@@ -674,7 +677,56 @@ void EditorCodeEditor::Stop()
 /************************************************************************************************/
 
 
-void EditorCodeEditor::RunCode()
+void EditorCodeEditor::Compile()
+{
+    if (scriptContext->GetState() == asEContextState::asEXECUTION_SUSPENDED)
+        return;
+
+    auto code       = textEditor->toPlainText().toStdString();
+
+    scriptContext->SetLineCallback(asMETHOD(EditorCodeEditor, LineCallback), this, asCALL_THISCALL);
+
+    begin = std::chrono::system_clock::now();
+
+    errorListWidget->clear();
+    QList<QTextEdit::ExtraSelection> extraSelections;
+    bool errorFound     = false;
+    auto errorHandler   =
+        [&](int row, int col, const char* msg, const char* segment, int errorType)
+        {
+            if (!textEditor->isReadOnly()) {
+                errorFound = true;
+
+                QTextEdit::ExtraSelection selection;
+
+                QColor lineColor = QColor(Qt::darkRed);
+
+                selection.format.setBackground(lineColor);
+                selection.format.setProperty(QTextFormat::FullWidthSelection, true);
+                selection.cursor = textEditor->textCursor();
+                selection.cursor.movePosition(QTextCursor::Start);
+                selection.cursor.movePosition(QTextCursor::Down, QTextCursor::MoveAnchor, row - 1);
+                selection.cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 0);
+                selection.cursor.clearSelection();
+                extraSelections.append(selection);
+
+                errorListWidget->addItem(new QListWidgetItem(fmt::format("{}, {}: {}", row, col, msg).c_str()));
+            }
+        };
+
+    scriptEngine.CompileString(code, scriptContext, errorHandler);
+
+    if (errorFound)
+        textEditor->setExtraSelections(extraSelections);
+
+    scriptContext->ClearLineCallback();
+}
+
+
+/************************************************************************************************/
+
+
+void EditorCodeEditor::Run()
 {
     if (scriptContext->GetState() == asEContextState::asEXECUTION_SUSPENDED)
         return;

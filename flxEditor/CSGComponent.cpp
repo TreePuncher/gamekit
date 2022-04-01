@@ -264,7 +264,7 @@ ModifiableShape CreateCubeCSGShape() noexcept
         V1, V2, V3, V4, V5
     };
 
-    cubeShape.AddPolygon(top, top + 5);
+    cubeShape.AddPolygon(top, top + 4);
 
 
     uint32_t bottom[] = {
@@ -1591,11 +1591,10 @@ public:
         }
     }
 
-    void RayCast(const FlexKit::Ray& R, auto OnHit)
+    void RayCast(const FlexKit::Ray& r, auto OnHit)
     {
         size_t selectedIdx  = -1;
         float  minDistance  = 10000.0f;
-        const auto r        = viewport.GetMouseRay();
 
         const CSGBrush*             hitBrush;
         CSGBrush::RayCast_result    hitResult;

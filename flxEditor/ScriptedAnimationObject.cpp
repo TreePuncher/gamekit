@@ -46,35 +46,35 @@ void StringToValue(const std::string& in, FlexKit::AnimatorComponent::InputValue
     {
     case FlexKit::AnimatorInputType::Float:
     {
-        scn::scan(in, "{}", input.x);
+        auto res = scn::scan(in, "{}", input.x);
     }   break;
     case FlexKit::AnimatorInputType::Float2:
     {
-        scn::scan(in, "{}, {}", input.xy.x, input.xy.y);
+        auto res = scn::scan(in, "{}, {}", input.xy.x, input.xy.y);
     }   break;
     case FlexKit::AnimatorInputType::Float3:
     {
-        scn::scan(in, "{}, {}, {}", input.xyz.x, input.xyz.y, input.xyz.z);
+        auto res = scn::scan(in, "{}, {}, {}", input.xyz.x, input.xyz.y, input.xyz.z);
     }   break;
     case FlexKit::AnimatorInputType::Float4:
     {
-        scn::scan(in, "{}, {}, {}, {}", input.xyzw.x, input.xyzw.y, input.xyzw.z, input.xyzw.w);
+        auto res = scn::scan(in, "{}, {}, {}, {}", input.xyzw.x, input.xyzw.y, input.xyzw.z, input.xyzw.w);
     }   break;
     case FlexKit::AnimatorInputType::Uint:
     {
-        scn::scan(in, "{}", input.a);
+        auto res = scn::scan(in, "{}", input.a);
     }   break;
     case FlexKit::AnimatorInputType::Uint2:
     {
-        scn::scan(in, "{}, {}", input.ab[0], input.ab[1]);
+        auto res = scn::scan(in, "{}, {}", input.ab[0], input.ab[1]);
     }   break;
     case FlexKit::AnimatorInputType::Uint3:
     {
-        scn::scan(in, "{}, {}, {}", input.abc[0], input.abc[1], input.abc[2]);
+        auto res = scn::scan(in, "{}, {}, {}", input.abc[0], input.abc[1], input.abc[2]);
     }   break;
     case FlexKit::AnimatorInputType::Uint4:
     {
-        scn::scan(in, "{}, {}, {}, {}", input.abcd[0], input.abcd[1], input.abcd[2], input.abcd[3]);
+        auto res = scn::scan(in, "{}, {}, {}, {}", input.abcd[0], input.abcd[1], input.abcd[2], input.abcd[3]);
     }   break;
     default:
         return;
@@ -158,6 +158,30 @@ uint32_t ScriptedAnimationObject::AddInputValue(FlexKit::GameObject& obj, const 
             animationValue.type      = (AnimationInput::InputType)valueType;
             animationValue.stringID  = name;
 
+            switch (valueType)
+            {
+            case (uint32_t)AnimationInput::InputType::Float:
+            case (uint32_t)AnimationInput::InputType::Float2:
+            case (uint32_t)AnimationInput::InputType::Float3:
+            case (uint32_t)AnimationInput::InputType::Float4:
+            {
+                FlexKit::float4 value{ 0, 0, 0, 0 };
+                memcpy(animationValue.defaultValue,
+                    &value, sizeof(FlexKit::float4));
+            }   break;
+            case (uint32_t)AnimationInput::InputType::Uint:
+            case (uint32_t)AnimationInput::InputType::Uint2:
+            case (uint32_t)AnimationInput::InputType::Uint3:
+            case (uint32_t)AnimationInput::InputType::Uint4:
+            {
+                FlexKit::uint4 value{ 0, 0, 0, 0 };
+                memcpy(animationValue.defaultValue,
+                    &value, sizeof(FlexKit::uint4));
+            }   break;
+            default:
+                break;
+            }
+
             resource->inputs.push_back(animationValue);
 
             return resource->inputs.size() - 1;
@@ -190,6 +214,134 @@ std::string ScriptedAnimationObject::ValueString(FlexKit::GameObject& obj, uint3
 }
 
 
+/************************************************************************************************/
+
+
+std::string ScriptedAnimationObject::DefaultValueString(uint32_t idx)
+{
+    auto& value = resource->inputs[idx];
+    
+
+    switch (value.type)
+    {
+    case (AnimationInput::InputType)FlexKit::AnimatorInputType::Float:
+        return fmt::format("{}", *reinterpret_cast<float*>(value.defaultValue));
+    case (AnimationInput::InputType)FlexKit::AnimatorInputType::Float2:
+    {
+        FlexKit::float2 xy = *reinterpret_cast<FlexKit::float2*>(value.defaultValue);
+        return fmt::format("{}, {}", xy[0], xy[1]);
+    }
+    case (AnimationInput::InputType)FlexKit::AnimatorInputType::Float3:
+    {
+        FlexKit::float3 xyz = *reinterpret_cast<FlexKit::float3*>(value.defaultValue);
+        return fmt::format("{}, {}, {}", xyz[0], xyz[1], xyz[2]);
+    }
+    case (AnimationInput::InputType)FlexKit::AnimatorInputType::Float4:
+    {
+        FlexKit::float4 xyzw = *reinterpret_cast<FlexKit::float4*>(value.defaultValue);
+        return fmt::format("{}, {}, {}", xyzw[0], xyzw[1], xyzw[2], xyzw[3]);
+    }
+    case (AnimationInput::InputType)FlexKit::AnimatorInputType::Uint:
+    {
+        auto a = *reinterpret_cast<uint*>(value.defaultValue);
+        return fmt::format("{}", a);
+    }
+    case (AnimationInput::InputType)FlexKit::AnimatorInputType::Uint2:
+    {
+        auto ab = *reinterpret_cast<FlexKit::uint2*>(value.defaultValue);
+        return fmt::format("{}, {}", ab[0], ab[1]);
+    }
+    case (AnimationInput::InputType)FlexKit::AnimatorInputType::Uint3:
+    {
+        auto abc = *reinterpret_cast<FlexKit::uint3*>(value.defaultValue);
+        return fmt::format("{}, {}, {}", abc[0], abc[1], abc[2]);
+    }
+    case (AnimationInput::InputType)FlexKit::AnimatorInputType::Uint4:
+    {
+        auto abcd = *reinterpret_cast<FlexKit::uint4*>(value.defaultValue);
+        return fmt::format("{}, {}, {}, {}", abcd[0], abcd[1], abcd[2], abcd[3]);
+    }
+    default:
+        return "";
+    }
+}
+
+
+/************************************************************************************************/
+
+
+void ScriptedAnimationObject::UpdateDefaultValue(uint32_t idx, const std::string& str)
+{
+    auto& value = resource->inputs[idx];
+
+    switch (value.type)
+    {
+    case (AnimationInput::InputType)FlexKit::AnimatorInputType::Float:
+    {
+        float x;
+        auto res = scn::scan(str, "{}", x);
+        if (res)
+            memcpy(value.defaultValue, &x, sizeof(x));
+    }   return;
+    case (AnimationInput::InputType)FlexKit::AnimatorInputType::Float2:
+    {
+        FlexKit::float2 xy;
+        auto res = scn::scan(str, "{}, {}", xy.x, xy.y);
+        if(res)
+            memcpy(value.defaultValue, &xy, sizeof(xy));
+
+    }   return;
+    case (AnimationInput::InputType)FlexKit::AnimatorInputType::Float3:
+    {
+        FlexKit::float3 xyz;
+        auto res = scn::scan(str, "{}, {}, {}", xyz.x, xyz.y, xyz.z);
+        if (res)
+            memcpy(value.defaultValue, &xyz, sizeof(xyz));
+    }   return;
+    case (AnimationInput::InputType)FlexKit::AnimatorInputType::Float4:
+    {
+        FlexKit::float4 xyzw;
+        auto res = scn::scan(str, "{}, {}, {}, {}", xyzw.x, xyzw.y, xyzw.z, xyzw.w);
+        if (res)
+            memcpy(value.defaultValue, &xyzw, sizeof(xyzw));
+    }   return;
+    case (AnimationInput::InputType)FlexKit::AnimatorInputType::Uint:
+    {
+        uint32_t x;
+        auto res = scn::scan(str, "{}", x);
+        if (res)
+            memcpy(value.defaultValue, &x, sizeof(x));
+    }   return;
+    case (AnimationInput::InputType)FlexKit::AnimatorInputType::Uint2:
+    {
+        FlexKit::uint2 xy;
+        auto res = scn::scan(str, "{}, {}", xy[0], xy[1]);
+        if (res)
+            memcpy(value.defaultValue, &xy, sizeof(xy));
+    }   return;
+    case (AnimationInput::InputType)FlexKit::AnimatorInputType::Uint3:
+    {
+        FlexKit::uint3 xyz;
+        auto res = scn::scan(str, "{}, {}, {}", xyz[0], xyz[1], xyz[2]);
+        if (res)
+            memcpy(value.defaultValue, &xyz, sizeof(xyz));
+    }   return;
+    case (AnimationInput::InputType)FlexKit::AnimatorInputType::Uint4:
+    {
+        FlexKit::uint4 xyzw;
+        auto res = scn::scan(str, "{}, {}, {}, {}", xyzw[0], xyzw[1], xyzw[2]);
+        if (res)
+            memcpy(value.defaultValue, &xyzw, sizeof(xyzw));
+    }   return;
+    default:
+        return;
+    }
+}
+
+
+/************************************************************************************************/
+
+
 void ScriptedAnimationObject::UpdateValue(FlexKit::GameObject& obj, uint32_t idx, const std::string& valueString)
 {
     FlexKit::Apply(
@@ -214,19 +366,6 @@ bool ScriptedAnimationObject::RegisterInterface(EditorScriptEngine& engine)
 {
     auto api = engine.GetScriptEngine();
     int res;
-
-    /*
-    res = api->RegisterObjectType("AnimationPose", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                           FK_ASSERT(res > 0);
-    res = api->RegisterObjectMethod("AnimationPose", "int GetBone(string)", asFUNCTION(GetBone), asCALL_CDECL_OBJFIRST);                                    FK_ASSERT(res > 0);
-
-    res = api->RegisterObjectMethod("AnimationPose", "float3 GetBonePosition(int)",         asFUNCTION(GetBonePosition),    asCALL_CDECL_OBJFIRST);         FK_ASSERT(res > 0);
-    res = api->RegisterObjectMethod("AnimationPose", "float3 GetBoneScale(int)",            asFUNCTION(GetBoneScale),       asCALL_CDECL_OBJFIRST);         FK_ASSERT(res > 0);
-    res = api->RegisterObjectMethod("AnimationPose", "Quaternion GetBoneOrientation(int)",  asFUNCTION(GetBoneOrientation), asCALL_CDECL_OBJFIRST);         FK_ASSERT(res > 0);
-
-    res = api->RegisterObjectMethod("AnimationPose", "void SetBonePosition(int, float3)",           asFUNCTION(SetBonePosition),    asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-    res = api->RegisterObjectMethod("AnimationPose", "void SetBoneScale(int, float3)",              asFUNCTION(SetBoneScale),       asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-    res = api->RegisterObjectMethod("AnimationPose", "void SetBoneOrientation(int, Quaternion)",    asFUNCTION(SetBoneOrientation), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-    */
 
     res = api->RegisterInterface("AnimatorInterface");                                                                                           FK_ASSERT(res > 0);
     res = api->RegisterInterfaceMethod("AnimatorInterface", "void Update(GameObject@ object, double dt)");                                       FK_ASSERT(res > 0);
