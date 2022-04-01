@@ -247,6 +247,9 @@ namespace FlexKit
         void        SetNode         (NodeHandle node) const noexcept;
         void        SetRadius       (float r) noexcept;
 
+        PointLight*         operator -> ()        noexcept  { return &GetComponent()[light]; }
+        const PointLight*   operator -> () const  noexcept  { return &GetComponent()[light]; }
+
 		operator PointLightHandle () { return light; }
 
 		PointLightHandle	light;
@@ -532,6 +535,25 @@ namespace FlexKit
         PointLightUpdate&           UpdatePointLights(UpdateDispatcher&, BuildBVHTask&, PointLightShadowGatherTask&, iAllocator* temporaryMemory, iAllocator* persistentMemory) const;
 
         Vector<SceneRayCastResult>    RayCast(FlexKit::Ray v, iAllocator& allocator = SystemAllocator) const;
+
+        template<typename ... TY_Queries>
+        auto Query(iAllocator& allocator, TY_Queries ... queries)
+        {
+            auto& visables = SceneVisibilityComponent::GetComponent();
+
+            using Optional_ty = decltype(FlexKit::Query(std::declval<GameObject&>(), queries...));
+            Vector<Optional_ty> results{ &allocator };
+
+            for (auto entity : sceneEntities)
+            {
+                auto& gameObject = *visables[entity].entity;
+                if (auto res = FlexKit::Query(gameObject, queries...); res)
+                    results.emplace_back(std::move(res));
+            }
+
+            return results;
+        }
+
 
         auto begin()    { return sceneEntities.begin(); }
         auto end()      { return sceneEntities.end(); }

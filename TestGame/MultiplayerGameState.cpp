@@ -142,13 +142,6 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     //base.renderWindow.ToggleMouseCapture();
 
     auto& renderSystem = framework.core.RenderSystem;
-    
-    D3D12_STATE_OBJECT_DESC stateObjects[] =
-    {
-        D3D12_STATE_OBJECT_DESC{}
-    };
-
-    //renderSystem.pDevice->CreateStateObject(stateObjects);
 
     renderSystem.RegisterPSOLoader(INSTANCEPARTICLEDPASS,       { &renderSystem.Library.RSDefault, CreateParticleMeshInstancedPSO });
     renderSystem.RegisterPSOLoader(INSTANCEPARTICLEDEPTHDPASS,  { &renderSystem.Library.RSDefault, CreateParticleMeshInstancedDepthPSO });
@@ -163,6 +156,11 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     pointLight1 = FlexKit::FindGameObject(worldState.GetScene(), "Light").value_or(nullptr);
     smolina     = FlexKit::FindGameObject(worldState.GetScene(), "smolina").value_or(nullptr);
 
+    auto& allocator     = IN_framework.core.GetTempMemory();
+    auto& scene         = worldState.GetScene();
+
+    //pointLight->Position;
+
     //particleEmitter.AddView<SceneNodeView<>>();
     //auto& emitterView       = particleEmitter.AddView<ParticleEmitterView>(ParticleEmitterData{ &testParticleSystem, GetSceneNode(particleEmitter) });
     //auto& emitterProperties = emitterView.GetData().properties;
@@ -173,7 +171,6 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
 
     //Translate(particleEmitter, { 0, 10, 0 });
 
-    auto& scene = worldState.GetScene();
 
     //playerCharacterModel    = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), CharacterModelAsset);
     //auto model              = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), PlaceHolderAsset);
