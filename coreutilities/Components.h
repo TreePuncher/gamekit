@@ -241,7 +241,7 @@ namespace FlexKit
         ComponentViewBase* operator -> () { return Get(); }
         operator ComponentViewBase* () { return Get(); }
 
-        ComponentViewBase* Get()
+        ComponentViewBase* Get() const
         {
             if (componentSize > sizeof(buffer))
                 return _ptr;
@@ -249,7 +249,7 @@ namespace FlexKit
                 return (ComponentViewBase*)&(buffer[0]);
         }
 
-        ComponentViewBase& Get_ref()
+        ComponentViewBase& Get_ref() const
         {
             return *Get();
         }
@@ -345,17 +345,17 @@ namespace FlexKit
         }
 
 
-		ComponentViewBase* GetView(ComponentID id)
+		ComponentViewBase* GetView(ComponentID id) const
 		{
-			for (auto& view : views)
+			for (const auto& view : views)
 				if (view.ID == id)
-					return view;
+					return view.Get();
 
 			return nullptr;
 		}
 
 
-		bool hasView(ComponentID id)
+		bool hasView(ComponentID id) const
 		{
 			for (auto& view : views)
 				if (view.ID == id)
@@ -397,7 +397,7 @@ namespace FlexKit
 
 
     template<typename ... TY_PACKED_ARGS>
-    bool hasViews(GameObject& go)
+    bool hasViews(const GameObject& go)
     {
         static_assert(ValidTypes<TY_PACKED_ARGS...>(), "Invalid Type Detected, Use only ComponentView types!");
 
@@ -406,7 +406,7 @@ namespace FlexKit
 
 
 	template<typename TY_COMPONENT>
-    auto& GetView(GameObject& go)
+    auto& GetView(const GameObject& go)
 	{
         static_assert(std::is_base_of<ComponentViewBase, TY_COMPONENT>::value, "Parameter that is not a behavior type detected, behavior types only!");
 
@@ -415,7 +415,7 @@ namespace FlexKit
 
 
     template<typename TY_COMPONENT>
-    auto GetViewTuple(GameObject& go)
+    auto GetViewTuple(const GameObject& go)
     {
         using TY_COMPONENT_DECAYED  = typename std::remove_pointer_t<std::decay_t<TY_COMPONENT>>;
         constexpr bool pointer      = std::is_pointer_v<TY_COMPONENT>;
@@ -430,7 +430,7 @@ namespace FlexKit
 
 
 	template<typename TY_COMPONENT_ARG, typename ... TY_PACKED_ARGS>
-	auto GetViewsTuple(GameObject& go)
+	auto GetViewsTuple(const GameObject& go)
 	{
 		if constexpr (sizeof...(TY_PACKED_ARGS) == 0)
             return  GetViewTuple<TY_COMPONENT_ARG>(go);
@@ -442,7 +442,7 @@ namespace FlexKit
 
 
 	template<typename ... TY_PACKED_ARGS, typename FN, typename ErrorFN>
-	auto Apply_t(GameObject& go, const FN& fn, const ErrorFN& errorFn)
+	auto Apply_t(const GameObject& go, const FN& fn, const ErrorFN& errorFn)
 	{
         if (!hasViews<TY_PACKED_ARGS...>(go))
 			return errorFn();
@@ -490,6 +490,58 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+    template<typename TY>
+    struct ReadOnly
+    {
+        using Type          = const TY&;
+        using ValueType     = TY;
+
+        static constexpr bool IsConst() { return true; }
+        bool IsValid(auto&) { return true; }
+    };
+
+    template<typename TY>
+    struct Mut
+    {
+        using Type      = TY&;
+        using ValueType = TY;
+
+        static constexpr bool IsConst() { return false; }
+        bool IsValid(auto&) { return true; }
+    };
+
+    template<typename TY>
+    bool Filter(const GameObject& go, TY& ty)
+    {
+        if (go.hasView(TY::ValueType::GetComponentID()))
+        {
+            auto& value = *(typename TY::ValueType*)go.GetView(TY::ValueType::GetComponentID());
+
+            return ty.IsValid(value);
+        }
+        else
+            return false;
+    }
+
+    template<typename TY_GO, typename ... TY>
+    auto Query(TY_GO& go, TY ... requests) requires( std::is_same_v<std::decay_t<TY_GO>, GameObject> )
+    {
+        if constexpr (std::is_const_v<TY_GO>)
+            static_assert((TY::IsConst() && ...), "All queries must be read only!");
+
+        bool available = (Filter(go, requests) && ...);
+        using Tuple_TY = std::tuple<TY::Type...>;
+
+        if (available)
+            return std::optional<Tuple_TY>(Tuple_TY{ GetView<TY::ValueType>(go)... });
+        else
+            return std::optional<Tuple_TY>{};
+    }
+
+
+    /************************************************************************************************/
 
 
     template<typename TY_Component>
@@ -678,7 +730,7 @@ namespace FlexKit
 
         void Remove(StringIDHandle handle);
 
-		char* operator[] (StringIDHandle handle) { return IDs[handles[handle]].ID; }
+        StringID& operator[] (StringIDHandle handle) { return IDs[handles[handle]]; }
 
         void AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 
@@ -697,13 +749,16 @@ namespace FlexKit
 
 		char* GetString() const
 		{
-			return GetComponent()[ID];
+			return GetComponent()[ID].ID;
 		}
 
         void SetString(const char* string)
         {
-            strncpy_s(GetComponent()[ID], 64, string, 64);
+            strncpy_s(GetComponent()[ID].ID, 64, string, 64);
         }
+
+                StringIDComponent::StringID* operator -> ()          { return &GetComponent()[ID]; }
+        const   StringIDComponent::StringID* operator -> () const    { return &GetComponent()[ID]; }
 
 		StringIDHandle ID;
 	};
@@ -731,7 +786,75 @@ namespace FlexKit
                 strncpy_s(ID.GetString(), 64, str, 64);
             });
     }
-	
+
+
+    template<typename TY>
+    concept IsConstCharStar = ( std::is_same_v<const char*, TY>);
+
+    template<IsConstCharStar ... TY>
+    struct StringQuery
+    {
+        using Type          = StringIDView&;
+        using ValueType     = StringIDView;
+        static constexpr bool IsConst() { return false; }
+
+        const std::tuple<TY...> IDs;
+
+        StringQuery() = default;
+
+        StringQuery(TY ... args) :
+            IDs{ std::make_tuple(args...) } {}
+
+        bool Compare(const StringIDView& stringID, const char* str)
+        {
+            return strncmp(stringID->ID, str, 64) == 0;
+        }
+
+        template<int ... N>
+        bool STRCMP_Helper(const StringIDView& stringID, std::integer_sequence<int, N...> integers)
+        {
+            return (Compare(stringID, std::get<N>(IDs)) | ...);
+        }
+
+        bool IsValid(const StringIDView& stringID)
+        {
+            return STRCMP_Helper(stringID, std::make_integer_sequence<int, sizeof ... (TY)>());
+        }
+    };
+
+
+    template<IsConstCharStar ... TY>
+    struct ROStringQuery
+    {
+        using Type          = const StringIDView&;
+        using ValueType     = StringIDView;
+        static constexpr bool IsConst() { return true; }
+
+        const std::tuple<TY...> IDs;
+
+        ROStringQuery() = default;
+
+        ROStringQuery(TY ... args) :
+            IDs{ std::make_tuple(args...) } {}
+
+        bool Compare(const StringIDView& stringID, const char* str)
+        {
+            return strncmp(stringID->ID, str, 64) == 0;
+        }
+
+        template<int ... N>
+        bool STRCMP_Helper(const StringIDView& stringID, std::integer_sequence<int, N...> integers)
+        {
+            return (Compare(stringID, std::get<N>(IDs)) | ...);
+        }
+
+        bool IsValid(const StringIDView& stringID)
+        {
+            return STRCMP_Helper(stringID, std::make_integer_sequence<int, sizeof ... (TY)>());
+        }
+    };
+
+
 	/************************************************************************************************/
 
 
