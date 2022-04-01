@@ -16,7 +16,6 @@ EditorAnimationInputTab::EditorAnimationInputTab(QWidget *parent)
     horizontalHeader->setVisible(true);
     verticalHeader->setVisible(true);
 
-    ui.tableWidget->setHorizontalHeaderLabels({ "Name", "Type", "Value" });
 
     connect(ui.pushButton, &QPushButton::pressed,
         [&]()
@@ -29,15 +28,17 @@ EditorAnimationInputTab::EditorAnimationInputTab(QWidget *parent)
         {
             const auto row = item->row();
 
-            auto name   = ui.tableWidget->item(row, 0);
-            auto value  = ui.tableWidget->item(row, 1);
+            auto name           = ui.tableWidget->item(row, 0);
+            auto value          = ui.tableWidget->item(row, 1);
+            auto defaultValue   = ui.tableWidget->item(row, 2);
 
-            if (name && value)
+            if (name && value && defaultValue)
             {
                 auto nameString     = name->text().toStdString();
                 auto valueString    = value->text().toStdString();
+                auto defaultString  = defaultValue->text().toStdString();
 
-                writeData((size_t) row, nameString, valueString);
+                writeData((size_t) row, nameString, valueString, defaultString);
             }
         });
 }
@@ -53,24 +54,28 @@ EditorAnimationInputTab::~EditorAnimationInputTab()
 void EditorAnimationInputTab::Update(const uint32_t rowCount, ReadEntryDataFN fetchData)
 {
     ui.tableWidget->setRowCount(rowCount);
-    ui.tableWidget->setColumnCount(2);
+    ui.tableWidget->setColumnCount(3);
+    ui.tableWidget->setHorizontalHeaderLabels({ "Name", "Immediate Value", "Default Value"});
 
     for (uint32_t row = 0; row < rowCount; row++)
     {
-        std::string value;
+        std::string defaultValue;
         std::string name;
-        fetchData(row, name, value);
+        std::string value;
+        fetchData(row, name, value, defaultValue);
 
         if (value.size() == 0)
             value = "0";
 
         if (!ui.tableWidget->item(row, 1) || ui.tableWidget->item(row, 1)->text().size() == 0 || ui.tableWidget->item(row, 1)->text().toStdString() != value)
         {
-            QTableWidgetItem* nameItem  = new QTableWidgetItem(name.c_str());
-            QTableWidgetItem* valueItem = new QTableWidgetItem(value.c_str());
+            QTableWidgetItem* nameItem      = new QTableWidgetItem(name.c_str());
+            QTableWidgetItem* valueItem     = new QTableWidgetItem(value.c_str());
+            QTableWidgetItem* defaultItem   = new QTableWidgetItem(defaultValue.c_str());
 
             ui.tableWidget->setItem(row, 0, nameItem);
             ui.tableWidget->setItem(row, 1, valueItem);
+            ui.tableWidget->setItem(row, 2, defaultItem);
         }
     }
 }
@@ -92,13 +97,6 @@ void EditorAnimationInputTab::SetOnChangeEvent(WriteEntryDataFN&& in)
 {
     writeData = in;
 }
-
-
-void EditorAnimationInputTab::AddInput(const std::string& name, uint32_t type)
-{
-
-}
-
 
 /**********************************************************************
 

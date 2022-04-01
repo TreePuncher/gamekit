@@ -479,7 +479,7 @@ namespace FlexKit
             std::optional<AnimatorInputType>    GetInputType(uint32_t idx) noexcept;
             AnimatorState&                      GetState() noexcept;
 
-            uint32_t                            AddInput(const char* name, AnimatorInputType type) noexcept;
+            uint32_t                            AddInput(const char* name, AnimatorInputType type, void* _ptr = nullptr) noexcept;
 
             AnimatorHandle animator;
         };

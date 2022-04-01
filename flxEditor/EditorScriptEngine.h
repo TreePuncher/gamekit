@@ -68,6 +68,7 @@ public:
     Module  BuildModule(const std::string& string, ErrorCallbackFN errorCallback = [](int, int, const char*, const char*, int) {});
     void    ReleaseModule(Module);
 
+    void    CompileString(const std::string& string, asIScriptContext* ctx, ErrorCallbackFN errorCallback = [](int, int, const char*, const char*, int) {});
     void    RunStdString(const std::string& string, asIScriptContext* ctx, ErrorCallbackFN errorCallback = [](int, int, const char*, const char*, int) {});
 
     ScriptContext   CreateContext();

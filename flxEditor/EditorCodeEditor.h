@@ -77,7 +77,8 @@ public:
 
     void Resume();
     void Stop();
-    void RunCode();
+    void Compile();
+    void Run();
     void LoadDocument();
     void SaveDocument();
     void SaveDocumentCopy();

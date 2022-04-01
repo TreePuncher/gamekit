@@ -251,7 +251,7 @@ public:
 
                 struct EntityPoses
                 {
-                    float4x4 transforms[64];
+                    float4x4 transforms[512];
 
                     auto& operator [](size_t idx)
                     {
@@ -530,7 +530,7 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
                     obj->script             = scriptObject;
 
                     for (auto& input : scriptObjectRes->inputs)
-                        view.AddInput(input.stringID.c_str(), (FlexKit::AnimatorInputType)input.type);
+                        view.AddInput(input.stringID.c_str(), (FlexKit::AnimatorInputType)input.type, input.defaultValue);
 
                     scriptObject->Reload(scriptEngine, obj);
 
@@ -567,7 +567,7 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
         });
 
     inputVariables->SetOnCreateEvent(
-        [&](uint32_t typeID, const std::string& ID)
+        [&](size_t typeID, const std::string& ID)
         {
             if (auto selection = localSelection->GetSelection(); selection)
             {
@@ -577,7 +577,7 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
         });
 
     inputVariables->SetOnChangeEvent(
-        [&](const size_t idx, const std::string& ID, const std::string& value)
+        [&](size_t idx, const std::string& ID, const std::string& value, const std::string& defaultValue)
         {
             if (auto selection = localSelection->GetSelection(); selection)
             {
@@ -586,6 +586,7 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
                 valueEntry.stringID = ID;
 
                 selection->script->UpdateValue(selection->gameObject, idx, value);
+                selection->script->UpdateDefaultValue(idx, defaultValue);
             }
         });
 
@@ -599,11 +600,12 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
                 {
                     inputVariables->Update(
                         inputs,
-                        [&](size_t idx, std::string& ID, std::string& value)
+                        [&](size_t idx, std::string& ID, std::string& value, std::string& defaultValue)
                         {
                             auto& inputID   = selection->script->resource->inputs[idx];
                             ID              = inputID.stringID;
                             value           = selection->script->ValueString(selection->gameObject, idx, (uint32_t)inputID.type);
+                            defaultValue    = selection->script->DefaultValueString(idx);
                         });
                 }
             }

@@ -24,9 +24,13 @@ public:
     void        Update(AnimationObject* obj, double dT);
     void        Reload(EditorScriptEngine& engine, AnimationObject* obj);
 
-    uint32_t    AddInputValue(FlexKit::GameObject& obj, const std::string& name, uint32_t valueType);
-    std::string ValueString(FlexKit::GameObject& obj, uint32_t idx, uint32_t valueType);
-    void        UpdateValue(FlexKit::GameObject& obj, uint32_t idx, const std::string& value);
+    uint32_t    AddInputValue       (FlexKit::GameObject& obj, const std::string& name, uint32_t valueType);
+
+    void        UpdateDefaultValue  (uint32_t idx, const std::string& str);
+    std::string DefaultValueString  (uint32_t idx);
+
+    std::string ValueString         (FlexKit::GameObject& obj, uint32_t idx, uint32_t valueType);
+    void        UpdateValue         (FlexKit::GameObject& obj, uint32_t idx, const std::string& value);
 
     static bool RegisterInterface(EditorScriptEngine& engine);
 };
