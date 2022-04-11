@@ -111,12 +111,45 @@ namespace FlexKit
     }
 
 
+    bool LoadPrefab(GameObject& gameObject, uint64_t assetID, iAllocator& allocator, void* user_ptr)
+    {
+        auto assetHandle    = LoadGameAsset(assetID);
+        auto asset          = static_cast<PrefabResource*>(GetAsset(assetID));
+
+        if (!asset)
+            return false;
+
+
+        char* buffer            = (char*)(asset + 1);
+        size_t offset           = 0;
+        size_t componentCount   = asset->componentCount;
+
+        for (size_t I = 0; I < componentCount; I++)
+        {
+            ComponentBlock::Header component;
+            memcpy(&component, buffer + offset, sizeof(component));
+
+            if (ComponentAvailability(component.componentID) == true)
+                GetComponent(component.componentID).AddComponentView(gameObject, user_ptr, (std::byte*)buffer + offset, component.blockSize, &allocator);
+            else
+            {
+                gameObject.Release();
+                return false;
+            }
+
+            offset += component.blockSize;
+        }
+
+        return true;
+    }
+
+
 }   /************************************************************************************************/
 
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2020 Robert May
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

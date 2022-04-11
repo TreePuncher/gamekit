@@ -2,24 +2,59 @@
 #include "Components.h"
 #include "SceneResource.h"
 #include "Serialization.hpp"
+#include "RuntimeComponentIDs.h"
 
-constexpr FlexKit::ComponentID EditorAnimatorComponentID = GetTypeGUID(EditorAnimatorComponentID);
 
-class EditorAnimatorComponent :
-    public FlexKit::Serializable<EditorAnimatorComponent, FlexKit::EntityComponent, EditorAnimatorComponentID>
+struct AnimationInput
+{
+    enum class InputType : uint32_t
+    {
+        Float,
+        Float2,
+        Float3,
+        Float4,
+        Uint,
+        Uint2,
+        Uint3,
+        Uint4
+    } type;
+
+    uint32_t    IDHash;
+    std::string stringID;
+    char        defaultValue[16];
+
+    void Serialize(auto& ar)
+    {
+        ar& type;
+        ar& IDHash;
+        ar& stringID;
+        ar& defaultValue;
+    }
+};
+
+
+class AnimatorComponent :
+    public FlexKit::Serializable<AnimatorComponent, FlexKit::EntityComponent, FlexKit::AnimatorComponentID>
 {
 public:
-    EditorAnimatorComponent() :
-        Serializable{ EditorAnimatorComponentID } {}
+    AnimatorComponent() :
+        Serializable{ FlexKit::AnimatorComponentID } {}
 
     FlexKit::Blob GetBlob() override;
 
     void Serialize(auto& ar)
     {
         EntityComponent::Serialize(ar);
+
+        ar& scriptResource;
+        ar& inputs;
     }
 
-    inline static RegisterConstructorHelper<EditorAnimatorComponent, EditorAnimatorComponentID> registered{};
+    uint64_t                    scriptResource;
+    std::vector<AnimationInput> inputs;
+
+
+    inline static RegisterConstructorHelper<AnimatorComponent, FlexKit::AnimatorComponentID> registered{};
 };
 
 

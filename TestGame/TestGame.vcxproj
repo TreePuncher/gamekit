@@ -355,6 +355,8 @@
     <ClCompile Include="Client.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="EngineTu.cpp" />
+    <ClCompile Include="ExternalTU.cpp" />
     <ClCompile Include="GamePlay.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>

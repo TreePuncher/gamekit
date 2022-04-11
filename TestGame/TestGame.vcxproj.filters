@@ -482,6 +482,12 @@
     <ClCompile Include="..\coreutilities\ScriptingRuntime.cpp">
       <Filter>Source\coreutilities</Filter>
     </ClCompile>
+    <ClCompile Include="ExternalTU.cpp">
+      <Filter>Source\TestGame</Filter>
+    </ClCompile>
+    <ClCompile Include="EngineTu.cpp">
+      <Filter>Source\TestGame</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\shaders\ACC.hlsl">

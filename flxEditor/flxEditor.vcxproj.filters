@@ -164,7 +164,7 @@
     <ClCompile Include="EditorCodeEditor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="EditorScriptObject.cpp">
+    <ClCompile Include="EditorPrefabObject.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Animation.cpp">
@@ -194,10 +194,10 @@
     <ClCompile Include="TTFontLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ScriptedAnimationObject.cpp">
+    <ClCompile Include="EditorAnimationInputTab.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="EditorAnimationInputTab.cpp">
+    <ClCompile Include="AnimationEditorObject.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -262,10 +262,10 @@
     <ClInclude Include="EditorAnimatorComponent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="EditorScriptObject.h">
+    <ClInclude Include="EditorPrefabObject.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="AnimationObject.h">
+    <ClInclude Include="AnimationEditorObject.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Animation.h">
@@ -299,9 +299,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ScriptedAnimationObject.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

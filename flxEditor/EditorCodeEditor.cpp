@@ -3,9 +3,9 @@
 #include "QtWidgets/qabstractbutton.h"
 #include "QtWidgets/qmenubar.h"
 #include "QtWidgets/qlistwidget.h"
+#include "EditorPrefabObject.h"
 #include "EditorProject.h"
 #include "EditorResourcePickerDialog.h"
-#include "EditorScriptObject.h"
 #include "EditorScriptEngine.h"
 
 #include <qsyntaxhighlighter.h>

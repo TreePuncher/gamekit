@@ -1,6 +1,6 @@
 #include "PCH.h"
 #include "EditorInspectorView.h"
-#include "AnimationObject.h"
+#include "AnimationEditorObject.h"
 #include "ViewportScene.h"
 
 
@@ -346,7 +346,7 @@ void EditorInspectorView::UpdatePropertiesViewportObjectInspector()
 
 void EditorInspectorView::UpdateAnimatorObjectInspector()
 {
-    auto selection      = selectionContext.GetSelection<AnimationObject*>();
+    auto selection      = selectionContext.GetSelection<AnimationEditorObject*>();
     uint64_t objectID   = selection->ID;
     auto& gameObject    = selection->gameObject;
 

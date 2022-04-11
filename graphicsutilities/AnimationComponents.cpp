@@ -1,5 +1,5 @@
 #include "AnimationComponents.h"
-
+#include <angelscript.h>
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -273,6 +273,14 @@ namespace FlexKit
         return GetComponent()[animator];
     }
 
+    AnimatorScriptState AnimatorComponent::AnimatorView::GetScriptState() noexcept
+    {
+        auto& state = GetComponent()[animator];
+
+        return { state.gameObject, state.obj };
+    }
+
+
 
     uint32_t AnimatorComponent::AnimatorView::AddInput(const char* name, AnimatorInputType type, void* _ptr) noexcept
     {
@@ -289,6 +297,35 @@ namespace FlexKit
             memcpy(&state.inputValues[idx], _ptr, sizeof(16));
 
         return idx;
+    }
+
+
+    /************************************************************************************************/
+
+
+    void AnimatorComponent::AnimatorView::SetAnimationState(uint32_t playId, uint32_t newState) noexcept
+    {
+        auto& state = GetState();
+
+        for (auto& anim : state.animations)
+        {
+            if (anim.ID == playId)
+            {
+                anim.state = (AnimatorComponent::AnimationState::State)newState;
+                return;
+            }
+        }
+    }
+
+
+    /************************************************************************************************/
+
+
+    void AnimatorComponent::AnimatorView::SetObj(void* _ptr) noexcept
+    {
+        auto& state = GetState();
+        state.obj   = (asIScriptObject*)_ptr;
+
     }
 
 
@@ -420,8 +457,25 @@ namespace FlexKit
                             context.AddField(pose);
                         });
 
-                    for (auto& animation : animator.animations)
-                        animation.Update(context, dT);
+
+                    auto scriptObj = animator.obj;
+                    if(scriptObj)
+                    {
+                        auto ctx                = GetContext();
+                        auto api_obj            = static_cast<asIScriptObject*>(scriptObj);
+                        auto method             = api_obj->GetObjectType()->GetMethodByName("Update");
+
+                        ctx->Prepare(method);
+                        ctx->SetObject(animator.obj);
+                        ctx->SetArgAddress(0, animator.gameObject);
+                        ctx->SetArgDouble(1, dT);
+                        ctx->Execute();
+
+                        for (auto& animation : animator.animations)
+                            animation.Update(context, dT);
+
+                        ReleaseContext(ctx);
+                    }
                 }
             });
     }
@@ -578,15 +632,15 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void SkeletonComponent::AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    void SkeletonComponent::AddComponentView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
         SkeletonComponentBlob blob;
         memcpy(&blob, buffer, bufferSize);
 
-        auto triMeshHandle = GetTriMesh(GO);
-        auto skeleton = Create(triMeshHandle, blob.assetID);
+        auto triMeshHandle  = GetTriMesh(gameObject);
+        auto skeleton       = Create(triMeshHandle, blob.assetID);
 
-        GO.AddView<SkeletonView>(triMeshHandle, skeleton);
+        gameObject.AddView<SkeletonView>(triMeshHandle, skeleton);
     }
 
 
@@ -817,12 +871,67 @@ namespace FlexKit
     }
 
 
+    /************************************************************************************************/
+
+
+    void AnimatorComponent::AddComponentView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    {
+        AnimatorBlobHeader header;
+        memcpy(&header, buffer, sizeof(header));
+
+        auto& animator = gameObject.AddView<AnimatorView>();
+
+        AnimatorBlobInputState*     inputs = (AnimatorBlobInputState*)(buffer + sizeof(header));
+        AnimatorBlobAnimatorState*  states = (AnimatorBlobAnimatorState*)(buffer + sizeof(header) + header.inputCount * sizeof(AnimatorBlobAnimatorState));
+
+        for (size_t I = 0; I < header.inputCount; I++)
+        {
+            AnimatorBlobInputState input;
+            memcpy(&input, inputs + I, sizeof(input));
+
+            animator.AddInput(input.name, (AnimatorInputType)input.type, input.data);
+        }
+
+        for (size_t I = 0; I < header.stateCount; I++)
+        {
+            AnimatorBlobAnimatorState state;
+            memcpy(&state, states + I, sizeof(state));
+
+            auto animation  = LoadAnimation(state.animationResourceID, SystemAllocator);
+            auto playId     = animator.Play(*animation);
+
+            animator.SetAnimationState(playId, state.initialState);
+        }
+
+        if (header.scriptResourceIdx != -1)
+        {
+            auto scriptModule   = LoadByteCodeAsset(header.scriptResourceIdx);
+            auto func           = scriptModule->GetFunctionByName("InitiateAnimator");
+
+            if (func)
+            {
+                auto ctx = GetContext();
+                ctx->Prepare(func);
+                ctx->SetArgAddress(0, &gameObject);
+                ctx->Execute();
+
+                auto animatorObj = ctx->GetReturnAddress();
+
+                ReleaseContext(ctx);
+
+                if (animatorObj)
+                    animator.SetObj(animatorObj);
+            }
+        }
+    }
+
+
 }   /************************************************************************************************/
 
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2021 Robert May
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

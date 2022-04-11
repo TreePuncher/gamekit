@@ -6,14 +6,39 @@ class asIScriptFunction;
 class asIScriptObject;
 class asIScriptModule;
 
-
-
 namespace FlexKit
 {
     class iAllocator;
 
+    struct ScriptContext
+    {
+        asIScriptContext*   ctx;
+        void*               scriptState;
+        asIScriptModule*    scriptModule;
+    };
+
+    struct ScriptResourceBlob : public Resource
+    {
+        ScriptResourceBlob(size_t byteCodeSize);
+
+        size_t blobSize;
+    };
+
     void RegisterGameObjectCore(asIScriptEngine*);
     void RegisterMathTypes(asIScriptEngine*, iAllocator* allocator);
+
+    void InitiateScriptRuntime();
+    void ReleaseScriptRuntime();
+
+    void AddGlobal(const char* str, void*);
+    void ReleaseGlobal(const char* str);
+
+    [[nodiscard]] asIScriptModule* LoadByteCode     (const char* moduleName, const char* byteCode, size_t);
+    [[nodiscard]] asIScriptModule* LoadByteCodeAsset(uint64_t assetID);
+
+    asIScriptEngine*    GetScriptEngine();
+    asIScriptContext*   GetContext();
+    void                ReleaseContext(asIScriptContext*);
 }
 
 

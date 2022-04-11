@@ -8,6 +8,7 @@
 #include "RuntimeComponentIDs.h"
 #include "Scene.h"
 #include "Transforms.h"
+#include "ScriptingRuntime.h"
 
 
 namespace FlexKit
@@ -90,7 +91,7 @@ namespace FlexKit
         }
 
 
-        void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
+        void AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 
 
         struct SkeletonState
@@ -270,6 +271,12 @@ namespace FlexKit
         Uint4
     };
 
+    struct AnimatorScriptState
+    {
+        GameObject*         gameObject  = nullptr;
+        asIScriptObject*    obj         = nullptr;
+    };
+
 	class AnimatorComponent : public FlexKit::Component<AnimatorComponent, AnimatorComponentID>
 	{
 	public:
@@ -286,6 +293,7 @@ namespace FlexKit
             return handle;
         }
 
+        void AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 
         struct AnimationStateContext
         {
@@ -460,10 +468,13 @@ namespace FlexKit
                 , inputIDs      { &allocator    } {}
 
 
-            GameObject*                 gameObject;
+            GameObject*                 gameObject  = nullptr;
+            asIScriptObject*            obj         = nullptr;
+
             Vector<AnimationState>      animations;
             Vector<InputValue>          inputValues;
             Vector<InputID>             inputIDs;
+
 			AnimationStateMachine       ASM;
 		};
 
@@ -478,8 +489,11 @@ namespace FlexKit
             std::optional<InputValue*>          GetInputValue(uint32_t idx) noexcept;
             std::optional<AnimatorInputType>    GetInputType(uint32_t idx) noexcept;
             AnimatorState&                      GetState() noexcept;
+            AnimatorScriptState                 GetScriptState() noexcept;
 
             uint32_t                            AddInput(const char* name, AnimatorInputType type, void* _ptr = nullptr) noexcept;
+            void                                SetAnimationState(uint32_t animationID, uint32_t state) noexcept;
+            void                                SetObj(void*) noexcept;
 
             AnimatorHandle animator;
         };
@@ -492,8 +506,6 @@ namespace FlexKit
 		Vector<AnimatorState>							animators;
 		HandleUtilities::HandleTable<AnimatorHandle>	handles;
         iAllocator&                                     allocator;
-
-
 	};
 
     using AnimatorView = AnimatorComponent::AnimatorView;

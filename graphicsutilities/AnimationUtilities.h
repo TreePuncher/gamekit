@@ -322,6 +322,31 @@ namespace FlexKit
     PoseState   CreatePoseState(Skeleton& skeleton, iAllocator* allocator);
     bool        InitiatePoseState(RenderSystem* RS, PoseState* EAS, PoseState_DESC& Desc, VShaderJoint* InitialState);
 
+    /************************************************************************************************/
+
+
+    struct AnimatorBlobInputState
+    {
+        uint32_t    type;
+        char        data[16];
+        char        name[32];
+    };
+
+
+    struct AnimatorBlobAnimatorState
+    {
+        uint64_t animationResourceID;
+        uint32_t initialState;
+    };
+
+
+    struct AnimatorBlobHeader
+    {
+        uint64_t scriptResourceIdx;
+        uint32_t inputCount;
+        uint32_t stateCount;
+    };
+
 
 }	/************************************************************************************************/
 

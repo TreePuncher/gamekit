@@ -3,6 +3,8 @@
 #include "Common.h"
 #include "SceneResource.h"
 #include "Serialization.hpp"
+#include "EditorProject.h"
+#include "EditorScriptEngine.h"
 
 
 /************************************************************************************************/
@@ -10,33 +12,6 @@
 
 constexpr FlexKit::ComponentID EditorScriptComponentID = GetTypeGUID(EditorScriptComponentID);
 
-
-struct AnimationInput
-{
-    enum class InputType : uint32_t
-    {
-        Float,
-        Float2,
-        Float3,
-        Float4,
-        Uint,
-        Uint2,
-        Uint3,
-        Uint4
-    } type;
-
-    uint32_t    IDHash;
-    std::string stringID;
-    char        defaultValue[16];
-
-    void Serialize(auto& ar)
-    {
-        ar& type;
-        ar& IDHash;
-        ar& stringID;
-        ar& defaultValue;
-    }
-};
 
 
 class ScriptResource :
@@ -55,11 +30,9 @@ public:
         ar& resourceId;
         ar& source;
         ar& ID;
-        ar& inputs;
     }
 
     uint64_t    resourceId      = rand();
-    std::vector<AnimationInput> inputs;
     std::string ID              = "ScriptObject";
     std::string source;
 };
@@ -71,8 +44,8 @@ using ScriptResource_ptr = std::shared_ptr<ScriptResource>;
 /************************************************************************************************/
 
 
-class ScriptedGameObjectResource :
-    public FlexKit::Serializable<ScriptedGameObjectResource, FlexKit::iResource, GetTypeGUID(ScriptedGameObjectResource)>
+class PrefabGameObjectResource :
+    public FlexKit::Serializable<PrefabGameObjectResource, FlexKit::iResource, GetTypeGUID(PrefabGameObjectResource)>
 {
 public:
     FlexKit::ResourceBlob   CreateBlob()        const           override;
@@ -86,25 +59,30 @@ public:
     {
         ar& resourceId;
         ar& ID;
-
-        ar& scriptId;
-        ar& skeletonId;
-        ar& triMeshId;
+        ar& components;
     }
 
-    uint64_t    resourceId  = rand();
-    std::string ID          = "ScriptedObject";
+    std::vector<std::shared_ptr<FlexKit::EntityComponent>> components;
 
-    uint64_t    scriptId;
-    uint64_t    skeletonId;
-    uint64_t    triMeshId;
+    std::string ID          = "PrefabGameObject";
+    uint64_t    resourceId  = rand();
 };
 
 
-using ScriptGameObjectResource_ptr = std::shared_ptr<ScriptedGameObjectResource>;
+using PrefabGameObjectResource_ptr = std::shared_ptr<PrefabGameObjectResource>;
 
 
-/************************************************************************************************/
+struct LoadEntityContextInterface
+{
+    virtual FlexKit::GameObject&            GameObject()                                        = 0;
+    virtual FlexKit::NodeHandle             GetNode(uint32_t idx)                               = 0;
+    virtual ProjectResource_ptr             FindSceneResource(uint64_t assetIdx)                = 0;
+    virtual FlexKit::TriMeshHandle          LoadTriMeshResource(ProjectResource_ptr resource)   = 0;
+    virtual FlexKit::MaterialHandle         DefaultMaterial() const                             = 0;
+    virtual FlexKit::Scene*                 Scene()                                             = 0;
+};
+
+void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface& ctx);
 
 
 /**********************************************************************

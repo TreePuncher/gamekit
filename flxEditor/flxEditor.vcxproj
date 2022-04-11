@@ -149,6 +149,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AnimationEditorObject.cpp" />
     <ClCompile Include="ExtraDependencies.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -187,7 +188,7 @@
     <ClCompile Include="EditorResourcePickerDialog.cpp" />
     <ClCompile Include="EditorResources.cpp" />
     <ClCompile Include="EditorScriptEngine.cpp" />
-    <ClCompile Include="EditorScriptObject.cpp" />
+    <ClCompile Include="EditorPrefabObject.cpp" />
     <ClCompile Include="EditorTaskList.cpp" />
     <ClCompile Include="FBXResourceUtilities.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -225,7 +226,6 @@
     <ClCompile Include="SceneResource.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="ScriptedAnimationObject.cpp" />
     <ClCompile Include="TaskManager.cpp" />
     <ClCompile Include="TextureResourceUtilities.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
@@ -250,7 +250,7 @@
   <ItemGroup>
     <QtMoc Include="EditorAnimationEditor.h" />
     <ClInclude Include="Animation.h" />
-    <ClInclude Include="AnimationObject.h" />
+    <ClInclude Include="AnimationEditorObject.h" />
     <ClInclude Include="Common.h" />
     <QtMoc Include="EditorAnimationInputTab.h" />
     <ClInclude Include="EditorAnimatorComponent.h" />
@@ -260,7 +260,7 @@
     <ClInclude Include="EditorApplication.h" />
     <QtMoc Include="EditorInspectorView.h" />
     <QtMoc Include="EditorResourcePickerDialog.h" />
-    <ClInclude Include="EditorScriptObject.h" />
+    <ClInclude Include="EditorPrefabObject.h" />
     <ClInclude Include="FBXResourceUtilities.h" />
     <ClInclude Include="MeshProcessing.h" />
     <ClInclude Include="MetaData.h" />
@@ -272,7 +272,6 @@
     <ClInclude Include="SceneInspectors.h" />
     <QtMoc Include="SceneOutliner.h" />
     <ClInclude Include="SceneResource.h" />
-    <ClInclude Include="ScriptedAnimationObject.h" />
     <ClInclude Include="SelectionContext.h" />
     <ClInclude Include="Serialization.h" />
     <ClInclude Include="TextureResourceUtilities.h" />

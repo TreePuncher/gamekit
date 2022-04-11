@@ -1018,8 +1018,6 @@ namespace FlexKit
 
 	void ClearDepthBuffer(FrameGraph& Graph, ResourceHandle Handle, float clearDepth)
 	{
-		FK_VLOG(Verbosity_9, "Clearing depth buffer.");
-
 		struct ClearDepthBuffer
 		{
 			FrameResourceHandle DepthBuffer;

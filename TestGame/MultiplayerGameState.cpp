@@ -152,12 +152,19 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
             EventHandler(evt);
         }
     );
+    auto& scene         = worldState.GetScene();
+    auto& allocator     = IN_framework.core.GetTempMemory();
+    
+    auto res = scene.Query(allocator, Mut<SceneNodeView<>>{}, StringQuery{ "Light", "smolina" });
 
     pointLight1 = FlexKit::FindGameObject(worldState.GetScene(), "Light").value_or(nullptr);
     smolina     = FlexKit::FindGameObject(worldState.GetScene(), "smolina").value_or(nullptr);
 
-    auto& allocator     = IN_framework.core.GetTempMemory();
-    auto& scene         = worldState.GetScene();
+    //auto& gameState = worldState.CreateGameObject();
+
+    //if (LoadPrefab(gameState, 1234, framework.core.GetBlockMemory()))
+    //{
+    //}
 
     //pointLight->Position;
 
@@ -240,6 +247,7 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     SetWorldPosition(particleEmitter, float3{ 0.0f, 40, 0.0f });
     Pitch(particleEmitter, float(pi / 2.0f));
     */
+
     runOnceDrawEvents.push_back([&]()
         {
             base.render.AddTask(

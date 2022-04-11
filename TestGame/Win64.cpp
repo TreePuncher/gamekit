@@ -17,8 +17,6 @@
 #include "MultiplayerGameState.cpp"
 #include "playgroundmode.hpp"
 
-#include "allsourcefiles.cpp"
-
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 

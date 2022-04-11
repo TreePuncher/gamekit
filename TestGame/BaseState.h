@@ -221,6 +221,8 @@ public:
         sub._ptr = &framework;
         renderWindow.Handler->Subscribe(sub);
         renderWindow.SetWindowTitle("[S.P.A.R.]");
+
+        InitiateScriptRuntime();
 	}
 
 
@@ -232,6 +234,8 @@ public:
 
         depthBuffer.Release();
         renderWindow.Release();
+
+        ReleaseScriptRuntime();
 	}
 
 

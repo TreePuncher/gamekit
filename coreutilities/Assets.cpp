@@ -102,16 +102,16 @@ namespace FlexKit
         if (S)
             FK_LOG_ERROR("Failed To Read Asset Table");
 
-		size_t TableSize	 = ReadAssetTableSize(F);
-		ResourceTable* Table = (ResourceTable*)Resources.ResourceMemory->_aligned_malloc(TableSize);
+		size_t          tableSize	= ReadAssetTableSize(F);
+		ResourceTable*  table       = (ResourceTable*)Resources.ResourceMemory->_aligned_malloc(tableSize);
 
-		if (ReadAssetTable(F, Table, TableSize))
+		if (ReadAssetTable(F, table, tableSize))
 		{
 			Resources.ResourceFiles.push_back(Dir);
-			Resources.Tables.push_back(Table);
+			Resources.Tables.push_back(table);
 		}
 		else
-			Resources.ResourceMemory->_aligned_free(Table);
+			Resources.ResourceMemory->_aligned_free(table);
 	}
 
     /************************************************************************************************/

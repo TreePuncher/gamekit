@@ -691,7 +691,7 @@ namespace FlexKit
 	}
 
 
-	auto CreateDefaultTerrainConstants(CameraHandle camera, const TerrainEngine& terrainEngine)
+	inline auto CreateDefaultTerrainConstants(CameraHandle camera, const TerrainEngine& terrainEngine)
 	{
 		return [debugMode = terrainEngine.DebugMode, camera](CBPushBuffer& pushBuffer) -> ConstantBufferDataSet {
 			uint32_t indirectArgsInitial[] = { 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };

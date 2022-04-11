@@ -234,7 +234,7 @@ namespace FlexKit
 	void SetBoundingSphereFromLight(GameObject& go)
 	{
 		Apply(
-			go,
+            go,
 			[](	SceneVisibilityView&    visibility,
 				PointLightView&	        pointLight)
 			{
@@ -309,7 +309,7 @@ namespace FlexKit
     {
         auto node = GetSceneNode(gameObject);
         if (node == InvalidHandle_t)
-            return;
+            node = GetZeroedNode();
 
         BrushComponentBlob brushComponent;
         memcpy(&brushComponent, buffer, bufferSize);

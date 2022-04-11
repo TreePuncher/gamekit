@@ -1,6 +1,9 @@
 #pragma once
 
 #include "EditorGadgetInterface.h"
+#include "ScriptingRuntime.h"
+#include "Serialization.hpp"
+
 #include <vector>
 
 
@@ -22,8 +25,15 @@ struct asSMessageInfo;
 class AngelScriptGadget : public iEditorGadget
 {
 public:
-    AngelScriptGadget(asIScriptObject*, asIScriptContext* IN_context = nullptr);
+    AngelScriptGadget(asIScriptObject*);
     ~AngelScriptGadget();
+
+    AngelScriptGadget(const AngelScriptGadget& rhs) = delete;
+    AngelScriptGadget& operator = (const AngelScriptGadget& rhs) = delete;
+
+    AngelScriptGadget(AngelScriptGadget&& rhs);
+    AngelScriptGadget& operator = (AngelScriptGadget& rhs);
+
 
     void        Execute() override;
     std::string GadgetID() override;
@@ -31,7 +41,6 @@ public:
     asIScriptObject*    object       = nullptr;
     asIScriptFunction*  asfnExecute  = nullptr;
     asIScriptFunction*  asfnGetID    = nullptr;
-    asIScriptContext*   context      = nullptr;
 };
 
 
@@ -51,7 +60,7 @@ struct BreakPoint
 
 using ErrorCallbackFN = std::function<void(int, int, const char*, const char*, int)>;
 
-using Module = asIScriptModule*;
+using Module        = asIScriptModule*;
 using ScriptContext = asIScriptContext*;
 
 class EditorScriptEngine
@@ -61,20 +70,23 @@ public:
     EditorScriptEngine(FlexKit::iAllocator* allocator = FlexKit::SystemAllocator);
     ~EditorScriptEngine();
 
-    std::vector<AngelScriptGadget*> GetGadgets() { return gadgets; };
+    std::vector<AngelScriptGadget>& GetGadgets() { return gadgets; };
     
     void LoadModules();
 
     Module  BuildModule(const std::string& string, ErrorCallbackFN errorCallback = [](int, int, const char*, const char*, int) {});
     void    ReleaseModule(Module);
 
-    void    CompileString(const std::string& string, asIScriptContext* ctx, ErrorCallbackFN errorCallback = [](int, int, const char*, const char*, int) {});
-    void    RunStdString(const std::string& string, asIScriptContext* ctx, ErrorCallbackFN errorCallback = [](int, int, const char*, const char*, int) {});
+    static void CompileString   (const std::string& string, asIScriptContext* ctx, ErrorCallbackFN errorCallback = [](int, int, const char*, const char*, int) {});
+    static void RunStdString    (const std::string& string, asIScriptContext* ctx, ErrorCallbackFN errorCallback = [](int, int, const char*, const char*, int) {});
+
+    static std::optional<FlexKit::Blob> GetByteCode(const std::string& moduleName);
+    static std::optional<FlexKit::Blob> CompileToBlob(const std::string& string, ErrorCallbackFN errorCallback = [](int, int, const char*, const char*, int) {});
 
     ScriptContext   CreateContext();
     void            ReleaseContext(ScriptContext);
 
-    asIScriptEngine*    GetScriptEngine()   { return scriptEngine; }
+    asIScriptEngine*    GetScriptEngine()   { return FlexKit::GetScriptEngine(); }
     const std::string&  GetTextBuffer()     { return outputTextBuffer; }
     const std::string&  GetErrorBuffer()    { return errorTextBuffer; }
 
@@ -93,13 +105,10 @@ protected:
     void        RegisterGadgetAPI();
     static void MessageCallback(const asSMessageInfo* msg, EditorScriptEngine* param);
 
-    asIScriptEngine*    scriptEngine    = nullptr;
-    asIScriptContext*   scriptContext   = nullptr;
-
     std::string         outputTextBuffer;
     std::string         errorTextBuffer;
 
-    std::vector<AngelScriptGadget*> gadgets;
+    std::vector<AngelScriptGadget> gadgets;
 };
 
 
