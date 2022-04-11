@@ -53,9 +53,13 @@ namespace FlexKit
 
 	enum EResourceType : size_t
 	{
+        EResource_Animation,
+        EResource_ByteCode,
 		EResource_Collider,
+        EResource_CubeMapTexture,
 		EResource_Font,
-		EResource_GameDB,
+        EResource_GameDB,
+        EResource_Prefab,
 		EResource_Skeleton,
 		EResource_SkeletalAnimation,
 		EResource_Shader,
@@ -63,8 +67,6 @@ namespace FlexKit
 		EResource_TriMesh,
 		EResource_TerrainCollider,
 		EResource_Texture,
-        EResource_CubeMapTexture,
-        EResource_Animation,
 	};
 
 	struct Resource
@@ -415,6 +417,22 @@ namespace FlexKit
 
     };
 
+
+    /************************************************************************************************/
+
+
+    struct PrefabResource : public Resource
+    {
+        PrefabResource(size_t blobSize, uint32_t IN_componentCount) :
+            componentCount  { IN_componentCount }
+        {
+            ResourceSize    = sizeof(PrefabResource) + blobSize;
+            Type            = EResourceType::EResource_Prefab;
+            State           = Resource::ResourceState::EResourceState_UNLOADED;		// Runtime Member
+        }
+
+        uint32_t componentCount;
+    };
 
 
 	/************************************************************************************************/

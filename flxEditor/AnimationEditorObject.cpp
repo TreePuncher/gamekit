@@ -1,9 +1,13 @@
 #include "PCH.h"
 #include "angelscript.h"
-#include "ScriptedAnimationObject.h"
-#include "AnimationObject.h"
-#include "AnimationUtilities.h"
 #include "AnimationComponents.h"
+#include "AnimationEditorObject.h"
+#include "AnimationUtilities.h"
+#include "EditorAnimatorComponent.h"
+#include "EditorPrefabObject.h"
+#include "EditorScriptEngine.h"
+#include "ResourceIDs.h"
+
 #include <fmt/format.h>
 #include <scn/scn.h>
 
@@ -85,65 +89,52 @@ void StringToValue(const std::string& in, FlexKit::AnimatorComponent::InputValue
 /************************************************************************************************/
 
 
-void ScriptedAnimationObject::Update(AnimationObject* animatedObj, double dT)
+void AnimationEditorObject::Reload(EditorScriptEngine& engine)
 {
-    auto api_obj = static_cast<asIScriptObject*>(obj);
+    auto* animatorView  = static_cast<FlexKit::AnimatorView*>(gameObject.GetView(FlexKit::AnimatorComponentID));
+    auto scriptState    = animatorView->GetScriptState();
 
-    if (!api_obj)
-        return;
+    auto ctx = FlexKit::GetContext();
 
-    auto method = api_obj->GetObjectType()->GetMethodByName("Update");
-
-    ctx->Prepare(method);
-    ctx->SetObject(obj);
-    ctx->SetArgAddress(0, animatedObj);
-    ctx->SetArgDouble(1, dT);
-    ctx->Execute();
-}
-
-
-/************************************************************************************************/
-
-
-void ScriptedAnimationObject::Reload(EditorScriptEngine& engine, AnimationObject* animatedObject)
-{
-    if (!ctx)
-        ctx = engine.CreateContext();
-
-    if (scriptModule)
+    if(scriptState.obj)
     {   // Release Old Module
-        SetArg(ctx, 0, obj);
+        auto scriptModule = scriptState.obj->GetObjectType()->GetModule();
+
+        SetArg(ctx, 0, scriptState.obj);
         RunScriptFunction(ctx, scriptModule, "ReleaseModule");
+        scriptState.obj->Release();
         engine.ReleaseModule(scriptModule);
     }
 
-    scriptModule = engine.BuildModule(resource->source);
+    auto scriptModule = engine.BuildModule(resource->source);
+
     if (!scriptModule)
     {
-        obj = nullptr;
+        animatorView->SetObj(nullptr);
         return;
     }
 
-    auto func = scriptModule->GetFunctionByName("InitiateModule");
+    auto func = scriptModule->GetFunctionByName("InitiateAnimator");
 
     ctx->Prepare(func);
-    SetArgAddress(ctx, 0, animatedObject);
+    SetArgAddress(ctx, 0, &gameObject);
 
     auto res = ctx->Execute();
 
-   obj = GetReturnObject(ctx);
-   auto api_obj = static_cast<asIScriptObject*>(obj);
+    animatorView->SetObj(GetReturnObject(ctx));
+
+   FlexKit::ReleaseContext(ctx);
 }
 
 
 /************************************************************************************************/
 
 
-uint32_t ScriptedAnimationObject::AddInputValue(FlexKit::GameObject& obj, const std::string& name, uint32_t valueType)
+uint32_t AnimationEditorObject::AddInputValue(const std::string& name, uint32_t valueType)
 {
     return FlexKit::Apply(
-        obj,
-        [&](FlexKit::AnimatorView& animator) -> uint32_t
+        gameObject,
+        [&](FlexKit::AnimatorView& animatorView) -> uint32_t
         {
             FlexKit::AnimatorComponent::InputID ID;
             FlexKit::AnimatorComponent::InputValue value;
@@ -151,8 +142,6 @@ uint32_t ScriptedAnimationObject::AddInputValue(FlexKit::GameObject& obj, const 
             strncpy_s(ID.stringID, name.c_str(), FlexKit::Min(sizeof(ID.stringID), name.size()));
             ID.type = (FlexKit::AnimatorInputType)valueType;
 
-            animator.GetState().inputIDs.push_back(ID);
-            animator.GetState().inputValues.push_back(value);
 
             AnimationInput animationValue;
             animationValue.type      = (AnimationInput::InputType)valueType;
@@ -165,26 +154,28 @@ uint32_t ScriptedAnimationObject::AddInputValue(FlexKit::GameObject& obj, const 
             case (uint32_t)AnimationInput::InputType::Float3:
             case (uint32_t)AnimationInput::InputType::Float4:
             {
-                FlexKit::float4 value{ 0, 0, 0, 0 };
-                memcpy(animationValue.defaultValue,
-                    &value, sizeof(FlexKit::float4));
+                FlexKit::float4 xyzw{ 0, 0, 0, 0 };
+                memcpy(animationValue.defaultValue, &xyzw, sizeof(FlexKit::float4));
+                memcpy(&value, &xyzw, sizeof(FlexKit::float4));
             }   break;
             case (uint32_t)AnimationInput::InputType::Uint:
             case (uint32_t)AnimationInput::InputType::Uint2:
             case (uint32_t)AnimationInput::InputType::Uint3:
             case (uint32_t)AnimationInput::InputType::Uint4:
             {
-                FlexKit::uint4 value{ 0, 0, 0, 0 };
-                memcpy(animationValue.defaultValue,
-                    &value, sizeof(FlexKit::uint4));
+                FlexKit::uint4 abcd{ 0, 0, 0, 0 };
+                memcpy(animationValue.defaultValue, &abcd, sizeof(FlexKit::uint4));
+                memcpy(&value, &abcd, sizeof(FlexKit::float4));
             }   break;
             default:
                 break;
             }
 
-            resource->inputs.push_back(animationValue);
+            animatorView.GetState().inputIDs.push_back(ID);
+            animatorView.GetState().inputValues.push_back(value);
+            animator->inputs.push_back(animationValue);
 
-            return resource->inputs.size() - 1;
+            return animator->inputs.size() - 1;
         },
         []() -> uint32_t {return -1; });
 
@@ -194,10 +185,10 @@ uint32_t ScriptedAnimationObject::AddInputValue(FlexKit::GameObject& obj, const 
 /************************************************************************************************/
 
 
-std::string ScriptedAnimationObject::ValueString(FlexKit::GameObject& obj, uint32_t idx, uint32_t valueType)
+std::string AnimationEditorObject::ValueString(uint32_t idx, uint32_t valueType)
 {
     return FlexKit::Apply(
-        obj,
+        gameObject,
         [&](FlexKit::AnimatorView& animator) -> std::string
         {
             auto value      = animator.GetInputValue(idx).value();
@@ -217,9 +208,9 @@ std::string ScriptedAnimationObject::ValueString(FlexKit::GameObject& obj, uint3
 /************************************************************************************************/
 
 
-std::string ScriptedAnimationObject::DefaultValueString(uint32_t idx)
+std::string AnimationEditorObject::DefaultValueString(uint32_t idx)
 {
-    auto& value = resource->inputs[idx];
+    auto& value = animator->inputs[idx];
     
 
     switch (value.type)
@@ -270,9 +261,9 @@ std::string ScriptedAnimationObject::DefaultValueString(uint32_t idx)
 /************************************************************************************************/
 
 
-void ScriptedAnimationObject::UpdateDefaultValue(uint32_t idx, const std::string& str)
+void AnimationEditorObject::UpdateDefaultValue(uint32_t idx, const std::string& str)
 {
-    auto& value = resource->inputs[idx];
+    auto& value = animator->inputs[idx];
 
     switch (value.type)
     {
@@ -342,10 +333,10 @@ void ScriptedAnimationObject::UpdateDefaultValue(uint32_t idx, const std::string
 /************************************************************************************************/
 
 
-void ScriptedAnimationObject::UpdateValue(FlexKit::GameObject& obj, uint32_t idx, const std::string& valueString)
+void AnimationEditorObject::UpdateValue(uint32_t idx, const std::string& valueString)
 {
     FlexKit::Apply(
-        obj,
+        gameObject,
         [&](FlexKit::AnimatorView& animator)
         {
             auto value      = animator.GetInputValue(idx).value();
@@ -358,11 +349,16 @@ void ScriptedAnimationObject::UpdateValue(FlexKit::GameObject& obj, uint32_t idx
         });
 }
 
+void AnimationEditorObject::Release()
+{
+    gameObject.Release();
+}
+
 
 /************************************************************************************************/
 
 
-bool ScriptedAnimationObject::RegisterInterface(EditorScriptEngine& engine)
+bool AnimationEditorObject::RegisterInterface(EditorScriptEngine& engine)
 {
     auto api = engine.GetScriptEngine();
     int res;
@@ -374,4 +370,27 @@ bool ScriptedAnimationObject::RegisterInterface(EditorScriptEngine& engine)
 }
 
 
-/************************************************************************************************/
+
+/**********************************************************************
+
+Copyright (c) 2021 - 2022 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

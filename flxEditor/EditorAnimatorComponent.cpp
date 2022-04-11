@@ -8,9 +8,28 @@
 
 /************************************************************************************************/
 
-FlexKit::Blob EditorAnimatorComponent::GetBlob()
+FlexKit::Blob AnimatorComponent::GetBlob()
 {
-    return {};
+    FlexKit::Blob blob;
+
+    FlexKit::AnimatorBlobHeader header;
+    header.inputCount           = inputs.size();
+    header.scriptResourceIdx    = scriptResource;
+    header.stateCount           = 0;
+
+    const auto end = inputs.size();
+    for (size_t I = 0; I < end; I++)
+    {
+        FlexKit::AnimatorBlobInputState input;
+
+        memcpy(input.data, inputs[I].defaultValue, sizeof(input.data));
+        strncpy_s(input.name, inputs[I].stringID.c_str(), 32);
+        input.type = (uint32_t)inputs[I].type;
+
+        blob += input;
+    }
+
+    return FlexKit::Blob{ header } + blob;
 }
 
 /************************************************************************************************/

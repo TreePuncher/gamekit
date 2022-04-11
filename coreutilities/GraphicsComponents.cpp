@@ -47,6 +47,12 @@ namespace FlexKit
 
 	Camera& CameraComponent::GetCamera(CameraHandle handle)
 	{
+        const auto idx = handles[handle];
+        if (DirtyFlags[idx])
+        {
+            Cameras[idx].UpdateMatrices();
+            DirtyFlags[idx] = false;
+        }
 		return Cameras[handles[handle]];
 	}
 

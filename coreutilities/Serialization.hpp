@@ -96,10 +96,12 @@ namespace FlexKit
             return { _ptr, size };
         }
 
+
         void Serialize(auto& ar)
         {
             ar& buffer;
         }
+
 
         std::vector<std::byte> buffer;
     };

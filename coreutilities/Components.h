@@ -304,9 +304,13 @@ namespace FlexKit
 		{
 			static_assert(std::is_base_of<ComponentViewBase, TY_View>(), "You can only add view types!");
 
-            views.emplace_back(ComponentViewContainer::Create<TY_View>(*allocator, *this, std::forward<TY_args>(args)...));
-
-            return *static_cast<TY_View*>(views.back().Get());
+            if (!hasView(TY_View::GetComponentID()))
+            {
+                views.emplace_back(ComponentViewContainer::Create<TY_View>(*allocator, *this, std::forward<TY_args>(args)...));
+                return *static_cast<TY_View*>(views.back().Get());
+            }
+            else
+                return *static_cast<TY_View*>(GetView(TY_View::GetComponentID()));
 		}
 
 
@@ -321,6 +325,7 @@ namespace FlexKit
 				}
 			}
 		}
+
 
 		void RemoveView(ComponentViewBase* view)
 		{
@@ -377,6 +382,9 @@ namespace FlexKit
         static_vector<ComponentViewContainer, 16>	views;	        // component + Code
 		iAllocator*						        	allocator;
     };
+
+
+    bool LoadPrefab(GameObject&, uint64_t assetID, iAllocator& allocator, void* context = nullptr);
 
 
     /************************************************************************************************/
@@ -487,6 +495,16 @@ namespace FlexKit
 	{
 		return ApplyProxy<FN>::run(go, fn, [&] {});
 	}
+
+    template<typename FN>
+    void Apply(GameObject** itr, GameObject** end, FN fn)
+    {
+        while (itr != end)
+        {
+            ApplyProxy<FN>::run(**itr, fn, [&] {});
+            itr++;
+        }
+    }
 
 
 	/************************************************************************************************/

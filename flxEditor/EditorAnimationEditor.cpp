@@ -1,18 +1,18 @@
 #include "PCH.h"
 #include "AnimationComponents.h"
-#include "AnimationObject.h"
+#include "AnimationEditorObject.h"
 #include "DXRenderWindow.h"
 #include "EditorAnimationEditor.h"
 #include "EditorAnimatorComponent.h"
 #include "EditorCodeEditor.h"
+#include "EditorPrefabObject.h"
 #include "EditorRenderer.h"
 #include "EditorResourcePickerDialog.h"
-#include "EditorScriptObject.h"
 #include "EditorScriptEngine.h"
 #include "SelectionContext.h"
 #include "ResourceIDs.h"
-#include "ScriptedAnimationObject.h"
 #include "EditorAnimationInputTab.h"
+#include "EditorAnimatorComponent.h"
 
 
 /************************************************************************************************/
@@ -90,24 +90,23 @@ public:
 
     void CreateObject()
     {
-        objects.emplace_back(std::make_unique<AnimationObject>());
-        selectedObject = objects.size() - 1;
     }
 
     void CreateAnimator()
     {
     }
 
-    AnimationObject* GetSelection()
+    AnimationEditorObject* GetSelection()
     {
-        if (objects.size() && selectedObject != -1)
-            return objects[selectedObject].get();
-
-        return nullptr;
+        return &object;
     }
 
-    std::vector<std::unique_ptr<AnimationObject>>   objects;
-    int                                             selectedObject = -1;
+    void Clear()
+    {
+
+    }
+
+    AnimationEditorObject object;
 };
 
 
@@ -140,6 +139,62 @@ public:
                     RenderAnimationPreview(dispatcher, dT, temporaries, frameGraph, renderTarget, allocator);
             });
     }
+
+    struct LoadEntityContext : public LoadEntityContextInterface
+    {
+        LoadEntityContext(
+            std::vector<FlexKit::NodeHandle>&   IN_nodes,
+            EditorScene_ptr                     IN_viewportscene,
+            EditorViewport&                     IN_viewport,
+            FlexKit::Scene&                     IN_scene,
+            FlexKit::GameObject&                IN_gameObject,
+            FlexKit::MaterialHandle             IN_defaultMaterial)
+            : nodes             { IN_nodes              }
+            , viewportscene     { IN_viewportscene      }
+            , viewport          { IN_viewport           }
+            , scene             { IN_scene              }
+            , gameObject        { IN_gameObject         }
+            , defaultMaterial   { IN_defaultMaterial    } {}
+
+
+        std::vector<FlexKit::NodeHandle>&   nodes;
+        EditorScene_ptr                     viewportscene;
+        EditorViewport&                     viewport;
+        FlexKit::Scene&                     scene;
+        FlexKit::GameObject&                gameObject;
+        FlexKit::MaterialHandle             defaultMaterial;
+
+        FlexKit::GameObject& GameObject() override
+        {
+            return gameObject;
+        }
+
+        FlexKit::NodeHandle GetNode(uint32_t idx) override
+        {
+            return nodes[idx];
+        }
+
+        ProjectResource_ptr FindSceneResource(uint64_t assetIdx) override
+        {
+            return viewportscene->FindSceneResource(assetIdx);
+        }
+
+        FlexKit::TriMeshHandle LoadTriMeshResource(ProjectResource_ptr resource) override
+        {
+            return FlexKit::InvalidHandle_t;
+        }
+
+        FlexKit::MaterialHandle DefaultMaterial() const override
+        {
+            return defaultMaterial;
+        }
+
+        FlexKit::Scene* Scene()
+        {
+            return nullptr;
+        }
+    };
+
 
     void resizeEvent(QResizeEvent* evt) override
     {
@@ -178,25 +233,7 @@ public:
         auto& transforms        = FlexKit::QueueTransformUpdateTask(dispatcher);
         auto& cameras           = FlexKit::CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
 
-
-        struct AnimationUpdate
-        {
-        };
-
-        auto& scriptedAnimationUpdate = dispatcher.Add<AnimationUpdate>(
-            [&](auto&, auto&)
-            {
-            },
-            [dT = dT, this](auto&, iAllocator& temporaryAllocator)
-            {
-                AnimationObject* mainObj = selection->GetSelection();
-
-                if(mainObj->script)
-                    mainObj->script->Update(mainObj, dT);
-            });
-
         cameras.AddInput(transforms);
-        animationUpdate.AddOutput(scriptedAnimationUpdate);
 
         frameGraph.AddNode<Pass>(
             Pass{
@@ -210,7 +247,6 @@ public:
 
                 builder.AddDataDependency(cameras);
                 builder.AddDataDependency(animationUpdate);
-                builder.AddDataDependency(scriptedAnimationUpdate);
             },
             [=, &gameObject](Pass& data, const FlexKit::ResourceHandler& frameResources, FlexKit::Context& ctx, FlexKit::iAllocator& allocator)
             {
@@ -320,11 +356,11 @@ public:
         FlexKit::ClearBackBuffer(frameGraph, renderTarget, FlexKit::float4{ 0, 0, 0, 0 });
         FlexKit::ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
 
-        if (selection->selectedObject != -1)
+        if (selection->object.ID != -1)
         {
-            auto& object = selection->objects[selection->selectedObject];
+            auto& object = selection->object;
 
-            RenderAnimatedModel(object->gameObject, dispatcher, dT, temporaryBuffers, frameGraph, renderTarget, allocator);
+            RenderAnimatedModel(object.gameObject, dispatcher, dT, temporaryBuffers, frameGraph, renderTarget, allocator);
         }
 
         FlexKit::PresentBackBuffer(frameGraph, renderTarget);
@@ -384,7 +420,7 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
     , scriptEngine      { IN_engine }
     , inputVariables    { new EditorAnimationInputTab }
 {
-    static auto _REGISTERED = ScriptedAnimationObject::RegisterInterface(scriptEngine);
+    static auto _REGISTERED = AnimationEditorObject::RegisterInterface(scriptEngine);
 
     codeEditor->GetTabs()->addTab(inputVariables, "Input Variables");
 
@@ -404,8 +440,8 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
         {
             codeEditor->SaveDocument();
 
-            if(auto obj = localSelection->GetSelection(); obj && obj->script)
-                obj->script->Reload(scriptEngine, obj);
+            if(auto obj = localSelection->GetSelection(); obj && obj->resource)
+                obj->Reload(scriptEngine);
         });
 
     auto layout = new QVBoxLayout{};
@@ -414,13 +450,14 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
     layout->addWidget(previewWindow);
 
     auto fileMenu       = menubar->addMenu("Object");
-    auto createObject   = fileMenu->addAction("Create");
+    auto createObject   = fileMenu->addAction("Create Animated Prefab");
 
     connect(
         createObject, &QAction::triggered,
         [&]
         {
             auto meshPicker = new EditorResourcePickerDialog(MeshResourceTypeID, IN_project, this);
+
             meshPicker->OnSelection(
                 [&](ProjectResource_ptr resource)
                 {
@@ -447,11 +484,7 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
 
                             // Create Script Object
                             auto scriptResource = std::make_shared<ScriptResource>();
-                            auto scriptObject   = new ScriptedAnimationObject{};
                             auto context        = scriptEngine.BuildModule(scriptResource->source);
-
-                            scriptObject->resource  = scriptResource;
-                            obj->script             = scriptObject;
 
                             project.AddResource(scriptResource);
                             codeEditor->SetResource(scriptResource);
@@ -462,14 +495,27 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
                             gameObject.AddView<FlexKit::AnimatorView>();
 
                             // serialize object
-                            ScriptGameObjectResource_ptr objectResource = std::make_shared<ScriptedGameObjectResource>();
+                            PrefabGameObjectResource_ptr objectResource = std::make_shared<PrefabGameObjectResource>();
                             project.AddResource(objectResource);
-                            objectResource->triMeshId   = meshResource->GetResourceGUID();
-                            objectResource->skeletonId  = skeleton->resource->GetResourceGUID();
-                            objectResource->scriptId    = scriptResource->GetResourceGUID();
-                            obj->resourceID             = objectResource->GetResourceGUID();
 
-                            // Set Selection
+                            auto brushComponent     = std::make_shared<FlexKit::EntityBrushComponent>();
+                            auto skeletonComponent  = std::make_shared<FlexKit::EntitySkeletonComponent>();
+                            auto animatorComponent  = std::make_shared<AnimatorComponent>();
+
+                            brushComponent->MeshGuid                = meshResource->GetResourceGUID();
+                            skeletonComponent->skeletonResourceID   = skeleton->resource->GetResourceGUID();
+                            animatorComponent->scriptResource       = scriptResource->GetResourceGUID();
+
+                            objectResource->components.push_back(brushComponent);
+                            objectResource->components.push_back(skeletonComponent);
+                            objectResource->components.push_back(animatorComponent);
+
+                            obj->resource                   = scriptResource;
+                            obj->resourceID                 = objectResource->GetResourceGUID();
+                            localSelection->object.ID       = obj->resourceID;
+                            localSelection->object.animator = animatorComponent.get();
+
+                            globalSelection.Clear();
                             globalSelection.type        = AnimatorObject_ID;
                             globalSelection.selection   = std::any{ obj };
 
@@ -482,59 +528,102 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
             meshPicker->show();
         });
 
-    auto loadObject     = fileMenu->addAction("Load");
+    auto loadObject = fileMenu->addAction("Load");
     connect(
         loadObject, &QAction::triggered,
         [&]
         {
-            auto resourcePicker = new EditorResourcePickerDialog(ScriptedObjectTypeID, IN_project, this);
+            auto resourcePicker = new EditorResourcePickerDialog(FlexKit::EResource_Prefab, IN_project, this);
             resourcePicker->OnSelection(
                 [&](ProjectResource_ptr projectObj)
                 {
                     localSelection->CreateObject();
                     auto obj = localSelection->GetSelection();
+                    obj->Release();
 
-                    auto scriptedObjectRes = std::static_pointer_cast<ScriptedGameObjectResource>(projectObj->resource);
+                    auto prefabObjectRes    = std::static_pointer_cast<PrefabGameObjectResource>(projectObj->resource);
 
-                    auto mesh       = project.FindProjectResource(scriptedObjectRes->triMeshId);
-                    auto skeleton   = project.FindProjectResource(scriptedObjectRes->skeletonId);
-                    auto scriptRes = project.FindProjectResource(scriptedObjectRes->scriptId);
+                    struct Context : public LoadEntityContextInterface
+                    {
+                        Context(FlexKit::GameObject& IN_obj, EditorRenderer& IN_renderer, EditorProject& IN_project)
+                            : gameObject    { IN_obj        }
+                            , renderer      { IN_renderer   }
+                            , project       { IN_project    } {}
+
+                        FlexKit::GameObject&    gameObject;
+                        EditorRenderer&         renderer;
+                        EditorProject&          project;
+
+                        FlexKit::GameObject&    GameObject() override { return gameObject; }
+                        FlexKit::NodeHandle     GetNode(uint32_t idx) { return FlexKit::GetZeroedNode(); }
+
+                        ProjectResource_ptr     FindSceneResource(uint64_t assetID) { return project.FindProjectResource(assetID); }
+                        FlexKit::TriMeshHandle  LoadTriMeshResource (ProjectResource_ptr resource)
+                        {
+                            auto meshResource = std::static_pointer_cast<FlexKit::MeshResource>(resource->resource);
+                            return renderer.LoadMesh(*meshResource);
+                        }
+
+                        FlexKit::MaterialHandle DefaultMaterial() const { return FlexKit::InvalidHandle_t; }
+                        FlexKit::Scene*         Scene()                 { return nullptr; }
+                    } context{ obj->gameObject, renderer, project };
+
+                    auto loadRes =
+                        [&](auto& resourceID)
+                        {
+                            auto sceneRes   = context.FindSceneResource(resourceID);
+
+                            auto blob       = sceneRes->resource->CreateBlob();
+                            auto buffer     = blob.buffer;
+                            blob.buffer     = nullptr;
+                            blob.bufferSize = 0;
+                            FlexKit::AddAssetBuffer((Resource*)buffer);
+
+                            return sceneRes;
+                        };
 
 
-                    // Load Tri Mesh
-                    auto meshResource   = std::static_pointer_cast<FlexKit::MeshResource>(mesh->resource);
-                    auto meshHandle     = renderer.LoadMesh(*meshResource);
-                    auto& gameObject    = obj->gameObject;
+                    auto& components = prefabObjectRes->components;
+                    auto FindComponent =
+                        [&](uint32_t componentID) -> std::optional<FlexKit::EntityComponent_ptr>
+                        {
+                            auto res = std::find_if(
+                                components.begin(), components.end(),
+                                [&](FlexKit::EntityComponent_ptr& component)
+                                {
+                                    return component->GetTypeID() == componentID;
+                                });
 
-                    // Load Skeleton
-                    auto blob   = skeleton->resource->CreateBlob();
-                    auto buffer = blob.buffer;
-                    blob.buffer = 0;
-                    blob.bufferSize = 0;
+                            if (res != components.end())
+                                return { *res };
+                            else
+                                return {};
+                        };
 
-                    FlexKit::AddAssetBuffer((FlexKit::Resource*)buffer);
+                    if (auto res = FindComponent(FlexKit::AnimatorComponentID); res)
+                    {
+                        auto animator = std::static_pointer_cast<AnimatorComponent>(*res);
+                        obj->animator = animator.get();
 
-                    // Build Editor object
-                    gameObject.AddView<FlexKit::BrushView>(meshHandle);
-                    gameObject.AddView<FlexKit::SkeletonView>(meshHandle, skeleton->resource->GetResourceGUID());
-                    auto& view = gameObject.AddView<FlexKit::AnimatorView>();
+                        auto resource   = loadRes(animator->scriptResource);
+                        auto scriptRes  = std::static_pointer_cast<ScriptResource>(resource->resource);
+                        obj->resource   = scriptRes;
 
-                    // Load script
-                    ScriptResource_ptr scriptObjectRes = std::static_pointer_cast<ScriptResource>(scriptRes->resource);
-                    codeEditor->SetResource(scriptObjectRes);
+                        codeEditor->SetResource(scriptRes);
+                    }
 
-                    auto scriptObject   = new ScriptedAnimationObject{};
-                    obj->resourceID     = scriptedObjectRes->GetResourceGUID();
+                    if (auto res = FindComponent(GetTypeGUID(EntitySkeletonComponent)); res)
+                    {
+                        auto sk = std::static_pointer_cast<FlexKit::EntitySkeletonComponent>(*res);
 
-                    scriptObject->resource  = scriptObjectRes;
-                    obj->script             = scriptObject;
+                        loadRes(sk->skeletonResourceID);
+                    }
 
-                    for (auto& input : scriptObjectRes->inputs)
-                        view.AddInput(input.stringID.c_str(), (FlexKit::AnimatorInputType)input.type, input.defaultValue);
+                    LoadEntity(prefabObjectRes->components, context);
 
-                    scriptObject->Reload(scriptEngine, obj);
+                    obj->ID = prefabObjectRes->GetResourceGUID();
 
-                    // Set Selection
+                    globalSelection.Clear();
                     globalSelection.type        = AnimatorObject_ID;
                     globalSelection.selection   = std::any{ obj };
 
@@ -572,7 +661,7 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
             if (auto selection = localSelection->GetSelection(); selection)
             {
                 auto& gameObject = selection->gameObject;
-                selection->script->AddInputValue(gameObject, ID, typeID);
+                selection->AddInputValue(ID, typeID);
             }
         });
 
@@ -581,12 +670,12 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
         {
             if (auto selection = localSelection->GetSelection(); selection)
             {
-                auto& inputs        = selection->script->resource->inputs;
+                auto& inputs        = selection->animator->inputs;
                 auto& valueEntry    = inputs[idx];
                 valueEntry.stringID = ID;
 
-                selection->script->UpdateValue(selection->gameObject, idx, value);
-                selection->script->UpdateDefaultValue(idx, defaultValue);
+                selection->UpdateValue(idx, value);
+                selection->UpdateDefaultValue(idx, defaultValue);
             }
         });
 
@@ -594,18 +683,18 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
     connect(timer, &QTimer::timeout,
         [&]()
         {
-            if (auto selection = localSelection->GetSelection(); selection)
+            if (auto selection = localSelection->GetSelection(); selection && selection->ID != -1)
             {
-                if (auto inputs = selection->script->resource->inputs.size(); inputs)
+                if (auto inputs = selection->animator->inputs.size(); inputs)
                 {
                     inputVariables->Update(
                         inputs,
                         [&](size_t idx, std::string& ID, std::string& value, std::string& defaultValue)
                         {
-                            auto& inputID   = selection->script->resource->inputs[idx];
+                            auto& inputID   = selection->animator->inputs[idx];
                             ID              = inputID.stringID;
-                            value           = selection->script->ValueString(selection->gameObject, idx, (uint32_t)inputID.type);
-                            defaultValue    = selection->script->DefaultValueString(idx);
+                            value           = selection->ValueString(idx, (uint32_t)inputID.type);
+                            defaultValue    = selection->DefaultValueString(idx);
                         });
                 }
             }

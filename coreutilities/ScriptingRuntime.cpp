@@ -5,6 +5,12 @@
 #include "RuntimeComponentIDs.h"
 
 #include <angelscript.h>
+#include <angelscript/scriptbuilder/scriptbuilder.h>
+#include <angelscript/scriptany/scriptany.h>
+#include <angelscript/scriptarray/scriptarray.h>
+#include <angelscript/scriptstdstring/scriptstdstring.h>
+#include <angelscript/scriptmath/scriptmath.h>
+#include <angelscript/scriptmath/scriptmathcomplex.h>
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -267,6 +273,17 @@ namespace FlexKit
 
     void RegisterGameObjectCore(asIScriptEngine* scriptEngine)
     {
+        RegisterScriptArray(scriptEngine, true);
+        RegisterScriptAny(scriptEngine);
+        RegisterStdString(scriptEngine);
+        RegisterStdStringUtils(scriptEngine);
+        RegisterScriptMath(scriptEngine);
+        RegisterScriptMathComplex(scriptEngine);
+
+
+        /************************************************************************************************/
+
+
         int res = 0;
         res = scriptEngine->RegisterTypedef("ComponentID_t", "uint32");
         res = scriptEngine->RegisterTypedef("BoneHandle", "uint32");
@@ -301,10 +318,10 @@ namespace FlexKit
         res = scriptEngine->RegisterEnumValue("AnimatorValueType", "Float2", (int32_t)AnimatorInputType::Float2);       FK_ASSERT(res >= 0);
         res = scriptEngine->RegisterEnumValue("AnimatorValueType", "Float3", (int32_t)AnimatorInputType::Float3);       FK_ASSERT(res >= 0);
         res = scriptEngine->RegisterEnumValue("AnimatorValueType", "Float4", (int32_t)AnimatorInputType::Float4);       FK_ASSERT(res >= 0);
-        res = scriptEngine->RegisterEnumValue("AnimatorValueType", "Uint1", (int32_t)AnimatorInputType::Uint);          FK_ASSERT(res >= 0);
-        res = scriptEngine->RegisterEnumValue("AnimatorValueType", "Uint2", (int32_t)AnimatorInputType::Uint2);         FK_ASSERT(res >= 0);
-        res = scriptEngine->RegisterEnumValue("AnimatorValueType", "Uint3", (int32_t)AnimatorInputType::Uint3);         FK_ASSERT(res >= 0);
-        res = scriptEngine->RegisterEnumValue("AnimatorValueType", "Uint4", (int32_t)AnimatorInputType::Uint4);         FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("AnimatorValueType", "Uint1",  (int32_t)AnimatorInputType::Uint);         FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("AnimatorValueType", "Uint2",  (int32_t)AnimatorInputType::Uint2);        FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("AnimatorValueType", "Uint3",  (int32_t)AnimatorInputType::Uint3);        FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterEnumValue("AnimatorValueType", "Uint4",  (int32_t)AnimatorInputType::Uint4);        FK_ASSERT(res >= 0);
 
 
         /************************************************************************************************/
@@ -977,10 +994,177 @@ namespace FlexKit
         res = scriptEngine->RegisterGlobalFunction("float4x4@ Identity()", asFUNCTION(Float4x4Identity), asCALL_CDECL);                                                                                     FK_ASSERT(res > 0);
 
 
-    }   /************************************************************************************************/
+    }
+
+
+    /************************************************************************************************/
+
+
+    ScriptResourceBlob::ScriptResourceBlob(size_t byteCodeSize) :
+        blobSize{ byteCodeSize }
+    {
+        ResourceSize    = sizeof(ScriptResourceBlob) + byteCodeSize;
+        Type            = EResourceType::EResource_ByteCode;
+        State           = Resource::ResourceState::EResourceState_UNLOADED;		// Runtime Member
+    }
+
+
+    /************************************************************************************************/
+
+
+    asIScriptEngine* scriptEngine = nullptr;
+
+    std::mutex                                       m;
+    FlexKit::CircularBuffer<asIScriptContext*, 128>  contexts;
+
+    void InitiateScriptRuntime()
+    {
+        scriptEngine = asCreateScriptEngine();
+
+        for (size_t I = 0; I < 128; I++)
+            contexts.push_back(scriptEngine->CreateContext());
+    }
+
+
+    /************************************************************************************************/
+
+
+    void ReleaseScriptRuntime()
+    {
+        if (scriptEngine)
+            scriptEngine->ShutDownAndRelease();
+
+        scriptEngine = nullptr;
+    }
+
+    /************************************************************************************************/
+
+
+    void AddGlobal(const char* str, void*)
+    {
+
+    }
+
+    /************************************************************************************************/
+
+
+    void ReleaseGlobal(const char* str)
+    {
+
+    }
+
+
+    /************************************************************************************************/
+
+
+    class BytecodeStream : public asIBinaryStream
+    {
+    public:
+        BytecodeStream(const char* IN_byteCode, size_t IN_size)
+            : byteCode      { IN_byteCode   }
+            , streamSize    { IN_size       }{}
+
+        int Write(const void* ptr, asUINT size) { return size; }
+
+        int Read(void* ptr, asUINT size)
+        {
+            if (size == 0 || offset + size > streamSize)
+                return 0;
+
+            memcpy(ptr, byteCode + offset, size);
+            offset += size;
+
+            return size;
+        }
+
+        const char* byteCode;
+        size_t      streamSize;
+        size_t      offset = 0;
+    };
+
+    /************************************************************************************************/
+
+
+    asIScriptModule* LoadByteCode(const char* moduleName, const char* byteCode, size_t streamSize)
+    {
+        std::scoped_lock l{ m };
+
+        auto scriptModule = scriptEngine->GetModule(moduleName, asGM_CREATE_IF_NOT_EXISTS);
+
+        BytecodeStream byteStream{ byteCode, streamSize };
+
+        auto res = scriptModule->LoadByteCode(&byteStream);
+
+        if (res >= 0)
+            return scriptModule;
+        else
+            return nullptr;
+    }
+
+
+    /************************************************************************************************/
+
+
+    asIScriptModule* LoadByteCodeAsset(uint64_t assetID)
+    {
+        char moduleName[32];
+        sprintf(moduleName, "%I64u", assetID);
+
+        auto module_ptr = scriptEngine->GetModule(moduleName, asGM_ONLY_IF_EXISTS);
+
+        if (module_ptr)
+            return module_ptr;
+
+        auto asset      = FlexKit::LoadGameAsset(assetID);
+        auto asset_ptr  = static_cast<ScriptResourceBlob*>(GetAsset(asset));
+
+        if (asset_ptr->Type != FlexKit::EResource_ByteCode)
+        {
+            FlexKit::FreeAsset(asset);
+            return nullptr;
+        }
+
+        char* buffer    = ((char*)asset_ptr) + sizeof(ScriptResourceBlob);
+        size_t blobSize = asset_ptr->blobSize;
+        auto module     = LoadByteCode(moduleName, buffer, blobSize);
+
+        FlexKit::FreeAsset(asset);
+
+        return module;
+    }
+
+
+    /************************************************************************************************/
+
+
+    asIScriptEngine* GetScriptEngine()
+    {
+        return scriptEngine;
+    }
+
+
+    /************************************************************************************************/
+
+
+    asIScriptContext* GetContext()
+    {
+        std::scoped_lock l{ m };
+        return contexts.pop_front();
+    }
+
+
+    /************************************************************************************************/
+
+
+    void ReleaseContext(asIScriptContext* ctx)
+    {
+        std::scoped_lock l{ m };
+        contexts.push_back(ctx);
+    }
 
 
 }   /************************************************************************************************/
+
 
 /**********************************************************************
 

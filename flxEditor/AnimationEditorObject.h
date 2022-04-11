@@ -1,15 +1,34 @@
 #pragma once
 #include "Components.h"
+#include "EditorPrefabObject.h"
+#include "EditorScriptEngine.h"
 
+class AnimatorComponent;
+class EditorScriptEngine;
 
-class ScriptedAnimationObject;
-
-struct AnimationObject
+struct AnimationEditorObject
 {
     FlexKit::GameObject         gameObject;
-    uint64_t                    ID = rand();
+    uint64_t                    ID          = (uint64_t)-1;
     uint64_t                    resourceID;
-    ScriptedAnimationObject*    script;
+
+    AnimatorComponent*          animator;
+
+    ScriptResource_ptr          resource;
+
+    void        Reload(EditorScriptEngine& engine);
+
+    uint32_t    AddInputValue(const std::string& name, uint32_t valueType);
+
+    void        UpdateDefaultValue(uint32_t idx, const std::string& str);
+    std::string DefaultValueString(uint32_t idx);
+
+    std::string ValueString(uint32_t idx, uint32_t valueType);
+    void        UpdateValue(uint32_t idx, const std::string& value);
+
+    void        Release();
+
+    static bool RegisterInterface(EditorScriptEngine& engine);
 };
 
 

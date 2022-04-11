@@ -59,7 +59,6 @@ namespace FlexKit
         Camera::ConstantBuffer          GetCameraPreviousConstants  (CameraHandle);
 		float4x4						GetCameraPV				    (CameraHandle);
 
-
 		auto&	QueueCameraUpdate(UpdateDispatcher& dispatcher)
         {
 		    auto& task = dispatcher.Add<_CameraUpdate>(

@@ -12,7 +12,7 @@ static const ResourceID_t SkeletonResourceTypeID    = GetTypeGUID(SkeletonResour
 static const ResourceID_t AnimationResourceTypeID   = GetTypeGUID(AnimationResourceTypeID);
 static const ResourceID_t TriMeshColliderTypeID     = GetTypeGUID(TriMeshColliderTypeID);
 static const ResourceID_t ScriptResourceTypeID      = GetTypeGUID(ScriptResourceTypeID);
-static const ResourceID_t ScriptedObjectTypeID      = GetTypeGUID(ScriptedObjectTypeID);
+static const ResourceID_t PrefabObjectTypeID        = GetTypeGUID(PrefabObjectTypeID);
 
 
 /**********************************************************************

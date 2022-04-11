@@ -7,6 +7,7 @@
 #include "physicsutilities.h"
 #include "SceneLoadingContext.h"
 #include "EditorInspectorView.h"
+#include "EditorPrefabObject.h"
 
 #include <QtWidgets/qmenubar.h>
 #include <QShortcut>
@@ -580,6 +581,61 @@ FlexKit::TriMeshHandle EditorViewport::LoadTriMeshResource(ProjectResource_ptr r
 }
 
 
+struct LoadEntityContext : public LoadEntityContextInterface
+{
+    LoadEntityContext(
+        std::vector<FlexKit::NodeHandle>&   IN_nodes,
+        EditorScene_ptr                     IN_viewportscene,
+        EditorViewport&                     IN_viewport,
+        FlexKit::Scene&                     IN_scene,
+        FlexKit::GameObject&                IN_gameObject,
+        FlexKit::MaterialHandle             IN_defaultMaterial)
+        : nodes             { IN_nodes              }
+        , viewportscene     { IN_viewportscene      }
+        , viewport          { IN_viewport           }
+        , scene             { IN_scene              }
+        , gameObject        { IN_gameObject         }
+        , defaultMaterial   { IN_defaultMaterial    } {}
+
+
+    std::vector<FlexKit::NodeHandle>&   nodes;
+    EditorScene_ptr                     viewportscene;
+    EditorViewport&                     viewport;
+    FlexKit::Scene&                     scene;
+    FlexKit::GameObject&                gameObject;
+    FlexKit::MaterialHandle             defaultMaterial;
+
+    FlexKit::GameObject& GameObject() override
+    {
+        return gameObject;
+    }
+
+    FlexKit::NodeHandle GetNode(uint32_t idx) override
+    {
+        return nodes[idx];
+    }
+
+    ProjectResource_ptr FindSceneResource(uint64_t assetIdx) override
+    {
+        return viewportscene->FindSceneResource(assetIdx);
+    }
+
+    FlexKit::TriMeshHandle LoadTriMeshResource(ProjectResource_ptr resource) override
+    {
+        return viewport.LoadTriMeshResource(resource);
+    }
+
+    FlexKit::MaterialHandle DefaultMaterial() const override
+    {
+        return defaultMaterial;
+    }
+
+    FlexKit::Scene* Scene()
+    {
+        return scene;
+    }
+};
+
 
 void EditorViewport::SetScene(EditorScene_ptr newScene)
 {
@@ -600,7 +656,6 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
 
     auto viewportScene = std::make_shared<ViewportScene>(newScene);
     auto& renderSystem = renderer.framework.GetRenderSystem();
-    
     
     FlexKit::SceneLoadingContext ctx{
         .scene = viewportScene->scene,
@@ -650,99 +705,16 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
         if (entity.id.size())
             viewObject->gameObject.AddView<FlexKit::StringIDView>(entity.id.c_str(), entity.id.size());
 
-        bool addedToScene = false;
+        LoadEntityContext ctx{
+            nodes,
+            newScene,
+            *this,
+            viewportScene->scene,
+            viewObject->gameObject,
+            gbufferPass
+        };
 
-        for (auto& componentEntry : entity.components)
-        {
-
-            switch (componentEntry->id)
-            {
-            case FlexKit::TransformComponentID:
-            {
-                auto nodeComponent = std::static_pointer_cast<FlexKit::EntitySceneNodeComponent>(componentEntry);
-                viewObject->gameObject.AddView<FlexKit::SceneNodeView<>>(nodes[nodeComponent->nodeIdx]);
-            }   break;
-            case FlexKit::BrushComponentID:
-            {
-                auto brushComponent = std::static_pointer_cast<FlexKit::EntityBrushComponent>(componentEntry);
-
-                if (brushComponent)
-                {
-                    auto res = newScene->FindSceneResource(brushComponent->MeshGuid);
-
-                    if (!res) // TODO: Mesh not found, use placeholder model?
-                        continue;
-
-
-                    auto& materials = FlexKit::MaterialComponent::GetComponent();
-                    auto material   = materials.CreateMaterial(gbufferPass);
-
-
-                    //TODO: Seems the issue if further up the asset pipeline. Improve material generation?
-                    if (brushComponent->material.subMaterials.size() > 1)
-                    {
-                        for (auto& subMaterialData : brushComponent->material.subMaterials)
-                        {
-                            auto subMaterial = materials.CreateMaterial();
-                            materials.AddSubMaterial(material, subMaterial);
-
-                            FlexKit::ReadContext rdCtx{};
-                            for (auto texture : subMaterialData.textures)
-                                materials.AddTexture(texture, subMaterial, rdCtx);
-                        }
-                    }
-                    else if(brushComponent->material.subMaterials.size() == 1)
-                    {
-                        auto& subMaterialData = brushComponent->material.subMaterials[0];
-
-                        FlexKit::ReadContext rdCtx{};
-
-                        for (auto texture : subMaterialData.textures)
-                            materials.AddTexture(texture, material, rdCtx);
-                    }
-
-                    FlexKit::TriMeshHandle handle = LoadTriMeshResource(res);
-
-                    auto& view = (FlexKit::BrushView&)EditorInspectorView::ConstructComponent(FlexKit::BrushComponentID, *viewObject, *viewportScene);
-
-                    auto& brush         = view.GetBrush();
-                    brush.material      = material;
-                    brush.MeshHandle    = handle;
-
-                    viewObject->gameObject.AddView<FlexKit::MaterialComponentView>(material);
-
-                    if(!addedToScene)
-                        viewportScene->scene.AddGameObject(viewObject->gameObject, FlexKit::GetSceneNode(viewObject->gameObject));
-
-                    addedToScene = true;
-
-                    FlexKit::SetBoundingSphereFromMesh(viewObject->gameObject);
-                }
-            }   break;
-            case FlexKit::PointLightComponentID:
-            {
-                if (!addedToScene)
-                    viewportScene->scene.AddGameObject(viewObject->gameObject, FlexKit::GetSceneNode(viewObject->gameObject));
-
-                auto  blob          = componentEntry->GetBlob();
-                auto& component     = FlexKit::ComponentBase::GetComponent(componentEntry->id);
-                auto& componentView = EditorInspectorView::ConstructComponent(componentEntry->id, *viewObject, *viewportScene);
-
-                component.AddComponentView(viewObject->gameObject, &ctx, blob, blob.size(), FlexKit::SystemAllocator);
-                FlexKit::SetBoundingSphereFromLight(viewObject->gameObject);
-
-                addedToScene = true;
-            }   break;
-            default:
-            {
-                auto  blob              = componentEntry->GetBlob();
-                //auto& componentView     = EditorInspectorView::ConstructComponent(componentEntry->id, *viewObject, *viewportScene);
-                auto& component         = FlexKit::ComponentBase::GetComponent(componentEntry->id);
-
-                component.AddComponentView(viewObject->gameObject, &ctx, blob, blob.size(), FlexKit::SystemAllocator);
-            }   break;
-            }
-        }
+        LoadEntity(entity.components, ctx);
     }
 
 

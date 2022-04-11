@@ -4,7 +4,7 @@
 #include "ui_EditorCodeEditor.h"
 #include "EditorScriptEngine.h"
 #include "QtWidgets/qplaintextedit.h"
-#include "EditorScriptObject.h"
+#include "EditorPrefabObject.h"
 #include <chrono>
 
 

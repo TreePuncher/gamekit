@@ -127,7 +127,7 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 
 	// connect script gadgets
 	for (auto& gadget : scripts.GetGadgets())
-		mainWindow.RegisterGadget(gadget);
+		mainWindow.RegisterGadget(&gadget);
 
     EditorInspectorView::AddComponentInspector<TransformInspector>();
     EditorInspectorView::AddComponentInspector<VisibilityInspector>();
