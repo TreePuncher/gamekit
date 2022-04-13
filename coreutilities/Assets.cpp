@@ -128,7 +128,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-	Pair<GUID_t, bool>	FindAssetGUID(const char* Str)
+	std::optional<GUID_t> FindAssetGUID(const char* Str)
 	{
 		bool Found = false;
 		GUID_t Guid = INVALIDHANDLE;
@@ -142,12 +142,12 @@ namespace FlexKit
 				{
 					Found = true;
 					Guid = T->Entries[I].GUID;
-					return{ Guid, Found };
+					return { Guid };
 				}
 			}
 		}
 
-		return{ Guid, Found };
+        return {};
 	}
 
 

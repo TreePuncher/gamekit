@@ -173,19 +173,11 @@ namespace FlexKit
 
 	struct PVEntry
 	{
-		PVEntry() {}
-		PVEntry(const Brush& b) : OcclusionID(-1), brush(&b){}
-
-		PVEntry(const Brush& b, size_t ID, size_t sortID, uint32_t lodIdx) :
-            OcclusionID { ID },
-            brush       { &b },
-            SortID      { sortID },
-            LODlevel    { lodIdx }  {}
-
 		size_t		    SortID          = 0;
-		size_t		    OcclusionID     = 0;
+		const Brush*    brush           = nullptr;
+        GameObject*     gameObject      = nullptr;
+        uint32_t        OcclusionID     = -1;
         uint32_t        LODlevel        = 0;
-		const Brush*	brush           = nullptr;
 
         const Brush* operator -> ()       { return brush; }
         const Brush* operator -> () const { return brush; }

@@ -560,7 +560,7 @@ void SceneBrushInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::
 
 void MaterialInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
 {
-    auto& material = static_cast<FlexKit::MaterialComponentView&>(component);
+    auto& material = static_cast<FlexKit::MaterialView&>(component);
 
     panelCtx.AddHeader("Material");
 

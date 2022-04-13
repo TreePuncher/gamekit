@@ -74,6 +74,8 @@ FlexKit::ResourceBlob PrefabGameObjectResource::CreateBlob() const
         blob += component->GetBlob();
 
     FlexKit::PrefabResource header{ blob.size(), (uint32_t)components.size() };
+    header.GUID             = GetResourceGUID();
+
     blob = FlexKit::Blob{ header } + blob;
 
     FlexKit::ResourceBlob outBlob;
@@ -163,7 +165,6 @@ void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface
 
                 FlexKit::TriMeshHandle handle = ctx.LoadTriMeshResource(res);
 
-                //auto& view = (FlexKit::BrushView&)EditorInspectorView::ConstructComponent(FlexKit::BrushComponentID, *viewObject, *viewportScene);
                 auto& component     = FlexKit::ComponentBase::GetComponent(componentEntry->id);
                 auto  blob          = brushComponent->GetBlob();
                 component.AddComponentView(ctx.GameObject(), &ctx, blob, blob.size(), FlexKit::SystemAllocator);
@@ -172,7 +173,7 @@ void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface
                 brush.material      = material;
                 brush.MeshHandle    = handle;
                 
-                ctx.GameObject().AddView<FlexKit::MaterialComponentView>(material);
+                ctx.GameObject().AddView<FlexKit::MaterialView>(material);
 
                 if(ctx.Scene() && !ctx.GameObject().hasView(FlexKit::SceneVisibilityComponentID))
                    ctx.Scene()->AddGameObject(ctx.GameObject(), FlexKit::GetSceneNode(ctx.GameObject()));
@@ -187,7 +188,6 @@ void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface
 
             auto  blob          = componentEntry->GetBlob();
             auto& component     = FlexKit::ComponentBase::GetComponent(componentEntry->id);
-            //auto& componentView = EditorInspectorView::ConstructComponent(componentEntry->id, *viewObject, *viewportScene);
 
             component.AddComponentView(ctx.GameObject(), &ctx, blob, blob.size(), FlexKit::SystemAllocator);
             FlexKit::SetBoundingSphereFromLight(ctx.GameObject());
@@ -195,7 +195,6 @@ void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface
         default:
         {
             auto  blob              = componentEntry->GetBlob();
-            //auto& componentView     = EditorInspectorView::ConstructComponent(componentEntry->id, *viewObject, *viewportScene);
             auto& component         = FlexKit::ComponentBase::GetComponent(componentEntry->id);
 
             component.AddComponentView(ctx.GameObject(), &ctx, blob, blob.size(), FlexKit::SystemAllocator);

@@ -13,9 +13,14 @@ FlexKit::Blob AnimatorComponent::GetBlob()
     FlexKit::Blob blob;
 
     FlexKit::AnimatorBlobHeader header;
-    header.inputCount           = inputs.size();
-    header.scriptResourceIdx    = scriptResource;
-    header.stateCount           = 0;
+
+    header.blockType    = FlexKit::EntityComponentBlock;
+    header.componentID  = FlexKit::AnimatorComponentID;
+    header.blockSize    = sizeof(header) + inputs.size() * sizeof(FlexKit::AnimatorBlobInputState);
+
+    header.inputCount       = inputs.size();
+    header.scriptResource   = scriptResource;
+    header.stateCount       = 0;
 
     const auto end = inputs.size();
     for (size_t I = 0; I < end; I++)
@@ -28,6 +33,7 @@ FlexKit::Blob AnimatorComponent::GetBlob()
 
         blob += input;
     }
+
 
     return FlexKit::Blob{ header } + blob;
 }

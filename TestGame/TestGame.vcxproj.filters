@@ -282,6 +282,9 @@
     <ClInclude Include="..\coreutilities\ScriptingRuntime.h">
       <Filter>Headers\coreutilities</Filter>
     </ClInclude>
+    <ClInclude Include="..\coreutilities\AnimationRendering.h">
+      <Filter>Headers\coreutilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\coreutilities\AllSourceFiles.cpp">
@@ -487,6 +490,9 @@
     </ClCompile>
     <ClCompile Include="EngineTu.cpp">
       <Filter>Source\TestGame</Filter>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\AnimationRendering.cpp">
+      <Filter>Source\graphicsutilities</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

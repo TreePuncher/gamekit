@@ -30,7 +30,8 @@ void UpdateLocalPlayer(GameObject& gameObject, const PlayerInputState& currentIn
             const auto cameraState = camera.GetData().GetFrameState();
 
             local->inputHistory.push_back({0, {}, {}, {}, {}, currentInputState, cameraState });
-            camera->Update(currentInputState.mousedXY, tpc_keyState, dT);
+            camera->UpdateCharacter(currentInputState.mousedXY, tpc_keyState, dT);
+            camera->UpdateCamera(currentInputState.mousedXY, tpc_keyState, dT);
 
             player->forward     = (GetCameraControllerForwardVector(gameObject) * float3(1, 0, 1)).normal();
             player->position    = GetCameraControllerHeadPosition(gameObject);
@@ -160,11 +161,25 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     pointLight1 = FlexKit::FindGameObject(worldState.GetScene(), "Light").value_or(nullptr);
     smolina     = FlexKit::FindGameObject(worldState.GetScene(), "smolina").value_or(nullptr);
 
-    //auto& gameState = worldState.CreateGameObject();
+    FlexKit::AddAssetFile("assets\\testprefab.gameres");
 
-    //if (LoadPrefab(gameState, 1234, framework.core.GetBlockMemory()))
-    //{
-    //}
+    auto& prefab = worldState.CreateGameObject();
+
+    if (LoadPrefab(prefab, 7958, framework.core.GetBlockMemory()))
+    {
+        auto material = base.materials.CreateMaterial(base.gbufferAnimatedPass);
+        base.materials.Add2Pass(material, ShadowMapAnimatedPassID);
+
+        prefab.AddView<MaterialView>(material);
+
+        scene.AddGameObject(prefab, GetSceneNode(prefab));
+
+        auto& animator  = *GetAnimator(prefab);
+        auto input      = animator.GetInputValue(0);
+        (*input)->x = 10;
+
+        SetBoundingSphereFromMesh(prefab);
+    }
 
     //pointLight->Position;
 

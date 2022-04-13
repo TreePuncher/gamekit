@@ -1,5 +1,7 @@
 #pragma once
 
+#include "AnimationComponents.h"
+#include "AnimationRendering.h"
 #include "ClusteredRendering.h"
 
 namespace FlexKit
@@ -1233,7 +1235,8 @@ namespace FlexKit
 		GBuffer&                        gbuffer,
 		ResourceHandle                  depthTarget,
 		ReserveConstantBufferFunction   reserveCB,
-		iAllocator*                     allocator)
+		iAllocator*                     allocator,
+        AnimationPoseUpload*            animationPoses)
 	{
 		auto& pass = frameGraph.AddNode<GBufferPass>(
 			GBufferPass{
@@ -1251,7 +1254,7 @@ namespace FlexKit
 				data.NormalTargetObject      = builder.RenderTarget(gbuffer.normal);
 				data.depthBufferTargetObject = builder.DepthTarget(depthTarget);
 			},
-			[](GBufferPass& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[animationPoses](GBufferPass& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
                 ProfileFunction();
 
@@ -1265,23 +1268,15 @@ namespace FlexKit
 					}
 				};
 
-                auto& passes = data.passes.GetData().passes;
-                const PVS* pvs = nullptr;
-                if (auto res = std::find_if(passes.begin(), passes.end(),
-                    [](auto& pass) -> bool
-                    {
-                        return pass.pass == PassHandle{GetCRCGUID(PBR_CLUSTERED_DEFERRED)};
-                    }); res != passes.end())
-                {
-                    pvs = &res->pvs;
-                }
-                else return;
+                auto& passes        = data.passes.GetData().passes;
+                auto pass           = FindPass(passes.begin(), passes.end(), GBufferPassID);
+                auto animatedPass   = FindPass(passes.begin(), passes.end(), GBufferAnimatedPassID);
 
-				if (!pvs->size())
+				if (!pass && !pass->pvs.size())
 					return;
 
                 size_t brushCount = 0;
-                for (auto& brush : *pvs)
+                for (auto& brush : pass->pvs)
                 {
                     auto* triMesh       = GetMeshResource(brush->MeshHandle);
                     const auto lodIdx   = brush.LODlevel;
@@ -1290,16 +1285,17 @@ namespace FlexKit
                     brushCount += Max(detailLevel.subMeshes.size(), 1);
                 }
 
-                /*
-                for (auto& skinnedBrushes : data.skinned)
+                if (animatedPass)
                 {
-                    auto* triMesh       = GetMeshResource(skinnedBrushes.brush->MeshHandle);
-                    const auto lodIdx   = skinnedBrushes.lodLevel;
-                    auto& detailLevel   = triMesh->lods[lodIdx];
+                    for (auto& brush : animatedPass->pvs)
+                    {
+                        auto* triMesh    = GetMeshResource(brush->MeshHandle);
+                        const auto lodIdx = brush.LODlevel;
+                        auto& detailLevel = triMesh->lods[lodIdx];
 
-                    brushCount += Max(detailLevel.subMeshes.size(), 1);
+                        brushCount += Max(detailLevel.subMeshes.size(), 1);
+                    }
                 }
-                */
 
                 struct ForwardDrawConstants
                 {
@@ -1315,12 +1311,8 @@ namespace FlexKit
 					AlignedSize<Camera::ConstantBuffer>() +
 					AlignedSize<ForwardDrawConstants>();
 
-				//const size_t poseBufferSize =
-				//	AlignedSize<EntityPoses>() * data.skinned.size();
-
 				auto passConstantBuffer   = data.reserveCB(passBufferSize);
 				auto entityConstantBuffer = data.reserveCB(entityBufferSize);
-				//auto poseBuffer           = data.reserveCB(poseBufferSize);
 
 				const auto cameraConstants  = ConstantBufferDataSet{ GetCameraConstants(data.camera), passConstantBuffer };
 				const auto passConstants    = ConstantBufferDataSet{ ForwardDrawConstants{ 1, 1 }, passConstantBuffer };
@@ -1358,6 +1350,8 @@ namespace FlexKit
                 const TriMesh::LOD_Runtime* prevLOD  = nullptr;
 
                 ctx.BeginEvent_DEBUG("G-Buffer Pass");
+                ctx.BeginEvent_DEBUG("Static Objects");
+
                 //ctx.TimeStamp(timeStats, 0);
 
                 DescriptorHeap defaultHeap{};
@@ -1372,8 +1366,7 @@ namespace FlexKit
                 defaultHeap.SetSRV(ctx, 3, resources.renderSystem().DefaultTexture);
                 defaultHeap.NullFill(ctx);
 
-				// unskinned models
-				for (auto& brush : *pvs)
+				for (auto& brush : pass->pvs)
 				{
 					auto constants    = brush->GetConstants();
 					auto* triMesh     = GetMeshResource(brush->MeshHandle);
@@ -1464,49 +1457,64 @@ namespace FlexKit
                     }
 				}
 
-				// skinned models
+                // skinned models
+                ctx.EndEvent_DEBUG();
+                ctx.BeginEvent_DEBUG("Skinned Objects");
+
+                // unskinned models
+
+                if (!animatedPass || !animatedPass->pvs.size())
+                    return;
+
+                auto& animatedBrushes       = animatedPass->pvs;
+                const size_t poseBufferSize = AlignedSize<EntityPoses>() * animatedBrushes.size();
+                auto poseBuffer             = data.reserveCB(poseBufferSize);
+                EntityPoses poses;
+
 				ctx.SetPipelineState(resources.GetPipelineState(GBUFFERPASS_SKINNED));
 
-				auto& poses = allocator.allocate<EntityPoses>();
+                ctx.SetGraphicsConstantBufferView(1, cameraConstants);
+                ctx.SetGraphicsConstantBufferView(3, passConstants);
 
-                /*
-				for (const auto& skinnedBrush : data.skinned)
-				{
-					const auto constants    = skinnedBrush.brush->GetConstants();
-					auto* triMesh           = GetMeshResource(skinnedBrush.brush->MeshHandle);
 
-					if (triMesh != prevMesh)
-					{
-						prevMesh = triMesh;
+                if (animationPoses)
+                {
+                    auto poses = animationPoses->GetIterator();
 
-						ctx.AddIndexBuffer(triMesh, triMesh->GetHighestLoadedLodIdx());
-						ctx.AddVertexBuffers(
-							triMesh,
-                            triMesh->GetHighestLoadedLodIdx(),
-							{
-								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
-								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
-								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
-								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
-								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
-							}
-						);
-					}
+				    for (size_t I = 0; I < animatedBrushes.size(); I++)
+				    {
+                        const auto& skinnedBrush    = animatedBrushes[I];
+					    const auto constants        = skinnedBrush.brush->GetConstants();
+					    auto* triMesh               = GetMeshResource(skinnedBrush.brush->MeshHandle);
 
-					auto pose       = skinnedBrush.pose;
-					auto skeleton   = pose->Sk;
+					    if (triMesh != prevMesh)
+					    {
+						    prevMesh = triMesh;
 
-					for(size_t I = 0; I < pose->JointCount; I++)
-						poses[I] = skeleton->IPose[I] * pose->CurrentPose[I];
+						    ctx.AddIndexBuffer(triMesh, triMesh->GetHighestLoadedLodIdx());
+						    ctx.AddVertexBuffers(
+							    triMesh,
+                                triMesh->GetHighestLoadedLodIdx(),
+							    {
+								    VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+								    VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
+								    VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
+								    VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+								    VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
+								    VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
+							    }
+						    );
+					    }
 
-					ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
-					ctx.SetGraphicsConstantBufferView(4, ConstantBufferDataSet(poses, poseBuffer));
+					    ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
+					    ctx.SetGraphicsConstantBufferView(4, poses[I]);
 
-                    for (auto& subMesh : triMesh->GetHighestLoadedLod().subMeshes)
-                        ctx.DrawIndexed(subMesh.IndexCount, subMesh.BaseIndex);
-				}
-                */
+                        auto& lod = triMesh->GetHighestLoadedLod();
+                        ctx.DrawIndexed(lod.GetIndexCount());
+				    }
+                }
+
+                ctx.EndEvent_DEBUG();
                 ctx.EndEvent_DEBUG();
 
                 //ctx.TimeStamp(timeStats, 1u);

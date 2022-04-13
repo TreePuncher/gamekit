@@ -83,7 +83,7 @@ struct MaterialComponentUpdate
     static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& base, ViewportSceneContext& scene)
     {
         auto& material  = static_cast<FlexKit::EntityMaterialComponent&>(component);
-        auto& runtime   = static_cast<FlexKit::MaterialComponentView&>(base);
+        auto& runtime   = static_cast<FlexKit::MaterialView&>(base);
     }
 
     IEntityComponentRuntimeUpdater::RegisterConstructorHelper<MaterialComponentUpdate, FlexKit::MaterialComponentID> _register;

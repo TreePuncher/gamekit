@@ -260,6 +260,7 @@ namespace FlexKit
 
             Add2Pass(newMaterial, PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
             Add2Pass(newMaterial, PassHandle{ GetCRCGUID(VXGI_STATIC) });
+            Add2Pass(newMaterial, PassHandle{ GetCRCGUID(SHADOWMAPPASS) });
 
             SetProperty(newMaterial, GetCRCGUID(PBR_ALBEDO), float4(0.5f, 0.5f, 0.5f, 0.3f));
             SetProperty(newMaterial, GetCRCGUID(PBR_SPECULAR), float4(0.9f, 0.9f, 0.9f, 0.0f));
@@ -310,7 +311,7 @@ namespace FlexKit
     {
         return Apply(
             go,
-            [&](MaterialComponentView& material)
+            [&](MaterialView& material)
             {
                 return material.handle;
             },

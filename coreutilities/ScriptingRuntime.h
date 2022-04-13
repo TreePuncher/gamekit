@@ -24,7 +24,7 @@ namespace FlexKit
         size_t blobSize;
     };
 
-    void RegisterGameObjectCore(asIScriptEngine*);
+    void RegisterRuntimeAPI(asIScriptEngine*);
     void RegisterMathTypes(asIScriptEngine*, iAllocator* allocator);
 
     void InitiateScriptRuntime();

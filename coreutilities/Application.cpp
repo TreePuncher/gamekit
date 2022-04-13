@@ -91,7 +91,7 @@ namespace FlexKit
                     const auto timepointB        = std::chrono::high_resolution_clock::now();
                     const auto durationRemaining = sleepTime - (timepointB - timePointA);
 
-                    if (durationRemaining < 10.ms)
+                    if (durationRemaining < 1.0ms)
                         break;
 
                     std::this_thread::sleep_for(1ms);

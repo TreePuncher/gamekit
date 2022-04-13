@@ -164,6 +164,7 @@ namespace FlexKit
 		EngineCore& operator =	(const EngineCore&) = delete;
 
 		bool					FrameLock   = true;
+		bool					vSync       = false;
         size_t                  FPSLimit    = 120;
 		bool					End         = false;
         ThreadManager			Threads;

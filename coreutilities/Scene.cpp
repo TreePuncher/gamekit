@@ -2,9 +2,9 @@
 #include "GraphicsComponents.h"
 #include "intersection.h"
 
+#include "AnimationRuntimeUtilities.H"
 #include "Components.h"
 #include "componentBlobs.h"
-#include "AnimationRuntimeUtilities.H"
 #include "ProfilingUtilities.h"
 #include "SceneLoadingContext.h"
 
@@ -311,6 +311,9 @@ namespace FlexKit
         if (node == InvalidHandle_t)
             node = GetZeroedNode();
 
+        if (!gameObject.hasView(TransformComponentID))
+            gameObject.AddView<SceneNodeView<>>(node);
+
         BrushComponentBlob brushComponent;
         memcpy(&brushComponent, buffer, bufferSize);
 
@@ -362,13 +365,8 @@ namespace FlexKit
 
 	void Scene::AddGameObject(GameObject& go, NodeHandle node)
 	{
-		go.AddView<SceneVisibilityView>(node, sceneID);
-
-		Apply(go, 
-			[&](SceneVisibilityView& visibility)
-			{
-				sceneEntities.push_back(visibility);
-			});
+		auto& view = go.AddView<SceneVisibilityView>(node, sceneID);
+        sceneEntities.push_back(view);
 	}
 
 
@@ -619,7 +617,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void PushPV(const Brush& brush, PVS& pvs, const float3 CameraPosition, float maxZ)
+    void PushPV(GameObject& gameObject, const Brush& brush, PVS& pvs, const float3 CameraPosition, float maxZ)
 	{
         auto brushPosition      = GetPositionW(brush.Node);
         auto distanceFromView   = (CameraPosition - brushPosition).magnitude();
@@ -655,7 +653,13 @@ namespace FlexKit
         const uint32_t usableLodLevel       = Max(requestedLodLevel, highestLoadedLod);
 
 		if (brush.MeshHandle != InvalidHandle_t)
-			pvs.push_back(PVEntry(brush, 0, CreateSortingID(false, false, (size_t)distanceFromView), usableLodLevel));
+			pvs.push_back(
+                PVEntry{
+                    .SortID         = CreateSortingID(false, false, (size_t)distanceFromView),
+                    .brush          = &brush,
+                    .gameObject     = &gameObject,
+                    .OcclusionID    = 0,
+                    .LODlevel       = usableLodLevel });
 	}
 
 
@@ -699,7 +703,7 @@ namespace FlexKit
                         const auto& brush = view.GetBrush();
 
 						if (Intersects(F, BS))
-                            PushPV(brush, pvs, POS);
+                            PushPV(*potentialVisible.entity, brush, pvs, POS);
 					});
 			}
 		}
@@ -1412,3 +1416,28 @@ namespace FlexKit
 
 
 }	/************************************************************************************************/
+
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2022 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

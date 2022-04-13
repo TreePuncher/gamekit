@@ -460,13 +460,9 @@ namespace FlexKit
 		struct AnimatorState
 		{
             AnimatorState() = default;
+            AnimatorState(GameObject* IN_gameObject, iAllocator& allocator);
 
-            AnimatorState(GameObject* IN_gameObject, iAllocator& allocator)
-                : gameObject    { IN_gameObject }
-                , animations    { &allocator    }
-                , inputValues   { &allocator    }
-                , inputIDs      { &allocator    } {}
-
+            ~AnimatorState();
 
             GameObject*                 gameObject  = nullptr;
             asIScriptObject*            obj         = nullptr;
@@ -509,6 +505,8 @@ namespace FlexKit
 	};
 
     using AnimatorView = AnimatorComponent::AnimatorView;
+
+    AnimatorView* GetAnimator(GameObject&);
 
     UpdateTask& UpdateAnimations(UpdateDispatcher& updateTask, double dT);
 

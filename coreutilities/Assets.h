@@ -127,10 +127,10 @@ namespace FlexKit
 	FLEXKITAPI size_t		ReadAssetTableSize	    (FILE* F);
 	FLEXKITAPI size_t		ReadAssetSize		    (FILE* F, ResourceTable* Table, size_t Index);
 
-	FLEXKITAPI void					AddAssetFile	(const char* FILELOC);
-	FLEXKITAPI AssetHandle			AddAssetBuffer	(Resource*);            // Will increment resource refcount
-	FLEXKITAPI Resource*			GetAsset		(AssetHandle RHandle);
-	FLEXKITAPI Pair<GUID_t, bool>	FindAssetGUID	(const char* Str);
+	FLEXKITAPI void					    AddAssetFile	(const char* FILELOC);
+	FLEXKITAPI AssetHandle			    AddAssetBuffer	(Resource*);            // Will increment resource refcount
+	FLEXKITAPI Resource*			    GetAsset		(AssetHandle RHandle);
+	FLEXKITAPI std::optional<GUID_t>    FindAssetGUID	(const char* Str);
 
 
 	FLEXKITAPI bool			ReadAssetTable	(FILE* F, ResourceTable* Out, size_t TableSize);

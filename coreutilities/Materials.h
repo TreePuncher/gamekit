@@ -184,17 +184,20 @@ namespace FlexKit
 
         static_vector<PassHandle>   GetPasses(MaterialHandle material) const
         {
+            static_vector<PassHandle> out;
+
             if (material == InvalidHandle_t)
-                return {};
+                return out;
 
             auto& materialData = materials[handles[material]];
-            if (materialData.Passes.size())
-                return materialData.Passes;
 
             if (materialData.parent != InvalidHandle_t)
-                return GetPasses(materialData.parent);
-            else
-                return {};
+                out = GetPasses(materialData.parent);
+
+            if (materialData.Passes.size())
+                out += materialData.Passes;
+
+            return out;
         }
 
         Vector<PassHandle>          GetActivePasses(iAllocator& allocator) const
@@ -263,7 +266,7 @@ namespace FlexKit
     };
 
 
-    using MaterialComponentView     = MaterialComponent::View;
+    using MaterialView = MaterialComponent::View;
 
 
     void SetMaterialHandle(GameObject& go, MaterialHandle material) noexcept;
@@ -272,7 +275,7 @@ namespace FlexKit
     template<typename TY>
     std::optional<TY> GetMaterialProperty(GameObject& go, const uint32_t ID) noexcept
     {
-        return Apply(go, [&](MaterialComponentView& view){ return view.GetProperty<TY>(ID); });
+        return Apply(go, [&](MaterialView& view){ return view.GetProperty<TY>(ID); });
     }
 
     template<typename TY>

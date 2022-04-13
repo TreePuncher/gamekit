@@ -1,6 +1,7 @@
 #pragma once
 #include "ShadowMapping.h"
 #include "AnimationComponents.h"
+#include "AnimationRendering.h"
 #include <fmt/format.h>
 
 namespace FlexKit
@@ -69,6 +70,7 @@ namespace FlexKit
 	ID3D12PipelineState* ShadowMapper::CreateShadowMapAnimatedPass(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("VS_Skinned_Main", "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
+        auto PShader = RS->LoadShader("PS_Main", "ps_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
 
 		/*
 		typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -101,6 +103,7 @@ namespace FlexKit
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature                         = rootSignature;
 			PSO_Desc.VS                                     = VShader;
+			PSO_Desc.PS                                     = PShader;
 			PSO_Desc.BlendState                             = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask                             = UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType                  = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
@@ -296,14 +299,15 @@ namespace FlexKit
 	ShadowMapPassData& ShadowMapper::ShadowMapPass(
 		FrameGraph&                             frameGraph,
         const PointLightShadowGatherTask&       shadowMaps,
-        UpdateTask&                       cameraUpdate,
-        GatherPassesTask&                       passes,
+        UpdateTask&                             cameraUpdate,
+        GatherPassesTask&                       gather,
         UpdateTask&                             shadowMapAcquire,
         ReserveConstantBufferFunction           reserveCB,
         ReserveVertexBufferFunction             reserveVB,
         static_vector<AdditionalShadowMapPass>& additional,
 		const double                            t,
-		iAllocator*                             allocator)
+		iAllocator*                             allocator,
+        AnimationPoseUpload*                    poses)
 	{
 		auto& shadowMapPass = allocator->allocate<ShadowMapPassData>(ShadowMapPassData{ allocator->allocate<Vector<TemporaryFrameResourceHandle>>(allocator) });
 
@@ -322,10 +326,10 @@ namespace FlexKit
 				    [&](FrameGraphNodeBuilder& builder, LocalShadowMapPassData& data)
 				    {
                         builder.AddDataDependency(cameraUpdate);
-                        builder.AddDataDependency(passes);
+                        builder.AddDataDependency(gather);
                         builder.AddDataDependency(shadowMapAcquire);
 				    },
-				    [=](LocalShadowMapPassData& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+				    [=, &gather](LocalShadowMapPassData& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 				    {
                         ProfileFunction();
 
@@ -362,7 +366,6 @@ namespace FlexKit
 					            if (!visables.size())
 						            return;
 
-
                                 static const Quaternion Orientations[6] = {
                                     Quaternion{   0,  90, 0 }, // Right
                                     Quaternion{   0, -90, 0 }, // Left
@@ -384,7 +387,9 @@ namespace FlexKit
 
                                 PVS                 brushes         { &allocator, visables.size() };
                                 Vector<GameObject*> animatedBrushes { &allocator, visables.size() };
-                                 
+
+                                auto& materials = MaterialComponent::GetComponent();
+
                                 for (auto& visable : visables)
                                 {
                                     ProfileFunctionLabled(VISIBILITY);
@@ -394,10 +399,25 @@ namespace FlexKit
                                     Apply(*entity,
                                         [&](BrushView& view)
                                         {
-                                            if (!view.GetBrush().Skinned)
-                                                PushPV(view.GetBrush(), brushes, pointLightPosition);
-                                            else
+                                            auto passes = materials.GetPasses(view.GetMaterial());
+
+                                            if (auto res = std::find_if(passes.begin(), passes.end(),
+                                                [](auto& pass)
+                                                {
+                                                    return pass == SHADOWMAPPASS;
+                                                }); res != passes.end())
+                                            {
+                                                PushPV(*entity, view.GetBrush(), brushes, pointLightPosition);
+                                            }
+
+                                            if (auto res = std::find_if(passes.begin(), passes.end(),
+                                                [](auto& pass)
+                                                {
+                                                    return pass == SHADOWMAPANIMATEDPASS;
+                                                }); res != passes.end())
+                                            {
                                                 animatedBrushes.push_back(entity);
+                                            }
                                         });
                                 }
 
@@ -408,7 +428,7 @@ namespace FlexKit
                                     float4x4 M[256];
                                 };
 
-                                CBPushBuffer animatedConstantBuffer = data.reserveCB(AlignedSize<Brush::VConstantsLayout>() * animatedBrushes.size() + AlignedSize<PoseConstants>() * animatedBrushes.size());
+                                CBPushBuffer animatedConstantBuffer = data.reserveCB((AlignedSize<Brush::VConstantsLayout>() + AlignedSize<PoseConstants>()) * animatedBrushes.size());
 
                                 auto PSO = resources.GetPipelineState(SHADOWMAPPASS);
 
@@ -522,10 +542,7 @@ namespace FlexKit
                                                 auto& pose      = poseView.GetPoseState();
                                                 auto& skeleton  = *pose.Sk;
 
-                                                struct poses
-                                                {
-                                                    float4x4 M[256];
-                                                }poseTemp;
+                                                PoseConstants poseTemp;
 
                                                 const size_t end = pose.JointCount;
                                                 for (size_t I = 0; I < end; ++I)
@@ -579,7 +596,6 @@ namespace FlexKit
                                 }
 
                                 shadowMaps.push_back(depthTarget);
-
                             }
 
                             ctx.EndEvent_DEBUG();

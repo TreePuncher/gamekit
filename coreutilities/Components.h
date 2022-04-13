@@ -384,7 +384,11 @@ namespace FlexKit
     };
 
 
-    bool LoadPrefab(GameObject&, uint64_t assetID, iAllocator& allocator, void* context = nullptr);
+    /************************************************************************************************/
+
+
+    bool LoadPrefab(GameObject&, const char* assetID,   iAllocator& allocator, void* user = nullptr);
+    bool LoadPrefab(GameObject&, uint64_t assetID,      iAllocator& allocator, void* user = nullptr);
 
 
     /************************************************************************************************/

@@ -78,7 +78,8 @@ Vertex VS_Skinned_Main(Skinned_Vertex IN)
     const float4 POS_VS = mul(View, float4(POS_WT, 1));
 
     Vertex Out;
-    Out.pos                 = float4(POS_DC.xy, POS_VS.z / maxZ, 1);
+    Out.pos                 = POS_DC;
+    Out.pos_VS              = POS_VS;
     Out.arrayTargetIndex    = arrayTarget;
 
     return Out;
