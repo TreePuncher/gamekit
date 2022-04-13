@@ -1261,7 +1261,7 @@ namespace FlexKit
     void UpdateThirdPersonCameraControllers(const float2& mouseInput, const double dT)
     {
         for (auto& controller : CameraControllerComponent::GetComponent())
-            controller.componentData.Update(mouseInput, dT);
+            controller.componentData.UpdateCharacter(mouseInput, dT);
     }
 
 
@@ -1546,13 +1546,13 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void ThirdPersonCamera::Update(const float2 mouseInput, const double dt)
+    void ThirdPersonCamera::UpdateCharacter(const float2 mouseInput, const double dt)
     {
-        Update(mouseInput, keyStates, dt);
+        UpdateCharacter(mouseInput, keyStates, dt);
     }
 
 
-    void ThirdPersonCamera::Update(const float2 mouseInput, const ThirdPersonCamera::KeyStates& keyStates, const double dt)
+    void ThirdPersonCamera::UpdateCharacter(const float2 mouseInput, const ThirdPersonCamera::KeyStates& keyStates, const double dt)
     {
         auto& controllerImpl = CharacterControllerComponent::GetComponent()[controller];
 
@@ -1562,8 +1562,8 @@ namespace FlexKit
         const float focusHeight     = controllerImpl.focusHeight;
         const float cameraDistance  = controllerImpl.cameraDistance;
 
-        const double deltaTime = 1.0 / 60.0f;
-        //while(controllerImpl.updateTimer >= deltaTime)
+        const double deltaTime = dt;// 1.0 / 60.0f;
+        while(controllerImpl.updateTimer >= deltaTime)
         {
             controllerImpl.updateTimer -= deltaTime;
 
@@ -1629,46 +1629,63 @@ namespace FlexKit
 
             if (desiredMove.magnitudeSq() * 0.5f >= deltaPos.magnitude())
                 velocity = 0;
-
-            const float3 footPosition   = pxVec3ToFloat3(controllerImpl.controller->getFootPosition());
-
-            auto& layer = PhysXComponent::GetComponent().GetLayer_ref(controllerImpl.layer);
-
-            const float3 origin1    = footPosition + up * 3 + 2.0f * -forward;
-            const float3 ray1       = -forward.normal();
-
-            float cameraZ = cameraDistance;
-
-            layer.RayCast(origin1, ray1, 10,
-                [&](auto hit)
-                {
-                    cameraZ = Min(hit.distance + 1.0f, cameraDistance);
-                    return false;
-                });
-
-            const float3 origin2 = footPosition - forward * cameraZ + up * 10.0f;
-            const float3 ray2    = (-up).normal();
-            float cameraMinY     = 0;
-
-            layer.RayCast(origin2, ray2, 100,
-                [&](auto hit)
-                {
-                    cameraMinY = hit.distance - origin2.y + 1;
-                    return false;
-                });
-
-            const auto cameraY      = Max(focusHeight - std::tanf(pitch) * cameraZ, cameraMinY);
-
-            SetPositionW(objectNode, footPosition);
-
-            const auto position             = footPosition - forward * cameraZ + up * cameraY;
-            const auto newCameraPosition    = lerp(position, cameraPosition, 0.65f);
-            cameraPosition                  = newCameraPosition;
-
-            SetPositionW(yawNode, cameraPosition);
-
-            CameraComponent::GetComponent().MarkDirty(camera);
         }
+    }
+
+
+    /************************************************************************************************/
+
+
+    void ThirdPersonCamera::UpdateCamera(const float2 mouseInput, const KeyStates& keyState, const double dt)
+    {
+        auto& controllerImpl = CharacterControllerComponent::GetComponent()[controller];
+
+        const float focusHeight     = controllerImpl.focusHeight;
+        const float cameraDistance  = controllerImpl.cameraDistance;
+
+        
+        const float3 footPosition   = pxVec3ToFloat3(controllerImpl.controller->getFootPosition());
+
+        auto& layer = PhysXComponent::GetComponent().GetLayer_ref(controllerImpl.layer);
+
+        const float3 forward    { (GetForwardVector() * float3(1, 0, 1)).normal() };
+        const float3 right      { GetRightVector() };
+        const float3 up         { 0, 1, 0 };
+
+        const float3 origin1    = footPosition + up * 3 + 2.0f * -forward;
+        const float3 ray1       = -forward.normal();
+
+        float cameraZ = cameraDistance;
+
+        layer.RayCast(origin1, ray1, 10,
+            [&](auto hit)
+            {
+                cameraZ = Min(hit.distance + 1.0f, cameraDistance);
+                return false;
+            });
+
+        const float3 origin2 = footPosition - forward * cameraZ + up * 10.0f;
+        const float3 ray2    = (-up).normal();
+        float cameraMinY     = 0;
+
+        layer.RayCast(origin2, ray2, 100,
+            [&](auto hit)
+            {
+                cameraMinY = hit.distance - origin2.y + 1;
+                return false;
+            });
+
+        const auto cameraY      = Max(focusHeight - std::tanf(pitch) * cameraZ, cameraMinY);
+
+        SetPositionW(objectNode, footPosition);
+
+        const auto position             = footPosition - forward * cameraZ + up * cameraY;
+        const auto newCameraPosition    = lerp(position, cameraPosition, 0.65f);
+        cameraPosition                  = newCameraPosition;
+
+        SetPositionW(yawNode, cameraPosition);
+
+        CameraComponent::GetComponent().MarkDirty(camera);
     }
 
 

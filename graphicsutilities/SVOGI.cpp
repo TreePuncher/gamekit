@@ -1049,7 +1049,7 @@ namespace FlexKit
         for (auto& entityHandle : scene.sceneEntities)
         {
             Apply(*visabilityComponent[entityHandle].entity,
-                [&](MaterialComponentView& material,
+                [&](MaterialView& material,
                     BrushView& brush)
                 {
                     auto passes = material.GetPasses();

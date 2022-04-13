@@ -360,11 +360,6 @@ void AnimationEditorObject::Release()
 
 bool AnimationEditorObject::RegisterInterface(EditorScriptEngine& engine)
 {
-    auto api = engine.GetScriptEngine();
-    int res;
-
-    res = api->RegisterInterface("AnimatorInterface");                                                                                           FK_ASSERT(res > 0);
-    res = api->RegisterInterfaceMethod("AnimatorInterface", "void Update(GameObject@ object, double dt)");                                       FK_ASSERT(res > 0);
 
     return true;
 }

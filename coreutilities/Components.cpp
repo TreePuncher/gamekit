@@ -111,10 +111,23 @@ namespace FlexKit
     }
 
 
+    bool LoadPrefab(GameObject& gameObject, const char* assetID, iAllocator& allocator, void* user_ptr)
+    {
+        auto guid = FlexKit::FindAssetGUID(assetID);
+        if (guid)
+            return LoadPrefab(gameObject, guid.value(), allocator, user_ptr);
+        else
+            false;
+    }
+
+
     bool LoadPrefab(GameObject& gameObject, uint64_t assetID, iAllocator& allocator, void* user_ptr)
     {
         auto assetHandle    = LoadGameAsset(assetID);
-        auto asset          = static_cast<PrefabResource*>(GetAsset(assetID));
+        if (assetHandle == -1)
+            return false;
+
+        auto asset          = static_cast<PrefabResource*>(GetAsset(assetHandle));
 
         if (!asset)
             return false;

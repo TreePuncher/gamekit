@@ -215,7 +215,7 @@ void CreateMultiplayerScene(GameWorld& world)
     layer.AddUpdateCallback(
         [&](WorkBarrier& barrier, iAllocator&, double dT)
         {
-            UpdateThirdPersonCameraControllers({}, dT);
+            //UpdateThirdPersonCameraControllers({}, dT);
         });
 }
 

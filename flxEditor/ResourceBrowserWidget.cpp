@@ -154,7 +154,7 @@ int ResourceItemModel::rowCount(const QModelIndex& parent) const
 
 int ResourceItemModel::columnCount(const QModelIndex& parent) const
 {
-    return 3;
+    return 4;
 }
 
 
@@ -172,6 +172,8 @@ QVariant ResourceItemModel::headerData(int section, Qt::Orientation orientation,
                 return QString("ResourceType");
             case 2:
                 return QString("User Count");
+            case 3:
+                return QString("User ID");
             default:
                 return QString("Header #%1").arg(section);
             }
@@ -227,6 +229,8 @@ QVariant ResourceItemModel::data(const QModelIndex& index, int role) const
         }
         case 2:
             return QVariant{ std::to_string(project.resources[index.row()]->resource.use_count() - 1).c_str() };
+        case 3:
+            return QVariant{ std::to_string(project.resources[index.row()]->resource->GetResourceGUID()).c_str()};
         default:
             return QVariant{ tr("Datass!") };
         }

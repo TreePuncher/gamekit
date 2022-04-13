@@ -1,5 +1,6 @@
-#include "WorldRender.h"
+#include "AnimationRendering.h"
 #include "TextureStreamingUtilities.h"
+#include "WorldRender.h"
 
 #include <d3d12.h>
 #include <d3dcompiler.h>
@@ -554,7 +555,7 @@ namespace FlexKit
 			enableOcclusionCulling	    { false	},
 
             UAVPool                     { renderSystem, 512 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
-            UAVTexturePool              { renderSystem, 256 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent },
+            UAVTexturePool              { renderSystem, 512 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent },
             RTPool                      { renderSystem, 2048 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget, persistent },
 
             timeStats                   { renderSystem.CreateTimeStampQuery(256) },
@@ -758,6 +759,13 @@ namespace FlexKit
                 drawSceneDesc.reserveCB,
                 temporary);
 
+        auto& poses =
+            UploadPoses(
+                frameGraph,
+                passes,
+                drawSceneDesc.reserveCB,
+                temporary);
+
         auto& occlutionConstants =
             OcclusionCulling(
                 dispatcher,
@@ -778,7 +786,8 @@ namespace FlexKit
                 gbuffer,
                 depthTarget.Get(),
                 reserveCB,
-                temporary);
+                temporary,
+                &poses);
 
         for (auto& pass : drawSceneDesc.additionalGbufferPasses)
             pass();

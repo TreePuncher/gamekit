@@ -106,6 +106,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\coreutilities\AnimationRendering.h" />
     <ClInclude Include="..\coreutilities\Application.h" />
     <ClInclude Include="..\coreutilities\Assets.h" />
     <ClInclude Include="..\coreutilities\CameraUtilities.h" />
@@ -193,6 +194,7 @@
     <ClCompile Include="..\coreutilities\AllSourceFiles.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\coreutilities\AnimationRendering.cpp" />
     <ClCompile Include="..\coreutilities\Application.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>

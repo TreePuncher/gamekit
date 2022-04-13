@@ -921,8 +921,11 @@ namespace FlexKit
         float3 GetHeadPosition() const;
 
 
-        void Update(const float2 mouseInput, const double dt);
-        void Update(const float2 mouseInput, const KeyStates& keyState, const double dt);
+        void UpdateCharacter(const float2 mouseInput, const double dt);
+        void UpdateCharacter(const float2 mouseInput, const KeyStates& keyState, const double dt);
+
+        void UpdateCamera(const float2 mouseInput, const KeyStates& keyState, const double dt);
+
 
         ThirdPersonCameraFrameState GetFrameState() const
         {

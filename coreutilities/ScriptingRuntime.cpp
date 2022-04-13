@@ -271,7 +271,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void RegisterGameObjectCore(asIScriptEngine* scriptEngine)
+    void RegisterRuntimeAPI(asIScriptEngine* scriptEngine)
     {
         RegisterScriptArray(scriptEngine, true);
         RegisterScriptAny(scriptEngine);
@@ -386,6 +386,17 @@ namespace FlexKit
         res = scriptEngine->RegisterObjectMethod("GameObject", "bool            Query(ComponentID_t)",          asFUNCTION(QueryForComponent), asCALL_CDECL_OBJFIRST);  FK_ASSERT(res > 0);
         res = scriptEngine->RegisterObjectMethod("GameObject", "PoseState@      GetPoseState()",                asFUNCTION(GetPoseState_AS),   asCALL_CDECL_OBJFIRST);  FK_ASSERT(res > 0);
         res = scriptEngine->RegisterObjectMethod("GameObject", "Animator@       GetAnimator()",                 asFUNCTION(GetAnimator_AS),   asCALL_CDECL_OBJFIRST);   FK_ASSERT(res > 0);
+
+
+        /************************************************************************************************/
+
+
+        res = scriptEngine->RegisterInterface("AnimatorInterface");                                                         FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterInterfaceMethod("AnimatorInterface", "void Update(GameObject@ object, double dt)");     FK_ASSERT(res > 0);
+
+
+        /************************************************************************************************/
+
 
         int x = 0;
     }
@@ -1017,12 +1028,25 @@ namespace FlexKit
     std::mutex                                       m;
     FlexKit::CircularBuffer<asIScriptContext*, 128>  contexts;
 
+    void DefaultMessageCallback(const asSMessageInfo* msg, void* param)
+    {
+        const char* type = "ERR ";
+        if (msg->type == asMSGTYPE_WARNING)
+            type = "WARN";
+        else if (msg->type == asMSGTYPE_INFORMATION)
+            type = "INFO";
+
+        FK_LOG_INFO("%s (%d, %d) : %s : %s\n", msg->section, msg->row, msg->col, type, msg->message);
+    }
+
     void InitiateScriptRuntime()
     {
         scriptEngine = asCreateScriptEngine();
 
         for (size_t I = 0; I < 128; I++)
             contexts.push_back(scriptEngine->CreateContext());
+
+        scriptEngine->SetMessageCallback(asFUNCTION(DefaultMessageCallback), nullptr, asCALL_CDECL);
     }
 
 
@@ -1115,20 +1139,19 @@ namespace FlexKit
         if (module_ptr)
             return module_ptr;
 
-        auto asset      = FlexKit::LoadGameAsset(assetID);
-        auto asset_ptr  = static_cast<ScriptResourceBlob*>(GetAsset(asset));
+        auto assetHandle = FlexKit::LoadGameAsset(assetID);
+        if (assetHandle == -1)
+            return nullptr;
+
+        auto asset_ptr  = static_cast<ScriptResourceBlob*>(GetAsset(assetHandle));
+        EXITSCOPE(FlexKit::FreeAsset(assetHandle));
 
         if (asset_ptr->Type != FlexKit::EResource_ByteCode)
-        {
-            FlexKit::FreeAsset(asset);
             return nullptr;
-        }
 
         char* buffer    = ((char*)asset_ptr) + sizeof(ScriptResourceBlob);
         size_t blobSize = asset_ptr->blobSize;
         auto module     = LoadByteCode(moduleName, buffer, blobSize);
-
-        FlexKit::FreeAsset(asset);
 
         return module;
     }

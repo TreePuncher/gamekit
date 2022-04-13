@@ -9,6 +9,12 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
+    struct AnimationPoseUpload;
+
+
+    /************************************************************************************************/
+
+
     class GBuffer
 	{
 	public:
@@ -272,6 +278,9 @@ namespace FlexKit
     };
 
 
+    constexpr PassHandle GBufferPassID          = PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) };
+    constexpr PassHandle GBufferAnimatedPassID  = PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED_ANIMATED) };
+
     /************************************************************************************************/
 
 
@@ -299,7 +308,8 @@ namespace FlexKit
 			                    GBuffer&                        gbuffer,
 			                    ResourceHandle                  depthTarget,
 			                    ReserveConstantBufferFunction   reserveCB,
-			                    iAllocator*                     allocator);
+			                    iAllocator*                     allocator,
+                                AnimationPoseUpload*            poses = nullptr);
 
 
         LightBufferUpdate& UpdateLightBuffers(

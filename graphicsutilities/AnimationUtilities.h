@@ -342,7 +342,12 @@ namespace FlexKit
 
     struct AnimatorBlobHeader
     {
-        uint64_t scriptResourceIdx;
+        uint32_t CRC32;
+        uint32_t blockType;
+        uint32_t blockSize;
+        uint32_t componentID;
+
+        uint64_t scriptResource;
         uint32_t inputCount;
         uint32_t stateCount;
     };

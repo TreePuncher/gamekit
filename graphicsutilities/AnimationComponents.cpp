@@ -254,6 +254,22 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    AnimatorComponent::AnimatorState::AnimatorState(GameObject* IN_gameObject, iAllocator& allocator)
+        : gameObject    { IN_gameObject }
+        , animations    { &allocator    }
+        , inputValues   { &allocator    }
+        , inputIDs      { &allocator    } {}
+
+    AnimatorComponent::AnimatorState::~AnimatorState()
+    {
+        if (obj)
+            obj->Release();
+    }
+
+
+    /************************************************************************************************/
+
+
     std::optional<AnimatorComponent::InputValue*> AnimatorComponent::AnimatorView::GetInputValue(uint32_t idx) noexcept
     {
         auto& state = GetState();
@@ -423,6 +439,15 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    AnimatorView* GetAnimator(GameObject& gameObject)
+    {
+        return Apply(gameObject, [](AnimatorView& view) { return &view; }, []() -> AnimatorView* { return nullptr; });
+    }
+
+
+    /************************************************************************************************/
+
+
     UpdateTask& UpdateAnimations(UpdateDispatcher& updateTask, double dT)
     {
         struct _ {};
@@ -517,7 +542,7 @@ namespace FlexKit
 					{
                         auto& brush = drawView.GetBrush();
 
-                        if (brush.Skinned && Intersects(F, BS))
+                        if (Intersects(F, BS))
                         {
                             const auto res = ComputeLOD(brush, POS, 10'000.0f);
                             out_skinned.push_back({ &brush, &skeleton.GetPoseState(), res.recommendedLOD });
@@ -903,9 +928,9 @@ namespace FlexKit
             animator.SetAnimationState(playId, state.initialState);
         }
 
-        if (header.scriptResourceIdx != -1)
+        if (header.scriptResource != -1)
         {
-            auto scriptModule   = LoadByteCodeAsset(header.scriptResourceIdx);
+            auto scriptModule   = LoadByteCodeAsset(header.scriptResource);
             auto func           = scriptModule->GetFunctionByName("InitiateAnimator");
 
             if (func)

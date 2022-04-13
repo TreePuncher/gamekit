@@ -181,7 +181,7 @@ void EditorScriptEngine::RegisterGadget(asIScriptObject* gObj)
 void EditorScriptEngine::RegisterCoreTypesAPI(FlexKit::iAllocator* allocator)
 {
     FlexKit::RegisterMathTypes(FlexKit::GetScriptEngine(), allocator);
-    FlexKit::RegisterGameObjectCore(FlexKit::GetScriptEngine());
+    FlexKit::RegisterRuntimeAPI(FlexKit::GetScriptEngine());
 }
 
 
@@ -341,7 +341,7 @@ std::optional<FlexKit::Blob> EditorScriptEngine::GetByteCode(const std::string& 
         return {};
 
     BytecodeBlobStream stream;
-    scriptModule->SaveByteCode(&stream, true);
+    scriptModule->SaveByteCode(&stream, false);
 
     return stream.GetBlob();
 }

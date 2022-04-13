@@ -52,6 +52,9 @@ namespace FlexKit
     };
 
 
+    struct AnimationPoseUpload;
+
+
     /************************************************************************************************/
 
     ShadowPassMatrices CalculateShadowMapMatrices(const float3 pos, const float r, const float T);
@@ -59,8 +62,12 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    constexpr PSOHandle SHADOWMAPPASS           = PSOHandle(GetTypeGUID(SHADOWMAPPASS));
-    constexpr PSOHandle SHADOWMAPANIMATEDPASS   = PSOHandle(GetTypeGUID(SHADOWMAPANIMATEDPASS));
+    constexpr PSOHandle SHADOWMAPPASS               = PSOHandle(GetTypeGUID(SHADOWMAPPASS));
+    constexpr PSOHandle SHADOWMAPANIMATEDPASS       = PSOHandle(GetTypeGUID(SHADOWMAPANIMATEDPASS));
+
+
+    constexpr PassHandle ShadowMapPassID            = PassHandle{ GetTypeGUID(SHADOWMAPPASS) };
+    constexpr PassHandle ShadowMapAnimatedPassID    = PassHandle{ GetTypeGUID(SHADOWMAPANIMATEDPASS) };
 
 
     /************************************************************************************************/
@@ -87,7 +94,8 @@ namespace FlexKit
                                 ReserveVertexBufferFunction             reserveVB,
                                 static_vector<AdditionalShadowMapPass>& additional,
 		                        const double                            t,
-		                        iAllocator*                             allocator);
+		                        iAllocator*                             allocator,
+                                AnimationPoseUpload*                    poses = nullptr);
 
     private:
 
