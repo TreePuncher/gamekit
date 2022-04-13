@@ -785,11 +785,14 @@ namespace FlexKit
 
                 static std::mutex m;
 
-                if (!m.try_lock())
+                if (!m.try_lock() || !PVS.size())
                     return;
 
                 const float3 cameraPosition = GetPositionW(GetCameraNode(camera));
-                auto copyHandle = renderSystem.OpenUploadQueue();
+
+                bool submit = false;
+
+                CopyContextHandle copyHandle = InvalidHandle_t;
 
                 for (auto& visable : PVS)
                 {
@@ -800,13 +803,21 @@ namespace FlexKit
                         auto triMesh    = GetMeshResource(visable.brush->MeshHandle);
                         auto lodsLoaded = triMesh->GetHighestLoadedLodIdx();
 
+                        if (!submit)
+                        {
+                            copyHandle = renderSystem.OpenUploadQueue();
+                            submit = true;
+                        }
+
                         for (auto itr = lodsLoaded - 1; itr >= res.requestedLOD; itr--)
                             LoadLOD(triMesh, itr, renderSystem, copyHandle, allocator);
                     }
 
                 }
 
-                renderSystem.SubmitUploadQueues(SYNC_Graphics, &copyHandle);
+                if(submit)
+                    renderSystem.SubmitUploadQueues(SYNC_Graphics, &copyHandle);
+
                 m.unlock();
 			});
     }
