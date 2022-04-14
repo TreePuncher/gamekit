@@ -3,7 +3,6 @@
 #include <limits>
 #include <regex>
 
-
 using FlexKit::GameFramework;
 
 
@@ -109,10 +108,30 @@ WorldStateUpdate HostWorldStateMangager::Update(EngineCore& core, UpdateDispatch
 
                         // Send Player Updates
                         PlayerFrameState localState = GetPlayerFrameState(localPlayer);
-                        currentInputState.mousedXY  = base.renderWindow.mouseState.Normalized_dPos;
+                        const auto leftStick        = base.gamepads.GetLeftJoyStick();
+                        auto rightStick             = base.gamepads.GetRightJoyStick() * float2(1, -1);
+
+                        if (rightStick.Magnitude() < 0.1f)
+                            rightStick = float2{ 0, 0 };
+
+                        float x = currentInputState.X + leftStick.x;
+                        float y = currentInputState.Y + leftStick.y;
+
+                        x = clamp(-1.0f, x, 1.0f);
+                        y = clamp(-1.0f, y, 1.0f);
+
+                        float2 XY = rightStick / 50.0F + base.renderWindow.mouseState.Normalized_dPos;
+                        XY.x = clamp(-1.0f, XY.x, 1.0f);
+                        XY.y = clamp(-1.0f, XY.y, 1.0f);
+
                         localState.inputState       = currentInputState;
 
-                        UpdateLocalPlayer(localPlayer, currentInputState, dT);
+                        auto temp = currentInputState;
+                        temp.X += x;
+                        temp.Y += y;
+                        temp.mousedXY = XY;
+
+                        UpdateLocalPlayer(localPlayer, temp, dT);
                         world.UpdatePlayer(localState, dT);
 
                         for (auto& playerUpdate : pendingRemoteUpdates)

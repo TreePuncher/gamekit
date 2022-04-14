@@ -285,6 +285,9 @@
     <ClInclude Include="..\coreutilities\AnimationRendering.h">
       <Filter>Headers\coreutilities</Filter>
     </ClInclude>
+    <ClInclude Include="GamepadInput.h">
+      <Filter>Source\TestGame</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\coreutilities\AllSourceFiles.cpp">
@@ -493,6 +496,9 @@
     </ClCompile>
     <ClCompile Include="..\coreutilities\AnimationRendering.cpp">
       <Filter>Source\graphicsutilities</Filter>
+    </ClCompile>
+    <ClCompile Include="GamepadInput.cpp">
+      <Filter>Headers\TestGame</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

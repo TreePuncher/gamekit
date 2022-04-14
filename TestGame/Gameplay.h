@@ -151,12 +151,10 @@ struct GadgetData
 
 struct PlayerInputState
 {
-    float forward   = 0;
-    float backward  = 0;
-    float left      = 0;
-    float right     = 0;
-    float up        = 0;
-    float down      = 0;
+    float Y     = 0;
+    float X     = 0;
+    float up    = 0;
+    float down  = 0;
 
     enum class Event
     {

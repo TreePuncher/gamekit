@@ -111,7 +111,13 @@ WorldStateUpdate ClientWorldStateMangager::Update(EngineCore& core, UpdateDispat
                         // Send Player Updates
                         PlayerFrameState localState = GetPlayerFrameState(localPlayer);
                         currentInputState.mousedXY  = base.renderWindow.mouseState.Normalized_dPos;
-                        localState.inputState = currentInputState;
+                        auto leftStick  = base.gamepads.GetLeftJoyStick();
+                        auto rightStick = base.gamepads.GetRightJoyStick();
+
+                        currentInputState.X = leftStick.x;
+                        currentInputState.Y = leftStick.y;
+
+                        localState.inputState       = currentInputState;
 
                         UpdateLocalPlayer(localPlayer, currentInputState, dT);
                         world.UpdatePlayer(localState, dT);

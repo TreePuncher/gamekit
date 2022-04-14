@@ -15,16 +15,16 @@
         	"cppcoro",
         	"directxmesh",
         	"directxtk12",
-            	"imgui",
+        	"fmt",
+            "imgui",
         	"implot",
 		"imguizmo",
+		"ois",
         	"physx",
-        	"fmt",
+		"scnlib",
         	"slikenet",
         	"stb",
-		"scnlib",
         	"tinygltf",
-        	"range-v3",
-        	"gainput"
+        	"range-v3"
     	]
 }

@@ -19,12 +19,8 @@ void UpdateLocalPlayer(GameObject& gameObject, const PlayerInputState& currentIn
         {
             const ThirdPersonCamera::KeyStates tpc_keyState =
             {
-                .forward    = currentInputState.forward > 0.0,
-                .backward   = currentInputState.backward > 0.0,
-                .left       = currentInputState.left > 0.0,
-                .right      = currentInputState.right > 0.0,
-                .up         = currentInputState.up > 0.0,
-                .down       = currentInputState.down > 0.0,
+                .x = currentInputState.X,
+                .y = currentInputState.Y,
             };
 
             const auto cameraState = camera.GetData().GetFrameState();
@@ -78,20 +74,20 @@ bool HandleEvents(PlayerInputState& keyState, Event evt)
     if (evt.InputSource == FlexKit::Event::Keyboard)
     {
         auto state = evt.Action == Event::Pressed ? 1.0f : 0.0f;
-
+        
         switch (evt.mData1.mINT[0])
         {
         case TPC_MoveForward:
-            keyState.forward = state;
+            keyState.Y = state;
             return true;
         case TPC_MoveBackward:
-            keyState.backward = state;
+            keyState.Y = -state;
             return true;
         case TPC_MoveLeft:
-            keyState.left = state;
+            keyState.X = -state;
             return true;
         case TPC_MoveRight:
-            keyState.right = state;
+            keyState.X = state;
             return true;
         case TPC_MoveUp:
             keyState.up = state;
@@ -176,7 +172,7 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
 
         auto& animator  = *GetAnimator(prefab);
         auto input      = animator.GetInputValue(0);
-        (*input)->x = 10;
+        (*input)->x = 0.0f;
 
         SetBoundingSphereFromMesh(prefab);
     }

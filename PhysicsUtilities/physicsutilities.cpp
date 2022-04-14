@@ -5,6 +5,7 @@
 #include <PxPhysics.h>
 #include <extensions/PxExtensionsAPI.h>
 #include <cooking/PxCooking.h>
+#include <fmt/printf.h>
 #include "..\coreutilities\SceneLoadingContext.h"
 
 using namespace physx;
@@ -1042,22 +1043,20 @@ namespace FlexKit
 			        switch (evt.mData1.mINT[0])
 			        {
 			        case TPC_MoveForward:
-				        keyStates.forward	= state;
+				        keyStates.y	= state ? 1 : 0;
                         return true;
 			        case TPC_MoveBackward:
-				        keyStates.backward	= state;
+				        keyStates.y = state ? -1 : 0;
                         return true;
 			        case TPC_MoveLeft:
-				        keyStates.left		= state;
+                        keyStates.x = state ? -1 : 0;
                         return true;
 			        case TPC_MoveRight:
-				        keyStates.right		= state;
+                        keyStates.x = state ? 1 : 0;
                         return true;
                     case TPC_MoveUp:
-                        keyStates.up        = state;
                         return true;
                     case TPC_MoveDown:
-                        keyStates.down      = state;
                         return true;
 			        }
 		        }
@@ -1582,18 +1581,14 @@ namespace FlexKit
             const float3 right      { GetRightVector() };
             const float3 up         { 0, 1, 0 };
 
-            movementVector += keyStates.forward     ? forward   : float3::Zero();
-            movementVector -= keyStates.backward    ? forward   : float3::Zero();
-            movementVector += keyStates.right       ? right     : float3::Zero();
-            movementVector -= keyStates.left        ? right     : float3::Zero();
-            movementVector += keyStates.up          ? up        : float3::Zero();
+            movementVector += keyStates.x * right;
+            movementVector += keyStates.y * forward;
 
-            if (keyStates.down)
-                movementVector -= up;
-
-            if (keyStates.KeyPressed())
+            if (movementVector.magnitudeSq() > 0.05f)
             {
                 movementVector.normalize();
+                movementVector *= float2(keyStates.x, keyStates.y).Magnitude();
+
                 velocity += movementVector * acceleration * (float)deltaTime;
             }
             
