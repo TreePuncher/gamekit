@@ -893,17 +893,8 @@ namespace FlexKit
 
         struct KeyStates
         {
-            bool forward  = false;
-            bool backward = false;
-            bool left     = false;
-            bool right    = false;
-            bool up       = false;
-            bool down     = false;
-
-            bool KeyPressed() const
-            {
-                return forward | backward | left | right | up | down;
-            }
+            float x;
+            float y;
         };
 
         Quaternion	GetOrientation()     const;

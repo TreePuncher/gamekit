@@ -12,12 +12,14 @@
 #include "TextureStreamingUtilities.h"
 #include "RayTracingUtilities.h"
 #include "DebugUI.h"
+#include "GamepadInput.h"
 
 #include <angelscript.h>
 #include <angelscript/scriptstdstring/scriptstdstring.h>
 #include <angelscript/scriptbuilder/scriptbuilder.h>
 #include <imgui.h>
 #include <fmod.hpp>
+#include <fmt/printf.h>
 
 using FlexKit::WorldRender;
 using FlexKit::FKApplication;
@@ -126,6 +128,18 @@ inline FlexKit::UpdateTask* QueueSoundUpdate(FlexKit::UpdateDispatcher& Dispatch
 
 /************************************************************************************************/
 
+struct ControllerInput
+{
+    static_vector<float>    axis;
+    static_vector<bool>     button;
+};
+
+class XInputState
+{
+
+};
+
+/************************************************************************************************/
 
 
 class BaseState : public FrameworkState
@@ -140,7 +154,7 @@ public:
 			depthBuffer		    { IN_Framework.core.RenderSystem, renderWindow.GetWH() },
 
 			vertexBuffer	    { IN_Framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 1, false) },
-			constantBuffer	    { IN_Framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 128, false) },
+			constantBuffer	    { IN_Framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 32, false) },
 			asEngine		    { asCreateScriptEngine() },
 			streamingEngine	    { IN_Framework.core.RenderSystem, IN_Framework.core.GetBlockMemory() },
             sounds              { IN_Framework.core.Threads,      IN_Framework.core.GetBlockMemory() },
@@ -174,7 +188,8 @@ public:
             staticBodies        { physics },
             characterControllers{ physics, framework.core.GetBlockMemory() },
             orbitCameras        { framework.core.GetBlockMemory() },
-            debugUI             { framework.core.RenderSystem, framework.core.GetBlockMemory() }
+            debugUI             { framework.core.RenderSystem, framework.core.GetBlockMemory() },
+            gamepads            { renderWindow.WindowHandle() }
 	{
 		auto& RS = *IN_Framework.GetRenderSystem();
 		RS.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS6CBVs4SRVs, LoadSpriteTextPSO		        });
@@ -205,6 +220,9 @@ public:
 
         materials.Add2Pass(gbufferPass,         GBufferPassID);
         materials.Add2Pass(gbufferAnimatedPass, GBufferAnimatedPassID);
+
+        gamepads.SetAxisMultiplier(2, -1.0f);
+        gamepads.SetAxisMultiplier(4, -1.0f);
 	}
 
 
@@ -225,6 +243,7 @@ public:
     {
         UpdateInput();
         renderWindow.UpdateCapturedMouseInput(dT);
+        gamepads.Update();
 
         if(enableHud)
             debugUI.Update(renderWindow, core, dispatcher, dT);
@@ -427,7 +446,7 @@ public:
     CameraControllerComponent       orbitCameras;
     SoundSystem			            sounds;
 
-
+    GamepadInput                    gamepads;
     ImGUIIntegrator                 debugUI;
 	TextureStreamingEngine		    streamingEngine;
     iRayTracer&                     rtEngine;
@@ -436,7 +455,7 @@ public:
 
 /**********************************************************************
 
-Copyright (c) 2021 Robert May
+Copyright (c) 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

@@ -252,6 +252,9 @@ namespace FlexKit
         }
 
 
+        HWND						WindowHandle() { return hWindow; }
+
+
         RenderSystem*               renderSystem;
         IDXGISwapChain4*            swapChain;
         ResourceHandle              backBuffer;

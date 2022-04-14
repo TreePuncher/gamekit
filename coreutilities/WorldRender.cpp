@@ -555,8 +555,7 @@ namespace FlexKit
 			enableOcclusionCulling	    { false	},
 
             UAVPool                     { renderSystem, 512 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
-            UAVTexturePool              { renderSystem, 512 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent },
-            RTPool                      { renderSystem, 2048 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget, persistent },
+            RTPool                      { renderSystem, 1024 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget, persistent },
 
             timeStats                   { renderSystem.CreateTimeStampQuery(256) },
             timingReadBack              { renderSystem.CreateReadBackBuffer(512) }, 
@@ -734,7 +733,6 @@ namespace FlexKit
         // Add Resources
         AddGBufferResource(gbuffer, frameGraph);
         frameGraph.AddMemoryPool(&UAVPool);
-        frameGraph.AddMemoryPool(&UAVTexturePool);
         frameGraph.AddMemoryPool(&RTPool);
         frameGraph.dataDependencies.push_back(&IKUpdate);
 

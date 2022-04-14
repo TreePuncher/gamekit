@@ -3894,7 +3894,8 @@ namespace FlexKit
 		/*
 		for (auto resource : ctx.freeResources)
 			resource->Release();
-			*/
+		*/
+
 		return CopyContextHandle{ currentIdx };
 	}
 
