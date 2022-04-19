@@ -452,7 +452,6 @@ namespace FlexKit
     {
     public:
         ResourceBlob CreateBlob() const override;
-        const std::string& GetResourceID() const noexcept override { return ID;  }
 
         uint32_t AddSceneEntity(SceneEntity entity)
         {
@@ -462,7 +461,6 @@ namespace FlexKit
             return idx;
         }
 
-
         uint32_t AddSceneNode(SceneNode node)
         {
             const auto idx = (uint32_t)nodes.size();
@@ -471,8 +469,11 @@ namespace FlexKit
             return idx;
         }
 
-        const ResourceID_t GetResourceTypeID() const noexcept override { return SceneResourceTypeID; }
+        const ResourceID_t GetResourceTypeID()  const noexcept final { return SceneResourceTypeID; }
+        const std::string& GetResourceID()      const noexcept final { return ID; }
 
+        void SetResourceID      (const std::string& newID)  noexcept final { ID = newID; }
+        void SetResourceGUID    (uint64_t newGUID)          noexcept final { guid = newGUID; }
 
         template<class Archive>
         void Serialize(Archive& ar)
@@ -484,7 +485,7 @@ namespace FlexKit
             ar& entities;
             ar& staticEntities;
 
-            ar& GUID;
+            ar& guid;
             ar& ID;
         }
 
@@ -495,7 +496,7 @@ namespace FlexKit
         std::vector<SceneEntity>		entities;
         std::vector<SceneEntity>		staticEntities;
 
-        size_t		GUID    = rand();
+        size_t		guid    = rand();
         std::string	ID;
     };
 

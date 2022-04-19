@@ -114,6 +114,7 @@ public:
 
     void                    RemoveResource(FlexKit::Resource_ptr resource);
     ProjectResource_ptr     FindProjectResource(uint64_t assetID);
+    ProjectResource_ptr     FindProjectResource(const std::string& id);
 
     bool LoadProject(const std::string& projectDir);
     bool SaveProject(const std::string& projectDir);

@@ -459,6 +459,7 @@ namespace FlexKit
     NodeHandle  GetSceneNode(GameObject& go);
     float4x4    GetWT(GameObject& go);
 
+    void SetLocalPosition(GameObject& go, const float3 pos);
     void SetWorldPosition(GameObject& go, const float3 pos);
     void SetScale(GameObject& go, float3 scale);
 

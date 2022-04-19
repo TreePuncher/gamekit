@@ -170,11 +170,16 @@ namespace FlexKit
     {
         ThreadProfiler& GetThreadProfiler()
         {
+#if USING(ENABLEPROFILER)
             std::scoped_lock lock{ m };
 
             threadProfilers.emplace_back(std::make_unique<ThreadProfiler>());
 
             return *threadProfilers.back().get();
+#else
+            ThreadProfiler& NULL_REF = *((ThreadProfiler*)(nullptr));
+            return NULL_REF;
+#endif
         }
 
         void BeginFrame()

@@ -22,6 +22,11 @@ class QTimer;
 /************************************************************************************************/
 
 
+namespace FlexKit
+{
+    class Animation;
+}
+
 class EditorAnimationEditor : public QWidget
 {
 	Q_OBJECT
@@ -31,6 +36,10 @@ public:
 	~EditorAnimationEditor();
 
 private:
+
+    FlexKit::Animation* LoadAnimation       (std::string&, bool);
+    void                ReleaseAnimation    (FlexKit::Animation*);
+
 	Ui::EditorAnimationEditor               ui;
     SelectionContext&                       globalSelection;
     QMenuBar*                               menubar;

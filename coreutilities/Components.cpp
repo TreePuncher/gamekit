@@ -113,8 +113,7 @@ namespace FlexKit
 
     bool LoadPrefab(GameObject& gameObject, const char* assetID, iAllocator& allocator, void* user_ptr)
     {
-        auto guid = FlexKit::FindAssetGUID(assetID);
-        if (guid)
+        if (auto guid = FlexKit::FindAssetGUID(assetID); guid)
             return LoadPrefab(gameObject, guid.value(), allocator, user_ptr);
         else
             false;

@@ -830,6 +830,18 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    void SetLocalPosition(GameObject& go, const float3 pos)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& view)
+            {   SetPositionL(view.node, pos); });
+    }
+
+
+
+    /************************************************************************************************/
+
+
     float3 GetScale(GameObject& go)
     {
         return Apply(go,

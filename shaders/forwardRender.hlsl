@@ -288,7 +288,8 @@ float4 ColoredPolys(Forward_PS_IN IN, uint test : SV_PrimitiveID) : SV_TARGET
         { 208 / 255.0f, 202 / 255.0f, 178 / 255.0f, 1.0f },
     };
 
-    return colors[test % 3] * saturate(dot(float3(0, 0, 1), mul(View, IN.Normal)));
+    //return colors[test % 3] * saturate(dot(float3(0, 0, 1), mul(View, IN.Normal)));
+    return float4(0.5f, 0.5f, 0.5f, 1.0f) * saturate(dot(float3(0, 0, 1), mul(View, IN.Normal)));
 }
 
 

@@ -81,6 +81,9 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
     showMaximized();
 
     show();
+
+    frameEnd    = high_resolution_clock::now();
+    frameBegin  = frameEnd;
 }
 
 
@@ -374,8 +377,15 @@ EditorMainWindow::~EditorMainWindow()
 
 void EditorMainWindow::Update()
 {
+    duration_t lastFrameDuration = frameEnd - frameBegin;
+
+    //time_point          frameEnd;
+    //time_point          frameBegin;
     //OutputDebugString(L"Update!\n");
-    renderer.DrawOneFrame(1.0f);
+    renderer.DrawOneFrame(lastFrameDuration.count());
+
+    frameBegin  = frameEnd;
+    frameEnd    = high_resolution_clock::now();
 }
 
 

@@ -74,7 +74,7 @@ namespace FlexKit
     {
         AnimationResourceBlob::AnimationResourceHeader header = {
             .Type       = EResourceType::EResource_Animation,
-            .GUID       = (uint64_t)rand(),
+            .GUID       = (uint64_t)guid,
             .trackCount = (uint32_t)tracks.size(),
         };
 

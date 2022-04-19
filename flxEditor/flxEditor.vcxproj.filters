@@ -202,9 +202,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="EditorProject.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -349,5 +346,8 @@
     <ResourceCompile Include="flxEditor.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>

@@ -566,7 +566,7 @@ namespace FlexKit
                                                 const float4x4 WT           = nodeView.GetWT();
                                                 const float4 brushPOS_WT    = WT * float4(triMesh->BS.xyz(), 1);
 
-                                                ctx.SetGraphicsConstantValue(2, 16, &WT);
+                                                ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
                                                 ctx.SetGraphicsConstantBufferView(3, poseConstants);
                                                 const auto matrices = CalculateShadowMapMatrices(Position, pointLight.R, t);
 

@@ -29,6 +29,8 @@ namespace FlexKit
         Animation(iAllocator& IN_allocator) :
             tracks{ &IN_allocator } {}
 
+        float Duration();
+
         Vector<AnimationTrack> tracks;
     };
 
@@ -39,12 +41,7 @@ namespace FlexKit
     };
 
 
-    inline Animation* LoadAnimation(GUID_t resourceId, iAllocator& allocator)
-    {
-        return nullptr;
-    }
-
-
+    Animation* LoadAnimation(GUID_t resourceId, iAllocator & allocator);
     Animation* LoadAnimation(const char* resourceName, iAllocator& allocator);
 
 
@@ -268,7 +265,8 @@ namespace FlexKit
         Uint,
         Uint2,
         Uint3,
-        Uint4
+        Uint4,
+        Unknown
     };
 
     struct AnimatorScriptState
@@ -361,14 +359,7 @@ namespace FlexKit
             {
                 JointTranslationTarget(JointHandle in_Joint) : joint{ in_Joint } {}
 
-                void Apply(FrameRange range, float t, AnimationStateContext& ctx) final override
-                {
-                    if (auto res = ctx.FindField<PoseState::Pose>(); res)
-                    {
-                        auto defaultPose = res->sk->JointPoses[joint];
-                        res->jointPose[joint].ts += range.begin->Value.xyz() - defaultPose.ts.xyz();
-                    }
-                }
+                void Apply(FrameRange range, float t, AnimationStateContext& ctx) final override;
 
                 JointHandle joint;
             };
@@ -377,13 +368,7 @@ namespace FlexKit
             {
                 JointScaleTarget(JointHandle in_Joint) : joint{ in_Joint } {}
 
-                void Apply(FrameRange range, float t, AnimationStateContext& ctx) final override
-                {
-                    if (auto res = ctx.FindField<PoseState::Pose>(); res)
-                    {
-                        res->jointPose[joint].ts.w = range.begin->Value.w;
-                    }
-                }
+                void Apply(FrameRange range, float t, AnimationStateContext& ctx) final override;
 
                 JointHandle joint;
             };
@@ -480,7 +465,11 @@ namespace FlexKit
             AnimatorView(GameObject& IN_gameObject, AnimatorHandle IN_animatorHandle = InvalidHandle_t) :
                 animator{ IN_animatorHandle != InvalidHandle_t ? IN_animatorHandle : GetComponent().Create(IN_gameObject) } {}
 
-            PlayID_t Play(Animation& anim, bool loop = false);
+            PlayID_t    Play(Animation& anim, bool loop = false);
+            void        Stop(PlayID_t playID);
+            void        Pause(PlayID_t playID);
+            void        SetProgress(PlayID_t playID, float);
+
 
             std::optional<InputValue*>          GetInputValue(uint32_t idx) noexcept;
             std::optional<AnimatorInputType>    GetInputType(uint32_t idx) noexcept;
