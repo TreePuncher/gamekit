@@ -45,6 +45,8 @@ public:
 
     FlexKit::uint2 WH() const { return renderWindow.GetWH(); }
 
+    void            resizeEvent(QResizeEvent* evt);
+
 public slots:
     void OnFrame();
 
@@ -55,7 +57,6 @@ private:
     void            showEvent(QShowEvent* event) override;
 
     void            resizeSwapChain(int width, int height);
-    void            resizeEvent(QResizeEvent* evt);
 
     bool            dirty = false;
 

@@ -135,3 +135,24 @@ ProjectResource_ptr EditorProject::FindProjectResource(uint64_t assetID)
 
 
 /************************************************************************************************/
+
+
+ProjectResource_ptr EditorProject::FindProjectResource(const std::string& id)
+{
+    auto res = std::find_if(
+        resources.begin(),
+        resources.end(),
+        [&](ProjectResource_ptr& resource)
+        {
+            return resource->resource->GetResourceID() == id;
+        }
+    );
+
+    if (res != resources.end())
+        return (*res);
+    else
+        return nullptr;
+}
+
+
+/************************************************************************************************/

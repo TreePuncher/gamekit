@@ -1368,7 +1368,7 @@ namespace FlexKit
         }
         else
         {
-            constants.MP.albedo     = float3{ 0.7, 0.7, 0.7 };
+            constants.MP.albedo     = float3{ 0.7f, 0.7f, 0.7f };
             constants.MP.roughness  = 0.7f;
             constants.MP.kS         = 1.0f;
             constants.MP.metallic   = 0.0f;

@@ -200,6 +200,8 @@ namespace FlexKit
 		const std::string& GetResourceID()      const noexcept override { return ID; }
 		const uint64_t     GetResourceGUID()    const noexcept override { return TriMeshID; }
 
+        void SetResourceID      (const std::string& newID)  noexcept final { ID = newID; }
+        void SetResourceGUID    (uint64_t newGUID)          noexcept final { TriMeshID = newGUID; }
 
         /*
         std::optional<VertexBufferView*> GetBuffer(VERTEXBUFFER_TYPE type) const

@@ -102,7 +102,7 @@ void AnimationEditorObject::Reload(EditorScriptEngine& engine)
 
         SetArg(ctx, 0, scriptState.obj);
         RunScriptFunction(ctx, scriptModule, "ReleaseModule");
-        scriptState.obj->Release();
+        //scriptState.obj->Release();
         engine.ReleaseModule(scriptModule);
     }
 
@@ -191,8 +191,8 @@ std::string AnimationEditorObject::ValueString(uint32_t idx, uint32_t valueType)
         gameObject,
         [&](FlexKit::AnimatorView& animator) -> std::string
         {
-            auto value      = animator.GetInputValue(idx).value();
-            auto valueType  = animator.GetInputType(idx).value();
+            auto value      = animator.GetInputValue(idx).value_or(nullptr);
+            auto valueType  = animator.GetInputType(idx).value_or(FlexKit::AnimatorInputType::Unknown);
 
             return ValueToString(
                 *value,
@@ -339,8 +339,8 @@ void AnimationEditorObject::UpdateValue(uint32_t idx, const std::string& valueSt
         gameObject,
         [&](FlexKit::AnimatorView& animator)
         {
-            auto value      = animator.GetInputValue(idx).value();
-            auto valueType  = animator.GetInputType(idx).value();
+            auto value      = animator.GetInputValue(idx).value_or(nullptr);
+            auto valueType  = animator.GetInputType(idx).value_or(FlexKit::AnimatorInputType::Unknown);
 
             StringToValue(
                 valueString,

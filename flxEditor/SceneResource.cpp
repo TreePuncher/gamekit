@@ -504,7 +504,7 @@ namespace FlexKit
 
 
             if (scene.extras.Has("ResourceID"))
-                sceneResource_ptr->GUID = scene.extras.Get("ResourceID").Get<int>();
+                sceneResource_ptr->SetResourceGUID(scene.extras.Get("ResourceID").Get<int>());
 
             sceneResource_ptr->ID = scene.name;
 
@@ -675,17 +675,21 @@ namespace FlexKit
                     float floats[3];
                 };
 
-
-
                 const size_t    frameCount          = outputView.byteLength / 16;
                 float*          startTime           = (float*)(model.buffers[inputView.buffer].data.data() + inputView.byteOffset);
-                float3Value*    float3Channel       = (float3Value*)(model.buffers[outputView.buffer].data.data() + outputView.byteOffset);
-                Quaternion*     roatationChannel    = (Quaternion*)(model.buffers[outputView.buffer].data.data() + outputView.byteOffset);
 
                 const uint channelID =  channel.target_path == "rotation" ? 0 :
                                         channel.target_path == "translation" ? 1 :
                                         channel.target_path == "scale" ? 2 : -1;
-                                    
+
+                const auto& r            = model.nodes[channel.target_node].rotation;
+                const auto& p            = model.nodes[channel.target_node].translation;
+                const Quaternion Q       = r.size() ?  Quaternion{ (float)r[0], (float)r[1], (float)r[2], (float)r[3] }.normal() : Quaternion::Identity();
+                const Quaternion Q_i     = Q.Inverse();
+                const auto position      = float4{ (float)p[0], (float)p[1], (float)p[2], 0 };
+
+                if (channelID == 2)
+                    continue;
 
                 for (size_t I = 0; I < frameCount; ++I)
                 {
@@ -698,14 +702,17 @@ namespace FlexKit
                     {
                     case 0:
                     {
-                        auto& outputValue   = roatationChannel[I];
-                        keyFrame.Value      = float4{ outputValue[0], outputValue[1], outputValue[2], outputValue[3] };
+                        Quaternion* rotationChannel = (Quaternion*)(model.buffers[outputView.buffer].data.data() + outputView.byteOffset);
+                        auto rotationKey            = rotationChannel[I] * Q_i;
+                        keyFrame.Value              = float4{ rotationKey[0], rotationKey[1], rotationKey[2], rotationKey[3] };
                     }   break;
                     case 1:
                     {
-                        auto& outputValue   = float3Channel[I];
-                        keyFrame.Value      = float4{ outputValue.floats[0], outputValue.floats[1], outputValue.floats[2], 0 };
+                        float3Value* float3Channel  = (float3Value*)(model.buffers[outputView.buffer].data.data() + outputView.byteOffset);
+                        keyFrame.Value              = float4{ float3Channel->floats[0], float3Channel->floats[1], float3Channel->floats[2], 1} - position;
                     }   break;
+                    default:
+                        break;
                     }
 
                     track.KeyFrames.emplace_back(keyFrame);
@@ -839,7 +846,7 @@ namespace FlexKit
         // Create Scene Resource Header
         SceneResourceBlob	header;
         header.blockCount   = 2 + entities.size();
-        header.GUID         = GUID;
+        header.GUID         = guid;
         strncpy(header.ID, ID.c_str(), 64);
         header.Type         = EResourceType::EResource_Scene;
         header.ResourceSize = sizeof(header) + nodeBlob.size() + entityBlock.size();
@@ -851,7 +858,7 @@ namespace FlexKit
         ResourceBlob out;
         out.buffer			= (char*)_ptr;
         out.bufferSize		= size;
-        out.GUID			= GUID;
+        out.GUID			= guid;
         out.ID				= ID;
         out.resourceType	= EResourceType::EResource_Scene;
 

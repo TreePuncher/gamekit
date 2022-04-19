@@ -18,10 +18,11 @@ namespace FlexKit
 
     iAllocator* allocator;
 
-
     //float2* ConstructFloat2();
     float3* ConstructFloat3() noexcept;
     float4* ConstructFloat4() noexcept;
+    Quaternion* ConstructQuaternion();
+
 
     /************************************************************************************************/
 
@@ -145,6 +146,7 @@ namespace FlexKit
         else return nullptr;
     }
 
+
     float4* AnimatorGetFloat4_AS(AnimatorView* view, uint32_t idx)
     {
         if (auto res = view->GetInputValue(idx); res.has_value())
@@ -156,6 +158,33 @@ namespace FlexKit
             return outValue;
         }
         else return nullptr;
+    }
+
+
+    uint32_t AnimatorPlayAnimation_AS(AnimatorView* view, Animation* anim, bool loop)
+    {
+        return view->Play(*anim, loop);
+    }
+
+
+    void AnimatorStopAnimation_AS(AnimatorView* view, uint32_t playID)
+    {
+        view->Stop(playID);
+    }
+
+
+    void AnimatorPauseAnimation_AS(AnimatorView* view, uint32_t playID)
+    {
+        view->Pause(playID);
+    }
+
+
+    /************************************************************************************************/
+
+
+    void AnimatorSetProgressAnimation_AS(AnimatorView* view, uint32_t playID, float p)
+    {
+        view->SetProgress(playID, p);
     }
 
 
@@ -181,7 +210,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    JointPose* PoseGetJointPose(FlexKit::PoseState::Pose* pose, int idx)
+    JointPose* PoseGetJointPose(FlexKit::PoseState::Pose* pose, uint32_t idx)
     {
         return pose->jointPose + idx;
     }
@@ -253,10 +282,20 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    Animation* LoadAnimation_AS(GUID_t handle, iAllocator* allocator)
+    Animation* LoadAnimation1_AS(GUID_t handle, iAllocator* allocator)
     {
         return LoadAnimation(handle, *allocator);
     }
+
+    Animation* LoadAnimation2_AS(std::string& name, iAllocator* IN_allocator)
+    {
+        return LoadAnimation(name.c_str(), *allocator);
+    }
+
+    void ReleaseAnimation_AS(FlexKit::Animation& animation, iAllocator* allocator)
+    {
+        allocator->release(animation);
+    };
 
 
     /************************************************************************************************/
@@ -271,7 +310,25 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void RegisterRuntimeAPI(asIScriptEngine* scriptEngine)
+    auto GetWorldPosition_AS   (GameObject* obj) { auto* f3 = ConstructFloat3();       *f3 = FlexKit::GetWorldPosition(*obj);  return f3; };
+    auto GetLocalPosition_AS   (GameObject* obj) { auto* f3 = ConstructFloat3();       *f3 = FlexKit::GetLocalPosition(*obj);  return f3; };
+    auto GetOrientation_AS     (GameObject* obj) { auto* q  = ConstructQuaternion();   *q  = FlexKit::GetOrientation(*obj);    return q;  };
+    auto GetScale_AS           (GameObject* obj) { auto* f3 = ConstructFloat3();       *f3 = FlexKit::GetScale(*obj);          return f3; };
+    
+    auto SetWorldPosition_AS   (GameObject* obj, float3& v)        { FlexKit::SetWorldPosition(*obj, v); };
+    auto SetLocalPosition_AS   (GameObject* obj, float3& v)        { FlexKit::SetLocalPosition(*obj, v); };
+    auto SetOrientation_AS     (GameObject* obj, Quaternion& q)    { FlexKit::SetOrientation(*obj, q); };
+    auto SetScale_AS           (GameObject* obj, float3& s)        { FlexKit::SetScale(*obj, s); };
+
+
+    /************************************************************************************************/
+
+    void Log_AS(std::string& in)
+    {
+        FK_LOG_INFO(in.c_str());
+    }
+
+    void RegisterRuntimeAPI(asIScriptEngine* scriptEngine, RegisterFlags flags)
     {
         RegisterScriptArray(scriptEngine, true);
         RegisterScriptAny(scriptEngine);
@@ -283,10 +340,16 @@ namespace FlexKit
 
         /************************************************************************************************/
 
-
         int res = 0;
+
+        res = scriptEngine->RegisterGlobalFunction("void Log(string& in)", asFUNCTION(Log_AS), asCALL_CDECL, allocator);  FK_ASSERT(res > 0);
+
+
+        /************************************************************************************************/
+
+
         res = scriptEngine->RegisterTypedef("ComponentID_t", "uint32");
-        res = scriptEngine->RegisterTypedef("BoneHandle", "uint32");
+        res = scriptEngine->RegisterTypedef("JointHandle", "uint32");
         res = scriptEngine->RegisterTypedef("AssetHandle", "uint64");
         res = scriptEngine->RegisterTypedef("PlayID", "uint32");
 
@@ -343,7 +406,7 @@ namespace FlexKit
 
 
         res = scriptEngine->RegisterObjectType("Pose", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                                   FK_ASSERT(res >= 0);
-        res = scriptEngine->RegisterObjectMethod("Pose", "JointPose@ GetJointPose(int)",                        asFUNCTION(PoseGetJointPose),  asCALL_CDECL_OBJFIRST);  FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("Pose", "JointPose@ GetJointPose(JointHandle)",                asFUNCTION(PoseGetJointPose),  asCALL_CDECL_OBJFIRST);  FK_ASSERT(res > 0);
         res = scriptEngine->RegisterObjectMethod("Pose", "int GetJointCount()",                                 asFUNCTION(PoseGetJointCount), asCALL_CDECL_OBJFIRST);  FK_ASSERT(res > 0);
 
 
@@ -353,14 +416,21 @@ namespace FlexKit
         res = scriptEngine->RegisterObjectType("PoseState", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                              FK_ASSERT(res >= 0);
         res = scriptEngine->RegisterObjectMethod("PoseState", "int GetPoseCount()",                             asFUNCTION(PoseStatePoseCount), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
         res = scriptEngine->RegisterObjectMethod("PoseState", "Pose@ GetPose(int)",                             asFUNCTION(PoseStateGetPose),   asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-        res = scriptEngine->RegisterObjectMethod("PoseState", "BoneHandle FindBone(string)",                    asFUNCTION(GetBone),            asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("PoseState", "JointHandle FindBone(string)",                   asFUNCTION(GetBone),            asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
 
 
         /************************************************************************************************/
 
 
-        res = scriptEngine->RegisterObjectType("Animation", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                              FK_ASSERT(res >= 0);
-        res = scriptEngine->RegisterGlobalFunction("Animation@ LoadAnimation(AssetHandle, AllocatorHandle@)",   asFUNCTION(LoadAnimation_AS), asCALL_CDECL);            FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectType("Animation", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                                  FK_ASSERT(res >= 0);
+
+        if(!(flags & EXCLUDE_LOADANIMATION))
+        {
+            res = scriptEngine->RegisterGlobalFunction("Animation@ LoadAnimation(AssetHandle, AllocatorHandle@)",   asFUNCTION(LoadAnimation1_AS), asCALL_CDECL);               FK_ASSERT(res > 0);
+            res = scriptEngine->RegisterGlobalFunction("Animation@ LoadAnimation(string& in)",                      asFUNCTION(LoadAnimation2_AS), asCALL_CDECL, allocator);    FK_ASSERT(res > 0);
+            res = scriptEngine->RegisterGlobalFunction("Animation@ ReleaseAnimation(Animation& in)",                asFUNCTION(ReleaseAnimation_AS), asCALL_CDECL, allocator);  FK_ASSERT(res > 0);
+        }
+
 
         /************************************************************************************************/
 
@@ -375,30 +445,40 @@ namespace FlexKit
         //res = scriptEngine->RegisterObjectMethod("Animator", "float2@ GetFloat2(idx)",           asFUNCTION(AnimatorGetFloat2_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
         res = scriptEngine->RegisterObjectMethod("Animator", "float3@ GetFloat3(uint)",          asFUNCTION(AnimatorGetFloat3_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
         res = scriptEngine->RegisterObjectMethod("Animator", "float4@ GetFloat4(uint)",          asFUNCTION(AnimatorGetFloat4_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-        
-        //res = scriptEngine->RegisterObjectMethod("Animator", "PlayID Play(Animation@)",                         asFUNCTION(PoseStatePoseCount), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("Animator", "PlayID Play(Animation@, bool)",    asFUNCTION(AnimatorPlayAnimation_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("Animator", "void Stop(PlayID)",                asFUNCTION(AnimatorStopAnimation_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("Animator", "void Pause(PlayID)",               asFUNCTION(AnimatorPauseAnimation_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("Animator", "void SetProgress(PlayID, float)",  asFUNCTION(AnimatorSetProgressAnimation_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
 
 
         /************************************************************************************************/
 
 
-        res = scriptEngine->RegisterObjectType("GameObject", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                             FK_ASSERT(res >= 0);
-        res = scriptEngine->RegisterObjectMethod("GameObject", "bool            Query(ComponentID_t)",          asFUNCTION(QueryForComponent), asCALL_CDECL_OBJFIRST);  FK_ASSERT(res > 0);
-        res = scriptEngine->RegisterObjectMethod("GameObject", "PoseState@      GetPoseState()",                asFUNCTION(GetPoseState_AS),   asCALL_CDECL_OBJFIRST);  FK_ASSERT(res > 0);
-        res = scriptEngine->RegisterObjectMethod("GameObject", "Animator@       GetAnimator()",                 asFUNCTION(GetAnimator_AS),   asCALL_CDECL_OBJFIRST);   FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectType("GameObject", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                    FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterObjectMethod("GameObject", "bool            Query(ComponentID_t)",  asFUNCTION(QueryForComponent), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("GameObject", "PoseState@      GetPoseState()",        asFUNCTION(GetPoseState_AS),   asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("GameObject", "Animator@       GetAnimator()",         asFUNCTION(GetAnimator_AS),    asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+
+        res = scriptEngine->RegisterObjectMethod("GameObject", "float3@         GetWorldPosition()",    asFUNCTION(&GetWorldPosition_AS), asCALL_CDECL_OBJFIRST);   FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("GameObject", "float3@         GetLocalPosition()",    asFUNCTION(&GetLocalPosition_AS), asCALL_CDECL_OBJFIRST);   FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("GameObject", "Quaternion@     GetOrientation()",      asFUNCTION(&GetOrientation_AS), asCALL_CDECL_OBJFIRST);     FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("GameObject", "float3@         GetScale()",            asFUNCTION(&GetScale_AS),   asCALL_CDECL_OBJFIRST);         FK_ASSERT(res > 0);
+
+        res = scriptEngine->RegisterObjectMethod("GameObject", "void SetWorldPosition(float3& in)",     asFUNCTION(SetWorldPosition_AS), asCALL_CDECL_OBJFIRST);   FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("GameObject", "void SetLocalPosition(float3& in)",     asFUNCTION(SetLocalPosition_AS), asCALL_CDECL_OBJFIRST);   FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("GameObject", "void SetOrientation(Quaternion& in)",   asFUNCTION(SetOrientation_AS), asCALL_CDECL_OBJFIRST);     FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("GameObject", "void SetScale(float3& in)",             asFUNCTION(SetScale_AS), asCALL_CDECL_OBJFIRST);           FK_ASSERT(res > 0);
 
 
         /************************************************************************************************/
 
 
-        res = scriptEngine->RegisterInterface("AnimatorInterface");                                                         FK_ASSERT(res > 0);
-        res = scriptEngine->RegisterInterfaceMethod("AnimatorInterface", "void Update(GameObject@ object, double dt)");     FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterInterface("AnimatorInterface");                                                             FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterInterfaceMethod("AnimatorInterface", "void PreUpdate(GameObject@ object, double dt)");      FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterInterfaceMethod("AnimatorInterface", "void PostUpdate(GameObject@ object, double dt)");     FK_ASSERT(res > 0);
 
 
         /************************************************************************************************/
-
-
-        int x = 0;
     }
 
 

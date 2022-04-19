@@ -128,19 +128,6 @@ inline FlexKit::UpdateTask* QueueSoundUpdate(FlexKit::UpdateDispatcher& Dispatch
 
 /************************************************************************************************/
 
-struct ControllerInput
-{
-    static_vector<float>    axis;
-    static_vector<bool>     button;
-};
-
-class XInputState
-{
-
-};
-
-/************************************************************************************************/
-
 
 class BaseState : public FrameworkState
 {

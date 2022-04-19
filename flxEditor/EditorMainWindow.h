@@ -11,6 +11,7 @@
 #include <QtWidgets/qfiledialog.h>
 #include <QtWidgets/qmenubar.h>
 #include <QtWidgets/qtabwidget.h>
+#include <chrono>
 
 #include "ResourceBrowserWidget.h"
 #include "EditorImport.h"
@@ -36,6 +37,9 @@ class EditorAnimationEditor;
 
 
 using FlexKit::ResourceList;
+using high_resolution_clock = std::chrono::high_resolution_clock;
+using time_point            = high_resolution_clock::time_point;
+using duration_t            = std::chrono::duration<double>;
 
 
 /************************************************************************************************/
@@ -91,6 +95,8 @@ signals:
     void onClose();
 
 private:
+    time_point          frameEnd;
+    time_point          frameBegin;
 
     SelectionContext    selectionContext;
     EditorScriptEngine& scriptEngine;

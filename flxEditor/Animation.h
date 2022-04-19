@@ -118,6 +118,9 @@ namespace FlexKit
         const uint64_t      GetResourceGUID()   const noexcept { return guid; }
         const ResourceID_t  GetResourceTypeID() const noexcept { return AnimationResourceTypeID; }
 
+        void SetResourceID(const std::string& newID)    noexcept final { ID = newID; }
+        void SetResourceGUID(uint64_t newGUID)          noexcept final { guid = newGUID; }
+
         struct Track
         {
             AnimationTrackTarget            targetChannel;
@@ -182,6 +185,9 @@ namespace FlexKit
         const std::string&  GetResourceID()     const noexcept override { return ID; }
         const uint64_t      GetResourceGUID()   const noexcept override { return guid; }
         const ResourceID_t  GetResourceTypeID() const noexcept override { return SkeletonResourceTypeID; }
+
+        void SetResourceID(const std::string& newID)    noexcept final { ID = newID; }
+        void SetResourceGUID(uint64_t newGUID)          noexcept final { guid = newGUID; }
 
         size_t								JointCount;
         GUID_t								guid;

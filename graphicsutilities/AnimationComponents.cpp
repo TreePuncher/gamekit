@@ -142,9 +142,23 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    Animation* LoadAnimation(const char* resourceName, iAllocator& allocator)
+    float Animation::Duration()
     {
-        auto asset = LoadGameAsset(resourceName);
+        float end = 0.0f;
+
+        for (auto& t : tracks)
+            end = Max(end, t.keyFrames.back().End);
+
+        return end;
+    }
+
+
+    /************************************************************************************************/
+
+
+    Animation* LoadAnimation(GUID_t resourceId, iAllocator& allocator)
+    {
+        auto asset = LoadGameAsset(resourceId);
 
         if (asset != -1)
         {
@@ -192,6 +206,19 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    Animation* LoadAnimation(const char* resourceName, iAllocator& allocator)
+    {
+        auto guid = FindAssetGUID(resourceName);
+        if (guid)
+            return LoadAnimation(*guid, allocator);
+        else
+            return nullptr;
+    }
+
+
+    /************************************************************************************************/
+
+
     PlayID_t AnimatorComponent::AnimatorView::Play(Animation& anim, bool loop)
     {
         auto&           componentData   = GetComponent()[animator];
@@ -212,6 +239,8 @@ namespace FlexKit
             {
                 auto joint = skeleton->FindJoint(track.target.c_str());
 
+                if (joint == InvalidHandle_t)
+                    continue;
                 if (track.trackName == "translation")
                 {
                     AnimationState::TrackState trackState;
@@ -254,6 +283,66 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    void AnimatorComponent::AnimatorView::Stop(PlayID_t playID)
+    {
+        auto& componentData = GetComponent()[animator];
+
+        auto res = std::find_if(componentData.animations.begin(), componentData.animations.end(),
+            [&](AnimationState& clip)
+            {
+                return clip.ID == playID;
+            });
+
+        componentData.animations.remove_unstable(res);
+    }
+
+
+    /************************************************************************************************/
+
+
+    void AnimatorComponent::AnimatorView::Pause(PlayID_t playID)
+    {
+        auto& componentData = GetComponent()[animator];
+
+        auto res = std::find_if(
+            componentData.animations.begin(),
+            componentData.animations.end(),
+            [&](AnimationState& clip)
+            {
+                return clip.ID == playID;
+            });
+
+        if(res != componentData.animations.end())
+            res->state = AnimationState::State::Paused;
+    }
+
+
+    /************************************************************************************************/
+
+
+    void AnimatorComponent::AnimatorView::SetProgress(PlayID_t playID, float p)
+    {
+        auto& componentData = GetComponent()[animator];
+
+        auto res = std::find_if(
+            componentData.animations.begin(),
+            componentData.animations.end(),
+            [&](AnimationState& clip)
+            {
+                return clip.ID == playID;
+            });
+
+        if (res != componentData.animations.end())
+        {
+            auto T = res->resource->Duration() * Saturate(p);
+            res->T = T;
+        }
+    }
+
+
+    /************************************************************************************************/
+
+
     AnimatorComponent::AnimatorState::AnimatorState(GameObject* IN_gameObject, iAllocator& allocator)
         : gameObject    { IN_gameObject }
         , animations    { &allocator    }
@@ -273,14 +362,22 @@ namespace FlexKit
     std::optional<AnimatorComponent::InputValue*> AnimatorComponent::AnimatorView::GetInputValue(uint32_t idx) noexcept
     {
         auto& state = GetState();
-        return &state.inputValues[idx];
+
+        if (state.inputValues.size() > idx)
+            return &state.inputValues[idx];
+        else
+            return {};
     }
 
 
     std::optional<AnimatorInputType> AnimatorComponent::AnimatorView::GetInputType(uint32_t idx) noexcept
     {
         auto& state = GetState();
-        return state.inputIDs[idx].type;
+
+        if(state.inputValues.size() > idx)
+            return state.inputIDs[idx].type;
+        else
+            return {};
     }
 
 
@@ -361,7 +458,7 @@ namespace FlexKit
                     const auto timepointEnd     = range.end->Begin;
                     const auto timeRange        = timepointEnd - timepointBegin;
 
-                    const auto I = (t - range.begin->Begin) / timeRange;
+                    const auto I = clamp(0.0f, (t - range.begin->Begin) / timeRange, 1.0f);
 
                     const auto& AValue = range.begin->Value;
                     const auto& BValue = range.end->Value;
@@ -372,10 +469,41 @@ namespace FlexKit
                     return Qlerp(A, B, I);
                 };
 
-            const auto value = range.begin->Begin == range.end->Begin ? range.begin->Value : interpolate();
+            const auto value        = range.begin->Begin == range.end->Begin ? range.begin->Value : interpolate();
+            const auto defaultPose  = res->sk->JointPoses[joint];
 
             res->jointPose[joint].r *= Quaternion{ value[0], value[1], value[2], value[3] };
         }
+    }
+
+
+    /************************************************************************************************/
+
+
+    void AnimatorComponent::AnimationState::JointTranslationTarget::Apply(AnimatorComponent::AnimationState::FrameRange range, float t, AnimationStateContext& ctx)
+    {
+        if (auto res = ctx.FindField<PoseState::Pose>(); res)
+        {
+            const auto timepointBegin   = range.begin->Begin;
+            const auto timepointEnd     = range.end->Begin;
+            const auto timeRange        = timepointEnd - timepointBegin;
+            const auto u                = clamp(0.0f, (t - range.begin->Begin) / timeRange, 1.0f);
+
+            const auto defaultPose  = res->sk->JointPoses[joint];
+            const auto xyz          = lerp(range.begin->Value.xyz(), range.end->Value.xyz(), u);
+
+            //res->jointPose[joint].ts += xyz - defaultPose.ts.xyz();
+        }
+    }
+
+
+    /************************************************************************************************/
+
+
+    void AnimatorComponent::AnimationState::JointScaleTarget::Apply(AnimatorComponent::AnimationState::FrameRange range, float t, AnimationStateContext& ctx)
+    {
+        if (auto res = ctx.FindField<PoseState::Pose>(); res)
+            res->jointPose[joint].ts.w = range.begin->Value.w;
     }
 
 
@@ -390,7 +518,7 @@ namespace FlexKit
                 return &frame;
         }
 
-        return nullptr;
+        return &track->keyFrames.back();
     }
 
 
@@ -411,25 +539,24 @@ namespace FlexKit
 
     AnimatorComponent::AnimationState::State AnimatorComponent::AnimationState::Update(AnimationStateContext& ctx, double dT)
     {
-        T += 1.0f / 600.0f;
-        bool animationPlayed = false;
-
-        if (state == State::Paused || state == State::Finished)
+        if (state == State::Finished)
             return state;
 
+        float endT = 0;
         for (auto& track : tracks)
         {
+            endT = Max(track.track->keyFrames.back().End, endT);
+
             if (auto frame = track.FindFrame(T); frame)
-            {
                 track.target->Apply({ frame, track.FindNextFrame(frame) }, T, ctx);
-                animationPlayed = true;
-            }
         }
 
-        if (state == State::Looping && !animationPlayed)
-            T = 0.0;
+        if(state != State::Paused)
+            T += dT;
 
-        if (state == State::Playing && !animationPlayed)
+        if (state == State::Looping && T >= endT)
+            T = 0.0;
+        else if (state == State::Playing && T >= endT)
             state = State::Finished;
 
         return state;
@@ -459,6 +586,11 @@ namespace FlexKit
 
                 auto& animatorComponent = AnimatorComponent::GetComponent();
 
+                if (!animatorComponent.animators.size())
+                    return;
+
+                auto ctx = GetContext();
+
                 for (AnimatorComponent::AnimatorState& animator : animatorComponent.animators)
                 {
                     AnimatorComponent::AnimationStateContext context{ temporaryAllocator };
@@ -482,15 +614,15 @@ namespace FlexKit
                             context.AddField(pose);
                         });
 
-
                     auto scriptObj = animator.obj;
+
                     if(scriptObj)
                     {
-                        auto ctx                = GetContext();
-                        auto api_obj            = static_cast<asIScriptObject*>(scriptObj);
-                        auto method             = api_obj->GetObjectType()->GetMethodByName("Update");
+                        auto api_obj    = static_cast<asIScriptObject*>(scriptObj);
+                        auto preUpdate  = api_obj->GetObjectType()->GetMethodByName("PreUpdate");
+                        auto postUpdate = api_obj->GetObjectType()->GetMethodByName("PostUpdate");
 
-                        ctx->Prepare(method);
+                        ctx->Prepare(preUpdate);
                         ctx->SetObject(animator.obj);
                         ctx->SetArgAddress(0, animator.gameObject);
                         ctx->SetArgDouble(1, dT);
@@ -499,9 +631,15 @@ namespace FlexKit
                         for (auto& animation : animator.animations)
                             animation.Update(context, dT);
 
-                        ReleaseContext(ctx);
+                        ctx->Prepare(postUpdate);
+                        ctx->SetObject(animator.obj);
+                        ctx->SetArgAddress(0, animator.gameObject);
+                        ctx->SetArgDouble(1, dT);
+                        ctx->Execute();
                     }
                 }
+
+                ReleaseContext(ctx);
             });
     }
 

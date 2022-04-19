@@ -83,7 +83,7 @@ namespace FlexKit
 		    renderSystem->WaitforGPU();
 		    renderSystem->_ForceReleaseTexture(backBuffer);
 
-		    const auto HR = swapChain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_R16G16B16A16_FLOAT, flags);
+		    const auto HR = swapChain->ResizeBuffers(0, WH[0], WH[1], DXGI_FORMAT_R16G16B16A16_FLOAT, flags);
 		    if (FAILED(HR))
 		    {
 			    FK_ASSERT(0, "Failed to resize back buffer!");
@@ -94,6 +94,8 @@ namespace FlexKit
 
 		    DXGI_SWAP_CHAIN_DESC1 desc;
             swapChain->GetDesc1(&desc);
+            desc.Width  = newWH[0];
+            desc.Height = newWH[1];
 
 		    const auto bufferCount = desc.BufferCount;
 

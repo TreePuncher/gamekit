@@ -58,24 +58,20 @@ void DXRenderWindow::Draw(FlexKit::EngineCore& Engine, TemporaryBuffers& tempora
 {
     t += dT;
 
-    if(t >= 1.0f / 30.0f)
+    dirty = true;
+
+    if (onDraw)
     {
-        dirty = true;
-
-        if (onDraw)
-        {
-            onDraw(Dispatcher, t, temporaries, frameGraph, renderWindow.GetBackBuffer(), threadSafeAllocator);
-        }
-        else
-        {
-            frameGraph.AddRenderTarget(renderWindow.backBuffer);
-
-            FlexKit::ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), FlexKit::float4{ 0.0f, 0.0f, 0.0f, 1 });
-            FlexKit::PresentBackBuffer(frameGraph, renderWindow.GetBackBuffer());
-        }
-
-        t = 0.0f;
+        onDraw(Dispatcher, dT, temporaries, frameGraph, renderWindow.GetBackBuffer(), threadSafeAllocator);
     }
+    else
+    {
+        frameGraph.AddRenderTarget(renderWindow.backBuffer);
+
+        FlexKit::ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), FlexKit::float4{ 0.0f, 0.0f, 0.0f, 1 });
+        FlexKit::PresentBackBuffer(frameGraph, renderWindow.GetBackBuffer());
+    }
+
 }
 
 
@@ -133,13 +129,17 @@ void DXRenderWindow::resizeSwapChain(int width, int height)
 
 void DXRenderWindow::resizeEvent(QResizeEvent* evt)
 {
-    QWidget::resizeEvent(evt);
+    QWidget::resize(evt->size());
 
     const auto widgetSize = size();
     const auto width      = widgetSize.width();
     const auto height     = widgetSize.height();
 
-    resizeSwapChain(evt->size().width(), evt->size().height());
+    const auto newWidth     = evt->size().width() * 1.5;
+    const auto newHeight    = evt->size().height() * 1.5;
+
+    //resizeSwapChain(evt->size().width(), evt->size().height());
+    resizeSwapChain(newWidth, newHeight);
 
     if (ResizeEventHandler)
         ResizeEventHandler(this);

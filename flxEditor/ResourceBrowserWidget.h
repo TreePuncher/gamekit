@@ -12,48 +12,13 @@
 #include <QtCore/QTimer>
 #include <QtWidgets/qmenu.h>
 
-
-/************************************************************************************************/
-
-
 class EditorRenderer;
-
-/************************************************************************************************/
-
-
-class ResourceItemModel : public QAbstractTableModel
-{
-    Q_OBJECT
-
-public:
-    ResourceItemModel(EditorProject& IN_project);
-
-    int         rowCount        (const QModelIndex& parent = QModelIndex()) const override;
-    int         columnCount     (const QModelIndex& parent = QModelIndex()) const override;
-
-    QVariant    headerData(int section, Qt::Orientation orientation, int role) const override;
-
-    QVariant                                data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
-    ResourceID_t                            GetResourceType(uint64_t index) const;
-    FlexKit::Resource_ptr                   GetResource(const uint64_t index);
-    void                                    RefreshTable();
-
-    void                                    Remove(FlexKit::Resource_ptr);
-
-private:
-
-    size_t          rows = 0;
-    QTimer*         timer;
-    EditorProject&  project;
-};
-
-
-/************************************************************************************************/
-
+class QMenuBar;
 
 using ResourceViewID = uint32_t;
 
-class QMenuBar;
+
+/************************************************************************************************/
 
 struct IResourceViewer
 {
@@ -75,7 +40,10 @@ public:
 	ResourceBrowserWidget(EditorProject& IN_project, EditorRenderer& renderer, QWidget *parent = Q_NULLPTR);
 	~ResourceBrowserWidget();
 
+    void Update();
     void resizeEvent(QResizeEvent* event) override;
+    void OnCellChange(int row, int column);
+
     static void AddResourceViewer(ResourceViewer_ptr);
 
 public slots:
@@ -83,11 +51,12 @@ public slots:
     void ShowContextMenu(const QPoint& pos);
 private:
 
-    QTableView*                 table;
-    ResourceItemModel           model;
+    QTableWidget*               table;
+    EditorProject&              project;
     EditorRenderer&             renderer;
 	Ui::ResourceBrowserWidget   ui;
     QMenuBar*                   menuBar;
+    QTimer*                     timer;
 
     inline static ResourceViewMap      resourceViewers;
 };

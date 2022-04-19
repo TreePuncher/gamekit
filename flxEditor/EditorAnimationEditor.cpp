@@ -14,6 +14,7 @@
 #include "EditorAnimationInputTab.h"
 #include "EditorAnimatorComponent.h"
 
+#include <angelscript.h>
 
 /************************************************************************************************/
 
@@ -21,7 +22,7 @@
 ID3D12PipelineState* CreateFlatSkinnedPassPSO(RenderSystem* RS)
 {
 	auto DrawRectVShader = RS->LoadShader("ForwardSkinned_VS",  "vs_6_0", "assets\\shaders\\forwardRender.hlsl");
-	auto DrawRectPShader = RS->LoadShader("ColoredPolys",        "ps_6_0", "assets\\shaders\\forwardRender.hlsl");
+	auto DrawRectPShader = RS->LoadShader("ColoredPolys",       "ps_6_0", "assets\\shaders\\forwardRender.hlsl");
 
 	/*
 	typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -204,7 +205,7 @@ public:
         FlexKit::uint2 newWH = { evt->size().width() * 1.5, evt->size().height() * 1.5 };
 
 
-        renderWindow->resize(evt->size());
+        renderWindow->resizeEvent(evt);
         depthBuffer.Resize(newWH);
 
         FlexKit::SetCameraAspectRatio(previewCamera, float(evt->size().width()) / float(evt->size().height()));
@@ -255,6 +256,8 @@ public:
 
                 if (!brush)
                     return;
+
+                FlexKit::Yaw(brush->Node, 1.0f/60.0f);
 
                 auto mesh           = brush->MeshHandle;
                 auto materialHndl   = brush->material;
@@ -361,6 +364,43 @@ public:
             auto& object = selection->object;
 
             RenderAnimatedModel(object.gameObject, dispatcher, dT, temporaryBuffers, frameGraph, renderTarget, allocator);
+            
+            if (const auto pose = FlexKit::GetPoseState(object.gameObject); pose)
+            {
+                const auto node = FlexKit::GetSceneNode(object.gameObject);
+                const auto PV   = GetCameraConstants(previewCamera).PV;
+
+
+                FlexKit::LineSegments lines(FlexKit::SystemAllocator);
+                lines = FlexKit::DEBUG_DrawPoseState(*pose, node, FlexKit::SystemAllocator);
+
+
+                for (auto& line : lines)
+                {
+                    const auto tempA = PV * float4{ line.A, 1 };
+                    const auto tempB = PV * float4{ line.B, 1 };
+
+                    if (tempA.w <= 0 || tempB.w <= 0)
+                    {
+                        line.A = { 0, 0, 0 };
+                        line.B = { 0, 0, 0 };
+                    }
+                    else
+                    {
+                        line.A = tempA.xyz() / tempA.w;
+                        line.B = tempB.xyz() / tempB.w;
+                    }
+                }
+
+                DrawShapes(
+                    FlexKit::DRAW_LINE_PSO,
+                    frameGraph,
+                    temporaryBuffers.ReserveVertexBuffer,
+                    temporaryBuffers.ReserveConstantBuffer,
+                    renderTarget,
+                    allocator,
+                    FlexKit::LineShape{ lines });
+            }
         }
 
         FlexKit::PresentBackBuffer(frameGraph, renderTarget);
@@ -408,6 +448,28 @@ private:
 /************************************************************************************************/
 
 
+FlexKit::Animation* EditorAnimationEditor::LoadAnimation(std::string& id, bool)
+{
+    auto resource   = project.FindProjectResource(id)->resource;
+    auto blob       = resource->CreateBlob();
+
+    FlexKit::AddAssetBuffer((FlexKit::Resource*)blob.buffer);
+    return FlexKit::LoadAnimation(resource->GetResourceGUID(), FlexKit::SystemAllocator);
+}
+
+
+/************************************************************************************************/
+
+
+void EditorAnimationEditor::ReleaseAnimation(FlexKit::Animation* anim)
+{
+    FlexKit::SystemAllocator.release(anim);
+}
+
+
+/************************************************************************************************/
+
+
 EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, EditorScriptEngine& IN_engine, EditorRenderer& IN_renderer, EditorProject& IN_project, QWidget* parent)
     : QWidget           { parent }
     , project           { IN_project }
@@ -421,6 +483,12 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
     , inputVariables    { new EditorAnimationInputTab }
 {
     static auto _REGISTERED = AnimationEditorObject::RegisterInterface(scriptEngine);
+
+    auto engine     = FlexKit::GetScriptEngine();
+
+    int res;
+    res = engine->RegisterGlobalFunction("Animation@ LoadAnimation(string& in)", asMETHOD(EditorAnimationEditor, LoadAnimation), asCALL_THISCALL_ASGLOBAL, this);
+    res = engine->RegisterGlobalFunction("void ReleaseAnimation(Animation@)", asMETHOD(EditorAnimationEditor, ReleaseAnimation), asCALL_THISCALL_ASGLOBAL, this);
 
     codeEditor->GetTabs()->addTab(inputVariables, "Input Variables");
 
@@ -490,6 +558,7 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
                             codeEditor->SetResource(scriptResource);
 
                             // Build Editor object
+                            gameObject.AddView<FlexKit::SceneNodeView<>>();
                             gameObject.AddView<FlexKit::BrushView>(mesh);
                             gameObject.AddView<FlexKit::SkeletonView>(mesh, skeleton->resource->GetResourceGUID());
                             gameObject.AddView<FlexKit::AnimatorView>();

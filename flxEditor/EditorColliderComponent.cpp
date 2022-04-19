@@ -18,15 +18,17 @@ class StaticColliderResource :
 public:
     const ResourceID_t GetResourceTypeID()  const noexcept override { return TriMeshColliderTypeID; }
     const std::string& GetResourceID()      const noexcept override { return stringID; }
-    const uint64_t     GetResourceGUID()    const noexcept override { return resourceID; }
+    const uint64_t     GetResourceGUID()    const noexcept override { return guid; }
 
+    void SetResourceID(const std::string& newID)    noexcept final { stringID = newID; }
+    void SetResourceGUID(uint64_t newGUID)          noexcept final { guid = newGUID; }
 
     FlexKit::ResourceBlob CreateBlob() const
     {
         FlexKit::ColliderResourceBlob header;
         FlexKit::Blob blob;
 
-        header.GUID         = resourceID;
+        header.GUID         = guid;
         header.ResourceSize = sizeof(header) + colliderBlob.size();
         header.Type         = EResourceType::EResource_Collider;
 
@@ -38,7 +40,7 @@ public:
         FlexKit::ResourceBlob out;
         out.buffer          = (char*)data;
         out.bufferSize      = size;
-        out.GUID            = resourceID;
+        out.GUID            = guid;
         out.ID              = stringID;
         out.resourceType    = EResourceType::EResource_Collider;
         return out;
@@ -47,13 +49,13 @@ public:
     void Serialize(auto& archive)
     {
         archive& stringID;
-        archive& resourceID;
+        archive& guid;
         archive& colliderBlob;
     }
 
     FlexKit::Blob   colliderBlob;
     std::string     stringID;
-    uint64_t        resourceID;
+    uint64_t        guid;
 };
 
 
@@ -96,14 +98,14 @@ public:
 
                         auto resource = std::make_shared<StaticColliderResource>();
                         resource->stringID      = "Static Collider";
-                        resource->resourceID    = rand();
+                        resource->guid          = rand();
                         resource->colliderBlob  = newShape;
 
                         auto shape = physx.LoadTriMeshShape(newShape);
 
                         Collider colliderMeta;
                         colliderMeta.shape.type             = FlexKit::StaticBodyType::TriangleMesh;
-                        colliderMeta.shape.triMeshResource  = resource->resourceID;
+                        colliderMeta.shape.triMeshResource  = resource->guid;
                         colliderMeta.shape.orientation      = FlexKit::Quaternion{ 0, 0, 0, 1 };
                         colliderMeta.shape.position         = FlexKit::float3(0);
                         colliderMeta.shapeName              = "CSG generated Collider";

@@ -109,11 +109,12 @@ namespace FlexKit
         virtual SerializableBase*   CloneSerializer() { return nullptr; }
 
         virtual ResourceBlob        CreateBlob()        const = 0;
-        virtual const std::string&  GetResourceID()     const noexcept { const static std::string _temp{ "resource" };  return _temp; }
+        virtual const std::string&  GetResourceID()     const noexcept = 0;
         virtual const uint64_t      GetResourceGUID()   const noexcept { return -1; }
         virtual const ResourceID_t  GetResourceTypeID() const noexcept = 0;// { return -1; }
 
-        virtual void                SetResourceID(std::string& id) {}
+        virtual void                SetResourceID   (const std::string& id) noexcept = 0;
+        virtual void                SetResourceGUID (uint64_t) noexcept = 0;
     };
 
 

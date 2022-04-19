@@ -1,5 +1,6 @@
 #include "PCH.h"
 
+#include <scn/scn.h>
 #include <QtWidgets/QTableWidget>
 #include <QtWidgets/qdockwidget>
 #include <QtWidgets/qmenubar.h>
@@ -22,15 +23,24 @@
 ResourceBrowserWidget::ResourceBrowserWidget(EditorProject& IN_project, EditorRenderer& IN_renderer, QWidget *parent) :
     QWidget     { parent },
     renderer    { IN_renderer },
-    model       { IN_project },
-    menuBar     { new QMenuBar{ this } }
+    menuBar     { new QMenuBar{ this } },
+    timer       { new QTimer(this) },
+    project     { IN_project }
 {
 	ui.setupUi(this);
     ui.verticalLayout->setMenuBar(menuBar);
 
-    table = findChild<QTableView*>("tableView");
+    table = findChild<QTableWidget*>("tableWidget");
     table->setContextMenuPolicy(Qt::CustomContextMenu);
-    table->setModel(&model);
+    table->setUpdatesEnabled(true);
+    table->setColumnCount(4);
+    table->setSelectionMode(QAbstractItemView::SingleSelection);
+
+    connect(table, &QTableWidget::cellChanged, this, &ResourceBrowserWidget::OnCellChange);
+
+    connect(timer, &QTimer::timeout, this, &ResourceBrowserWidget::Update);
+    timer->setInterval(1000);
+    timer->start();
 
     connect(
         table, SIGNAL(customContextMenuRequested(const QPoint&)),
@@ -42,16 +52,14 @@ ResourceBrowserWidget::ResourceBrowserWidget(EditorProject& IN_project, EditorRe
     createScene->connect(createScene, &QAction::triggered,
         [&]
         {
-            auto scene = std::make_shared<FlexKit::SceneResource>();
-            auto editorScene = std::make_shared<EditorScene>(scene);
+            auto scene          = std::make_shared<FlexKit::SceneResource>();
+            auto editorScene    = std::make_shared<EditorScene>(scene);
 
             scene->ID               = "NewScene";
             editorScene->sceneName  = "NewScene";
             
             IN_project.AddScene(editorScene);
             IN_project.AddResource(std::static_pointer_cast<FlexKit::iResource>(scene));
-
-            model.layoutChanged();
         });
 }
 
@@ -61,6 +69,101 @@ ResourceBrowserWidget::ResourceBrowserWidget(EditorProject& IN_project, EditorRe
 
 ResourceBrowserWidget::~ResourceBrowserWidget()
 {
+}
+
+
+/************************************************************************************************/
+
+
+void ResourceBrowserWidget::Update()
+{
+    auto resourceCount = project.resources.size();
+    table->setRowCount(resourceCount);
+
+    static const std::map<ResourceID_t, const char*> IDTypeMap = {
+        { TextureResourceTypeID,    "Texture" },
+        { MeshResourceTypeID,       "Mesh" },
+        { SceneResourceTypeID,      "Scene" },
+    };
+
+    for (size_t I = 0; I < resourceCount; I++)
+    {
+        auto useCount   = project.resources[I].use_count();
+        auto& resource  = project.resources[I]->resource;
+
+        auto name           = table->item(I, 0);
+        auto ID             = table->item(I, 1);
+        auto userCount      = table->item(I, 2);
+        auto resourceType   = table->item(I, 3);
+
+        if (!name)
+        {
+            name            = new QTableWidgetItem;
+            ID              = new QTableWidgetItem;
+            userCount       = new QTableWidgetItem;
+            resourceType    = new QTableWidgetItem;
+
+            auto& idTxt = resource->GetResourceID();
+            name->setText(idTxt.c_str());
+            ID->setText(fmt::format("{}", resource->GetResourceGUID()).c_str());
+            userCount->setText(fmt::format("{}", useCount).c_str());
+
+            table->setItem(I, 0, name);
+            table->setItem(I, 1, ID);
+            table->setItem(I, 2, userCount);
+            table->setItem(I, 3, resourceType);
+        }
+        else
+        {
+            auto& idTxt = resource->GetResourceID();
+            name->setText(idTxt.c_str());
+            ID->setText(fmt::format("{}", resource->GetResourceGUID()).c_str());
+            userCount->setText(fmt::format("{}", useCount).c_str());
+
+            if (auto res = IDTypeMap.find(resource->GetResourceTypeID()); res != IDTypeMap.end())
+                resourceType->setText(res->second);
+            else
+                resourceType->setText("Unknown");
+        }
+    }
+
+    table->update();
+
+    timer->start();
+}
+
+
+/************************************************************************************************/
+
+
+void ResourceBrowserWidget::OnCellChange(int row, int column)
+{
+    auto item = table->item(row, column);
+
+    switch (column)
+    {
+    case 0:
+    {
+        auto name = item->text().toStdString();
+        project.resources[row]->resource->SetResourceID(name);
+    }   break;
+    case 1:
+    {
+        uint64_t GUID;
+        auto text = item->text().toStdString();
+        if(scn::scan(text, "{}", GUID))
+            project.resources[row]->resource->SetResourceGUID(GUID);
+
+    }   break;
+    case 2:
+    {
+    }   break;
+    case 3:
+    {
+    }   break;
+    default:
+        return;
+    }
 }
 
 
@@ -77,7 +180,7 @@ void ResourceBrowserWidget::resizeEvent(QResizeEvent* evt)
 
     resize(widgetSize);
 
-    auto child = findChild<QTableView*>("tableView");
+    auto child = findChild<QTableWidget*>("tableWidget");
 
     child->resize(widgetSize);
 }
@@ -94,7 +197,6 @@ void ResourceBrowserWidget::AddResourceViewer(ResourceViewer_ptr viewer_ptr)
 
 /************************************************************************************************/
 
-
 void ResourceBrowserWidget::ShowContextMenu(const QPoint& pos)
 {
     auto index = table->indexAt(pos);
@@ -105,6 +207,7 @@ void ResourceBrowserWidget::ShowContextMenu(const QPoint& pos)
 
         std::vector<QAction> actions;
 
+        /*
         auto type = model.GetResourceType(index.row());
 
         if (auto res = resourceViewers.find(type); res != resourceViewers.end()) {
@@ -122,42 +225,11 @@ void ResourceBrowserWidget::ShowContextMenu(const QPoint& pos)
             });
 
         contextMenu.exec(table->viewport()->mapToGlobal(pos));
+        */
     }
 }
 
-
-/************************************************************************************************/
-
-
-ResourceItemModel::ResourceItemModel(EditorProject& IN_project) :
-    QAbstractTableModel{},
-    project{ IN_project },
-    timer{ new QTimer(this) }
-{
-    timer->setInterval(1000);
-    connect(timer, &QTimer::timeout, this, &ResourceItemModel::RefreshTable);
-    timer->start();
-}
-
-
-/************************************************************************************************/
-
-
-int ResourceItemModel::rowCount(const QModelIndex& parent) const
-{
-    return project.resources.size();
-}
-
-
-/************************************************************************************************/
-
-
-int ResourceItemModel::columnCount(const QModelIndex& parent) const
-{
-    return 4;
-}
-
-
+/*
 QVariant ResourceItemModel::headerData(int section, Qt::Orientation orientation, int role) const 
 {
     if (orientation == Qt::Orientation::Horizontal)
@@ -182,28 +254,12 @@ QVariant ResourceItemModel::headerData(int section, Qt::Orientation orientation,
 
     return{};
 }
+*/
 
 /************************************************************************************************/
 
 
-FlexKit::Resource_ptr  ResourceItemModel::GetResource(const uint64_t index)
-{
-    return project.resources[index]->resource;
-}
-
-
-/************************************************************************************************/
-
-
-ResourceID_t  ResourceItemModel::GetResourceType(uint64_t index) const
-{
-    return project.resources[index]->resource->GetResourceTypeID();
-}
-
-
-/************************************************************************************************/
-
-
+/*
 QVariant ResourceItemModel::data(const QModelIndex& index, int role) const
 {
     if (role == Qt::DisplayRole)
@@ -232,61 +288,13 @@ QVariant ResourceItemModel::data(const QModelIndex& index, int role) const
         case 3:
             return QVariant{ std::to_string(project.resources[index.row()]->resource->GetResourceGUID()).c_str()};
         default:
-            return QVariant{ tr("Datass!") };
+            return QVariant{ tr("ERROR!") };
         }
     }
 
     return QVariant{};
 }
-
-
-/************************************************************************************************/
-
-
-void ResourceItemModel::Remove(FlexKit::Resource_ptr resource)
-{
-    project.RemoveResource(resource);
-}
-
-
-/************************************************************************************************/
-
-
-void ResourceItemModel::RefreshTable()
-{
-    if (rowCount())
-    {
-        QModelIndex topLeft     = createIndex(0, 0);
-        QModelIndex bottomRight = createIndex(project.resources.size(), 0);
-
-        if (project.resources.size() != rows)
-        {
-            const auto newRowCount = project.resources.size();
-
-            beginInsertRows(QModelIndex{}, rows, newRowCount);
-            endInsertRows();
-
-            rows = newRowCount;
-            emit layoutChanged();
-        }
-        else
-            emit dataChanged(topLeft, bottomRight, { Qt::DisplayRole });
-    }
-    else
-    {
-        if (rows != 0)
-        {
-            beginInsertRows(QModelIndex{}, rows, 0);
-            endInsertRows();
-
-            rows = 0;
-            emit layoutChanged();
-        }
-    }
-
-    timer->start();
-}
-
+*/
 
 /**********************************************************************
 

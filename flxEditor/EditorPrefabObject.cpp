@@ -48,7 +48,7 @@ const std::string& ScriptResource::GetResourceID() const noexcept
 
 const uint64_t ScriptResource::GetResourceGUID() const noexcept
 {
-    return resourceId;
+    return guid;
 }
 
 
@@ -60,7 +60,22 @@ const ResourceID_t ScriptResource::GetResourceTypeID() const noexcept
     return ScriptResourceTypeID;
 }
 
-void ScriptResource::SetResourceID(std::string& id) { ID = id; }
+
+/************************************************************************************************/
+
+
+void ScriptResource::SetResourceID(const std::string& id) noexcept
+{
+    ID = id;
+}
+
+/************************************************************************************************/
+
+
+void ScriptResource::SetResourceGUID(uint64_t newGUID) noexcept
+{
+    guid = newGUID;
+}
 
 
 /************************************************************************************************/
@@ -97,7 +112,7 @@ const std::string& PrefabGameObjectResource::GetResourceID() const noexcept
 
 const uint64_t PrefabGameObjectResource::GetResourceGUID() const noexcept
 {
-    return resourceId;
+    return guid;
 }
 
 const ResourceID_t PrefabGameObjectResource::GetResourceTypeID() const noexcept
@@ -105,9 +120,14 @@ const ResourceID_t PrefabGameObjectResource::GetResourceTypeID() const noexcept
     return FlexKit::EResource_Prefab;
 }
 
-void PrefabGameObjectResource::SetResourceID(std::string& newID)
+void PrefabGameObjectResource::SetResourceID(const std::string& newID) noexcept
 {
     ID = newID;
+}
+
+void PrefabGameObjectResource::SetResourceGUID(uint64_t newGUID) noexcept
+{
+    guid = newGUID;
 }
 
 

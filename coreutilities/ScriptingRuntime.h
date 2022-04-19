@@ -24,7 +24,13 @@ namespace FlexKit
         size_t blobSize;
     };
 
-    void RegisterRuntimeAPI(asIScriptEngine*);
+    enum RegisterFlags
+    {
+        REGISTER_ALL,
+        EXCLUDE_LOADANIMATION,
+    };
+
+    void RegisterRuntimeAPI(asIScriptEngine*, RegisterFlags flags = REGISTER_ALL);
     void RegisterMathTypes(asIScriptEngine*, iAllocator* allocator);
 
     void InitiateScriptRuntime();

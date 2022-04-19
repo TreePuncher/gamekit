@@ -151,6 +151,8 @@ EditorScriptEngine::EditorScriptEngine(FlexKit::iAllocator* allocator)
 {
     FlexKit::InitiateScriptRuntime();
 
+    auto engine     = FlexKit::GetScriptEngine();
+
     auto r          = FlexKit::GetScriptEngine()->SetMessageCallback(asFUNCTION(EditorScriptEngine::MessageCallback), this, asCALL_CDECL); assert(r >= 0);
 
     //scriptContext->SetLineCallback(asMETHOD(CDebugger, LineCallback), debugger, asCALL_THISCALL);
@@ -181,7 +183,7 @@ void EditorScriptEngine::RegisterGadget(asIScriptObject* gObj)
 void EditorScriptEngine::RegisterCoreTypesAPI(FlexKit::iAllocator* allocator)
 {
     FlexKit::RegisterMathTypes(FlexKit::GetScriptEngine(), allocator);
-    FlexKit::RegisterRuntimeAPI(FlexKit::GetScriptEngine());
+    FlexKit::RegisterRuntimeAPI(FlexKit::GetScriptEngine(), FlexKit::EXCLUDE_LOADANIMATION);
 }
 
 

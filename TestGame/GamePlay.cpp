@@ -62,7 +62,30 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
 
     //materialView.SetProperty(GetCRCGUID(PBR_ALBEDO), float4{ 1, 0, 0, 0.5f });
 
-    desc.scene.AddGameObject(gameObject, node);
+    static bool s_addAsset = []() { FlexKit::AddAssetFile("assets\\testprefab.gameres"); return true; }();
+
+    auto& prefab = objectPool.Allocate();
+
+    if (LoadPrefab(prefab, 123456, allocator))
+    {
+        auto& materials = MaterialComponent::GetComponent();
+        auto material   = materials.CreateMaterial();
+        materials.Add2Pass(material, ShadowMapAnimatedPassID);
+        materials.Add2Pass(material, GBufferAnimatedPassID);
+
+        prefab.AddView<MaterialView>(material);
+        prefab.AddView<StringIDView>("wiggle", 6);
+
+        scene.AddGameObject(prefab, GetSceneNode(prefab));
+
+        auto& animator  = *GetAnimator(prefab);
+        //auto input      = animator.GetInputValue(0);
+        //(*input)->x     = 0.0f * pi;
+
+        SetBoundingSphereFromMesh(prefab);
+
+        SetParentNode(node, GetSceneNode(prefab));
+    }
 
     return gameObject;
 }
