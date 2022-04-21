@@ -103,7 +103,10 @@ namespace FlexKit
                 }
             }
 
-            std::vector<LODLevel> lodLevels;
+            uint32_t                    morphTargetVertexCount = 0;
+            std::vector<LODLevel>       lodLevels;
+            std::vector<std::string>    morphTargetNames;
+            std::vector<uint32_t>       morphTargetStart;
 
             for(auto sourceMesh : lodSources)
             {
@@ -259,6 +262,66 @@ namespace FlexKit
 
                     }
 
+                    size_t morphTargetCount = 0;
+                    for(auto& morphChannels : primitive.targets)
+                    {
+                        auto& extraValues   = mesh.extras.Get<tinygltf::Value::Object>();
+                        auto& targetNames   = extraValues["targetNames"].Get<tinygltf::Value::Array>();
+                        morphTargetNames.push_back(targetNames[morphTargetCount].Get<std::string>());
+                        morphTargetStart.push_back(morphTargetVertexCount);
+
+                        auto position       = morphChannels.find("POSITION");
+                        auto tangent        = morphChannels.find("TANGENT");
+                        auto normal         = morphChannels.find("NORMAL");
+
+                        if (tangent == morphChannels.end() || normal == morphChannels.end() || position == morphChannels.end())
+                            continue;
+
+                        auto& positionAcessor   = model.accessors[position->second];
+                        auto& positionView      = model.bufferViews[positionAcessor.bufferView];
+                        auto* positionBuffer    = model.buffers[positionView.buffer].data.data() + positionView.byteOffset;
+
+                        auto& normalAcessor     = model.accessors[normal->second];
+                        auto& normalView        = model.bufferViews[normalAcessor.bufferView];
+                        auto* normalBuffer      = model.buffers[normalView.buffer].data.data() + normalView.byteOffset;
+
+                        auto& tangentAcessor    = model.accessors[tangent->second];
+                        auto& tangentView       = model.bufferViews[tangentAcessor.bufferView];
+                        auto* tangentbuffer     = model.buffers[tangentView.buffer].data.data() + tangentView.byteOffset;
+
+                        auto positionStride         = positionView.byteStride == 0 ? GetComponentSizeInBytes(positionAcessor.componentType) * GetNumComponentsInType(positionAcessor.type) : positionView.byteStride;
+                        auto positionElementCount   = positionView.byteLength / positionStride;
+
+                        auto tangentStride          = tangentView.byteStride == 0 ? GetComponentSizeInBytes(tangentAcessor.componentType) * GetNumComponentsInType(tangentAcessor.type) : tangentView.byteStride;
+                        auto tangentElementCount    = tangentView.byteLength / tangentStride;
+
+                        auto normalStride           = normalView.byteStride == 0 ? GetComponentSizeInBytes(normalAcessor.componentType) * GetNumComponentsInType(normalAcessor.type) : normalView.byteStride;
+                        auto normalElementCount     = normalView.byteLength / normalStride;
+
+                        for (size_t I = 0; I < normalElementCount; I++)
+                        {
+                            float3 position;
+                            float3 normal;
+                            float3 tangent;
+
+                            memcpy(&position,   positionBuffer + positionStride * I, positionStride);
+                            memcpy(&normal,     normalBuffer  + normalStride  * I, normalStride);
+                            memcpy(&tangent,    tangentbuffer + tangentStride * I, tangentStride);
+
+                            const MorphTargetVertexToken token{
+                                .position   = position,
+                                .normal     = normal,
+                                .tangent    = tangent,
+                                .morphIdx   = (uint32_t)morphTargetCount
+                            };
+
+                            meshTokens.push_back(token);
+                        }
+
+                        morphTargetVertexCount += normalElementCount;
+                        morphTargetCount++;
+                    }
+
                     auto& indexAccessor     = model.accessors[primitive.indices];
                     auto& indexBufferView   = model.bufferViews[indexAccessor.bufferView];
                     auto& indexBuffer       = model.buffers[indexBufferView.buffer];
@@ -295,6 +358,9 @@ namespace FlexKit
                                 tokens[II].vertex.push_back(VertexField{ idx, VertexField::JointWeight });
                             }
 
+                            for (uint32_t morphIdx = 0; morphIdx < morphTargetCount; morphIdx++)
+                                tokens[II].vertex.push_back(VertexField{ morphTargetStart[morphIdx] + idx, VertexField::MorphTarget});
+
                             std::sort(
                                 tokens[II].vertex.begin(), tokens[II].vertex.end(),
                                 [&](VertexField& lhs, VertexField& rhs)
@@ -310,15 +376,18 @@ namespace FlexKit
 
                     newMesh.tokens      = std::move(meshTokens);
                     newMesh.faceCount   = elementCount;
-
+                    
                     lod.subMeshs.emplace_back(std::move(newMesh));
                 }
 
                 lodLevels.emplace_back(std::move(lod));
             }
 
-            auto meshResource = CreateMeshResource(lodLevels,  mesh.name, {}, false);
+            auto meshResource       = CreateMeshResource(lodLevels, mesh.name, {}, false);
             meshResource->TriMeshID = GUID;
+
+            for (size_t I = 0; I < morphTargetNames.size(); I++)
+                meshResource->morphTargetBuffers[I].name = morphTargetNames[I];
 
             resources.emplace_back(std::move(meshResource));
 

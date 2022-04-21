@@ -86,6 +86,31 @@ namespace FlexKit
     };
 
 
+    struct MorphTargetVertexToken
+    {
+        float3      position;
+        float3      normal;
+        float3      tangent;
+        uint32_t    morphIdx;
+
+        void Serialize(auto& archive)
+        {
+            archive& position;
+            archive& normal;
+            archive& tangent;
+            archive& morphIdx;
+        }
+    };
+
+
+    struct MorphTargetVertex
+    {
+        float3      position;
+        float3      normal;
+        float3      tangent;
+    };
+
+
     struct VertexField
     {
         uint32_t idx;
@@ -98,7 +123,8 @@ namespace FlexKit
             Tangent,
             Material,
             JointWeight,
-            JointIndex
+            JointIndex,
+            MorphTarget,
         } type;
     };
 
@@ -119,7 +145,8 @@ namespace FlexKit
         MaterialToken,
         JointWeightToken,
         JointIndexToken,
-        VertexToken>;
+        VertexToken,
+        MorphTargetVertexToken>;
 
 
 	struct PackedVertexLayout
@@ -199,6 +226,19 @@ namespace FlexKit
 		typedef Vector<CombinedVertex>	CombinedVertexBuffer;
 
 
+        struct MorphTarget
+        {
+            Vector<MorphTargetVertex> vertices{ SystemAllocator };
+        };
+
+        struct MorphTarget_STL
+        {
+            std::vector<MorphTargetVertexToken> vertices;
+
+            void Serialize(auto& archive) { archive& vertices; }
+        };
+
+
         /************************************************************************************************/
 
 
@@ -246,6 +286,7 @@ namespace FlexKit
                 archive& jointIndexes;
                 archive& indexes;
                 archive& tris;
+                archive& morphTargets;
             }
 
 
@@ -264,8 +305,9 @@ namespace FlexKit
             std::vector<JointWeight>		jointWeights        {};
             std::vector<JointIndexes>	    jointIndexes        {};
 
-            std::vector<VertexIndexList>	indexes;
-            std::vector<Triangle>	        tris;
+            std::vector<VertexIndexList>	    indexes;
+            std::vector<Triangle>	            tris;
+            std::vector<MorphTargetVertexToken> morphTargets;
         };
 
 
@@ -315,8 +357,9 @@ namespace FlexKit
             Vector<float2>              textureCoordinates  { SystemAllocator };
             Vector<VertexWeight>		jointWeights        { SystemAllocator };
             Vector<uint4_16>	        jointIndexes        { SystemAllocator };
+            Vector<MorphTarget>	        morphTargets        { SystemAllocator };
 
-            Vector<uint32_t>	        indexes{ SystemAllocator };
+            Vector<uint32_t>	        indexes             { SystemAllocator };
 
             AABB                        aabb;
             BoundingSphere              boundingSphere;
@@ -338,6 +381,10 @@ namespace FlexKit
             Vector<char> textureCoordinates { SystemAllocator };
             Vector<char> jointWeights       { SystemAllocator };
             Vector<char> jointIndexes       { SystemAllocator };
+
+            using MorphBuffer = Vector<char>;
+
+            Vector<MorphBuffer> morphBuffers{ SystemAllocator };
 
             Vector<char> indexes    { SystemAllocator };
 

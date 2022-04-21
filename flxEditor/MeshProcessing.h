@@ -325,6 +325,8 @@ namespace FlexKit
 
             ar& LODs;
             ar& subDivs;
+
+            ar& morphTargetBuffers;
         }
 
 
@@ -336,9 +338,21 @@ namespace FlexKit
 		SkeletonResource_ptr	    Skeleton;
 		size_t					    SkeletonGUID;
 
+        struct MorphTargetBuffer
+        {
+            std::string         name;
+            std::vector<char>   buffer;
 
-		std::vector<LevelOfDetail>  LODs;
-        std::vector<SubDivInfo>		subDivs;
+            void Serialize(auto& ar)
+            {
+                ar& name;
+                ar& buffer;
+            }
+        };
+
+		std::vector<LevelOfDetail>      LODs;
+        std::vector<SubDivInfo>		    subDivs;
+        std::vector<MorphTargetBuffer>  morphTargetBuffers;
 	};
 
 
@@ -354,8 +368,8 @@ namespace FlexKit
     {
         std::vector<MeshDesc> subMeshs;
     };
-	
-	MeshResource_ptr	CreateMeshResource(std::vector<LODLevel>& lods, const std::string& ID, const MetaDataList& MD = MetaDataList{}, const bool EnableSubDiv = false);
+
+	MeshResource_ptr	CreateMeshResource(std::vector<LODLevel>& lods,  const std::string& ID, const MetaDataList& MD = MetaDataList{}, const bool EnableSubDiv = false);
 
 
 	/************************************************************************************************/

@@ -80,7 +80,12 @@ namespace FlexKit
                         [&](const VertexToken& token)
                         {
                             indexes.push_back(token.vertex);
-                        } },
+                        },
+                        [&](const MorphTargetVertexToken& token)
+                        {
+                            morphTargets.push_back(token);
+                        }
+                    },
                     token);
             };
 
@@ -410,6 +415,12 @@ namespace FlexKit
             appendBuffers(jointIndexes, rhs.jointIndexes);
             appendBuffers(jointWeights, rhs.jointWeights);
 
+            if (morphTargets.size() < rhs.morphTargets.size())
+                morphTargets.resize(rhs.morphTargets.size());
+
+            for(size_t I = 0; I < morphTargets.size(); I++)
+                appendBuffers(morphTargets[I].vertices, rhs.morphTargets[I].vertices);
+
             return *this;
         }
 
@@ -445,6 +456,19 @@ namespace FlexKit
                     case VertexField::JointIndex:
                         jointIndexes.push_back(ctx.mesh.jointIndexes[field.idx]);
                         break;
+                    case VertexField::MorphTarget:
+                    {
+                        auto& vertex = ctx.mesh.morphTargets[field.idx];
+                        MorphTargetVertex mtv;
+                        mtv.normal      = vertex.normal;
+                        mtv.position    = vertex.position;
+                        mtv.tangent     = vertex.tangent;
+
+                        if (vertex.morphIdx >= morphTargets.size())
+                            morphTargets.emplace_back();
+
+                        morphTargets[vertex.morphIdx].vertices.push_back(mtv);
+                    }   break;
                     default:
                         break;
                     }
@@ -476,9 +500,9 @@ namespace FlexKit
         /************************************************************************************************/
 
 
-        OptimizedBuffer::OptimizedBuffer(const OptimizedMesh& buffer) :
-            aabb    { buffer.aabb           },
-            bs      { buffer.boundingSphere }
+        OptimizedBuffer::OptimizedBuffer(const OptimizedMesh& mesh) :
+            aabb    { mesh.aabb           },
+            bs      { mesh.boundingSphere }
         {
             // Not quick I know, leave me alone
             auto moveFloat3s =
@@ -507,15 +531,25 @@ namespace FlexKit
                     }
                 };
 
+            moveFloat3s(points,     mesh.points);
+            moveFloat3s(normals,    mesh.normals);
+            moveFloat3s(tangents,   mesh.tangents);
 
-            moveFloat3s(points,     buffer.points);
-            moveFloat3s(normals,    buffer.normals);
-            moveFloat3s(tangents,   buffer.tangents);
+            moveBuffer(textureCoordinates,  mesh.textureCoordinates);
+            moveBuffer(jointWeights,        mesh.jointWeights);
+            moveBuffer(jointIndexes,        mesh.jointIndexes);
+            moveBuffer(indexes,             mesh.indexes);
 
-            moveBuffer(textureCoordinates,  buffer.textureCoordinates);
-            moveBuffer(jointWeights,        buffer.jointWeights);
-            moveBuffer(jointIndexes,        buffer.jointIndexes);
-            moveBuffer(indexes,             buffer.indexes);
+            for (auto& morphTarget : mesh.morphTargets)
+            {
+                const size_t bufferSize = morphTarget.vertices.size() * sizeof(float3) * 3;
+                MorphBuffer buffer{ SystemAllocator };
+                buffer.resize(bufferSize);
+
+                memcpy(buffer.data(), (void*)&morphTarget.vertices[0], bufferSize);
+
+                morphBuffers.push_back(buffer);
+            }
         }
 
 
