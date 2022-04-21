@@ -220,11 +220,18 @@ namespace FlexKit
 
         struct LODlevelDesciption
         {
-            size_t  bufferOffset    = 0;
-            size_t  subMeshCount    = 0;
-
+            size_t bufferOffset    = 0;
+            size_t subMeshCount    = 0;
+            size_t morphTargets    = 0; 
             static_vector<Buffer> buffers;
         } descriptor;
+
+        struct LODMorphTarget
+        {
+            char    morphTargetName[32];
+            size_t  bufferOffset    = 0;
+            size_t  buffserSize     = 0;
+        };
 
         //SubMesh subMeshes[];
     };

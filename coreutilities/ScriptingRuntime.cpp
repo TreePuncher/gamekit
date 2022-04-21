@@ -416,7 +416,7 @@ namespace FlexKit
         res = scriptEngine->RegisterObjectType("PoseState", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                              FK_ASSERT(res >= 0);
         res = scriptEngine->RegisterObjectMethod("PoseState", "int GetPoseCount()",                             asFUNCTION(PoseStatePoseCount), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
         res = scriptEngine->RegisterObjectMethod("PoseState", "Pose@ GetPose(int)",                             asFUNCTION(PoseStateGetPose),   asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-        res = scriptEngine->RegisterObjectMethod("PoseState", "JointHandle FindBone(string)",                   asFUNCTION(GetBone),            asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+        res = scriptEngine->RegisterObjectMethod("PoseState", "JointHandle FindJoint(string)",                  asFUNCTION(GetBone),            asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
 
 
         /************************************************************************************************/

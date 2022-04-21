@@ -112,18 +112,22 @@ namespace FlexKit
 
         std::vector<Blob> lodblobs;
 
-        for (auto& lod : LODs)
+        for (size_t I = 0; I < LODs.size(); I++)
         {
+            auto& lod = LODs[I];
+
             Blob        lodSubMeshTable;
             Blob        lodVertexBuffer;
+            Blob        morphTargetTableBuffer;
             LODlevel    lodLevel;
 
             lodLevel.descriptor.subMeshCount = lod.submeshes.size();
+            lodLevel.descriptor.morphTargets = I == 0 ? morphTargetBuffers.size() : 0;
 
             for (auto& subMesh : lod.submeshes)
                 lodSubMeshTable += Blob(subMesh);
 
-            const size_t headerSize = sizeof(LODlevel::LODlevelDesciption);
+            const size_t headerSize = sizeof(LODlevel::LODlevelDesciption) + sizeof(LODlevel::LODMorphTarget) * lodLevel.descriptor.morphTargets;
 
 			for (auto& buffer : lod.buffers)
 			{
@@ -139,8 +143,21 @@ namespace FlexKit
                 lodVertexBuffer += vertexBufferBlob;
 			}
 
+            for (size_t morphTargetIdx = 0; I < lodLevel.descriptor.morphTargets; I++)
+            {
+                LODlevel::LODMorphTarget mt;
+                strncpy(mt.morphTargetName, morphTargetBuffers[morphTargetIdx].name.c_str(), sizeof(mt.morphTargetName));
 
-            lodblobs.push_back(Blob{ lodLevel } + lodSubMeshTable + lodVertexBuffer);
+                auto& buffer = morphTargetBuffers[morphTargetIdx].buffer;
+                Blob bufferBlob{ (const char*)buffer.data(), buffer.size() };
+
+                mt.bufferOffset = headerSize + lodVertexBuffer.size();
+
+                morphTargetTableBuffer += mt;
+                lodVertexBuffer += bufferBlob;
+            }
+
+            lodblobs.push_back(Blob{ lodLevel } + morphTargetTableBuffer + lodSubMeshTable + lodVertexBuffer);
         }
 
         // Generate LOD table
@@ -210,7 +227,7 @@ namespace FlexKit
             OptimizedMesh optimizedMesh;
 
             static_vector<FlexKit::SubMesh, 32> subMeshes;
-
+            
             for(auto& subMesh : lod.subMeshs)
             {
                 SubMesh newSubMesh;
@@ -267,6 +284,18 @@ namespace FlexKit
             newLod.submeshes        = subMeshes;
 
             LODs.emplace_back(std::move(newLod));
+
+            if (LODs.size() == 1)
+            {
+                for (auto& morphTargetBuffer : optimizedBuffer.morphBuffers)
+                {
+                    MeshResource::MorphTargetBuffer target;
+                    target.buffer.resize(morphTargetBuffer.size());
+                    memcpy(target.buffer.data(), morphTargetBuffer.data(), morphTargetBuffer.size());
+                    
+                    meshOut->morphTargetBuffers.push_back(target);
+                }
+            }
         }
 
 #if USING(TOOTLE)
