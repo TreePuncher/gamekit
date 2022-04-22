@@ -629,8 +629,14 @@ namespace FlexKit
             const size_t subMeshCount = lodHeader.descriptor.subMeshCount;
             for (size_t I = 0; I < subMeshCount; I++)
             {
+                const size_t readOffset =
+                    lod.lodFileOffset +
+                    sizeof(LODlevel) +
+                    lodHeader.descriptor.morphTargets * sizeof(LODlevel::LODMorphTarget) +
+                    sizeof(SubMesh) * I;
+
                 SubMesh subMesh;
-                memcpy(&subMesh, buffer + lod.lodFileOffset + sizeof(LODlevel) + sizeof(SubMesh) * I, sizeof(SubMesh));
+                memcpy(&subMesh, buffer + readOffset, sizeof(SubMesh));
 
                 lod.subMeshes.push_back(subMesh);
             }
