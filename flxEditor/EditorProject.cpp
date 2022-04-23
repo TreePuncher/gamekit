@@ -46,6 +46,9 @@ bool EditorProject::LoadProject(const std::string& projectDir)
 
 bool EditorProject::SaveProject(const std::string& projectDir)
 {
+    if (!projectDir.size())
+        return false;
+
     try
     {
         FlexKit::SaveArchiveContext archive;

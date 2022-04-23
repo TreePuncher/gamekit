@@ -31,7 +31,7 @@ namespace FlexKit
                 auto& pass  = passes.GetData().passes;
                 auto res    = FindPass(pass.begin(), pass.end(), GBufferAnimatedPassID);
 
-                if (!res)
+                if (!res || !res->pvs.size())
                     return;
 
                 auto& buffer = data.GetData();

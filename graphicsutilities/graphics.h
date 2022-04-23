@@ -4054,6 +4054,7 @@ private:
 		SkinDeformer*                       SkinTable;
 		Skeleton*                           Skeleton;
 
+
         struct LOD_Runtime
         {
             LOD_Runtime() = default;
@@ -4155,6 +4156,21 @@ private:
             static_vector<SubMesh, 32>  subMeshes;
         };
 
+
+        struct MorphTarget
+        {
+            ResourceHandle gpuResource;
+        };
+
+
+        struct MorphTargetAsset
+        {
+            char name[32];
+            size_t offset;
+            size_t size;
+        };
+
+
         const uint32_t GetHighestLoadedLodIdx() const
         {
             for (uint32_t I = 0; I < lods.size(); I++)
@@ -4194,6 +4210,7 @@ private:
         GUID_t                          assetHandle;
         static_vector<LOD_Runtime>      lods;
 
+
 		struct RInfo
 		{
 			float3 Offset;
@@ -4205,8 +4222,11 @@ private:
 		AABB			AABB;
 		BoundingSphere	BS;
 
-		size_t		SkeletonGUID;
-		iAllocator* Memory;
+		size_t		    SkeletonGUID;
+		iAllocator*     Memory;
+
+        static_vector<MorphTarget>      morphTargets;
+        static_vector<MorphTargetAsset> morphTargetAssets;
 	};
 
 
@@ -4240,7 +4260,6 @@ private:
 			memcpy(buffer, rhs.buffer, rhs.bufferSize);
 			bufferSize = rhs.bufferSize;
 		}
-
 
 		~Shader()
 		{

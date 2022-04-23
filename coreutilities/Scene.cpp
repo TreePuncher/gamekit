@@ -783,9 +783,9 @@ namespace FlexKit
 			{
                 ProfileFunction();
 
-                static std::mutex m;
+                //static std::mutex m;
 
-                if (!m.try_lock() || !PVS.size())
+                if (!PVS.size())
                     return;
 
                 const float3 cameraPosition = GetPositionW(GetCameraNode(camera));
@@ -818,7 +818,7 @@ namespace FlexKit
                 if(submit)
                     renderSystem.SubmitUploadQueues(SYNC_Graphics, &copyHandle);
 
-                m.unlock();
+                //m.unlock();
 			});
     }
 

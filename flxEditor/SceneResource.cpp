@@ -599,36 +599,13 @@ namespace FlexKit
     {
         ImageLoaderDesc* loader = reinterpret_cast<ImageLoaderDesc*>(user_ptr);
 
-        if (!std::filesystem::exists("tmp"))
-            std::filesystem::create_directory("tmp");
-
-        fmt::print("Saving image to disk, {}\n", image->name.c_str());
-        std::string tempLocation = "tmp\\" + image->name;
-
         int x       = 0;
         int y       = 0;
         int comp    = 0;
 
-        auto datass = stbi_load_from_memory(bytes, size, &x, &y, &comp, 3);
-        auto res    = stbi_write_png(tempLocation.c_str(), x, y, comp, datass, comp * x);
-
-        if (!res)
-        {
-            fmt::print("Failed to save image to disk, {}\n", tempLocation);
-            return false;
-        }
-
-        stbi_image_free(datass);
-        float* floats = (float*)datass;
-
-        std::filesystem::path path{ tempLocation };
-
-        auto resource = CreateTextureResource(path,std::string("DXT7"));
-        resource->SetResourceID(image->name);
-
-        std::filesystem::remove(path);
-
-        std::cout << loader->resources.size() << " : " << image_idx << "\n";
+        auto datass     = stbi_load_from_memory(bytes, size, &x, &y, &comp, 3);
+        float* floats   = (float*)datass;
+        auto resource   = CreateTextureResource(floats, x * y * 3, { x, y }, 3, image->name, "DXT7");
 
         loader->resources.push_back(resource);
         loader->imageMap[image_idx] = resource;
@@ -755,7 +732,7 @@ namespace FlexKit
                 const auto& p            = model.nodes[channel.target_node].translation;
                 const Quaternion Q       = r.size() ?  Quaternion{ (float)r[0], (float)r[1], (float)r[2], (float)r[3] }.normal() : Quaternion::Identity();
                 const Quaternion Q_i     = Q.Inverse();
-                const auto position      = float4{ (float)p[0], (float)p[1], (float)p[2], 0 };
+                const auto position      = p.size() ? float4{ (float)p[0], (float)p[1], (float)p[2], 0 } : float4{ 0 };
 
                 if (channelID == 2)
                     continue;

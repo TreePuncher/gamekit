@@ -118,14 +118,17 @@ namespace FlexKit
     public:
         void Serialize(auto& ar)
         {
-            ar & ID;
-            ar & assetHandle;
-            ar & format;
-            ar & mipLevels;
-            ar & mipOffsets;
-            ar & WH;
-            ar & bufferSize;
-            ar & RawBuffer{ buffer, bufferSize };
+            ar& ID;
+            ar& assetHandle;
+            ar& targetFormat;
+            ar& WH;
+            ar& MIPlevels;
+            ar& channelCount;
+
+            ar& exportedMIPCount;
+            ar& offsets;
+            ar& RawBuffer{ cachedBuffer, cachedBufferSize };
+
         }
 
         TextureResource() {}
@@ -137,17 +140,31 @@ namespace FlexKit
         void                SetResourceID(const std::string& IN_ID) noexcept final { ID = IN_ID; }
         void                SetResourceGUID(uint64_t newGUID)       noexcept final { assetHandle = newGUID; }
 
-        ResourceBlob CreateBlob() const override;
+        ResourceBlob        CreateBlob() const override;
 
         std::string             ID              = "";
         GUID_t                  assetHandle     = -1;
-        FlexKit::DeviceFormat   format          = FlexKit::DeviceFormat::UNKNOWN;
-        uint32_t                mipLevels       = 0;
-        uint32_t                mipOffsets[15]  = { 0 };
+        std::string             targetFormat    = "";
         uint2                   WH              = { 0, 0 };
+        uint32_t                channelCount    = 0;
 
-        void*     buffer        = nullptr;
-        size_t    bufferSize    = 0;
+        size_t                  exportedMIPCount = 0;
+        std::vector<uint32_t>   offsets;
+        void*                   cachedBuffer        = nullptr;
+        size_t                  cachedBufferSize    = 0;
+
+        struct MIPLevel
+        {
+            void*      buffer        = nullptr;
+            size_t     bufferSize    = 0;
+
+            void Serialize(auto& ar)
+            {
+                ar& RawBuffer{ buffer, bufferSize };
+            }
+        };
+
+        std::vector<MIPLevel> MIPlevels;
     };
 
 
@@ -155,8 +172,7 @@ namespace FlexKit
 
 
     _TextureMipLevelResource    CreateMIPMapResource(const std::string& string);
-
-    std::shared_ptr<iResource>  CreateTextureResource(const std::filesystem::path& path, const std::string& formatString);
+    std::shared_ptr<iResource>  CreateTextureResource(float* imageBuffer, size_t imageBufferSize, uint2 WH, uint8_t channelCount, const std::string& name, const std::string& formatString);
     std::shared_ptr<iResource>  CreateTextureResource(std::shared_ptr<Texture_MetaData> metaData);
     std::shared_ptr<iResource>  CreateTextureResource(FlexKit::TextureBuffer& textureBuffer, std::string format);
     std::shared_ptr<iResource>  CreateCompressedTextureResource(FlexKit::TextureBuffer& textureBuffer, std::string format);
@@ -168,7 +184,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2020 Robert May
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

@@ -1,5 +1,6 @@
 #include "AnimationUtilities.h"
 
+
 namespace FlexKit
 {   /************************************************************************************************/
 
@@ -90,6 +91,38 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    PoseState::Pose& PoseState::CreateSubPose(uint32_t ID, iAllocator& allocator)
+    {
+        Pose newSubPose;
+        newSubPose.jointPose    = (JointPose*)allocator.malloc(sizeof(JointPose) * JointCount);
+        newSubPose.sk           = Sk;
+        newSubPose.poseID       = ID;
+
+        for (size_t I = 0; I < JointCount; I++)
+            newSubPose.jointPose[I] = JointPose{Quaternion{ 0, 0, 0, 1 }, float4(0, 0, 0, 1)};
+
+        poses.emplace_back(newSubPose);
+
+        return poses.back();
+    }
+
+
+    /************************************************************************************************/
+
+
+    PoseState::Pose* PoseState::FindPose(uint32_t poseID)
+    {
+        auto res = std::find_if(
+            poses.begin(), poses.end(),
+            [&](auto e) { return e.poseID == poseID; });
+
+        return res != poses.end() ? res : nullptr;
+    }
+
+
+    /************************************************************************************************/
+
+
 	void Skeleton::InitiateSkeleton(iAllocator* Allocator, size_t JC)
 	{
 		auto test = sizeof(Skeleton);
@@ -162,7 +195,31 @@ namespace FlexKit
     }
 
 
-	/************************************************************************************************/
+    /************************************************************************************************/
+
+
+    ResourceHandle LoadMorphTarget(TriMesh* triMesh, const char* morphTargetName, RenderSystem& renderSystem, CopyContextHandle handle, iAllocator& allocator)
+    {
+        auto readCtx = OpenReadContext(triMesh->assetHandle);
+
+        if (!readCtx)
+            return InvalidHandle_t;
+
+        for (auto& morphTarget : triMesh->morphTargetAssets)
+        {
+            if (!strcmp(morphTarget.name, morphTargetName))
+            {
+                auto* buffer = allocator._aligned_malloc(morphTarget.size);
+                readCtx.Read(buffer,  morphTarget.size, morphTarget.offset);
+
+
+                //size_t morphTargetCount = level0.descriptor.morphTargets;
+            }
+        }
+    }
+
+
+    /************************************************************************************************/
 
 
 	void CleanUpSkeleton(Skeleton* S)

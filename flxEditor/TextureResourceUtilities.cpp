@@ -3,12 +3,13 @@
 #include <filesystem>
 #include <numeric>
 #include <fmt\format.h>
+#include <cmp_core.h>
 
 #ifdef _DEBUG
-#pragma comment(lib, "CMP_Framework_MDd.lib")
+#pragma comment(lib, "CMP_Core_MDd.lib")
 #else
 #ifdef NDEBUG
-#pragma comment(lib, "CMP_Framework_MD.lib")
+#pragma comment(lib, "CMP_Core_MD.lib")
 #endif
 #endif
 
@@ -147,20 +148,240 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    void CompressLevel(DDSTextureFormat format, uint32_t channelCount, uint2 WH, char* compressed, char* buffer)
+    {
+        const size_t rowOffset = WH[0] * channelCount;
+
+
+        const auto threadCount = std::thread::hardware_concurrency() / 2;
+
+        const size_t X_blockCount = Max(WH[0] / 4, 1);
+        const size_t Y_blockCount = Max(WH[1] / 4, 1);
+        const size_t rowPitch     = X_blockCount * 16;
+
+        auto compress = [&](size_t begin_y, size_t end_y)
+        {
+            void* BC7Options;
+            CreateOptionsBC7(&BC7Options);
+            SetQualityBC7(BC7Options, 0.05f);
+
+
+            switch (format)
+            {
+            case DDSTextureFormat::DXT7:
+            {
+                switch (channelCount)
+                {
+                case 3:
+                {
+                    unsigned char   inputBlock[16 * 4];
+                    CMP_BYTE        outputBlock[16];
+
+                    memset(inputBlock, 0xff, sizeof(inputBlock));
+
+                    for (size_t I = 3; I < 64; I += 4)
+                        inputBlock[I] = 0xff;
+
+                    if (WH[0] < 4 && WH[1] < 4)
+                    {
+                        for (size_t I = 0; I < 64; I += 4)
+                            for(size_t J = 0; J < 3; J++)
+                                inputBlock[J + I] = buffer[J];
+
+                        const auto endX = WH[0];
+                        const auto endY = WH[1];
+
+                        for (size_t Y = 0; Y < endY; Y++)
+                            for (size_t X = 0; X < endX; X++)
+                                memcpy(inputBlock + 4 * X + 16 * Y, buffer + 6 * Y + 3 * X, 3);
+
+                        auto res = CompressBlockBC7(inputBlock, 16, outputBlock, BC7Options);
+                        memcpy(compressed, outputBlock, sizeof(outputBlock));
+                    }
+                    else
+                    {
+                        for (size_t Y = begin_y; Y < end_y; Y++)
+                        {
+                            for (size_t X = 0; X < X_blockCount; X++)
+                                {
+                                    const size_t inputOffset  = (X_blockCount * Y * 4 + X) * 12;
+                                    const size_t outputOffset = rowPitch * Y + X * 16;
+
+                                    unsigned char RGB[4][12];
+
+                                    for(size_t J = 0; J < 4; J++)
+                                    {
+                                        memcpy(RGB[J], buffer + inputOffset + rowOffset * J, 12);
+
+                                        inputBlock[0 + 16 * J]  = RGB[J][0];
+                                        inputBlock[1 + 16 * J]  = RGB[J][1];
+                                        inputBlock[2 + 16 * J]  = RGB[J][2];
+
+                                        inputBlock[4 + 16 * J]  = RGB[J][3];
+                                        inputBlock[5 + 16 * J]  = RGB[J][4];
+                                        inputBlock[6 + 16 * J]  = RGB[J][5];
+
+                                        inputBlock[8 + 16 * J]  = RGB[J][6];
+                                        inputBlock[9 + 16 * J]  = RGB[J][7];
+                                        inputBlock[10 + 16 * J] = RGB[J][8];
+
+                                        inputBlock[12 + 16 * J] = RGB[J][9];
+                                        inputBlock[13 + 16 * J] = RGB[J][10];
+                                        inputBlock[14 + 16 * J] = RGB[J][11];
+                                    }
+
+                                    auto res = CompressBlockBC7(inputBlock, 16, outputBlock, BC7Options);
+
+                                    memcpy(compressed + outputOffset, outputBlock, sizeof(outputBlock));
+                                }
+                            }
+                    }
+                }   break;
+                case 4:
+                {
+                    for (size_t Y = 0; Y < Y_blockCount; Y++)
+                    {
+                        for (size_t X = 0; X < X_blockCount; X++)
+                        {
+                            const size_t outputOffset = rowPitch * Y + X * 16;
+
+                            unsigned char   inputBlock[16][4];
+                            CMP_BYTE        outputBlock[16];
+
+                            size_t offset = (X_blockCount * Y * 4 + X) * 16;
+                            memcpy(inputBlock[0],  buffer + offset + rowOffset * 0, sizeof(uint8_t) * 4);
+                            memcpy(inputBlock[4],  buffer + offset + rowOffset * 1, sizeof(uint8_t) * 4);
+                            memcpy(inputBlock[8],  buffer + offset + rowOffset * 2, sizeof(uint8_t) * 4);
+                            memcpy(inputBlock[12], buffer + offset + rowOffset * 3, sizeof(uint8_t) * 4);
+
+                            auto res = CompressBlockBC7((unsigned char*)inputBlock, 16, outputBlock, BC7Options);
+                            memcpy(compressed + outputOffset, outputBlock, sizeof(outputBlock));
+                        }
+                    }
+                }
+                default:
+                    break;
+                }
+            }   break;
+            }
+
+        };
+
+
+        if (Y_blockCount * X_blockCount > 1)
+        {
+            const size_t blockSize = (size_t)std::ceilf((float)Y_blockCount / (float)threadCount);
+            std::vector<std::jthread> threads;
+            threads.reserve(threadCount);
+
+            for (size_t I = 0; I < threadCount; I++)
+            {
+                threads.push_back(
+                    std::jthread([&, BlockID = I]()
+                        {
+                            compress(
+                                FlexKit::Min((BlockID + 0) * blockSize, Y_blockCount),
+                                FlexKit::Min((BlockID + 1) * blockSize, Y_blockCount));
+
+                            fmt::print("Thread: {} Completed\n", BlockID);
+                        }));
+            }
+
+            for (auto& thread : threads)
+                thread.join();
+
+            threads.clear();
+        }
+        else
+            compress(0, 1);
+
+
+
+    }
+
+    /************************************************************************************************/
+
+
     ResourceBlob TextureResource::CreateBlob() const
     {
+        if(!cachedBuffer)
+        {
+            uint32_t mipCount = std::ceilf(std::log2(FlexKit::Max(WH[0], WH[1]))) + 1;
+
+            CMP_MipSet dstMipSet = { 0 };
+
+            size_t outputSize = WH.Product();
+
+            std::vector<uint32_t> offsets;
+            offsets.resize(15);
+            offsets[0] = 0;
+
+            for (int I = 1; I < mipCount; I++)
+            {
+                static const size_t alignement  = 64 * 1024;
+
+                const auto MIPWH            = (WH / (1 << I));
+                const size_t X              = MIPWH[0] / 4;
+                const size_t Y              = MIPWH[1] / 4;
+                const auto rowPitch         = FlexKit::Max(X * 16, 256);
+                const size_t MipLevelSize   = Max(rowPitch * Y, 16);
+
+                offsets[I] = outputSize;
+                outputSize += MipLevelSize;
+            }
+
+
+            char* compressed            = (char*)malloc(outputSize);
+            const auto      format      = FormatStringToFormatID(targetFormat);
+            const char*     buffer      = (char*)MIPlevels[0].buffer;
+
+            std::vector<TextureBuffer> mipLevels;
+            mipLevels.push_back(FlexKit::TextureBuffer{ WH, (FlexKit::byte*)buffer, channelCount });
+
+            fmt::print("Building Mip Levels\n");
+
+            switch (channelCount)
+            {
+            case 3:
+                for (size_t I = 1; I < mipCount; I++)
+                    mipLevels.emplace_back(FlexKit::BuildMipMap<Vect<3, uint8_t>, false>(mipLevels[I - 1], &FlexKit::SystemAllocator, AverageSampler<FlexKit::TextureBufferView<Vect<3, uint8_t>>>));
+                break;
+            case 4:
+                for (size_t I = 1; I < mipCount; I++)
+                    mipLevels.emplace_back(FlexKit::BuildMipMap<Vect<4, uint8_t>, false>(mipLevels[I - 1], &FlexKit::SystemAllocator, AverageSampler<FlexKit::TextureBufferView<Vect<4, uint8_t>>>));
+                break;
+            }
+
+            fmt::print("Compressing\n");
+
+            for (size_t I = 0; I < mipCount; I++)
+            {
+                CompressLevel(format, channelCount, mipLevels[I].WH, compressed + offsets[I], (char*)mipLevels[I].Buffer);
+
+                fmt::print("MipLevel:{} Completed\n", I);
+            }
+
+            fmt::print("Compression Completed\n");
+
+            const_cast<std::vector<uint32_t>&>(this->offsets)   = offsets;
+            const_cast<void*&>(cachedBuffer)                    = compressed;
+            const_cast<size_t&>(cachedBufferSize)               = outputSize;
+            const_cast<size_t&>(exportedMIPCount)               = mipCount;
+        }
+
+
         TextureResourceBlob headerData;
 
-        headerData.format       = format;
-        headerData.ResourceSize = sizeof(headerData) + bufferSize;
+        headerData.format       = FormatStringToDeviceFormat(targetFormat);
+        headerData.ResourceSize = sizeof(headerData) + cachedBufferSize;
         headerData.GUID         = assetHandle;
         headerData.WH           = WH;
-        headerData.mipLevels    = mipLevels;
+        headerData.mipLevels    = exportedMIPCount;
 
-        memcpy(headerData.mipOffsets, mipOffsets, sizeof(mipOffsets));
+        memcpy(headerData.mipOffsets, offsets.data(), sizeof(headerData.mipOffsets));
 
         Blob header { headerData };
-        Blob body   = { (const char*)buffer, bufferSize };
+        Blob body   = { (const char*)cachedBuffer, cachedBufferSize };
 
         strncpy(headerData.ID, ID.c_str(), Min(sizeof(headerData.ID), ID.size()));
 
@@ -173,8 +394,8 @@ namespace FlexKit
         out.ID              = ID;
         out.resourceType    = EResourceType::EResource_Texture;
 
-        std::cout << "_DEBUG: " __FUNCTION__ << " : Size : " << out.bufferSize << "\n";
-        std::cout << "_DEBUG: " __FUNCTION__ << " : MipCount : " << mipLevels << "\n";
+        std::cout << "_DEBUG: " __FUNCTION__ << " : Size : "        << out.bufferSize << "\n";
+        std::cout << "_DEBUG: " __FUNCTION__ << " : MipCount : "    << exportedMIPCount << "\n";
 
         return out;
     }
@@ -194,46 +415,16 @@ namespace FlexKit
 
     _TextureMipLevelResource CreateMIPMapResource(const std::string& string)
     {
-        CMP_MipSet mipSet;
-        memset(&mipSet, 0, sizeof(CMP_MipSet));
-
-        if(auto res = CMP_LoadTexture(string.c_str(), &mipSet); res != CMP_OK)
-        {
-            std::printf("Error %d: Loading source file!\n", res);
-            return {};
-        }
-
-        KernelOptions kernel_options;
-        memset(&kernel_options, 0, sizeof(KernelOptions));
-
-
-        kernel_options.encodeWith   = CMP_GPU_DXC;
-        kernel_options.format       = CMP_FORMAT_BC7;
-        kernel_options.fquality     = 0.05f;
-        kernel_options.threads      = 0;
-
-        auto progress = [](CMP_FLOAT fProgress, CMP_DWORD_PTR pUser1, CMP_DWORD_PTR pUser2)-> bool
-        {
-            //std::cout << "Progress: " << fProgress * 100 << "\n";
-            return true;
-        };
-
-        CMP_MipSet dstMipSet = { 0 };
-
-        auto cmp_status = CMP_ProcessTexture(&mipSet, &dstMipSet, kernel_options, CompressionCallback);
-
-        return {
-            mipSet,
-            string
-        };
+        return {};
     }
 
 
     /************************************************************************************************/
 
 
-    std::shared_ptr<iResource> CreateTextureResource(const std::filesystem::path& path, const std::string& formatString)
+    std::shared_ptr<iResource> CreateTextureResource(float* imageBuffer, size_t imageBufferSize, uint2 WH, uint8_t channelCount, const std::string& name, const std::string& formatString)
     {
+        /*
         std::printf("building texture resource\n");
 
         CMP_MipSet mipSet;
@@ -259,12 +450,6 @@ namespace FlexKit
             std::printf("Error %d: Failed to create Mip Levels!\n", res);
             return {};
         }
-
-
-#if 0
-        std::cout << "DEBUG: nMinSize: " << nMinSize << "\n";
-        std::cout << "DEBUG: INPUT MIP LEVELS: " << mipSet.m_nMipLevels << "\n";
-#endif
 
         KernelOptions kernel_options;
         memset(&kernel_options, 0, sizeof(KernelOptions));
@@ -321,38 +506,21 @@ namespace FlexKit
 #endif
         }
 
-        auto temp = new char[bufferSize];
-        memset(resource->mipOffsets, 0, sizeof(TextureResource::mipOffsets));
+        */
 
-        for (int I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++)
-        {
-            CMP_MipLevel* mipLevel = nullptr;
-            CMP_GetMipLevel(&mipLevel, &dstMipSet, I, 0);
+        auto resource = std::make_shared<TextureResource>();
 
-            resource->mipOffsets[I] = offset;
+        resource->channelCount  = channelCount;
+        resource->ID            = name;
+        resource->WH            = WH;
+        resource->assetHandle   = rand();
+        resource->targetFormat  = formatString;
 
-#if 0
-            std::cout << "_DEBUG: " __FUNCTION__ << " : LinearSize : " << mipLevel->m_dwLinearSize << "\n";
-#endif
-
-            memcpy((char*)temp + offset, mipLevel->m_pbData, mipLevel->m_dwLinearSize);
-            offset += mipLevel->m_dwLinearSize;
-        }
-        resource->ID          = path.filename().string();
-        resource->WH          = { dstMipSet.m_nWidth, dstMipSet.m_nHeight };
-        resource->assetHandle = rand();
-        resource->buffer      = temp;
-        resource->bufferSize  = bufferSize;
-        resource->format      = FormatStringToDeviceFormat(formatString);
-        resource->mipLevels   = dstMipSet.m_nMipLevels;
-
-#if 0
-        std::cout << "_DEBUG: " __FUNCTION__ << " : Size : " << resource->bufferSize << "\n";
-        std::cout << "_DEBUG: " __FUNCTION__ << " : MipCount : " << dstMipSet.m_nMipLevels << "\n";
-#endif
-
-        CMP_FreeMipSet(&mipSet);
-        CMP_FreeMipSet(&dstMipSet);
+        resource->MIPlevels.push_back(
+            TextureResource::MIPLevel{
+                .buffer         = (char*)imageBuffer,
+                .bufferSize     = imageBufferSize,
+            });
 
         return resource;
     }
@@ -383,13 +551,15 @@ namespace FlexKit
         }
 
         CMP_INT nMinSize = CMP_CalcMinMipSize(mipSet.m_nHeight, mipSet.m_nWidth, mipSet.m_nMaxMipLevels);
-
+        
         if (auto res = CMP_GenerateMIPLevels(&mipSet, nMinSize); res != CMP_OK)
         {
             std::printf("Error %d: Failed to create Mip Levels!\n", res);
             return {};
         }
 
+
+        /*
         std::cout << "DEBUG: nMinSize: " << nMinSize << "\n";
         std::cout << "DEBUG: INPUT MIP LEVELS: " << mipSet.m_nMipLevels << "\n";
 
@@ -442,33 +612,32 @@ namespace FlexKit
 
         auto temp = new char[bufferSize];
         memset(resource->mipOffsets, 0, sizeof(TextureResource::mipOffsets));
+        */
 
-        for (int I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++)
+
+        auto resource = std::make_shared<TextureResource>();
+
+        for (int I = 0, offset = 0; I < mipSet.m_nMipLevels; I++)
         {
+            CMP_MipSet dstMipSet = { 0 };
+            
             CMP_MipLevel* mipLevel = nullptr;
-            CMP_GetMipLevel(&mipLevel, &dstMipSet, I, 0);
+            CMP_GetMipLevel(&mipLevel, &mipSet, I, 0);
 
-            resource->mipOffsets[I] = offset;
+            auto buffer = malloc(mipLevel->m_dwLinearSize);
+            memcpy(buffer, mipLevel->m_pbData, mipLevel->m_dwLinearSize);
 
-            std::cout << "_DEBUG: " __FUNCTION__ << " : LinearSize : " << mipLevel->m_dwLinearSize << "\n";
-
-            memcpy((char*)temp + offset, mipLevel->m_pbData, mipLevel->m_dwLinearSize);
-            offset += mipLevel->m_dwLinearSize;
+            resource->MIPlevels.push_back(TextureResource::MIPLevel{
+                .buffer         = buffer,
+                .bufferSize     = mipLevel->m_dwLinearSize });
         }
 
-        resource->ID          = metaData->stringID;
-        resource->WH          = { dstMipSet.m_nWidth, dstMipSet.m_nHeight };
-        resource->assetHandle = metaData->assetID;
-        resource->buffer      = temp;
-        resource->bufferSize  = bufferSize;
-        resource->format      = FormatStringToDeviceFormat(metaData->format);
-        resource->mipLevels   = dstMipSet.m_nMipLevels;
-
-        std::cout << "_DEBUG: " __FUNCTION__ << " : Size : " << resource->bufferSize << "\n";
-        std::cout << "_DEBUG: " __FUNCTION__ << " : MipCount : " << dstMipSet.m_nMipLevels << "\n";
+        resource->ID            = metaData->stringID;
+        resource->WH            = { mipSet.m_nWidth, mipSet.m_nHeight };
+        resource->assetHandle   = metaData->assetID;
+        resource->targetFormat  = metaData->format;
 
         CMP_FreeMipSet(&mipSet);
-        CMP_FreeMipSet(&dstMipSet);
 
         return resource;
     }
@@ -493,10 +662,14 @@ namespace FlexKit
         resource->ID          = "";
         resource->WH          = textureBuffer.WH;
         resource->assetHandle = rand();
-        resource->buffer      = buffer;
-        resource->bufferSize  = textureBuffer.BufferSize();
-        resource->format      = FormatStringToDeviceFormat(formatStr);
-        resource->mipLevels   = 1;
+
+        resource->MIPlevels.push_back(
+            TextureResource::MIPLevel{
+                .buffer     = buffer,
+                .bufferSize = textureBuffer.BufferSize()
+            });
+
+        resource->targetFormat  = formatStr;
 
         return resource;
     }
@@ -507,121 +680,6 @@ namespace FlexKit
 
     std::shared_ptr<iResource>  CreateCompressedTextureResource(FlexKit::TextureBuffer& textureBuffer, std::string formatStr)
     {
-        FK_ASSERT(false, "Not Implemented");
-
-        std::printf("building texture resource\n");
-
-        auto format = FormatStringToFormatID(formatStr);
-
-        CMP_MipSet mipSet;
-        memset(&mipSet, 0, sizeof(CMP_MipSet));
-        mipSet.dwDataSize           = (uint32_t)textureBuffer.BufferSize();
-        mipSet.m_nHeight            = textureBuffer.WH[1];
-        mipSet.m_nWidth             = textureBuffer.WH[0];
-        mipSet.m_nMaxMipLevels      = (uint32_t)std::log2(std::min(textureBuffer.WH[1], textureBuffer.WH[0]));
-        mipSet.pData                = textureBuffer.Buffer;
-        mipSet.m_nMipLevels         = 1;
-        mipSet.m_format             = CMP_FORMAT_RGBA_8888;
-        mipSet.m_nDepth             = 1;
-        mipSet.m_TextureDataType    = TDT_ARGB;
-
-        CMP_MipLevel        mipLevels[12]   = { 0 };
-        CMP_MipLevelTable   levels[12]      = { 0 };
-
-        mipLevels[0].m_nHeight       = textureBuffer.WH[1];
-        mipLevels[0].m_nWidth        = textureBuffer.WH[0];
-        mipLevels[0].m_dwLinearSize  = (uint32_t)textureBuffer.BufferSize();
-        mipLevels[0].m_pcData        = (CMP_COLOR*)textureBuffer.Buffer;
-
-        levels[0] = &mipLevels[0];
-
-        mipSet.m_pMipLevelTable      = levels;
-
-        CMP_INT nMinSize    = CMP_CalcMinMipSize(mipSet.m_nHeight, mipSet.m_nWidth, mipSet.m_nMaxMipLevels);
-
-        if (auto res = CMP_GenerateMIPLevels(&mipSet, nMinSize); res != CMP_OK)
-        {
-            std::printf("Error %d: Failed to create Mip Levels!\n", res);
-            return {};
-        }
-
-        std::cout << "DEBUG: nMinSize: " << nMinSize << "\n";
-        std::cout << "DEBUG: INPUT MIP LEVELS: " << mipSet.m_nMipLevels << "\n";
-
-        KernelOptions kernel_options;
-        memset(&kernel_options, 0, sizeof(KernelOptions));
-
-        kernel_options.encodeWith = CMP_HPC;
-        kernel_options.format     = CMP_FORMAT_BC7;
-        kernel_options.fquality   = 0.05f;
-        kernel_options.threads    = 0;
-
-        CMP_MipSet dstMipSet = { 0 };
-
-        switch (format)
-        {
-        case DDSTextureFormat::DXT3:
-            kernel_options.format = CMP_FORMAT_BC3;
-            break;
-        case DDSTextureFormat::DXT5:
-            kernel_options.format = CMP_FORMAT_BC5;
-                break;
-        case DDSTextureFormat::DXT7:
-            kernel_options.format = CMP_FORMAT_BC7;
-            break;
-        default:
-            return {};
-        }
-
-        auto progress = [](CMP_FLOAT fProgress, CMP_DWORD_PTR pUser1, CMP_DWORD_PTR pUser2)-> bool
-        {
-            printf("\rProgress: %f\n", fProgress);
-            return false;
-        };
-
-        auto cmp_status = CMP_ProcessTexture(&mipSet, &dstMipSet, kernel_options, progress);
-        auto resource = std::make_shared<TextureResource>();
-            
-        size_t bufferSize = 0;
-        for (int I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++) {
-            CMP_MipLevel* mipLevel = nullptr;
-            CMP_GetMipLevel(&mipLevel, &dstMipSet, I, 0);
-
-            bufferSize += mipLevel->m_dwLinearSize;
-
-            std::cout << "_DEBUG: " __FUNCTION__ << " : Mip Size : " << mipLevel->m_dwLinearSize << "\n";
-        }
-
-        auto temp = new char[bufferSize];
-        memset(resource->mipOffsets, 0, sizeof(TextureResource::mipOffsets));
-
-        for (int I = 0, offset = 0; I < dstMipSet.m_nMipLevels; I++)
-        {
-            CMP_MipLevel* mipLevel = nullptr;
-            CMP_GetMipLevel(&mipLevel, &dstMipSet, I, 0);
-
-            resource->mipOffsets[I] = offset;
-
-            std::cout << "_DEBUG: " __FUNCTION__ << " : LinearSize : " << mipLevel->m_dwLinearSize << "\n";
-
-            memcpy((char*)temp + offset, mipLevel->m_pbData, mipLevel->m_dwLinearSize);
-            offset += mipLevel->m_dwLinearSize;
-        }
-
-        resource->ID          = "";
-        resource->WH          = { dstMipSet.m_nWidth, dstMipSet.m_nHeight };
-        resource->assetHandle = rand();
-        resource->buffer      = temp;
-        resource->bufferSize  = bufferSize;
-        resource->format      = FormatStringToDeviceFormat(formatStr);
-        resource->mipLevels   = dstMipSet.m_nMipLevels;
-
-        std::cout << "_DEBUG: " __FUNCTION__ << " : Size : " << resource->bufferSize << "\n";
-        std::cout << "_DEBUG: " __FUNCTION__ << " : MipCount : " << dstMipSet.m_nMipLevels << "\n";
-
-        CMP_FreeMipSet(&mipSet);
-        CMP_FreeMipSet(&dstMipSet);
-
         return {};
     }
 

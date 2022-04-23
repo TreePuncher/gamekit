@@ -43,8 +43,8 @@ ResourceBrowserWidget::ResourceBrowserWidget(EditorProject& IN_project, EditorRe
     timer->start();
 
     connect(
-        table, SIGNAL(customContextMenuRequested(const QPoint&)),
-        SLOT(ShowContextMenu(const QPoint&)));
+        table, &QTableWidget::customContextMenuRequested,
+        this, &ResourceBrowserWidget::ShowContextMenu);
 
     auto createDropDown = menuBar->addMenu("Create");
     auto createScene    = createDropDown->addAction("Scene");
@@ -207,94 +207,27 @@ void ResourceBrowserWidget::ShowContextMenu(const QPoint& pos)
 
         std::vector<QAction> actions;
 
-        /*
-        auto type = model.GetResourceType(index.row());
+        auto item = table->itemAt(pos);
 
-        if (auto res = resourceViewers.find(type); res != resourceViewers.end()) {
-            contextMenu.addAction("View", [&, index = index, type = type, resource = model.GetResource(index.row())]
+        auto& projectResource = project.resources[item->row()];
+        auto typeID = projectResource->resource->GetResourceTypeID();
+
+        if (auto res = resourceViewers.find(typeID); res != resourceViewers.end()) {
+            contextMenu.addAction("View", [&, index = index, type = typeID, resource = project.resources[index.row()]]
                 {
-                    (*resourceViewers[type])(resource);
+                    (*resourceViewers[type])(projectResource->resource);
                 });
         }
 
-        contextMenu.addAction("Remove", [&, index = index, resource = model.GetResource(index.row())]
+        contextMenu.addAction("Remove", [&, index = index, projRes = project.resources[index.row()]]
             {
-                model.removeRow(index.row());
-                model.Remove(resource);
-                model.RefreshTable();
+                project.RemoveResource(projRes->resource);
             });
 
         contextMenu.exec(table->viewport()->mapToGlobal(pos));
-        */
     }
 }
 
-/*
-QVariant ResourceItemModel::headerData(int section, Qt::Orientation orientation, int role) const 
-{
-    if (orientation == Qt::Orientation::Horizontal)
-    {
-        if (role == Qt::DisplayRole)
-        {
-            switch (section)
-            {
-            case 0:
-                return QString("ResourceID");
-            case 1:
-                return QString("ResourceType");
-            case 2:
-                return QString("User Count");
-            case 3:
-                return QString("User ID");
-            default:
-                return QString("Header #%1").arg(section);
-            }
-        }
-    }
-
-    return{};
-}
-*/
-
-/************************************************************************************************/
-
-
-/*
-QVariant ResourceItemModel::data(const QModelIndex& index, int role) const
-{
-    if (role == Qt::DisplayRole)
-    {
-        switch (index.column())
-        {
-        case 0:
-            return QVariant{ project.resources[index.row()]->resource->GetResourceID().c_str() };
-        case 1:
-        {
-            static const std::map<ResourceID_t, const char*> IDTypeMap = {
-                { TextureResourceTypeID,    "Texture" },
-                { MeshResourceTypeID,       "Mesh" },
-                { SceneResourceTypeID,      "Scene" },
-            };
-
-            const auto editorResource = project.resources[index.row()];
-
-            if (auto res = IDTypeMap.find(editorResource->resource->GetResourceTypeID()); res != IDTypeMap.end())
-                return QVariant{ res->second };
-
-            return QVariant{ "Unknown Type" };
-        }
-        case 2:
-            return QVariant{ std::to_string(project.resources[index.row()]->resource.use_count() - 1).c_str() };
-        case 3:
-            return QVariant{ std::to_string(project.resources[index.row()]->resource->GetResourceGUID()).c_str()};
-        default:
-            return QVariant{ tr("ERROR!") };
-        }
-    }
-
-    return QVariant{};
-}
-*/
 
 /**********************************************************************
 

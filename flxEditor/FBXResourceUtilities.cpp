@@ -3,9 +3,7 @@
 
 #include "Common.h"
 #include "FBXResourceUtilities.h"
-
 #include "AnimationUtilities.h"
-
 #include "MeshProcessing.h"
 
 #include "fbxsdk.h"

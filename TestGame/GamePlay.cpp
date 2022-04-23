@@ -62,6 +62,7 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
 
     //materialView.SetProperty(GetCRCGUID(PBR_ALBEDO), float4{ 1, 0, 0, 0.5f });
 
+    /*
     static bool s_addAsset = []() { FlexKit::AddAssetFile("assets\\testprefab.gameres"); return true; }();
 
     auto& prefab = objectPool.Allocate();
@@ -86,6 +87,7 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
 
         SetParentNode(node, GetSceneNode(prefab));
     }
+    */
 
     return gameObject;
 }
