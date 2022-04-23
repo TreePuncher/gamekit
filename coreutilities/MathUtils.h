@@ -286,10 +286,6 @@ namespace FlexKit
             return (*this * *this).Sum();
         }
 
-        void Serialize(auto& arc)
-        {
-        }
-
         struct
         {
             float x, y;
@@ -754,7 +750,7 @@ namespace FlexKit
 		auto V_out = v;
 
 		for (auto& Vs : V_out)
-			Vs *= (TY_Vs)scaler;
+			Vs = (TY_Vs)(Vs * scaler);
 
 		return V_out;
 	}
@@ -1483,6 +1479,7 @@ namespace FlexKit
 		operator Vect4 ()		{ return{ x, y, z, w }; };
 		operator Vect4 () const { return{ x, y, z, w }; };
 
+        /*
         void Serialize(auto& ar)
         {
             ar& x;
@@ -1490,6 +1487,7 @@ namespace FlexKit
             ar& z;
             ar& w;
         }
+        */
 
 		__m128 pFloats;
 	};

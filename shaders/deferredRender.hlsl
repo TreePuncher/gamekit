@@ -398,7 +398,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
         //
         //return pow(-positionVS.z / 128, 10.0f);
         //return depth;
-        return float4(N / 2.0f + 0.5f);
+        //return float4(N / 2.0f + 0.5f);
     //return Albedo * Albedo;
     //return float4(positionW, 0);
     //return pow(roughness, 2.2f);
@@ -410,7 +410,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
     //return float4(N.xyz / 2 + 0.5f, 1);
     //return float4(N.xyz / 2 + 0.5f, 1) * (float(localLightCount) / float(lightCount));
     //return lerp(float4(0, 0, 0, 0), float4(1, 1, 1, 0), float(localLightCount) / float(lightCount));
-    //return float4(albedo, 1);
+    return float4(albedo, 1);
 #endif
     
 	return color;

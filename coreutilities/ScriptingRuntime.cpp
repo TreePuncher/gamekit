@@ -301,6 +301,15 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    void LoadMorphTarget_AS(TriMesh* triMesh, std::string& morphTargetName)
+    {
+        //LoadMorphTarget(triMesh, morphTargetName.c_str(), , , );
+    }
+
+
+    /************************************************************************************************/
+
+
     PlayID_t AnimatorPlay_AS(AnimatorView* animator, Animation* animation, bool loop)
     {
         return animator->Play(*animation, loop);
@@ -430,6 +439,13 @@ namespace FlexKit
             res = scriptEngine->RegisterGlobalFunction("Animation@ LoadAnimation(string& in)",                      asFUNCTION(LoadAnimation2_AS), asCALL_CDECL, allocator);    FK_ASSERT(res > 0);
             res = scriptEngine->RegisterGlobalFunction("Animation@ ReleaseAnimation(Animation& in)",                asFUNCTION(ReleaseAnimation_AS), asCALL_CDECL, allocator);  FK_ASSERT(res > 0);
         }
+
+
+        /************************************************************************************************/
+
+
+        res = scriptEngine->RegisterObjectType("TriMesh", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                                FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterGlobalFunction("void LoadMorphTarget(TriMesh@, string& in)", asFUNCTION(LoadMorphTarget_AS), asCALL_CDECL);                         FK_ASSERT(res > 0);
 
 
         /************************************************************************************************/

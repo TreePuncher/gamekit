@@ -471,6 +471,8 @@ namespace FlexKit
 
         const ResourceID_t GetResourceTypeID()  const noexcept final { return SceneResourceTypeID; }
         const std::string& GetResourceID()      const noexcept final { return ID; }
+        const uint64_t     GetResourceGUID()    const noexcept final { return guid; }
+
 
         void SetResourceID      (const std::string& newID)  noexcept final { ID = newID; }
         void SetResourceGUID    (uint64_t newGUID)          noexcept final { guid = newGUID; }
@@ -478,7 +480,6 @@ namespace FlexKit
         template<class Archive>
         void Serialize(Archive& ar)
         {
-
             ar& translationTable;
             ar& pointLights;
             ar& nodes;

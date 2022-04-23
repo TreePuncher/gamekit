@@ -19,19 +19,19 @@
     <Filter Include="Headers\shaders">
       <UniqueIdentifier>{BA8400C4-2610-6E88-2F21-F17C9B2BCA88}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source">
+    <Filter Include="Headers\Source">
       <UniqueIdentifier>{56EB95D1-428D-C0A7-2B48-D4FB178947F8}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\TestGame">
+    <Filter Include="Headers\Source\TestGame">
       <UniqueIdentifier>{FF91C4D3-6B1D-3298-742E-B58CE0388E98}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\coreutilities">
+    <Filter Include="Headers\Source\coreutilities">
       <UniqueIdentifier>{CA608A86-B6EF-1350-5F0E-284B4B7C24F6}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\graphicsutilities">
+    <Filter Include="Headers\Source\graphicsutilities">
       <UniqueIdentifier>{B2F49716-9E19-E796-C764-CC26B3E8E5B4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\physicsutilities">
+    <Filter Include="Headers\Source\physicsutilities">
       <UniqueIdentifier>{6421A7BE-D058-EF55-D962-53794519164F}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -271,7 +271,7 @@
       <Filter>Headers\coreutilities</Filter>
     </ClInclude>
     <ClInclude Include="Playground.hpp">
-      <Filter>Source\TestGame</Filter>
+      <Filter>Headers\Source\TestGame</Filter>
     </ClInclude>
     <ClInclude Include="..\graphicsutilities\AnimationRuntimeUtilities.H">
       <Filter>Headers\graphicsutilities</Filter>
@@ -286,216 +286,216 @@
       <Filter>Headers\coreutilities</Filter>
     </ClInclude>
     <ClInclude Include="GamepadInput.h">
-      <Filter>Source\TestGame</Filter>
+      <Filter>Headers\Source\TestGame</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\coreutilities\AllSourceFiles.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\Application.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\Assets.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\CameraUtilities.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\CommonUtilities.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\Components.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\Console.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\DebugPanel.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\DungeonGen.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\EngineCore.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\FlexKitApplication.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\GUIInputState.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\GameFramework.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\Scene.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\GraphicsComponents.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\Handle.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\Intersection.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\Logging.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\Materials.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\MathUtils.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\NetworkUtilities.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\ProfilingUtilities.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\ThreadUtilities.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\Transforms.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\WorldRender.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\memoryutilities.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\signal.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\timeutilities.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\type.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\AnimationComponents.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\AnimationRuntimeUtilities.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\AnimationUtilities.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\CoreSceneObjects.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\DDSUtilities.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\Fonts.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\FrameGraph.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\Geometry.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\GuiUtilities.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\Meshutils.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\PipelineState.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\SSReflections.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\TerrainRendering.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\TextRendering.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\TextureStreamingUtilities.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\TextureUtilities.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\defaultpipelinestates.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\graphics.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\physicsutilities\physicsutilities.cpp">
-      <Filter>Source\physicsutilities</Filter>
+      <Filter>Headers\Source\physicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="Client.cpp">
-      <Filter>Source\TestGame</Filter>
+      <Filter>Headers\Source\TestGame</Filter>
     </ClCompile>
     <ClCompile Include="GamePlay.cpp">
-      <Filter>Source\TestGame</Filter>
+      <Filter>Headers\Source\TestGame</Filter>
     </ClCompile>
     <ClCompile Include="Host.cpp">
-      <Filter>Source\TestGame</Filter>
+      <Filter>Headers\Source\TestGame</Filter>
     </ClCompile>
     <ClCompile Include="LobbyGUI.cpp">
-      <Filter>Source\TestGame</Filter>
+      <Filter>Headers\Source\TestGame</Filter>
     </ClCompile>
     <ClCompile Include="MainMenu.cpp">
-      <Filter>Source\TestGame</Filter>
+      <Filter>Headers\Source\TestGame</Filter>
     </ClCompile>
     <ClCompile Include="MenuState.cpp">
-      <Filter>Source\TestGame</Filter>
+      <Filter>Headers\Source\TestGame</Filter>
     </ClCompile>
     <ClCompile Include="MultiplayerGameState.cpp">
-      <Filter>Source\TestGame</Filter>
+      <Filter>Headers\Source\TestGame</Filter>
     </ClCompile>
     <ClCompile Include="MultiplayerState.cpp">
-      <Filter>Source\TestGame</Filter>
+      <Filter>Headers\Source\TestGame</Filter>
     </ClCompile>
     <ClCompile Include="Win64.cpp">
-      <Filter>Source\TestGame</Filter>
+      <Filter>Headers\Source\TestGame</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\RayTracingUtilities.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\DebugUI.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\Particles.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\SVOGI.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\ClusteredRendering.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\ShadowMapping.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\Transparency.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\graphicsutilities\GILightingUtilities.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\ScriptingRuntime.cpp">
-      <Filter>Source\coreutilities</Filter>
+      <Filter>Headers\Source\coreutilities</Filter>
     </ClCompile>
     <ClCompile Include="ExternalTU.cpp">
-      <Filter>Source\TestGame</Filter>
+      <Filter>Headers\Source\TestGame</Filter>
     </ClCompile>
     <ClCompile Include="EngineTu.cpp">
-      <Filter>Source\TestGame</Filter>
+      <Filter>Headers\Source\TestGame</Filter>
     </ClCompile>
     <ClCompile Include="..\coreutilities\AnimationRendering.cpp">
-      <Filter>Source\graphicsutilities</Filter>
+      <Filter>Headers\Source\graphicsutilities</Filter>
     </ClCompile>
     <ClCompile Include="GamepadInput.cpp">
       <Filter>Headers\TestGame</Filter>

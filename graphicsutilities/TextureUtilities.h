@@ -205,6 +205,8 @@ namespace FlexKit
     template<typename TY>
     struct TextureBufferView
     {
+        using value_type = TY;
+
         TextureBufferView(TextureBuffer& Buffer) :
             Texture     { Buffer                    },
             rowPitch    { Buffer.WH[0] * sizeof(TY) } {}
@@ -283,6 +285,15 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    struct RGB
+    {
+        byte Red;
+        byte Green;
+        byte Blue;
+        byte Reserved;
+    };
+
+
     struct RGBA
     {
         byte Red;
@@ -319,16 +330,16 @@ namespace FlexKit
     template<typename TY_VIEW = TextureBufferView<Vect<4, uint8_t>>>
     auto AverageSampler (const TY_VIEW& view, uint2 xy) noexcept
     {
-        auto Sample1 = view[xy + uint2{ 0, 0 }];
-        auto Sample2 = view[xy + uint2{ 0, 1 }];
-        auto Sample3 = view[xy + uint2{ 1, 0 }];
-        auto Sample4 = view[xy + uint2{ 1, 1 }];
+        auto Sample1 = view[xy + uint2{ 0, 0 }] / 4;
+        auto Sample2 = view[xy + uint2{ 0, 1 }] / 4;
+        auto Sample3 = view[xy + uint2{ 1, 0 }] / 4;
+        auto Sample4 = view[xy + uint2{ 1, 1 }] / 4;
 
         return (
             Sample1 +
             Sample2 +
             Sample3 +
-            Sample4) * 0.25f;
+            Sample4);
     }
 
 
@@ -343,7 +354,7 @@ namespace FlexKit
     }
 
 
-    template<typename TY_FORMAT = Vect<4, uint8_t>>
+    template<typename TY_FORMAT = Vect<4, uint8_t>, bool AlignedRows = true>
     TextureBuffer BuildMipMap(TextureBuffer& sourceMap, iAllocator* memory, auto sampler)
     {
         const size_t    elementSize = sizeof(TY_FORMAT);
@@ -351,9 +362,14 @@ namespace FlexKit
 
         auto GetRowPitch = [&]
         {
-            const auto offset = WH[0] * sizeof(TY_FORMAT) % 256;
+            if constexpr (AlignedRows)
+            {
+                const auto offset = WH[0] * sizeof(TY_FORMAT) % 256;
 
-            return (offset == 0) ? WH[0] * elementSize : WH[0] * elementSize + (256 - offset);
+                return (offset == 0) ? WH[0] * elementSize : WH[0] * elementSize + (256 - offset);
+            }
+            else
+                return  WH[0] * sizeof(TY_FORMAT);
         };
 
         size_t                  RowPitch    = GetRowPitch();
@@ -365,10 +381,11 @@ namespace FlexKit
         {
             for (uint32_t X = 0; X < WH[0]; X++)
             {
-                const uint2 in_Cord = { X * 2, Y * 2 };
-                const uint2 out_Cord = { X, Y };
+                const uint2 in_Cord     = { X * 2, Y * 2 };
+                const uint2 out_Cord    = { X, Y };
 
-                DestiView[out_Cord] = sampler(InputView, in_Cord);
+                auto newSample = sampler(InputView, in_Cord);
+                DestiView[out_Cord] = newSample;
             }
         }
 

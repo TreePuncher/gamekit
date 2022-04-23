@@ -571,12 +571,21 @@ FlexKit::TriMeshHandle EditorViewport::LoadTriMeshResource(ProjectResource_ptr r
     else
     {
         auto& renderSystem = renderer.framework.GetRenderSystem();
+        auto guid = res->resource->GetResourceGUID();
 
-        auto meshBlob = res->resource->CreateBlob();
-        FlexKit::TriMeshHandle handle = FlexKit::LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), meshBlob.buffer, meshBlob.bufferSize);
-
-        res->properties[GetCRCGUID(TriMeshHandle)] = std::any{ handle };
-        return handle;
+        if (!FlexKit::isAssetAvailable(guid))
+        {
+            auto meshBlob = res->resource->CreateBlob();
+            FlexKit::TriMeshHandle handle = FlexKit::LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), meshBlob.buffer, meshBlob.bufferSize);
+            res->properties[GetCRCGUID(TriMeshHandle)] = std::any{ handle };
+            return handle;
+        }
+        else
+        {
+            auto handle = FlexKit::LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), guid);
+            res->properties[GetCRCGUID(TriMeshHandle)] = std::any{ handle };
+            return handle;
+        }
     }
 }
 

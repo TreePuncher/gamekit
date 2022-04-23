@@ -137,15 +137,14 @@ struct TextureResourceViewer : public IResourceViewer
     {
         auto textureResource    = std::static_pointer_cast<FlexKit::TextureResource>(resource);
 
-        void* textureBuffer     = textureResource->buffer;
-        const auto format       = textureResource->format;
+        void* textureBuffer     = textureResource->MIPlevels[0].buffer;
         const auto WH           = textureResource->WH;
 
-        FlexKit::TextureBuffer  uploadBuffer{ WH, (FlexKit::byte*)textureBuffer, textureResource->bufferSize, 16, nullptr };
+        FlexKit::TextureBuffer  uploadBuffer{ WH, (FlexKit::byte*)textureBuffer, textureResource->MIPlevels[0].bufferSize, 16, nullptr };
 
         auto& renderSystem  = renderer.framework.GetRenderSystem();
         auto queue          = renderSystem.GetImmediateUploadQueue();
-        auto texture        = FlexKit::MoveTextureBufferToVRAM(renderSystem, queue, &uploadBuffer, format);
+        auto texture        = FlexKit::MoveTextureBufferToVRAM(renderSystem, queue, &uploadBuffer, FlexKit::DeviceFormat::R32G32B32A32_FLOAT);
 
         auto docklet        = new QDockWidget{ parent };
         auto textureViewer  = new TextureViewer(renderer, parent, texture);

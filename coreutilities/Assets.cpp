@@ -119,7 +119,8 @@ namespace FlexKit
 
     AssetHandle AddAssetBuffer(Resource* buffer)
     {
-        buffer->RefCount = 1;
+        buffer->RefCount    = 1;
+        buffer->State       = Resource::EResourceState_LOADED;
 
         return Resources.ResourcesLoaded.push_back((Resource*)buffer);
     }
@@ -535,6 +536,31 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    void LoadMorphTargets(TriMesh* triMesh, const char* buffer, const size_t bufferSize, const size_t morphTargetCount)
+    {
+        for (size_t I = 0; I < morphTargetCount; I++)
+        {
+            const size_t readOffset =
+                sizeof(LODlevel) +
+                sizeof(LODlevel::LODMorphTarget) * I;
+
+            LODlevel::LODMorphTarget morphTarget;
+            memcpy(&morphTarget, buffer + readOffset, sizeof(morphTarget));
+
+            TriMesh::MorphTargetAsset mta;
+            memcpy(&mta.name, morphTarget.morphTargetName, sizeof(mta.name));
+
+            mta.offset  = morphTarget.bufferOffset;
+            mta.size    = morphTarget.buffserSize;
+
+            triMesh->morphTargetAssets.push_back(mta);
+        }
+    }
+
+
+    /************************************************************************************************/
+
+
     bool LoadLOD(TriMesh* triMesh, uint level, RenderSystem& renderSystem, CopyContextHandle copyCtx, iAllocator& memory)
     {
         auto readCtx = OpenReadContext(triMesh->assetHandle);
@@ -574,10 +600,18 @@ namespace FlexKit
         for (size_t I = 0; I < subMeshCount; I++)
         {
             SubMesh subMesh;
-            memcpy(&subMesh, buffer + lod.lodFileOffset + sizeof(LODlevel) + sizeof(SubMesh) * I, sizeof(SubMesh));
+            const size_t readOffset =
+                sizeof(LODlevel) +
+                lodHeader->descriptor.morphTargets * sizeof(LODlevel::LODMorphTarget) +
+                sizeof(SubMesh) * I;
+
+            memcpy(&subMesh, buffer + readOffset, sizeof(subMesh));
             
             lod.subMeshes.push_back(subMesh);
         }
+
+        if(level == 0)
+            LoadMorphTargets(triMesh, buffer + lod.lodFileOffset, lod.lodSize, lodHeader->descriptor.morphTargets);
 
         lod.state = TriMesh::LOD_Runtime::LOD_State::Loaded;
 
@@ -640,6 +674,8 @@ namespace FlexKit
 
                 lod.subMeshes.push_back(subMesh);
             }
+
+            LoadMorphTargets(triMesh, buffer + lod.lodFileOffset, lod.lodSize, lodHeader.descriptor.morphTargets);
 
             lod.state = TriMesh::LOD_Runtime::LOD_State::Loaded;
         }

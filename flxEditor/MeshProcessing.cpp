@@ -79,7 +79,6 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-
     ResourceBlob MeshResource::CreateBlob() const
 	{ 
 		TriMeshAssetBlob::TriMeshAssetHeader header;
@@ -195,6 +194,9 @@ namespace FlexKit
 
 		return out;
 	}
+
+
+    /************************************************************************************************/
 
 
 	MeshResource_ptr CreateMeshResource(std::vector<LODLevel>& lods, const std::string& ID, const MetaDataList& metaData, const bool enableSubDiv)

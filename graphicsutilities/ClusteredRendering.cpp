@@ -1397,8 +1397,6 @@ namespace FlexKit
 
                     if (material.SubMaterials.empty())
                     {
-                        
-
                         if (material.Textures.size())
                         {
                             DescriptorHeap descHeap;
@@ -1459,12 +1457,14 @@ namespace FlexKit
 
                 // skinned models
                 ctx.EndEvent_DEBUG();
-                ctx.BeginEvent_DEBUG("Skinned Objects");
-
-                // unskinned models
 
                 if (!animatedPass || !animatedPass->pvs.size())
+                {
+                    ctx.EndEvent_DEBUG();
                     return;
+                }
+
+                ctx.BeginEvent_DEBUG("Skinned Objects");
 
                 auto& animatedBrushes       = animatedPass->pvs;
                 const size_t poseBufferSize = AlignedSize<EntityPoses>() * animatedBrushes.size();
