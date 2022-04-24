@@ -62,11 +62,38 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
 
     //materialView.SetProperty(GetCRCGUID(PBR_ALBEDO), float4{ 1, 0, 0, 0.5f });
 
+    static bool s_addAssets = []()
+    {
+        //FlexKit::AddAssetFile("assets\\testprefab.gameres");
+        FlexKit::AddAssetFile("assets\\demonGirl.gameres");
+        return true;
+    }();
+
+
+    auto [triMesh, loaded] = FindMesh(9021);
+
+    if (!loaded)
+        triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), 9021);
+
+    auto& materials = MaterialComponent::GetComponent();
+    auto material   = materials.CreateMaterial();
+    materials.Add2Pass(material, ShadowMapPassID);
+    materials.Add2Pass(material, GBufferPassID);
+
+    auto& prefab    = objectPool.Allocate();
+    auto& nodeView  = prefab.AddView<SceneNodeView<>>();
+    auto& brush     = prefab.AddView<BrushView>(triMesh);
+
+    nodeView.Scale(float3{ 3 });
+    EnableScale(prefab, true);
+    brush.SetMaterial(material);
+    scene.AddGameObject(prefab, GetSceneNode(prefab));
+
+    SetBoundingSphereFromMesh(prefab);
+    SetParentNode(node, nodeView);
+
+
     /*
-    static bool s_addAsset = []() { FlexKit::AddAssetFile("assets\\testprefab.gameres"); return true; }();
-
-    auto& prefab = objectPool.Allocate();
-
     if (LoadPrefab(prefab, 123456, allocator))
     {
         auto& materials = MaterialComponent::GetComponent();

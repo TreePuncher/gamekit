@@ -253,7 +253,8 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 
     gbuffer.Albedo      = float4(albedo.xyz, Ks);
     gbuffer.MRIA        = roughMetal.zyxx;
-    gbuffer.Normal      = mul(View, float4(normalize(IN.Normal), 0));
+    //gbuffer.Normal      = mul(View, float4(normalize(IN.Normal), 0));
+    gbuffer.Normal      = mul(View, float4(normalize(normal), 0));
     gbuffer.Depth       = IN.depth;
 
     return gbuffer;

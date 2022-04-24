@@ -214,11 +214,11 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
     const float3 positionWS     = GetWorldSpacePosition(UV, depth);
 
     const float ior           = MRIA.b;
-    const float metallic      = MRIA.r > 0.1f ? 1.0f : 0.0f; 
+    const float metallic      = 0;//MRIA.r > 0.1f ? 1.0f : 0.0f; 
 	const float3 albedo       = pow(Albedo.rgb, 2.2f);
-    const float roughness     = 0.3f;//MRIA.g;
+    const float roughness     = 0.5f;//MRIA.g;
 
-    const float Ks              = 0.05f;lerp(0, 0.4f, saturate(Albedo.w));
+    const float Ks              = 0.15f;//lerp(0, 0.4f, saturate(Albedo.w));
     const float Kd              = (1.0 - Ks) * (1.0 - metallic);
     const float NdotV           = saturate(dot(N.xyz, V));
 
@@ -227,9 +227,6 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
     {
         const uint pointLightIdx    = lightListBuffer[localLightList + I];
         const PointLight light      = pointLights[pointLightIdx];
-
-        //if (pointLightIdx != 0)
-        //    continue;
 
         const float3 Lc			= light.KI.rgb;
         const float3 Lp         = mul(View, float4(light.PR.xyz, 1));
@@ -398,7 +395,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
         //
         //return pow(-positionVS.z / 128, 10.0f);
         //return depth;
-        //return float4(N / 2.0f + 0.5f);
+        return float4(N / 2.0f + 0.5f);
     //return Albedo * Albedo;
     //return float4(positionW, 0);
     //return pow(roughness, 2.2f);

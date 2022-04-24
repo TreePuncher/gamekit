@@ -803,7 +803,8 @@ namespace FlexKit
         auto triMeshHandle  = GetTriMesh(gameObject);
         auto skeleton       = Create(triMeshHandle, blob.assetID);
 
-        gameObject.AddView<SkeletonView>(triMeshHandle, skeleton);
+        if(skeleton != InvalidHandle_t)
+            gameObject.AddView<SkeletonView>(triMeshHandle, skeleton);
     }
 
 
