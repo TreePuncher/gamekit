@@ -252,6 +252,9 @@ namespace FlexKit
 
     void MaterialComponent::AddComponentView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
+        if (gameObject.hasView(MaterialComponentID))
+            return;
+
         MaterialComponentBlob materialBlob;
         memcpy(&materialBlob, buffer, Min(sizeof(materialBlob), bufferSize));
 

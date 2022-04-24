@@ -459,12 +459,13 @@ namespace FlexKit
                     case VertexField::MorphTarget:
                     {
                         auto& vertex = ctx.mesh.morphTargets[field.idx];
+
                         MorphTargetVertex mtv;
                         mtv.normal      = vertex.normal;
                         mtv.position    = vertex.position;
                         mtv.tangent     = vertex.tangent;
 
-                        if (vertex.morphIdx >= morphTargets.size())
+                        while(vertex.morphIdx >= morphTargets.size())
                             morphTargets.emplace_back();
 
                         morphTargets[vertex.morphIdx].vertices.push_back(mtv);

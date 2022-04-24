@@ -103,10 +103,8 @@ namespace FlexKit
                 }
             }
 
-            uint32_t                    morphTargetVertexCount = 0;
             std::vector<LODLevel>       lodLevels;
             std::vector<std::string>    morphTargetNames;
-            std::vector<uint32_t>       morphTargetStart;
 
             for(auto sourceMesh : lodSources)
             {
@@ -114,7 +112,6 @@ namespace FlexKit
                 auto        meshTokens = FlexKit::MeshUtilityFunctions::TokenList{ SystemAllocator };
 
                 LODLevel lod;
-
                 for(auto& primitive : primitives)
                 {
                     MeshDesc newMesh;
@@ -262,20 +259,20 @@ namespace FlexKit
 
                     }
 
-                    size_t morphTargetCount = 0;
+                    size_t                  morphTargetCount = 0;
+                    uint32_t                morphTargetVertexCount = 0;
+                    std::vector<uint32_t>   morphTargetStart;
+
                     for(auto& morphChannels : primitive.targets)
                     {
-                        auto& extraValues   = mesh.extras.Get<tinygltf::Value::Object>();
-                        auto& targetNames   = extraValues["targetNames"].Get<tinygltf::Value::Array>();
-                        morphTargetNames.push_back(targetNames[morphTargetCount].Get<std::string>());
-                        morphTargetStart.push_back(morphTargetVertexCount);
-
                         auto position       = morphChannels.find("POSITION");
                         auto tangent        = morphChannels.find("TANGENT");
                         auto normal         = morphChannels.find("NORMAL");
 
                         if (tangent == morphChannels.end() || normal == morphChannels.end() || position == morphChannels.end())
                             continue;
+
+                        morphTargetStart.push_back(morphTargetVertexCount);
 
                         auto& positionAcessor   = model.accessors[position->second];
                         auto& positionView      = model.bufferViews[positionAcessor.bufferView];
@@ -312,7 +309,7 @@ namespace FlexKit
                                 .position   = position,
                                 .normal     = normal,
                                 .tangent    = tangent,
-                                .morphIdx   = (uint32_t)morphTargetCount
+                                .morphIdx   = (uint32_t)morphTargetCount,
                             };
 
                             meshTokens.push_back(token);
@@ -386,8 +383,11 @@ namespace FlexKit
             auto meshResource       = CreateMeshResource(lodLevels, mesh.name, {}, false);
             meshResource->TriMeshID = GUID;
 
-            for (size_t I = 0; I < morphTargetNames.size(); I++)
-                meshResource->morphTargetBuffers[I].name = morphTargetNames[I];
+            auto& extraValues = mesh.extras.Get<tinygltf::Value::Object>();
+            auto& targetNames = extraValues["targetNames"].Get<tinygltf::Value::Array>();
+
+            for (size_t I = 0; I < meshResource->morphTargetBuffers.size(); I++)
+                meshResource->morphTargetBuffers[I].name = targetNames[I].Get<std::string>();
 
             resources.emplace_back(std::move(meshResource));
 
