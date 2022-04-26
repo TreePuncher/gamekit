@@ -815,6 +815,9 @@ namespace FlexKit
         for (auto& N : Nodes)
             ProcessNode(&N, Resources, taskList, threadLocalAllocator);
 
+        if (!taskList.size())
+            return;
+
         auto& renderSystem = Resources.renderSystem;
         Vector<Context*> contexts{ &threadLocalAllocator };
 

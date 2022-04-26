@@ -6,7 +6,7 @@ namespace FlexKit
     AnimationPoseUpload::PoseView AnimationPoseUpload::GetIterator()
     {
         auto& buffer = GetBuffer(reserve, passes);
-        return CreateCBIterator<BrushPoses>( buffer );
+        return CreateCBIterator<BrushPoseBlock>( buffer );
     }
 
     CBPushBuffer& AnimationPoseUpload::GetData()
@@ -38,7 +38,7 @@ namespace FlexKit
 
                 struct EntityPoses
                 {
-                    float4x4 transforms[512];
+                    float4x4 transforms[768];
 
                     auto& operator [](size_t idx)
                     {
@@ -56,7 +56,7 @@ namespace FlexKit
                     for (size_t I = 0; I < pose->JointCount; I++)
                         poses[I] = (skeleton->IPose[I] * pose->CurrentPose[I]);
 
-                    ConstantBufferDataSet(poses, poseBuffer);
+                    ConstantBufferDataSet((char*)&poses, sizeof(pose->JointCount) * sizeof(float4x4), poseBuffer);
                 }
             });
     }

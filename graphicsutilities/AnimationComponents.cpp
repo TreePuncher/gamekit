@@ -439,6 +439,7 @@ namespace FlexKit
         auto& state = GetState();
         state.obj   = (asIScriptObject*)_ptr;
 
+        state.obj->AddRef();
     }
 
 

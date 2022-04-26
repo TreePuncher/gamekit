@@ -288,6 +288,16 @@
     <ClInclude Include="GamepadInput.h">
       <Filter>Source\TestGame</Filter>
     </ClInclude>
+    <ClInclude Include="Enemy1.h">
+      <Filter>Headers\TestGame</Filter>
+    </ClInclude>
+    <ClInclude Include="AIUtilities.h">
+      <Filter>Headers\TestGame</Filter>
+    </ClInclude>
+    <ClInclude Include="Pathfinding.h">
+      <Filter>Headers\TestGame</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\coreutilities\AllSourceFiles.cpp">
@@ -434,9 +444,6 @@
     <ClCompile Include="..\physicsutilities\physicsutilities.cpp">
       <Filter>Source\physicsutilities</Filter>
     </ClCompile>
-    <ClCompile Include="Client.cpp">
-      <Filter>Source\TestGame</Filter>
-    </ClCompile>
     <ClCompile Include="GamePlay.cpp">
       <Filter>Source\TestGame</Filter>
     </ClCompile>
@@ -500,6 +507,10 @@
     <ClCompile Include="GamepadInput.cpp">
       <Filter>Headers\TestGame</Filter>
     </ClCompile>
+    <ClCompile Include="Enemy1.cpp">
+      <Filter>Source\TestGame</Filter>
+    </ClCompile>
+    <ClCompile Include="Player.cpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\shaders\ACC.hlsl">

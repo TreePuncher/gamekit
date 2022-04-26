@@ -329,14 +329,14 @@ namespace FlexKit
         };
 
         template<typename TY_HITFN>
-        void RayCast(const float3 origin, const float3 ray, const float maxDistance, TY_HITFN OnHit)
+        bool RayCast(const float3 origin, const float3 ray, const float maxDistance, TY_HITFN OnHit)
         {
             const auto pxOrigin = Float3TopxVec3(origin);
             const auto pxRay    = Float3TopxVec3(ray);
 
             HitCallback<TY_HITFN> hitCallback{ OnHit };
 
-            scene->raycast(pxOrigin, pxRay, maxDistance, hitCallback);
+            return scene->raycast(pxOrigin, pxRay, maxDistance, hitCallback);
         }
 
         physx::PxControllerManager& GetCharacterController() { return *controllerManager; }
@@ -714,6 +714,9 @@ namespace FlexKit
         {
             auto& manager = physx.GetLayer_ref(layer).GetCharacterController();
 
+            if (!gameObject->hasView(TransformComponentID))
+                gameObject->AddView<SceneNodeView<>>(node);
+
             SetPositionW(node, initialPosition + float3{0, H / 2, 0});
 
             physx::PxCapsuleControllerDesc CCDesc;
@@ -816,12 +819,12 @@ namespace FlexKit
             GetComponent().Remove(controller);
         }
 
+
         NodeHandle GetNode() const
         {
             return GetComponent()[controller].node;
         }
 
-        struct MoveFilter {};
 
         float3 GetPosition()
         {
@@ -830,6 +833,7 @@ namespace FlexKit
             return pxVec3ToFloat3(ref.controller->getPosition());
         }
 
+
         void SetPosition(const float3 xyz)
         {
             auto& ref = GetComponent()[controller];
@@ -837,21 +841,32 @@ namespace FlexKit
             SetPositionW(ref.node, xyz);
         }
 
+
         void SetOrientation(const Quaternion q)
         {
             auto& ref = GetComponent()[controller];
             FlexKit::SetOrientation(ref.node, q);
         }
 
+
+        uint32_t Move(const float3 v, double dt, physx::PxControllerFilters& filters)
+        {
+            auto& ref = GetComponent()[controller];
+
+            return ref.controller->move({ v.x, v.y, v.z }, 0.001f, (float)dt, filters);
+        }
+
+
         CharacterControllerHandle controller;
     };
 
 
-    NodeHandle                  GetControllerNode(GameObject& GO);
-    CharacterControllerHandle   GetControllerHandle(GameObject& GO);
-    float3                      GetControllerPosition(GameObject& GO);
-    void                        SetControllerPosition(GameObject& GO, const float3 xyz);
-    void                        SetControllerOrientation(GameObject& GO, const Quaternion q);
+    NodeHandle                  GetControllerNode           (GameObject&);
+    CharacterControllerHandle   GetControllerHandle         (GameObject&);
+    float3                      GetControllerPosition       (GameObject&);
+    void                        SetControllerPosition       (GameObject&, const float3);
+    void                        SetControllerOrientation    (GameObject&, const Quaternion);
+    void                        MoveController              (GameObject&, const float3&, physx::PxControllerFilters& filters, double dt);
 
 
     /************************************************************************************************/

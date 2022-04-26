@@ -896,6 +896,7 @@ namespace FlexKit
 			GeometryTable.GeometryIDs.push_back		(nullptr);
 			GeometryTable.Guids.push_back			(0);
 			GeometryTable.ReferenceCounts.push_back	(0);
+            GeometryTable.Handle.push_back          (Handle);
 
 			auto Available = isAssetAvailable(ID);
 			FK_ASSERT(Available);
@@ -966,6 +967,7 @@ namespace FlexKit
 			GeometryTable.GeometryIDs.push_back		(nullptr);
 			GeometryTable.Guids.push_back			(0);
 			GeometryTable.ReferenceCounts.push_back	(0);
+            GeometryTable.Handle.push_back          (Handle);
 
 
 			if(Buffer2TriMesh(GeometryTable.renderSystem, handle, buffer, bufferSize, GeometryTable.Memory, &GeometryTable.Geometry[Index]))

@@ -448,6 +448,16 @@ namespace FlexKit
     }
 
 
+    void SetTriMesh(GameObject& gameObject, TriMeshHandle triMesh) noexcept
+    {
+        return Apply(gameObject,
+            [&](BrushView& brush)
+            {
+                brush.SetMesh(triMesh);
+            });
+    }
+
+
     /************************************************************************************************/
 
 
@@ -1357,9 +1367,9 @@ namespace FlexKit
         if (material != InvalidHandle_t)
         {
             const auto albedo       = materials.GetProperty<float4>(material, GetCRCGUID(PBR_ALBEDO)).value_or(float4{ 0.7f, 0.7f, 0.7f, 0.3f });
-            const auto specular     = materials.GetProperty<float4>(material, GetCRCGUID(PBR_SPECULAR)).value_or(float4{ 1.0f, 1.0f, 1.0f, 0.0f });
-            const auto roughness    = materials.GetProperty<float>(material, GetCRCGUID(PBR_ROUGHNESS)).value_or(0.6f);
-            const auto metal        = materials.GetProperty<float>(material, GetCRCGUID(PBR_METAL)).value_or(0.0f);
+            const auto specular     = materials.GetProperty<float4>(material, GetCRCGUID(PBR_SPECULAR)).value_or(float4{ 1.0f, 1.0f, 1.0f, 1.0f });
+            const auto roughness    = materials.GetProperty<float>(material,  GetCRCGUID(PBR_ROUGHNESS)).value_or(1.0f);
+            const auto metal        = materials.GetProperty<float>(material,  GetCRCGUID(PBR_METAL)).value_or(1.0f);
 
             constants.MP.albedo     = albedo.xyz();
             constants.MP.roughness  = roughness;

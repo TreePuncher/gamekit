@@ -134,6 +134,7 @@ private:
     void DrawSceneOverlay   (FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, DrawSceneOverlay_Desc& desc);
 
     double                          T = 0.0f;
+    bool                            overlayEnabled = true;
 
     std::vector<ViewportMode_ptr>   mode;
 

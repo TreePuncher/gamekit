@@ -230,7 +230,6 @@ public:
         };
 
 
-        auto& animationUpdate   = FlexKit::UpdateAnimations(dispatcher, dT);
         auto& transforms        = FlexKit::QueueTransformUpdateTask(dispatcher);
         auto& cameras           = FlexKit::CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
 
@@ -247,7 +246,12 @@ public:
                 data.depthTarget    = builder.DepthTarget(depthBuffer.Get());
 
                 builder.AddDataDependency(cameras);
-                builder.AddDataDependency(animationUpdate);
+
+                if (animate)
+                {
+                    auto& animationUpdate = FlexKit::UpdateAnimations(dispatcher, dT);
+                    builder.AddDataDependency(animationUpdate);
+                }
             },
             [=, &gameObject](Pass& data, const FlexKit::ResourceHandler& frameResources, FlexKit::Context& ctx, FlexKit::iAllocator& allocator)
             {
@@ -256,8 +260,6 @@ public:
 
                 if (!brush)
                     return;
-
-                FlexKit::Yaw(brush->Node, 1.0f/60.0f);
 
                 auto mesh           = brush->MeshHandle;
                 auto materialHndl   = brush->material;
@@ -290,7 +292,7 @@ public:
 
                 struct EntityPoses
                 {
-                    float4x4 transforms[512];
+                    float4x4 transforms[768];
 
                     auto& operator [](size_t idx)
                     {
@@ -363,9 +365,12 @@ public:
         {
             auto& object = selection->object;
 
+            if (turnTable)
+                FlexKit::Yaw(object.gameObject, 1.0f / 60.0f);
+
             RenderAnimatedModel(object.gameObject, dispatcher, dT, temporaryBuffers, frameGraph, renderTarget, allocator);
             
-            if (const auto pose = FlexKit::GetPoseState(object.gameObject); pose)
+            if (const auto pose = FlexKit::GetPoseState(object.gameObject); skeletonOverlay && pose)
             {
                 const auto node = FlexKit::GetSceneNode(object.gameObject);
                 const auto PV   = GetCameraConstants(previewCamera).PV;
@@ -435,6 +440,10 @@ public:
         }
     }
 
+
+    bool skeletonOverlay = false;
+    bool turnTable       = false;
+    bool animate         = true;
 
 private:
     FlexKit::CameraHandle       previewCamera;
@@ -713,8 +722,11 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
         });
 
 
-    auto viewMenu   = menubar->addMenu("View");
-    auto centerView = viewMenu->addAction("Center View On Object");
+    auto viewMenu               = menubar->addMenu("View");
+    auto centerView             = viewMenu->addAction("Center View On Object");
+    auto toggleSkeletonOverlay  = viewMenu->addAction("Toggle Skeleton");
+    auto toggleTurnTable        = viewMenu->addAction("Toggle Turntable");
+    auto toggleAnimation        = viewMenu->addAction("Toggle Animation");
 
     connect(
         centerView, &QAction::triggered,
@@ -722,6 +734,36 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
         {
             if(localSelection->GetSelection())
                 previewWindow->CenterCamera();
+        });
+
+    toggleSkeletonOverlay->setCheckable(true);
+    toggleSkeletonOverlay->setChecked(previewWindow->skeletonOverlay);
+    connect(
+        toggleSkeletonOverlay, &QAction::triggered,
+        [=]
+        {
+            previewWindow->skeletonOverlay = toggleSkeletonOverlay->isChecked();
+            toggleSkeletonOverlay->setChecked(previewWindow->skeletonOverlay);
+        });
+
+    toggleTurnTable->setCheckable(true);
+    toggleTurnTable->setChecked(previewWindow->turnTable);
+    connect(
+        toggleTurnTable, &QAction::triggered,
+        [=]
+        {
+            previewWindow->turnTable = toggleTurnTable->isChecked();
+            toggleTurnTable->setChecked(previewWindow->turnTable);
+        });
+
+    toggleAnimation->setCheckable(true);
+    toggleAnimation->setChecked(previewWindow->animate);
+    connect(
+        toggleAnimation, &QAction::triggered,
+        [=]
+        {
+            previewWindow->animate = toggleAnimation->isChecked();
+            toggleAnimation->setChecked(previewWindow->animate);
         });
 
     inputVariables->SetOnCreateEvent(
@@ -752,22 +794,24 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
     connect(timer, &QTimer::timeout,
         [&]()
         {
-            if (auto selection = localSelection->GetSelection(); selection && selection->ID != -1)
+            if (isVisible())
             {
-                if (auto inputs = selection->animator->inputs.size(); inputs)
+                if (auto selection = localSelection->GetSelection(); selection && selection->ID != -1)
                 {
-                    inputVariables->Update(
-                        inputs,
-                        [&](size_t idx, std::string& ID, std::string& value, std::string& defaultValue)
-                        {
-                            auto& inputID   = selection->animator->inputs[idx];
-                            ID              = inputID.stringID;
-                            value           = selection->ValueString(idx, (uint32_t)inputID.type);
-                            defaultValue    = selection->DefaultValueString(idx);
-                        });
+                    if (auto inputs = selection->animator->inputs.size(); inputs)
+                    {
+                        inputVariables->Update(
+                            inputs,
+                            [&](size_t idx, std::string& ID, std::string& value, std::string& defaultValue)
+                            {
+                                auto& inputID   = selection->animator->inputs[idx];
+                                ID              = inputID.stringID;
+                                value           = selection->ValueString(idx, (uint32_t)inputID.type);
+                                defaultValue    = selection->DefaultValueString(idx);
+                            });
+                    }
                 }
             }
-
             timer->start(500ms);
         });
 

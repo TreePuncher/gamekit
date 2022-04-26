@@ -1278,6 +1278,7 @@ namespace FlexKit
                 taskMap.push_back({ TaskID, &task });
             else
             {
+                FK_LOG_FATAL("Task double scheduled!");
                 std::cout << "ERROR!";
                 std::exit(-1);
             }
