@@ -172,7 +172,7 @@ public:
     GameObject*                     smolina     = nullptr;
 
     //GameObject&                     testAnimation;
-    //GameObject&                     particleEmitter;
+    GameObject&                     particleEmitter;
     //GameObject&                     IKTarget;
 
     //TriMeshHandle                   playerCharacterModel;

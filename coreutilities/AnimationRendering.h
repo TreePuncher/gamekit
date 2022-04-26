@@ -7,9 +7,9 @@
 
 namespace FlexKit
 {
-    struct BrushPoses
+    struct BrushPoseBlock
     {
-        float4x4 transforms[512];
+        float4x4 transforms[8];
 
         auto& operator [](size_t idx)
         {
@@ -26,8 +26,15 @@ namespace FlexKit
                 auto& passes    = passesGather.GetData().passes;
                 auto res        = FindPass(passes.begin(), passes.end(), GBufferAnimatedPassID);
 
+                size_t requiredBlocks = 0;
+                for (auto& skinnedBrush : res->pvs)
+                {
+                    auto pose = GetPoseState(*skinnedBrush.gameObject);
+                    requiredBlocks += ceil(pose->JointCount / 8.0f);
+                }
+
                 if (res)
-                    return reserve(res->pvs.size() * sizeof(BrushPoses));
+                    return reserve(requiredBlocks * sizeof(BrushPoseBlock));
                 else
                     return {};
             });
@@ -44,7 +51,7 @@ namespace FlexKit
                 reserve     { IN_reserve } {}
 
         using CreateFN = decltype(CreateGetFN(std::declval<iAllocator&>()));
-        using PoseView = decltype(CreateCBIterator<BrushPoses>(std::declval<CBPushBuffer&>()));
+        using PoseView = decltype(CreateCBIterator<BrushPoseBlock>(std::declval<CBPushBuffer&>()));
 
         CreateFN                        GetBuffer;
         GatherPassesTask&               passes;

@@ -85,11 +85,11 @@ Vertex VS_Skinned_Main(Skinned_Vertex IN)
     return Out;
 }
 
-
 float PS_Main(Vertex IN, const bool frontFacing : SV_IsFrontFace) : SV_DEPTH
 {
     if (frontFacing)
-        return (-IN.pos_VS.z / maxZ) + 0.015f;
+        return (-IN.pos_VS.z / maxZ) - 0.000015f;
     else
-        return (-IN.pos_VS.z / maxZ) - 0.00015f;
+        return (-IN.pos_VS.z / maxZ) + 0.000015f;
+
 }

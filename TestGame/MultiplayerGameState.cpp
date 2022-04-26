@@ -123,16 +123,16 @@ bool HandleEvents(PlayerInputState& keyState, Event evt)
 /************************************************************************************************/
 
 
-LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerInterface& IN_worldState, BaseState& IN_base) :
-        FrameworkState      { IN_framework  },
-        base                { IN_base },
-        worldState          { IN_worldState },
-        testParticleSystem  { IN_framework.core.GetBlockMemory() }
-    ,   emitters            { IN_framework.core.GetBlockMemory() }
+LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerInterface& IN_worldState, BaseState& IN_base)
+    : FrameworkState      { IN_framework  }
+    , base                { IN_base }
+    , worldState          { IN_worldState }
+    , testParticleSystem  { IN_framework.core.GetBlockMemory() }
+    , emitters            { IN_framework.core.GetBlockMemory() }
     //,   testAnimation       { IN_worldState.CreateGameObject() }
-    //, particleEmitter     { IN_worldState.CreateGameObject() }
+    , particleEmitter     { IN_worldState.CreateGameObject() }
     //,   IKTarget            { IN_worldState.CreateGameObject() }
-    ,   runOnceDrawEvents   { IN_framework.core.GetBlockMemory() }//
+    , runOnceDrawEvents   { IN_framework.core.GetBlockMemory() }//
     //,   testAnimationResource   { LoadAnimation("TestRigAction", IN_framework.core.GetBlockMemory()) }
 {
     //base.PixCapture();
@@ -158,18 +158,24 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
     smolina     = FlexKit::FindGameObject(worldState.GetScene(), "smolina").value_or(nullptr);
 
 
-    //pointLight->Position;
+    particleEmitter.AddView<SceneNodeView<>>();
+    auto& emitterView       = particleEmitter.AddView<ParticleEmitterView>(ParticleEmitterData{ &testParticleSystem, GetSceneNode(particleEmitter) });
+    auto& emitterProperties = emitterView.GetData().properties;
 
-    //particleEmitter.AddView<SceneNodeView<>>();
-    //auto& emitterView       = particleEmitter.AddView<ParticleEmitterView>(ParticleEmitterData{ &testParticleSystem, GetSceneNode(particleEmitter) });
-    //auto& emitterProperties = emitterView.GetData().properties;
+    emitterProperties.emissionSpread    = 1.0f;
+    emitterProperties.minEmissionRate   = 0;
+    emitterProperties.maxEmissionRate   = 1000;
 
-    //emitterProperties.emissionSpread    = 1.0f;
-    //emitterProperties.minEmissionRate   = 0;
-    //emitterProperties.maxEmissionRate   = 1000;
+    Translate(particleEmitter, { 0, 10, 0 });
 
-    //Translate(particleEmitter, { 0, 10, 0 });
 
+    auto pointLightSearch = scene.Query(framework.core.GetTempMemory(), PointLightQuery{});
+
+    for (auto& query : pointLightSearch)
+    {
+        auto& [pl] = query.value();
+        pl.SetIntensity(pl.GetIntensity() * 10.0f);
+    }
 
     //playerCharacterModel    = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), CharacterModelAsset);
     //auto model              = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), PlaceHolderAsset);
@@ -273,8 +279,8 @@ UpdateTask* LocalGameState::Update(EngineCore& core, UpdateDispatcher& dispatche
 
     if (pointLight1 && move)
     {
-        static float t = 0.0f;
-        static float3 XZ = GetWorldPosition(*pointLight1);
+        static float t      = 0.0f;
+        static float3 XZ    = GetWorldPosition(*pointLight1);
 
         if(mode)
             SetWorldPosition(*pointLight1, float3{ XZ.x, 10 * sin(t) + 20, XZ.z });
@@ -284,6 +290,9 @@ UpdateTask* LocalGameState::Update(EngineCore& core, UpdateDispatcher& dispatche
         t += dT;
     }
 
+
+    if (smolina)
+        Yaw(*smolina, pi);
 
     //SetWorldPosition(particleEmitter, float3{ 100.0f * sin(t), 20, 100.0f * cos(t) });
     //SetWorldPosition(IKTarget, float3{ 2.0f * cos(t), 4.0f * sin(t / 2.0f) + 8.0f, 4.0f * sin(t) } + float3{ 30.0f, 0.0f, 10.0f });
@@ -305,7 +314,6 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 
     const CameraHandle activeCamera = worldState.GetActiveCamera();
     SetCameraAspectRatio(activeCamera, base.renderWindow.GetAspectRatio());
-
 
     auto& scene             = worldState.GetScene();
     auto& transforms        = QueueTransformUpdateTask(dispatcher);
@@ -442,26 +450,8 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
             //worldState.GetScene().Query(base.framework.core.GetTempMemory(), ROStringQuery{ "wiggler" });
             // Draw Skeleton overlay
             const auto Skeleton = GetSkeleton(*wiggler);
-            const auto pose = GetPoseState(*wiggler);
-            const auto node = GetSceneNode(*wiggler);
-
-
-            /*
-            static double T = 0.0f;
-            const size_t jointCount = GetJointCount(*wiggler);
-            for (size_t I = 0; I < 0; I++)
-            {
-                auto jointPose = GetJointPose(*wiggler, JointHandle{ I });
-
-                const float i = sin(T) / 2.0f + 0.5f;
-                jointPose.r = Qlerp( Quaternion{ 0, 0, 0 }, Quaternion{ 0, 90, 0 }, i );
-
-                SetJointPose(*wiggler, JointHandle{ I }, jointPose);
-                //RotateJoint(testAnimation, JointHandle{ I }, Quaternion{ 0.0f, float(45.0f * dT), 0.0f });
-            }
-
-            T += dT;
-            */
+            const auto pose     = GetPoseState(*wiggler);
+            const auto node     = GetSceneNode(*wiggler);
 
             if (!Skeleton)
                 return nullptr;
@@ -492,11 +482,11 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 
             if (0)
             {
-                const size_t divisions = 64;
-                const auto boundingSphere = GetBoundingSphere(*smolina);
-                const auto POS = boundingSphere.xyz();
-                const auto radius = boundingSphere.w;
-                const float Step = 2.0f * (float)FlexKit::pi / divisions;
+                const size_t divisions      = 64;
+                const auto boundingSphere   = GetBoundingSphere(*smolina);
+                const auto POS              = boundingSphere.xyz();
+                const auto radius           = boundingSphere.w;
+                const float Step            = 2.0f * (float)FlexKit::pi / divisions;
 
                 auto lightHandle = GetPointLight(*pointLight1);
                 const auto& light = PointLightComponent::GetComponent()[lightHandle];

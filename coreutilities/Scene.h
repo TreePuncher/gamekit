@@ -142,6 +142,7 @@ namespace FlexKit
 
 
     TriMeshHandle   GetTriMesh(GameObject& go) noexcept;
+    void            SetTriMesh(GameObject& go, TriMeshHandle triMesh) noexcept;
     Brush*          GetBrush(GameObject& go) noexcept;
 
     void ToggleSkinned(GameObject& go, bool enabled);
@@ -232,6 +233,21 @@ namespace FlexKit
 
 
     PointLightHandle GetPointLight(GameObject& go);
+
+
+    template<IsConstCharStar ... TY>
+    struct PointLightQuery
+    {
+        using Type      = PointLightView&;
+        using ValueType = PointLightView;
+
+        static constexpr bool IsConst() { return false; }
+
+        bool IsValid(const PointLightView& stringID)
+        {
+            return true;
+        }
+    };
 
 
 	/************************************************************************************************/
@@ -512,6 +528,7 @@ namespace FlexKit
         Vector<SceneRayCastResult>    RayCast(FlexKit::Ray v, iAllocator& allocator = SystemAllocator) const;
 
         template<typename ... TY_Queries>
+        [[nodiscard]]
         auto Query(iAllocator& allocator, TY_Queries ... queries)
         {
             auto& visables = SceneVisibilityComponent::GetComponent();

@@ -178,8 +178,10 @@
     <ClInclude Include="..\graphicsutilities\graphics.h" />
     <ClInclude Include="..\graphicsutilities\Win32Graphics.h" />
     <ClInclude Include="..\physicsutilities\physicsutilities.h" />
+    <ClInclude Include="AIUtilities.h" />
     <ClInclude Include="BaseState.h" />
     <ClInclude Include="Client.h" />
+    <ClInclude Include="Enemy1.h" />
     <ClInclude Include="GamepadInput.h" />
     <ClInclude Include="Gameplay.h" />
     <ClInclude Include="Host.h" />
@@ -189,6 +191,8 @@
     <ClInclude Include="MultiplayerGameState.h" />
     <ClInclude Include="MultiplayerState.h" />
     <ClInclude Include="Packets.h" />
+    <ClInclude Include="Pathfinding.h" />
+    <ClInclude Include="Player.h" />
     <ClInclude Include="Playground.hpp" />
     <ClInclude Include="playgroundmode.hpp" />
     <ClInclude Include="ThirdPersonUtilities.h" />
@@ -357,9 +361,7 @@
     <ClCompile Include="..\physicsutilities\physicsutilities.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="Client.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
+    <ClCompile Include="Enemy1.cpp" />
     <ClCompile Include="EngineTu.cpp" />
     <ClCompile Include="ExternalTU.cpp" />
     <ClCompile Include="GamepadInput.cpp" />
@@ -384,6 +386,7 @@
     <ClCompile Include="MultiplayerState.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="Player.cpp" />
     <ClCompile Include="Win64.cpp" />
   </ItemGroup>
   <ItemGroup>

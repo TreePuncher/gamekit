@@ -183,10 +183,13 @@ WorldStateUpdate HostWorldStateMangager::Update(EngineCore& core, UpdateDispatch
 
     auto& physicsUpdate     = base.physics.Update(dispatcher, dT);
     auto& spellUpdate       = world.UpdateGadgets(dispatcher, world.objectPool, dT);
+    auto& enemyAIUpdate     = UpdateEnemies(dispatcher, dT);
 
     spellUpdate.AddInput(worldUpdate);
     physicsUpdate.AddInput(worldUpdate);
     physicsUpdate.AddInput(spellUpdate);
+    physicsUpdate.AddInput(enemyAIUpdate);
+    worldUpdate.AddInput(enemyAIUpdate);
 
     out.update = &physicsUpdate;
 

@@ -7,13 +7,14 @@
 #include "containers.h"
 #include "Components.h"
 #include "Events.h"
-#include "MathUtils.h"
-#include "GameFramework.h"
+#include "Enemy1.h"
 #include "FrameGraph.h"
-#include "Particles.h"
-#include "physicsutilities.h"
 #include "GameAssets.h"
-
+#include "GameFramework.h"
+#include "MathUtils.h"
+#include "Particles.h"
+#include "Player.h"
+#include "physicsutilities.h"
 #include <regex>
 
 
@@ -90,11 +91,6 @@ enum PLAYER_INPUT_EVENTS : int64_t
 	PLAYER_UNKNOWN,
 };
 
-enum class PlayerEvents
-{
-    PlayerDeath,
-    PlayerHit,
-};
 
 enum DEBUG_EVENTS : int64_t
 {
@@ -183,49 +179,6 @@ struct PlayerFrameState
 };
 
 
-struct PlayerState
-{
-    GameObject*             gameObject;
-    MultiplayerPlayerID_t   playerID;
-    float                   playerHealth    = 100.0f;
-
-    float3                  forward;
-    float3                  position;
-
-    void ApplyDamage(float damage)
-    {
-        playerHealth -= damage;
-
-        if (playerHealth > 0.0f)
-        {
-            FlexKit::Event evt;
-            evt.InputSource       = Event::InputType::Local;
-            evt.mType             = Event::EventType::iObject;
-            evt.mData1.mINT[0]    = (int)PlayerEvents::PlayerHit;
-
-            playerEvents.push_back(evt);
-        }
-        else if(playerHealth <= 0.0f)
-        {
-            FlexKit::Event evt;
-            evt.InputSource       = Event::InputType::Local;
-            evt.mType             = Event::EventType::iObject;
-            evt.mData1.mINT[0]    = (int)PlayerEvents::PlayerDeath;
-
-            playerEvents.push_back(evt);
-        }
-    }
-
-    static_vector<FlexKit::Event> playerEvents;
-};
-
-inline static const ComponentID PlayerComponentID = GetTypeGUID(PlayerGameComponentID);
-
-using PlayerHandle      = Handle_t<32, PlayerComponentID>;
-using PlayerComponent   = BasicComponent_t<PlayerState, PlayerHandle, PlayerComponentID>;
-using PlayerView        = PlayerComponent::View;
-
-
 struct LocalPlayerData
 {
     PlayerHandle                        playerGameState;
@@ -291,32 +244,18 @@ using GadgetView         = GadgetComponent::View;
 class GameWorld
 {
 public:
-    GameWorld(EngineCore& IN_core) :
-        allocator       { static_cast<iAllocator&>(IN_core.GetBlockMemory()) },
-        core            { IN_core },
-        renderSystem    { IN_core.RenderSystem},
-        objectPool      { IN_core.GetBlockMemory(), 8196 },
-        layer           { PhysXComponent::GetComponent().CreateLayer() },
-        scene           { IN_core.GetBlockMemory() },
-        cubeShape       { PhysXComponent::GetComponent().CreateCubeShape({ 0.5f, 0.5f, 0.5f}) } {}
+    GameWorld(EngineCore& IN_core);
+    ~GameWorld();
 
-    ~GameWorld()
-    {
-        Release();
-    }
-
-    void Release()
-    {
-        scene.ClearScene();
-
-        objectPool.~ObjectPool();
-    }
+    void Release();
 
     GameObject& AddLocalPlayer(MultiplayerPlayerID_t multiplayerID);
     GameObject& AddRemotePlayer(MultiplayerPlayerID_t playerID, ConnectionHandle connection = InvalidHandle_t);
     void        AddCube(float3 POS);
 
-    GameObject& CreatePlayer(const PlayerDesc& desc);
+    void        SpawnEnemy_1    (const Enemy_1_Desc& desc);
+    GameObject& CreatePlayer    (const PlayerDesc& desc);
+
     bool        LoadScene(GUID_t assetID);
 
     void        UpdatePlayer        (const PlayerFrameState& playerState, const double);
@@ -324,13 +263,6 @@ public:
     UpdateTask& UpdateGadgets       (UpdateDispatcher& dispathcer, ObjectPool<GameObject>& objectPool, const double dt);
 
 
-    struct GameEvent
-    {
-
-    };
-
-
-    Vector<GameEvent>       pendingEvents;
     const Shape             cubeShape;
 
     EngineCore&             core;
@@ -339,6 +271,7 @@ public:
     Scene                   scene;
     LayerHandle             layer;
 
+    Enemy_1_Component       enemy1Component;
     ObjectPool<GameObject>  objectPool;
     iAllocator&             allocator;
 };

@@ -593,12 +593,12 @@ namespace FlexKit
             if (dirtyFlags[itr])
             {
                 auto& collider = colliders[itr];
-				physx::PxTransform pose     = collider.actor->getGlobalPose();
-				Quaternion	orientation		= Quaternion{pose.q.x, pose.q.y, pose.q.z, pose.q.w};
-				float3		position		= float3(pose.p.x, pose.p.y, pose.p.z);
+				const physx::PxTransform pose   = collider.actor->getGlobalPose();
+				const Quaternion	orientation	= Quaternion{ pose.q.x, pose.q.y, pose.q.z, pose.q.w };
+				const float3		position	= float3{ pose.p.x, pose.p.y, pose.p.z };
 
-				FlexKit::SetPositionW	(collider.node, position);
-				FlexKit::SetOrientation	(collider.node, orientation);
+				SetPositionW	(collider.node, position);
+				SetOrientation	(collider.node, orientation);
 
                 dirtyFlags[itr] = false;
             }
@@ -1296,9 +1296,9 @@ namespace FlexKit
     }
 
 
-    NodeHandle GetRigidBodyNode(GameObject& GO)
+    NodeHandle GetRigidBodyNode(GameObject& gameObject)
     {
-        return Apply(GO,
+        return Apply(gameObject,
             [](RigidBodyView& staticBody) -> NodeHandle
             {
                 return staticBody.GetNode();
@@ -1310,9 +1310,9 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void SetRigidBodyPosition(GameObject& GO, const float3 worldPOS)
+    void SetRigidBodyPosition(GameObject& gameObject, const float3 worldPOS)
     {
-        Apply(GO, [&](RigidBodyView& rigidBody)
+        Apply(gameObject, [&](RigidBodyView& rigidBody)
             {
                 PhysXComponent::GetComponent().GetLayer_ref(rigidBody.layer).SetRigidBodyPosition(rigidBody.staticBody, worldPOS);
             });
@@ -1322,9 +1322,9 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void ApplyForce(GameObject& GO, const float3 force)
+    void ApplyForce(GameObject& gameObject, const float3 force)
     {
-        Apply(GO, [&](RigidBodyView& rigidBody)
+        Apply(gameObject, [&](RigidBodyView& rigidBody)
             {
                 PhysXComponent::GetComponent().GetLayer_ref(rigidBody.layer).ApplyForce(rigidBody.staticBody, force);
             });
@@ -1334,9 +1334,9 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    inline NodeHandle GetStaticBodyNode(GameObject& GO)
+    inline NodeHandle GetStaticBodyNode(GameObject& gameObject)
     {
-        return Apply(GO,
+        return Apply(gameObject,
             [](StaticBodyView& staticBody) -> NodeHandle
             {
                 return staticBody.GetNode();
@@ -1349,9 +1349,9 @@ namespace FlexKit
 
 
     
-    NodeHandle GetControllerNode(GameObject& GO)
+    NodeHandle GetControllerNode(GameObject& gameObject)
     {
-        return Apply(GO, [](CharacterControllerView& controller)
+        return Apply(gameObject, [](CharacterControllerView& controller)
             {
                 return controller.GetNode();
             },
@@ -1362,9 +1362,9 @@ namespace FlexKit
     }
 
 
-    CharacterControllerHandle GetControllerHandle(GameObject& GO)
+    CharacterControllerHandle GetControllerHandle(GameObject& gameObject)
     {
-        return Apply(GO, [](CharacterControllerView& controller)
+        return Apply(gameObject, [](CharacterControllerView& controller)
             {
                 return controller.controller;
             },
@@ -1375,31 +1375,41 @@ namespace FlexKit
     }
 
 
-    float3 GetControllerPosition(GameObject& GO)
+    float3 GetControllerPosition(GameObject& gameObject)
     {
-        return Apply(GO, [&](CharacterControllerView& controller)
+        return Apply(gameObject, [&](CharacterControllerView& controller)
             {
                 return controller.GetPosition();
             }, [] { return float3{ 0, 0, 0 };  });
     }
 
 
-    void SetControllerPosition(GameObject& GO, const float3 xyz)
+    void SetControllerPosition(GameObject& gameObject, const float3 xyz)
     {
-        Apply(GO, [&](CharacterControllerView& controller)
+        Apply(gameObject, [&](CharacterControllerView& controller)
             {
                 controller.SetPosition(xyz);
             });
     }
 
 
-    void SetControllerOrientation(GameObject& GO, const Quaternion q)
+    void SetControllerOrientation(GameObject& gameObject, const Quaternion q)
     {
-        Apply(GO, [&](CharacterControllerView& controller)
+        Apply(gameObject, [&](CharacterControllerView& controller)
             {
                 controller.SetOrientation(q);
             });
     }
+
+
+    void MoveController(GameObject& gameObject, const float3& v, physx::PxControllerFilters& filters, double dt)
+    {
+        Apply(gameObject, [&](CharacterControllerView& controller)
+            {
+                controller.Move(v, dt, filters);
+            });
+    }
+
 
 
     /************************************************************************************************/

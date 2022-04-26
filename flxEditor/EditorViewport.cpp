@@ -497,13 +497,26 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
             IN_renderer.framework.GetRenderSystem().QueuePSOLoad(FlexKit::CREATECLUSTERS);
         });
 
+    auto viewMenu       = menuBar->addMenu("View");
+    auto overlayToggle  = viewMenu->addAction("Toggle Overlay");
+    overlayToggle->setChecked(true);
+    overlayToggle->setCheckable(true);
+
+    connect(overlayToggle, &QAction::triggered,
+        [&, toggle = overlayToggle]
+        {
+            overlayEnabled = toggle->isChecked();
+            toggle->setChecked(overlayEnabled);
+        });
+
     menuBar->show();
 
     renderWindow = renderer.CreateRenderWindow();
     renderWindow->SetOnDraw(
         [&](FlexKit::UpdateDispatcher& dispatcher, double dT, TemporaryBuffers& temporaries, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator)
         {
-            Render(dispatcher, dT, temporaries, frameGraph, renderTarget, allocator);
+            if(isVisible())
+                Render(dispatcher, dT, temporaries, frameGraph, renderTarget, allocator);
         });
 
     layout->addWidget(renderWindow);
@@ -523,6 +536,7 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
             auto material = materials.CreateMaterial();
 
             materials.Add2Pass(material, FlexKit::PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
+            materials.Add2Pass(material, FlexKit::PassHandle{ GetCRCGUID(SHADOWMAPPASS) });
             materials.AddRef(material);
 
             return material;
@@ -570,8 +584,8 @@ FlexKit::TriMeshHandle EditorViewport::LoadTriMeshResource(ProjectResource_ptr r
     }
     else
     {
-        auto& renderSystem = renderer.framework.GetRenderSystem();
-        auto guid = res->resource->GetResourceGUID();
+        auto& renderSystem  = renderer.framework.GetRenderSystem();
+        const auto guid     = res->resource->GetResourceGUID();
 
         if (!FlexKit::isAssetAvailable(guid))
         {
@@ -968,7 +982,8 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
             .allocator      = allocator
         };
 
-        DrawSceneOverlay(dispatcher, frameGraph, desc);
+        if(overlayEnabled)
+            DrawSceneOverlay(dispatcher, frameGraph, desc);
 
         if (mode.size())
             mode.back()->Draw(dispatcher, frameGraph, temporaries, renderTarget, depthBuffer.Get());

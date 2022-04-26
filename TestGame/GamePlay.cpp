@@ -25,6 +25,36 @@ FlashLight::FlashLight() : GadgetInterface{
 /************************************************************************************************/
 
 
+void GameWorld::SpawnEnemy_1(const Enemy_1_Desc& desc)
+{
+    auto& enemy = objectPool.Allocate();
+
+    //if (LoadPrefab(enemy, "enemy1prefab", core.GetBlockMemory()))
+    {
+        CreateEnemy1(enemy, desc);
+
+        static const auto material = []() {
+            auto& materials = MaterialComponent::GetComponent();
+            auto material   = materials.CreateMaterial();
+            materials.Add2Pass(material, ShadowMapPassID);
+            materials.Add2Pass(material, GBufferPassID);
+
+            return material;
+        }();
+
+        scene.AddGameObject(enemy, GetSceneNode(enemy));
+
+        SetBoundingSphereFromMesh(enemy);
+        SetMaterialHandle(enemy, material);
+    }
+    //else
+    //        objectPool.Release(enemy);
+}
+
+
+/************************************************************************************************/
+
+
 GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
 {
     GameObject& gameObject = objectPool.Allocate();
@@ -114,9 +144,48 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
 
         SetParentNode(node, GetSceneNode(prefab));
     }
+    else
+        objectPool.Release(prefab);
     */
 
     return gameObject;
+}
+
+
+/************************************************************************************************/
+
+
+GameWorld::GameWorld(EngineCore& IN_core) :
+    allocator       { static_cast<iAllocator&>(IN_core.GetBlockMemory()) },
+    core            { IN_core },
+    renderSystem    { IN_core.RenderSystem},
+    objectPool      { IN_core.GetBlockMemory(), 1024 * 16 },
+    enemy1Component { IN_core.GetBlockMemory() },
+    layer           { PhysXComponent::GetComponent().CreateLayer() },
+    scene           { IN_core.GetBlockMemory() },
+    cubeShape       { PhysXComponent::GetComponent().CreateCubeShape({ 0.5f, 0.5f, 0.5f}) }
+{
+    AddAssetFile("assets\\enemy1.gameres");
+}
+
+
+/************************************************************************************************/
+
+
+GameWorld::~GameWorld()
+{
+    Release();
+}
+
+
+/************************************************************************************************/
+
+
+void GameWorld::Release()
+{
+    scene.ClearScene();
+
+    objectPool.~ObjectPool();
 }
 
 
@@ -265,10 +334,23 @@ void CreateMultiplayerScene(GameWorld& world)
 
     auto& layer = PhysXComponent::GetComponent().GetLayer_ref(world.layer);
     layer.AddUpdateCallback(
-        [&](WorkBarrier& barrier, iAllocator&, double dT)
+        [&](WorkBarrier& barrier, iAllocator& allocator, double dT)
         {
-            //UpdateThirdPersonCameraControllers({}, dT);
+            CommitEnemyMoves(dT);
         });
+
+    for (int I = 0; I < 100; I++)
+    {
+        const int spawnArea = 40;
+
+        Enemy_1_Desc enemy1
+        {
+            .initialPos = float3(rand() % spawnArea - spawnArea / 2, 0.0f, rand() % spawnArea - spawnArea / 2),
+            .layer      = world.layer
+        };
+
+        world.SpawnEnemy_1(enemy1);
+    }
 }
 
 
@@ -349,6 +431,7 @@ public:
 UpdateTask& GameWorld::UpdateGadgets(FlexKit::UpdateDispatcher& dispathcer, ObjectPool<GameObject>& objectPool, const double dt)
 {
     struct _ {};
+
     return dispathcer.Add<_>(
         [&](auto& builder, auto& _)
         {

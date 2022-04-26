@@ -214,11 +214,11 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
     const float3 positionWS     = GetWorldSpacePosition(UV, depth);
 
     const float ior           = MRIA.b;
-    const float metallic      = 0;//MRIA.r > 0.1f ? 1.0f : 0.0f; 
+    const float metallic      = 1 - MRIA.r > 0.1f ? 1.0f : 0.0f; 
 	const float3 albedo       = pow(Albedo.rgb, 2.2f);
-    const float roughness     = 0.5f;//MRIA.g;
+    const float roughness     = MRIA.g;
 
-    const float Ks              = 0.15f;//lerp(0, 0.4f, saturate(Albedo.w));
+    const float Ks              = lerp(0, 0.4f, saturate(Albedo.w));
     const float Kd              = (1.0 - Ks) * (1.0 - metallic);
     const float NdotV           = saturate(dot(N.xyz, V));
 
@@ -232,7 +232,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
         const float3 Lp         = mul(View, float4(light.PR.xyz, 1));
         const float3 L		    = normalize(Lp - positionVS);
         const float  Ld			= length(positionVS - Lp);
-        const float  Li			= light.KI.w * 10;
+        const float  Li			= light.KI.w;
         const float  Lr			= light.PR.w;
         const float  ld_2		= Ld * Ld;
         const float  La			= (Li / ld_2) * (1 - (pow(Ld, 10) / pow(Lr, 10)));
@@ -247,9 +247,9 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
         #endif
 
         #if 1
-            const float3 specular = F_r_said(V, H, L, N.xyz, albedo, roughness, metallic);
+            const float3 specular = F_r_said(V, H, L, N.xyz, albedo, roughness, 0);
         #else
-            const float3 specular = F_r(V, H, L, N.xyz, roughness);
+            const float3 specular = F_r(V, H, L, N.xyz, roughness) * length(albedo);
         #endif
 
         #if 0// skip shadowmaping
@@ -376,7 +376,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 
     const uint clusterKey = GetSliceIdx(depth * MaxZ);
 
-    //if (px.x > WH.x / 2)
+    if (px.x > WH.x / 2)
         //return pow(float4(0, UV.y, 0, 1), 2);
     
         //return float4(positionWS * float3(0, 0, -0.01), 1);
@@ -395,8 +395,8 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
         //
         //return pow(-positionVS.z / 128, 10.0f);
         //return depth;
-        return float4(N / 2.0f + 0.5f);
-    //return Albedo * Albedo;
+        //return float4(N / 2.0f + 0.5f);
+    return Albedo * Albedo;
     //return float4(positionW, 0);
     //return pow(roughness, 2.2f);
     //return pow(MRIA, 2.2f);
@@ -407,7 +407,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
     //return float4(N.xyz / 2 + 0.5f, 1);
     //return float4(N.xyz / 2 + 0.5f, 1) * (float(localLightCount) / float(lightCount));
     //return lerp(float4(0, 0, 0, 0), float4(1, 1, 1, 0), float(localLightCount) / float(lightCount));
-    return float4(albedo, 1);
+    //return float4(albedo, 1);
 #endif
     
 	return color;
