@@ -8418,7 +8418,7 @@ namespace FlexKit
 	{
         ProfileFunction();
 
-		const auto pendingFrame = pendingFrames[(frameIdx) % 3];
+		const auto pendingFrame = pendingFrames[(frameIdx) % 2];
 
 		while (pendingFrame > Fence->GetCompletedValue())
 		{
@@ -8498,12 +8498,12 @@ namespace FlexKit
 		for (auto context : contexts)
 			context->_QueueReadBacks();
 
-		VertexBuffers.LockUntil(GetCurrentFrame() + 2);
+		VertexBuffers.LockUntil(GetCurrentFrame() + 1);
 		ConstantBuffers.LockFor(2);
-		Textures.LockUntil(GetCurrentFrame() + 2);
+		Textures.LockUntil(GetCurrentFrame() + 1);
 
 		pendingFrames[frameIdx] = counter;
-		frameIdx = ++frameIdx % 3;
+		frameIdx = ++frameIdx % 2;
 
 		ReadBackTable.Update();
 
@@ -9699,7 +9699,7 @@ namespace FlexKit
                 if (range.blockCount >= requestBlockCount)
                 {
                     if  (range.flags == Clear ||
-                        (range.flags == Locked && range.frameID + 4 < frameID) ||
+                        (range.flags == Locked && range.frameID + 2 < frameID) ||
                         (range.flags | AllowReallocation && range.frameID == frameID))
                     {
                         GPUHeapAllocation heapAllocation = {
@@ -9758,8 +9758,8 @@ namespace FlexKit
         while (I + 1 < freeRanges.size())
         {
             if (freeRanges[I].offset + freeRanges[I].blockCount == freeRanges[I + 1].offset &&
-                freeRanges[I].frameID + 2 < frameID &&
-                freeRanges[I + 1].frameID + 2 < frameID)
+                freeRanges[I].frameID + 1 < frameID &&
+                freeRanges[I + 1].frameID + 1 < frameID)
             {
                 freeRanges[I].blockCount += freeRanges[I + 1].blockCount;
                 freeRanges.remove_stable(freeRanges.begin() + I + 1);

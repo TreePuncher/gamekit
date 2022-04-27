@@ -555,7 +555,7 @@ namespace FlexKit
 			enableOcclusionCulling	    { false	},
 
             UAVPool                     { renderSystem, 64 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
-            RTPool                      { renderSystem, 128 * 6 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget, persistent },
+            RTPool                      { renderSystem, 128 * 4 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget, persistent },
 
             timeStats                   { renderSystem.CreateTimeStampQuery(256) },
             timingReadBack              { renderSystem.CreateReadBackBuffer(512) }, 
