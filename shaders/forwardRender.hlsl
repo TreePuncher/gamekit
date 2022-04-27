@@ -167,7 +167,7 @@ struct Deferred_OUT
 {
     float4 Albedo   : SV_TARGET0;
     float4 MRIA     : SV_TARGET1;
-    float4 Normal   : SV_TARGET2;
+    float2 Normal   : SV_TARGET2;
 
     float Depth : SV_DepthLessEqual;
 };
@@ -222,23 +222,9 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
 
 Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 {
-    const float4 albedo     = textureCount >= 1 ? SampleVirtualTexture(albedoTexture, BiLinear, IN.UV) : Albedo;
-
-    /*
-    if(albedo.w < 0.5f)
-    {   
-        Deferred_OUT gbuffer;
-        gbuffer.Normal      = mul(View, float4(normalize(IN.Normal), 0.0f));
-        gbuffer.MRIA        = float4(0.0f, 0.5f, 0.5, 0.5f);
-        gbuffer.Albedo      = float4(normalize(IN.Normal) / 2.0f + 0.5f, 0);
-        gbuffer.Depth       = length(IN.WPOS - CameraPOS.xyz) / MaxZ;
-        
-        return gbuffer;
-    }
-    */
-
     Deferred_OUT gbuffer;
 
+    const float4 albedo             = textureCount >= 1 ? SampleVirtualTexture(albedoTexture, BiLinear, IN.UV) : Albedo;
     const float3 biTangent          = normalize(IN.Bitangent);
     const float4 roughMetal         = textureCount >= 3 ? SampleVirtualTexture(roughnessMetalTexture, BiLinear, IN.UV) : float4(IOR, Roughness, Metallic, Anisotropic);
     const float3 normalSample       = textureCount >= 2 ? SampleVirtualTexture(normalTexture, BiLinear, IN.UV).xyz : float3(0.5f, 0.5f, 1.0f);
@@ -250,7 +236,7 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 
     gbuffer.Albedo      = float4(albedo.xyz, Ks);
     gbuffer.MRIA        = roughMetal.zyxw * float4(Metallic, Roughness, IOR, Anisotropic);
-    gbuffer.Normal      = mul(View, float4(normalize(normal), 0));
+    gbuffer.Normal      = mul(View, float4(normalize(normal), 0)).xy;
     gbuffer.Depth       = IN.depth;
 
     return gbuffer;
@@ -270,7 +256,7 @@ float4 FlatWhite(Forward_PS_IN IN) : SV_TARGET
 /************************************************************************************************/
 
 
-float4 ColoredPolys(Forward_PS_IN IN, uint test : SV_PrimitiveID) : SV_TARGET
+float4 ColoredPolys(Forward_PS_IN IN, uint primitiveID : SV_PrimitiveID) : SV_TARGET
 {
     static const float4 colors[] =
     {
@@ -285,8 +271,7 @@ float4 ColoredPolys(Forward_PS_IN IN, uint test : SV_PrimitiveID) : SV_TARGET
         { 208 / 255.0f, 202 / 255.0f, 178 / 255.0f, 1.0f },
     };
 
-    return colors[test % 3] * saturate(dot(float3(0, 0, 1), mul(View, IN.Normal)));
-    //return float4(0.5f, 0.5f, 0.5f, 1.0f) * saturate(dot(float3(0, 0, 1), mul(View, IN.Normal)));
+    return colors[primitiveID % 3] * saturate(dot(float3(0, 0, 1), mul(View, IN.Normal)));
 }
 
 

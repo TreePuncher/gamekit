@@ -9758,8 +9758,8 @@ namespace FlexKit
         while (I + 1 < freeRanges.size())
         {
             if (freeRanges[I].offset + freeRanges[I].blockCount == freeRanges[I + 1].offset &&
-                freeRanges[I].frameID + 4 < frameID &&
-                freeRanges[I + 1].frameID + 4 < frameID)
+                freeRanges[I].frameID + 2 < frameID &&
+                freeRanges[I + 1].frameID + 2 < frameID)
             {
                 freeRanges[I].blockCount += freeRanges[I + 1].blockCount;
                 freeRanges.remove_stable(freeRanges.begin() + I + 1);

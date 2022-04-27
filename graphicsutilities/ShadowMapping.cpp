@@ -182,7 +182,7 @@ namespace FlexKit
 
     ResourceHandle ShadowMapper::GetResource(const size_t frameID)
     {
-        if (auto res = std::find_if(resourcePool.begin(), resourcePool.end(), [&](auto& res) { return frameID > (res.availibility + 3); }); res != resourcePool.end())
+        if (auto res = std::find_if(resourcePool.begin(), resourcePool.end(), [&](auto& res) { return frameID > (res.availibility); }); res != resourcePool.end())
         {
             auto resource = res->resource;
             resourcePool.remove_unstable(res);
@@ -244,8 +244,8 @@ namespace FlexKit
 
                 for (;itr != end; itr++)
                 {
-                    auto lightHandle = *itr;
-                    auto& light = lights[lightHandle];
+                    auto lightHandle    = *itr;
+                    auto& light         = lights[lightHandle];
 
                     if (light.shadowMap != InvalidHandle_t)
                     {
@@ -280,9 +280,9 @@ namespace FlexKit
                     {
                         ProfileFunction();
 
-                        auto& light = lights[lightHandle];
+                        auto& light         = lights[lightHandle];
                         auto [shadowMap, _] = shadowMapAllocator.Acquire(GPUResourceDesc::DepthTarget({ 1024, 1024 }, DeviceFormat::D32_FLOAT, 6), false);
-                        light.shadowMap = shadowMap;
+                        light.shadowMap     = shadowMap;
 
 #if USING(DEBUGGRAPHICS)
                         auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.GetCurrentFrame(), light.shadowMap);
@@ -321,7 +321,7 @@ namespace FlexKit
 					    shadowMapPass,
 					    reserveCB,
                         reserveVB,
-                        //additional
+                        additional
 				    },
 				    [&](FrameGraphNodeBuilder& builder, LocalShadowMapPassData& data)
 				    {

@@ -1060,11 +1060,9 @@ namespace FlexKit
                     desc.placed.offset  = offset;
 
                     renderSystem.BackResource(resource, desc);
-
+                    renderSystem.SetDebugName(resource, "Deferred Resource");
                     
-                    renderSystem.SetDebugName(resource, "un-named virtual resources");
                     FK_LOG_9("Allocated Resource: %u", renderSystem.GetDeviceResource(resource));
-                    renderSystem.SetDebugName(resource, "Virtual Resource");
                 });
 
             pendingTasks.AddWork(workItem);

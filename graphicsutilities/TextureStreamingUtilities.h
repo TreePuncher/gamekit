@@ -290,7 +290,7 @@ namespace FlexKit
 
 	struct TextureCacheDesc
 	{
-		const size_t textureCacheSize	= 256 * MEGABYTE;
+		const size_t textureCacheSize	= 64 * MEGABYTE;
 		const size_t blockSize			= GetTileByteSize();
 	};
 
@@ -496,9 +496,10 @@ namespace FlexKit
 
 }   /************************************************************************************************/
 
+
 /**********************************************************************
 
-Copyright (c) 2021 Robert May
+Copyright (c) 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

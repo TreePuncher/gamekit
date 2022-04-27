@@ -50,8 +50,8 @@ namespace FlexKit
 			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 			PSO_Desc.NumRenderTargets      = 3;
 			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R8G8B8A8_UNORM; // Albedo
-			PSO_Desc.RTVFormats[1]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // Specular
-			PSO_Desc.RTVFormats[2]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // Normal
+			PSO_Desc.RTVFormats[1]         = DXGI_FORMAT_R8G8B8A8_UNORM; // Specular
+			PSO_Desc.RTVFormats[2]         = DXGI_FORMAT_R16G16_FLOAT; // Normal
 			PSO_Desc.SampleDesc.Count      = 1;
 			PSO_Desc.SampleDesc.Quality    = 0;
 			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
@@ -116,8 +116,8 @@ namespace FlexKit
 			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 			PSO_Desc.NumRenderTargets      = 3;
 			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R8G8B8A8_UNORM; // Albedo
-			PSO_Desc.RTVFormats[1]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // Specular
-			PSO_Desc.RTVFormats[2]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // Normal
+			PSO_Desc.RTVFormats[1]         = DXGI_FORMAT_R8G8B8A8_UNORM; // Specular
+			PSO_Desc.RTVFormats[2]         = DXGI_FORMAT_R16G16_FLOAT; // Normal
 			PSO_Desc.SampleDesc.Count      = 1;
 			PSO_Desc.SampleDesc.Quality    = 0;
 			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
@@ -607,8 +607,8 @@ namespace FlexKit
     GBuffer::GBuffer(const uint2 WH, RenderSystem& RS_IN) :
 		RS              { RS_IN },
 		albedo          { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM)) },
-		MRIA            { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT)) },
-		normal          { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT)) }
+		MRIA            { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM)) },
+		normal          { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16_FLOAT)) }
 	{
 		RS.SetDebugName(albedo,     "Albedo");
 		RS.SetDebugName(MRIA,       "MRIA");

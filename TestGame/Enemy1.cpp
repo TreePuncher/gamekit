@@ -93,60 +93,6 @@ namespace FlexKit
 
                         enemyView.componentData.t += dt;
                     });
-
-                /*
-                for (auto& enemyView : enemies)
-                {
-                    auto& enemyData = enemyView.componentData;
-                    enemyData.Health;
-
-                    const auto enemyPosition = GetWorldPosition(*enemyView.componentData.gameObject);
-
-                    auto d = playerPositions.front() - enemyPosition;
-                    const auto d_n = d.normal();
-
-                    auto& component     = PhysXComponent::GetComponent();
-                    auto hitDetected    = false;
-
-                    component.GetLayer_ref(enemyData.layer).RayCast(enemyPosition + enemyData.pendingMoves * enemyData.t + enemyData.direction + float3(0, 10, 0), enemyData.direction, 2.0f,
-                    [&](PhysicsLayer::RayCastHit&& hit)
-                        {
-                            if (hit.distance < 5)
-                            {
-                                enemyData.direction = (enemyData.direction + 2 * hit.normal).normal();
-                                enemyData.t2        = 0.0f;
-                                hitDetected         = true;
-                            }
-                            return false;
-                        });
-
-                    if (!hitDetected)
-                    {
-                        if (d.magnitude() < 20)
-                        {
-                            enemyView.componentData.pendingMoves += -d_n * float3{ 1, 0, 1 } *dt * 50;
-                            enemyView.componentData.direction     = -d_n.normal();
-                        }
-                        else
-                        {
-                            if (enemyData.t2 > 5)
-                            {
-                                enemyData.direction = float3(rand() % 20 - 10, 0, rand() % 20 - 10).normal();
-                                enemyData.t2 = 0.0f;
-                            }
-                            else
-                                enemyData.t2 += dt;
-
-                            enemyView.componentData.pendingMoves += enemyData.direction * dt * 50;
-                        }
-                    }
-
-                    const auto orientation = Vector2Quaternion(enemyData.direction, float3{ 0, 1, 0 }, enemyData.direction.cross(float3{ 0, 1, 0 }));
-                    SetOrientation(*enemyData.gameObject, orientation);
-
-                    enemyView.componentData.t += dt;
-                }
-                */
             });
     }
 
