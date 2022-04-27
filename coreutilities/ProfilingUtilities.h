@@ -79,7 +79,7 @@ namespace FlexKit
             return relativeTimePoint;
         }
 
-        static_vector <uint64_t> children;
+        static_vector <uint64_t, 32> children;
     };
 
 
@@ -284,11 +284,11 @@ namespace FlexKit
 #define GETLINEHASH(A) FlexKit::GenerateTypeGUID<sizeof(A)>(A)
 
 #if USING(ENABLEPROFILER)
-#define ProfileFunction() const auto PROFILELABEL_ = _ProfileFunction(std::source_location::current().function_name().c_str() , GETLINEHASH(STRINGIFY(__LINE__) __FUNCTION__ ))
-#define ProfileFunctionLabled(LABEL)  const auto PROFILELABEL_##LABEL = _ProfileFunction(__FUNCTION__":"#LABEL, GETLINEHASH(STRINGIFY(__LINE__) __FUNCTION__ ))
+#define ProfileFunction() const auto PROFILELABEL_ = _ProfileFunction(__FUNCTION__, GETLINEHASH(STRINGIFY(__LINE__) __FUNCTION__ ))
+#define ProfileFunctionLabeled(LABEL)  const auto PROFILELABEL_##LABEL = _ProfileFunction(__FUNCTION__":"#LABEL, GETLINEHASH(STRINGIFY(__LINE__) __FUNCTION__ ))
 #else
 #define ProfileFunction()
-#define ProfileFunctionLabled(LABEL)
+#define ProfileFunctionLabeled(LABEL)
 #endif
 #define TIMEBLOCK(A, B) _TimeBlock([&]{ return A(); }, B)
 

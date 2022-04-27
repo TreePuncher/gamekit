@@ -177,6 +177,10 @@ namespace FlexKit
 			double t;
 			double fpsT;
             double dT;
+            double du_average   = 0;
+            double du_T         = 0;
+
+
 			size_t fps;
 			size_t fpsCounter;
 			size_t objectsDrawnLastFrame;

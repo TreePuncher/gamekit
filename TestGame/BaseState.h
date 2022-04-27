@@ -306,7 +306,8 @@ public:
 			"Current VRam Usage: %u MB\n"
             "FPS: %u\n"
             "dT: %fms\n"
-			"Update/Draw Dispatch Time: %fms\n"
+            "Average U+D Time: %fms\n"
+            "Update + Draw Dispatch Time: %fms\n"
 			//"Objects Drawn: %u\n"
             "Hardware RT: %s\n"
             "Timing:\n"
@@ -322,6 +323,7 @@ public:
 			VRamUsage, 
 			(uint32_t)framework.stats.fps,
             (float)framework.stats.dT,
+            (float)framework.stats.du_average,
             updateTime,
 			//(uint32_t)framework.stats.objectsDrawnLastFrame,
             RTFeatureStr,

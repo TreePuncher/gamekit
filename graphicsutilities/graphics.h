@@ -2300,6 +2300,15 @@ private:
         size_t byteSize;
         bool   rayTraceStructure = false;
 
+        DeviceResourceState InitialResourceState() const
+        {
+            return 
+                renderTarget      ? DRS_RenderTarget :
+                depthTarget       ? DRS_DEPTHBUFFERWRITE :
+                rayTraceStructure ? DRS_ACCELERATIONSTRUCTURE : DRS_Common;
+        }
+
+
         size_t CalculateByteSize() const
         {
             const auto dxgiFormat = TextureFormat2DXGIFormat(format);
@@ -2841,7 +2850,9 @@ private:
 
 		Texture2D		    operator[]		(ResourceHandle Handle);
 
+        ResourceHandle      GetFreeHandle();
 		ResourceHandle	    AddResource		(const GPUResourceDesc& Desc, const DeviceResourceState InitialState);
+		void                SetResource		(ResourceHandle handle, const GPUResourceDesc& Desc, const DeviceResourceState InitialState);
 		void			    SetState		(ResourceHandle Handle, DeviceResourceState State);
         void			    SetDebug        (ResourceHandle Handle, const char* string);
 
@@ -3609,6 +3620,7 @@ private:
 		[[nodiscard]] ResourceHandle			CreateDepthBuffer			(const uint2 WH, const bool UseFloat = false, size_t bufferCount = 3);
         [[nodiscard]] ResourceHandle			CreateDepthBufferArray		(const uint2 WH, const bool UseFloat = false, const size_t arraySize = 1, const bool buffered = true, const ResourceAllocationType = ResourceAllocationType::Committed);
         [[nodiscard]] ResourceHandle			CreateGPUResource			(const GPUResourceDesc& desc);
+        [[nodiscard]] ResourceHandle			CreateGPUResourceHandle     ();
         [[nodiscard]] QueryHandle				CreateOcclusionBuffer		(size_t Size);
         [[nodiscard]] ResourceHandle		    CreateUAVBufferResource		(size_t bufferHandle, bool tripleBuffer = true);
         [[nodiscard]] ResourceHandle		    CreateUAVTextureResource	(const uint2 WH, const DeviceFormat, const bool RenderTarget = false);
@@ -3617,6 +3629,8 @@ private:
         [[nodiscard]] QueryHandle				CreateTimeStampQuery		(size_t count);
         [[nodiscard]] IndirectLayout			CreateIndirectLayout		(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, RootSignature* signature = nullptr);
         [[nodiscard]] ReadBackResourceHandle    CreateReadBackBuffer        (const size_t bufferSize);
+
+        void BackResource(ResourceHandle, const GPUResourceDesc& desc);
 
 		void                        SetReadBackEvent    (ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler);
 		std::pair<void*, size_t>    OpenReadBackBuffer  (ReadBackResourceHandle readbackBuffer, const size_t readSize = -1);
@@ -3886,17 +3900,38 @@ private:
     /************************************************************************************************/
 
 
+    struct GPUHeapAllocation
+    {
+        size_t offset   = 0;
+        size_t size     = 0;
+
+        ResourceHandle Overlap = InvalidHandle_t;
+
+        operator bool() { return size > 0; }
+    };
+
     struct AcquireResult
     {
         ResourceHandle resource;
         ResourceHandle overlap;
     };
 
+    struct AcquireDeferredRes
+    {
+        ResourceHandle      resource    = InvalidHandle_t;
+        ResourceHandle      overlap     = InvalidHandle_t;
+
+        size_t              offset      = 0;
+        DeviceHeapHandle    heap        = InvalidHandle_t;
+    };
+
 	struct PoolAllocatorInterface
 	{
 		virtual ~PoolAllocatorInterface() {};
 
-		virtual AcquireResult   Acquire(GPUResourceDesc desc, bool temporary = false) = 0;
+		virtual AcquireResult       Acquire         (GPUResourceDesc desc, bool temporary = false) = 0;
+        virtual AcquireDeferredRes  AcquireDeferred (GPUResourceDesc desc, bool temporary = false) = 0;
+
         virtual AcquireResult   Recycle(ResourceHandle resource, GPUResourceDesc desc) = 0;
 		virtual void            Release(ResourceHandle handle, const bool freeResourceImmedate = true, const bool allowImmediateReuse = true) = 0;
 
@@ -3921,21 +3956,11 @@ private:
 			Locked              = 0x4,
 			Temporary           = 0x8,
 		};
-
-		struct HeapAllocation
-		{
-			size_t offset   = 0;
-			size_t size     = 0;
-
-            ResourceHandle Overlap = InvalidHandle_t;
-
-			operator bool () { return size > 0; }
-		};
-
 		
-		HeapAllocation  GetMemory(const size_t requestBlockCount, const uint64_t frameID, const uint64_t flags);
-        AcquireResult   Acquire(GPUResourceDesc desc, bool temporary) final override;
-        AcquireResult   Recycle(ResourceHandle resource, GPUResourceDesc desc) final override;
+        GPUHeapAllocation   GetMemory       (const size_t requestBlockCount, const uint64_t frameID, const uint64_t flags);
+        AcquireResult       Acquire         (GPUResourceDesc desc, bool temporary) final override;
+        AcquireDeferredRes  AcquireDeferred (GPUResourceDesc desc, bool temporary) final override;
+        AcquireResult       Recycle         (ResourceHandle resource, GPUResourceDesc desc) final override;
 
         uint32_t Flags() const final override;
 
