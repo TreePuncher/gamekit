@@ -318,6 +318,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		case DXGI_FORMAT_R16G16_UNORM:
 		case DXGI_FORMAT_R16G16_SNORM:
 		case DXGI_FORMAT_R16G16_SINT:
+            return 4;
 		case DXGI_FORMAT_R24G8_TYPELESS:
 		case DXGI_FORMAT_D24_UNORM_S8_UINT:
 		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
