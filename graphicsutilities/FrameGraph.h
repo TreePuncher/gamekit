@@ -264,6 +264,7 @@ namespace FlexKit
 		RenderSystem&			renderSystem;
 		iAllocator*             allocator;
 
+
 		/************************************************************************************************/
 
 
@@ -937,7 +938,7 @@ namespace FlexKit
 		void ReleaseResources       (FrameResources& resources, Context& ctx);
 
 
-        ResusableResourceQuery FindReuseableResource(PoolAllocatorInterface& allocator, size_t allocationSize, uint32_t flags, FrameResources& handler);
+        ResusableResourceQuery      FindReuseableResource(PoolAllocatorInterface& allocator, size_t allocationSize, uint32_t flags, FrameResources& handler);
 
 		Vector<FrameGraphNode*>		GetNodeDependencies()	{ return (nullptr); } 
 
@@ -960,14 +961,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    struct PendingAcquire
+    {
+        ResourceHandle          resourecHandle;
+        uint64_t                offset;
+        uint64_t                size;
+
+        const GPUResourceDesc   desc;
+    };
+
+
 	FLEXKITAPI class FrameGraphResourceContext
 	{
 	public:
-		FrameGraphResourceContext(FrameResources& IN_resources, iAllocator* Temp) :
-			resources   { IN_resources },
-			Writables	{ Temp },
-			Readables	{ Temp },
-			Retirees	{ Temp }{}
+		FrameGraphResourceContext(FrameResources& IN_resources, ThreadManager& IN_threads, RenderSystem& IN_renderSystem, iAllocator* Temp) :
+			resources       { IN_resources  },
+			Writables	    { Temp          },
+			Readables	    { Temp          },
+			Retirees	    { Temp          },
+            threads         { IN_threads    },
+            pendingTasks    { IN_threads    },
+            renderSystem    { IN_renderSystem  } {}
 
 
 		void AddWriteable(const FrameObjectLink& NewObject)
@@ -1035,6 +1049,35 @@ namespace FlexKit
 		}
 
 
+        void AddDeferredCreation(ResourceHandle resource, size_t offset, DeviceHeapHandle heap, const GPUResourceDesc& desc)
+        {
+            auto& workItem = CreateWorkItem(
+                [=, &renderSystem = renderSystem, desc = desc](auto& allocator) mutable
+                {
+                    desc.bufferCount    = 1;
+                    desc.allocationType = ResourceAllocationType::Placed;
+                    desc.placed.heap    = heap;
+                    desc.placed.offset  = offset;
+
+                    renderSystem.BackResource(resource, desc);
+
+                    
+                    renderSystem.SetDebugName(resource, "un-named virtual resources");
+                    FK_LOG_9("Allocated Resource: %u", renderSystem.GetDeviceResource(resource));
+                    renderSystem.SetDebugName(resource, "Virtual Resource");
+                });
+
+            pendingTasks.AddWork(workItem);
+            threads.AddWork(&workItem);
+        }
+
+
+        void WaitFor()
+        {
+            pendingTasks.JoinLocal();
+        }
+
+
 		template<typename _pred>
 		Pair<bool, FrameObjectLink&> _IsTrackedReadable(_pred pred)
 		{
@@ -1069,7 +1112,11 @@ namespace FlexKit
 		Vector<FrameObjectLink>	Readables;
 		Vector<FrameObjectLink>	Retirees;
 
+        iAllocator*             tempAllocator;
+        ThreadManager&          threads;
+        WorkBarrier             pendingTasks;
 		FrameResources&         resources;
+        RenderSystem&           renderSystem;
 	};
 
 
@@ -1141,7 +1188,8 @@ namespace FlexKit
 
         void SetDebugName(FrameResourceHandle handle, const char* debugName)
         {
-            Resources->renderSystem.SetDebugName(Resources->GetTexture(handle), debugName);
+            if(auto res = Resources->GetTexture(handle); res != InvalidHandle_t)
+                Resources->renderSystem.SetDebugName(res, debugName);
         }
 
 		size_t							GetDescriptorTableSize			(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
@@ -1274,10 +1322,11 @@ namespace FlexKit
 			Resources		    { RS, Temp },
 			threads             { IN_threads },
 			dataDependencies    { Temp },
-			ResourceContext	    { Resources, Temp },
+			ResourceContext	    { Resources, IN_threads, RS, Temp },
 			Memory			    { Temp },
 			Nodes			    { Temp },
-            acquiredResources   { Temp } {}
+            acquiredResources   { Temp },
+            pendingAcquire      { Temp } {}
 
 		FrameGraph				(const FrameGraph& RHS) = delete;
 		FrameGraph& operator =	(const FrameGraph& RHS) = delete;
@@ -1320,7 +1369,11 @@ namespace FlexKit
 						data.draw(data.fields, handler, ctx, tempAllocator);
 
 						node.RestoreResourceStates(&ctx, resources, localTracking);
-						data.fields.~TY();
+
+                        {
+                            ProfileFunctionLabeled(Destruction);
+                            data.fields.~TY();
+                        }
 					},
 					&data,
 					Memory});
@@ -1352,16 +1405,16 @@ namespace FlexKit
 			}
 		};
 
-		void        ProcessNode		(FrameGraphNode* N, FrameResources& Resources, Vector<FrameGraphNodeWork>& taskList, iAllocator& allocator);
+		void            ProcessNode		(FrameGraphNode* N, FrameResources& Resources, Vector<FrameGraphNodeWork>& taskList, iAllocator& allocator);
 		
-		void        UpdateFrameGraph(RenderSystem* RS, iAllocator* Temp);// 
-		UpdateTask& SubmitFrameGraph(UpdateDispatcher& dispatcher, RenderSystem* RS, iAllocator* persistentAllocator);
+		void            UpdateFrameGraph(RenderSystem* RS, iAllocator* Temp);// 
+		UpdateTask&     SubmitFrameGraph(UpdateDispatcher& dispatcher, RenderSystem* RS, iAllocator* persistentAllocator);
 
-		RenderSystem& GetRenderSystem() { return Resources.renderSystem; }
-
+		RenderSystem&   GetRenderSystem() { return Resources.renderSystem; }
 
 		FrameResources				Resources;
         Vector<ResourceHandle>      acquiredResources;
+        Vector<PendingAcquire>      pendingAcquire;
 		FrameGraphResourceContext	ResourceContext;
 		iAllocator*					Memory;
 		Vector<FrameGraphNode>		Nodes;

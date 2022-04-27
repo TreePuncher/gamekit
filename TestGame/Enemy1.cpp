@@ -17,6 +17,8 @@ namespace FlexKit
 
     UpdateTask& UpdateEnemies(UpdateDispatcher& dispatcher, double dt)
     {
+        ProfileFunction();
+
         struct EnemyUpdate
         {
 
@@ -26,8 +28,10 @@ namespace FlexKit
             [&](auto& ... args)
             {
             },
-            [=](auto& args, iAllocator& allocator)
+            [=, &dispatcher](auto& args, iAllocator& allocator)
             {
+                ProfileFunction();
+
                 auto& enemies = Enemy_1_Component::GetComponent();
                 auto& players = PlayerComponent::GetComponent();
 
@@ -35,6 +39,62 @@ namespace FlexKit
                 for (auto& p : players)
                     playerPositions.push_back(p.componentData.position);
 
+                Parallel_For(*dispatcher.threads, allocator, enemies.begin(), enemies.end(), 10,
+                    [&](auto& enemyView, iAllocator& allocator)
+                    {
+                        ProfileFunction();
+
+                        auto& enemyData = enemyView.componentData;
+                        enemyData.Health;
+
+                        const auto enemyPosition = GetWorldPosition(*enemyView.componentData.gameObject);
+
+                        auto d = playerPositions.front() - enemyPosition;
+                        const auto d_n = d.normal();
+
+                        auto& component     = PhysXComponent::GetComponent();
+                        auto hitDetected    = false;
+
+                        component.GetLayer_ref(enemyData.layer).RayCast(enemyPosition + enemyData.pendingMoves * (float)enemyData.t + enemyData.direction + float3(0.0f, 10.0f, 0.0f), enemyData.direction, 2.0f,
+                        [&](PhysicsLayer::RayCastHit&& hit)
+                            {
+                                if (hit.distance < 5)
+                                {
+                                    enemyData.direction = (enemyData.direction + 2 * hit.normal).normal();
+                                    enemyData.t2        = 0.0f;
+                                    hitDetected         = true;
+                                }
+                                return false;
+                            });
+
+                        if (!hitDetected)
+                        {
+                            if (d.magnitude() < 20)
+                            {
+                                enemyView.componentData.pendingMoves += -d_n * float3{ 1, 0, 1 } * (float)dt * 50;
+                                enemyView.componentData.direction     = -d_n.normal();
+                            }
+                            else
+                            {
+                                if (enemyData.t2 > 5)
+                                {
+                                    enemyData.direction = float3(rand() % 20 - 10, 0, rand() % 20 - 10).normal();
+                                    enemyData.t2 = 0.0f;
+                                }
+                                else
+                                    enemyData.t2 += dt;
+
+                                enemyView.componentData.pendingMoves += enemyData.direction * (float)dt * 50;
+                            }
+                        }
+
+                        const auto orientation = Vector2Quaternion(enemyData.direction, float3{ 0, 1, 0 }, enemyData.direction.cross(float3{ 0, 1, 0 }));
+                        SetOrientation(*enemyData.gameObject, orientation);
+
+                        enemyView.componentData.t += dt;
+                    });
+
+                /*
                 for (auto& enemyView : enemies)
                 {
                     auto& enemyData = enemyView.componentData;
@@ -86,6 +146,7 @@ namespace FlexKit
 
                     enemyView.componentData.t += dt;
                 }
+                */
             });
     }
 
@@ -95,6 +156,8 @@ namespace FlexKit
 
     void CommitEnemyMoves(double dt)
     {
+        ProfileFunction();
+
         auto& enemies = Enemy_1_Component::GetComponent();
 
 
@@ -111,9 +174,9 @@ namespace FlexKit
 
             physx::PxControllerFilters filters;
 
-            if (pendingMove.magnitude() > 0.01f)
+            if (pendingMove.magnitude() > 0.0001f)
             {
-                MoveController(gameObject, pendingMove * 0.05f, filters, enemyView.componentData.t);
+                MoveController(gameObject, pendingMove * dt, filters, dt);
 
                 auto newPosition = GetControllerPosition(gameObject);
 

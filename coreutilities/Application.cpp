@@ -62,21 +62,26 @@ namespace FlexKit
 
 			framework.DrawFrame(dT);
 
-			const auto frameEnd         = std::chrono::high_resolution_clock::now();
-			const auto updateDuration   = frameEnd - frameStart;
-            const auto desiredFrameTime = std::chrono::microseconds(1000000) / float(Core.FPSLimit);
+			const auto frameEnd             = std::chrono::high_resolution_clock::now();
+			const auto updateDuration       = frameEnd - frameStart;
+            const auto desiredFrameTime     = std::chrono::microseconds(1000000) / float(Core.FPSLimit);
+            const auto updateDuration_F     = double(std::chrono::duration_cast<std::chrono::microseconds>(updateDuration).count()) / 1000.0f;
 
+            framework.stats.du_T += framework.stats.dispatchTime;
 
             framework.stats.frameTimes.push_back(
                 GameFramework::TimePoint{
                     .T          = framework.runningTime,
-                    .duration   = double(std::chrono::duration_cast<std::chrono::microseconds>(updateDuration).count()) / 1000.0f});
+                    .duration   = updateDuration_F
+                });
 
             if (FPSTimer >= 1.0f)
             {
-                framework.stats.fps = fpsCounter;
-                fpsCounter  = 0;
-                FPSTimer    = 0.0f;
+                framework.stats.fps             = fpsCounter;
+                framework.stats.du_average      = framework.stats.du_T / fpsCounter;
+                framework.stats.du_T            = 0.0;
+                fpsCounter                      = 0;
+                FPSTimer                        = 0.0f;
             }
 
             if (Core.FrameLock)// FPS Locked
@@ -85,7 +90,7 @@ namespace FlexKit
                 auto timePointA = std::chrono::high_resolution_clock::now();
 
 
-                // Give up timeslice for 1ms increments
+                // Give up timeslice in 1ms increments
                 while (true)
                 {
                     const auto timepointB        = std::chrono::high_resolution_clock::now();
@@ -114,8 +119,9 @@ namespace FlexKit
 
 			dT = double(totalDuration.count() ) / 1000000000.0;
             T += dT;
-            framework.runningTime += dT;
-            framework.stats.dT = dT * 1000;
+
+            framework.runningTime    += dT;
+            framework.stats.dT        = dT * 1000.0;
             fpsCounter++;
 
 			Core.Time.After();

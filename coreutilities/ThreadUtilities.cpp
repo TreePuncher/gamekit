@@ -338,7 +338,7 @@ namespace FlexKit
 
 		while(inProgress.load(std::memory_order::acquire))
         {
-            ProfileFunctionLabled(Joined);
+            ProfileFunctionLabeled(Joined);
 
             auto work = localWorkQueue->pop_back().value_or(nullptr);
             if (work)

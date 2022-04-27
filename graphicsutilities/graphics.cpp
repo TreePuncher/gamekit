@@ -4879,6 +4879,8 @@ namespace FlexKit
 
 	ResourceHandle RenderSystem::CreateGPUResource(const GPUResourceDesc& desc)
 	{
+        ProfileFunction();
+
 		if (desc.backBuffer)
 		{
 			return Textures.AddResource(desc, DRS_Present);
@@ -4932,6 +4934,8 @@ namespace FlexKit
 				{
 				case ResourceAllocationType::Tiled:
 				{
+                    ProfileFunctionLabeled(Tiled);
+
 					Resource_DESC.Layout = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
                     
 					HRESULT HR = pDevice->CreateReservedResource(
@@ -4944,6 +4948,8 @@ namespace FlexKit
 				}   break;
 				case ResourceAllocationType::Committed:
 				{
+                    ProfileFunctionLabeled(Committed);
+
 					HRESULT HR = pDevice->CreateCommittedResource(
 									&HEAP_Props, 
 									flags,
@@ -4953,6 +4959,8 @@ namespace FlexKit
 				}   break;
 				case ResourceAllocationType::Placed:
 				{
+                    ProfileFunctionLabeled(Placed);
+
 					HRESULT HR = pDevice->CreatePlacedResource(
                         desc.placed.heap != InvalidHandle_t ? GetDeviceResource(desc.placed.heap) : desc.placed.customHeap,
 						desc.placed.offset,
@@ -4973,11 +4981,7 @@ namespace FlexKit
 
 			auto filledDesc = desc;
 
-			auto initialState =
-				filledDesc.renderTarget         ? DRS_RenderTarget:
-				filledDesc.depthTarget          ? DRS_DEPTHBUFFERWRITE :
-                filledDesc.rayTraceStructure    ? DRS_ACCELERATIONSTRUCTURE :
-				DRS_Common;
+            auto initialState = filledDesc.InitialResourceState();
 
 			filledDesc.resources    = NewResource;
             filledDesc.byteSize     = byteSize;
@@ -4987,6 +4991,121 @@ namespace FlexKit
 
 		return InvalidHandle_t;
 	}
+
+
+    /************************************************************************************************/
+
+
+    void RenderSystem::BackResource(ResourceHandle handle, const GPUResourceDesc& desc)
+    {
+        ProfileFunction();
+
+        size_t byteSize                   = desc.CalculateByteSize();
+        D3D12_RESOURCE_DESC Resource_DESC = desc.GetD3D12ResourceDesc();
+
+		D3D12_HEAP_PROPERTIES HEAP_Props	={};
+		HEAP_Props.CPUPageProperty			= D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		HEAP_Props.Type						= D3D12_HEAP_TYPE_DEFAULT;
+		HEAP_Props.MemoryPoolPreference		= D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
+		HEAP_Props.CreationNodeMask			= 0;
+		HEAP_Props.VisibleNodeMask			= 0;
+
+		D3D12_CLEAR_VALUE CV;
+		CV.Color[0] = desc.depthTarget ? 1.0f : 0.0f;
+		CV.Color[1] = 0.0f;
+		CV.Color[2] = 0.0f;
+		CV.Color[3] = 0.0f;
+		CV.Format	= TextureFormat2DXGIFormat(desc.format);
+		
+		auto flags = D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES |
+            (desc.unordered ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE);
+
+
+		D3D12_CLEAR_VALUE* pCV = (desc.CVFlag | desc.renderTarget | desc.depthTarget) ? &CV : nullptr;
+
+
+		D3D12_RESOURCE_STATES InitialState =
+			desc.renderTarget       ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RENDER_TARGET :
+			desc.depthTarget        ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_WRITE   :
+            desc.rayTraceStructure  ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE : 
+            D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
+
+		ID3D12Resource* NewResource[3] = { nullptr, nullptr, nullptr };
+
+		FK_ASSERT(desc.bufferCount <= 3);
+
+		FK_LOG_9("Creating Texture!");
+
+		const size_t end = desc.bufferCount;
+		for (size_t itr = 0; itr < end; ++itr)
+		{
+			switch(desc.allocationType)
+			{
+			case ResourceAllocationType::Tiled:
+			{
+                ProfileFunctionLabeled(Tiled);
+
+				Resource_DESC.Layout = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
+                    
+				HRESULT HR = pDevice->CreateReservedResource(
+								&Resource_DESC,
+								InitialState,
+								pCV,
+								IID_PPV_ARGS(&NewResource[itr]));
+
+				CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE VIRTUAL MEMORY FOR TEXTURE"));
+			}   break;
+			case ResourceAllocationType::Committed:
+			{
+                ProfileFunctionLabeled(Committed);
+
+				HRESULT HR = pDevice->CreateCommittedResource(
+								&HEAP_Props, 
+								flags,
+								&Resource_DESC, InitialState, pCV, IID_PPV_ARGS(&NewResource[itr]));
+
+				CheckHR(HR, ASSERTONFAIL("FAILED TO COMMIT MEMORY FOR TEXTURE"));
+			}   break;
+			case ResourceAllocationType::Placed:
+			{
+                ProfileFunctionLabeled(Placed);
+
+				HRESULT HR = pDevice->CreatePlacedResource(
+                    desc.placed.heap != InvalidHandle_t ? GetDeviceResource(desc.placed.heap) : desc.placed.customHeap,
+					desc.placed.offset,
+					&Resource_DESC,
+					InitialState,
+					pCV,
+					IID_PPV_ARGS(&NewResource[itr]));
+
+                CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE PLACED RESOURCE"));
+
+                if (FAILED(HR))
+                    _OnCrash();
+			}   break;
+			}
+			FK_ASSERT(NewResource[itr], "Failed to Create Texture!");
+			SETDEBUGNAME(NewResource[itr], __func__);
+		}
+
+		auto filledDesc     = desc;
+        auto initialState   = filledDesc.InitialResourceState();
+
+
+		filledDesc.resources    = NewResource;
+        filledDesc.byteSize     = byteSize;
+
+		Textures.SetResource(handle, filledDesc, initialState);
+    }
+
+
+    /************************************************************************************************/
+
+
+    ResourceHandle RenderSystem::CreateGPUResourceHandle()
+    {
+        return Textures.GetFreeHandle();
+    }
 
 
 	/************************************************************************************************/
@@ -6627,6 +6746,20 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    ResourceHandle TextureStateTable::GetFreeHandle()
+    {
+        std::scoped_lock lock{ m };
+
+        auto newHandle = Handles.GetNewHandle();
+        Handles[newHandle] = -1;
+
+        return newHandle;
+    }
+
+
+    /************************************************************************************************/
+
+
 	ResourceHandle TextureStateTable::AddResource(const GPUResourceDesc& Desc, const DeviceResourceState InitialState)
 	{
         std::scoped_lock lock{m};
@@ -6685,7 +6818,66 @@ namespace FlexKit
 
 		return Handle;
 	}
-	
+
+
+    /************************************************************************************************/
+
+
+    void TextureStateTable::SetResource(ResourceHandle handle, const GPUResourceDesc& Desc, const DeviceResourceState InitialState)
+    {
+        std::scoped_lock lock{ m };
+
+        ResourceEntry NewEntry = 
+		{	
+			Desc.bufferCount,
+			0,
+			{ nullptr, nullptr, nullptr },
+			{ 0, 0, 0 },
+			{ InitialState, InitialState , InitialState },
+			TextureFormat2DXGIFormat(Desc.format),
+			Desc.MipLevels,
+			Desc.WH,
+			handle,
+            { { Desc.placed.offset, 0 }, {}, {} }
+		};
+
+        for (size_t I = 0; I < Desc.bufferCount; ++I) {
+            NewEntry.Resources[I]           = Desc.resources[I];
+
+#if USING(AFTERMATH)
+            GFSDK_Aftermath_ResourceHandle  aftermathResource;
+            GFSDK_Aftermath_DX12_RegisterResource(Desc.resources[I], &aftermathResource);
+            NewEntry.aftermathResource[I]   = aftermathResource;
+#endif
+        }
+
+		UserEntry Entry;
+		Entry.ResourceIdx		= Resources.push_back(NewEntry);
+        Entry.resourceSize      = Desc.byteSize;
+		Entry.FrameGraphIndex	= -1;
+		Entry.FGI_FrameStamp    = -1;
+		Entry.Handle            = handle;
+		Entry.Format			= NewEntry.Format;
+		Entry.Flags             = Desc.backBuffer ? TF_BackBuffer : 0;
+		Entry.dimension         = Desc.Dimensions;
+		Entry.arraySize         = Desc.arraySize;
+		Entry.tileMappings      = { allocator };
+
+        if (Desc.Dimensions == TextureDimension::Buffer)
+        {
+            UAVResourceLayout layout;
+            layout.format       = NewEntry.Format;
+            layout.elementCount = Desc.byteSize / 4;
+            layout.stride       = 4;
+            Entry.extra         = layout;
+        }
+
+		Handles[handle]         = UserEntries.push_back(Entry);
+
+		if (Desc.buffered && Desc.bufferCount > 1)
+			BufferedResources.push_back(handle);
+    }
+
 
 	/************************************************************************************************/
 
@@ -6832,6 +7024,10 @@ namespace FlexKit
         FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
 		auto UserIdx    = Handles[handle];
+
+        if (UserIdx == -1)
+            return;
+
 		auto resIdx     = UserEntries[UserIdx].ResourceIdx;
 		auto& resource  = Resources[resIdx];
 
@@ -9487,14 +9683,14 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    MemoryPoolAllocator::HeapAllocation MemoryPoolAllocator::GetMemory(const size_t requestBlockCount, const uint64_t frameID, const uint64_t flags)
+    GPUHeapAllocation MemoryPoolAllocator::GetMemory(const size_t requestBlockCount, const uint64_t frameID, const uint64_t flags)
     {
         ProfileFunction();
         std::scoped_lock localLock{ m };
 
         std::sort(freeRanges.begin(), freeRanges.end());
 
-        auto _GetMemory = [&]() -> HeapAllocation {
+        auto _GetMemory = [&]() -> GPUHeapAllocation {
             for (auto& range : freeRanges)
             {
                 if (range.offset > blockCount)
@@ -9506,7 +9702,7 @@ namespace FlexKit
                         (range.flags == Locked && range.frameID + 4 < frameID) ||
                         (range.flags | AllowReallocation && range.frameID == frameID))
                     {
-                        MemoryPoolAllocator::HeapAllocation heapAllocation = {
+                        GPUHeapAllocation heapAllocation = {
                             range.offset * blockSize,
                             requestBlockCount * blockSize,
                             (range.priorAllocation != InvalidHandle_t &&
@@ -9603,10 +9799,12 @@ namespace FlexKit
 
 
         ResourceHandle resource = renderSystem.CreateGPUResource(desc);
+
         if (resource != InvalidHandle_t) {
             renderSystem.SetDebugName(resource, "Acquire");
 
             std::scoped_lock localLock{ m };
+
             allocations.push_back({
                 (uint32_t)(allocation.offset / blockSize),
                 (uint32_t)(allocation.size / blockSize),
@@ -9618,6 +9816,54 @@ namespace FlexKit
             __debugbreak();
 
         return { resource, allocation.Overlap };
+    }
+
+
+    /************************************************************************************************/
+
+
+    AcquireDeferredRes MemoryPoolAllocator::AcquireDeferred(GPUResourceDesc desc, bool temporary)
+    {
+        ProfileFunction();
+
+        auto frameIdx   = renderSystem.GetCurrentFrame();
+        auto size       = renderSystem.GetAllocationSize(desc);
+
+        const size_t requestedBlockCount = (size / blockSize) + ((size % blockSize == 0) ? 0 : 1);
+        auto allocation = GetMemory(requestedBlockCount, frameIdx, Clear);
+
+        if (allocation.offset / blockSize > blockCount) {
+            FK_LOG_ERROR("MemoryPoolAllocator Allocated a block beyond range!");
+            return { InvalidHandle_t, InvalidHandle_t };
+        }
+
+        if (!allocation) {
+            FK_LOG_ERROR("MemoryPoolAllocator Ran out of memory!");
+            return { InvalidHandle_t, InvalidHandle_t };
+        }
+
+        desc.bufferCount    = 1;
+        desc.allocationType = ResourceAllocationType::Placed;
+        desc.placed.heap    = heap;
+        desc.placed.offset  = allocation.offset;
+
+
+        ResourceHandle resource = renderSystem.CreateGPUResourceHandle();
+
+        if (resource != InvalidHandle_t) {
+            std::scoped_lock localLock{ m };
+
+            allocations.push_back({
+                (uint32_t)(allocation.offset / blockSize),
+                (uint32_t)(allocation.size / blockSize),
+                frameIdx,
+                (uint64_t)(temporary ? Temporary : Clear),
+                resource });
+        }
+        else
+            __debugbreak();
+
+        return { resource, allocation.Overlap, allocation.offset, heap };
     }
 
 
@@ -9654,7 +9900,7 @@ namespace FlexKit
                     return { InvalidHandle_t, InvalidHandle_t }; // ERROR!?
 
 
-                MemoryPoolAllocator::HeapAllocation heapAllocation = {
+                GPUHeapAllocation heapAllocation = {
                         rangeDescriptor.offset * blockSize,
                         requestedBlockCount * blockSize,
                         (rangeDescriptor.priorAllocation != InvalidHandle_t &&

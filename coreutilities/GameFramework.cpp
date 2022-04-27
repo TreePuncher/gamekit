@@ -290,8 +290,8 @@ namespace FlexKit
         typedef std::chrono::microseconds mms;
         typedef std::chrono::duration<float> fsec;
 
-        fsec duration = std::chrono::duration_cast<mms>(TimeFunction([&] { dispatcher.Execute(); }));
-        stats.dispatchTime = duration.count() * 1000;
+        const fsec duration = std::chrono::duration_cast<mms>(TimeFunction([&] { dispatcher.Execute(); }));
+        stats.dispatchTime  = duration.count() * 1000;
 
 		PostDraw(core.GetTempMemoryMT(), dT);
 
@@ -301,11 +301,14 @@ namespace FlexKit
 
 		FK_LOG_9("Frame End");
 
-        for (auto state : deferredFrees) {
-            core.GetBlockMemory().release_allocation(*state);
-            subStates.pop_back();
-        }
+        {
+            ProfileFunctionLabeled(Frees);
 
+            for (auto state : deferredFrees) {
+                core.GetBlockMemory().release_allocation(*state);
+                subStates.pop_back();
+            }
+        }
         deferredFrees.clear();
 
 		// Memory -----------------------------------------------------------------------------------

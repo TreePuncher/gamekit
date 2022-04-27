@@ -446,6 +446,8 @@ namespace FlexKit
 
 	FrameResourceHandle  FrameGraphNodeBuilder::AcquireVirtualResource(const GPUResourceDesc desc, DeviceResourceState initialState, bool temp)
 	{
+        ProfileFunction();
+
         auto NeededFlags = 0;
         NeededFlags |= !desc.unordered && desc.Dimensions == TextureDimension::Texture1D ? DeviceHeapFlags::RenderTarget : 0;
         NeededFlags |= !desc.unordered && desc.Dimensions == TextureDimension::Texture2D ? DeviceHeapFlags::RenderTarget : 0;
@@ -474,7 +476,6 @@ namespace FlexKit
         {
             auto allocationSize = Resources->renderSystem.GetAllocationSize(desc);
 
-#if 1
             ResourceHandle virtualResource  = InvalidHandle_t;
             ResourceHandle overlap          = InvalidHandle_t;
 
@@ -487,14 +488,13 @@ namespace FlexKit
             }
             else
             {
-                auto [resource, _overlap] = memoryPool->Acquire(desc, temp);
+                auto [resource, _overlap, offset, heap] = memoryPool->AcquireDeferred(desc, temp);
+                Context.AddDeferredCreation(resource, offset, heap, desc);
 
                 virtualResource = resource;
                 overlap         = _overlap;
             }
-#else
-            auto [virtualResource, overlap] = memoryPool->Acquire(desc, temp);
-#endif
+
             if (virtualResource == InvalidHandle_t)
                 return InvalidHandle_t;
 
@@ -504,22 +504,21 @@ namespace FlexKit
             virtualObject.virtualState      = VirtualResourceState::Virtual_Temporary;
             virtualObject.pool              = memoryPool;
 
-            Resources->renderSystem.SetDebugName(virtualResource, "Un-named virtual resources");
 
 		    auto virtualResourceHandle = FrameResourceHandle{ Resources->Resources.emplace_back(virtualObject) };
 		    Resources->Resources[virtualResourceHandle].Handle = virtualResourceHandle;
 		    Resources->virtualResources.push_back(virtualResourceHandle);
 
-            auto defaultState = Resources->renderSystem.GetObjectState(virtualResource);
+            const auto defaultState = desc.InitialResourceState();
 
 		    FrameObjectLink outputObject;
 			    outputObject.neededState    = initialState;
 			    outputObject.Source         = &Node;
 			    outputObject.handle         = virtualResourceHandle;
 
-            FK_LOG_9("Allocated Resource: %u", Resources->GetObjectResource(virtualResource));
-            Resources->renderSystem.SetDebugName(virtualResource, "Virtual Resource");
-
+            //Resources->renderSystem.SetDebugName(virtualResource, "un-named virtual resources");
+            //FK_LOG_9("Allocated Resource: %u", Resources->GetObjectResource(virtualResource));
+            //Resources->renderSystem.SetDebugName(virtualResource, "Virtual Resource");
 
 		    Context.AddWriteable(outputObject);
 		    Node.OutputObjects.push_back(outputObject);
@@ -893,6 +892,8 @@ namespace FlexKit
         auto& ctx = *contexts.front();
         for (auto acquired : acquiredResources)
             ctx.AddAliasingBarrier(acquired, InvalidHandle_t);
+
+        ResourceContext.WaitFor();
 
 		for (auto& worker : workers)
 			threads.AddWork(*worker);

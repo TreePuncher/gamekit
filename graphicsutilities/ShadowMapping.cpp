@@ -302,8 +302,8 @@ namespace FlexKit
         UpdateTask&                             cameraUpdate,
         GatherPassesTask&                       gather,
         UpdateTask&                             shadowMapAcquire,
-        ReserveConstantBufferFunction           reserveCB,
-        ReserveVertexBufferFunction             reserveVB,
+        ReserveConstantBufferFunction&          reserveCB,
+        ReserveVertexBufferFunction&            reserveVB,
         static_vector<AdditionalShadowMapPass>& additional,
 		const double                            t,
 		iAllocator*                             allocator,
@@ -321,7 +321,7 @@ namespace FlexKit
 					    shadowMapPass,
 					    reserveCB,
                         reserveVB,
-                        additional
+                        //additional
 				    },
 				    [&](FrameGraphNodeBuilder& builder, LocalShadowMapPassData& data)
 				    {
@@ -329,9 +329,12 @@ namespace FlexKit
                         builder.AddDataDependency(gather);
                         builder.AddDataDependency(shadowMapAcquire);
 				    },
-				    [=, &gather](LocalShadowMapPassData& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+				    [this, &gather, t = t](LocalShadowMapPassData& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 				    {
                         ProfileFunction();
+
+                        auto shadowMapPSO = resources.GetPipelineState(SHADOWMAPPASS);
+                        ctx.SetRootSignature(rootSignature);
 
                         auto& visableLights = data.pointLightShadows;
                         auto& pointLights   = PointLightComponent::GetComponent();
@@ -392,7 +395,7 @@ namespace FlexKit
 
                                 for (auto& visable : visables)
                                 {
-                                    ProfileFunctionLabled(VISIBILITY);
+                                    ProfileFunctionLabeled(VISIBILITY);
 
                                     auto entity = visibilityComponent[visable].entity;
 
@@ -422,26 +425,25 @@ namespace FlexKit
                                 }
 
                                 const float3 Position   = FlexKit::GetPositionW(pointLight.Position);
+                                const auto matrices     = CalculateShadowMapMatrices(Position, pointLight.R, t);
 
                                 struct PoseConstants
                                 {
                                     float4x4 M[256];
                                 };
 
-                                CBPushBuffer animatedConstantBuffer = data.reserveCB((AlignedSize<Brush::VConstantsLayout>() + AlignedSize<PoseConstants>()) * animatedBrushes.size());
-
-                                auto PSO = resources.GetPipelineState(SHADOWMAPPASS);
-
 
                                 if (auto state = resources.renderSystem().GetObjectState(depthTarget); state != DRS_DEPTHBUFFERWRITE)
                                     ctx.AddResourceBarrier(depthTarget, state, DRS_DEPTHBUFFERWRITE);
 
-                                ctx.ClearDepthBuffer(depthTarget, 1.0f);
+
+                                CBPushBuffer animatedConstantBuffer = data.reserveCB((AlignedSize<Brush::VConstantsLayout>() + AlignedSize<PoseConstants>()) * animatedBrushes.size());
 
                                 const DepthStencilView_Options DSV_desc = { 0, 0, depthTarget };
 
-                                ctx.SetRootSignature(rootSignature);
-                                ctx.SetPipelineState(PSO);
+                                ctx.ClearDepthBuffer(depthTarget, 1.0f);
+
+                                ctx.SetPipelineState(shadowMapPSO);
                                 ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
                                 ctx.SetScissorAndViewports({ depthTarget });
                                 ctx.SetRenderTargets2({}, 0, DSV_desc);
@@ -450,6 +452,7 @@ namespace FlexKit
                                 size_t          currentLodIdx   = -1;
                                 size_t          indexCount      = 0;
                                 BoundingSphere  BS;
+
 
 					            for(size_t brushIdx = 0; brushIdx < brushes.size(); brushIdx++)
 					            {
@@ -471,6 +474,7 @@ namespace FlexKit
                                         ctx.AddVertexBuffers(triMesh,
                                             currentLodIdx,
                                             { VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
+
                                         BS = triMesh->BS;
                                     }
 
@@ -494,9 +498,6 @@ namespace FlexKit
                                     if (intersections[0] || intersections[1] || intersections[2] ||
                                         intersections[3] || intersections[4] || intersections[5])
                                     {
-                                        ProfileFunctionLabled(SUBMISSION);
-
-                                        const auto matrices = CalculateShadowMapMatrices(Position, pointLight.R, t);
 
                                         ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
 
@@ -511,10 +512,10 @@ namespace FlexKit
                                                     uint32_t Idx;
                                                     float    maxZ;
                                                 }tempConstants = {
-                                                        .PV = matrices.PV[itr],
-                                                        .View = matrices.View[itr],
-                                                        .Idx = itr,
-                                                        .maxZ = pointLight.R };
+                                                        .PV     = matrices.PV[itr],
+                                                        .View   = matrices.View[itr],
+                                                        .Idx    = itr,
+                                                        .maxZ   = pointLight.R };
 
                                                 ctx.SetGraphicsConstantValue(0, 34, &tempConstants);
                                                 ctx.DrawIndexedInstanced(indexCount);
@@ -568,7 +569,6 @@ namespace FlexKit
 
                                                 ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
                                                 ctx.SetGraphicsConstantBufferView(3, poseConstants);
-                                                const auto matrices = CalculateShadowMapMatrices(Position, pointLight.R, t);
 
                                                 for (uint32_t itr = 0; itr < 6; itr++)
                                                 {
@@ -603,6 +603,8 @@ namespace FlexKit
 
                         if(shadowMaps.size())
                         {
+                            ProfileFunctionLabeled(Barriers);
+
                             for (auto& additionalPass : data.additionalShadowPass)
                             {
                                 ctx.BeginEvent_DEBUG("Additional Shadow Map Pass");
@@ -619,7 +621,6 @@ namespace FlexKit
 
                                 ctx.EndEvent_DEBUG();
                             }
-
                             for (auto target : shadowMaps) {
                                 ctx.AddResourceBarrier(target, DRS_DEPTHBUFFERWRITE, DRS_PixelShaderResource);
                                 ctx.renderSystem->SetObjectState(target, DRS_PixelShaderResource);
