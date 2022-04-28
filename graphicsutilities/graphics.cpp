@@ -6915,7 +6915,7 @@ namespace FlexKit
         for (auto res : resource.Resources)
         {
             if (res)
-                delayRelease.push_back({ res, 4 });
+                delayRelease.push_back({ res, 5 });
         }
 
 #if USING(AFTERMATH)

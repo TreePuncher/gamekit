@@ -34,7 +34,7 @@ using namespace FlexKit;
 
 typedef uint32_t SoundHandle;
 
-
+/*
 class SoundSystem
 {
 public:
@@ -95,11 +95,11 @@ public:
 	FMOD_RESULT       result;
 	unsigned int      version;
 };
-
+*/
 
 /************************************************************************************************/
 
-
+/*
 inline FlexKit::UpdateTask* QueueSoundUpdate(FlexKit::UpdateDispatcher& Dispatcher, SoundSystem* Sounds, iAllocator* allocator)
 {
 	struct SoundUpdateData
@@ -124,7 +124,7 @@ inline FlexKit::UpdateTask* QueueSoundUpdate(FlexKit::UpdateDispatcher& Dispatch
 
 	return &SoundUpdate;
 }
-
+*/
 
 /************************************************************************************************/
 
@@ -144,7 +144,7 @@ public:
 			constantBuffer	    { IN_Framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 32, false) },
 			asEngine		    { asCreateScriptEngine() },
 			streamingEngine	    { IN_Framework.core.RenderSystem, IN_Framework.core.GetBlockMemory() },
-            sounds              { IN_Framework.core.Threads,      IN_Framework.core.GetBlockMemory() },
+            //sounds              { IN_Framework.core.Threads,      IN_Framework.core.GetBlockMemory() },
 
             renderWindow{ std::get<0>(CreateWin32RenderWindow(IN_Framework.GetRenderSystem(), DefaultWindowDesc({ WH }) )) },
 
@@ -433,7 +433,7 @@ public:
     StaticBodyComponent             staticBodies;
     CharacterControllerComponent    characterControllers;
     CameraControllerComponent       orbitCameras;
-    SoundSystem			            sounds;
+    //SoundSystem			            sounds;
 
     GamepadInput                    gamepads;
     ImGUIIntegrator                 debugUI;

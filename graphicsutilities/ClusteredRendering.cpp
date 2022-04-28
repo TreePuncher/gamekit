@@ -1575,9 +1575,9 @@ namespace FlexKit
                 data.lightLists                 = builder.ReadTransition(lightPass.lightLists,              DRS_PixelShaderResource);
 
                 data.renderTargetObject         = builder.AcquireVirtualResource(
-                                                    GPUResourceDesc::UAVTexture(
+                                                    GPUResourceDesc::RenderTarget(
                                                         builder.GetRenderSystem().GetTextureWH(renderTarget),
-                                                        DeviceFormat::R16G16B16A16_FLOAT, true), FlexKit::DRS_RenderTarget, false);//builder.RenderTarget(renderTarget);
+                                                        DeviceFormat::R16G16B16A16_FLOAT), FlexKit::DRS_RenderTarget, false);
 
 				data.pointLightBufferObject     = builder.ReadTransition(lightPass.lightBufferObject,       DRS_PixelShaderResource);
 

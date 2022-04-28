@@ -555,7 +555,7 @@ namespace FlexKit
 			enableOcclusionCulling	    { false	},
 
             UAVPool                     { renderSystem, 64 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
-            RTPool                      { renderSystem, 128 * 4 * MEGABYTE,
+            RTPool                      { renderSystem, 128 * 3 * MEGABYTE,
                                             DefaultBlockSize,renderSystem.features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier2 ?
                                             DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget : DeviceHeapFlags::RenderTarget, persistent },
 
@@ -576,7 +576,7 @@ namespace FlexKit
         layout.SetParameterAsShaderUAV(1, 1, 1, 0);
 
         if (renderSystem.features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier1)
-            UAVTexturePool.emplace(renderSystem, 128 * 4 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent);
+            UAVTexturePool.emplace(renderSystem, 128 * 3 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent);
 
         rootSignatureToneMapping.AllowIA = true;
         rootSignatureToneMapping.SetParameterAsDescriptorTable(0, layout);
@@ -773,6 +773,7 @@ namespace FlexKit
                 drawSceneDesc.reserveCB,
                 temporary);
 
+        /*
         auto& occlutionConstants =
             OcclusionCulling(
                 dispatcher,
@@ -783,6 +784,7 @@ namespace FlexKit
                 drawSceneDesc.reserveCB,
                 depthTarget,
                 temporary);
+        */
 
         auto& gbufferPass =
             clusteredRender.FillGBuffer(
@@ -927,7 +929,7 @@ namespace FlexKit
                     skinnedObjects,
                     entityConstants,
                     visablePointLights,
-                    occlutionConstants.ZPyramid
+                    //occlutionConstants.ZPyramid
         };
     }
 
