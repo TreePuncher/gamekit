@@ -409,7 +409,7 @@ namespace FlexKit
         if(_ptr)
             memcpy(&state.inputValues[idx], _ptr, sizeof(16));
 
-        return idx;
+        return (uint32_t)idx;
     }
 
 

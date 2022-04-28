@@ -142,7 +142,7 @@ namespace FlexKit
     {
         static auto guraModel = []
         {
-            auto [gura, _] = FindMesh("HW_GuraDinoMESH");
+            auto [gura, _] = FindMesh("1x1x1Cube");
             return gura;
         }();
 

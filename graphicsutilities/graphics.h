@@ -3217,6 +3217,7 @@ private:
 			}
 			else
 			{
+                FK_LOG_ERROR("Failed to create Heap. Flags: %u", flags);
 				return InvalidHandle_t;
 			}
 		}

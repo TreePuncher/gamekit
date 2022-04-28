@@ -505,6 +505,10 @@ void PushHostState(GameInfo& info, GameFramework& framework, BaseState& base, Ne
 {
     AddAssetFile("assets\\testAssets.gameres");
 
+    auto asset = LoadGameAsset("1x1x1Cube");
+    LoadTriMeshIntoTable(framework.core.RenderSystem.GetImmediateUploadQueue(), "1x1x1Cube");
+    FreeAsset(asset);
+
     auto& host  = framework.PushState<HostState>(info, base, net);
     auto& lobby = framework.PushState<LobbyState>(base, net);
 
