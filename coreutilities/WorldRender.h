@@ -496,8 +496,11 @@ namespace FlexKit
 
 		RenderSystem&			renderSystem;
 
-        MemoryPoolAllocator     UAVPool;
-        MemoryPoolAllocator     RTPool;
+        MemoryPoolAllocator                 UAVPool;
+        MemoryPoolAllocator                 RTPool;
+        std::optional<MemoryPoolAllocator>  UAVTexturePool;
+
+        MemoryPoolAllocator*    activePools[3] = { nullptr, nullptr, nullptr };
 
         QueryHandle             timeStats;
         ReadBackResourceHandle  timingReadBack;

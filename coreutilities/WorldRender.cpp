@@ -555,7 +555,9 @@ namespace FlexKit
 			enableOcclusionCulling	    { false	},
 
             UAVPool                     { renderSystem, 64 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
-            RTPool                      { renderSystem, 128 * 4 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget, persistent },
+            RTPool                      { renderSystem, 128 * 4 * MEGABYTE,
+                                            DefaultBlockSize,renderSystem.features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier2 ?
+                                            DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget : DeviceHeapFlags::RenderTarget, persistent },
 
             timeStats                   { renderSystem.CreateTimeStampQuery(256) },
             timingReadBack              { renderSystem.CreateReadBackBuffer(512) }, 
@@ -572,6 +574,9 @@ namespace FlexKit
         FlexKit::DesciptorHeapLayout layout{};
         layout.SetParameterAsSRV(0, 0, 2, 0);
         layout.SetParameterAsShaderUAV(1, 1, 1, 0);
+
+        if (renderSystem.features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier1)
+            UAVTexturePool.emplace(renderSystem, 128 * 4 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent);
 
         rootSignatureToneMapping.AllowIA = true;
         rootSignatureToneMapping.SetParameterAsDescriptorTable(0, layout);
@@ -734,6 +739,10 @@ namespace FlexKit
         AddGBufferResource(gbuffer, frameGraph);
         frameGraph.AddMemoryPool(&UAVPool);
         frameGraph.AddMemoryPool(&RTPool);
+
+        if(UAVTexturePool)
+            frameGraph.AddMemoryPool(&UAVTexturePool.value());
+
         frameGraph.dataDependencies.push_back(&IKUpdate);
 
         PassData data = {

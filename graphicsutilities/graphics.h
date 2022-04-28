@@ -3825,6 +3825,12 @@ private:
 				HLSL_CompilerEnabled,
 				HLSL_CompilerDisabled
 			} Compiler;
+
+            enum struct ResourceHeapTier
+            {
+                HeapTier1,
+                HeapTier2,
+            }   resourceHeapTier;
 		}features;
 
 
