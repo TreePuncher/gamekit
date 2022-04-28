@@ -4185,7 +4185,7 @@ namespace FlexKit
 
         bool InitiateComplete = false;
 
-		HR = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&Device));
+		HR = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&Device));
 		if(FAILED(HR))
 		{
 			FK_LOG_ERROR("Failed to create A DX12 Device!");
@@ -4195,7 +4195,6 @@ namespace FlexKit
 			if (FAILED(HR))
 			{
 				FK_LOG_ERROR("Failed to create A DX11 Device!");
-				//MessageBox(NULL, L"FAILED TO CREATE D3D12 ADAPTER! GET A NEWER COMPUTER", L"ERROR!", MB_OK);
 				return false;
 			}
 		}
@@ -4210,6 +4209,7 @@ namespace FlexKit
 
         D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
         Device->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
+
 
         switch (options5.RaytracingTier)
         {
@@ -4232,6 +4232,18 @@ namespace FlexKit
             features.conservativeRast = AvailableFeatures::ConservativeRast_AVAILABLE;
             break;
         };
+
+        switch (options.ResourceHeapTier)
+        {
+        case D3D12_RESOURCE_HEAP_TIER_1:
+            features.resourceHeapTier = AvailableFeatures::ResourceHeapTier::HeapTier1;
+            break;
+        case D3D12_RESOURCE_HEAP_TIER_2:
+            features.resourceHeapTier = AvailableFeatures::ResourceHeapTier::HeapTier2;
+            break;
+        default:
+            break;
+        }
 
 #if USING(AFTERMATH)
 
