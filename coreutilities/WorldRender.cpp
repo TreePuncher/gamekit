@@ -550,12 +550,24 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    WorldRender::WorldRender(RenderSystem& RS_IN, TextureStreamingEngine& IN_streamingEngine, iAllocator* persistent) :
-			renderSystem                { RS_IN },
+    size_t GetRTPoolSize(RenderSystem& renderSystem, const uint2 WH = uint2{ 1920, 1080 })
+    {
+        if (renderSystem.features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier1)
+            return 128 * 3 * MEGABYTE;
+        else
+            return 128 * 6 * MEGABYTE;
+    }
+
+
+    /************************************************************************************************/
+
+
+    WorldRender::WorldRender(RenderSystem& IN_renderSystem, TextureStreamingEngine& IN_streamingEngine, iAllocator* persistent) :
+			renderSystem                { IN_renderSystem },
 			enableOcclusionCulling	    { false	},
 
             UAVPool                     { renderSystem, 64 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
-            RTPool                      { renderSystem, 128 * 3 * MEGABYTE,
+            RTPool                      { renderSystem, GetRTPoolSize(IN_renderSystem),
                                             DefaultBlockSize,renderSystem.features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier2 ?
                                             DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget : DeviceHeapFlags::RenderTarget, persistent },
 
@@ -576,7 +588,7 @@ namespace FlexKit
         layout.SetParameterAsShaderUAV(1, 1, 1, 0);
 
         if (renderSystem.features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier1)
-            UAVTexturePool.emplace(renderSystem, 128 * 3 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent);
+            UAVTexturePool.emplace(renderSystem, 128 * 4 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent);
 
         rootSignatureToneMapping.AllowIA = true;
         rootSignatureToneMapping.SetParameterAsDescriptorTable(0, layout);
@@ -585,59 +597,58 @@ namespace FlexKit
         rootSignatureToneMapping.Build(renderSystem, persistent);
 
 
-		RS_IN.RegisterPSOLoader(FORWARDDRAW,			        { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawPSO,		  });
-		RS_IN.RegisterPSOLoader(FORWARDDRAWINSTANCED,	        { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO });
+        renderSystem.RegisterPSOLoader(FORWARDDRAW,			            { &renderSystem.Library.RS6CBVs4SRVs,		CreateForwardDrawPSO,		  });
+        renderSystem.RegisterPSOLoader(FORWARDDRAWINSTANCED,	        { &renderSystem.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO });
 
-		RS_IN.RegisterPSOLoader(LIGHTPREPASS,			        { &RS_IN.Library.ComputeSignature,  CreateLightPassPSO			  });
-		RS_IN.RegisterPSOLoader(DEPTHPREPASS,			        { &RS_IN.Library.RS6CBVs4SRVs,      CreateDepthPrePassPSO         });
+        renderSystem.RegisterPSOLoader(LIGHTPREPASS,			        { &renderSystem.Library.ComputeSignature,  CreateLightPassPSO			  });
+        renderSystem.RegisterPSOLoader(DEPTHPREPASS,			        { &renderSystem.Library.RS6CBVs4SRVs,      CreateDepthPrePassPSO         });
 
-		RS_IN.RegisterPSOLoader(ENVIRONMENTPASS,                { &RS_IN.Library.RS6CBVs4SRVs,      CreateEnvironmentPassPSO      });
+        renderSystem.RegisterPSOLoader(ENVIRONMENTPASS,                 { &renderSystem.Library.RS6CBVs4SRVs,      CreateEnvironmentPassPSO      });
 
-                
-		RS_IN.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL,    { &RS_IN.Library.RSDefault, CreateBilaterialBlurHorizontalPSO });
-		RS_IN.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,      { &RS_IN.Library.RSDefault, CreateBilaterialBlurVerticalPSO   });
+        renderSystem.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL,     { &renderSystem.Library.RSDefault, CreateBilaterialBlurHorizontalPSO });
+        renderSystem.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,       { &renderSystem.Library.RSDefault, CreateBilaterialBlurVerticalPSO   });
 
-        RS_IN.RegisterPSOLoader(ZPYRAMIDBUILDLEVEL,             { &RS_IN.Library.RSDefault, CreateBuildZLayer });
-        RS_IN.RegisterPSOLoader(DEPTHCOPY,                      { &RS_IN.Library.RSDefault, CreateDepthBufferCopy });
+        renderSystem.RegisterPSOLoader(ZPYRAMIDBUILDLEVEL,              { &renderSystem.Library.RSDefault, CreateBuildZLayer });
+        renderSystem.RegisterPSOLoader(DEPTHCOPY,                       { &renderSystem.Library.RSDefault, CreateDepthBufferCopy });
 
-        RS_IN.RegisterPSOLoader(AVERAGELUMINANCE_BLOCK,         { &RS_IN.Library.RSDefault, [&](auto renderSystem){ return CreateAverageLumanceLocal(renderSystem); } });
-        RS_IN.RegisterPSOLoader(AVERAGELUMANANCE_GLOBAL,        { &RS_IN.Library.RSDefault, [&](auto renderSystem){ return CreateAverageLumanceGlobal(renderSystem); } });
-        RS_IN.RegisterPSOLoader(TONEMAP,                        { &RS_IN.Library.RSDefault, [&](auto renderSystem){ return CreateToneMapping(renderSystem); } });
+        renderSystem.RegisterPSOLoader(AVERAGELUMINANCE_BLOCK,          { &renderSystem.Library.RSDefault, [&](auto renderSystem){ return CreateAverageLumanceLocal(renderSystem); } });
+        renderSystem.RegisterPSOLoader(AVERAGELUMANANCE_GLOBAL,         { &renderSystem.Library.RSDefault, [&](auto renderSystem){ return CreateAverageLumanceGlobal(renderSystem); } });
+        renderSystem.RegisterPSOLoader(TONEMAP,                         { &renderSystem.Library.RSDefault, [&](auto renderSystem){ return CreateToneMapping(renderSystem); } });
 
-		RS_IN.QueuePSOLoad(GBUFFERPASS);
-		RS_IN.QueuePSOLoad(GBUFFERPASS_SKINNED);
-		RS_IN.QueuePSOLoad(DEPTHPREPASS);
-		RS_IN.QueuePSOLoad(LIGHTPREPASS);
-		RS_IN.QueuePSOLoad(FORWARDDRAW);
-		RS_IN.QueuePSOLoad(FORWARDDRAWINSTANCED);
-		RS_IN.QueuePSOLoad(SHADINGPASS);
-		RS_IN.QueuePSOLoad(COMPUTETILEDSHADINGPASS);
-		RS_IN.QueuePSOLoad(BILATERALBLURPASSHORIZONTAL);
-		RS_IN.QueuePSOLoad(BILATERALBLURPASSVERTICAL);
-        RS_IN.QueuePSOLoad(SHADOWMAPPASS);
-        RS_IN.QueuePSOLoad(CLEARCOUNTERSPSO);
-        RS_IN.QueuePSOLoad(RESOLUTIONMATCHSHADOWMAPS);
-        RS_IN.QueuePSOLoad(CLEARSHADOWRESOLUTIONBUFFER);
-        RS_IN.QueuePSOLoad(ZPYRAMIDBUILDLEVEL);
+		renderSystem.QueuePSOLoad(GBUFFERPASS);
+		renderSystem.QueuePSOLoad(GBUFFERPASS_SKINNED);
+		renderSystem.QueuePSOLoad(DEPTHPREPASS);
+		renderSystem.QueuePSOLoad(LIGHTPREPASS);
+		renderSystem.QueuePSOLoad(FORWARDDRAW);
+		renderSystem.QueuePSOLoad(FORWARDDRAWINSTANCED);
+		renderSystem.QueuePSOLoad(SHADINGPASS);
+		renderSystem.QueuePSOLoad(COMPUTETILEDSHADINGPASS);
+		renderSystem.QueuePSOLoad(BILATERALBLURPASSHORIZONTAL);
+		renderSystem.QueuePSOLoad(BILATERALBLURPASSVERTICAL);
+        renderSystem.QueuePSOLoad(SHADOWMAPPASS);
+        renderSystem.QueuePSOLoad(CLEARCOUNTERSPSO);
+        renderSystem.QueuePSOLoad(RESOLUTIONMATCHSHADOWMAPS);
+        renderSystem.QueuePSOLoad(CLEARSHADOWRESOLUTIONBUFFER);
+        renderSystem.QueuePSOLoad(ZPYRAMIDBUILDLEVEL);
 
-        RS_IN.QueuePSOLoad(DEBUG_DrawBVH);
+        renderSystem.QueuePSOLoad(DEBUG_DrawBVH);
 
-        RS_IN.QueuePSOLoad(CREATELIGHTBVH_PHASE1);
-        RS_IN.QueuePSOLoad(CREATELIGHTBVH_PHASE2);
+        renderSystem.QueuePSOLoad(CREATELIGHTBVH_PHASE1);
+        renderSystem.QueuePSOLoad(CREATELIGHTBVH_PHASE2);
 
-        RS_IN.SetReadBackEvent(
+        renderSystem.SetReadBackEvent(
             timingReadBack,
             [&](ReadBackResourceHandle resource)
             {
-                auto [buffer, bufferSize] = RS_IN.OpenReadBackBuffer(resource);
-                EXITSCOPE(RS_IN.CloseReadBackBuffer(resource));
+                auto [buffer, bufferSize] = renderSystem.OpenReadBackBuffer(resource);
+                EXITSCOPE(renderSystem.CloseReadBackBuffer(resource));
 
                 if(buffer){
                     size_t timePoints[64];
                     memcpy(timePoints, (char*)buffer, sizeof(timePoints));
 
                     UINT64 timeStampFreq;
-                    RS_IN.GraphicsQueue->GetTimestampFrequency(&timeStampFreq);
+                    renderSystem.GraphicsQueue->GetTimestampFrequency(&timeStampFreq);
 
                     float durations[32];
 

@@ -281,7 +281,7 @@ namespace FlexKit
                         ProfileFunction();
 
                         auto& light         = lights[lightHandle];
-                        auto [shadowMap, _] = shadowMapAllocator.Acquire(GPUResourceDesc::DepthTarget({ 1024, 1024 }, DeviceFormat::D32_FLOAT, 6), false);
+                        auto [shadowMap, _] = shadowMapAllocator.Acquire(GPUResourceDesc::DepthTarget({ 256, 256 }, DeviceFormat::D32_FLOAT, 6), false);
                         light.shadowMap     = shadowMap;
 
 #if USING(DEBUGGRAPHICS)
