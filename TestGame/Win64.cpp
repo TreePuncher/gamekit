@@ -22,6 +22,7 @@
 
 #include <iostream>
 
+
 int main(int argc, char* argv[])
 {
     std::string name;
@@ -63,8 +64,8 @@ int main(int argc, char* argv[])
     try
     {
         FlexKit::FKApplication app{ allocator, Max(std::thread::hardware_concurrency() / 2, 1u) - 1 };
-        app.GetCore().FrameLock = true;
-        app.GetCore().vSync     = true;
+        app.GetCore().FrameLock = false;
+        app.GetCore().vSync     = false;
         app.GetCore().FPSLimit  = 60;
 
         auto& base      = app.PushState<BaseState>(app, WH);

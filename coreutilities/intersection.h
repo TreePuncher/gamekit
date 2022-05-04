@@ -102,15 +102,7 @@ namespace FlexKit
 
 	typedef Vector<Ray> RaySet;
 
-	/************************************************************************************************/
-	// Intersection Distance from Origin to Plane Surface
 
-	inline float Intersects(const Ray& R, const Plane& P) noexcept
-	{
-		const auto w = P.o - R.O;
-
-		return w.dot(P.n) / R.D.dot(P.n);
-	}
 
 	/************************************************************************************************/
 
@@ -172,49 +164,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool Intersects(const Frustum& F, const BoundingSphere BS);
-
-
-	/************************************************************************************************/
-
-
-	inline bool Intersects(const Frustum frustum, const AABB aabb) noexcept
-	{
-		int Result = 1;
-
-		for (int I = 0; I < 6; ++I)
-		{
-			float px = (frustum.Planes[I].n.x >= 0.0f) ? aabb.Min.x : aabb.Max.x;
-			float py = (frustum.Planes[I].n.y >= 0.0f) ? aabb.Min.y : aabb.Max.y;
-			float pz = (frustum.Planes[I].n.z >= 0.0f) ? aabb.Min.z : aabb.Max.z;
-
-			float3 pV = float3{ px, py, pz } -frustum.Planes[I].o;
-			float dP = dot(frustum.Planes[I].n, pV);
-
-			if (dP >= 0)
-				return false;
-		}
-
-		return true;
-	}
-
-
-    /************************************************************************************************/
-
-
-    inline bool Intersects(const AABB a, const AABB b) noexcept
-	{
-        return  (a.Min.x <= b.Max.x && b.Min.x <= a.Max.x) &&
-                (a.Min.y <= b.Max.y && b.Min.y <= a.Max.y) &&
-                (a.Min.z <= b.Max.z && b.Min.z <= a.Max.z);
-	}
-
-
-    /************************************************************************************************/
-
-
-    std::optional<float> Intersects(const Ray r, const AABB b);
-    std::optional<float> Intersects(const Ray r, const BoundingSphere b);
+    float                   Intersects(const Ray& R, const Plane& P) noexcept;
+	bool                    Intersects(const Frustum& F, const BoundingSphere BS);
+    bool                    Intersects(const Frustum frustum, const AABB aabb) noexcept;
+    bool                    Intersects(const AABB a, const AABB b) noexcept;
+    std::optional<float>    Intersects(const Ray r, const AABB b);
+    std::optional<float>    Intersects(const Ray r, const BoundingSphere b);
 
 
 	/************************************************************************************************/
@@ -246,7 +201,5 @@ namespace FlexKit
 		float2		BottomRight) noexcept;
 
 
-	/************************************************************************************************/
-
-}
+}   /************************************************************************************************/
 

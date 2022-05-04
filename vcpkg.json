@@ -26,6 +26,7 @@
         	"stb",
         	"tinygltf",
         	"range-v3",
-		"usd"
+		"usd",
+		"zlib-ng"
     	]
 }

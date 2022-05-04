@@ -1633,7 +1633,7 @@ namespace FlexKit
             const auto      deltaPos    = prevPos - postPos;
 
             if (desiredMove.magnitudeSq() * 0.5f >= deltaPos.magnitude())
-                velocity = 0;
+                velocity = 0.0f;
         }
     }
 

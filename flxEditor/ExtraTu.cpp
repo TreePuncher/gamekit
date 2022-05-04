@@ -2,6 +2,7 @@
 
 
 #include "..\coreutilities\AnimationRendering.cpp"
+#include "..\coreutilities\ModifiableShape.cpp"
 #include "..\graphicsutilities\ClusteredRendering.cpp"
 #include "..\graphicsutilities\GILightingUtilities.cpp"
 #include "..\graphicsutilities\SVOGI.cpp"

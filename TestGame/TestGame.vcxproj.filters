@@ -298,6 +298,9 @@
       <Filter>Headers\TestGame</Filter>
     </ClInclude>
     <ClInclude Include="Player.h" />
+    <ClInclude Include="..\coreutilities\ModifiableShape.h">
+      <Filter>Headers\coreutilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\coreutilities\AllSourceFiles.cpp">
@@ -511,9 +514,12 @@
       <Filter>Source\TestGame</Filter>
     </ClCompile>
     <ClCompile Include="Player.cpp" />
+    <ClCompile Include="..\coreutilities\ModifiableShape.cpp">
+      <Filter>Source\coreutilities</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="..\shaders\ACC.hlsl">
+    <FxCompile Include="..\shaders\ACCQuad.hlsl">
       <Filter>Headers\shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\BilateralBlur.hlsl">

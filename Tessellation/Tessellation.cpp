@@ -1,0 +1,625 @@
+#include "pch.h"
+
+constexpr FlexKit::PSOHandle ACC = FlexKit::PSOHandle(GetTypeGUID(ACC));
+
+using namespace FlexKit;
+
+enum GregoryQuadPatchPoint
+{
+    p0 = 0,
+    p1 = 1,
+    p2 = 2,
+    p3 = 3,
+
+    e0Minus = 4,
+    e0Plus  = 5,
+    e1Minus = 6,
+    e1Plus  = 7,
+    e2Minus = 8,
+    e2Plus  = 9,
+    e3Minus = 10,
+    e3Plus  = 11,
+
+    f0Minus = 12,
+    f0Plus  = 13,
+
+    f1Minus = 14,
+    f1Plus  = 15,
+
+    f2Minus = 16,
+    f2Plus  = 17,
+
+    f3Minus = 18,
+    f3Plus  = 19
+};
+
+
+struct ControlPoint
+{
+    float3 P;
+};
+
+
+float Lambda(float N)
+{
+    const float T = cos((2 * pi) / N);
+
+    return
+        (1.0f / 16.0f) *
+        (5.0f
+            + T
+            + cos(pi / N) * sqrt(18 + 2 * T));
+}
+
+
+float Theta(float N)
+{
+    const float T = cos(pi / N);
+    return 1.0f / sqrt(4.0f + T * T);
+}
+
+
+struct QuadPatch
+{
+    uint4 vertexIds;
+};
+
+struct VertexNeighorList
+{
+    static_vector<uint32_t> patches;
+};
+
+
+/************************************************************************************************/
+
+
+class TessellationTest : public FlexKit::FrameworkState
+{
+public:
+    TessellationTest(FlexKit::GameFramework& IN_framework, int test) :
+        FrameworkState{ IN_framework },
+        renderWindow    {
+            std::get<0>(CreateWin32RenderWindow(
+                IN_framework.GetRenderSystem(),
+                FlexKit::DefaultWindowDesc({ 1920, 1080 }))) },
+        rootSig         { IN_framework.core.GetBlockMemory() },
+        vertexBuffer    { IN_framework.GetRenderSystem().CreateVertexBuffer(MEGABYTE, false) },
+
+        controlWeights  { IN_framework.core.GetBlockMemory() }
+    {
+        PreComputeMesh();
+
+        rootSig.SetParameterAsSRV(0, 0, 0);
+        rootSig.AllowIA = true;
+        rootSig.AllowSO = false;
+        FK_ASSERT(rootSig.Build(IN_framework.GetRenderSystem(), IN_framework.core.GetTempMemory()));
+
+        framework.GetRenderSystem().RegisterPSOLoader(ACC, { &rootSig, [&](auto* renderSystem) { return LoadPSO(renderSystem); } });
+
+
+        FlexKit::EventNotifier<>::Subscriber sub;
+        sub.Notify  = &FlexKit::EventsWrapper;
+        sub._ptr    = &framework;
+
+        renderWindow.Handler->Subscribe(sub);
+        renderWindow.SetWindowTitle("[Tessellation Test]");
+
+
+        float xyz[3];
+        int x = 0;
+        float3 v;
+        v = xyz;
+    }
+
+
+    /************************************************************************************************/
+
+
+    static_vector<uint2> FindSharedEdges(QuadPatch& quadPatch, uint32_t vertexIdx)
+    {
+        static_vector<uint2> out;
+
+        for(size_t I = 0; I < 4; I++)
+        if (quadPatch.vertexIds[I] == vertexIdx)
+        {
+            out.emplace_back(quadPatch.vertexIds[I], quadPatch.vertexIds[(I + 1) % 4]);
+            out.emplace_back(quadPatch.vertexIds[(I + 3) % 4], quadPatch.vertexIds[I]);
+        }
+
+        return out;
+    }
+
+
+    /************************************************************************************************/
+
+
+    // V7 ------- V6 -------V11 ------- V15
+    // |          |          |           |
+    // |          |          |           |
+    // |   P2     |   p5     |   p8      |
+    // |          |          |           |
+    // |          |          |           |
+    // V5 ------- V4 -------V10 ------- V14
+    // |          |          |           |
+    // |          |          |           |
+    // |   p1     |   p4     |   p7      |
+    // |          |          |           |
+    // |          |          |           |
+    // V3 ------- V2 ------- V9 ------- V13
+    // |          |          |           |
+    // |          |          |           |
+    // |   p0     |   p3     |   p6      |
+    // |          |          |           |
+    // |          |          |           |
+    // V0 ------- V1 ------- V8 ------- V12
+
+
+    /************************************************************************************************/
+
+
+    void PreComputeMesh()
+    {
+        // Patch 1
+        shape.AddVertex(float3{ -1.0f,  -1.0f,  0.0f }); // 0
+        shape.AddVertex(float3{ -0.66f, -1.0f,  0.0f }); // 1
+        shape.AddVertex(float3{ -0.66f, -0.66f, 0.0f }); // 2
+        shape.AddVertex(float3{ -1.0f,  -0.66f, 0.0f }); // 3
+
+        shape.AddVertex(float3{ -0.66f,  0.33f, 0.0f }); // 4
+        shape.AddVertex(float3{ -1.0f,   0.33f, 0.0f }); // 5
+        shape.AddVertex(float3{ -0.66f,  0.33f, 0.0f }); // 6
+        shape.AddVertex(float3{ -1.0f,   0.33f, 0.0f }); // 7
+
+        shape.AddVertex(float3{ 0.33f,  -1.0f,  0.0f }); // 8
+        shape.AddVertex(float3{ 0.33f,  -0.66f, 0.0f }); // 9
+        shape.AddVertex(float3{ 0.33f,   0.33f, 0.0f }); // 10
+        shape.AddVertex(float3{ 0.33f,   0.00f, 0.0f }); // 11
+
+        shape.AddVertex(float3{ 1.0f,  -1.0f,  0.0f }); // 12
+        shape.AddVertex(float3{ 1.0f,  -0.66f, 0.0f }); // 13
+        shape.AddVertex(float3{ 1.0f,   0.33f, 0.0f }); // 14
+        shape.AddVertex(float3{ 1.0f,   0.00f, 0.0f }); // 15
+
+        uint32_t patch1[] = { 0, 1, 2, 3 };
+        uint32_t patch2[] = { 3, 2, 4, 5 };
+        uint32_t patch3[] = { 5, 4, 6, 7 };
+        uint32_t patch4[] = { 1, 8, 9, 2 };
+        uint32_t patch5[] = { 2, 9, 10, 4 };
+        uint32_t patch6[] = { 4, 10, 11, 6 };
+        uint32_t patch7[] = { 8, 12, 13, 9 };
+        uint32_t patch8[] = { 9, 13, 14, 10 };
+        uint32_t patch9[] = { 10, 14, 15, 11 };
+
+        shape.AddPolygon(patch1, patch1 + 4);
+        shape.AddPolygon(patch2, patch2 + 4);
+        shape.AddPolygon(patch3, patch3 + 4);
+        shape.AddPolygon(patch4, patch4 + 4);
+        shape.AddPolygon(patch5, patch5 + 4);
+        shape.AddPolygon(patch6, patch6 + 4);
+        shape.AddPolygon(patch7, patch7 + 4);
+        shape.AddPolygon(patch8, patch8 + 4);
+        shape.AddPolygon(patch9, patch9 + 4);
+
+        std::vector<uint32_t> QuadPatches;
+        std::vector<uint32_t> TriPatches;
+
+        std::vector<uint32_t> irregularTri;
+        std::vector<uint32_t> irregularQuad;
+
+        std::vector<uint32_t> edgeQuad;
+        std::vector<uint32_t> edgeTri;
+
+        // First Classify patches
+        for (uint32_t I = 0; I < shape.wFaces.size(); I++)
+        {
+            auto& patch = shape.wFaces[I];
+            auto edgeCount = patch.GetEdgeCount(shape);
+
+            switch (edgeCount)
+            {
+            case 3: // Triangle
+            {
+                [&]
+                {
+                    auto itr = patch.GetVertexView(shape).begin();
+                    auto end = patch.GetVertexView(shape).end();
+
+                    for (; itr != end; itr++)
+                    {
+                        if (itr.Edges().size() == 2)
+                        {
+                            TriPatches.push_back(I);
+                            return;
+                        }
+                        else if (itr.Edges().size() != 3)
+                        {
+                            irregularTri.push_back(I);
+                            return;
+                        }
+                    }
+
+                    TriPatches.push_back(I);
+                }();
+            }   break;
+            case 4: // Quad:
+            {
+                [&]
+                {
+                    auto itr = patch.GetVertexView(shape).begin();
+                    auto end = patch.GetVertexView(shape).end();
+
+                    for (; itr != end; itr++)
+                    {
+                        const auto vertexValence = itr.Edges().size() / 2;
+                        if (itr.IsEdge())
+                        {
+                            edgeQuad.push_back(I);
+                            return;
+                        }
+                        else if (vertexValence != 4)
+                        {
+                            irregularQuad.push_back(I);
+                            return;
+                        }
+                    }
+
+                    QuadPatches.push_back(I);
+                }();
+            }   break;
+            }
+        }
+
+        struct Patch
+        {
+            struct ControlPointWeights
+            {
+                ControlPointWeights() { memset(indices, 0xff, sizeof(indices)); }
+
+                float       weights[32] = { 0.0f };
+                uint32_t    indices[32];
+            } controlPoints[20];
+
+            uint32_t inputVertices[32];
+            uint32_t vertCount = 0;
+        };
+
+        std::vector<Patch> patches;
+
+        for (auto& quadPatch : QuadPatches)
+        {
+            size_t B = 0;
+            Patch newPatch;
+            auto vertexView = shape.wFaces[quadPatch].GetVertexView(shape);
+
+            for (auto [point, pointIdx, edges, edgeView] : vertexView)
+            {
+                size_t A = 0;
+                Patch::ControlPointWeights controlPoint;
+                if (!vertexView.IsExteriorCorner())
+                {
+                    const auto n = edges.size() / 2;
+
+                    auto idx                = A++;
+                    controlPoint.weights[idx] = (n - 3.0f) / (n + 5.0f);
+                    controlPoint.indices[idx] = pointIdx;
+
+                    const auto w = (1.0f / 2.0f) * 4.0f / (n * (n + 5u));
+
+                    for (const auto& edge : edgeView)
+                    {
+
+                        auto AddMidEdgeWeight = [&](auto v_Idx)
+                        {
+                            for (size_t I = 0; I < A; I++)
+                            {
+                                if (controlPoint.indices[I] != v_Idx)
+                                    continue;
+
+                                controlPoint.weights[I] += w;
+                                return;
+                            }
+
+                            const auto idx = A++;
+                            controlPoint.weights[idx] += 4.0f / (n * (n + 5)) * 0.5f;
+                            controlPoint.indices[idx] = v_Idx;
+                        };
+
+                        AddMidEdgeWeight(edge.A_idx);
+                        AddMidEdgeWeight(edge.B_idx);
+                    }
+
+                    std::vector<uint32_t> faceList;
+
+                    for (size_t edge : edges)
+                        faceList.push_back(shape.wEdges[edge].face);
+
+                    std::sort(faceList.begin(), faceList.end());
+                    faceList.erase(std::unique(faceList.begin(), faceList.end()), faceList.end());
+
+                    for (auto& face : faceList)
+                    {
+                        const auto vertices     = shape.GetFaceVertices(face);
+                        const auto faceCount    = vertices.size();
+                        const auto w            = (1.0f / vertices.size()) * 4.0f / (n * (n + 5u));
+
+                        for (auto v_Idx : vertices)
+                        [&]
+                        {
+                            for (size_t I = 0; I < A; I++)
+                            {
+                                if (controlPoint.indices[I] != v_Idx)
+                                    continue;
+
+                                controlPoint.weights[I] += w;
+                                return;
+                            }
+
+                            const auto idx = A++;
+                            controlPoint.indices[idx] = v_Idx;
+                            controlPoint.weights[idx] = w;
+                        }();
+                    }
+                }
+                else
+                {
+                    controlPoint.indices[0] = pointIdx;
+                    controlPoint.weights[0] = 1.0f;
+                }
+
+                float f = 0.0f;
+                for (auto& w : controlPoint.weights)
+                    f += w;
+
+                FK_ASSERT(fabs(f - 1.0f) < 0.001f, "Calculation error!");
+
+                float3 p{ 0 };
+                for (size_t I = 0; I < 32; I++)
+                    if (controlPoint.indices[I] != 0xffffffff)
+                        p += controlPoint.weights[I] * shape.wVertices[controlPoint.indices[I]].point;
+
+                newPatch.controlPoints[B++] = controlPoint;
+            }
+
+            
+
+            patches.push_back(newPatch);
+        }
+
+        for (auto& patch : patches)
+        {
+            std::vector<uint32_t> verticies;
+            for (const auto& controlPoint : patch.controlPoints)
+                for (const auto idx : controlPoint.indices)
+                    verticies.push_back(idx);
+
+            std::sort(verticies.begin(), verticies.end());
+            verticies.erase(std::unique(verticies.begin(), verticies.end()), verticies.end());
+
+            for (const auto idx : verticies)
+                patch.inputVertices[patch.vertCount++] = idx;
+        }
+
+
+        // TODO:
+        //  Produce Verte
+        //  Remap ControlPointWeights::Indicies from global buffer idx to patch local coord, [0, vertexCount ] -> [ 0 -> 32]
+    }
+
+
+    /************************************************************************************************/
+
+
+    void DrawPatch(FlexKit::FrameGraph& frameGraph)
+    {
+        struct DrawPatch
+        {
+            FrameResourceHandle renderTarget;
+        };
+
+        frameGraph.AddNode<DrawPatch>(
+            DrawPatch{},
+            [&](FrameGraphNodeBuilder& builder, DrawPatch& draw)
+            {
+                draw.renderTarget = builder.RenderTarget(renderWindow.GetBackBuffer());
+            },
+            [&](DrawPatch& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+            {
+                /*
+                VBPushBuffer        buffer  { vertexBuffer, 4096, *ctx.renderSystem };
+                VertexBufferDataSet VB      { controlPoints, buffer};
+
+                ctx.SetRootSignature(rootSig);
+                ctx.SetPipelineState(resources.GetPipelineState(ACC));
+                ctx.SetPrimitiveTopology(EInputTopology::EIT_PATCH_CP_20);
+                ctx.SetVertexBuffers({ VB });
+                ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
+                ctx.SetRenderTargets({ resources.GetRenderTarget(data.renderTarget) }, false);
+                ctx.Draw(4);
+                */
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    FlexKit::UpdateTask* Draw(FlexKit::UpdateTask* updateTask, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
+    {
+        ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), { 0.0f, 0.0f, 0.0f, 1.0f });
+
+        DrawPatch(frameGraph);
+
+        PresentBackBuffer(frameGraph, renderWindow.GetBackBuffer());
+
+        return nullptr;
+    }
+
+
+    /************************************************************************************************/
+
+
+    FlexKit::UpdateTask* Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
+    { 
+        FlexKit::UpdateInput();
+        renderWindow.UpdateCapturedMouseInput(dT);
+
+        return nullptr;
+    }
+
+
+    /************************************************************************************************/
+
+
+    void PostDrawUpdate(FlexKit::EngineCore& core, double dT) override
+    {
+        renderWindow.Present(core.vSync ? 1 : 0, 0);
+    }
+
+
+    /************************************************************************************************/
+    
+
+    bool EventHandler(FlexKit::Event evt) override
+    {
+        switch (evt.InputSource)
+        {
+        case FlexKit::Event::E_SystemEvent:
+            if (evt.Action == FlexKit::Event::InputAction::Exit)
+            {
+                framework.quit = true;
+                return true;
+            }
+            break;
+        case FlexKit::Event::InputType::Keyboard:
+            if (evt.mType == Event::EventType::Input && evt.Action == Event::Release && evt.mData1.mKC[0] == KC_R)
+                framework.GetRenderSystem().QueuePSOLoad(ACC);
+        };
+
+        return false;
+    }
+
+
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* LoadPSO(FlexKit::RenderSystem* renderSystem)
+    {
+        auto ACC_VShader = renderSystem->LoadShader("VS_Main", "vs_6_0", "assets\\shaders\\ACC.hlsl");
+        auto ACC_DShader = renderSystem->LoadShader("DS_Main", "ds_6_0", "assets\\shaders\\ACC.hlsl");
+		auto ACC_HShader = renderSystem->LoadShader("HS_Main", "hs_6_0", "assets\\shaders\\ACC.hlsl");
+        auto ACC_PShader = renderSystem->LoadShader("PS_Main", "ps_6_0", "assets\\shaders\\ACC.hlsl");
+
+
+		/*
+		typedef struct D3D12_INPUT_ELEMENT_DESC
+		{
+		LPCSTR SemanticName;
+		UINT SemanticIndex;
+		DXGI_FORMAT Format;
+		UINT InputSlot;
+		UINT AlignedByteOffset;
+		D3D12_INPUT_CLASSIFICATION InputSlotClass;
+		UINT InstanceDataStepRate;
+		} 	D3D12_INPUT_ELEMENT_DESC;
+		*/
+
+		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "NORMAL",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 2, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		};
+
+
+		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+        Rast_Desc.CullMode              = D3D12_CULL_MODE_NONE;
+        Rast_Desc.FillMode              = D3D12_FILL_MODE_WIREFRAME;
+        //Rast_Desc.ConservativeRaster    = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
+
+		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+		Depth_Desc.DepthEnable	= false;
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+			PSO_Desc.pRootSignature        = rootSig;
+			PSO_Desc.VS                    = ACC_VShader;
+			PSO_Desc.DS                    = ACC_DShader;
+			PSO_Desc.HS                    = ACC_HShader;
+			PSO_Desc.PS                    = ACC_PShader;
+			PSO_Desc.RasterizerState       = Rast_Desc;
+			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask            = UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+			PSO_Desc.NumRenderTargets      = 1;
+			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // renderTarget
+			PSO_Desc.SampleDesc.Count      = 1;
+			PSO_Desc.SampleDesc.Quality    = 0;
+			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.DepthStencilState     = Depth_Desc;
+			PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
+			PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
+		}
+
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
+    FlexKit::ModifiableShape    shape;
+    Vector<float>               controlWeights;
+
+    FlexKit::VertexBufferHandle vertexBuffer;
+    FlexKit::RootSignature      rootSig;
+    FlexKit::Win32RenderWindow  renderWindow;
+};
+
+
+/************************************************************************************************/
+
+
+int main()
+{
+    try
+    {
+        auto* allocator = FlexKit::CreateEngineMemory();
+        EXITSCOPE(ReleaseEngineMemory(allocator));
+
+        FlexKit::FKApplication app{ allocator, FlexKit::Max(std::thread::hardware_concurrency() / 2, 1u) - 1 };
+
+        auto& state = app.PushState<TessellationTest>(0);
+
+        app.Run();
+    }
+    catch (...) { }
+
+    return 0;
+}
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2022 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

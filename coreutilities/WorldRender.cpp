@@ -555,7 +555,7 @@ namespace FlexKit
         if (renderSystem.features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier1)
             return 128 * 3 * MEGABYTE;
         else
-            return 128 * 6 * MEGABYTE;
+            return 128 * 2 * MEGABYTE;
     }
 
 
@@ -567,9 +567,9 @@ namespace FlexKit
 			enableOcclusionCulling	    { false	},
 
             UAVPool                     { renderSystem, 64 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
-            RTPool                      { renderSystem, GetRTPoolSize(IN_renderSystem),
-                                            DefaultBlockSize,renderSystem.features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier2 ?
-                                            DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget : DeviceHeapFlags::RenderTarget, persistent },
+            RTPool                      { renderSystem, GetRTPoolSize(IN_renderSystem), DefaultBlockSize,
+                                            renderSystem.features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier2 ?
+                                                DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget : DeviceHeapFlags::RenderTarget, persistent },
 
             timeStats                   { renderSystem.CreateTimeStampQuery(256) },
             timingReadBack              { renderSystem.CreateReadBackBuffer(512) }, 
@@ -588,7 +588,7 @@ namespace FlexKit
         layout.SetParameterAsShaderUAV(1, 1, 1, 0);
 
         if (renderSystem.features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier1)
-            UAVTexturePool.emplace(renderSystem, 128 * 4 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent);
+            UAVTexturePool.emplace(renderSystem, 128 * 2 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent);
 
         rootSignatureToneMapping.AllowIA = true;
         rootSignatureToneMapping.SetParameterAsDescriptorTable(0, layout);
@@ -597,13 +597,13 @@ namespace FlexKit
         rootSignatureToneMapping.Build(renderSystem, persistent);
 
 
-        renderSystem.RegisterPSOLoader(FORWARDDRAW,			            { &renderSystem.Library.RS6CBVs4SRVs,		CreateForwardDrawPSO,		  });
+        renderSystem.RegisterPSOLoader(FORWARDDRAW,			            { &renderSystem.Library.RS6CBVs4SRVs,       CreateForwardDrawPSO,		  });
         renderSystem.RegisterPSOLoader(FORWARDDRAWINSTANCED,	        { &renderSystem.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO });
 
-        renderSystem.RegisterPSOLoader(LIGHTPREPASS,			        { &renderSystem.Library.ComputeSignature,  CreateLightPassPSO			  });
-        renderSystem.RegisterPSOLoader(DEPTHPREPASS,			        { &renderSystem.Library.RS6CBVs4SRVs,      CreateDepthPrePassPSO         });
+        renderSystem.RegisterPSOLoader(LIGHTPREPASS,			        { &renderSystem.Library.ComputeSignature,   CreateLightPassPSO			  });
+        renderSystem.RegisterPSOLoader(DEPTHPREPASS,			        { &renderSystem.Library.RS6CBVs4SRVs,       CreateDepthPrePassPSO         });
 
-        renderSystem.RegisterPSOLoader(ENVIRONMENTPASS,                 { &renderSystem.Library.RS6CBVs4SRVs,      CreateEnvironmentPassPSO      });
+        renderSystem.RegisterPSOLoader(ENVIRONMENTPASS,                 { &renderSystem.Library.RS6CBVs4SRVs,       CreateEnvironmentPassPSO      });
 
         renderSystem.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL,     { &renderSystem.Library.RSDefault, CreateBilaterialBlurHorizontalPSO });
         renderSystem.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,       { &renderSystem.Library.RSDefault, CreateBilaterialBlurVerticalPSO   });
