@@ -12,6 +12,11 @@
 constexpr uint32_t CSGComponentID = GetTypeGUID(CSGComponentID);
 
 
+using FlexKit::ModifiableShape;
+using FlexKit::Ray;
+using FlexKit::Triangle;
+
+
 enum class CSG_OP
 {
     CSG_ADD,

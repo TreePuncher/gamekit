@@ -5,6 +5,253 @@
 #include "EditorViewport.h"
 
 
+/************************************************************************************************/
+
+
+struct IntersectionPoints
+{
+    float3 A;
+    float3 B;
+};
+
+
+float ProjectPointOntoRay(const FlexKit::float3& vector, const FlexKit::Ray& r) noexcept
+{
+    return (vector - r.O).dot(r.D);
+}
+
+
+/************************************************************************************************/
+
+
+bool Intersects(const float2 A_0, const float2 A_1, const float2 B_0, const float2 B_1, float2& intersection) noexcept
+{
+    const auto S0 = (A_1 - A_0);
+    const auto S1 = (B_1 - B_0);
+
+    if ((S1.y / S1.x - S0.y / S0.x) < 0.000001f)
+        return false; // Parallel
+
+    const float C = S0.x * S1.y - S1.y + S1.x;
+    const float A = A_0.x * A_1.y - A_0.y * A_1.x;
+    const float B = B_0.x * B_1.y - B_0.y * B_1.x;
+
+    const float x = A * S1.x - B * S0.x;
+    const float y = A * S1.y - B * S0.y;
+
+    intersection = { x, y };
+
+    return(x >= FlexKit::Min(A_0.x, A_1.x) &&
+        x <= FlexKit::Max(A_0.x, A_1.x) &&
+        y >= FlexKit::Min(A_0.y, A_1.y) &&
+        y <= FlexKit::Max(A_0.y, A_1.y));
+}
+
+
+/************************************************************************************************/
+
+
+bool Intersects(const float2 A_0, const float2 A_1, const float2 B_0, const float2 B_1) noexcept
+{
+    float2 _;
+    return Intersects(A_0, A_1, B_0, B_1, _);
+}
+
+
+/************************************************************************************************/
+
+
+bool Intersects(const Triangle& A, const Triangle& B) noexcept
+{
+    const auto A_n = A.Normal();
+    const auto A_p = A.TriPoint();
+    const auto B_n = B.Normal();
+    const auto B_p = B.TriPoint();
+
+    bool infront = false;
+    bool behind = false;
+
+    float3 distances_A;
+    float3 distances_B;
+
+    for (size_t idx = 0; idx < 3; ++idx)
+    {
+        const auto t1 = B[idx] - A_p;
+        const auto dp1 = t1.dot(A_n);
+        const auto t2 = A[idx] - B_p;
+        const auto dp2 = t2.dot(B_n);
+
+        distances_B[idx] = dp1;
+        distances_A[idx] = dp2;
+    }
+
+    infront = (distances_B[0] > 0.0f) | (distances_B[1] > 0.0f) | (distances_B[2] > 0.0);
+    behind = (distances_B[0] < 0.0f) | (distances_B[1] < 0.0f) | (distances_B[2] < 0.0);
+
+    if (!(infront && behind))
+        return false;
+
+    infront = false;
+    behind = false;
+
+    infront = distances_A[0] > 0.0f | distances_A[1] > 0.0f | distances_A[2] > 0.0;
+    behind = distances_A[0] < 0.0f | distances_A[1] < 0.0f | distances_A[2] < 0.0;
+
+    if (!(infront && behind))
+        return false;
+
+    auto M_a = distances_A.Max();
+    auto M_b = distances_B.Max();
+
+    if (M_a < 0.00001f || M_b < 0.00001f)
+    {   // Coplanar
+        const float3 n = FlexKit::SSE_ABS(A_n);
+        int i0, i1;
+
+        if (n[0] > n[1])
+        {
+            if (n[0] > n[2])
+            {
+                i0 = 1;
+                i1 = 2;
+            }
+            else
+            {
+                i0 = 0;
+                i1 = 1;
+            }
+        }
+        else
+        {
+            if (n[2] > n[1])
+            {
+                i0 = 0;
+                i1 = 1;
+            }
+            else
+            {
+                i0 = 0;
+                i1 = 2;
+            }
+        }
+
+        const float2 XY_A[3] =
+        {
+            { A[0][i0], A[0][i1] },
+            { A[1][i0], A[1][i1] },
+            { A[2][i0], A[2][i1] }
+        };
+
+        const float2 XY_B[3] =
+        {
+            { B[0][i0], B[0][i1] },
+            { B[1][i0], B[1][i1] },
+            { B[2][i0], B[2][i1] }
+        };
+
+        // Edge to edge intersection testing
+
+        bool res = false;
+        for (size_t idx = 0; idx < 3; idx++)
+        {
+            for (size_t idx2 = 0; idx2 < 3; idx2++)
+            {
+                res |= Intersects(
+                    XY_A[(idx + idx2 + 0) % 3],
+                    XY_A[(idx + idx2 + 1) % 3],
+                    XY_B[(idx + idx2 + 0) % 3],
+                    XY_B[(idx + idx2 + 1) % 3]);
+            }
+        }
+
+
+        if (!res)
+        {
+            const auto P1 = XY_B[0];
+
+            const auto sign = [](auto& p1, auto& p2, auto& p3)
+            {
+                return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
+            };
+
+            const float S0 = sign(P1, XY_A[0], XY_A[1]);
+            const float S1 = sign(P1, XY_A[1], XY_A[2]);
+            const float S2 = sign(P1, XY_A[2], XY_A[0]);
+
+            const bool neg = S0 < 0.0f || S1 < 0.0f || S2 < 0.0f;
+            const bool pos = S0 > 0.0f || S1 > 0.0f || S2 > 0.0f;
+
+            return !(neg && pos);
+        }
+        else
+            return res;
+    }
+    else
+    {   // Non-Planar
+        const auto L_n = A_n.cross(B_n);
+        const FlexKit::Plane p{ B_n, B_p };
+
+        const FlexKit::Ray r[] = {
+            { (A[1] - A[0]).normal(), A[0] },
+            { (A[2] - A[1]).normal(), A[1] },
+            { (A[0] - A[2]).normal(), A[2] } };
+
+        const auto w0 = p.o - r[0].O;
+        const auto w1 = p.o - r[1].O;
+        const auto w2 = p.o - r[2].O;
+
+        const float3 W_dp = { w0.dot(p.n),      w1.dot(p.n),    w2.dot(p.n) };
+        const float3 V_dp = { r[0].D.dot(p.n),  r[1].D.dot(p.n), r[2].D.dot(p.n) };
+
+        const float3 i = W_dp / V_dp;
+
+        /*
+        const float i[] =
+        {
+            FlexKit::Intersects(r[0], p),
+            FlexKit::Intersects(r[1], p),
+            FlexKit::Intersects(r[2], p)
+        };
+        */
+        size_t idx = 0;
+        float d = INFINITY;
+
+        for (size_t I = 0; I < 3; I++)
+        {
+            //if (!std::isnan(i[I]) && !std::isinf(i[I]))
+            {
+                if (i[I] < d)
+                {
+                    idx = I;
+                    d = i[I];
+                }
+            }
+        }
+
+        const FlexKit::Ray L{ L_n, r[idx].R(i[idx]) };
+
+        const float3 A_L = {
+            ProjectPointOntoRay(A[0], L),
+            ProjectPointOntoRay(A[1], L),
+            ProjectPointOntoRay(A[2], L),
+        };
+
+        const float3 B_L = {
+            ProjectPointOntoRay(B[0], L),
+            ProjectPointOntoRay(B[1], L),
+            ProjectPointOntoRay(B[2], L),
+        };
+
+        const float a_min = A_L.Min();
+        const float a_max = A_L.Max();
+
+        const float b_min = B_L.Min();
+        const float b_max = B_L.Max();
+
+        return (a_min < b_max) & (b_min < a_max);
+    }
+}
+
 
 /************************************************************************************************/
 
@@ -154,95 +401,6 @@ std::vector<Vertex> CreateWireframeCube2(const float halfW)
     return vertices;
 }
 
-
-/************************************************************************************************/
-
-
-Triangle Triangle::Offset(FlexKit::float3 offset) const noexcept
-{
-    Triangle tri_out;
-
-    for (size_t I = 0; I < 3; I++)
-        tri_out[I] = position[I] + offset;
-
-    return tri_out;
-}
-
-
-FlexKit::float3& Triangle::operator [] (size_t idx) noexcept
-{
-    return position[idx];
-}
-
-
-const FlexKit::float3& Triangle::operator [] (size_t idx) const noexcept
-{
-    return position[idx];
-}
-
-
-FlexKit::AABB Triangle::GetAABB() const noexcept
-{
-    FlexKit::AABB aabb;
-    aabb += position[0];
-    aabb += position[1];
-    aabb += position[2];
-
-    return aabb;
-}
-
-
-const float3 Triangle::Normal() const noexcept
-{
-    return FlexKit::TripleProduct(position[0], position[1], position[2]);
-}
-
-
-const float3 Triangle::TriPoint() const noexcept
-{
-    return (position[0] + position[1] + position[2]) / 3;
-}
-
-
-const float3 Triangle::TriPoint(const FlexKit::float3 BaryCentricPoint) const noexcept
-{
-    return 
-        position[0] * BaryCentricPoint[0] +
-        position[1] * BaryCentricPoint[1] +
-        position[2] * BaryCentricPoint[2];
-}
-
-
-FlexKit::AABB ModifiableShape::GetAABB() const noexcept
-{
-    FlexKit::AABB aabb;
-
-    for (const auto& v : tris)
-    {
-        aabb += v.position[0];
-        aabb += v.position[1];
-        aabb += v.position[2];
-    }
-
-    return aabb;
-}
-
-
-FlexKit::AABB ModifiableShape::GetAABB(const float3 pos) const noexcept
-{
-    FlexKit::AABB aabb;
-
-    for (const auto& v : tris)
-    {
-        aabb += v.position[0];
-        aabb += v.position[1];
-        aabb += v.position[2];
-    }
-    
-    return aabb.Offset(pos);
-}
-
-
 /************************************************************************************************/
 
 
@@ -312,248 +470,12 @@ bool CSGBrush::IsLeaf() const noexcept
 }
 
 
-FlexKit::AABB CSGBrush::GetAABB() const noexcept
-{
-    return shape.GetAABB(position);
-}
-
-
 /************************************************************************************************/
 
 
-struct IntersectionPoints
+FlexKit::AABB CSGBrush::GetAABB() const noexcept
 {
-    float3 A;
-    float3 B;
-};
-
-
-float ProjectPointOntoRay(const FlexKit::float3& vector, const FlexKit::Ray& r) noexcept
-{
-    return (vector - r.O).dot(r.D);
-}
-
-
-bool Intersects(const float2 A_0, const float2 A_1, const float2 B_0, const float2 B_1, float2& intersection) noexcept
-{
-    const auto S0 = (A_1 - A_0);
-    const auto S1 = (B_1 - B_0);
-
-    if ((S1.y / S1.x - S0.y / S0.x) < 0.000001f)
-        return false; // Parallel
-
-    const float C = S0.x * S1.y - S1.y + S1.x;
-    const float A = A_0.x * A_1.y - A_0.y * A_1.x;
-    const float B = B_0.x * B_1.y - B_0.y * B_1.x;
-
-    const float x = A * S1.x - B * S0.x;
-    const float y = A * S1.y - B * S0.y;
-
-    intersection = { x, y };
-
-    return( x >= FlexKit::Min(A_0.x, A_1.x) &&
-            x <= FlexKit::Max(A_0.x, A_1.x) &&
-            y >= FlexKit::Min(A_0.y, A_1.y) &&
-            y <= FlexKit::Max(A_0.y, A_1.y));
-}
-
-
-bool Intersects(const float2 A_0, const float2 A_1, const float2 B_0, const float2 B_1) noexcept
-{
-    float2 _;
-    return Intersects(A_0, A_1, B_0, B_1, _);
-}
-
-
-bool Intersects(const Triangle& A, const Triangle& B) noexcept
-{
-    const auto A_n = A.Normal();
-    const auto A_p = A.TriPoint();
-    const auto B_n = B.Normal();
-    const auto B_p = B.TriPoint();
-
-    bool infront    = false;
-    bool behind     = false;
-
-    float3 distances_A;
-    float3 distances_B;
-
-    for (size_t idx = 0; idx < 3; ++idx)
-    {
-        const auto t1       = B[idx] - A_p;
-        const auto dp1      = t1.dot(A_n);
-        const auto t2       = A[idx] - B_p;
-        const auto dp2      = t2.dot(B_n);
-
-        distances_B[idx] = dp1;
-        distances_A[idx] = dp2;
-    }
-
-    infront = (distances_B[0] > 0.0f) | (distances_B[1] > 0.0f) | (distances_B[2] > 0.0);
-    behind  = (distances_B[0] < 0.0f) | (distances_B[1] < 0.0f) | (distances_B[2] < 0.0);
-
-    if(!(infront && behind))
-        return false;
-
-    infront = false;
-    behind  = false;
-
-    infront = distances_A[0] > 0.0f | distances_A[1] > 0.0f | distances_A[2] > 0.0;
-    behind  = distances_A[0] < 0.0f | distances_A[1] < 0.0f | distances_A[2] < 0.0;
-
-    if (!(infront && behind))
-        return false;
-
-    auto M_a = distances_A.Max();
-    auto M_b = distances_B.Max();
-
-    if (M_a < 0.00001f || M_b < 0.00001f)
-    {   // Coplanar
-        const float3 n = FlexKit::SSE_ABS(A_n);
-        int i0, i1;
-
-        if (n[0] > n[1])
-        {
-            if (n[0] > n[2])
-            {
-                i0 = 1;
-                i1 = 2;
-            }
-            else
-            {
-                i0 = 0;
-                i1 = 1;
-            }
-        }
-        else
-        {
-            if (n[2] > n[1])
-            {
-                i0 = 0;
-                i1 = 1;
-            }
-            else
-            {
-                i0 = 0;
-                i1 = 2;
-            }
-        }
-
-        const float2 XY_A[3] =
-        {
-            { A[0][i0], A[0][i1] },
-            { A[1][i0], A[1][i1] },
-            { A[2][i0], A[2][i1] }
-        };
-
-        const float2 XY_B[3] =
-        {
-            { B[0][i0], B[0][i1] },
-            { B[1][i0], B[1][i1] },
-            { B[2][i0], B[2][i1] }
-        };
-
-        // Edge to edge intersection testing
-
-        bool res = false;
-        for (size_t idx = 0; idx < 3; idx++)
-        {
-            for (size_t idx2 = 0; idx2 < 3; idx2++)
-            {
-                res |= Intersects(
-                    XY_A[(idx + idx2 + 0) % 3],
-                    XY_A[(idx + idx2 + 1) % 3],
-                    XY_B[(idx + idx2 + 0) % 3],
-                    XY_B[(idx + idx2 + 1) % 3]);
-            }
-        }
-
-
-        if (!res)
-        {
-            const auto P1 = XY_B[0];
-
-            const auto sign = [](auto& p1, auto& p2, auto& p3)
-            {
-                return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
-            };
-
-            const float S0 = sign(P1, XY_A[0], XY_A[1]);
-            const float S1 = sign(P1, XY_A[1], XY_A[2]);
-            const float S2 = sign(P1, XY_A[2], XY_A[0]);
-
-            const bool neg = S0 < 0.0f || S1 < 0.0f || S2 < 0.0f;
-            const bool pos = S0 > 0.0f || S1 > 0.0f || S2 > 0.0f;
-
-            return !(neg && pos);
-        }
-        else
-            return res;
-    }
-    else
-    {   // Non-Planar
-        const auto L_n = A_n.cross(B_n);
-        const FlexKit::Plane p{ B_n, B_p };
-
-        const FlexKit::Ray r[] = {
-            { (A[1] - A[0]).normal(), A[0] },
-            { (A[2] - A[1]).normal(), A[1] },
-            { (A[0] - A[2]).normal(), A[2] } };
-
-        const auto w0 = p.o - r[0].O;
-        const auto w1 = p.o - r[1].O;
-        const auto w2 = p.o - r[2].O;
-
-        const float3 W_dp = { w0.dot(p.n),      w1.dot(p.n),    w2.dot(p.n) };
-        const float3 V_dp = { r[0].D.dot(p.n),  r[1].D.dot(p.n), r[2].D.dot(p.n) };
-
-        const float3 i = W_dp / V_dp;
-
-        /*
-        const float i[] =
-        {
-            FlexKit::Intersects(r[0], p),
-            FlexKit::Intersects(r[1], p),
-            FlexKit::Intersects(r[2], p)
-        };
-        */
-        size_t idx = 0;
-        float d = INFINITY;
-
-        for (size_t I = 0; I < 3; I++)
-        {
-            //if (!std::isnan(i[I]) && !std::isinf(i[I]))
-            {
-                if (i[I] < d)
-                {
-                    idx = I;
-                    d   = i[I];
-                }
-            }
-        }
-
-        const FlexKit::Ray L{ L_n, r[idx].R(i[idx]) };
-
-        const float3 A_L = {
-            ProjectPointOntoRay(A[0], L),
-            ProjectPointOntoRay(A[1], L),
-            ProjectPointOntoRay(A[2], L),
-        };
-
-        const float3 B_L = {
-            ProjectPointOntoRay(B[0], L),
-            ProjectPointOntoRay(B[1], L),
-            ProjectPointOntoRay(B[2], L),
-        };
-
-        const float a_min = A_L.Min();
-        const float a_max = A_L.Max();
-
-        const float b_min = B_L.Min();
-        const float b_max = B_L.Max();
-
-        return (a_min < b_max) & (b_min < a_max);
-    }
+    return shape.GetAABB(position);
 }
 
 
@@ -643,62 +565,6 @@ void CSGBrush::Rebuild() noexcept
 /************************************************************************************************/
 
 
-struct RayTriIntersection_Res
-{
-    bool    res;
-    float   d;
-    float3  cord_bc;
-
-    operator bool() const noexcept { return res; }
-};
-
-
-/************************************************************************************************/
-
-
-RayTriIntersection_Res Intersects(const FlexKit::Ray& r, const Triangle& tri) noexcept
-{
-    static const float epsilon = 0.000001f;
-
-    const auto edge1    = tri[1] - tri[0];
-    const auto edge2    = tri[2] - tri[0];
-    const auto h        = r.D.cross(edge2);
-    const auto a        = edge1.dot(h);
-
-    if (abs(a) < epsilon)
-        return { false };
-
-    const auto f = 1.0f / a;
-    const auto s = r.O - tri[0];
-    const auto u = f * s.dot(h);
-
-    if (u < 0.0f || u > 1.0f)
-        return { false };
-
-    const auto q = s.cross(edge1);
-    const auto v = f * r.D.dot(q);
-
-    if (v < 0.0f || u + v > 1.0f)
-        return { false };
-
-    const auto t = f * edge2.dot(q);
-
-    if (t > epsilon)
-    {
-        const auto w = tri[0] - r.O;
-        const auto n = edge1.cross(edge2).normal();
-        const auto d = w.dot(n) / r.D.dot(n);
-
-        return { true, d, {  1.0f - u - v, u, v, } };
-    }
-    else
-        return { false };
-}
-
-
-/************************************************************************************************/
-
-
 std::optional<ModifiableShape::RayCast_result> ModifiableShape::RayCast(const FlexKit::Ray& r) const noexcept
 {
     if (!Intersects(r, GetAABB()))
@@ -735,9 +601,6 @@ std::optional<ModifiableShape::RayCast_result> ModifiableShape::RayCast(const Fl
         .faceSubIdx     = faceSubIdx
     };
 }
-
-
-/************************************************************************************************/
 
 
 std::optional<CSGBrush::RayCast_result> CSGBrush::RayCast(const FlexKit::Ray& r) const noexcept

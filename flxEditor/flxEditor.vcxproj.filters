@@ -134,7 +134,7 @@
     <ClCompile Include="PCH.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ExtraDependencies.cpp">
+    <ClCompile Include="ExtraTu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CSGComponent.cpp">
@@ -147,9 +147,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="EditorColliderComponent.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ModifiableShape.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="EditorResourcePickerDialog.cpp">
@@ -251,9 +248,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EditorColliderComponent.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ModifiableShape.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EditorAnimatorComponent.h">

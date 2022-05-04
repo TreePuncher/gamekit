@@ -915,8 +915,8 @@ namespace FlexKit
         float3(float val)	noexcept { pfloats = _mm_set_ps1(val); }
         float3(float X, float Y, float Z)	    noexcept { pfloats = _mm_set_ps(0.0f, Z, Y, X); }
         float3(const float2 in, float Z = 0)	noexcept { pfloats = _mm_setr_ps(in.x, in.y, Z, 0.0f); }
-        float3(const float3& a) noexcept { pfloats = a.pfloats; }
-        float3(const __m128& in) noexcept { pfloats = in; }
+        float3(const float3& a)     noexcept { pfloats = a.pfloats; }
+        float3(const __m128& in)    noexcept { pfloats = in; }
 
         float2 xy() const noexcept { return { x, y }; }
         float2 yz() const noexcept { return { y, z }; }
@@ -929,17 +929,26 @@ namespace FlexKit
         float3 yzx() const noexcept { return { y, z, x }; }
 
 
+        float3& operator = (const float* f) noexcept
+        {
+            pfloats = _mm_load_ps(f);
+            return *this;
+        }
+
+
         float3& operator = (float F) noexcept
         {
             pfloats = _mm_set_ps1(F);
             return *this;
         }
 
+
         float3& operator = (const float3& F) noexcept
         {
             pfloats = F.pfloats;
             return *this;
         }
+
 
         float& operator[] (const size_t index)	        noexcept { return *GetElement_ptr(pfloats, index); }
         float operator[]  (const size_t index)	const   noexcept { return GetElement(pfloats, index); }
@@ -1049,10 +1058,12 @@ namespace FlexKit
             return _mm_div_ps(pfloats, _mm_set1_ps(a));
         }
 
+
         float3 operator / (const float3& a) const noexcept
         {
             return _mm_div_ps(pfloats, a);
         }
+
 
         float3& operator /= (const float a) noexcept
         {
@@ -1060,11 +1071,13 @@ namespace FlexKit
             return *this;
         }
 
+
         float3& operator /= (const float3& a) noexcept
         {
             pfloats = _mm_div_ps(pfloats, a);
             return *this;
         }
+
 
         float3& Scale(float S) noexcept
         {
@@ -1083,6 +1096,7 @@ namespace FlexKit
         {
             return CrossProduct(pfloats, rhs.pfloats);
         }
+
 
         const float3 distance(const float3& b) const noexcept
         {

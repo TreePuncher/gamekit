@@ -1469,7 +1469,6 @@ namespace FlexKit
                 auto& animatedBrushes       = animatedPass->pvs;
                 const size_t poseBufferSize = AlignedSize<EntityPoses>() * animatedBrushes.size();
                 auto poseBuffer             = data.reserveCB(poseBufferSize);
-                EntityPoses poses;
 
 				ctx.SetPipelineState(resources.GetPipelineState(GBUFFERPASS_SKINNED));
 

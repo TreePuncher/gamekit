@@ -96,6 +96,13 @@ namespace FlexKit
 		}
 
 
+        static_vector(size_t initialSize) : static_vector()
+        {
+            for (size_t I = 0; I < initialSize; I++)
+                emplace_back();
+        }
+
+
 		template<unsigned int RHSIZE = 10> requires(std::is_trivially_copyable_v<TY_>)
 		static_vector(const static_vector<TY_, RHSIZE>& in)
 		{

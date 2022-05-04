@@ -864,7 +864,7 @@ namespace FlexKit
 			{
 				FreeAsset(RHandle);
 
-				GeometryTable.Handles			[Handle]	= Index;
+				GeometryTable.Handles			[Handle]	= (FlexKit::index_t)Index;
 				GeometryTable.GeometryIDs		[Index]		= GameRes->ID;
 				GeometryTable.Guids				[Index]		= GUID;
 				GeometryTable.ReferenceCounts	[Index]		= 1;
@@ -935,7 +935,7 @@ namespace FlexKit
 			{
 				FreeAsset(RHandle);
 
-				GeometryTable.Handles[Handle]			= Index;
+				GeometryTable.Handles[Handle]			= (FlexKit::index_t)Index;
 				GeometryTable.GeometryIDs[Index]		= GameRes->ID;
 				GeometryTable.Guids[Index]				= GameRes->GUID;
 				GeometryTable.ReferenceCounts[Index]	= 1;
@@ -989,7 +989,7 @@ namespace FlexKit
 
 			if(Buffer2TriMesh(GeometryTable.renderSystem, handle, buffer, bufferSize, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
 			{
-				GeometryTable.Handles[Handle]			= Index;
+				GeometryTable.Handles[Handle]			= (FlexKit::index_t)Index;
 				GeometryTable.GeometryIDs[Index]		= Blob->header.ID;
 				GeometryTable.Guids[Index]				= Blob->header.GUID;
 				GeometryTable.ReferenceCounts[Index]	= 1;

@@ -196,21 +196,6 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
         uint state;
         const float4 texel = source.SampleLevel(textureSampler, UV, mip, 0.0f, state);
 
-        #if 0
-        uint mipWidth;
-        uint mipHeight;
-        source.GetDimensions(mip, mipWidth, mipHeight, MIPCount);
-
-        const float tilesW = float(mipWidth)  / 256.0f;
-        const float tilesH = float(mipHeight) / 256.0f;
-
-        const uint tilex = tilesW * UV.x;
-        const uint tiley = tilesW * UV.y;
-
-        if(CheckAccessFullyMapped(state))
-            return float4(float(tilex) / tilesW, float(tiley) / tilesH, float(mip) / MIPCount, 1);
-        #endif
-
         if(CheckAccessFullyMapped(state))
             return texel;
 
@@ -277,7 +262,7 @@ float4 ColoredPolys(Forward_PS_IN IN, uint primitiveID : SV_PrimitiveID) : SV_TA
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2020 Robert May
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

@@ -141,6 +141,52 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    float Intersects(const Ray& R, const Plane& P) noexcept
+    {
+        const auto w = P.o - R.O;
+
+        return w.dot(P.n) / R.D.dot(P.n);
+    }
+
+
+    /************************************************************************************************/
+
+
+    bool Intersects(const Frustum frustum, const AABB aabb) noexcept
+    {
+        int Result = 1;
+
+        for (int I = 0; I < 6; ++I)
+        {
+            float px = (frustum.Planes[I].n.x >= 0.0f) ? aabb.Min.x : aabb.Max.x;
+            float py = (frustum.Planes[I].n.y >= 0.0f) ? aabb.Min.y : aabb.Max.y;
+            float pz = (frustum.Planes[I].n.z >= 0.0f) ? aabb.Min.z : aabb.Max.z;
+
+            float3 pV = float3{ px, py, pz } - frustum.Planes[I].o;
+            float dP = dot(frustum.Planes[I].n, pV);
+
+            if (dP >= 0)
+                return false;
+        }
+
+        return true;
+    }
+
+
+    /************************************************************************************************/
+
+
+    bool Intersects(const AABB a, const AABB b) noexcept
+    {
+        return  (a.Min.x <= b.Max.x && b.Min.x <= a.Max.x) &&
+            (a.Min.y <= b.Max.y && b.Min.y <= a.Max.y) &&
+            (a.Min.z <= b.Max.z && b.Min.z <= a.Max.z);
+    }
+
+
+    /************************************************************************************************/
+
+
     std::optional<float> Intersects(const Ray r, const AABB aabb)
     {
         const auto Normals = static_vector<float3, 3>(
@@ -519,7 +565,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2014-2018 Robert May
+Copyright (c) 2014-2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
