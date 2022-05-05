@@ -123,12 +123,91 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    ModifiableShape::wFace* ModifiableShape::wFace::_NeighborFaceIterator::operator->() noexcept
+    {
+        auto faceIdx = shape->wEdges[currentEdge].face;
+        return &shape->wFaces[faceIdx];
+    }
+
+
+    /************************************************************************************************/
+
+
+    bool ModifiableShape::wFace::_NeighborFaceIterator::operator == (_NeighborFaceIterator& rhs) noexcept
+    {
+        return itr == rhs.itr;
+    }
+
+
+    /************************************************************************************************/
+
+
+    void ModifiableShape::wFace::_NeighborFaceIterator::Next() noexcept
+    {
+        auto prev   = shape->wEdges[currentEdge].prev;
+        currentEdge = shape->wEdges[prev].oppositeNeighbor;
+
+        itr++;
+    }
+
+
+    void ModifiableShape::wFace::_NeighborFaceIterator::Prev() noexcept
+    {
+        auto twin   = shape->wEdges[currentEdge].oppositeNeighbor;
+        currentEdge = shape->wEdges[twin].next;
+        itr--;
+    }
+
+
+    /************************************************************************************************/
+
+
+    ModifiableShape::wFace::_NeighborFaceIterator ModifiableShape::wFace::_NeighborFaceIterator::operator ++() noexcept
+    {
+        auto itr = *this;
+
+        Next();
+        return itr;
+    }
+
+    ModifiableShape::wFace::_NeighborFaceIterator ModifiableShape::wFace::_NeighborFaceIterator::operator --() noexcept
+    {
+        auto itr = *this;
+
+        Prev();
+        return itr;
+    }
+
+
+    /************************************************************************************************/
+
+
+    ModifiableShape::wFace::_NeighborFaceIterator& ModifiableShape::wFace::_NeighborFaceIterator::operator ++(int) noexcept
+    {
+        Next();
+        return *this;
+    }
+
+
+    /************************************************************************************************/
+
+
+    ModifiableShape::wFace::_NeighborFaceIterator& ModifiableShape::wFace::_NeighborFaceIterator::operator --(int) noexcept
+    {
+        Prev();
+        return *this;
+    }
+
+
+    /************************************************************************************************/
+
+
     size_t ModifiableShape::wFace::GetEdgeCount(ModifiableShape& shape) const
     {
         size_t edgeCount = 0;
 
-        auto i = GetEdgeView(shape).begin();
-        auto e = GetEdgeView(shape).end();
+        auto i = EdgeView(shape).begin();
+        auto e = EdgeView(shape).end();
 
         for(;i != e; i++)
             edgeCount++;
@@ -646,7 +725,7 @@ namespace FlexKit
         if (face.edgeStart == -1)
             return {};
 
-        auto edgeView = face.GetEdgeView(*this);
+        auto edgeView = face.EdgeView(*this);
 
         ConstFaceIterator itr = edgeView.begin();
         ConstFaceIterator end = edgeView.end();
@@ -866,7 +945,7 @@ namespace FlexKit
     {
         freeFaces.push_back(faceIdx);
 
-        auto itr = wFaces[faceIdx].GetEdgeView(*this).begin();
+        auto itr = wFaces[faceIdx].EdgeView(*this).begin();
 
         for (; !itr.end(); itr++)
         {
