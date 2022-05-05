@@ -100,6 +100,12 @@ struct ModifiableShape
 
             auto begin  () { return FaceIterator{ shape, edgeStart }; }
             auto end    () { auto end = FaceIterator{ shape, edgeStart }; end--; return end; }
+
+
+            auto operator [] (uint32_t idx)
+            {
+                return (begin() + idx);
+            }
         };
 
         
@@ -113,11 +119,73 @@ struct ModifiableShape
         };
 
 
-        struct _NeighborEdgeView
+        struct _NeighborFaceIterator
+        {
+            ModifiableShape*  shape;
+            uint32_t          currentEdge;
+            uint32_t          itr;
+
+            struct Res
+            {
+                wFace&      face;
+                uint32_t    faceIdx;
+            };
+
+            wFace* operator -> () noexcept;
+
+            Res operator * () noexcept
+            {
+                auto faceIdx = shape->wEdges[currentEdge].face;
+                return Res{ shape->wFaces[faceIdx], faceIdx };
+            }
+
+            bool operator == (_NeighborFaceIterator& rhs) noexcept;
+
+            void Next() noexcept;
+            void Prev() noexcept;
+
+            _NeighborFaceIterator  operator ++() noexcept;
+            _NeighborFaceIterator  operator --() noexcept;
+
+            _NeighborFaceIterator& operator ++(int) noexcept;
+            _NeighborFaceIterator& operator --(int) noexcept;
+        };
+
+        struct _FaceView
         {
             ModifiableShape* shape;
-            uint32_t         edge;
-            uint32_t         vertex;
+            uint32_t         edgeStart;
+            uint32_t         offset;
+
+            auto begin()    const
+            {
+                _NeighborFaceIterator itr{ shape, edgeStart };
+
+                for(size_t I = 0; I < offset; I++)
+                    itr++;
+
+                return itr;
+            }
+
+            auto end()      const
+            {
+                auto start  = begin();
+                auto end    = start;
+                end++;
+
+                while (start.currentEdge != end.currentEdge)
+                    end++;
+
+                return end;
+            }
+        };
+
+
+        struct _NeighborEdgeView
+        {
+            ModifiableShape*    shape;
+            uint32_t            edge;
+            uint32_t            offset;
 
             struct Iterator
             {
@@ -160,27 +228,34 @@ struct ModifiableShape
                 void Next()
                 {
                     itr++;
-                    auto twin = shape->wEdges[current].oppositeNeighbor;
-                    current = shape->wEdges[twin].prev;
+                    current = shape->wEdges[Twin()].prev;
                 }
 
                 void Prev()
                 {
                     itr--;
-                    auto twin = shape->wEdges[current].oppositeNeighbor;
-                    current = shape->wEdges[twin].next;
+                    current = shape->wEdges[Twin()].next;
                 }
             };
 
-            auto begin()    { return Iterator{ shape, edge }; }
+            auto begin()
+            {
+                Iterator itr{ shape, edge };
+
+                for (size_t I = 0; I < offset && itr.Twin() != 0xffffffff; I++)
+                    itr++;
+
+                return itr;
+            }
 
             auto end()
             {
-                auto end = Iterator{ shape, edge };
+                auto start  = begin();
+                auto end    = start;
 
                 end++;
 
-                while (end.Twin() != 0xffffffff && end.current != edge)
+                while (end.Twin() != 0xffffffff && end.current != start.current)
                     ++end;
 
                 return end;
@@ -198,6 +273,12 @@ struct ModifiableShape
             bool        IsEdge() const  { return shape->IsEdgeVertex(shape->wEdges[current].vertices[0]); }
 
             _NeighborEdgeView EdgeView()
+            {
+                auto v = shape->wVerticeEdges[shape->wEdges[current].vertices[0]].front();
+                return { shape, v };
+            }
+
+            _FaceView FaceView()
             {
                 auto v = shape->wVerticeEdges[shape->wEdges[current].vertices[0]].front();
                 return { shape, v };
@@ -286,6 +367,25 @@ struct ModifiableShape
             wFace*              face;
             uint32_t            edgeStart;
 
+            auto& Edges()
+            {
+                return shape->wVerticeEdges[shape->wEdges[edgeStart].vertices[0]];
+            }
+
+            _NeighborEdgeView EdgeView(uint32_t offset = 0, uint32_t edgeOffset = 0)
+            {
+                auto edge = edgeStart;
+                for(size_t I = 0; I < edgeOffset; I++)
+                    edge = shape->wEdges[edge].next;
+
+                auto v = shape->wVerticeEdges[shape->wEdges[edge].vertices[0]].front();
+                return { shape, v, offset };
+            }
+
+            _FaceView FaceView(uint32_t offset = 0)
+            {
+                return { shape, edgeStart, offset };
+            }
 
             bool IsExteriorCorner() const
             {
@@ -334,11 +434,18 @@ struct ModifiableShape
         };
 
 
-        auto GetEdgeView    (ModifiableShape& shape) { return _EdgeView     { &shape, edgeStart }; }
-        auto GetVertexView  (ModifiableShape& shape) { return _VertexView   { &shape, this, edgeStart }; }
+        auto EdgeView    (ModifiableShape& shape) { return _EdgeView     { &shape, edgeStart }; }
+        auto VertexView  (ModifiableShape& shape, uint32_t offset = 0)
+        {
+            auto edge = edgeStart;
+            for(size_t I = 0; I < offset; I++)
+                edge = shape.wEdges[edge].next;
 
-        auto GetEdgeView    (const ModifiableShape& shape) const { return _EdgeViewConst    { &shape, edgeStart }; }
-        auto GetVertexView  (const ModifiableShape& shape) const { return _VertexViewConst  { &shape, edgeStart }; }
+            return _VertexView{ &shape, this, edge };
+        }
+
+        auto EdgeView    (const ModifiableShape& shape) const { return _EdgeViewConst    { &shape, edgeStart }; }
+        auto VertexView  (const ModifiableShape& shape) const { return _VertexViewConst  { &shape, edgeStart }; }
 
         size_t GetEdgeCount(ModifiableShape& shape) const;
 
@@ -359,10 +466,10 @@ struct ModifiableShape
             , current   { IN_end }
             , itr       { 0 } {}
 
-        const ModifiableShape* shape;
-        uint32_t    endIdx;
-        uint32_t    current;
-        int32_t     itr;
+        const ModifiableShape*  shape;
+        uint32_t                endIdx;
+        uint32_t                current;
+        int32_t                 itr;
 
         FlexKit::float3 GetPoint(uint32_t vertex) const;
         bool            end() noexcept;
