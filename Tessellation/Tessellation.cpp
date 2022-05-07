@@ -6,10 +6,10 @@ using namespace FlexKit;
 
 enum GregoryQuadPatchPoint
 {
-    p0 = 0,
-    p1 = 1,
-    p2 = 2,
-    p3 = 3,
+    p0      = 0,
+    p1      = 1,
+    p2      = 2,
+    p3      = 3,
 
     e0Minus = 4,
     e0Plus  = 5,
@@ -20,17 +20,17 @@ enum GregoryQuadPatchPoint
     e3Minus = 10,
     e3Plus  = 11,
 
-    f0Minus = 12,
-    f0Plus  = 13,
+    r0Minus = 12,
+    r0Plus  = 13,
 
-    f1Minus = 14,
-    f1Plus  = 15,
+    r1Minus = 14,
+    r1Plus  = 15,
 
-    f2Minus = 16,
-    f2Plus  = 17,
+    r2Minus = 16,
+    r2Plus  = 17,
 
-    f3Minus = 18,
-    f3Plus  = 19
+    r3Minus = 18,
+    r3Plus  = 19
 };
 
 
@@ -194,16 +194,43 @@ float3 GetPoint_E2_Plus(Patch& patch, ModifiableShape& shape)
     return e2_Plus;
 }
 
+
 /************************************************************************************************/
 
 
 float3 GetPoint_E2_Minus(Patch& patch, ModifiableShape& shape)
 {
-    const float3 P = GetPoint_P2(patch, shape);
-    const float3 Q = ApplyWeights(patch, shape, e2Minus);
-    const float3 e2_Minus = P + 2.0f / 3.0f * Q;
+    const float3 P          = GetPoint_P2(patch, shape);
+    const float3 Q          = ApplyWeights(patch, shape, e2Minus);
+    const float3 e2_Minus   = P + 2.0f / 3.0f * Q;
 
     return e2_Minus;
+}
+
+
+/************************************************************************************************/
+
+
+float3 GetPoint_E3_Plus(Patch& patch, ModifiableShape& shape)
+{
+    const float3 P          = GetPoint_P3(patch, shape);
+    const float3 Q          = ApplyWeights(patch, shape, e3Plus);
+    const float3 e3_Plus    = P + 2.0f / 3.0f * Q;
+
+    return e3_Plus;
+}
+
+
+/************************************************************************************************/
+
+
+float3 GetPoint_E3_Minus(Patch& patch, ModifiableShape& shape)
+{
+    const float3 P          = GetPoint_P3(patch, shape);
+    const float3 Q          = ApplyWeights(patch, shape, e3Minus);
+    const float3 e3_Minus   = P + 2.0f / 3.0f * Q;
+
+    return e3_Minus;
 }
 
 
@@ -491,8 +518,8 @@ void CalculateQuadEdgePoint_E0_Minus(uint32_t quadPatchIdx, Patch& patch, Modifi
     auto faceView   = vertexView.FaceView(1);
     auto E3         = edgeView[3];
 
-    const auto v0_Idx     = E3->vertices[0];
-    const auto N          = shape.wVerticeEdges[v0_Idx].size() / 2.0f;
+    const auto v_Idx    = E3->vertices[0];
+    const auto N        = shape.wVerticeEdges[v_Idx].size() / 2.0f;
 
     auto vertexEdgeView = vertexView.EdgeView(2);
     auto controlPoint = CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N);
@@ -513,11 +540,11 @@ void CalculateQuadEdgePoint_E1_Plus(uint32_t quadPatchIdx, Patch& patch, Modifia
     auto faceView   = vertexView.FaceView();
     auto E1         = edgeView[1];
 
-    const auto v1_Idx     = E1->vertices[0];
-    const auto N          = shape.wVerticeEdges[v1_Idx].size() / 2.0f;
+    const auto v_Idx = E1->vertices[0];
+    const auto N     = shape.wVerticeEdges[v_Idx].size() / 2.0f;
 
     auto vertexEdgeView = vertexView.EdgeView(2, 1);
-    auto controlPoint = CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N);
+    auto controlPoint   = CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N);
 
     patch.controlPoints[e1Plus] = controlPoint;
 
@@ -536,11 +563,11 @@ void CalculateQuadEdgePoint_E1_Minus(uint32_t quadPatchIdx, Patch& patch, Modifi
     auto faceView   = vertexView.FaceView(1);
     auto E1         = edgeView[1];
 
-    const auto v1_Idx     = E1->vertices[0];
-    const auto N          = shape.wVerticeEdges[v1_Idx].size() / 2.0f;
+    const auto v_Idx    = E1->vertices[0];
+    const auto N        = shape.wVerticeEdges[v_Idx].size() / 2.0f;
 
     auto vertexEdgeView = vertexView.EdgeView(3, 0);
-    auto controlPoint = CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N);
+    auto controlPoint   = CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N);
 
     patch.controlPoints[e1Minus] = controlPoint;
 
@@ -558,12 +585,11 @@ void CalculateQuadEdgePoint_E2_Plus(uint32_t quadPatchIdx, Patch& patch, Modifia
     auto faceView   = vertexView.FaceView(0);
     auto E2         = edgeView[2];
 
-    const auto v1_Idx     = E2->vertices[0];
-    const auto v2_Idx     = E2->vertices[1];
-    const auto N          = shape.wVerticeEdges[v1_Idx].size() / 2.0f;
+    const auto v_Idx    = E2->vertices[0];
+    const auto N        = shape.wVerticeEdges[v_Idx].size() / 2.0f;
 
-    auto vertexEdgeView = vertexView.EdgeView(0, 0);
-    auto controlPoint = CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N);
+    auto vertexEdgeView = vertexView.EdgeView(3, 0);
+    auto controlPoint   = CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N);
 
     patch.controlPoints[e2Plus] = controlPoint;
 
@@ -577,24 +603,64 @@ void CalculateQuadEdgePoint_E2_Plus(uint32_t quadPatchIdx, Patch& patch, Modifia
 void CalculateQuadEdgePoint_E2_Minus(uint32_t quadPatchIdx, Patch& patch, ModifiableShape& shape)
 {
     auto vertexView = shape.wFaces[quadPatchIdx].VertexView(shape, 2);
-    auto edgeView = shape.wFaces[quadPatchIdx].EdgeView(shape);
-    auto faceView = vertexView.FaceView(0);
-    auto E2 = edgeView[2];
+    auto edgeView   = shape.wFaces[quadPatchIdx].EdgeView(shape);
+    auto faceView   = vertexView.FaceView(1);
+    auto E2         = edgeView[2];
 
-    const auto v1_Idx = E2->vertices[0];
-    const auto v2_Idx = E2->vertices[1];
-    const auto N = shape.wVerticeEdges[v1_Idx].size() / 2.0f;
+    const auto v_Idx    = E2->vertices[0];
+    const auto N        = shape.wVerticeEdges[v_Idx].size() / 2.0f;
 
     auto vertexEdgeView = vertexView.EdgeView(0, 0);
-    auto controlPoint = CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N);
+    auto controlPoint   = CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N);
 
     patch.controlPoints[e2Minus] = controlPoint;
 
     auto E2_P = GetPoint_E2_Minus(patch, shape);
 }
 
-void CalculateQuadEdgePoint_E3_Plus(uint32_t quadPatchIdx, Patch& patch, ModifiableShape& shape) {}
-void CalculateQuadEdgePoint_E3_Minus(uint32_t quadPatchIdx, Patch& patch, ModifiableShape& shape) {}
+
+/************************************************************************************************/
+
+
+void CalculateQuadEdgePoint_E3_Plus(uint32_t quadPatchIdx, Patch& patch, ModifiableShape& shape)
+{
+    auto vertexView = shape.wFaces[quadPatchIdx].VertexView(shape, 3);
+    auto edgeView   = shape.wFaces[quadPatchIdx].EdgeView(shape);
+    auto faceView   = vertexView.FaceView(0);
+    auto E2         = edgeView[2];
+
+    const auto v_Idx    = E2->vertices[0];
+    const auto N        = shape.wVerticeEdges[v_Idx].size() / 2.0f;
+
+    auto vertexEdgeView = vertexView.EdgeView(0, 0);
+    auto controlPoint   = CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N);
+
+    patch.controlPoints[e3Plus] = controlPoint;
+
+    auto E2_P = GetPoint_E3_Plus(patch, shape);
+}
+
+
+/************************************************************************************************/
+
+
+void CalculateQuadEdgePoint_E3_Minus(uint32_t quadPatchIdx, Patch& patch, ModifiableShape& shape)
+{
+    auto vertexView = shape.wFaces[quadPatchIdx].VertexView(shape, 3);
+    auto edgeView   = shape.wFaces[quadPatchIdx].EdgeView(shape);
+    auto faceView   = vertexView.FaceView(1);
+    auto E2         = edgeView[3];
+
+    const auto v_Idx    = E2->vertices[0];
+    const auto N        = shape.wVerticeEdges[v_Idx].size() / 2.0f;
+
+    auto vertexEdgeView = vertexView.EdgeView(1, 0);
+    auto controlPoint   = CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N);
+
+    patch.controlPoints[e3Minus] = controlPoint;
+
+    auto E2_M = GetPoint_E3_Minus(patch, shape);
+}
 
 
 /************************************************************************************************/
