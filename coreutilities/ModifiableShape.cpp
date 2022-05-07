@@ -162,6 +162,26 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    ModifiableShape::wFace::_NeighborFaceIterator ModifiableShape::wFace::_NeighborFaceIterator::operator +(int n) noexcept
+    {
+        auto temp_itr = *this;
+
+        while (n < 0)
+        {
+            temp_itr--;
+            n++;
+        }
+
+        while (n > 0)
+        {
+            temp_itr++;
+            n--;
+        }
+
+        return temp_itr;
+    }
+
+
     ModifiableShape::wFace::_NeighborFaceIterator ModifiableShape::wFace::_NeighborFaceIterator::operator ++() noexcept
     {
         auto itr = *this;
@@ -169,6 +189,7 @@ namespace FlexKit
         Next();
         return itr;
     }
+
 
     ModifiableShape::wFace::_NeighborFaceIterator ModifiableShape::wFace::_NeighborFaceIterator::operator --() noexcept
     {
@@ -423,8 +444,12 @@ namespace FlexKit
     {
         FaceIterator out{ shape, endIdx };
 
-        for(size_t itr = 0; itr < rhs; itr++)
-            out++;
+        auto e = abs(rhs);
+        for (size_t itr = 0; itr < e; itr++)
+            if (rhs > 0)
+                out++;
+            else
+                out--;
 
         return out;
     }
