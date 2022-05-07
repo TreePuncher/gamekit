@@ -102,7 +102,7 @@ struct ModifiableShape
             auto end    () { auto end = FaceIterator{ shape, edgeStart }; end--; return end; }
 
 
-            auto operator [] (uint32_t idx)
+            auto operator [] (int32_t idx)
             {
                 return (begin() + idx);
             }
@@ -144,6 +144,8 @@ struct ModifiableShape
             void Next() noexcept;
             void Prev() noexcept;
 
+            _NeighborFaceIterator  operator +(int n) noexcept;
+
             _NeighborFaceIterator  operator ++() noexcept;
             _NeighborFaceIterator  operator --() noexcept;
 
@@ -178,6 +180,13 @@ struct ModifiableShape
 
                 return end;
             }
+
+
+            auto operator [](int n)
+            {
+                auto itr = begin() + n;
+                return *itr;
+            }
         };
 
 
@@ -185,7 +194,7 @@ struct ModifiableShape
         {
             ModifiableShape*    shape;
             uint32_t            edge;
-            uint32_t            offset;
+            int32_t             offset;
 
             struct Iterator
             {
@@ -228,13 +237,15 @@ struct ModifiableShape
                 void Next()
                 {
                     itr++;
-                    current = shape->wEdges[Twin()].prev;
+                    auto prev  = shape->wEdges[current].prev;
+                    current    = shape->wEdges[prev].oppositeNeighbor;
                 }
 
                 void Prev()
                 {
                     itr--;
-                    current = shape->wEdges[Twin()].next;
+                    auto twin   = Twin();
+                    current     = shape->wEdges[twin].next;
                 }
             };
 
@@ -242,8 +253,12 @@ struct ModifiableShape
             {
                 Iterator itr{ shape, edge };
 
-                for (size_t I = 0; I < offset && itr.Twin() != 0xffffffff; I++)
-                    itr++;
+                bool forward = offset >= 0;
+                for (size_t I = 0; I < abs(offset) && itr.Twin() != 0xffffffff; I++)
+                    if (forward)
+                        itr++;
+                    else
+                        itr--;
 
                 return itr;
             }
@@ -260,6 +275,23 @@ struct ModifiableShape
 
                 return end;
             }
+
+            auto operator [](int32_t i)
+            {
+                auto itr = begin();
+                auto n = abs(i);
+
+                if (i > 0)
+                {
+                    while(i--)
+                        itr++;
+                }
+                else
+                    while (i++ < 0)
+                        itr--;
+
+                return *itr;
+            }
         };
 
 
@@ -274,8 +306,7 @@ struct ModifiableShape
 
             _NeighborEdgeView EdgeView()
             {
-                auto v = shape->wVerticeEdges[shape->wEdges[current].vertices[0]].front();
-                return { shape, v };
+                return { shape, current };
             }
 
             _FaceView FaceView()
@@ -372,14 +403,13 @@ struct ModifiableShape
                 return shape->wVerticeEdges[shape->wEdges[edgeStart].vertices[0]];
             }
 
-            _NeighborEdgeView EdgeView(uint32_t offset = 0, uint32_t edgeOffset = 0)
+            _NeighborEdgeView EdgeView(int32_t offset = 0, int32_t edgeOffset = 0)
             {
                 auto edge = edgeStart;
                 for(size_t I = 0; I < edgeOffset; I++)
                     edge = shape->wEdges[edge].next;
 
-                auto v = shape->wVerticeEdges[shape->wEdges[edge].vertices[0]].front();
-                return { shape, v, offset };
+                return { shape, edge, offset };
             }
 
             _FaceView FaceView(uint32_t offset = 0)
@@ -434,7 +464,15 @@ struct ModifiableShape
         };
 
 
-        auto EdgeView    (ModifiableShape& shape) { return _EdgeView     { &shape, edgeStart }; }
+        auto EdgeView    (ModifiableShape& shape, uint32_t offset = 0)
+        {
+            auto edge = edgeStart;
+            for (size_t I = 0; I < offset; I++)
+                edge = shape.wEdges[edge].next;
+
+            return _EdgeView{ &shape, edge };
+        }
+
         auto VertexView  (ModifiableShape& shape, uint32_t offset = 0)
         {
             auto edge = edgeStart;
