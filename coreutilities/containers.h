@@ -109,7 +109,7 @@ namespace FlexKit
 		typedef Ty*			Iterator;
 		typedef const Ty*	Iterator_const;
 
-		inline  Vector(
+		Vector(
 			iAllocator*		Alloc = nullptr,
 			const size_t	InitialReservation = 0) :
                 Allocator   { Alloc },
@@ -128,8 +128,9 @@ namespace FlexKit
 			}
 		}
 
+
 		template<typename TY_Initial>
-		inline  Vector(
+		Vector(
 			iAllocator*		    Alloc,
 			const size_t	    InitialSize,
 			const TY_Initial&   Initial_V) :
@@ -152,7 +153,33 @@ namespace FlexKit
 			}
 		}
 
-		inline  Vector(const THISTYPE& RHS) :
+
+        template<typename TY_Initial>
+        explicit Vector(
+			iAllocator&		    Alloc,
+			const size_t	    InitialSize,
+			const TY_Initial&   Initial_V) :
+				Allocator   { &Alloc },
+				Max         { InitialSize },
+				Size        { 0 },
+				A           { nullptr }
+		{
+			if (InitialSize > 0)
+			{
+				FK_ASSERT(Allocator);
+				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * InitialSize);
+				FK_ASSERT(NewMem);
+
+				A   = NewMem;
+				Max = InitialSize;
+
+				for (size_t itr = 0; itr < InitialSize; ++itr)
+					emplace_back(Initial_V);
+			}
+		}
+
+
+		Vector(const THISTYPE& RHS) :
 			Allocator   { RHS.Allocator },
 			Max         { RHS.Max       },
 			Size        { RHS.Size      }
@@ -161,7 +188,7 @@ namespace FlexKit
 		}
 
 
-		inline  Vector(THISTYPE&& RHS) noexcept :
+		Vector(THISTYPE&& RHS) noexcept :
 			A           { RHS.A },
 			Allocator   { RHS.Allocator },
 			Max         { RHS.Max },
@@ -603,7 +630,8 @@ namespace FlexKit
 
 		Iterator_const begin()	const { return A; }
 		Iterator_const end()	const { return A + Size; }
-		size_t size()			const { return Size; }
+        size_t size()			const { return Size; }
+        size_t ByteSize()		const { return Size * sizeof(Ty); }
 
 
         Vector Copy(iAllocator& destination) const

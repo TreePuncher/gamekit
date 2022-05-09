@@ -78,7 +78,7 @@ namespace FlexKit
                             {
                                 if (enemyData.t2 > 5)
                                 {
-                                    enemyData.direction = float3(rand() % 20 - 10, 0, rand() % 20 - 10).normal();
+                                    enemyData.direction = float3((float)(rand() % 20 - 10), 0.0f, (float)(rand() % 20 - 10)).normal();
                                     enemyData.t2 = 0.0f;
                                 }
                                 else
@@ -122,7 +122,7 @@ namespace FlexKit
 
             if (pendingMove.magnitude() > 0.0001f)
             {
-                MoveController(gameObject, pendingMove * dt, filters, dt);
+                MoveController(gameObject, pendingMove * (float)dt, filters, dt);
 
                 auto newPosition = GetControllerPosition(gameObject);
 
@@ -151,7 +151,7 @@ namespace FlexKit
 
         SetParentNode(controllerNode, node);
         SetPositionL(node, { 0.0f, -1.5f, 0.0f });
-        Yaw(node, pi / 1.5f );
+        Yaw(node, (float)pi / 1.5f );
         auto& brushView             = gameObject.AddView<BrushView>(guraModel);
         brushView.GetBrush().Node   = node;
 

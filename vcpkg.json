@@ -16,6 +16,7 @@
         	"directxmesh",
         	"directxtk12",
         	"fmt",
+		"fp16",
             "imgui",
         	"implot",
 		"imguizmo",

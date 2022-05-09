@@ -756,7 +756,14 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		EIT_PATCH_CP_22,
 		EIT_PATCH_CP_23,
 		EIT_PATCH_CP_24,
-		EIT_PATCH_CP_25,
+        EIT_PATCH_CP_25,
+        EIT_PATCH_CP_26,
+        EIT_PATCH_CP_27,
+        EIT_PATCH_CP_28,
+        EIT_PATCH_CP_29,
+        EIT_PATCH_CP_30,
+        EIT_PATCH_CP_31,
+        EIT_PATCH_CP_32,
 	};
 
 
@@ -1675,6 +1682,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorHeap& DH);
 		void SetGraphicsShaderResourceView	(size_t idx, FrameBufferedResource* Resource, size_t Count, size_t ElementSize);
 		void SetGraphicsShaderResourceView	(size_t idx, Texture2D& Texture);
+		void SetGraphicsShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0);
         void SetGraphicsUnorderedAccessView (size_t idx, ResourceHandle resource, size_t offset = 0);
 
 
@@ -3611,7 +3619,7 @@ private:
 		void            UploadTexture(ResourceHandle handle, CopyContextHandle, TextureBuffer* buffer, size_t resourceCount); // Uses Upload Queue
 		void			UpdateResourceByUploadQueue(ID3D12Resource* Dest, CopyContextHandle, void* Data, size_t Size, size_t ByteSize, DeviceResourceState EndState);
 
-		Shader  LoadShader(const char* entryPoint, const char* ShaderType, const char* file);
+		Shader  LoadShader(const char* entryPoint, const char* ShaderType, const char* file, bool enable16Bit = false);
 
         PipelineStateLibraryDesc    CreatePipelibrary();
 
@@ -4018,7 +4026,7 @@ private:
 
 	// INTERNAL USE ONLY!
 	FLEXKITAPI UploadSegment	    ReserveUploadBuffer		(RenderSystem& renderSystem, const size_t uploadSize, CopyContextHandle = InvalidHandle_t);
-	FLEXKITAPI void				    MoveBuffer2UploadBuffer	(const UploadSegment& data, byte* source, size_t uploadSize);
+	FLEXKITAPI void				    MoveBuffer2UploadBuffer	(const UploadSegment& data, const byte* source, const size_t uploadSize);
 
 	FLEXKITAPI DescHeapPOS PushRenderTarget             (RenderSystem* RS, ResourceHandle    target, DescHeapPOS POS, const size_t MIPOffset = 0);
 
@@ -4055,6 +4063,8 @@ private:
 	ResourceHandle MoveTextureBufferToVRAM	(RenderSystem* RS, CopyContextHandle, TextureBuffer* buffer, DeviceFormat format);
 	ResourceHandle MoveTextureBuffersToVRAM	(RenderSystem* RS, CopyContextHandle, TextureBuffer* buffer, size_t MIPCount, size_t arrayCount, DeviceFormat format);
 	ResourceHandle MoveTextureBuffersToVRAM	(RenderSystem* RS, CopyContextHandle, TextureBuffer* buffer, size_t MIPCount, DeviceFormat format);
+
+    ResourceHandle MoveBufferToDevice       (RenderSystem* RS, const char* buffer, const size_t, CopyContextHandle ctx = InvalidHandle_t);
 
 
 	/************************************************************************************************/

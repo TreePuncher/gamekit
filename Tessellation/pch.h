@@ -4,3 +4,4 @@
 #include <..\coreutilities\Application.h>
 #include <..\coreutilities\ModifiableShape.h>
 #include "Win32Graphics.h"
+#include <fp16.h>

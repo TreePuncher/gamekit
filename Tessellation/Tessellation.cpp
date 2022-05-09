@@ -34,9 +34,9 @@ enum GregoryQuadPatchPoint
 };
 
 
-struct ControlPoint
+struct GPUVertex
 {
-    float3 P;
+    float P[3];
 };
 
 
@@ -86,20 +86,79 @@ struct PatchGroups
     std::vector<uint32_t> edgeTri;
 };
 
+
 struct Patch
 {
+    Patch()
+    {
+        memset(inputVertices, 0xff, sizeof(inputVertices));
+    }
+
     struct ControlPointWeights
     {
         ControlPointWeights() { memset(indices, 0xff, sizeof(indices)); }
 
         float       weights[32] = { 0.0f };
         uint32_t    indices[32];
+
     } controlPoints[20];
+
+    struct ControlPoint_F_n
+    {
+        uint32_t C_0[4];
+        uint32_t C_minusOne[4][4];
+    } F_n[4];
 
     uint32_t inputVertices[32];
     uint32_t vertCount = 0;
 };
 
+
+struct GPUPatch
+{
+    struct controlPoint
+    {
+        uint16_t weights[32];
+    } controlPoints[20];
+
+    struct ControlPoint_F_n
+    {
+        uint8_t C_0[4];
+        uint8_t C_n[16];
+    } F_n[4];
+
+    uint32_t indices[32];
+};
+
+
+/************************************************************************************************/
+
+GPUPatch CreateGPUPatch(const Patch& p)
+{
+    GPUPatch out;
+
+    for (size_t I = 0; I < 20; I++)
+    {
+        const auto& cp = p.controlPoints[I];
+
+        for (size_t J = 0; J < 32; J++)
+            out.controlPoints[I].weights[J] = fp16_ieee_from_fp32_value(0);
+
+        for (size_t J = 0; J < 32; J++)
+        {
+            if (cp.indices[J] != 0xffffffff)
+                out.controlPoints[I].weights[cp.indices[J]] = fp16_ieee_from_fp32_value(cp.weights[J]);
+        }
+    }
+
+    for (size_t J = 0; J < 32; J++)
+    {
+        const auto idx = p.inputVertices[J];
+        out.indices[J] = J;// (idx != 0xffffffff) ? p.inputVertices[J] : p.inputVertices[0];
+    }
+
+    return out;
+}
 
 /************************************************************************************************/
 
@@ -108,6 +167,26 @@ float3 ApplyWeights(Patch& patch, ModifiableShape& shape, uint32_t Idx)
 {
     auto& indices = patch.controlPoints[Idx].indices;
     auto& weights = patch.controlPoints[Idx].weights;
+
+    float3 P{ 0, 0, 0 };
+
+    for (size_t I = 0; I < 32; I++)
+    {
+        auto index = indices[I];
+
+        if (index != 0xffffffff) {
+            const float w = weights[I];
+            P += shape.wVertices[index].point * w;
+        }
+    }
+
+    return P;
+}
+
+float3 ApplyWeights(const Patch::ControlPointWeights& CP, const ModifiableShape& shape)
+{
+    const auto& indices = CP.indices;
+    const auto& weights = CP.weights;
 
     float3 P{ 0, 0, 0 };
 
@@ -764,6 +843,20 @@ void CalculateQuadControlPoint_R0_Plus(uint32_t quadPatchIdx, Patch& patch, Modi
     const auto a = faceView[0].faceIdx;
     const auto b = faceView[-1].faceIdx;
 
+    auto points_A = shape.GetFaceIndices(b);
+
+    patch.F_n[0].C_0[0] = points_A[0];
+    patch.F_n[0].C_0[1] = points_A[1];
+    patch.F_n[0].C_0[2] = points_A[2];
+    patch.F_n[0].C_0[3] = points_A[3];
+
+    auto points_B = shape.GetFaceIndices(b);
+    patch.F_n[0].C_minusOne[0][0] = points_B[0];
+    patch.F_n[0].C_minusOne[0][1] = points_B[1];
+    patch.F_n[0].C_minusOne[0][2] = points_B[2];
+    patch.F_n[0].C_minusOne[0][3] = points_B[3];
+
+    /*
     const auto r    = ApplyWeights(patch, shape, r0Plus);
     const auto C0   = shape.GetFaceCenterPoint(a);
     const auto C1   = shape.GetFaceCenterPoint(b);
@@ -773,6 +866,7 @@ void CalculateQuadControlPoint_R0_Plus(uint32_t quadPatchIdx, Patch& patch, Modi
     const auto P    = ApplyWeights(patch, shape, p0);
 
     const auto f    = (C1 * P + (float3(4.0f) - (2.0f * C0) - C1) * eP + (2 * C0 * eM) + r) / 4.0f;
+    */
 }
 
 
@@ -789,6 +883,7 @@ void CalculateQuadControlPoint_R0_Minus(uint32_t quadPatchIdx, Patch& patch, Mod
     auto controlPoint           = CalculateQuadControlPoint_Rn(vertexEdgeView, edgeView, faceView, shape, true);
     patch.controlPoints[r0Minus] = controlPoint;
 
+    /*
     const auto a = faceView[0].faceIdx;
     const auto b = faceView[-1].faceIdx;
 
@@ -801,6 +896,7 @@ void CalculateQuadControlPoint_R0_Minus(uint32_t quadPatchIdx, Patch& patch, Mod
     const auto P    = ApplyWeights(patch, shape, p0);
 
     const auto f    = (C1 * P + (float3(4.0f) - (2.0f * C0) - C1) * eM + (2 * C0 * eP) + r) / 4.0f;
+    */
 }
 
 
@@ -817,8 +913,16 @@ void CalculateQuadControlPoint_R1_Plus(uint32_t quadPatchIdx, Patch& patch, Modi
     auto controlPoint           = CalculateQuadControlPoint_Rn(vertexEdgeView, edgeView, faceView, shape);
     patch.controlPoints[r1Plus] = controlPoint;
 
-    const auto a = faceView[0].faceIdx;
     const auto b = faceView[-1].faceIdx;
+
+    auto points_B = shape.GetFaceIndices(b);
+    patch.F_n[0].C_minusOne[1][0] = points_B[0];
+    patch.F_n[0].C_minusOne[1][1] = points_B[1];
+    patch.F_n[0].C_minusOne[1][2] = points_B[2];
+    patch.F_n[0].C_minusOne[1][3] = points_B[3];
+
+    /*
+    const auto a    = faceView[0].faceIdx;
 
     const auto r    = ApplyWeights(patch, shape, r1Plus);
     const auto C0   = shape.GetFaceCenterPoint(a);
@@ -829,6 +933,7 @@ void CalculateQuadControlPoint_R1_Plus(uint32_t quadPatchIdx, Patch& patch, Modi
     const auto P    = ApplyWeights(patch, shape, p1);
 
     const auto f    = (C1 * P + (float3(4.0f) - (2.0f * C0) - C1) * eP + (2 * C0 * eM) + r) / 4.0f;
+    */
 }
 
 
@@ -845,6 +950,7 @@ void CalculateQuadControlPoint_R1_Minus(uint32_t quadPatchIdx, Patch& patch, Mod
     auto controlPoint               = CalculateQuadControlPoint_Rn(vertexEdgeView, edgeView, faceView, shape, true);
     patch.controlPoints[r1Minus]    = controlPoint;
 
+    /*
     auto a = faceView[-1].faceIdx;
     auto b = faceView[0].faceIdx;
 
@@ -857,6 +963,7 @@ void CalculateQuadControlPoint_R1_Minus(uint32_t quadPatchIdx, Patch& patch, Mod
     const auto P    = ApplyWeights(patch, shape, p1);
 
     const auto f    = (C1 * P + (float3(4.0f) - (2.0f * C0) - C1) * eP + (2 * C0 * eM) + r) / 4.0f;
+    */
 }
 
 
@@ -873,8 +980,16 @@ void CalculateQuadControlPoint_R2_Plus(uint32_t quadPatchIdx, Patch& patch, Modi
     auto controlPoint           = CalculateQuadControlPoint_Rn(vertexEdgeView, edgeView, faceView, shape);
     patch.controlPoints[r2Plus] = controlPoint;
 
-    const auto a    = faceView[0].faceIdx;
     const auto b    = faceView[-1].faceIdx;
+
+    auto points_B = shape.GetFaceIndices(b);
+    patch.F_n[0].C_minusOne[2][0] = points_B[0];
+    patch.F_n[0].C_minusOne[2][1] = points_B[1];
+    patch.F_n[0].C_minusOne[2][2] = points_B[2];
+    patch.F_n[0].C_minusOne[2][3] = points_B[3];
+
+    /*
+    const auto a = faceView[0].faceIdx;
 
     const auto r    = ApplyWeights(patch, shape, r2Plus);
     const auto C0   = shape.GetFaceCenterPoint(a);
@@ -884,7 +999,17 @@ void CalculateQuadControlPoint_R2_Plus(uint32_t quadPatchIdx, Patch& patch, Modi
     const auto eM   = GetPoint_E3_Minus(patch, shape);
     const auto P    = ApplyWeights(patch, shape, p2);
 
+    auto temp1 = patch.controlPoints[e3Minus];
+    auto temp2 = patch.controlPoints[e2Plus];
+
+    auto temp3 = ApplyWeights(temp1, shape);
+    auto temp4 = ApplyWeights(temp2, shape);
+
+    auto temp5 = C0 * eM;
+    auto temp6 = C1 * P;
+
     const auto f = (C1 * P + (float3(4.0f) - (2.0f * C0) - C1) * eP + (2 * C0 * eM) + r) / 4.0f;
+    */
 }
 
 
@@ -901,9 +1026,10 @@ void CalculateQuadControlPoint_R2_Minus(uint32_t quadPatchIdx, Patch& patch, Mod
     auto controlPoint               = CalculateQuadControlPoint_Rn(vertexEdgeView, edgeView, faceView, shape, true);
     patch.controlPoints[r2Minus]    = controlPoint;
 
-    auto a = faceView[-1].faceIdx;
     auto b = faceView[0].faceIdx;
 
+    /*
+    auto a = faceView[-1].faceIdx;
     const auto r    = ApplyWeights(patch, shape, r2Minus);
     const auto C0   = shape.GetFaceCenterPoint(a);
     const auto C1   = shape.GetFaceCenterPoint(b);
@@ -913,6 +1039,7 @@ void CalculateQuadControlPoint_R2_Minus(uint32_t quadPatchIdx, Patch& patch, Mod
     const auto P    = ApplyWeights(patch, shape, p2);
 
     const auto f    = (C1 * P + (float3(4.0f) - (2.0f * C0) - C1) * eP + (2 * C0 * eM) + r) / 4.0f;
+    */
 }
 
 /************************************************************************************************/
@@ -928,9 +1055,16 @@ void CalculateQuadControlPoint_R3_Plus(uint32_t quadPatchIdx, Patch& patch, Modi
     auto controlPoint           = CalculateQuadControlPoint_Rn(vertexEdgeView, edgeView, faceView, shape);
     patch.controlPoints[r3Plus] = controlPoint;
 
-    const auto a    = faceView[0].faceIdx;
     const auto b    = faceView[-1].faceIdx;
 
+    auto points_B = shape.GetFaceIndices(b);
+    patch.F_n[0].C_minusOne[3][0] = points_B[0];
+    patch.F_n[0].C_minusOne[3][1] = points_B[1];
+    patch.F_n[0].C_minusOne[3][2] = points_B[2];
+    patch.F_n[0].C_minusOne[3][3] = points_B[3];
+
+    /*
+    const auto a    = faceView[0].faceIdx;
     const auto r    = ApplyWeights(patch, shape, r3Plus);
     const auto C0   = shape.GetFaceCenterPoint(a);
     const auto C1   = shape.GetFaceCenterPoint(b);
@@ -940,6 +1074,7 @@ void CalculateQuadControlPoint_R3_Plus(uint32_t quadPatchIdx, Patch& patch, Modi
     const auto P    = ApplyWeights(patch, shape, p3);
 
     const auto f    = (C1 * P + (float3(4.0f) - (2.0f * C0) - C1) * eP + (2 * C0 * eM) + r) / 4.0f;
+    */
 }
 
 
@@ -954,8 +1089,9 @@ void CalculateQuadControlPoint_R3_Minus(uint32_t quadPatchIdx, Patch& patch, Mod
     auto vertexEdgeView = vertexView.EdgeView(1);
 
     auto controlPoint               = CalculateQuadControlPoint_Rn(vertexEdgeView, edgeView, faceView, shape, true);
-    patch.controlPoints[r2Minus]    = controlPoint;
+    patch.controlPoints[r3Minus]    = controlPoint;
 
+    /*
     auto a = faceView[-1].faceIdx;
     auto b = faceView[0].faceIdx;
 
@@ -968,6 +1104,7 @@ void CalculateQuadControlPoint_R3_Minus(uint32_t quadPatchIdx, Patch& patch, Mod
     const auto P    = ApplyWeights(patch, shape, p3);
 
     const auto f    = (C1 * P + (float3(4.0f) - (2.0f * C0) - C1) * eP + (2 * C0 * eM) + r) / 4.0f;
+    */
 }
 
 /************************************************************************************************/
@@ -1041,11 +1178,11 @@ public:
                 IN_framework.GetRenderSystem(),
                 FlexKit::DefaultWindowDesc({ 1920, 1080 }))) },
         rootSig         { IN_framework.core.GetBlockMemory() },
-        vertexBuffer    { IN_framework.GetRenderSystem().CreateVertexBuffer(MEGABYTE, false) },
-
-        controlWeights  { IN_framework.core.GetBlockMemory() }
+        vertexBuffer    { IN_framework.GetRenderSystem().CreateVertexBuffer(MEGABYTE, false) }
     {
-        PreComputePatches();
+        patches             = PreComputePatches(IN_framework.core.GetBlockMemory() );
+        vertices            = GetGregoryVertexBuffer(shape, framework.core.GetBlockMemory());
+        patchBuffer         = MoveBufferToDevice(framework.GetRenderSystem(), (const char*)patches.data(), patches.ByteSize());
 
         rootSig.SetParameterAsSRV(0, 0, 0);
         rootSig.AllowIA = true;
@@ -1053,7 +1190,6 @@ public:
         FK_ASSERT(rootSig.Build(IN_framework.GetRenderSystem(), IN_framework.core.GetTempMemory()));
 
         framework.GetRenderSystem().RegisterPSOLoader(ACC, { &rootSig, [&](auto* renderSystem) { return LoadPSO(renderSystem); } });
-
 
         FlexKit::EventNotifier<>::Subscriber sub;
         sub.Notify  = &FlexKit::EventsWrapper;
@@ -1109,7 +1245,7 @@ public:
     /************************************************************************************************/
 
 
-    void PreComputePatches()
+    Vector<GPUPatch> PreComputePatches(iAllocator& allocator)
     {
         // Patch 1
         shape.AddVertex(float3{ 0.0f, 0.0f, 0.0f }); // 0
@@ -1155,9 +1291,33 @@ public:
         auto classifiedPatches  = ClassifyPatches(shape);
         auto controlPoints      = CalculateControlPointWeights(classifiedPatches, shape);
 
+        Vector<GPUPatch> GPUControlPoints{ allocator };
+
+        for (auto& cp : controlPoints)
+            GPUControlPoints.emplace_back(CreateGPUPatch(cp));
+
         // TODO:
-        // Face Points, Tangent vectors
         //  Remap ControlPointWeights::Indicies from global buffer idx to patch local coord, [0, vertexCount ] -> [ 0 -> 32]
+
+        return GPUControlPoints;
+    }
+
+
+    /************************************************************************************************/
+
+
+    Vector<GPUVertex> GetGregoryVertexBuffer(ModifiableShape& shape, iAllocator& allocator)
+    {
+        Vector<GPUVertex> vertices{ allocator };
+
+        for (const auto& vertex : shape.wVertices)
+        {
+            GPUVertex p;
+            memcpy(&p, &vertex.point, sizeof(p));
+            vertices.push_back(p);
+        }
+
+        return vertices;
     }
 
 
@@ -1179,18 +1339,22 @@ public:
             },
             [&](DrawPatch& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
-                /*
-                VBPushBuffer        buffer  { vertexBuffer, 4096, *ctx.renderSystem };
-                VertexBufferDataSet VB      { controlPoints, buffer};
+                VBPushBuffer        buffer  { vertexBuffer, 8196, *ctx.renderSystem };
+                VertexBufferDataSet VB      { vertices, buffer};
+                VertexBufferDataSet IB      { patches[0].indices, buffer};
+
+                
 
                 ctx.SetRootSignature(rootSig);
+                ctx.SetGraphicsShaderResourceView(0, patchBuffer);
+
                 ctx.SetPipelineState(resources.GetPipelineState(ACC));
-                ctx.SetPrimitiveTopology(EInputTopology::EIT_PATCH_CP_20);
+                ctx.SetPrimitiveTopology(EInputTopology::EIT_PATCH_CP_32);
                 ctx.SetVertexBuffers({ VB });
+                ctx.SetIndexBuffer(IB);
                 ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
                 ctx.SetRenderTargets({ resources.GetRenderTarget(data.renderTarget) }, false);
-                ctx.Draw(4);
-                */
+                ctx.Draw(32);
             });
     }
 
@@ -1259,10 +1423,10 @@ public:
 
     ID3D12PipelineState* LoadPSO(FlexKit::RenderSystem* renderSystem)
     {
-        auto ACC_VShader = renderSystem->LoadShader("VS_Main", "vs_6_0", "assets\\shaders\\ACC.hlsl");
-        auto ACC_DShader = renderSystem->LoadShader("DS_Main", "ds_6_0", "assets\\shaders\\ACC.hlsl");
-		auto ACC_HShader = renderSystem->LoadShader("HS_Main", "hs_6_0", "assets\\shaders\\ACC.hlsl");
-        auto ACC_PShader = renderSystem->LoadShader("PS_Main", "ps_6_0", "assets\\shaders\\ACC.hlsl");
+        auto ACC_VShader = renderSystem->LoadShader("VS_Main", "vs_6_2", "assets\\shaders\\ACCQuad.hlsl", true);
+        auto ACC_DShader = renderSystem->LoadShader("DS_Main", "ds_6_2", "assets\\shaders\\ACCQuad.hlsl", true);
+		auto ACC_HShader = renderSystem->LoadShader("HS_Main", "hs_6_2", "assets\\shaders\\ACCQuad.hlsl", true);
+        auto ACC_PShader = renderSystem->LoadShader("PS_Main", "ps_6_2", "assets\\shaders\\ACCQuad.hlsl", true);
 
 
 		/*
@@ -1280,8 +1444,8 @@ public:
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "NORMAL",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 2, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+//			{ "NORMAL",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+//			{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 2, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		};
 
 
@@ -1310,7 +1474,7 @@ public:
 			PSO_Desc.SampleDesc.Quality    = 0;
 			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
 			PSO_Desc.DepthStencilState     = Depth_Desc;
-			PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
+			PSO_Desc.InputLayout           = { InputElements, 1 };
 			PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
 		}
 
@@ -1326,8 +1490,9 @@ public:
 
 
     FlexKit::ModifiableShape    shape;
-    Vector<float>               controlWeights;
-
+    Vector<GPUVertex>           vertices;
+    Vector<GPUPatch>            patches;
+    FlexKit::ResourceHandle     patchBuffer;
     FlexKit::VertexBufferHandle vertexBuffer;
     FlexKit::RootSignature      rootSig;
     FlexKit::Win32RenderWindow  renderWindow;
@@ -1348,6 +1513,9 @@ int main()
 
         auto& state = app.PushState<TessellationTest>(0);
 
+        app.GetCore().FPSLimit  = 30;
+        app.GetCore().FrameLock = true;
+        app.GetCore().vSync     = true;
         app.Run();
     }
     catch (...) { }
