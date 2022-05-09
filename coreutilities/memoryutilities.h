@@ -92,6 +92,8 @@ namespace FlexKit
 			free(&_ref);
 		}
 
+        operator iAllocator* () { return this; }
+
 	protected:
 		iAllocator() noexcept {}
 	};

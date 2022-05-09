@@ -2010,6 +2010,30 @@ namespace FlexKit
 		case EInputTopology::EIT_PATCH_CP_24:
 			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_24_CONTROL_POINT_PATCHLIST;
 			break;
+        case EInputTopology::EIT_PATCH_CP_25:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_25_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_26:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_26_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_27:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_27_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_28:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_28_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_29:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_29_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_30:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_30_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_31:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_31_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_32:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_32_CONTROL_POINT_PATCHLIST;
+            break;
 		default:
 			FK_ASSERT(0);
 		}
@@ -2089,6 +2113,15 @@ namespace FlexKit
 	{
 		DeviceContext->SetGraphicsRootShaderResourceView(idx, Texture->GetGPUVirtualAddress());
 	}
+
+
+    /************************************************************************************************/
+
+
+    void Context::SetGraphicsShaderResourceView(size_t idx, ResourceHandle resource, size_t offset)
+    {
+        DeviceContext->SetGraphicsRootShaderResourceView(idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress());
+    }
 
 
     /************************************************************************************************/
@@ -6044,7 +6077,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    Shader  RenderSystem::LoadShader(const char* entryPoint, const char* profile, const char* file)
+    Shader  RenderSystem::LoadShader(const char* entryPoint, const char* profile, const char* file, bool enable16Bit)
     {
         std::filesystem::path filePath{ file };
         auto parentPath = filePath.parent_path();
@@ -6078,14 +6111,15 @@ namespace FlexKit
         {
             L"-Od",
             L"/Zi",
-            L"-Qembed_debug"
+            L"-Qembed_debug",
+            L"-enable-16bit-types",
         };
 
 
 #if USING(DEBUGSHADERS)
-        const size_t argumentCount = 3;
+        const size_t argumentCount = 3 + (enable16Bit ? 1 : 0);
 #else
-        const size_t argumentCount = 0;
+        const size_t argumentCount = enable16Bit ? 1 : 0;
 #endif
 
         IDxcOperationResult* result = nullptr;
@@ -6161,7 +6195,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void MoveBuffer2UploadBuffer(const UploadSegment& data, byte* source, size_t uploadSize)
+	void MoveBuffer2UploadBuffer(const UploadSegment& data, const byte* source, const size_t uploadSize)
 	{
 		memcpy(data.buffer, source, data.uploadSize > uploadSize ? uploadSize : data.uploadSize);
 	}
@@ -9632,6 +9666,27 @@ namespace FlexKit
 		return textureHandle;
 	}
 
+
+    /************************************************************************************************/
+
+
+    ResourceHandle MoveBufferToDevice(RenderSystem* RS, const char* buffer, const size_t byteSize, CopyContextHandle copyCtx)
+    {
+        auto bufferResource = RS->CreateGPUResource(GPUResourceDesc::StructuredResource(byteSize));
+        UploadSegment upload = ReserveUploadBuffer(*RS, byteSize);
+        MoveBuffer2UploadBuffer(upload, (const byte*)buffer, byteSize);
+
+        auto deviceResource = RS->GetDeviceResource(bufferResource);
+        auto ctx = RS->_GetCopyContext(copyCtx);
+
+        if(auto state = RS->GetObjectState(bufferResource); state!= DRS_CopyDest)
+            ctx.Barrier(deviceResource, state, DRS_CopyDest);
+
+        ctx.CopyBuffer(deviceResource, 0, upload.resource, upload.offset, upload.uploadSize);
+        ctx.Barrier(deviceResource, DRS_CopyDest, DRS_Common);
+
+        return bufferResource;
+    }
 
 
 	/************************************************************************************************/
