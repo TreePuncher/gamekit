@@ -1744,7 +1744,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void SetSOTargets		(static_vector<D3D12_STREAM_OUTPUT_BUFFER_VIEW, 4> SOViews);
 
-		void Draw					(size_t VertexCount, size_t BaseVertex = 0);
+		void Draw					(size_t VertexCount, size_t BaseVertex = 0, size_t baseIndex = 0);
 		void DrawInstanced			(size_t VertexCount, size_t BaseVertex = 0, size_t instanceCount = 0, size_t instanceOffset = 0);
 		void DrawIndexed			(size_t IndexCount, size_t IndexOffet = 0, size_t BaseVertex = 0);
 		void DrawIndexedInstanced	(size_t IndexCount, size_t IndexOffet = 0, size_t BaseVertex = 0, size_t InstanceCount = 1, size_t InstanceOffset = 0);

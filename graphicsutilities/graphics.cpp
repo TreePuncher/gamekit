@@ -2937,10 +2937,10 @@ namespace FlexKit
 	}
 
 
-	void Context::Draw(size_t VertexCount, size_t BaseVertex)
+	void Context::Draw(size_t VertexCount, size_t BaseVertex, size_t baseIndex)
 	{
 		UpdateResourceStates();
-		DeviceContext->DrawInstanced(VertexCount, 1, BaseVertex, 0);
+		DeviceContext->DrawInstanced(VertexCount, 1, BaseVertex, baseIndex);
 	}
 
 
@@ -6107,23 +6107,24 @@ namespace FlexKit
 
         IDxcCompiler2* debugCompiler = nullptr;
         hlslCompiler->QueryInterface<IDxcCompiler2>(&debugCompiler);
-        LPCWSTR arguments[] =
-        {
-            L"-Od",
-            L"/Zi",
-            L"-Qembed_debug",
-            L"-enable-16bit-types",
-        };
 
+        static_vector<LPCWSTR> arguments;
 
 #if USING(DEBUGSHADERS)
-        const size_t argumentCount = 3 + (enable16Bit ? 1 : 0);
+        arguments.push_back(L"-Od");
+        arguments.push_back(L"/Zi");
+        arguments.push_back(L"-Qembed_debug");
+
+        if(enable16Bit)
+            arguments.push_back(L"-enable-16bit-types");
 #else
-        const size_t argumentCount = enable16Bit ? 1 : 0;
+
+        if (enable16Bit)
+            arguments.push_back(L"-enable-16bit-types");
 #endif
 
         IDxcOperationResult* result = nullptr;
-        auto HR2 = hlslCompiler->Compile(blob, filenameW, entryPoint != nullptr ? entryPointW : nullptr, profileW, arguments, argumentCount, nullptr, 0, &includeHandler, &result);
+        auto HR2 = hlslCompiler->Compile(blob, filenameW, entryPoint != nullptr ? entryPointW : nullptr, profileW, arguments.data(), arguments.size(), nullptr, 0, &includeHandler, &result);
 
         if (FAILED(HR2))
         {
@@ -6152,7 +6153,7 @@ namespace FlexKit
                 std::cin >> str;
 
                 HR1 = hlslLibrary->CreateBlobFromFile(fileW, nullptr, &blob);
-                HR2 = hlslCompiler->Compile(blob, filenameW, entryPointW, profileW, arguments, argumentCount, nullptr, 0, &includeHandler, &result);
+                HR2 = hlslCompiler->Compile(blob, filenameW, entryPointW, profileW, arguments.data(), arguments.size(), nullptr, 0, &includeHandler, &result);
 
                 result->GetStatus(&status);
             }
