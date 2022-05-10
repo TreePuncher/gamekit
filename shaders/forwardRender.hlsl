@@ -101,6 +101,9 @@ Forward_VS_OUT Forward_VS(Vertex In)
 }
 
 
+/************************************************************************************************/
+
+
 struct VertexSkinned
 {
     float3 POS		: POSITION;
@@ -152,6 +155,10 @@ float4 DepthPass_VS(float3 POS : POSITION) : SV_POSITION
 {
     return mul(PV, mul(WT, float4(POS, 1)));
 }
+
+
+/************************************************************************************************/
+
 
 struct Forward_PS_IN
 {
@@ -205,6 +212,10 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
     return float4(1.0f, 0.0f, 1.0f, 0.0f); // NO PAGES LOADED!
 }
 
+
+/************************************************************************************************/
+
+
 Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 {
     Deferred_OUT gbuffer;
@@ -227,6 +238,10 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
     return gbuffer;
 }
 
+
+/************************************************************************************************/
+
+
 float4 Forward_PS(Forward_PS_IN IN) : SV_TARGET
 {
     float3 Color = float3(0, 0, 0);
@@ -237,6 +252,7 @@ float4 FlatWhite(Forward_PS_IN IN) : SV_TARGET
 {
     return float4(1, 1, 1, 1);
 }
+
 
 /************************************************************************************************/
 

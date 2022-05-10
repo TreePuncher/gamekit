@@ -3,7 +3,7 @@
 
 #define PI 3.14159265359
 
-enum GregoryQuadPatchPoint
+enum GregoryQuadControlPoints
 {
     p0      = 0,
     p1      = 1,
@@ -33,25 +33,47 @@ enum GregoryQuadPatchPoint
 };
 
 
+//*************************************************************************************
+
+
+// Gregory Quad Patch
+//(P3)------(e3-)------(e2+)-------(P2)
+// |          |          |           |
+// |          |          |           |
+// |        (f3-)      (f2+)         |
+// |        ____         ____        |
+// |                                 |
+//(e3+)---(f3+)            (f2-)---(e2-)
+// |                                 |
+// |                                 |
+// |                                 |
+// |                                 |
+// |                                 |
+//(e0-)---(f0-)            (f1+)---(e1+)
+// |       _____         ______      |
+// |                                 |
+// |        (f0+)      (f1-)         |
+// |          |          |           |
+// |          |          |           |
+//(P0)------(e0+)------(e1-)-------(P1)
+
+
+//*************************************************************************************
+
 
 struct VS_Input
 {
     float3 p : POSITION;
-    //float3 n : NORMAL;
-    //float2 t : TEXCOORD;
 };
 
 struct HS_Input
 {
     float4 p    : SV_POSITION;
-    //float3 n    : NORMAL;
-    //float2 t    : TEXCOORD;
 };
 
 struct PS_Input
 {
     float4 p : SV_POSITION;
-    //float3 n : NORMAL;
     float2 t : TEXCOORD;
 };
 
@@ -63,14 +85,9 @@ struct ControlPoint
 struct GregoryPatch
 {
     ControlPoint controlPoints[20];
-    /*
 
-    struct ControlPoint_F_n
-    {
-        uint C_0;
-        uint C_n[2];
-    } F_n[4];
-    */
+    uint C_0;
+    uint F_n[4];
 };
 
 
@@ -80,10 +97,40 @@ StructuredBuffer<GregoryPatch> patch : register(t0);
 //*************************************************************************************
 
 
+cbuffer CameraConstants : register(b0)
+{
+    float4x4 View;
+    float4x4 ViewI;
+    float4x4 Proj;
+    float4x4 PV;				// Projection x View
+    float4x4 PVI;
+    float4   CameraPOS;
+    float  	 MinZ;
+    float  	 MaxZ;
+    float    AspectRatio;
+    float    FOV;
+
+    float3   TLCorner_VS;
+    float3   TRCorner_VS;
+
+    float3   BLCorner_VS;
+    float3   BRCorner_VS;
+};
+
+
+cbuffer LocalConstants : register(b1)
+{
+    float4x4 WT;
+};
+
+
+//*************************************************************************************
+
+
 HS_Input VS_Main(VS_Input input, const uint vid : SV_VertexID)
 {
     HS_Input output;
-    output.p = float4(input.p + float3(-1, -1, 0), 1);
+    output.p = float4(input.p + float3(0, 0, 0), 1);
     //output.normal   = input.normal;
     //output.texcoord = input.texcoord;
 
@@ -105,30 +152,173 @@ struct Gregory_CP
 
 struct PatchConstants_Output
 {
-    float Edges[4]        : SV_TessFactor;
-    float Inside[2]       : SV_InsideTessFactor;
+    float Edges[4]  : SV_TessFactor;
+    float Inside[2] : SV_InsideTessFactor;
 
-    //float3 Bezier_CP[16] : BZ_CONTROLPOINTS;
+    float3 gregoryPatch[20] : BZ_CONTROLPOINTS;
 };
 
 
 //*************************************************************************************
 
 
+uint4 GetFaceIndices(const uint c)
+{
+    const uint p1 = (c & (0xff << 0))  >> 0;
+    const uint p2 = (c & (0xff << 8))  >> 8;
+    const uint p3 = (c & (0xff << 16)) >> 16;
+    const uint p4 = (c & (0xff << 24)) >> 24;
+
+    return uint4(p1, p2, p3, p4);
+}
+
+
+float3 GetFaceMidPoint(uint4 indices, in InputPatch<HS_Input, 32> patch)
+{
+    const float3 pos =
+        ((indices[0] != 0xff || true) ? patch[indices[0]].p : float3(0, 0, 0)) +
+        ((indices[1] != 0xff || true) ? patch[indices[1]].p : float3(0, 0, 0)) +
+        ((indices[2] != 0xff || true) ? patch[indices[2]].p : float3(0, 0, 0)) +
+        ((indices[3] != 0xff || true) ? patch[indices[3]].p : float3(0, 0, 0));
+
+    const float a =
+        (indices[0] != 0xff ? 1.0f : 0.0f) +
+        (indices[1] != 0xff ? 1.0f : 0.0f) +
+        (indices[2] != 0xff ? 1.0f : 0.0f) +
+        (indices[3] != 0xff ? 1.0f : 0.0f);
+
+    return pos / a;
+}
+
+
+//*************************************************************************************
+
+
+float3 CalculateFacePoint(
+    in const float3 C0,
+    in const float3 C1,
+    in const float3 P,
+    in const float3 eP,
+    in const float3 eM,
+    in const float3 r)
+{
+    return (C1 * P + (4.0f - (2.0f * C0) - C1) * eP + (2 * C0 * eM) + r) / 4.0f;
+}
+
+
+//*************************************************************************************
+
+
 PatchConstants_Output PatchConstants(
-    InputPatch<HS_Input, 32>            patch,
+    const InputPatch<HS_Input, 32>      inputPoints,
     const OutputPatch<Gregory_CP, 20>   controlPoints,
     uint                                patchIdx : SV_PRIMITIVEID
 )
 {
-    PatchConstants_Output output;
-    output.Edges[0] = 3.0f;
-    output.Edges[1] = 3.0f;
-    output.Edges[2] = 3.0f;
-    output.Edges[3] = 3.0f;
+    const uint4 F0  = GetFaceIndices(patch[patchIdx].C_0);
+    const float3 C0 = GetFaceMidPoint(F0, inputPoints);
 
-    output.Inside[0] = 3.0f;
-    output.Inside[1] = 3.0f;
+    const uint4 N1  = GetFaceIndices(patch[patchIdx].F_n[0]);
+    const float3 C1 = GetFaceMidPoint(N1, inputPoints);
+
+    const uint4 N2  = GetFaceIndices(patch[patchIdx].F_n[1]);
+    const float3 C2 = GetFaceMidPoint(N2, inputPoints);
+
+    const uint4 N3  = GetFaceIndices(patch[patchIdx].F_n[2]);
+    const float3 C3 = GetFaceMidPoint(N3, inputPoints);
+
+    const uint4 N4  = GetFaceIndices(patch[patchIdx].F_n[3]);
+    const float3 C4 = GetFaceMidPoint(N4, inputPoints);
+
+    PatchConstants_Output output;
+    output.Edges[0] = 24.0f;
+    output.Edges[1] = 24.0f;
+    output.Edges[2] = 24.0f;
+    output.Edges[3] = 24.0f;
+
+    output.Inside[0] = 24.0f;
+    output.Inside[1] = 24.0f;
+
+    output.gregoryPatch[p0] = controlPoints[p0].p;
+    output.gregoryPatch[p1] = controlPoints[p1].p;
+    output.gregoryPatch[p2] = controlPoints[p2].p;
+    output.gregoryPatch[p3] = controlPoints[p3].p;
+
+    output.gregoryPatch[e0Minus]    = controlPoints[p0].p + 2.0f / 3.0f * controlPoints[e0Minus].p;
+    output.gregoryPatch[e0Plus]     = controlPoints[p0].p + 2.0f / 3.0f * controlPoints[e0Plus].p;
+
+    output.gregoryPatch[e1Minus]    = controlPoints[p1].p + 2.0f / 3.0f * controlPoints[e1Minus].p;
+    output.gregoryPatch[e1Plus]     = controlPoints[p1].p + 2.0f / 3.0f * controlPoints[e1Plus].p;
+
+    output.gregoryPatch[e2Plus]     = controlPoints[p2].p + 2.0f / 3.0f * controlPoints[e2Plus].p;
+    output.gregoryPatch[e2Minus]    = controlPoints[p2].p + 2.0f / 3.0f * controlPoints[e2Minus].p;
+
+    output.gregoryPatch[e3Plus]     = controlPoints[p3].p + 2.0f / 3.0f * controlPoints[e3Plus].p;
+    output.gregoryPatch[e3Minus]    = controlPoints[p3].p + 2.0f / 3.0f * controlPoints[e3Minus].p;
+
+    output.gregoryPatch[r0Plus] =
+        CalculateFacePoint(
+            C0, C1,
+            output.gregoryPatch[p0],
+            output.gregoryPatch[e0Plus],
+            output.gregoryPatch[e1Minus],
+            controlPoints[r0Plus].p);
+
+    output.gregoryPatch[r0Minus] =
+        CalculateFacePoint(
+            C0, C4,
+            output.gregoryPatch[p0],
+            output.gregoryPatch[e0Minus],
+            output.gregoryPatch[e3Plus],
+            controlPoints[r0Minus].p);
+
+    output.gregoryPatch[r1Plus] =
+        CalculateFacePoint(
+            C0, C2,
+            output.gregoryPatch[p1],
+            output.gregoryPatch[e1Plus],
+            output.gregoryPatch[e2Minus],
+            controlPoints[r1Plus].p);
+
+    output.gregoryPatch[r1Minus] =
+        CalculateFacePoint(
+            C0, C1,
+            output.gregoryPatch[p1],
+            output.gregoryPatch[e1Minus],
+            output.gregoryPatch[e0Plus],
+            controlPoints[r1Minus].p);
+
+    output.gregoryPatch[r2Plus] =
+        CalculateFacePoint(
+            C0, C3,
+            output.gregoryPatch[p2],
+            output.gregoryPatch[e2Plus],
+            output.gregoryPatch[e3Minus],
+            controlPoints[r2Plus].p);
+
+    output.gregoryPatch[r2Minus] =
+        CalculateFacePoint(
+            C0, C2,
+            output.gregoryPatch[p2],
+            output.gregoryPatch[e2Minus],
+            output.gregoryPatch[e1Plus],
+            controlPoints[r2Minus].p);
+
+    output.gregoryPatch[r3Plus] =
+        CalculateFacePoint(
+            C0, C4,
+            output.gregoryPatch[p3],
+            output.gregoryPatch[e3Plus],
+            output.gregoryPatch[e0Minus],
+            controlPoints[r3Plus].p);
+
+    output.gregoryPatch[r3Minus] =
+        CalculateFacePoint(
+            C0, C3,
+            output.gregoryPatch[p3],
+            output.gregoryPatch[e3Minus],
+            output.gregoryPatch[e2Plus],
+            controlPoints[r3Minus].p);
 
     return output;
 }
@@ -138,12 +328,12 @@ PatchConstants_Output PatchConstants(
 
 
 [domain("quad")]
-[partitioning("integer")]
+[partitioning("fractional_even")]
 [outputtopology("triangle_cw")]
 [outputcontrolpoints(20)]
 [patchconstantfunc("PatchConstants")]
 Gregory_CP HS_Main(
-    InputPatch<HS_Input, 32>            inputPatch,
+    InputPatch<HS_Input, 32>    inputPatch,
     const uint                  I           : SV_OutputControlPointID,
     const uint                  patchIdx    : SV_PrimitiveID)
 {
@@ -170,11 +360,102 @@ PS_Input DS_Main(
 {
     PS_Input output;
 
-    output.p =
-        float4(lerp(lerp(controlPoints[p0].p, controlPoints[p1].p, UV.x),
-                    lerp(controlPoints[p3].p, controlPoints[p2].p, UV.x), UV.y),
-               1.0f);
+    const float u = UV.x;
+    const float v = UV.y;
+    const float U = 1 - UV.x;
+    const float V = 1 - UV.y;
 
+    float d11 = u + v; if (u + v == 0.0f) d11 = 1.0f;
+    float d12 = U + v; if (U + v == 0.0f) d12 = 1.0f;
+    float d21 = u + V; if (u + V == 0.0f) d21 = 1.0f;
+    float d22 = U + V; if (U + V == 0.0f) d22 = 1.0f;
+
+    float3 bezierPatch[4][4];
+    bezierPatch[0][0] = constants.gregoryPatch[p0];
+    bezierPatch[0][1] = constants.gregoryPatch[e0Plus];
+    bezierPatch[0][2] = constants.gregoryPatch[e1Minus];
+    bezierPatch[0][3] = constants.gregoryPatch[p1];
+
+    bezierPatch[1][0] = constants.gregoryPatch[e0Minus];
+    bezierPatch[1][1] = (u * constants.gregoryPatch[r0Plus] + v * constants.gregoryPatch[r0Minus]) / d11;
+    bezierPatch[1][2] = (U * constants.gregoryPatch[r1Minus] + v * constants.gregoryPatch[r1Plus]) / d12;
+    bezierPatch[1][3] = constants.gregoryPatch[e1Plus];
+
+    bezierPatch[2][0] = constants.gregoryPatch[e3Plus];
+    bezierPatch[2][1] = (u * constants.gregoryPatch[r3Minus] + V * constants.gregoryPatch[r3Plus]) / d21;
+    bezierPatch[2][2] = (U * constants.gregoryPatch[r2Plus] + V * constants.gregoryPatch[r2Minus]) / d22;
+    bezierPatch[2][3] = constants.gregoryPatch[e2Minus];
+
+    bezierPatch[3][0] = constants.gregoryPatch[p3];
+    bezierPatch[3][1] = constants.gregoryPatch[e3Minus]; 
+    bezierPatch[3][2] = constants.gregoryPatch[e2Plus];
+    bezierPatch[3][3] = constants.gregoryPatch[p2];
+
+    const float3 i0 =
+        lerp(
+            lerp(
+                lerp(bezierPatch[0][0], bezierPatch[0][1], u),
+                lerp(bezierPatch[0][1], bezierPatch[0][2], u),
+                u),
+            lerp(
+                lerp(bezierPatch[0][1], bezierPatch[0][2], u),
+                lerp(bezierPatch[0][2], bezierPatch[0][3], u),
+                u),
+            u);
+
+    const float3 i1 =
+        lerp(
+            lerp(
+                lerp(bezierPatch[1][0], bezierPatch[1][1], u),
+                lerp(bezierPatch[1][1], bezierPatch[1][2], u),
+                u),
+            lerp(
+                lerp(bezierPatch[1][1], bezierPatch[1][2], u),
+                lerp(bezierPatch[1][2], bezierPatch[1][3], u),
+                u),
+            u);
+
+    const float3 i2 =
+        lerp(
+            lerp(
+                lerp(bezierPatch[2][0], bezierPatch[2][1], u),
+                lerp(bezierPatch[2][1], bezierPatch[2][2], u),
+                u),
+            lerp(
+                lerp(bezierPatch[2][1], bezierPatch[2][2], u),
+                lerp(bezierPatch[2][2], bezierPatch[2][3], u),
+                u),
+            u);
+
+    const float3 i3 =
+        lerp(
+            lerp(
+                lerp(bezierPatch[3][0], bezierPatch[3][1], u),
+                lerp(bezierPatch[3][1], bezierPatch[3][2], u),
+                UV.x),
+            lerp(
+                lerp(bezierPatch[3][1], bezierPatch[3][2], u),
+                lerp(bezierPatch[3][2], bezierPatch[3][3], u),
+                u),
+            u);
+
+    const float3 p =
+        lerp(
+            lerp(
+                lerp(i0, i1, v),
+                lerp(i1, i2, v),
+                v),
+            lerp(
+                lerp(i1, i2, v),
+                lerp(i2, i3, v),
+                v),
+            v) - float3(0, 2.5f, 0);
+
+    const float4 POS_MS = float4(p.xyz, 1) * float4(1, 1, 1, 1) + float4(0, 3, 0, 0);
+    const float4 pos_WS = mul(WT, POS_MS);
+    const float4 pos_DC = mul(PV, pos_WS);
+
+    output.p = pos_DC;
     output.t = UV;
 
     return output;
@@ -186,7 +467,7 @@ PS_Input DS_Main(
 
 float4 PS_Main(PS_Input input) : SV_TARGET
 {
-    return float4(input.t, 1, 0);
+    return float4(input.t * input.t, 0.5f, 0);
 }
 
 

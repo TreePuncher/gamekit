@@ -98,16 +98,30 @@ struct Patch
     {
         ControlPointWeights() { memset(indices, 0xff, sizeof(indices)); }
 
+        void PushWeight(uint32_t index, float w)
+        {
+
+        }
+
+        void AddWeight(uint32_t index, float w)
+        {
+
+        }
+
         float       weights[32] = { 0.0f };
         uint32_t    indices[32];
 
+        ControlPointWeights& operator += (const ControlPointWeights& rhs)
+        {
+            for (size_t I = 0; I < 32; I++)
+                if(rhs.indices[I] != 0xffffffff && rhs.weights[I] != 0.0f)
+                    AddWeight(rhs.indices[I], rhs.weights[I]);
+        }
     } controlPoints[20];
 
-    struct ControlPoint_F_n
-    {
-        uint32_t C_0[4];
-        uint32_t C_minusOne[4][4];
-    } F_n[4];
+    uint32_t C_0;
+    uint32_t C_idx[8];
+
 
     uint32_t inputVertices[32];
     uint32_t vertCount = 0;
@@ -121,43 +135,101 @@ struct GPUPatch
         uint16_t weights[32];
     } controlPoints[20];
 
-    struct ControlPoint_F_n
-    {
-        uint8_t C_0[4];
-        uint8_t C_n[16];
-    } F_n[4];
-
-    uint32_t indices[32];
+    uint C0;
+    uint Cn[4];
 };
 
 
 /************************************************************************************************/
 
-GPUPatch CreateGPUPatch(const Patch& p)
+
+uint Pack(uint4 points)
 {
-    GPUPatch out;
+    return  ((points[0] & 0xff) << 0) |
+            ((points[1] & 0xff) << 8) |
+            ((points[2] & 0xff) << 16) |
+            ((points[3] & 0xff) << 24);
+}
+
+
+/************************************************************************************************/
+
+
+uint4 MapIndexToLocal(const auto& verts, const auto& localVerts)
+{
+    uint4 patchLocalIndexes{ 0xff, 0xff, 0xff, 0xff };
+
+    for (size_t J = 0; J < 4; J++)
+    {
+        for (uint32_t I = 0; I < 32; I++)
+        {
+            if (localVerts[I] == verts[J])
+            {
+                patchLocalIndexes[J] = I;
+                break;
+            }
+        }
+    }
+
+    return patchLocalIndexes;
+}
+
+
+/************************************************************************************************/
+
+
+uint32_t MapIndexToLocal(const uint32_t idx, const auto& localVerts)
+{
+    for (uint32_t I = 0; I < 32; I++)
+        if (localVerts[I] == idx)
+            return I;
+
+    return -1;
+}
+
+
+/************************************************************************************************/
+
+
+
+
+void CreateGPUPatch(const Patch& p, ModifiableShape& shape, Vector<GPUPatch>& patches, Vector<uint32_t>& indices)
+{
+    GPUPatch patch;
+    uint32_t patchIndexes[32];
+
+    for (size_t J = 0; J < 32; J++)
+    {
+        const auto idx = p.inputVertices[J];
+        patchIndexes[J] = (idx != 0xffffffff) ? p.inputVertices[J] : p.inputVertices[0];
+    }
 
     for (size_t I = 0; I < 20; I++)
     {
         const auto& cp = p.controlPoints[I];
 
         for (size_t J = 0; J < 32; J++)
-            out.controlPoints[I].weights[J] = fp16_ieee_from_fp32_value(0);
+            patch.controlPoints[I].weights[J] = fp16_ieee_from_fp32_value(0);
 
         for (size_t J = 0; J < 32; J++)
         {
+            const uint32_t localIdx = MapIndexToLocal(cp.indices[J], patchIndexes);
+
             if (cp.indices[J] != 0xffffffff)
-                out.controlPoints[I].weights[cp.indices[J]] = fp16_ieee_from_fp32_value(cp.weights[J]);
+                patch.controlPoints[I].weights[localIdx] = fp16_ieee_from_fp32_value(cp.weights[J]);
         }
     }
 
-    for (size_t J = 0; J < 32; J++)
-    {
-        const auto idx = p.inputVertices[J];
-        out.indices[J] = J;// (idx != 0xffffffff) ? p.inputVertices[J] : p.inputVertices[0];
-    }
+    patch.C0    = Pack(MapIndexToLocal(shape.GetFaceVertices(p.C_0),      p.inputVertices));
+    patch.Cn[0] = Pack(MapIndexToLocal(shape.GetFaceVertices(p.C_idx[0]), p.inputVertices));
+    patch.Cn[1] = Pack(MapIndexToLocal(shape.GetFaceVertices(p.C_idx[2]), p.inputVertices));
+    patch.Cn[2] = Pack(MapIndexToLocal(shape.GetFaceVertices(p.C_idx[4]), p.inputVertices));
+    patch.Cn[3] = Pack(MapIndexToLocal(shape.GetFaceVertices(p.C_idx[6]), p.inputVertices));
 
-    return out;
+    patches.push_back(patch);
+
+    for (auto I : p.inputVertices)
+        indices.push_back(I);
 }
 
 /************************************************************************************************/
@@ -843,18 +915,11 @@ void CalculateQuadControlPoint_R0_Plus(uint32_t quadPatchIdx, Patch& patch, Modi
     const auto a = faceView[0].faceIdx;
     const auto b = faceView[-1].faceIdx;
 
-    auto points_A = shape.GetFaceIndices(b);
+    const auto points_A = shape.GetFaceVertices(a);
+    patch.C_0 = a;
+    const auto points_B = shape.GetFaceVertices(b);
 
-    patch.F_n[0].C_0[0] = points_A[0];
-    patch.F_n[0].C_0[1] = points_A[1];
-    patch.F_n[0].C_0[2] = points_A[2];
-    patch.F_n[0].C_0[3] = points_A[3];
-
-    auto points_B = shape.GetFaceIndices(b);
-    patch.F_n[0].C_minusOne[0][0] = points_B[0];
-    patch.F_n[0].C_minusOne[0][1] = points_B[1];
-    patch.F_n[0].C_minusOne[0][2] = points_B[2];
-    patch.F_n[0].C_minusOne[0][3] = points_B[3];
+    patch.C_idx[0] = b;
 
     /*
     const auto r    = ApplyWeights(patch, shape, r0Plus);
@@ -883,10 +948,14 @@ void CalculateQuadControlPoint_R0_Minus(uint32_t quadPatchIdx, Patch& patch, Mod
     auto controlPoint           = CalculateQuadControlPoint_Rn(vertexEdgeView, edgeView, faceView, shape, true);
     patch.controlPoints[r0Minus] = controlPoint;
 
-    /*
     const auto a = faceView[0].faceIdx;
     const auto b = faceView[-1].faceIdx;
 
+    const auto points_B = shape.GetFaceVertices(b);
+
+    patch.C_idx[1] = a;
+
+    /*
     const auto r    = ApplyWeights(patch, shape, r0Minus);
     const auto C0   = shape.GetFaceCenterPoint(a);
     const auto C1   = shape.GetFaceCenterPoint(b);
@@ -913,13 +982,11 @@ void CalculateQuadControlPoint_R1_Plus(uint32_t quadPatchIdx, Patch& patch, Modi
     auto controlPoint           = CalculateQuadControlPoint_Rn(vertexEdgeView, edgeView, faceView, shape);
     patch.controlPoints[r1Plus] = controlPoint;
 
-    const auto b = faceView[-1].faceIdx;
+    const auto b            = faceView[-1].faceIdx;
+    const auto points_B     = shape.GetFaceVertices(b);
 
-    auto points_B = shape.GetFaceIndices(b);
-    patch.F_n[0].C_minusOne[1][0] = points_B[0];
-    patch.F_n[0].C_minusOne[1][1] = points_B[1];
-    patch.F_n[0].C_minusOne[1][2] = points_B[2];
-    patch.F_n[0].C_minusOne[1][3] = points_B[3];
+    patch.C_idx[2] = b;
+
 
     /*
     const auto a    = faceView[0].faceIdx;
@@ -949,6 +1016,12 @@ void CalculateQuadControlPoint_R1_Minus(uint32_t quadPatchIdx, Patch& patch, Mod
 
     auto controlPoint               = CalculateQuadControlPoint_Rn(vertexEdgeView, edgeView, faceView, shape, true);
     patch.controlPoints[r1Minus]    = controlPoint;
+
+    const auto a        = faceView[0].faceIdx;
+    const auto b        = faceView[-1].faceIdx;
+    const auto points_B = shape.GetFaceVertices(b);
+
+    patch.C_idx[3] = a;
 
     /*
     auto a = faceView[-1].faceIdx;
@@ -980,13 +1053,10 @@ void CalculateQuadControlPoint_R2_Plus(uint32_t quadPatchIdx, Patch& patch, Modi
     auto controlPoint           = CalculateQuadControlPoint_Rn(vertexEdgeView, edgeView, faceView, shape);
     patch.controlPoints[r2Plus] = controlPoint;
 
-    const auto b    = faceView[-1].faceIdx;
+    const auto b            = faceView[-1].faceIdx;
+    const auto points_B     = shape.GetFaceVertices(b);
 
-    auto points_B = shape.GetFaceIndices(b);
-    patch.F_n[0].C_minusOne[2][0] = points_B[0];
-    patch.F_n[0].C_minusOne[2][1] = points_B[1];
-    patch.F_n[0].C_minusOne[2][2] = points_B[2];
-    patch.F_n[0].C_minusOne[2][3] = points_B[3];
+    patch.C_idx[4] = b;
 
     /*
     const auto a = faceView[0].faceIdx;
@@ -1026,10 +1096,13 @@ void CalculateQuadControlPoint_R2_Minus(uint32_t quadPatchIdx, Patch& patch, Mod
     auto controlPoint               = CalculateQuadControlPoint_Rn(vertexEdgeView, edgeView, faceView, shape, true);
     patch.controlPoints[r2Minus]    = controlPoint;
 
-    auto b = faceView[0].faceIdx;
+    const auto a          = faceView[-1].faceIdx;
+    const auto b          = faceView[0].faceIdx;
+    const auto points_B   = shape.GetFaceVertices(b);
+
+    patch.C_idx[5] = a;
 
     /*
-    auto a = faceView[-1].faceIdx;
     const auto r    = ApplyWeights(patch, shape, r2Minus);
     const auto C0   = shape.GetFaceCenterPoint(a);
     const auto C1   = shape.GetFaceCenterPoint(b);
@@ -1055,13 +1128,11 @@ void CalculateQuadControlPoint_R3_Plus(uint32_t quadPatchIdx, Patch& patch, Modi
     auto controlPoint           = CalculateQuadControlPoint_Rn(vertexEdgeView, edgeView, faceView, shape);
     patch.controlPoints[r3Plus] = controlPoint;
 
-    const auto b    = faceView[-1].faceIdx;
+    const auto a        = faceView[0].faceIdx;
+    const auto b        = faceView[-1].faceIdx;
+    const auto points_B = shape.GetFaceVertices(b);
 
-    auto points_B = shape.GetFaceIndices(b);
-    patch.F_n[0].C_minusOne[3][0] = points_B[0];
-    patch.F_n[0].C_minusOne[3][1] = points_B[1];
-    patch.F_n[0].C_minusOne[3][2] = points_B[2];
-    patch.F_n[0].C_minusOne[3][3] = points_B[3];
+    patch.C_idx[6] = b;
 
     /*
     const auto a    = faceView[0].faceIdx;
@@ -1091,8 +1162,13 @@ void CalculateQuadControlPoint_R3_Minus(uint32_t quadPatchIdx, Patch& patch, Mod
     auto controlPoint               = CalculateQuadControlPoint_Rn(vertexEdgeView, edgeView, faceView, shape, true);
     patch.controlPoints[r3Minus]    = controlPoint;
 
+    const auto a          = faceView[0].faceIdx;
+    const auto b          = faceView[-1].faceIdx;
+    const auto points_A   = shape.GetFaceVertices(a);
+
+    patch.C_idx[7] = b;
+
     /*
-    auto a = faceView[-1].faceIdx;
     auto b = faceView[0].faceIdx;
 
     const auto r    = ApplyWeights(patch, shape, r2Minus);
@@ -1157,6 +1233,12 @@ auto CalculateControlPointWeights(PatchGroups& classifiedPatches, ModifiableShap
         std::sort(verticies.begin(), verticies.end());
         verticies.erase(std::unique(verticies.begin(), verticies.end()), verticies.end());
 
+        while (verticies.back() == 0xffffffff)
+            verticies.pop_back();
+
+        while (verticies.size() < 32)
+            verticies.push_back(verticies.front());
+
         for (const auto idx : verticies)
             patch.inputVertices[patch.vertCount++] = idx;
     }
@@ -1178,13 +1260,21 @@ public:
                 IN_framework.GetRenderSystem(),
                 FlexKit::DefaultWindowDesc({ 1920, 1080 }))) },
         rootSig         { IN_framework.core.GetBlockMemory() },
-        vertexBuffer    { IN_framework.GetRenderSystem().CreateVertexBuffer(MEGABYTE, false) }
+        vertexBuffer    { IN_framework.GetRenderSystem().CreateVertexBuffer(MEGABYTE, false) },
+        constantBuffer  { IN_framework.GetRenderSystem().CreateConstantBuffer(MEGABYTE, false) },
+        cameras         { IN_framework.core.GetBlockMemory() },
+        depthBuffer     { IN_framework.GetRenderSystem().CreateDepthBuffer({ 1920, 1080 }, true) },
+        indices         { IN_framework.core.GetBlockMemory() },
+        nodes           {}
     {
-        patches             = PreComputePatches(IN_framework.core.GetBlockMemory() );
-        vertices            = GetGregoryVertexBuffer(shape, framework.core.GetBlockMemory());
-        patchBuffer         = MoveBufferToDevice(framework.GetRenderSystem(), (const char*)patches.data(), patches.ByteSize());
+        patches     = PreComputePatches(IN_framework.core.GetBlockMemory() );
+        vertices    = GetGregoryVertexBuffer(shape, framework.core.GetBlockMemory());
+        patchBuffer = MoveBufferToDevice(framework.GetRenderSystem(), (const char*)patches.data(), patches.ByteSize());
 
         rootSig.SetParameterAsSRV(0, 0, 0);
+        rootSig.SetParameterAsCBV(1, 0, 0, PIPELINE_DEST_ALL);
+        rootSig.SetParameterAsUINT(2, 16, 1, 0, PIPELINE_DEST_ALL);
+
         rootSig.AllowIA = true;
         rootSig.AllowSO = false;
         FK_ASSERT(rootSig.Build(IN_framework.GetRenderSystem(), IN_framework.core.GetTempMemory()));
@@ -1197,6 +1287,15 @@ public:
 
         renderWindow.Handler->Subscribe(sub);
         renderWindow.SetWindowTitle("[Tessellation Test]");
+
+        activeCamera    = CameraComponent::GetComponent().CreateCamera((float)pi/3.0f, 1920.0f / 1080.0f);
+        node            = GetZeroedNode();
+
+        TranslateWorld(node, float3( 0, -3, -12.5f ));
+        //Pitch(node, pi / 6);
+
+        //Yaw(node, pi);
+        //Pitch(node, pi / 2);
     }
 
 
@@ -1221,25 +1320,25 @@ public:
     /************************************************************************************************/
 
 
-    // V7 ------- V6 ------- V11 ------ V15
-    // |          |          |           |
-    // |          |          |           |
-    // |   P2     |    p5    |    p8     |
-    // |          |          |           |
-    // |          |          |           |
-    // V5 ------- V4 ------- V10 ------ V14
-    // |          |          |           |
-    // |          |          |           |
-    // |   p1     |    p4    |    p7     |
-    // |          |          |           |
-    // |          |          |           |
-    // V3 ------- V2 ------- V9 ------- V13
-    // |          |          |           |
-    // |          |          |           |
-    // |   p0     |    p3    |    p6     |
-    // |          |          |           |
-    // |          |          |           |
-    // V0 ------- V1 ------- V8 ------- V12
+    // V7 ------- V6 ------- V11 ------ V15 ------ V19
+    // |          |          |           |          |
+    // |          |          |           |          |
+    // |   P2     |    p5    |    p8     |          |
+    // |          |          |           |          |
+    // |          |          |           |          |
+    // V5 ------- V4 ------- V10 ------ V14 ------ V18
+    // |          |          |           |          |
+    // |          |          |           |          |
+    // |   p1     |    p4    |    p7     |          |
+    // |          |          |           |          |
+    // |          |          |           |          |
+    // V3 ------- V2 ------- V9 ------- V13 ------ V17
+    // |          |          |           |          |
+    // |          |          |           |          |
+    // |   p0     |    p3    |    p6     |          |
+    // |          |          |           |          |
+    // |          |          |           |          |
+    // V0 ------- V1 ------- V8 ------- V12 ------ V16
 
 
     /************************************************************************************************/
@@ -1248,35 +1347,44 @@ public:
     Vector<GPUPatch> PreComputePatches(iAllocator& allocator)
     {
         // Patch 1
-        shape.AddVertex(float3{ 0.0f, 0.0f, 0.0f }); // 0
-        shape.AddVertex(float3{ 1.0f, 0.0f, 0.0f }); // 1
-        shape.AddVertex(float3{ 1.0f, 1.0f, 1.0f }); // 2
-        shape.AddVertex(float3{ 0.0f, 1.0f, 0.0f }); // 3
+        shape.AddVertex((float3{ 0.0f, 0.0f, 0.0f } - float3(1.5, 0, 1.5)) * 3.0f); // 0
+        shape.AddVertex((float3{ 1.0f, 0.0f, 0.0f } - float3(1.5, 0, 1.5)) * 3.0f); // 1
+        shape.AddVertex((float3{ 1.0f, 1.0f, 1.0f } - float3(1.5, 0, 1.5)) * 3.0f); // 2
+        shape.AddVertex((float3{ 0.0f, 0.0f, 1.0f } - float3(1.5, 0, 1.5)) * 3.0f); // 3
 
-        shape.AddVertex(float3{ 1.0f, 2.00f, 1.0f }); // 4
-        shape.AddVertex(float3{ 0.0f, 2.00f, 0.0f }); // 5
-        shape.AddVertex(float3{ 1.0f, 3.00f, 0.0f }); // 6
-        shape.AddVertex(float3{ 0.0f, 3.00f, 0.0f }); // 7
+        shape.AddVertex((float3{ 1.0f, 1.0f, 2.0f } - float3(1.5, 0, 1.5)) * 3.0f); // 4
+        shape.AddVertex((float3{ 0.0f, 0.0f, 2.0f } - float3(1.5, 0, 1.5)) * 3.0f); // 5
+        shape.AddVertex((float3{ 1.0f, 0.0f, 3.0f } - float3(1.5, 0, 1.5)) * 3.0f); // 6
+        shape.AddVertex((float3{ 0.0f, 0.0f, 3.0f } - float3(1.5, 0, 1.5)) * 3.0f); // 7
 
-        shape.AddVertex(float3{ 2.0f, 0.0f,  0.0f }); // 8
-        shape.AddVertex(float3{ 2.0f, 1.0f,  1.0f }); // 9
-        shape.AddVertex(float3{ 2.0f, 2.0f,  1.0f }); // 10
-        shape.AddVertex(float3{ 2.0f, 3.0f,  0.0f }); // 11
+        shape.AddVertex((float3{ 2.0f, 0.0f, 0.0f } - float3(1.5, 0, 1.5)) * 3.0f); // 8
+        shape.AddVertex((float3{ 2.0f, 1.0f, 1.0f } - float3(1.5, 0, 1.5)) * 3.0f); // 9
+        shape.AddVertex((float3{ 2.0f, 1.0f, 2.0f } - float3(1.5, 0, 1.5)) * 3.0f); // 10
+        shape.AddVertex((float3{ 2.0f, 0.0f, 3.0f } - float3(1.5, 0, 1.5)) * 3.0f); // 11
 
-        shape.AddVertex(float3{ 3.0f, 0.0f,  0.0f }); // 12
-        shape.AddVertex(float3{ 3.0f, 1.0f,  0.0f }); // 13
-        shape.AddVertex(float3{ 3.0f, 2.0f,  0.0f }); // 14
-        shape.AddVertex(float3{ 3.0f, 3.0f,  0.0f }); // 15
+        shape.AddVertex((float3{ 3.0f, 0.0f, 0.0f } - float3(1.5, 0, 1.5)) * 3.0f); // 12
+        shape.AddVertex((float3{ 3.0f, 0.0f, 1.0f } - float3(1.5, 0, 1.5)) * 3.0f); // 13
+        shape.AddVertex((float3{ 3.0f, 0.0f, 2.0f } - float3(1.5, 0, 1.5)) * 3.0f); // 14
+        shape.AddVertex((float3{ 3.0f, 0.0f, 3.0f } - float3(1.5, 0, 1.5)) * 3.0f); // 15
 
-        uint32_t patch1[] = { 0, 1, 2, 3 };
-        uint32_t patch2[] = { 3, 2, 4, 5 };
-        uint32_t patch3[] = { 5, 4, 6, 7 };
-        uint32_t patch4[] = { 1, 8, 9, 2 };
-        uint32_t patch5[] = { 2, 9, 10, 4 };
-        uint32_t patch6[] = { 4, 10, 11, 6 };
-        uint32_t patch7[] = { 8, 12, 13, 9 };
-        uint32_t patch8[] = { 9, 13, 14, 10 };
-        uint32_t patch9[] = { 10, 14, 15, 11 };
+        shape.AddVertex((float3{ 4.0f, 0.0f, 0.0f } - float3(1.5, 0, 1.5)) * 3.0f); // 16
+        shape.AddVertex((float3{ 4.0f, 0.0f, 1.0f } - float3(1.5, 0, 1.5)) * 3.0f); // 17
+        shape.AddVertex((float3{ 4.0f, 0.0f, 2.0f } - float3(1.5, 0, 1.5)) * 3.0f); // 18
+        shape.AddVertex((float3{ 4.0f, 0.0f, 3.0f } - float3(1.5, 0, 1.5)) * 3.0f); // 19
+
+        const uint32_t patch1[] = { 0, 1, 2, 3 };
+        const uint32_t patch2[] = { 3, 2, 4, 5 };
+        const uint32_t patch3[] = { 5, 4, 6, 7 };
+        const uint32_t patch4[] = { 1, 8, 9, 2 };
+        const uint32_t patch5[] = { 2, 9, 10, 4 };
+        const uint32_t patch6[] = { 4, 10, 11, 6 };
+        const uint32_t patch7[] = { 8, 12, 13, 9 };
+        const uint32_t patch8[] = { 9, 13, 14, 10 };
+        const uint32_t patch9[] = { 10, 14, 15, 11 };
+
+        const uint32_t patch10[] = { 12, 16, 17, 13 };
+        const uint32_t patch11[] = { 13, 17, 18, 14 };
+        const uint32_t patch12[] = { 14, 18, 19, 15 };
 
         shape.AddPolygon(patch1, patch1 + 4);
         shape.AddPolygon(patch2, patch2 + 4);
@@ -1287,17 +1395,17 @@ public:
         shape.AddPolygon(patch7, patch7 + 4);
         shape.AddPolygon(patch8, patch8 + 4);
         shape.AddPolygon(patch9, patch9 + 4);
+        shape.AddPolygon(patch10, patch10 + 4);
+        shape.AddPolygon(patch11, patch11 + 4);
+        shape.AddPolygon(patch12, patch12 + 4);
 
         auto classifiedPatches  = ClassifyPatches(shape);
-        auto controlPoints      = CalculateControlPointWeights(classifiedPatches, shape);
+        auto patches            = CalculateControlPointWeights(classifiedPatches, shape);
 
         Vector<GPUPatch> GPUControlPoints{ allocator };
 
-        for (auto& cp : controlPoints)
-            GPUControlPoints.emplace_back(CreateGPUPatch(cp));
-
-        // TODO:
-        //  Remap ControlPointWeights::Indicies from global buffer idx to patch local coord, [0, vertexCount ] -> [ 0 -> 32]
+        for (auto& patch : patches)
+            CreateGPUPatch(patch, shape, GPUControlPoints, indices);
 
         return GPUControlPoints;
     }
@@ -1324,37 +1432,53 @@ public:
     /************************************************************************************************/
 
 
-    void DrawPatch(FlexKit::FrameGraph& frameGraph)
+    void DrawPatch(UpdateDispatcher& dispatcher, FlexKit::FrameGraph& frameGraph)
     {
         struct DrawPatch
         {
             FrameResourceHandle renderTarget;
+            FrameResourceHandle depthTarget;
         };
+
+        auto& cameraUpdate = CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
+
 
         frameGraph.AddNode<DrawPatch>(
             DrawPatch{},
             [&](FrameGraphNodeBuilder& builder, DrawPatch& draw)
             {
-                draw.renderTarget = builder.RenderTarget(renderWindow.GetBackBuffer());
+                builder.AddDataDependency(cameraUpdate);
+                draw.renderTarget   = builder.RenderTarget(renderWindow.GetBackBuffer());
+                draw.depthTarget    = builder.DepthTarget(depthBuffer);
             },
             [&](DrawPatch& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
-                VBPushBuffer        buffer  { vertexBuffer, 8196, *ctx.renderSystem };
-                VertexBufferDataSet VB      { vertices, buffer};
-                VertexBufferDataSet IB      { patches[0].indices, buffer};
+                VBPushBuffer Vbuffer{ vertexBuffer, 8196, *ctx.renderSystem };
+                CBPushBuffer Cbuffer{ constantBuffer, 1024 * 16, *ctx.renderSystem };
 
-                
+                const VertexBufferDataSet VB{ vertices, Vbuffer};
+                const VertexBufferDataSet IB{ indices, Vbuffer};
+
+                const float4x4 WT       = GetWT(node).Transpose();
+                const auto constants    = GetCameraConstants(activeCamera);
+
+                ConstantBufferDataSet CB{ constants, Cbuffer };
+
+                ctx.ClearDepthBuffer(depthBuffer, 1.0f);
 
                 ctx.SetRootSignature(rootSig);
-                ctx.SetGraphicsShaderResourceView(0, patchBuffer);
-
                 ctx.SetPipelineState(resources.GetPipelineState(ACC));
                 ctx.SetPrimitiveTopology(EInputTopology::EIT_PATCH_CP_32);
                 ctx.SetVertexBuffers({ VB });
                 ctx.SetIndexBuffer(IB);
                 ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
-                ctx.SetRenderTargets({ resources.GetRenderTarget(data.renderTarget) }, false);
-                ctx.Draw(32);
+                ctx.SetRenderTargets({ resources.GetRenderTarget(data.renderTarget) }, true, depthBuffer);
+
+                ctx.SetGraphicsShaderResourceView(0, patchBuffer);
+                ctx.SetGraphicsConstantBufferView(1, CB);
+                ctx.SetGraphicsConstantValue(2, 16, &WT);
+
+                ctx.DrawIndexed(64);
             });
     }
 
@@ -1366,7 +1490,9 @@ public:
     {
         ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), { 0.0f, 0.0f, 0.0f, 1.0f });
 
-        DrawPatch(frameGraph);
+        Yaw(node, dT * pi / 4);
+        UpdateTransforms();
+        DrawPatch(dispatcher, frameGraph);
 
         PresentBackBuffer(frameGraph, renderWindow.GetBackBuffer());
 
@@ -1451,12 +1577,12 @@ public:
 
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
         Rast_Desc.CullMode              = D3D12_CULL_MODE_NONE;
-        Rast_Desc.FillMode              = D3D12_FILL_MODE_WIREFRAME;
+        //Rast_Desc.FillMode              = D3D12_FILL_MODE_WIREFRAME;
         //Rast_Desc.ConservativeRaster    = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
-		Depth_Desc.DepthEnable	= false;
+		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature        = rootSig;
@@ -1489,13 +1615,24 @@ public:
     /************************************************************************************************/
 
 
-    FlexKit::ModifiableShape    shape;
-    Vector<GPUVertex>           vertices;
-    Vector<GPUPatch>            patches;
-    FlexKit::ResourceHandle     patchBuffer;
-    FlexKit::VertexBufferHandle vertexBuffer;
-    FlexKit::RootSignature      rootSig;
-    FlexKit::Win32RenderWindow  renderWindow;
+    ModifiableShape         shape;
+    Vector<GPUVertex>       vertices;
+    Vector<uint32_t>        indices;
+    Vector<GPUPatch>        patches;
+    NodeHandle              node;
+
+    
+    ResourceHandle          patchBuffer;
+    VertexBufferHandle      vertexBuffer;
+    ConstantBufferHandle    constantBuffer;
+    RootSignature           rootSig;
+    Win32RenderWindow       renderWindow;
+    ResourceHandle          depthBuffer;
+
+    CameraComponent         cameras;
+    SceneNodeComponent      nodes;
+
+    CameraHandle            activeCamera;
 };
 
 
@@ -1513,7 +1650,7 @@ int main()
 
         auto& state = app.PushState<TessellationTest>(0);
 
-        app.GetCore().FPSLimit  = 30;
+        app.GetCore().FPSLimit  = 90;
         app.GetCore().FrameLock = true;
         app.GetCore().vSync     = true;
         app.Run();
@@ -1522,6 +1659,7 @@ int main()
 
     return 0;
 }
+
 
 /**********************************************************************
 
