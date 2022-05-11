@@ -144,21 +144,27 @@ namespace FlexKit
 
 			switch (evt.mData1.mINT[0])
 			{
+            case KC_W:
 			case OCE_MoveForward:
 				keyStates.forward	= state;
 				break;
+            case KC_S:
 			case OCE_MoveBackward:
 				keyStates.backward	= state;
 				break;
+            case KC_A:
 			case OCE_MoveLeft:
 				keyStates.left		= state;
 				break;
+            case KC_D:
 			case OCE_MoveRight:
 				keyStates.right		= state;
 				break;
+            case KC_E:
             case OCE_MoveUp:
                 keyStates.up        = state;
                 break;
+            case KC_Q:
             case OCE_MoveDown:
                 keyStates.down      = state;
                 break;
@@ -234,7 +240,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	auto& QueueOrbitCameraUpdateTask(
+    UpdateTask& QueueOrbitCameraUpdateTask(
 					UpdateDispatcher&		dispatcher, 
 					OrbitCameraBehavior&	orbitCamera, 
 					MouseInputState			mouseState, 
@@ -246,7 +252,7 @@ namespace FlexKit
 			float					dt;
 		};
 
-		auto& data = dispatcher.Add<OrbitCameraUpdateData>(
+        UpdateTask& data = dispatcher.Add<OrbitCameraUpdateData>(
 			[&](UpdateDispatcher::UpdateBuilder& Builder, OrbitCameraUpdateData& data)
 			{
 				Builder.SetDebugString("OrbitCamera Update");

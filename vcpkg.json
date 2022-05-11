@@ -3,30 +3,31 @@
 	"version-string": "0.0.1",
     	"dependencies": 
 	[
-        	{
-            	"name": "angelscript",
-            	"features": [ "addons" ]
-        	},
-        	{
-            	"name": "directxtex",
-            	"features": [ "dx12", "openexr" ]
-        	},
-        	"boost",
-        	"cppcoro",
-        	"directxmesh",
-        	"directxtk12",
-        	"fmt",
+        {
+           	"name": "angelscript",
+           	"features": [ "addons" ]
+        },
+        {
+           	"name": "directxtex",
+           	"features": [ "dx12", "openexr" ]
+        },
+        "boost",
+        "cppcoro",
+        "directxmesh",
+        "directxtk12",
+        "fmt",
 		"fp16",
-            "imgui",
-        	"implot",
+        "imgui",
+        "implot",
 		"imguizmo",
 		"ois",
-        	"physx",
+		"opensubdiv",
+        "physx",
 		"scnlib",
-        	"slikenet",
-        	"stb",
-        	"tinygltf",
-        	"range-v3",
+        "slikenet",
+        "stb",
+        "tinygltf",
+        "range-v3",
 		"usd",
 		"zlib-ng"
     	]
