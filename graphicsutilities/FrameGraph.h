@@ -733,6 +733,11 @@ namespace FlexKit
             return Transition(resource, DRS_INDIRECTARGS, ctx);
         }
 
+        ResourceHandle VertexBuffer(const FrameResourceHandle resource, Context& ctx) const
+        {
+            return Transition(resource, DRS_VERTEXBUFFER, ctx);
+        }
+
 		DeviceResourceState GetObjectState(FrameResourceHandle handle) const
 		{
 			auto res = find(SubNodeTracking,

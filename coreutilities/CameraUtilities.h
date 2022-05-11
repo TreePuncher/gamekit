@@ -106,13 +106,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	auto&	QueueOrbitCameraUpdateTask(
-		UpdateDispatcher&		dispatcher, 
-		UpdateTask&				transformUpdateDependency,
-		UpdateTask&				cameraUpdateDependency,
-		OrbitCameraBehavior&	orbitCamera, 
-		MouseInputState			mouseState, 
-		float dt);
+	UpdateTask&	QueueOrbitCameraUpdateTask(
+        UpdateDispatcher&       dispatcher,
+        OrbitCameraBehavior&    orbitCamera,
+        MouseInputState			mouseState,
+        float					dt);
 
 
 }	/************************************************************************************************/
