@@ -144,6 +144,9 @@ namespace FlexKit
 
     void ModifiableShape::wFace::_NeighborFaceIterator::Next() noexcept
     {
+        if (currentEdge == 0xffffffff)
+            return;
+
         auto prev   = shape->wEdges[currentEdge].prev;
         currentEdge = shape->wEdges[prev].oppositeNeighbor;
 
@@ -153,6 +156,9 @@ namespace FlexKit
 
     void ModifiableShape::wFace::_NeighborFaceIterator::Prev() noexcept
     {
+        if (currentEdge == 0xffffffff)
+            return;
+
         auto twin   = shape->wEdges[currentEdge].oppositeNeighbor;
         currentEdge = shape->wEdges[twin].next;
         itr--;

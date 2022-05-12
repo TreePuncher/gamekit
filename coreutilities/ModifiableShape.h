@@ -101,6 +101,10 @@ struct ModifiableShape
             auto begin  () { return FaceIterator{ shape, edgeStart }; }
             auto end    () { auto end = FaceIterator{ shape, edgeStart }; end--; return end; }
 
+            uint32_t Twin() const
+            {
+                shape->wEdges[edgeStart].oppositeNeighbor;
+            }
 
             auto operator [] (int32_t idx)
             {
@@ -175,7 +179,7 @@ struct ModifiableShape
                 auto end    = start;
                 end++;
 
-                while (start.currentEdge != end.currentEdge)
+                while (end.currentEdge != 0xffffffff && start.currentEdge != end.currentEdge)
                     end++;
 
                 return end;
@@ -232,10 +236,15 @@ struct ModifiableShape
 
                 bool operator == (const Iterator& rhs) const { return itr == rhs.itr; }
 
+                operator bool() { return current != 0xffffffff; }
+
                 uint32_t Twin() const { return shape->wEdges[current].oppositeNeighbor; }
 
                 void Next()
                 {
+                    if (current == 0xffffffff)
+                        return;
+
                     itr++;
                     auto prev  = shape->wEdges[current].prev;
                     current    = shape->wEdges[prev].oppositeNeighbor;
@@ -243,6 +252,9 @@ struct ModifiableShape
 
                 void Prev()
                 {
+                    if (current == 0xffffffff)
+                        return;
+
                     itr--;
                     auto twin   = Twin();
                     current     = shape->wEdges[twin].next;
@@ -270,7 +282,7 @@ struct ModifiableShape
 
                 end++;
 
-                while (end.Twin() != 0xffffffff && end.current != start.current)
+                while (end && end.Twin() != 0xffffffff && end.current != start.current)
                     ++end;
 
                 return end;
@@ -419,7 +431,8 @@ struct ModifiableShape
 
             bool IsExteriorCorner() const
             {
-                return shape->wVerticeEdges[shape->wEdges[edgeStart].vertices[0]].size() == 2;
+                auto& edges = shape->wVerticeEdges[shape->wEdges[edgeStart].vertices[0]];
+                return edges.size() == 2;
             }
 
 
@@ -487,7 +500,6 @@ struct ModifiableShape
 
         size_t GetEdgeCount(ModifiableShape& shape) const;
 
-
         void Serialize(auto& ar)
         {
             ar& edgeStart;
@@ -553,6 +565,7 @@ struct ModifiableShape
 
         void Next() noexcept;
         void Prev() noexcept;
+        operator uint32_t () { return current; }
 
 
         FaceIterator& operator ++(int) noexcept;

@@ -86,7 +86,8 @@ struct GregoryPatch
 
 
 StructuredBuffer<GregoryPatch>  patch : register(t0);
-RWStructuredBuffer<float3>      debug : register(u0);
+RWStructuredBuffer<uint>        counter : register(u0);
+RWStructuredBuffer<float3>      debug   : register(u1);
 
 
 //*************************************************************************************
@@ -232,22 +233,22 @@ PatchConstants_Output PatchConstants(
 
     PatchConstants_Output output;
 
-    output.gregoryPatch[p0] = controlPoints[p0].p + float3(0, 0, 0);
-    output.gregoryPatch[p1] = controlPoints[p1].p + float3(0, 0, 0);
-    output.gregoryPatch[p2] = controlPoints[p2].p + float3(0, 0, 0);
-    output.gregoryPatch[p3] = controlPoints[p3].p + float3(0, 0, 0);
+    output.gregoryPatch[p0] = controlPoints[p0].p;
+    output.gregoryPatch[p1] = controlPoints[p1].p;
+    output.gregoryPatch[p2] = controlPoints[p2].p;
+    output.gregoryPatch[p3] = controlPoints[p3].p;
 
-    output.gregoryPatch[e0Minus]    = controlPoints[p0].p + 2.0f / 3.0f * controlPoints[e0Minus].p;
-    output.gregoryPatch[e0Plus]     = controlPoints[p0].p + 2.0f / 3.0f * controlPoints[e0Plus].p;
+    output.gregoryPatch[e0Minus]    = controlPoints[e0Minus].p;
+    output.gregoryPatch[e0Plus]     = controlPoints[e0Plus].p;
 
-    output.gregoryPatch[e1Minus]    = controlPoints[p1].p + 2.0f / 3.0f * controlPoints[e1Minus].p;
-    output.gregoryPatch[e1Plus]     = controlPoints[p1].p + 2.0f / 3.0f * controlPoints[e1Plus].p;
+    output.gregoryPatch[e1Minus]    = controlPoints[e1Minus].p;
+    output.gregoryPatch[e1Plus]     = controlPoints[e1Plus].p;
 
-    output.gregoryPatch[e2Plus]     = controlPoints[p2].p + 2.0f / 3.0f * controlPoints[e2Plus].p;
-    output.gregoryPatch[e2Minus]    = controlPoints[p2].p + 2.0f / 3.0f * controlPoints[e2Minus].p;
+    output.gregoryPatch[e2Plus]     = controlPoints[e2Plus].p;
+    output.gregoryPatch[e2Minus]    = controlPoints[e2Minus].p;
 
-    output.gregoryPatch[e3Plus]     = controlPoints[p3].p + 2.0f / 3.0f * controlPoints[e3Plus].p;
-    output.gregoryPatch[e3Minus]    = controlPoints[p3].p + 2.0f / 3.0f * controlPoints[e3Minus].p;
+    output.gregoryPatch[e3Plus]     = controlPoints[e3Plus].p;
+    output.gregoryPatch[e3Minus]    = controlPoints[e3Minus].p;
 
 
     output.gregoryPatch[r0Plus] =
@@ -314,13 +315,16 @@ PatchConstants_Output PatchConstants(
                 output.gregoryPatch[e2Plus],
                 controlPoints[r3Minus].p);
 
-    for (int J = 0; J < 20; J++)
-        debug[20 * patchIdx + J] = output.gregoryPatch[J];
+    for (uint K = 0; K < 20; K++)
+        debug[K + patchIdx * 20] = output.gregoryPatch[K];
+
 
     const float4 pos0_DC = mul(PV, mul(WT, float4(controlPoints[p0].p, 1)));
     const float4 pos1_DC = mul(PV, mul(WT, float4(controlPoints[p1].p, 1)));
     const float4 pos2_DC = mul(PV, mul(WT, float4(controlPoints[p2].p, 1)));
     const float4 pos3_DC = mul(PV, mul(WT, float4(controlPoints[p3].p, 1)));
+
+
 
     const float MaxZ = max(max(pos0_DC.z, pos1_DC.z), max(pos2_DC.z, pos3_DC.z));
     if (MaxZ < 0.0f)
@@ -340,19 +344,20 @@ PatchConstants_Output PatchConstants(
         const float3 pos2_NDC = pos2_DC.xyz / pos2_DC.w;
         const float3 pos3_NDC = pos3_DC.xyz / pos3_DC.w;
 
-        const float e0_factor = (2160.0f) * length(pos0_NDC - pos1_NDC) / 2.0f;
-        const float e1_factor = (2160.0f) * length(pos1_NDC - pos2_NDC) / 2.0f;
-        const float e2_factor = (2160.0f) * length(pos2_NDC - pos3_NDC) / 2.0f;
-        const float e3_factor = (2160.0f) * length(pos3_NDC - pos0_NDC) / 2.0f;
+        const float e0_factor = min(expansionRate, (2160.0f / 8) * length((pos0_NDC - pos1_NDC).xy) / 2.0f);
+        const float e1_factor = min(expansionRate, (2160.0f / 8) * length((pos1_NDC - pos2_NDC).xy) / 2.0f);
+        const float e2_factor = min(expansionRate, (2160.0f / 8) * length((pos2_NDC - pos3_NDC).xy) / 2.0f);
+        const float e3_factor = min(expansionRate, (2160.0f / 8) * length((pos3_NDC - pos0_NDC).xy) / 2.0f);
 
         output.Edges[0] = e3_factor;
         output.Edges[1] = e0_factor;
         output.Edges[2] = e1_factor;
         output.Edges[3] = e2_factor;
 
-        output.Inside[0] = (e0_factor + e2_factor) / 2.0f;
-        output.Inside[1] = (e1_factor + e3_factor) / 2.0f;
+        output.Inside[0] = min(e0_factor, e2_factor);
+        output.Inside[1] = min(e1_factor, e3_factor) / 2.0f;
     }
+
     return output;
 }
 
@@ -361,7 +366,7 @@ PatchConstants_Output PatchConstants(
 
 
 [domain("quad")]
-[partitioning("fractional_odd")]
+[partitioning("pow2")]
 [outputtopology("triangle_cw")]
 [outputcontrolpoints(20)]
 [patchconstantfunc("PatchConstants")]
@@ -564,6 +569,13 @@ PS_Input DS_Main(
     output.p        = POS_DC;
     output.tx       = UV;
 
+    /*
+    uint idx = 0xffffffff;
+    InterlockedAdd(counter[0], 1, idx);
+    debug[idx * 2 + 0] = POS_WS;
+    debug[idx * 2 + 1] = POS_WS + normalize(cross(output.t, output.bt));
+    */
+
     return output;
 }
 
@@ -573,17 +585,18 @@ PS_Input DS_Main(
 
 float4 PS_Main(PS_Input input) : SV_TARGET
 {
-    const float3 light_pos      = float3(0, 10, 0);
-    const float3 l_dir          = normalize(input.pos_WS - light_pos);
-    const float3 v_dir          = normalize(input.pos_WS - CameraPOS);
-    const float3 n              = normalize(cross(input.bt, input.t)) * float3(1, 1, 1);
-    const float3 rDir           = reflect(-l_dir, n);
+    const float3 light_pos      = float3(0, 20, 0);
+    const float3 l_dir          = normalize(light_pos - input.pos_WS);
+    const float3 v_dir          = -normalize(CameraPOS - input.pos_WS);
+    const float3 n              = normalize(cross(input.t, input.bt));
+    const float3 rDir           = reflect(l_dir, n);
 
-    const float spec            = pow(saturate(dot(v_dir, rDir)), 100) / pow(length(input.pos_WS - light_pos), 2.0f);
-    const float diff            = 1 * dot(n, l_dir) / pow(length(input.pos_WS - light_pos), 2.0f);
+    const float spec            = 1 * pow(saturate(dot(v_dir, rDir)), 300) / pow(length(input.pos_WS - light_pos), 2.0f);
+    const float diff            = dot(n, l_dir) / pow(length(input.pos_WS - light_pos), 2.0f);
     const float3 K              = spec + diff * pow(float3(1.0f, 0.5f, 0.31f), 2.2f);
 
     return pow(float4(K, 1), 1.0f / 2.0f);
+    //return pow(float4(float3(1, 1, 1) * (n / 2.0f + 0.5f), 0), 1.0f / 1.0f);
 }
 
 
