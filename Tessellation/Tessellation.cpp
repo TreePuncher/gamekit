@@ -83,9 +83,12 @@ struct PatchGroups
     std::vector<uint32_t> irregularTri;
     std::vector<uint32_t> irregularQuad;
 
-    std::vector<uint32_t> edgeQuad;
-    std::vector<uint32_t> edgeTri;
+    std::vector<uint32_t> edgeQuadPatches;
+    std::vector<uint32_t> edgeTriPatches;
 };
+
+
+/************************************************************************************************/
 
 
 struct Patch
@@ -104,13 +107,28 @@ struct Patch
 
         }
 
-        void AddWeight(uint32_t index, float w)
-        {
-
-        }
-
         float       weights[32] = { 0.0f };
         uint32_t    indices[32];
+
+        void AddWeight(uint32_t idx, float w)
+        {
+            size_t I = 0;
+            for (; I < 32; I++)
+            {
+                if (indices[I] == idx)
+                {
+                    weights[I] += w;
+                    return;
+                }
+
+                if (indices[I] == 0xffffffff)
+                {
+                    indices[I] = idx;
+                    weights[I] = w;
+                    return;
+                }
+            }
+        }
 
         ControlPointWeights& operator += (const ControlPointWeights& rhs)
         {
@@ -221,11 +239,13 @@ void CreateGPUPatch(const Patch& p, ModifiableShape& shape, Vector<GPUPatch>& pa
         }
     }
 
+    /*
     patch.C0    = Pack(MapIndexToLocal(shape.GetFaceVertices(p.C_0),      p.inputVertices));
     patch.Cn[0] = Pack(MapIndexToLocal(shape.GetFaceVertices(p.C_idx[0]), p.inputVertices));
     patch.Cn[1] = Pack(MapIndexToLocal(shape.GetFaceVertices(p.C_idx[2]), p.inputVertices));
     patch.Cn[2] = Pack(MapIndexToLocal(shape.GetFaceVertices(p.C_idx[4]), p.inputVertices));
     patch.Cn[3] = Pack(MapIndexToLocal(shape.GetFaceVertices(p.C_idx[6]), p.inputVertices));
+    */
 
     patches.push_back(patch);
 
@@ -437,7 +457,7 @@ auto ClassifyPatches(ModifiableShape& shape)
                     const auto vertexValence = itr.Edges().size() / 2;
                     if (itr.IsEdge())
                     {
-                        groups.edgeQuad.push_back(I);
+                        groups.edgeQuadPatches.push_back(I);
                         return;
                     }
                     else if (vertexValence != 4)
@@ -469,8 +489,47 @@ void CalculateQuadCornerPoints(uint32_t quadPatchIdx, Patch& patch, ModifiableSh
     {
         size_t A = 0; // Weight counter
         Patch::ControlPointWeights controlPoint;
-        if (!vertexView.IsExteriorCorner())
+        switch(edges.size())
         {
+        case 2: // Corner
+        {
+            auto idx = A++;
+            controlPoint.weights[idx] = 1.0f;
+            controlPoint.indices[idx] = pointIdx;
+        }   break;
+        case 4: // T-Junction
+        {
+            static_vector<uint32_t, 2> boundaryEdges;
+
+            for (size_t I = 0; I < 4; I++)
+            {
+                const auto e = edges[I];
+                const auto twin = shape.wEdges[edges[I]].oppositeNeighbor;
+
+                if (twin == 0xffffffff)
+                    boundaryEdges.push_back(e);
+            }
+
+            controlPoint.weights[A] = 4.0f / 6.0f;
+            controlPoint.indices[A++] = pointIdx;
+
+            const uint32_t verts[] = {
+                shape.wEdges[boundaryEdges[0]].vertices[0],
+                shape.wEdges[boundaryEdges[0]].vertices[1],
+                shape.wEdges[boundaryEdges[1]].vertices[0],
+                shape.wEdges[boundaryEdges[1]].vertices[1] };
+
+
+            for (auto v : verts)
+            {
+                if (v != pointIdx)
+                {
+                    controlPoint.weights[A]     = 1.0f / 6.0f;
+                    controlPoint.indices[A++]   = v;
+                }
+            }
+        }   break;
+        default:
             const auto n = edges.size() / 2;
 
             auto idx                = A++;
@@ -533,21 +592,7 @@ void CalculateQuadCornerPoints(uint32_t quadPatchIdx, Patch& patch, ModifiableSh
                 }();
             }
         }
-        else
-        {
-            controlPoint.indices[0] = pointIdx;
-            controlPoint.weights[0] = 1.0f;
-        }
-
-        float f = 0.0f;
-        for (auto& w : controlPoint.weights)
-            f += w;
-
-        FK_ASSERT(fabs(f - 1.0f) < 0.001f, "Calculation error!");
-
         patch.controlPoints[B++] = controlPoint;
-        auto P_n = ApplyWeights(patch, shape, B - 1u);
-        int x = 0;
     }
 }
 
@@ -555,13 +600,15 @@ void CalculateQuadCornerPoints(uint32_t quadPatchIdx, Patch& patch, ModifiableSh
 /************************************************************************************************/
 
 
-Patch::ControlPointWeights CalculateQuadEdgeControlPoint(auto& vertexEdgeView, auto& faceView, auto& shape, const auto N)
+void CalculateQuadEdgeControlPoint(auto& vertexEdgeView, auto& faceView, auto& shape, const auto N, Patch::ControlPointWeights& outControlPoint)
 {
-    Patch::ControlPointWeights controlPoint;
-
     const auto S = Sigma(N);
     const auto L = Lambda(N);
     size_t A = 0;
+
+    Patch::ControlPointWeights controlPoint = outControlPoint;
+    for (auto& w : controlPoint.weights)
+        w = 0.0f;
 
     // Calculate Mid Edge Points
     // M_i(1 - THETA * cos(pi / n)) * cos((2PI*I) / N)
@@ -626,9 +673,10 @@ Patch::ControlPointWeights CalculateQuadEdgeControlPoint(auto& vertexEdgeView, a
     }
 
     for (auto& w : controlPoint.weights)
-        w *= L * (2.0f / N);
+        w *= (2.0f / 3.0f) * L * (2.0f / N);
 
-    return controlPoint;
+    for (size_t I = 0; I < 32; I++)
+        outControlPoint.AddWeight(controlPoint.indices[I], controlPoint.weights[I]);
 }
 
 
@@ -646,7 +694,9 @@ void CalculateQuadEdgePoint_E0_Plus(uint32_t quadPatchIdx, Patch& patch, Modifia
 
     auto faceView       = vertexView.FaceView();
     auto vertexEdgeView = vertexView.EdgeView(0);
-    auto controlPoint   = CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N);
+
+    Patch::ControlPointWeights controlPoint = patch.controlPoints[p0];
+    CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N, controlPoint);
 
     patch.controlPoints[e0Plus] = controlPoint;
 
@@ -668,7 +718,9 @@ void CalculateQuadEdgePoint_E0_Minus(uint32_t quadPatchIdx, Patch& patch, Modifi
 
     auto faceView       = vertexView.FaceView(1);
     auto vertexEdgeView = vertexView.EdgeView(1);
-    auto controlPoint   = CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N);
+
+    Patch::ControlPointWeights controlPoint = patch.controlPoints[p0];
+    CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N, controlPoint);
 
     patch.controlPoints[e0Minus] = controlPoint;
 
@@ -690,7 +742,9 @@ void CalculateQuadEdgePoint_E1_Plus(uint32_t quadPatchIdx, Patch& patch, Modifia
 
     auto faceView       = vertexView.FaceView();
     auto vertexEdgeView = vertexView.EdgeView();
-    auto controlPoint   = CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N);
+
+    Patch::ControlPointWeights controlPoint = patch.controlPoints[p1];
+    CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N, controlPoint);
 
     patch.controlPoints[e1Plus] = controlPoint;
 
@@ -713,7 +767,9 @@ void CalculateQuadEdgePoint_E1_Minus(uint32_t quadPatchIdx, Patch& patch, Modifi
 
     auto faceView       = vertexView.FaceView(1);
     auto vertexEdgeView = vertexView.EdgeView(1);
-    auto controlPoint   = CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N);
+
+    Patch::ControlPointWeights controlPoint = patch.controlPoints[p1];
+    CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N, controlPoint);
 
     patch.controlPoints[e1Minus] = controlPoint;
 
@@ -735,7 +791,9 @@ void CalculateQuadEdgePoint_E2_Plus(uint32_t quadPatchIdx, Patch& patch, Modifia
 
     auto faceView       = vertexView.FaceView(0);
     auto vertexEdgeView = vertexView.EdgeView(0);
-    auto controlPoint   = CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N);
+
+    Patch::ControlPointWeights controlPoint = patch.controlPoints[p2];
+    CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N, controlPoint);
 
     patch.controlPoints[e2Plus] = controlPoint;
 
@@ -757,7 +815,9 @@ void CalculateQuadEdgePoint_E2_Minus(uint32_t quadPatchIdx, Patch& patch, Modifi
 
     auto faceView       = vertexView.FaceView(1);
     auto vertexEdgeView = vertexView.EdgeView(1);
-    auto controlPoint   = CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N);
+
+    Patch::ControlPointWeights controlPoint = patch.controlPoints[p2];
+    CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N, controlPoint);
 
     patch.controlPoints[e2Minus] = controlPoint;
 
@@ -779,7 +839,9 @@ void CalculateQuadEdgePoint_E3_Plus(uint32_t quadPatchIdx, Patch& patch, Modifia
 
     auto faceView       = vertexView.FaceView(0);
     auto vertexEdgeView = vertexView.EdgeView(0);
-    auto controlPoint   = CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N);
+
+    Patch::ControlPointWeights controlPoint = patch.controlPoints[p3];
+    CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N, controlPoint);
 
     patch.controlPoints[e3Plus] = controlPoint;
 
@@ -801,7 +863,9 @@ void CalculateQuadEdgePoint_E3_Minus(uint32_t quadPatchIdx, Patch& patch, Modifi
 
     auto faceView       = vertexView.FaceView(1);
     auto vertexEdgeView = vertexView.EdgeView(1);
-    auto controlPoint   = CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N);
+
+    Patch::ControlPointWeights controlPoint = patch.controlPoints[p3];
+    CalculateQuadEdgeControlPoint(vertexEdgeView, faceView, shape, N, controlPoint);
 
     patch.controlPoints[e3Minus] = controlPoint;
 
@@ -1185,41 +1249,236 @@ void CalculateQuadControlPoint_R3_Minus(uint32_t quadPatchIdx, Patch& patch, Mod
 /************************************************************************************************/
 
 
+Patch BuidRegularPatch(uint32_t quadPatch, ModifiableShape& shape)
+{
+    Patch patch;
+
+    CalculateQuadCornerPoints(quadPatch, patch, shape);
+    CalculateQuadEdgePoint_E0_Plus(quadPatch, patch, shape);
+    CalculateQuadEdgePoint_E0_Minus(quadPatch, patch, shape);
+
+    CalculateQuadEdgePoint_E1_Plus(quadPatch, patch, shape);
+    CalculateQuadEdgePoint_E1_Minus(quadPatch, patch, shape);
+
+    CalculateQuadEdgePoint_E2_Plus(quadPatch, patch, shape);
+    CalculateQuadEdgePoint_E2_Minus(quadPatch, patch, shape);
+
+    CalculateQuadEdgePoint_E3_Plus(quadPatch, patch, shape);
+    CalculateQuadEdgePoint_E3_Minus(quadPatch, patch, shape);
+
+    CalculateQuadControlPoint_R0_Plus(quadPatch, patch, shape);
+    CalculateQuadControlPoint_R0_Minus(quadPatch, patch, shape);
+
+    CalculateQuadControlPoint_R1_Plus(quadPatch, patch, shape);
+    CalculateQuadControlPoint_R1_Minus(quadPatch, patch, shape);
+
+    CalculateQuadControlPoint_R2_Plus(quadPatch, patch, shape);
+    CalculateQuadControlPoint_R2_Minus(quadPatch, patch, shape);
+
+    CalculateQuadControlPoint_R3_Plus(quadPatch, patch, shape);
+    CalculateQuadControlPoint_R3_Minus(quadPatch, patch, shape);
+
+    return patch;
+}
+
+
+void CalculateCornerEdge(Patch& patch, uint32_t edge, uint32_t target, bool Minus, ModifiableShape& shape)
+{
+    const uint32_t v0 = shape.wEdges[edge].vertices[0];
+    const uint32_t v1 = shape.wEdges[edge].vertices[1];
+
+    size_t idx0 = 0;
+    size_t idx1 = 0;
+    for (; idx0 < 32 && patch.controlPoints[target].weights[idx0] != v0; idx0++);
+    for (; idx1 < 32 && patch.controlPoints[target].weights[idx1] != v1; idx1++);
+
+
+    if (Minus)
+    {
+        patch.controlPoints[target].AddWeight(v0, 1.0f / 3.0f);
+        patch.controlPoints[target].AddWeight(v1, 2.0f / 3.0f);
+    }
+    else
+    {
+        patch.controlPoints[target].AddWeight(v0, 2.0f / 3.0f);
+        patch.controlPoints[target].AddWeight(v1, 1.0f / 3.0f);
+    }
+}
+
+Patch BuildQuadEdgePatch(uint32_t edgePatch, ModifiableShape& shape)
+{
+    static const bool Plus  = false;
+    static const bool Minus = true;
+
+
+    Patch patch;
+
+    CalculateQuadCornerPoints(edgePatch, patch, shape);
+
+    auto edgeView = shape.wFaces[edgePatch].EdgeView(shape);
+
+    {   // Edge 0
+        auto edge = edgeView[0];
+
+        // V0
+        switch (shape.wVerticeEdges[edge->vertices[0]].size())
+        {
+        case 2: // Corner
+        {
+            CalculateCornerEdge(patch, edge, e0Plus, Plus, shape);
+        }   break;
+        case 4: // T-Junction
+        {
+            int x = 0;
+        }   break;
+        default:
+        {
+            CalculateQuadEdgePoint_E0_Plus(edgePatch, patch, shape);
+            CalculateQuadEdgePoint_E0_Minus(edgePatch, patch, shape);
+            CalculateQuadControlPoint_R0_Minus(edgePatch, patch, shape);
+            CalculateQuadControlPoint_R0_Plus(edgePatch, patch, shape);
+        }   break;
+        {
+            int x = 0;
+        }   break;
+        }
+
+        // V1
+        switch (shape.wVerticeEdges[edge->vertices[1]].size())
+        {
+        case 2:
+            CalculateCornerEdge(patch, edge, e1Minus, Minus, shape);
+            break;
+        default:
+            break;
+        }
+    }
+
+    {   // Edge 1
+        auto edge = edgeView[1];
+
+        //V0
+        switch (shape.wVerticeEdges[edge->vertices[0]].size())
+        {
+        case 2: // Corner
+        {
+            CalculateCornerEdge(patch, edge, e1Plus, Plus, shape);
+        }   break;
+        case 4: // T-Junction
+        {
+            int x = 0;
+        }   break;
+        default:
+        {
+            CalculateQuadEdgePoint_E1_Plus(edgePatch, patch, shape);
+            CalculateQuadEdgePoint_E1_Minus(edgePatch, patch, shape);
+            CalculateQuadControlPoint_R1_Minus(edgePatch, patch, shape);
+            CalculateQuadControlPoint_R1_Plus(edgePatch, patch, shape);
+        }   break;
+        }
+
+
+        // V1
+        switch (shape.wVerticeEdges[edge->vertices[1]].size())
+        {
+        case 2:
+            CalculateCornerEdge(patch, edge, e2Minus, Minus, shape);
+            break;
+        default:
+            break;
+        }
+    }
+
+    {   // Edge 2
+        auto edge = edgeView[2];
+        auto temp2 = shape.wVerticeEdges[edge->vertices[1]].size();
+
+        switch (shape.wVerticeEdges[edge->vertices[0]].size())
+        {
+        case 2: // Corner
+        {
+            CalculateCornerEdge(patch, edge, e2Plus, Plus, shape);
+        }   break;
+        case 4: // T-Junction
+        {
+            int x = 0;
+        }   break;
+        default:
+        {
+            CalculateQuadEdgePoint_E2_Plus(edgePatch, patch, shape);
+            CalculateQuadEdgePoint_E2_Minus(edgePatch, patch, shape);
+            CalculateQuadControlPoint_R2_Minus(edgePatch, patch, shape);
+            CalculateQuadControlPoint_R2_Plus(edgePatch, patch, shape);
+        }   break;
+        }
+
+        // V1
+        switch (shape.wVerticeEdges[edge->vertices[1]].size())
+        {
+        case 2:
+            CalculateCornerEdge(patch, edge, e3Minus, Minus, shape);
+            break;
+        default:
+            break;
+        }
+    }
+
+    {   // Edge 3
+        auto edge = edgeView[3];
+
+        auto v2 = shape.wVerticeEdges[edge->vertices[1]].size();
+
+        switch (shape.wVerticeEdges[edge->vertices[0]].size())
+        {
+        case 2: // Corner
+        {
+            CalculateCornerEdge(patch, edge, e3Plus, Plus, shape);
+        }   break;
+        case 4: // T-Junction
+        {
+            int x = 0;
+        }   break;
+        default:
+        {
+            CalculateQuadEdgePoint_E3_Plus(edgePatch, patch, shape);
+            CalculateQuadEdgePoint_E3_Minus(edgePatch, patch, shape);
+            CalculateQuadControlPoint_R3_Minus(edgePatch, patch, shape);
+            CalculateQuadControlPoint_R3_Plus(edgePatch, patch, shape);
+        }   break;
+        }
+
+        // V1
+        switch (shape.wVerticeEdges[edge->vertices[1]].size())
+        {
+        case 2:
+            CalculateCornerEdge(patch, edge, e0Minus, Minus, shape);
+            break;
+        default:
+            break;
+        }
+    }
+
+    return patch;
+}
+
+
 auto CalculateControlPointWeights(PatchGroups& classifiedPatches, ModifiableShape& shape)
 {
     std::vector<Patch> patches;
 
     for (auto& quadPatch : classifiedPatches.QuadPatches)
     {
-        Patch newPatch;
+        const Patch regularPatch = BuidRegularPatch(quadPatch, shape);
 
-        CalculateQuadCornerPoints(quadPatch, newPatch, shape);
-        CalculateQuadEdgePoint_E0_Plus(quadPatch, newPatch, shape);
-        CalculateQuadEdgePoint_E0_Minus(quadPatch, newPatch, shape);
-
-        CalculateQuadEdgePoint_E1_Plus(quadPatch, newPatch, shape);
-        CalculateQuadEdgePoint_E1_Minus(quadPatch, newPatch, shape);
-
-        CalculateQuadEdgePoint_E2_Plus(quadPatch, newPatch, shape);
-        CalculateQuadEdgePoint_E2_Minus(quadPatch, newPatch, shape);
-
-        CalculateQuadEdgePoint_E3_Plus(quadPatch, newPatch, shape);
-        CalculateQuadEdgePoint_E3_Minus(quadPatch, newPatch, shape);
-
-        CalculateQuadControlPoint_R0_Plus(quadPatch, newPatch, shape);
-        CalculateQuadControlPoint_R0_Minus(quadPatch, newPatch, shape);
-
-        CalculateQuadControlPoint_R1_Plus(quadPatch, newPatch, shape);
-        CalculateQuadControlPoint_R1_Minus(quadPatch, newPatch, shape);
-
-        CalculateQuadControlPoint_R2_Plus(quadPatch, newPatch, shape);
-        CalculateQuadControlPoint_R2_Minus(quadPatch, newPatch, shape);
-
-        CalculateQuadControlPoint_R3_Plus(quadPatch, newPatch, shape);
-        CalculateQuadControlPoint_R3_Minus(quadPatch, newPatch, shape);
-
-        patches.push_back(newPatch);
+        patches.push_back(regularPatch);
     }
+
+    for (auto& borderPatch : classifiedPatches.edgeQuadPatches)
+    {
+        const Patch edgePatch = BuildQuadEdgePatch(borderPatch, shape);
+        patches.push_back(edgePatch);
+    }
+
 
     for (auto& patch : patches)
     {
@@ -1257,15 +1516,15 @@ public:
         renderWindow    {
             std::get<0>(CreateWin32RenderWindow(
                 IN_framework.GetRenderSystem(),
-                FlexKit::DefaultWindowDesc(uint2{ 1920, 1080 } * 2))) },
+                FlexKit::DefaultWindowDesc(uint2{ 1920, 1080 }))) },
         rootSig         { IN_framework.core.GetBlockMemory() },
         vertexBuffer    { IN_framework.GetRenderSystem().CreateVertexBuffer(MEGABYTE, false) },
         constantBuffer  { IN_framework.GetRenderSystem().CreateConstantBuffer(MEGABYTE, false) },
         cameras         { IN_framework.core.GetBlockMemory() },
-        depthBuffer     { IN_framework.GetRenderSystem().CreateDepthBuffer(uint2{ 1920, 1080 } * 2, true) },
+        depthBuffer     { IN_framework.GetRenderSystem().CreateDepthBuffer(uint2{ 1920, 1080 }, true) },
         debugBuffer     { IN_framework.GetRenderSystem().CreateUAVBufferResource(MEGABYTE, false) },
         indices         { IN_framework.core.GetBlockMemory() },
-        orbitCamera     { gameObject },
+        orbitCamera     { gameObject, CameraComponent::GetComponent().CreateCamera(), 10.0f },
         nodes           {}
     {
         patches     = PreComputePatches(IN_framework.core.GetBlockMemory() );
@@ -1276,7 +1535,8 @@ public:
         rootSig.SetParameterAsCBV(1, 0, 0, PIPELINE_DEST_ALL);
         rootSig.SetParameterAsUINT(2, 16, 1, 0, PIPELINE_DEST_ALL);
         rootSig.SetParameterAsUINT(3, 1, 2, 0, PIPELINE_DEST_ALL);
-        rootSig.SetParameterAsUAV(4, 0, 0, PIPELINE_DEST_HS);
+        rootSig.SetParameterAsUAV(4, 0, 0, PIPELINE_DEST_ALL);
+        rootSig.SetParameterAsUAV(5, 1, 0, PIPELINE_DEST_ALL);
 
         rootSig.AllowIA = true;
         rootSig.AllowSO = false;
@@ -1296,7 +1556,6 @@ public:
         node            = GetZeroedNode();
         orbitCamera.SetCameraAspectRatio(1920.0f / 1080.0f);
         orbitCamera.SetCameraFOV((float)pi / 3.0f);
-
         //TranslateWorld(node, float3( 0, -3, -20.0f ));
         //Pitch(node, pi / 6);
 
@@ -1408,7 +1667,6 @@ public:
         const uint32_t patch14[] = { 11, 15, 23, 22 };
         const uint32_t patch15[] = { 15, 19, 24, 23 };
 
-
         shape.AddPolygon(patch0, patch0 + 4);
         shape.AddPolygon(patch1, patch1 + 4);
         shape.AddPolygon(patch2, patch2 + 4);
@@ -1491,9 +1749,11 @@ public:
                 const float4x4 WT       = GetWT(node).Transpose();
                 const auto constants    = GetCameraConstants(orbitCamera.camera);
                 
-                ConstantBufferDataSet CB{ constants, Cbuffer };
+                const ConstantBufferDataSet CB{ constants, Cbuffer };
 
                 ctx.ClearDepthBuffer(depthBuffer, 1.0f);
+                ctx.ClearUAVBuffer(resources.UAV(data.debugBuffer, ctx));
+                ctx.AddUAVBarrier(resources.UAV(data.debugBuffer, ctx));
 
                 ctx.SetRootSignature(rootSig);
                 ctx.SetPipelineState(resources.GetPipelineState(ACCQuad));
@@ -1503,21 +1763,23 @@ public:
                 ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
                 ctx.SetRenderTargets({ resources.GetRenderTarget(data.renderTarget) }, true, depthBuffer);
 
-                float expansionRate = 1 + cos(t) * 63.0f / 2 + 63.0f / 2.0f;
+                float expansionRate = 64.0f;// 1 + cos(t) * 63.0f / 2 + 63.0f / 2.0f;
 
                 ctx.SetGraphicsShaderResourceView(0, patchBuffer);
                 ctx.SetGraphicsConstantBufferView(1, CB);
                 ctx.SetGraphicsConstantValue(2, 16, &WT);
                 ctx.SetGraphicsConstantValue(3, 1, &expansionRate);
-                ctx.SetGraphicsUnorderedAccessView(4, resources.UAV(data.debugBuffer, ctx));
+                ctx.SetGraphicsUnorderedAccessView(4, resources.UAV(data.debugBuffer, ctx), 0);
+                ctx.SetGraphicsUnorderedAccessView(5, resources.UAV(data.debugBuffer, ctx), 64);
 
                 ctx.DrawIndexed(indices.size());
+                ctx.AddUAVBarrier(resources.UAV(data.debugBuffer, ctx));
 
                 auto devicePointer = resources.GetDevicePointer(resources.VertexBuffer(data.debugBuffer, ctx));
                 ctx.SetPipelineState(resources.GetPipelineState(ACCDebug));
                 ctx.SetPrimitiveTopology(EInputTopology::EIT_POINT);
-                ctx.SetVertexBuffers2({ D3D12_VERTEX_BUFFER_VIEW{ devicePointer, (UINT)(indices.size() / 32 * 20 * 12), 12 } });
-                //ctx.Draw(20 * 4);
+                ctx.SetVertexBuffers2({ D3D12_VERTEX_BUFFER_VIEW{ devicePointer + 64, MEGABYTE - 64, 12 } });
+                ctx.Draw(20 * indices.size() / 32);
             });
     }
 
@@ -1646,7 +1908,7 @@ public:
 
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
         Rast_Desc.CullMode              = D3D12_CULL_MODE_NONE;
-        //Rast_Desc.FillMode              = D3D12_FILL_MODE_WIREFRAME;
+        Rast_Desc.FillMode              = D3D12_FILL_MODE_WIREFRAME;
         //Rast_Desc.ConservativeRaster    = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);

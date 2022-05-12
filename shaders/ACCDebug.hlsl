@@ -46,7 +46,7 @@ void GS_Main(
     inout TriangleStream<OutputVert>    triangleStream)
 {
 
-    const float3 pos    = IN[0].pos * float3(3, 3, 3) + float3(-5, -1.5, -2);
+    const float3 pos    = IN[0].pos;
     const float4 pos_WS = mul(WT, float4(pos, 1));
     const float4 pos_DC = mul(PV, pos_WS);
 
