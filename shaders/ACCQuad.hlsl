@@ -71,12 +71,6 @@ struct HS_Input
     float4 p    : SV_POSITION;
 };
 
-struct PS_Input
-{
-    float4 p : SV_POSITION;
-    float2 t : TEXCOORD;
-};
-
 struct ControlPoint
 {
     float16_t  w[32];
@@ -136,8 +130,6 @@ HS_Input VS_Main(VS_Input input, const uint vid : SV_VertexID)
 {
     HS_Input output;
     output.p = float4(input.p, 1);
-    //output.normal   = input.normal;
-    //output.texcoord = input.texcoord;
 
     return output;
 }
@@ -239,18 +231,11 @@ PatchConstants_Output PatchConstants(
     const float3 C4 = GetFaceMidPoint(N4, inputPoints);
 
     PatchConstants_Output output;
-    output.Edges[0] = 64;
-    output.Edges[1] = 64;
-    output.Edges[2] = 64;
-    output.Edges[3] = 64;
 
-    output.Inside[0] = 64;
-    output.Inside[1] = 64;
-
-    output.gregoryPatch[p0] = controlPoints[p0].p;
-    output.gregoryPatch[p1] = controlPoints[p1].p;
-    output.gregoryPatch[p2] = controlPoints[p2].p;
-    output.gregoryPatch[p3] = controlPoints[p3].p;
+    output.gregoryPatch[p0] = controlPoints[p0].p + float3(0, 0, 0);
+    output.gregoryPatch[p1] = controlPoints[p1].p + float3(0, 0, 0);
+    output.gregoryPatch[p2] = controlPoints[p2].p + float3(0, 0, 0);
+    output.gregoryPatch[p3] = controlPoints[p3].p + float3(0, 0, 0);
 
     output.gregoryPatch[e0Minus]    = controlPoints[p0].p + 2.0f / 3.0f * controlPoints[e0Minus].p;
     output.gregoryPatch[e0Plus]     = controlPoints[p0].p + 2.0f / 3.0f * controlPoints[e0Plus].p;
@@ -264,12 +249,8 @@ PatchConstants_Output PatchConstants(
     output.gregoryPatch[e3Plus]     = controlPoints[p3].p + 2.0f / 3.0f * controlPoints[e3Plus].p;
     output.gregoryPatch[e3Minus]    = controlPoints[p3].p + 2.0f / 3.0f * controlPoints[e3Minus].p;
 
-    float y = 0.940972328;
-    bool enable = false;
 
     output.gregoryPatch[r0Plus] =
-        (patchIdx == 0  && enable) ?
-            float3(1.45833, y, 1.25) :
             CalculateFacePoint(
                 C0, C1,
                 output.gregoryPatch[p0],
@@ -278,8 +259,6 @@ PatchConstants_Output PatchConstants(
                 controlPoints[r0Plus].p);
 
     output.gregoryPatch[r0Minus] =
-        (patchIdx == 0 && enable) ?
-            float3(1.25, y, 1.45833) :
             CalculateFacePoint(
                 C0, C4,
                 output.gregoryPatch[p0],
@@ -288,8 +267,6 @@ PatchConstants_Output PatchConstants(
                 controlPoints[r0Minus].p);
 
     output.gregoryPatch[r1Plus] =
-        (patchIdx == 0 && enable) ?
-            float3(1.75, y, 1.45833) :
             CalculateFacePoint(
                 C0, C2,
                 output.gregoryPatch[p1],
@@ -298,8 +275,6 @@ PatchConstants_Output PatchConstants(
                 controlPoints[r1Plus].p);
 
     output.gregoryPatch[r1Minus] =
-        (patchIdx == 0 && enable) ?
-            float3(1.54167, y, 1.25) :
             CalculateFacePoint(
                 C0, C1,
                 output.gregoryPatch[p1],
@@ -308,8 +283,6 @@ PatchConstants_Output PatchConstants(
                 controlPoints[r1Minus].p);
 
     output.gregoryPatch[r2Plus] =
-        (patchIdx == 0 && enable) ?
-            float3(1.54167, y, 1.75) :
             CalculateFacePoint(
                 C0, C3,
                 output.gregoryPatch[p2],
@@ -318,8 +291,6 @@ PatchConstants_Output PatchConstants(
                 controlPoints[r2Plus].p);
 
     output.gregoryPatch[r2Minus] =
-        (patchIdx == 0 && enable) ?
-            float3(1.75, y, 1.54167) :
             CalculateFacePoint(
                 C0, C2,
                 output.gregoryPatch[p2],
@@ -328,8 +299,6 @@ PatchConstants_Output PatchConstants(
                 controlPoints[r2Minus].p);
 
     output.gregoryPatch[r3Plus] =
-        (patchIdx == 0 && enable) ?
-            float3(1.25, y, 1.54167) :
             CalculateFacePoint(
                 C0, C4,
                 output.gregoryPatch[p3],
@@ -338,8 +307,6 @@ PatchConstants_Output PatchConstants(
                 controlPoints[r3Plus].p);
 
     output.gregoryPatch[r3Minus] =
-        (patchIdx == 0 && enable) ?
-            float3(1.45833, y, 1.75) :
             CalculateFacePoint(
                 C0, C3,
                 output.gregoryPatch[p3],
@@ -348,14 +315,44 @@ PatchConstants_Output PatchConstants(
                 controlPoints[r3Minus].p);
 
     for (int J = 0; J < 20; J++)
-        debug[25 * patchIdx + J] = output.gregoryPatch[J];
+        debug[20 * patchIdx + J] = output.gregoryPatch[J];
 
-    debug[25 * patchIdx + 20] = C0;
-    debug[25 * patchIdx + 21] = C1;
-    debug[25 * patchIdx + 22] = C2;
-    debug[25 * patchIdx + 23] = C3;
-    debug[25 * patchIdx + 24] = C4;
+    const float4 pos0_DC = mul(PV, mul(WT, float4(controlPoints[p0].p, 1)));
+    const float4 pos1_DC = mul(PV, mul(WT, float4(controlPoints[p1].p, 1)));
+    const float4 pos2_DC = mul(PV, mul(WT, float4(controlPoints[p2].p, 1)));
+    const float4 pos3_DC = mul(PV, mul(WT, float4(controlPoints[p3].p, 1)));
 
+    const float MaxZ = max(max(pos0_DC.z, pos1_DC.z), max(pos2_DC.z, pos3_DC.z));
+    if (MaxZ < 0.0f)
+    {
+        output.Edges[0] = 0;
+        output.Edges[1] = 0;
+        output.Edges[2] = 0;
+        output.Edges[3] = 0;
+
+        output.Inside[0] = 0;
+        output.Inside[1] = 0;
+    }
+    else
+    {
+        const float3 pos0_NDC = pos0_DC.xyz / pos0_DC.w;
+        const float3 pos1_NDC = pos1_DC.xyz / pos1_DC.w;
+        const float3 pos2_NDC = pos2_DC.xyz / pos2_DC.w;
+        const float3 pos3_NDC = pos3_DC.xyz / pos3_DC.w;
+
+        const float e0_factor = (2160.0f) * length(pos0_NDC - pos1_NDC) / 2.0f;
+        const float e1_factor = (2160.0f) * length(pos1_NDC - pos2_NDC) / 2.0f;
+        const float e2_factor = (2160.0f) * length(pos2_NDC - pos3_NDC) / 2.0f;
+        const float e3_factor = (2160.0f) * length(pos3_NDC - pos0_NDC) / 2.0f;
+
+        output.Edges[0] = e3_factor;
+        output.Edges[1] = e0_factor;
+        output.Edges[2] = e1_factor;
+        output.Edges[3] = e2_factor;
+
+        output.Inside[0] = (e0_factor + e2_factor) / 2.0f;
+        output.Inside[1] = (e1_factor + e3_factor) / 2.0f;
+    }
     return output;
 }
 
@@ -387,6 +384,35 @@ Gregory_CP HS_Main(
 
 //*************************************************************************************
 
+
+struct PS_Input
+{
+    float4 p        : SV_POSITION;
+    float3 pos_WS   : POSITION;
+    float2 tx       : TEXCOORD;
+    float3 bt       : BITANGENT;
+    float3 t        : TANGENT;
+};
+
+void Univar4(in float u, out float B[4], out float D[4])
+{
+    float t = u;
+    float s = 1.0 - u;
+
+    float A0 =     s * s;
+    float A1 = 2 * s * t;
+    float A2 = t * t;
+
+    B[0] =          s * A0;
+    B[1] = t * A0 + s * A1;
+    B[2] = t * A1 + s * A2;
+    B[3] = t * A2;
+
+    D[0] =    - A0;
+    D[1] = A0 - A1;
+    D[2] = A1 - A2;
+    D[3] = A2;
+}
 
 [domain("quad")]
 PS_Input DS_Main(
@@ -426,6 +452,46 @@ PS_Input DS_Main(
     bezierPatch[3][1] = constants.gregoryPatch[e3Minus]; 
     bezierPatch[3][2] = constants.gregoryPatch[e2Plus];
     bezierPatch[3][3] = constants.gregoryPatch[p2];
+
+    const float3 u0 = 3 * (constants.gregoryPatch[e0Plus]   - constants.gregoryPatch[p0]);
+    const float3 u1 = 3 * (constants.gregoryPatch[e1Minus]  - constants.gregoryPatch[e0Plus]);
+    const float3 u2 = 3 * (constants.gregoryPatch[p1]       - constants.gregoryPatch[e1Minus]);
+
+    const float3 v0 = 3 * (constants.gregoryPatch[e0Plus]   - constants.gregoryPatch[p0]);
+    const float3 v1 = 4 * (constants.gregoryPatch[r0Plus]   - constants.gregoryPatch[e0Plus]);
+    const float3 v2 = 4 * (constants.gregoryPatch[r1Minus]  - constants.gregoryPatch[e1Minus]);
+    const float3 v3 = 3 * (constants.gregoryPatch[e1Plus]   - constants.gregoryPatch[p1]);
+
+    float B[4], D[4];
+
+    Univar4(v, B, D);
+    float3 BUCP[4], DUCP[4];
+
+
+    for (int i = 0; i < 4; ++i)
+    {
+        BUCP[i] = float3(0, 0, 0);
+        DUCP[i] = float3(0, 0, 0);
+
+        for (uint j = 0; j < 4; ++j)
+        {
+            float3 A = bezierPatch[j][i];
+
+            BUCP[i] += A * B[j];
+            DUCP[i] += A * D[j];
+        }
+    }
+
+    Univar4(u, B, D);
+
+    float3 Tangent      = float3(0, 0, 0);
+    float3 BiTangent    = float3(0, 0, 0);
+
+    for (uint j = 0; j < 4; ++j)
+    {
+        Tangent     += B[j] * DUCP[j];
+        BiTangent   += D[j] * BUCP[j];
+    }
 
     const float3 i0 =
         lerp(
@@ -485,14 +551,18 @@ PS_Input DS_Main(
                 lerp(i1, i2, v),
                 lerp(i2, i3, v),
                 v),
-            v) - float3(0, 2.5f, 0);
+            v);
 
-    const float4 POS_MS = float4(p.xyz, 1) * float4(3, 3, 3, 1) + float4(-5, 6, -2, 0);
-    const float4 pos_WS = mul(WT, POS_MS);
-    const float4 pos_DC = mul(PV, pos_WS);
+    const float4 POS_MS = float4(p.xyz, 1);
+    const float4 POS_WS = mul(WT, POS_MS);
+    const float4 POS_DC = mul(PV, POS_WS);
 
-    output.p = pos_DC;
-    output.t = UV;
+    output.t    = mul(WT, Tangent);
+    output.bt   = mul(WT, BiTangent);
+
+    output.pos_WS   = POS_WS;
+    output.p        = POS_DC;
+    output.tx       = UV;
 
     return output;
 }
@@ -503,7 +573,17 @@ PS_Input DS_Main(
 
 float4 PS_Main(PS_Input input) : SV_TARGET
 {
-    return float4(input.t, 1, 1);
+    const float3 light_pos      = float3(0, 10, 0);
+    const float3 l_dir          = normalize(input.pos_WS - light_pos);
+    const float3 v_dir          = normalize(input.pos_WS - CameraPOS);
+    const float3 n              = normalize(cross(input.bt, input.t)) * float3(1, 1, 1);
+    const float3 rDir           = reflect(-l_dir, n);
+
+    const float spec            = pow(saturate(dot(v_dir, rDir)), 100) / pow(length(input.pos_WS - light_pos), 2.0f);
+    const float diff            = 1 * dot(n, l_dir) / pow(length(input.pos_WS - light_pos), 2.0f);
+    const float3 K              = spec + diff * pow(float3(1.0f, 0.5f, 0.31f), 2.2f);
+
+    return pow(float4(K, 1), 1.0f / 2.0f);
 }
 
 
