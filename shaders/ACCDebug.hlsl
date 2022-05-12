@@ -53,10 +53,10 @@ void GS_Main(
     float r = 0.03f;
 
     OutputVert v1, v2, v3, v4;
-    v1.pos = pos_DC + float4(-r, -r, -0.01f, 0);
-    v2.pos = pos_DC + float4( r, -r, -0.01f, 0);
-    v3.pos = pos_DC + float4( r,  r, -0.01f, 0);
-    v4.pos = pos_DC + float4(-r,  r, -0.01f, 0);
+    v1.pos = pos_DC + float4(-r / AspectRatio, -r, -0.01f, 0);
+    v2.pos = pos_DC + float4( r / AspectRatio, -r, -0.01f, 0);
+    v3.pos = pos_DC + float4( r / AspectRatio,  r, -0.01f, 0);
+    v4.pos = pos_DC + float4(-r / AspectRatio,  r, -0.01f, 0);
 
     triangleStream.Append(v1);
     triangleStream.Append(v2);

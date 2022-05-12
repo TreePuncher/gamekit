@@ -1294,10 +1294,10 @@ public:
         renderWindow.EnableCaptureMouse(true);
         //activeCamera    = CameraComponent::GetComponent().CreateCamera((float)pi/3.0f, 1920.0f / 1080.0f);
         node            = GetZeroedNode();
-        orbitCamera.SetCameraAspectRatio(1920.0f/ 1080.0f);
+        orbitCamera.SetCameraAspectRatio(1920.0f / 1080.0f);
         orbitCamera.SetCameraFOV((float)pi / 3.0f);
 
-        TranslateWorld(node, float3( 0, -3, -20.0f ));
+        //TranslateWorld(node, float3( 0, -3, -20.0f ));
         //Pitch(node, pi / 6);
 
         //Yaw(node, pi);
@@ -1517,7 +1517,7 @@ public:
                 ctx.SetPipelineState(resources.GetPipelineState(ACCDebug));
                 ctx.SetPrimitiveTopology(EInputTopology::EIT_POINT);
                 ctx.SetVertexBuffers2({ D3D12_VERTEX_BUFFER_VIEW{ devicePointer, (UINT)(indices.size() / 32 * 20 * 12), 12 } });
-                ctx.Draw(25 * 4);
+                //ctx.Draw(20 * 4);
             });
     }
 
