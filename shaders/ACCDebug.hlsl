@@ -24,14 +24,23 @@ cbuffer LocalConstants : register(b1)
     float4x4 WT;
 };
 
-float4 VS_Main(float3 pos : POSITION) : POSITION
+float3 VS_Main(float3 pos : POSITION) : POSITION
 {
-    return float4(pos, 1);
+    return pos;
 }
+
+float4 VS2_Main(float3 pos : POSITION) : SV_POSITION
+{
+    const float4 pos_WS = mul(WT, float4(pos, 1));
+    const float4 pos_DC = mul(PV, pos_WS);
+
+    return pos_DC;
+}
+
 
 struct InputVert
 {
-    float4 pos : POSITION;
+    float3 pos : POSITION;
 };
 
 struct OutputVert
@@ -45,10 +54,9 @@ void GS_Main(
     point InputVert                     IN[1],
     inout TriangleStream<OutputVert>    triangleStream)
 {
-
-    const float3 pos    = IN[0].pos;
-    const float4 pos_WS = mul(WT, float4(pos, 1));
-    const float4 pos_DC = mul(PV, pos_WS);
+    const float4 pos    = float4(IN[0].pos, 1);
+    const float4 pos_WS = mul(WT, pos);
+    const float4 pos_DC = mul(PV, pos);
 
     float r = 0.03f;
 
@@ -72,7 +80,12 @@ void GS_Main(
 
 float4 PS_Main() : SV_TARGET
 {
-    return float4(0.5f, 0.5f, 0.5f, 1.0f);
+    return float4(0.3f, 0.0f, 0.0f, 1.0f);
+}
+
+float4 PS2_Main() : SV_TARGET
+{
+    return float4(0.0f, 1.0f, 0.0f, 1.0f);
 }
 
 /**********************************************************************

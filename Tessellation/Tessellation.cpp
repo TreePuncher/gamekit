@@ -1,7 +1,8 @@
 #include "pch.h"
 
-constexpr FlexKit::PSOHandle ACCQuad    = FlexKit::PSOHandle(GetTypeGUID(ACCQuad));
-constexpr FlexKit::PSOHandle ACCDebug   = FlexKit::PSOHandle(GetTypeGUID(ACCDebug));
+constexpr FlexKit::PSOHandle ACCQuad                = FlexKit::PSOHandle(GetTypeGUID(ACCQuad));
+constexpr FlexKit::PSOHandle ACCDebugNormals        = FlexKit::PSOHandle(GetTypeGUID(ACCDebugNormals));
+constexpr FlexKit::PSOHandle ACCDebugControlpoints  = FlexKit::PSOHandle(GetTypeGUID(ACCDebugControlpoints));
 
 using namespace FlexKit;
 
@@ -125,6 +126,19 @@ struct Patch
                 {
                     indices[I] = idx;
                     weights[I] = w;
+                    return;
+                }
+            }
+        }
+
+        void ScaleWeight(uint32_t idx, float s)
+        {
+            size_t I = 0;
+            for (; I < 32; I++)
+            {
+                if (indices[I] == idx)
+                {
+                    weights[I] *= s;
                     return;
                 }
             }
@@ -1305,6 +1319,78 @@ void CalculateCornerEdge(Patch& patch, uint32_t edge, uint32_t target, bool Minu
     }
 }
 
+void CalculateTJunction(Patch& patch, uint32_t edge, uint32_t target, uint32_t point, bool Minus, ModifiableShape& shape)
+{
+    auto& hEdge = shape.wEdges[edge];
+
+    const auto v0       = shape.wEdges[edge].vertices[Minus ? 1 : 0];
+    const auto v1       = shape.wEdges[edge].vertices[Minus ? 0 : 1];
+    const auto& edges   = shape.wVerticeEdges[v0];
+
+    Patch::ControlPointWeights controlPoint;// = patch.controlPoints[point];
+
+    if (hEdge.oppositeNeighbor != 0xffffffff)
+    {   // Interner Edge
+        const auto f1 = shape.wEdges[edge].face;
+        const auto f2 = shape.wEdges[hEdge.oppositeNeighbor].face;
+
+        const auto f1_verts = shape.GetFaceVertices(f1);
+        const auto f2_verts = shape.GetFaceVertices(f2);
+
+        {
+            auto w = f1_verts.size() == 4 ? (1.0f / 12.0f) : (2.0f / 12.0f);
+            for (auto v : f1_verts)
+                if(v != v0 && v!= v1)
+                    controlPoint.AddWeight(v, w);
+        }
+
+        {
+            auto w = f2_verts.size() == 4 ? (1.0f / 12.0f) : (2.0f / 12.0f);
+            for (auto v : f2_verts)
+                if (v != v0 && v != v1)
+                    controlPoint.AddWeight(v, w);
+        }
+
+        controlPoint.AddWeight(v0, (2 / 3.0f) * (2.0f / 3.0f));
+        controlPoint.AddWeight(v1, (2 / 3.0f) * (1.0f / 3.0f));
+    }
+    else
+    {   // exterior Edge
+        static_vector<uint32_t, 2> boundaryEdges;
+        for (size_t I = 0; I < 4; I++)
+        {
+            const auto e    = edges[I];
+            const auto twin = shape.wEdges[edges[I]].oppositeNeighbor;
+
+            if (twin == 0xffffffff)
+                boundaryEdges.push_back(e);
+        }
+
+
+        uint32_t verts[] = {
+            shape.wEdges[boundaryEdges[0]].vertices[0],
+            shape.wEdges[boundaryEdges[0]].vertices[1],
+            shape.wEdges[boundaryEdges[1]].vertices[0],
+            shape.wEdges[boundaryEdges[1]].vertices[1] };
+
+        std::remove_if(verts, verts + 4, [&](auto v) { return v == v0; });
+
+        if (verts[0] != v1)
+        {
+            controlPoint.AddWeight(verts[1], 2.0f / 3.0f);
+            controlPoint.AddWeight(verts[0], 1.0f / 3.0f);
+        }
+        else
+        {
+            controlPoint.AddWeight(verts[0], 2.0f / 3.0f);
+            controlPoint.AddWeight(verts[1], 1.0f / 3.0);
+        }
+    }
+
+    patch.controlPoints[target] = controlPoint;
+}
+
+
 Patch BuildQuadEdgePatch(uint32_t edgePatch, ModifiableShape& shape)
 {
     static const bool Plus  = false;
@@ -1329,7 +1415,7 @@ Patch BuildQuadEdgePatch(uint32_t edgePatch, ModifiableShape& shape)
         }   break;
         case 4: // T-Junction
         {
-            int x = 0;
+            CalculateTJunction(patch, edge, e0Plus, p0, Plus, shape);
         }   break;
         default:
         {
@@ -1349,6 +1435,9 @@ Patch BuildQuadEdgePatch(uint32_t edgePatch, ModifiableShape& shape)
         case 2:
             CalculateCornerEdge(patch, edge, e1Minus, Minus, shape);
             break;
+        case 4:
+            CalculateTJunction(patch, edge, e1Minus, p1, Minus, shape);
+            break;
         default:
             break;
         }
@@ -1366,7 +1455,7 @@ Patch BuildQuadEdgePatch(uint32_t edgePatch, ModifiableShape& shape)
         }   break;
         case 4: // T-Junction
         {
-            int x = 0;
+            CalculateTJunction(patch, edge, e1Plus, p1, Plus, shape);
         }   break;
         default:
         {
@@ -1383,6 +1472,9 @@ Patch BuildQuadEdgePatch(uint32_t edgePatch, ModifiableShape& shape)
         {
         case 2:
             CalculateCornerEdge(patch, edge, e2Minus, Minus, shape);
+            break;
+        case 4:
+            CalculateTJunction(patch, edge, e2Minus, p2, Minus, shape);
             break;
         default:
             break;
@@ -1401,7 +1493,7 @@ Patch BuildQuadEdgePatch(uint32_t edgePatch, ModifiableShape& shape)
         }   break;
         case 4: // T-Junction
         {
-            int x = 0;
+            CalculateTJunction(patch, edge, e2Plus, p2, Plus, shape);
         }   break;
         default:
         {
@@ -1417,6 +1509,9 @@ Patch BuildQuadEdgePatch(uint32_t edgePatch, ModifiableShape& shape)
         {
         case 2:
             CalculateCornerEdge(patch, edge, e3Minus, Minus, shape);
+            break;
+        case 4:
+            CalculateTJunction(patch, edge, e3Minus, p3, Minus, shape);
             break;
         default:
             break;
@@ -1436,7 +1531,7 @@ Patch BuildQuadEdgePatch(uint32_t edgePatch, ModifiableShape& shape)
         }   break;
         case 4: // T-Junction
         {
-            int x = 0;
+            CalculateTJunction(patch, edge, e3Plus, p3, Plus, shape);
         }   break;
         default:
         {
@@ -1452,6 +1547,9 @@ Patch BuildQuadEdgePatch(uint32_t edgePatch, ModifiableShape& shape)
         {
         case 2:
             CalculateCornerEdge(patch, edge, e0Minus, Minus, shape);
+            break;
+        case 4:
+            CalculateTJunction(patch, edge, e0Minus, p0, Minus, shape);
             break;
         default:
             break;
@@ -1522,7 +1620,8 @@ public:
         constantBuffer  { IN_framework.GetRenderSystem().CreateConstantBuffer(MEGABYTE, false) },
         cameras         { IN_framework.core.GetBlockMemory() },
         depthBuffer     { IN_framework.GetRenderSystem().CreateDepthBuffer(uint2{ 1920, 1080 }, true) },
-        debugBuffer     { IN_framework.GetRenderSystem().CreateUAVBufferResource(MEGABYTE, false) },
+        debug1Buffer    { IN_framework.GetRenderSystem().CreateUAVBufferResource(MEGABYTE, false) },
+        debug2Buffer    { IN_framework.GetRenderSystem().CreateUAVBufferResource(MEGABYTE, false) },
         indices         { IN_framework.core.GetBlockMemory() },
         orbitCamera     { gameObject, CameraComponent::GetComponent().CreateCamera(), 10.0f },
         nodes           {}
@@ -1537,13 +1636,15 @@ public:
         rootSig.SetParameterAsUINT(3, 1, 2, 0, PIPELINE_DEST_ALL);
         rootSig.SetParameterAsUAV(4, 0, 0, PIPELINE_DEST_ALL);
         rootSig.SetParameterAsUAV(5, 1, 0, PIPELINE_DEST_ALL);
+        rootSig.SetParameterAsUAV(6, 2, 0, PIPELINE_DEST_ALL);
 
         rootSig.AllowIA = true;
         rootSig.AllowSO = false;
         FK_ASSERT(rootSig.Build(IN_framework.GetRenderSystem(), IN_framework.core.GetTempMemory()));
 
-        framework.GetRenderSystem().RegisterPSOLoader(ACCQuad, { &rootSig, [&](auto* renderSystem) { return LoadPSO(renderSystem); } });
-        framework.GetRenderSystem().RegisterPSOLoader(ACCDebug, { &rootSig, [&](auto* renderSystem) { return LoadPSO2(renderSystem); } });
+        framework.GetRenderSystem().RegisterPSOLoader(ACCQuad,                  { &rootSig, [&](auto* renderSystem) { return LoadPSO(renderSystem); } });
+        framework.GetRenderSystem().RegisterPSOLoader(ACCDebugControlpoints,    { &rootSig, [&](auto* renderSystem) { return LoadPSO2(renderSystem); } });
+        framework.GetRenderSystem().RegisterPSOLoader(ACCDebugNormals,          { &rootSig, [&](auto* renderSystem) { return LoadPSO3(renderSystem); } });
 
         FlexKit::EventNotifier<>::Subscriber sub;
         sub.Notify  = &FlexKit::EventsWrapper;
@@ -1724,7 +1825,8 @@ public:
         {
             FrameResourceHandle renderTarget;
             FrameResourceHandle depthTarget;
-            FrameResourceHandle debugBuffer;
+            FrameResourceHandle debug1Buffer;
+            FrameResourceHandle debug2Buffer;
         };
 
         auto& cameraUpdate = CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
@@ -1736,7 +1838,8 @@ public:
                 builder.AddDataDependency(cameraUpdate);
                 draw.renderTarget   = builder.RenderTarget(renderWindow.GetBackBuffer());
                 draw.depthTarget    = builder.DepthTarget(depthBuffer);
-                draw.debugBuffer    = builder.UnorderedAccess(debugBuffer);
+                draw.debug1Buffer    = builder.UnorderedAccess(debug1Buffer);
+                draw.debug2Buffer    = builder.UnorderedAccess(debug2Buffer);
             },
             [&](DrawPatch& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
@@ -1752,8 +1855,10 @@ public:
                 const ConstantBufferDataSet CB{ constants, Cbuffer };
 
                 ctx.ClearDepthBuffer(depthBuffer, 1.0f);
-                ctx.ClearUAVBuffer(resources.UAV(data.debugBuffer, ctx));
-                ctx.AddUAVBarrier(resources.UAV(data.debugBuffer, ctx));
+                ctx.ClearUAVBufferRange(resources.UAV(data.debug1Buffer, ctx), 0, 64);
+                ctx.ClearUAVBufferRange(resources.UAV(data.debug2Buffer, ctx), 0, 64);
+                ctx.AddUAVBarrier(resources.UAV(data.debug1Buffer, ctx));
+                ctx.AddUAVBarrier(resources.UAV(data.debug2Buffer, ctx));
 
                 ctx.SetRootSignature(rootSig);
                 ctx.SetPipelineState(resources.GetPipelineState(ACCQuad));
@@ -1763,23 +1868,33 @@ public:
                 ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
                 ctx.SetRenderTargets({ resources.GetRenderTarget(data.renderTarget) }, true, depthBuffer);
 
-                float expansionRate = 64.0f;// 1 + cos(t) * 63.0f / 2 + 63.0f / 2.0f;
+                const float expansionRate = 16.0f;// 1 + cos(t) * 63.0f / 2 + 63.0f / 2.0f;
 
                 ctx.SetGraphicsShaderResourceView(0, patchBuffer);
                 ctx.SetGraphicsConstantBufferView(1, CB);
                 ctx.SetGraphicsConstantValue(2, 16, &WT);
                 ctx.SetGraphicsConstantValue(3, 1, &expansionRate);
-                ctx.SetGraphicsUnorderedAccessView(4, resources.UAV(data.debugBuffer, ctx), 0);
-                ctx.SetGraphicsUnorderedAccessView(5, resources.UAV(data.debugBuffer, ctx), 64);
+                ctx.SetGraphicsUnorderedAccessView(4, resources.UAV(data.debug1Buffer, ctx), 0);
+                ctx.SetGraphicsUnorderedAccessView(5, resources.UAV(data.debug1Buffer, ctx), 64);
+                ctx.SetGraphicsUnorderedAccessView(6, resources.UAV(data.debug2Buffer, ctx), 0);
 
                 ctx.DrawIndexed(indices.size());
-                ctx.AddUAVBarrier(resources.UAV(data.debugBuffer, ctx));
+                //ctx.AddUAVBarrier(resources.UAV(data.debug1Buffer, ctx));
+                //ctx.AddUAVBarrier(resources.UAV(data.debug2Buffer, ctx));
 
-                auto devicePointer = resources.GetDevicePointer(resources.VertexBuffer(data.debugBuffer, ctx));
-                ctx.SetPipelineState(resources.GetPipelineState(ACCDebug));
+                const auto devicePointer1 = resources.GetDevicePointer(resources.VertexBuffer(data.debug2Buffer, ctx));
+                ctx.SetPipelineState(resources.GetPipelineState(ACCDebugControlpoints));
                 ctx.SetPrimitiveTopology(EInputTopology::EIT_POINT);
-                ctx.SetVertexBuffers2({ D3D12_VERTEX_BUFFER_VIEW{ devicePointer + 64, MEGABYTE - 64, 12 } });
+                ctx.SetVertexBuffers2({ D3D12_VERTEX_BUFFER_VIEW{ devicePointer1, MEGABYTE, 12 } });
+
                 ctx.Draw(20 * indices.size() / 32);
+
+                const auto devicePointer2 = resources.GetDevicePointer(resources.VertexBuffer(data.debug1Buffer, ctx));
+                ctx.SetPipelineState(resources.GetPipelineState(ACCDebugNormals));
+                ctx.SetPrimitiveTopology(EInputTopology::EIT_LINE);
+                ctx.SetVertexBuffers2({ D3D12_VERTEX_BUFFER_VIEW{ devicePointer2 + 64, MEGABYTE - 64, 12 } });
+
+                ctx.Draw(16 * 16 * 9 * 16);
             });
     }
 
@@ -1866,7 +1981,8 @@ public:
             if (evt.mType == Event::EventType::Input && evt.Action == Event::Release && evt.mData1.mKC[0] == KC_R)
             {
                 framework.GetRenderSystem().QueuePSOLoad(ACCQuad);
-                framework.GetRenderSystem().QueuePSOLoad(ACCDebug);
+                framework.GetRenderSystem().QueuePSOLoad(ACCDebugControlpoints);
+                framework.GetRenderSystem().QueuePSOLoad(ACCDebugNormals);
             }
         }   break;
         };
@@ -1908,7 +2024,7 @@ public:
 
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
         Rast_Desc.CullMode              = D3D12_CULL_MODE_NONE;
-        Rast_Desc.FillMode              = D3D12_FILL_MODE_WIREFRAME;
+        //Rast_Desc.FillMode              = D3D12_FILL_MODE_WIREFRAME;
         //Rast_Desc.ConservativeRaster    = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -1949,7 +2065,7 @@ public:
     ID3D12PipelineState* LoadPSO2(FlexKit::RenderSystem* renderSystem)
     {
         auto Debug_VShader = renderSystem->LoadShader("VS_Main", "vs_6_2", "assets\\shaders\\ACCDebug.hlsl", true);
-        auto Debug_GShader = renderSystem->LoadShader("GS_Main", "gs_6_0",  "assets\\shaders\\ACCDebug.hlsl");
+        auto Debug_GShader = renderSystem->LoadShader("GS_Main", "gs_6_0", "assets\\shaders\\ACCDebug.hlsl");
         auto Debug_PShader = renderSystem->LoadShader("PS_Main", "ps_6_2", "assets\\shaders\\ACCDebug.hlsl", true);
 
 		/*
@@ -2006,6 +2122,63 @@ public:
     }
 
 
+    ID3D12PipelineState* LoadPSO3(FlexKit::RenderSystem* renderSystem)
+    {
+        auto Debug_VShader = renderSystem->LoadShader("VS2_Main", "vs_6_2", "assets\\shaders\\ACCDebug.hlsl", true);
+        auto Debug_PShader = renderSystem->LoadShader("PS2_Main", "ps_6_2",  "assets\\shaders\\ACCDebug.hlsl", true);
+
+		/*
+		typedef struct D3D12_INPUT_ELEMENT_DESC
+		{
+		LPCSTR SemanticName;
+		UINT SemanticIndex;
+		DXGI_FORMAT Format;
+		UINT InputSlot;
+		UINT AlignedByteOffset;
+		D3D12_INPUT_CLASSIFICATION InputSlotClass;
+		UINT InstanceDataStepRate;
+		} 	D3D12_INPUT_ELEMENT_DESC;
+		*/
+
+		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		};
+
+
+		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+        Rast_Desc.CullMode              = D3D12_CULL_MODE_NONE;
+        //Rast_Desc.FillMode              = D3D12_FILL_MODE_WIREFRAME;
+        //Rast_Desc.ConservativeRaster    = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
+
+		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+		Depth_Desc.DepthEnable	= true;
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+			PSO_Desc.pRootSignature         = rootSig;
+			PSO_Desc.VS                     = Debug_VShader;
+			PSO_Desc.PS                     = Debug_PShader;
+			PSO_Desc.RasterizerState        = Rast_Desc;
+			PSO_Desc.BlendState             = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask             = UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType  = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+			PSO_Desc.NumRenderTargets       = 1;
+			PSO_Desc.RTVFormats[0]          = DXGI_FORMAT_R16G16B16A16_FLOAT; // renderTarget
+			PSO_Desc.SampleDesc.Count       = 1;
+			PSO_Desc.SampleDesc.Quality     = 0;
+			PSO_Desc.DSVFormat              = DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.DepthStencilState      = Depth_Desc;
+			PSO_Desc.InputLayout            = { InputElements, 1 };
+			PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
+		}
+
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		return PSO;
+    }
+
     /************************************************************************************************/
 
 
@@ -2022,7 +2195,8 @@ public:
     RootSignature           rootSig;
     Win32RenderWindow       renderWindow;
     ResourceHandle          depthBuffer;
-    ResourceHandle          debugBuffer;
+    ResourceHandle          debug1Buffer;
+    ResourceHandle          debug2Buffer;
 
     CameraComponent         cameras;
     SceneNodeComponent      nodes;
