@@ -85,9 +85,10 @@ struct GregoryPatch
 };
 
 
-StructuredBuffer<GregoryPatch>  patch : register(t0);
-RWStructuredBuffer<uint>        counter : register(u0);
-RWStructuredBuffer<float3>      debug   : register(u1);
+StructuredBuffer<GregoryPatch>  patch           : register(t0);
+RWStructuredBuffer<uint>        counter         : register(u0);
+RWStructuredBuffer<float3>      normal_Debug    : register(u1); // normal
+RWStructuredBuffer<float3>      CP_debug        : register(u2); // control point
 
 
 //*************************************************************************************
@@ -130,7 +131,7 @@ cbuffer LocalConstants : register(b2)
 HS_Input VS_Main(VS_Input input, const uint vid : SV_VertexID)
 {
     HS_Input output;
-    output.p = float4(input.p, 1);
+    output.p = float4(input.p * float3(1, 1, 1), 1);
 
     return output;
 }
@@ -316,17 +317,15 @@ PatchConstants_Output PatchConstants(
                 controlPoints[r3Minus].p);
 
     for (uint K = 0; K < 20; K++)
-        debug[K + patchIdx * 20] = output.gregoryPatch[K];
-
+        CP_debug[K + patchIdx * 20] = output.gregoryPatch[K];
 
     const float4 pos0_DC = mul(PV, mul(WT, float4(controlPoints[p0].p, 1)));
     const float4 pos1_DC = mul(PV, mul(WT, float4(controlPoints[p1].p, 1)));
     const float4 pos2_DC = mul(PV, mul(WT, float4(controlPoints[p2].p, 1)));
     const float4 pos3_DC = mul(PV, mul(WT, float4(controlPoints[p3].p, 1)));
 
-
-
     const float MaxZ = max(max(pos0_DC.z, pos1_DC.z), max(pos2_DC.z, pos3_DC.z));
+
     if (MaxZ < 0.0f)
     {
         output.Edges[0] = 0;
@@ -344,18 +343,18 @@ PatchConstants_Output PatchConstants(
         const float3 pos2_NDC = pos2_DC.xyz / pos2_DC.w;
         const float3 pos3_NDC = pos3_DC.xyz / pos3_DC.w;
 
-        const float e0_factor = min(expansionRate, (2160.0f / 8) * length((pos0_NDC - pos1_NDC).xy) / 2.0f);
-        const float e1_factor = min(expansionRate, (2160.0f / 8) * length((pos1_NDC - pos2_NDC).xy) / 2.0f);
-        const float e2_factor = min(expansionRate, (2160.0f / 8) * length((pos2_NDC - pos3_NDC).xy) / 2.0f);
-        const float e3_factor = min(expansionRate, (2160.0f / 8) * length((pos3_NDC - pos0_NDC).xy) / 2.0f);
+        const float e0_factor = min(expansionRate, (2160.0f / 16) * length((pos0_NDC - pos1_NDC).xyz) / 2.0f);
+        const float e1_factor = min(expansionRate, (2160.0f / 16) * length((pos1_NDC - pos2_NDC).xyz) / 2.0f);
+        const float e2_factor = min(expansionRate, (2160.0f / 16) * length((pos2_NDC - pos3_NDC).xyz) / 2.0f);
+        const float e3_factor = min(expansionRate, (2160.0f / 16) * length((pos3_NDC - pos0_NDC).xyz) / 2.0f);
 
         output.Edges[0] = e3_factor;
         output.Edges[1] = e0_factor;
         output.Edges[2] = e1_factor;
         output.Edges[3] = e2_factor;
 
-        output.Inside[0] = min(e0_factor, e2_factor);
-        output.Inside[1] = min(e1_factor, e3_factor) / 2.0f;
+        output.Inside[0] = max(max(e0_factor, e2_factor), max(e1_factor, e3_factor));
+        output.Inside[1] = max(max(e0_factor, e2_factor), max(e1_factor, e3_factor));
     }
 
     return output;
@@ -366,7 +365,7 @@ PatchConstants_Output PatchConstants(
 
 
 [domain("quad")]
-[partitioning("pow2")]
+[partitioning("fractional_odd")]
 [outputtopology("triangle_cw")]
 [outputcontrolpoints(20)]
 [patchconstantfunc("PatchConstants")]
@@ -428,9 +427,9 @@ PS_Input DS_Main(
     PS_Input output;
 
     const float u = UV.x;
-    const float v = UV.y;
+    const float v = 1 - UV.y;
     const float U = 1 - UV.x;
-    const float V = 1 - UV.y;
+    const float V = UV.y;
 
     const float d11 = (u + v == 0.0f) ? 1.0f : u + v;
     const float d12 = (U + v == 0.0f) ? 1.0f : U + v;
@@ -569,12 +568,10 @@ PS_Input DS_Main(
     output.p        = POS_DC;
     output.tx       = UV;
 
-    /*
     uint idx = 0xffffffff;
-    InterlockedAdd(counter[0], 1, idx);
-    debug[idx * 2 + 0] = POS_WS;
-    debug[idx * 2 + 1] = POS_WS + normalize(cross(output.t, output.bt));
-    */
+    InterlockedAdd(counter[0], 2, idx);
+    normal_Debug[idx + 0] = POS_WS;
+    normal_Debug[idx + 1] = POS_WS + normalize(cross(output.t, output.bt)) * 0.1f;
 
     return output;
 }
@@ -585,18 +582,21 @@ PS_Input DS_Main(
 
 float4 PS_Main(PS_Input input) : SV_TARGET
 {
-    const float3 light_pos      = float3(0, 20, 0);
+    const float3 light_pos      = float3(2, 2, 2);
     const float3 l_dir          = normalize(light_pos - input.pos_WS);
-    const float3 v_dir          = -normalize(CameraPOS - input.pos_WS);
+    const float3 v_dir          = normalize(input.pos_WS - CameraPOS);
     const float3 n              = normalize(cross(input.t, input.bt));
     const float3 rDir           = reflect(l_dir, n);
+    const float d               = length(input.pos_WS - light_pos);
+    const float i               = 0.4f;
 
-    const float spec            = 1 * pow(saturate(dot(v_dir, rDir)), 300) / pow(length(input.pos_WS - light_pos), 2.0f);
-    const float diff            = dot(n, l_dir) / pow(length(input.pos_WS - light_pos), 2.0f);
-    const float3 K              = spec + diff * pow(float3(1.0f, 0.5f, 0.31f), 2.2f);
+    const float spec            = i * pow(saturate(dot(v_dir, rDir)), 30) / (d * d);
+    const float diff            = i * dot(n, l_dir) / (d * d);
+    const float3 K              = spec + diff * pow(float3(1.0f, 1.0f, 1.0f), 2.2f);
 
-    return pow(float4(K, 1), 1.0f / 2.0f);
-    //return pow(float4(float3(1, 1, 1) * (n / 2.0f + 0.5f), 0), 1.0f / 1.0f);
+    //return float4(1, 1, 1, 1);
+    return float4(K, 1);
+    //return float4(float3(1, 1, 1) * (n / 2.0f + 0.5f), 1);
 }
 
 
