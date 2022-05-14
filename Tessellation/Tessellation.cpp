@@ -168,8 +168,7 @@ struct GPUPatch
         uint16_t weights[32];
     } controlPoints[20];
 
-    uint C0;
-    uint Cn[4];
+    uint Pn;
 };
 
 
@@ -224,8 +223,6 @@ uint32_t MapIndexToLocal(const uint32_t idx, const auto& localVerts)
 /************************************************************************************************/
 
 
-
-
 void CreateGPUPatch(const Patch& p, ModifiableShape& shape, Vector<GPUPatch>& patches, Vector<uint32_t>& indices)
 {
     GPUPatch patch;
@@ -253,19 +250,28 @@ void CreateGPUPatch(const Patch& p, ModifiableShape& shape, Vector<GPUPatch>& pa
         }
     }
 
-    /*
-    patch.C0    = Pack(MapIndexToLocal(shape.GetFaceVertices(p.C_0),      p.inputVertices));
-    patch.Cn[0] = Pack(MapIndexToLocal(shape.GetFaceVertices(p.C_idx[0]), p.inputVertices));
-    patch.Cn[1] = Pack(MapIndexToLocal(shape.GetFaceVertices(p.C_idx[2]), p.inputVertices));
-    patch.Cn[2] = Pack(MapIndexToLocal(shape.GetFaceVertices(p.C_idx[4]), p.inputVertices));
-    patch.Cn[3] = Pack(MapIndexToLocal(shape.GetFaceVertices(p.C_idx[6]), p.inputVertices));
-    */
+    
+    auto vertexView = shape.wFaces[p.C_0].VertexView(shape);
+
+    auto temp1 = vertexView[0];
+    auto temp2 = vertexView[1];
+    auto temp3 = vertexView[2];
+    auto temp4 = vertexView[3];
+
+
+    const auto v1 = shape.GetVertexValence(vertexView[0]);
+    const auto v2 = shape.GetVertexValence(vertexView[1]);
+    const auto v3 = shape.GetVertexValence(vertexView[2]);
+    const auto v4 = shape.GetVertexValence(vertexView[3]);
+
+    patch.Pn = Pack({ v1, v2, v3, v4 });
 
     patches.push_back(patch);
 
     for (auto I : p.inputVertices)
         indices.push_back(I);
 }
+
 
 /************************************************************************************************/
 
@@ -922,20 +928,12 @@ Patch::ControlPointWeights CalculateQuadControlPoint_Rn(auto& vertexEdgeView, au
         controlPoint.indices[idx] = v_Idx;
     };
 
-    if (!flipDirection)
-    {
-        AddMidEdgeWeight(el.A_idx, 1.0f / 3.0f);
-        AddMidEdgeWeight(el.B_idx, 1.0f / 3.0f);
-        AddMidEdgeWeight(er.A_idx, -1.0f / 3.0f);
-        AddMidEdgeWeight(er.B_idx, -1.0f / 3.0f);
-    }
-    else
-    {
-        AddMidEdgeWeight(el.A_idx, -1.0f / 3.0f);
-        AddMidEdgeWeight(el.B_idx, -1.0f / 3.0f);
-        AddMidEdgeWeight(er.A_idx, 1.0f / 3.0f);
-        AddMidEdgeWeight(er.B_idx, 1.0f / 3.0f);
-    }
+    auto f = flipDirection ? -1 : 1;
+
+    AddMidEdgeWeight(el.A_idx, f * 1.0f / 3.0f);
+    AddMidEdgeWeight(el.B_idx, f * 1.0f / 3.0f);
+    AddMidEdgeWeight(er.A_idx, f * -1.0f / 3.0f);
+    AddMidEdgeWeight(er.B_idx, f * -1.0f / 3.0f);
 
     auto AddFaceWeights = [&](uint32_t faceIdx, float factor)
     {
@@ -962,17 +960,9 @@ Patch::ControlPointWeights CalculateQuadControlPoint_Rn(auto& vertexEdgeView, au
         }();
     };
 
+    AddFaceWeights(f0.faceIdx, f * 2.0f / 3.0f);
+    AddFaceWeights(fr.faceIdx, f * -2.0f / 3.0f);
 
-    if (!flipDirection)
-    {
-        AddFaceWeights(f0.faceIdx, 2.0f / 3.0f);
-        AddFaceWeights(fr.faceIdx, -2.0f / 3.0f);
-    }
-    else
-    {
-        AddFaceWeights(f0.faceIdx, -2.0f / 3.0f);
-        AddFaceWeights(fr.faceIdx, 2.0f / 3.0f);
-    }
 
     return controlPoint;
 }
@@ -1260,6 +1250,7 @@ void CalculateQuadControlPoint_R3_Minus(uint32_t quadPatchIdx, Patch& patch, Mod
     */
 }
 
+
 /************************************************************************************************/
 
 
@@ -1296,6 +1287,9 @@ Patch BuidRegularPatch(uint32_t quadPatch, ModifiableShape& shape)
 }
 
 
+/************************************************************************************************/
+
+
 void CalculateCornerEdge(Patch& patch, uint32_t edge, uint32_t target, bool Minus, ModifiableShape& shape)
 {
     const uint32_t v0 = shape.wEdges[edge].vertices[0];
@@ -1318,6 +1312,10 @@ void CalculateCornerEdge(Patch& patch, uint32_t edge, uint32_t target, bool Minu
         patch.controlPoints[target].AddWeight(v1, 1.0f / 3.0f);
     }
 }
+
+
+/************************************************************************************************/
+
 
 void CalculateTJunction(Patch& patch, uint32_t edge, uint32_t target, uint32_t point, bool Minus, ModifiableShape& shape)
 {
@@ -1373,7 +1371,7 @@ void CalculateTJunction(Patch& patch, uint32_t edge, uint32_t target, uint32_t p
             shape.wEdges[boundaryEdges[1]].vertices[0],
             shape.wEdges[boundaryEdges[1]].vertices[1] };
 
-        std::remove_if(verts, verts + 4, [&](auto v) { return v == v0; });
+        auto end = std::remove_if(verts, verts + 4, [&](auto v) { return v == v0; });
 
         if (verts[0] != v1)
         {
@@ -1391,17 +1389,45 @@ void CalculateTJunction(Patch& patch, uint32_t edge, uint32_t target, uint32_t p
 }
 
 
+/************************************************************************************************/
+
+
+void CalculateQuadFacePoint(uint32_t edge, Patch& patch, uint32_t CP_idx, ModifiableShape& shape, bool flip = false)
+{
+    Patch::ControlPointWeights r;
+
+    const auto v0 = shape.wEdges[edge].vertices[0];
+    const auto v1 = shape.wEdges[edge].vertices[1];
+
+    const auto face   = shape.wEdges[edge].face;
+    const auto verts  = shape.GetFaceVertices(face);
+
+    const float f = flip ? -1.0f : 1.0f;
+
+    //for (auto v : verts)
+    //    r.AddWeight(v, f * 0.5f);
+
+    r.AddWeight(v0, (f * -1.0f));
+    r.AddWeight(v1, (f * 1.0f));
+
+    patch.controlPoints[CP_idx] = r;
+}
+
+
+/************************************************************************************************/
+
+
 Patch BuildQuadEdgePatch(uint32_t edgePatch, ModifiableShape& shape)
 {
     static const bool Plus  = false;
     static const bool Minus = true;
 
-
     Patch patch;
 
     CalculateQuadCornerPoints(edgePatch, patch, shape);
-
+    patch.C_0 = edgePatch;
     auto edgeView = shape.wFaces[edgePatch].EdgeView(shape);
+
 
     {   // Edge 0
         auto edge = edgeView[0];
@@ -1412,10 +1438,14 @@ Patch BuildQuadEdgePatch(uint32_t edgePatch, ModifiableShape& shape)
         case 2: // Corner
         {
             CalculateCornerEdge(patch, edge, e0Plus, Plus, shape);
+            CalculateQuadFacePoint(edgePatch, patch, r0Plus, shape);
+            //CalculateQuadFacePoint(edgePatch, patch, r0Minus, shape);
         }   break;
         case 4: // T-Junction
         {
             CalculateTJunction(patch, edge, e0Plus, p0, Plus, shape);
+            //CalculateQuadFacePoint(edgePatch, patch, r0Plus, shape);
+            //CalculateQuadFacePoint(edgePatch, patch, r0Minus, shape);
         }   break;
         default:
         {
@@ -1452,10 +1482,14 @@ Patch BuildQuadEdgePatch(uint32_t edgePatch, ModifiableShape& shape)
         case 2: // Corner
         {
             CalculateCornerEdge(patch, edge, e1Plus, Plus, shape);
+            //CalculateQuadFacePoint(edgePatch, patch, r1Plus, shape);
+            //CalculateQuadFacePoint(edgePatch, patch, r1Minus, shape);
         }   break;
         case 4: // T-Junction
         {
             CalculateTJunction(patch, edge, e1Plus, p1, Plus, shape);
+            //CalculateQuadFacePoint(edgePatch, patch, r1Plus, shape);
+            //CalculateQuadFacePoint(edgePatch, patch, r1Minus, shape);
         }   break;
         default:
         {
@@ -1490,10 +1524,14 @@ Patch BuildQuadEdgePatch(uint32_t edgePatch, ModifiableShape& shape)
         case 2: // Corner
         {
             CalculateCornerEdge(patch, edge, e2Plus, Plus, shape);
+            //CalculateQuadFacePoint(edgePatch, patch, r2Plus, shape);
+            //CalculateQuadFacePoint(edgePatch, patch, r2Minus, shape);
         }   break;
         case 4: // T-Junction
         {
             CalculateTJunction(patch, edge, e2Plus, p2, Plus, shape);
+            //CalculateQuadFacePoint(edgePatch, patch, r2Plus, shape);
+            //CalculateQuadFacePoint(edgePatch, patch, r2Minus, shape);
         }   break;
         default:
         {
@@ -1516,7 +1554,7 @@ Patch BuildQuadEdgePatch(uint32_t edgePatch, ModifiableShape& shape)
         default:
             break;
         }
-    }
+    } 
 
     {   // Edge 3
         auto edge = edgeView[3];
@@ -1528,10 +1566,14 @@ Patch BuildQuadEdgePatch(uint32_t edgePatch, ModifiableShape& shape)
         case 2: // Corner
         {
             CalculateCornerEdge(patch, edge, e3Plus, Plus, shape);
+            //CalculateQuadFacePoint(edgePatch, patch, r3Plus, shape);
+            //CalculateQuadFacePoint(edgePatch, patch, r3Minus, shape);
         }   break;
         case 4: // T-Junction
         {
             CalculateTJunction(patch, edge, e3Plus, p3, Plus, shape);
+            //CalculateQuadFacePoint(edgePatch, patch, r3Plus, shape);
+            //CalculateQuadFacePoint(edgePatch, patch, r3Minus, shape);
         }   break;
         default:
         {
@@ -1560,6 +1602,9 @@ Patch BuildQuadEdgePatch(uint32_t edgePatch, ModifiableShape& shape)
 }
 
 
+/************************************************************************************************/
+
+
 auto CalculateControlPointWeights(PatchGroups& classifiedPatches, ModifiableShape& shape)
 {
     std::vector<Patch> patches;
@@ -1573,7 +1618,8 @@ auto CalculateControlPointWeights(PatchGroups& classifiedPatches, ModifiableShap
 
     for (auto& borderPatch : classifiedPatches.edgeQuadPatches)
     {
-        const Patch edgePatch = BuildQuadEdgePatch(borderPatch, shape);
+        //auto& borderPatch       = classifiedPatches.edgeQuadPatches[0];
+        const Patch edgePatch   = BuildQuadEdgePatch(borderPatch, shape);
         patches.push_back(edgePatch);
     }
 
@@ -1868,28 +1914,28 @@ public:
                 ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
                 ctx.SetRenderTargets({ resources.GetRenderTarget(data.renderTarget) }, true, depthBuffer);
 
-                const float expansionRate = 16.0f;// 1 + cos(t) * 63.0f / 2 + 63.0f / 2.0f;
+                const float expansionRate = 1 + cos(t) * 63.0f / 2 + 63.0f / 2.0f;
 
                 ctx.SetGraphicsShaderResourceView(0, patchBuffer);
                 ctx.SetGraphicsConstantBufferView(1, CB);
                 ctx.SetGraphicsConstantValue(2, 16, &WT);
                 ctx.SetGraphicsConstantValue(3, 1, &expansionRate);
+
                 ctx.SetGraphicsUnorderedAccessView(4, resources.UAV(data.debug1Buffer, ctx), 0);
                 ctx.SetGraphicsUnorderedAccessView(5, resources.UAV(data.debug1Buffer, ctx), 64);
                 ctx.SetGraphicsUnorderedAccessView(6, resources.UAV(data.debug2Buffer, ctx), 0);
 
                 ctx.DrawIndexed(indices.size());
-                //ctx.AddUAVBarrier(resources.UAV(data.debug1Buffer, ctx));
-                //ctx.AddUAVBarrier(resources.UAV(data.debug2Buffer, ctx));
 
                 const auto devicePointer1 = resources.GetDevicePointer(resources.VertexBuffer(data.debug2Buffer, ctx));
+                const auto devicePointer2 = resources.GetDevicePointer(resources.VertexBuffer(data.debug1Buffer, ctx));
+
                 ctx.SetPipelineState(resources.GetPipelineState(ACCDebugControlpoints));
                 ctx.SetPrimitiveTopology(EInputTopology::EIT_POINT);
-                ctx.SetVertexBuffers2({ D3D12_VERTEX_BUFFER_VIEW{ devicePointer1, MEGABYTE, 12 } });
+                ctx.SetVertexBuffers2({ D3D12_VERTEX_BUFFER_VIEW{ devicePointer1, MEGABYTE, 24 } });
 
                 ctx.Draw(20 * indices.size() / 32);
 
-                const auto devicePointer2 = resources.GetDevicePointer(resources.VertexBuffer(data.debug1Buffer, ctx));
                 ctx.SetPipelineState(resources.GetPipelineState(ACCDebugNormals));
                 ctx.SetPrimitiveTopology(EInputTopology::EIT_LINE);
                 ctx.SetVertexBuffers2({ D3D12_VERTEX_BUFFER_VIEW{ devicePointer2 + 64, MEGABYTE - 64, 12 } });
@@ -2024,7 +2070,7 @@ public:
 
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
         Rast_Desc.CullMode              = D3D12_CULL_MODE_NONE;
-        //Rast_Desc.FillMode              = D3D12_FILL_MODE_WIREFRAME;
+        Rast_Desc.FillMode              = D3D12_FILL_MODE_WIREFRAME;
         //Rast_Desc.ConservativeRaster    = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -2082,7 +2128,8 @@ public:
 		*/
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
-			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "COLOR",	    0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		};
 
 
@@ -2110,7 +2157,7 @@ public:
 			PSO_Desc.SampleDesc.Quality     = 0;
 			PSO_Desc.DSVFormat              = DXGI_FORMAT_D32_FLOAT;
 			PSO_Desc.DepthStencilState      = Depth_Desc;
-			PSO_Desc.InputLayout            = { InputElements, 1 };
+			PSO_Desc.InputLayout            = { InputElements, 2 };
 			PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
 		}
 
@@ -2147,8 +2194,6 @@ public:
 
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
         Rast_Desc.CullMode              = D3D12_CULL_MODE_NONE;
-        //Rast_Desc.FillMode              = D3D12_FILL_MODE_WIREFRAME;
-        //Rast_Desc.ConservativeRaster    = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
@@ -2161,7 +2206,7 @@ public:
 			PSO_Desc.RasterizerState        = Rast_Desc;
 			PSO_Desc.BlendState             = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask             = UINT_MAX;
-			PSO_Desc.PrimitiveTopologyType  = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+			PSO_Desc.PrimitiveTopologyType  = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
 			PSO_Desc.NumRenderTargets       = 1;
 			PSO_Desc.RTVFormats[0]          = DXGI_FORMAT_R16G16B16A16_FLOAT; // renderTarget
 			PSO_Desc.SampleDesc.Count       = 1;

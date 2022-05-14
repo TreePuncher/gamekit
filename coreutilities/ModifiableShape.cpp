@@ -696,6 +696,16 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    uint32_t ModifiableShape::GetVertexValence(const uint32_t vertexIdx) const
+    {
+        const auto& edges = wVerticeEdges[vertexIdx];
+        return edges.size() / 2;
+    }
+
+
+    /************************************************************************************************/
+
+
     float3 ModifiableShape::GetEdgeMidPoint(uint32_t edgeId) const
     {
         const auto vertices = wEdges[edgeId].vertices;

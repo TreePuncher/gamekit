@@ -363,6 +363,42 @@ struct ModifiableShape
 
             void operator -- (int) { Prev(); }
             void operator ++ (int) { Next(); }
+
+            auto operator + (int n)
+            {
+                auto itr = *this;
+                while(n < 0)
+                {
+                    itr--;
+                    n++;
+                }
+
+                while (n > 0)
+                {
+                    itr++;
+                    n--;
+                }
+
+                return itr;
+            }
+
+            auto& operator += (int n)
+            {
+                auto itr = *this;
+                while (n < 0)
+                {
+                    Prev();
+                    n++;
+                }
+
+                while (n > 0)
+                {
+                    Next();
+                    n--;
+                }
+
+                return *this;
+            }
         };
 
 
@@ -409,6 +445,14 @@ struct ModifiableShape
             ModifiableShape*    shape;
             wFace*              face;
             uint32_t            edgeStart;
+
+            uint32_t operator [] (uint32_t index)
+            {
+                VertexIterator itr{ shape, edgeStart, 0 };
+
+                itr += index;
+                return shape->wEdges[itr.current].vertices[0];
+            }
 
             auto& Edges()
             {
@@ -603,6 +647,8 @@ struct ModifiableShape
 
     uint32_t    _SplitEdge                 (const uint32_t edgeId,     const uint32_t vertexIdx);
     void        _RemoveVertexEdgeNeighbor  (const uint32_t vertexIdx,  const uint32_t edgeIdx);
+
+    uint32_t                GetVertexValence(const uint32_t vertexIdx) const;
 
     float3                  GetEdgeMidPoint (uint32_t edgeId) const;
     EdgeSegment             GetEdgeSegment  (uint32_t edgeId) const;
