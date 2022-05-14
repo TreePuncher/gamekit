@@ -80,8 +80,7 @@ struct GregoryPatch
 {
     ControlPoint controlPoints[20];
 
-    uint C_0;
-    uint F_n[4];
+    uint vertexValences;
 };
 
 
@@ -161,14 +160,14 @@ struct PatchConstants_Output
 //*************************************************************************************
 
 
-uint4 GetFaceIndices(const uint c)
+uint4 Unpack(uint packed)
 {
-    const uint p1 = (c & (0xff << 0))  >> 0;
-    const uint p2 = (c & (0xff << 8))  >> 8;
-    const uint p3 = (c & (0xff << 16)) >> 16;
-    const uint p4 = (c & (0xff << 24)) >> 24;
+    const uint p0 = (packed & (0xff << 0))  >> 0;
+    const uint p1 = (packed & (0xff << 8))  >> 8;
+    const uint p2 = (packed & (0xff << 16)) >> 16;
+    const uint p3 = (packed & (0xff << 24)) >> 24;
 
-    return uint4(p1, p2, p3, p4);
+    return uint4(p0, p1, p2, p3);
 }
 
 
@@ -201,10 +200,9 @@ float3 CalculateFacePoint(
     in const float3 eM,
     in const float3 r)
 {
-    const float c0 = cos(2 * PI / 4);
-    const float c1 = cos(2 * PI / 4);
     static const float D = 4.0f;
-    return (c1 * P + (D - (2.0f * c0) - c1) * eP + (2 * c0 * eM) + r) / D;
+
+    return (C1 * P + (D - (2.0f * C0) - C1) * eP + (2 * C0 * eM) + r) / D;
 }
 
 
@@ -217,20 +215,9 @@ PatchConstants_Output PatchConstants(
     uint                                patchIdx : SV_PRIMITIVEID
 )
 {
-    const uint4 F0  = GetFaceIndices(patch[patchIdx].C_0);
-    const float3 C0 = GetFaceMidPoint(F0, inputPoints);
+    const uint4 valences    = Unpack(patch[patchIdx].vertexValences);
+    const float4 C          = cos(2 * PI / float4(valences));
 
-    const uint4 N1  = GetFaceIndices(patch[patchIdx].F_n[0]);
-    const float3 C1 = GetFaceMidPoint(N1, inputPoints);
-
-    const uint4 N2  = GetFaceIndices(patch[patchIdx].F_n[1]);
-    const float3 C2 = GetFaceMidPoint(N2, inputPoints);
-
-    const uint4 N3  = GetFaceIndices(patch[patchIdx].F_n[2]);
-    const float3 C3 = GetFaceMidPoint(N3, inputPoints);
-
-    const uint4 N4  = GetFaceIndices(patch[patchIdx].F_n[3]);
-    const float3 C4 = GetFaceMidPoint(N4, inputPoints);
 
     PatchConstants_Output output;
 
@@ -254,7 +241,7 @@ PatchConstants_Output PatchConstants(
 
     output.gregoryPatch[r0Plus] =
             CalculateFacePoint(
-                C0, C1,
+                C[0], C[3],
                 output.gregoryPatch[p0],
                 output.gregoryPatch[e0Plus],
                 output.gregoryPatch[e1Minus],
@@ -262,7 +249,7 @@ PatchConstants_Output PatchConstants(
 
     output.gregoryPatch[r0Minus] =
             CalculateFacePoint(
-                C0, C4,
+                C[0], C[1],
                 output.gregoryPatch[p0],
                 output.gregoryPatch[e0Minus],
                 output.gregoryPatch[e3Plus],
@@ -270,7 +257,7 @@ PatchConstants_Output PatchConstants(
 
     output.gregoryPatch[r1Plus] =
             CalculateFacePoint(
-                C0, C2,
+                C[1], C[0],
                 output.gregoryPatch[p1],
                 output.gregoryPatch[e1Plus],
                 output.gregoryPatch[e2Minus],
@@ -278,7 +265,7 @@ PatchConstants_Output PatchConstants(
 
     output.gregoryPatch[r1Minus] =
             CalculateFacePoint(
-                C0, C1,
+                C[1], C[2],
                 output.gregoryPatch[p1],
                 output.gregoryPatch[e1Minus],
                 output.gregoryPatch[e0Plus],
@@ -286,7 +273,7 @@ PatchConstants_Output PatchConstants(
 
     output.gregoryPatch[r2Plus] =
             CalculateFacePoint(
-                C0, C3,
+                C[2], C[1],
                 output.gregoryPatch[p2],
                 output.gregoryPatch[e2Plus],
                 output.gregoryPatch[e3Minus],
@@ -294,7 +281,7 @@ PatchConstants_Output PatchConstants(
 
     output.gregoryPatch[r2Minus] =
             CalculateFacePoint(
-                C0, C2,
+                C[2], C[3],
                 output.gregoryPatch[p2],
                 output.gregoryPatch[e2Minus],
                 output.gregoryPatch[e1Plus],
@@ -302,7 +289,7 @@ PatchConstants_Output PatchConstants(
 
     output.gregoryPatch[r3Plus] =
             CalculateFacePoint(
-                C0, C4,
+                C[3], C[2],
                 output.gregoryPatch[p3],
                 output.gregoryPatch[e3Plus],
                 output.gregoryPatch[e0Minus],
@@ -310,14 +297,39 @@ PatchConstants_Output PatchConstants(
 
     output.gregoryPatch[r3Minus] =
             CalculateFacePoint(
-                C0, C3,
+                C[3], C[0],
                 output.gregoryPatch[p3],
                 output.gregoryPatch[e3Minus],
                 output.gregoryPatch[e2Plus],
                 controlPoints[r3Minus].p);
 
     for (uint K = 0; K < 20; K++)
-        CP_debug[K + patchIdx * 20] = output.gregoryPatch[K];
+    {
+        CP_debug[2 * K + 0 + patchIdx * 40] = output.gregoryPatch[K];
+        CP_debug[2 * K + 1 + patchIdx * 40] = 6;// valences[K % 4];
+    }
+
+    CP_debug[2 * p0 + 1 + patchIdx * 40] = valences[0];
+    CP_debug[2 * p1 + 1 + patchIdx * 40] = valences[1];
+    CP_debug[2 * p2 + 1 + patchIdx * 40] = valences[2];
+    CP_debug[2 * p3 + 1 + patchIdx * 40] = valences[3];
+
+    CP_debug[2 * r0Minus +  0 + patchIdx * 40] = output.gregoryPatch[r0Plus];
+    CP_debug[2 * r0Minus +  1 + patchIdx * 40] = float4(valences[0], valences[3], 3, 0);
+    CP_debug[2 * r0Minus +  2 + patchIdx * 40] = output.gregoryPatch[r0Minus];
+    CP_debug[2 * r0Minus +  3 + patchIdx * 40] = float4(valences[0], valences[1], 3, 0);
+    CP_debug[2 * r0Minus +  4 + patchIdx * 40] = output.gregoryPatch[r1Plus];
+    CP_debug[2 * r0Minus +  5 + patchIdx * 40] = float4(valences[1], valences[0], 3, 0);
+    CP_debug[2 * r0Minus +  6 + patchIdx * 40] = output.gregoryPatch[r1Minus];
+    CP_debug[2 * r0Minus +  7 + patchIdx * 40] = float4(valences[1], valences[2], 3, 0);
+    CP_debug[2 * r0Minus +  8 + patchIdx * 40] = output.gregoryPatch[r2Plus];
+    CP_debug[2 * r0Minus +  9 + patchIdx * 40] = float4(valences[2], valences[1], 3, 0);
+    CP_debug[2 * r0Minus + 10 + patchIdx * 40] = output.gregoryPatch[r2Minus];
+    CP_debug[2 * r0Minus + 11 + patchIdx * 40] = float4(valences[2], valences[3], 3, 0);
+    CP_debug[2 * r0Minus + 12 + patchIdx * 40] = output.gregoryPatch[r3Plus];
+    CP_debug[2 * r0Minus + 13 + patchIdx * 40] = float4(valences[3], valences[2], 3, 0);
+    CP_debug[2 * r0Minus + 14 + patchIdx * 40] = output.gregoryPatch[r3Minus];
+    CP_debug[2 * r0Minus + 15 + patchIdx * 40] = float4(valences[3], valences[0], 3, 0);
 
     const float4 pos0_DC = mul(PV, mul(WT, float4(controlPoints[p0].p, 1)));
     const float4 pos1_DC = mul(PV, mul(WT, float4(controlPoints[p1].p, 1)));
@@ -343,18 +355,18 @@ PatchConstants_Output PatchConstants(
         const float3 pos2_NDC = pos2_DC.xyz / pos2_DC.w;
         const float3 pos3_NDC = pos3_DC.xyz / pos3_DC.w;
 
-        const float e0_factor = min(expansionRate, (2160.0f / 16) * length((pos0_NDC - pos1_NDC).xyz) / 2.0f);
-        const float e1_factor = min(expansionRate, (2160.0f / 16) * length((pos1_NDC - pos2_NDC).xyz) / 2.0f);
-        const float e2_factor = min(expansionRate, (2160.0f / 16) * length((pos2_NDC - pos3_NDC).xyz) / 2.0f);
-        const float e3_factor = min(expansionRate, (2160.0f / 16) * length((pos3_NDC - pos0_NDC).xyz) / 2.0f);
+        const float e0_factor = min(expansionRate, (2160.0f / 16) * length((pos0_NDC - pos1_NDC).xy) / 2.0f);
+        const float e1_factor = min(expansionRate, (2160.0f / 16) * length((pos1_NDC - pos2_NDC).xy) / 2.0f);
+        const float e2_factor = min(expansionRate, (2160.0f / 16) * length((pos2_NDC - pos3_NDC).xy) / 2.0f);
+        const float e3_factor = min(expansionRate, (2160.0f / 16) * length((pos3_NDC - pos0_NDC).xy) / 2.0f);
 
         output.Edges[0] = e3_factor;
-        output.Edges[1] = e0_factor;
+        output.Edges[1] = e2_factor;
         output.Edges[2] = e1_factor;
-        output.Edges[3] = e2_factor;
+        output.Edges[3] = e0_factor;
 
-        output.Inside[0] = max(max(e0_factor, e2_factor), max(e1_factor, e3_factor));
-        output.Inside[1] = max(max(e0_factor, e2_factor), max(e1_factor, e3_factor));
+        output.Inside[0] = (e0_factor + e2_factor + e1_factor + e3_factor) / 4.0f;
+        output.Inside[1] = (e0_factor + e2_factor + e1_factor + e3_factor) / 4.0f;
     }
 
     return output;
@@ -365,7 +377,7 @@ PatchConstants_Output PatchConstants(
 
 
 [domain("quad")]
-[partitioning("fractional_odd")]
+[partitioning("fractional_even")]
 [outputtopology("triangle_cw")]
 [outputcontrolpoints(20)]
 [patchconstantfunc("PatchConstants")]
@@ -568,11 +580,12 @@ PS_Input DS_Main(
     output.p        = POS_DC;
     output.tx       = UV;
 
+    /*
     uint idx = 0xffffffff;
     InterlockedAdd(counter[0], 2, idx);
     normal_Debug[idx + 0] = POS_WS;
-    normal_Debug[idx + 1] = POS_WS + normalize(cross(output.t, output.bt)) * 0.1f;
-
+    normal_Debug[idx + 1] = POS_WS + normalize(cross(output.t, output.bt)) * 0.01f;
+    */
     return output;
 }
 
@@ -594,8 +607,8 @@ float4 PS_Main(PS_Input input) : SV_TARGET
     const float diff            = i * dot(n, l_dir) / (d * d);
     const float3 K              = spec + diff * pow(float3(1.0f, 1.0f, 1.0f), 2.2f);
 
-    //return float4(1, 1, 1, 1);
-    return float4(K, 1);
+    return float4(1, 1, 1, 1);
+    //return float4(K, 1);
     //return float4(float3(1, 1, 1) * (n / 2.0f + 0.5f), 1);
 }
 

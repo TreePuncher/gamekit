@@ -24,10 +24,22 @@ cbuffer LocalConstants : register(b1)
     float4x4 WT;
 };
 
-float3 VS_Main(float3 pos : POSITION) : POSITION
+struct GS_Input
 {
-    return pos;
+    float3 pos : POSITION;
+    float3 c : COLOR;
+};
+
+
+GS_Input VS_Main(float3 pos : POSITION, float3 c : COLOR)
+{
+    GS_Input output;
+    output.pos = pos;
+    output.c = c;
+
+    return output;
 }
+
 
 float4 VS2_Main(float3 pos : POSITION) : SV_POSITION
 {
@@ -38,20 +50,16 @@ float4 VS2_Main(float3 pos : POSITION) : SV_POSITION
 }
 
 
-struct InputVert
-{
-    float3 pos : POSITION;
-};
-
 struct OutputVert
 {
+    uint color : COLOR;
     float4 pos : SV_POSITION;
 };
 
 
 [maxvertexcount(6)]
 void GS_Main(
-    point InputVert                     IN[1],
+    point GS_Input                      IN[1],
     inout TriangleStream<OutputVert>    triangleStream)
 {
     const float4 pos    = float4(IN[0].pos, 1);
@@ -61,15 +69,26 @@ void GS_Main(
     float r = 0.03f;
 
     OutputVert v1, v2, v3, v4;
+
     v1.pos = pos_DC + float4(-r / AspectRatio, -r, -0.01f, 0);
     v2.pos = pos_DC + float4( r / AspectRatio, -r, -0.01f, 0);
     v3.pos = pos_DC + float4( r / AspectRatio,  r, -0.01f, 0);
     v4.pos = pos_DC + float4(-r / AspectRatio,  r, -0.01f, 0);
 
+    v1.color = IN[0].c[1];
+    v2.color = IN[0].c[1];
+    v3.color = IN[0].c[1];
+    v4.color = IN[0].c[1];
+
     triangleStream.Append(v1);
     triangleStream.Append(v2);
     triangleStream.Append(v3);
     triangleStream.RestartStrip();
+
+    v1.color = IN[0].c[0];
+    v2.color = IN[0].c[0];
+    v3.color = IN[0].c[0];
+    v4.color = IN[0].c[0];
 
     triangleStream.Append(v1);
     triangleStream.Append(v3);
@@ -78,9 +97,19 @@ void GS_Main(
 }
 
 
-float4 PS_Main() : SV_TARGET
+float4 PS_Main(const uint color : COLOR) : SV_TARGET
 {
-    return float4(0.3f, 0.0f, 0.0f, 1.0f);
+    float3 colors[] =
+    {
+        float3(1, 0, 0),
+        float3(0, 1, 0),
+        float3(0, 0, 1),
+        float3(1, 0, 1),
+        float3(1, 1, 1),
+        float3(0, 1, 1),
+    };
+
+    return float4(colors[color % 6], 1.0f);
 }
 
 float4 PS2_Main() : SV_TARGET
