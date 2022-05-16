@@ -246,8 +246,9 @@ struct ModifiableShape
                         return;
 
                     itr++;
-                    auto prev  = shape->wEdges[current].prev;
-                    current    = shape->wEdges[prev].oppositeNeighbor;
+                    auto prev   = shape->wEdges[current].prev;
+                    auto twin   = shape->wEdges[prev].oppositeNeighbor;
+                    current     = twin != 0xffffffff ? twin : prev;
                 }
 
                 void Prev()
@@ -255,9 +256,12 @@ struct ModifiableShape
                     if (current == 0xffffffff)
                         return;
 
-                    itr--;
                     auto twin   = Twin();
-                    current     = shape->wEdges[twin].next;
+                    if (twin != 0xffffffff)
+                    {
+                        itr--;
+                        current = shape->wEdges[twin].next;
+                    }
                 }
             };
 
@@ -609,8 +613,29 @@ struct ModifiableShape
 
         void Next() noexcept;
         void Prev() noexcept;
-        operator uint32_t () { return current; }
 
+        auto Twin() const
+        {
+            return shape->wEdges[current].oppositeNeighbor;
+        }
+
+        auto PeekNext()
+        {
+            auto itr = *this;
+            itr.Next();
+
+            return itr;
+        }
+
+        auto PeekPrev()
+        {
+            auto itr = *this;
+            itr.Prev();
+
+            return itr;
+        }
+
+        operator uint32_t () { return current; }
 
         FaceIterator& operator ++(int) noexcept;
         FaceIterator& operator --(int) noexcept;

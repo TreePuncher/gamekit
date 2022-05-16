@@ -160,7 +160,10 @@ namespace FlexKit
             return;
 
         auto twin   = shape->wEdges[currentEdge].oppositeNeighbor;
-        currentEdge = shape->wEdges[twin].next;
+
+        if(twin!= 0xffffffff)
+            currentEdge = shape->wEdges[twin].next;
+
         itr--;
     }
 
@@ -888,8 +891,8 @@ namespace FlexKit
         std::vector<uint32_t> out;
         for (size_t I = 0; (I == 0 || edge != start); ++I)
         {
-            edge = wEdges[edge].next;
             out.push_back(wEdges[edge].vertices[0]);
+            edge = wEdges[edge].next;
         }
 
         return out;

@@ -193,8 +193,8 @@ float3 GetFaceMidPoint(uint4 indices, in InputPatch<HS_Input, 32> patch)
 
 
 float3 CalculateFacePoint(
-    in const float3 C0,
-    in const float3 C1,
+    in const float C0,
+    in const float C1,
     in const float3 P,
     in const float3 eP,
     in const float3 eM,
@@ -306,30 +306,35 @@ PatchConstants_Output PatchConstants(
     for (uint K = 0; K < 20; K++)
     {
         CP_debug[2 * K + 0 + patchIdx * 40] = output.gregoryPatch[K];
-        CP_debug[2 * K + 1 + patchIdx * 40] = 6;// valences[K % 4];
+        CP_debug[2 * K + 1 + patchIdx * 40] = 6;
     }
 
-    CP_debug[2 * p0 + 1 + patchIdx * 40] = valences[0];
-    CP_debug[2 * p1 + 1 + patchIdx * 40] = valences[1];
-    CP_debug[2 * p2 + 1 + patchIdx * 40] = valences[2];
-    CP_debug[2 * p3 + 1 + patchIdx * 40] = valences[3];
+    CP_debug[2 * p0 + 0 + patchIdx * 40] = output.gregoryPatch[0];// + float3(0, 0.1f, 0);
+    CP_debug[2 * p1 + 0 + patchIdx * 40] = output.gregoryPatch[1];// + float3(0, 0.35f, 0);
+    CP_debug[2 * p2 + 0 + patchIdx * 40] = output.gregoryPatch[2];// + float3(0, 0.6f, 0);
+    CP_debug[2 * p3 + 0 + patchIdx * 40] = output.gregoryPatch[3];// + float3(0, 0.85f, 0);
+    CP_debug[2 * p0 + 1 + patchIdx * 40] = float4(5, 0, 0, 0);
+    CP_debug[2 * p1 + 1 + patchIdx * 40] = float4(5, 1, 0, 0);
+    CP_debug[2 * p2 + 1 + patchIdx * 40] = float4(5, 2, 0, 0);
+    CP_debug[2 * p3 + 1 + patchIdx * 40] = float4(5, 3, 0, 0);
 
-    CP_debug[2 * r0Minus +  0 + patchIdx * 40] = output.gregoryPatch[r0Plus];
-    CP_debug[2 * r0Minus +  1 + patchIdx * 40] = float4(valences[0], valences[3], 3, 0);
-    CP_debug[2 * r0Minus +  2 + patchIdx * 40] = output.gregoryPatch[r0Minus];
-    CP_debug[2 * r0Minus +  3 + patchIdx * 40] = float4(valences[0], valences[1], 3, 0);
-    CP_debug[2 * r0Minus +  4 + patchIdx * 40] = output.gregoryPatch[r1Plus];
-    CP_debug[2 * r0Minus +  5 + patchIdx * 40] = float4(valences[1], valences[0], 3, 0);
-    CP_debug[2 * r0Minus +  6 + patchIdx * 40] = output.gregoryPatch[r1Minus];
-    CP_debug[2 * r0Minus +  7 + patchIdx * 40] = float4(valences[1], valences[2], 3, 0);
-    CP_debug[2 * r0Minus +  8 + patchIdx * 40] = output.gregoryPatch[r2Plus];
-    CP_debug[2 * r0Minus +  9 + patchIdx * 40] = float4(valences[2], valences[1], 3, 0);
-    CP_debug[2 * r0Minus + 10 + patchIdx * 40] = output.gregoryPatch[r2Minus];
-    CP_debug[2 * r0Minus + 11 + patchIdx * 40] = float4(valences[2], valences[3], 3, 0);
-    CP_debug[2 * r0Minus + 12 + patchIdx * 40] = output.gregoryPatch[r3Plus];
-    CP_debug[2 * r0Minus + 13 + patchIdx * 40] = float4(valences[3], valences[2], 3, 0);
-    CP_debug[2 * r0Minus + 14 + patchIdx * 40] = output.gregoryPatch[r3Minus];
-    CP_debug[2 * r0Minus + 15 + patchIdx * 40] = float4(valences[3], valences[0], 3, 0);
+
+    CP_debug[2 * r0Minus +  0 + patchIdx * 40] = output.gregoryPatch[r0Minus];
+    CP_debug[2 * r0Minus +  1 + patchIdx * 40] = float4(0, 0, 0, 0); // Red
+    CP_debug[2 * r0Minus +  2 + patchIdx * 40] = output.gregoryPatch[r0Plus]; // 
+    CP_debug[2 * r0Minus +  3 + patchIdx * 40] = float4(0, 1, 0, 0); // Green
+    CP_debug[2 * r0Minus +  4 + patchIdx * 40] = output.gregoryPatch[r1Minus];
+    CP_debug[2 * r0Minus +  5 + patchIdx * 40] = float4(1, 0, 0, 0); // Red
+    CP_debug[2 * r0Minus +  6 + patchIdx * 40] = output.gregoryPatch[r1Plus];
+    CP_debug[2 * r0Minus +  7 + patchIdx * 40] = float4(1, 1, 0, 0); // Green
+    CP_debug[2 * r0Minus +  8 + patchIdx * 40] = output.gregoryPatch[r2Minus];
+    CP_debug[2 * r0Minus +  9 + patchIdx * 40] = float4(2, 0, 0, 0); // Red
+    CP_debug[2 * r0Minus + 10 + patchIdx * 40] = output.gregoryPatch[r2Plus];
+    CP_debug[2 * r0Minus + 11 + patchIdx * 40] = float4(2, 1, 0, 0); // Green
+    CP_debug[2 * r0Minus + 12 + patchIdx * 40] = output.gregoryPatch[r3Minus];
+    CP_debug[2 * r0Minus + 13 + patchIdx * 40] = float4(3, 0, 0, 0); // Red
+    CP_debug[2 * r0Minus + 14 + patchIdx * 40] = output.gregoryPatch[r3Plus];
+    CP_debug[2 * r0Minus + 15 + patchIdx * 40] = float4(3, 1, 0, 0); // Green
 
     const float4 pos0_DC = mul(PV, mul(WT, float4(controlPoints[p0].p, 1)));
     const float4 pos1_DC = mul(PV, mul(WT, float4(controlPoints[p1].p, 1)));
@@ -580,12 +585,11 @@ PS_Input DS_Main(
     output.p        = POS_DC;
     output.tx       = UV;
 
-    /*
     uint idx = 0xffffffff;
     InterlockedAdd(counter[0], 2, idx);
     normal_Debug[idx + 0] = POS_WS;
-    normal_Debug[idx + 1] = POS_WS + normalize(cross(output.t, output.bt)) * 0.01f;
-    */
+    normal_Debug[idx + 1] = POS_WS + normalize(cross(output.t, output.bt)) * 0.05f;
+
     return output;
 }
 
@@ -607,9 +611,15 @@ float4 PS_Main(PS_Input input) : SV_TARGET
     const float diff            = i * dot(n, l_dir) / (d * d);
     const float3 K              = spec + diff * pow(float3(1.0f, 1.0f, 1.0f), 2.2f);
 
-    return float4(1, 1, 1, 1);
+    //return float4(1, 1, 1, 1);
     //return float4(K, 1);
-    //return float4(float3(1, 1, 1) * (n / 2.0f + 0.5f), 1);
+    return float4(float3(1, 1, 1) * (n.xzy / 2.0f + 0.5f), 1);
+}
+
+
+float4 PS_Main2(PS_Input input) : SV_TARGET
+{
+    return float4(0, 0, 0, 1);
 }
 
 

@@ -101,15 +101,16 @@ float4 PS_Main(const uint color : COLOR) : SV_TARGET
 {
     float3 colors[] =
     {
-        float3(1, 0, 0),
-        float3(0, 1, 0),
-        float3(0, 0, 1),
-        float3(1, 0, 1),
-        float3(1, 1, 1),
-        float3(0, 1, 1),
+        float3(1, 0, 0),                // 0:Red            
+        float3(0, 1, 0),                // 1:Green          
+        float3(0, 0, 1),                // 2:Blue
+        float3(1, 0, 1),                // 3:Purple
+        float3(1, 1, 1),                // 4:White
+        float3(0.0f, 1.0f, 1.0f),       // 5: Cyan
+        float3(0.0f, 0.0f, 0.0f),       // 6: Black
     };
 
-    return float4(colors[color % 6], 1.0f);
+    return float4(colors[color % 7], 1.0f);
 }
 
 float4 PS2_Main() : SV_TARGET
