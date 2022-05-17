@@ -612,8 +612,8 @@ float4 PS_Main(PS_Input input) : SV_TARGET
     const float3 K              = spec + diff * pow(float3(1.0f, 1.0f, 1.0f), 2.2f);
 
     //return float4(1, 1, 1, 1);
-    //return float4(K, 1);
-    return float4(float3(1, 1, 1) * (n.xzy / 2.0f + 0.5f), 1);
+    return float4(K, 1);
+    //return float4(float3(1, 1, 1) * (n.xzy / 2.0f + 0.5f), 1);
 }
 
 

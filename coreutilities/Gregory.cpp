@@ -1231,6 +1231,40 @@ namespace FlexKit
         int x = 0;
     }
 
+    void CalculateQuadControlPoint_R(uint32_t edgeIdx, Patch& patch, ModifiableShape& shape, uint32_t controlPointIdx)
+    {
+        if (shape.GetEdgeTwin(edgeIdx) == 0xffffffff)
+            edgeIdx = shape.wEdges[edgeIdx].prev;
+
+        const auto twin         = shape.GetEdgeTwin(edgeIdx);
+        const auto ln           = shape.GetEdgeLeftNeighbor(twin);
+        const auto rn           = shape.GetEdgeRightNeighbor(twin);
+        const auto face1        = shape.GetEdgeOwningFace(twin);
+        const auto face0        = shape.GetEdgeOwningFace(edgeIdx);
+        const auto& verts1      = shape.wEdges[ln].vertices;
+        const auto& verts2      = shape.wEdges[rn].vertices;
+        const auto faceVerts0   = shape.GetFaceVertices(face0);
+        const auto faceVerts1   = shape.GetFaceVertices(face1);
+
+        Patch::ControlPointWeights controlPoint;
+        controlPoint.AddWeight(verts1[0],-0.5f * 1.0f/3.0f);
+        controlPoint.AddWeight(verts1[1],-0.5f * 1.0f/3.0f);
+
+        controlPoint.AddWeight(verts2[0], 0.5f * 1.0f/3.0f);
+        controlPoint.AddWeight(verts2[1], 0.5f * 1.0f/3.0f);
+
+        for (auto v : faceVerts0)
+            controlPoint.AddWeight(v,  0.25f * 2.0f / 3.0f);
+
+        for (auto v : faceVerts1)
+            controlPoint.AddWeight(v, -0.25f * 2.0f / 3.0f);
+
+        auto w_s = controlPoint.WeightSum();
+        auto t = ApplyWeights(controlPoint, shape);
+
+        patch.controlPoints[controlPointIdx] = controlPoint;
+    }
+
 
     /************************************************************************************************/
 
@@ -1475,7 +1509,7 @@ namespace FlexKit
     {
         Patch::ControlPointWeights r;
 
-        const auto adjEdge  = edge;//shape.wEdges[edge].next;
+        const auto adjEdge  = shape.wEdges[edge].next;
         const auto prevEdge = shape.wEdges[adjEdge].prev;
         const auto opposite = shape.wEdges[shape.wEdges[adjEdge].next].next;
 
@@ -1491,9 +1525,97 @@ namespace FlexKit
         r.AddWeight(v2, -1.0f);
         r.AddWeight(v3,  1.0f);
 
+        r.Scale(0.5f);
+
         patch.controlPoints[r1Plus] = r;
     }
 
+
+    /************************************************************************************************/
+
+
+    void CalculateQuadFacePointF2Minus(uint32_t edge, Patch& patch, ModifiableShape& shape)
+    {
+        Patch::ControlPointWeights r;
+
+        const auto adjEdge  = edge;
+        const auto prevEdge = shape.wEdges[adjEdge].prev;
+        const auto opposite = shape.wEdges[shape.wEdges[adjEdge].next].next;
+
+        const auto v0 = shape.wEdges[adjEdge].vertices[0];
+        const auto v1 = shape.wEdges[adjEdge].vertices[1];
+
+        const auto v2 = shape.wEdges[opposite].vertices[1];
+        const auto v3 = shape.wEdges[opposite].vertices[0];
+
+        r.AddWeight(v0, -1.0f);
+        r.AddWeight(v1,  1.0f);
+
+        r.AddWeight(v2, -1.0f);
+        r.AddWeight(v3,  1.0f);
+
+        r.Scale(0.5f);
+
+        patch.controlPoints[r2Minus] = r;
+    }
+
+
+    /************************************************************************************************/
+
+
+    void CalculateQuadFacePointF2Plus(uint32_t edge, Patch& patch, ModifiableShape& shape)
+    {
+        Patch::ControlPointWeights r;
+
+        const auto adjEdge  = shape.wEdges[edge].next;
+        const auto prevEdge = shape.wEdges[adjEdge].prev;
+        const auto opposite = shape.wEdges[shape.wEdges[adjEdge].next].next;
+
+        const auto v0 = shape.wEdges[adjEdge].vertices[0];
+        const auto v1 = shape.wEdges[adjEdge].vertices[1];
+
+        const auto v2 = shape.wEdges[opposite].vertices[1];
+        const auto v3 = shape.wEdges[opposite].vertices[0];
+
+        r.AddWeight(v0, -1.0f);
+        r.AddWeight(v1,  1.0f);
+
+        r.AddWeight(v2, -1.0f);
+        r.AddWeight(v3,  1.0f);
+
+        r.Scale(0.5f);
+
+        patch.controlPoints[r2Plus] = r;
+    }
+
+
+    /************************************************************************************************/
+
+
+    void CalculateQuadFacePointFn(uint32_t edge, Patch& patch, ModifiableShape& shape, uint32_t controlPoint, float f = 1.0f)
+    {
+        Patch::ControlPointWeights r;
+
+        const auto adjEdge  = edge;
+        const auto prevEdge = shape.wEdges[adjEdge].prev;
+        const auto opposite = shape.wEdges[shape.wEdges[adjEdge].next].next;
+
+        const auto v0 = shape.wEdges[adjEdge].vertices[0];
+        const auto v1 = shape.wEdges[adjEdge].vertices[1];
+
+        const auto v2 = shape.wEdges[opposite].vertices[1];
+        const auto v3 = shape.wEdges[opposite].vertices[0];
+
+        r.AddWeight(v0, -1.0f);
+        r.AddWeight(v1,  1.0f);
+
+        r.AddWeight(v2, -1.0f);
+        r.AddWeight(v3,  1.0f);
+
+        r.Scale(0.5f * f);
+
+        patch.controlPoints[controlPoint] = r;
+    }
 
     
     /************************************************************************************************/
@@ -1559,8 +1681,17 @@ namespace FlexKit
             case 4: // T-Junction
             {
                 CalculateTJunctionEdge(patch, edge, e0Plus, p0, Plus, shape);
-                CalculateQuadControlPoint_R0_Plus(edgePatch, patch, shape);
-                CalculateQuadFacePointF0Minus(edge, patch, shape);
+
+                if (shape.GetEdgeTwin(edge.current) == 0xffffffff)
+                {
+                    CalculateQuadFacePointF0Plus(edge, patch, shape);
+                    CalculateQuadControlPoint_R(edge, patch, shape, r0Minus);
+                }
+                else
+                {
+                    CalculateQuadControlPoint_R0_Plus(edgePatch, patch, shape);
+                    CalculateQuadFacePointF0Minus(edge, patch, shape);
+                }
             }   break;
             default:
             {
@@ -1594,12 +1725,23 @@ namespace FlexKit
             case 2: // Corner
             {
                 CalculateCornerEdge(patch, edge, e1Plus, Plus, shape);
+                CalculateQuadFacePointF1Plus(edge, patch, shape);
+                CalculateQuadFacePointF1Minus(edge, patch, shape);
             }   break;
             case 4: // T-Junction
             {
                 CalculateTJunctionEdge(patch, edge, e1Plus, p1, Plus, shape);
-                CalculateQuadControlPoint_R1_Plus(edgePatch, patch, shape);
-                CalculateQuadFacePointF1Minus(edge, patch, shape);
+
+                if (shape.GetEdgeTwin(edge.current) == 0xffffffff)
+                {
+                    CalculateQuadFacePointF1Plus(edge, patch, shape);
+                    CalculateQuadControlPoint_R(edge, patch, shape, r1Minus);
+                }
+                else
+                {
+                    CalculateQuadControlPoint_R1_Plus(edgePatch, patch, shape);
+                    CalculateQuadFacePointF1Minus(edge, patch, shape);
+                }
             }   break;
             default:
             {
@@ -1633,11 +1775,24 @@ namespace FlexKit
             {
             case 2: // Corner
             {
-                //CalculateCornerEdge(patch, edge, e2Plus, Plus, shape);
+                CalculateCornerEdge(patch, edge, e2Plus, Plus, shape);
+                CalculateQuadFacePointF2Plus(edge, patch, shape);
+                CalculateQuadFacePointF2Minus(edge, patch, shape);
             }   break;
             case 4: // T-Junction
             {
-                //CalculateTJunctionEdge(patch, edge, e2Plus, p2, Plus, shape);
+                CalculateTJunctionEdge(patch, edge, e2Plus, p2, Plus, shape);
+
+                if (shape.GetEdgeTwin(edge.current) == 0xffffffff)
+                {
+                    CalculateQuadFacePointFn(edgeView[1], patch, shape, r2Plus, -1.0f);
+                    CalculateQuadControlPoint_R(edge, patch, shape, r2Minus);
+                }
+                else
+                {
+                    CalculateQuadControlPoint_R2_Plus(edgePatch, patch, shape);
+                    CalculateQuadFacePointF2Minus(edge, patch, shape);
+                }
             }   break;
             default:
             {
@@ -1671,12 +1826,23 @@ namespace FlexKit
             case 2: // Corner
             {
                 CalculateCornerEdge(patch, edge, e3Plus, Plus, shape);
+                CalculateQuadFacePointFn(edgeView[2], patch, shape, r3Plus, -1);
+                CalculateQuadFacePointFn(edge, patch, shape, r3Minus);
             }   break;
             case 4: // T-Junction
             {
-                CalculateCornerEdge(patch, edge, e3Plus, Plus, shape);
-                CalculateQuadFacePointF3Plus(edge, patch, shape);
-                CalculateQuadControlPoint_R3_Minus_2(edgeView[2], patch, shape);
+                CalculateTJunctionEdge(patch, edge, e3Plus, p3, Plus, shape);
+
+                if (shape.GetEdgeTwin(edge.current) == 0xffffffff)
+                {
+                    CalculateQuadFacePointFn(edgeView[2], patch, shape, r3Plus, -1.0f);
+                    CalculateQuadControlPoint_R(edge, patch, shape, r3Minus);
+                }
+                else
+                {
+                    CalculateQuadControlPoint_R3_Plus(edgePatch, patch, shape);
+                    CalculateQuadFacePointFn(edge, patch, shape, r3Minus);
+                }
             }   break;
             default:
             {
@@ -1718,17 +1884,8 @@ namespace FlexKit
             patches.push_back(regularPatch);
         }
 
-        //for (auto& borderPatch : classifiedPatches.edgeQuadPatches)
-        //    patches.push_back(BuildQuadBoundryPatch(borderPatch, shape));
-
-        patches.push_back(BuildQuadBoundryPatch(classifiedPatches.edgeQuadPatches[0], shape));
-        patches.push_back(BuildQuadBoundryPatch(classifiedPatches.edgeQuadPatches[1], shape));
-        patches.push_back(BuildQuadBoundryPatch(classifiedPatches.edgeQuadPatches[2], shape));
-        patches.push_back(BuildQuadBoundryPatch(classifiedPatches.edgeQuadPatches[3], shape));
-        patches.push_back(BuildQuadBoundryPatch(classifiedPatches.edgeQuadPatches[4], shape));
-        //patches.push_back(BuildQuadBoundryPatch(classifiedPatches.edgeQuadPatches[5], shape));
-        //patches.push_back(BuildQuadBoundryPatch(classifiedPatches.edgeQuadPatches[6], shape));
-
+        for (auto& borderPatch : classifiedPatches.edgeQuadPatches)
+            patches.push_back(BuildQuadBoundryPatch(borderPatch, shape));
 
         for (auto& patch : patches)
         {
