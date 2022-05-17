@@ -148,7 +148,7 @@ namespace FlexKit
             return;
 
         auto prev   = shape->wEdges[currentEdge].prev;
-        currentEdge = shape->wEdges[prev].oppositeNeighbor;
+        currentEdge = shape->wEdges[prev].twin;
 
         itr++;
     }
@@ -159,7 +159,7 @@ namespace FlexKit
         if (currentEdge == 0xffffffff)
             return;
 
-        auto twin   = shape->wEdges[currentEdge].oppositeNeighbor;
+        auto twin   = shape->wEdges[currentEdge].twin;
 
         if(twin!= 0xffffffff)
             currentEdge = shape->wEdges[twin].next;
@@ -589,7 +589,7 @@ namespace FlexKit
         const uint32_t opposingEdge = FindOpposingEdge(V1, V2);
 
         if(opposingEdge != 0xffffffff)
-            wEdges[opposingEdge].oppositeNeighbor = (uint32_t)wEdges.size();
+            wEdges[opposingEdge].twin = (uint32_t)wEdges.size();
 
         wVerticeEdges[V1].push_back(idx);
         wVerticeEdges[V2].push_back(idx);
@@ -728,6 +728,43 @@ namespace FlexKit
             .A = wVertices[vertices[0]].point,
             .B = wVertices[vertices[1]].point,
         };
+    }
+
+
+    /************************************************************************************************/
+
+
+    uint32_t ModifiableShape::GetEdgeTwin(uint32_t edgeId) const
+    {
+        return wEdges[edgeId].twin;
+    }
+
+
+    /************************************************************************************************/
+
+
+    uint32_t ModifiableShape::GetEdgeOwningFace(uint32_t edgeId) const
+    {
+        return wEdges[edgeId].face;
+    }
+
+
+    /************************************************************************************************/
+
+
+    uint32_t ModifiableShape::GetEdgeLeftNeighbor(uint32_t edgeId) const
+    {
+        return wEdges[edgeId].prev;
+    }
+
+
+    /************************************************************************************************/
+
+
+    uint32_t ModifiableShape::GetEdgeRightNeighbor(uint32_t edgeId) const
+    {
+        auto twin = wEdges[edgeId].twin;
+        return wEdges[twin].next;
     }
 
 
@@ -927,7 +964,7 @@ namespace FlexKit
     {
         auto& edges = wVerticeEdges[vertexIdx];
         for (auto& edge : edges)
-            if (wEdges[edge].oppositeNeighbor == 0xffffffff)
+            if (wEdges[edge].twin == 0xffffffff)
                 return true;
 
         return false;
@@ -993,9 +1030,9 @@ namespace FlexKit
 
         for (; !itr.end(); itr++)
         {
-            auto neighbor = wEdges[itr.current].oppositeNeighbor;
+            auto neighbor = wEdges[itr.current].twin;
             if(neighbor != 0xffffffff)
-                wEdges[neighbor].oppositeNeighbor = 0xffffffff;
+                wEdges[neighbor].twin = 0xffffffff;
 
             freeEdges.push_back(itr.current);
         }
@@ -1061,12 +1098,12 @@ namespace FlexKit
         wEdges[E8].vertices[0]  = V2;
         wEdges[E8].vertices[1]  = V3;
 
-        wEdges[E3].oppositeNeighbor = E6;
-        wEdges[E4].oppositeNeighbor = E8;
-        wEdges[E5].oppositeNeighbor = E7;
-        wEdges[E6].oppositeNeighbor = E3;
-        wEdges[E7].oppositeNeighbor = E5;
-        wEdges[E8].oppositeNeighbor = E4;
+        wEdges[E3].twin = E6;
+        wEdges[E4].twin = E8;
+        wEdges[E5].twin = E7;
+        wEdges[E6].twin = E3;
+        wEdges[E7].twin = E5;
+        wEdges[E8].twin = E4;
 
         wVerticeEdges[V0].push_back(E3);
 
@@ -1122,7 +1159,7 @@ namespace FlexKit
         wEdges[E4].prev             = E1;
         wEdges[E4].next             = E3;
         wEdges[E4].face             = oldFaceIdx;
-        wEdges[E4].oppositeNeighbor = E5;
+        wEdges[E4].twin = E5;
 
         wFaces[oldFaceIdx].edgeStart = E1;
 
@@ -1136,7 +1173,7 @@ namespace FlexKit
         wEdges[E5].vertices[1]      = V4;
         wEdges[E5].prev             = E2;
         wEdges[E5].next             = E6;
-        wEdges[E5].oppositeNeighbor = E4;
+        wEdges[E5].twin = E4;
         wEdges[E5].face             = newFaceIdx;
 
 
@@ -1172,14 +1209,14 @@ namespace FlexKit
 
         const auto E1 = _SplitEdge(edgeIdx, V4);
 
-        if (auto neighbor = wEdges[edgeIdx].oppositeNeighbor; neighbor != 0xffffffff)
+        if (auto neighbor = wEdges[edgeIdx].twin; neighbor != 0xffffffff)
         {
             auto E2 = _SplitEdge(neighbor, V4);
 
-            wEdges[edgeIdx].oppositeNeighbor    = E2;
-            wEdges[neighbor].oppositeNeighbor   = E1;
-            wEdges[E1].oppositeNeighbor         = neighbor;
-            wEdges[E2].oppositeNeighbor         = edgeIdx;
+            wEdges[edgeIdx].twin    = E2;
+            wEdges[neighbor].twin   = E1;
+            wEdges[E1].twin         = neighbor;
+            wEdges[E2].twin         = edgeIdx;
         }
     }
 
@@ -1189,12 +1226,12 @@ namespace FlexKit
 
     void ModifiableShape::RotateEdgeCCW(const uint32_t E1)
     {
-        if (wEdges[E1].oppositeNeighbor == -1)
+        if (wEdges[E1].twin == -1)
             return;
 
         const auto E2 = wEdges[E1].next;
         const auto E3 = wEdges[E2].next;
-        const auto E4 = wEdges[E1].oppositeNeighbor;
+        const auto E4 = wEdges[E1].twin;
         const auto E5 = wEdges[E4].next;
         const auto E6 = wEdges[E5].next;
 

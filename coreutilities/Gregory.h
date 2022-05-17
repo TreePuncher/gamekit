@@ -46,9 +46,11 @@ namespace FlexKit
         {
             ControlPointWeights();
 
-            void Scale(float s);
-            void AddWeight(uint32_t idx, float w);
-            void ScaleWeight(uint32_t idx, float s);
+            void    Scale(float s);
+            void    AddWeight(uint32_t idx, float w);
+            void    ScaleWeight(uint32_t idx, float s);
+            float   WeightSum() const;
+
             ControlPointWeights& operator += (const ControlPointWeights& rhs);
 
             float       weights[32] = { 0.0f };

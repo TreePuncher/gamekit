@@ -927,6 +927,7 @@ namespace FlexKit
 
         float3 zxy() const noexcept { return { z, x, y }; }
         float3 yzx() const noexcept { return { y, z, x }; }
+        float3 zyx() const noexcept { return { z, y, x }; }
 
 
         float3& operator = (const float* f) noexcept
