@@ -130,7 +130,7 @@ cbuffer LocalConstants : register(b2)
 HS_Input VS_Main(VS_Input input, const uint vid : SV_VertexID)
 {
     HS_Input output;
-    output.p = float4(input.p * float3(1, 1, 1), 1);
+    output.p = float4(input.p.zyx * float3(1, 1, 1), 1);
 
     return output;
 }
@@ -305,14 +305,14 @@ PatchConstants_Output PatchConstants(
 
     for (uint K = 0; K < 20; K++)
     {
-        CP_debug[2 * K + 0 + patchIdx * 40] = output.gregoryPatch[K];
+        CP_debug[2 * K + 0 + patchIdx * 40] = output.gregoryPatch[K] + float3(0, 0.0f, 0);
         CP_debug[2 * K + 1 + patchIdx * 40] = 6;
     }
 
-    CP_debug[2 * p0 + 0 + patchIdx * 40] = output.gregoryPatch[0];// + float3(0, 0.1f, 0);
-    CP_debug[2 * p1 + 0 + patchIdx * 40] = output.gregoryPatch[1];// + float3(0, 0.35f, 0);
-    CP_debug[2 * p2 + 0 + patchIdx * 40] = output.gregoryPatch[2];// + float3(0, 0.6f, 0);
-    CP_debug[2 * p3 + 0 + patchIdx * 40] = output.gregoryPatch[3];// + float3(0, 0.85f, 0);
+    CP_debug[2 * p0 + 0 + patchIdx * 40] = output.gregoryPatch[0] + float3(0, 0.0f, 0);
+    CP_debug[2 * p1 + 0 + patchIdx * 40] = output.gregoryPatch[1] + float3(0, 0.05f, 0);
+    CP_debug[2 * p2 + 0 + patchIdx * 40] = output.gregoryPatch[2] + float3(0, 0.1f, 0);
+    CP_debug[2 * p3 + 0 + patchIdx * 40] = output.gregoryPatch[3] + float3(0, 0.15f, 0);
     CP_debug[2 * p0 + 1 + patchIdx * 40] = float4(5, 0, 0, 0);
     CP_debug[2 * p1 + 1 + patchIdx * 40] = float4(5, 1, 0, 0);
     CP_debug[2 * p2 + 1 + patchIdx * 40] = float4(5, 2, 0, 0);
@@ -360,10 +360,10 @@ PatchConstants_Output PatchConstants(
         const float3 pos2_NDC = pos2_DC.xyz / pos2_DC.w;
         const float3 pos3_NDC = pos3_DC.xyz / pos3_DC.w;
 
-        const float e0_factor = min(expansionRate, (2160.0f / 16) * length((pos0_NDC - pos1_NDC).xy) / 2.0f);
-        const float e1_factor = min(expansionRate, (2160.0f / 16) * length((pos1_NDC - pos2_NDC).xy) / 2.0f);
-        const float e2_factor = min(expansionRate, (2160.0f / 16) * length((pos2_NDC - pos3_NDC).xy) / 2.0f);
-        const float e3_factor = min(expansionRate, (2160.0f / 16) * length((pos3_NDC - pos0_NDC).xy) / 2.0f);
+        const float e0_factor = min(expansionRate, (2160.0f / 16) * length((pos0_NDC - pos1_NDC).xy * float2(AspectRatio, 1)) / 2.0f);
+        const float e1_factor = min(expansionRate, (2160.0f / 16) * length((pos1_NDC - pos2_NDC).xy * float2(AspectRatio, 1)) / 2.0f);
+        const float e2_factor = min(expansionRate, (2160.0f / 16) * length((pos2_NDC - pos3_NDC).xy * float2(AspectRatio, 1)) / 2.0f);
+        const float e3_factor = min(expansionRate, (2160.0f / 16) * length((pos3_NDC - pos0_NDC).xy * float2(AspectRatio, 1)) / 2.0f);
 
         output.Edges[0] = e3_factor;
         output.Edges[1] = e2_factor;
@@ -444,9 +444,9 @@ PS_Input DS_Main(
     PS_Input output;
 
     const float u = UV.x;
-    const float v = 1 - UV.y;
+    const float v = UV.y;
     const float U = 1 - UV.x;
-    const float V = UV.y;
+    const float V = 1 - UV.y;
 
     const float d11 = (u + v == 0.0f) ? 1.0f : u + v;
     const float d12 = (U + v == 0.0f) ? 1.0f : U + v;
@@ -588,7 +588,7 @@ PS_Input DS_Main(
     uint idx = 0xffffffff;
     InterlockedAdd(counter[0], 2, idx);
     normal_Debug[idx + 0] = POS_WS;
-    normal_Debug[idx + 1] = POS_WS + normalize(cross(output.t, output.bt)) * 0.05f;
+    normal_Debug[idx + 1] = POS_WS + normalize(cross(output.bt, output.t)) * 0.05f;
 
     return output;
 }
@@ -602,7 +602,7 @@ float4 PS_Main(PS_Input input) : SV_TARGET
     const float3 light_pos      = float3(2, 2, 2);
     const float3 l_dir          = normalize(light_pos - input.pos_WS);
     const float3 v_dir          = normalize(input.pos_WS - CameraPOS);
-    const float3 n              = normalize(cross(input.t, input.bt));
+    const float3 n              = normalize(cross(input.bt, input.t));
     const float3 rDir           = reflect(l_dir, n);
     const float d               = length(input.pos_WS - light_pos);
     const float i               = 0.4f;

@@ -73,7 +73,7 @@ struct ModifiableShape
     struct wEdge // Half Edge, directed structure
     {
         uint32_t vertices[2];
-        uint32_t oppositeNeighbor;
+        uint32_t twin;
         uint32_t next;
         uint32_t prev;
         uint32_t face;
@@ -103,7 +103,7 @@ struct ModifiableShape
 
             uint32_t Twin() const
             {
-                shape->wEdges[edgeStart].oppositeNeighbor;
+                shape->wEdges[edgeStart].twin;
             }
 
             auto operator [] (int32_t idx)
@@ -238,7 +238,7 @@ struct ModifiableShape
 
                 operator bool() { return current != 0xffffffff; }
 
-                uint32_t Twin() const { return shape->wEdges[current].oppositeNeighbor; }
+                uint32_t Twin() const { return shape->wEdges[current].twin; }
 
                 void Next()
                 {
@@ -247,7 +247,7 @@ struct ModifiableShape
 
                     itr++;
                     auto prev   = shape->wEdges[current].prev;
-                    auto twin   = shape->wEdges[prev].oppositeNeighbor;
+                    auto twin   = shape->wEdges[prev].twin;
                     current     = twin != 0xffffffff ? twin : prev;
                 }
 
@@ -491,7 +491,7 @@ struct ModifiableShape
                 if (edges.size() > 2)
                 {
                     for (auto& edge : shape->wEdges)
-                        if (edge.oppositeNeighbor = 0xffffffff)
+                        if (edge.twin = 0xffffffff)
                             return true;
                 }
                 else
@@ -616,7 +616,7 @@ struct ModifiableShape
 
         auto Twin() const
         {
-            return shape->wEdges[current].oppositeNeighbor;
+            return shape->wEdges[current].twin;
         }
 
         auto PeekNext()
@@ -675,8 +675,12 @@ struct ModifiableShape
 
     uint32_t                GetVertexValence(const uint32_t vertexIdx) const;
 
-    float3                  GetEdgeMidPoint (uint32_t edgeId) const;
-    EdgeSegment             GetEdgeSegment  (uint32_t edgeId) const;
+    float3                  GetEdgeMidPoint     (uint32_t edgeId) const;
+    EdgeSegment             GetEdgeSegment      (uint32_t edgeId) const;
+    uint32_t                GetEdgeTwin         (uint32_t edgeId) const;
+    uint32_t                GetEdgeOwningFace   (uint32_t edgeId) const;
+    uint32_t                GetEdgeLeftNeighbor (uint32_t edgeId) const;
+    uint32_t                GetEdgeRightNeighbor(uint32_t edgeId) const;
 
     std::vector<Triangle>   GetFaceGeometry (uint32_t faceIdx) const;
     std::vector<uint32_t>   GetFaceIndices  (uint32_t faceIdx) const;

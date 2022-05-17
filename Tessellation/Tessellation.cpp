@@ -275,12 +275,12 @@ public:
                 ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
                 ctx.SetRenderTargets({ resources.GetRenderTarget(data.renderTarget) }, true, depthBuffer);
 
-                const float expansionRate = normals ? 16 : 64;// 1 + cos(t) * 63.0f / 2 + 63.0f / 2.0f;
+                const float maxExpansionRate = tesselationLevel;// 1 + cos(t) * 63.0f / 2 + 63.0f / 2.0f;
 
                 ctx.SetGraphicsShaderResourceView(0, patchBuffer);
                 ctx.SetGraphicsConstantBufferView(1, CB);
                 ctx.SetGraphicsConstantValue(2, 16, &WT);
-                ctx.SetGraphicsConstantValue(3, 1, &expansionRate);
+                ctx.SetGraphicsConstantValue(3, 1, &maxExpansionRate);
 
                 ctx.SetGraphicsUnorderedAccessView(4, resources.UAV(data.debug1Buffer, ctx), 0);
                 ctx.SetGraphicsUnorderedAccessView(5, resources.UAV(data.debug1Buffer, ctx), 64);
@@ -294,21 +294,23 @@ public:
                     ctx.DrawIndexed(indices.size());
                 }
 
-                const auto devicePointer1 = resources.GetDevicePointer(resources.VertexBuffer(data.debug2Buffer, ctx));
-                const auto devicePointer2 = resources.GetDevicePointer(resources.VertexBuffer(data.debug1Buffer, ctx));
 
-                ctx.SetPipelineState(resources.GetPipelineState(ACCDebugControlpoints));
-                ctx.SetPrimitiveTopology(EInputTopology::EIT_POINT);
-                ctx.SetVertexBuffers2({ D3D12_VERTEX_BUFFER_VIEW{ devicePointer1, MEGABYTE, 24 } });
+                if (markers)
+                {
+                    const auto devicePointer1 = resources.GetDevicePointer(resources.VertexBuffer(data.debug2Buffer, ctx));
+                    ctx.SetPipelineState(resources.GetPipelineState(ACCDebugControlpoints));
+                    ctx.SetPrimitiveTopology(EInputTopology::EIT_POINT);
+                    ctx.SetVertexBuffers2({ D3D12_VERTEX_BUFFER_VIEW{ devicePointer1, MEGABYTE, 24 } });
 
-                ctx.Draw(20 * indices.size() / 32);
-
+                    ctx.Draw(20 * indices.size() / 32);
+                }
                 if (normals)
                 {
+                    const auto devicePointer2 = resources.GetDevicePointer(resources.VertexBuffer(data.debug1Buffer, ctx));
                     ctx.SetPipelineState(resources.GetPipelineState(ACCDebugNormals));
                     ctx.SetPrimitiveTopology(EInputTopology::EIT_LINE);
                     ctx.SetVertexBuffers2({ D3D12_VERTEX_BUFFER_VIEW{ devicePointer2 + 64, MEGABYTE - 64, 12 } });
-                    ctx.Draw(expansionRate * expansionRate * 9 * 16);
+                    ctx.Draw(maxExpansionRate * maxExpansionRate * 9 * 16);
                 }
             });
     }
@@ -399,10 +401,24 @@ public:
                 if (evt.Action == Event::Release)
                     normals = !normals;
                 break;
+            case KC_2:
+                if (evt.Action == Event::Release)
+                    tesselationLevel++;
+                break;
+            case KC_1:
+                if (evt.Action == Event::Release)
+                    tesselationLevel--;
+                break;
+            case KC_3:
+                if (evt.Action == Event::Release)
+                    markers = !markers;
+                break;
             }
+
             if (evt.mType == Event::EventType::Input && evt.Action == Event::Release && evt.mData1.mKC[0] == KC_R)
             {
                 framework.GetRenderSystem().QueuePSOLoad(ACCQuad);
+                framework.GetRenderSystem().QueuePSOLoad(ACCQuadWireframe);
                 framework.GetRenderSystem().QueuePSOLoad(ACCDebugControlpoints);
                 framework.GetRenderSystem().QueuePSOLoad(ACCDebugNormals);
             }
@@ -627,12 +643,13 @@ public:
     CameraComponent         cameras;
     SceneNodeComponent      nodes;
 
-    double                  t = 0.0f;
-
-    bool wireframe  = true;
-    bool normals    = true;
-    bool forward    = false;
-    bool backward   = false;
+    double  t                   = 0.0f;
+    int     tesselationLevel    = 16;
+    bool    wireframe           = false;
+    bool    markers             = false;
+    bool    normals             = false;
+    bool    forward             = false;
+    bool    backward            = false;
 
     MouseInputState         mouseState;
     GameObject              gameObject;
@@ -647,6 +664,8 @@ int main()
 {
     try
     {
+        fmt::print("Controls:\n\t1: Decrease tessellation.\n\t2: Increase tessellation.\n\t3: Toggle markers.\n\tM: toggle mouse.\n\tR: Reload Shaders\n\tT: Toggle wireframe.\n\tY: Toggle Normal hairs.\n");
+
         auto* allocator = FlexKit::CreateEngineMemory();
         EXITSCOPE(ReleaseEngineMemory(allocator));
 
