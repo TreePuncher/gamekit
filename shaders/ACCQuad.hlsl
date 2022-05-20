@@ -303,12 +303,6 @@ PatchConstants_Output PatchConstants(
                 output.gregoryPatch[e2Plus],
                 controlPoints[r3Minus].p);
 
-    for (uint K = 0; K < 20; K++)
-    {
-        CP_debug[2 * K + 0 + patchIdx * 40] = output.gregoryPatch[K] + float3(0, 0.0f, 0);
-        CP_debug[2 * K + 1 + patchIdx * 40] = 6;
-    }
-
     CP_debug[2 * p0 + 0 + patchIdx * 40] = output.gregoryPatch[0] + float3(0, 0.0f, 0);
     CP_debug[2 * p1 + 0 + patchIdx * 40] = output.gregoryPatch[1] + float3(0, 0.05f, 0);
     CP_debug[2 * p2 + 0 + patchIdx * 40] = output.gregoryPatch[2] + float3(0, 0.1f, 0);
@@ -318,6 +312,25 @@ PatchConstants_Output PatchConstants(
     CP_debug[2 * p2 + 1 + patchIdx * 40] = float4(5, 2, 0, 0);
     CP_debug[2 * p3 + 1 + patchIdx * 40] = float4(5, 3, 0, 0);
 
+    CP_debug[2 * e0Minus + 0 + patchIdx * 40] = output.gregoryPatch[e0Minus];
+    CP_debug[2 * e0Minus + 1 + patchIdx * 40] = float4(0, 0, 0, 0); // Red
+    CP_debug[2 * e0Plus  + 0 + patchIdx * 40] = output.gregoryPatch[e0Plus];
+    CP_debug[2 * e0Plus  + 1 + patchIdx * 40] = float4(0, 1, 0, 0); // Green
+
+    CP_debug[2 * e1Minus + 0 + patchIdx * 40] = output.gregoryPatch[e1Minus];
+    CP_debug[2 * e1Minus + 1 + patchIdx * 40] = float4(1, 0, 0, 0); // Red
+    CP_debug[2 * e1Plus  + 0 + patchIdx * 40] = output.gregoryPatch[e1Plus];
+    CP_debug[2 * e1Plus  + 1 + patchIdx * 40] = float4(1, 1, 0, 0); // Green
+
+    CP_debug[2 * e2Minus + 0 + patchIdx * 40] = output.gregoryPatch[e2Minus];
+    CP_debug[2 * e2Minus + 1 + patchIdx * 40] = float4(2, 0, 0, 0); // Red
+    CP_debug[2 * e2Plus  + 0 + patchIdx * 40] = output.gregoryPatch[e2Plus];
+    CP_debug[2 * e2Plus  + 1 + patchIdx * 40] = float4(2, 1, 0, 0); // Green
+
+    CP_debug[2 * e3Minus + 0 + patchIdx * 40] = output.gregoryPatch[e3Minus];
+    CP_debug[2 * e3Minus + 1 + patchIdx * 40] = float4(3, 0, 0, 0); // Red
+    CP_debug[2 * e3Plus  + 0 + patchIdx * 40] = output.gregoryPatch[e3Plus];
+    CP_debug[2 * e3Plus  + 1 + patchIdx * 40] = float4(3, 1, 0, 0); // Green
 
     CP_debug[2 * r0Minus +  0 + patchIdx * 40] = output.gregoryPatch[r0Minus];
     CP_debug[2 * r0Minus +  1 + patchIdx * 40] = float4(0, 0, 0, 0); // Red

@@ -240,7 +240,7 @@ struct ModifiableShape
 
                 uint32_t Twin() const { return shape->wEdges[current].twin; }
 
-                void Next()
+                void Next(bool wrap = false)
                 {
                     if (current == 0xffffffff)
                         return;
@@ -248,7 +248,23 @@ struct ModifiableShape
                     itr++;
                     auto prev   = shape->wEdges[current].prev;
                     auto twin   = shape->wEdges[prev].twin;
-                    current     = twin != 0xffffffff ? twin : prev;
+
+
+                    if(!wrap)
+                        current = twin != 0xffffffff ? twin : prev;
+                    else if (twin != 0xffffffff)
+                    {
+                        current = twin;
+                    }
+                    else
+                    {
+                        auto face = shape->wEdges[current].face;
+                        Iterator tempItr{ shape, shape->wFaces[face].edgeStart, 0 };
+                        while (tempItr.PeekPrev() != 0xffffffff)
+                            --tempItr;
+
+                        current = tempItr.current;
+                    }
                 }
 
                 void Prev()
@@ -262,6 +278,15 @@ struct ModifiableShape
                         itr--;
                         current = shape->wEdges[twin].next;
                     }
+                }
+
+                uint32_t PeekPrev() const
+                {
+                    if (current == 0xffffffff)
+                        return current;
+
+                    auto twin = Twin();
+                    return (twin != 0xffffffff) ? shape->wEdges[twin].next : twin;
                 }
             };
 
