@@ -20,12 +20,12 @@ public:
         renderWindow    {
             std::get<0>(CreateWin32RenderWindow(
                 IN_framework.GetRenderSystem(),
-                FlexKit::DefaultWindowDesc(uint2{ 1920, 1080 }))) },
+                FlexKit::DefaultWindowDesc(uint2{ 1920, 1080 } * 2))) },
         rootSig         { IN_framework.core.GetBlockMemory() },
         vertexBuffer    { IN_framework.GetRenderSystem().CreateVertexBuffer(MEGABYTE, false) },
         constantBuffer  { IN_framework.GetRenderSystem().CreateConstantBuffer(MEGABYTE, false) },
         cameras         { IN_framework.core.GetBlockMemory() },
-        depthBuffer     { IN_framework.GetRenderSystem().CreateDepthBuffer(uint2{ 1920, 1080 }, true) },
+        depthBuffer     { IN_framework.GetRenderSystem().CreateDepthBuffer(uint2{ 1920, 1080 } * 2, true) },
         debug1Buffer    { IN_framework.GetRenderSystem().CreateUAVBufferResource(MEGABYTE * 16, false) },
         debug2Buffer    { IN_framework.GetRenderSystem().CreateUAVBufferResource(MEGABYTE, false) },
         indices         { IN_framework.core.GetBlockMemory() },
@@ -175,7 +175,7 @@ public:
         const uint32_t patch14[] = { 11, 15, 23, 22 };
         const uint32_t patch15[] = { 15, 19, 24, 23 };
 
-        shape.AddPolygon(patch0, patch0 + 4);
+        //shape.AddPolygon(patch0, patch0 + 4);
         shape.AddPolygon(patch1, patch1 + 4);
         shape.AddPolygon(patch2, patch2 + 4);
         shape.AddPolygon(patch3, patch3 + 4);
@@ -403,11 +403,11 @@ public:
                 break;
             case KC_2:
                 if (evt.Action == Event::Release)
-                    tesselationLevel++;
+                    tesselationLevel = clamp(1, tesselationLevel++, 64);
                 break;
             case KC_1:
                 if (evt.Action == Event::Release)
-                    tesselationLevel--;
+                    tesselationLevel = clamp(1, tesselationLevel--, 64);
                 break;
             case KC_3:
                 if (evt.Action == Event::Release)
