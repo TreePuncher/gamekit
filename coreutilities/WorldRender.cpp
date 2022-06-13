@@ -550,9 +550,9 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    size_t GetRTPoolSize(RenderSystem& renderSystem, const uint2 WH = uint2{ 1920, 1080 })
+    size_t GetRTPoolSize(const RenderSystem::AvailableFeatures& features, const uint2 WH)
     {
-        if (renderSystem.features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier1)
+        if (features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier1)
             return 128 * 3 * MEGABYTE;
         else
             return 128 * 2 * MEGABYTE;
@@ -562,12 +562,12 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    WorldRender::WorldRender(RenderSystem& IN_renderSystem, TextureStreamingEngine& IN_streamingEngine, iAllocator* persistent) :
+    WorldRender::WorldRender(RenderSystem& IN_renderSystem, TextureStreamingEngine& IN_streamingEngine, iAllocator* persistent, const PoolSizes& poolSizes) :
 			renderSystem                { IN_renderSystem },
 			enableOcclusionCulling	    { false	},
 
-            UAVPool                     { renderSystem, 64 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
-            RTPool                      { renderSystem, GetRTPoolSize(IN_renderSystem), DefaultBlockSize,
+            UAVPool                     { renderSystem, poolSizes.UAVPoolByteSize, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
+            RTPool                      { renderSystem, poolSizes.RTPoolByteSize, DefaultBlockSize,
                                             renderSystem.features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier2 ?
                                                 DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget : DeviceHeapFlags::RenderTarget, persistent },
 
@@ -588,7 +588,7 @@ namespace FlexKit
         layout.SetParameterAsShaderUAV(1, 1, 1, 0);
 
         if (renderSystem.features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier1)
-            UAVTexturePool.emplace(renderSystem, 128 * 2 * MEGABYTE, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent);
+            UAVTexturePool.emplace(renderSystem, poolSizes.UAVTexturePoolByteSize, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent);
 
         rootSignatureToneMapping.AllowIA = true;
         rootSignatureToneMapping.SetParameterAsDescriptorTable(0, layout);

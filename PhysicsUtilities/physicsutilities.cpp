@@ -549,17 +549,9 @@ namespace FlexKit
             {
                 ProfileFunction();
 
-                const auto updatePeriod = 1.0 / updateFrequency;
-
-                while (acc > updatePeriod)
-                {
-                    WorkBarrier barrier{ threads, &threadAllocator };
-                    Simulate(dt, &barrier, &threadAllocator);
-                    barrier.JoinLocal(); // Only works on work in local thread queue, to avoid increasing latency doing other tasks before continuing
-                    acc -= updatePeriod;
-                }
-
-                acc += dt;
+                WorkBarrier barrier{ threads, &threadAllocator };
+                Simulate(dt, &barrier, &threadAllocator);
+                barrier.JoinLocal(); // Only works on work in local thread queue, to avoid increasing latency doing other tasks before continuing
             });
     }
 

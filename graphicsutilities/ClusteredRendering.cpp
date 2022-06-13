@@ -641,8 +641,8 @@ namespace FlexKit
 		RS.ReleaseResource(normal);
 
 		albedo  = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM));
-		MRIA    = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT));
-		normal  = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT));
+		MRIA    = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM));
+		normal  = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16_FLOAT));
 
 		RS.SetDebugName(albedo,  "Albedo");
 		RS.SetDebugName(MRIA,    "MRIA");
@@ -1319,7 +1319,7 @@ namespace FlexKit
 
 				ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
 				ctx.SetPipelineState(resources.GetPipelineState(GBUFFERPASS));
-				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
+				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 
 				// Setup pipeline resources
 				SetScissorAndViewports(

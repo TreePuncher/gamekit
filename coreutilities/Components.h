@@ -547,17 +547,18 @@ namespace FlexKit
             return false;
     }
 
-    template<typename TY_GO, typename ... TY>
-    auto Query(TY_GO& go, TY ... requests) requires( std::is_same_v<std::decay_t<TY_GO>, GameObject> )
+
+    template<typename TY_GO, typename ... TY_ARGS>
+    auto Query(TY_GO& go, TY_ARGS ... requests) //requires( std::is_same_v<std::decay_t<TY_GO>, GameObject> )
     {
         if constexpr (std::is_const_v<TY_GO>)
-            static_assert((TY::IsConst() && ...), "All queries must be read only!");
+            static_assert((TY_ARGS::IsConst() && ...), "All queries must be read only!");
 
-        bool available = (Filter(go, requests) && ...);
-        using Tuple_TY = std::tuple<TY::Type...>;
+        bool available  = (Filter(go, requests) && ...);
+        using Tuple_TY = std::tuple<typename TY_ARGS::Type...>;
 
         if (available)
-            return std::optional<Tuple_TY>(Tuple_TY{ GetView<TY::ValueType>(go)... });
+            return std::optional{ Tuple_TY(GetView<typename TY_ARGS::ValueType>(go)... ) };
         else
             return std::optional<Tuple_TY>{};
     }

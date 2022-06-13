@@ -448,7 +448,7 @@ namespace FlexKit
 
     void AnimatorComponent::AnimationState::JointRotationTarget::Apply(AnimatorComponent::AnimationState::FrameRange range, float t, AnimationStateContext& ctx)
     {
-        if (auto res = ctx.FindField<PoseState::Pose>(); res) {
+        if (auto res = ctx.FindField<FlexKit::PoseState::Pose>(); res) {
             auto beginKey   = range.begin->Value;
             auto endKey     = range.end->Value;
 
@@ -483,7 +483,7 @@ namespace FlexKit
 
     void AnimatorComponent::AnimationState::JointTranslationTarget::Apply(AnimatorComponent::AnimationState::FrameRange range, float t, AnimationStateContext& ctx)
     {
-        if (auto res = ctx.FindField<PoseState::Pose>(); res)
+        if (auto res = ctx.FindField<FlexKit::PoseState::Pose>(); res)
         {
             const auto timepointBegin   = range.begin->Begin;
             const auto timepointEnd     = range.end->Begin;

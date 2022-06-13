@@ -837,7 +837,7 @@ namespace FlexKit
                     if (value == nullptr)
                     {
                         if constexpr (SerializeableUtilities::is_smart_ptr<TY>())
-                            value = std::make_shared<SerializeableUtilities::is_smart_ptr<TY>::type>();
+                            value = std::make_shared<typename SerializeableUtilities::is_smart_ptr<TY>::type>();
                     }
                     DeserializePointer(value);
                 }
@@ -1122,7 +1122,7 @@ namespace FlexKit
                     if (value == nullptr)
                     {
                         if constexpr (SerializeableUtilities::is_smart_ptr<TY>())
-                            value = std::make_shared<SerializeableUtilities::is_smart_ptr<TY>::type>();
+                            value = std::make_shared<typename SerializeableUtilities::is_smart_ptr<TY>::type>();
                     }
                     DeserializePointer(value);
                 }

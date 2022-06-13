@@ -261,12 +261,13 @@ uint32_t ExtrudeFace(uint32_t faceIdx, float z, ModifiableShape& shape)
     auto extrudedFace   = shape.DuplicateFace(faceIdx);
     auto normal         = shape.GetFaceNormal(extrudedFace);
 
-    for (auto itr = shape.wFaces[extrudedFace].begin(&shape);!itr.end();itr++)
+    
+    for (auto itr = shape.wFaces[extrudedFace].EdgeView(shape).begin(); !itr.end(); itr++)
         shape.wVertices[itr->vertices[0]].point += normal * z;
 
 
-    auto itr1 = shape.wFaces[faceIdx].begin(&shape);
-    auto itr2 = shape.wFaces[extrudedFace].begin(&shape);
+    auto itr1 = shape.wFaces[faceIdx].EdgeView(shape).begin();
+    auto itr2 = shape.wFaces[extrudedFace].EdgeView(shape).begin();
 
     while (!itr1.end())
     {
@@ -1076,7 +1077,7 @@ public:
             FlexKit::float3 scale;
             ImGuizmo::DecomposeMatrixToComponents(delta, deltapos, rotation, scale);
 
-            auto itr = shape.wFaces[selection.faceIdx].begin(&shape);
+            auto itr = shape.wFaces[selection.faceIdx].EdgeView(shape).begin();
 
             for (;!itr.end(); itr++)
             {
@@ -1096,8 +1097,8 @@ public:
             if (ImGui::InputFloat3("XYZ", newPos))
             {
                 auto deltaP = newPos - point;
-                auto itr    = shape.wFaces[selection.faceIdx].begin(&shape);
-                auto end    = shape.wFaces[selection.faceIdx].end(&shape);
+                auto itr    = shape.wFaces[selection.faceIdx].EdgeView(shape).begin();
+                auto end    = shape.wFaces[selection.faceIdx].EdgeView(shape).end();
 
                 for (; itr != end; itr++)
                 {
@@ -1465,7 +1466,7 @@ public:
         for (const auto& brush : selection.GetData().brushes)
         {
             const auto AABB = brush.GetAABB();
-            auto res = FlexKit::Intersects(r, AABB);
+            const auto res = FlexKit::Intersects(r, AABB);
             if (res && res.value() < minDistance && res.value() > 0.0f)
             {
                 if (auto res = brush.RayCast(r); res)

@@ -1195,7 +1195,7 @@ namespace FlexKit
 		HRESULT HR;
 		D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapdesc;
 		descriptorHeapdesc.Flags            = D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		descriptorHeapdesc.NumDescriptors   = 1024 * 64;
+		descriptorHeapdesc.NumDescriptors   = 1024 * 128;
 		descriptorHeapdesc.NodeMask         = 0;
 		descriptorHeapdesc.Type             = D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		HR = renderSystem->pDevice->CreateDescriptorHeap(&descriptorHeapdesc, IID_PPV_ARGS(&descHeapSRV));
@@ -4369,16 +4369,16 @@ namespace FlexKit
 
 		{
 			// Copy temp resources over
-			pDevice					= Device;
-			pGIFactory				= DXGIFactory;
-			pDXGIAdapter			= DXGIAdapter;
-			pDebugDevice			= DebugDevice;
-			pDebug					= Debug;
-			BufferCount				= 3;
-			FenceCounter			= 0;
-			DescriptorRTVSize		= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-			DescriptorDSVSize		= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-			DescriptorCBVSRVUAVSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+			pDevice					    = Device;
+			pGIFactory				    = DXGIFactory;
+			pDXGIAdapter			    = DXGIAdapter;
+			pDebugDevice			    = DebugDevice;
+			pDebug					    = Debug;
+			BufferCount				    = 3;
+			graphicsSubmissionCounter	= 0;
+			DescriptorRTVSize		    = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+			DescriptorDSVSize		    = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+			DescriptorCBVSRVUAVSize     = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		}
 
 
@@ -4393,8 +4393,9 @@ namespace FlexKit
 		Library.Initiate(this, in->TempMemory);
 		ReadBackTable.Initiate(Device);
 
-		FreeList.Allocator = in->Memory;
-		DefaultTexture = _CreateDefaultTexture();
+        FreeList_GraphicsQueue.Allocator    = in->Memory;
+        FreeList_CopyQueue.Allocator        = in->Memory;
+		DefaultTexture                      = _CreateDefaultTexture();
 
         RegisterPSOLoader(CLEARBUFFERPSO, { &Library.ClearBuffer, CreateClearBufferPSO });
         QueuePSOLoad(CLEARBUFFERPSO);
@@ -4420,10 +4421,11 @@ namespace FlexKit
 		for (auto& ctx : Contexts)
 			ctx.Release();
 
-		while (FreeList.size())
+		while (FreeList_GraphicsQueue.size() || FreeList_CopyQueue.size())
 			Free_DelayedReleaseResources(this);
 
-		FreeList.Release();
+        FreeList_GraphicsQueue.Release();
+        FreeList_CopyQueue.Release();
 		copyEngine.Release();
 
 		for (auto& FR : Contexts)
@@ -4444,8 +4446,6 @@ namespace FlexKit
 		if(pDXGIAdapter)	pDXGIAdapter->Release();
 		if(pDevice)			pDevice->Release();
 		if(Fence)			Fence->Release();
-
-		FreeList.Release();
 
 #if USING(DEBUGGRAPHICS)
 		// Prints Detailed Report
@@ -4521,7 +4521,7 @@ namespace FlexKit
 
 	size_t RenderSystem::GetCurrentCounter()
 	{
-		return FenceCounter;
+		return graphicsSubmissionCounter;
 	}
 
 
@@ -4530,7 +4530,7 @@ namespace FlexKit
 	
 	void RenderSystem::_UpdateCounters()
 	{
-		Textures.UpdateLocks(threads);
+		Textures.UpdateLocks(threads, Fence->GetCompletedValue());
 
 		ConstantBuffers.DecrementLocks();
 
@@ -4552,14 +4552,14 @@ namespace FlexKit
 
 	void RenderSystem::WaitforGPU()
 	{
-		GraphicsQueue->Signal(Fence, ++FenceCounter);
+		GraphicsQueue->Signal(Fence, ++graphicsSubmissionCounter);
 
 		const size_t completedValue	= Fence->GetCompletedValue();
-		const size_t currentCounter = FenceCounter;
+		const size_t currentCounter = graphicsSubmissionCounter;
 
 		if (currentCounter > completedValue)
 		{
-			HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS); FK_ASSERT(eventHandle != 0);
+			const HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS); FK_ASSERT(eventHandle != 0);
 			Fence->SetEventOnCompletion(currentCounter, eventHandle);
 			WaitForSingleObject(eventHandle, INFINITE);
 			CloseHandle(eventHandle);
@@ -5784,7 +5784,7 @@ namespace FlexKit
 
 	void RenderSystem::ReleaseResource(ResourceHandle Handle)
 	{
-		Textures.ReleaseTexture(Handle);
+		Textures.ReleaseTexture(Handle, graphicsSubmissionCounter);
 	}
 
 
@@ -5811,8 +5811,17 @@ namespace FlexKit
 
 	void Push_DelayedRelease(RenderSystem* RS, ID3D12Resource* Res)
 	{
-		RS->FreeList.push_back({ Res, 3 });
+		RS->FreeList_GraphicsQueue.push_back({ Res, RS->graphicsSubmissionCounter });
 	}
+
+
+    /************************************************************************************************/
+
+
+    void Push_DelayedReleaseCopy(RenderSystem* RS, ID3D12Resource* Res)
+    {
+        RS->FreeList_CopyQueue.push_back({ Res, RS->copyEngine.counter });
+    }
 
 
 	/************************************************************************************************/
@@ -5820,16 +5829,33 @@ namespace FlexKit
 
 	void Free_DelayedReleaseResources(RenderSystem* RS)
 	{
-		for (auto& R : RS->FreeList)
-			if (!--R.Counter)
-				SAFERELEASE(R.Resource);
+        {
+            auto completed = RS->Fence->GetCompletedValue();
+            for (auto& R : RS->FreeList_GraphicsQueue)
+                if (completed > R.Counter)
+                    SAFERELEASE(R.Resource);
 
-		RS->FreeList.erase(
-			std::partition(
-				RS->FreeList.begin(), 
-				RS->FreeList.end(), 
-				[](const auto& R) -> bool {return (R.Resource); }), 
-			RS->FreeList.end());
+            RS->FreeList_GraphicsQueue.erase(
+                std::partition(
+                    RS->FreeList_GraphicsQueue.begin(),
+                    RS->FreeList_GraphicsQueue.end(),
+                    [](const auto& R) -> bool {return (R.Resource); }),
+                RS->FreeList_GraphicsQueue.end());
+        }
+
+        {
+            auto completed = RS->copyEngine.fence->GetCompletedValue();
+            for (auto& R : RS->FreeList_CopyQueue)
+                if (completed > R.Counter)
+                    SAFERELEASE(R.Resource);
+
+            RS->FreeList_CopyQueue.erase(
+                std::partition(
+                    RS->FreeList_CopyQueue.begin(),
+                    RS->FreeList_CopyQueue.end(),
+                    [](const auto& R) -> bool {return (R.Resource); }),
+                RS->FreeList_CopyQueue.end());
+        }
 	}
 
 
@@ -6929,7 +6955,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::ReleaseTexture(ResourceHandle handle)
+	void TextureStateTable::ReleaseTexture(ResourceHandle handle, const int64_t idx)
 	{
         FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -6950,7 +6976,7 @@ namespace FlexKit
         for (auto res : resource.Resources)
         {
             if (res)
-                delayRelease.push_back({ res, 5 });
+                delayRelease.push_back({ res, idx });
         }
 
 #if USING(AFTERMATH)
@@ -7402,7 +7428,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::UpdateLocks(ThreadManager& threads)
+	void TextureStateTable::UpdateLocks(ThreadManager& threads, const int64_t currentIdx)
 	{
         ProfileFunction();
 
@@ -7410,7 +7436,7 @@ namespace FlexKit
 
 		for (auto& res : delayRelease)
 		{
-            if (!--res.counter)
+            if ((res.idx) < currentIdx)
                 freeList.push_back(res.resource);
 		}
 
@@ -7427,12 +7453,12 @@ namespace FlexKit
 			std::remove_if(
 				delayRelease.begin(),
 				delayRelease.end(),
-				[](auto& res)
+				[&](auto& res)
 				{
-					return res.counter == 0;
+					return int(res.idx) < currentIdx;
 				}),
 
-			delayRelease.end());
+        delayRelease.end());
 	}
 
 
@@ -7909,7 +7935,7 @@ namespace FlexKit
 		if (uploadQueue != InvalidHandle_t)
 			copyEngine.Push_Temporary(resource, uploadQueue);
 		else
-			FreeList.push_back({ resource, 30 });
+			FreeList_CopyQueue.push_back({ resource, copyEngine.counter });
 	}
 
 
@@ -8496,7 +8522,7 @@ namespace FlexKit
 			ImmediateUpload = InvalidHandle_t;
 		}
 
-		const auto counter = ++FenceCounter;
+		const auto counter = graphicsSubmissionCounter++;
 
         static_vector<ID3D12CommandList*, 64> cls;
 

@@ -145,7 +145,7 @@ public:
 };
 
 
-void PushHostState(const GameInfo&, GameFramework&, BaseState&, NetworkState&);
+void StartGame(const GameInfo&, GameFramework&, BaseState&, NetworkState&);
 
 
 /************************************************************************************************/

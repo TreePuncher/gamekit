@@ -36,3 +36,4 @@ Release/
 /packages
 /vcpkg_installed
 /TestGame/VTune Profiler Results/TestGame
+/ThirdParty/*

@@ -60,15 +60,19 @@ UpdateTask* MenuState::Update(EngineCore& core, UpdateDispatcher& dispatcher, do
     case MenuMode::MainMenu:
         ImGui::Begin("Menu");
 
-        if (ImGui::Button("Join"))
-            mode = MenuMode::Join;
-
-        if (ImGui::Button("Host"))
-            mode = MenuMode::Host;
-
-        if (ImGui::Button("Playground"))
+        if (ImGui::Button("Start"))
         {
+            GameInfo info;
+            info.name = name;
+            info.lobbyName = lobbyName;
 
+            auto& framework_temp = framework;
+            auto& base_temp = base;
+            auto& net_temp = net;
+
+            framework_temp.PopState();
+
+            StartGame(info, framework_temp, base_temp, net);
         }
 
         if (ImGui::Button("Exit"))
@@ -118,9 +122,9 @@ UpdateTask* MenuState::Update(EngineCore& core, UpdateDispatcher& dispatcher, do
     }   break;
     case MenuMode::Host:
     {   // Get Host name, start listing, push lobby state
-        ImGui::Begin("Host");
-        ImGui::InputText("Name", name, 128);
-        ImGui::InputText("LobbyName", lobbyName, 128);
+        ImGui::Begin("Start");
+        //ImGui::InputText("Name", name, 128);
+        //ImGui::InputText("LobbyName", lobbyName, 128);
 
         if (ImGui::Button("Start") && strnlen_s(name, 128) && strnlen_s(lobbyName, 128))
         {
@@ -134,7 +138,7 @@ UpdateTask* MenuState::Update(EngineCore& core, UpdateDispatcher& dispatcher, do
 
             framework_temp.PopState();
 
-            PushHostState(info, framework_temp, base_temp, net);
+            StartGame(info, framework_temp, base_temp, net);
         }
 
         ImGui::End();

@@ -116,7 +116,7 @@ namespace FlexKit
         if (auto guid = FlexKit::FindAssetGUID(assetID); guid)
             return LoadPrefab(gameObject, guid.value(), allocator, user_ptr);
         else
-            false;
+            return false;
     }
 
 

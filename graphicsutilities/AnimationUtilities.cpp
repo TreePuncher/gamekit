@@ -210,12 +210,13 @@ namespace FlexKit
             if (!strcmp(morphTarget.name, morphTargetName))
             {
                 auto* buffer = allocator._aligned_malloc(morphTarget.size);
-                readCtx.Read(buffer,  morphTarget.size, morphTarget.offset);
+                readCtx.Read(buffer, morphTarget.size, morphTarget.offset);
 
-
-                //size_t morphTargetCount = level0.descriptor.morphTargets;
+                return MoveBufferToDevice(renderSystem, (const char*)buffer, morphTarget.size, handle);
             }
         }
+
+        return InvalidHandle_t;
     }
 
 

@@ -346,7 +346,7 @@ namespace FlexKit
 		physx::PxControllerManager*	controllerManager	= nullptr;
 		physx::PxClientID			CID;
 
-		double	stepSize	= 1.0 / 60.0;
+		double	stepSize	= 1.0 / 120.0f;
 		double	T			= 0.0;
 		bool	updateColliders;
 
@@ -422,7 +422,6 @@ namespace FlexKit
 		physx::PxPhysics*				physxAPI;
 
         double                          acc             = 0.0;
-        size_t                          updateFrequency = 30;
 
 		//physx::PxProfileZoneManager*	ProfileZoneManager;
 		physx::PxCooking*				cooker              = nullptr;
@@ -694,7 +693,7 @@ namespace FlexKit
 
         physx::PxController*        controller;
 
-        float                       focusHeight     = 2.0f;
+        float                       focusHeight     = 4.0f;
         float                       cameraDistance  = 10.0f;
         float2                      mouseMoved      = { 0, 0 };
         double                      updateTimer     = 0;
@@ -853,7 +852,7 @@ namespace FlexKit
         {
             auto& ref = GetComponent()[controller];
 
-            return ref.controller->move({ v.x, v.y, v.z }, 0.001f, (float)dt, filters);
+            return ref.controller->move({ v.x, v.y, v.z }, 0.0001f, (float)dt, filters);
         }
 
 

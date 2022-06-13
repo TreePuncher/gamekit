@@ -1096,7 +1096,7 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
             ctx.SetGraphicsConstantBufferView(1, cameraConstants);
 
             // Draw Point Lights
-            for (auto& lightHandle : pointLights)
+            for (const auto& lightHandle : pointLights)
             {
                 bool selectedLight = false;
                 for (auto& viewportObject : selection.viewportObjects)
