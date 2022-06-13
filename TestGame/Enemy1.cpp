@@ -49,14 +49,15 @@ namespace FlexKit
 
                         const auto enemyPosition = GetWorldPosition(*enemyView.componentData.gameObject);
 
-                        auto d = playerPositions.front() - enemyPosition;
-                        const auto d_n = d.normal();
+                        auto d          = playerPositions.front() - enemyPosition;
+                        const auto d_n  = d.normal();
 
                         auto& component     = PhysXComponent::GetComponent();
                         auto hitDetected    = false;
 
-                        component.GetLayer_ref(enemyData.layer).RayCast(enemyPosition + enemyData.pendingMoves * (float)enemyData.t + enemyData.direction + float3(0.0f, 10.0f, 0.0f), enemyData.direction, 2.0f,
-                        [&](PhysicsLayer::RayCastHit&& hit)
+                        component.GetLayer_ref(enemyData.layer).RayCast(
+                            enemyPosition + enemyData.pendingMoves * (float)enemyData.t + enemyData.direction + float3(0.0f, 10.0f, 0.0f), enemyData.direction, 2.0f,
+                            [&](PhysicsLayer::RayCastHit&& hit)
                             {
                                 if (hit.distance < 5)
                                 {
@@ -71,7 +72,7 @@ namespace FlexKit
                         {
                             if (d.magnitude() < 20)
                             {
-                                enemyView.componentData.pendingMoves += -d_n * float3{ 1, 0, 1 } * (float)dt * 50;
+                                enemyView.componentData.pendingMoves += -d_n * float3{ 1, 0, 1 } * (float)dt * 5.0f;
                                 enemyView.componentData.direction     = -d_n.normal();
                             }
                             else
@@ -79,12 +80,12 @@ namespace FlexKit
                                 if (enemyData.t2 > 5)
                                 {
                                     enemyData.direction = float3((float)(rand() % 20 - 10), 0.0f, (float)(rand() % 20 - 10)).normal();
-                                    enemyData.t2 = 0.0f;
+                                    enemyData.t2        = 0.0f;
                                 }
                                 else
                                     enemyData.t2 += dt;
 
-                                enemyView.componentData.pendingMoves += enemyData.direction * (float)dt * 50;
+                                enemyView.componentData.pendingMoves += enemyData.direction * (float)dt * 5.0f;
                             }
                         }
 
@@ -120,13 +121,10 @@ namespace FlexKit
 
             physx::PxControllerFilters filters;
 
-            if (pendingMove.magnitude() > 0.0001f)
+            if (pendingMove.magnitude() > 0.001f)
             {
-                MoveController(gameObject, pendingMove * (float)dt, filters, dt);
-
-                auto newPosition = GetControllerPosition(gameObject);
-
-                SetWorldPosition(gameObject, newPosition);
+                MoveController(gameObject, pendingMove, filters, dt);
+                SetWorldPosition(gameObject, GetControllerPosition(gameObject));
             }
 
             enemyView.componentData.pendingMoves    = 0.0f;

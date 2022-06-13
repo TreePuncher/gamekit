@@ -501,7 +501,7 @@ void HostState::SendGameStart()
 /************************************************************************************************/
 
 
-void PushHostState(GameInfo& info, GameFramework& framework, BaseState& base, NetworkState& net)
+LobbyState& StartGame(GameInfo& info, GameFramework& framework, BaseState& base, NetworkState& net)
 {
     AddAssetFile("assets\\testAssets.gameres");
 
@@ -512,6 +512,7 @@ void PushHostState(GameInfo& info, GameFramework& framework, BaseState& base, Ne
     auto& host  = framework.PushState<HostState>(info, base, net);
     auto& lobby = framework.PushState<LobbyState>(base, net);
 
+    /*
     lobby.host  = true;
 
     lobby.GetPlayer         =
@@ -546,33 +547,39 @@ void PushHostState(GameInfo& info, GameFramework& framework, BaseState& base, Ne
     lobby.OnGameStart =
         [&]
         {
-            auto& net_temp  = net;
-            auto& base_temp = base;
 
-            framework.PopState();
-
-            host.SendGameStart();
-
-            auto& worldState = framework.core.GetBlockMemory().allocate<HostWorldStateMangager>(host.hostID, net_temp, base_temp);
-            auto& localState = framework.PushState<LocalGameState>(worldState, base_temp);
-
-            net_temp.HandleDisconnection =
-                [&](ConnectionHandle connection)
-                {
-                    for(auto& player : worldState.remotePlayerComponent)
-                    {
-                        if (connection == player.componentData.connection)
-                        {
-                            player.componentData.gameObject->Release();
-                            return;
-                        }
-                    }
-                };
-
-            for (auto& player : host.players)
-                if(player.ID != host.hostID)
-                    worldState.AddPlayer(player.connection, player.ID);
         };
+        */
+
+
+    auto& net_temp = net;
+    auto& base_temp = base;
+
+    framework.PopState();
+
+    host.SendGameStart();
+
+    auto& worldState = framework.core.GetBlockMemory().allocate<HostWorldStateMangager>(host.hostID, net_temp, base_temp);
+    auto& localState = framework.PushState<LocalGameState>(worldState, base_temp);
+
+    net_temp.HandleDisconnection =
+        [&](ConnectionHandle connection)
+    {
+        for (auto& player : worldState.remotePlayerComponent)
+        {
+            if (connection == player.componentData.connection)
+            {
+                player.componentData.gameObject->Release();
+                return;
+            }
+        }
+    };
+
+    for (auto& player : host.players)
+        if (player.ID != host.hostID)
+            worldState.AddPlayer(player.connection, player.ID);
+
+    return lobby;
 }
 
 

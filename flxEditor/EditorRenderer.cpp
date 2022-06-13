@@ -12,7 +12,7 @@ EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FK
     vertexBuffer    { IN_framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 1, false)        },
     constantBuffer  { IN_framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 128, false)    },
     textureEngine   { IN_framework.core.RenderSystem, IN_framework.core.GetBlockMemory() },
-    worldRender     { IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory() },
+    worldRender     { IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory(),  },
 
     csg                     { IN_framework.core.GetBlockMemory() },
     brushComponent          { IN_framework.core.GetBlockMemory(), IN_framework.core.RenderSystem },

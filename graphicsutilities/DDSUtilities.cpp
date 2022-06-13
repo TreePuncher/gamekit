@@ -944,7 +944,7 @@ namespace FlexKit
 					nullptr,
 					IID_PPV_ARGS(&textureUploadHeap));
 
-				Push_DelayedRelease(RS, textureUploadHeap);
+				Push_DelayedReleaseCopy(RS, textureUploadHeap);
 
 				SETDEBUGNAME(*texture,          "TEXTURE");
 				SETDEBUGNAME(textureUploadHeap, "textureUploadHeap");

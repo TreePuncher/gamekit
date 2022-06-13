@@ -441,10 +441,11 @@ namespace FlexKit
 
                                 const DepthStencilView_Options DSV_desc = { 0, 0, depthTarget };
 
+                                ctx.DiscardResource(depthTarget);
                                 ctx.ClearDepthBuffer(depthTarget, 1.0f);
 
                                 ctx.SetPipelineState(shadowMapPSO);
-                                ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
+                                ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
                                 ctx.SetScissorAndViewports({ depthTarget });
                                 ctx.SetRenderTargets2({}, 0, DSV_desc);
 
@@ -530,7 +531,7 @@ namespace FlexKit
                                     ctx.SetPipelineState(PSOAnimated);
                                     ctx.SetScissorAndViewports({ depthTarget });
                                     ctx.SetRenderTargets2({}, 0, DSV_desc);
-                                    ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
+                                    ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 
                                     for (auto& brush : animatedBrushes)
                                     {

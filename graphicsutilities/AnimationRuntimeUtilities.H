@@ -182,14 +182,6 @@ namespace FlexKit
 	FLEXKITAPI float EaseIn_RAMP	(float Weight);
 	FLEXKITAPI float EaseIn_Squared	(float Weight);
 
-	struct Pose {
-		size_t		JointCount;
-		float4x4*	JointPoses;
-
-		iAllocator* Memory;
-	};
-
-
 	typedef uint16_t DAStateHandle;
 	typedef uint16_t DAConditionHandle;
 

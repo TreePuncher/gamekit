@@ -365,10 +365,19 @@ namespace FlexKit
     class ParticleSystemInterface;
 
 
+    size_t GetRTPoolSize(const RenderSystem::AvailableFeatures& features, const uint2 WH = uint2{ 1920, 1080 });
+
+    struct PoolSizes
+    {
+        size_t UAVPoolByteSize          = 64 * MEGABYTE;
+        size_t RTPoolByteSize           = 1024 * MEGABYTE;
+        size_t UAVTexturePoolByteSize   = 1024 * MEGABYTE;
+    };
+
 	class FLEXKITAPI WorldRender
 	{
     public:
-        WorldRender(RenderSystem&, TextureStreamingEngine&, iAllocator* persistent);
+        WorldRender(RenderSystem&, TextureStreamingEngine&, iAllocator* persistent, const PoolSizes& poolSizes = PoolSizes{});
 		~WorldRender();
 
         void HandleTextures();

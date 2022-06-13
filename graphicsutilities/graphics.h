@@ -2899,10 +2899,10 @@ private:
 		void ReplaceResources(ResourceHandle handle, ID3D12Resource** begin, size_t size);
 
 
-		void ReleaseTexture	(ResourceHandle Handle);
+		void ReleaseTexture	(ResourceHandle Handle, const int64_t idx);
 		void LockUntil		(size_t FrameID);
 
-		void UpdateLocks(ThreadManager& thread);
+		void UpdateLocks(ThreadManager& thread, const int64_t currentIdx);
 		void SubmitTileUpdates(ID3D12CommandQueue* queue, RenderSystem& renderSystem, iAllocator* allocator_temp);
 
 		void _ReleaseTextureForceRelease(ResourceHandle Handle);
@@ -2957,7 +2957,7 @@ private:
 		struct UnusedResource
 		{
 			ID3D12Resource* resource;
-			uint8_t         counter;
+			int64_t         idx;
 		};
 
 		Vector<UnusedResource>	delayRelease;
@@ -3745,11 +3745,11 @@ private:
 		ID3D12CommandQueue* GraphicsQueue   = nullptr;
 		ID3D12CommandQueue* ComputeQueue    = nullptr;
 
-		size_t              pendingFrames[3]    = { 0, 0, 0 };
-		size_t              frameIdx            = 0;
-		size_t              CurrentFrame        = 0;
-		std::atomic_uint    FenceCounter        = 0;
-		ID3D12Fence*        Fence               = nullptr;
+		size_t              pendingFrames[3]            = { 0, 0, 0 };
+		size_t              frameIdx                    = 0;
+		size_t              CurrentFrame                = 0;
+		std::atomic_uint    graphicsSubmissionCounter   = 0;
+		ID3D12Fence*        Fence                       = nullptr;
 
 		CopyContextHandle   ImmediateUpload = InvalidHandle_t;
 
@@ -3862,7 +3862,8 @@ private:
 
 		std::atomic_uint                SyncCounter = 0;
 		Vector<UploadSyncPoint>         Syncs;
-		Vector<FreeEntry>	            FreeList;
+        Vector<FreeEntry>	            FreeList_GraphicsQueue;
+        Vector<FreeEntry>	            FreeList_CopyQueue;
 		Vector<Barrier>	                PendingBarriers;
 
 		ThreadManager&          threads;
@@ -5168,6 +5169,7 @@ private:
 
 	FLEXKITAPI void	Release						(RenderSystem* System);
 	FLEXKITAPI void Push_DelayedRelease			(RenderSystem* RS, ID3D12Resource* Res);
+    FLEXKITAPI void Push_DelayedReleaseCopy     (RenderSystem* RS, ID3D12Resource* Res);
 	FLEXKITAPI void Free_DelayedReleaseResources(RenderSystem* RS);
 
 

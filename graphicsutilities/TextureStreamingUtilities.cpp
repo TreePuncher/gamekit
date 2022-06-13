@@ -560,6 +560,7 @@ namespace FlexKit
                 ctx.SetGraphicsDescriptorTable(5, uavHeap);
                 ctx.SetGraphicsConstantBufferView(0, cameraConstants);
                 ctx.SetGraphicsConstantBufferView(2, passConstants);
+                ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 
                 TriMesh*        prevMesh        = nullptr;
                 MaterialHandle  prevMaterial    = InvalidHandle_t;
