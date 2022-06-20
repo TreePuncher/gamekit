@@ -10,6 +10,8 @@
 #include <vector>
 #include <any>
 #include <variant>
+#include <optional>
+#include <static_vector.h>
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -373,9 +375,12 @@ namespace FlexKit
 
     struct RawBuffer
     {
-        void*&  buffer;
-        size_t& bufferSize;
+        void*&  _ptr;
+        size_t& size;
     };
+
+    std::optional<Blob>     CompressBuffer      (const RawBuffer& buffer);
+    std::optional<void*>    DecompressBuffer    (const RawBuffer& buffer, const size_t decompressedBufferSize);
 
     constexpr const char* stringTest() { return "Testing"; }
 
@@ -581,8 +586,17 @@ namespace FlexKit
 
         void operator & (RawBuffer&& rhs)
         {
-            dataBuffer.back() += rhs.bufferSize;
-            dataBuffer.back() += Blob{ reinterpret_cast<const char*>(rhs.buffer), rhs.bufferSize};
+            if(auto compressed = CompressBuffer(rhs); compressed)
+            {
+                dataBuffer.back() += rhs.size;
+                dataBuffer.back() += compressed.value().buffer.size();
+                dataBuffer.back() += compressed.value();
+            }
+            else
+            {
+                dataBuffer.back() += 0;
+                dataBuffer.back() += 0;
+            }
         }
 
 
@@ -718,6 +732,23 @@ namespace FlexKit
 
         LoadFileArchiveContext              (LoadFileArchiveContext&&) = delete;
         LoadFileArchiveContext& operator =  (LoadFileArchiveContext&&) = delete;
+
+        void Read(void* dest, size_t size) noexcept
+        {
+            fread(dest, 1, size, f);
+
+            offset += size;
+        }
+
+        void Seek(size_t pos) noexcept
+        {
+            fseek(f, pos, 0);
+        }
+
+        size_t Tell() const noexcept
+        {
+            return ftell(f);
+        }
 
         constexpr bool Loading() const noexcept { return true; }
 
@@ -939,14 +970,22 @@ namespace FlexKit
 
         void operator & (RawBuffer&& rhs)
         {
-            fread(&rhs.bufferSize, 1, sizeof(rhs.bufferSize), f);
+            Read(&rhs.size, sizeof(rhs.size));
 
-            if (rhs.bufferSize)
-            {
-                rhs.buffer = malloc(rhs.bufferSize);
+            if (!rhs.size)
+                return;
 
-                fread(rhs.buffer, 1, rhs.bufferSize, f);
-            }
+            size_t tempBufferSize;
+            Read(&tempBufferSize, sizeof(tempBufferSize));
+
+            rhs._ptr = malloc(rhs.size);
+            void* temp = malloc(tempBufferSize);
+
+            Read((void*)temp, tempBufferSize);
+            auto decompressed = DecompressBuffer(RawBuffer{ ._ptr = temp, .size = tempBufferSize }, rhs.size);
+
+            rhs._ptr = decompressed.value_or(nullptr);
+            rhs.size = decompressed ? rhs.size : 0;
         }
 
     private:
@@ -1224,11 +1263,22 @@ namespace FlexKit
 
         void operator & (RawBuffer&& rhs)
         {
-            Read(&rhs.bufferSize, sizeof(rhs.bufferSize));
+            Read(&rhs.size,         sizeof(rhs.size));
 
-            rhs.buffer = malloc(rhs.bufferSize);
+            if (!rhs.size)
+                return;
 
-            Read(rhs.buffer, rhs.bufferSize);
+            size_t tempBufferSize;
+            Read(&tempBufferSize, sizeof(tempBufferSize));
+
+            rhs._ptr = malloc(rhs.size);
+            void*    temp = malloc(tempBufferSize);
+
+            Read((void*)temp, tempBufferSize);
+            auto decompressed = DecompressBuffer(RawBuffer{ ._ptr = temp, .size = tempBufferSize }, rhs.size);
+
+            rhs._ptr = decompressed.value_or(nullptr);
+            rhs.size = decompressed ? rhs.size : 0;
         }
 
     private:

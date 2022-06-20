@@ -226,9 +226,6 @@
     <ClInclude Include="EditorResources.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Serialization.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="SelectionContext.h">
       <Filter>Header Files</Filter>
     </ClInclude>
