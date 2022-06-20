@@ -170,8 +170,8 @@ namespace FlexKit
 
     struct AnimationTrackHeader
     {
-        char        trackName[32];
-        char        target[32];
+        char        trackName[64];
+        char        target[64];
 
         TrackType   type;
 
