@@ -268,7 +268,6 @@
     <QtMoc Include="SceneOutliner.h" />
     <ClInclude Include="SceneResource.h" />
     <ClInclude Include="SelectionContext.h" />
-    <ClInclude Include="Serialization.h" />
     <ClInclude Include="TextureResourceUtilities.h" />
     <ClInclude Include="TTFontLoader.h" />
     <ClInclude Include="ViewportScene.h" />
