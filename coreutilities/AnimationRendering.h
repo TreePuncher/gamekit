@@ -30,7 +30,7 @@ namespace FlexKit
                 for (auto& skinnedBrush : res->pvs)
                 {
                     auto pose = GetPoseState(*skinnedBrush.gameObject);
-                    requiredBlocks += ceil(pose->JointCount / 8.0f);
+                    requiredBlocks += (size_t)ceil((float)pose->JointCount / 8.0f);
                 }
 
                 if (res)
