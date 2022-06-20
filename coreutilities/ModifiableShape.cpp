@@ -605,7 +605,7 @@ namespace FlexKit
 
     uint32_t ModifiableShape::AddTri(uint32_t V1, uint32_t V2, uint32_t V3)
     {
-        const auto idx = wFaces.size();
+        const uint32_t idx = (uint32_t)wFaces.size();
 
         auto E1 = (uint32_t)AddEdge(V1, V2, idx);
         auto E2 = (uint32_t)AddEdge(V2, V3, idx);
@@ -630,7 +630,7 @@ namespace FlexKit
 
     uint32_t ModifiableShape::_AddEdge()
     {
-        const uint32_t idx = wEdges.size();
+        const uint32_t idx = (uint32_t)wEdges.size();
         wEdges.emplace_back(wEdge{ { 0xffffffff, 0xffffffff }, 0xffffffff, 0xffffffff });
 
         return idx;
@@ -642,7 +642,7 @@ namespace FlexKit
 
     uint32_t ModifiableShape::_AddVertex()
     {
-        const uint32_t idx = wVertices.size();
+        const uint32_t idx = (uint32_t)wVertices.size();
         wVertices.emplace_back();
         wVerticeEdges.emplace_back();
 
@@ -657,7 +657,7 @@ namespace FlexKit
     {
         uint32_t firstEdge      = 0xffffffff;
         uint32_t previousEdge   = 0xffffffff;
-        const auto faceIdx = wFaces.size();
+        const uint32_t faceIdx  = (uint32_t)wFaces.size();
 
         for (auto itr = vertexStart; itr != vertexEnd; itr++)
         {
@@ -702,7 +702,7 @@ namespace FlexKit
     uint32_t ModifiableShape::GetVertexValence(const uint32_t vertexIdx) const
     {
         const auto& edges = wVerticeEdges[vertexIdx];
-        return edges.size() / 2;
+        return (uint32_t)(edges.size() / 2);
     }
 
 
@@ -942,7 +942,7 @@ namespace FlexKit
     FlexKit::float3 ModifiableShape::GetFaceCenterPoint(uint32_t faceIdx) const
     {
         FlexKit::float3 point{ 0 };
-        size_t vertexCount = 0;
+        uint32_t vertexCount = 0;
 
     
         ConstFaceIterator itr{ this, wFaces[faceIdx].edgeStart };
@@ -953,7 +953,7 @@ namespace FlexKit
             itr++;
         }
 
-        return point / vertexCount;
+        return point / (float)vertexCount;
     }
 
 
@@ -1144,7 +1144,7 @@ namespace FlexKit
         const uint32_t V3 = wEdges[E3].vertices[0];
 
         const uint32_t oldFaceIdx = wEdges[E1].face;
-        const uint32_t newFaceIdx = wFaces.size();
+        const uint32_t newFaceIdx = (uint32_t)wFaces.size();
 
         // Lower triangle
         // { V1, V4, V3 }
@@ -1289,7 +1289,7 @@ namespace FlexKit
     {
         tris.clear();
 
-        for (size_t faceIdx = 0; faceIdx < wFaces.size(); faceIdx++)
+        for (uint32_t faceIdx = 0; faceIdx < wFaces.size(); faceIdx++)
         {
             auto geometry = GetFaceGeometry(faceIdx);
 
@@ -1306,7 +1306,7 @@ namespace FlexKit
     {
         IndexedMesh out;
 
-        for (size_t faceIdx = 0; faceIdx < wFaces.size(); faceIdx++)
+        for (uint32_t faceIdx = 0; faceIdx < wFaces.size(); faceIdx++)
         {
             auto geometry = GetFaceIndices(faceIdx);
 

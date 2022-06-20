@@ -173,7 +173,7 @@ namespace FlexKit
         const auto fovy     = c.FOV / c.AspectRatio;
         const auto pr       = cot(fovy / 2) * r / sqrt(d*d - r*r);
 
-        return pi * pr * pr;
+        return (float)pi * pr * pr;
     }
 
 
@@ -337,18 +337,18 @@ namespace FlexKit
                         ctx.SetRootSignature(rootSignature);
 
                         auto& visableLights = data.pointLightShadows;
-                        auto& pointLights   = PointLightComponent::GetComponent();
+                        auto& pointLights  = PointLightComponent::GetComponent();
                     
                         Vector<ResourceHandle>          shadowMaps      { &allocator, visableLights.size() };
                         Vector<ConstantBufferDataSet>   passConstant2   { &allocator, visableLights.size() };
 
                         ctx.BeginEvent_DEBUG("Shadow Mapping");
 
-                        const size_t workCount  = (visableLights.size() / data.threadTotal) + (visableLights.size() % data.threadTotal != 0 ? 1 : 0);
-                        const size_t begin      = workCount * data.threadIdx;
-                        const size_t end        = Min(begin + workCount, visableLights.size());
+                        const uint32_t workCount  = (uint32_t)(visableLights.size() / data.threadTotal) + (visableLights.size() % (uint32_t)data.threadTotal != 0 ? 1 : 0);
+                        const uint32_t begin      = (uint32_t)(workCount * (uint32_t)data.threadIdx);
+                        const uint32_t end        = Min(begin + workCount, (uint32_t)visableLights.size());
 
-                        for (size_t I = begin; I < end; I++)
+                        for (uint32_t I = begin; I < end; I++)
                         {
                             ProfileFunction();
 
@@ -380,12 +380,12 @@ namespace FlexKit
 
                                 const Frustum fustrum[] =
                                 {
-                                    GetFrustum(1.0f, pi / 2, 0.1, pointLight.R, pointLightPosition, Orientations[0]),
-                                    GetFrustum(1.0f, pi / 2, 0.1, pointLight.R, pointLightPosition, Orientations[1]),
-                                    GetFrustum(1.0f, pi / 2, 0.1, pointLight.R, pointLightPosition, Orientations[2]),
-                                    GetFrustum(1.0f, pi / 2, 0.1, pointLight.R, pointLightPosition, Orientations[3]),
-                                    GetFrustum(1.0f, pi / 2, 0.1, pointLight.R, pointLightPosition, Orientations[4]),
-                                    GetFrustum(1.0f, pi / 2, 0.1, pointLight.R, pointLightPosition, Orientations[5]),
+                                    GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[0]),
+                                    GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[1]),
+                                    GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[2]),
+                                    GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[3]),
+                                    GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[4]),
+                                    GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[5]),
                                 };
 
                                 PVS                 brushes         { &allocator, visables.size() };
@@ -425,7 +425,7 @@ namespace FlexKit
                                 }
 
                                 const float3 Position   = FlexKit::GetPositionW(pointLight.Position);
-                                const auto matrices     = CalculateShadowMapMatrices(Position, pointLight.R, t);
+                                const auto matrices     = CalculateShadowMapMatrices(Position, pointLight.R, (float)t);
 
                                 struct PoseConstants
                                 {
@@ -450,12 +450,12 @@ namespace FlexKit
                                 ctx.SetRenderTargets2({}, 0, DSV_desc);
 
                                 TriMeshHandle   currentMesh     = InvalidHandle_t;
-                                size_t          currentLodIdx   = -1;
+                                size_t          currentLodIdx   = 0xffffffffffffffff;
                                 size_t          indexCount      = 0;
                                 BoundingSphere  BS;
 
 
-					            for(size_t brushIdx = 0; brushIdx < brushes.size(); brushIdx++)
+					            for(uint32_t brushIdx = 0; brushIdx < brushes.size(); brushIdx++)
 					            {
                                     auto& PV            = brushes[brushIdx];
                                     const auto lodLevel = PV.LODlevel;
@@ -550,9 +550,9 @@ namespace FlexKit
                                                 for (size_t I = 0; I < end; ++I)
                                                     poseTemp.M[I] = skeleton.IPose[I] * pose.CurrentPose[I];
 
-                                                auto triMesh                    = GetMeshResource(draw.MeshHandle);
+                                                const auto      triMesh         = GetMeshResource(draw.MeshHandle);
                                                 const auto      lodLevelIdx     = triMesh->GetHighestLoadedLodIdx();
-                                                const auto      lodLevel        = triMesh->GetHighestLoadedLod();
+                                                const auto&     lodLevel        = triMesh->GetHighestLoadedLod();
                                                 const size_t    indexCount      = triMesh->GetHighestLoadedLod().GetIndexCount();
 
                                                 ctx.AddIndexBuffer(triMesh, lodLevelIdx);
@@ -615,14 +615,15 @@ namespace FlexKit
                                     data.reserveVB,
                                     passConstant2.data(),
                                     shadowMaps.data(),
-                                    shadowMaps.size(),
+                                    (uint32_t)shadowMaps.size(),
                                     resources,
                                     ctx,
                                     allocator);
 
                                 ctx.EndEvent_DEBUG();
                             }
-                            for (auto target : shadowMaps) {
+
+                            for (const auto target : shadowMaps) {
                                 ctx.AddResourceBarrier(target, DRS_DEPTHBUFFERWRITE, DRS_PixelShaderResource);
                                 ctx.renderSystem->SetObjectState(target, DRS_PixelShaderResource);
                             }
