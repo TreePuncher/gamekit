@@ -586,16 +586,24 @@ namespace FlexKit
 
         void operator & (RawBuffer&& rhs)
         {
-            if(auto compressed = CompressBuffer(rhs); compressed)
+            if (rhs.size < 256)
             {
                 dataBuffer.back() += rhs.size;
-                dataBuffer.back() += compressed.value().buffer.size();
-                dataBuffer.back() += compressed.value();
+                dataBuffer.back() += Blob{ (const char*)rhs._ptr, rhs.size };
             }
             else
             {
-                dataBuffer.back() += 0;
-                dataBuffer.back() += 0;
+                if (auto compressed = CompressBuffer(rhs); compressed)
+                {
+                    dataBuffer.back() += rhs.size;
+                    dataBuffer.back() += compressed.value().buffer.size();
+                    dataBuffer.back() += compressed.value();
+                }
+                else
+                {
+                    dataBuffer.back() += 0;
+                    dataBuffer.back() += 0;
+                }
             }
         }
 
@@ -975,17 +983,26 @@ namespace FlexKit
             if (!rhs.size)
                 return;
 
-            size_t tempBufferSize;
-            Read(&tempBufferSize, sizeof(tempBufferSize));
+            if(rhs.size >= 256)
+            {
+                size_t tempBufferSize;
+                Read(&tempBufferSize, sizeof(tempBufferSize));
 
-            rhs._ptr = malloc(rhs.size);
-            void* temp = malloc(tempBufferSize);
+                rhs._ptr = malloc(rhs.size);
+                void* temp = malloc(tempBufferSize);
 
-            Read((void*)temp, tempBufferSize);
-            auto decompressed = DecompressBuffer(RawBuffer{ ._ptr = temp, .size = tempBufferSize }, rhs.size);
+                Read((void*)temp, tempBufferSize);
+                auto decompressed = DecompressBuffer(RawBuffer{ ._ptr = temp, .size = tempBufferSize }, rhs.size);
 
-            rhs._ptr = decompressed.value_or(nullptr);
-            rhs.size = decompressed ? rhs.size : 0;
+                rhs._ptr = decompressed.value_or(nullptr);
+                rhs.size = decompressed ? rhs.size : 0;
+            }
+            else
+            {
+                rhs._ptr = malloc(rhs.size);
+
+                Read(rhs._ptr, rhs.size);
+            }
         }
 
     private:
@@ -1268,17 +1285,26 @@ namespace FlexKit
             if (!rhs.size)
                 return;
 
-            size_t tempBufferSize;
-            Read(&tempBufferSize, sizeof(tempBufferSize));
+            if(rhs.size >= 256)
+            {
+                size_t tempBufferSize;
+                Read(&tempBufferSize, sizeof(tempBufferSize));
 
-            rhs._ptr = malloc(rhs.size);
-            void*    temp = malloc(tempBufferSize);
+                rhs._ptr = malloc(rhs.size);
+                void* temp = malloc(tempBufferSize);
 
-            Read((void*)temp, tempBufferSize);
-            auto decompressed = DecompressBuffer(RawBuffer{ ._ptr = temp, .size = tempBufferSize }, rhs.size);
+                Read((void*)temp, tempBufferSize);
+                auto decompressed = DecompressBuffer(RawBuffer{ ._ptr = temp, .size = tempBufferSize }, rhs.size);
 
-            rhs._ptr = decompressed.value_or(nullptr);
-            rhs.size = decompressed ? rhs.size : 0;
+                rhs._ptr = decompressed.value_or(nullptr);
+                rhs.size = decompressed ? rhs.size : 0;
+            }
+            else
+            {
+                rhs._ptr = malloc(rhs.size);
+
+                Read(rhs._ptr, rhs.size);
+            }
         }
 
     private:
