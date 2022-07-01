@@ -359,29 +359,29 @@ void CreateMultiplayerScene(GameWorld& world)
 
 void GameWorld::UpdatePlayer(const PlayerFrameState& playerState, const double dT)
 {
-    auto gameObject = FindPlayer(playerState.player);
-
-    Apply(
-        *gameObject,
-        [&](PlayerView& player)
-        {
-        });
-
-    if (gameObject) {
-        for (const auto event_ : playerState.inputState.events)
-        {
-            switch (event_)
+    
+    if (auto gameObject = FindPlayer(playerState.player); gameObject)
+    {
+        Apply(
+            *gameObject,
+            [&](PlayerView& player)
             {
-            case PlayerInputState::Event::Action1:
-            case PlayerInputState::Event::Action2:
-            case PlayerInputState::Event::Action3:
-            case PlayerInputState::Event::Action4:
-            {
-            }   break;
-            default:
-                break;
-            }
-        }
+                for (const auto event_ : playerState.inputState.events)
+                {
+                    switch (event_)
+                    {
+                    case PlayerInputState::Event::Action1:
+                    case PlayerInputState::Event::Action2:
+                    case PlayerInputState::Event::Action3:
+                    case PlayerInputState::Event::Action4:
+                    {
+                        player->Action1();
+                    }   break;
+                    default:
+                        break;
+                    }
+                }
+            });
     }
 }
 

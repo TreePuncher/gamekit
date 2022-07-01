@@ -176,16 +176,6 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
-
-
-	bool InitiatePoseState(RenderSystem* RS, PoseState* EAS, PoseState_DESC& Desc, VShaderJoint* InitialState)
-	{
-		size_t ResourceSize = Desc.JointCount * sizeof(VShaderJoint) * 2;
-		return true;
-	}
-
-
     /************************************************************************************************/
 
 

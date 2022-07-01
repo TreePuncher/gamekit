@@ -7436,7 +7436,11 @@ namespace FlexKit
 
 		for (auto& res : delayRelease)
 		{
+#if _DEBUG
+            if ((res.idx + 3) < currentIdx)
+#else
             if ((res.idx) < currentIdx)
+#endif
                 freeList.push_back(res.resource);
 		}
 

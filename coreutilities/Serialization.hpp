@@ -750,7 +750,7 @@ namespace FlexKit
 
         void Seek(size_t pos) noexcept
         {
-            fseek(f, pos, 0);
+            fseek(f, (size_t)pos, 0);
         }
 
         size_t Tell() const noexcept

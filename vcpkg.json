@@ -1,34 +1,30 @@
 {
-	"name": "flexkit",
-	"version-string": "0.0.1",
-    	"dependencies": 
-	[
+    "name": "flexkit",
+    "version-string": "0.0.1",
+    "dependencies": [
         {
-           	"name": "angelscript",
-           	"features": [ "addons" ]
+            "name": "angelscript",
+            "features": [ "addons" ]
         },
         {
-           	"name": "directxtex",
-           	"features": [ "dx12", "openexr" ]
+            "name": "directxtex",
+            "features": [ "dx12", "openexr" ]
         },
-        "boost",
         "cppcoro",
         "directxmesh",
         "directxtk12",
         "fmt",
-		"fp16",
+        "fp16",
         "imgui",
         "implot",
-		"imguizmo",
-		"ois",
-		"opensubdiv",
+        "imguizmo",
+        "ois",
         "physx",
-		"scnlib",
+        "range-v3",
+        "scnlib",
         "slikenet",
         "stb",
         "tinygltf",
-        "range-v3",
-		"usd",
-		"zlib-ng"
-    	]
+        "zlib-ng"
+    ]
 }

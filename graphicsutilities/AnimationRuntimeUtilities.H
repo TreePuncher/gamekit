@@ -334,7 +334,6 @@ namespace FlexKit
 
 
 	FLEXKITAPI PoseState	CreatePoseState		( Skeleton&, iAllocator*);
-	FLEXKITAPI bool			InitiatePoseState	( RenderSystem* RS, PoseState* EAS, PoseState_DESC& Desc, VShaderJoint* Initial );
 	FLEXKITAPI void			InitiateASM			( AnimationStateMachine* AS, iAllocator*, EntityHandle Target );
 
 
@@ -352,8 +351,7 @@ namespace FlexKit
 
 
 	//	Call After Updating PoseState
-	FLEXKITAPI float4x4 GetJointPosed_WT( JointHandle Joint, NodeHandle Node, PoseState* DPS );
-
+	FLEXKITAPI float4x4     GetJointPosed_WT( JointHandle Joint, NodeHandle Node, PoseState* DPS );
 	FLEXKITAPI LineSegments BuildSkeletonLineSet            ( Skeleton* S, NodeHandle Node, iAllocator* TEMP);
 
     FLEXKITAPI LineSegments DEBUG_DrawPoseState             ( PoseState&, NodeHandle, iAllocator*);

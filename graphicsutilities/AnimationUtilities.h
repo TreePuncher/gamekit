@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -57,14 +57,8 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	
-	struct VShaderJoint
-	{
-		XMMATRIX I;
-		XMMATRIX T;
-	};
 
-	struct JointPose
+    struct JointPose
 	{
 		JointPose() {}
 		JointPose(Quaternion Q, float4 TS) : r(Q), ts(TS) {}
@@ -298,10 +292,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    PoseState   CreatePoseState(Skeleton& skeleton, iAllocator* allocator);
-    bool        InitiatePoseState(RenderSystem* RS, PoseState* EAS, PoseState_DESC& Desc, VShaderJoint* InitialState);
-
-    ResourceHandle   LoadMorphTarget(TriMesh* triMesh, const char* morphTargetName, RenderSystem&, CopyContextHandle handle, iAllocator&);
+    PoseState           CreatePoseState(Skeleton& skeleton, iAllocator* allocator);
+    ResourceHandle      LoadMorphTarget(TriMesh* triMesh, const char* morphTargetName, RenderSystem&, CopyContextHandle handle, iAllocator&);
 
 
     /************************************************************************************************/
