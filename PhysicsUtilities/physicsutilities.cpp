@@ -1450,8 +1450,6 @@ namespace FlexKit
         const byte*                     constantBlock,
         physx::PxU32                    constantBlockSize)
     {
-        std::cout << "FILTERING";
-
         pairFlags = physx::PxPairFlag::eCONTACT_DEFAULT;
         return physx::PxFilterFlag::eDEFAULT;
     }

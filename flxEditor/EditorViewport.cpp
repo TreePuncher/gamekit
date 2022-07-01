@@ -750,10 +750,10 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
 
 FlexKit::Ray EditorViewport::GetMouseRay() const
 {
-    const auto qPos = renderWindow->mapFromGlobal(QCursor::pos());
+    const auto qPos                 = renderWindow->mapFromGlobal(QCursor::pos());
 
-    const FlexKit::uint2 XY{ (uint32_t)qPos.x(), (uint32_t)qPos.y() };
-    const FlexKit::uint2 screenWH = renderWindow->WH();
+    const FlexKit::uint2 XY         = FlexKit::uint2{ (uint32_t)qPos.x(), (uint32_t)qPos.y() };
+    const FlexKit::uint2 screenWH   = FlexKit::uint2{ renderWindow->width(), renderWindow->height() };
 
     const FlexKit::float2 UV{ XY[0] / float(screenWH[0]), XY[1] / float(screenWH[1]) };
     const FlexKit::float2 ScreenCoord{ FlexKit::float2{ 2, -2 } * UV + FlexKit::float2{ -1.0f, 1.0f } };
