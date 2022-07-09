@@ -18,16 +18,61 @@
 #include <stdint.h>
 #include <string>
 #include <type_traits>
-
+#include <concepts>
 
 namespace FlexKit
 {   /************************************************************************************************/
 
+    template<class T>
+    concept isScaler = std::is_integral_v<T> || std::is_floating_point_v<T>;
 
-	template<typename TY_1, typename TY_2>  constexpr auto Floor	(const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x > (TY_1)y) ? y : x);   }
-    template<typename TY_1, typename TY_2>  constexpr auto Min		(const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x > (TY_1)y) ? y : x);   }
-    template<typename TY_1, typename TY_2>  constexpr auto Max		(const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x > (TY_1)y) ? x : y);   }
-	template<typename TY_1, typename TY_2>  constexpr auto Fastmod  (const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x < (TY_1)y) ? x : x%y); }
+    template<class T>
+	concept isVector = !isScaler<T> && requires(T t)
+	{
+		t[0];
+		t.Size();
+	};
+
+	template<isScaler TY_1, isScaler TY_2> [[nodiscard]] constexpr auto Floor	(const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x > (TY_1)y) ? y : x);   }
+    template<isScaler TY_1, isScaler TY_2> [[nodiscard]] constexpr auto Min		(const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x > (TY_1)y) ? y : x);   }
+    template<isScaler TY_1, isScaler TY_2> [[nodiscard]] constexpr auto Max		(const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x > (TY_1)y) ? x : y);   }
+	template<isScaler TY_1, isScaler TY_2> [[nodiscard]] constexpr auto Fastmod (const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x < (TY_1)y) ? x : x%y); }
+
+    template<isVector TY_V> [[nodiscard]] constexpr auto Floor(const TY_V x, const TY_V y) noexcept
+    {
+        TY_V out;
+        for (size_t I = 0; I < TY_V::Size(); I++)
+           out[I] = Floor(x[I], y[I]);
+
+        return out;
+    }
+
+    template<isVector TY_V> [[nodiscard]] constexpr auto Min(const TY_V x, const TY_V y) noexcept
+    {
+        TY_V out;
+        for (size_t I = 0; I < TY_V::Size(); I++)
+            out[I] = Min(x[I], y[I]);
+
+        return out;
+    }
+
+    template<isVector TY_V> [[nodiscard]] constexpr auto Max(const TY_V x, const TY_V y) noexcept
+    {
+        TY_V out;
+        for (size_t I = 0; I < TY_V::Size(); I++)
+            out[I] = Max(x[I], y[I]);
+
+        return out;
+    }
+
+    template<isVector TY_V> [[nodiscard]] constexpr auto Fastmod(const TY_V x, const TY_V y) noexcept
+    {
+        TY_V out;
+        for (size_t I = 0; I < TY_V::Size(); I++)
+            out[I] = Fastmod(x[I], y[I]);
+
+        return out;
+    }
 
 
     /************************************************************************************************/
@@ -291,6 +336,8 @@ namespace FlexKit
             float x, y;
         };
 
+		constexpr static size_t Size() { return 2; }
+
 		float XY[2];
 
 	};
@@ -385,19 +432,6 @@ namespace FlexKit
             helper(tuple, indexes);
         }
 
-        /*
-		Vect( std::initializer_list<TY> il ) noexcept
-		{
-			size_t itr = 0;
-			for( auto n : il )
-			{
-				Vector[itr++] = n;
-				if( itr > SIZE )
-					return;
-			}
-		}
-        */
-
 		TY* begin() noexcept
 		{
 			return Vector;
@@ -482,6 +516,7 @@ namespace FlexKit
             return Vector[index];
         }
 
+
         TY& operator [](const size_t index) noexcept
         {
             return Vector[index];
@@ -491,6 +526,17 @@ namespace FlexKit
         const TY& operator [](const size_t index) const noexcept
         {
             return Vector[index];
+        }
+
+
+        Vect operator & (this auto& self, const TY index) noexcept
+        {
+            Vect out;
+
+            for (size_t I = 0; I < 3; I++)
+                out[I] = self[I] & index;
+
+            return out;
         }
 
 
@@ -677,10 +723,11 @@ namespace FlexKit
 		}
 
 
-        template<typename ...TY_ARGS>
-        auto Swizzle()
+        template<size_t ... TY_ARGS>
+        auto Swizzle(this auto& self)
         {
-            return;
+			static_assert(sizeof ... (TY_ARGS) == Size(), "Incorrect number of arguments");
+			return THISTYPE(self[TY_ARGS] ...);
         }
 
 
@@ -694,13 +741,14 @@ namespace FlexKit
 		}
 
 
-        static const size_t Size() noexcept
+        constexpr static const size_t Size() noexcept
         {
             return SIZE;
         }
 
 
 		operator TY* () noexcept { return Vector; }
+
 
         operator __m128 ()  noexcept
         {
@@ -715,7 +763,7 @@ namespace FlexKit
 
 
     FLEXKITAPI template<typename TY_S, size_t ELEMENT_COUNT = 1>
-	Vect<ELEMENT_COUNT, TY_S> operator* (const Vect<ELEMENT_COUNT, TY_S> lhs, const Vect<ELEMENT_COUNT, TY_S> rhs)// vector multiply
+	constexpr [[nodiscard]] Vect<ELEMENT_COUNT, TY_S> operator* (const Vect<ELEMENT_COUNT, TY_S> lhs, const Vect<ELEMENT_COUNT, TY_S> rhs)// vector multiply
 	{
         Vect<ELEMENT_COUNT, TY_S> V_out;
 
@@ -730,7 +778,7 @@ namespace FlexKit
 
 
     FLEXKITAPI template<typename TY_S, typename TY_Vs, size_t ELEMENT_COUNT = 1>
-	Vect<ELEMENT_COUNT, TY_Vs> operator * (TY_S scaler, const Vect<ELEMENT_COUNT, TY_Vs>& v)// scaler multiply
+	constexpr [[nodiscard]] Vect<ELEMENT_COUNT, TY_Vs> operator * (TY_S scaler, const Vect<ELEMENT_COUNT, TY_Vs>& v)// scaler multiply
 	{
 		auto V_out = v;
 
@@ -745,7 +793,7 @@ namespace FlexKit
 
 
     FLEXKITAPI template<typename TY_S, typename TY_Vs, size_t ELEMENT_COUNT = 1>
-	Vect<ELEMENT_COUNT, TY_Vs> operator * (const Vect<ELEMENT_COUNT, TY_Vs>& v, TY_S scaler)// scaler multiply
+	constexpr [[nodiscard]] Vect<ELEMENT_COUNT, TY_Vs> operator * (const Vect<ELEMENT_COUNT, TY_Vs>& v, TY_S scaler)// scaler multiply
 	{
 		auto V_out = v;
 
@@ -759,7 +807,7 @@ namespace FlexKit
 
 
     FLEXKITAPI template<typename TY_S, typename TY_Vs, size_t ELEMENT_COUNT = 1>
-    Vect<ELEMENT_COUNT, TY_Vs> operator / (const Vect<ELEMENT_COUNT, TY_Vs>& v, TY_S scaler)// scaler multiply
+    constexpr [[nodiscard]] Vect<ELEMENT_COUNT, TY_Vs> operator / (const Vect<ELEMENT_COUNT, TY_Vs>& v, TY_S scaler)// scaler multiply
     {
         auto V_out = v;
 
@@ -774,7 +822,7 @@ namespace FlexKit
 
 
     FLEXKITAPI template<typename TY_Vs, size_t ELEMENT_COUNT = 1>
-    Vect<ELEMENT_COUNT, TY_Vs> operator / (const Vect<ELEMENT_COUNT, TY_Vs>& v1, const Vect<ELEMENT_COUNT, TY_Vs>& v2)// scaler multiply
+	constexpr [[nodiscard]] Vect<ELEMENT_COUNT, TY_Vs> operator / (const Vect<ELEMENT_COUNT, TY_Vs>& v1, const Vect<ELEMENT_COUNT, TY_Vs>& v2)// scaler multiply
     {
         auto V_out = v1;
 
@@ -785,7 +833,7 @@ namespace FlexKit
     }
 
     FLEXKITAPI template<typename TY_Vs, size_t ELEMENT_COUNT = 1>
-        Vect<ELEMENT_COUNT, TY_Vs> operator - (const Vect<ELEMENT_COUNT, TY_Vs>& v)// 
+	constexpr [[nodiscard]] Vect<ELEMENT_COUNT, TY_Vs> operator - (const Vect<ELEMENT_COUNT, TY_Vs>& v)// 
     {
         TY_Vs V_out;
 
@@ -1207,6 +1255,7 @@ namespace FlexKit
 			return float3(_mm_loadr_ps((float*)&temp));
 		}
 
+		constexpr static size_t Size() { return 3; }
 
         void Serialize(auto& ar)
         {
@@ -1494,6 +1543,8 @@ namespace FlexKit
 		operator Vect4 ()		{ return{ x, y, z, w }; };
 		operator Vect4 () const { return{ x, y, z, w }; };
 
+		constexpr static size_t Size() { return 4; }
+
         /*
         void Serialize(auto& ar)
         {
@@ -1737,6 +1788,8 @@ namespace FlexKit
             ar& z;
             ar& w;
         }
+
+		constexpr static size_t Size() { return 4; }
 
 		struct
 		{
