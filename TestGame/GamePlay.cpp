@@ -375,12 +375,10 @@ constinit std::array<float, (size_t)CellIds::Count> CellProbabilies =
                                                         }();
 
 
-struct iConstraint
+struct ConstraintTable
 {
-    virtual bool operator () (const SparseMap& map, CellCoord xyz, CellId id) const noexcept = 0;
-};
-
-using ConstraintTable = Vector<std::unique_ptr<iConstraint>>;
+    static_vector<TypeErasedCallable<bool(const SparseMap& map, CellCoord xyz, CellId id), 16>> contraints[CellIds::Count];
+};// = Vector<TypeErasedCallable<bool(const SparseMap& map, CellCoord xyz, CellId id), 16>>;
 
 int64_t GetTileID(const ChunkCoord cord) noexcept
 {
@@ -578,14 +576,14 @@ struct SparseMap
         return chunks[chunkID];
     }
 
-    static_vector<CellId> GetSuperSet(this auto& map, const ConstraintTable& constraints, const CellCoord xyz)
+    static_vector<CellId> GetSuperSet(this const auto& map, const ConstraintTable& constraints, const CellCoord xyz)
     {
         static_vector<CellId> out;
 
         for (const auto cellType : SuperSet)
         {
-            for (const auto& constraint : constraints)
-                if ((*constraint)(map, xyz, cellType))
+            for (const auto& constraint : constraints.contraints[cellType])
+                if (constraint(map, xyz, cellType))
                 {
                     out.push_back(cellType);
                     break;
@@ -697,77 +695,61 @@ struct SparseMap
 
 /************************************************************************************************/
 
-class WallConstraint : public iConstraint
-{
-    virtual bool operator () (const SparseMap& map, CellCoord xyz, CellId ID) const noexcept override
+
+bool WallConstraint(const SparseMap& map, CellCoord xyz, CellId ID)
+{   // wall tiles need at least one neighboring floor tile
+    for (auto&& [cell, cellId] : SparseMap::NeighborIterator{ map, xyz })
     {
-        // wall tiles need at least one neighboring floor tile
-        if (ID != CellIds::Wall)
-            return false;
-
-        for (auto&& [cell, cellId] : SparseMap::NeighborIterator{ map, xyz })
-        {
-            if (cell == CellIds::Floor)
-                return true;
-        }
-
-        return false;
+        if (cell == CellIds::Floor)
+            return true;
     }
-};
 
-class FloorConstraint : public iConstraint
-{
-    virtual bool operator () (const SparseMap& map, CellCoord xyz, CellId ID) const noexcept override
+    return false;
+}
+
+bool FloorConstraint(const SparseMap& map, CellCoord xyz, CellId ID)
+{   // Floors tiles need at least one neighboring floor tile or ramp tile
+    for (auto&& [cell, cellId] : SparseMap::NeighborIterator{ map, xyz })
     {
-        // Floors tiles need at least one neighboring floor tile or ramp tile
-        if (ID != CellIds::Floor)
-            return false;
-
-        for (auto&& [cell, cellId] : SparseMap::NeighborIterator{ map, xyz })
-        {
-            switch(cell)
-                case CellIds::Floor:
-                case CellIds::Ramp:
-                    return true;
-        }
-
-        return false;
-    }
-};
-
-class RampConstraint : public iConstraint
-{
-    virtual bool operator () (const SparseMap& map, CellCoord coord, CellId id) const noexcept override
-    {
-        if (id != CellIds::Ramp)
-            return false;
-
-        bool wallNeighbor = false;
-
-        for (auto&& [cell, cellId] : SparseMap::NeighborIterator{ map, coord })
-        {
-            // Ramps must be next to a wall, but not next to another ramp
-            switch (cell)
-            {
-            case CellIds::Wall:
-                wallNeighbor = true; break;
+        switch(cell)
+            case CellIds::Floor:
             case CellIds::Ramp:
-                return false;
-            }
-        }
-
-        return wallNeighbor;
+                return true;
     }
-};
+
+    return false;
+}
+
+bool RampConstraint(const SparseMap& map, CellCoord coord, CellId id) 
+{
+    bool wallNeighbor = false;
+
+    for (auto&& [cell, cellId] : SparseMap::NeighborIterator{ map, coord })
+    {   // Ramps must be next to a wall, but not next to another ramp
+        switch (cell)
+        {
+        case CellIds::Wall:
+            wallNeighbor = true; break;
+        case CellIds::Ramp:
+            return false;
+        }
+    }
+
+    return wallNeighbor;
+}
+
+
+/************************************************************************************************/
+
 
 SparseMap GenerateWorld(GameWorld& world, iAllocator& temp)
 {
     // Step 1. Generate world
     SparseMap map{ temp };
-	ConstraintTable constraints{ temp };
-    constraints.emplace_back(std::make_unique<FloorConstraint>());
-    constraints.emplace_back(std::make_unique<WallConstraint>());
-    constraints.emplace_back(std::make_unique<RampConstraint>());
+	ConstraintTable constraints;
+    constraints.contraints[CellIds::Floor].emplace_back(&FloorConstraint);
+    constraints.contraints[CellIds::Wall].emplace_back(&WallConstraint);
+    constraints.contraints[CellIds::Ramp].emplace_back(&RampConstraint);
 
     map.Generate(constraints, int3{ 256, 256, 1 }, temp);
 

@@ -2149,6 +2149,7 @@ namespace FlexKit
             using fnCopy        = void (*)(char* lhs, const char* rhs);
             using fnMove        = void (*)(char* lhs, char* rhs);
             using fnProxy       = TY_R (*)(char*, TY_args... args);
+            using fnProxyConst  = TY_R (*)(const char*, TY_args... args);
             using fnDestructor  = void (*)(char*);
 
             struct VTable
@@ -2203,6 +2204,51 @@ namespace FlexKit
 
                 return &sVTable;
 		    }
+
+            template<typename TY_CALLABLE>
+            static auto Assign(void* buffer, const TY_CALLABLE& callable)
+            {
+                static_assert(sizeof(TY_CALLABLE) <= STORAGESIZE, "Callable object too large for this TypeErasedCallable!");
+
+                struct data
+                {
+                    TY_CALLABLE callable;
+                };
+
+                new(buffer) data{ callable };
+
+                static const VTable sVTable{
+                    .copy =
+                        [](char* lhs_ptr, const char* rhs_ptr)
+                        {
+                            const data* rhs = reinterpret_cast<const data*>(rhs_ptr);
+                            new(lhs_ptr) data(*rhs);
+                        },
+
+                    .move =
+                        [](char* lhs_ptr, char* rhs_ptr)
+                        {
+                            data* rhs = reinterpret_cast<data*>(rhs_ptr);
+                            new(lhs_ptr) data(std::move(*rhs));
+                        },
+
+                    .proxy =
+                        [](char* _ptr, TY_args ... args) -> TY_Return
+                        {
+                            auto functor = reinterpret_cast<data*>(_ptr);
+                            return functor->callable(std::forward<TY_args>(args)...);
+                        },
+
+                    .destructor =
+                        [](char* _ptr)
+                        {
+                            auto functor = reinterpret_cast<data*>(_ptr);
+                            functor->~data();
+                        }
+                };
+
+                return &sVTable;
+            }
         };
 
         using Generator = ProxyTypeGenerator<FuncSig>;
@@ -2214,6 +2260,7 @@ namespace FlexKit
         using fnCopy        = void (*)(char* lhs, const char* rhs);
         using fnMove        = void (*)(char* lhs, char* rhs);
         using fnProxy       = Generator::fnProxy;
+        using fnProxyConst  = Generator::fnProxyConst;
         using fnDestructor  = void (*)(char*);
 
 	public:
@@ -2302,6 +2349,12 @@ namespace FlexKit
             return vtable->proxy(buffer, std::forward<TY_args>(args)...);
         }
 
+        template<typename ... TY_args>
+        auto operator()(TY_args&& ... args) const
+        {
+            return reinterpret_cast<fnProxyConst>(vtable->proxy)(buffer, std::forward<TY_args>(args)...);
+        }
+
         operator bool() const
         {
             return vtable != nullptr;
@@ -2317,6 +2370,13 @@ namespace FlexKit
             vtable = Generator::Assign(buffer, callable);
 		}
 
+        template<typename TY_CALLABLE>
+        void Assign(const TY_CALLABLE& callable)
+        {
+            static_assert(sizeof(TY_CALLABLE) <= STORAGESIZE, "Callable object too large for this TypeErasedCallable!");
+
+            vtable = Generator::Assign(buffer, callable);
+        }
 
         const VTable*   vtable = nullptr;
 		char            buffer[STORAGESIZE - sizeof(VTable*)];
