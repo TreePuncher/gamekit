@@ -47,8 +47,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
-	using SkeletonHandle = Handle_t<32, SkeletonComponentID>;
+	using SkeletonHandle    = Handle_t<32, SkeletonComponentID>;
 
     class SkeletonComponent : public FlexKit::Component<SkeletonComponent, SkeletonComponentID>
     {
@@ -113,9 +112,16 @@ namespace FlexKit
     public:
         SkeletonView(GameObject& gameObject, const TriMeshHandle triMesh, const AssetHandle asset) : handle{ GetComponent().Create(triMesh, asset) } { }
 
-        PoseState& GetPoseState()
+        auto& GetPoseState(this auto&& self)
         {
-            return GetComponent()[handle].poseState;
+            auto& ref               = GetComponent()[self.handle].poseState;
+            using ref_type          = decltype(ref);
+            using const_ref_type    = const ref_type;
+
+            if constexpr (std::is_const_v<decltype(self)>)
+                return std::forward<const_ref_type >(ref);
+            else
+                return std::forward<ref_type>(GetComponent()[self.handle].poseState);
         }
 
         auto GetSkeleton()
@@ -274,6 +280,8 @@ namespace FlexKit
         GameObject*         gameObject  = nullptr;
         asIScriptObject*    obj         = nullptr;
     };
+
+    using AnimatorCallback = TypeErasedCallable<void (GameObject&)>;
 
 	class AnimatorComponent : public FlexKit::Component<AnimatorComponent, AnimatorComponentID>
 	{
@@ -455,6 +463,7 @@ namespace FlexKit
             Vector<AnimationState>      animations;
             Vector<InputValue>          inputValues;
             Vector<InputID>             inputIDs;
+            Vector<AnimatorCallback>    callbacks;
 
 			AnimationStateMachine       ASM;
 		};

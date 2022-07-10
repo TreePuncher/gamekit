@@ -2937,21 +2937,21 @@ namespace FlexKit
 	}
 
 
-	void Context::Draw(size_t VertexCount, size_t BaseVertex, size_t baseIndex)
+	void Context::Draw(const size_t VertexCount, const size_t BaseVertex, const size_t baseIndex)
 	{
 		UpdateResourceStates();
 		DeviceContext->DrawInstanced(VertexCount, 1, BaseVertex, baseIndex);
 	}
 
 
-    void Context::DrawInstanced(size_t vertexCount, size_t baseVertex, size_t instanceCount, size_t instanceOffset )
+    void Context::DrawInstanced(const size_t vertexCount, const size_t baseVertex, const size_t instanceCount, const size_t instanceOffset )
     {
         UpdateResourceStates();
         DeviceContext->DrawInstanced(vertexCount, instanceCount, baseVertex, instanceOffset);
     }
 
 
-	void Context::DrawIndexed(size_t IndexCount, size_t IndexOffet, size_t BaseVertex)
+	void Context::DrawIndexed(const size_t IndexCount, const size_t IndexOffet, const size_t BaseVertex)
 	{
 		UpdateResourceStates();
 		DeviceContext->DrawIndexedInstanced(IndexCount, 1, IndexOffet, BaseVertex, 0);
@@ -2959,9 +2959,9 @@ namespace FlexKit
 
 
 	void Context::DrawIndexedInstanced(
-		size_t IndexCount, size_t IndexOffet, 
-		size_t BaseVertex, size_t InstanceCount, 
-		size_t InstanceOffset)
+		const size_t IndexCount, const size_t IndexOffet, 
+		const size_t BaseVertex, const size_t InstanceCount, 
+		const size_t InstanceOffset)
 	{
 		UpdateResourceStates();
 		DeviceContext->DrawIndexedInstanced(
@@ -2974,7 +2974,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::Dispatch(uint3 xyz)
+	void Context::Dispatch(const uint3 xyz)
 	{
 		UpdateResourceStates();
 		DeviceContext->Dispatch((UINT)xyz[0], (UINT)xyz[1], (UINT)xyz[2]);
@@ -2984,7 +2984,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void Context::DispatchRays(uint3 WHD, const DispatchDesc desc)
+    void Context::DispatchRays(const uint3 WHD, const DispatchDesc desc)
     {
         UpdateResourceStates();
 
@@ -3193,6 +3193,23 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+    void Context::BeginMarker(const char* str)
+    {
+    }
+
+
+    /************************************************************************************************/
+
+
+    void Context::EndMarker(const char* str)
+    {
+
+    }
+
+
+    /************************************************************************************************/
 
 
 	void Context::_AddBarrier(ID3D12Resource* resource, DeviceResourceState currentState, DeviceResourceState newState)

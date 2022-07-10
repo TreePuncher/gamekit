@@ -80,9 +80,12 @@ namespace FlexKit
 			return GetComponent()[brush].MeshHandle;
 		}
 
-        Brush& GetBrush() noexcept
+        auto& GetBrush(this auto&& self) noexcept
         {
-            return GetComponent()[brush];
+            if constexpr (std::is_const_v<decltype(self)>)
+                return std::add_const_t<decltype(GetComponent()[self.brush])>(GetComponent()[self.brush]);
+            else
+                return std::forward<decltype(GetComponent()[self.brush])>(GetComponent()[self.brush]);
         }
 
         MaterialHandle GetMaterial() noexcept

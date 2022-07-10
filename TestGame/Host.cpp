@@ -58,7 +58,7 @@ HostWorldStateMangager::HostWorldStateMangager(MultiplayerPlayerID_t IN_player, 
 
     SetControllerPosition(localPlayer, { -0, 5, -0 });
 
-    CreateMultiplayerScene(world);
+    CreateMultiplayerScene(world, IN_base.framework.core.GetTempMemory());
 }
 
 

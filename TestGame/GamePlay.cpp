@@ -1,6 +1,7 @@
 #include "Gameplay.h"
 #include "containers.h"
 #include "SceneLoadingContext.h"
+
 #include <algorithm>
 
 using namespace FlexKit;
@@ -319,16 +320,450 @@ bool GameWorld::LoadScene(GUID_t assetID)
 /************************************************************************************************/
 
 
-void CreateMultiplayerScene(GameWorld& world)
+using CellCoord = int3;
+using ChunkCoord = int3;
+
+int64_t GetChunkIndex(ChunkCoord coord)
 {
-    static const GUID_t sceneID = 1234;
-    world.LoadScene(sceneID);
+    return coord[2] * 2048 * 2048 + coord[1] * 2048 + coord[1];
+}
+
+struct SparseMap;
+
+struct MapCordHasher
+{
+    uint64_t operator ()(const CellCoord& in) noexcept
+    {
+        return -1;
+    }
+};
+
+using CellId = uint8_t;
+
+enum CellIds : CellId
+{
+    Empty,
+    Floor,
+    Ramp,
+    Wall,
+    Count,
+    Super,
+    Error
+};
+
+constexpr float CellWeights[] = { 1, 1, 1, 1 };
+
+template<size_t ... ints>
+consteval auto _GetCellIdsCollectionHelper(std::integer_sequence<size_t, ints...> int_seq)
+{
+    return std::array<CellId, (size_t)CellIds::Count>{ ints... };
+}
+
+template<size_t ... ints>
+consteval auto _GetCellIdsProbabilitiesHelper(std::integer_sequence<size_t, ints...> int_seq, const float total)
+{
+    return std::array<float, (size_t)CellIds::Count>{ ((CellWeights[ints] / total), ...) };
+}
+
+constinit const auto SuperSet   = []() { return _GetCellIdsCollectionHelper(std::make_index_sequence<(size_t)CellIds::Count>{});  }();
+
+constinit std::array<float, (size_t)CellIds::Count> CellProbabilies =
+                                                        []() -> std::array<float, (size_t)CellIds::Count>
+                                                        {
+                                                            const float sum = std::accumulate(std::begin(CellWeights), std::end(CellWeights), 0.0f);
+
+                                                            return _GetCellIdsProbabilitiesHelper(std::make_index_sequence<(size_t)CellIds::Count>{}, sum);
+                                                        }();
+
+
+struct iConstraint
+{
+    virtual bool operator () (const SparseMap& map, CellCoord xyz, CellId id) const noexcept = 0;
+};
+
+using ConstraintTable = Vector<std::unique_ptr<iConstraint>>;
+
+int64_t GetTileID(const ChunkCoord cord) noexcept
+{
+    constexpr auto r_max = std::numeric_limits<int16_t>::max();
+
+    return cord[0] + cord[1] * r_max + cord[2] * r_max * r_max;
+}
+
+
+struct MapChunk
+{
+    ChunkCoord  coord;
+    CellId      cells[8*8*8]; //8x8
+
+    CellId& operator[] (const int3 localCoord) noexcept
+    {
+        const auto idx = abs(localCoord[0]) % 8 + abs(localCoord[1]) % 8 * 8 + abs(localCoord[2]) % 8 * 64;
+
+        return cells[idx];
+    }
+
+    CellId operator[] (const int3 localCoord) const noexcept
+    {
+        const auto idx = abs(localCoord[0]) % 8 + abs(localCoord[1]) % 8 * 8 + abs(localCoord[2]) % 8 * 64;
+        return cells[idx];
+    }
+
+    struct iterator
+    {
+        CellId*     cells;
+        int         flatIdx;
+        ChunkCoord  coord;
+
+		struct _Pair
+		{
+			CellId& cell;
+			int3    flatIdx;
+		};
+
+        _Pair operator * ()
+        {
+            return { cells[flatIdx], coord * 8 + int3{ flatIdx % 8, (flatIdx / 8) % 8,  (flatIdx / 64) } };
+        }
+
+        void operator ++ ()
+        {
+            flatIdx++;
+        }
+
+        bool operator != (const iterator& rhs) const
+        {
+            return !(cells == rhs.cells && flatIdx == rhs.flatIdx);
+        }
+    };
+
+    auto begin()
+    {
+        return iterator{ cells, 0, coord };
+    }
+
+    auto end()
+    {
+        return iterator{ cells, 8 * 8 * 8, coord };
+    }
+
+    operator int64_t () const { return GetTileID(coord); }
+};
+
+
+struct ChunkedChunkMap
+{
+    ChunkedChunkMap(iAllocator& allocator) :
+        chunkIDs { allocator },
+        chunks   { allocator } {}
+
+    auto begin()    { return chunks.begin(); }
+    auto end()      { return chunks.end(); }
+
+    void InsertBlock(const int3 xyz, const int3 begin = { 0, 0, 0 })
+    {
+		const auto offset = xyz / 2;
+
+        for (int x = 0; x < xyz[0]; x++)
+            for (int y = 0; y < xyz[1]; y++)
+                for (int z = 0; z < xyz[2]; z++)
+                {
+                    const auto chunkIdx = chunks.emplace_back(begin + int3{ x, y, z } - offset);
+
+					for (auto&& [cell, cellIdx] : chunks[chunkIdx])
+						cell = CellIds::Super;
+                }
+
+        std::ranges::sort(chunks);
+        chunkIDs.resize(chunks.size());
+        for (size_t I = 0; I < chunks.size(); I++)
+            chunkIDs[I] = chunks[I];
+    }
+
+    std::optional<std::reference_wrapper<MapChunk>> operator [](ChunkCoord coord)
+    {
+        const auto idx = GetChunkIndex(coord);
+
+        auto res = std::ranges::lower_bound(chunkIDs, idx);
+
+        if (res != chunkIDs.end())
+        {
+            auto idx = std::distance(chunkIDs.begin(), res);
+            if (chunks[idx].coord == coord)
+                return { chunks[idx] };
+        }
+
+        return {};
+    }
+
+    std::optional<std::reference_wrapper<const MapChunk>> operator [](ChunkCoord coord) const
+    {
+        const auto idx = GetChunkIndex(coord);
+
+        auto res = std::ranges::lower_bound(chunks, idx);
+
+        if (res != chunks.end() && res->coord == coord)
+            return { *res };
+        else
+            return {};
+    }
+
+    Vector<int64_t>     chunkIDs;
+    Vector<MapChunk>    chunks;
+};
+
+
+struct SparseMap
+{
+    ChunkedChunkMap chunks;
+
+    auto operator [](CellCoord cord) const
+    {
+        auto chunkID = cord / (8);
+        if (auto res = chunks[chunkID]; res)
+            return res.value().get()[cord - (chunkID * 8)];
+
+        return (CellId)CellIds::Error;
+    }
+
+    auto begin()    { return chunks.begin(); }
+    auto end()      { return chunks.end(); }
+
+    struct NeighborIterator
+    {
+        NeighborIterator(const SparseMap& IN_map, CellCoord coord, int IN_idx = 0) :
+            centralCord { coord  },
+            map         { IN_map },
+            idx         { IN_idx } {}
+
+        auto operator * ()
+        {
+            static const int3 offsets[] =
+            {
+                {  0, -1,  0 },
+                { -1,  0,  0 },
+                {  1,  0,  0 },
+                {  0, -1,  0 },
+                {  0,  0,  1 },
+                {  0,  0, -1 },
+            };
+
+            const auto neighborCoord = offsets[idx] + centralCord;
+            return std::make_pair(map[neighborCoord], neighborCoord);
+        }
+
+        NeighborIterator begin()    { return { map, centralCord, 0 }; }
+        NeighborIterator end()      { return { map, centralCord, 6 }; }
+
+        void operator ++ () noexcept { idx++; }
+
+        bool operator != (const NeighborIterator& rhs) const
+        {
+            return !(rhs.centralCord == centralCord && rhs.idx == idx);
+        }
+
+        const SparseMap&    map;
+        CellCoord           centralCord;
+        int                 idx = 0;
+    };
+
+    static_vector<CellId> GetSuperSet(this auto& map, const ConstraintTable& constraints, const CellCoord xyz)
+    {
+        static_vector<CellId> out;
+
+        for (const auto cellType : SuperSet)
+        {
+            for (const auto& constraint : constraints)
+                if ((*constraint)(map, xyz, cellType))
+                {
+                    out.push_back(cellType);
+                    break;
+                }
+        }
+
+        return out;
+    }
+
+    void SetCell(const CellCoord XYZ, const CellId ID)
+    {
+        auto chunkID = (ID & (-1 + 15)) / 8;
+
+        if (auto res = chunks[chunkID]; res)
+            res.value().get()[XYZ % 8] = ID;
+    }
+
+    float CalculateCellEntropy(this const auto& map, const CellCoord coord, const static_vector<CellId>& superSet)
+    {
+        const auto sum = [&]()
+            {
+                float s = 0;
+                for(auto e : superSet)
+                    s += CellWeights[e];
+
+                return s;
+            }();
+
+        float entropy = 0.0f;
+        for (auto& cell : superSet)
+            entropy += -log(CellWeights[cell] / sum) * CellWeights[cell];
+
+        return entropy;
+    }
+
+    void Generate(this SparseMap& map, const ConstraintTable& constraints, const uint3 WHD, iAllocator& tempMemory)
+    {
+        const auto XYZ = Max(WHD, uint3{ 8, 8, 8 }) / 8;
+
+        map.chunks.InsertBlock(XYZ, XYZ / -2);
+        map.SetCell({ 0, 0, 0 }, CellIds::Floor);
+
+        bool continueGeneration;
+
+        struct EntropyPair
+        {
+            float       entropy;
+            CellCoord   cellIdx;
+
+            operator float() const { return entropy; }
+        };
+
+        Vector<EntropyPair> entropySet{ tempMemory };
+        entropySet.reserve(4096);
+
+        do
+        {
+            continueGeneration = false;
+
+            for (auto& chunk : map.chunks)
+            {
+                for (auto [cell, cellCoord] : chunk)
+                {
+                    if (cell == CellIds::Super)
+                        for (auto [neighborCell, _] : NeighborIterator{ map, cellCoord })
+                        {
+                            if (neighborCell != CellIds::Super && neighborCell != CellIds::Error)
+                            {
+                                continueGeneration |= true;
+
+                                entropySet.emplace_back(
+                                    map.CalculateCellEntropy(cellCoord, map.GetSuperSet(constraints, cellCoord)),
+                                    cellCoord);
+
+                                break;
+                            }
+                        }
+                }
+            }
+
+            std::ranges::partial_sort(entropySet, entropySet.begin() + 1);
+
+            if (entropySet.size())
+            {
+                auto entity = entropySet.front();
+                const auto superSet = map.GetSuperSet(constraints, entity.cellIdx);
+                map.SetCell(entity.cellIdx, superSet[rand() % superSet.size()]);
+            }
+
+            entropySet.clear();
+        } while (continueGeneration);
+    }
+};
+
+
+/************************************************************************************************/
+
+class WallConstraint : public iConstraint
+{
+    virtual bool operator () (const SparseMap& map, CellCoord xyz, CellId ID) const noexcept override
+    {
+        // wall tiles need at least one neighboring floor tile
+        if (ID == CellIds::Wall)
+        {
+            for (auto&& [cell, cellId] : SparseMap::NeighborIterator{ map, xyz })
+            {
+                if (cell == CellIds::Floor)
+                    return true;
+            }
+        }
+        else return false;
+    }
+};
+
+class FloorConstraint : public iConstraint
+{
+    virtual bool operator () (const SparseMap& map, CellCoord xyz, CellId ID) const noexcept override
+    {
+        // Floors tiles need at least one neighboring floor tile
+        if (ID == CellIds::Floor)
+        {
+            for (auto&& [cell, cellId] : SparseMap::NeighborIterator{ map, xyz })
+            {
+                if (cell == CellIds::Floor)
+                    return true;
+            }
+        }
+        else return false;
+    }
+};
+
+class RampConstraint : public iConstraint
+{
+    virtual bool operator () (const SparseMap& map, CellCoord coord, CellId id) const noexcept override
+    {
+        if (id != CellIds::Wall)
+            return false;
+
+        bool wallNeighbor = false;
+
+        for (auto&& [cell, cellId] : SparseMap::NeighborIterator{ map, coord })
+        {
+            // Ramps must be next to a wall, but not next to another ramp
+            switch (cell)
+            {
+            case CellIds::Wall:
+                wallNeighbor = true; break;
+            case CellIds::Ramp:
+                return false;
+            }
+        }
+
+        return wallNeighbor;
+    }
+};
+
+SparseMap GenerateWorld(GameWorld& world, iAllocator& temp)
+{
+    // Step 1. Generate world
+    SparseMap map{ temp };
+	ConstraintTable constraints{ temp };
+    constraints.emplace_back(std::make_unique<FloorConstraint>());
+    constraints.emplace_back(std::make_unique<WallConstraint>());
+    constraints.emplace_back(std::make_unique<RampConstraint>());
+
+    map.Generate(constraints, int3{ 256, 256, 1 }, temp);
+
+    // Step 2. Translate map cells -> game world
+    // ...
+
+    return map;
+}
+
+
+/************************************************************************************************/
+
+
+void CreateMultiplayerScene(GameWorld& world, iAllocator& tempAllocator)
+{
+    //static const GUID_t sceneID = 1234;
+    //world.LoadScene(sceneID);
+
+    GenerateWorld(world, tempAllocator);
 
     auto& physics       = PhysXComponent::GetComponent();
     auto& floorCollider = world.objectPool.Allocate();
     auto floorShape     = physics.CreateCubeShape({ 200, 1, 200 });
     
-    auto& staticBody = floorCollider.AddView<StaticBodyView>(world.layer, float3{ 0, -1.0f, 0 });
+    auto& staticBody    = floorCollider.AddView<StaticBodyView>(world.layer, float3{ 0, -1.0f, 0 } );
     staticBody.AddShape(floorShape);
 
 
@@ -386,6 +821,9 @@ void GameWorld::UpdatePlayer(const PlayerFrameState& playerState, const double d
 }
 
 
+/************************************************************************************************/
+
+
 void GameWorld::UpdateRemotePlayer(const PlayerFrameState& playerState, const double dT)
 {
     auto playerView = FindRemotePlayer(playerState.player);
@@ -396,6 +834,7 @@ void GameWorld::UpdateRemotePlayer(const PlayerFrameState& playerState, const do
         UpdatePlayer(playerState, dT);
     }
 }
+
 
 /************************************************************************************************/
 

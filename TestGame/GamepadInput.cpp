@@ -94,7 +94,7 @@ namespace FlexKit
     GamepadInput::GamepadInput(HWND hwnd)
     {
         OIS::ParamList pl;
-        pl.insert(std::make_pair(std::string("WINDOW"), fmt::format("{}", (uint32_t)hwnd)));
+        pl.insert(std::make_pair(std::string("WINDOW"), fmt::format("{}", (uint64_t)hwnd)));
         gInputMangaer = OIS::InputManager::createInputSystem(pl);
         gInputMangaer->enableAddOnFactory(OIS::InputManager::AddOn_All);
 

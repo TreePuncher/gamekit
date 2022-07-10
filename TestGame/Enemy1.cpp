@@ -115,9 +115,9 @@ namespace FlexKit
 
             const auto enemyPosition = GetWorldPosition(*enemyView.componentData.gameObject);
 
-            auto& gameObject = *enemyView.componentData.gameObject;
-            auto pendingMove =  enemyView.componentData.pendingMoves;
-            const auto t     =  enemyView.componentData.t;
+            auto& gameObject        = *enemyView.componentData.gameObject;
+            const auto pendingMove  =  enemyView.componentData.pendingMoves;
+            const auto t            =  enemyView.componentData.t;
 
             physx::PxControllerFilters filters;
 
