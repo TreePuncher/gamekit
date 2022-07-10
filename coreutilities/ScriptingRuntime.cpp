@@ -160,6 +160,17 @@ namespace FlexKit
         else return nullptr;
     }
 
+    void* AnimatorGetCallback_AS(AnimatorView* view, uint32_t idx)
+    {
+        auto& state = view->GetState();
+
+        return &state.callbacks[idx];
+    }
+
+    void AnimatorCallback_Call(AnimatorCallback* view, GameObject* gameObject)
+    {
+        (*view)(*gameObject);
+    }
 
     uint32_t AnimatorPlayAnimation_AS(AnimatorView* view, Animation* anim, bool loop)
     {
@@ -396,6 +407,11 @@ namespace FlexKit
         res = scriptEngine->RegisterEnumValue("AnimatorValueType", "Uint4",  (int32_t)AnimatorInputType::Uint4);        FK_ASSERT(res >= 0);
 
 
+        res = scriptEngine->RegisterObjectType("GameObject", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                    FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterObjectType("AnimatorCallback", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                              FK_ASSERT(res >= 0);
+        res = scriptEngine->RegisterObjectMethod("AnimatorCallback", "void opCall(GameObject@)", asFUNCTION(AnimatorCallback_Call), asCALL_CDECL_OBJFIRST);    FK_ASSERT(res > 0);
+
+
         /************************************************************************************************/
 
 
@@ -461,6 +477,9 @@ namespace FlexKit
         //res = scriptEngine->RegisterObjectMethod("Animator", "float2@ GetFloat2(idx)",           asFUNCTION(AnimatorGetFloat2_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
         res = scriptEngine->RegisterObjectMethod("Animator", "float3@ GetFloat3(uint)",          asFUNCTION(AnimatorGetFloat3_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
         res = scriptEngine->RegisterObjectMethod("Animator", "float4@ GetFloat4(uint)",          asFUNCTION(AnimatorGetFloat4_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+
+        res = scriptEngine->RegisterObjectMethod("Animator", "AnimatorCallback@ GetCallback(uint)", asFUNCTION(AnimatorGetCallback_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+
         res = scriptEngine->RegisterObjectMethod("Animator", "PlayID Play(Animation@, bool)",    asFUNCTION(AnimatorPlayAnimation_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
         res = scriptEngine->RegisterObjectMethod("Animator", "void Stop(PlayID)",                asFUNCTION(AnimatorStopAnimation_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
         res = scriptEngine->RegisterObjectMethod("Animator", "void Pause(PlayID)",               asFUNCTION(AnimatorPauseAnimation_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
@@ -470,7 +489,6 @@ namespace FlexKit
         /************************************************************************************************/
 
 
-        res = scriptEngine->RegisterObjectType("GameObject", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                    FK_ASSERT(res >= 0);
         res = scriptEngine->RegisterObjectMethod("GameObject", "bool            Query(ComponentID_t)",  asFUNCTION(QueryForComponent), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
         res = scriptEngine->RegisterObjectMethod("GameObject", "PoseState@      GetPoseState()",        asFUNCTION(GetPoseState_AS),   asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
         res = scriptEngine->RegisterObjectMethod("GameObject", "Animator@       GetAnimator()",         asFUNCTION(GetAnimator_AS),    asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
@@ -494,8 +512,7 @@ namespace FlexKit
         res = scriptEngine->RegisterInterfaceMethod("AnimatorInterface", "void PostUpdate(GameObject@ object, double dt)");     FK_ASSERT(res > 0);
 
 
-        /************************************************************************************************/
-    }
+    }   /************************************************************************************************/
 
 
     /************************************************************************************************/

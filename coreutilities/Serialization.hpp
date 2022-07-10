@@ -12,6 +12,7 @@
 #include <variant>
 #include <optional>
 #include <static_vector.h>
+#include <limits>
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -750,7 +751,9 @@ namespace FlexKit
 
         void Seek(size_t pos) noexcept
         {
-            fseek(f, (size_t)pos, 0);
+            FK_ASSERT(pos < std::numeric_limits<long>::max());
+
+            fseek(f, (long)pos, 0);
         }
 
         size_t Tell() const noexcept
@@ -851,9 +854,7 @@ namespace FlexKit
             auto temp = ftell(f);
 
             VectorHeader header = { 0, 0 };
-            auto res = fread(&header, 1, sizeof(header), f);
-
-            if (res != sizeof(header))
+            if (const auto res = fread(&header, 1, sizeof(header), f); res != sizeof(header))
             {
                 if (ferror(f))
                 {

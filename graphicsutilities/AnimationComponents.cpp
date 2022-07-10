@@ -386,6 +386,7 @@ namespace FlexKit
         return GetComponent()[animator];
     }
 
+
     AnimatorScriptState AnimatorComponent::AnimatorView::GetScriptState() noexcept
     {
         auto& state = GetComponent()[animator];

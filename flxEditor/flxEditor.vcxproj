@@ -103,7 +103,7 @@
     <QtVars>$(QMake_DEFINES_);$(QMake_INCLUDEPATH_);$(QMake_LIBPATH_)</QtVars>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
-    <QtInstall>6.2.2_msvc2019_64</QtInstall>
+    <QtInstall>6.3.1</QtInstall>
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>release</QtBuildConfig>
     <QtLibrarySearchPath>/lib/</QtLibrarySearchPath>

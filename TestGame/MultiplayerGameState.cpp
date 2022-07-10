@@ -292,7 +292,7 @@ UpdateTask* LocalGameState::Update(EngineCore& core, UpdateDispatcher& dispatche
 
 
     if (smolina)
-        Yaw(*smolina, pi);
+        Yaw(*smolina, (float)pi);
 
     //SetWorldPosition(particleEmitter, float3{ 100.0f * sin(t), 20, 100.0f * cos(t) });
     //SetWorldPosition(IKTarget, float3{ 2.0f * cos(t), 4.0f * sin(t / 2.0f) + 8.0f, 4.0f * sin(t) } + float3{ 30.0f, 0.0f, 10.0f });
@@ -492,7 +492,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
                 const auto& light = PointLightComponent::GetComponent()[lightHandle];
                 const auto pointLightPosition = GetPositionW(light.Position);
 
-                auto f = GetFrustum(1.0f, pi / 2, 0.1, light.R, pointLightPosition, Quaternion{ 0,  90, 0 });
+                auto f = GetFrustum(1.0f, (float)pi / 2.0f, 1.0f, light.R, pointLightPosition, Quaternion{ 0.0f,  90.0f, 0.0f });
                 auto r = Intersects(f, boundingSphere);
 
                 for (size_t I = 0; I < divisions; I++)
@@ -626,7 +626,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
                     L1.A = FBR;
                     L1.B = NBR;
                     lines.push_back(L1);
-                }(1.0f, pi / 2, 0.1, 20, pointLightPosition, Orientations[I]);
+                }(1.0f, (float)pi / 2.0f, 0.1f, 20.0f, pointLightPosition, Orientations[I]);
             }
 
 

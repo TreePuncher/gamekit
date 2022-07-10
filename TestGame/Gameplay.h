@@ -280,7 +280,7 @@ public:
 /************************************************************************************************/
 
 
-void CreateMultiplayerScene(GameWorld&);
+void CreateMultiplayerScene(GameWorld&, iAllocator& temp);
 
 PlayerFrameState    GetPlayerFrameState (GameObject& gameObject);
 RemotePlayerData*   FindRemotePlayer    (MultiplayerPlayerID_t ID);

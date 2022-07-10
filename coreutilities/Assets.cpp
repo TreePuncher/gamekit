@@ -891,7 +891,7 @@ namespace FlexKit
 		{
 			auto Index	= GeometryTable.Geometry.size();
 			Handle		= GeometryTable.Handles.GetNewHandle();
-
+            
 			GeometryTable.Geometry.push_back		(TriMesh());
 			GeometryTable.GeometryIDs.push_back		(nullptr);
 			GeometryTable.Guids.push_back			(0);
@@ -1130,7 +1130,6 @@ namespace FlexKit
 				{
 				case 0x01:
 				{
-					auto test = sizeof(BlockDescriptor);
 					INFOBLOCK* IB = (INFOBLOCK*)(mem + Position + sizeof(BlockDescriptor));
 					char* FontName = &IB->fontName;
 					strcpy_s(ID, FontName);

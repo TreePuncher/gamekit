@@ -1590,344 +1590,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-    using ReadBackEventHandler = TypeErasedCallable<void (ReadBackResourceHandle), 64>;
-
-
-	FLEXKITAPI class Context
-	{
-	public:
-		Context(RenderSystem*				renderSystem_IN	= nullptr, 
-				iAllocator*					allocator		= nullptr);
-			
-        Context(Context&& RHS);
-
-
-        Context& operator = (Context&& RHS);
-
-
-		Context				(const Context& RHS) = delete;
-		Context& operator = (const Context& RHS) = delete;
-
-		void Release();
-
-		void CreateAS(const AccelerationStructureDesc&, const TriMesh& );
-        void BuildBLAS(VertexBuffer& buffer, ResourceHandle destination, ResourceHandle scratchSpace);
-
-        void DiscardResource(ResourceHandle resource);
-
-		void AddAliasingBarrier (ResourceHandle before, ResourceHandle after);
-		void AddUAVBarrier      (ResourceHandle Handle = InvalidHandle_t, uint32_t subresource = -1);
-
-		void AddPresentBarrier			(ResourceHandle Handle,	DeviceResourceState Before);
-		void AddRenderTargetBarrier		(ResourceHandle Handle,	DeviceResourceState Before, DeviceResourceState State = DeviceResourceState::DRS_RenderTarget);
-		void AddStreamOutBarrier		(SOResourceHandle,		DeviceResourceState Before, DeviceResourceState State);
-		void AddResourceBarrier	        (ResourceHandle Handle,	DeviceResourceState Before, DeviceResourceState State, uint32_t subResource = -1);
-
-		void AddCopyResourceBarrier (ResourceHandle Handle, DeviceResourceState Before, DeviceResourceState State);
-
-		void ClearDepthBuffer		(ResourceHandle Texture, float ClearDepth = 0.0f); // Assumes full-screen Clear
-		void ClearRenderTarget		(ResourceHandle Texture, float4 ClearColor = float4(0.0f)); // Assumes full-screen Clear
-		void ClearUAVTextureFloat   (ResourceHandle UAV, float4 clearColor = float4(0, 0, 0, 0));
-		void ClearUAVTextureUint    (ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
-		void ClearUAV               (ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
-        void ClearUAVBuffer         (ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
-        void ClearUAVBufferRange    (ResourceHandle UAV, uint begin, uint end, uint4 clearColor = uint4{ 0, 0, 0, 0 });
-
-		void SetRootSignature		    (const RootSignature& RS);
-		void SetComputeRootSignature    (const RootSignature& RS);
-		void SetPipelineState		    (ID3D12PipelineState* PSO);
-
-		void SetRenderTargets		    (const static_vector<ResourceHandle> RTs, bool DepthStecil, ResourceHandle DepthStencil = InvalidHandle_t, const size_t MIPMapOffset = 0);
-		void SetRenderTargets2		    (const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV);
-
-		void SetViewports			    (static_vector<D3D12_VIEWPORT, 16>	VPs);
-		void SetScissorRects		    (static_vector<D3D12_RECT, 16>		Rects);
-
-		void SetScissorAndViewports	    (static_vector<ResourceHandle, 16>	RenderTargets);
-		void SetScissorAndViewports2    (static_vector<ResourceHandle, 16>	RenderTargets, const size_t MIPMapOffset = 0);
-
-        /*
-		template<typename ... ARGS>
-		void SetScissorAndViewports(std::tuple<ARGS...>	RenderTargets)
-		{
-			static_vector<D3D12_VIEWPORT, 16>	VPs;
-			static_vector<D3D12_RECT, 16>		Rects;
-
-			Tuple_For(
-				RenderTargets,
-				[&](auto target)
-				{
-					const auto WH = renderSystem->GetTextureWH(target);
-					VPs.push_back(  { 0,0, (FLOAT)WH[0], (FLOAT)WH[1], 0, 1 });
-					Rects.push_back({ 0,0, (LONG)WH[0], (LONG)WH[1] });
-				});
-
-			SetViewports(VPs);
-			SetScissorRects(Rects);
-		}
-        */
-
-		void QueueReadBack(ReadBackResourceHandle readBack);
-        void QueueReadBack(ReadBackResourceHandle readBack, ReadBackEventHandler callback);
-
-		void SetDepthStencil		(ResourceHandle DS);
-		void SetPrimitiveTopology	(EInputTopology Topology);
-
-        void SetGraphicsConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0);
-
-		void NullGraphicsConstantBufferView	(size_t idx);
-		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0);
-		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferDataSet& CB);
-		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBuffer& CB);
-		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorHeap& DH);
-		void SetGraphicsShaderResourceView	(size_t idx, FrameBufferedResource* Resource, size_t Count, size_t ElementSize);
-		void SetGraphicsShaderResourceView	(size_t idx, Texture2D& Texture);
-		void SetGraphicsShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0);
-        void SetGraphicsUnorderedAccessView (size_t idx, ResourceHandle resource, size_t offset = 0);
-
-
-        void SetComputeDescriptorTable      (size_t idx);
-		void SetComputeDescriptorTable		(size_t idx, const DescriptorHeap& DH);
-		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferHandle, size_t offset);
-		void SetComputeConstantBufferView   (size_t idx, const ConstantBufferDataSet& CB);
-        void SetComputeConstantBufferView   (size_t idx, ResourceHandle, size_t offset = 0, size_t bufferSize = 256);
-		void SetComputeShaderResourceView	(size_t idx, Texture2D&		texture);
-		void SetComputeShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0);
-		void SetComputeUnorderedAccessView	(size_t idx, ResourceHandle resource, size_t offset = 0);
-        void SetComputeConstantValue        (size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0);
-
-
-		void BeginQuery	(QueryHandle query, size_t idx);
-		void EndQuery	(QueryHandle query, size_t idx);
-
-        void TimeStamp(QueryHandle query, size_t idx);
-
-        void SetMarker_DEBUG(const char* str);
-
-        void BeginEvent_DEBUG(const char* str);
-        void EndEvent_DEBUG();
-
-        void CopyResource(ResourceHandle dest, ResourceHandle src);
-
-		void CopyBufferRegion(
-			static_vector<ID3D12Resource*>		sources,
-			static_vector<size_t>				sourceOffset,
-			static_vector<ID3D12Resource*>		destinations,
-			static_vector<size_t>				destinationOffset,
-			static_vector<size_t>				copySize,
-			static_vector<DeviceResourceState>	currentStates,
-			static_vector<DeviceResourceState>	finalStates);
-
-		void ImmediateWrite(
-			static_vector<ResourceHandle>	handles,
-			static_vector<size_t>				value,
-			static_vector<DeviceResourceState>	currentStates,
-			static_vector<DeviceResourceState>	finalStates);
-
-		void ClearSOCounters(static_vector<SOResourceHandle> handles);
-
-		void CopyUInt64(
-			static_vector<ID3D12Resource*>			source,
-			static_vector<DeviceResourceState>		sourceState,
-			static_vector<size_t>					sourceoffsets,
-			static_vector<ID3D12Resource*>			destination,
-			static_vector<DeviceResourceState>		destinationState,
-			static_vector<size_t>					destinationoffset);
-
-		void AddIndexBuffer			(TriMesh* Mesh, uint32_t lod = 0);
-		void SetIndexBuffer         (VertexBufferEntry buffer, DeviceFormat format = DeviceFormat::R32_UINT);
-
-		void AddVertexBuffers		(TriMesh* Mesh, uint32_t lod, static_vector<VERTEXBUFFER_TYPE, 16> Buffers, VertexBufferList* InstanceBuffers = nullptr);
-		void SetVertexBuffers		(VertexBufferList&	List);
-		void SetVertexBuffers		(VertexBufferList	List);
-		void SetVertexBuffers2		(static_vector<D3D12_VERTEX_BUFFER_VIEW>	List);
-
-		void SetSOTargets		(static_vector<D3D12_STREAM_OUTPUT_BUFFER_VIEW, 4> SOViews);
-
-		void Draw					(size_t VertexCount, size_t BaseVertex = 0, size_t baseIndex = 0);
-		void DrawInstanced			(size_t VertexCount, size_t BaseVertex = 0, size_t instanceCount = 0, size_t instanceOffset = 0);
-		void DrawIndexed			(size_t IndexCount, size_t IndexOffet = 0, size_t BaseVertex = 0);
-		void DrawIndexedInstanced	(size_t IndexCount, size_t IndexOffet = 0, size_t BaseVertex = 0, size_t InstanceCount = 1, size_t InstanceOffset = 0);
-		void Clear					();
-
-		void ResolveQuery			(QueryHandle query, size_t begin, size_t end, ResourceHandle destination, size_t destOffset);
-		void ResolveQuery			(QueryHandle query, size_t begin, size_t end, ID3D12Resource* destination, size_t destOffset);
-
-		void ExecuteIndirect		(ResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset = 0, size_t executionCount = 1);
-		void Dispatch				(uint3);
-        void Dispatch               (ID3D12PipelineState* PSO, uint3 xyz) { SetPipelineState(PSO); Dispatch(xyz); }
-		void DispatchRays           (uint3, const DispatchDesc desc);
-
-		void FlushBarriers();
-
-		void SetPredicate(bool Enable, QueryHandle Handle = {}, size_t = 0);
-
-		void CopyBuffer		(const UploadSegment src, const ResourceHandle destination, const size_t destOffset = 0);
-		void CopyTexture2D	(const UploadSegment src, const ResourceHandle destination, const uint2 BufferSize);
-
-        /*
-		template<typename TY_RES1, typename TY_RES2>
-		void CopyTexture2D(TY_RES1 des, TY_RES2 src)
-		{
-			FlushBarriers();
-
-			DeviceContext->CopyResource(
-				renderSystem->GetDeviceResource(des),
-				renderSystem->GetDeviceResource(src));
-		}
-        */
-
-		void SetRTRead	(ResourceHandle Handle);
-		void SetRTWrite	(ResourceHandle Handle);
-		void SetRTFree	(ResourceHandle Handle);
-
-		void     Close(const size_t counter);
-		Context& Reset();
-
-		void SetDebugName(const char* ID)
-		{
-			SETDEBUGNAME(DeviceContext, ID);
-		}
-
-
-		// Not Yet Implemented
-		void SetUAVRead();
-		void SetUAVWrite();
-		void SetUAVFree();
-
-		void _QueueReadBacks();
-
-		DescHeapPOS _ReserveDSV(size_t count);
-		DescHeapPOS _ReserveSRV(size_t count);
-		DescHeapPOS _ReserveRTV(size_t count);
-		DescHeapPOS _ReserveSRVLocal(size_t count);
-
-
-		void        _ResetRTV();
-		void        _ResetDSV();
-		void        _ResetSRV();
-
-		uint64_t    _GetCounter() { return counter;  }
-		ID3D12GraphicsCommandList*	GetCommandList() { return DeviceContext; }
-
-		RenderSystem* renderSystem = nullptr;
-
-		void BeginMarker(const char* str)
-		{
-		}
-
-		void EndMarker(const char* str)
-		{
-
-		}
-
-        void _AddBarrier(ID3D12Resource* resource, DeviceResourceState currentState, DeviceResourceState newState);
-
-	//private:
-
-        DescHeapPOS _GetDepthDesciptor(ResourceHandle resource);
-
-		struct Barrier
-		{
-			Barrier() {}
-
-			DeviceResourceState OldState;
-			DeviceResourceState NewState;
-
-			enum class Type
-			{
-				ConstantBuffer,
-				QueryBuffer,
-				VertexBuffer,
-				StreamOut,
-				Resource,
-				Generic,
-				Aliasing,
-                UAV,
-                Unknown,
-			}Type = Type::Unknown;
-
-			union 
-			{
-				ResourceHandle		resourceHandle;
-				SOResourceHandle	streamOut;
-				ID3D12Resource*		resource_ptr;
-				QueryHandle			query;
-
-                ResourceHandle		aliasedResources[2];
-			};
-
-            uint32_t subResource = -1;
-		};
-
-
-		void UpdateResourceStates();
-
-
-		ID3D12CommandAllocator*         commandAllocator        = nullptr;
-		ID3D12GraphicsCommandList4*		DeviceContext			= nullptr;
-
-		const RootSignature*			CurrentRootSignature	    = nullptr;
-		const RootSignature*			CurrentComputeRootSignature	= nullptr;
-		ID3D12PipelineState*			CurrentPipelineState	    = nullptr;
-
-		ID3D12DescriptorHeap*           descHeapRTV             = nullptr;
-		ID3D12DescriptorHeap*           descHeapSRV             = nullptr;
-		ID3D12DescriptorHeap*           descHeapSRVLocal        = nullptr; // CPU visable only
-		ID3D12DescriptorHeap*           descHeapDSV             = nullptr;
-
-		D3D12_CPU_DESCRIPTOR_HANDLE RTV_CPU;
-
-		D3D12_CPU_DESCRIPTOR_HANDLE SRV_CPU;
-		D3D12_GPU_DESCRIPTOR_HANDLE SRV_GPU;
-
-		D3D12_CPU_DESCRIPTOR_HANDLE DSV_CPU;
-
-		D3D12_CPU_DESCRIPTOR_HANDLE RTVPOSCPU;
-		D3D12_CPU_DESCRIPTOR_HANDLE DSVPOSCPU;
-
-		D3D12_CPU_DESCRIPTOR_HANDLE SRV_LOCAL_CPU;
-
-		size_t	RenderTargetCount;
-		bool	DepthStencilEnabled;
-
-		
-		static_vector<ResourceHandle, 16>		RenderTargets;
-		static_vector<D3D12_VIEWPORT, 16>		Viewports;
-		static_vector<DescriptorHeap*>			DesciptorHeaps;
-		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
-
-		struct StreamOutResource {
-			SOResourceHandle	handle;
-		};
-
-		struct RTV_View {
-			ResourceHandle  resource;
-            DescHeapPOS     descriptor;
-		};
-
-		static_vector<StreamOutResource, 128>       TrackedSOBuffers;
-		static_vector<Barrier, 128>				    PendingBarriers; // Barriers potentially needed
-		static_vector<Barrier, 128>				    queuedBarriers; // Barriers required
-		static_vector<RTV_View, 128>                renderTargetViews;
-		static_vector<RTV_View, 128>                depthStencilViews;
-		static_vector<ReadBackResourceHandle, 128>  queuedReadBacks;
-
-		uint64_t                                    counter = 0;
-		iAllocator*								    Memory;
-
-#if USING(AFTERMATH)
-public:
-		GFSDK_Aftermath_ContextHandle   AFTERMATH_context;
-private:
-#endif
-	};
-
-
-
-	/************************************************************************************************/
-
-
 	FLEXKITAPI class VertexBufferStateTable
 	{
 	public:
@@ -3878,6 +3540,330 @@ private:
 
         std::mutex              crashM;
         std::mutex              barrierLock;
+	};
+
+    
+	/************************************************************************************************/
+
+    using ReadBackEventHandler = TypeErasedCallable<void (ReadBackResourceHandle), 64>;
+
+	FLEXKITAPI class Context
+	{
+	public:
+		Context(RenderSystem*				renderSystem_IN	= nullptr, 
+				iAllocator*					allocator		= nullptr);
+			
+        Context(Context&& RHS);
+
+
+        Context& operator = (Context&& RHS);
+
+
+		Context				(const Context& RHS) = delete;
+		Context& operator = (const Context& RHS) = delete;
+
+		void Release();
+
+		void CreateAS(const AccelerationStructureDesc&, const TriMesh& );
+        void BuildBLAS(VertexBuffer& buffer, ResourceHandle destination, ResourceHandle scratchSpace);
+
+        void DiscardResource(ResourceHandle resource);
+
+		void AddAliasingBarrier (ResourceHandle before, ResourceHandle after);
+		void AddUAVBarrier      (ResourceHandle Handle = InvalidHandle_t, uint32_t subresource = -1);
+
+		void AddPresentBarrier			(ResourceHandle Handle,	DeviceResourceState Before);
+		void AddRenderTargetBarrier		(ResourceHandle Handle,	DeviceResourceState Before, DeviceResourceState State = DeviceResourceState::DRS_RenderTarget);
+		void AddStreamOutBarrier		(SOResourceHandle,		DeviceResourceState Before, DeviceResourceState State);
+		void AddResourceBarrier	        (ResourceHandle Handle,	DeviceResourceState Before, DeviceResourceState State, uint32_t subResource = -1);
+
+		void AddCopyResourceBarrier (ResourceHandle Handle, DeviceResourceState Before, DeviceResourceState State);
+
+		void ClearDepthBuffer		(ResourceHandle Texture, float ClearDepth = 0.0f); // Assumes full-screen Clear
+		void ClearRenderTarget		(ResourceHandle Texture, float4 ClearColor = float4(0.0f)); // Assumes full-screen Clear
+		void ClearUAVTextureFloat   (ResourceHandle UAV, float4 clearColor = float4(0, 0, 0, 0));
+		void ClearUAVTextureUint    (ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
+		void ClearUAV               (ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
+        void ClearUAVBuffer         (ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
+        void ClearUAVBufferRange    (ResourceHandle UAV, uint begin, uint end, uint4 clearColor = uint4{ 0, 0, 0, 0 });
+
+		void SetRootSignature		    (const RootSignature& RS);
+		void SetComputeRootSignature    (const RootSignature& RS);
+		void SetPipelineState		    (ID3D12PipelineState* PSO);
+
+		void SetRenderTargets		    (const static_vector<ResourceHandle> RTs, bool DepthStecil, ResourceHandle DepthStencil = InvalidHandle_t, const size_t MIPMapOffset = 0);
+		void SetRenderTargets2		    (const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV);
+
+		void SetViewports			    (static_vector<D3D12_VIEWPORT, 16>	VPs);
+		void SetScissorRects		    (static_vector<D3D12_RECT, 16>		Rects);
+
+		void SetScissorAndViewports	    (static_vector<ResourceHandle, 16>	RenderTargets);
+		void SetScissorAndViewports2    (static_vector<ResourceHandle, 16>	RenderTargets, const size_t MIPMapOffset = 0);
+
+		template<typename ... ARGS>
+		void SetScissorAndViewports(std::tuple<ARGS...>	RenderTargets)
+		{
+			static_vector<D3D12_VIEWPORT, 16>	VPs;
+			static_vector<D3D12_RECT, 16>		Rects;
+
+			Tuple_For(
+				RenderTargets,
+				[&](auto target)
+				{
+					const auto WH = renderSystem->GetTextureWH(target);
+					VPs.push_back(  { 0,0, (FLOAT)WH[0], (FLOAT)WH[1], 0, 1 });
+					Rects.push_back({ 0,0, (LONG)WH[0], (LONG)WH[1] });
+				});
+
+			SetViewports(VPs);
+			SetScissorRects(Rects);
+		}
+
+		void QueueReadBack(ReadBackResourceHandle readBack);
+        void QueueReadBack(ReadBackResourceHandle readBack, ReadBackEventHandler callback);
+
+		void SetDepthStencil		(ResourceHandle DS);
+		void SetPrimitiveTopology	(EInputTopology Topology);
+
+        void SetGraphicsConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0);
+
+		void NullGraphicsConstantBufferView	(size_t idx);
+		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0);
+		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferDataSet& CB);
+		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBuffer& CB);
+		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorHeap& DH);
+		void SetGraphicsShaderResourceView	(size_t idx, FrameBufferedResource* Resource, size_t Count, size_t ElementSize);
+		void SetGraphicsShaderResourceView	(size_t idx, Texture2D& Texture);
+		void SetGraphicsShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0);
+        void SetGraphicsUnorderedAccessView (size_t idx, ResourceHandle resource, size_t offset = 0);
+
+
+        void SetComputeDescriptorTable      (size_t idx);
+		void SetComputeDescriptorTable		(size_t idx, const DescriptorHeap& DH);
+		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferHandle, size_t offset);
+		void SetComputeConstantBufferView   (size_t idx, const ConstantBufferDataSet& CB);
+        void SetComputeConstantBufferView   (size_t idx, ResourceHandle, size_t offset = 0, size_t bufferSize = 256);
+		void SetComputeShaderResourceView	(size_t idx, Texture2D&		texture);
+		void SetComputeShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0);
+		void SetComputeUnorderedAccessView	(size_t idx, ResourceHandle resource, size_t offset = 0);
+        void SetComputeConstantValue        (size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0);
+
+
+		void BeginQuery	(QueryHandle query, size_t idx);
+		void EndQuery	(QueryHandle query, size_t idx);
+
+        void TimeStamp(QueryHandle query, size_t idx);
+
+        void SetMarker_DEBUG(const char* str);
+
+        void BeginEvent_DEBUG(const char* str);
+        void EndEvent_DEBUG();
+
+        void CopyResource(ResourceHandle dest, ResourceHandle src);
+
+		void CopyBufferRegion(
+			static_vector<ID3D12Resource*>		sources,
+			static_vector<size_t>				sourceOffset,
+			static_vector<ID3D12Resource*>		destinations,
+			static_vector<size_t>				destinationOffset,
+			static_vector<size_t>				copySize,
+			static_vector<DeviceResourceState>	currentStates,
+			static_vector<DeviceResourceState>	finalStates);
+
+		void ImmediateWrite(
+			static_vector<ResourceHandle>	handles,
+			static_vector<size_t>				value,
+			static_vector<DeviceResourceState>	currentStates,
+			static_vector<DeviceResourceState>	finalStates);
+
+		void ClearSOCounters(static_vector<SOResourceHandle> handles);
+
+		void CopyUInt64(
+			static_vector<ID3D12Resource*>			source,
+			static_vector<DeviceResourceState>		sourceState,
+			static_vector<size_t>					sourceoffsets,
+			static_vector<ID3D12Resource*>			destination,
+			static_vector<DeviceResourceState>		destinationState,
+			static_vector<size_t>					destinationoffset);
+
+		void AddIndexBuffer			(TriMesh* Mesh, uint32_t lod = 0);
+		void SetIndexBuffer         (VertexBufferEntry buffer, DeviceFormat format = DeviceFormat::R32_UINT);
+
+		void AddVertexBuffers		(TriMesh* Mesh, uint32_t lod, static_vector<VERTEXBUFFER_TYPE, 16> Buffers, VertexBufferList* InstanceBuffers = nullptr);
+		void SetVertexBuffers		(VertexBufferList&	List);
+		void SetVertexBuffers		(VertexBufferList	List);
+		void SetVertexBuffers2		(static_vector<D3D12_VERTEX_BUFFER_VIEW>	List);
+
+		void SetSOTargets		(static_vector<D3D12_STREAM_OUTPUT_BUFFER_VIEW, 4> SOViews);
+
+		void Draw					(const size_t VertexCount, const size_t BaseVertex = 0, const size_t baseIndex = 0);
+		void DrawInstanced			(const size_t VertexCount, const size_t BaseVertex = 0, const size_t instanceCount = 0, size_t instanceOffset = 0);
+		void DrawIndexed			(const size_t IndexCount, const size_t IndexOffet = 0, const size_t BaseVertex = 0);
+		void DrawIndexedInstanced	(const size_t IndexCount, const size_t IndexOffet = 0, const size_t BaseVertex = 0, const size_t InstanceCount = 1, const size_t InstanceOffset = 0);
+		void Clear					();
+
+		void ResolveQuery			(QueryHandle query, size_t begin, size_t end, ResourceHandle destination, size_t destOffset);
+		void ResolveQuery			(QueryHandle query, size_t begin, size_t end, ID3D12Resource* destination, size_t destOffset);
+
+		void ExecuteIndirect		(ResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset = 0, size_t executionCount = 1);
+		void Dispatch				(const uint3);
+        void Dispatch               (ID3D12PipelineState* PSO, const uint3 xyz) { SetPipelineState(PSO); Dispatch(xyz); }
+		void DispatchRays           (const uint3, const DispatchDesc desc);
+
+		void FlushBarriers();
+
+		void SetPredicate(bool Enable, QueryHandle Handle = {}, size_t = 0);
+
+		void CopyBuffer		(const UploadSegment src, const ResourceHandle destination, const size_t destOffset = 0);
+		void CopyTexture2D	(const UploadSegment src, const ResourceHandle destination, const uint2 BufferSize);
+
+		void CopyTexture2D(auto des, auto src)
+		{
+			FlushBarriers();
+
+			DeviceContext->CopyResource(
+				renderSystem->GetDeviceResource(des),
+				renderSystem->GetDeviceResource(src));
+		}
+
+		void SetRTRead	(ResourceHandle Handle);
+		void SetRTWrite	(ResourceHandle Handle);
+		void SetRTFree	(ResourceHandle Handle);
+
+		void     Close(const size_t counter);
+		Context& Reset();
+
+		void SetDebugName(const char* ID)
+		{
+			SETDEBUGNAME(DeviceContext, ID);
+		}
+
+
+		// Not Yet Implemented
+		void SetUAVRead();
+		void SetUAVWrite();
+		void SetUAVFree();
+
+		void _QueueReadBacks();
+
+		DescHeapPOS _ReserveDSV(size_t count);
+		DescHeapPOS _ReserveSRV(size_t count);
+		DescHeapPOS _ReserveRTV(size_t count);
+		DescHeapPOS _ReserveSRVLocal(size_t count);
+
+
+		void        _ResetRTV();
+		void        _ResetDSV();
+		void        _ResetSRV();
+
+		uint64_t    _GetCounter() { return counter;  }
+		ID3D12GraphicsCommandList*	GetCommandList() { return DeviceContext; }
+
+		RenderSystem* renderSystem = nullptr;
+
+        void BeginMarker(const char* str);
+        void EndMarker(const char* str);
+
+        void _AddBarrier(ID3D12Resource* resource, DeviceResourceState currentState, DeviceResourceState newState);
+
+	//private:
+
+        DescHeapPOS _GetDepthDesciptor(ResourceHandle resource);
+
+		struct Barrier
+		{
+            Barrier() {}
+            
+			DeviceResourceState OldState = DeviceResourceState::DRS_UNKNOWN;
+			DeviceResourceState NewState = DeviceResourceState::DRS_UNKNOWN;
+
+			enum class Type
+			{
+				ConstantBuffer,
+				QueryBuffer,
+				VertexBuffer,
+				StreamOut,
+				Resource,
+				Generic,
+				Aliasing,
+                UAV,
+                Unknown,
+			}Type = Type::Unknown;
+
+			union 
+			{
+				ResourceHandle		resourceHandle;
+				SOResourceHandle	streamOut;
+				ID3D12Resource*		resource_ptr;
+				QueryHandle			query;
+
+                ResourceHandle		aliasedResources[2];
+			};
+
+            uint32_t subResource = -1;
+		};
+
+
+		void UpdateResourceStates();
+
+
+		ID3D12CommandAllocator*         commandAllocator        = nullptr;
+		ID3D12GraphicsCommandList4*		DeviceContext			= nullptr;
+
+		const RootSignature*			CurrentRootSignature	    = nullptr;
+		const RootSignature*			CurrentComputeRootSignature	= nullptr;
+		ID3D12PipelineState*			CurrentPipelineState	    = nullptr;
+
+		ID3D12DescriptorHeap*           descHeapRTV             = nullptr;
+		ID3D12DescriptorHeap*           descHeapSRV             = nullptr;
+		ID3D12DescriptorHeap*           descHeapSRVLocal        = nullptr; // CPU visable only
+		ID3D12DescriptorHeap*           descHeapDSV             = nullptr;
+
+		D3D12_CPU_DESCRIPTOR_HANDLE RTV_CPU;
+
+		D3D12_CPU_DESCRIPTOR_HANDLE SRV_CPU;
+		D3D12_GPU_DESCRIPTOR_HANDLE SRV_GPU;
+
+		D3D12_CPU_DESCRIPTOR_HANDLE DSV_CPU;
+
+		D3D12_CPU_DESCRIPTOR_HANDLE RTVPOSCPU;
+		D3D12_CPU_DESCRIPTOR_HANDLE DSVPOSCPU;
+
+		D3D12_CPU_DESCRIPTOR_HANDLE SRV_LOCAL_CPU;
+
+		size_t	RenderTargetCount;
+		bool	DepthStencilEnabled;
+
+		
+		static_vector<ResourceHandle, 16>		RenderTargets;
+		static_vector<D3D12_VIEWPORT, 16>		Viewports;
+		static_vector<DescriptorHeap*>			DesciptorHeaps;
+		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
+
+		struct StreamOutResource {
+			SOResourceHandle	handle;
+		};
+
+		struct RTV_View {
+			ResourceHandle  resource;
+            DescHeapPOS     descriptor;
+		};
+
+		static_vector<StreamOutResource, 128>       TrackedSOBuffers;
+		static_vector<Barrier, 128>				    PendingBarriers; // Barriers potentially needed
+		static_vector<Barrier, 128>				    queuedBarriers; // Barriers required
+		static_vector<RTV_View, 128>                renderTargetViews;
+		static_vector<RTV_View, 128>                depthStencilViews;
+		static_vector<ReadBackResourceHandle, 128>  queuedReadBacks;
+
+		uint64_t                                    counter = 0;
+		iAllocator*								    Memory;
+
+#if USING(AFTERMATH)
+public:
+		GFSDK_Aftermath_ContextHandle   AFTERMATH_context;
+private:
+#endif
 	};
 
 

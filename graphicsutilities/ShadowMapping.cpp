@@ -533,16 +533,16 @@ namespace FlexKit
                                     ctx.SetRenderTargets2({}, 0, DSV_desc);
                                     ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 
-                                    for (auto& brush : animatedBrushes)
+                                    for (const auto& brush : animatedBrushes)
                                     {
                                         Apply(*brush,
-                                            [&](SceneNodeView<>&    nodeView,
-                                                BrushView&          brushView,
-                                                SkeletonView&       poseView)
+                                            [&](const SceneNodeView<>&    nodeView,
+                                                const BrushView&          brushView,
+                                                const SkeletonView&       poseView)
                                             {
-                                                auto& draw      = brushView.GetBrush();
-                                                auto& pose      = poseView.GetPoseState();
-                                                auto& skeleton  = *pose.Sk;
+                                                const auto& draw      = brushView.GetBrush();
+                                                const auto& pose      = poseView.GetPoseState();
+                                                const auto& skeleton  = *pose.Sk;
 
                                                 PoseConstants poseTemp;
 
