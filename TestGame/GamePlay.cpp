@@ -342,7 +342,6 @@ using CellId = uint8_t;
 
 enum CellIds : CellId
 {
-    Empty,
     Floor,
     Ramp,
     Wall,
@@ -351,7 +350,7 @@ enum CellIds : CellId
     Error
 };
 
-constexpr float CellWeights[] = { 1, 1, 1, 1 };
+constexpr float CellWeights[] = { 1, 1, 1 };
 
 template<size_t ... ints>
 consteval auto _GetCellIdsCollectionHelper(std::integer_sequence<size_t, ints...> int_seq)
@@ -394,6 +393,7 @@ int64_t GetTileID(const ChunkCoord cord) noexcept
 struct MapChunk
 {
     ChunkCoord  coord;
+    bool        active = true;
     CellId      cells[8*8*8]; //8x8
 
     CellId& operator[] (const int3 localCoord) noexcept
@@ -437,12 +437,14 @@ struct MapChunk
         }
     };
 
-    auto begin()
+    iterator begin()
     {
-        return iterator{ cells, 0, coord };
+        if (active)
+            return iterator{ cells, 0, coord };
+        else return end();
     }
 
-    auto end()
+    iterator end()
     {
         return iterator{ cells, 8 * 8 * 8, coord };
     }
@@ -472,6 +474,8 @@ struct ChunkedChunkMap
 
 					for (auto&& [cell, cellIdx] : chunks[chunkIdx])
 						cell = CellIds::Super;
+
+                    chunks[chunkIdx].active = false;
                 }
 
         std::ranges::sort(chunks);
@@ -567,6 +571,13 @@ struct SparseMap
         int                 idx = 0;
     };
 
+    auto GetChunk(uint3 xyz)
+    {
+        auto chunkID = (xyz & (-1 + 15)) / 8;
+
+        return chunks[chunkID];
+    }
+
     static_vector<CellId> GetSuperSet(this auto& map, const ConstraintTable& constraints, const CellCoord xyz)
     {
         static_vector<CellId> out;
@@ -586,10 +597,14 @@ struct SparseMap
 
     void SetCell(const CellCoord XYZ, const CellId ID)
     {
-        auto chunkID = (ID & (-1 + 15)) / 8;
+        auto chunkID = (XYZ & (-1 + 15)) / 8;
 
         if (auto res = chunks[chunkID]; res)
-            res.value().get()[XYZ % 8] = ID;
+        {
+            auto& chunk = res.value().get();
+            chunk[XYZ % 8] = ID;
+            chunk.active = true;
+        }
     }
 
     float CalculateCellEntropy(this const auto& map, const CellCoord coord, const static_vector<CellId>& superSet)
@@ -636,32 +651,42 @@ struct SparseMap
 
             for (auto& chunk : map.chunks)
             {
-                for (auto [cell, cellCoord] : chunk)
+                if (chunk.active)
                 {
-                    if (cell == CellIds::Super)
-                        for (auto [neighborCell, _] : NeighborIterator{ map, cellCoord })
-                        {
-                            if (neighborCell != CellIds::Super && neighborCell != CellIds::Error)
+                    for (auto [cell, cellCoord] : chunk)
+                    {
+                        if (cell == CellIds::Super)
+                            for (auto [neighborCell, _] : NeighborIterator{ map, cellCoord })
                             {
-                                continueGeneration |= true;
+                                if (neighborCell != CellIds::Super && neighborCell != CellIds::Error)
+                                {
+                                    continueGeneration |= true;
 
-                                entropySet.emplace_back(
-                                    map.CalculateCellEntropy(cellCoord, map.GetSuperSet(constraints, cellCoord)),
-                                    cellCoord);
+                                    entropySet.emplace_back(
+                                        map.CalculateCellEntropy(cellCoord, map.GetSuperSet(constraints, cellCoord)),
+                                        cellCoord);
 
-                                break;
+                                    break;
+                                }
                             }
-                        }
+                    }
                 }
             }
 
-            std::ranges::partial_sort(entropySet, entropySet.begin() + 1);
 
             if (entropySet.size())
             {
+                std::ranges::partial_sort(entropySet, entropySet.begin() + 1);
+
                 auto entity = entropySet.front();
                 const auto superSet = map.GetSuperSet(constraints, entity.cellIdx);
-                map.SetCell(entity.cellIdx, superSet[rand() % superSet.size()]);
+                if (superSet.size())
+                {
+                    auto tile = superSet[rand() % superSet.size()];
+                    map.SetCell(entity.cellIdx, tile);
+                }
+                else
+                    DebugBreak();
             }
 
             entropySet.clear();
@@ -677,15 +702,16 @@ class WallConstraint : public iConstraint
     virtual bool operator () (const SparseMap& map, CellCoord xyz, CellId ID) const noexcept override
     {
         // wall tiles need at least one neighboring floor tile
-        if (ID == CellIds::Wall)
+        if (ID != CellIds::Wall)
+            return false;
+
+        for (auto&& [cell, cellId] : SparseMap::NeighborIterator{ map, xyz })
         {
-            for (auto&& [cell, cellId] : SparseMap::NeighborIterator{ map, xyz })
-            {
-                if (cell == CellIds::Floor)
-                    return true;
-            }
+            if (cell == CellIds::Floor)
+                return true;
         }
-        else return false;
+
+        return false;
     }
 };
 
@@ -693,16 +719,19 @@ class FloorConstraint : public iConstraint
 {
     virtual bool operator () (const SparseMap& map, CellCoord xyz, CellId ID) const noexcept override
     {
-        // Floors tiles need at least one neighboring floor tile
-        if (ID == CellIds::Floor)
+        // Floors tiles need at least one neighboring floor tile or ramp tile
+        if (ID != CellIds::Floor)
+            return false;
+
+        for (auto&& [cell, cellId] : SparseMap::NeighborIterator{ map, xyz })
         {
-            for (auto&& [cell, cellId] : SparseMap::NeighborIterator{ map, xyz })
-            {
-                if (cell == CellIds::Floor)
+            switch(cell)
+                case CellIds::Floor:
+                case CellIds::Ramp:
                     return true;
-            }
         }
-        else return false;
+
+        return false;
     }
 };
 
@@ -710,7 +739,7 @@ class RampConstraint : public iConstraint
 {
     virtual bool operator () (const SparseMap& map, CellCoord coord, CellId id) const noexcept override
     {
-        if (id != CellIds::Wall)
+        if (id != CellIds::Ramp)
             return false;
 
         bool wallNeighbor = false;
@@ -742,6 +771,13 @@ SparseMap GenerateWorld(GameWorld& world, iAllocator& temp)
 
     map.Generate(constraints, int3{ 256, 256, 1 }, temp);
 
+    auto chunk = map.GetChunk({0, 0, 0});
+    if (chunk)
+    {
+        auto& c = chunk.value().get();
+        c.cells;
+        int x = 0;
+    }
     // Step 2. Translate map cells -> game world
     // ...
 
