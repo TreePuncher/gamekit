@@ -514,6 +514,7 @@ namespace FlexKit
 		}
 
 		void				AddGameObject	(GameObject& go, NodeHandle node);
+		void				AddGameObject	(GameObject& go);
 		void				RemoveEntity	(GameObject& go);
 
 		void				ClearScene			();

@@ -61,7 +61,8 @@ ClientWorldStateMangager::ClientWorldStateMangager(ConnectionHandle IN_server, M
 
     SetControllerPosition(localPlayer, { 30, 10, -30 });
 
-    CreateMultiplayerScene(world, IN_base.framework.core.GetTempMemory());
+    const auto worldAssets = LoadBasicTiles();
+    CreateMultiplayerScene(world, worldAssets, IN_base.framework.core.GetTempMemory());
 }
 
 

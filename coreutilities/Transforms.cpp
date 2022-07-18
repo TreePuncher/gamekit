@@ -413,7 +413,7 @@ namespace FlexKit
 		FlexKit::GetArray_ptr(Local.S)[1] = XYZ[1];
 		FlexKit::GetArray_ptr(Local.S)[2] = XYZ[2];
 
-		SetLocal(Node, &Local);
+		SetLocal(Node, &Local, SceneNodes::SCALE);
 	}
 
 
@@ -437,10 +437,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void SetLocal(NodeHandle node, LT_Entry* __restrict In)
+	void SetLocal(NodeHandle node, LT_Entry* __restrict In, uint32_t extraFlags)
 	{
 		SceneNodeTable.LT[_SNHandleToIndex(node)] = *In;
-		SetFlag(node, SceneNodes::StateFlags::DIRTY);
+		SetFlag(node, SceneNodes::StateFlags::DIRTY | extraFlags);
 	}
 
 
@@ -669,7 +669,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void SetFlag(NodeHandle node, SceneNodes::StateFlags f)
+	void SetFlag(NodeHandle node, uint32_t f)
 	{
 		auto index = _SNHandleToIndex(node);
 		SceneNodeTable.Flags[index] = SceneNodeTable.Flags[index] | f;

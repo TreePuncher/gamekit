@@ -439,7 +439,7 @@ namespace FlexKit
 
                                 CBPushBuffer animatedConstantBuffer = data.reserveCB((AlignedSize<Brush::VConstantsLayout>() + AlignedSize<PoseConstants>()) * animatedBrushes.size());
 
-                                const DepthStencilView_Options DSV_desc = { 0, 0, depthTarget };
+                                const DepthStencilView_Options DSV_desc{ 0, 0, depthTarget };
 
                                 ctx.DiscardResource(depthTarget);
                                 ctx.ClearDepthBuffer(depthTarget, 1.0f);
@@ -478,7 +478,6 @@ namespace FlexKit
 
                                         BS = triMesh->BS;
                                     }
-
 
                                     const float4x4 WT   = GetWT(PV.brush->Node);
                                     const float3 POS    = GetPositionW(PV.brush->Node);
