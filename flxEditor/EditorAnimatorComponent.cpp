@@ -68,12 +68,12 @@ public:
 
 struct SkeletonFactory : public IComponentFactory
 {
-    FlexKit::ComponentViewBase& Construct(ViewportGameObject& viewportObject, ViewportScene& scene)
+    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ViewportScene* viewportScene)
     {
-        if (!viewportObject.gameObject.hasView(FlexKit::SkeletonComponentID))
-            return viewportObject.gameObject.AddView<FlexKit::SkeletonView>(FlexKit::GetBrush(viewportObject.gameObject)->MeshHandle, -1u);
+        if (!gameObject.hasView(FlexKit::SkeletonComponentID))
+            return gameObject.AddView<FlexKit::SkeletonView>(FlexKit::GetBrush(gameObject)->MeshHandle, -1u);
         else
-            return *viewportObject.gameObject.GetView(FlexKit::SkeletonComponentID);
+            return *gameObject.GetView(FlexKit::SkeletonComponentID);
     }
 
     inline static const std::string name = "Skeleton";

@@ -297,19 +297,22 @@ public:
 
 struct ColliderComponentFactory : public IComponentFactory
 {
-    FlexKit::ComponentViewBase& Construct(ViewportGameObject& viewportObject, ViewportScene& scene)
+    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ViewportScene* viewportScene)
     {
-        auto& physx = FlexKit::PhysXComponent::GetComponent();
-        auto layer  = scene.GetLayer();
+        if (viewportScene)
+        {
+            auto& physx = FlexKit::PhysXComponent::GetComponent();
+            auto layer  = viewportScene->GetLayer();
 
-        const static auto defaultCube   = physx.CreateCubeShape(float3{ 1, 1, 1 });
-        auto editorData                 = new StaticColliderEditorData{};
+            const static auto defaultCube = physx.CreateCubeShape(float3{ 1, 1, 1 });
+            auto editorData = new StaticColliderEditorData{};
 
-        auto& staticBody = viewportObject.gameObject.AddView<FlexKit::StaticBodyView>(layer);
+            auto& staticBody = gameObject.AddView<FlexKit::StaticBodyView>(layer);
 
-        staticBody.SetUserData(editorData);
+            staticBody.SetUserData(editorData);
 
-        return staticBody;
+            return staticBody;
+        }
     }
 
     inline static const std::string name = "Static Collider";
@@ -344,17 +347,20 @@ struct ColliderComponentFactory : public IComponentFactory
 
 struct RigidBodyComponentFactory : public IComponentFactory
 {
-    FlexKit::ComponentViewBase& Construct(ViewportGameObject& viewportObject, ViewportScene& scene)
+    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ViewportScene* viewportScene)
     {
-        auto& physx = FlexKit::PhysXComponent::GetComponent();
-        auto layer  = scene.GetLayer();
+        if(viewportScene)
+        {
+            auto& physx = FlexKit::PhysXComponent::GetComponent();
+            auto layer  = viewportScene->GetLayer();
 
-        const static auto defaultCube = physx.CreateCubeShape(float3{ 1, 1, 1 });
+            const static auto defaultCube = physx.CreateCubeShape(float3{ 1, 1, 1 });
 
-        auto& rigidBodyView = viewportObject.gameObject.AddView<FlexKit::RigidBodyView>(layer);
-        rigidBodyView.AddShape(defaultCube);
+            auto& rigidBodyView = gameObject.AddView<FlexKit::RigidBodyView>(layer);
+            rigidBodyView.AddShape(defaultCube);
 
-        return rigidBodyView;
+            return rigidBodyView;
+        }
     }
 
     inline static const std::string name = "Rigid Body Collider";

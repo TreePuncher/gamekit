@@ -55,6 +55,8 @@ public:
     void PushHorizontalLayout   (std::string groupName = {}, bool goup = false);
     void Pop();
 
+    void Refresh();
+
     EditorInspectorView*        inspector;
     std::vector<QBoxLayout*>    layoutStack;
     std::vector<QObject*>&      propertyItems;
@@ -81,7 +83,7 @@ class IComponentFactory
 public:
     virtual ~IComponentFactory() {}
 
-    virtual FlexKit::ComponentViewBase& Construct(ViewportGameObject&, ViewportScene& scene) = 0;
+    virtual FlexKit::ComponentViewBase& Construct(FlexKit::GameObject&, ViewportScene* scene) = 0;
     virtual const std::string&          ComponentName() const noexcept = 0;
     virtual FlexKit::ComponentID        ComponentID() const noexcept = 0;
 };
@@ -114,13 +116,15 @@ public:
     static FlexKit::ComponentViewBase& ConstructComponent(uint32_t ComponentID, ViewportGameObject& gameObject, ViewportScene& scene);
 
      SelectionContext* GetSelectionContext() { return &selectionContext; }
+
+     void ClearPanel();
+
 private:
 
     void UpdatePropertiesViewportObjectInspector();
     void UpdateAnimatorObjectInspector();
     void UpdateUI(FlexKit::GameObject&);
 
-    void ClearPanel();
     void timerEvent(QTimerEvent*) override;
     void OnUpdate();
 

@@ -156,13 +156,13 @@
     <ClCompile Include="Animation.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="EditorAnimationEditor.cpp">
+    <ClCompile Include="EditorPrefabEditor.cpp">
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
     </ClCompile>
-    <ClCompile Include="EditorAnimationInputTab.cpp" />
+    <ClCompile Include="EditorPrefabInputTab.cpp" />
     <ClCompile Include="EditorAnimatorComponent.cpp" />
     <ClCompile Include="EditorColliderComponent.cpp" />
     <ClCompile Include="CSGComponent.cpp" />
@@ -244,11 +244,11 @@
     <ClCompile Include="DXRenderWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <QtMoc Include="EditorAnimationEditor.h" />
+    <QtMoc Include="EditorPrefabEditor.h" />
     <ClInclude Include="Animation.h" />
     <ClInclude Include="AnimationEditorObject.h" />
     <ClInclude Include="Common.h" />
-    <QtMoc Include="EditorAnimationInputTab.h" />
+    <QtMoc Include="EditorPrefabInputTab.h" />
     <ClInclude Include="EditorAnimatorComponent.h" />
     <ClInclude Include="EditorColliderComponent.h" />
     <ClInclude Include="CSGComponent.h" />

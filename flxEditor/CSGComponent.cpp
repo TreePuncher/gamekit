@@ -2120,9 +2120,9 @@ void CSGComponentEventHandler::OnCreateView(FlexKit::GameObject& gameObject, voi
 
 struct CSGComponentFactory : public IComponentFactory
 {
-    FlexKit::ComponentViewBase& Construct(ViewportGameObject& viewportObject, ViewportScene& scene)
+    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ViewportScene* viewportScene)
     {
-        return viewportObject.gameObject.AddView<CSGView>();
+        return gameObject.AddView<CSGView>();
     }
 
     inline static const std::string name = "CSG";
