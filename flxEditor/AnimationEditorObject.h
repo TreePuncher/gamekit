@@ -13,7 +13,6 @@ struct AnimationEditorObject
     uint64_t                    resourceID;
 
     AnimatorComponent*          animator;
-
     ScriptResource_ptr          resource;
 
     void        Reload(EditorScriptEngine& engine);

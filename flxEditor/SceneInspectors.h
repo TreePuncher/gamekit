@@ -34,9 +34,9 @@ class StringIDFactory : public IComponentFactory
 public:
     ~StringIDFactory() {}
 
-    FlexKit::ComponentViewBase& Construct(ViewportGameObject& viewportObject, ViewportScene& scene)
+    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ViewportScene* scene)
     {
-        return viewportObject.gameObject.AddView<FlexKit::StringIDView>(nullptr, 0);
+        return gameObject.AddView<FlexKit::StringIDView>(nullptr, 0);
     }
 
     const std::string&      ComponentName() const noexcept { return name; }
@@ -82,12 +82,12 @@ class TransformComponentFactory : public IComponentFactory
 public:
     ~TransformComponentFactory() {}
 
-    static FlexKit::ComponentViewBase& ConstructNode(ViewportGameObject& gameObject, ViewportScene& scene)
+    static FlexKit::ComponentViewBase& ConstructNode(FlexKit::GameObject& gameObject, ViewportScene* scene)
     {
-        return (FlexKit::ComponentViewBase&)gameObject.gameObject.AddView<FlexKit::SceneNodeView<>>(FlexKit::GetZeroedNode());
+        return (FlexKit::ComponentViewBase&)gameObject.AddView<FlexKit::SceneNodeView<>>(FlexKit::GetZeroedNode());
     }
 
-    FlexKit::ComponentViewBase& Construct(ViewportGameObject& gameObject, ViewportScene& scene)
+    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ViewportScene* scene)
     {
         return ConstructNode(gameObject, scene);
     }
@@ -147,22 +147,22 @@ public:
 
 struct PointLightFactory : public IComponentFactory
 {
-    static FlexKit::ComponentViewBase& ConstructPointLight(ViewportGameObject& viewportGameObject, ViewportScene& viewportScene) noexcept
+    static FlexKit::ComponentViewBase& ConstructPointLight(FlexKit::GameObject& gameObject, ViewportScene* viewportScene) noexcept
     {
-        viewportGameObject.gameObject.AddView<FlexKit::PointLightView>();
+        gameObject.AddView<FlexKit::PointLightView>();
 
-        if (!viewportGameObject.gameObject.hasView(FlexKit::TransformComponentID))
-            viewportGameObject.gameObject.AddView<FlexKit::SceneNodeView<>>();
+        if (!gameObject.hasView(FlexKit::TransformComponentID))
+            gameObject.AddView<FlexKit::SceneNodeView<>>();
 
-        if (!viewportGameObject.gameObject.hasView(FlexKit::SceneVisibilityComponentID))
-            viewportScene.scene.AddGameObject(viewportGameObject.gameObject, FlexKit::GetSceneNode(viewportGameObject.gameObject));
+        if (viewportScene && !gameObject.hasView(FlexKit::SceneVisibilityComponentID))
+            viewportScene->scene.AddGameObject(gameObject);
 
-        return *viewportGameObject.gameObject.GetView(FlexKit::PointLightComponentID);
+        return *gameObject.GetView(FlexKit::PointLightComponentID);
     }
 
-    FlexKit::ComponentViewBase& Construct(ViewportGameObject& viewportGameObject, ViewportScene& viewportScene)
+    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ViewportScene* viewportScene)
     {
-        return ConstructPointLight(viewportGameObject, viewportScene);
+        return ConstructPointLight(gameObject, viewportScene);
     }
 
     inline static const std::string name = "PointLight";
@@ -203,14 +203,14 @@ public:
 
 struct CubicShadowMapFactory : public IComponentFactory
 {
-    FlexKit::ComponentViewBase& Construct(ViewportGameObject& viewportObject, ViewportScene& scene)
+    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ViewportScene* viewportScene)
     {
-        if(viewportObject.gameObject.GetView(FlexKit::PointLightComponent::GetComponentID()))
-            viewportObject.gameObject.AddView<FlexKit::PointLightShadowMapView>(
-                FlexKit::_PointLightShadowCaster{ FlexKit::GetPointLight(viewportObject.gameObject),
-                FlexKit::GetSceneNode(viewportObject.gameObject) } );
+        if(gameObject.GetView(FlexKit::PointLightComponent::GetComponentID()))
+            gameObject.AddView<FlexKit::PointLightShadowMapView>(
+                FlexKit::_PointLightShadowCaster{ FlexKit::GetPointLight(gameObject),
+                FlexKit::GetSceneNode(gameObject) } );
 
-        return *viewportObject.gameObject.GetView(FlexKit::PointLightComponent::GetComponentID());
+        return *gameObject.GetView(FlexKit::PointLightComponent::GetComponentID());
     }
 
     inline static const std::string name = "Cubic Shadow Map";
@@ -250,12 +250,12 @@ public:
 
 struct SceneBrushFactory : public IComponentFactory
 {
-    FlexKit::ComponentViewBase& Construct(ViewportGameObject& viewportObject, ViewportScene& scene)
+    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ViewportScene* viewportScene)
     {
-        if (!viewportObject.gameObject.hasView(FlexKit::TransformComponentID))
-            viewportObject.gameObject.AddView<FlexKit::SceneNodeView<>>();
+        if (!gameObject.hasView(FlexKit::TransformComponentID))
+            gameObject.AddView<FlexKit::SceneNodeView<>>();
 
-        return viewportObject.gameObject.AddView<FlexKit::BrushView>(FlexKit::InvalidHandle_t);
+        return gameObject.AddView<FlexKit::BrushView>(FlexKit::InvalidHandle_t);
     }
 
     inline static const std::string name = "Brush";
@@ -290,10 +290,10 @@ public:
 
 struct MaterialFactory : public IComponentFactory
 {
-    FlexKit::ComponentViewBase& Construct(ViewportGameObject& viewportObject, ViewportScene& scene)
+    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ViewportScene* viewportScene)
     {
-        auto& materialComponentView = viewportObject.gameObject.AddView<FlexKit::MaterialView>(FlexKit::MaterialComponent::GetComponent().CreateMaterial());
-        FlexKit::SetMaterialHandle(viewportObject.gameObject, FlexKit::GetMaterialHandle(viewportObject.gameObject));
+        auto& materialComponentView = gameObject.AddView<FlexKit::MaterialView>(FlexKit::MaterialComponent::GetComponent().CreateMaterial());
+        FlexKit::SetMaterialHandle(gameObject, FlexKit::GetMaterialHandle(gameObject));
 
         return materialComponentView;
     }

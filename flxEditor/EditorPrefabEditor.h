@@ -8,14 +8,14 @@
 
 
 class AnimatorSelectionContext;
-class EditorAnimationPreview;
+class EditorPrefabPreview;
 class EditorRenderer;
 class EditorProject;
 class EditorCodeEditor;
 class QMenuBar;
 class EditorScriptEngine;
 class SelectionContext;
-class EditorAnimationInputTab;
+class EditorPrefabInputTab;
 class QTimer;
 
 
@@ -27,13 +27,13 @@ namespace FlexKit
     class Animation;
 }
 
-class EditorAnimationEditor : public QWidget
+class EditorPrefabEditor : public QWidget
 {
 	Q_OBJECT
 
 public:
-	EditorAnimationEditor(SelectionContext& IN_selection, EditorScriptEngine& engine, EditorRenderer& IN_renderer, EditorProject& IN_project, QWidget *parent = Q_NULLPTR);
-	~EditorAnimationEditor();
+    EditorPrefabEditor(SelectionContext& IN_selection, EditorScriptEngine& engine, EditorRenderer& IN_renderer, EditorProject& IN_project, QWidget *parent = Q_NULLPTR);
+	~EditorPrefabEditor();
 
 private:
 
@@ -44,8 +44,8 @@ private:
     SelectionContext&                       globalSelection;
     QMenuBar*                               menubar;
     AnimatorSelectionContext*               localSelection;
-    EditorAnimationPreview*                 previewWindow;
-    EditorAnimationInputTab*                inputVariables;
+    EditorPrefabPreview*                    previewWindow;
+    EditorPrefabInputTab*                   inputVariables;
     EditorProject&                          project;
     EditorCodeEditor*                       codeEditor;
     EditorRenderer&                         renderer;

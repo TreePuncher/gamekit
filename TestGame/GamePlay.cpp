@@ -597,11 +597,19 @@ struct SparseMap
     };
 
 
-    static CircularBuffer<uint8_t, 8> GetNeighborRing(const SparseMap& map, CellCoord coord)
+    struct Neighbor
     {
-        CircularBuffer<uint8_t, 8> buffer;
-        for (auto&& [c, _] : NeighborIterator{map, coord})
-            buffer.push_back(c);
+        uint8_t c;
+        int3    xyz;
+
+        operator uint8_t& () { return c; }
+    };
+
+    static CircularBuffer<Neighbor, 8> GetNeighborRing(const SparseMap& map, CellCoord coord)
+    {
+        CircularBuffer<Neighbor, 8> buffer;
+        for (auto&& [c, xyz] : NeighborIterator{map, coord})
+            buffer.push_back({ c, xyz });
 
         return buffer;
     }
@@ -888,7 +896,7 @@ struct CornerConstraint : iConstraint
         auto neighbors = SparseMap::GetNeighborRing(map, coord);
         size_t neighborCount = 0;
 
-        for (auto& c : neighbors)
+        for (auto&& [c, _] : neighbors)
         {
             if (c == GetIdBit(CellStates::Ramp))
                 return false;
@@ -980,7 +988,7 @@ struct RampConstraint : public iConstraint
         // not next to another ramp
         auto neighbors = SparseMap::GetNeighborRing(map, coord);
 
-        int wallCount = 3;
+        int wallCount = 0;
         for (auto&& cell : neighbors)
         {
             if(cell == GetIdBit(CellStates::Ramp))
@@ -1014,8 +1022,19 @@ struct RampConstraint : public iConstraint
     {
         map.SetCell(coord, GetIdBit(CellStates::Ramp));
 
-        for (auto&& [cell, cellId] : SparseMap::NeighborIterator{ map, coord })
+        auto neighbors = SparseMap::GetNeighborRing(map, coord);
+        for (auto&& [cell, cellId] : neighbors)
             map.RemoveBits(cellId, GetIdBit(CellStates::Ramp));
+
+        for (int i = 0; i < 8; i+= 2)
+        {
+            auto&& [cell, cellId] = neighbors[i];
+            if (cell & GetIdBit(CellStates::Wall))
+            {
+                map.SetCell(neighbors[i + 4].xyz, GetIdBit(CellStates::Floor));
+                break;
+            }
+        }
 
         return true;
     }
@@ -1050,7 +1069,7 @@ GameObject& AddWorldObject(GameWorld& world, TriMeshHandle mesh)
 }
 
 
-void TranslateChunk(MapChunk& chunk, GameWorld& world, const WorldAssets& assets, iAllocator& temp)
+void TranslateChunk(MapChunk& chunk, SparseMap& map, GameWorld& world, const WorldAssets& assets, iAllocator& temp)
 {
     for (auto [c, cellXYZ] : chunk)
     {
@@ -1072,13 +1091,25 @@ void TranslateChunk(MapChunk& chunk, GameWorld& world, const WorldAssets& assets
             }   break;
             case GetIdBit(CellStates::Ramp):
             {
-                auto& rampObject = AddWorldObject(world, assets.ramp);
+                auto& rampObject    = AddWorldObject(world, assets.ramp);
+                auto neighbors      = SparseMap::GetNeighborRing(map, cellXYZ);
+
+                for (int i = 0; i < 8; i += 2)
+                {
+                    auto&& [cell, cellId] = neighbors[i];
+                    if (cell == GetIdBit(CellStates::Wall) && neighbors[i + 4] == GetIdBit(CellStates::Floor))
+                    {
+                        Yaw(rampObject, pi/2 * -i);
+                        break;
+                    }
+                }
 
                 SetWorldPosition(rampObject,
                     float3{
                         cellXYZ[0] * 10.0f,
                         cellXYZ[2] * 10.0f,
                         cellXYZ[1] * 10.0f });
+
             }   break;
             case GetIdBit(CellStates::Wall):
             {
@@ -1092,7 +1123,7 @@ void TranslateChunk(MapChunk& chunk, GameWorld& world, const WorldAssets& assets
             }   break;
             case GetIdBit(CellStates::Corner):
             {
-                auto& cornerObject = AddWorldObject(world, assets.wallXSegment);
+                auto& cornerObject  = AddWorldObject(world, assets.wallXSegment);
 
                 SetWorldPosition(cornerObject,
                     float3{
@@ -1155,7 +1186,7 @@ SparseMap GenerateWorld(GameWorld& world, const WorldAssets& assets, iAllocator&
 
     // Step 2. Translate map cells -> game world
     if (chunk)
-        TranslateChunk(*chunk, world, assets, temp);
+        TranslateChunk(*chunk, map, world, assets, temp);
 
     return map;
 }

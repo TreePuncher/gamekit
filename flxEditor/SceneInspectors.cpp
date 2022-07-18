@@ -502,15 +502,13 @@ void SceneBrushInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::
 
     panelCtx.PushVerticalLayout("Brush", true);
 
-
-
     panelCtx.AddButton("Select Mesh",
-        [&]()
+        [&, inspector = panelCtx.inspector]()
         {
             auto resourcePicker = new EditorResourcePickerDialog(MeshResourceTypeID, project);
-
+            
             resourcePicker->OnSelection(
-                [&](ProjectResource_ptr resource_ptr)
+                [&, inspector = inspector](ProjectResource_ptr resource_ptr)
                 {
                     if (resource_ptr->resource->GetResourceTypeID() == MeshResourceTypeID)
                     {
@@ -525,7 +523,10 @@ void SceneBrushInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::
                             brush.SetMaterial(newMaterial);
                         }
 
-                        viewport.GetScene()->scene.AddGameObject(gameObject, FlexKit::GetSceneNode(gameObject));
+                        if(viewport.isVisible())
+                            viewport.GetScene()->scene.AddGameObject(gameObject, FlexKit::GetSceneNode(gameObject));
+
+                        inspector->ClearPanel();
                     }
                 });
 

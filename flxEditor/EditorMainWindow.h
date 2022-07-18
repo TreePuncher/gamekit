@@ -30,7 +30,7 @@
 class TextureResource;
 class EditorScriptEngine;
 class EditorViewport;
-class EditorAnimationEditor;
+class EditorPrefabEditor;
 
 
 /************************************************************************************************/
@@ -74,7 +74,7 @@ public:
 
     EditorViewport&         Get3DView()         { return *viewport; }
     SelectionContext&       GetSelectionCtx()   { return selectionContext; };
-    EditorAnimationEditor*  GetAnimationEditor(){ return animationEditor; };
+    EditorPrefabEditor*     GetPrefabEditor()   { return prefabEditor; };
 
 
     void RegisterGadget(iEditorGadget* gadget);
@@ -107,7 +107,7 @@ private:
     EditorProject&          project;
     EditorRenderer&         renderer;
 
-    EditorAnimationEditor*  animationEditor;
+    EditorPrefabEditor*     prefabEditor;
 
     QMenu*              fileMenu    = nullptr;
     QMenu*              importMenu  = nullptr;

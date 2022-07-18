@@ -85,10 +85,10 @@ public:
         if (newParent && newParent != parent())
         {
             if (!viewportObject->gameObject.hasView(FlexKit::TransformComponentID))
-                TransformComponentFactory::ConstructNode(*viewportObject, scene);
+                TransformComponentFactory::ConstructNode(*viewportObject, &scene);
 
             if (!newParent->viewportObject->gameObject.hasView(FlexKit::TransformComponentID))
-                TransformComponentFactory::ConstructNode(*newParent->viewportObject, scene);
+                TransformComponentFactory::ConstructNode(*newParent->viewportObject, &scene);
 
             FlexKit::SetParentNode(
                 FlexKit::GetSceneNode(newParent->viewportObject->gameObject),
@@ -378,7 +378,7 @@ HierarchyItem* SceneOutliner::CreatePointLight() noexcept
 
     auto obj = CreateObject();
 
-    PointLightFactory::ConstructPointLight(*obj->viewportObject, *scene);
+    PointLightFactory::ConstructPointLight(*obj->viewportObject, scene.get());
 
     return obj;
 }

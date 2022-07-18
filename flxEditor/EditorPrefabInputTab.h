@@ -14,13 +14,13 @@ using WriteEntryDataFN      = std::function<void (size_t idx, const std::string&
 
 class QTimer;
 
-class EditorAnimationInputTab : public QWidget
+class EditorPrefabInputTab : public QWidget
 {
 	Q_OBJECT
 
 public:
-	EditorAnimationInputTab(QWidget *parent = Q_NULLPTR);
-	~EditorAnimationInputTab();
+    EditorPrefabInputTab(QWidget *parent = Q_NULLPTR);
+	~EditorPrefabInputTab();
 
     void Update(const uint32_t tableCount, ReadEntryDataFN);
     void SetOnCreateEvent(OnCreationEventFN&& in);

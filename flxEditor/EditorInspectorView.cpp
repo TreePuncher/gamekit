@@ -176,6 +176,15 @@ void ComponentViewPanelContext::Pop()
 /************************************************************************************************/
 
 
+void ComponentViewPanelContext::Refresh()
+{
+    inspector->ClearPanel();
+}
+
+
+/************************************************************************************************/
+
+
 QListWidget* ComponentViewPanelContext::AddList(ListSizeUpdateCallback size, ListContentUpdateCallback content, ListEventCallback evt)
 {
     auto list = new QListWidget();
@@ -250,7 +259,14 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
                 case ViewportObjectList_ID:
                 {
                     auto selection = selectionContext.GetSelection<ViewportSelection>();
-                    factory->Construct(*selection.viewportObjects.front(), *selection.scene);
+                    if(selection.viewportObjects.size())
+                        factory->Construct(*selection.viewportObjects.front(), selection.scene);
+                }   break;
+                case AnimatorObject_ID:
+                {
+                    auto selection = selectionContext.GetSelection<AnimationEditorObject*>();
+                    if(selection)
+                        factory->Construct(selection->gameObject, nullptr);
                 }   break;
                 default:
                     break;
@@ -292,7 +308,7 @@ FlexKit::ComponentViewBase& EditorInspectorView::ConstructComponent(uint32_t com
     for (auto& component : availableComponents)
     {
         if (component->ComponentID() == componentID)
-            return component->Construct(gameObject, scene);
+            return component->Construct(gameObject, &scene);
      }
 
     throw std::runtime_error("Unknown Component");
@@ -355,7 +371,7 @@ void EditorInspectorView::UpdateAnimatorObjectInspector()
     if (objectID        != selectedObject ||
         propertyCount   != gameObjectPropertyCount)
     {
-        menu->setEnabled(false);
+        //menu->setEnabled(false);
 
         selectedObject  = objectID;
         propertyCount   = gameObjectPropertyCount;

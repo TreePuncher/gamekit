@@ -1,11 +1,11 @@
 #include "pch.h"
-#include "EditorAnimationInputTab.h"
+#include "EditorPrefabInputTab.h"
 
 
 /************************************************************************************************/
 
 
-EditorAnimationInputTab::EditorAnimationInputTab(QWidget *parent)
+EditorPrefabInputTab::EditorPrefabInputTab(QWidget *parent)
 	: QWidget(parent)
 {
 	ui.setupUi(this);
@@ -47,11 +47,11 @@ EditorAnimationInputTab::EditorAnimationInputTab(QWidget *parent)
 /************************************************************************************************/
 
 
-EditorAnimationInputTab::~EditorAnimationInputTab()
+EditorPrefabInputTab::~EditorPrefabInputTab()
 {
 }
 
-void EditorAnimationInputTab::Update(const uint32_t rowCount, ReadEntryDataFN fetchData)
+void EditorPrefabInputTab::Update(const uint32_t rowCount, ReadEntryDataFN fetchData)
 {
     ui.tableWidget->setRowCount(rowCount);
     ui.tableWidget->setColumnCount(3);
@@ -84,7 +84,7 @@ void EditorAnimationInputTab::Update(const uint32_t rowCount, ReadEntryDataFN fe
 /************************************************************************************************/
 
 
-void EditorAnimationInputTab::SetOnCreateEvent(OnCreationEventFN&& IN_callback)
+void EditorPrefabInputTab::SetOnCreateEvent(OnCreationEventFN&& IN_callback)
 {
     callback = IN_callback;
 }
@@ -93,7 +93,7 @@ void EditorAnimationInputTab::SetOnCreateEvent(OnCreationEventFN&& IN_callback)
 /************************************************************************************************/
 
 
-void EditorAnimationInputTab::SetOnChangeEvent(WriteEntryDataFN&& in)
+void EditorPrefabInputTab::SetOnChangeEvent(WriteEntryDataFN&& in)
 {
     writeData = in;
 }

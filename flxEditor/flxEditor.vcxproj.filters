@@ -60,10 +60,10 @@
     <QtMoc Include="EditorResourcePickerDialog.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <QtMoc Include="EditorAnimationEditor.h">
+    <QtMoc Include="EditorPrefabEditor.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <QtMoc Include="EditorAnimationInputTab.h">
+    <QtMoc Include="EditorPrefabInputTab.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>
@@ -152,7 +152,7 @@
     <ClCompile Include="EditorResourcePickerDialog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="EditorAnimationEditor.cpp">
+    <ClCompile Include="EditorPrefabEditor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="EditorAnimatorComponent.cpp">
@@ -191,7 +191,7 @@
     <ClCompile Include="TTFontLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="EditorAnimationInputTab.cpp">
+    <ClCompile Include="EditorPrefabInputTab.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="AnimationEditorObject.cpp">

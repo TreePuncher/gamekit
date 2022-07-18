@@ -2,17 +2,17 @@
 #include "AnimationComponents.h"
 #include "AnimationEditorObject.h"
 #include "DXRenderWindow.h"
-#include "EditorAnimationEditor.h"
 #include "EditorAnimatorComponent.h"
 #include "EditorCodeEditor.h"
+#include "EditorPrefabEditor.h"
 #include "EditorPrefabObject.h"
 #include "EditorRenderer.h"
 #include "EditorResourcePickerDialog.h"
 #include "EditorScriptEngine.h"
 #include "SelectionContext.h"
 #include "ResourceIDs.h"
-#include "EditorAnimationInputTab.h"
 #include "EditorAnimatorComponent.h"
+#include "EditorPrefabInputTab.h"
 
 #include <angelscript.h>
 
@@ -85,6 +85,69 @@ ID3D12PipelineState* CreateFlatSkinnedPassPSO(RenderSystem* RS)
 /************************************************************************************************/
 
 
+ID3D12PipelineState* CreateFlatPassPSO(RenderSystem* RS)
+{
+	auto DrawRectVShader = RS->LoadShader("Forward_VS", "vs_6_0", R"(assets\shaders\forwardRender.hlsl)");
+	auto DrawRectPShader = RS->LoadShader("ColoredPolys", "ps_6_0", R"(assets\shaders\forwardRender.hlsl)");
+
+	/*
+	typedef struct D3D12_INPUT_ELEMENT_DESC
+	{
+	LPCSTR SemanticName;
+	UINT SemanticIndex;
+	DXGI_FORMAT Format;
+	UINT InputSlot;
+	UINT AlignedByteOffset;
+	D3D12_INPUT_CLASSIFICATION InputSlotClass;
+	UINT InstanceDataStepRate;
+	} 	D3D12_INPUT_ELEMENT_DESC;
+	*/
+
+	D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+		{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "NORMAL",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TANGENT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 2, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 3, 0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+	};
+
+
+	D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    //Rast_Desc.FillMode = D3D12_FILL_MODE_WIREFRAME;
+    //Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
+
+	D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+	Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+	Depth_Desc.DepthEnable	= true;
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+		PSO_Desc.pRootSignature        = RS->Library.RS6CBVs4SRVs;
+		PSO_Desc.VS                    = DrawRectVShader;
+		PSO_Desc.PS                    = DrawRectPShader;
+		PSO_Desc.RasterizerState       = Rast_Desc;
+		PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		PSO_Desc.SampleMask            = UINT_MAX;
+		PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		PSO_Desc.NumRenderTargets      = 1;
+		PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // Albedo
+		PSO_Desc.SampleDesc.Count      = 1;
+		PSO_Desc.SampleDesc.Quality    = 0;
+		PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+		PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
+		PSO_Desc.DepthStencilState     = Depth_Desc;
+		PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
+	}
+
+	ID3D12PipelineState* PSO = nullptr;
+	auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+	FK_ASSERT(SUCCEEDED(HR));
+
+	return PSO;
+}
+
+
+/************************************************************************************************/
+
+
 class AnimatorSelectionContext
 {
 public:
@@ -114,13 +177,14 @@ public:
 /************************************************************************************************/
 
 
-constexpr FlexKit::PSOHandle FLATSKINNED_PSO = FlexKit::PSOHandle(GetTypeGUID(FlatSkinned));
+constexpr FlexKit::PSOHandle FLATSKINNED_PSO    = FlexKit::PSOHandle(GetTypeGUID(FlatSkinned));
+constexpr FlexKit::PSOHandle FLAT_PSO           = FlexKit::PSOHandle(GetTypeGUID(Flat));
 
 
-class EditorAnimationPreview : public QWidget
+class EditorPrefabPreview : public QWidget
 {
 public:
-    EditorAnimationPreview(EditorRenderer& IN_renderer, AnimatorSelectionContext* IN_selection, QWidget* parent = nullptr)
+    EditorPrefabPreview(EditorRenderer& IN_renderer, AnimatorSelectionContext* IN_selection, QWidget* parent = nullptr)
         : QWidget       { parent }
         , renderer      { IN_renderer }
         , renderWindow  { IN_renderer.CreateRenderWindow(this) }
@@ -132,6 +196,7 @@ public:
 
         auto& renderSystem = renderer.GetRenderSystem();
         renderSystem.RegisterPSOLoader(FLATSKINNED_PSO, { &renderSystem.Library.RS6CBVs4SRVs, &CreateFlatSkinnedPassPSO });
+        renderSystem.RegisterPSOLoader(FLAT_PSO, { &renderSystem.Library.RS6CBVs4SRVs, &CreateFlatPassPSO });
 
         renderWindow->SetOnDraw(
             [&](FlexKit::UpdateDispatcher& dispatcher, double dT, TemporaryBuffers& temporaries, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator)
@@ -229,6 +294,9 @@ public:
             FlexKit::FrameResourceHandle depthTarget;
         };
 
+        auto WH = frameGraph.GetRenderSystem().GetTextureWH(renderTarget);
+        FlexKit::SetCameraAspectRatio(previewCamera, (float)WH[0] / (float)WH[1]);
+        FlexKit::MarkCameraDirty(previewCamera);
 
         auto& transforms        = FlexKit::QueueTransformUpdateTask(dispatcher);
         auto& cameras           = FlexKit::CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
@@ -258,7 +326,7 @@ public:
                 using namespace FlexKit;
                 auto brush = GetBrush(gameObject);
 
-                if (!brush)
+                if (!brush || brush->MeshHandle == FlexKit::InvalidHandle_t || brush->material == FlexKit::InvalidHandle_t)
                     return;
 
                 auto mesh           = brush->MeshHandle;
@@ -311,41 +379,76 @@ public:
 				const auto passConstants    = ConstantBufferDataSet{ ForwardDrawConstants{ 1, 1 }, passConstantBuffer };
 
                 ctx.SetRootSignature(frameResources.renderSystem().Library.RS6CBVs4SRVs);
-                ctx.SetPipelineState(frameResources.GetPipelineState(FLATSKINNED_PSO));
-                ctx.SetPrimitiveTopology(FlexKit::EIT_TRIANGLELIST);
 
-                ctx.SetScissorAndViewports({ renderTarget });
-                ctx.SetRenderTargets(
-                    { frameResources.GetResource({ data.renderTarget }) },
-                    true, frameResources.GetResource(data.depthTarget));
 
-                ctx.AddIndexBuffer(triMesh, lodLevel);
-                ctx.AddVertexBuffers(
-                    triMesh,
-                    lodLevel,
-                    {
-                        VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-                        VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
-                        VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
-                        VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
-                        VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
-                        VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
-                    }
-                );
+                if (poseState)
+                {
+                    ctx.SetPipelineState(frameResources.GetPipelineState(FLATSKINNED_PSO));
+                    ctx.SetPrimitiveTopology(FlexKit::EIT_TRIANGLELIST);
 
-                auto& poses     = allocator.allocate<EntityPoses>();
+                    ctx.SetScissorAndViewports({ renderTarget });
+                    ctx.SetRenderTargets(
+                        { frameResources.GetResource({ data.renderTarget }) },
+                        true, frameResources.GetResource(data.depthTarget));
 
-                FlexKit::UpdatePose(*poseState, allocator);
+                    ctx.AddIndexBuffer(triMesh, lodLevel);
 
-                for (size_t I = 0; I < poseState->JointCount; I++)
-                    poses[I] = skeleton->IPose[I] * poseState->CurrentPose[I];
+                    ctx.AddVertexBuffers(
+                        triMesh,
+                        lodLevel,
+                        {
+                            VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+                            VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
+                            VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
+                            VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+                            VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
+                            VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
+                        }
+                    );
 
-                ctx.SetGraphicsConstantBufferView(1, cameraConstants);
-                ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
-                ctx.SetGraphicsConstantBufferView(3, passConstants);
-                ctx.SetGraphicsConstantBufferView(4, ConstantBufferDataSet(poses, poseBuffer));
+                    auto& poses = allocator.allocate<EntityPoses>();
 
-                ctx.DrawIndexed(triMesh->GetHighestLoadedLod().GetIndexCount());
+                    FlexKit::UpdatePose(*poseState, allocator);
+
+                    for (size_t I = 0; I < poseState->JointCount; I++)
+                        poses[I] = skeleton->IPose[I] * poseState->CurrentPose[I];
+
+                    ctx.SetGraphicsConstantBufferView(1, cameraConstants);
+                    ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
+                    ctx.SetGraphicsConstantBufferView(3, passConstants);
+                    ctx.SetGraphicsConstantBufferView(4, ConstantBufferDataSet(poses, poseBuffer));
+
+                    ctx.DrawIndexed(triMesh->GetHighestLoadedLod().GetIndexCount());
+                }
+                else
+                {
+                    ctx.SetPipelineState(frameResources.GetPipelineState(FLAT_PSO));
+                    ctx.SetPrimitiveTopology(FlexKit::EIT_TRIANGLELIST);
+
+                    ctx.SetScissorAndViewports({ renderTarget });
+                    ctx.SetRenderTargets(
+                        { frameResources.GetResource({ data.renderTarget }) },
+                        true, frameResources.GetResource(data.depthTarget));
+
+                    ctx.AddIndexBuffer(triMesh, lodLevel);
+
+                    ctx.AddVertexBuffers(
+                        triMesh,
+                        lodLevel,
+                        {
+                            VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+                            VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
+                            VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
+                            VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+                        }
+                    );
+
+                    ctx.SetGraphicsConstantBufferView(1, cameraConstants);
+                    ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
+                    ctx.SetGraphicsConstantBufferView(3, passConstants);
+
+                    ctx.DrawIndexed(triMesh->GetHighestLoadedLod().GetIndexCount());
+                }
             });
     }
 
@@ -457,7 +560,7 @@ private:
 /************************************************************************************************/
 
 
-FlexKit::Animation* EditorAnimationEditor::LoadAnimation(std::string& id, bool)
+FlexKit::Animation* EditorPrefabEditor::LoadAnimation(std::string& id, bool)
 {
     auto resource   = project.FindProjectResource(id)->resource;
     auto blob       = resource->CreateBlob();
@@ -470,7 +573,7 @@ FlexKit::Animation* EditorAnimationEditor::LoadAnimation(std::string& id, bool)
 /************************************************************************************************/
 
 
-void EditorAnimationEditor::ReleaseAnimation(FlexKit::Animation* anim)
+void EditorPrefabEditor::ReleaseAnimation(FlexKit::Animation* anim)
 {
     FlexKit::SystemAllocator.release(anim);
 }
@@ -479,25 +582,25 @@ void EditorAnimationEditor::ReleaseAnimation(FlexKit::Animation* anim)
 /************************************************************************************************/
 
 
-EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, EditorScriptEngine& IN_engine, EditorRenderer& IN_renderer, EditorProject& IN_project, QWidget* parent)
+EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScriptEngine& IN_engine, EditorRenderer& IN_renderer, EditorProject& IN_project, QWidget* parent)
     : QWidget           { parent }
     , project           { IN_project }
-    , previewWindow     { new EditorAnimationPreview{ IN_renderer, localSelection } }
+    , previewWindow     { new EditorPrefabPreview{ IN_renderer, localSelection } }
     , menubar           { new QMenuBar{} }
     , localSelection    { new AnimatorSelectionContext{} }
     , codeEditor        { new EditorCodeEditor{ IN_project, IN_engine, this } }
     , globalSelection   { IN_selection }
     , renderer          { IN_renderer }
     , scriptEngine      { IN_engine }
-    , inputVariables    { new EditorAnimationInputTab }
+    , inputVariables    { new EditorPrefabInputTab }
 {
     static auto _REGISTERED = AnimationEditorObject::RegisterInterface(scriptEngine);
 
     auto engine     = FlexKit::GetScriptEngine();
 
     int res;
-    res = engine->RegisterGlobalFunction("Animation@ LoadAnimation(string& in)", asMETHOD(EditorAnimationEditor, LoadAnimation), asCALL_THISCALL_ASGLOBAL, this);
-    res = engine->RegisterGlobalFunction("void ReleaseAnimation(Animation@)", asMETHOD(EditorAnimationEditor, ReleaseAnimation), asCALL_THISCALL_ASGLOBAL, this);
+    res = engine->RegisterGlobalFunction("Animation@ LoadAnimation(string& in)", asMETHOD(EditorPrefabEditor, LoadAnimation), asCALL_THISCALL_ASGLOBAL, this);
+    res = engine->RegisterGlobalFunction("void ReleaseAnimation(Animation@)", asMETHOD(EditorPrefabEditor, ReleaseAnimation), asCALL_THISCALL_ASGLOBAL, this);
 
     codeEditor->GetTabs()->addTab(inputVariables, "Input Variables");
 
@@ -526,11 +629,11 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
     ui.animationPreview->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(previewWindow);
 
-    auto fileMenu       = menubar->addMenu("Object");
-    auto createObject   = fileMenu->addAction("Create Animated Prefab");
+    auto fileMenu               = menubar->addMenu("Object");
+    auto createAnimatedObject   = fileMenu->addAction("Create Animated Prefab");
 
     connect(
-        createObject, &QAction::triggered,
+        createAnimatedObject, &QAction::triggered,
         [&]
         {
             auto meshPicker = new EditorResourcePickerDialog(MeshResourceTypeID, IN_project, this);
@@ -604,6 +707,26 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
                 });
 
             meshPicker->show();
+        });
+
+    auto createPrefabObject = fileMenu->addAction("Create Prefab");
+    connect(
+        createPrefabObject, &QAction::triggered,
+        [&]()
+        {
+            localSelection->CreateObject();
+            auto obj = localSelection->GetSelection();
+
+            PrefabGameObjectResource_ptr objectResource = std::make_shared<PrefabGameObjectResource>();
+            project.AddResource(objectResource);
+
+            obj->resourceID                 = objectResource->GetResourceGUID();
+            localSelection->object.ID       = obj->resourceID;
+            localSelection->object.animator = nullptr;
+
+            globalSelection.Clear();
+            globalSelection.type        = AnimatorObject_ID;
+            globalSelection.selection   = std::any{ obj };
         });
 
     auto loadObject = fileMenu->addAction("Load");
@@ -796,7 +919,7 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
         {
             if (isVisible())
             {
-                if (auto selection = localSelection->GetSelection(); selection && selection->ID != -1)
+                if (auto selection = localSelection->GetSelection(); selection && selection->ID != -1 && selection->animator)
                 {
                     if (auto inputs = selection->animator->inputs.size(); inputs)
                     {
@@ -823,7 +946,7 @@ EditorAnimationEditor::EditorAnimationEditor(SelectionContext& IN_selection, Edi
 /************************************************************************************************/
 
 
-EditorAnimationEditor::~EditorAnimationEditor()
+EditorPrefabEditor::~EditorPrefabEditor()
 {
     delete localSelection;
 }
