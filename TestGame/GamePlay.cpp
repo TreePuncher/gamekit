@@ -338,47 +338,68 @@ struct MapCordHasher
     }
 };
 
-using CellId = uint8_t;
+using CellState_t = uint8_t;
 
-enum CellIds : CellId
+enum CellStates : CellState_t
 {
     Floor,
     Ramp,
+    Corner,
     Wall,
     Count,
     Super,
     Error
 };
 
-constexpr float CellWeights[] = { 1, 1, 1 };
+static_assert(CellStates::Count < sizeof(CellState_t) * 8, "Increase CellState_t ByteSize");
+
+constexpr uint8_t GetIdBit(const CellState_t id)
+{
+    return 1 << id;
+}
+
+constexpr float CellWeights[] = { 1, 1, 1, 1 };
 
 template<size_t ... ints>
-consteval auto _GetCellIdsCollectionHelper(std::integer_sequence<size_t, ints...> int_seq)
+consteval auto _GetCellState_tsCollectionHelper(std::integer_sequence<size_t, ints...> int_seq)
 {
-    return std::array<CellId, (size_t)CellIds::Count>{ ints... };
+    return std::array<CellState_t, (size_t)CellStates::Count>{ ints... };
 }
 
 template<size_t ... ints>
-consteval auto _GetCellIdsProbabilitiesHelper(std::integer_sequence<size_t, ints...> int_seq, const float total)
+consteval auto _GetCellState_tsProbabilitiesHelper(std::integer_sequence<size_t, ints...> int_seq, const float total)
 {
-    return std::array<float, (size_t)CellIds::Count>{ ((CellWeights[ints] / total), ...) };
+    return std::array<float, (size_t)CellStates::Count>{ ((CellWeights[ints] / total), ...) };
 }
 
-constinit const auto SuperSet   = []() { return _GetCellIdsCollectionHelper(std::make_index_sequence<(size_t)CellIds::Count>{});  }();
+constinit const auto SuperSet = []() { return _GetCellState_tsCollectionHelper(std::make_index_sequence<(size_t)CellStates::Count>{});  }();
 
-constinit std::array<float, (size_t)CellIds::Count> CellProbabilies =
-                                                        []() -> std::array<float, (size_t)CellIds::Count>
+constinit std::array<float, (size_t)CellStates::Count> CellProbabilies =
+                                                        []() -> std::array<float, (size_t)CellStates::Count>
                                                         {
                                                             const float sum = std::accumulate(std::begin(CellWeights), std::end(CellWeights), 0.0f);
 
-                                                            return _GetCellIdsProbabilitiesHelper(std::make_index_sequence<(size_t)CellIds::Count>{}, sum);
+                                                            return _GetCellState_tsProbabilitiesHelper(std::make_index_sequence<(size_t)CellStates::Count>{}, sum);
                                                         }();
 
-
-struct ConstraintTable
+consteval CellState_t FullSet()
 {
-    static_vector<TypeErasedCallable<bool(const SparseMap& map, CellCoord xyz, CellId id), 16>> contraints[CellIds::Count];
-};// = Vector<TypeErasedCallable<bool(const SparseMap& map, CellCoord xyz, CellId id), 16>>;
+    uint8_t set = 0;
+    for (uint8_t I = 0; I < CellStates::Count; I++)
+        set |= GetIdBit(I);
+
+    return set;
+}
+
+
+
+struct iConstraint
+{
+    virtual bool Constraint (const   SparseMap& map,const CellCoord coord, const CellState_t ID) const noexcept = 0;
+    virtual bool Apply      (        SparseMap& map,const CellCoord coord)                  const noexcept = 0;
+};
+
+using ConstraintTable = static_vector<std::unique_ptr<iConstraint>, 16>[CellStates::Count];
 
 int64_t GetTileID(const ChunkCoord cord) noexcept
 {
@@ -392,16 +413,16 @@ struct MapChunk
 {
     ChunkCoord  coord;
     bool        active = true;
-    CellId      cells[8*8*8]; //8x8
+    CellState_t      cells[8*8*8]; //8x8
 
-    CellId& operator[] (const int3 localCoord) noexcept
+    CellState_t& operator[] (const int3 localCoord) noexcept
     {
         const auto idx = abs(localCoord[0]) % 8 + abs(localCoord[1]) % 8 * 8 + abs(localCoord[2]) % 8 * 64;
 
         return cells[idx];
     }
 
-    CellId operator[] (const int3 localCoord) const noexcept
+    CellState_t operator[] (const int3 localCoord) const noexcept
     {
         const auto idx = abs(localCoord[0]) % 8 + abs(localCoord[1]) % 8 * 8 + abs(localCoord[2]) % 8 * 64;
         return cells[idx];
@@ -409,13 +430,13 @@ struct MapChunk
 
     struct iterator
     {
-        CellId*     cells;
+        CellState_t*     cells;
         int         flatIdx;
         ChunkCoord  coord;
 
 		struct _Pair
 		{
-			CellId& cell;
+			CellState_t& cell;
 			int3    flatIdx;
 		};
 
@@ -451,6 +472,9 @@ struct MapChunk
 };
 
 
+/************************************************************************************************/
+
+
 struct ChunkedChunkMap
 {
     ChunkedChunkMap(iAllocator& allocator) :
@@ -471,7 +495,7 @@ struct ChunkedChunkMap
                     const auto chunkIdx = chunks.emplace_back(begin + int3{ x, y, z } - offset);
 
 					for (auto&& [cell, cellIdx] : chunks[chunkIdx])
-						cell = CellIds::Super;
+						cell = FullSet();
 
                     chunks[chunkIdx].active = false;
                 }
@@ -515,6 +539,9 @@ struct ChunkedChunkMap
 };
 
 
+/************************************************************************************************/
+
+
 struct SparseMap
 {
     ChunkedChunkMap chunks;
@@ -525,7 +552,7 @@ struct SparseMap
         if (auto res = chunks[chunkID]; res)
             return res.value().get()[cord - (chunkID * 8)];
 
-        return (CellId)CellIds::Error;
+        return (CellState_t)CellStates::Error;
     }
 
     auto begin()    { return chunks.begin(); }
@@ -569,6 +596,17 @@ struct SparseMap
         int                 idx = 0;
     };
 
+
+    static CircularBuffer<uint8_t, 8> GetNeighborRing(const SparseMap& map, CellCoord coord)
+    {
+        CircularBuffer<uint8_t, 8> buffer;
+        for (auto&& [c, _] : NeighborIterator{map, coord})
+            buffer.push_back(c);
+
+        return buffer;
+    }
+
+
     auto GetChunk(uint3 xyz)
     {
         auto chunkID = (xyz & (-1 + 15)) / 8;
@@ -576,24 +614,70 @@ struct SparseMap
         return chunks[chunkID];
     }
 
-    static_vector<CellId> GetSuperSet(this const auto& map, const ConstraintTable& constraints, const CellCoord xyz)
+    static_vector<CellState_t> GetSuperState(this const SparseMap& map, const CellCoord xyz)
     {
-        static_vector<CellId> out;
+        auto bits = map[xyz];
+        static_vector<CellState_t> set;
+        for (size_t I = 0; I < CellStates::Count; I++)
+        {
+            if (GetIdBit((CellState_t)I) & bits)
+                set.push_back((CellState_t)I);
+        }
+
+        return set;
+    }
+
+    static_vector<CellState_t> CalculateSuperState(this const SparseMap& map, const ConstraintTable& constraints, const CellCoord xyz)
+    {
+        static_vector<CellState_t> out;
 
         for (const auto cellType : SuperSet)
         {
-            for (const auto& constraint : constraints.contraints[cellType])
-                if (constraint(map, xyz, cellType))
+            if (constraints[cellType].size())
+            {
+                bool valid = true;
+                for (const auto& constraint : constraints[cellType])
                 {
-                    out.push_back(cellType);
-                    break;
+                    valid &= constraint->Constraint(map, xyz, cellType);
+                    if(!valid)
+                        break;
                 }
+
+                if(valid)
+                    out.push_back(cellType);
+            }
         }
 
         return out;
     }
 
-    void SetCell(const CellCoord XYZ, const CellId ID)
+    void UpdateNeighboringSuperStates(this auto& map, const ConstraintTable& constraints, const CellCoord cellCoord)
+    {
+        for (auto [neighborCell, neighborCellState_tx] : NeighborIterator{ map, cellCoord })
+        {
+            if (__popcnt(neighborCell) == 1)
+                continue;
+
+            auto set = map.CalculateSuperState(constraints, neighborCellState_tx);
+
+            if (set.size() == 1)
+            {
+                map.SetCell(neighborCellState_tx, GetIdBit(set.front()));
+                //map.UpdateNeighboringSuperStates(constraints, neighborCellState_tx);
+            }
+            else
+            {
+                CellState_t bitSet = 0;
+
+                for (auto&& it : set)
+                    bitSet |= GetIdBit(it);
+
+                map.SetCell(neighborCellState_tx, bitSet);
+            }
+        }
+    }
+
+    void SetCell(const CellCoord XYZ, const CellState_t ID)
     {
         auto chunkID = (XYZ & (-1 + 15)) / 8;
 
@@ -605,7 +689,24 @@ struct SparseMap
         }
     }
 
-    float CalculateCellEntropy(this const auto& map, const CellCoord coord, const static_vector<CellId>& superSet)
+	
+	void RemoveBits(const CellCoord XYZ, const CellState_t ID)
+	{
+		auto chunkID = (XYZ & (-1 + 15)) / 8;
+
+		if (auto res = chunks[chunkID]; res)
+		{
+			auto& chunk			= res.value().get();
+			auto currentState	= chunk[XYZ % 8];
+			auto newState		= currentState & ~ID;
+			chunk[XYZ % 8]		= newState;
+
+			chunk.active = true;
+		}
+	}
+
+
+    float CalculateCellEntropy(this const auto& map, const CellCoord coord, const static_vector<CellState_t>& superSet)
     {
         const auto sum = [&]()
             {
@@ -628,9 +729,9 @@ struct SparseMap
         const auto XYZ = Max(WHD, uint3{ 8, 8, 8 }) / 8;
 
         map.chunks.InsertBlock(XYZ, XYZ / -2);
-        map.SetCell({ 0, 0, 0 }, CellIds::Floor);
+        map.SetCell({ 0, 0, 0 }, GetIdBit(CellStates::Floor));
+        map.UpdateNeighboringSuperStates(constraints, {0, 0, 0});
 
-        bool continueGeneration;
 
         struct EntropyPair
         {
@@ -643,6 +744,8 @@ struct SparseMap
         Vector<EntropyPair> entropySet{ tempMemory };
         entropySet.reserve(4096);
 
+        bool continueGeneration;
+        
         do
         {
             continueGeneration = false;
@@ -653,20 +756,27 @@ struct SparseMap
                 {
                     for (auto [cell, cellCoord] : chunk)
                     {
-                        if (cell == CellIds::Super)
-                            for (auto [neighborCell, _] : NeighborIterator{ map, cellCoord })
-                            {
-                                if (neighborCell != CellIds::Super && neighborCell != CellIds::Error)
-                                {
-                                    continueGeneration |= true;
+                        auto res = __popcnt(cell);
+                        if (__popcnt(cell) > 1)
+                        {
+                            continueGeneration |= true;
 
-                                    entropySet.emplace_back(
-                                        map.CalculateCellEntropy(cellCoord, map.GetSuperSet(constraints, cellCoord)),
-                                        cellCoord);
+                            const auto super = map.GetSuperState(cellCoord);
 
-                                    break;
-                                }
-                            }
+                            CellState_t bitSet = 0;
+
+                            for (auto&& it : super)
+                                bitSet |= GetIdBit(it);
+
+                            map.SetCell(cellCoord, bitSet);
+
+                            entropySet.emplace_back(
+                                map.CalculateCellEntropy(cellCoord, super),
+                                cellCoord);
+
+                            if (!super.size())
+                                DebugBreak();
+                        }
                     }
                 }
             }
@@ -677,17 +787,67 @@ struct SparseMap
                 std::ranges::partial_sort(entropySet, entropySet.begin() + 1);
 
                 auto entity = entropySet.front();
-                const auto superSet = map.GetSuperSet(constraints, entity.cellIdx);
-                if (superSet.size())
+                const auto superSet = map.GetSuperState(entity.cellIdx);
+                
+                if (superSet.size() == 1)
                 {
-                    auto tile = superSet[rand() % superSet.size()];
-                    map.SetCell(entity.cellIdx, tile);
+                    for (auto& constraint : constraints[superSet.front()])
+                        constraint->Apply(map, entity.cellIdx);
+
+                    map.UpdateNeighboringSuperStates(constraints, entity.cellIdx);
+                }
+                else if (superSet.size() > 1)
+                {
+                    auto cellId = superSet[rand() % superSet.size()];
+
+                    for (auto& constraint : constraints[cellId])
+                        constraint->Apply(map, entity.cellIdx);
+
+                    map.UpdateNeighboringSuperStates(constraints, entity.cellIdx);
                 }
                 else
                     DebugBreak();
             }
 
             entropySet.clear();
+
+            if (0)
+            {
+                std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n";
+
+                if (auto chunk = map.GetChunk({ 0, 0, 0 }); chunk)
+                {
+                    auto& chunk_ref = chunk.value().get();
+
+                    int x = 0;
+                    int y = 0;
+                    for (auto [c, _] : chunk_ref)
+                    {
+                        if(c & GetIdBit(CellStates::Floor))
+                            std::cout << "_";
+                        if(c & GetIdBit(CellStates::Ramp))
+                            std::cout << "R";
+                        if(c & GetIdBit(CellStates::Wall))
+                            std::cout << "X";
+                        if(c & GetIdBit(CellStates::Corner))
+                            std::cout << "C";
+
+                        auto res = __popcnt(c);
+                        for(size_t i = 0; i < CellStates::Count - res; i++)
+                            std::cout << " ";
+
+                        if (++x >= 8)
+                        {
+                            std::cout << "\n";
+
+                            y++;
+                            x = 0;
+                            if (y > 8)
+                                break;
+                        }
+                    }
+                }
+            }
         } while (continueGeneration);
     }
 };
@@ -696,72 +856,306 @@ struct SparseMap
 /************************************************************************************************/
 
 
-bool WallConstraint(const SparseMap& map, CellCoord xyz, CellId ID)
-{   // wall tiles need at least one neighboring floor tile
-    for (auto&& [cell, cellId] : SparseMap::NeighborIterator{ map, xyz })
-    {
-        if (cell == CellIds::Floor)
-            return true;
-    }
-
-    return false;
-}
-
-bool FloorConstraint(const SparseMap& map, CellCoord xyz, CellId ID)
-{   // Floors tiles need at least one neighboring floor tile or ramp tile
-    for (auto&& [cell, cellId] : SparseMap::NeighborIterator{ map, xyz })
-    {
-        switch(cell)
-            case CellIds::Floor:
-            case CellIds::Ramp:
-                return true;
-    }
-
-    return false;
-}
-
-bool RampConstraint(const SparseMap& map, CellCoord coord, CellId id) 
+struct WallConstraint : iConstraint
 {
-    bool wallNeighbor = false;
-
-    for (auto&& [cell, cellId] : SparseMap::NeighborIterator{ map, coord })
-    {   // Ramps must be next to a wall, but not next to another ramp
-        switch (cell)
+    bool Constraint(const SparseMap& map, const CellCoord xyz, const CellState_t ID) const noexcept final
+    {   // wall tiles need at least one neighboring floor tile
+        for (auto&& [cell, cellId] : SparseMap::NeighborIterator{ map, xyz })
         {
-        case CellIds::Wall:
-            wallNeighbor = true; break;
-        case CellIds::Ramp:
-            return false;
+            if (cell & GetIdBit(CellStates::Floor))
+                return true;
         }
+
+        return false;
     }
 
-    return wallNeighbor;
-}
+    bool Apply(SparseMap& map, const CellCoord coord) const noexcept final
+    {
+		map.SetCell(coord, GetIdBit(CellStates::Wall));
+
+        //for (auto&& [cell, cellId] : SparseMap::NeighborIterator{ map, coord })
+        //    map.RemoveBits(cellId, GetIdBit(CellStates::Ramp));
+
+        return true;
+    }
+};
+
+
+struct CornerConstraint : iConstraint
+{
+    bool Constraint(const SparseMap& map, const CellCoord coord, const CellState_t ID) const noexcept final
+    {
+        auto neighbors = SparseMap::GetNeighborRing(map, coord);
+        size_t neighborCount = 0;
+
+        for (auto& c : neighbors)
+        {
+            if (c == GetIdBit(CellStates::Ramp))
+                return false;
+
+            neighborCount += c & GetIdBit(CellStates::Corner);
+        }
+
+        auto cornerBit = GetIdBit(CellStates::Corner);
+        if (neighborCount == 2)
+        {
+            return
+                ((neighbors[0] & cornerBit && neighbors[2] & cornerBit) ||
+                    (neighbors[2] & cornerBit && neighbors[4] & cornerBit) ||
+                    (neighbors[4] & cornerBit && neighbors[6] & cornerBit) ||
+                    (neighbors[6] & cornerBit && neighbors[0] & cornerBit)) != 0;
+        }
+        else return false;
+    }
+
+    bool Apply(SparseMap& map, const CellCoord coord) const noexcept final
+    {
+		auto neighbors = SparseMap::GetNeighborRing(map, coord);
+        size_t neighborCount = 0;
+
+        for (auto& c : neighbors)
+        {
+            if (c == GetIdBit(CellStates::Ramp))
+                return false;
+
+            neighborCount += c & GetIdBit(CellStates::Corner);
+        }
+
+        auto cornerBit = GetIdBit(CellStates::Corner);
+        if (neighborCount == 2)
+        {
+			if (neighbors[0] & cornerBit && neighbors[2] & cornerBit)
+			{
+				map.SetCell(coord + int2{ 0, 0 }, GetIdBit(CellStates::Corner));
+				map.SetCell(coord + int2{ 0, 1 }, GetIdBit(CellStates::Wall));
+				map.SetCell(coord + int2{ 1, 0 }, GetIdBit(CellStates::Wall));
+			}
+			else if (neighbors[2] & cornerBit && neighbors[4] & cornerBit)
+			{
+				map.SetCell(coord + int2{ 0, 0 }, GetIdBit(CellStates::Corner));
+				map.SetCell(coord + int2{ 1, 0 }, GetIdBit(CellStates::Wall));
+				map.SetCell(coord + int2{ 0,-1 }, GetIdBit(CellStates::Wall));
+			}
+			else if (neighbors[4] & cornerBit && neighbors[6] & cornerBit)
+			{
+				map.SetCell(coord + int2{ 0,  0 }, GetIdBit(CellStates::Corner));
+				map.SetCell(coord + int2{ 0, -1 }, GetIdBit(CellStates::Wall));
+				map.SetCell(coord + int2{ -1, 0 }, GetIdBit(CellStates::Wall));
+			}
+			else if (neighbors[6] & cornerBit && neighbors[0] & cornerBit)
+			{
+				map.SetCell(coord + int2{  0,  0 }, GetIdBit(CellStates::Corner));
+				map.SetCell(coord + int2{ -1,  0 }, GetIdBit(CellStates::Wall));
+				map.SetCell(coord + int2{  0,  1 }, GetIdBit(CellStates::Wall));
+			}
+
+			return true;
+        }
+        else return false;
+    }
+};
+
+
+struct FloorConstraint : public iConstraint
+{
+    bool Constraint(const SparseMap& map, const CellCoord xyz, const CellState_t coord)  const noexcept final
+    {
+        return true;
+    }
+
+    bool Apply(SparseMap& map, const CellCoord coord) const noexcept final
+    {
+		map.SetCell(coord, GetIdBit(CellStates::Floor));
+
+        return true;
+    }
+};
+
+
+struct RampConstraint : public iConstraint
+{
+    bool Constraint(const SparseMap& map, const CellCoord coord, const CellState_t ID) const noexcept final
+    {   // Rules
+        // must be next to a 3 wall segment,
+        // not next to another ramp
+        auto neighbors = SparseMap::GetNeighborRing(map, coord);
+
+        int wallCount = 3;
+        for (auto&& cell : neighbors)
+        {
+            if(cell == GetIdBit(CellStates::Ramp))
+                return false;
+
+            if (cell == GetIdBit(CellStates::Corner))
+                return false;
+
+            wallCount += (cell & GetIdBit(CellStates::Wall)) != 0;
+        }
+
+		if (wallCount > 1)
+		{
+			int i = 0;
+			for (; i < neighbors.size(); i++)
+				if (neighbors[i] & GetIdBit(CellStates::Wall))
+					break;
+
+			return	neighbors[i + 0] & GetIdBit(CellStates::Wall) &&
+					neighbors[i + 1] & GetIdBit(CellStates::Wall) &&
+					neighbors[i + 2] & GetIdBit(CellStates::Wall);
+		}
+        //    return ((neighbors[0] & GetIdBit(CellStates::Wall)) |
+        //            (neighbors[2] & GetIdBit(CellStates::Wall)) |
+        //            (neighbors[4] & GetIdBit(CellStates::Wall)) |
+        //            (neighbors[6] & GetIdBit(CellStates::Wall)));
+        else return false;
+    }
+
+    bool Apply(SparseMap& map, const CellCoord coord) const noexcept final
+    {
+        map.SetCell(coord, GetIdBit(CellStates::Ramp));
+
+        for (auto&& [cell, cellId] : SparseMap::NeighborIterator{ map, coord })
+            map.RemoveBits(cellId, GetIdBit(CellStates::Ramp));
+
+        return true;
+    }
+};
 
 
 /************************************************************************************************/
 
 
-SparseMap GenerateWorld(GameWorld& world, iAllocator& temp)
+GameObject& AddWorldObject(GameWorld& world, TriMeshHandle mesh)
+{
+    static const auto material = [] {
+        auto& materials = MaterialComponent::GetComponent();
+        auto material       = materials.CreateMaterial();
+        materials.Add2Pass(material, ShadowMapPassID);
+        materials.Add2Pass(material, GBufferPassID);
+
+        return material;
+    }();
+
+    auto& object = world.objectPool.Allocate();
+    object.AddView<SceneNodeView<>>();
+    object.AddView<BrushView>(mesh);
+    object.AddView<MaterialView>(material);
+
+    SetScale(object, float3{ 5.0f, 5.0f, 5.0f });
+
+    world.scene.AddGameObject(object);
+    SetBoundingSphereFromMesh(object);
+
+    return object;
+}
+
+
+void TranslateChunk(MapChunk& chunk, GameWorld& world, const WorldAssets& assets, iAllocator& temp)
+{
+    for (auto [c, cellXYZ] : chunk)
+    {
+        // For now I'm only doing the first layer
+        if (cellXYZ[2] > 0)
+            continue;
+
+        switch (c)
+        {
+            case GetIdBit(CellStates::Floor):
+            {
+                auto& floorObject = AddWorldObject(world, assets.floor);
+
+                SetWorldPosition(floorObject,
+                    float3{
+                        cellXYZ[0] * 10.0f,
+                        cellXYZ[2] * 10.0f,
+                        cellXYZ[1] * 10.0f });
+            }   break;
+            case GetIdBit(CellStates::Ramp):
+            {
+                auto& rampObject = AddWorldObject(world, assets.ramp);
+
+                SetWorldPosition(rampObject,
+                    float3{
+                        cellXYZ[0] * 10.0f,
+                        cellXYZ[2] * 10.0f,
+                        cellXYZ[1] * 10.0f });
+            }   break;
+            case GetIdBit(CellStates::Wall):
+            {
+                auto& wallObject = AddWorldObject(world, assets.wallXSegment);
+
+                SetWorldPosition(wallObject,
+                    float3{
+                        cellXYZ[0] * 10.0f,
+                        cellXYZ[2] * 10.0f,
+                        cellXYZ[1] * 10.0f });
+            }   break;
+            case GetIdBit(CellStates::Corner):
+            {
+                auto& cornerObject = AddWorldObject(world, assets.wallXSegment);
+
+                SetWorldPosition(cornerObject,
+                    float3{
+                        cellXYZ[0] * 10.0f,
+                        cellXYZ[2] * 10.0f,
+                        cellXYZ[1] * 10.0f });
+            }   break;
+        }
+    }
+}
+
+SparseMap GenerateWorld(GameWorld& world, const WorldAssets& assets, iAllocator& temp)
 {
     // Step 1. Generate world
     SparseMap map{ temp };
 	ConstraintTable constraints;
-    constraints.contraints[CellIds::Floor].emplace_back(&FloorConstraint);
-    constraints.contraints[CellIds::Wall].emplace_back(&WallConstraint);
-    constraints.contraints[CellIds::Ramp].emplace_back(&RampConstraint);
+    constraints[CellStates::Corner].emplace_back(std::make_unique<CornerConstraint>());
+    constraints[CellStates::Floor].emplace_back(std::make_unique<FloorConstraint>());
+    constraints[CellStates::Wall].emplace_back(std::make_unique<WallConstraint>());
+    constraints[CellStates::Ramp].emplace_back(std::make_unique<RampConstraint>());
 
     map.Generate(constraints, int3{ 256, 256, 1 }, temp);
+
+    std::cout << "Legend:\n";
+    std::cout << "_ = Space\n";
+    std::cout << "R = Ramp\n";
+    std::cout << "X = Wall\n";
+    std::cout << "C = Corner\n";
 
     auto chunk = map.GetChunk({0, 0, 0});
     if (chunk)
     {
-        auto& c = chunk.value().get();
-        c.cells;
+        auto& chunk_ref = chunk.value().get();
+
         int x = 0;
+        int y = 0;
+        for (auto [c, _] : chunk_ref)
+        {
+            if      (c & GetIdBit(CellStates::Floor))
+                    std::cout << "_ ";
+            else if (c & GetIdBit(CellStates::Ramp))
+                    std::cout << "R ";
+            else if (c & GetIdBit(CellStates::Wall))
+                    std::cout << "X ";
+            if (c & GetIdBit(CellStates::Corner))
+                std::cout << "C ";
+
+            if (++x >= 8)
+            {
+                std::cout << "\n";
+
+                y++;
+                x = 0;
+                if (y > 8)
+                    break;
+            }
+        }
     }
+
+
     // Step 2. Translate map cells -> game world
-    // ...
+    if (chunk)
+        TranslateChunk(*chunk, world, assets, temp);
 
     return map;
 }
@@ -770,12 +1164,28 @@ SparseMap GenerateWorld(GameWorld& world, iAllocator& temp)
 /************************************************************************************************/
 
 
-void CreateMultiplayerScene(GameWorld& world, iAllocator& tempAllocator)
+WorldAssets LoadBasicTiles()
+{
+    AddAssetFile(R"(assets\basicTiles.gameres)");
+    WorldAssets out;
+    out.cornerSegment   = FlexKit::GetMesh("Wall_Corner");
+    out.wallEndSegment  = FlexKit::GetMesh("Wall_End");
+    out.wallXSegment    = FlexKit::GetMesh("Wall_X");
+    out.wallYSegment    = FlexKit::GetMesh("Wall_Y");
+    out.wallISegment    = FlexKit::GetMesh("Wall_Straight");
+
+    out.floor   = FlexKit::GetMesh("Floor");
+    out.ramp    = FlexKit::GetMesh("Ramp");
+
+    return out;
+}
+
+void CreateMultiplayerScene(GameWorld& world, const WorldAssets& assets, iAllocator& tempAllocator)
 {
     //static const GUID_t sceneID = 1234;
     //world.LoadScene(sceneID);
 
-    GenerateWorld(world, tempAllocator);
+    GenerateWorld(world, assets, tempAllocator);
 
     auto& physics       = PhysXComponent::GetComponent();
     auto& floorCollider = world.objectPool.Allocate();
@@ -792,7 +1202,7 @@ void CreateMultiplayerScene(GameWorld& world, iAllocator& tempAllocator)
             CommitEnemyMoves(dT);
         });
 
-    for (int I = 0; I < 100; I++)
+    for (int I = 0; I < 0; I++)
     {
         const int spawnArea = 40;
 

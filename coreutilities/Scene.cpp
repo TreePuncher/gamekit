@@ -369,6 +369,12 @@ namespace FlexKit
         sceneEntities.push_back(view);
 	}
 
+    void Scene::AddGameObject(GameObject& go)
+    {
+        auto& view = go.AddView<SceneVisibilityView>(GetSceneNode(go), sceneID);
+        sceneEntities.push_back(view);
+    }
+
 
 	/************************************************************************************************/
 

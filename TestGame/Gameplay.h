@@ -280,7 +280,24 @@ public:
 /************************************************************************************************/
 
 
-void CreateMultiplayerScene(GameWorld&, iAllocator& temp);
+struct WorldAssets
+{
+    // walls
+    TriMeshHandle wallXSegment;
+    TriMeshHandle wallYSegment;
+    TriMeshHandle wallISegment;
+    TriMeshHandle wallEndSegment;
+    TriMeshHandle cornerSegment;
+
+    // Floors
+    TriMeshHandle floor;
+    TriMeshHandle ramp;
+};
+
+WorldAssets LoadBasicTiles();
+
+
+void CreateMultiplayerScene(GameWorld&, const WorldAssets&, iAllocator& temp);
 
 PlayerFrameState    GetPlayerFrameState (GameObject& gameObject);
 RemotePlayerData*   FindRemotePlayer    (MultiplayerPlayerID_t ID);

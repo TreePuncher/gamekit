@@ -4829,8 +4829,8 @@ private:
 
 	FLEXKITAPI TriMeshHandle				LoadMesh				( GUID_t TMHandle );
 
-	FLEXKITAPI TriMeshHandle                GetMesh                 (RenderSystem* rs, GUID_t, CopyContextHandle copyCtx = InvalidHandle_t);
-	FLEXKITAPI TriMeshHandle				GetMesh					( RenderSystem* rs, const char* meshID, CopyContextHandle );
+	FLEXKITAPI TriMeshHandle                GetMesh                 ( GUID_t, CopyContextHandle copyCtx = InvalidHandle_t);
+	FLEXKITAPI TriMeshHandle				GetMesh					( const char* meshID, CopyContextHandle = InvalidHandle_t);
 
 
 	FLEXKITAPI TriMesh*						GetMeshResource			( TriMeshHandle  TMHandle );
