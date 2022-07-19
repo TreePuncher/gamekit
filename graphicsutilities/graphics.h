@@ -24,16 +24,15 @@
 #include <algorithm>
 #include <concepts>
 #include <string>
-#include <d3d12.h>
-#include <d3d12sdklayers.h>
-#include <DirectXMath.h>
+#include <directx/d3d12.h>
+#include <directx/d3d12sdklayers.h>
+#include <DirectXMath/DirectXMath.h>
 #include <dxgi1_6.h>
 #include <concepts>
 #include <tuple>
 #include <variant>
 #include <optional>
-
-#include <..\thirdparty\dxcapi.h>
+#include <directx-dxc/dxcapi.h>
 
 #if USING(AFTERMATH)
 

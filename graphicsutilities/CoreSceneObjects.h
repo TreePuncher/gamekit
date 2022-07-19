@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ResourceHandles.h"
 #include "Transforms.h"
 
-#include <DirectXMath.h>
+#include <DirectXMath/DirectXMath.h>
 
 using DirectX::XMMATRIX;
 

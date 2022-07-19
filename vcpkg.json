@@ -11,7 +11,9 @@
             "features": [ "dx12", "openexr" ]
         },
         "cppcoro",
-        "directxmesh",
+		"directx-dxc",
+		"directx-headers",
+		"directxmesh",
         "directxtk12",
         "fmt",
         "fp16",
@@ -20,6 +22,7 @@
         "imguizmo",
         "ois",
         "physx",
+		"qttools",
         "range-v3",
         "scnlib",
         "slikenet",

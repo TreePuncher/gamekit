@@ -35,7 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "graphics.h"
 #include "DDSUtilities.h"
 #include "TextureUtilities.h"
-#include <DirectXMath.h>
+#include <DirectXMath/DirectXMath.h>
 
 
 namespace FlexKit

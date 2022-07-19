@@ -34,7 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CoreSceneObjects.h"
 #include "graphics.h"
 
-#include <DirectXMath.h>
+#include <DirectXMath/DirectXMath.h>
 #include <functional>
 
 // TODOs:
