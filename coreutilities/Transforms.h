@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RuntimeComponentIDs.h"
 #include "ResourceHandles.h"
 #include "XMMathConversion.h"
-#include <DirectXMath.h>
+#include <DirectXMath/DirectXMath.h>
 
 namespace FlexKit
 {

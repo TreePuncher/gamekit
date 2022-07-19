@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "buildsettings.h"
 #include "Handle.h"
 #include "Assets.h"
-#include <DirectXMath.h>
+#include <DirectXMath/DirectXMath.h>
 
 
 namespace FlexKit

@@ -33,8 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdint.h>
 #include <utility>
 
-#include <d3d12.h>
-#include "..\ThirdParty\d3dx12.h"
-
-
+#include <directx/d3d12.h>
+#include <directx/d3dx12.h>
+#include <DirectXMath/DirectXMath.h>
 #endif

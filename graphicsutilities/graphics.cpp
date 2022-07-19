@@ -21,8 +21,6 @@
 #include <Windows.h>
 #include <windowsx.h>
 
-#pragma warning( disable :4267 )
-
 extern "C" __declspec(dllexport) DWORD  NvOptimusEnablement = 1;
 extern "C" __declspec(dllexport) int    AmdPowerXpressRequestHighPerformance = 1;
 
