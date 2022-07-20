@@ -68,7 +68,7 @@ public:
 
 struct SkeletonFactory : public IComponentFactory
 {
-    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ViewportScene* viewportScene)
+    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
     {
         if (!gameObject.hasView(FlexKit::SkeletonComponentID))
             return gameObject.AddView<FlexKit::SkeletonView>(FlexKit::GetBrush(gameObject)->MeshHandle, -1u);

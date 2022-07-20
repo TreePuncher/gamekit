@@ -344,7 +344,7 @@ namespace FlexKit
         struct Block
         {
             TileID_t        tileID;
-            ResourceHandle  resource            = InvalidHandle_t;
+            ResourceHandle  resource            = InvalidHandle;
             uint8_t         state               = EBlockState::Free;
             uint64_t        staleFrameCount     = 0;
             uint32_t        blockID;

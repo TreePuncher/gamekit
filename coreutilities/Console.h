@@ -242,9 +242,9 @@ namespace FlexKit
 
 		/************************************************************************************************/
 
-		VertexBufferHandle		vertexBuffer    = InvalidHandle_t; 
-		VertexBufferHandle		textBuffer      = InvalidHandle_t;
-		ConstantBufferHandle	constantBuffer  = InvalidHandle_t;
+		VertexBufferHandle		vertexBuffer    = InvalidHandle; 
+		VertexBufferHandle		textBuffer      = InvalidHandle;
+		ConstantBufferHandle	constantBuffer  = InvalidHandle;
 
 		CircularBuffer<ConsoleLine, 32>	lines;
 		CircularBuffer<ConsoleLine, 32>	commandHistory;

@@ -78,12 +78,19 @@ public:
 class ViewportGameObject;
 class ViewportScene;
 
+class ComponentConstructionContext
+{
+public:
+    virtual void AddToScene(FlexKit::GameObject&) {}
+    virtual FlexKit::LayerHandle GetSceneLayer() { return FlexKit::InvalidHandle; }
+};
+
 class IComponentFactory
 {
 public:
     virtual ~IComponentFactory() {}
 
-    virtual FlexKit::ComponentViewBase& Construct(FlexKit::GameObject&, ViewportScene* scene) = 0;
+    virtual FlexKit::ComponentViewBase& Construct(FlexKit::GameObject&, ComponentConstructionContext& scene) = 0;
     virtual const std::string&          ComponentName() const noexcept = 0;
     virtual FlexKit::ComponentID        ComponentID() const noexcept = 0;
 };
@@ -113,7 +120,7 @@ public:
         availableComponents.emplace_back(std::move(factory));
     }
 
-    static FlexKit::ComponentViewBase& ConstructComponent(uint32_t ComponentID, ViewportGameObject& gameObject, ViewportScene& scene);
+    static FlexKit::ComponentViewBase& ConstructComponent(uint32_t ComponentID, ViewportGameObject& gameObject, ComponentConstructionContext& scene);
 
      SelectionContext* GetSelectionContext() { return &selectionContext; }
 

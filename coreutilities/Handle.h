@@ -35,7 +35,7 @@ namespace FlexKit
 {
 	typedef uint32_t index_t;
 
-	struct _InvalidHandle_t {} inline static const InvalidHandle_t;
+	struct _InvalidHandle_t {} inline static const InvalidHandle;
 
 	template<size_t HandleSize = 32, size_t ID = (size_t)-1>
 	class Handle_t
@@ -118,7 +118,7 @@ namespace FlexKit
 
 		bool operator == (_InvalidHandle_t)
 		{
-			return (*this == THISTYPE_t(InvalidHandle_t));
+			return (*this == THISTYPE_t(InvalidHandle));
 		}
 
 		bool operator != (_InvalidHandle_t handle)

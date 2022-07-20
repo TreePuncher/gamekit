@@ -186,6 +186,7 @@ class EditorPrefabPreview : public QWidget
 public:
     EditorPrefabPreview(EditorRenderer& IN_renderer, AnimatorSelectionContext* IN_selection, QWidget* parent = nullptr)
         : QWidget       { parent }
+        , layer         { FlexKit::PhysXComponent::GetComponent().CreateLayer() }
         , renderer      { IN_renderer }
         , renderWindow  { IN_renderer.CreateRenderWindow(this) }
         , depthBuffer   { IN_renderer.GetRenderSystem(), renderWindow->WH() }
@@ -222,7 +223,6 @@ public:
             , gameObject        { IN_gameObject         }
             , defaultMaterial   { IN_defaultMaterial    } {}
 
-
         std::vector<FlexKit::NodeHandle>&   nodes;
         EditorScene_ptr                     viewportscene;
         EditorViewport&                     viewport;
@@ -247,7 +247,7 @@ public:
 
         FlexKit::TriMeshHandle LoadTriMeshResource(ProjectResource_ptr resource) override
         {
-            return FlexKit::InvalidHandle_t;
+            return FlexKit::InvalidHandle;
         }
 
         FlexKit::MaterialHandle DefaultMaterial() const override
@@ -326,7 +326,7 @@ public:
                 using namespace FlexKit;
                 auto brush = GetBrush(gameObject);
 
-                if (!brush || brush->MeshHandle == FlexKit::InvalidHandle_t || brush->material == FlexKit::InvalidHandle_t)
+                if (!brush || brush->MeshHandle == FlexKit::InvalidHandle || brush->material == FlexKit::InvalidHandle)
                     return;
 
                 auto mesh           = brush->MeshHandle;
@@ -520,7 +520,7 @@ public:
         auto& gameObject = selection->GetSelection()->gameObject;
         auto mesh = FlexKit::GetTriMesh(gameObject);
 
-        if (mesh == FlexKit::InvalidHandle_t)
+        if (mesh == FlexKit::InvalidHandle)
             return;
 
         if (auto resource = FlexKit::GetMeshResource(mesh); resource)
@@ -548,6 +548,8 @@ public:
     bool turnTable       = false;
     bool animate         = true;
 
+    FlexKit::LayerHandle        layer = FlexKit::InvalidHandle;
+
 private:
     FlexKit::CameraHandle       previewCamera;
     EditorRenderer&             renderer;
@@ -555,6 +557,15 @@ private:
     AnimatorSelectionContext*   selection;
     FlexKit::DepthBuffer        depthBuffer;
 };
+
+
+/************************************************************************************************/
+
+
+FlexKit::LayerHandle EditorPrefabEditor::GetPhysicsLayer() const
+{
+    return previewWindow->layer;
+}
 
 
 /************************************************************************************************/
@@ -720,6 +731,7 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
             PrefabGameObjectResource_ptr objectResource = std::make_shared<PrefabGameObjectResource>();
             project.AddResource(objectResource);
 
+            obj->layer                      = GetPhysicsLayer();
             obj->resourceID                 = objectResource->GetResourceGUID();
             localSelection->object.ID       = obj->resourceID;
             localSelection->object.animator = nullptr;
@@ -765,7 +777,7 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
                             return renderer.LoadMesh(*meshResource);
                         }
 
-                        FlexKit::MaterialHandle DefaultMaterial() const { return FlexKit::InvalidHandle_t; }
+                        FlexKit::MaterialHandle DefaultMaterial() const { return FlexKit::InvalidHandle; }
                         FlexKit::Scene*         Scene()                 { return nullptr; }
                     } context{ obj->gameObject, renderer, project };
 

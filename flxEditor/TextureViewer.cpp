@@ -35,7 +35,7 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
         {
             FlexKit::ClearBackBuffer(frameGraph, renderTarget, { 1, 0, 1, 1 });
 
-            if (texture == FlexKit::InvalidHandle_t)
+            if (texture == FlexKit::InvalidHandle)
                 return;
 
 
@@ -49,7 +49,7 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
 
             auto& draw = frameGraph.AddNode<DrawTexture>(
                 DrawTexture{
-                    FlexKit::InvalidHandle_t,
+                    FlexKit::InvalidHandle,
                     temporary.ReserveConstantBuffer,
                     temporary.ReserveVertexBuffer },
                 [&](FlexKit::FrameGraphNodeBuilder& Builder, DrawTexture& data)

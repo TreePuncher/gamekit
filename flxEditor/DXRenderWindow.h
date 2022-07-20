@@ -66,7 +66,7 @@ private:
     FNResize_t                  onResize;
 
     FlexKit::Win32RenderWindow  renderWindow;
-    FlexKit::CameraHandle       camera  = FlexKit::InvalidHandle_t;
+    FlexKit::CameraHandle       camera  = FlexKit::InvalidHandle;
 };
 
 

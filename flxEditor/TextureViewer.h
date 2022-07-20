@@ -22,7 +22,7 @@ class TextureViewer : public QWidget
 	Q_OBJECT
 
 public:
-	TextureViewer(EditorRenderer& renderer, QWidget *parent = Q_NULLPTR, FlexKit::ResourceHandle resource = FlexKit::InvalidHandle_t);
+	TextureViewer(EditorRenderer& renderer, QWidget *parent = Q_NULLPTR, FlexKit::ResourceHandle resource = FlexKit::InvalidHandle);
 	~TextureViewer();
 
     void resizeEvent(QResizeEvent* event);
@@ -38,7 +38,7 @@ private:
     DXRenderWindow*         renderWindow;
     EditorRenderer&         renderer;
 
-    FlexKit::ResourceHandle texture = FlexKit::InvalidHandle_t;
+    FlexKit::ResourceHandle texture = FlexKit::InvalidHandle;
 };
 
 

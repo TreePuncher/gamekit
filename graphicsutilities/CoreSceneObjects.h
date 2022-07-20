@@ -118,10 +118,10 @@ namespace FlexKit
 
 	struct FLEXKITAPI Brush
 	{
-		NodeHandle			Node				= InvalidHandle_t;	// 2
-		TriMeshHandle		Occluder			= InvalidHandle_t;	// 2
-		TriMeshHandle		MeshHandle			= InvalidHandle_t;	// 2
-        MaterialHandle      material            = InvalidHandle_t;
+		NodeHandle			Node				= InvalidHandle;	// 2
+		TriMeshHandle		Occluder			= InvalidHandle;	// 2
+		TriMeshHandle		MeshHandle			= InvalidHandle;	// 2
+        MaterialHandle      material            = InvalidHandle;
 
 		bool					DrawLast		= false; // 1
 		bool					Transparent		= false; // 1

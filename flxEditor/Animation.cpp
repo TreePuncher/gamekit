@@ -12,7 +12,7 @@ namespace FlexKit
             if (joints[I].Joint.mID == ID)
                 return (JointHandle)I;
 
-        return InvalidHandle_t;
+        return InvalidHandle;
     }
 
 
@@ -172,7 +172,7 @@ namespace FlexKit
                 return JointHandle(itr);
         }
 
-        return InvalidHandle_t;
+        return InvalidHandle;
     }
 
 
@@ -181,7 +181,7 @@ namespace FlexKit
 
     void SkeletonResource::AddJoint(const SkeletonJoint joint, const XMMATRIX IPose)
     {
-        const auto parentIPose  = joint.mParent != InvalidHandle_t ? IPoses[joint.mParent] : DirectX::XMMatrixIdentity();
+        const auto parentIPose  = joint.mParent != InvalidHandle ? IPoses[joint.mParent] : DirectX::XMMatrixIdentity();
         const auto pose         = DirectX::XMMatrixInverse(nullptr, IPose);
 
         IPoses.push_back(IPose);

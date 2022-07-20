@@ -285,7 +285,7 @@ namespace FlexKit
 
         ~SceneNodeView() override
         {
-            if (node != InvalidHandle_t)
+            if (node != InvalidHandle)
                 ReleaseNode(node);
         }
 
@@ -293,14 +293,14 @@ namespace FlexKit
         SceneNodeView(SceneNodeView&& rhs)
         {
             node		= rhs.node;
-            rhs.node	= InvalidHandle_t;
+            rhs.node	= InvalidHandle;
         }
 
 
         SceneNodeView& operator = (SceneNodeView&& rhs)
         {
             node		= rhs.node;
-            rhs.node	= InvalidHandle_t;
+            rhs.node	= InvalidHandle;
 
             return *this;
         }

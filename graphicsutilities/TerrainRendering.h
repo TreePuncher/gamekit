@@ -235,7 +235,7 @@ namespace FlexKit
 		float2			SWUV		= { 0.0f, 0.0f };
 		float2			NEUV		= { 1.0f, 1.0f };
 
-		ResourceHandle	HeightMap			= InvalidHandle_t;
+		ResourceHandle	HeightMap			= InvalidHandle;
 		int				HeightMapSampleBias = 0;
 	};
 

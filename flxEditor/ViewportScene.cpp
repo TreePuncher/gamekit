@@ -9,7 +9,7 @@
 
 int ViewportSceneContext::MapNode(FlexKit::NodeHandle node) noexcept
 {
-    if (node == FlexKit::InvalidHandle_t || node == FlexKit::NodeHandle{ 0 })
+    if (node == FlexKit::InvalidHandle || node == FlexKit::NodeHandle{ 0 })
         return -1;
 
     if (auto res = nodeMap.find(node); res != nodeMap.end())
@@ -223,7 +223,7 @@ void ViewportScene::RemoveObject(ViewportGameObject_ptr object)
 
 FlexKit::LayerHandle ViewportScene::GetLayer()
 {
-    if(physicsLayer == FlexKit::InvalidHandle_t)
+    if(physicsLayer == FlexKit::InvalidHandle)
         physicsLayer = FlexKit::PhysXComponent::GetComponent().CreateLayer(true);
 
     return physicsLayer;

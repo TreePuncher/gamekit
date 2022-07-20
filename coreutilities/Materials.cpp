@@ -18,7 +18,7 @@ namespace FlexKit
             auto& textures = materials[idx].Textures;
             auto parent = materials[idx].parent;
 
-            if (parent != InvalidHandle_t)
+            if (parent != InvalidHandle)
                 ReleaseMaterial(parent);
 
             for (auto& texture : textures)
@@ -75,7 +75,7 @@ namespace FlexKit
         auto& material = materials[clone];
         material.refCount = 0;
 
-        if (material.parent != InvalidHandle_t)
+        if (material.parent != InvalidHandle)
             AddRef(material.parent);
 
         const auto handle = handles.GetNewHandle();
@@ -238,7 +238,7 @@ namespace FlexKit
         }
 
         if (GetComponent()[handle].SubMaterials.full())
-            return InvalidHandle_t;
+            return InvalidHandle;
 
         auto subMaterial = materials.CreateMaterial();
         materials.AddSubMaterial(handle, subMaterial);
@@ -320,7 +320,7 @@ namespace FlexKit
             },
             []() -> MaterialHandle
             {
-                return InvalidHandle_t;
+                return InvalidHandle;
             });
     }
 

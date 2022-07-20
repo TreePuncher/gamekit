@@ -864,7 +864,7 @@ namespace FlexKit
 
         auto node = GetSceneNode(*go);
 
-        if (node == InvalidHandle_t)
+        if (node == InvalidHandle)
         {
             node = GetZeroedNode();
             go->AddView<SceneNodeView<>>(node);
@@ -1016,7 +1016,7 @@ namespace FlexKit
             },
             []
             {
-                return (CameraHandle)InvalidHandle_t;
+                return (CameraHandle)InvalidHandle;
             });
     }
 
@@ -1174,7 +1174,7 @@ namespace FlexKit
             },
             [] () -> NodeHandle
             {
-                return InvalidHandle_t;
+                return InvalidHandle;
             });
     }
 
@@ -1295,7 +1295,7 @@ namespace FlexKit
             {
                 return staticBody.GetNode();
             },
-            [] { return (NodeHandle)InvalidHandle_t; });
+            [] { return (NodeHandle)InvalidHandle; });
     }
 
 
@@ -1333,7 +1333,7 @@ namespace FlexKit
             {
                 return staticBody.GetNode();
             },
-            [] { return (NodeHandle)InvalidHandle_t; });
+            [] { return (NodeHandle)InvalidHandle; });
     }
 
 
@@ -1349,7 +1349,7 @@ namespace FlexKit
             },
             []
             {
-                return (NodeHandle)InvalidHandle_t;
+                return (NodeHandle)InvalidHandle;
             });
     }
 
@@ -1362,7 +1362,7 @@ namespace FlexKit
             },
             []
             {
-                return (CharacterControllerHandle)InvalidHandle_t;
+                return (CharacterControllerHandle)InvalidHandle;
             });
     }
 

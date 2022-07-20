@@ -370,7 +370,7 @@ namespace FlexKit
 
 
     private:
-        ResourceHandle clusterBuffer = InvalidHandle_t;
+        ResourceHandle clusterBuffer = InvalidHandle;
         IndirectLayout dispatch;
         IndirectLayout gather;
         IndirectLayout draw;

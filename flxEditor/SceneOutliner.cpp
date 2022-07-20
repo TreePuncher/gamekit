@@ -84,11 +84,27 @@ public:
 
         if (newParent && newParent != parent())
         {
-            if (!viewportObject->gameObject.hasView(FlexKit::TransformComponentID))
-                TransformComponentFactory::ConstructNode(*viewportObject, &scene);
+            struct OutlinerContext : public ComponentConstructionContext
+            {
+                OutlinerContext(ViewportScene& IN_scene) : scene{ IN_scene } {}
 
-            if (!newParent->viewportObject->gameObject.hasView(FlexKit::TransformComponentID))
-                TransformComponentFactory::ConstructNode(*newParent->viewportObject, &scene);
+                void AddToScene(FlexKit::GameObject& go) final
+                {
+                    scene.scene.AddGameObject(go);
+                }
+
+                FlexKit::LayerHandle GetSceneLayer() final
+                {
+                    return scene.physicsLayer;
+                }
+
+                ViewportScene& scene;
+            } ctx{ scene };
+
+            if (!viewportObject->gameObject.hasView(FlexKit::TransformComponentID))
+                TransformComponentFactory::ConstructNode(*viewportObject, ctx);
+            else if (!newParent->viewportObject->gameObject.hasView(FlexKit::TransformComponentID))
+                TransformComponentFactory::ConstructNode(*newParent->viewportObject, ctx);
 
             FlexKit::SetParentNode(
                 FlexKit::GetSceneNode(newParent->viewportObject->gameObject),
@@ -229,7 +245,7 @@ void SceneTreeWidget::UpdateLabels()
             {
                 auto node       = FlexKit::GetParentNode(obj->gameObject);
 
-                if (node == FlexKit::NodeHandle{ 0 } || node == FlexKit::InvalidHandle_t)
+                if (node == FlexKit::NodeHandle{ 0 } || node == FlexKit::InvalidHandle)
                 {
                     AddAtTopLevel(obj);
                     continue;
@@ -378,7 +394,24 @@ HierarchyItem* SceneOutliner::CreatePointLight() noexcept
 
     auto obj = CreateObject();
 
-    PointLightFactory::ConstructPointLight(*obj->viewportObject, scene.get());
+    struct OutlinerContext : public ComponentConstructionContext
+    {
+        OutlinerContext(ViewportScene& IN_scene) : scene{ IN_scene } {}
+
+        void AddToScene(FlexKit::GameObject& go) final
+        {
+            scene.scene.AddGameObject(go);
+        }
+
+        FlexKit::LayerHandle GetSceneLayer() final
+        {
+            return scene.physicsLayer;
+        }
+
+        ViewportScene& scene;
+    } ctx{ *scene };
+
+    PointLightFactory::ConstructPointLight(*obj->viewportObject, ctx);
 
     return obj;
 }

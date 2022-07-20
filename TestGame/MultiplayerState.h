@@ -35,7 +35,7 @@ using ConnectionHandle = Handle_t<32, GetTypeGUID(ConnectionHandle)>;
 class Packet
 {
 public:
-	Packet(void* IN_data = nullptr, size_t IN_size = 0, ConnectionHandle IN_sender = InvalidHandle_t, iAllocator* IN_allocator = nullptr) :
+	Packet(void* IN_data = nullptr, size_t IN_size = 0, ConnectionHandle IN_sender = InvalidHandle, iAllocator* IN_allocator = nullptr) :
 		dataSize    { IN_size       },
 		data        { IN_data       },
 		sender      { IN_sender     },
@@ -59,7 +59,7 @@ public:
 		allocator   = rhs.allocator;
 
         rhs.data        = nullptr;
-        rhs.sender      = InvalidHandle_t;
+        rhs.sender      = InvalidHandle;
         rhs.allocator   = nullptr;
         rhs.dataSize    = 0;
     }
@@ -75,7 +75,7 @@ public:
 		allocator   = rhs.allocator;
 
         rhs.data        = nullptr;
-        rhs.sender      = InvalidHandle_t;
+        rhs.sender      = InvalidHandle;
         rhs.allocator   = nullptr;
         rhs.dataSize    = 0;
 
@@ -88,7 +88,7 @@ public:
 			allocator->free(data);
 
         data            = nullptr;
-        sender          = InvalidHandle_t;
+        sender          = InvalidHandle;
         allocator       = nullptr;
         dataSize        = 0;
     }
@@ -104,7 +104,7 @@ public:
 
 	void*               data        = nullptr;
 	size_t              dataSize    = 0;
-	ConnectionHandle    sender      = InvalidHandle_t;
+	ConnectionHandle    sender      = InvalidHandle;
 	iAllocator*         allocator   = nullptr;
 };
 

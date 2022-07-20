@@ -289,7 +289,7 @@ namespace FlexKit
 		if (!E)
 			return;
 
-		if (J != InvalidHandle_t && J < E->JointCount) {
+		if (J != InvalidHandle && J < E->JointCount) {
 			E->Joints[J].r = DirectX::XMQuaternionMultiply(E->Joints[J].r, Q);
 			E->Dirty = true;
 		}
@@ -300,7 +300,7 @@ namespace FlexKit
 		if (!PS)
 			return;
 
-		if (J != InvalidHandle_t)
+		if (J != InvalidHandle)
         {
             const float4 xyzw{ xyz, 0 };
 			PS->Joints[J].ts = PS->Joints[J].ts + xyzw;
@@ -313,7 +313,7 @@ namespace FlexKit
 		if (!E)
 			return;
 
-		if (J != InvalidHandle_t) {
+		if (J != InvalidHandle) {
 			float s = E->Joints[J].ts.w;
 			E->Joints[J].ts = float4( xyz.x, xyz.y, xyz.z, s);
 			E->Dirty = true;
@@ -325,7 +325,7 @@ namespace FlexKit
 		if (!E)
 			return;
 
-		if (J!= InvalidHandle_t)
+		if (J!= InvalidHandle)
 			E->Joints[J].ts.w *= S;
 	}
 

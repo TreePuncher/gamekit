@@ -84,21 +84,21 @@ namespace FlexKit
 
         MaterialComponentData operator [](const MaterialHandle handle) const
         {
-            if(handle == InvalidHandle_t)
-                return { 0, InvalidHandle_t, InvalidHandle_t, {}, {}, {}, {} };
+            if(handle == InvalidHandle)
+                return { 0, InvalidHandle, InvalidHandle, {}, {}, {}, {} };
 
             return materials[handles[handle]];
         }
 
 
-        MaterialHandle CreateMaterial(MaterialHandle IN_parent = InvalidHandle_t)
+        MaterialHandle CreateMaterial(MaterialHandle IN_parent = InvalidHandle)
         {
             std::scoped_lock lock{ m };
 
             const auto handle         = handles.GetNewHandle();
             const auto materialIdx    = (index_t)materials.push_back({ 0, handle, IN_parent, {}, {}, {}, {}  });
 
-            if(IN_parent != InvalidHandle_t)
+            if(IN_parent != InvalidHandle)
                 AddRef(IN_parent);
 
             handles[handle] = materialIdx;
@@ -109,7 +109,7 @@ namespace FlexKit
 
         void AddRef(MaterialHandle material) noexcept
         {
-            if(material != InvalidHandle_t)
+            if(material != InvalidHandle)
                 materials[handles[material]].refCount++;
         }
 
@@ -186,12 +186,12 @@ namespace FlexKit
         {
             static_vector<PassHandle> out;
 
-            if (material == InvalidHandle_t)
+            if (material == InvalidHandle)
                 return out;
 
             auto& materialData = materials[handles[material]];
 
-            if (materialData.parent != InvalidHandle_t)
+            if (materialData.parent != InvalidHandle)
                 out = GetPasses(materialData.parent);
 
             if (materialData.Passes.size())
@@ -247,7 +247,7 @@ namespace FlexKit
                 else
                     return {};
             }
-            else if (material.parent != InvalidHandle_t)
+            else if (material.parent != InvalidHandle)
                 return GetProperty<TY>(material.parent, ID);
             else
                 return {};

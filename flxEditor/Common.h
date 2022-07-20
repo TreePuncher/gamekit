@@ -32,7 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ResourceIDs.h"
 #include "Serialization.hpp"
 
-#include <DirectXMath.h>
+#include <DirectXMath/DirectXMath.h>
 
 
 #pragma comment(lib, "Ole32.lib")

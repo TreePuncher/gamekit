@@ -146,7 +146,7 @@ namespace FlexKit
                 Block
                 {
                     .tileID                 = uint32_t(-1),
-                    .resource               = InvalidHandle_t,
+                    .resource               = InvalidHandle,
                     .state                  = EBlockState::Free,
                     .staleFrameCount        = 0,
                     .blockID                = uint32_t(I),
@@ -563,7 +563,7 @@ namespace FlexKit
                 ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 
                 TriMesh*        prevMesh        = nullptr;
-                MaterialHandle  prevMaterial    = InvalidHandle_t;
+                MaterialHandle  prevMaterial    = InvalidHandle;
 
                 ctx.TimeStamp(timeStats, 0);
 
@@ -1001,7 +1001,7 @@ namespace FlexKit
         auto deviceHeap     = renderSystem.GetDeviceResource(heap);
 
         Vector<ResourceHandle>  updatedTextures     = { &threadLocalAllocator  };
-        ResourceHandle          prevResource        = InvalidHandle_t;
+        ResourceHandle          prevResource        = InvalidHandle;
         TextureStreamContext    streamContext       = { &threadLocalAllocator };
         uint2                   blockSize           = { 256, 256 };
         TileMapList             mappings            = { &threadLocalAllocator };
@@ -1321,7 +1321,7 @@ namespace FlexKit
         Vector<gpuTileID> allocationsNeeded{ allocator };
         for (const gpuTileID* itr = begin; itr < end; itr++)
         {
-            if (ResourceHandle{ itr->TextureID } == InvalidHandle_t)
+            if (ResourceHandle{ itr->TextureID } == InvalidHandle)
                 continue;
 
             if (auto res = findInuse(*itr); res) {
@@ -1396,7 +1396,7 @@ namespace FlexKit
                 if (tile.tileID.bytes == -1)
                     return;
 
-                if (ResourceHandle{ tile.TextureID } == InvalidHandle_t)
+                if (ResourceHandle{ tile.TextureID } == InvalidHandle)
                     return;
 
                 if (free.size())

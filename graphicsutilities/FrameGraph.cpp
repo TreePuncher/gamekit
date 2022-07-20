@@ -52,7 +52,7 @@ namespace FlexKit
 					AfterState);
 				break;
 			case DRS_Retired:
-				ctx->AddAliasingBarrier(resourceObject.shaderResource, InvalidHandle_t);
+				ctx->AddAliasingBarrier(resourceObject.shaderResource, InvalidHandle);
 				break;
 			default:
 				FK_ASSERT(0);
@@ -204,7 +204,7 @@ namespace FlexKit
             if (resource.virtualState == VirtualResourceState::Virtual_Temporary ||
                 resource.virtualState == VirtualResourceState::Virtual_Released)
             {
-                ctx->AddAliasingBarrier(resource.shaderResource, InvalidHandle_t);
+                ctx->AddAliasingBarrier(resource.shaderResource, InvalidHandle);
             }
         }
 	}
@@ -301,7 +301,7 @@ namespace FlexKit
 
     FrameResourceHandle FrameGraphNodeBuilder::AccelerationStructure(ResourceHandle handle)
     {
-        if (auto frameResource = AddWriteableResource(handle, DeviceResourceState::DRS_ACCELERATIONSTRUCTURE); frameResource != InvalidHandle_t)
+        if (auto frameResource = AddWriteableResource(handle, DeviceResourceState::DRS_ACCELERATIONSTRUCTURE); frameResource != InvalidHandle)
             return frameResource;
 
         Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
@@ -312,7 +312,7 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::PixelShaderResource(ResourceHandle handle)
 	{
-        if (auto frameResource = AddReadableResource(handle, DeviceResourceState::DRS_PixelShaderResource); frameResource != InvalidHandle_t)
+        if (auto frameResource = AddReadableResource(handle, DeviceResourceState::DRS_PixelShaderResource); frameResource != InvalidHandle)
             return frameResource;
 
         Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
@@ -326,7 +326,7 @@ namespace FlexKit
 
     FrameResourceHandle FrameGraphNodeBuilder::NonPixelShaderResource(ResourceHandle handle)
     {
-        if (auto frameResource = AddReadableResource(handle, DeviceResourceState::DRS_NonPixelShaderResource); frameResource != InvalidHandle_t)
+        if (auto frameResource = AddReadableResource(handle, DeviceResourceState::DRS_NonPixelShaderResource); frameResource != InvalidHandle)
             return frameResource;
 
         Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
@@ -349,7 +349,7 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::CopySource(ResourceHandle handle)
 	{
-        if (auto frameResource = AddReadableResource(handle, DeviceResourceState::DRS_CopySrc); frameResource != InvalidHandle_t)
+        if (auto frameResource = AddReadableResource(handle, DeviceResourceState::DRS_CopySrc); frameResource != InvalidHandle)
             return frameResource;
 
         Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
@@ -362,7 +362,7 @@ namespace FlexKit
 
     FrameResourceHandle FrameGraphNodeBuilder::CopyDest(ResourceHandle  handle)
     {
-        if (auto frameResource = AddWriteableResource(handle, DeviceResourceState::DRS_CopyDest); frameResource != InvalidHandle_t)
+        if (auto frameResource = AddWriteableResource(handle, DeviceResourceState::DRS_CopyDest); frameResource != InvalidHandle)
             return frameResource;
 
         Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
@@ -378,7 +378,7 @@ namespace FlexKit
 	{
 		const auto resourceHandle = AddWriteableResource(target, DeviceResourceState::DRS_RenderTarget);
 
-        if (resourceHandle == InvalidHandle_t)
+        if (resourceHandle == InvalidHandle)
         {
             Resources->AddResource(target, true);
             return RenderTarget(target);
@@ -387,7 +387,7 @@ namespace FlexKit
 		auto resource = Resources->GetAssetObject(resourceHandle);
 
 		if (!resource)
-			return InvalidHandle_t;
+			return InvalidHandle;
 
 		return resourceHandle;
 	}
@@ -416,7 +416,7 @@ namespace FlexKit
 
     FrameResourceHandle	FrameGraphNodeBuilder::DepthRead(ResourceHandle handle)
     {
-        if (auto frameObject = AddReadableResource(handle, DeviceResourceState::DRS_DEPTHBUFFERREAD); frameObject == InvalidHandle_t)
+        if (auto frameObject = AddReadableResource(handle, DeviceResourceState::DRS_DEPTHBUFFERREAD); frameObject == InvalidHandle)
         {
             Resources->AddResource(handle, true);
             return DepthRead(handle);
@@ -431,7 +431,7 @@ namespace FlexKit
 
 	FrameResourceHandle	FrameGraphNodeBuilder::DepthTarget(ResourceHandle handle)
 	{
-        if (auto frameObject = AddWriteableResource(handle, DeviceResourceState::DRS_DEPTHBUFFERWRITE); frameObject == InvalidHandle_t)
+        if (auto frameObject = AddWriteableResource(handle, DeviceResourceState::DRS_DEPTHBUFFERWRITE); frameObject == InvalidHandle)
         {
             Resources->AddResource(handle, true);
             return DepthTarget(handle);
@@ -476,12 +476,12 @@ namespace FlexKit
         {
             auto allocationSize = Resources->renderSystem.GetAllocationSize(desc);
 
-            ResourceHandle virtualResource  = InvalidHandle_t;
-            ResourceHandle overlap          = InvalidHandle_t;
+            ResourceHandle virtualResource  = InvalidHandle;
+            ResourceHandle overlap          = InvalidHandle;
 
             auto [reuseableResource, found] = Node.FindReuseableResource(*memoryPool, allocationSize, NeededFlags, *Resources);
 
-            if (found || reuseableResource != InvalidHandle_t)
+            if (found || reuseableResource != InvalidHandle)
             {
                 auto reusedResource = Resources->Resources[reuseableResource].shaderResource;
                 auto deviceResource = Resources->renderSystem.GetHeapOffset(reusedResource);
@@ -495,8 +495,8 @@ namespace FlexKit
                 overlap         = _overlap;
             }
 
-            if (virtualResource == InvalidHandle_t)
-                return InvalidHandle_t;
+            if (virtualResource == InvalidHandle)
+                return InvalidHandle;
 
 		    FrameObject virtualObject       = FrameObject::VirtualObject();
 		    virtualObject.shaderResource    = virtualResource;
@@ -538,7 +538,7 @@ namespace FlexKit
             return  virtualResourceHandle;
         }
 
-        return InvalidHandle_t;
+        return InvalidHandle;
 	}
 
 
@@ -579,7 +579,7 @@ namespace FlexKit
             }
         }
 
-        return { InvalidHandle_t, false };
+        return { InvalidHandle, false };
     }
 
 
@@ -600,25 +600,25 @@ namespace FlexKit
         if (!((allocator.Flags() & NeededFlags) == NeededFlags))
         {
             FK_LOG_ERROR("Allocation with incompatible heap was detected!");
-            return InvalidHandle_t;
+            return InvalidHandle;
         }
 
 
 #if 1
         auto [virtualResource, overlap] = allocator.Acquire(desc, temp);
 
-        if (virtualResource == InvalidHandle_t)
-            return InvalidHandle_t;
+        if (virtualResource == InvalidHandle)
+            return InvalidHandle;
 #else
         auto allocationSize = Resources->renderSystem.GetAllocationSize(desc);
 
 
-        ResourceHandle virtualResource  = InvalidHandle_t;
-        ResourceHandle overlap          = InvalidHandle_t;
+        ResourceHandle virtualResource  = InvalidHandle;
+        ResourceHandle overlap          = InvalidHandle;
 
         auto [reuseableResource, found] = Node.FindReuseableResource(allocator, allocationSize, NeededFlags, *Resources);
 
-        if (found || reuseableResource != InvalidHandle_t)
+        if (found || reuseableResource != InvalidHandle)
         {
             auto reusedResource = Resources->Resources[reuseableResource].shaderResource;
             auto deviceResource = Resources->renderSystem.GetHeapOffset(reusedResource);
@@ -697,7 +697,7 @@ namespace FlexKit
 
 	FrameResourceHandle	FrameGraphNodeBuilder::UnorderedAccess(ResourceHandle handle, DeviceResourceState state)
 	{
-        if (auto frameResource = AddWriteableResource(handle, state); frameResource != InvalidHandle_t)
+        if (auto frameResource = AddWriteableResource(handle, state); frameResource != InvalidHandle)
             return frameResource;
 
         Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
@@ -891,7 +891,7 @@ namespace FlexKit
 
         auto& ctx = *contexts.front();
         for (auto acquired : acquiredResources)
-            ctx.AddAliasingBarrier(acquired, InvalidHandle_t);
+            ctx.AddAliasingBarrier(acquired, InvalidHandle);
 
         ResourceContext.WaitFor();
 
@@ -1001,7 +1001,7 @@ namespace FlexKit
 		auto& Pass = Graph.AddNode<PassData>(
 			PassData
 			{
-				InvalidHandle_t,
+				InvalidHandle,
 				Color
 			},
 			[=](FrameGraphNodeBuilder& Builder, PassData& Data)
@@ -1030,7 +1030,7 @@ namespace FlexKit
 
 		auto& Pass = Graph.AddNode<ClearDepthBuffer>(
 			ClearDepthBuffer{
-				InvalidHandle_t,
+				InvalidHandle,
 				clearDepth
 			},
 			[=](FrameGraphNodeBuilder& Builder, ClearDepthBuffer& Data)

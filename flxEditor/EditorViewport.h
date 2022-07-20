@@ -150,7 +150,7 @@ private:
 
     FlexKit::GBuffer                gbuffer;
     FlexKit::DepthBuffer            depthBuffer;
-    FlexKit::CameraHandle           viewportCamera = FlexKit::InvalidHandle_t;
+    FlexKit::CameraHandle           viewportCamera = FlexKit::InvalidHandle;
 
     std::shared_ptr<ViewportScene>  scene;
 };

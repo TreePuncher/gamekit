@@ -806,7 +806,7 @@ namespace FlexKit
 	{	// Make this atomic
         auto Available = isAssetAvailable(GUID);
         if (!Available)
-            return InvalidHandle_t;
+            return InvalidHandle;
 
 		TriMeshHandle Handle;
 
@@ -844,7 +844,7 @@ namespace FlexKit
 			}
 			else
 			{
-				Handle = InvalidHandle_t;
+				Handle = InvalidHandle;
 			}
 		}
 		else
@@ -872,7 +872,7 @@ namespace FlexKit
 			}
 			else
 			{
-				Handle = InvalidHandle_t;
+				Handle = InvalidHandle;
 			}
 		}
 
@@ -915,7 +915,7 @@ namespace FlexKit
 			}
 			else
 			{
-				Handle = InvalidHandle_t;
+				Handle = InvalidHandle;
 			}
 		}
 		else
@@ -942,7 +942,7 @@ namespace FlexKit
 			}
 			else
 			{
-				Handle = InvalidHandle_t;
+				Handle = InvalidHandle;
 			}
 		}
 
@@ -978,7 +978,7 @@ namespace FlexKit
 				GeometryTable.ReferenceCounts[Index]	= 1;
 			}
 			else
-				Handle = InvalidHandle_t;
+				Handle = InvalidHandle;
 		}
 		else
 		{
@@ -995,7 +995,7 @@ namespace FlexKit
 				GeometryTable.ReferenceCounts[Index]	= 1;
 			}
 			else
-				Handle = InvalidHandle_t;
+				Handle = InvalidHandle;
 		}
 
 		return Handle;
