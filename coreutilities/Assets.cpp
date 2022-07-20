@@ -28,12 +28,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace FlexKit
 {   /************************************************************************************************/
 
-
 	struct ResourceDirectory
 	{
 		char str[256];
 	};
-	
+
 	struct GlobalResourceTable
 	{
 		~GlobalResourceTable()
@@ -54,6 +53,7 @@ namespace FlexKit
 		Vector<Resource*>			ResourcesLoaded;
 		Vector<GUID_t>				ResourceGUIDs;
 		iAllocator*					ResourceMemory;
+        AssetFailureHandler         failureHandler = [](GUID_t) -> AssetHandle { return INVALIDHANDLE; };
 	}inline Resources;
 
 
@@ -350,7 +350,7 @@ namespace FlexKit
 			}
 		}
 
-		return RHandle;
+		return Resources.failureHandler(guid);
 	}
 
 
@@ -531,6 +531,15 @@ namespace FlexKit
 
 		return false;
 	}
+
+
+    /************************************************************************************************/
+
+
+    void SetLoadFailureHandler(AssetFailureHandler handler)
+    {
+        Resources.failureHandler = handler;
+    }
 
 
 	/************************************************************************************************/

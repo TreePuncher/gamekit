@@ -319,7 +319,7 @@ void ClusteredShading(uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThread
         #endif
     }
 
-#if 0
+#if 1
     float4 Colors[] = {
         float4(0, 0, 0, 0), 
         float4(1, 0, 0, 0), 
@@ -333,7 +333,7 @@ void ClusteredShading(uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThread
 
     const uint clusterKey = GetSliceIdx(depth * MaxZ);
 
-    //if (px.x % (1920 / 38) == 0 || px.y % (1080 / 18) == 0)
+    if (px.x % (1920 / 38) == 0 || px.y % (1080 / 18) == 0)
     //    return color * color;
     //else
     //
@@ -365,7 +365,7 @@ void ClusteredShading(uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThread
     //return pow(float4(roughness, metallic, 0, 0), 2.2f);
     //return float4(N.xyz / 2 + 0.5f, 1);
     //return float4(T.xyz / 2 + 0.5f, 1);
-    //return float4(Albedo.xyz, 1);
+    return float4(Albedo.xyz, 1);
 
     //return pow(UV.y, 1.0f); 
     //return pow(1 - UV.y, 2.2f); 

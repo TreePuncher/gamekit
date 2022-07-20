@@ -2103,7 +2103,7 @@ FlexKit::Blob EditorComponentCSG::GetBlob()
 /************************************************************************************************/
 
 
-void CSGComponentEventHandler::OnCreateView(FlexKit::GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+void CSGComponentEventHandler::OnCreateView(FlexKit::GameObject& gameObject, FlexKit::ValueMap values, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
 {
     std::vector<CSGBrush>   brushes;
 

@@ -1,6 +1,7 @@
 #include "Gameplay.h"
 #include "containers.h"
 #include "SceneLoadingContext.h"
+#include "KeyValueIds.h"
 
 #include <algorithm>
 
@@ -1213,10 +1214,16 @@ WorldAssets LoadBasicTiles()
 
 void CreateMultiplayerScene(GameWorld& world, const WorldAssets& assets, iAllocator& tempAllocator)
 {
-    //static const GUID_t sceneID = 1234;
-    //world.LoadScene(sceneID);
+    static const GUID_t sceneID = 1234;
+    world.LoadScene(sceneID);
+    auto& prefabObject = world.objectPool.Allocate();
 
-    GenerateWorld(world, assets, tempAllocator);
+    static_vector<KeyValuePair> values;
+    values.emplace_back(PhysicsLayerKID, &world.layer);
+
+    //FlexKit::LoadPrefab(prefabObject, "PrefabGameObject", tempAllocator, {values});
+
+    //GenerateWorld(world, assets, tempAllocator);
 
     auto& physics       = PhysXComponent::GetComponent();
     auto& floorCollider = world.objectPool.Allocate();

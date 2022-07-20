@@ -137,6 +137,22 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 
     RegisterCSGInspector(mainWindow.Get3DView());
     RegisterColliderInspector(mainWindow.Get3DView(), project);
+
+    FlexKit::SetLoadFailureHandler(
+        [&](FlexKit::GUID_t guid) -> FlexKit::AssetHandle
+        {
+            for(auto& res : project.resources)
+                if (res->resource->GetResourceGUID() == guid)
+                {
+                    auto blob = res->resource->CreateBlob();
+                    FlexKit::AddAssetBuffer((FlexKit::Resource*)blob.buffer);
+
+                    blob.buffer = nullptr;
+                    return FlexKit::LoadGameAsset(guid);
+                }
+
+            return INVALIDHANDLE;
+        });
 }
 
 

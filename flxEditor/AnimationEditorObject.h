@@ -12,9 +12,10 @@ struct AnimationEditorObject
     uint64_t                    ID          = (uint64_t)-1;
     uint64_t                    resourceID;
 
-    AnimatorComponent*          animator;
-    ScriptResource_ptr          resource;
-    FlexKit::LayerHandle        layer;
+    AnimatorComponent*              animator;
+    ScriptResource_ptr              resource;
+    PrefabGameObjectResource_ptr    prefab;
+    FlexKit::LayerHandle            layer;
 
     void        Reload(EditorScriptEngine& engine);
 

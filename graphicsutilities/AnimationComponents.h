@@ -87,7 +87,7 @@ namespace FlexKit
         }
 
 
-        void AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
+        void AddComponentView(GameObject& GO, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 
 
         struct SkeletonState
@@ -299,7 +299,7 @@ namespace FlexKit
             return handle;
         }
 
-        void AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
+        void AddComponentView(GameObject& GO, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 
         struct AnimationStateContext
         {

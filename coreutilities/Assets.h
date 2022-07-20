@@ -118,7 +118,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
+    using AssetFailureHandler = TypeErasedCallable<AssetHandle(AssetHandle)>;
     struct ResourceTable;
 
 	FLEXKITAPI void			InitiateAssetTable	(iAllocator* Memory);
@@ -132,7 +132,6 @@ namespace FlexKit
 	FLEXKITAPI Resource*			    GetAsset		(AssetHandle RHandle);
 	FLEXKITAPI std::optional<GUID_t>    FindAssetGUID	(const char* Str);
 
-
 	FLEXKITAPI bool			ReadAssetTable	(FILE* F, ResourceTable* Out, size_t TableSize);
 	FLEXKITAPI bool			ReadResource	(FILE* F, ResourceTable* Table, size_t Index, Resource* out);
 
@@ -145,6 +144,8 @@ namespace FlexKit
 
 	FLEXKITAPI bool isAssetAvailable		(GUID_t ID);
 	FLEXKITAPI bool isAssetAvailable		(const char* ID);
+
+    FLEXKITAPI void SetLoadFailureHandler   (AssetFailureHandler handler);
 
 
 	/************************************************************************************************/
