@@ -34,7 +34,7 @@ namespace FlexKit
 
     struct Enemy1EventHandler
     {
-        static void OnCreateView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
+        static void OnCreateView(GameObject& gameObject, ValueMap values, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
     };
 
     constexpr size_t Enemy1ID   = GetTypeGUID(Enemy1Component);

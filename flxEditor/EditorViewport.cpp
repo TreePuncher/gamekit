@@ -653,9 +653,14 @@ struct LoadEntityContext : public LoadEntityContextInterface
         return defaultMaterial;
     }
 
-    FlexKit::Scene* Scene()
+    FlexKit::Scene* Scene() final
     {
         return scene;
+    }
+
+    FlexKit::LayerHandle LayerHandle() final
+    {
+        return viewport.GetScene()->GetLayer();
     }
 };
 

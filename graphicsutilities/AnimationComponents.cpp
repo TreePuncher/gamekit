@@ -797,7 +797,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void SkeletonComponent::AddComponentView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    void SkeletonComponent::AddComponentView(GameObject& gameObject, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
         SkeletonComponentBlob blob;
         memcpy(&blob, buffer, bufferSize);
@@ -1040,7 +1040,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void AnimatorComponent::AddComponentView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    void AnimatorComponent::AddComponentView(GameObject& gameObject, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
         AnimatorBlobHeader header;
         memcpy(&header, buffer, sizeof(header));

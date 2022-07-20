@@ -13,6 +13,7 @@
 #include <iostream>
 #include <type_traits>
 #include <tuple>
+#include <span>
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -21,6 +22,25 @@ namespace FlexKit
 	constexpr ComponentID InvalidComponentID = -1;
 
     class GameObject;
+
+    using KeyValuePair  = std::pair<uint32_t, void*>;
+    using ValueMap      = std::span<KeyValuePair>;
+
+    template<typename TY>
+    std::optional<TY> FindValue(ValueMap& map, uint32_t valueId)
+    {
+        auto res = std::find_if(
+                    map.begin(),
+                    map.end(),
+                    [&](auto& pair) {
+                        return std::get<0>(pair) == valueId; }
+                    );
+
+        if (res != map.end())
+            return { (TY)res->second };
+        else
+            return {};
+    }
 
 	class ComponentBase
 	{
@@ -118,7 +138,7 @@ namespace FlexKit
 		}
 
 
-        virtual void AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) {};
+        virtual void AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) {};
 
 
 		inline static static_vector<ComponentEntry, 128> Components = static_vector<ComponentBase::ComponentEntry, 128>();
@@ -138,6 +158,7 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
 
 	template<typename TY, ComponentID ID = -1>
 	class Component : public ComponentBase
@@ -181,7 +202,7 @@ namespace FlexKit
 			return component != nullptr;
 		}
 
-        virtual void AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override {}
+        virtual void AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override {}
 	};
 
 
@@ -386,8 +407,8 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    bool LoadPrefab(GameObject&, const char* assetID,   iAllocator& allocator, void* user = nullptr);
-    bool LoadPrefab(GameObject&, uint64_t assetID,      iAllocator& allocator, void* user = nullptr);
+    bool LoadPrefab(GameObject&, const char* assetID,   iAllocator& allocator, ValueMap user = {});
+    bool LoadPrefab(GameObject&, uint64_t assetID,      iAllocator& allocator, ValueMap user = {});
 
 
     /************************************************************************************************/
@@ -611,7 +632,7 @@ namespace FlexKit
 
     struct BasicComponentEventHandler
     {
-        static void OnCreateView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+        static void OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
         {
         }
     };
@@ -674,9 +695,9 @@ namespace FlexKit
         }
 
 
-        void AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
+        void AddComponentView(GameObject& GO, ValueMap values, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
         {
-            eventHandler.OnCreateView(GO, user_ptr, buffer, bufferSize, allocator);
+            eventHandler.OnCreateView(GO, values, buffer, bufferSize, allocator);
         }
 
 
@@ -754,7 +775,7 @@ namespace FlexKit
 
         StringID& operator[] (StringIDHandle handle) { return IDs[handles[handle]]; }
 
-        void AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
+        void AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 
 		HandleUtilities::HandleTable<StringIDHandle>	handles;
 		Vector<StringID>								IDs;

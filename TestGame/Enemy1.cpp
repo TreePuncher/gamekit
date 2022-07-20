@@ -6,7 +6,7 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
-    void Enemy1EventHandler::OnCreateView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    void Enemy1EventHandler::OnCreateView(GameObject& gameObject, ValueMap values, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
 
     }

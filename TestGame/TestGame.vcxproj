@@ -122,6 +122,7 @@
     <ClInclude Include="..\coreutilities\Events.h" />
     <ClInclude Include="..\coreutilities\GUIInputState.h" />
     <ClInclude Include="..\coreutilities\GameFramework.h" />
+    <ClInclude Include="..\coreutilities\KeyValueIds.h" />
     <ClInclude Include="..\coreutilities\ModifiableShape.h" />
     <ClInclude Include="..\coreutilities\RuntimeComponentIDs.h" />
     <ClInclude Include="..\coreutilities\Scene.h" />

@@ -236,7 +236,7 @@ FlexKit::LayerHandle ViewportScene::GetLayer()
 void ViewportScene::Update()
 {
     auto& entities = sceneResource->sceneResource->entities; // TODO: make this not dumb
-    ViewportSceneContext ctx{ *this };
+    ViewportSceneContext ctx;
 
     for (auto& object : sceneObjects)
     {

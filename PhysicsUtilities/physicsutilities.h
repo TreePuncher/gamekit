@@ -567,11 +567,11 @@ namespace FlexKit
         }
     };
 
-
     struct StaticBodyHeaderBlob
     {
         uint32_t shapeCount;
     };
+
 
     class StaticBodyComponent : public Component<StaticBodyComponent, StaticBodyComponentID>
     {
@@ -584,7 +584,7 @@ namespace FlexKit
             return physx.CreateStaticCollider(gameObject, layer, pos, q);
         }
 
-        void AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
+        void AddComponentView(GameObject& GO, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
         void Remove() noexcept;
 
 
@@ -640,7 +640,7 @@ namespace FlexKit
         RigidBodyComponent(PhysXComponent& IN_physx);
 
         RigidBodyHandle CreateRigidBody(GameObject* gameObject, LayerHandle layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 });
-        void            AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
+        void            AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 
         void            Remove(RigidBodyView& rigidBody);
         PhysicsLayer&   GetLayer(LayerHandle layer);
@@ -746,7 +746,7 @@ namespace FlexKit
         }
 
 
-        void AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
+        void AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
         {
             FK_ASSERT(0);
         }
@@ -976,7 +976,7 @@ namespace FlexKit
 
     struct ThirdPersonEventHandler
     {
-        void OnCreateView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+        void OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
         {
         }
     };

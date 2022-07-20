@@ -36,7 +36,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void StringIDComponent::AddComponentView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    void StringIDComponent::AddComponentView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
         IDComponentBlob blob;
         std::memcpy(&blob, buffer, sizeof(blob));
@@ -111,7 +111,7 @@ namespace FlexKit
     }
 
 
-    bool LoadPrefab(GameObject& gameObject, const char* assetID, iAllocator& allocator, void* user_ptr)
+    bool LoadPrefab(GameObject& gameObject, const char* assetID, iAllocator& allocator, ValueMap user_ptr)
     {
         if (auto guid = FlexKit::FindAssetGUID(assetID); guid)
             return LoadPrefab(gameObject, guid.value(), allocator, user_ptr);
@@ -120,7 +120,7 @@ namespace FlexKit
     }
 
 
-    bool LoadPrefab(GameObject& gameObject, uint64_t assetID, iAllocator& allocator, void* user_ptr)
+    bool LoadPrefab(GameObject& gameObject, uint64_t assetID, iAllocator& allocator, ValueMap userValues)
     {
         auto assetHandle    = LoadGameAsset(assetID);
         if (assetHandle == -1)
@@ -142,7 +142,10 @@ namespace FlexKit
             memcpy(&component, buffer + offset, sizeof(component));
 
             if (ComponentAvailability(component.componentID) == true)
-                GetComponent(component.componentID).AddComponentView(gameObject, user_ptr, (std::byte*)buffer + offset, component.blockSize, &allocator);
+            {
+                auto& componentSystem = GetComponent(component.componentID);
+                componentSystem.AddComponentView(gameObject, userValues, (std::byte*)buffer + offset, component.blockSize, &allocator);
+            }
             else
             {
                 gameObject.Release();

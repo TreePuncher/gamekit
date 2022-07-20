@@ -250,7 +250,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void MaterialComponent::AddComponentView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    void MaterialComponent::AddComponentView(GameObject& gameObject, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
         if (gameObject.hasView(MaterialComponentID))
             return;

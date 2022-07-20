@@ -163,7 +163,7 @@ namespace FlexKit
         using View = MaterialView;
 
         void AddTexture(GUID_t textureAsset, MaterialHandle material, ReadContext& readContext, const bool LoadLowest = false);
-        void AddComponentView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
+        void AddComponentView(GameObject& gameObject, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 
         void Add2Pass(MaterialHandle& material, const PassHandle ID)
         {

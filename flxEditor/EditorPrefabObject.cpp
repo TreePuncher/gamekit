@@ -2,6 +2,7 @@
 #include "EditorPrefabObject.h"
 #include "ResourceIDs.h"
 #include "EditorScriptEngine.h"
+#include "KeyValueIds.h"
 
 
 /************************************************************************************************/
@@ -134,6 +135,23 @@ void PrefabGameObjectResource::SetResourceGUID(uint64_t newGUID) noexcept
 /************************************************************************************************/
 
 
+FlexKit::EntityComponent_ptr PrefabGameObjectResource::FindComponent(FlexKit::ComponentID id)
+{
+    auto res = std::find_if(
+        std::begin(components),
+        std::end(components),
+        [&](FlexKit::EntityComponent_ptr& component)
+        {
+            return component->id == id;
+        });
+
+    return res != std::end(components) ? *res : nullptr;
+}
+
+
+/************************************************************************************************/
+
+
 void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface& ctx)
 {
     for (auto& componentEntry : components)
@@ -185,9 +203,12 @@ void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface
 
                 FlexKit::TriMeshHandle handle = ctx.LoadTriMeshResource(res);
 
+                static_vector<FlexKit::KeyValuePair> values;
+                values.emplace_back(FlexKit::LoadEntityContextInterfaceKID, &ctx);
+
                 auto& component     = FlexKit::ComponentBase::GetComponent(componentEntry->id);
                 auto  blob          = brushComponent->GetBlob();
-                component.AddComponentView(ctx.GameObject(), &ctx, blob, blob.size(), FlexKit::SystemAllocator);
+                component.AddComponentView(ctx.GameObject(), values, blob, blob.size(), FlexKit::SystemAllocator);
 
                 auto& brush         = FlexKit::GetView<FlexKit::BrushView>(ctx.GameObject()).GetBrush();
                 brush.material      = material;
@@ -209,7 +230,10 @@ void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface
             auto  blob          = componentEntry->GetBlob();
             auto& component     = FlexKit::ComponentBase::GetComponent(componentEntry->id);
 
-            component.AddComponentView(ctx.GameObject(), &ctx, blob, blob.size(), FlexKit::SystemAllocator);
+            static_vector<FlexKit::KeyValuePair> values;
+            values.emplace_back(FlexKit::LoadEntityContextInterfaceKID, &ctx);
+
+            component.AddComponentView(ctx.GameObject(), values, blob, blob.size(), FlexKit::SystemAllocator);
             FlexKit::SetBoundingSphereFromLight(ctx.GameObject());
         }   break;
         default:
@@ -217,7 +241,12 @@ void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface
             auto  blob              = componentEntry->GetBlob();
             auto& component         = FlexKit::ComponentBase::GetComponent(componentEntry->id);
 
-            component.AddComponentView(ctx.GameObject(), &ctx, blob, blob.size(), FlexKit::SystemAllocator);
+            auto layer = ctx.LayerHandle();
+            static_vector<FlexKit::KeyValuePair> values{
+                { FlexKit::LoadEntityContextInterfaceKID, &ctx },
+                { FlexKit::PhysicsLayerKID, &layer  } };
+
+            component.AddComponentView(ctx.GameObject(), values, blob, blob.size(), FlexKit::SystemAllocator);
         }   break;
         }
     }

@@ -13,6 +13,7 @@
 #include "ResourceIDs.h"
 #include "EditorAnimatorComponent.h"
 #include "EditorPrefabInputTab.h"
+#include "ViewportScene.h"
 
 #include <angelscript.h>
 
@@ -729,16 +730,52 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
             auto obj = localSelection->GetSelection();
 
             PrefabGameObjectResource_ptr objectResource = std::make_shared<PrefabGameObjectResource>();
-            project.AddResource(objectResource);
+            auto projectRes = project.AddResource(objectResource);
 
             obj->layer                      = GetPhysicsLayer();
             obj->resourceID                 = objectResource->GetResourceGUID();
+            obj->prefab                     = objectResource;
+
             localSelection->object.ID       = obj->resourceID;
             localSelection->object.animator = nullptr;
 
             globalSelection.Clear();
             globalSelection.type        = AnimatorObject_ID;
             globalSelection.selection   = std::any{ obj };
+        });
+
+
+    auto saveObject = fileMenu->addAction("Save");
+    connect(
+        saveObject, &QAction::triggered,
+        [&]
+        {
+            if (auto obj = localSelection->GetSelection(); obj && obj->prefab)
+            {
+                auto prefab = (PrefabGameObjectResource*)(project.FindProjectResource(localSelection->object.ID)->resource.get());
+
+                ViewportSceneContext ctx{};
+
+                for (auto& component : obj->gameObject)
+                {
+
+                    auto component_res = prefab->FindComponent(component.ID);
+
+                    if (!component_res)
+                    {
+                        auto entityComponent = FlexKit::EntityComponent::CreateComponent(component.ID);
+
+                        if (!entityComponent)
+                            continue;
+
+                        prefab->components.emplace_back(FlexKit::EntityComponent_ptr(entityComponent));
+
+                        IEntityComponentRuntimeUpdater::Update(*entityComponent, component.Get_ref(), ctx);
+                    }
+                    else
+                        IEntityComponentRuntimeUpdater::Update(*component_res, component.Get_ref(), ctx);
+                }
+            }
         });
 
     auto loadObject = fileMenu->addAction("Load");
@@ -758,14 +795,16 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 
                     struct Context : public LoadEntityContextInterface
                     {
-                        Context(FlexKit::GameObject& IN_obj, EditorRenderer& IN_renderer, EditorProject& IN_project)
+                        Context(FlexKit::GameObject& IN_obj, EditorRenderer& IN_renderer, EditorProject& IN_project, FlexKit::LayerHandle IN_layer)
                             : gameObject    { IN_obj        }
                             , renderer      { IN_renderer   }
-                            , project       { IN_project    } {}
+                            , project       { IN_project    }
+                            , layer         { IN_layer      } {}
 
                         FlexKit::GameObject&    gameObject;
                         EditorRenderer&         renderer;
                         EditorProject&          project;
+                        FlexKit::LayerHandle    layer;
 
                         FlexKit::GameObject&    GameObject() override { return gameObject; }
                         FlexKit::NodeHandle     GetNode(uint32_t idx) { return FlexKit::GetZeroedNode(); }
@@ -779,7 +818,9 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 
                         FlexKit::MaterialHandle DefaultMaterial() const { return FlexKit::InvalidHandle; }
                         FlexKit::Scene*         Scene()                 { return nullptr; }
-                    } context{ obj->gameObject, renderer, project };
+
+                        FlexKit::LayerHandle    LayerHandle() final { return layer; }
+                    } context{ obj->gameObject, renderer, project, previewWindow->layer };
 
                     auto loadRes =
                         [&](auto& resourceID)

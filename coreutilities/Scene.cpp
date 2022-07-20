@@ -7,6 +7,7 @@
 #include "componentBlobs.h"
 #include "ProfilingUtilities.h"
 #include "SceneLoadingContext.h"
+#include "KeyValueIds.h"
 
 #include <cmath>
 
@@ -305,7 +306,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void BrushComponentEventHandler::OnCreateView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    void BrushComponentEventHandler::OnCreateView(GameObject& gameObject, ValueMap, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
         auto node = GetSceneNode(gameObject);
         if (node == InvalidHandle)
@@ -337,7 +338,7 @@ namespace FlexKit
     /************************************************************************************************/
 
     
-    void PointLightEventHandler::OnCreateView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    void PointLightEventHandler::OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
         PointLightComponentBlob pointLight;
 
@@ -969,9 +970,12 @@ namespace FlexKit
                                 }
                                 else if (ComponentAvailability(ID) == true)
                                 {
+                                    static_vector<KeyValuePair> values;
+                                    values.emplace_back(SceneLoadingContextKID, &ctx);
+
                                     GetComponent(ID).AddComponentView(
                                                         gameObject,
-                                                        &ctx,
+                                                        std::span{ values },
                                                         (std::byte*)(block) + sizeof(entityBlock) + componentOffset,
                                                         component.blockSize,
                                                         allocator);

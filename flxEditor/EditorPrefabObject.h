@@ -57,6 +57,8 @@ public:
     void                    SetResourceID   (const std::string& id) noexcept override;
     void                    SetResourceGUID (uint64_t GUID) noexcept;
 
+    FlexKit::EntityComponent_ptr FindComponent(FlexKit::ComponentID id);
+
     void Serialize(auto& ar)
     {
         ar& guid;
@@ -82,6 +84,7 @@ struct LoadEntityContextInterface
     virtual FlexKit::TriMeshHandle          LoadTriMeshResource(ProjectResource_ptr resource)   = 0;
     virtual FlexKit::MaterialHandle         DefaultMaterial() const                             = 0;
     virtual FlexKit::Scene*                 Scene()                                             = 0;
+    virtual FlexKit::LayerHandle            LayerHandle()                                       = 0;
 };
 
 void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface& ctx);

@@ -7,7 +7,7 @@
 #include <cooking/PxCooking.h>
 #include <fmt/printf.h>
 #include "..\coreutilities\SceneLoadingContext.h"
-
+#include "KeyValueIds.h"
 using namespace physx;
 
 namespace FlexKit
@@ -1687,14 +1687,17 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void StaticBodyComponent::AddComponentView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    void StaticBodyComponent::AddComponentView(GameObject& gameObject, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
+        if (userValues.empty())
+            return;
+
         StaticBodyHeaderBlob header;
         memcpy(&header, (void*)buffer, sizeof(header));
 
-        SceneLoadingContext* ctx = static_cast<SceneLoadingContext*>(user_ptr);
+        LayerHandle* layer = FindValue<LayerHandle*>(userValues, PhysicsLayerKID).value_or(nullptr);
 
-        auto& staticBody = gameObject.hasView(StaticBodyComponentID) ? static_cast<StaticBodyView&>(*gameObject.GetView(StaticBodyComponentID)) : gameObject.AddView<StaticBodyView>(ctx->layer);
+        auto& staticBody = gameObject.hasView(StaticBodyComponentID) ? static_cast<StaticBodyView&>(*gameObject.GetView(StaticBodyComponentID)) : gameObject.AddView<StaticBodyView>(*layer);
 
         for (size_t I = 0; I < header.shapeCount; I++)
         {
@@ -1834,7 +1837,7 @@ namespace FlexKit
         return physx.CreateRigidBodyCollider(gameObject, layer, pos, q);
     }
 
-    void RigidBodyComponent::AddComponentView(GameObject& GO, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    void RigidBodyComponent::AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
         FK_ASSERT(0);
     }

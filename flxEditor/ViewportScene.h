@@ -61,8 +61,6 @@ class FlexKit::EntityComponent;
 
 struct ViewportSceneContext
 {
-    ViewportScene& scene;
-
     struct Node
     {
         float3      position;

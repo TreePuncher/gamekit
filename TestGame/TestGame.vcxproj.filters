@@ -301,6 +301,9 @@
     <ClInclude Include="..\coreutilities\ModifiableShape.h">
       <Filter>Headers\coreutilities</Filter>
     </ClInclude>
+    <ClInclude Include="..\coreutilities\KeyValueIds.h">
+      <Filter>Headers\coreutilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\coreutilities\AllSourceFiles.cpp">
