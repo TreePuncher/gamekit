@@ -887,7 +887,7 @@ namespace FlexKit
     struct ThirdPersonCamera
     {
         ThirdPersonCamera(
-            CharacterControllerHandle   IN_controller        = InvalidHandle_t,
+            CharacterControllerHandle   IN_controller        = InvalidHandle,
             NodeHandle                  IN_node              = GetZeroedNode(),
             CameraHandle                IN_camera            = CameraComponent::GetComponent().CreateCamera(),
             float3                      initialPos           = { 0, 0, 0 },
@@ -943,15 +943,15 @@ namespace FlexKit
             return out;
         }
 
-        CharacterControllerHandle   controller    = InvalidHandle_t;
-        CameraHandle                camera        = InvalidHandle_t;
+        CharacterControllerHandle   controller    = InvalidHandle;
+        CameraHandle                camera        = InvalidHandle;
 
-        NodeHandle objectNode   = InvalidHandle_t;
-        NodeHandle cameraNode   = InvalidHandle_t;
+        NodeHandle objectNode   = InvalidHandle;
+        NodeHandle cameraNode   = InvalidHandle;
 
-        NodeHandle yawNode      = InvalidHandle_t;
-        NodeHandle pitchNode    = InvalidHandle_t;
-        NodeHandle rollNode     = InvalidHandle_t;
+        NodeHandle yawNode      = InvalidHandle;
+        NodeHandle pitchNode    = InvalidHandle;
+        NodeHandle rollNode     = InvalidHandle;
 
 
         float3          cameraPosition  = float3(0, 0, 0);

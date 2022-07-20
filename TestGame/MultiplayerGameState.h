@@ -39,7 +39,7 @@ struct GameInfo
     std::string name;
     std::string lobbyName;
 
-    ConnectionHandle connectionHandle = InvalidHandle_t;
+    ConnectionHandle connectionHandle = InvalidHandle;
 };
 
 

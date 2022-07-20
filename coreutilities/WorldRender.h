@@ -514,7 +514,7 @@ namespace FlexKit
         QueryHandle             timeStats;
         ReadBackResourceHandle  timingReadBack;
 
-        ResourceHandle          clusterBuffer = InvalidHandle_t;
+        ResourceHandle          clusterBuffer = InvalidHandle;
 
         ClusteredRender             clusteredRender;
         ShadowMapper                shadowMapping;

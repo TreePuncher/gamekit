@@ -515,7 +515,7 @@ void SceneBrushInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::
                         auto trimesh = viewport.LoadTriMeshResource(resource_ptr);
                         brush.SetMesh(trimesh);
 
-                        if (brush.GetMaterial() == FlexKit::InvalidHandle_t)
+                        if (brush.GetMaterial() == FlexKit::InvalidHandle)
                         {
                             auto& materials     = FlexKit::MaterialComponent::GetComponent();
                             auto newMaterial    = materials.CreateMaterial(viewport.gbufferPass);
@@ -534,7 +534,7 @@ void SceneBrushInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::
         });
 
     auto mesh = brush.GetTriMesh();
-    if (mesh == FlexKit::InvalidHandle_t)
+    if (mesh == FlexKit::InvalidHandle)
     {
         panelCtx.AddText(fmt::format("No Mesh Set"));
 

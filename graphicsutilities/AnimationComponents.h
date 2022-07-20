@@ -59,12 +59,12 @@ namespace FlexKit
 
         SkeletonHandle Create(const TriMeshHandle triMesh, const AssetHandle asset)
         {
-            if (triMesh == InvalidHandle_t)
-                return InvalidHandle_t;
+            if (triMesh == InvalidHandle)
+                return InvalidHandle;
 
             auto mesh = GetMeshResource(triMesh);
             if (!mesh)
-                return InvalidHandle_t;
+                return InvalidHandle;
 
             if (!mesh->Skeleton)
             {
@@ -72,7 +72,7 @@ namespace FlexKit
                 const auto available     = isAssetAvailable(skeletonGuid);
 
                 if (!available)
-                    return InvalidHandle_t;
+                    return InvalidHandle;
 
                 const auto resource = LoadGameAsset(skeletonGuid);
                 mesh->Skeleton      = Resource2Skeleton(resource, allocator);
@@ -471,8 +471,8 @@ namespace FlexKit
         class AnimatorView : public FlexKit::ComponentView_t<AnimatorComponent>
         {
         public:
-            AnimatorView(GameObject& IN_gameObject, AnimatorHandle IN_animatorHandle = InvalidHandle_t) :
-                animator{ IN_animatorHandle != InvalidHandle_t ? IN_animatorHandle : GetComponent().Create(IN_gameObject) } {}
+            AnimatorView(GameObject& IN_gameObject, AnimatorHandle IN_animatorHandle = InvalidHandle) :
+                animator{ IN_animatorHandle != InvalidHandle ? IN_animatorHandle : GetComponent().Create(IN_gameObject) } {}
 
             PlayID_t    Play(Animation& anim, bool loop = false);
             void        Stop(PlayID_t playID);
@@ -513,7 +513,7 @@ namespace FlexKit
 
     struct FABRIKTarget
     {
-        FABRIKTarget(NodeHandle IN_node = InvalidHandle_t, iAllocator* IN_allocator = nullptr) :
+        FABRIKTarget(NodeHandle IN_node = InvalidHandle, iAllocator* IN_allocator = nullptr) :
             node    { IN_node },
             users   { IN_allocator }{}
 
@@ -608,8 +608,8 @@ namespace FlexKit
             Vector<Target>  targets;
             GameObject*     gameObject;
 
-            JointHandle     endEffector     = InvalidHandle_t;
-            JointHandle     ikRoot          = InvalidHandle_t;
+            JointHandle     endEffector     = InvalidHandle;
+            JointHandle     ikRoot          = InvalidHandle;
             uint32_t        iterationCount  = 5;
             uint32_t        poseID          = rand();
 

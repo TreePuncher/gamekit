@@ -14,6 +14,7 @@ struct AnimationEditorObject
 
     AnimatorComponent*          animator;
     ScriptResource_ptr          resource;
+    FlexKit::LayerHandle        layer;
 
     void        Reload(EditorScriptEngine& engine);
 

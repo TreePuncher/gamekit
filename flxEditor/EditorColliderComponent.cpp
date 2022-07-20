@@ -8,7 +8,7 @@
 #include "Serialization.hpp"
 #include "ResourceIDs.h"
 #include "EditorResourcePickerDialog.h"
-
+#include "Scene.h"
 
 /************************************************************************************************/
 
@@ -75,8 +75,10 @@ public:
     {
         panelCtx.PushVerticalLayout("Static Collider", true);
 
+        panelCtx.PushHorizontalLayout("Create", true);
+
         panelCtx.AddButton(
-            "Create Collider from CSG Brush",
+            "Create Collider from TriMesh",
             [&]()
             {
                 auto& staticBody = static_cast<FlexKit::StaticBodyView&>(view);
@@ -84,41 +86,107 @@ public:
                 auto& gameObject = staticBody.GetGameObject();
 
                 FlexKit::Apply(gameObject,
-                    [&](CSGView& csg)
+                    [&](FlexKit::BrushView& brush)
                     {
-                        if (!csg->brushes.size())
-                            return;
+                        auto triMesh = brush.GetTriMesh();
 
-                        auto& physx     = FlexKit::PhysXComponent::GetComponent();
-                        auto geometry   = csg->brushes.front().shape.CreateIndexedMesh();
+                        if (triMesh != FlexKit::InvalidHandle)
+                        {
+                            auto meshResource = FlexKit::GetMeshResource(triMesh);
+                            auto& physx = FlexKit::PhysXComponent::GetComponent();
 
-                        auto newShape = physx.CookMesh2(
-                            geometry.points.data(), geometry.points.size(),
-                            geometry.indices.data(), geometry.indices.size());
+                            auto lod = meshResource->GetLowestLoadedLod();
+                            auto indexBufferIdx = lod.GetIndexBufferIndex();
 
-                        auto resource = std::make_shared<StaticColliderResource>();
-                        resource->stringID      = "Static Collider";
-                        resource->guid          = rand();
-                        resource->colliderBlob  = newShape;
+                            auto indexBuffer = lod.GetIndices();
+                            auto pointBuffer = lod.GetPoints();
 
-                        auto shape = physx.LoadTriMeshShape(newShape);
+                            if (pointBuffer && indexBuffer)
+                            {
+                                auto newShape = physx.CookMesh2(
+                                    (float3*)pointBuffer->GetBuffer(), pointBuffer->GetBufferSize(),
+                                    (uint32_t*)indexBuffer->GetBuffer(), indexBuffer->GetBufferSize());
 
-                        Collider colliderMeta;
-                        colliderMeta.shape.type             = FlexKit::StaticBodyType::TriangleMesh;
-                        colliderMeta.shape.triMeshResource  = resource->guid;
-                        colliderMeta.shape.orientation      = FlexKit::Quaternion{ 0, 0, 0, 1 };
-                        colliderMeta.shape.position         = FlexKit::float3(0);
-                        colliderMeta.shapeName              = "CSG generated Collider";
+                                auto resource = std::make_shared<StaticColliderResource>();
+                                resource->stringID      = "Static Collider";
+                                resource->guid          = rand();
+                                resource->colliderBlob  = newShape;
 
-                        editorData->colliders.push_back({ colliderMeta });
+                                auto shape = physx.LoadTriMeshShape(newShape);
+                                
+                                Collider colliderMeta;
+                                colliderMeta.shape.type             = FlexKit::StaticBodyType::TriangleMesh;
+                                colliderMeta.shape.triMeshResource  = resource->guid;
+                                colliderMeta.shape.orientation      = FlexKit::Quaternion{ 0, 0, 0, 1 };
+                                colliderMeta.shape.position         = FlexKit::float3(0);
+                                colliderMeta.shapeName              = std::string(meshResource->ID) + "_Collider";
 
-                        if(shape)
-                            staticBody.AddShape(shape);
+                                editorData->colliders.push_back({ colliderMeta });
 
-                        auto projectResource = project.AddResource(resource);
-                        viewport.GetScene()->sceneResource->sceneResources.push_back(projectResource);
+                                if(shape)
+                                    staticBody.AddShape(shape);
+
+                                auto projectResource = project.AddResource(resource);
+
+                                if(viewport.GetScene())
+                                    viewport.GetScene()->sceneResource->sceneResources.push_back(projectResource);
+                            }
+                            else
+                                return;
+
+                        }
                     });
             });
+
+
+        if (viewport.GetScene())
+            panelCtx.AddButton(
+                "Create Collider from CSG Brush",
+                [&]()
+                {
+                    auto& staticBody = static_cast<FlexKit::StaticBodyView&>(view);
+                    auto* editorData = (StaticColliderEditorData*)staticBody.GetUserData();
+                    auto& gameObject = staticBody.GetGameObject();
+
+                    FlexKit::Apply(gameObject,
+                        [&](CSGView& csg)
+                        {
+                            if (!csg->brushes.size())
+                                return;
+
+                            auto& physx     = FlexKit::PhysXComponent::GetComponent();
+                            auto geometry   = csg->brushes.front().shape.CreateIndexedMesh();
+
+                            auto newShape = physx.CookMesh2(
+                                geometry.points.data(), geometry.points.size(),
+                                geometry.indices.data(), geometry.indices.size());
+
+                            auto resource = std::make_shared<StaticColliderResource>();
+                            resource->stringID      = "Static Collider";
+                            resource->guid          = rand();
+                            resource->colliderBlob  = newShape;
+
+                            auto shape = physx.LoadTriMeshShape(newShape);
+
+                            Collider colliderMeta;
+                            colliderMeta.shape.type             = FlexKit::StaticBodyType::TriangleMesh;
+                            colliderMeta.shape.triMeshResource  = resource->guid;
+                            colliderMeta.shape.orientation      = FlexKit::Quaternion{ 0, 0, 0, 1 };
+                            colliderMeta.shape.position         = FlexKit::float3(0);
+                            colliderMeta.shapeName              = "CSG generated Collider";
+
+                            editorData->colliders.push_back({ colliderMeta });
+
+                            if(shape)
+                                staticBody.AddShape(shape);
+
+                            auto projectResource = project.AddResource(resource);
+
+                            viewport.GetScene()->sceneResource->sceneResources.push_back(projectResource);
+                        });
+                });
+
+        panelCtx.Pop();
 
         panelCtx.AddButton(
             "Add TriMesh Collider",
@@ -297,22 +365,21 @@ public:
 
 struct ColliderComponentFactory : public IComponentFactory
 {
-    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ViewportScene* viewportScene)
+    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
     {
-        if (viewportScene)
-        {
-            auto& physx = FlexKit::PhysXComponent::GetComponent();
-            auto layer  = viewportScene->GetLayer();
+        auto layerHandle = ctx.GetSceneLayer();
+        FK_ASSERT(layerHandle != FlexKit::InvalidHandle);
 
-            const static auto defaultCube = physx.CreateCubeShape(float3{ 1, 1, 1 });
-            auto editorData = new StaticColliderEditorData{};
+        auto& physx = FlexKit::PhysXComponent::GetComponent();
 
-            auto& staticBody = gameObject.AddView<FlexKit::StaticBodyView>(layer);
+        const static auto defaultCube = physx.CreateCubeShape(float3{ 1, 1, 1 });
+        auto editorData = new StaticColliderEditorData{};
 
-            staticBody.SetUserData(editorData);
+        auto& staticBody = gameObject.AddView<FlexKit::StaticBodyView>(layerHandle);
 
-            return staticBody;
-        }
+        staticBody.SetUserData(editorData);
+
+        return staticBody;
     }
 
     inline static const std::string name = "Static Collider";
@@ -347,20 +414,19 @@ struct ColliderComponentFactory : public IComponentFactory
 
 struct RigidBodyComponentFactory : public IComponentFactory
 {
-    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ViewportScene* viewportScene)
+    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
     {
-        if(viewportScene)
-        {
-            auto& physx = FlexKit::PhysXComponent::GetComponent();
-            auto layer  = viewportScene->GetLayer();
+        auto& physx = FlexKit::PhysXComponent::GetComponent();
+        auto layer  = ctx.GetSceneLayer();
 
-            const static auto defaultCube = physx.CreateCubeShape(float3{ 1, 1, 1 });
+        FK_ASSERT(layer != FlexKit::InvalidHandle);
 
-            auto& rigidBodyView = gameObject.AddView<FlexKit::RigidBodyView>(layer);
-            rigidBodyView.AddShape(defaultCube);
+        const static auto defaultCube = physx.CreateCubeShape(float3{ 1, 1, 1 });
 
-            return rigidBodyView;
-        }
+        auto& rigidBodyView = gameObject.AddView<FlexKit::RigidBodyView>(layer);
+        rigidBodyView.AddShape(defaultCube);
+
+        return rigidBodyView;
     }
 
     inline static const std::string name = "Rigid Body Collider";

@@ -265,7 +265,7 @@ namespace FlexKit
 			return;
 		}
 
-		if (PSO->id == InvalidHandle_t)
+		if (PSO->id == InvalidHandle)
 		{
 			// First node in chain
 			PSO->id				= handle;

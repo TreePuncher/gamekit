@@ -84,7 +84,7 @@ namespace FlexKit
 
 	float4x4 Skeleton::GetInversePose(const JointHandle H)
 	{
-		return H != InvalidHandle_t ? IPose[H] : float4x4::Identity();
+		return H != InvalidHandle ? IPose[H] : float4x4::Identity();
 	}
 
 
@@ -193,7 +193,7 @@ namespace FlexKit
         auto readCtx = OpenReadContext(triMesh->assetHandle);
 
         if (!readCtx)
-            return InvalidHandle_t;
+            return InvalidHandle;
 
         for (auto& morphTarget : triMesh->morphTargetAssets)
         {
@@ -206,7 +206,7 @@ namespace FlexKit
             }
         }
 
-        return InvalidHandle_t;
+        return InvalidHandle;
     }
 
 
@@ -239,7 +239,7 @@ namespace FlexKit
                 return JointHandle{ I };
 		}
 
-		return InvalidHandle_t;
+		return InvalidHandle;
 	}
 
 

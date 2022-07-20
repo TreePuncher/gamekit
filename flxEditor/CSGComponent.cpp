@@ -2120,7 +2120,7 @@ void CSGComponentEventHandler::OnCreateView(FlexKit::GameObject& gameObject, voi
 
 struct CSGComponentFactory : public IComponentFactory
 {
-    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ViewportScene* viewportScene)
+    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
     {
         return gameObject.AddView<CSGView>();
     }

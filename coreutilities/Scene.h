@@ -63,7 +63,7 @@ namespace FlexKit
             auto node = GetSceneNode(gameObject);
 
 			GetComponent()[brush].MeshHandle    = triMesh;
-			GetComponent()[brush].Node		    = node != InvalidHandle_t ? node : GetZeroedNode();
+			GetComponent()[brush].Node		    = node != InvalidHandle ? node : GetZeroedNode();
 		}
 
         ~BrushView()
@@ -107,7 +107,7 @@ namespace FlexKit
 		{
 			auto meshHandle = GetComponent()[brush].MeshHandle;
 
-            if (meshHandle == InvalidHandle_t)
+            if (meshHandle == InvalidHandle)
                 return {};
             else
                 return GetMeshResource(meshHandle)->BS;
@@ -194,7 +194,7 @@ namespace FlexKit
         float I, R;
 
         NodeHandle      Position;
-        ResourceHandle  shadowMap = InvalidHandle_t;
+        ResourceHandle  shadowMap = InvalidHandle;
 
         bool                forceDisableShadowMapping = false;
         LightStateFlags     state;
@@ -213,7 +213,7 @@ namespace FlexKit
 	class PointLightView : public ComponentView_t<PointLightComponent>
 	{
 	public:
-        PointLightView(GameObject& gameObject, float3 color = { 1, 1, 1 }, float intensity = 100, float radius = 100, NodeHandle node = InvalidHandle_t);
+        PointLightView(GameObject& gameObject, float3 color = { 1, 1, 1 }, float intensity = 100, float radius = 100, NodeHandle node = InvalidHandle);
 
 
         float3      GetK();
@@ -259,8 +259,8 @@ namespace FlexKit
 	struct VisibilityFields
 	{
 		GameObject*		entity		= nullptr;	// to get parents in raycast results
-		SceneHandle		scene		= InvalidHandle_t;
-		NodeHandle		node		= InvalidHandle_t;
+		SceneHandle		scene		= InvalidHandle;
+		NodeHandle		node		= InvalidHandle;
 
 		bool			visable		= true;
 		bool			rayVisible	= false;
@@ -293,7 +293,7 @@ namespace FlexKit
         ~SceneVisibilityView() override
         {
             GetComponent().Remove(visibility);
-            visibility = InvalidHandle_t;
+            visibility = InvalidHandle;
         }
 
         BoundingSphere GetBoundingSphere() const
@@ -658,9 +658,9 @@ namespace FlexKit
 
     struct _PointLightShadowCaster
     {
-        PointLightHandle    pointLight  = InvalidHandle_t;
-        NodeHandle          node        = InvalidHandle_t;
-        ResourceHandle      shadowMap   = InvalidHandle_t;
+        PointLightHandle    pointLight  = InvalidHandle;
+        NodeHandle          node        = InvalidHandle;
+        ResourceHandle      shadowMap   = InvalidHandle;
         float4x4            matrix      = float4x4::Identity();
     };
 

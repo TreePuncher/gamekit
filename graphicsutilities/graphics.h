@@ -1441,7 +1441,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	struct VertexBufferEntry
 	{
-		VertexBufferHandle	VertexBuffer	= InvalidHandle_t;
+		VertexBufferHandle	VertexBuffer	= InvalidHandle;
 		UINT				Stride			= 0;
 		UINT				Offset			= 0;
 	};
@@ -2600,7 +2600,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			DXGI_FORMAT			Format;
 			uint8_t				mipCount;
 			uint2				WH;
-			ResourceHandle      owner           = InvalidHandle_t;
+			ResourceHandle      owner           = InvalidHandle;
             uint2               heapRange[3]    = { { 0, 0 }, { 0, 0 }, { 0, 0 } };
 
 #if USING(AFTERMATH)
@@ -2887,7 +2887,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			else
 			{
                 FK_LOG_ERROR("Failed to create Heap. Flags: %u", flags);
-				return InvalidHandle_t;
+				return InvalidHandle;
 			}
 		}
 
@@ -3360,7 +3360,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		VertexResourceBuffer	_CreateVertexBufferDeviceResource(const size_t ResourceSize, bool GPUResident = true);
 		ResourceHandle          _CreateDefaultTexture();
 
-		void                    _PushDelayReleasedResource(ID3D12Resource*, CopyContextHandle = InvalidHandle_t);
+		void                    _PushDelayReleasedResource(ID3D12Resource*, CopyContextHandle = InvalidHandle);
 
 		void    _ForceReleaseTexture(ResourceHandle handle);
         void    _InsertBarrier(const Vector<Barrier>& vector);
@@ -3370,7 +3370,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 
 		ID3D12QueryHeap*    _GetQueryResource(QueryHandle handle);
-		CopyContext&        _GetCopyContext(CopyContextHandle handle = InvalidHandle_t);
+		CopyContext&        _GetCopyContext(CopyContextHandle handle = InvalidHandle);
 		auto*               _GetCopyQueue() { return copyEngine.copyQueue; }
 
 		void                _OnCrash();
@@ -3412,7 +3412,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		std::atomic_uint    graphicsSubmissionCounter   = 0;
 		ID3D12Fence*        Fence                       = nullptr;
 
-		CopyContextHandle   ImmediateUpload = InvalidHandle_t;
+		CopyContextHandle   ImmediateUpload = InvalidHandle;
 
 		IDXGIFactory5*      pGIFactory = nullptr;
 		IDXGIAdapter4*      pDXGIAdapter = nullptr;
@@ -3569,7 +3569,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
         void DiscardResource(ResourceHandle resource);
 
 		void AddAliasingBarrier (ResourceHandle before, ResourceHandle after);
-		void AddUAVBarrier      (ResourceHandle Handle = InvalidHandle_t, uint32_t subresource = -1);
+		void AddUAVBarrier      (ResourceHandle Handle = InvalidHandle, uint32_t subresource = -1);
 
 		void AddPresentBarrier			(ResourceHandle Handle,	DeviceResourceState Before);
 		void AddRenderTargetBarrier		(ResourceHandle Handle,	DeviceResourceState Before, DeviceResourceState State = DeviceResourceState::DRS_RenderTarget);
@@ -3590,7 +3590,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetComputeRootSignature    (const RootSignature& RS);
 		void SetPipelineState		    (ID3D12PipelineState* PSO);
 
-		void SetRenderTargets		    (const static_vector<ResourceHandle> RTs, bool DepthStecil, ResourceHandle DepthStencil = InvalidHandle_t, const size_t MIPMapOffset = 0);
+		void SetRenderTargets		    (const static_vector<ResourceHandle> RTs, bool DepthStecil, ResourceHandle DepthStencil = InvalidHandle, const size_t MIPMapOffset = 0);
 		void SetRenderTargets2		    (const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV);
 
 		void SetViewports			    (static_vector<D3D12_VIEWPORT, 16>	VPs);
@@ -3907,7 +3907,7 @@ private:
         size_t offset   = 0;
         size_t size     = 0;
 
-        ResourceHandle Overlap = InvalidHandle_t;
+        ResourceHandle Overlap = InvalidHandle;
 
         operator bool() { return size > 0; }
     };
@@ -3920,11 +3920,11 @@ private:
 
     struct AcquireDeferredRes
     {
-        ResourceHandle      resource    = InvalidHandle_t;
-        ResourceHandle      overlap     = InvalidHandle_t;
+        ResourceHandle      resource    = InvalidHandle;
+        ResourceHandle      overlap     = InvalidHandle;
 
         size_t              offset      = 0;
-        DeviceHeapHandle    heap        = InvalidHandle_t;
+        DeviceHeapHandle    heap        = InvalidHandle;
     };
 
 	struct PoolAllocatorInterface
@@ -3983,7 +3983,7 @@ private:
 			uint32_t        blockCount;
 			uint64_t        flags;
 			uint64_t        frameID;
-            ResourceHandle  priorAllocation = InvalidHandle_t;
+            ResourceHandle  priorAllocation = InvalidHandle;
 
             friend bool operator < (MemoryRange& lhs, MemoryRange& rhs)
             {
@@ -3997,7 +3997,7 @@ private:
 			uint32_t        blockCount;
 			size_t          frameID;
 			uint64_t        flags;
-			ResourceHandle  resource = InvalidHandle_t;
+			ResourceHandle  resource = InvalidHandle;
 		};
 
 		Vector<MemoryRange> freeRanges;
@@ -4011,7 +4011,7 @@ private:
 	/************************************************************************************************/
 
 	// INTERNAL USE ONLY!
-	FLEXKITAPI UploadSegment	    ReserveUploadBuffer		(RenderSystem& renderSystem, const size_t uploadSize, CopyContextHandle = InvalidHandle_t);
+	FLEXKITAPI UploadSegment	    ReserveUploadBuffer		(RenderSystem& renderSystem, const size_t uploadSize, CopyContextHandle = InvalidHandle);
 	FLEXKITAPI void				    MoveBuffer2UploadBuffer	(const UploadSegment& data, const byte* source, const size_t uploadSize);
 
 	FLEXKITAPI DescHeapPOS PushRenderTarget             (RenderSystem* RS, ResourceHandle    target, DescHeapPOS POS, const size_t MIPOffset = 0);
@@ -4050,7 +4050,7 @@ private:
 	ResourceHandle MoveTextureBuffersToVRAM	(RenderSystem* RS, CopyContextHandle, TextureBuffer* buffer, size_t MIPCount, size_t arrayCount, DeviceFormat format);
 	ResourceHandle MoveTextureBuffersToVRAM	(RenderSystem* RS, CopyContextHandle, TextureBuffer* buffer, size_t MIPCount, DeviceFormat format);
 
-    ResourceHandle MoveBufferToDevice       (RenderSystem* RS, const char* buffer, const size_t, CopyContextHandle ctx = InvalidHandle_t);
+    ResourceHandle MoveBufferToDevice       (RenderSystem* RS, const char* buffer, const size_t, CopyContextHandle ctx = InvalidHandle);
 
 
 	/************************************************************************************************/
@@ -4155,6 +4155,17 @@ private:
 
 			    return nullptr;
 		    }
+
+            VertexBufferView* GetPoints()
+            {
+                for (auto view : buffers)
+                {
+                    if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION)
+                        return view;
+                }
+
+                return nullptr;
+            }
 
             size_t GetIndexBufferIndex() const
             {
@@ -4419,7 +4430,7 @@ private:
 	class CBPushBuffer
 	{
 	public:
-		CBPushBuffer(ConstantBufferHandle cBuffer = InvalidHandle_t, char* IN_buffer = nullptr, size_t offsetBegin = 0, size_t reservedSize = 0) :
+		CBPushBuffer(ConstantBufferHandle cBuffer = InvalidHandle, char* IN_buffer = nullptr, size_t offsetBegin = 0, size_t reservedSize = 0) :
 			CB				{ cBuffer		},
 			buffer			{ IN_buffer		},
 			pushBufferSize	{ reservedSize	},
@@ -4449,7 +4460,7 @@ private:
 			pushBufferSize	= pushBuffer.pushBufferSize;
 			pushBufferUsed	= pushBuffer.pushBufferUsed;
 
-			pushBuffer.CB				= InvalidHandle_t;
+			pushBuffer.CB				= InvalidHandle;
 			pushBuffer.buffer			= nullptr;
 			pushBuffer.pushBufferBegin	= 0;
 			pushBuffer.pushBufferSize	= 0;
@@ -4465,7 +4476,7 @@ private:
 			pushBufferSize	= pushBuffer.pushBufferSize;
 			pushBufferUsed	= pushBuffer.pushBufferUsed;
 
-			pushBuffer.CB				= InvalidHandle_t;
+			pushBuffer.CB				= InvalidHandle;
 			pushBuffer.buffer			= nullptr;
 			pushBuffer.pushBufferBegin	= 0;
 			pushBuffer.pushBufferSize	= 0;
@@ -4517,7 +4528,7 @@ private:
 		size_t begin() const { return pushBufferBegin; }
 
 	private:
-		ConstantBufferHandle	CB				= InvalidHandle_t;
+		ConstantBufferHandle	CB				= InvalidHandle;
 		char*					buffer			= nullptr;
 		size_t					pushBufferBegin = 0;
 		size_t					pushBufferSize	= 0;
@@ -4528,7 +4539,7 @@ private:
 	class VBPushBuffer
 	{
 	public:
-		VBPushBuffer(VertexBufferHandle vBuffer = InvalidHandle_t, char* buffer_ptr = nullptr, size_t offsetBegin = 0, size_t reservedSize = 0) noexcept :
+		VBPushBuffer(VertexBufferHandle vBuffer = InvalidHandle, char* buffer_ptr = nullptr, size_t offsetBegin = 0, size_t reservedSize = 0) noexcept :
 			VB					{ vBuffer		},
 			buffer				{ buffer_ptr	},
 			pushBufferSize		{ reservedSize	},
@@ -4557,7 +4568,7 @@ private:
 			pushBufferSize	 = pushBuffer.pushBufferSize;
 			pushBufferUsed	 = pushBuffer.pushBufferUsed;
 
-			pushBuffer.VB				= InvalidHandle_t;
+			pushBuffer.VB				= InvalidHandle;
 			pushBuffer.buffer			= nullptr;
 			pushBuffer.pushBufferOffset	= 0;
 			pushBuffer.pushBufferSize	= 0;
@@ -4573,7 +4584,7 @@ private:
 			pushBufferSize	 = pushBuffer.pushBufferSize;
 			pushBufferUsed	 = pushBuffer.pushBufferUsed;
 
-			pushBuffer.VB				= InvalidHandle_t;
+			pushBuffer.VB				= InvalidHandle;
 			pushBuffer.buffer			= nullptr;
 			pushBuffer.pushBufferOffset	= 0;
 			pushBuffer.pushBufferSize	= 0;
@@ -4620,7 +4631,7 @@ private:
 			return pushBufferUsed + pushBufferOffset;
 		}
 
-		VertexBufferHandle	VB					= InvalidHandle_t;
+		VertexBufferHandle	VB					= InvalidHandle;
 		char*				buffer				= 0;
 		size_t				pushBufferOffset	= 0;
 		size_t				pushBufferSize		= 0;
@@ -4682,7 +4693,7 @@ private:
         size_t                  Size() const { return size; }
 
 	private:
-		ConstantBufferHandle	constantBuffer		= InvalidHandle_t;
+		ConstantBufferHandle	constantBuffer		= InvalidHandle;
 		size_t					constantsOffset		= 0;
         size_t                  size                = 0;
 	};
@@ -4708,7 +4719,7 @@ private:
 
 			const size_t                offset;
 			const size_t                idx;
-			const ConstantBufferHandle	CB = InvalidHandle_t;
+			const ConstantBufferHandle	CB = InvalidHandle;
 		};
 
 		return Proxy{ source.begin(), 0, source };
@@ -4796,7 +4807,7 @@ private:
 	private:
 		uint64_t			offsetBegin		= 0;
 		uint64_t			vertexStride	= 0;
-		VertexBufferHandle	vertexBuffer	= InvalidHandle_t;
+		VertexBufferHandle	vertexBuffer	= InvalidHandle;
 	};
 
 
@@ -4828,8 +4839,8 @@ private:
 
 	FLEXKITAPI TriMeshHandle				LoadMesh				( GUID_t TMHandle );
 
-	FLEXKITAPI TriMeshHandle                GetMesh                 ( GUID_t, CopyContextHandle copyCtx = InvalidHandle_t);
-	FLEXKITAPI TriMeshHandle				GetMesh					( const char* meshID, CopyContextHandle = InvalidHandle_t);
+	FLEXKITAPI TriMeshHandle                GetMesh                 ( GUID_t, CopyContextHandle copyCtx = InvalidHandle);
+	FLEXKITAPI TriMeshHandle				GetMesh					( const char* meshID, CopyContextHandle = InvalidHandle);
 
 
 	FLEXKITAPI TriMesh*						GetMeshResource			( TriMeshHandle  TMHandle );
@@ -5348,8 +5359,8 @@ private:
 	}
 
 
-	using ReserveVertexBufferFunction   = decltype(CreateVertexBufferReserveObject(InvalidHandle_t, nullptr, nullptr));
-	using ReserveConstantBufferFunction = decltype(CreateConstantBufferReserveObject(InvalidHandle_t, nullptr, nullptr));
+	using ReserveVertexBufferFunction   = decltype(CreateVertexBufferReserveObject(InvalidHandle, nullptr, nullptr));
+	using ReserveConstantBufferFunction = decltype(CreateConstantBufferReserveObject(InvalidHandle, nullptr, nullptr));
 
     inline auto CreateOnceReserveBuffer(ReserveConstantBufferFunction& reserveConstants, iAllocator* allocator)
     {

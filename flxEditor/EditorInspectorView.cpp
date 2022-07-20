@@ -258,15 +258,47 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
                 {
                 case ViewportObjectList_ID:
                 {
-                    auto selection = selectionContext.GetSelection<ViewportSelection>();
+                    ViewportSelection selection = selectionContext.GetSelection<ViewportSelection>();
+                    struct ViewportPanelContext : public ComponentConstructionContext
+                    {
+                        ViewportPanelContext(ViewportSelection& IN_selection) : selection{ IN_selection } {}
+
+                        void AddToScene(FlexKit::GameObject& go)
+                        {
+                            selection.scene->scene.AddGameObject(go);
+                        }
+
+                        FlexKit::LayerHandle GetSceneLayer()
+                        {
+                            return selection.scene->physicsLayer;
+                        }
+
+                        ViewportSelection& selection;
+                    } ctx{ selection };
+
                     if(selection.viewportObjects.size())
-                        factory->Construct(*selection.viewportObjects.front(), selection.scene);
+                        factory->Construct(*selection.viewportObjects.front(), ctx);
                 }   break;
                 case AnimatorObject_ID:
                 {
                     auto selection = selectionContext.GetSelection<AnimationEditorObject*>();
+                    
+                    struct AnimatorPanelContext : public ComponentConstructionContext
+                    {
+                        AnimatorPanelContext(AnimationEditorObject* IN_obj) : selection{ IN_obj } {}
+
+                        void AddToScene(FlexKit::GameObject& gameObject) {}
+
+                        FlexKit::LayerHandle GetSceneLayer()
+                        {
+                            return selection->layer;
+                        }
+
+                        AnimationEditorObject* selection;
+                    } ctx{ selection };
+
                     if(selection)
-                        factory->Construct(selection->gameObject, nullptr);
+                        factory->Construct(selection->gameObject, ctx);
                 }   break;
                 default:
                     break;
@@ -303,12 +335,12 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
 }
 
 
-FlexKit::ComponentViewBase& EditorInspectorView::ConstructComponent(uint32_t componentID, ViewportGameObject& gameObject, ViewportScene& scene)
+FlexKit::ComponentViewBase& EditorInspectorView::ConstructComponent(uint32_t componentID, ViewportGameObject& gameObject, ComponentConstructionContext& ctx)
 {
     for (auto& component : availableComponents)
     {
         if (component->ComponentID() == componentID)
-            return component->Construct(gameObject, &scene);
+            return component->Construct(gameObject, ctx);
      }
 
     throw std::runtime_error("Unknown Component");

@@ -43,7 +43,7 @@ struct ViewportScene
     EditorScene_ptr                     sceneResource;
     std::vector<ViewportGameObject_ptr> sceneObjects;
     FlexKit::Scene                      scene           { FlexKit::SystemAllocator };
-    FlexKit::LayerHandle                physicsLayer    = FlexKit::InvalidHandle_t;
+    FlexKit::LayerHandle                physicsLayer    = FlexKit::InvalidHandle;
     std::vector<uint64_t>               markedForDeletion;
 };
 

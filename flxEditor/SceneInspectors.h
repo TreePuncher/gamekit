@@ -34,7 +34,7 @@ class StringIDFactory : public IComponentFactory
 public:
     ~StringIDFactory() {}
 
-    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ViewportScene* scene)
+    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
     {
         return gameObject.AddView<FlexKit::StringIDView>(nullptr, 0);
     }
@@ -82,14 +82,14 @@ class TransformComponentFactory : public IComponentFactory
 public:
     ~TransformComponentFactory() {}
 
-    static FlexKit::ComponentViewBase& ConstructNode(FlexKit::GameObject& gameObject, ViewportScene* scene)
+    static FlexKit::ComponentViewBase& ConstructNode(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
     {
         return (FlexKit::ComponentViewBase&)gameObject.AddView<FlexKit::SceneNodeView<>>(FlexKit::GetZeroedNode());
     }
 
-    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ViewportScene* scene)
+    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
     {
-        return ConstructNode(gameObject, scene);
+        return ConstructNode(gameObject, ctx);
     }
 
     const std::string&      ComponentName() const noexcept { return name; }
@@ -147,22 +147,22 @@ public:
 
 struct PointLightFactory : public IComponentFactory
 {
-    static FlexKit::ComponentViewBase& ConstructPointLight(FlexKit::GameObject& gameObject, ViewportScene* viewportScene) noexcept
+    static FlexKit::ComponentViewBase& ConstructPointLight(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx) noexcept
     {
         gameObject.AddView<FlexKit::PointLightView>();
 
         if (!gameObject.hasView(FlexKit::TransformComponentID))
             gameObject.AddView<FlexKit::SceneNodeView<>>();
 
-        if (viewportScene && !gameObject.hasView(FlexKit::SceneVisibilityComponentID))
-            viewportScene->scene.AddGameObject(gameObject);
+        if (!gameObject.hasView(FlexKit::SceneVisibilityComponentID))
+            ctx.AddToScene(gameObject);
 
         return *gameObject.GetView(FlexKit::PointLightComponentID);
     }
 
-    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ViewportScene* viewportScene)
+    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
     {
-        return ConstructPointLight(gameObject, viewportScene);
+        return ConstructPointLight(gameObject, ctx);
     }
 
     inline static const std::string name = "PointLight";
@@ -203,7 +203,7 @@ public:
 
 struct CubicShadowMapFactory : public IComponentFactory
 {
-    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ViewportScene* viewportScene)
+    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
     {
         if(gameObject.GetView(FlexKit::PointLightComponent::GetComponentID()))
             gameObject.AddView<FlexKit::PointLightShadowMapView>(
@@ -250,12 +250,12 @@ public:
 
 struct SceneBrushFactory : public IComponentFactory
 {
-    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ViewportScene* viewportScene)
+    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
     {
         if (!gameObject.hasView(FlexKit::TransformComponentID))
             gameObject.AddView<FlexKit::SceneNodeView<>>();
 
-        return gameObject.AddView<FlexKit::BrushView>(FlexKit::InvalidHandle_t);
+        return gameObject.AddView<FlexKit::BrushView>(FlexKit::InvalidHandle);
     }
 
     inline static const std::string name = "Brush";
@@ -290,7 +290,7 @@ public:
 
 struct MaterialFactory : public IComponentFactory
 {
-    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ViewportScene* viewportScene)
+    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
     {
         auto& materialComponentView = gameObject.AddView<FlexKit::MaterialView>(FlexKit::MaterialComponent::GetComponent().CreateMaterial());
         FlexKit::SetMaterialHandle(gameObject, FlexKit::GetMaterialHandle(gameObject));

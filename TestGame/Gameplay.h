@@ -250,7 +250,7 @@ public:
     void Release();
 
     GameObject& AddLocalPlayer(MultiplayerPlayerID_t multiplayerID);
-    GameObject& AddRemotePlayer(MultiplayerPlayerID_t playerID, ConnectionHandle connection = InvalidHandle_t);
+    GameObject& AddRemotePlayer(MultiplayerPlayerID_t playerID, ConnectionHandle connection = InvalidHandle);
     void        AddCube(float3 POS);
 
     void        SpawnEnemy_1    (const Enemy_1_Desc& desc);

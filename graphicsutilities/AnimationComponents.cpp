@@ -69,7 +69,7 @@ namespace FlexKit
             },
             []() -> JointHandle
             {
-                return InvalidHandle_t;
+                return InvalidHandle;
             });
     }
 
@@ -87,7 +87,7 @@ namespace FlexKit
             },
             []() -> JointHandle
             {
-                return InvalidHandle_t;
+                return InvalidHandle;
             });
     }
 
@@ -239,7 +239,7 @@ namespace FlexKit
             {
                 auto joint = skeleton->FindJoint(track.target.c_str());
 
-                if (joint == InvalidHandle_t)
+                if (joint == InvalidHandle)
                     continue;
                 if (track.trackName == "translation")
                 {
@@ -805,7 +805,7 @@ namespace FlexKit
         auto triMeshHandle  = GetTriMesh(gameObject);
         auto skeleton       = Create(triMeshHandle, blob.assetID);
 
-        if(skeleton != InvalidHandle_t)
+        if(skeleton != InvalidHandle)
             gameObject.AddView<SkeletonView>(triMeshHandle, skeleton);
     }
 
@@ -851,7 +851,7 @@ namespace FlexKit
                         auto* poseState   = GetPoseState(*IKController.gameObject);
                         auto* skeleton    = poseState->Sk;
 
-                        if (poseState == nullptr || IKController.endEffector == InvalidHandle_t || IKController.targets.size() == 0)
+                        if (poseState == nullptr || IKController.endEffector == InvalidHandle || IKController.targets.size() == 0)
                             return;
 
                         auto ikRoot = IKController.ikRoot;
@@ -866,7 +866,7 @@ namespace FlexKit
                             {
                                 const auto parent = GetParentJoint(joint);
 
-                                if (parent != InvalidHandle_t)
+                                if (parent != InvalidHandle)
                                     return (poseState->CurrentPose[parent] * float4{ 0, 0, 0, 1 }).xyz();
                                 else
                                     return float3{ 0, 0, 0 };
@@ -874,14 +874,14 @@ namespace FlexKit
 
                         auto GetRootPosition = [&]
                             {
-                                if(ikRoot != InvalidHandle_t)
+                                if(ikRoot != InvalidHandle)
                                 {
                                     return (poseState->CurrentPose[ikRoot] * float4{ 0, 0, 0, 1 }).xyz();
                                 }
                                 else
                                 {
                                     JointHandle itr = IKController.endEffector;
-                                    while (GetParentJoint(itr) != InvalidHandle_t, itr = GetParentJoint(itr));
+                                    while (GetParentJoint(itr) != InvalidHandle, itr = GetParentJoint(itr));
                                     return (poseState->CurrentPose[itr] * float4{ 0, 0, 0, 1 }).xyz();
                                 }
                             };
@@ -899,7 +899,7 @@ namespace FlexKit
                         Vector<JointHandle> joints          { &allocator, poseState->JointCount };
 
                         // Get Initial Position in pose space
-                        for(auto joint = IKController.endEffector; GetParentJoint(joint) != InvalidHandle_t; joint = GetParentJoint(joint))
+                        for(auto joint = IKController.endEffector; GetParentJoint(joint) != InvalidHandle; joint = GetParentJoint(joint))
                         {
                             const float3        jointPosition   = (poseState->CurrentPose[joint] * float4{ 0, 0, 0, 1 }).xyz();
                             const JointHandle   parent          = GetParentJoint(joint);
@@ -999,7 +999,7 @@ namespace FlexKit
                             [&](JointHandle node)
                             {
                                 const auto parent = skeleton->Joints[node].mParent;
-                                if (parent != InvalidHandle_t)
+                                if (parent != InvalidHandle)
                                     return transforms[parent];
                                 else
                                     return float4x4::Identity();

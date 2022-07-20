@@ -461,7 +461,7 @@ namespace FlexKit
 
 			CL->BeginQuery(OCHeap, D3D12_QUERY_TYPE::D3D12_QUERY_TYPE_BINARY_OCCLUSION, QueryID);
 
-			auto MeshHande		= (P.D->Occluder == InvalidHandle_t) ? P.D->MeshHandle : P.D->Occluder;
+			auto MeshHande		= (P.D->Occluder == InvalidHandle) ? P.D->MeshHandle : P.D->Occluder;
 			auto DHeapPosition	= RS->_GetDescTableCurrentPosition_GPU();
 			auto DHeap			= RS->_ReserveDescHeap(8);
 			auto DTable			= DHeap;

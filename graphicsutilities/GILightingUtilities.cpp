@@ -131,7 +131,7 @@ namespace FlexKit
         size_t Size() { return buffer.size() * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES; }
 
         DevicePointer           gpuBuffer   = { 0 };
-        ConstantBufferHandle    resource    = InvalidHandle_t;
+        ConstantBufferHandle    resource    = InvalidHandle;
         uint32_t                tableSize   = 0;
 
         iAllocator&             allocator;

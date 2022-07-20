@@ -733,7 +733,7 @@ namespace FlexKit
         return
             [&, camera = camera, WH = WH](FrameGraph& frameGraph)
             {
-                if (clusterBuffer != InvalidHandle_t)
+                if (clusterBuffer != InvalidHandle)
                     UAVPool.Release(clusterBuffer, false, false);
 
                 struct GPUCluster { float4 min, max; };
@@ -876,7 +876,7 @@ namespace FlexKit
                 if (readBackBuffers.size())
                     data.readBackHandle = readBackBuffers.pop_front();
                 else
-                    data.readBackHandle = InvalidHandle_t;
+                    data.readBackHandle = InvalidHandle;
                 */
 
                 builder.SetDebugName(data.clusterBufferObject,      "ClusterBufferObject");
@@ -1151,7 +1151,7 @@ namespace FlexKit
                 ctx.EndEvent_DEBUG();
 
 
-                if(data.readBackHandle != InvalidHandle_t && false)
+                if(data.readBackHandle != InvalidHandle && false)
                 {
                     ctx.BeginEvent_DEBUG("Resolution Match Shadow Maps");
                     FK_LOG_INFO("ReadBack Buffer : %u", data.readBackHandle.to_uint());

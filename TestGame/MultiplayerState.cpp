@@ -71,7 +71,7 @@ UpdateTask* NetworkState::Update(EngineCore& core, UpdateDispatcher& dispatcher,
             FK_LOG_INFO("Detected disconnection!");
 
             auto handle = FindConnectionHandle(packet->systemAddress);
-            if (handle == InvalidHandle_t) {
+            if (handle == InvalidHandle) {
                 SystemInError();
                 return nullptr;
             }
@@ -99,7 +99,7 @@ UpdateTask* NetworkState::Update(EngineCore& core, UpdateDispatcher& dispatcher,
 		{   // Process packets in a deferred manner
 			auto sender = FindConnectionHandle(packet->systemAddress);
 
-			if (sender == InvalidHandle_t)
+			if (sender == InvalidHandle)
 				continue;
 
 			auto buffer = core.GetBlockMemory().malloc(packet->length);
@@ -159,7 +159,7 @@ void NetworkState::Broadcast(const UserPacketHeader& packet)
 
 void NetworkState::Send(const UserPacketHeader& packet, ConnectionHandle destination)
 {
-    if (destination == InvalidHandle_t)
+    if (destination == InvalidHandle)
         return;
 
     auto socket = GetConnection(destination);
@@ -228,7 +228,7 @@ ConnectionHandle NetworkState::FindConnectionHandle(SLNet::SystemAddress address
         if (openConnections[i].address == address)
             return openConnections[i].handle;
 
-    return InvalidHandle_t;
+    return InvalidHandle;
 }
 
 

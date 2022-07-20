@@ -102,7 +102,7 @@ namespace FlexKit
         state                       = rhs.state;
         shadowState                 = rhs.shadowState;
 
-        rhs.shadowMap       = InvalidHandle_t;
+        rhs.shadowMap       = InvalidHandle;
         rhs.shadowState     = nullptr;
     }
 
@@ -123,7 +123,7 @@ namespace FlexKit
         state                       = rhs.state;
         shadowState                 = rhs.shadowState;
 
-        rhs.shadowMap       = InvalidHandle_t;
+        rhs.shadowMap       = InvalidHandle;
         rhs.shadowState     = nullptr;
 
         return *this;
@@ -136,7 +136,7 @@ namespace FlexKit
 		poingLight.K			= color;
 		poingLight.I			= intensity;
 		poingLight.R			= radius;
-		poingLight.Position		= node != InvalidHandle_t ? node : FlexKit::GetSceneNode(gameObject);
+		poingLight.Position		= node != InvalidHandle ? node : FlexKit::GetSceneNode(gameObject);
 	}
 
 	float PointLightView::GetRadius() const noexcept
@@ -193,7 +193,7 @@ namespace FlexKit
             },
             []() -> PointLightHandle
             {
-                return InvalidHandle_t;
+                return InvalidHandle;
             });
     }
 
@@ -308,7 +308,7 @@ namespace FlexKit
     void BrushComponentEventHandler::OnCreateView(GameObject& gameObject, void* user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
         auto node = GetSceneNode(gameObject);
-        if (node == InvalidHandle_t)
+        if (node == InvalidHandle)
             node = GetZeroedNode();
 
         if (!gameObject.hasView(TransformComponentID))
@@ -322,7 +322,7 @@ namespace FlexKit
         if (!loaded)
             triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), brushComponent.resourceID);
 
-        if (triMesh == InvalidHandle_t)
+        if (triMesh == InvalidHandle)
             return;
 
         if (!gameObject.hasView(FlexKit::BrushComponentID))
@@ -435,7 +435,7 @@ namespace FlexKit
 			}, 
 			[]() -> TriMeshHandle
 			{
-				return TriMeshHandle{ InvalidHandle_t };
+				return TriMeshHandle{ InvalidHandle };
 			});
 	}
 
@@ -668,7 +668,7 @@ namespace FlexKit
         const uint32_t requestedLodLevel    = normalizedAdjustedDistance * maxLod;
         const uint32_t usableLodLevel       = Max(requestedLodLevel, highestLoadedLod);
 
-		if (brush.MeshHandle != InvalidHandle_t)
+		if (brush.MeshHandle != InvalidHandle)
 			pvs.push_back(
                 PVEntry{
                     .SortID         = CreateSortingID(false, false, (size_t)distanceFromView),
@@ -808,7 +808,7 @@ namespace FlexKit
 
                 bool submit = false;
 
-                CopyContextHandle copyHandle = InvalidHandle_t;
+                CopyContextHandle copyHandle = InvalidHandle;
 
                 for (auto& visable : PVS)
                 {
@@ -1265,7 +1265,7 @@ namespace FlexKit
 
             iAllocator&             persistentMemory;
             SceneBVH&               bvh;
-            const PointLightHandle  lightHandle = InvalidHandle_t;
+            const PointLightHandle  lightHandle = InvalidHandle;
         };
 
         return dispatcher.Add<PointLightUpdate_DATA>(
@@ -1370,7 +1370,7 @@ namespace FlexKit
 
         auto& materials = MaterialComponent::GetComponent();
 
-        if (material != InvalidHandle_t)
+        if (material != InvalidHandle)
         {
             const auto albedo       = materials.GetProperty<float4>(material, GetCRCGUID(PBR_ALBEDO)).value_or(float4{ 0.7f, 0.7f, 0.7f, 0.3f });
             const auto specular     = materials.GetProperty<float4>(material, GetCRCGUID(PBR_SPECULAR)).value_or(float4{ 1.0f, 1.0f, 1.0f, 1.0f });
@@ -1392,7 +1392,7 @@ namespace FlexKit
 
         constants.Transform = XMMatrixToFloat4x4(WT).Transpose();
 
-        if (material != InvalidHandle_t)
+        if (material != InvalidHandle)
         {
             const auto& textures    = MaterialComponent::GetComponent()[material].Textures;
             constants.textureCount  = (uint32_t)textures.size();

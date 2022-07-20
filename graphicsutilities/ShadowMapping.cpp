@@ -189,7 +189,7 @@ namespace FlexKit
             return { resource };
         }
 
-        return InvalidHandle_t;
+        return InvalidHandle;
     }
 
 
@@ -247,13 +247,13 @@ namespace FlexKit
                     auto lightHandle    = *itr;
                     auto& light         = lights[lightHandle];
 
-                    if (light.shadowMap != InvalidHandle_t)
+                    if (light.shadowMap != InvalidHandle)
                     {
                         AddResource(light.shadowMap, frameID);
-                        light.shadowMap = InvalidHandle_t;
+                        light.shadowMap = InvalidHandle;
                     }
 
-                    if (auto res = GetResource(frameID); res != InvalidHandle_t)
+                    if (auto res = GetResource(frameID); res != InvalidHandle)
                     {
                         light.shadowMap = res;
                     }
@@ -266,10 +266,10 @@ namespace FlexKit
                     auto lightHandle    = *i;
                     auto& light         = lights[lightHandle];
 
-                    if (light.shadowMap != InvalidHandle_t)
+                    if (light.shadowMap != InvalidHandle)
                     {
                         AddResource(light.shadowMap, frameID);
-                        light.shadowMap == InvalidHandle_t;
+                        light.shadowMap == InvalidHandle;
                     }
                 }
 
@@ -357,7 +357,7 @@ namespace FlexKit
                             auto& lightHandle   = visableLights[I];
                             auto& pointLight    = pointLights[lightHandle];
 
-                            if (pointLight.state == LightStateFlags::Dirty && pointLight.shadowMap != InvalidHandle_t)
+                            if (pointLight.state == LightStateFlags::Dirty && pointLight.shadowMap != InvalidHandle)
                             {
                                 pointLight.state = LightStateFlags::Clean;
 
@@ -449,7 +449,7 @@ namespace FlexKit
                                 ctx.SetScissorAndViewports({ depthTarget });
                                 ctx.SetRenderTargets2({}, 0, DSV_desc);
 
-                                TriMeshHandle   currentMesh     = InvalidHandle_t;
+                                TriMeshHandle   currentMesh     = InvalidHandle;
                                 size_t          currentLodIdx   = 0xffffffffffffffff;
                                 size_t          indexCount      = 0;
                                 BoundingSphere  BS;

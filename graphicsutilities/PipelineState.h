@@ -86,7 +86,7 @@ namespace FlexKit
         void Release(iAllocator* allocator);
 
 		ID3D12PipelineState*				PSO		= nullptr;
-		PSOHandle							id		= InvalidHandle_t;
+		PSOHandle							id		= InvalidHandle;
 		bool								stale	= false;
 		std::atomic<PSO_States>				state	= PSO_States::Unloaded;
 		PipelineStateObject*				next	= nullptr;

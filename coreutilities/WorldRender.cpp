@@ -686,7 +686,7 @@ namespace FlexKit
 
 	void WorldRender::Release()
 	{
-        if(clusterBuffer != InvalidHandle_t)
+        if(clusterBuffer != InvalidHandle)
             renderSystem.ReleaseResource(clusterBuffer);
 	}
 

@@ -305,7 +305,7 @@ namespace FlexKit
 		XMMATRIX XMIV;
 		XMMATRIX XMProj;
 
-		if (Node != InvalidHandle_t)
+		if (Node != InvalidHandle)
 			GetTransform(Node, &XMWT);
 		else
 			XMWT = DirectX::XMMatrixIdentity();

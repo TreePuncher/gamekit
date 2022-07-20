@@ -35,6 +35,8 @@ public:
     EditorPrefabEditor(SelectionContext& IN_selection, EditorScriptEngine& engine, EditorRenderer& IN_renderer, EditorProject& IN_project, QWidget *parent = Q_NULLPTR);
 	~EditorPrefabEditor();
 
+    FlexKit::LayerHandle GetPhysicsLayer() const;
+
 private:
 
     FlexKit::Animation* LoadAnimation       (std::string&, bool);

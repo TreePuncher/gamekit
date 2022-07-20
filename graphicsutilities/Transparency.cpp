@@ -183,9 +183,9 @@ namespace FlexKit
                 auto&                   materials   = MaterialComponent::GetComponent();
 
 
-                TriMeshHandle   previous        = InvalidHandle_t;
+                TriMeshHandle   previous        = InvalidHandle;
                 TriMesh*        triMesh         = nullptr;
-                MaterialHandle  prevMaterial    = InvalidHandle_t;
+                MaterialHandle  prevMaterial    = InvalidHandle;
 
                 ctx.ClearRenderTarget(resources.GetRenderTarget(data.accumalatorObject));
                 ctx.ClearRenderTarget(resources.GetRenderTarget(data.counterObject), float4{ 1, 1, 1, 1 });

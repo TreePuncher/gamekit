@@ -43,7 +43,7 @@ namespace FlexKit
 
 	inline uint16_t	_SNHandleToIndex(NodeHandle Node) 
 	{
-        if (Node == InvalidHandle_t)
+        if (Node == InvalidHandle)
             return 0;
 
 		return SceneNodeTable.Indexes[Node]; 
@@ -218,7 +218,7 @@ namespace FlexKit
 
 	void ReleaseNode(NodeHandle handle)
 	{
-        if (InvalidHandle_t == handle)
+        if (InvalidHandle == handle)
             return;
 
 		SceneNodeTable.Flags[_SNHandleToIndex(handle)] = SceneNodes::FREE;
@@ -232,8 +232,8 @@ namespace FlexKit
 
 	NodeHandle GetParentNode(NodeHandle handle)
 	{
-		if (handle == FlexKit::InvalidHandle_t)
-			return FlexKit::InvalidHandle_t;
+		if (handle == FlexKit::InvalidHandle)
+			return FlexKit::InvalidHandle;
 
         const auto idx  = SceneNodeTable.Indexes[handle];
         const auto node = SceneNodeTable.Nodes[idx];
@@ -888,7 +888,7 @@ namespace FlexKit
             },
             []() -> NodeHandle
             {
-                return InvalidHandle_t;
+                return InvalidHandle;
             }
         );
     }
@@ -975,7 +975,7 @@ namespace FlexKit
             },
             []
             {
-                return NodeHandle(InvalidHandle_t);
+                return NodeHandle(InvalidHandle);
             });
     }
 

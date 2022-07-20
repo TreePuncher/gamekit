@@ -332,7 +332,7 @@ namespace FlexKit
 		{
 			DeviceResourceState initialState = renderSystem.GetObjectState(handle);
 
-            if (auto res = FindFrameResource(handle); res != InvalidHandle_t)
+            if (auto res = FindFrameResource(handle); res != InvalidHandle)
                 return res;
             else
             {
@@ -473,7 +473,7 @@ namespace FlexKit
 			if (res != Resources.end())
 				return res->Handle;
 
-			return InvalidHandle_t;
+			return InvalidHandle;
 		}
 
 
@@ -493,7 +493,7 @@ namespace FlexKit
 			if (res != Resources.end())
 				return res->Handle;
 
-			return InvalidHandle_t;
+			return InvalidHandle;
 		}
 
 
@@ -513,7 +513,7 @@ namespace FlexKit
 			if (res != Resources.end())
 				return res->Handle;
 
-			return InvalidHandle_t;
+			return InvalidHandle;
 		}
 
 
@@ -533,7 +533,7 @@ namespace FlexKit
 			if (res != Resources.end())
 				return res->Handle;
 
-			return InvalidHandle_t;
+			return InvalidHandle;
 		}
 
 
@@ -547,7 +547,7 @@ namespace FlexKit
 			if (res != Resources.end())
 				return res->Handle;
 
-			return InvalidHandle_t;
+			return InvalidHandle;
 		}
 
 
@@ -558,7 +558,7 @@ namespace FlexKit
 
 		uint2 GetTextureWH(FrameResourceHandle handle) const
 		{
-			if (auto res = GetTexture(handle); res != InvalidHandle_t)
+			if (auto res = GetTexture(handle); res != InvalidHandle)
 				return renderSystem.GetTextureWH(res);
 			else
 				return { 0, 0 };
@@ -851,7 +851,7 @@ namespace FlexKit
 	struct FrameObjectLink
 	{
 		FrameObjectLink(
-			FrameResourceHandle IN_handle           = InvalidHandle_t,
+			FrameResourceHandle IN_handle           = InvalidHandle,
 			FrameGraphNode*		IN_SourceObject		= nullptr,
 			DeviceResourceState	IN_neededState		= DRS_UNKNOWN) :
 				Source			{ IN_SourceObject },
@@ -900,7 +900,7 @@ namespace FlexKit
 	public:
 		void ProcessTransition	(FrameResources& Resources, Context* Ctx) const;
 
-		FrameResourceHandle Object      = InvalidHandle_t;
+		FrameResourceHandle Object      = InvalidHandle;
 		DeviceResourceState	BeforeState = DRS_UNKNOWN;
 		DeviceResourceState	AfterState  = DRS_UNKNOWN;
 	};
@@ -918,7 +918,7 @@ namespace FlexKit
 
     struct ResusableResourceQuery
     {
-        FrameResourceHandle object = InvalidHandle_t;
+        FrameResourceHandle object = InvalidHandle;
         bool                success = false;
     };
 
@@ -1191,7 +1191,7 @@ namespace FlexKit
 
         void SetDebugName(FrameResourceHandle handle, const char* debugName)
         {
-            if(auto res = Resources->GetTexture(handle); res != InvalidHandle_t)
+            if(auto res = Resources->GetTexture(handle); res != InvalidHandle)
                 Resources->renderSystem.SetDebugName(res, debugName);
         }
 
@@ -1210,7 +1210,7 @@ namespace FlexKit
 		{
 			FrameResourceHandle frameResourceHandle = Context.GetFrameObject(handle);
 
-			if (frameResourceHandle == InvalidHandle_t)
+			if (frameResourceHandle == InvalidHandle)
 				return frameResourceHandle;
 
 			FrameObject& frameObject = Context.resources.Resources[frameResourceHandle];
@@ -1250,8 +1250,8 @@ namespace FlexKit
 		{
 			FrameResourceHandle frameResourceHandle = Context.GetFrameObject(handle);
 
-			if (frameResourceHandle == InvalidHandle_t)
-				return InvalidHandle_t;
+			if (frameResourceHandle == InvalidHandle)
+				return InvalidHandle;
 
 			FrameObject& frameObject = Context.resources.Resources[frameResourceHandle];
 
@@ -1594,7 +1594,7 @@ namespace FlexKit
 		ConstantBufferDataSet   constants;
 		VertexBufferDataSet     vertices;
 		size_t                  vertexCount     = 0;
-		ResourceHandle          texture         = InvalidHandle_t;
+		ResourceHandle          texture         = InvalidHandle;
 	};
 
 	typedef Vector<ShapeDraw> DrawList;
@@ -2238,7 +2238,7 @@ namespace FlexKit
 					builder.AddDataDependency(*dep);
 
 				data.renderTarget	= builder.RenderTarget(desc.RenderTarget);
-				data.depthBuffer	= desc.enableDepthBuffer ? builder.DepthTarget(desc.DepthBuffer) : InvalidHandle_t;
+				data.depthBuffer	= desc.enableDepthBuffer ? builder.DepthTarget(desc.DepthBuffer) : InvalidHandle;
 
 				size_t MaxElementSize = 0;
 				for (auto& i : constantData)

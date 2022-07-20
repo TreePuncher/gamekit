@@ -558,7 +558,7 @@ namespace FlexKit
 
 	bool DescriptorHeap::SetSRVCubemap(Context& ctx, size_t idx, ResourceHandle	handle, DeviceFormat format)
 	{
-		if (handle == InvalidHandle_t || !CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
+		if (handle == InvalidHandle || !CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
 			return false;
 
 		FillState[idx] = true;
@@ -1489,8 +1489,8 @@ namespace FlexKit
 			{
 				return
 					(rhs.Type            == Barrier::Type::Aliasing) &&
-					((before != InvalidHandle_t &&  rhs.aliasedResources[0] == before) ||
-                     (after != InvalidHandle_t &&   rhs.aliasedResources[1] == after));
+					((before != InvalidHandle &&  rhs.aliasedResources[0] == before) ||
+                     (after != InvalidHandle &&   rhs.aliasedResources[1] == after));
 			});
 
 		if (std::end(PendingBarriers) == res)
@@ -1506,8 +1506,8 @@ namespace FlexKit
         {
             Barrier barrier;
             barrier.Type                = Barrier::Type::Aliasing;
-            barrier.aliasedResources[0] = res->aliasedResources[0] == InvalidHandle_t ? before : res->aliasedResources[0];
-            barrier.aliasedResources[1] = res->aliasedResources[1] == InvalidHandle_t ? after  : res->aliasedResources[1];
+            barrier.aliasedResources[0] = res->aliasedResources[0] == InvalidHandle ? before : res->aliasedResources[0];
+            barrier.aliasedResources[1] = res->aliasedResources[1] == InvalidHandle ? after  : res->aliasedResources[1];
 
             PendingBarriers.push_back(barrier);
         }
@@ -1805,7 +1805,7 @@ namespace FlexKit
 		
 		auto DSV_CPU_HANDLE = D3D12_CPU_DESCRIPTOR_HANDLE{};
 
-		const bool depthEnabled = DSV.depthStencil != InvalidHandle_t;
+		const bool depthEnabled = DSV.depthStencil != InvalidHandle;
 
 		if(depthEnabled)
 		{
@@ -1902,7 +1902,7 @@ namespace FlexKit
 
 	void Context::SetDepthStencil(ResourceHandle DS)
 	{
-		if (DS != InvalidHandle_t)
+		if (DS != InvalidHandle)
 		{
 			auto DSV = _ReserveDSV(1);
 			PushDepthStencil(renderSystem, DS, DSV);
@@ -2221,7 +2221,7 @@ namespace FlexKit
 
 	void Context::BeginQuery(QueryHandle query, size_t idx)
 	{
-        if (query == InvalidHandle_t)
+        if (query == InvalidHandle)
             return;
 
 		auto resource	= renderSystem->Queries.GetAsset(query);
@@ -2233,7 +2233,7 @@ namespace FlexKit
 
 	void Context::EndQuery(QueryHandle query, size_t idx)
 	{
-        if (query == InvalidHandle_t)
+        if (query == InvalidHandle)
             return;
 
 		auto resource	= renderSystem->Queries.GetAsset(query);
@@ -2245,7 +2245,7 @@ namespace FlexKit
 
     void Context::TimeStamp(QueryHandle query, size_t idx)
     {
-        if (query == InvalidHandle_t)
+        if (query == InvalidHandle)
             return;
 
         auto resource   = renderSystem->Queries.GetAsset(query);
@@ -2888,7 +2888,7 @@ namespace FlexKit
 
 	void Context::ResolveQuery(QueryHandle query, size_t begin, size_t end, ResourceHandle destination, size_t destOffset)
 	{
-        if (query == InvalidHandle_t)
+        if (query == InvalidHandle)
             return;
 
 		auto res			= renderSystem->GetDeviceResource(destination);
@@ -2906,7 +2906,7 @@ namespace FlexKit
 
     void Context::ResolveQuery(QueryHandle query, size_t begin, size_t end, ID3D12Resource* destination, size_t destOffset)
     {
-        if (query == InvalidHandle_t)
+        if (query == InvalidHandle)
             return;
 
 		auto type			= renderSystem->Queries.GetType(query);
@@ -4669,7 +4669,7 @@ namespace FlexKit
 
 	const uint2	RenderSystem::GetTextureWH(ResourceHandle handle) const
 	{
-		if (handle == InvalidHandle_t)
+		if (handle == InvalidHandle)
 			return { 0, 0 };
 		else
 			return Textures.GetWH(handle);
@@ -5022,7 +5022,7 @@ namespace FlexKit
                     ProfileFunctionLabeled(Placed);
 
 					HRESULT HR = pDevice->CreatePlacedResource(
-                        desc.placed.heap != InvalidHandle_t ? GetDeviceResource(desc.placed.heap) : desc.placed.customHeap,
+                        desc.placed.heap != InvalidHandle ? GetDeviceResource(desc.placed.heap) : desc.placed.customHeap,
 						desc.placed.offset,
 						&Resource_DESC,
 						InitialState,
@@ -5049,7 +5049,7 @@ namespace FlexKit
 			return Textures.AddResource(filledDesc, initialState);
 		}
 
-		return InvalidHandle_t;
+		return InvalidHandle;
 	}
 
 
@@ -5131,7 +5131,7 @@ namespace FlexKit
                 ProfileFunctionLabeled(Placed);
 
 				HRESULT HR = pDevice->CreatePlacedResource(
-                    desc.placed.heap != InvalidHandle_t ? GetDeviceResource(desc.placed.heap) : desc.placed.customHeap,
+                    desc.placed.heap != InvalidHandle ? GetDeviceResource(desc.placed.heap) : desc.placed.customHeap,
 					desc.placed.offset,
 					&Resource_DESC,
 					InitialState,
@@ -5372,7 +5372,7 @@ namespace FlexKit
 			Vector<D3D12_TILE_RANGE_FLAGS>          flags       { allocator };
 			Vector<UINT>                            offsets     { allocator };
 			Vector<UINT>                            tileRanges  { allocator };
-			DeviceHeapHandle                        heap = InvalidHandle_t;
+			DeviceHeapHandle                        heap = InvalidHandle;
 
 
             auto nullEnd = std::partition(mappings.begin(), mappings.end(),
@@ -5474,7 +5474,7 @@ namespace FlexKit
 
 				I++;
 
-				if (heap != InvalidHandle_t)
+				if (heap != InvalidHandle)
 				{
 					D3D12_TILE_RANGE_FLAGS nullRangeFlag = D3D12_TILE_RANGE_FLAG_NULL;
 
@@ -5693,7 +5693,7 @@ namespace FlexKit
 
 	ID3D12Resource* RenderSystem::GetDeviceResource(const ResourceHandle handle) const
 	{
-        if (handle != InvalidHandle_t)
+        if (handle != InvalidHandle)
             return Textures.GetResource(handle, pDevice);
         else
             return nullptr;
@@ -6976,7 +6976,7 @@ namespace FlexKit
 
         std::scoped_lock lock{ m };
 
-		if (handle == InvalidHandle_t)
+		if (handle == InvalidHandle)
 			return;
 
 		const auto UserIdx	= Handles[handle];
@@ -7273,7 +7273,7 @@ namespace FlexKit
 
 	void TextureStateTable::UpdateTileMappings(ResourceHandle handle, const TileMapping* begin, const TileMapping* end)
 	{
-		if (handle == InvalidHandle_t)
+		if (handle == InvalidHandle)
 			return;
 
         FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
@@ -7581,7 +7581,7 @@ namespace FlexKit
                 __debugbreak();
         }
 
-        return InvalidHandle_t;
+        return InvalidHandle;
     }
 
 
@@ -7674,7 +7674,7 @@ namespace FlexKit
 
 	void ReleaseMesh(TriMeshHandle TMHandle)
 	{
-        if (TMHandle == InvalidHandle_t)
+        if (TMHandle == InvalidHandle)
             return;
 		// TODO: MAKE ATOMIC
 		if (GeometryTable.Handles[TMHandle] == -1)
@@ -7713,7 +7713,7 @@ namespace FlexKit
 		}
 
 		TriMeshHandle triMesh = LoadTriMeshIntoTable(
-			copyCtx == InvalidHandle_t ? GeometryTable.renderSystem->GetImmediateUploadQueue() : copyCtx, guid);
+			copyCtx == InvalidHandle ? GeometryTable.renderSystem->GetImmediateUploadQueue() : copyCtx, guid);
 
 		return triMesh;
 	}
@@ -7729,7 +7729,7 @@ namespace FlexKit
 		if(result)
 			return mesh;
 
-		return LoadTriMeshIntoTable(copyCtx == InvalidHandle_t ? GeometryTable.renderSystem->GetImmediateUploadQueue() : copyCtx, meshID);
+		return LoadTriMeshIntoTable(copyCtx == InvalidHandle ? GeometryTable.renderSystem->GetImmediateUploadQueue() : copyCtx, meshID);
 	}
 
 
@@ -7738,7 +7738,7 @@ namespace FlexKit
 
 	TriMesh* GetMeshResource(TriMeshHandle TMHandle)
     {
-		FK_ASSERT(TMHandle != InvalidHandle_t);
+		FK_ASSERT(TMHandle != InvalidHandle);
 
 #if USING(DEBUGGRAPHICS)
         if (GeometryTable.Handles[TMHandle] == -1)
@@ -7826,7 +7826,7 @@ namespace FlexKit
 			++location;
 		}
 
-		return { InvalidHandle_t, false };
+		return { InvalidHandle, false };
 	}
 	
 
@@ -7835,7 +7835,7 @@ namespace FlexKit
 
 	Pair<TriMeshHandle, bool>	FindMesh(const char* ID)
 	{
-		TriMeshHandle HandleOut = InvalidHandle_t;
+		TriMeshHandle HandleOut = InvalidHandle;
 		size_t location			= 0;
 		size_t HandleIndex		= 0;
 
@@ -7951,7 +7951,7 @@ namespace FlexKit
 
 	void RenderSystem::_PushDelayReleasedResource(ID3D12Resource* resource, CopyContextHandle uploadQueue)
 	{
-		if (uploadQueue != InvalidHandle_t)
+		if (uploadQueue != InvalidHandle)
 			copyEngine.Push_Temporary(resource, uploadQueue);
 		else
 			FreeList_CopyQueue.push_back({ resource, copyEngine.counter });
@@ -8013,9 +8013,9 @@ namespace FlexKit
 
 	CopyContext& RenderSystem::_GetCopyContext(CopyContextHandle handle)
 	{
-		if (handle == InvalidHandle_t)
+		if (handle == InvalidHandle)
 		{
-			if (ImmediateUpload == InvalidHandle_t)
+			if (ImmediateUpload == InvalidHandle)
 				ImmediateUpload = OpenUploadQueue();
 
 			handle = ImmediateUpload;
@@ -8143,7 +8143,7 @@ namespace FlexKit
                     FK_LOG_ERROR("GFSDK_Aftermath_Device_Status_DmaFault : %u", pageFault.resourceDesc.ptr_align_pAppResource);
 
                     auto res = Textures.FindResourceHandle(pageFault.resourceDesc.pAppResource);
-                    if(res != InvalidHandle_t)
+                    if(res != InvalidHandle)
                     {
                         auto debugString = Textures.GetDebug(res);
                         if (debugString)
@@ -8535,10 +8535,10 @@ namespace FlexKit
 	{
         ProfileFunction();
 
-		if (ImmediateUpload != InvalidHandle_t)
+		if (ImmediateUpload != InvalidHandle)
 		{
 			SubmitUploadQueues(SYNC_Graphics, &ImmediateUpload);
-			ImmediateUpload = InvalidHandle_t;
+			ImmediateUpload = InvalidHandle;
 		}
 
 		const auto counter = graphicsSubmissionCounter++;
@@ -8639,7 +8639,7 @@ namespace FlexKit
 
 	CopyContextHandle RenderSystem::GetImmediateUploadQueue()
 	{
-		if (ImmediateUpload == InvalidHandle_t)
+		if (ImmediateUpload == InvalidHandle)
 			ImmediateUpload = copyEngine.Open();
 
 		return ImmediateUpload;
@@ -9818,10 +9818,10 @@ namespace FlexKit
                         GPUHeapAllocation heapAllocation = {
                             range.offset * blockSize,
                             requestBlockCount * blockSize,
-                            (range.priorAllocation != InvalidHandle_t &&
+                            (range.priorAllocation != InvalidHandle &&
                              range.flags | AllowReallocation &&
                              range.frameID == frameID) ?
-                                range.priorAllocation : InvalidHandle_t
+                                range.priorAllocation : InvalidHandle
                         };
 
                         FK_LOG_9("Allocated Blocks %u - %u", range.offset, range.offset + range.blockCount);
@@ -9897,12 +9897,12 @@ namespace FlexKit
 
         if (allocation.offset / blockSize > blockCount) {
             FK_LOG_ERROR("MemoryPoolAllocator Allocated a block beyond range!");
-            return { InvalidHandle_t, InvalidHandle_t };
+            return { InvalidHandle, InvalidHandle };
         }
 
         if (!allocation) {
             FK_LOG_ERROR("MemoryPoolAllocator Ran out of memory!");
-            return { InvalidHandle_t, InvalidHandle_t };
+            return { InvalidHandle, InvalidHandle };
         }
 
         desc.bufferCount    = 1;
@@ -9913,7 +9913,7 @@ namespace FlexKit
 
         ResourceHandle resource = renderSystem.CreateGPUResource(desc);
 
-        if (resource != InvalidHandle_t) {
+        if (resource != InvalidHandle) {
             renderSystem.SetDebugName(resource, "Acquire");
 
             std::scoped_lock localLock{ m };
@@ -9947,12 +9947,12 @@ namespace FlexKit
 
         if (allocation.offset / blockSize > blockCount) {
             FK_LOG_ERROR("MemoryPoolAllocator Allocated a block beyond range!");
-            return { InvalidHandle_t, InvalidHandle_t };
+            return { InvalidHandle, InvalidHandle };
         }
 
         if (!allocation) {
             FK_LOG_ERROR("MemoryPoolAllocator Ran out of memory!");
-            return { InvalidHandle_t, InvalidHandle_t };
+            return { InvalidHandle, InvalidHandle };
         }
 
         desc.bufferCount    = 1;
@@ -9963,7 +9963,7 @@ namespace FlexKit
 
         ResourceHandle resource = renderSystem.CreateGPUResourceHandle();
 
-        if (resource != InvalidHandle_t) {
+        if (resource != InvalidHandle) {
             std::scoped_lock localLock{ m };
 
             allocations.push_back({
@@ -10010,16 +10010,16 @@ namespace FlexKit
                     res->blockCount -= requestedBlockCount;
                 }
                 else if (res->blockCount < requestedBlockCount)
-                    return { InvalidHandle_t, InvalidHandle_t }; // ERROR!?
+                    return { InvalidHandle, InvalidHandle }; // ERROR!?
 
 
                 GPUHeapAllocation heapAllocation = {
                         rangeDescriptor.offset * blockSize,
                         requestedBlockCount * blockSize,
-                        (rangeDescriptor.priorAllocation != InvalidHandle_t &&
+                        (rangeDescriptor.priorAllocation != InvalidHandle &&
                             rangeDescriptor.flags | AllowReallocation &&
                             rangeDescriptor.frameID == frameIdx) ?
-                        rangeDescriptor.priorAllocation : InvalidHandle_t
+                        rangeDescriptor.priorAllocation : InvalidHandle
                 };
                 
                 desc.bufferCount    = 1;
@@ -10028,7 +10028,7 @@ namespace FlexKit
                 desc.placed.offset  = heapAllocation.offset;
 
                 ResourceHandle resource = renderSystem.CreateGPUResource(desc);
-                if (resource != InvalidHandle_t) {
+                if (resource != InvalidHandle) {
                     renderSystem.SetDebugName(resource, "Acquire");
 
                     allocations.push_back({
@@ -10046,7 +10046,7 @@ namespace FlexKit
             }
         }
 
-        return { InvalidHandle_t, InvalidHandle_t };
+        return { InvalidHandle, InvalidHandle };
     }
 
 
