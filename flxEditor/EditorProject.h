@@ -119,7 +119,6 @@ public:
     bool LoadProject(const std::string& projectDir);
     bool SaveProject(const std::string& projectDir);
 
-
     std::vector<EditorScene_ptr>        scenes;
     std::vector<ProjectResource_ptr>    resources;
     ProjectLayout                       layout;

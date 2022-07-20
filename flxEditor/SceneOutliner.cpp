@@ -86,7 +86,9 @@ public:
         {
             struct OutlinerContext : public ComponentConstructionContext
             {
-                OutlinerContext(ViewportScene& IN_scene) : scene{ IN_scene } {}
+                OutlinerContext(ViewportScene& IN_scene, ViewportGameObject_ptr& IN_object)
+                : scene     { IN_scene }
+                , object    { IN_object }{}
 
                 void AddToScene(FlexKit::GameObject& go) final
                 {
@@ -98,8 +100,14 @@ public:
                     return scene.physicsLayer;
                 }
 
-                ViewportScene& scene;
-            } ctx{ scene };
+                uint64_t GetEditorIdentifier() final
+                {
+                    return object->objectID;
+                }
+
+                ViewportScene&              scene;
+                ViewportGameObject_ptr&     object;
+            } ctx{ scene, viewportObject };
 
             if (!viewportObject->gameObject.hasView(FlexKit::TransformComponentID))
                 TransformComponentFactory::ConstructNode(*viewportObject, ctx);
@@ -396,7 +404,9 @@ HierarchyItem* SceneOutliner::CreatePointLight() noexcept
 
     struct OutlinerContext : public ComponentConstructionContext
     {
-        OutlinerContext(ViewportScene& IN_scene) : scene{ IN_scene } {}
+        OutlinerContext(ViewportScene& IN_scene, ViewportGameObject& IN_object)
+            : scene     { IN_scene  }
+            , object    { IN_object } {}
 
         void AddToScene(FlexKit::GameObject& go) final
         {
@@ -408,8 +418,14 @@ HierarchyItem* SceneOutliner::CreatePointLight() noexcept
             return scene.physicsLayer;
         }
 
-        ViewportScene& scene;
-    } ctx{ *scene };
+        uint64_t GetEditorIdentifier() final
+        {
+            return object.objectID;
+        }
+
+        ViewportScene&      scene;
+        ViewportGameObject& object;
+    } ctx{ *scene, *obj->viewportObject };
 
     PointLightFactory::ConstructPointLight(*obj->viewportObject, ctx);
 

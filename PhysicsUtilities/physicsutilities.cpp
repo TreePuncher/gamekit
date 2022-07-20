@@ -1687,6 +1687,17 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    StaticBodyHandle StaticBodyComponent::Create(GameObject* gameObject, LayerHandle layer, float3 pos, Quaternion q)
+    {
+        auto res = physx.CreateStaticCollider(gameObject, layer, pos, q);
+
+        if (onConstruction)
+            onConstruction(*gameObject, nullptr, 0, ValueMap{});
+
+        return res;
+    }
+
+
     void StaticBodyComponent::AddComponentView(GameObject& gameObject, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
         if (userValues.empty())
@@ -1750,6 +1761,9 @@ namespace FlexKit
 
             staticBody.AddShape(shape);
         }
+
+        if (onConstruction)
+            onConstruction(gameObject, (const char*)buffer, bufferSize, userValues);
     }
 
 

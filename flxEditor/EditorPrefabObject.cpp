@@ -86,10 +86,10 @@ FlexKit::ResourceBlob PrefabGameObjectResource::CreateBlob() const
 {
     FlexKit::Blob blob;
 
-    for (auto& component : components)
+    for (auto& component : entity.components)
         blob += component->GetBlob();
 
-    FlexKit::PrefabResource header{ blob.size(), (uint32_t)components.size() };
+    FlexKit::PrefabResource header{ blob.size(), (uint32_t)entity.components.size() };
     header.GUID             = GetResourceGUID();
 
     blob = FlexKit::Blob{ header } + blob;
@@ -137,15 +137,7 @@ void PrefabGameObjectResource::SetResourceGUID(uint64_t newGUID) noexcept
 
 FlexKit::EntityComponent_ptr PrefabGameObjectResource::FindComponent(FlexKit::ComponentID id)
 {
-    auto res = std::find_if(
-        std::begin(components),
-        std::end(components),
-        [&](FlexKit::EntityComponent_ptr& component)
-        {
-            return component->id == id;
-        });
-
-    return res != std::end(components) ? *res : nullptr;
+    return entity.FindComponent(id);
 }
 
 
@@ -247,6 +239,7 @@ void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface
                 { FlexKit::PhysicsLayerKID, &layer  } };
 
             component.AddComponentView(ctx.GameObject(), values, blob, blob.size(), FlexKit::SystemAllocator);
+            
         }   break;
         }
     }

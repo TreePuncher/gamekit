@@ -89,6 +89,20 @@ void StringToValue(const std::string& in, FlexKit::AnimatorComponent::InputValue
 /************************************************************************************************/
 
 
+void AnimationEditorObject::Reset()
+{
+    gameObject.Release();
+    resource    = nullptr;
+    prefab      = nullptr;
+    animator    = nullptr;
+    resourceID  = 0xffffffffffffffff;
+    ID          = 0xffffffffffffffff;
+}
+
+
+/************************************************************************************************/
+
+
 void AnimationEditorObject::Reload(EditorScriptEngine& engine)
 {
     auto* animatorView  = static_cast<FlexKit::AnimatorView*>(gameObject.GetView(FlexKit::AnimatorComponentID));

@@ -71,7 +71,10 @@ struct BrushComponentUpdate
         auto& runtimeBrush  = runtime.GetBrush();
 
         //brush.material = runtimeBrush.material; // TODO: update material component data
-        brush.MeshGuid  = FlexKit::GetMeshResource(runtimeBrush.MeshHandle)->assetHandle;
+        if (runtimeBrush.MeshHandle != FlexKit::InvalidHandle)
+            brush.MeshGuid = FlexKit::GetMeshResource(runtimeBrush.MeshHandle)->assetHandle;
+        else
+            brush.MeshGuid = INVALIDHANDLE;
     }
 
     IEntityComponentRuntimeUpdater::RegisterConstructorHelper<BrushComponentUpdate, FlexKit::BrushComponentID> _register;

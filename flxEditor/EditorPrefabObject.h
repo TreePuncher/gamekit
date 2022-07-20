@@ -63,10 +63,11 @@ public:
     {
         ar& guid;
         ar& ID;
-        ar& components;
+        ar& entity;
     }
 
-    std::vector<std::shared_ptr<FlexKit::EntityComponent>> components;
+    FlexKit::SceneEntity entity;
+    //std::vector<std::shared_ptr<FlexKit::EntityComponent>> components;
 
     std::string ID   = "PrefabGameObject";
     uint64_t    guid = rand();
@@ -85,6 +86,7 @@ struct LoadEntityContextInterface
     virtual FlexKit::MaterialHandle         DefaultMaterial() const                             = 0;
     virtual FlexKit::Scene*                 Scene()                                             = 0;
     virtual FlexKit::LayerHandle            LayerHandle()                                       = 0;
+    virtual FlexKit::SceneEntity*           Resource()                                          = 0;
 };
 
 void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface& ctx);

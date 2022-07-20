@@ -168,7 +168,7 @@ public:
 
     void Clear()
     {
-
+        object.gameObject.Release();
     }
 
     AnimationEditorObject object;
@@ -699,9 +699,9 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
                             skeletonComponent->skeletonResourceID   = skeleton->resource->GetResourceGUID();
                             animatorComponent->scriptResource       = scriptResource->GetResourceGUID();
 
-                            objectResource->components.push_back(brushComponent);
-                            objectResource->components.push_back(skeletonComponent);
-                            objectResource->components.push_back(animatorComponent);
+                            objectResource->entity.components.push_back(brushComponent);
+                            objectResource->entity.components.push_back(skeletonComponent);
+                            objectResource->entity.components.push_back(animatorComponent);
 
                             obj->resource                   = scriptResource;
                             obj->resourceID                 = objectResource->GetResourceGUID();
@@ -726,7 +726,9 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
         createPrefabObject, &QAction::triggered,
         [&]()
         {
-            localSelection->CreateObject();
+            globalSelection.Clear();
+            localSelection->GetSelection()->Reset();
+
             auto obj = localSelection->GetSelection();
 
             PrefabGameObjectResource_ptr objectResource = std::make_shared<PrefabGameObjectResource>();
@@ -758,7 +760,6 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 
                 for (auto& component : obj->gameObject)
                 {
-
                     auto component_res = prefab->FindComponent(component.ID);
 
                     if (!component_res)
@@ -768,7 +769,7 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
                         if (!entityComponent)
                             continue;
 
-                        prefab->components.emplace_back(FlexKit::EntityComponent_ptr(entityComponent));
+                        prefab->entity.components.emplace_back(FlexKit::EntityComponent_ptr(entityComponent));
 
                         IEntityComponentRuntimeUpdater::Update(*entityComponent, component.Get_ref(), ctx);
                     }
@@ -795,16 +796,18 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 
                     struct Context : public LoadEntityContextInterface
                     {
-                        Context(FlexKit::GameObject& IN_obj, EditorRenderer& IN_renderer, EditorProject& IN_project, FlexKit::LayerHandle IN_layer)
+                        Context(FlexKit::GameObject& IN_obj, EditorRenderer& IN_renderer, EditorProject& IN_project, FlexKit::LayerHandle IN_layer, FlexKit::SceneEntity* IN_entity)
                             : gameObject    { IN_obj        }
                             , renderer      { IN_renderer   }
                             , project       { IN_project    }
-                            , layer         { IN_layer      } {}
+                            , layer         { IN_layer      }
+                            , entity        { IN_entity     } {}
 
                         FlexKit::GameObject&    gameObject;
                         EditorRenderer&         renderer;
                         EditorProject&          project;
                         FlexKit::LayerHandle    layer;
+                        FlexKit::SceneEntity*   entity;
 
                         FlexKit::GameObject&    GameObject() override { return gameObject; }
                         FlexKit::NodeHandle     GetNode(uint32_t idx) { return FlexKit::GetZeroedNode(); }
@@ -819,8 +822,9 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
                         FlexKit::MaterialHandle DefaultMaterial() const { return FlexKit::InvalidHandle; }
                         FlexKit::Scene*         Scene()                 { return nullptr; }
 
-                        FlexKit::LayerHandle    LayerHandle() final { return layer; }
-                    } context{ obj->gameObject, renderer, project, previewWindow->layer };
+                        FlexKit::LayerHandle    LayerHandle()   final { return layer; }
+                        FlexKit::SceneEntity*   Resource()      final { return entity; }
+                    } context{ obj->gameObject, renderer, project, previewWindow->layer, &prefabObjectRes->entity };
 
                     auto loadRes =
                         [&](auto& resourceID)
@@ -837,26 +841,11 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
                         };
 
 
-                    auto& components = prefabObjectRes->components;
-                    auto FindComponent =
-                        [&](uint32_t componentID) -> std::optional<FlexKit::EntityComponent_ptr>
-                        {
-                            auto res = std::find_if(
-                                components.begin(), components.end(),
-                                [&](FlexKit::EntityComponent_ptr& component)
-                                {
-                                    return component->GetTypeID() == componentID;
-                                });
+                    auto& components = prefabObjectRes->entity;
 
-                            if (res != components.end())
-                                return { *res };
-                            else
-                                return {};
-                        };
-
-                    if (auto res = FindComponent(FlexKit::AnimatorComponentID); res)
+                    if (auto res = components.FindComponent(FlexKit::AnimatorComponentID); res)
                     {
-                        auto animator = std::static_pointer_cast<AnimatorComponent>(*res);
+                        auto animator = std::static_pointer_cast<AnimatorComponent>(res);
                         obj->animator = animator.get();
 
                         auto resource   = loadRes(animator->scriptResource);
@@ -866,14 +855,14 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
                         codeEditor->SetResource(scriptRes);
                     }
 
-                    if (auto res = FindComponent(GetTypeGUID(EntitySkeletonComponent)); res)
+                    if (auto res = components.FindComponent(GetTypeGUID(EntitySkeletonComponent)); res)
                     {
-                        auto sk = std::static_pointer_cast<FlexKit::EntitySkeletonComponent>(*res);
+                        auto sk = std::static_pointer_cast<FlexKit::EntitySkeletonComponent>(res);
 
                         loadRes(sk->skeletonResourceID);
                     }
 
-                    LoadEntity(prefabObjectRes->components, context);
+                    LoadEntity(prefabObjectRes->entity.components, context);
 
                     obj->ID = prefabObjectRes->GetResourceGUID();
 
@@ -896,7 +885,6 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
         {
             localSelection->CreateAnimator();
         });
-
 
     auto viewMenu               = menubar->addMenu("View");
     auto centerView             = viewMenu->addAction("Center View On Object");

@@ -81,8 +81,9 @@ class ViewportScene;
 class ComponentConstructionContext
 {
 public:
-    virtual void AddToScene(FlexKit::GameObject&) {}
-    virtual FlexKit::LayerHandle GetSceneLayer() { return FlexKit::InvalidHandle; }
+    virtual void                    AddToScene(FlexKit::GameObject&)    {}
+    virtual FlexKit::LayerHandle    GetSceneLayer()                     { return FlexKit::InvalidHandle; }
+    virtual uint64_t                GetEditorIdentifier() = 0;
 };
 
 class IComponentFactory
