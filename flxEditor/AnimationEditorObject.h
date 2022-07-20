@@ -17,6 +17,7 @@ struct AnimationEditorObject
     PrefabGameObjectResource_ptr    prefab;
     FlexKit::LayerHandle            layer;
 
+    void        Reset();
     void        Reload(EditorScriptEngine& engine);
 
     uint32_t    AddInputValue(const std::string& name, uint32_t valueType);

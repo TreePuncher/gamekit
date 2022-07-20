@@ -21,7 +21,8 @@ struct Collider
 
 struct StaticColliderEditorData
 {
-    std::vector<Collider> colliders;
+    std::vector<Collider>   colliders;
+    uint64_t                editorId;
 };
 
 class EditorColliderComponent :
@@ -40,7 +41,8 @@ public:
 
     FlexKit::Blob GetBlob() override;
 
-    std::vector<Collider> colliders;
+    uint32_t                editorId;
+    std::vector<Collider>   colliders;
 
     inline static RegisterConstructorHelper<EditorColliderComponent, FlexKit::StaticBodyComponentID> registered{};
 };

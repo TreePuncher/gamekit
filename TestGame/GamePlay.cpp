@@ -1214,14 +1214,14 @@ WorldAssets LoadBasicTiles()
 
 void CreateMultiplayerScene(GameWorld& world, const WorldAssets& assets, iAllocator& tempAllocator)
 {
-    static const GUID_t sceneID = 1234;
-    world.LoadScene(sceneID);
-    auto& prefabObject = world.objectPool.Allocate();
+    //static const GUID_t sceneID = 1234;
+    //world.LoadScene(sceneID);
 
     static_vector<KeyValuePair> values;
     values.emplace_back(PhysicsLayerKID, &world.layer);
 
-    //FlexKit::LoadPrefab(prefabObject, "PrefabGameObject", tempAllocator, {values});
+    auto& prefabObject = world.objectPool.Allocate();
+    FlexKit::LoadPrefab(prefabObject, "PrefabGameObject", tempAllocator, {values});
 
     //GenerateWorld(world, assets, tempAllocator);
 
@@ -1231,7 +1231,6 @@ void CreateMultiplayerScene(GameWorld& world, const WorldAssets& assets, iAlloca
     
     auto& staticBody    = floorCollider.AddView<StaticBodyView>(world.layer, float3{ 0, -1.0f, 0 } );
     staticBody.AddShape(floorShape);
-
 
     auto& layer = PhysXComponent::GetComponent().GetLayer_ref(world.layer);
     layer.AddUpdateCallback(

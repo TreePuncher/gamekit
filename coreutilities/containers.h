@@ -2297,10 +2297,7 @@ namespace FlexKit
 
 		~TypeErasedCallable()
 		{
-			if (vtable && vtable->destructor)
-                vtable->destructor(buffer);
-
-            vtable = nullptr;
+            Release();
 		}
 
 
@@ -2358,6 +2355,14 @@ namespace FlexKit
         operator bool() const
         {
             return vtable != nullptr;
+        }
+
+        void Release()
+        {
+            if (vtable && vtable->destructor)
+                vtable->destructor(buffer);
+
+            vtable = nullptr;
         }
 
     private:

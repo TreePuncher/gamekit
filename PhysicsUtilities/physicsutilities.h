@@ -569,6 +569,13 @@ namespace FlexKit
 
     struct StaticBodyHeaderBlob
     {
+        FlexKit::ComponentBlock::Header  componentHeader = {
+            0,
+            FlexKit::EntityComponentBlock,
+            sizeof(FlexKit::ComponentBlock::Header),
+            FlexKit::StaticBodyComponentID
+        };
+
         uint32_t shapeCount;
     };
 
@@ -579,22 +586,24 @@ namespace FlexKit
         StaticBodyComponent(PhysXComponent& IN_physx) :
             physx{ IN_physx } {}
 
-        StaticBodyHandle Create(GameObject* gameObject, LayerHandle layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 })
-        {
-            return physx.CreateStaticCollider(gameObject, layer, pos, q);
-        }
+        StaticBodyHandle Create(GameObject* gameObject, LayerHandle layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 });
 
         void AddComponentView(GameObject& GO, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
         void Remove() noexcept;
-
 
         auto& GetLayer(LayerHandle layer)
         {
             return physx.GetLayer_ref(layer);
         }
 
+        using OnConstructionHandler = TypeErasedCallable<void(GameObject&, const char* userData_ptr, const size_t userData_size, ValueMap)>;
+
+        static void SetOnConstructionHandler(OnConstructionHandler callback) { onConstruction = callback; }
+        static void ClearCallback() { onConstruction.Release(); }
+
     private:
-        PhysXComponent& physx;
+        PhysXComponent&                         physx;
+        inline static OnConstructionHandler     onConstruction;
     };
 
 

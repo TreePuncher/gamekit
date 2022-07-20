@@ -662,6 +662,11 @@ struct LoadEntityContext : public LoadEntityContextInterface
     {
         return viewport.GetScene()->GetLayer();
     }
+
+    FlexKit::SceneEntity* Resource() final
+    {
+        return nullptr;
+    }
 };
 
 

@@ -263,14 +263,19 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
                     {
                         ViewportPanelContext(ViewportSelection& IN_selection) : selection{ IN_selection } {}
 
-                        void AddToScene(FlexKit::GameObject& go)
+                        void AddToScene(FlexKit::GameObject& go) final
                         {
                             selection.scene->scene.AddGameObject(go);
                         }
 
-                        FlexKit::LayerHandle GetSceneLayer()
+                        FlexKit::LayerHandle GetSceneLayer() final
                         {
                             return selection.scene->physicsLayer;
+                        }
+
+                        uint64_t GetEditorIdentifier() final
+                        {
+                            return selection.viewportObjects.front()->objectID;
                         }
 
                         ViewportSelection& selection;
@@ -292,6 +297,11 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
                         FlexKit::LayerHandle GetSceneLayer()
                         {
                             return selection->layer;
+                        }
+
+                        uint64_t GetEditorIdentifier() final
+                        {
+                            return selection->ID;
                         }
 
                         AnimationEditorObject* selection;
@@ -403,8 +413,6 @@ void EditorInspectorView::UpdateAnimatorObjectInspector()
     if (objectID        != selectedObject ||
         propertyCount   != gameObjectPropertyCount)
     {
-        //menu->setEnabled(false);
-
         selectedObject  = objectID;
         propertyCount   = gameObjectPropertyCount;
 
@@ -416,6 +424,26 @@ void EditorInspectorView::UpdateAnimatorObjectInspector()
 /************************************************************************************************/
 
 
+void clearLayout(QLayout* layout) {
+    if (layout == NULL)
+        return;
+    QLayoutItem* item;
+    while ((item = layout->takeAt(0))) {
+        if (item->layout()) {
+            clearLayout(item->layout());
+            item->layout()->setParent(nullptr);
+            delete item->layout();
+        }
+        else if (item->widget()) {
+            item->widget()->hide();
+            item->widget()->setParent(nullptr);
+            delete item->widget();
+        }
+        else
+            delete item;
+    }
+}
+
 void EditorInspectorView::ClearPanel()
 {
     if (selectedObject == -1)
@@ -425,46 +453,19 @@ void EditorInspectorView::ClearPanel()
 
     auto childCount = contentLayout->children().size();
 
-    while(propertyItems.size())
-    {
-        auto object = propertyItems.back();
-        propertyItems.erase(std::remove(propertyItems.begin(), propertyItems.end(), object), propertyItems.end());
-
-        delete object;
-    }
     propertyItems.clear();
 
-    if (!res && contentLayout->children().size() > 2)
-    {
-        for (auto child : contentLayout->children())
-        {
-            if (child->isWidgetType())
-            {
-                contentLayout->removeWidget((QWidget*)child);
-                child->setParent(nullptr);
-                delete child;
+    clearLayout(contentLayout);
 
-            }
-            else
-                delete child;
-        }
-    }
+    QLabel* label = new QLabel{};
+    label->setText("Nothing Selected");
+    label->setObjectName("Nothing Selected");
+    label->setAccessibleName("Nothing Selected");
+    label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
+    contentLayout->addWidget(label);
 
-
-    if (!res)
-    {
-        QLabel* label = new QLabel{};
-        label->setText("Nothing Selected");
-        label->setObjectName("Nothing Selected");
-        label->setAccessibleName("Nothing Selected");
-        label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-
-        contentLayout->addWidget(label);
-
-        propertyItems.push_back(label);
-    }
+    propertyItems.push_back(label);
 
     selectedObject  = -1;
     propertyCount   = 0;

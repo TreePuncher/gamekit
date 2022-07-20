@@ -1,4 +1,5 @@
 #include "PCH.h"
+#include "EditorApplication.h"
 #include "EditorColliderComponent.h"
 #include "EditorInspectorView.h"
 #include "EditorViewport.h"
@@ -9,8 +10,12 @@
 #include "ResourceIDs.h"
 #include "EditorResourcePickerDialog.h"
 #include "Scene.h"
+#include "KeyValueIds.h"
+#include "EditorPrefabObject.h"
+
 
 /************************************************************************************************/
+
 
 class StaticColliderResource :
     public FlexKit::Serializable<StaticColliderResource, FlexKit::iResource, TriMeshColliderTypeID>
@@ -20,8 +25,8 @@ public:
     const std::string& GetResourceID()      const noexcept override { return stringID; }
     const uint64_t     GetResourceGUID()    const noexcept override { return guid; }
 
-    void SetResourceID(const std::string& newID)    noexcept final { stringID = newID; }
-    void SetResourceGUID(uint64_t newGUID)          noexcept final { guid = newGUID; }
+    void SetResourceID(const std::string& newID)    noexcept final { stringID   = newID; }
+    void SetResourceGUID(uint64_t newGUID)          noexcept final { guid       = newGUID; }
 
     FlexKit::ResourceBlob CreateBlob() const
     {
@@ -31,7 +36,7 @@ public:
         header.GUID         = guid;
         header.ResourceSize = sizeof(header) + colliderBlob.size();
         header.Type         = EResourceType::EResource_Collider;
-
+        
         blob += header;
         blob += colliderBlob;
 
@@ -43,6 +48,7 @@ public:
         out.GUID            = guid;
         out.ID              = stringID;
         out.resourceType    = EResourceType::EResource_Collider;
+
         return out;
     }
 
@@ -372,10 +378,10 @@ struct ColliderComponentFactory : public IComponentFactory
 
         auto& physx = FlexKit::PhysXComponent::GetComponent();
 
-        const static auto defaultCube = physx.CreateCubeShape(float3{ 1, 1, 1 });
-        auto editorData = new StaticColliderEditorData{};
-
-        auto& staticBody = gameObject.AddView<FlexKit::StaticBodyView>(layerHandle);
+        const static auto defaultCube   = physx.CreateCubeShape(float3{ 1, 1, 1 });
+        auto editorData                 = new StaticColliderEditorData{};
+        editorData->editorId            = ctx.GetEditorIdentifier();
+        auto& staticBody                = gameObject.AddView<FlexKit::StaticBodyView>(layerHandle);
 
         staticBody.SetUserData(editorData);
 
@@ -385,10 +391,48 @@ struct ColliderComponentFactory : public IComponentFactory
     inline static const std::string name = "Static Collider";
 
     const std::string&      ComponentName() const noexcept { return name; }
-    FlexKit::ComponentID    ComponentID() const noexcept { return FlexKit::StaticBodyComponentID; }
+    FlexKit::ComponentID    ComponentID()   const noexcept { return FlexKit::StaticBodyComponentID; }
+
+    static void AddEditorColliderData(FlexKit::GameObject& gameObject, const char* userData_ptr, size_t userData_size, FlexKit::ValueMap map)
+    {
+        auto ctx = FlexKit::FindValue<LoadEntityContextInterface*>(map, FlexKit::LoadEntityContextInterfaceKID);
+
+        if (userData_ptr && ctx)
+        {   // Loading collider from disk
+            FlexKit::StaticBodyHeaderBlob header;
+            memcpy(&header, (void*)userData_ptr, sizeof(header));
+
+            auto shapes_ptr = ((FlexKit::StaticBodyShape*)(userData_ptr + sizeof(header)));
+            auto shapes     = std::span{ shapes_ptr, header.shapeCount };
+
+            auto staticBodyComponent = std::static_pointer_cast<EditorColliderComponent>(ctx.value()->Resource()->FindComponent(FlexKit::StaticBodyComponentID));
+
+            if (ctx && staticBodyComponent)
+            {
+                FlexKit::Apply(gameObject,
+                    [&](FlexKit::StaticBodyView& view)
+                    {
+                        auto editorData = new StaticColliderEditorData{};
+                        editorData->colliders = staticBodyComponent->colliders;
+                        view.SetUserData(editorData);
+                    });
+            }
+        }
+    }
 
     static bool Register()
     {
+        static bool once = []
+        {
+            FlexKit::StaticBodyComponent::SetOnConstructionHandler(
+                [](FlexKit::GameObject& gameObject, const char* userData_ptr, size_t userData_size, FlexKit::ValueMap values)
+                {
+                    AddEditorColliderData(gameObject, userData_ptr, userData_size, values);
+                });
+
+            return true;
+        }();
+
         EditorInspectorView::AddComponentFactory(std::make_unique<ColliderComponentFactory>());
 
         return true;
@@ -400,11 +444,16 @@ struct ColliderComponentFactory : public IComponentFactory
         auto& colliderView      = static_cast<FlexKit::StaticBodyView&>(base);
         auto* editorData        = static_cast<StaticColliderEditorData*>(colliderView.GetUserData());
 
-        colliderComponent.colliders = editorData->colliders;
+        FK_ASSERT(editorData != nullptr);
+
+        if (editorData)
+        {
+            colliderComponent.colliders = editorData->colliders;
+            colliderComponent.editorId  = editorData->editorId;
+        }
     }
 
     inline static IEntityComponentRuntimeUpdater::RegisterConstructorHelper<ColliderComponentFactory, FlexKit::StaticBodyComponentID> _register;
-
     inline static bool _registered = Register();
 };
 
@@ -475,18 +524,20 @@ void RegisterRigidBodyInspector(EditorViewport& viewport, EditorProject& project
 
 FlexKit::Blob EditorColliderComponent::GetBlob()
 {
-    FlexKit::StaticBodyHeaderBlob header{
-        .shapeCount = (uint32_t)colliders.size()
+    FlexKit::Blob body;
+    for (auto& collider : colliders)
+        body += collider.shape;
+
+    FlexKit::StaticBodyHeaderBlob headerDesc{
+        .shapeCount = (uint32_t)colliders.size(),
     };
 
-    FlexKit::Blob blob;
+    FlexKit::Blob header;
+    headerDesc.componentHeader.blockSize = sizeof(header) + body.size();
 
-    blob += header;
+    header += headerDesc;
 
-    for (auto& collider : colliders)
-        blob += collider.shape;
-
-    return blob;
+    return header + body;
 }
 
 FlexKit::Blob EditorRigidBodyComponent::GetBlob()
