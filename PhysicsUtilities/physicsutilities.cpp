@@ -1326,7 +1326,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    inline NodeHandle GetStaticBodyNode(GameObject& gameObject)
+    NodeHandle GetStaticBodyNode(GameObject& gameObject)
     {
         return Apply(gameObject,
             [](StaticBodyView& staticBody) -> NodeHandle
@@ -1334,6 +1334,55 @@ namespace FlexKit
                 return staticBody.GetNode();
             },
             [] { return (NodeHandle)InvalidHandle; });
+    }
+
+
+    /************************************************************************************************/
+
+
+    void StaticBodySetWorldPosition(GameObject& gameObject, const float3 xyz)
+    {
+        Apply(gameObject,
+            [&](StaticBodyView& staticBody)
+            {
+                auto actor              = staticBody->actor;
+                PxTransform transform   = actor->getGlobalPose();
+                transform.p             = physx::PxVec3{ xyz.x, xyz.y, xyz.z };
+                actor->setGlobalPose(transform);
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    void StaticSetBodyScale(GameObject& gameObject, const float3 xyz)
+    {
+        Apply(gameObject,
+            [&](StaticBodyView& staticBody)
+            {
+                auto actor              = staticBody->actor;
+                PxTransform transform   = actor->getGlobalPose();
+                //transform               = physx::PxVec3{ xyz.x, xyz.y, xyz.z };
+                actor->setGlobalPose(transform);
+                SetFlag(staticBody->node, SceneNodes::SCALE);
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    void StaticBodySetWorldOrientation(GameObject& gameObject, const Quaternion q)
+    {
+        Apply(gameObject,
+            [&](StaticBodyView& staticBody)
+            {
+                auto actor = staticBody->actor;
+                PxTransform transform = actor->getGlobalPose();
+                transform.q = physx::PxQuat{ q.x, q.y, q.z, q.w };
+                actor->setGlobalPose(transform);
+            });
     }
 
 
@@ -1826,6 +1875,13 @@ namespace FlexKit
 
         return staticBody_data.actor->getNbShapes();
     }
+
+    StaticColliderSystem::StaticColliderObject* StaticBodyView::operator -> ()
+    {
+        auto& staticBody_data = GetComponent().GetLayer(layer)[staticBody];
+
+        return &staticBody_data;
+    };
 
     void StaticBodyView::SetUserData(void* _ptr) noexcept
     {
