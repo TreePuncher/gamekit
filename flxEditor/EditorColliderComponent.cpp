@@ -533,7 +533,7 @@ FlexKit::Blob EditorColliderComponent::GetBlob()
     };
 
     FlexKit::Blob header;
-    headerDesc.componentHeader.blockSize = sizeof(header) + body.size();
+    headerDesc.componentHeader.blockSize = sizeof(headerDesc) + body.size();
 
     header += headerDesc;
 

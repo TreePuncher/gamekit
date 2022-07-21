@@ -283,21 +283,21 @@ public:
 struct WorldAssets
 {
     // walls
-    TriMeshHandle wallXSegment;
-    TriMeshHandle wallYSegment;
-    TriMeshHandle wallISegment;
-    TriMeshHandle wallEndSegment;
-    TriMeshHandle cornerSegment;
+    AssetHandle wallXSegment;
+    AssetHandle wallYSegment;
+    AssetHandle wallISegment;
+    AssetHandle wallEndSegment;
+    AssetHandle cornerSegment;
 
     // Floors
-    TriMeshHandle floor;
-    TriMeshHandle ramp;
+    AssetHandle floor;
+    AssetHandle ramp;
 };
 
 WorldAssets LoadBasicTiles();
 
 
-void CreateMultiplayerScene(GameWorld&, const WorldAssets&, iAllocator& temp);
+void CreateMultiplayerScene(GameWorld&, const WorldAssets&, iAllocator& allocator, iAllocator& temp);
 
 PlayerFrameState    GetPlayerFrameState (GameObject& gameObject);
 RemotePlayerData*   FindRemotePlayer    (MultiplayerPlayerID_t ID);

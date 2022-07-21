@@ -625,6 +625,8 @@ namespace FlexKit
         physx::PxShape* GetShape(size_t);
         size_t          GetShapeCount() const noexcept;
 
+        StaticColliderSystem::StaticColliderObject* operator -> ();
+
         void    SetUserData(void*) noexcept;
         void*   GetUserData() noexcept;
 
@@ -633,7 +635,13 @@ namespace FlexKit
     };
 
 
-    inline NodeHandle GetStaticBodyNode(GameObject& GO);
+    /************************************************************************************************/
+
+
+    NodeHandle  GetStaticBodyNode            (GameObject& GO);
+    void        StaticBodySetWorldPosition   (GameObject& GO, const float3 xyz);
+    void        StaticBodySetScale           (GameObject& GO, const float3 xyz);
+    void        StaticBodySetWorldOrientation(GameObject& GO, const Quaternion xyz);
 
 
 	/************************************************************************************************/

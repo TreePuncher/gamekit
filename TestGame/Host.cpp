@@ -59,7 +59,7 @@ HostWorldStateMangager::HostWorldStateMangager(MultiplayerPlayerID_t IN_player, 
     SetControllerPosition(localPlayer, { -0, 5, -0 });
 
     const auto worldAssets = LoadBasicTiles();
-    CreateMultiplayerScene(world, worldAssets, IN_base.framework.core.GetTempMemory());
+    CreateMultiplayerScene(world, worldAssets, IN_base.framework.core.GetBlockMemory(), IN_base.framework.core.GetTempMemory());
 }
 
 

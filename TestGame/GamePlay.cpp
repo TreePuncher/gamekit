@@ -1045,7 +1045,7 @@ struct RampConstraint : public iConstraint
 /************************************************************************************************/
 
 
-GameObject& AddWorldObject(GameWorld& world, TriMeshHandle mesh)
+std::optional<std::reference_wrapper<GameObject>> AddWorldObject(GameWorld& world, AssetHandle handle, iAllocator& allocator)
 {
     static const auto material = [] {
         auto& materials = MaterialComponent::GetComponent();
@@ -1056,12 +1056,25 @@ GameObject& AddWorldObject(GameWorld& world, TriMeshHandle mesh)
         return material;
     }();
 
+    
     auto& object = world.objectPool.Allocate();
+    static_vector<KeyValuePair> values = {
+        { PhysicsLayerKID, &world.layer }
+    };
+
+    if (!LoadPrefab(object, handle, allocator, values))
+        return {};
+
+    auto n = GetSceneNode(object);
+    auto m = GetStaticBodyNode(object);
+
+    /*
     object.AddView<SceneNodeView<>>();
     object.AddView<BrushView>(mesh);
-    object.AddView<MaterialView>(material);
+    */
 
-    SetScale(object, float3{ 5.0f, 5.0f, 5.0f });
+    object.AddView<MaterialView>(material);
+    //SetScale(object, float3{ 5.0f, 5.0f, 5.0f });
 
     world.scene.AddGameObject(object);
     SetBoundingSphereFromMesh(object);
@@ -1070,7 +1083,7 @@ GameObject& AddWorldObject(GameWorld& world, TriMeshHandle mesh)
 }
 
 
-void TranslateChunk(MapChunk& chunk, SparseMap& map, GameWorld& world, const WorldAssets& assets, iAllocator& temp)
+void TranslateChunk(MapChunk& chunk, SparseMap& map, GameWorld& world, const WorldAssets& assets, iAllocator& allocator)
 {
     for (auto [c, cellXYZ] : chunk)
     {
@@ -1078,59 +1091,63 @@ void TranslateChunk(MapChunk& chunk, SparseMap& map, GameWorld& world, const Wor
         if (cellXYZ[2] > 0)
             continue;
 
+        const float scale = 2.0f;
+
         switch (c)
         {
             case GetIdBit(CellStates::Floor):
             {
-                auto& floorObject = AddWorldObject(world, assets.floor);
-
-                SetWorldPosition(floorObject,
-                    float3{
-                        cellXYZ[0] * 10.0f,
-                        cellXYZ[2] * 10.0f,
-                        cellXYZ[1] * 10.0f });
+                if(auto floorObject = AddWorldObject(world, assets.floor, allocator); floorObject)
+                    StaticBodySetWorldPosition(*floorObject,
+                        float3{
+                            cellXYZ[0] * scale,
+                            cellXYZ[2] * scale,
+                            cellXYZ[1] * scale });
             }   break;
             case GetIdBit(CellStates::Ramp):
             {
-                auto& rampObject    = AddWorldObject(world, assets.ramp);
-                auto neighbors      = SparseMap::GetNeighborRing(map, cellXYZ);
-
-                for (int i = 0; i < 8; i += 2)
+                if (auto rampObject = AddWorldObject(world, assets.ramp, allocator); rampObject)
                 {
-                    auto&& [cell, cellId] = neighbors[i];
-                    if (cell == GetIdBit(CellStates::Wall) && neighbors[i + 4] == GetIdBit(CellStates::Floor))
+                    auto neighbors = SparseMap::GetNeighborRing(map, cellXYZ);
+
+                    for (int i = 0; i < 8; i += 2)
                     {
-                        Yaw(rampObject, pi/2 * -i);
-                        break;
+                        auto&& [cell, cellId] = neighbors[i];
+                        if (cell == GetIdBit(CellStates::Wall) && neighbors[i + 4] == GetIdBit(CellStates::Floor))
+                        {
+                            Yaw(*rampObject, pi / 2 * -i);
+                            break;
+                        }
                     }
+
+                    StaticBodySetWorldPosition(*rampObject,
+                        float3{
+                            cellXYZ[0] * scale,
+                            cellXYZ[2] * scale,
+                            cellXYZ[1] * scale });
                 }
-
-                SetWorldPosition(rampObject,
-                    float3{
-                        cellXYZ[0] * 10.0f,
-                        cellXYZ[2] * 10.0f,
-                        cellXYZ[1] * 10.0f });
-
             }   break;
             case GetIdBit(CellStates::Wall):
             {
-                auto& wallObject = AddWorldObject(world, assets.wallXSegment);
-
-                SetWorldPosition(wallObject,
-                    float3{
-                        cellXYZ[0] * 10.0f,
-                        cellXYZ[2] * 10.0f,
-                        cellXYZ[1] * 10.0f });
+                if (auto wallObject = AddWorldObject(world, assets.wallXSegment, allocator); wallObject)
+                {
+                    StaticBodySetWorldPosition(*wallObject,
+                        float3{
+                            cellXYZ[0] * scale,
+                            cellXYZ[2] * scale,
+                            cellXYZ[1] * scale });
+                }
             }   break;
             case GetIdBit(CellStates::Corner):
             {
-                auto& cornerObject  = AddWorldObject(world, assets.wallXSegment);
-
-                SetWorldPosition(cornerObject,
-                    float3{
-                        cellXYZ[0] * 10.0f,
-                        cellXYZ[2] * 10.0f,
-                        cellXYZ[1] * 10.0f });
+                if (auto cornerObject = AddWorldObject(world, assets.wallXSegment, allocator); cornerObject)
+                {
+                    StaticBodySetWorldPosition(*cornerObject,
+                        float3{
+                            cellXYZ[0] * scale,
+                            cellXYZ[2] * scale,
+                            cellXYZ[1] * scale });
+                }
             }   break;
         }
     }
@@ -1200,36 +1217,37 @@ WorldAssets LoadBasicTiles()
 {
     AddAssetFile(R"(assets\basicTiles.gameres)");
     WorldAssets out;
-    out.cornerSegment   = FlexKit::GetMesh("Wall_Corner");
-    out.wallEndSegment  = FlexKit::GetMesh("Wall_End");
-    out.wallXSegment    = FlexKit::GetMesh("Wall_X");
-    out.wallYSegment    = FlexKit::GetMesh("Wall_Y");
-    out.wallISegment    = FlexKit::GetMesh("Wall_Straight");
+    out.cornerSegment   = 10870;
+    out.wallEndSegment  = 20850;
+    out.wallXSegment    = 200;
+    out.wallYSegment    = 13491;
+    out.wallISegment    = 27187;
 
-    out.floor   = FlexKit::GetMesh("Floor");
-    out.ramp    = FlexKit::GetMesh("Ramp");
+    out.floor   = 29638;
+    out.ramp    = 23581;
 
     return out;
 }
 
-void CreateMultiplayerScene(GameWorld& world, const WorldAssets& assets, iAllocator& tempAllocator)
+
+void CreateMultiplayerScene(GameWorld& world, const WorldAssets& assets, iAllocator& allocator, iAllocator& tempAllocator)
 {
     //static const GUID_t sceneID = 1234;
     //world.LoadScene(sceneID);
 
-    static_vector<KeyValuePair> values;
-    values.emplace_back(PhysicsLayerKID, &world.layer);
+    //static_vector<KeyValuePair> values;
+    //values.emplace_back(PhysicsLayerKID, &world.layer);
 
-    auto& prefabObject = world.objectPool.Allocate();
-    FlexKit::LoadPrefab(prefabObject, "PrefabGameObject", tempAllocator, {values});
+    //auto& prefabObject = world.objectPool.Allocate();
+    //FlexKit::LoadPrefab(prefabObject, "PrefabGameObject", tempAllocator, {values});
 
-    //GenerateWorld(world, assets, tempAllocator);
+    GenerateWorld(world, assets, tempAllocator);
 
     auto& physics       = PhysXComponent::GetComponent();
     auto& floorCollider = world.objectPool.Allocate();
     auto floorShape     = physics.CreateCubeShape({ 200, 1, 200 });
-    
     auto& staticBody    = floorCollider.AddView<StaticBodyView>(world.layer, float3{ 0, -1.0f, 0 } );
+
     staticBody.AddShape(floorShape);
 
     auto& layer = PhysXComponent::GetComponent().GetLayer_ref(world.layer);
