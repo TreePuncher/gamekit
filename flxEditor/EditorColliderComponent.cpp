@@ -263,7 +263,8 @@ public:
                 auto resourceID = editorData->colliders[idx].shape.triMeshResource;
                 std::string label{ std::format("{}", resourceID)};
 
-                item->setData(Qt::DisplayRole, label.c_str());
+                if(item->text() != label.c_str())
+                    item->setData(Qt::DisplayRole, label.c_str());
             },
             [&](QListWidget* listWidget)
             {   // On Event
@@ -281,8 +282,14 @@ public:
                 auto item           = list.currentItem();
                 auto idx            = list.indexFromItem(item).row();
                 auto& staticBody    = static_cast<FlexKit::StaticBodyView&>(view);
+                auto* editorData    = (StaticColliderEditorData*)staticBody.GetUserData();
+
+                if (idx < 0 || idx > editorData->colliders.size())
+                    return;
 
                 staticBody.RemoveShape(idx);
+
+                editorData->colliders.erase(editorData->colliders.begin() + idx);
             });
 
         panelCtx.AddButton(

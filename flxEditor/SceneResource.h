@@ -116,7 +116,8 @@ namespace FlexKit
         ~EntityComponent() = default;
 
 
-        virtual Blob GetBlob() { return {}; }
+        virtual Blob GetBlob()                  { return {}; }
+        virtual bool ExportComponent() const    { return true; }
 
         uint32_t id;
 
@@ -344,6 +345,8 @@ namespace FlexKit
 
             ar& materials;
         }
+
+        bool ExportComponent() const final { return false; }
 
         std::vector<EntityMaterial> materials;
 

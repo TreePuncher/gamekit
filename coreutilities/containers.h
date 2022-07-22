@@ -103,6 +103,7 @@ namespace FlexKit
 	template<typename Ty>
 	struct Vector
 	{
+        using value_t = Ty;
 		typedef Vector<Ty> ELEMENT_TYPE;
 		typedef Vector<Ty> THISTYPE;
 

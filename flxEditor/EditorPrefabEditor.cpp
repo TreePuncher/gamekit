@@ -864,7 +864,8 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 
                     LoadEntity(prefabObjectRes->entity.components, context);
 
-                    obj->ID = prefabObjectRes->GetResourceGUID();
+                    obj->ID     = prefabObjectRes->GetResourceGUID();
+                    obj->prefab = prefabObjectRes;
 
                     globalSelection.Clear();
                     globalSelection.type        = AnimatorObject_ID;

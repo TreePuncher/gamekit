@@ -43,6 +43,7 @@ public:
     }
 
     Scene&          GetScene() final;
+    LayerHandle     GetLayer() final;
     CameraHandle    GetActiveCamera() const final;
 
     GameObject&     CreateGameObject() final { return world.objectPool.Allocate(); };

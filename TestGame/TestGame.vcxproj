@@ -124,6 +124,7 @@
     <ClInclude Include="..\coreutilities\GameFramework.h" />
     <ClInclude Include="..\coreutilities\KeyValueIds.h" />
     <ClInclude Include="..\coreutilities\ModifiableShape.h" />
+    <ClInclude Include="..\coreutilities\PhysicsDebugVis.h" />
     <ClInclude Include="..\coreutilities\RuntimeComponentIDs.h" />
     <ClInclude Include="..\coreutilities\Scene.h" />
     <ClInclude Include="..\coreutilities\GraphicsComponents.h" />
@@ -243,6 +244,7 @@
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\coreutilities\ModifiableShape.cpp" />
+    <ClCompile Include="..\coreutilities\PhysicsDebugVis.cpp" />
     <ClCompile Include="..\coreutilities\Scene.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
@@ -363,6 +365,7 @@
     <ClCompile Include="..\physicsutilities\physicsutilities.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="BaseState.cpp" />
     <ClCompile Include="Enemy1.cpp" />
     <ClCompile Include="EngineTu.cpp" />
     <ClCompile Include="ExternalTU.cpp" />

@@ -208,6 +208,15 @@ Scene& ClientWorldStateMangager::GetScene()
 /************************************************************************************************/
 
 
+LayerHandle ClientWorldStateMangager::GetLayer()
+{
+    return world.layer;
+}
+
+
+/************************************************************************************************/
+
+
 CameraHandle ClientWorldStateMangager::GetActiveCamera() const 
 {
     return GetCameraControllerCamera(localPlayer);

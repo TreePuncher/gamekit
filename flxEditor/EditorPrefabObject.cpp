@@ -86,11 +86,18 @@ FlexKit::ResourceBlob PrefabGameObjectResource::CreateBlob() const
 {
     FlexKit::Blob blob;
 
+    uint32_t exportedComponents = 0;
     for (auto& component : entity.components)
-        blob += component->GetBlob();
+    {
+        if (component->ExportComponent())
+        {
+            blob += component->GetBlob();
+            exportedComponents++;
+        }
+    }
 
-    FlexKit::PrefabResource header{ blob.size(), (uint32_t)entity.components.size() };
-    header.GUID             = GetResourceGUID();
+    FlexKit::PrefabResource header{ blob.size(), (uint32_t)exportedComponents };
+    header.GUID = GetResourceGUID();
 
     blob = FlexKit::Blob{ header } + blob;
 

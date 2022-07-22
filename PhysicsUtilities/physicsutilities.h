@@ -739,9 +739,10 @@ namespace FlexKit
             CCDesc.material         = physx.GetDefaultMaterial();
             CCDesc.radius           = R;
             CCDesc.height           = H;
-            CCDesc.contactOffset    = 0.01f;
+            CCDesc.contactOffset    = 0.1f;
             CCDesc.position         = { initialPosition.x, initialPosition.y, initialPosition.z };
             CCDesc.climbingMode     = physx::PxCapsuleClimbingMode::eEASY;
+            CCDesc.stepOffset       = 0.2f;
 
             auto controller = manager.createController(CCDesc);
 
@@ -869,7 +870,7 @@ namespace FlexKit
         {
             auto& ref = GetComponent()[controller];
 
-            return ref.controller->move({ v.x, v.y, v.z }, 0.0001f, (float)dt, filters);
+            return ref.controller->move({ v.x, v.y, v.z }, 0.01f, (float)dt, filters);
         }
 
 
