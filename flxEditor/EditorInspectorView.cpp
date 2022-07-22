@@ -208,17 +208,23 @@ QListWidget* ComponentViewPanelContext::AddList(ListSizeUpdateCallback size, Lis
     timer->connect(
         timer,
         &QTimer::timeout,
-        [=]() mutable
+        [=, currentSize = 0]() mutable
         {
-            list->clear();
 
             const auto end = size();
-            for (size_t itr = 0; itr < end; ++itr)
+            if (currentSize != size())
             {
-                QListWidgetItem* item = new QListWidgetItem;
-                content(itr, item);
-                list->addItem(item);
+                list->clear();
+
+                for (size_t itr = 0; itr < end; ++itr)
+                {
+                    QListWidgetItem* item = new QListWidgetItem;
+                    content(itr, item);
+                    list->addItem(item);
+                }
+                currentSize = size();
             }
+
 
             timer->start(250);
         });

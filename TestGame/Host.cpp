@@ -9,6 +9,15 @@ using FlexKit::GameFramework;
 /************************************************************************************************/
 
 
+constexpr bool EnableDebug()
+{
+//#if _DEBUG
+    return true;
+//#else
+    return false;
+//#endif
+}
+
 HostWorldStateMangager::HostWorldStateMangager(MultiplayerPlayerID_t IN_player, NetworkState& IN_net, BaseState& IN_base) :
     net                     { IN_net    },
     base                    { IN_base   },
@@ -26,7 +35,7 @@ HostWorldStateMangager::HostWorldStateMangager(MultiplayerPlayerID_t IN_player, 
     remotePlayerComponent   { IN_base.framework.core.GetBlockMemory() },
 
     packetHandlers          { IN_base.framework.core.GetBlockMemory() },
-    world                   { IN_base.framework.core }
+    world                   { IN_base.framework.core, EnableDebug() }
 {
     auto& allocator = IN_base.framework.core.GetBlockMemory();
 
@@ -56,7 +65,7 @@ HostWorldStateMangager::HostWorldStateMangager(MultiplayerPlayerID_t IN_player, 
     eventMap.MapKeyToEvent(KEYCODES::KC_3, PLAYER_ACTION3);
     eventMap.MapKeyToEvent(KEYCODES::KC_4, PLAYER_ACTION4);
 
-    SetControllerPosition(localPlayer, { -0, 5, -0 });
+    SetControllerPosition(localPlayer, { -0, 0, -0 });
 
     const auto worldAssets = LoadBasicTiles();
     CreateMultiplayerScene(world, worldAssets, IN_base.framework.core.GetBlockMemory(), IN_base.framework.core.GetTempMemory());
@@ -244,6 +253,15 @@ bool HostWorldStateMangager::EventHandler(Event evt)
 Scene& HostWorldStateMangager::GetScene()
 {
     return world.scene;
+}
+
+
+/************************************************************************************************/
+
+
+LayerHandle HostWorldStateMangager::GetLayer()
+{
+    return world.layer;
 }
 
 

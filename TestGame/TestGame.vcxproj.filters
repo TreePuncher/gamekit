@@ -304,6 +304,9 @@
     <ClInclude Include="..\coreutilities\KeyValueIds.h">
       <Filter>Headers\coreutilities</Filter>
     </ClInclude>
+    <ClInclude Include="..\coreutilities\PhysicsDebugVis.h">
+      <Filter>Headers\coreutilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\coreutilities\AllSourceFiles.cpp">
@@ -519,6 +522,12 @@
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="..\coreutilities\ModifiableShape.cpp">
       <Filter>Source\coreutilities</Filter>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\PhysicsDebugVis.cpp">
+      <Filter>Source\coreutilities</Filter>
+    </ClCompile>
+    <ClCompile Include="BaseState.cpp">
+      <Filter>Source\TestGame</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

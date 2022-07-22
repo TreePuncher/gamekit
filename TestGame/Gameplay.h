@@ -244,7 +244,7 @@ using GadgetView         = GadgetComponent::View;
 class GameWorld
 {
 public:
-    GameWorld(EngineCore& IN_core);
+    GameWorld(EngineCore& IN_core, bool debug = false);
     ~GameWorld();
 
     void Release();

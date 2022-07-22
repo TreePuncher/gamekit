@@ -356,12 +356,21 @@ namespace FlexKit
     {
         physx::PxTriangleMeshDesc meshDesc;
         meshDesc.points.count   = geometrySize;
-        meshDesc.points.stride  = sizeof(FlexKit::float3);
+        meshDesc.points.stride  = 12;
         meshDesc.points.data    = geometry;
+
+        std::vector<uint32_t> reversedIndices;
+        reversedIndices.reserve(indexCount);
+        for(int I = 0; I < indexCount; I += 3)
+        {
+            reversedIndices.push_back(indices[I]);
+            reversedIndices.push_back(indices[I + 2]);
+            reversedIndices.push_back(indices[I + 1]);
+        }
 
         meshDesc.triangles.count    = indexCount / 3;
         meshDesc.triangles.stride   = 3 * sizeof(uint32_t);
-        meshDesc.triangles.data     = indices;
+        meshDesc.triangles.data     = reversedIndices.data();
 
         auto oven = GetCooker()->validateTriangleMesh(meshDesc);
 
@@ -1610,7 +1619,7 @@ namespace FlexKit
         const float focusHeight     = controllerImpl.focusHeight;
         const float cameraDistance  = controllerImpl.cameraDistance;
 
-        const double deltaTime = dt;// 1.0 / 60.0f;
+        const double deltaTime = dt;
         while(controllerImpl.updateTimer >= deltaTime)
         {
             controllerImpl.updateTimer -= deltaTime;
@@ -1632,6 +1641,8 @@ namespace FlexKit
 
             movementVector += keyStates.x * right;
             movementVector += keyStates.y * forward;
+
+            float3 newVelocity = velocity;
 
             if (movementVector.magnitudeSq() > 0.05f)
             {
@@ -1852,6 +1863,9 @@ namespace FlexKit
     void StaticBodyView::RemoveShape(uint32_t idx)
     {
         auto& staticBody_data = GetComponent().GetLayer(layer)[staticBody];
+
+        if (idx >= staticBody_data.actor->getNbShapes())
+            return;
 
         PxShape* shape = nullptr;
 

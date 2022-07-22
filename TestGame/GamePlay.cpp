@@ -157,13 +157,13 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
 /************************************************************************************************/
 
 
-GameWorld::GameWorld(EngineCore& IN_core) :
+GameWorld::GameWorld(EngineCore& IN_core, bool debug) :
     allocator       { static_cast<iAllocator&>(IN_core.GetBlockMemory()) },
     core            { IN_core },
     renderSystem    { IN_core.RenderSystem},
     objectPool      { IN_core.GetBlockMemory(), 1024 * 16 },
     enemy1Component { IN_core.GetBlockMemory() },
-    layer           { PhysXComponent::GetComponent().CreateLayer() },
+    layer           { PhysXComponent::GetComponent().CreateLayer(debug) },
     scene           { IN_core.GetBlockMemory() },
     cubeShape       { PhysXComponent::GetComponent().CreateCubeShape({ 0.5f, 0.5f, 0.5f}) }
 {
@@ -1232,16 +1232,18 @@ WorldAssets LoadBasicTiles()
 
 void CreateMultiplayerScene(GameWorld& world, const WorldAssets& assets, iAllocator& allocator, iAllocator& tempAllocator)
 {
-    //static const GUID_t sceneID = 1234;
-    //world.LoadScene(sceneID);
+#if 0
+    static const GUID_t sceneID = 1234;
+    world.LoadScene(sceneID);
+#else
+    static_vector<KeyValuePair> values;
+    values.emplace_back(PhysicsLayerKID, &world.layer);
 
-    //static_vector<KeyValuePair> values;
-    //values.emplace_back(PhysicsLayerKID, &world.layer);
-
-    //auto& prefabObject = world.objectPool.Allocate();
-    //FlexKit::LoadPrefab(prefabObject, "PrefabGameObject", tempAllocator, {values});
+    auto& prefabObject = world.objectPool.Allocate();
+    FlexKit::LoadPrefab(prefabObject, "PrefabGameObject", tempAllocator, {values});
 
     GenerateWorld(world, assets, tempAllocator);
+#endif
 
     auto& physics       = PhysXComponent::GetComponent();
     auto& floorCollider = world.objectPool.Allocate();

@@ -1,4 +1,5 @@
 #include "MultiplayerGameState.h"
+#include "PhysicsDebugVis.h"
 #include "Packets.h"
 
 #include <imgui.h>
@@ -662,6 +663,10 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
     }
 
     base.DrawDebugHUD(core, dispatcher, frameGraph, reserveVB, reserveCB, targets.RenderTarget, dT);
+
+    if(base.HUDmode == BaseState::EHudMode::PhysXOverlay)
+        RenderPhysicsOverlay(dispatcher, frameGraph, targets.RenderTarget, worldState.GetLayer(), activeCamera, reserveVB, reserveCB);
+
     PresentBackBuffer(frameGraph, base.renderWindow);
 
     return nullptr;
@@ -749,6 +754,9 @@ bool LocalGameState::EventHandler(Event evt)
                     return true;
                 case KC_ESC:
                     framework.quit = true;
+                    return true;
+                case KC_F1:
+                    base.HUDmode = (BaseState::EHudMode)((base.HUDmode + 1) % BaseState::EHudMode::ModeCount);
                     return true;
                 };
         }   break;
