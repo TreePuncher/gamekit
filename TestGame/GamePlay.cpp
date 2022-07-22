@@ -1074,7 +1074,8 @@ std::optional<std::reference_wrapper<GameObject>> AddWorldObject(GameWorld& worl
     */
 
     object.AddView<MaterialView>(material);
-    //SetScale(object, float3{ 5.0f, 5.0f, 5.0f });
+    StaticBodySetScale(object, float3{ 5.0f, 5.0f, 5.0f });
+    SetScale(object, { 5, 5, 5 });
 
     world.scene.AddGameObject(object);
     SetBoundingSphereFromMesh(object);
@@ -1091,7 +1092,7 @@ void TranslateChunk(MapChunk& chunk, SparseMap& map, GameWorld& world, const Wor
         if (cellXYZ[2] > 0)
             continue;
 
-        const float scale = 2.0f;
+        const float scale = 10.0f;
 
         switch (c)
         {
