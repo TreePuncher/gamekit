@@ -1365,15 +1365,40 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void StaticSetBodyScale(GameObject& gameObject, const float3 xyz)
+    void StaticBodySetScale(GameObject& gameObject, const float3 xyz)
     {
         Apply(gameObject,
             [&](StaticBodyView& staticBody)
             {
-                auto actor              = staticBody->actor;
-                PxTransform transform   = actor->getGlobalPose();
+                auto actor = staticBody->actor;
+                PxMeshScale scale{ PxVec3{xyz.x, xyz.y, xyz.z } };
+
+                PxShape* shape;
+                actor->getShapes(&shape, 1);
+
+                if (shape)
+                {
+                    auto geometry   = shape->getGeometry();
+                    auto& mesh  = geometry.triangleMesh();
+
+                    if (!shape->isExclusive())
+                    {
+                        mesh.meshFlags;
+                        mesh.scale = scale;
+
+                        actor->detachShape(*shape);
+                        shape = PhysXComponent::GetComponent().GetAPI()->createShape(geometry.any(), *PhysXComponent::GetComponent().GetDefaultMaterial(), true);
+                        actor->attachShape(*shape);
+                    }
+
+                    else
+                        mesh.scale = scale;
+
+                    FK_ASSERT(mesh.isValid());
+                }
+
                 //transform               = physx::PxVec3{ xyz.x, xyz.y, xyz.z };
-                actor->setGlobalPose(transform);
+                //actor->setGlobalPose(transform);
                 SetFlag(staticBody->node, SceneNodes::SCALE);
             });
     }

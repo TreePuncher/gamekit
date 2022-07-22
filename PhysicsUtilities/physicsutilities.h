@@ -408,6 +408,7 @@ namespace FlexKit
         Blob                            CookMesh2   (float3* geometry, size_t geometrySize, uint32_t* indices, size_t indexCount);
 
         Shape                           LoadTriMeshShape(const Blob&);
+        physx::PxPhysics*               GetAPI() { return physxAPI; }
 
 		template<typename TY>
 		PhysicsLayer&	GetOwningLayer(TY handle)

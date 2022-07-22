@@ -166,16 +166,28 @@ namespace FlexKit
         std::vector<ThreadStats> Threads;
     };
 
+    inline static std::mutex _ProfilerLock = std::mutex{};
+
     struct EngineProfiling
     {
+        EngineProfiling() { printf("Main Thread Initialized\n"); }
+
         ThreadProfiler& GetThreadProfiler()
         {
 #if USING(ENABLEPROFILER)
-            std::scoped_lock lock{ m };
+            thread_local std::atomic_bool   available = false;
+            thread_local ThreadProfiler*    profiler = nullptr;
 
-            threadProfilers.emplace_back(std::make_unique<ThreadProfiler>());
+            if (!available.load(std::memory_order_relaxed))
+            {
+                std::scoped_lock lock{ _ProfilerLock };
 
-            return *threadProfilers.back().get();
+                threadProfilers.emplace_back(std::make_unique<ThreadProfiler>());
+                profiler    = threadProfilers.back().get();
+                available   = true;
+            }
+
+            return *profiler;
 #else
             ThreadProfiler& NULL_REF = *((ThreadProfiler*)(nullptr));
             return NULL_REF;
@@ -224,8 +236,6 @@ namespace FlexKit
 
         void DrawProfiler(uint2 POS, uint2 WH, iAllocator& temp);
 
-        std::mutex m;
-
         bool paused     = false;
         bool showLabels = true;
         size_t frameOffset = 0;
@@ -235,7 +245,7 @@ namespace FlexKit
         std::vector<std::unique_ptr<ThreadProfiler>>        threadProfilers;
     };
 
-    inline EngineProfiling profiler;
+    inline EngineProfiling profiler = EngineProfiling{};
 
 	
     template<typename TY>
@@ -252,7 +262,7 @@ namespace FlexKit
         return function();
     }
 
-    inline thread_local ThreadProfiler& threadProfiler = profiler.GetThreadProfiler();
+    //inline thread_local ThreadProfiler& threadProfiler = profiler.GetThreadProfiler();
 
     class _ProfileFunction
     {
@@ -261,12 +271,12 @@ namespace FlexKit
             function    { FunctionName },
             profileID   { IN_profileID + rand() }
         {
-            threadProfiler.Push(FunctionName, profileID, std::chrono::high_resolution_clock::now());
+            profiler.GetThreadProfiler().Push(FunctionName, profileID, std::chrono::high_resolution_clock::now());
         }
 
         ~_ProfileFunction()
         {
-            threadProfiler.Pop(profileID, std::chrono::high_resolution_clock::now());
+            profiler.GetThreadProfiler().Pop(profileID, std::chrono::high_resolution_clock::now());
         }
 
     private:

@@ -149,7 +149,7 @@ void BaseState::DrawDebugHUD(EngineCore& core, UpdateDispatcher& dispatcher, Fra
         case EHudMode::Profiler:
         {
             auto wh = renderWindow.GetWH();
-            FlexKit::profiler.DrawProfiler(uint2{ 400, 0u }, uint2{ wh[0] - 400u, wh[1] }, core.GetTempMemory());
+            //FlexKit::profiler.DrawProfiler(uint2{ 400, 0u }, uint2{ wh[0] - 400u, wh[1] }, core.GetTempMemory());
         }   break;
         }
 
