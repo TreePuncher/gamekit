@@ -193,19 +193,19 @@ namespace FlexKit
 
     ModifiableShape::wFace::_NeighborFaceIterator ModifiableShape::wFace::_NeighborFaceIterator::operator ++() noexcept
     {
-        auto itr = *this;
+        auto prev = *this;
 
         Next();
-        return itr;
+        return prev;
     }
 
 
     ModifiableShape::wFace::_NeighborFaceIterator ModifiableShape::wFace::_NeighborFaceIterator::operator --() noexcept
     {
-        auto itr = *this;
+        auto current = *this;
 
         Prev();
-        return itr;
+        return current;
     }
 
 
@@ -325,7 +325,7 @@ namespace FlexKit
     {
         ModifiableShape::ConstFaceIterator out{ shape, endIdx };
 
-        for(size_t itr = 0; itr < rhs; itr++)
+        for(size_t I = 0; I < rhs; I++)
             out++;
 
         return out;
@@ -337,7 +337,7 @@ namespace FlexKit
 
     ModifiableShape::ConstFaceIterator& ModifiableShape::ConstFaceIterator::operator += (int rhs) noexcept
     {
-        for (size_t itr = 0; itr < rhs; itr++)
+        for (size_t I = 0; I < rhs; I++)
             Next();
 
         return *this;
@@ -351,7 +351,7 @@ namespace FlexKit
     {
         ModifiableShape::ConstFaceIterator out{ shape, endIdx };
 
-        for (size_t itr = 0; itr < rhs; itr++)
+        for (size_t I = 0; I < rhs; I++)
             out--;
 
         return out;
@@ -363,7 +363,7 @@ namespace FlexKit
 
     ModifiableShape::ConstFaceIterator& ModifiableShape::ConstFaceIterator::operator -= (int rhs) noexcept
     {
-        for (size_t itr = 0; itr < rhs; itr++)
+        for (size_t I = 0; I < rhs; I++)
             Prev();
 
         return *this;
@@ -454,7 +454,7 @@ namespace FlexKit
         FaceIterator out{ shape, endIdx };
 
         auto e = abs(rhs);
-        for (size_t itr = 0; itr < e; itr++)
+        for (size_t I = 0; I < e; I++)
             if (rhs > 0)
                 out++;
             else
@@ -469,7 +469,7 @@ namespace FlexKit
 
     ModifiableShape::FaceIterator& ModifiableShape::FaceIterator::operator += (int rhs) noexcept
     {
-        for (size_t itr = 0; itr < rhs; itr++)
+        for (size_t I = 0; I < rhs; I++)
             Next();
 
         return *this;
@@ -483,7 +483,7 @@ namespace FlexKit
     {
         FaceIterator out{ shape, endIdx };
 
-        for (size_t itr = 0; itr < rhs; itr++)
+        for (size_t I = 0; I < rhs; I++)
             out--;
 
         return out;
@@ -495,7 +495,7 @@ namespace FlexKit
 
     ModifiableShape::FaceIterator& ModifiableShape::FaceIterator::operator -= (int rhs) noexcept
     {
-        for (size_t itr = 0; itr < rhs; itr++)
+        for (size_t I = 0; I < rhs; I++)
             Prev();
 
         return *this;
@@ -1037,7 +1037,7 @@ namespace FlexKit
             freeEdges.push_back(itr.current);
         }
 
-        wFaces[faceIdx].edgeStart = -1;
+        wFaces[faceIdx].edgeStart = 0xffffffff;
     }
 
 
@@ -1139,7 +1139,6 @@ namespace FlexKit
         const uint32_t E5 = _AddEdge();
         const uint32_t E6 = _AddEdge();
 
-        const uint32_t V1 = wEdges[E1].vertices[0];
         const uint32_t V2 = wEdges[E2].vertices[0];
         const uint32_t V3 = wEdges[E3].vertices[0];
 
@@ -1235,7 +1234,6 @@ namespace FlexKit
         const auto E5 = wEdges[E4].next;
         const auto E6 = wEdges[E5].next;
 
-        const auto V1 = wEdges[E1].vertices[0];
         const auto V2 = wEdges[E2].vertices[0];
         const auto V3 = wEdges[E3].vertices[0];
         const auto V4 = wEdges[E6].vertices[0];

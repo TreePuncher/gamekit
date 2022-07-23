@@ -217,14 +217,14 @@ struct ModifiableShape
 
                 Res operator * ()
                 {
-                    auto& edge = shape->wEdges[current];
+                    auto& e = shape->wEdges[current];
 
                     return {
-                        .A = shape->wVertices[edge.vertices[0]].point,
-                        .B = shape->wVertices[edge.vertices[1]].point,
+                        .A = shape->wVertices[e.vertices[0]].point,
+                        .B = shape->wVertices[e.vertices[1]].point,
 
-                        .A_idx = edge.vertices[0],
-                        .B_idx = edge.vertices[1]
+                        .A_idx = e.vertices[0],
+                        .B_idx = e.vertices[1]
                     };
                 }
 
@@ -320,7 +320,6 @@ struct ModifiableShape
             auto operator [](int32_t i)
             {
                 auto itr = begin();
-                auto n = abs(i);
 
                 if (i > 0)
                 {
@@ -395,25 +394,24 @@ struct ModifiableShape
 
             auto operator + (int n)
             {
-                auto itr = *this;
+                auto I = *this;
                 while(n < 0)
                 {
-                    itr--;
+                    I--;
                     n++;
                 }
 
                 while (n > 0)
                 {
-                    itr++;
+                    I++;
                     n--;
                 }
 
-                return itr;
+                return I;
             }
 
             auto& operator += (int n)
             {
-                auto itr = *this;
                 while (n < 0)
                 {
                     Prev();
@@ -646,18 +644,18 @@ struct ModifiableShape
 
         auto PeekNext()
         {
-            auto itr = *this;
-            itr.Next();
+            auto I = *this;
+            I.Next();
 
-            return itr;
+            return I;
         }
 
-        auto PeekPrev()
+        auto PeekPrev() const
         {
-            auto itr = *this;
-            itr.Prev();
+            auto I = *this;
+            I.Prev();
 
-            return itr;
+            return I;
         }
 
         operator uint32_t () { return current; }

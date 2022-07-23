@@ -72,7 +72,7 @@ namespace FlexKit
         A.Min = lowerBound;
         A.Max = upperBound;
 
-        return A;
+        return lhs + A;
     }
 
 
