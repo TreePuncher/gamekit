@@ -7,7 +7,8 @@
 #include "fmt/format.h"
 
 namespace FlexKit
-{
+{   /************************************************************************************************/
+
 
     void ThreadProfiler::Push(const char* func, uint64_t Id, TimePoint tp)
     {
@@ -29,6 +30,9 @@ namespace FlexKit
     }
 
 
+    /************************************************************************************************/
+
+
     void ThreadProfiler::Pop(uint64_t Id, TimePoint tp)
     {
         auto& frames = activeFrames;
@@ -42,6 +46,9 @@ namespace FlexKit
         currentFrame.end = tp;
         completedFrames.push_back(currentFrame);
     }
+
+
+    /************************************************************************************************/
 
 
     void EngineProfiling::DrawProfiler(uint2 POS, uint2 WH, iAllocator& temp)
@@ -286,7 +293,7 @@ namespace FlexKit
     }
 
 
-}
+}   /************************************************************************************************/
 
 
 /**********************************************************************

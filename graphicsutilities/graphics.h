@@ -5173,9 +5173,9 @@ private:
 	FLEXKITAPI void AddTempShaderRes(ShaderResourceBuffer& ShaderResource, RenderSystem* RS);
 
 
-	inline DescHeapPOS IncrementHeapPOS(DescHeapPOS POS, size_t Size, size_t INC) {
-		const size_t Offset = Size * INC;
-		return{ POS.V1.ptr + Offset, POS.V2.ptr + Offset };
+	inline DescHeapPOS IncrementHeapPOS(const DescHeapPOS POS, const size_t size, const size_t increment) {
+		const size_t offset = size * increment;
+		return { POS.V1.ptr + offset, POS.V2.ptr + offset };
 	}
 
 

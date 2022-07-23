@@ -1416,6 +1416,8 @@ namespace FlexKit
                 PxTransform transform = actor->getGlobalPose();
                 transform.q = physx::PxQuat{ q.x, q.y, q.z, q.w };
                 actor->setGlobalPose(transform);
+                transform = actor->getGlobalPose();
+
             });
     }
 
