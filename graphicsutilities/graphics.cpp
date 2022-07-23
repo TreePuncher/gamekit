@@ -49,14 +49,17 @@ namespace FlexKit
 
 	UAVBuffer::UAVBuffer(const RenderSystem& rs, const ResourceHandle handle, const size_t IN_stride, const size_t IN_offset)
 	{
+        FK_ASSERT(IN_stride < std::numeric_limits<uint32_t>::max());
+        FK_ASSERT(IN_offset < std::numeric_limits<uint32_t>::max());
+
 		auto uavLayout	= rs.GetUAVBufferLayout(handle);
         auto bufferSize = rs.GetUAVBufferSize(handle);
 
 		resource		= rs.GetDeviceResource(handle);
-		stride			= IN_stride == -1 ? uavLayout.stride : IN_stride;
-		elementCount	= bufferSize / stride;
+		stride			= (uint32_t)(IN_stride == -1 ? uavLayout.stride : IN_stride);
+		elementCount	= (uint32_t)bufferSize / stride;
 		counterOffset	= 0;
-		offset			= IN_offset;
+		offset			= (uint32_t)IN_offset;
 		format			= uavLayout.format;
 	}
 
@@ -132,7 +135,7 @@ namespace FlexKit
 		};
 
 
-		handles[handle] = buffers.push_back(buffer);
+		handles[handle] = (uint32_t)buffers.push_back(buffer);
 
 		return handle;
 	}
@@ -739,13 +742,16 @@ namespace FlexKit
 
 	bool DescriptorHeap::SetUAVBuffer(Context& ctx, size_t idx, ResourceHandle handle, size_t offset)
 	{
+        FK_ASSERT(idx < std::numeric_limits<uint32_t>::max());
+        FK_ASSERT(offset < std::numeric_limits<uint32_t>::max());
+
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
 			return false;
 
 		FillState[idx] = true;
 
 		UAVBuffer UAV{ *ctx.renderSystem, handle };
-		UAV.offset = offset;
+		UAV.offset = (uint32_t)offset;
 
 		PushUAVBufferToDescHeap(
 			ctx.renderSystem,
@@ -818,6 +824,9 @@ namespace FlexKit
 
     bool DescriptorHeap::SetUAVTexture(Context& ctx, size_t idx, size_t mipLevel, ResourceHandle handle, DeviceFormat format)
     {
+        FK_ASSERT(idx < std::numeric_limits<uint32_t>::max());
+        FK_ASSERT(mipLevel < std::numeric_limits<uint32_t>::max());
+
         if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
 			return false;
 
@@ -831,11 +840,11 @@ namespace FlexKit
         PushUAV2DToDescHeap(
 			ctx.renderSystem,
 			tex,
-            mipLevel,
+            (uint32_t)mipLevel,
 			IncrementHeapPOS(
 				descriptorHeap,
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
-				idx));
+                idx));
 
         return true;
     }
@@ -905,14 +914,18 @@ namespace FlexKit
         size_t              stride,
         size_t              counterOffset)
     {
+        FK_ASSERT(idx < std::numeric_limits<uint32_t>::max());
+        FK_ASSERT(stride < std::numeric_limits<uint32_t>::max());
+        FK_ASSERT(counterOffset < std::numeric_limits<uint32_t>::max());
+
         if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
             return false;
 
         FillState[idx] = true;
 
         UAVBuffer uavDesc{ *ctx.renderSystem, resource, stride, 0 };
-        uavDesc.counterOffset   = counterOffset;
-        uavDesc.offset          = resource == counter ? Max(4096 / stride, 1) : 0;
+        uavDesc.counterOffset   = (uint32_t)counterOffset;
+        uavDesc.offset          = (uint32_t)(resource == counter ? Max(4096 / stride, 1) : 0);
 
         PushUAVBufferToDescHeap2(
             ctx.renderSystem,
@@ -1078,7 +1091,7 @@ namespace FlexKit
 
 				const auto temp = DesciptorHeaps.back().size();
 				Param.InitAsDescriptorTable(
-					DesciptorHeaps.back().size(), 
+					(UINT)DesciptorHeaps.back().size(), 
 					DesciptorHeaps.back().begin(), 
 					PipelineDest2ShaderVis(I.DescriptorHeap.Accessibility));
 			}	break;
@@ -1131,7 +1144,7 @@ namespace FlexKit
                                             D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK }
 		};
 
-		RootSignatureDesc.Init(Parameters.size(), Parameters.begin(), 1, &Default);
+		RootSignatureDesc.Init((UINT)Parameters.size(), Parameters.begin(), 1, &Default);
 		RootSignatureDesc.pStaticSamplers	= Samplers;
 		RootSignatureDesc.NumStaticSamplers	= 3;
 
@@ -1444,12 +1457,12 @@ namespace FlexKit
         desc.Triangles.Transform3x4 = 0;
         desc.Triangles.IndexFormat  = DXGI_FORMAT_R32_UINT;
         desc.Triangles.IndexBuffer  = indexBuffer.GetDevicePointer();
-        desc.Triangles.IndexCount   = indexBuffer.Size();
+        desc.Triangles.IndexCount   = (UINT)indexBuffer.Size();
 
         desc.Triangles.VertexFormat                 = DXGI_FORMAT_R32G32B32_FLOAT;
         desc.Triangles.VertexBuffer.StartAddress    = positionBuffer->GetDevicePointer();
         desc.Triangles.VertexBuffer.StrideInBytes   = positionBuffer->BufferStride;
-        desc.Triangles.VertexCount                  = positionBuffer->Size();
+        desc.Triangles.VertexCount                  = (UINT)positionBuffer->Size();
 
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC build_desc {
                             .DestAccelerationStructureData = renderSystem->GetDeviceResource(destination)->GetGPUVirtualAddress(),
@@ -1754,7 +1767,7 @@ namespace FlexKit
 
 
 		DeviceContext->OMSetRenderTargets(
-			RTV_CPU_HANDLES.size(),
+			(UINT)RTV_CPU_HANDLES.size(),
 			RTV_CPU_HANDLES.begin(),
 			DepthStecil,
 			DepthStecil ? &DSV_CPU_HANDLE : nullptr);
@@ -1817,7 +1830,7 @@ namespace FlexKit
 		}
 
 		DeviceContext->OMSetRenderTargets(
-			RTV_CPU_HANDLES.size(),
+			(UINT)RTV_CPU_HANDLES.size(),
 			RTV_CPU_HANDLES.begin(),
 			depthEnabled,
 			depthEnabled ? &DSV_CPU_HANDLE : nullptr);
@@ -1830,7 +1843,7 @@ namespace FlexKit
 	void Context::SetViewports(static_vector<D3D12_VIEWPORT, 16> VPs)
 	{
 		Viewports = VPs;
-		DeviceContext->RSSetViewports(VPs.size(), VPs.begin());
+		DeviceContext->RSSetViewports((UINT)VPs.size(), VPs.begin());
 	}
 
 
@@ -1839,7 +1852,7 @@ namespace FlexKit
 
 	void Context::SetScissorRects(static_vector<D3D12_RECT, 16>	Rects)
 	{
-		DeviceContext->RSSetScissorRects(Rects.size(), Rects.begin());
+		DeviceContext->RSSetScissorRects((UINT)Rects.size(), Rects.begin());
 	}
 
 
@@ -1907,7 +1920,7 @@ namespace FlexKit
 			auto DSV = _ReserveDSV(1);
 			PushDepthStencil(renderSystem, DS, DSV);
 			DeviceContext->OMSetRenderTargets(
-				RenderTargetCount,
+				(UINT)RenderTargetCount,
 				RenderTargetCount ? &RTVPOSCPU : nullptr, true,
 				DepthStencilEnabled ? &DSVPOSCPU : nullptr);
 		}
@@ -2045,7 +2058,7 @@ namespace FlexKit
 
     void Context::SetGraphicsConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset)
     {
-        DeviceContext->SetGraphicsRoot32BitConstants(idx, valueCount, data_ptr, offset);
+        DeviceContext->SetGraphicsRoot32BitConstants((UINT)idx, (UINT)valueCount, data_ptr, (UINT)offset);
     }
 
 
@@ -2054,7 +2067,7 @@ namespace FlexKit
 
 	void Context::NullGraphicsConstantBufferView(size_t idx)
 	{
-        DeviceContext->SetGraphicsRootConstantBufferView(idx, 0);
+        DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, 0);
 	}
 
 
@@ -2065,7 +2078,7 @@ namespace FlexKit
 	{
 		FK_ASSERT(!(Offset % 256), "Incorrect CB Offset!");
 
-		DeviceContext->SetGraphicsRootConstantBufferView(idx, renderSystem->GetConstantBufferAddress(CB) + Offset);
+		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, renderSystem->GetConstantBufferAddress(CB) + (UINT)Offset);
 	}
 
 
@@ -2074,7 +2087,7 @@ namespace FlexKit
 
 	void Context::SetGraphicsConstantBufferView(size_t idx, const ConstantBuffer& CB)
 	{
-		DeviceContext->SetGraphicsRootConstantBufferView(idx, CB.Get()->GetGPUVirtualAddress());
+		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, CB.Get()->GetGPUVirtualAddress());
 	}
 
 
@@ -2083,7 +2096,7 @@ namespace FlexKit
 
 	void Context::SetGraphicsConstantBufferView(size_t idx, const ConstantBufferDataSet& CB)
 	{
-		DeviceContext->SetGraphicsRootConstantBufferView(idx, renderSystem->GetConstantBufferAddress(CB.Handle()) + CB.Offset());
+		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, renderSystem->GetConstantBufferAddress(CB.Handle()) + CB.Offset());
 	}
 
 
@@ -2092,7 +2105,7 @@ namespace FlexKit
 
 	void Context::SetGraphicsDescriptorTable(size_t idx, const DescriptorHeap& DH)
 	{
-		DeviceContext->SetGraphicsRootDescriptorTable(idx, DH);
+		DeviceContext->SetGraphicsRootDescriptorTable((UINT)idx, DH);
 	}
 
 
@@ -2101,7 +2114,7 @@ namespace FlexKit
 
 	void Context::SetGraphicsShaderResourceView(size_t idx, FrameBufferedResource* Resource, size_t Count, size_t ElementSize)
 	{
-		DeviceContext->SetGraphicsRootShaderResourceView(idx, Resource->Get()->GetGPUVirtualAddress());
+		DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, Resource->Get()->GetGPUVirtualAddress());
 	}
 
 
@@ -2109,7 +2122,7 @@ namespace FlexKit
 
 	void Context::SetGraphicsShaderResourceView(size_t idx, Texture2D& Texture)
 	{
-		DeviceContext->SetGraphicsRootShaderResourceView(idx, Texture->GetGPUVirtualAddress());
+		DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, Texture->GetGPUVirtualAddress());
 	}
 
 
@@ -2118,7 +2131,7 @@ namespace FlexKit
 
     void Context::SetGraphicsShaderResourceView(size_t idx, ResourceHandle resource, size_t offset)
     {
-        DeviceContext->SetGraphicsRootShaderResourceView(idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress());
+        DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress());
     }
 
 
@@ -2129,7 +2142,7 @@ namespace FlexKit
     {
         auto resource = renderSystem->GetDeviceResource(UAVresource);
 
-        DeviceContext->SetGraphicsRootUnorderedAccessView(idx, resource->GetGPUVirtualAddress() + offset);
+        DeviceContext->SetGraphicsRootUnorderedAccessView((UINT)idx, resource->GetGPUVirtualAddress() + offset);
     }
 
 
@@ -2138,13 +2151,13 @@ namespace FlexKit
 
     void Context::SetComputeDescriptorTable(size_t idx)
     {
-        DeviceContext->SetComputeRootDescriptorTable(idx, D3D12_GPU_DESCRIPTOR_HANDLE{ 0 });
+        DeviceContext->SetComputeRootDescriptorTable((UINT)idx, D3D12_GPU_DESCRIPTOR_HANDLE{ 0 });
     }
 
 
 	void Context::SetComputeDescriptorTable(size_t idx, const DescriptorHeap& DH)
 	{
-		DeviceContext->SetComputeRootDescriptorTable(idx, DH);
+		DeviceContext->SetComputeRootDescriptorTable((UINT)idx, DH);
 	}
 
 
@@ -2153,7 +2166,7 @@ namespace FlexKit
 
 	void Context::SetComputeConstantBufferView(size_t idx, const ConstantBufferHandle CB, size_t offset)
 	{
-		DeviceContext->SetGraphicsRootConstantBufferView(idx, renderSystem->GetConstantBufferAddress(CB) + offset);
+		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, renderSystem->GetConstantBufferAddress(CB) + offset);
 	}
 
 
@@ -2162,7 +2175,7 @@ namespace FlexKit
 
 	void Context::SetComputeConstantBufferView(size_t idx, const ConstantBufferDataSet& CB)
 	{
-		DeviceContext->SetComputeRootConstantBufferView(idx, renderSystem->GetConstantBufferAddress(CB.Handle()) + CB.Offset());
+		DeviceContext->SetComputeRootConstantBufferView((UINT)idx, renderSystem->GetConstantBufferAddress(CB.Handle()) + CB.Offset());
 	}
 
 
@@ -2174,7 +2187,7 @@ namespace FlexKit
         auto deviceResource     = renderSystem->GetDeviceResource(resource);
         auto gpuAddress         = deviceResource->GetGPUVirtualAddress();
 
-        DeviceContext->SetComputeRootConstantBufferView(idx, gpuAddress + offset);
+        DeviceContext->SetComputeRootConstantBufferView((UINT)idx, gpuAddress + offset);
     }
 
 
@@ -2183,7 +2196,7 @@ namespace FlexKit
 
 	void Context::SetComputeShaderResourceView(size_t idx, Texture2D& Texture)
 	{
-		DeviceContext->SetComputeRootShaderResourceView(idx, Texture->GetGPUVirtualAddress());
+		DeviceContext->SetComputeRootShaderResourceView((UINT)idx, Texture->GetGPUVirtualAddress());
 	}
 
 
@@ -2192,7 +2205,7 @@ namespace FlexKit
 
     void Context::SetComputeShaderResourceView(size_t idx, ResourceHandle resource, const size_t offset)
     {
-        DeviceContext->SetComputeRootShaderResourceView(idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress() + offset);
+        DeviceContext->SetComputeRootShaderResourceView((UINT)idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress() + offset);
     }
 
 
@@ -2203,7 +2216,7 @@ namespace FlexKit
 	{
 		auto resource = renderSystem->GetDeviceResource(UAVresource);
 
-		DeviceContext->SetComputeRootUnorderedAccessView(idx, resource->GetGPUVirtualAddress() + offset);
+		DeviceContext->SetComputeRootUnorderedAccessView((UINT)idx, resource->GetGPUVirtualAddress() + offset);
 	}
 
 
@@ -2212,7 +2225,7 @@ namespace FlexKit
 
     void Context::SetComputeConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset)
     {
-        DeviceContext->SetComputeRoot32BitConstants(idx, valueCount, data_ptr, offset);
+        DeviceContext->SetComputeRoot32BitConstants((UINT)idx, (UINT)valueCount, data_ptr, (UINT)offset);
     }
 
 
@@ -2227,7 +2240,7 @@ namespace FlexKit
 		auto resource	= renderSystem->Queries.GetAsset(query);
 		auto queryType	= renderSystem->Queries.GetType(query);
 
-		DeviceContext->BeginQuery(resource, queryType, idx);
+		DeviceContext->BeginQuery(resource, queryType, (UINT)idx);
 	}
 
 
@@ -2239,7 +2252,7 @@ namespace FlexKit
 		auto resource	= renderSystem->Queries.GetAsset(query);
 		auto queryType	= renderSystem->Queries.GetType(query);
 
-		DeviceContext->EndQuery(resource, queryType, idx);
+		DeviceContext->EndQuery(resource, queryType, (UINT)idx);
 	}
 
 
@@ -2251,7 +2264,7 @@ namespace FlexKit
         auto resource   = renderSystem->Queries.GetAsset(query);
         auto queryType  = renderSystem->Queries.GetType(query);
 
-        DeviceContext->EndQuery(resource, queryType, idx);
+        DeviceContext->EndQuery(resource, queryType, (UINT)idx);
     }
 
 
@@ -2569,7 +2582,7 @@ namespace FlexKit
 		D3D12_INDEX_BUFFER_VIEW		IndexView;
 		IndexView.BufferLocation	= GetBuffer(Mesh, lod, IBIndex)->GetGPUVirtualAddress();
 		IndexView.Format			= DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
-		IndexView.SizeInBytes		= IndexCount * 4;
+		IndexView.SizeInBytes		= (UINT)IndexCount * 4;
 
 		DeviceContext->IASetIndexBuffer(&IndexView);
 	}
@@ -2583,7 +2596,7 @@ namespace FlexKit
 		D3D12_INDEX_BUFFER_VIEW		IndexView;
 		IndexView.BufferLocation    = renderSystem->GetVertexBufferAddress(buffer.VertexBuffer) + buffer.Offset;
 		IndexView.Format            = TextureFormat2DXGIFormat(format);
-		IndexView.SizeInBytes       = renderSystem->GetVertexBufferSize(buffer.VertexBuffer) - buffer.Offset;
+		IndexView.SizeInBytes       = (UINT)(renderSystem->GetVertexBufferSize(buffer.VertexBuffer) - buffer.Offset);
 
 		DeviceContext->IASetIndexBuffer(&IndexView);
 	}
@@ -2610,7 +2623,7 @@ namespace FlexKit
 			}
 		}
 
-		DeviceContext->IASetVertexBuffers(0, VBViews.size(), VBViews.begin());
+		DeviceContext->IASetVertexBuffers(0, (UINT)VBViews.size(), VBViews.begin());
 	}
 
 
@@ -2637,7 +2650,7 @@ namespace FlexKit
 				VB.Stride});
 		}
 
-		DeviceContext->IASetVertexBuffers(0, VBViews.size(), VBViews.begin());
+		DeviceContext->IASetVertexBuffers(0, (UINT)VBViews.size(), VBViews.begin());
 	}
 
 
@@ -2665,7 +2678,7 @@ namespace FlexKit
 				VB.Stride});
 		}
 
-		DeviceContext->IASetVertexBuffers(0, VBViews.size(), VBViews.begin());
+		DeviceContext->IASetVertexBuffers(0, (UINT)VBViews.size(), VBViews.begin());
 	}
 
 
@@ -2674,7 +2687,7 @@ namespace FlexKit
 
 	void Context::SetVertexBuffers2(static_vector<D3D12_VERTEX_BUFFER_VIEW>	List)
 	{
-		DeviceContext->IASetVertexBuffers(0, List.size(), List.begin());
+		DeviceContext->IASetVertexBuffers(0, (UINT)List.size(), List.begin());
 	}
 
 
@@ -2683,7 +2696,7 @@ namespace FlexKit
 
 	void Context::SetSOTargets(static_vector<D3D12_STREAM_OUTPUT_BUFFER_VIEW, 4> SOViews)
 	{
-		DeviceContext->SOSetTargets(0, SOViews.size(), SOViews.begin());
+		DeviceContext->SOSetTargets(0, (UINT)SOViews.size(), SOViews.begin());
 	}
 
 
@@ -2897,7 +2910,7 @@ namespace FlexKit
 
 		UpdateResourceStates();
 
-		DeviceContext->ResolveQueryData(queryResource, type, begin, end - begin, res, destOffset);
+		DeviceContext->ResolveQueryData(queryResource, type, (UINT)begin, (UINT)(end - begin), res, (UINT)destOffset);
 	}
 
 
@@ -2914,7 +2927,7 @@ namespace FlexKit
 
 		UpdateResourceStates();
 
-		DeviceContext->ResolveQueryData(queryResource, type, begin, end - begin, destination, destOffset);
+		DeviceContext->ResolveQueryData(queryResource, type, (UINT)begin, (UINT)(end - begin), destination, (UINT)destOffset);
     }
 
 
@@ -2927,9 +2940,9 @@ namespace FlexKit
 
 		DeviceContext->ExecuteIndirect(
 			layout.signature, 
-			Min(layout.entries.size(), executionCount), 
+            (UINT)Min(layout.entries.size(), executionCount),
 			renderSystem->GetDeviceResource(args),
-			argumentBufferOffset,
+            (UINT)argumentBufferOffset,
 			nullptr, 
 			0);
 	}
@@ -2938,21 +2951,21 @@ namespace FlexKit
 	void Context::Draw(const size_t VertexCount, const size_t BaseVertex, const size_t baseIndex)
 	{
 		UpdateResourceStates();
-		DeviceContext->DrawInstanced(VertexCount, 1, BaseVertex, baseIndex);
+		DeviceContext->DrawInstanced((UINT)VertexCount, 1, (UINT)BaseVertex, (UINT)baseIndex);
 	}
 
 
     void Context::DrawInstanced(const size_t vertexCount, const size_t baseVertex, const size_t instanceCount, const size_t instanceOffset )
     {
         UpdateResourceStates();
-        DeviceContext->DrawInstanced(vertexCount, instanceCount, baseVertex, instanceOffset);
+        DeviceContext->DrawInstanced((UINT)vertexCount, (UINT)instanceCount, (UINT)baseVertex, (UINT)instanceOffset);
     }
 
 
 	void Context::DrawIndexed(const size_t IndexCount, const size_t IndexOffet, const size_t BaseVertex)
 	{
 		UpdateResourceStates();
-		DeviceContext->DrawIndexedInstanced(IndexCount, 1, IndexOffet, BaseVertex, 0);
+		DeviceContext->DrawIndexedInstanced((UINT)IndexCount, 1, (UINT)IndexOffet, (UINT)BaseVertex, 0);
 	}
 
 
@@ -2963,9 +2976,9 @@ namespace FlexKit
 	{
 		UpdateResourceStates();
 		DeviceContext->DrawIndexedInstanced(
-			IndexCount, InstanceCount, 
-			IndexOffet, BaseVertex, 
-			InstanceOffset);
+            (UINT)IndexCount, (UINT)InstanceCount,
+            (UINT)IndexOffet, (UINT)BaseVertex,
+            (UINT)InstanceOffset);
 	}
 
 
@@ -3061,7 +3074,7 @@ namespace FlexKit
 		srcLocation.PlacedFootprint.Footprint.Format	= format;
 		srcLocation.PlacedFootprint.Footprint.Height	= WH[1];
 		srcLocation.PlacedFootprint.Footprint.Width		= WH[0];
-		srcLocation.PlacedFootprint.Footprint.RowPitch	= BufferSize[0] * texelSize;
+		srcLocation.PlacedFootprint.Footprint.RowPitch	= (UINT)(BufferSize[0] * texelSize);
 
 		UpdateResourceStates();
 		DeviceContext->CopyTextureRegion(&destLocation, 0, 0, 0, &srcLocation, nullptr);
@@ -3351,7 +3364,7 @@ namespace FlexKit
 		}
 
 		if (Barriers.size())
-			DeviceContext->ResourceBarrier(Barriers.size(), Barriers.begin());
+			DeviceContext->ResourceBarrier((UINT)Barriers.size(), Barriers.begin());
 
 		Barriers.clear();
 		PendingBarriers.clear();
@@ -3711,7 +3724,7 @@ namespace FlexKit
 		if (pendingBarriers.empty())
 			return;
 
-		commandList->ResourceBarrier(pendingBarriers.size(), pendingBarriers.data());
+		commandList->ResourceBarrier((UINT)pendingBarriers.size(), pendingBarriers.data());
 		pendingBarriers.clear();
 	}
 
@@ -3823,12 +3836,12 @@ namespace FlexKit
 		D3D12_PLACED_SUBRESOURCE_FOOTPRINT SubRegion;
 		SubRegion.Footprint.Depth       = 1;
 		SubRegion.Footprint.Format      = deviceFormat;
-		SubRegion.Footprint.RowPitch    = rowPitch;
+		SubRegion.Footprint.RowPitch    = (UINT)rowPitch;
 		SubRegion.Footprint.Width       = WH[0];
 		SubRegion.Footprint.Height      = WH[1];
 		SubRegion.Offset                = source.offset;
 
-		auto destinationLocation    = CD3DX12_TEXTURE_COPY_LOCATION(destination, subResourceIdx);
+		auto destinationLocation    = CD3DX12_TEXTURE_COPY_LOCATION(destination, (UINT)subResourceIdx);
 		auto sourceLocation         = CD3DX12_TEXTURE_COPY_LOCATION(source.resource, SubRegion);
 
 		commandList->CopyTextureRegion(
@@ -3908,7 +3921,7 @@ namespace FlexKit
 		UINT                        subResourceTilingCount = 1;
 		D3D12_SUBRESOURCE_TILING    subResourceTiling_Packed;
 
-		device->GetResourceTiling(resource, &TileCount, &packedMipInfo, &TileShape, &subResourceTilingCount, level, &subResourceTiling_Packed);
+		device->GetResourceTiling(resource, &TileCount, &packedMipInfo, &TileShape, &subResourceTilingCount, (UINT)level, &subResourceTiling_Packed);
 
 		return (subResourceTiling_Packed.HeightInTiles * subResourceTiling_Packed.WidthInTiles) != 0;
 	}
@@ -4001,7 +4014,7 @@ namespace FlexKit
         if (auto syncPoint = syncOpt.value_or(SyncPoint{}); syncOpt.has_value())
             copyQueue->Wait(syncPoint.fence, syncPoint.syncCounter);
 
-		copyQueue->ExecuteCommandLists(cmdLists.size(), cmdLists);
+		copyQueue->ExecuteCommandLists((UINT)cmdLists.size(), cmdLists);
         if (const auto HR = copyQueue->Signal(fence, localCounter); FAILED(HR))
             FK_LOG_ERROR("FAILED TO SUBMIT TO COPY ENGINE!");
 
@@ -4825,12 +4838,12 @@ namespace FlexKit
         desc.Flags  = D3D12_RAYTRACING_GEOMETRY_FLAGS::D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
         desc.Triangles.IndexFormat  = DXGI_FORMAT_R32_UINT;
         desc.Triangles.IndexBuffer  = indexBuffer.GetDevicePointer();
-        desc.Triangles.IndexCount   = indexBuffer.Size();
+        desc.Triangles.IndexCount   = (UINT)indexBuffer.Size();
 
         desc.Triangles.VertexFormat                 = DXGI_FORMAT_R32G32B32_FLOAT;
         desc.Triangles.VertexBuffer.StartAddress    = positionBuffer->GetDevicePointer();
         desc.Triangles.VertexBuffer.StrideInBytes   = positionBuffer->BufferStride;
-        desc.Triangles.VertexCount                  = positionBuffer->Size();
+        desc.Triangles.VertexCount                  = (UINT)positionBuffer->Size();
 
 
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs;
@@ -4904,7 +4917,7 @@ namespace FlexKit
 	ResourceHandle RenderSystem::CreateDepthBuffer( const uint2 WH, const bool UseFloat, const size_t bufferCount)
 	{
         auto resourceDesc           = GPUResourceDesc::DepthTarget(WH, UseFloat ? DeviceFormat::D32_FLOAT : DeviceFormat::D24_UNORM_S8_UINT);
-        resourceDesc.bufferCount    = bufferCount;
+        resourceDesc.bufferCount    = (uint8_t)bufferCount;
 
 		auto resource = CreateGPUResource(resourceDesc);
 		SetDebugName(resource, "DepthBuffer");
@@ -4924,7 +4937,7 @@ namespace FlexKit
 		const ResourceAllocationType    allocationType)
 	{
 		auto desc           = GPUResourceDesc::DepthTarget(WH, UseFloat ? DeviceFormat::D32_FLOAT : DeviceFormat::D24_UNORM_S8_UINT);
-		desc.arraySize      = arraySize;
+		desc.arraySize      = (uint8_t)arraySize;
 		desc.allocationType = allocationType;
 
 		auto resource   = CreateGPUResource(desc);
@@ -5186,7 +5199,7 @@ namespace FlexKit
         desc.bufferCount = tripleBuffer ? 3 : 1;
 
         UAVResourceLayout layout;
-        layout.elementCount = resourceSize / sizeof(uint32_t);// initial layout assume a uint buffer
+        layout.elementCount = (UINT)(resourceSize / sizeof(uint32_t));// initial layout assume a uint buffer
         layout.format       = DXGI_FORMAT_UNKNOWN;
         layout.stride       = sizeof(uint32_t);
 
@@ -5335,8 +5348,8 @@ namespace FlexKit
         }
 
 		D3D12_COMMAND_SIGNATURE_DESC desc;
-		desc.ByteStride			= entryStride;
-		desc.NumArgumentDescs	= entries.size();
+		desc.ByteStride			= (UINT)entryStride;
+		desc.NumArgumentDescs	= (UINT)entries.size();
 		desc.pArgumentDescs		= signatureEntries.begin();
 		desc.NodeMask			= 0;
 
@@ -5407,11 +5420,11 @@ namespace FlexKit
             {
                 copyEngine.copyQueue->UpdateTileMappings(
                     deviceResource,
-                    coordinates.size(),
+                    (UINT)coordinates.size(),
                     coordinates.data(),
                     nullptr,
                     nullptr,
-                    coordinates.size(),
+                    (UINT)coordinates.size(),
                     flags.data(),
                     offsets.data(),
                     tileRanges.data(),
@@ -5487,11 +5500,11 @@ namespace FlexKit
                     {
                         copyEngine.copyQueue->UpdateTileMappings(
                             deviceResource,
-                            coordinates.size(),
+                            (UINT)coordinates.size(),
                             coordinates.data(),
                             regionSizes.data(),
                             GetDeviceResource(heap),
-                            coordinates.size(),
+                            (UINT)coordinates.size(),
                             flags.data(),
                             offsets.data(),
                             tileRanges.data(),
@@ -6165,7 +6178,7 @@ namespace FlexKit
 #endif
 
         IDxcOperationResult* result = nullptr;
-        auto HR2 = hlslCompiler->Compile(blob, filenameW, entryPoint != nullptr ? entryPointW : nullptr, profileW, arguments.data(), arguments.size(), nullptr, 0, &includeHandler, &result);
+        auto HR2 = hlslCompiler->Compile(blob, filenameW, entryPoint != nullptr ? entryPointW : nullptr, profileW, arguments.data(), (UINT)arguments.size(), nullptr, 0, &includeHandler, &result);
 
         if (FAILED(HR2))
         {
@@ -6194,7 +6207,7 @@ namespace FlexKit
                 std::cin >> str;
 
                 HR1 = hlslLibrary->CreateBlobFromFile(fileW, nullptr, &blob);
-                HR2 = hlslCompiler->Compile(blob, filenameW, entryPointW, profileW, arguments.data(), arguments.size(), nullptr, 0, &includeHandler, &result);
+                HR2 = hlslCompiler->Compile(blob, filenameW, entryPointW, profileW, arguments.data(), (UINT)arguments.size(), nullptr, 0, &includeHandler, &result);
 
                 result->GetStatus(&status);
             }
@@ -6354,8 +6367,8 @@ namespace FlexKit
 				SETDEBUGNAME(NewBuffer, "INDEXBUFFER");
 
 				DVB_Out.VertexBuffers[itr].Buffer				= NewBuffer;
-				DVB_Out.VertexBuffers[itr].BufferSizeInBytes	= Buffers[itr]->GetBufferSizeRaw();
-				DVB_Out.VertexBuffers[itr].BufferStride			= Buffers[itr]->GetElementSize();
+				DVB_Out.VertexBuffers[itr].BufferSizeInBytes	= (uint32_t)Buffers[itr]->GetBufferSizeRaw();
+				DVB_Out.VertexBuffers[itr].BufferStride			= (uint32_t)Buffers[itr]->GetElementSize();
 				DVB_Out.VertexBuffers[itr].Type					= Buffers[itr]->GetBufferType();
 				DVB_Out.MD.IndexBuffer_Index					= itr;
 				DVB_Out.MD.InputElementCount                    = Buffers[itr]->GetBufferSize();
@@ -6420,8 +6433,8 @@ namespace FlexKit
                     DRS_Common);
 
 			    DVB_Out.VertexBuffers[itr].Buffer				= NewBuffer;
-			    DVB_Out.VertexBuffers[itr].BufferStride			= Buffers[itr]->GetElementSize();
-			    DVB_Out.VertexBuffers[itr].BufferSizeInBytes	= Buffers[itr]->GetBufferSizeRaw();
+			    DVB_Out.VertexBuffers[itr].BufferStride			= (uint32_t)Buffers[itr]->GetElementSize();
+			    DVB_Out.VertexBuffers[itr].BufferSizeInBytes	= (uint32_t)Buffers[itr]->GetBufferSizeRaw();
 			    DVB_Out.VertexBuffers[itr].Type					= Buffers[itr]->GetBufferType();
 		    }
 		}
@@ -6438,7 +6451,7 @@ namespace FlexKit
 			Buffer[I] = CreateVertexBufferResource(BufferSize, GPUResident, RS);
 
 		const auto handle   = Handles.GetNewHandle();
-		Handles[handle]     = UserBuffers.size();
+		Handles[handle]     = (index_t)UserBuffers.size();
 
 		UserBuffers.push_back(UserVertexBuffer{
 			0,
@@ -6717,7 +6730,7 @@ namespace FlexKit
 	QueryHandle QueryTable::CreateQueryBuffer(size_t count, QueryType type)
 	{
 		D3D12_QUERY_HEAP_DESC desc;
-		desc.Count			= count;
+		desc.Count			= (UINT)count;
 		desc.NodeMask		= 0;
 
 		ResourceEntry newResEntry = { 0 };
@@ -6764,7 +6777,7 @@ namespace FlexKit
 
 		D3D12_QUERY_HEAP_DESC	heapDesc = {};
 		
-		heapDesc.Count	= count;
+		heapDesc.Count	= (UINT)count;
 		heapDesc.Type	= static_cast<D3D12_QUERY_HEAP_TYPE>(D3D12_QUERY_HEAP_TYPE_SO_STATISTICS);
 
 		ResourceEntry newResEntry	= { 0 };
@@ -6894,12 +6907,12 @@ namespace FlexKit
         {
             UAVResourceLayout layout;
             layout.format       = NewEntry.Format;
-            layout.elementCount = Desc.byteSize / 4;
+            layout.elementCount = (UINT)(Desc.byteSize / 4);
             layout.stride       = 4;
             Entry.extra         = layout;
         }
 
-		Handles[Handle]         = UserEntries.push_back(Entry);
+		Handles[Handle]         = (UINT)UserEntries.push_back(Entry);
 
 		if (Desc.buffered && Desc.bufferCount > 1)
 			BufferedResources.push_back(Handle);
@@ -6955,12 +6968,12 @@ namespace FlexKit
         {
             UAVResourceLayout layout;
             layout.format       = NewEntry.Format;
-            layout.elementCount = Desc.byteSize / 4;
+            layout.elementCount = (UINT)(Desc.byteSize / 4);
             layout.stride       = 4;
             Entry.extra         = layout;
         }
 
-		Handles[handle]         = UserEntries.push_back(Entry);
+		Handles[handle]         = (UINT)UserEntries.push_back(Entry);
 
 		if (Desc.buffered && Desc.bufferCount > 1)
 			BufferedResources.push_back(handle);
@@ -7153,7 +7166,7 @@ namespace FlexKit
 
 		auto UserIdx = Handles[handle];
 		UserEntries[UserIdx].FGI_FrameStamp		= FrameID;
-		UserEntries[UserIdx].FrameGraphIndex	= Index;
+		UserEntries[UserIdx].FrameGraphIndex	= (UINT)Index;
 	}
 
 
@@ -7346,11 +7359,11 @@ namespace FlexKit
 					if (mappingHeap)
 						queue->UpdateTileMappings(
 							resource,
-							coordinates.size(),
+                            (UINT)coordinates.size(),
 							coordinates.data(),
 							regionSize.data(),
 							heap,
-							tile_flags.size(),
+                            (UINT)tile_flags.size(),
 							tile_flags.data(),
 							heapOffsets.data(),
 							tileCounts.data(),
@@ -7816,7 +7829,7 @@ namespace FlexKit
 				for ( auto index : GeometryTable.Handles.Indexes)
 				{
 					if (index == location) {
-						return { TriMeshHandle(HandleIndex, GeometryTable.Handles.mType, 0x04), true };
+						return { TriMeshHandle((unsigned int)HandleIndex, GeometryTable.Handles.mType, 0x04), true };
 						break;
 					}
 					++HandleIndex;
@@ -8582,7 +8595,7 @@ namespace FlexKit
         if (auto sync = syncOptional.value_or(SyncPoint{}); syncOptional.has_value())
             GraphicsQueue->Wait(sync.fence, sync.syncCounter);
 
-		GraphicsQueue->ExecuteCommandLists(cls.size(), cls.begin());
+		GraphicsQueue->ExecuteCommandLists((UINT)cls.size(), cls.begin());
 
         if (auto HR = GraphicsQueue->Signal(Fence, counter); FAILED(HR))
             FK_LOG_ERROR("Failed to Signal");
@@ -8684,7 +8697,7 @@ namespace FlexKit
 						InputElementDesc.InputSlot            = static_cast<UINT>(++InputSlot);
 						InputElementDesc.InputSlotClass       = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
 						InputElementDesc.InstanceDataStepRate = 0;
-						InputElementDesc.SemanticIndex        = ++POS_Buffer_Counter;
+						InputElementDesc.SemanticIndex        = (UINT)POS_Buffer_Counter++;
 						InputElementDesc.SemanticName         = "POSITION";
 
 						Input_Desc.push_back(InputElementDesc);
@@ -8709,7 +8722,7 @@ namespace FlexKit
 						InputElementDesc.InputSlot            = static_cast<UINT>(InputSlot++);
 						InputElementDesc.InputSlotClass       = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
 						InputElementDesc.InstanceDataStepRate = 0;
-						InputElementDesc.SemanticIndex        = COLOR_Buffer_Counter++;
+						InputElementDesc.SemanticIndex        = (UINT)COLOR_Buffer_Counter++;
 						InputElementDesc.SemanticName         = "COLOR";
 
 						Input_Desc.push_back(InputElementDesc);
@@ -8732,7 +8745,7 @@ namespace FlexKit
 						InputElementDesc.InputSlot            = static_cast<UINT>(InputSlot++);
 						InputElementDesc.InputSlotClass       = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
 						InputElementDesc.InstanceDataStepRate = 0;
-						InputElementDesc.SemanticIndex        = Normal_Buffer_Counter++;
+						InputElementDesc.SemanticIndex        = (UINT)Normal_Buffer_Counter++;
 						InputElementDesc.SemanticName         = "NORMAL";
 
 						Input_Desc.push_back(InputElementDesc);
@@ -8755,7 +8768,7 @@ namespace FlexKit
 						InputElementDesc.InputSlot            = static_cast<UINT>(InputSlot++);
 						InputElementDesc.InputSlotClass       = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
 						InputElementDesc.InstanceDataStepRate = 0;
-						InputElementDesc.SemanticIndex        = Tangent_Buffer_Counter++;
+						InputElementDesc.SemanticIndex        = (UINT)Tangent_Buffer_Counter++;
 						InputElementDesc.SemanticName         = "TANGENT";
 
 						Input_Desc.push_back(InputElementDesc);
@@ -8778,7 +8791,7 @@ namespace FlexKit
 						InputElementDesc.InputSlot            = static_cast<UINT>(InputSlot++);
 						InputElementDesc.InputSlotClass       = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
 						InputElementDesc.InstanceDataStepRate = 0;
-						InputElementDesc.SemanticIndex        = UV_Buffer_Counter;
+						InputElementDesc.SemanticIndex        = (UINT)UV_Buffer_Counter++;
 						InputElementDesc.SemanticName         = "TEXCOORD";
 
 						Input_Desc.push_back(InputElementDesc);
@@ -8802,7 +8815,7 @@ namespace FlexKit
 						InputElementDesc.InputSlot            = static_cast<UINT>(InputSlot++);
 						InputElementDesc.InputSlotClass       = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
 						InputElementDesc.InstanceDataStepRate = 0;
-						InputElementDesc.SemanticIndex        = WEIGHT_Buffer_Counter;
+						InputElementDesc.SemanticIndex        = (UINT)WEIGHT_Buffer_Counter++;
 						InputElementDesc.SemanticName         = "WEIGHTS";
 
 						Input_Desc.push_back(InputElementDesc);
@@ -8826,7 +8839,7 @@ namespace FlexKit
 						InputElementDesc.InputSlot            = static_cast<UINT>(InputSlot++);
 						InputElementDesc.InputSlotClass       = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
 						InputElementDesc.InstanceDataStepRate = 0;
-						InputElementDesc.SemanticIndex        = WINDICES_Buffer_Counter++;
+						InputElementDesc.SemanticIndex        = (UINT)WINDICES_Buffer_Counter++;
 						InputElementDesc.SemanticName         = "WEIGHTINDICES";
 
 						Input_Desc.push_back(InputElementDesc);
@@ -8839,7 +8852,7 @@ namespace FlexKit
 						InputElementDesc.InputSlot            = static_cast<UINT>(InputSlot++);
 						InputElementDesc.InputSlotClass       = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
 						InputElementDesc.InstanceDataStepRate = 0;
-						InputElementDesc.SemanticIndex        = WINDICES_Buffer_Counter++;
+						InputElementDesc.SemanticIndex        = (UINT)WINDICES_Buffer_Counter++;
 						InputElementDesc.SemanticName         = "WEIGHTINDICES";
 
 						Input_Desc.push_back(InputElementDesc);
@@ -8860,20 +8873,20 @@ namespace FlexKit
 					InputElementDesc.InputSlotClass			= D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
 					InputElementDesc.InstanceDataStepRate	= 0;
 
-					InputElementDesc.SemanticIndex			= POS_Buffer_Counter++;
+					InputElementDesc.SemanticIndex			= (UINT)POS_Buffer_Counter++;
 					InputElementDesc.SemanticName			= "POSITION";
 					Input_Desc.push_back(InputElementDesc);
 					InputElementDesc.AlignedByteOffset		= 16;
 					InputElementDesc.SemanticName			= "NORMAL";
-					InputElementDesc.SemanticIndex			= Normal_Buffer_Counter++;
+					InputElementDesc.SemanticIndex			= (UINT)Normal_Buffer_Counter++;
 					Input_Desc.push_back(InputElementDesc);
 					InputElementDesc.AlignedByteOffset		= 32;
 					InputElementDesc.SemanticName			= "TANGENT";
-					InputElementDesc.SemanticIndex			= Tangent_Buffer_Counter++;
+					InputElementDesc.SemanticIndex			= (UINT)Tangent_Buffer_Counter++;
 					Input_Desc.push_back(InputElementDesc);
 					InputElementDesc.AlignedByteOffset		= 48;
 					InputElementDesc.SemanticName			= "TEXCOORD";
-					InputElementDesc.SemanticIndex			= UV_Buffer_Counter++;
+					InputElementDesc.SemanticIndex			= (UINT)UV_Buffer_Counter++;
 					InputElementDesc.Format					= ::DXGI_FORMAT_R32G32_FLOAT;
 					Input_Desc.push_back(InputElementDesc);
 				}	break;
@@ -8886,12 +8899,12 @@ namespace FlexKit
 					InputElementDesc.InputSlotClass			= D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
 					InputElementDesc.InstanceDataStepRate	= 0;
 
-					InputElementDesc.SemanticIndex			= WEIGHT_Buffer_Counter++;
+					InputElementDesc.SemanticIndex			= (UINT)WEIGHT_Buffer_Counter++;
 					InputElementDesc.SemanticName			= "WEIGHTS";
 					Input_Desc.push_back(InputElementDesc);
 
 					InputElementDesc.AlignedByteOffset		= 12;
-					InputElementDesc.SemanticIndex			= WINDICES_Buffer_Counter++;
+					InputElementDesc.SemanticIndex			= (UINT)WINDICES_Buffer_Counter++;
 					InputElementDesc.SemanticName			= "WEIGHTINDICES";
 					InputElementDesc.Format					= ::DXGI_FORMAT_R16G16B16A16_UINT;
 					Input_Desc.push_back(InputElementDesc);
@@ -9039,14 +9052,14 @@ namespace FlexKit
 		{
 		case TextureDimension::Texture2D:
 			TargetDesc.Format               = TextureFormat2DXGIFormat(RS->GetTextureFormat(target));
-			TargetDesc.Texture2D.MipSlice   = MIPOffset;
+			TargetDesc.Texture2D.MipSlice   = (UINT)MIPOffset;
 			TargetDesc.Texture2D.PlaneSlice = 0;
 			TargetDesc.ViewDimension        = D3D12_RTV_DIMENSION_TEXTURE2D;
 			break;
 		case TextureDimension::TextureCubeMap:
 			TargetDesc.Format                           = TextureFormat2DXGIFormat(RS->GetTextureFormat(target));
 			TargetDesc.Texture2DArray.FirstArraySlice   = 0;
-			TargetDesc.Texture2DArray.MipSlice          = MIPOffset;
+			TargetDesc.Texture2DArray.MipSlice          = (UINT)MIPOffset;
 			TargetDesc.Texture2DArray.PlaneSlice        = 0;
 			TargetDesc.Texture2DArray.ArraySize         = 6;
 			TargetDesc.ViewDimension                    = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
@@ -9082,9 +9095,9 @@ namespace FlexKit
 
 		D3D12_DEPTH_STENCIL_VIEW_DESC DSVDesc = {};
 		DSVDesc.Format                          = RS->GetTextureDeviceFormat(Target);
-		DSVDesc.Texture2DArray.ArraySize        = arraySize - arrayOffset;
-		DSVDesc.Texture2DArray.FirstArraySlice  = arrayOffset;
-		DSVDesc.Texture2DArray.MipSlice         = MipSlice;
+		DSVDesc.Texture2DArray.ArraySize        = (UINT)(arraySize - arrayOffset);
+		DSVDesc.Texture2DArray.FirstArraySlice  = (UINT)arrayOffset;
+		DSVDesc.Texture2DArray.MipSlice         = (UINT)MipSlice;
 		DSVDesc.ViewDimension                   = D3D12_DSV_DIMENSION::D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
 
 		RS->pDevice->CreateDepthStencilView(RS->GetDeviceResource(Target), &DSVDesc, POS);
@@ -9100,7 +9113,7 @@ namespace FlexKit
 	{
 		D3D12_CONSTANT_BUFFER_VIEW_DESC CBV_DESC = {};
 		CBV_DESC.BufferLocation = Buffer ? Buffer->GetGPUVirtualAddress() + Offset : 0;
-		CBV_DESC.SizeInBytes	= BufferSize;
+		CBV_DESC.SizeInBytes	= (UINT)BufferSize;
 		RS->pDevice->CreateConstantBufferView(&CBV_DESC, POS);
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
@@ -9118,8 +9131,8 @@ namespace FlexKit
 			Desc.ViewDimension              = D3D12_SRV_DIMENSION_BUFFER;
 			Desc.Buffer.FirstElement        = offset;
 			Desc.Buffer.Flags               = D3D12_BUFFER_SRV_FLAGS::D3D12_BUFFER_SRV_FLAG_NONE;
-			Desc.Buffer.NumElements         = ElementCount - offset;
-			Desc.Buffer.StructureByteStride = Stride;
+			Desc.Buffer.NumElements         = (UINT)(ElementCount - offset);
+			Desc.Buffer.StructureByteStride = (UINT)Stride;
 		}
 
         FK_ASSERT(Desc.Buffer.StructureByteStride < 512);
@@ -9188,7 +9201,7 @@ namespace FlexKit
 			ViewDesc.Texture2DArray.MostDetailedMip     = 0;
 			ViewDesc.Texture2DArray.PlaneSlice          = 0;
 			ViewDesc.Texture2DArray.ResourceMinLODClamp = 0;
-			ViewDesc.Texture2DArray.ArraySize           = arraySize;
+			ViewDesc.Texture2DArray.ArraySize           = (UINT)arraySize;
 		}
 
 		auto debug = RS->GetDeviceResource(handle);
@@ -9214,7 +9227,7 @@ namespace FlexKit
 			ViewDesc.Texture2DArray.MostDetailedMip     = highestMipLevel;
 			ViewDesc.Texture2DArray.PlaneSlice          = 0;
 			ViewDesc.Texture2DArray.ResourceMinLODClamp = 0;
-			ViewDesc.Texture2DArray.ArraySize           = arraySize;
+			ViewDesc.Texture2DArray.ArraySize           = (UINT)arraySize;
 		}
 
 		auto debug = RS->GetDeviceResource(handle);
@@ -9692,7 +9705,9 @@ namespace FlexKit
 
 	ResourceHandle MoveTextureBuffersToVRAM(RenderSystem* RS, CopyContextHandle handle, TextureBuffer* buffer, size_t resourceCount, DeviceFormat format)
 	{
-		auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer[0].WH, format, resourceCount));
+        FK_ASSERT(resourceCount < std::numeric_limits<uint8_t>::max());
+
+		auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer[0].WH, format, (uint8_t)resourceCount));
 		RS->UploadTexture(textureHandle, handle, buffer, resourceCount);
         RS->SetDebugName(textureHandle, "MoveTextureBuffersToVRAM");
 
@@ -9705,7 +9720,9 @@ namespace FlexKit
 
 	ResourceHandle MoveTextureBuffersToVRAM(RenderSystem* RS, CopyContextHandle handle, TextureBuffer* buffer, size_t MIPCount, size_t arrayCount, DeviceFormat format)
 	{
-		auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer[0].WH, format, MIPCount, arrayCount));
+        FK_ASSERT(MIPCount < std::numeric_limits<uint8_t>::max());
+
+		auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer[0].WH, format, (uint8_t)MIPCount, arrayCount));
 		RS->UploadTexture(textureHandle, handle, buffer, arrayCount * MIPCount);
         RS->SetDebugName(textureHandle, "MoveTextureBuffersToVRAM");
 
@@ -9718,7 +9735,9 @@ namespace FlexKit
 
     ResourceHandle MoveBufferToDevice(RenderSystem* RS, const char* buffer, const size_t byteSize, CopyContextHandle copyCtx)
     {
-        auto bufferResource = RS->CreateGPUResource(GPUResourceDesc::StructuredResource(byteSize));
+        FK_ASSERT(byteSize < std::numeric_limits<uint32_t>::max());
+
+        auto bufferResource = RS->CreateGPUResource(GPUResourceDesc::StructuredResource((uint32_t)byteSize));
         UploadSegment upload = ReserveUploadBuffer(*RS, byteSize);
         MoveBuffer2UploadBuffer(upload, (const byte*)buffer, byteSize);
 
@@ -9799,6 +9818,8 @@ namespace FlexKit
     GPUHeapAllocation MemoryPoolAllocator::GetMemory(const size_t requestBlockCount, const uint64_t frameID, const uint64_t flags)
     {
         ProfileFunction();
+        FK_ASSERT(requestBlockCount < std::numeric_limits<uint32_t>::max());
+
         std::scoped_lock localLock{ m };
 
         std::sort(freeRanges.begin(), freeRanges.end());
@@ -9828,8 +9849,8 @@ namespace FlexKit
 
                         if (range.blockCount > requestBlockCount)
                         {
-                            range.blockCount    -= requestBlockCount;
-                            range.offset        += requestBlockCount;
+                            range.blockCount    -= (uint32_t)requestBlockCount;
+                            range.offset        += (uint32_t)requestBlockCount;
                         }
                         else if (range.blockCount == requestBlockCount) {
                             freeRanges.remove_unstable(&range);
@@ -9993,6 +10014,8 @@ namespace FlexKit
         auto size                           = renderSystem.GetAllocationSize(desc);
         const size_t requestedBlockCount    = (size / blockSize) + (size % blockSize == 0) ? 0 : 1;
 
+        FK_ASSERT(requestedBlockCount < std::numeric_limits<uint32_t>::max());
+
         if (auto res = std::find_if(std::begin(freeRanges), std::end(freeRanges),
             [&](auto r) { return r.priorAllocation == resourceToRecycle; }); res != std::end(freeRanges))
         {
@@ -10006,8 +10029,8 @@ namespace FlexKit
                 }
                 else if(res->blockCount > requestedBlockCount)
                 {
-                    res->offset     += requestedBlockCount;
-                    res->blockCount -= requestedBlockCount;
+                    res->offset     += (uint32_t)requestedBlockCount;
+                    res->blockCount -= (uint32_t)requestedBlockCount;
                 }
                 else if (res->blockCount < requestedBlockCount)
                     return { InvalidHandle, InvalidHandle }; // ERROR!?

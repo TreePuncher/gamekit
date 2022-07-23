@@ -348,6 +348,7 @@ namespace FlexKit
                         const uint32_t begin      = (uint32_t)(workCount * (uint32_t)data.threadIdx);
                         const uint32_t end        = Min(begin + workCount, (uint32_t)visableLights.size());
 
+
                         for (uint32_t I = begin; I < end; I++)
                         {
                             ProfileFunction();
@@ -455,7 +456,7 @@ namespace FlexKit
                                 BoundingSphere  BS;
 
 
-					            for(uint32_t brushIdx = 0; brushIdx < brushes.size(); brushIdx++)
+					            for(uint32_t brushIdx = 0; brushIdx < (uint32_t)brushes.size(); brushIdx++)
 					            {
                                     auto& PV            = brushes[brushIdx];
                                     const auto lodLevel = PV.LODlevel;
@@ -471,14 +472,13 @@ namespace FlexKit
                                         auto& lod           = triMesh->lods[currentLodIdx];
                                         indexCount          = lod.GetIndexCount();
 
-                                        ctx.AddIndexBuffer(triMesh, currentLodIdx);
+                                        ctx.AddIndexBuffer(triMesh, (uint32_t)currentLodIdx);
                                         ctx.AddVertexBuffers(triMesh,
-                                            currentLodIdx,
+                                            (uint32_t)currentLodIdx,
                                             { VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
 
                                         BS = triMesh->BS;
                                     }
-
                                     const float4x4 WT   = GetWT(PV.brush->Node);
                                     const float3 POS    = GetPositionW(PV.brush->Node);
                                     const float4 POS_WT = POS + (WT * float4(BS.xyz(), 0)).xyz();
@@ -627,7 +627,6 @@ namespace FlexKit
                                 ctx.renderSystem->SetObjectState(target, DRS_PixelShaderResource);
                             }
                         }
-
                         ctx.EndEvent_DEBUG();
 				    });
 

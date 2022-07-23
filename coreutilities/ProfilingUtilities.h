@@ -175,16 +175,14 @@ namespace FlexKit
         ThreadProfiler& GetThreadProfiler()
         {
 #if USING(ENABLEPROFILER)
-            thread_local std::atomic_bool   available = false;
             thread_local ThreadProfiler*    profiler = nullptr;
 
-            if (!available.load(std::memory_order_relaxed))
+            if (!profiler)
             {
                 std::scoped_lock lock{ _ProfilerLock };
 
                 threadProfilers.emplace_back(std::make_unique<ThreadProfiler>());
                 profiler    = threadProfilers.back().get();
-                available   = true;
             }
 
             return *profiler;

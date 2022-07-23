@@ -1074,8 +1074,8 @@ std::optional<std::reference_wrapper<GameObject>> AddWorldObject(GameWorld& worl
     */
 
     object.AddView<MaterialView>(material);
-    StaticBodySetScale(object, float3{ 5.0f, 5.0f, 5.0f });
-    SetScale(object, { 5, 5, 5 });
+    StaticBodySetScale(object, float3{ 10.0f, 10.0f, 10.0f });
+    SetScale(object, { 10, 10, 10 });
 
     world.scene.AddGameObject(object);
     SetBoundingSphereFromMesh(object);
@@ -1092,7 +1092,7 @@ void TranslateChunk(MapChunk& chunk, SparseMap& map, GameWorld& world, const Wor
         if (cellXYZ[2] > 0)
             continue;
 
-        const float scale = 10.0f;
+        const float scale = 20.0f;
 
         switch (c)
         {
@@ -1111,12 +1111,15 @@ void TranslateChunk(MapChunk& chunk, SparseMap& map, GameWorld& world, const Wor
                 {
                     auto neighbors = SparseMap::GetNeighborRing(map, cellXYZ);
 
-                    for (int i = 0; i < 8; i += 2)
+                    StaticBodySetWorldOrientation(*rampObject, Quaternion{ 0.0f, 90.0f, 0.0f });
+
+                    if(0)
+                    for (int i = 2; i <= 4; i += 2)
                     {
-                        auto&& [cell, cellId] = neighbors[i];
-                        if (cell == GetIdBit(CellStates::Wall) && neighbors[i + 4] == GetIdBit(CellStates::Floor))
+                        auto&& [cell, cellId] = neighbors[2 * i];
+                        if (cell == GetIdBit(CellStates::Wall) && neighbors[2 * i + 4] == GetIdBit(CellStates::Floor))
                         {
-                            Yaw(*rampObject, pi / 2 * -i);
+                            StaticBodySetWorldOrientation(*rampObject, Quaternion{ 0.0f, 90.0f *  -(i % 4), 0.0f });
                             break;
                         }
                     }

@@ -232,7 +232,7 @@ namespace FlexKit
 
     int PoseGetJointCount(FlexKit::PoseState::Pose* pose)
     {
-        return pose->sk->JointCount;
+        return (int)pose->sk->JointCount;
     }
 
 

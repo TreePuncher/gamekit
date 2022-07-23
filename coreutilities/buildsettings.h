@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define ON			+
 #define OFF			-
-#define USING(x) ((1 x 1)==2) 
+#define USING(x) ((1 x 1)==2)
 
 #define FASTMATH ON
 
