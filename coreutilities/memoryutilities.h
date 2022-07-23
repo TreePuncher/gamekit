@@ -1095,12 +1095,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	static uint64_t hash_DJB2(char* str)
+	uint64_t hash_DJB2(char* str)
 	{
 		unsigned long hash = 5381;
-		int c;
 
-		while (c = *str++)
+		for (int c = *str; c != '\0' ; str++)
 			hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
 
 		return hash;

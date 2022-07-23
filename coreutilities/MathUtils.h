@@ -2,7 +2,7 @@
 
 #ifndef MATHUTTILS
 #define MATHUTTILS
-
+#pragma warning(disable : 4201)
 
 // Includes
 #include "buildsettings.h"
@@ -170,8 +170,8 @@ namespace FlexKit
 
     FLEXKITAPI inline __m128 SSE_CopySign(__m128 sign, __m128 abs) noexcept
 	{
-		const uint32_t M1 = (1 << 31);
-		const uint32_t M2 =~(1 << 31);
+		const uint32_t M1 = (1u << 31);
+		const uint32_t M2 =~(1u << 31);
 
 		const __m128 Sgn = _mm_and_ps(sign, _mm_castsi128_ps(_mm_set1_epi32(M1)));
 		const __m128 Abs = _mm_and_ps(abs, _mm_castsi128_ps(_mm_set1_epi32(M2)));
@@ -361,7 +361,7 @@ namespace FlexKit
 		typedef Vect<SIZE, TY> THISTYPE;
 
         template<typename TY_tuple, int ... ints>
-        void helper(const TY_tuple& tuple, std::integer_sequence<int, ints...> x) noexcept
+        void helper(const TY_tuple& tuple, std::integer_sequence<int, ints...>) noexcept
         {
             ((Vector[ints] = static_cast<TY>(std::get<ints>(tuple))), ...);
         }
@@ -1384,51 +1384,51 @@ namespace FlexKit
 		inline float operator[]  ( const size_t index )	const	{ return GetElement( pFloats, index); }
 		inline operator __m128	 ()						const	{ return pFloats;} 
 
-		inline float4 operator+ ( const float4& a ) const 
+		inline float4 operator+ ( const float4& rhs ) const 
 		{
 #if USING(FASTMATH)
-			return _mm_add_ps(pFloats, a.pFloats);
+			return _mm_add_ps(pFloats, rhs.pFloats);
 #else
-			return float4(	x + a.x, 
-							y + a.y, 
-							z + a.z, 
-							w + a.w );
+			return float4(	x + rhs.x,
+							y + rhs.y,
+							z + rhs.z,
+							w + rhs.w );
 #endif
 		}
 
-		inline float4 operator+ ( const float a ) const
+		inline float4 operator+ (const float rhs) const
 		{
 #if USING(FASTMATH)
-			return _mm_add_ps(pFloats, _mm_set1_ps(a));
+			return _mm_add_ps(pFloats, _mm_set1_ps(rhs));
 #else
-			return float4(	x + a, 
-							y + a, 
-							z + a, 
-							w + a );
+			return float4(	x + rhs, 
+							y + rhs, 
+							z + rhs, 
+							w + rhs );
 #endif
 		}
 
-		inline float4 operator- ( const float4& a ) const
+		inline float4 operator- ( const float4& rhs) const
 		{
 #if USING(FASTMATH)
-			return _mm_sub_ps(pFloats, a);
+			return _mm_sub_ps(pFloats, rhs);
 #else
-			return float4(	x - a.x, 
-							y - a.y, 
-							z - a.z, 
-							w - a.w );
+			return float4(	x - rhs.x, 
+							y - rhs.y, 
+							z - rhs.z, 
+							w - rhs.w );
 #endif
 		}
 
-		inline float4 operator- ( const float a ) const
+		inline float4 operator- ( const float rhs) const
 		{
 #if USING(FASTMATH)
-			return _mm_sub_ps(pFloats, _mm_set1_ps(a));
+			return _mm_sub_ps(pFloats, _mm_set1_ps(rhs));
 #else
-			return float4(	x - a, 
-							y - a, 
-							z - a, 
-							w - a );
+			return float4(	x - rhs, 
+							y - rhs, 
+							z - rhs, 
+							w - rhs );
 #endif
 		}
 
@@ -1437,82 +1437,82 @@ namespace FlexKit
 #if USING(FASTMATH)
 		//	return _mm_mul_ps(pFloats, a);
 #else
-			return float4(	x * a.x, 
-							y * a.y, 
-							z * a.z, 
-							w * a.w );
+			return float4(	x * rhs.x, 
+							y * rhs.y, 
+							z * rhs.z, 
+							w * rhs.w );
 #endif
 		//}
 
-		inline float4 operator* ( const float a ) const
+		inline float4 operator* (const float rhs) const
 		{
 #if USING(FASTMATH)
-			return _mm_mul_ps(pFloats, _mm_set1_ps(a));
+			return _mm_mul_ps(pFloats, _mm_set1_ps(rhs));
 #else
-			return float4(	x * a, 
-							y * a, 
-							z * a, 
-							w * a );
+			return float4(	x * rhs, 
+							y * rhs, 
+							z * rhs, 
+							w * rhs );
 #endif
 		}
 
-		inline float4 operator += ( const float4& a )
+		inline float4 operator += (const float4& rhs)
 		{
 #if USING(FASTMATH)
-			pFloats = _mm_add_ps(pFloats, a);
+			pFloats = _mm_add_ps(pFloats, rhs);
 #else
-			return float4(	x + a.x, 
-							y + a.y, 
-							z + a.z, 
-							w + a.w );
+			return float4(	x + rhs.x, 
+							y + rhs.y, 
+							z + rhs.z, 
+							w + rhs.w );
 #endif
 			return pFloats;
 		}
 
-		inline float4 operator / ( const float4& a ) const
+		inline float4 operator / (const float4& rhs) const
 		{
 #if USING(FASTMATH)
-			return _mm_div_ps(pFloats, a);
+			return _mm_div_ps(pFloats, rhs);
 #else
-			return float4(	x / a.x, 
-							y / a.y, 
-							z / a.z, 
-							w / a.w );
+			return float4(	x / rhs.x, 
+							y / rhs.y, 
+							z / rhs.z, 
+							w / rhs.w );
 #endif
 		}
 
-		inline float4& operator /= ( const float a ) 
+		inline float4& operator /= (const float rhs)
 		{
 #if USING(FASTMATH)
-			pFloats = _mm_div_ps(pFloats, _mm_set1_ps(a));
+			pFloats = _mm_div_ps(pFloats, _mm_set1_ps(rhs));
 
 			return *this;
 #else
-			return float4(	x / a.x, 
-							y / a.y, 
-							z / a.z, 
-							w / a.w );
+			return float4(	x / rhs.x, 
+							y / rhs.y, 
+							z / rhs.z, 
+							w / rhs.w );
 #endif
 		}
 
-		inline float4 operator / ( const float a ) const
+		inline float4 operator / (const float rhs) const
 		{
 #if USING(FASTMATH)
-			return _mm_div_ps(pFloats, _mm_set1_ps(a));
+			return _mm_div_ps(pFloats, _mm_set1_ps(rhs));
 #else
-			return float4(	x / a, 
-							y / a, 
-							z / a, 
-							w / a );
+			return float4(	x / rhs, 
+							y / rhs, 
+							z / rhs, 
+							w / rhs );
 #endif
 		}
 
-		inline float4 operator % ( const float4& a ) const
+		inline float4 operator % (const float4& rhs) const
 		{
-			return float4(	std::fmod( x, a.x ), 
-							std::fmod( y, a.y ),
-							std::fmod( z, a.z ),
-							std::fmod( w, a.w ) );
+			return float4(	std::fmod( x, rhs.x ), 
+							std::fmod( y, rhs.y ),
+							std::fmod( z, rhs.z ),
+							std::fmod( w, rhs.w ) );
 		}
 
         float Max() const noexcept
@@ -1911,6 +1911,9 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
+#pragma warning(push)
+#pragma warning(disable : 4324)
 	// Row Major
 	template< const int ROW, const int COL, typename Ty = float >
 	union alignas(16) Matrix
@@ -2113,6 +2116,8 @@ namespace FlexKit
 
 		Ty matrix[COL][ROW];
 	};
+
+#pragma warning(pop)
 
 
 	/************************************************************************************************/
