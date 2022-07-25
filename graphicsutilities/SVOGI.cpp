@@ -1093,30 +1093,35 @@ namespace FlexKit
 
         for (const auto& brush : brushes)
         {
-            auto* const triMesh = GetMeshResource(brushComponent[brush].MeshHandle);
-            const auto lod      = triMesh->GetHighestLoadedLodIdx();
+            auto meshes = brushComponent[brush].meshes;
 
-            const float4x4  WT      = GetWT(brushComponent[brush].Node).Transpose();
-            const float4    albedo  = GetMaterialProperty<float4>(brushComponent[brush].material, GetCRCGUID(PBR_ALBEDO)).value_or(float4{ 1.0f, 0.0f, 1.0f, 0.0f });
-
-            struct sVoxelConstants
+            for(auto mesh : meshes)
             {
-                float4x4    WT;
-                float4      albedo;
-            };
+                auto* const triMesh = GetMeshResource(mesh);
+                const auto lod      = triMesh->GetHighestLoadedLodIdx();
 
-            const ConstantBufferDataSet entityConstants{ sVoxelConstants{ WT, albedo }, constantBuffer };
+                const float4x4  WT      = GetWT(brushComponent[brush].Node).Transpose();
+                const float4    albedo  = GetMaterialProperty<float4>(brushComponent[brush].material, GetCRCGUID(PBR_ALBEDO)).value_or(float4{ 1.0f, 0.0f, 1.0f, 0.0f });
 
-            ctx.SetGraphicsConstantBufferView(1, entityConstants);
+                struct sVoxelConstants
+                {
+                    float4x4    WT;
+                    float4      albedo;
+                };
 
-            ctx.AddIndexBuffer(triMesh, lod);
-            ctx.AddVertexBuffers(triMesh,
-                lod,
-                {   VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-                    VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
-                    VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV });
+                const ConstantBufferDataSet entityConstants{ sVoxelConstants{ WT, albedo }, constantBuffer };
 
-            ctx.DrawIndexed(triMesh->lods[lod].GetIndexCount());
+                ctx.SetGraphicsConstantBufferView(1, entityConstants);
+
+                ctx.AddIndexBuffer(triMesh, lod);
+                ctx.AddVertexBuffers(triMesh,
+                    lod,
+                    {   VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+                        VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
+                        VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV });
+
+                ctx.DrawIndexed(triMesh->lods[lod].GetIndexCount());
+            }
         }
 
         ctx.EndEvent_DEBUG();

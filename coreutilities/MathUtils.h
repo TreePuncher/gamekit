@@ -763,7 +763,7 @@ namespace FlexKit
 
 
     FLEXKITAPI template<typename TY_S, size_t ELEMENT_COUNT = 1>
-	constexpr [[nodiscard]] Vect<ELEMENT_COUNT, TY_S> operator* (const Vect<ELEMENT_COUNT, TY_S> lhs, const Vect<ELEMENT_COUNT, TY_S> rhs)// vector multiply
+    [[nodiscard]] constexpr Vect<ELEMENT_COUNT, TY_S> operator* (const Vect<ELEMENT_COUNT, TY_S> lhs, const Vect<ELEMENT_COUNT, TY_S> rhs)// vector multiply
 	{
         Vect<ELEMENT_COUNT, TY_S> V_out;
 
@@ -778,7 +778,7 @@ namespace FlexKit
 
 
     FLEXKITAPI template<typename TY_S, typename TY_Vs, size_t ELEMENT_COUNT = 1>
-	constexpr [[nodiscard]] Vect<ELEMENT_COUNT, TY_Vs> operator * (TY_S scaler, const Vect<ELEMENT_COUNT, TY_Vs>& v)// scaler multiply
+    [[nodiscard]] constexpr Vect<ELEMENT_COUNT, TY_Vs> operator * (TY_S scaler, const Vect<ELEMENT_COUNT, TY_Vs>& v)// scaler multiply
 	{
 		auto V_out = v;
 
@@ -793,7 +793,7 @@ namespace FlexKit
 
 
     FLEXKITAPI template<typename TY_S, typename TY_Vs, size_t ELEMENT_COUNT = 1>
-	constexpr [[nodiscard]] Vect<ELEMENT_COUNT, TY_Vs> operator * (const Vect<ELEMENT_COUNT, TY_Vs>& v, TY_S scaler)// scaler multiply
+    [[nodiscard]] constexpr Vect<ELEMENT_COUNT, TY_Vs> operator * (const Vect<ELEMENT_COUNT, TY_Vs>& v, TY_S scaler)// scaler multiply
 	{
 		auto V_out = v;
 
@@ -807,7 +807,7 @@ namespace FlexKit
 
 
     FLEXKITAPI template<typename TY_S, typename TY_Vs, size_t ELEMENT_COUNT = 1>
-    constexpr [[nodiscard]] Vect<ELEMENT_COUNT, TY_Vs> operator / (const Vect<ELEMENT_COUNT, TY_Vs>& v, TY_S scaler)// scaler multiply
+    [[nodiscard]] constexpr Vect<ELEMENT_COUNT, TY_Vs> operator / (const Vect<ELEMENT_COUNT, TY_Vs>& v, TY_S scaler)// scaler multiply
     {
         auto V_out = v;
 
@@ -822,7 +822,7 @@ namespace FlexKit
 
 
     FLEXKITAPI template<typename TY_Vs, size_t ELEMENT_COUNT = 1>
-	constexpr [[nodiscard]] Vect<ELEMENT_COUNT, TY_Vs> operator / (const Vect<ELEMENT_COUNT, TY_Vs>& v1, const Vect<ELEMENT_COUNT, TY_Vs>& v2)// scaler multiply
+    [[nodiscard]] constexpr Vect<ELEMENT_COUNT, TY_Vs> operator / (const Vect<ELEMENT_COUNT, TY_Vs>& v1, const Vect<ELEMENT_COUNT, TY_Vs>& v2)// scaler multiply
     {
         auto V_out = v1;
 
@@ -833,7 +833,7 @@ namespace FlexKit
     }
 
     FLEXKITAPI template<typename TY_Vs, size_t ELEMENT_COUNT = 1>
-	constexpr [[nodiscard]] Vect<ELEMENT_COUNT, TY_Vs> operator - (const Vect<ELEMENT_COUNT, TY_Vs>& v)// 
+    [[nodiscard]] constexpr Vect<ELEMENT_COUNT, TY_Vs> operator - (const Vect<ELEMENT_COUNT, TY_Vs>& v)// 
     {
         TY_Vs V_out;
 

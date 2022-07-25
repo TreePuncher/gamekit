@@ -1039,38 +1039,41 @@ namespace FlexKit
                 ctx.SetGraphicsConstantBufferView(3, cameraConstants);
                 ctx.NullGraphicsConstantBufferView(6);
 
-                TriMesh* prevMesh           = nullptr;
-                const auto& brushes         = data.passes.GetData().solid;
-                const size_t brushCount     = brushes.size();
+                TriMesh* prevMesh		= nullptr;
+                const auto& brushes		= data.passes.GetData().solid;
+                const size_t brushCount	= brushes.size();
 
                 auto brushConstants = CreateCBIterator<Brush::VConstantsLayout>(constants);
 
                 for (size_t I = 0; I < brushCount; I++)
                 {
-                    auto& brush         = brushes[I];
-                    auto* const triMesh = GetMeshResource(brush.brush->MeshHandle);
-                    const auto& lod     = triMesh->GetLowestLoadedLod();
-                    const auto& lodIdx  = triMesh->GetLowestLodIdx();
+                    auto& meshes = brushes[I]->meshes;
+					for(auto mesh : meshes)
+						{
+							auto* const triMesh = GetMeshResource(mesh);
+							const auto& lod     = triMesh->GetLowestLoadedLod();
+							const auto& lodIdx  = triMesh->GetLowestLodIdx();
 
-                    if (triMesh != prevMesh)
-                    {
-                        prevMesh = triMesh;
+						if (triMesh != prevMesh)
+						{
+							prevMesh = triMesh;
 
-                        ctx.AddIndexBuffer(triMesh, lodIdx);
-                        ctx.AddVertexBuffers(triMesh,
-                            lodIdx,
-                            { VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
-                    }
-                    
-                    ctx.SetGraphicsConstantBufferView(2, brushConstants[I]);
-                    ctx.DrawIndexedInstanced(lod.GetIndexCount());
-                }
+							ctx.AddIndexBuffer(triMesh, lodIdx);
+							ctx.AddVertexBuffers(triMesh,
+								lodIdx,
+								{ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
+						}
 
-                ctx.EndEvent_DEBUG();
+						ctx.SetGraphicsConstantBufferView(2, brushConstants[I]);
+						ctx.DrawIndexedInstanced(lod.GetIndexCount());
+					}
+				}
 
-                ctx.BeginEvent_DEBUG("Occlusion Culling - Create Z-Pyramid");
+				ctx.EndEvent_DEBUG();
 
-                auto& rootSignature = resources.renderSystem().Library.RSDefault;
+				ctx.BeginEvent_DEBUG("Occlusion Culling - Create Z-Pyramid");
+
+				auto& rootSignature = resources.renderSystem().Library.RSDefault;
 
                 ctx.SetComputeRootSignature(resources.renderSystem().Library.RSDefault);
 
@@ -1218,30 +1221,35 @@ namespace FlexKit
                 TriMesh* prevMesh = nullptr;
                 for (const auto& brush : data.brushes)
                 {
-                    const auto  lodIdx  = brush.LODlevel;
-                    auto* const triMesh = GetMeshResource(brush->MeshHandle);
-                    const auto& lod     = triMesh->lods[lodIdx];
+					auto& meshes = brush->meshes;
 
-                    if (triMesh != prevMesh)
-                    {
-                        prevMesh = triMesh;
+					for(size_t I = 0; I < meshes.size(); I++)
+					{
+						const uint8_t lodIdx	= brush.LODlevel[I];
+						auto* const triMesh		= GetMeshResource(meshes[I]);
+						const auto& lod			= triMesh->lods[lodIdx];
 
-                        ctx.AddIndexBuffer(triMesh, lodIdx);
-                        ctx.AddVertexBuffers(triMesh,
-                            triMesh->GetHighestLoadedLodIdx(),
-                            { VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
-                    }
+						if (triMesh != prevMesh)
+						{
+							prevMesh = triMesh;
 
-                    auto constants = ConstantBufferDataSet{ brush->GetConstants(), data.entityConstantsBuffer };
-                    ctx.SetGraphicsConstantBufferView(2, constants);
-                    ctx.DrawIndexedInstanced(lod.GetIndexCount());
-                }
+							ctx.AddIndexBuffer(triMesh, lodIdx);
+							ctx.AddVertexBuffers(triMesh,
+								triMesh->GetHighestLoadedLodIdx(),
+								{ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
+						}
 
-                ctx.EndEvent_DEBUG();
-            });
+						auto constants = ConstantBufferDataSet{ brush->GetConstants(), data.entityConstantsBuffer };
+						ctx.SetGraphicsConstantBufferView(2, constants);
+						ctx.DrawIndexedInstanced(lod.GetIndexCount());
+					}
+				}
 
-        return pass;
-    }
+			ctx.EndEvent_DEBUG();
+			});
+
+		return pass;
+	}
 
 
     /************************************************************************************************/

@@ -407,7 +407,7 @@ void PushClientState(const MultiplayerPlayerID_t playerID, const ConnectionHandl
             lobby.chatHistory += "Player Joined\n";
         };
 
-    client.OnGameStart          =
+    client.OnGameStart =
         [&]()
         {
             framework.PopState();

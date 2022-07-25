@@ -16,122 +16,122 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    std::optional<GameObject*> FindGameObject(Scene& scene, const char* id)
-    {
-        auto& visableComponent = SceneVisibilityComponent::GetComponent();
+	std::optional<GameObject*> FindGameObject(Scene& scene, const char* id)
+	{
+		auto& visableComponent = SceneVisibilityComponent::GetComponent();
 
-        for (auto& visable : scene)
-        {
-            auto& gameObject = *visableComponent[visable].entity;
-            auto res = Apply(
-                gameObject,
-                [&]
-                (
-                    StringIDView& ID
-                )
-                {
-                    auto goID = ID.GetString();
-                    return strncmp(goID, id, 64) == 0;
-                },
-                []
-                { return false; });
+		for (auto& visable : scene)
+		{
+			auto& gameObject = *visableComponent[visable].entity;
+			auto res = Apply(
+				gameObject,
+				[&]
+				(
+					StringIDView& ID
+				)
+				{
+					auto goID = ID.GetString();
+					return strncmp(goID, id, 64) == 0;
+				},
+				[]
+				{ return false; });
 
-            if (res)
-                return &gameObject;
-        }
+			if (res)
+				return &gameObject;
+		}
 
-        return {};
-    }
-
-
-    void DEBUG_ListSceneObjects(Scene& scene)
-    {
-        auto& visableComponent = SceneVisibilityComponent::GetComponent();
-
-        for (auto& visable : scene)
-        {
-            auto& gameObject = *visableComponent[visable].entity;
-            Apply(
-                gameObject,
-                [&]
-                (
-                    StringIDView& ID
-                )
-                {
-                    std::cout << ID.GetString() << '\n';
-                });
-        }
-    }
+		return {};
+	}
 
 
-    /************************************************************************************************/
+	void DEBUG_ListSceneObjects(Scene& scene)
+	{
+		auto& visableComponent = SceneVisibilityComponent::GetComponent();
+
+		for (auto& visable : scene)
+		{
+			auto& gameObject = *visableComponent[visable].entity;
+			Apply(
+				gameObject,
+				[&]
+				(
+					StringIDView& ID
+				)
+				{
+					std::cout << ID.GetString() << '\n';
+				});
+		}
+	}
 
 
-    void SetVisable(GameObject& gameObject, bool v)
-    {
-        Apply(
-            gameObject,
-            [&]( SceneVisibilityView& visable )
-            {
-                visable.SetVisable(v);
-            });
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
-
-    PointLight::~PointLight()
-    {
-        if (shadowState)
-            shadowState->Release();
-    }
-
-
-    /************************************************************************************************/
-
-
-    PointLight::PointLight(PointLight&& rhs)
-    {
-        K = rhs.K;
-        I = rhs.I;
-        R = rhs.R;
-
-        Position    = rhs.Position;
-        shadowMap   = rhs.shadowMap;
-
-        forceDisableShadowMapping   = rhs.forceDisableShadowMapping;
-        state                       = rhs.state;
-        shadowState                 = rhs.shadowState;
-
-        rhs.shadowMap       = InvalidHandle;
-        rhs.shadowState     = nullptr;
-    }
+	void SetVisable(GameObject& gameObject, bool v)
+	{
+		Apply(
+			gameObject,
+			[&]( SceneVisibilityView& visable )
+			{
+				visable.SetVisable(v);
+			});
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
+
+	PointLight::~PointLight()
+	{
+		if (shadowState)
+			shadowState->Release();
+	}
 
 
-    PointLight& PointLight::operator = (PointLight&& rhs)
-    {
-        K = rhs.K;
-        I = rhs.I;
-        R = rhs.R;
-
-        Position    = rhs.Position;
-        shadowMap   = rhs.shadowMap;
-
-        forceDisableShadowMapping   = rhs.forceDisableShadowMapping;
-        state                       = rhs.state;
-        shadowState                 = rhs.shadowState;
-
-        rhs.shadowMap       = InvalidHandle;
-        rhs.shadowState     = nullptr;
-
-        return *this;
-    }
+	/************************************************************************************************/
 
 
-    PointLightView::PointLightView(GameObject& gameObject, float3 color, float intensity, float radius, NodeHandle node) : light{ GetComponent().Create() }
+	PointLight::PointLight(PointLight&& rhs)
+	{
+		K = rhs.K;
+		I = rhs.I;
+		R = rhs.R;
+
+		Position    = rhs.Position;
+		shadowMap   = rhs.shadowMap;
+
+		forceDisableShadowMapping   = rhs.forceDisableShadowMapping;
+		state                       = rhs.state;
+		shadowState                 = rhs.shadowState;
+
+		rhs.shadowMap       = InvalidHandle;
+		rhs.shadowState     = nullptr;
+	}
+
+
+	/************************************************************************************************/
+
+
+	PointLight& PointLight::operator = (PointLight&& rhs)
+	{
+		K = rhs.K;
+		I = rhs.I;
+		R = rhs.R;
+
+		Position    = rhs.Position;
+		shadowMap   = rhs.shadowMap;
+
+		forceDisableShadowMapping   = rhs.forceDisableShadowMapping;
+		state                       = rhs.state;
+		shadowState                 = rhs.shadowState;
+
+		rhs.shadowMap       = InvalidHandle;
+		rhs.shadowState     = nullptr;
+
+		return *this;
+	}
+
+
+	PointLightView::PointLightView(GameObject& gameObject, float3 color, float intensity, float radius, NodeHandle node) : light{ GetComponent().Create() }
 	{
 		auto& poingLight        = GetComponent()[light];
 		poingLight.K			= color;
@@ -145,97 +145,97 @@ namespace FlexKit
 		return GetComponent()[light].R;
 	}
 
-    void PointLightView::SetRadius(float r) noexcept
-    {
-        GetComponent()[light].R = Max(r, 0.1f);
-    }
+	void PointLightView::SetRadius(float r) noexcept
+	{
+		GetComponent()[light].R = Max(r, 0.1f);
+	}
 
-    float PointLightView::GetIntensity()
-    {
-        return GetComponent()[light].I;
-    }
+	float PointLightView::GetIntensity()
+	{
+		return GetComponent()[light].I;
+	}
 
-    float3 PointLightView::GetK()
-    {
-        return GetComponent()[light].K;
-    }
+	float3 PointLightView::GetK()
+	{
+		return GetComponent()[light].K;
+	}
 
-    void PointLightView::SetK(float3 color)
-    {
-        GetComponent()[light].K = color;
-    }
+	void PointLightView::SetK(float3 color)
+	{
+		GetComponent()[light].K = color;
+	}
 
-    void PointLightView::SetIntensity(float I)
-    {
-        GetComponent()[light].I = I;
-    }
+	void PointLightView::SetIntensity(float I)
+	{
+		GetComponent()[light].I = I;
+	}
 
 	void PointLightView::SetNode(NodeHandle node) const noexcept
 	{
 		GetComponent()[light].Position = node;
 	}
 
-    NodeHandle PointLightView::GetNode() const noexcept
-    {
-        return GetComponent()[light].Position;
-    }
+	NodeHandle PointLightView::GetNode() const noexcept
+	{
+		return GetComponent()[light].Position;
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    PointLightHandle GetPointLight(GameObject& go)
-    {
-        return Apply(
-            go,
-            [](PointLightView& pointLight) -> PointLightHandle
-            {
-                return pointLight;
-            },
-            []() -> PointLightHandle
-            {
-                return InvalidHandle;
-            });
-    }
+	PointLightHandle GetPointLight(GameObject& go)
+	{
+		return Apply(
+			go,
+			[](PointLightView& pointLight) -> PointLightHandle
+			{
+				return pointLight;
+			},
+			[]() -> PointLightHandle
+			{
+				return InvalidHandle;
+			});
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void SetBoundingSphereFromMesh(GameObject& go)
+	void SetBoundingSphereFromMesh(GameObject& go)
 	{
 		Apply(
 			go,
 			[&]( SceneVisibilityView&	visibility,
-			    BrushView&			    brush)
+				BrushView&			    brush)
 			{
-                auto boundingSphere = brush.GetBoundingSphere();
+				auto boundingSphere = brush.GetBoundingSphere();
 				visibility.SetBoundingSphere(boundingSphere);
 			});
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void SetBoundingSphereRadius(GameObject& go, const float radius)
-    {
-        Apply(
-            go,
-            [&](SceneVisibilityView& visibility)
-            {
-                visibility.SetBoundingSphere(BoundingSphere{ 0, 0, 0, radius });
-            });
-    }
+	void SetBoundingSphereRadius(GameObject& go, const float radius)
+	{
+		Apply(
+			go,
+			[&](SceneVisibilityView& visibility)
+			{
+				visibility.SetBoundingSphere(BoundingSphere{ 0, 0, 0, radius });
+			});
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	void SetBoundingSphereFromLight(GameObject& go)
 	{
 		Apply(
-            go,
+			go,
 			[](	SceneVisibilityView&    visibility,
 				PointLightView&	        pointLight)
 			{
@@ -244,137 +244,128 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void SetTransparent(GameObject& go, const bool tranparent)
-    {
-        Apply(
-            go,
-            [&](SceneVisibilityView& visibility)
-            {
-                visibility.SetTransparency(tranparent);
-            });
-    }
+	void SetTransparent(GameObject& go, const bool tranparent)
+	{
+		Apply(
+			go,
+			[&](SceneVisibilityView& visibility)
+			{
+				visibility.SetTransparency(tranparent);
+			});
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
-    
-    BoundingSphere GetBoundingSphereFromMesh(GameObject& go)
-    {
-        const auto Scale = GetScale(go).Max();
+	
+	BoundingSphere GetBoundingSphereFromMesh(GameObject& go)
+	{
+		const auto scale = GetScale(go).Max();
 
-        return Apply(
-            go,
-            [&](BrushView& brushView)
-            {
-                auto boundingSphere = brushView.GetBoundingSphere();
-
-                return BoundingSphere{ boundingSphere.xyz() * Scale, boundingSphere.w * Scale};
-            },
-            []()
-            {
-                return BoundingSphere{ 0, 0, 0, 0 };
-            });
-    }
+		return Apply(
+			go,
+			[&](BrushView& brushView)	{ return brushView.GetBoundingSphere() * scale; },
+			[]							{ return BoundingSphere{ 0 }; });
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    BoundingSphere GetBoundingSphere(GameObject& go)
-    {
+	BoundingSphere GetBoundingSphere(GameObject& go)
+	{
+		return Apply(
+			go,
+			[&](SceneVisibilityView& visibility)
+			{
+				auto pos    = GetWorldPosition(go);
+				auto scale  = GetScale(go).Max();
+				auto bs     = visibility.GetBoundingSphere();
 
-        return Apply(
-            go,
-            [&](SceneVisibilityView& visibility)
-            {
-                auto pos    = GetWorldPosition(go);
-                auto scale  = GetScale(go).Max();
-                auto bs     = visibility.GetBoundingSphere();
-
-                return BoundingSphere{ bs.xyz() + pos, bs.w * scale };
-            },
-            []()
-            {
-                return BoundingSphere{ 0, 0, 0, 0 };
-            });
-    }
-
-
-    /************************************************************************************************/
+				return BoundingSphere{ bs.xyz() + pos, bs.w * scale };
+			},
+			[]()
+			{
+				return BoundingSphere{ 0, 0, 0, 0 };
+			});
+	}
 
 
-    void BrushComponentEventHandler::OnCreateView(GameObject& gameObject, ValueMap, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
-    {
-        auto node = GetSceneNode(gameObject);
-        if (node == InvalidHandle)
-            node = GetZeroedNode();
-
-        if (!gameObject.hasView(TransformComponentID))
-            gameObject.AddView<SceneNodeView<>>(node);
-
-        BrushComponentBlob brushComponent;
-        memcpy(&brushComponent, buffer, bufferSize);
-
-        auto [triMesh, loaded] = FindMesh(brushComponent.resourceID);
-
-        if (!loaded)
-            triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), brushComponent.resourceID);
-
-        if (triMesh == InvalidHandle)
-            return;
-
-        if (!gameObject.hasView(FlexKit::BrushComponentID))
-            gameObject.AddView<BrushView>(triMesh);
-        else
-            static_cast<BrushView*>(gameObject.GetView(BrushComponentID))->SetMesh(triMesh);
-
-        SetBoundingSphereFromMesh(gameObject);
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	void BrushComponentEventHandler::OnCreateView(GameObject& gameObject, ValueMap, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+	{
+		auto node = GetSceneNode(gameObject);
+		if (node == InvalidHandle)
+			node = GetZeroedNode();
 
-    
-    void PointLightEventHandler::OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
-    {
-        PointLightComponentBlob pointLight;
+		if (!gameObject.hasView(TransformComponentID))
+			gameObject.AddView<SceneNodeView<>>(node);
 
-        memcpy(&pointLight, buffer, sizeof(pointLight));
+		BrushComponentBlob brushComponent;
+		memcpy(&brushComponent, buffer, bufferSize);
 
-        if(!gameObject.hasView(PointLightComponentID))
-            gameObject.AddView<PointLightView>(pointLight.K, pointLight.IR[0], pointLight.IR[1], GetSceneNode(gameObject));
-        else
-        {
-            auto* pointLightView = static_cast<PointLightView*>(gameObject.GetView(PointLightComponentID));
-            pointLightView->SetK(pointLight.K);
-            pointLightView->SetIntensity(pointLight.IR[0]);
-            pointLightView->SetRadius(pointLight.IR[1]);
-            pointLightView->SetNode(GetSceneNode(gameObject));
-        }
+		auto [triMesh, loaded] = FindMesh(brushComponent.resourceID);
 
-        SetBoundingSphereFromLight(gameObject);
+		if (!loaded)
+			triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), brushComponent.resourceID);
 
-        EnablePointLightShadows(gameObject);
-    }
+		if (triMesh == InvalidHandle)
+			return;
+
+		if (!gameObject.hasView(FlexKit::BrushComponentID))
+			gameObject.AddView<BrushView>(triMesh);
+		else
+			static_cast<BrushView*>(gameObject.GetView(BrushComponentID))->PushMesh(triMesh);
+
+		SetBoundingSphereFromMesh(gameObject);
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
+
+	
+	void PointLightEventHandler::OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+	{
+		PointLightComponentBlob pointLight;
+
+		memcpy(&pointLight, buffer, sizeof(pointLight));
+
+		if(!gameObject.hasView(PointLightComponentID))
+			gameObject.AddView<PointLightView>(pointLight.K, pointLight.IR[0], pointLight.IR[1], GetSceneNode(gameObject));
+		else
+		{
+			auto* pointLightView = static_cast<PointLightView*>(gameObject.GetView(PointLightComponentID));
+			pointLightView->SetK(pointLight.K);
+			pointLightView->SetIntensity(pointLight.IR[0]);
+			pointLightView->SetRadius(pointLight.IR[1]);
+			pointLightView->SetNode(GetSceneNode(gameObject));
+		}
+
+		SetBoundingSphereFromLight(gameObject);
+
+		EnablePointLightShadows(gameObject);
+	}
+
+
+	/************************************************************************************************/
 
 
 	void Scene::AddGameObject(GameObject& go, NodeHandle node)
 	{
 		auto& view = go.AddView<SceneVisibilityView>(node, sceneID);
-        sceneEntities.push_back(view);
+		sceneEntities.push_back(view);
 	}
 
-    void Scene::AddGameObject(GameObject& go)
-    {
-        auto& view = go.AddView<SceneVisibilityView>(GetSceneNode(go), sceneID);
-        sceneEntities.push_back(view);
-    }
+	void Scene::AddGameObject(GameObject& go)
+	{
+		auto& view = go.AddView<SceneVisibilityView>(GetSceneNode(go), sceneID);
+		sceneEntities.push_back(view);
+	}
 
 
 	/************************************************************************************************/
@@ -405,287 +396,290 @@ namespace FlexKit
 
 		for (auto visHandle : sceneEntities)
 		{
-            if (!visHandle)
-                continue;
+			if (!visHandle)
+				continue;
 
 			auto entity		= visables[visHandle].entity;
 			auto visable	= entity->GetView(visableID);
 			entity->RemoveView(visable);
 		}
-        sceneEntities.clear();
+		sceneEntities.clear();
 
-        for (auto* gameObject : ownedGameObjects) {
-            gameObject->Release();
-            allocator->release(*gameObject);
-        }
-        ownedGameObjects.clear();
+		for (auto* gameObject : ownedGameObjects) {
+			gameObject->Release();
+			allocator->release(*gameObject);
+		}
+		ownedGameObjects.clear();
 
-        bvh = SceneBVH(*allocator);
+		bvh = SceneBVH(*allocator);
 	}
 
 
 	/************************************************************************************************/
 
 
-    TriMeshHandle GetTriMesh(GameObject& gameObject) noexcept
+	std::span<TriMeshHandle> GetTriMesh(GameObject& gameObject) noexcept
 	{
 		return Apply(gameObject,
-			[&](BrushView& brush)
+			[&](BrushView& brush) -> std::span<TriMeshHandle>
 			{
-				return brush.GetTriMesh();
+				return brush.GetMeshes();
 			}, 
-			[]() -> TriMeshHandle
+			[]() -> std::span<TriMeshHandle>
 			{
-				return TriMeshHandle{ InvalidHandle };
+				return {};
 			});
 	}
 
 
-    Brush* GetBrush(GameObject& gameObject) noexcept
-    {
-        return Apply(gameObject,
-            [&](BrushView& brush) -> Brush*
-            {
-                return &brush.GetBrush();
-            },
-            []() -> Brush*
-            {
-                return nullptr;
-            });
-    }
+	Brush* GetBrush(GameObject& gameObject) noexcept
+	{
+		return Apply(gameObject,
+			[&](BrushView& brush) -> Brush*
+			{
+				return &brush.GetBrush();
+			},
+			[]() -> Brush*
+			{
+				return nullptr;
+			});
+	}
 
 
-    void SetTriMesh(GameObject& gameObject, TriMeshHandle triMesh) noexcept
-    {
-        return Apply(gameObject,
-            [&](BrushView& brush)
-            {
-                brush.SetMesh(triMesh);
-            });
-    }
-
-
-    /************************************************************************************************/
-
-
-    void ToggleSkinned(GameObject& go, bool enabled)
-    {
-        return Apply(go,
-            [&](BrushView& brushView)
-            {
-                brushView.GetBrush().Skinned = enabled;
-            });
-    }
+	void SetTriMesh(GameObject& gameObject, TriMeshHandle triMesh, uint32_t offset) noexcept
+	{
+		return Apply(gameObject,
+			[&](BrushView& brush)
+			{
+				brush.GetMeshes()[offset] = triMesh;
+			});
+	}
 
 
 	/************************************************************************************************/
 
 
-    #define ComponentSize 9
-    #define ComponentMask (1 << ComponentSize) - 1
-
-    inline uint CreateMortonCode(const uint3 XYZ)
-    {
-        const uint X = uint(XYZ[0]) & ComponentMask;
-        const uint Y = uint(XYZ[1]) & ComponentMask;
-        const uint Z = uint(XYZ[2]) & ComponentMask;
-
-        uint mortonCode = 0;
-
-        for (uint I = 0; I < ComponentSize; I++)
-        {
-            const uint x_bit = X & (1 << I);
-            const uint y_bit = Y & (1 << I);
-            const uint z_bit = Z & (1 << I);
-
-            const uint XYZ = x_bit << 2 | y_bit << 0 | z_bit << 1;
-            //const uint XYZ = x_bit << 0 | y_bit << 1 | z_bit << 2;
-
-            mortonCode |= XYZ << I * 3;
-        }
-
-        return mortonCode;
-    }
-
-
-    /************************************************************************************************/
-
-
-    SceneBVH SceneBVH::Build(const Scene& scene, iAllocator& allocator)
-    {
-        ProfileFunction();
-
-        auto& visables              = scene.sceneEntities;
-        auto& visibilityComponent   = SceneVisibilityComponent::GetComponent();
-
-        auto elements   = Vector<BVHElement>{ &allocator, visables.size() };
-        auto nodes      = Vector<BVHNode>{ &allocator, visables.size() * 2 };
-
-        AABB worldAABB;
-
-        for (auto& visable : visables)
-            worldAABB += visibilityComponent[visable].GetAABB();
-
-        const float3 worldSpan  = worldAABB.Span();
-        const float3 offset     = -worldAABB.Min;
-
-        for (auto& visable : visables)
-        {
-            const auto POS          = GetPositionW(visibilityComponent[visable].node);
-            const auto normalizePOS = (offset + POS) / worldSpan;
-            const auto ID           = CreateMortonCode({
-                                        (uint)(normalizePOS.x * ComponentMask),
-                                        (uint)(normalizePOS.y * ComponentMask),
-                                        (uint)(normalizePOS.z * ComponentMask)});
-
-            elements.push_back({ ID, visable });
-        }
-
-        std::sort(elements.begin(), elements.end());
-
-        // Phase 1 - Build Leaf Nodes -
-        const size_t end            = std::ceil(elements.size() / 4.0f);
-        const size_t elementCount   = elements.size();
-
-        for (uint16_t I = 0; I < end; ++I)
-        {
-            BVHNode node;
-
-            const uint16_t begin  = 4 * I;
-            const uint16_t end    = (uint16_t)Min(elementCount, 4 * I + 4);
-
-            for (uint16_t II = 4 * I; II < end; II++) {
-                const uint16_t idx  = II;
-                auto& visable       = elements[idx].handle;
-                const auto aabb     = visibilityComponent[visable].GetAABB();
-                node.boundingVolume += aabb;
-            }
-
-            node.children   = 4 * I;
-            node.count      = end - begin;
-            node.Leaf       = true;
-
-            nodes.push_back(node);
-        }
-
-        // Phase 2 - Build Interior Nodes -
-        uint begin = 0;
-        while (true)
-        {
-            const uint end  = (uint)nodes.size();
-            const uint temp = (uint)end;
-
-            if (end - begin > 1)
-            {
-                for (uint I = begin; I < end; I += 4)
-                {
-                    BVHNode node;
-
-                    const size_t localEnd = Min(end, I + 4);
-                    for (size_t II = I; II < localEnd; II++)
-                        node.boundingVolume += nodes[II].boundingVolume;
-
-                    node.children   = I;
-                    node.count      = uint8_t(localEnd - I);
-                    node.Leaf       = false;
-
-                    nodes.push_back(node);
-                }
-            }
-            else
-                break;
-
-            begin = temp;
-        }
-
-        SceneBVH BVH{ allocator };
-        BVH.elements    = elements.Copy(allocator);
-        BVH.nodes       = nodes.Copy(allocator);
-        BVH.root        = begin;
-
-        return BVH;
-    }
-
-
-    /************************************************************************************************/
-
-
-    ComputeLod_RES ComputeLOD(const Brush& brush, const float3 CameraPosition, const float maxZ)
-    {
-        auto brushPosition      = GetPositionW(brush.Node);
-        auto distanceFromView   = (CameraPosition - brushPosition).magnitude();
-
-        auto* mesh                      = GetMeshResource(brush.MeshHandle);
-        const auto maxLod               = mesh->lods.size() - 1;
-        const auto highestLoadedLod     = mesh->GetHighestLoadedLodIdx();
-
-        auto temp = pow((distanceFromView) / maxZ, 1.0f / 5.0f);
-
-        const uint32_t requestedLodLevel    = temp * maxLod;
-        const uint32_t usableLodLevel       = Max(requestedLodLevel, highestLoadedLod);
-
-        return ComputeLod_RES{
-            .requestedLOD   = requestedLodLevel,
-            .recommendedLOD = usableLodLevel,
-        };
-    }
-
-
-    /************************************************************************************************/
-
-
-    void PushPV(GameObject& gameObject, const Brush& brush, PVS& pvs, const float3 CameraPosition, float maxZ)
+	void ToggleSkinned(GameObject& go, bool enabled)
 	{
-        auto brushPosition      = GetPositionW(brush.Node);
-        auto distanceFromView   = (CameraPosition - brushPosition).magnitude();
-
-        auto* mesh = GetMeshResource(brush.MeshHandle);
-
-        const auto maxLod               = mesh->lods.size() - 1;
-        const auto highestLoadedLod     = mesh->GetHighestLoadedLodIdx();
-
-        /*
-        // Alternate, screen space size based LOD selection 
-        const auto aabb = mesh->AABB;
-        const auto WT   = GetWT(e.Node);
-
-        const auto UpperRight   = WT * aabb.Max;
-        const auto LowerLeft    = WT * aabb.Min;
-
-        auto UpperRight_DC    = PV * UpperRight;
-        auto LowerLeft_DC     = PV * LowerLeft;
-
-        UpperRight_DC   /= UpperRight_DC.w;
-        LowerLeft_DC    /= LowerLeft_DC.w;
-
-        auto screenSpan = UpperRight_DC - LowerLeft;
-        auto screenArea = screenSpan.x * screenSpan.y;
-
-        const uint32_t requestedLodLevel    = maxLod - std::ceil(pow(screenArea, 2) * maxLod);
-        */
-
-        const auto normalizedAdjustedDistance = pow((distanceFromView) / maxZ, 1.0f / 5.0f);
-            
-        const uint32_t requestedLodLevel    = normalizedAdjustedDistance * maxLod;
-        const uint32_t usableLodLevel       = Max(requestedLodLevel, highestLoadedLod);
-
-		if (brush.MeshHandle != InvalidHandle)
-			pvs.push_back(
-                PVEntry{
-                    .SortID         = CreateSortingID(false, false, (size_t)distanceFromView),
-                    .brush          = &brush,
-                    .gameObject     = &gameObject,
-                    .OcclusionID    = 0,
-                    .LODlevel       = usableLodLevel });
+		return Apply(go,
+			[&](BrushView& brushView)
+			{
+				brushView.GetBrush().Skinned = enabled;
+			});
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
+
+
+	#define ComponentSize 9
+	#define ComponentMask (1 << ComponentSize) - 1
+
+	inline uint CreateMortonCode(const uint3 XYZ)
+	{
+		const uint X = uint(XYZ[0]) & ComponentMask;
+		const uint Y = uint(XYZ[1]) & ComponentMask;
+		const uint Z = uint(XYZ[2]) & ComponentMask;
+
+		uint mortonCode = 0;
+
+		for (uint I = 0; I < ComponentSize; I++)
+		{
+			const uint x_bit = X & (1 << I);
+			const uint y_bit = Y & (1 << I);
+			const uint z_bit = Z & (1 << I);
+
+			const uint XYZ = x_bit << 2 | y_bit << 0 | z_bit << 1;
+			//const uint XYZ = x_bit << 0 | y_bit << 1 | z_bit << 2;
+
+			mortonCode |= XYZ << I * 3;
+		}
+
+		return mortonCode;
+	}
+
+
+	/************************************************************************************************/
+
+
+	SceneBVH SceneBVH::Build(const Scene& scene, iAllocator& allocator)
+	{
+		ProfileFunction();
+
+		auto& visables              = scene.sceneEntities;
+		auto& visibilityComponent   = SceneVisibilityComponent::GetComponent();
+
+		auto elements   = Vector<BVHElement>{ &allocator, visables.size() };
+		auto nodes      = Vector<BVHNode>{ &allocator, visables.size() * 2 };
+
+		AABB worldAABB;
+
+		for (auto& visable : visables)
+			worldAABB += visibilityComponent[visable].GetAABB();
+
+		const float3 worldSpan  = worldAABB.Span();
+		const float3 offset     = -worldAABB.Min;
+
+		for (auto& visable : visables)
+		{
+			const auto POS          = GetPositionW(visibilityComponent[visable].node);
+			const auto normalizePOS = (offset + POS) / worldSpan;
+			const auto ID           = CreateMortonCode({
+										(uint)(normalizePOS.x * ComponentMask),
+										(uint)(normalizePOS.y * ComponentMask),
+										(uint)(normalizePOS.z * ComponentMask)});
+
+			elements.push_back({ ID, visable });
+		}
+
+		std::sort(elements.begin(), elements.end());
+
+		// Phase 1 - Build Leaf Nodes -
+		const size_t end            = std::ceil(elements.size() / 4.0f);
+		const size_t elementCount   = elements.size();
+
+		for (uint16_t I = 0; I < end; ++I)
+		{
+			BVHNode node;
+
+			const uint16_t begin  = 4 * I;
+			const uint16_t end    = (uint16_t)Min(elementCount, 4 * I + 4);
+
+			for (uint16_t II = 4 * I; II < end; II++) {
+				const uint16_t idx  = II;
+				auto& visable       = elements[idx].handle;
+				const auto aabb     = visibilityComponent[visable].GetAABB();
+				node.boundingVolume += aabb;
+			}
+
+			node.children   = 4 * I;
+			node.count      = end - begin;
+			node.Leaf       = true;
+
+			nodes.push_back(node);
+		}
+
+		// Phase 2 - Build Interior Nodes -
+		uint begin = 0;
+		while (true)
+		{
+			const uint end  = (uint)nodes.size();
+			const uint temp = (uint)end;
+
+			if (end - begin > 1)
+			{
+				for (uint I = begin; I < end; I += 4)
+				{
+					BVHNode node;
+
+					const size_t localEnd = Min(end, I + 4);
+					for (size_t II = I; II < localEnd; II++)
+						node.boundingVolume += nodes[II].boundingVolume;
+
+					node.children   = I;
+					node.count      = uint8_t(localEnd - I);
+					node.Leaf       = false;
+
+					nodes.push_back(node);
+				}
+			}
+			else
+				break;
+
+			begin = temp;
+		}
+
+		SceneBVH BVH{ allocator };
+		BVH.elements    = elements.Copy(allocator);
+		BVH.nodes       = nodes.Copy(allocator);
+		BVH.root        = begin;
+
+		return BVH;
+	}
+
+
+	/************************************************************************************************/
+
+
+	ComputeLod_RES ComputeLOD(const Brush& brush, const float3 CameraPosition, const float maxZ)
+	{
+		auto brushPosition		= GetPositionW(brush.Node);
+		auto distanceFromView	= (CameraPosition - brushPosition).magnitude();
+
+		auto* mesh						= GetMeshResource(brush.meshes[0]); // TODO: Factor in all meshes
+		const auto maxLod				= mesh->lods.size() - 1;
+		const auto highestLoadedLod		= mesh->GetHighestLoadedLodIdx();
+
+		auto temp = pow((distanceFromView) / maxZ, 1.0f / 5.0f);
+
+		const uint32_t requestedLodLevel	= temp * maxLod;
+		const uint32_t usableLodLevel		= Max(requestedLodLevel, highestLoadedLod);
+
+		return ComputeLod_RES{
+			.requestedLOD   = requestedLodLevel,
+			.recommendedLOD = usableLodLevel,
+		};
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PushPV(GameObject& gameObject, const Brush& brush, PVS& pvs, const float3 CameraPosition, float maxZ)
+	{
+		auto brushPosition      = GetPositionW(brush.Node);
+		auto distanceFromView   = (CameraPosition - brushPosition).magnitude();
+
+		static_vector<uint8_t> lodLevels;
+		for(auto mesh : brush.meshes)
+		{
+			auto* mesh_ptr = GetMeshResource(mesh);
+
+			const auto maxLod               = mesh_ptr->lods.size() - 1;
+			const auto highestLoadedLod     = mesh_ptr->GetHighestLoadedLodIdx();
+
+			/*
+			// Alternate, screen space size based LOD selection 
+			const auto aabb = mesh->AABB;
+			const auto WT   = GetWT(e.Node);
+
+			const auto UpperRight   = WT * aabb.Max;
+			const auto LowerLeft    = WT * aabb.Min;
+
+			auto UpperRight_DC    = PV * UpperRight;
+			auto LowerLeft_DC     = PV * LowerLeft;
+
+			UpperRight_DC   /= UpperRight_DC.w;
+			LowerLeft_DC    /= LowerLeft_DC.w;
+
+			auto screenSpan = UpperRight_DC - LowerLeft;
+			auto screenArea = screenSpan.x * screenSpan.y;
+
+			const uint32_t requestedLodLevel    = maxLod - std::ceil(pow(screenArea, 2) * maxLod);
+			*/
+
+			const auto normalizedAdjustedDistance = pow((distanceFromView) / maxZ, 1.0f / 5.0f);
+			
+			const uint32_t requestedLodLevel    = normalizedAdjustedDistance * maxLod;
+			lodLevels.push_back(Max(requestedLodLevel, highestLoadedLod));
+		}
+
+		pvs.push_back(
+			PVEntry{
+				.SortID         = CreateSortingID(false, false, (size_t)distanceFromView),
+				.brush          = &brush,
+				.gameObject     = &gameObject,
+				.OcclusionID    = 0,
+				.LODlevel       = lodLevels });
+	}
+
+
+	/************************************************************************************************/
 
 
 	void GatherScene(Scene* SM, CameraHandle Camera, PVS& pvs)
 	{
-        ProfileFunction();
+		ProfileFunction();
 
 		FK_ASSERT(Camera	!= CameraHandle{(unsigned int)INVALIDHANDLE});
 		FK_ASSERT(SM		!= nullptr);
@@ -717,10 +711,10 @@ namespace FlexKit
 				Apply(*potentialVisible.entity,
 					[&](BrushView& view)
 					{
-                        const auto& brush = view.GetBrush();
+						const auto& brush = view.GetBrush();
 
 						if (Intersects(F, BS))
-                            PushPV(*potentialVisible.entity, brush, pvs, POS);
+							PushPV(*potentialVisible.entity, brush, pvs, POS);
 					});
 			}
 		}
@@ -730,7 +724,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    GatherPassesTask& GatherScene(UpdateDispatcher& dispatcher, Scene* scene, CameraHandle C, iAllocator& allocator)
+	GatherPassesTask& GatherScene(UpdateDispatcher& dispatcher, Scene* scene, CameraHandle C, iAllocator& allocator)
 	{
 		auto& task = dispatcher.Add<GetPVSTaskData>(
 			[&](auto& builder, auto& data)
@@ -738,106 +732,108 @@ namespace FlexKit
 				data.scene			= scene;
 				data.camera			= C;
 
-                builder.SetDebugString("Gather Scene");
+				builder.SetDebugString("Gather Scene");
 			},
 			[&allocator = allocator, &threads = *dispatcher.threads](GetPVSTaskData& data, iAllocator& threadAllocator)
 			{
-                ProfileFunction();
+				ProfileFunction();
 
-                PVS pvs{ &threadAllocator };
+				PVS pvs{ &threadAllocator };
 
-                auto activePasses = MaterialComponent::GetComponent().GetActivePasses(threadAllocator);
+				auto activePasses = MaterialComponent::GetComponent().GetActivePasses(threadAllocator);
 
-                GatherScene(data.scene, data.camera, pvs);
+				GatherScene(data.scene, data.camera, pvs);
 				SortPVS(&pvs, &CameraComponent::GetComponent().GetCamera(data.camera));
 
-                Vector<PassPVS> passes{ &allocator };
+				Vector<PassPVS> passes{ &allocator };
 
-                for (auto& pass : activePasses)
-                    passes.emplace_back(pass, &allocator);
+				for (auto& pass : activePasses)
+					passes.emplace_back(pass, &allocator);
 
-                Parallel_For(
-                    threads, threadAllocator,
-                    passes.begin(), passes.end(), 2,
-                    [&](PassPVS& pass, iAllocator& threadAllocator)
-                    {
-                        const auto passID = pass.pass;
-                        auto& materials = MaterialComponent::GetComponent();
+				Parallel_For(
+					threads, threadAllocator,
+					passes.begin(), passes.end(), 2,
+					[&](PassPVS& pass, iAllocator& threadAllocator)
+					{
+						const auto passID = pass.pass;
+						auto& materials = MaterialComponent::GetComponent();
 
-                        pass.pvs.reserve(128);
+						pass.pvs.reserve(128);
 
-                        for (auto& visable: pvs)
-                        {
-                            const auto passes = materials.GetPasses(visable.brush->material);
+						for (auto& visable: pvs)
+						{
+							const auto passes = materials.GetPasses(visable.brush->material);
 
-                            if (std::find(passes.begin(), passes.end(), passID) != passes.end())
-                                pass.pvs.push_back(visable);
-                        }
-                    });
+							if (std::find(passes.begin(), passes.end(), passID) != passes.end())
+								pass.pvs.push_back(visable);
+						}
+					});
 
-                data.solid  = pvs.Copy(allocator);
-                data.passes = std::move(passes);
+				data.solid  = pvs.Copy(allocator);
+				data.passes = std::move(passes);
 			});
 
 		return task;
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void LoadLodLevels(UpdateDispatcher& dispatcher, GatherPassesTask& PVS, CameraHandle camera, RenderSystem& renderSystem, iAllocator& allocator)
-    {
-        struct _ {};
+	void LoadLodLevels(UpdateDispatcher& dispatcher, GatherPassesTask& PVS, CameraHandle camera, RenderSystem& renderSystem, iAllocator& allocator)
+	{
+		struct _ {};
 
-        dispatcher.Add<_>(
+		dispatcher.Add<_>(
 			[&](UpdateDispatcher::UpdateBuilder& builder, auto& data)
 			{
-                builder.AddInput(PVS);
-                builder.SetDebugString("Load LODs");
+				builder.AddInput(PVS);
+				builder.SetDebugString("Load LODs");
 			},
 			[&allocator = allocator, &PVS = PVS.GetData().solid, &renderSystem = renderSystem, camera = camera](_& data, iAllocator& threadAllocator)
 			{
-                ProfileFunction();
+				ProfileFunction();
 
-                //static std::mutex m;
+				//static std::mutex m;
 
-                if (!PVS.size())
-                    return;
+				if (!PVS.size())
+					return;
 
-                const float3 cameraPosition = GetPositionW(GetCameraNode(camera));
+				const float3 cameraPosition = GetPositionW(GetCameraNode(camera));
 
-                bool submit = false;
+				bool submit = false;
 
-                CopyContextHandle copyHandle = InvalidHandle;
+				CopyContextHandle copyHandle = InvalidHandle;
 
-                for (auto& visable : PVS)
-                {
-                    auto res        = ComputeLOD(*visable.brush, cameraPosition, 10'000);
+				for (auto& visable : PVS)
+				{
+					for (auto mesh : visable.brush->meshes)
+					{
+						auto res = ComputeLOD(*visable.brush, cameraPosition, 10'000);
 
-                    if (res.recommendedLOD != res.requestedLOD)
-                    {
-                        auto triMesh    = GetMeshResource(visable.brush->MeshHandle);
-                        auto lodsLoaded = triMesh->GetHighestLoadedLodIdx();
+						if (res.recommendedLOD != res.requestedLOD)
+						{
+							auto triMesh = GetMeshResource(mesh);
+							auto lodsLoaded = triMesh->GetHighestLoadedLodIdx();
 
-                        if (!submit)
-                        {
-                            copyHandle = renderSystem.OpenUploadQueue();
-                            submit = true;
-                        }
+							if (!submit)
+							{
+								copyHandle = renderSystem.OpenUploadQueue();
+								submit = true;
+							}
 
-                        for (auto itr = lodsLoaded - 1; itr >= res.requestedLOD; itr--)
-                            LoadLOD(triMesh, itr, renderSystem, copyHandle, allocator);
-                    }
+							for (auto itr = lodsLoaded - 1; itr >= res.requestedLOD; itr--)
+								LoadLOD(triMesh, itr, renderSystem, copyHandle, allocator);
+						}
+					}
+				}
 
-                }
+				if(submit)
+					renderSystem.SubmitUploadQueues(SYNC_Graphics, &copyHandle);
 
-                if(submit)
-                    renderSystem.SubmitUploadQueues(SYNC_Graphics, &copyHandle);
-
-                //m.unlock();
+				//m.unlock();
 			});
-    }
+	}
 
 
 	/************************************************************************************************/
@@ -879,8 +875,8 @@ namespace FlexKit
 			EXITSCOPE(FreeAsset(RHandle));
 
 			if (R != nullptr) {
-                SceneResourceBlob* sceneBlob = (SceneResourceBlob*)R;
-                char* buffer = (char*)R;
+				SceneResourceBlob* sceneBlob = (SceneResourceBlob*)R;
+				char* buffer = (char*)R;
 
 				const auto blockCount = sceneBlob->blockCount;
 				
@@ -902,7 +898,7 @@ namespace FlexKit
 							nodeBlock = reinterpret_cast<SceneNodeBlock*>(block);
 
 							const auto nodeCount = nodeBlock->header.nodeCount;
-                            ctx.nodes.reserve(nodeCount);
+							ctx.nodes.reserve(nodeCount);
 
 
 							for (size_t itr = 0; itr < nodeCount; ++itr)
@@ -912,8 +908,8 @@ namespace FlexKit
 								float3		scale;
 
 								//auto sceneNode = &nodeBlock->nodes[itr];
-                                SceneNodeBlock::SceneNode nodeData;
-                                memcpy(&nodeData, ((char*)block) + sizeof(SceneNodeBlock::Header) + sizeof(SceneNodeBlock::SceneNode) * itr, sizeof(SceneNodeBlock::SceneNode));
+								SceneNodeBlock::SceneNode nodeData;
+								memcpy(&nodeData, ((char*)block) + sizeof(SceneNodeBlock::Header) + sizeof(SceneNodeBlock::SceneNode) * itr, sizeof(SceneNodeBlock::SceneNode));
 
 								memcpy(&position,		&nodeData.position, sizeof(float3));
 								memcpy(&orientation,	&nodeData.orientation, sizeof(orientation));
@@ -928,7 +924,7 @@ namespace FlexKit
 								if (nodeData.parent != INVALIDHANDLE)
 									SetParentNode(ctx.nodes[nodeData.parent], newNode);
 
-                                ctx.nodes.push_back(newNode);
+								ctx.nodes.push_back(newNode);
 							}
 						}	break;
 						case SceneBlockType::ComponentRequirementTable:
@@ -937,57 +933,57 @@ namespace FlexKit
 							FK_ASSERT(nodeBlock != nullptr, "No Node Block defined!");
 							//FK_ASSERT(componentRequirement != nullptr, "No Component Requirement Block defined!");
 
-                            EntityBlock::Header entityBlock;
-                            memcpy(&entityBlock, block, sizeof(entityBlock));
+							EntityBlock::Header entityBlock;
+							memcpy(&entityBlock, block, sizeof(entityBlock));
 							auto& gameObject = allocator->allocate<GameObject>(allocator);
-                            ctx.scene.ownedGameObjects.push_back(&gameObject);
+							ctx.scene.ownedGameObjects.push_back(&gameObject);
 
-                            size_t itr                  = 0;
-                            size_t componentOffset      = 0;
-                            const size_t componentCount = entityBlock.componentCount;
+							size_t itr                  = 0;
+							size_t componentOffset      = 0;
+							const size_t componentCount = entityBlock.componentCount;
 
-                            while(itr < componentCount)
-                            {
-                                if (((char*)&entityBlock) + componentOffset >= ((char*)&entityBlock) + entityBlock.blockSize)
-                                    break;
+							while(itr < componentCount)
+							{
+								if (((char*)&entityBlock) + componentOffset >= ((char*)&entityBlock) + entityBlock.blockSize)
+									break;
 
-                                ComponentBlock::Header component;
-                                memcpy(&component, (std::byte*)block + sizeof(entityBlock) + componentOffset, sizeof(component));
+								ComponentBlock::Header component;
+								memcpy(&component, (std::byte*)block + sizeof(entityBlock) + componentOffset, sizeof(component));
 
-                                const ComponentID ID = component.componentID;
-                                if (component.blockType != EntityComponentBlock) // malformed blob?
-                                    break;
-                                else if (ID == SceneNodeView<>::GetComponentID())
-                                {
-                                    SceneNodeComponentBlob blob;
-                                    memcpy(&blob, (std::byte*)block + sizeof(entityBlock) + componentOffset, sizeof(blob));
+								const ComponentID ID = component.componentID;
+								if (component.blockType != EntityComponentBlock) // malformed blob?
+									break;
+								else if (ID == SceneNodeView<>::GetComponentID())
+								{
+									SceneNodeComponentBlob blob;
+									memcpy(&blob, (std::byte*)block + sizeof(entityBlock) + componentOffset, sizeof(blob));
 
-                                    auto node = ctx.nodes[blob.nodeIdx];
-                                    gameObject.AddView<SceneNodeView<>>(node);
+									auto node = ctx.nodes[blob.nodeIdx];
+									gameObject.AddView<SceneNodeView<>>(node);
 
-                                    if (!blob.excludeFromScene)
-                                        ctx.scene.AddGameObject(gameObject, node);
-                                }
-                                else if (ComponentAvailability(ID) == true)
-                                {
-                                    static_vector<KeyValuePair> values;
-                                    values.emplace_back(SceneLoadingContextKID, &ctx);
+									if (!blob.excludeFromScene)
+										ctx.scene.AddGameObject(gameObject, node);
+								}
+								else if (ComponentAvailability(ID) == true)
+								{
+									static_vector<KeyValuePair> values;
+									values.emplace_back(SceneLoadingContextKID, &ctx);
 
-                                    GetComponent(ID).AddComponentView(
-                                                        gameObject,
-                                                        std::span{ values },
-                                                        (std::byte*)(block) + sizeof(entityBlock) + componentOffset,
-                                                        component.blockSize,
-                                                        allocator);
-                                }
+									GetComponent(ID).AddComponentView(
+														gameObject,
+														std::span{ values },
+														(std::byte*)(block) + sizeof(entityBlock) + componentOffset,
+														component.blockSize,
+														allocator);
+								}
 
-                                ++itr;
-                                componentOffset += component.blockSize;
-                                if (itr >= componentCount)
-                                    break;
-                            }
+								++itr;
+								componentOffset += component.blockSize;
+								if (itr >= componentCount)
+									break;
+							}
 
-                            SetBoundingSphereFromMesh(gameObject);
+							SetBoundingSphereFromMesh(gameObject);
 						}
 						case SceneBlockType::EntityComponentBlock:
 							break;
@@ -999,7 +995,7 @@ namespace FlexKit
 				}
 
 
-                UpdateTransforms();
+				UpdateTransforms();
 
 				return true;
 			}
@@ -1059,33 +1055,33 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    BuildBVHTask& Scene::UpdateSceneBVH(UpdateDispatcher& dispatcher, UpdateTask& transformDependency, iAllocator* allocator)
-    {
-        return dispatcher.Add<SceneBVHBuild>(
-            [&](UpdateDispatcher::UpdateBuilder& builder, SceneBVHBuild& data)
+	BuildBVHTask& Scene::UpdateSceneBVH(UpdateDispatcher& dispatcher, UpdateTask& transformDependency, iAllocator* allocator)
+	{
+		return dispatcher.Add<SceneBVHBuild>(
+			[&](UpdateDispatcher::UpdateBuilder& builder, SceneBVHBuild& data)
 			{
-                builder.SetDebugString("BVH");
-                builder.AddInput(transformDependency);
+				builder.SetDebugString("BVH");
+				builder.AddInput(transformDependency);
 			},
 			[this, allocator = allocator](SceneBVHBuild& data, iAllocator& threadAllocator)
 			{
-                FK_LOG_9("Build BVH");
-                ProfileFunction();
+				FK_LOG_9("Build BVH");
+				ProfileFunction();
 
-                bvh         = bvh.Build(*this, threadAllocator).Copy(*allocator);
-                data.bvh    = &bvh;
+				bvh         = bvh.Build(*this, threadAllocator).Copy(*allocator);
+				data.bvh    = &bvh;
 			}
 		);
-    }
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    PointLightGatherTask& Scene::GetPointLights(UpdateDispatcher& dispatcher, iAllocator* tempMemory) const
+	PointLightGatherTask& Scene::GetPointLights(UpdateDispatcher& dispatcher, iAllocator* tempMemory) const
 	{
 		return dispatcher.Add<PointLightGather>(
 			[&](UpdateDispatcher::UpdateBuilder& builder, PointLightGather& data)
@@ -1093,15 +1089,15 @@ namespace FlexKit
 				data.pointLights	= Vector<PointLightHandle>{ tempMemory, 64 };
 				data.scene			= this;
 
-                builder.SetDebugString("Point Light Gather");
+				builder.SetDebugString("Point Light Gather");
 			},
 			[this](PointLightGather& data, iAllocator& threadAllocator)
 			{
-                FK_LOG_9("Point Light Gather");
-                ProfileFunction();
+				FK_LOG_9("Point Light Gather");
+				ProfileFunction();
 
-                Vector<PointLightHandle> tempList{ &threadAllocator, 64 };
-			    auto& visables = SceneVisibilityComponent::GetComponent();
+				Vector<PointLightHandle> tempList{ &threadAllocator, 64 };
+				auto& visables = SceneVisibilityComponent::GetComponent();
 
 				for (auto entity : sceneEntities)
 				{
@@ -1110,243 +1106,243 @@ namespace FlexKit
 						[&](PointLightView&         pointLight,
 							SceneVisibilityView&    visibility)
 						{
-                            tempList.emplace_back(pointLight);
+							tempList.emplace_back(pointLight);
 						});
 				}
 
-                data.pointLights = tempList;
+				data.pointLights = tempList;
 			}
 		);
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    PointLightShadowGatherTask& Scene::GetVisableLights(UpdateDispatcher& dispatcher, CameraHandle camera, BuildBVHTask& bvh, iAllocator* temporaryMemory) const
-    {
-        return dispatcher.Add<PointLightShadowGather>(
+	PointLightShadowGatherTask& Scene::GetVisableLights(UpdateDispatcher& dispatcher, CameraHandle camera, BuildBVHTask& bvh, iAllocator* temporaryMemory) const
+	{
+		return dispatcher.Add<PointLightShadowGather>(
 			[&](UpdateDispatcher::UpdateBuilder& builder, PointLightShadowGather& data)
 			{
-                builder.SetDebugString("Point Light Shadow Gather");
-                builder.AddInput(bvh);
+				builder.SetDebugString("Point Light Shadow Gather");
+				builder.AddInput(bvh);
 
-                data.pointLightShadows = Vector<PointLightHandle>{ temporaryMemory };
+				data.pointLightShadows = Vector<PointLightHandle>{ temporaryMemory };
 			},
-            [this, &bvh = bvh.GetData().bvh, camera = camera](PointLightShadowGather& data, iAllocator& threadAllocator)
+			[this, &bvh = bvh.GetData().bvh, camera = camera](PointLightShadowGather& data, iAllocator& threadAllocator)
 			{
-                FK_LOG_9("Point Light Shadow Gather");
-                ProfileFunction();
+				FK_LOG_9("Point Light Shadow Gather");
+				ProfileFunction();
 
-                Vector<PointLightHandle> visablePointLights{ &threadAllocator };
-                auto& visabilityComponent = SceneVisibilityComponent::GetComponent();
+				Vector<PointLightHandle> visablePointLights{ &threadAllocator };
+				auto& visabilityComponent = SceneVisibilityComponent::GetComponent();
 
-                const auto frustum = GetFrustum(camera);
+				const auto frustum = GetFrustum(camera);
 
-                auto& lights = PointLightComponent::GetComponent();
+				auto& lights = PointLightComponent::GetComponent();
 
 
-                if constexpr (false)
-                {
-                    for (auto& light : lights)
-                        visablePointLights.push_back(light.handle);
-                }
-                else
-                {
-                    bvh->Traverse(frustum,
-                        [&](VisibilityHandle intersector, auto& intersectionResult)
-                        {
-                            GameObject& go = *visabilityComponent[intersector].entity;
-                            Apply(go,
-                                [&](PointLightView& light)
-                                {
-                                    visablePointLights.push_back(light);
-                                }
-                            );
-                        });
-                }
-                data.pointLightShadows = visablePointLights;
+				if constexpr (false)
+				{
+					for (auto& light : lights)
+						visablePointLights.push_back(light.handle);
+				}
+				else
+				{
+					bvh->Traverse(frustum,
+						[&](VisibilityHandle intersector, auto& intersectionResult)
+						{
+							GameObject& go = *visabilityComponent[intersector].entity;
+							Apply(go,
+								[&](PointLightView& light)
+								{
+									visablePointLights.push_back(light);
+								}
+							);
+						});
+				}
+				data.pointLightShadows = visablePointLights;
 			}
 		);
-    }
+	}
 
 
 	/************************************************************************************************/
 
 
-    PointLightUpdate& Scene::UpdatePointLights(UpdateDispatcher& dispatcher, BuildBVHTask& bvh, PointLightShadowGatherTask& visablePointLights, iAllocator* temporaryMemory, iAllocator* persistentMemory) const
-    {
-        class Task : public iWork
-        {
-        public:
-            Task(PointLightHandle IN_light, SceneBVH& IN_bvh, iAllocator& IN_allocator) :
-                iWork           {},
-                persistentMemory{ IN_allocator },
-                lightHandle     { IN_light },
-                bvh             { IN_bvh }
-            {
-                _debugID = "PointLightUpdate_Task";
-            }
+	PointLightUpdate& Scene::UpdatePointLights(UpdateDispatcher& dispatcher, BuildBVHTask& bvh, PointLightShadowGatherTask& visablePointLights, iAllocator* temporaryMemory, iAllocator* persistentMemory) const
+	{
+		class Task : public iWork
+		{
+		public:
+			Task(PointLightHandle IN_light, SceneBVH& IN_bvh, iAllocator& IN_allocator) :
+				iWork           {},
+				persistentMemory{ IN_allocator },
+				lightHandle     { IN_light },
+				bvh             { IN_bvh }
+			{
+				_debugID = "PointLightUpdate_Task";
+			}
 
-            void Run(iAllocator& threadLocalAllocator)
-            {
-                ProfileFunction();
+			void Run(iAllocator& threadLocalAllocator)
+			{
+				ProfileFunction();
 
-                auto& visables  = SceneVisibilityComponent::GetComponent();
-                auto& lights    = PointLightComponent::GetComponent();
+				auto& visables  = SceneVisibilityComponent::GetComponent();
+				auto& lights    = PointLightComponent::GetComponent();
 
-                auto& light         = lights[lightHandle];
-                const float3 POS    = GetPositionW(light.Position);
-                const float  r      = light.R;
-                AABB lightAABB{ POS - r, POS + r };
+				auto& light         = lights[lightHandle];
+				const float3 POS    = GetPositionW(light.Position);
+				const float  r      = light.R;
+				AABB lightAABB{ POS - r, POS + r };
 
-                Vector<VisibilityHandle> PVS{ &threadLocalAllocator };
+				Vector<VisibilityHandle> PVS{ &threadLocalAllocator };
 
-                bvh.Traverse(lightAABB,
-                    [&](VisibilityHandle visable, auto& intersionResult)
-                    {
-                        PVS.push_back(visable);
-                    });
+				bvh.Traverse(lightAABB,
+					[&](VisibilityHandle visable, auto& intersionResult)
+					{
+						PVS.push_back(visable);
+					});
 
-                if(const auto flags = GetFlags(light.Position); flags & (SceneNodes::DIRTY | SceneNodes::UPDATED))
-                    light.state = LightStateFlags::Dirty;
+				if(const auto flags = GetFlags(light.Position); flags & (SceneNodes::DIRTY | SceneNodes::UPDATED))
+					light.state = LightStateFlags::Dirty;
 
-                std::sort(
-                    std::begin(PVS), std::end(PVS),
-                    [](const auto& lhs, const auto& rhs)
-                    {
-                        return lhs < rhs;
-                    });
+				std::sort(
+					std::begin(PVS), std::end(PVS),
+					[](const auto& lhs, const auto& rhs)
+					{
+						return lhs < rhs;
+					});
 
-                auto markDirty =
-                    [&]
-                    {
-                        light.state = LightStateFlags::Dirty;
-                        light.shadowState->visableObjects = PVS;
-                    };
+				auto markDirty =
+					[&]
+					{
+						light.state = LightStateFlags::Dirty;
+						light.shadowState->visableObjects = PVS;
+					};
 
 
-                if (light.shadowState)
-                {   // Compare previousPVS with current PVS to see if shadow map needs update
-                    auto& previousPVS = light.shadowState->visableObjects;
+				if (light.shadowState)
+				{   // Compare previousPVS with current PVS to see if shadow map needs update
+					auto& previousPVS = light.shadowState->visableObjects;
 
-                    if (previousPVS.size() == PVS.size())
-                    {
-                        for (size_t I = 0; I < PVS.size(); ++I)
-                        {
-                            if (PVS[I] != previousPVS[I])
-                            {
-                                markDirty();
-                                break; // do full update
-                            }
-                            const auto flags = GetFlags(visables[PVS[I]].node);
+					if (previousPVS.size() == PVS.size())
+					{
+						for (size_t I = 0; I < PVS.size(); ++I)
+						{
+							if (PVS[I] != previousPVS[I])
+							{
+								markDirty();
+								break; // do full update
+							}
+							const auto flags = GetFlags(visables[PVS[I]].node);
 
-                            if (flags & (SceneNodes::UPDATED | SceneNodes::DIRTY))
-                            {
-                                markDirty();
-                                return;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        markDirty();
-                        return;
-                    }
+							if (flags & (SceneNodes::UPDATED | SceneNodes::DIRTY))
+							{
+								markDirty();
+								return;
+							}
+						}
+					}
+					else
+					{
+						markDirty();
+						return;
+					}
 
-                    return;
-                }
+					return;
+				}
 
-                if (!light.shadowState)
-                    light.shadowState = &persistentMemory.allocate<CubeMapState>(&persistentMemory);
+				if (!light.shadowState)
+					light.shadowState = &persistentMemory.allocate<CubeMapState>(&persistentMemory);
 
-                light.state = LightStateFlags::Dirty;
-                light.shadowState->shadowMapSize = 128;
-                light.shadowState->visableObjects = PVS;
-            }
+				light.state = LightStateFlags::Dirty;
+				light.shadowState->shadowMapSize = 128;
+				light.shadowState->visableObjects = PVS;
+			}
 
-            void Release() {}
+			void Release() {}
 
-            iAllocator&             persistentMemory;
-            SceneBVH&               bvh;
-            const PointLightHandle  lightHandle = InvalidHandle;
-        };
+			iAllocator&             persistentMemory;
+			SceneBVH&               bvh;
+			const PointLightHandle  lightHandle = InvalidHandle;
+		};
 
-        return dispatcher.Add<PointLightUpdate_DATA>(
+		return dispatcher.Add<PointLightUpdate_DATA>(
 			[&](UpdateDispatcher::UpdateBuilder& builder, PointLightUpdate_DATA& data)
 			{
-                builder.SetDebugString("Point Light Shadow Gather");
-                builder.AddInput(bvh);
-                builder.AddInput(visablePointLights);
+				builder.SetDebugString("Point Light Shadow Gather");
+				builder.AddInput(bvh);
+				builder.AddInput(visablePointLights);
 
-                data.dirtyList = Vector<PointLightHandle>{ temporaryMemory };
+				data.dirtyList = Vector<PointLightHandle>{ temporaryMemory };
 			},
-            [   this,
-                &bvh                = bvh.GetData().bvh,
-                &visablePointLights = visablePointLights.GetData().pointLightShadows,
-                persistentMemory    = persistentMemory,
-                &threads            = *dispatcher.threads
-            ]
-            (PointLightUpdate_DATA& data, iAllocator& threadAllocator)
+			[   this,
+				&bvh                = bvh.GetData().bvh,
+				&visablePointLights = visablePointLights.GetData().pointLightShadows,
+				persistentMemory    = persistentMemory,
+				&threads            = *dispatcher.threads
+			]
+			(PointLightUpdate_DATA& data, iAllocator& threadAllocator)
 			{
-                ProfileFunction();
+				ProfileFunction();
 
-                WorkBarrier     barrier{ threads, &threadAllocator };
-                Vector<Task*>   taskList{ &threadAllocator, visablePointLights.size() };
+				WorkBarrier     barrier{ threads, &threadAllocator };
+				Vector<Task*>   taskList{ &threadAllocator, visablePointLights.size() };
 
-                for (auto visableLight : visablePointLights)
-                {
-                    auto& task = threadAllocator.allocate<Task>(visableLight, *bvh, *persistentMemory);
-                    barrier.AddWork(task);
-                    taskList.push_back(&task);
-                }
+				for (auto visableLight : visablePointLights)
+				{
+					auto& task = threadAllocator.allocate<Task>(visableLight, *bvh, *persistentMemory);
+					barrier.AddWork(task);
+					taskList.push_back(&task);
+				}
 
-                for (auto& task : taskList)
-                    threads.AddWork(task);
+				for (auto& task : taskList)
+					threads.AddWork(task);
 
-                barrier.Join();
-                
-                auto& lights = PointLightComponent::GetComponent();
+				barrier.Join();
+				
+				auto& lights = PointLightComponent::GetComponent();
 
-                for (auto visableLight : visablePointLights)
-                {
-                    auto& light = lights[visableLight];
-                    if (lights[visableLight].state == LightStateFlags::Dirty && light.shadowState)
-                        data.dirtyList.push_back(visableLight);
-                }
+				for (auto visableLight : visablePointLights)
+				{
+					auto& light = lights[visableLight];
+					if (lights[visableLight].state == LightStateFlags::Dirty && light.shadowState)
+						data.dirtyList.push_back(visableLight);
+				}
 			}
 		);
-    }
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    Vector<SceneRayCastResult> Scene::RayCast(FlexKit::Ray v, iAllocator& allocator) const
-    {
-        Vector<SceneRayCastResult> results{ &allocator };
+	Vector<SceneRayCastResult> Scene::RayCast(FlexKit::Ray v, iAllocator& allocator) const
+	{
+		Vector<SceneRayCastResult> results{ &allocator };
 
-        if (!bvh.Valid())
-            const_cast<SceneBVH&>(bvh) = bvh.Build(*this, allocator);
+		if (!bvh.Valid())
+			const_cast<SceneBVH&>(bvh) = bvh.Build(*this, allocator);
 
-        bvh.Traverse(v,
-            [&](auto& visable, const auto& intersectionResult)
-            {
-                results.emplace_back(visable, intersectionResult.value());
-            });
+		bvh.Traverse(v,
+			[&](auto& visable, const auto& intersectionResult)
+			{
+				results.emplace_back(visable, intersectionResult.value());
+			});
 
-        std::sort(
-            results.begin(), results.end(),
-            [](auto& lhs, auto& rhs)
-            {
-                return lhs.d < rhs.d;
-            });
+		std::sort(
+			results.begin(), results.end(),
+			[](auto& lhs, auto& rhs)
+			{
+				return lhs.d < rhs.d;
+			});
 
-        return results;
-    }
+		return results;
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	size_t	Scene::GetPointLightCount()
@@ -1372,40 +1368,40 @@ namespace FlexKit
 
 		Brush::VConstantsLayout	constants;
 
-        auto& materials = MaterialComponent::GetComponent();
+		auto& materials = MaterialComponent::GetComponent();
 
-        if (material != InvalidHandle)
-        {
-            const auto albedo       = materials.GetProperty<float4>(material, GetCRCGUID(PBR_ALBEDO)).value_or(float4{ 0.7f, 0.7f, 0.7f, 0.3f });
-            const auto specular     = materials.GetProperty<float4>(material, GetCRCGUID(PBR_SPECULAR)).value_or(float4{ 1.0f, 1.0f, 1.0f, 1.0f });
-            const auto roughness    = materials.GetProperty<float>(material,  GetCRCGUID(PBR_ROUGHNESS)).value_or(1.0f);
-            const auto metal        = materials.GetProperty<float>(material,  GetCRCGUID(PBR_METAL)).value_or(1.0f);
+		if (material != InvalidHandle)
+		{
+			const auto albedo       = materials.GetProperty<float4>(material, GetCRCGUID(PBR_ALBEDO)).value_or(float4{ 0.7f, 0.7f, 0.7f, 0.3f });
+			const auto specular     = materials.GetProperty<float4>(material, GetCRCGUID(PBR_SPECULAR)).value_or(float4{ 1.0f, 1.0f, 1.0f, 1.0f });
+			const auto roughness    = materials.GetProperty<float>(material,  GetCRCGUID(PBR_ROUGHNESS)).value_or(1.0f);
+			const auto metal        = materials.GetProperty<float>(material,  GetCRCGUID(PBR_METAL)).value_or(1.0f);
 
-            constants.MP.albedo     = albedo.xyz();
-            constants.MP.roughness  = roughness;
-            constants.MP.kS         = specular.x;
-            constants.MP.metallic   = metal;
-        }
-        else
-        {
-            constants.MP.albedo     = float3{ 0.7f, 0.7f, 0.7f };
-            constants.MP.roughness  = 0.7f;
-            constants.MP.kS         = 1.0f;
-            constants.MP.metallic   = 0.0f;
-        }
+			constants.MP.albedo     = albedo.xyz();
+			constants.MP.roughness  = roughness;
+			constants.MP.kS         = specular.x;
+			constants.MP.metallic   = metal;
+		}
+		else
+		{
+			constants.MP.albedo     = float3{ 0.7f, 0.7f, 0.7f };
+			constants.MP.roughness  = 0.7f;
+			constants.MP.kS         = 1.0f;
+			constants.MP.metallic   = 0.0f;
+		}
 
-        constants.Transform = XMMatrixToFloat4x4(WT).Transpose();
+		constants.Transform = XMMatrixToFloat4x4(WT).Transpose();
 
-        if (material != InvalidHandle)
-        {
-            const auto& textures    = MaterialComponent::GetComponent()[material].Textures;
-            constants.textureCount  = (uint32_t)textures.size();
+		if (material != InvalidHandle)
+		{
+			const auto& textures    = MaterialComponent::GetComponent()[material].Textures;
+			constants.textureCount  = (uint32_t)textures.size();
 
-            for (auto& texture : textures)
-                constants.textureHandles[std::distance(std::begin(textures), &texture)] = uint4{ 256, 256, texture.to_uint() };
-        }
-        else
-            constants.textureCount = 0;
+			for (auto& texture : textures)
+				constants.textureHandles[std::distance(std::begin(textures), &texture)] = uint4{ 256, 256, texture.to_uint() };
+		}
+		else
+			constants.textureCount = 0;
 
 		return constants;
 	}
@@ -1424,26 +1420,26 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void EnablePointLightShadows(GameObject& gameObject)
-    {
-        if (!Apply(gameObject,
-            [](PointLightShadowMapView& pointLight){ return true; }, []{ return false; }))
-        {
-            Apply(gameObject,
-                [&](PointLightView& pointLight)
-                {
-                    gameObject.AddView<PointLightShadowMapView>(
-                        _PointLightShadowCaster{
-                            pointLight,
-                            pointLight.GetNode()
-                        }
-                    );
-                });
-        }
-    }
+	void EnablePointLightShadows(GameObject& gameObject)
+	{
+		if (!Apply(gameObject,
+			[](PointLightShadowMapView& pointLight){ return true; }, []{ return false; }))
+		{
+			Apply(gameObject,
+				[&](PointLightView& pointLight)
+				{
+					gameObject.AddView<PointLightShadowMapView>(
+						_PointLightShadowCaster{
+							pointLight,
+							pointLight.GetNode()
+						}
+					);
+				});
+		}
+	}
 
 
 }	/************************************************************************************************/
