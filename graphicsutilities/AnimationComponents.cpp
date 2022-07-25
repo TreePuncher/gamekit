@@ -803,10 +803,10 @@ namespace FlexKit
         memcpy(&blob, buffer, bufferSize);
 
         auto triMeshHandle  = GetTriMesh(gameObject);
-        auto skeleton       = Create(triMeshHandle, blob.assetID);
+        auto skeleton       = Create(triMeshHandle[0], blob.assetID);
 
         if(skeleton != InvalidHandle)
-            gameObject.AddView<SkeletonView>(triMeshHandle, skeleton);
+            gameObject.AddView<SkeletonView>(triMeshHandle[0], skeleton);
     }
 
 

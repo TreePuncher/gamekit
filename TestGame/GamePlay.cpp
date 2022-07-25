@@ -294,18 +294,13 @@ bool GameWorld::LoadScene(GUID_t assetID)
 
         if (id && std::regex_search(id, pattern))
         {
-            auto meshHandle = GetTriMesh(go);
-            auto mesh       = GetMeshResource(meshHandle);
-
-            const AABB aabb{
-                .Min = mesh->Info.Min,
-                .Max = mesh->Info.Max };
+            AABB aabb;
+            aabb = aabb + GetBoundingSphere(go);
 
             const auto midPoint = aabb.MidPoint();
             const auto dim      = aabb.Dim() / 2.0f;
             const auto pos      = GetWorldPosition(go);
             auto q              = GetOrientation(go);
-
 
             auto shape = physics.CreateCubeShape(dim);
 

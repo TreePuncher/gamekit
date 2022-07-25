@@ -1095,7 +1095,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	uint64_t hash_DJB2(char* str)
+	inline uint64_t hash_DJB2(char* str)
 	{
 		unsigned long hash = 5381;
 

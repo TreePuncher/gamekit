@@ -70,8 +70,8 @@ struct SkeletonFactory : public IComponentFactory
 {
     FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
     {
-        if (!gameObject.hasView(FlexKit::SkeletonComponentID))
-            return gameObject.AddView<FlexKit::SkeletonView>(FlexKit::GetBrush(gameObject)->MeshHandle, -1u);
+        if (!gameObject.hasView(FlexKit::SkeletonComponentID) && FlexKit::GetBrush(gameObject)->meshes.size())
+            return gameObject.AddView<FlexKit::SkeletonView>(FlexKit::GetBrush(gameObject)->meshes.front(), -1u);
         else
             return *gameObject.GetView(FlexKit::SkeletonComponentID);
     }

@@ -10,8 +10,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* ShadowMapper::CreateShadowMapPass(RenderSystem* RS)
 	{
-        auto VShader = RS->LoadShader("VS_Main", "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
-        auto PShader = RS->LoadShader("PS_Main", "ps_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
+		auto VShader = RS->LoadShader("VS_Main", "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
+		auto PShader = RS->LoadShader("PS_Main", "ps_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
 
 		/*
 		typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -64,13 +64,13 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	ID3D12PipelineState* ShadowMapper::CreateShadowMapAnimatedPass(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("VS_Skinned_Main", "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
-        auto PShader = RS->LoadShader("PS_Main", "ps_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
+		auto PShader = RS->LoadShader("PS_Main", "ps_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
 
 		/*
 		typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -86,9 +86,9 @@ namespace FlexKit
 		*/
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
-                { "POSITION",	    0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-                { "BLENDWEIGHT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    1, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-                { "BLENDINDICES",	0, DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_UINT,  2, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "POSITION",	    0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "BLENDWEIGHT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    1, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "BLENDINDICES",	0, DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_UINT,  2, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		};
 
 
@@ -131,12 +131,12 @@ namespace FlexKit
 	ShadowPassMatrices CalculateShadowMapMatrices(const float3 pos, const float r, const float T)
 	{
 		static const XMMATRIX ViewOrientations[] = {
-            DirectX::XMMatrixRotationY((float)-pi / 2.0f),  // Right Face
-            DirectX::XMMatrixRotationY((float) pi / 2.0f),  // Left Face,
-            DirectX::XMMatrixRotationX((float) pi / 2.0f),  // Bottom
-            DirectX::XMMatrixRotationX((float)-pi / 2.0f),  // Top
-            DirectX::XMMatrixRotationY((float) pi),         // Backward
-            DirectX::XMMatrixIdentity(),                    // Foward
+			DirectX::XMMatrixRotationY((float)-pi / 2.0f),  // Right Face
+			DirectX::XMMatrixRotationY((float) pi / 2.0f),  // Left Face,
+			DirectX::XMMatrixRotationX((float) pi / 2.0f),  // Bottom
+			DirectX::XMMatrixRotationX((float)-pi / 2.0f),  // Top
+			DirectX::XMMatrixRotationY((float) pi),         // Backward
+			DirectX::XMMatrixIdentity(),                    // Foward
 		};
 
 		ShadowPassMatrices out;
@@ -149,8 +149,8 @@ namespace FlexKit
 			const XMMATRIX PV               = DirectX::XMMatrixTranspose(perspective) * XMMatrixTranspose(View);
 
 			out.PV[I]       = XMMatrixToFloat4x4(PV).Transpose();
-            out.ViewI[I]    = XMMatrixToFloat4x4(ViewI);
-            out.View[I]     = XMMatrixToFloat4x4(View);
+			out.ViewI[I]    = XMMatrixToFloat4x4(ViewI);
+			out.View[I]     = XMMatrixToFloat4x4(View);
 		}
 
 		return out;
@@ -160,475 +160,486 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    float cot(float t)
-    {
-        return 1.0f / std::tanf(t);
-    }
+	float cot(float t)
+	{
+		return 1.0f / std::tanf(t);
+	}
 
-    float ScreenSpaceSize(const Camera c, const BoundingSphere bs)
-    {
-        const auto position = GetPositionW(c.Node);
-        const auto d        = (position - bs.xyz()).magnitude();
-        const auto r        = bs.r;
-        const auto fovy     = c.FOV / c.AspectRatio;
-        const auto pr       = cot(fovy / 2) * r / sqrt(d*d - r*r);
+	float ScreenSpaceSize(const Camera c, const BoundingSphere bs)
+	{
+		const auto position = GetPositionW(c.Node);
+		const auto d        = (position - bs.xyz()).magnitude();
+		const auto r        = bs.r;
+		const auto fovy     = c.FOV / c.AspectRatio;
+		const auto pr       = cot(fovy / 2) * r / sqrt(d*d - r*r);
 
-        return (float)pi * pr * pr;
-    }
-
-
-    /************************************************************************************************/
+		return (float)pi * pr * pr;
+	}
 
 
-    ResourceHandle ShadowMapper::GetResource(const size_t frameID)
-    {
-        if (auto res = std::find_if(resourcePool.begin(), resourcePool.end(), [&](auto& res) { return frameID > (res.availibility); }); res != resourcePool.end())
-        {
-            auto resource = res->resource;
-            resourcePool.remove_unstable(res);
-            return { resource };
-        }
-
-        return InvalidHandle;
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	ResourceHandle ShadowMapper::GetResource(const size_t frameID)
+	{
+		if (auto res = std::find_if(resourcePool.begin(), resourcePool.end(), [&](auto& res) { return frameID > (res.availibility); }); res != resourcePool.end())
+		{
+			auto resource = res->resource;
+			resourcePool.remove_unstable(res);
+			return { resource };
+		}
+
+		return InvalidHandle;
+	}
 
 
-    void ShadowMapper::AddResource(ResourceHandle shadowMap, const size_t frameID)
-    {
-        resourcePool.emplace_back(shadowMap, frameID);
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
-
-    ShadowMapper::ShadowMapper(RenderSystem& renderSystem, iAllocator& allocator) :
-        rootSignature   { &allocator },
-        resourcePool    { &allocator }
-    {
-        rootSignature.AllowIA = true;
-        rootSignature.AllowSO = false;
-        rootSignature.SetParameterAsUINT(   0, 40,  3, 0,   PIPELINE_DEST_ALL);
-        rootSignature.SetParameterAsCBV(    1, 0,   0,      PIPELINE_DEST_ALL);
-        rootSignature.SetParameterAsUINT(   2, 16,  1, 0,   PIPELINE_DEST_ALL);
-        rootSignature.SetParameterAsCBV(    3, 2,   0,      PIPELINE_DEST_ALL);
-        rootSignature.Build(renderSystem, &allocator);
-
-        renderSystem.RegisterPSOLoader(SHADOWMAPPASS,          { &renderSystem.Library.RS6CBVs4SRVs, [&](RenderSystem* rs) { return CreateShadowMapPass(rs); }});
-        renderSystem.RegisterPSOLoader(SHADOWMAPANIMATEDPASS,  { &renderSystem.Library.RS6CBVs4SRVs, [&](RenderSystem* rs) { return CreateShadowMapAnimatedPass(rs); } });
-    }
+	void ShadowMapper::AddResource(ResourceHandle shadowMap, const size_t frameID)
+	{
+		resourcePool.emplace_back(shadowMap, frameID);
+	}
 
 
-    AcquireShadowMapTask& ShadowMapper::AcquireShadowMaps(UpdateDispatcher& dispatcher, RenderSystem& renderSystem, MemoryPoolAllocator& RTPool, PointLightUpdate& pointLightUpdate)
-    {
-        return dispatcher.Add<AcquireShadowMapResources>(
-            [&](UpdateDispatcher::UpdateBuilder& builder, AcquireShadowMapResources& data)
-            {
-                ProfileFunction();
+	/************************************************************************************************/
 
-                builder.AddInput(pointLightUpdate);
-            },
-            [&dirtyList = pointLightUpdate.GetData().dirtyList, &renderSystem = renderSystem, &shadowMapAllocator = RTPool, this]
-            (AcquireShadowMapResources& data, iAllocator& threadLocalAllocator)
-            {
-                ProfileFunction();
+	ShadowMapper::ShadowMapper(RenderSystem& renderSystem, iAllocator& allocator) :
+		rootSignature   { &allocator },
+		resourcePool    { &allocator }
+	{
+		rootSignature.AllowIA = true;
+		rootSignature.AllowSO = false;
+		rootSignature.SetParameterAsUINT(   0, 40,  3, 0,   PIPELINE_DEST_ALL);
+		rootSignature.SetParameterAsCBV(    1, 0,   0,      PIPELINE_DEST_ALL);
+		rootSignature.SetParameterAsUINT(   2, 16,  1, 0,   PIPELINE_DEST_ALL);
+		rootSignature.SetParameterAsCBV(    3, 2,   0,      PIPELINE_DEST_ALL);
+		rootSignature.Build(renderSystem, &allocator);
 
-                size_t idx = 0;
-
-                auto& lights        = PointLightComponent::GetComponent();
-                auto itr            = dirtyList.begin();
-                const auto end      = dirtyList.end();
-                const auto frameID  = renderSystem.GetCurrentFrame();
-
-                for (;itr != end; itr++)
-                {
-                    auto lightHandle    = *itr;
-                    auto& light         = lights[lightHandle];
-
-                    if (light.shadowMap != InvalidHandle)
-                    {
-                        AddResource(light.shadowMap, frameID);
-                        light.shadowMap = InvalidHandle;
-                    }
-
-                    if (auto res = GetResource(frameID); res != InvalidHandle)
-                    {
-                        light.shadowMap = res;
-                    }
-                    else
-                        break;
-                }
-
-                for (auto i = itr; i != end; i++)
-                {
-                    auto lightHandle    = *i;
-                    auto& light         = lights[lightHandle];
-
-                    if (light.shadowMap != InvalidHandle)
-                    {
-                        AddResource(light.shadowMap, frameID);
-                        light.shadowMap == InvalidHandle;
-                    }
-                }
+		renderSystem.RegisterPSOLoader(SHADOWMAPPASS,          { &renderSystem.Library.RS6CBVs4SRVs, [&](RenderSystem* rs) { return CreateShadowMapPass(rs); }});
+		renderSystem.RegisterPSOLoader(SHADOWMAPANIMATEDPASS,  { &renderSystem.Library.RS6CBVs4SRVs, [&](RenderSystem* rs) { return CreateShadowMapAnimatedPass(rs); } });
+	}
 
 
-                Parallel_For(
-                    renderSystem.threads, threadLocalAllocator, itr, end, 1,
-                    [&](auto lightHandle, iAllocator& threadLocalAllocator)
-                    {
-                        ProfileFunction();
+	AcquireShadowMapTask& ShadowMapper::AcquireShadowMaps(UpdateDispatcher& dispatcher, RenderSystem& renderSystem, MemoryPoolAllocator& RTPool, PointLightUpdate& pointLightUpdate)
+	{
+		return dispatcher.Add<AcquireShadowMapResources>(
+			[&](UpdateDispatcher::UpdateBuilder& builder, AcquireShadowMapResources& data)
+			{
+				ProfileFunction();
 
-                        auto& light         = lights[lightHandle];
-                        auto [shadowMap, _] = shadowMapAllocator.Acquire(GPUResourceDesc::DepthTarget({ 256, 256 }, DeviceFormat::D32_FLOAT, 6), false);
-                        light.shadowMap     = shadowMap;
+				builder.AddInput(pointLightUpdate);
+			},
+			[&dirtyList = pointLightUpdate.GetData().dirtyList, &renderSystem = renderSystem, &shadowMapAllocator = RTPool, this]
+			(AcquireShadowMapResources& data, iAllocator& threadLocalAllocator)
+			{
+				ProfileFunction();
+
+				size_t idx = 0;
+
+				auto& lights        = PointLightComponent::GetComponent();
+				auto itr            = dirtyList.begin();
+				const auto end      = dirtyList.end();
+				const auto frameID  = renderSystem.GetCurrentFrame();
+
+				for (;itr != end; itr++)
+				{
+					auto lightHandle    = *itr;
+					auto& light         = lights[lightHandle];
+
+					if (light.shadowMap != InvalidHandle)
+					{
+						AddResource(light.shadowMap, frameID);
+						light.shadowMap = InvalidHandle;
+					}
+
+					if (auto res = GetResource(frameID); res != InvalidHandle)
+					{
+						light.shadowMap = res;
+					}
+					else
+						break;
+				}
+
+				for (auto i = itr; i != end; i++)
+				{
+					auto lightHandle    = *i;
+					auto& light         = lights[lightHandle];
+
+					if (light.shadowMap != InvalidHandle)
+					{
+						AddResource(light.shadowMap, frameID);
+						light.shadowMap == InvalidHandle;
+					}
+				}
+
+
+				Parallel_For(
+					renderSystem.threads, threadLocalAllocator, itr, end, 1,
+					[&](auto lightHandle, iAllocator& threadLocalAllocator)
+					{
+						ProfileFunction();
+
+						auto& light         = lights[lightHandle];
+						auto [shadowMap, _] = shadowMapAllocator.Acquire(GPUResourceDesc::DepthTarget({ 256, 256 }, DeviceFormat::D32_FLOAT, 6), false);
+						light.shadowMap     = shadowMap;
 
 #if USING(DEBUGGRAPHICS)
-                        auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.GetCurrentFrame(), light.shadowMap);
-                        renderSystem.SetDebugName(shadowMap, debugName.c_str());
+						auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.GetCurrentFrame(), light.shadowMap);
+						renderSystem.SetDebugName(shadowMap, debugName.c_str());
 #endif
-                    });
-            });
-    }
+					});
+			});
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	ShadowMapPassData& ShadowMapper::ShadowMapPass(
 		FrameGraph&                             frameGraph,
-        const PointLightShadowGatherTask&       shadowMaps,
-        UpdateTask&                             cameraUpdate,
-        GatherPassesTask&                       gather,
-        UpdateTask&                             shadowMapAcquire,
-        ReserveConstantBufferFunction&          reserveCB,
-        ReserveVertexBufferFunction&            reserveVB,
-        static_vector<AdditionalShadowMapPass>& additional,
+		const PointLightShadowGatherTask&       shadowMaps,
+		UpdateTask&                             cameraUpdate,
+		GatherPassesTask&                       gather,
+		UpdateTask&                             shadowMapAcquire,
+		ReserveConstantBufferFunction&          reserveCB,
+		ReserveVertexBufferFunction&            reserveVB,
+		static_vector<AdditionalShadowMapPass>& additional,
 		const double                            t,
 		iAllocator*                             allocator,
-        AnimationPoseUpload*                    poses)
+		AnimationPoseUpload*                    poses)
 	{
 		auto& shadowMapPass = allocator->allocate<ShadowMapPassData>(ShadowMapPassData{ allocator->allocate<Vector<TemporaryFrameResourceHandle>>(allocator) });
 
-        constexpr size_t workerThreadCount = 3;
-        for(size_t I = 0; I < workerThreadCount; I++)
-		    frameGraph.AddNode<LocalShadowMapPassData>(
-				    LocalShadowMapPassData{
-                        I,
-                        workerThreadCount,
-                        shadowMaps.GetData().pointLightShadows,
-					    shadowMapPass,
-					    reserveCB,
-                        reserveVB,
-                        additional
-				    },
-				    [&](FrameGraphNodeBuilder& builder, LocalShadowMapPassData& data)
-				    {
-                        builder.AddDataDependency(cameraUpdate);
-                        builder.AddDataDependency(gather);
-                        builder.AddDataDependency(shadowMapAcquire);
-				    },
-				    [this, &gather, t = t](LocalShadowMapPassData& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
-				    {
-                        ProfileFunction();
+		constexpr size_t workerThreadCount = 3;
+		for(size_t I = 0; I < workerThreadCount; I++)
+			frameGraph.AddNode<LocalShadowMapPassData>(
+					LocalShadowMapPassData{
+						I,
+						workerThreadCount,
+						shadowMaps.GetData().pointLightShadows,
+						shadowMapPass,
+						reserveCB,
+						reserveVB,
+						additional
+					},
+					[&](FrameGraphNodeBuilder& builder, LocalShadowMapPassData& data)
+					{
+						builder.AddDataDependency(cameraUpdate);
+						builder.AddDataDependency(gather);
+						builder.AddDataDependency(shadowMapAcquire);
+					},
+					[this, &gather, t = t](LocalShadowMapPassData& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+					{
+						ProfileFunction();
 
-                        auto shadowMapPSO = resources.GetPipelineState(SHADOWMAPPASS);
-                        ctx.SetRootSignature(rootSignature);
+						auto shadowMapPSO = resources.GetPipelineState(SHADOWMAPPASS);
+						ctx.SetRootSignature(rootSignature);
 
-                        auto& visableLights = data.pointLightShadows;
-                        auto& pointLights  = PointLightComponent::GetComponent();
-                    
-                        Vector<ResourceHandle>          shadowMaps      { &allocator, visableLights.size() };
-                        Vector<ConstantBufferDataSet>   passConstant2   { &allocator, visableLights.size() };
+						auto& visableLights = data.pointLightShadows;
+						auto& pointLights  = PointLightComponent::GetComponent();
+					
+						Vector<ResourceHandle>          shadowMaps      { &allocator, visableLights.size() };
+						Vector<ConstantBufferDataSet>   passConstant2   { &allocator, visableLights.size() };
 
-                        ctx.BeginEvent_DEBUG("Shadow Mapping");
+						ctx.BeginEvent_DEBUG("Shadow Mapping");
 
-                        const uint32_t workCount  = (uint32_t)(visableLights.size() / data.threadTotal) + (visableLights.size() % (uint32_t)data.threadTotal != 0 ? 1 : 0);
-                        const uint32_t begin      = (uint32_t)(workCount * (uint32_t)data.threadIdx);
-                        const uint32_t end        = Min(begin + workCount, (uint32_t)visableLights.size());
-
-
-                        for (uint32_t I = begin; I < end; I++)
-                        {
-                            ProfileFunction();
-
-                            ctx.BeginEvent_DEBUG("Shadow Map Pass");
-
-                            auto& lightHandle   = visableLights[I];
-                            auto& pointLight    = pointLights[lightHandle];
-
-                            if (pointLight.state == LightStateFlags::Dirty && pointLight.shadowMap != InvalidHandle)
-                            {
-                                pointLight.state = LightStateFlags::Clean;
-
-                                const auto& visibilityComponent = SceneVisibilityComponent::GetComponent();
-                                const auto& visables            = pointLight.shadowState->visableObjects;
-					            const auto depthTarget          = pointLight.shadowMap;
-                                const float3 pointLightPosition = GetPositionW(pointLight.Position);
-
-					            if (!visables.size())
-						            return;
-
-                                static const Quaternion Orientations[6] = {
-                                    Quaternion{   0,  90, 0 }, // Right
-                                    Quaternion{   0, -90, 0 }, // Left
-                                    Quaternion{ -90,   0, 0 }, // Top
-                                    Quaternion{  90,   0, 0 }, // Bottom
-                                    Quaternion{   0, 180, 0 }, // Backward
-                                    Quaternion{   0,   0, 0 }, // Forward
-                                };
-
-                                const Frustum fustrum[] =
-                                {
-                                    GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[0]),
-                                    GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[1]),
-                                    GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[2]),
-                                    GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[3]),
-                                    GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[4]),
-                                    GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[5]),
-                                };
-
-                                PVS                 brushes         { &allocator, visables.size() };
-                                Vector<GameObject*> animatedBrushes { &allocator, visables.size() };
-
-                                auto& materials = MaterialComponent::GetComponent();
-
-                                for (auto& visable : visables)
-                                {
-                                    ProfileFunctionLabeled(VISIBILITY);
-
-                                    auto entity = visibilityComponent[visable].entity;
-
-                                    Apply(*entity,
-                                        [&](BrushView& view)
-                                        {
-                                            auto passes = materials.GetPasses(view.GetMaterial());
-
-                                            if (auto res = std::find_if(passes.begin(), passes.end(),
-                                                [](auto& pass)
-                                                {
-                                                    return pass == SHADOWMAPPASS;
-                                                }); res != passes.end())
-                                            {
-                                                PushPV(*entity, view.GetBrush(), brushes, pointLightPosition);
-                                            }
-
-                                            if (auto res = std::find_if(passes.begin(), passes.end(),
-                                                [](auto& pass)
-                                                {
-                                                    return pass == SHADOWMAPANIMATEDPASS;
-                                                }); res != passes.end())
-                                            {
-                                                animatedBrushes.push_back(entity);
-                                            }
-                                        });
-                                }
-
-                                const float3 Position   = FlexKit::GetPositionW(pointLight.Position);
-                                const auto matrices     = CalculateShadowMapMatrices(Position, pointLight.R, (float)t);
-
-                                struct PoseConstants
-                                {
-                                    float4x4 M[256];
-                                };
+						const uint32_t workCount  = (uint32_t)(visableLights.size() / data.threadTotal) + (visableLights.size() % (uint32_t)data.threadTotal != 0 ? 1 : 0);
+						const uint32_t begin      = (uint32_t)(workCount * (uint32_t)data.threadIdx);
+						const uint32_t end        = Min(begin + workCount, (uint32_t)visableLights.size());
 
 
-                                if (auto state = resources.renderSystem().GetObjectState(depthTarget); state != DRS_DEPTHBUFFERWRITE)
-                                    ctx.AddResourceBarrier(depthTarget, state, DRS_DEPTHBUFFERWRITE);
+						for (uint32_t I = begin; I < end; I++)
+						{
+							ProfileFunction();
+
+							ctx.BeginEvent_DEBUG("Shadow Map Pass");
+
+							auto& lightHandle   = visableLights[I];
+							auto& pointLight    = pointLights[lightHandle];
+
+							if (pointLight.state == LightStateFlags::Dirty && pointLight.shadowMap != InvalidHandle)
+							{
+								pointLight.state = LightStateFlags::Clean;
+
+								const auto& visibilityComponent = SceneVisibilityComponent::GetComponent();
+								const auto& visables            = pointLight.shadowState->visableObjects;
+								const auto depthTarget          = pointLight.shadowMap;
+								const float3 pointLightPosition = GetPositionW(pointLight.Position);
+
+								if (!visables.size())
+									return;
+
+								static const Quaternion Orientations[6] = {
+									Quaternion{   0,  90, 0 }, // Right
+									Quaternion{   0, -90, 0 }, // Left
+									Quaternion{ -90,   0, 0 }, // Top
+									Quaternion{  90,   0, 0 }, // Bottom
+									Quaternion{   0, 180, 0 }, // Backward
+									Quaternion{   0,   0, 0 }, // Forward
+								};
+
+								const Frustum fustrum[] =
+								{
+									GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[0]),
+									GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[1]),
+									GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[2]),
+									GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[3]),
+									GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[4]),
+									GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[5]),
+								};
+
+								PVS                 brushes         { &allocator, visables.size() };
+								Vector<GameObject*> animatedBrushes { &allocator, visables.size() };
+
+								auto& materials = MaterialComponent::GetComponent();
+
+								for (auto& visable : visables)
+								{
+									ProfileFunctionLabeled(VISIBILITY);
+
+									auto entity = visibilityComponent[visable].entity;
+
+									Apply(*entity,
+										[&](BrushView& view)
+										{
+											auto passes = materials.GetPasses(view.GetMaterial());
+
+											if (auto res = std::find_if(passes.begin(), passes.end(),
+												[](auto& pass)
+												{
+													return pass == SHADOWMAPPASS;
+												}); res != passes.end())
+											{
+												PushPV(*entity, view.GetBrush(), brushes, pointLightPosition);
+											}
+
+											if (auto res = std::find_if(passes.begin(), passes.end(),
+												[](auto& pass)
+												{
+													return pass == SHADOWMAPANIMATEDPASS;
+												}); res != passes.end())
+											{
+												animatedBrushes.push_back(entity);
+											}
+										});
+								}
+
+								const float3 Position   = FlexKit::GetPositionW(pointLight.Position);
+								const auto matrices     = CalculateShadowMapMatrices(Position, pointLight.R, (float)t);
+
+								struct PoseConstants
+								{
+									float4x4 M[256];
+								};
 
 
-                                CBPushBuffer animatedConstantBuffer = data.reserveCB((AlignedSize<Brush::VConstantsLayout>() + AlignedSize<PoseConstants>()) * animatedBrushes.size());
-
-                                const DepthStencilView_Options DSV_desc{ 0, 0, depthTarget };
-
-                                ctx.DiscardResource(depthTarget);
-                                ctx.ClearDepthBuffer(depthTarget, 1.0f);
-
-                                ctx.SetPipelineState(shadowMapPSO);
-                                ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
-                                ctx.SetScissorAndViewports({ depthTarget });
-                                ctx.SetRenderTargets2({}, 0, DSV_desc);
-
-                                TriMeshHandle   currentMesh     = InvalidHandle;
-                                size_t          currentLodIdx   = 0xffffffffffffffff;
-                                size_t          indexCount      = 0;
-                                BoundingSphere  BS;
+								if (auto state = resources.renderSystem().GetObjectState(depthTarget); state != DRS_DEPTHBUFFERWRITE)
+									ctx.AddResourceBarrier(depthTarget, state, DRS_DEPTHBUFFERWRITE);
 
 
-					            for(uint32_t brushIdx = 0; brushIdx < (uint32_t)brushes.size(); brushIdx++)
-					            {
-                                    auto& PV            = brushes[brushIdx];
-                                    const auto lodLevel = PV.LODlevel;
+								CBPushBuffer animatedConstantBuffer = data.reserveCB((AlignedSize<Brush::VConstantsLayout>() + AlignedSize<PoseConstants>()) * animatedBrushes.size());
 
-                                    if( currentMesh     != PV.brush->MeshHandle ||
-                                        currentLodIdx   != lodLevel)
-                                    {
-                                        currentMesh     = PV.brush->MeshHandle;
+								const DepthStencilView_Options DSV_desc{ 0, 0, depthTarget };
 
-						                auto* const triMesh = GetMeshResource(currentMesh);
+								ctx.DiscardResource(depthTarget);
+								ctx.ClearDepthBuffer(depthTarget, 1.0f);
 
-                                        currentLodIdx       = Max(lodLevel, triMesh->GetHighestLoadedLodIdx());
-                                        auto& lod           = triMesh->lods[currentLodIdx];
-                                        indexCount          = lod.GetIndexCount();
+								ctx.SetPipelineState(shadowMapPSO);
+								ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+								ctx.SetScissorAndViewports({ depthTarget });
+								ctx.SetRenderTargets2({}, 0, DSV_desc);
 
-                                        ctx.AddIndexBuffer(triMesh, (uint32_t)currentLodIdx);
-                                        ctx.AddVertexBuffers(triMesh,
-                                            (uint32_t)currentLodIdx,
-                                            { VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
+								TriMeshHandle   currentMesh     = InvalidHandle;
+								size_t          currentLodIdx   = 0xffffffffffffffff;
+								size_t          indexCount      = 0;
+								BoundingSphere  BS;
 
-                                        BS = triMesh->BS;
-                                    }
-                                    const float4x4 WT   = GetWT(PV.brush->Node);
-                                    const float3 POS    = GetPositionW(PV.brush->Node);
-                                    const float4 POS_WT = POS + (WT * float4(BS.xyz(), 0)).xyz();
-                                    const float scale   = Max(WT[0][0], Max(WT[1][1], WT[2][2]));
 
-                                    auto brushBoundingSphere = BoundingSphere{ POS_WT.xyz(), BS.w * scale };
-                                    bool intersections[] =
-                                    {
-                                        Intersects(fustrum[0], brushBoundingSphere), // Left
-                                        Intersects(fustrum[1], brushBoundingSphere), // Right
-                                        Intersects(fustrum[2], brushBoundingSphere), // Top
-                                        Intersects(fustrum[3], brushBoundingSphere), // Bottom
-                                        Intersects(fustrum[4], brushBoundingSphere), // Forward
-                                        Intersects(fustrum[5], brushBoundingSphere), // Backward
-                                    };
+								for(uint32_t brushIdx = 0; brushIdx < (uint32_t)brushes.size(); brushIdx++)
+								{
+									auto& PV            = brushes[brushIdx];
+									const auto lodLevel = PV.LODlevel;
+									auto& meshes        = PV.brush->meshes;
 
-                                    if (intersections[0] || intersections[1] || intersections[2] ||
-                                        intersections[3] || intersections[4] || intersections[5])
-                                    {
+									const size_t meshCount = meshes.size();
+									for(size_t I = 0; I < meshCount; I++)
+									{
+										auto& mesh			= meshes[I];
+										auto meshLodLevel	= lodLevel[I];
 
-                                        ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
+										if( currentMesh != mesh || currentLodIdx != meshLodLevel)
+										{
+											currentMesh = mesh;
 
-                                        for (uint32_t itr = 0; itr < 6; itr++)
-                                        {
-                                            if (intersections[itr])
-                                            {
-                                                struct
-                                                {
-                                                    float4x4 PV;
-                                                    float4x4 View;
-                                                    uint32_t Idx;
-                                                    float    maxZ;
-                                                }tempConstants = {
-                                                        .PV     = matrices.PV[itr],
-                                                        .View   = matrices.View[itr],
-                                                        .Idx    = itr,
-                                                        .maxZ   = pointLight.R };
+											auto* const triMesh = GetMeshResource(currentMesh);
 
-                                                ctx.SetGraphicsConstantValue(0, 34, &tempConstants);
-                                                ctx.DrawIndexedInstanced(indexCount);
-                                            }
-                                        }
-                                    }
-					            }
+											currentLodIdx       = Max(meshLodLevel, triMesh->GetHighestLoadedLodIdx());
+											auto& lod           = triMesh->lods[currentLodIdx];
+											indexCount          = lod.GetIndexCount();
 
-                                if(animatedBrushes.size())
-                                {
-                                    auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS);
-                                    ctx.SetPipelineState(PSOAnimated);
-                                    ctx.SetScissorAndViewports({ depthTarget });
-                                    ctx.SetRenderTargets2({}, 0, DSV_desc);
-                                    ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+											ctx.AddIndexBuffer(triMesh, (uint32_t)currentLodIdx);
+											ctx.AddVertexBuffers(triMesh,
+												(uint32_t)currentLodIdx,
+												{ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
 
-                                    for (const auto& brush : animatedBrushes)
-                                    {
-                                        Apply(*brush,
-                                            [&](const SceneNodeView<>&    nodeView,
-                                                const BrushView&          brushView,
-                                                const SkeletonView&       poseView)
-                                            {
-                                                const auto& draw      = brushView.GetBrush();
-                                                const auto& pose      = poseView.GetPoseState();
-                                                const auto& skeleton  = *pose.Sk;
+											BS = triMesh->BS;
+										}
 
-                                                PoseConstants poseTemp;
+										const float4x4 WT   = GetWT(PV.brush->Node);
+										const float3 POS    = GetPositionW(PV.brush->Node);
+										const float4 POS_WT = POS + (WT * float4(BS.xyz(), 0)).xyz();
+										const float scale   = Max(WT[0][0], Max(WT[1][1], WT[2][2]));
 
-                                                const size_t end = pose.JointCount;
-                                                for (size_t I = 0; I < end; ++I)
-                                                    poseTemp.M[I] = skeleton.IPose[I] * pose.CurrentPose[I];
+										auto brushBoundingSphere = BoundingSphere{ POS_WT.xyz(), BS.w * scale };
+										bool intersections[] =
+										{
+											Intersects(fustrum[0], brushBoundingSphere), // Left
+											Intersects(fustrum[1], brushBoundingSphere), // Right
+											Intersects(fustrum[2], brushBoundingSphere), // Top
+											Intersects(fustrum[3], brushBoundingSphere), // Bottom
+											Intersects(fustrum[4], brushBoundingSphere), // Forward
+											Intersects(fustrum[5], brushBoundingSphere), // Backward
+										};
 
-                                                const auto      triMesh         = GetMeshResource(draw.MeshHandle);
-                                                const auto      lodLevelIdx     = triMesh->GetHighestLoadedLodIdx();
-                                                const auto&     lodLevel        = triMesh->GetHighestLoadedLod();
-                                                const size_t    indexCount      = triMesh->GetHighestLoadedLod().GetIndexCount();
+										if (intersections[0] || intersections[1] || intersections[2] ||
+											intersections[3] || intersections[4] || intersections[5])
+										{
 
-                                                ctx.AddIndexBuffer(triMesh, lodLevelIdx);
-						                        ctx.AddVertexBuffers(triMesh,
-                                                    lodLevelIdx,
-							                        {   VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-                                                        VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
-                                                        VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
-                                                    });
+											ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
 
-                                                const auto poseConstants = ConstantBufferDataSet{ poseTemp, animatedConstantBuffer };
+											for (uint32_t itr = 0; itr < 6; itr++)
+											{
+												if (intersections[itr])
+												{
+													struct
+													{
+														float4x4 PV;
+														float4x4 View;
+														uint32_t Idx;
+														float    maxZ;
+													}tempConstants = {
+															.PV     = matrices.PV[itr],
+															.View   = matrices.View[itr],
+															.Idx    = itr,
+															.maxZ   = pointLight.R };
 
-                                                const float4x4 WT           = nodeView.GetWT();
-                                                const float4 brushPOS_WT    = WT * float4(triMesh->BS.xyz(), 1);
+													ctx.SetGraphicsConstantValue(0, 34, &tempConstants);
+													ctx.DrawIndexedInstanced(indexCount);
+												}
+											}
+										}
+									}
+								}
 
-                                                ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
-                                                ctx.SetGraphicsConstantBufferView(3, poseConstants);
+								if(animatedBrushes.size())
+								{
+									auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS);
+									ctx.SetPipelineState(PSOAnimated);
+									ctx.SetScissorAndViewports({ depthTarget });
+									ctx.SetRenderTargets2({}, 0, DSV_desc);
+									ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 
-                                                for (uint32_t itr = 0; itr < 6; itr++)
-                                                {
-                                                    struct 
-                                                    {
-                                                        float4x4    PV;
-                                                        float4x4    View;
-                                                        uint32_t    Idx;
-                                                        float       maxZ;
-                                                    }tempConstants = {
-                                                            .PV     = matrices.PV[itr],
-                                                            .View   = matrices.View[itr],
-                                                            .Idx    = itr,
-                                                            .maxZ   = pointLight.R
-                                                    };
+									for (const auto& brush : animatedBrushes)
+									{
+										Apply(*brush,
+											[&](const SceneNodeView<>&    nodeView,
+												const BrushView&          brushView,
+												const SkeletonView&       poseView)
+											{
+												const auto& draw      = brushView.GetBrush();
+												const auto& pose      = poseView.GetPoseState();
+												const auto& skeleton  = *pose.Sk;
 
-                                                    if (FlexKit::Intersects(fustrum[itr], float4{ brushPOS_WT.xyz(), triMesh->BS.w }))
-                                                    {
-                                                        ctx.SetGraphicsConstantValue(0, 40, &tempConstants);
-                                                        ctx.DrawIndexedInstanced(indexCount);
-                                                    }
-                                                }
-                                            });
-                                    }
-                                }
+												PoseConstants poseTemp;
 
-                                shadowMaps.push_back(depthTarget);
-                            }
+												const size_t end = pose.JointCount;
+												for (size_t I = 0; I < end; ++I)
+													poseTemp.M[I] = skeleton.IPose[I] * pose.CurrentPose[I];
 
-                            ctx.EndEvent_DEBUG();
-                        }
+												for(auto mesh : draw.meshes)
+												{
+													const auto      triMesh         = GetMeshResource(mesh);
+													const auto      lodLevelIdx     = triMesh->GetHighestLoadedLodIdx();
+													const auto&     lodLevel        = triMesh->GetHighestLoadedLod();
+													const size_t    indexCount      = triMesh->GetHighestLoadedLod().GetIndexCount();
 
-                        if(shadowMaps.size())
-                        {
-                            ProfileFunctionLabeled(Barriers);
+													ctx.AddIndexBuffer(triMesh, lodLevelIdx);
+													ctx.AddVertexBuffers(triMesh,
+														lodLevelIdx,
+														{   VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+															VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
+															VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
+														});
 
-                            for (auto& additionalPass : data.additionalShadowPass)
-                            {
-                                ctx.BeginEvent_DEBUG("Additional Shadow Map Pass");
+													const auto poseConstants = ConstantBufferDataSet{ poseTemp, animatedConstantBuffer };
 
-                                additionalPass(
-                                    data.reserveCB,
-                                    data.reserveVB,
-                                    passConstant2.data(),
-                                    shadowMaps.data(),
-                                    (uint32_t)shadowMaps.size(),
-                                    resources,
-                                    ctx,
-                                    allocator);
+													const float4x4 WT           = nodeView.GetWT();
+													const float4 brushPOS_WT    = WT * float4(triMesh->BS.xyz(), 1);
 
-                                ctx.EndEvent_DEBUG();
-                            }
+													ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
+													ctx.SetGraphicsConstantBufferView(3, poseConstants);
 
-                            for (const auto target : shadowMaps) {
-                                ctx.AddResourceBarrier(target, DRS_DEPTHBUFFERWRITE, DRS_PixelShaderResource);
-                                ctx.renderSystem->SetObjectState(target, DRS_PixelShaderResource);
-                            }
-                        }
-                        ctx.EndEvent_DEBUG();
-				    });
+													for (uint32_t itr = 0; itr < 6; itr++)
+													{
+														struct 
+														{
+															float4x4    PV;
+															float4x4    View;
+															uint32_t    Idx;
+															float       maxZ;
+														}tempConstants = {
+																.PV     = matrices.PV[itr],
+																.View   = matrices.View[itr],
+																.Idx    = itr,
+																.maxZ   = pointLight.R
+														};
+
+														if (FlexKit::Intersects(fustrum[itr], float4{ brushPOS_WT.xyz(), triMesh->BS.w }))
+														{
+															ctx.SetGraphicsConstantValue(0, 40, &tempConstants);
+															ctx.DrawIndexedInstanced(indexCount);
+														}
+													}
+												}
+											});
+									}
+								}
+
+								shadowMaps.push_back(depthTarget);
+							}
+
+							ctx.EndEvent_DEBUG();
+						}
+
+						if(shadowMaps.size())
+						{
+							ProfileFunctionLabeled(Barriers);
+
+							for (auto& additionalPass : data.additionalShadowPass)
+							{
+								ctx.BeginEvent_DEBUG("Additional Shadow Map Pass");
+
+								additionalPass(
+									data.reserveCB,
+									data.reserveVB,
+									passConstant2.data(),
+									shadowMaps.data(),
+									(uint32_t)shadowMaps.size(),
+									resources,
+									ctx,
+									allocator);
+
+								ctx.EndEvent_DEBUG();
+							}
+
+							for (const auto target : shadowMaps) {
+								ctx.AddResourceBarrier(target, DRS_DEPTHBUFFERWRITE, DRS_PixelShaderResource);
+								ctx.renderSystem->SetObjectState(target, DRS_PixelShaderResource);
+							}
+						}
+						ctx.EndEvent_DEBUG();
+					});
 
 		return shadowMapPass;
 	}

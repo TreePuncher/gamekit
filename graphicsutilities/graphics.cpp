@@ -49,11 +49,10 @@ namespace FlexKit
 
 	UAVBuffer::UAVBuffer(const RenderSystem& rs, const ResourceHandle handle, const size_t IN_stride, const size_t IN_offset)
 	{
-        FK_ASSERT(IN_stride < std::numeric_limits<uint32_t>::max());
-        FK_ASSERT(IN_offset < std::numeric_limits<uint32_t>::max());
+		FK_ASSERT(IN_offset < std::numeric_limits<uint32_t>::max());
 
 		auto uavLayout	= rs.GetUAVBufferLayout(handle);
-        auto bufferSize = rs.GetUAVBufferSize(handle);
+		auto bufferSize = rs.GetUAVBufferSize(handle);
 
 		resource		= rs.GetDeviceResource(handle);
 		stride			= (uint32_t)(IN_stride == -1 ? uavLayout.stride : IN_stride);
@@ -161,15 +160,15 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    size_t ConstantBufferTable::GetBufferSize(const ConstantBufferHandle Handle) const
-    {
-        auto& buffer = buffers[handles[Handle]];
+	size_t ConstantBufferTable::GetBufferSize(const ConstantBufferHandle Handle) const
+	{
+		auto& buffer = buffers[handles[Handle]];
 
-        return buffer.size;
-    }
+		return buffer.size;
+	}
 
 
 	/************************************************************************************************/
@@ -242,8 +241,8 @@ namespace FlexKit
 	ConstantBufferTable::SubAllocation ConstantBufferTable::Reserve(ConstantBufferHandle CB, size_t reserveSize)
 	{
 		const auto res = Push(CB, nullptr, reserveSize);
-        if (!res.has_value())
-            DebugBreak();
+		if (!res.has_value())
+			DebugBreak();
 
 		FK_ASSERT(res.has_value());
 
@@ -485,12 +484,12 @@ namespace FlexKit
 							ctx.renderSystem->DescriptorCBVSRVUAVSize,
 							Idx);
 
-                        Texture2D nullTexture{ nullptr };
-                        nullTexture.Format = DXGI_FORMAT_R8G8B8A8_UINT;
+						Texture2D nullTexture{ nullptr };
+						nullTexture.Format = DXGI_FORMAT_R8G8B8A8_UINT;
 
 						PushUAV2DToDescHeap(
 							ctx.renderSystem,
-                            nullTexture,
+							nullTexture,
 							POS);
 					}	break;
 					case DescHeapEntryType::HeapError:
@@ -605,12 +604,12 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    bool DescriptorHeap::SetSRV(Context& ctx, size_t idx, ResourceHandle handle, uint MipOffset, DeviceFormat format)
-    {
-        if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
+	bool DescriptorHeap::SetSRV(Context& ctx, size_t idx, ResourceHandle handle, uint MipOffset, DeviceFormat format)
+	{
+		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
 			return false;
 
 		FillState[idx] = true;
@@ -620,7 +619,7 @@ namespace FlexKit
 		PushTextureToDescHeap(
 			ctx.renderSystem,
 			dxFormat,
-            MipOffset,
+			MipOffset,
 			handle,
 			IncrementHeapPOS(
 				descriptorHeap,
@@ -628,45 +627,45 @@ namespace FlexKit
 				idx));
 
 		return true;
-    }
-
-
-    /************************************************************************************************/
-
-
-    bool DescriptorHeap::SetSRV3D(Context& ctx, size_t idx, ResourceHandle resource)
-    {
-        if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
-			return false;
-
-		FillState[idx] = true;
-
-        const uint32_t  mipCount    = ctx.renderSystem->GetTextureMipCount(resource);
-        const auto      format      = ctx.renderSystem->GetTextureFormat(resource);
-		const auto      dxFormat    = TextureFormat2DXGIFormat(format);
-
-        PushTexture3DToDescHeap(
-            ctx.renderSystem,
-            dxFormat,
-            mipCount,
-            0,
-            0,
-            resource,
-            IncrementHeapPOS(
-                descriptorHeap,
-                ctx.renderSystem->DescriptorCBVSRVUAVSize,
-                idx));
-
-		return true;
-    }
+	}
 
 
 	/************************************************************************************************/
 
 
-    bool DescriptorHeap::SetCBV(Context& ctx, size_t idx, const ConstantBufferDataSet& constants)
-    {
-        if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx))
+	bool DescriptorHeap::SetSRV3D(Context& ctx, size_t idx, ResourceHandle resource)
+	{
+		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
+			return false;
+
+		FillState[idx] = true;
+
+		const uint32_t  mipCount    = ctx.renderSystem->GetTextureMipCount(resource);
+		const auto      format      = ctx.renderSystem->GetTextureFormat(resource);
+		const auto      dxFormat    = TextureFormat2DXGIFormat(format);
+
+		PushTexture3DToDescHeap(
+			ctx.renderSystem,
+			dxFormat,
+			mipCount,
+			0,
+			0,
+			resource,
+			IncrementHeapPOS(
+				descriptorHeap,
+				ctx.renderSystem->DescriptorCBVSRVUAVSize,
+				idx));
+
+		return true;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool DescriptorHeap::SetCBV(Context& ctx, size_t idx, const ConstantBufferDataSet& constants)
+	{
+		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx))
 			return false;
 
 		FillState[idx] = true;
@@ -680,14 +679,14 @@ namespace FlexKit
 				descriptorHeap,
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
 				idx),
-            constants.Size(),
-            constants.Offset());
+			constants.Size(),
+			constants.Offset());
 
 		return true;
-    }
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	bool DescriptorHeap::SetCBV(Context& ctx, size_t idx, ConstantBufferHandle	Handle, size_t offset, size_t bufferSize)
@@ -712,12 +711,12 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    bool DescriptorHeap::SetCBV(Context& ctx, size_t idx, ResourceHandle	Handle, size_t offset, size_t bufferSize)
-    {
-        if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx))
+	bool DescriptorHeap::SetCBV(Context& ctx, size_t idx, ResourceHandle	Handle, size_t offset, size_t bufferSize)
+	{
+		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx))
 			return false;
 
 		FillState[idx] = true;
@@ -734,7 +733,7 @@ namespace FlexKit
 			offset);
 
 		return true;
-    }
+	}
 
 
 	/************************************************************************************************/
@@ -742,8 +741,8 @@ namespace FlexKit
 
 	bool DescriptorHeap::SetUAVBuffer(Context& ctx, size_t idx, ResourceHandle handle, size_t offset)
 	{
-        FK_ASSERT(idx < std::numeric_limits<uint32_t>::max());
-        FK_ASSERT(offset < std::numeric_limits<uint32_t>::max());
+		FK_ASSERT(idx < std::numeric_limits<uint32_t>::max());
+		FK_ASSERT(offset < std::numeric_limits<uint32_t>::max());
 
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
 			return false;
@@ -763,7 +762,7 @@ namespace FlexKit
 
 		return true;
 	}
-    
+	
 
 	/************************************************************************************************/
 
@@ -775,10 +774,10 @@ namespace FlexKit
 
 		FillState[idx] = true;
 
-        Texture2D tex;
-        tex.WH          = ctx.renderSystem->GetTextureWH(handle);
-        tex.Texture     = ctx.renderSystem->GetDeviceResource(handle);
-        tex.Format      = ctx.renderSystem->GetTextureDeviceFormat(handle);
+		Texture2D tex;
+		tex.WH          = ctx.renderSystem->GetTextureWH(handle);
+		tex.Texture     = ctx.renderSystem->GetDeviceResource(handle);
+		tex.Format      = ctx.renderSystem->GetTextureDeviceFormat(handle);
 
 		PushUAV2DToDescHeap(
 			ctx.renderSystem,
@@ -792,20 +791,20 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    bool DescriptorHeap::SetUAVTexture(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
-    {
-        if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
+	bool DescriptorHeap::SetUAVTexture(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
+	{
+		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
 			return false;
 
 		FillState[idx] = true;
 
-        Texture2D tex;
-        tex.WH          = ctx.renderSystem->GetTextureWH(handle);
-        tex.Texture     = ctx.renderSystem->GetDeviceResource(handle);
-        tex.Format      = TextureFormat2DXGIFormat(format);
+		Texture2D tex;
+		tex.WH          = ctx.renderSystem->GetTextureWH(handle);
+		tex.Texture     = ctx.renderSystem->GetDeviceResource(handle);
+		tex.Format      = TextureFormat2DXGIFormat(format);
 
 		PushUAV2DToDescHeap(
 			ctx.renderSystem,
@@ -815,129 +814,129 @@ namespace FlexKit
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
 				idx));
 
-        return true;
-    }
+		return true;
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    bool DescriptorHeap::SetUAVTexture(Context& ctx, size_t idx, size_t mipLevel, ResourceHandle handle, DeviceFormat format)
-    {
-        FK_ASSERT(idx < std::numeric_limits<uint32_t>::max());
-        FK_ASSERT(mipLevel < std::numeric_limits<uint32_t>::max());
+	bool DescriptorHeap::SetUAVTexture(Context& ctx, size_t idx, size_t mipLevel, ResourceHandle handle, DeviceFormat format)
+	{
+		FK_ASSERT(idx < std::numeric_limits<uint32_t>::max());
+		FK_ASSERT(mipLevel < std::numeric_limits<uint32_t>::max());
 
-        if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
+		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
 			return false;
 
 		FillState[idx] = true;
 
-        Texture2D tex;
-        tex.WH          = ctx.renderSystem->GetTextureWH(handle);
-        tex.Texture     = ctx.renderSystem->GetDeviceResource(handle);
-        tex.Format      = TextureFormat2DXGIFormat(format);
+		Texture2D tex;
+		tex.WH          = ctx.renderSystem->GetTextureWH(handle);
+		tex.Texture     = ctx.renderSystem->GetDeviceResource(handle);
+		tex.Format      = TextureFormat2DXGIFormat(format);
 
-        PushUAV2DToDescHeap(
+		PushUAV2DToDescHeap(
 			ctx.renderSystem,
 			tex,
-            (uint32_t)mipLevel,
-			IncrementHeapPOS(
-				descriptorHeap,
-				ctx.renderSystem->DescriptorCBVSRVUAVSize,
-                idx));
-
-        return true;
-    }
-
-
-    /************************************************************************************************/
-
-
-    bool DescriptorHeap::SetUAVTexture3D(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
-    {
-        if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
-			return false;
-
-		FillState[idx] = true;
-
-        Texture2D tex;
-        tex.WH          = ctx.renderSystem->GetTextureWH(handle);
-        tex.Texture     = ctx.renderSystem->GetDeviceResource(handle);
-        tex.Format      = TextureFormat2DXGIFormat(format);
-
-        PushUAV3DToDescHeap(
-			ctx.renderSystem,
-			tex,
-            tex.WH[0],
+			(uint32_t)mipLevel,
 			IncrementHeapPOS(
 				descriptorHeap,
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
 				idx));
 
-        return true;
-    }
+		return true;
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    bool DescriptorHeap::SetUAVStructured(Context& ctx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
-    {
-        if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
+	bool DescriptorHeap::SetUAVTexture3D(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
+	{
+		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
 			return false;
 
 		FillState[idx] = true;
 
-        UAVBuffer uavDesc{ *ctx.renderSystem, handle, stride, offset };
-        
-        PushUAVBufferToDescHeap(
-            ctx.renderSystem,
-            uavDesc,
-            IncrementHeapPOS(
-                descriptorHeap,
-                ctx.renderSystem->DescriptorCBVSRVUAVSize,
-                idx));
+		Texture2D tex;
+		tex.WH          = ctx.renderSystem->GetTextureWH(handle);
+		tex.Texture     = ctx.renderSystem->GetDeviceResource(handle);
+		tex.Format      = TextureFormat2DXGIFormat(format);
+
+		PushUAV3DToDescHeap(
+			ctx.renderSystem,
+			tex,
+			tex.WH[0],
+			IncrementHeapPOS(
+				descriptorHeap,
+				ctx.renderSystem->DescriptorCBVSRVUAVSize,
+				idx));
 
 		return true;
-    }
+	}
 
 
-    
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    bool DescriptorHeap::SetUAVStructured(
-        Context&            ctx,
-        size_t              idx,
-        ResourceHandle	    resource,
-        ResourceHandle      counter,
-        size_t              stride,
-        size_t              counterOffset)
-    {
-        FK_ASSERT(idx < std::numeric_limits<uint32_t>::max());
-        FK_ASSERT(stride < std::numeric_limits<uint32_t>::max());
-        FK_ASSERT(counterOffset < std::numeric_limits<uint32_t>::max());
+	bool DescriptorHeap::SetUAVStructured(Context& ctx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
+	{
+		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
+			return false;
 
-        if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
-            return false;
+		FillState[idx] = true;
 
-        FillState[idx] = true;
+		UAVBuffer uavDesc{ *ctx.renderSystem, handle, stride, offset };
+		
+		PushUAVBufferToDescHeap(
+			ctx.renderSystem,
+			uavDesc,
+			IncrementHeapPOS(
+				descriptorHeap,
+				ctx.renderSystem->DescriptorCBVSRVUAVSize,
+				idx));
 
-        UAVBuffer uavDesc{ *ctx.renderSystem, resource, stride, 0 };
-        uavDesc.counterOffset   = (uint32_t)counterOffset;
-        uavDesc.offset          = (uint32_t)(resource == counter ? Max(4096 / stride, 1) : 0);
+		return true;
+	}
 
-        PushUAVBufferToDescHeap2(
-            ctx.renderSystem,
-            uavDesc,
-            ctx.renderSystem->GetDeviceResource(counter),
-            IncrementHeapPOS(
-                descriptorHeap,
-                ctx.renderSystem->DescriptorCBVSRVUAVSize,
-                idx));
 
-        return true;
-    }
+	
+	/************************************************************************************************/
+
+
+	bool DescriptorHeap::SetUAVStructured(
+		Context&            ctx,
+		size_t              idx,
+		ResourceHandle	    resource,
+		ResourceHandle      counter,
+		size_t              stride,
+		size_t              counterOffset)
+	{
+		FK_ASSERT(idx < std::numeric_limits<uint32_t>::max());
+		FK_ASSERT(stride < std::numeric_limits<uint32_t>::max());
+		FK_ASSERT(counterOffset < std::numeric_limits<uint32_t>::max());
+
+		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
+			return false;
+
+		FillState[idx] = true;
+
+		UAVBuffer uavDesc{ *ctx.renderSystem, resource, stride, 0 };
+		uavDesc.counterOffset   = (uint32_t)counterOffset;
+		uavDesc.offset          = (uint32_t)(resource == counter ? Max(4096 / stride, 1) : 0);
+
+		PushUAVBufferToDescHeap2(
+			ctx.renderSystem,
+			uavDesc,
+			ctx.renderSystem->GetDeviceResource(counter),
+			IncrementHeapPOS(
+				descriptorHeap,
+				ctx.renderSystem->DescriptorCBVSRVUAVSize,
+				idx));
+
+		return true;
+	}
 
 
 	/************************************************************************************************/
@@ -958,10 +957,10 @@ namespace FlexKit
 			IncrementHeapPOS(descriptorHeap,
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
 				idx),
-            byteSize / stride,
+			byteSize / stride,
 			stride,
-            D3D12_BUFFER_SRV_FLAG_NONE,
-            offset);
+			D3D12_BUFFER_SRV_FLAG_NONE,
+			offset);
 
 		return true;
 	}
@@ -970,7 +969,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    /*
+	/*
 	bool DescriptorHeap::SetStructuredResource(Context& ctx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
 	{
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
@@ -988,12 +987,12 @@ namespace FlexKit
 				idx),
 			size / stride,
 			stride,
-            D3D12_BUFFER_SRV_FLAG_NONE,
-            offset);
+			D3D12_BUFFER_SRV_FLAG_NONE,
+			offset);
 
 		return true;
 	}
-    */
+	*/
 
 	/************************************************************************************************/
 
@@ -1046,14 +1045,14 @@ namespace FlexKit
 
 			switch (I.Type)
 			{
-            case RootSignatureEntryType::UINT:
-            {
-                Param.InitAsConstants(
-                    I.UINTConstant.size,
-                    I.UINTConstant.Register,
-                    I.UINTConstant.RegisterSpace,
-                    PipelineDest2ShaderVis(I.UINTConstant.Accessibility));
-            }   break;
+			case RootSignatureEntryType::UINT:
+			{
+				Param.InitAsConstants(
+					I.UINTConstant.size,
+					I.UINTConstant.Register,
+					I.UINTConstant.RegisterSpace,
+					PipelineDest2ShaderVis(I.UINTConstant.Accessibility));
+			}   break;
 			case RootSignatureEntryType::DescriptorHeap:
 			{
 				const auto  HeapIdx = I.DescriptorHeap.HeapIdx;
@@ -1136,12 +1135,12 @@ namespace FlexKit
 											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_WRAP},
 
 			CD3DX12_STATIC_SAMPLER_DESC{1, D3D12_FILTER::D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR },
-            CD3DX12_STATIC_SAMPLER_DESC{2,  D3D12_FILTER::D3D12_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR,
-                                            D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
-                                            D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
-                                            D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
-                                            0, 1, D3D12_COMPARISON_FUNC_LESS_EQUAL,
-                                            D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK }
+			CD3DX12_STATIC_SAMPLER_DESC{2,  D3D12_FILTER::D3D12_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR,
+											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+											0, 1, D3D12_COMPARISON_FUNC_LESS_EQUAL,
+											D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK }
 		};
 
 		RootSignatureDesc.Init((UINT)Parameters.size(), Parameters.begin(), 1, &Default);
@@ -1183,7 +1182,7 @@ namespace FlexKit
 
 		DesciptorHeaps.clear();
 
-        Signature->AddRef();
+		Signature->AddRef();
 
 		return true;
 	}
@@ -1246,8 +1245,8 @@ namespace FlexKit
 		HR = renderSystem->pDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator, nullptr, __uuidof(ID3D12CommandList), (void**)&DeviceContext);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
 
 
-        SETDEBUGNAME(DeviceContext, "GraphicsContext");
-        SETDEBUGNAME(DeviceContext, "GraphicsContextAllocator");
+		SETDEBUGNAME(DeviceContext, "GraphicsContext");
+		SETDEBUGNAME(DeviceContext, "GraphicsContextAllocator");
 
 #if USING(AFTERMATH)
 		auto res = GFSDK_Aftermath_DX12_CreateContextHandle(DeviceContext, &AFTERMATH_context);
@@ -1271,7 +1270,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-    Context::Context(Context&& RHS)
+	Context::Context(Context&& RHS)
 	{
 		DeviceContext			= RHS.DeviceContext;
 		CurrentRootSignature	= RHS.CurrentRootSignature;
@@ -1323,16 +1322,16 @@ namespace FlexKit
 
 		RHS.descHeapRTV = nullptr;
 		RHS.descHeapSRV = nullptr;
-        RHS.descHeapDSV = nullptr;
+		RHS.descHeapDSV = nullptr;
 
 #if USING(AFTERMATH)
-        AFTERMATH_context       = RHS.AFTERMATH_context;
-        RHS.AFTERMATH_context   = nullptr;
+		AFTERMATH_context       = RHS.AFTERMATH_context;
+		RHS.AFTERMATH_context   = nullptr;
 #endif
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	Context& Context::operator = (Context&& RHS)// Moves only
@@ -1390,21 +1389,21 @@ namespace FlexKit
 
 
 #if USING(AFTERMATH)
-        AFTERMATH_context       = RHS.AFTERMATH_context;
-        RHS.AFTERMATH_context   = nullptr;
+		AFTERMATH_context       = RHS.AFTERMATH_context;
+		RHS.AFTERMATH_context   = nullptr;
 #endif
 
 		return *this;
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	void Context::Release()
 	{
 #if USING(AFTERMATH)
-        GFSDK_Aftermath_ReleaseContextHandle(AFTERMATH_context);
+		GFSDK_Aftermath_ReleaseContextHandle(AFTERMATH_context);
 #endif
 
 		if(descHeapRTV)
@@ -1432,67 +1431,67 @@ namespace FlexKit
 		descHeapSRVLocal     = nullptr;
 		commandAllocator     = nullptr;
 		DeviceContext        = nullptr;
-        CurrentPipelineState = nullptr;
+		CurrentPipelineState = nullptr;
 	}
 
 
 	/************************************************************************************************/
 
 
-    void Context::CreateAS(const AccelerationStructureDesc& asDesc, const TriMesh&)
-    {
-        FK_ASSERT(0);
-    }
+	void Context::CreateAS(const AccelerationStructureDesc& asDesc, const TriMesh&)
+	{
+		FK_ASSERT(0);
+	}
 
 
-    void Context::BuildBLAS(VertexBuffer& vertexBuffer, ResourceHandle destination, ResourceHandle scratchSpace)
-    {
-        auto indexBuffer    = vertexBuffer.VertexBuffers[vertexBuffer.MD.IndexBuffer_Index];
-        auto positionBuffer = vertexBuffer.Find(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION);
+	void Context::BuildBLAS(VertexBuffer& vertexBuffer, ResourceHandle destination, ResourceHandle scratchSpace)
+	{
+		auto indexBuffer    = vertexBuffer.VertexBuffers[vertexBuffer.MD.IndexBuffer_Index];
+		auto positionBuffer = vertexBuffer.Find(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION);
 
-        D3D12_RAYTRACING_GEOMETRY_DESC desc;
-        desc.Type   = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-        desc.Flags  = D3D12_RAYTRACING_GEOMETRY_FLAGS::D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
+		D3D12_RAYTRACING_GEOMETRY_DESC desc;
+		desc.Type   = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+		desc.Flags  = D3D12_RAYTRACING_GEOMETRY_FLAGS::D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
 
-        desc.Triangles.Transform3x4 = 0;
-        desc.Triangles.IndexFormat  = DXGI_FORMAT_R32_UINT;
-        desc.Triangles.IndexBuffer  = indexBuffer.GetDevicePointer();
-        desc.Triangles.IndexCount   = (UINT)indexBuffer.Size();
+		desc.Triangles.Transform3x4 = 0;
+		desc.Triangles.IndexFormat  = DXGI_FORMAT_R32_UINT;
+		desc.Triangles.IndexBuffer  = indexBuffer.GetDevicePointer();
+		desc.Triangles.IndexCount   = (UINT)indexBuffer.Size();
 
-        desc.Triangles.VertexFormat                 = DXGI_FORMAT_R32G32B32_FLOAT;
-        desc.Triangles.VertexBuffer.StartAddress    = positionBuffer->GetDevicePointer();
-        desc.Triangles.VertexBuffer.StrideInBytes   = positionBuffer->BufferStride;
-        desc.Triangles.VertexCount                  = (UINT)positionBuffer->Size();
+		desc.Triangles.VertexFormat                 = DXGI_FORMAT_R32G32B32_FLOAT;
+		desc.Triangles.VertexBuffer.StartAddress    = positionBuffer->GetDevicePointer();
+		desc.Triangles.VertexBuffer.StrideInBytes   = positionBuffer->BufferStride;
+		desc.Triangles.VertexCount                  = (UINT)positionBuffer->Size();
 
-        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC build_desc {
-                            .DestAccelerationStructureData = renderSystem->GetDeviceResource(destination)->GetGPUVirtualAddress(),
-                            .Inputs = {
-                                .Type           = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
-                                .Flags          = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE,
-                                .NumDescs       = 1,
-                                .DescsLayout    = D3D12_ELEMENTS_LAYOUT::D3D12_ELEMENTS_LAYOUT_ARRAY,
-                                .pGeometryDescs = &desc,
-                            },
-                            .ScratchAccelerationStructureData = renderSystem->GetDeviceResource(scratchSpace)->GetGPUVirtualAddress(),
-        };
+		D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC build_desc {
+							.DestAccelerationStructureData = renderSystem->GetDeviceResource(destination)->GetGPUVirtualAddress(),
+							.Inputs = {
+								.Type           = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
+								.Flags          = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE,
+								.NumDescs       = 1,
+								.DescsLayout    = D3D12_ELEMENTS_LAYOUT::D3D12_ELEMENTS_LAYOUT_ARRAY,
+								.pGeometryDescs = &desc,
+							},
+							.ScratchAccelerationStructureData = renderSystem->GetDeviceResource(scratchSpace)->GetGPUVirtualAddress(),
+		};
 
-        UpdateResourceStates();
-        DeviceContext->BuildRaytracingAccelerationStructure(&build_desc, 0, nullptr);
-    }
-
-
-    /************************************************************************************************/
+		UpdateResourceStates();
+		DeviceContext->BuildRaytracingAccelerationStructure(&build_desc, 0, nullptr);
+	}
 
 
-    void Context::DiscardResource(ResourceHandle resource)
-    {
-        UpdateResourceStates();
-
-        DeviceContext->DiscardResource(renderSystem->GetDeviceResource(resource), nullptr);
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	void Context::DiscardResource(ResourceHandle resource)
+	{
+		UpdateResourceStates();
+
+		DeviceContext->DiscardResource(renderSystem->GetDeviceResource(resource), nullptr);
+	}
+
+
+	/************************************************************************************************/
 
 
 	void Context::AddAliasingBarrier(ResourceHandle before, ResourceHandle after)
@@ -1503,7 +1502,7 @@ namespace FlexKit
 				return
 					(rhs.Type            == Barrier::Type::Aliasing) &&
 					((before != InvalidHandle &&  rhs.aliasedResources[0] == before) ||
-                     (after != InvalidHandle &&   rhs.aliasedResources[1] == after));
+					 (after != InvalidHandle &&   rhs.aliasedResources[1] == after));
 			});
 
 		if (std::end(PendingBarriers) == res)
@@ -1515,41 +1514,41 @@ namespace FlexKit
 
 			PendingBarriers.push_back(barrier);
 		}
-        else
-        {
-            Barrier barrier;
-            barrier.Type                = Barrier::Type::Aliasing;
-            barrier.aliasedResources[0] = res->aliasedResources[0] == InvalidHandle ? before : res->aliasedResources[0];
-            barrier.aliasedResources[1] = res->aliasedResources[1] == InvalidHandle ? after  : res->aliasedResources[1];
+		else
+		{
+			Barrier barrier;
+			barrier.Type                = Barrier::Type::Aliasing;
+			barrier.aliasedResources[0] = res->aliasedResources[0] == InvalidHandle ? before : res->aliasedResources[0];
+			barrier.aliasedResources[1] = res->aliasedResources[1] == InvalidHandle ? after  : res->aliasedResources[1];
 
-            PendingBarriers.push_back(barrier);
-        }
+			PendingBarriers.push_back(barrier);
+		}
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void Context::AddUAVBarrier(ResourceHandle handle, uint32_t subresource)
-    {
-        auto res = find(PendingBarriers,
-            [&](Barrier& rhs) -> bool
-            {
-                return
-                    rhs.Type == Barrier::Type::UAV &&
-                    rhs.resourceHandle == handle;
-            });
+	void Context::AddUAVBarrier(ResourceHandle handle, uint32_t subresource)
+	{
+		auto res = find(PendingBarriers,
+			[&](Barrier& rhs) -> bool
+			{
+				return
+					rhs.Type == Barrier::Type::UAV &&
+					rhs.resourceHandle == handle;
+			});
 
-        if (std::end(PendingBarriers) == res)
-        {
-            Barrier barrier;
-            barrier.Type            = Barrier::Type::UAV;
-            barrier.resourceHandle  = handle;
-            barrier.subResource     = subresource;
+		if (std::end(PendingBarriers) == res)
+		{
+			Barrier barrier;
+			barrier.Type            = Barrier::Type::UAV;
+			barrier.resourceHandle  = handle;
+			barrier.subResource     = subresource;
 
-            PendingBarriers.push_back(barrier);
-        }
-    }
+			PendingBarriers.push_back(barrier);
+		}
+	}
 
 
 	/************************************************************************************************/
@@ -1604,22 +1603,22 @@ namespace FlexKit
 		auto res = find(PendingBarriers, 
 			[&](Barrier& rhs) -> bool
 			{
-                switch (rhs.Type)
-                {
-                case Barrier::Type::Generic:
-                    return rhs.resource_ptr == renderSystem->GetDeviceResource(resource);
-                case Barrier::Type::Resource:
-                    return rhs.resourceHandle == resource;
-                default:
-                    return false;
-                }
+				switch (rhs.Type)
+				{
+				case Barrier::Type::Generic:
+					return rhs.resource_ptr == renderSystem->GetDeviceResource(resource);
+				case Barrier::Type::Resource:
+					return rhs.resourceHandle == resource;
+				default:
+					return false;
+				}
 			});
 
 		if (res != PendingBarriers.end()) {
-            if (res->OldState == State)
-                PendingBarriers.remove_unstable(res);
-            else
-                res->NewState = State;
+			if (res->OldState == State)
+				PendingBarriers.remove_unstable(res);
+			else
+				res->NewState = State;
 		}
 		else
 		{
@@ -1668,7 +1667,7 @@ namespace FlexKit
 
 	void Context::SetRootSignature(const RootSignature& RS)
 	{
-        CurrentRootSignature = &RS;
+		CurrentRootSignature = &RS;
 		DeviceContext->SetGraphicsRootSignature(RS);
 	}
 
@@ -1678,7 +1677,7 @@ namespace FlexKit
 
 	void Context::SetComputeRootSignature(const RootSignature& RS)
 	{
-        CurrentComputeRootSignature = &RS;
+		CurrentComputeRootSignature = &RS;
 		DeviceContext->SetComputeRootSignature(RS);
 	}
 
@@ -1690,8 +1689,8 @@ namespace FlexKit
 	{
 		FK_ASSERT(PSO);
 
-        if (PSO == nullptr)
-            __debugbreak();
+		if (PSO == nullptr)
+			__debugbreak();
 
 		if (CurrentPipelineState == PSO)
 			return;
@@ -1903,11 +1902,11 @@ namespace FlexKit
 		queuedReadBacks.push_back(readBack);
 	}
 
-    void Context::QueueReadBack(ReadBackResourceHandle readBack, ReadBackEventHandler callback)
-    {
-        renderSystem->SetReadBackEvent(readBack, std::move(callback));
-        QueueReadBack(readBack);
-    }
+	void Context::QueueReadBack(ReadBackResourceHandle readBack, ReadBackEventHandler callback)
+	{
+		renderSystem->SetReadBackEvent(readBack, std::move(callback));
+		QueueReadBack(readBack);
+	}
 
 
 	/************************************************************************************************/
@@ -2021,30 +2020,30 @@ namespace FlexKit
 		case EInputTopology::EIT_PATCH_CP_24:
 			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_24_CONTROL_POINT_PATCHLIST;
 			break;
-        case EInputTopology::EIT_PATCH_CP_25:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_25_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_26:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_26_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_27:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_27_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_28:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_28_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_29:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_29_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_30:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_30_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_31:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_31_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_32:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_32_CONTROL_POINT_PATCHLIST;
-            break;
+		case EInputTopology::EIT_PATCH_CP_25:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_25_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_26:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_26_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_27:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_27_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_28:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_28_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_29:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_29_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_30:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_30_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_31:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_31_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_32:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_32_CONTROL_POINT_PATCHLIST;
+			break;
 		default:
 			FK_ASSERT(0);
 		}
@@ -2056,18 +2055,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    void Context::SetGraphicsConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset)
-    {
-        DeviceContext->SetGraphicsRoot32BitConstants((UINT)idx, (UINT)valueCount, data_ptr, (UINT)offset);
-    }
+	void Context::SetGraphicsConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset)
+	{
+		DeviceContext->SetGraphicsRoot32BitConstants((UINT)idx, (UINT)valueCount, data_ptr, (UINT)offset);
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	void Context::NullGraphicsConstantBufferView(size_t idx)
 	{
-        DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, 0);
+		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, 0);
 	}
 
 
@@ -2126,33 +2125,33 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void Context::SetGraphicsShaderResourceView(size_t idx, ResourceHandle resource, size_t offset)
-    {
-        DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress());
-    }
-
-
-    /************************************************************************************************/
-
-
-    void Context::SetGraphicsUnorderedAccessView(size_t idx, ResourceHandle UAVresource, size_t offset)
-    {
-        auto resource = renderSystem->GetDeviceResource(UAVresource);
-
-        DeviceContext->SetGraphicsRootUnorderedAccessView((UINT)idx, resource->GetGPUVirtualAddress() + offset);
-    }
+	void Context::SetGraphicsShaderResourceView(size_t idx, ResourceHandle resource, size_t offset)
+	{
+		DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress());
+	}
 
 
 	/************************************************************************************************/
 
 
-    void Context::SetComputeDescriptorTable(size_t idx)
-    {
-        DeviceContext->SetComputeRootDescriptorTable((UINT)idx, D3D12_GPU_DESCRIPTOR_HANDLE{ 0 });
-    }
+	void Context::SetGraphicsUnorderedAccessView(size_t idx, ResourceHandle UAVresource, size_t offset)
+	{
+		auto resource = renderSystem->GetDeviceResource(UAVresource);
+
+		DeviceContext->SetGraphicsRootUnorderedAccessView((UINT)idx, resource->GetGPUVirtualAddress() + offset);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetComputeDescriptorTable(size_t idx)
+	{
+		DeviceContext->SetComputeRootDescriptorTable((UINT)idx, D3D12_GPU_DESCRIPTOR_HANDLE{ 0 });
+	}
 
 
 	void Context::SetComputeDescriptorTable(size_t idx, const DescriptorHeap& DH)
@@ -2179,16 +2178,16 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void Context::SetComputeConstantBufferView(size_t idx, ResourceHandle resource, size_t offset, size_t bufferSize)
-    {
-        auto deviceResource     = renderSystem->GetDeviceResource(resource);
-        auto gpuAddress         = deviceResource->GetGPUVirtualAddress();
+	void Context::SetComputeConstantBufferView(size_t idx, ResourceHandle resource, size_t offset, size_t bufferSize)
+	{
+		auto deviceResource     = renderSystem->GetDeviceResource(resource);
+		auto gpuAddress         = deviceResource->GetGPUVirtualAddress();
 
-        DeviceContext->SetComputeRootConstantBufferView((UINT)idx, gpuAddress + offset);
-    }
+		DeviceContext->SetComputeRootConstantBufferView((UINT)idx, gpuAddress + offset);
+	}
 
 
 	/************************************************************************************************/
@@ -2200,13 +2199,13 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void Context::SetComputeShaderResourceView(size_t idx, ResourceHandle resource, const size_t offset)
-    {
-        DeviceContext->SetComputeRootShaderResourceView((UINT)idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress() + offset);
-    }
+	void Context::SetComputeShaderResourceView(size_t idx, ResourceHandle resource, const size_t offset)
+	{
+		DeviceContext->SetComputeRootShaderResourceView((UINT)idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress() + offset);
+	}
 
 
 	/************************************************************************************************/
@@ -2220,13 +2219,13 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void Context::SetComputeConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset)
-    {
-        DeviceContext->SetComputeRoot32BitConstants((UINT)idx, (UINT)valueCount, data_ptr, (UINT)offset);
-    }
+	void Context::SetComputeConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset)
+	{
+		DeviceContext->SetComputeRoot32BitConstants((UINT)idx, (UINT)valueCount, data_ptr, (UINT)offset);
+	}
 
 
 	/************************************************************************************************/
@@ -2234,8 +2233,8 @@ namespace FlexKit
 
 	void Context::BeginQuery(QueryHandle query, size_t idx)
 	{
-        if (query == InvalidHandle)
-            return;
+		if (query == InvalidHandle)
+			return;
 
 		auto resource	= renderSystem->Queries.GetAsset(query);
 		auto queryType	= renderSystem->Queries.GetType(query);
@@ -2246,8 +2245,8 @@ namespace FlexKit
 
 	void Context::EndQuery(QueryHandle query, size_t idx)
 	{
-        if (query == InvalidHandle)
-            return;
+		if (query == InvalidHandle)
+			return;
 
 		auto resource	= renderSystem->Queries.GetAsset(query);
 		auto queryType	= renderSystem->Queries.GetType(query);
@@ -2256,66 +2255,66 @@ namespace FlexKit
 	}
 
 
-    void Context::TimeStamp(QueryHandle query, size_t idx)
-    {
-        if (query == InvalidHandle)
-            return;
+	void Context::TimeStamp(QueryHandle query, size_t idx)
+	{
+		if (query == InvalidHandle)
+			return;
 
-        auto resource   = renderSystem->Queries.GetAsset(query);
-        auto queryType  = renderSystem->Queries.GetType(query);
+		auto resource   = renderSystem->Queries.GetAsset(query);
+		auto queryType  = renderSystem->Queries.GetType(query);
 
-        DeviceContext->EndQuery(resource, queryType, (UINT)idx);
-    }
-
-
-    /************************************************************************************************/
+		DeviceContext->EndQuery(resource, queryType, (UINT)idx);
+	}
 
 
-    void Context::SetMarker_DEBUG(const char* str)
-    {
+	/************************************************************************************************/
+
+
+	void Context::SetMarker_DEBUG(const char* str)
+	{
 #if USING(AFTERMATH)
-        GFSDK_Aftermath_GetShaderHash;
-        AFTERMATH_context;
+		GFSDK_Aftermath_GetShaderHash;
+		AFTERMATH_context;
 #endif
-    }
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void Context::BeginEvent_DEBUG(const char* str)
-    {
+	void Context::BeginEvent_DEBUG(const char* str)
+	{
 #if USING(PIX)
-        wchar_t temp[64];
-        mbstowcs(temp, str, 64);
+		wchar_t temp[64];
+		mbstowcs(temp, str, 64);
 
-        PIXBeginEvent(DeviceContext, PIX_COLOR_INDEX(rand() % 255), temp);
+		PIXBeginEvent(DeviceContext, PIX_COLOR_INDEX(rand() % 255), temp);
 #endif
-    }
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void Context::EndEvent_DEBUG()
-    {
+	void Context::EndEvent_DEBUG()
+	{
 #if USING(PIX)
-        PIXEndEvent(DeviceContext);
+		PIXEndEvent(DeviceContext);
 #endif
-    }
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void Context::CopyResource(ResourceHandle dest, ResourceHandle src)
-    {
-        FlushBarriers();
+	void Context::CopyResource(ResourceHandle dest, ResourceHandle src)
+	{
+		FlushBarriers();
 
-        DeviceContext->CopyResource(
-            renderSystem->GetDeviceResource(dest),
-            renderSystem->GetDeviceResource(src));
-    }
+		DeviceContext->CopyResource(
+			renderSystem->GetDeviceResource(dest),
+			renderSystem->GetDeviceResource(src));
+	}
 
 
 	/************************************************************************************************/
@@ -2373,7 +2372,7 @@ namespace FlexKit
 				_AddBarrier(resource, DeviceResourceState::DRS_CopyDest, state);
 
 			prevResource	= resource;
-            prevState       = state;
+			prevState       = state;
 		}
 	}
 
@@ -2707,8 +2706,8 @@ namespace FlexKit
 	{
 		UpdateResourceStates();
 
-        auto descriptor = _GetDepthDesciptor(depthBuffer);
-        PushDepthStencilArray(renderSystem, depthBuffer, 0, 0, descriptor);
+		auto descriptor = _GetDepthDesciptor(depthBuffer);
+		PushDepthStencilArray(renderSystem, depthBuffer, 0, 0, descriptor);
 
 		DeviceContext->ClearDepthStencilView(descriptor, D3D12_CLEAR_FLAG_DEPTH, ClearDepth, 0, 0, nullptr);
 		renderSystem->Textures.MarkRTUsed(depthBuffer);
@@ -2758,12 +2757,12 @@ namespace FlexKit
 		auto view       = _ReserveSRVLocal(1);
 		auto resource   = renderSystem->GetDeviceResource(UAV);
 
-        Texture2D tex{
-            renderSystem->GetDeviceResource(UAV),
-            renderSystem->GetTextureWH(UAV),
-            renderSystem->GetTextureMipCount(UAV),
-            renderSystem->GetTextureDeviceFormat(UAV),
-        };
+		Texture2D tex{
+			renderSystem->GetDeviceResource(UAV),
+			renderSystem->GetTextureWH(UAV),
+			renderSystem->GetTextureMipCount(UAV),
+			renderSystem->GetTextureDeviceFormat(UAV),
+		};
 
 		PushUAV2DToDescHeap(
 			renderSystem,
@@ -2780,28 +2779,28 @@ namespace FlexKit
 
 	void Context::ClearUAVTextureUint(ResourceHandle UAV, uint4 clearColor)
 	{
-        auto CPUview    = _ReserveSRVLocal(1);
-        auto GPUview    = _ReserveSRV(1);
+		auto CPUview    = _ReserveSRVLocal(1);
+		auto GPUview    = _ReserveSRV(1);
 		auto resource   = renderSystem->GetDeviceResource(UAV);
 
-        Texture2D tex{
-            renderSystem->GetDeviceResource(UAV),
-            renderSystem->GetTextureWH(UAV),
-            renderSystem->GetTextureMipCount(UAV),
-            renderSystem->GetTextureDeviceFormat(UAV),
-        };
+		Texture2D tex{
+			renderSystem->GetDeviceResource(UAV),
+			renderSystem->GetTextureWH(UAV),
+			renderSystem->GetTextureMipCount(UAV),
+			renderSystem->GetTextureDeviceFormat(UAV),
+		};
 
 		PushUAV2DToDescHeap(
 			renderSystem,
 			tex,
 			CPUview);
 
-        PushUAV2DToDescHeap(
-            renderSystem,
-            tex,
-            GPUview);
+		PushUAV2DToDescHeap(
+			renderSystem,
+			tex,
+			GPUview);
 
-        const auto CPUHandle = CPUview.Get<0>();
+		const auto CPUHandle = CPUview.Get<0>();
 		const auto GPUHandle = GPUview.Get<1>();
 
 		FlushBarriers();
@@ -2819,7 +2818,7 @@ namespace FlexKit
 		const auto deviceResource     = renderSystem->GetDeviceResource(resource);
 		const auto deviceFormat       = renderSystem->GetTextureDeviceFormat(resource);
 
-        PushUAV1DToDescHeap(renderSystem, deviceResource, deviceFormat, 0, view);
+		PushUAV1DToDescHeap(renderSystem, deviceResource, deviceFormat, 0, view);
 
 		const auto CPUHandle = view.Get<0>();
 		const auto GPUHandle = view.Get<1>();
@@ -2830,70 +2829,70 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void Context::ClearUAVBuffer(ResourceHandle UAV, uint4 clearColor)
-    {
-        BeginEvent_DEBUG("ClearUAVBuffer");
+	void Context::ClearUAVBuffer(ResourceHandle UAV, uint4 clearColor)
+	{
+		BeginEvent_DEBUG("ClearUAVBuffer");
 
-        UpdateResourceStates();
+		UpdateResourceStates();
 
-        auto PSO = renderSystem->GetPSO(CLEARBUFFERPSO);
-        DeviceContext->SetComputeRootSignature(renderSystem->Library.ClearBuffer);
-        DeviceContext->SetPipelineState(PSO);
-        DeviceContext->SetComputeRoot32BitConstants(0, 4, &clearColor, 0);
-        DeviceContext->SetComputeRootUnorderedAccessView(1, renderSystem->GetDeviceResource(UAV)->GetGPUVirtualAddress());
+		auto PSO = renderSystem->GetPSO(CLEARBUFFERPSO);
+		DeviceContext->SetComputeRootSignature(renderSystem->Library.ClearBuffer);
+		DeviceContext->SetPipelineState(PSO);
+		DeviceContext->SetComputeRoot32BitConstants(0, 4, &clearColor, 0);
+		DeviceContext->SetComputeRootUnorderedAccessView(1, renderSystem->GetDeviceResource(UAV)->GetGPUVirtualAddress());
 
-        auto resourceSize = renderSystem->GetResourceSize(UAV);
+		auto resourceSize = renderSystem->GetResourceSize(UAV);
 
-        uint2 range{ 0, resourceSize / 16 };
-        DeviceContext->SetComputeRoot32BitConstants(0, 2, &range, 4);
+		uint2 range{ 0, resourceSize / 16 };
+		DeviceContext->SetComputeRoot32BitConstants(0, 2, &range, 4);
 
-        DeviceContext->Dispatch(UINT(ceil(resourceSize / 1024.0f)), 1, 1);
+		DeviceContext->Dispatch(UINT(ceil(resourceSize / 1024.0f)), 1, 1);
 
-        if(CurrentComputeRootSignature)
-            DeviceContext->SetComputeRootSignature(*CurrentComputeRootSignature);
+		if(CurrentComputeRootSignature)
+			DeviceContext->SetComputeRootSignature(*CurrentComputeRootSignature);
 
-        if(CurrentPipelineState)
-            DeviceContext->SetPipelineState(CurrentPipelineState);
+		if(CurrentPipelineState)
+			DeviceContext->SetPipelineState(CurrentPipelineState);
 
-        EndEvent_DEBUG();
-    }
-
-
-    /************************************************************************************************/
+		EndEvent_DEBUG();
+	}
 
 
-    void Context::ClearUAVBufferRange(ResourceHandle UAV, uint begin, uint end, uint4 clearColor)
-    {
-        FK_ASSERT(begin % 16 == 0, "Begin must be 16-byte aligned");
-        FK_ASSERT(end % 16 == 0, "End must be 16-byte aligned");
+	/************************************************************************************************/
 
-        BeginEvent_DEBUG("ClearUAVBuffer");
 
-        UpdateResourceStates();
+	void Context::ClearUAVBufferRange(ResourceHandle UAV, uint begin, uint end, uint4 clearColor)
+	{
+		FK_ASSERT(begin % 16 == 0, "Begin must be 16-byte aligned");
+		FK_ASSERT(end % 16 == 0, "End must be 16-byte aligned");
 
-        uint2 range{ begin / 16, end / 16};
+		BeginEvent_DEBUG("ClearUAVBuffer");
 
-        auto PSO = renderSystem->GetPSO(CLEARBUFFERPSO);
-        DeviceContext->SetComputeRootSignature(renderSystem->Library.ClearBuffer);
-        DeviceContext->SetPipelineState(PSO);
-        DeviceContext->SetComputeRoot32BitConstants(0, 4, &clearColor, 0);
-        DeviceContext->SetComputeRoot32BitConstants(0, 2, &range, 4);
-        DeviceContext->SetComputeRootUnorderedAccessView(1, renderSystem->GetDeviceResource(UAV)->GetGPUVirtualAddress());
+		UpdateResourceStates();
 
-        auto resourceSize = renderSystem->GetResourceSize(UAV);
-        DeviceContext->Dispatch(UINT(ceil(Min(resourceSize, end - begin)/ 1024.0f)), 1, 1);
+		uint2 range{ begin / 16, end / 16};
 
-        if(CurrentComputeRootSignature)
-            DeviceContext->SetComputeRootSignature(*CurrentComputeRootSignature);
+		auto PSO = renderSystem->GetPSO(CLEARBUFFERPSO);
+		DeviceContext->SetComputeRootSignature(renderSystem->Library.ClearBuffer);
+		DeviceContext->SetPipelineState(PSO);
+		DeviceContext->SetComputeRoot32BitConstants(0, 4, &clearColor, 0);
+		DeviceContext->SetComputeRoot32BitConstants(0, 2, &range, 4);
+		DeviceContext->SetComputeRootUnorderedAccessView(1, renderSystem->GetDeviceResource(UAV)->GetGPUVirtualAddress());
 
-        if(CurrentPipelineState)
-            DeviceContext->SetPipelineState(CurrentPipelineState);
+		auto resourceSize = renderSystem->GetResourceSize(UAV);
+		DeviceContext->Dispatch(UINT(ceil(Min(resourceSize, end - begin)/ 1024.0f)), 1, 1);
 
-        EndEvent_DEBUG();
-    }
+		if(CurrentComputeRootSignature)
+			DeviceContext->SetComputeRootSignature(*CurrentComputeRootSignature);
+
+		if(CurrentPipelineState)
+			DeviceContext->SetPipelineState(CurrentPipelineState);
+
+		EndEvent_DEBUG();
+	}
 
 
 	/************************************************************************************************/
@@ -2901,8 +2900,8 @@ namespace FlexKit
 
 	void Context::ResolveQuery(QueryHandle query, size_t begin, size_t end, ResourceHandle destination, size_t destOffset)
 	{
-        if (query == InvalidHandle)
-            return;
+		if (query == InvalidHandle)
+			return;
 
 		auto res			= renderSystem->GetDeviceResource(destination);
 		auto type			= renderSystem->Queries.GetType(query);
@@ -2914,13 +2913,13 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void Context::ResolveQuery(QueryHandle query, size_t begin, size_t end, ID3D12Resource* destination, size_t destOffset)
-    {
-        if (query == InvalidHandle)
-            return;
+	void Context::ResolveQuery(QueryHandle query, size_t begin, size_t end, ID3D12Resource* destination, size_t destOffset)
+	{
+		if (query == InvalidHandle)
+			return;
 
 		auto type			= renderSystem->Queries.GetType(query);
 		auto queryResource	= renderSystem->Queries.GetAsset(query);
@@ -2928,7 +2927,7 @@ namespace FlexKit
 		UpdateResourceStates();
 
 		DeviceContext->ResolveQueryData(queryResource, type, (UINT)begin, (UINT)(end - begin), destination, (UINT)destOffset);
-    }
+	}
 
 
 	/************************************************************************************************/
@@ -2940,9 +2939,9 @@ namespace FlexKit
 
 		DeviceContext->ExecuteIndirect(
 			layout.signature, 
-            (UINT)Min(layout.entries.size(), executionCount),
+			(UINT)Min(layout.entries.size(), executionCount),
 			renderSystem->GetDeviceResource(args),
-            (UINT)argumentBufferOffset,
+			(UINT)argumentBufferOffset,
 			nullptr, 
 			0);
 	}
@@ -2955,11 +2954,11 @@ namespace FlexKit
 	}
 
 
-    void Context::DrawInstanced(const size_t vertexCount, const size_t baseVertex, const size_t instanceCount, const size_t instanceOffset )
-    {
-        UpdateResourceStates();
-        DeviceContext->DrawInstanced((UINT)vertexCount, (UINT)instanceCount, (UINT)baseVertex, (UINT)instanceOffset);
-    }
+	void Context::DrawInstanced(const size_t vertexCount, const size_t baseVertex, const size_t instanceCount, const size_t instanceOffset )
+	{
+		UpdateResourceStates();
+		DeviceContext->DrawInstanced((UINT)vertexCount, (UINT)instanceCount, (UINT)baseVertex, (UINT)instanceOffset);
+	}
 
 
 	void Context::DrawIndexed(const size_t IndexCount, const size_t IndexOffet, const size_t BaseVertex)
@@ -2976,9 +2975,9 @@ namespace FlexKit
 	{
 		UpdateResourceStates();
 		DeviceContext->DrawIndexedInstanced(
-            (UINT)IndexCount, (UINT)InstanceCount,
-            (UINT)IndexOffet, (UINT)BaseVertex,
-            (UINT)InstanceOffset);
+			(UINT)IndexCount, (UINT)InstanceCount,
+			(UINT)IndexOffet, (UINT)BaseVertex,
+			(UINT)InstanceOffset);
 	}
 
 
@@ -2992,25 +2991,25 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void Context::DispatchRays(const uint3 WHD, const DispatchDesc desc)
-    {
-        UpdateResourceStates();
+	void Context::DispatchRays(const uint3 WHD, const DispatchDesc desc)
+	{
+		UpdateResourceStates();
 
-        D3D12_DISPATCH_RAYS_DESC dispatchDesc{};
-        dispatchDesc.Width  = WHD[0];
-        dispatchDesc.Height = WHD[1];
-        dispatchDesc.Depth  = WHD[2];
+		D3D12_DISPATCH_RAYS_DESC dispatchDesc{};
+		dispatchDesc.Width  = WHD[0];
+		dispatchDesc.Height = WHD[1];
+		dispatchDesc.Depth  = WHD[2];
 
-        dispatchDesc.CallableShaderTable        = desc.callableShaderTable;
-        dispatchDesc.HitGroupTable              = desc.hitGroupTable;
-        dispatchDesc.MissShaderTable            = desc.missTable;
-        dispatchDesc.RayGenerationShaderRecord  = desc.rayGenerationRecord;
+		dispatchDesc.CallableShaderTable        = desc.callableShaderTable;
+		dispatchDesc.HitGroupTable              = desc.hitGroupTable;
+		dispatchDesc.MissShaderTable            = desc.missTable;
+		dispatchDesc.RayGenerationShaderRecord  = desc.rayGenerationRecord;
 
-        DeviceContext->DispatchRays(&dispatchDesc);
-    }
+		DeviceContext->DispatchRays(&dispatchDesc);
+	}
 
 
 	/************************************************************************************************/
@@ -3099,8 +3098,8 @@ namespace FlexKit
 
 		DeviceContext->ClearState(nullptr);
 
-        depthStencilViews.clear();
-        renderTargetViews.clear();
+		depthStencilViews.clear();
+		renderTargetViews.clear();
 	}
 
 
@@ -3137,10 +3136,10 @@ namespace FlexKit
 	void Context::Close(const size_t IN_counter)
 	{
 		counter = IN_counter;
-        if (auto HR = DeviceContext->Close(); FAILED(HR)) {
-            FK_LOG_ERROR("Failed to close graphics context!");
-            renderSystem->_OnCrash();
-        }
+		if (auto HR = DeviceContext->Close(); FAILED(HR)) {
+			FK_LOG_ERROR("Failed to close graphics context!");
+			renderSystem->_OnCrash();
+		}
 	}
 
 
@@ -3149,24 +3148,24 @@ namespace FlexKit
 
 	Context& Context::Reset()
 	{
-        CurrentPipelineState = nullptr;
+		CurrentPipelineState = nullptr;
 
-        if (FAILED(commandAllocator->Reset()))
-            FK_LOG_ERROR("Failed to reset command allocator");
+		if (FAILED(commandAllocator->Reset()))
+			FK_LOG_ERROR("Failed to reset command allocator");
 
 		if(FAILED(DeviceContext->Reset(commandAllocator, nullptr)))
-            FK_LOG_ERROR("Failed to reset device context");
+			FK_LOG_ERROR("Failed to reset device context");
 
 		_ResetDSV();
 		_ResetRTV();
 		_ResetSRV();
 
-        TrackedSOBuffers.clear();
-        PendingBarriers.clear();
-        queuedBarriers.clear();
-        renderTargetViews.clear();
-        depthStencilViews.clear();
-        queuedReadBacks.clear();
+		TrackedSOBuffers.clear();
+		PendingBarriers.clear();
+		queuedBarriers.clear();
+		renderTargetViews.clear();
+		depthStencilViews.clear();
+		queuedReadBacks.clear();
 
 		ID3D12DescriptorHeap* heaps[]{ descHeapSRV };
 
@@ -3206,21 +3205,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    void Context::BeginMarker(const char* str)
-    {
-    }
+	void Context::BeginMarker(const char* str)
+	{
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void Context::EndMarker(const char* str)
-    {
+	void Context::EndMarker(const char* str)
+	{
 
-    }
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	void Context::_AddBarrier(ID3D12Resource* resource, DeviceResourceState currentState, DeviceResourceState newState)
@@ -3231,42 +3230,42 @@ namespace FlexKit
 		barrier.OldState	    = currentState;
 		barrier.NewState	    = newState;
 
-        if (PendingBarriers.full())
-            FlushBarriers();
+		if (PendingBarriers.full())
+			FlushBarriers();
 
 		PendingBarriers.push_back(barrier);
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    DescHeapPOS Context::_GetDepthDesciptor(ResourceHandle depthBuffer)
-    {
-        auto DSV_CPU_HANDLE = DescHeapPOS{};
+	DescHeapPOS Context::_GetDepthDesciptor(ResourceHandle depthBuffer)
+	{
+		auto DSV_CPU_HANDLE = DescHeapPOS{};
 
-        if (auto res = std::find_if(
-            depthStencilViews.begin(),
-            depthStencilViews.end(),
-            [&](RTV_View& view)
-            {
-                return view.resource == depthBuffer;
-            });
-            res == depthStencilViews.end())
-        {
-            if (!depthStencilViews.full()) {
-                auto DSV        = _ReserveDSV(1);
-                DSV_CPU_HANDLE  = DSV;
-                depthStencilViews.push_back({ depthBuffer, DSV });
-            }
-            else
-                DSV_CPU_HANDLE = depthStencilViews[rand() % depthStencilViews.size()].descriptor;
-        }
-        else
-            DSV_CPU_HANDLE = res->descriptor;
+		if (auto res = std::find_if(
+			depthStencilViews.begin(),
+			depthStencilViews.end(),
+			[&](RTV_View& view)
+			{
+				return view.resource == depthBuffer;
+			});
+			res == depthStencilViews.end())
+		{
+			if (!depthStencilViews.full()) {
+				auto DSV        = _ReserveDSV(1);
+				DSV_CPU_HANDLE  = DSV;
+				depthStencilViews.push_back({ depthBuffer, DSV });
+			}
+			else
+				DSV_CPU_HANDLE = depthStencilViews[rand() % depthStencilViews.size()].descriptor;
+		}
+		else
+			DSV_CPU_HANDLE = res->descriptor;
 
-        return DSV_CPU_HANDLE;
-    }
+		return DSV_CPU_HANDLE;
+	}
 
 
 	/************************************************************************************************/
@@ -3316,7 +3315,7 @@ namespace FlexKit
 							Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(resource, currentState, newState, B.subResource));
 					}
 				}	break;
-                case Barrier::Type::Generic:
+				case Barrier::Type::Generic:
 				{
 					auto resource		= B.resource_ptr;
 					auto currentState	= DRS2D3DState(B.OldState);
@@ -3334,7 +3333,7 @@ namespace FlexKit
 						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
 							resource, currentState, newState, B.subResource));
 				}	break;
-                case Barrier::Type::Resource:
+				case Barrier::Type::Resource:
 				{
 					auto resource		= renderSystem->GetDeviceResource(B.resourceHandle);
 					auto currentState	= DRS2D3DState(B.OldState);
@@ -3344,20 +3343,20 @@ namespace FlexKit
 						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
 							resource, currentState, newState, B.subResource));
 				}	break;
-                case Barrier::Type::Aliasing:
+				case Barrier::Type::Aliasing:
 				{
-                    auto before = renderSystem->GetDeviceResource(B.aliasedResources[0]);
-                    auto after  = renderSystem->GetDeviceResource(B.aliasedResources[1]);
+					auto before = renderSystem->GetDeviceResource(B.aliasedResources[0]);
+					auto after  = renderSystem->GetDeviceResource(B.aliasedResources[1]);
 					const auto aliasingBarrier = CD3DX12_RESOURCE_BARRIER::Aliasing(before, after);
 
 					Barriers.push_back(aliasingBarrier);
 				}   break;
-                case Barrier::Type::UAV:
-                {
-                    const auto UAVBarrier = CD3DX12_RESOURCE_BARRIER::UAV(renderSystem->GetDeviceResource(B.resourceHandle));
-                    Barriers.push_back(UAVBarrier);
+				case Barrier::Type::UAV:
+				{
+					const auto UAVBarrier = CD3DX12_RESOURCE_BARRIER::UAV(renderSystem->GetDeviceResource(B.resourceHandle));
+					Barriers.push_back(UAVBarrier);
 
-                }   break;
+				}   break;
 				default:
 					FK_ASSERT(0);
 			};
@@ -3475,7 +3474,7 @@ namespace FlexKit
 		SRV_GPU = descHeapSRV->GetGPUDescriptorHandleForHeapStart();
 
 		SRV_LOCAL_CPU = descHeapSRVLocal->GetCPUDescriptorHandleForHeapStart();
-        //descHeapSRVLocal->GetGPUDescriptorHandleForHeapStart();
+		//descHeapSRVLocal->GetGPUDescriptorHandleForHeapStart();
 	}
 
 
@@ -3611,10 +3610,10 @@ namespace FlexKit
 
 			SETDEBUGNAME(RS->Library.ShadingRTSig, "ComputeSignature");
 		}
-        {
-            RS->Library.ClearBuffer.SetParameterAsUINT(0, 6, 0, 0, PIPELINE_DEST_CS);
-            RS->Library.ClearBuffer.SetParameterAsUAV(1, 0, 0, PIPELINE_DEST_CS);
-            RS->Library.ClearBuffer.Build(RS, TempMemory);
+		{
+			RS->Library.ClearBuffer.SetParameterAsUINT(0, 6, 0, 0, PIPELINE_DEST_CS);
+			RS->Library.ClearBuffer.SetParameterAsUAV(1, 0, 0, PIPELINE_DEST_CS);
+			RS->Library.ClearBuffer.Build(RS, TempMemory);
 
 			SETDEBUGNAME(RS->Library.ClearBuffer, "ClearBuffer");
 		}
@@ -3861,13 +3860,13 @@ namespace FlexKit
 
 		auto desc = dest->GetDesc();
 
-        D3D12_TILED_RESOURCE_COORDINATE coordinate;
+		D3D12_TILED_RESOURCE_COORDINATE coordinate;
 		coordinate.X              = (UINT)destTile[0];
 		coordinate.Y              = (UINT)destTile[1];
 		coordinate.Z              = (UINT)0;
 		coordinate.Subresource    = (UINT)destTile[2];
 		
-        D3D12_TILE_REGION_SIZE regionSize;
+		D3D12_TILE_REGION_SIZE regionSize;
 		regionSize.NumTiles   = 1;
 		regionSize.UseBox     = false;
 		regionSize.Width      = 1;
@@ -3949,8 +3948,8 @@ namespace FlexKit
 		if (FAILED(ctx.commandAllocator->Reset()))
 			__debugbreak();
 
-        if (FAILED(ctx.commandList->Reset(ctx.commandAllocator, nullptr)))
-            __debugbreak();
+		if (FAILED(ctx.commandList->Reset(ctx.commandAllocator, nullptr)))
+			__debugbreak();
 
 		/*
 		for (auto resource : ctx.freeResources)
@@ -3984,18 +3983,18 @@ namespace FlexKit
 		auto& ctx = copyContexts[handle];
 		ctx.flushPendingBarriers();
 
-        if (FAILED(ctx.commandList->Close()))
-        {
-            FK_LOG_ERROR("Failed to close Copy Command list!");
-            __debugbreak();
-        }
+		if (FAILED(ctx.commandList->Close()))
+		{
+			FK_LOG_ERROR("Failed to close Copy Command list!");
+			__debugbreak();
+		}
 	}
 
 
 	/************************************************************************************************/
 
 
-    SyncPoint CopyEngine::Submit(CopyContextHandle* begin, CopyContextHandle* end, std::optional<SyncPoint> syncOpt)
+	SyncPoint CopyEngine::Submit(CopyContextHandle* begin, CopyContextHandle* end, std::optional<SyncPoint> syncOpt)
 	{
 		const size_t localCounter = ++counter;
 		static_vector<ID3D12CommandList*, 64> cmdLists;
@@ -4011,14 +4010,14 @@ namespace FlexKit
 			Close(*itr);
 		}
 
-        if (auto syncPoint = syncOpt.value_or(SyncPoint{}); syncOpt.has_value())
-            copyQueue->Wait(syncPoint.fence, syncPoint.syncCounter);
+		if (auto syncPoint = syncOpt.value_or(SyncPoint{}); syncOpt.has_value())
+			copyQueue->Wait(syncPoint.fence, syncPoint.syncCounter);
 
 		copyQueue->ExecuteCommandLists((UINT)cmdLists.size(), cmdLists);
-        if (const auto HR = copyQueue->Signal(fence, localCounter); FAILED(HR))
-            FK_LOG_ERROR("FAILED TO SUBMIT TO COPY ENGINE!");
+		if (const auto HR = copyQueue->Signal(fence, localCounter); FAILED(HR))
+			FK_LOG_ERROR("FAILED TO SUBMIT TO COPY ENGINE!");
 
-        return { (UINT)localCounter, fence };
+		return { (UINT)localCounter, fence };
 	}
 
 
@@ -4027,8 +4026,8 @@ namespace FlexKit
 
 	void CopyEngine::Signal(ID3D12Fence* fence, const size_t counter)
 	{
-        if (auto HR = copyQueue->Signal(fence, counter); FAILED(HR))
-            FK_LOG_ERROR("Failed to Signal");
+		if (auto HR = copyQueue->Signal(fence, counter); FAILED(HR))
+			FK_LOG_ERROR("Failed to Signal");
 	}
 
 
@@ -4156,28 +4155,28 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    ID3D12PipelineState* CreateClearBufferPSO(RenderSystem* RS)
-    {
-        Shader computeShader = RS->LoadShader("Clear", "cs_6_0", R"(assets\shaders\ClearBuffer.hlsl)");
+	ID3D12PipelineState* CreateClearBufferPSO(RenderSystem* RS)
+	{
+		Shader computeShader = RS->LoadShader("Clear", "cs_6_0", R"(assets\shaders\ClearBuffer.hlsl)");
 
-        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-            RS->Library.ClearBuffer,
-            computeShader
-        };
+		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+			RS->Library.ClearBuffer,
+			computeShader
+		};
 
-        ID3D12PipelineState* PSO = nullptr;
-        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
-        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-        return PSO;
-    }
-
-
-    /************************************************************************************************/
+		return PSO;
+	}
 
 
-    RenderSystem::RenderSystem(iAllocator* IN_allocator, ThreadManager* IN_Threads) :
+	/************************************************************************************************/
+
+
+	RenderSystem::RenderSystem(iAllocator* IN_allocator, ThreadManager* IN_Threads) :
 			Memory          { IN_allocator },
 			Library         { IN_allocator },
 			Queries         { IN_allocator, this },
@@ -4194,10 +4193,10 @@ namespace FlexKit
 			heaps           { pDevice, IN_allocator }{}
 
 
-    RenderSystem::~RenderSystem() { Release(); }
+	RenderSystem::~RenderSystem() { Release(); }
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	bool RenderSystem::Initiate(Graphics_Desc* in)
@@ -4215,36 +4214,36 @@ namespace FlexKit
 
 
 #if USING(ENABLEDRED)
-        ID3D12DeviceRemovedExtendedDataSettings1* dredSettings;
-        if(auto HR = D3D12GetDebugInterface(IID_PPV_ARGS(&dredSettings)); FAILED(HR))
-            FK_LOG_ERROR("Failed to enable Dred!");
-        else
-        {
-            dredSettings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
-            dredSettings->SetBreadcrumbContextEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
-            dredSettings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+		ID3D12DeviceRemovedExtendedDataSettings1* dredSettings;
+		if(auto HR = D3D12GetDebugInterface(IID_PPV_ARGS(&dredSettings)); FAILED(HR))
+			FK_LOG_ERROR("Failed to enable Dred!");
+		else
+		{
+			dredSettings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+			dredSettings->SetBreadcrumbContextEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+			dredSettings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
 
-            FK_LOG_INFO("DRED enabled");
-        }
+			FK_LOG_INFO("DRED enabled");
+		}
 #endif
 
 
-        HRESULT HR;
-        HR = D3D12GetDebugInterface(__uuidof(ID3D12Debug5), (void**)&Debug); FK_ASSERT(SUCCEEDED(HR));
+		HRESULT HR;
+		HR = D3D12GetDebugInterface(__uuidof(ID3D12Debug5), (void**)&Debug); FK_ASSERT(SUCCEEDED(HR));
 #if USING( DEBUGGRAPHICS )
-        Debug->EnableDebugLayer();
-        //Debug->SetEnableSynchronizedCommandQueueValidation(true);
-        Debug->SetEnableAutoName(true);
+		Debug->EnableDebugLayer();
+		//Debug->SetEnableSynchronizedCommandQueueValidation(true);
+		Debug->SetEnableAutoName(true);
 
 #if USING(DEBUGGPUVALIDATION)
-        Debug->SetEnableGPUBasedValidation(true);
+		Debug->SetEnableGPUBasedValidation(true);
 #endif
 #else
-        Debug = nullptr;
-        DebugDevice = nullptr;
+		Debug = nullptr;
+		DebugDevice = nullptr;
 #endif	
 
-        bool InitiateComplete = false;
+		bool InitiateComplete = false;
 
 		HR = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&Device));
 		if(FAILED(HR))
@@ -4261,68 +4260,68 @@ namespace FlexKit
 		}
 
 #if USING(ENABLEDRED)
-        if (auto HR = Device->QueryInterface(IID_PPV_ARGS(&dred)); FAILED(HR))
-            FK_LOG_ERROR("Failed to enable Dred!");
+		if (auto HR = Device->QueryInterface(IID_PPV_ARGS(&dred)); FAILED(HR))
+			FK_LOG_ERROR("Failed to enable Dred!");
 #endif
 
-        D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
-        Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
+		D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
+		Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
 
-        D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
-        Device->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
+		D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
+		Device->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
 
 
-        switch (options5.RaytracingTier)
-        {
-        case D3D12_RAYTRACING_TIER_1_0:
-            features.RT_Level = AvailableFeatures::Raytracing::RT_FeatureLevel_1;
-            break;
-        case D3D12_RAYTRACING_TIER_1_1:
-            features.RT_Level = AvailableFeatures::Raytracing::RT_FeatureLevel_1_1;
-            break;
-        default:
-            features.RT_Level = AvailableFeatures::Raytracing::RT_FeatureLevel_NOTAVAILABLE;
-        }
+		switch (options5.RaytracingTier)
+		{
+		case D3D12_RAYTRACING_TIER_1_0:
+			features.RT_Level = AvailableFeatures::Raytracing::RT_FeatureLevel_1;
+			break;
+		case D3D12_RAYTRACING_TIER_1_1:
+			features.RT_Level = AvailableFeatures::Raytracing::RT_FeatureLevel_1_1;
+			break;
+		default:
+			features.RT_Level = AvailableFeatures::Raytracing::RT_FeatureLevel_NOTAVAILABLE;
+		}
 
-        switch (options.ConservativeRasterizationTier)
-        {
-        case D3D12_CONSERVATIVE_RASTERIZATION_TIER_NOT_SUPPORTED:
-            features.conservativeRast = AvailableFeatures::ConservativeRast_NOTAVAILABLE;
-            break;
-        default:
-            features.conservativeRast = AvailableFeatures::ConservativeRast_AVAILABLE;
-            break;
-        };
+		switch (options.ConservativeRasterizationTier)
+		{
+		case D3D12_CONSERVATIVE_RASTERIZATION_TIER_NOT_SUPPORTED:
+			features.conservativeRast = AvailableFeatures::ConservativeRast_NOTAVAILABLE;
+			break;
+		default:
+			features.conservativeRast = AvailableFeatures::ConservativeRast_AVAILABLE;
+			break;
+		};
 
-        switch (options.ResourceHeapTier)
-        {
-        case D3D12_RESOURCE_HEAP_TIER_1:
-            features.resourceHeapTier = AvailableFeatures::ResourceHeapTier::HeapTier1;
-            break;
-        case D3D12_RESOURCE_HEAP_TIER_2:
-            features.resourceHeapTier = AvailableFeatures::ResourceHeapTier::HeapTier2;
-            break;
-        default:
-            break;
-        }
+		switch (options.ResourceHeapTier)
+		{
+		case D3D12_RESOURCE_HEAP_TIER_1:
+			features.resourceHeapTier = AvailableFeatures::ResourceHeapTier::HeapTier1;
+			break;
+		case D3D12_RESOURCE_HEAP_TIER_2:
+			features.resourceHeapTier = AvailableFeatures::ResourceHeapTier::HeapTier2;
+			break;
+		default:
+			break;
+		}
 
 #if USING(AFTERMATH)
 
-        auto res2 = GFSDK_Aftermath_EnableGpuCrashDumps(
-            GFSDK_Aftermath_Version_API,
-            GFSDK_Aftermath_GpuCrashDumpWatchedApiFlags_DX,
-            GFSDK_Aftermath_GpuCrashDumpFeatureFlags_DeferDebugInfoCallbacks,   // Let the Nsight Aftermath library cache shader debug information.
-            GpuCrashDumpCallback,                                               // Register callback for GPU crash dumps.
-            nullptr,                                                            // Register callback for shader debug information.
-            nullptr,                                                            // Register callback for GPU crash dump description.
-            this);                                                              // Set the GpuCrashTracker object as user data for the above callbacks.
+		auto res2 = GFSDK_Aftermath_EnableGpuCrashDumps(
+			GFSDK_Aftermath_Version_API,
+			GFSDK_Aftermath_GpuCrashDumpWatchedApiFlags_DX,
+			GFSDK_Aftermath_GpuCrashDumpFeatureFlags_DeferDebugInfoCallbacks,   // Let the Nsight Aftermath library cache shader debug information.
+			GpuCrashDumpCallback,                                               // Register callback for GPU crash dumps.
+			nullptr,                                                            // Register callback for shader debug information.
+			nullptr,                                                            // Register callback for GPU crash dump description.
+			this);                                                              // Set the GpuCrashTracker object as user data for the above callbacks.
 
-        auto res = GFSDK_Aftermath_DX12_Initialize(GFSDK_Aftermath_Version_API, GFSDK_Aftermath_FeatureFlags_Maximum, Device);
+		auto res = GFSDK_Aftermath_DX12_Initialize(GFSDK_Aftermath_Version_API, GFSDK_Aftermath_FeatureFlags_Maximum, Device);
 
-        if (res2)
-            FK_LOG_INFO("Aftermath enabled");
-        else
-            FK_LOG_INFO("Aftermath disabled");
+		if (res2)
+			FK_LOG_INFO("Aftermath enabled");
+		else
+			FK_LOG_INFO("Aftermath disabled");
 #endif
 
 #if USING(DEBUGGRAPHICS)
@@ -4376,17 +4375,17 @@ namespace FlexKit
 			}
 		FINALLYOVER;
 
-        if (FAILED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&hlslLibrary))))
-            throw(std::runtime_error{ "Unable to create HLSL 6.x Library!" });
+		if (FAILED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&hlslLibrary))))
+			throw(std::runtime_error{ "Unable to create HLSL 6.x Library!" });
 
-        if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&hlslCompiler))))
-            throw(std::runtime_error{ "Unable to create HLSL 6.x Compiler!" });
+		if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&hlslCompiler))))
+			throw(std::runtime_error{ "Unable to create HLSL 6.x Compiler!" });
 
-        hlslLibrary->CreateIncludeHandler(&hlslIncludeHandler);
+		hlslLibrary->CreateIncludeHandler(&hlslIncludeHandler);
 
 		// Create Resources
 		HR = CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&DXGIFactory));
-        DXGIFactory->EnumAdapterByLuid(Device->GetAdapterLuid(), IID_PPV_ARGS(&DXGIAdapter));
+		DXGIFactory->EnumAdapterByLuid(Device->GetAdapterLuid(), IID_PPV_ARGS(&DXGIAdapter));
 
 		FK_ASSERT(FAILED(HR), "FAILED TO CREATE DXGIFactory!"  );
 
@@ -4421,12 +4420,12 @@ namespace FlexKit
 		Library.Initiate(this, in->TempMemory);
 		ReadBackTable.Initiate(Device);
 
-        FreeList_GraphicsQueue.Allocator    = in->Memory;
-        FreeList_CopyQueue.Allocator        = in->Memory;
+		FreeList_GraphicsQueue.Allocator    = in->Memory;
+		FreeList_CopyQueue.Allocator        = in->Memory;
 		DefaultTexture                      = _CreateDefaultTexture();
 
-        RegisterPSOLoader(CLEARBUFFERPSO, { &Library.ClearBuffer, CreateClearBufferPSO });
-        QueuePSOLoad(CLEARBUFFERPSO);
+		RegisterPSOLoader(CLEARBUFFERPSO, { &Library.ClearBuffer, CreateClearBufferPSO });
+		QueuePSOLoad(CLEARBUFFERPSO);
 
 		SetDebugName(DefaultTexture, "Default Texture");
 
@@ -4452,8 +4451,8 @@ namespace FlexKit
 		while (FreeList_GraphicsQueue.size() || FreeList_CopyQueue.size())
 			Free_DelayedReleaseResources(this);
 
-        FreeList_GraphicsQueue.Release();
-        FreeList_CopyQueue.Release();
+		FreeList_GraphicsQueue.Release();
+		FreeList_CopyQueue.Release();
 		copyEngine.Release();
 
 		for (auto& FR : Contexts)
@@ -4464,7 +4463,7 @@ namespace FlexKit
 		Textures.Release();
 		PipelineStates.ReleasePSOs();
 		ReadBackTable.Release();
-        Queries.Release();
+		Queries.Release();
 
 		Library.Release();
 
@@ -4507,15 +4506,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    void RenderSystem::BuildLibrary(PSOHandle State, const PipelineStateLibraryDesc desc)
-    {
+	void RenderSystem::BuildLibrary(PSOHandle State, const PipelineStateLibraryDesc desc)
+	{
 
-        FK_ASSERT(0);
-        //CompileShader();
-    }
+		FK_ASSERT(0);
+		//CompileShader();
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	void RenderSystem::RegisterPSOLoader(PSOHandle State, PipelineStateDescription desc)
@@ -4635,19 +4634,19 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    const size_t RenderSystem::GetResourceSize(ConstantBufferHandle handle) const noexcept
-    {
-        return ConstantBuffers.GetBufferOffset(handle);
-    }
+	const size_t RenderSystem::GetResourceSize(ConstantBufferHandle handle) const noexcept
+	{
+		return ConstantBuffers.GetBufferOffset(handle);
+	}
 
 
-    const size_t RenderSystem::GetResourceSize(ResourceHandle handle) const noexcept
-    {
-        return Textures.GetResourceSize(handle);
-    }
+	const size_t RenderSystem::GetResourceSize(ResourceHandle handle) const noexcept
+	{
+		return Textures.GetResourceSize(handle);
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	const size_t    RenderSystem::GetAllocationSize(ResourceHandle handle) const noexcept
@@ -4662,7 +4661,7 @@ namespace FlexKit
 
 	const size_t    RenderSystem::GetAllocationSize(GPUResourceDesc desc) const noexcept
 	{
-        const D3D12_RESOURCE_DESC Resource_DESC = desc.GetD3D12ResourceDesc();
+		const D3D12_RESOURCE_DESC Resource_DESC = desc.GetD3D12ResourceDesc();
 		return pDevice->GetResourceAllocationInfo(0, 1, &Resource_DESC).SizeInBytes;
 	}
 
@@ -4692,12 +4691,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    /*
+	/*
 	const uint2	RenderSystem::GetTextureWH(ResourceHandle Handle) const
 	{
 		return Texture2DUAVs.GetExtra(Handle).WH;
 	}
-    */
+	*/
 
 	/************************************************************************************************/
 
@@ -4738,34 +4737,34 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    uint8_t RenderSystem::GetTextureMipCount(ResourceHandle handle) const
+	uint8_t RenderSystem::GetTextureMipCount(ResourceHandle handle) const
 	{
 		return Textures.GetMIPCount(handle);
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    uint2 RenderSystem::GetTextureTilingWH(ResourceHandle handle, const uint mipLevel) const
-    {
-        auto WH = Textures.GetWH(handle);
-        WH[0]   = WH[0] >> mipLevel;
-        WH[1]   = WH[1] >> mipLevel;
+	uint2 RenderSystem::GetTextureTilingWH(ResourceHandle handle, const uint mipLevel) const
+	{
+		auto WH = Textures.GetWH(handle);
+		WH[0]   = WH[0] >> mipLevel;
+		WH[1]   = WH[1] >> mipLevel;
 
-        const auto tileSize = GetFormatTileSize(GetTextureFormat(handle));
+		const auto tileSize = GetFormatTileSize(GetTextureFormat(handle));
 
-        return WH / tileSize;
-    }
-
-
-    /************************************************************************************************/
+		return WH / tileSize;
+	}
 
 
-    uint2 RenderSystem::GetHeapOffset(ResourceHandle handle, uint subResourceID) const
-    {
-        return Textures.GetHeapOffset(handle, subResourceID);
-    }
+	/************************************************************************************************/
+
+
+	uint2 RenderSystem::GetHeapOffset(ResourceHandle handle, uint subResourceID) const
+	{
+		return Textures.GetHeapOffset(handle, subResourceID);
+	}
 
 
 	/************************************************************************************************/
@@ -4776,7 +4775,7 @@ namespace FlexKit
 		auto resource	= GetDeviceResource(handle);
 		auto wh			= GetTextureWH(handle);
 		auto formatSize = GetTextureElementSize(handle); FK_ASSERT(formatSize != -1);
-        auto format     = GetTextureFormat(handle);
+		auto format     = GetTextureFormat(handle);
 
 		size_t resourceSize = bufferSize;
 		size_t offset       = 0;
@@ -4785,13 +4784,13 @@ namespace FlexKit
 
 		SubResourceUpload_Desc desc;
 		desc.buffers            = &textureBuffer;
-        desc.subResourceCount   = 1;
-        desc.subResourceStart   = 0;
-        desc.format             = format;
+		desc.subResourceCount   = 1;
+		desc.subResourceStart   = 0;
+		desc.format             = format;
 
 		_UpdateSubResourceByUploadQueue(this, queue, resource, &desc, DRS_Common);
 
-        Textures.SetState(handle, DeviceResourceState::DRS_Common);
+		Textures.SetState(handle, DeviceResourceState::DRS_Common);
 	}
 
 
@@ -4810,7 +4809,7 @@ namespace FlexKit
 
 		_UpdateSubResourceByUploadQueue(this, queue, resource, &desc, DRS_Common);
 
-        Textures.SetState(handle, DeviceResourceState::DRS_Common);
+		Textures.SetState(handle, DeviceResourceState::DRS_Common);
 	}
 
 
@@ -4825,43 +4824,43 @@ namespace FlexKit
 
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    BLAS_PreBuildInfo RenderSystem::GetBLASPreBuildInfo(VertexBuffer& vertexBuffer)
-    {
-        auto& indexBuffer    = vertexBuffer.VertexBuffers[vertexBuffer.MD.IndexBuffer_Index];
-        auto* positionBuffer = vertexBuffer.Find(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION);
+	BLAS_PreBuildInfo RenderSystem::GetBLASPreBuildInfo(VertexBuffer& vertexBuffer)
+	{
+		auto& indexBuffer    = vertexBuffer.VertexBuffers[vertexBuffer.MD.IndexBuffer_Index];
+		auto* positionBuffer = vertexBuffer.Find(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION);
 
-        D3D12_RAYTRACING_GEOMETRY_DESC desc;
-        desc.Type   = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-        desc.Flags  = D3D12_RAYTRACING_GEOMETRY_FLAGS::D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
-        desc.Triangles.IndexFormat  = DXGI_FORMAT_R32_UINT;
-        desc.Triangles.IndexBuffer  = indexBuffer.GetDevicePointer();
-        desc.Triangles.IndexCount   = (UINT)indexBuffer.Size();
+		D3D12_RAYTRACING_GEOMETRY_DESC desc;
+		desc.Type   = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+		desc.Flags  = D3D12_RAYTRACING_GEOMETRY_FLAGS::D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
+		desc.Triangles.IndexFormat  = DXGI_FORMAT_R32_UINT;
+		desc.Triangles.IndexBuffer  = indexBuffer.GetDevicePointer();
+		desc.Triangles.IndexCount   = (UINT)indexBuffer.Size();
 
-        desc.Triangles.VertexFormat                 = DXGI_FORMAT_R32G32B32_FLOAT;
-        desc.Triangles.VertexBuffer.StartAddress    = positionBuffer->GetDevicePointer();
-        desc.Triangles.VertexBuffer.StrideInBytes   = positionBuffer->BufferStride;
-        desc.Triangles.VertexCount                  = (UINT)positionBuffer->Size();
+		desc.Triangles.VertexFormat                 = DXGI_FORMAT_R32G32B32_FLOAT;
+		desc.Triangles.VertexBuffer.StartAddress    = positionBuffer->GetDevicePointer();
+		desc.Triangles.VertexBuffer.StrideInBytes   = positionBuffer->BufferStride;
+		desc.Triangles.VertexCount                  = (UINT)positionBuffer->Size();
 
 
-        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs;
-        inputs.DescsLayout      = D3D12_ELEMENTS_LAYOUT::D3D12_ELEMENTS_LAYOUT_ARRAY;
-        inputs.Type             = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
-        inputs.pGeometryDescs   = &desc;
-        inputs.NumDescs         = 1u;
-        inputs.Flags            = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
+		D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs;
+		inputs.DescsLayout      = D3D12_ELEMENTS_LAYOUT::D3D12_ELEMENTS_LAYOUT_ARRAY;
+		inputs.Type             = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
+		inputs.pGeometryDescs   = &desc;
+		inputs.NumDescs         = 1u;
+		inputs.Flags            = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
 
-        D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info;
-        pDevice->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
+		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info;
+		pDevice->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
 
-        return {
-            .BLAS_byteSize          = info.ResultDataMaxSizeInBytes,
-            .scratchPad_byteSize    = info.ScratchDataSizeInBytes,
-            .update_byteSize        = info.UpdateScratchDataSizeInBytes
-        };
-    }
+		return {
+			.BLAS_byteSize          = info.ResultDataMaxSizeInBytes,
+			.scratchPad_byteSize    = info.ScratchDataSizeInBytes,
+			.update_byteSize        = info.UpdateScratchDataSizeInBytes
+		};
+	}
 
 
 	/************************************************************************************************/
@@ -4916,8 +4915,8 @@ namespace FlexKit
 
 	ResourceHandle RenderSystem::CreateDepthBuffer( const uint2 WH, const bool UseFloat, const size_t bufferCount)
 	{
-        auto resourceDesc           = GPUResourceDesc::DepthTarget(WH, UseFloat ? DeviceFormat::D32_FLOAT : DeviceFormat::D24_UNORM_S8_UINT);
-        resourceDesc.bufferCount    = (uint8_t)bufferCount;
+		auto resourceDesc           = GPUResourceDesc::DepthTarget(WH, UseFloat ? DeviceFormat::D32_FLOAT : DeviceFormat::D24_UNORM_S8_UINT);
+		resourceDesc.bufferCount    = (uint8_t)bufferCount;
 
 		auto resource = CreateGPUResource(resourceDesc);
 		SetDebugName(resource, "DepthBuffer");
@@ -4952,7 +4951,7 @@ namespace FlexKit
 
 	ResourceHandle RenderSystem::CreateGPUResource(const GPUResourceDesc& desc)
 	{
-        ProfileFunction();
+		ProfileFunction();
 
 		if (desc.backBuffer)
 		{
@@ -4964,8 +4963,8 @@ namespace FlexKit
 		}
 		else
 		{
-            size_t byteSize                   = desc.CalculateByteSize();
-            D3D12_RESOURCE_DESC Resource_DESC = desc.GetD3D12ResourceDesc();
+			size_t byteSize                   = desc.CalculateByteSize();
+			D3D12_RESOURCE_DESC Resource_DESC = desc.GetD3D12ResourceDesc();
 
 			D3D12_HEAP_PROPERTIES HEAP_Props	={};
 			HEAP_Props.CPUPageProperty			= D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
@@ -4982,7 +4981,7 @@ namespace FlexKit
 			CV.Format	= TextureFormat2DXGIFormat(desc.format);
 		
 			auto flags = D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES |
-                (desc.unordered ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE);
+				(desc.unordered ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE);
 
 
 			D3D12_CLEAR_VALUE* pCV = (desc.CVFlag | desc.renderTarget | desc.depthTarget) ? &CV : nullptr;
@@ -4991,8 +4990,8 @@ namespace FlexKit
 			D3D12_RESOURCE_STATES InitialState =
 				desc.renderTarget       ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RENDER_TARGET :
 				desc.depthTarget        ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_WRITE   :
-                desc.rayTraceStructure  ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE : 
-                D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
+				desc.rayTraceStructure  ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE : 
+				D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
 
 			ID3D12Resource* NewResource[3] = { nullptr, nullptr, nullptr };
 
@@ -5007,10 +5006,10 @@ namespace FlexKit
 				{
 				case ResourceAllocationType::Tiled:
 				{
-                    ProfileFunctionLabeled(Tiled);
+					ProfileFunctionLabeled(Tiled);
 
 					Resource_DESC.Layout = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
-                    
+					
 					HRESULT HR = pDevice->CreateReservedResource(
 									&Resource_DESC,
 									InitialState,
@@ -5021,7 +5020,7 @@ namespace FlexKit
 				}   break;
 				case ResourceAllocationType::Committed:
 				{
-                    ProfileFunctionLabeled(Committed);
+					ProfileFunctionLabeled(Committed);
 
 					HRESULT HR = pDevice->CreateCommittedResource(
 									&HEAP_Props, 
@@ -5032,20 +5031,20 @@ namespace FlexKit
 				}   break;
 				case ResourceAllocationType::Placed:
 				{
-                    ProfileFunctionLabeled(Placed);
+					ProfileFunctionLabeled(Placed);
 
 					HRESULT HR = pDevice->CreatePlacedResource(
-                        desc.placed.heap != InvalidHandle ? GetDeviceResource(desc.placed.heap) : desc.placed.customHeap,
+						desc.placed.heap != InvalidHandle ? GetDeviceResource(desc.placed.heap) : desc.placed.customHeap,
 						desc.placed.offset,
 						&Resource_DESC,
 						InitialState,
 						pCV,
 						IID_PPV_ARGS(&NewResource[itr]));
 
-                    CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE PLACED RESOURCE"));
+					CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE PLACED RESOURCE"));
 
-                    if (FAILED(HR))
-                        _OnCrash();
+					if (FAILED(HR))
+						_OnCrash();
 				}   break;
 				}
 				FK_ASSERT(NewResource[itr], "Failed to Create Texture!");
@@ -5054,10 +5053,10 @@ namespace FlexKit
 
 			auto filledDesc = desc;
 
-            auto initialState = filledDesc.InitialResourceState();
+			auto initialState = filledDesc.InitialResourceState();
 
 			filledDesc.resources    = NewResource;
-            filledDesc.byteSize     = byteSize;
+			filledDesc.byteSize     = byteSize;
 
 			return Textures.AddResource(filledDesc, initialState);
 		}
@@ -5066,15 +5065,15 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void RenderSystem::BackResource(ResourceHandle handle, const GPUResourceDesc& desc)
-    {
-        ProfileFunction();
+	void RenderSystem::BackResource(ResourceHandle handle, const GPUResourceDesc& desc)
+	{
+		ProfileFunction();
 
-        size_t byteSize                   = desc.CalculateByteSize();
-        D3D12_RESOURCE_DESC Resource_DESC = desc.GetD3D12ResourceDesc();
+		size_t byteSize                   = desc.CalculateByteSize();
+		D3D12_RESOURCE_DESC Resource_DESC = desc.GetD3D12ResourceDesc();
 
 		D3D12_HEAP_PROPERTIES HEAP_Props	={};
 		HEAP_Props.CPUPageProperty			= D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
@@ -5091,7 +5090,7 @@ namespace FlexKit
 		CV.Format	= TextureFormat2DXGIFormat(desc.format);
 		
 		auto flags = D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES |
-            (desc.unordered ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE);
+			(desc.unordered ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE);
 
 
 		D3D12_CLEAR_VALUE* pCV = (desc.CVFlag | desc.renderTarget | desc.depthTarget) ? &CV : nullptr;
@@ -5100,8 +5099,8 @@ namespace FlexKit
 		D3D12_RESOURCE_STATES InitialState =
 			desc.renderTarget       ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RENDER_TARGET :
 			desc.depthTarget        ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_WRITE   :
-            desc.rayTraceStructure  ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE : 
-            D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
+			desc.rayTraceStructure  ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE : 
+			D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
 
 		ID3D12Resource* NewResource[3] = { nullptr, nullptr, nullptr };
 
@@ -5116,10 +5115,10 @@ namespace FlexKit
 			{
 			case ResourceAllocationType::Tiled:
 			{
-                ProfileFunctionLabeled(Tiled);
+				ProfileFunctionLabeled(Tiled);
 
 				Resource_DESC.Layout = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
-                    
+					
 				HRESULT HR = pDevice->CreateReservedResource(
 								&Resource_DESC,
 								InitialState,
@@ -5130,7 +5129,7 @@ namespace FlexKit
 			}   break;
 			case ResourceAllocationType::Committed:
 			{
-                ProfileFunctionLabeled(Committed);
+				ProfileFunctionLabeled(Committed);
 
 				HRESULT HR = pDevice->CreateCommittedResource(
 								&HEAP_Props, 
@@ -5141,20 +5140,20 @@ namespace FlexKit
 			}   break;
 			case ResourceAllocationType::Placed:
 			{
-                ProfileFunctionLabeled(Placed);
+				ProfileFunctionLabeled(Placed);
 
 				HRESULT HR = pDevice->CreatePlacedResource(
-                    desc.placed.heap != InvalidHandle ? GetDeviceResource(desc.placed.heap) : desc.placed.customHeap,
+					desc.placed.heap != InvalidHandle ? GetDeviceResource(desc.placed.heap) : desc.placed.customHeap,
 					desc.placed.offset,
 					&Resource_DESC,
 					InitialState,
 					pCV,
 					IID_PPV_ARGS(&NewResource[itr]));
 
-                CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE PLACED RESOURCE"));
+				CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE PLACED RESOURCE"));
 
-                if (FAILED(HR))
-                    _OnCrash();
+				if (FAILED(HR))
+					_OnCrash();
 			}   break;
 			}
 			FK_ASSERT(NewResource[itr], "Failed to Create Texture!");
@@ -5162,23 +5161,23 @@ namespace FlexKit
 		}
 
 		auto filledDesc     = desc;
-        auto initialState   = filledDesc.InitialResourceState();
+		auto initialState   = filledDesc.InitialResourceState();
 
 
 		filledDesc.resources    = NewResource;
-        filledDesc.byteSize     = byteSize;
+		filledDesc.byteSize     = byteSize;
 
 		Textures.SetResource(handle, filledDesc, initialState);
-    }
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    ResourceHandle RenderSystem::CreateGPUResourceHandle()
-    {
-        return Textures.GetFreeHandle();
-    }
+	ResourceHandle RenderSystem::CreateGPUResourceHandle()
+	{
+		return Textures.GetFreeHandle();
+	}
 
 
 	/************************************************************************************************/
@@ -5193,36 +5192,36 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    ResourceHandle RenderSystem::CreateUAVBufferResource(size_t resourceSize, bool tripleBuffer)
+	ResourceHandle RenderSystem::CreateUAVBufferResource(size_t resourceSize, bool tripleBuffer)
 	{
-        auto desc = GPUResourceDesc::UAVResource(resourceSize);
-        desc.bufferCount = tripleBuffer ? 3 : 1;
+		auto desc = GPUResourceDesc::UAVResource(resourceSize);
+		desc.bufferCount = tripleBuffer ? 3 : 1;
 
-        UAVResourceLayout layout;
-        layout.elementCount = (UINT)(resourceSize / sizeof(uint32_t));// initial layout assume a uint buffer
-        layout.format       = DXGI_FORMAT_UNKNOWN;
-        layout.stride       = sizeof(uint32_t);
+		UAVResourceLayout layout;
+		layout.elementCount = (UINT)(resourceSize / sizeof(uint32_t));// initial layout assume a uint buffer
+		layout.format       = DXGI_FORMAT_UNKNOWN;
+		layout.stride       = sizeof(uint32_t);
 
-        auto handle = CreateGPUResource(desc);
-        Textures.SetExtra(handle, layout);
-        SetDebugName(handle, "CreateUAVBuffer");
+		auto handle = CreateGPUResource(desc);
+		Textures.SetExtra(handle, layout);
+		SetDebugName(handle, "CreateUAVBuffer");
 
-        return handle;
+		return handle;
 	}
 
 
 	/************************************************************************************************/
 
 
-    ResourceHandle RenderSystem::CreateUAVTextureResource(const uint2 WH, const DeviceFormat format, const bool renderTarget)
+	ResourceHandle RenderSystem::CreateUAVTextureResource(const uint2 WH, const DeviceFormat format, const bool renderTarget)
 	{
-        auto desc           = GPUResourceDesc::UAVTexture(WH, format, renderTarget);
-        desc.bufferCount    = 3;
+		auto desc           = GPUResourceDesc::UAVTexture(WH, format, renderTarget);
+		desc.bufferCount    = 3;
 
-        auto UAVresource = CreateGPUResource(desc);
-        SetDebugName(UAVresource, "CreateUAVBuffer");
+		auto UAVresource = CreateGPUResource(desc);
+		SetDebugName(UAVresource, "CreateUAVBuffer");
 
-        return UAVresource;
+		return UAVresource;
 	}
 
 
@@ -5288,13 +5287,13 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    QueryHandle	RenderSystem::CreateTimeStampQuery(size_t count)
-    {
-        return Queries.CreateQueryBuffer(count, QueryType::TimeStats);
-    }
+	QueryHandle	RenderSystem::CreateTimeStampQuery(size_t count)
+	{
+		return Queries.CreateQueryBuffer(count, QueryType::TimeStats);
+	}
 
 
 	/************************************************************************************************/
@@ -5313,39 +5312,39 @@ namespace FlexKit
 		{
 			switch (entries[itr].type)
 			{
-			    case ILE_DrawCall:
-			    {
-				    D3D12_INDIRECT_ARGUMENT_DESC desc = {};
-				    desc.Type   = D3D12_INDIRECT_ARGUMENT_TYPE::D3D12_INDIRECT_ARGUMENT_TYPE_DRAW;
+				case ILE_DrawCall:
+				{
+					D3D12_INDIRECT_ARGUMENT_DESC desc = {};
+					desc.Type   = D3D12_INDIRECT_ARGUMENT_TYPE::D3D12_INDIRECT_ARGUMENT_TYPE_DRAW;
 
-				    signatureEntries.push_back(desc);
-				    layout.push_back(ILE_DrawCall);
-				    entryStride += sizeof(uint32_t) * 4; // uses 4 8byte values
-			    }	break;
-                case ILE_DispatchCall:
-                {
-                    D3D12_INDIRECT_ARGUMENT_DESC desc = {};
-                    desc.Type   = D3D12_INDIRECT_ARGUMENT_TYPE::D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
+					signatureEntries.push_back(desc);
+					layout.push_back(ILE_DrawCall);
+					entryStride += sizeof(uint32_t) * 4; // uses 4 8byte values
+				}	break;
+				case ILE_DispatchCall:
+				{
+					D3D12_INDIRECT_ARGUMENT_DESC desc = {};
+					desc.Type   = D3D12_INDIRECT_ARGUMENT_TYPE::D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
 
-                    signatureEntries.push_back(desc);
-                    layout.push_back(ILE_DispatchCall);
-                    entryStride += sizeof(uint4); // uses 4 8byte values
-			    }   break;
-                case ILE_RootDescriptorUINT:
-                {
-                    D3D12_INDIRECT_ARGUMENT_DESC desc = {};
-                    desc.Type                               = D3D12_INDIRECT_ARGUMENT_TYPE::D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
-                    desc.Constant.DestOffsetIn32BitValues   = entries[itr].description.constantValue.destinationOffset;
-                    desc.Constant.Num32BitValuesToSet       = entries[itr].description.constantValue.numValues;
-                    desc.Constant.RootParameterIndex        = entries[itr].description.constantValue.rootParameterIdx;
+					signatureEntries.push_back(desc);
+					layout.push_back(ILE_DispatchCall);
+					entryStride += sizeof(uint4); // uses 4 8byte values
+				}   break;
+				case ILE_RootDescriptorUINT:
+				{
+					D3D12_INDIRECT_ARGUMENT_DESC desc = {};
+					desc.Type                               = D3D12_INDIRECT_ARGUMENT_TYPE::D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+					desc.Constant.DestOffsetIn32BitValues   = entries[itr].description.constantValue.destinationOffset;
+					desc.Constant.Num32BitValuesToSet       = entries[itr].description.constantValue.numValues;
+					desc.Constant.RootParameterIndex        = entries[itr].description.constantValue.rootParameterIdx;
 
-                    signatureEntries.push_back(desc);
-                    layout.push_back(ILE_RootDescriptorUINT);
+					signatureEntries.push_back(desc);
+					layout.push_back(ILE_RootDescriptorUINT);
 
-                    entryStride += desc.Constant.Num32BitValuesToSet * sizeof(uint32_t);
-                }   break;
-		    }
-        }
+					entryStride += desc.Constant.Num32BitValuesToSet * sizeof(uint32_t);
+				}   break;
+			}
+		}
 
 		D3D12_COMMAND_SIGNATURE_DESC desc;
 		desc.ByteStride			= (UINT)entryStride;
@@ -5355,7 +5354,7 @@ namespace FlexKit
 
 		auto HR = pDevice->CreateCommandSignature(
 			&desc,
-            rootSignature ? rootSignature->Get_ptr() : nullptr,
+			rootSignature ? rootSignature->Get_ptr() : nullptr,
 			IID_PPV_ARGS(&signature));
 
 		CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE CONSTANT BUFFER"));
@@ -5367,14 +5366,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    SyncPoint RenderSystem::UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator)
+	SyncPoint RenderSystem::UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator)
 	{
 		FK_LOG_9("Updating tile mappings for frame: %u", GetCurrentFrame());
 
 		auto itr = begin;
 		while(itr < end)
 		{
-            FK_ASSERT(*itr >= Textures.Handles.size(), "Invalid Handle Detected");
+			FK_ASSERT(*itr >= Textures.Handles.size(), "Invalid Handle Detected");
 
 			auto& mappings      = Textures._GetTileMappings(*itr);
 			auto deviceResource = GetDeviceResource(*itr);
@@ -5388,16 +5387,16 @@ namespace FlexKit
 			DeviceHeapHandle                        heap = InvalidHandle;
 
 
-            auto nullEnd = std::partition(mappings.begin(), mappings.end(),
-                [](auto& mapping)
-                {
-                    return mapping.state == TileMapState::Null;
-                });
+			auto nullEnd = std::partition(mappings.begin(), mappings.end(),
+				[](auto& mapping)
+				{
+					return mapping.state == TileMapState::Null;
+				});
 
-            std::for_each(mappings.begin(), nullEnd,
-                [&](auto& mapping)
-                {
-                    const auto flag = D3D12_TILE_RANGE_FLAG_NULL;
+			std::for_each(mappings.begin(), nullEnd,
+				[&](auto& mapping)
+				{
+					const auto flag = D3D12_TILE_RANGE_FLAG_NULL;
 
 					D3D12_TILED_RESOURCE_COORDINATE coordinate;
 					coordinate.Subresource  = mapping.tileID.GetMipLevel();
@@ -5405,39 +5404,39 @@ namespace FlexKit
 					coordinate.Y            = mapping.tileID.GetTileY();
 					coordinate.Z            = 0;
 
-                    if (mapping.tileID.bytes != -1)
-                    {
-                        coordinates.push_back(coordinate);
-                        offsets.push_back(mapping.heapOffset);
-                        flags.push_back(flag);
-                        tileRanges.push_back(1);
-                    }
-                    else
-                        FK_LOG_ERROR("Invalid virtual texture tileID received");
-                });
+					if (mapping.tileID.bytes != -1)
+					{
+						coordinates.push_back(coordinate);
+						offsets.push_back(mapping.heapOffset);
+						flags.push_back(flag);
+						tileRanges.push_back(1);
+					}
+					else
+						FK_LOG_ERROR("Invalid virtual texture tileID received");
+				});
 
-            if (coordinates.size())
-            {
-                copyEngine.copyQueue->UpdateTileMappings(
-                    deviceResource,
-                    (UINT)coordinates.size(),
-                    coordinates.data(),
-                    nullptr,
-                    nullptr,
-                    (UINT)coordinates.size(),
-                    flags.data(),
-                    offsets.data(),
-                    tileRanges.data(),
-                    D3D12_TILE_MAPPING_FLAG_NONE);
-            }
+			if (coordinates.size())
+			{
+				copyEngine.copyQueue->UpdateTileMappings(
+					deviceResource,
+					(UINT)coordinates.size(),
+					coordinates.data(),
+					nullptr,
+					nullptr,
+					(UINT)coordinates.size(),
+					flags.data(),
+					offsets.data(),
+					tileRanges.data(),
+					D3D12_TILE_MAPPING_FLAG_NONE);
+			}
 
-            coordinates.clear();
-            regionSizes.clear();
-            flags.clear();
-            offsets.clear();
-            tileRanges.clear();
+			coordinates.clear();
+			regionSizes.clear();
+			flags.clear();
+			offsets.clear();
+			tileRanges.clear();
 
-            uint32_t I = std::distance(mappings.begin(), nullEnd);
+			uint32_t I = std::distance(mappings.begin(), nullEnd);
 			while(I < mappings.size())
 			{
 				heap = mappings[I].heap;
@@ -5460,29 +5459,29 @@ namespace FlexKit
 					if(flag == D3D12_TILE_RANGE_FLAG_NONE)
 						FK_LOG_9("Mapping Tile { %u, %u, %u MIP } to Offset: { %u }", coordinate.X, coordinate.Y, coordinate.Subresource, mapping.heapOffset );
 					else
-                        FK_LOG_INFO("Unmapping Tile { %u, %u, %u MIP } from Offset: { %u }", coordinate.X, coordinate.Y, coordinate.Subresource, mapping.heapOffset);
+						FK_LOG_INFO("Unmapping Tile { %u, %u, %u MIP } from Offset: { %u }", coordinate.X, coordinate.Y, coordinate.Subresource, mapping.heapOffset);
 #endif
 
-                    if (mapping.tileID.bytes != -1)
-                    {
-                        coordinates.push_back(coordinate);
+					if (mapping.tileID.bytes != -1)
+					{
+						coordinates.push_back(coordinate);
 
-					    D3D12_TILE_REGION_SIZE regionSize;
-					    regionSize.Depth    = 1;
-					    regionSize.Height   = 1;
-					    regionSize.Width    = 1;
+						D3D12_TILE_REGION_SIZE regionSize;
+						regionSize.Depth    = 1;
+						regionSize.Height   = 1;
+						regionSize.Width    = 1;
 
-					    regionSize.NumTiles = 1;
-					    regionSize.UseBox = false;
+						regionSize.NumTiles = 1;
+						regionSize.UseBox = false;
 
-					    regionSizes.push_back(regionSize);
+						regionSizes.push_back(regionSize);
 
-					    offsets.push_back(mapping.heapOffset);
-					    flags.push_back(flag);
-					    tileRanges.push_back(1);
-                    }
-                    else
-                        FK_LOG_ERROR("Invalid virtual texture tile received");
+						offsets.push_back(mapping.heapOffset);
+						flags.push_back(flag);
+						tileRanges.push_back(1);
+					}
+					else
+						FK_LOG_ERROR("Invalid virtual texture tile received");
 				}
 
 				I++;
@@ -5491,25 +5490,25 @@ namespace FlexKit
 				{
 					D3D12_TILE_RANGE_FLAGS nullRangeFlag = D3D12_TILE_RANGE_FLAG_NULL;
 
-                    if (!coordinates.size())
-                    {
-                        D3D12_TILE_RANGE_FLAGS rangeFlags = D3D12_TILE_RANGE_FLAG_NULL;
-                        copyEngine.copyQueue->UpdateTileMappings(deviceResource, 1, NULL, NULL, NULL, 1, &rangeFlags, NULL, NULL, D3D12_TILE_MAPPING_FLAG_NONE);
-                    }
-                    else
-                    {
-                        copyEngine.copyQueue->UpdateTileMappings(
-                            deviceResource,
-                            (UINT)coordinates.size(),
-                            coordinates.data(),
-                            regionSizes.data(),
-                            GetDeviceResource(heap),
-                            (UINT)coordinates.size(),
-                            flags.data(),
-                            offsets.data(),
-                            tileRanges.data(),
-                            D3D12_TILE_MAPPING_FLAG_NONE);
-                    }
+					if (!coordinates.size())
+					{
+						D3D12_TILE_RANGE_FLAGS rangeFlags = D3D12_TILE_RANGE_FLAG_NULL;
+						copyEngine.copyQueue->UpdateTileMappings(deviceResource, 1, NULL, NULL, NULL, 1, &rangeFlags, NULL, NULL, D3D12_TILE_MAPPING_FLAG_NONE);
+					}
+					else
+					{
+						copyEngine.copyQueue->UpdateTileMappings(
+							deviceResource,
+							(UINT)coordinates.size(),
+							coordinates.data(),
+							regionSizes.data(),
+							GetDeviceResource(heap),
+							(UINT)coordinates.size(),
+							flags.data(),
+							offsets.data(),
+							tileRanges.data(),
+							D3D12_TILE_MAPPING_FLAG_NONE);
+					}
 				}
 
 				mappings.erase(
@@ -5534,15 +5533,15 @@ namespace FlexKit
 
 		FK_LOG_9("Completed file mapping update");
 
-        /*/
-        const auto counter = ++FenceCounter;
-        if (auto HR = GraphicsQueue->Signal(Fence, counter); FAILED(HR))
-            FK_LOG_ERROR("Failed to Signal");
+		/*/
+		const auto counter = ++FenceCounter;
+		if (auto HR = GraphicsQueue->Signal(Fence, counter); FAILED(HR))
+			FK_LOG_ERROR("Failed to Signal");
 
-        return { counter, Fence };
-        */
+		return { counter, Fence };
+		*/
 
-        return {};
+		return {};
 	}
 
 
@@ -5589,7 +5588,7 @@ namespace FlexKit
 			nullptr,
 			IID_PPV_ARGS(&resource));
 
-        SETDEBUGNAME(resource, "ReadBackHeap");
+		SETDEBUGNAME(resource, "ReadBackHeap");
 
 		return ReadBackTable.AddReadBack(bufferSize, resource);
 	}
@@ -5706,10 +5705,10 @@ namespace FlexKit
 
 	ID3D12Resource* RenderSystem::GetDeviceResource(const ResourceHandle handle) const
 	{
-        if (handle != InvalidHandle)
-            return Textures.GetResource(handle, pDevice);
-        else
-            return nullptr;
+		if (handle != InvalidHandle)
+			return Textures.GetResource(handle, pDevice);
+		else
+			return nullptr;
 	}
 
 
@@ -5746,10 +5745,10 @@ namespace FlexKit
 
 	UAVResourceLayout RenderSystem::GetUAVBufferLayout(const ResourceHandle handle) const noexcept
 	{
-        auto extra  = Textures.GetExtra(handle);
-        auto temp   = std::get_if<UAVResourceLayout>(&extra);
+		auto extra  = Textures.GetExtra(handle);
+		auto temp   = std::get_if<UAVResourceLayout>(&extra);
 
-        return temp ? *temp : UAVResourceLayout{};
+		return temp ? *temp : UAVResourceLayout{};
 	}
 
 
@@ -5758,7 +5757,7 @@ namespace FlexKit
 
 	void RenderSystem::SetUAVBufferLayout(const ResourceHandle handle, const UAVResourceLayout newConfig) noexcept
 	{
-        Textures.SetExtra(handle, newConfig);
+		Textures.SetExtra(handle, newConfig);
 	}
 
 
@@ -5767,7 +5766,7 @@ namespace FlexKit
 
 	size_t RenderSystem::GetUAVBufferSize(const ResourceHandle handle) const noexcept
 	{
-        return Textures.GetResourceSize(handle);
+		return Textures.GetResourceSize(handle);
 	}
 
 
@@ -5825,13 +5824,13 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void RenderSystem::ReleaseHeap(DeviceHeapHandle heap)
-    {
-        heaps.ReleaseHeap(heap);
-    }
+	void RenderSystem::ReleaseHeap(DeviceHeapHandle heap)
+	{
+		heaps.ReleaseHeap(heap);
+	}
 
 
 	/************************************************************************************************/
@@ -5843,13 +5842,13 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void Push_DelayedReleaseCopy(RenderSystem* RS, ID3D12Resource* Res)
-    {
-        RS->FreeList_CopyQueue.push_back({ Res, RS->copyEngine.counter });
-    }
+	void Push_DelayedReleaseCopy(RenderSystem* RS, ID3D12Resource* Res)
+	{
+		RS->FreeList_CopyQueue.push_back({ Res, RS->copyEngine.counter });
+	}
 
 
 	/************************************************************************************************/
@@ -5857,33 +5856,33 @@ namespace FlexKit
 
 	void Free_DelayedReleaseResources(RenderSystem* RS)
 	{
-        {
-            auto completed = RS->Fence->GetCompletedValue();
-            for (auto& R : RS->FreeList_GraphicsQueue)
-                if (completed > R.Counter)
-                    SAFERELEASE(R.Resource);
+		{
+			auto completed = RS->Fence->GetCompletedValue();
+			for (auto& R : RS->FreeList_GraphicsQueue)
+				if (completed > R.Counter)
+					SAFERELEASE(R.Resource);
 
-            RS->FreeList_GraphicsQueue.erase(
-                std::partition(
-                    RS->FreeList_GraphicsQueue.begin(),
-                    RS->FreeList_GraphicsQueue.end(),
-                    [](const auto& R) -> bool {return (R.Resource); }),
-                RS->FreeList_GraphicsQueue.end());
-        }
+			RS->FreeList_GraphicsQueue.erase(
+				std::partition(
+					RS->FreeList_GraphicsQueue.begin(),
+					RS->FreeList_GraphicsQueue.end(),
+					[](const auto& R) -> bool {return (R.Resource); }),
+				RS->FreeList_GraphicsQueue.end());
+		}
 
-        {
-            auto completed = RS->copyEngine.fence->GetCompletedValue();
-            for (auto& R : RS->FreeList_CopyQueue)
-                if (completed > R.Counter)
-                    SAFERELEASE(R.Resource);
+		{
+			auto completed = RS->copyEngine.fence->GetCompletedValue();
+			for (auto& R : RS->FreeList_CopyQueue)
+				if (completed > R.Counter)
+					SAFERELEASE(R.Resource);
 
-            RS->FreeList_CopyQueue.erase(
-                std::partition(
-                    RS->FreeList_CopyQueue.begin(),
-                    RS->FreeList_CopyQueue.end(),
-                    [](const auto& R) -> bool {return (R.Resource); }),
-                RS->FreeList_CopyQueue.end());
-        }
+			RS->FreeList_CopyQueue.erase(
+				std::partition(
+					RS->FreeList_CopyQueue.begin(),
+					RS->FreeList_CopyQueue.end(),
+					[](const auto& R) -> bool {return (R.Resource); }),
+				RS->FreeList_CopyQueue.end());
+		}
 	}
 
 
@@ -5894,8 +5893,8 @@ namespace FlexKit
 	{
 		switch (F)
 		{
-        case FlexKit::DeviceFormat::R16_FLOAT:
-            return DXGI_FORMAT::DXGI_FORMAT_R16_FLOAT;
+		case FlexKit::DeviceFormat::R16_FLOAT:
+			return DXGI_FORMAT::DXGI_FORMAT_R16_FLOAT;
 		case FlexKit::DeviceFormat::R16_UINT:
 			return DXGI_FORMAT::DXGI_FORMAT_R16_UINT;
 		case FlexKit::DeviceFormat::R16G16_UINT:
@@ -5904,14 +5903,14 @@ namespace FlexKit
 			return DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
 		case FlexKit::DeviceFormat::R32G32_UINT:
 			return DXGI_FORMAT::DXGI_FORMAT_R32G32_UINT;
-        case FlexKit::DeviceFormat::R32G32B32_UINT:
-            return DXGI_FORMAT::DXGI_FORMAT_R32G32B32_UINT;
-        case FlexKit::DeviceFormat::R32G32B32A32_UINT:
-            return DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_UINT;
+		case FlexKit::DeviceFormat::R32G32B32_UINT:
+			return DXGI_FORMAT::DXGI_FORMAT_R32G32B32_UINT;
+		case FlexKit::DeviceFormat::R32G32B32A32_UINT:
+			return DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_UINT;
 		case FlexKit::DeviceFormat::R8G8B8A8_UNORM:
 			return DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM;
-        case FlexKit::DeviceFormat::R8G8B8A8_UNORM_SRGB:
-            return DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		case FlexKit::DeviceFormat::R8G8B8A8_UNORM_SRGB:
+			return DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		case FlexKit::DeviceFormat::R8G8_UNORM:
 			return DXGI_FORMAT::DXGI_FORMAT_R8G8_UNORM;
 		case FlexKit::DeviceFormat::R16G16_FLOAT:
@@ -5956,10 +5955,10 @@ namespace FlexKit
 			return DXGI_FORMAT::DXGI_FORMAT_BC5_UNORM;
 		case FlexKit::DeviceFormat::BC5_SNORM:
 			return DXGI_FORMAT::DXGI_FORMAT_BC5_SNORM;
-        case FlexKit::DeviceFormat::BC7_UNORM:
-            return DXGI_FORMAT::DXGI_FORMAT_BC7_UNORM;
-        case FlexKit::DeviceFormat::UNKNOWN:
-            return DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
+		case FlexKit::DeviceFormat::BC7_UNORM:
+			return DXGI_FORMAT::DXGI_FORMAT_BC7_UNORM;
+		case FlexKit::DeviceFormat::UNKNOWN:
+			return DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
 		default:
 			return DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UINT;
 			break;
@@ -5980,8 +5979,8 @@ namespace FlexKit
 			return FlexKit::DeviceFormat::R32G32_UINT;
 		case DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM:
 			return FlexKit::DeviceFormat::R8G8B8A8_UNORM;
-        case DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
-            return FlexKit::DeviceFormat::R8G8B8A8_UNORM_SRGB;
+		case DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+			return FlexKit::DeviceFormat::R8G8B8A8_UNORM_SRGB;
 		case DXGI_FORMAT::DXGI_FORMAT_R8G8_UNORM:
 			return FlexKit::DeviceFormat::R8G8_UNORM;
 		case DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT:
@@ -6024,15 +6023,15 @@ namespace FlexKit
 			return FlexKit::DeviceFormat::BC5_UNORM;
 		case DXGI_FORMAT::DXGI_FORMAT_BC5_SNORM:
 			return FlexKit::DeviceFormat::BC5_SNORM;
-        case DXGI_FORMAT::DXGI_FORMAT_BC7_UNORM:
-            return FlexKit::DeviceFormat::BC7_UNORM;
+		case DXGI_FORMAT::DXGI_FORMAT_BC7_UNORM:
+			return FlexKit::DeviceFormat::BC7_UNORM;
 		case DXGI_FORMAT::DXGI_FORMAT_R32_UINT:
 			return FlexKit::DeviceFormat::R32_UINT;
 
-        case DXGI_FORMAT::DXGI_FORMAT_R32G32B32_UINT:
-            return FlexKit::DeviceFormat::R32G32B32_UINT;
-        case DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_UINT:
-            return FlexKit::DeviceFormat::R32G32B32A32_UINT;
+		case DXGI_FORMAT::DXGI_FORMAT_R32G32B32_UINT:
+			return FlexKit::DeviceFormat::R32G32B32_UINT;
+		case DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_UINT:
+			return FlexKit::DeviceFormat::R32G32B32A32_UINT;
 
 		default:
 			return FlexKit::DeviceFormat::UNKNOWN;
@@ -6069,7 +6068,7 @@ namespace FlexKit
 		copyCtx.Barrier(
 			destinationResource,
 			DRS_CopyDest,
-            EndState);
+			EndState);
 	}
 
 
@@ -6089,141 +6088,141 @@ namespace FlexKit
 
 		copyCtx.CopyBuffer(Dest, 0, reservedSpace);
 
-        copyCtx.Barrier(
-            Dest,
-            DRS_CopyDest,
-            EndState);
+		copyCtx.Barrier(
+			Dest,
+			DRS_CopyDest,
+			EndState);
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
-    struct IncludeHandler : public IDxcIncludeHandler
-    {
-        HRESULT STDMETHODCALLTYPE LoadSource(LPCWSTR pFilename, IDxcBlob** ppIncludeSource) override
-        {
-            char fileStr[256];
-            auto fileLength = wcstombs(fileStr, pFilename, 256);
+	struct IncludeHandler : public IDxcIncludeHandler
+	{
+		HRESULT STDMETHODCALLTYPE LoadSource(LPCWSTR pFilename, IDxcBlob** ppIncludeSource) override
+		{
+			char fileStr[256];
+			auto fileLength = wcstombs(fileStr, pFilename, 256);
 
-            std::filesystem::path file{ fileStr };
-            auto newFilePath = includePath.string() + R"(\)" + file.filename().string();
+			std::filesystem::path file{ fileStr };
+			auto newFilePath = includePath.string() + R"(\)" + file.filename().string();
 
-            wchar_t fileW[256];
-            mbstowcs(fileW, newFilePath.c_str(), 256);
-
-
-            return handler->LoadSource(fileW, ppIncludeSource);
-        }
-
-        HRESULT IUnknown::QueryInterface(const IID&, void**)
-        {
-            return 0;
-        }
-
-        std::filesystem::path   includePath;
-        IDxcIncludeHandler*     handler;
-
-        ULONG AddRef() { return 0; }
-        ULONG Release() { return 0; }
-    };
+			wchar_t fileW[256];
+			mbstowcs(fileW, newFilePath.c_str(), 256);
 
 
-    /************************************************************************************************/
+			return handler->LoadSource(fileW, ppIncludeSource);
+		}
+
+		HRESULT IUnknown::QueryInterface(const IID&, void**)
+		{
+			return 0;
+		}
+
+		std::filesystem::path   includePath;
+		IDxcIncludeHandler*     handler;
+
+		ULONG AddRef() { return 0; }
+		ULONG Release() { return 0; }
+	};
 
 
-    Shader  RenderSystem::LoadShader(const char* entryPoint, const char* profile, const char* file, bool enable16Bit)
-    {
-        std::filesystem::path filePath{ file };
-        auto parentPath = filePath.parent_path();
-
-        wchar_t entryPointW[64];
-        wchar_t fileW[256];
-        wchar_t filenameW[256];
-        wchar_t profileW[64];
-
-        size_t fileWLength = 0;
-        if(entryPoint != nullptr)
-            mbstowcs(entryPointW, entryPoint, 64);
-
-        mbstowcs(profileW, profile, 64);
-        mbstowcs(fileW, file, 256);
-        mbstowcs(filenameW, filePath.filename().string().c_str(), 256);
+	/************************************************************************************************/
 
 
-        IDxcBlobEncoding* blob;
-        auto HR1 = hlslLibrary->CreateBlobFromFile(fileW, nullptr, &blob);
+	Shader  RenderSystem::LoadShader(const char* entryPoint, const char* profile, const char* file, bool enable16Bit)
+	{
+		std::filesystem::path filePath{ file };
+		auto parentPath = filePath.parent_path();
+
+		wchar_t entryPointW[64];
+		wchar_t fileW[256];
+		wchar_t filenameW[256];
+		wchar_t profileW[64];
+
+		size_t fileWLength = 0;
+		if(entryPoint != nullptr)
+			mbstowcs(entryPointW, entryPoint, 64);
+
+		mbstowcs(profileW, profile, 64);
+		mbstowcs(fileW, file, 256);
+		mbstowcs(filenameW, filePath.filename().string().c_str(), 256);
 
 
-        IncludeHandler includeHandler;
-        includeHandler.includePath      = parentPath;
-        includeHandler.handler          = hlslIncludeHandler;
+		IDxcBlobEncoding* blob;
+		auto HR1 = hlslLibrary->CreateBlobFromFile(fileW, nullptr, &blob);
 
 
-        IDxcCompiler2* debugCompiler = nullptr;
-        hlslCompiler->QueryInterface<IDxcCompiler2>(&debugCompiler);
+		IncludeHandler includeHandler;
+		includeHandler.includePath      = parentPath;
+		includeHandler.handler          = hlslIncludeHandler;
 
-        static_vector<LPCWSTR> arguments;
+
+		IDxcCompiler2* debugCompiler = nullptr;
+		hlslCompiler->QueryInterface<IDxcCompiler2>(&debugCompiler);
+
+		static_vector<LPCWSTR> arguments;
 
 #if USING(DEBUGSHADERS)
-        arguments.push_back(L"-Od");
-        arguments.push_back(L"/Zi");
-        arguments.push_back(L"-Qembed_debug");
+		arguments.push_back(L"-Od");
+		arguments.push_back(L"/Zi");
+		arguments.push_back(L"-Qembed_debug");
 
-        if(enable16Bit)
-            arguments.push_back(L"-enable-16bit-types");
+		if(enable16Bit)
+			arguments.push_back(L"-enable-16bit-types");
 #else
 
-        if (enable16Bit)
-            arguments.push_back(L"-enable-16bit-types");
+		if (enable16Bit)
+			arguments.push_back(L"-enable-16bit-types");
 #endif
 
-        IDxcOperationResult* result = nullptr;
-        auto HR2 = hlslCompiler->Compile(blob, filenameW, entryPoint != nullptr ? entryPointW : nullptr, profileW, arguments.data(), (UINT)arguments.size(), nullptr, 0, &includeHandler, &result);
+		IDxcOperationResult* result = nullptr;
+		auto HR2 = hlslCompiler->Compile(blob, filenameW, entryPoint != nullptr ? entryPointW : nullptr, profileW, arguments.data(), (UINT)arguments.size(), nullptr, 0, &includeHandler, &result);
 
-        if (FAILED(HR2))
-        {
-            if(result)
-                result->Release();
+		if (FAILED(HR2))
+		{
+			if(result)
+				result->Release();
 
-            return {};
-        }
-        else
-        {
-            IDxcBlob* byteCodeBlob;
-            HRESULT status;
-            result->GetStatus(&status);
+			return {};
+		}
+		else
+		{
+			IDxcBlob* byteCodeBlob;
+			HRESULT status;
+			result->GetStatus(&status);
 
-            while(FAILED(status))
-            {
-                IDxcBlobEncoding* errors;
-                result->GetErrorBuffer(&errors);
+			while(FAILED(status))
+			{
+				IDxcBlobEncoding* errors;
+				result->GetErrorBuffer(&errors);
 
-                auto errorString = (const char*)errors->GetBufferPointer();
-                FK_LOG_ERROR("%s\nFailed to Compile Shader\nEntryPoint: %s\nFile: %s\nPress Enter to try again\n", errorString, entryPoint, file);
+				auto errorString = (const char*)errors->GetBufferPointer();
+				FK_LOG_ERROR("%s\nFailed to Compile Shader\nEntryPoint: %s\nFile: %s\nPress Enter to try again\n", errorString, entryPoint, file);
 
-                errors->Release();
+				errors->Release();
 
-                char str[100];
-                std::cin >> str;
+				char str[100];
+				std::cin >> str;
 
-                HR1 = hlslLibrary->CreateBlobFromFile(fileW, nullptr, &blob);
-                HR2 = hlslCompiler->Compile(blob, filenameW, entryPointW, profileW, arguments.data(), (UINT)arguments.size(), nullptr, 0, &includeHandler, &result);
+				HR1 = hlslLibrary->CreateBlobFromFile(fileW, nullptr, &blob);
+				HR2 = hlslCompiler->Compile(blob, filenameW, entryPointW, profileW, arguments.data(), (UINT)arguments.size(), nullptr, 0, &includeHandler, &result);
 
-                result->GetStatus(&status);
-            }
+				result->GetStatus(&status);
+			}
 
 
-            auto HR = result->GetResult(&byteCodeBlob);
+			auto HR = result->GetResult(&byteCodeBlob);
 
-            wchar_t* text = (wchar_t*)byteCodeBlob->GetBufferPointer();
+			wchar_t* text = (wchar_t*)byteCodeBlob->GetBufferPointer();
 
-            Shader out{ byteCodeBlob };
-            byteCodeBlob->Release();
-            result->Release();
+			Shader out{ byteCodeBlob };
+			byteCodeBlob->Release();
+			result->Release();
 
-            return std::move(out);
-        }
-    }
+			return std::move(out);
+		}
+	}
 
 	
 	/************************************************************************************************/
@@ -6320,11 +6319,11 @@ namespace FlexKit
 		HEAP_Props.CreationNodeMask	    = 0;
 		HEAP_Props.VisibleNodeMask		= 0;
 
-        auto& cctx = RS->_GetCopyContext(handle);
+		auto& cctx = RS->_GetCopyContext(handle);
 
 		for (uint32_t itr = 0; itr < BufferCount; ++itr)
 		{
-            auto& buffer = Buffers[itr];
+			auto& buffer = Buffers[itr];
 			if (nullptr != Buffers[itr] && Buffers[itr]->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX)
 			{
 				// Create the Vertex Buffer
@@ -6334,35 +6333,35 @@ namespace FlexKit
 				ID3D12Resource* NewBuffer = nullptr;
 
 				HRESULT HR = RS->pDevice->CreateCommittedResource(
-					                &HEAP_Props, 
-					                D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE, 
-					                &Resource_DESC, 
-					                D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON, 
-					                nullptr, 
-					                IID_PPV_ARGS(&NewBuffer));
+									&HEAP_Props, 
+									D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE, 
+									&Resource_DESC, 
+									D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON, 
+									nullptr, 
+									IID_PPV_ARGS(&NewBuffer));
 			
 				if (FAILED(HR))
 				{// TODO!
 					FK_ASSERT(0);
 				}
 
-                Barrier b = {
-                    ._ptr           = NewBuffer,
-                    .type           = Barrier::ResourceType::PTR,
-                    .beforeState    = DRS_Common,
-                    .afterState     = DRS_INDEXBUFFER,
-                };
+				Barrier b = {
+					._ptr           = NewBuffer,
+					.type           = Barrier::ResourceType::PTR,
+					.beforeState    = DRS_Common,
+					.afterState     = DRS_INDEXBUFFER,
+				};
 
-                RS->_InsertBarrier(b);
+				RS->_InsertBarrier(b);
 
-                cctx.Barrier(NewBuffer, DRS_Common, DRS_CopyDest);
+				cctx.Barrier(NewBuffer, DRS_Common, DRS_CopyDest);
 
 				RS->UpdateResourceByUploadQueue(
 					NewBuffer, 
 					handle,
 					Buffers[itr]->GetBuffer(),
 					Buffers[itr]->GetBufferSizeRaw(), 1,
-                    DRS_Common);
+					DRS_Common);
 
 				SETDEBUGNAME(NewBuffer, "INDEXBUFFER");
 
@@ -6412,31 +6411,31 @@ namespace FlexKit
 				default:
 					{SETDEBUGNAME(NewBuffer, "VERTEXBUFFER_TYPE_ERROR"); break; }
 					break;
-		        }
+				}
 
-                Barrier b = {
-                    ._ptr           = NewBuffer,
-                    .type           = Barrier::ResourceType::PTR,
-                    .beforeState    = DRS_Common,
-                    .afterState     = DRS_VERTEXBUFFER,
-                };
+				Barrier b = {
+					._ptr           = NewBuffer,
+					.type           = Barrier::ResourceType::PTR,
+					.beforeState    = DRS_Common,
+					.afterState     = DRS_VERTEXBUFFER,
+				};
 
-                RS->_InsertBarrier(b);
+				RS->_InsertBarrier(b);
 
-                cctx.Barrier(NewBuffer, DRS_Common, DRS_CopyDest);
+				cctx.Barrier(NewBuffer, DRS_Common, DRS_CopyDest);
 
-			    RS->UpdateResourceByUploadQueue(
-				    NewBuffer,
-				    handle,
-				    Buffers[itr]->GetBuffer(),
-				    Buffers[itr]->GetBufferSizeRaw(), 1, 
-                    DRS_Common);
+				RS->UpdateResourceByUploadQueue(
+					NewBuffer,
+					handle,
+					Buffers[itr]->GetBuffer(),
+					Buffers[itr]->GetBufferSizeRaw(), 1, 
+					DRS_Common);
 
-			    DVB_Out.VertexBuffers[itr].Buffer				= NewBuffer;
-			    DVB_Out.VertexBuffers[itr].BufferStride			= (uint32_t)Buffers[itr]->GetElementSize();
-			    DVB_Out.VertexBuffers[itr].BufferSizeInBytes	= (uint32_t)Buffers[itr]->GetBufferSizeRaw();
-			    DVB_Out.VertexBuffers[itr].Type					= Buffers[itr]->GetBufferType();
-		    }
+				DVB_Out.VertexBuffers[itr].Buffer				= NewBuffer;
+				DVB_Out.VertexBuffers[itr].BufferStride			= (uint32_t)Buffers[itr]->GetElementSize();
+				DVB_Out.VertexBuffers[itr].BufferSizeInBytes	= (uint32_t)Buffers[itr]->GetBufferSizeRaw();
+				DVB_Out.VertexBuffers[itr].Type					= Buffers[itr]->GetBufferType();
+			}
 		}
 	}
 	
@@ -6745,10 +6744,10 @@ namespace FlexKit
 			desc.Type			= D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS;
 			newResEntry.type	= D3D12_QUERY_TYPE_PIPELINE_STATISTICS;
 			break;
-        case QueryType::TimeStats:
-            desc.Type           = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
-            newResEntry.type    = D3D12_QUERY_TYPE_TIMESTAMP;
-            break;
+		case QueryType::TimeStats:
+			desc.Type           = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
+			newResEntry.type    = D3D12_QUERY_TYPE_TIMESTAMP;
+			break;
 		default:
 			break;
 		}
@@ -6834,8 +6833,8 @@ namespace FlexKit
 		}
 
 		for (auto& resource : delayRelease)
-            if(resource.resource)
-			    resource.resource->Release();
+			if(resource.resource)
+				resource.resource->Release();
 
 		delayRelease.Release();
 		UserEntries.Release();
@@ -6847,23 +6846,23 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    ResourceHandle TextureStateTable::GetFreeHandle()
-    {
-        std::scoped_lock lock{ m };
+	ResourceHandle TextureStateTable::GetFreeHandle()
+	{
+		std::scoped_lock lock{ m };
 
-        auto newHandle = Handles.GetNewHandle();
-        Handles[newHandle] = -1;
+		auto newHandle = Handles.GetNewHandle();
+		Handles[newHandle] = -1;
 
-        return newHandle;
-    }
+		return newHandle;
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	ResourceHandle TextureStateTable::AddResource(const GPUResourceDesc& Desc, const DeviceResourceState InitialState)
 	{
-        std::scoped_lock lock{m};
+		std::scoped_lock lock{m};
 
 		auto Handle		 = Handles.GetNewHandle();
 
@@ -6878,22 +6877,22 @@ namespace FlexKit
 			Desc.MipLevels,
 			Desc.WH,
 			Handle,
-            { { Desc.placed.offset, 0 }, {}, {} }
+			{ { Desc.placed.offset, 0 }, {}, {} }
 		};
 
-        for (size_t I = 0; I < Desc.bufferCount; ++I) {
-            NewEntry.Resources[I]           = Desc.resources[I];
+		for (size_t I = 0; I < Desc.bufferCount; ++I) {
+			NewEntry.Resources[I]           = Desc.resources[I];
 
 #if USING(AFTERMATH)
-            GFSDK_Aftermath_ResourceHandle  aftermathResource;
-            GFSDK_Aftermath_DX12_RegisterResource(Desc.resources[I], &aftermathResource);
-            NewEntry.aftermathResource[I]   = aftermathResource;
+			GFSDK_Aftermath_ResourceHandle  aftermathResource;
+			GFSDK_Aftermath_DX12_RegisterResource(Desc.resources[I], &aftermathResource);
+			NewEntry.aftermathResource[I]   = aftermathResource;
 #endif
-        }
+		}
 
 		UserEntry Entry;
 		Entry.ResourceIdx		= Resources.push_back(NewEntry);
-        Entry.resourceSize      = Desc.byteSize;
+		Entry.resourceSize      = Desc.byteSize;
 		Entry.FrameGraphIndex	= -1;
 		Entry.FGI_FrameStamp    = -1;
 		Entry.Handle            = Handle;
@@ -6903,14 +6902,14 @@ namespace FlexKit
 		Entry.arraySize         = Desc.arraySize;
 		Entry.tileMappings      = { allocator };
 
-        if (Desc.Dimensions == TextureDimension::Buffer)
-        {
-            UAVResourceLayout layout;
-            layout.format       = NewEntry.Format;
-            layout.elementCount = (UINT)(Desc.byteSize / 4);
-            layout.stride       = 4;
-            Entry.extra         = layout;
-        }
+		if (Desc.Dimensions == TextureDimension::Buffer)
+		{
+			UAVResourceLayout layout;
+			layout.format       = NewEntry.Format;
+			layout.elementCount = (UINT)(Desc.byteSize / 4);
+			layout.stride       = 4;
+			Entry.extra         = layout;
+		}
 
 		Handles[Handle]         = (UINT)UserEntries.push_back(Entry);
 
@@ -6921,14 +6920,14 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void TextureStateTable::SetResource(ResourceHandle handle, const GPUResourceDesc& Desc, const DeviceResourceState InitialState)
-    {
-        std::scoped_lock lock{ m };
+	void TextureStateTable::SetResource(ResourceHandle handle, const GPUResourceDesc& Desc, const DeviceResourceState InitialState)
+	{
+		std::scoped_lock lock{ m };
 
-        ResourceEntry NewEntry = 
+		ResourceEntry NewEntry = 
 		{	
 			Desc.bufferCount,
 			0,
@@ -6939,22 +6938,22 @@ namespace FlexKit
 			Desc.MipLevels,
 			Desc.WH,
 			handle,
-            { { Desc.placed.offset, 0 }, {}, {} }
+			{ { Desc.placed.offset, 0 }, {}, {} }
 		};
 
-        for (size_t I = 0; I < Desc.bufferCount; ++I) {
-            NewEntry.Resources[I]           = Desc.resources[I];
+		for (size_t I = 0; I < Desc.bufferCount; ++I) {
+			NewEntry.Resources[I]           = Desc.resources[I];
 
 #if USING(AFTERMATH)
-            GFSDK_Aftermath_ResourceHandle  aftermathResource;
-            GFSDK_Aftermath_DX12_RegisterResource(Desc.resources[I], &aftermathResource);
-            NewEntry.aftermathResource[I]   = aftermathResource;
+			GFSDK_Aftermath_ResourceHandle  aftermathResource;
+			GFSDK_Aftermath_DX12_RegisterResource(Desc.resources[I], &aftermathResource);
+			NewEntry.aftermathResource[I]   = aftermathResource;
 #endif
-        }
+		}
 
 		UserEntry Entry;
 		Entry.ResourceIdx		= Resources.push_back(NewEntry);
-        Entry.resourceSize      = Desc.byteSize;
+		Entry.resourceSize      = Desc.byteSize;
 		Entry.FrameGraphIndex	= -1;
 		Entry.FGI_FrameStamp    = -1;
 		Entry.Handle            = handle;
@@ -6964,20 +6963,20 @@ namespace FlexKit
 		Entry.arraySize         = Desc.arraySize;
 		Entry.tileMappings      = { allocator };
 
-        if (Desc.Dimensions == TextureDimension::Buffer)
-        {
-            UAVResourceLayout layout;
-            layout.format       = NewEntry.Format;
-            layout.elementCount = (UINT)(Desc.byteSize / 4);
-            layout.stride       = 4;
-            Entry.extra         = layout;
-        }
+		if (Desc.Dimensions == TextureDimension::Buffer)
+		{
+			UAVResourceLayout layout;
+			layout.format       = NewEntry.Format;
+			layout.elementCount = (UINT)(Desc.byteSize / 4);
+			layout.stride       = 4;
+			Entry.extra         = layout;
+		}
 
 		Handles[handle]         = (UINT)UserEntries.push_back(Entry);
 
 		if (Desc.buffered && Desc.bufferCount > 1)
 			BufferedResources.push_back(handle);
-    }
+	}
 
 
 	/************************************************************************************************/
@@ -6985,32 +6984,32 @@ namespace FlexKit
 
 	void TextureStateTable::ReleaseTexture(ResourceHandle handle, const int64_t idx)
 	{
-        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
-        std::scoped_lock lock{ m };
+		std::scoped_lock lock{ m };
 
 		if (handle == InvalidHandle)
 			return;
 
 		const auto UserIdx	= Handles[handle];
 
-        if (UserIdx == -1)
-            return;
+		if (UserIdx == -1)
+			return;
 
 		auto& UserEntry		= UserEntries[UserIdx];
 		const auto ResIdx	= UserEntry.ResourceIdx;
 		auto& resource		= Resources[ResIdx];
 
-        for (auto res : resource.Resources)
-        {
-            if (res)
-                delayRelease.push_back({ res, idx });
-        }
+		for (auto res : resource.Resources)
+		{
+			if (res)
+				delayRelease.push_back({ res, idx });
+		}
 
 #if USING(AFTERMATH)
-        for (auto res : resource.aftermathResource)
-            if(res)
-                GFSDK_Aftermath_DX12_UnregisterResource(res);
+		for (auto res : resource.aftermathResource)
+			if(res)
+				GFSDK_Aftermath_DX12_UnregisterResource(res);
 #endif
 
 		const auto TempHandle	= UserEntries.back().Handle;
@@ -7033,7 +7032,7 @@ namespace FlexKit
 
 	void TextureStateTable::_ReleaseTextureForceRelease(ResourceHandle handle)
 	{
-        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
 		auto  UserIdx		= Handles[handle];
 		auto& UserEntry		= UserEntries[UserIdx];
@@ -7063,7 +7062,7 @@ namespace FlexKit
 
 	Texture2D TextureStateTable::operator[](ResourceHandle handle)
 	{
-        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
 		const auto Idx		    = Handles[handle];
 		const auto resource     = Resources[UserEntries[Idx].ResourceIdx];
@@ -7082,7 +7081,7 @@ namespace FlexKit
 
 	void TextureStateTable::SetState(ResourceHandle handle, DeviceResourceState State)
 	{
-        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
 		auto UserIdx = Handles[handle];
 		auto ResIdx  = UserEntries[UserIdx].ResourceIdx;
@@ -7091,16 +7090,16 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void TextureStateTable::SetDebug(ResourceHandle handle, const char* string)
-    {
-        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+	void TextureStateTable::SetDebug(ResourceHandle handle, const char* string)
+	{
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
-        auto UserIdx                    = Handles[handle];
-        UserEntries[UserIdx].userString = string;
-    }
+		auto UserIdx                    = Handles[handle];
+		UserEntries[UserIdx].userString = string;
+	}
 
 
 	/************************************************************************************************/
@@ -7108,7 +7107,7 @@ namespace FlexKit
 
 	void TextureStateTable::SetBufferedIdx(ResourceHandle handle, uint32_t idx)
 	{
-        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
 		auto UserIdx = Handles[handle];
 		auto Residx  = UserEntries[UserIdx].ResourceIdx;
@@ -7122,17 +7121,17 @@ namespace FlexKit
 
 	void TextureStateTable::SetDebugName(ResourceHandle handle, const char* str)
 	{
-        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
 		auto UserIdx    = Handles[handle];
 
-        if (UserIdx == -1)
-            return;
+		if (UserIdx == -1)
+			return;
 
 		auto resIdx     = UserEntries[UserIdx].ResourceIdx;
 		auto& resource  = Resources[resIdx];
 
-        UserEntries[UserIdx].userString = str;
+		UserEntries[UserIdx].userString = str;
 
 		for (auto& res : resource.Resources)
 			if (res)
@@ -7145,7 +7144,7 @@ namespace FlexKit
 
 	size_t TextureStateTable::GetFrameGraphIndex(ResourceHandle handle, size_t FrameID) const
 	{
-        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
 		auto UserIdx	= Handles[handle];
 		auto FrameStamp	= UserEntries[UserIdx].FGI_FrameStamp;
@@ -7162,7 +7161,7 @@ namespace FlexKit
 
 	void TextureStateTable::SetFrameGraphIndex(ResourceHandle handle, size_t FrameID, size_t Index)
 	{
-        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
 		auto UserIdx = Handles[handle];
 		UserEntries[UserIdx].FGI_FrameStamp		= FrameID;
@@ -7175,7 +7174,7 @@ namespace FlexKit
 
 	DXGI_FORMAT TextureStateTable::GetFormat(ResourceHandle handle) const
 	{
-        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
 		auto UserIdx = Handles[handle];
 		return UserEntries[UserIdx].Format;
@@ -7187,7 +7186,7 @@ namespace FlexKit
 
 	TextureDimension TextureStateTable::GetDimension(ResourceHandle handle) const
 	{
-        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
 		auto UserIdx = Handles[handle];
 		return UserEntries[UserIdx].dimension;
@@ -7199,7 +7198,7 @@ namespace FlexKit
 
 	size_t TextureStateTable::GetArraySize(ResourceHandle handle) const
 	{
-        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
 		auto UserIdx = Handles[handle];
 		return UserEntries[UserIdx].arraySize;
@@ -7209,76 +7208,76 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    uint8_t TextureStateTable::GetMIPCount(ResourceHandle handle) const
+	uint8_t TextureStateTable::GetMIPCount(ResourceHandle handle) const
 	{
-        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
 		auto UserIdx = Handles[handle];
 		return Resources[UserEntries[UserIdx].ResourceIdx].mipCount;
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void TextureStateTable::SetExtra(ResourceHandle handle, GPUResourceExtra_t extra)
-    {
-        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+	void TextureStateTable::SetExtra(ResourceHandle handle, GPUResourceExtra_t extra)
+	{
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
-        auto UserIdx = Handles[handle];
-        UserEntries[UserIdx].extra = extra;
-    }
-
-
-    /************************************************************************************************/
-
-
-    GPUResourceExtra_t  TextureStateTable::GetExtra(ResourceHandle handle) const
-    {
-        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
-
-        auto UserIdx = Handles[handle];
-        return UserEntries[UserIdx].extra;
-    }
+		auto UserIdx = Handles[handle];
+		UserEntries[UserIdx].extra = extra;
+	}
 
 
 	/************************************************************************************************/
 
 
-    const char* TextureStateTable::GetDebug(ResourceHandle handle)
-    {
-        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+	GPUResourceExtra_t  TextureStateTable::GetExtra(ResourceHandle handle) const
+	{
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
-        auto UserIdx = Handles[handle];
-        return UserEntries[UserIdx].userString;
-    }
+		auto UserIdx = Handles[handle];
+		return UserEntries[UserIdx].extra;
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
+
+
+	const char* TextureStateTable::GetDebug(ResourceHandle handle)
+	{
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
+		auto UserIdx = Handles[handle];
+		return UserEntries[UserIdx].userString;
+	}
+
+
+	/************************************************************************************************/
 
 
 	uint2 TextureStateTable::GetWH(ResourceHandle handle) const
 	{
-        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
-        auto UserIdx = Handles[handle];
-        return Resources[UserEntries[UserIdx].ResourceIdx].WH;
+		auto UserIdx = Handles[handle];
+		return Resources[UserEntries[UserIdx].ResourceIdx].WH;
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    uint3 TextureStateTable::GetXYZ(ResourceHandle handle) const
-    {
-        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+	uint3 TextureStateTable::GetXYZ(ResourceHandle handle) const
+	{
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
-        auto UserIdx    = Handles[handle];
-        auto& user      = UserEntries[UserIdx];
-        auto& resource  = Resources[UserEntries[UserIdx].ResourceIdx];
+		auto UserIdx    = Handles[handle];
+		auto& user      = UserEntries[UserIdx];
+		auto& resource  = Resources[UserEntries[UserIdx].ResourceIdx];
 
-        return { resource.WH, user.arraySize };
-    }
+		return { resource.WH, user.arraySize };
+	}
 
 
 	/************************************************************************************************/
@@ -7289,7 +7288,7 @@ namespace FlexKit
 		if (handle == InvalidHandle)
 			return;
 
-        FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
 		auto itr        = begin;
 		auto UserIdx    = Handles[handle];
@@ -7353,17 +7352,17 @@ namespace FlexKit
 				
 				if (auto mappingHeap = renderSystem.GetDeviceResource(mapping.heap); heap != mappingHeap)
 				{
-                    if (!coordinates.size())
-                        __debugbreak();
+					if (!coordinates.size())
+						__debugbreak();
 
 					if (mappingHeap)
 						queue->UpdateTileMappings(
 							resource,
-                            (UINT)coordinates.size(),
+							(UINT)coordinates.size(),
 							coordinates.data(),
 							regionSize.data(),
 							heap,
-                            (UINT)tile_flags.size(),
+							(UINT)tile_flags.size(),
 							tile_flags.data(),
 							heapOffsets.data(),
 							tileCounts.data(),
@@ -7458,28 +7457,28 @@ namespace FlexKit
 
 	void TextureStateTable::UpdateLocks(ThreadManager& threads, const int64_t currentIdx)
 	{
-        ProfileFunction();
+		ProfileFunction();
 
-        Vector<ID3D12Resource*> freeList = { delayRelease.Allocator };
+		Vector<ID3D12Resource*> freeList = { delayRelease.Allocator };
 
 		for (auto& res : delayRelease)
 		{
 #if _DEBUG
-            if ((res.idx + 3) < currentIdx)
+			if ((res.idx + 3) < currentIdx)
 #else
-            if ((res.idx) < currentIdx)
+			if ((res.idx) < currentIdx)
 #endif
-                freeList.push_back(res.resource);
+				freeList.push_back(res.resource);
 		}
 
-        auto& workItem = FlexKit::CreateWorkItem(
-            [freeList = std::move(freeList)](auto& threadLocalAllocator)
-            {
-                for (auto res : freeList)
-                    res->Release();
-            }, delayRelease.Allocator);
+		auto& workItem = FlexKit::CreateWorkItem(
+			[freeList = std::move(freeList)](auto& threadLocalAllocator)
+			{
+				for (auto res : freeList)
+					res->Release();
+			}, delayRelease.Allocator);
 
-        threads.AddBackgroundWork(workItem);
+		threads.AddBackgroundWork(workItem);
 
 		delayRelease.erase(
 			std::remove_if(
@@ -7490,7 +7489,7 @@ namespace FlexKit
 					return int(res.idx) < currentIdx;
 				}),
 
-        delayRelease.end());
+		delayRelease.end());
 	}
 
 
@@ -7527,8 +7526,8 @@ namespace FlexKit
 
 	ID3D12Resource* TextureStateTable::GetResource(ResourceHandle Handle, ID3D12Device* device) const
 	{
-        if (Handle >= Handles.size())
-            return nullptr;
+		if (Handle >= Handles.size())
+			return nullptr;
 
 		auto  Idx			= Handles[Handle];
 		auto  ResourceIdx	= UserEntries[Idx].ResourceIdx;
@@ -7539,63 +7538,63 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    size_t TextureStateTable::GetResourceSize(ResourceHandle Handle) const
-    {
-        auto  Idx			= Handles[Handle];
+	size_t TextureStateTable::GetResourceSize(ResourceHandle Handle) const
+	{
+		auto  Idx			= Handles[Handle];
 		return UserEntries[Idx].resourceSize;
-    }
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    uint2 TextureStateTable::GetHeapOffset(ResourceHandle Handle, uint subResourceIdx) const
-    {
-        auto Idx = Handles[Handle];
+	uint2 TextureStateTable::GetHeapOffset(ResourceHandle Handle, uint subResourceIdx) const
+	{
+		auto Idx = Handles[Handle];
 
-        return Resources[UserEntries[Idx].resourceSize].heapRange[subResourceIdx];
-    }
-
-
-    /************************************************************************************************/
+		return Resources[UserEntries[Idx].resourceSize].heapRange[subResourceIdx];
+	}
 
 
-    ResourceHandle TextureStateTable::FindResourceHandle(ID3D12Resource* deviceResource) const
-    {
-        auto res = std::find_if(
-            Resources.begin(), Resources.end(),
-            [&](auto res)
-            {
-                for (size_t I = 0; I < res.ResourceCount; I++)
-                    if (res.Resources[I] == deviceResource)
-                        return true;
+	/************************************************************************************************/
 
-                return false;
-            });
 
-        if (res != Resources.end())
-            return res->owner;
-        else
-        {
-            auto res = std::find_if(
-                delayRelease.begin(), delayRelease.end(),
-                [&](auto res)
-                {
-                    if (res.resource == deviceResource)
-                        return true;
+	ResourceHandle TextureStateTable::FindResourceHandle(ID3D12Resource* deviceResource) const
+	{
+		auto res = std::find_if(
+			Resources.begin(), Resources.end(),
+			[&](auto res)
+			{
+				for (size_t I = 0; I < res.ResourceCount; I++)
+					if (res.Resources[I] == deviceResource)
+						return true;
 
-                    return false;
-                });
+				return false;
+			});
 
-            if (res != delayRelease.end())
-                __debugbreak();
-        }
+		if (res != Resources.end())
+			return res->owner;
+		else
+		{
+			auto res = std::find_if(
+				delayRelease.begin(), delayRelease.end(),
+				[&](auto res)
+				{
+					if (res.resource == deviceResource)
+						return true;
 
-        return InvalidHandle;
-    }
+					return false;
+				});
+
+			if (res != delayRelease.end())
+				__debugbreak();
+		}
+
+		return InvalidHandle;
+	}
 
 
 	/************************************************************************************************/
@@ -7626,7 +7625,7 @@ namespace FlexKit
 		GeometryTable.GeometryIDs		= Vector<const char*>(Memory);
 		GeometryTable.FreeList			= Vector<size_t>(Memory);
 		GeometryTable.Memory			= Memory;
-        GeometryTable.renderSystem      = renderSystem;
+		GeometryTable.renderSystem      = renderSystem;
 	}
 
 
@@ -7687,8 +7686,8 @@ namespace FlexKit
 
 	void ReleaseMesh(TriMeshHandle TMHandle)
 	{
-        if (TMHandle == InvalidHandle)
-            return;
+		if (TMHandle == InvalidHandle)
+			return;
 		// TODO: MAKE ATOMIC
 		if (GeometryTable.Handles[TMHandle] == -1)
 			return;// Already Released
@@ -7750,18 +7749,18 @@ namespace FlexKit
 
 
 	TriMesh* GetMeshResource(TriMeshHandle TMHandle)
-    {
+	{
 		FK_ASSERT(TMHandle != InvalidHandle);
 
 #if USING(DEBUGGRAPHICS)
-        if (GeometryTable.Handles[TMHandle] == -1)
-        {
-            DebugBreak();
-            return nullptr;
+		if (GeometryTable.Handles[TMHandle] == -1)
+		{
+			DebugBreak();
+			return nullptr;
 
-        }
+		}
 #endif
-        return &GeometryTable.Geometry[GeometryTable.Handles[TMHandle]];
+		return &GeometryTable.Geometry[GeometryTable.Handles[TMHandle]];
 	}
 	
 
@@ -7983,20 +7982,20 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    void RenderSystem::_InsertBarrier(const Vector<Barrier>& vector)
+	void RenderSystem::_InsertBarrier(const Vector<Barrier>& vector)
 	{
-        std::unique_lock lock{ barrierLock };
-        PendingBarriers += vector;
+		std::unique_lock lock{ barrierLock };
+		PendingBarriers += vector;
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void RenderSystem::_InsertBarrier(Barrier b)
-    {
-        PendingBarriers.push_back(b);
-    }
+	void RenderSystem::_InsertBarrier(Barrier b)
+	{
+		PendingBarriers.push_back(b);
+	}
 
 
 	/************************************************************************************************/
@@ -8043,427 +8042,427 @@ namespace FlexKit
 
 	void RenderSystem::_OnCrash()
 	{
-        auto reason = pDevice->GetDeviceRemovedReason();
+		auto reason = pDevice->GetDeviceRemovedReason();
 
-        switch (reason)
-        {
-        case DXGI_ERROR_DEVICE_HUNG:
-            FK_LOG_ERROR("DXGI_ERROR_DEVICE_HUNG");             break;
-        case DXGI_ERROR_DEVICE_REMOVED:                         
-            FK_LOG_ERROR("DXGI_ERROR_DEVICE_REMOVED");          break;
-        case DXGI_ERROR_DEVICE_RESET:                           
-            FK_LOG_ERROR("DXGI_ERROR_DEVICE_RESET");            break;
-        case DXGI_ERROR_DRIVER_INTERNAL_ERROR:                  
-            FK_LOG_ERROR("DXGI_ERROR_DRIVER_INTERNAL_ERROR");   break;
-        case DXGI_ERROR_INVALID_CALL:                           
-            FK_LOG_ERROR("DXGI_ERROR_INVALID_CALL");            break;
-        case S_OK:
-            FK_LOG_ERROR("???? S_OK ????");                     break;
-        }
+		switch (reason)
+		{
+		case DXGI_ERROR_DEVICE_HUNG:
+			FK_LOG_ERROR("DXGI_ERROR_DEVICE_HUNG");             break;
+		case DXGI_ERROR_DEVICE_REMOVED:                         
+			FK_LOG_ERROR("DXGI_ERROR_DEVICE_REMOVED");          break;
+		case DXGI_ERROR_DEVICE_RESET:                           
+			FK_LOG_ERROR("DXGI_ERROR_DEVICE_RESET");            break;
+		case DXGI_ERROR_DRIVER_INTERNAL_ERROR:                  
+			FK_LOG_ERROR("DXGI_ERROR_DRIVER_INTERNAL_ERROR");   break;
+		case DXGI_ERROR_INVALID_CALL:                           
+			FK_LOG_ERROR("DXGI_ERROR_INVALID_CALL");            break;
+		case S_OK:
+			FK_LOG_ERROR("???? S_OK ????");                     break;
+		}
 
 #if USING(AFTERMATH)
-        {
-            /*
-            // Decode the crash dump to a JSON string.
-            // Step 1: Generate the JSON and get the size.
-            uint32_t jsonSize = 0;
-            GFSDK_Aftermath_GpuCrashDump_GenerateJSON(
-                decoder,
-                GFSDK_Aftermath_GpuCrashDumpDecoderFlags_ALL_INFO,
-                GFSDK_Aftermath_GpuCrashDumpFormatterFlags_NONE,
-                RenderSystem::OnShaderDebugInfoLookup,
-                RenderSystem::OnShaderLookup,
-                RenderSystem::OnShaderInstructionsLookup,
-                RenderSystem::OnShaderSourceDebugInfoLookup,
-                this,
-                &jsonSize);
+		{
+			/*
+			// Decode the crash dump to a JSON string.
+			// Step 1: Generate the JSON and get the size.
+			uint32_t jsonSize = 0;
+			GFSDK_Aftermath_GpuCrashDump_GenerateJSON(
+				decoder,
+				GFSDK_Aftermath_GpuCrashDumpDecoderFlags_ALL_INFO,
+				GFSDK_Aftermath_GpuCrashDumpFormatterFlags_NONE,
+				RenderSystem::OnShaderDebugInfoLookup,
+				RenderSystem::OnShaderLookup,
+				RenderSystem::OnShaderInstructionsLookup,
+				RenderSystem::OnShaderSourceDebugInfoLookup,
+				this,
+				&jsonSize);
 
-            // Step 2: Allocate a buffer and fetch the generated JSON.
-            std::vector<char> json(jsonSize);
-            GFSDK_Aftermath_GpuCrashDump_GetJSON(
-                decoder,
-                uint32_t(json.size()),
-                json.data());
+			// Step 2: Allocate a buffer and fetch the generated JSON.
+			std::vector<char> json(jsonSize);
+			GFSDK_Aftermath_GpuCrashDump_GetJSON(
+				decoder,
+				uint32_t(json.size()),
+				json.data());
 
-            // Write the the crash dump data as JSON to a file.
-            const std::string jsonFileName = crashDumpFileName + ".json";
-            std::ofstream jsonFile(jsonFileName, std::ios::out | std::ios::binary);
-            if (jsonFile)
-            {
-                jsonFile.write(json.data(), json.size());
-                jsonFile.close();
-            }
-            std::lock_guard lock{ crashM };
-            WriteGpuCrashDumpToFile(gpuCrashDrump, gpuCrashDumpSize);
-            */
+			// Write the the crash dump data as JSON to a file.
+			const std::string jsonFileName = crashDumpFileName + ".json";
+			std::ofstream jsonFile(jsonFileName, std::ios::out | std::ios::binary);
+			if (jsonFile)
+			{
+				jsonFile.write(json.data(), json.size());
+				jsonFile.close();
+			}
+			std::lock_guard lock{ crashM };
+			WriteGpuCrashDumpToFile(gpuCrashDrump, gpuCrashDumpSize);
+			*/
 
-            GFSDK_Aftermath_Device_Status           device_status;
-
-
-            std::vector<GFSDK_Aftermath_ContextHandle> context_handles;
-            std::vector<GFSDK_Aftermath_ContextData> context_crash_info{ Contexts.size() };
-
-            for (auto& context : Contexts) {
-                context_handles.push_back(context.AFTERMATH_context);
-            }
-
-            GFSDK_Aftermath_GetData(context_handles.size(), context_handles.data(), context_crash_info.data());
-
-            std::vector<GFSDK_Aftermath_ContextData> faultedContexts;
-
-            for (auto& contextInfo : context_crash_info)
-            {
-                if (contextInfo.status == GFSDK_Aftermath_Context_Status_Invalid) {
-                    faultedContexts.push_back(contextInfo);
-                    GFSDK_Aftermath_GetContextError(&contextInfo);
-                }
-
-            }
+			GFSDK_Aftermath_Device_Status           device_status;
 
 
+			std::vector<GFSDK_Aftermath_ContextHandle> context_handles;
+			std::vector<GFSDK_Aftermath_ContextData> context_crash_info{ Contexts.size() };
+
+			for (auto& context : Contexts) {
+				context_handles.push_back(context.AFTERMATH_context);
+			}
+
+			GFSDK_Aftermath_GetData(context_handles.size(), context_handles.data(), context_crash_info.data());
+
+			std::vector<GFSDK_Aftermath_ContextData> faultedContexts;
+
+			for (auto& contextInfo : context_crash_info)
+			{
+				if (contextInfo.status == GFSDK_Aftermath_Context_Status_Invalid) {
+					faultedContexts.push_back(contextInfo);
+					GFSDK_Aftermath_GetContextError(&contextInfo);
+				}
+
+			}
 
 
 
-            GFSDK_Aftermath_GetDeviceStatus(&device_status);
-
-            Sleep(3000); // Aftermath needs a moment to do it's crash dump
-
-            switch(device_status)
-            {
-            case GFSDK_Aftermath_Device_Status_Active:
-                FK_LOG_ERROR("GFSDK_Aftermath_Device_Status_Active"); break;
-            case GFSDK_Aftermath_Device_Status_Timeout:
-                FK_LOG_ERROR("GFSDK_Aftermath_Device_Status_Timeout"); break;
-            case GFSDK_Aftermath_Device_Status_OutOfMemory:
-                FK_LOG_ERROR("GFSDK_Aftermath_Device_Status_OutOfMemory"); break;
-            case GFSDK_Aftermath_Device_Status_PageFault:
-                FK_LOG_ERROR("GFSDK_Aftermath_Device_Status_PageFault"); break;
-            case GFSDK_Aftermath_Device_Status_Stopped:
-                FK_LOG_ERROR("GFSDK_Aftermath_Device_Status_Stopped"); break;
-            case GFSDK_Aftermath_Device_Status_Reset:
-                FK_LOG_ERROR("GFSDK_Aftermath_Device_Status_Reset"); break;
-            case GFSDK_Aftermath_Device_Status_Unknown:
-                FK_LOG_ERROR("GFSDK_Aftermath_Device_Status_Unknown"); break;
-            case GFSDK_Aftermath_Device_Status_DmaFault:
-            {
-                GFSDK_Aftermath_PageFaultInformation    pageFault;
-
-                memset(&pageFault, 0, sizeof(pageFault));
-
-                GFSDK_Aftermath_GetPageFaultInformation(&pageFault);
-
-                if (pageFault.bHasPageFaultOccured) {
-                    FK_LOG_ERROR("GFSDK_Aftermath_Device_Status_DmaFault : %u", pageFault.resourceDesc.ptr_align_pAppResource);
-
-                    auto res = Textures.FindResourceHandle(pageFault.resourceDesc.pAppResource);
-                    if(res != InvalidHandle)
-                    {
-                        auto debugString = Textures.GetDebug(res);
-                        if (debugString)
-                            FK_LOG_ERROR("DMA FAULT DETECTED INVOLVING RESOURCE: %s!", debugString);
-                        else
-                            FK_LOG_ERROR("DMA FAULT DETECTED!");
-                    }
-                }
-                
-
-            }   break;
-            };
 
 
-            Sleep(3000); // Aftermath needs a moment to do it's crash dump
+			GFSDK_Aftermath_GetDeviceStatus(&device_status);
 
-            __debugbreak();
+			Sleep(3000); // Aftermath needs a moment to do it's crash dump
 
-            for (auto& context : Contexts)
-                GFSDK_Aftermath_ReleaseContextHandle(context.AFTERMATH_context);
+			switch(device_status)
+			{
+			case GFSDK_Aftermath_Device_Status_Active:
+				FK_LOG_ERROR("GFSDK_Aftermath_Device_Status_Active"); break;
+			case GFSDK_Aftermath_Device_Status_Timeout:
+				FK_LOG_ERROR("GFSDK_Aftermath_Device_Status_Timeout"); break;
+			case GFSDK_Aftermath_Device_Status_OutOfMemory:
+				FK_LOG_ERROR("GFSDK_Aftermath_Device_Status_OutOfMemory"); break;
+			case GFSDK_Aftermath_Device_Status_PageFault:
+				FK_LOG_ERROR("GFSDK_Aftermath_Device_Status_PageFault"); break;
+			case GFSDK_Aftermath_Device_Status_Stopped:
+				FK_LOG_ERROR("GFSDK_Aftermath_Device_Status_Stopped"); break;
+			case GFSDK_Aftermath_Device_Status_Reset:
+				FK_LOG_ERROR("GFSDK_Aftermath_Device_Status_Reset"); break;
+			case GFSDK_Aftermath_Device_Status_Unknown:
+				FK_LOG_ERROR("GFSDK_Aftermath_Device_Status_Unknown"); break;
+			case GFSDK_Aftermath_Device_Status_DmaFault:
+			{
+				GFSDK_Aftermath_PageFaultInformation    pageFault;
+
+				memset(&pageFault, 0, sizeof(pageFault));
+
+				GFSDK_Aftermath_GetPageFaultInformation(&pageFault);
+
+				if (pageFault.bHasPageFaultOccured) {
+					FK_LOG_ERROR("GFSDK_Aftermath_Device_Status_DmaFault : %u", pageFault.resourceDesc.ptr_align_pAppResource);
+
+					auto res = Textures.FindResourceHandle(pageFault.resourceDesc.pAppResource);
+					if(res != InvalidHandle)
+					{
+						auto debugString = Textures.GetDebug(res);
+						if (debugString)
+							FK_LOG_ERROR("DMA FAULT DETECTED INVOLVING RESOURCE: %s!", debugString);
+						else
+							FK_LOG_ERROR("DMA FAULT DETECTED!");
+					}
+				}
+				
+
+			}   break;
+			};
 
 
-            exit(-1);
-        }
+			Sleep(3000); // Aftermath needs a moment to do it's crash dump
+
+			__debugbreak();
+
+			for (auto& context : Contexts)
+				GFSDK_Aftermath_ReleaseContextHandle(context.AFTERMATH_context);
+
+
+			exit(-1);
+		}
 #else
 
 #if USING(ENABLEDRED)
 
-        if (FAILED(pDevice->QueryInterface(&dred)))
-            FK_LOG_ERROR("CRASH DETECTED, DRED NOT ENABLED!");
-        else
-            FK_LOG_ERROR("Dumping Breadcrumbs");
+		if (FAILED(pDevice->QueryInterface(&dred)))
+			FK_LOG_ERROR("CRASH DETECTED, DRED NOT ENABLED!");
+		else
+			FK_LOG_ERROR("Dumping Breadcrumbs");
 
-        D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 DredAutoBreadcrumbsOutput;
-        D3D12_DRED_PAGE_FAULT_OUTPUT DredPageFaultOutput;
+		D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 DredAutoBreadcrumbsOutput;
+		D3D12_DRED_PAGE_FAULT_OUTPUT DredPageFaultOutput;
 
-        if (auto HR = dred->GetAutoBreadcrumbsOutput1(&DredAutoBreadcrumbsOutput); FAILED(HR))
-            FK_LOG_ERROR("Failed to get Breadcrumbs!");
+		if (auto HR = dred->GetAutoBreadcrumbsOutput1(&DredAutoBreadcrumbsOutput); FAILED(HR))
+			FK_LOG_ERROR("Failed to get Breadcrumbs!");
 
-        if (auto HR = dred->GetPageFaultAllocationOutput(&DredPageFaultOutput); FAILED(HR))
-            FK_LOG_ERROR("Failed to get Fault Allocation Info!");
+		if (auto HR = dred->GetPageFaultAllocationOutput(&DredPageFaultOutput); FAILED(HR))
+			FK_LOG_ERROR("Failed to get Fault Allocation Info!");
 
-        auto node = DredAutoBreadcrumbsOutput.pHeadAutoBreadcrumbNode;
+		auto node = DredAutoBreadcrumbsOutput.pHeadAutoBreadcrumbNode;
 
-        if(!node) 
-            FK_LOG_ERROR("No Breadcrumbs!");
+		if(!node) 
+			FK_LOG_ERROR("No Breadcrumbs!");
 
-        while (node)
-        {
-            auto event = *node->pCommandHistory;
-            if (event)
-            {
-                switch (event)
-                {
-                case D3D12_AUTO_BREADCRUMB_OP_SETMARKER:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_SETMARKER"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_BEGINEVENT:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_BEGINEVENT"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_ENDEVENT:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_ENDEVENT"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_DRAWINSTANCED:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_DRAWINSTANCED"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_DRAWINDEXEDINSTANCED:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_DRAWINDEXEDINSTANCED"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_EXECUTEINDIRECT:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_EXECUTEINDIRECT"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_DISPATCH:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_DISPATCH"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_COPYBUFFERREGION:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_COPYBUFFERREGION"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_COPYTEXTUREREGION:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_COPYTEXTUREREGION"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_COPYRESOURCE:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_COPYRESOURCE"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_COPYTILES:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_COPYTILES"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_RESOLVESUBRESOURCE:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_RESOLVESUBRESOURCE"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_CLEARRENDERTARGETVIEW:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_CLEARRENDERTARGETVIEW"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_CLEARUNORDEREDACCESSVIEW:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_CLEARUNORDEREDACCESSVIEW"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_CLEARDEPTHSTENCILVIEW:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_CLEARDEPTHSTENCILVIEW"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_RESOURCEBARRIER:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_RESOURCEBARRIER"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_EXECUTEBUNDLE:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_EXECUTEBUNDLE"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_PRESENT:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_PRESENT"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_RESOLVEQUERYDATA:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_RESOLVEQUERYDATA"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_BEGINSUBMISSION:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_BEGINSUBMISSION"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_ENDSUBMISSION:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_ENDSUBMISSION"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_DECODEFRAME:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_DECODEFRAME"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_PROCESSFRAMES:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_PROCESSFRAMES"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_ATOMICCOPYBUFFERUINT:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_ATOMICCOPYBUFFERUINT"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_ATOMICCOPYBUFFERUINT64:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_ATOMICCOPYBUFFERUINT64"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_RESOLVESUBRESOURCEREGION:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_RESOLVESUBRESOURCEREGION"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_WRITEBUFFERIMMEDIATE:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_WRITEBUFFERIMMEDIATE"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_DECODEFRAME1:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_DECODEFRAME1"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_SETPROTECTEDRESOURCESESSION:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_SETPROTECTEDRESOURCESESSION"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_DECODEFRAME2:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_DECODEFRAME2"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_PROCESSFRAMES1:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_PROCESSFRAMES1"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_BUILDRAYTRACINGACCELERATIONSTRUCTURE:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_BUILDRAYTRACINGACCELERATIONSTRUCTURE"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_EMITRAYTRACINGACCELERATIONSTRUCTUREPOSTBUILDINFO:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_EMITRAYTRACINGACCELERATIONSTRUCTUREPOSTBUILDINFO"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_COPYRAYTRACINGACCELERATIONSTRUCTURE:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_COPYRAYTRACINGACCELERATIONSTRUCTURE"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_DISPATCHRAYS:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_DISPATCHRAYS"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_INITIALIZEMETACOMMAND:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_INITIALIZEMETACOMMAND"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_EXECUTEMETACOMMAND:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_EXECUTEMETACOMMAND"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_ESTIMATEMOTION:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_ESTIMATEMOTION"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_RESOLVEMOTIONVECTORHEAP:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_RESOLVEMOTIONVECTORHEAP"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_SETPIPELINESTATE1:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_SETPIPELINESTATE1"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_INITIALIZEEXTENSIONCOMMAND:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_INITIALIZEEXTENSIONCOMMAND"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_EXECUTEEXTENSIONCOMMAND:
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_EXECUTEEXTENSIONCOMMAND"); break;
-                case D3D12_AUTO_BREADCRUMB_OP_DISPATCHMESH: 
-                    FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_DISPATCHMESH");  break;
-                };
-            }
-            node = node->pNext;
-        }
+		while (node)
+		{
+			auto event = *node->pCommandHistory;
+			if (event)
+			{
+				switch (event)
+				{
+				case D3D12_AUTO_BREADCRUMB_OP_SETMARKER:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_SETMARKER"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_BEGINEVENT:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_BEGINEVENT"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_ENDEVENT:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_ENDEVENT"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_DRAWINSTANCED:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_DRAWINSTANCED"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_DRAWINDEXEDINSTANCED:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_DRAWINDEXEDINSTANCED"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_EXECUTEINDIRECT:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_EXECUTEINDIRECT"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_DISPATCH:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_DISPATCH"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_COPYBUFFERREGION:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_COPYBUFFERREGION"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_COPYTEXTUREREGION:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_COPYTEXTUREREGION"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_COPYRESOURCE:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_COPYRESOURCE"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_COPYTILES:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_COPYTILES"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_RESOLVESUBRESOURCE:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_RESOLVESUBRESOURCE"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_CLEARRENDERTARGETVIEW:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_CLEARRENDERTARGETVIEW"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_CLEARUNORDEREDACCESSVIEW:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_CLEARUNORDEREDACCESSVIEW"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_CLEARDEPTHSTENCILVIEW:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_CLEARDEPTHSTENCILVIEW"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_RESOURCEBARRIER:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_RESOURCEBARRIER"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_EXECUTEBUNDLE:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_EXECUTEBUNDLE"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_PRESENT:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_PRESENT"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_RESOLVEQUERYDATA:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_RESOLVEQUERYDATA"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_BEGINSUBMISSION:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_BEGINSUBMISSION"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_ENDSUBMISSION:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_ENDSUBMISSION"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_DECODEFRAME:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_DECODEFRAME"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_PROCESSFRAMES:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_PROCESSFRAMES"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_ATOMICCOPYBUFFERUINT:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_ATOMICCOPYBUFFERUINT"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_ATOMICCOPYBUFFERUINT64:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_ATOMICCOPYBUFFERUINT64"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_RESOLVESUBRESOURCEREGION:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_RESOLVESUBRESOURCEREGION"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_WRITEBUFFERIMMEDIATE:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_WRITEBUFFERIMMEDIATE"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_DECODEFRAME1:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_DECODEFRAME1"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_SETPROTECTEDRESOURCESESSION:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_SETPROTECTEDRESOURCESESSION"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_DECODEFRAME2:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_DECODEFRAME2"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_PROCESSFRAMES1:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_PROCESSFRAMES1"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_BUILDRAYTRACINGACCELERATIONSTRUCTURE:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_BUILDRAYTRACINGACCELERATIONSTRUCTURE"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_EMITRAYTRACINGACCELERATIONSTRUCTUREPOSTBUILDINFO:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_EMITRAYTRACINGACCELERATIONSTRUCTUREPOSTBUILDINFO"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_COPYRAYTRACINGACCELERATIONSTRUCTURE:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_COPYRAYTRACINGACCELERATIONSTRUCTURE"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_DISPATCHRAYS:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_DISPATCHRAYS"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_INITIALIZEMETACOMMAND:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_INITIALIZEMETACOMMAND"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_EXECUTEMETACOMMAND:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_EXECUTEMETACOMMAND"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_ESTIMATEMOTION:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_ESTIMATEMOTION"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_RESOLVEMOTIONVECTORHEAP:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_RESOLVEMOTIONVECTORHEAP"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_SETPIPELINESTATE1:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_SETPIPELINESTATE1"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_INITIALIZEEXTENSIONCOMMAND:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_INITIALIZEEXTENSIONCOMMAND"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_EXECUTEEXTENSIONCOMMAND:
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_EXECUTEEXTENSIONCOMMAND"); break;
+				case D3D12_AUTO_BREADCRUMB_OP_DISPATCHMESH: 
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_DISPATCHMESH");  break;
+				};
+			}
+			node = node->pNext;
+		}
 #endif
-        __debugbreak();
-        exit(-1);
+		__debugbreak();
+		exit(-1);
 #endif
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 #if USING(AFTERMATH)
 
-    void RenderSystem::WriteGpuCrashDumpToFile(const void* pGpuCrashDump, const uint32_t gpuCrashDumpSize)
-    {
-        FK_LOG_ERROR("RenderSystem::WriteGpuCrashDumpToFile");
-    }
+	void RenderSystem::WriteGpuCrashDumpToFile(const void* pGpuCrashDump, const uint32_t gpuCrashDumpSize)
+	{
+		FK_LOG_ERROR("RenderSystem::WriteGpuCrashDumpToFile");
+	}
 
 
-    void RenderSystem::GpuCrashDumpCallback(const void* gpuCrashDump, const uint32_t gpuCrashDumpSize, void* pUserData)
-    {
-        FK_LOG_ERROR("RenderSystem::GpuCrashDumpCallback");
+	void RenderSystem::GpuCrashDumpCallback(const void* gpuCrashDump, const uint32_t gpuCrashDumpSize, void* pUserData)
+	{
+		FK_LOG_ERROR("RenderSystem::GpuCrashDumpCallback");
 
-        RenderSystem*   renderSystem = reinterpret_cast<RenderSystem*>(pUserData);
+		RenderSystem*   renderSystem = reinterpret_cast<RenderSystem*>(pUserData);
 
-        std::vector<GFSDK_Aftermath_ContextHandle> context_handles;
-        std::vector<GFSDK_Aftermath_ContextData> context_crash_info{ renderSystem->Contexts.size() };
-
-
-        GFSDK_Aftermath_Device_Status           device_status;
-        GFSDK_Aftermath_PageFaultInformation    pafeFault;
-
-        for (auto& context : renderSystem->Contexts)
-            context_handles.push_back(context.AFTERMATH_context);
-
-        GFSDK_Aftermath_GetDeviceStatus(&device_status);
-        GFSDK_Aftermath_GetData(context_handles.size(), context_handles.data(), context_crash_info.data());
-        GFSDK_Aftermath_GetPageFaultInformation(&pafeFault);
-
-        GFSDK_Aftermath_GpuCrashDump_Decoder decoder = {};
-
-        auto res = GFSDK_Aftermath_GpuCrashDump_CreateDecoder(
-            GFSDK_Aftermath_Version_API,
-            gpuCrashDump,
-            gpuCrashDumpSize,
-            &decoder);
-
-        GFSDK_Aftermath_GpuCrashDump_BaseInfo baseInfo = {};
-        GFSDK_Aftermath_GpuCrashDump_GetBaseInfo(decoder, &baseInfo);
-
-        uint32_t applicationNameLength = 0;
-        GFSDK_Aftermath_GpuCrashDump_GetDescriptionSize(
-            decoder,
-            GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationName,
-            &applicationNameLength);
-
-        std::vector<char> applicationName(applicationNameLength, '\0');
-
-        GFSDK_Aftermath_GpuCrashDump_GetDescription(
-            decoder,
-            GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationName,
-            uint32_t(applicationName.size()),
-            applicationName.data());
-
-        static int count = 0;
-        const std::string baseFileName =
-            std::string("TestGame")
-            + "-"
-            + std::to_string(baseInfo.pid)
-            + "-"
-            + std::to_string(++count);
-
-        const std::string crashDumpFileName = baseFileName + ".nv-gpudmp";
-        std::ofstream dumpFile(crashDumpFileName, std::ios::out | std::ios::binary);
-        if (dumpFile)
-        {
-            dumpFile.write((const char*)gpuCrashDump, gpuCrashDumpSize);
-            dumpFile.close();
-        }
-    }
+		std::vector<GFSDK_Aftermath_ContextHandle> context_handles;
+		std::vector<GFSDK_Aftermath_ContextData> context_crash_info{ renderSystem->Contexts.size() };
 
 
+		GFSDK_Aftermath_Device_Status           device_status;
+		GFSDK_Aftermath_PageFaultInformation    pafeFault;
 
-    void RenderSystem::ShaderDebugInfoCallback(const void* pShaderDebugInfo, const uint32_t shaderDebugInfoSize, void* pUserData)
-    {
-        RenderSystem* renderSystem = reinterpret_cast<RenderSystem*>(pUserData);
-        __debugbreak();
-    }
+		for (auto& context : renderSystem->Contexts)
+			context_handles.push_back(context.AFTERMATH_context);
 
+		GFSDK_Aftermath_GetDeviceStatus(&device_status);
+		GFSDK_Aftermath_GetData(context_handles.size(), context_handles.data(), context_crash_info.data());
+		GFSDK_Aftermath_GetPageFaultInformation(&pafeFault);
 
-    void RenderSystem::CrashDumpDescriptionCallback(PFN_GFSDK_Aftermath_AddGpuCrashDumpDescription addDescription, void* pUserData)
-    {
-        RenderSystem* renderSystem = reinterpret_cast<RenderSystem*>(pUserData);
-        __debugbreak();
-    }
+		GFSDK_Aftermath_GpuCrashDump_Decoder decoder = {};
+
+		auto res = GFSDK_Aftermath_GpuCrashDump_CreateDecoder(
+			GFSDK_Aftermath_Version_API,
+			gpuCrashDump,
+			gpuCrashDumpSize,
+			&decoder);
+
+		GFSDK_Aftermath_GpuCrashDump_BaseInfo baseInfo = {};
+		GFSDK_Aftermath_GpuCrashDump_GetBaseInfo(decoder, &baseInfo);
+
+		uint32_t applicationNameLength = 0;
+		GFSDK_Aftermath_GpuCrashDump_GetDescriptionSize(
+			decoder,
+			GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationName,
+			&applicationNameLength);
+
+		std::vector<char> applicationName(applicationNameLength, '\0');
+
+		GFSDK_Aftermath_GpuCrashDump_GetDescription(
+			decoder,
+			GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationName,
+			uint32_t(applicationName.size()),
+			applicationName.data());
+
+		static int count = 0;
+		const std::string baseFileName =
+			std::string("TestGame")
+			+ "-"
+			+ std::to_string(baseInfo.pid)
+			+ "-"
+			+ std::to_string(++count);
+
+		const std::string crashDumpFileName = baseFileName + ".nv-gpudmp";
+		std::ofstream dumpFile(crashDumpFileName, std::ios::out | std::ios::binary);
+		if (dumpFile)
+		{
+			dumpFile.write((const char*)gpuCrashDump, gpuCrashDumpSize);
+			dumpFile.close();
+		}
+	}
 
 
 
-    void RenderSystem::OnShaderDebugInfoLookup(const GFSDK_Aftermath_ShaderDebugInfoIdentifier* pIdentifier, PFN_GFSDK_Aftermath_SetData setShaderDebugInfo, void* pUserData)
-    {
-        __debugbreak();
-    }
+	void RenderSystem::ShaderDebugInfoCallback(const void* pShaderDebugInfo, const uint32_t shaderDebugInfoSize, void* pUserData)
+	{
+		RenderSystem* renderSystem = reinterpret_cast<RenderSystem*>(pUserData);
+		__debugbreak();
+	}
+
+
+	void RenderSystem::CrashDumpDescriptionCallback(PFN_GFSDK_Aftermath_AddGpuCrashDumpDescription addDescription, void* pUserData)
+	{
+		RenderSystem* renderSystem = reinterpret_cast<RenderSystem*>(pUserData);
+		__debugbreak();
+	}
 
 
 
-    void RenderSystem::OnShaderLookup(const GFSDK_Aftermath_ShaderHash* pShaderHash, PFN_GFSDK_Aftermath_SetData setShaderBinary, void* pUserData)
-    {
-        __debugbreak();
-    }
+	void RenderSystem::OnShaderDebugInfoLookup(const GFSDK_Aftermath_ShaderDebugInfoIdentifier* pIdentifier, PFN_GFSDK_Aftermath_SetData setShaderDebugInfo, void* pUserData)
+	{
+		__debugbreak();
+	}
 
 
 
-    void RenderSystem::OnShaderInstructionsLookup(const GFSDK_Aftermath_ShaderInstructionsHash* pShaderInstructionsHash, PFN_GFSDK_Aftermath_SetData setShaderBinary, void* pUserData)
-    {
-        __debugbreak();
-    }
+	void RenderSystem::OnShaderLookup(const GFSDK_Aftermath_ShaderHash* pShaderHash, PFN_GFSDK_Aftermath_SetData setShaderBinary, void* pUserData)
+	{
+		__debugbreak();
+	}
 
 
 
-    void RenderSystem::OnShaderSourceDebugInfoLookup(const GFSDK_Aftermath_ShaderDebugName* pShaderDebugName, PFN_GFSDK_Aftermath_SetData setShaderBinary, void* pUserData)
-    {
-        __debugbreak();
-    }
+	void RenderSystem::OnShaderInstructionsLookup(const GFSDK_Aftermath_ShaderInstructionsHash* pShaderInstructionsHash, PFN_GFSDK_Aftermath_SetData setShaderBinary, void* pUserData)
+	{
+		__debugbreak();
+	}
+
+
+
+	void RenderSystem::OnShaderSourceDebugInfoLookup(const GFSDK_Aftermath_ShaderDebugName* pShaderDebugName, PFN_GFSDK_Aftermath_SetData setShaderBinary, void* pUserData)
+	{
+		__debugbreak();
+	}
 #endif
 
 
-    bool RenderSystem::DEBUG_AttachPIX()
-    {
+	bool RenderSystem::DEBUG_AttachPIX()
+	{
 #if USING(PIX)
-        if (pix)
-            return true;
+		if (pix)
+			return true;
 
-        HRESULT hr = DXGIGetDebugInterface1(0, IID_PPV_ARGS(&pix));
+		HRESULT hr = DXGIGetDebugInterface1(0, IID_PPV_ARGS(&pix));
 
-        return SUCCEEDED(hr);
+		return SUCCEEDED(hr);
 #else
-        return false;
+		return false;
 #endif
-    }
+	}
 
 
-    bool RenderSystem::DEBUG_BeginPixCapture()
-    {
+	bool RenderSystem::DEBUG_BeginPixCapture()
+	{
 #if USING(PIX)
-        if (pix)
-            pix->BeginCapture();
+		if (pix)
+			pix->BeginCapture();
 
-        return pix != nullptr;
+		return pix != nullptr;
 #else
-        return false;
+		return false;
 #endif
-    }
+	}
 
 
-    bool RenderSystem::DEBUG_EndPixCapture()
-    {
+	bool RenderSystem::DEBUG_EndPixCapture()
+	{
 #if USING(PIX)
-        if (pix)
-            pix->EndCapture();
+		if (pix)
+			pix->EndCapture();
 
-        return pix != nullptr;
+		return pix != nullptr;
 #else
-        return false;
+		return false;
 #endif
-    }
+	}
 
 
 	/************************************************************************************************/
@@ -8486,7 +8485,7 @@ namespace FlexKit
 			1,
 			DeviceFormat::R8G8B8A8_UNORM);
 
-        SetDebugName(defaultTexture, "Default Texture");
+		SetDebugName(defaultTexture, "Default Texture");
 		SubmitUploadQueues(0, &upload);
 
 		return defaultTexture;
@@ -8521,7 +8520,7 @@ namespace FlexKit
 
 	void RenderSystem::BeginSubmission()
 	{
-        ProfileFunction();
+		ProfileFunction();
 
 		const auto pendingFrame = pendingFrames[(frameIdx) % 2];
 
@@ -8530,11 +8529,11 @@ namespace FlexKit
 			HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS); FK_ASSERT(eventHandle != 0);
 			Fence->SetEventOnCompletion(pendingFrame, eventHandle);
 
-            while (WaitForSingleObject(eventHandle, 1) == WAIT_TIMEOUT)
-            {
-                auto temp = Fence->GetCompletedValue();
-                int x = 0;
-            }
+			while (WaitForSingleObject(eventHandle, 1) == WAIT_TIMEOUT)
+			{
+				auto temp = Fence->GetCompletedValue();
+				int x = 0;
+			}
 
 			CloseHandle(eventHandle);
 		}
@@ -8544,9 +8543,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    SyncPoint RenderSystem::Submit(Vector<Context*>& contexts, std::optional<SyncPoint> syncOptional)
+	SyncPoint RenderSystem::Submit(Vector<Context*>& contexts, std::optional<SyncPoint> syncOptional)
 	{
-        ProfileFunction();
+		ProfileFunction();
 
 		if (ImmediateUpload != InvalidHandle)
 		{
@@ -8556,35 +8555,35 @@ namespace FlexKit
 
 		const auto counter = graphicsSubmissionCounter++;
 
-        static_vector<ID3D12CommandList*, 64> cls;
+		static_vector<ID3D12CommandList*, 64> cls;
 
-        if (PendingBarriers.size())
-        {
-            std::unique_lock lock{ barrierLock };
+		if (PendingBarriers.size())
+		{
+			std::unique_lock lock{ barrierLock };
 
-            auto& context = GetCommandList();
-            cls.push_back(context.GetCommandList());
+			auto& context = GetCommandList();
+			cls.push_back(context.GetCommandList());
 
-            for (auto barrier : PendingBarriers) {
-                if (barrier.type == Barrier::ResourceType::PTR)
-                    context._AddBarrier(
-                        barrier._ptr,
-                        barrier.beforeState,
-                        barrier.afterState);
-                else if (barrier.type == Barrier::ResourceType::HNDL) {
-                    context._AddBarrier(
-                        GetDeviceResource(barrier.handle),
-                        barrier.beforeState,
-                        barrier.afterState);
+			for (auto barrier : PendingBarriers) {
+				if (barrier.type == Barrier::ResourceType::PTR)
+					context._AddBarrier(
+						barrier._ptr,
+						barrier.beforeState,
+						barrier.afterState);
+				else if (barrier.type == Barrier::ResourceType::HNDL) {
+					context._AddBarrier(
+						GetDeviceResource(barrier.handle),
+						barrier.beforeState,
+						barrier.afterState);
 
-                    SetObjectState(barrier.handle, barrier.afterState);
-                }
-            }
+					SetObjectState(barrier.handle, barrier.afterState);
+				}
+			}
 
-            context.FlushBarriers();
-            context.Close(counter);
-            PendingBarriers.clear();
-        }
+			context.FlushBarriers();
+			context.Close(counter);
+			PendingBarriers.clear();
+		}
 
 		for (auto context : contexts)
 		{
@@ -8592,13 +8591,13 @@ namespace FlexKit
 			context->Close(counter);
 		}
 
-        if (auto sync = syncOptional.value_or(SyncPoint{}); syncOptional.has_value())
-            GraphicsQueue->Wait(sync.fence, sync.syncCounter);
+		if (auto sync = syncOptional.value_or(SyncPoint{}); syncOptional.has_value())
+			GraphicsQueue->Wait(sync.fence, sync.syncCounter);
 
 		GraphicsQueue->ExecuteCommandLists((UINT)cls.size(), cls.begin());
 
-        if (auto HR = GraphicsQueue->Signal(Fence, counter); FAILED(HR))
-            FK_LOG_ERROR("Failed to Signal");
+		if (auto HR = GraphicsQueue->Signal(Fence, counter); FAILED(HR))
+			FK_LOG_ERROR("Failed to Signal");
 
 		for (auto context : contexts)
 			context->_QueueReadBacks();
@@ -8612,16 +8611,16 @@ namespace FlexKit
 
 		ReadBackTable.Update();
 
-        _UpdateCounters();
+		_UpdateCounters();
 
-        return { counter, Fence };
+		return { counter, Fence };
 	}
 
 
 	/************************************************************************************************/
 
 
-    SyncPoint RenderSystem::SubmitUploadQueues(uint32_t flags, CopyContextHandle* handles, size_t count, std::optional<SyncPoint> sync)
+	SyncPoint RenderSystem::SubmitUploadQueues(uint32_t flags, CopyContextHandle* handles, size_t count, std::optional<SyncPoint> sync)
 	{
 		auto syncPoint = copyEngine.Submit(handles, handles + count, sync);
 
@@ -8634,7 +8633,7 @@ namespace FlexKit
 		{
 		}
 
-        return syncPoint;
+		return syncPoint;
 	}
 
 
@@ -8996,17 +8995,17 @@ namespace FlexKit
 			return false;
 		}
 
-        *out = Shader{ NewBlob };
-        NewBlob->Release();
+		*out = Shader{ NewBlob };
+		NewBlob->Release();
 
 		return true;
 	}
-    */
+	*/
 
 	/************************************************************************************************/
 
 
-    /*
+	/*
 	Shader LoadShader_OLD(const char* Entry,  const char* ShaderVersion, const char* File)
 	{
 		Shader Shader;
@@ -9037,7 +9036,7 @@ namespace FlexKit
 
 		return Shader;
 	}
-    */
+	*/
 
 
 	/************************************************************************************************/
@@ -9135,10 +9134,10 @@ namespace FlexKit
 			Desc.Buffer.StructureByteStride = (UINT)Stride;
 		}
 
-        FK_ASSERT(Desc.Buffer.StructureByteStride < 512);
-        FK_ASSERT(Desc.Buffer.NumElements > 0);
+		FK_ASSERT(Desc.Buffer.StructureByteStride < 512);
+		FK_ASSERT(Desc.Buffer.NumElements > 0);
 
-        RS->pDevice->CreateShaderResourceView(Buffer, &Desc, POS);
+		RS->pDevice->CreateShaderResourceView(Buffer, &Desc, POS);
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
@@ -9211,10 +9210,10 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    DescHeapPOS PushTextureToDescHeap(RenderSystem* RS, DXGI_FORMAT format, uint32_t highestMipLevel, ResourceHandle handle, DescHeapPOS POS)
+	DescHeapPOS PushTextureToDescHeap(RenderSystem* RS, DXGI_FORMAT format, uint32_t highestMipLevel, ResourceHandle handle, DescHeapPOS POS)
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC ViewDesc = {}; {
 			const auto mipCount     = RS->GetTextureMipCount(handle);
@@ -9237,10 +9236,10 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    DescHeapPOS PushTexture3DToDescHeap(RenderSystem* RS, DXGI_FORMAT format, uint32_t mipCount, uint32_t highestDetailMip, uint32_t minLODClamp, ResourceHandle handle, DescHeapPOS POS)
+	DescHeapPOS PushTexture3DToDescHeap(RenderSystem* RS, DXGI_FORMAT format, uint32_t mipCount, uint32_t highestDetailMip, uint32_t minLODClamp, ResourceHandle handle, DescHeapPOS POS)
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC ViewDesc = {}; {
 			const auto mipCount     = RS->GetTextureMipCount(handle);
@@ -9298,7 +9297,7 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	DescHeapPOS PushUAV2DToDescHeap(RenderSystem* RS, Texture2D tex, uint32_t mipLevel, DescHeapPOS POS)
@@ -9315,7 +9314,7 @@ namespace FlexKit
 	}
 
 
-    DescHeapPOS PushUAV3DToDescHeap(RenderSystem* RS, Texture2D tex, uint32_t width, DescHeapPOS POS)
+	DescHeapPOS PushUAV3DToDescHeap(RenderSystem* RS, Texture2D tex, uint32_t width, DescHeapPOS POS)
 	{
 		D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc;
 		UAVDesc.Format                  = tex.Format;
@@ -9330,7 +9329,7 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	inline DescHeapPOS PushUAV1DToDescHeap(RenderSystem* RS, ID3D12Resource* resource, DXGI_FORMAT format, uint mip, DescHeapPOS POS)
@@ -9360,8 +9359,8 @@ namespace FlexKit
 		UAVDesc.Buffer.NumElements			= buffer.elementCount - buffer.offset; // space for counter at beginning
 		UAVDesc.Buffer.StructureByteStride	= buffer.stride;
 
-        FK_ASSERT(UAVDesc.Buffer.StructureByteStride < 512);
-        FK_ASSERT(UAVDesc.Buffer.NumElements > 0);
+		FK_ASSERT(UAVDesc.Buffer.StructureByteStride < 512);
+		FK_ASSERT(UAVDesc.Buffer.NumElements > 0);
 
 		RS->pDevice->CreateUnorderedAccessView(buffer.resource, nullptr, &UAVDesc, POS);
 
@@ -9369,22 +9368,22 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    inline DescHeapPOS PushUAVBufferToDescHeap2(RenderSystem* RS, UAVBuffer buffer, ID3D12Resource* counter, DescHeapPOS POS)
+	inline DescHeapPOS PushUAVBufferToDescHeap2(RenderSystem* RS, UAVBuffer buffer, ID3D12Resource* counter, DescHeapPOS POS)
 	{
 		D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc;
 		UAVDesc.Format						= buffer.format;
 		UAVDesc.ViewDimension				= D3D12_UAV_DIMENSION_BUFFER;
 		UAVDesc.Buffer.CounterOffsetInBytes = buffer.counterOffset;
-        UAVDesc.Buffer.FirstElement         = buffer.offset;
+		UAVDesc.Buffer.FirstElement         = buffer.offset;
 		UAVDesc.Buffer.Flags				= buffer.typeless == true ? D3D12_BUFFER_UAV_FLAGS::D3D12_BUFFER_UAV_FLAG_RAW : D3D12_BUFFER_UAV_FLAGS::D3D12_BUFFER_UAV_FLAG_NONE;
 		UAVDesc.Buffer.NumElements			= buffer.elementCount - buffer.offset;
 		UAVDesc.Buffer.StructureByteStride	= buffer.stride;
 
-        FK_ASSERT(UAVDesc.Buffer.StructureByteStride < 512);
-        FK_ASSERT(UAVDesc.Buffer.NumElements > 0);
+		FK_ASSERT(UAVDesc.Buffer.StructureByteStride < 512);
+		FK_ASSERT(UAVDesc.Buffer.NumElements > 0);
 
 		RS->pDevice->CreateUnorderedAccessView(buffer.resource, counter, &UAVDesc, POS);
 
@@ -9469,11 +9468,11 @@ namespace FlexKit
 		//out.Buffers[01] = FlexKit::CreateVertexBufferView(NormalBuffer, NormalBufferSize);
 		//out.Buffers[15] = FlexKit::CreateVertexBufferView(IndexBuffer,  IndexBufferSize);
 
-        /*
+		/*
 		out.Buffers[0]->Begin
 			( FlexKit::VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION
 			, FlexKit::VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32 );
-        
+		
 
 		float3 Vmn = float3(0);
 		float3 Vmx = float3(0);
@@ -9608,7 +9607,7 @@ namespace FlexKit
 			//ClearTriMeshVBVs(&out);
 			TempSpace.clear();
 		}
-        */
+		*/
 		return false;
 	}
 
@@ -9619,17 +9618,17 @@ namespace FlexKit
 	void ReleaseTriMesh(TriMesh* T)
 	{
 		if(T->Memory){
-            for (auto& details : T->lods) {
-                Release(&details.vertexBuffer);
+			for (auto& details : T->lods) {
+				Release(&details.vertexBuffer);
 
-                for (auto& buffer : details.buffers)
-                {
-                    if (buffer)
-                        T->Memory->free(buffer);
+				for (auto& buffer : details.buffers)
+				{
+					if (buffer)
+						T->Memory->free(buffer);
 
-                    buffer = nullptr;
-                }
-            }
+					buffer = nullptr;
+				}
+			}
 			T->Memory->free((void*)T->ID);
 		}
 	}
@@ -9640,20 +9639,20 @@ namespace FlexKit
 
 	void DelayedReleaseTriMesh(RenderSystem* RS, TriMesh* T)
 	{
-        for (auto& detailLevel : T->lods)
-        {
-            DelayedRelease(RS, &detailLevel.vertexBuffer);
+		for (auto& detailLevel : T->lods)
+		{
+			DelayedRelease(RS, &detailLevel.vertexBuffer);
 
-            for (auto& B : detailLevel.buffers)
-            {
-                if (B)
-                    T->Memory->free(B);
+			for (auto& B : detailLevel.buffers)
+			{
+				if (B)
+					T->Memory->free(B);
 
-                B = nullptr;
-            }
+				B = nullptr;
+			}
 
-            detailLevel.vertexBuffer.clear();
-        }
+			detailLevel.vertexBuffer.clear();
+		}
 
 		T->Memory->free((void*)T->ID);
 	}
@@ -9694,7 +9693,7 @@ namespace FlexKit
 	{
 		auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer->WH, format));
 		RS->UploadTexture(textureHandle, handle, buffer->Buffer, buffer->Size);
-        RS->SetDebugName(textureHandle, "MoveTextureBufferToVRAM");
+		RS->SetDebugName(textureHandle, "MoveTextureBufferToVRAM");
 
 		return textureHandle;
 	}
@@ -9705,11 +9704,11 @@ namespace FlexKit
 
 	ResourceHandle MoveTextureBuffersToVRAM(RenderSystem* RS, CopyContextHandle handle, TextureBuffer* buffer, size_t resourceCount, DeviceFormat format)
 	{
-        FK_ASSERT(resourceCount < std::numeric_limits<uint8_t>::max());
+		FK_ASSERT(resourceCount < std::numeric_limits<uint8_t>::max());
 
 		auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer[0].WH, format, (uint8_t)resourceCount));
 		RS->UploadTexture(textureHandle, handle, buffer, resourceCount);
-        RS->SetDebugName(textureHandle, "MoveTextureBuffersToVRAM");
+		RS->SetDebugName(textureHandle, "MoveTextureBuffersToVRAM");
 
 		return textureHandle;
 	}
@@ -9720,38 +9719,38 @@ namespace FlexKit
 
 	ResourceHandle MoveTextureBuffersToVRAM(RenderSystem* RS, CopyContextHandle handle, TextureBuffer* buffer, size_t MIPCount, size_t arrayCount, DeviceFormat format)
 	{
-        FK_ASSERT(MIPCount < std::numeric_limits<uint8_t>::max());
+		FK_ASSERT(MIPCount < std::numeric_limits<uint8_t>::max());
 
 		auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer[0].WH, format, (uint8_t)MIPCount, arrayCount));
 		RS->UploadTexture(textureHandle, handle, buffer, arrayCount * MIPCount);
-        RS->SetDebugName(textureHandle, "MoveTextureBuffersToVRAM");
+		RS->SetDebugName(textureHandle, "MoveTextureBuffersToVRAM");
 
 		return textureHandle;
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    ResourceHandle MoveBufferToDevice(RenderSystem* RS, const char* buffer, const size_t byteSize, CopyContextHandle copyCtx)
-    {
-        FK_ASSERT(byteSize < std::numeric_limits<uint32_t>::max());
+	ResourceHandle MoveBufferToDevice(RenderSystem* RS, const char* buffer, const size_t byteSize, CopyContextHandle copyCtx)
+	{
+		FK_ASSERT(byteSize < std::numeric_limits<uint32_t>::max());
 
-        auto bufferResource = RS->CreateGPUResource(GPUResourceDesc::StructuredResource((uint32_t)byteSize));
-        UploadSegment upload = ReserveUploadBuffer(*RS, byteSize);
-        MoveBuffer2UploadBuffer(upload, (const byte*)buffer, byteSize);
+		auto bufferResource = RS->CreateGPUResource(GPUResourceDesc::StructuredResource((uint32_t)byteSize));
+		UploadSegment upload = ReserveUploadBuffer(*RS, byteSize);
+		MoveBuffer2UploadBuffer(upload, (const byte*)buffer, byteSize);
 
-        auto deviceResource = RS->GetDeviceResource(bufferResource);
-        auto ctx = RS->_GetCopyContext(copyCtx);
+		auto deviceResource = RS->GetDeviceResource(bufferResource);
+		auto ctx = RS->_GetCopyContext(copyCtx);
 
-        if(auto state = RS->GetObjectState(bufferResource); state!= DRS_CopyDest)
-            ctx.Barrier(deviceResource, state, DRS_CopyDest);
+		if(auto state = RS->GetObjectState(bufferResource); state!= DRS_CopyDest)
+			ctx.Barrier(deviceResource, state, DRS_CopyDest);
 
-        ctx.CopyBuffer(deviceResource, 0, upload.resource, upload.offset, upload.uploadSize);
-        ctx.Barrier(deviceResource, DRS_CopyDest, DRS_Common);
+		ctx.CopyBuffer(deviceResource, 0, upload.resource, upload.offset, upload.uploadSize);
+		ctx.Barrier(deviceResource, DRS_CopyDest, DRS_Common);
 
-        return bufferResource;
-    }
+		return bufferResource;
+	}
 
 
 	/************************************************************************************************/
@@ -9777,7 +9776,7 @@ namespace FlexKit
 			handle,
 			RS->GetDeviceResource(texture),
 			&desc,
-            DRS_GenericRead);
+			DRS_GenericRead);
 
 		RS->Textures.SetState(texture, DeviceResourceState::DRS_GenericRead);
 		RS->SetDebugName(texture, "LOADTEXTURE");
@@ -9786,338 +9785,338 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
-
-
-    MemoryPoolAllocator::MemoryPoolAllocator(RenderSystem& IN_renderSystem, size_t IN_heapSize, size_t IN_blockSize, uint32_t IN_flags, iAllocator* IN_allocator) :
-        renderSystem    { IN_renderSystem },
-        blockCount      { IN_heapSize / IN_blockSize },
-        blockSize       { IN_blockSize },
-        allocator       { IN_allocator },
-        allocations     { IN_allocator },
-        freeRanges      { IN_allocator },
-        heap            { IN_renderSystem.CreateHeap(IN_heapSize, IN_flags) },
-        flags           { IN_flags }
-    {
-        freeRanges.push_back({ 0, (uint32_t)blockCount, Clear });
-    }
-
-
-    /************************************************************************************************/
-
-
-    MemoryPoolAllocator::~MemoryPoolAllocator()
-    {
-        renderSystem.ReleaseHeap(heap);
-    }
-
-
-    /************************************************************************************************/
-
-
-    GPUHeapAllocation MemoryPoolAllocator::GetMemory(const size_t requestBlockCount, const uint64_t frameID, const uint64_t flags)
-    {
-        ProfileFunction();
-        FK_ASSERT(requestBlockCount < std::numeric_limits<uint32_t>::max());
-
-        std::scoped_lock localLock{ m };
-
-        std::sort(freeRanges.begin(), freeRanges.end());
-
-        auto _GetMemory = [&]() -> GPUHeapAllocation {
-            for (auto& range : freeRanges)
-            {
-                if (range.offset > blockCount)
-                    __debugbreak();
-
-                if (range.blockCount >= requestBlockCount)
-                {
-                    if  (range.flags == Clear ||
-                        (range.flags == Locked && range.frameID + 2 < frameID) ||
-                        (range.flags | AllowReallocation && range.frameID == frameID))
-                    {
-                        GPUHeapAllocation heapAllocation = {
-                            range.offset * blockSize,
-                            requestBlockCount * blockSize,
-                            (range.priorAllocation != InvalidHandle &&
-                             range.flags | AllowReallocation &&
-                             range.frameID == frameID) ?
-                                range.priorAllocation : InvalidHandle
-                        };
-
-                        FK_LOG_9("Allocated Blocks %u - %u", range.offset, range.offset + range.blockCount);
-
-                        if (range.blockCount > requestBlockCount)
-                        {
-                            range.blockCount    -= (uint32_t)requestBlockCount;
-                            range.offset        += (uint32_t)requestBlockCount;
-                        }
-                        else if (range.blockCount == requestBlockCount) {
-                            freeRanges.remove_unstable(&range);
-                        }
-
-                        return heapAllocation;
-                    }
-                }
-            }
+	/************************************************************************************************/
+
+
+	MemoryPoolAllocator::MemoryPoolAllocator(RenderSystem& IN_renderSystem, size_t IN_heapSize, size_t IN_blockSize, uint32_t IN_flags, iAllocator* IN_allocator) :
+		renderSystem    { IN_renderSystem },
+		blockCount      { IN_heapSize / IN_blockSize },
+		blockSize       { IN_blockSize },
+		allocator       { IN_allocator },
+		allocations     { IN_allocator },
+		freeRanges      { IN_allocator },
+		heap            { IN_renderSystem.CreateHeap(IN_heapSize, IN_flags) },
+		flags           { IN_flags }
+	{
+		freeRanges.push_back({ 0, (uint32_t)blockCount, Clear });
+	}
+
+
+	/************************************************************************************************/
+
+
+	MemoryPoolAllocator::~MemoryPoolAllocator()
+	{
+		renderSystem.ReleaseHeap(heap);
+	}
+
+
+	/************************************************************************************************/
+
+
+	GPUHeapAllocation MemoryPoolAllocator::GetMemory(const size_t requestBlockCount, const uint64_t frameID, const uint64_t flags)
+	{
+		ProfileFunction();
+		FK_ASSERT(requestBlockCount < std::numeric_limits<uint32_t>::max());
+
+		std::scoped_lock localLock{ m };
+
+		std::sort(freeRanges.begin(), freeRanges.end());
+
+		auto _GetMemory = [&]() -> GPUHeapAllocation {
+			for (auto& range : freeRanges)
+			{
+				if (range.offset > blockCount)
+					__debugbreak();
+
+				if (range.blockCount >= requestBlockCount)
+				{
+					if  (range.flags == Clear ||
+						(range.flags == Locked && range.frameID + 2 < frameID) ||
+						(range.flags | AllowReallocation && range.frameID == frameID))
+					{
+						GPUHeapAllocation heapAllocation = {
+							range.offset * blockSize,
+							requestBlockCount * blockSize,
+							(range.priorAllocation != InvalidHandle &&
+							 range.flags | AllowReallocation &&
+							 range.frameID == frameID) ?
+								range.priorAllocation : InvalidHandle
+						};
+
+						FK_LOG_9("Allocated Blocks %u - %u", range.offset, range.offset + range.blockCount);
+
+						if (range.blockCount > requestBlockCount)
+						{
+							range.blockCount    -= (uint32_t)requestBlockCount;
+							range.offset        += (uint32_t)requestBlockCount;
+						}
+						else if (range.blockCount == requestBlockCount) {
+							freeRanges.remove_unstable(&range);
+						}
+
+						return heapAllocation;
+					}
+				}
+			}
 
-            return {};
-        };
-        auto res = _GetMemory();
-        if (res)
-            return res;
+			return {};
+		};
+		auto res = _GetMemory();
+		if (res)
+			return res;
 
 
-        Coalesce();
+		Coalesce();
 
-        return _GetMemory();
-    }
+		return _GetMemory();
+	}
 
 
-    void MemoryPoolAllocator::Coalesce()
-    {
-        const auto frameID = renderSystem.GetCurrentFrame();
-        FK_LOG_9("Coalesce");
+	void MemoryPoolAllocator::Coalesce()
+	{
+		const auto frameID = renderSystem.GetCurrentFrame();
+		FK_LOG_9("Coalesce");
 
-        std::sort(
-            std::begin(freeRanges),
-            std::end(freeRanges),
-            [&](auto& lhs, auto& rhs)
-            {
-                return lhs.offset < rhs.offset;
-            }
-        );
+		std::sort(
+			std::begin(freeRanges),
+			std::end(freeRanges),
+			[&](auto& lhs, auto& rhs)
+			{
+				return lhs.offset < rhs.offset;
+			}
+		);
 
-        size_t I = 0; 
-        while (I + 1 < freeRanges.size())
-        {
-            if (freeRanges[I].offset + freeRanges[I].blockCount == freeRanges[I + 1].offset &&
-                freeRanges[I].frameID + 1 < frameID &&
-                freeRanges[I + 1].frameID + 1 < frameID)
-            {
-                freeRanges[I].blockCount += freeRanges[I + 1].blockCount;
-                freeRanges.remove_stable(freeRanges.begin() + I + 1);
-            }
-            else
-                I++;
-        }
-    }
+		size_t I = 0; 
+		while (I + 1 < freeRanges.size())
+		{
+			if (freeRanges[I].offset + freeRanges[I].blockCount == freeRanges[I + 1].offset &&
+				freeRanges[I].frameID + 1 < frameID &&
+				freeRanges[I + 1].frameID + 1 < frameID)
+			{
+				freeRanges[I].blockCount += freeRanges[I + 1].blockCount;
+				freeRanges.remove_stable(freeRanges.begin() + I + 1);
+			}
+			else
+				I++;
+		}
+	}
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    AcquireResult MemoryPoolAllocator::Acquire(GPUResourceDesc desc, bool temporary)
-    {
-        ProfileFunction();
+	AcquireResult MemoryPoolAllocator::Acquire(GPUResourceDesc desc, bool temporary)
+	{
+		ProfileFunction();
 
-        auto frameIdx   = renderSystem.GetCurrentFrame();
-        auto size       = renderSystem.GetAllocationSize(desc);
+		auto frameIdx   = renderSystem.GetCurrentFrame();
+		auto size       = renderSystem.GetAllocationSize(desc);
 
-        const size_t requestedBlockCount = (size / blockSize) + ((size % blockSize == 0) ? 0 : 1);
-        auto allocation = GetMemory(requestedBlockCount, frameIdx, Clear);
+		const size_t requestedBlockCount = (size / blockSize) + ((size % blockSize == 0) ? 0 : 1);
+		auto allocation = GetMemory(requestedBlockCount, frameIdx, Clear);
 
-        if (allocation.offset / blockSize > blockCount) {
-            FK_LOG_ERROR("MemoryPoolAllocator Allocated a block beyond range!");
-            return { InvalidHandle, InvalidHandle };
-        }
+		if (allocation.offset / blockSize > blockCount) {
+			FK_LOG_ERROR("MemoryPoolAllocator Allocated a block beyond range!");
+			return { InvalidHandle, InvalidHandle };
+		}
 
-        if (!allocation) {
-            FK_LOG_ERROR("MemoryPoolAllocator Ran out of memory!");
-            return { InvalidHandle, InvalidHandle };
-        }
+		if (!allocation) {
+			FK_LOG_ERROR("MemoryPoolAllocator Ran out of memory!");
+			return { InvalidHandle, InvalidHandle };
+		}
 
-        desc.bufferCount    = 1;
-        desc.allocationType = ResourceAllocationType::Placed;
-        desc.placed.heap    = heap;
-        desc.placed.offset  = allocation.offset;
+		desc.bufferCount    = 1;
+		desc.allocationType = ResourceAllocationType::Placed;
+		desc.placed.heap    = heap;
+		desc.placed.offset  = allocation.offset;
 
 
-        ResourceHandle resource = renderSystem.CreateGPUResource(desc);
+		ResourceHandle resource = renderSystem.CreateGPUResource(desc);
 
-        if (resource != InvalidHandle) {
-            renderSystem.SetDebugName(resource, "Acquire");
+		if (resource != InvalidHandle) {
+			renderSystem.SetDebugName(resource, "Acquire");
 
-            std::scoped_lock localLock{ m };
+			std::scoped_lock localLock{ m };
 
-            allocations.push_back({
-                (uint32_t)(allocation.offset / blockSize),
-                (uint32_t)(allocation.size / blockSize),
-                frameIdx,
-                (uint64_t)(temporary ? Temporary : Clear),
-                resource });
-        }
-        else
-            __debugbreak();
-
-        return { resource, allocation.Overlap };
-    }
-
-
-    /************************************************************************************************/
+			allocations.push_back({
+				(uint32_t)(allocation.offset / blockSize),
+				(uint32_t)(allocation.size / blockSize),
+				frameIdx,
+				(uint64_t)(temporary ? Temporary : Clear),
+				resource });
+		}
+		else
+			__debugbreak();
+
+		return { resource, allocation.Overlap };
+	}
+
+
+	/************************************************************************************************/
 
-
-    AcquireDeferredRes MemoryPoolAllocator::AcquireDeferred(GPUResourceDesc desc, bool temporary)
-    {
-        ProfileFunction();
-
-        auto frameIdx   = renderSystem.GetCurrentFrame();
-        auto size       = renderSystem.GetAllocationSize(desc);
-
-        const size_t requestedBlockCount = (size / blockSize) + ((size % blockSize == 0) ? 0 : 1);
-        auto allocation = GetMemory(requestedBlockCount, frameIdx, Clear);
-
-        if (allocation.offset / blockSize > blockCount) {
-            FK_LOG_ERROR("MemoryPoolAllocator Allocated a block beyond range!");
-            return { InvalidHandle, InvalidHandle };
-        }
-
-        if (!allocation) {
-            FK_LOG_ERROR("MemoryPoolAllocator Ran out of memory!");
-            return { InvalidHandle, InvalidHandle };
-        }
+
+	AcquireDeferredRes MemoryPoolAllocator::AcquireDeferred(GPUResourceDesc desc, bool temporary)
+	{
+		ProfileFunction();
+
+		auto frameIdx   = renderSystem.GetCurrentFrame();
+		auto size       = renderSystem.GetAllocationSize(desc);
+
+		const size_t requestedBlockCount = (size / blockSize) + ((size % blockSize == 0) ? 0 : 1);
+		auto allocation = GetMemory(requestedBlockCount, frameIdx, Clear);
+
+		if (allocation.offset / blockSize > blockCount) {
+			FK_LOG_ERROR("MemoryPoolAllocator Allocated a block beyond range!");
+			return { InvalidHandle, InvalidHandle };
+		}
+
+		if (!allocation) {
+			FK_LOG_ERROR("MemoryPoolAllocator Ran out of memory!");
+			return { InvalidHandle, InvalidHandle };
+		}
 
-        desc.bufferCount    = 1;
-        desc.allocationType = ResourceAllocationType::Placed;
-        desc.placed.heap    = heap;
-        desc.placed.offset  = allocation.offset;
+		desc.bufferCount    = 1;
+		desc.allocationType = ResourceAllocationType::Placed;
+		desc.placed.heap    = heap;
+		desc.placed.offset  = allocation.offset;
 
 
-        ResourceHandle resource = renderSystem.CreateGPUResourceHandle();
+		ResourceHandle resource = renderSystem.CreateGPUResourceHandle();
 
-        if (resource != InvalidHandle) {
-            std::scoped_lock localLock{ m };
+		if (resource != InvalidHandle) {
+			std::scoped_lock localLock{ m };
 
-            allocations.push_back({
-                (uint32_t)(allocation.offset / blockSize),
-                (uint32_t)(allocation.size / blockSize),
-                frameIdx,
-                (uint64_t)(temporary ? Temporary : Clear),
-                resource });
-        }
-        else
-            __debugbreak();
+			allocations.push_back({
+				(uint32_t)(allocation.offset / blockSize),
+				(uint32_t)(allocation.size / blockSize),
+				frameIdx,
+				(uint64_t)(temporary ? Temporary : Clear),
+				resource });
+		}
+		else
+			__debugbreak();
 
-        return { resource, allocation.Overlap, allocation.offset, heap };
-    }
+		return { resource, allocation.Overlap, allocation.offset, heap };
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    AcquireResult MemoryPoolAllocator::Recycle(ResourceHandle resourceToRecycle, GPUResourceDesc desc)
-    {
-        ProfileFunction();
+	AcquireResult MemoryPoolAllocator::Recycle(ResourceHandle resourceToRecycle, GPUResourceDesc desc)
+	{
+		ProfileFunction();
 
-        std::scoped_lock localLock{ m };
+		std::scoped_lock localLock{ m };
 
-        auto frameIdx                       = renderSystem.GetCurrentFrame();
-        auto size                           = renderSystem.GetAllocationSize(desc);
-        const size_t requestedBlockCount    = (size / blockSize) + (size % blockSize == 0) ? 0 : 1;
+		auto frameIdx                       = renderSystem.GetCurrentFrame();
+		auto size                           = renderSystem.GetAllocationSize(desc);
+		const size_t requestedBlockCount    = (size / blockSize) + (size % blockSize == 0) ? 0 : 1;
 
-        FK_ASSERT(requestedBlockCount < std::numeric_limits<uint32_t>::max());
+		FK_ASSERT(requestedBlockCount < std::numeric_limits<uint32_t>::max());
 
-        if (auto res = std::find_if(std::begin(freeRanges), std::end(freeRanges),
-            [&](auto r) { return r.priorAllocation == resourceToRecycle; }); res != std::end(freeRanges))
-        {
-            if (res->flags | AllowReallocation)
-            {
-                auto rangeDescriptor = *res;
+		if (auto res = std::find_if(std::begin(freeRanges), std::end(freeRanges),
+			[&](auto r) { return r.priorAllocation == resourceToRecycle; }); res != std::end(freeRanges))
+		{
+			if (res->flags | AllowReallocation)
+			{
+				auto rangeDescriptor = *res;
 
-                if (res->blockCount == requestedBlockCount)
-                {
-                    freeRanges.remove_unstable(res);
-                }
-                else if(res->blockCount > requestedBlockCount)
-                {
-                    res->offset     += (uint32_t)requestedBlockCount;
-                    res->blockCount -= (uint32_t)requestedBlockCount;
-                }
-                else if (res->blockCount < requestedBlockCount)
-                    return { InvalidHandle, InvalidHandle }; // ERROR!?
+				if (res->blockCount == requestedBlockCount)
+				{
+					freeRanges.remove_unstable(res);
+				}
+				else if(res->blockCount > requestedBlockCount)
+				{
+					res->offset     += (uint32_t)requestedBlockCount;
+					res->blockCount -= (uint32_t)requestedBlockCount;
+				}
+				else if (res->blockCount < requestedBlockCount)
+					return { InvalidHandle, InvalidHandle }; // ERROR!?
 
 
-                GPUHeapAllocation heapAllocation = {
-                        rangeDescriptor.offset * blockSize,
-                        requestedBlockCount * blockSize,
-                        (rangeDescriptor.priorAllocation != InvalidHandle &&
-                            rangeDescriptor.flags | AllowReallocation &&
-                            rangeDescriptor.frameID == frameIdx) ?
-                        rangeDescriptor.priorAllocation : InvalidHandle
-                };
-                
-                desc.bufferCount    = 1;
-                desc.allocationType = ResourceAllocationType::Placed;
-                desc.placed.heap    = heap;
-                desc.placed.offset  = heapAllocation.offset;
+				GPUHeapAllocation heapAllocation = {
+						rangeDescriptor.offset * blockSize,
+						requestedBlockCount * blockSize,
+						(rangeDescriptor.priorAllocation != InvalidHandle &&
+							rangeDescriptor.flags | AllowReallocation &&
+							rangeDescriptor.frameID == frameIdx) ?
+						rangeDescriptor.priorAllocation : InvalidHandle
+				};
+				
+				desc.bufferCount    = 1;
+				desc.allocationType = ResourceAllocationType::Placed;
+				desc.placed.heap    = heap;
+				desc.placed.offset  = heapAllocation.offset;
 
-                ResourceHandle resource = renderSystem.CreateGPUResource(desc);
-                if (resource != InvalidHandle) {
-                    renderSystem.SetDebugName(resource, "Acquire");
+				ResourceHandle resource = renderSystem.CreateGPUResource(desc);
+				if (resource != InvalidHandle) {
+					renderSystem.SetDebugName(resource, "Acquire");
 
-                    allocations.push_back({
-                        (uint32_t)(rangeDescriptor.offset / blockSize),
-                        (uint32_t)(requestedBlockCount),
-                        frameIdx,
-                        Temporary,
-                        resource });
-                }
-                else
-                    __debugbreak();
+					allocations.push_back({
+						(uint32_t)(rangeDescriptor.offset / blockSize),
+						(uint32_t)(requestedBlockCount),
+						frameIdx,
+						Temporary,
+						resource });
+				}
+				else
+					__debugbreak();
 
-                return { resource, resourceToRecycle };
+				return { resource, resourceToRecycle };
 
-            }
-        }
+			}
+		}
 
-        return { InvalidHandle, InvalidHandle };
-    }
+		return { InvalidHandle, InvalidHandle };
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    uint32_t MemoryPoolAllocator::Flags() const
-    {
-        return flags;
-    }
+	uint32_t MemoryPoolAllocator::Flags() const
+	{
+		return flags;
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void MemoryPoolAllocator::Release(ResourceHandle handle, const bool freeResourceImmedate, const bool allowImmediateReuse)
-    {
-        std::scoped_lock localLock{ m };
+	void MemoryPoolAllocator::Release(ResourceHandle handle, const bool freeResourceImmedate, const bool allowImmediateReuse)
+	{
+		std::scoped_lock localLock{ m };
 
-        auto res = find(allocations,
-            [&](auto& e)
-            {
-                return (e.resource == handle);
-            }
-        );
+		auto res = find(allocations,
+			[&](auto& e)
+			{
+				return (e.resource == handle);
+			}
+		);
 
-        if (res != std::end(allocations))
-        {
+		if (res != std::end(allocations))
+		{
 #if DEBUG
-            if (res->offset > blockCount || res->offset + res->blockCount > blockCount)
-                __debugbreak();
+			if (res->offset > blockCount || res->offset + res->blockCount > blockCount)
+				__debugbreak();
 #endif
 
 
-            freeRanges.push_back(
-                {
-                    res->offset,
-                    res->blockCount,
-                    uint64_t(res->flags == AllowReallocation ? AllowReallocation : Locked),
-                    res->frameID,
-                    handle
-                });
+			freeRanges.push_back(
+				{
+					res->offset,
+					res->blockCount,
+					uint64_t(res->flags == AllowReallocation ? AllowReallocation : Locked),
+					res->frameID,
+					handle
+				});
 
-            FK_LOG_9("Released Blocks %u - %u : flags[%u]", res->offset, res->offset + res->blockCount, flags);
+			FK_LOG_9("Released Blocks %u - %u : flags[%u]", res->offset, res->offset + res->blockCount, flags);
 
-            allocations.remove_unstable(res);
-        }
-    }
+			allocations.remove_unstable(res);
+		}
+	}
 
 
 	/************************************************************************************************/

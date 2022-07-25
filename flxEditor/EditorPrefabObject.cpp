@@ -10,28 +10,28 @@
 
 FlexKit::ResourceBlob ScriptResource::CreateBlob() const
 {
-    auto res = EditorScriptEngine::CompileToBlob(source);
+	auto res = EditorScriptEngine::CompileToBlob(source);
 
-    if (!res)
-        return {};
+	if (!res)
+		return {};
 
-    auto& blob = res.value();
+	auto& blob = res.value();
 
-    FlexKit::ScriptResourceBlob header{ blob.size() };
-    header.GUID = GetResourceGUID();
-    strncpy(header.ID, ID.c_str(), FlexKit::Min(64, ID.size()));
-    blob = FlexKit::Blob{ header } + blob;
+	FlexKit::ScriptResourceBlob header{ blob.size() };
+	header.GUID = GetResourceGUID();
+	strncpy(header.ID, ID.c_str(), FlexKit::Min(64, ID.size()));
+	blob = FlexKit::Blob{ header } + blob;
 
-    FlexKit::ResourceBlob outBlob;
-    auto [_ptr, size] = blob.Release();
+	FlexKit::ResourceBlob outBlob;
+	auto [_ptr, size] = blob.Release();
 
-    outBlob.buffer          = (char*)_ptr;
-    outBlob.bufferSize      = size;
-    outBlob.GUID            = GetResourceGUID();
-    outBlob.ID              = ID;
-    outBlob.resourceType    = FlexKit::EResource_ByteCode;
+	outBlob.buffer          = (char*)_ptr;
+	outBlob.bufferSize      = size;
+	outBlob.GUID            = GetResourceGUID();
+	outBlob.ID              = ID;
+	outBlob.resourceType    = FlexKit::EResource_ByteCode;
 
-    return outBlob;
+	return outBlob;
 }
 
 
@@ -40,7 +40,7 @@ FlexKit::ResourceBlob ScriptResource::CreateBlob() const
 
 const std::string& ScriptResource::GetResourceID() const noexcept
 {
-    return ID;
+	return ID;
 }
 
 
@@ -49,7 +49,7 @@ const std::string& ScriptResource::GetResourceID() const noexcept
 
 const uint64_t ScriptResource::GetResourceGUID() const noexcept
 {
-    return guid;
+	return guid;
 }
 
 
@@ -58,7 +58,7 @@ const uint64_t ScriptResource::GetResourceGUID() const noexcept
 
 const ResourceID_t ScriptResource::GetResourceTypeID() const noexcept
 {
-    return ScriptResourceTypeID;
+	return ScriptResourceTypeID;
 }
 
 
@@ -67,7 +67,7 @@ const ResourceID_t ScriptResource::GetResourceTypeID() const noexcept
 
 void ScriptResource::SetResourceID(const std::string& id) noexcept
 {
-    ID = id;
+	ID = id;
 }
 
 /************************************************************************************************/
@@ -75,7 +75,7 @@ void ScriptResource::SetResourceID(const std::string& id) noexcept
 
 void ScriptResource::SetResourceGUID(uint64_t newGUID) noexcept
 {
-    guid = newGUID;
+	guid = newGUID;
 }
 
 
@@ -84,58 +84,58 @@ void ScriptResource::SetResourceGUID(uint64_t newGUID) noexcept
 
 FlexKit::ResourceBlob PrefabGameObjectResource::CreateBlob() const
 {
-    FlexKit::Blob blob;
+	FlexKit::Blob blob;
 
-    uint32_t exportedComponents = 0;
-    for (auto& component : entity.components)
-    {
-        if (component->ExportComponent())
-        {
-            blob += component->GetBlob();
-            exportedComponents++;
-        }
-    }
+	uint32_t exportedComponents = 0;
+	for (auto& component : entity.components)
+	{
+		if (component->ExportComponent())
+		{
+			blob += component->GetBlob();
+			exportedComponents++;
+		}
+	}
 
-    FlexKit::PrefabResource header{ blob.size(), (uint32_t)exportedComponents };
-    header.GUID = GetResourceGUID();
+	FlexKit::PrefabResource header{ blob.size(), (uint32_t)exportedComponents };
+	header.GUID = GetResourceGUID();
 
-    blob = FlexKit::Blob{ header } + blob;
+	blob = FlexKit::Blob{ header } + blob;
 
-    FlexKit::ResourceBlob outBlob;
-    auto [_ptr, size] = blob.Release();
+	FlexKit::ResourceBlob outBlob;
+	auto [_ptr, size] = blob.Release();
 
-    outBlob.buffer          = (char*)_ptr;
-    outBlob.bufferSize      = size;
-    outBlob.GUID            = GetResourceGUID();
-    outBlob.ID              = ID;
-    outBlob.resourceType    = FlexKit::EResource_Prefab;
+	outBlob.buffer          = (char*)_ptr;
+	outBlob.bufferSize      = size;
+	outBlob.GUID            = GetResourceGUID();
+	outBlob.ID              = ID;
+	outBlob.resourceType    = FlexKit::EResource_Prefab;
 
-    return outBlob;
+	return outBlob;
 }
 
 const std::string& PrefabGameObjectResource::GetResourceID() const noexcept
 {
-    return ID;
+	return ID;
 }
 
 const uint64_t PrefabGameObjectResource::GetResourceGUID() const noexcept
 {
-    return guid;
+	return guid;
 }
 
 const ResourceID_t PrefabGameObjectResource::GetResourceTypeID() const noexcept
 {
-    return FlexKit::EResource_Prefab;
+	return FlexKit::EResource_Prefab;
 }
 
 void PrefabGameObjectResource::SetResourceID(const std::string& newID) noexcept
 {
-    ID = newID;
+	ID = newID;
 }
 
 void PrefabGameObjectResource::SetResourceGUID(uint64_t newGUID) noexcept
 {
-    guid = newGUID;
+	guid = newGUID;
 }
 
 
@@ -144,7 +144,7 @@ void PrefabGameObjectResource::SetResourceGUID(uint64_t newGUID) noexcept
 
 FlexKit::EntityComponent_ptr PrefabGameObjectResource::FindComponent(FlexKit::ComponentID id)
 {
-    return entity.FindComponent(id);
+	return entity.FindComponent(id);
 }
 
 
@@ -153,103 +153,105 @@ FlexKit::EntityComponent_ptr PrefabGameObjectResource::FindComponent(FlexKit::Co
 
 void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface& ctx)
 {
-    for (auto& componentEntry : components)
-    {
-        switch (componentEntry->id)
-        {
-        case FlexKit::TransformComponentID:
-        {
-            auto nodeComponent = std::static_pointer_cast<FlexKit::EntitySceneNodeComponent>(componentEntry);
-            ctx.GameObject().AddView<FlexKit::SceneNodeView<>>(ctx.GetNode(nodeComponent->nodeIdx));
-        }   break;
-        case FlexKit::BrushComponentID:
-        {
-            auto brushComponent = std::static_pointer_cast<FlexKit::EntityBrushComponent>(componentEntry);
+	for (auto& componentEntry : components)
+	{
+		switch (componentEntry->id)
+		{
+		case FlexKit::TransformComponentID:
+		{
+			auto nodeComponent = std::static_pointer_cast<FlexKit::EntitySceneNodeComponent>(componentEntry);
+			ctx.GameObject().AddView<FlexKit::SceneNodeView<>>(ctx.GetNode(nodeComponent->nodeIdx));
+		}   break;
+		case FlexKit::BrushComponentID:
+		{
+			auto brushComponent = std::static_pointer_cast<FlexKit::EntityBrushComponent>(componentEntry);
 
-            if (brushComponent)
-            {
-                auto res = ctx.FindSceneResource(brushComponent->MeshGuid);
-
-                if (!res) // TODO: Mesh not found, use placeholder model?
-                    continue;
-
-                auto& materials = FlexKit::MaterialComponent::GetComponent();
-                auto material   = materials.CreateMaterial(ctx.DefaultMaterial());
+			if (brushComponent)
+			{
+				auto& materials = FlexKit::MaterialComponent::GetComponent();
+				auto material   = materials.CreateMaterial(ctx.DefaultMaterial());
 
 
-                //TODO: Seems the issue if further up the asset pipeline. Improve material generation?
-                if (brushComponent->material.subMaterials.size() > 1)
-                {
-                    for (auto& subMaterialData : brushComponent->material.subMaterials)
-                    {
-                        auto subMaterial = materials.CreateMaterial();
-                        materials.AddSubMaterial(material, subMaterial);
+				//TODO: Seems the issue if further up the asset pipeline. Improve material generation?
+				if (brushComponent->material.subMaterials.size() > 1)
+				{
+					for (auto& subMaterialData : brushComponent->material.subMaterials)
+					{
+						auto subMaterial = materials.CreateMaterial();
+						materials.AddSubMaterial(material, subMaterial);
 
-                        FlexKit::ReadContext rdCtx{};
-                        for (auto texture : subMaterialData.textures)
-                            materials.AddTexture(texture, subMaterial, rdCtx);
-                    }
-                }
-                else if(brushComponent->material.subMaterials.size() == 1)
-                {
-                    auto& subMaterialData = brushComponent->material.subMaterials[0];
+						FlexKit::ReadContext rdCtx{};
+						for (auto texture : subMaterialData.textures)
+							materials.AddTexture(texture, subMaterial, rdCtx);
+					}
+				}
+				else if(brushComponent->material.subMaterials.size() == 1)
+				{
+					auto& subMaterialData = brushComponent->material.subMaterials[0];
 
-                    FlexKit::ReadContext rdCtx{};
+					FlexKit::ReadContext rdCtx{};
 
-                    for (auto texture : subMaterialData.textures)
-                        materials.AddTexture(texture, material, rdCtx);
-                }
+					for (auto texture : subMaterialData.textures)
+						materials.AddTexture(texture, material, rdCtx);
+				}
 
-                FlexKit::TriMeshHandle handle = ctx.LoadTriMeshResource(res);
+				auto& meshes	= brushComponent->meshes;
 
-                static_vector<FlexKit::KeyValuePair> values;
-                values.emplace_back(FlexKit::LoadEntityContextInterfaceKID, &ctx);
+				for(auto& mesh : meshes)
+				{
+					auto res = ctx.FindSceneResource(mesh);
 
-                auto& component     = FlexKit::ComponentBase::GetComponent(componentEntry->id);
-                auto  blob          = brushComponent->GetBlob();
-                component.AddComponentView(ctx.GameObject(), values, blob, blob.size(), FlexKit::SystemAllocator);
+					FlexKit::TriMeshHandle handle = ctx.LoadTriMeshResource(res);
 
-                auto& brush         = FlexKit::GetView<FlexKit::BrushView>(ctx.GameObject()).GetBrush();
-                brush.material      = material;
-                brush.MeshHandle    = handle;
-                
-                ctx.GameObject().AddView<FlexKit::MaterialView>(material);
+					static_vector<FlexKit::KeyValuePair> values;
+					values.emplace_back(FlexKit::LoadEntityContextInterfaceKID, &ctx);
 
-                if(ctx.Scene() && !ctx.GameObject().hasView(FlexKit::SceneVisibilityComponentID))
-                   ctx.Scene()->AddGameObject(ctx.GameObject(), FlexKit::GetSceneNode(ctx.GameObject()));
+					auto& component		= FlexKit::ComponentBase::GetComponent(componentEntry->id);
+					auto  blob			= brushComponent->GetBlob();
+					component.AddComponentView(ctx.GameObject(), values, blob, blob.size(), FlexKit::SystemAllocator);
 
-                FlexKit::SetBoundingSphereFromMesh(ctx.GameObject());
-            }
-        }   break;
-        case FlexKit::PointLightComponentID:
-        {
-            if (ctx.Scene() && !ctx.GameObject().hasView(FlexKit::SceneVisibilityComponentID))
-                ctx.Scene()->AddGameObject(ctx.GameObject(), FlexKit::GetSceneNode(ctx.GameObject()));
+					auto& brush			= FlexKit::GetView<FlexKit::BrushView>(ctx.GameObject()).GetBrush();
+					brush.material		= material;
+					brush.meshes.push_back(handle);
+				}
 
-            auto  blob          = componentEntry->GetBlob();
-            auto& component     = FlexKit::ComponentBase::GetComponent(componentEntry->id);
+				ctx.GameObject().AddView<FlexKit::MaterialView>(material);
 
-            static_vector<FlexKit::KeyValuePair> values;
-            values.emplace_back(FlexKit::LoadEntityContextInterfaceKID, &ctx);
+				if(ctx.Scene() && !ctx.GameObject().hasView(FlexKit::SceneVisibilityComponentID))
+				   ctx.Scene()->AddGameObject(ctx.GameObject(), FlexKit::GetSceneNode(ctx.GameObject()));
 
-            component.AddComponentView(ctx.GameObject(), values, blob, blob.size(), FlexKit::SystemAllocator);
-            FlexKit::SetBoundingSphereFromLight(ctx.GameObject());
-        }   break;
-        default:
-        {
-            auto  blob              = componentEntry->GetBlob();
-            auto& component         = FlexKit::ComponentBase::GetComponent(componentEntry->id);
+				FlexKit::SetBoundingSphereFromMesh(ctx.GameObject());
+			}
+		}   break;
+		case FlexKit::PointLightComponentID:
+		{
+			if (ctx.Scene() && !ctx.GameObject().hasView(FlexKit::SceneVisibilityComponentID))
+				ctx.Scene()->AddGameObject(ctx.GameObject(), FlexKit::GetSceneNode(ctx.GameObject()));
 
-            auto layer = ctx.LayerHandle();
-            static_vector<FlexKit::KeyValuePair> values{
-                { FlexKit::LoadEntityContextInterfaceKID, &ctx },
-                { FlexKit::PhysicsLayerKID, &layer  } };
+			auto  blob          = componentEntry->GetBlob();
+			auto& component     = FlexKit::ComponentBase::GetComponent(componentEntry->id);
 
-            component.AddComponentView(ctx.GameObject(), values, blob, blob.size(), FlexKit::SystemAllocator);
-            
-        }   break;
-        }
-    }
+			static_vector<FlexKit::KeyValuePair> values;
+			values.emplace_back(FlexKit::LoadEntityContextInterfaceKID, &ctx);
+
+			component.AddComponentView(ctx.GameObject(), values, blob, blob.size(), FlexKit::SystemAllocator);
+			FlexKit::SetBoundingSphereFromLight(ctx.GameObject());
+		}   break;
+		default:
+		{
+			auto  blob              = componentEntry->GetBlob();
+			auto& component         = FlexKit::ComponentBase::GetComponent(componentEntry->id);
+
+			auto layer = ctx.LayerHandle();
+			static_vector<FlexKit::KeyValuePair> values{
+				{ FlexKit::LoadEntityContextInterfaceKID, &ctx },
+				{ FlexKit::PhysicsLayerKID, &layer  } };
+
+			component.AddComponentView(ctx.GameObject(), values, blob, blob.size(), FlexKit::SystemAllocator);
+			
+		}   break;
+		}
+	}
 }
 
 

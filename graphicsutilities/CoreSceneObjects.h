@@ -51,14 +51,14 @@ namespace FlexKit
 			float4		WPOS;
 			float		MinZ;
 			float		MaxZ;
-            float       AspectRatio;
-            float       FOV;
+			float       AspectRatio;
+			float       FOV;
 
-            float3   TLCorner_VS;
-            float3   TRCorner_VS;
+			float3   TLCorner_VS;
+			float3   TRCorner_VS;
 
-            float3   BLCorner_VS;
-            float3   BRCorner_VS;
+			float3   BLCorner_VS;
+			float3   BRCorner_VS;
 
 			constexpr static const size_t GetBufferSize()
 			{
@@ -71,7 +71,7 @@ namespace FlexKit
 		FustrumPoints			    GetFrustumPoints(float3 XYZ, Quaternion Q);
 
 		ConstantBuffer			    GetConstants() const;
-        ConstantBuffer			    GetCameraPreviousConstants() const;
+		ConstantBuffer			    GetCameraPreviousConstants() const;
 		float4x4				    GetPV();
 
 		NodeHandle	Node;
@@ -91,19 +91,19 @@ namespace FlexKit
 		float4x4    IV;	// Inverse Transform
 
 
-        struct PreviousFrameState
-        {
-            float4x4 View   = float4x4::Identity();
-            float4x4 Proj   = float4x4::Identity();
-            float4x4 WT     = float4x4::Identity();	// World Transform
-            float4x4 PV     = float4x4::Identity();	// Projection x View
-            float4x4 IV     = float4x4::Identity();	// Inverse Transform
+		struct PreviousFrameState
+		{
+			float4x4 View   = float4x4::Identity();
+			float4x4 Proj   = float4x4::Identity();
+			float4x4 WT     = float4x4::Identity();	// World Transform
+			float4x4 PV     = float4x4::Identity();	// Projection x View
+			float4x4 IV     = float4x4::Identity();	// Inverse Transform
 
-            float FOV           = 1.0f;
-            float aspectRatio   = 1.0f;
-            float nearClip      = 0.01f;
-            float farClip       = 10000.0f;
-        }   previous;
+			float FOV           = 1.0f;
+			float aspectRatio   = 1.0f;
+			float nearClip      = 0.01f;
+			float farClip       = 10000.0f;
+		}   previous;
 
 		void UpdateMatrices();
 
@@ -118,39 +118,40 @@ namespace FlexKit
 
 	struct FLEXKITAPI Brush
 	{
-		NodeHandle			Node				= InvalidHandle;	// 2
-		TriMeshHandle		Occluder			= InvalidHandle;	// 2
-		TriMeshHandle		MeshHandle			= InvalidHandle;	// 2
-        MaterialHandle      material            = InvalidHandle;
+		NodeHandle						Node		= InvalidHandle; // 2
+		MaterialHandle					material	= InvalidHandle; // 2
+		TriMeshHandle					Occluder	= InvalidHandle; // 2
+		static_vector<TriMeshHandle>	meshes;
+		//TriMeshHandle		MeshHandle			= InvalidHandle;	// 2
 
 		bool					DrawLast		= false; // 1
 		bool					Transparent		= false; // 1
 		bool					Textured		= false; // 1
 		bool					Dirty			= false; // 1
-        bool                    Skinned         = false;
+		bool                    Skinned         = false;
 		bool					Padding[1];		// 5
 		char*					id;				// 8 - string ID, null terminated 
 
 		struct MaterialProperties
 		{
-            float3  albedo      = float3{1.0f, 1.0f, 1.0f};
-            float   kS          = 0.5f;
-            float   IOR         = 0.45f;
-            float   roughness   = 0.5f;
-            float   anisotropic = 0.0f;
-            float   metallic    = 0.0f;
+			float3	albedo		= float3{1.0f, 1.0f, 1.0f};
+			float	kS			= 0.5f;
+			float	IOR			= 0.45f;
+			float	roughness	= 0.5f;
+			float	anisotropic	= 0.0f;
+			float	metallic	= 0.0f;
 		};	// 32 
 
 		struct alignas(256) VConstantsLayout
 		{
 			MaterialProperties	MP;
-			float4x4	        Transform;
-            uint32_t            textureCount;
-            uint32_t            padding[3];
-            uint4               textureHandles[16];
+			float4x4			Transform;
+			uint32_t			textureCount;
+			uint32_t			padding[3];
+			uint4				textureHandles[16];
 		};
 
-        VConstantsLayout GetConstants() const;
+		VConstantsLayout GetConstants() const;
 	};
 
 	constexpr const Type_t BRUSH_ID = GetTypeGUID(Brush);
@@ -173,17 +174,18 @@ namespace FlexKit
 
 	struct PVEntry
 	{
-		size_t		    SortID          = 0;
-		const Brush*    brush           = nullptr;
-        GameObject*     gameObject      = nullptr;
-        uint32_t        OcclusionID     = -1;
-        uint32_t        LODlevel        = 0;
+		size_t			SortID			= 0;
+		const Brush*	brush			= nullptr;
+		GameObject*		gameObject		= nullptr;
+		uint32_t		OcclusionID		= -1;
 
-        const Brush* operator -> ()       { return brush; }
-        const Brush* operator -> () const { return brush; }
+		static_vector<uint8_t>	LODlevel{ 0 };
 
-		operator const Brush* ()    { return brush; }
-		operator size_t ()          { return SortID; }
+		const Brush* operator -> ()			{ return brush; }
+		const Brush* operator -> () const	{ return brush; }
+
+		operator const Brush* ()	{ return brush; }
+		operator size_t ()			{ return SortID; }
 
 		bool operator < (PVEntry rhs)
 		{
@@ -194,7 +196,7 @@ namespace FlexKit
 	
 	typedef Vector<PVEntry> PVS;
 
-    size_t CreateSortingID(bool Posed, bool Textured, size_t Depth);
+	size_t CreateSortingID(bool Posed, bool Textured, size_t Depth);
 
 	FLEXKITAPI void SortPVS				(PVS* PVS_, Camera* C);
 	FLEXKITAPI void SortPVSTransparent	(PVS* PVS_, Camera* C);
