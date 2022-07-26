@@ -42,9 +42,8 @@ void TransformInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::G
 	const auto scale            = sceneNodeView.GetScale();
 	const auto orientation      = sceneNodeView.GetOrientation();
 
-	panelCtx.PushVerticalLayout("", true);
 	{
-		panelCtx.PushHorizontalLayout("Transform", true);
+		panelCtx.PushHorizontalLayout("Linkage", true);
 
 		panelCtx.AddText(fmt::format("Node: {}", sceneNodeView.node.to_uint()));
 		panelCtx.AddText(fmt::format("Parent: {}", sceneNodeView.GetParentNode().to_uint()));
@@ -65,14 +64,12 @@ void TransformInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::G
 				sceneNodeView.SetScale({ 1, 1, 1 });
 				sceneNodeView.SetWT(FlexKit::float4x4::Identity());
 			});
-
-
 		panelCtx.Pop();
 	}
 
 	auto positionTxt = panelCtx.AddText(fmt::format("Global: [{}, {}, {}]", initialPos.x, initialPos.y, initialPos.z));
 	{
-		panelCtx.PushVerticalLayout("", true);
+		panelCtx.PushHorizontalLayout("", true);
 
 		panelCtx.AddInputBox(
 			"X",
@@ -404,7 +401,6 @@ void TransformInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::G
 
 		panelCtx.Pop();
 	}
-	panelCtx.Pop();
 }
 
 
@@ -535,9 +531,7 @@ void SceneBrushInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::
 
 	auto meshes = brush.GetMeshes();
 	if (meshes.empty())
-	{
 		panelCtx.AddText(fmt::format("No Mesh Set"));
-	}
 
 	panelCtx.PushVerticalLayout();
 

@@ -15,16 +15,20 @@
 class StringIDInspector : public IComponentInspector
 {
 public:
+	StringIDInspector() {}
+	~StringIDInspector() {}
 
-    StringIDInspector() {}
-    ~StringIDInspector() {}
+	FlexKit::ComponentID ComponentID() override
+	{
+		return FlexKit::StringComponentID;
+	}
 
-    FlexKit::ComponentID ComponentID() override
-    {
-        return FlexKit::StringComponentID;
-    }
+	std::string ComponentName() const noexcept final
+	{
+		return "StringID";
+	}
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
 
 private:
 };
@@ -32,27 +36,27 @@ private:
 class StringIDFactory : public IComponentFactory
 {
 public:
-    ~StringIDFactory() {}
+	~StringIDFactory() {}
 
-    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
-    {
-        return gameObject.AddView<FlexKit::StringIDView>(nullptr, 0);
-    }
+	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
+	{
+		return gameObject.AddView<FlexKit::StringIDView>(nullptr, 0);
+	}
 
-    const std::string&      ComponentName() const noexcept { return name; }
-    FlexKit::ComponentID    ComponentID() const noexcept { return FlexKit::StringComponentID; }
+	const std::string&      ComponentName() const noexcept { return name; }
+	FlexKit::ComponentID    ComponentID() const noexcept { return FlexKit::StringComponentID; }
 
-    inline static const std::string name = "StringID";
+	inline static const std::string name = "StringID";
 
-    static bool Register()
-    {
-        EditorInspectorView::AddComponentFactory(std::make_unique<StringIDFactory>());
-        EditorInspectorView::AddComponentInspector<StringIDInspector>();
+	static bool Register()
+	{
+		EditorInspectorView::AddComponentFactory(std::make_unique<StringIDFactory>());
+		EditorInspectorView::AddComponentInspector<StringIDInspector>();
 
-        return true;
-    }
+		return true;
+	}
 
-    inline static bool _registered = Register();
+	inline static bool _registered = Register();
 };
 
 
@@ -62,16 +66,20 @@ public:
 class TransformInspector : public IComponentInspector
 {
 public:
+	TransformInspector() {}
+	~TransformInspector() {}
 
-    TransformInspector() {}
-    ~TransformInspector() {}
+	FlexKit::ComponentID ComponentID() override
+	{
+		return FlexKit::TransformComponentID;
+	}
 
-    FlexKit::ComponentID ComponentID() override
-    {
-        return FlexKit::TransformComponentID;
-    }
+	std::string ComponentName() const noexcept final
+	{
+		return "Transform";
+	}
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
 private:
 
 };
@@ -80,30 +88,30 @@ private:
 class TransformComponentFactory : public IComponentFactory
 {
 public:
-    ~TransformComponentFactory() {}
+	~TransformComponentFactory() {}
 
-    static FlexKit::ComponentViewBase& ConstructNode(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
-    {
-        return (FlexKit::ComponentViewBase&)gameObject.AddView<FlexKit::SceneNodeView<>>(FlexKit::GetZeroedNode());
-    }
+	static FlexKit::ComponentViewBase& ConstructNode(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
+	{
+		return (FlexKit::ComponentViewBase&)gameObject.AddView<FlexKit::SceneNodeView<>>(FlexKit::GetZeroedNode());
+	}
 
-    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
-    {
-        return ConstructNode(gameObject, ctx);
-    }
+	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
+	{
+		return ConstructNode(gameObject, ctx);
+	}
 
-    const std::string&      ComponentName() const noexcept { return name; }
-    FlexKit::ComponentID    ComponentID() const noexcept { return FlexKit::TransformComponentID; }
+	const std::string&      ComponentName() const noexcept { return name; }
+	FlexKit::ComponentID    ComponentID() const noexcept { return FlexKit::TransformComponentID; }
 
-    inline static const std::string name = "Transform";
+	inline static const std::string name = "Transform";
 
-    static bool Register()
-    {
-        EditorInspectorView::AddComponentFactory(std::make_unique<TransformComponentFactory>());
-        return true;
-    }
+	static bool Register()
+	{
+		EditorInspectorView::AddComponentFactory(std::make_unique<TransformComponentFactory>());
+		return true;
+	}
 
-    inline static bool _registered = Register();
+	inline static bool _registered = Register();
 };
 
 
@@ -113,16 +121,20 @@ public:
 class VisibilityInspector : public IComponentInspector
 {
 public:
+	VisibilityInspector() {}
+	~VisibilityInspector() {}
 
-    VisibilityInspector() {}
-    ~VisibilityInspector() {}
+	FlexKit::ComponentID ComponentID() override
+	{
+		return FlexKit::SceneVisibilityComponentID;
+	}
 
-    FlexKit::ComponentID ComponentID() override
-    {
-        return FlexKit::SceneVisibilityComponentID;
-    }
+	std::string ComponentName() const noexcept final
+	{
+		return "Visibilty";
+	}
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
 
 private:
 
@@ -135,47 +147,51 @@ private:
 class PointLightInspector : public IComponentInspector
 {
 public:
+	FlexKit::ComponentID ComponentID() override
+	{
+		return FlexKit::PointLightComponentID;
+	}
 
-    FlexKit::ComponentID ComponentID() override
-    {
-        return FlexKit::PointLightComponentID;
-    }
+	std::string ComponentName() const noexcept final
+	{
+		return "Point Light";
+	}
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
 };
 
 
 struct PointLightFactory : public IComponentFactory
 {
-    static FlexKit::ComponentViewBase& ConstructPointLight(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx) noexcept
-    {
-        gameObject.AddView<FlexKit::PointLightView>();
+	static FlexKit::ComponentViewBase& ConstructPointLight(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx) noexcept
+	{
+		gameObject.AddView<FlexKit::PointLightView>();
 
-        if (!gameObject.hasView(FlexKit::TransformComponentID))
-            gameObject.AddView<FlexKit::SceneNodeView<>>();
+		if (!gameObject.hasView(FlexKit::TransformComponentID))
+			gameObject.AddView<FlexKit::SceneNodeView<>>();
 
-        if (!gameObject.hasView(FlexKit::SceneVisibilityComponentID))
-            ctx.AddToScene(gameObject);
+		if (!gameObject.hasView(FlexKit::SceneVisibilityComponentID))
+			ctx.AddToScene(gameObject);
 
-        return *gameObject.GetView(FlexKit::PointLightComponentID);
-    }
+		return *gameObject.GetView(FlexKit::PointLightComponentID);
+	}
 
-    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
-    {
-        return ConstructPointLight(gameObject, ctx);
-    }
+	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
+	{
+		return ConstructPointLight(gameObject, ctx);
+	}
 
-    inline static const std::string name = "PointLight";
-    const std::string&      ComponentName() const noexcept { return name; }
-    FlexKit::ComponentID    ComponentID() const noexcept { return FlexKit::PointLightComponentID; }
+	inline static const std::string name = "PointLight";
+	const std::string&      ComponentName() const noexcept { return name; }
+	FlexKit::ComponentID    ComponentID() const noexcept { return FlexKit::PointLightComponentID; }
 
-    static bool Register()
-    {
-        EditorInspectorView::AddComponentFactory(std::make_unique<PointLightFactory>());
-        return true;
-    }
+	static bool Register()
+	{
+		EditorInspectorView::AddComponentFactory(std::make_unique<PointLightFactory>());
+		return true;
+	}
 
-    inline static bool _registered = Register();
+	inline static bool _registered = Register();
 };
 
 
@@ -186,45 +202,50 @@ class PointLightShadowInspector : public IComponentInspector
 {
 public:
 
-    FlexKit::ComponentID ComponentID() override
-    {
-        return FlexKit::PointLightShadowMapID;
-    }
+	FlexKit::ComponentID ComponentID() override
+	{
+		return FlexKit::PointLightShadowMapID;
+	}
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override
-    {
-        auto& cubeShadowMapView = static_cast<FlexKit::PointLightShadowMapView&>(component);
+	std::string ComponentName() const noexcept final
+	{
+		return "Point Light Shadow";
+	}
 
-        panelCtx.AddHeader("Point Light Shadow Map");
-        panelCtx.AddText("No Fields!");
-    }
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override
+	{
+		auto& cubeShadowMapView = static_cast<FlexKit::PointLightShadowMapView&>(component);
+
+		panelCtx.AddHeader("Point Light Shadow Map");
+		panelCtx.AddText("No Fields!");
+	}
 };
 
 
 struct CubicShadowMapFactory : public IComponentFactory
 {
-    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
-    {
-        if(gameObject.GetView(FlexKit::PointLightComponent::GetComponentID()))
-            gameObject.AddView<FlexKit::PointLightShadowMapView>(
-                FlexKit::_PointLightShadowCaster{ FlexKit::GetPointLight(gameObject),
-                FlexKit::GetSceneNode(gameObject) } );
+	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
+	{
+		if(gameObject.GetView(FlexKit::PointLightComponent::GetComponentID()))
+			gameObject.AddView<FlexKit::PointLightShadowMapView>(
+				FlexKit::_PointLightShadowCaster{ FlexKit::GetPointLight(gameObject),
+				FlexKit::GetSceneNode(gameObject) } );
 
-        return *gameObject.GetView(FlexKit::PointLightComponent::GetComponentID());
-    }
+		return *gameObject.GetView(FlexKit::PointLightComponent::GetComponentID());
+	}
 
-    inline static const std::string name = "Cubic Shadow Map";
+	inline static const std::string name = "Cubic Shadow Map";
 
-    const std::string&      ComponentName() const noexcept { return name; }
-    FlexKit::ComponentID    ComponentID() const noexcept { return FlexKit::PointLightShadowMapID; }
+	const std::string&      ComponentName() const noexcept { return name; }
+	FlexKit::ComponentID    ComponentID() const noexcept { return FlexKit::PointLightShadowMapID; }
 
-    static bool Register()
-    {
-        EditorInspectorView::AddComponentFactory(std::make_unique<CubicShadowMapFactory>());
-        return true;
-    }
+	static bool Register()
+	{
+		EditorInspectorView::AddComponentFactory(std::make_unique<CubicShadowMapFactory>());
+		return true;
+	}
 
-    inline static bool _registered = Register();
+	inline static bool _registered = Register();
 };
 
 
@@ -234,41 +255,46 @@ struct CubicShadowMapFactory : public IComponentFactory
 class SceneBrushInspector : public IComponentInspector
 {
 public:
-    SceneBrushInspector(EditorProject&, EditorViewport&);
+	SceneBrushInspector(EditorProject&, EditorViewport&);
 
-    FlexKit::ComponentID ComponentID() override
-    {
-        return FlexKit::BrushComponentID;
-    }
+	FlexKit::ComponentID ComponentID() override
+	{
+		return FlexKit::BrushComponentID;
+	}
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
+	std::string ComponentName() const noexcept final
+	{
+		return "Brush";
+	}
 
-    EditorViewport& viewport;
-    EditorProject&  project;
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
+
+	EditorViewport& viewport;
+	EditorProject&  project;
 };
 
 
 struct SceneBrushFactory : public IComponentFactory
 {
-    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
-    {
-        if (!gameObject.hasView(FlexKit::TransformComponentID))
-            gameObject.AddView<FlexKit::SceneNodeView<>>();
+	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
+	{
+		if (!gameObject.hasView(FlexKit::TransformComponentID))
+			gameObject.AddView<FlexKit::SceneNodeView<>>();
 
-        return gameObject.AddView<FlexKit::BrushView>(FlexKit::InvalidHandle);
-    }
+		return gameObject.AddView<FlexKit::BrushView>();
+	}
 
-    inline static const std::string name = "Brush";
-    const std::string&      ComponentName() const noexcept { return name; }
-    FlexKit::ComponentID    ComponentID() const noexcept { return FlexKit::BrushComponentID; }
+	inline static const std::string name = "Brush";
+	const std::string&      ComponentName() const noexcept { return name; }
+	FlexKit::ComponentID    ComponentID() const noexcept { return FlexKit::BrushComponentID; }
 
-    static bool Register()
-    {
-        EditorInspectorView::AddComponentFactory(std::make_unique<SceneBrushFactory>());
-        return true;
-    }
+	static bool Register()
+	{
+		EditorInspectorView::AddComponentFactory(std::make_unique<SceneBrushFactory>());
+		return true;
+	}
 
-    inline static bool _registered = Register();
+	inline static bool _registered = Register();
 };
 
 
@@ -279,36 +305,36 @@ class MaterialInspector : public IComponentInspector
 {
 public:
 
-    FlexKit::ComponentID ComponentID() override
-    {
-        return FlexKit::BrushComponentID;
-    }
+	FlexKit::ComponentID ComponentID() override
+	{
+		return FlexKit::BrushComponentID;
+	}
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
 };
 
 
 struct MaterialFactory : public IComponentFactory
 {
-    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
-    {
-        auto& materialComponentView = gameObject.AddView<FlexKit::MaterialView>(FlexKit::MaterialComponent::GetComponent().CreateMaterial());
-        FlexKit::SetMaterialHandle(gameObject, FlexKit::GetMaterialHandle(gameObject));
+	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
+	{
+		auto& materialComponentView = gameObject.AddView<FlexKit::MaterialView>(FlexKit::MaterialComponent::GetComponent().CreateMaterial());
+		FlexKit::SetMaterialHandle(gameObject, FlexKit::GetMaterialHandle(gameObject));
 
-        return materialComponentView;
-    }
+		return materialComponentView;
+	}
 
-    inline static const std::string name = "Material";
-    const std::string&      ComponentName() const noexcept { return name; }
-    FlexKit::ComponentID    ComponentID() const noexcept { return FlexKit::MaterialComponentID; }
+	inline static const std::string name = "Material";
+	const std::string&      ComponentName() const noexcept { return name; }
+	FlexKit::ComponentID    ComponentID() const noexcept { return FlexKit::MaterialComponentID; }
 
-    static bool Register()
-    {
-        EditorInspectorView::AddComponentFactory(std::make_unique<MaterialFactory>());
-        return true;
-    }
+	static bool Register()
+	{
+		EditorInspectorView::AddComponentFactory(std::make_unique<MaterialFactory>());
+		return true;
+	}
 
-    inline static bool _registered = Register();
+	inline static bool _registered = Register();
 };
 
 

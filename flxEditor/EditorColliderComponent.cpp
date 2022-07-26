@@ -77,6 +77,11 @@ public:
 		return FlexKit::StaticBodyComponentID;
 	}
 
+	std::string ComponentName() const noexcept final
+	{
+		return "Static Collider";
+	}
+
 	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& view) override
 	{
 		panelCtx.PushVerticalLayout("Static Collider", true);
@@ -353,6 +358,11 @@ public:
 		return FlexKit::RigidBodyComponentID;
 	}
 
+	std::string ComponentName() const noexcept final
+	{
+		return "Rigid Body Collider";
+	}
+
 	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& view) override
 	{
 		panelCtx.PushVerticalLayout("Rigid Body Collider", true);
@@ -361,8 +371,8 @@ public:
 			"Add Cube Rigid Body",
 			[&]()
 			{
-				auto& physx     = FlexKit::PhysXComponent::GetComponent();
-				auto cubeShape  = physx.CreateCubeShape({ 1, 1, 1 });
+				auto& physx		= FlexKit::PhysXComponent::GetComponent();
+				auto cubeShape	= physx.CreateCubeShape({ 1, 1, 1 });
 			});
 
 		panelCtx.Pop();
