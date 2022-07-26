@@ -58,6 +58,14 @@ namespace FlexKit
 	class BrushView : public ComponentView_t<BrushComponent>
 	{
 	public:
+		BrushView(GameObject& gameObject)
+		{
+			auto node = GetSceneNode(gameObject);
+
+			GetComponent()[brush].Node = node != InvalidHandle ? node : GetZeroedNode();
+		}
+
+
 		BrushView(GameObject& gameObject, TriMeshHandle	triMesh)
 		{
 			auto node = GetSceneNode(gameObject);

@@ -610,7 +610,7 @@ struct LoadEntityContext : public LoadEntityContextInterface
         std::vector<FlexKit::NodeHandle>&   IN_nodes,
         EditorScene_ptr                     IN_viewportscene,
         EditorViewport&                     IN_viewport,
-        FlexKit::Scene&                     IN_scene,
+        ViewportScene&						IN_scene,
         FlexKit::GameObject&                IN_gameObject,
         FlexKit::MaterialHandle             IN_defaultMaterial)
         : nodes             { IN_nodes              }
@@ -624,7 +624,7 @@ struct LoadEntityContext : public LoadEntityContextInterface
     std::vector<FlexKit::NodeHandle>&   nodes;
     EditorScene_ptr                     viewportscene;
     EditorViewport&                     viewport;
-    FlexKit::Scene&                     scene;
+	ViewportScene&						scene;
     FlexKit::GameObject&                gameObject;
     FlexKit::MaterialHandle             defaultMaterial;
 
@@ -655,12 +655,12 @@ struct LoadEntityContext : public LoadEntityContextInterface
 
     FlexKit::Scene* Scene() final
     {
-        return scene;
+        return &scene.scene;
     }
 
     FlexKit::LayerHandle LayerHandle() final
     {
-        return viewport.GetScene()->GetLayer();
+		return scene.GetLayer();
     }
 
     FlexKit::SceneEntity* Resource() final
@@ -742,14 +742,13 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
             nodes,
             newScene,
             *this,
-            viewportScene->scene,
+            *viewportScene,
             viewObject->gameObject,
             gbufferPass
         };
 
         LoadEntity(entity.components, ctx);
     }
-
 
     scene = viewportScene;
 }

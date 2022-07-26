@@ -44,9 +44,9 @@ class ComponentViewPanelContext
 public:
     ComponentViewPanelContext(QBoxLayout* panel, std::vector<QObject*>& items_out, std::vector<QBoxLayout*>&, EditorInspectorView*);
 
-    QLabel* AddHeader           (std::string txt);
-    QLabel* AddText             (std::string txt);
-    void    AddInputBox         (std::string txt, FieldUpdateCallback update, FieldChangeCallback change);
+    QLabel* AddHeader           (const std::string txt);
+    QLabel* AddText             (const std::string txt);
+    void    AddInputBox         (const std::string txt, FieldUpdateCallback update, FieldChangeCallback change);
 
     void            AddButton      (std::string label, ButtonCallback);
     QListWidget*    AddList        (ListSizeUpdateCallback, ListContentUpdateCallback, ListEventCallback);
@@ -72,6 +72,7 @@ public:
     virtual ~IComponentInspector() {}
     virtual FlexKit::ComponentID ComponentID() = 0;
 
+	virtual std::string ComponentName() const noexcept = 0;
     virtual void Inspect(ComponentViewPanelContext& layout, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) = 0;
 };
 
