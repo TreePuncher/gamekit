@@ -241,6 +241,8 @@ void ViewportScene::Update()
 
 	for (auto& object : sceneObjects)
 	{
+		std::vector<uint64_t> componentIds;
+
 		auto entity_res = std::find_if(entities.begin(), entities.end(),
 			[&](FlexKit::SceneEntity& entity)
 			{
@@ -251,6 +253,7 @@ void ViewportScene::Update()
 		{   // Update Data
 			for (auto& component : object->gameObject)
 			{
+				componentIds.push_back(component.ID);
 				auto component_res = entity_res->FindComponent(component.ID);
 
 				if (!component_res)
@@ -270,11 +273,13 @@ void ViewportScene::Update()
 		}
 		else
 		{   // Add GameObject
-			auto& entity    = entities.emplace_back();
+			auto& entity	= entities.emplace_back();
 			entity.objectID = object->objectID;
 
 			for (auto& component : object->gameObject)
 			{
+				componentIds.push_back(component.ID);
+
 				if (auto entityComponent = FlexKit::EntityComponent::CreateComponent(component.ID); entityComponent)
 				{
 					IEntityComponentRuntimeUpdater::Update(*entityComponent, component.Get_ref(), ctx);
@@ -286,6 +291,15 @@ void ViewportScene::Update()
 			}
 		}
 
+		auto begin = std::partition(
+			entity_res->components.begin(),
+			entity_res->components.end(),
+			[&](FlexKit::EntityComponent_ptr& element) -> bool
+			{
+				return std::ranges::find(componentIds, element->id) != componentIds.end();
+			});
+
+		entity_res->components.erase(begin, entity_res->components.end());
 	}
 
 	auto& nodes = sceneResource->sceneResource->nodes;

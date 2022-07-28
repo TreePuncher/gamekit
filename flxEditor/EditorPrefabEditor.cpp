@@ -760,9 +760,12 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 
 				ViewportSceneContext ctx{};
 
+				std::vector<uint64_t> componentIds;
+
 				for (auto& component : obj->gameObject)
 				{
 					auto component_res = prefab->FindComponent(component.ID);
+					componentIds.push_back(component.ID);
 
 					if (!component_res)
 					{
@@ -778,6 +781,16 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 					else
 						IEntityComponentRuntimeUpdater::Update(*component_res, component.Get_ref(), ctx);
 				}
+
+				auto begin = std::partition(
+					prefab->entity.components.begin(),
+					prefab->entity.components.end(),
+					[&](FlexKit::EntityComponent_ptr& element) -> bool
+					{
+						return std::ranges::find(componentIds, element->id) != componentIds.end();
+					});
+
+				prefab->entity.components.erase(begin, prefab->entity.components.end());
 			}
 		});
 
