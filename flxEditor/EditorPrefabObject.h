@@ -15,27 +15,27 @@ constexpr FlexKit::ComponentID EditorScriptComponentID = GetTypeGUID(EditorScrip
 
 
 class ScriptResource :
-    public FlexKit::Serializable<ScriptResource, FlexKit::iResource, GetTypeGUID(ScriptResource)>
+	public FlexKit::Serializable<ScriptResource, FlexKit::iResource, GetTypeGUID(ScriptResource)>
 {
 public:
-    FlexKit::ResourceBlob   CreateBlob()        const           override;
-    const std::string&      GetResourceID()     const noexcept  override;
-    const uint64_t          GetResourceGUID()   const noexcept  override;
-    const ResourceID_t      GetResourceTypeID() const noexcept  override;
+	FlexKit::ResourceBlob	CreateBlob()		const			override;
+	const std::string&		GetResourceID()		const noexcept	override;
+	const uint64_t			GetResourceGUID()	const noexcept	override;
+	const ResourceID_t		GetResourceTypeID()	const noexcept	override;
 
-    void                    SetResourceID   (const std::string& id) noexcept final;
-    void                    SetResourceGUID (uint64_t guid)         noexcept final;
+	void					SetResourceID	(const std::string& id)	noexcept final;
+	void					SetResourceGUID	(uint64_t guid)			noexcept final;
 
-    void Serialize(auto& ar)
-    {
-        ar& guid;
-        ar& source;
-        ar& ID;
-    }
+	void Serialize(auto& ar)
+	{
+		ar& guid;
+		ar& source;
+		ar& ID;
+	}
 
-    uint64_t    guid    = rand();
-    std::string ID      = "ScriptObject";
-    std::string source;
+	uint64_t    guid    = rand();
+	std::string ID      = "ScriptObject";
+	std::string source;
 };
 
 
@@ -46,31 +46,31 @@ using ScriptResource_ptr = std::shared_ptr<ScriptResource>;
 
 
 class PrefabGameObjectResource :
-    public FlexKit::Serializable<PrefabGameObjectResource, FlexKit::iResource, GetTypeGUID(PrefabGameObjectResource)>
+	public FlexKit::Serializable<PrefabGameObjectResource, FlexKit::iResource, GetTypeGUID(PrefabGameObjectResource)>
 {
 public:
-    FlexKit::ResourceBlob   CreateBlob()        const           override;
-    const std::string&      GetResourceID()     const noexcept  override;
-    const uint64_t          GetResourceGUID()   const noexcept  override;
-    const ResourceID_t      GetResourceTypeID() const noexcept  override;
+	FlexKit::ResourceBlob	CreateBlob()		const			override;
+	const std::string&		GetResourceID()		const noexcept	override;
+	const uint64_t			GetResourceGUID()	const noexcept	override;
+	const ResourceID_t		GetResourceTypeID()	const noexcept	override;
 
-    void                    SetResourceID   (const std::string& id) noexcept override;
-    void                    SetResourceGUID (uint64_t GUID) noexcept;
+	void					SetResourceID   (const std::string& id) noexcept override;
+	void					SetResourceGUID (uint64_t GUID) noexcept;
 
-    FlexKit::EntityComponent_ptr FindComponent(FlexKit::ComponentID id);
+	FlexKit::EntityComponent_ptr FindComponent(FlexKit::ComponentID id);
 
-    void Serialize(auto& ar)
-    {
-        ar& guid;
-        ar& ID;
-        ar& entity;
-    }
+	void Serialize(auto& ar)
+	{
+		ar& guid;
+		ar& ID;
+		ar& entity;
+	}
 
-    FlexKit::SceneEntity entity;
-    //std::vector<std::shared_ptr<FlexKit::EntityComponent>> components;
+	FlexKit::SceneEntity entity;
+	//std::vector<std::shared_ptr<FlexKit::EntityComponent>> components;
 
-    std::string ID   = "PrefabGameObject";
-    uint64_t    guid = rand();
+	std::string ID   = "PrefabGameObject";
+	uint64_t    guid = rand();
 };
 
 
@@ -79,14 +79,14 @@ using PrefabGameObjectResource_ptr = std::shared_ptr<PrefabGameObjectResource>;
 
 struct LoadEntityContextInterface
 {
-    virtual FlexKit::GameObject&            GameObject()                                        = 0;
-    virtual FlexKit::NodeHandle             GetNode(uint32_t idx)                               = 0;
-    virtual ProjectResource_ptr             FindSceneResource(uint64_t assetIdx)                = 0;
-    virtual FlexKit::TriMeshHandle          LoadTriMeshResource(ProjectResource_ptr resource)   = 0;
-    virtual FlexKit::MaterialHandle         DefaultMaterial() const                             = 0;
-    virtual FlexKit::Scene*                 Scene()                                             = 0;
-    virtual FlexKit::LayerHandle            LayerHandle()                                       = 0;
-    virtual FlexKit::SceneEntity*           Resource()                                          = 0;
+	virtual FlexKit::GameObject&			GameObject()										= 0;
+	virtual FlexKit::NodeHandle				GetNode(uint32_t idx)								= 0;
+	virtual ProjectResource_ptr				FindSceneResource(uint64_t assetIdx)				= 0;
+	virtual FlexKit::TriMeshHandle			LoadTriMeshResource(ProjectResource_ptr resource)	= 0;
+	virtual FlexKit::MaterialHandle			DefaultMaterial() const								= 0;
+	virtual FlexKit::Scene*					Scene()												= 0;
+	virtual FlexKit::LayerHandle			LayerHandle()										= 0;
+	virtual FlexKit::SceneEntity*			Resource()											= 0;
 };
 
 void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface& ctx);
