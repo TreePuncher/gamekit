@@ -195,7 +195,7 @@ void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface
 						materials.AddTexture(texture, material, rdCtx);
 				}
 
-				auto& meshes	= brushComponent->meshes;
+				auto& meshes = brushComponent->meshes;
 
 				for(auto& mesh : meshes)
 				{
@@ -212,7 +212,6 @@ void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface
 
 					auto& brush			= FlexKit::GetView<FlexKit::BrushView>(ctx.GameObject()).GetBrush();
 					brush.material		= material;
-					brush.meshes.push_back(handle);
 				}
 
 				ctx.GameObject().AddView<FlexKit::MaterialView>(material);

@@ -5,22 +5,22 @@
 
 cbuffer CameraConstants : register( b0 )
 {
-    float4x4 View;
-    float4x4 ViewI;
-    float4x4 Proj;
+	float4x4 View;
+	float4x4 ViewI;
+	float4x4 Proj;
 	float4x4 PV;				// Projection x View
 	float4x4 PVI;				
 	float4   CameraPOS;
 	float  	 MinZ;
 	float  	 MaxZ;
-    float    AspectRatio;
-    float    FOV;
-    
-    float3   TLCorner_VS;
-    float3   TRCorner_VS;
+	float    AspectRatio;
+	float    FOV;
+	
+	float3   TLCorner_VS;
+	float3   TRCorner_VS;
 
-    float3   BLCorner_VS;
-    float3   BRCorner_VS;
+	float3   BLCorner_VS;
+	float3   BRCorner_VS;
 };
 
 struct PS_IN
@@ -49,14 +49,21 @@ struct RectPoint_PS
 	float4 POS 		: SV_POSITION;
 };
 
-struct DrawFlatTri3D_IN
+struct RectPointDepth_PS
 {
-    float4 Color	: COLOR;
-    float2 UV		: TEXCOORD;
-    float4 POS 		: SV_POSITION;
-    float  Depth    : DEPTH;
+	float4	Color	: COLOR;
+	float2	UV		: TEXCOORD;
+	float4	POS 	: SV_POSITION;
+	float	depth	: DEPTH;
 };
 
+struct DrawFlatTri3D_IN
+{
+	float4 Color	: COLOR;
+	float2 UV		: TEXCOORD;
+	float4 POS 		: SV_POSITION;
+	float  Depth    : DEPTH;
+};
 
 struct PS_Colour_IN
 {
@@ -81,9 +88,9 @@ struct Plane
 
 float Hash(in float x)
 {
-    uint2 n = uint(x) * uint2(1597334673U, 3812015801U);
-    uint q = (n.x ^ n.y) * 1597334673U;
-    return float(q) * (1.0 / float(0xFFFFFFFFU));
+	uint2 n = uint(x) * uint2(1597334673U, 3812015801U);
+	uint q = (n.x ^ n.y) * 1597334673U;
+	return float(q) * (1.0 / float(0xFFFFFFFFU));
 }
 
 float2 Hash2(in uint q)
@@ -95,13 +102,13 @@ float2 Hash2(in uint q)
 
 float Hash(float2 IN)// Thanks nVidia
 {
-    return frac(1.0e4 * sin(17.0f * IN.x + 0.1 * IN.y) *
-                (0.1 + abs(sin(13.0 * IN.y + IN.x))));
+	return frac(1.0e4 * sin(17.0f * IN.x + 0.1 * IN.y) *
+				(0.1 + abs(sin(13.0 * IN.y + IN.x))));
 }
 
 float Hash3D(float3 IN)// Thanks nVidia
 {
-    return Hash(float2(Hash(IN.xy), IN.z));
+	return Hash(float2(Hash(IN.xy), IN.z));
 }
 
 float4 SampleVTexture(Texture2D OffsetTable, Texture2D TextureAtlas, float2 Coordinate)
@@ -128,13 +135,13 @@ float cot(float theta)
 
 float2 PixelCordToCameraCord(int2 UV, float2 WH)
 {
-    float2 Out = float2(UV) / WH;
+	float2 Out = float2(UV) / WH;
 	return Out * 2 - 1.0;
 }
 
 float2 GetTextureSpaceCord(float2 UV, float2 WH)
 {
-    return UV / WH;
+	return UV / WH;
 }
 
 float2 ViewToTextureSpace(float2 CoordDS, float2 WH)
@@ -144,56 +151,56 @@ float2 ViewToTextureSpace(float2 CoordDS, float2 WH)
 
 float NormalizeAndRescaleZ(float Z_in, float Scale)
 {
-    return saturate((Z_in - MinZ) / (Scale - MinZ));
+	return saturate((Z_in - MinZ) / (Scale - MinZ));
 }
 
 float3 GetViewVector_VS(const float2 UV) // View Space Vector
 {
-    const float3 LeftPoint  = lerp(TLCorner_VS, BLCorner_VS, UV.y); // Left Edge
-    const float3 RightPoint = lerp(TRCorner_VS, BRCorner_VS, UV.y); // Right Edge
-    const float3 FarPos     = lerp(LeftPoint, RightPoint, UV.x);
+	const float3 LeftPoint  = lerp(TLCorner_VS, BLCorner_VS, UV.y); // Left Edge
+	const float3 RightPoint = lerp(TRCorner_VS, BRCorner_VS, UV.y); // Right Edge
+	const float3 FarPos     = lerp(LeftPoint, RightPoint, UV.x);
 
-    return normalize(FarPos);
+	return normalize(FarPos);
 }
 
 float3 GetViewVector(const float2 UV)
 {
-    const float3 View_VS = GetViewVector_VS(UV);
-    return mul(ViewI, View_VS);
+	const float3 View_VS = GetViewVector_VS(UV);
+	return mul(ViewI, View_VS);
 }
 
 float3 GetViewSpacePosition(float2 UV, float D)
 {
-    const float3 LeftPoint  = lerp(TLCorner_VS, BLCorner_VS, UV.y); // Left Edge
-    const float3 RightPoint = lerp(TRCorner_VS, BRCorner_VS, UV.y); // Right Edge
-    const float3 V          = lerp(LeftPoint, RightPoint, UV.x) * D;
+	const float3 LeftPoint  = lerp(TLCorner_VS, BLCorner_VS, UV.y); // Left Edge
+	const float3 RightPoint = lerp(TRCorner_VS, BRCorner_VS, UV.y); // Right Edge
+	const float3 V          = lerp(LeftPoint, RightPoint, UV.x) * D;
 
-    return V;
+	return V;
 }
 
 void GetViewSpacePOSanDIR(float2 UV, float D, out float3 POS_VS, out float3 V)
 {
-    const float3 LeftPoint  = lerp(TLCorner_VS, BLCorner_VS, UV.y); // Left Edge
-    const float3 RightPoint = lerp(TRCorner_VS, BRCorner_VS, UV.y); // Right Edge
-    const float3 farPoint   = lerp(LeftPoint, RightPoint, UV.x);
+	const float3 LeftPoint  = lerp(TLCorner_VS, BLCorner_VS, UV.y); // Left Edge
+	const float3 RightPoint = lerp(TRCorner_VS, BRCorner_VS, UV.y); // Right Edge
+	const float3 farPoint   = lerp(LeftPoint, RightPoint, UV.x);
 
-    POS_VS  = farPoint * D;
-    V = normalize(farPoint);
+	POS_VS  = farPoint * D;
+	V = normalize(farPoint);
 }
 
 float3 GetWorldSpacePosition(float2 UV, float D) 
 {
-    const float3 V = GetViewSpacePosition(UV, D);
+	const float3 V = GetViewSpacePosition(UV, D);
 
-    return mul(ViewI, float4(V, 1));
+	return mul(ViewI, float4(V, 1));
 }
 
 void GetWorldSpacePositionAndViewDir(float2 UV, float D, out float3 POS_WS, out float3 VWS)
 {
-    GetViewSpacePOSanDIR(UV, D, POS_WS, VWS);
+	GetViewSpacePOSanDIR(UV, D, POS_WS, VWS);
 
-    POS_WS  = mul(ViewI, float4(POS_WS, 1));
-    VWS     = mul(ViewI, float4(VWS, 1));
+	POS_WS  = mul(ViewI, float4(POS_WS, 1));
+	VWS     = mul(ViewI, float4(VWS, 1));
 }
 
 

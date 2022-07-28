@@ -51,7 +51,7 @@ public:
 				system->playSound(sound1, nullptr, false, &channel);
 		}, memory, memory);
 
-        Work._debugID = "FMOD: Play Sound";
+		Work._debugID = "FMOD: Play Sound";
 		threads.AddWork(Work);
 	}
 
@@ -78,7 +78,7 @@ public:
 			}, 
 			memory);
 
-        Work._debugID = "FMOD: Update Sound";
+		Work._debugID = "FMOD: Update Sound";
 		threads.AddWork(Work);
 	}
 
@@ -116,7 +116,7 @@ inline FlexKit::UpdateTask* QueueSoundUpdate(FlexKit::UpdateDispatcher& Dispatch
 		},
 		[allocator](auto& Data, iAllocator& threadAllocator)
 		{
-            ProfileFunction();
+			ProfileFunction();
 
 			FK_LOG_9("Sound Update");
 			Data.Sounds->Update(allocator);
@@ -132,89 +132,89 @@ inline FlexKit::UpdateTask* QueueSoundUpdate(FlexKit::UpdateDispatcher& Dispatch
 class BaseState : public FrameworkState
 {
 public:
-    BaseState(
-        GameFramework& IN_Framework,
-        FKApplication& IN_App,
-        uint2 WH = { 1920, 1080 });
+	BaseState(
+		GameFramework& IN_Framework,
+		FKApplication& IN_App,
+		uint2 WH = { 1920, 1080 });
 
-    ~BaseState();
+	~BaseState();
 
-    UpdateTask* Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT);
+	UpdateTask* Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT);
 
-    void PostDrawUpdate(EngineCore& core, double dT) override;
+	void PostDrawUpdate(EngineCore& core, double dT) override;
 
-    void Resize(const uint2 WH);
+	void Resize(const uint2 WH);
 
-    void DrawDebugHUD(EngineCore& core, UpdateDispatcher& dispatcher, FrameGraph& frameGraph, ReserveVertexBufferFunction& reserveVB, ReserveConstantBufferFunction& reserveCB, ResourceHandle renderTarget, double dT);
-    void DEBUG_PrintDebugStats(EngineCore& core);
+	void DrawDebugHUD(EngineCore& core, UpdateDispatcher& dispatcher, FrameGraph& frameGraph, ReserveVertexBufferFunction& reserveVB, ReserveConstantBufferFunction& reserveCB, ResourceHandle renderTarget, double dT);
+	void DEBUG_PrintDebugStats(EngineCore& core);
 
 
-    void PixCapture();
-    void BeginPixCapture();
+	void PixCapture();
+	void BeginPixCapture();
 
-    void EndPixCapture();
+	void EndPixCapture();
 
 	asIScriptEngine* asEngine;
 
 	FKApplication&  App;
 
 
-    // Debug hud
-    enum EHudMode
-    {
-        FPS_Counter,
-        PhysXOverlay,
-        Profiler,
-        Disabled,
-        ModeCount
-    } HUDmode = EHudMode::FPS_Counter;
-    bool                        enableHud = true;
+	// Debug hud
+	enum EHudMode
+	{
+		FPS_Counter,
+		PhysXOverlay,
+		Profiler,
+		Disabled,
+		ModeCount
+	} HUDmode = EHudMode::FPS_Counter;
+	bool                        enableHud = true;
 
-    // counters, timers
-    float                       t           = 0.0f;
-    size_t                      counter     = 0;
+	// counters, timers
+	float                       t           = 0.0f;
+	size_t                      counter     = 0;
 
-    // Pix capture
-    bool                        PIX_SingleFrameCapture  = false;
-    bool                        PIX_CaptureInProgress   = false;
-    uint32_t                    PIX_frameCaptures       = 0;
+	// Pix capture
+	bool                        PIX_SingleFrameCapture  = false;
+	bool                        PIX_CaptureInProgress   = false;
+	uint32_t                    PIX_frameCaptures       = 0;
 
-    // Default passes
-    MaterialHandle              gbufferPass;
-    MaterialHandle              gbufferAnimatedPass;
+	// Default passes
+	MaterialHandle              gbufferPass;
+	MaterialHandle              gbufferAnimatedPass;
 
-    // Graphics resources
-    Win32RenderWindow           renderWindow;
+	// Graphics resources
+	Win32RenderWindow           renderWindow;
 	WorldRender					render;
-    GBuffer                     gbuffer;
-    DepthBuffer				    depthBuffer;
+	GBuffer                     gbuffer;
+	DepthBuffer				    depthBuffer;
 	VertexBufferHandle			vertexBuffer;
 	ConstantBufferHandle		constantBuffer;
 
 	// Components
-    AnimatorComponent               animations;
-    FABRIKComponent                 IK;
-    FABRIKTargetComponent           IKTargets;
+	AnimatorComponent               animations;
+	FABRIKComponent                 IK;
+	FABRIKTargetComponent           IKTargets;
 	SceneNodeComponent			    transforms;
 	CameraComponent				    cameras;
 	StringIDComponent			    ids;
 	BrushComponent			        brushes;
-    MaterialComponent               materials;
+	MaterialComponent               materials;
 	SceneVisibilityComponent	    visables;
 	PointLightComponent			    pointLights;
-    SkeletonComponent               skeletonComponent;
-    PointLightShadowMap             shadowCasters;
-    PhysXComponent  	            physics;
-    RigidBodyComponent              rigidBodies;
-    StaticBodyComponent             staticBodies;
-    CharacterControllerComponent    characterControllers;
-    CameraControllerComponent       orbitCameras;
-    //SoundSystem			            sounds;
+	SkeletonComponent               skeletonComponent;
+	PointLightShadowMap             shadowCasters;
+	PhysXComponent  	            physics;
+	RigidBodyComponent              rigidBodies;
+	StaticBodyComponent             staticBodies;
+	CharacterControllerComponent    characterControllers;
+	CameraControllerComponent       orbitCameras;
+	//SoundSystem			            sounds;
 
-    GamepadInput                    gamepads;
-    ImGUIIntegrator                 debugUI;
+	GamepadInput                    gamepads;
+	ImGUIIntegrator                 debugUI;
 	TextureStreamingEngine		    streamingEngine;
-    iRayTracer&                     rtEngine;
+	iRayTracer&                     rtEngine;
 };
 
 

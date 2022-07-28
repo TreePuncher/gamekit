@@ -10,287 +10,286 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
-    void ThreadProfiler::Push(const char* func, uint64_t Id, TimePoint tp)
-    {
-        const auto parentID = activeFrames.size() ? activeFrames.back().profileID : -1;
+	void ThreadProfiler::Push(const char* func, uint64_t Id, TimePoint tp)
+	{
+		const auto parentID = activeFrames.size() ? activeFrames.back().profileID : -1;
 
-        if (activeFrames.size()) {
-            auto& parent = activeFrames.back();
-            parent.children.push_back(Id);
-        }
+		if (activeFrames.size()) {
+			auto& parent = activeFrames.back();
+			parent.children.push_back(Id);
+		}
 
-        FrameTiming timing{ 
-            .Function   = func,
-            .profileID  = Id,
-            .parentID   = parentID,
-            .begin      = tp,
-        };
+		FrameTiming timing{ 
+			.Function   = func,
+			.profileID  = Id,
+			.parentID   = parentID,
+			.begin      = tp,
+		};
 
-        activeFrames.push_back(timing);
-    }
-
-
-    /************************************************************************************************/
+		activeFrames.push_back(timing);
+	}
 
 
-    void ThreadProfiler::Pop(uint64_t Id, TimePoint tp)
-    {
-        auto& frames = activeFrames;
-
-        if (!frames.size() || Id != frames.back().profileID) // Discard, frame changed
-            return;
-
-        auto currentFrame = frames.back();
-        frames.pop_back();
-
-        currentFrame.end = tp;
-        completedFrames.push_back(currentFrame);
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	void ThreadProfiler::Pop(uint64_t Id, TimePoint tp)
+	{
+		auto& frames = activeFrames;
+
+		if (!frames.size() || Id != frames.back().profileID) // Discard, frame changed
+			return;
+
+		auto currentFrame = frames.back();
+		frames.pop_back();
+
+		currentFrame.end = tp;
+		completedFrames.push_back(currentFrame);
+	}
 
 
-    void EngineProfiling::DrawProfiler(uint2 POS, uint2 WH, iAllocator& temp)
-    {
+	/************************************************************************************************/
+
+
+	void EngineProfiling::DrawProfiler(uint2 POS, uint2 WH, iAllocator& temp)
+	{
 #if USING(ENABLEPROFILER)
-        if (auto stats = profiler.GetStats(); stats)
-        {
-            if (ImGui::Begin("Profiler"))
-            {
-                ImGui::SetWindowPos({ (float)POS[0], (float)POS[1] });
-                ImGui::SetWindowSize({ (float)WH[0], (float)WH[1] });
+		if (auto stats = profiler.GetStats(); stats)
+		{
+			if (ImGui::Begin("Profiler"))
+			{
+				ImGui::SetWindowPos({ (float)POS[0], (float)POS[1] });
+				ImGui::SetWindowSize({ (float)WH[0], (float)WH[1] });
 
-                static int maxDepth = 15;
+				static int maxDepth = 15;
 
-                if (ImGui::Button("Pause"))
-                    paused = !paused;
+				if (ImGui::Button("Pause"))
+					paused = !paused;
 
-                ImGui::SameLine();
+				ImGui::SameLine();
 
-                if (ImGui::Button("Next"))
-                    frameOffset = clamp(size_t(0), frameOffset + 1, this->stats.size() - 1);
+				if (ImGui::Button("Next"))
+					frameOffset = clamp(size_t(0), frameOffset + 1, this->stats.size() - 1);
 
-                ImGui::SameLine();
+				ImGui::SameLine();
 
-                if (ImGui::Button("Previous"))
-                    frameOffset = clamp(size_t(0), frameOffset - 1, this->stats.size() - 1);
+				if (ImGui::Button("Previous"))
+					frameOffset = clamp(size_t(0), frameOffset - 1, this->stats.size() - 1);
 
-                ImGui::SameLine();
+				ImGui::SameLine();
 
-                if (ImGui::Button("Toggle Labels"))
-                    showLabels = !showLabels;
+				if (ImGui::Button("Toggle Labels"))
+					showLabels = !showLabels;
 
-                ImGui::SameLine();
+				ImGui::SameLine();
 
-                ImGui::SliderInt("Stack Depth", &maxDepth, 1, 15);
+				ImGui::SliderInt("Stack Depth", &maxDepth, 1, 15);
 
-                static float beginRange    = 0.0f;
-                static float endRange      = 1.0f;
+				static float beginRange    = 0.0f;
+				static float endRange      = 1.0f;
 
+				ImGui::DragFloatRange2("Range", &beginRange,&endRange, 0.0001f, 0.0f, 1.0f);
 
-                //ImGui::SliderFloat("Begin", &beginRange, 0, 1);
-                //ImGui::SliderFloat("End", &endRange, 0, 1);
-                ImGui::DragFloatRange2("Range", &beginRange,&endRange, 0.01, 0, 1);
+				const float range = endRange - beginRange;
 
-                const float range = endRange - beginRange;
+				ImDrawList* draw_list       = ImGui::GetWindowDrawList();
+				const float scrollY         = ImGui::GetScrollY();
 
-                ImDrawList* draw_list       = ImGui::GetWindowDrawList();
-                const uint32_t threadCount  = (uint32_t)stats->Threads.size();
-                const float scrollY         = ImGui::GetScrollY();
+				ImGui::CalcItemWidth();
+				ImGui::GetFrameHeight();
 
-                ImGui::CalcItemWidth();
-                ImGui::GetFrameHeight();
+				if (stats)
+				{
+					TimePoint begin = TimePoint::max();
+					TimePoint end = TimePoint::min();
 
-                if (stats)
-                {
-                    TimePoint begin = TimePoint::max();
-                    TimePoint end = TimePoint::min();
+					for (auto& thread : stats->Threads)
+					{
+						for (const auto sample : thread.timePoints)
+						{
+							begin = min(sample.begin, begin);
+							end = max(sample.end, end);
+						}
+					}
 
-                    for (auto& thread : stats->Threads)
-                    {
-                        for (const auto sample : thread.timePoints)
-                        {
-                            begin = min(sample.begin, begin);
-                            end = max(sample.end, end);
-                        }
-                    }
+					const auto duration     = end - begin;
+					const double fDuration  = double(duration.count()) / 1000000.0;
 
-                    const auto duration     = end - begin;
-                    const double fDuration  = double(duration.count()) / 1000000.0;
+					const float barWidth    = 25.0f;
+					const float areaH       = stats->Threads.size() * maxDepth * barWidth;
 
-                    const float barWidth    = 25.0f;
-                    const float areaH       = stats->Threads.size() * maxDepth * barWidth;
+					const ImVec2 windowPOS  = ImGui::GetWindowPos();
+					const ImVec2 windowSize = ImGui::GetWindowSize();
 
-                    const ImVec2 windowPOS  = ImGui::GetWindowPos();
-                    const ImVec2 windowSize = ImGui::GetWindowSize();
+					ImGui::SameLine();
+					ImGui::Text(fmt::format("Capture duration {}ms", fDuration).c_str());
 
-                    ImGui::SameLine();
-                    ImGui::Text(fmt::format("Capture duration {}ms", fDuration).c_str());
+					struct imDrawText
+					{
+						ImVec2      pos;
+						ImColor     color;
+						std::string string;
+					};
 
-                    struct imDrawText
-                    {
-                        ImVec2      pos;
-                        ImColor     color;
-                        std::string string;
-                    };
+					Vector<imDrawText> textstack{ &temp };
+					size_t drawCount = 0;
 
-                    Vector<imDrawText> textstack{ &temp };
-                    size_t drawCount = 0;
+					if(ImGui::BeginChild(GetCRCGUID("PROFILEGRAPH" + threadID++), ImVec2(windowSize.x, areaH/2)))
+					{
+						const auto contentBegin = ImGui::GetCursorScreenPos();
 
-                    if(ImGui::BeginChild(GetCRCGUID("PROFILEGRAPH" + threadID++), ImVec2(windowSize.x, areaH/2)))
-                    {
-                        const auto contentBegin = ImGui::GetCursorScreenPos();
+						uint32_t threadOffsetCounter = 0;
 
-                        uint32_t threadOffsetCounter = 0;
+						for (size_t threadID = 0; threadID < stats->Threads.size(); threadID++)
+						{
+							auto& thread        = stats->Threads[threadID];
+							auto& profilings    = thread.timePoints;
 
-                        for (size_t threadID = 0; threadID < stats->Threads.size(); threadID++)
-                        {
-                            auto& thread        = stats->Threads[threadID];
-                            auto& profilings    = thread.timePoints;
+							if (!profilings.size())
+								continue;
 
-                            if (!profilings.size())
-                                continue;
+							auto GetChild = [&](uint64_t childID) -> FrameTiming&
+							{
+								for (auto& timeSample : profilings)
+									if (timeSample.profileID == childID)
+										return timeSample;
 
-                            ImColor color(1.0f, 1.0f, 1.0f, 1.0f);
+								FK_ASSERT(0);
 
-                            auto GetChild = [&](uint64_t childID) -> FrameTiming&
-                            {
-                                for (auto& timeSample : profilings)
-                                    if (timeSample.profileID == childID)
-                                        return timeSample;
-
-                                FK_ASSERT(0);
-                            };
+								return *profilings.end();
+							};
 
 
-                            const float threadOffset = threadOffsetCounter++ * barWidth * maxDepth;
+							const float threadOffset = (float)threadOffsetCounter++ * barWidth * maxDepth;
 
 
-                            const ImVec2 pMin = ImVec2{ contentBegin.x,                  contentBegin.y + barWidth + threadOffset - scrollY };
-                            const ImVec2 pMax = ImVec2{ contentBegin.x + windowSize.x,   contentBegin.y + maxDepth * barWidth + threadOffset - scrollY };
+							const ImVec2 pMin{ contentBegin.x,                  contentBegin.y + barWidth + threadOffset - scrollY };
+							const ImVec2 pMax{ contentBegin.x + windowSize.x,   contentBegin.y + maxDepth * barWidth + threadOffset - scrollY };
 
-                            const ImVec2 threadBoxMin = ImVec2{ contentBegin.x,                  contentBegin.y + threadOffset - scrollY };
-                            const ImVec2 threadBoxMax = ImVec2{ contentBegin.x + windowSize.x,   contentBegin.y + maxDepth * barWidth + threadOffset - scrollY };
+							const ImVec2 threadBoxMin{ contentBegin.x,                  contentBegin.y + threadOffset - scrollY };
+							const ImVec2 threadBoxMax{ contentBegin.x + windowSize.x,   contentBegin.y + maxDepth * barWidth + threadOffset - scrollY };
 
-                            static const ImColor colors[] = {
-                                ImColor{11, 173, 181},
-                                ImColor{73, 127, 130},
-                                ImColor{56, 75,  65},
-                            };
+							static const ImColor colors[] = {
+								ImColor{11, 173, 181},
+								ImColor{73, 127, 130},
+								ImColor{56, 75,  65},
+							};
 
-                            draw_list->AddRectFilled(threadBoxMin, threadBoxMax, colors[threadOffsetCounter % 2], 0);
+							draw_list->AddRectFilled(threadBoxMin, threadBoxMax, colors[threadOffsetCounter % 2], 7.0f, ImDrawFlags_RoundCornersAll);
+							draw_list->AddRect(threadBoxMin, threadBoxMax, ImColor{ 0, 0, 0 }, 7.0f, ImDrawFlags_RoundCornersAll);
 
-                            if (pMax.y > 0.0f)
-                            {
-                                auto VisitChildren =
-                                    [&](uint64_t nodeID, auto& _Self, uint32_t maxDepth, uint32_t currentDepth) -> void
-                                    {
-                                        FrameTiming& node = GetChild(nodeID);
-                                        // Render Current Profile Sample
-                                        const float fbegin  = node.GetRelativeTimePointBegin(begin, duration) / range - beginRange / range;
-                                        const float fend    = node.GetRelativeTimePointEnd(begin, duration) / range - beginRange / range;
+							if (pMax.y > 0.0f)
+							{
+								auto VisitChildren =
+									[&](uint64_t nodeID, auto& _Self, uint32_t maxDepth, uint32_t currentDepth) -> void
+									{
+										FrameTiming& node = GetChild(nodeID);
+										// Render Current Profile Sample
+										const float fbegin  = node.GetRelativeTimePointBegin(begin, duration) / range - beginRange / range;
+										const float fend    = node.GetRelativeTimePointEnd(begin, duration) / range - beginRange / range;
 
-                                        const ImVec2 pMin = ImVec2{
-                                            contentBegin.x + windowSize.x * fbegin,
-                                            contentBegin.y + (currentDepth + 0) * barWidth + threadOffset - scrollY };
+										const ImVec2 pMin = ImVec2{
+											contentBegin.x + windowSize.x * fbegin,
+											contentBegin.y + (currentDepth + 0) * barWidth + threadOffset - scrollY };
 
-                                        const ImVec2 pMax = ImVec2{
-                                            contentBegin.x + windowSize.x * fend,
-                                            contentBegin.y + (currentDepth + 1) * barWidth + threadOffset - scrollY };
+										const ImVec2 pMax = ImVec2{
+											contentBegin.x + windowSize.x * fend,
+											contentBegin.y + (currentDepth + 1) * barWidth + threadOffset - scrollY };
 
-                                        if (pMax.y > 0.0f)
-                                        {
-                                            static const ImColor colors[] = {
-                                                {37, 232, 132},
-                                                {235, 96, 115},
-                                                {181, 11, 119},
-                                            };
-                                            draw_list->AddRectFilled(pMin, pMax, colors[drawCount++ % 3], 0);
+										if (pMax.y > 0.0f)
+										{
+											static const ImColor colors[] = {
+												{37, 232, 132},
+												{235, 96, 115},
+												{181, 11, 119},
+											};
 
-                                            const ImVec2 pTxt = ImVec2{
-                                                contentBegin.x + windowSize.x * fbegin,
-                                                contentBegin.y + currentDepth * barWidth + threadOffset - scrollY };
+											draw_list->AddRectFilled(pMin, pMax, colors[drawCount++ % 3], 7.0f, ImDrawFlags_RoundCornersAll);
+											draw_list->AddRect(pMin, pMax, ImColor{ 0, 0, 0 }, 7.0f, ImDrawFlags_RoundCornersAll);
 
-                                            const ImColor textColor(0.0f, 0.0f, 0.0f, 1.0f);
+											const ImVec2 pTxt = ImVec2{
+												contentBegin.x + windowSize.x * fbegin,
+												contentBegin.y + currentDepth * barWidth + threadOffset - scrollY };
 
-
-                                            // Visit Child Samples
-                                            if (currentDepth + 1 < maxDepth)
-                                                for (uint64_t childID : node.children)
-                                                    _Self(childID, _Self, maxDepth, currentDepth + 1);
+											const ImColor textColor(0.0f, 0.0f, 0.0f, 1.0f);
 
 
-                                            auto txt        = fmt::format("{} [ {}.ms ]", node.Function, node.GetDurationDouble() * 100);
-                                            auto txtSize    = ImGui::CalcTextSize(txt.c_str());
-
-                                            if ((showLabels && txtSize.x <= (pMax.x - pMin.x)))
-                                            {
-                                                textstack.emplace_back(
-                                                    pTxt,
-                                                    textColor,
-                                                    txt.c_str()
-                                                );
-                                            }
-                                            else if (ImGui::IsMouseHoveringRect(pMin, pMax, true))
-                                            {
-                                                textstack.emplace_back(
-                                                    pTxt,
-                                                    textColor,
-                                                    fmt::format("{} [ {}.ms ]", node.Function, node.GetDurationDouble() * 100)
-                                                );
-
-                                                auto parentNode = node.parentID;
-                                                for (size_t I = 1; parentNode != uint64_t(-1); I++)
-                                                {
-                                                    auto& parentNode_ref = GetChild(parentNode);
-
-                                                    const float fbegin  = parentNode_ref.GetRelativeTimePointBegin(begin, duration) / range - beginRange / range;
-                                                    const float fend    = parentNode_ref.GetRelativeTimePointEnd(begin, duration) / range - beginRange / range;
-
-                                                    const ImVec2 pTxt = ImVec2{
-                                                        contentBegin.x + windowSize.x * fbegin,
-                                                        contentBegin.y + (currentDepth - I) * barWidth + threadOffset - scrollY };
-
-                                                    const auto txt      = fmt::format("{} [ {}.ms ]", parentNode_ref.Function, parentNode_ref.GetDurationDouble() * 100);
-                                                    const auto size     = windowSize.x * (fend - fbegin);
-                                                    const auto txtSize  = ImGui::CalcTextSize(txt.c_str());
-
-                                                    if (txtSize.x > size)
-                                                        textstack.emplace_back(
-                                                            pTxt,
-                                                            textColor,
-                                                            txt.c_str());
-
-                                                    parentNode = parentNode_ref.parentID;
-                                                }
-                                            }
-                                        }
-                                    };
-
-                                for (auto profile : profilings)
-                                    if (profile.parentID == uint64_t(-1))
-                                        VisitChildren(profile.profileID, VisitChildren, maxDepth, 0);
-                            }
-                        }
+											// Visit Child Samples
+											if (currentDepth + 1 < maxDepth)
+												for (uint64_t childID : node.children)
+													_Self(childID, _Self, maxDepth, currentDepth + 1);
 
 
-                        for(auto& txt : textstack)
-                            draw_list->AddText(txt.pos, txt.color, txt.string.c_str());
+											auto txt        = fmt::format("{} [ {}.ms ]", node.Function, node.GetDurationDouble() * 100);
+											auto txtSize    = ImGui::CalcTextSize(txt.c_str());
 
-                        ImGui::EndChild();
-                    }
-                }
-                else
-                {
-                    ImGui::Text("No Profiling Stats Available!");
-                }
-            }
+											if ((showLabels && txtSize.x <= (pMax.x - pMin.x)))
+											{
+												textstack.emplace_back(
+													pTxt,
+													textColor,
+													txt.c_str()
+												);
+											}
+											else if (ImGui::IsMouseHoveringRect(pMin, pMax, true))
+											{
+												textstack.emplace_back(
+													pTxt,
+													textColor,
+													fmt::format("{} [ {}.ms ]", node.Function, node.GetDurationDouble() * 100)
+												);
 
-            ImGui::End();
-        }
+												auto parentNode = node.parentID;
+												for (size_t I = 1; parentNode != uint64_t(-1); I++)
+												{
+													auto& parentNode_ref = GetChild(parentNode);
+
+													const float fbegin  = parentNode_ref.GetRelativeTimePointBegin(begin, duration) / range - beginRange / range;
+													const float fend    = parentNode_ref.GetRelativeTimePointEnd(begin, duration) / range - beginRange / range;
+
+													const ImVec2 pTxt = ImVec2{
+														contentBegin.x + windowSize.x * fbegin,
+														contentBegin.y + (currentDepth - I) * barWidth + threadOffset - scrollY };
+
+													const auto txt      = fmt::format("{} [ {}.ms ]", parentNode_ref.Function, parentNode_ref.GetDurationDouble() * 100);
+													const auto size     = windowSize.x * (fend - fbegin);
+													const auto txtSize  = ImGui::CalcTextSize(txt.c_str());
+
+													if (txtSize.x > size)
+														textstack.emplace_back(
+															pTxt,
+															textColor,
+															txt.c_str());
+
+													parentNode = parentNode_ref.parentID;
+												}
+											}
+										}
+									};
+
+								for (const auto& profile : profilings)
+									if (profile.parentID == uint64_t(-1))
+										VisitChildren(profile.profileID, VisitChildren, maxDepth, 0);
+							}
+						}
+
+
+						for(const auto& txt : textstack)
+							draw_list->AddText(txt.pos, txt.color, txt.string.c_str());
+
+						ImGui::EndChild();
+					}
+				}
+				else
+				{
+					ImGui::Text("No Profiling Stats Available!");
+				}
+			}
+
+			ImGui::End();
+		}
 #endif
-    }
+	}
 
 
 }   /************************************************************************************************/

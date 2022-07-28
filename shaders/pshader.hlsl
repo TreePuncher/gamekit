@@ -161,6 +161,20 @@ float4 DrawRect(RectPoint_PS IN) : SV_TARGET
 	return IN.Color;
 }
 
+struct ColorDepthOut
+{
+	float4	color : SV_TARGET;
+	float	depth : SV_DEPTH;
+};
+
+ColorDepthOut DrawLinearDepth(DrawFlatTri3D_IN IN)
+{
+	ColorDepthOut Out;
+	Out.color = IN.Color;
+	Out.depth = IN.Depth;
+
+	return Out;
+}
 
 float4 DrawRectTextured(RectPoint_PS IN) : SV_TARGET
 {
@@ -174,21 +188,20 @@ float4 DrawRectTextured(RectPoint_PS IN) : SV_TARGET
 
 struct DrawFlatTriangle_OUT
 {
-    float4  color : SV_TARGET;
-    float   depth : SV_DEPTH;
+	float4  color : SV_TARGET;
+	float   depth : SV_DEPTH;
 };
 
 DrawFlatTriangle_OUT DrawFlatTriangle(DrawFlatTri3D_IN IN)
 {
-    DrawFlatTriangle_OUT Out;
-    Out.color = IN.Color;
-    Out.depth = IN.Depth;
-    return Out;
+	DrawFlatTriangle_OUT Out;
+	Out.color = float4(IN.Color.xyz, 1);
+	Out.depth = IN.Depth;
+	return Out;
 }
 
 
 /************************************************************************************************/
-
 
 
 float4 DrawRectTextured_DEBUGUV(RectPoint_PS IN) : SV_TARGET

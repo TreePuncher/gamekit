@@ -1455,8 +1455,9 @@ namespace FlexKit
 						auto& submeshes = lod->subMeshes;
 						for (size_t I = 0; I < submeshes.size(); I++)
 						{
-							ctx.SetGraphicsDescriptorTable(0, descriptors[I]);
-							ctx.SetGraphicsConstantBufferView(2, constants[0]);
+							auto materialIdx = Min(I, descriptors.size() - 1);
+							ctx.SetGraphicsDescriptorTable(0, descriptors[materialIdx]);
+							ctx.SetGraphicsConstantBufferView(2, constants[materialIdx]);
 
 							ctx.DrawIndexed(
 								submeshes[I].IndexCount,
