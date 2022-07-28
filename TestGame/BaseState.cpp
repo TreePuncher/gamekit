@@ -72,8 +72,8 @@ BaseState::BaseState(
 	RegisterMathTypes(GetScriptEngine(), framework.core.GetBlockMemory());
 	RegisterRuntimeAPI(GetScriptEngine());
 
-	gbufferPass             = materials.CreateMaterial();
-	gbufferAnimatedPass     = materials.CreateMaterial();
+	gbufferPass				= materials.CreateMaterial();
+	gbufferAnimatedPass		= materials.CreateMaterial();
 
 	materials.Add2Pass(gbufferPass,         GBufferPassID);
 	materials.Add2Pass(gbufferAnimatedPass, GBufferAnimatedPassID);

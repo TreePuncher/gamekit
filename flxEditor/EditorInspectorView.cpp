@@ -515,9 +515,11 @@ void EditorInspectorView::UpdateUI(FlexKit::GameObject& gameObject)
 		auto scrollable	= new QScrollArea{};
 
 		scrollable->setLayout(layout);
+		scrollable->setContextMenuPolicy(Qt::CustomContextMenu);
+		
 		properties.push_back(layout);
 		layout->setObjectName("Properties");
-
+		
 		ComponentViewPanelContext context{ layout, propertyItems, properties, this };
 
 		if (auto res = componentInspectors.find(componentView.ID); res != componentInspectors.end())
@@ -534,6 +536,23 @@ void EditorInspectorView::UpdateUI(FlexKit::GameObject& gameObject)
 			context.AddText("No Component Inspector Available");
 			context.Pop();
 		}
+
+		scrollable->connect(scrollable, &QScrollArea::customContextMenuRequested,
+			[=, inspector = context.inspector, &gameObject, component = componentView.Get()](const QPoint& point)
+			{
+				auto menu			= new QMenu{ tr("Context menu"), scrollable };
+				auto removeAction	= new QAction{ "Remove", this };
+
+				menu->connect(removeAction, &QAction::triggered,
+					[&, removeAction]()
+					{
+						gameObject.RemoveView(component);
+						menu->removeAction(removeAction);
+					});
+
+				menu->addAction(removeAction);
+				menu->exec(scrollable->mapToGlobal(point));
+			});
 
 		scrollable->setSizePolicy(QSizePolicy{ QSizePolicy::MinimumExpanding,  QSizePolicy::Minimum });
 		layout->setSizeConstraint(QLayout::SetMinimumSize);

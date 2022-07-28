@@ -372,7 +372,7 @@ namespace FlexKit
 		FNPSCENECALLBACK_PREUPDATE	PostUpdate;
 		void*						User;
 
-		Vector<DebugVertex>         debugGeometry;
+		Vector<DebugVertex>			debugGeometry;
 		size_t						debugTriCount	= 0;
 		size_t						debugLineCount	= 0;
 
@@ -395,7 +395,7 @@ namespace FlexKit
 		void							Release();
 		void							ReleaseScene				(LayerHandle);
 
-		UpdateTask&                     Update(UpdateDispatcher&, const double dt);
+		UpdateTask&						Update(UpdateDispatcher&, const double dt);
 		void							Simulate( const double dt, WorkBarrier* barrier = nullptr, iAllocator* temp_allocator = nullptr);
 
 		[[nodiscard]] LayerHandle		CreateLayer(bool DebugVis = false);
@@ -509,7 +509,7 @@ namespace FlexKit
 		} dispatcher;
 
 
-		Vector<Shape>               shapes;
+		Vector<Shape>				shapes;
 
 		Vector<PhysicsLayer>		scenes;
 		iAllocator*					allocator;

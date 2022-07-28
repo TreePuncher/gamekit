@@ -5,7 +5,8 @@
 
 
 namespace FlexKit
-{
+{	/************************************************************************************************/
+
 
 	ID3D12PipelineState* CreateWireframeDebugVis(RenderSystem* RS)
 	{
@@ -50,6 +51,10 @@ namespace FlexKit
 
 		return PSO;
 	}
+
+	
+	/************************************************************************************************/
+
 
 	ID3D12PipelineState* CreateSolidDebugVis(RenderSystem* RS)
 	{
@@ -97,11 +102,18 @@ namespace FlexKit
 	static const PSOHandle Wireframe	= PSOHandle(GetTypeGUID(CreateWireframeDebugVis));
 	static const PSOHandle Solid		= PSOHandle(GetTypeGUID(CreateSolidDebugVis));
 
+
+	/************************************************************************************************/
+
+
 	void RegisterPhysicsDebugVis(RenderSystem& renderSystem)
 	{
 		renderSystem.RegisterPSOLoader(Wireframe,	{ &renderSystem.Library.RS6CBVs4SRVs, CreateWireframeDebugVis });
 		renderSystem.RegisterPSOLoader(Solid,		{ &renderSystem.Library.RS6CBVs4SRVs, CreateSolidDebugVis });
 	}
+
+
+	/************************************************************************************************/
 
 
 	PhysicsDebugOverlayPass& RenderPhysicsOverlay(
@@ -173,4 +185,5 @@ namespace FlexKit
 	}
 
 
-}
+}	/************************************************************************************************/
+
