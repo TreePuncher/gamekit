@@ -670,6 +670,9 @@ struct LoadEntityContext : public LoadEntityContextInterface
 };
 
 
+/************************************************************************************************/
+
+
 void EditorViewport::SetScene(EditorScene_ptr newScene)
 {
     if (scene)

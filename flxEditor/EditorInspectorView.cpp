@@ -513,13 +513,10 @@ void EditorInspectorView::UpdateUI(FlexKit::GameObject& gameObject)
 	{
 		auto layout		= new QBoxLayout{ QBoxLayout::Down };
 		auto scrollable	= new QScrollArea{};
-		//auto toolWidget	= new QWidget{};
 
 		scrollable->setLayout(layout);
-		//toolWidget->setLayout(layout);
 		properties.push_back(layout);
 		layout->setObjectName("Properties");
-		//contentLayout->addLayout(layout);
 
 		ComponentViewPanelContext context{ layout, propertyItems, properties, this };
 

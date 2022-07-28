@@ -1,4 +1,5 @@
 #pragma once
+
 #include "ResourceHandles.h"
 #include "FrameGraph.h"
 
@@ -9,21 +10,18 @@ namespace FlexKit
     {
         ReserveVertexBufferFunction     reserveVB;
         ReserveConstantBufferFunction   reserveCB;
-        FrameResourceHandle             renderTarget;
+		FrameResourceHandle             renderTarget;
+		FrameResourceHandle             depthTarget;
     };
 
-    enum class OverlayMode
-    {
-        Wireframe,
-        Solid
-    };
+	void RegisterPhysicsDebugVis(RenderSystem&);
 
     PhysicsDebugOverlayPass& RenderPhysicsOverlay(
-        UpdateDispatcher&                   dispatcher,
-        FrameGraph&                         frameGraph,
+		FrameGraph&                         frameGraph,
         ResourceHandle                      renderTarget,
+		ResourceHandle						depthTarget,
         LayerHandle                         layer,
-        CameraHandle                        camera,
-        ReserveVertexBufferFunction&,
-        ReserveConstantBufferFunction&);
+        CameraHandle						camera,
+        const ReserveVertexBufferFunction&,
+        const ReserveConstantBufferFunction&);
 }

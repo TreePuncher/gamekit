@@ -1,4 +1,4 @@
-/**********************************************************************
+ /**********************************************************************
 
 Copyright (c) 2015-2016 Robert May
 
@@ -85,10 +85,10 @@ LinePointPS VSegmentPassthrough(LinePoint In)
 
 LinePointPS VSegmentPassthrough_NOPV(LinePoint In)
 {
-    LinePointPS Out;
-    Out.POS     = In.POS;
-    Out.Colour  = In.Colour;
-    return Out;
+	LinePointPS Out;
+	Out.POS     = In.POS;
+	Out.Colour  = In.Colour;
+	return Out;
 }
 
 
@@ -133,7 +133,7 @@ PS_IN V2Main( VIN2 In )
 
 	Out.N   	= normalize(mul(rot, In.N.xyz));
 	Out.UV		= In.UV;
-    Out.Depth   = Out.POS.z / Out.POS.w;
+	Out.Depth   = Out.POS.z / Out.POS.w;
 
 	return Out;
 }
@@ -150,7 +150,7 @@ struct VIN10
 };
 
 
-RectPoint_PS V10Main( VIN10 In )
+RectPoint_PS V10Main(VIN10 In)
 {
 	RectPoint_PS Out;
 	Out.POS 	= mul(mul(PV, WT), In.POS);
@@ -167,58 +167,75 @@ RectPoint_PS V10Main( VIN10 In )
 
 DrawFlatTri3D_IN V11Main(VIN10 In)
 {
-    const float3 POS_WT = mul(WT, In.POS);
-    const float4 POS_VS = mul(View, float4(POS_WT, 1));
+	const float3 POS_WT = mul(WT, In.POS);
+	const float4 POS_VS = mul(View, float4(POS_WT, 1));
 
-    DrawFlatTri3D_IN Out;
-    Out.POS     = mul(mul(PV, WT), In.POS);
-    Out.Depth   = -POS_VS.z / MaxZ;
-    Out.UV      = In.UV;
-    Out.Color   = In.Color;
+	DrawFlatTri3D_IN Out;
+	Out.POS     = mul(mul(PV, WT), In.POS);
+	Out.Depth	= -POS_VS.z / MaxZ;
+	Out.UV      = In.UV;
+	Out.Color   = float4(In.Color.xyz, 0);
 
-    return Out;
+	return Out;
 }
 
 
 /************************************************************************************************/
 
 
+DrawFlatTri3D_IN V12Main(VIN10 In)
+{
+	const float3 POS_WT = mul(WT, In.POS);
+	const float4 POS_VS = mul(View, float4(POS_WT, 1));
+
+	DrawFlatTri3D_IN Out;
+	Out.POS     = mul(mul(PV, WT), In.POS);
+	Out.Depth	= -POS_VS.z / MaxZ - 0.00001f;
+	Out.UV      = In.UV;
+	Out.Color   = float4(In.Color.xyz, 0);
+
+	return Out;
+}
+
+/************************************************************************************************/
+
+
 float4 FullScreeQuad(int ID : SV_VertexID) : SV_Position
 {
-    float4 Out;
+	float4 Out;
 
-    if(ID == 0) // Top Left
-    {
-        float4 Out = float4(-1, 1, 0, 1);
-    }
-    if (ID == 1) // Top Right
-    {
-        float4 Out = float4(-1, 1, 0, 1);
+	if(ID == 0) // Top Left
+	{
+		float4 Out = float4(-1, 1, 0, 1);
+	}
+	if (ID == 1) // Top Right
+	{
+		float4 Out = float4(-1, 1, 0, 1);
 
-    }
-    if (ID == 2) // Bottom Left
-    {
-        float4 Out = float4(-1, 1, 0, 1);
+	}
+	if (ID == 2) // Bottom Left
+	{
+		float4 Out = float4(-1, 1, 0, 1);
 
-    }
-    if (ID == 3) // BottomLeft
-    {
-        float4 Out = float4(-1, 1, 0, 1);
-        
-    }
-    if (ID == 4) // Top Right
-    {
-        float4 Out = float4(-1, 1, 0, 1);
+	}
+	if (ID == 3) // BottomLeft
+	{
+		float4 Out = float4(-1, 1, 0, 1);
+		
+	}
+	if (ID == 4) // Top Right
+	{
+		float4 Out = float4(-1, 1, 0, 1);
 
-    }
-    if (ID == 5) // Bottom Right
-    {
-        float4 Out = float4(-1, 1, 0, 1);
-        
-    }
-    Out = mul(PV, Out);
+	}
+	if (ID == 5) // Bottom Right
+	{
+		float4 Out = float4(-1, 1, 0, 1);
+		
+	}
+	Out = mul(PV, Out);
 
-    return Out;
+	return Out;
 }
 
 
@@ -244,7 +261,7 @@ PS_IN2 V3Main( VIN3 In )
 	Out.N   	= float4(mul(rot, In.N), 0);
 	Out.T   	= mul(rot, In.T);
 	Out.B   	= mul(rot, cross(In.N, In.T));
-    Out.Depth   = Out.POS.z / Out.POS.w;
+	Out.Depth   = Out.POS.z / Out.POS.w;
 	
 	return Out;
 }
@@ -314,7 +331,7 @@ PS_IN VMainVertexPallet(VIN4 In)
 	Out.POS     = mul(PV, mul(WT, V2));
 	Out.N       = mul(WT, N).xyz;
 	Out.UV      = In.UV;
-    Out.Depth   = Out.POS.z / Out.POS.w;
+	Out.Depth   = Out.POS.z / Out.POS.w;
 
 	return Out;
 }
