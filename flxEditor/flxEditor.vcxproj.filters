@@ -5,10 +5,6 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
     <Filter Include="Resource Files">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
@@ -22,49 +18,53 @@
       <Extensions>qrc;*</Extensions>
       <ParseFiles>false</ParseFiles>
     </Filter>
+    <Filter Include="Form Files\Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="DXRenderWindow.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </QtMoc>
     <QtMoc Include="EditorMainWindow.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </QtMoc>
     <QtMoc Include="ResourceBrowserWidget.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </QtMoc>
     <QtMoc Include="TaskManager.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </QtMoc>
     <QtMoc Include="TextureViewer.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </QtMoc>
     <QtMoc Include="EditorCodeEditor.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </QtMoc>
     <QtMoc Include="EditorOutputWindow.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </QtMoc>
     <QtMoc Include="ModelViewerWidget.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </QtMoc>
     <QtMoc Include="EditorViewport.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </QtMoc>
     <QtMoc Include="EditorInspectorView.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </QtMoc>
     <QtMoc Include="SceneOutliner.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </QtMoc>
     <QtMoc Include="EditorResourcePickerDialog.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </QtMoc>
     <QtMoc Include="EditorPrefabEditor.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </QtMoc>
     <QtMoc Include="EditorPrefabInputTab.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
@@ -84,7 +84,7 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="EditorRenderer.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClCompile>
     <ClCompile Include="EditorOperators.cpp">
       <Filter>Source Files</Filter>
@@ -200,94 +200,94 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EditorProject.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EditorConfig.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EditorApplication.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EditorOperators.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EditorImport.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EditorTaskList.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EditorScriptEngine.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EditorGadgetInterface.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EditorResources.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SelectionContext.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ViewportScene.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SceneInspectors.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="PCH.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CSGComponent.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CSGRendering.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EditorColliderComponent.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EditorAnimatorComponent.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EditorPrefabObject.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="AnimationEditorObject.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Animation.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Common.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="FBXResourceUtilities.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MeshProcessing.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MetaData.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ResourceIDs.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ResourceUtilities.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SceneResource.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="TextureResourceUtilities.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="TTFontLoader.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -327,7 +327,7 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\coreutilities\Serialization.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>Form Files\Header Files</Filter>
     </Text>
     <Text Include="..\coreutilities\Serialization.cpp">
       <Filter>Source Files</Filter>
