@@ -243,8 +243,8 @@ void ViewportScene::Update()
 	{
 		std::vector<uint64_t> componentIds;
 
-		auto entity_res = std::find_if(entities.begin(), entities.end(),
-			[&](FlexKit::SceneEntity& entity)
+		auto entity_res = std::ranges::find_if(entities,
+			[&](const FlexKit::SceneEntity& entity)
 			{
 				return (entity.objectID == object->objectID);
 			});
@@ -270,6 +270,15 @@ void ViewportScene::Update()
 				else
 					IEntityComponentRuntimeUpdater::Update(*component_res, component.Get_ref(), ctx);
 			}
+
+			auto range = std::ranges::partition(
+				entity_res->components,
+				[&](FlexKit::EntityComponent_ptr& element) -> bool
+				{
+					return std::ranges::find(componentIds, element->id) != componentIds.end();
+				});
+
+			entity_res->components.erase(range.begin(), range.end());
 		}
 		else
 		{   // Add GameObject
@@ -285,21 +294,8 @@ void ViewportScene::Update()
 					IEntityComponentRuntimeUpdater::Update(*entityComponent, component.Get_ref(), ctx);
 					entity.components.emplace_back(entityComponent);
 				}
-				//else// TODO: ignore certain components that are runtime only
-				//    FK_LOG_WARNING("Failed to serialize component data! Component ID: %u", component.ID);
-
 			}
 		}
-
-		auto begin = std::partition(
-			entity_res->components.begin(),
-			entity_res->components.end(),
-			[&](FlexKit::EntityComponent_ptr& element) -> bool
-			{
-				return std::ranges::find(componentIds, element->id) != componentIds.end();
-			});
-
-		entity_res->components.erase(begin, entity_res->components.end());
 	}
 
 	auto& nodes = sceneResource->sceneResource->nodes;
@@ -308,22 +304,20 @@ void ViewportScene::Update()
 	for (const auto& node : ctx.nodes)
 	{
 		FlexKit::SceneNode sceneNode;
-		sceneNode.scale         = node.scale;
-		sceneNode.orientation   = node.orientation;
-		sceneNode.position      = node.position;
-		sceneNode.parent        = node.parent;
+		sceneNode.scale			= node.scale;
+		sceneNode.orientation	= node.orientation;
+		sceneNode.position		= node.position;
+		sceneNode.parent		= node.parent;
 
 		nodes.emplace_back(sceneNode);
 	}
 
-	auto newEnd = std::remove_if(
-		entities.begin(),
-		entities.end(),
+	auto eraseRange = std::ranges::remove_if(
+		entities,
 		[&](auto& entity)
 		{
-			auto res = std::find_if(
-				markedForDeletion.begin(),
-				markedForDeletion.end(),
+			auto res = std::ranges::find_if(
+				markedForDeletion,
 				[&](auto& id)
 				{
 					return entity.objectID == id;
@@ -332,7 +326,7 @@ void ViewportScene::Update()
 			return res != markedForDeletion.end();
 		});
 
-	entities.erase(newEnd, entities.end());
+	entities.erase(eraseRange.begin(), eraseRange.end());
 
 	markedForDeletion.clear();
 }
