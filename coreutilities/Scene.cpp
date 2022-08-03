@@ -206,8 +206,8 @@ namespace FlexKit
 	{
 		Apply(
 			go,
-			[&]( SceneVisibilityView&	visibility,
-				BrushView&			    brush)
+			[&](SceneVisibilityView&	visibility,
+				BrushView&				brush)
 			{
 				auto boundingSphere = brush.GetBoundingSphere();
 				visibility.SetBoundingSphere(boundingSphere);

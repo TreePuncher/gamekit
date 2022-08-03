@@ -4,6 +4,7 @@
 #include "KeyValueIds.h"
 
 #include <algorithm>
+#include <span>
 
 using namespace FlexKit;
 
@@ -159,7 +160,7 @@ GameWorld::GameWorld(EngineCore& IN_core, bool debug) :
 	allocator       { static_cast<iAllocator&>(IN_core.GetBlockMemory()) },
 	core            { IN_core },
 	renderSystem    { IN_core.RenderSystem},
-	objectPool      { IN_core.GetBlockMemory(), 1024 * 16 },
+	objectPool      { IN_core.GetBlockMemory(), 1024 * 32 },
 	enemy1Component { IN_core.GetBlockMemory() },
 	layer           { PhysXComponent::GetComponent().CreateLayer(debug) },
 	scene           { IN_core.GetBlockMemory() },
@@ -196,11 +197,11 @@ GameObject& GameWorld::AddLocalPlayer(MultiplayerPlayerID_t multiplayerID)
 {
 	return CreatePlayer(
 				PlayerDesc{
-					.player = multiplayerID,
-					.layer  = layer,
-					.scene  = scene,
-					.h      = 0.5f,
-					.r      = 0.5f
+					.player	= multiplayerID,
+					.layer	= layer,
+					.scene	= scene,
+					.h		= 0.5f,
+					.r		= 0.5f
 				});
 }
 
@@ -212,25 +213,25 @@ GameObject& GameWorld::AddRemotePlayer(MultiplayerPlayerID_t playerID, Connectio
 {
 	auto& gameObject = objectPool.Allocate();
 
-	auto& player    = gameObject.AddView<PlayerView>(
+	const auto& player = gameObject.AddView<PlayerView>(
 		PlayerState{
-			.gameObject         = &gameObject,
-			.playerID           = playerID,
+			.gameObject	= &gameObject,
+			.playerID	= playerID,
 		});
 
-	auto& dummy     = gameObject.AddView<RemotePlayerView>(
+	auto& dummy	= gameObject.AddView<RemotePlayerView>(
 		RemotePlayerData{
-			.gameObject         = &gameObject,
-			.playerGameState    = player.handle,
-			.connection         = connection,
-			.playerID           = playerID });
+			.gameObject			= &gameObject,
+			.playerGameState	= player.handle,
+			.connection			= connection,
+			.playerID			= playerID });
 
 	auto [triMesh, loaded] = FindMesh(playerModel);
 
 	if (!loaded)
 		triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), playerModel);
 
-	auto& characterController = gameObject.AddView<CharacterControllerView>(layer, float3{0, 0, 0}, GetZeroedNode(), 1.0f, 1.0f);
+	const auto& characterController = gameObject.AddView<CharacterControllerView>(layer, float3{ 0.0f, 0.0f, 0.0f }, GetZeroedNode(), 1.0f, 1.0f);
 	gameObject.AddView<SceneNodeView<>>(characterController.GetNode());
 	gameObject.AddView<BrushView>(triMesh);
 
@@ -254,9 +255,9 @@ void GameWorld::AddCube(float3 POS)
 	if (!loaded)
 		triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), cube1X1X1);
 
-	auto& rigidBody = gameObject.AddView<RigidBodyView>(layer, POS);
-	auto& sceneNode = gameObject.AddView<SceneNodeView<>>(GetRigidBodyNode(gameObject));
-	auto& brushView = gameObject.AddView<BrushView>(triMesh);
+			auto& rigidBody = gameObject.AddView<RigidBodyView>(layer, POS);
+	const	auto& sceneNode = gameObject.AddView<SceneNodeView<>>(GetRigidBodyNode(gameObject));
+	const	auto& brushView = gameObject.AddView<BrushView>(triMesh);
 
 	rigidBody.AddShape(cubeShape);
 
@@ -280,12 +281,12 @@ bool GameWorld::LoadScene(GUID_t assetID)
 
 	auto res = FlexKit::LoadScene(core, ctx, assetID);
 
-	auto& physics       = PhysXComponent::GetComponent();
-	auto& visibility    = SceneVisibilityComponent::GetComponent();
+	auto& physics		= PhysXComponent::GetComponent();
+	auto& visibility	= SceneVisibilityComponent::GetComponent();
 
 	static const std::regex pattern{"Cube"};
 
-	for (auto& entity : scene.sceneEntities)
+	for (const auto& entity : scene.sceneEntities)
 	{
 		auto& go    = *visibility[entity].entity;
 		auto id     = GetStringID(go);
@@ -295,10 +296,9 @@ bool GameWorld::LoadScene(GUID_t assetID)
 			AABB aabb;
 			aabb = aabb + GetBoundingSphere(go);
 
-			const auto midPoint = aabb.MidPoint();
-			const auto dim      = aabb.Dim() / 2.0f;
-			const auto pos      = GetWorldPosition(go);
-			auto q              = GetOrientation(go);
+			const auto dim	= aabb.Dim() / 2.0f;
+			const auto pos	= GetWorldPosition(go);
+			const auto q	= GetOrientation(go);
 
 			auto shape = physics.CreateCubeShape(dim);
 
@@ -319,7 +319,7 @@ using ChunkCoord = int3;
 
 int64_t GetChunkIndex(ChunkCoord coord)
 {
-	return coord[2] * 2048 * 2048 + coord[1] * 2048 + coord[1];
+	return coord[2] * 2048 * 2048 + coord[1] * 2048 + coord[0];
 }
 
 struct SparseMap;
@@ -393,7 +393,8 @@ struct iConstraint
 	virtual bool Apply      (        SparseMap& map,const CellCoord coord)                  const noexcept = 0;
 };
 
-using ConstraintTable = static_vector<std::unique_ptr<iConstraint>, 16>[CellStates::Count];
+using ConstraintTable	= static_vector<std::unique_ptr<iConstraint>, 16>[CellStates::Count];
+using ConstraintSpan	= std::span<static_vector<std::unique_ptr<iConstraint>, 16>>;
 
 int64_t GetTileID(const ChunkCoord cord) noexcept
 {
@@ -523,13 +524,18 @@ struct ChunkedChunkMap
 		auto res = std::ranges::lower_bound(chunks, idx);
 
 		if (res != chunks.end() && res->coord == coord)
+		{
+			//if (idx != 0)
+			//	DebugBreak();
+
 			return { *res };
+		}
 		else
 			return {};
 	}
 
-	Vector<int64_t>     chunkIDs;
-	Vector<MapChunk>    chunks;
+	Vector<int64_t>		chunkIDs;
+	Vector<MapChunk>	chunks;
 };
 
 
@@ -555,9 +561,9 @@ struct SparseMap
 	struct NeighborIterator
 	{
 		NeighborIterator(const SparseMap& IN_map, CellCoord coord, int IN_idx = 0) :
-			centralCord { coord  },
-			map         { IN_map },
-			idx         { IN_idx } {}
+			centralCord	{ coord  },
+			map			{ IN_map },
+			idx			{ IN_idx } {}
 
 		auto operator * ()
 		{
@@ -629,7 +635,7 @@ struct SparseMap
 		return set;
 	}
 
-	static_vector<CellState_t> CalculateSuperState(this const SparseMap& map, const ConstraintTable& constraints, const CellCoord xyz)
+	static_vector<CellState_t> CalculateSuperState(this const SparseMap& map, const ConstraintSpan& constraints, const CellCoord xyz)
 	{
 		static_vector<CellState_t> out;
 
@@ -653,7 +659,7 @@ struct SparseMap
 		return out;
 	}
 
-	void UpdateNeighboringSuperStates(this auto& map, const ConstraintTable& constraints, const CellCoord cellCoord)
+	void UpdateNeighboringSuperStates(this auto& map, const ConstraintSpan& constraints, const CellCoord cellCoord)
 	{
 		for (auto [neighborCell, neighborCellState_tx] : NeighborIterator{ map, cellCoord })
 		{
@@ -681,7 +687,7 @@ struct SparseMap
 
 	void SetCell(const CellCoord XYZ, const CellState_t ID)
 	{
-		auto chunkID = (XYZ & (-1 + 15)) / 8;
+		auto chunkID = XYZ / 8;
 
 		if (auto res = chunks[chunkID]; res)
 		{
@@ -726,12 +732,14 @@ struct SparseMap
 		return entropy;
 	}
 
-	void Generate(this SparseMap& map, const ConstraintTable& constraints, const uint3 WHD, iAllocator& tempMemory)
+	void Generate(this SparseMap& map, const ConstraintSpan& constraints, const uint3 WHD, iAllocator& tempMemory)
 	{
 		const auto XYZ = Max(WHD, uint3{ 8, 8, 8 }) / 8;
 
 		map.chunks.InsertBlock(XYZ, XYZ / -2);
 		map.SetCell({ 0, 0, 0 }, GetIdBit(CellStates::Floor));
+		map.SetCell({ -1, 0, 0 }, GetIdBit(CellStates::Floor));
+		map.SetCell({  0, 0, -1 }, GetIdBit(CellStates::Floor));
 		map.UpdateNeighboringSuperStates(constraints, {0, 0, 0});
 
 
@@ -1042,7 +1050,7 @@ std::optional<std::reference_wrapper<GameObject>> AddWorldObject(GameWorld& worl
 {
 	static const auto material = [] {
 		auto& materials = MaterialComponent::GetComponent();
-		auto material       = materials.CreateMaterial();
+		auto material	= materials.CreateMaterial();
 		materials.Add2Pass(material, ShadowMapPassID);
 		materials.Add2Pass(material, GBufferPassID);
 
@@ -1058,23 +1066,18 @@ std::optional<std::reference_wrapper<GameObject>> AddWorldObject(GameWorld& worl
 	if (!LoadPrefab(object, handle, allocator, values))
 		return {};
 
-	auto n = GetSceneNode(object);
-	auto m = GetStaticBodyNode(object);
-
-	/*
-	object.AddView<SceneNodeView<>>();
-	object.AddView<BrushView>(mesh);
-	*/
-
 	object.AddView<MaterialView>(material);
-	StaticBodySetScale(object, float3{ 10.0f, 10.0f, 10.0f });
-	SetScale(object, { 10, 10, 10 });
+	StaticBodySetScale(object, float3{ 20.0f, 20.0f, 20.0f });
+	SetScale(object, { 20.0f, 20.0f, 20.0f });
 
 	world.scene.AddGameObject(object);
 	SetBoundingSphereFromMesh(object);
 
 	return object;
 }
+
+
+/************************************************************************************************/
 
 
 void TranslateChunk(MapChunk& chunk, SparseMap& map, GameWorld& world, const WorldAssets& assets, iAllocator& allocator)
@@ -1085,7 +1088,7 @@ void TranslateChunk(MapChunk& chunk, SparseMap& map, GameWorld& world, const Wor
 		if (cellXYZ[2] > 0)
 			continue;
 
-		const float scale = 20.0f;
+		const float scale = 40.0f;
 
 		switch (c)
 		{
@@ -1159,6 +1162,14 @@ SparseMap GenerateWorld(GameWorld& world, const WorldAssets& assets, iAllocator&
 
 	map.Generate(constraints, int3{ 256, 256, 1 }, temp);
 
+	// Step 2. Translate map cells -> game world
+	for (auto& chunk : map)
+	{
+		if (chunk.active)
+			TranslateChunk(chunk, map, world, assets, temp);
+	}
+
+	// Print Chunk (0, 0, 0)
 	std::cout << "Legend:\n";
 	std::cout << "_ = Space\n";
 	std::cout << "R = Ramp\n";
@@ -1195,11 +1206,6 @@ SparseMap GenerateWorld(GameWorld& world, const WorldAssets& assets, iAllocator&
 		}
 	}
 
-
-	// Step 2. Translate map cells -> game world
-	if (chunk)
-		TranslateChunk(*chunk, map, world, assets, temp);
-
 	return map;
 }
 
@@ -1226,7 +1232,7 @@ WorldAssets LoadBasicTiles()
 
 void CreateMultiplayerScene(GameWorld& world, const WorldAssets& assets, iAllocator& allocator, iAllocator& tempAllocator)
 {
-#if 0
+#if 1
 	static const GUID_t sceneID = 1234;
 	world.LoadScene(sceneID);
 #else

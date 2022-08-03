@@ -9,7 +9,7 @@ BaseState::BaseState(
 		FrameworkState	    { IN_Framework },
 		depthBuffer		    { IN_Framework.core.RenderSystem, renderWindow.GetWH() },
 
-		vertexBuffer	    { IN_Framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 1, false) },
+		vertexBuffer	    { IN_Framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 64, false) },
 		constantBuffer	    { IN_Framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 16, false) },
 		asEngine		    { asCreateScriptEngine() },
 		streamingEngine	    { IN_Framework.core.RenderSystem, IN_Framework.core.GetBlockMemory() },

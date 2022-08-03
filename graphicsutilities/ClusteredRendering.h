@@ -293,110 +293,110 @@ namespace FlexKit
 
         FlexKit::TypeErasedCallable<void (FrameGraph&), 48>
             CreateClusterBuffer(
-                                RenderSystem&                   renderSystem,
-                                uint2                           WH,
-                                CameraHandle                    camera,
-                                MemoryPoolAllocator&            UAVPool,
-                                ReserveConstantBufferFunction&  reserveCB);
+								RenderSystem&					renderSystem,
+								uint2							WH,
+								CameraHandle					camera,
+								MemoryPoolAllocator&			UAVPool,
+								ReserveConstantBufferFunction&	reserveCB);
 
 
         GBufferPass& FillGBuffer(
-			                    UpdateDispatcher&               dispatcher,
-			                    FrameGraph&                     frameGraph,
-                                GatherPassesTask&               passes,
-			                    const CameraHandle              camera,
-			                    GBuffer&                        gbuffer,
-			                    ResourceHandle                  depthTarget,
-			                    ReserveConstantBufferFunction   reserveCB,
-			                    iAllocator*                     allocator,
-                                AnimationPoseUpload*            poses = nullptr);
+								UpdateDispatcher&				dispatcher,
+								FrameGraph&						frameGraph,
+								GatherPassesTask&				passes,
+								const CameraHandle				camera,
+								GBuffer&						gbuffer,
+								ResourceHandle					depthTarget,
+								ReserveConstantBufferFunction	reserveCB,
+								iAllocator*						allocator,
+								AnimationPoseUpload*			poses = nullptr);
 
 
         LightBufferUpdate& UpdateLightBuffers(
-                                UpdateDispatcher&		            dispatcher,
-		                        FrameGraph&				            graph,
-		                        const CameraHandle	                camera,
-		                        const Scene&	                    scene,
-		                        const PointLightShadowGatherTask&   pointLightsShadowMaps,
-                                ResourceHandle                      depthBuffer,
-		                        ReserveConstantBufferFunction       reserveCB,
-		                        iAllocator*				            tempMemory,
-                                bool                                releaseTemporaries = true);
+								UpdateDispatcher&					dispatcher,
+								FrameGraph&							graph,
+								const CameraHandle					camera,
+								const Scene&						scene,
+								const PointLightShadowGatherTask&	pointLightsShadowMaps,
+								ResourceHandle						depthBuffer,
+								ReserveConstantBufferFunction		reserveCB,
+								iAllocator*							tempMemory,
+								bool								releaseTemporaries = true);
 
 
 	    TiledDeferredShade& ClusteredShading(
-                                UpdateDispatcher&               dispatcher,
-		                        FrameGraph&                     frameGraph,
-                                PointLightShadowGatherTask&     pointLightShadowMaps,
-		                        PointLightGatherTask&           pointLightgather,
-                                GBufferPass&                    gbufferPass,
-		                        ResourceHandle                  depthTarget,
-		                        ResourceHandle                  renderTarget,
-		                        ShadowMapPassData&              shadowMaps,
-		                        LightBufferUpdate&              lightPass,
-		                        ReserveConstantBufferFunction   reserveCB,
-		                        ReserveVertexBufferFunction     reserveVB,
-		                        float                           t,
-		                        iAllocator*                     allocator);
+								UpdateDispatcher&				dispatcher,
+								FrameGraph&						frameGraph,
+								PointLightShadowGatherTask&		pointLightShadowMaps,
+								PointLightGatherTask&			pointLightgather,
+								GBufferPass&					gbufferPass,
+								ResourceHandle					depthTarget,
+								ResourceHandle					renderTarget,
+								ShadowMapPassData&				shadowMaps,
+								LightBufferUpdate&				lightPass,
+								ReserveConstantBufferFunction	reserveCB,
+								ReserveVertexBufferFunction		reserveVB,
+								float							t,
+								iAllocator*						allocator);
 
 
         void ReleaseFrameResources(
-                                FrameGraph&                     rameGraph,
-                                LightBufferUpdate&              lightPass,
-                                TiledDeferredShade&             TiledDeferredShade);
+								FrameGraph&						rameGraph,
+								LightBufferUpdate&				lightPass,
+								TiledDeferredShade&				TiledDeferredShade);
 
 
         DEBUGVIS_DrawBVH& DEBUGVIS_DrawLightBVH(
-			                    UpdateDispatcher&               dispatcher,
-			                    FrameGraph&                     frameGraph,
-			                    const CameraHandle              camera,
-                                ResourceHandle                  renderTarget,
-                                LightBufferUpdate&              lightBufferUpdate,
-			                    ReserveConstantBufferFunction   reserveCB,
-                                ClusterDebugDrawMode            mode,
-			                    iAllocator*                     tempMemory);
+								UpdateDispatcher&				dispatcher,
+								FrameGraph&						frameGraph,
+								const CameraHandle				camera,
+								ResourceHandle					renderTarget,
+								LightBufferUpdate&				lightBufferUpdate,
+								ReserveConstantBufferFunction	reserveCB,
+								ClusterDebugDrawMode			mode,
+								iAllocator*						tempMemory);
 
 
         void DEBUGVIS_BVH(
-			                    UpdateDispatcher&               dispatcher,
-			                    FrameGraph&                     frameGraph,
-                                SceneBVH&                       bvh,
-                                CameraHandle                    camera,
-			                    ResourceHandle                  renderTarget,
-			                    ReserveConstantBufferFunction   reserveCB,
-			                    ReserveVertexBufferFunction     reserveVB,
-                                BVHVisMode                      mode,
-			                    iAllocator*                     allocator);
+								UpdateDispatcher&				dispatcher,
+								FrameGraph&						frameGraph,
+								SceneBVH&						bvh,
+								CameraHandle					camera,
+								ResourceHandle					renderTarget,
+								ReserveConstantBufferFunction	reserveCB,
+								ReserveVertexBufferFunction		reserveVB,
+								BVHVisMode						mode,
+								iAllocator*						allocator);
 
 
     private:
-        ResourceHandle clusterBuffer = InvalidHandle;
-        IndirectLayout dispatch;
-        IndirectLayout gather;
-        IndirectLayout draw;
+		ResourceHandle clusterBuffer = InvalidHandle;
+		IndirectLayout dispatch;
+		IndirectLayout gather;
+		IndirectLayout draw;
 
-        static ID3D12PipelineState* CreateLightPassPSO                  (RenderSystem* RS);
-        static ID3D12PipelineState* CreateGBufferPassPSO                (RenderSystem* RS);
-        static ID3D12PipelineState* CreateGBufferSkinnedPassPSO         (RenderSystem* RS);
-        static ID3D12PipelineState* CreateDeferredShadingPassPSO        (RenderSystem* RS);
-        static ID3D12PipelineState* CreateDeferredShadingPassComputePSO (RenderSystem* RS);
-        static ID3D12PipelineState* CreateComputeTiledDeferredPSO       (RenderSystem* RS);
+		static ID3D12PipelineState* CreateLightPassPSO                  (RenderSystem* RS);
+		static ID3D12PipelineState* CreateGBufferPassPSO                (RenderSystem* RS);
+		static ID3D12PipelineState* CreateGBufferSkinnedPassPSO         (RenderSystem* RS);
+		static ID3D12PipelineState* CreateDeferredShadingPassPSO        (RenderSystem* RS);
+		static ID3D12PipelineState* CreateDeferredShadingPassComputePSO (RenderSystem* RS);
+		static ID3D12PipelineState* CreateComputeTiledDeferredPSO       (RenderSystem* RS);
 
-        static ID3D12PipelineState* CreateLight_DEBUGARGSVIS_PSO    (RenderSystem* RS);
-        static ID3D12PipelineState* CreateLightBVH_PHASE1_PSO       (RenderSystem* RS);
-        static ID3D12PipelineState* CreateLightBVH_PHASE2_PSO       (RenderSystem* RS);
-        static ID3D12PipelineState* CreateLightBVH_DEBUGVIS_PSO     (RenderSystem* RS);
-        static ID3D12PipelineState* CreateLightListArgs_PSO         (RenderSystem* RS);
-        static ID3D12PipelineState* CreateCluster_DEBUGVIS_PSO      (RenderSystem* RS);
-        static ID3D12PipelineState* CreateCluster_DEBUGARGSVIS_PSO  (RenderSystem* RS);
-        static ID3D12PipelineState* CreateClusterLightListsPSO      (RenderSystem* RS);
-        static ID3D12PipelineState* CreateResolutionMatch_PSO       (RenderSystem* RS);
-        static ID3D12PipelineState* CreateClearResolutionMatch_PSO  (RenderSystem* RS);
+		static ID3D12PipelineState* CreateLight_DEBUGARGSVIS_PSO    (RenderSystem* RS);
+		static ID3D12PipelineState* CreateLightBVH_PHASE1_PSO       (RenderSystem* RS);
+		static ID3D12PipelineState* CreateLightBVH_PHASE2_PSO       (RenderSystem* RS);
+		static ID3D12PipelineState* CreateLightBVH_DEBUGVIS_PSO     (RenderSystem* RS);
+		static ID3D12PipelineState* CreateLightListArgs_PSO         (RenderSystem* RS);
+		static ID3D12PipelineState* CreateCluster_DEBUGVIS_PSO      (RenderSystem* RS);
+		static ID3D12PipelineState* CreateCluster_DEBUGARGSVIS_PSO  (RenderSystem* RS);
+		static ID3D12PipelineState* CreateClusterLightListsPSO      (RenderSystem* RS);
+		static ID3D12PipelineState* CreateResolutionMatch_PSO       (RenderSystem* RS);
+		static ID3D12PipelineState* CreateClearResolutionMatch_PSO  (RenderSystem* RS);
 
-        static ID3D12PipelineState* CreateClustersPSO               (RenderSystem* RS);
-        static ID3D12PipelineState* CreateClusterBufferPSO          (RenderSystem* RS);
-        static ID3D12PipelineState* CreateClearClusterCountersPSO   (RenderSystem* RS);
-        static ID3D12PipelineState* CreateDEBUGBVHVIS               (RenderSystem* RS);
+		static ID3D12PipelineState* CreateClustersPSO               (RenderSystem* RS);
+		static ID3D12PipelineState* CreateClusterBufferPSO          (RenderSystem* RS);
+		static ID3D12PipelineState* CreateClearClusterCountersPSO   (RenderSystem* RS);
+		static ID3D12PipelineState* CreateDEBUGBVHVIS               (RenderSystem* RS);
 
     };
 }

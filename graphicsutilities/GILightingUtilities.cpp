@@ -369,7 +369,7 @@ namespace FlexKit
 				}
 			};
 
-			if (FAILED(renderSystem.pDevice->CreateStateObject(descs, IID_PPV_ARGS(&stateObject))))
+			if (FAILED(renderSystem.pDevice9->CreateStateObject(descs, IID_PPV_ARGS(&stateObject))))
 				FK_LOG_ERROR("Failed to create State Object");
 
 		}
