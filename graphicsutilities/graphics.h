@@ -1123,6 +1123,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		DescriptorHeap() {}
 		DescriptorHeap(Context& RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
 
+		DescriptorHeap& operator = (const DescriptorHeap&);
+
 		// moveable
 		DescriptorHeap(DescriptorHeap&& rhs);
 		DescriptorHeap& operator = (DescriptorHeap&&);
@@ -1165,6 +1167,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		operator D3D12_GPU_DESCRIPTOR_HANDLE () const { return descriptorHeap.V2; } // TODO: FIX PAIRS SO AUTO CASTING WORKS
 
 		DescriptorHeap	GetHeapOffsetted(size_t offset, Context& ctx) const;
+
+		void Mirror(const DescriptorHeap& rhs)
+		{
+			descriptorHeap = rhs.descriptorHeap;
+		}
 
 	private:
 
@@ -3402,7 +3409,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		operator RenderSystem* () { return this; }
 
-		ID3D12Device9*      pDevice         = nullptr;
+		ID3D12Device1*      pDevice         = nullptr;
+		ID3D12Device9*      pDevice9        = nullptr;
 		ID3D12CommandQueue* GraphicsQueue   = nullptr;
 		ID3D12CommandQueue* ComputeQueue    = nullptr;
 
@@ -3414,8 +3422,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		CopyContextHandle   ImmediateUpload = InvalidHandle;
 
-		IDXGIFactory5*      pGIFactory = nullptr;
-		IDXGIAdapter4*      pDXGIAdapter = nullptr;
+		IDXGIFactory2*      pGIFactory		= nullptr;
+		IDXGIFactory5*      pGIFactory5		= nullptr;
+		IDXGIAdapter3*      pDXGIAdapter	= nullptr;
+		IDXGIAdapter4*      pDXGIAdapter4	= nullptr;
 
 		ResourceHandle      DefaultTexture;
 
@@ -3533,8 +3543,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		IDxcCompiler*           hlslCompiler        = nullptr;
         IDxcIncludeHandler*     hlslIncludeHandler  = nullptr;
 
-		ID3D12Debug5*			pDebug			= nullptr;
-		ID3D12DebugDevice1*		pDebugDevice	= nullptr;
+		ID3D12Debug1*			pDebug			= nullptr;
+		ID3D12Debug5*			pDebug5			= nullptr;
+		ID3D12DebugDevice*		pDebugDevice	= nullptr;
+		ID3D12DebugDevice1*		pDebugDevice1	= nullptr;
 		iAllocator*				Memory			= nullptr;
 
         std::mutex              crashM;

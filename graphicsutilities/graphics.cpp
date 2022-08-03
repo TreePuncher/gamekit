@@ -4208,9 +4208,9 @@ namespace FlexKit
 		Settings.AASamples = 1;
 		UINT DeviceFlags   = 0;
 
-		ID3D12Device9*		Device;
-		ID3D12Debug5*		Debug;
-		ID3D12DebugDevice1* DebugDevice;
+		ID3D12Device1*		Device;
+		ID3D12Debug1*		Debug;
+		ID3D12DebugDevice*	DebugDevice;
 
 
 #if USING(ENABLEDRED)
@@ -4229,14 +4229,20 @@ namespace FlexKit
 
 
 		HRESULT HR;
-		HR = D3D12GetDebugInterface(__uuidof(ID3D12Debug5), (void**)&Debug); FK_ASSERT(SUCCEEDED(HR));
+		HR = D3D12GetDebugInterface(__uuidof(ID3D12Debug1), (void**)&Debug); FK_ASSERT(SUCCEEDED(HR));
 #if USING( DEBUGGRAPHICS )
+		HR = D3D12GetDebugInterface(__uuidof(ID3D12Debug5), (void**)&pDebug5); FK_ASSERT(SUCCEEDED(HR));
+
 		Debug->EnableDebugLayer();
-		//Debug->SetEnableSynchronizedCommandQueueValidation(true);
-		Debug->SetEnableAutoName(true);
+
+		if (pDebug5)
+		{
+			//Debug->SetEnableSynchronizedCommandQueueValidation(true);
+			pDebug5->SetEnableAutoName(true);
+			pDebug5->SetEnableGPUBasedValidation(true);
+		}
 
 #if USING(DEBUGGPUVALIDATION)
-		Debug->SetEnableGPUBasedValidation(true);
 #endif
 #else
 		Debug = nullptr;
@@ -4270,6 +4276,7 @@ namespace FlexKit
 		D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
 		Device->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
 
+		Device->QueryInterface(__uuidof(ID3D12Device9), (void**)&pDevice9);
 
 		switch (options5.RaytracingTier)
 		{
@@ -4325,7 +4332,8 @@ namespace FlexKit
 #endif
 
 #if USING(DEBUGGRAPHICS)
-		HR =  Device->QueryInterface(__uuidof(ID3D12DebugDevice1), (void**)&DebugDevice);
+		Device->QueryInterface(__uuidof(ID3D12DebugDevice), (void**)&DebugDevice);
+		Device->QueryInterface(__uuidof(ID3D12DebugDevice1), (void**)&pDebugDevice1);
 #else
 		DebugDevice = nullptr;
 #endif
@@ -4350,7 +4358,7 @@ namespace FlexKit
 		ComputeCQD.Flags								= D3D12_COMMAND_QUEUE_FLAGS::D3D12_COMMAND_QUEUE_FLAG_NONE;
 		ComputeCQD.Type									= D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COMPUTE;
 
-		IDXGIFactory5*				DXGIFactory         = nullptr;
+		IDXGIFactory5*				DXGIFactory			= nullptr;
 		IDXGIAdapter4*				DXGIAdapter			= nullptr;
 		
 
@@ -4853,7 +4861,7 @@ namespace FlexKit
 		inputs.Flags            = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
 
 		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info;
-		pDevice->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
+		pDevice9->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
 
 		return {
 			.BLAS_byteSize          = info.ResultDataMaxSizeInBytes,

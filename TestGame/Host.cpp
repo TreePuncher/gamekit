@@ -11,11 +11,11 @@ using FlexKit::GameFramework;
 
 constexpr bool EnableDebug()
 {
-//#if _DEBUG
+#if _DEBUG
     return true;
-//#else
+#else
     return false;
-//#endif
+#endif
 }
 
 HostWorldStateMangager::HostWorldStateMangager(MultiplayerPlayerID_t IN_player, NetworkState& IN_net, BaseState& IN_base) :

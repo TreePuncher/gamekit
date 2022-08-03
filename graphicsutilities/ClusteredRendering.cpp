@@ -1228,15 +1228,15 @@ namespace FlexKit
 
 
 	GBufferPass& ClusteredRender::FillGBuffer(
-		UpdateDispatcher&               dispatcher,
-		FrameGraph&                     frameGraph,
-		GatherPassesTask&               passes,
-		const CameraHandle              camera,
-		GBuffer&                        gbuffer,
-		ResourceHandle                  depthTarget,
-		ReserveConstantBufferFunction   reserveCB,
-		iAllocator*                     allocator,
-		AnimationPoseUpload*            animationPoses)
+		UpdateDispatcher&				dispatcher,
+		FrameGraph&						frameGraph,
+		GatherPassesTask&				passes,
+		const CameraHandle				camera,
+		GBuffer&						gbuffer,
+		ResourceHandle					depthTarget,
+		ReserveConstantBufferFunction	reserveCB,
+		iAllocator*						allocator,
+		AnimationPoseUpload*			animationPoses)
 	{
 		auto& pass = frameGraph.AddNode<GBufferPass>(
 			GBufferPass{
@@ -1268,9 +1268,9 @@ namespace FlexKit
 					}
 				};
 
-				auto& passes        = data.passes.GetData().passes;
-				auto pass           = FindPass(passes.begin(), passes.end(), GBufferPassID);
-				auto animatedPass   = FindPass(passes.begin(), passes.end(), GBufferAnimatedPassID);
+				auto& passes		= data.passes.GetData().passes;
+				auto pass			= FindPass(passes.begin(), passes.end(), GBufferPassID);
+				auto animatedPass	= FindPass(passes.begin(), passes.end(), GBufferAnimatedPassID);
 
 				if (!pass && !pass->pvs.size())
 					return;
@@ -1386,27 +1386,23 @@ namespace FlexKit
 					descriptors.emplace_back();
 					auto& descHeap = descriptors.back();
 
-					descHeap.Init(
-						ctx,
-						resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0u),
-						&allocator);
-
 					constantData.textureCount = (uint32_t)material.Textures.size();
 					constants.emplace_back(constantData, entityConstantBuffer);
 
 					if (material.Textures.size())
 					{
+						descHeap.Init(
+							ctx,
+							resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0u),
+							&allocator);
 
-						for (auto texture : material.Textures)
-						{
-							for (size_t I = 0; I < Min(material.Textures.size(), 4u); I++)
-								descHeap.SetSRV(ctx, I, material.Textures[I]);
+						for (size_t I = 0; I < Min(material.Textures.size(), 4u); I++)
+							descHeap.SetSRV(ctx, I, material.Textures[I]);
 
-							descHeap.NullFill(ctx);
-						}
+						descHeap.NullFill(ctx);
 					}
 					else
-						descHeap.NullFill(ctx);
+						descHeap.Mirror(defaultHeap);
 				};
 
 				for (auto& brush : pass->pvs)
