@@ -4,6 +4,7 @@
 #include <QtWidgets/QTableWidget>
 #include <QtWidgets/qdockwidget>
 #include <QtWidgets/qmenubar.h>
+#include <qshortcut>
 #include <memory>
 
 #include "ResourceBrowserWidget.h"
@@ -21,46 +22,54 @@
 
 
 ResourceBrowserWidget::ResourceBrowserWidget(EditorProject& IN_project, EditorRenderer& IN_renderer, QWidget *parent) :
-    QWidget     { parent },
-    renderer    { IN_renderer },
-    menuBar     { new QMenuBar{ this } },
-    timer       { new QTimer(this) },
-    project     { IN_project }
+	QWidget		{ parent },
+	renderer	{ IN_renderer },
+	menuBar		{ new QMenuBar{ this } },
+	timer		{ new QTimer(this) },
+	project		{ IN_project }
 {
 	ui.setupUi(this);
-    ui.verticalLayout->setMenuBar(menuBar);
+	ui.verticalLayout->setMenuBar(menuBar);
 
-    table = findChild<QTableWidget*>("tableWidget");
-    table->setContextMenuPolicy(Qt::CustomContextMenu);
-    table->setUpdatesEnabled(true);
-    table->setColumnCount(4);
-    table->setSelectionMode(QAbstractItemView::SingleSelection);
+	table = findChild<QTableWidget*>("tableWidget");
+	table->setContextMenuPolicy(Qt::CustomContextMenu);
+	table->setUpdatesEnabled(true);
+	table->setColumnCount(4);
+	table->setSelectionMode(QAbstractItemView::MultiSelection);
 
-    connect(table, &QTableWidget::cellChanged, this, &ResourceBrowserWidget::OnCellChange);
+	connect(table, &QTableWidget::cellChanged, this, &ResourceBrowserWidget::OnCellChange);
 
-    connect(timer, &QTimer::timeout, this, &ResourceBrowserWidget::Update);
-    timer->setInterval(1000);
-    timer->start();
+	connect(timer, &QTimer::timeout, this, &ResourceBrowserWidget::Update);
+	timer->setInterval(1000);
+	timer->start();
 
-    connect(
-        table, &QTableWidget::customContextMenuRequested,
-        this, &ResourceBrowserWidget::ShowContextMenu);
+	connect(
+		table, &QTableWidget::customContextMenuRequested,
+		this, &ResourceBrowserWidget::ShowContextMenu);
 
-    auto createDropDown = menuBar->addMenu("Create");
-    auto createScene    = createDropDown->addAction("Scene");
+	auto createDropDown = menuBar->addMenu("Create");
+	auto createScene    = createDropDown->addAction("Scene");
 
-    createScene->connect(createScene, &QAction::triggered,
-        [&]
-        {
-            auto scene          = std::make_shared<FlexKit::SceneResource>();
-            auto editorScene    = std::make_shared<EditorScene>(scene);
+	createScene->connect(createScene, &QAction::triggered,
+		[&]
+		{
+			auto scene			= std::make_shared<FlexKit::SceneResource>();
+			auto editorScene	= std::make_shared<EditorScene>(scene);
 
-            scene->ID               = "NewScene";
-            editorScene->sceneName  = "NewScene";
-            
-            IN_project.AddScene(editorScene);
-            IN_project.AddResource(std::static_pointer_cast<FlexKit::iResource>(scene));
-        });
+			scene->ID				= "NewScene";
+			editorScene->sceneName	= "NewScene";
+			
+			IN_project.AddScene(editorScene);
+			IN_project.AddResource(std::static_pointer_cast<FlexKit::iResource>(scene));
+		});
+
+	auto* deleteHotKey = new QShortcut{ QKeySequence::Delete, this };
+
+	connect(deleteHotKey, &QShortcut::activated,
+		[this]()
+		{
+			RemoveSelectedItems();
+		});
 }
 
 
@@ -77,59 +86,59 @@ ResourceBrowserWidget::~ResourceBrowserWidget()
 
 void ResourceBrowserWidget::Update()
 {
-    auto resourceCount = project.resources.size();
-    table->setRowCount(resourceCount);
+	auto resourceCount = project.resources.size();
+	table->setRowCount(resourceCount);
 
-    static const std::map<ResourceID_t, const char*> IDTypeMap = {
-        { TextureResourceTypeID,    "Texture" },
-        { MeshResourceTypeID,       "Mesh" },
-        { SceneResourceTypeID,      "Scene" },
-    };
+	static const std::map<ResourceID_t, const char*> IDTypeMap = {
+		{ TextureResourceTypeID,	"Texture" },
+		{ MeshResourceTypeID,		"Mesh" },
+		{ SceneResourceTypeID,		"Scene" },
+	};
 
-    for (size_t I = 0; I < resourceCount; I++)
-    {
-        auto useCount   = project.resources[I].use_count();
-        auto& resource  = project.resources[I]->resource;
+	for (size_t I = 0; I < resourceCount; I++)
+	{
+		auto useCount   = project.resources[I].use_count();
+		auto& resource  = project.resources[I]->resource;
 
-        auto name           = table->item(I, 0);
-        auto ID             = table->item(I, 1);
-        auto userCount      = table->item(I, 2);
-        auto resourceType   = table->item(I, 3);
+		auto name			= table->item(I, 0);
+		auto ID				= table->item(I, 1);
+		auto userCount		= table->item(I, 2);
+		auto resourceType	= table->item(I, 3);
 
-        if (!name)
-        {
-            name            = new QTableWidgetItem;
-            ID              = new QTableWidgetItem;
-            userCount       = new QTableWidgetItem;
-            resourceType    = new QTableWidgetItem;
+		if (!name)
+		{
+			name			= new QTableWidgetItem;
+			ID				= new QTableWidgetItem;
+			userCount		= new QTableWidgetItem;
+			resourceType	= new QTableWidgetItem;
 
-            auto& idTxt = resource->GetResourceID();
-            name->setText(idTxt.c_str());
-            ID->setText(fmt::format("{}", resource->GetResourceGUID()).c_str());
-            userCount->setText(fmt::format("{}", useCount).c_str());
+			auto& idTxt = resource->GetResourceID();
+			name->setText(idTxt.c_str());
+			ID->setText(fmt::format("{}", resource->GetResourceGUID()).c_str());
+			userCount->setText(fmt::format("{}", useCount).c_str());
 
-            table->setItem(I, 0, name);
-            table->setItem(I, 1, ID);
-            table->setItem(I, 2, userCount);
-            table->setItem(I, 3, resourceType);
-        }
-        else
-        {
-            auto& idTxt = resource->GetResourceID();
-            name->setText(idTxt.c_str());
-            ID->setText(fmt::format("{}", resource->GetResourceGUID()).c_str());
-            userCount->setText(fmt::format("{}", useCount).c_str());
+			table->setItem(I, 0, name);
+			table->setItem(I, 1, ID);
+			table->setItem(I, 2, userCount);
+			table->setItem(I, 3, resourceType);
+		}
+		else
+		{
+			auto& idTxt = resource->GetResourceID();
+			name->setText(idTxt.c_str());
+			ID->setText(fmt::format("{}", resource->GetResourceGUID()).c_str());
+			userCount->setText(fmt::format("{}", useCount).c_str());
 
-            if (auto res = IDTypeMap.find(resource->GetResourceTypeID()); res != IDTypeMap.end())
-                resourceType->setText(res->second);
-            else
-                resourceType->setText("Unknown");
-        }
-    }
+			if (auto res = IDTypeMap.find(resource->GetResourceTypeID()); res != IDTypeMap.end())
+				resourceType->setText(res->second);
+			else
+				resourceType->setText("Unknown");
+		}
+	}
 
-    table->update();
+	table->update();
 
-    timer->start();
+	timer->start();
 }
 
 
@@ -138,32 +147,55 @@ void ResourceBrowserWidget::Update()
 
 void ResourceBrowserWidget::OnCellChange(int row, int column)
 {
-    auto item = table->item(row, column);
+	auto item = table->item(row, column);
 
-    switch (column)
-    {
-    case 0:
-    {
-        auto name = item->text().toStdString();
-        project.resources[row]->resource->SetResourceID(name);
-    }   break;
-    case 1:
-    {
-        uint64_t GUID;
-        auto text = item->text().toStdString();
-        if(scn::scan(text, "{}", GUID))
-            project.resources[row]->resource->SetResourceGUID(GUID);
+	switch (column)
+	{
+	case 0:
+	{
+		auto name = item->text().toStdString();
+		project.resources[row]->resource->SetResourceID(name);
+	}   break;
+	case 1:
+	{
+		uint64_t GUID;
+		auto text = item->text().toStdString();
+		if(scn::scan(text, "{}", GUID))
+			project.resources[row]->resource->SetResourceGUID(GUID);
 
-    }   break;
-    case 2:
-    {
-    }   break;
-    case 3:
-    {
-    }   break;
-    default:
-        return;
-    }
+	}   break;
+	case 2:
+	{
+	}   break;
+	case 3:
+	{
+	}   break;
+	default:
+		return;
+	}
+}
+
+
+/************************************************************************************************/
+
+
+void ResourceBrowserWidget::RemoveSelectedItems()
+{
+	table = findChild<QTableWidget*>("tableWidget");
+
+	std::vector<ProjectResource_ptr> removeList;
+
+	for (auto* item : table->selectedItems())
+	{
+		auto& projRes = project.resources[item->row()];
+		removeList.push_back(projRes);
+	}
+
+	for (auto&& res : removeList)
+		project.RemoveResource(res->resource);
+
+	table->clearSelection();
+	table->update();
 }
 
 
@@ -172,17 +204,17 @@ void ResourceBrowserWidget::OnCellChange(int row, int column)
 
 void ResourceBrowserWidget::resizeEvent(QResizeEvent* evt) 
 {
-    QWidget::resizeEvent(evt);
+	QWidget::resizeEvent(evt);
 
-    const auto widgetSize   = size();
-    const auto width        = widgetSize.width();
-    const auto height       = widgetSize.height();
+	const auto widgetSize	= size();
+	const auto width		= widgetSize.width();
+	const auto height		= widgetSize.height();
 
-    resize(widgetSize);
+	resize(widgetSize);
 
-    auto child = findChild<QTableWidget*>("tableWidget");
+	auto child = findChild<QTableWidget*>("tableWidget");
 
-    child->resize(widgetSize);
+	child->resize(widgetSize);
 }
 
 
@@ -191,7 +223,7 @@ void ResourceBrowserWidget::resizeEvent(QResizeEvent* evt)
 
 void ResourceBrowserWidget::AddResourceViewer(ResourceViewer_ptr viewer_ptr)
 {
-    resourceViewers[viewer_ptr->resourceID] = viewer_ptr;
+	resourceViewers[viewer_ptr->resourceID] = viewer_ptr;
 }
 
 
@@ -199,33 +231,34 @@ void ResourceBrowserWidget::AddResourceViewer(ResourceViewer_ptr viewer_ptr)
 
 void ResourceBrowserWidget::ShowContextMenu(const QPoint& pos)
 {
-    auto index = table->indexAt(pos);
+	auto index = table->indexAt(pos);
 
-    if (index.isValid())
-    {
-        QMenu contextMenu(tr("Context menu"), this);
+	if (index.isValid())
+	{
+		QMenu contextMenu(tr("Context menu"), this);
 
-        std::vector<QAction> actions;
+		std::vector<QAction> actions;
 
-        auto item = table->itemAt(pos);
+		auto item = table->itemAt(pos);
 
-        auto& projectResource = project.resources[item->row()];
-        auto typeID = projectResource->resource->GetResourceTypeID();
+		auto& projectResource = project.resources[item->row()];
+		auto typeID = projectResource->resource->GetResourceTypeID();
 
-        if (auto res = resourceViewers.find(typeID); res != resourceViewers.end()) {
-            contextMenu.addAction("View", [&, index = index, type = typeID, resource = project.resources[index.row()]]
-                {
-                    (*resourceViewers[type])(projectResource->resource);
-                });
-        }
+		if (auto res = resourceViewers.find(typeID); res != resourceViewers.end()) {
+			contextMenu.addAction("View", [&, index = index, type = typeID, resource = project.resources[index.row()]]
+				{
+					(*resourceViewers[type])(projectResource->resource);
+				});
+		}
 
-        contextMenu.addAction("Remove", [&, index = index, projRes = project.resources[index.row()]]
-            {
-                project.RemoveResource(projRes->resource);
-            });
+		contextMenu.addAction("Remove", [&, index = index, projRes = project.resources[index.row()]]
+			{
+				RemoveSelectedItems();
+				//project.RemoveResource(projRes->resource);
+			});
 
-        contextMenu.exec(table->viewport()->mapToGlobal(pos));
-    }
+		contextMenu.exec(table->viewport()->mapToGlobal(pos));
+	}
 }
 
 

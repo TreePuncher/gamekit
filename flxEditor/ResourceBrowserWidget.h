@@ -22,11 +22,11 @@ using ResourceViewID = uint32_t;
 
 struct IResourceViewer
 {
-    IResourceViewer(ResourceViewID IN_ID) : resourceID{ IN_ID } {}
+	IResourceViewer(ResourceViewID IN_ID) : resourceID{ IN_ID } {}
 
-    ResourceViewID resourceID = -1;
+	ResourceViewID resourceID = -1;
 
-    virtual void operator () (FlexKit::Resource_ptr) = 0;
+	virtual void operator () (FlexKit::Resource_ptr) = 0;
 };
 
 using ResourceViewer_ptr    = std::shared_ptr<IResourceViewer>;
@@ -40,25 +40,27 @@ public:
 	ResourceBrowserWidget(EditorProject& IN_project, EditorRenderer& renderer, QWidget *parent = Q_NULLPTR);
 	~ResourceBrowserWidget();
 
-    void Update();
-    void resizeEvent(QResizeEvent* event) override;
-    void OnCellChange(int row, int column);
+	void Update();
+	void resizeEvent(QResizeEvent* event) override;
+	void OnCellChange(int row, int column);
 
-    static void AddResourceViewer(ResourceViewer_ptr);
+	void RemoveSelectedItems();
+
+	static void AddResourceViewer(ResourceViewer_ptr);
 
 public slots:
 
-    void ShowContextMenu(const QPoint& pos);
+	void ShowContextMenu(const QPoint& pos);
 private:
 
-    QTableWidget*               table;
-    EditorProject&              project;
-    EditorRenderer&             renderer;
-	Ui::ResourceBrowserWidget   ui;
-    QMenuBar*                   menuBar;
-    QTimer*                     timer;
+	QTableWidget*				table;
+	EditorProject&				project;
+	EditorRenderer&				renderer;
+	Ui::ResourceBrowserWidget	ui;
+	QMenuBar*					menuBar;
+	QTimer*						timer;
 
-    inline static ResourceViewMap      resourceViewers;
+	inline static ResourceViewMap	resourceViewers;
 };
 
 
