@@ -14,6 +14,7 @@
 #include <type_traits>
 #include <tuple>
 #include <span>
+#include <regex>
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -21,26 +22,26 @@ namespace FlexKit
 
 	constexpr ComponentID InvalidComponentID = -1;
 
-    class GameObject;
+	class GameObject;
 
-    using KeyValuePair  = std::pair<uint32_t, void*>;
-    using ValueMap      = std::span<KeyValuePair>;
+	using KeyValuePair  = std::pair<uint32_t, void*>;
+	using ValueMap      = std::span<KeyValuePair>;
 
-    template<typename TY>
-    std::optional<TY> FindValue(ValueMap& map, uint32_t valueId)
-    {
-        auto res = std::find_if(
-                    map.begin(),
-                    map.end(),
-                    [&](auto& pair) {
-                        return std::get<0>(pair) == valueId; }
-                    );
+	template<typename TY>
+	std::optional<TY> FindValue(ValueMap& map, uint32_t valueId)
+	{
+		auto res = std::find_if(
+					map.begin(),
+					map.end(),
+					[&](auto& pair) {
+						return std::get<0>(pair) == valueId; }
+					);
 
-        if (res != map.end())
-            return { (TY)res->second };
-        else
-            return {};
-    }
+		if (res != map.end())
+			return { (TY)res->second };
+		else
+			return {};
+	}
 
 	class ComponentBase
 	{
@@ -72,10 +73,10 @@ namespace FlexKit
 					return value.ID == ID;
 				});
 
-            if (res != Components.end()) {
-                FK_LOG_WARNING("Component System Adding already added System!");
-                FK_ASSERT(0, "Critical Error!");
-            }
+			if (res != Components.end()) {
+				FK_LOG_WARNING("Component System Adding already added System!");
+				FK_ASSERT(0, "Critical Error!");
+			}
 
 			Components.push_back({ &component, component.GetID() });
 		}
@@ -118,18 +119,18 @@ namespace FlexKit
 		}
 
 
-        static bool isComponentAvailable(ComponentID ID)
-        {
-            auto res = find(
-                Components,
-                [&](auto e)
-                {
-                    return e.ID == ID;
-                });
+		static bool isComponentAvailable(ComponentID ID)
+		{
+			auto res = find(
+				Components,
+				[&](auto e)
+				{
+					return e.ID == ID;
+				});
 
 
-            return res != Components.end();
-        }
+			return res != Components.end();
+		}
 
 
 		static static_vector<ComponentEntry, 128> GetComponentList()
@@ -138,23 +139,23 @@ namespace FlexKit
 		}
 
 
-        virtual void AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) {};
+		virtual void AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) {};
 
 
 		inline static static_vector<ComponentEntry, 128> Components = static_vector<ComponentBase::ComponentEntry, 128>();
 	};
 
 
-    inline bool ComponentAvailability(ComponentID ID)
-    {
-        return ComponentBase::isComponentAvailable(ID);
-    }
+	inline bool ComponentAvailability(ComponentID ID)
+	{
+		return ComponentBase::isComponentAvailable(ID);
+	}
 
 
-    inline ComponentBase& GetComponent(ComponentID ID)
-    {
-        return ComponentBase::GetComponent(ID);
-    }
+	inline ComponentBase& GetComponent(ComponentID ID)
+	{
+		return ComponentBase::GetComponent(ID);
+	}
 
 
 	/************************************************************************************************/
@@ -202,7 +203,7 @@ namespace FlexKit
 			return component != nullptr;
 		}
 
-        virtual void AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override {}
+		virtual void AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override {}
 	};
 
 
@@ -212,7 +213,7 @@ namespace FlexKit
 	class ComponentViewBase
 	{
 	public:
-        ComponentViewBase(ComponentID IN_ID) :
+		ComponentViewBase(ComponentID IN_ID) :
 			ID{ IN_ID } {}
 
 		virtual ~ComponentViewBase() {}
@@ -227,8 +228,8 @@ namespace FlexKit
 	class ComponentView_t : public ComponentViewBase
 	{
 	public:
-        ComponentView_t() : ComponentViewBase{ ComponentTY::GetComponentID() } {}
-        virtual ~ComponentView_t() override {}
+		ComponentView_t() : ComponentViewBase{ ComponentTY::GetComponentID() } {}
+		virtual ~ComponentView_t() override {}
 
 		static ComponentID		GetComponentID()	{ return ComponentTY::GetComponentID(); }
 		static decltype(auto)	GetComponent()		{ return ComponentTY::GetComponent(); }
@@ -238,68 +239,66 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    struct ComponentViewContainer
-    {
-        ComponentViewContainer() = default;
+	struct ComponentViewContainer
+	{
+		ComponentViewContainer() = default;
 
-        template<typename TY, typename... TY_ARGS> [[nodiscard]]
-        static ComponentViewContainer Create(iAllocator& allocator, GameObject& gameObject, TY_ARGS&& ... args)
-        {
-            ComponentViewContainer component;
-            component.componentSize = sizeof(TY);
+		template<typename TY, typename... TY_ARGS>
+		void Create(iAllocator& allocator, GameObject& gameObject, TY_ARGS&& ... args)
+		{
+			componentSize = (uint8_t)Min(sizeof(TY), 0xff);
 
-            if (component.componentSize > sizeof(component.buffer))
-                component._ptr = &allocator.allocate<TY>(gameObject, std::forward<TY_ARGS>(args)...);
-            else
-                new(component.buffer) TY(gameObject, std::forward<TY_ARGS>(args)...);
+			if (componentSize > sizeof(buffer))
+				_ptr = &allocator.allocate<TY>(gameObject, std::forward<TY_ARGS>(args)...);
+			else
+				new(buffer) TY(gameObject, std::forward<TY_ARGS>(args)...);
+		}
 
-            component.ID = component.Get()->ID;
+		ComponentViewBase* operator -> () { return Get(); }
+		operator ComponentViewBase* () { return Get(); }
 
-            return component;
-        }
+		ComponentViewBase* Get() const
+		{
+			if (componentSize > sizeof(buffer))
+				return _ptr;
+			else
+				return (ComponentViewBase*)(buffer);
+		}
 
-        ComponentViewBase* operator -> () { return Get(); }
-        operator ComponentViewBase* () { return Get(); }
+		ComponentID GetID() const
+		{
+			return Get()->ID;
+		}
 
-        ComponentViewBase* Get() const
-        {
-            if (componentSize > sizeof(buffer))
-                return _ptr;
-            else
-                return (ComponentViewBase*)&(buffer[0]);
-        }
 
-        ComponentViewBase& Get_ref() const
-        {
-            return *Get();
-        }
+		ComponentViewBase& Get_ref() const
+		{
+			return *Get();
+		}
 
-        void Release(iAllocator* allocator)
-        {
-            if (ID == -1)
-                return;
+		void Release(iAllocator* allocator)
+		{
+			if (componentSize == 0)
+				return;
 
-            Get()->~ComponentViewBase();
+			Get()->~ComponentViewBase();
 
-            if (componentSize > componentSize)
-                allocator->release(_ptr);
+			if (componentSize > componentSize)
+				allocator->release(_ptr);
+		}
 
-            ID = -1;
-        }
-
-        ComponentID ID;
-        uint16_t    componentSize;
-        union
-        {
-            ComponentViewBase* _ptr;
-            char                buffer[24];
-        };
-    };
+		uint8_t		componentSize = 0;
+		union
+		{
+			ComponentViewBase* _ptr;
+			char                buffer[24];
+		};
+	};
 
 
 	class GameObject
 	{
-    public:
+	public:
 		GameObject(iAllocator* IN_allocator = SystemAllocator) :
 			allocator{ IN_allocator }
 			//behaviors{ allocator } 
@@ -312,36 +311,41 @@ namespace FlexKit
 		}
 
 
-        GameObject              (const GameObject& rhs) = delete;
-        GameObject& operator =  (const GameObject& rhs) = delete;
+		GameObject              (const GameObject& rhs) = delete;
+		GameObject& operator =  (const GameObject& rhs) = delete;
 
 
-        GameObject              (GameObject&& rhs) = delete;
-        GameObject& operator =  (GameObject&& rhs) = delete;
+		GameObject              (GameObject&& rhs) = delete;
+		GameObject& operator =  (GameObject&& rhs) = delete;
 
 		template<typename TY_View, typename ... TY_args>
 		auto& AddView(TY_args&& ... args)
 		{
 			static_assert(std::is_base_of<ComponentViewBase, TY_View>(), "You can only add view types!");
 
-            if (!hasView(TY_View::GetComponentID()))
-            {
-                views.emplace_back(ComponentViewContainer::Create<TY_View>(*allocator, *this, std::forward<TY_args>(args)...));
-                return *static_cast<TY_View*>(views.back().Get());
-            }
-            else
-                return *static_cast<TY_View*>(GetView(TY_View::GetComponentID()));
+			if (auto res = GetView(TY_View::GetComponentID()); res)
+				return *static_cast<TY_View*>(res);
+			else
+			{
+				views.emplace_back();
+				ids.push_back(TY_View::GetComponentID());
+				auto& container = views.back();
+				container.Create<TY_View>(*allocator, *this, std::forward<TY_args>(args)...);
+
+				return *static_cast<TY_View*>(container.Get());
+			}
 		}
 
 
 		void RemoveView(ComponentViewBase& view)
 		{
 			auto const id = view.ID;
-			for (auto itr = views.begin(); itr < views.end(); itr++)
+			for (size_t I = 0; I < ids.size(); I++)
 			{
-				if ((*itr).ID == id) {
-					itr->Release(allocator);
-					views.remove_unstable(itr);
+				if (ids[I] == id) {
+					views[I].Release(allocator);
+					views.remove_unstable(views.begin() + I);
+					ids.remove_unstable(ids.begin() + I);
 				}
 			}
 		}
@@ -361,20 +365,23 @@ namespace FlexKit
 			}
 
 			views.clear();
+			ids.clear();
 		}
 
 
-        void _Clear()
-        {
-            views.clear();
-        }
+		void _Clear()
+		{
+			views.clear();
+			ids.clear();
+		}
 
 
 		ComponentViewBase* GetView(ComponentID id) const
 		{
-			for (const auto& view : views)
-				if (view.ID == id)
-					return view.Get();
+			const size_t end = ids.size();
+			for (size_t I = 0; I < end; I++)
+				if (ids[I] == id)
+					return views[I].Get();
 
 			return nullptr;
 		}
@@ -382,101 +389,102 @@ namespace FlexKit
 
 		bool hasView(ComponentID id) const
 		{
-			for (auto& view : views)
-				if (view.ID == id)
+			for (auto& componentId : ids)
+				if (componentId == id)
 					return true;
 
 			return false;
 		}
 
 
-        auto begin()    { return views.begin(); }
-        auto end()      { return views.end(); }
+		auto begin()	{ return views.begin(); }
+		auto end()		{ return views.end(); }
 
-        auto begin()    const { return views.begin(); }
-        auto end()      const { return views.end(); }
+		auto begin()	const { return views.begin(); }
+		auto end()		const { return views.end(); }
 
 	private:
 
 
-        static_vector<ComponentViewContainer, 16>	views;	        // component + Code
-		iAllocator*						        	allocator;
-    };
+		static_vector<uint32_t, 16>					ids;	// component + Code
+		static_vector<ComponentViewContainer, 16>	views;	// component + Code
+		iAllocator*									allocator;
+	};
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    bool LoadPrefab(GameObject&, const char* assetID,   iAllocator& allocator, ValueMap user = {});
-    bool LoadPrefab(GameObject&, uint64_t assetID,      iAllocator& allocator, ValueMap user = {});
+	bool LoadPrefab(GameObject&, const char* assetID,   iAllocator& allocator, ValueMap user = {});
+	bool LoadPrefab(GameObject&, uint64_t assetID,      iAllocator& allocator, ValueMap user = {});
 
 
-    /************************************************************************************************/
-
-
-    template<typename TY_COMPONENT>
-    constexpr bool ValidType()
-    {
-        return std::is_base_of_v<ComponentViewBase, std::remove_pointer_t<std::decay_t<TY_COMPONENT>>>;
-    }
-
-
-    template<typename ... ARGS>
-    constexpr bool ValidTypes()
-    {
-        return (ValidType<ARGS>() || ...);
-    }
-
-
-    template<typename ... TY_PACKED_ARGS>
-    bool hasViews(const GameObject& go)
-    {
-        static_assert(ValidTypes<TY_PACKED_ARGS...>(), "Invalid Type Detected, Use only ComponentView types!");
-
-        return (go.hasView(std::decay_t<TY_PACKED_ARGS>::GetComponentID()) & ...);
-    }
+	/************************************************************************************************/
 
 
 	template<typename TY_COMPONENT>
-    auto& GetView(const GameObject& go)
+	constexpr bool ValidType()
 	{
-        static_assert(std::is_base_of<ComponentViewBase, TY_COMPONENT>::value, "Parameter that is not a behavior type detected, behavior types only!");
-
-        return *static_cast<TY_COMPONENT*>(go.GetView(TY_COMPONENT::GetComponentID()));
+		return std::is_base_of_v<ComponentViewBase, std::remove_pointer_t<std::decay_t<TY_COMPONENT>>>;
 	}
 
 
-    template<typename TY_COMPONENT>
-    auto GetViewTuple(const GameObject& go)
-    {
-        using TY_COMPONENT_DECAYED  = typename std::remove_pointer_t<std::decay_t<TY_COMPONENT>>;
-        constexpr bool pointer      = std::is_pointer_v<TY_COMPONENT>;
+	template<typename ... ARGS>
+	constexpr bool ValidTypes()
+	{
+		return (ValidType<ARGS>() || ...);
+	}
 
-        static_assert(std::is_base_of<ComponentViewBase, TY_COMPONENT_DECAYED>::value, "Parameter that is not a behavior type detected, behavior types only!");
 
-        if constexpr (pointer)
-            return  std::tuple<TY_COMPONENT_DECAYED*>{ &GetView<TY_COMPONENT_DECAYED>(go) };
-        else
-            return  std::tuple<TY_COMPONENT_DECAYED&>{  GetView<TY_COMPONENT_DECAYED>(go) };
-    }
+	template<typename ... TY_PACKED_ARGS>
+	bool hasViews(const GameObject& go)
+	{
+		static_assert(ValidTypes<TY_PACKED_ARGS...>(), "Invalid Type Detected, Use only ComponentView types!");
+
+		return (go.hasView(std::decay_t<TY_PACKED_ARGS>::GetComponentID()) & ...);
+	}
+
+
+	template<typename TY_COMPONENT>
+	auto& GetView(const GameObject& go)
+	{
+		static_assert(std::is_base_of<ComponentViewBase, TY_COMPONENT>::value, "Parameter that is not a behavior type detected, behavior types only!");
+
+		return *static_cast<TY_COMPONENT*>(go.GetView(TY_COMPONENT::GetComponentID()));
+	}
+
+
+	template<typename TY_COMPONENT>
+	auto GetViewTuple(const GameObject& go)
+	{
+		using TY_COMPONENT_DECAYED  = typename std::remove_pointer_t<std::decay_t<TY_COMPONENT>>;
+		constexpr bool pointer      = std::is_pointer_v<TY_COMPONENT>;
+
+		static_assert(std::is_base_of<ComponentViewBase, TY_COMPONENT_DECAYED>::value, "Parameter that is not a behavior type detected, behavior types only!");
+
+		if constexpr (pointer)
+			return  std::tuple<TY_COMPONENT_DECAYED*>{ &GetView<TY_COMPONENT_DECAYED>(go) };
+		else
+			return  std::tuple<TY_COMPONENT_DECAYED&>{  GetView<TY_COMPONENT_DECAYED>(go) };
+	}
 
 
 	template<typename TY_COMPONENT_ARG, typename ... TY_PACKED_ARGS>
 	auto GetViewsTuple(const GameObject& go)
 	{
 		if constexpr (sizeof...(TY_PACKED_ARGS) == 0)
-            return  GetViewTuple<TY_COMPONENT_ARG>(go);
+			return  GetViewTuple<TY_COMPONENT_ARG>(go);
 		else
-            return  std::tuple_cat(
-                GetViewTuple<TY_COMPONENT_ARG>(go),
-                GetViewsTuple<TY_PACKED_ARGS...>(go));
+			return  std::tuple_cat(
+				GetViewTuple<TY_COMPONENT_ARG>(go),
+				GetViewsTuple<TY_PACKED_ARGS...>(go));
 	}
 
 
 	template<typename ... TY_PACKED_ARGS, typename FN, typename ErrorFN>
 	auto Apply_t(const GameObject& go, const FN& fn, const ErrorFN& errorFn)
 	{
-        if (!hasViews<TY_PACKED_ARGS...>(go))
+		if (!hasViews<TY_PACKED_ARGS...>(go))
 			return errorFn();
 		else 
 			return std::apply(fn, GetViewsTuple<TY_PACKED_ARGS...>(go));
@@ -520,144 +528,144 @@ namespace FlexKit
 		return ApplyProxy<FN>::run(go, fn, [&] {});
 	}
 
-    template<typename FN>
-    void Apply(GameObject** itr, GameObject** end, FN fn)
-    {
-        while (itr != end)
-        {
-            ApplyProxy<FN>::run(**itr, fn, [&] {});
-            itr++;
-        }
-    }
+	template<typename FN>
+	void Apply(GameObject** itr, GameObject** end, FN fn)
+	{
+		while (itr != end)
+		{
+			ApplyProxy<FN>::run(**itr, fn, [&] {});
+			itr++;
+		}
+	}
 
 
 	/************************************************************************************************/
 
 
-    template<typename TY>
-    struct ReadOnly
-    {
-        using Type          = const TY&;
-        using ValueType     = TY;
+	template<typename TY>
+	struct ReadOnly
+	{
+		using Type          = const TY&;
+		using ValueType     = TY;
 
-        static constexpr bool IsConst() { return true; }
-        bool IsValid(auto&) { return true; }
-    };
+		static constexpr bool IsConst() { return true; }
+		bool IsValid(auto&) { return true; }
+	};
 
-    template<typename TY>
-    struct Mut
-    {
-        using Type      = TY&;
-        using ValueType = TY;
+	template<typename TY>
+	struct Mut
+	{
+		using Type      = TY&;
+		using ValueType = TY;
 
-        static constexpr bool IsConst() { return false; }
-        bool IsValid(auto&) { return true; }
-    };
+		static constexpr bool IsConst() { return false; }
+		bool IsValid(auto&) { return true; }
+	};
 
-    template<typename TY>
-    bool Filter(const GameObject& go, TY& ty)
-    {
-        if (go.hasView(TY::ValueType::GetComponentID()))
-        {
-            auto& value = *(typename TY::ValueType*)go.GetView(TY::ValueType::GetComponentID());
+	template<typename TY>
+	bool Filter(const GameObject& go, TY& ty)
+	{
+		if (go.hasView(TY::ValueType::GetComponentID()))
+		{
+			auto& value = *(typename TY::ValueType*)go.GetView(TY::ValueType::GetComponentID());
 
-            return ty.IsValid(value);
-        }
-        else
-            return false;
-    }
-
-
-    template<typename TY_GO, typename ... TY_ARGS>
-    auto Query(TY_GO& go, TY_ARGS ... requests) //requires( std::is_same_v<std::decay_t<TY_GO>, GameObject> )
-    {
-        if constexpr (std::is_const_v<TY_GO>)
-            static_assert((TY_ARGS::IsConst() && ...), "All queries must be read only!");
-
-        bool available  = (Filter(go, requests) && ...);
-        using Tuple_TY = std::tuple<typename TY_ARGS::Type...>;
-
-        if (available)
-            return std::optional{ Tuple_TY(GetView<typename TY_ARGS::ValueType>(go)... ) };
-        else
-            return std::optional<Tuple_TY>{};
-    }
+			return ty.IsValid(value);
+		}
+		else
+			return false;
+	}
 
 
-    /************************************************************************************************/
+	template<typename TY_GO, typename ... TY_ARGS>
+	auto Query(TY_GO& go, TY_ARGS ... requests) //requires( std::is_same_v<std::decay_t<TY_GO>, GameObject> )
+	{
+		if constexpr (std::is_const_v<TY_GO>)
+			static_assert((TY_ARGS::IsConst() && ...), "All queries must be read only!");
+
+		bool available  = (Filter(go, requests) && ...);
+		using Tuple_TY = std::tuple<typename TY_ARGS::Type...>;
+
+		if (available)
+			return std::optional{ Tuple_TY(GetView<typename TY_ARGS::ValueType>(go)... ) };
+		else
+			return std::optional<Tuple_TY>{};
+	}
 
 
-    template<typename TY_Component>
-    class BasicComponentView_t : public ComponentView_t<TY_Component>
-    {
-    public:
-        using ComponentHandle_t = typename Handle_t<32, TY_Component::GetComponentID()>;
-
-        BasicComponentView_t(GameObject& gameObject, ComponentHandle_t IN_handle) : handle{ IN_handle } {}
+	/************************************************************************************************/
 
 
-        template<typename ... TY_Args>
-        BasicComponentView_t(GameObject& gameObject, TY_Args ... args) : handle{ ComponentView_t<TY_Component>::GetComponent().Create(std::forward<TY_Args>(args)...) } {}
+	template<typename TY_Component>
+	class BasicComponentView_t : public ComponentView_t<TY_Component>
+	{
+	public:
+		using ComponentHandle_t = typename Handle_t<32, TY_Component::GetComponentID()>;
 
-        virtual ~BasicComponentView_t() final
-        {
-            TY_Component::GetComponent().Remove(handle);
-        }
-
-
-        // No moving
-        BasicComponentView_t(const BasicComponentView_t&)               = delete;
-        BasicComponentView_t& operator = (const BasicComponentView_t&)  = delete;
-
-        BasicComponentView_t(BasicComponentView_t&&)                = delete;
-        BasicComponentView_t& operator = (BasicComponentView_t&&)   = delete;
+		BasicComponentView_t(GameObject& gameObject, ComponentHandle_t IN_handle) : handle{ IN_handle } {}
 
 
-        decltype(auto) operator -> ()
-        {
-            return &GetData();
-        }
+		template<typename ... TY_Args>
+		BasicComponentView_t(GameObject& gameObject, TY_Args ... args) : handle{ ComponentView_t<TY_Component>::GetComponent().Create(std::forward<TY_Args>(args)...) } {}
 
-        decltype(auto) GetData()
-        {
-            return ComponentView_t<TY_Component>::GetComponent()[handle];
-        }
-
-        ComponentHandle_t handle;
-    };
+		virtual ~BasicComponentView_t() final
+		{
+			TY_Component::GetComponent().Remove(handle);
+		}
 
 
-    /************************************************************************************************/
+		// No moving
+		BasicComponentView_t(const BasicComponentView_t&)               = delete;
+		BasicComponentView_t& operator = (const BasicComponentView_t&)  = delete;
+
+		BasicComponentView_t(BasicComponentView_t&&)                = delete;
+		BasicComponentView_t& operator = (BasicComponentView_t&&)   = delete;
 
 
-    struct BasicComponentEventHandler
-    {
-        static void OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
-        {
-        }
-    };
+		decltype(auto) operator -> ()
+		{
+			return &GetData();
+		}
 
-    template<typename TY, typename TY_Handle, ComponentID ID, typename TY_EventHandler = BasicComponentEventHandler>
+		decltype(auto) GetData()
+		{
+			return ComponentView_t<TY_Component>::GetComponent()[handle];
+		}
+
+		ComponentHandle_t handle;
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct BasicComponentEventHandler
+	{
+		static void OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+		{
+		}
+	};
+
+	template<typename TY, typename TY_Handle, ComponentID ID, typename TY_EventHandler = BasicComponentEventHandler>
 	class BasicComponent_t : public Component<BasicComponent_t<TY, TY_Handle, ID, TY_EventHandler>, ID>
 	{
 	public:
-        using ThisType      = BasicComponent_t<TY, TY_Handle, ID, TY_EventHandler>;
-        using EventHandler  = TY_EventHandler;
+		using ThisType      = BasicComponent_t<TY, TY_Handle, ID, TY_EventHandler>;
+		using EventHandler  = TY_EventHandler;
 
-        template<typename ... TY_args>
-        BasicComponent_t(iAllocator* allocator, TY_args&&... args) :
-            eventHandler    { std::forward<TY_args>(args)... },
-			elements	    { allocator },
-			handles		    { allocator } {}
+		template<typename ... TY_args>
+		BasicComponent_t(iAllocator* allocator, TY_args&&... args) :
+			eventHandler	{ std::forward<TY_args>(args)... },
+			elements		{ allocator },
+			handles			{ allocator } {}
 
-        BasicComponent_t(iAllocator* allocator) :
-            elements        { allocator },
-            handles         { allocator } {}
+		BasicComponent_t(iAllocator* allocator) :
+			elements		{ allocator },
+			handles			{ allocator } {}
 
-        ~BasicComponent_t()
-        {
-            elements.Release();
-        }
+		~BasicComponent_t()
+		{
+			elements.Release();
+		}
 
 		struct elementData
 		{
@@ -665,7 +673,7 @@ namespace FlexKit
 			TY				componentData;
 		};
 
-        using View = BasicComponentView_t<BasicComponent_t<TY, TY_Handle, ID, TY_EventHandler>>;
+		using View = BasicComponentView_t<BasicComponent_t<TY, TY_Handle, ID, TY_EventHandler>>;
 
 
 		TY_Handle Create(const TY& initial)
@@ -677,28 +685,28 @@ namespace FlexKit
 		}
 
 
-        TY_Handle Create(TY&& initial)
-        {
-            auto handle = handles.GetNewHandle();
-            handles[handle] = (index_t)elements.emplace_back(handle, std::move(initial));
+		TY_Handle Create(TY&& initial)
+		{
+			auto handle = handles.GetNewHandle();
+			handles[handle] = (index_t)elements.emplace_back(handle, std::move(initial));
 
-            return handle;
-        }
-
-
-        TY_Handle Create()
-        {
-            auto handle = handles.GetNewHandle();
-            handles[handle] = (index_t)elements.emplace_back(handle, TY{});
-
-            return handle;
-        }
+			return handle;
+		}
 
 
-        void AddComponentView(GameObject& GO, ValueMap values, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
-        {
-            eventHandler.OnCreateView(GO, values, buffer, bufferSize, allocator);
-        }
+		TY_Handle Create()
+		{
+			auto handle = handles.GetNewHandle();
+			handles[handle] = (index_t)elements.emplace_back(handle, TY{});
+
+			return handle;
+		}
+
+
+		void AddComponentView(GameObject& GO, ValueMap values, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
+		{
+			eventHandler.OnCreateView(GO, values, buffer, bufferSize, allocator);
+		}
 
 
 		void Remove(TY_Handle handle)
@@ -733,19 +741,19 @@ namespace FlexKit
 			return elements[handles[handle]].componentData;
 		}
 
-        auto begin()
-        {
-            return elements.begin();
-        }
+		auto begin()
+		{
+			return elements.begin();
+		}
 
-        auto end()
-        {
-            return elements.end();
-        }
+		auto end()
+		{
+			return elements.end();
+		}
 
 		HandleUtilities::HandleTable<TY_Handle>	handles;
 		Vector<elementData>						elements;
-        TY_EventHandler                         eventHandler;
+		TY_EventHandler                         eventHandler;
 	};
 
 
@@ -769,13 +777,13 @@ namespace FlexKit
 		};
 
 
-        StringIDHandle Create(const char* initial = nullptr, size_t length = 0);
+		StringIDHandle Create(const char* initial = nullptr, size_t length = 0);
 
-        void Remove(StringIDHandle handle);
+		void Remove(StringIDHandle handle);
 
-        StringID& operator[] (StringIDHandle handle) { return IDs[handles[handle]]; }
+		StringID& operator[] (StringIDHandle handle) { return IDs[handles[handle]]; }
 
-        void AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
+		void AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 
 		HandleUtilities::HandleTable<StringIDHandle>	handles;
 		Vector<StringID>								IDs;
@@ -788,114 +796,129 @@ namespace FlexKit
 	class StringIDView : public ComponentView_t<StringIDComponent>
 	{
 	public:
-        StringIDView(GameObject& gameObject, const char* id, size_t idLen) : ID{ GetComponent().Create(id, idLen) } {}
+		StringIDView(GameObject& gameObject, const char* id, size_t idLen) : ID{ GetComponent().Create(id, idLen) } {}
 
 		char* GetString() const
 		{
 			return GetComponent()[ID].ID;
 		}
 
-        void SetString(const char* string)
-        {
-            strncpy_s(GetComponent()[ID].ID, 64, string, 64);
-        }
+		void SetString(const char* string)
+		{
+			strncpy_s(GetComponent()[ID].ID, 64, string, 64);
+		}
 
-                StringIDComponent::StringID* operator -> ()          { return &GetComponent()[ID]; }
-        const   StringIDComponent::StringID* operator -> () const    { return &GetComponent()[ID]; }
+				StringIDComponent::StringID* operator -> ()          { return &GetComponent()[ID]; }
+		const   StringIDComponent::StringID* operator -> () const    { return &GetComponent()[ID]; }
 
 		StringIDHandle ID;
 	};
 
 
-    inline const char* GetStringID(GameObject& gameObject)
-    {
-        return Apply(gameObject,
-            [](StringIDView& ID) -> const char*
-            {
-                return ID.GetString();
-            },
-            []() -> const char*
-            {
-                return nullptr;
-            });
-    }
+	inline const char* GetStringID(GameObject& gameObject)
+	{
+		return Apply(gameObject,
+			[](StringIDView& ID) -> const char*
+			{
+				return ID.GetString();
+			},
+			[]() -> const char*
+			{
+				return nullptr;
+			});
+	}
 
 
-    inline void SetStringID(GameObject& gameObject, const char* str)
-    {
-        Apply(gameObject,
-            [&](StringIDView& ID)
-            {
-                strncpy_s(ID.GetString(), 64, str, 64);
-            });
-    }
+	inline void SetStringID(GameObject& gameObject, const char* str)
+	{
+		Apply(gameObject,
+			[&](StringIDView& ID)
+			{
+				strncpy_s(ID.GetString(), 64, str, 64);
+			});
+	}
 
 
-    template<typename TY>
-    concept IsConstCharStar = ( std::is_same_v<const char*, TY>);
+	template<typename TY>
+	concept IsConstCharStar = ( std::is_same_v<const char*, TY>);
 
-    template<IsConstCharStar ... TY>
-    struct StringQuery
-    {
-        using Type          = StringIDView&;
-        using ValueType     = StringIDView;
-        static constexpr bool IsConst() { return false; }
+	template<IsConstCharStar ... TY>
+	struct StringQuery
+	{
+		using Type          = StringIDView&;
+		using ValueType     = StringIDView;
+		static constexpr bool IsConst() { return false; }
 
-        const std::tuple<TY...> IDs;
+		const std::tuple<TY...> IDs;
 
-        StringQuery() = default;
+		StringQuery() = default;
 
-        StringQuery(TY ... args) :
-            IDs{ std::make_tuple(args...) } {}
+		StringQuery(TY ... args) :
+			IDs{ std::make_tuple(args...) } {}
 
-        bool Compare(const StringIDView& stringID, const char* str)
-        {
-            return strncmp(stringID->ID, str, 64) == 0;
-        }
+		bool Compare(const StringIDView& stringID, const char* str)
+		{
+			return strncmp(stringID->ID, str, 64) == 0;
+		}
 
-        template<int ... N>
-        bool STRCMP_Helper(const StringIDView& stringID, std::integer_sequence<int, N...> integers)
-        {
-            return (Compare(stringID, std::get<N>(IDs)) | ...);
-        }
+		template<int ... N>
+		bool STRCMP_Helper(const StringIDView& stringID, std::integer_sequence<int, N...> integers)
+		{
+			return (Compare(stringID, std::get<N>(IDs)) | ...);
+		}
 
-        bool IsValid(const StringIDView& stringID)
-        {
-            return STRCMP_Helper(stringID, std::make_integer_sequence<int, sizeof ... (TY)>());
-        }
-    };
+		bool IsValid(const StringIDView& stringID)
+		{
+			return STRCMP_Helper(stringID, std::make_integer_sequence<int, sizeof ... (TY)>());
+		}
+	};
 
+	template<IsConstCharStar ... TY>
+	struct ROStringQuery
+	{
+		using Type          = const StringIDView&;
+		using ValueType     = StringIDView;
+		static constexpr bool IsConst() { return true; }
 
-    template<IsConstCharStar ... TY>
-    struct ROStringQuery
-    {
-        using Type          = const StringIDView&;
-        using ValueType     = StringIDView;
-        static constexpr bool IsConst() { return true; }
+		const std::tuple<TY...> IDs;
 
-        const std::tuple<TY...> IDs;
+		ROStringQuery() = default;
 
-        ROStringQuery() = default;
+		ROStringQuery(TY ... args) :
+			IDs{ std::make_tuple(args...) } {}
 
-        ROStringQuery(TY ... args) :
-            IDs{ std::make_tuple(args...) } {}
+		bool Compare(const StringIDView& stringID, const char* str)
+		{
+			return strncmp(stringID->ID, str, 64) == 0;
+		}
 
-        bool Compare(const StringIDView& stringID, const char* str)
-        {
-            return strncmp(stringID->ID, str, 64) == 0;
-        }
+		template<int ... N>
+		bool STRCMP_Helper(const StringIDView& stringID, std::integer_sequence<int, N...> integers)
+		{
+			return (Compare(stringID, std::get<N>(IDs)) | ...);
+		}
 
-        template<int ... N>
-        bool STRCMP_Helper(const StringIDView& stringID, std::integer_sequence<int, N...> integers)
-        {
-            return (Compare(stringID, std::get<N>(IDs)) | ...);
-        }
+		bool IsValid(const StringIDView& stringID)
+		{
+			return STRCMP_Helper(stringID, std::make_integer_sequence<int, sizeof ... (TY)>());
+		}
+	};
 
-        bool IsValid(const StringIDView& stringID)
-        {
-            return STRCMP_Helper(stringID, std::make_integer_sequence<int, sizeof ... (TY)>());
-        }
-    };
+	
+	struct StringPatternQuery
+	{
+		using Type			= StringIDView&;
+		using ValueType		= StringIDView;
+		static constexpr bool IsConst() { return false; }
+		const std::regex& pattern;
+
+		StringPatternQuery() = default;
+
+		StringPatternQuery(const std::regex& IN_pattern) :
+			pattern{ IN_pattern } {}
+
+		bool IsValid(const StringIDView& stringID) const noexcept;
+	};
 
 
 	/************************************************************************************************/
@@ -910,7 +933,7 @@ namespace FlexKit
 	public:
 		SampleComponent(iAllocator* allocator = SystemAllocator) : entities{ allocator } { }
 
-        SampleHandle CreateComponent()
+		SampleHandle CreateComponent()
 		{
 			return SampleHandle{ static_cast<unsigned int>(entities.push_back({})) };
 		}
@@ -938,7 +961,7 @@ namespace FlexKit
 	public:
 		SampleComponent2(iAllocator* allocator = SystemAllocator) : entities{ allocator } { }
 
-        Sample2Handle CreateComponent()
+		Sample2Handle CreateComponent()
 		{
 			return Sample2Handle{ static_cast<unsigned int>(entities.push_back({})) };
 		}
@@ -965,7 +988,7 @@ namespace FlexKit
 	public:
 		SampleComponent3(iAllocator* allocator = SystemAllocator) : entities{ allocator } { }
 
-        Sample3Handle CreateComponent()
+		Sample3Handle CreateComponent()
 		{
 			return Sample3Handle{ static_cast<unsigned int>(entities.push_back({})) };
 		}
@@ -1057,7 +1080,7 @@ namespace FlexKit
 
 
 	using TestView = BasicComponentView_t<StringIDComponent>;
-    inline void GameOjectTest(iAllocator* allocator);
+	inline void GameOjectTest(iAllocator* allocator);
 
 
 	/************************************************************************************************/
@@ -1101,12 +1124,12 @@ namespace FlexKit
 
 				void Run(iAllocator& threadAllocator) override
 				{
-                    ProfileFunction();
+					ProfileFunction();
 
 					task->Run(threadAllocator);
 				}
 
-                void Release() override {}
+				void Release() override {}
 			}threadTask;
 
 
@@ -1122,55 +1145,55 @@ namespace FlexKit
 			}
 
 
-            void AddInput(UpdateTaskBase& input) 
-            {
-                counter++;
-                leaf = false;
+			void AddInput(UpdateTaskBase& input) 
+			{
+				counter++;
+				leaf = false;
 
-                input.AddContinuationTask(
-                    [&]
-                    {
-                        if (_DecrementCounter())
-                            PushToLocalQueue(threadTask);
-                    });
-            }
-
-
-            void AddOutput(UpdateTaskBase& output)
-            {
-                output.AddInput(*this);
-            }
+				input.AddContinuationTask(
+					[&]
+					{
+						if (_DecrementCounter())
+							PushToLocalQueue(threadTask);
+					});
+			}
 
 
-            bool _DecrementCounter()
-            {
-                const auto count = counter.fetch_sub(1);
-                return count == 1;
-            }
+			void AddOutput(UpdateTaskBase& output)
+			{
+				output.AddInput(*this);
+			}
 
 
-            void AddContinuation(UpdateTaskBase& task)
-            {
-                threadTask.Subscribe(
-                    [&]
-                    {
-                        PushToLocalQueue(task);
-                    });
-            }
+			bool _DecrementCounter()
+			{
+				const auto count = counter.fetch_sub(1);
+				return count == 1;
+			}
 
 
-            template<typename TY_FN>
-            void AddContinuationTask(TY_FN task)
-            {
-                threadTask.Subscribe(task);
-            }
+			void AddContinuation(UpdateTaskBase& task)
+			{
+				threadTask.Subscribe(
+					[&]
+					{
+						PushToLocalQueue(task);
+					});
+			}
 
 
-            operator iWork& () { return threadTask; }
-            operator iWork* () { return &threadTask; }
+			template<typename TY_FN>
+			void AddContinuationTask(TY_FN task)
+			{
+				threadTask.Subscribe(task);
+			}
 
-            std::atomic_int     counter     = 0;
-            bool                leaf        = true;
+
+			operator iWork& () { return threadTask; }
+			operator iWork* () { return &threadTask; }
+
+			std::atomic_int     counter     = 0;
+			bool                leaf        = true;
 
 			UpdateID_t			ID          = (uint32_t)-1;
 			iUpdateFN&			Update;
@@ -1196,7 +1219,7 @@ namespace FlexKit
 			nodes		{ IN_allocator	},
 			allocator	{ IN_allocator	},
 			threads		{ IN_threads	},
-            taskMap     { IN_allocator  } {}
+			taskMap     { IN_allocator  } {}
 
 
 		// No Copy
@@ -1206,20 +1229,20 @@ namespace FlexKit
 
 		void Execute()
 		{
-            ProfileFunction();
+			ProfileFunction();
 			WorkBarrier barrier{ *threads, allocator };
 
-            for (auto& node : nodes)
-                barrier.AddWork(node->threadTask);
+			for (auto& node : nodes)
+				barrier.AddWork(node->threadTask);
 
-            for (auto node : nodes)
-                if (node->isLeaf())
-                    threads->AddWork(node->threadTask);
+			for (auto node : nodes)
+				if (node->isLeaf())
+					threads->AddWork(node->threadTask);
 
 			barrier.JoinLocal();
 
-            nodes.clear();
-            taskMap.clear();
+			nodes.clear();
+			taskMap.clear();
 		}
 
 
@@ -1228,7 +1251,7 @@ namespace FlexKit
 		public:
 			UpdateBuilder(UpdateTaskBase& IN_node, UpdateDispatcher& IN_dispatcher) :
 				newNode     { IN_node	    },
-                dispatcher  { IN_dispatcher } {}
+				dispatcher  { IN_dispatcher } {}
 
 
 			void SetDebugString(const char* str) noexcept
@@ -1249,63 +1272,63 @@ namespace FlexKit
 			}
 
 
-            void AddOutput(uint32_t taskID)
-            {
-                auto res = find(
-                    dispatcher.taskMap,
-                    [&](auto task){ return  std::get<0>(task) == taskID; });
+			void AddOutput(uint32_t taskID)
+			{
+				auto res = find(
+					dispatcher.taskMap,
+					[&](auto task){ return  std::get<0>(task) == taskID; });
 
-                if (res != dispatcher.taskMap.end())
-                {
-                    auto node = std::get<1>(*res);
-                    AddOutput(*node);
-                }
-                else
-                    FK_ASSERT(false, "Failed to find output Task!");
-            }
+				if (res != dispatcher.taskMap.end())
+				{
+					auto node = std::get<1>(*res);
+					AddOutput(*node);
+				}
+				else
+					FK_ASSERT(false, "Failed to find output Task!");
+			}
 
 
-            void AddInput(uint32_t taskID)
-            {
-                auto res = find(
-                    dispatcher.taskMap,
-                    [&](auto task){ return  std::get<0>(task) == taskID; });
+			void AddInput(uint32_t taskID)
+			{
+				auto res = find(
+					dispatcher.taskMap,
+					[&](auto task){ return  std::get<0>(task) == taskID; });
 
-                if (res != dispatcher.taskMap.end())
-                {
-                    auto node = std::get<1>(*res);
-                    AddInput(*node);
-                }
-                else
-                    FK_ASSERT(false, "Failed to find inputTask!");
-            }
+				if (res != dispatcher.taskMap.end())
+				{
+					auto node = std::get<1>(*res);
+					AddInput(*node);
+				}
+				else
+					FK_ASSERT(false, "Failed to find inputTask!");
+			}
 
 		private:
 
-            UpdateDispatcher&   dispatcher;
+			UpdateDispatcher&   dispatcher;
 			UpdateTaskBase&     newNode;
 		};
 
 
-        template<
-            typename TY_NODEDATA,
-            typename FN_LINKAGE,
-            typename FN_UPDATE>
-        UpdateTask<TY_NODEDATA>& Add(uint32_t TaskID, FN_LINKAGE LinkageSetup, FN_UPDATE UpdateFN)
-        {
-            auto& task = Add<TY_NODEDATA>(LinkageSetup, std::move(UpdateFN));
+		template<
+			typename TY_NODEDATA,
+			typename FN_LINKAGE,
+			typename FN_UPDATE>
+		UpdateTask<TY_NODEDATA>& Add(uint32_t TaskID, FN_LINKAGE LinkageSetup, FN_UPDATE UpdateFN)
+		{
+			auto& task = Add<TY_NODEDATA>(LinkageSetup, std::move(UpdateFN));
 
-            if (find(taskMap, [&](auto& task) { return std::get<0>(task) == TaskID; } ) == taskMap.end())
-                taskMap.push_back({ TaskID, &task });
-            else
-            {
-                FK_LOG_FATAL("Task double scheduled!");
-                std::cout << "ERROR!";
-                std::exit(-1);
-            }
+			if (find(taskMap, [&](auto& task) { return std::get<0>(task) == TaskID; } ) == taskMap.end())
+				taskMap.push_back({ TaskID, &task });
+			else
+			{
+				FK_LOG_FATAL("Task double scheduled!");
+				std::cout << "ERROR!";
+				std::exit(-1);
+			}
 
-            return task;
-        }
+			return task;
+		}
 
 		template<
 			typename TY_NODEDATA,
@@ -1315,8 +1338,8 @@ namespace FlexKit
 		{
 			struct data_BoilderPlate : UpdateTaskBase::iUpdateFN
 			{
-                data_BoilderPlate(FN_UPDATE&& IN_fn) : 
-                    function{ std::move(IN_fn) } {}
+				data_BoilderPlate(FN_UPDATE&& IN_fn) : 
+					function{ std::move(IN_fn) } {}
 
 				virtual void operator() (UpdateTaskBase& task, iAllocator& threadAllocator) override
 				{
@@ -1324,7 +1347,7 @@ namespace FlexKit
 				}
 
 				TY_NODEDATA locals;
-                FN_UPDATE	function;
+				FN_UPDATE	function;
 			};
 
 			auto& functor		= allocator->allocate_aligned<data_BoilderPlate>(std::move(UpdateFN));
@@ -1340,8 +1363,8 @@ namespace FlexKit
 		}
 
 		ThreadManager*				                    threads;
-        Vector<UpdateTaskBase*>		                    nodes;
-        Vector<std::pair<uint32_t, UpdateTaskBase*>>	taskMap;
+		Vector<UpdateTaskBase*>		                    nodes;
+		Vector<std::pair<uint32_t, UpdateTaskBase*>>	taskMap;
 		iAllocator*					                    allocator;
 	};
 
