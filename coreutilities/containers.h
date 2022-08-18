@@ -100,7 +100,7 @@ namespace FlexKit
 
 
 	template<typename TY, size_t Size>
-	struct _VectorBuffer
+	struct alignas(std::alignment_of_v<TY>) _VectorBuffer
 	{
 		char buffer[sizeof(TY) * Size];
 
