@@ -99,11 +99,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	template<typename TY, size_t Size>
+	struct _VectorBuffer
+	{
+		char buffer[sizeof(TY) * Size];
+
+		constexpr size_t size() const { return Size; }
+		TY* GetBuffer()			const { return (TY*)buffer; }
+	};
+
+	template<typename TY>
+	struct _VectorBuffer<TY, 0>
+	{
+		constexpr size_t size() const { return 0; }
+		TY* GetBuffer()			const { return nullptr; }
+	};
+
 	// NOTE: Doesn't call destructors automatically, but does free held memory!
-	template<typename Ty>
+	template<typename Ty, size_t InternalBufferSize = 0>
 	struct Vector
 	{
-        using value_t = Ty;
+		using value_t = Ty;
 		typedef Vector<Ty> ELEMENT_TYPE;
 		typedef Vector<Ty> THISTYPE;
 
@@ -112,58 +128,55 @@ namespace FlexKit
 
 		Vector(
 			iAllocator*		Alloc = nullptr,
-			const size_t	InitialReservation = 0) :
-                Allocator   { Alloc },
-				Max         { InitialReservation },
-				Size        { 0 },
-				A           { nullptr }
+			const size_t	initialReservation = 0) :
+				Allocator	{ Alloc },
+				Max			{ initialReservation },
+				Size		{ 0 },
+				A			{ internalBuffer.GetBuffer() }
 		{
-			if (InitialReservation > 0)
+			if (initialReservation > 0 && initialReservation > internalBuffer.size())
 			{
 				FK_ASSERT(Allocator);
-				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * InitialReservation);
+				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * initialReservation);
 				FK_ASSERT(NewMem);
 
 				A = NewMem;
-				Max = InitialReservation;
+				Max = initialReservation;
 			}
+			else
+				Max = internalBuffer.size();
 		}
 
 
 		template<typename TY_Initial>
 		Vector(
-			iAllocator*		    Alloc,
-			const size_t	    InitialSize,
-			const TY_Initial&   Initial_V) :
-				Allocator   { Alloc },
-				Max         { InitialSize },
-				Size        { 0 },
-				A           { nullptr }
+			iAllocator*			alloc,
+			const size_t		initialSize,
+			const TY_Initial&	initial_V) :
+				Allocator	{ alloc },
+				Max			{ FlexKit::Max(initialSize, internalBuffer.size()) },
+				Size		{ 0 },
+				A			{ internalBuffer.GetBuffer() }
 		{
-			if (InitialSize > 0)
+			if (initialSize > 0)
 			{
-				FK_ASSERT(Allocator);
-				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * InitialSize);
-				FK_ASSERT(NewMem);
+				reserve(initialSize);
 
-				A   = NewMem;
-				Max = InitialSize;
-
-				for (size_t itr = 0; itr < InitialSize; ++itr)
-					emplace_back(Initial_V);
+				for (size_t itr = 0; itr < initialSize; ++itr)
+					emplace_back(initial_V);
 			}
 		}
 
 
-        template<typename TY_Initial>
-        explicit Vector(
-			iAllocator&		    Alloc,
-			const size_t	    InitialSize,
-			const TY_Initial&   Initial_V) :
-				Allocator   { &Alloc },
-				Max         { InitialSize },
-				Size        { 0 },
-				A           { nullptr }
+		template<typename TY_Initial>
+		explicit Vector(
+			iAllocator&			Alloc,
+			const size_t		InitialSize,
+			const TY_Initial&	Initial_V) :
+				Allocator	{ &Alloc },
+				Max			{ InitialSize },
+				Size		{ 0 },
+				A			{ nullptr }
 		{
 			if (InitialSize > 0)
 			{
@@ -181,35 +194,35 @@ namespace FlexKit
 
 
 		Vector(const THISTYPE& RHS) :
-			Allocator   { RHS.Allocator },
-			Max         { RHS.Max       },
-			Size        { RHS.Size      }
+			Allocator	{ RHS.Allocator	},
+			Max			{ RHS.Max		},
+			Size		{ RHS.Size		}
 		{
 			(*this) = RHS;
 		}
 
 
 		Vector(THISTYPE&& RHS) noexcept :
-			A           { RHS.A },
-			Allocator   { RHS.Allocator },
-			Max         { RHS.Max },
-			Size        { RHS.Size }
+			A			{ RHS.A },
+			Allocator	{ RHS.Allocator },
+			Max			{ RHS.Max },
+			Size		{ RHS.Size }
 		{
-			RHS.A       = nullptr;
-			RHS.Max     = 0;
-			RHS.Size    = 0;
+			RHS.A		= nullptr;
+			RHS.Max		= 0;
+			RHS.Size	= 0;
 		}
 
 
 		inline ~Vector()
 		{
-			if (A && Allocator)
+			if (A && Allocator && A != internalBuffer.GetBuffer())
 				Allocator->_aligned_free(A);
 
 			A           = nullptr;
 			Allocator   = nullptr;
-            Max         = 0;
-            Size        = 0;
+			Max         = 0;
+			Size        = 0;
 		}
 
 
@@ -224,7 +237,7 @@ namespace FlexKit
 		{
 			if (!Allocator) Allocator = RHS.Allocator;
 
-            clear();
+			clear();
 
 			reserve(RHS.size());
 
@@ -259,14 +272,14 @@ namespace FlexKit
 		{
 			Release();
 
-			Allocator   = RHS.Allocator;
-			A           = RHS.A;
-			Max         = RHS.Max;
-			Size        = RHS.Size;
+			Allocator	= RHS.Allocator;
+			A			= RHS.A;
+			Max			= RHS.Max;
+			Size		= RHS.Size;
 
-			RHS.Size    = 0;
-			RHS.Max     = 0;
-			RHS.A       = nullptr;
+			RHS.Size	= 0;
+			RHS.Max		= 0;
+			RHS.A		= nullptr;
 
 			return *this;
 		}
@@ -354,39 +367,6 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		/*
-		void push_back(Ty&& in){
-			if (Size + 1 > Max)
-			{// Increase Size
-				FK_ASSERT(Allocator);
-				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * 2 * C->Max);
-				FK_ASSERT(NewMem);
-
-				{
-					size_t itr = 0;
-					size_t End = Size + 1;
-					while (itr < End) new(NewMem + itr) ();
-				}
-				{
-					size_t itr = 0;
-					size_t End = Size;
-					while (itr < End) NewMem[itr] = A[itr];
-				}
-
-				mem->_aligned_free(A);
-				Size++;
-				A    = NewMem;
-				Max *= 2;
-			}
-
-			A[Size++] = in;
-		}
-		*/
-
-
-		/************************************************************************************************/
-
-
 		size_t push_back(const Ty& in) {
 			if (Size + 1 > Max)
 			{// Increase Size
@@ -421,7 +401,8 @@ namespace FlexKit
 					for (; itr < End; ++itr)
 						NewMem[itr] = std::move(A[itr]);
 
-					Allocator->_aligned_free(A);
+					if(A != internalBuffer.GetBuffer())
+						Allocator->_aligned_free(A);
 				}
 
 				A   = NewMem;
@@ -459,7 +440,8 @@ namespace FlexKit
 					for (; itr < End; ++itr)
 						new(NewMem + itr) Ty{ std::move(A[itr]) };
 
-					Allocator->_aligned_free(A);
+					if (A != internalBuffer.GetBuffer())
+						Allocator->_aligned_free(A);
 				}
 
 				A = NewMem;
@@ -468,7 +450,7 @@ namespace FlexKit
 
 			const size_t idx = Size++;
 
-            new(A + idx) Ty{ std::forward<ARGS_t>(in)... };
+			new(A + idx) Ty{ std::forward<ARGS_t>(in)... };
 			return idx;
 		}
 
@@ -555,11 +537,11 @@ namespace FlexKit
 
 		void reserve(size_t NewSize)
 		{
-            if (!NewSize)
-            {
-                clear();
-            }
-            else if (!A || Max < NewSize)
+			if (!NewSize)
+			{
+				clear();
+			}
+			else if (!A || Max < NewSize)
 			{// Increase Size
 				FK_ASSERT(Allocator);
 				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * NewSize);
@@ -570,9 +552,10 @@ namespace FlexKit
 					size_t itr = 0;
 					size_t End = Size;
 					for (; itr < End; ++itr)
-                        new(NewMem + itr) Ty{ std::move(A[itr]) }; // move if Possible
+						new(NewMem + itr) Ty{ std::move(A[itr]) }; // move if Possible
 
-					Allocator->_aligned_free(A);
+					if (A != internalBuffer.GetBuffer())
+						Allocator->_aligned_free(A);
 				}
 
 				A   = NewMem;
@@ -609,13 +592,13 @@ namespace FlexKit
 		{
 			clear();
 
-			if (A && Allocator)
+			if (A && Allocator && A != internalBuffer.GetBuffer())
 				Allocator->_aligned_free(A);
 
-			A           = nullptr;
-            Allocator   = nullptr;
-			Max         = 0;
-            Size        = 0;
+			A			= nullptr;
+			Allocator	= nullptr;
+			Max			= 0;
+			Size		= 0;
 		}
 
 
@@ -631,33 +614,34 @@ namespace FlexKit
 
 		Iterator_const begin()	const { return A; }
 		Iterator_const end()	const { return A + Size; }
-        size_t size()			const { return Size; }
-        size_t ByteSize()		const { return Size * sizeof(Ty); }
+		size_t size()			const { return Size; }
+		size_t ByteSize()		const { return Size * sizeof(Ty); }
 
 
-        Vector Copy(iAllocator& destination) const
-        {
-            Vector c{ &destination };
+		Vector Copy(iAllocator& destination) const
+		{
+			Vector c{ &destination };
 
-            for (const auto& e : *this)
-                c.emplace_back(e);
+			for (const auto& e : *this)
+				c.emplace_back(e);
 
-            return c;
-        }
-
-		/************************************************************************************************/
-
-
-		Ty*	A                   = nullptr;
-
-		size_t Size             = 0;
-		size_t Max              = 0;
-
-		iAllocator* Allocator   = 0;
-
+			return c;
+		}
 
 		/************************************************************************************************/
-	};
+
+
+		Ty*	A					= nullptr;
+
+		size_t Size				= 0;
+		size_t Max				= 0;
+
+		iAllocator* Allocator	= 0;
+
+		[[no_unique_address]] _VectorBuffer<Ty, InternalBufferSize> internalBuffer;
+
+
+	};	/************************************************************************************************/
 
 
 	template< typename Ty_Get, template<typename Ty, typename... Ty_V> class TC, typename Ty_, typename... TV2> Ty_Get GetByType(TC<Ty_, TV2...>& in) { return in.GetByType<Ty_Get>(); }
@@ -667,20 +651,20 @@ namespace FlexKit
 	{
 		typedef Pair<Ty_1, Ty_2> ThisType;
 
-        template<typename Ty_Get, typename Ty_V>	static  inline const auto& _GetByType(const Pair<Ty_Get, Ty_V>& in) { return in.V1; }
-        template<typename Ty_Get, typename Ty_V>	static  inline const auto& _GetByType(const Pair<Ty_V, Ty_Get>& in) { return in.V2; }
+		template<typename Ty_Get, typename Ty_V>	static  inline const auto& _GetByType(const Pair<Ty_Get, Ty_V>& in) { return in.V1; }
+		template<typename Ty_Get, typename Ty_V>	static  inline const auto& _GetByType(const Pair<Ty_V, Ty_Get>& in) { return in.V2; }
 
 		template<typename Ty_Get, typename Ty_V>	static  inline Ty_Get& _GetByType(Pair<Ty_Get, Ty_V>&     in)   { return in.V1; }
 		template<typename Ty_Get, typename Ty_V>	static  inline Ty_Get& _GetByType(Pair<Ty_V, Ty_Get>&     in)   { return in.V2; }
 		template<typename Ty_Get>					static  inline auto&   _GetByType(Pair<Ty_Get, Ty_Get>&	in)     { static_assert(!std::is_same_v<Ty_1, Ty_2>, "NON_UNIQUE TYPES IN Pair!");  return in.V2; }
 
-        template<typename Ty_Get>							inline auto&  GetByType() const { return _GetByType<Ty_Get>(*this); }
+		template<typename Ty_Get>							inline auto&  GetByType() const { return _GetByType<Ty_Get>(*this); }
 
 		template<typename Ty_Assign> ThisType operator = (const Ty_Assign& in) { Ty_Assign& thisVar = GetByType<Ty_Assign>(); thisVar = in; return *this; }
 
 		explicit operator bool() { return GetByType<bool>(); }
-        template<typename Ty_1>	operator Ty_1() const { return GetByType<Ty_1>(); }
-        template<typename Ty_1>	operator Ty_1() { return GetByType<Ty_1>(); }
+		template<typename Ty_1>	operator Ty_1() const { return GetByType<Ty_1>(); }
+		template<typename Ty_1>	operator Ty_1() { return GetByType<Ty_1>(); }
 
 		template<size_t index>	auto& Get() noexcept { static_assert(index >= 2, "Invalid Index"); }
 		template<>	constexpr auto& Get<0>() noexcept { return V1; }
@@ -1027,7 +1011,7 @@ namespace FlexKit
 			for (auto& Element : *this)
 				Element.~Ty();
 
-            _Head = 0;
+			_Head = 0;
 			_Size = 0;
 		}
 
@@ -1036,10 +1020,10 @@ namespace FlexKit
 			return at(idx);
 		}
 
-        Ty  operator [](size_t idx) const
-        {
-            return at(idx);
-        }
+		Ty  operator [](size_t idx) const
+		{
+			return at(idx);
+		}
 
 		Ty& at(size_t idx)
 		{
@@ -1155,38 +1139,38 @@ namespace FlexKit
 			return true;
 		}
 
-        template<typename ... TY_ARGS>
-        bool emplace_back(TY_ARGS&& ... args) noexcept
-        {
-            if (_Size + 1 > SIZE)// Call Destructor on Tail
-                back().~Ty();
+		template<typename ... TY_ARGS>
+		bool emplace_back(TY_ARGS&& ... args) noexcept
+		{
+			if (_Size + 1 > SIZE)// Call Destructor on Tail
+				back().~Ty();
 
-            _Size       = Min(++_Size, SIZE);
-            size_t idx  = _Head++;
-            _Head       = _Head % SIZE;
+			_Size       = Min(++_Size, SIZE);
+			size_t idx  = _Head++;
+			_Head       = _Head % SIZE;
 
-            new(Buffer + idx) Ty{ std::forward<TY_ARGS>(args)... };
+			new(Buffer + idx) Ty{ std::forward<TY_ARGS>(args)... };
 
-            return true;
-        }
+			return true;
+		}
 
-        template<typename ... TY>
-        bool emplace_back(TY&& ... args, std::invocable<Ty&> auto&& callOnTail) noexcept
-        {
-            _Size       = Min(++_Size, SIZE);
-            size_t idx  = _Head++;
-            _Head       = _Head % SIZE;
+		template<typename ... TY>
+		bool emplace_back(TY&& ... args, std::invocable<Ty&> auto&& callOnTail) noexcept
+		{
+			_Size       = Min(++_Size, SIZE);
+			size_t idx  = _Head++;
+			_Head       = _Head % SIZE;
 
-            if (_Size + 1 > SIZE)// Call Destructor on Tail
-            {
-                callOnTail(back());
-                Buffer[idx].~Ty();
-            }
+			if (_Size + 1 > SIZE)// Call Destructor on Tail
+			{
+				callOnTail(back());
+				Buffer[idx].~Ty();
+			}
 
-            new(Buffer + idx) Ty{ std::forward<TY>(args)... };
+			new(Buffer + idx) Ty{ std::forward<TY>(args)... };
 
-            return true;
-        }
+			return true;
+		}
 
 		Ty& front() noexcept
 		{
@@ -1285,7 +1269,7 @@ namespace FlexKit
 			return{ this, _Size };
 		}
 
-        Ty* data() { return Buffer; }
+		Ty* data() { return Buffer; }
 
 		int _Head, _Size;
 		Ty Buffer[SIZE];
@@ -1732,7 +1716,7 @@ namespace FlexKit
 			DequeNode_MT*	right;
 			uint32_t		flag;
 
-            /*
+			/*
 			bool try_LockLeft(uint32_t flag)
 			{
 				return !left->Lock(flag);
@@ -1742,7 +1726,7 @@ namespace FlexKit
 			{
 				return !right->Lock(flag);
 			}
-            */
+			*/
 			bool isLocked()
 			{
 				return flag != 0;
@@ -1784,7 +1768,7 @@ namespace FlexKit
 				});
 
 
-            FreeObjectList.clear();
+			FreeObjectList.clear();
 			Allocator->free(Pool);
 		}
 
@@ -2128,141 +2112,141 @@ namespace FlexKit
 		private:
 			TY_Element* first	= nullptr;
 			TY_Element* last	= nullptr;
-    };
+	};
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	template<typename FuncSig, unsigned int STORAGESIZE = 64>
 	class TypeErasedCallable
 	{
-    private:
+	private:
 
-        template<typename>
-        struct ProxyTypeGenerator {};
+		template<typename>
+		struct ProxyTypeGenerator {};
 
-        template<typename TY_R, typename ... TY_args>
-        struct ProxyTypeGenerator<TY_R (TY_args...)>
-        {
-            using TY_Return = TY_R;
+		template<typename TY_R, typename ... TY_args>
+		struct ProxyTypeGenerator<TY_R (TY_args...)>
+		{
+			using TY_Return = TY_R;
 
-            using fnCopy        = void (*)(char* lhs, const char* rhs);
-            using fnMove        = void (*)(char* lhs, char* rhs);
-            using fnProxy       = TY_R (*)(char*, TY_args... args);
-            using fnProxyConst  = TY_R (*)(const char*, TY_args... args);
-            using fnDestructor  = void (*)(char*);
+			using fnCopy        = void (*)(char* lhs, const char* rhs);
+			using fnMove        = void (*)(char* lhs, char* rhs);
+			using fnProxy       = TY_R (*)(char*, TY_args... args);
+			using fnProxyConst  = TY_R (*)(const char*, TY_args... args);
+			using fnDestructor  = void (*)(char*);
 
-            struct VTable
-            {
-                fnCopy          copy;
-                fnMove          move;
-                fnProxy         proxy;
-                fnDestructor    destructor;
-            };
+			struct VTable
+			{
+				fnCopy          copy;
+				fnMove          move;
+				fnProxy         proxy;
+				fnDestructor    destructor;
+			};
 
-            template<typename TY_CALLABLE>
-		    static auto Assign(void* buffer, TY_CALLABLE& callable)
-		    {
-			    static_assert(sizeof(TY_CALLABLE) <= STORAGESIZE, "Callable object too large for this TypeErasedCallable!");
+			template<typename TY_CALLABLE>
+			static auto Assign(void* buffer, TY_CALLABLE& callable)
+			{
+				static_assert(sizeof(TY_CALLABLE) <= STORAGESIZE, "Callable object too large for this TypeErasedCallable!");
 
-			    struct data
-			    {
-				    TY_CALLABLE callable;
-			    };
+				struct data
+				{
+					TY_CALLABLE callable;
+				};
 
-			    new(buffer) data{ callable };
+				new(buffer) data{ callable };
 
-                static const VTable sVTable{
-                    .copy =
-                        [](char* lhs_ptr, const char* rhs_ptr)
-                        {
-                            const data* rhs = reinterpret_cast<const data*>(rhs_ptr);
-                            new(lhs_ptr) data(*rhs);
-                        },
+				static const VTable sVTable{
+					.copy =
+						[](char* lhs_ptr, const char* rhs_ptr)
+						{
+							const data* rhs = reinterpret_cast<const data*>(rhs_ptr);
+							new(lhs_ptr) data(*rhs);
+						},
 
-                    .move =
-                        [](char* lhs_ptr, char* rhs_ptr)
-                        {
-                            data* rhs = reinterpret_cast<data*>(rhs_ptr);
-                            new(lhs_ptr) data(std::move(*rhs));
-                        },
+					.move =
+						[](char* lhs_ptr, char* rhs_ptr)
+						{
+							data* rhs = reinterpret_cast<data*>(rhs_ptr);
+							new(lhs_ptr) data(std::move(*rhs));
+						},
 
-                    .proxy =
-                        [](char* _ptr, TY_args ... args) -> TY_Return
-				        {
-					        auto functor = reinterpret_cast<data*>(_ptr);
-					        return functor->callable(std::forward<TY_args>(args)...);
-				        },
+					.proxy =
+						[](char* _ptr, TY_args ... args) -> TY_Return
+						{
+							auto functor = reinterpret_cast<data*>(_ptr);
+							return functor->callable(std::forward<TY_args>(args)...);
+						},
 
-                    .destructor =
-                        [](char* _ptr)
-                        {
-                            auto functor = reinterpret_cast<data*>(_ptr);
-                            functor->~data();
-                        }
-                };
+					.destructor =
+						[](char* _ptr)
+						{
+							auto functor = reinterpret_cast<data*>(_ptr);
+							functor->~data();
+						}
+				};
 
-                return &sVTable;
-		    }
+				return &sVTable;
+			}
 
-            template<typename TY_CALLABLE>
-            static auto Assign(void* buffer, const TY_CALLABLE& callable)
-            {
-                static_assert(sizeof(TY_CALLABLE) <= STORAGESIZE, "Callable object too large for this TypeErasedCallable!");
+			template<typename TY_CALLABLE>
+			static auto Assign(void* buffer, const TY_CALLABLE& callable)
+			{
+				static_assert(sizeof(TY_CALLABLE) <= STORAGESIZE, "Callable object too large for this TypeErasedCallable!");
 
-                struct data
-                {
-                    TY_CALLABLE callable;
-                };
+				struct data
+				{
+					TY_CALLABLE callable;
+				};
 
-                new(buffer) data{ callable };
+				new(buffer) data{ callable };
 
-                static const VTable sVTable{
-                    .copy =
-                        [](char* lhs_ptr, const char* rhs_ptr)
-                        {
-                            const data* rhs = reinterpret_cast<const data*>(rhs_ptr);
-                            new(lhs_ptr) data(*rhs);
-                        },
+				static const VTable sVTable{
+					.copy =
+						[](char* lhs_ptr, const char* rhs_ptr)
+						{
+							const data* rhs = reinterpret_cast<const data*>(rhs_ptr);
+							new(lhs_ptr) data(*rhs);
+						},
 
-                    .move =
-                        [](char* lhs_ptr, char* rhs_ptr)
-                        {
-                            data* rhs = reinterpret_cast<data*>(rhs_ptr);
-                            new(lhs_ptr) data(std::move(*rhs));
-                        },
+					.move =
+						[](char* lhs_ptr, char* rhs_ptr)
+						{
+							data* rhs = reinterpret_cast<data*>(rhs_ptr);
+							new(lhs_ptr) data(std::move(*rhs));
+						},
 
-                    .proxy =
-                        [](char* _ptr, TY_args ... args) -> TY_Return
-                        {
-                            auto functor = reinterpret_cast<data*>(_ptr);
-                            return functor->callable(std::forward<TY_args>(args)...);
-                        },
+					.proxy =
+						[](char* _ptr, TY_args ... args) -> TY_Return
+						{
+							auto functor = reinterpret_cast<data*>(_ptr);
+							return functor->callable(std::forward<TY_args>(args)...);
+						},
 
-                    .destructor =
-                        [](char* _ptr)
-                        {
-                            auto functor = reinterpret_cast<data*>(_ptr);
-                            functor->~data();
-                        }
-                };
+					.destructor =
+						[](char* _ptr)
+						{
+							auto functor = reinterpret_cast<data*>(_ptr);
+							functor->~data();
+						}
+				};
 
-                return &sVTable;
-            }
-        };
+				return &sVTable;
+			}
+		};
 
-        using Generator = ProxyTypeGenerator<FuncSig>;
+		using Generator = ProxyTypeGenerator<FuncSig>;
 
-        using TY_Return = Generator::TY_Return;
-        using FN_PTR    = FuncSig;
-        using VTable    = Generator::VTable;
+		using TY_Return = Generator::TY_Return;
+		using FN_PTR    = FuncSig;
+		using VTable    = Generator::VTable;
 
-        using fnCopy        = void (*)(char* lhs, const char* rhs);
-        using fnMove        = void (*)(char* lhs, char* rhs);
-        using fnProxy       = Generator::fnProxy;
-        using fnProxyConst  = Generator::fnProxyConst;
-        using fnDestructor  = void (*)(char*);
+		using fnCopy        = void (*)(char* lhs, const char* rhs);
+		using fnMove        = void (*)(char* lhs, char* rhs);
+		using fnProxy       = Generator::fnProxy;
+		using fnProxyConst  = Generator::fnProxyConst;
+		using fnDestructor  = void (*)(char*);
 
 	public:
 		TypeErasedCallable() = default;
@@ -2274,31 +2258,31 @@ namespace FlexKit
 			Assign(callable);
 		}
 
-        TypeErasedCallable(FN_PTR* fn_ptr) noexcept
-        {
-            auto thunk = [fn_ptr](auto&&... args)
-            {
-                return fn_ptr(args...);
-            };
+		TypeErasedCallable(FN_PTR* fn_ptr) noexcept
+		{
+			auto thunk = [fn_ptr](auto&&... args)
+			{
+				return fn_ptr(args...);
+			};
 
-            Assign(thunk);
-        }
-        
+			Assign(thunk);
+		}
+		
 		TypeErasedCallable(const TypeErasedCallable& callable) noexcept
 		{
-            if (vtable)
-                vtable->destructor(buffer);
+			if (vtable)
+				vtable->destructor(buffer);
 
-            if (callable.vtable)
-                callable.vtable->copy(buffer, callable.buffer);
+			if (callable.vtable)
+				callable.vtable->copy(buffer, callable.buffer);
 
-            vtable = callable.vtable;
+			vtable = callable.vtable;
 		}
 
 
 		~TypeErasedCallable()
 		{
-            Release();
+			Release();
 		}
 
 
@@ -2306,7 +2290,7 @@ namespace FlexKit
 		TypeErasedCallable& operator = (TY_CALLABLE callable)
 		{
 			if (vtable && vtable->destructor)
-                vtable->destructor(buffer);
+				vtable->destructor(buffer);
 
 			Assign(callable);
 
@@ -2314,77 +2298,77 @@ namespace FlexKit
 		}
 
 
-        TypeErasedCallable& operator = (const TypeErasedCallable& rhs)
-        {
-            if(vtable && vtable->destructor)
-                vtable->destructor(buffer);
-
-            rhs.vtable->copy(buffer, rhs.buffer);
-
-            vtable = rhs.vtable;
-
-            return *this;
-        }
-
-
-		TypeErasedCallable& operator = (TypeErasedCallable&& rhs)
+		TypeErasedCallable& operator = (const TypeErasedCallable& rhs)
 		{
-            if (vtable && vtable->destructor)
-                vtable->destructor(buffer);
+			if(vtable && vtable->destructor)
+				vtable->destructor(buffer);
 
-            if(rhs.vtable)
-                rhs.vtable->move(buffer, rhs.buffer);
+			rhs.vtable->copy(buffer, rhs.buffer);
 
-            vtable      = rhs.vtable;
-            rhs.vtable  = nullptr;
+			vtable = rhs.vtable;
 
 			return *this;
 		}
 
-        template<typename ... TY_args>
-        auto operator()(TY_args&& ... args)
-        {
-            return vtable->proxy(buffer, std::forward<TY_args>(args)...);
-        }
 
-        template<typename ... TY_args>
-        auto operator()(TY_args&& ... args) const
-        {
-            return reinterpret_cast<fnProxyConst>(vtable->proxy)(buffer, std::forward<TY_args>(args)...);
-        }
+		TypeErasedCallable& operator = (TypeErasedCallable&& rhs)
+		{
+			if (vtable && vtable->destructor)
+				vtable->destructor(buffer);
 
-        operator bool() const
-        {
-            return vtable != nullptr;
-        }
+			if(rhs.vtable)
+				rhs.vtable->move(buffer, rhs.buffer);
 
-        void Release()
-        {
-            if (vtable && vtable->destructor)
-                vtable->destructor(buffer);
+			vtable      = rhs.vtable;
+			rhs.vtable  = nullptr;
 
-            vtable = nullptr;
-        }
+			return *this;
+		}
 
-    private:
+		template<typename ... TY_args>
+		auto operator()(TY_args&& ... args)
+		{
+			return vtable->proxy(buffer, std::forward<TY_args>(args)...);
+		}
+
+		template<typename ... TY_args>
+		auto operator()(TY_args&& ... args) const
+		{
+			return reinterpret_cast<fnProxyConst>(vtable->proxy)(buffer, std::forward<TY_args>(args)...);
+		}
+
+		operator bool() const
+		{
+			return vtable != nullptr;
+		}
+
+		void Release()
+		{
+			if (vtable && vtable->destructor)
+				vtable->destructor(buffer);
+
+			vtable = nullptr;
+		}
+
+	private:
 
 		template<typename TY_CALLABLE>
 		void Assign(TY_CALLABLE& callable)
 		{
 			static_assert(sizeof(TY_CALLABLE) <= STORAGESIZE, "Callable object too large for this TypeErasedCallable!");
 
-            vtable = Generator::Assign(buffer, callable);
+			vtable = Generator::Assign(buffer, callable);
 		}
 
-        template<typename TY_CALLABLE>
-        void Assign(const TY_CALLABLE& callable)
-        {
-            static_assert(sizeof(TY_CALLABLE) <= STORAGESIZE, "Callable object too large for this TypeErasedCallable!");
+		template<typename TY_CALLABLE>
+		void Assign(const TY_CALLABLE& callable)
+		{
+			static_assert(sizeof(TY_CALLABLE) <= STORAGESIZE, "Callable object too large for this TypeErasedCallable!");
 
-            vtable = Generator::Assign(buffer, callable);
-        }
+			vtable = Generator::Assign(buffer, callable);
+		}
 
-        const VTable*   vtable = nullptr;
+		const VTable*   vtable = nullptr;
 		char            buffer[STORAGESIZE - sizeof(VTable*)];
 	};
 
