@@ -8,173 +8,173 @@
 
 namespace FlexKit
 {
-    enum SceneBlockType
-    {
-        NodeTable = 1337,
-        ComponentRequirementTable,
-        EntityBlock,
-        EntityComponentBlock,
-        MaterialComponentBlock,
-    };
+	enum SceneBlockType
+	{
+		NodeTable = 1337,
+		ComponentRequirementTable,
+		EntityBlock,
+		EntityComponentBlock,
+		MaterialComponentBlock,
+	};
 
 
-    struct SceneBlock
-    {
-        uint32_t CRC32;
-        uint32_t blockType;
-        uint32_t blockSize;
-    };
+	struct SceneBlock
+	{
+		uint32_t CRC32;
+		uint32_t blockType;
+		uint32_t blockSize;
+	};
 
-    // SceneNodeBlock must always be defined before any entity Blocks
-    struct SceneNodeBlock
-    {
-        struct Header
-        {
-            uint32_t CRC32;
-            uint32_t blockType = NodeTable;
-            uint32_t blockSize;
-            uint32_t nodeCount;
-        } header;
-        static const size_t GetHeaderSize() { return sizeof(Header); }
+	// SceneNodeBlock must always be defined before any entity Blocks
+	struct SceneNodeBlock
+	{
+		struct Header
+		{
+			uint32_t CRC32;
+			uint32_t blockType = NodeTable;
+			uint32_t blockSize;
+			uint32_t nodeCount;
+		} header;
+		static const size_t GetHeaderSize() { return sizeof(Header); }
 
-        struct SceneNode
-        {
-            float3		position;		// 16
-            Quaternion	orientation;	// 16
-            float3		scale;			// 16
-            size_t		parent;			// 8
-            size_t		pad;			// 8
-        };
-    };
-
-
-    struct ComponentRequirementBlock
-    {
-        uint32_t CRC32;
-        uint32_t blockType = ComponentRequirementTable;
-        uint32_t blockSize;
-
-        uint32_t count;
-    };
+		struct SceneNode
+		{
+			float3		position;		// 16
+			Quaternion	orientation;	// 16
+			float3		scale;			// 16
+			size_t		parent;			// 8
+			size_t		pad;			// 8
+		};
+	};
 
 
-    struct ComponentBlock
-    {
-        struct Header
-        {
-            uint32_t CRC32;
-            uint32_t blockType = EntityComponentBlock;
-            uint32_t blockSize;
-            uint32_t componentID;
-        } header;
-    };
+	struct ComponentRequirementBlock
+	{
+		uint32_t CRC32;
+		uint32_t blockType = ComponentRequirementTable;
+		uint32_t blockSize;
+
+		uint32_t count;
+	};
 
 
-    struct EntityBlock
-    {
-        struct Header
-        {
-            uint32_t CRC32;
-            uint32_t blockType = EntityComponentBlock;
-            size_t	 blockSize;
-
-            // Temporary Values
-            char	ID[64];
-
-            size_t componentCount = 0;
-        } header;
-    };
+	struct ComponentBlock
+	{
+		struct Header
+		{
+			uint32_t CRC32;
+			uint32_t blockType = EntityComponentBlock;
+			uint32_t blockSize;
+			uint32_t componentID;
+		} header;
+	};
 
 
-    struct PointLightComponentBlob
-    {
-        ComponentBlock::Header  header = {
-           0,
-           EntityComponentBlock,
-           sizeof(PointLightComponentBlob),
-           GetTypeGUID(PointLight)
-        };
+	struct EntityBlock
+	{
+		struct Header
+		{
+			uint32_t CRC32;
+			uint32_t blockType = EntityComponentBlock;
+			size_t	 blockSize;
 
-        float2 IR;
-        float3 K;
-    };
+			// Temporary Values
+			char	ID[64];
 
-    struct SubMaterial
-    {
-        static_vector<uint64_t>  textures;
-    };
-
-    struct BrushComponentBlob
-    {
-        ComponentBlock::Header  header = {
-           0,
-           EntityComponentBlock,
-           sizeof(BrushComponentBlob),
-           GetTypeGUID(Brush)
-        };
-
-        GUID_t resourceID;
-
-        float4 albedo_smoothness;
-        float4 specular_metal;
-    };
+			size_t componentCount = 0;
+		} header;
+	};
 
 
-    struct MaterialComponentBlob
-    {
-        ComponentBlock::Header  header = {
-           0,
-           EntityComponentBlock,
-           sizeof(MaterialComponentBlob),
-           MaterialComponentID
-        };
+	struct PointLightComponentBlob
+	{
+		ComponentBlock::Header  header = {
+		   0,
+		   EntityComponentBlock,
+		   sizeof(PointLightComponentBlob),
+		   GetTypeGUID(PointLight)
+		};
 
-        GUID_t                          resourceID;
-        static_vector<SubMaterial, 32>  materials;
+		float2 IR;
+		float3 K;
+	};
 
-        float4 albedo_smoothness;
-        float4 specular_metal;
-    };
+	struct SubMaterial
+	{
+		static_vector<uint64_t>  textures;
+	};
 
+	struct BrushComponentBlob
+	{
+		ComponentBlock::Header  header = {
+		   0,
+		   EntityComponentBlock,
+		   sizeof(BrushComponentBlob),
+		   GetTypeGUID(Brush)
+		};
 
-    struct IDComponentBlob
-    {
-        ComponentBlock::Header  header = {
-            0,
-            EntityComponentBlock,
-            sizeof(IDComponentBlob),
-            GetTypeGUID(StringID)
-        };
+		GUID_t resourceID;
 
-        char ID[64];
-    };
-
-
-    struct SceneNodeComponentBlob
-    {
-        ComponentBlock::Header  header = {
-            0,
-            EntityComponentBlock,
-            sizeof(SceneNodeComponentBlob),
-            GetTypeGUID(TransformComponent)
-        };
-
-        uint32_t    nodeIdx             = 0;
-        bool        excludeFromScene    = false;
-    };
+		float4 albedo_smoothness;
+		float4 specular_metal;
+	};
 
 
-    struct SkeletonComponentBlob
-    {
-        ComponentBlock::Header  header = {
-            0,
-            EntityComponentBlock,
-            sizeof(SkeletonComponentBlob),
-            GetTypeGUID(Skeleton),
-        };
+	struct MaterialComponentBlob
+	{
+		ComponentBlock::Header  header = {
+		   0,
+		   EntityComponentBlock,
+		   sizeof(MaterialComponentBlob),
+		   MaterialComponentID
+		};
 
-        uint64_t assetID; // SkeletonAsset ID
-    };
+		GUID_t                          resourceID;
+		static_vector<SubMaterial, 32>  materials;
+
+		float4 albedo_smoothness;
+		float4 specular_metal;
+	};
+
+
+	struct IDComponentBlob
+	{
+		ComponentBlock::Header  header = {
+			0,
+			EntityComponentBlock,
+			sizeof(IDComponentBlob),
+			GetTypeGUID(StringID)
+		};
+
+		char ID[64];
+	};
+
+
+	struct SceneNodeComponentBlob
+	{
+		ComponentBlock::Header  header = {
+			0,
+			EntityComponentBlock,
+			sizeof(SceneNodeComponentBlob),
+			GetTypeGUID(TransformComponent)
+		};
+
+		uint32_t    nodeIdx             = 0;
+		bool        excludeFromScene    = false;
+	};
+
+
+	struct SkeletonComponentBlob
+	{
+		ComponentBlock::Header  header = {
+			0,
+			EntityComponentBlock,
+			sizeof(SkeletonComponentBlob),
+			GetTypeGUID(Skeleton),
+		};
+
+		uint64_t assetID; // SkeletonAsset ID
+	};
 }   // namespace FlexKit
 
 
