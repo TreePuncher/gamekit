@@ -307,74 +307,74 @@ namespace FlexKit
 
 		/************************************************************************************************/
 
-		template<TYSize rhsSize, typename rhsSizeType>
-		THISTYPE& operator =(Vector<Ty, rhsSize, rhsSizeType>&& RHS)
+		template<typename ThisType, TYSize rhsSize, typename rhsSizeType>
+		auto& operator =(this ThisType& self, Vector<Ty, rhsSize, rhsSizeType>&& RHS)
 		{
-			Release();
-			Allocator = RHS.Allocator;
+			self.Release();
+			self.Allocator = RHS.Allocator;
 
 			if constexpr(InternalBufferSize > 0 || rhsSize > 0)
 			{
 				if (RHS.A == RHS.internalBuffer.GetBuffer())
 				{
-					reserve(RHS.size());
+					self.reserve(RHS.size());
 
 					if constexpr (std::is_move_assignable_v<Ty>)
 					{
 						const TYSize end = RHS.size();
 						for (TYSize I = 0; I < end; I++)
-							A[I] = std::move(RHS[I]);
+							self.A[I] = std::move(RHS[I]);
 
-						Size		= RHS.size();
-						RHS.Max		= (rhsSize > 0) ? RHS.internalBuffer.size() : 0;
+						self.Size	= RHS.size();
+						RHS.Max		= (rhsSize > 0) ? (TYSize)RHS.internalBuffer.size() : 0;
 						RHS.Size	= 0;
 
 					}
 					else
 					{
 						for (TYSize I = 0; I < RHS.size(); I++)
-							emplace_back(RHS[I]);
+							self.emplace_back(RHS[I]);
 
 						RHS.clear();
 					}
 				}
 				else
 				{
-					A			= RHS.A;
-					Max			= RHS.Max;
-					Size		= RHS.Size;
+					self.A		= RHS.A;
+					self.Max	= RHS.Max;
+					self.Size	= RHS.Size;
 
 					RHS.A		= RHS.internalBuffer.GetBuffer();
-					RHS.Max		= RHS.internalBuffer.size();
+					RHS.Max		= (TYSize)RHS.internalBuffer.size();
 					RHS.Size	= 0;
 				}
 			}
 			else
 			{
-				A			= RHS.A;
-				Max			= RHS.Max;
-				Size		= RHS.Size;
+				self.A		= RHS.A;
+				self.Max	= RHS.Max;
+				self.Size	= RHS.Size;
 
 				RHS.A		= RHS.internalBuffer.GetBuffer();
-				RHS.Max		= RHS.internalBuffer.size();
+				RHS.Max		= (TYSize)RHS.internalBuffer.size();
 				RHS.Size	= 0;
 			}
 
-			return *this;
+			return self;
 		}
 
 
 		/************************************************************************************************/
 
-		template<TYSize rhsSize, typename rhsSizeType>
-		THISTYPE& operator +=(const Vector<Ty, rhsSize, rhsSizeType>& RHS)
+		template<typename thisType, TYSize rhsSize, typename rhsSizeType>
+		auto& operator +=(this thisType&  self, const Vector<Ty, rhsSize, rhsSizeType>& RHS)
 		{
-			reserve(size() + RHS.size());
+			self.reserve(self.size() + RHS.size());
 
 			for (auto I : RHS)
-				push_back(I);
+				self.push_back(I);
 
-			return (*this);
+			return self;
 		}
 
 
@@ -682,7 +682,7 @@ namespace FlexKit
 
 			A			= internalBuffer.GetBuffer();
 			Allocator	= nullptr;
-			Max			= internalBuffer.size();
+			Max			= (TYSize)internalBuffer.size();
 			Size		= 0;
 		}
 
@@ -690,12 +690,12 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		Ty& at(size_t index)                { return A[index]; }
-		const Ty& at(size_t index) const    { return A[index]; }
+		Ty& at(size_t index)				{ return A[index]; }
+		const Ty& at(size_t index) const	{ return A[index]; }
 
 
 		Iterator begin() { return A; }
-		Iterator end() { return A + Size; }
+		Iterator end()	 { return A + Size; }
 
 		Iterator_const begin()	const { return A; }
 		Iterator_const end()	const { return A + Size; }
