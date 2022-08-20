@@ -53,35 +53,37 @@ namespace FlexKit
 	{
 	public:
 		SkeletonComponent(iAllocator* allocator) :
-			skeletons   { allocator },
-			handles     { allocator },
-			allocator   { allocator } {}
+			states		{ allocator },
+			skeletons	{ allocator },
+			handles		{ allocator },
+			allocator	{ allocator } {}
 
-		SkeletonHandle Create(const TriMeshHandle triMesh, const AssetHandle asset)
+		SkeletonHandle Create(const AssetHandle asset)
 		{
-			if (triMesh == InvalidHandle)
+			const auto skeletonGuid  = asset;
+			const auto available     = isAssetAvailable(skeletonGuid);
+
+			if (!available)
 				return InvalidHandle;
 
-			auto mesh = GetMeshResource(triMesh);
-			if (!mesh)
-				return InvalidHandle;
+			auto res = std::ranges::find_if(
+				skeletons,
+				[&](const auto& sk)
+				{
+					return sk.asset == asset;
+				});
 
-			if (!mesh->Skeleton)
+			if (res == skeletons.end())
 			{
-				const auto skeletonGuid  = asset;
-				const auto available     = isAssetAvailable(skeletonGuid);
-
-				if (!available)
-					return InvalidHandle;
-
 				const auto resource = LoadGameAsset(skeletonGuid);
-				mesh->Skeleton      = Resource2Skeleton(resource, allocator);
-				mesh->SkeletonGUID  = asset;
+				auto skeleton		= Resource2Skeleton(resource, allocator);
+
+				skeletons.emplace_back(asset, skeleton);
+				res = &skeletons.back();
 			}
 
-
 			const auto handle = handles.GetNewHandle();
-			handles[handle] = (uint32_t)skeletons.push_back({ mesh->Skeleton, CreatePoseState(*mesh->Skeleton, allocator) });
+			handles[handle] = (uint32_t)states.push_back({ res->sk, CreatePoseState(*res->sk, allocator) });
 
 			return handle;
 		}
@@ -98,10 +100,18 @@ namespace FlexKit
 
 		SkeletonState& operator [](SkeletonHandle handle)
 		{
-			return skeletons[handles[handle]];
+			return states[handles[handle]];
 		}
 
-		Vector<SkeletonState>							skeletons;
+		struct LoadedSkeleton
+		{
+			AssetHandle	asset;
+			Skeleton*	sk = nullptr;
+		};
+
+		Vector<SkeletonState>							states;
+		Vector<LoadedSkeleton>							skeletons;
+
 		HandleUtilities::HandleTable<SkeletonHandle>	handles;
 		iAllocator*                                     allocator;
 	};
@@ -110,13 +120,13 @@ namespace FlexKit
 	class SkeletonView : public FlexKit::ComponentView_t<SkeletonComponent>
 	{
 	public:
-		SkeletonView(GameObject& gameObject, const TriMeshHandle triMesh, const AssetHandle asset) : handle{ GetComponent().Create(triMesh, asset) } { }
+		SkeletonView(GameObject& gameObject, const AssetHandle asset) : handle{ GetComponent().Create(asset) } {}
 
 		auto& GetPoseState(this auto&& self)
 		{
-			auto& ref               = GetComponent()[self.handle].poseState;
-			using ref_type          = decltype(ref);
-			using const_ref_type    = const ref_type;
+			auto& ref	= GetComponent()[self.handle].poseState;
+			using ref_type				= decltype(ref);
+			using const_ref_type		= const ref_type;
 
 			if constexpr (std::is_const_v<decltype(self)>)
 				return std::forward<const_ref_type >(ref);
@@ -135,7 +145,7 @@ namespace FlexKit
 		}
 
 
-		JointPose GetPose(JointHandle jointId)
+		JointPose GetPose(JointHandle jointId) const
 		{
 			return GetPoseState().Joints[jointId];
 		}

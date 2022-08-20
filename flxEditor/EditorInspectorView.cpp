@@ -522,7 +522,7 @@ void EditorInspectorView::UpdateUI(FlexKit::GameObject& gameObject)
 		
 		ComponentViewPanelContext context{ layout, propertyItems, properties, this };
 
-		if (auto res = componentInspectors.find(componentView.ID); res != componentInspectors.end())
+		if (auto res = componentInspectors.find(componentView.GetID()); res != componentInspectors.end())
 		{
 			toolBox->addItem(scrollable, fmt::format("{}", res->second->ComponentName()).c_str());
 
@@ -530,9 +530,9 @@ void EditorInspectorView::UpdateUI(FlexKit::GameObject& gameObject)
 		}
 		else
 		{
-			toolBox->addItem(scrollable, fmt::format("Unknown Component: {}", componentView.ID).c_str());
+			toolBox->addItem(scrollable, fmt::format("Unknown Component: {}", componentView.GetID()).c_str());
 
-			context.PushVerticalLayout(QString{ "Component ID#%1: " }.arg(componentView.ID).toStdString(), true);
+			context.PushVerticalLayout(QString{ "Component ID#%1: " }.arg(componentView.GetID()).toStdString(), true);
 			context.AddText("No Component Inspector Available");
 			context.Pop();
 		}

@@ -11,32 +11,32 @@
 
 FlexKit::Blob AnimatorComponent::GetBlob()
 {
-    FlexKit::Blob blob;
+	FlexKit::Blob blob;
 
-    FlexKit::AnimatorBlobHeader header;
+	FlexKit::AnimatorBlobHeader header;
 
-    header.blockType    = FlexKit::EntityComponentBlock;
-    header.componentID  = FlexKit::AnimatorComponentID;
-    header.blockSize    = sizeof(header) + inputs.size() * sizeof(FlexKit::AnimatorBlobInputState);
+	header.blockType		= FlexKit::EntityComponentBlock;
+	header.componentID		= FlexKit::AnimatorComponentID;
+	header.blockSize		= sizeof(header) + inputs.size() * sizeof(FlexKit::AnimatorBlobInputState);
 
-    header.inputCount       = inputs.size();
-    header.scriptResource   = scriptResource;
-    header.stateCount       = 0;
+	header.inputCount		= inputs.size();
+	header.scriptResource	= scriptResource;
+	header.stateCount		= 0;
 
-    const auto end = inputs.size();
-    for (size_t I = 0; I < end; I++)
-    {
-        FlexKit::AnimatorBlobInputState input;
+	const auto end = inputs.size();
+	for (size_t I = 0; I < end; I++)
+	{
+		FlexKit::AnimatorBlobInputState input;
 
-        memcpy(input.data, inputs[I].defaultValue, sizeof(input.data));
-        strncpy_s(input.name, inputs[I].stringID.c_str(), 32);
-        input.type = (uint32_t)inputs[I].type;
+		memcpy(input.data, inputs[I].defaultValue, sizeof(input.data));
+		strncpy_s(input.name, inputs[I].stringID.c_str(), 32);
+		input.type = (uint32_t)inputs[I].type;
 
-        blob += input;
-    }
+		blob += input;
+	}
 
 
-    return FlexKit::Blob{ header } + blob;
+	return FlexKit::Blob{ header } + blob;
 }
 
 
@@ -46,51 +46,51 @@ FlexKit::Blob AnimatorComponent::GetBlob()
 class SkeletonInspector : public IComponentInspector
 {
 public:
-    SkeletonInspector(EditorProject& IN_project, EditorViewport& IN_viewport)
-        : viewport  { IN_viewport }
-        , project   { IN_project }{}
+	SkeletonInspector(EditorProject& IN_project, EditorViewport& IN_viewport)
+		: viewport	{ IN_viewport }
+		, project	{ IN_project }{}
 
 
-    FlexKit::ComponentID ComponentID() override
-    {
-        return FlexKit::SkeletonComponentID;
-    }
+	FlexKit::ComponentID ComponentID() override
+	{
+		return FlexKit::SkeletonComponentID;
+	}
 
-    void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override
-    {
-        panelCtx.PushVerticalLayout("Skeleton", true);
-        panelCtx.AddText("TODO: ME!");
-        panelCtx.Pop();
-    }
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override
+	{
+		panelCtx.PushVerticalLayout("Skeleton", true);
+		panelCtx.AddText("TODO: ME!");
+		panelCtx.Pop();
+	}
 
-    EditorViewport& viewport;
-    EditorProject& project;
+	EditorViewport& viewport;
+	EditorProject& project;
 };
 
 
 struct SkeletonFactory : public IComponentFactory
 {
-    FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
-    {
-        if (gameObject.hasView(FlexKit::BrushComponentID) && !gameObject.hasView(FlexKit::SkeletonComponentID) && FlexKit::GetBrush(gameObject)->meshes.size())
-            return gameObject.AddView<FlexKit::SkeletonView>(FlexKit::GetBrush(gameObject)->meshes.front(), -1u);
-        else
-            return *gameObject.GetView(FlexKit::SkeletonComponentID);
-    }
+	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
+	{
+		if (gameObject.hasView(FlexKit::BrushComponentID) && !gameObject.hasView(FlexKit::SkeletonComponentID) && FlexKit::GetBrush(gameObject)->meshes.size())
+			return gameObject.AddView<FlexKit::SkeletonView>(-1u);
+		else
+			return *gameObject.GetView(FlexKit::SkeletonComponentID);
+	}
 
-    inline static const std::string name = "Skeleton";
+	inline static const std::string name = "Skeleton";
 
-    const std::string&      ComponentName() const noexcept { return name; }
-    FlexKit::ComponentID    ComponentID()   const noexcept { return FlexKit::SkeletonComponentID; }
+	const std::string&		ComponentName() const noexcept { return name; }
+	FlexKit::ComponentID	ComponentID()   const noexcept { return FlexKit::SkeletonComponentID; }
 
-    static bool Register()
-    {
-        EditorInspectorView::AddComponentFactory(std::make_unique<SkeletonFactory>());
+	static bool Register()
+	{
+		EditorInspectorView::AddComponentFactory(std::make_unique<SkeletonFactory>());
 
-        return true;
-    }
+		return true;
+	}
 
-    inline static bool _registered = Register();
+	inline static bool _registered = Register();
 };
 
 
