@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2021 Robert May
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -52,8 +52,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DEBUGALLOCATOR		OFF
 #define DEBUGGRAPHICS		ON
 #define DEBUGSHADERS		ON
-#define DEBUGGPUVALIDATION  OFF
-#define ENABLEDRED		    OFF
+#define DEBUGGPUVALIDATION	OFF
+#define ENABLEDRED			OFF
 #define DEBUGHANDLES		OFF
 #define DEBUGMEMORY			OFF
 #define FATALERROR			OFF
@@ -64,8 +64,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RESCOMPILERVERBOSE	ON
 #define TOOTLE				OFF
 #define AFTERMATH			OFF
-#define PIX                 OFF
-#define ENABLEPROFILER      OFF
+#define PIX					OFF
+#define ENABLEPROFILER		OFF
+#define ENABLEDEBUGVIS		ON
 
 #else
 
@@ -75,8 +76,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DEBUGALLOCATOR		OFF
 #define DEBUGGRAPHICS		OFF
 #define DEBUGSHADERS		ON
-#define DEBUGGPUVALIDATION  OFF
-#define ENABLEDRED		    OFF
+#define DEBUGGPUVALIDATION	OFF
+#define ENABLEDRED			OFF
 #define DEBUGHANDLES		OFF
 #define DEBUGMEMORY			OFF
 #define FATALERROR			ON
@@ -87,9 +88,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RESCOMPILERVERBOSE	ON
 #define TOOTLE				OFF
 #define AFTERMATH			OFF
-#define PIX                 ON
-#define ENABLEPROFILER      OFF
-
+#define PIX					ON
+#define ENABLEPROFILER		OFF
+#define ENABLEDEBUGVIS		OFF
 
 #endif
 
@@ -202,13 +203,13 @@ static const size_t MEGABYTE	= 1024 * KILOBYTE;
 static const size_t GIGABYTE	= 1024 * MEGABYTE;
 
 constexpr size_t DefaultWorkerCount = 2; // should be safe for a quad core cpu
-const size_t INVALIDHANDLE          = size_t(-1);
+const size_t INVALIDHANDLE			= size_t(-1);
 
 namespace FlexKit {
-	using byte          = uint8_t;
-	using ComponentID   = uint32_t;
-	using AssetHandle   = uint64_t;
-	using GUID_t        = uint64_t;
+	using byte			= uint8_t;
+	using ComponentID	= uint32_t;
+	using AssetHandle	= uint64_t;
+	using GUID_t		= uint64_t;
 }
 
 #define NOMINMAX
