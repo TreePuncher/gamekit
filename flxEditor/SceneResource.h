@@ -180,11 +180,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Blob CreateSceneNodeComponent   (uint32_t nodeIdx);
-	Blob CreateIDComponent          (const std::string& string);
-	Blob CreateBrushComponent       (GUID_t meshGUID, const float4 albedo, const float4 specular);
-	Blob CreateMaterialComponent    (BrushMaterial material);
-	Blob CreatePointLightComponent  (float3 K, float2 IR);
+	Blob CreateSceneNodeComponent	(uint32_t nodeIdx);
+	Blob CreateIDComponent			(const std::string& string);
+	Blob CreateBrushComponent		(std::span<GUID_t> meshGUIDs, const float4 albedo, const float4 specular);
+	Blob CreateMaterialComponent	(BrushMaterial material);
+	Blob CreatePointLightComponent	(float3 K, float2 IR);
 
 
 	/************************************************************************************************/
@@ -222,8 +222,8 @@ namespace FlexKit
 	{
 	public:
 		EntitySceneNodeComponent(size_t IN_nodeIdx = -1 ) :
-			Serializable    { FlexKit::TransformComponentID },
-			nodeIdx         { IN_nodeIdx } {}
+			Serializable	{ FlexKit::TransformComponentID },
+			nodeIdx			{ IN_nodeIdx } {}
 
 		void Serialize(auto& ar)
 		{
@@ -249,8 +249,9 @@ namespace FlexKit
 	{
 	public:
 		EntityBrushComponent(GUID_t IN_MGUID = INVALIDHANDLE, float4 IN_albedo = { 0, 1, 0, 0.5f }, float4 specular = { 1, 0, 1, 0 }) :
-			Serializable    { GetTypeGUID(Brush) }
+			Serializable	{ GetTypeGUID(Brush) }
 		{
+			if(IN_MGUID != INVALIDHANDLE)
 			meshes.push_back(IN_MGUID);
 		}
 
@@ -291,8 +292,8 @@ namespace FlexKit
 	{
 	public:
 		EntitySkeletonComponent(GUID_t IN_skeletonResourceID = -1) :
-			Serializable        { GetTypeGUID(Skeleton) },
-			skeletonResourceID  { IN_skeletonResourceID } {}
+			Serializable		{ GetTypeGUID(Skeleton) },
+			skeletonResourceID	{ IN_skeletonResourceID } {}
 
 		void Serialize(auto& ar)
 		{
@@ -316,9 +317,9 @@ namespace FlexKit
 	{
 		using MaterialProperty = std::variant<std::string, float4, float3, float2, float>;
 
-		std::vector<MaterialProperty>   properties;
-		std::vector<std::string>        propertyID;
-		std::vector<uint32_t>           propertyGUID;
+		std::vector<MaterialProperty>	properties;
+		std::vector<std::string>		propertyID;
+		std::vector<uint32_t>			propertyGUID;
 
 		template<class Archive>
 		void Serialize(Archive& ar)
@@ -372,10 +373,10 @@ namespace FlexKit
 	{
 	public:
 		EntityPointLightComponent(const FlexKit::float3 IN_K = {}, const float2 IR = {}) :
-			Serializable    { GetTypeGUID(PointLight) },
-			K               { IN_K },
-			I               { IR.x },
-			R               { IR.y } {}
+			Serializable	{ GetTypeGUID(PointLight) },
+			K				{ IN_K },
+			I				{ IR.x },
+			R				{ IR.y } {}
 
 		Blob GetBlob() override
 		{
@@ -402,8 +403,8 @@ namespace FlexKit
 	};
 
 
-	using EntityComponent_ptr   = std::shared_ptr<EntityComponent>;
-	using ComponentVector       = std::vector<EntityComponent_ptr>;
+	using EntityComponent_ptr	= std::shared_ptr<EntityComponent>;
+	using ComponentVector		= std::vector<EntityComponent_ptr>;
 
 
 	/************************************************************************************************/
@@ -479,13 +480,13 @@ namespace FlexKit
 			return idx;
 		}
 
-		const ResourceID_t GetResourceTypeID()  const noexcept final { return SceneResourceTypeID; }
-		const std::string& GetResourceID()      const noexcept final { return ID; }
-		const uint64_t     GetResourceGUID()    const noexcept final { return guid; }
+		const ResourceID_t	GetResourceTypeID()	const noexcept final { return SceneResourceTypeID; }
+		const std::string&	GetResourceID()		const noexcept final { return ID; }
+		const uint64_t		GetResourceGUID()	const noexcept final { return guid; }
 
 
-		void SetResourceID      (const std::string& newID)  noexcept final { ID = newID; }
-		void SetResourceGUID    (uint64_t newGUID)          noexcept final { guid = newGUID; }
+		void SetResourceID		(const std::string& newID)	noexcept final { ID		= newID; }
+		void SetResourceGUID	(uint64_t newGUID)			noexcept final { guid	= newGUID; }
 
 		template<class Archive>
 		void Serialize(Archive& ar)
@@ -501,13 +502,13 @@ namespace FlexKit
 		}
 
 
-		IDTranslationTable			    translationTable;
+		IDTranslationTable				translationTable;
 		std::vector<ScenePointLight>	pointLights;
 		std::vector<SceneNode>			nodes;
 		std::vector<SceneEntity>		entities;
 		std::vector<SceneEntity>		staticEntities;
 
-		size_t		guid    = rand();
+		size_t		guid	= rand();
 		std::string	ID;
 	};
 

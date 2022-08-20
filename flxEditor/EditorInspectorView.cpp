@@ -8,8 +8,8 @@
 
 
 ComponentViewPanelContext::ComponentViewPanelContext(QBoxLayout* panel, std::vector<QObject*>& items_out, std::vector<QBoxLayout*>& layouts, EditorInspectorView* IN_inspector)
-	: inspector     { IN_inspector }
-	, propertyItems { items_out }
+	: inspector		{ IN_inspector }
+	, propertyItems	{ items_out }
 {
 	layoutStack.push_back(panel);
 }
@@ -387,11 +387,11 @@ void EditorInspectorView::timerEvent(QTimerEvent*)
 void EditorInspectorView::UpdatePropertiesViewportObjectInspector()
 {
 
-	auto selection                  = selectionContext.GetSelection<ViewportSelection>().viewportObjects.front();
-	uint64_t objectID               = selection->objectID;
+	auto selection					= selectionContext.GetSelection<ViewportSelection>().viewportObjects.front();
+	uint64_t objectID				= selection->objectID;
 
-	auto& gameObject                = selection->gameObject;
-	auto gameObjectPropertyCount    = std::distance(gameObject.begin(), gameObject.end());
+	auto& gameObject				= selection->gameObject;
+	auto gameObjectPropertyCount	= std::distance(gameObject.begin(), gameObject.end());
 
 	if( objectID        != selectedObject ||
 		propertyCount   != gameObjectPropertyCount)
@@ -494,7 +494,7 @@ void EditorInspectorView::UpdateUI(FlexKit::GameObject& gameObject)
 	properties.clear();
 	propertyItems.clear();
 
-	const char* ID      = FlexKit::GetStringID(gameObject);
+	const char* ID		= FlexKit::GetStringID(gameObject);
 	const size_t ID_len = strnlen_s(ID, 32);
 
 	QLabel* header = (ID_len) ?

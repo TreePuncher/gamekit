@@ -11,64 +11,64 @@ using FlexKit::GameFramework;
 
 constexpr bool EnableDebug()
 {
-#if _DEBUG
-    return true;
+#if USING(ENABLEDEBUGVIS)
+	return true;
 #else
-    return false;
+	return false;
 #endif
 }
 
 HostWorldStateMangager::HostWorldStateMangager(MultiplayerPlayerID_t IN_player, NetworkState& IN_net, BaseState& IN_base) :
-    net                     { IN_net    },
-    base                    { IN_base   },
+	net						{ IN_net	},
+	base					{ IN_base	},
 
-    eventMap                { IN_base.framework.core.GetBlockMemory() },
+	eventMap				{ IN_base.framework.core.GetBlockMemory() },
 
-    pendingRemoteUpdates    { IN_base.framework.core.GetBlockMemory() },
+	pendingRemoteUpdates	{ IN_base.framework.core.GetBlockMemory() },
 
-    localPlayerID           { IN_player },
-    localPlayer             { world.AddLocalPlayer(IN_player) },
+	localPlayerID			{ IN_player },
+	localPlayer				{ world.AddLocalPlayer(IN_player) },
 
-    gadgetComponent         { IN_base.framework.core.GetBlockMemory() },
-    playerComponent         { IN_base.framework.core.GetBlockMemory() },
-    localPlayerComponent    { IN_base.framework.core.GetBlockMemory() },
-    remotePlayerComponent   { IN_base.framework.core.GetBlockMemory() },
+	gadgetComponent			{ IN_base.framework.core.GetBlockMemory() },
+	playerComponent			{ IN_base.framework.core.GetBlockMemory() },
+	localPlayerComponent	{ IN_base.framework.core.GetBlockMemory() },
+	remotePlayerComponent	{ IN_base.framework.core.GetBlockMemory() },
 
-    packetHandlers          { IN_base.framework.core.GetBlockMemory() },
-    world                   { IN_base.framework.core, EnableDebug() }
+	packetHandlers			{ IN_base.framework.core.GetBlockMemory() },
+	world					{ IN_base.framework.core, EnableDebug() }
 {
-    auto& allocator = IN_base.framework.core.GetBlockMemory();
+	auto& allocator = IN_base.framework.core.GetBlockMemory();
 
-    packetHandlers.push_back(
-        CreatePacketHandler(
-            PlayerUpdate,
-            [&](UserPacketHeader* header, Packet* packet, NetworkState* network)
-            {
-                auto* updatePacket = reinterpret_cast<PlayerUpdatePacket*>(header);
+	packetHandlers.push_back(
+		CreatePacketHandler(
+			PlayerUpdate,
+			[&](UserPacketHeader* header, Packet* packet, NetworkState* network)
+			{
+				auto* updatePacket = reinterpret_cast<PlayerUpdatePacket*>(header);
 
-                pendingRemoteUpdates.push_back(updatePacket->state);
-            },
-            allocator));
+				pendingRemoteUpdates.push_back(updatePacket->state);
+			},
+			allocator));
 
-    net.PushHandler(packetHandlers);
+	net.PushHandler(packetHandlers);
 
-    eventMap.MapKeyToEvent(KEYCODES::KC_W, TPC_MoveForward);
-    eventMap.MapKeyToEvent(KEYCODES::KC_S, TPC_MoveBackward);
+	eventMap.MapKeyToEvent(KEYCODES::KC_W, TPC_MoveForward);
+	eventMap.MapKeyToEvent(KEYCODES::KC_S, TPC_MoveBackward);
 
-    eventMap.MapKeyToEvent(KEYCODES::KC_A, TPC_MoveLeft);
-    eventMap.MapKeyToEvent(KEYCODES::KC_D, TPC_MoveRight);
-    eventMap.MapKeyToEvent(KEYCODES::KC_Q, TPC_MoveDown);
-    eventMap.MapKeyToEvent(KEYCODES::KC_E, TPC_MoveUp);
+	eventMap.MapKeyToEvent(KEYCODES::KC_A, TPC_MoveLeft);
+	eventMap.MapKeyToEvent(KEYCODES::KC_D, TPC_MoveRight);
+	eventMap.MapKeyToEvent(KEYCODES::KC_Q, TPC_MoveDown);
+	eventMap.MapKeyToEvent(KEYCODES::KC_E, TPC_MoveUp);
 
-    eventMap.MapKeyToEvent(KEYCODES::KC_1, PLAYER_ACTION1);
-    eventMap.MapKeyToEvent(KEYCODES::KC_2, PLAYER_ACTION2);
-    eventMap.MapKeyToEvent(KEYCODES::KC_3, PLAYER_ACTION3);
-    eventMap.MapKeyToEvent(KEYCODES::KC_4, PLAYER_ACTION4);
+	eventMap.MapKeyToEvent(KEYCODES::KC_1, PLAYER_ACTION1);
+	eventMap.MapKeyToEvent(KEYCODES::KC_2, PLAYER_ACTION2);
+	eventMap.MapKeyToEvent(KEYCODES::KC_3, PLAYER_ACTION3);
+	eventMap.MapKeyToEvent(KEYCODES::KC_4, PLAYER_ACTION4);
 
-    SetControllerPosition(localPlayer, { -0, 0, -0 });
+	SetControllerPosition(localPlayer, { -0, 0, -0 });
 
-    const auto worldAssets = LoadBasicTiles();
-    CreateMultiplayerScene(world, worldAssets, IN_base.framework.core.GetBlockMemory(), IN_base.framework.core.GetTempMemory());
+	const auto worldAssets = LoadBasicTiles();
+	CreateMultiplayerScene(world, worldAssets, IN_base.framework.core.GetBlockMemory(), IN_base.framework.core.GetTempMemory());
 }
 
 
@@ -77,15 +77,15 @@ HostWorldStateMangager::HostWorldStateMangager(MultiplayerPlayerID_t IN_player, 
 
 HostWorldStateMangager::~HostWorldStateMangager()
 {
-    auto& allocator = base.framework.core.GetBlockMemory();
+	auto& allocator = base.framework.core.GetBlockMemory();
 
-    for (auto handler : packetHandlers)
-        allocator.release_allocation(*handler);
+	for (auto handler : packetHandlers)
+		allocator.release_allocation(*handler);
 
-    packetHandlers.clear();
+	packetHandlers.clear();
 
-    localPlayer.Release();
-    world.Release();
+	localPlayer.Release();
+	world.Release();
 }
 
 
@@ -94,116 +94,116 @@ HostWorldStateMangager::~HostWorldStateMangager()
 
 WorldStateUpdate HostWorldStateMangager::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
-    ProfileFunction();
+	ProfileFunction();
 
-    net.Update(core, dispatcher, dT);
+	net.Update(core, dispatcher, dT);
 
-    WorldStateUpdate out;
+	WorldStateUpdate out;
 
-    struct _ {};
+	struct _ {};
 
-    auto& worldUpdate =
-        dispatcher.Add<_>(
-            [](UpdateDispatcher::UpdateBuilder& Builder, auto& data)
-            {
-            },
-            [&, dT = dT](auto& data, iAllocator& threadAllocator)
-            {
-                ProfileFunction();
+	auto& worldUpdate =
+		dispatcher.Add<_>(
+			[](UpdateDispatcher::UpdateBuilder& Builder, auto& data)
+			{
+			},
+			[&, dT = dT](auto& data, iAllocator& threadAllocator)
+			{
+				ProfileFunction();
 
-                fixedUpdate(dT,
-                    [&](auto dT)
-                    {
-                        ProfileFunction();
+				fixedUpdate(dT,
+					[&](auto dT)
+					{
+						ProfileFunction();
 
-                        // Send Player Updates
-                        PlayerFrameState localState = GetPlayerFrameState(localPlayer);
-                        const auto leftStick        = base.gamepads.GetLeftJoyStick();
-                        auto rightStick             = base.gamepads.GetRightJoyStick() * float2(1, -1);
+						// Send Player Updates
+						PlayerFrameState localState	= GetPlayerFrameState(localPlayer);
+						const auto leftStick		= base.gamepads.GetLeftJoyStick();
+						auto rightStick				= base.gamepads.GetRightJoyStick() * float2(1, -1);
 
-                        if (rightStick.Magnitude() < 0.1f)
-                            rightStick = float2{ 0, 0 };
+						if (rightStick.Magnitude() < 0.1f)
+							rightStick = float2{ 0, 0 };
 
-                        float x = currentInputState.X + leftStick.x;
-                        float y = currentInputState.Y + leftStick.y;
+						float x = currentInputState.X + leftStick.x;
+						float y = currentInputState.Y + leftStick.y;
 
-                        x = clamp(-1.0f, x, 1.0f);
-                        y = clamp(-1.0f, y, 1.0f);
+						x = clamp(-1.0f, x, 1.0f);
+						y = clamp(-1.0f, y, 1.0f);
 
-                        float2 XY = rightStick / 50.0F + base.renderWindow.mouseState.Normalized_dPos;
-                        XY.x = clamp(-1.0f, XY.x, 1.0f);
-                        XY.y = clamp(-1.0f, XY.y, 1.0f);
+						float2 XY = rightStick / 50.0F + base.renderWindow.mouseState.Normalized_dPos;
+						XY.x = clamp(-1.0f, XY.x, 1.0f);
+						XY.y = clamp(-1.0f, XY.y, 1.0f);
 
-                        localState.inputState       = currentInputState;
+						localState.inputState       = currentInputState;
 
-                        auto temp = currentInputState;
-                        temp.X += x;
-                        temp.Y += y;
-                        temp.mousedXY = XY;
+						auto temp = currentInputState;
+						temp.X += x;
+						temp.Y += y;
+						temp.mousedXY = XY;
 
-                        UpdateLocalPlayer(localPlayer, temp, dT);
-                        world.UpdatePlayer(localState, dT);
+						UpdateLocalPlayer(localPlayer, temp, dT);
+						world.UpdatePlayer(localState, dT);
 
-                        for (auto& playerUpdate : pendingRemoteUpdates)
-                            world.UpdateRemotePlayer(playerUpdate, dT);
+						for (auto& playerUpdate : pendingRemoteUpdates)
+							world.UpdateRemotePlayer(playerUpdate, dT);
 
-                        // Process Player events
-                        for (auto& player : playerComponent)
-                        {
-                            for (auto& evt : player.componentData.playerEvents)
-                            {
-                                switch (evt.mData1.mINT[0])
-                                {
-                                case (int)PlayerEvents::PlayerDeath:
-                                {
-                                    static_vector<Event> events{ evt };
-                                    BroadcastEvent(events);
+						// Process Player events
+						for (auto& player : playerComponent)
+						{
+							for (auto& evt : player.componentData.playerEvents)
+							{
+								switch (evt.mData1.mINT[0])
+								{
+								case (int)PlayerEvents::PlayerDeath:
+								{
+									static_vector<Event> events{ evt };
+									BroadcastEvent(events);
 
-                                    gameEventHandler(evt); // broadcast evt globally
-                                }   break;
-                                }
-                            }
+									gameEventHandler(evt); // broadcast evt globally
+								}   break;
+								}
+							}
 
-                            player.componentData.playerEvents.clear();
-                        }
-                        
+							player.componentData.playerEvents.clear();
+						}
+						
 
-                        for (auto& playerView : remotePlayerComponent)
-                        {
-                            const auto playerID     = playerView.componentData.playerID;
-                            const auto state        = playerView.componentData.GetFrameState();
-                            const auto connection   = playerView.componentData.connection;
+						for (auto& playerView : remotePlayerComponent)
+						{
+							const auto playerID     = playerView.componentData.playerID;
+							const auto state        = playerView.componentData.GetFrameState();
+							const auto connection   = playerView.componentData.connection;
 
-                            SendFrameState(localPlayerID, localState, connection);
+							SendFrameState(localPlayerID, localState, connection);
 
-                            for (auto otherPlayer : remotePlayerComponent)
-                            {
-                                const auto otherPID     = otherPlayer.componentData.playerID;
-                                const auto connection   = otherPlayer.componentData.connection;
+							for (auto otherPlayer : remotePlayerComponent)
+							{
+								const auto otherPID     = otherPlayer.componentData.playerID;
+								const auto connection   = otherPlayer.componentData.connection;
 
-                                if (playerID != otherPID)
-                                    SendFrameState(playerID, state, connection);
-                            }
-                        }
+								if (playerID != otherPID)
+									SendFrameState(playerID, state, connection);
+							}
+						}
 
-                        pendingRemoteUpdates.clear();
-                        currentInputState.events.clear();
-                    });
-            });
+						pendingRemoteUpdates.clear();
+						currentInputState.events.clear();
+					});
+			});
 
-    auto& physicsUpdate     = base.physics.Update(dispatcher, dT);
-    auto& spellUpdate       = world.UpdateGadgets(dispatcher, world.objectPool, dT);
-    auto& enemyAIUpdate     = UpdateEnemies(dispatcher, dT);
+	auto& physicsUpdate		= base.physics.Update(dispatcher, dT);
+	auto& spellUpdate		= world.UpdateGadgets(dispatcher, world.objectPool, dT);
+	auto& enemyAIUpdate		= UpdateEnemies(dispatcher, dT);
 
-    spellUpdate.AddInput(worldUpdate);
-    physicsUpdate.AddInput(worldUpdate);
-    physicsUpdate.AddInput(spellUpdate);
-    physicsUpdate.AddInput(enemyAIUpdate);
-    worldUpdate.AddInput(enemyAIUpdate);
+	spellUpdate.AddInput(worldUpdate);
+	physicsUpdate.AddInput(worldUpdate);
+	physicsUpdate.AddInput(spellUpdate);
+	physicsUpdate.AddInput(enemyAIUpdate);
+	worldUpdate.AddInput(enemyAIUpdate);
 
-    out.update = &physicsUpdate;
+	out.update = &physicsUpdate;
 
-    return out;
+	return out;
 }
 
 
@@ -212,9 +212,9 @@ WorldStateUpdate HostWorldStateMangager::Update(EngineCore& core, UpdateDispatch
 
 Vector<UpdateTask*> HostWorldStateMangager::DrawTasks(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
-    Vector<UpdateTask*> tasks{ core.GetTempMemory() };
+	Vector<UpdateTask*> tasks{ core.GetTempMemory() };
 
-    return tasks;
+	return tasks;
 }
 
 
@@ -223,11 +223,11 @@ Vector<UpdateTask*> HostWorldStateMangager::DrawTasks(EngineCore& core, UpdateDi
 
 void HostWorldStateMangager::SendFrameState(const MultiplayerPlayerID_t ID, const PlayerFrameState& state, const ConnectionHandle connection)
 {
-    PlayerUpdatePacket packet;
-    packet.playerID = ID;
-    packet.state    = state;
+	PlayerUpdatePacket packet;
+	packet.playerID	= ID;
+	packet.state	= state;
 
-    net.Send(packet.header, connection);
+	net.Send(packet.header, connection);
 }
 
 
@@ -236,14 +236,14 @@ void HostWorldStateMangager::SendFrameState(const MultiplayerPlayerID_t ID, cons
 
 bool HostWorldStateMangager::EventHandler(Event evt)
 {
-    ProfileFunction();
+	ProfileFunction();
 
-    return
-        eventMap.Handle(evt,
-        [&](auto& evt) -> bool
-        {
-            return HandleEvents(currentInputState, evt);
-        });
+	return
+		eventMap.Handle(evt,
+		[&](auto& evt) -> bool
+		{
+			return HandleEvents(currentInputState, evt);
+		});
 }
 
 
@@ -252,7 +252,7 @@ bool HostWorldStateMangager::EventHandler(Event evt)
 
 Scene& HostWorldStateMangager::GetScene()
 {
-    return world.scene;
+	return world.scene;
 }
 
 
@@ -261,7 +261,7 @@ Scene& HostWorldStateMangager::GetScene()
 
 LayerHandle HostWorldStateMangager::GetLayer()
 {
-    return world.layer;
+	return world.layer;
 }
 
 
@@ -270,7 +270,7 @@ LayerHandle HostWorldStateMangager::GetLayer()
 
 CameraHandle HostWorldStateMangager::GetActiveCamera() const 
 {
-    return GetCameraControllerCamera(localPlayer);
+	return GetCameraControllerCamera(localPlayer);
 }
 
 
@@ -279,14 +279,14 @@ CameraHandle HostWorldStateMangager::GetActiveCamera() const
 
 void HostWorldStateMangager::AddPlayer(ConnectionHandle connection, MultiplayerPlayerID_t ID)
 {
-    auto& remotePlayer = world.AddRemotePlayer(ID);
+	auto& remotePlayer = world.AddRemotePlayer(ID);
 
-    Apply(
-        remotePlayer,
-        [&](RemotePlayerView& remote)
-        {
-            remote.GetData().connection = connection;
-        });
+	Apply(
+		remotePlayer,
+		[&](RemotePlayerView& remote)
+		{
+			remote.GetData().connection = connection;
+		});
 }
 
 
@@ -294,83 +294,83 @@ void HostWorldStateMangager::AddPlayer(ConnectionHandle connection, MultiplayerP
 
 
 HostState::HostState(GameFramework& framework, GameInfo IN_info, BaseState& IN_base, NetworkState& IN_net) :
-    FrameworkState  { framework },
-    net             { IN_net },
-    base            { IN_base },
-    info            { IN_info },
-    handler         { framework.core.GetBlockMemory() },
-    hostID          { GeneratePlayerID() }
+	FrameworkState	{ framework },
+	net				{ IN_net },
+	base			{ IN_base },
+	info			{ IN_info },
+	handler			{ framework.core.GetBlockMemory() },
+	hostID			{ GeneratePlayerID() }
 {
-    net.HandleNewConnection = [&](ConnectionHandle connection) { HandleIncomingConnection(connection); };
-    net.HandleDisconnection = [&](ConnectionHandle connection) { HandleDisconnection(connection); };
+	net.HandleNewConnection = [&](ConnectionHandle connection) { HandleIncomingConnection(connection); };
+	net.HandleDisconnection = [&](ConnectionHandle connection) { HandleDisconnection(connection); };
 
-    Player host{
-        .name = info.name,
-        .ID   = hostID
-    };
+	Player host{
+		.name = info.name,
+		.ID   = hostID
+	};
 
-    players.push_back(host);
+	players.push_back(host);
 
-    // Register Packet Handlers
-    handler.push_back(
-        CreatePacketHandler(
-            ClientDataRequestResponse,
-            [&](UserPacketHeader* incomingPacket, Packet* packet, NetworkState* network)
-            {
-                const ClientDataPacket* clientData = reinterpret_cast<ClientDataPacket*>(incomingPacket);
+	// Register Packet Handlers
+	handler.push_back(
+		CreatePacketHandler(
+			ClientDataRequestResponse,
+			[&](UserPacketHeader* incomingPacket, Packet* packet, NetworkState* network)
+			{
+				const ClientDataPacket* clientData = reinterpret_cast<ClientDataPacket*>(incomingPacket);
 
-                const std::string           name        { clientData->playerName };
-                const PlayerJoinEventPacket joinEvent   { clientData->playerID };
+				const std::string           name        { clientData->playerName };
+				const PlayerJoinEventPacket joinEvent   { clientData->playerID };
 
-                for (auto& player : players)
-                {
-                    if (clientData->playerID == player.ID)
-                        player.name = name;
-                    else
-                        net.Send(joinEvent.Header, player.connection);
-                }
-            },
-            framework.core.GetBlockMemory()));
+				for (auto& player : players)
+				{
+					if (clientData->playerID == player.ID)
+						player.name = name;
+					else
+						net.Send(joinEvent.Header, player.connection);
+				}
+			},
+			framework.core.GetBlockMemory()));
 
-    handler.push_back(
-        CreatePacketHandler(
-            LobbyMessage,
-            [&](UserPacketHeader* incomingPacket, Packet* packet, NetworkState* network)
-            {
-                LobbyMessagePacket* msgPacket = reinterpret_cast<LobbyMessagePacket*>(incomingPacket);
+	handler.push_back(
+		CreatePacketHandler(
+			LobbyMessage,
+			[&](UserPacketHeader* incomingPacket, Packet* packet, NetworkState* network)
+			{
+				LobbyMessagePacket* msgPacket = reinterpret_cast<LobbyMessagePacket*>(incomingPacket);
 
-                std::string msg = msgPacket->message;
+				std::string msg = msgPacket->message;
 
-                for (auto& player : players)
-                {
-                    if (player.ID != msgPacket->playerID)
-                    {
-                        LobbyMessagePacket outMessage{ player.ID, msg };
-                        net.Send(outMessage.Header, player.connection);
-                    }
-                }
+				for (auto& player : players)
+				{
+					if (player.ID != msgPacket->playerID)
+					{
+						LobbyMessagePacket outMessage{ player.ID, msg };
+						net.Send(outMessage.Header, player.connection);
+					}
+				}
 
-                if (OnMessageRecieved)
-                    OnMessageRecieved(msg);
-            },
-            framework.core.GetBlockMemory()));
+				if (OnMessageRecieved)
+					OnMessageRecieved(msg);
+			},
+			framework.core.GetBlockMemory()));
 
-    handler.push_back(
-        CreatePacketHandler(
-            RequestPlayerListPacket::PacketID(),
-            [&](UserPacketHeader* incomingPacket, Packet* packet, NetworkState* network)
-            {
-                RequestPlayerListPacket* request = reinterpret_cast<RequestPlayerListPacket*>(incomingPacket);
+	handler.push_back(
+		CreatePacketHandler(
+			RequestPlayerListPacket::PacketID(),
+			[&](UserPacketHeader* incomingPacket, Packet* packet, NetworkState* network)
+			{
+				RequestPlayerListPacket* request = reinterpret_cast<RequestPlayerListPacket*>(incomingPacket);
 
-                auto player = GetPlayer(request->playerID);
+				auto player = GetPlayer(request->playerID);
 
-                if(player)
-                    SendPlayerList(player->connection);
-            },
-            framework.core.GetBlockMemory()));
+				if(player)
+					SendPlayerList(player->connection);
+			},
+			framework.core.GetBlockMemory()));
 
-    net.PushHandler(handler);
-    net.Startup(1337);
+	net.PushHandler(handler);
+	net.Startup(1337);
 }
 
 
@@ -379,10 +379,10 @@ HostState::HostState(GameFramework& framework, GameInfo IN_info, BaseState& IN_b
 
 HostState::~HostState()
 {
-    for (auto h : handler)
-        framework.core.GetBlockMemory().release_allocation(*h);
+	for (auto h : handler)
+		framework.core.GetBlockMemory().release_allocation(*h);
 
-    handler.clear();
+	handler.clear();
 }
 
 
@@ -391,19 +391,19 @@ HostState::~HostState()
 
 void HostState::HandleIncomingConnection(ConnectionHandle connectionhandle)
 {
-    Player host{
-        .name       = "Incoming",
-        .ID         = GetNewID(),
-        .connection = connectionhandle
-    };
+	Player host{
+		.name       = "Incoming",
+		.ID         = GetNewID(),
+		.connection = connectionhandle
+	};
 
-    players.push_back(host);
+	players.push_back(host);
 
-    RequestClientDataPacket packet(host.ID);
-    net.Send(packet.header, connectionhandle);
+	RequestClientDataPacket packet(host.ID);
+	net.Send(packet.header, connectionhandle);
 
-    if (OnPlayerJoin)
-        OnPlayerJoin(players.back());
+	if (OnPlayerJoin)
+		OnPlayerJoin(players.back());
 
 }
 
@@ -413,13 +413,13 @@ void HostState::HandleIncomingConnection(ConnectionHandle connectionhandle)
 
 void HostState::HandleDisconnection(ConnectionHandle connection)
 {
-    players.erase(
-        std::remove_if(
-            players.begin(), players.end(),
-            [&](auto& player)
-            {
-                return player.connection == connection;
-            }));
+	players.erase(
+		std::remove_if(
+			players.begin(), players.end(),
+			[&](auto& player)
+			{
+				return player.connection == connection;
+			}));
 }
 
 
@@ -428,9 +428,9 @@ void HostState::HandleDisconnection(ConnectionHandle connection)
 
 UpdateTask* HostState::Update(EngineCore&core, UpdateDispatcher& dispatcher, double dT)
 {
-    net.Update(core, dispatcher, dT);
+	net.Update(core, dispatcher, dT);
 
-    return nullptr;
+	return nullptr;
 }
 
 
@@ -439,14 +439,14 @@ UpdateTask* HostState::Update(EngineCore&core, UpdateDispatcher& dispatcher, dou
 
 MultiplayerPlayerID_t HostState::GetNewID() const
 {
-    while (true)
-    {
-        const auto newID = GeneratePlayerID();
+	while (true)
+	{
+		const auto newID = GeneratePlayerID();
 
-        if (std::find_if(std::begin(players), std::end(players),
-            [&](auto& player) -> bool { return player.ID == newID; }) == players.end())
-            return newID;
-    }
+		if (std::find_if(std::begin(players), std::end(players),
+			[&](auto& player) -> bool { return player.ID == newID; }) == players.end())
+			return newID;
+	}
 }
 
 
@@ -455,15 +455,15 @@ MultiplayerPlayerID_t HostState::GetNewID() const
 
 HostState::Player* HostState::GetPlayer(MultiplayerPlayerID_t ID)
 {
-    if (auto res = std::find_if(
-            std::begin(players),
-            std::end(players),
-            [&](auto& player) -> bool { return player.ID == ID; });
-            res != players.end())
+	if (auto res = std::find_if(
+			std::begin(players),
+			std::end(players),
+			[&](auto& player) -> bool { return player.ID == ID; });
+			res != players.end())
 
-        return &(*res);
-    else
-        return nullptr;
+		return &(*res);
+	else
+		return nullptr;
 }
 
 
@@ -472,13 +472,13 @@ HostState::Player* HostState::GetPlayer(MultiplayerPlayerID_t ID)
 
 void HostState::BroadCastMessage(std::string msg)
 {
-    for (auto& player : players)
-    {
-        LobbyMessagePacket msgPkt{ player.ID, msg };
+	for (auto& player : players)
+	{
+		LobbyMessagePacket msgPkt{ player.ID, msg };
 
 
-        net.Send(msgPkt.Header, player.connection);
-    }
+		net.Send(msgPkt.Header, player.connection);
+	}
 }
 
 
@@ -487,21 +487,21 @@ void HostState::BroadCastMessage(std::string msg)
 
 void HostState::SendPlayerList(ConnectionHandle dest)
 {
-    auto& temp  = framework.core.GetTempMemory();
-    auto packet = PlayerListPacket::Create(players.size(), temp);
+	auto& temp  = framework.core.GetTempMemory();
+	auto packet = PlayerListPacket::Create(players.size(), temp);
 
 
-    for (size_t I = 0; I < players.size(); I++)
-    {
-        strcpy(packet->Players[I].name, players[I].name.c_str());
+	for (size_t I = 0; I < players.size(); I++)
+	{
+		strcpy(packet->Players[I].name, players[I].name.c_str());
 
-        packet->Players[I].ready    = false;
-        packet->Players[I].ID       = players[I].ID;
+		packet->Players[I].ready    = false;
+		packet->Players[I].ID       = players[I].ID;
 
-        strncpy(packet->Players[I].name, players[I].name.c_str(), sizeof(packet->Players[I].name));
-    }
+		strncpy(packet->Players[I].name, players[I].name.c_str(), sizeof(packet->Players[I].name));
+	}
 
-    net.Send(*packet, dest);
+	net.Send(*packet, dest);
 }
 
 
@@ -510,10 +510,10 @@ void HostState::SendPlayerList(ConnectionHandle dest)
 
 void HostState::SendGameStart()
 {
-    StartGamePacket startGamePacket;
+	StartGamePacket startGamePacket;
 
-    for (size_t I = 0; I < players.size(); I++)
-        net.Send(startGamePacket, players[I].connection);
+	for (size_t I = 0; I < players.size(); I++)
+		net.Send(startGamePacket, players[I].connection);
 }
 
 
@@ -522,83 +522,83 @@ void HostState::SendGameStart()
 
 LobbyState& StartGame(GameInfo& info, GameFramework& framework, BaseState& base, NetworkState& net)
 {
-    AddAssetFile("assets\\testAssets.gameres");
+	AddAssetFile("assets\\testAssets.gameres");
 
-    auto asset = LoadGameAsset("1x1x1Cube");
-    LoadTriMeshIntoTable(framework.core.RenderSystem.GetImmediateUploadQueue(), "1x1x1Cube");
-    FreeAsset(asset);
+	auto asset = LoadGameAsset("1x1x1Cube");
+	LoadTriMeshIntoTable(framework.core.RenderSystem.GetImmediateUploadQueue(), "1x1x1Cube");
+	FreeAsset(asset);
 
-    auto& host  = framework.PushState<HostState>(info, base, net);
-    auto& lobby = framework.PushState<LobbyState>(base, net);
+	auto& host  = framework.PushState<HostState>(info, base, net);
+	auto& lobby = framework.PushState<LobbyState>(base, net);
 
-    /*
-    lobby.host  = true;
+	/*
+	lobby.host  = true;
 
-    lobby.GetPlayer         =
-        [&](uint idx) -> LobbyState::Player
-        {
-            auto& player = host.players[idx];
+	lobby.GetPlayer         =
+		[&](uint idx) -> LobbyState::Player
+		{
+			auto& player = host.players[idx];
 
-            const LobbyState::Player lobbyPlayer = {
-                    .Name   = player.name,
-                    .ID     = player.ID
-            };
+			const LobbyState::Player lobbyPlayer = {
+					.Name   = player.name,
+					.ID     = player.ID
+			};
 
-            return lobbyPlayer;
-        };
+			return lobbyPlayer;
+		};
 
-    lobby.GetPlayerCount    = [&]                       { return (uint)host.players.size(); };
-    lobby.OnSendMessage     = [&](std::string message)  { host.BroadCastMessage(message); };
+	lobby.GetPlayerCount    = [&]                       { return (uint)host.players.size(); };
+	lobby.OnSendMessage     = [&](std::string message)  { host.BroadCastMessage(message); };
 
-    host.OnMessageRecieved  = [&](std::string message)  { lobby.MessageRecieved(message); };
-    host.OnPlayerJoin       =
-        [&](HostState::Player& player)
-        {
-            const LobbyState::Player lobbyPlayer = {
-                .Name   = player.name,
-                .ID     = player.ID
-            };
+	host.OnMessageRecieved  = [&](std::string message)  { lobby.MessageRecieved(message); };
+	host.OnPlayerJoin       =
+		[&](HostState::Player& player)
+		{
+			const LobbyState::Player lobbyPlayer = {
+				.Name   = player.name,
+				.ID     = player.ID
+			};
 
-            lobby.players.push_back(lobbyPlayer);
-            lobby.chatHistory  += "Player Joining...\n";
-        };
+			lobby.players.push_back(lobbyPlayer);
+			lobby.chatHistory  += "Player Joining...\n";
+		};
 
-    lobby.OnGameStart =
-        [&]
-        {
+	lobby.OnGameStart =
+		[&]
+		{
 
-        };
-        */
+		};
+		*/
 
 
-    auto& net_temp = net;
-    auto& base_temp = base;
+	auto& net_temp = net;
+	auto& base_temp = base;
 
-    framework.PopState();
+	framework.PopState();
 
-    host.SendGameStart();
+	host.SendGameStart();
 
-    auto& worldState = framework.core.GetBlockMemory().allocate<HostWorldStateMangager>(host.hostID, net_temp, base_temp);
-    auto& localState = framework.PushState<LocalGameState>(worldState, base_temp);
+	auto& worldState = framework.core.GetBlockMemory().allocate<HostWorldStateMangager>(host.hostID, net_temp, base_temp);
+	auto& localState = framework.PushState<LocalGameState>(worldState, base_temp);
 
-    net_temp.HandleDisconnection =
-        [&](ConnectionHandle connection)
-    {
-        for (auto& player : worldState.remotePlayerComponent)
-        {
-            if (connection == player.componentData.connection)
-            {
-                player.componentData.gameObject->Release();
-                return;
-            }
-        }
-    };
+	net_temp.HandleDisconnection =
+		[&](ConnectionHandle connection)
+	{
+		for (auto& player : worldState.remotePlayerComponent)
+		{
+			if (connection == player.componentData.connection)
+			{
+				player.componentData.gameObject->Release();
+				return;
+			}
+		}
+	};
 
-    for (auto& player : host.players)
-        if (player.ID != host.hostID)
-            worldState.AddPlayer(player.connection, player.ID);
+	for (auto& player : host.players)
+		if (player.ID != host.hostID)
+			worldState.AddPlayer(player.connection, player.ID);
 
-    return lobby;
+	return lobby;
 }
 
 

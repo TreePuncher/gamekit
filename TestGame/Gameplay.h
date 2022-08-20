@@ -26,12 +26,12 @@ typedef uint64_t MultiplayerPlayerID_t;
 
 inline MultiplayerPlayerID_t GeneratePlayerID()
 {
-    std::random_device generator;
-    std::uniform_int_distribution<MultiplayerPlayerID_t> distribution(
-        std::numeric_limits<MultiplayerPlayerID_t>::min(),
-        std::numeric_limits<MultiplayerPlayerID_t>::max());
+	std::random_device generator;
+	std::uniform_int_distribution<MultiplayerPlayerID_t> distribution(
+		std::numeric_limits<MultiplayerPlayerID_t>::min(),
+		std::numeric_limits<MultiplayerPlayerID_t>::max());
 
-    return distribution(generator);
+	return distribution(generator);
 }
 
 
@@ -108,172 +108,172 @@ class GameWorld;
 
 struct GadgetInterface
 {
-    CardTypeID_t  CardID                = (CardTypeID_t)-1;
-    const char*   cardName              = "!!!!!";
-    const char*   description           = "!!!!!";
+	CardTypeID_t	CardID				= (CardTypeID_t)-1;
+	const char*		cardName			= "!!!!!";
+	const char*		description			= "!!!!!";
 
-    uint16_t      requiredPowerLevel    = 0;
+	uint16_t		requiredPowerLevel	= 0;
 
-    TypeErasedCallable<void (GameWorld&, GameObject&), 16> OnActivate    = [](GameWorld& world, GameObject& player){};
+	TypeErasedCallable<void (GameWorld&, GameObject&), 16> OnActivate    = [](GameWorld& world, GameObject& player){};
 };
 
 
 struct FlashLight : public GadgetInterface
 {
-    FlashLight();
+	FlashLight();
 
-    static CardTypeID_t ID() { return GetTypeGUID(FlashLight); };
+	static CardTypeID_t ID() { return GetTypeGUID(FlashLight); };
 };
 
 
 struct PlayerDesc
 {
-    MultiplayerPlayerID_t   player;
-    LayerHandle             layer;
-    Scene&                  scene;  
+	MultiplayerPlayerID_t	player;
+	LayerHandle				layer;
+	Scene&					scene;
 
-    float h = 1.0f;
-    float r = 1.0f;
+	float h = 1.0f;
+	float r = 1.0f;
 };
 
 
 struct GadgetData
 {
-    GameObject*             gameObject;
+	GameObject*				gameObject;
 
-    uint32_t                owner;
-    GadgetInterface*        gadgetState;
+	uint32_t				owner;
+	GadgetInterface*		gadgetState;
 };
 
 struct PlayerInputState
 {
-    float Y     = 0;
-    float X     = 0;
-    float up    = 0;
-    float down  = 0;
+	float Y     = 0;
+	float X     = 0;
+	float up    = 0;
+	float down  = 0;
 
-    enum class Event
-    {
-        Action1,
-        Action2,
-        Action3,
-        Action4,
-    };
+	enum class Event
+	{
+		Action1,
+		Action2,
+		Action3,
+		Action4,
+	};
 
-    static_vector<Event> events;
+	static_vector<Event> events;
 
-    FlexKit::float2 mousedXY = { 0, 0 };
+	FlexKit::float2 mousedXY = { 0, 0 };
 };
 
 
 struct PlayerFrameState
 {
-    MultiplayerPlayerID_t       player;
-    float3                      pos;
-    float3                      velocity;
-    float3                      forwardVector;
-    Quaternion                  orientation;
+	MultiplayerPlayerID_t		player;
+	float3						pos;
+	float3						velocity;
+	float3						forwardVector;
+	Quaternion					orientation;
 
-    PlayerInputState            inputState;
-    ThirdPersonCameraFrameState cameraState;
+	PlayerInputState			inputState;
+	ThirdPersonCameraFrameState	cameraState;
 };
 
 
 struct LocalPlayerData
 {
-    PlayerHandle                        playerGameState;
-    MultiplayerPlayerID_t               playerID;
-    CircularBuffer<PlayerFrameState>    inputHistory;
-    //Vector<iNetEvent>                   pendingEvent;
+	PlayerHandle						playerGameState;
+	MultiplayerPlayerID_t				playerID;
+	CircularBuffer<PlayerFrameState>	inputHistory;
+	//Vector<iNetEvent>					pendingEvent;
 };
 
 struct RemotePlayerData
 {
-    GameObject*             gameObject;
-    PlayerHandle            playerGameState;
-    ConnectionHandle        connection;
-    MultiplayerPlayerID_t   playerID;
+	GameObject*				gameObject;
+	PlayerHandle			playerGameState;
+	ConnectionHandle		connection;
+	MultiplayerPlayerID_t	playerID;
 
-    void Update(PlayerFrameState state)
-    {
-        SetControllerPosition(*gameObject, state.pos);
-        SetControllerOrientation(*gameObject, state.orientation);
+	void Update(PlayerFrameState state)
+	{
+		SetControllerPosition(*gameObject, state.pos);
+		SetControllerOrientation(*gameObject, state.orientation);
 
-        Apply(
-            *gameObject,
-            [&](PlayerView& player)
-            {
-                player->forward     = state.forwardVector;
-                player->position    = GetControllerPosition(*gameObject);
-            });
-    }
+		Apply(
+			*gameObject,
+			[&](PlayerView& player)
+			{
+				player->forward		= state.forwardVector;
+				player->position	= GetControllerPosition(*gameObject);
+			});
+	}
 
-    PlayerFrameState    GetFrameState() const
-    {
-        PlayerFrameState out
-        {
-            .pos            = GetWorldPosition(*gameObject),
-            .velocity       = { 0, 0, 0 },
-            .orientation    = GetOrientation(*gameObject),
-        };
+	PlayerFrameState    GetFrameState() const
+	{
+		PlayerFrameState out
+		{
+			.pos			= GetWorldPosition(*gameObject),
+			.velocity		= { 0, 0, 0 },
+			.orientation	= GetOrientation(*gameObject),
+		};
 
-        return out;
-    }
+		return out;
+	}
 };
 
 
 inline static const ComponentID LocalPlayerComponentID  = GetTypeGUID(LocalPlayerData);
 
-using LocalPlayerHandle     = Handle_t<32, LocalPlayerComponentID>;
-using LocalPlayerComponent  = BasicComponent_t<LocalPlayerData, LocalPlayerHandle, LocalPlayerComponentID>;
-using LocalPlayerView       = LocalPlayerComponent::View;
+using LocalPlayerHandle		= Handle_t<32, LocalPlayerComponentID>;
+using LocalPlayerComponent	= BasicComponent_t<LocalPlayerData, LocalPlayerHandle, LocalPlayerComponentID>;
+using LocalPlayerView		= LocalPlayerComponent::View;
 
 inline static const ComponentID RemotePlayerComponentID  = GetTypeGUID(RemotePlayerData);
 
-using RemotePlayerHandle     = Handle_t<32, RemotePlayerComponentID>; // this is a handle to an instance
-using RemotePlayerComponent  = BasicComponent_t<RemotePlayerData, RemotePlayerHandle, RemotePlayerComponentID>; // This defines a new component
-using RemotePlayerView       = RemotePlayerComponent::View; // This defines an interface to access data in the component in a easy manner 
+using RemotePlayerHandle	= Handle_t<32, RemotePlayerComponentID>;											// this is a handle to an instance
+using RemotePlayerComponent	= BasicComponent_t<RemotePlayerData, RemotePlayerHandle, RemotePlayerComponentID>;	// This defines a new component
+using RemotePlayerView		= typename RemotePlayerComponent::View;												// This defines an interface to access data in the component in a easy manner 
 
 inline static const ComponentID GadgetComponentID = GetTypeGUID(GadgetComponent);
 
-using GadgetHandle       = Handle_t<32, GadgetComponentID>;
-using GadgetComponent    = BasicComponent_t<GadgetData, GadgetHandle, GadgetComponentID>;
-using GadgetView         = GadgetComponent::View;
+using GadgetHandle		= Handle_t<32, GadgetComponentID>;
+using GadgetComponent	= BasicComponent_t<GadgetData, GadgetHandle, GadgetComponentID>;
+using GadgetView		= typename GadgetComponent::View;
 
 
 class GameWorld
 {
 public:
-    GameWorld(EngineCore& IN_core, bool debug = false);
-    ~GameWorld();
+	GameWorld(EngineCore& IN_core, bool debug = false);
+	~GameWorld();
 
-    void Release();
+	void Release();
 
-    GameObject& AddLocalPlayer(MultiplayerPlayerID_t multiplayerID);
-    GameObject& AddRemotePlayer(MultiplayerPlayerID_t playerID, ConnectionHandle connection = InvalidHandle);
-    void        AddCube(float3 POS);
+	GameObject& AddLocalPlayer(MultiplayerPlayerID_t multiplayerID);
+	GameObject& AddRemotePlayer(MultiplayerPlayerID_t playerID, ConnectionHandle connection = InvalidHandle);
+	void		AddCube(float3 POS);
 
-    void        SpawnEnemy_1    (const Enemy_1_Desc& desc);
-    GameObject& CreatePlayer    (const PlayerDesc& desc);
+	void		SpawnEnemy_1	(const Enemy_1_Desc& desc);
+	GameObject&	CreatePlayer	(const PlayerDesc& desc);
 
-    bool        LoadScene(GUID_t assetID);
+	bool		LoadScene(GUID_t assetID);
 
-    void        UpdatePlayer        (const PlayerFrameState& playerState, const double);
-    void        UpdateRemotePlayer  (const PlayerFrameState& playerState, const double);
-    UpdateTask& UpdateGadgets       (UpdateDispatcher& dispathcer, ObjectPool<GameObject>& objectPool, const double dt);
+	void		UpdatePlayer		(const PlayerFrameState& playerState, const double);
+	void		UpdateRemotePlayer	(const PlayerFrameState& playerState, const double);
+	UpdateTask&	UpdateGadgets		(UpdateDispatcher& dispathcer, ObjectPool<GameObject>& objectPool, const double dt);
 
 
-    const Shape             cubeShape;
+	const Shape				cubeShape;
 
-    EngineCore&             core;
-    RenderSystem&           renderSystem;
+	EngineCore&				core;
+	RenderSystem&			renderSystem;
 
-    Scene                   scene;
-    LayerHandle             layer;
+	Scene					scene;
+	LayerHandle				layer;
 
-    Enemy_1_Component       enemy1Component;
-    ObjectPool<GameObject>  objectPool;
-    iAllocator&             allocator;
+	Enemy_1_Component		enemy1Component;
+	ObjectPool<GameObject>	objectPool;
+	iAllocator&				allocator;
 };
 
 
@@ -281,17 +281,16 @@ public:
 
 
 struct WorldAssets
-{
-    // walls
-    AssetHandle wallXSegment;
-    AssetHandle wallYSegment;
-    AssetHandle wallISegment;
-    AssetHandle wallEndSegment;
-    AssetHandle cornerSegment;
+{	// walls
+	AssetHandle wallXSegment;
+	AssetHandle wallYSegment;
+	AssetHandle wallISegment;
+	AssetHandle wallEndSegment;
+	AssetHandle cornerSegment;
 
-    // Floors
-    AssetHandle floor;
-    AssetHandle ramp;
+	// Floors
+	AssetHandle floor;
+	AssetHandle ramp;
 };
 
 WorldAssets LoadBasicTiles();
@@ -299,9 +298,9 @@ WorldAssets LoadBasicTiles();
 
 void CreateMultiplayerScene(GameWorld&, const WorldAssets&, iAllocator& allocator, iAllocator& temp);
 
-PlayerFrameState    GetPlayerFrameState (GameObject& gameObject);
-RemotePlayerData*   FindRemotePlayer    (MultiplayerPlayerID_t ID);
-GameObject*         FindPlayer          (MultiplayerPlayerID_t ID);
+PlayerFrameState	GetPlayerFrameState	(GameObject& gameObject);
+RemotePlayerData*	FindRemotePlayer	(MultiplayerPlayerID_t ID);
+GameObject*			FindPlayer			(MultiplayerPlayerID_t ID);
 
 
 /************************************************************************************************/

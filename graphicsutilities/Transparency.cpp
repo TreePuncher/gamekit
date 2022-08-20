@@ -7,62 +7,62 @@ namespace FlexKit
 
 	ID3D12PipelineState* Transparency::CreateOITDrawPSO(RenderSystem* RS)
 	{
-		auto VShader = RS->LoadShader("VMain",      "vs_6_0", "assets\\shaders\\OITPass.hlsl");
-		auto PShader = RS->LoadShader("PassMain",   "ps_6_0", "assets\\shaders\\OITPass.hlsl");
+		auto VShader = RS->LoadShader("VMain",		"vs_6_0", "assets\\shaders\\OITPass.hlsl");
+		auto PShader = RS->LoadShader("PassMain",	"ps_6_0", "assets\\shaders\\OITPass.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
-			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "NORMAL",	    0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    1, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TANGENT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    2, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,       3, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "NORMAL",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	1, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TANGENT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	2, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,		3, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		};
 
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-		Rast_Desc.CullMode                      = D3D12_CULL_MODE_BACK;
+		Rast_Desc.CullMode						= D3D12_CULL_MODE_BACK;
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-		Depth_Desc.DepthFunc	                = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
-		Depth_Desc.DepthEnable	                = true;
-		Depth_Desc.DepthWriteMask               = D3D12_DEPTH_WRITE_MASK_ZERO;
+		Depth_Desc.DepthFunc					= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+		Depth_Desc.DepthEnable					= true;
+		Depth_Desc.DepthWriteMask				= D3D12_DEPTH_WRITE_MASK_ZERO;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = RS->Library.RSDefault;
-			PSO_Desc.VS                    = VShader;
-			PSO_Desc.PS                    = PShader;
-			PSO_Desc.RasterizerState       = Rast_Desc;
-			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-			PSO_Desc.SampleMask            = UINT_MAX;
-			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-			PSO_Desc.NumRenderTargets      = 2;
-			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
-			PSO_Desc.RTVFormats[1]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // count
-			PSO_Desc.SampleDesc.Count      = 1;
-			PSO_Desc.SampleDesc.Quality    = 0;
-			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
-			PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
-			PSO_Desc.DepthStencilState     = Depth_Desc;
+			PSO_Desc.pRootSignature			= RS->Library.RSDefault;
+			PSO_Desc.VS						= VShader;
+			PSO_Desc.PS						= PShader;
+			PSO_Desc.RasterizerState		= Rast_Desc;
+			PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask				= UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType	= D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSO_Desc.NumRenderTargets		= 2;
+			PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+			PSO_Desc.RTVFormats[1]			= DXGI_FORMAT_R16G16B16A16_FLOAT; // count
+			PSO_Desc.SampleDesc.Count		= 1;
+			PSO_Desc.SampleDesc.Quality		= 0;
+			PSO_Desc.DSVFormat				= DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout			= { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
+			PSO_Desc.DepthStencilState		= Depth_Desc;
 
-			PSO_Desc.BlendState.IndependentBlendEnable          = true;
+			PSO_Desc.BlendState.IndependentBlendEnable			= true;
 
-			PSO_Desc.BlendState.RenderTarget[0].BlendEnable     = true;
-			PSO_Desc.BlendState.RenderTarget[0].BlendOp         = D3D12_BLEND_OP_ADD;
-			PSO_Desc.BlendState.RenderTarget[0].BlendOpAlpha    = D3D12_BLEND_OP_ADD;
+			PSO_Desc.BlendState.RenderTarget[0].BlendEnable		= true;
+			PSO_Desc.BlendState.RenderTarget[0].BlendOp			= D3D12_BLEND_OP_ADD;
+			PSO_Desc.BlendState.RenderTarget[0].BlendOpAlpha	= D3D12_BLEND_OP_ADD;
 
-			PSO_Desc.BlendState.RenderTarget[0].SrcBlend        = D3D12_BLEND_ONE;
-			PSO_Desc.BlendState.RenderTarget[0].SrcBlendAlpha   = D3D12_BLEND_ONE;
+			PSO_Desc.BlendState.RenderTarget[0].SrcBlend		= D3D12_BLEND_ONE;
+			PSO_Desc.BlendState.RenderTarget[0].SrcBlendAlpha	= D3D12_BLEND_ONE;
 
-			PSO_Desc.BlendState.RenderTarget[0].DestBlend       = D3D12_BLEND_ONE;
-			PSO_Desc.BlendState.RenderTarget[0].DestBlendAlpha  = D3D12_BLEND_ONE;
+			PSO_Desc.BlendState.RenderTarget[0].DestBlend		= D3D12_BLEND_ONE;
+			PSO_Desc.BlendState.RenderTarget[0].DestBlendAlpha	= D3D12_BLEND_ONE;
 
-			PSO_Desc.BlendState.RenderTarget[1].BlendEnable     = true;
-			PSO_Desc.BlendState.RenderTarget[1].BlendOp         = D3D12_BLEND_OP_ADD;
-			PSO_Desc.BlendState.RenderTarget[1].BlendOpAlpha    = D3D12_BLEND_OP_ADD;
+			PSO_Desc.BlendState.RenderTarget[1].BlendEnable		= true;
+			PSO_Desc.BlendState.RenderTarget[1].BlendOp			= D3D12_BLEND_OP_ADD;
+			PSO_Desc.BlendState.RenderTarget[1].BlendOpAlpha	= D3D12_BLEND_OP_ADD;
 
-			PSO_Desc.BlendState.RenderTarget[1].SrcBlend        = D3D12_BLEND_ZERO;
-			PSO_Desc.BlendState.RenderTarget[1].SrcBlendAlpha   = D3D12_BLEND_ZERO;
+			PSO_Desc.BlendState.RenderTarget[1].SrcBlend		= D3D12_BLEND_ZERO;
+			PSO_Desc.BlendState.RenderTarget[1].SrcBlendAlpha	= D3D12_BLEND_ZERO;
 
-			PSO_Desc.BlendState.RenderTarget[1].DestBlend       = D3D12_BLEND_INV_SRC_ALPHA;
-			PSO_Desc.BlendState.RenderTarget[1].DestBlendAlpha  = D3D12_BLEND_INV_SRC_ALPHA;
+			PSO_Desc.BlendState.RenderTarget[1].DestBlend		= D3D12_BLEND_INV_SRC_ALPHA;
+			PSO_Desc.BlendState.RenderTarget[1].DestBlendAlpha	= D3D12_BLEND_INV_SRC_ALPHA;
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
@@ -93,35 +93,35 @@ namespace FlexKit
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-		Depth_Desc.DepthFunc	                = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
-		Depth_Desc.DepthEnable	                = false;
+		Depth_Desc.DepthFunc					= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+		Depth_Desc.DepthEnable					= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = RS->Library.RSDefault;
-			PSO_Desc.VS                    = VShader;
-			PSO_Desc.PS                    = PShader;
-			PSO_Desc.RasterizerState       = Rast_Desc;
-			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-			PSO_Desc.SampleMask            = UINT_MAX;
-			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-			PSO_Desc.NumRenderTargets      = 1;
-			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
-			PSO_Desc.SampleDesc.Count      = 1;
-			PSO_Desc.SampleDesc.Quality    = 0;
-			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
-			PSO_Desc.InputLayout           = { nullptr, 0 };
-			PSO_Desc.DepthStencilState     = Depth_Desc;
+			PSO_Desc.pRootSignature			= RS->Library.RSDefault;
+			PSO_Desc.VS						= VShader;
+			PSO_Desc.PS						= PShader;
+			PSO_Desc.RasterizerState		= Rast_Desc;
+			PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask				= UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType	= D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSO_Desc.NumRenderTargets		= 1;
+			PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+			PSO_Desc.SampleDesc.Count		= 1;
+			PSO_Desc.SampleDesc.Quality		= 0;
+			PSO_Desc.DSVFormat				= DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout			= { nullptr, 0 };
+			PSO_Desc.DepthStencilState		= Depth_Desc;
 
-			PSO_Desc.BlendState.IndependentBlendEnable          = true;
-			PSO_Desc.BlendState.RenderTarget[0].BlendEnable     = true;
-			PSO_Desc.BlendState.RenderTarget[0].BlendOp         = D3D12_BLEND_OP_ADD;
-			PSO_Desc.BlendState.RenderTarget[0].BlendOpAlpha    = D3D12_BLEND_OP_ADD;
+			PSO_Desc.BlendState.IndependentBlendEnable			= true;
+			PSO_Desc.BlendState.RenderTarget[0].BlendEnable		= true;
+			PSO_Desc.BlendState.RenderTarget[0].BlendOp			= D3D12_BLEND_OP_ADD;
+			PSO_Desc.BlendState.RenderTarget[0].BlendOpAlpha	= D3D12_BLEND_OP_ADD;
 
-			PSO_Desc.BlendState.RenderTarget[0].SrcBlend        = D3D12_BLEND_INV_SRC_ALPHA;
-			PSO_Desc.BlendState.RenderTarget[0].SrcBlendAlpha   = D3D12_BLEND_ONE;
+			PSO_Desc.BlendState.RenderTarget[0].SrcBlend		= D3D12_BLEND_INV_SRC_ALPHA;
+			PSO_Desc.BlendState.RenderTarget[0].SrcBlendAlpha	= D3D12_BLEND_ONE;
 
-			PSO_Desc.BlendState.RenderTarget[0].DestBlend       = D3D12_BLEND_SRC_ALPHA;
-			PSO_Desc.BlendState.RenderTarget[0].DestBlendAlpha  = D3D12_BLEND_ONE;
+			PSO_Desc.BlendState.RenderTarget[0].DestBlend		= D3D12_BLEND_SRC_ALPHA;
+			PSO_Desc.BlendState.RenderTarget[0].DestBlendAlpha	= D3D12_BLEND_ONE;
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
@@ -137,9 +137,9 @@ namespace FlexKit
 
 	Transparency::Transparency(RenderSystem& renderSystem)
 	{
-		renderSystem.RegisterPSOLoader(OITBLEND,           { &renderSystem.Library.RSDefault, CreateOITBlendPSO });
-		renderSystem.RegisterPSOLoader(OITDRAW,            { &renderSystem.Library.RSDefault, CreateOITDrawPSO });
-		renderSystem.RegisterPSOLoader(OITDRAWANIMATED,    { &renderSystem.Library.RSDefault, CreateOITDrawAnimatedPSO });
+		renderSystem.RegisterPSOLoader(OITBLEND,		{ &renderSystem.Library.RSDefault, CreateOITBlendPSO });
+		renderSystem.RegisterPSOLoader(OITDRAW,			{ &renderSystem.Library.RSDefault, CreateOITDrawPSO });
+		renderSystem.RegisterPSOLoader(OITDRAWANIMATED,	{ &renderSystem.Library.RSDefault, CreateOITDrawAnimatedPSO });
 	}
 
 
@@ -147,13 +147,13 @@ namespace FlexKit
 
 
 	OITPass& Transparency::OIT_WB_Pass(
-		UpdateDispatcher&               dispatcher,
-		FrameGraph&                     frameGraph,
-		GatherPassesTask&               passes,
-		CameraHandle                    camera,
-		ResourceHandle                  depthTarget,
-		ReserveConstantBufferFunction   reserveCB,
-		iAllocator*                     allocator)
+		UpdateDispatcher&				dispatcher,
+		FrameGraph&						frameGraph,
+		GatherPassesTask&				passes,
+		CameraHandle					camera,
+		ResourceHandle					depthTarget,
+		ReserveConstantBufferFunction	reserveCB,
+		iAllocator*						allocator)
 	{
 		return frameGraph.AddNode<OITPass>(
 			OITPass{
@@ -168,30 +168,30 @@ namespace FlexKit
 
 				const auto WH = builder.GetRenderSystem().GetTextureWH(depthTarget);
 
-				data.depthTarget        = builder.DepthRead(depthTarget);
-				data.accumalatorObject  = builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DRS_RenderTarget, false);
-				data.counterObject      = builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DRS_RenderTarget, false);
+				data.depthTarget		= builder.DepthRead(depthTarget);
+				data.accumalatorObject	= builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DRS_RenderTarget, false);
+				data.counterObject		= builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DRS_RenderTarget, false);
 
-				builder.SetDebugName(data.accumalatorObject,    "Accumalator");
-				builder.SetDebugName(data.counterObject,        "counterObject");
+				builder.SetDebugName(data.accumalatorObject,	"Accumalator");
+				builder.SetDebugName(data.counterObject,		"counterObject");
 			},
 			[=](OITPass& data, ResourceHandler& resources, Context& ctx, iAllocator& tempAllocator)
 			{
 				ProfileFunction();
 
-				const RootSignature&    rootSig     = resources.renderSystem().Library.RSDefault;
-				auto&                   materials   = MaterialComponent::GetComponent();
+				const RootSignature&	rootSig		= resources.renderSystem().Library.RSDefault;
+				auto&					materials	= MaterialComponent::GetComponent();
 
 
-				TriMeshHandle   previous        = InvalidHandle;
-				TriMesh*        triMesh         = nullptr;
-				MaterialHandle  prevMaterial    = InvalidHandle;
+				TriMeshHandle	previous		= InvalidHandle;
+				TriMesh*		triMesh			= nullptr;
+				MaterialHandle	prevMaterial	= InvalidHandle;
 
 				ctx.ClearRenderTarget(resources.GetRenderTarget(data.accumalatorObject));
 				ctx.ClearRenderTarget(resources.GetRenderTarget(data.counterObject), float4{ 1, 1, 1, 1 });
 
-				auto& passes    = data.PVS.GetData().passes;
-				const PVS* pvs  = nullptr;
+				auto& passes	= data.PVS.GetData().passes;
+				const PVS* pvs	= nullptr;
 				if (auto res = std::find_if(passes.begin(), passes.end(),
 					[](auto& pass) -> bool
 					{
@@ -240,7 +240,7 @@ namespace FlexKit
 				for (auto& draw : *pvs)
 				{
 					const auto meshes		= draw.brush->meshes;
-					const auto material     = draw.brush->material;
+					const auto material		= draw.brush->material;
 
 					for(uint32_t I = 0; I < meshes.size(); I++)
 					{
@@ -308,19 +308,19 @@ namespace FlexKit
 
 
 	OITBlend& Transparency::OIT_WB_Blend(
-		UpdateDispatcher&               dispatcher,
-		FrameGraph&                     frameGraph,
-		OITPass&                        OITPass,
-		FrameResourceHandle             renderTarget,
-		iAllocator*                     allocator)
+		UpdateDispatcher&		dispatcher,
+		FrameGraph&				frameGraph,
+		OITPass&				OITPass,
+		FrameResourceHandle		renderTarget,
+		iAllocator*				allocator)
 	{
 		return frameGraph.AddNode<OITBlend>(
 			OITBlend{},
 			[&](FrameGraphNodeBuilder& builder, OITBlend& data)
 			{
-				data.renderTargetObject = builder.WriteTransition(renderTarget, DRS_RenderTarget);
-				data.accumalatorObject  = OITPass.accumalatorObject;
-				data.counterObject      = OITPass.counterObject;
+				data.renderTargetObject	= builder.WriteTransition(renderTarget, DRS_RenderTarget);
+				data.accumalatorObject	= OITPass.accumalatorObject;
+				data.counterObject		= OITPass.counterObject;
 
 				builder.ReleaseVirtualResource(OITPass.accumalatorObject);
 				builder.ReleaseVirtualResource(OITPass.counterObject);

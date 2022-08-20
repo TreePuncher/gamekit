@@ -96,11 +96,13 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
 	static bool s_addAssets = []()
 	{
 		//FlexKit::AddAssetFile("assets\\testprefab.gameres");
-		FlexKit::AddAssetFile("assets\\demonGirl.gameres");
+		//FlexKit::AddAssetFile("assets\\demonGirl.gameres");
+		FlexKit::AddAssetFile("assets\\robot.gameres");
 		return true;
 	}();
 
 
+#if 0
 	auto [triMesh, loaded] = FindMesh(9021);
 
 	if (!loaded)
@@ -123,21 +125,23 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
 	SetBoundingSphereFromMesh(prefab);
 	SetParentNode(node, nodeView);
 
+#else
 
-	/*
-	if (LoadPrefab(prefab, 123456, allocator))
+	auto& prefab	= objectPool.Allocate();
+	if (LoadPrefab(prefab, 4123, allocator))
 	{
 		auto& materials = MaterialComponent::GetComponent();
 		auto material   = materials.CreateMaterial();
-		materials.Add2Pass(material, ShadowMapAnimatedPassID);
-		materials.Add2Pass(material, GBufferAnimatedPassID);
+		materials.Add2Pass(material, ShadowMapPassID);
+		materials.Add2Pass(material, GBufferPassID);
 
 		prefab.AddView<MaterialView>(material);
-		prefab.AddView<StringIDView>("wiggle", 6);
+		prefab.AddView<StringIDView>("PlayerModel", 11);
+		SetMaterialHandle(prefab, material);
 
 		scene.AddGameObject(prefab, GetSceneNode(prefab));
 
-		auto& animator  = *GetAnimator(prefab);
+		//auto& animator  = *GetAnimator(prefab);
 		//auto input      = animator.GetInputValue(0);
 		//(*input)->x     = 0.0f * pi;
 
@@ -147,7 +151,7 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
 	}
 	else
 		objectPool.Release(prefab);
-	*/
+#endif
 
 	return gameObject;
 }
@@ -157,14 +161,14 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
 
 
 GameWorld::GameWorld(EngineCore& IN_core, bool debug) :
-	allocator       { static_cast<iAllocator&>(IN_core.GetBlockMemory()) },
-	core            { IN_core },
-	renderSystem    { IN_core.RenderSystem},
-	objectPool      { IN_core.GetBlockMemory(), 1024 * 32 },
-	enemy1Component { IN_core.GetBlockMemory() },
-	layer           { PhysXComponent::GetComponent().CreateLayer(debug) },
-	scene           { IN_core.GetBlockMemory() },
-	cubeShape       { PhysXComponent::GetComponent().CreateCubeShape({ 0.5f, 0.5f, 0.5f}) }
+	allocator		{ static_cast<iAllocator&>(IN_core.GetBlockMemory()) },
+	core			{ IN_core },
+	renderSystem	{ IN_core.RenderSystem},
+	objectPool		{ IN_core.GetBlockMemory(), 1024 * 32 },
+	enemy1Component	{ IN_core.GetBlockMemory() },
+	layer			{ PhysXComponent::GetComponent().CreateLayer(debug) },
+	scene			{ IN_core.GetBlockMemory() },
+	cubeShape		{ PhysXComponent::GetComponent().CreateCubeShape({ 0.5f, 0.5f, 0.5f}) }
 {
 	AddAssetFile("assets\\enemy1.gameres");
 }
@@ -286,26 +290,22 @@ bool GameWorld::LoadScene(GUID_t assetID)
 
 	static const std::regex pattern{"Cube"};
 
-	for (const auto& entity : scene.sceneEntities)
-	{
-		auto& go    = *visibility[entity].entity;
-		auto id     = GetStringID(go);
-
-		if (id && std::regex_search(id, pattern))
+	scene.QueryFor(
+		[&](GameObject& gameObject, auto&& res)
 		{
 			AABB aabb;
-			aabb = aabb + GetBoundingSphere(go);
+			aabb += GetAABBFromMesh(gameObject);
 
 			const auto dim	= aabb.Dim() / 2.0f;
-			const auto pos	= GetWorldPosition(go);
-			const auto q	= GetOrientation(go);
+			const auto pos	= GetWorldPosition(gameObject);
+			const auto q	= GetOrientation(gameObject);
 
 			auto shape = physics.CreateCubeShape(dim);
 
-			auto& staticBodyView = go.AddView<StaticBodyView>(layer, pos, q);
+			auto& staticBodyView = gameObject.AddView<StaticBodyView>(layer, pos, q);
 			staticBodyView.AddShape(shape);
-		}
-	}
+		},
+		StringPatternQuery{ pattern });
 
 	return res;
 }
@@ -1228,6 +1228,9 @@ WorldAssets LoadBasicTiles()
 
 	return out;
 }
+
+
+/************************************************************************************************/
 
 
 void CreateMultiplayerScene(GameWorld& world, const WorldAssets& assets, iAllocator& allocator, iAllocator& tempAllocator)

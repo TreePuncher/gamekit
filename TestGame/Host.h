@@ -16,87 +16,87 @@
 
 enum PlayerNetState : uint32_t
 {
-    Joining,
-    Lobby,
-    StartingGame,
-    LoadingScreen,
-    InGame
+	Joining,
+	Lobby,
+	StartingGame,
+	LoadingScreen,
+	InGame
 };
 
 
 class HostWorldStateMangager : public WorldStateMangagerInterface
 {
 public:
-    HostWorldStateMangager(MultiplayerPlayerID_t IN_player, NetworkState& IN_net, BaseState& IN_base);
+	HostWorldStateMangager(MultiplayerPlayerID_t IN_player, NetworkState& IN_net, BaseState& IN_base);
 
-    ~HostWorldStateMangager();
+	~HostWorldStateMangager();
 
-    WorldStateUpdate    Update      (EngineCore& core, UpdateDispatcher& dispatcher, double dT) final;
-    Vector<UpdateTask*> DrawTasks   (EngineCore& core, UpdateDispatcher& dispatcher, double dT) final;
-
-
-    void SendFrameState(const MultiplayerPlayerID_t ID, const PlayerFrameState& state, const ConnectionHandle connection);
-    bool EventHandler(Event evt) final;
-
-    Scene&          GetScene() final;
-    LayerHandle     GetLayer() final;
-    CameraHandle    GetActiveCamera() const final;
-
-    GameObject&     CreateGameObject() final { return world.objectPool.Allocate(); };
-
-    void SetOnGameEventRecieved(GameEventHandler handler) final
-    {
-        gameEventHandler = handler;
-    }
-
-    void AddPlayer(ConnectionHandle connection, MultiplayerPlayerID_t ID);
-
-    void BroadcastEvent(static_vector<Event> events)
-    {
-        GameEventPacket packet;
-        packet.events = events;
-
-        for (auto& remotePlayer : remotePlayerComponent)
-            net.Send(packet.header, remotePlayer.componentData.connection);
-    }
-
-    struct PlayerState
-    {
-        float3              position;
-        PlayerInputState    input;
-    };
-
-    struct ServerFrame
-    {
-        Vector<PlayerState> players;
-    };
-
-    const MultiplayerPlayerID_t     localPlayerID;
-
-    FixedUpdate                 fixedUpdate{ 60 };
+	WorldStateUpdate    Update      (EngineCore& core, UpdateDispatcher& dispatcher, double dT) final;
+	Vector<UpdateTask*> DrawTasks   (EngineCore& core, UpdateDispatcher& dispatcher, double dT) final;
 
 
-    PlayerInputState            currentInputState;
-    Vector<PlayerFrameState>    pendingRemoteUpdates;
+	void SendFrameState(const MultiplayerPlayerID_t ID, const PlayerFrameState& state, const ConnectionHandle connection);
+	bool EventHandler(Event evt) final;
 
-    PlayerComponent                     playerComponent;        // players game state such as health, player deck, etc
-    LocalPlayerComponent                localPlayerComponent;   // Handles local tasks such as input, and local state history
-    RemotePlayerComponent               remotePlayerComponent;  // Updates remote player proxies
-    GadgetComponent                     gadgetComponent;
+	Scene&			GetScene() final;
+	LayerHandle		GetLayer() final;
+	CameraHandle	GetActiveCamera() const final;
 
-    GameWorld                           world;
+	GameObject&		CreateGameObject() final { return world.objectPool.Allocate(); };
 
-    GameEventHandler                    gameEventHandler;
+	void SetOnGameEventRecieved(GameEventHandler handler) final
+	{
+		gameEventHandler = handler;
+	}
 
-    CircularBuffer<ServerFrame, 240>	history;
-    InputMap					        eventMap;
+	void AddPlayer(ConnectionHandle connection, MultiplayerPlayerID_t ID);
 
-    GameObject&                         localPlayer;
+	void BroadcastEvent(static_vector<Event> events)
+	{
+		GameEventPacket packet;
+		packet.events = events;
 
-    PacketHandlerVector                 packetHandlers;
+		for (auto& remotePlayer : remotePlayerComponent)
+			net.Send(packet.header, remotePlayer.componentData.connection);
+	}
 
-    BaseState&      base;
-    NetworkState&   net;
+	struct PlayerState
+	{
+		float3				position;
+		PlayerInputState	input;
+	};
+
+	struct ServerFrame
+	{
+		Vector<PlayerState> players;
+	};
+
+	const MultiplayerPlayerID_t localPlayerID;
+
+	FixedUpdate					fixedUpdate{ 60 };
+
+
+	PlayerInputState			currentInputState;
+	Vector<PlayerFrameState>	pendingRemoteUpdates;
+
+	PlayerComponent						playerComponent;        // players game state such as health, player deck, etc
+	LocalPlayerComponent				localPlayerComponent;   // Handles local tasks such as input, and local state history
+	RemotePlayerComponent				remotePlayerComponent;  // Updates remote player proxies
+	GadgetComponent						gadgetComponent;
+
+	GameWorld							world;
+
+	GameEventHandler					gameEventHandler;
+
+	CircularBuffer<ServerFrame, 240>	history;
+	InputMap							eventMap;
+
+	GameObject&							localPlayer;
+
+	PacketHandlerVector					packetHandlers;
+
+	BaseState&		base;
+	NetworkState&	net;
 };
 
 
@@ -107,42 +107,42 @@ public:
 class HostState : public FrameworkState
 {
 public:
-    HostState(GameFramework& framework, GameInfo IN_info, BaseState& IN_base, NetworkState& IN_net);
-    ~HostState();
+	HostState(GameFramework& framework, GameInfo IN_info, BaseState& IN_base, NetworkState& IN_net);
+	~HostState();
 
-    void HandleIncomingConnection(ConnectionHandle connectionhandle);
-    void HandleDisconnection(ConnectionHandle connection);
+	void HandleIncomingConnection(ConnectionHandle connectionhandle);
+	void HandleDisconnection(ConnectionHandle connection);
 
-    void BroadCastMessage(std::string);
-    void SendPlayerList(ConnectionHandle connection);
-    void SendGameStart();
+	void BroadCastMessage(std::string);
+	void SendPlayerList(ConnectionHandle connection);
+	void SendGameStart();
 
-    UpdateTask* Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) override;
-
-
-    struct Player
-    {
-        std::string             name;
-        MultiplayerPlayerID_t   ID;
-        ConnectionHandle        connection;
-    };
+	UpdateTask* Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) override;
 
 
-    MultiplayerPlayerID_t   GetNewID() const;
-    HostState::Player*      GetPlayer(MultiplayerPlayerID_t);
+	struct Player
+	{
+		std::string				name;
+		MultiplayerPlayerID_t	ID;
+		ConnectionHandle		connection;
+	};
 
-    std::vector<Player> players;
 
-    std::function<void (std::string)>       OnMessageRecieved   = [](std::string msg) {};
-    std::function<void (Player& player)>    OnPlayerJoin        = [](Player& player) {};
+	MultiplayerPlayerID_t	GetNewID() const;
+	HostState::Player*		GetPlayer(MultiplayerPlayerID_t);
 
-    Vector<PacketHandler*>  handler;
+	std::vector<Player> players;
 
-    MultiplayerPlayerID_t   hostID;
+	std::function<void (std::string)>		OnMessageRecieved	= [](std::string msg) {};
+	std::function<void (Player& player)>	OnPlayerJoin		= [](Player& player) {};
 
-    GameInfo        info;
-    NetworkState&   net;
-    BaseState&      base;
+	Vector<PacketHandler*>	handler;
+
+	MultiplayerPlayerID_t	hostID;
+
+	GameInfo		info;
+	NetworkState&	net;
+	BaseState&		base;
 };
 
 
