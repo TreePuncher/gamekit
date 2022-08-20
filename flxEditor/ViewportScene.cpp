@@ -253,12 +253,12 @@ void ViewportScene::Update()
 		{   // Update Data
 			for (auto& component : object->gameObject)
 			{
-				componentIds.push_back(component.ID);
-				auto component_res = entity_res->FindComponent(component.ID);
+				componentIds.push_back(component.GetID());
+				auto component_res = entity_res->FindComponent(component.GetID());
 
 				if (!component_res)
 				{
-					auto entityComponent = FlexKit::EntityComponent::CreateComponent(component.ID);
+					auto entityComponent = FlexKit::EntityComponent::CreateComponent(component.GetID());
 
 					if (!entityComponent)
 						continue;
@@ -287,9 +287,9 @@ void ViewportScene::Update()
 
 			for (auto& component : object->gameObject)
 			{
-				componentIds.push_back(component.ID);
+				componentIds.push_back(component.GetID());
 
-				if (auto entityComponent = FlexKit::EntityComponent::CreateComponent(component.ID); entityComponent)
+				if (auto entityComponent = FlexKit::EntityComponent::CreateComponent(component.GetID()); entityComponent)
 				{
 					IEntityComponentRuntimeUpdater::Update(*entityComponent, component.Get_ref(), ctx);
 					entity.components.emplace_back(entityComponent);

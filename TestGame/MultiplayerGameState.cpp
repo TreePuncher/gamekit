@@ -440,15 +440,14 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 	}
 
 
-	if(false)
 	{
 		LineSegments lines(core.GetTempMemory());
 #if 1
-		auto wiggler = FlexKit::FindGameObject(worldState.GetScene(), "wiggle").value_or(nullptr);
+		auto wiggler = FlexKit::FindGameObject(worldState.GetScene(), "PlayerModel").value_or(nullptr);
+		//auto res = worldState.GetScene().Query(base.framework.core.GetTempMemory(), ROStringQuery{ "PlayerModel" });
 
 		if (wiggler)
 		{
-			//worldState.GetScene().Query(base.framework.core.GetTempMemory(), ROStringQuery{ "wiggler" });
 			// Draw Skeleton overlay
 			const auto Skeleton = GetSkeleton(*wiggler);
 			const auto pose     = GetPoseState(*wiggler);
@@ -459,6 +458,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 
 			lines = DEBUG_DrawPoseState(*pose, node, core.GetTempMemory());
 
+			if(0)
 			Apply(*wiggler,
 				[&](FABRIKView& view)
 				{

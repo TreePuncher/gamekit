@@ -1405,15 +1405,11 @@ namespace FlexKit
 						descHeap.Mirror(defaultHeap);
 				};
 
-				for (auto& brush : pass->pvs)
+				auto GetConstants = [&](auto& brush, auto& constants, auto& descriptors)
 				{
-					auto brushConstants		= brush->GetConstants();
-
-					auto& materials			= MaterialComponent::GetComponent();
-					const auto material		= materials[brush->material];
-
-					static_vector<ConstantBufferDataSet>	constants;
-					static_vector<DescriptorHeap>			descriptors;
+					auto brushConstants = brush->GetConstants();
+					auto& materials		= MaterialComponent::GetComponent();
+					const auto material = materials[brush->material];
 
 					if (!material.SubMaterials.empty())
 					{
@@ -1422,6 +1418,14 @@ namespace FlexKit
 					}
 					else
 						PushMaterial(material, descriptors, constants, brushConstants);
+				};
+
+				for (auto& brush : pass->pvs)
+				{
+					static_vector<ConstantBufferDataSet>	constants;
+					static_vector<DescriptorHeap>			descriptors;
+
+					GetConstants(brush, constants, descriptors);
 
 					const	size_t meshCount = brush->meshes.size();
 					for (auto I = 0; I < meshCount; I++)
@@ -1525,45 +1529,66 @@ namespace FlexKit
 				ctx.SetGraphicsConstantBufferView(1, cameraConstants);
 				ctx.SetGraphicsConstantBufferView(3, passConstants);
 
-
-				/*
 				if (animationPoses)
 				{
-					auto poses = animationPoses->GetIterator();
+					prevMesh	= nullptr;
+					auto poses	= animationPoses->GetIterator();
 
 					for (size_t I = 0; I < animatedBrushes.size(); I++)
 					{
-						const auto& skinnedBrush    = animatedBrushes[I];
-						const auto constants        = skinnedBrush.brush->GetConstants();
-						auto* triMesh               = GetMeshResource(skinnedBrush.brush->MeshHandle);
+						static_vector<ConstantBufferDataSet>	constants;
+						static_vector<DescriptorHeap>			descriptors;
 
-						if (triMesh != prevMesh)
-						{
-							prevMesh = triMesh;
-
-							ctx.AddIndexBuffer(triMesh, triMesh->GetHighestLoadedLodIdx());
-							ctx.AddVertexBuffers(
-								triMesh,
-								triMesh->GetHighestLoadedLodIdx(),
-								{
-									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
-									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
-									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
-									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
-									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
-								}
-							);
-						}
-
-						ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
+						const auto& pvs			= animatedBrushes[I];
+						GetConstants(pvs.brush, constants, descriptors);
 						ctx.SetGraphicsConstantBufferView(4, poses[I]);
 
-						auto& lod = triMesh->GetHighestLoadedLod();
-						ctx.DrawIndexed(lod.GetIndexCount());
+						const auto& meshes		= pvs.brush->meshes;
+						const size_t meshCount	= meshes.size();
+						for (auto I = 0; I < meshCount; I++)
+						{
+							const auto&		mesh		= meshes[I];
+							auto*			triMesh		= GetMeshResource(mesh);
+							const size_t	lodLevel	= pvs.LODlevel[I];
+
+							if (triMesh != prevMesh)
+							{
+								prevMesh = triMesh;
+
+								ctx.AddIndexBuffer(triMesh, triMesh->GetHighestLoadedLodIdx());
+								ctx.AddVertexBuffers(
+									triMesh,
+									lodLevel,
+									{
+										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
+										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
+										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
+										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
+									}
+								);
+							}
+
+							ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet{ constants, entityConstantBuffer });
+
+							auto& lod		= triMesh->lods[lodLevel];
+							auto& submeshes = lod.subMeshes;
+							for (size_t I = 0; I < submeshes.size(); I++)
+							{
+								auto materialIdx = Min(I, descriptors.size() - 1);
+								ctx.SetGraphicsDescriptorTable(0, descriptors[materialIdx]);
+								ctx.SetGraphicsConstantBufferView(2, constants[materialIdx]);
+
+								ctx.DrawIndexed(
+									submeshes[I].IndexCount,
+									submeshes[I].BaseIndex);
+							}
+
+							ctx.DrawIndexed(lod.GetIndexCount());
+						}
 					}
 				}
-				*/
 
 				ctx.EndEvent_DEBUG();
 				ctx.EndEvent_DEBUG();

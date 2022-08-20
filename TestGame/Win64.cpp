@@ -25,6 +25,17 @@
 
 int main(int argc, char* argv[])
 {
+
+	Vector<uint32_t, 4> testA{ SystemAllocator };
+	testA.push_back(1);
+	testA.push_back(2);
+	testA.push_back(3);
+	testA.push_back(4);
+
+	Vector<uint32_t> testB{ SystemAllocator };
+	testB = std::move(testA);
+
+
 	std::string name;
 	std::string server;
 
@@ -63,8 +74,8 @@ int main(int argc, char* argv[])
 
 	try
 	{
-		FlexKit::FKApplication app{ allocator, Max(std::thread::hardware_concurrency() / 2, 1u) - 1 };
-		app.GetCore().FrameLock = true;
+		FlexKit::FKApplication app{ allocator, Max(std::thread::hardware_concurrency(), 2u) - 1 };
+		app.GetCore().FrameLock = false;
 		app.GetCore().vSync		= false;
 		app.GetCore().FPSLimit  = 60;
 

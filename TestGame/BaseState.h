@@ -168,53 +168,53 @@ public:
 		Disabled,
 		ModeCount
 	} HUDmode = EHudMode::FPS_Counter;
-	bool                        enableHud = true;
+	bool						enableHud = true;
 
 	// counters, timers
-	float                       t           = 0.0f;
-	size_t                      counter     = 0;
+	float						t			= 0.0f;
+	size_t						counter		= 0;
 
 	// Pix capture
-	bool                        PIX_SingleFrameCapture  = false;
-	bool                        PIX_CaptureInProgress   = false;
-	uint32_t                    PIX_frameCaptures       = 0;
+	bool						PIX_SingleFrameCapture	= false;
+	bool						PIX_CaptureInProgress	= false;
+	uint32_t					PIX_frameCaptures		= 0;
 
 	// Default passes
-	MaterialHandle              gbufferPass;
-	MaterialHandle              gbufferAnimatedPass;
+	MaterialHandle				gbufferPass;
+	MaterialHandle				gbufferAnimatedPass;
 
 	// Graphics resources
-	Win32RenderWindow           renderWindow;
+	Win32RenderWindow			renderWindow;
 	WorldRender					render;
-	GBuffer                     gbuffer;
-	DepthBuffer				    depthBuffer;
+	GBuffer						gbuffer;
+	DepthBuffer					depthBuffer;
 	VertexBufferHandle			vertexBuffer;
 	ConstantBufferHandle		constantBuffer;
 
 	// Components
-	AnimatorComponent               animations;
-	FABRIKComponent                 IK;
-	FABRIKTargetComponent           IKTargets;
-	SceneNodeComponent			    transforms;
-	CameraComponent				    cameras;
-	StringIDComponent			    ids;
-	BrushComponent			        brushes;
-	MaterialComponent               materials;
-	SceneVisibilityComponent	    visables;
-	PointLightComponent			    pointLights;
-	SkeletonComponent               skeletonComponent;
-	PointLightShadowMap             shadowCasters;
-	PhysXComponent  	            physics;
-	RigidBodyComponent              rigidBodies;
-	StaticBodyComponent             staticBodies;
-	CharacterControllerComponent    characterControllers;
-	CameraControllerComponent       orbitCameras;
+	AnimatorComponent				animations;
+	FABRIKComponent					IK;
+	FABRIKTargetComponent			IKTargets;
+	SceneNodeComponent				transforms;
+	CameraComponent					cameras;
+	StringIDComponent				ids;
+	BrushComponent					brushes;
+	MaterialComponent				materials;
+	SceneVisibilityComponent		visables;
+	PointLightComponent				pointLights;
+	SkeletonComponent				skeletonComponent;
+	PointLightShadowMap				shadowCasters;
+	PhysXComponent  				physics;
+	RigidBodyComponent				rigidBodies;
+	StaticBodyComponent				staticBodies;
+	CharacterControllerComponent	characterControllers;
+	CameraControllerComponent		orbitCameras;
 	//SoundSystem			            sounds;
 
-	GamepadInput                    gamepads;
-	ImGUIIntegrator                 debugUI;
-	TextureStreamingEngine		    streamingEngine;
-	iRayTracer&                     rtEngine;
+	GamepadInput					gamepads;
+	ImGUIIntegrator					debugUI;
+	TextureStreamingEngine			streamingEngine;
+	iRayTracer&						rtEngine;
 };
 
 

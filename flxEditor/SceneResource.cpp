@@ -865,9 +865,10 @@ namespace FlexKit
 				if (component->id == GetTypeGUID(Brush))
 				{
 					auto brushComponent = std::dynamic_pointer_cast<EntityBrushComponent>(component);
-					const auto ID       = TranslateID(brushComponent->meshes.front(), translationTable);
+					//const auto ID       = TranslateID(brushComponent->meshes.front(), translationTable); // TODO: ID Translation was used for FBX, but FBX is broken, so considering removing or fixing FBX import
 
-					componentBlock += CreateBrushComponent(ID,
+					componentBlock += CreateBrushComponent(
+										brushComponent->meshes,
 										brushComponent->material.albedo,
 										brushComponent->material.specular);
 	
@@ -947,12 +948,12 @@ namespace FlexKit
 	}
 
 
-	Blob CreateBrushComponent(GUID_t meshGUID, const float4 albedo, const float4 specular)
+	Blob CreateBrushComponent(std::span<uint64_t> meshGUIDs, const float4 albedo, const float4 specular)
 	{
 		BrushComponentBlob brushComponent;
-		brushComponent.resourceID        = meshGUID;
 		brushComponent.albedo_smoothness = albedo;
 		brushComponent.specular_metal    = specular;
+		brushComponent.resourceID        = meshGUIDs.front();
 
 		return { brushComponent };
 	}

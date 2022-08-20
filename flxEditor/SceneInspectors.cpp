@@ -498,43 +498,67 @@ void SceneBrushInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::
 
 	panelCtx.PushVerticalLayout("Brush", true);
 
-	panelCtx.AddButton("Add Mesh",
-		[&, inspector = panelCtx.inspector]()
-		{
-			auto resourcePicker = new EditorResourcePickerDialog(MeshResourceTypeID, project);
-			
-			resourcePicker->OnSelection(
-				[&, inspector = inspector](ProjectResource_ptr resource_ptr)
-				{
-					if (resource_ptr->resource->GetResourceTypeID() == MeshResourceTypeID)
-					{
-						auto trimesh = viewport.LoadTriMeshResource(resource_ptr);
-						brush.GetMeshes().front() = trimesh;
-
-						if (brush.GetMaterial() == FlexKit::InvalidHandle)
-						{
-							auto& materials		= FlexKit::MaterialComponent::GetComponent();
-							auto newMaterial	= materials.CreateMaterial(viewport.gbufferPass);
-
-							brush.SetMaterial(newMaterial);
-						}
-
-						if(viewport.isVisible())
-							viewport.GetScene()->scene.AddGameObject(gameObject, FlexKit::GetSceneNode(gameObject));
-
-						inspector->ClearPanel();
-					}
-				});
-
-			resourcePicker->show();
-		});
-
 	auto meshes = brush.GetMeshes();
 	if (meshes.empty())
 		panelCtx.AddText(fmt::format("No Mesh Set"));
 
 	panelCtx.PushVerticalLayout();
 
+	auto list = panelCtx.AddList(
+		[&brush]() { return brush.GetMeshes().size(); },
+		[&brush](size_t idx, QListWidgetItem* item)
+		{
+			auto meshes		= brush.GetMeshes();
+			auto& mesh		= meshes[idx];
+			auto mesh_ptr	= FlexKit::GetMeshResource(mesh);
+
+			item->setText(mesh_ptr->ID);
+		},
+		[&](QListWidget* item)
+		{
+		});
+
+	panelCtx.PushVerticalLayout();
+
+	panelCtx.AddButton("Add",
+		[&, inspector = panelCtx.inspector]()
+		{
+			auto resourcePicker = new EditorResourcePickerDialog(MeshResourceTypeID, project);
+
+			resourcePicker->OnSelection(
+				[&, inspector = inspector](ProjectResource_ptr resource_ptr)
+				{
+					if (resource_ptr->resource->GetResourceTypeID() == MeshResourceTypeID)
+					{
+						auto trimesh = viewport.LoadTriMeshResource(resource_ptr);
+						brush.PushMesh(trimesh);
+
+						if (brush.GetMaterial() == FlexKit::InvalidHandle)
+						{
+							auto& materials = FlexKit::MaterialComponent::GetComponent();
+							auto newMaterial = materials.CreateMaterial(viewport.gbufferPass);
+
+							brush.SetMaterial(newMaterial);
+						}
+
+						if (viewport.isVisible())
+							viewport.GetScene()->scene.AddGameObject(gameObject, FlexKit::GetSceneNode(gameObject));
+					}
+				});
+
+			resourcePicker->show();
+		});
+
+	panelCtx.AddButton("Remove",
+		[&, inspector = panelCtx.inspector]()
+		{
+			auto item = list->currentRow();
+			brush.RemoveMesh(brush.GetMeshes()[item]);
+		});
+
+	panelCtx.Pop();
+
+	/*
 	for(auto mesh : meshes)
 	{
 		auto mesh_ptr = FlexKit::GetMeshResource(mesh);
@@ -547,6 +571,7 @@ void SceneBrushInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::
 		if (mesh_ptr->AnimationData)
 			panelCtx.AddText("Brush Animated");
 	}
+	*/
 
 	panelCtx.Pop();
 	panelCtx.Pop();
@@ -577,10 +602,6 @@ void MaterialInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::Ga
 	panelCtx.AddText("Pass Count" + std::format("{}", passes.size()));
 	panelCtx.AddButton("Add Pass", [&]() {});
 }
-
-
-/************************************************************************************************/
-
 
 
 /**********************************************************************

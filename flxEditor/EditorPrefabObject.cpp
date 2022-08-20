@@ -25,11 +25,11 @@ FlexKit::ResourceBlob ScriptResource::CreateBlob() const
 	FlexKit::ResourceBlob outBlob;
 	auto [_ptr, size] = blob.Release();
 
-	outBlob.buffer          = (char*)_ptr;
-	outBlob.bufferSize      = size;
-	outBlob.GUID            = GetResourceGUID();
-	outBlob.ID              = ID;
-	outBlob.resourceType    = FlexKit::EResource_ByteCode;
+	outBlob.buffer			= (char*)_ptr;
+	outBlob.bufferSize		= size;
+	outBlob.GUID			= GetResourceGUID();
+	outBlob.ID				= ID;
+	outBlob.resourceType	= FlexKit::EResource_ByteCode;
 
 	return outBlob;
 }
@@ -104,11 +104,11 @@ FlexKit::ResourceBlob PrefabGameObjectResource::CreateBlob() const
 	FlexKit::ResourceBlob outBlob;
 	auto [_ptr, size] = blob.Release();
 
-	outBlob.buffer          = (char*)_ptr;
-	outBlob.bufferSize      = size;
-	outBlob.GUID            = GetResourceGUID();
-	outBlob.ID              = ID;
-	outBlob.resourceType    = FlexKit::EResource_Prefab;
+	outBlob.buffer			= (char*)_ptr;
+	outBlob.bufferSize		= size;
+	outBlob.GUID			= GetResourceGUID();
+	outBlob.ID				= ID;
+	outBlob.resourceType	= FlexKit::EResource_Prefab;
 
 	return outBlob;
 }

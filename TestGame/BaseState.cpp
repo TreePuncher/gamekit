@@ -1,19 +1,23 @@
 #include "BaseState.h"
 #include "PhysicsDebugVis.h"
 
-BaseState::BaseState(
-	GameFramework&  IN_Framework,
-	FKApplication&  IN_App,
-	uint2           WH) :
-		App				    { IN_App },
-		FrameworkState	    { IN_Framework },
-		depthBuffer		    { IN_Framework.core.RenderSystem, renderWindow.GetWH() },
 
-		vertexBuffer	    { IN_Framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 64, false) },
-		constantBuffer	    { IN_Framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 16, false) },
-		asEngine		    { asCreateScriptEngine() },
-		streamingEngine	    { IN_Framework.core.RenderSystem, IN_Framework.core.GetBlockMemory() },
-		//sounds              { IN_Framework.core.Threads,      IN_Framework.core.GetBlockMemory() },
+/************************************************************************************************/
+
+
+BaseState::BaseState(
+	GameFramework&	IN_Framework,
+	FKApplication&	IN_App,
+	uint2			WH) :
+		App					{ IN_App },
+		FrameworkState		{ IN_Framework },
+		depthBuffer			{ IN_Framework.core.RenderSystem, renderWindow.GetWH() },
+
+		vertexBuffer		{ IN_Framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 16, false) },
+		constantBuffer		{ IN_Framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 16, false) },
+		asEngine			{ asCreateScriptEngine() },
+		streamingEngine		{ IN_Framework.core.RenderSystem, IN_Framework.core.GetBlockMemory() },
+		//sounds				{ IN_Framework.core.Threads,      IN_Framework.core.GetBlockMemory() },
 
 		renderWindow{ std::get<0>(CreateWin32RenderWindow(IN_Framework.GetRenderSystem(), DefaultWindowDesc({ WH }) )) },
 
@@ -27,34 +31,34 @@ BaseState::BaseState(
 			(iRayTracer&)IN_Framework.core.GetBlockMemory().allocate<NullRayTracer>() },
 
 		// Components
-		animations          { framework.core.GetBlockMemory() },
-		IK                  { framework.core.GetBlockMemory() },
-		IKTargets           { framework.core.GetBlockMemory() },
-		cameras		        { framework.core.GetBlockMemory() },
-		ids			        { framework.core.GetBlockMemory() },
-		brushes 	        { framework.core.GetBlockMemory(), IN_Framework.GetRenderSystem() },
-		materials           { IN_Framework.core.RenderSystem, streamingEngine, framework.core.GetBlockMemory() },
-		visables	        { framework.core.GetBlockMemory() },
-		pointLights	        { framework.core.GetBlockMemory() },
-		skeletonComponent   { framework.core.GetBlockMemory() },
-		gbuffer             { renderWindow.GetWH(), framework.core.RenderSystem },
-		shadowCasters       { IN_Framework.core.GetBlockMemory() },
-		physics             { IN_Framework.core.Threads, IN_Framework.core.GetBlockMemory() },
-		rigidBodies         { physics },
-		staticBodies        { physics },
-		characterControllers{ physics, framework.core.GetBlockMemory() },
-		orbitCameras        { framework.core.GetBlockMemory() },
-		debugUI             { framework.core.RenderSystem, framework.core.GetBlockMemory() },
-		gamepads            { renderWindow.WindowHandle() }
+		animations				{ framework.core.GetBlockMemory() },
+		IK						{ framework.core.GetBlockMemory() },
+		IKTargets				{ framework.core.GetBlockMemory() },
+		cameras					{ framework.core.GetBlockMemory() },
+		ids						{ framework.core.GetBlockMemory() },
+		brushes 				{ framework.core.GetBlockMemory(), IN_Framework.GetRenderSystem() },
+		materials				{ IN_Framework.core.RenderSystem, streamingEngine, framework.core.GetBlockMemory() },
+		visables				{ framework.core.GetBlockMemory() },
+		pointLights				{ framework.core.GetBlockMemory() },
+		skeletonComponent		{ framework.core.GetBlockMemory() },
+		gbuffer					{ renderWindow.GetWH(), framework.core.RenderSystem },
+		shadowCasters			{ IN_Framework.core.GetBlockMemory() },
+		physics					{ IN_Framework.core.Threads, IN_Framework.core.GetBlockMemory() },
+		rigidBodies				{ physics },
+		staticBodies			{ physics },
+		characterControllers	{ physics, framework.core.GetBlockMemory() },
+		orbitCameras			{ framework.core.GetBlockMemory() },
+		debugUI					{ framework.core.RenderSystem, framework.core.GetBlockMemory() },
+		gamepads				{ renderWindow.WindowHandle() }
 {
 	auto& RS = *IN_Framework.GetRenderSystem();
-	RS.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO,	{ &RS.Library.RS6CBVs4SRVs, LoadSpriteTextPSO				});
-	RS.RegisterPSOLoader(DRAW_PSO,				{ &RS.Library.RS6CBVs4SRVs, CreateDrawTriStatePSO			});
-	RS.RegisterPSOLoader(DRAW_TEXTURED_PSO,		{ &RS.Library.RS6CBVs4SRVs, CreateTexturedTriStatePSO		});
-	RS.RegisterPSOLoader(DRAW_LINE_PSO,			{ &RS.Library.RS6CBVs4SRVs, CreateDrawLineStatePSO			});
+	RS.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO,	{ &RS.Library.RS6CBVs4SRVs, LoadSpriteTextPSO			});
+	RS.RegisterPSOLoader(DRAW_PSO,				{ &RS.Library.RS6CBVs4SRVs, CreateDrawTriStatePSO		});
+	RS.RegisterPSOLoader(DRAW_TEXTURED_PSO,		{ &RS.Library.RS6CBVs4SRVs, CreateTexturedTriStatePSO	});
+	RS.RegisterPSOLoader(DRAW_LINE_PSO,			{ &RS.Library.RS6CBVs4SRVs, CreateDrawLineStatePSO		});
 
-	RS.RegisterPSOLoader(DRAW_LINE3D_PSO,		{ &RS.Library.RS6CBVs4SRVs, CreateDraw2StatePSO				});
-	RS.RegisterPSOLoader(DRAW_TRI3D_PSO,		{ &RS.Library.RS6CBVs4SRVs, CreateDrawTriStatePSO			});
+	RS.RegisterPSOLoader(DRAW_LINE3D_PSO,		{ &RS.Library.RS6CBVs4SRVs, CreateDraw2StatePSO			});
+	RS.RegisterPSOLoader(DRAW_TRI3D_PSO,		{ &RS.Library.RS6CBVs4SRVs, CreateDrawTriStatePSO		});
 
 	RS.QueuePSOLoad(DRAW_PSO);
 	RS.QueuePSOLoad(DRAW_TEXTURED_DEBUG_PSO);
@@ -83,6 +87,9 @@ BaseState::BaseState(
 }
 
 
+/************************************************************************************************/
+
+
 BaseState::~BaseState()
 {
 	framework.GetRenderSystem().ReleaseVB(vertexBuffer);
@@ -94,6 +101,9 @@ BaseState::~BaseState()
 
 	ReleaseScriptRuntime();
 }
+
+
+/************************************************************************************************/
 
 
 UpdateTask* BaseState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
@@ -113,6 +123,9 @@ UpdateTask* BaseState::Update(EngineCore& core, UpdateDispatcher& dispatcher, do
 }
 
 
+/************************************************************************************************/
+
+
 void BaseState::PostDrawUpdate(EngineCore& core, double dT)
 {
 	ProfileFunction();
@@ -120,6 +133,9 @@ void BaseState::PostDrawUpdate(EngineCore& core, double dT)
 	depthBuffer.Increment();
 	renderWindow.Present(core.vSync ? 1 : 0, 0);
 }
+
+
+/************************************************************************************************/
 
 
 void BaseState::Resize(const uint2 WH)
@@ -134,6 +150,9 @@ void BaseState::Resize(const uint2 WH)
 	depthBuffer.Resize(adjustedWH);
 	gbuffer.Resize(adjustedWH);
 }
+
+
+/************************************************************************************************/
 
 
 void BaseState::DrawDebugHUD(EngineCore& core, UpdateDispatcher& dispatcher, FrameGraph& frameGraph, ReserveVertexBufferFunction& reserveVB, ReserveConstantBufferFunction& reserveCB, ResourceHandle renderTarget, double dT)
@@ -158,6 +177,9 @@ void BaseState::DrawDebugHUD(EngineCore& core, UpdateDispatcher& dispatcher, Fra
 		debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderTarget);
 	}
 }
+
+
+/************************************************************************************************/
 
 
 void BaseState::DEBUG_PrintDebugStats(EngineCore& core)
@@ -214,10 +236,16 @@ void BaseState::DEBUG_PrintDebugStats(EngineCore& core)
 }
 
 
+/************************************************************************************************/
+
+
 void BaseState::PixCapture()
 {
 	PIX_SingleFrameCapture = true;
 }
+
+
+/************************************************************************************************/
 
 
 void BaseState::BeginPixCapture()
@@ -246,6 +274,9 @@ void BaseState::BeginPixCapture()
 			PIX_frameCaptures--;
 	}
 }
+
+
+/************************************************************************************************/
 
 
 void BaseState::EndPixCapture()

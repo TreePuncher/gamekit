@@ -40,248 +40,248 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-    using TimePoint     = std::chrono::high_resolution_clock::time_point;
-    using TimeDuration  = std::chrono::high_resolution_clock::duration;
+	using TimePoint     = std::chrono::high_resolution_clock::time_point;
+	using TimeDuration  = std::chrono::high_resolution_clock::duration;
 
 
-    struct FrameTiming
-    {
-        const char* Function;
-        uint64_t    profileID;
-        uint64_t    parentID;
-        TimePoint   begin;
-        TimePoint   end;
+	struct FrameTiming
+	{
+		const char* Function;
+		uint64_t    profileID;
+		uint64_t    parentID;
+		TimePoint   begin;
+		TimePoint   end;
 
-        TimeDuration GetDuration() const
-        {
-            return end - begin;
-        }
+		TimeDuration GetDuration() const
+		{
+			return end - begin;
+		}
 
-        double GetDurationDouble()
-        {
-            auto duration = end - begin;
-            auto fDuration = double(duration.count()) / 100000000.0;
+		double GetDurationDouble()
+		{
+			auto duration = end - begin;
+			auto fDuration = double(duration.count()) / 100000000.0;
 
-            return fDuration;
-        }
+			return fDuration;
+		}
 
-        double GetRelativeTimePointBegin(const TimePoint rel_begin, const TimeDuration duration)
-        {
-            auto relativeTimePoint = double((begin - rel_begin).count()) / double(duration.count());
+		double GetRelativeTimePointBegin(const TimePoint rel_begin, const TimeDuration duration)
+		{
+			auto relativeTimePoint = double((begin - rel_begin).count()) / double(duration.count());
 
-            return relativeTimePoint;
-        }
+			return relativeTimePoint;
+		}
 
-        double GetRelativeTimePointEnd(const TimePoint rel_begin, const TimeDuration duration)
-        {
-            auto relativeTimePoint = double((end - rel_begin).count()) / double(duration.count());
+		double GetRelativeTimePointEnd(const TimePoint rel_begin, const TimeDuration duration)
+		{
+			auto relativeTimePoint = double((end - rel_begin).count()) / double(duration.count());
 
-            return relativeTimePoint;
-        }
+			return relativeTimePoint;
+		}
 
-        static_vector <uint64_t, 32> children;
-    };
+		static_vector <uint64_t, 32> children;
+	};
 
 
-    struct ThreadStats
-    {
-        std::vector<FrameTiming> timePoints;
-    };
+	struct ThreadStats
+	{
+		std::vector<FrameTiming> timePoints;
+	};
 
 
 	struct ThreadProfiler
 	{
-        ThreadProfiler()
-        {
-            activeFrames.reserve(1024);
-            completedFrames.reserve(1024);
-        }
+		ThreadProfiler()
+		{
+			activeFrames.reserve(1024);
+			completedFrames.reserve(1024);
+		}
 
-        void BeginFrame()
-        {
-            std::scoped_lock lock(m);
+		void BeginFrame()
+		{
+			std::scoped_lock lock(m);
 
-            activeFrames.clear();
-            completedFrames.clear();
-        }
+			activeFrames.clear();
+			completedFrames.clear();
+		}
 
-        void EndFrame()
-        {
-            std::scoped_lock lock(m);
+		void EndFrame()
+		{
+			std::scoped_lock lock(m);
 
-            for (auto& frame : activeFrames)
-                Pop(frame.profileID, std::chrono::high_resolution_clock::now());
+			for (auto& frame : activeFrames)
+				Pop(frame.profileID, std::chrono::high_resolution_clock::now());
 
-            std::sort(
-                completedFrames.begin(),
-                completedFrames.end(),
-                [](FrameTiming& lhs, FrameTiming& rhs)
-                {
-                    return lhs.begin < rhs.begin;
-                });
-        }
+			std::sort(
+				completedFrames.begin(),
+				completedFrames.end(),
+				[](FrameTiming& lhs, FrameTiming& rhs)
+				{
+					return lhs.begin < rhs.begin;
+				});
+		}
 
-        ThreadStats GetStats()
-        {
-            if (completedFrames.size())
-            {
-                std::vector<FrameTiming> temp{ std::move(completedFrames) };
-                completedFrames.reserve(1024);
-                return { std::move(temp) };
-            }
-            else return {};
-        }
+		ThreadStats GetStats()
+		{
+			if (completedFrames.size())
+			{
+				std::vector<FrameTiming> temp{ std::move(completedFrames) };
+				completedFrames.reserve(1024);
+				return { std::move(temp) };
+			}
+			else return {};
+		}
 
-        void Clear()
-        {
-            activeFrames.clear();
-            completedFrames.clear();
+		void Clear()
+		{
+			activeFrames.clear();
+			completedFrames.clear();
 
-            activeFrames.reserve(1024);
-            completedFrames.reserve(1024);
-        }
+			activeFrames.reserve(1024);
+			completedFrames.reserve(1024);
+		}
 
-        void Push(const char* func, uint64_t Id, TimePoint tp);
-        void Pop(uint64_t Id, TimePoint tp);
+		void Push(const char* func, uint64_t Id, TimePoint tp);
+		void Pop(uint64_t Id, TimePoint tp);
 
-        void Release()
-        {
-            activeFrames.clear();
-            completedFrames.clear();
+		void Release()
+		{
+			activeFrames.clear();
+			completedFrames.clear();
 
-            activeFrames.reserve(1024);
-            completedFrames.reserve(1024);
-        }
+			activeFrames.reserve(1024);
+			completedFrames.reserve(1024);
+		}
 
-        std::vector<FrameTiming> activeFrames{};
-        std::vector<FrameTiming> completedFrames{};
-        std::mutex              m;
+		std::vector<FrameTiming> activeFrames{};
+		std::vector<FrameTiming> completedFrames{};
+		std::mutex              m;
 	};
 
 
-    class ProfilingStats
-    {
-    public:
+	class ProfilingStats
+	{
+	public:
 
-        std::vector<ThreadStats> Threads;
-    };
+		std::vector<ThreadStats> Threads;
+	};
 
-    inline static std::mutex _ProfilerLock = std::mutex{};
+	inline static std::mutex _ProfilerLock = std::mutex{};
 
-    struct EngineProfiling
-    {
-        EngineProfiling() { printf("Main Thread Initialized\n"); }
+	struct EngineProfiling
+	{
+		EngineProfiling() { printf("Main Thread Initialized\n"); }
 
-        ThreadProfiler& GetThreadProfiler()
-        {
+		ThreadProfiler& GetThreadProfiler()
+		{
 #if USING(ENABLEPROFILER)
-            thread_local ThreadProfiler*    profiler = nullptr;
+			thread_local ThreadProfiler*    profiler = nullptr;
 
-            if (!profiler)
-            {
-                std::scoped_lock lock{ _ProfilerLock };
+			if (!profiler)
+			{
+				std::scoped_lock lock{ _ProfilerLock };
 
-                threadProfilers.emplace_back(std::make_unique<ThreadProfiler>());
-                profiler    = threadProfilers.back().get();
-            }
+				threadProfilers.emplace_back(std::make_unique<ThreadProfiler>());
+				profiler    = threadProfilers.back().get();
+			}
 
-            return *profiler;
+			return *profiler;
 #else
-            ThreadProfiler& NULL_REF = *((ThreadProfiler*)(nullptr));
-            return NULL_REF;
+			ThreadProfiler& NULL_REF = *((ThreadProfiler*)(nullptr));
+			return NULL_REF;
 #endif
-        }
+		}
 
-        void BeginFrame()
-        {
+		void BeginFrame()
+		{
 #if USING(ENABLEPROFILER)
-            for (auto& threadProfiler : threadProfilers)
-                threadProfiler->BeginFrame();
+			for (auto& threadProfiler : threadProfilers)
+				threadProfiler->BeginFrame();
 #endif
-        }
+		}
 
-        void EndFrame()
-        {
+		void EndFrame()
+		{
 #if USING(ENABLEPROFILER)
-            for (auto& threadProfiler : threadProfilers)
-                threadProfiler->EndFrame();
+			for (auto& threadProfiler : threadProfilers)
+				threadProfiler->EndFrame();
 
-            auto frameStats = std::make_shared<ProfilingStats>();
+			auto frameStats = std::make_shared<ProfilingStats>();
 
-            for (auto& threadProfiler : threadProfilers)
-                frameStats->Threads.push_back(threadProfiler->GetStats());
+			for (auto& threadProfiler : threadProfilers)
+				frameStats->Threads.push_back(threadProfiler->GetStats());
 
-            if (!paused)
-                stats.push_back(std::move(frameStats));
+			if (!paused)
+				stats.push_back(std::move(frameStats));
 #endif
-        }
+		}
 
-        void Release()
-        {
-            for (auto& threadProfiler : threadProfilers)
-                threadProfiler->Release();
+		void Release()
+		{
+			for (auto& threadProfiler : threadProfilers)
+				threadProfiler->Release();
 
-            stats.Release();
-        }
+			stats.Release();
+		}
 
-        std::shared_ptr<ProfilingStats>  GetStats()
-        {
-            if(stats.size())
-                return stats[stats.size() - 1 - frameOffset];
-            else
-                return {};
-        }
+		std::shared_ptr<ProfilingStats>  GetStats()
+		{
+			if(stats.size())
+				return stats[stats.size() - 1 - frameOffset];
+			else
+				return {};
+		}
 
-        void DrawProfiler(uint2 POS, uint2 WH, iAllocator& temp);
+		void DrawProfiler(uint2 POS, uint2 WH, iAllocator& temp);
 
-        bool paused     = false;
-        bool showLabels = true;
-        size_t frameOffset = 0;
+		bool paused     = false;
+		bool showLabels = true;
+		size_t frameOffset = 0;
 
-        std::shared_ptr<ProfilingStats>                     pausedFrame;
-        CircularBuffer<std::shared_ptr<ProfilingStats>>     stats;
-        std::vector<std::unique_ptr<ThreadProfiler>>        threadProfilers;
-    };
+		std::shared_ptr<ProfilingStats>                     pausedFrame;
+		CircularBuffer<std::shared_ptr<ProfilingStats>>     stats;
+		std::vector<std::unique_ptr<ThreadProfiler>>        threadProfilers;
+	};
 
-    inline EngineProfiling profiler = EngineProfiling{};
+	inline EngineProfiling profiler = EngineProfiling{};
 
 	
-    template<typename TY>
-    FLEXKITAPI decltype(auto) _TimeBlock(TY function, const char* id)
-    {
-        static const std::chrono::high_resolution_clock Clock;
-        const auto Before = Clock.now();
+	template<typename TY>
+	FLEXKITAPI decltype(auto) _TimeBlock(TY function, const char* id)
+	{
+		static const std::chrono::high_resolution_clock Clock;
+		const auto Before = Clock.now();
 
-        EXITSCOPE(
-            const auto After = Clock.now();
-            const auto Duration = std::chrono::duration_cast<std::chrono::microseconds>(After - Before);
-        FK_LOG_0("Function %s executed in %umicroseconds.", id, Duration.count()); );
+		EXITSCOPE(
+			const auto After = Clock.now();
+			const auto Duration = std::chrono::duration_cast<std::chrono::microseconds>(After - Before);
+		FK_LOG_0("Function %s executed in %umicroseconds.", id, Duration.count()); );
 
-        return function();
-    }
+		return function();
+	}
 
-    //inline thread_local ThreadProfiler& threadProfiler = profiler.GetThreadProfiler();
+	//inline thread_local ThreadProfiler& threadProfiler = profiler.GetThreadProfiler();
 
-    class _ProfileFunction
-    {
-    public:
-        _ProfileFunction(const char* FunctionName, uint64_t IN_profileID) :
-            function    { FunctionName },
-            profileID   { IN_profileID + rand() }
-        {
-            profiler.GetThreadProfiler().Push(FunctionName, profileID, std::chrono::high_resolution_clock::now());
-        }
+	class _ProfileFunction
+	{
+	public:
+		_ProfileFunction(const char* FunctionName, uint64_t IN_profileID) :
+			function	{ FunctionName },
+			profileID	{ IN_profileID + rand() }
+		{
+			profiler.GetThreadProfiler().Push(FunctionName, profileID, std::chrono::high_resolution_clock::now());
+		}
 
-        ~_ProfileFunction()
-        {
-            profiler.GetThreadProfiler().Pop(profileID, std::chrono::high_resolution_clock::now());
-        }
+		~_ProfileFunction()
+		{
+			profiler.GetThreadProfiler().Pop(profileID, std::chrono::high_resolution_clock::now());
+		}
 
-    private:
-        std::chrono::high_resolution_clock::time_point before = std::chrono::high_resolution_clock::now();
-        const char*     function = "Unnamed function";
-        const uint64_t  profileID;
-    };
+	private:
+		std::chrono::high_resolution_clock::time_point before = std::chrono::high_resolution_clock::now();
+		const char*     function = "Unnamed function";
+		const uint64_t  profileID;
+	};
 
 #define PROFILELABEL_(a) MERGECOUNT_(PROFILE_ID_, a)
 #define PROFILELABEL PROFILELABEL_(__LINE__)
@@ -301,18 +301,18 @@ namespace FlexKit
 #define TIMEBLOCK(A, B) _TimeBlock([&]{ return A(); }, B)
 
 
-    template<typename TY>
-    FLEXKITAPI decltype(auto) TimeFunction(TY&& function)
-    {
-        static const std::chrono::high_resolution_clock Clock;
-        const auto Before = Clock.now();
+	template<typename TY>
+	FLEXKITAPI decltype(auto) TimeFunction(TY&& function)
+	{
+		static const std::chrono::high_resolution_clock Clock;
+		const auto Before = Clock.now();
 
-        function();
+		function();
 
-        const auto After = Clock.now();
+		const auto After = Clock.now();
 
-        return After - Before;
-    }
+		return After - Before;
+	}
 }
 
 /************************************************************************************************/
