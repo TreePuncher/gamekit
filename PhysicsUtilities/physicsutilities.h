@@ -201,8 +201,9 @@ namespace FlexKit
 		StaticColliderObject    GetAPIObject(StaticBodyHandle collider);
 
 		Vector<StaticColliderObject>	colliders;
-		Vector<bool>	                dirtyFlags;
-		PhysicsLayer*				    layer;
+		Vector<bool>					dirtyFlags;
+		HandleTable						handles;
+		PhysicsLayer*					layer;
 	};
 
 
@@ -645,10 +646,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	NodeHandle  GetStaticBodyNode            (GameObject& GO);
-	void        StaticBodySetWorldPosition   (GameObject& GO, const float3 xyz);
-	void        StaticBodySetScale           (GameObject& GO, const float3 xyz);
-	void        StaticBodySetWorldOrientation(GameObject& GO, const Quaternion xyz);
+	NodeHandle	GetStaticBodyNode				(GameObject& GO);
+	void		StaticBodySetWorldPosition		(GameObject& GO, const float3 xyz);
+	void		StaticBodySetScale				(GameObject& GO, const float3 xyz);
+	void		StaticBodySetWorldOrientation	(GameObject& GO, const Quaternion xyz);
 
 
 	/************************************************************************************************/
@@ -681,24 +682,24 @@ namespace FlexKit
 	{
 	public:
 		RigidBodyView(GameObject& gameObject, RigidBodyHandle IN_rigidBody, LayerHandle IN_layer) :
-			staticBody  { IN_rigidBody },
-			layer       { IN_layer      } {}
+			staticBody	{ IN_rigidBody },
+			layer		{ IN_layer      } {}
 
 		RigidBodyView(GameObject& gameObject, LayerHandle IN_layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 }) :
-			staticBody  { GetComponent().CreateRigidBody(&gameObject, IN_layer, pos, q) },
-			layer       { IN_layer } {}
+			staticBody	{ GetComponent().CreateRigidBody(&gameObject, IN_layer, pos, q) },
+			layer		{ IN_layer } {}
 
-		NodeHandle      GetNode() const;
-		void            AddShape(Shape shape);
+		NodeHandle		GetNode() const;
+		void			AddShape(Shape shape);
 
-		const LayerHandle       layer;
-		const RigidBodyHandle   staticBody;
+		const LayerHandle		layer;
+		const RigidBodyHandle	staticBody;
 	};
 
 
-	NodeHandle  GetRigidBodyNode(GameObject& GO);
-	void        SetRigidBodyPosition(GameObject& GO, const float3 worldPOS);
-	void        ApplyForce(GameObject& GO, const float3 force);
+	NodeHandle	GetRigidBodyNode(GameObject& GO);
+	void		SetRigidBodyPosition(GameObject& GO, const float3 worldPOS);
+	void		ApplyForce(GameObject& GO, const float3 force);
 
 
 
@@ -710,17 +711,17 @@ namespace FlexKit
 
 	struct CharacterController
 	{
-		CharacterControllerHandle   handle;
-		NodeHandle                  node;
-		GameObject*                 gameObject;
-		LayerHandle                 layer;
+		CharacterControllerHandle	handle;
+		NodeHandle					node;
+		GameObject*					gameObject;
+		LayerHandle					layer;
 
-		physx::PxController*        controller;
+		physx::PxController*		controller;
 
-		float                       focusHeight     = 4.0f;
-		float                       cameraDistance  = 10.0f;
-		float2                      mouseMoved      = { 0, 0 };
-		double                      updateTimer     = 0;
+		float						focusHeight		= 4.0f;
+		float						cameraDistance	= 10.0f;
+		float2						mouseMoved		= { 0, 0 };
+		double						updateTimer		= 0;
 	};
 
 
@@ -779,8 +780,8 @@ namespace FlexKit
 
 		void Remove(CharacterControllerHandle handle)
 		{
-			const auto idx              = handles[handle];
-			auto& characterController   = controllers[idx];
+			const auto idx				= handles[handle];
+			auto& characterController	= controllers[idx];
 
 			characterController.controller->release();
 			characterController = controllers.back();
@@ -885,12 +886,12 @@ namespace FlexKit
 	};
 
 
-	NodeHandle                  GetControllerNode           (GameObject&);
-	CharacterControllerHandle   GetControllerHandle         (GameObject&);
-	float3                      GetControllerPosition       (GameObject&);
-	void                        SetControllerPosition       (GameObject&, const float3);
-	void                        SetControllerOrientation    (GameObject&, const Quaternion);
-	void                        MoveController              (GameObject&, const float3&, physx::PxControllerFilters& filters, double dt);
+	NodeHandle					GetControllerNode			(GameObject&);
+	CharacterControllerHandle	GetControllerHandle			(GameObject&);
+	float3						GetControllerPosition		(GameObject&);
+	void						SetControllerPosition		(GameObject&, const float3);
+	void						SetControllerOrientation	(GameObject&, const Quaternion);
+	void						MoveController				(GameObject&, const float3&, physx::PxControllerFilters& filters, double dt);
 
 
 	/************************************************************************************************/
@@ -912,20 +913,20 @@ namespace FlexKit
 	struct ThirdPersonCamera
 	{
 		ThirdPersonCamera(
-			CharacterControllerHandle   IN_controller        = InvalidHandle,
-			NodeHandle                  IN_node              = GetZeroedNode(),
-			CameraHandle                IN_camera            = CameraComponent::GetComponent().CreateCamera(),
-			float3                      initialPos           = { 0, 0, 0 },
-			const float                 initialMovementSpeed = 50);
+			CharacterControllerHandle	IN_controller		= InvalidHandle,
+			NodeHandle					IN_node				= GetZeroedNode(),
+			CameraHandle				IN_camera			= CameraComponent::GetComponent().CreateCamera(),
+			float3						initialPos			= { 0, 0, 0 },
+			const float					initialMovementSpeed= 50);
 
 		static physx::PxFilterFlags Test(
-			physx::PxFilterObjectAttributes attributes0,
-			physx::PxFilterData             filterData0,
-			physx::PxFilterObjectAttributes attributes1,
-			physx::PxFilterData             filterData1,
-			physx::PxPairFlags&             pairFlags,
-			const byte*                     constantBlock,
-			physx::PxU32                    constantBlockSize);
+			physx::PxFilterObjectAttributes	attributes0,
+			physx::PxFilterData				filterData0,
+			physx::PxFilterObjectAttributes	attributes1,
+			physx::PxFilterData				filterData1,
+			physx::PxPairFlags&				pairFlags,
+			const byte*						constantBlock,
+			physx::PxU32					constantBlockSize);
 
 
 		ThirdPersonCamera(const ThirdPersonCamera&) = default;
@@ -936,16 +937,16 @@ namespace FlexKit
 			float y;
 		};
 
-		Quaternion	GetOrientation()     const;
-		float3      GetForwardVector()   const;
-		float3      GetRightVector()     const;
+		Quaternion	GetOrientation()	const;
+		float3		GetForwardVector()	const;
+		float3		GetRightVector()	const;
 
 		void SetRotation(const float3 xyz);
 
-		void Rotate (const float3 xyz);
-		void Yaw    (const float theta);
-		void Pitch  (const float theta);
-		void Roll   (const float theta);
+		void Rotate		(const float3 xyz);
+		void Yaw		(const float theta);
+		void Pitch		(const float theta);
+		void Roll		(const float theta);
 		void SetPosition(const float3 xyz);
 
 		float3 GetHeadPosition() const;
@@ -961,37 +962,37 @@ namespace FlexKit
 		{
 			ThirdPersonCameraFrameState out;
 
-			out.pitch   = pitch;
-			out.yaw     = yaw;
-			out.roll    = roll;
+			out.pitch	= pitch;
+			out.yaw		= yaw;
+			out.roll	= roll;
 
 			return out;
 		}
 
-		CharacterControllerHandle   controller    = InvalidHandle;
-		CameraHandle                camera        = InvalidHandle;
+		CharacterControllerHandle	controller	= InvalidHandle;
+		CameraHandle				camera		= InvalidHandle;
 
-		NodeHandle objectNode   = InvalidHandle;
-		NodeHandle cameraNode   = InvalidHandle;
+		NodeHandle objectNode	= InvalidHandle;
+		NodeHandle cameraNode	= InvalidHandle;
 
-		NodeHandle yawNode      = InvalidHandle;
-		NodeHandle pitchNode    = InvalidHandle;
-		NodeHandle rollNode     = InvalidHandle;
+		NodeHandle yawNode		= InvalidHandle;
+		NodeHandle pitchNode	= InvalidHandle;
+		NodeHandle rollNode		= InvalidHandle;
 
 
-		float3          cameraPosition  = float3(0, 0, 0);
+		float3			cameraPosition  = float3(0, 0, 0);
 
-		float           pitch   = 0; // parented to yaw
-		float           roll    = 0; // Parented to pitch
-		float           yaw     = 0; 
+		float			pitch	= 0; // parented to yaw
+		float			roll	= 0; // Parented to pitch
+		float			yaw		= 0; 
 
-		float3          velocity        = 0;
-		float           acceleration    = 100;
-		float           drag            = 5.0f;
-		float			moveRate        = 50;
-		float           gravity         = 9.8f;
+		float3			velocity		= 0;
+		float			acceleration	= 100;
+		float			drag			= 5.0f;
+		float			moveRate		= 50;
+		float			gravity			= 9.8f;
 
-		bool            floorContact = false;
+		bool			floorContact = false;
 
 		KeyStates keyStates;
 	};
@@ -1006,29 +1007,29 @@ namespace FlexKit
 		}
 	};
 
-	using CameraControllerComponent     = BasicComponent_t<ThirdPersonCamera, CameraControllerHandle, CameraControllerComponentID, ThirdPersonEventHandler>;
-	using CameraControllerView          = CameraControllerComponent::View;
+	using CameraControllerComponent		= BasicComponent_t<ThirdPersonCamera, CameraControllerHandle, CameraControllerComponentID, ThirdPersonEventHandler>;
+	using CameraControllerView			= CameraControllerComponent::View;
 
 
-	CameraHandle    GetCameraControllerCamera(GameObject& GO);
-	GameObject&     CreateThirdPersonCameraController(GameObject& gameObject, LayerHandle layer, iAllocator& allocator, const float R = 1, const float H = 1);
+	CameraHandle	GetCameraControllerCamera(GameObject& GO);
+	GameObject&		CreateThirdPersonCameraController(GameObject& gameObject, LayerHandle layer, iAllocator& allocator, const float R = 1, const float H = 1);
 
-	float3          GetCameraControllerHeadPosition(GameObject& GO);
-	float3          GetCameraControllerForwardVector(GameObject& GO);
-	Quaternion      GetCameraControllerOrientation(GameObject& GO);
-	NodeHandle      GetCameraControllerNode(GameObject& GO);
+	float3			GetCameraControllerHeadPosition(GameObject& GO);
+	float3			GetCameraControllerForwardVector(GameObject& GO);
+	Quaternion		GetCameraControllerOrientation(GameObject& GO);
+	NodeHandle		GetCameraControllerNode(GameObject& GO);
 
-	float3          GetCameraControllerModelPosition(GameObject& GO);
-	Quaternion      GetCameraControllerModelOrientation(GameObject& GO);
+	float3			GetCameraControllerModelPosition(GameObject& GO);
+	Quaternion		GetCameraControllerModelOrientation(GameObject& GO);
 
-	void            YawCameraController(GameObject& GO, float rad);
+	void			YawCameraController(GameObject& GO, float rad);
 
-	void            SetCameraControllerCameraHeightOffset(GameObject& GO, const float offset);
-	void            SetCameraControllerCameraBackOffset(GameObject& GO, const float offset);
+	void			SetCameraControllerCameraHeightOffset(GameObject& GO, const float offset);
+	void			SetCameraControllerCameraBackOffset(GameObject& GO, const float offset);
 
 
-	void            UpdateThirdPersonCameraControllers(const float2& mouseInput, const double dT);
-	UpdateTask&     QueueThirdPersonCameraControllers(UpdateDispatcher& dispatcher, float2 mouseInput, const double dT);
+	void			UpdateThirdPersonCameraControllers(const float2& mouseInput, const double dT);
+	UpdateTask&		QueueThirdPersonCameraControllers(UpdateDispatcher& dispatcher, float2 mouseInput, const double dT);
 
 
 	/************************************************************************************************/
