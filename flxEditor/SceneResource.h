@@ -252,26 +252,21 @@ namespace FlexKit
 			Serializable	{ GetTypeGUID(Brush) }
 		{
 			if(IN_MGUID != INVALIDHANDLE)
-			meshes.push_back(IN_MGUID);
+				meshes.push_back(IN_MGUID);
 		}
 
 		void Serialize(auto& ar)
 		{
 			EntityComponent::Serialize(ar);
 
-			GUID_t mesh = meshes.front();
-			ar& mesh;
-
-			if (ar.Loading())
-				meshes[0] = mesh;
-
+			ar& meshes;
 			ar& Collider;
 			ar& material;
 		}
 
 		Blob GetBlob() override
 		{
-			return CreateBrushComponent(meshes.front(), material.albedo, material.specular);
+			return CreateBrushComponent(meshes, material.albedo, material.specular);
 		}
 
 		GUID_t					Collider = INVALIDHANDLE;

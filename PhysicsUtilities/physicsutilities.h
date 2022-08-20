@@ -161,9 +161,10 @@ namespace FlexKit
 	{
 	public:
 		StaticColliderSystem(PhysicsLayer& IN_layer, iAllocator* IN_memory) :
-			layer       { &IN_layer },
+			handles		{ IN_memory },
+			layer		{ &IN_layer },
 			colliders	{ IN_memory },
-			dirtyFlags  { IN_memory, 128 } {}
+			dirtyFlags	{ IN_memory, 128 } {}
 
 
 		~StaticColliderSystem()
@@ -176,7 +177,7 @@ namespace FlexKit
 		StaticColliderSystem& operator =	(const StaticColliderSystem&) = delete;
 
 		// MOVEABLE
-		StaticColliderSystem(StaticColliderSystem&& IN_staticColliders);
+		StaticColliderSystem(StaticColliderSystem&& IN_staticColliders) noexcept;
 
 		void Release();
 
@@ -184,21 +185,24 @@ namespace FlexKit
 
 		auto& operator[] (const StaticBodyHandle collider)
 		{
-			return colliders[collider];
+			return colliders[handles[collider]];
 		}
 
 
 		struct StaticColliderObject
 		{
 			NodeHandle				node;
+			StaticBodyHandle		handle;
 			physx::PxRigidStatic*	actor;
-			GameObject*             gameObject;
-			void*                   User;
+			GameObject*				gameObject;
+			void*					User;
 		};
 
 
-		size_t                  push_back(const StaticColliderObject& object, bool initialDirtyFlag);
-		StaticColliderObject    GetAPIObject(StaticBodyHandle collider);
+		StaticBodyHandle		AddCollider(const StaticColliderObject& object, bool initialDirtyFlag);
+		StaticColliderObject	GetAPIObject(StaticBodyHandle collider);
+
+		using HandleTable = FlexKit::HandleUtilities::HandleTable<StaticBodyHandle>;
 
 		Vector<StaticColliderObject>	colliders;
 		Vector<bool>					dirtyFlags;
@@ -531,6 +535,7 @@ namespace FlexKit
 		Cube,
 		Capsule,
 		Sphere,
+		BoundingVolume
 	};
 
 	struct CubeCollider
@@ -549,6 +554,11 @@ namespace FlexKit
 		float height;
 	};
 
+	struct BoudingVolumeCollider
+	{
+		StaticBodyType subType; // Must be a Cube, Capsule, or Sphere
+	};
+
 	struct StaticBodyShape
 	{
 		StaticBodyShape() = default;
@@ -557,10 +567,11 @@ namespace FlexKit
 
 		union
 		{
-			uint64_t            triMeshResource;
-			CubeCollider        cube;
-			SphereCollider      sphere;
-			CapsuleCollider     capsule;
+			uint64_t				triMeshResource;
+			CubeCollider			cube;
+			SphereCollider			sphere;
+			CapsuleCollider			capsule;
+			BoudingVolumeCollider	bv;
 		};
 
 		float3          position;
@@ -597,7 +608,7 @@ namespace FlexKit
 		StaticBodyHandle Create(GameObject* gameObject, LayerHandle layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 });
 
 		void AddComponentView(GameObject& GO, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
-		void Remove() noexcept;
+		void Remove(LayerHandle layer, StaticBodyHandle sb) noexcept;
 
 		auto& GetLayer(LayerHandle layer)
 		{
@@ -624,14 +635,17 @@ namespace FlexKit
 		StaticBodyView(GameObject& gameObject, StaticBodyHandle IN_staticBody, LayerHandle IN_layer);
 		StaticBodyView(GameObject& gameObject, LayerHandle IN_layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 });
 
+		~StaticBodyView();
+
 		NodeHandle  GetNode() const;
 		GameObject& GetGameObject() const;
 
 		void AddShape(Shape shape);
 		void RemoveShape(uint32_t);
+		void RemoveAll();
 
-		physx::PxShape* GetShape(size_t);
-		size_t          GetShapeCount() const noexcept;
+		physx::PxShape*	GetShape(size_t);
+		size_t			GetShapeCount() const noexcept;
 
 		StaticColliderSystem::StaticColliderObject* operator -> ();
 
@@ -724,7 +738,7 @@ namespace FlexKit
 		double						updateTimer		= 0;
 	};
 
-
+	
 	class CharacterControllerComponent : public Component<CharacterControllerComponent, CharacterControllerComponentID>
 	{
 	public:

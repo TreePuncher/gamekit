@@ -385,6 +385,18 @@ public:
 						{ frameResources.GetResource({ data.renderTarget }) },
 						true, frameResources.GetResource(data.depthTarget));
 
+					auto& poses = allocator.allocate<EntityPoses>();
+
+					FlexKit::UpdatePose(*poseState, allocator);
+
+					for (size_t I = 0; I < poseState->JointCount; I++)
+						poses[I] = skeleton->IPose[I] * poseState->CurrentPose[I];
+
+					ctx.SetGraphicsConstantBufferView(1, cameraConstants);
+					ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
+					ctx.SetGraphicsConstantBufferView(3, passConstants);
+					ctx.SetGraphicsConstantBufferView(4, ConstantBufferDataSet(poses, poseBuffer));
+
 					for (auto mesh : brush->meshes)
 					{
 						auto triMesh	= GetMeshResource(mesh);
@@ -405,18 +417,6 @@ public:
 							}
 						);
 
-						auto& poses = allocator.allocate<EntityPoses>();
-
-						FlexKit::UpdatePose(*poseState, allocator);
-
-						for (size_t I = 0; I < poseState->JointCount; I++)
-							poses[I] = skeleton->IPose[I] * poseState->CurrentPose[I];
-
-						ctx.SetGraphicsConstantBufferView(1, cameraConstants);
-						ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
-						ctx.SetGraphicsConstantBufferView(3, passConstants);
-						ctx.SetGraphicsConstantBufferView(4, ConstantBufferDataSet(poses, poseBuffer));
-
 						ctx.DrawIndexed(triMesh->GetHighestLoadedLod().GetIndexCount());
 					}
 				}
@@ -429,6 +429,10 @@ public:
 					ctx.SetRenderTargets(
 						{ frameResources.GetResource({ data.renderTarget }) },
 						true, frameResources.GetResource(data.depthTarget));
+
+					ctx.SetGraphicsConstantBufferView(1, cameraConstants);
+					ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
+					ctx.SetGraphicsConstantBufferView(3, passConstants);
 
 					for (auto mesh : brush->meshes)
 					{
@@ -446,10 +450,6 @@ public:
 								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
 							}
 						);
-
-						ctx.SetGraphicsConstantBufferView(1, cameraConstants);
-						ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
-						ctx.SetGraphicsConstantBufferView(3, passConstants);
 
 						ctx.DrawIndexed(triMesh->GetHighestLoadedLod().GetIndexCount());
 					}
@@ -661,18 +661,18 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 						[&, resource](ProjectResource_ptr skeleton)
 						{
 							localSelection->CreateObject();
-							auto obj            = localSelection->GetSelection();
+							auto obj			= localSelection->GetSelection();
 
 							// Load Tri Mesh
-							auto meshResource   = std::static_pointer_cast<FlexKit::MeshResource>(resource->resource);
-							auto mesh           = renderer.LoadMesh(*meshResource);
-							auto& gameObject    = obj->gameObject;
+							auto meshResource	= std::static_pointer_cast<FlexKit::MeshResource>(resource->resource);
+							auto mesh			= renderer.LoadMesh(*meshResource);
+							auto& gameObject	= obj->gameObject;
 
 							// Load Skeleton
-							auto blob           = skeleton->resource->CreateBlob();
-							auto buffer         = blob.buffer;
-							blob.buffer         = 0;
-							blob.bufferSize     = 0;
+							auto blob			= skeleton->resource->CreateBlob();
+							auto buffer			= blob.buffer;
+							blob.buffer			= 0;
+							blob.bufferSize		= 0;
 
 							FlexKit::AddAssetBuffer((FlexKit::Resource*)buffer);
 
@@ -686,16 +686,16 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 							// Build Editor object
 							gameObject.AddView<FlexKit::SceneNodeView<>>();
 							gameObject.AddView<FlexKit::BrushView>(mesh);
-							gameObject.AddView<FlexKit::SkeletonView>(mesh, skeleton->resource->GetResourceGUID());
+							gameObject.AddView<FlexKit::SkeletonView>(skeleton->resource->GetResourceGUID());
 							gameObject.AddView<FlexKit::AnimatorView>();
 
 							// serialize object
 							PrefabGameObjectResource_ptr objectResource = std::make_shared<PrefabGameObjectResource>();
 							project.AddResource(objectResource);
 
-							auto brushComponent     = std::make_shared<FlexKit::EntityBrushComponent>();
-							auto skeletonComponent  = std::make_shared<FlexKit::EntitySkeletonComponent>();
-							auto animatorComponent  = std::make_shared<AnimatorComponent>();
+							auto brushComponent		= std::make_shared<FlexKit::EntityBrushComponent>();
+							auto skeletonComponent	= std::make_shared<FlexKit::EntitySkeletonComponent>();
+							auto animatorComponent	= std::make_shared<AnimatorComponent>();
 
 							brushComponent->meshes.push_back(meshResource->GetResourceGUID());
 							skeletonComponent->skeletonResourceID	= skeleton->resource->GetResourceGUID();
@@ -764,12 +764,12 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 
 				for (auto& component : obj->gameObject)
 				{
-					auto component_res = prefab->FindComponent(component.ID);
-					componentIds.push_back(component.ID);
+					auto component_res = prefab->FindComponent(component.GetID());
+					componentIds.push_back(component.GetID());
 
 					if (!component_res)
 					{
-						auto entityComponent = FlexKit::EntityComponent::CreateComponent(component.ID);
+						auto entityComponent = FlexKit::EntityComponent::CreateComponent(component.GetID());
 
 						if (!entityComponent)
 							continue;

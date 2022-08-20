@@ -568,7 +568,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	StaticColliderSystem::StaticColliderSystem(StaticColliderSystem&& IN_staticColliders) :
+	StaticColliderSystem::StaticColliderSystem(StaticColliderSystem&& IN_staticColliders) noexcept :
 		colliders{ std::move(IN_staticColliders.colliders) }
 	{
 		layer = IN_staticColliders.layer;
@@ -610,10 +610,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t StaticColliderSystem::push_back(const StaticColliderObject& object, bool initialDirtyFlag)
+	StaticBodyHandle StaticColliderSystem::AddCollider(const StaticColliderObject& object, bool initialDirtyFlag)
 	{
 		dirtyFlags.push_back(initialDirtyFlag);
-		return colliders.push_back(object);
+
+		const auto idx				= colliders.push_back(object);
+		const auto handle			= handles.GetNewHandle();
+		colliders[handle].handle	= handle;
+		handles[handle]				= idx;
+
+		return handle;
 	}
 
 
@@ -865,11 +871,16 @@ namespace FlexKit
 			go->AddView<SceneNodeView<>>(node);
 		}
 
-		size_t handleIdx = staticColliders.push_back({ node, rigidStaticActor, go }, true);
+		auto handle = staticColliders.AddCollider(
+			{	.node		= node,
+				.handle		= InvalidHandle,
+				.actor		= rigidStaticActor,
+				.gameObject	= go
+			}, true);
 
 		scene->addActor(*rigidStaticActor);
 
-		return StaticBodyHandle{ static_cast<unsigned int>(handleIdx) };
+		return handle;
 	}
 
 
@@ -913,6 +924,8 @@ namespace FlexKit
 	void PhysicsLayer::ReleaseCollider(StaticBodyHandle handle)
 	{
 		scene->removeActor(*staticColliders.colliders[handle].actor);
+
+		staticColliders.colliders.remove_unstable(staticColliders.colliders.begin() + handle);
 	}
 
 
@@ -1813,6 +1826,25 @@ namespace FlexKit
 				Blob triMeshBlob{ ((char*)resource) + sizeof(Resource), resource->ResourceSize - sizeof(Resource) };
 				shape = physX.LoadTriMeshShape(triMeshBlob);
 			}   break;
+			case StaticBodyType::BoundingVolume:
+			{
+				auto boundingVolume = GetBoundingSphere(gameObject);
+				switch (triMeshShape.bv.subType)
+				{
+				case StaticBodyType::Cube:
+					shape = physX.CreateSphereShape(boundingVolume.w);
+					break;
+				case StaticBodyType::Capsule:
+					shape = physX.CreateCapsuleShape(boundingVolume.w, 0);
+					break;
+				case StaticBodyType::Sphere:
+					shape = physX.CreateSphereShape(boundingVolume.w);
+					break;
+				default:
+					FK_LOG_WARNING("Incorrect argument found in staticbodyComponent entity data.");
+					break;
+				}
+			}	break;
 			default:
 				break;
 			};
@@ -1840,8 +1872,12 @@ namespace FlexKit
 	}
 
 
-	void StaticBodyComponent::Remove() noexcept
+	void StaticBodyComponent::Remove(LayerHandle layer, StaticBodyHandle sb) noexcept
 	{
+		auto& layer_ref		= GetComponent().GetLayer(layer);
+		auto& staticBody	= layer_ref[sb];
+		staticBody.actor->release();
+		layer_ref.ReleaseCollider(sb);
 	}
 
 
@@ -1855,6 +1891,12 @@ namespace FlexKit
 	StaticBodyView::StaticBodyView(GameObject& gameObject, LayerHandle IN_layer, float3 pos, Quaternion q) :
 			staticBody  { GetComponent().Create(&gameObject, layer, pos, q) },
 			layer       { IN_layer } {}
+
+	StaticBodyView::~StaticBodyView()
+	{
+		RemoveAll();
+	}
+
 
 	NodeHandle StaticBodyView::GetNode() const
 	{
@@ -1884,6 +1926,19 @@ namespace FlexKit
 
 		staticBody_data.actor->getShapes(&shape, sizeof(PxShape*), idx);
 		staticBody_data.actor->detachShape(*shape);
+	}
+
+	void StaticBodyView::RemoveAll()
+	{
+		auto& staticBody_data = GetComponent().GetLayer(layer)[staticBody];
+
+		PxShape* shape = nullptr;
+
+		while (staticBody_data.actor->getNbShapes() > 0)
+		{
+			staticBody_data.actor->getShapes(&shape, sizeof(PxShape*), 0);
+			staticBody_data.actor->detachShape(*shape);
+		}
 	}
 
 	physx::PxShape* StaticBodyView::GetShape(size_t idx)

@@ -24,7 +24,7 @@
 extern "C" __declspec(dllexport) DWORD  NvOptimusEnablement = 1;
 extern "C" __declspec(dllexport) int    AmdPowerXpressRequestHighPerformance = 1;
 
-extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 602; }
+extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 606; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath      = ".\\D3D12\\"; }
 
 namespace FlexKit
@@ -2604,20 +2604,29 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::AddVertexBuffers(TriMesh* Mesh, uint32_t lod, static_vector<VERTEXBUFFER_TYPE, 16> Buffers, VertexBufferList* InstanceBuffers)
+	void Context::AddVertexBuffers(TriMesh* mesh, uint32_t lod, const std::initializer_list<VERTEXBUFFER_TYPE>& buffers, VertexBufferList* instanceBuffers)
+	{
+		AddVertexBuffers(mesh, lod, std::span{ buffers.begin(), buffers.size() }, instanceBuffers);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::AddVertexBuffers(TriMesh* mesh, uint32_t lod, const std::span<const VERTEXBUFFER_TYPE> buffers, VertexBufferList* instanceBuffers)
 	{
 		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
 
-		for(auto& I : Buffers)
-			FK_ASSERT(AddVertexBuffer(I, Mesh, lod, VBViews));
+		for (auto& I : buffers)
+			FK_ASSERT(AddVertexBuffer(I, mesh, lod, VBViews));
 
-		if (InstanceBuffers)
+		if (instanceBuffers)
 		{
-			for (auto& IB : *InstanceBuffers)
+			for (auto& IB : *instanceBuffers)
 			{
 				VBViews.push_back({
-					renderSystem->GetVertexBufferAddress(IB.VertexBuffer)		+ IB.Offset,
-					(UINT)renderSystem->GetVertexBufferSize(IB.VertexBuffer)	- IB.Offset,
+					renderSystem->GetVertexBufferAddress(IB.VertexBuffer) + IB.Offset,
+					(UINT)renderSystem->GetVertexBufferSize(IB.VertexBuffer) - IB.Offset,
 					IB.Stride });
 			}
 		}
@@ -2628,11 +2637,20 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	
-	void Context::SetVertexBuffers(VertexBufferList& List)
+
+	void Context::SetVertexBuffers(const std::initializer_list<VertexBufferEntry>& list)
+	{
+		SetVertexBuffers(std::span{ list.begin(), list.end() });
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetVertexBuffers(const std::span<const VertexBufferEntry> list)
 	{
 		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
-		for (auto& VB : List)
+		for (auto& VB : list)
 		{
 			/*
 			typedef struct D3D12_VERTEX_BUFFER_VIEW
@@ -2653,40 +2671,21 @@ namespace FlexKit
 	}
 
 
-
 	/************************************************************************************************/
 
 
-	void Context::SetVertexBuffers(VertexBufferList List)
+	void Context::SetVertexBuffers2(const std::initializer_list<D3D12_VERTEX_BUFFER_VIEW>& list)
 	{
-		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
-		for (auto& VB : List)
-		{
-			/*
-			typedef struct D3D12_VERTEX_BUFFER_VIEW
-			{
-			D3D12_GPU_VIRTUAL_ADDRESS BufferLocation;
-			UINT SizeInBytes;
-			UINT StrideInBytes;
-			} 	D3D12_VERTEX_BUFFER_VIEW;
-			*/
-
-			VBViews.push_back({
-				renderSystem->GetVertexBufferAddress(VB.VertexBuffer) + VB.Offset,
-				(UINT)renderSystem->GetVertexBufferSize(VB.VertexBuffer) - VB.Offset,
-				VB.Stride});
-		}
-
-		DeviceContext->IASetVertexBuffers(0, (UINT)VBViews.size(), VBViews.begin());
+		SetVertexBuffers2(std::span(list.begin(), list.end()));
 	}
 
 
 	/************************************************************************************************/
 
 
-	void Context::SetVertexBuffers2(static_vector<D3D12_VERTEX_BUFFER_VIEW>	List)
+	void Context::SetVertexBuffers2(const std::span<const D3D12_VERTEX_BUFFER_VIEW> list)
 	{
-		DeviceContext->IASetVertexBuffers(0, (UINT)List.size(), List.begin());
+		DeviceContext->IASetVertexBuffers(0, (UINT)list.size(), list.data());
 	}
 
 
@@ -3363,7 +3362,7 @@ namespace FlexKit
 		}
 
 		if (Barriers.size())
-			DeviceContext->ResourceBarrier((UINT)Barriers.size(), Barriers.begin());
+			DeviceContext->ResourceBarrier((UINT)Barriers.size(), Barriers.data());
 
 		Barriers.clear();
 		PendingBarriers.clear();
@@ -4177,20 +4176,20 @@ namespace FlexKit
 
 
 	RenderSystem::RenderSystem(iAllocator* IN_allocator, ThreadManager* IN_Threads) :
-			Memory          { IN_allocator },
-			Library         { IN_allocator },
-			Queries         { IN_allocator, this },
-			Textures        { IN_allocator },
-			VertexBuffers   { IN_allocator },
-			ConstantBuffers { IN_allocator, this },
-			PipelineStates  { IN_allocator, this, IN_Threads },
-			PendingBarriers { IN_allocator },
-			StreamOutTable  { IN_allocator },
-			ReadBackTable   { IN_allocator },
-			threads         { *IN_Threads },
-			Syncs           { IN_allocator, 64 },
-			Contexts        { IN_allocator, 3 * (1 + IN_Threads->GetThreadCount()) },
-			heaps           { pDevice, IN_allocator }{}
+			Memory			{ IN_allocator },
+			Library			{ IN_allocator },
+			Queries			{ IN_allocator, this },
+			Textures		{ IN_allocator },
+			VertexBuffers	{ IN_allocator },
+			ConstantBuffers	{ IN_allocator, this },
+			PipelineStates	{ IN_allocator, this, IN_Threads },
+			PendingBarriers	{ IN_allocator },
+			StreamOutTable	{ IN_allocator },
+			ReadBackTable	{ IN_allocator },
+			threads			{ *IN_Threads },
+			Syncs			{ IN_allocator, 64 },
+			Contexts		{ IN_allocator, 3 * (1 + IN_Threads->GetThreadCount()) },
+			heaps			{ pDevice, IN_allocator }{}
 
 
 	RenderSystem::~RenderSystem() { Release(); }
