@@ -43,8 +43,8 @@ namespace FlexKit
 
 	inline uint16_t	_SNHandleToIndex(NodeHandle Node) 
 	{
-        if (Node == InvalidHandle)
-            return 0;
+		if (Node == InvalidHandle)
+			return 0;
 
 		return SceneNodeTable.Indexes[Node]; 
 	}
@@ -64,15 +64,15 @@ namespace FlexKit
 
 	void InitiateSceneNodeBuffer(iAllocator* persistent)
 	{
-        SceneNodeTable.Nodes    = { persistent, 2048 };
-        SceneNodeTable.LT       = { persistent, 2048 };
-        SceneNodeTable.WT       = { persistent, 2048 };
-        SceneNodeTable.Flags    = { persistent, 2048 };
-        SceneNodeTable.Children = { persistent, 2048 };
+		SceneNodeTable.Nodes    = { persistent, 2048 };
+		SceneNodeTable.LT       = { persistent, 2048 };
+		SceneNodeTable.WT       = { persistent, 2048 };
+		SceneNodeTable.Flags    = { persistent, 2048 };
+		SceneNodeTable.Children = { persistent, 2048 };
 
-        SceneNodeTable.Indexes.Initiate( persistent );
+		SceneNodeTable.Indexes.Initiate( persistent );
 
-        SceneNodeTable.root = GetZeroedNode();
+		SceneNodeTable.root = GetZeroedNode();
 	}
 
 
@@ -149,7 +149,7 @@ namespace FlexKit
 					
 					SwapNodeEntryies(I, II);
 
-                    SceneNodeTable.Nodes[I];
+					SceneNodeTable.Nodes[I];
 
 					SceneNodeTable.Indexes[NodeHandle(I)]   = (uint16_t)I;
 					SceneNodeTable.Indexes[NodeHandle(II)]  = (uint16_t)II;
@@ -185,15 +185,15 @@ namespace FlexKit
 	// TODO: Search an optional Free List
 	NodeHandle GetNewNode()
 	{
-        uint nodeIdx = (uint)SceneNodeTable._AddNode();
+		uint nodeIdx = (uint)SceneNodeTable._AddNode();
 
 		SceneNodeTable.Flags[nodeIdx] = SceneNodes::DIRTY;
-        const auto handle = SceneNodeTable.Indexes.GetNewHandle();
+		const auto handle = SceneNodeTable.Indexes.GetNewHandle();
 
 		SceneNodeTable.Indexes[handle]          = nodeIdx;
-        auto& node  = SceneNodeTable.Nodes[nodeIdx];
+		auto& node  = SceneNodeTable.Nodes[nodeIdx];
 		node.handle	= handle;
-        node.Parent = SceneNodeTable.root;
+		node.Parent = SceneNodeTable.root;
 
 		return handle;
 	}
@@ -218,8 +218,8 @@ namespace FlexKit
 
 	void ReleaseNode(NodeHandle handle)
 	{
-        if (InvalidHandle == handle)
-            return;
+		if (InvalidHandle == handle)
+			return;
 
 		SceneNodeTable.Flags[_SNHandleToIndex(handle)] = SceneNodes::FREE;
 		SceneNodeTable.Nodes[_SNHandleToIndex(handle)].Parent = NodeHandle(-1);
@@ -235,8 +235,8 @@ namespace FlexKit
 		if (handle == FlexKit::InvalidHandle)
 			return FlexKit::InvalidHandle;
 
-        const auto idx  = SceneNodeTable.Indexes[handle];
-        const auto node = SceneNodeTable.Nodes[idx];
+		const auto idx  = SceneNodeTable.Indexes[handle];
+		const auto node = SceneNodeTable.Nodes[idx];
 
 		return node.Parent;
 	}
@@ -268,9 +268,9 @@ namespace FlexKit
 		GetTransform(node, &wt);
 
 		return float3(
-            FlexKit::GetArray_ptr(wt.r[0])[3],
-            FlexKit::GetArray_ptr(wt.r[1])[3],
-            FlexKit::GetArray_ptr(wt.r[2])[3] );
+			FlexKit::GetArray_ptr(wt.r[0])[3],
+			FlexKit::GetArray_ptr(wt.r[1])[3],
+			FlexKit::GetArray_ptr(wt.r[2])[3] );
 	}
 
 
@@ -290,21 +290,21 @@ namespace FlexKit
 
 	void SetPositionW(NodeHandle node, float3 in) // Sets Position in World Space
 	{
-        DirectX::XMMATRIX wt;
-        DirectX::XMMATRIX parentWT;
+		DirectX::XMMATRIX wt;
+		DirectX::XMMATRIX parentWT;
 
 		GetTransform(node, &wt);
-        GetTransform(GetParentNode(node), &parentWT);
+		GetTransform(GetParentNode(node), &parentWT);
 
-        GetArray_ptr(wt.r[0])[3] = in.x;
-        GetArray_ptr(wt.r[1])[3] = in.y;
-        GetArray_ptr(wt.r[2])[3] = in.z;
+		GetArray_ptr(wt.r[0])[3] = in.x;
+		GetArray_ptr(wt.r[1])[3] = in.y;
+		GetArray_ptr(wt.r[2])[3] = in.z;
 
 		auto tmp = DirectX::XMMatrixInverse(nullptr, parentWT) * wt;
 		float3 lPosition = float3(
-            FlexKit::GetArray_ptr(tmp.r[0])[3],
-            FlexKit::GetArray_ptr(tmp.r[1])[3],
-            FlexKit::GetArray_ptr(tmp.r[2])[3] );
+			FlexKit::GetArray_ptr(tmp.r[0])[3],
+			FlexKit::GetArray_ptr(tmp.r[1])[3],
+			FlexKit::GetArray_ptr(tmp.r[2])[3] );
 
 		// Set New Local Position
 		LT_Entry Local = GetLocal(node);
@@ -313,7 +313,7 @@ namespace FlexKit
 		FlexKit::GetArray_ptr(Local.T)[1] = lPosition[1];
 		FlexKit::GetArray_ptr(Local.T)[2] = lPosition[2];
 
-        SetWT       (node, &wt);
+		SetWT       (node, &wt);
 		SetLocal	(node, &Local);
 		SetFlag		(node, SceneNodes::DIRTY);
 	}
@@ -375,16 +375,16 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    float4x4 GetWT(NodeHandle node)
-    {
-        auto index  = _SNHandleToIndex(node);
-        auto WT     = XMMatrixToFloat4x4(SceneNodeTable.WT[index].m4x4);
+	float4x4 GetWT(NodeHandle node)
+	{
+		auto index  = _SNHandleToIndex(node);
+		auto WT     = XMMatrixToFloat4x4(SceneNodeTable.WT[index].m4x4);
 
-        return WT;
-    }
+		return WT;
+	}
 
 
 	/************************************************************************************************/
@@ -427,11 +427,11 @@ namespace FlexKit
 	}
 
 
-    void SetWT(NodeHandle node, const float4x4  in)
-    {
-        SceneNodeTable.WT[_SNHandleToIndex(node)].m4x4 = Float4x4ToXMMATIRX(in);
-        SetFlag(node, SceneNodes::DIRTY);
-    }
+	void SetWT(NodeHandle node, const float4x4  in)
+	{
+		SceneNodeTable.WT[_SNHandleToIndex(node)].m4x4 = Float4x4ToXMMATIRX(in);
+		SetFlag(node, SceneNodes::DIRTY);
+	}
 
 
 	/************************************************************************************************/
@@ -455,15 +455,15 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    uint32_t GetFlags(NodeHandle Node)
-    {
-        auto index  = _SNHandleToIndex(Node);
-        auto F      = SceneNodeTable.Flags[index];
-        return F;
-    }
+	uint32_t GetFlags(NodeHandle Node)
+	{
+		auto index  = _SNHandleToIndex(Node);
+		auto F      = SceneNodeTable.Flags[index];
+		return F;
+	}
 
 
 	/************************************************************************************************/
@@ -479,12 +479,12 @@ namespace FlexKit
 		return q;
 	}
 
-    Quaternion GetOrientationLocal(NodeHandle node)
-    {
-        auto local = GetLocal(node);
+	Quaternion GetOrientationLocal(NodeHandle node)
+	{
+		auto local = GetLocal(node);
 
-        return local.R;
-    }
+		return local.R;
+	}
 
 
 	/************************************************************************************************/
@@ -496,7 +496,7 @@ namespace FlexKit
 		LT_Entry Local(GetLocal(node));
 		GetTransform(FlexKit::GetParentNode(node), &wt);
 
-        const auto transposed = DirectX::XMMatrixTranspose(wt);
+		const auto transposed = DirectX::XMMatrixTranspose(wt);
 		const auto tmp2 = FlexKit::Matrix2Quat(FlexKit::XMMatrixToFloat4x4(&transposed)).Inverse();
 
 		Local.R = DirectX::XMQuaternionMultiply(in, tmp2);
@@ -564,23 +564,23 @@ namespace FlexKit
 		}
 #else
 
-        SceneNodeTable.Flags[0] = SceneNodes::CLEAR;
+		SceneNodeTable.Flags[0] = SceneNodes::CLEAR;
 
 		size_t Unused_Nodes = 0;
 		for (size_t itr = 1; itr < SceneNodeTable.size(); ++itr)
 		{
-            const auto flag         = SceneNodeTable.Flags[itr];
-            const auto parentFlag   = SceneNodeTable.Flags[_SNHandleToIndex(SceneNodeTable.Nodes[itr].Parent)];
-            const auto scaleFlag    = flag & SceneNodes::SCALE;
+			const auto flag         = SceneNodeTable.Flags[itr];
+			const auto parentFlag   = SceneNodeTable.Flags[_SNHandleToIndex(SceneNodeTable.Nodes[itr].Parent)];
+			const auto scaleFlag    = flag & SceneNodes::SCALE;
 
 
-            if((flag & SceneNodes::DIRTY) || (parentFlag & SceneNodes::UPDATED))
+			if((flag & SceneNodes::DIRTY) || (parentFlag & SceneNodes::UPDATED))
 			{
 				DirectX::XMMATRIX LT = XMMatrixIdentity();
 				LT_Entry TRS = GetLocal(SceneNodeTable.Nodes[itr].handle);
 
-                const auto newFlag          = scaleFlag | SceneNodes::UPDATED;
-                SceneNodeTable.Flags[itr]   = newFlag;
+				const auto newFlag          = scaleFlag | SceneNodes::UPDATED;
+				SceneNodeTable.Flags[itr]   = newFlag;
 
 				bool sf = (SceneNodeTable.Flags[itr] & SceneNodes::StateFlags::SCALE) != 0;
 				LT =(	XMMatrixRotationQuaternion(TRS.R) *
@@ -594,8 +594,8 @@ namespace FlexKit
 				auto temp						= SceneNodeTable.WT[itr].m4x4;
 				SceneNodeTable.WT[itr].m4x4	= WT;
 			}
-            else
-                SceneNodeTable.Flags[itr] = scaleFlag;
+			else
+				SceneNodeTable.Flags[itr] = scaleFlag;
 
 			Unused_Nodes += (SceneNodeTable.Flags[itr] & SceneNodes::FREE);
 		}
@@ -606,33 +606,33 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void UpdateNode(NodeHandle node)
-    {
-        static_vector<NodeHandle> stack;
+	void UpdateNode(NodeHandle node)
+	{
+		static_vector<NodeHandle> stack;
 
-        stack.push_back(node);
+		stack.push_back(node);
 
-        const auto root = SceneNodeTable.root;
-        for(NodeHandle itr = node; itr != root;)
-        {
-            auto parent = GetParentNode(itr);
-            stack.push_back(parent);
-            itr = parent;
-        }
+		const auto root = SceneNodeTable.root;
+		for(NodeHandle itr = node; itr != root;)
+		{
+			auto parent = GetParentNode(itr);
+			stack.push_back(parent);
+			itr = parent;
+		}
 
-        float4x4 transform = float4x4::Identity();
+		float4x4 transform = float4x4::Identity();
 
-        for (auto itr = stack.rbegin(); itr != stack.rend(); itr++)
-        {
-            const float4x4 parent = GetWT(*itr);
-            transform = parent * transform;
-        }
+		for (auto itr = stack.rbegin(); itr != stack.rend(); itr++)
+		{
+			const float4x4 parent = GetWT(*itr);
+			transform = parent * transform;
+		}
 
-        SetWT(node, transform);
-    }
+		SetWT(node, transform);
+	}
 
 
 	/************************************************************************************************/
@@ -734,7 +734,7 @@ namespace FlexKit
 		FlexKit::LT_Entry Local(FlexKit::GetLocal(Node));
 
 		Local.R = DirectX::XMQuaternionMultiply(rot, Local.R);
-        Local.R = DirectX::XMQuaternionNormalize(Local.R);
+		Local.R = DirectX::XMQuaternionNormalize(Local.R);
 
 		FlexKit::SetLocal(Node, &Local);
 	}
@@ -778,246 +778,246 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void Translate(GameObject& go, const float3 xyz)
-    {
-        Apply(go,
-            [&](SceneNodeView<>& node)
-            {
-                node.TranslateWorld(xyz);
-            });
-    }
+	void Translate(GameObject& go, const float3 xyz)
+	{
+		Apply(go,
+			[&](SceneNodeView<>& node)
+			{
+				node.TranslateWorld(xyz);
+			});
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
-    float3 GetLocalPosition(GameObject& go)
-    {
-        return Apply(go, 
-            [&](SceneNodeView<>& node)
-            {	return node.GetPositionL(); }, 
-            []
-            { return float3{ 0, 0, 0 }; });
-    }
+	float3 GetLocalPosition(GameObject& go)
+	{
+		return Apply(go, 
+			[&](SceneNodeView<>& node)
+			{	return node.GetPositionL(); }, 
+			[]
+			{ return float3{ 0, 0, 0 }; });
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    float3 GetWorldPosition(GameObject& go)
-    {
-        return Apply(go,
-            [&](SceneNodeView<>& node)
-            {	return node.GetPosition(); },
-            []
-            { return float3{ 0, 0, 0 }; });
-    }
+	float3 GetWorldPosition(GameObject& go)
+	{
+		return Apply(go,
+			[&](SceneNodeView<>& node)
+			{	return node.GetPosition(); },
+			[]
+			{ return float3{ 0, 0, 0 }; });
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void SetWorldPosition(GameObject& go, const float3 pos)
-    {
-        return Apply(go,
-            [&](SceneNodeView<>& view)
-            {   SetPositionW(view.node, pos); });
-    }
+	void SetWorldPosition(GameObject& go, const float3 pos)
+	{
+		return Apply(go,
+			[&](SceneNodeView<>& view)
+			{   SetPositionW(view.node, pos); });
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void SetLocalPosition(GameObject& go, const float3 pos)
-    {
-        return Apply(go,
-            [&](SceneNodeView<>& view)
-            {   SetPositionL(view.node, pos); });
-    }
+	void SetLocalPosition(GameObject& go, const float3 pos)
+	{
+		return Apply(go,
+			[&](SceneNodeView<>& view)
+			{   SetPositionL(view.node, pos); });
+	}
 
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    float3 GetScale(GameObject& go)
-    {
-        return Apply(go,
-            [&](SceneNodeView<>& node)
-            { return node.GetScale(); },
-            []
-            { return float3{ 1, 1, 1 }; });
-    }
+	float3 GetScale(GameObject& go)
+	{
+		return Apply(go,
+			[&](SceneNodeView<>& node)
+			{ return node.GetScale(); },
+			[]
+			{ return float3{ 1, 1, 1 }; });
+	}
 
-    float3 GetScale(NodeHandle node)
-    {
-        const float4x4 WT               = GetWT(node);
-        const Quaternion Q              = Matrix2Quat(WT);
-        const float4x4 InverseRotation  = Quaternion2Matrix(Q.Inverse());
-        const float4x4 scaleMatrix      = InverseRotation * WT;
+	float3 GetScale(NodeHandle node)
+	{
+		const float4x4 WT               = GetWT(node);
+		const Quaternion Q              = Matrix2Quat(WT);
+		const float4x4 InverseRotation  = Quaternion2Matrix(Q.Inverse());
+		const float4x4 scaleMatrix      = InverseRotation * WT;
 
-        return { scaleMatrix[0][0], scaleMatrix[1][1], scaleMatrix[2][2] };
-    }
+		return { scaleMatrix[0][0], scaleMatrix[1][1], scaleMatrix[2][2] };
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void ClearParent(GameObject& go)
-    {
-        return Apply(go,
-            [&](SceneNodeView<>& node)
-            {
-                return node.SetParentNode(node.GetComponent().GetRoot());
-            }
-        );
-    }
+	void ClearParent(GameObject& go)
+	{
+		return Apply(go,
+			[&](SceneNodeView<>& node)
+			{
+				return node.SetParentNode(node.GetComponent().GetRoot());
+			}
+		);
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    NodeHandle GetParentNode(GameObject& go)
-    {
-        return Apply(go,
-            [&](const SceneNodeView<>& node) -> NodeHandle
-            {
-                return node.GetParentNode();
-            },
-            []() -> NodeHandle
-            {
-                return InvalidHandle;
-            }
-        );
-    }
+	NodeHandle GetParentNode(GameObject& go)
+	{
+		return Apply(go,
+			[&](const SceneNodeView<>& node) -> NodeHandle
+			{
+				return node.GetParentNode();
+			},
+			[]() -> NodeHandle
+			{
+				return InvalidHandle;
+			}
+		);
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void EnableScale(GameObject& go, bool scale)
-    {
-        return Apply(go,
-            [&](SceneNodeView<>& node)
-            {
-                return node.ToggleScaling(scale);
-            });
-    }
+	void EnableScale(GameObject& go, bool scale)
+	{
+		return Apply(go,
+			[&](SceneNodeView<>& node)
+			{
+				return node.ToggleScaling(scale);
+			});
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void SetScale(GameObject& go, float3 scale)
-    {
-        return Apply(go,
-            [&](SceneNodeView<>& node)
-            {
-                return node.SetScale(scale);
-            }
-            );
-    }
+	void SetScale(GameObject& go, float3 scale)
+	{
+		return Apply(go,
+			[&](SceneNodeView<>& node)
+			{
+				return node.SetScale(scale);
+			}
+			);
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void Pitch(GameObject& go, float theta)
-    {
-        return Apply(go,
-            [&](SceneNodeView<>& node)
-            {
-                return node.Pitch(theta);
-            }
-        );
-    }
+	void Pitch(GameObject& go, float theta)
+	{
+		return Apply(go,
+			[&](SceneNodeView<>& node)
+			{
+				return node.Pitch(theta);
+			}
+		);
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void Yaw(GameObject& go, float theta)
-    {
-        return Apply(go,
-            [&](SceneNodeView<>& node)
-            {
-                return node.Yaw(theta);
-            }
-        );
-    }
+	void Yaw(GameObject& go, float theta)
+	{
+		return Apply(go,
+			[&](SceneNodeView<>& node)
+			{
+				return node.Yaw(theta);
+			}
+		);
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    Quaternion GetOrientation(GameObject& go)
-    {
-        return Apply(go,
-            [&](const SceneNodeView<>& node)
-            { return node.GetOrientation(); },
-            []
-            { return Quaternion{ 0, 0, 0, 1 }; });
-    }
+	Quaternion GetOrientation(GameObject& go)
+	{
+		return Apply(go,
+			[&](const SceneNodeView<>& node)
+			{ return node.GetOrientation(); },
+			[]
+			{ return Quaternion{ 0, 0, 0, 1 }; });
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    NodeHandle GetSceneNode(GameObject& go)
-    {
-        return Apply(
-            go,
-            [](const SceneNodeView<>& node)
-            {
-                return node.node;
-            },
-            []
-            {
-                return NodeHandle(InvalidHandle);
-            });
-    }
+	NodeHandle GetSceneNode(GameObject& go)
+	{
+		return Apply(
+			go,
+			[](const SceneNodeView<>& node)
+			{
+				return node.node;
+			},
+			[]
+			{
+				return NodeHandle(InvalidHandle);
+			});
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    float4x4 GetWT(GameObject& go)
-    {
-        return GetWT(GetSceneNode(go));
-    }
+	float4x4 GetWT(GameObject& go)
+	{
+		return GetWT(GetSceneNode(go));
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void SetWT(GameObject& go, const float4x4 newMatrix)
-    {
-        const auto node     = GetSceneNode(go);
-        const auto parentWT = GetWT(FlexKit::GetParentNode(node));
+	void SetWT(GameObject& go, const float4x4 newMatrix)
+	{
+		const auto node     = GetSceneNode(go);
+		const auto parentWT = GetWT(FlexKit::GetParentNode(node));
 
-        auto PI         = Inverse(parentWT);
-        auto localT     = newMatrix * PI.Transpose();
+		auto PI         = Inverse(parentWT);
+		auto localT     = newMatrix * PI.Transpose();
 
-        FlexKit::LT_Entry local = FlexKit::GetLocal(node);
-        local.R                 = Matrix2Quat(localT);
-        local.T                 = FlexKit::Vect4ToFloat4(localT[3]).xyz();
+		FlexKit::LT_Entry local = FlexKit::GetLocal(node);
+		local.R                 = Matrix2Quat(localT);
+		local.T                 = FlexKit::Vect4ToFloat4(localT[3]).xyz();
 
-        FlexKit::SetLocal(node, &local);
-        FlexKit::SetFlag(node, SceneNodes::StateFlags::UPDATED);
-    }
+		FlexKit::SetLocal(node, &local);
+		FlexKit::SetFlag(node, SceneNodes::StateFlags::UPDATED);
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void SetOrientation(GameObject& go, const Quaternion q)
-    {
-        return Apply(go,
-            [&](SceneNodeView<>& view)
-            { SetOrientation(view.node, q); });
-    }
+	void SetOrientation(GameObject& go, const Quaternion q)
+	{
+		return Apply(go,
+			[&](SceneNodeView<>& view)
+			{ SetOrientation(view.node, q); });
+	}
 
 
 }   /************************************************************************************************/
