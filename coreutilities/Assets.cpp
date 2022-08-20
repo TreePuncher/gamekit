@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -46,14 +46,14 @@ namespace FlexKit
 			ResourceFiles.Allocator		= nullptr;
 			ResourcesLoaded.Allocator	= nullptr;
 			ResourceGUIDs.Allocator		= nullptr;
-        }
+		}
 
 		Vector<ResourceTable*>		Tables;
 		Vector<ResourceDirectory>	ResourceFiles;
 		Vector<Resource*>			ResourcesLoaded;
 		Vector<GUID_t>				ResourceGUIDs;
 		iAllocator*					ResourceMemory;
-        AssetFailureHandler         failureHandler = [](GUID_t) -> AssetHandle { return INVALIDHANDLE; };
+		AssetFailureHandler			failureHandler = [](GUID_t) -> AssetHandle { return INVALIDHANDLE; };
 	}inline Resources;
 
 
@@ -88,7 +88,7 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	void AddAssetFile(const char* FILELOC)
@@ -99,8 +99,8 @@ namespace FlexKit
 		FILE* F = 0;
 		int S   = fopen_s(&F, FILELOC, "rb");
 
-        if (S)
-            FK_LOG_ERROR("Failed To Read Asset Table");
+		if (S)
+			FK_LOG_ERROR("Failed To Read Asset Table");
 
 		size_t          tableSize	= ReadAssetTableSize(F);
 		ResourceTable*  table       = (ResourceTable*)Resources.ResourceMemory->_aligned_malloc(tableSize);
@@ -114,19 +114,19 @@ namespace FlexKit
 			Resources.ResourceMemory->_aligned_free(table);
 	}
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    AssetHandle AddAssetBuffer(Resource* buffer)
-    {
-        buffer->RefCount    = 1;
-        buffer->State       = Resource::EResourceState_LOADED;
+	AssetHandle AddAssetBuffer(Resource* buffer)
+	{
+		buffer->RefCount    = 1;
+		buffer->State       = Resource::EResourceState_LOADED;
 
-        return Resources.ResourcesLoaded.push_back((Resource*)buffer);
-    }
+		return Resources.ResourcesLoaded.push_back((Resource*)buffer);
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	std::optional<GUID_t> FindAssetGUID(const char* Str)
@@ -148,7 +148,7 @@ namespace FlexKit
 			}
 		}
 
-        return {};
+		return {};
 	}
 
 
@@ -202,56 +202,19 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    ReadContext OpenReadContext(GUID_t guid)
-    {
-        AssetHandle RHandle = INVALIDHANDLE;
+	ReadContext OpenReadContext(GUID_t guid)
+	{
+		AssetHandle RHandle = INVALIDHANDLE;
 
-        for (auto resource : Resources.ResourcesLoaded)
-        {
-            if (resource->GUID == guid)
-            {
-                auto& bufferCtx = Resources.ResourceMemory->allocate<BufferContext>((byte*)resource, resource->ResourceSize, 0);
-                return ReadContext{ guid, &bufferCtx, Resources.ResourceMemory };
-            }
-        }
-
-		for (size_t TI = 0; TI < Resources.Tables.size(); ++TI)
+		for (auto resource : Resources.ResourcesLoaded)
 		{
-			auto& t = Resources.Tables[TI];
-			for (size_t I = 0; I < t->ResourceCount; ++I)
+			if (resource->GUID == guid)
 			{
-                if (t->Entries[I].GUID == guid)
-                {
-                    auto& fileCtx = Resources.ResourceMemory->allocate<FileContext>(Resources.ResourceFiles[TI].str, t->Entries[I].ResourcePosition);
-                    return ReadContext{ guid, &fileCtx, Resources.ResourceMemory };
-                }
+				auto& bufferCtx = Resources.ResourceMemory->allocate<BufferContext>((byte*)resource, resource->ResourceSize, 0);
+				return ReadContext{ guid, &bufferCtx, Resources.ResourceMemory };
 			}
 		}
 
-        return {};
-    }
-
-
-    /************************************************************************************************/
-
-
-    ReadAsset_RC ReadAsset(ReadContext& readContext, GUID_t guid, void* _ptr, size_t readSize, size_t readOffset)
-    {
-        for (auto resource : Resources.ResourcesLoaded)
-        {
-            if (resource->GUID == guid)
-            {
-                auto& bufferCtx = Resources.ResourceMemory->allocate<BufferContext>((byte*)resource, resource->ResourceSize, 0);
-                readContext = ReadContext{ guid, &bufferCtx, Resources.ResourceMemory };
-
-                readContext.Read(_ptr, readSize, readOffset);
-
-                return RAC_OK;
-            }
-        }
-
-
-        AssetHandle RHandle = INVALIDHANDLE;
 		for (size_t TI = 0; TI < Resources.Tables.size(); ++TI)
 		{
 			auto& t = Resources.Tables[TI];
@@ -259,46 +222,83 @@ namespace FlexKit
 			{
 				if (t->Entries[I].GUID == guid)
 				{
-                    size_t resourceOffset = t->Entries[I].ResourcePosition;
-
-                    //if (readContext.fileDir != Resources.ResourceFiles[TI].str)
-                    if (readContext.guid != guid)
-                        readContext = OpenReadContext(guid);// ReadContext{ Resources.ResourceFiles[TI].str, resourceOffset };
-
-                    readContext.SetOffset(resourceOffset);
-                    readContext.Read(_ptr, readSize, readOffset);
-
-                    return RAC_OK;
+					auto& fileCtx = Resources.ResourceMemory->allocate<FileContext>(Resources.ResourceFiles[TI].str, t->Entries[I].ResourcePosition);
+					return ReadContext{ guid, &fileCtx, Resources.ResourceMemory };
 				}
 			}
 		}
 
-        return RAC_ERROR;
-    }
+		return {};
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    const char* GetResourceStringID(GUID_t guid)
-    {
-        AssetHandle RHandle = INVALIDHANDLE;
-        for (size_t TI = 0; TI < Resources.Tables.size(); ++TI)
-        {
-            auto& t = Resources.Tables[TI];
-            for (size_t I = 0; I < t->ResourceCount; ++I)
-            {
-                if (t->Entries[I].GUID == guid)
-                    return t->Entries[I].ID;
-            }
-        }
+	ReadAsset_RC ReadAsset(ReadContext& readContext, GUID_t guid, void* _ptr, size_t readSize, size_t readOffset)
+	{
+		for (auto resource : Resources.ResourcesLoaded)
+		{
+			if (resource->GUID == guid)
+			{
+				auto& bufferCtx = Resources.ResourceMemory->allocate<BufferContext>((byte*)resource, resource->ResourceSize, 0);
+				readContext = ReadContext{ guid, &bufferCtx, Resources.ResourceMemory };
 
-        return nullptr;
-    }
+				readContext.Read(_ptr, readSize, readOffset);
 
+				return RAC_OK;
+			}
+		}
 
 
-    /************************************************************************************************/
+		AssetHandle RHandle = INVALIDHANDLE;
+		for (size_t TI = 0; TI < Resources.Tables.size(); ++TI)
+		{
+			auto& t = Resources.Tables[TI];
+			for (size_t I = 0; I < t->ResourceCount; ++I)
+			{
+				if (t->Entries[I].GUID == guid)
+				{
+					size_t resourceOffset = t->Entries[I].ResourcePosition;
+
+					//if (readContext.fileDir != Resources.ResourceFiles[TI].str)
+					if (readContext.guid != guid)
+						readContext = OpenReadContext(guid);// ReadContext{ Resources.ResourceFiles[TI].str, resourceOffset };
+
+					readContext.SetOffset(resourceOffset);
+					readContext.Read(_ptr, readSize, readOffset);
+
+					return RAC_OK;
+				}
+			}
+		}
+
+		return RAC_ERROR;
+	}
+
+
+	/************************************************************************************************/
+
+
+	const char* GetResourceStringID(GUID_t guid)
+	{
+		AssetHandle RHandle = INVALIDHANDLE;
+		for (size_t TI = 0; TI < Resources.Tables.size(); ++TI)
+		{
+			auto& t = Resources.Tables[TI];
+			for (size_t I = 0; I < t->ResourceCount; ++I)
+			{
+				if (t->Entries[I].GUID == guid)
+					return t->Entries[I].ID;
+			}
+		}
+
+		return nullptr;
+	}
+
+
+
+	/************************************************************************************************/
 
 
 	AssetHandle LoadGameAsset(GUID_t guid)
@@ -307,7 +307,7 @@ namespace FlexKit
 			if (Resources.ResourcesLoaded[I]->GUID == guid)
 				return I;
 
-        AssetHandle RHandle = INVALIDHANDLE;
+		AssetHandle RHandle = INVALIDHANDLE;
 		for (size_t TI = 0; TI < Resources.Tables.size(); ++TI)
 		{
 			auto& t = Resources.Tables[TI];
@@ -357,13 +357,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    AssetHandle LoadGameAsset(const char* ID)
+	AssetHandle LoadGameAsset(const char* ID)
 	{
 		for (size_t I = 0; I < Resources.ResourcesLoaded.size(); ++I)
 			if (!strcmp(Resources.ResourcesLoaded[I]->ID, ID))
 				return I;
 
-        AssetHandle RHandle = 0xFFFFFFFFFFFFFFFF;
+		AssetHandle RHandle = 0xFFFFFFFFFFFFFFFF;
 		for (size_t TI = 0; TI < Resources.Tables.size(); ++TI)
 		{
 			auto& t = Resources.Tables[TI];
@@ -407,10 +407,10 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    size_t ReadAssetTableSize(FILE* F)
+	size_t ReadAssetTableSize(FILE* F)
 	{
 		byte Buffer[128];
 
@@ -427,8 +427,8 @@ namespace FlexKit
 
 	bool ReadAssetTable(FILE* F, ResourceTable* Out, size_t TableSize)
 	{
-        const int seek_res    = fseek(F, 0, SEEK_SET);
-        const size_t read_res = fread(Out, 1, TableSize, F);
+		const int seek_res    = fseek(F, 0, SEEK_SET);
+		const size_t read_res = fread(Out, 1, TableSize, F);
 
 		return (read_res == TableSize);
 	}
@@ -449,37 +449,37 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	bool ReadResource(FILE* F, ResourceTable* Table, size_t Index, Resource* out)
 	{
-        FK_LOG_INFO( "Loading Resource: %s : ResourceID: %u", Table->Entries[Index].ID, Table->Entries[Index].GUID);
+		FK_LOG_INFO( "Loading Resource: %s : ResourceID: %u", Table->Entries[Index].ID, Table->Entries[Index].GUID);
 #if _DEBUG
 		std::chrono::system_clock Clock;
 		auto Before = Clock.now();
 		FINALLY
 			auto After = Clock.now();
 			auto Duration = std::chrono::duration_cast<std::chrono::microseconds>( After - Before );
-            FK_LOG_INFO("Loading Resource: %s took %u microseconds", Table->Entries[Index].ID, Duration.count());
+			FK_LOG_INFO("Loading Resource: %s took %u microseconds", Table->Entries[Index].ID, Duration.count());
 		FINALLYOVER
 #endif
 
-        if(!F)
-            return false;
+		if(!F)
+			return false;
 
-        fseek(F, 0, SEEK_END);
-        const size_t resourceFileSize = ftell(F) + 1;
-        rewind(F);
+		fseek(F, 0, SEEK_END);
+		const size_t resourceFileSize = ftell(F) + 1;
+		rewind(F);
 
-        const size_t position   = Table->Entries[Index].ResourcePosition;
+		const size_t position   = Table->Entries[Index].ResourcePosition;
 		int seek_res            = fseek(F, (long)position, SEEK_SET);
 
-        size_t resourceSize = 0;
+		size_t resourceSize = 0;
 		size_t read_res     = fread(&resourceSize, 1, 8, F);
 
-        if (!(resourceSize + position < resourceFileSize))
-            return false;
+		if (!(resourceSize + position < resourceFileSize))
+			return false;
 
 		seek_res                = fseek(F, (long)position, SEEK_SET);
 		const size_t readSize   = fread(out, 1, resourceSize, F);
@@ -497,7 +497,7 @@ namespace FlexKit
 			if (Resources.ResourcesLoaded[I]->GUID == ID)
 				return true;
 
-        AssetHandle RHandle = 0xFFFFFFFFFFFFFFFF;
+		AssetHandle RHandle = 0xFFFFFFFFFFFFFFFF;
 		for (size_t TI = 0; TI < Resources.Tables.size(); ++TI)
 		{
 			auto& t = Resources.Tables[TI];
@@ -518,7 +518,7 @@ namespace FlexKit
 			if (!strcmp(Resources.ResourcesLoaded[I]->ID, ID))
 				return true;
 
-        AssetHandle RHandle = 0xFFFFFFFFFFFFFFFF;
+		AssetHandle RHandle = 0xFFFFFFFFFFFFFFFF;
 		for (size_t TI = 0; TI < Resources.Tables.size(); ++TI)
 		{
 			auto& t = Resources.Tables[TI];
@@ -533,173 +533,173 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void SetLoadFailureHandler(AssetFailureHandler handler)
-    {
-        Resources.failureHandler = handler;
-    }
+	void SetLoadFailureHandler(AssetFailureHandler handler)
+	{
+		Resources.failureHandler = handler;
+	}
 
 
 	/************************************************************************************************/
 
 
-    void LoadMorphTargets(TriMesh* triMesh, const char* buffer, const size_t bufferSize, const size_t morphTargetCount)
-    {
-        for (size_t I = 0; I < morphTargetCount; I++)
-        {
-            const size_t readOffset =
-                sizeof(LODlevel) +
-                sizeof(LODlevel::LODMorphTarget) * I;
+	void LoadMorphTargets(TriMesh* triMesh, const char* buffer, const size_t bufferSize, const size_t morphTargetCount)
+	{
+		for (size_t I = 0; I < morphTargetCount; I++)
+		{
+			const size_t readOffset =
+				sizeof(LODlevel) +
+				sizeof(LODlevel::LODMorphTarget) * I;
 
-            LODlevel::LODMorphTarget morphTarget;
-            memcpy(&morphTarget, buffer + readOffset, sizeof(morphTarget));
+			LODlevel::LODMorphTarget morphTarget;
+			memcpy(&morphTarget, buffer + readOffset, sizeof(morphTarget));
 
-            TriMesh::MorphTargetAsset mta;
-            memcpy(&mta.name, morphTarget.morphTargetName, sizeof(mta.name));
+			TriMesh::MorphTargetAsset mta;
+			memcpy(&mta.name, morphTarget.morphTargetName, sizeof(mta.name));
 
-            mta.offset  = morphTarget.bufferOffset;
-            mta.size    = morphTarget.buffserSize;
+			mta.offset  = morphTarget.bufferOffset;
+			mta.size    = morphTarget.buffserSize;
 
-            triMesh->morphTargetAssets.push_back(mta);
-        }
-    }
-
-
-    /************************************************************************************************/
+			triMesh->morphTargetAssets.push_back(mta);
+		}
+	}
 
 
-    bool LoadLOD(TriMesh* triMesh, uint level, RenderSystem& renderSystem, CopyContextHandle copyCtx, iAllocator& memory)
-    {
-        auto readCtx = OpenReadContext(triMesh->assetHandle);
+	/************************************************************************************************/
 
-        if (!readCtx)
-            return false;
 
-        auto& lod       = triMesh->lods[level];
+	bool LoadLOD(TriMesh* triMesh, uint level, RenderSystem& renderSystem, CopyContextHandle copyCtx, iAllocator& memory)
+	{
+		auto readCtx = OpenReadContext(triMesh->assetHandle);
 
-        TriMesh::LOD_Runtime::LOD_State lodState = lod.state.load();
+		if (!readCtx)
+			return false;
 
-        if (lodState != TriMesh::LOD_Runtime::LOD_State::Unloaded)
-            return false;
+		auto& lod       = triMesh->lods[level];
 
-        if (!lod.state.compare_exchange_strong(lodState, TriMesh::LOD_Runtime::LOD_State::Loading))
-            return false;
+		TriMesh::LOD_Runtime::LOD_State lodState = lod.state.load();
 
-        auto buffer     = (char*)memory.malloc(lod.lodSize);
-        auto lodHeader  = new(buffer) FlexKit::LODlevel;
+		if (lodState != TriMesh::LOD_Runtime::LOD_State::Unloaded)
+			return false;
 
-        readCtx.Read(lodHeader, lod.lodSize, lod.lodFileOffset);
+		if (!lod.state.compare_exchange_strong(lodState, TriMesh::LOD_Runtime::LOD_State::Loading))
+			return false;
+
+		auto buffer     = (char*)memory.malloc(lod.lodSize);
+		auto lodHeader  = new(buffer) FlexKit::LODlevel;
+
+		readCtx.Read(lodHeader, lod.lodSize, lod.lodFileOffset);
 
 		for (auto& vertexBuffer : lodHeader->descriptor.buffers)
 		{
 			if (vertexBuffer.size)
 			{
-                float* temp = (float*)(buffer + vertexBuffer.Begin);
+				float* temp = (float*)(buffer + vertexBuffer.Begin);
 				auto View = new (memory._aligned_malloc(sizeof(VertexBufferView))) VertexBufferView(buffer + vertexBuffer.Begin, vertexBuffer.size);
 				View->SetTypeFormatSize((VERTEXBUFFER_TYPE)vertexBuffer.Type, (VERTEXBUFFER_FORMAT)vertexBuffer.Format, vertexBuffer.size / vertexBuffer.Format );
 				lod.buffers.push_back(View);
 			}
 		}
 
-        CreateVertexBuffer(renderSystem, copyCtx, lod.buffers, lod.buffers.size(), lod.vertexBuffer);
+		CreateVertexBuffer(renderSystem, copyCtx, lod.buffers, lod.buffers.size(), lod.vertexBuffer);
 
-        const size_t subMeshCount = lodHeader->descriptor.subMeshCount;
-        for (size_t I = 0; I < subMeshCount; I++)
-        {
-            SubMesh subMesh;
-            const size_t readOffset =
-                sizeof(LODlevel) +
-                lodHeader->descriptor.morphTargets * sizeof(LODlevel::LODMorphTarget) +
-                sizeof(SubMesh) * I;
+		const size_t subMeshCount = lodHeader->descriptor.subMeshCount;
+		for (size_t I = 0; I < subMeshCount; I++)
+		{
+			SubMesh subMesh;
+			const size_t readOffset =
+				sizeof(LODlevel) +
+				lodHeader->descriptor.morphTargets * sizeof(LODlevel::LODMorphTarget) +
+				sizeof(SubMesh) * I;
 
-            memcpy(&subMesh, buffer + readOffset, sizeof(subMesh));
-            
-            lod.subMeshes.push_back(subMesh);
-        }
+			memcpy(&subMesh, buffer + readOffset, sizeof(subMesh));
+			
+			lod.subMeshes.push_back(subMesh);
+		}
 
-        if(level == 0)
-            LoadMorphTargets(triMesh, buffer + lod.lodFileOffset, lod.lodSize, lodHeader->descriptor.morphTargets);
+		if(level == 0)
+			LoadMorphTargets(triMesh, buffer + lod.lodFileOffset, lod.lodSize, lodHeader->descriptor.morphTargets);
 
-        lod.state = TriMesh::LOD_Runtime::LOD_State::Loaded;
+		lod.state = TriMesh::LOD_Runtime::LOD_State::Loaded;
 
-        lodHeader->~LODlevel();
-        memory.free(buffer);
+		lodHeader->~LODlevel();
+		memory.free(buffer);
 
-        return true;
-    }
-
-
-    /************************************************************************************************/
+		return true;
+	}
 
 
-    bool LoadAllLODFromMemory(TriMesh* triMesh, const char* buffer, const size_t bufferSize, RenderSystem& renderSystem, CopyContextHandle copyCtx, iAllocator& memory)
-    {
-        const size_t lodCount = triMesh->lods.size();
-        for (auto& lod : triMesh->lods)
-        {
-            TriMesh::LOD_Runtime::LOD_State lodState = lod.state.load();
-
-            if (lodState != TriMesh::LOD_Runtime::LOD_State::Unloaded)
-                return false;
-
-            if (!lod.state.compare_exchange_strong(lodState, TriMesh::LOD_Runtime::LOD_State::Loading))
-                return false;
-
-            auto lodBuffer  = (char*)memory.malloc(lod.lodSize);
-
-            FlexKit::LODlevel lodHeader;
-            memcpy(&lodHeader, buffer + lod.lodFileOffset, sizeof(LODlevel));
-
-            auto buffer2 = (char*)memory.malloc(lod.lodSize);
-            memcpy(buffer2, buffer + lod.lodFileOffset, lod.lodSize);
+	/************************************************************************************************/
 
 
-		    for (auto& vertexBuffer : lodHeader.descriptor.buffers)
-		    {
-			    if (vertexBuffer.size)
-			    {
-                    float* temp = (float*)(buffer2 + vertexBuffer.Begin);
-				    auto View   = new (memory._aligned_malloc(sizeof(VertexBufferView))) VertexBufferView(buffer2 + vertexBuffer.Begin, vertexBuffer.size);
-				    View->SetTypeFormatSize((VERTEXBUFFER_TYPE)vertexBuffer.Type, (VERTEXBUFFER_FORMAT)vertexBuffer.Format, vertexBuffer.size / vertexBuffer.Format );
-				    lod.buffers.push_back(View);
-			    }
-		    }
+	bool LoadAllLODFromMemory(TriMesh* triMesh, const char* buffer, const size_t bufferSize, RenderSystem& renderSystem, CopyContextHandle copyCtx, iAllocator& memory)
+	{
+		const size_t lodCount = triMesh->lods.size();
+		for (auto& lod : triMesh->lods)
+		{
+			TriMesh::LOD_Runtime::LOD_State lodState = lod.state.load();
 
-            CreateVertexBuffer(renderSystem, copyCtx, lod.buffers, lod.buffers.size(), lod.vertexBuffer);
+			if (lodState != TriMesh::LOD_Runtime::LOD_State::Unloaded)
+				return false;
 
-            const size_t subMeshCount = lodHeader.descriptor.subMeshCount;
-            for (size_t I = 0; I < subMeshCount; I++)
-            {
-                const size_t readOffset =
-                    lod.lodFileOffset +
-                    sizeof(LODlevel) +
-                    lodHeader.descriptor.morphTargets * sizeof(LODlevel::LODMorphTarget) +
-                    sizeof(SubMesh) * I;
+			if (!lod.state.compare_exchange_strong(lodState, TriMesh::LOD_Runtime::LOD_State::Loading))
+				return false;
 
-                SubMesh subMesh;
-                memcpy(&subMesh, buffer + readOffset, sizeof(SubMesh));
+			auto lodBuffer  = (char*)memory.malloc(lod.lodSize);
 
-                lod.subMeshes.push_back(subMesh);
-            }
+			FlexKit::LODlevel lodHeader;
+			memcpy(&lodHeader, buffer + lod.lodFileOffset, sizeof(LODlevel));
 
-            LoadMorphTargets(triMesh, buffer + lod.lodFileOffset, lod.lodSize, lodHeader.descriptor.morphTargets);
-
-            lod.state = TriMesh::LOD_Runtime::LOD_State::Loaded;
-        }
-
-        return true;
-    }
+			auto buffer2 = (char*)memory.malloc(lod.lodSize);
+			memcpy(buffer2, buffer + lod.lodFileOffset, lod.lodSize);
 
 
-    /************************************************************************************************/
+			for (auto& vertexBuffer : lodHeader.descriptor.buffers)
+			{
+				if (vertexBuffer.size)
+				{
+					float* temp = (float*)(buffer2 + vertexBuffer.Begin);
+					auto View   = new (memory._aligned_malloc(sizeof(VertexBufferView))) VertexBufferView(buffer2 + vertexBuffer.Begin, vertexBuffer.size);
+					View->SetTypeFormatSize((VERTEXBUFFER_TYPE)vertexBuffer.Type, (VERTEXBUFFER_FORMAT)vertexBuffer.Format, vertexBuffer.size / vertexBuffer.Format );
+					lod.buffers.push_back(View);
+				}
+			}
+
+			CreateVertexBuffer(renderSystem, copyCtx, lod.buffers, lod.buffers.size(), lod.vertexBuffer);
+
+			const size_t subMeshCount = lodHeader.descriptor.subMeshCount;
+			for (size_t I = 0; I < subMeshCount; I++)
+			{
+				const size_t readOffset =
+					lod.lodFileOffset +
+					sizeof(LODlevel) +
+					lodHeader.descriptor.morphTargets * sizeof(LODlevel::LODMorphTarget) +
+					sizeof(SubMesh) * I;
+
+				SubMesh subMesh;
+				memcpy(&subMesh, buffer + readOffset, sizeof(SubMesh));
+
+				lod.subMeshes.push_back(subMesh);
+			}
+
+			LoadMorphTargets(triMesh, buffer + lod.lodFileOffset, lod.lodSize, lodHeader.descriptor.morphTargets);
+
+			lod.state = TriMesh::LOD_Runtime::LOD_State::Loaded;
+		}
+
+		return true;
+	}
 
 
-    bool Buffer2TriMesh(RenderSystem* RS, CopyContextHandle copyCtx, const char* buffer, size_t bufferSize, iAllocator* Memory, TriMesh* triMesh, bool ClearBuffers)
-    {
-        TriMeshAssetBlob Blob;
-        memcpy(&Blob, buffer, sizeof(Blob));
+	/************************************************************************************************/
+
+
+	bool Buffer2TriMesh(RenderSystem* RS, CopyContextHandle copyCtx, const char* buffer, size_t bufferSize, iAllocator* Memory, TriMesh* triMesh, bool ClearBuffers)
+	{
+		TriMeshAssetBlob Blob;
+		memcpy(&Blob, buffer, sizeof(Blob));
 
 		size_t BufferCount      = 0;
 
@@ -714,50 +714,50 @@ namespace FlexKit
 		triMesh->Info.Max.z     = Blob.header.Info.minz;
 		triMesh->Info.r		    = Blob.header.Info.r;
 		triMesh->Memory		    = Memory;
-        triMesh->assetHandle    = Blob.header.GUID;
-        triMesh->TriMeshID      = Blob.header.GUID;
+		triMesh->assetHandle    = Blob.header.GUID;
+		triMesh->TriMeshID      = Blob.header.GUID;
 
-        triMesh->BS     = { { Blob.header.BS[0], Blob.header.BS[1], Blob.header.BS[2] }, Blob.header.BS[3] };
-        triMesh->AABB   =
-        { 
+		triMesh->BS     = { { Blob.header.BS[0], Blob.header.BS[1], Blob.header.BS[2] }, Blob.header.BS[3] };
+		triMesh->AABB   =
+		{ 
 			{ Blob.header.AABB[0], Blob.header.AABB[1], Blob.header.AABB[2] },
 			{ Blob.header.AABB[3], Blob.header.AABB[4], Blob.header.AABB[5] }
 		};
 
-            
+			
 		if (strlen(Blob.header.ID))
 		{
-            triMesh->ID = (char*)Memory->malloc(64);
+			triMesh->ID = (char*)Memory->malloc(64);
 			strcpy_s((char*)triMesh->ID, 64, Blob.header.ID);
 		} else
-            triMesh->ID = nullptr;
+			triMesh->ID = nullptr;
 
 
-        const size_t lodCount   = Blob.header.LODCount;
-        const size_t tableSize  = lodCount * sizeof(LODEntry);
+		const size_t lodCount   = Blob.header.LODCount;
+		const size_t tableSize  = lodCount * sizeof(LODEntry);
 
-        for (size_t I = 0; I < lodCount; I++)
-        {
-            LODEntry lodTable;
-            memcpy(&lodTable, buffer + sizeof(TriMeshAssetBlob::header) + sizeof(LODEntry) * I, tableSize);
+		for (size_t I = 0; I < lodCount; I++)
+		{
+			LODEntry lodTable;
+			memcpy(&lodTable, buffer + sizeof(TriMeshAssetBlob::header) + sizeof(LODEntry) * I, tableSize);
 
-            TriMesh::LOD_Runtime lod;
-            lod.lodFileOffset   = lodTable.offset;
-            lod.lodSize         = lodTable.size;
-            lod.state           = TriMesh::LOD_Runtime::LOD_State::Unloaded;
+			TriMesh::LOD_Runtime lod;
+			lod.lodFileOffset   = lodTable.offset;
+			lod.lodSize         = lodTable.size;
+			lod.state           = TriMesh::LOD_Runtime::LOD_State::Unloaded;
 
-            triMesh->lods.push_back(lod);
-        }
+			triMesh->lods.push_back(lod);
+		}
 
-        // Load lowest detail lod level
-        if (!LoadLOD(triMesh, uint(lodCount - 1), *RS, copyCtx, *Memory))
-            LoadAllLODFromMemory(triMesh, buffer, bufferSize, *RS, copyCtx, *Memory);// not able to stream lods, load all now
+		// Load lowest detail lod level
+		if (!LoadLOD(triMesh, uint(lodCount - 1), *RS, copyCtx, *Memory))
+			LoadAllLODFromMemory(triMesh, buffer, bufferSize, *RS, copyCtx, *Memory);// not able to stream lods, load all now
 
-        return true;
-    }
+		return true;
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	bool Asset2TriMesh(RenderSystem* RS, CopyContextHandle copyCtx, AssetHandle RHandle, iAllocator* Memory, TriMesh* triMesh, bool ClearBuffers)
@@ -766,46 +766,46 @@ namespace FlexKit
 		if (R->State == Resource::EResourceState_LOADED && R->Type == EResource_TriMesh)
 		{
 			TriMeshAssetBlob* Blob  = (TriMeshAssetBlob*)R;
-            return Buffer2TriMesh(RS, copyCtx, (const char*)R, R->ResourceSize, Memory, triMesh, ClearBuffers);
+			return Buffer2TriMesh(RS, copyCtx, (const char*)R, R->ResourceSize, Memory, triMesh, ClearBuffers);
 		}
-        else
-		    return false;
+		else
+			return false;
 	}
 
 
 	/************************************************************************************************/
 
 
-    Vector<TextureBuffer> LoadCubeMapAsset(GUID_t resourceID, size_t& OUT_MIPCount, uint2& OUT_WH, DeviceFormat& OUT_format, iAllocator* allocator)
-    {
-        Vector<TextureBuffer> textureArray{ allocator };
+	Vector<TextureBuffer> LoadCubeMapAsset(GUID_t resourceID, size_t& OUT_MIPCount, uint2& OUT_WH, DeviceFormat& OUT_format, iAllocator* allocator)
+	{
+		Vector<TextureBuffer> textureArray{ allocator };
 
-        auto assetHandle            = LoadGameAsset(resourceID);
-        CubeMapAssetBlob* resource  = reinterpret_cast<CubeMapAssetBlob*>(FlexKit::GetAsset(assetHandle));
+		auto assetHandle            = LoadGameAsset(resourceID);
+		CubeMapAssetBlob* resource  = reinterpret_cast<CubeMapAssetBlob*>(FlexKit::GetAsset(assetHandle));
 
-        OUT_MIPCount    = resource->GetFace(0)->MipCount;
-        OUT_WH          = { (uint32_t)resource->Width, (uint32_t)resource->Height };
-        OUT_format      = (DeviceFormat)resource->Format;
+		OUT_MIPCount    = resource->GetFace(0)->MipCount;
+		OUT_WH          = { (uint32_t)resource->Width, (uint32_t)resource->Height };
+		OUT_format      = (DeviceFormat)resource->Format;
 
-        for (size_t I = 0; I < 6; I++)
-        {
-            for (size_t MIPLevel = 0; MIPLevel < resource->MipCount; MIPLevel++)
-            {
-                float* buffer = (float*)resource->GetFace(I)->GetMip(MIPLevel);
-                const size_t bufferSize = resource->GetFace(I)->GetMipSize(MIPLevel);
+		for (size_t I = 0; I < 6; I++)
+		{
+			for (size_t MIPLevel = 0; MIPLevel < resource->MipCount; MIPLevel++)
+			{
+				float* buffer = (float*)resource->GetFace(I)->GetMip(MIPLevel);
+				const size_t bufferSize = resource->GetFace(I)->GetMipSize(MIPLevel);
 
-                textureArray.emplace_back(
-                    TextureBuffer{
-                        uint2{(uint32_t)resource->Width >> MIPLevel, (uint32_t)resource->Height >> MIPLevel},
-                        (byte*)buffer,
-                        bufferSize,
-                        sizeof(float4),
-                        nullptr });
-            }
-        }
+				textureArray.emplace_back(
+					TextureBuffer{
+						uint2{(uint32_t)resource->Width >> MIPLevel, (uint32_t)resource->Height >> MIPLevel},
+						(byte*)buffer,
+						bufferSize,
+						sizeof(float4),
+						nullptr });
+			}
+		}
 
-        return textureArray;
-    }
+		return textureArray;
+	}
 
 
 	/************************************************************************************************/
@@ -813,9 +813,9 @@ namespace FlexKit
 
 	TriMeshHandle LoadTriMeshIntoTable(CopyContextHandle handle, size_t GUID)
 	{	// Make this atomic
-        auto Available = isAssetAvailable(GUID);
-        if (!Available)
-            return InvalidHandle;
+		auto Available = isAssetAvailable(GUID);
+		if (!Available)
+			return InvalidHandle;
 
 		TriMeshHandle Handle;
 
@@ -900,12 +900,12 @@ namespace FlexKit
 		{
 			auto Index	= GeometryTable.Geometry.size();
 			Handle		= GeometryTable.Handles.GetNewHandle();
-            
+			
 			GeometryTable.Geometry.push_back		(TriMesh());
 			GeometryTable.GeometryIDs.push_back		(nullptr);
 			GeometryTable.Guids.push_back			(0);
 			GeometryTable.ReferenceCounts.push_back	(0);
-            GeometryTable.Handle.push_back          (Handle);
+			GeometryTable.Handle.push_back          (Handle);
 
 			auto Available = isAssetAvailable(ID);
 			FK_ASSERT(Available);
@@ -959,13 +959,13 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    TriMeshHandle LoadTriMeshIntoTable(CopyContextHandle handle, const char* buffer, const size_t bufferSize)
-    {
-        TriMeshHandle Handle;
-        TriMeshAssetBlob* Blob = (TriMeshAssetBlob*)buffer;
+	TriMeshHandle LoadTriMeshIntoTable(CopyContextHandle handle, const char* buffer, const size_t bufferSize)
+	{
+		TriMeshHandle Handle;
+		TriMeshAssetBlob* Blob = (TriMeshAssetBlob*)buffer;
 
 		if(!GeometryTable.FreeList.size())
 		{
@@ -976,7 +976,7 @@ namespace FlexKit
 			GeometryTable.GeometryIDs.push_back		(nullptr);
 			GeometryTable.Guids.push_back			(0);
 			GeometryTable.ReferenceCounts.push_back	(0);
-            GeometryTable.Handle.push_back          (Handle);
+			GeometryTable.Handle.push_back          (Handle);
 
 
 			if(Buffer2TriMesh(GeometryTable.renderSystem, handle, buffer, bufferSize, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
@@ -1008,7 +1008,7 @@ namespace FlexKit
 		}
 
 		return Handle;
-    }
+	}
 
 
 	/************************************************************************************************/
@@ -1100,8 +1100,8 @@ namespace FlexKit
 
 		size_t Size = 1 + GetFileSize(TEMP);
 		byte* mem = (byte*)tempMem->malloc(Size);
-        if (!LoadFileIntoBuffer(TEMP, mem, Size, false))
-            return { 0, nullptr };
+		if (!LoadFileIntoBuffer(TEMP, mem, Size, false))
+			return { 0, nullptr };
 
 		char*	FontPath   = nullptr;
 		size_t  PathLength = strlen(dir);
@@ -1158,7 +1158,7 @@ namespace FlexKit
 					Fonts = (SpriteFontAsset*)outMem->malloc(sizeof(SpriteFontAsset) * FontCount);
 
 					for (size_t I = 0; I < FontCount; ++I) {
-                        memset(Fonts + I, 0, sizeof(SpriteFontAsset));
+						memset(Fonts + I, 0, sizeof(SpriteFontAsset));
 
 						Fonts[I].Padding = Padding;
 						Fonts[I].Memory  = outMem;
@@ -1225,8 +1225,8 @@ namespace FlexKit
 
 	void Release(SpriteFontAsset* asset, RenderSystem* RS)
 	{
-        if (!asset)
-            return;
+		if (!asset)
+			return;
 
 		RS->ReleaseResource(asset->Texture);
 		asset->Memory->free(asset->FontDir);
