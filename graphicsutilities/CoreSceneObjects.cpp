@@ -276,6 +276,9 @@ namespace FlexKit
 
 	DirectX::XMMATRIX CreatePerspective(Camera* camera, bool Invert = false)
 	{
+		if (camera->FOV == 0.0f || camera->AspectRatio == 0.0f || camera->Near == 0.0f || camera->Far == 0.0f)
+			return DirectX::XMMatrixIdentity();
+
 		DirectX::XMMATRIX InvertPersepective(DirectX::XMMatrixIdentity());
 		if (Invert)
 		{
