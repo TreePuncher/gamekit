@@ -64,7 +64,7 @@ namespace FlexKit
 	class ThreadManager;
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	typedef TypeErasedCallable<void ()> OnCompletionEvent;
@@ -76,25 +76,25 @@ namespace FlexKit
 	class iWork
 	{
 	public:
-        iWork(iAllocator* Memory = nullptr) : _debugID{ "UNIDENTIFIED!" } { }
+		iWork(iAllocator* Memory = nullptr) : _debugID{ "UNIDENTIFIED!" } { }
 
-        virtual ~iWork() {}
+		virtual ~iWork() {}
 
 		iWork& operator = (const iWork&)    = delete;
 		iWork& operator = (iWork&&)         = delete;
 
-        iWork(const iWork&) = delete;
-        iWork(iWork&&)      = delete;
+		iWork(const iWork&) = delete;
+		iWork(iWork&&)      = delete;
 
 		virtual void Run(iAllocator& threadLocalAllocatoDDr) { FK_ASSERT(0); }
-        virtual void Release() {}
+		virtual void Release() {}
 
 
-        void DoWork(iAllocator& threadLocalAllocator)
-        {
-            Run(threadLocalAllocator);
-            ReleaseAndNotifyWatchers();
-        }
+		void DoWork(iAllocator& threadLocalAllocator)
+		{
+			Run(threadLocalAllocator);
+			ReleaseAndNotifyWatchers();
+		}
 
 		template<typename TY_Callable>
 		void Subscribe(TY_Callable subscriber)
@@ -109,15 +109,15 @@ namespace FlexKit
 
 	protected:
 
-        void ReleaseAndNotifyWatchers()
-        {
-            static_vector<OnCompletionEvent, 8>	tempSubs{ std::move(subscribers) };
+		void ReleaseAndNotifyWatchers()
+		{
+			static_vector<OnCompletionEvent, 8>	tempSubs{ std::move(subscribers) };
 
-            Release();
+			Release();
 
-            for (auto& sub : tempSubs)
-                sub();
-        }
+			for (auto& sub : tempSubs)
+				sub();
+		}
 
 	private:
 		static_vector<OnCompletionEvent, 8>	subscribers;
@@ -224,26 +224,26 @@ namespace FlexKit
 		}
 
 
-        bool Steal(TY_E& out) noexcept // FIFO
-        {
-            auto front  = frontCounter.load(std::memory_order_acquire);
-            auto back   = backCounter.load(std::memory_order_acquire);
+		bool Steal(TY_E& out) noexcept // FIFO
+		{
+			auto front  = frontCounter.load(std::memory_order_acquire);
+			auto back   = backCounter.load(std::memory_order_acquire);
 
-            if (front < back)
-            {
-                auto job = *queue[front % queueArraySize];
+			if (front < back)
+			{
+				auto job = *queue[front % queueArraySize];
 
-                if (frontCounter.compare_exchange_strong(front, front + 1))
-                {
-                    out = job;
-                    return true;
-                }
-                else
-                    return false;
-            }
-            else
-                return false;
-        }
+				if (frontCounter.compare_exchange_strong(front, front + 1))
+				{
+					out = job;
+					return true;
+				}
+				else
+					return false;
+			}
+			else
+				return false;
+		}
 
 	
 		void push_back(TY_E element) noexcept
@@ -412,28 +412,28 @@ namespace FlexKit
 
 	FLEXKITAPI inline _WorkerThread&                    GetLocalThread();
 
-    inline thread_local static_vector<std::unique_ptr<StackAllocator>> localAllocators;
+	inline thread_local static_vector<std::unique_ptr<StackAllocator>> localAllocators;
 
 	FLEXKITAPI inline void RunTask(iWork& work)
 	{
-        std::unique_ptr<StackAllocator> allocator;
+		std::unique_ptr<StackAllocator> allocator;
 
-        if (localAllocators.empty())
-        {
-            allocator = std::make_unique<StackAllocator>();
-            allocator->Init((byte*)malloc(16 * MEGABYTE), 16 * MEGABYTE);
-        }
-        else
-        {
-            allocator = std::move(localAllocators.back());
-            localAllocators.pop_back();
-        }
+		if (localAllocators.empty())
+		{
+			allocator = std::make_unique<StackAllocator>();
+			allocator->Init((byte*)malloc(16 * MEGABYTE), 16 * MEGABYTE);
+		}
+		else
+		{
+			allocator = std::move(localAllocators.back());
+			localAllocators.pop_back();
+		}
 
-        work.DoWork(*allocator);
+		work.DoWork(*allocator);
 
-        allocator->clear();
+		allocator->clear();
 
-        localAllocators.emplace_back(std::move(allocator));
+		localAllocators.emplace_back(std::move(allocator));
 	}
 
 	using WorkerList	= IntrusiveLinkedList<_WorkerThread>;
@@ -448,32 +448,32 @@ namespace FlexKit
 	{
 	public:
 		LambdaWork(TY_FN FNIN, iAllocator* IN_allocator = FlexKit::SystemAllocator) noexcept :
-			iWork		{ IN_allocator  },
-			allocator   { IN_allocator  },
-			Callback	{ FNIN          } {}
+			iWork		{ IN_allocator	},
+			allocator	{ IN_allocator	},
+			Callback	{ FNIN			} {}
 
 		void Release() noexcept
 		{
-            auto temp = allocator;
+			auto temp = allocator;
 			this->~LambdaWork();
-            temp->free(this);
+			temp->free(this);
 		}
 
 		void Run(iAllocator& allocator) override
 		{
-            ProfileFunction();
+			ProfileFunction();
 
 			Callback(allocator);
 		}
 
-		TY_FN       Callback;
+		TY_FN		Callback;
 		iAllocator* allocator;
 	};
 
 
 	template<typename TY_FN>
 	iWork& CreateWorkItem(
-		TY_FN       FNIN, 
+		TY_FN		FNIN, 
 		iAllocator* Memory_1,
 		iAllocator* Memory_2)
 	{
@@ -482,7 +482,7 @@ namespace FlexKit
 
 	template<typename TY_FN>
 	iWork& CreateWorkItem(
-		TY_FN       FNIN,
+		TY_FN		FNIN,
 		iAllocator* allocator = SystemAllocator)
 	{
 		return CreateWorkItem(FNIN, allocator, allocator);
@@ -517,7 +517,7 @@ namespace FlexKit
 
 		iWork* FindWork(bool stealBackground = false);
 
-        size_t GetThreadCount() const noexcept;
+		size_t GetThreadCount() const noexcept;
 
 		auto GetThreadsBegin()	{ return threads.begin(); }
 		auto GetThreadsEnd()	{ return threads.end(); }
@@ -593,33 +593,33 @@ namespace FlexKit
 
 	// Thread safe lazy object constructor, returns callable that returns the same object everytime, for every calling thread.  Will block during construction.
 	template<typename TY, typename FN_Constructor> 
-    [[nodiscard]] auto MakeLazyObject(iAllocator* allocator, FN_Constructor FN_Construct)
+	[[nodiscard]] auto MakeLazyObject(iAllocator* allocator, FN_Constructor FN_Construct)
 	{
 		struct _State
 		{
 			TY			constructable;
 			atomic_bool ready = false;
-            std::mutex  m;
+			std::mutex  m;
 
 		};
 
-        return
-            [FN_Construct = FN_Construct, _state = MakeSharedRef<_State>(allocator)](auto&& ... args) mutable -> TY&
-		    {
-			    if (!_state.Get().ready)
-			    {
-				    if (_state.Get().m.try_lock())
-				    {
-					    _state.Get().constructable	= FN_Construct(std::forward<decltype(args)>(args)...);
-					    _state.Get().ready			= true;
-                        _state.Get().m.unlock();
-				    }
-				    else
-                        while(!_state.Get().ready);
-			    }
+		return
+			[FN_Construct = FN_Construct, _state = MakeSharedRef<_State>(allocator)](auto&& ... args) mutable -> TY&
+			{
+				if (!_state.Get().ready)
+				{
+					if (_state.Get().m.try_lock())
+					{
+						_state.Get().constructable	= FN_Construct(std::forward<decltype(args)>(args)...);
+						_state.Get().ready			= true;
+						_state.Get().m.unlock();
+					}
+					else
+						while(!_state.Get().ready);
+				}
 
-			    return _state.Get().constructable;
-		    };
+				return _state.Get().constructable;
+			};
 	}
 
 
@@ -668,172 +668,172 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    template<typename ITERATOR_TY, typename FN_TY>
-    void Parallel_For(
-        ThreadManager&  threads,
-        iAllocator&     allocator,
-        ITERATOR_TY     begin,
-        ITERATOR_TY     end,
-        const size_t    blockSize,
-        FN_TY           task)
-    {
-        ProfileFunction();
+	template<typename ITERATOR_TY, typename FN_TY>
+	void Parallel_For(
+		ThreadManager&  threads,
+		iAllocator&     allocator,
+		ITERATOR_TY     begin,
+		ITERATOR_TY     end,
+		const size_t    blockSize,
+		FN_TY           task)
+	{
+		ProfileFunction();
 
-        const size_t taskCount = std::distance(begin, end);
+		const size_t taskCount = std::distance(begin, end);
 
-        const size_t temp           = taskCount / blockSize;
-        const size_t temp2          = taskCount % blockSize != 0;
-        const size_t threadCount    = Max(temp + temp2, 1);
-
-
-
-        struct Task : public iWork
-        {
-            using ITERATOR = ITERATOR_TY;
-
-            ITERATOR begin   = 0;
-            ITERATOR end     = 0;
-
-            FN_TY* task_FN;
-
-            Task() : iWork{ nullptr } {}
-
-            Task(ITERATOR IN_begin, ITERATOR IN_end, FN_TY* IN_FN) :
-                    iWork       { nullptr },
-                    begin       { IN_begin  },
-                    end         { IN_end    },
-                    task_FN     { IN_FN     }
-            {
-                int x = 0;
-            }
-
-            ~Task(){}
-
-            void Run(iAllocator& threadLocalAllocator) final
-            {
-                ProfileFunction();
-
-                for(auto I = begin; I < end; I++)
-                    (*task_FN)(*I, threadLocalAllocator);
-            }
-
-            void Release() final
-            {
-            }
-        };
-
-        if (threadCount > 1)
-        {
-            WorkBarrier barrier{threads, &allocator};
-            Vector<Task*> tasks{&allocator, threadCount};
-
-            for (size_t I = 0; I < threadCount; ++I)
-            {
-                auto workItem =
-                    &allocator.allocate<Task>(
-                        begin + I * blockSize,
-                        begin + Min((I + 1) * blockSize, taskCount),
-                        &task);
-
-                tasks.emplace_back(workItem);
-                barrier.AddWork(*workItem);
-            }
-
-            for (auto& task : tasks)
-                threads.AddWork(task);
-
-            barrier.Join();
-        }
-        else
-            std::for_each(begin, end,
-                [&](auto& element)
-                {
-                    task(element, allocator);
-                });
-    }
-
-
-        template<typename ITERATOR_TY, typename FN_TY>
-    void Parallel_For2(
-        ThreadManager&  threads,
-        iAllocator&     allocator,
-        ITERATOR_TY     begin,
-        ITERATOR_TY     end,
-        const size_t    blockSize,
-        FN_TY           task)
-    {
-        ProfileFunction();
-
-        const size_t taskCount = std::distance(begin, end);
-
-        const size_t temp           = taskCount / blockSize;
-        const size_t temp2          = taskCount % blockSize != 0;
-        const size_t threadCount    = Max(temp + temp2, 1);
+		const size_t temp           = taskCount / blockSize;
+		const size_t temp2          = taskCount % blockSize != 0;
+		const size_t threadCount    = Max(temp + temp2, 1);
 
 
 
-        struct Task : public iWork
-        {
-            using ITERATOR = ITERATOR_TY;
+		struct Task : public iWork
+		{
+			using ITERATOR = ITERATOR_TY;
 
-            ITERATOR    begin   = 0;
-            ITERATOR    end     = 0;
-            size_t      dispatchID;
+			ITERATOR begin   = 0;
+			ITERATOR end     = 0;
 
-            FN_TY* task_FN;
+			FN_TY* task_FN;
 
-            Task() : iWork{ nullptr } {}
+			Task() : iWork{ nullptr } {}
 
-            Task(ITERATOR IN_begin, ITERATOR IN_end, size_t IN_dispatchID, FN_TY* IN_FN) :
-                    iWork       { nullptr },
-                    begin       { IN_begin  },
-                    end         { IN_end    },
-                    task_FN     { IN_FN     },
-                    dispatchID  { IN_dispatchID } {}
+			Task(ITERATOR IN_begin, ITERATOR IN_end, FN_TY* IN_FN) :
+					iWork       { nullptr },
+					begin       { IN_begin  },
+					end         { IN_end    },
+					task_FN     { IN_FN     }
+			{
+				int x = 0;
+			}
 
-            ~Task(){}
+			~Task(){}
 
-            void Run(iAllocator& threadLocalAllocator) final
-            {
-                ProfileFunction();
+			void Run(iAllocator& threadLocalAllocator) final
+			{
+				ProfileFunction();
 
-                (*task_FN)(begin, end, dispatchID, threadLocalAllocator);
-            }
+				for(auto I = begin; I < end; I++)
+					(*task_FN)(*I, threadLocalAllocator);
+			}
 
-            void Release() final
-            {
-            }
-        };
+			void Release() final
+			{
+			}
+		};
 
-        if (threadCount > 1)
-        {
-            WorkBarrier barrier{threads, &allocator};
-            Vector<Task*> tasks{&allocator, threadCount};
+		if (threadCount > 1)
+		{
+			WorkBarrier barrier{threads, &allocator};
+			Vector<Task*> tasks{&allocator, threadCount};
 
-            for (size_t I = 0; I < threadCount; ++I)
-            {
-                auto workItem =
-                    &allocator.allocate<Task>(
-                        begin + I * blockSize,
-                        begin + Min((I + 1) * blockSize, taskCount),
-                        I,
-                        &task);
+			for (size_t I = 0; I < threadCount; ++I)
+			{
+				auto workItem =
+					&allocator.allocate<Task>(
+						begin + I * blockSize,
+						begin + Min((I + 1) * blockSize, taskCount),
+						&task);
 
-                tasks.emplace_back(workItem);
-                barrier.AddWork(*workItem);
-            }
+				tasks.emplace_back(workItem);
+				barrier.AddWork(*workItem);
+			}
 
-            for (auto& task : tasks)
-                threads.AddWork(task);
+			for (auto& task : tasks)
+				threads.AddWork(task);
 
-            barrier.Join();
-        }
-        else
-            task(begin, end, 0, allocator);
-    }
+			barrier.Join();
+		}
+		else
+			std::for_each(begin, end,
+				[&](auto& element)
+				{
+					task(element, allocator);
+				});
+	}
+
+
+		template<typename ITERATOR_TY, typename FN_TY>
+	void Parallel_For2(
+		ThreadManager&  threads,
+		iAllocator&     allocator,
+		ITERATOR_TY     begin,
+		ITERATOR_TY     end,
+		const size_t    blockSize,
+		FN_TY           task)
+	{
+		ProfileFunction();
+
+		const size_t taskCount = std::distance(begin, end);
+
+		const size_t temp           = taskCount / blockSize;
+		const size_t temp2          = taskCount % blockSize != 0;
+		const size_t threadCount    = Max(temp + temp2, 1);
+
+
+
+		struct Task : public iWork
+		{
+			using ITERATOR = ITERATOR_TY;
+
+			ITERATOR    begin   = 0;
+			ITERATOR    end     = 0;
+			size_t      dispatchID;
+
+			FN_TY* task_FN;
+
+			Task() : iWork{ nullptr } {}
+
+			Task(ITERATOR IN_begin, ITERATOR IN_end, size_t IN_dispatchID, FN_TY* IN_FN) :
+					iWork       { nullptr },
+					begin       { IN_begin  },
+					end         { IN_end    },
+					task_FN     { IN_FN     },
+					dispatchID  { IN_dispatchID } {}
+
+			~Task(){}
+
+			void Run(iAllocator& threadLocalAllocator) final
+			{
+				ProfileFunction();
+
+				(*task_FN)(begin, end, dispatchID, threadLocalAllocator);
+			}
+
+			void Release() final
+			{
+			}
+		};
+
+		if (threadCount > 1)
+		{
+			WorkBarrier barrier{threads, &allocator};
+			Vector<Task*> tasks{&allocator, threadCount};
+
+			for (size_t I = 0; I < threadCount; ++I)
+			{
+				auto workItem =
+					&allocator.allocate<Task>(
+						begin + I * blockSize,
+						begin + Min((I + 1) * blockSize, taskCount),
+						I,
+						&task);
+
+				tasks.emplace_back(workItem);
+				barrier.AddWork(*workItem);
+			}
+
+			for (auto& task : tasks)
+				threads.AddWork(task);
+
+			barrier.Join();
+		}
+		else
+			task(begin, end, 0, allocator);
+	}
 
 
 

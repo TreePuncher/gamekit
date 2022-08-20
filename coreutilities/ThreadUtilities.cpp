@@ -13,33 +13,33 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
-    thread_local CircularStealingQueue<iWork*>* localWorkQueue  = nullptr;
-    thread_local _WorkerThread*                 _localThread    = nullptr;
-    thread_local iAllocator*                    _localAllocator = nullptr;
+	thread_local CircularStealingQueue<iWork*>* localWorkQueue  = nullptr;
+	thread_local _WorkerThread*                 _localThread    = nullptr;
+	thread_local iAllocator*                    _localAllocator = nullptr;
 
 
-    FLEXKITAPI void PushToLocalQueue(iWork& work)
-    {
-        localWorkQueue->push_back(&work);
-    }
+	FLEXKITAPI void PushToLocalQueue(iWork& work)
+	{
+		localWorkQueue->push_back(&work);
+	}
 
 
-    FLEXKITAPI CircularStealingQueue<iWork*>& _GetThreadLocalQueue()
-    {
-        return *localWorkQueue;
-    }
+	FLEXKITAPI CircularStealingQueue<iWork*>& _GetThreadLocalQueue()
+	{
+		return *localWorkQueue;
+	}
 
 
-    FLEXKITAPI void _SetThreadLocalQueue(CircularStealingQueue<iWork*>& localQueue)
-    {
-        localWorkQueue = &localQueue;
-    }
+	FLEXKITAPI void _SetThreadLocalQueue(CircularStealingQueue<iWork*>& localQueue)
+	{
+		localWorkQueue = &localQueue;
+	}
 
 
-    FLEXKITAPI _WorkerThread& GetLocalThread()
-    {
-        return *_localThread;
-    }
+	FLEXKITAPI _WorkerThread& GetLocalThread()
+	{
+		return *_localThread;
+	}
 
 
 	/************************************************************************************************/
@@ -86,37 +86,36 @@ namespace FlexKit
 
 		while (true)
 		{
-            for(size_t I = 0; I < 10; I++)
+			for(size_t I = 0; I < 10; I++)
 			{
 				EXITSCOPE({
 					Manager->DecrementActiveWorkerCount();
 					});
 
-				    Manager->IncrementActiveWorkerCount();
+					Manager->IncrementActiveWorkerCount();
 
-                    if (auto workItem = Manager->FindWork(true); workItem)
-                    {
-                        I = 0;
-                        hasJob.store(true, std::memory_order_release);
+					if (auto workItem = Manager->FindWork(true); workItem)
+					{
+						I = 0;
+						hasJob.store(true, std::memory_order_release);
 
-                        RunTask(*workItem);
+						RunTask(*workItem);
 
-                        hasJob.store(false, std::memory_order_release);
-                    }
-                    else if(I > 1) // Reduce thread contention a little
-                    {
-                        const auto beginTimePoint = std::chrono::high_resolution_clock::now();
+						hasJob.store(false, std::memory_order_release);
+					}
+					else if(I > 1) // Reduce thread contention a little
+					{
+						const auto begin = __rdtsc();
 
-                        while (true)
-                        {
-                            const auto currentTime    = std::chrono::high_resolution_clock::now();
-                            const auto duration       = currentTime - beginTimePoint;
+						while (true)
+						{
+							const auto current	= __rdtsc();
+							const auto duration = current - begin;
 
-                            if (duration > std::chrono::nanoseconds(1000))
-                                break;
-                        }
-
-                    }
+							if (duration >= 4000)
+								break;
+						}
+					}
 			}
 
 			Manager->WaitForWork();
@@ -149,23 +148,23 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void _WorkerThread::Start() noexcept
-    {
-        Thread = std::move(
-            std::thread([&]
-                {
-                    localWorkQueue  = &workQueue;
-                    _localThread    = this;
+	void _WorkerThread::Start() noexcept
+	{
+		Thread = std::move(
+			std::thread([&]
+				{
+					localWorkQueue  = &workQueue;
+					_localThread    = this;
 
-                    _Run();
-                }));
-    }
+					_Run();
+				}));
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	bool _WorkerThread::hasWork() noexcept
@@ -180,92 +179,92 @@ namespace FlexKit
 	iWork* _WorkerThread::Steal() noexcept
 	{
 
-        iWork* work = nullptr;
+		iWork* work = nullptr;
 		localWorkQueue->Steal(work);
 
-        return work;
+		return work;
 	}
 
 
 	/************************************************************************************************/
 
 
-    _BackgrounWorkQueue::_BackgrounWorkQueue(iAllocator* allocator) :
-        queue{ allocator },
-        workList{ allocator }
-    {
-        backgroundThread = std::thread{
-            [&]
-            {
-                localWorkQueue = &queue;
-                running = true;
+	_BackgrounWorkQueue::_BackgrounWorkQueue(iAllocator* allocator) :
+		queue{ allocator },
+		workList{ allocator }
+	{
+		backgroundThread = std::thread{
+			[&]
+			{
+				localWorkQueue = &queue;
+				running = true;
 
-                Run();
-            } };
-    }
-
-
-
-    void _BackgrounWorkQueue::Shutdown()
-    {
-        running = false;
-        cv.notify_all();
-
-        if(backgroundThread.joinable())
-            backgroundThread.join();
-    }
+				Run();
+			} };
+	}
 
 
-    void _BackgrounWorkQueue::PushWork(iWork& work)
-    {
-        std::scoped_lock localLock{ lock };
-        workList.push_back(work);
 
-        cv.notify_one();
-    }
+	void _BackgrounWorkQueue::Shutdown()
+	{
+		running = false;
+		cv.notify_all();
 
-
-    void _BackgrounWorkQueue::Run()
-    {
-        while (running)
-        {
-            if (workList.size())
-            {
-                std::scoped_lock localLock{ lock };
-                while (workList.size())
-                    queue.push_back(workList.pop_back());
-            }
-            else
-            {
-                std::mutex m;
-                std::unique_lock ul{ m };
-
-                cv.wait(ul);
-            }
-        }
-    }
+		if(backgroundThread.joinable())
+			backgroundThread.join();
+	}
 
 
-    CircularStealingQueue<iWork*>& _BackgrounWorkQueue::GetQueue()
-    {
-        return queue;
-    }
+	void _BackgrounWorkQueue::PushWork(iWork& work)
+	{
+		std::scoped_lock localLock{ lock };
+		workList.push_back(work);
+
+		cv.notify_one();
+	}
 
 
-    bool _BackgrounWorkQueue::Running()
-    {
-        return running;
-    }
+	void _BackgrounWorkQueue::Run()
+	{
+		while (running)
+		{
+			if (workList.size())
+			{
+				std::scoped_lock localLock{ lock };
+				while (workList.size())
+					queue.push_back(workList.pop_back());
+			}
+			else
+			{
+				std::mutex m;
+				std::unique_lock ul{ m };
+
+				cv.wait(ul);
+			}
+		}
+	}
 
 
-    /************************************************************************************************/
+	CircularStealingQueue<iWork*>& _BackgrounWorkQueue::GetQueue()
+	{
+		return queue;
+	}
+
+
+	bool _BackgrounWorkQueue::Running()
+	{
+		return running;
+	}
+
+
+	/************************************************************************************************/
 
 
 
 	void WorkBarrier::AddWork(iWork& work)
 	{
 		++tasksInProgress;
-        inProgress = true;
+		inProgress = true;
 
 		work.Subscribe(
 			[&]
@@ -292,7 +291,7 @@ namespace FlexKit
 
 	void WorkBarrier::Wait()
 	{
-        ProfileFunction();
+		ProfileFunction();
 
 		do
 		{
@@ -307,10 +306,10 @@ namespace FlexKit
 
 	void WorkBarrier::Join()
 	{
-        ProfileFunction();
+		ProfileFunction();
 
-        if (!inProgress.load(std::memory_order::acquire))
-            return;
+		if (!inProgress.load(std::memory_order::acquire))
+			return;
 
 		do
 		{
@@ -318,84 +317,84 @@ namespace FlexKit
 				return;
 
 			for(auto work = threads.FindWork(); work; work = threads.FindWork())
-                RunTask(*work);
+				RunTask(*work);
 
 		} while (true);
 
-        Reset();
+		Reset();
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void WorkBarrier::JoinLocal()
-    {
-        ProfileFunction();
+	void WorkBarrier::JoinLocal()
+	{
+		ProfileFunction();
 
-        if (!inProgress.load(std::memory_order::acquire))
-            return;
+		if (!inProgress.load(std::memory_order::acquire))
+			return;
 
 		while(inProgress.load(std::memory_order::acquire))
-        {
-            ProfileFunctionLabeled(Joined);
+		{
+			ProfileFunctionLabeled(Joined);
 
-            auto work = localWorkQueue->pop_back().value_or(nullptr);
-            if (work)
-                RunTask(*work);
-            else break;
+			auto work = localWorkQueue->pop_back().value_or(nullptr);
+			if (work)
+				RunTask(*work);
+			else break;
 		}
 
-        Wait();
-        Reset();
-    }
+		Wait();
+		Reset();
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void WorkBarrier::Reset()
-    {
-        tasksInProgress = 0;
-        inProgress      = false;
-    }
+	void WorkBarrier::Reset()
+	{
+		tasksInProgress = 0;
+		inProgress      = false;
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    ThreadManager::ThreadManager(const size_t threadCount, iAllocator* IN_allocator) :
+	ThreadManager::ThreadManager(const size_t threadCount, iAllocator* IN_allocator) :
 		threads				{ },
 		allocator			{ IN_allocator		},
 		workingThreadCount	{ 0					},
 		workerCount			{ threadCount       },
 		workQueues          { IN_allocator      },
-        mainThreadQueue     { IN_allocator      },
-        backgroundQueue     { IN_allocator      }
+		mainThreadQueue     { IN_allocator      },
+		backgroundQueue     { IN_allocator      }
 	{
-        FK_ASSERT(WorkerThread::Manager == nullptr);
+		FK_ASSERT(WorkerThread::Manager == nullptr);
 
 		WorkerThread::Manager = this;
-        _SetThreadLocalQueue(mainThreadQueue);
+		_SetThreadLocalQueue(mainThreadQueue);
 		workQueues.push_back(&mainThreadQueue);
 
-        buffer = std::make_unique<std::array<byte, MEGABYTE * 16>>();
-        localAllocator.Init(buffer->data(), MEGABYTE * 16);
-        _localAllocator = localAllocator;
+		buffer = std::make_unique<std::array<byte, MEGABYTE * 16>>();
+		localAllocator.Init(buffer->data(), MEGABYTE * 16);
+		_localAllocator = localAllocator;
 
 		for (size_t I = 0; I < workerCount; ++I)
-        {
+		{
 			auto& thread = allocator->allocate<WorkerThread>(allocator);
 			threads.push_back(thread);
 			workQueues.push_back(&thread.GetQueue());
 		}
 
-        for (auto& thread : threads)
-            thread.Start();
+		for (auto& thread : threads)
+			thread.Start();
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	void ThreadManager::Release()
@@ -413,11 +412,11 @@ namespace FlexKit
 				allocator->release(worker);
 		}
 
-        backgroundQueue.Shutdown();
+		backgroundQueue.Shutdown();
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	void ThreadManager::SendShutdown()
@@ -427,42 +426,42 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	void ThreadManager::AddWork(iWork* newWork) noexcept
 	{
-        PushToLocalQueue(*newWork);
+		PushToLocalQueue(*newWork);
 
-		workerWait.notify_all();
+		workerWait.notify_one();
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void ThreadManager::AddBackgroundWork(iWork& newWork) noexcept
-    {
-        backgroundQueue.PushWork(newWork);
-    }
+	void ThreadManager::AddBackgroundWork(iWork& newWork) noexcept
+	{
+		backgroundQueue.PushWork(newWork);
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	void ThreadManager::WaitForWorkersToComplete(iAllocator& tempAllocator)
 	{
-        auto& localWorkQueue = _GetThreadLocalQueue();
+		auto& localWorkQueue = _GetThreadLocalQueue();
 		while (!localWorkQueue.empty())
 		{
 			if (auto workItem = FindWork(true); workItem)
-                RunTask(*workItem);
+				RunTask(*workItem);
 		}
 		while (workingThreadCount > 0);
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	void ThreadManager::WaitForShutdown() noexcept // TODO: this does not work!
@@ -482,7 +481,7 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	void ThreadManager::IncrementActiveWorkerCount() noexcept
@@ -492,7 +491,7 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	void ThreadManager::DecrementActiveWorkerCount() noexcept
@@ -502,61 +501,61 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	void ThreadManager::WaitForWork() noexcept
 	{
-        std::mutex m;
-        std::unique_lock l{ m };
+		std::mutex m;
+		std::unique_lock l{ m };
 
-        workerWait.wait_for(l, 5ms);
+		workerWait.wait_for(l, 5ms);
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	iWork* ThreadManager::FindWork(bool stealBackground)
 	{
-        auto& localWorkQueue = _GetThreadLocalQueue();
+		auto& localWorkQueue = _GetThreadLocalQueue();
 
-        if (auto res = localWorkQueue.pop_back(); res)
-            return res.value();
+		if (auto res = localWorkQueue.pop_back(); res)
+			return res.value();
 
-        thread_local static const size_t startingPoint = randomDevice();
+		thread_local static const size_t startingPoint = randomDevice();
 
-        for (size_t I = 0; I < workQueues.size(); ++I)
-        {
-            const size_t idx = (I + startingPoint) % workQueues.size();
+		for (size_t I = 0; I < workQueues.size(); ++I)
+		{
+			const size_t idx = (I + startingPoint) % workQueues.size();
 
-            iWork* work = nullptr;
+			iWork* work = nullptr;
 
-            if (auto res = workQueues[idx]->Steal(work); res)
-                return work;
-        }
+			if (auto res = workQueues[idx]->Steal(work); res)
+				return work;
+		}
 
-        if (stealBackground)
-        {
-            iWork* work = nullptr;
-            backgroundQueue.GetQueue().Steal(work);
-            return work;
-        }
-        else
-            return nullptr;
+		if (stealBackground)
+		{
+			iWork* work = nullptr;
+			backgroundQueue.GetQueue().Steal(work);
+			return work;
+		}
+		else
+			return nullptr;
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    size_t ThreadManager::GetThreadCount() const noexcept
+	size_t ThreadManager::GetThreadCount() const noexcept
 	{
 		return workerCount;
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	ThreadManager* WorkerThread::Manager = nullptr;
