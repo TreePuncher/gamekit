@@ -118,17 +118,16 @@ namespace FlexKit
 
 	struct FLEXKITAPI Brush
 	{
-		NodeHandle						Node		= InvalidHandle; // 2
-		MaterialHandle					material	= InvalidHandle; // 2
-		TriMeshHandle					Occluder	= InvalidHandle; // 2
-		static_vector<TriMeshHandle>	meshes;
-		//TriMeshHandle		MeshHandle			= InvalidHandle;	// 2
+		NodeHandle							Node		= InvalidHandle; // 2
+		MaterialHandle						material	= InvalidHandle; // 2
+		TriMeshHandle						Occluder	= InvalidHandle; // 2
+		Vector<TriMeshHandle, 16, uint8_t>	meshes;
 
 		bool					DrawLast		= false; // 1
 		bool					Transparent		= false; // 1
 		bool					Textured		= false; // 1
 		bool					Dirty			= false; // 1
-		bool                    Skinned         = false;
+		bool					Skinned			= false;
 		bool					Padding[1];		// 5
 		char*					id;				// 8 - string ID, null terminated 
 

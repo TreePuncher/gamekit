@@ -12,8 +12,7 @@
 #include <cmath>
 
 namespace FlexKit
-{
-	/************************************************************************************************/
+{	/************************************************************************************************/
 
 
 	std::optional<GameObject*> FindGameObject(Scene& scene, const char* id)
@@ -75,6 +74,185 @@ namespace FlexKit
 			{
 				visable.SetVisable(v);
 			});
+	}
+
+
+	/************************************************************************************************/
+
+
+	BrushView::BrushView(GameObject& gameObject)
+	{
+		auto node = GetSceneNode(gameObject);
+
+		GetComponent()[brush].Node = node != InvalidHandle ? node : GetZeroedNode();
+	}
+
+
+	/************************************************************************************************/
+
+
+	BrushView::BrushView(GameObject& gameObject, TriMeshHandle	triMesh)
+	{
+		auto node = GetSceneNode(gameObject);
+
+		auto& meshes = GetComponent()[brush].meshes;
+
+		GetComponent()[brush].meshes.push_back(triMesh);
+		GetComponent()[brush].Node = node != InvalidHandle ? node : GetZeroedNode();
+	}
+
+
+	/************************************************************************************************/
+
+
+	BrushView::~BrushView()
+	{
+		auto& brush_ref = GetComponent()[brush];
+		ReleaseMesh(brush_ref.Occluder);
+
+		for (auto& mesh : brush_ref.meshes)
+			ReleaseMesh(mesh);
+
+		GetComponent().Remove(brush);
+	}
+
+
+	/************************************************************************************************/
+
+
+	std::span<TriMeshHandle> BrushView::GetMeshes() const noexcept
+	{
+		return GetComponent()[brush].meshes;
+	}
+
+
+	/************************************************************************************************/
+
+
+	MaterialHandle BrushView::GetMaterial() noexcept
+	{
+		return GetComponent()[brush].material;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void BrushView::SetMaterial(MaterialHandle material) noexcept
+	{
+		GetComponent()[brush].material = material;
+	}
+
+
+	/************************************************************************************************/
+
+
+	BrushView::operator Brush& () noexcept
+	{
+		return GetComponent()[brush];
+	}
+
+
+	/************************************************************************************************/
+
+
+	AABB BrushView::GetAABB() const noexcept
+	{
+		auto meshes = GetMeshes();
+
+		if (meshes.empty())
+			return {};
+		else
+		{
+			AABB aabb{};
+
+			for (const auto mesh : meshes)
+				aabb += GetMeshResource(mesh)->AABB;
+
+			return aabb;
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	BoundingSphere BrushView::GetBoundingSphere() const noexcept
+	{
+		auto meshes = GetMeshes();
+
+		if (meshes.empty())
+			return {};
+		else
+		{
+			BoundingSphere bs = GetMeshResource(meshes.front())->BS;
+
+			for (const auto mesh : std::span{meshes.begin() + 1, meshes.end()})
+			{
+				auto meshbs = GetMeshResource(mesh)->BS;
+				bs += meshbs;
+			}
+
+			return bs;
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void BrushView::SetTransparent(const bool transparent) noexcept
+	{
+		GetComponent()[brush].Transparent = transparent;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void BrushView::PushMesh(const TriMeshHandle mesh) noexcept
+	{
+		auto& meshes = GetComponent()[brush].meshes;
+		meshes.push_back(mesh);
+
+		AddRef(mesh);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void BrushView::SetOptionalAllocator(iAllocator& allocator) noexcept
+	{
+		auto& meshes = GetComponent()[brush].meshes;
+
+		Vector<TriMeshHandle, 16, uint8_t>	newContainer{ allocator };
+		newContainer += meshes;
+
+		meshes = std::move(newContainer);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void BrushView::RemoveMesh(const TriMeshHandle mesh) noexcept
+	{
+		auto& meshes = GetComponent()[brush].meshes;
+
+		if(auto itr = std::ranges::find(meshes, mesh); itr != meshes.end())
+			meshes.remove_unstable(itr);
+
+		ReleaseMesh(mesh);
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool BrushView::GetTransparent() const noexcept
+	{
+		return GetComponent()[brush].Transparent;
 	}
 
 
@@ -267,8 +445,20 @@ namespace FlexKit
 
 		return Apply(
 			go,
-			[&](BrushView& brushView)	{ return brushView.GetBoundingSphere() * scale; },
+			[&](BrushView& brushView)	{ return brushView.GetBoundingSphere(); },
 			[]							{ return BoundingSphere{ 0 }; });
+	}
+
+
+	/************************************************************************************************/
+
+
+	AABB GetAABBFromMesh(GameObject& go)
+	{
+		return Apply(
+			go,
+			[&](BrushView& brushView)	{ return brushView.GetAABB(); },
+			[]()						{ return AABB{}; });
 	}
 
 
