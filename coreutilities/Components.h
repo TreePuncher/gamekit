@@ -24,8 +24,8 @@ namespace FlexKit
 
 	class GameObject;
 
-	using KeyValuePair  = std::pair<uint32_t, void*>;
-	using ValueMap      = std::span<KeyValuePair>;
+	using KeyValuePair	= std::pair<uint32_t, void*>;
+	using ValueMap		= std::span<KeyValuePair>;
 
 	template<typename TY>
 	std::optional<TY> FindValue(ValueMap& map, uint32_t valueId)
@@ -192,8 +192,10 @@ namespace FlexKit
 
 		static TY& GetComponent()
 		{
+#if _DEBUG
 			if (!component)
 				throw(std::runtime_error("Component::GetSystem() : ERROR : Component not initialized!"));
+#endif
 
 			return *static_cast<TY*>(component);
 		}
@@ -262,7 +264,7 @@ namespace FlexKit
 			if (componentSize > sizeof(buffer))
 				return _ptr;
 			else
-				return (ComponentViewBase*)(buffer);
+				return (ComponentViewBase*)(&buffer);
 		}
 
 		ComponentID GetID() const
@@ -300,8 +302,9 @@ namespace FlexKit
 	{
 	public:
 		GameObject(iAllocator* IN_allocator = SystemAllocator) :
-			allocator{ IN_allocator }
-			//behaviors{ allocator } 
+			allocator	{ IN_allocator },
+			ids			{ IN_allocator },
+			views		{ IN_allocator }
 		{}
 
 
@@ -311,12 +314,12 @@ namespace FlexKit
 		}
 
 
-		GameObject              (const GameObject& rhs) = delete;
-		GameObject& operator =  (const GameObject& rhs) = delete;
+		GameObject				(const GameObject& rhs) = delete;
+		GameObject& operator =	(const GameObject& rhs) = delete;
 
 
-		GameObject              (GameObject&& rhs) = delete;
-		GameObject& operator =  (GameObject&& rhs) = delete;
+		GameObject				(GameObject&& rhs) = delete;
+		GameObject& operator =	(GameObject&& rhs) = delete;
 
 		template<typename TY_View, typename ... TY_args>
 		auto& AddView(TY_args&& ... args)
@@ -405,11 +408,10 @@ namespace FlexKit
 
 	private:
 
-
-		static_vector<uint32_t, 16>					ids;	// component + Code
-		static_vector<ComponentViewContainer, 16>	views;	// component + Code
-		iAllocator*									allocator;
-	};
+		Vector<uint32_t, 16, uint8_t>					ids;	// component + Code
+		Vector<ComponentViewContainer, 16, uint8_t>		views;	// component + Code
+		iAllocator*										allocator;
+};
 
 
 	/************************************************************************************************/
@@ -649,8 +651,8 @@ namespace FlexKit
 	class BasicComponent_t : public Component<BasicComponent_t<TY, TY_Handle, ID, TY_EventHandler>, ID>
 	{
 	public:
-		using ThisType      = BasicComponent_t<TY, TY_Handle, ID, TY_EventHandler>;
-		using EventHandler  = TY_EventHandler;
+		using ThisType		= BasicComponent_t<TY, TY_Handle, ID, TY_EventHandler>;
+		using EventHandler	= TY_EventHandler;
 
 		template<typename ... TY_args>
 		BasicComponent_t(iAllocator* allocator, TY_args&&... args) :
@@ -753,7 +755,7 @@ namespace FlexKit
 
 		HandleUtilities::HandleTable<TY_Handle>	handles;
 		Vector<elementData>						elements;
-		TY_EventHandler                         eventHandler;
+		TY_EventHandler							eventHandler;
 	};
 
 
@@ -808,8 +810,8 @@ namespace FlexKit
 			strncpy_s(GetComponent()[ID].ID, 64, string, 64);
 		}
 
-				StringIDComponent::StringID* operator -> ()          { return &GetComponent()[ID]; }
-		const   StringIDComponent::StringID* operator -> () const    { return &GetComponent()[ID]; }
+				StringIDComponent::StringID* operator -> ()			{ return &GetComponent()[ID]; }
+		const   StringIDComponent::StringID* operator -> () const	{ return &GetComponent()[ID]; }
 
 		StringIDHandle ID;
 	};
@@ -845,8 +847,8 @@ namespace FlexKit
 	template<IsConstCharStar ... TY>
 	struct StringQuery
 	{
-		using Type          = StringIDView&;
-		using ValueType     = StringIDView;
+		using Type			= StringIDView&;
+		using ValueType		= StringIDView;
 		static constexpr bool IsConst() { return false; }
 
 		const std::tuple<TY...> IDs;
@@ -1219,7 +1221,7 @@ namespace FlexKit
 			nodes		{ IN_allocator	},
 			allocator	{ IN_allocator	},
 			threads		{ IN_threads	},
-			taskMap     { IN_allocator  } {}
+			taskMap		{ IN_allocator  } {}
 
 
 		// No Copy
@@ -1250,8 +1252,8 @@ namespace FlexKit
 		{
 		public:
 			UpdateBuilder(UpdateTaskBase& IN_node, UpdateDispatcher& IN_dispatcher) :
-				newNode     { IN_node	    },
-				dispatcher  { IN_dispatcher } {}
+				newNode		{ IN_node		},
+				dispatcher	{ IN_dispatcher	} {}
 
 
 			void SetDebugString(const char* str) noexcept
@@ -1305,8 +1307,8 @@ namespace FlexKit
 
 		private:
 
-			UpdateDispatcher&   dispatcher;
-			UpdateTaskBase&     newNode;
+			UpdateDispatcher&	dispatcher;
+			UpdateTaskBase&		newNode;
 		};
 
 
@@ -1362,10 +1364,10 @@ namespace FlexKit
 			return newNode;
 		}
 
-		ThreadManager*				                    threads;
-		Vector<UpdateTaskBase*>		                    nodes;
+		ThreadManager*									threads;
+		Vector<UpdateTaskBase*>							nodes;
 		Vector<std::pair<uint32_t, UpdateTaskBase*>>	taskMap;
-		iAllocator*					                    allocator;
+		iAllocator*										allocator;
 	};
 
 
