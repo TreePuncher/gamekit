@@ -58,37 +58,11 @@ namespace FlexKit
 	class BrushView : public ComponentView_t<BrushComponent>
 	{
 	public:
-		BrushView(GameObject& gameObject)
-		{
-			auto node = GetSceneNode(gameObject);
+		BrushView(GameObject& gameObject);
+		BrushView(GameObject& gameObject, TriMeshHandle	triMesh);
+		~BrushView();
 
-			GetComponent()[brush].Node = node != InvalidHandle ? node : GetZeroedNode();
-		}
-
-
-		BrushView(GameObject& gameObject, TriMeshHandle	triMesh)
-		{
-			auto node = GetSceneNode(gameObject);
-
-			GetComponent()[brush].meshes.push_back(triMesh);
-			GetComponent()[brush].Node = node != InvalidHandle ? node : GetZeroedNode();
-		}
-
-		~BrushView()
-		{
-			auto& brush_ref = GetComponent()[brush];
-			ReleaseMesh(brush_ref.Occluder);
-
-			for (auto& mesh : brush_ref.meshes)
-				ReleaseMesh(mesh);
-
-			GetComponent().Remove(brush);
-		}
-
-		std::span<TriMeshHandle> GetMeshes() noexcept
-		{
-			return GetComponent()[brush].meshes;
-		}
+		std::span<TriMeshHandle> GetMeshes() const noexcept;
 
 		auto& GetBrush(this auto&& self) noexcept
 		{
@@ -98,57 +72,29 @@ namespace FlexKit
 				return std::forward<decltype(GetComponent()[self.brush])>(GetComponent()[self.brush]);
 		}
 
-		MaterialHandle GetMaterial() noexcept
-		{
-			return GetComponent()[brush].material;
-		}
+		MaterialHandle GetMaterial() noexcept;
 
-		void SetMaterial(MaterialHandle material) noexcept
-		{
-			GetComponent()[brush].material = material;
-		}
+		void SetMaterial(MaterialHandle material) noexcept;
 
-		operator Brush& () noexcept
-		{
-			return GetComponent()[brush];
-		}
+		operator Brush& () noexcept;
 
-		BoundingSphere GetBoundingSphere() noexcept
-		{
-			auto meshes = GetMeshes();
 
-			if (meshes.empty())
-				return {};
-			else
-			{
-				BoundingSphere bs{ 0, 0 };
-				for (const auto mesh : meshes)
-				{
-					auto meshbs = GetMeshResource(mesh)->BS;
-					bs += meshbs;
-				}
-				return bs;
-			}
-		}
+		AABB GetAABB() const noexcept;
 
-		void SetTransparent(const bool transparent) noexcept
-		{
-			GetComponent()[brush].Transparent = transparent;
-		}
+		BoundingSphere	GetBoundingSphere() const noexcept;
 
-		void PushMesh(TriMeshHandle mesh) noexcept
-		{
-			auto& meshes = GetComponent()[brush].meshes;
-			meshes.push_back(mesh);
+		bool			GetTransparent() const noexcept;
+		void			SetTransparent(const bool transparent) noexcept;
 
-			AddRef(mesh);
-		}
+		void			PushMesh(const TriMeshHandle mesh) noexcept;
+		void			RemoveMesh(const TriMeshHandle mesh) noexcept;
 
-		bool GetTransparent() const noexcept
-		{
-			return GetComponent()[brush].Transparent;
-		}
 
+		// Brush::Meshes has internal space for 16 meshes.
+		// When more than 16 meshes are expected,
+		// set the optional allocator to allow for expansion
+		// Brush::Meshes can store up to 256 meshes. 
+		void SetOptionalAllocator(iAllocator& allocator) noexcept;
 
 		BrushHandle	brush = GetComponent().Create(Brush{});
 	};
@@ -239,8 +185,7 @@ namespace FlexKit
 		void		SetNode			(NodeHandle node) const noexcept;
 		void		SetRadius		(float r) noexcept;
 
-		PointLight*			operator -> ()        noexcept  { return &GetComponent()[light]; }
-		const PointLight*	operator -> () const  noexcept  { return &GetComponent()[light]; }
+		PointLight*	operator -> (this auto& self) noexcept  { return &self.GetComponent()[light]; }
 
 		operator PointLightHandle () { return light; }
 
@@ -344,6 +289,8 @@ namespace FlexKit
 	void			SetBoundingSphereRadius(GameObject& go, const float radius);
 	void			SetBoundingSphereFromLight(GameObject& go);
 	void			SetTransparent(GameObject& go, const bool tranparent);
+
+	AABB			GetAABBFromMesh(GameObject& go);
 	BoundingSphere	GetBoundingSphereFromMesh(GameObject& go);
 	BoundingSphere	GetBoundingSphere(GameObject& go);
 
@@ -367,18 +314,11 @@ namespace FlexKit
 	{
 		struct BVHElement
 		{
-			uint32_t            ID;
-			VisibilityHandle    handle;
+			uint32_t			ID;
+			VisibilityHandle	handle;
 
-			friend bool operator > (const BVHElement& lhs, const BVHElement& rhs)
-			{
-				return lhs.ID > rhs.ID;
-			}
-
-			friend bool operator < (const BVHElement& lhs, const BVHElement& rhs)
-			{
-				return lhs.ID < rhs.ID;
-			}
+			friend bool operator > (const BVHElement& lhs, const BVHElement& rhs) { return lhs.ID > rhs.ID; }
+			friend bool operator < (const BVHElement& lhs, const BVHElement& rhs) { return lhs.ID < rhs.ID; }
 		};
 
 
@@ -530,7 +470,7 @@ namespace FlexKit
 		void				AddGameObject	(GameObject& go);
 		void				RemoveEntity	(GameObject& go);
 
-		void				ClearScene			();
+		void				ClearScene();
 
 		Vector<PointLightHandle>	FindPointLights(const Frustum& f, iAllocator* tempMemory) const;
 
@@ -545,8 +485,7 @@ namespace FlexKit
 		Vector<SceneRayCastResult>	RayCast(FlexKit::Ray v, iAllocator& allocator = SystemAllocator) const;
 
 		template<typename ... TY_Queries>
-		[[nodiscard]]
-		auto Query(iAllocator& allocator, TY_Queries ... queries)
+		[[nodiscard]] auto Query(iAllocator& allocator, TY_Queries ... queries)
 		{
 			auto& visables = SceneVisibilityComponent::GetComponent();
 
@@ -563,6 +502,18 @@ namespace FlexKit
 			return results;
 		}
 
+		template<typename TY_FN, typename ... TY_Queries>
+		void QueryFor(TY_FN FN, const TY_Queries& ... queries)
+		{
+			auto& visables = SceneVisibilityComponent::GetComponent();
+
+			for (const auto entity : sceneEntities)
+			{
+				auto& gameObject = *visables[entity].entity;
+				if (auto res = FlexKit::Query(gameObject, queries...); res)
+					FN(gameObject, res);
+			}
+		}
 
 		auto begin()	{ return sceneEntities.begin(); }
 		auto end()		{ return sceneEntities.end(); }
@@ -574,7 +525,7 @@ namespace FlexKit
 		Vector<GameObject*>				ownedGameObjects;
 		Vector<VisibilityHandle>		sceneEntities;
 		SceneBVH						bvh;
-		iAllocator*						allocator       = nullptr;
+		iAllocator*						allocator = nullptr;
 
 		operator Scene* () { return this; }
 	};
@@ -635,8 +586,8 @@ namespace FlexKit
 	FLEXKITAPI void DEBUG_ListSceneObjects(Scene& scene);
 
 
-	FLEXKITAPI void UpdateScene				    (Scene* SM);
-	FLEXKITAPI void UpdateAnimationsScene	    (Scene* SM, double dt);
+	FLEXKITAPI void UpdateScene					(Scene* SM);
+	FLEXKITAPI void UpdateAnimationsScene		(Scene* SM, double dt);
 	FLEXKITAPI void UpdateScenePoseTransform	(Scene* SM );
 	FLEXKITAPI void UpdateShadowCasters			(Scene* SM);
 
@@ -650,7 +601,7 @@ namespace FlexKit
 
 	struct SceneLoadingContext;
 
-	FLEXKITAPI bool LoadScene(RenderSystem* RS, SceneLoadingContext& ctx, GUID_t Guid,              iAllocator* allocator, iAllocator* Temp);
+	FLEXKITAPI bool LoadScene(RenderSystem* RS, SceneLoadingContext& ctx, GUID_t Guid,				iAllocator* allocator, iAllocator* Temp);
 	FLEXKITAPI bool LoadScene(RenderSystem* RS, SceneLoadingContext& ctx, const char* LevelName,	iAllocator* allocator, iAllocator* Temp);
 
 

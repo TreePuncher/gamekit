@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -26,8 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CoreSceneObjects.h"
 
 namespace FlexKit
-{
-	/************************************************************************************************/
+{	/************************************************************************************************/
 
 
 	size_t CreateSortingID(bool Posed, bool Textured, size_t Depth)
@@ -206,7 +205,7 @@ namespace FlexKit
 			}
 			{
 				float4 V1 = DirectX::XMVector4Transform(BottomRight,	Float4x4ToXMMATIRX(&InverseView));
-				float4 V2 = DirectX::XMVector4Transform(BottomLeft,		Float4x4ToXMMATIRX(&InverseView));
+				float4 V2 = DirectX::XMVector4Transform(BottomLeft, Float4x4ToXMMATIRX(&InverseView));
 				float3 V3 = V1.xyz() / V1.w;
 				float3 V4 = V2.xyz() / V2.w;
 
@@ -318,11 +317,11 @@ namespace FlexKit
 		XMPV		= XMMatrixTranspose(XMMatrixTranspose(XMProj) * XMView);
 		XMIV		= XMWT;//XMMatrixTranspose(XMMatrixInverse(nullptr, XMMatrixTranspose(CreatePerspective(this, invert)) * XMView));
 
-        previous.WT     = WT;
-        previous.View   = View;
-        previous.PV     = PV;
-        previous.Proj   = Proj;
-        previous.IV     = IV;
+		previous.WT     = WT;
+		previous.View   = View;
+		previous.PV     = PV;
+		previous.Proj   = Proj;
+		previous.IV     = IV;
 
 		WT		= XMMatrixToFloat4x4(&XMWT);
 		View	= XMMatrixToFloat4x4(&XMView);
@@ -370,9 +369,9 @@ namespace FlexKit
 	}
 
 
-    Camera::ConstantBuffer Camera::GetCameraPreviousConstants() const
-    {
-        DirectX::XMMATRIX XMWT   = Float4x4ToXMMATIRX(&previous.WT);
+	Camera::ConstantBuffer Camera::GetCameraPreviousConstants() const
+	{
+		DirectX::XMMATRIX XMWT   = Float4x4ToXMMATIRX(&previous.WT);
 		DirectX::XMMATRIX XMView = DirectX::XMMatrixInverse(nullptr, XMWT);
 
 		Camera::ConstantBuffer NewData;
@@ -402,7 +401,7 @@ namespace FlexKit
 		NewData.AspectRatio = previous.aspectRatio;
 
 		return NewData;
-    }
+	}
 
 
 	float4x4 Camera::GetPV()
