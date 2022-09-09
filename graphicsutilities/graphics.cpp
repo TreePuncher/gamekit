@@ -7708,9 +7708,6 @@ namespace FlexKit
 
 			DelayedReleaseTriMesh(GeometryTable.renderSystem, G);
 
-			if (G->Skeleton)
-				CleanUpSkeleton(G->Skeleton);
-
 			GeometryTable.FreeList.push_back(Index);
 			GeometryTable.Geometry[Index]   = TriMesh();
 			GeometryTable.Handles[TMHandle] = -1;
@@ -7779,47 +7776,6 @@ namespace FlexKit
 		auto Mesh = &GeometryTable.Geometry[GeometryTable.Handles[TMHandle]];
 		return float4{ float3{0}, Mesh->Info.r };
 	}
-
-
-	/************************************************************************************************/
-
-
-	Skeleton* GetSkeleton(TriMeshHandle TMHandle){
-		return GetMeshResource(TMHandle)->Skeleton;
-	}
-
-
-	/************************************************************************************************/
-
-
-	size_t	GetSkeletonGUID(TriMeshHandle TMHandle){
-		return GetMeshResource(TMHandle)->SkeletonGUID;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void SetSkeleton(TriMeshHandle TMHandle, Skeleton* S){
-		GetMeshResource(TMHandle)->Skeleton = S;
-	}
-
-
-	/************************************************************************************************/
-
-
-	bool IsSkeletonLoaded(TriMeshHandle guid){
-		return (GetMeshResource(guid)->Skeleton != nullptr);
-	}
-
-
-	/************************************************************************************************/
-
-
-	bool HasAnimationData(TriMeshHandle RMeshHandle){
-		return GetSkeleton(RMeshHandle)->Animations != nullptr;
-	}
-
 
 
 	/************************************************************************************************/

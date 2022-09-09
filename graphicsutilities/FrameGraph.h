@@ -1354,10 +1354,10 @@ namespace FlexKit
 			auto idx    = Nodes.emplace_back(
 				FrameGraphNode{
 					[](
-					FrameGraphNode& node,
-					FrameResources& resources,
-					Context&        ctx,
-					iAllocator&     tempAllocator)
+					FrameGraphNode&	node,
+					FrameResources&	resources,
+					Context&		ctx,
+					iAllocator&		tempAllocator)
 					{
 						ProfileFunction();
 

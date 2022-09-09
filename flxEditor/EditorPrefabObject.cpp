@@ -47,7 +47,7 @@ const std::string& ScriptResource::GetResourceID() const noexcept
 /************************************************************************************************/
 
 
-const uint64_t ScriptResource::GetResourceGUID() const noexcept
+uint64_t ScriptResource::GetResourceGUID() const noexcept
 {
 	return guid;
 }
@@ -56,7 +56,7 @@ const uint64_t ScriptResource::GetResourceGUID() const noexcept
 /************************************************************************************************/
 
 
-const ResourceID_t ScriptResource::GetResourceTypeID() const noexcept
+ResourceID_t ScriptResource::GetResourceTypeID() const noexcept
 {
 	return ScriptResourceTypeID;
 }
@@ -118,12 +118,12 @@ const std::string& PrefabGameObjectResource::GetResourceID() const noexcept
 	return ID;
 }
 
-const uint64_t PrefabGameObjectResource::GetResourceGUID() const noexcept
+uint64_t PrefabGameObjectResource::GetResourceGUID() const noexcept
 {
 	return guid;
 }
 
-const ResourceID_t PrefabGameObjectResource::GetResourceTypeID() const noexcept
+ResourceID_t PrefabGameObjectResource::GetResourceTypeID() const noexcept
 {
 	return FlexKit::EResource_Prefab;
 }
@@ -182,7 +182,7 @@ void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface
 
 						FlexKit::ReadContext rdCtx{};
 						for (auto texture : subMaterialData.textures)
-							materials.AddTexture(texture, subMaterial, rdCtx);
+							materials.PushTexture(subMaterial, texture, rdCtx);
 					}
 				}
 				else if(brushComponent->material.subMaterials.size() == 1)
@@ -192,7 +192,7 @@ void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface
 					FlexKit::ReadContext rdCtx{};
 
 					for (auto texture : subMaterialData.textures)
-						materials.AddTexture(texture, material, rdCtx);
+						materials.PushTexture(material, texture, rdCtx);
 				}
 
 				auto& meshes = brushComponent->meshes;

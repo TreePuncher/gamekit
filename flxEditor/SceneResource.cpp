@@ -3,7 +3,7 @@
 #include "ComponentBlobs.h"
 #include "MeshUtils.h"
 #include "TextureResourceUtilities.h"
-#include "MeshProcessing.h"
+#include "MeshResource.h"
 #include "ResourceUtilities.h"
 
 #include <fstream>
@@ -16,7 +16,7 @@
 #include <stb_image_write.h>
 
 namespace FlexKit
-{   /************************************************************************************************/
+{	/************************************************************************************************/
 
 
 	std::optional<MeshResource_ptr> ExtractGeometry(tinygltf::Mesh& mesh)
@@ -28,8 +28,8 @@ namespace FlexKit
 	{
 		using namespace tinygltf;
 
-		ResourceList        resources;
-		std::vector<size_t> meshMap;
+		ResourceList		resources;
+		std::vector<size_t>	meshMap;
 
 		for (auto& mesh : model.meshes)
 		{
@@ -103,13 +103,13 @@ namespace FlexKit
 				}
 			}
 
-			std::vector<LODLevel>       lodLevels;
-			std::vector<std::string>    morphTargetNames;
+			std::vector<LODLevel>		lodLevels;
+			std::vector<std::string>	morphTargetNames;
 
 			for(auto sourceMesh : lodSources)
 			{
-				auto&       primitives = sourceMesh->primitives;
-				auto        meshTokens = FlexKit::MeshUtilityFunctions::TokenList{ SystemAllocator };
+				auto&	primitives = sourceMesh->primitives;
+				auto	meshTokens = FlexKit::MeshUtilityFunctions::TokenList{ SystemAllocator };
 
 				LODLevel lod;
 				for(auto& primitive : primitives)
@@ -118,15 +118,15 @@ namespace FlexKit
 
 					for(auto& attribute : primitive.attributes)
 					{
-						auto& bufferAcessor = model.accessors[attribute.second];
-						auto& bufferView    = model.bufferViews[bufferAcessor.bufferView];
-						auto* buffer        = model.buffers[bufferView.buffer].data.data() + bufferView.byteOffset;
+						auto& bufferAcessor	= model.accessors[attribute.second];
+						auto& bufferView	= model.bufferViews[bufferAcessor.bufferView];
+						auto* buffer		= model.buffers[bufferView.buffer].data.data() + bufferView.byteOffset;
 
-						auto stride         = bufferView.byteStride == 0 ? GetComponentSizeInBytes(bufferAcessor.componentType) * GetNumComponentsInType(bufferAcessor.type) : bufferView.byteStride;
-						auto elementCount   = bufferView.byteLength / stride;
+						auto stride			= bufferView.byteStride == 0 ? GetComponentSizeInBytes(bufferAcessor.componentType) * GetNumComponentsInType(bufferAcessor.type) : bufferView.byteStride;
+						auto elementCount	= bufferView.byteLength / stride;
 
-						std::regex texcoordPattern  { R"(TEXCOORD_[0-9]+)" };
-						std::regex jointPattern     { R"(JOINTS_[0-9]+)" };
+						std::regex texcoordPattern	{ R"(TEXCOORD_[0-9]+)" };
+						std::regex jointPattern		{ R"(JOINTS_[0-9]+)" };
 
 
 						if (attribute.first == "POSITION")
@@ -149,14 +149,14 @@ namespace FlexKit
 						{
 							if (primitive.attributes.find("TANGENT") != primitive.attributes.end())
 							{
-								newMesh.Normals     = true;
-								newMesh.Tangents    = true;
+								newMesh.Normals		= true;
+								newMesh.Tangents	= true;
 
-								auto& tangentAcessor    = model.accessors[primitive.attributes["TANGENT"]];
-								auto& tangentView       = model.bufferViews[tangentAcessor.bufferView];
-								auto* tangentbuffer     = model.buffers[tangentView.buffer].data.data() + tangentView.byteOffset;
+								auto& tangentAcessor	= model.accessors[primitive.attributes["TANGENT"]];
+								auto& tangentView		= model.bufferViews[tangentAcessor.bufferView];
+								auto* tangentbuffer		= model.buffers[tangentView.buffer].data.data() + tangentView.byteOffset;
 
-								auto tangentStride      = tangentView.byteStride == 0 ? GetComponentSizeInBytes(tangentAcessor.componentType) * GetNumComponentsInType(tangentAcessor.type) : tangentView.byteStride;
+								auto tangentStride		= tangentView.byteStride == 0 ? GetComponentSizeInBytes(tangentAcessor.componentType) * GetNumComponentsInType(tangentAcessor.type) : tangentView.byteStride;
 
 								for (size_t I = 0; I < elementCount; I++)
 								{
@@ -224,16 +224,16 @@ namespace FlexKit
 
 							idx = res ? std::atoi(results.begin()->str().c_str()) : 0;
 
-							auto& weightsAcessor    = model.accessors[primitive.attributes[fmt::format("WEIGHTS_{0}", idx)]];
-							auto& weightsView       = model.bufferViews[weightsAcessor.bufferView];
-							auto* weightsbuffer     = model.buffers[weightsView.buffer].data.data() + weightsView.byteOffset;
+							auto& weightsAcessor	= model.accessors[primitive.attributes[fmt::format("WEIGHTS_{0}", idx)]];
+							auto& weightsView		= model.bufferViews[weightsAcessor.bufferView];
+							auto* weightsbuffer		= model.buffers[weightsView.buffer].data.data() + weightsView.byteOffset;
 
-							const auto weightsStride = weightsView.byteStride == 0 ? GetComponentSizeInBytes(weightsAcessor.componentType) * GetNumComponentsInType(weightsAcessor.type) : weightsView.byteStride;
+							const auto weightsStride	= weightsView.byteStride == 0 ? GetComponentSizeInBytes(weightsAcessor.componentType) * GetNumComponentsInType(weightsAcessor.type) : weightsView.byteStride;
 
 							for (size_t I = 0; I < elementCount; I++)
 							{
-								uint4_16    joints;
-								float4      weights;
+								uint4_16	joints;
+								float4		weights;
 
 
 								if(stride == 4)
@@ -259,41 +259,41 @@ namespace FlexKit
 
 					}
 
-					size_t                  morphTargetCount = 0;
-					uint32_t                morphTargetVertexCount = 0;
-					std::vector<uint32_t>   morphTargetStart;
+					size_t					morphTargetCount = 0;
+					uint32_t				morphTargetVertexCount = 0;
+					std::vector<uint32_t>	morphTargetStart;
 
 					for(auto& morphChannels : primitive.targets)
 					{
-						auto position       = morphChannels.find("POSITION");
-						auto tangent        = morphChannels.find("TANGENT");
-						auto normal         = morphChannels.find("NORMAL");
+						auto position		= morphChannels.find("POSITION");
+						auto tangent		= morphChannels.find("TANGENT");
+						auto normal			= morphChannels.find("NORMAL");
 
 						if (tangent == morphChannels.end() || normal == morphChannels.end() || position == morphChannels.end())
 							continue;
 
 						morphTargetStart.push_back(morphTargetVertexCount);
 
-						auto& positionAcessor   = model.accessors[position->second];
-						auto& positionView      = model.bufferViews[positionAcessor.bufferView];
-						auto* positionBuffer    = model.buffers[positionView.buffer].data.data() + positionView.byteOffset;
+						auto& positionAcessor	= model.accessors[position->second];
+						auto& positionView		= model.bufferViews[positionAcessor.bufferView];
+						auto* positionBuffer	= model.buffers[positionView.buffer].data.data() + positionView.byteOffset;
 
-						auto& normalAcessor     = model.accessors[normal->second];
-						auto& normalView        = model.bufferViews[normalAcessor.bufferView];
-						auto* normalBuffer      = model.buffers[normalView.buffer].data.data() + normalView.byteOffset;
+						auto& normalAcessor		= model.accessors[normal->second];
+						auto& normalView		= model.bufferViews[normalAcessor.bufferView];
+						auto* normalBuffer		= model.buffers[normalView.buffer].data.data() + normalView.byteOffset;
 
-						auto& tangentAcessor    = model.accessors[tangent->second];
-						auto& tangentView       = model.bufferViews[tangentAcessor.bufferView];
-						auto* tangentbuffer     = model.buffers[tangentView.buffer].data.data() + tangentView.byteOffset;
+						auto& tangentAcessor	= model.accessors[tangent->second];
+						auto& tangentView		= model.bufferViews[tangentAcessor.bufferView];
+						auto* tangentbuffer		= model.buffers[tangentView.buffer].data.data() + tangentView.byteOffset;
 
-						auto positionStride         = positionView.byteStride == 0 ? GetComponentSizeInBytes(positionAcessor.componentType) * GetNumComponentsInType(positionAcessor.type) : positionView.byteStride;
-						auto positionElementCount   = positionView.byteLength / positionStride;
+						auto positionStride			= positionView.byteStride == 0 ? GetComponentSizeInBytes(positionAcessor.componentType) * GetNumComponentsInType(positionAcessor.type) : positionView.byteStride;
+						auto positionElementCount	= positionView.byteLength / positionStride;
 
-						auto tangentStride          = tangentView.byteStride == 0 ? GetComponentSizeInBytes(tangentAcessor.componentType) * GetNumComponentsInType(tangentAcessor.type) : tangentView.byteStride;
-						auto tangentElementCount    = tangentView.byteLength / tangentStride;
+						auto tangentStride			= tangentView.byteStride == 0 ? GetComponentSizeInBytes(tangentAcessor.componentType) * GetNumComponentsInType(tangentAcessor.type) : tangentView.byteStride;
+						auto tangentElementCount	= tangentView.byteLength / tangentStride;
 
-						auto normalStride           = normalView.byteStride == 0 ? GetComponentSizeInBytes(normalAcessor.componentType) * GetNumComponentsInType(normalAcessor.type) : normalView.byteStride;
-						auto normalElementCount     = normalView.byteLength / normalStride;
+						auto normalStride			= normalView.byteStride == 0 ? GetComponentSizeInBytes(normalAcessor.componentType) * GetNumComponentsInType(normalAcessor.type) : normalView.byteStride;
+						auto normalElementCount		= normalView.byteLength / normalStride;
 
 						for (size_t I = 0; I < normalElementCount; I++)
 						{
@@ -301,15 +301,15 @@ namespace FlexKit
 							float3 normal;
 							float3 tangent;
 
-							memcpy(&position,   positionBuffer + positionStride * I, positionStride);
-							memcpy(&normal,     normalBuffer  + normalStride  * I, normalStride);
-							memcpy(&tangent,    tangentbuffer + tangentStride * I, tangentStride);
+							memcpy(&position,	positionBuffer + positionStride * I, positionStride);
+							memcpy(&normal,		normalBuffer  + normalStride  * I, normalStride);
+							memcpy(&tangent,	tangentbuffer + tangentStride * I, tangentStride);
 
 							const MorphTargetVertexToken token{
-								.position   = position,
-								.normal     = normal,
-								.tangent    = tangent,
-								.morphIdx   = (uint32_t)morphTargetCount,
+								.position	= position,
+								.normal		= normal,
+								.tangent	= tangent,
+								.morphIdx	= (uint32_t)morphTargetCount,
 							};
 
 							meshTokens.push_back(token);
@@ -319,15 +319,15 @@ namespace FlexKit
 						morphTargetCount++;
 					}
 
-					auto& indexAccessor     = model.accessors[primitive.indices];
-					auto& indexBufferView   = model.bufferViews[indexAccessor.bufferView];
-					auto& indexBuffer       = model.buffers[indexBufferView.buffer];
+					auto& indexAccessor		= model.accessors[primitive.indices];
+					auto& indexBufferView	= model.bufferViews[indexAccessor.bufferView];
+					auto& indexBuffer		= model.buffers[indexBufferView.buffer];
 					 
-					const auto componentType  = indexAccessor.componentType;
-					const auto type           = indexAccessor.type;
+					const auto componentType	= indexAccessor.componentType;
+					const auto type				= indexAccessor.type;
 
-					const auto stride         = indexBufferView.byteStride == 0 ? GetComponentSizeInBytes(componentType) * GetNumComponentsInType(type) : indexBufferView.byteStride;
-					const auto elementCount   = indexBufferView.byteLength / stride;
+					const auto stride			= indexBufferView.byteStride == 0 ? GetComponentSizeInBytes(componentType) * GetNumComponentsInType(type) : indexBufferView.byteStride;
+					const auto elementCount		= indexBufferView.byteLength / stride;
 
 					auto* buffer = model.buffers[indexBufferView.buffer].data.data() + indexBufferView.byteOffset;
 
@@ -371,8 +371,8 @@ namespace FlexKit
 						meshTokens.push_back(tokens[1]);
 					}
 
-					newMesh.tokens      = std::move(meshTokens);
-					newMesh.faceCount   = elementCount;
+					newMesh.tokens		= std::move(meshTokens);
+					newMesh.faceCount	= elementCount;
 					
 					lod.subMeshs.emplace_back(std::move(newMesh));
 				}
@@ -380,14 +380,14 @@ namespace FlexKit
 				lodLevels.emplace_back(std::move(lod));
 			}
 
-			auto meshResource       = CreateMeshResource(lodLevels, mesh.name, {}, false);
-			meshResource->TriMeshID = GUID;
+			auto meshResource		= CreateMeshResource(lodLevels, mesh.name, {}, false);
+			meshResource->TriMeshID	= GUID;
 
 			auto& extraValues = mesh.extras.Get<tinygltf::Value::Object>();
 			auto& targetNames = extraValues["targetNames"].Get<tinygltf::Value::Array>();
 
-			for (size_t I = 0; I < meshResource->morphTargetBuffers.size(); I++)
-				meshResource->morphTargetBuffers[I].name = targetNames[I].Get<std::string>();
+			for (size_t I = 0; I < meshResource->data->morphTargetBuffers.size(); I++)
+				meshResource->data->morphTargetBuffers[I].name = targetNames[I].Get<std::string>();
 
 			resources.emplace_back(std::move(meshResource));
 
@@ -408,7 +408,7 @@ namespace FlexKit
 		{
 			SceneResource_ptr	sceneResource_ptr = std::make_shared<SceneResource>();
 
-			auto& name      = scene.name;
+			auto& name		= scene.name;
 			//auto& metaData  = FindRelatedMetaData({}, MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE, name); // TODO: allow for meta data to be included from external files
 
 			std::map<int, int> sceneNodeMap;
@@ -472,8 +472,8 @@ namespace FlexKit
 
 										if (imageMap.find(index) != imageMap.end())
 										{
-											auto resource   = imageMap[index];
-											auto assetGUID  = resource->GetResourceGUID();
+											auto resource	= imageMap[index];
+											auto assetGUID	= resource->GetResourceGUID();
 
 											std::cout << "Searched for " << string << ". Found resource: " << resource->GetResourceID() << "\n";
 
@@ -542,13 +542,13 @@ namespace FlexKit
 						{
 							auto lightIdx = ext.second.Get<tinygltf::Value::Object>()["light"].Get<int>();
 
-							auto& extension     = model.extensions["KHR_lights_punctual"];
-							auto& lights        = extension.Get<tinygltf::Value::Object>()["lights"];
+							auto& extension		= model.extensions["KHR_lights_punctual"];
+							auto& lights		= extension.Get<tinygltf::Value::Object>()["lights"];
 
-							auto& light         = lights.Get(lightIdx);
-							auto& color         = light.Get("color");
-							float intensity     = GetNumber(light.Get("intensity"));
-							float range         = light.Has("range") ? ([](float F) { return F == 0.0 ? 1000 : F; }(GetNumber(light.Get("range")))) : 1000;
+							auto& light			= lights.Get(lightIdx);
+							auto& color			= light.Get("color");
+							float intensity		= GetNumber(light.Get("intensity"));
+							float range			= light.Has("range") ? ([](float F) { return F == 0.0 ? 1000 : F; }(GetNumber(light.Get("range")))) : 1000;
 
 							float3 K = {
 								GetNumber(color.Get(0)),
@@ -589,9 +589,9 @@ namespace FlexKit
 
 	struct ImageLoaderDesc
 	{
-		tinygltf::Model&                model;
-		ResourceList&                   resources;
-		std::map<int, Resource_ptr>&    imageMap;
+		tinygltf::Model&				model;
+		ResourceList&					resources;
+		std::map<int, Resource_ptr>&	imageMap;
 	};
 
 
@@ -599,13 +599,13 @@ namespace FlexKit
 	{
 		ImageLoaderDesc* loader = reinterpret_cast<ImageLoaderDesc*>(user_ptr);
 
-		int x       = 0;
-		int y       = 0;
-		int comp    = 0;
+		int x		= 0;
+		int y		= 0;
+		int comp	= 0;
 
-		auto datass     = stbi_load_from_memory(bytes, size, &x, &y, &comp, 3);
-		float* floats   = (float*)datass;
-		auto resource   = CreateTextureResource(floats, x * y * 3, { x, y }, 3, image->name, "DXT7");
+		auto datass		= stbi_load_from_memory(bytes, size, &x, &y, &comp, 3);
+		float* floats	= (float*)datass;
+		auto resource	= CreateTextureResource(floats, x * y * 3, { x, y }, 3, image->name, "DXT7");
 
 		loader->resources.push_back(resource);
 		loader->imageMap[image_idx] = resource;
@@ -623,9 +623,9 @@ namespace FlexKit
 
 		for (auto& skin : model.skins)
 		{
-			std::vector<uint32_t>           parentLinkage;
-			std::map<uint32_t, uint32_t>    nodeMap;
-			std::vector<float4x4>           jointPoses;
+			std::vector<uint32_t>			parentLinkage;
+			std::map<uint32_t, uint32_t>	nodeMap;
+			std::vector<float4x4>			jointPoses;
 
 			// Build linkage
 			for (auto _ : skin.joints)
@@ -639,11 +639,11 @@ namespace FlexKit
 
 			GUID_t ID = rand();
 
-			const auto bufferViewIdx    = model.accessors[skin.inverseBindMatrices].bufferView;
-			const auto& bufferView      = model.bufferViews[bufferViewIdx];
-			const auto& buffer          = model.buffers[bufferView.buffer];
+			const auto bufferViewIdx	= model.accessors[skin.inverseBindMatrices].bufferView;
+			const auto& bufferView		= model.bufferViews[bufferViewIdx];
+			const auto& buffer			= model.buffers[bufferView.buffer];
 
-			const auto inverseMatrices  = reinterpret_cast<const FlexKit::float4x4*>(buffer.data.data() + bufferView.byteOffset);
+			const auto inverseMatrices	= reinterpret_cast<const FlexKit::float4x4*>(buffer.data.data() + bufferView.byteOffset);
 
 			// Fetch properties
 			for (auto& joint : skin.joints)
@@ -666,12 +666,12 @@ namespace FlexKit
 			// Fetch Bind Pose
 			for (size_t I = 0; I < parentLinkage.size(); I++)
 			{
-				auto parent         = JointHandle(parentLinkage[I]);
-				auto inversePose    = Float4x4ToXMMATIRX(inverseMatrices[I]);
+				auto parent			= JointHandle(parentLinkage[I]);
+				auto inversePose	= Float4x4ToXMMATIRX(inverseMatrices[I]);
 
 				SkeletonJoint joint;
-				joint.mParent   = parent;
-				joint.mID       = model.nodes[skin.joints[I]].name;
+				joint.mParent	= parent;
+				joint.mID		= model.nodes[skin.joints[I]].name;
 				skeleton->AddJoint(joint, inversePose);
 			}
 
@@ -691,11 +691,11 @@ namespace FlexKit
 
 		for (auto& animation : model.animations)
 		{
-			auto animationResource  = std::make_shared<AnimationResource>();
+			auto animationResource	= std::make_shared<AnimationResource>();
 
-			animationResource->ID   = animation.name;
-			auto& channels          = animation.channels;
-			auto& samplers          = animation.samplers;
+			animationResource->ID	= animation.name;
+			auto& channels			= animation.channels;
+			auto& samplers			= animation.samplers;
 
 			for (auto& channel : channels)
 			{
@@ -703,36 +703,36 @@ namespace FlexKit
 
 				auto& sampler = samplers[channel.sampler];
 
-				auto& input     = model.accessors[sampler.input];
-				auto& output    = model.accessors[sampler.output];
+				auto& input		= model.accessors[sampler.input];
+				auto& output	= model.accessors[sampler.output];
 
-				auto& inputView     = model.bufferViews[input.bufferView];
-				auto& outputView    = model.bufferViews[output.bufferView];
+				auto& inputView		= model.bufferViews[input.bufferView];
+				auto& outputView	= model.bufferViews[output.bufferView];
 
 				auto name = model.nodes[channel.target_node].name;
 
 				track.targetChannel = AnimationTrackTarget{
-										.Channel    = channel.target_path,
-										.Target     = name,
-										.type       = TrackType::Skeletal };
+										.Channel	= channel.target_path,
+										.Target		= name,
+										.type		= TrackType::Skeletal };
 
 				union float3Value
 				{
 					float floats[3];
 				};
 
-				const size_t    frameCount          = outputView.byteLength / 16;
-				float*          startTime           = (float*)(model.buffers[inputView.buffer].data.data() + inputView.byteOffset);
+				const size_t	frameCount			= outputView.byteLength / 16;
+				float*			startTime			= (float*)(model.buffers[inputView.buffer].data.data() + inputView.byteOffset);
 
 				const uint channelID =  channel.target_path == "rotation" ? 0 :
 										channel.target_path == "translation" ? 1 :
 										channel.target_path == "scale" ? 2 : -1;
 
-				const auto& r            = model.nodes[channel.target_node].rotation;
-				const auto& p            = model.nodes[channel.target_node].translation;
-				const Quaternion Q       = r.size() ?  Quaternion{ (float)r[0], (float)r[1], (float)r[2], (float)r[3] }.normal() : Quaternion::Identity();
-				const Quaternion Q_i     = Q.Inverse();
-				const auto position      = p.size() ? float4{ (float)p[0], (float)p[1], (float)p[2], 0 } : float4{ 0 };
+				const auto& r			= model.nodes[channel.target_node].rotation;
+				const auto& p			= model.nodes[channel.target_node].translation;
+				const Quaternion Q		= r.size() ?  Quaternion{ (float)r[0], (float)r[1], (float)r[2], (float)r[3] }.normal() : Quaternion::Identity();
+				const Quaternion Q_i	= Q.Inverse();
+				const auto position		= p.size() ? float4{ (float)p[0], (float)p[1], (float)p[2], 0 } : float4{ 0 };
 
 				if (channelID == 2)
 					continue;
@@ -740,22 +740,22 @@ namespace FlexKit
 				for (size_t I = 0; I < frameCount; ++I)
 				{
 					AnimationKeyFrame keyFrame;
-					keyFrame.Begin          = startTime[I];
-					keyFrame.End            = startTime[I + 1];
-					keyFrame.interpolator   = AnimationInterpolator{ .Type = AnimationInterpolator::InterpolatorType::Linear };
+					keyFrame.Begin			= startTime[I];
+					keyFrame.End			= startTime[I + 1];
+					keyFrame.interpolator	= AnimationInterpolator{ .Type = AnimationInterpolator::InterpolatorType::Linear };
 
 					switch(channelID)
 					{
 					case 0:
 					{
-						Quaternion* rotationChannel = (Quaternion*)(model.buffers[outputView.buffer].data.data() + outputView.byteOffset);
-						auto rotationKey            = rotationChannel[I] * Q_i;
-						keyFrame.Value              = float4{ rotationKey[0], rotationKey[1], rotationKey[2], rotationKey[3] };
+						Quaternion* rotationChannel	= (Quaternion*)(model.buffers[outputView.buffer].data.data() + outputView.byteOffset);
+						auto rotationKey			= rotationChannel[I] * Q_i;
+						keyFrame.Value				= float4{ rotationKey[0], rotationKey[1], rotationKey[2], rotationKey[3] };
 					}   break;
 					case 1:
 					{
-						float3Value* float3Channel  = (float3Value*)(model.buffers[outputView.buffer].data.data() + outputView.byteOffset);
-						keyFrame.Value              = float4{ float3Channel->floats[0], float3Channel->floats[1], float3Channel->floats[2], 1} - position;
+						float3Value* float3Channel	= (float3Value*)(model.buffers[outputView.buffer].data.data() + outputView.byteOffset);
+						keyFrame.Value				= float4{ float3Channel->floats[0], float3Channel->floats[1], float3Channel->floats[2], 1} - position;
 					}   break;
 					default:
 						break;
@@ -785,8 +785,8 @@ namespace FlexKit
 		std::string err;
 		std::string warn;
 
-		ResourceList                resources;
-		std::map<int, Resource_ptr> imageMap;
+		ResourceList				resources;
+		std::map<int, Resource_ptr>	imageMap;
 
 		ImageLoaderDesc imageLoader{ model, resources, imageMap };
 		loader.SetImageLoader(loadImage, &imageLoader);
@@ -794,9 +794,9 @@ namespace FlexKit
 		if (auto res = loader.LoadBinaryFromFile(&model, &err, &warn, fileDir.string()); res == true)
 		{
 
-			auto deformers                  = GatherDeformers(model);
-			auto animations                 = GatherAnimations(model);
-			auto [meshResources, meshMap]   = GatherGeometry(model);
+			auto deformers					= GatherDeformers(model);
+			auto animations					= GatherAnimations(model);
+			auto [meshResources, meshMap]	= GatherGeometry(model);
 
 			auto scenes = GatherScenes(model, meshMap, imageMap, deformers);
 
@@ -853,9 +853,9 @@ namespace FlexKit
 		for (auto& entity : entities)
 		{
 			EntityBlock::Header entityHeader;
-			entityHeader.blockType         = SceneBlockType::EntityBlock;
-			entityHeader.blockSize         = sizeof(EntityBlock::Header);
-			entityHeader.componentCount    = 1;//2 + entity.components.size() + 1; // TODO: Create a proper material component
+			entityHeader.blockType		= SceneBlockType::EntityBlock;
+			entityHeader.blockSize		= sizeof(EntityBlock::Header);
+			entityHeader.componentCount	= 1;//2 + entity.components.size() + 1; // TODO: Create a proper material component
 
 			Blob componentBlock;
 			componentBlock      += CreateIDComponent(entity.id);
@@ -951,11 +951,17 @@ namespace FlexKit
 	Blob CreateBrushComponent(std::span<uint64_t> meshGUIDs, const float4 albedo, const float4 specular)
 	{
 		BrushComponentBlob brushComponent;
-		brushComponent.albedo_smoothness = albedo;
-		brushComponent.specular_metal    = specular;
-		brushComponent.resourceID        = meshGUIDs.front();
+		brushComponent.albedo_smoothness	= albedo;
+		brushComponent.specular_metal		= specular;
+		brushComponent.meshCount			= (uint8_t)meshGUIDs.size();
+		brushComponent.header.blockSize += sizeof(uint64_t) * meshGUIDs.size();
+		Blob blob;
+		blob += brushComponent;
 
-		return { brushComponent };
+		for (auto GUID : meshGUIDs)
+			blob += GUID;
+
+		return blob;
 	}
 
 

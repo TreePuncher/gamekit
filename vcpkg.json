@@ -11,7 +11,8 @@
             "features": [ "dx12", "openexr" ]
         },
         "cppcoro",
-		"directx-dxc",
+		"cpptoml",
+        "directx-dxc",
 		"directx-headers",
 		"directxmesh",
         "directxtk12",

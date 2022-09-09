@@ -238,7 +238,7 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	ID3D12PipelineState* CreateEnvironmentPassPSO(RenderSystem* RS)
@@ -358,46 +358,46 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    ID3D12PipelineState* CreateBuildZLayer(RenderSystem* RS)
-    {
-        Shader computeShader = RS->LoadShader("GenerateZLevel", "cs_6_0", R"(assets\shaders\HZB.hlsl)");
+	ID3D12PipelineState* CreateBuildZLayer(RenderSystem* RS)
+	{
+		Shader computeShader = RS->LoadShader("GenerateZLevel", "cs_6_0", R"(assets\shaders\HZB.hlsl)");
 
-        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-            RS->Library.RSDefault,
-            computeShader
-        };
+		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+			RS->Library.RSDefault,
+			computeShader
+		};
 
-        ID3D12PipelineState* PSO = nullptr;
-        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
-        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-        return PSO;
-    }
-
-
-    /************************************************************************************************/
+		return PSO;
+	}
 
 
-    ID3D12PipelineState* CreateDepthBufferCopy(RenderSystem* RS)
-    {
-        Shader computeShader = RS->LoadShader("GenerateZLevel", "cs_6_0", R"(assets\shaders\HZB.hlsl)");
+	/************************************************************************************************/
 
-        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-            RS->Library.RSDefault,
-            computeShader
-        };
 
-        ID3D12PipelineState* PSO = nullptr;
-        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+	ID3D12PipelineState* CreateDepthBufferCopy(RenderSystem* RS)
+	{
+		Shader computeShader = RS->LoadShader("GenerateZLevel", "cs_6_0", R"(assets\shaders\HZB.hlsl)");
 
-        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+			RS->Library.RSDefault,
+			computeShader
+		};
 
-        return PSO;
-    }
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+
+		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+		return PSO;
+	}
 
 
 	/************************************************************************************************/
@@ -405,7 +405,7 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateOcclusionDrawPSO(RenderSystem* RS)
 	{
-        FK_ASSERT(0);
+		FK_ASSERT(0);
 
 		return nullptr;
 
@@ -547,73 +547,73 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    size_t GetRTPoolSize(const RenderSystem::AvailableFeatures& features, const uint2 WH)
-    {
-        if (features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier1)
-            return 128 * 3 * MEGABYTE;
-        else
-            return 128 * 2 * MEGABYTE;
-    }
+	size_t GetRTPoolSize(const RenderSystem::AvailableFeatures& features, const uint2 WH)
+	{
+		if (features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier1)
+			return 128 * 3 * MEGABYTE;
+		else
+			return 128 * 2 * MEGABYTE;
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    WorldRender::WorldRender(RenderSystem& IN_renderSystem, TextureStreamingEngine& IN_streamingEngine, iAllocator* persistent, const PoolSizes& poolSizes) :
+	WorldRender::WorldRender(RenderSystem& IN_renderSystem, TextureStreamingEngine& IN_streamingEngine, iAllocator* persistent, const PoolSizes& poolSizes) :
 			renderSystem                { IN_renderSystem },
 			enableOcclusionCulling	    { false	},
 
-            UAVPool                     { renderSystem, poolSizes.UAVPoolByteSize, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
-            RTPool                      { renderSystem, poolSizes.RTPoolByteSize, DefaultBlockSize,
-                                            renderSystem.features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier2 ?
-                                                DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget : DeviceHeapFlags::RenderTarget, persistent },
+			UAVPool                     { renderSystem, poolSizes.UAVPoolByteSize, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
+			RTPool                      { renderSystem, poolSizes.RTPoolByteSize, DefaultBlockSize,
+											renderSystem.features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier2 ?
+												DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget : DeviceHeapFlags::RenderTarget, persistent },
 
-            timeStats                   { renderSystem.CreateTimeStampQuery(256) },
-            timingReadBack              { renderSystem.CreateReadBackBuffer(512) }, 
+			timeStats                   { renderSystem.CreateTimeStampQuery(256) },
+			timingReadBack              { renderSystem.CreateReadBackBuffer(512) }, 
 
 			streamingEngine		        { IN_streamingEngine },
 
-            lightingEngine              { renderSystem, *persistent, EGITECHNIQUE::DISABLE },
-            shadowMapping               { renderSystem, *persistent },
-            clusteredRender             { renderSystem, *persistent },
-            transparency                { renderSystem },
+			lightingEngine              { renderSystem, *persistent, EGITECHNIQUE::DISABLE },
+			shadowMapping               { renderSystem, *persistent },
+			clusteredRender             { renderSystem, *persistent },
+			transparency                { renderSystem },
 
-            rootSignatureToneMapping    { persistent }
+			rootSignatureToneMapping    { persistent }
 	{
-        FlexKit::DesciptorHeapLayout layout{};
-        layout.SetParameterAsSRV(0, 0, 2, 0);
-        layout.SetParameterAsShaderUAV(1, 1, 1, 0);
+		FlexKit::DesciptorHeapLayout layout{};
+		layout.SetParameterAsSRV(0, 0, 2, 0);
+		layout.SetParameterAsShaderUAV(1, 1, 1, 0);
 
-        if (renderSystem.features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier1)
-            UAVTexturePool.emplace(renderSystem, poolSizes.UAVTexturePoolByteSize, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent);
+		if (renderSystem.features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier1)
+			UAVTexturePool.emplace(renderSystem, poolSizes.UAVTexturePoolByteSize, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent);
 
-        rootSignatureToneMapping.AllowIA = true;
-        rootSignatureToneMapping.SetParameterAsDescriptorTable(0, layout);
-        rootSignatureToneMapping.SetParameterAsUAV(1, 0, 0, PIPELINE_DEST_ALL);
-        rootSignatureToneMapping.SetParameterAsUINT(2, 16, 0, 0);
-        rootSignatureToneMapping.Build(renderSystem, persistent);
+		rootSignatureToneMapping.AllowIA = true;
+		rootSignatureToneMapping.SetParameterAsDescriptorTable(0, layout);
+		rootSignatureToneMapping.SetParameterAsUAV(1, 0, 0, PIPELINE_DEST_ALL);
+		rootSignatureToneMapping.SetParameterAsUINT(2, 16, 0, 0);
+		rootSignatureToneMapping.Build(renderSystem, persistent);
 
 
-        renderSystem.RegisterPSOLoader(FORWARDDRAW,			            { &renderSystem.Library.RS6CBVs4SRVs,       CreateForwardDrawPSO,		  });
-        renderSystem.RegisterPSOLoader(FORWARDDRAWINSTANCED,	        { &renderSystem.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO });
+		renderSystem.RegisterPSOLoader(FORWARDDRAW,			            { &renderSystem.Library.RS6CBVs4SRVs,       CreateForwardDrawPSO,		  });
+		renderSystem.RegisterPSOLoader(FORWARDDRAWINSTANCED,	        { &renderSystem.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO });
 
-        renderSystem.RegisterPSOLoader(LIGHTPREPASS,			        { &renderSystem.Library.ComputeSignature,   CreateLightPassPSO			  });
-        renderSystem.RegisterPSOLoader(DEPTHPREPASS,			        { &renderSystem.Library.RS6CBVs4SRVs,       CreateDepthPrePassPSO         });
+		renderSystem.RegisterPSOLoader(LIGHTPREPASS,			        { &renderSystem.Library.ComputeSignature,   CreateLightPassPSO			  });
+		renderSystem.RegisterPSOLoader(DEPTHPREPASS,			        { &renderSystem.Library.RS6CBVs4SRVs,       CreateDepthPrePassPSO         });
 
-        renderSystem.RegisterPSOLoader(ENVIRONMENTPASS,                 { &renderSystem.Library.RS6CBVs4SRVs,       CreateEnvironmentPassPSO      });
+		renderSystem.RegisterPSOLoader(ENVIRONMENTPASS,                 { &renderSystem.Library.RS6CBVs4SRVs,       CreateEnvironmentPassPSO      });
 
-        renderSystem.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL,     { &renderSystem.Library.RSDefault, CreateBilaterialBlurHorizontalPSO });
-        renderSystem.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,       { &renderSystem.Library.RSDefault, CreateBilaterialBlurVerticalPSO   });
+		renderSystem.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL,     { &renderSystem.Library.RSDefault, CreateBilaterialBlurHorizontalPSO });
+		renderSystem.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,       { &renderSystem.Library.RSDefault, CreateBilaterialBlurVerticalPSO   });
 
-        renderSystem.RegisterPSOLoader(ZPYRAMIDBUILDLEVEL,              { &renderSystem.Library.RSDefault, CreateBuildZLayer });
-        renderSystem.RegisterPSOLoader(DEPTHCOPY,                       { &renderSystem.Library.RSDefault, CreateDepthBufferCopy });
+		renderSystem.RegisterPSOLoader(ZPYRAMIDBUILDLEVEL,              { &renderSystem.Library.RSDefault, CreateBuildZLayer });
+		renderSystem.RegisterPSOLoader(DEPTHCOPY,                       { &renderSystem.Library.RSDefault, CreateDepthBufferCopy });
 
-        renderSystem.RegisterPSOLoader(AVERAGELUMINANCE_BLOCK,          { &renderSystem.Library.RSDefault, [&](auto renderSystem){ return CreateAverageLumanceLocal(renderSystem); } });
-        renderSystem.RegisterPSOLoader(AVERAGELUMANANCE_GLOBAL,         { &renderSystem.Library.RSDefault, [&](auto renderSystem){ return CreateAverageLumanceGlobal(renderSystem); } });
-        renderSystem.RegisterPSOLoader(TONEMAP,                         { &renderSystem.Library.RSDefault, [&](auto renderSystem){ return CreateToneMapping(renderSystem); } });
+		renderSystem.RegisterPSOLoader(AVERAGELUMINANCE_BLOCK,          { &renderSystem.Library.RSDefault, [&](auto renderSystem){ return CreateAverageLumanceLocal(renderSystem); } });
+		renderSystem.RegisterPSOLoader(AVERAGELUMANANCE_GLOBAL,         { &renderSystem.Library.RSDefault, [&](auto renderSystem){ return CreateAverageLumanceGlobal(renderSystem); } });
+		renderSystem.RegisterPSOLoader(TONEMAP,                         { &renderSystem.Library.RSDefault, [&](auto renderSystem){ return CreateToneMapping(renderSystem); } });
 
 		renderSystem.QueuePSOLoad(GBUFFERPASS);
 		renderSystem.QueuePSOLoad(GBUFFERPASS_SKINNED);
@@ -625,57 +625,57 @@ namespace FlexKit
 		renderSystem.QueuePSOLoad(COMPUTETILEDSHADINGPASS);
 		renderSystem.QueuePSOLoad(BILATERALBLURPASSHORIZONTAL);
 		renderSystem.QueuePSOLoad(BILATERALBLURPASSVERTICAL);
-        renderSystem.QueuePSOLoad(SHADOWMAPPASS);
-        renderSystem.QueuePSOLoad(CLEARCOUNTERSPSO);
-        renderSystem.QueuePSOLoad(RESOLUTIONMATCHSHADOWMAPS);
-        renderSystem.QueuePSOLoad(CLEARSHADOWRESOLUTIONBUFFER);
-        renderSystem.QueuePSOLoad(ZPYRAMIDBUILDLEVEL);
+		renderSystem.QueuePSOLoad(SHADOWMAPPASS);
+		renderSystem.QueuePSOLoad(CLEARCOUNTERSPSO);
+		renderSystem.QueuePSOLoad(RESOLUTIONMATCHSHADOWMAPS);
+		renderSystem.QueuePSOLoad(CLEARSHADOWRESOLUTIONBUFFER);
+		renderSystem.QueuePSOLoad(ZPYRAMIDBUILDLEVEL);
 
-        renderSystem.QueuePSOLoad(DEBUG_DrawBVH);
+		renderSystem.QueuePSOLoad(DEBUG_DrawBVH);
 
-        renderSystem.QueuePSOLoad(CREATELIGHTBVH_PHASE1);
-        renderSystem.QueuePSOLoad(CREATELIGHTBVH_PHASE2);
+		renderSystem.QueuePSOLoad(CREATELIGHTBVH_PHASE1);
+		renderSystem.QueuePSOLoad(CREATELIGHTBVH_PHASE2);
 
-        renderSystem.SetReadBackEvent(
-            timingReadBack,
-            [&](ReadBackResourceHandle resource)
-            {
-                auto [buffer, bufferSize] = renderSystem.OpenReadBackBuffer(resource);
-                EXITSCOPE(renderSystem.CloseReadBackBuffer(resource));
+		renderSystem.SetReadBackEvent(
+			timingReadBack,
+			[&](ReadBackResourceHandle resource)
+			{
+				auto [buffer, bufferSize] = renderSystem.OpenReadBackBuffer(resource);
+				EXITSCOPE(renderSystem.CloseReadBackBuffer(resource));
 
-                if(buffer){
-                    size_t timePoints[64];
-                    memcpy(timePoints, (char*)buffer, sizeof(timePoints));
+				if(buffer){
+					size_t timePoints[64];
+					memcpy(timePoints, (char*)buffer, sizeof(timePoints));
 
-                    UINT64 timeStampFreq;
-                    renderSystem.GraphicsQueue->GetTimestampFrequency(&timeStampFreq);
+					UINT64 timeStampFreq;
+					renderSystem.GraphicsQueue->GetTimestampFrequency(&timeStampFreq);
 
-                    float durations[32];
+					float durations[32];
 
-                    for (size_t I = 0; I < 4; I++)
-                        durations[I] = float(timePoints[2 * I + 1] - timePoints[2 * I + 0]) / timeStampFreq * 1000;
+					for (size_t I = 0; I < 4; I++)
+						durations[I] = float(timePoints[2 * I + 1] - timePoints[2 * I + 0]) / timeStampFreq * 1000;
 
-                    timingValues.gBufferPass        = durations[0];
-                    timingValues.ClusterCreation    = durations[1];
-                    timingValues.shadingPass        = durations[2];
-                    timingValues.BVHConstruction    = durations[3];
-                }
-            });
+					timingValues.gBufferPass        = durations[0];
+					timingValues.ClusterCreation    = durations[1];
+					timingValues.shadingPass        = durations[2];
+					timingValues.BVHConstruction    = durations[3];
+				}
+			});
 
-        pendingGPUTasks.emplace_back(
-            [&](FrameGraph& frameGraph, auto& resources)
-            {
-                lightingEngine.Init(frameGraph, resources.reserveCB);
-            });
+		pendingGPUTasks.emplace_back(
+			[&](FrameGraph& frameGraph, auto& resources)
+			{
+				lightingEngine.Init(frameGraph, resources.reserveCB);
+			});
 
-        readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
+		readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
 	}
 
 
-    WorldRender::~WorldRender()
+	WorldRender::~WorldRender()
 	{
-        Release();
-    }
+		Release();
+	}
 
 
 	void WorldRender::HandleTextures()
@@ -686,368 +686,368 @@ namespace FlexKit
 
 	void WorldRender::Release()
 	{
-        if(clusterBuffer != InvalidHandle)
-            renderSystem.ReleaseResource(clusterBuffer);
+		if(clusterBuffer != InvalidHandle)
+			renderSystem.ReleaseResource(clusterBuffer);
 	}
 
 
-    DrawOutputs WorldRender::DrawScene(UpdateDispatcher& dispatcher, FrameGraph& frameGraph, DrawSceneDescription& drawSceneDesc, WorldRender_Targets targets, iAllocator* persistent, ThreadSafeAllocator& temporary)
-    {
-        ProfileFunction();
+	DrawOutputs WorldRender::DrawScene(UpdateDispatcher& dispatcher, FrameGraph& frameGraph, DrawSceneDescription& drawSceneDesc, WorldRender_Targets targets, iAllocator* persistent, ThreadSafeAllocator& temporary)
+	{
+		ProfileFunction();
 
-        auto&       scene           = drawSceneDesc.scene;
-        const auto  camera          = drawSceneDesc.camera;
-        auto&       gbuffer         = drawSceneDesc.gbuffer;
-        const auto  t               = drawSceneDesc.t;
+		auto&       scene           = drawSceneDesc.scene;
+		const auto  camera          = drawSceneDesc.camera;
+		auto&       gbuffer         = drawSceneDesc.gbuffer;
+		const auto  t               = drawSceneDesc.t;
 
-        auto&       depthTarget     = targets.DepthTarget;
-        auto        renderTarget    = targets.RenderTarget;
+		auto&       depthTarget     = targets.DepthTarget;
+		auto        renderTarget    = targets.RenderTarget;
 
-        auto& passes = GatherScene(dispatcher, &scene, camera, temporary);
+		auto& passes = GatherScene(dispatcher, &scene, camera, temporary);
 
-        passes.AddInput(drawSceneDesc.transformDependency);
-        passes.AddInput(drawSceneDesc.cameraDependency);
+		passes.AddInput(drawSceneDesc.transformDependency);
+		passes.AddInput(drawSceneDesc.cameraDependency);
 
-        auto& pointLightGather      = scene.GetPointLights(dispatcher, temporary);
-        auto& sceneBVH              = scene.UpdateSceneBVH(dispatcher, drawSceneDesc.transformDependency, temporary);
-        auto& visablePointLights    = scene.GetVisableLights(dispatcher, camera, sceneBVH, temporary);
-        auto& pointLightUpdate      = scene.UpdatePointLights(dispatcher, sceneBVH, visablePointLights, temporary, persistent);
-        auto& shadowMaps            = shadowMapping.AcquireShadowMaps(dispatcher, frameGraph.GetRenderSystem(), RTPool, pointLightUpdate);
+		auto& pointLightGather      = scene.GetPointLights(dispatcher, temporary);
+		auto& sceneBVH              = scene.UpdateSceneBVH(dispatcher, drawSceneDesc.transformDependency, temporary);
+		auto& visablePointLights    = scene.GetVisableLights(dispatcher, camera, sceneBVH, temporary);
+		auto& pointLightUpdate      = scene.UpdatePointLights(dispatcher, sceneBVH, visablePointLights, temporary, persistent);
+		auto& shadowMaps            = shadowMapping.AcquireShadowMaps(dispatcher, frameGraph.GetRenderSystem(), RTPool, pointLightUpdate);
 
-        LoadLodLevels(dispatcher, passes, drawSceneDesc.camera, renderSystem, *persistent);
+		LoadLodLevels(dispatcher, passes, drawSceneDesc.camera, renderSystem, *persistent);
 
-        pointLightGather.AddInput(drawSceneDesc.transformDependency);
-        pointLightGather.AddInput(drawSceneDesc.cameraDependency);
+		pointLightGather.AddInput(drawSceneDesc.transformDependency);
+		pointLightGather.AddInput(drawSceneDesc.cameraDependency);
 
-        auto& IKUpdate          = UpdateIKControllers(dispatcher, drawSceneDesc.dt);
-        auto& animationUpdate   = UpdateAnimations(dispatcher, drawSceneDesc.dt);
-        auto& skinnedObjects    = GatherSkinned(dispatcher, scene, camera, temporary);
-        auto& updatedPoses      = UpdatePoses(dispatcher, skinnedObjects);
+		auto& IKUpdate          = UpdateIKControllers(dispatcher, drawSceneDesc.dt);
+		auto& animationUpdate   = UpdateAnimations(dispatcher, drawSceneDesc.dt);
+		auto& skinnedObjects    = GatherSkinned(dispatcher, scene, camera, temporary);
+		auto& updatedPoses      = UpdatePoses(dispatcher, skinnedObjects);
 
-        // [skinned Objects] -> [update Poses]
-        IKUpdate.AddInput(drawSceneDesc.transformDependency);
-        updatedPoses.AddInput(IKUpdate);
-        updatedPoses.AddInput(drawSceneDesc.transformDependency);
-        skinnedObjects.AddInput(drawSceneDesc.cameraDependency);
-        updatedPoses.AddInput(skinnedObjects);
-        updatedPoses.AddInput(animationUpdate);
+		// [skinned Objects] -> [update Poses]
+		IKUpdate.AddInput(drawSceneDesc.transformDependency);
+		updatedPoses.AddInput(IKUpdate);
+		updatedPoses.AddInput(drawSceneDesc.transformDependency);
+		skinnedObjects.AddInput(drawSceneDesc.cameraDependency);
+		updatedPoses.AddInput(skinnedObjects);
+		updatedPoses.AddInput(animationUpdate);
 
-        const SceneDescription sceneDesc = {
-            drawSceneDesc.camera,
-            pointLightGather,
-            visablePointLights,
-            shadowMaps,
-            drawSceneDesc.transformDependency,
-            drawSceneDesc.cameraDependency,
-            passes,
-            skinnedObjects
-        };
+		const SceneDescription sceneDesc = {
+			drawSceneDesc.camera,
+			pointLightGather,
+			visablePointLights,
+			shadowMaps,
+			drawSceneDesc.transformDependency,
+			drawSceneDesc.cameraDependency,
+			passes,
+			skinnedObjects
+		};
 
-        auto& reserveCB = drawSceneDesc.reserveCB;
-        auto& reserveVB = drawSceneDesc.reserveVB;
+		auto& reserveCB = drawSceneDesc.reserveCB;
+		auto& reserveVB = drawSceneDesc.reserveVB;
 
-        // Add Resources
-        AddGBufferResource(gbuffer, frameGraph);
-        frameGraph.AddMemoryPool(&UAVPool);
-        frameGraph.AddMemoryPool(&RTPool);
+		// Add Resources
+		AddGBufferResource(gbuffer, frameGraph);
+		frameGraph.AddMemoryPool(&UAVPool);
+		frameGraph.AddMemoryPool(&RTPool);
 
-        if(UAVTexturePool)
-            frameGraph.AddMemoryPool(&UAVTexturePool.value());
+		if(UAVTexturePool)
+			frameGraph.AddMemoryPool(&UAVTexturePool.value());
 
-        frameGraph.dataDependencies.push_back(&IKUpdate);
+		frameGraph.dataDependencies.push_back(&IKUpdate);
 
-        PassData data = {
-            .passes     = passes,
-            .reserveCB  = reserveCB,
-            .reserveVB  = reserveVB
-        };
+		PassData data = {
+			.passes     = passes,
+			.reserveCB  = reserveCB,
+			.reserveVB  = reserveVB
+		};
 
-        for (auto& task : pendingGPUTasks)
-            task(frameGraph, data);
+		for (auto& task : pendingGPUTasks)
+			task(frameGraph, data);
 
-        pendingGPUTasks.clear();
+		pendingGPUTasks.clear();
 
-        ClearGBuffer(gbuffer, frameGraph);
+		ClearGBuffer(gbuffer, frameGraph);
 
-        auto& entityConstants =
-            BuildEntityConstantsBuffer(
-                frameGraph,
-                dispatcher,
-                passes,
-                drawSceneDesc.reserveCB,
-                temporary);
+		auto& entityConstants =
+			BuildEntityConstantsBuffer(
+				frameGraph,
+				dispatcher,
+				passes,
+				drawSceneDesc.reserveCB,
+				temporary);
 
-        auto& poses =
-            UploadPoses(
-                frameGraph,
-                passes,
-                drawSceneDesc.reserveCB,
-                temporary);
+		auto& poses =
+			UploadPoses(
+				frameGraph,
+				passes,
+				drawSceneDesc.reserveCB,
+				temporary);
 
-        /*
-        auto& occlutionConstants =
-            OcclusionCulling(
-                dispatcher,
-                frameGraph,
-                entityConstants,
-                passes,
-                camera,
-                drawSceneDesc.reserveCB,
-                depthTarget,
-                temporary);
-        */
+		/*
+		auto& occlutionConstants =
+			OcclusionCulling(
+				dispatcher,
+				frameGraph,
+				entityConstants,
+				passes,
+				camera,
+				drawSceneDesc.reserveCB,
+				depthTarget,
+				temporary);
+		*/
 
-        auto& gbufferPass =
-            clusteredRender.FillGBuffer(
-                dispatcher,
-                frameGraph,
-                passes,
-                camera,
-                gbuffer,
-                depthTarget.Get(),
-                reserveCB,
-                temporary,
-                &poses);
+		auto& gbufferPass =
+			clusteredRender.FillGBuffer(
+				dispatcher,
+				frameGraph,
+				passes,
+				camera,
+				gbuffer,
+				depthTarget.Get(),
+				reserveCB,
+				temporary,
+				&poses);
 
-        for (auto& pass : drawSceneDesc.additionalGbufferPasses)
-            pass();
+		for (auto& pass : drawSceneDesc.additionalGbufferPasses)
+			pass();
 
-        auto& lightPass =
-            clusteredRender.UpdateLightBuffers(
-                dispatcher,
-                frameGraph,
-                camera,
-                scene,
-                sceneDesc.pointLightMaps,
-                depthTarget.Get(),
-                reserveCB,
-                temporary,
-                drawSceneDesc.debugDisplay != DebugVisMode::ClusterVIS);
+		auto& lightPass =
+			clusteredRender.UpdateLightBuffers(
+				dispatcher,
+				frameGraph,
+				camera,
+				scene,
+				sceneDesc.pointLightMaps,
+				depthTarget.Get(),
+				reserveCB,
+				temporary,
+				drawSceneDesc.debugDisplay != DebugVisMode::ClusterVIS);
 
-        auto& shadowMapPass =
-            shadowMapping.ShadowMapPass(
-                frameGraph,
-                visablePointLights,
-                drawSceneDesc.cameraDependency,
-                passes,
-                shadowMaps,
-                reserveCB,
-                reserveVB,
-                drawSceneDesc.additionalShadowPasses,
-                t,
-                &temporary);
+		auto& shadowMapPass =
+			shadowMapping.ShadowMapPass(
+				frameGraph,
+				visablePointLights,
+				drawSceneDesc.cameraDependency,
+				passes,
+				shadowMaps,
+				reserveCB,
+				reserveVB,
+				drawSceneDesc.additionalShadowPasses,
+				t,
+				&temporary);
 
-        /*
-        auto& updateVolumes =
-            lightingEngine.UpdateVoxelVolumes(
-                dispatcher,
-                frameGraph,
-                camera,
-                depthTarget.Get(),
-                reserveCB,
-                temporary);
-        */
+		/*
+		auto& updateVolumes =
+			lightingEngine.UpdateVoxelVolumes(
+				dispatcher,
+				frameGraph,
+				camera,
+				depthTarget.Get(),
+				reserveCB,
+				temporary);
+		*/
 
-        auto& shadingPass =
-            clusteredRender.ClusteredShading(
-                dispatcher,
-                frameGraph,
-                sceneDesc.pointLightMaps,
-                pointLightGather,
-                gbufferPass,
-                depthTarget.Get(),
-                renderTarget,
-                shadowMapPass,
-                lightPass,
-                reserveCB, reserveVB,
-                t,
-                temporary);
+		auto& shadingPass =
+			clusteredRender.ClusteredShading(
+				dispatcher,
+				frameGraph,
+				sceneDesc.pointLightMaps,
+				pointLightGather,
+				gbufferPass,
+				depthTarget.Get(),
+				renderTarget,
+				shadowMapPass,
+				lightPass,
+				reserveCB, reserveVB,
+				t,
+				temporary);
 
-        lightingEngine.RayTrace(
-                dispatcher,
-                frameGraph,
-                camera,
-                sceneDesc.passes,
-                depthTarget.Get(),
-                shadingPass.renderTargetObject,
-                gbuffer,
-                reserveCB,
-                temporary);
+		lightingEngine.RayTrace(
+				dispatcher,
+				frameGraph,
+				camera,
+				sceneDesc.passes,
+				depthTarget.Get(),
+				shadingPass.renderTargetObject,
+				gbuffer,
+				reserveCB,
+				temporary);
 
-        auto& OIT_pass =
-            transparency.OIT_WB_Pass(
-                dispatcher,
-                frameGraph,
-                passes,
-                camera,
-                depthTarget.Get(),
-                reserveCB,
-                temporary);
+		auto& OIT_pass =
+			transparency.OIT_WB_Pass(
+				dispatcher,
+				frameGraph,
+				passes,
+				camera,
+				depthTarget.Get(),
+				reserveCB,
+				temporary);
 
-        auto& OIT_blend =
-            transparency.OIT_WB_Blend(
-                dispatcher,
-                frameGraph,
-                OIT_pass,
-                shadingPass.renderTargetObject,
-                temporary);
+		auto& OIT_blend =
+			transparency.OIT_WB_Blend(
+				dispatcher,
+				frameGraph,
+				OIT_pass,
+				shadingPass.renderTargetObject,
+				temporary);
 
-        auto& toneMapped =
-            RenderPBR_ToneMapping(
-                dispatcher,
-                frameGraph,
-                shadingPass.renderTargetObject,
-                renderTarget,
-                reserveCB,
-                reserveVB,
-                drawSceneDesc.dt,
-                temporary);
-
-
-        if (drawSceneDesc.debugDisplay == DebugVisMode::ClusterVIS)
-        {
-            clusteredRender.DEBUGVIS_DrawLightBVH(
-                dispatcher,
-                frameGraph,
-                camera,
-                targets.RenderTarget,
-                lightPass,
-                reserveCB,
-                drawSceneDesc.debugDrawMode,
-                temporary);
-        }
-        else if(drawSceneDesc.debugDisplay == DebugVisMode::BVHVIS)
-        {
-            clusteredRender.DEBUGVIS_BVH(
-                dispatcher,
-                frameGraph,
-                *sceneBVH.GetData().bvh,
-                camera,
-                renderTarget,
-                reserveCB,
-                reserveVB,
-                drawSceneDesc.BVHVisMode,
-                temporary);
-        }
-
-        clusteredRender.ReleaseFrameResources(
-            frameGraph,
-            lightPass,
-            shadingPass);
-
-        return DrawOutputs{
-                    passes,
-                    skinnedObjects,
-                    entityConstants,
-                    visablePointLights,
-                    //occlutionConstants.ZPyramid
-        };
-    }
+		auto& toneMapped =
+			RenderPBR_ToneMapping(
+				dispatcher,
+				frameGraph,
+				shadingPass.renderTargetObject,
+				renderTarget,
+				reserveCB,
+				reserveVB,
+				drawSceneDesc.dt,
+				temporary);
 
 
-    /************************************************************************************************/
+		if (drawSceneDesc.debugDisplay == DebugVisMode::ClusterVIS)
+		{
+			clusteredRender.DEBUGVIS_DrawLightBVH(
+				dispatcher,
+				frameGraph,
+				camera,
+				targets.RenderTarget,
+				lightPass,
+				reserveCB,
+				drawSceneDesc.debugDrawMode,
+				temporary);
+		}
+		else if(drawSceneDesc.debugDisplay == DebugVisMode::BVHVIS)
+		{
+			clusteredRender.DEBUGVIS_BVH(
+				dispatcher,
+				frameGraph,
+				*sceneBVH.GetData().bvh,
+				camera,
+				renderTarget,
+				reserveCB,
+				reserveVB,
+				drawSceneDesc.BVHVisMode,
+				temporary);
+		}
+
+		clusteredRender.ReleaseFrameResources(
+			frameGraph,
+			lightPass,
+			shadingPass);
+
+		return DrawOutputs{
+					passes,
+					skinnedObjects,
+					entityConstants,
+					visablePointLights,
+					//occlutionConstants.ZPyramid
+		};
+	}
 
 
-    EntityConstants& WorldRender::BuildEntityConstantsBuffer(
-        FrameGraph&                     frameGraph,
-        UpdateDispatcher&               dispatcher,
-        GatherPassesTask&               passes,
-        ReserveConstantBufferFunction&  reserveConstants,
-        iAllocator&                     allocator)
-    {
-        return frameGraph.AddNode<EntityConstants>(
-            EntityConstants
-            {
-                CreateOnceReserveBuffer(reserveConstants, &allocator),
-                passes
-            },
-            [&](FrameGraphNodeBuilder& builder, EntityConstants& data) {},
-            [](EntityConstants& data, const ResourceHandler& resourecs, Context& ctx, iAllocator& allocator)
-            {
-                auto& constantBuffer    = data.GetConstants();
-                auto& brushes           = data.passes.GetData().solid;
-
-                for (auto& brush : brushes)
-                    constantBuffer.Push(brush->GetConstants());
-            });
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	EntityConstants& WorldRender::BuildEntityConstantsBuffer(
+		FrameGraph&                     frameGraph,
+		UpdateDispatcher&               dispatcher,
+		GatherPassesTask&               passes,
+		ReserveConstantBufferFunction&  reserveConstants,
+		iAllocator&                     allocator)
+	{
+		return frameGraph.AddNode<EntityConstants>(
+			EntityConstants
+			{
+				CreateOnceReserveBuffer(reserveConstants, &allocator),
+				passes
+			},
+			[&](FrameGraphNodeBuilder& builder, EntityConstants& data) {},
+			[](EntityConstants& data, const ResourceHandler& resourecs, Context& ctx, iAllocator& allocator)
+			{
+				auto& constantBuffer    = data.GetConstants();
+				auto& brushes           = data.passes.GetData().solid;
+
+				for (auto& brush : brushes)
+					constantBuffer.Push(brush->GetConstants());
+			});
+	}
 
 
-    OcclusionCullingResults& WorldRender::OcclusionCulling(
-                UpdateDispatcher&               dispatcher,
-                FrameGraph&                     frameGraph,
-                EntityConstants&                entityConstants,
-                GatherPassesTask&               passes,
-                CameraHandle                    camera,
-                ReserveConstantBufferFunction&  reserveConstants,
-                DepthBuffer&                    depthBuffer,
-                ThreadSafeAllocator&            temporary)
-    {
-        auto& occlusion = frameGraph.AddNode<OcclusionCullingResults>(
-            OcclusionCullingResults{
-                passes,
-                entityConstants,
-                reserveConstants,
-            },
-            [&](FrameGraphNodeBuilder& builder, OcclusionCullingResults& data)
-            {
-                const uint2 WH          = builder.GetRenderSystem().GetTextureWH(depthBuffer.Get());
-                const uint MipLevels    = log2(Max(WH[0], WH[1]));
+	/************************************************************************************************/
 
-                data.depthBuffer    = builder.AcquireVirtualResource(GPUResourceDesc::DepthTarget(WH, DeviceFormat::D32_FLOAT), DRS_DEPTHBUFFERWRITE);
-                data.ZPyramid       = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT, true, MipLevels), DRS_UAV);
 
-                builder.SetDebugName(data.depthBuffer, "depthBuffer");
-                builder.SetDebugName(data.ZPyramid, "ZPyramid");
-            },
-            [camera = camera](OcclusionCullingResults& data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
-            {
-                ProfileFunction();
+	OcclusionCullingResults& WorldRender::OcclusionCulling(
+				UpdateDispatcher&               dispatcher,
+				FrameGraph&                     frameGraph,
+				EntityConstants&                entityConstants,
+				GatherPassesTask&               passes,
+				CameraHandle                    camera,
+				ReserveConstantBufferFunction&  reserveConstants,
+				DepthBuffer&                    depthBuffer,
+				ThreadSafeAllocator&            temporary)
+	{
+		auto& occlusion = frameGraph.AddNode<OcclusionCullingResults>(
+			OcclusionCullingResults{
+				passes,
+				entityConstants,
+				reserveConstants,
+			},
+			[&](FrameGraphNodeBuilder& builder, OcclusionCullingResults& data)
+			{
+				const uint2 WH          = builder.GetRenderSystem().GetTextureWH(depthBuffer.Get());
+				const uint MipLevels    = log2(Max(WH[0], WH[1]));
 
-                return;
-                ctx.BeginEvent_DEBUG("Occlusion Culling");
-                ctx.BeginEvent_DEBUG("Occluder Pass");
+				data.depthBuffer    = builder.AcquireVirtualResource(GPUResourceDesc::DepthTarget(WH, DeviceFormat::D32_FLOAT), DRS_DEPTHBUFFERWRITE);
+				data.ZPyramid       = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT, true, MipLevels), DRS_UAV);
 
-                auto& constants             = data.entityConstants.GetConstants();
-                auto ZPassConstantsBuffer   = data.reserveCB(AlignedSize<Camera::ConstantBuffer>());
+				builder.SetDebugName(data.depthBuffer, "depthBuffer");
+				builder.SetDebugName(data.ZPyramid, "ZPyramid");
+			},
+			[camera = camera](OcclusionCullingResults& data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			{
+				ProfileFunction();
 
-                const auto cameraConstants = ConstantBufferDataSet{ GetCameraConstants(camera), ZPassConstantsBuffer };
+				return;
+				ctx.BeginEvent_DEBUG("Occlusion Culling");
+				ctx.BeginEvent_DEBUG("Occluder Pass");
 
-                DescriptorHeap heap{
-                    ctx,
-                    resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
-                    &allocator };
+				auto& constants             = data.entityConstants.GetConstants();
+				auto ZPassConstantsBuffer   = data.reserveCB(AlignedSize<Camera::ConstantBuffer>());
 
-                heap.NullFill(ctx);
+				const auto cameraConstants = ConstantBufferDataSet{ GetCameraConstants(camera), ZPassConstantsBuffer };
 
-                ctx.ClearDepthBuffer(resources.GetResource(data.depthBuffer), 1.0f);
-                ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
-                ctx.SetPipelineState(resources.GetPipelineState(DEPTHPREPASS));
+				DescriptorHeap heap{
+					ctx,
+					resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
+					&allocator };
 
-                ctx.SetScissorAndViewports({ resources.GetResource(data.depthBuffer) });
-                ctx.SetRenderTargets(
-                    {},
-                    true,
-                    resources.GetResource(data.depthBuffer));
+				heap.NullFill(ctx);
 
-                ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
-                ctx.SetGraphicsDescriptorTable(0, heap);
-                ctx.SetGraphicsConstantBufferView(1, cameraConstants);
-                ctx.SetGraphicsConstantBufferView(3, cameraConstants);
-                ctx.NullGraphicsConstantBufferView(6);
+				ctx.ClearDepthBuffer(resources.GetResource(data.depthBuffer), 1.0f);
+				ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
+				ctx.SetPipelineState(resources.GetPipelineState(DEPTHPREPASS));
 
-                TriMesh* prevMesh		= nullptr;
-                const auto& brushes		= data.passes.GetData().solid;
-                const size_t brushCount	= brushes.size();
+				ctx.SetScissorAndViewports({ resources.GetResource(data.depthBuffer) });
+				ctx.SetRenderTargets(
+					{},
+					true,
+					resources.GetResource(data.depthBuffer));
 
-                auto brushConstants = CreateCBIterator<Brush::VConstantsLayout>(constants);
+				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+				ctx.SetGraphicsDescriptorTable(0, heap);
+				ctx.SetGraphicsConstantBufferView(1, cameraConstants);
+				ctx.SetGraphicsConstantBufferView(3, cameraConstants);
+				ctx.NullGraphicsConstantBufferView(6);
 
-                for (size_t I = 0; I < brushCount; I++)
-                {
-                    auto& meshes = brushes[I]->meshes;
+				TriMesh* prevMesh		= nullptr;
+				const auto& brushes		= data.passes.GetData().solid;
+				const size_t brushCount	= brushes.size();
+
+				auto brushConstants = CreateCBIterator<Brush::VConstantsLayout>(constants);
+
+				for (size_t I = 0; I < brushCount; I++)
+				{
+					auto& meshes = brushes[I]->meshes;
 					for(auto mesh : meshes)
 						{
 							auto* const triMesh = GetMeshResource(mesh);
@@ -1075,152 +1075,152 @@ namespace FlexKit
 
 				auto& rootSignature = resources.renderSystem().Library.RSDefault;
 
-                ctx.SetComputeRootSignature(resources.renderSystem().Library.RSDefault);
+				ctx.SetComputeRootSignature(resources.renderSystem().Library.RSDefault);
 
-                auto currentConstants   = GetCameraConstants(camera);
-                auto previousConstants  = GetCameraPreviousConstants(camera);
+				auto currentConstants   = GetCameraConstants(camera);
+				auto previousConstants  = GetCameraPreviousConstants(camera);
 
-                struct ReprojectionConstants
-                {
-                    float4x4 currentPV;
-                    float4x4 previousIView;
+				struct ReprojectionConstants
+				{
+					float4x4 currentPV;
+					float4x4 previousIView;
 
-                    float3  TLCorner_VS;
-                    float3  TRCorner_VS;
+					float3  TLCorner_VS;
+					float3  TRCorner_VS;
 
-                    float3  BLCorner_VS;
-                    float3  BRCorner_VS;
+					float3  BLCorner_VS;
+					float3  BRCorner_VS;
 
-                    float3  cameraPOS;
-                    float   MaxZ;
-                } projectionConstants{
-                    .currentPV      = currentConstants.PV,
-                    .previousIView  = previousConstants.ViewI,
+					float3  cameraPOS;
+					float   MaxZ;
+				} projectionConstants{
+					.currentPV      = currentConstants.PV,
+					.previousIView  = previousConstants.ViewI,
 
-                    .TLCorner_VS    = currentConstants.TLCorner_VS,
-                    .TRCorner_VS    = currentConstants.TRCorner_VS,
+					.TLCorner_VS    = currentConstants.TLCorner_VS,
+					.TRCorner_VS    = currentConstants.TRCorner_VS,
 
-                    .BLCorner_VS    = currentConstants.BLCorner_VS,
-                    .BRCorner_VS    = currentConstants.BRCorner_VS,
+					.BLCorner_VS    = currentConstants.BLCorner_VS,
+					.BRCorner_VS    = currentConstants.BRCorner_VS,
 
-                    .cameraPOS      = currentConstants.WPOS.xyz(),
-                    .MaxZ           = currentConstants.MaxZ
-                };
+					.cameraPOS      = currentConstants.WPOS.xyz(),
+					.MaxZ           = currentConstants.MaxZ
+				};
 
-                auto CBBuffer   = data.reserveCB(AlignedSize<ReprojectionConstants>());
-                auto computeCB  = ConstantBufferDataSet{ projectionConstants, CBBuffer };
+				auto CBBuffer   = data.reserveCB(AlignedSize<ReprojectionConstants>());
+				auto computeCB  = ConstantBufferDataSet{ projectionConstants, CBBuffer };
 
-                const auto ZPyramid = resources.GetResource(data.ZPyramid);
+				const auto ZPyramid = resources.GetResource(data.ZPyramid);
 
-                DescriptorHeap SRVHeap;
-                SRVHeap.Init2(ctx, rootSignature.GetDescHeap(0), 1, &allocator);
-                SRVHeap.SetSRV(ctx, 0, resources.Transition(data.depthBuffer, DRS_NonPixelShaderResource, ctx), DeviceFormat::R32_FLOAT);
+				DescriptorHeap SRVHeap;
+				SRVHeap.Init2(ctx, rootSignature.GetDescHeap(0), 1, &allocator);
+				SRVHeap.SetSRV(ctx, 0, resources.Transition(data.depthBuffer, DRS_NonPixelShaderResource, ctx), DeviceFormat::R32_FLOAT);
 
-                DescriptorHeap UAVHeap;
-                UAVHeap.Init2(ctx, rootSignature.GetDescHeap(1), 1, &allocator);
-                UAVHeap.SetUAVTexture(ctx, 0, 0, resources.Transition(data.ZPyramid, DRS_UAV, ctx), DeviceFormat::R32_FLOAT);
+				DescriptorHeap UAVHeap;
+				UAVHeap.Init2(ctx, rootSignature.GetDescHeap(1), 1, &allocator);
+				UAVHeap.SetUAVTexture(ctx, 0, 0, resources.Transition(data.ZPyramid, DRS_UAV, ctx), DeviceFormat::R32_FLOAT);
 
-                ctx.SetComputeConstantBufferView(0, computeCB);
-                ctx.SetComputeDescriptorTable(4, SRVHeap);
-                ctx.SetComputeDescriptorTable(5, UAVHeap);
+				ctx.SetComputeConstantBufferView(0, computeCB);
+				ctx.SetComputeDescriptorTable(4, SRVHeap);
+				ctx.SetComputeDescriptorTable(5, UAVHeap);
 
-                const uint2 dispatchWH = resources.GetTextureWH(data.ZPyramid);
+				const uint2 dispatchWH = resources.GetTextureWH(data.ZPyramid);
 
-                auto copySource     = resources.GetPipelineState(DEPTHCOPY);
-                auto buildZLevel    = resources.GetPipelineState(ZPYRAMIDBUILDLEVEL);
+				auto copySource     = resources.GetPipelineState(DEPTHCOPY);
+				auto buildZLevel    = resources.GetPipelineState(ZPYRAMIDBUILDLEVEL);
 
-                ctx.Dispatch(copySource,    { dispatchWH[0], dispatchWH[1], 1 });
+				ctx.Dispatch(copySource,    { dispatchWH[0], dispatchWH[1], 1 });
 
-                ctx.AddUAVBarrier(ZPyramid);
+				ctx.AddUAVBarrier(ZPyramid);
 
-                const uint mipCount = 5;
-                const uint end      = mipCount - 1;
+				const uint mipCount = 5;
+				const uint end      = mipCount - 1;
 
-                for (uint32_t I = 0; I < end; I++)
-                {
-                    ctx.Dispatch(buildZLevel, { dispatchWH[0], dispatchWH[1], 1 });
+				for (uint32_t I = 0; I < end; I++)
+				{
+					ctx.Dispatch(buildZLevel, { dispatchWH[0], dispatchWH[1], 1 });
 
-                    DescriptorHeap SRVHeap;
-                    SRVHeap.Init2(ctx, rootSignature.GetDescHeap(0), 1, &allocator);
-                    SRVHeap.SetSRV(ctx, 0, resources.GetResource(data.ZPyramid), I, DeviceFormat::R32_FLOAT);
+					DescriptorHeap SRVHeap;
+					SRVHeap.Init2(ctx, rootSignature.GetDescHeap(0), 1, &allocator);
+					SRVHeap.SetSRV(ctx, 0, resources.GetResource(data.ZPyramid), I, DeviceFormat::R32_FLOAT);
 
-                    DescriptorHeap UAVHeap;
-                    UAVHeap.Init2(ctx, rootSignature.GetDescHeap(1), 1, &allocator);
-                    UAVHeap.SetUAVTexture(ctx, 0, I + 1, resources.Transition(data.ZPyramid, DRS_NonPixelShaderResource, ctx), DeviceFormat::R32_FLOAT);
+					DescriptorHeap UAVHeap;
+					UAVHeap.Init2(ctx, rootSignature.GetDescHeap(1), 1, &allocator);
+					UAVHeap.SetUAVTexture(ctx, 0, I + 1, resources.Transition(data.ZPyramid, DRS_NonPixelShaderResource, ctx), DeviceFormat::R32_FLOAT);
 
-                    ctx.SetComputeDescriptorTable(4, SRVHeap);
-                    ctx.SetComputeDescriptorTable(5, UAVHeap);
+					ctx.SetComputeDescriptorTable(4, SRVHeap);
+					ctx.SetComputeDescriptorTable(5, UAVHeap);
 
-                    ctx.Dispatch(buildZLevel, { dispatchWH[0], dispatchWH[1], 1 });
-                    ctx.AddUAVBarrier(ZPyramid);
-                }
+					ctx.Dispatch(buildZLevel, { dispatchWH[0], dispatchWH[1], 1 });
+					ctx.AddUAVBarrier(ZPyramid);
+				}
 
-                ctx.EndEvent_DEBUG();
-                ctx.EndEvent_DEBUG();
-            });
+				ctx.EndEvent_DEBUG();
+				ctx.EndEvent_DEBUG();
+			});
 
-        return occlusion;
-    }
-
-
-    /************************************************************************************************/
+		return occlusion;
+	}
 
 
-    DepthPass& WorldRender::DepthPrePass(
-        UpdateDispatcher&               dispatcher,
-        FrameGraph&                     frameGraph,
-        const CameraHandle              camera,
-        GatherPassesTask&               passes,
-        const ResourceHandle            depthBufferTarget,
-        ReserveConstantBufferFunction   reserveConsantBufferSpace,
-        iAllocator*                     allocator)
-    {
-        const size_t MaxEntityDrawCount = 1000;
+	/************************************************************************************************/
 
-        auto& pass = frameGraph.AddNode<DepthPass>(
-            passes.GetData().solid,
-            [&, camera](FrameGraphNodeBuilder& builder, DepthPass& data)
-            {
-                const size_t localBufferSize = Max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
 
-                data.entityConstantsBuffer  = std::move(reserveConsantBufferSpace(sizeof(ForwardDrawConstants) * MaxEntityDrawCount));
-                data.passConstantsBuffer    = std::move(reserveConsantBufferSpace(2048));
-                data.depthBufferObject      = builder.DepthTarget(depthBufferTarget);
-                data.depthPassTarget        = depthBufferTarget;
+	DepthPass& WorldRender::DepthPrePass(
+		UpdateDispatcher&               dispatcher,
+		FrameGraph&                     frameGraph,
+		const CameraHandle              camera,
+		GatherPassesTask&               passes,
+		const ResourceHandle            depthBufferTarget,
+		ReserveConstantBufferFunction   reserveConsantBufferSpace,
+		iAllocator*                     allocator)
+	{
+		const size_t MaxEntityDrawCount = 1000;
 
-                builder.AddDataDependency(passes);
-            },
-            [=](DepthPass& data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
-            {
-                const auto cameraConstants = ConstantBufferDataSet{ GetCameraConstants(camera), data.passConstantsBuffer };
+		auto& pass = frameGraph.AddNode<DepthPass>(
+			passes.GetData().solid,
+			[&, camera](FrameGraphNodeBuilder& builder, DepthPass& data)
+			{
+				const size_t localBufferSize = Max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
 
-                DescriptorHeap heap{
-                    ctx,
-                    resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
-                    &allocator };
+				data.entityConstantsBuffer  = std::move(reserveConsantBufferSpace(sizeof(ForwardDrawConstants) * MaxEntityDrawCount));
+				data.passConstantsBuffer    = std::move(reserveConsantBufferSpace(2048));
+				data.depthBufferObject      = builder.DepthTarget(depthBufferTarget);
+				data.depthPassTarget        = depthBufferTarget;
 
-                heap.NullFill(ctx);
+				builder.AddDataDependency(passes);
+			},
+			[=](DepthPass& data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			{
+				const auto cameraConstants = ConstantBufferDataSet{ GetCameraConstants(camera), data.passConstantsBuffer };
 
-                ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
-                ctx.SetPipelineState(resources.GetPipelineState(DEPTHPREPASS));
+				DescriptorHeap heap{
+					ctx,
+					resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
+					&allocator };
 
-                ctx.SetScissorAndViewports({ data.depthPassTarget });
-                ctx.SetRenderTargets(
-                    {},
-                    true,
-                    resources.GetResource(data.depthBufferObject));
+				heap.NullFill(ctx);
 
-                ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
-                ctx.SetGraphicsDescriptorTable(0, heap);
-                ctx.SetGraphicsConstantBufferView(1, cameraConstants);
-                ctx.SetGraphicsConstantBufferView(3, cameraConstants);
-                ctx.NullGraphicsConstantBufferView(6);
+				ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
+				ctx.SetPipelineState(resources.GetPipelineState(DEPTHPREPASS));
 
-                ctx.BeginEvent_DEBUG("Z-PrePass");
+				ctx.SetScissorAndViewports({ data.depthPassTarget });
+				ctx.SetRenderTargets(
+					{},
+					true,
+					resources.GetResource(data.depthBufferObject));
 
-                TriMesh* prevMesh = nullptr;
-                for (const auto& brush : data.brushes)
-                {
+				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+				ctx.SetGraphicsDescriptorTable(0, heap);
+				ctx.SetGraphicsConstantBufferView(1, cameraConstants);
+				ctx.SetGraphicsConstantBufferView(3, cameraConstants);
+				ctx.NullGraphicsConstantBufferView(6);
+
+				ctx.BeginEvent_DEBUG("Z-PrePass");
+
+				TriMesh* prevMesh = nullptr;
+				for (const auto& brush : data.brushes)
+				{
 					auto& meshes = brush->meshes;
 
 					for(size_t I = 0; I < meshes.size(); I++)
@@ -1252,7 +1252,7 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	BackgroundEnvironmentPass& WorldRender::BackgroundPass(
@@ -1515,38 +1515,38 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    ID3D12PipelineState* WorldRender::CreateAverageLumanceLocal(RenderSystem* renderSystem)
-    {
-        auto lightPassShader = renderSystem->LoadShader("LuminanceAverage", "cs_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
+	ID3D12PipelineState* WorldRender::CreateAverageLumanceLocal(RenderSystem* renderSystem)
+	{
+		auto lightPassShader = renderSystem->LoadShader("LuminanceAverage", "cs_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
 
-        D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_desc = {};
-        PSO_desc.CS             = lightPassShader;
-        PSO_desc.pRootSignature = rootSignatureToneMapping;
+		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_desc = {};
+		PSO_desc.CS             = lightPassShader;
+		PSO_desc.pRootSignature = rootSignatureToneMapping;
 
-        ID3D12PipelineState* PSO = nullptr;
-        auto HR = renderSystem->pDevice->CreateComputePipelineState(&PSO_desc, IID_PPV_ARGS(&PSO));
-        FK_ASSERT(SUCCEEDED(HR));
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = renderSystem->pDevice->CreateComputePipelineState(&PSO_desc, IID_PPV_ARGS(&PSO));
+		FK_ASSERT(SUCCEEDED(HR));
 
-        return PSO;
-    }
+		return PSO;
+	}
 
-    ID3D12PipelineState* WorldRender::CreateAverageLumanceGlobal(RenderSystem* renderSystem)
-    {
-        auto lightPassShader = renderSystem->LoadShader("AverageLuminance", "cs_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
+	ID3D12PipelineState* WorldRender::CreateAverageLumanceGlobal(RenderSystem* renderSystem)
+	{
+		auto lightPassShader = renderSystem->LoadShader("AverageLuminance", "cs_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
 
-        D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_desc = {};
-        PSO_desc.CS             = lightPassShader;
-        PSO_desc.pRootSignature = rootSignatureToneMapping;
+		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_desc = {};
+		PSO_desc.CS             = lightPassShader;
+		PSO_desc.pRootSignature = rootSignatureToneMapping;
 
-        ID3D12PipelineState* PSO = nullptr;
-        auto HR = renderSystem->pDevice->CreateComputePipelineState(&PSO_desc, IID_PPV_ARGS(&PSO));
-        FK_ASSERT(SUCCEEDED(HR));
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = renderSystem->pDevice->CreateComputePipelineState(&PSO_desc, IID_PPV_ARGS(&PSO));
+		FK_ASSERT(SUCCEEDED(HR));
 
-        return PSO;
-    }
+		return PSO;
+	}
 
-    ID3D12PipelineState* WorldRender::CreateToneMapping(RenderSystem* renderSystem)
-    {
+	ID3D12PipelineState* WorldRender::CreateToneMapping(RenderSystem* renderSystem)
+	{
 		auto VShader = renderSystem->LoadShader("FullScreen", "vs_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
 		auto PShader = renderSystem->LoadShader("ToneMap", "ps_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
 
@@ -1577,79 +1577,79 @@ namespace FlexKit
 		FK_ASSERT(SUCCEEDED(HR));
 
 		return PSO;
-    }
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
-    // TODO(@RobertMay): Do actual tone mapping
-    ToneMap& WorldRender::RenderPBR_ToneMapping(
-			    UpdateDispatcher&               dispatcher,
-			    FrameGraph&                     frameGraph,
-                FrameResourceHandle             source,
-			    ResourceHandle                  target,
-			    ReserveConstantBufferFunction   reserveCB,
-			    ReserveVertexBufferFunction     reserveVB,
-			    float                           t,
-			    iAllocator*                     allocator)
-    {
-        return frameGraph.AddNode<ToneMap>(
-            ToneMap{},
+	// TODO(@RobertMay): Do actual tone mapping
+	ToneMap& WorldRender::RenderPBR_ToneMapping(
+				UpdateDispatcher&               dispatcher,
+				FrameGraph&                     frameGraph,
+				FrameResourceHandle             source,
+				ResourceHandle                  target,
+				ReserveConstantBufferFunction   reserveCB,
+				ReserveVertexBufferFunction     reserveVB,
+				float                           t,
+				iAllocator*                     allocator)
+	{
+		return frameGraph.AddNode<ToneMap>(
+			ToneMap{},
 			[&](FrameGraphNodeBuilder& builder, ToneMap& data)
 			{
-                const auto WH = frameGraph.GetRenderSystem().GetTextureWH(target) / 2;
+				const auto WH = frameGraph.GetRenderSystem().GetTextureWH(target) / 2;
 
-                data.outputTarget   = builder.RenderTarget(target);
-                data.sourceTarget   = builder.NonPixelShaderResource(source);
+				data.outputTarget   = builder.RenderTarget(target);
+				data.sourceTarget   = builder.NonPixelShaderResource(source);
 
-                //data.outputTarget = builder.RenderTarget(target);
-                //data.sourceTarget   = builder.ReadTransition(source, DRS_NonPixelShaderResource);
-                //data.temp1Buffer    = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(2048, DeviceFormat::R32_FLOAT), DRS_UAV);
-                //data.temp2Buffer    = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT), DRS_UAV);
-            },
+				//data.outputTarget = builder.RenderTarget(target);
+				//data.sourceTarget   = builder.ReadTransition(source, DRS_NonPixelShaderResource);
+				//data.temp1Buffer    = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(2048, DeviceFormat::R32_FLOAT), DRS_UAV);
+				//data.temp2Buffer    = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT), DRS_UAV);
+			},
 			[&]
 			(ToneMap& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
-            {
-                ProfileFunction();
+			{
+				ProfileFunction();
 
-                ctx.BeginEvent_DEBUG("Tone Mapping");
+				ctx.BeginEvent_DEBUG("Tone Mapping");
 
-                const uint2 WH = resources.GetTextureWH(data.sourceTarget);
-                const uint2 XY = (float2{ (float)WH[0], (float)WH[1] } / 512.0f).ceil();
+				const uint2 WH = resources.GetTextureWH(data.sourceTarget);
+				const uint2 XY = (float2{ (float)WH[0], (float)WH[1] } / 512.0f).ceil();
 
-                DescriptorHeap heap1{};
-                heap1.Init(ctx, rootSignatureToneMapping.GetDescHeap(0), &allocator);
-                heap1.SetSRV(ctx, 0, resources.NonPixelShaderResource(data.sourceTarget, ctx));
+				DescriptorHeap heap1{};
+				heap1.Init(ctx, rootSignatureToneMapping.GetDescHeap(0), &allocator);
+				heap1.SetSRV(ctx, 0, resources.NonPixelShaderResource(data.sourceTarget, ctx));
 
 #if 0
-                ID3D12PipelineState* createInitialLevel = resources.GetPipelineState(AVERAGELUMINANCE_BLOCK);
-                ID3D12PipelineState* averageLuminance = resources.GetPipelineState(AVERAGELUMANANCE_GLOBAL);
+				ID3D12PipelineState* createInitialLevel = resources.GetPipelineState(AVERAGELUMINANCE_BLOCK);
+				ID3D12PipelineState* averageLuminance = resources.GetPipelineState(AVERAGELUMANANCE_GLOBAL);
 
-                ctx.SetComputeRootSignature(rootSignatureToneMapping);
-                ctx.SetComputeDescriptorTable(0, heap1);
-                ctx.SetComputeUnorderedAccessView(1, resources.UAV(data.temp1Buffer, ctx));
-                ctx.SetComputeConstantValue(2, 2, &XY, 0);
-                ctx.Dispatch(createInitialLevel, { XY, 1 });
+				ctx.SetComputeRootSignature(rootSignatureToneMapping);
+				ctx.SetComputeDescriptorTable(0, heap1);
+				ctx.SetComputeUnorderedAccessView(1, resources.UAV(data.temp1Buffer, ctx));
+				ctx.SetComputeConstantValue(2, 2, &XY, 0);
+				ctx.Dispatch(createInitialLevel, { XY, 1 });
 
-                ctx.AddUAVBarrier(resources.GetResource(data.temp1Buffer));
-                ctx.Dispatch(averageLuminance, { 1, 1, 1 });
-                ctx.AddUAVBarrier(resources.GetResource(data.temp1Buffer));
+				ctx.AddUAVBarrier(resources.GetResource(data.temp1Buffer));
+				ctx.Dispatch(averageLuminance, { 1, 1, 1 });
+				ctx.AddUAVBarrier(resources.GetResource(data.temp1Buffer));
 #endif
-                ID3D12PipelineState* toneMap            = resources.GetPipelineState(TONEMAP);
+				ID3D12PipelineState* toneMap            = resources.GetPipelineState(TONEMAP);
 
-                ctx.SetRootSignature(rootSignatureToneMapping);
-                ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
-                ctx.SetPipelineState(toneMap);
-                ctx.SetGraphicsDescriptorTable(0, heap1);
-                //ctx.SetGraphicsUnorderedAccessView(1, resources.UAV(data.temp1Buffer, ctx));
-                ctx.SetGraphicsConstantValue(2, 2, &XY, 0);
-                ctx.SetScissorAndViewports({  resources.GetResource(data.outputTarget) });
-                ctx.SetRenderTargets({ resources.RenderTarget(data.outputTarget, ctx) }, false);
-                ctx.Draw(3, 0);
+				ctx.SetRootSignature(rootSignatureToneMapping);
+				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+				ctx.SetPipelineState(toneMap);
+				ctx.SetGraphicsDescriptorTable(0, heap1);
+				//ctx.SetGraphicsUnorderedAccessView(1, resources.UAV(data.temp1Buffer, ctx));
+				ctx.SetGraphicsConstantValue(2, 2, &XY, 0);
+				ctx.SetScissorAndViewports({  resources.GetResource(data.outputTarget) });
+				ctx.SetRenderTargets({ resources.RenderTarget(data.outputTarget, ctx) }, false);
+				ctx.Draw(3, 0);
 
-                ctx.EndEvent_DEBUG();
-            });
-    }
+				ctx.EndEvent_DEBUG();
+			});
+	}
 
 
 }	/************************************************************************************************/

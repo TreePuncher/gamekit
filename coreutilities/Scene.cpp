@@ -497,20 +497,28 @@ namespace FlexKit
 			gameObject.AddView<SceneNodeView<>>(node);
 
 		BrushComponentBlob brushComponent;
-		memcpy(&brushComponent, buffer, bufferSize);
+		memcpy(&brushComponent, buffer, sizeof(BrushComponentBlob));
 
-		auto [triMesh, loaded] = FindMesh(brushComponent.resourceID);
-
-		if (!loaded)
-			triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), brushComponent.resourceID);
-
-		if (triMesh == InvalidHandle)
-			return;
-
+		BrushView* brush = nullptr;
 		if (!gameObject.hasView(FlexKit::BrushComponentID))
-			gameObject.AddView<BrushView>(triMesh);
+			brush = &gameObject.AddView<BrushView>();
 		else
-			static_cast<BrushView*>(gameObject.GetView(BrushComponentID))->PushMesh(triMesh);
+			brush = (BrushView*)gameObject.GetView(FlexKit::BrushComponentID);
+
+		for(uint I = 0; I < brushComponent.meshCount; I++)
+		{
+			GUID_t guid;
+			memcpy(&guid, buffer + sizeof(BrushComponentBlob) + sizeof(GUID_t) * I, sizeof(GUID_t));
+			auto [triMesh, loaded] = FindMesh(guid);
+
+			if (!loaded)
+				triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), guid);
+
+			if (triMesh == InvalidHandle)
+				return;
+
+			brush->PushMesh(triMesh);
+		}
 
 		SetBoundingSphereFromMesh(gameObject);
 	}
@@ -924,7 +932,7 @@ namespace FlexKit
 
 				builder.SetDebugString("Gather Scene");
 			},
-			[&allocator = allocator, &threads = *dispatcher.threads](GetPVSTaskData& data, iAllocator& threadAllocator)
+			[&allocator, &threads = *dispatcher.threads](GetPVSTaskData& data, iAllocator& threadAllocator)
 			{
 				ProfileFunction();
 

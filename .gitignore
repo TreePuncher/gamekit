@@ -1,14 +1,25 @@
 # folders #
-Tools/
-assets/
-builds/
-Dependencies/
-CodeGraphData/
-.vs/
-x64/
-x86/
-Debug/
-Release/
+Tools/*
+assets/*
+builds/*
+Dependencies/*
+CodeGraphData/*
+.vs/*
+x64/*
+x86/*
+Debug/*
+Release/*
+flxEditor/x64/**
+TestGame/obj/**
+SignalsAndSlotsTest/x64/**
+EditorWinUI/Generated Files/winrt
+packages
+vcpkg_installed
+*/VTune Profiler Results/**
+ThirdParty/*
+Tessellation/x64/**
+FlexKitResourceCompiler/obj/**
+Temp/*
 
 # files #
 *.tlog
@@ -32,8 +43,7 @@ Release/
 /assets
 /hdrs
 *.ini
-/EditorWinUI/Generated Files/winrt
-/packages
-/vcpkg_installed
-/TestGame/VTune Profiler Results/TestGame
-/ThirdParty/*
+
+*.recipe
+*.enc
+

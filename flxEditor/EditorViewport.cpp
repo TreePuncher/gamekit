@@ -431,14 +431,14 @@ void EditorVewportPanMode::Draw(FlexKit::UpdateDispatcher& dispatcher, FlexKit::
 
 
 EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN_context, QWidget *parent)
-	:   QWidget{ parent }
-	,   hud                 { IN_renderer.GetRenderSystem(), FlexKit::SystemAllocator }
-	,   menuBar             { new QMenuBar{ this } }
-	,   renderer            { IN_renderer }
-	,   gbuffer             { { 100, 200 }, IN_renderer.framework.GetRenderSystem() }
-	,   depthBuffer         { IN_renderer.framework.GetRenderSystem(), { 100, 200 } }
-	,   viewportCamera      { FlexKit::CameraComponent::GetComponent().CreateCamera() }
-	,   selectionContext    { IN_context }
+	: QWidget{ parent }
+	, hud                 { IN_renderer.GetRenderSystem(), FlexKit::SystemAllocator }
+	, menuBar             { new QMenuBar{ this } }
+	, renderer            { IN_renderer }
+	, gbuffer             { { 100, 200 }, IN_renderer.framework.GetRenderSystem() }
+	, depthBuffer         { IN_renderer.framework.GetRenderSystem(), { 100, 200 } }
+	, viewportCamera      { FlexKit::CameraComponent::GetComponent().CreateCamera() }
+	, selectionContext    { IN_context }
 {
 	ui.setupUi(this);
 

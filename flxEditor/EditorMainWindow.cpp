@@ -19,71 +19,71 @@ using namespace std::chrono_literals;
 
 
 EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngine& IN_scriptEngine, EditorProject& IN_project, QApplication& IN_application, QWidget* parent) :
-    QMainWindow     { parent            },
-    QtApplication   { IN_application    },
-    prefabEditor    { new EditorPrefabEditor{ selectionContext, IN_scriptEngine, IN_renderer, IN_project } },
-    project         { IN_project        },
-    renderer        { IN_renderer       },
-    scriptEngine    { IN_scriptEngine   },
-    viewport        { new EditorViewport{ IN_renderer, selectionContext, this } },
-    tabBar          { new QTabWidget{} }
+	QMainWindow     { parent            },
+	QtApplication   { IN_application    },
+	prefabEditor    { new EditorPrefabEditor{ selectionContext, IN_scriptEngine, IN_renderer, IN_project } },
+	project         { IN_project        },
+	renderer        { IN_renderer       },
+	scriptEngine    { IN_scriptEngine   },
+	viewport        { new EditorViewport{ IN_renderer, selectionContext, this } },
+	tabBar          { new QTabWidget{} }
 {
-    fileMenu       = menuBar()->addMenu("File");
-    importMenu     = fileMenu->addMenu("Import");
-    exportMenu     = fileMenu->addMenu("Export");
+	fileMenu       = menuBar()->addMenu("File");
+	importMenu     = fileMenu->addMenu("Import");
+	exportMenu     = fileMenu->addMenu("Export");
 
 
-    tabBar->addTab(viewport, "Scene");
-    tabBar->addTab(prefabEditor, "Prefab");
+	tabBar->addTab(viewport, "Scene");
+	tabBar->addTab(prefabEditor, "Prefab");
 
-    setCentralWidget(tabBar);
+	setCentralWidget(tabBar);
 
-    auto viewMenu   = menuBar()->addMenu("View");
-    auto Add3DView  = viewMenu->addAction("Add 3D AddViewPort");
-    connect(Add3DView, &QAction::triggered, this, &EditorMainWindow::AddViewPort);
+	auto viewMenu   = menuBar()->addMenu("View");
+	auto Add3DView  = viewMenu->addAction("Add 3D AddViewPort");
+	connect(Add3DView, &QAction::triggered, this, &EditorMainWindow::AddViewPort);
 
-    auto AddTextView = viewMenu->addAction("Add Text View");
-    connect(AddTextView, &QAction::triggered, this, &EditorMainWindow::AddTextView);
+	auto AddTextView = viewMenu->addAction("Add Text View");
+	connect(AddTextView, &QAction::triggered, this, &EditorMainWindow::AddTextView);
 
-    auto addResourceView = viewMenu->addAction("Add Resource List");
-    connect(addResourceView, &QAction::triggered, this, &EditorMainWindow::AddResourceList);
+	auto addResourceView = viewMenu->addAction("Add Resource List");
+	connect(addResourceView, &QAction::triggered, this, &EditorMainWindow::AddResourceList);
 
-    auto addTextureView = viewMenu->addAction("Add Texture View");
-    connect(addTextureView, &QAction::triggered, this, [&] { AddTextureViewer(); });
+	auto addTextureView = viewMenu->addAction("Add Texture View");
+	connect(addTextureView, &QAction::triggered, this, [&] { AddTextureViewer(); });
 
-    auto addCodeEditor = viewMenu->addAction("Add Code Editor");
-    connect(addCodeEditor, &QAction::triggered, this, [&] { AddEditorView(); });
+	auto addCodeEditor = viewMenu->addAction("Add Code Editor");
+	connect(addCodeEditor, &QAction::triggered, this, [&] { AddEditorView(); });
 
-    auto addTextOutput = viewMenu->addAction("Add text Output");
-    connect(addTextOutput, &QAction::triggered, this, [&] { AddOutputView(); });
+	auto addTextOutput = viewMenu->addAction("Add text Output");
+	connect(addTextOutput, &QAction::triggered, this, [&] { AddOutputView(); });
 
-    auto addInspector = viewMenu->addAction("Add Inspector");
-    connect(addInspector, &QAction::triggered, this, [&] { AddInspector(); });
+	auto addInspector = viewMenu->addAction("Add Inspector");
+	connect(addInspector, &QAction::triggered, this, [&] { AddInspector(); });
 
-    auto addOutliner= viewMenu->addAction("Add Scene Outliner");
-    connect(addOutliner, &QAction::triggered, this, [&] { AddSceneOutliner(); });
+	auto addOutliner= viewMenu->addAction("Add Scene Outliner");
+	connect(addOutliner, &QAction::triggered, this, [&] { AddSceneOutliner(); });
 
-    auto tools = menuBar()->addMenu("Tools");
-    gadgetMenu = tools->addMenu("Scripts");
+	auto tools = menuBar()->addMenu("Tools");
+	gadgetMenu = tools->addMenu("Scripts");
 
-    auto timer = new QTimer{ this };
-    connect(timer, &QTimer::timeout, this, &EditorMainWindow::Update);
-    timer->setTimerType(Qt::PreciseTimer);
-    timer->start(16ms);
+	auto timer = new QTimer{ this };
+	connect(timer, &QTimer::timeout, this, &EditorMainWindow::Update);
+	timer->setTimerType(Qt::PreciseTimer);
+	timer->start(16ms);
 
-    setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowTabbedDocks | QMainWindow::AllowNestedDocks | QMainWindow::VerticalTabs);
-    tabPosition(Qt::TopDockWidgetArea);
+	setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowTabbedDocks | QMainWindow::AllowNestedDocks | QMainWindow::VerticalTabs);
+	tabPosition(Qt::TopDockWidgetArea);
 
-    AddSceneOutliner();
-    AddInspector();
-    AddResourceList();
+	AddSceneOutliner();
+	AddInspector();
+	AddResourceList();
 
-    showMaximized();
+	showMaximized();
 
-    show();
+	show();
 
-    frameEnd    = high_resolution_clock::now();
-    frameBegin  = frameEnd;
+	frameEnd    = high_resolution_clock::now();
+	frameBegin  = frameEnd;
 }
 
 
@@ -92,17 +92,17 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
 
 QTextEdit* EditorMainWindow::AddTextView()
 {
-    auto textDocklet        = new QDockWidget{};
-    QTextEdit* textEditor   = new QTextEdit{ textDocklet };
+	auto textDocklet        = new QDockWidget{};
+	QTextEdit* textEditor   = new QTextEdit{ textDocklet };
 
-    textDocklet->setWindowTitle("TextEditor");
-    textDocklet->setWidget(textEditor);
-    textDocklet->setFloating(true);
-    textDocklet->show();
+	textDocklet->setWindowTitle("TextEditor");
+	textDocklet->setWidget(textEditor);
+	textDocklet->setFloating(true);
+	textDocklet->show();
 
-    addDockWidget(Qt::RightDockWidgetArea, textDocklet);
+	addDockWidget(Qt::RightDockWidgetArea, textDocklet);
 
-    return textEditor;
+	return textEditor;
 }
 
 
@@ -111,14 +111,14 @@ QTextEdit* EditorMainWindow::AddTextView()
 
 void EditorMainWindow::AddEditorView()
 {
-    auto docklet = new QDockWidget{};
-    EditorCodeEditor* textEditor = new EditorCodeEditor{ project, scriptEngine ,docklet };
+	auto docklet = new QDockWidget{};
+	EditorCodeEditor* textEditor = new EditorCodeEditor{ project, scriptEngine ,docklet };
 
-    docklet->setWindowTitle("Code Editor");
-    docklet->setWidget(textEditor);
-    docklet->show();
+	docklet->setWindowTitle("Code Editor");
+	docklet->setWidget(textEditor);
+	docklet->show();
 
-    addDockWidget(Qt::RightDockWidgetArea, docklet);
+	addDockWidget(Qt::RightDockWidgetArea, docklet);
 }
 
 
@@ -127,16 +127,16 @@ void EditorMainWindow::AddEditorView()
 
 void EditorMainWindow::AddOutputView()
 {
-    auto docklet = new QDockWidget{};
-    auto* output = new EditorOutputWindow{ docklet };
+	auto docklet = new QDockWidget{};
+	auto* output = new EditorOutputWindow{ docklet };
 
-    docklet->setWindowTitle("Output");
-    docklet->setWidget(output);
-    docklet->show();
-    
-    output->SetInputSource([&]() -> const std::string& { return scriptEngine.GetTextBuffer(); }, 0);
+	docklet->setWindowTitle("Output");
+	docklet->setWidget(output);
+	docklet->show();
+	
+	output->SetInputSource([&]() -> const std::string& { return scriptEngine.GetTextBuffer(); }, 0);
 
-    addDockWidget(Qt::RightDockWidgetArea, docklet);
+	addDockWidget(Qt::RightDockWidgetArea, docklet);
 }
 
 
@@ -145,60 +145,60 @@ void EditorMainWindow::AddOutputView()
 
 void EditorMainWindow::AddImporter(iEditorImportor* importer)
 {
-    auto importAction = importMenu->addAction(importer->GetFileTypeName().c_str());
+	auto importAction = importMenu->addAction(importer->GetFileTypeName().c_str());
 
-    connect(importAction, &QAction::triggered, this,
-        [=]
-        {
-            const auto importText   = std::string{ "Import " } + importer->GetFileTypeName();
-            const auto fileMenuText = std::string{ "Files (*." } + importer->GetFileExt() + ")";
-            const auto fileDir      = QFileDialog::getOpenFileName(this, tr(importText.c_str()), QDir::currentPath(), fileMenuText.c_str());
-            const auto fileStr      = fileDir.toStdString();
+	connect(importAction, &QAction::triggered, this,
+		[=]
+		{
+			const auto importText   = std::string{ "Import " } + importer->GetFileTypeName();
+			const auto fileMenuText = std::string{ "Files (*." } + importer->GetFileExt() + ")";
+			const auto fileDir      = QFileDialog::getOpenFileName(this, tr(importText.c_str()), QDir::currentPath(), fileMenuText.c_str());
+			const auto fileStr      = fileDir.toStdString();
 
-            if (fileDir.size() && !importer->Import(fileStr))
-            {   // Log Error
-                FK_LOG_ERROR("Import Failed!");
-            }
-        });
+			if (fileDir.size() && !importer->Import(fileStr))
+			{   // Log Error
+				FK_LOG_ERROR("Import Failed!");
+			}
+		});
 }
 
 
 void EditorMainWindow::AddExporter(iEditorExporter* exporter)
 {
-    auto exportAction = exportMenu->addAction(exporter->GetFileTypeName().c_str());
+	auto exportAction = exportMenu->addAction(exporter->GetFileTypeName().c_str());
 
-    connect(exportAction, &QAction::triggered, this,
-        [=]
-        {
-            const auto exportLabel  = std::string{ "Export" } + exporter->GetFileTypeName();
-            const auto fileMenuText = std::string{ "Files (*." } + exporter->GetFileExt() + ")";
-            const auto fileDir      = QFileDialog::getSaveFileName(this, tr(exportLabel.c_str()), QDir::currentPath(), fileMenuText.c_str());
-            const auto fileStr      = fileDir.toStdString();
+	connect(exportAction, &QAction::triggered, this,
+		[=]
+		{
+			const auto exportLabel  = std::string{ "Export" } + exporter->GetFileTypeName();
+			const auto fileMenuText = std::string{ "Files (*." } + exporter->GetFileExt() + ")";
+			const auto fileDir      = QFileDialog::getSaveFileName(this, tr(exportLabel.c_str()), QDir::currentPath(), fileMenuText.c_str());
+			const auto fileStr      = fileDir.toStdString();
 
-            std::vector<FlexKit::Resource_ptr> selectedResources{};
+			std::vector<FlexKit::Resource_ptr> selectedResources{};
 
-            for (auto& resource : project.GetResources())
-                    selectedResources.emplace_back(resource);
+			for (auto& resource : project.GetResources())
+					selectedResources.emplace_back(resource);
 
-            std::sort(
-                std::begin(selectedResources),
-                std::end(selectedResources),
-                [](FlexKit::Resource_ptr& lhs, FlexKit::Resource_ptr& rhs) { return lhs->GetResourceGUID() < rhs->GetResourceGUID(); });
+			std::sort(
+				std::begin(selectedResources),
+				std::end(selectedResources),
+				[](FlexKit::Resource_ptr& lhs, FlexKit::Resource_ptr& rhs) { return lhs->GetResourceGUID() < rhs->GetResourceGUID(); });
 
-            selectedResources.erase(
-                std::unique(
-                    std::begin(selectedResources),
-                    std::end(selectedResources)),
-                std::end(selectedResources));
+			selectedResources.erase(
+				std::unique(
+					std::begin(selectedResources),
+					std::end(selectedResources)),
+				std::end(selectedResources));
 
-            if (fileDir.size() && selectedResources.size() && !exporter->Export(fileStr, selectedResources))
-            {   // Log Error
-                const auto fileDir = QFileDialog::getOpenFileName(this, tr(exportLabel.c_str()), QDir::currentPath(), fileMenuText.c_str());
-                const auto fileStr = fileDir.toStdString();
+			if (fileDir.size() && selectedResources.size() && !exporter->Export(fileStr, selectedResources))
+			{   // Log Error
+				const auto fileDir = QFileDialog::getOpenFileName(this, tr(exportLabel.c_str()), QDir::currentPath(), fileMenuText.c_str());
+				const auto fileStr = fileDir.toStdString();
 
-                FK_LOG_ERROR("Export Failed!");
-            }
-        });
+				FK_LOG_ERROR("Export Failed!");
+			}
+		});
 }
 
 
@@ -207,16 +207,16 @@ void EditorMainWindow::AddExporter(iEditorExporter* exporter)
 
 void EditorMainWindow::RegisterGadget(iEditorGadget* gadget)
 {
-    auto gadgetID = gadget->GadgetID();
-    auto action = gadgetMenu->addAction(QString(gadgetID.c_str()));
+	auto gadgetID = gadget->GadgetID();
+	auto action = gadgetMenu->addAction(QString(gadgetID.c_str()));
 
-    connect(
-        action,
-        &QAction::triggered, this,
-        [=]
-        {
-            gadget->Execute();
-        });
+	connect(
+		action,
+		&QAction::triggered, this,
+		[=]
+		{
+			gadget->Execute();
+		});
 }
 
 
@@ -225,22 +225,22 @@ void EditorMainWindow::RegisterGadget(iEditorGadget* gadget)
 
 DXRenderWindow* EditorMainWindow::AddViewPort()
 {
-    auto viewPortWidget = renderer.CreateRenderWindow();
+	auto viewPortWidget = renderer.CreateRenderWindow();
 
-    viewPortWidget->ResizeEventHandler =
-        [&](DXRenderWindow* renderWindow)
-        {
-            //renderer.DrawRenderWindow(renderWindow);
-        };
+	viewPortWidget->ResizeEventHandler =
+		[&](DXRenderWindow* renderWindow)
+		{
+			//renderer.DrawRenderWindow(renderWindow);
+		};
 
-    auto docklet = new QDockWidget{};
-    docklet->setWidget(viewPortWidget);
-    docklet->setFeatures(docklet->features() | QDockWidget::DockWidgetFeature::DockWidgetVerticalTitleBar);
-    docklet->show();
+	auto docklet = new QDockWidget{};
+	docklet->setWidget(viewPortWidget);
+	docklet->setFeatures(docklet->features() | QDockWidget::DockWidgetFeature::DockWidgetVerticalTitleBar);
+	docklet->show();
 
-    addDockWidget(Qt::RightDockWidgetArea, docklet, Qt::Orientation::Vertical);
+	addDockWidget(Qt::RightDockWidgetArea, docklet, Qt::Orientation::Vertical);
 
-    return viewPortWidget;
+	return viewPortWidget;
 }
 
 
@@ -249,19 +249,19 @@ DXRenderWindow* EditorMainWindow::AddViewPort()
 
 ResourceBrowserWidget* EditorMainWindow::AddResourceList()
 {
-    auto docklet            = new QDockWidget{ this };
-    auto resourceBrowser    = new ResourceBrowserWidget(project, renderer, this);
+	auto docklet            = new QDockWidget{ this };
+	auto resourceBrowser    = new ResourceBrowserWidget(project, renderer, this);
 
-    resourceBrowser->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+	resourceBrowser->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
 
-    docklet->setWindowTitle("Resource List");
-    docklet->setWidget(resourceBrowser);
-    docklet->setFeatures(docklet->features() | QDockWidget::DockWidgetFeature::DockWidgetVerticalTitleBar);
-    docklet->show();
+	docklet->setWindowTitle("Resource List");
+	docklet->setWidget(resourceBrowser);
+	docklet->setFeatures(docklet->features() | QDockWidget::DockWidgetFeature::DockWidgetVerticalTitleBar);
+	docklet->show();
 
-    addDockWidget(Qt::LeftDockWidgetArea, docklet, Qt::Orientation::Vertical);
+	addDockWidget(Qt::LeftDockWidgetArea, docklet, Qt::Orientation::Vertical);
 
-    return resourceBrowser;
+	return resourceBrowser;
 }
 
 
@@ -270,15 +270,15 @@ ResourceBrowserWidget* EditorMainWindow::AddResourceList()
 
 void EditorMainWindow::AddSceneOutliner()
 {
-    auto docklet    = new QDockWidget{ this };
-    auto outliner   = new SceneOutliner{ Get3DView(), this};
+	auto docklet    = new QDockWidget{ this };
+	auto outliner   = new SceneOutliner{ Get3DView(), this};
 
-    docklet->setWindowTitle("Outliner");
-    docklet->setWidget(outliner);
-    docklet->setFeatures(docklet->features() | QDockWidget::DockWidgetFeature::DockWidgetVerticalTitleBar);
-    docklet->show();
+	docklet->setWindowTitle("Outliner");
+	docklet->setWidget(outliner);
+	docklet->setFeatures(docklet->features() | QDockWidget::DockWidgetFeature::DockWidgetVerticalTitleBar);
+	docklet->show();
 
-    addDockWidget(Qt::LeftDockWidgetArea, docklet, Qt::Orientation::Vertical);
+	addDockWidget(Qt::LeftDockWidgetArea, docklet, Qt::Orientation::Vertical);
 }
 
 
@@ -287,16 +287,16 @@ void EditorMainWindow::AddSceneOutliner()
 
 void EditorMainWindow::AddModelViewer()
 {
-    auto docklet        = new QDockWidget{ this };
-    auto modelViewer    = new ModelViewerWidget(renderer, this);
+	auto docklet        = new QDockWidget{ this };
+	auto modelViewer    = new ModelViewerWidget(renderer, this);
 
-    modelViewer->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+	modelViewer->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
 
-    docklet->setWindowTitle("Model Viewer");
-    docklet->setWidget(modelViewer);
-    docklet->setFeatures(docklet->features() | QDockWidget::DockWidgetFeature::DockWidgetVerticalTitleBar);
-    docklet->setFloating(true);
-    docklet->show();
+	docklet->setWindowTitle("Model Viewer");
+	docklet->setWidget(modelViewer);
+	docklet->setFeatures(docklet->features() | QDockWidget::DockWidgetFeature::DockWidgetVerticalTitleBar);
+	docklet->setFloating(true);
+	docklet->show();
 }
 
 
@@ -305,16 +305,16 @@ void EditorMainWindow::AddModelViewer()
 
 TextureViewer* EditorMainWindow::AddTextureViewer(TextureResource* res)
 {
-    auto docklet        = new QDockWidget{ this };
-    auto textureViewer  = new TextureViewer{ renderer, this };
+	auto docklet        = new QDockWidget{ this };
+	auto textureViewer  = new TextureViewer{ renderer, this };
 
-    docklet->setWidget(textureViewer);
-    docklet->setWindowTitle("TextureViewer");
-    docklet->setFeatures(docklet->features() | QDockWidget::DockWidgetFeature::DockWidgetVerticalTitleBar);
-    docklet->setFloating(true);
-    docklet->show();
-    
-    return textureViewer;
+	docklet->setWidget(textureViewer);
+	docklet->setWindowTitle("TextureViewer");
+	docklet->setFeatures(docklet->features() | QDockWidget::DockWidgetFeature::DockWidgetVerticalTitleBar);
+	docklet->setFloating(true);
+	docklet->show();
+	
+	return textureViewer;
 }
 
 
@@ -323,15 +323,15 @@ TextureViewer* EditorMainWindow::AddTextureViewer(TextureResource* res)
 
 void EditorMainWindow::AddInspector()
 {
-    auto docklet    = new QDockWidget{ this };
-    auto inspector  = new EditorInspectorView{ selectionContext, this };
+	auto docklet    = new QDockWidget{ this };
+	auto inspector  = new EditorInspectorView{ selectionContext, this };
 
-    docklet->setWidget(inspector);
-    docklet->setWindowTitle("Inspector");
-    docklet->setFeatures(docklet->features() | QDockWidget::DockWidgetFeature::DockWidgetVerticalTitleBar);
-    docklet->show();
+	docklet->setWidget(inspector);
+	docklet->setWindowTitle("Inspector");
+	docklet->setFeatures(docklet->features() | QDockWidget::DockWidgetFeature::DockWidgetVerticalTitleBar);
+	docklet->show();
 
-    addDockWidget(Qt::RightDockWidgetArea, docklet, Qt::Orientation::Vertical);
+	addDockWidget(Qt::RightDockWidgetArea, docklet, Qt::Orientation::Vertical);
 }
 
 
@@ -340,7 +340,7 @@ void EditorMainWindow::AddInspector()
 
 void EditorMainWindow::CloseEvent(QCloseEvent* event)
 {
-    QSettings settings("Flex", "Kit");
+	QSettings settings("Flex", "Kit");
 }
 
 
@@ -349,9 +349,9 @@ void EditorMainWindow::CloseEvent(QCloseEvent* event)
 
 void EditorMainWindow::Close()
 {
-    QtApplication.closeAllWindows();
-    QtApplication.quit();
-    QtApplication.exit();
+	QtApplication.closeAllWindows();
+	QtApplication.quit();
+	QtApplication.exit();
 }
 
 
@@ -360,7 +360,7 @@ void EditorMainWindow::Close()
 
 void EditorMainWindow::timerEvent(QTimerEvent* event)
 {
-    OutputDebugString(L"Hello!\n");
+	OutputDebugString(L"Hello!\n");
 }
 
 
@@ -377,15 +377,12 @@ EditorMainWindow::~EditorMainWindow()
 
 void EditorMainWindow::Update()
 {
-    duration_t lastFrameDuration = frameEnd - frameBegin;
+	duration_t lastFrameDuration = frameEnd - frameBegin;
 
-    //time_point          frameEnd;
-    //time_point          frameBegin;
-    //OutputDebugString(L"Update!\n");
-    renderer.DrawOneFrame(lastFrameDuration.count());
+	renderer.DrawOneFrame(lastFrameDuration.count());
 
-    frameBegin  = frameEnd;
-    frameEnd    = high_resolution_clock::now();
+	frameBegin  = frameEnd;
+	frameEnd    = high_resolution_clock::now();
 }
 
 

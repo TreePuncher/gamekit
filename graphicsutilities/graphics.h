@@ -4094,10 +4094,8 @@ private:
 			int* IndicesPerFace;
 		}*SubDiv;
 
-		const char*                         ID;
-		SkinDeformer*                       SkinTable;
-		Skeleton*                           Skeleton;
-
+		const char*		ID;
+		SkinDeformer*	SkinTable;
 
 		struct LOD_Runtime
 		{

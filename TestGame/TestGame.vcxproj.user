@@ -12,4 +12,7 @@
     <LocalDebuggerCommand>$(SolutionDir)builds\Debug\TestGame.exe</LocalDebuggerCommand>
     <LocalDebuggerAttach>false</LocalDebuggerAttach>
   </PropertyGroup>
+  <PropertyGroup>
+    <ShowAllFiles>false</ShowAllFiles>
+  </PropertyGroup>
 </Project>

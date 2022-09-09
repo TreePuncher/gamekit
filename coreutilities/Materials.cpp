@@ -3,326 +3,687 @@
 #include "TextureStreamingUtilities.h"
 
 namespace FlexKit
-{   /************************************************************************************************/
+{	/************************************************************************************************/
 
 
-    void MaterialComponent::ReleaseMaterial(MaterialHandle material)
-    {
-        const auto idx = handles[material];
+	MaterialComponentData MaterialComponent::operator [](const MaterialHandle handle) const
+	{
+		if(handle == InvalidHandle)
+			return { 0, InvalidHandle, InvalidHandle, {}, {}, {}, {} };
 
-        if(materials[idx].refCount)
-            materials[idx].refCount--;
+		return materials[handles[handle]];
+	}
 
-        if (materials[idx].refCount == 0)
-        {
-            auto& textures = materials[idx].Textures;
-            auto parent = materials[idx].parent;
 
-            if (parent != InvalidHandle)
-                ReleaseMaterial(parent);
+	/************************************************************************************************/
 
-            for (auto& texture : textures)
-                ReleaseTexture(texture);
 
+	MaterialHandle MaterialComponent::CreateMaterial(MaterialHandle IN_parent)
+	{
+		std::scoped_lock lock{ m };
 
-            materials[idx] = materials.back();
-            materials.pop_back();
+		const auto handle		= handles.GetNewHandle();
+		const auto materialIdx = (index_t)materials.push_back({ (uint32_t)0, handle, IN_parent, {}, {}, {} });
 
-            if (materials.size())
-            {
-                handles[materials[idx].handle] = idx;
-                handles.RemoveHandle(material);
-            }
-        }
-    }
+		if(IN_parent != InvalidHandle)
+			AddRef(IN_parent);
 
+		handles[handle] = materialIdx;
 
-    /************************************************************************************************/
+		return handle;
+	}
 
 
-    void MaterialComponent::ReleaseTexture(ResourceHandle texture)
-    {
-        const auto res = std::find_if(
-            std::begin(textures),
-            std::end(textures),
-            [&](auto element)
-            {
-                return element.texture == texture;
-            }
-        );
+	/************************************************************************************************/
 
-        if (res != std::end(textures))
-        {
-            res->refCount--;
 
-            if (res->refCount == 0)
-            {
-                renderSystem.ReleaseResource(res->texture);
-                textures.remove_unstable(res);
-            }
-        }
-    }
+	void MaterialComponent::AddRef(MaterialHandle material) noexcept
+	{
+		if(material != InvalidHandle)
+			std::atomic_ref(materials[handles[material]].refCount).fetch_add(1, std::memory_order_acq_rel);
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    MaterialHandle MaterialComponent::CloneMaterial(MaterialHandle sourceMaterial)
-    {
-        const auto clone = (index_t)materials.push_back(materials[handles[sourceMaterial]]);
-        materials[clone].refCount = 0;
+	void MaterialComponent::AddSubMaterial(MaterialHandle material, MaterialHandle subMaterial)
+	{
+		materials[handles[material]].SubMaterials.push_back(subMaterial);
+	}
 
-        auto& material = materials[clone];
-        material.refCount = 0;
 
-        if (material.parent != InvalidHandle)
-            AddRef(material.parent);
+	/************************************************************************************************/
 
-        const auto handle = handles.GetNewHandle();
-        handles[handle] = clone;
 
-        return handle;
-    }
+	MaterialTextureEntry* MaterialComponent::_AddTextureAsset(GUID_t textureAsset, ReadContext& readContext, const bool loadLowest)
+	{
+		const auto [MIPCount, DDSTextureWH, format] = GetDDSInfo(textureAsset, readContext);
+		const auto resourceStrID					= GetResourceStringID(textureAsset);
 
+		if (DDSTextureWH.Product() == 0)
+			return nullptr;
 
-    /************************************************************************************************/
+		auto textureResource = renderSystem.CreateGPUResource(
+			GPUResourceDesc::ShaderResource(
+				DDSTextureWH,
+				format,
+				MIPCount,
+				1,
+				ResourceAllocationType::Tiled));
 
+		renderSystem.SetDebugName(textureResource, "Virtual Texture");
 
-    void MaterialComponent::AddTexture(GUID_t textureAsset, MaterialHandle material, ReadContext& readContext, const bool loadLowest)
-    {
-        const auto res = std::find_if(
-            std::begin(textures),
-            std::end(textures),
-            [&](auto element)
-            {
-                return element.assetID == textureAsset;
-            }
-        );
+		streamEngine.BindAsset(textureAsset, textureResource);
 
-        if (res == std::end(textures))
-        {
-            const auto [MIPCount, DDSTextureWH, format] = GetDDSInfo(textureAsset, readContext);
-            const auto resourceStrID = GetResourceStringID(textureAsset);
+		if(loadLowest)
+			streamEngine.LoadLowestLevel(textureResource);
 
-            if (DDSTextureWH.Product() == 0)
-                return;
+		const auto idx = textures.push_back({ 1, textureResource, textureAsset });
 
-            auto textureResource = renderSystem.CreateGPUResource(
-                GPUResourceDesc::ShaderResource(
-                    DDSTextureWH,
-                    format,
-                    MIPCount,
-                    1,
-                    ResourceAllocationType::Tiled));
+		return textures.begin() + idx;
+	}
 
-            renderSystem.SetDebugName(textureResource, "Virtual Texture");
 
-            streamEngine.BindAsset(textureAsset, textureResource);
+	/************************************************************************************************/
 
-            if(loadLowest)
-                streamEngine.LoadLowestLevel(textureResource);
 
-            textures.push_back({ 1, textureResource, textureAsset });
+	void MaterialComponent::_ReleaseTexture(MaterialTextureEntry* entry)
+	{
+		auto res = std::atomic_ref(entry->refCount).fetch_sub(1, std::memory_order_acq_rel);
 
-            materials[handles[material]].Textures.push_back(textureResource);
-        }
-        else
-        {
-            res->refCount++;
-            materials[handles[material]].Textures.push_back(res->texture);
-        }
-    }
-    /************************************************************************************************/
+		if (res == 1)
+		{
+			renderSystem.ReleaseResource(entry->texture);
+			textures.remove_unstable(entry);
+		}
+	}
 
 
-    MaterialComponent::MaterialView::MaterialView(GameObject & gameObject, MaterialHandle IN_handle) noexcept :
-        handle{ IN_handle }
-    {
-        GetComponent().AddRef(handle);
+	/************************************************************************************************/
 
-        SetMaterialHandle(gameObject, handle);
-    }
 
-    MaterialComponent::MaterialView::MaterialView(GameObject& gameObject) noexcept : handle{ GetComponent().CreateMaterial() }
-    {
-        GetComponent().AddRef(handle);
+	MaterialTextureEntry* MaterialComponent::_FindTextureAsset(ResourceHandle resourceHandle)
+	{
+		return std::ranges::find_if(
+			textures,
+			[&](auto element)
+			{
+				return element.texture == resourceHandle;
+			}
+		);
+	}
 
-        SetMaterialHandle(gameObject, handle);
-    }
+	MaterialTextureEntry* MaterialComponent::_FindTextureAsset(GUID_t textureAsset)
+	{
+		return std::ranges::find_if(
+			textures,
+			[&](auto element)
+			{
+				return	element.assetID != 0xfffffffffffffff &&
+						element.assetID == textureAsset;
+			}
+		);
+	}
 
-    /************************************************************************************************/
 
+	/************************************************************************************************/
 
-    MaterialComponent::MaterialView::~MaterialView()
-    {
-        GetComponent().ReleaseMaterial(handle);
-    }
 
+	void MaterialComponent::ReleaseMaterial(MaterialHandle material)
+	{
+		const auto idx = handles[material];
+		std::atomic_ref refCount(materials[idx].refCount);
 
-    /************************************************************************************************/
+		if(refCount.load(std::memory_order_acquire) > 0)
+			refCount.fetch_sub(1, std::memory_order_acq_rel);
 
+		if (refCount.load(std::memory_order_acquire) == 0)
+		{
+			auto& textures = materials[idx].Textures;
+			auto parent = materials[idx].parent;
 
-    MaterialComponentData MaterialComponent::MaterialView::GetData() const
-    {
-        return GetComponent()[handle];
-    }
+			if (parent != InvalidHandle)
+				ReleaseMaterial(parent);
 
+			for (auto& texture : textures)
+				ReleaseTexture(texture);
 
-    /************************************************************************************************/
 
+			materials[idx] = materials.back();
+			materials.pop_back();
 
-    bool MaterialComponent::MaterialView::Shared() const
-    {
-        return GetComponent()[handle].refCount > 1;
-    }
+			if (materials.size())
+			{
+				handles[materials[idx].handle] = idx;
+				handles.RemoveHandle(material);
+			}
+		}
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void MaterialComponent::MaterialView::Add2Pass(const PassHandle ID)
-    {
-        GetComponent().Add2Pass(handle, ID);
-    }
+	void MaterialComponent::ReleaseTexture(ResourceHandle texture)
+	{
+		auto res = _FindTextureAsset(texture);
 
+		if (res != std::end(textures))
+			_ReleaseTexture(res);
+	}
 
-    /************************************************************************************************/
 
+	/************************************************************************************************/
 
-    static_vector<PassHandle> MaterialComponent::MaterialView::GetPasses() const
-    {
-        return GetComponent().GetPasses(handle);
-    }
 
+	MaterialHandle MaterialComponent::CloneMaterial(MaterialHandle sourceMaterial)
+	{
+		const auto clone = (index_t)materials.push_back(materials[handles[sourceMaterial]]);
 
-    /************************************************************************************************/
+		auto& material = materials[clone];
+		material.refCount = 0;
 
+		if (material.parent != InvalidHandle)
+			AddRef(material.parent);
 
-    void MaterialComponent::MaterialView::AddTexture(GUID_t textureAsset, bool LoadLowest)
-    {
-        if (Shared())
-        {
-            auto newHandle = GetComponent().CloneMaterial(handle);
-            GetComponent().ReleaseMaterial(handle);
+		const auto handle = handles.GetNewHandle();
+		handles[handle] = clone;
 
-            handle = newHandle;
-        }
+		return handle;
+	}
 
-        ReadContext rdCtx{};
-        GetComponent().AddTexture(textureAsset, handle, rdCtx, LoadLowest);
-    }
 
+	/************************************************************************************************/
 
-    /************************************************************************************************/
 
+	void MaterialComponent::PushTexture(MaterialHandle material, GUID_t textureAsset, ReadContext& readContext, const bool loadLowest)
+	{
+		auto res = _FindTextureAsset(textureAsset);
 
-    bool MaterialComponent::MaterialView::HasSubMaterials() const
-    {
-        return !GetComponent()[handle].SubMaterials.empty();
-    }
+		if (res == std::end(textures))
+		{
+			auto assets = _AddTextureAsset(textureAsset, readContext, loadLowest);
+			materials[handles[material]].Textures.push_back(assets->texture);
+		}
+		else
+		{
+			std::atomic_ref(res->refCount).fetch_add(1, std::memory_order_acq_rel);
+			materials[handles[material]].Textures.push_back(res->texture);
+		}
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    MaterialHandle MaterialComponent::MaterialView::CreateSubMaterial()
-    {
-        auto& materials = GetComponent();
+	void MaterialComponent::PushTexture(MaterialHandle material, ResourceHandle texture)
+	{
+		auto res = _FindTextureAsset(texture);
 
-        if (Shared())
-        {
-            auto newHandle = GetComponent().CloneMaterial(handle);
-            GetComponent().ReleaseMaterial(handle);
+		if (res == std::end(textures))
+		{
+			textures.push_back({ 1, texture, 0xfffffffffffffff });
+			materials[handles[material]].Textures.push_back(texture);
+		}
+		else
+		{
+			std::atomic_ref(res->refCount).fetch_add(1, std::memory_order_acq_rel);
+			materials[handles[material]].Textures.push_back(texture);
+		}
+	}
 
-            handle = newHandle;
-        }
 
-        if (GetComponent()[handle].SubMaterials.full())
-            return InvalidHandle;
+	/************************************************************************************************/
 
-        auto subMaterial = materials.CreateMaterial();
-        materials.AddSubMaterial(handle, subMaterial);
 
-        return subMaterial;
-    }
+	void MaterialComponent::RemoveTexture(MaterialHandle material, GUID_t guid)
+	{
+		auto& material_ref = materials[handles[material]];
 
+		auto res = _FindTextureAsset(guid);
 
-    /************************************************************************************************/
+		if (auto res2 = std::ranges::find(material_ref.Textures, res->texture); res2 != material_ref.Textures.end())
+		{
+			material_ref.Textures.remove_stable(res2);
+			_ReleaseTexture(res);
+		}
+	}
 
 
-    void MaterialComponent::AddComponentView(GameObject& gameObject, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
-    {
-        if (gameObject.hasView(MaterialComponentID))
-            return;
+	/************************************************************************************************/
 
-        MaterialComponentBlob materialBlob;
-        memcpy(&materialBlob, buffer, Min(sizeof(materialBlob), bufferSize));
 
-        const static auto parentMaterial = [&]() {
-            auto newMaterial = CreateMaterial();
+	void MaterialComponent::RemoveTexture(MaterialHandle material, ResourceHandle resource)
+	{
+		auto& material_ref = materials[handles[material]];
 
-            Add2Pass(newMaterial, PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
-            Add2Pass(newMaterial, PassHandle{ GetCRCGUID(VXGI_STATIC) });
-            Add2Pass(newMaterial, PassHandle{ GetCRCGUID(SHADOWMAPPASS) });
+		if (auto res = std::ranges::find(material_ref.Textures, resource); res != material_ref.Textures.end())
+		{
+			material_ref.Textures.remove_stable(res);
+			ReleaseTexture(resource);
+		}
+	}
 
-            SetProperty(newMaterial, GetCRCGUID(PBR_ALBEDO), float4(0.5f, 0.5f, 0.5f, 0.3f));
-            SetProperty(newMaterial, GetCRCGUID(PBR_SPECULAR), float4(0.9f, 0.9f, 0.9f, 0.0f));
 
-            return newMaterial;
-        }();
+	/************************************************************************************************/
 
-        auto newMaterial = CreateMaterial(parentMaterial);
 
-        auto rdCtx          = ReadContext{};
-        if (materialBlob.materials.size() > 1)
-        {
-            for (auto& subMaterial : materialBlob.materials)
-            {
-                auto newSubMaterial = CreateMaterial(newMaterial);
-                AddSubMaterial(newMaterial, newSubMaterial);
+	void MaterialComponent::RemoveTextureAt(MaterialHandle material, int idx)
+	{
+		auto& material_ref = materials[handles[material]];
+		const auto t = material_ref.Textures[idx];
 
+		material_ref.Textures.remove_stable(material_ref.Textures.begin() + idx);
+		ReleaseTexture(t);
+	}
 
-                for (auto& texture : subMaterial.textures)
-                    AddTexture(texture, newSubMaterial, rdCtx);
-            }
-        }
-        else if (materialBlob.materials.size() == 1)
-        {
 
-            for (auto& texture : materialBlob.materials[0].textures)
-                AddTexture(texture, newMaterial, rdCtx);
-        }
+	/************************************************************************************************/
 
-        gameObject.AddView<MaterialView>(newMaterial);
-        SetMaterialHandle(gameObject, newMaterial);
-    }
 
+	void MaterialComponent::InsertTexture(MaterialHandle material, GUID_t guid, int I, ReadContext& readContext, const bool loadLowest)
+	{
+		auto asset = _FindTextureAsset(guid);
 
+		if (asset == textures.end())
+			asset = _AddTextureAsset(guid, readContext, loadLowest);
+		else
+			std::atomic_ref(asset->refCount).fetch_add(1, std::memory_order_acq_rel);
 
-    void SetMaterialHandle(GameObject& go, MaterialHandle material) noexcept
-    {
-        Apply(
-            go,
-            [&](BrushView& brush)
-            {
-                brush.GetBrush().material = material;
-            });
-    }
+		auto& textures = materials[handles[material]].Textures;
 
+		textures.insert(textures.begin() + I, asset->texture);
+	}
 
-    MaterialHandle GetMaterialHandle(GameObject& go) noexcept
-    {
-        return Apply(
-            go,
-            [&](MaterialView& material)
-            {
-                return material.handle;
-            },
-            []() -> MaterialHandle
-            {
-                return InvalidHandle;
-            });
-    }
+
+	/************************************************************************************************/
+
+
+	void MaterialComponent::InsertTexture(MaterialHandle material, ResourceHandle resource, int I)
+	{
+		auto asset = _FindTextureAsset(resource);
+
+		if (asset == textures.end())
+			return;
+
+		std::atomic_ref(asset->refCount).fetch_add(1, std::memory_order_acq_rel);
+
+		auto& textures = materials[handles[material]].Textures;
+
+		textures.insert(textures.begin() + I, asset->texture);
+	}
+
+
+	/************************************************************************************************/
+
+
+	MaterialComponent::MaterialView::MaterialView(GameObject& gameObject, MaterialHandle IN_handle) noexcept :
+		handle{ IN_handle }
+	{
+		GetComponent().AddRef(handle);
+
+		SetMaterialHandle(gameObject, handle);
+	}
+
+	MaterialComponent::MaterialView::MaterialView(GameObject& gameObject) noexcept : handle{ GetComponent().CreateMaterial() }
+	{
+		GetComponent().AddRef(handle);
+
+		SetMaterialHandle(gameObject, handle);
+	}
+
+	/************************************************************************************************/
+
+
+	MaterialComponent::MaterialView::~MaterialView()
+	{
+		GetComponent().ReleaseMaterial(handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	MaterialComponentData MaterialComponent::MaterialView::GetData() const
+	{
+		return GetComponent()[handle];
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool MaterialComponent::MaterialView::Shared() const
+	{
+		const auto& material		= GetComponent()[handle];
+		const auto& refCount_ref	= material.refCount;
+		return std::atomic_ref(refCount_ref).load(std::memory_order_acquire) > 1;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void MaterialComponent::MaterialView::Add2Pass(const PassHandle ID)
+	{
+		GetComponent().Add2Pass(handle, ID);
+	}
+
+
+	/************************************************************************************************/
+
+
+	Vector<PassHandle, 16, uint8_t> MaterialComponent::MaterialView::GetPasses() const
+	{
+		return GetComponent().GetPasses(handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void MaterialComponent::MaterialView::PushTexture(GUID_t textureAsset, bool LoadLowest)
+	{
+		if (Shared())
+		{
+			auto newHandle = GetComponent().CloneMaterial(handle);
+			GetComponent().ReleaseMaterial(handle);
+
+			handle = newHandle;
+		}
+
+		ReadContext rdCtx{};
+		GetComponent().PushTexture(handle, textureAsset, rdCtx, LoadLowest);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void MaterialComponent::MaterialView::PushTexture(ResourceHandle resource)
+	{
+		if (Shared())
+		{
+			auto newHandle = GetComponent().CloneMaterial(handle);
+			GetComponent().ReleaseMaterial(handle);
+
+			handle = newHandle;
+		}
+
+		ReadContext rdCtx{};
+		GetComponent().PushTexture(handle, 0xfffffffffffffff, rdCtx);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void MaterialComponent::MaterialView::InsertTexture(GUID_t asset, int idx, ReadContext& readContext, const bool loadLowest)
+	{
+		if (Shared())
+		{
+			auto newHandle = GetComponent().CloneMaterial(handle);
+			GetComponent().ReleaseMaterial(handle);
+
+			handle = newHandle;
+		}
+
+		GetComponent().InsertTexture(handle, asset, idx, readContext, loadLowest);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void MaterialComponent::MaterialView::RemoveTextureAt(int idx)
+	{
+		if (Shared())
+		{
+			auto newHandle = GetComponent().CloneMaterial(handle);
+			GetComponent().ReleaseMaterial(handle);
+
+			handle = newHandle;
+		}
+
+		GetComponent().RemoveTextureAt(handle, idx);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void MaterialComponent::MaterialView::InsertTexture(ResourceHandle resource, int idx)
+	{
+		auto& materials = GetComponent();
+
+		if (Shared())
+		{
+			auto newHandle = materials.CloneMaterial(handle);
+			materials.ReleaseMaterial(handle);
+
+			handle = newHandle;
+		}
+
+		materials.InsertTexture(handle, resource, idx);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void MaterialComponent::MaterialView::RemoveTexture(GUID_t asset)
+	{
+		auto& materials = GetComponent();
+
+		auto res = std::ranges::find_if(
+			GetComponent().textures,
+			[&](auto& texture)
+			{
+				return texture.assetID == asset;
+			});
+
+		if (materials.textures.end() == res)
+			return;
+
+		if (Shared())
+		{
+			auto newHandle = materials.CloneMaterial(handle);
+			materials.ReleaseMaterial(handle);
+
+			handle = newHandle;
+		}
+
+		materials.RemoveTexture(handle, res->texture);
+		materials.ReleaseTexture(res->texture);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void MaterialComponent::MaterialView::RemoveTexture(ResourceHandle resource)
+	{
+		auto& materials = GetComponent();
+
+		if (Shared())
+		{
+			auto newHandle = materials.CloneMaterial(handle);
+			materials.ReleaseMaterial(handle);
+
+			handle = newHandle;
+		}
+
+		materials.ReleaseTexture(resource);
+		materials.RemoveTexture(handle, resource);
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool MaterialComponent::MaterialView::HasSubMaterials() const
+	{
+		return !GetComponent()[handle].SubMaterials.empty();
+	}
+
+
+	/************************************************************************************************/
+
+
+	MaterialHandle MaterialComponent::MaterialView::CreateSubMaterial()
+	{
+		auto& materials = GetComponent();
+
+		if (Shared())
+		{
+			auto newHandle = GetComponent().CloneMaterial(handle);
+			GetComponent().ReleaseMaterial(handle);
+
+			handle = newHandle;
+		}
+
+		auto subMaterial = materials.CreateMaterial();
+		materials.AddSubMaterial(handle, subMaterial);
+
+		return subMaterial;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void MaterialComponent::AddComponentView(GameObject& gameObject, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+	{
+		if (gameObject.hasView(MaterialComponentID))
+			return;
+
+		MaterialComponentBlob materialBlob;
+		memcpy(&materialBlob, buffer, Min(sizeof(materialBlob), bufferSize));
+
+		const static auto parentMaterial = [&]() {
+			auto newMaterial = CreateMaterial();
+
+			Add2Pass(newMaterial, PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
+			Add2Pass(newMaterial, PassHandle{ GetCRCGUID(VXGI_STATIC) });
+			Add2Pass(newMaterial, PassHandle{ GetCRCGUID(SHADOWMAPPASS) });
+
+			SetProperty(newMaterial, GetCRCGUID(PBR_ALBEDO),	float4(0.5f, 0.5f, 0.5f, 0.3f));
+			SetProperty(newMaterial, GetCRCGUID(PBR_SPECULAR),	float4(0.9f, 0.9f, 0.9f, 0.0f));
+
+			return newMaterial;
+		}();
+
+		auto newMaterial = CreateMaterial(parentMaterial);
+
+		auto rdCtx = ReadContext{};
+		if (materialBlob.materials.size() > 1)
+		{
+			for (auto& subMaterial : materialBlob.materials)
+			{
+				auto newSubMaterial = CreateMaterial(newMaterial);
+				AddSubMaterial(newMaterial, newSubMaterial);
+
+				for (auto& texture : subMaterial.textures)
+					PushTexture(newSubMaterial, texture, rdCtx);
+			}
+		}
+		else if (materialBlob.materials.size() == 1)
+		{
+			for (auto& texture : materialBlob.materials[0].textures)
+				PushTexture(newMaterial, texture, rdCtx);
+		}
+
+		gameObject.AddView<MaterialView>(newMaterial);
+		SetMaterialHandle(gameObject, newMaterial);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void MaterialComponent::Add2Pass(MaterialHandle& material, const PassHandle ID)
+	{
+		if (std::atomic_ref(materials[handles[material]].refCount).load(std::memory_order_acquire) > 1)
+		{
+			auto newHandle = GetComponent().CloneMaterial(material);
+			GetComponent().ReleaseMaterial(material);
+
+			material = newHandle;
+		}
+
+		auto& passes = materials[handles[material]].Passes;
+		passes.emplace_back(ID);
+
+		if (auto res = std::find(activePasses.begin(), activePasses.end(), ID); res == activePasses.end())
+			activePasses.push_back(ID);
+	}
+
+
+	/************************************************************************************************/
+
+
+	Vector<PassHandle, 16, uint8_t> MaterialComponent::GetPasses(MaterialHandle material) const
+	{
+		Vector<PassHandle, 16, uint8_t> out{ &allocator };
+
+		if (material == InvalidHandle)
+			return out;
+
+		auto& materialData = materials[handles[material]];
+
+		if (materialData.parent != InvalidHandle)
+			out = GetPasses(materialData.parent);
+
+		if (materialData.Passes.size())
+			out += materialData.Passes;
+
+		return out;
+	}
+
+
+	/************************************************************************************************/
+
+
+	Vector<PassHandle> MaterialComponent::GetActivePasses(iAllocator& tempAllocator) const
+	{
+		Vector<PassHandle> passes{ &tempAllocator };
+		passes = activePasses;
+
+		return passes;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void SetMaterialHandle(GameObject& go, MaterialHandle material) noexcept
+	{
+		Apply(
+			go,
+			[&](BrushView& brush)
+			{
+				brush.GetBrush().material = material;
+			});
+	}
+
+
+	/************************************************************************************************/
+
+
+	MaterialHandle GetMaterialHandle(GameObject& go) noexcept
+	{
+		return Apply(
+			go,
+			[&](MaterialView& material)
+			{
+				return material.handle;
+			},
+			[]() -> MaterialHandle
+			{
+				return InvalidHandle;
+			});
+	}
 
 
 }   /************************************************************************************************/

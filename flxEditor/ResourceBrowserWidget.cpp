@@ -70,6 +70,16 @@ ResourceBrowserWidget::ResourceBrowserWidget(EditorProject& IN_project, EditorRe
 		{
 			RemoveSelectedItems();
 		});
+
+	auto resourceMenu	= menuBar->addMenu("Resource");
+	auto buildAll		= resourceMenu->addAction("Build All");
+
+	connect(buildAll, &QAction::triggered,
+		[&]()
+		{
+			for (auto& projRes : project.resources)
+				projRes->resource->CreateBlob();
+		});
 }
 
 

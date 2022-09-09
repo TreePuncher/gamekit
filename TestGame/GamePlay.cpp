@@ -97,7 +97,6 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
 	{
 		//FlexKit::AddAssetFile("assets\\testprefab.gameres");
 		//FlexKit::AddAssetFile("assets\\demonGirl.gameres");
-		FlexKit::AddAssetFile("assets\\robot.gameres");
 		return true;
 	}();
 
@@ -170,7 +169,6 @@ GameWorld::GameWorld(EngineCore& IN_core, bool debug) :
 	scene			{ IN_core.GetBlockMemory() },
 	cubeShape		{ PhysXComponent::GetComponent().CreateCubeShape({ 0.5f, 0.5f, 0.5f}) }
 {
-	AddAssetFile("assets\\enemy1.gameres");
 }
 
 
@@ -1185,7 +1183,7 @@ SparseMap GenerateWorld(GameWorld& world, const WorldAssets& assets, iAllocator&
 		int y = 0;
 		for (auto [c, _] : chunk_ref)
 		{
-			if      (c & GetIdBit(CellStates::Floor))
+			if		(c & GetIdBit(CellStates::Floor))
 					std::cout << "_ ";
 			else if (c & GetIdBit(CellStates::Ramp))
 					std::cout << "R ";
@@ -1215,7 +1213,6 @@ SparseMap GenerateWorld(GameWorld& world, const WorldAssets& assets, iAllocator&
 
 WorldAssets LoadBasicTiles()
 {
-	AddAssetFile(R"(assets\basicTiles.gameres)");
 	WorldAssets out;
 	out.cornerSegment	= 10870;
 	out.wallEndSegment	= 20850;
@@ -1348,8 +1345,8 @@ public:
 		fnFinal();
 	}
 
-	TY_Touch    fnTouch;
-	TY_Final    fnFinal;
+	TY_Touch fnTouch;
+	TY_Final fnFinal;
 
 	physx::PxOverlapHit hits[64];
 };

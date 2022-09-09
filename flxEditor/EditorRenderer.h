@@ -3,93 +3,93 @@
 #include <QtWidgets/qapplication>
 
 #include "AnimationComponents.h"
-#include "DXRenderWindow.h"
-#include "Materials.h"
-#include "WorldRender.h"
-#include "TextureStreamingUtilities.h"
-#include "Scene.h"
 #include "CSGComponent.h"
 #include "CSGRendering.h"
+#include "DXRenderWindow.h"
+#include "Materials.h"
+#include "MeshResource.h"
+#include "Scene.h"
+#include "TextureStreamingUtilities.h"
+#include "WorldRender.h"
 
-#include "MeshProcessing.h"
 
 class QWidget;
 
 class EditorRenderer : public FlexKit::FrameworkState
 {
 public:
-    EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FKApplication& IN_application, QApplication& IN_QtApplication);
+	EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FKApplication& IN_application, QApplication& IN_QtApplication);
 
-    ~EditorRenderer();
+	~EditorRenderer();
 
-    void DrawOneFrame(double dT);
+	void DrawOneFrame(double dT);
 
-    DXRenderWindow* CreateRenderWindow(QWidget* parent = nullptr);
-    void DrawRenderWindow(DXRenderWindow* renderWindow);
+	DXRenderWindow* CreateRenderWindow(QWidget* parent = nullptr);
+	void DrawRenderWindow(DXRenderWindow* renderWindow);
 
-    FlexKit::TriMeshHandle LoadMesh(FlexKit::MeshResource& mesh);
-    FlexKit::RenderSystem& GetRenderSystem() { return framework.core.RenderSystem; }
+	FlexKit::TriMeshHandle LoadMesh(FlexKit::MeshResource& mesh);
+	FlexKit::RenderSystem& GetRenderSystem() { return framework.core.RenderSystem; }
 
-    FlexKit::UpdateTask& UpdatePhysx(FlexKit::UpdateDispatcher& dispatcher, double dT);
+	FlexKit::UpdateTask& UpdatePhysx(FlexKit::UpdateDispatcher& dispatcher, double dT);
 
 protected:
-    FlexKit::UpdateTask* Update (FlexKit::EngineCore& Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT) override;
-    FlexKit::UpdateTask* Draw   (FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph) override;
+	FlexKit::UpdateTask* Update (FlexKit::EngineCore& Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT) override;
+	FlexKit::UpdateTask* Draw   (FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph) override;
 
-    void PostDrawUpdate(FlexKit::EngineCore& core, double dT) override;
+	void PostDrawUpdate(FlexKit::EngineCore& core, double dT) override;
 
-    std::atomic_bool                drawInProgress = false;
+	std::atomic_bool                drawInProgress = false;
 
 
 public:
-    FlexKit::TextureStreamingEngine textureEngine;
-    FlexKit::WorldRender            worldRender;
-    CSGRender                       csgRender;
+	FlexKit::TextureStreamingEngine textureEngine;
+	FlexKit::WorldRender            worldRender;
+	CSGRender                       csgRender;
 
 private:
-    struct TempBuffer
-    {
-        char buffer[MEGABYTE * 32];
-    };
+	struct TempBuffer
+	{
+		char buffer[MEGABYTE * 32];
+	};
 
 
-    std::unique_ptr<TempBuffer>     temporaryBuffer = std::make_unique<TempBuffer>();
+	std::unique_ptr<TempBuffer>     temporaryBuffer = std::make_unique<TempBuffer>();
 
-    FlexKit::StackAllocator         allocator;
-    FlexKit::ThreadSafeAllocator    threadedAllocator{ allocator };
+	FlexKit::StackAllocator         allocator;
+	FlexKit::ThreadSafeAllocator    threadedAllocator{ FlexKit::SystemAllocator };
 
-    // Temp Buffers
-    FlexKit::VertexBufferHandle		vertexBuffer;
-    FlexKit::ConstantBufferHandle	constantBuffer;
+	// Temp Buffers
+	FlexKit::VertexBufferHandle		vertexBuffer;
+	FlexKit::ConstantBufferHandle	constantBuffer;
 
-    // Components
-    FlexKit::SceneNodeComponent         sceneNodes;
-    FlexKit::BrushComponent             brushComponent;
-    FlexKit::StringIDComponent          stringIDComponent;
-    FlexKit::MaterialComponent          materialComponent;
-    FlexKit::CameraComponent            cameraComponent;
-    FlexKit::SceneVisibilityComponent   visibilityComponent;
-    FlexKit::SkeletonComponent          skeletonComponent;
-    FlexKit::AnimatorComponent          animatorComponent;
-    FlexKit::PointLightComponent        pointLightComponent;
-    FlexKit::PointLightShadowMap        pointLightShadowMaps;
+	// Components
+	FlexKit::SceneNodeComponent         sceneNodes;
+	FlexKit::BrushComponent             brushComponent;
+	FlexKit::StringIDComponent          stringIDComponent;
+	FlexKit::MaterialComponent          materialComponent;
+	FlexKit::CameraComponent            cameraComponent;
+	FlexKit::SceneVisibilityComponent   visibilityComponent;
+	FlexKit::SkeletonComponent          skeletonComponent;
+	FlexKit::AnimatorComponent          animatorComponent;
+	FlexKit::PointLightComponent        pointLightComponent;
+	FlexKit::PointLightShadowMap        pointLightShadowMaps;
 
-    FlexKit::FABRIKTargetComponent      ikTargetComponent;
-    FlexKit::FABRIKComponent            ikComponent;
+	FlexKit::FABRIKTargetComponent      ikTargetComponent;
+	FlexKit::FABRIKComponent            ikComponent;
 
-    // physX components
-    FlexKit::PhysXComponent                 physX;
-    FlexKit::StaticBodyComponent            staticBodies;
-    FlexKit::RigidBodyComponent             rigidBodies;
-    FlexKit::CharacterControllerComponent   characterControllers;
+	// physX components
+	FlexKit::PhysXComponent                 physX;
+	FlexKit::StaticBodyComponent            staticBodies;
+	FlexKit::RigidBodyComponent             rigidBodies;
+	FlexKit::CharacterControllerComponent   characterControllers;
 
-    // Editor Only Components
-    CSGComponent csg;
+	// Editor Only Components
+	CSGComponent csg;
 
 
-    QApplication&                   QtApplication;
-    FlexKit::FKApplication&         application;
-    std::vector<DXRenderWindow*>    renderWindows;
+	QApplication&                   QtApplication;
+	FlexKit::FKApplication&         application;
+	std::vector<DXRenderWindow*>    renderWindows;
 };
 
 

@@ -120,8 +120,7 @@ namespace FlexKit
 	struct Vector
 	{
 		using value_t = Ty;
-		typedef Vector<Ty> ELEMENT_TYPE;
-		typedef Vector<Ty> THISTYPE;
+		typedef Vector<Ty, InternalBufferSize, TYSize> THISTYPE;
 
 		typedef Ty*			Iterator;
 		typedef const Ty*	Iterator_const;
@@ -172,7 +171,7 @@ namespace FlexKit
 			const size_t		InitialSize,
 			const TY_Initial&	Initial_V) :
 				Allocator	{ &Alloc },
-				Max			{ InitialSize },
+				Max			{ (TYSize)InitialSize },
 				Size		{ 0 },
 				A			{ internalBuffer.GetBuffer() }
 		{
@@ -192,11 +191,34 @@ namespace FlexKit
 
 
 		Vector(const THISTYPE& RHS) :
-			Allocator	{ RHS.Allocator	},
-			Max			{ internalBuffer.size() },
+			Allocator	{ RHS.Allocator },
+			Max			{ (TYSize)internalBuffer.size() },
 			Size		{ 0 }
 		{
-			(*this) = RHS;
+			if (!Allocator) Allocator = RHS.Allocator;
+
+			clear();
+
+			reserve(RHS.size());
+
+			for (const auto& E : RHS)
+				push_back(E);
+		}
+
+		template<size_t rhsSize, typename rhsSizeType>
+		Vector(const Vector<Ty, rhsSize, rhsSizeType>& RHS) :
+			Allocator	{ RHS.Allocator },
+			Max			{ (TYSize)internalBuffer.size() },
+			Size		{ 0 }
+		{
+			if (!Allocator) Allocator = RHS.Allocator;
+
+			clear();
+
+			reserve(RHS.size());
+
+			for (const auto& E : RHS)
+				push_back(E);
 		}
 
 		template<TYSize rhsSize, typename rhsSizeType>
@@ -273,7 +295,8 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		THISTYPE& operator =(const THISTYPE& RHS)
+		template<TYSize rhsSize, typename rhsSizeType>
+		THISTYPE& AssignmentOP(const Vector<Ty, rhsSize, rhsSizeType>& RHS)
 		{
 			if (!Allocator) Allocator = RHS.Allocator;
 
@@ -286,6 +309,11 @@ namespace FlexKit
 
 			return *this;
 		}
+
+		THISTYPE& operator =(const THISTYPE& RHS) { return AssignmentOP(RHS); }
+
+		template<TYSize rhsSize, typename rhsSizeType>
+		THISTYPE& operator =(const Vector<Ty, rhsSize, rhsSizeType>& RHS) { return AssignmentOP(RHS); }
 
 
 		/************************************************************************************************/
@@ -446,7 +474,8 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		TYSize push_back(const Ty& in) {
+		TYSize push_back(const Ty& in)
+		{
 			if (Size + 1 > Max)
 			{// Increase Size
 #ifdef _DEBUG
@@ -459,14 +488,9 @@ namespace FlexKit
 #else
 				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * NewSize);
 #endif
-				{
-					TYSize itr = 0;
-					TYSize End = Size;
-					for (; itr < End; ++itr)
-					{
-						new(NewMem + itr) Ty();
-					}
-				}
+				const TYSize End = Size;
+				for (TYSize itr = 0; itr < End; ++itr)
+					new(NewMem + itr) Ty();
 
 #ifdef _DEBUG
 				FK_ASSERT(NewMem != nullptr);
@@ -474,7 +498,8 @@ namespace FlexKit
 					FK_ASSERT(NewMem != A);
 #endif
 
-				if (A) {
+				if (A)
+				{
 					TYSize itr = 0;
 					TYSize End = Size;
 					for (; itr < End; ++itr)
@@ -497,8 +522,57 @@ namespace FlexKit
 
 		/************************************************************************************************/
 
+		TYSize push_back(Ty&& in)
+		{
+			if (Size + 1 > Max)
+			{// Increase Size
+#ifdef _DEBUG
+				FK_ASSERT(Allocator);
+#endif			
+				auto NewSize = ((Max < 1) ? 2 : (2 * Max));
+
+#if USING(DEBUGMEMORY)
+				Ty* NewMem = (Ty*)Allocator->malloc_Debug(sizeof(Ty) * NewSize, "TEST", 4);
+#else
+				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * NewSize);
+#endif
+				TYSize itr = 0;
+				TYSize End = Size;
+				for (; itr < End; ++itr)
+					new(NewMem + itr) Ty();
+
+#ifdef _DEBUG
+				FK_ASSERT(NewMem != nullptr);
+				if (Size)
+					FK_ASSERT(NewMem != A);
+#endif
+
+				if (A)
+				{
+					TYSize itr = 0;
+					TYSize End = Size;
+					for (; itr < End; ++itr)
+						NewMem[itr] = std::move(A[itr]);
+
+					if(A != internalBuffer.GetBuffer())
+						Allocator->_aligned_free(A);
+				}
+
+				A   = NewMem;
+				Max = NewSize;
+			}
+
+			const TYSize idx = Size++;
+			new(A + idx) Ty{ std::move(in) }; //
+
+			return idx;
+		}
+
+		/************************************************************************************************/
+
 		template<typename ... ARGS_t>
-		TYSize emplace_back(ARGS_t&& ... in) {
+		TYSize emplace_back(ARGS_t&& ... in)
+		{
 			if (Size + 1 > Max)
 			{// Increase Size
 #ifdef _DEBUG
@@ -515,7 +589,7 @@ namespace FlexKit
 				if (A)
 				{
 					size_t itr = 0;
-					size_t End = Size;
+					const size_t End = Size;
 					for (; itr < End; ++itr)
 						new(NewMem + itr) Ty{ std::move(A[itr]) };
 
@@ -527,7 +601,7 @@ namespace FlexKit
 				Max = NewSize;
 			}
 
-			const size_t idx = Size++;
+			const TYSize idx = Size++;
 
 			new(A + idx) Ty{ std::forward<ARGS_t>(in)... };
 
@@ -540,12 +614,13 @@ namespace FlexKit
 
 		void insert(Iterator I, const Ty& in)
 		{
-			if (!size()) {
+			if (!size())
+			{
 				push_back(in);
 				return;
 			}
 
-			auto II     = end() - 1;
+			auto II = end() - 1;
 
 			push_back(back());
 
@@ -575,12 +650,8 @@ namespace FlexKit
 
 		void erase(const Iterator first, const Iterator last)
 		{
-			auto itr = first;
-			while (itr != last)
-			{
+			for (auto itr = first; itr != last; ++itr)
 				remove_stable(first);
-				++itr;
-			}
 		}
 
 		/************************************************************************************************/
@@ -618,9 +689,7 @@ namespace FlexKit
 		void reserve(size_t NewSize)
 		{
 			if (!NewSize)
-			{
 				clear();
-			}
 			else if (!A || Max < NewSize)
 			{// Increase Size
 				FK_ASSERT(Allocator);
@@ -719,7 +788,7 @@ namespace FlexKit
 		Ty*	A					= internalBuffer.GetBuffer();
 
 		TYSize Size				= 0;
-		TYSize Max				= 0;
+		TYSize Max				= internalBuffer.size();
 
 		iAllocator* Allocator	= 0;
 

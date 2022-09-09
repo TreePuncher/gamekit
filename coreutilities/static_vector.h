@@ -39,8 +39,8 @@ namespace FlexKit
 	class static_vector
 	{
 	public:
-        using value_type    = TY_;
-        using iterator      = TY_*;
+		using value_type    = TY_;
+		using iterator      = TY_*;
 
 		class iterator_t
 		{
@@ -56,8 +56,8 @@ namespace FlexKit
 			TY_* operator -- (int) { I++; return I - 1; }
 			size_t operator - (iterator_t i) { return I - i.I; }
 
-            bool operator == (const iterator_t rhs) const { return rhs.I == I; }
-            bool operator != (const iterator_t rhs) const { return !(*this == rhs); }
+			bool operator == (const iterator_t rhs) const { return rhs.I == I; }
+			bool operator != (const iterator_t rhs) const { return !(*this == rhs); }
 
 			operator TY_* () {return I;}
 
@@ -86,7 +86,7 @@ namespace FlexKit
 		typedef typename reverse_iterator_t reverse_iterator;
 
 
-        static_vector() = default;
+		static_vector() = default;
 
 
 		static_vector(const std::initializer_list<TY_> list) : static_vector()
@@ -96,86 +96,86 @@ namespace FlexKit
 		}
 
 
-        static_vector(size_t initialSize) : static_vector()
-        {
-            for (size_t I = 0; I < initialSize; I++)
-                emplace_back();
-        }
+		static_vector(size_t initialSize) : static_vector()
+		{
+			for (size_t I = 0; I < initialSize; I++)
+				emplace_back();
+		}
 
 
 		template<unsigned int RHSIZE = 10> requires(std::is_trivially_copyable_v<TY_>)
 		static_vector(const static_vector<TY_, RHSIZE>& in)
 		{
-            Size = in.size();
-            memcpy(buffer, in.data(), in.size() * sizeof(TY_));
+			Size = in.size();
+			memcpy(buffer, in.data(), in.size() * sizeof(TY_));
 		}
 
 
-        template<unsigned int RHSIZE = 10> requires(std::is_trivially_copyable_v<TY_>)
-        static_vector(static_vector<TY_, RHSIZE>&& in)
-        {
-            Size = in.size();
-            memcpy(buffer, in.data(), in.size() * sizeof(TY_));
+		template<unsigned int RHSIZE = 10> requires(std::is_trivially_copyable_v<TY_>)
+		static_vector(static_vector<TY_, RHSIZE>&& in)
+		{
+			Size = in.size();
+			memcpy(buffer, in.data(), in.size() * sizeof(TY_));
 
-            in.Size = 0;
-        }
-
-
-        template<unsigned int RHSIZE = 10> requires(!std::is_trivially_copyable_v<TY_>)
-        static_vector(static_vector<TY_, RHSIZE>&& in)
-        {
-            for (auto&& i : in)
-                if (Size != TSIZE)
-                    emplace_back(std::move(i));
-                else
-                    return;
-
-            in.Size = 0;
-        }
+			in.Size = 0;
+		}
 
 
-        template<unsigned int RHSIZE = 10>
-        static_vector(const static_vector<TY_, RHSIZE>& in)
-        {
-            clear();
+		template<unsigned int RHSIZE = 10> requires(!std::is_trivially_copyable_v<TY_>)
+		static_vector(static_vector<TY_, RHSIZE>&& in)
+		{
+			for (auto&& i : in)
+				if (Size != TSIZE)
+					emplace_back(std::move(i));
+				else
+					return;
 
-            for (auto i : in)
-                if (Size != TSIZE)
-                    push_back(i);
-                else
-                    return;
-        }
+			in.Size = 0;
+		}
 
 
-        ~static_vector()
-        {
-            if constexpr (!std::is_trivially_destructible_v<TY_>)
-            {
-                while (!empty())
-                    pop_back();
-            }
-        }
+		template<unsigned int RHSIZE = 10>
+		static_vector(const static_vector<TY_, RHSIZE>& in)
+		{
+			clear();
+
+			for (auto i : in)
+				if (Size != TSIZE)
+					push_back(i);
+				else
+					return;
+		}
+
+
+		~static_vector()
+		{
+			if constexpr (!std::is_trivially_destructible_v<TY_>)
+			{
+				while (!empty())
+					pop_back();
+			}
+		}
 
 		static_vector& operator = (const TY_& in)
 		{
-            FK_ASSERT(TSIZE > in.size());
+			FK_ASSERT(TSIZE > in.size());
 
-            if constexpr (std::is_trivially_copyable_v<TY_>)
-            {
-                Size = in.size();
+			if constexpr (std::is_trivially_copyable_v<TY_>)
+			{
+				Size = in.size();
 
-                memcpy(buffer, in.buffer, in.size() * sizeof(TY_));
-            }
-            else
-            {
-                Size = 0;
+				memcpy(buffer, in.buffer, in.size() * sizeof(TY_));
+			}
+			else
+			{
+				Size = 0;
 
-                for (auto i : in)
-                    if (Size != TSIZE)
-                        push_back(i);
-                    else
-                        break;
-            }
+				for (auto i : in)
+					if (Size != TSIZE)
+						push_back(i);
+					else
+						break;
+			}
 
 			return *this;
 		}
@@ -184,15 +184,15 @@ namespace FlexKit
 		operator TY_* () { return reinterpret_cast<TY_*>(buffer); }
 
 
-        TY_* at_ptr(size_t idx)
-        {
-            return reinterpret_cast<TY_*>(buffer) + idx;
-        }
+		TY_* at_ptr(size_t idx)
+		{
+			return reinterpret_cast<TY_*>(buffer) + idx;
+		}
 
-        const TY_* at_ptr(size_t idx) const
-        {
-            return reinterpret_cast<const TY_*>(buffer) + idx;
-        }
+		const TY_* at_ptr(size_t idx) const
+		{
+			return reinterpret_cast<const TY_*>(buffer) + idx;
+		}
 
 
 		TY_& at(const size_t index)
@@ -207,15 +207,15 @@ namespace FlexKit
 		}
 
 
-        TY_& operator [](size_t index)
-        {
-            return at(index);
-        }
+		TY_& operator [](size_t index)
+		{
+			return at(index);
+		}
 
-        const TY_& operator [](size_t index) const
-        {
-            return at(index);
-        }
+		const TY_& operator [](size_t index) const
+		{
+			return at(index);
+		}
 
 
 		static_vector& operator+=(const TY_ in)
@@ -244,10 +244,10 @@ namespace FlexKit
 		}
 
 
-        const TY_& back() const
-        {
-            return at(Size - 1);
-        }
+		const TY_& back() const
+		{
+			return at(Size - 1);
+		}
 
 
 		size_t push_back( const TY_& in )
@@ -258,16 +258,16 @@ namespace FlexKit
 				return Size++;
 			}
 
-            return -1;
+			return -1;
 		}
 
 
-        template<typename ... TY_ARGS>
+		template<typename ... TY_ARGS>
 		void emplace_back(TY_ARGS&& ... in_args)
 		{
 			if (!full())
 			{
-                new(at_ptr(Size)) TY_{ std::forward<TY_ARGS>(in_args)...};
+				new(at_ptr(Size)) TY_{ std::forward<TY_ARGS>(in_args)...};
 				Size++;
 			}
 		}
@@ -279,9 +279,9 @@ namespace FlexKit
 		}
 
  
-        TY_* end()
+		TY_* end()
 		{
-            return at_ptr(Size);
+			return at_ptr(Size);
 		}
 
 
@@ -299,8 +299,8 @@ namespace FlexKit
 
 		void remove_unstable(iterator i)
 		{
-            if (i == end())
-                return;
+			if (i == end())
+				return;
 
 			*i = back();
 			pop_back();
@@ -359,20 +359,20 @@ namespace FlexKit
 			return at(0);
 		}
 
-        const TY_& front() const noexcept
-        {
-            return at(0);
-        }
+		const TY_& front() const noexcept
+		{
+			return at(0);
+		}
 
 		size_t size() const noexcept
 		{
 			return Size;
 		}
 
-        size_t ByteSize() const noexcept
-        {
-            return sizeof(buffer);
-        }
+		size_t ByteSize() const noexcept
+		{
+			return sizeof(buffer);
+		}
 
  
 		bool full() const
@@ -387,26 +387,26 @@ namespace FlexKit
  
 		void clear()
 		{
-            if constexpr (std::is_trivial_v<TY_>)
-            {
-                Size = 0;
-            }
-            else
-            {
-                while(!empty())
-                    pop_back();
-            }
+			if constexpr (std::is_trivial_v<TY_>)
+			{
+				Size = 0;
+			}
+			else
+			{
+				while(!empty())
+					pop_back();
+			}
 		}
 
-        TY_* data()
-        {
-            return reinterpret_cast<TY_*>(buffer);
-        }
+		TY_* data()
+		{
+			return reinterpret_cast<TY_*>(buffer);
+		}
 
-        const TY_* data() const
-        {
-            return reinterpret_cast<const TY_*>(buffer);
-        }
+		const TY_* data() const
+		{
+			return reinterpret_cast<const TY_*>(buffer);
+		}
  
 		void resize(size_t NewSize)
 		{
@@ -432,7 +432,7 @@ namespace FlexKit
 		{
 			while( !full() )
 			{
-                new(at_ptr(Size)) TY_();
+				new(at_ptr(Size)) TY_();
 				++Size;
 			}
 		}

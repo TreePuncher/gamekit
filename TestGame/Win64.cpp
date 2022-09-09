@@ -21,7 +21,7 @@
 #include <stb_image.h>
 
 #include <iostream>
-
+#include <cpptoml.h>
 
 int main(int argc, char* argv[])
 {
@@ -69,15 +69,46 @@ int main(int argc, char* argv[])
 		}
 	}
 
+	auto config = cpptoml::parse_file("config.toml");
+	if (config->empty())
+	{
+		auto engineParams = cpptoml::make_table();
+		engineParams->insert("ThreadCount", Max(std::thread::hardware_concurrency(), 2u) - 1);
+
+		config->insert("Engine", engineParams);
+	}
+
+	auto engineParams = config->get_table("Engine");
+
+	if (!engineParams)
+		return -1;
+
+	const int threadCount = engineParams->get_as<int>("ThreadCount").value_or(1);
+
+
 	auto* allocator = CreateEngineMemory();
 	EXITSCOPE(ReleaseEngineMemory(allocator));
 
 	try
 	{
 		FlexKit::FKApplication app{ allocator, Max(std::thread::hardware_concurrency(), 2u) - 1 };
-		app.GetCore().FrameLock = false;
-		app.GetCore().vSync		= false;
-		app.GetCore().FPSLimit  = 60;
+
+		auto assets = config->get_table("Assets");
+		if (assets)
+		{
+			auto assetFolder = assets->get_as<std::string>("Folder");
+			auto assetsFiles = assets->get_array_of<std::string>("Files");
+
+			for (auto file : *assetsFiles)
+			{
+				std::string assetFile = std::string(*assetFolder) + std::string(file);
+				FlexKit::AddAssetFile(assetFile.c_str());
+			}
+		}
+
+		app.GetCore().FrameLock = engineParams->get_as<bool>("FrameLock").value_or(false);
+		app.GetCore().vSync		= engineParams->get_as<bool>("VerticalSync").value_or(false);
+		app.GetCore().FPSLimit  = engineParams->get_as<int>("FPSLimit").value_or(60);
 
 		auto& base		= app.PushState<BaseState>(app, WH);
 		auto& net		= app.PushState<NetworkState>(base);
@@ -102,6 +133,11 @@ int main(int argc, char* argv[])
 	{
 		return -2;
 	};
+
+	std::fstream f{ "config.toml", 'w' };
+	std::cout << *config;
+	f << *config;
+	f.close();
 
 	return 0;
 }

@@ -245,15 +245,15 @@ QListWidget* ComponentViewPanelContext::AddList(ListSizeUpdateCallback size, Lis
 
 
 EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, QWidget *parent) :
-	QWidget             { parent },
-	selectionContext    { IN_selectionContext },
-	menu                { new QMenuBar{} },
-	outerLayout         { new QVBoxLayout{} },
-	scrollArea          { new QScrollArea{} },
-	contentLayout       { new QVBoxLayout{} },
-	contentWidget       { new QWidget{} }
+	QWidget				{ parent },
+	selectionContext	{ IN_selectionContext },
+	menu				{ new QMenuBar{} },
+	outerLayout			{ new QVBoxLayout{} },
+	scrollArea			{ new QScrollArea{} },
+	contentLayout		{ new QVBoxLayout{} },
+	contentWidget		{ new QWidget{} }
 {
-	auto addComponentMenu   = menu->addMenu("Add");
+	auto addComponentMenu = menu->addMenu("Add");
 
 	for (auto& factory : availableComponents)
 	{
@@ -290,7 +290,7 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
 
 					if(selection.viewportObjects.size())
 						factory->Construct(*selection.viewportObjects.front(), ctx);
-				}   break;
+				}	break;
 				case AnimatorObject_ID:
 				{
 					auto selection = selectionContext.GetSelection<AnimationEditorObject*>();
@@ -316,7 +316,7 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
 
 					if(selection)
 						factory->Construct(selection->gameObject, ctx);
-				}   break;
+				}	break;
 				default:
 					break;
 				}
