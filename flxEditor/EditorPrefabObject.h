@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Common.h"
+#include "EditorProject.h"
+#include "EditorResource.h"
+#include "EditorScriptEngine.h"
 #include "SceneResource.h"
 #include "Serialization.hpp"
-#include "EditorProject.h"
-#include "EditorScriptEngine.h"
 
 
 /************************************************************************************************/
@@ -13,15 +13,14 @@
 constexpr FlexKit::ComponentID EditorScriptComponentID = GetTypeGUID(EditorScriptComponentID);
 
 
-
 class ScriptResource :
 	public FlexKit::Serializable<ScriptResource, FlexKit::iResource, GetTypeGUID(ScriptResource)>
 {
 public:
 	FlexKit::ResourceBlob	CreateBlob()		const			override;
-	const std::string&		GetResourceID()		const noexcept	override;
-	const uint64_t			GetResourceGUID()	const noexcept	override;
-	const ResourceID_t		GetResourceTypeID()	const noexcept	override;
+	const	std::string&	GetResourceID()		const noexcept	override;
+			uint64_t		GetResourceGUID()	const noexcept	override;
+			ResourceID_t	GetResourceTypeID()	const noexcept	override;
 
 	void					SetResourceID	(const std::string& id)	noexcept final;
 	void					SetResourceGUID	(uint64_t guid)			noexcept final;
@@ -33,9 +32,9 @@ public:
 		ar& ID;
 	}
 
-	uint64_t    guid    = rand();
-	std::string ID      = "ScriptObject";
-	std::string source;
+	uint64_t	guid	= rand();
+	std::string	ID		= "ScriptObject";
+	std::string	source;
 };
 
 
@@ -50,12 +49,12 @@ class PrefabGameObjectResource :
 {
 public:
 	FlexKit::ResourceBlob	CreateBlob()		const			override;
-	const std::string&		GetResourceID()		const noexcept	override;
-	const uint64_t			GetResourceGUID()	const noexcept	override;
-	const ResourceID_t		GetResourceTypeID()	const noexcept	override;
+	const	std::string&	GetResourceID()		const noexcept	override;
+			uint64_t		GetResourceGUID()	const noexcept	override;
+			ResourceID_t	GetResourceTypeID()	const noexcept	override;
 
-	void					SetResourceID   (const std::string& id) noexcept override;
-	void					SetResourceGUID (uint64_t GUID) noexcept;
+	void					SetResourceID	(const std::string& id) noexcept override;
+	void					SetResourceGUID	(uint64_t GUID) noexcept;
 
 	FlexKit::EntityComponent_ptr FindComponent(FlexKit::ComponentID id);
 
@@ -67,7 +66,6 @@ public:
 	}
 
 	FlexKit::SceneEntity entity;
-	//std::vector<std::shared_ptr<FlexKit::EntityComponent>> components;
 
 	std::string ID   = "PrefabGameObject";
 	uint64_t    guid = rand();

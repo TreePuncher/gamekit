@@ -16,10 +16,10 @@ int ViewportSceneContext::MapNode(FlexKit::NodeHandle node) noexcept
 		return res->second;
 	else
 	{
-		auto parent             = MapNode(FlexKit::GetParentNode(node));
-		auto localPosition      = FlexKit::GetPositionL(node);
-		auto localOrientation   = FlexKit::GetOrientation(node);
-		auto localScale         = FlexKit::GetLocalScale(node);
+		auto parent				= MapNode(FlexKit::GetParentNode(node));
+		auto localPosition		= FlexKit::GetPositionL(node);
+		auto localOrientation	= FlexKit::GetOrientation(node);
+		auto localScale			= FlexKit::GetLocalScale(node);
 
 		auto idx = nodes.size();
 		nodes.emplace_back(localPosition, localOrientation, localScale, parent);
@@ -70,7 +70,8 @@ struct BrushComponentUpdate
 		auto& runtime		= static_cast<FlexKit::BrushView&>(base);
 		auto& runtimeBrush	= runtime.GetBrush();
 
-		//brush.material = runtimeBrush.material; // TODO: update material component data
+		//brush.material = runtimeBrush.material;
+		// TODO: update material component data
 		for (auto mesh : runtimeBrush.meshes)
 			brush.meshes.push_back(FlexKit::GetMeshResource(mesh)->assetHandle);
 	}

@@ -12,282 +12,247 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
-    class TextureStreamingEngine;
+	class TextureStreamingEngine;
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
-    
-    using PassHandle = Handle_t<32u, PassHandleID>;
+	
+	using PassHandle = Handle_t<32u, PassHandleID>;
 
 
-    struct MaterialProperty
-    {
-        MaterialProperty() = default;
+	struct MaterialProperty
+	{
+		MaterialProperty() = default;
 
-        template<typename TY>
-        MaterialProperty(uint32_t IN_ID, const TY& IN_value) :
-            ID      { IN_ID },
-            value   { IN_value } {}
+		template<typename TY>
+		MaterialProperty(uint32_t IN_ID, const TY& IN_value) :
+			ID		{ IN_ID },
+			value	{ IN_value } {}
 
-        uint32_t                                                                                ID = -1;
-        std::variant<float, float2, float3, float4, uint, uint2, uint3, uint4, ResourceHandle>  value;
-    };
+		using ValueVarient = std::variant<float, float2, float3, float4, uint, uint2, uint3, uint4, ResourceHandle>;
 
+		uint32_t		ID = -1;
+		ValueVarient	value;
+	};
 
-    struct MaterialComponentData
-    {
-        uint32_t                            refCount;
-        MaterialHandle                      handle;
-        MaterialHandle                      parent;
+	template<typename TY>
+	concept MaterialValue =
+		requires(TY ty)
+		{
+			{ MaterialProperty::ValueVarient{ ty } };
+		};
 
-        static_vector<PassHandle, 32>       Passes;
-        static_vector<MaterialProperty, 32> Properties;
-        static_vector<MaterialHandle, 32>   SubMaterials;
-        static_vector<ResourceHandle, 32>   Textures;
-    };
+	struct MaterialComponentData
+	{
+		uint32_t							refCount;
+		MaterialHandle						handle;
+		MaterialHandle						parent;
 
+		Vector<PassHandle, 8, uint8_t>			Passes;
+		Vector<MaterialProperty, 8, uint8_t>	Properties;
+		Vector<ResourceHandle, 8, uint8_t>		Textures;
+		Vector<MaterialHandle, 16, uint8_t>		SubMaterials;
+	};
 
-    struct MaterialTextureEntry
-    {
-        uint32_t        refCount;
-        ResourceHandle  texture;
-        GUID_t          assetID;
-    };
 
+	struct MaterialTextureEntry
+	{
+		uint32_t		refCount;
+		ResourceHandle	texture;
+		GUID_t			assetID;
+	};
 
-    /************************************************************************************************/
 
+	/************************************************************************************************/
 
-    struct MaterialComponentEventHandler
-    {
-        void OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
-    };
 
+	struct MaterialComponentEventHandler
+	{
+		void OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
+	};
 
-    /************************************************************************************************/
 
+	/************************************************************************************************/
 
-    struct MaterialComponent : public Component<MaterialComponent, MaterialComponentID>
-    {
-        MaterialComponent(RenderSystem& IN_renderSystem, TextureStreamingEngine& IN_TSE, iAllocator* allocator) :
-            streamEngine    { IN_TSE },  
-            renderSystem    { IN_renderSystem },
-            materials       { allocator },
-            textures        { allocator },
-            handles         { allocator },
-            activePasses    { allocator }
-        {
-            materials.reserve(256);
-        }
 
+	struct MaterialComponent : public Component<MaterialComponent, MaterialComponentID>
+	{
+		MaterialComponent(RenderSystem& IN_renderSystem, TextureStreamingEngine& IN_TSE, iAllocator* IN_allocator) :
+			streamEngine	{ IN_TSE },
+			renderSystem	{ IN_renderSystem },
+			materials		{ IN_allocator },
+			textures		{ IN_allocator },
+			handles			{ IN_allocator },
+			activePasses	{ IN_allocator },
+			allocator		{ *IN_allocator }
+		{
+			materials.reserve(256);
+		}
 
-        MaterialComponentData operator [](const MaterialHandle handle) const
-        {
-            if(handle == InvalidHandle)
-                return { 0, InvalidHandle, InvalidHandle, {}, {}, {}, {} };
 
-            return materials[handles[handle]];
-        }
+		MaterialComponentData operator [](const MaterialHandle handle) const;
+		MaterialHandle CreateMaterial(MaterialHandle IN_parent = InvalidHandle);
 
+		void AddRef(MaterialHandle material) noexcept;
+		void AddSubMaterial(MaterialHandle material, MaterialHandle subMaterial);
 
-        MaterialHandle CreateMaterial(MaterialHandle IN_parent = InvalidHandle)
-        {
-            std::scoped_lock lock{ m };
+		void ReleaseMaterial(MaterialHandle material);
+		void ReleaseTexture(ResourceHandle texture);
 
-            const auto handle         = handles.GetNewHandle();
-            const auto materialIdx    = (index_t)materials.push_back({ 0, handle, IN_parent, {}, {}, {}, {}  });
+		MaterialTextureEntry*	_AddTextureAsset(GUID_t textureAsset, ReadContext& readContext, const bool loadLowest = false);
+		void					_ReleaseTexture(MaterialTextureEntry* entry);
+		MaterialTextureEntry*	_FindTextureAsset(ResourceHandle	resourceHandle);
+		MaterialTextureEntry*	_FindTextureAsset(GUID_t			textureAsset);
 
-            if(IN_parent != InvalidHandle)
-                AddRef(IN_parent);
+		MaterialHandle  CloneMaterial(MaterialHandle sourceMaterial);
 
-            handles[handle] = materialIdx;
+		// The Material View is a ref counted reference to a material instance.
+		// On Writes to the material, if it is shared, the MaterialView does a copy on write and creates a new instance of the material.
+		struct MaterialView : public ComponentView_t<MaterialComponent>
+		{
+			MaterialView(GameObject& gameObject, MaterialHandle IN_handle) noexcept;
+			MaterialView(GameObject& gameObject) noexcept;
 
-            return handle;
-        }
+			~MaterialView() override;
 
+			MaterialComponentData GetData() const;
 
-        void AddRef(MaterialHandle material) noexcept
-        {
-            if(material != InvalidHandle)
-                materials[handles[material]].refCount++;
-        }
+			bool Shared() const;
 
-        void            AddSubMaterial(MaterialHandle material, MaterialHandle subMaterial)
-        {
-            materials[handles[material]].SubMaterials.push_back(subMaterial);
-        }
+			void Add2Pass(const PassHandle ID);
 
-        void            ReleaseMaterial(MaterialHandle material);
-        void            ReleaseTexture(ResourceHandle texture);
+			Vector<PassHandle, 16, uint8_t> GetPasses() const;
 
-        MaterialHandle  CloneMaterial(MaterialHandle sourceMaterial);
+			void SetProperty(const uint32_t ID, auto&& value) { GetComponent().SetProperty(handle, ID, value); }
 
-        // The Material View is a ref counted reference to a material instance.
-        // On Writes to the material, if it is shared, the MaterialView does a copy on write and creates a new instance of the material.
-        struct MaterialView : public ComponentView_t<MaterialComponent>
-        {
-            MaterialView(GameObject& gameObject, MaterialHandle IN_handle) noexcept;
 
-            MaterialView(GameObject& gameObject) noexcept;
+			template<MaterialValue TY>
+			std::optional<TY> GetProperty(const uint32_t ID) const { return GetComponent().GetProperty(handle, ID); }
 
-            ~MaterialView() override;
 
+			void						PushTexture(GUID_t textureAsset, bool LoadLowest = false);
+			void						PushTexture(ResourceHandle);
 
-            MaterialComponentData GetData() const;
+			void						InsertTexture(GUID_t, int idx, ReadContext& readContext, const bool loadLowest = false);
+			void						InsertTexture(ResourceHandle, int idx);
 
-            bool Shared() const;
+			void						RemoveTextureAt(int idx);
 
+			void						RemoveTexture(GUID_t);
+			void						RemoveTexture(ResourceHandle);
 
-            void Add2Pass(const PassHandle ID);
+			const std::span<GUID_t>		GetTextures() const;
 
+			bool						HasSubMaterials() const;
+			std::span<MaterialHandle>	GetSubMaterials() const;
+			MaterialHandle				CreateSubMaterial();
 
-            static_vector<PassHandle> GetPasses() const;
 
-            template<typename TY>
-            void SetProperty(const uint32_t ID, TY value) { GetComponent().SetProperty(handle, ID, value); }
+			MaterialHandle	handle;
+		};
 
+		using View = MaterialView;
 
-            template<typename TY>
-            std::optional<TY> GetProperty(const uint32_t ID) const { return GetComponent().GetProperty(handle, ID); }
+		void PushTexture(MaterialHandle material, GUID_t textureAsset,ReadContext& readContext, const bool LoadLowest = false);
+		void PushTexture(MaterialHandle material, ResourceHandle texture);
 
+		void RemoveTexture(MaterialHandle material, GUID_t);
+		void RemoveTexture(MaterialHandle material, ResourceHandle);
+		void RemoveTextureAt(MaterialHandle material, int idx);
 
-            void            AddTexture(GUID_t textureAsset, bool LoadLowest = false);
-            bool            HasSubMaterials() const;
-            MaterialHandle  CreateSubMaterial();
+		void InsertTexture(MaterialHandle material, GUID_t, int I, ReadContext& readContext, const bool loadLowest = false);
+		void InsertTexture(MaterialHandle material, ResourceHandle, int I);
 
+		void AddComponentView(GameObject& gameObject, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 
-            MaterialHandle  handle;
-        };
+		void Add2Pass(MaterialHandle& material, const PassHandle ID);
 
-        using View = MaterialView;
+		Vector<PassHandle, 16, uint8_t>	GetPasses(MaterialHandle material) const;
+		Vector<PassHandle>				GetActivePasses(iAllocator& allocator) const;
 
-        void AddTexture(GUID_t textureAsset, MaterialHandle material, ReadContext& readContext, const bool LoadLowest = false);
-        void AddComponentView(GameObject& gameObject, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 
-        void Add2Pass(MaterialHandle& material, const PassHandle ID)
-        {
-            if (materials[handles[material]].refCount > 1)
-            {
-                auto newHandle = GetComponent().CloneMaterial(material);
-                GetComponent().ReleaseMaterial(material);
+		void SetProperty(MaterialHandle& material, const uint32_t ID, auto&& value)
+		{
+			if (materials[handles[material]].refCount > 1)
+			{
+				auto newHandle = CloneMaterial(material);
+				ReleaseMaterial(material);
 
-                material = newHandle;
-            }
+				material = newHandle;
+			}
 
-            auto& passes = materials[handles[material]].Passes;
-            passes.emplace_back(ID);
+			auto& properties = materials[handles[material]].Properties;
 
-            if (auto res = std::find(activePasses.begin(), activePasses.end(), ID); res == activePasses.end())
-                activePasses.push_back(ID);
-        }
+			if (MaterialProperty* prop =
+					std::find_if(
+						properties.begin(), properties.end(),
+						[&](auto& prop) { return prop.ID == ID;}); prop != properties.end())
+				prop->value = value;
+			else
+				properties.emplace_back(ID, value);
+		}
 
-        static_vector<PassHandle>   GetPasses(MaterialHandle material) const
-        {
-            static_vector<PassHandle> out;
 
-            if (material == InvalidHandle)
-                return out;
+		template<MaterialValue TY>
+		std::optional<TY> GetProperty(MaterialHandle handle, const uint32_t ID) const
+		{
+			auto& material		= materials[handles[handle]];
+			auto& properties	= material.Properties;
 
-            auto& materialData = materials[handles[material]];
+			if (auto res = std::find_if(
+					properties.begin(), properties.end(),
+					[&](const auto& prop) -> bool { return prop.ID == ID; }); res != properties.end())
+			{
+				if (auto* property = std::get_if<TY>(&res->value))
+					return { *property };
+				else
+					return {};
+			}
+			else if (material.parent != InvalidHandle)
+				return GetProperty<TY>(material.parent, ID);
+			else
+				return {};
+		}
 
-            if (materialData.parent != InvalidHandle)
-                out = GetPasses(materialData.parent);
 
-            if (materialData.Passes.size())
-                out += materialData.Passes;
+		RenderSystem&					renderSystem;
+		TextureStreamingEngine&			streamEngine;
 
-            return out;
-        }
+		Vector<MaterialComponentData>					materials;
+		Vector<MaterialTextureEntry>					textures;
+		Vector<PassHandle>								activePasses;
 
-        Vector<PassHandle>          GetActivePasses(iAllocator& allocator) const
-        {
-            Vector<PassHandle> passes{ &allocator };
-            passes = activePasses;
+		HandleUtilities::HandleTable<MaterialHandle>	handles;
+		std::mutex										m;
+		iAllocator&										allocator;
+	};
 
-            return passes;
-        }
 
+	using MaterialView = MaterialComponent::View;
 
-        template<typename TY>
-        void SetProperty(MaterialHandle& material, const uint32_t ID, TY value)
-        {
-            if (materials[handles[material]].refCount > 1)
-            {
-                auto newHandle = CloneMaterial(material);
-                ReleaseMaterial(material);
 
-                material = newHandle;
-            }
+	void SetMaterialHandle(GameObject& go, MaterialHandle material) noexcept;
+	MaterialHandle GetMaterialHandle(GameObject& go) noexcept;
 
-            auto& properties = materials[handles[material]].Properties;
+	template<MaterialValue TY>
+	std::optional<TY> GetMaterialProperty(GameObject& go, const uint32_t ID) noexcept
+	{
+		return Apply(go, [&](MaterialView& view){ return view.GetProperty<TY>(ID); });
+	}
 
-            if (MaterialProperty* prop =
-                    std::find_if(
-                        properties.begin(), properties.end(),
-                        [&](auto& prop) { return prop.ID == ID;}); prop != properties.end())
-                prop->value = value;
-            else
-                properties.emplace_back(ID, value);
-        }
+	template<MaterialValue TY>
+	std::optional<TY> GetMaterialProperty(const MaterialHandle material, const uint32_t ID) noexcept
+	{
+		return MaterialComponent::GetComponent().GetProperty<TY>(material, ID);
+	}
 
 
-        template<typename TY> 
-        std::optional<TY> GetProperty(MaterialHandle handle, const uint32_t ID) const
-        {
-            auto& material      = materials[handles[handle]];
-            auto& properties    = material.Properties;
-
-            if (auto res = std::find_if(
-                    properties.begin(), properties.end(),
-                    [&](const auto& prop) -> bool { return prop.ID == ID; }); res != properties.end())
-            {
-                if (auto* property = std::get_if<TY>(&res->value))
-                    return { *property };
-                else
-                    return {};
-            }
-            else if (material.parent != InvalidHandle)
-                return GetProperty<TY>(material.parent, ID);
-            else
-                return {};
-        }
-
-
-        RenderSystem&                   renderSystem;
-        TextureStreamingEngine&         streamEngine;
-
-        Vector<MaterialComponentData>                   materials;
-        Vector<MaterialTextureEntry>                    textures;
-        Vector<PassHandle>                              activePasses;
-
-        HandleUtilities::HandleTable<MaterialHandle>    handles;
-        std::mutex                                      m;
-    };
-
-
-    using MaterialView = MaterialComponent::View;
-
-
-    void SetMaterialHandle(GameObject& go, MaterialHandle material) noexcept;
-    MaterialHandle GetMaterialHandle(GameObject& go) noexcept;
-
-    template<typename TY>
-    std::optional<TY> GetMaterialProperty(GameObject& go, const uint32_t ID) noexcept
-    {
-        return Apply(go, [&](MaterialView& view){ return view.GetProperty<TY>(ID); });
-    }
-
-    template<typename TY>
-    std::optional<TY> GetMaterialProperty(const MaterialHandle material, const uint32_t ID) noexcept
-    {
-        return MaterialComponent::GetComponent().GetProperty<TY>(material, ID);
-    }
-}   /************************************************************************************************/
+}	/************************************************************************************************/
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2021 Robert May
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

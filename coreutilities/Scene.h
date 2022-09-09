@@ -591,8 +591,8 @@ namespace FlexKit
 	FLEXKITAPI void UpdateScenePoseTransform	(Scene* SM );
 	FLEXKITAPI void UpdateShadowCasters			(Scene* SM);
 
-	FLEXKITAPI void                 GatherScene(Scene* SM, CameraHandle Camera, PVS& solid);
-	FLEXKITAPI GatherPassesTask&    GatherScene(UpdateDispatcher& dispatcher, Scene* scene, CameraHandle C, iAllocator& allocator);
+	FLEXKITAPI void					GatherScene(Scene* SM, CameraHandle Camera, PVS& solid);
+	FLEXKITAPI GatherPassesTask&	GatherScene(UpdateDispatcher& dispatcher, Scene* scene, CameraHandle C, iAllocator& allocator);
 
 	FLEXKITAPI void LoadLodLevels(UpdateDispatcher& dispatcher, GatherPassesTask& PVS, CameraHandle camera, RenderSystem& renderSystem, iAllocator& allocator);
 

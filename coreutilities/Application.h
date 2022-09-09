@@ -35,44 +35,44 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-    class FKApplication
-    {
-    public:
-        FKApplication(EngineMemory* Memory, size_t threadCount = 4);
+	class FKApplication
+	{
+	public:
+		FKApplication(EngineMemory* Memory, size_t threadCount = 4);
 
-        ~FKApplication();
+		~FKApplication();
 
-        void PopState() noexcept
-        {
-            framework.PopState();
-        }
+		void PopState() noexcept
+		{
+			framework.PopState();
+		}
 
-        template<typename TY_STATE, typename ... TY_ARGS>
-        TY_STATE& PushState(TY_ARGS&& ... ARGS) noexcept
-        {
-            return framework.PushState<TY_STATE>(std::forward<TY_ARGS>(ARGS)...);
-        }
+		template<typename TY_STATE, typename ... TY_ARGS>
+		TY_STATE& PushState(TY_ARGS&& ... ARGS) noexcept
+		{
+			return framework.PushState<TY_STATE>(std::forward<TY_ARGS>(ARGS)...);
+		}
 
 
-        void DrawOneFrame(float dT)
-        {
-            framework.DrawFrame(dT);
-        }
+		void DrawOneFrame(float dT)
+		{
+			framework.DrawFrame(dT);
+		}
 
-        void Run();
-        void Release();
+		void Run();
+		void Release();
 
-        void PushArgument(const char* Str);
+		void PushArgument(const char* Str);
 
-        GameFramework&	GetFramework()  { return framework; }
-        EngineCore&     GetCore()       { return Core;      }
+		GameFramework&	GetFramework()  { return framework; }
+		EngineCore&		GetCore()       { return Core;      }
 
-        bool running() { return framework.Running();  }
-    private:
-        EngineMemory*	        Memory;
-        EngineCore		        Core;
-        GameFramework	        framework;
-    };
+		bool running() { return framework.Running();  }
+	private:
+		EngineMemory*	Memory;
+		EngineCore		Core;
+		GameFramework	framework;
+	};
 
 }
 

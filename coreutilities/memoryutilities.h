@@ -92,62 +92,62 @@ namespace FlexKit
 			free(&_ref);
 		}
 
-        operator iAllocator* () { return this; }
+		operator iAllocator* () { return this; }
 
 	protected:
 		iAllocator() noexcept {}
 	};
 
 
-    class ThreadSafeAllocator : public iAllocator
-    {
-    public:
-        ThreadSafeAllocator(iAllocator* IN_allocator) :
-            allocator{ IN_allocator } {}
+	class ThreadSafeAllocator : public iAllocator
+	{
+	public:
+		ThreadSafeAllocator(iAllocator* IN_allocator) :
+			allocator{ IN_allocator } {}
 
-        void* malloc(size_t s)
-        {
-            std::unique_lock l{ m };
-            return allocator->malloc(s);
-        }
+		void* malloc(size_t s)
+		{
+			std::unique_lock l{ m };
+			return allocator->malloc(s);
+		}
 
-        void  free(void* _ptr)
-        {
-            std::unique_lock l{ m };
-            allocator->free(_ptr);
-        }
+		void  free(void* _ptr)
+		{
+			std::unique_lock l{ m };
+			allocator->free(_ptr);
+		}
 
-        void* _aligned_malloc(size_t s, size_t A = 0x10)
-        {
-            std::unique_lock l{ m };
-            return allocator->_aligned_malloc(s, A);
-        }
+		void* _aligned_malloc(size_t s, size_t A = 0x10)
+		{
+			std::unique_lock l{ m };
+			return allocator->_aligned_malloc(s, A);
+		}
 
-        void  _aligned_free(void* _ptr)
-        {
-            std::unique_lock l{ m };
-            return allocator->_aligned_free(_ptr);
-        }
+		void  _aligned_free(void* _ptr)
+		{
+			std::unique_lock l{ m };
+			return allocator->_aligned_free(_ptr);
+		}
 
-        void  clear(void)
-        {
-            std::unique_lock l{ m };
-            return allocator->clear();
-        }
+		void  clear(void)
+		{
+			std::unique_lock l{ m };
+			return allocator->clear();
+		}
 
-        void* malloc_Debug(size_t s, const char* MD, size_t MDSectionSize)
-        {
-            std::unique_lock l{ m };
-            return allocator->malloc_Debug(s, MD, MDSectionSize);
-        }
+		void* malloc_Debug(size_t s, const char* MD, size_t MDSectionSize)
+		{
+			std::unique_lock l{ m };
+			return allocator->malloc_Debug(s, MD, MDSectionSize);
+		}
 
-        operator iAllocator* () { return this; }
+		operator iAllocator* () { return this; }
 
-    private:
+	private:
 
-        iAllocator* allocator;
-        std::mutex  m;
-    };
+		iAllocator* allocator;
+		std::mutex  m;
+	};
 
 	/************************************************************************************************/
 
@@ -300,14 +300,14 @@ namespace FlexKit
 		void*	_aligned_malloc		(size_t s, size_t alignement = 0x10);
 		void	clear				();
 
-        void*   buffer() { return Buffer; }
+		void*   buffer() { return Buffer; }
 
 		operator iAllocator* () { return &AllocatorInterface; }
 		operator iAllocator& () { return  AllocatorInterface; }
 	private:
 
-        size_t  used	= 0;
-        size_t  size	= 0;
+		size_t  used	= 0;
+		size_t  size	= 0;
 		byte*   Buffer	= 0;
 
 
@@ -943,10 +943,10 @@ namespace FlexKit
 			return &AllocatorInterface; 
 		}
 
-        operator iAllocator& ()
-        {
-            return AllocatorInterface;
-        }
+		operator iAllocator& ()
+		{
+			return AllocatorInterface;
+		}
 	};
 
 

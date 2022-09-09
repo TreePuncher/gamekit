@@ -7,61 +7,61 @@
 
 namespace FlexKit
 {
-    struct BrushPoseBlock
-    {
-        float4x4 transforms[8];
+	struct BrushPoseBlock
+	{
+		float4x4 transforms[8];
 
-        auto& operator [](size_t idx)
-        {
-            return transforms[idx];
-        }
-    };
+		auto& operator [](size_t idx)
+		{
+			return transforms[idx];
+		}
+	};
 
-    inline auto CreateGetFN(iAllocator& allocator)
-    {
-        return MakeLazyObject<CBPushBuffer>(
-            &allocator,
-            [&](ReserveConstantBufferFunction& reserve, GatherPassesTask& passesGather) mutable -> CBPushBuffer
-            {
-                auto& passes    = passesGather.GetData().passes;
-                auto res        = FindPass(passes.begin(), passes.end(), GBufferAnimatedPassID);
+	inline auto CreateGetFN(iAllocator& allocator)
+	{
+		return MakeLazyObject<CBPushBuffer>(
+			&allocator,
+			[&](ReserveConstantBufferFunction& reserve, GatherPassesTask& passesGather) mutable -> CBPushBuffer
+			{
+				auto& passes    = passesGather.GetData().passes;
+				auto res        = FindPass(passes.begin(), passes.end(), GBufferAnimatedPassID);
 
-                size_t requiredBlocks = 0;
-                for (auto& skinnedBrush : res->pvs)
-                {
-                    auto pose = GetPoseState(*skinnedBrush.gameObject);
-                    requiredBlocks += (size_t)ceil((float)pose->JointCount / 8.0f);
-                }
+				size_t requiredBlocks = 0;
+				for (auto& skinnedBrush : res->pvs)
+				{
+					auto pose = GetPoseState(*skinnedBrush.gameObject);
+					requiredBlocks += (size_t)ceil((float)pose->JointCount / 8.0f);
+				}
 
-                if (res)
-                    return reserve(requiredBlocks * sizeof(BrushPoseBlock));
-                else
-                    return {};
-            });
-    }
+				if (res)
+					return reserve(requiredBlocks * sizeof(BrushPoseBlock));
+				else
+					return {};
+			});
+	}
 
-    struct AnimationPoseUpload
-    {
-        AnimationPoseUpload(
-            ReserveConstantBufferFunction&  IN_reserve,
-            GatherPassesTask&               IN_passes,
-            iAllocator&                     IN_allocator) :
-                GetBuffer   { CreateGetFN(IN_allocator) },
-                passes      { IN_passes },
-                reserve     { IN_reserve } {}
+	struct AnimationPoseUpload
+	{
+		AnimationPoseUpload(
+			ReserveConstantBufferFunction&  IN_reserve,
+			GatherPassesTask&               IN_passes,
+			iAllocator&                     IN_allocator) :
+				GetBuffer   { CreateGetFN(IN_allocator) },
+				passes      { IN_passes },
+				reserve     { IN_reserve } {}
 
-        using CreateFN = decltype(CreateGetFN(std::declval<iAllocator&>()));
-        using PoseView = decltype(CreateCBIterator<BrushPoseBlock>(std::declval<CBPushBuffer&>()));
+		using CreateFN = decltype(CreateGetFN(std::declval<iAllocator&>()));
+		using PoseView = decltype(CreateCBIterator<BrushPoseBlock>(std::declval<CBPushBuffer&>()));
 
-        CreateFN                        GetBuffer;
-        GatherPassesTask&               passes;
-        ReserveConstantBufferFunction&  reserve;
+		CreateFN                        GetBuffer;
+		GatherPassesTask&               passes;
+		ReserveConstantBufferFunction&  reserve;
 
-        PoseView        GetIterator();
-        CBPushBuffer&   GetData();
-    };
+		PoseView        GetIterator();
+		CBPushBuffer&   GetData();
+	};
 
-    AnimationPoseUpload& UploadPoses(FrameGraph&, GatherPassesTask& passes, ReserveConstantBufferFunction& reserveCB, iAllocator& allocator);
+	AnimationPoseUpload& UploadPoses(FrameGraph&, GatherPassesTask& passes, ReserveConstantBufferFunction& reserveCB, iAllocator& allocator);
 }
 
 

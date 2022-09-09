@@ -19,9 +19,9 @@ struct AnimationInput
 		Uint4
 	} type;
 
-	uint32_t    IDHash;
-	std::string stringID;
-	char        defaultValue[16];
+	uint32_t	IDHash;
+	std::string	stringID;
+	char		defaultValue[16];
 
 	void Serialize(auto& ar)
 	{
@@ -50,7 +50,7 @@ public:
 		ar& inputs;
 	}
 
-	uint64_t                    scriptResource;
+	uint64_t					scriptResource;
 	std::vector<AnimationInput> inputs;
 
 

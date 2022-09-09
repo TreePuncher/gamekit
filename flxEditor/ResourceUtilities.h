@@ -25,14 +25,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "Common.h"
-#include "MetaData.h"
-
 #include "buildsettings.h"
-#include "containers.h"
-#include "memoryutilities.h"
+
 #include "Assets.h"
 #include "AnimationUtilities.h"
+#include "containers.h"
+#include "EditorResource.h"
+#include "MetaData.h"
+#include "memoryutilities.h"
 #include "Serialization.hpp"
 
 #include <random>
@@ -65,64 +65,64 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
-    struct FileDir
-    {	
-        char str[256]; 
-        bool Valid	= false;
-    };
+	struct FileDir
+	{	
+		char str[256]; 
+		bool Valid	= false;
+	};
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    size_t CreateRandomID();
-    FileDir SelectFile();
+	size_t CreateRandomID();
+	FileDir SelectFile();
 
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    bool ExportGameRes(const std::string& file, const ResourceList& blobs);
+	bool ExportGameRes(const std::string& file, const ResourceList& blobs);
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    struct IDTranslation
-    {
-        size_t	FBXID;
-        GUID_t	Guid;
+	struct IDTranslation
+	{
+		size_t	FBXID;
+		GUID_t	Guid;
 
-        template<class Archive>
-        void serialize(Archive& ar, const unsigned int version)
-        {
-            ar& FBXID;
-            ar& Guid;
-        }
-    };
-
-
-    typedef std::vector<IDTranslation> IDTranslationTable;
+		template<class Archive>
+		void serialize(Archive& ar, const unsigned int version)
+		{
+			ar& FBXID;
+			ar& Guid;
+		}
+	};
 
 
-    inline GUID_t	TranslateID(const size_t FBXID, const IDTranslationTable& Table)
-    {
-        for (auto ID : Table)
-            if (ID.FBXID == FBXID)
-                return ID.Guid;
+	typedef std::vector<IDTranslation> IDTranslationTable;
 
-        return FBXID;
-    }
 
-    inline bool IDPresentInTable(const size_t FBXID, const IDTranslationTable& Table)
-    {
-        for (auto ID : Table)
-            if (ID.FBXID == FBXID)
-                return true;
+	inline GUID_t	TranslateID(const size_t FBXID, const IDTranslationTable& Table)
+	{
+		for (auto ID : Table)
+			if (ID.FBXID == FBXID)
+				return ID.Guid;
 
-        return false;
-    }
+		return FBXID;
+	}
+
+	inline bool IDPresentInTable(const size_t FBXID, const IDTranslationTable& Table)
+	{
+		for (auto ID : Table)
+			if (ID.FBXID == FBXID)
+				return true;
+
+		return false;
+	}
 
 
 }   /************************************************************************************************/

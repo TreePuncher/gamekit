@@ -819,9 +819,9 @@ namespace FlexKit
 
 	private:
 
-		HandleUtilities::HandleTable<CharacterControllerHandle> handles;
-		Vector<CharacterController>                             controllers;
-		PhysXComponent&                                         physx;
+		HandleUtilities::HandleTable<CharacterControllerHandle>	handles;
+		Vector<CharacterController>								controllers;
+		PhysXComponent&											physx;
 	};
 
 
@@ -832,12 +832,12 @@ namespace FlexKit
 	{
 	public:
 		CharacterControllerView(
-			GameObject&         gameObject,
-			LayerHandle         layer,
-			const float3        initialPosition = { 0, 0, 0 },
-			NodeHandle          node            = GetZeroedNode(),
-			const float         R               = 1.0f,
-			const float         H               = 1.0f) :
+			GameObject&		gameObject,
+			LayerHandle		layer,
+			const float3	initialPosition	= { 0, 0, 0 },
+			NodeHandle		node			= GetZeroedNode(),
+			const float		R				= 1.0f,
+			const float		H				= 1.0f) :
 				controller{ GetComponent().Create(layer, gameObject, node, initialPosition) }
 		{
 			auto& controller_ref = GetComponent()[controller];

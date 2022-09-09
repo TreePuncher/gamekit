@@ -113,10 +113,9 @@ namespace FlexKit
 		   GetTypeGUID(Brush)
 		};
 
-		GUID_t resourceID;
-
 		float4 albedo_smoothness;
 		float4 specular_metal;
+		uint8_t	meshCount;
 	};
 
 

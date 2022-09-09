@@ -113,6 +113,7 @@
     <VcpkgUseStatic>false</VcpkgUseStatic>
     <VcpkgTriplet>
     </VcpkgTriplet>
+    <VcpkgConfiguration>Debug</VcpkgConfiguration>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <VcpkgEnableManifest>true</VcpkgEnableManifest>
@@ -186,7 +187,6 @@
     <ClCompile Include="EditorMainWindow.cpp" />
     <ClCompile Include="EditorProject.cpp" />
     <ClCompile Include="EditorResourcePickerDialog.cpp" />
-    <ClCompile Include="EditorResources.cpp" />
     <ClCompile Include="EditorScriptEngine.cpp" />
     <ClCompile Include="EditorPrefabObject.cpp" />
     <ClCompile Include="EditorTaskList.cpp" />
@@ -204,7 +204,8 @@
       <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
     </ClCompile>
-    <ClCompile Include="MeshProcessing.cpp">
+    <ClCompile Include="MaterialResource.cpp" />
+    <ClCompile Include="MeshResource.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="MetaData.cpp">
@@ -247,7 +248,6 @@
     <QtMoc Include="EditorPrefabEditor.h" />
     <ClInclude Include="Animation.h" />
     <ClInclude Include="AnimationEditorObject.h" />
-    <ClInclude Include="Common.h" />
     <QtMoc Include="EditorPrefabInputTab.h" />
     <ClInclude Include="EditorAnimatorComponent.h" />
     <ClInclude Include="EditorColliderComponent.h" />
@@ -258,7 +258,8 @@
     <QtMoc Include="EditorResourcePickerDialog.h" />
     <ClInclude Include="EditorPrefabObject.h" />
     <ClInclude Include="FBXResourceUtilities.h" />
-    <ClInclude Include="MeshProcessing.h" />
+    <ClInclude Include="MaterialResource.h" />
+    <ClInclude Include="MeshResource.h" />
     <ClInclude Include="MetaData.h" />
     <ClInclude Include="PCH.h" />
     <ClInclude Include="resource.h" />
@@ -268,6 +269,7 @@
     <QtMoc Include="SceneOutliner.h" />
     <ClInclude Include="SceneResource.h" />
     <ClInclude Include="SelectionContext.h" />
+    <ClInclude Include="Serialization.h" />
     <ClInclude Include="TextureResourceUtilities.h" />
     <ClInclude Include="TTFontLoader.h" />
     <ClInclude Include="ViewportScene.h" />
@@ -277,7 +279,7 @@
     <ClInclude Include="EditorConfig.h" />
     <ClInclude Include="EditorGadgetInterface.h" />
     <QtMoc Include="EditorOutputWindow.h" />
-    <ClInclude Include="EditorResources.h" />
+    <ClInclude Include="EditorResource.h" />
     <ClInclude Include="EditorScriptEngine.h" />
     <ClInclude Include="EditorTaskList.h" />
     <QtMoc Include="TextureViewer.h" />

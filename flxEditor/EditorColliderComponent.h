@@ -9,61 +9,61 @@
 
 struct Collider
 {
-    FlexKit::StaticBodyShape    shape;
-    std::string                 shapeName;
+	FlexKit::StaticBodyShape	shape;
+	std::string					shapeName;
 
-    void Serialize(auto& ar)
-    {
-        ar& shape;
-        ar& shapeName;
-    }
+	void Serialize(auto& ar)
+	{
+		ar& shape;
+		ar& shapeName;
+	}
 };
 
 struct StaticColliderEditorData
 {
-    std::vector<Collider>   colliders;
-    uint64_t                editorId;
+	std::vector<Collider>	colliders;
+	uint64_t				editorId;
 };
 
 class EditorColliderComponent :
-    public FlexKit::Serializable<EditorColliderComponent, FlexKit::EntityComponent, FlexKit::StaticBodyComponentID>
+	public FlexKit::Serializable<EditorColliderComponent, FlexKit::EntityComponent, FlexKit::StaticBodyComponentID>
 {
 public:
-    EditorColliderComponent() :
-        Serializable{ FlexKit::StaticBodyComponentID } {}
+	EditorColliderComponent() :
+		Serializable{ FlexKit::StaticBodyComponentID } {}
 
-    void Serialize(auto& ar)
-    {
-        EntityComponent::Serialize(ar);
+	void Serialize(auto& ar)
+	{
+		EntityComponent::Serialize(ar);
 
-        ar& colliders;
-    }
+		ar& colliders;
+	}
 
-    FlexKit::Blob GetBlob() override;
+	FlexKit::Blob GetBlob() override;
 
-    uint32_t                editorId;
-    std::vector<Collider>   colliders;
+	uint32_t				editorId;
+	std::vector<Collider>	colliders;
 
-    inline static RegisterConstructorHelper<EditorColliderComponent, FlexKit::StaticBodyComponentID> registered{};
+	inline static RegisterConstructorHelper<EditorColliderComponent, FlexKit::StaticBodyComponentID> registered{};
 };
 
 class EditorRigidBodyComponent :
-    public FlexKit::Serializable<EditorRigidBodyComponent, FlexKit::EntityComponent, FlexKit::RigidBodyComponentID>
+	public FlexKit::Serializable<EditorRigidBodyComponent, FlexKit::EntityComponent, FlexKit::RigidBodyComponentID>
 {
 public:
-    EditorRigidBodyComponent() :
-        Serializable{ FlexKit::RigidBodyComponentID } {}
+	EditorRigidBodyComponent() :
+		Serializable{ FlexKit::RigidBodyComponentID } {}
 
-    void Serialize(auto& ar)
-    {
-        EntityComponent::Serialize(ar);
-    }
+	void Serialize(auto& ar)
+	{
+		EntityComponent::Serialize(ar);
+	}
 
-    FlexKit::Blob GetBlob() override;
+	FlexKit::Blob GetBlob() override;
 
-    FlexKit::ResourceHandle ColliderResourceID;
+	FlexKit::ResourceHandle ColliderResourceID;
 
-    inline static RegisterConstructorHelper<EditorColliderComponent, FlexKit::RigidBodyComponentID> registered{};
+	inline static RegisterConstructorHelper<EditorColliderComponent, FlexKit::RigidBodyComponentID> registered{};
 };
 
 class EditorViewport;

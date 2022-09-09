@@ -522,8 +522,6 @@ void HostState::SendGameStart()
 
 LobbyState& StartGame(GameInfo& info, GameFramework& framework, BaseState& base, NetworkState& net)
 {
-	AddAssetFile("assets\\testAssets.gameres");
-
 	auto asset = LoadGameAsset("1x1x1Cube");
 	LoadTriMeshIntoTable(framework.core.RenderSystem.GetImmediateUploadQueue(), "1x1x1Cube");
 	FreeAsset(asset);

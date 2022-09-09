@@ -12,7 +12,7 @@
 #include <tiny_gltf.h>
 #include <filesystem>
 
-#include "Common.h"
+#include "EditorResource.h"
 #include "MetaData.h"
 #include "ResourceUtilities.h"
 
@@ -38,14 +38,14 @@ namespace FlexKit
 
 	struct Scene_Desc
 	{
-		size_t			    MaxTriMeshCount		= 0;
-		size_t			    MaxEntityCount		= 0;
-		size_t			    MaxPointLightCount	= 0;
-		size_t			    MaxSkeletonCount	= 0;
-		iAllocator*		    SceneMemory			= nullptr;
-		iAllocator*		    AssetMemory			= nullptr;
-		ResNodeHandle       Root;
-		ShaderSetHandle     DefaultMaterial;
+		size_t				MaxTriMeshCount		= 0;
+		size_t				MaxEntityCount		= 0;
+		size_t				MaxPointLightCount	= 0;
+		size_t				MaxSkeletonCount	= 0;
+		iAllocator*			SceneMemory			= nullptr;
+		iAllocator*			AssetMemory			= nullptr;
+		ResNodeHandle		Root;
+		ShaderSetHandle		DefaultMaterial;
 	};
 
 
@@ -116,8 +116,8 @@ namespace FlexKit
 		~EntityComponent() = default;
 
 
-		virtual Blob GetBlob()                  { return {}; }
-		virtual bool ExportComponent() const    { return true; }
+		virtual Blob GetBlob()					{ return {}; }
+		virtual bool ExportComponent() const	{ return true; }
 
 		uint32_t id;
 
@@ -271,8 +271,7 @@ namespace FlexKit
 
 		GUID_t					Collider = INVALIDHANDLE;
 		BrushMaterial			material;
-		static_vector<GUID_t>	meshes;
-
+		std::vector<GUID_t>		meshes;
 
 		inline static RegisterConstructorHelper<EntityBrushComponent, FlexKit::BrushComponentID> registered{};
 	};
@@ -312,7 +311,8 @@ namespace FlexKit
 	{
 		using MaterialProperty = std::variant<std::string, float4, float3, float2, float>;
 
-		std::vector<MaterialProperty>	properties;
+		GUID_t							resource;		// Resource
+		std::vector<MaterialProperty>	properties;		// Properties override data in the resource
 		std::vector<std::string>		propertyID;
 		std::vector<uint32_t>			propertyGUID;
 
@@ -407,7 +407,7 @@ namespace FlexKit
 
 	struct SceneEntity
 	{
-		uint64_t        objectID = rand();
+		uint64_t		objectID = rand();
 		std::string		id;
 		//uint32_t	    Node;
 		ComponentVector components;
@@ -475,9 +475,9 @@ namespace FlexKit
 			return idx;
 		}
 
-		const ResourceID_t	GetResourceTypeID()	const noexcept final { return SceneResourceTypeID; }
-		const std::string&	GetResourceID()		const noexcept final { return ID; }
-		const uint64_t		GetResourceGUID()	const noexcept final { return guid; }
+				ResourceID_t	GetResourceTypeID()	const noexcept final { return SceneResourceTypeID; }
+		const	std::string&	GetResourceID()		const noexcept final { return ID; }
+				uint64_t		GetResourceGUID()	const noexcept final { return guid; }
 
 
 		void SetResourceID		(const std::string& newID)	noexcept final { ID		= newID; }
@@ -525,7 +525,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2021 Robert May
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

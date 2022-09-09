@@ -225,16 +225,16 @@ namespace FlexKit
 
 		core.End = quit;
 
-        return dependency;
+		return dependency;
 	}
 
 
 	/************************************************************************************************/
 
 
-    UpdateTask* GameFramework::Draw(UpdateTask* update, UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT)
+	UpdateTask* GameFramework::Draw(UpdateTask* update, UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT)
 	{
-        ProfileFunction();
+		ProfileFunction();
 
 		FrameGraph&	frameGraph = TempMemory->allocate_aligned<FrameGraph>(core.RenderSystem, core.Threads, TempMemory);
 
@@ -242,7 +242,7 @@ namespace FlexKit
 
 		subStates.back()->Draw(update, core, dispatcher, dT, frameGraph);
 
-        Free_DelayedReleaseResources(core.RenderSystem);
+		Free_DelayedReleaseResources(core.RenderSystem);
 
 		return &frameGraph.SubmitFrameGraph(dispatcher, core.RenderSystem, core.GetBlockMemory());
 	}
@@ -253,10 +253,10 @@ namespace FlexKit
 
 	void GameFramework::PostDraw(iAllocator* TempMemory, double dt)
 	{
-        ProfileFunction();
+		ProfileFunction();
 
-        if(subStates.back())
-            subStates.back()->PostDrawUpdate(core, dt);
+		if(subStates.back())
+			subStates.back()->PostDrawUpdate(core, dt);
 	}
 
 
@@ -265,33 +265,33 @@ namespace FlexKit
 
 	void GameFramework::DrawFrame(double dT)
 	{
-        ProfileFunction();
+		ProfileFunction();
 
 
 		FK_LOG_9("Frame Begin");
-        if (!subStates.size() && !deferredPushes.size())
-        {
-            FK_LOG_9("State stack empty!");
-            return;
-        }
-        else if (deferredPushes.size())
-        {
-            for (auto deferredPush : deferredPushes)
-                subStates.push_back(deferredPush);
+		if (!subStates.size() && !deferredPushes.size())
+		{
+			FK_LOG_9("State stack empty!");
+			return;
+		}
+		else if (deferredPushes.size())
+		{
+			for (auto deferredPush : deferredPushes)
+				subStates.push_back(deferredPush);
 
-            deferredPushes.clear();
-        }
+			deferredPushes.clear();
+		}
 
-        UpdateDispatcher dispatcher{ &core.Threads, core.GetTempMemoryMT() };
-        auto updateTask = Update(dispatcher, dT);
+		UpdateDispatcher dispatcher{ &core.Threads, core.GetTempMemoryMT() };
+		auto updateTask = Update(dispatcher, dT);
 		auto drawTask   = Draw(updateTask, dispatcher, core.GetTempMemoryMT(), dT);
 
-        typedef std::chrono::seconds sec;
-        typedef std::chrono::microseconds mms;
-        typedef std::chrono::duration<float> fsec;
+		typedef std::chrono::seconds sec;
+		typedef std::chrono::microseconds mms;
+		typedef std::chrono::duration<float> fsec;
 
-        const fsec duration = std::chrono::duration_cast<mms>(TimeFunction([&] { dispatcher.Execute(); }));
-        stats.dispatchTime  = duration.count() * 1000;
+		const fsec duration = std::chrono::duration_cast<mms>(TimeFunction([&] { dispatcher.Execute(); }));
+		stats.dispatchTime  = duration.count() * 1000;
 
 		PostDraw(core.GetTempMemoryMT(), dT);
 
@@ -301,15 +301,15 @@ namespace FlexKit
 
 		FK_LOG_9("Frame End");
 
-        {
-            ProfileFunctionLabeled(Frees);
+		{
+			ProfileFunctionLabeled(Frees);
 
-            for (auto state : deferredFrees) {
-                core.GetBlockMemory().release_allocation(*state);
-                subStates.pop_back();
-            }
-        }
-        deferredFrees.clear();
+			for (auto state : deferredFrees) {
+				core.GetBlockMemory().release_allocation(*state);
+				subStates.pop_back();
+			}
+		}
+		deferredFrees.clear();
 
 		// Memory -----------------------------------------------------------------------------------
 		//Engine->GetBlockMemory().LargeBlockAlloc.Collapse(); // Coalesce blocks
@@ -326,18 +326,18 @@ namespace FlexKit
 
 		GetRenderSystem().WaitforGPU();
 
-        for (auto state : deferredFrees) {
-            core.GetBlockMemory().release_allocation(*state);
-            subStates.pop_back();
-        }
+		for (auto state : deferredFrees) {
+			core.GetBlockMemory().release_allocation(*state);
+			subStates.pop_back();
+		}
 
-        for (auto state : deferredPushes)
-            core.GetBlockMemory().release_allocation(state);
+		for (auto state : deferredPushes)
+			core.GetBlockMemory().release_allocation(state);
 
-        while (subStates.size()) {
-            core.GetBlockMemory().release_allocation(*subStates.back());
-            subStates.pop_back();
-        }
+		while (subStates.size()) {
+			core.GetBlockMemory().release_allocation(*subStates.back());
+			subStates.pop_back();
+		}
 
 		console.Release();
 		FlexKit::Release(DefaultAssets.Font, core.RenderSystem);
@@ -370,27 +370,27 @@ namespace FlexKit
 		uint32_t VRamUsage	        = (uint32_t)(core.RenderSystem._GetVidMemUsage() / MEGABYTE);
 		char* TempBuffer	        = (char*)core.GetTempMemory().malloc(512);
 		auto DrawTiming		        = 0.0f;
-        const char* RTFeatureStr    = core.RenderSystem.GetRTFeatureLevel() == RenderSystem::AvailableFeatures::Raytracing::RT_FeatureLevel_NOTAVAILABLE ? "Not Available" : "Available";
+		const char* RTFeatureStr    = core.RenderSystem.GetRTFeatureLevel() == RenderSystem::AvailableFeatures::Raytracing::RT_FeatureLevel_NOTAVAILABLE ? "Not Available" : "Available";
 
 		sprintf_s(TempBuffer, 512, 
 			"Current VRam Usage: %u MB\n"
 			"FPS: %u\n"
 			"Update/Draw Dispatch Time: %fms\n"
 			"Objects Drawn: %u\n"
-            "Hardware RT available: %s\n"
+			"Hardware RT available: %s\n"
 			"Build Date: " __DATE__ "\n",
 			VRamUsage, 
 			(uint32_t)stats.fps,
 			DrawTiming,
 			(uint32_t)stats.objectsDrawnLastFrame,
-            RTFeatureStr);
-        
-        const uint2 WH          = core.RenderSystem.GetTextureWH(renderTarget);
-        const float aspectRatio = float(WH[0]) / float(WH[1]);
+			RTFeatureStr);
+		
+		const uint2 WH          = core.RenderSystem.GetTextureWH(renderTarget);
+		const float aspectRatio = float(WH[0]) / float(WH[1]);
 
 		PrintTextFormatting Format = PrintTextFormatting::DefaultParams();
-        Format.Scale = float2{ 0.5f, 0.5f } * float2{ (float)WH[0], (float)WH[1] * aspectRatio } / float2{ 1080, 1920 };
-        Format.Color = { 1, 1, 1, 1 };
+		Format.Scale = float2{ 0.5f, 0.5f } * float2{ (float)WH[0], (float)WH[1] * aspectRatio } / float2{ 1080, 1920 };
+		Format.Color = { 1, 1, 1, 1 };
 
 		DrawSprite_Text(
 				TempBuffer, 
@@ -424,18 +424,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    void GameFramework::PushState(FrameworkState& state)
-    {
-        deferredPushes.push_back(&state);
-    }
+	void GameFramework::PushState(FrameworkState& state)
+	{
+		deferredPushes.push_back(&state);
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	void GameFramework::PopState()
 	{
-        deferredFrees.push_back(subStates.back());
+		deferredFrees.push_back(subStates.back());
 	}
 
 
@@ -443,25 +443,25 @@ namespace FlexKit
 
 
 	void HandleMouseEvents(const Event& in, GameFramework& framework)
-    {
-	    switch (in.Action)
-	    {
-	    case Event::InputAction::Pressed:
-	    {
-		    if (in.mData1.mKC[0] == KC_MOUSELEFT) {
-			    //framework.MouseState.LMB_Pressed = true;
-		    }
-	    }	break;
-	    case Event::InputAction::Release:
-	    {
-		    if (in.mData1.mKC[0] == KC_MOUSELEFT) {
-			    //framework.MouseState.LMB_Pressed = false;
-		    }
-	    }	break;
-	    default:
-		    break;
-	    }
-    }
+	{
+		switch (in.Action)
+		{
+		case Event::InputAction::Pressed:
+		{
+			if (in.mData1.mKC[0] == KC_MOUSELEFT) {
+				//framework.MouseState.LMB_Pressed = true;
+			}
+		}	break;
+		case Event::InputAction::Release:
+		{
+			if (in.mData1.mKC[0] == KC_MOUSELEFT) {
+				//framework.MouseState.LMB_Pressed = false;
+			}
+		}	break;
+		default:
+			break;
+		}
+	}
 
 
 	/************************************************************************************************/
@@ -515,8 +515,8 @@ namespace FlexKit
 		iAllocator*				tempMemory,
 		FrameGraph*				frameGraph)
 	{
-        FK_ASSERT(0);
-        /*
+		FK_ASSERT(0);
+		/*
 		DrawShapes(
 			DRAW_PSO,
 			*frameGraph,
@@ -528,7 +528,7 @@ namespace FlexKit
 				CursorPos,
 				CursorSize,
 				{Grey(1.0f), 1.0f}));
-         */
+		 */
 	}
 
 

@@ -1,27 +1,49 @@
-#include "PCH.h"
-#include "EditorResources.h"
+#pragma once
+#include "EditorResource.h"
+#include "Serialization.hpp"
+#include <string>
+#include <EditorInspectorView.h>
 
 
 /************************************************************************************************/
 
 
-TextureResource::TextureResource(FlexKit::ResourceHandle IN_resource, FlexKit::RenderSystem& IN_renderSystem) :
-    resource        { IN_resource },
-    renderSystem    { IN_renderSystem } {}
-
-
-/************************************************************************************************/
-
-
-TextureResource::~TextureResource()
+class MaterialResource : public FlexKit::Serializable<MaterialResource, FlexKit::iResource, GetTypeGUID(MaterialResource)>
 {
+public:
+	void Serialize(auto& ar)
+	{
+		FlexKit::ValueStore fields;
 
-}
+		BindValue(fields, id);
+		BindValue(fields, guid);
+
+		ar& fields;
+	}
+
+	FlexKit::ResourceBlob	CreateBlob() const override;
+	const std::string&		GetResourceID() const noexcept override;
+
+	uint64_t		GetResourceGUID()	const noexcept override;
+	ResourceID_t	GetResourceTypeID() const noexcept;
+
+	void			SetResourceID	(const std::string& IN_id)	noexcept;
+	void			SetResourceGUID	(uint64_t IN_guid) noexcept;
+
+	std::string			id		= fmt::format("Material_{}", rand());
+	FlexKit::GUID_t		guid	= 0xfffffffffffffff;
+};
+
+
+void RegisterMaterialInspector();
+
+
+/************************************************************************************************/
 
 
 /**********************************************************************
 
-Copyright (c) 2021 Robert May
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

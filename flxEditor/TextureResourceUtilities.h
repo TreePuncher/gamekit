@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 
-#include "Common.h"
+#include "EditorResource.h"
 #include "MetaData.h"
 #include "TextureUtilities.h"
 #include "ResourceUtilities.h"
@@ -16,166 +16,177 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
-    inline FlexKit::DeviceFormat FormatStringToDeviceFormat(const std::string& format);
+	inline FlexKit::DeviceFormat FormatStringToDeviceFormat(const std::string& format);
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    struct CubeMapFace
-    {
-        std::vector<FlexKit::TextureBuffer> mipLevels;
+	struct CubeMapFace
+	{
+		std::vector<FlexKit::TextureBuffer> mipLevels;
 
-        Blob CreateBlob() const;
-    };
-
-
-    /************************************************************************************************/
+		Blob CreateBlob() const;
+	};
 
 
-    class CubeMapTexture : public iResource
-    {
-    public:
-        CubeMapFace                 Faces[6];
-        size_t                      GUID;
-        std::string					ID;
-        FlexKit::DeviceFormat       format;
-
-        size_t                      Width   = 0;
-        size_t                      Height  = 0;
+	/************************************************************************************************/
 
 
-        ResourceBlob CreateBlob() const override;
+	class CubeMapTexture : public iResource
+	{
+	public:
+		CubeMapFace					Faces[6];
+		size_t						GUID;
+		std::string					ID;
+		FlexKit::DeviceFormat		format;
 
-        const ResourceID_t  GetResourceTypeID() const noexcept override { return CubeMapResourceTypeID; }
-        const std::string&  GetResourceID()     const noexcept final { return ID; }
-        const uint64_t      GetResourceGUID()   const noexcept final { return GUID; }
-
-        void SetResourceGUID(uint64_t newGUID)          noexcept final { GUID = newGUID; }
-        void SetResourceID(const std::string& newID)    noexcept final { ID = newID; }
-    };
-
-
-    inline std::shared_ptr<iResource> CreateCubeMapResource(std::shared_ptr<TextureCubeMap_MetaData> metaData);
+		size_t						Width   = 0;
+		size_t						Height  = 0;
 
 
-    /************************************************************************************************/
+		ResourceBlob CreateBlob() const override;
+
+				ResourceID_t  GetResourceTypeID()	const noexcept override { return CubeMapResourceTypeID; }
+		const	std::string&  GetResourceID()		const noexcept final { return ID; }
+				uint64_t      GetResourceGUID()		const noexcept final { return GUID; }
+
+		void SetResourceGUID(uint64_t newGUID)			noexcept final { GUID = newGUID; }
+		void SetResourceID(const std::string& newID)	noexcept final { ID = newID; }
+	};
 
 
-    inline void CreateCompressedDDSTextureResource()
-    {
-    }
+	inline std::shared_ptr<iResource> CreateCubeMapResource(std::shared_ptr<TextureCubeMap_MetaData> metaData);
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    enum class DDSTextureFormat
-    {
-        DXT3,
-        DXT5,
-        DXT7,
-        UNKNOWN
-    };
+	inline void CreateCompressedDDSTextureResource()
+	{
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    inline DDSTextureFormat FormatStringToFormatID(const std::string& ID)
-    {
-        if (ID == "DXT3")
-            return DDSTextureFormat::DXT3;
-        if (ID == "DXT5")
-            return DDSTextureFormat::DXT5;
-        if (ID == "DXT7")
-            return DDSTextureFormat::DXT7;
-
-        return DDSTextureFormat::UNKNOWN;
-    }
+	enum class DDSTextureFormat
+	{
+		DXT3,
+		DXT5,
+		DXT7,
+		UNKNOWN
+	};
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    struct _TextureMipLevelResource
-    {
-        CMP_MipSet mipSet;
-        std::string file;
+	inline DDSTextureFormat FormatStringToFormatID(const std::string& ID)
+	{
+		if (ID == "DXT3")
+			return DDSTextureFormat::DXT3;
+		if (ID == "DXT5")
+			return DDSTextureFormat::DXT5;
+		if (ID == "DXT7")
+			return DDSTextureFormat::DXT7;
 
-        void Release()
-        {
-            CMP_FreeMipSet(&mipSet);
-        }
-    };
-
-
-    /************************************************************************************************/
+		return DDSTextureFormat::UNKNOWN;
+	}
 
 
-    class TextureResource : public Serializable<TextureResource, iResource, GetTypeGUID(TextureResource)>
-    {
-    public:
-        void Serialize(auto& ar)
-        {
-            ar& ID;
-            ar& assetHandle;
-            ar& targetFormat;
-            ar& WH;
-            ar& MIPlevels;
-            ar& channelCount;
-
-            ar& exportedMIPCount;
-            ar& offsets;
-            ar& RawBuffer{ cachedBuffer, cachedBufferSize };
-
-        }
-
-        TextureResource() {}
-
-        const std::string&  GetResourceID()     const noexcept final { return ID; }
-        const uint64_t      GetResourceGUID()   const noexcept final { return assetHandle; }
-        const ResourceID_t  GetResourceTypeID() const noexcept final { return TextureResourceTypeID; }
-
-        void                SetResourceID(const std::string& IN_ID) noexcept final { ID = IN_ID; }
-        void                SetResourceGUID(uint64_t newGUID)       noexcept final { assetHandle = newGUID; }
-
-        ResourceBlob        CreateBlob() const override;
-
-        std::string             ID              = "";
-        GUID_t                  assetHandle     = -1;
-        std::string             targetFormat    = "";
-        uint2                   WH              = { 0, 0 };
-        uint32_t                channelCount    = 0;
-
-        size_t                  exportedMIPCount = 0;
-        std::vector<uint32_t>   offsets;
-        void*                   cachedBuffer        = nullptr;
-        size_t                  cachedBufferSize    = 0;
-
-        struct MIPLevel
-        {
-            void*      buffer        = nullptr;
-            size_t     bufferSize    = 0;
-
-            void Serialize(auto& ar)
-            {
-                ar& RawBuffer{ buffer, bufferSize };
-            }
-        };
-
-        std::vector<MIPLevel> MIPlevels;
-    };
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	struct _TextureMipLevelResource
+	{
+		CMP_MipSet mipSet;
+		std::string file;
+
+		void Release()
+		{
+			CMP_FreeMipSet(&mipSet);
+		}
+	};
 
 
-    _TextureMipLevelResource    CreateMIPMapResource(const std::string& string);
-    std::shared_ptr<iResource>  CreateTextureResource(float* imageBuffer, size_t imageBufferSize, uint2 WH, uint8_t channelCount, const std::string& name, const std::string& formatString);
-    std::shared_ptr<iResource>  CreateTextureResource(std::shared_ptr<Texture_MetaData> metaData);
-    std::shared_ptr<iResource>  CreateTextureResource(FlexKit::TextureBuffer& textureBuffer, std::string format);
-    std::shared_ptr<iResource>  CreateCompressedTextureResource(FlexKit::TextureBuffer& textureBuffer, std::string format);
+	/************************************************************************************************/
+
+
+
+	class TextureResource_IMPL : public Serializable<TextureResource_IMPL, iResource, GetTypeGUID(TextureResource)>
+	{
+	public:
+		void Serialize(auto& ar)
+		{
+			uint32_t version = 01;
+			ar& version;
+
+			FK_ASSERT(version == 01, "Texture resource version mismatch!");
+
+			ar& ID;
+			ar& assetHandle;
+			ar& targetFormat;
+			ar& WH;
+			ar& MIPlevels;
+			ar& channelCount;
+
+			ar& exportedMIPCount;
+			ar& offsets;
+			ar& RawBuffer{ cachedBuffer, cachedBufferSize };
+		}
+
+		const	std::string&	GetResourceID()		const noexcept final { return ID; }
+				uint64_t		GetResourceGUID()	const noexcept final { return assetHandle; }
+				ResourceID_t	GetResourceTypeID()	const noexcept final { return TextureResourceTypeID; }
+
+		void					SetResourceID(const std::string& IN_ID)	noexcept final { ID = IN_ID; }
+		void					SetResourceGUID(uint64_t newGUID)		noexcept final { assetHandle = newGUID; }
+
+		ResourceBlob			CreateBlob() const override;
+
+		bool DirtyFlag()		{ return dirtyFlag; }
+		void ClearDirtyFlag()	{ dirtyFlag = false; }
+
+		std::string				ID					= "";
+		GUID_t					assetHandle			= -1;
+		std::string				targetFormat		= "";
+		uint2					WH					= { 0, 0 };
+		uint32_t				channelCount		= 0;
+
+		size_t					exportedMIPCount	= 0;
+		std::vector<uint32_t>	offsets;
+
+		bool					dirtyFlag			= false;
+		void*					cachedBuffer		= nullptr;
+		size_t					cachedBufferSize	= 0;
+		
+		struct MIPLevel
+		{
+			void*	buffer		= nullptr;
+			size_t	bufferSize	= 0;
+
+			void Serialize(auto& ar)
+			{
+				ar& RawBuffer{ buffer, bufferSize };
+			}
+		};
+
+		std::vector<MIPLevel> MIPlevels;
+	};
+
+
+	using TextureResource = FileObjectResource<TextureResource_IMPL, GetTypeGUID(TextureResource)>;
+
+
+	/************************************************************************************************/
+
+
+	_TextureMipLevelResource	CreateMIPMapResource(const std::string& string);
+	std::shared_ptr<iResource>	CreateTextureResource(float* imageBuffer, size_t imageBufferSize, uint2 WH, uint8_t channelCount, const std::string& name, const std::string& formatString);
+	std::shared_ptr<iResource>	CreateTextureResource(std::shared_ptr<Texture_MetaData> metaData);
+	std::shared_ptr<iResource>	CreateTextureResource(FlexKit::TextureBuffer& textureBuffer, std::string format);
+	std::shared_ptr<iResource>	CreateCompressedTextureResource(FlexKit::TextureBuffer& textureBuffer, std::string format);
 
 
 }    /************************************************************************************************/

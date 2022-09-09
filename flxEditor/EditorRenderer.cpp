@@ -6,45 +6,45 @@
 
 
 EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FKApplication& IN_application, QApplication& IN_QtApplication) :
-    FrameworkState  { IN_framework      },
-    QtApplication   { IN_QtApplication  },
-    application     { IN_application    },
-    vertexBuffer    { IN_framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 1, false)        },
-    constantBuffer  { IN_framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 128, false)    },
-    textureEngine   { IN_framework.core.RenderSystem, IN_framework.core.GetBlockMemory() },
-    worldRender     { IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory(),  },
+	FrameworkState  { IN_framework      },
+	QtApplication   { IN_QtApplication  },
+	application     { IN_application    },
+	vertexBuffer    { IN_framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 1, false)        },
+	constantBuffer  { IN_framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 128, false)    },
+	textureEngine   { IN_framework.core.RenderSystem, IN_framework.core.GetBlockMemory() },
+	worldRender     { IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory(),  },
 
-    csg                     { IN_framework.core.GetBlockMemory() },
-    brushComponent          { IN_framework.core.GetBlockMemory(), IN_framework.core.RenderSystem },
-    stringIDComponent       { IN_framework.core.GetBlockMemory() },
-    materialComponent       { IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory() },
-    cameraComponent         { IN_framework.core.GetBlockMemory() },
-    visibilityComponent     { IN_framework.core.GetBlockMemory() },
-    skeletonComponent       { IN_framework.core.GetBlockMemory() },
-    animatorComponent       { IN_framework.core.GetBlockMemory() },
+	csg                     { IN_framework.core.GetBlockMemory() },
+	brushComponent          { IN_framework.core.GetBlockMemory(), IN_framework.core.RenderSystem },
+	stringIDComponent       { IN_framework.core.GetBlockMemory() },
+	materialComponent       { IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory() },
+	cameraComponent         { IN_framework.core.GetBlockMemory() },
+	visibilityComponent     { IN_framework.core.GetBlockMemory() },
+	skeletonComponent       { IN_framework.core.GetBlockMemory() },
+	animatorComponent       { IN_framework.core.GetBlockMemory() },
 
-    pointLightComponent     { IN_framework.core.GetBlockMemory() },
-    pointLightShadowMaps    { IN_framework.core.GetBlockMemory() },
+	pointLightComponent     { IN_framework.core.GetBlockMemory() },
+	pointLightShadowMaps    { IN_framework.core.GetBlockMemory() },
 
-    physX                   { IN_framework.core.Threads, IN_framework.core.GetBlockMemory() },
-    staticBodies            { physX },
-    rigidBodies             { physX },
-    characterControllers    { physX, IN_framework.core.GetBlockMemory() },
+	physX                   { IN_framework.core.Threads, IN_framework.core.GetBlockMemory() },
+	staticBodies            { physX },
+	rigidBodies             { physX },
+	characterControllers    { physX, IN_framework.core.GetBlockMemory() },
 
-    ikTargetComponent       { IN_framework.core.GetBlockMemory() },
-    ikComponent             { IN_framework.core.GetBlockMemory() }
+	ikTargetComponent       { IN_framework.core.GetBlockMemory() },
+	ikComponent             { IN_framework.core.GetBlockMemory() }
 {
-    auto& renderSystem = framework.GetRenderSystem();
-    renderSystem.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_PSO,  { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateTexturedTriStatePSO });
-    renderSystem.RegisterPSOLoader(FlexKit::DRAW_3D_PSO,        { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateDrawTriStatePSO });
-    renderSystem.RegisterPSOLoader(FlexKit::DRAW_TRI3D_PSO,     { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateDrawTri3DStatePSO });
-    renderSystem.RegisterPSOLoader(FlexKit::DRAW_LINE_PSO,      { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateDrawLineStatePSO });
+	auto& renderSystem = framework.GetRenderSystem();
+	renderSystem.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_PSO,  { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateTexturedTriStatePSO });
+	renderSystem.RegisterPSOLoader(FlexKit::DRAW_3D_PSO,        { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateDrawTriStatePSO });
+	renderSystem.RegisterPSOLoader(FlexKit::DRAW_TRI3D_PSO,     { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateDrawTri3DStatePSO });
+	renderSystem.RegisterPSOLoader(FlexKit::DRAW_LINE_PSO,      { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateDrawLineStatePSO });
 
-    renderSystem.QueuePSOLoad(FlexKit::DRAW_3D_PSO);
-    renderSystem.QueuePSOLoad(FlexKit::DRAW_LINE_PSO);
-    renderSystem.QueuePSOLoad(FlexKit::DRAW_TRI3D_PSO);
+	renderSystem.QueuePSOLoad(FlexKit::DRAW_3D_PSO);
+	renderSystem.QueuePSOLoad(FlexKit::DRAW_LINE_PSO);
+	renderSystem.QueuePSOLoad(FlexKit::DRAW_TRI3D_PSO);
 
-    allocator.Init((byte*)temporaryBuffer->buffer, sizeof(TempBuffer));
+	allocator.Init((byte*)temporaryBuffer->buffer, sizeof(TempBuffer));
 }
 
 
@@ -53,10 +53,10 @@ EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FK
 
 EditorRenderer::~EditorRenderer()
 {
-    auto& renderSystem = framework.GetRenderSystem();
+	auto& renderSystem = framework.GetRenderSystem();
 
-    renderSystem.ReleaseCB(constantBuffer);
-    renderSystem.ReleaseVB(vertexBuffer);
+	renderSystem.ReleaseCB(constantBuffer);
+	renderSystem.ReleaseVB(vertexBuffer);
 }
 
 
@@ -65,7 +65,7 @@ EditorRenderer::~EditorRenderer()
 
 void EditorRenderer::DrawOneFrame(double dT)
 {
-    application.DrawOneFrame(dT);
+	application.DrawOneFrame(dT);
 }
 
 
@@ -74,10 +74,10 @@ void EditorRenderer::DrawOneFrame(double dT)
 
 DXRenderWindow* EditorRenderer::CreateRenderWindow(QWidget* parent)
 {
-    auto viewPortWidget = new DXRenderWindow{ application.GetFramework().GetRenderSystem(), parent };
-    renderWindows.push_back(viewPortWidget);
+	auto viewPortWidget = new DXRenderWindow{ application.GetFramework().GetRenderSystem(), parent };
+	renderWindows.push_back(viewPortWidget);
 
-    return viewPortWidget;
+	return viewPortWidget;
 }
 
 
@@ -86,10 +86,10 @@ DXRenderWindow* EditorRenderer::CreateRenderWindow(QWidget* parent)
 
 void EditorRenderer::DrawRenderWindow(DXRenderWindow* renderWindow)
 {
-    if (drawInProgress)
-        return;
+	if (drawInProgress)
+		return;
 
-    return; // Causes crash for now
+	return; // Causes crash for now
 }
 
 
@@ -98,15 +98,15 @@ void EditorRenderer::DrawRenderWindow(DXRenderWindow* renderWindow)
 
 FlexKit::TriMeshHandle EditorRenderer::LoadMesh(FlexKit::MeshResource& mesh)
 {
-    auto& renderSystem  = framework.GetRenderSystem();
-    auto  copyContext   = renderSystem.GetImmediateUploadQueue();
+	auto& renderSystem  = framework.GetRenderSystem();
+	auto  copyContext   = renderSystem.GetImmediateUploadQueue();
 
-    TriMesh newMesh;
+	TriMesh newMesh;
 
-    auto meshBlob = mesh.CreateBlob();
-    FlexKit::TriMeshHandle handle = FlexKit::LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), meshBlob.buffer, meshBlob.bufferSize);
+	auto meshBlob = mesh.CreateBlob();
+	FlexKit::TriMeshHandle handle = FlexKit::LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), meshBlob.buffer, meshBlob.bufferSize);
 
-    return handle;
+	return handle;
 }
 
 
@@ -115,7 +115,7 @@ FlexKit::TriMeshHandle EditorRenderer::LoadMesh(FlexKit::MeshResource& mesh)
 
 FlexKit::UpdateTask& EditorRenderer::UpdatePhysx(FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
-    return physX.Update(dispatcher, dT);
+	return physX.Update(dispatcher, dT);
 }
 
 
@@ -124,14 +124,14 @@ FlexKit::UpdateTask& EditorRenderer::UpdatePhysx(FlexKit::UpdateDispatcher& disp
 
 FlexKit::UpdateTask* EditorRenderer::Update(FlexKit::EngineCore& Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT)
 {
-    renderWindows.erase(std::remove_if(std::begin(renderWindows), std::end(renderWindows),
-        [](auto& I)
-        {
-            return !I->isValid();
-        }),
-        std::end(renderWindows));
+	renderWindows.erase(std::remove_if(std::begin(renderWindows), std::end(renderWindows),
+		[](auto& I)
+		{
+			return !I->isValid();
+		}),
+		std::end(renderWindows));
 
-    return nullptr;
+	return nullptr;
 }
 
 
@@ -140,19 +140,19 @@ FlexKit::UpdateTask* EditorRenderer::Update(FlexKit::EngineCore& Engine, FlexKit
 
 FlexKit::UpdateTask* EditorRenderer::Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
-    drawInProgress = true;
+	drawInProgress = true;
 
-    FlexKit::ClearVertexBuffer(frameGraph, vertexBuffer);
+	FlexKit::ClearVertexBuffer(frameGraph, vertexBuffer);
 
-    TemporaryBuffers temporaries{
-        FlexKit::CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory()),
-        FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory()),
-    };
+	TemporaryBuffers temporaries{
+		FlexKit::CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory()),
+		FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory()),
+	};
 
-    for (auto renderWindow : renderWindows)
-        renderWindow->Draw(core, temporaries, dispatcher, dT, frameGraph, threadedAllocator);
+	for (auto renderWindow : renderWindows)
+		renderWindow->Draw(core, temporaries, dispatcher, dT, frameGraph, threadedAllocator);
 
-    return nullptr;
+	return nullptr;
 }
 
 
@@ -161,10 +161,10 @@ FlexKit::UpdateTask* EditorRenderer::Draw(FlexKit::UpdateTask* update, FlexKit::
 
 void EditorRenderer::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 {
-    for (auto renderWindow : renderWindows)
-        renderWindow->Present();
+	for (auto renderWindow : renderWindows)
+		renderWindow->Present();
 
-    drawInProgress = false;
+	drawInProgress = false;
 }
 
 

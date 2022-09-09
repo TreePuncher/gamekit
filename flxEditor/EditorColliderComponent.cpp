@@ -21,12 +21,12 @@ class StaticColliderResource :
 	public FlexKit::Serializable<StaticColliderResource, FlexKit::iResource, TriMeshColliderTypeID>
 {
 public:
-	const ResourceID_t GetResourceTypeID()  const noexcept override { return TriMeshColliderTypeID; }
-	const std::string& GetResourceID()      const noexcept override { return stringID; }
-	const uint64_t     GetResourceGUID()    const noexcept override { return guid; }
+			ResourceID_t GetResourceTypeID()	const noexcept override { return TriMeshColliderTypeID; }
+	const	std::string& GetResourceID()		const noexcept override { return stringID; }
+			uint64_t     GetResourceGUID()		const noexcept override { return guid; }
 
-	void SetResourceID(const std::string& newID)    noexcept final { stringID   = newID; }
-	void SetResourceGUID(uint64_t newGUID)          noexcept final { guid       = newGUID; }
+	void SetResourceID(const std::string& newID)	noexcept final { stringID	= newID; }
+	void SetResourceGUID(uint64_t newGUID)			noexcept final { guid		= newGUID; }
 
 	FlexKit::ResourceBlob CreateBlob() const
 	{
@@ -101,7 +101,7 @@ public:
 					{
 						auto meshes = brush.GetMeshes();
 
-						if (meshes.empty())
+						if (!meshes.empty())
 						{
 							auto meshResource	= FlexKit::GetMeshResource(meshes.front());
 							auto& physx			= FlexKit::PhysXComponent::GetComponent();
@@ -210,9 +210,9 @@ public:
 					{
 						auto colliderResource = std::static_pointer_cast<StaticColliderResource>(resource->resource);
 
-						auto& physx         = FlexKit::PhysXComponent::GetComponent();
-						auto shape          = physx.LoadTriMeshShape(colliderResource->colliderBlob);
-						auto& staticBody    = static_cast<FlexKit::StaticBodyView&>(view);
+						auto& physx			= FlexKit::PhysXComponent::GetComponent();
+						auto shape			= physx.LoadTriMeshShape(colliderResource->colliderBlob);
+						auto& staticBody	= static_cast<FlexKit::StaticBodyView&>(view);
 
 						staticBody.AddShape(shape);
 					});
@@ -407,8 +407,8 @@ struct ColliderComponentFactory : public IComponentFactory
 
 	inline static const std::string name = "Static Collider";
 
-	const std::string&      ComponentName() const noexcept { return name; }
-	FlexKit::ComponentID    ComponentID()   const noexcept { return FlexKit::StaticBodyComponentID; }
+	const std::string&		ComponentName()	const noexcept { return name; }
+	FlexKit::ComponentID	ComponentID()	const noexcept { return FlexKit::StaticBodyComponentID; }
 
 	static void AddEditorColliderData(FlexKit::GameObject& gameObject, const char* userData_ptr, size_t userData_size, FlexKit::ValueMap map)
 	{
@@ -457,9 +457,9 @@ struct ColliderComponentFactory : public IComponentFactory
 
 	static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& base, ViewportSceneContext& scene)
 	{
-		auto& colliderComponent = static_cast<EditorColliderComponent&>(component);
-		auto& colliderView      = static_cast<FlexKit::StaticBodyView&>(base);
-		auto* editorData        = static_cast<StaticColliderEditorData*>(colliderView.GetUserData());
+		auto& colliderComponent	= static_cast<EditorColliderComponent&>(component);
+		auto& colliderView		= static_cast<FlexKit::StaticBodyView&>(base);
+		auto* editorData		= static_cast<StaticColliderEditorData*>(colliderView.GetUserData());
 
 		FK_ASSERT(editorData != nullptr);
 

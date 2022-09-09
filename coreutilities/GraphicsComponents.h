@@ -16,9 +16,9 @@ namespace FlexKit
 
 	typedef Handle_t<32, GetCRCGUID(CameraHandle)> CameraHandle;
 
-    struct _CameraUpdate {};
+	struct _CameraUpdate {};
 
-    using CameraUpdateTask = UpdateTaskTyped<_CameraUpdate>;
+	using CameraUpdateTask = UpdateTaskTyped<_CameraUpdate>;
 
 	class CameraComponent : public Component<CameraComponent, CameraComponentID>
 	{
@@ -50,43 +50,43 @@ namespace FlexKit
 		void							SetCameraNear			(CameraHandle, float);
 		void							SetCameraFar			(CameraHandle, float);
 	
-		float							GetCameraAspectRatio	    (CameraHandle);
-		float							GetCameraFar			    (CameraHandle);
-		float							GetCameraFOV			    (CameraHandle);
-		NodeHandle						GetCameraNode			    (CameraHandle);
-		float							GetCameraNear			    (CameraHandle);
-		Camera::ConstantBuffer			GetCameraConstants		    (CameraHandle);
-        Camera::ConstantBuffer          GetCameraPreviousConstants  (CameraHandle);
-		float4x4						GetCameraPV				    (CameraHandle);
+		float							GetCameraAspectRatio		(CameraHandle);
+		float							GetCameraFar				(CameraHandle);
+		float							GetCameraFOV				(CameraHandle);
+		NodeHandle						GetCameraNode				(CameraHandle);
+		float							GetCameraNear				(CameraHandle);
+		Camera::ConstantBuffer			GetCameraConstants			(CameraHandle);
+		Camera::ConstantBuffer          GetCameraPreviousConstants	(CameraHandle);
+		float4x4						GetCameraPV					(CameraHandle);
 
 		auto&	QueueCameraUpdate(UpdateDispatcher& dispatcher)
-        {
-		    auto& task = dispatcher.Add<_CameraUpdate>(
-			    [&](UpdateDispatcher::UpdateBuilder& Builder, auto& Data)
-			    {
-				    Builder.SetDebugString("QueueCameraUpdate");
-			    },
-			    [this](auto& Data, iAllocator& threadAllocator)
-			    {
-                    ProfileFunction();
+		{
+			auto& task = dispatcher.Add<_CameraUpdate>(
+				[&](UpdateDispatcher::UpdateBuilder& Builder, auto& Data)
+				{
+					Builder.SetDebugString("QueueCameraUpdate");
+				},
+				[this](auto& Data, iAllocator& threadAllocator)
+				{
+					ProfileFunction();
 
-				    FK_LOG_9("Updating Cameras");
+					FK_LOG_9("Updating Cameras");
 
-				    size_t End = Cameras.size();
-				    for (size_t I = 0; I < End; ++I)
-				    {
-					    if (DirtyFlags[I])
-					    {
-						    Cameras[I].UpdateMatrices();
-						    DirtyFlags[I] = false;
-					    }
-				    }
+					size_t End = Cameras.size();
+					for (size_t I = 0; I < End; ++I)
+					{
+						if (DirtyFlags[I])
+						{
+							Cameras[I].UpdateMatrices();
+							DirtyFlags[I] = false;
+						}
+					}
 
-				    return;
-			    });
+					return;
+				});
 
-		    return task;
-	    }
+			return task;
+		}
 
 		Vector<bool>								DirtyFlags;
 		Vector<Camera>								Cameras;
@@ -113,10 +113,10 @@ namespace FlexKit
 	inline Camera::ConstantBuffer			GetCameraPreviousConstants  (CameraHandle camera) { return CameraComponent::GetComponent().GetCameraPreviousConstants(camera);  }
 	inline float4x4							GetCameraPV				    (CameraHandle camera) { return CameraComponent::GetComponent().GetCameraPV(camera);				    }
 
-    inline void                             MarkCameraDirty             (CameraHandle camera) { return CameraComponent::GetComponent().MarkDirty(camera); }
+	inline void                             MarkCameraDirty             (CameraHandle camera) { return CameraComponent::GetComponent().MarkDirty(camera); }
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	struct DefaultCameraInteractor

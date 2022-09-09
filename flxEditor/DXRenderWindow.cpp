@@ -9,27 +9,27 @@
 
 
 DXRenderWindow::DXRenderWindow(FlexKit::RenderSystem& renderSystem, QWidget *parent) :
-    QWidget         { parent },
-    renderWindow    { FlexKit::CreateWin32RenderWindowFromHWND(renderSystem, (HWND)winId()).first }
+	QWidget         { parent },
+	renderWindow    { FlexKit::CreateWin32RenderWindowFromHWND(renderSystem, (HWND)winId()).first }
 {
-    hide();
+	hide();
 
-    QPalette pal = palette();
-    pal.setColor(QPalette::Window, Qt::black);
-    setAutoFillBackground(true);
-    setPalette(pal);
+	QPalette pal = palette();
+	pal.setColor(QPalette::Window, Qt::black);
+	setAutoFillBackground(true);
+	setPalette(pal);
 
-    setMinimumSize(100, 100);
+	setMinimumSize(100, 100);
 
-    setFocusPolicy(Qt::StrongFocus);
-    setAttribute(Qt::WA_NativeWindow);
-    setAttribute(Qt::WA_PaintOnScreen);
-    setAttribute(Qt::WA_NoSystemBackground);
-    setContentsMargins(0, 0, 0, 0);
+	setFocusPolicy(Qt::StrongFocus);
+	setAttribute(Qt::WA_NativeWindow);
+	setAttribute(Qt::WA_PaintOnScreen);
+	setAttribute(Qt::WA_NoSystemBackground);
+	setContentsMargins(0, 0, 0, 0);
 
-    adjustSize();
+	adjustSize();
 
-    show();
+	show();
 }
 
 
@@ -38,7 +38,7 @@ DXRenderWindow::DXRenderWindow(FlexKit::RenderSystem& renderSystem, QWidget *par
 
 DXRenderWindow::~DXRenderWindow()
 {
-    Release();
+	Release();
 }
 
 
@@ -47,7 +47,7 @@ DXRenderWindow::~DXRenderWindow()
 
 void DXRenderWindow::Release()
 {
-    renderWindow.Release();
+	renderWindow.Release();
 }
 
 
@@ -56,22 +56,24 @@ void DXRenderWindow::Release()
 
 void DXRenderWindow::Draw(FlexKit::EngineCore& Engine, TemporaryBuffers& temporaries, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& frameGraph, FlexKit::ThreadSafeAllocator& threadSafeAllocator)
 {
-    t += dT;
+	t += dT;
 
-    dirty = true;
+	if (isActiveWindow())
+	{
+		dirty = true;
 
-    if (onDraw)
-    {
-        onDraw(Dispatcher, dT, temporaries, frameGraph, renderWindow.GetBackBuffer(), threadSafeAllocator);
-    }
-    else
-    {
-        frameGraph.AddRenderTarget(renderWindow.backBuffer);
+		if (onDraw)
+		{
+			onDraw(Dispatcher, dT, temporaries, frameGraph, renderWindow.GetBackBuffer(), threadSafeAllocator);
+		}
+		else
+		{
+			frameGraph.AddRenderTarget(renderWindow.backBuffer);
 
-        FlexKit::ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), FlexKit::float4{ 0.0f, 0.0f, 0.0f, 1 });
-        FlexKit::PresentBackBuffer(frameGraph, renderWindow.GetBackBuffer());
-    }
-
+			FlexKit::ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), FlexKit::float4{ 0.0f, 0.0f, 0.0f, 1 });
+			FlexKit::PresentBackBuffer(frameGraph, renderWindow.GetBackBuffer());
+		}
+	}
 }
 
 
@@ -80,11 +82,11 @@ void DXRenderWindow::Draw(FlexKit::EngineCore& Engine, TemporaryBuffers& tempora
 
 void DXRenderWindow::Present()
 {
-    if (dirty)
-    {
-        dirty = false;
-        renderWindow.Present(1);
-    }
+	if (dirty)
+	{
+		dirty = false;
+		renderWindow.Present(1);
+	}
 }
 
 
@@ -101,7 +103,7 @@ void DXRenderWindow::paintEvent(QPaintEvent* event)
 
 QPaintEngine* DXRenderWindow::paintEngine() const
 {
-    return nullptr;
+	return nullptr;
 }
 
 
@@ -110,8 +112,8 @@ QPaintEngine* DXRenderWindow::paintEngine() const
 
 void DXRenderWindow::showEvent(QShowEvent* event)
 {
-    auto string = fmt::format("showing window, winID : {}\n", winId());
-    OutputDebugStringA(string.c_str());
+	auto string = fmt::format("showing window, winID : {}\n", winId());
+	OutputDebugStringA(string.c_str());
 }
 
 
@@ -120,7 +122,7 @@ void DXRenderWindow::showEvent(QShowEvent* event)
 
 void DXRenderWindow::resizeSwapChain(int width, int height)
 {
-    renderWindow.Resize(FlexKit::uint2{ (size_t)width, (size_t)height });
+	renderWindow.Resize(FlexKit::uint2{ (size_t)width, (size_t)height });
 }
 
 
@@ -129,23 +131,23 @@ void DXRenderWindow::resizeSwapChain(int width, int height)
 
 void DXRenderWindow::resizeEvent(QResizeEvent* evt)
 {
-    QWidget::resize(evt->size());
+	QWidget::resize(evt->size());
 
-    const auto widgetSize = size();
-    const auto width      = widgetSize.width();
-    const auto height     = widgetSize.height();
+	const auto widgetSize = size();
+	const auto width      = widgetSize.width();
+	const auto height     = widgetSize.height();
 
-    const auto newWidth     = evt->size().width() * 1.5;
-    const auto newHeight    = evt->size().height() * 1.5;
+	const auto newWidth     = evt->size().width() * 1.5;
+	const auto newHeight    = evt->size().height() * 1.5;
 
-    //resizeSwapChain(evt->size().width(), evt->size().height());
-    resizeSwapChain(newWidth, newHeight);
+	//resizeSwapChain(evt->size().width(), evt->size().height());
+	resizeSwapChain(newWidth, newHeight);
 
-    if (ResizeEventHandler)
-        ResizeEventHandler(this);
+	if (ResizeEventHandler)
+		ResizeEventHandler(this);
 
-    if (onResize)
-        onResize({ (uint32_t)width, (uint32_t)height });
+	if (onResize)
+		onResize({ (uint32_t)width, (uint32_t)height });
 }
 
 
@@ -154,10 +156,10 @@ void DXRenderWindow::resizeEvent(QResizeEvent* evt)
 
 void DXRenderWindow::OnFrame()
 {
-    auto string = fmt::format("winID : {}\n", winId());
-    OutputDebugStringA(string.c_str());
+	auto string = fmt::format("winID : {}\n", winId());
+	OutputDebugStringA(string.c_str());
 
-    //Present();
+	//Present();
 }
 
 

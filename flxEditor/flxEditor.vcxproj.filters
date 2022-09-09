@@ -1,10 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
     <Filter Include="Resource Files">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
@@ -18,276 +14,282 @@
       <Extensions>qrc;*</Extensions>
       <ParseFiles>false</ParseFiles>
     </Filter>
-    <Filter Include="Form Files\Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    <Filter Include="Headers">
+      <UniqueIdentifier>{ee1ef41c-0058-4ada-933b-9d2ec580718f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="DXRenderWindow.h">
-      <Filter>Form Files\Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="EditorMainWindow.h">
-      <Filter>Form Files\Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="ResourceBrowserWidget.h">
-      <Filter>Form Files\Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="TaskManager.h">
-      <Filter>Form Files\Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="TextureViewer.h">
-      <Filter>Form Files\Header Files</Filter>
+      <Filter>Headers</Filter>
     </QtMoc>
     <QtMoc Include="EditorCodeEditor.h">
-      <Filter>Form Files\Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="EditorOutputWindow.h">
-      <Filter>Form Files\Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="ModelViewerWidget.h">
-      <Filter>Form Files\Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="EditorViewport.h">
-      <Filter>Form Files\Header Files</Filter>
+      <Filter>Headers</Filter>
     </QtMoc>
     <QtMoc Include="EditorInspectorView.h">
-      <Filter>Form Files\Header Files</Filter>
+      <Filter>Headers</Filter>
     </QtMoc>
-    <QtMoc Include="SceneOutliner.h">
-      <Filter>Form Files\Header Files</Filter>
+    <QtMoc Include="EditorMainWindow.h">
+      <Filter>Headers</Filter>
     </QtMoc>
-    <QtMoc Include="EditorResourcePickerDialog.h">
-      <Filter>Form Files\Header Files</Filter>
+    <QtMoc Include="EditorOutputWindow.h">
+      <Filter>Headers</Filter>
     </QtMoc>
     <QtMoc Include="EditorPrefabEditor.h">
-      <Filter>Form Files\Header Files</Filter>
+      <Filter>Headers</Filter>
     </QtMoc>
     <QtMoc Include="EditorPrefabInputTab.h">
-      <Filter>Form Files\Header Files</Filter>
+      <Filter>Headers</Filter>
+    </QtMoc>
+    <QtMoc Include="EditorResourcePickerDialog.h">
+      <Filter>Headers</Filter>
+    </QtMoc>
+    <QtMoc Include="EditorViewport.h">
+      <Filter>Headers</Filter>
+    </QtMoc>
+    <QtMoc Include="ModelViewerWidget.h">
+      <Filter>Headers</Filter>
+    </QtMoc>
+    <QtMoc Include="ResourceBrowserWidget.h">
+      <Filter>Headers</Filter>
+    </QtMoc>
+    <QtMoc Include="SceneOutliner.h">
+      <Filter>Headers</Filter>
+    </QtMoc>
+    <QtMoc Include="TaskManager.h">
+      <Filter>Headers</Filter>
+    </QtMoc>
+    <QtMoc Include="TextureViewer.h">
+      <Filter>Headers</Filter>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DXRenderWindow.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="flxEditor-Win64.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorProject.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorConfig.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorMainWindow.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="EditorRenderer.h">
-      <Filter>Form Files\Header Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorOperators.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="ResourceBrowserWidget.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="TaskManager.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorTaskList.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorScriptEngine.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorApplication.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="TextureViewer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="EditorResources.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorOutputWindow.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="ModelViewerWidget.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorViewport.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorRenderer.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="ViewportScene.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorInspectorView.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="SceneOutliner.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="PCH.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="ExtraTu.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="CSGComponent.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="CSGRendering.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="SceneInspectors.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorColliderComponent.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorResourcePickerDialog.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorPrefabEditor.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorAnimatorComponent.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorCodeEditor.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorPrefabObject.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Animation.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="FBXResourceUtilities.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="FlexKitResourceCompiler.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="MeshProcessing.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="MeshResource.cpp">
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="MetaData.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="ResourceUtilities.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="SceneResource.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="TextureResourceUtilities.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="TTFontLoader.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorPrefabInputTab.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="AnimationEditorObject.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="MaterialResource.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="EditorRenderer.h">
+      <Filter>Headers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="EditorProject.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EditorConfig.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EditorApplication.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EditorOperators.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EditorImport.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EditorTaskList.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EditorScriptEngine.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EditorGadgetInterface.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EditorResources.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SelectionContext.h">
-      <Filter>Form Files\Header Files</Filter>
+    <ClInclude Include="Serialization.h">
+      <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="ViewportScene.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SceneInspectors.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PCH.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CSGComponent.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CSGRendering.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EditorColliderComponent.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EditorAnimatorComponent.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EditorPrefabObject.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="AnimationEditorObject.h">
-      <Filter>Form Files\Header Files</Filter>
+      <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="Animation.h">
-      <Filter>Form Files\Header Files</Filter>
+      <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Common.h">
-      <Filter>Form Files\Header Files</Filter>
+    <ClInclude Include="AnimationEditorObject.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="CSGComponent.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="CSGRendering.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorAnimatorComponent.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorApplication.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorColliderComponent.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorConfig.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorGadgetInterface.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorImport.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorOperators.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorPrefabObject.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorProject.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorResource.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorScriptEngine.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorTaskList.h">
+      <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="FBXResourceUtilities.h">
-      <Filter>Form Files\Header Files</Filter>
+      <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="MeshProcessing.h">
-      <Filter>Form Files\Header Files</Filter>
+    <ClInclude Include="MaterialResource.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshResource.h">
+      <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="MetaData.h">
-      <Filter>Form Files\Header Files</Filter>
+      <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="ResourceIDs.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ResourceUtilities.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SceneResource.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="TextureResourceUtilities.h">
-      <Filter>Form Files\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="TTFontLoader.h">
-      <Filter>Form Files\Header Files</Filter>
+    <ClInclude Include="PCH.h">
+      <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
-      <Filter>Form Files\Header Files</Filter>
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="ResourceIDs.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="ResourceUtilities.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneInspectors.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneResource.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="SelectionContext.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="TextureResourceUtilities.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="TTFontLoader.h">
+      <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -326,11 +328,11 @@
     </QtUic>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="..\coreutilities\Serialization.hpp">
-      <Filter>Form Files\Header Files</Filter>
-    </Text>
     <Text Include="..\coreutilities\Serialization.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source</Filter>
+    </Text>
+    <Text Include="..\coreutilities\Serialization.hpp">
+      <Filter>Headers</Filter>
     </Text>
   </ItemGroup>
   <ItemGroup>

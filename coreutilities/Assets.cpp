@@ -26,7 +26,126 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "graphics.h"
 
 namespace FlexKit
-{   /************************************************************************************************/
+{	/************************************************************************************************/
+
+
+	struct FileContext : public ReadContextInterface
+	{
+		FileContext() = default;
+
+		FileContext(const char* IN_fileDir, size_t IN_offset)
+		{
+			WCHAR wFileDir[256];
+			memset(wFileDir, 0, sizeof(wFileDir));
+			size_t converted = 0;
+
+			mbstowcs_s(&converted, wFileDir, IN_fileDir, strnlen_s(IN_fileDir, sizeof(wFileDir)));
+
+			file = CreateFile2(
+				wFileDir,
+				GENERIC_READ,
+				FILE_SHARE_READ,
+				OPEN_EXISTING,
+				nullptr);
+
+
+			if (file == INVALID_HANDLE_VALUE)
+			{
+				auto err = GetLastError();
+				//__debugbreak();
+			}
+
+			fileDir = IN_fileDir;
+			offset  = IN_offset;
+		}
+
+		~FileContext() { Close(); }
+
+		HANDLE          file    = INVALID_HANDLE_VALUE;
+		const char*     fileDir = nullptr;
+		size_t          offset  = 0;
+
+		// Non-copyable
+		FileContext(const FileContext& rhs)                 = delete;
+		FileContext& operator = (const FileContext& rhs)    = delete;
+
+		FileContext& operator = (FileContext&& rhs) noexcept
+		{
+			Close();
+
+			file        = rhs.file;
+			fileDir     = rhs.fileDir;
+			offset      = rhs.offset;
+
+			rhs.file        = INVALID_HANDLE_VALUE;
+			rhs.fileDir     = nullptr;
+			rhs.offset      = 0;
+
+			return *this;
+		}
+
+		void Close() final
+		{
+			if(file != INVALID_HANDLE_VALUE)
+				CloseHandle(file);
+		}
+
+		void Read(void* dst_ptr, size_t readSize, size_t readOffset) final
+		{
+			if (file != INVALID_HANDLE_VALUE)
+			{
+				DWORD bytesRead = 0;
+
+				OVERLAPPED overlapped   = { 0 };
+				overlapped.Offset       = static_cast<DWORD>(readOffset + offset);
+
+				if (bool res = ReadFile(file, dst_ptr, static_cast<DWORD>(readSize), &bytesRead, &overlapped); res != true)
+					throw std::runtime_error("Failed to read");
+			}
+		}
+
+		void SetOffset(size_t readOffset) final
+		{
+			offset = readOffset;
+		}
+
+		bool IsValid() const noexcept
+		{
+			return file != INVALID_HANDLE_VALUE;
+		}
+	};
+
+
+	struct BufferContext : public ReadContextInterface
+	{
+		BufferContext(byte* IN_buffer, size_t IN_bufferSize, size_t IN_offset) :
+			buffer      { IN_buffer },
+			bufferSize  { IN_bufferSize },
+			offset      { IN_offset } {}
+
+		void Close() final {}
+
+		void Read(void* dst_ptr, size_t readSize, size_t readOffset) final
+		{
+			if(readOffset + offset + readSize <= bufferSize)
+				memcpy(dst_ptr, buffer + readOffset + offset, readSize);
+		}
+
+		void SetOffset(size_t readOffset) final
+		{
+			offset = readOffset;
+		}
+
+		bool IsValid() const noexcept final
+		{
+			return (buffer != nullptr && bufferSize > 0);
+		}
+
+		byte*   buffer      = nullptr;
+		size_t  bufferSize  = 0;
+		size_t  offset      = 0;
+	};
+
 
 	struct ResourceDirectory
 	{
@@ -701,21 +820,18 @@ namespace FlexKit
 		TriMeshAssetBlob Blob;
 		memcpy(&Blob, buffer, sizeof(Blob));
 
-		size_t BufferCount      = 0;
-
-		triMesh->SkinTable	    = nullptr;
-		triMesh->SkeletonGUID   = Blob.header.SkeletonGuid;
-		triMesh->Skeleton	    = nullptr;
-		triMesh->Info.Min.x     = Blob.header.Info.maxx;
-		triMesh->Info.Min.y     = Blob.header.Info.maxy;
-		triMesh->Info.Min.z     = Blob.header.Info.maxz;
-		triMesh->Info.Max.x     = Blob.header.Info.minx;
-		triMesh->Info.Max.y     = Blob.header.Info.miny;
-		triMesh->Info.Max.z     = Blob.header.Info.minz;
-		triMesh->Info.r		    = Blob.header.Info.r;
-		triMesh->Memory		    = Memory;
-		triMesh->assetHandle    = Blob.header.GUID;
-		triMesh->TriMeshID      = Blob.header.GUID;
+		size_t BufferCount		= 0;
+		triMesh->SkinTable		= nullptr;
+		triMesh->Info.Min.x		= Blob.header.Info.maxx;
+		triMesh->Info.Min.y		= Blob.header.Info.maxy;
+		triMesh->Info.Min.z		= Blob.header.Info.maxz;
+		triMesh->Info.Max.x		= Blob.header.Info.minx;
+		triMesh->Info.Max.y		= Blob.header.Info.miny;
+		triMesh->Info.Max.z		= Blob.header.Info.minz;
+		triMesh->Info.r			= Blob.header.Info.r;
+		triMesh->Memory			= Memory;
+		triMesh->assetHandle	= Blob.header.GUID;
+		triMesh->TriMeshID		= Blob.header.GUID;
 
 		triMesh->BS     = { { Blob.header.BS[0], Blob.header.BS[1], Blob.header.BS[2] }, Blob.header.BS[3] };
 		triMesh->AABB   =
@@ -1231,6 +1347,69 @@ namespace FlexKit
 		RS->ReleaseResource(asset->Texture);
 		asset->Memory->free(asset->FontDir);
 		asset->Memory->free(asset);
+	}
+
+
+	ReadContext::ReadContext(GUID_t IN_guid, ReadContextInterface* IN_ctx, iAllocator* IN_allocator) :
+		guid        { IN_guid   },
+		pimpl       { IN_ctx    },
+		allocator   { IN_allocator }{}
+
+	ReadContext::~ReadContext()
+	{
+		Release();
+	}
+
+	ReadContext& ReadContext::operator = (ReadContext&& rhs) noexcept
+	{
+		if (pimpl)
+			Release();
+
+		pimpl       = rhs.pimpl;
+		allocator   = rhs.allocator;
+		guid        = rhs.guid;
+
+		rhs.pimpl       = nullptr;
+		rhs.allocator   = nullptr;
+		rhs.guid        = INVALIDHANDLE;
+
+		return *this;
+	}
+
+	void ReadContext::Close()
+	{
+		if (pimpl)
+			pimpl->Close();
+	}
+
+	void ReadContext::Read(void* dst_ptr, size_t readSize, size_t readOffset)
+	{
+		if (pimpl)
+			pimpl->Read(dst_ptr, readSize, readOffset);
+	}
+
+	void ReadContext::SetOffset(size_t offset)
+	{
+		if (pimpl)
+			pimpl->SetOffset(offset);
+	}
+
+	void ReadContext::Release()
+	{
+		if (pimpl)
+			allocator->release(*pimpl);
+
+		pimpl       = nullptr;
+		allocator   = nullptr;
+		guid        = INVALIDHANDLE;
+	}
+
+	ReadContext::operator bool() const noexcept
+	{
+		if (pimpl)
+			return pimpl->IsValid();
+
+		return false;
 	}
 
 

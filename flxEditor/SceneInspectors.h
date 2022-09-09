@@ -43,8 +43,8 @@ public:
 		return gameObject.AddView<FlexKit::StringIDView>(nullptr, 0);
 	}
 
-	const std::string&      ComponentName() const noexcept { return name; }
-	FlexKit::ComponentID    ComponentID() const noexcept { return FlexKit::StringComponentID; }
+	const std::string&		ComponentName() const noexcept { return name; }
+	FlexKit::ComponentID	ComponentID() const noexcept { return FlexKit::StringComponentID; }
 
 	inline static const std::string name = "StringID";
 
@@ -100,8 +100,8 @@ public:
 		return ConstructNode(gameObject, ctx);
 	}
 
-	const std::string&      ComponentName() const noexcept { return name; }
-	FlexKit::ComponentID    ComponentID() const noexcept { return FlexKit::TransformComponentID; }
+	const std::string&		ComponentName() const noexcept { return name; }
+	FlexKit::ComponentID	ComponentID() const noexcept { return FlexKit::TransformComponentID; }
 
 	inline static const std::string name = "Transform";
 
@@ -182,8 +182,8 @@ struct PointLightFactory : public IComponentFactory
 	}
 
 	inline static const std::string name = "PointLight";
-	const std::string&      ComponentName() const noexcept { return name; }
-	FlexKit::ComponentID    ComponentID() const noexcept { return FlexKit::PointLightComponentID; }
+	const std::string&		ComponentName() const noexcept { return name; }
+	FlexKit::ComponentID	ComponentID() const noexcept { return FlexKit::PointLightComponentID; }
 
 	static bool Register()
 	{
@@ -236,8 +236,8 @@ struct CubicShadowMapFactory : public IComponentFactory
 
 	inline static const std::string name = "Cubic Shadow Map";
 
-	const std::string&      ComponentName() const noexcept { return name; }
-	FlexKit::ComponentID    ComponentID() const noexcept { return FlexKit::PointLightShadowMapID; }
+	const std::string&		ComponentName() const noexcept { return name; }
+	FlexKit::ComponentID	ComponentID() const noexcept { return FlexKit::PointLightShadowMapID; }
 
 	static bool Register()
 	{
@@ -285,8 +285,8 @@ struct SceneBrushFactory : public IComponentFactory
 	}
 
 	inline static const std::string name = "Brush";
-	const std::string&      ComponentName() const noexcept { return name; }
-	FlexKit::ComponentID    ComponentID() const noexcept { return FlexKit::BrushComponentID; }
+	const std::string&		ComponentName()	const noexcept { return name; }
+	FlexKit::ComponentID	ComponentID()	const noexcept { return FlexKit::BrushComponentID; }
 
 	static bool Register()
 	{
@@ -325,8 +325,8 @@ struct MaterialFactory : public IComponentFactory
 	}
 
 	inline static const std::string name = "Material";
-	const std::string&      ComponentName() const noexcept { return name; }
-	FlexKit::ComponentID    ComponentID() const noexcept { return FlexKit::MaterialComponentID; }
+	const std::string&		ComponentName() const noexcept { return name; }
+	FlexKit::ComponentID	ComponentID() const noexcept { return FlexKit::MaterialComponentID; }
 
 	static bool Register()
 	{
