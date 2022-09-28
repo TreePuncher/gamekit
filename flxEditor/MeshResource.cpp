@@ -1,8 +1,8 @@
 #include "PCH.h"
 #include "buildsettings.h"
 
+#include "EditorAnimationResource.h"
 #include "MeshResource.h"
-#include "Animation.h"
 #include "intersection.h"
 
 #include <iostream>
@@ -25,17 +25,17 @@ namespace FlexKit
 	using FlexKit::MeshUtilityFunctions::IndexList;
 	using FlexKit::MeshUtilityFunctions::CombinedVertexBuffer;
 
-	inline uint32_t		FetchIndex2			(uint32_t itr, const IndexList* IL)				    { return IL->at(itr);								}
-	inline float3		FetchVertexPOS		(uint32_t itr, const CombinedVertexBuffer* Buff)    { return Buff->at(itr).POS;							}
-	inline float3		FetchWeights		(uint32_t itr, const CombinedVertexBuffer* Buff)    { return Buff->at(itr).WEIGHTS;						}
-	inline float3		FetchVertexNormal	(uint32_t itr, const CombinedVertexBuffer* Buff)    { return Buff->at(itr).NORMAL;						}
-	inline float3		FetchVertexTangent  (uint32_t itr, const CombinedVertexBuffer* Buff)    { return Buff->at(itr).TANGENT;						}
-	inline float3		FetchFloat3ZERO		(uint32_t itr, const CombinedVertexBuffer* Buff)    { return{ 0.0f, 0.0f, 0.0f };						}
-	inline float2		FetchVertexUV		(uint32_t itr, const CombinedVertexBuffer* Buff)    { auto temp = Buff->at(itr).TEXCOORD.xy(); return {temp.x, temp.y};	    }
-	inline uint4_16		FetchWeightIndices	(size_t itr, const CombinedVertexBuffer* Buff)	    { return Buff->at(itr).WIndices;					}
-	inline uint32_t		WriteIndex			(uint32_t in)								        { return in;										}
-	inline float3		WriteVertex			(float3 in)									        { return float3(in);								}
-	inline float2		WriteUV				(float2 in)									        { return in;										}
+	inline uint32_t		FetchIndex2			(uint32_t itr, const IndexList* IL)					{ return IL->at(itr);								}
+	inline float3		FetchVertexPOS		(uint32_t itr, const CombinedVertexBuffer* Buff)	{ return Buff->at(itr).POS;							}
+	inline float3		FetchWeights		(uint32_t itr, const CombinedVertexBuffer* Buff)	{ return Buff->at(itr).WEIGHTS;						}
+	inline float3		FetchVertexNormal	(uint32_t itr, const CombinedVertexBuffer* Buff)	{ return Buff->at(itr).NORMAL;						}
+	inline float3		FetchVertexTangent  (uint32_t itr, const CombinedVertexBuffer* Buff)	{ return Buff->at(itr).TANGENT;						}
+	inline float3		FetchFloat3ZERO		(uint32_t itr, const CombinedVertexBuffer* Buff)	{ return{ 0.0f, 0.0f, 0.0f };						}
+	inline float2		FetchVertexUV		(uint32_t itr, const CombinedVertexBuffer* Buff)	{ auto temp = Buff->at(itr).TEXCOORD.xy(); return {temp.x, temp.y};	    }
+	inline uint4_16		FetchWeightIndices	(size_t itr, const CombinedVertexBuffer* Buff)		{ return Buff->at(itr).WIndices;					}
+	inline uint32_t		WriteIndex			(uint32_t in)										{ return in;										}
+	inline float3		WriteVertex			(float3 in)											{ return float3(in);								}
+	inline float2		WriteUV				(float2 in)											{ return in;										}
 	inline uint4_16		Writeuint4			(uint4_16 in);
 
 
@@ -81,8 +81,8 @@ namespace FlexKit
 		header.Info.r			= Info.r;
 
 		memcpy(header.BS, &BS, sizeof(BoundingSphere));
-		memcpy(header.AABB + 00, &AABB.Min, sizeof(float[3]));
-		memcpy(header.AABB + 12, &AABB.Max, sizeof(float[3]));
+		memcpy(header.AABB + 0, &AABB.Min, sizeof(float[3]));
+		memcpy(header.AABB + 3, &AABB.Max, sizeof(float[3]));
 			
 		strcpy_s(header.ID, ID_LENGTH > ID.size() ? ID_LENGTH : ID.size(), ID.c_str());
 
@@ -248,7 +248,8 @@ namespace FlexKit
 
 		FlexKit::AABB aabb = {};
 
-		meshOut->data->kdbTree_0 = std::make_shared<MeshKDBTree>( lods[0].subMeshs[0].tokens );
+		for (auto& subMesh : lods[0].subMeshs)
+			meshOut->data->kdbTrees.emplace_back(std::make_shared<MeshKDBTree>(subMesh.tokens));
 
 		for(auto& lod : lods)
 		{
@@ -261,16 +262,16 @@ namespace FlexKit
 			{
 				SubMesh newSubMesh;
 
-				auto kdbTree    = std::make_shared<MeshKDBTree>(subMesh.tokens);
-				auto submesh    = CreateOptimizedMesh(*kdbTree);
+				auto kdbTree = std::make_shared<MeshKDBTree>(subMesh.tokens);
+				auto submesh = CreateOptimizedMesh(*kdbTree);
 
 				newSubMesh.BaseIndex    = (uint32_t)optimizedMesh.indexes.size();
 				newSubMesh.IndexCount   = (uint32_t)submesh.indexes.size();
 
 				newSubMesh.aabb = kdbTree->root->aabb;
 
-				optimizedMesh  += submesh;
-				aabb           += kdbTree->root->aabb;
+				optimizedMesh	+= submesh;
+				aabb			+= kdbTree->root->aabb;
 
 				subMeshes.push_back(newSubMesh);
 			}

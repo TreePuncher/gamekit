@@ -2,7 +2,7 @@
 #include "EditorProject.h"
 #include "EditorResource.h"
 #include "MeshResource.h"
-#include "TextureResourceUtilities.h"
+#include "EditorTextureResources.h"
 #include <fstream>
 #include <filesystem>
 

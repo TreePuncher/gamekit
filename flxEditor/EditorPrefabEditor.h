@@ -7,11 +7,11 @@
 /************************************************************************************************/
 
 
-class AnimatorSelectionContext;
+class EditorCodeEditor;
 class EditorPrefabPreview;
 class EditorRenderer;
 class EditorProject;
-class EditorCodeEditor;
+class EditorSelectedPrefabObject;
 class QMenuBar;
 class EditorScriptEngine;
 class SelectionContext;
@@ -24,35 +24,35 @@ class QTimer;
 
 namespace FlexKit
 {
-    class Animation;
+	class Animation;
 }
+
 
 class EditorPrefabEditor : public QWidget
 {
 	Q_OBJECT
 
 public:
-    EditorPrefabEditor(SelectionContext& IN_selection, EditorScriptEngine& engine, EditorRenderer& IN_renderer, EditorProject& IN_project, QWidget *parent = Q_NULLPTR);
+	EditorPrefabEditor(SelectionContext& IN_selection, EditorScriptEngine& engine, EditorRenderer& IN_renderer, EditorProject& IN_project, QWidget *parent = Q_NULLPTR);
 	~EditorPrefabEditor();
 
-    FlexKit::LayerHandle GetPhysicsLayer() const;
+	FlexKit::LayerHandle GetPhysicsLayer() const;
 
 private:
+	FlexKit::Animation*		LoadAnimation		(std::string&, bool);
+	void					ReleaseAnimation	(FlexKit::Animation*);
 
-    FlexKit::Animation* LoadAnimation       (std::string&, bool);
-    void                ReleaseAnimation    (FlexKit::Animation*);
-
-	Ui::EditorAnimationEditor               ui;
-    SelectionContext&                       globalSelection;
-    QMenuBar*                               menubar;
-    AnimatorSelectionContext*               localSelection;
-    EditorPrefabPreview*                    previewWindow;
-    EditorPrefabInputTab*                   inputVariables;
-    EditorProject&                          project;
-    EditorCodeEditor*                       codeEditor;
-    EditorRenderer&                         renderer;
-    EditorScriptEngine&                     scriptEngine;
-    QTimer*                                 timer;
+	Ui::EditorAnimationEditor	ui;
+	SelectionContext&			globalSelection;
+	QMenuBar*					menubar;
+	EditorSelectedPrefabObject*	localSelection = nullptr;
+	EditorPrefabPreview*		previewWindow;
+	EditorPrefabInputTab*		inputVariables;
+	EditorProject&				project;
+	EditorCodeEditor*			codeEditor;
+	EditorRenderer&				renderer;
+	EditorScriptEngine&			scriptEngine;
+	QTimer*						timer;
 };
 
 /**********************************************************************

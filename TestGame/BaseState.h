@@ -18,116 +18,13 @@
 #include <angelscript/scriptstdstring/scriptstdstring.h>
 #include <angelscript/scriptbuilder/scriptbuilder.h>
 #include <imgui.h>
-#include <fmod.hpp>
+
 #include <fmt/printf.h>
 
-using FlexKit::WorldRender;
-using FlexKit::FKApplication;
-
-
 /************************************************************************************************/
 
-
-#pragma comment(lib, "fmod_vc.lib")
 
 using namespace FlexKit;
-
-typedef uint32_t SoundHandle;
-
-/*
-class SoundSystem
-{
-public:
-	SoundSystem(ThreadManager& IN_Threads, iAllocator* memory) :
-		threads	{	IN_Threads	}
-	{
-		result			= FMOD::System_Create(&system);
-		auto initres	= system->init(32, FMOD_INIT_NORMAL, nullptr);
-
-		auto& Work = CreateWorkItem(
-			[this](iAllocator&) {
-			//auto res = system->createSound("test.flac", FMOD_DEFAULT, 0, &sound1);
-			if(sound1)
-				system->playSound(sound1, nullptr, false, &channel);
-		}, memory, memory);
-
-		Work._debugID = "FMOD: Play Sound";
-		threads.AddWork(Work);
-	}
-
-
-	~SoundSystem()
-	{
-		sound1->release();
-		system->release();
-		system = nullptr;
-	}
-
-
-	SoundHandle LoadSoundFromDisk(const char* str)
-	{
-		return -1;
-	}
-
-
-	void Update(iAllocator* memory)
-	{
-		auto& Work = CreateWorkItem(
-			[this](iAllocator&) {
-				auto result = system->update();
-			}, 
-			memory);
-
-		Work._debugID = "FMOD: Update Sound";
-		threads.AddWork(Work);
-	}
-
-
-	FlexKit::Vector<FMOD::Sound*> Sounds;
-
-	ThreadManager&	threads;
-
-	FMOD::System*	system	= nullptr;
-	FMOD::Sound*	sound1	= nullptr;
-	FMOD::Sound*	sound2	= nullptr;
-	FMOD::Sound*	sound3	= nullptr;
-	FMOD::Channel*	channel = nullptr;
-	FMOD_RESULT       result;
-	unsigned int      version;
-};
-*/
-
-/************************************************************************************************/
-
-/*
-inline FlexKit::UpdateTask* QueueSoundUpdate(FlexKit::UpdateDispatcher& Dispatcher, SoundSystem* Sounds, iAllocator* allocator)
-{
-	struct SoundUpdateData
-	{
-		SoundSystem* Sounds;
-	};
-
-	SoundSystem* Sounds_ptr = nullptr;
-	auto& SoundUpdate = Dispatcher.Add<SoundUpdateData>(
-		[&](auto& Builder, SoundUpdateData& Data)
-		{
-			Data.Sounds = Sounds;
-			Builder.SetDebugString("UpdateSound");
-		},
-		[allocator](auto& Data, iAllocator& threadAllocator)
-		{
-			ProfileFunction();
-
-			FK_LOG_9("Sound Update");
-			Data.Sounds->Update(allocator);
-		});
-
-	return &SoundUpdate;
-}
-*/
-
-/************************************************************************************************/
-
 
 class BaseState : public FrameworkState
 {
@@ -135,7 +32,8 @@ public:
 	BaseState(
 		GameFramework& IN_Framework,
 		FKApplication& IN_App,
-		uint2 WH = { 1920, 1080 });
+		uint2 WH = { 1920, 1080 },
+		bool fullscreen = false);
 
 	~BaseState();
 

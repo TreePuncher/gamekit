@@ -1,8 +1,10 @@
 #include "PCH.h"
+
+#include "angelscript.h"
 #include "EditorApplication.h"
 #include "TextureUtilities.h"
-#include "angelscript.h"
-#include "TextureResourceUtilities.h"
+#include "EditorTextureResources.h"
+
 #include <stb_image_write.h>
 #include <filesystem>
 #include <QKeySequence>

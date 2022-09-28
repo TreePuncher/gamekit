@@ -56,13 +56,13 @@
     <QtMoc Include="ResourceBrowserWidget.h">
       <Filter>Headers</Filter>
     </QtMoc>
-    <QtMoc Include="SceneOutliner.h">
+    <QtMoc Include="EditorOutliner.h">
       <Filter>Headers</Filter>
     </QtMoc>
     <QtMoc Include="TaskManager.h">
       <Filter>Headers</Filter>
     </QtMoc>
-    <QtMoc Include="TextureViewer.h">
+    <QtMoc Include="EditorTextureViewer.h">
       <Filter>Headers</Filter>
     </QtMoc>
   </ItemGroup>
@@ -100,7 +100,7 @@
     <ClCompile Include="EditorApplication.cpp">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="TextureViewer.cpp">
+    <ClCompile Include="EditorTextureViewer.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorOutputWindow.cpp">
@@ -121,7 +121,7 @@
     <ClCompile Include="EditorInspectorView.cpp">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="SceneOutliner.cpp">
+    <ClCompile Include="EditorOutliner.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="PCH.cpp">
@@ -136,7 +136,7 @@
     <ClCompile Include="CSGRendering.cpp">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="SceneInspectors.cpp">
+    <ClCompile Include="EditorInspectors.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorColliderComponent.cpp">
@@ -157,7 +157,7 @@
     <ClCompile Include="EditorPrefabObject.cpp">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="Animation.cpp">
+    <ClCompile Include="EditorAnimationResource.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="FBXResourceUtilities.cpp">
@@ -175,10 +175,10 @@
     <ClCompile Include="ResourceUtilities.cpp">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="SceneResource.cpp">
+    <ClCompile Include="EditorSceneResource.cpp">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="TextureResourceUtilities.cpp">
+    <ClCompile Include="EditorTextureResources.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="TTFontLoader.cpp">
@@ -187,7 +187,7 @@
     <ClCompile Include="EditorPrefabInputTab.cpp">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="AnimationEditorObject.cpp">
+    <ClCompile Include="EditorSelectedPrefabObject.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="MaterialResource.cpp">
@@ -195,6 +195,9 @@
     </ClCompile>
     <ClCompile Include="EditorRenderer.h">
       <Filter>Headers</Filter>
+    </ClCompile>
+    <ClCompile Include="EditorPrefabRenderer.cpp">
+      <Filter>Source</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -204,10 +207,10 @@
     <ClInclude Include="ViewportScene.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="Animation.h">
+    <ClInclude Include="EditorAnimationResource.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="AnimationEditorObject.h">
+    <ClInclude Include="EditorSelectedPrefabObject.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="CSGComponent.h">
@@ -276,19 +279,22 @@
     <ClInclude Include="ResourceUtilities.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="SceneInspectors.h">
+    <ClInclude Include="EditorInspectors.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="SceneResource.h">
+    <ClInclude Include="EditorSceneResource.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="SelectionContext.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="TextureResourceUtilities.h">
+    <ClInclude Include="EditorTextureResources.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="TTFontLoader.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorPrefabRenderer.h">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>

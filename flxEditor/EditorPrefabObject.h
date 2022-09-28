@@ -3,7 +3,7 @@
 #include "EditorProject.h"
 #include "EditorResource.h"
 #include "EditorScriptEngine.h"
-#include "SceneResource.h"
+#include "EditorSceneResource.h"
 #include "Serialization.hpp"
 
 
