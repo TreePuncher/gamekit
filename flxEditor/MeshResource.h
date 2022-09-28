@@ -1,33 +1,6 @@
-#ifndef MESHPROCESSING_H
-#define MESHPROCESSING_H
+#pragma once
 
-
-/**********************************************************************
-
-Copyright (c) 2015 - 2022 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
-
-#include "Animation.h"
+#include "EditorAnimationResource.h"
 #include "EditorResource.h"
 #include "Geometry.h"
 #include "MetaData.h"
@@ -338,8 +311,7 @@ namespace FlexKit
 			BoundingSphere				BS;
 			RInfo						Info;
 
-			MeshKDBTree_ptr				kdbTree_0;
-
+			std::vector<MeshKDBTree_ptr>	kdbTrees;
 			std::vector<LevelOfDetail>		LODs;
 			std::vector<SubDivInfo>			subDivs;
 			std::vector<MorphTargetBuffer>	morphTargetBuffers;
@@ -358,7 +330,7 @@ namespace FlexKit
 				ar& Info.Max;
 				ar& Info.r;
 
-				ar& kdbTree_0;
+				ar& kdbTrees;
 				ar& AABB;
 				ar& BS;
 
@@ -391,4 +363,29 @@ namespace FlexKit
 
 	/************************************************************************************************/
 }
-#endif
+
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2022 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/
+

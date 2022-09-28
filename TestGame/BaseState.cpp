@@ -1,14 +1,13 @@
 #include "BaseState.h"
 #include "PhysicsDebugVis.h"
 
-
 /************************************************************************************************/
-
 
 BaseState::BaseState(
 	GameFramework&	IN_Framework,
 	FKApplication&	IN_App,
-	uint2			WH) :
+	uint2			WH,
+	bool			fullscreen ) :
 		App					{ IN_App },
 		FrameworkState		{ IN_Framework },
 		depthBuffer			{ IN_Framework.core.RenderSystem, renderWindow.GetWH() },
@@ -19,7 +18,7 @@ BaseState::BaseState(
 		streamingEngine		{ IN_Framework.core.RenderSystem, IN_Framework.core.GetBlockMemory() },
 		//sounds				{ IN_Framework.core.Threads,      IN_Framework.core.GetBlockMemory() },
 
-		renderWindow{ std::get<0>(CreateWin32RenderWindow(IN_Framework.GetRenderSystem(), DefaultWindowDesc({ WH }) )) },
+		renderWindow{ std::get<0>(CreateWin32RenderWindow(IN_Framework.GetRenderSystem(), DefaultWindowDesc(WH, fullscreen) )) },
 
 		render	{	IN_Framework.core.RenderSystem,
 					streamingEngine,

@@ -5,8 +5,8 @@
 #include <memory>
 #include <any>
 
+#include "EditorSceneResource.h"
 #include "Scene.h"
-#include "SceneResource.h"
 #include "Serialization.hpp"
 
 

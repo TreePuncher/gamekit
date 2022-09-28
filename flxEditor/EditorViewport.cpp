@@ -3,7 +3,7 @@
 #include "DXRenderWindow.h"
 #include "EditorRenderer.h"
 #include "qevent.h"
-#include "DebugUI.cpp"
+#include "DebugUI.h"
 #include "physicsutilities.h"
 #include "SceneLoadingContext.h"
 #include "EditorInspectorView.h"
@@ -330,10 +330,7 @@ void EditorVewportPanMode::keyPressEvent(QKeyEvent* event)
 
 			FlexKit::AABB aabb;
 			for (auto& object : selection.viewportObjects)
-			{
-				auto boundingSphere = FlexKit::GetBoundingSphere(object->gameObject);
-				aabb = aabb + boundingSphere;
-			}
+				aabb += FlexKit::GetBoundingSphere(object->gameObject);
 
 			const FlexKit::Camera c = FlexKit::CameraComponent::GetComponent().GetCamera(viewportCamera);
 
@@ -1063,11 +1060,11 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 				float3 Color;
 			};
 
-			auto& PVS           = data.brushes;
-			auto& pointLights   = data.lights;
+			auto& PVS			= data.brushes;
+			auto& pointLights	= data.lights;
 
-			auto& visibilityComponent   = FlexKit::SceneVisibilityComponent::GetComponent();
-			auto& pointLightComponnet   = FlexKit::PointLightComponent::GetComponent();
+			auto& visibilityComponent = FlexKit::SceneVisibilityComponent::GetComponent();
+			auto& pointLightComponnet = FlexKit::PointLightComponent::GetComponent();
 
 			FlexKit::DescriptorHeap descHeap;
 			descHeap.Init(
@@ -1154,7 +1151,7 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 						pushBuffer.Push(Vertex{ float4{ 0, V2.x, V2.z, 1 }, color, float2{ 1, 1 } });
 
 						return {};
-					},                                                  
+					},
 					VBBuffer };
 
 				ctx.SetVertexBuffers({ vertices });

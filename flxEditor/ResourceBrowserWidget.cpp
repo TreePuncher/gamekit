@@ -7,15 +7,15 @@
 #include <qshortcut>
 #include <memory>
 
-#include "ResourceBrowserWidget.h"
-#include "TextureViewer.h"
 #include "Assets.h"
-#include "EditorRenderer.h"
 #include "graphics.h"
-#include "memoryutilities.h"
+#include "EditorTextureViewer.h"
+#include "EditorRenderer.h"
 #include "EditorProject.h"
+#include "memoryutilities.h"
+#include "ResourceBrowserWidget.h"
 
-#include "TextureResourceUtilities.h"
+#include "EditorTextureResources.h"
 
 
 /************************************************************************************************/

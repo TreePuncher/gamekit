@@ -1,5 +1,6 @@
 #include "Gameplay.h"
 #include "containers.h"
+#include "MathUtils.h"
 #include "SceneLoadingContext.h"
 #include "KeyValueIds.h"
 

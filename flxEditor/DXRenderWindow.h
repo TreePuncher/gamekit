@@ -10,8 +10,8 @@ class FlexKit::FrameGraph;
 
 struct TemporaryBuffers
 {
-    FlexKit::ReserveVertexBufferFunction    ReserveVertexBuffer;
-    FlexKit::ReserveConstantBufferFunction  ReserveConstantBuffer;
+	FlexKit::ReserveVertexBufferFunction    ReserveVertexBuffer;
+	FlexKit::ReserveConstantBufferFunction  ReserveConstantBuffer;
 };
 
 using FNRender_t = std::function<void (FlexKit::UpdateDispatcher& Dispatcher, double dT, TemporaryBuffers&, FlexKit::FrameGraph& graph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& threadSafeAllocator)>;
@@ -25,48 +25,48 @@ public:
 	DXRenderWindow(FlexKit::RenderSystem& renderSystem, QWidget *parent = Q_NULLPTR);
 	~DXRenderWindow();
 
-    void Release();
+	void Release();
 
-    void Draw(FlexKit::EngineCore& Engine, TemporaryBuffers& temporaries, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& graph, FlexKit::ThreadSafeAllocator& threadSafeAllocator);
-    void Present();
+	void Draw(FlexKit::EngineCore& Engine, TemporaryBuffers& temporaries, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& graph, FlexKit::ThreadSafeAllocator& threadSafeAllocator);
+	void Present();
 
-    bool isValid() { return renderWindow.isValid(); }
-    std::function<void (DXRenderWindow* renderWindow)> ResizeEventHandler;
+	bool isValid() { return renderWindow.isValid(); }
+	std::function<void (DXRenderWindow* renderWindow)> ResizeEventHandler;
 
-    void SetOnDraw(FNRender_t draw)
-    {
-        onDraw = draw;
-    }
+	void SetOnDraw(FNRender_t draw)
+	{
+		onDraw = draw;
+	}
 
-    void SetOnResize(FNResize_t resize)
-    {
-        onResize = resize;
-    }
+	void SetOnResize(FNResize_t resize)
+	{
+		onResize = resize;
+	}
 
-    FlexKit::uint2 WH() const { return renderWindow.GetWH(); }
+	FlexKit::uint2 WH() const { return renderWindow.GetWH(); }
 
-    void            resizeEvent(QResizeEvent* evt);
+	void            resizeEvent(QResizeEvent* evt);
 
 public slots:
-    void OnFrame();
+	void OnFrame();
 
 
 private:
-    void            paintEvent(QPaintEvent* event) override;
-    QPaintEngine*   paintEngine() const override;
-    void            showEvent(QShowEvent* event) override;
+	void            paintEvent(QPaintEvent* event) override;
+	QPaintEngine*   paintEngine() const override;
+	void            showEvent(QShowEvent* event) override;
 
-    void            resizeSwapChain(int width, int height);
+	void            resizeSwapChain(int width, int height);
 
-    bool            dirty = false;
+	bool            dirty = false;
 
-    double          t = 0.0f;
+	double          t = 0.0f;
 
-    FNRender_t                  onDraw;
-    FNResize_t                  onResize;
+	FNRender_t                  onDraw;
+	FNResize_t                  onResize;
 
-    FlexKit::Win32RenderWindow  renderWindow;
-    FlexKit::CameraHandle       camera  = FlexKit::InvalidHandle;
+	FlexKit::Win32RenderWindow  renderWindow;
+	FlexKit::CameraHandle       camera  = FlexKit::InvalidHandle;
 };
 
 

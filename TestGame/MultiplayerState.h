@@ -23,10 +23,6 @@ using FlexKit::EngineCore;
 using FlexKit::UpdateDispatcher;
 using FlexKit::GameFramework;
 
-
-/************************************************************************************************/
-
-
 using ConnectionHandle = Handle_t<32, GetTypeGUID(ConnectionHandle)>;
 
 /************************************************************************************************/
@@ -58,11 +54,11 @@ public:
 		sender      = rhs.sender;
 		allocator   = rhs.allocator;
 
-        rhs.data        = nullptr;
-        rhs.sender      = InvalidHandle;
-        rhs.allocator   = nullptr;
-        rhs.dataSize    = 0;
-    }
+		rhs.data        = nullptr;
+		rhs.sender      = InvalidHandle;
+		rhs.allocator   = nullptr;
+		rhs.dataSize    = 0;
+	}
 
 
 	Packet& operator = (Packet&& rhs) noexcept// Move
@@ -74,10 +70,10 @@ public:
 		sender      = rhs.sender;
 		allocator   = rhs.allocator;
 
-        rhs.data        = nullptr;
-        rhs.sender      = InvalidHandle;
-        rhs.allocator   = nullptr;
-        rhs.dataSize    = 0;
+		rhs.data        = nullptr;
+		rhs.sender      = InvalidHandle;
+		rhs.allocator   = nullptr;
+		rhs.dataSize    = 0;
 
 		return *this;
 	}
@@ -87,11 +83,11 @@ public:
 		if (data)
 			allocator->free(data);
 
-        data            = nullptr;
-        sender          = InvalidHandle;
-        allocator       = nullptr;
-        dataSize        = 0;
-    }
+		data            = nullptr;
+		sender          = InvalidHandle;
+		allocator       = nullptr;
+		dataSize        = 0;
+	}
 
 	static Packet CopyCreate(void* data, size_t data_size, ConnectionHandle sender, iAllocator* allocator)
 	{
@@ -125,7 +121,7 @@ enum EBasePacketIDs : unsigned char
 class UserPacketHeader
 {
 public:
-    UserPacketHeader() = default;
+	UserPacketHeader() = default;
 
 	UserPacketHeader(const size_t IN_size, PacketID_t IN_id) :
 		EBasePacketIDs	{ EBP_USERPACKET	},
@@ -202,14 +198,14 @@ class NetworkState : public FlexKit::FrameworkState
 {
 protected:
 
-    SLNet::RakPeerInterface& raknet = *SLNet::RakPeerInterface::GetInstance();
+	SLNet::RakPeerInterface& raknet = *SLNet::RakPeerInterface::GetInstance();
 
 	struct openSocket
 	{
 		uint64_t state      = 0;
 		uint64_t latency    = 0;
 
-        SLNet::SystemAddress address;
+		SLNet::SystemAddress address;
 		ConnectionHandle    handle;
 	};
 
@@ -229,48 +225,48 @@ public:
 			incomingPackets { IN_framework.core.GetBlockMemory()  },
 			openConnections { IN_framework.core.GetBlockMemory()  }
 	{
-        raknet.SetMaximumIncomingConnections(16);
-    }
+		raknet.SetMaximumIncomingConnections(16);
+	}
 
 
-    ~NetworkState();
+	~NetworkState();
 
 	/************************************************************************************************/
 
 
-    void        Startup(short port);
-    UpdateTask* Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) final override;
-    void        Broadcast(const UserPacketHeader& packet);
+	void        Startup(short port);
+	UpdateTask* Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) final override;
+	void        Broadcast(const UserPacketHeader& packet);
 
 
-    void Send           (const UserPacketHeader& packet, ConnectionHandle destination);
-    void PushHandler    (Vector<PacketHandler*>& handler);
-    void PopHandler     ();
+	void Send           (const UserPacketHeader& packet, ConnectionHandle destination);
+	void PushHandler    (Vector<PacketHandler*>& handler);
+	void PopHandler     ();
 
-    void Connect            (const char* address, uint16_t port);
-    void Disconnect         ();
-    void CloseConnection    (ConnectionHandle handle);
-
-
-    ConnectionHandle    FindConnectionHandle(SLNet::SystemAddress address);
-    openSocket          GetConnection(ConnectionHandle handle);
-
-    void RemoveConnectionHandle(SLNet::SystemAddress address);
-    void SystemInError();
+	void Connect            (const char* address, uint16_t port);
+	void Disconnect         ();
+	void CloseConnection    (ConnectionHandle handle);
 
 
-    /************************************************************************************************/
+	ConnectionHandle    FindConnectionHandle(SLNet::SystemAddress address);
+	openSocket          GetConnection(ConnectionHandle handle);
+
+	void RemoveConnectionHandle(SLNet::SystemAddress address);
+	void SystemInError();
+
+
+	/************************************************************************************************/
 
 
 	SL_list<Packet>                     incomingPackets;
 	Vector<Vector<PacketHandler*>*>		handlerStack;
 	Vector<openSocket>		            openConnections;
 
-    std::function<void (ConnectionHandle)> Accepted;
-    std::function<void (ConnectionHandle)> HandleNewConnection;
-    std::function<void (ConnectionHandle)> HandleDisconnection;
+	std::function<void (ConnectionHandle)> Accepted;
+	std::function<void (ConnectionHandle)> HandleNewConnection;
+	std::function<void (ConnectionHandle)> HandleDisconnection;
 
-    float                               timer = 0;
+	float                               timer = 0;
 	uint16_t                            port;
 	bool                                running;
 };
@@ -296,7 +292,7 @@ enum UserPacketIDs : PacketID_t
 	ClientDisconnect,
 	ClientReadyEvent,
 	LobbyMessage,
-    SpellbookUpdate,
+	SpellbookUpdate,
 	UserPacketIDCount,
 };
 

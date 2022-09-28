@@ -2,8 +2,8 @@
 
 #include <vector>
 #include "Components.h"
+#include "EditorSceneResource.h"
 #include "physicsutilities.h"
-#include "SceneResource.h"
 #include "type.h"
 
 

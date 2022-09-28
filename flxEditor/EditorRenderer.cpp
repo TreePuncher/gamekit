@@ -6,39 +6,39 @@
 
 
 EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FKApplication& IN_application, QApplication& IN_QtApplication) :
-	FrameworkState  { IN_framework      },
-	QtApplication   { IN_QtApplication  },
-	application     { IN_application    },
-	vertexBuffer    { IN_framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 1, false)        },
-	constantBuffer  { IN_framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 128, false)    },
-	textureEngine   { IN_framework.core.RenderSystem, IN_framework.core.GetBlockMemory() },
-	worldRender     { IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory(),  },
+	FrameworkState	{ IN_framework		},
+	QtApplication	{ IN_QtApplication	},
+	application		{ IN_application	},
+	vertexBuffer	{ IN_framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 32, false) },
+	constantBuffer	{ IN_framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 128, false) },
+	textureEngine	{ IN_framework.core.RenderSystem, IN_framework.core.GetBlockMemory() },
+	worldRender		{ IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory(), },
 
-	csg                     { IN_framework.core.GetBlockMemory() },
-	brushComponent          { IN_framework.core.GetBlockMemory(), IN_framework.core.RenderSystem },
-	stringIDComponent       { IN_framework.core.GetBlockMemory() },
-	materialComponent       { IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory() },
-	cameraComponent         { IN_framework.core.GetBlockMemory() },
-	visibilityComponent     { IN_framework.core.GetBlockMemory() },
-	skeletonComponent       { IN_framework.core.GetBlockMemory() },
-	animatorComponent       { IN_framework.core.GetBlockMemory() },
+	csg						{ IN_framework.core.GetBlockMemory() },
+	brushComponent			{ IN_framework.core.GetBlockMemory(), IN_framework.core.RenderSystem },
+	stringIDComponent		{ IN_framework.core.GetBlockMemory() },
+	materialComponent		{ IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory() },
+	cameraComponent			{ IN_framework.core.GetBlockMemory() },
+	visibilityComponent		{ IN_framework.core.GetBlockMemory() },
+	skeletonComponent		{ IN_framework.core.GetBlockMemory() },
+	animatorComponent		{ IN_framework.core.GetBlockMemory() },
 
-	pointLightComponent     { IN_framework.core.GetBlockMemory() },
-	pointLightShadowMaps    { IN_framework.core.GetBlockMemory() },
+	pointLightComponent		{ IN_framework.core.GetBlockMemory() },
+	pointLightShadowMaps	{ IN_framework.core.GetBlockMemory() },
 
-	physX                   { IN_framework.core.Threads, IN_framework.core.GetBlockMemory() },
-	staticBodies            { physX },
-	rigidBodies             { physX },
-	characterControllers    { physX, IN_framework.core.GetBlockMemory() },
+	physX					{ IN_framework.core.Threads, IN_framework.core.GetBlockMemory() },
+	staticBodies			{ physX },
+	rigidBodies				{ physX },
+	characterControllers	{ physX, IN_framework.core.GetBlockMemory() },
 
-	ikTargetComponent       { IN_framework.core.GetBlockMemory() },
-	ikComponent             { IN_framework.core.GetBlockMemory() }
+	ikTargetComponent		{ IN_framework.core.GetBlockMemory() },
+	ikComponent				{ IN_framework.core.GetBlockMemory() }
 {
 	auto& renderSystem = framework.GetRenderSystem();
-	renderSystem.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_PSO,  { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateTexturedTriStatePSO });
-	renderSystem.RegisterPSOLoader(FlexKit::DRAW_3D_PSO,        { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateDrawTriStatePSO });
-	renderSystem.RegisterPSOLoader(FlexKit::DRAW_TRI3D_PSO,     { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateDrawTri3DStatePSO });
-	renderSystem.RegisterPSOLoader(FlexKit::DRAW_LINE_PSO,      { &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateDrawLineStatePSO });
+	renderSystem.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_PSO,	{ &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateTexturedTriStatePSO });
+	renderSystem.RegisterPSOLoader(FlexKit::DRAW_3D_PSO,		{ &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateDrawTriStatePSO });
+	renderSystem.RegisterPSOLoader(FlexKit::DRAW_TRI3D_PSO,		{ &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateDrawTri3DStatePSO });
+	renderSystem.RegisterPSOLoader(FlexKit::DRAW_LINE_PSO,		{ &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateDrawLineStatePSO });
 
 	renderSystem.QueuePSOLoad(FlexKit::DRAW_3D_PSO);
 	renderSystem.QueuePSOLoad(FlexKit::DRAW_LINE_PSO);
@@ -98,8 +98,8 @@ void EditorRenderer::DrawRenderWindow(DXRenderWindow* renderWindow)
 
 FlexKit::TriMeshHandle EditorRenderer::LoadMesh(FlexKit::MeshResource& mesh)
 {
-	auto& renderSystem  = framework.GetRenderSystem();
-	auto  copyContext   = renderSystem.GetImmediateUploadQueue();
+	auto& renderSystem	= framework.GetRenderSystem();
+	auto  copyContext	= renderSystem.GetImmediateUploadQueue();
 
 	TriMesh newMesh;
 

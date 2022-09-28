@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1304</width>
+    <width>1325</width>
     <height>884</height>
    </rect>
   </property>
@@ -15,18 +15,12 @@
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout">
    <item>
-    <widget class="QWidget" name="animationPreview" native="true">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
+    <widget class="QSplitter" name="splitter">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
      </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QFrame" name="editorSection">
-     <layout class="QVBoxLayout" name="verticalLayout"/>
+     <widget class="QWidget" name="viewportArea" native="true"/>
+     <widget class="QWidget" name="prefabEditorArea" native="true"/>
     </widget>
    </item>
   </layout>

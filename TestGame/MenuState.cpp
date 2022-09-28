@@ -6,43 +6,43 @@
 
 MenuState::MenuState(GameFramework& framework, BaseState& IN_base, NetworkState& IN_net) :
 	FrameworkState	    { framework },
-    net                 { IN_net },
-    base                { IN_base },
-    packetHandlers      { framework.core.GetBlockMemory() }
+	net                 { IN_net },
+	base                { IN_base },
+	packetHandlers      { framework.core.GetBlockMemory() }
 {
-    memset(name,        '\0', sizeof(name));
-    memset(lobbyName,   '\0', sizeof(lobbyName));
-    memset(server,      '\0', sizeof(server));
+	memset(name,        '\0', sizeof(name));
+	memset(lobbyName,   '\0', sizeof(lobbyName));
+	memset(server,      '\0', sizeof(server));
 
-    packetHandlers.push_back(
-        CreatePacketHandler(
-            UserPacketIDs::ClientDataRequest,
-            [&](UserPacketHeader* header, Packet* packet, NetworkState* network)
-            {
-                auto request = reinterpret_cast<RequestClientDataPacket*>(header);
-                ClientDataPacket clientPacket(request->playerID, name);
+	packetHandlers.push_back(
+		CreatePacketHandler(
+			UserPacketIDs::ClientDataRequest,
+			[&](UserPacketHeader* header, Packet* packet, NetworkState* network)
+			{
+				auto request = reinterpret_cast<RequestClientDataPacket*>(header);
+				ClientDataPacket clientPacket(request->playerID, name);
 
-                FK_LOG_INFO("Joining Lobby ID: %u", request->playerID);
+				FK_LOG_INFO("Joining Lobby ID: %u", request->playerID);
 
-                net.Send(clientPacket.Header, packet->sender);
+				net.Send(clientPacket.Header, packet->sender);
 
-                auto& net_temp  = net;
-                auto& base_temp = base;
+				auto& net_temp  = net;
+				auto& base_temp = base;
 
-                net.PopHandler();
+				net.PopHandler();
 
-                framework.PopState();
+				framework.PopState();
 
-                PushClientState(request->playerID, packet->sender, base, net);
-            }, framework.core.GetBlockMemory()));
+				PushClientState(request->playerID, packet->sender, base, net);
+			}, framework.core.GetBlockMemory()));
 }
 
 
 MenuState::~MenuState()
 {
-    for (auto handler : packetHandlers) {
-        framework.core.GetBlockMemory().release_allocation(*handler);
-    }
+	for (auto handler : packetHandlers) {
+		framework.core.GetBlockMemory().release_allocation(*handler);
+	}
 }
 
 /************************************************************************************************/
@@ -50,104 +50,104 @@ MenuState::~MenuState()
 
 UpdateTask* MenuState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
-    base.Update(core, dispatcher, dT);
-    base.debugUI.Update(base.renderWindow, core, dispatcher, dT);
+	base.Update(core, dispatcher, dT);
+	base.debugUI.Update(base.renderWindow, core, dispatcher, dT);
 
-    ImGui::NewFrame();
+	ImGui::NewFrame();
 
-    switch (mode)
-    {
-    case MenuMode::MainMenu:
-        ImGui::Begin("Menu");
+	switch (mode)
+	{
+	case MenuMode::MainMenu:
+		ImGui::Begin("Menu");
 
-        if (ImGui::Button("Start"))
-        {
-            GameInfo info;
-            info.name = name;
-            info.lobbyName = lobbyName;
+		if (ImGui::Button("Start"))
+		{
+			GameInfo info;
+			info.name = name;
+			info.lobbyName = lobbyName;
 
-            auto& framework_temp = framework;
-            auto& base_temp = base;
-            auto& net_temp = net;
+			auto& framework_temp = framework;
+			auto& base_temp = base;
+			auto& net_temp = net;
 
-            framework_temp.PopState();
+			framework_temp.PopState();
 
-            StartGame(info, framework_temp, base_temp, net);
-        }
+			HostGame(info, framework_temp, base_temp, net);
+		}
 
-        if (ImGui::Button("Exit"))
-            framework.quit = true;
+		if (ImGui::Button("Exit"))
+			framework.quit = true;
 
-        ImGui::End();
-        break;
-    case MenuMode::Join:
-    {
-        ImGui::Begin("Join");
-        ImGui::InputText("Name", name, 128);
-        ImGui::InputText("Server Address", server, 128);
+		ImGui::End();
+		break;
+	case MenuMode::Join:
+	{
+		ImGui::Begin("Join");
+		ImGui::InputText("Name", name, 128);
+		ImGui::InputText("Server Address", server, 128);
 
-        if (ImGui::Button("Join") && strnlen_s(name, 128) && strnlen_s(server, 128))
-        {
-            net.PushHandler(packetHandlers);
-            net.Connect(server, 1337);
+		if (ImGui::Button("Join") && strnlen_s(name, 128) && strnlen_s(server, 128))
+		{
+			net.PushHandler(packetHandlers);
+			net.Connect(server, 1337);
 
-            mode = MenuMode::JoinInProgress;
-        }
+			mode = MenuMode::JoinInProgress;
+		}
 
-        ImGui::SameLine();
+		ImGui::SameLine();
 
-        if (ImGui::Button("Back"))
-            mode = MenuMode::MainMenu;
+		if (ImGui::Button("Back"))
+			mode = MenuMode::MainMenu;
 
-        ImGui::End();
-    }   break;
-    case MenuMode::JoinInProgress:
-    {
-        net.Update(core, dispatcher, dT);
+		ImGui::End();
+	}   break;
+	case MenuMode::JoinInProgress:
+	{
+		net.Update(core, dispatcher, dT);
 
-        connectionTimer += dT;
+		connectionTimer += dT;
 
-        std::cout << connectionTimer << "\n";
+		std::cout << connectionTimer << "\n";
 
-        if (connectionTimer > 30.0)
-        {
-            net.Disconnect();
-            net.PopHandler();
-            mode = MenuMode::MainMenu;
+		if (connectionTimer > 30.0)
+		{
+			net.Disconnect();
+			net.PopHandler();
+			mode = MenuMode::MainMenu;
 
-            connectionTimer = 0.0;
-        }
-        ImGui::Begin("Joining...");
-        ImGui::End();
-    }   break;
-    case MenuMode::Host:
-    {   // Get Host name, start listing, push lobby state
-        ImGui::Begin("Start");
-        //ImGui::InputText("Name", name, 128);
-        //ImGui::InputText("LobbyName", lobbyName, 128);
+			connectionTimer = 0.0;
+		}
+		ImGui::Begin("Joining...");
+		ImGui::End();
+	}   break;
+	case MenuMode::Host:
+	{   // Get Host name, start listing, push lobby state
+		ImGui::Begin("Start");
+		//ImGui::InputText("Name", name, 128);
+		//ImGui::InputText("LobbyName", lobbyName, 128);
 
-        if (ImGui::Button("Start") && strnlen_s(name, 128) && strnlen_s(lobbyName, 128))
-        {
-            GameInfo info;
-            info.name       = name;
-            info.lobbyName  = lobbyName;
+		if (ImGui::Button("Start") && strnlen_s(name, 128) && strnlen_s(lobbyName, 128))
+		{
+			GameInfo info;
+			info.name       = name;
+			info.lobbyName  = lobbyName;
 
-            auto& framework_temp    = framework;
-            auto& base_temp         = base;
-            auto& net_temp          = net;
+			auto& framework_temp    = framework;
+			auto& base_temp         = base;
+			auto& net_temp          = net;
 
-            framework_temp.PopState();
+			framework_temp.PopState();
 
-            StartGame(info, framework_temp, base_temp, net);
-        }
+			HostGame(info, framework_temp, base_temp, net);
+		}
 
-        ImGui::End();
-    }   break;
-    default:
-        framework.quit = true;
-    }
+		ImGui::End();
+	}   break;
+	default:
+		framework.quit = true;
+	}
 
-    return nullptr;
+	return nullptr;
 }
 
 
@@ -156,21 +156,21 @@ UpdateTask* MenuState::Update(EngineCore& core, UpdateDispatcher& dispatcher, do
 
 UpdateTask* MenuState::Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
-    auto renderTarget = base.renderWindow.GetBackBuffer();
+	auto renderTarget = base.renderWindow.GetBackBuffer();
 
-    ClearVertexBuffer(frameGraph, base.vertexBuffer);
-    ClearBackBuffer(frameGraph, renderTarget, 0.0f);
+	ClearVertexBuffer(frameGraph, base.vertexBuffer);
+	ClearBackBuffer(frameGraph, renderTarget, 0.0f);
 
-    auto reserveVB = FlexKit::CreateVertexBufferReserveObject(base.vertexBuffer, core.RenderSystem, core.GetTempMemory());
-    auto reserveCB = FlexKit::CreateConstantBufferReserveObject(base.constantBuffer, core.RenderSystem, core.GetTempMemory());
+	auto reserveVB = FlexKit::CreateVertexBufferReserveObject(base.vertexBuffer, core.RenderSystem, core.GetTempMemory());
+	auto reserveCB = FlexKit::CreateConstantBufferReserveObject(base.constantBuffer, core.RenderSystem, core.GetTempMemory());
 
-    ImGui::Render();
+	ImGui::Render();
 
-    base.debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderTarget);
+	base.debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderTarget);
 
-    FlexKit::PresentBackBuffer(frameGraph, renderTarget);
+	FlexKit::PresentBackBuffer(frameGraph, renderTarget);
 
-    return nullptr;
+	return nullptr;
 }
 
 
@@ -179,7 +179,7 @@ UpdateTask* MenuState::Draw(UpdateTask* update, EngineCore& core, UpdateDispatch
 
 void MenuState::PostDrawUpdate(EngineCore& core, double dT)
 {
-    base.PostDrawUpdate(core, dT);
+	base.PostDrawUpdate(core, dT);
 }
 
 
@@ -188,30 +188,30 @@ void MenuState::PostDrawUpdate(EngineCore& core, double dT)
 
 bool MenuState::EventHandler(Event evt)
 {
-    switch (evt.InputSource)
-    {
-    case Event::E_SystemEvent:
-    {
-        switch (evt.Action)
-        {
-        case Event::InputAction::Resized:
-        {
-            const auto width    = (uint32_t)evt.mData1.mINT[0];
-            const auto height   = (uint32_t)evt.mData2.mINT[0];
+	switch (evt.InputSource)
+	{
+	case Event::E_SystemEvent:
+	{
+		switch (evt.Action)
+		{
+		case Event::InputAction::Resized:
+		{
+			const auto width    = (uint32_t)evt.mData1.mINT[0];
+			const auto height   = (uint32_t)evt.mData2.mINT[0];
 
-            base.Resize({ width, height });
-        }   break;
+			base.Resize({ width, height });
+		}   break;
 
-        case Event::InputAction::Exit:
-            framework.quit = true;
-            break;
-        default:
-            break;
-        }
-    }   break;
-    };
+		case Event::InputAction::Exit:
+			framework.quit = true;
+			break;
+		default:
+			break;
+		}
+	}   break;
+	};
 
-    return base.debugUI.HandleInput(evt);
+	return base.debugUI.HandleInput(evt);
 }
 
 
