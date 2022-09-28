@@ -7,7 +7,10 @@
 #include <string>
 #include <vector>
 #include <Signal.h>
+#include <numeric>
 
+#include <fmt\format.h>
+#include <cmp_core.h>
 
 #include <QtWidgets/qboxlayout.h>
 #include <qevent.h>

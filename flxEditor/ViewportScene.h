@@ -11,46 +11,46 @@
 
 struct ViewportGameObject
 {
-    FlexKit::GameObject gameObject;
-    uint64_t            objectID;
-    
-    operator FlexKit::GameObject& () { return gameObject; }
+	FlexKit::GameObject	gameObject;
+	uint64_t			objectID;
+	
+	operator FlexKit::GameObject& () { return gameObject; }
 
-    std::vector<ProjectResource_ptr>    resourceDependencies;
-    std::any                            editorData;
+	std::vector<ProjectResource_ptr>	resourceDependencies;
+	std::any							editorData;
 };
 
-using ViewportGameObject_ptr    = std::shared_ptr<ViewportGameObject>;
-using ViewportObjectList        = std::vector<ViewportGameObject_ptr>;
+using ViewportGameObject_ptr	= std::shared_ptr<ViewportGameObject>;
+using ViewportObjectList		= std::vector<ViewportGameObject_ptr>;
 
 
 struct ViewportScene
 {
-    ViewportScene(EditorScene_ptr IN_sceneResource) :
-            sceneResource   { IN_sceneResource  } {}
+	ViewportScene(EditorScene_ptr IN_sceneResource) :
+			sceneResource	{ IN_sceneResource  } {}
 
-    ViewportObjectList  RayCast(FlexKit::Ray v) const;
+	ViewportObjectList  RayCast(FlexKit::Ray v) const;
 
-    void Update();
+	void Update();
 
-    ViewportGameObject_ptr  CreateObject();
-    ViewportGameObject_ptr  CreatePointLight();
-    ViewportGameObject_ptr  FindObject(uint64_t);
-    ViewportGameObject_ptr  FindObject(FlexKit::NodeHandle);
-    void                    RemoveObject(ViewportGameObject_ptr);
-    FlexKit::LayerHandle    GetLayer();
+	ViewportGameObject_ptr	CreateObject();
+	ViewportGameObject_ptr	CreatePointLight();
+	ViewportGameObject_ptr	FindObject(uint64_t);
+	ViewportGameObject_ptr	FindObject(FlexKit::NodeHandle);
+	void					RemoveObject(ViewportGameObject_ptr);
+	FlexKit::LayerHandle	GetLayer();
 
-    EditorScene_ptr                     sceneResource;
-    std::vector<ViewportGameObject_ptr> sceneObjects;
-    FlexKit::Scene                      scene           { FlexKit::SystemAllocator };
-    FlexKit::LayerHandle                physicsLayer    = FlexKit::InvalidHandle;
-    std::vector<uint64_t>               markedForDeletion;
+	EditorScene_ptr						sceneResource;
+	std::vector<ViewportGameObject_ptr>	sceneObjects;
+	FlexKit::Scene						scene           { FlexKit::SystemAllocator };
+	FlexKit::LayerHandle				physicsLayer    = FlexKit::InvalidHandle;
+	std::vector<uint64_t>				markedForDeletion;
 };
 
 struct ViewportSelection
 {
-    ViewportObjectList  viewportObjects;
-    ViewportScene*      scene;
+	ViewportObjectList  viewportObjects;
+	ViewportScene*      scene;
 };
 
 
@@ -61,18 +61,18 @@ class FlexKit::EntityComponent;
 
 struct ViewportSceneContext
 {
-    struct Node
-    {
-        float3      position;
-        Quaternion  orientation;
-        float3      scale;
-        int         parent = -1;
-    };
+	struct Node
+	{
+		float3		position;
+		Quaternion	orientation;
+		float3		scale;
+		int			parent = -1;
+	};
 
-    int MapNode(FlexKit::NodeHandle node) noexcept;
+	int MapNode(FlexKit::NodeHandle node) noexcept;
 
-    std::map<FlexKit::NodeHandle, int>  nodeMap = { { FlexKit::NodeHandle{ 0 }, 0 } };
-    std::vector<Node>                   nodes   = { { { 0, 0, 0 }, { 0, 0, 0, 1 }, { 1, 1, 1 }, -1 }};
+	std::map<FlexKit::NodeHandle, int>	nodeMap = { { FlexKit::NodeHandle{ 0 }, 0 } };
+	std::vector<Node>					nodes   = { { { 0, 0, 0 }, { 0, 0, 0, 1 }, { 1, 1, 1 }, -1 }};
 };
 
 
@@ -82,30 +82,30 @@ struct ViewportSceneContext
 class IEntityComponentRuntimeUpdater
 {
 public:
-    inline static std::map<uint32_t, void (*)(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& runtime, ViewportSceneContext& scene)> updaters;
+	inline static std::map<uint32_t, void (*)(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& runtime, ViewportSceneContext& scene)> updaters;
 
-    template<typename TY, size_t UpdaterID>
-    struct RegisterConstructorHelper
-    {
-        static bool Register()
-        {
-            IEntityComponentRuntimeUpdater::updaters[UpdaterID] = [](FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& runtime, ViewportSceneContext& scene)
-            {
-                TY::Update(component, runtime, scene);
-            };
+	template<typename TY, size_t UpdaterID>
+	struct RegisterConstructorHelper
+	{
+		static bool Register()
+		{
+			IEntityComponentRuntimeUpdater::updaters[UpdaterID] = [](FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& runtime, ViewportSceneContext& scene)
+			{
+				TY::Update(component, runtime, scene);
+			};
 
-            return true;
-        }
+			return true;
+		}
 
-        inline static bool _registered = Register();
-    };
+		inline static bool _registered = Register();
+	};
 
 
-    static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& runtime, ViewportSceneContext& scene)
-    {
-        if(updaters.find(runtime.ID) != updaters.end())
-            updaters[runtime.ID](component, runtime, scene);
-    }
+	static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& runtime, ViewportSceneContext& scene)
+	{
+		if(updaters.find(runtime.ID) != updaters.end())
+			updaters[runtime.ID](component, runtime, scene);
+	}
 };
 
 

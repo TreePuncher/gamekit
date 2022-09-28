@@ -4,7 +4,7 @@
 
 /************************************************************************************************/
 
-
+#include "BaseState.h"
 #include "MultiplayerState.h"
 #include "MultiplayerGameState.h"
 #include "Packets.h"
@@ -146,7 +146,7 @@ public:
 };
 
 
-void StartGame(const GameInfo&, GameFramework&, BaseState&, NetworkState&);
+LobbyState& HostGame(const GameInfo&, FlexKit::GameFramework&, BaseState&, NetworkState&);
 
 
 /************************************************************************************************/

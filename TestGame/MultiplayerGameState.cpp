@@ -1,7 +1,8 @@
 #include "MultiplayerGameState.h"
 #include "PhysicsDebugVis.h"
 #include "Packets.h"
-
+#include "Particles.h"
+#include "ParticleRendering.hpp"
 #include <imgui.h>
 #include <implot.h>
 

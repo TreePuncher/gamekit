@@ -1,6 +1,6 @@
 #include "PCH.h"
 #include "EditorInspectorView.h"
-#include "AnimationEditorObject.h"
+#include "EditorSelectedPrefabObject.h"
 #include "ViewportScene.h"
 #include "qtoolbox.h"
 
@@ -293,11 +293,11 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
 				}	break;
 				case AnimatorObject_ID:
 				{
-					auto selection = selectionContext.GetSelection<AnimationEditorObject*>();
+					auto selection = selectionContext.GetSelection<EditorSelectedPrefabObject*>();
 					
 					struct AnimatorPanelContext : public ComponentConstructionContext
 					{
-						AnimatorPanelContext(AnimationEditorObject* IN_obj) : selection{ IN_obj } {}
+						AnimatorPanelContext(EditorSelectedPrefabObject* IN_obj) : selection{ IN_obj } {}
 
 						void AddToScene(FlexKit::GameObject& gameObject) {}
 
@@ -311,7 +311,7 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
 							return selection->ID;
 						}
 
-						AnimationEditorObject* selection;
+						EditorSelectedPrefabObject* selection;
 					} ctx{ selection };
 
 					if(selection)
@@ -411,7 +411,7 @@ void EditorInspectorView::UpdatePropertiesViewportObjectInspector()
 
 void EditorInspectorView::UpdateAnimatorObjectInspector()
 {
-	auto selection      = selectionContext.GetSelection<AnimationEditorObject*>();
+	auto selection      = selectionContext.GetSelection<EditorSelectedPrefabObject*>();
 	uint64_t objectID   = selection->ID;
 	auto& gameObject    = selection->gameObject;
 

@@ -19,7 +19,7 @@
 #include "EditorProject.h"
 #include "EditorGadgetInterface.h"
 #include "EditorViewport.h"
-#include "TextureViewer.h"
+#include "EditorTextureViewer.h"
 #include "SelectionContext.h"
 
 #include "ModelViewerWidget.h"

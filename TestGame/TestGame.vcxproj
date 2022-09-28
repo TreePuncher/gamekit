@@ -10,6 +10,10 @@
       <Configuration>Release</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="UnityBuild|x64">
+      <Configuration>UnityBuild</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{BF10A474-ABDD-FE7F-D4F6-EC27C022340E}</ProjectGuid>
@@ -31,6 +35,12 @@
     <CharacterSet>Unicode</CharacterSet>
     <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
@@ -40,6 +50,9 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -47,6 +60,7 @@
     <IntDir>obj\Debug\</IntDir>
     <TargetName>TestGame</TargetName>
     <TargetExt>.exe</TargetExt>
+    <IncludePath>$(SolutionDir)\source;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -54,11 +68,23 @@
     <IntDir>obj\Release\</IntDir>
     <TargetName>TestGame</TargetName>
     <TargetExt>.exe</TargetExt>
+    <IncludePath>$(SolutionDir)\source;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>..\builds\Release\</OutDir>
+    <IntDir>obj\Release\</IntDir>
+    <TargetName>TestGame</TargetName>
+    <TargetExt>.exe</TargetExt>
+    <IncludePath>$(SolutionDir)\source;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <VcpkgEnableManifest>true</VcpkgEnableManifest>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <VcpkgEnableManifest>true</VcpkgEnableManifest>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'" Label="Vcpkg">
     <VcpkgEnableManifest>true</VcpkgEnableManifest>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -106,80 +132,105 @@
       <AdditionalDependencies>Xinput.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>_WINSOCKAPI_;NDEBUG;_CRT_SECURE_NO_WARNINGS;_ENABLE_ATOMIC_ALIGNMENT_FIX;_SILENCE_CXX20_CISO646_REMOVED_WARNING;UNITY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>%fmodapidir%\api\core\inc;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\libxml2;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\utils;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\arch;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\base;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\math;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\sync;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio\collada;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio\fbx;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\animation;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\constraint;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\geometry;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\shading;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\libxml2\libxml;..\coreutilities;..\graphicsutilities;..\physicsutilities;..\Dependencies\sdks;..\Dependencies\sdks\fbxsdk\include;..\Dependencies\sdks\DirectXTK\Src;..\Dependencies\sdks\DirectXTK\Inc;..\Dependencies\sdks\DirectX-Graphics-Samples\Libraries\D3DX12;..\Dependencies\sdks\crunch\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <Optimization>Full</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <StringPooling>true</StringPooling>
+      <AdditionalOptions>/MD /bigobj %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>..\Dependencies\libs\release;%fmodapidir%\api\lowlevel\lib;%fmodapidir%\api\core\lib\x64;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\lib\vs2017\x64\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Xinput.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\coreutilities\AnimationRendering.h" />
-    <ClInclude Include="..\coreutilities\Application.h" />
-    <ClInclude Include="..\coreutilities\Assets.h" />
-    <ClInclude Include="..\coreutilities\CameraUtilities.h" />
-    <ClInclude Include="..\coreutilities\CommonStructs.h" />
-    <ClInclude Include="..\coreutilities\ComponentBlobs.h" />
-    <ClInclude Include="..\coreutilities\Components.h" />
-    <ClInclude Include="..\coreutilities\Console.h" />
-    <ClInclude Include="..\coreutilities\DebugPanel.h" />
-    <ClInclude Include="..\coreutilities\DebugUI.h" />
-    <ClInclude Include="..\coreutilities\DungeonGen.h" />
-    <ClInclude Include="..\coreutilities\EngineCore.h" />
-    <ClInclude Include="..\coreutilities\Events.h" />
-    <ClInclude Include="..\coreutilities\GUIInputState.h" />
-    <ClInclude Include="..\coreutilities\GameFramework.h" />
-    <ClInclude Include="..\coreutilities\KeyValueIds.h" />
-    <ClInclude Include="..\coreutilities\ModifiableShape.h" />
-    <ClInclude Include="..\coreutilities\PhysicsDebugVis.h" />
-    <ClInclude Include="..\coreutilities\RuntimeComponentIDs.h" />
-    <ClInclude Include="..\coreutilities\Scene.h" />
-    <ClInclude Include="..\coreutilities\GraphicsComponents.h" />
-    <ClInclude Include="..\coreutilities\Handle.h" />
-    <ClInclude Include="..\coreutilities\Input.h" />
-    <ClInclude Include="..\coreutilities\KeycodesEnums.h" />
-    <ClInclude Include="..\coreutilities\Logging.h" />
-    <ClInclude Include="..\coreutilities\Materials.h" />
-    <ClInclude Include="..\coreutilities\MathUtils.h" />
-    <ClInclude Include="..\coreutilities\NetworkUtilities.h" />
-    <ClInclude Include="..\coreutilities\Particles.h" />
-    <ClInclude Include="..\coreutilities\ProfilingUtilities.h" />
-    <ClInclude Include="..\coreutilities\ResourceHandles.h" />
-    <ClInclude Include="..\coreutilities\SceneLoadingContext.h" />
-    <ClInclude Include="..\coreutilities\ScriptingRuntime.h" />
-    <ClInclude Include="..\coreutilities\Signal.h" />
-    <ClInclude Include="..\coreutilities\ThreadUtilities.h" />
-    <ClInclude Include="..\coreutilities\Transforms.h" />
-    <ClInclude Include="..\coreutilities\WorldRender.h" />
-    <ClInclude Include="..\coreutilities\XMMathConversion.h" />
-    <ClInclude Include="..\coreutilities\buildsettings.h" />
-    <ClInclude Include="..\coreutilities\containers.h" />
-    <ClInclude Include="..\coreutilities\intersection.h" />
-    <ClInclude Include="..\coreutilities\memoryutilities.h" />
-    <ClInclude Include="..\coreutilities\static_vector.h" />
-    <ClInclude Include="..\coreutilities\timeutilities.h" />
-    <ClInclude Include="..\coreutilities\type.h" />
-    <ClInclude Include="..\graphicsutilities\AnimationComponents.h" />
-    <ClInclude Include="..\graphicsutilities\AnimationRuntimeUtilities.H" />
-    <ClInclude Include="..\graphicsutilities\AnimationUtilities.h" />
-    <ClInclude Include="..\graphicsutilities\ClusteredRendering.h" />
-    <ClInclude Include="..\graphicsutilities\CoreSceneObjects.h" />
-    <ClInclude Include="..\graphicsutilities\DDSUtilities.h" />
-    <ClInclude Include="..\graphicsutilities\Fonts.h" />
-    <ClInclude Include="..\graphicsutilities\FrameGraph.h" />
-    <ClInclude Include="..\graphicsutilities\Geometry.h" />
-    <ClInclude Include="..\graphicsutilities\GILightingUtilities.h" />
-    <ClInclude Include="..\graphicsutilities\GuiUtilities.h" />
-    <ClInclude Include="..\graphicsutilities\MeshUtils.h" />
-    <ClInclude Include="..\graphicsutilities\PipelineState.h" />
-    <ClInclude Include="..\graphicsutilities\RayTracingUtilities.h" />
-    <ClInclude Include="..\graphicsutilities\ShadowMapping.h" />
-    <ClInclude Include="..\graphicsutilities\SSReflections.h" />
-    <ClInclude Include="..\graphicsutilities\SceneManager.h" />
-    <ClInclude Include="..\graphicsutilities\SVOGI.h" />
-    <ClInclude Include="..\graphicsutilities\TerrainRendering.h" />
-    <ClInclude Include="..\graphicsutilities\TextRendering.h" />
-    <ClInclude Include="..\graphicsutilities\TextureStreamingUtilities.h" />
-    <ClInclude Include="..\graphicsutilities\TextureUtilities.h" />
-    <ClInclude Include="..\graphicsutilities\Transparency.h" />
-    <ClInclude Include="..\graphicsutilities\VertexBuffer.h" />
-    <ClInclude Include="..\graphicsutilities\defaultpipelinestates.h" />
-    <ClInclude Include="..\graphicsutilities\graphics.h" />
-    <ClInclude Include="..\graphicsutilities\Win32Graphics.h" />
-    <ClInclude Include="..\physicsutilities\physicsutilities.h" />
+    <ClInclude Include="..\source\AnimationComponents.h" />
+    <ClInclude Include="..\source\AnimationRendering.h" />
+    <ClInclude Include="..\source\AnimationRuntimeUtilities.H" />
+    <ClInclude Include="..\source\AnimationUtilities.h" />
+    <ClInclude Include="..\source\Application.h" />
+    <ClInclude Include="..\source\Assets.h" />
+    <ClInclude Include="..\source\buildsettings.h" />
+    <ClInclude Include="..\source\CameraUtilities.h" />
+    <ClInclude Include="..\source\ClusteredRendering.h" />
+    <ClInclude Include="..\source\CommonStructs.h" />
+    <ClInclude Include="..\source\ComponentBlobs.h" />
+    <ClInclude Include="..\source\Components.h" />
+    <ClInclude Include="..\source\Console.h" />
+    <ClInclude Include="..\source\containers.h" />
+    <ClInclude Include="..\source\CoreSceneObjects.h" />
+    <ClInclude Include="..\source\DDSUtilities.h" />
+    <ClInclude Include="..\source\DebugPanel.h" />
+    <ClInclude Include="..\source\DebugUI.h" />
+    <ClInclude Include="..\source\defaultpipelinestates.h" />
+    <ClInclude Include="..\source\DepthBuffer.h" />
+    <ClInclude Include="..\source\DungeonGen.h" />
+    <ClInclude Include="..\source\EngineCore.h" />
+    <ClInclude Include="..\source\Events.h" />
+    <ClInclude Include="..\source\Fonts.h" />
+    <ClInclude Include="..\source\FrameGraph.h" />
+    <ClInclude Include="..\source\GameFramework.h" />
+    <ClInclude Include="..\source\Geometry.h" />
+    <ClInclude Include="..\source\GILightingUtilities.h" />
+    <ClInclude Include="..\source\graphics.h" />
+    <ClInclude Include="..\source\GraphicsComponents.h" />
+    <ClInclude Include="..\source\GuiUtilities.h" />
+    <ClInclude Include="..\source\Handle.h" />
+    <ClInclude Include="..\source\Input.h" />
+    <ClInclude Include="..\source\intersection.h" />
+    <ClInclude Include="..\source\KeycodesEnums.h" />
+    <ClInclude Include="..\source\KeyValueIds.h" />
+    <ClInclude Include="..\source\Logging.h" />
+    <ClInclude Include="..\source\Materials.h" />
+    <ClInclude Include="..\source\MathUtils.h" />
+    <ClInclude Include="..\source\memoryutilities.h" />
+    <ClInclude Include="..\source\MeshUtils.h" />
+    <ClInclude Include="..\source\ModifiableShape.h" />
+    <ClInclude Include="..\source\NetworkUtilities.h" />
+    <ClInclude Include="..\source\ParticleRendering.hpp" />
+    <ClInclude Include="..\source\Particles.h" />
+    <ClInclude Include="..\source\PhysicsDebugVis.h" />
+    <ClInclude Include="..\source\physicsutilities.h" />
+    <ClInclude Include="..\source\PipelineState.h" />
+    <ClInclude Include="..\source\ProfilingUtilities.h" />
+    <ClInclude Include="..\source\RayTracingUtilities.h" />
+    <ClInclude Include="..\source\ResourceHandles.h" />
+    <ClInclude Include="..\source\RuntimeComponentIDs.h" />
+    <ClInclude Include="..\source\Scene.h" />
+    <ClInclude Include="..\source\SceneLoadingContext.h" />
+    <ClInclude Include="..\source\SceneManager.h" />
+    <ClInclude Include="..\source\ScriptingRuntime.h" />
+    <ClInclude Include="..\source\Serialization.hpp" />
+    <ClInclude Include="..\source\ShadowMapping.h" />
+    <ClInclude Include="..\source\Signal.h" />
+    <ClInclude Include="..\source\SSReflections.h" />
+    <ClInclude Include="..\source\static_vector.h" />
+    <ClInclude Include="..\source\SVOGI.h" />
+    <ClInclude Include="..\source\TerrainRendering.h" />
+    <ClInclude Include="..\source\TextRendering.h" />
+    <ClInclude Include="..\source\TextureStreamingUtilities.h" />
+    <ClInclude Include="..\source\TextureUtilities.h" />
+    <ClInclude Include="..\source\ThreadUtilities.h" />
+    <ClInclude Include="..\source\timeutilities.h" />
+    <ClInclude Include="..\source\Transforms.h" />
+    <ClInclude Include="..\source\Transparency.h" />
+    <ClInclude Include="..\source\type.h" />
+    <ClInclude Include="..\source\VertexBuffer.h" />
+    <ClInclude Include="..\source\Win32Graphics.h" />
+    <ClInclude Include="..\source\WorldRender.h" />
+    <ClInclude Include="..\source\XMMathConversion.h" />
     <ClInclude Include="AIUtilities.h" />
     <ClInclude Include="BaseState.h" />
     <ClInclude Include="Client.h" />
@@ -188,210 +239,255 @@
     <ClInclude Include="Gameplay.h" />
     <ClInclude Include="Host.h" />
     <ClInclude Include="LobbyGUI.h" />
-    <ClInclude Include="MainMenu.h" />
     <ClInclude Include="MenuState.h" />
     <ClInclude Include="MultiplayerGameState.h" />
     <ClInclude Include="MultiplayerState.h" />
     <ClInclude Include="Packets.h" />
     <ClInclude Include="Pathfinding.h" />
     <ClInclude Include="Player.h" />
-    <ClInclude Include="Playground.hpp" />
+    <ClInclude Include="Playground.hpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="playgroundmode.hpp" />
+    <ClInclude Include="SoundComponents.h" />
     <ClInclude Include="ThirdPersonUtilities.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\coreutilities\AllSourceFiles.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\AnimationRendering.cpp" />
-    <ClCompile Include="..\coreutilities\Application.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\Assets.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\CameraUtilities.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\CommonUtilities.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\Components.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\Console.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\DebugPanel.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\DebugUI.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\DungeonGen.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\EngineCore.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\FlexKitApplication.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\GUIInputState.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\GameFramework.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\ModifiableShape.cpp" />
-    <ClCompile Include="..\coreutilities\PhysicsDebugVis.cpp" />
-    <ClCompile Include="..\coreutilities\Scene.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\GraphicsComponents.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\Handle.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\Intersection.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\Logging.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\Materials.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\MathUtils.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\NetworkUtilities.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\Particles.cpp" />
-    <ClCompile Include="..\coreutilities\ProfilingUtilities.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\coreutilities\ScriptingRuntime.cpp">
+    <ClCompile Include="..\source\AllSourceFiles.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\coreutilities\ThreadUtilities.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
+    <ClCompile Include="..\source\AnimationComponents.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\coreutilities\Transforms.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
+    <ClCompile Include="..\source\AnimationRendering.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\coreutilities\WorldRender.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
+    <ClCompile Include="..\source\AnimationRuntimeUtilities.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\coreutilities\memoryutilities.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
+    <ClCompile Include="..\source\AnimationUtilities.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\coreutilities\signal.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
+    <ClCompile Include="..\source\Application.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\coreutilities\timeutilities.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
+    <ClCompile Include="..\source\Assets.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\coreutilities\type.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
+    <ClCompile Include="..\source\CameraUtilities.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\graphicsutilities\AnimationComponents.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
+    <ClCompile Include="..\source\ClusteredRendering.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\graphicsutilities\AnimationRuntimeUtilities.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
+    <ClCompile Include="..\source\Components.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\graphicsutilities\AnimationUtilities.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
+    <ClCompile Include="..\source\Console.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\graphicsutilities\ClusteredRendering.cpp" />
-    <ClCompile Include="..\graphicsutilities\CoreSceneObjects.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
+    <ClCompile Include="..\source\CoreSceneObjects.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\graphicsutilities\DDSUtilities.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
+    <ClCompile Include="..\source\DDSUtilities.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\graphicsutilities\Fonts.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
+    <ClCompile Include="..\source\DebugPanel.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\graphicsutilities\FrameGraph.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
+    <ClCompile Include="..\source\DebugUI.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\graphicsutilities\Geometry.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
+    <ClCompile Include="..\source\defaultpipelinestates.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\graphicsutilities\GILightingUtilities.cpp" />
-    <ClCompile Include="..\graphicsutilities\GuiUtilities.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
+    <ClCompile Include="..\source\DungeonGen.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\graphicsutilities\Meshutils.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
+    <ClCompile Include="..\source\EngineCore.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\graphicsutilities\PipelineState.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
+    <ClCompile Include="..\source\Fonts.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\graphicsutilities\RayTracingUtilities.cpp">
+    <ClCompile Include="..\source\FrameGraph.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\GameFramework.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\Geometry.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\GILightingUtilities.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\graphics.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\GraphicsComponents.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\GuiUtilities.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\Handle.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\Intersection.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\Logging.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\Materials.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\MathUtils.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\memoryutilities.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\Meshutils.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\ModifiableShape.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\NetworkUtilities.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\ParticleRendering.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\Particles.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\PhysicsDebugVis.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\physicsutilities.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\PipelineState.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\ProfilingUtilities.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\RayTracingUtilities.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\Scene.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\ScriptingRuntime.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\Serialization.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\SHADOWMAPPING.CPP">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\signal.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\SSReflections.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\SVOGI.cpp" />
+    <ClCompile Include="..\source\TerrainRendering.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\TextRendering.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\TextureStreamingUtilities.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\TextureUtilities.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\ThreadUtilities.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\timeutilities.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\Transforms.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\Transparency.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\type.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\source\WorldRender.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="BaseState.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Client.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Enemy1.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="EngineTu.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">false</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\graphicsutilities\ShadowMapping.cpp" />
-    <ClCompile Include="..\graphicsutilities\SSReflections.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\graphicsutilities\SVOGI.cpp" />
-    <ClCompile Include="..\graphicsutilities\TerrainRendering.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\graphicsutilities\TextRendering.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\graphicsutilities\TextureStreamingUtilities.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\graphicsutilities\TextureUtilities.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\graphicsutilities\defaultpipelinestates.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\graphicsutilities\graphics.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\graphicsutilities\Transparency.cpp" />
-    <ClCompile Include="..\physicsutilities\physicsutilities.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="BaseState.cpp" />
-    <ClCompile Include="Enemy1.cpp" />
-    <ClCompile Include="EngineTu.cpp" />
     <ClCompile Include="ExternalTU.cpp" />
-    <ClCompile Include="GamepadInput.cpp" />
+    <ClCompile Include="GamepadInput.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="GamePlay.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Host.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="LobbyGUI.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="MainMenu.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="MenuState.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="MultiplayerGameState.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="MultiplayerState.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Player.cpp" />
+    <ClCompile Include="SoundComponent.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="Win64.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -401,6 +497,7 @@
     <FxCompile Include="..\shaders\algorithms.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\BilateralBlur.hlsl">
       <ExcludedFromBuild>true</ExcludedFromBuild>
@@ -408,6 +505,7 @@
     <FxCompile Include="..\shaders\ClearBuffer.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\ClearRenderTarget.hlsl">
       <ExcludedFromBuild>true</ExcludedFromBuild>
@@ -415,14 +513,17 @@
     <FxCompile Include="..\shaders\ClusterArgsDebugVis.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\ClusterBuffer.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\ClusteredRendering.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\ComputeAuto.hlsl">
       <ExcludedFromBuild>true</ExcludedFromBuild>
@@ -433,6 +534,7 @@
     <FxCompile Include="..\shaders\DebugVISBVH.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\DrawInstancedPShader.hlsl">
       <ExcludedFromBuild>true</ExcludedFromBuild>
@@ -452,42 +554,52 @@
     <FxCompile Include="..\shaders\HZB.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\LightBVH.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\lightBVH_DEBUGVIS.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\LightListArguementIndirect.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\lightListConstruction.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\OITBlend.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\OITPass.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\ParticleRendering.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\ParticleShadowMapping.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\ResolutionMatch.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\SSRCompute.hlsl">
       <ExcludedFromBuild>true</ExcludedFromBuild>
@@ -498,14 +610,17 @@
     <FxCompile Include="..\shaders\SVO_VoxelGatherArgs.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\SVO_VoxelSortBlock.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\SVO_VoxelSortMultipleBlock.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\Temp.hlsl">
       <ExcludedFromBuild>true</ExcludedFromBuild>
@@ -513,6 +628,7 @@
     <FxCompile Include="..\shaders\CubeMapShadowMapping.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\TextRendering.hlsl">
       <ExcludedFromBuild>true</ExcludedFromBuild>
@@ -523,6 +639,7 @@
     <FxCompile Include="..\shaders\TextureFeedbackBlockPreFixSum.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\TextureFeedbackCompressor.hlsl">
       <ExcludedFromBuild>true</ExcludedFromBuild>
@@ -530,22 +647,27 @@
     <FxCompile Include="..\shaders\TextureFeedbackMergeBlocks.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\ToneMapping-CreatePyramid.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\ToneMapping.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\VoxelDebugVis.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\Voxelizer.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\VPP.hlsl">
       <ExcludedFromBuild>true</ExcludedFromBuild>
@@ -616,38 +738,47 @@
     <FxCompile Include="..\shaders\VXGI.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\VXGI_common.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\VXGI_DecrementCounter.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\VXGI_DispatchArgs.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\VXGI_DrawArgs.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\VXGI_Erase.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\VXGI_InitOctree.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\VXGI_Remove.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="..\shaders\VXGI_RemoveArgs.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>

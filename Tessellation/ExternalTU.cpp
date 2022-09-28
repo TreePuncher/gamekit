@@ -1,12 +1,12 @@
 #include "pch.h"
 #include "allsourcefiles.cpp"
-#include "..\coreutilities\AnimationRendering.cpp"
-#include "..\coreutilities\ModifiableShape.cpp"
-#include "..\graphicsutilities\ClusteredRendering.cpp"
-#include "..\graphicsutilities\GILightingUtilities.cpp"
-#include "..\graphicsutilities\ShadowMapping.cpp"
-#include "..\graphicsutilities\Transparency.cpp"
-#include "..\graphicsutilities\SVOGI.cpp"
+#include "AnimationRendering.cpp"
+#include "ModifiableShape.cpp"
+#include "ClusteredRendering.cpp"
+#include "GILightingUtilities.cpp"
+#include "ShadowMapping.cpp"
+#include "Transparency.cpp"
+#include "SVOGI.cpp"
 
 #include <angelscript/scriptbuilder/scriptbuilder.cpp>
 #include <angelscript/scriptany/scriptany.cpp>

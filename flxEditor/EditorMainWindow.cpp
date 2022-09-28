@@ -5,9 +5,9 @@
 #include "EditorPrefabEditor.h"
 #include "EditorCodeEditor.h"
 #include "EditorOutputWindow.h"
+#include "EditorOutliner.h"
 #include "EditorViewport.h"
 
-#include "SceneOutliner.h"
 #include <QtWidgets/qmenubar.h>
 #include <chrono>
 

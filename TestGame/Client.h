@@ -4,8 +4,6 @@
 #include "MultiplayerGameState.h"
 #include "Packets.h"
 #include "LobbyGUI.h"
-
-
 #include <regex>
 
 /************************************************************************************************/
@@ -127,7 +125,7 @@ public:
 };
 
 
-void PushClientState(const MultiplayerPlayerID_t, const ConnectionHandle server, GameFramework&, BaseState&, NetworkState&);
+void PushClientState(const MultiplayerPlayerID_t, const ConnectionHandle server, BaseState&, NetworkState&);
 
 
 /************************************************************************************************/

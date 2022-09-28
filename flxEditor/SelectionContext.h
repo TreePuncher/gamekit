@@ -1,10 +1,10 @@
 #pragma once
 
-#include <type.h>
 #include <any>
 #include <optional>
 
-#include "..\coreutilities\Signal.h"
+#include "type.h"
+#include "Signal.h"
 
 using SelectionTypeID = std::uint32_t;
 

@@ -2,18 +2,18 @@
 
 #include "Application.h"
 #include "DXRenderWindow.h"
-#include "EditorProject.h"
 #include "EditorConfig.h"
+#include "EditorProject.h"
 #include "EditorImport.h"
+#include "EditorMainWindow.h"
 #include "EditorRenderer.h"
 #include "EditorScriptEngine.h"
-#include "EditorMainWindow.h"
+#include "EditorInspectors.h"
 #include "EditorViewport.h"
 
-#include "SceneInspectors.h"
 
-#include "SceneResource.h"
-#include "TextureResourceUtilities.h"
+#include "EditorSceneResource.h"
+#include "EditorTextureResources.h"
 #include <QtWidgets/qstylefactory.h>
 
 

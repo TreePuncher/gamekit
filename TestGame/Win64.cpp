@@ -1,10 +1,14 @@
 #include "buildsettings.h"
-
 #include "Logging.h"
 #include "Application.h"
-#include "AnimationComponents.h"
-
 #include "BaseState.h"
+
+#include "MultiplayerState.h"
+#include "MenuState.h"
+
+#ifdef UNITY
+#include "BaseState.cpp"
+#include "Enemy1.cpp"
 #include "client.cpp"
 #include "Gameplay.cpp"
 #include "host.cpp"
@@ -15,7 +19,7 @@
 
 #include "MultiplayerState.cpp"
 #include "MultiplayerGameState.cpp"
-#include "playgroundmode.hpp"
+#endif
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -23,22 +27,12 @@
 #include <iostream>
 #include <cpptoml.h>
 
+
+/************************************************************************************************/
+
+
 int main(int argc, char* argv[])
 {
-
-	Vector<uint32_t, 4> testA{ SystemAllocator };
-	testA.push_back(1);
-	testA.push_back(2);
-	testA.push_back(3);
-	testA.push_back(4);
-
-	Vector<uint32_t> testB{ SystemAllocator };
-	testB = std::move(testA);
-
-
-	std::string name;
-	std::string server;
-
 	FlexKit::InitLog(argc, argv);
 	FlexKit::SetShellVerbocity(FlexKit::Verbosity_1);
 	FlexKit::AddLogFile("GameState.log", FlexKit::Verbosity_INFO);
@@ -68,7 +62,7 @@ int main(int argc, char* argv[])
 			I += 2;
 		}
 	}
-
+	
 	auto config = cpptoml::parse_file("config.toml");
 	if (config->empty())
 	{
@@ -84,7 +78,6 @@ int main(int argc, char* argv[])
 		return -1;
 
 	const int threadCount = engineParams->get_as<int>("ThreadCount").value_or(1);
-
 
 	auto* allocator = CreateEngineMemory();
 	EXITSCOPE(ReleaseEngineMemory(allocator));
@@ -119,10 +112,8 @@ int main(int argc, char* argv[])
 			FK_LOG_2("Running application.");
 			app.Run();
 			FK_LOG_2("Application shutting down.");
-
-			FK_LOG_2("Cleanup Startup.");
 			app.Release();
-			FK_LOG_2("Cleanup Finished.");
+			FK_LOG_2("shut down Finished.");
 		}
 		catch (...)
 		{
@@ -135,9 +126,33 @@ int main(int argc, char* argv[])
 	};
 
 	std::fstream f{ "config.toml", 'w' };
-	std::cout << *config;
 	f << *config;
 	f.close();
 
 	return 0;
 }
+
+
+/**********************************************************************
+
+Copyright (c) 2022 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

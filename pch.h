@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define PCH_H
 
 #include "buildsettings.h"
-#include "coreutilities\containers.h"
+#include "containers.h"
 
 #include <chrono>
 #include <iostream>
