@@ -1,6 +1,6 @@
 #pragma once
 #include "Components.h"
-#include "SceneResource.h"
+#include "EditorSceneResource.h"
 #include "Serialization.hpp"
 #include "RuntimeComponentIDs.h"
 

@@ -24,7 +24,7 @@
     <ClCompile Include="ExternalTU.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\coreutilities\Gregory.cpp">
+    <ClCompile Include="Gregory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -32,7 +32,7 @@
     <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\coreutilities\Gregory.h">
+    <ClInclude Include="Gregory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

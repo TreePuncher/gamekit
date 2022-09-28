@@ -12,6 +12,7 @@
 #include "GameAssets.h"
 #include "GameFramework.h"
 #include "MathUtils.h"
+#include "MultiplayerState.h"
 #include "Particles.h"
 #include "Player.h"
 #include "physicsutilities.h"
@@ -114,7 +115,7 @@ struct GadgetInterface
 
 	uint16_t		requiredPowerLevel	= 0;
 
-	TypeErasedCallable<void (GameWorld&, GameObject&), 16> OnActivate    = [](GameWorld& world, GameObject& player){};
+	FlexKit::TypeErasedCallable<void (GameWorld&, FlexKit::GameObject&), 16> OnActivate    = [](GameWorld& world, FlexKit::GameObject& player){};
 };
 
 
@@ -129,8 +130,8 @@ struct FlashLight : public GadgetInterface
 struct PlayerDesc
 {
 	MultiplayerPlayerID_t	player;
-	LayerHandle				layer;
-	Scene&					scene;
+	FlexKit::LayerHandle	layer;
+	FlexKit::Scene&			scene;
 
 	float h = 1.0f;
 	float r = 1.0f;
@@ -139,8 +140,7 @@ struct PlayerDesc
 
 struct GadgetData
 {
-	GameObject*				gameObject;
-
+	FlexKit::GameObject*	gameObject;
 	uint32_t				owner;
 	GadgetInterface*		gadgetState;
 };
@@ -174,23 +174,25 @@ struct PlayerFrameState
 	float3						forwardVector;
 	Quaternion					orientation;
 
-	PlayerInputState			inputState;
-	ThirdPersonCameraFrameState	cameraState;
+	PlayerInputState						inputState;
+	FlexKit::ThirdPersonCameraFrameState	cameraState;
 };
 
 
+using InputHistoryBuffer = FlexKit::CircularBuffer<PlayerFrameState>;
+
 struct LocalPlayerData
 {
-	PlayerHandle						playerGameState;
-	MultiplayerPlayerID_t				playerID;
-	CircularBuffer<PlayerFrameState>	inputHistory;
-	//Vector<iNetEvent>					pendingEvent;
+	FlexKit::PlayerHandle	playerGameState;
+	MultiplayerPlayerID_t	playerID;
+	InputHistoryBuffer		inputHistory;
+	//Vector<iNetEvent>		pendingEvent;
 };
 
 struct RemotePlayerData
 {
-	GameObject*				gameObject;
-	PlayerHandle			playerGameState;
+	FlexKit::GameObject*	gameObject;
+	FlexKit::PlayerHandle	playerGameState;
 	ConnectionHandle		connection;
 	MultiplayerPlayerID_t	playerID;
 

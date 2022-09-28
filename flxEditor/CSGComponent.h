@@ -1,8 +1,8 @@
 #pragma once
 #include <vector>
 #include "Components.h"
+#include "EditorSceneResource.h"
 #include "ModifiableShape.h"
-#include "SceneResource.h"
 #include "type.h"
 
 
