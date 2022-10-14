@@ -4,6 +4,7 @@
 #include "EditorProject.h"
 #include "physicsutilities.h"
 #include "intersection.h"
+#include "Signal.h"
 #include <any>
 
 /************************************************************************************************/
@@ -14,7 +15,8 @@ struct ViewportGameObject
 	FlexKit::GameObject	gameObject;
 	uint64_t			objectID;
 	
-	operator FlexKit::GameObject& () { return gameObject; }
+	operator FlexKit::GameObject& () noexcept				{ return gameObject; }
+	operator const FlexKit::GameObject& () const noexcept	{ return gameObject; }
 
 	std::vector<ProjectResource_ptr>	resourceDependencies;
 	std::any							editorData;
@@ -23,6 +25,55 @@ struct ViewportGameObject
 using ViewportGameObject_ptr	= std::shared_ptr<ViewportGameObject>;
 using ViewportObjectList		= std::vector<ViewportGameObject_ptr>;
 
+
+struct PendingDelete
+{
+	ViewportGameObject_ptr obj_ptr;
+};
+
+struct ViewportScene;
+
+struct DeletionHandle
+{
+	DeletionHandle() = default;
+	DeletionHandle(ViewportGameObject_ptr, ViewportScene* scene, bool objInScene, bool removed);
+	~DeletionHandle();
+
+	DeletionHandle				(const DeletionHandle&);
+	DeletionHandle& operator =	(const DeletionHandle&);
+
+	DeletionHandle				(DeletionHandle&& rhs) { controlSection = rhs.controlSection; rhs.controlSection = nullptr; } 
+	DeletionHandle& operator =	(DeletionHandle&& rhs) { controlSection = rhs.controlSection; rhs.controlSection = nullptr; return *this;  }
+
+	operator bool() { return controlSection != nullptr; }
+
+	void UndoDelete();
+	void RedoDelete();
+
+	ViewportGameObject_ptr GetObj();
+
+	struct ControlSection
+	{
+		ControlSection() = default;
+
+		void UndoDelete();
+		void RedoDelete();
+
+		// unique, no moves, no copies
+		ControlSection(const ControlSection&)	= delete;
+		ControlSection(ControlSection&&)		= delete; 
+		ControlSection& operator = (const ControlSection& rhs)	= delete;
+		ControlSection& operator = (ControlSection&& rhs)		= delete;
+
+		ViewportGameObject_ptr	obj_ptr			= nullptr;
+		ViewportScene*			scene			= nullptr;
+		bool					objectInScene	= false;
+		bool					removed			= false;
+		std::atomic_int			ref_count		= 1;
+	};
+
+	ControlSection* controlSection = nullptr;
+};
 
 struct ViewportScene
 {
@@ -37,20 +88,26 @@ struct ViewportScene
 	ViewportGameObject_ptr	CreatePointLight();
 	ViewportGameObject_ptr	FindObject(uint64_t);
 	ViewportGameObject_ptr	FindObject(FlexKit::NodeHandle);
-	void					RemoveObject(ViewportGameObject_ptr);
+	DeletionHandle			RemoveObject(ViewportGameObject_ptr);
 	FlexKit::LayerHandle	GetLayer();
+
+	void	_RemoveObject(ViewportGameObject_ptr);
+	void	_ReAddObject(ViewportGameObject_ptr);
 
 	EditorScene_ptr						sceneResource;
 	std::vector<ViewportGameObject_ptr>	sceneObjects;
-	FlexKit::Scene						scene           { FlexKit::SystemAllocator };
-	FlexKit::LayerHandle				physicsLayer    = FlexKit::InvalidHandle;
 	std::vector<uint64_t>				markedForDeletion;
+	std::vector<PendingDelete>			pendingDeletes;
+
+	FlexKit::Scene						scene				{ FlexKit::SystemAllocator };
+	FlexKit::LayerHandle				physicsLayer		= FlexKit::InvalidHandle;
+	FlexKit::Signal<void ()>			OnSceneChange;
 };
 
 struct ViewportSelection
 {
-	ViewportObjectList  viewportObjects;
-	ViewportScene*      scene;
+	ViewportObjectList	viewportObjects;
+	ViewportScene*		scene;
 };
 
 
@@ -111,7 +168,7 @@ public:
 
 /**********************************************************************
 
-Copyright (c) 2021 Robert May
+Copyright (c) 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
