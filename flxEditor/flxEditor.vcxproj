@@ -27,10 +27,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <PlatformToolset>v143</PlatformToolset>
+    <EnableUnitySupport>false</EnableUnitySupport>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <PlatformToolset>v143</PlatformToolset>
+    <EnableUnitySupport>true</EnableUnitySupport>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -78,6 +80,7 @@
       <ShowIncludes>false</ShowIncludes>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>PCH.h</PrecompiledHeaderFile>
+      <TranslateIncludes>false</TranslateIncludes>
     </ClCompile>
     <QtMoc>
       <AdditionalDependencies>
@@ -100,6 +103,9 @@
       <EnableModules>false</EnableModules>
       <PreprocessorDefinitions>
       </PreprocessorDefinitions>
+      <TranslateIncludes>false</TranslateIncludes>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
     </ClCompile>
     <QtMoc>
       <AdditionalDependencies>
@@ -146,6 +152,7 @@
       <EnableModules>false</EnableModules>
       <PreprocessorDefinitions>
       </PreprocessorDefinitions>
+      <TranslateIncludes>true</TranslateIncludes>
     </ClCompile>
     <QtMoc>
       <AdditionalDependencies>
@@ -217,7 +224,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'" Label="Configuration">
@@ -237,6 +244,8 @@
   <ItemGroup>
     <ClCompile Include="EditorSelectedPrefabObject.cpp" />
     <ClCompile Include="EditorPrefabRenderer.cpp" />
+    <ClInclude Include="EditorUndoRedo.h" />
+    <ClCompile Include="EditorUndoRedo.cpp" />
     <ClCompile Include="ExtraTu.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">NotUsing</PrecompiledHeader>

@@ -1,44 +1,20 @@
-#pragma once
+#include <containers.h>
 
-#include <any>
-#include <optional>
-
-#include "type.h"
-#include "Signal.h"
-
-using SelectionTypeID = std::uint32_t;
-
-constexpr SelectionTypeID ViewportObjectList_ID = GetCRCGUID(ViewportObjectList);
-constexpr SelectionTypeID AnimatorObject_ID     = GetCRCGUID(AnimatorObject);
-
-class SelectionContext
+struct ObjectState
 {
-public:
-	SelectionTypeID GetSelectionType() const
-	{
-		return type;
-	}
+	uint64_t stateID	= 0xffffffffffffffff;
+	uint64_t userID		= 0xffffffffffffffff;
 
-	template<typename TY>
-	TY GetSelection()
-	{
-		return std::any_cast<TY>(selection);
-	}
-
-	void Clear(const bool notify = true)
-	{
-		selection.reset();
-		type = -1u;
-
-		if(notify)
-			OnChange();
-	}
-
-	std::any		selection;
-	SelectionTypeID	type;
-
-	FlexKit::Signal<void ()> OnChange;
+	FlexKit::TypeErasedCallable<void (), 128, 16> undo = []() {};
+	FlexKit::TypeErasedCallable<void (), 128, 16> redo = []() {};
 };
+
+void PushState(ObjectState&& objectState);
+void Undo();
+void Redo();
+
+ObjectState&	GetCurrentState();
+uint64_t		GetCurrentID();
 
 /**********************************************************************
 

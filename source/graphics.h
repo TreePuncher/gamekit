@@ -1738,8 +1738,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		struct UserConstantBuffer
 		{
-			uint64_t	size;
-			uint64_t	offset;
+			uint32_t	size;
+			uint32_t	offset;
 			void*		mapped_ptr;
 
 			bool GPUResident;
@@ -1754,7 +1754,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 
 
-		ConstantBufferHandle	CreateConstantBuffer	(size_t BufferSize, bool GPUResident = false);
+		ConstantBufferHandle	CreateConstantBuffer	(uint32_t BufferSize, bool GPUResident = false);
 		void					ReleaseBuffer			(ConstantBufferHandle Handle);
 
 		ID3D12Resource*			GetDeviceResource		(const ConstantBufferHandle Handle) const;

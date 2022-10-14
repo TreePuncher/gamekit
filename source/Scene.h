@@ -254,6 +254,7 @@ namespace FlexKit
 			visibility = InvalidHandle;
 		}
 
+
 		BoundingSphere GetBoundingSphere() const
 		{
 			return GetComponent()[visibility].boundingSphere;
@@ -271,6 +272,7 @@ namespace FlexKit
 			GetComponent()[visibility].visable = v;
 		}
 
+
 		void SetTransparency(bool t)
 		{
 			GetComponent()[visibility].transparent = t;
@@ -285,8 +287,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	AABB			GetVisibilityAABB(GameObject& go);
 	void			SetBoundingSphereFromMesh(GameObject& go);
 	void			SetBoundingSphereRadius(GameObject& go, const float radius);
+	void			SetBoundingSphere(GameObject& go, const BoundingSphere);
 	void			SetBoundingSphereFromLight(GameObject& go);
 	void			SetTransparent(GameObject& go, const bool tranparent);
 

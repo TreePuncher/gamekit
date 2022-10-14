@@ -386,6 +386,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	BoundingSphere GetVisibilityBoundingSphere(GameObject& go)
+	{
+		return Apply(
+			go,
+			[&](SceneVisibilityView& visibility) -> BoundingSphere
+			{
+				return visibility.GetBoundingSphere();
+			},
+			[]() -> BoundingSphere { return {}; });
+	}
+
+
+	/************************************************************************************************/
+
+
 	void SetBoundingSphereFromMesh(GameObject& go)
 	{
 		Apply(
@@ -411,6 +426,21 @@ namespace FlexKit
 				visibility.SetBoundingSphere(BoundingSphere{ 0, 0, 0, radius });
 			});
 	}
+
+
+	/************************************************************************************************/
+
+
+	void SetBoundingSphere(GameObject& go, const BoundingSphere bs)
+	{
+		Apply(
+			go,
+			[&](SceneVisibilityView& visibility)
+			{
+				visibility.SetBoundingSphere(bs);
+			});
+	}
+
 
 
 	/************************************************************************************************/
@@ -738,7 +768,7 @@ namespace FlexKit
 		std::sort(elements.begin(), elements.end());
 
 		// Phase 1 - Build Leaf Nodes -
-		const size_t end            = std::ceil(elements.size() / 4.0f);
+		const size_t end            = (size_t)std::ceil(elements.size() / 4.0f);
 		const size_t elementCount   = elements.size();
 
 		for (uint16_t I = 0; I < end; ++I)

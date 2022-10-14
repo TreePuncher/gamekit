@@ -7,29 +7,29 @@
 #include <qtreewidget.h>
 #include <qevent.h>
 #include <unordered_map>
-
+#include "Signal.h"
 
 /************************************************************************************************/
 
 
 class EditorViewport;
-class QTimer;
 class HierarchyItem;
+class QTimer;
 
 class SceneTreeWidget : public QTreeWidget
 {
 public:
-    SceneTreeWidget(EditorViewport&);
+	SceneTreeWidget(EditorViewport&);
 
-    virtual void dragEnterEvent(QDragEnterEvent* event) override;
-    virtual void dropEvent(QDropEvent* event) override;
+	virtual void dragEnterEvent(QDragEnterEvent* event) override;
+	virtual void dropEvent(QDropEvent* event) override;
 
-    void            UpdateLabels();
-    HierarchyItem*  GetWidget(uint64_t);
+	void			UpdateLabels();
+	HierarchyItem*	GetWidget(uint64_t);
 
-    std::unordered_map<uint64_t, HierarchyItem*>    widgetMap;
-    HierarchyItem*                                  draggedItem = nullptr;
-    EditorViewport&                                 editorViewport;
+	std::unordered_map<uint64_t, HierarchyItem*>	widgetMap;
+	HierarchyItem*									draggedItem = nullptr;
+	EditorViewport&									editorViewport;
 };
 
 class SceneOutliner : public QWidget
@@ -41,20 +41,21 @@ public:
 	~SceneOutliner();
 
 public slots:
-    void ShowContextMenu(const QPoint&);
+	void ShowContextMenu(const QPoint&);
 
 private:
-    HierarchyItem* CreateObject() noexcept;
-    HierarchyItem* CreatePointLight() noexcept;
+	HierarchyItem* CreateObject() noexcept;
+	HierarchyItem* CreatePointLight() noexcept;
 
+	void on_clicked();
+	void Update();
 
-    void on_clicked();
-    void Update();
+	Ui::SceneOutliner				ui;
+	SceneTreeWidget					treeWidget;
+	EditorViewport&					viewport;
+	QTimer*							timer;
 
-	Ui::SceneOutliner                   ui;
-    SceneTreeWidget                     treeWidget;
-    EditorViewport&                     viewport;
-    QTimer*                             timer;
+	FlexKit::Signal<void()>::Slots	sceneChangeSlot;
 };
 
 

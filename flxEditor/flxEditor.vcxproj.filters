@@ -199,6 +199,9 @@
     <ClCompile Include="EditorPrefabRenderer.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="EditorUndoRedo.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Serialization.h">
@@ -295,6 +298,9 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="EditorPrefabRenderer.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorUndoRedo.h">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>
