@@ -617,8 +617,9 @@ namespace FlexKit
 
 		using OnConstructionHandler = TypeErasedCallable<void(GameObject&, const char* userData_ptr, const size_t userData_size, ValueMap)>;
 
-		static void SetOnConstructionHandler(OnConstructionHandler callback) { onConstruction = callback; }
-		static void ClearCallback() { onConstruction.Release(); }
+
+		static void SetOnConstructionHandler(const auto& callback)	{ onConstruction = callback; }
+		static void ClearCallback()									{ onConstruction.Release(); }
 
 	private:
 		PhysXComponent&                         physx;

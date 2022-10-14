@@ -45,12 +45,12 @@ namespace FlexKit
 		class Slots
 		{
 		public:
-            Slots() {}
+			Slots() {}
 
 			~Slots()
 			{
 				for( auto entry : signalTable )
-                    entry.signal->Disconnect( this, entry.ID );
+					entry.signal->Disconnect( this, entry.ID );
 			}
 
 			void Release(Signal* signal)
@@ -59,23 +59,23 @@ namespace FlexKit
 				{
 					if (entry.signal == signal)
 					{
-                        entry.signal->Disconnect(this, entry.ID);
-                        signalTable.erase(&entry);
-                        return;
+						entry.signal->Disconnect(this, entry.ID);
+						signalTable.erase(&entry);
+						return;
 					}
 				}
 			}
 
 			void NotifyOnDestruction( Signal* _ptr, uint64_t id )
 			{
-                signalTable.push_back( Signal_Entry( _ptr, id ) );
+				signalTable.push_back( Signal_Entry( _ptr, id ) );
 			}
 		private:
 
 			struct Signal_Entry
 			{
 				Signal*		signal;
-                uint64_t    ID;
+				uint64_t    ID;
 			};
 
 			static_vector<Signal_Entry>	signalTable;
@@ -85,8 +85,8 @@ namespace FlexKit
 	private:
 		struct Slot_Entry
 		{
-            TypeErasedCallable<FNDef, 48>   callable;
-            uint64_t                        ID;
+			TypeErasedCallable<FNDef, 48>   callable;
+			uint64_t                        ID;
 			Slots*			                Ptr;
 		};
 
@@ -98,18 +98,18 @@ namespace FlexKit
 			DiconnectAll();
 		}
 
-        template<typename ... TY_args>
+		template<typename ... TY_args>
 		void operator()(TY_args&& ... args)
 		{
 			for( auto slot : outputSlots )
 				slot.callable(std::forward<TY_args>(args)...);
 		}
 
-        template<typename TY_Callable>
+		template<typename TY_Callable>
 		void Connect(Slots& slot, TY_Callable callable)
 		{
-            slot.NotifyOnDestruction(this, outputSlots.size() );
-            outputSlots.emplace_back(Slot_Entry{ callable, outputSlots.size(), &slot });
+			slot.NotifyOnDestruction(this, outputSlots.size() );
+			outputSlots.emplace_back(Slot_Entry{ callable, outputSlots.size(), &slot });
 		}
 
 		void Disconnect(Slots* _ptr, unsigned int ID )

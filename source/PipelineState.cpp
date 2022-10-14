@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -27,44 +27,44 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    bool PipelineStateObject::changeState(const PipelineStateObject::PSO_States newState)
-    {
-        auto currentState = state.load(std::memory_order_acquire);
+	bool PipelineStateObject::changeState(const PipelineStateObject::PSO_States newState)
+	{
+		auto currentState = state.load(std::memory_order_acquire);
 
-        if (currentState == PipelineStateObject::PSO_States::Unloaded ||
-            currentState == PipelineStateObject::PSO_States::Loaded)
-        {
-            if (state.compare_exchange_strong(currentState, newState, std::memory_order_release))
-            {
-                return true;
-            }
-        }
+		if (currentState == PipelineStateObject::PSO_States::Unloaded ||
+			currentState == PipelineStateObject::PSO_States::Loaded)
+		{
+			if (state.compare_exchange_strong(currentState, newState, std::memory_order_release))
+			{
+				return true;
+			}
+		}
 
-        return false;
-    }
-
-
-    /************************************************************************************************/
+		return false;
+	}
 
 
-    void PipelineStateObject::Release(iAllocator* allocator)
-    {
-        if(PSO)
-            PSO->Release();
-
-        PSO = nullptr;
-
-        if (auto _ptr = next; _ptr)
-            _ptr->Release(allocator);
-
-        allocator->free(this);
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	void PipelineStateObject::Release(iAllocator* allocator)
+	{
+		if(PSO)
+			PSO->Release();
+
+		PSO = nullptr;
+
+		if (auto _ptr = next; _ptr)
+			_ptr->Release(allocator);
+
+		allocator->free(this);
+	}
+
+
+	/************************************************************************************************/
 
 
 	PipelineStateTable::PipelineStateTable(iAllocator* IN_allocator, RenderSystem* IN_RS, ThreadManager* IN_Threads) :
@@ -132,11 +132,11 @@ namespace FlexKit
 				return true;
 			}
 
-            else
-            {
-                queueAllocator->release(NewTask); // Failed to schedule task, release task
-                return false;
-            }
+			else
+			{
+				queueAllocator->release(NewTask); // Failed to schedule task, release task
+				return false;
+			}
 		}
 
 
@@ -162,7 +162,7 @@ namespace FlexKit
 
 			switch (PSO->state)
 			{
-            case PipelineStateObject::PSO_States::LoadQueued:
+			case PipelineStateObject::PSO_States::LoadQueued:
 			case PipelineStateObject::PSO_States::LoadInProgress: 
 			{
 				std::mutex			M;
@@ -189,8 +189,8 @@ namespace FlexKit
 				{
 					PSO->state = PipelineStateObject::PSO_States::LoadInProgress;
 
-					auto loader = PSO->loader;
-					auto res	= loader(RS);
+					auto& loader	= PSO->loader;
+					auto res		= loader(RS);
 
 					PSO->stale = false;
 
@@ -248,7 +248,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PipelineStateTable::RegisterPSOLoader( PSOHandle handle, PipelineStateDescription PSODesc)
+	void PipelineStateTable::RegisterPSOLoader(PSOHandle handle, PipelineStateDescription PSODesc)
 	{
 		PipelineStateObject* PSO = _GetNearestStateObject(handle);
 
@@ -256,10 +256,10 @@ namespace FlexKit
 		{
 			FK_LOG_2("Adding State Node!");
 			// add new node
-			PSO			= &allocator->allocate<PipelineStateObject>();
-			PSO->id		= handle;
-			PSO->state	= PipelineStateObject::PSO_States::Unloaded;
-			PSO->loader			= PSODesc.loadState;
+			PSO					= &allocator->allocate<PipelineStateObject>();
+			PSO->id				= handle;
+			PSO->state			= PipelineStateObject::PSO_States::Unloaded;
+			PSO->loader			= std::move(PSODesc.loadState);
 			PSO->rootSignature	= PSODesc.rootSignature;
 			_AddStateObject(PSO);
 			return;
@@ -270,7 +270,7 @@ namespace FlexKit
 			// First node in chain
 			PSO->id				= handle;
 			PSO->state			= PipelineStateObject::PSO_States::Unloaded;
-			PSO->loader			= PSODesc.loadState;
+			PSO->loader			= std::move(PSODesc.loadState);
 			PSO->rootSignature	= PSODesc.rootSignature;
 			return;
 		}
@@ -279,7 +279,7 @@ namespace FlexKit
 		{
 			// node exists
 			PSO->stale			= true;
-			PSO->loader			= PSODesc.loadState;
+			PSO->loader			= std::move(PSODesc.loadState);
 			PSO->rootSignature	= PSODesc.rootSignature;
 			return;
 		}
@@ -291,7 +291,7 @@ namespace FlexKit
 			PSO					= &allocator->allocate<PipelineStateObject>();
 			PSO->id				= handle;
 			PSO->state			= PipelineStateObject::PSO_States::Unloaded;
-			PSO->loader			= PSODesc.loadState;
+			PSO->loader			= std::move(PSODesc.loadState);
 			PSO->rootSignature	= PSODesc.rootSignature;
 			_AddStateObject(PSO);
 			return;
@@ -382,9 +382,9 @@ namespace FlexKit
 			iWork		{ IN_allocator	},
 			RS			{ IN_PST->RS	},
 			PSO			{ IN_PSO		}
-    {
-        _debugID = "Load PSO task";
-    }
+	{
+		_debugID = "Load PSO task";
+	}
 
 
 	/************************************************************************************************/
@@ -392,7 +392,7 @@ namespace FlexKit
 
 	void LoadTask::Run(iAllocator& threadLocalAllocator)
 	{
-        ProfileFunction();
+		ProfileFunction();
 
 		std::chrono::system_clock Clock;
 		auto Before = Clock.now();
@@ -404,10 +404,10 @@ namespace FlexKit
 		);
 		
 		const auto previousPSO = PSO->PSO;
-        const auto previousState = PSO->state.load();
+		const auto previousState = PSO->state.load();
 
-        if(previousState != PipelineStateObject::PSO_States::ReLoadQueued)
-		    PSO->state = PipelineStateObject::PSO_States::LoadInProgress;
+		if(previousState != PipelineStateObject::PSO_States::ReLoadQueued)
+			PSO->state = PipelineStateObject::PSO_States::LoadInProgress;
 
 		while (true)
 		{
@@ -425,8 +425,8 @@ namespace FlexKit
 			auto res = loader(RS);
 
 			if (!res) {
-                if (previousState != PipelineStateObject::PSO_States::ReLoadQueued)
-    				PSO->state = PipelineStateObject::PSO_States::Failed;
+				if (previousState != PipelineStateObject::PSO_States::ReLoadQueued)
+					PSO->state = PipelineStateObject::PSO_States::Failed;
 
 				FK_LOG_ERROR("PSO Load FAILED!");
 				return;
@@ -440,9 +440,9 @@ namespace FlexKit
 			PSO->state	= PipelineStateObject::PSO_States::Loaded;
 			PSO->CV.notify_all();
 
-            // TODO: FIX THIS LEAK!
-            if (previousPSO)
-                int x = 0;
+			// TODO: FIX THIS LEAK!
+			if (previousPSO)
+				int x = 0;
 			//	previousPSO->Release();
 
 			break;

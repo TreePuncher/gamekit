@@ -67,7 +67,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ConstantBufferHandle	ConstantBufferTable::CreateConstantBuffer(size_t BufferSize, bool GPUResident)
+	ConstantBufferHandle	ConstantBufferTable::CreateConstantBuffer(uint32_t BufferSize, bool GPUResident)
 	{
 		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(BufferSize);
 		Resource_DESC.Alignment				= 0;
@@ -80,12 +80,12 @@ namespace FlexKit
 		Resource_DESC.SampleDesc.Quality	= 0;
 		Resource_DESC.Flags					= D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;//D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE; // Causes Graphics Debugger to crash
 
-		D3D12_HEAP_PROPERTIES HEAP_Props ={};
-		HEAP_Props.CPUPageProperty	     = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		HEAP_Props.Type				     = GPUResident ? D3D12_HEAP_TYPE_DEFAULT : D3D12_HEAP_TYPE_UPLOAD;
-		HEAP_Props.MemoryPoolPreference  = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
-		HEAP_Props.CreationNodeMask	     = 0;
-		HEAP_Props.VisibleNodeMask		 = 0;
+		D3D12_HEAP_PROPERTIES HEAP_Props	={};
+		HEAP_Props.CPUPageProperty			= D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		HEAP_Props.Type						= GPUResident ? D3D12_HEAP_TYPE_DEFAULT : D3D12_HEAP_TYPE_UPLOAD;
+		HEAP_Props.MemoryPoolPreference		= D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
+		HEAP_Props.CreationNodeMask			= 0;
+		HEAP_Props.VisibleNodeMask			= 0;
 
 		constexpr size_t bufferCount = 3;
 		ID3D12Resource*  resources[3];
@@ -211,8 +211,8 @@ namespace FlexKit
 
 		UpdateCurrentBuffer(Handle);
 
-		const uint32_t size     = buffer.size;
-		const uint32_t offset   = buffer.offset;
+		const uint32_t size     = (uint32_t)buffer.size;
+		const uint32_t offset   = (uint32_t)buffer.offset;
 		const char*  mapped_Ptr	= (char*)buffer.mapped_ptr;
 
 		if (!mapped_Ptr)
@@ -4527,7 +4527,7 @@ namespace FlexKit
 
 	void RenderSystem::RegisterPSOLoader(PSOHandle State, PipelineStateDescription desc)
 	{
-		PipelineStates.RegisterPSOLoader(State, desc);
+		PipelineStates.RegisterPSOLoader(State, std::move(desc));
 	}
 
 
