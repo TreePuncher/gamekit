@@ -2,6 +2,7 @@
 #include "EditorOutliner.h"
 #include "EditorViewport.h"
 #include "EditorInspectors.h"
+#include "EditorUndoRedo.h"
 
 #include <chrono>
 #include <qtimer.h>
@@ -32,6 +33,11 @@ public:
 	~HierarchyItem() {}
 
 	ViewportGameObject_ptr viewportObject = std::make_shared<ViewportGameObject>();
+
+	uint64_t GetID() const
+	{
+		return viewportObject->objectID;
+	}
 
 	void Update()
 	{
@@ -87,8 +93,8 @@ public:
 			struct OutlinerContext : public ComponentConstructionContext
 			{
 				OutlinerContext(ViewportScene& IN_scene, ViewportGameObject_ptr& IN_object)
-				: scene     { IN_scene }
-				, object    { IN_object }{}
+				: scene	{ IN_scene }
+				, object{ IN_object }{}
 
 				void AddToScene(FlexKit::GameObject& go) final
 				{
@@ -105,8 +111,8 @@ public:
 					return object->objectID;
 				}
 
-				ViewportScene&              scene;
-				ViewportGameObject_ptr&     object;
+				ViewportScene&				scene;
+				ViewportGameObject_ptr&		object;
 			} ctx{ scene, viewportObject };
 
 			if (!viewportObject->gameObject.hasView(FlexKit::TransformComponentID))
@@ -122,6 +128,7 @@ public:
 		}
 	}
 };
+
 
 /************************************************************************************************/
 
@@ -166,10 +173,10 @@ void SceneTreeWidget::dropEvent(QDropEvent* event)
 	{
 	case QAbstractItemView::DropIndicatorPosition::AboveItem:
 	{
-		auto idx        = indexAt(event->pos());
-		auto item       = itemAt(event->pos());
-		auto parent     = static_cast<HierarchyItem*>(item->parent());
-		auto oldParent  = draggedItem->parent();
+		auto idx		= indexAt(event->pos());
+		auto item		= itemAt(event->pos());
+		auto parent		= static_cast<HierarchyItem*>(item->parent());
+		auto oldParent	= draggedItem->parent();
 
 		if (oldParent)
 			oldParent->removeChild(draggedItem);
@@ -183,10 +190,10 @@ void SceneTreeWidget::dropEvent(QDropEvent* event)
 	}   break;
 	case QAbstractItemView::DropIndicatorPosition::BelowItem:
 	{
-		auto idx        = indexAt(event->pos());
-		auto item       = itemAt(event->pos());
-		auto parent     = static_cast<HierarchyItem*>(item->parent());
-		auto oldParent  = draggedItem->parent();
+		auto idx		= indexAt(event->pos());
+		auto item		= itemAt(event->pos());
+		auto parent		= static_cast<HierarchyItem*>(item->parent());
+		auto oldParent	= draggedItem->parent();
 
 		if (oldParent)
 			oldParent->removeChild(draggedItem);
@@ -200,8 +207,8 @@ void SceneTreeWidget::dropEvent(QDropEvent* event)
 	}   break;
 	case QAbstractItemView::DropIndicatorPosition::OnItem:
 	{
-		auto item   = static_cast<HierarchyItem*>(itemAt(event->pos()));
-		auto idx    = indexAt(event->pos());
+		auto item	= static_cast<HierarchyItem*>(itemAt(event->pos()));
+		auto idx	= indexAt(event->pos());
 
 		if (item)
 		{
@@ -234,7 +241,7 @@ void SceneTreeWidget::UpdateLabels()
 	if (!editorViewport.GetScene() || draggedItem)
 		return;
 
-	auto& scene = editorViewport.GetScene();
+	auto& scene = *editorViewport.GetScene();
 
 	auto AddAtTopLevel =
 		[&](auto& obj)
@@ -245,13 +252,26 @@ void SceneTreeWidget::UpdateLabels()
 			addTopLevelItem(item);
 		};
 
+	for (auto& pending : editorViewport.GetScene()->markedForDeletion)
+	{
+		if (auto res = widgetMap.find(pending); res != widgetMap.end())
+		{
+			auto widget = res->second;
+			widget->ClearChildren(scene);
+			removeItemWidget(widget, 0);
+
+			widgetMap.erase(res);
+			delete widget;
+		}
+	}
+
 	for (auto& obj : editorViewport.GetScene()->sceneObjects)
 	{
 		if (auto res = widgetMap.find(obj->objectID); res == widgetMap.end())
 		{
 			if (obj->gameObject.hasView(FlexKit::TransformComponentID))
 			{
-				auto node       = FlexKit::GetParentNode(obj->gameObject);
+				auto node = FlexKit::GetParentNode(obj->gameObject);
 
 				if (node == FlexKit::NodeHandle{ 0 } || node == FlexKit::InvalidHandle)
 				{
@@ -259,7 +279,7 @@ void SceneTreeWidget::UpdateLabels()
 					continue;
 				}
 
-				auto parentObj  = scene->FindObject(FlexKit::GetParentNode(obj->gameObject));
+				auto parentObj = scene.FindObject(FlexKit::GetParentNode(obj->gameObject));
 				if (parentObj)
 				{
 
@@ -267,7 +287,7 @@ void SceneTreeWidget::UpdateLabels()
 					{
 						auto item = new HierarchyItem(obj);
 						widgetMap[obj->objectID] = item;
-						item->SetParent(widget, *scene, 0);
+						item->SetParent(widget, scene, 0);
 					}
 				}
 				else
@@ -301,9 +321,9 @@ HierarchyItem* SceneTreeWidget::GetWidget(uint64_t ID)
 
 
 SceneOutliner::SceneOutliner(EditorViewport& IN_viewport, QWidget *parent) :
-	QWidget     { parent },
-	viewport    { IN_viewport },
-	treeWidget  { IN_viewport }
+	QWidget		{ parent },
+	viewport	{ IN_viewport },
+	treeWidget	{ IN_viewport }
 {
 	ui.setupUi(this);
 
@@ -329,6 +349,12 @@ SceneOutliner::SceneOutliner(EditorViewport& IN_viewport, QWidget *parent) :
 		&treeWidget,
 		SIGNAL(customContextMenuRequested(const QPoint&)),
 		SLOT(ShowContextMenu(const QPoint&)));
+
+	viewport.sceneChangeSlot.Connect(sceneChangeSlot,
+		[&]
+		{
+			viewport.GetScene()->OnSceneChange.Connect(sceneChangeSlot, [&] { Update();	});
+		});
 }
 
 
@@ -355,18 +381,66 @@ void SceneOutliner::Update()
 
 void SceneOutliner::on_clicked()
 {
-	HierarchyItem* selectedItem = static_cast<HierarchyItem*>(treeWidget.currentItem());
+	auto& selectionCtx	= viewport.GetSelectionContext();
+	HierarchyItem* selectedItem			= static_cast<HierarchyItem*>(treeWidget.currentItem());
 
-	auto& selectionCtx          = viewport.GetSelectionContext();
 	ViewportSelection selection;
-
 	selection.scene = viewport.GetScene().get();
 	selection.viewportObjects.clear();
 	selection.viewportObjects.push_back(selectedItem->viewportObject);
 
+	uint64_t		prevObjId = 0xffffffffffffffff;
+	HierarchyItem* prevItem = nullptr;
+
+	if (selectionCtx.type == ViewportObjectList_ID)
+	{
+		prevObjId = selectionCtx.GetSelection<ViewportSelection>().viewportObjects.front()->objectID;
+	}
+
+	if (GetCurrentState().userID != selectedItem->GetID())
+	{
+		ObjectState state{
+			.stateID	= GetTypeGUID(SelectionOP),
+			.userID		= selectedItem->GetID(),
+
+			.undo =
+				[this, prev = selectionCtx.selection, prevID = selectionCtx.type, prevItem = selectedItem, prevObjId]()
+				{
+					auto& selectionCtx = viewport.GetSelectionContext();
+
+					selectionCtx.Clear(false);
+					selectionCtx.selection	= prev;
+					selectionCtx.type		= prevID;
+					selectionCtx.OnChange();
+
+					if (prevObjId != 0xffffffffffffffff)
+					{
+						auto item = treeWidget.GetWidget(prevObjId);
+						treeWidget.setCurrentItem(item);
+					}
+				},
+
+			.redo =
+				[this, selection, objectID = selectedItem->viewportObject->objectID]()
+				{
+					auto& selectionCtx = viewport.GetSelectionContext();
+
+					selectionCtx.Clear(false);
+					selectionCtx.selection	= selection;
+					selectionCtx.type		= ViewportObjectList_ID;
+					selectionCtx.OnChange();
+
+					auto item = treeWidget.GetWidget(objectID);
+					treeWidget.setCurrentItem(item);
+				}
+		};
+
+		PushState(std::move(state));
+	}
+
 	selectionCtx.Clear();
-	selectionCtx.selection  = std::move(selection);
-	selectionCtx.type       = ViewportObjectList_ID;
+	selectionCtx.selection	= std::move(selection);
+	selectionCtx.type		= ViewportObjectList_ID;
 }
 
 
@@ -405,8 +479,8 @@ HierarchyItem* SceneOutliner::CreatePointLight() noexcept
 	struct OutlinerContext : public ComponentConstructionContext
 	{
 		OutlinerContext(ViewportScene& IN_scene, ViewportGameObject& IN_object)
-			: scene     { IN_scene  }
-			, object    { IN_object } {}
+			: scene		{ IN_scene  }
+			, object	{ IN_object } {}
 
 		void AddToScene(FlexKit::GameObject& go) final
 		{
@@ -423,8 +497,8 @@ HierarchyItem* SceneOutliner::CreatePointLight() noexcept
 			return object.objectID;
 		}
 
-		ViewportScene&      scene;
-		ViewportGameObject& object;
+		ViewportScene&		scene;
+		ViewportGameObject&	object;
 	} ctx{ *scene, *obj->viewportObject };
 
 	PointLightFactory::ConstructPointLight(*obj->viewportObject, ctx);
@@ -461,10 +535,10 @@ void SceneOutliner::ShowContextMenu(const QPoint& point)
 		auto addChildAction = contextMenu.addAction("Create Child",
 			[&]()
 			{
-				auto& scene = viewport.GetScene();
-
-				if (scene == nullptr)
+				if (viewport.GetScene() == nullptr)
 					return;
+
+				auto& scene = *viewport.GetScene();
 
 				auto newItem = CreateObject();
 
@@ -477,7 +551,7 @@ void SceneOutliner::ShowContextMenu(const QPoint& point)
 				if (!parent.hasView(FlexKit::TransformComponentID))
 					parent.AddView<FlexKit::SceneNodeView<>>();
 
-				scene->sceneObjects.push_back(newItem->viewportObject);
+				scene.sceneObjects.push_back(newItem->viewportObject);
 				auto& nodeView = newItem->viewportObject->gameObject.AddView<FlexKit::SceneNodeView<>>();
 
 				nodeView.SetParentNode(FlexKit::GetSceneNode(parent));
@@ -503,4 +577,26 @@ void SceneOutliner::ShowContextMenu(const QPoint& point)
 }
 
 
-/************************************************************************************************/
+/**********************************************************************
+
+Copyright (c) 2022 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

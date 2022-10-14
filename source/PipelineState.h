@@ -50,7 +50,7 @@ namespace FlexKit
 	class PipelineStateTable;
 
 
-    using LOADSTATE_FN = FlexKit::TypeErasedCallable<ID3D12PipelineState* (RenderSystem*), 16>;
+	using LOADSTATE_FN = FlexKit::TypeErasedCallable<ID3D12PipelineState* (RenderSystem*), 16>;
 
 	//typedef ID3D12PipelineState* LOADSTATE_FN(RenderSystem* RS);
 
@@ -82,8 +82,8 @@ namespace FlexKit
 			Undefined
 		};
 
-        bool changeState(const PipelineStateObject::PSO_States newState);
-        void Release(iAllocator* allocator);
+		bool changeState(const PipelineStateObject::PSO_States newState);
+		void Release(iAllocator* allocator);
 
 		ID3D12PipelineState*				PSO		= nullptr;
 		PSOHandle							id		= InvalidHandle;

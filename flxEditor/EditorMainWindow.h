@@ -15,8 +15,6 @@
 
 #include "ResourceBrowserWidget.h"
 #include "EditorImport.h"
-#include "EditorRenderer.h"
-#include "EditorProject.h"
 #include "EditorGadgetInterface.h"
 #include "EditorViewport.h"
 #include "EditorTextureViewer.h"
@@ -29,9 +27,10 @@
 
 class TextureResource;
 class EditorScriptEngine;
-class EditorViewport;
 class EditorPrefabEditor;
-
+class EditorProject;
+class EditorViewport;
+class EditorRenderer;
 
 /************************************************************************************************/
 
@@ -49,70 +48,71 @@ class EditorMainWindow : public QMainWindow
 	Q_OBJECT
 
 public:
-    EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngine& scriptEngine, EditorProject& IN_project, QApplication& application, QWidget *parent = Q_NULLPTR);
+	EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngine& scriptEngine, EditorProject& IN_project, QApplication& application, QWidget *parent = Q_NULLPTR);
 	~EditorMainWindow();
 
 
-    void                    AddImporter(iEditorImportor* importer);
-    void                    AddExporter(iEditorExporter* exporter);
+	void					AddImporter(iEditorImportor* importer);
+	void					AddExporter(iEditorExporter* exporter);
 
-    void                    AddEditorView();
-    void                    AddInspector();
-    void                    AddOutputView();
-    void                    AddModelViewer();
-    ResourceBrowserWidget*  AddResourceList();
-    void                    AddSceneOutliner();
-    TextureViewer*          AddTextureViewer(TextureResource* res = nullptr);
-    QTextEdit*              AddTextView();
-    DXRenderWindow*         AddViewPort();
+	void					AddEditorView();
+	void					AddInspector();
+	void					AddOutputView();
+	void					AddModelViewer();
+	ResourceBrowserWidget*	AddResourceList();
+	void					AddSceneOutliner();
+	TextureViewer*			AddTextureViewer(TextureResource* res = nullptr);
+	QTextEdit*				AddTextView();
+	DXRenderWindow*			AddViewPort();
 
-    void AddFileAction(const std::string& name, auto&& callable)
-    {
-        auto action = fileMenu->addAction(name.c_str());
-        connect(action, &QAction::triggered, this, callable);
-    }
+	void AddFileAction(const std::string& name, auto&& callable)
+	{
+		auto action = fileMenu->addAction(name.c_str());
+		connect(action, &QAction::triggered, this, callable);
+	}
 
-    EditorViewport&         Get3DView()         { return *viewport; }
-    SelectionContext&       GetSelectionCtx()   { return selectionContext; };
-    EditorPrefabEditor*     GetPrefabEditor()   { return prefabEditor; };
+	EditorViewport&			Get3DView()			{ return *viewport; }
+	SelectionContext&		GetSelectionCtx()	{ return selectionContext; };
+	EditorPrefabEditor*		GetPrefabEditor()	{ return prefabEditor; };
 
 
-    void RegisterGadget(iEditorGadget* gadget);
-    
-    void CloseEvent(QCloseEvent* event);
-    void Close();
-    void timerEvent(QTimerEvent* event);
-    void showEvent(QShowEvent* event) override {}
+	void RegisterGadget(iEditorGadget* gadget);
+	
+	void CloseEvent(QCloseEvent* event);
+	void Close();
+	void timerEvent(QTimerEvent* event);
+	void showEvent(QShowEvent* event) override {}
 
-    QMenu* GetFileMenu() { return fileMenu; }
+	QMenu* GetFileMenu() { return fileMenu; }
 
 public slots:
 
-    void Update();
+	void Update();
 
 
 signals:
-    void onClose();
+	void onClose();
 
 private:
-    time_point          frameEnd;
-    time_point          frameBegin;
+	time_point          frameEnd;
+	time_point          frameBegin;
 
-    SelectionContext    selectionContext;
-    EditorScriptEngine& scriptEngine;
+	SelectionContext    selectionContext;
+	EditorScriptEngine& scriptEngine;
 
-    QTabWidget*             tabBar;
-    EditorViewport*         viewport;
-    QApplication&           QtApplication;
-    EditorProject&          project;
-    EditorRenderer&         renderer;
+	QTabWidget*             tabBar;
+	EditorViewport*         viewport;
+	QApplication&           QtApplication;
+	EditorProject&          project;
+	EditorRenderer&         renderer;
 
-    EditorPrefabEditor*     prefabEditor;
+	EditorPrefabEditor*     prefabEditor;
 
-    QMenu*              fileMenu    = nullptr;
-    QMenu*              importMenu  = nullptr;
-    QMenu*              exportMenu  = nullptr;
-    QMenu*              gadgetMenu  = nullptr;
+	QMenu*              fileMenu    = nullptr;
+	QMenu*              editMenu    = nullptr;
+	QMenu*              importMenu  = nullptr;
+	QMenu*              exportMenu  = nullptr;
+	QMenu*              gadgetMenu  = nullptr;
 };
 
 

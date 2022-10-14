@@ -8,6 +8,7 @@
 #include "SceneLoadingContext.h"
 #include "EditorInspectorView.h"
 #include "EditorPrefabObject.h"
+#include "EditorUndoRedo.h"
 
 #include <QtWidgets/qmenubar.h>
 #include <QShortcut>
@@ -30,14 +31,14 @@ public:
 
 	ViewportModeID GetModeID() const override { return VewportSelectionModeID; };
 
-	void mousePressEvent    (QMouseEvent* event) override;
+	void mousePressEvent	(QMouseEvent* event) override;
 	void DrawImguI();
 
-	DXRenderWindow*         renderWindow;
-	FlexKit::CameraHandle   viewportCamera;
+	DXRenderWindow*			renderWindow;
+	FlexKit::CameraHandle	viewportCamera;
 
-	SelectionContext&               selectionContext;
-	std::shared_ptr<ViewportScene>  scene;
+	SelectionContext&				selectionCtx;
+	std::shared_ptr<ViewportScene>	scene;
 };
 
 
@@ -72,25 +73,26 @@ public:
 class EditorVewportTranslationMode : public IEditorViewportMode
 {
 public:
-	EditorVewportTranslationMode(SelectionContext&, DXRenderWindow*, FlexKit::CameraHandle, FlexKit::ImGUIIntegrator& hud);
+	EditorVewportTranslationMode(SelectionContext&, DXRenderWindow*, EditorViewport&, FlexKit::CameraHandle, FlexKit::ImGUIIntegrator& hud);
 
 	ViewportModeID GetModeID() const override { return TranslationModeID; };
 
-	void keyPressEvent      (QKeyEvent* event) override;
+	void keyPressEvent		(QKeyEvent* event) override;
 
-	void mousePressEvent    (QMouseEvent* event) override;
-	void mouseReleaseEvent  (QMouseEvent* event) override;
+	void mousePressEvent	(QMouseEvent* event) override;
+	void mouseReleaseEvent	(QMouseEvent* event) override;
 
 	void DrawImguI  () override;
 
-	DXRenderWindow*             renderWindow;
-	SelectionContext&           selectionContext;
-	FlexKit::CameraHandle       viewportCamera;
-	FlexKit::ImGUIIntegrator&   hud;
+	DXRenderWindow*				renderWindow;
+	SelectionContext&			selectionContext;
+	EditorViewport&				viewport;
+	FlexKit::CameraHandle		viewportCamera;
+	FlexKit::ImGUIIntegrator&	hud;
 
-	FlexKit::int2 previousMousePosition     = FlexKit::int2{ -160000, -160000 };
-	ImGuizmo::OPERATION manipulatorState    = ImGuizmo::OPERATION::TRANSLATE;
-	ImGuizmo::MODE mode                     = ImGuizmo::MODE::LOCAL;
+	FlexKit::int2 previousMousePosition		= FlexKit::int2{ -160000, -160000 };
+	ImGuizmo::OPERATION manipulatorState	= ImGuizmo::OPERATION::TRANSLATE;
+	ImGuizmo::MODE mode						= ImGuizmo::MODE::LOCAL;
 };
 
 
@@ -98,22 +100,28 @@ public:
 
 
 EditorVewportTranslationMode::EditorVewportTranslationMode(
-	SelectionContext&           IN_selectionContext,
-	DXRenderWindow*             IN_renderWindow,
-	FlexKit::CameraHandle       IN_camera,
-	FlexKit::ImGUIIntegrator&   IN_hud) :
-		selectionContext    { IN_selectionContext },
-		renderWindow        { IN_renderWindow },
-		viewportCamera      { IN_camera },
-		hud                 { IN_hud } {}
+	SelectionContext&			IN_selectionContext,
+	DXRenderWindow*				IN_renderWindow,
+	EditorViewport&				IN_viewport,
+	FlexKit::CameraHandle		IN_camera,
+	FlexKit::ImGUIIntegrator&	IN_hud) :
+		selectionContext	{ IN_selectionContext },
+		renderWindow		{ IN_renderWindow },
+		viewportCamera		{ IN_camera },
+		hud					{ IN_hud },
+		viewport			{ IN_viewport } {}
 
 
 void EditorVewportTranslationMode::keyPressEvent(QKeyEvent* event)
 {
 	auto keyCode = event->key();
 
-	if (keyCode == Qt::Key_T)
+	auto priorState = manipulatorState;
+
+	if (keyCode == Qt::Key_T) {
 		mode = mode == ImGuizmo::MODE::LOCAL ? ImGuizmo::MODE::WORLD : ImGuizmo::MODE::LOCAL;
+		return;
+	}
 
 	if (keyCode == Qt::Key_W)
 		manipulatorState = ImGuizmo::OPERATION::TRANSLATE;
@@ -123,6 +131,9 @@ void EditorVewportTranslationMode::keyPressEvent(QKeyEvent* event)
 
 	if (keyCode == Qt::Key_R)
 		manipulatorState = ImGuizmo::OPERATION::ROTATE;
+
+	if (priorState == manipulatorState)
+		viewport.PopMode();
 }
 
 void EditorVewportTranslationMode::mousePressEvent(QMouseEvent* event)
@@ -132,9 +143,9 @@ void EditorVewportTranslationMode::mousePressEvent(QMouseEvent* event)
 		previousMousePosition = FlexKit::int2{ -160000, -160000 };
 
 		FlexKit::Event mouseEvent;
-		mouseEvent.InputSource  = FlexKit::Event::Mouse;
-		mouseEvent.Action       = FlexKit::Event::Pressed;
-		mouseEvent.mType        = FlexKit::Event::Input;
+		mouseEvent.InputSource	= FlexKit::Event::Mouse;
+		mouseEvent.Action		= FlexKit::Event::Pressed;
+		mouseEvent.mType		= FlexKit::Event::Input;
 
 		mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSELEFT;
 		hud.HandleInput(mouseEvent);
@@ -144,9 +155,9 @@ void EditorVewportTranslationMode::mousePressEvent(QMouseEvent* event)
 		previousMousePosition = FlexKit::int2{ -160000, -160000 };
 
 		FlexKit::Event mouseEvent;
-		mouseEvent.InputSource  = FlexKit::Event::Mouse;
-		mouseEvent.Action       = FlexKit::Event::Pressed;
-		mouseEvent.mType        = FlexKit::Event::Input;
+		mouseEvent.InputSource	= FlexKit::Event::Mouse;
+		mouseEvent.Action		= FlexKit::Event::Pressed;
+		mouseEvent.mType		= FlexKit::Event::Input;
 
 		mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSERIGHT;
 		hud.HandleInput(mouseEvent);
@@ -160,9 +171,9 @@ void EditorVewportTranslationMode::mouseReleaseEvent(QMouseEvent* event)
 		previousMousePosition = FlexKit::int2{ -160000, -160000 };
 
 		FlexKit::Event mouseEvent;
-		mouseEvent.InputSource  = FlexKit::Event::Mouse;
-		mouseEvent.Action       = FlexKit::Event::Release;
-		mouseEvent.mType        = FlexKit::Event::Input;
+		mouseEvent.InputSource	= FlexKit::Event::Mouse;
+		mouseEvent.Action		= FlexKit::Event::Release;
+		mouseEvent.mType		= FlexKit::Event::Input;
 
 		mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSELEFT;
 		hud.HandleInput(mouseEvent);
@@ -172,9 +183,9 @@ void EditorVewportTranslationMode::mouseReleaseEvent(QMouseEvent* event)
 		previousMousePosition = FlexKit::int2{ -160000, -160000 };
 
 		FlexKit::Event mouseEvent;
-		mouseEvent.InputSource  = FlexKit::Event::Mouse;
-		mouseEvent.Action       = FlexKit::Event::Release;
-		mouseEvent.mType        = FlexKit::Event::Input;
+		mouseEvent.InputSource	= FlexKit::Event::Mouse;
+		mouseEvent.Action		= FlexKit::Event::Release;
+		mouseEvent.mType		= FlexKit::Event::Input;
 
 		mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSERIGHT;
 		hud.HandleInput(mouseEvent);
@@ -187,16 +198,16 @@ void EditorVewportTranslationMode::DrawImguI()
 	ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
 
 	FlexKit::CameraComponent::GetComponent().GetCamera(viewportCamera).UpdateMatrices();
-	auto& camera                = FlexKit::CameraComponent::GetComponent().GetCamera(viewportCamera);
-	const float4x4 view         = camera.View.Transpose();
-	const float4x4 projection   = camera.Proj;
-	const float4x4 grid         = float4x4{   1,   0,   0,   0,
+	auto& camera				= FlexKit::CameraComponent::GetComponent().GetCamera(viewportCamera);
+	const float4x4 view			= camera.View.Transpose();
+	const float4x4 projection	= camera.Proj;
+	const float4x4 grid			= float4x4{   1,   0,   0,   0,
 											  0,   1,   0,   0,
 											  0,   0,   1,   0,
 											  0,   0,   0,   1  };
 
-	QPoint globalCursorPos      = QCursor::pos();
-	const auto localPosition    = renderWindow->mapFromGlobal(globalCursorPos);
+	QPoint globalCursorPos		= QCursor::pos();
+	const auto localPosition	= renderWindow->mapFromGlobal(globalCursorPos);
 
 	if (localPosition.x() >= 0 && localPosition.y() >= 0 &&
 		localPosition.x() * 1.5f < io.DisplaySize.x  &&
@@ -208,13 +219,69 @@ void EditorVewportTranslationMode::DrawImguI()
 
 		if (selection.viewportObjects.size())
 		{
-			auto& gameObject = selection.viewportObjects.front()->gameObject;
+			auto& viewportObject	= selection.viewportObjects.front();
+			auto& gameObject		= viewportObject->gameObject;
 
-			float4x4 wt     = FlexKit::GetWT(gameObject).Transpose();
-			float4x4 delta  = float4x4::Identity();
+			float4x4 initial	= FlexKit::GetWT(gameObject);
+			float4x4 wt			= initial.Transpose();
+			float4x4 delta		= float4x4::Identity();
 
 			if (ImGuizmo::Manipulate(view, projection, manipulatorState, mode, wt, delta))
+			{
+				auto& object = GetCurrentState();
+				if (object.stateID != GetTypeGUID(TransformOP) || object.userID != viewportObject->objectID)
+				{
+					ObjectState state{
+						.stateID	= GetTypeGUID(TransformOP),
+						.userID		= viewportObject->objectID,
+
+						.undo = [initial, &gameObject]()
+						{
+							const std::string text = fmt::format("\nWT\n{}, {}, {}, {}, \n{}, {}, {}, {}, \n{}, {}, {}, {},\n{}, {}, {}, {} ]\n",
+								initial[0][0], initial[0][1], initial[0][2], initial[0][3],
+								initial[1][0], initial[1][1], initial[1][2], initial[1][3],
+								initial[2][0], initial[2][1], initial[2][2], initial[2][3],
+								initial[3][0], initial[3][1], initial[3][2], initial[3][3]);
+
+							fmt::print("Undoing Transform, previous WT: \n{}\n", text);
+
+							FlexKit::SetWT(gameObject, initial.Transpose());
+						},
+						.redo = [wt, &gameObject]()
+						{
+							const std::string text = fmt::format("\nWT\n{}, {}, {}, {}, \n{}, {}, {}, {}, \n{}, {}, {}, {},\n{}, {}, {}, {} ]\n",
+								wt[0][0], wt[0][1], wt[0][2], wt[0][3],
+								wt[1][0], wt[1][1], wt[1][2], wt[1][3],
+								wt[2][0], wt[2][1], wt[2][2], wt[2][3],
+								wt[3][0], wt[3][1], wt[3][2], wt[3][3]);
+
+							fmt::print("Undoing Transform, previous WT: \n{}\n", text);
+
+							FlexKit::SetWT(gameObject, wt);
+						}
+					};
+					PushState(std::move(state));
+				}
+				else if(object.stateID == GetTypeGUID(TransformOP) &&
+						object.userID == viewportObject->objectID)
+				{
+					GetCurrentState().redo =
+						[&gameObject, wt]()
+						{
+							const std::string text = fmt::format("\nWT\n{}, {}, {}, {}, \n{}, {}, {}, {}, \n{}, {}, {}, {},\n{}, {}, {}, {} ]\n",
+								wt[0][0], wt[0][1], wt[0][2], wt[0][3],
+								wt[1][0], wt[1][1], wt[1][2], wt[1][3],
+								wt[2][0], wt[2][1], wt[2][2], wt[2][3],
+								wt[3][0], wt[3][1], wt[3][2], wt[3][3]);
+
+							fmt::print("Undoing Transform, previous WT: \n{}\n", text);
+
+							FlexKit::SetWT(gameObject, wt);
+						};
+				}
+
 				FlexKit::SetWT(gameObject, wt);
+			}
 
 			const std::string text = fmt::format("\nWT\n{}, {}, {}, {}, \n{}, {}, {}, {}, \n{}, {}, {}, {},\n{}, {}, {}, {} ]\n",
 										wt[0][0], wt[0][1], wt[0][2], wt[0][3],
@@ -239,14 +306,14 @@ void EditorVewportTranslationMode::DrawImguI()
 
 
 EditorVewportSelectionMode::EditorVewportSelectionMode(
-	SelectionContext&               IN_selection,
-	std::shared_ptr<ViewportScene>& IN_scene,
-	DXRenderWindow*                 IN_window,
-	FlexKit::CameraHandle           IN_camera) :
-		renderWindow        { IN_window     },
-		viewportCamera      { IN_camera     },
-		selectionContext    { IN_selection  },
-		scene               { IN_scene      } {}
+	SelectionContext&				IN_selection,
+	std::shared_ptr<ViewportScene>&	IN_scene,
+	DXRenderWindow*					IN_window,
+	FlexKit::CameraHandle			IN_camera) :
+		renderWindow	{ IN_window		},
+		viewportCamera	{ IN_camera		},
+		selectionCtx	{ IN_selection	},
+		scene			{ IN_scene		} {}
 
 
 void EditorVewportSelectionMode::mousePressEvent(QMouseEvent* event)
@@ -261,11 +328,11 @@ void EditorVewportSelectionMode::mousePressEvent(QMouseEvent* event)
 		const FlexKit::float2 UV{ XY[0] / float(screenWH[0]), XY[1] / float(screenWH[1]) };
 		const FlexKit::float2 ScreenCoord{ FlexKit::float2{ 2, -2 } * UV + FlexKit::float2{ -1.0f, 1.0f } };
 
-		const auto cameraConstants      = FlexKit::GetCameraConstants(viewportCamera);
-		const auto cameraOrientation    = FlexKit::GetOrientation(FlexKit::GetCameraNode(viewportCamera));
+		const auto cameraConstants		= FlexKit::GetCameraConstants(viewportCamera);
+		const auto cameraOrientation	= FlexKit::GetOrientation(FlexKit::GetCameraNode(viewportCamera));
 
 		const FlexKit::float3 v_dir = cameraOrientation * (Inverse(cameraConstants.Proj) * FlexKit::float4{ ScreenCoord.x, ScreenCoord.y,  1.0f, 1.0f }).xyz().normal();
-		const FlexKit::float3 v_o   = cameraConstants.WPOS.xyz();
+		const FlexKit::float3 v_o	= cameraConstants.WPOS.xyz();
 
 		auto results = scene->RayCast(
 			FlexKit::Ray{
@@ -274,13 +341,43 @@ void EditorVewportSelectionMode::mousePressEvent(QMouseEvent* event)
 
 		if(results.size())
 		{
+			if (auto& obj = GetCurrentState();
+				obj.userID == results.front()->objectID &&
+				obj.stateID == GetTypeGUID(SelectionOP))
+					return;
+
 			ViewportSelection selection;
 			selection.viewportObjects.push_back(results.front());
 			selection.scene = scene.get();
 
-			selectionContext.Clear();
-			selectionContext.selection  = std::move(selection); 
-			selectionContext.type       = ViewportObjectList_ID;
+			ObjectState state = {
+				.stateID	= GetTypeGUID(SelectionOP),
+				.userID		= results.front()->objectID,
+
+				.undo = [&selectionCtx = selectionCtx, prev = selectionCtx.selection, prevID = selectionCtx.type]()
+				{
+					selectionCtx.Clear(false);
+					selectionCtx.selection	= prev;
+					selectionCtx.type		= prevID;
+					selectionCtx.OnChange();
+				},
+
+				.redo = [&selectionCtx = selectionCtx, selection]()
+				{
+					selectionCtx.Clear();
+					selectionCtx.selection	= selection;
+					selectionCtx.type		= ViewportObjectList_ID;
+
+					selectionCtx.OnChange();
+				}
+			};
+
+			PushState(std::move(state));
+
+			selectionCtx.Clear(false);
+			selectionCtx.selection	= std::move(selection);
+			selectionCtx.type		= ViewportObjectList_ID;
+			selectionCtx.OnChange();
 		}
 	}
 }
@@ -303,15 +400,15 @@ void EditorVewportSelectionMode::DrawImguI()
 
 
 EditorVewportPanMode::EditorVewportPanMode(
-	SelectionContext&               IN_selection,
-	std::shared_ptr<ViewportScene>& IN_scene,
-	DXRenderWindow*                 IN_window,
-	FlexKit::CameraHandle           IN_camera,
-	ViewportMode_ptr                IN_previous) :
-		selectionContext    { IN_selection  },
-		scene               { IN_scene      },
-		viewportCamera      { IN_camera     },
-		renderWindow        { IN_window     },
+	SelectionContext&				IN_selection,
+	std::shared_ptr<ViewportScene>&	IN_scene,
+	DXRenderWindow*					IN_window,
+	FlexKit::CameraHandle			IN_camera,
+	ViewportMode_ptr				IN_previous) :
+		selectionContext	{ IN_selection	},
+		scene				{ IN_scene		},
+		viewportCamera		{ IN_camera		},
+		renderWindow		{ IN_window		},
 		previous{ IN_previous }  {}
 
 
@@ -334,12 +431,12 @@ void EditorVewportPanMode::keyPressEvent(QKeyEvent* event)
 
 			const FlexKit::Camera c = FlexKit::CameraComponent::GetComponent().GetCamera(viewportCamera);
 
-			const auto target           = aabb.MidPoint();
-			const auto desiredDistance  = (2.0f / std::sqrt(2.0f)) * aabb.Span().magnitude() / std::tan(c.FOV);
+			const auto target		= aabb.MidPoint();
+			const auto desiredDistance		= (2.0f / std::sqrt(2.0f)) * aabb.Span().magnitude() / std::tan(c.FOV);
 
-			auto position_VS        = c.View.Transpose() * float4 { target, 1 };
-			auto updatedPosition_WS = c.IV.Transpose() * float4 { position_VS.x, position_VS.y, position_VS.z + desiredDistance, 1 };
-			const auto node         = FlexKit::GetCameraNode(viewportCamera);
+			auto position_VS			= c.View.Transpose() * float4 { target, 1 };
+			auto updatedPosition_WS		= c.IV.Transpose() * float4 { position_VS.x, position_VS.y, position_VS.z + desiredDistance, 1 };
+			const auto node		= FlexKit::GetCameraNode(viewportCamera);
 
 			FlexKit::SetPositionW(node, updatedPosition_WS.xyz());
 			FlexKit::MarkCameraDirty(viewportCamera);
@@ -360,8 +457,8 @@ void EditorVewportPanMode::mouseMoveEvent(QMouseEvent* event)
 			FlexKit::int2 newPosition{ event->pos().x(), event->pos().y() };
 			FlexKit::int2 deltaPosition = previousMousePosition - newPosition;
 
-			const auto node   = FlexKit::GetCameraNode(viewportCamera);
-			const auto q      = FlexKit::GetOrientation(node);
+			const auto node	= FlexKit::GetCameraNode(viewportCamera);
+			const auto q		= FlexKit::GetOrientation(node);
 
 			FlexKit::TranslateWorld(node, q * float3(deltaPosition[0] * 1.0f / 60.0f * panSpeed, -deltaPosition[1] * 1.0f / 60.0f * panSpeed, 0));
 
@@ -378,10 +475,10 @@ void EditorVewportPanMode::mouseMoveEvent(QMouseEvent* event)
 			const FlexKit::int2 newPosition{ event->pos().x(), event->pos().y() };
 			const FlexKit::int2 deltaPosition = previousMousePosition - newPosition;
 
-			const auto  node   = FlexKit::GetCameraNode(viewportCamera);
-			const auto  q      = FlexKit::GetOrientation(node);
-			const float x      = float(deltaPosition[0]);
-			const float y      = float(deltaPosition[1]);
+			const auto  node	= FlexKit::GetCameraNode(viewportCamera);
+			const auto  q		= FlexKit::GetOrientation(node);
+			const float x		= float(deltaPosition[0]);
+			const float y		= float(deltaPosition[1]);
 
 			FlexKit::Yaw(node, x / 1000.0f);
 			FlexKit::Pitch(node, y / 1000.0f);
@@ -402,8 +499,8 @@ void EditorVewportPanMode::mouseReleaseEvent(QMouseEvent* event)
 
 void EditorVewportPanMode::wheelEvent(QWheelEvent* event)
 {
-	const auto node = FlexKit::GetCameraNode(viewportCamera);
-	const auto q    = FlexKit::GetOrientation(node);
+	const auto node	= FlexKit::GetCameraNode(viewportCamera);
+	const auto q	= FlexKit::GetOrientation(node);
 
 	FlexKit::TranslateWorld(node, q * float3{ 0, 0, event->angleDelta().x() / -100.0f });
 	MarkCameraDirty(viewportCamera);
@@ -429,13 +526,13 @@ void EditorVewportPanMode::Draw(FlexKit::UpdateDispatcher& dispatcher, FlexKit::
 
 EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN_context, QWidget *parent)
 	: QWidget{ parent }
-	, hud                 { IN_renderer.GetRenderSystem(), FlexKit::SystemAllocator }
-	, menuBar             { new QMenuBar{ this } }
-	, renderer            { IN_renderer }
-	, gbuffer             { { 100, 200 }, IN_renderer.framework.GetRenderSystem() }
-	, depthBuffer         { IN_renderer.framework.GetRenderSystem(), { 100, 200 } }
-	, viewportCamera      { FlexKit::CameraComponent::GetComponent().CreateCamera() }
-	, selectionContext    { IN_context }
+	, hud				{ IN_renderer.GetRenderSystem(), FlexKit::SystemAllocator }
+	, menuBar			{ new QMenuBar{ this } }
+	, renderer			{ IN_renderer }
+	, gbuffer			{ { 100, 200 }, IN_renderer.framework.GetRenderSystem() }
+	, depthBuffer		{ IN_renderer.framework.GetRenderSystem(), { 100, 200 } }
+	, viewportCamera	{ FlexKit::CameraComponent::GetComponent().CreateCamera() }
+	, selectionContext	{ IN_context }
 {
 	ui.setupUi(this);
 
@@ -446,12 +543,14 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
 	setMinimumSize(100, 100);
 	setMaximumSize({ 1024 * 16, 1024 * 16 });
 
-	auto scene      = menuBar->addMenu("Scene");
-	auto saveScene  = scene->addAction("Save");
+	auto scene		= menuBar->addMenu("Scene");
+	auto saveScene	= scene->addAction("Save");
 	saveScene->connect(saveScene, &QAction::triggered, this, &EditorViewport::SaveScene);
 
-	auto file           = menuBar->addMenu("Add");
-	auto addGameObject  = file->addAction("Empty GameObject");
+	auto objectMenu		= menuBar->addMenu("Object");
+	auto addMenu		= objectMenu->addMenu("Add");
+
+	auto addGameObject	= addMenu->addAction("Empty GameObject");
 
 	addGameObject->connect(addGameObject, &QAction::triggered,
 		[&]
@@ -461,10 +560,39 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
 			if (scene == nullptr)
 				return;
 
-			scene->CreateObject();
+			auto obj = scene->CreateObject();
+
+			struct SharedState
+			{
+				DeletionHandle handle;
+			};
+
+			auto sharedState = std::make_shared<SharedState>();
+
+			ObjectState objState{
+				.stateID	= GetCRCGUID(AddGameObject),
+				.userID		= obj->objectID,
+
+				.undo = [sharedState, this, obj]() mutable
+				{
+					if (sharedState->handle)
+						sharedState->handle.UndoDelete();
+					else
+						sharedState->handle = GetScene()->RemoveObject(obj);
+				},
+				.redo = [sharedState, this]() mutable
+				{
+					if(sharedState->handle)
+						sharedState->handle.RedoDelete();
+					else
+						FK_LOG_ERROR("!!!!! redoing a creation object action that was never undone!");
+				}
+			};
+
+			PushState(std::move(objState));
 		});
 
-	auto addLight = file->addAction("Point Light");
+	auto addLight = addMenu->addAction("Point Light");
 	addLight->connect(addLight, &QAction::triggered,
 		[&]
 		{
@@ -473,15 +601,56 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
 			if (scene == nullptr)
 				return;
 
-			ViewportGameObject_ptr viewportObject = scene->CreateObject();
+			ViewportGameObject_ptr obj = scene->CreateObject();
 
-			viewportObject->gameObject.AddView<FlexKit::SceneNodeView<>>();
-			viewportObject->gameObject.AddView<FlexKit::PointLightView>(float3{ 1, 1, 1 }, 10, 10);
+			obj->gameObject.AddView<FlexKit::SceneNodeView<>>();
+			obj->gameObject.AddView<FlexKit::PointLightView>(float3{ 1, 1, 1 }, 10, 10);
 
-			scene->scene.AddGameObject(*viewportObject, FlexKit::GetSceneNode(*viewportObject));
+			scene->scene.AddGameObject(*obj, FlexKit::GetSceneNode(*obj));
 
-			FlexKit::SetBoundingSphereFromLight(*viewportObject);
+			FlexKit::SetBoundingSphereFromLight(*obj);
+
+			struct SharedState
+			{
+				DeletionHandle handle;
+			};
+
+			auto sharedState = std::make_shared<SharedState>();
+
+			ObjectState objState{
+				.stateID	= GetCRCGUID(AddGameObject),
+				.userID		= obj->objectID,
+
+				.undo = [sharedState, this, obj]() mutable
+				{
+					if (sharedState->handle)
+					{
+						sharedState->handle.RedoDelete();
+					}
+					else
+						sharedState->handle = GetScene()->RemoveObject(obj);
+				},
+				.redo = [sharedState, this, obj]() mutable
+				{
+					if (sharedState->handle)
+					{
+						sharedState->handle.UndoDelete();
+						FlexKit::SetBoundingSphereFromLight(*sharedState->handle.GetObj());
+					}
+					else
+						FK_LOG_ERROR("!!!!! redoing a creation object action that was never undone!");
+				}
+			};
+
+			PushState(std::move(objState));
 		});
+
+	auto deleteItem = objectMenu->addAction("Delete");
+	addLight->connect(deleteItem, &QAction::triggered,
+		[&]{
+			DeleteSelectionItem();
+		});
+
 
 	auto debugMenu = menuBar->addMenu("Debug");
 	auto reloadShaders = debugMenu->addAction("ReloadShaders");
@@ -494,8 +663,8 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
 			IN_renderer.framework.GetRenderSystem().QueuePSOLoad(FlexKit::CREATECLUSTERS);
 		});
 
-	auto viewMenu       = menuBar->addMenu("View");
-	auto overlayToggle  = viewMenu->addAction("Toggle Overlay");
+	auto viewMenu		= menuBar->addMenu("View");
+	auto overlayToggle	= viewMenu->addAction("Toggle Overlay");
 	overlayToggle->setChecked(true);
 	overlayToggle->setCheckable(true);
 
@@ -525,6 +694,9 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
 
 	auto& RS = IN_renderer.GetRenderSystem();
 	RS.RegisterPSOLoader(FlexKit::DRAW_LINE3D_PSO, { &RS.Library.RS6CBVs4SRVs, FlexKit::CreateDraw2StatePSO });
+
+	auto undoHotKey = new QShortcut(QKeySequence(QKeySequence::Delete), this);
+	connect(undoHotKey, &QShortcut::activated, [&]() { DeleteSelectionItem(); });
 
 	gbufferPass =
 		[]
@@ -604,26 +776,26 @@ FlexKit::TriMeshHandle EditorViewport::LoadTriMeshResource(ProjectResource_ptr r
 struct LoadEntityContext : public LoadEntityContextInterface
 {
 	LoadEntityContext(
-		std::vector<FlexKit::NodeHandle>&   IN_nodes,
-		EditorScene_ptr                     IN_viewportscene,
-		EditorViewport&                     IN_viewport,
+		std::vector<FlexKit::NodeHandle>&	IN_nodes,
+		EditorScene_ptr						IN_viewportscene,
+		EditorViewport&						IN_viewport,
 		ViewportScene&						IN_scene,
-		FlexKit::GameObject&                IN_gameObject,
-		FlexKit::MaterialHandle             IN_defaultMaterial)
-		: nodes             { IN_nodes              }
-		, viewportscene     { IN_viewportscene      }
-		, viewport          { IN_viewport           }
-		, scene             { IN_scene              }
-		, gameObject        { IN_gameObject         }
-		, defaultMaterial   { IN_defaultMaterial    } {}
+		FlexKit::GameObject&				IN_gameObject,
+		FlexKit::MaterialHandle				IN_defaultMaterial)
+		: nodes				{ IN_nodes				}
+		, viewportscene		{ IN_viewportscene		}
+		, viewport			{ IN_viewport			}
+		, scene				{ IN_scene				}
+		, gameObject		{ IN_gameObject			}
+		, defaultMaterial	{ IN_defaultMaterial	} {}
 
 
-	std::vector<FlexKit::NodeHandle>&   nodes;
-	EditorScene_ptr                     viewportscene;
-	EditorViewport&                     viewport;
+	std::vector<FlexKit::NodeHandle>&	nodes;
+	EditorScene_ptr						viewportscene;
+	EditorViewport&						viewport;
 	ViewportScene&						scene;
-	FlexKit::GameObject&                gameObject;
-	FlexKit::MaterialHandle             defaultMaterial;
+	FlexKit::GameObject&				gameObject;
+	FlexKit::MaterialHandle				defaultMaterial;
 
 	FlexKit::GameObject& GameObject() override
 	{
@@ -698,11 +870,11 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
 
 	for (auto& dependantResource : newScene->sceneResources)
 	{
-		auto blob   = dependantResource->resource->CreateBlob();
-		auto buffer = blob.buffer;
+		auto blob	= dependantResource->resource->CreateBlob();
+		auto buffer	= blob.buffer;
 
-		blob.buffer     = nullptr;
-		blob.bufferSize = 0;
+		blob.buffer		= nullptr;
+		blob.bufferSize	= 0;
 
 		FlexKit::AddAssetBuffer((Resource*)buffer);
 	}
@@ -713,8 +885,8 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
 		auto newNode = FlexKit::GetZeroedNode();
 		nodes.push_back(newNode);
 
-		const auto position     = node.position;
-		const auto orientation  = node.orientation;
+		const auto position		= node.position;
+		const auto orientation	= node.orientation;
 
 		FlexKit::SetScale(newNode, float3{ node.scale.x, node.scale.x, node.scale.x });
 		FlexKit::SetOrientationL(newNode, orientation);
@@ -751,8 +923,74 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
 	}
 
 	scene = viewportScene;
+	sceneChangeSlot();
 }
 
+
+/************************************************************************************************/
+
+
+std::shared_ptr<ViewportScene>& EditorViewport::GetScene()
+{
+	return scene;
+}
+
+
+/************************************************************************************************/
+
+
+SelectionContext& EditorViewport::GetSelectionContext()
+{
+	return selectionContext;
+}
+
+
+/************************************************************************************************/
+
+
+void EditorViewport::PushMode(ViewportMode_ptr newMode)
+{
+	if (mode.empty() || newMode->GetModeID() != mode.back()->GetModeID())
+		mode.push_back(newMode);
+}
+
+
+/************************************************************************************************/
+
+
+void EditorViewport::PopMode()
+{
+	if(mode.size())
+		mode.pop_back();
+}
+
+
+/************************************************************************************************/
+
+
+void EditorViewport::ClearMode()
+{
+	while (mode.size())
+		mode.pop_back();
+}
+
+
+/************************************************************************************************/
+
+
+void EditorViewport::ClearSelection()
+{
+	selectionContext.Clear();
+}
+
+
+/************************************************************************************************/
+
+
+FlexKit::ImGUIIntegrator& EditorViewport::GetHUD()
+{
+	return hud;
+}
 
 /************************************************************************************************/
 
@@ -780,10 +1018,46 @@ FlexKit::Ray EditorViewport::GetMouseRay() const
 /************************************************************************************************/
 
 
+FlexKit::uint2	EditorViewport::WH() const noexcept
+{
+	return renderWindow->WH();
+}
+
+
+/************************************************************************************************/
+
+
+FlexKit::CameraHandle EditorViewport::GetViewportCamera() const noexcept
+{
+	return viewportCamera;
+}
+
+
+/************************************************************************************************/
+
+
 void EditorViewport::keyPressEvent(QKeyEvent* evt)
 {
 	if (!scene)
 		return;
+
+	auto setManipulator =
+		[&](ImGuizmo::OPERATION op)
+		{
+			if (mode.size() != 0 && !(mode.back()->GetModeID() == VewportSelectionModeID || mode.back()->GetModeID() == VewportPanModeID))
+			{
+				mode.back()->keyPressEvent(evt);
+				return;
+			}
+			else if ((mode.size() && mode.back()->GetModeID() == TranslationModeID))
+				mode.back()->keyPressEvent(evt);
+			else if (mode.size() == 0 || !(mode.size() && mode.back()->GetModeID() != TranslationModeID))
+			{
+				auto _ptr = std::make_shared<EditorVewportTranslationMode>(selectionContext, renderWindow, *this, viewportCamera, hud);
+				_ptr->manipulatorState = op;
+				mode.emplace_back(std::static_pointer_cast<IEditorViewportMode>(_ptr));
+			}
+		};
 
 	switch (evt->key())
 	{
@@ -791,7 +1065,7 @@ void EditorViewport::keyPressEvent(QKeyEvent* evt)
 	{
 		if(mode.size())
 			mode.pop_back();
-	}   break;
+	}	break;
 	case Qt::Key_Q:
 	{
 		if ((mode.size() && mode.back()->GetModeID() == VewportSelectionModeID))
@@ -799,23 +1073,18 @@ void EditorViewport::keyPressEvent(QKeyEvent* evt)
 		else if(mode.size() == 0 || !(mode.size() && mode.back()->GetModeID() != VewportSelectionModeID))
 			mode.emplace_back(std::static_pointer_cast<IEditorViewportMode>(
 				std::make_shared<EditorVewportSelectionMode>(selectionContext, scene, renderWindow, viewportCamera)));
-	}   break;
+	}	break;
 	case Qt::Key_W:
+		setManipulator(ImGuizmo::OPERATION::TRANSLATE);
+		break;
 	case Qt::Key_E:
+		setManipulator(ImGuizmo::OPERATION::SCALE);
+		break;
 	case Qt::Key_R:
-	{
-		if (mode.size() != 0 && !(mode.back()->GetModeID() == VewportSelectionModeID || mode.back()->GetModeID() == VewportPanModeID))
-			goto A;
-		if ((mode.size() && mode.back()->GetModeID() == TranslationModeID))
-			mode.back()->keyPressEvent(evt);
-		else if (mode.size() == 0 || !(mode.size() && mode.back()->GetModeID() != TranslationModeID))
-			mode.emplace_back(std::static_pointer_cast<IEditorViewportMode>(
-				std::make_shared<EditorVewportTranslationMode>(selectionContext, renderWindow, viewportCamera, hud)));
-
-	}   break;
+		setManipulator(ImGuizmo::OPERATION::ROTATE);
+		break;
 	default:
 	{
-		A:
 		if (mode.size())
 			mode.back()->keyPressEvent(evt);
 	}   break;
@@ -833,6 +1102,9 @@ void EditorViewport::keyReleaseEvent(QKeyEvent* evt)
 
 	switch (evt->key())
 	{
+	case Qt::Key_Delete:
+		DeleteSelectionItem();
+		break;
 	default:
 		if (mode.size())
 			mode.back()->keyReleaseEvent(evt);
@@ -897,7 +1169,54 @@ void EditorViewport::mouseReleaseEvent(QMouseEvent* evt)
 
 void EditorViewport::SaveScene()
 {
+	if (!scene)
+		return;
+
 	GetScene()->Update();
+}
+
+
+/************************************************************************************************/
+
+
+void EditorViewport::DeleteSelectionItem()
+{
+	if (selectionContext.GetSelectionType() == ViewportObjectList_ID)
+	{
+		auto selection	= selectionContext.GetSelection<ViewportSelection>();
+		auto& obj		= selection.viewportObjects.front();
+
+		auto bs		= FlexKit::GetBoundingSphere(obj->gameObject);
+		auto handle = scene->RemoveObject(obj);
+
+		ObjectState objState{
+			.stateID	= GetCRCGUID(ViewportDelete),
+			.userID		= obj->objectID,
+
+			.undo = [handle, bs, this, selection]() mutable
+			{
+				handle.UndoDelete();
+
+				if (auto obj_ptr = handle.GetObj(); obj_ptr)
+					FlexKit::SetBoundingSphere(obj_ptr->gameObject, bs);
+
+				selectionContext.Clear();
+				selectionContext.selection	= selection;
+				selectionContext.type		= ViewportObjectList_ID;
+
+				selectionContext.OnChange();
+			},
+			.redo = [handle, this]() mutable
+			{
+				handle.RedoDelete();
+				selectionContext.Clear();
+			}
+		};
+
+		PushState(std::move(objState));
+
+		selectionContext.Clear();
+	}
 }
 
 
@@ -934,10 +1253,10 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 	{
 		allocator.clear();
 
-		auto& physXUpdate       = renderer.UpdatePhysx(dispatcher, dT);
-		auto& transforms        = QueueTransformUpdateTask(dispatcher);
-		auto& cameras           = FlexKit::CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
-		auto& cameraConstants   = FlexKit::MakeHeapCopy(FlexKit::Camera::ConstantBuffer{}, allocator);
+		auto& physXUpdate		= renderer.UpdatePhysx(dispatcher, dT);
+		auto& transforms		= QueueTransformUpdateTask(dispatcher);
+		auto& cameras			= FlexKit::CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
+		auto& cameraConstants	= FlexKit::MakeHeapCopy(FlexKit::Camera::ConstantBuffer{}, allocator);
 
 		transforms.AddInput(physXUpdate);
 		depthBuffer.Increment();
@@ -947,30 +1266,30 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 		FlexKit::ClearBackBuffer(frameGraph, renderTarget);
 
 		FlexKit::WorldRender_Targets targets {
-			.RenderTarget   = renderTarget,
-			.DepthTarget    = depthBuffer,
+			.RenderTarget	= renderTarget,
+			.DepthTarget	= depthBuffer,
 		};
 
 		FlexKit::DrawSceneDescription sceneDesc =
 		{
-			.camera = viewportCamera,
-			.scene  = scene->scene,
-			.dt     = dT,
-			.t      = T,
+			.camera	= viewportCamera,
+			.scene	= scene->scene,
+			.dt		= dT,
+			.t		= T,
 
-			.gbuffer    = gbuffer,
-			.reserveVB  = temporaries.ReserveVertexBuffer,
-			.reserveCB  = temporaries.ReserveConstantBuffer,
+			.gbuffer	= gbuffer,
+			.reserveVB	= temporaries.ReserveVertexBuffer,
+			.reserveCB	= temporaries.ReserveConstantBuffer,
 
-			.debugDisplay   = FlexKit::DebugVisMode::Disabled,
-			.BVHVisMode     = FlexKit::BVHVisMode::BoundingVolumes,
-			.debugDrawMode  = FlexKit::ClusterDebugDrawMode::Clusters,
+			.debugDisplay	= FlexKit::DebugVisMode::Disabled,
+			.BVHVisMode		= FlexKit::BVHVisMode::BoundingVolumes,
+			.debugDrawMode	= FlexKit::ClusterDebugDrawMode::Clusters,
 
-			.transformDependency    = transforms,
-			.cameraDependency       = cameras,
+			.transformDependency	= transforms,
+			.cameraDependency		= cameras,
 
-			.additionalGbufferPasses    = {},
-			.additionalShadowPasses     = {}
+			.additionalGbufferPasses	= {},
+			.additionalShadowPasses		= {}
 		};
 
 		renderer.csgRender.Render(
@@ -983,12 +1302,12 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 		auto drawSceneRes = renderer.worldRender.DrawScene(dispatcher, frameGraph, sceneDesc, targets, FlexKit::SystemAllocator, allocator);
 
 		EditorViewport::DrawSceneOverlay_Desc desc{
-			.brushes        = drawSceneRes.passes.GetData().solid,
-			.lights         = drawSceneRes.pointLights,
+			.brushes		= drawSceneRes.passes.GetData().solid,
+			.lights			= drawSceneRes.pointLights,
 
-			.buffers        = temporaries,
-			.renderTarget   = renderTarget,
-			.allocator      = allocator
+			.buffers		= temporaries,
+			.renderTarget	= renderTarget,
+			.allocator		= allocator
 		};
 
 		if(overlayEnabled)
@@ -1122,8 +1441,8 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 					FlexKit::float2 UV;
 				};
 
-				const float3 position   = FlexKit::GetPositionW(pointLightComponnet[lightHandle].Position);
-				const float radius      = pointLightComponnet[lightHandle].R;
+				const float3 position	= FlexKit::GetPositionW(pointLightComponnet[lightHandle].Position);
+				const float radius		= pointLightComponnet[lightHandle].R;
 
 				const size_t divisions  = 64;
 				FlexKit::VBPushBuffer VBBuffer   = data.ReserveVertexBuffer(sizeof(Vertex) * 6 * divisions);
@@ -1157,13 +1476,13 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 				ctx.SetVertexBuffers({ vertices });
 
 				struct {
-					float4     unused1;
-					float4     unused2;
-					float4x4   transform;
+					float4		unused1;
+					float4		unused2;
+					float4x4	transform;
 				} CB_Data {
-					.unused1    = float4{ 1, 1, 1, 1 },
-					.unused2    = float4{ 1, 1, 1, 1 },
-					.transform  = FlexKit::TranslationMatrix(position)
+					.unused1	= float4{ 1, 1, 1, 1 },
+					.unused2	= float4{ 1, 1, 1, 1 },
+					.transform	= FlexKit::TranslationMatrix(position)
 				};
 
 				auto constantBuffer = data.ReserveConstantBuffer(256);
@@ -1207,11 +1526,11 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 						continue;
 
 
-					const auto      node        = FlexKit::GetSceneNode(object->gameObject);
-					const auto      BS          = FlexKit::GetBoundingSphereFromMesh(object->gameObject);
-					const auto      Q           = FlexKit::GetOrientation(node);
-					const float4    position    = float4(BS.xyz(), 0);
-					const auto      radius      = BS.w;
+					const auto		node		= FlexKit::GetSceneNode(object->gameObject);
+					const auto		BS			= FlexKit::GetBoundingSphereFromMesh(object->gameObject);
+					const auto		Q			= FlexKit::GetOrientation(node);
+					const float4	position	= float4(BS.xyz(), 0);
+					const auto		radius		= BS.w;
 
 					Vertex vertices[] = {
 						// Top
@@ -1265,13 +1584,13 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 					ctx.SetVertexBuffers({ vbDataSet });
 
 					struct {
-						float4     unused1;
-						float4     unused2;
-						float4x4   transform;
+						float4		unused1;
+						float4		unused2;
+						float4x4	transform;
 					} CB_Data {
-						.unused1    = float4{ 1, 1, 1, 1 },
-						.unused2    = float4{ 1, 1, 1, 1 },
-						.transform  = GetWT(node).Transpose()
+						.unused1	= float4{ 1, 1, 1, 1 },
+						.unused2	= float4{ 1, 1, 1, 1 },
+						.transform	= GetWT(node).Transpose()
 					};
 
 					auto constantBuffer = data.ReserveConstantBuffer(256);

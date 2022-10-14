@@ -2,14 +2,18 @@
 #include "EditorMainWindow.h"
 #include "DXRenderWindow.h"
 
+#include "EditorProject.h"
 #include "EditorPrefabEditor.h"
 #include "EditorCodeEditor.h"
 #include "EditorOutputWindow.h"
 #include "EditorOutliner.h"
 #include "EditorViewport.h"
+#include "EditorRenderer.h"
+#include "EditorUndoRedo.h"
 
-#include <QtWidgets/qmenubar.h>
 #include <chrono>
+#include <QShortcut.h>
+#include <QtWidgets/qmenubar.h>
 
 
 using namespace std::chrono_literals;
@@ -29,6 +33,7 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
 	tabBar          { new QTabWidget{} }
 {
 	fileMenu       = menuBar()->addMenu("File");
+	editMenu       = menuBar()->addMenu("Edit");
 	importMenu     = fileMenu->addMenu("Import");
 	exportMenu     = fileMenu->addMenu("Export");
 
@@ -65,6 +70,18 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
 
 	auto tools = menuBar()->addMenu("Tools");
 	gadgetMenu = tools->addMenu("Scripts");
+
+	auto undo = editMenu->addAction("Undo");
+	connect(undo, &QAction::triggered, []() { Undo(); });
+
+	auto redo = editMenu->addAction("Redo");
+	connect(redo, &QAction::triggered, []() { Redo(); });
+
+	auto undoHotKey = new QShortcut(QKeySequence(tr("Ctrl+Z", "Edit|Undo")), this);
+	connect(undoHotKey, &QShortcut::activated, [&]() { Undo(); });
+
+	auto redoHotKey = new QShortcut(QKeySequence(tr("Ctrl+Y", "Edit|Redo")), this);
+	connect(redoHotKey, &QShortcut::activated, []() { Redo(); });
 
 	auto timer = new QTimer{ this };
 	connect(timer, &QTimer::timeout, this, &EditorMainWindow::Update);

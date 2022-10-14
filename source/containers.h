@@ -1,5 +1,4 @@
-#ifndef CONTAINERS_H
-#define CONTAINERS_H
+#pragma once
 
 #include "buildsettings.h"
 #include "memoryutilities.h"
@@ -1148,11 +1147,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	template<typename Ty, int SIZE = 64>
+	template<typename Ty, int SIZE = 64, int Alignment = 16>
 	struct CircularBuffer
 	{
 		CircularBuffer() : _Head(0), _Size(0)
-		{}
+		{
+			for (auto& e : Buffer)
+				new(&e) Ty{};
+		}
 
 
 		~CircularBuffer()
@@ -1214,9 +1216,9 @@ namespace FlexKit
 			//	FK_ASSERT("BUFFER EMPTY!");
 
 
-			Ty Out = front();
+			Ty Out = std::move(front());
 			_Size = FlexKit::Max(--_Size, 0);
-			return Out;
+			return std::move(Out);
 		}
 
 		Ty pop_back() noexcept
@@ -1225,10 +1227,10 @@ namespace FlexKit
 			//	FK_ASSERT("BUFFER EMPTY!");
 
 
-			Ty Out = back();
+			Ty Out = std::move(back());
 			_Size = FlexKit::Max(--_Size, 0);
 			_Head = (SIZE + --_Head) % SIZE;
-			return Out;
+			return std::move(Out);
 		}
 
 		bool push_back(const Ty& Item) noexcept
@@ -1326,6 +1328,47 @@ namespace FlexKit
 			return true;
 		}
 
+		void push_front(const Ty& Item) noexcept
+		{
+			if (_Size + 1 > SIZE)// Call Destructor on Head
+			{
+				front().~Ty();
+			}
+
+			_Size = Min(++_Size, SIZE);
+			const size_t idx = (SIZE + _Head - _Size) % SIZE;
+			new (Buffer + idx) Ty{ Item };
+		}
+
+		template<typename FN>
+		void push_front(const Ty& Item, FN callOnTail) noexcept
+		{
+			if (_Size + 1 > SIZE)// Call Destructor on Head
+			{
+				front().~Ty();
+				callOnTail(front());
+			}
+
+			_Size = Min(++_Size, SIZE);
+			const size_t idx = (SIZE + _Head - _Size) % SIZE;
+			new (Buffer + idx) Ty{ Item };
+		}
+
+		template<typename ... TY_args>
+		void emplace_front(TY_args&& ... args) noexcept
+		{
+			if (_Size + 1 > SIZE)// Call Destructor on Head
+			{
+				front().~Ty();
+				callOnTail(front());
+			}
+
+			_Size = Min(++_Size, SIZE);
+			const size_t idx = (SIZE + _Head - _Size) % SIZE;
+
+			new (Buffer + idx) Ty{ std::forward<TY_args>(args)... };
+		}
+
 		Ty& front() noexcept
 		{
 			return Buffer[(SIZE + _Head - _Size) % SIZE];
@@ -1347,21 +1390,29 @@ namespace FlexKit
 				return Buffer->at(Idx);
 			}
 
+			Ty* operator -> ()
+			{
+				return &Buffer->at(Idx);
+			}
+
 			bool operator <		(CircularIterator rhs) { return Idx < rhs.Idx; }
 			bool operator ==	(CircularIterator rhs) { return Idx == rhs.Idx; }
 
 			bool operator !=	(CircularIterator rhs) { return !(*this == rhs); }
 
 
-			void Increment()
+			void Increment(int n = 1)
 			{
-				Idx++;
+				Idx += n;
 			}
 
-			void Decrement()
+			void Decrement(int n = 1)
 			{
-				Idx--;
+				Idx -= n;
 			}
+
+			CircularIterator& operator + (int n) { Increment(n); return *this; }
+			CircularIterator& operator - (int n) { Decrement(n); return *this; }
 
 			CircularIterator operator ++ (int) { auto Temp = *this; Increment(); return Temp; }
 			CircularIterator operator ++ () { Increment(); return (*this); }
@@ -1380,21 +1431,29 @@ namespace FlexKit
 				return Buffer->at(Idx);
 			}
 
+			const Ty* operator -> () const
+			{
+				return &Buffer->at(Idx);
+			}
+
 			bool operator <		(Const_CircularIterator rhs) { return Idx < rhs.Idx; }
 			bool operator ==	(Const_CircularIterator rhs) { return Idx == rhs.Idx; }
 
 			bool operator !=	(Const_CircularIterator rhs) { return !(*this == rhs); }
 
 
-			void Increment()
+			void Increment(int n = 1)
 			{
-				Idx++;
+				Idx+= n;
 			}
 
-			void Decrement()
+			void Decrement(int n = 1)
 			{
-				Idx--;
+				Idx-= n;
 			}
+
+			Const_CircularIterator& operator + (int n) { Increment(n); return *this; }
+			Const_CircularIterator& operator - (int n) { Decrement(n); return *this; }
 
 			Const_CircularIterator operator ++ (int) { auto Temp = *this; Increment(); return Temp; }
 			Const_CircularIterator operator ++ () { Increment(); return (*this); }
@@ -1426,7 +1485,7 @@ namespace FlexKit
 		Ty* data() { return Buffer; }
 
 		int _Head, _Size;
-		Ty Buffer[SIZE];
+		alignas(Alignment) Ty Buffer[SIZE];
 	};
 
 	struct test
@@ -2272,8 +2331,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	template<typename FuncSig, unsigned int STORAGESIZE = 64>
-	class TypeErasedCallable
+	template<typename FuncSig, unsigned int STORAGESIZE = 64, unsigned int Alignment = 8>
+	class alignas(Alignment) TypeErasedCallable
 	{
 	private:
 
@@ -2285,143 +2344,186 @@ namespace FlexKit
 		{
 			using TY_Return = TY_R;
 
-			using fnCopy        = void (*)(char* lhs, const char* rhs);
-			using fnMove        = void (*)(char* lhs, char* rhs);
-			using fnProxy       = TY_R (*)(char*, TY_args... args);
-			using fnProxyConst  = TY_R (*)(const char*, TY_args... args);
-			using fnDestructor  = void (*)(char*);
+			using fnCopy		= void (*)(char* lhs, const char* rhs);
+			using fnMove		= void (*)(char* lhs, char* rhs);
+			using fnProxy		= TY_R (*)(char*, TY_args... args);
+			using fnProxyConst	= TY_R (*)(const char*, TY_args... args);
+			using fnDestructor	= void (*)(char*);
 
 			struct VTable
 			{
-				fnCopy          copy;
-				fnMove          move;
-				fnProxy         proxy;
-				fnDestructor    destructor;
+				fnCopy			copy;
+				fnMove			move;
+				fnProxy			proxy;
+				fnDestructor	destructor;
 			};
 
-			template<typename TY_CALLABLE>
-			static auto Assign(void* buffer, TY_CALLABLE& callable)
+			static size_t GetOffset(size_t alignment, const void* _ptr, size_t size)
 			{
-				static_assert(sizeof(TY_CALLABLE) <= STORAGESIZE, "Callable object too large for this TypeErasedCallable!");
+				const size_t offset = alignment - (size_t(_ptr) % alignment);
+				return offset == alignment ? 0 : offset;
+			}
 
-				struct data
-				{
-					TY_CALLABLE callable;
-				};
-
-				new(buffer) data{ callable };
-
+			template<typename TY_CALLABLE>
+			static const VTable* GenerateVTable()
+			{
 				static const VTable sVTable{
 					.copy =
 						[](char* lhs_ptr, const char* rhs_ptr)
 						{
-							const data* rhs = reinterpret_cast<const data*>(rhs_ptr);
-							new(lhs_ptr) data(*rhs);
+							constexpr size_t alignment = std::alignment_of_v<TY_CALLABLE>;
+
+							if constexpr (alignment == 1)
+							{
+								const TY_CALLABLE* rhs = reinterpret_cast<const TY_CALLABLE*>(rhs_ptr);
+								new(lhs_ptr) TY_CALLABLE(*rhs);
+							}
+							else
+							{
+								const TY_CALLABLE* rhs = reinterpret_cast<const TY_CALLABLE*>(rhs_ptr + GetOffset(alignment, rhs_ptr, STORAGESIZE));
+								new(lhs_ptr + GetOffset(alignment, lhs_ptr, STORAGESIZE)) TY_CALLABLE{ *rhs };
+							}
 						},
 
 					.move =
 						[](char* lhs_ptr, char* rhs_ptr)
 						{
-							data* rhs = reinterpret_cast<data*>(rhs_ptr);
-							new(lhs_ptr) data(std::move(*rhs));
+							constexpr size_t alignment = std::alignment_of_v<TY_CALLABLE>;
+
+							if constexpr (alignment == 1)
+							{
+								TY_CALLABLE* rhs = reinterpret_cast<TY_CALLABLE*>(rhs_ptr);
+								new(lhs_ptr) TY_CALLABLE(std::move(*rhs));
+							}
+							else
+							{
+								const TY_CALLABLE* rhs = reinterpret_cast<const TY_CALLABLE*>(rhs_ptr + GetOffset(alignment, rhs_ptr, STORAGESIZE));
+								new(lhs_ptr + GetOffset(alignment, lhs_ptr, STORAGESIZE)) TY_CALLABLE{ std::move(*rhs) };
+							}
 						},
 
 					.proxy =
 						[](char* _ptr, TY_args ... args) -> TY_Return
 						{
-							auto functor = reinterpret_cast<data*>(_ptr);
-							return functor->callable(std::forward<TY_args>(args)...);
+							constexpr size_t alignment = std::alignment_of_v<TY_CALLABLE>;
+							if constexpr (alignment == 1)
+							{
+								auto& callable = *reinterpret_cast<TY_CALLABLE*>(_ptr);
+								return callable(std::forward<TY_args>(args)...);
+							}
+							else
+							{
+								auto& callable = *reinterpret_cast<TY_CALLABLE*>(_ptr + GetOffset(alignment, _ptr, STORAGESIZE));
+								return callable(std::forward<TY_args>(args)...);
+							}
 						},
 
 					.destructor =
 						[](char* _ptr)
 						{
-							auto functor = reinterpret_cast<data*>(_ptr);
-							functor->~data();
+							constexpr size_t alignment = std::alignment_of_v<TY_CALLABLE>;
+
+							if constexpr (alignment == 1)
+							{
+								auto functor = reinterpret_cast<TY_CALLABLE*>(_ptr);
+								functor->~TY_CALLABLE();
+							}
+							else
+							{
+								auto functor = reinterpret_cast<TY_CALLABLE*>(_ptr + GetOffset(alignment, _ptr, STORAGESIZE));
+								functor->~TY_CALLABLE();
+							}
 						}
-				};
+					};
 
 				return &sVTable;
 			}
 
 			template<typename TY_CALLABLE>
-			static auto Assign(void* buffer, const TY_CALLABLE& callable)
+			static const VTable* Assign(void* buffer, TY_CALLABLE&& callable)
 			{
 				static_assert(sizeof(TY_CALLABLE) <= STORAGESIZE, "Callable object too large for this TypeErasedCallable!");
 
-				struct data
-				{
-					TY_CALLABLE callable;
-				};
+				constexpr size_t alignment = std::alignment_of_v<TY_CALLABLE>;
+				const size_t offset = GetOffset(alignment, buffer, STORAGESIZE);
 
-				new(buffer) data{ callable };
+				if (sizeof(TY_CALLABLE) + offset > STORAGESIZE)
+					throw std::runtime_error("Failed to create type erased callable. size + alignment offset larger than buffer size.");
 
-				static const VTable sVTable{
-					.copy =
-						[](char* lhs_ptr, const char* rhs_ptr)
-						{
-							const data* rhs = reinterpret_cast<const data*>(rhs_ptr);
-							new(lhs_ptr) data(*rhs);
-						},
+				new((char*)buffer + offset) std::decay_t<TY_CALLABLE>{ callable };
 
-					.move =
-						[](char* lhs_ptr, char* rhs_ptr)
-						{
-							data* rhs = reinterpret_cast<data*>(rhs_ptr);
-							new(lhs_ptr) data(std::move(*rhs));
-						},
+				return GenerateVTable<std::decay_t<TY_CALLABLE>>();
+			}
 
-					.proxy =
-						[](char* _ptr, TY_args ... args) -> TY_Return
-						{
-							auto functor = reinterpret_cast<data*>(_ptr);
-							return functor->callable(std::forward<TY_args>(args)...);
-						},
+			template<typename TY_CALLABLE>
+			static const VTable* Assign(void* buffer, const TY_CALLABLE& callable)
+			{
+				static_assert(sizeof(TY_CALLABLE) <= STORAGESIZE, "Callable object too large for this TypeErasedCallable!");
 
-					.destructor =
-						[](char* _ptr)
-						{
-							auto functor = reinterpret_cast<data*>(_ptr);
-							functor->~data();
-						}
-				};
+				constexpr size_t alignment = std::alignment_of_v<TY_CALLABLE>;
+				const size_t offset = GetOffset(alignment, buffer, STORAGESIZE);
 
-				return &sVTable;
+				if (sizeof(TY_CALLABLE) + offset > STORAGESIZE)
+					throw std::runtime_error("Failed to create type erased callable. size + alignment offset larger than buffer size.");
+
+				new((char*)buffer + offset) TY_CALLABLE{ callable };
+
+				return GenerateVTable<std::decay_t<TY_CALLABLE>>();
 			}
 		};
 
-		using Generator = ProxyTypeGenerator<FuncSig>;
+		using Generator		= ProxyTypeGenerator<FuncSig>;
 
-		using TY_Return = Generator::TY_Return;
-		using FN_PTR    = FuncSig;
-		using VTable    = Generator::VTable;
+		using TY_Return		= Generator::TY_Return;
+		using FN_PTR		= FuncSig;
+		using VTable		= Generator::VTable;
 
-		using fnCopy        = void (*)(char* lhs, const char* rhs);
-		using fnMove        = void (*)(char* lhs, char* rhs);
-		using fnProxy       = Generator::fnProxy;
-		using fnProxyConst  = Generator::fnProxyConst;
-		using fnDestructor  = void (*)(char*);
+		using fnCopy		= void (*)(char* lhs, const char* rhs);
+		using fnMove		= void (*)(char* lhs, char* rhs);
+		using fnProxy		= Generator::fnProxy;
+		using fnProxyConst	= Generator::fnProxyConst;
+		using fnDestructor	= void (*)(char*);
 
 	public:
 		TypeErasedCallable() = default;
 
 
-		template<typename TY_CALLABLE>
+		template<typename TY_CALLABLE> requires(!std::is_same_v<std::decay_t<TY_CALLABLE>, TypeErasedCallable>)
 		TypeErasedCallable(const TY_CALLABLE& callable) noexcept
 		{
 			Assign(callable);
 		}
 
+
+		template<typename TY_CALLABLE> requires(!std::is_same_v<std::decay_t<TY_CALLABLE>, TypeErasedCallable>)
+		TypeErasedCallable(TY_CALLABLE&& callable) noexcept
+		{
+			Assign(callable);
+		}
+
+
 		TypeErasedCallable(FN_PTR* fn_ptr) noexcept
 		{
-			auto thunk = [fn_ptr](auto&&... args)
-			{
-				return fn_ptr(args...);
-			};
-
-			Assign(thunk);
+			Assign([fn_ptr](auto&&... args)
+				{
+					return fn_ptr(args...);
+				});
 		}
-		
+
+
+		TypeErasedCallable(TypeErasedCallable&& callable) noexcept
+		{
+			if (vtable)
+				vtable->destructor(buffer);
+
+			if (callable.vtable)
+				callable.vtable->move(buffer, callable.buffer);
+
+			vtable			= callable.vtable;
+			callable.vtable = nullptr;
+		}
+
+
 		TypeErasedCallable(const TypeErasedCallable& callable) noexcept
 		{
 			if (vtable)
@@ -2440,24 +2542,13 @@ namespace FlexKit
 		}
 
 
-		template<typename TY_CALLABLE>
-		TypeErasedCallable& operator = (TY_CALLABLE callable)
-		{
-			if (vtable && vtable->destructor)
-				vtable->destructor(buffer);
-
-			Assign(callable);
-
-			return *this;
-		}
-
-
 		TypeErasedCallable& operator = (const TypeErasedCallable& rhs)
 		{
 			if(vtable && vtable->destructor)
 				vtable->destructor(buffer);
 
-			rhs.vtable->copy(buffer, rhs.buffer);
+			if (rhs.vtable)
+				rhs.vtable->copy(buffer, rhs.buffer);
 
 			vtable = rhs.vtable;
 
@@ -2473,8 +2564,32 @@ namespace FlexKit
 			if(rhs.vtable)
 				rhs.vtable->move(buffer, rhs.buffer);
 
-			vtable      = rhs.vtable;
-			rhs.vtable  = nullptr;
+			vtable		= rhs.vtable;
+			rhs.vtable	= nullptr;
+
+			return *this;
+		}
+
+
+		template<typename TY_CALLABLE> requires(!std::is_same_v<std::decay_t<TY_CALLABLE>, TypeErasedCallable>)
+		TypeErasedCallable& operator = (const TY_CALLABLE& callable)
+		{
+			if (vtable && vtable->destructor)
+				vtable->destructor(buffer);
+
+			Assign(callable);
+
+			return *this;
+		}
+
+
+		template<typename TY_CALLABLE> requires(!std::is_same_v<std::decay_t<TY_CALLABLE>, TypeErasedCallable>)
+		TypeErasedCallable& operator = (TY_CALLABLE&& callable)
+		{
+			if (vtable && vtable->destructor)
+				vtable->destructor(buffer);
+
+			Assign(callable);
 
 			return *this;
 		}
@@ -2485,16 +2600,19 @@ namespace FlexKit
 			return vtable->proxy(buffer, std::forward<TY_args>(args)...);
 		}
 
+
 		template<typename ... TY_args>
 		auto operator()(TY_args&& ... args) const
 		{
 			return reinterpret_cast<fnProxyConst>(vtable->proxy)(buffer, std::forward<TY_args>(args)...);
 		}
 
+
 		operator bool() const
 		{
 			return vtable != nullptr;
 		}
+
 
 		void Release()
 		{
@@ -2506,13 +2624,15 @@ namespace FlexKit
 
 	private:
 
+
 		template<typename TY_CALLABLE>
-		void Assign(TY_CALLABLE& callable)
+		void Assign(TY_CALLABLE&& callable)
 		{
 			static_assert(sizeof(TY_CALLABLE) <= STORAGESIZE, "Callable object too large for this TypeErasedCallable!");
 
 			vtable = Generator::Assign(buffer, callable);
 		}
+
 
 		template<typename TY_CALLABLE>
 		void Assign(const TY_CALLABLE& callable)
@@ -2522,14 +2642,13 @@ namespace FlexKit
 			vtable = Generator::Assign(buffer, callable);
 		}
 
-		const VTable*   vtable = nullptr;
-		char            buffer[STORAGESIZE - sizeof(VTable*)];
+		const VTable*	vtable = nullptr;
+		char			buffer[STORAGESIZE - sizeof(VTable*)];
 	};
 
 
 }	// namespace FlexKit;
 	/************************************************************************************************/
-#endif
 #endif
 
 

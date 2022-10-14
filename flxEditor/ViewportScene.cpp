@@ -158,6 +158,8 @@ ViewportGameObject_ptr ViewportScene::CreateObject()
 
 	sceneObjects.push_back(obj);
 
+	OnSceneChange();
+
 	return obj;
 }
 
@@ -202,11 +204,138 @@ ViewportGameObject_ptr  ViewportScene::FindObject(FlexKit::NodeHandle node)
 /************************************************************************************************/
 
 
-void ViewportScene::RemoveObject(ViewportGameObject_ptr object)
+DeletionHandle::DeletionHandle(
+	ViewportGameObject_ptr	obj,
+	ViewportScene*			scene,
+	bool					objInScene,
+	bool					removed) :
+	controlSection{ new ControlSection{} }
+{
+	controlSection->obj_ptr			= obj;
+	controlSection->scene			= scene;
+	controlSection->removed			= removed;
+	controlSection->objectInScene	= objInScene;
+}
+
+
+/************************************************************************************************/
+
+
+DeletionHandle::DeletionHandle(const DeletionHandle& rhs) :
+	controlSection{ rhs.controlSection }
+{
+	controlSection->ref_count++;
+}
+
+
+/************************************************************************************************/
+
+
+DeletionHandle::~DeletionHandle()
+{
+	if (controlSection)
+	{
+		if(controlSection->ref_count.fetch_sub(1) == 1)
+			delete controlSection;
+
+		controlSection = nullptr;
+	}
+}
+
+
+/************************************************************************************************/
+
+
+DeletionHandle& DeletionHandle::operator = (const DeletionHandle& rhs)
+{
+	controlSection = rhs.controlSection;
+	controlSection->ref_count++;
+
+	return *this;
+}
+
+
+/************************************************************************************************/
+
+
+void DeletionHandle::UndoDelete()
+{
+	if (controlSection)
+		controlSection->UndoDelete();
+}
+
+
+/************************************************************************************************/
+
+
+void DeletionHandle::RedoDelete()
+{
+	if (controlSection)
+		controlSection->RedoDelete();
+}
+
+
+/************************************************************************************************/
+
+
+ViewportGameObject_ptr DeletionHandle::GetObj()
+{
+	return controlSection ? controlSection->obj_ptr : nullptr;
+}
+
+
+/************************************************************************************************/
+
+
+void DeletionHandle::ControlSection::UndoDelete()
+{
+	if (removed)
+	{
+		scene->_ReAddObject(obj_ptr);
+		removed = false;
+	}
+}
+
+
+/************************************************************************************************/
+
+
+void DeletionHandle::ControlSection::RedoDelete()
+{
+	if (!removed)
+	{
+		scene->_RemoveObject(obj_ptr);
+		removed = true;
+	}
+}
+
+
+/************************************************************************************************/
+
+
+DeletionHandle ViewportScene::RemoveObject(ViewportGameObject_ptr object)
 {
 	if (!object)
-		return;
+		return DeletionHandle{};
 
+	_RemoveObject(object);
+
+	DeletionHandle handle{
+		object,
+		this,
+		object->gameObject.hasView(FlexKit::SceneVisibilityComponentID),
+		true
+	};
+
+	return handle;
+}
+
+
+/************************************************************************************************/
+
+
+void ViewportScene::_RemoveObject(ViewportGameObject_ptr object)
+{
 	markedForDeletion.push_back(object->objectID);
 	scene.RemoveEntity(object->gameObject);
 
@@ -216,7 +345,20 @@ void ViewportScene::RemoveObject(ViewportGameObject_ptr object)
 			return obj == object;
 		});
 
-	object->gameObject.Release();
+	OnSceneChange();
+}
+
+
+/************************************************************************************************/
+
+
+void ViewportScene::_ReAddObject(ViewportGameObject_ptr object)
+{
+	std::erase(markedForDeletion, object->objectID);
+	scene.AddGameObject(object->gameObject);
+	sceneObjects.push_back(object);
+
+	OnSceneChange();
 }
 
 
@@ -237,6 +379,9 @@ FlexKit::LayerHandle ViewportScene::GetLayer()
 
 void ViewportScene::Update()
 {
+	if (!sceneResource)
+		return;
+
 	auto& entities = sceneResource->sceneResource->entities; // TODO: make this not dumb
 	ViewportSceneContext ctx;
 
@@ -338,7 +483,7 @@ void ViewportScene::Update()
 
 /**********************************************************************
 
-Copyright (c) 2021 Robert May
+Copyright (c) 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
