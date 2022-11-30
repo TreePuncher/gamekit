@@ -567,38 +567,6 @@ void SceneBrushInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::
 /************************************************************************************************/
 
 
-void MaterialInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
-{
-	auto& material = static_cast<FlexKit::MaterialView&>(component);
-
-	panelCtx.AddHeader("Material");
-
-	auto passes			= material.GetPasses();
-	auto subMaterials	= material.HasSubMaterials();
-	panelCtx.AddText("Passes");
-
-	if (passes.size())
-	{
-		panelCtx.PushVerticalLayout();
-		for (auto& pass : passes)
-			panelCtx.AddText(std::string{} + std::format("{}", pass.to_uint()));
-
-		panelCtx.Pop();
-	}
-
-	if (passes.size())
-	{
-		panelCtx.PushVerticalLayout();
-		for (auto& pass : passes)
-			panelCtx.AddText(std::string{} + std::format("{}", pass.to_uint()));
-
-		panelCtx.Pop();
-	}
-	panelCtx.AddText("Pass Count" + std::format("{}", passes.size()));
-	panelCtx.AddButton("Add Pass", [&]() {});
-}
-
-
 /**********************************************************************
 
 Copyright (c) 2021 - 2022 Robert May

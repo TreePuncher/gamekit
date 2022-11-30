@@ -45,7 +45,13 @@ namespace FlexKit
 	{
 		InitiateSceneNodeBuffer(memory->BlockAllocator);
 
-		if (!Initiate(memory))
+#ifdef _DEBUG
+		const bool debugMode = true;
+#else
+		const bool debugMode = false;
+#endif
+
+		if (!Initiate(memory, debugMode))
 			throw std::runtime_error{"Failed to initiate core"};
 	}
 
@@ -114,11 +120,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool EngineCore::Initiate(EngineMemory* Memory)
+	bool EngineCore::Initiate(EngineMemory* Memory, const bool debugMode)
 	{
 		Graphics_Desc	desc	= { 0 };
 		desc.Memory			    = GetBlockMemory();
 		desc.TempMemory			= GetTempMemory();
+
+		desc.DX_DebugMode					= debugMode;
+		desc.DX_GPUvalidation				= debugMode;
+		desc.DX_SynchronizedQueueValidation = debugMode;
 
 		if (!RenderSystem.Initiate(&desc)) {
 			FK_LOG_ERROR("Failed to initiate renderSystem");

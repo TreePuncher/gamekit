@@ -368,10 +368,10 @@ namespace FlexKit
 
 	void GameFramework::DrawDebugHUD(double dT, VertexBufferHandle textBuffer, ResourceHandle renderTarget, FrameGraph& frameGraph)
 	{
-		uint32_t VRamUsage	        = (uint32_t)(core.RenderSystem._GetVidMemUsage() / MEGABYTE);
-		char* TempBuffer	        = (char*)core.GetTempMemory().malloc(512);
-		auto DrawTiming		        = 0.0f;
-		const char* RTFeatureStr    = core.RenderSystem.GetRTFeatureLevel() == RenderSystem::AvailableFeatures::Raytracing::RT_FeatureLevel_NOTAVAILABLE ? "Not Available" : "Available";
+		uint32_t VRamUsage			= (uint32_t)(core.RenderSystem._GetVidMemUsage() / MEGABYTE);
+		char* TempBuffer			= (char*)core.GetTempMemory().malloc(512);
+		auto DrawTiming				= 0.0f;
+		const char* RTFeatureStr	= core.RenderSystem.GetRTFeatureLevel() == AvailableFeatures::Raytracing::RT_FeatureLevel_NOTAVAILABLE ? "Not Available" : "Available";
 
 		sprintf_s(TempBuffer, 512, 
 			"Current VRam Usage: %u MB\n"

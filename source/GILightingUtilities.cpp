@@ -16,22 +16,22 @@ namespace FlexKit
 
 
 		void BuildScene(
-			FrameGraph&                     frameGraph,
-			Scene&                          scene,
-			GatherPassesTask&               passes,
-			ReserveConstantBufferFunction   reserveCB) {}
+			FrameGraph&						frameGraph,
+			Scene&							scene,
+			GatherPassesTask&				passes,
+			ReserveConstantBufferFunction	reserveCB) {}
 
 
 		void RayTrace(
-			UpdateDispatcher&               dispatcher,
-			FrameGraph&                     frameGraph,
-			const CameraHandle              camera,
-			GatherPassesTask&               passes,
-			ResourceHandle                  depthTarget,
-			FrameResourceHandle             renderTarget,
-			GBuffer&                        gbuffer,
-			ReserveConstantBufferFunction   reserveCB,
-			iAllocator*                     allocator) {}
+			UpdateDispatcher&				dispatcher,
+			FrameGraph&						frameGraph,
+			const CameraHandle				camera,
+			GatherPassesTask&				passes,
+			ResourceHandle					depthTarget,
+			FrameResourceHandle				renderTarget,
+			GBuffer&						gbuffer,
+			ReserveConstantBufferFunction	reserveCB,
+			iAllocator*						allocator) {}
 	};
 
 
@@ -78,12 +78,12 @@ namespace FlexKit
 		};
 
 		FrameAllocator(RenderSystem& IN_renderSystem, iAllocator& IN_allocator) :
-			allocator       { IN_allocator },
-			renderSystem    { IN_renderSystem },
-			frameBegin      { buffer.begin() }
+			allocator		{ IN_allocator },
+			renderSystem	{ IN_renderSystem },
+			frameBegin		{ buffer.begin() }
 		{
-			resource    = renderSystem.CreateConstantBuffer(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * TableSize, false);
-			gpuBuffer   = { renderSystem.GetDeviceResource(resource)->GetGPUVirtualAddress() };
+			resource	= renderSystem.CreateConstantBuffer(D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES * TableSize, false);
+			gpuBuffer	= { renderSystem.GetDeviceResource(resource)->GetGPUVirtualAddress() };
 		}
 
 		DevicePointer Push(void* identifier_ptr)
@@ -130,12 +130,12 @@ namespace FlexKit
 
 		size_t Size() { return buffer.size() * D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES; }
 
-		DevicePointer           gpuBuffer   = { 0 };
-		ConstantBufferHandle    resource    = InvalidHandle;
-		uint32_t                tableSize   = 0;
+		DevicePointer			gpuBuffer	= { 0 };
+		ConstantBufferHandle	resource	= InvalidHandle;
+		uint32_t				tableSize	= 0;
 
-		iAllocator&             allocator;
-		RenderSystem&           renderSystem;
+		iAllocator&				allocator;
+		RenderSystem&			renderSystem;
 
 		using IdentifierBuffer = CircularBuffer<Identifier, TableSize>;
 
@@ -145,9 +145,9 @@ namespace FlexKit
 			uint32_t end;
 		};
 
-		CircularBuffer<FrameRange, 3>               frameRanges;
-		typename IdentifierBuffer::CircularIterator frameBegin;
-		IdentifierBuffer                            buffer;
+		CircularBuffer<FrameRange, 3>				frameRanges;
+		typename IdentifierBuffer::CircularIterator	frameBegin;
+		IdentifierBuffer							buffer;
 	};
 
 
@@ -160,14 +160,14 @@ namespace FlexKit
 	struct PersistentAllocator
 	{
 		PersistentAllocator(uint32_t blockSize, RenderSystem& IN_renderSystem, iAllocator& IN_allocator) :
-			allocations { &IN_allocator },
-			freeList    { &IN_allocator }{}
+			allocations	{ &IN_allocator },
+			freeList	{ &IN_allocator }{}
 
 		struct AllocatedRange
 		{
-			size_t      frameID;
-			uint32_t    begin;
-			uint32_t    end;
+			size_t		frameID;
+			uint32_t	begin;
+			uint32_t	end;
 
 			uint32_t size() const { return end - begin; }
 
@@ -230,10 +230,10 @@ namespace FlexKit
 
 		}
 
-		ID3D12DescriptorHeap*   heap;
-		char*                   buffer;
-		Vector<AllocatedRange>  allocations;
-		Vector<AllocatedRange>  freeList;
+		ID3D12DescriptorHeap*	heap;
+		char*					buffer;
+		Vector<AllocatedRange>	allocations;
+		Vector<AllocatedRange>	freeList;
 	};
 
 
@@ -310,17 +310,17 @@ namespace FlexKit
 			D3D12_DXIL_LIBRARY_DESC dxil_desc[1] =
 			{
 				{
-					.DXILLibrary = shaderByteCode,
-					.NumExports  = 4,
-					.pExports    = exports,
+					.DXILLibrary	= shaderByteCode,
+					.NumExports		= 4,
+					.pExports		= exports,
 				}
 			};
 
 			D3D12_RAYTRACING_SHADER_CONFIG shader_Config[1] =
 			{
 				{
-					.MaxPayloadSizeInBytes      = 16,
-					.MaxAttributeSizeInBytes    = 16,
+					.MaxPayloadSizeInBytes		= 16,
+					.MaxAttributeSizeInBytes	= 16,
 				}
 			};
 
@@ -331,41 +331,41 @@ namespace FlexKit
 			};
 
 			D3D12_HIT_GROUP_DESC hitGroupDesc = {
-				.HitGroupExport             = L"DefaultHitGroup",
-				.AnyHitShaderImport         = L"anyhit_main",
-				.ClosestHitShaderImport     = L"closestHit",
-				.IntersectionShaderImport   = nullptr
+				.HitGroupExport				= L"DefaultHitGroup",
+				.AnyHitShaderImport			= L"anyhit_main",
+				.ClosestHitShaderImport		= L"closestHit",
+				.IntersectionShaderImport	= nullptr
 			};
 
 			D3D12_STATE_SUBOBJECT subObjects[] =
 			{
 				{
-					.Type = D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE,
-					.pDesc = &signature,
+					.Type	= D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE,
+					.pDesc	= &signature,
 				},
 				{
-					.Type   = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY,
-					.pDesc  = dxil_desc,
+					.Type	= D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY,
+					.pDesc	= dxil_desc,
 				},
 				{
-					.Type   = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG,
-					.pDesc  = shader_Config
+					.Type	= D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG,
+					.pDesc	= shader_Config
 				},
 				{
-					.Type   = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG,
-					.pDesc  = pipelineConfig
+					.Type	= D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG,
+					.pDesc	= pipelineConfig
 				},
 				{
-					.Type   = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP,
-					.pDesc  = &hitGroupDesc
+					.Type	= D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP,
+					.pDesc	= &hitGroupDesc
 				}
 			};
 
 			D3D12_STATE_OBJECT_DESC descs[2] = {
 				{
-					.Type           = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE,
-					.NumSubobjects  = sizeof(subObjects) / sizeof(subObjects[0]),
-					.pSubobjects    = subObjects,
+					.Type			= D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE,
+					.NumSubobjects	= sizeof(subObjects) / sizeof(subObjects[0]),
+					.pSubobjects	= subObjects,
 				}
 			};
 
@@ -385,11 +385,11 @@ namespace FlexKit
 		{
 			struct Resources
 			{
-				ReserveConstantBufferFunction   reserveCB;
-				FrameResourceHandle             rayGenTable;
-				FrameResourceHandle             hitShaderTable;
-				FrameResourceHandle             missShaderTable;
-				FrameResourceHandle             hlAS;
+				ReserveConstantBufferFunction	reserveCB;
+				FrameResourceHandle				rayGenTable;
+				FrameResourceHandle				hitShaderTable;
+				FrameResourceHandle				missShaderTable;
+				FrameResourceHandle				hlAS;
 			};
 
 			auto& resources = frameGraph.AddNode<Resources>(
@@ -398,9 +398,9 @@ namespace FlexKit
 				},
 				[&](FrameGraphNodeBuilder& builder, Resources& data)
 				{
-					data.rayGenTable        = builder.CopyDest(rayGenTable);
-					data.hitShaderTable     = builder.CopyDest(hitShaderTable);
-					data.missShaderTable    = builder.CopyDest(missShaderTable);
+					data.rayGenTable		= builder.CopyDest(rayGenTable);
+					data.hitShaderTable		= builder.CopyDest(hitShaderTable);
+					data.missShaderTable	= builder.CopyDest(missShaderTable);
 				},
 				[&](Resources& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 				{
@@ -408,9 +408,9 @@ namespace FlexKit
 					if (FAILED(stateObject->QueryInterface(&stateObjectProperties)))
 						FK_LOG_ERROR("Failed to query ID3D12StateObjectProperties");
 
-					const auto missIdentifier       = stateObjectProperties->GetShaderIdentifier(L"miss");
-					const auto hitTableIdentifier   = stateObjectProperties->GetShaderIdentifier(L"DefaultHitGroup");
-					const auto rayGenIdentifier     = stateObjectProperties->GetShaderIdentifier(L"HelloRTX");
+					const auto missIdentifier		= stateObjectProperties->GetShaderIdentifier(L"miss");
+					const auto hitTableIdentifier	= stateObjectProperties->GetShaderIdentifier(L"DefaultHitGroup");
+					const auto rayGenIdentifier		= stateObjectProperties->GetShaderIdentifier(L"HelloRTX");
 
 					temporary.BeginFrame();
 
@@ -493,22 +493,22 @@ namespace FlexKit
 
 
 		void BuildScene(
-			FrameGraph&                     frameGraph,
-			Scene&                          scene,
-			GatherPassesTask&               passes,
-			ReserveConstantBufferFunction   reserveCB)
+			FrameGraph&						frameGraph,
+			Scene&							scene,
+			GatherPassesTask&				passes,
+			ReserveConstantBufferFunction	reserveCB)
 		{
 			// Build Low Level AS
 			struct MeshBuildAS
 			{
-				FrameResourceHandle blas;
-				TriMeshHandle       mesh;
+				FrameResourceHandle	blas;
+				TriMeshHandle		mesh;
 			};
 
 			struct buildScene_data
 			{
-				Vector<MeshBuildAS>     buildList;
-				FrameResourceHandle     scratchSpace;
+				Vector<MeshBuildAS>	buildList;
+				FrameResourceHandle	scratchSpace;
 			};
 
 			frameGraph.AddNode<buildScene_data>(
@@ -536,13 +536,13 @@ namespace FlexKit
 					{
 						auto meshResource = GetMeshResource(*meshHandle);
 
-						auto lodIdx         = meshResource->GetHighestLoadedLodIdx();
-						auto lod            = meshResource->GetHighestLoadedLod();
+						auto lodIdx			= meshResource->GetHighestLoadedLodIdx();
+						auto lod			= meshResource->GetHighestLoadedLod();
 
-						const auto prebuildInfo = frameGraph.GetRenderSystem().GetBLASPreBuildInfo(lod.vertexBuffer);
-						scratchSpaceSize        = Max(prebuildInfo.scratchPad_byteSize, scratchSpaceSize);
+						const auto prebuildInfo	= frameGraph.GetRenderSystem().GetBLASPreBuildInfo(lod.vertexBuffer);
+						scratchSpaceSize		= Max(prebuildInfo.scratchPad_byteSize, scratchSpaceSize);
 
-						auto blAS               = builder.AcquireVirtualResource(GPUResourceDesc::RayTracingStructure(prebuildInfo.BLAS_byteSize), DRS_ACCELERATIONSTRUCTURE, false);
+						auto blAS				= builder.AcquireVirtualResource(GPUResourceDesc::RayTracingStructure(prebuildInfo.BLAS_byteSize), DRS_ACCELERATIONSTRUCTURE, false);
 						builder.SetDebugName(blAS, "Bottom Level Acceleration Structure");
 
 						data.buildList.emplace_back(blAS, *meshHandle);
@@ -558,8 +558,8 @@ namespace FlexKit
 				{
 					for (auto workItem : data.buildList)
 					{
-						auto meshResource   = GetMeshResource(workItem.mesh);
-						auto& lod           = meshResource->GetHighestLoadedLod();
+						auto meshResource	= GetMeshResource(workItem.mesh);
+						auto& lod			= meshResource->GetHighestLoadedLod();
 
 						lod.blAS = resources.GetDevicePointer(workItem.blas);
 
@@ -650,29 +650,29 @@ namespace FlexKit
 						}
 					}
 
-					const size_t arraySize  = FlexKit::AlignedSize(sceneElements.size() * sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
+					const uint32_t arraySize = FlexKit::AlignedSize(sceneElements.size() * sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
 
-					const size_t bufferSize =
+					const uint32_t bufferSize =
 						arraySize + FlexKit::AlignedSize<Camera::ConstantBuffer>();
 
-					auto constantBuffer     = data.reserveCB(bufferSize);
-					ConstantBufferDataSet  rayTracingInstances{(char*)sceneElements.data(), arraySize, constantBuffer};
+					auto constantBuffer		= data.reserveCB(bufferSize);
+					ConstantBufferDataSet	rayTracingInstances{(char*)sceneElements.data(), arraySize, constantBuffer};
 
 					UploadSegment upload;
-					upload.offset       = rayTracingInstances.Offset();
-					upload.resource     = resources.GetDeviceResource(rayTracingInstances.Handle());
-					upload.uploadSize   = bufferSize;
+					upload.offset			= rayTracingInstances.Offset();
+					upload.resource			= resources.GetDeviceResource(rayTracingInstances.Handle());
+					upload.uploadSize		= bufferSize;
 
 					ctx.CopyBuffer(upload, resources.CopyDest(data.temporary, ctx));
 
 					D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildAS = {
 						.DestAccelerationStructureData   = resources.GetDevicePointer(resources.GetResource(data.tlAS)),
 						.Inputs = {
-							.Type           = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
-							.Flags          = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE,
-							.NumDescs       = static_cast<UINT>(sceneElements.size()),
-							.DescsLayout    = D3D12_ELEMENTS_LAYOUT_ARRAY,
-							.InstanceDescs  = resources.GetDevicePointer(resources.NonPixelShaderResource(data.temporary, ctx))
+							.Type			= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
+							.Flags			= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE,
+							.NumDescs		= static_cast<UINT>(sceneElements.size()),
+							.DescsLayout	= D3D12_ELEMENTS_LAYOUT_ARRAY,
+							.InstanceDescs	= resources.GetDevicePointer(resources.NonPixelShaderResource(data.temporary, ctx))
 						},
 						.ScratchAccelerationStructureData = resources.GetDevicePointer(resources.UAV(data.scratchPad, ctx)),
 					};
@@ -691,24 +691,24 @@ namespace FlexKit
 						.hitGroupTable =
 						{
 							.rangeStride = {
-								.StartAddress   = resources.GetDevicePointer(hitShaderTable),
-								.SizeInBytes    = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
-								.StrideInBytes  = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
+								.StartAddress	= resources.GetDevicePointer(hitShaderTable),
+								.SizeInBytes	= D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
+								.StrideInBytes	= D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
 							}
 						},
 						.missTable =
 						{
 							.rangeStride = {
-								.StartAddress   = resources.GetDevicePointer(missShaderTable),
-								.SizeInBytes    = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
-								.StrideInBytes  = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
+								.StartAddress	= resources.GetDevicePointer(missShaderTable),
+								.SizeInBytes	= D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
+								.StrideInBytes	= D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
 							}
 						},
 						.rayGenerationRecord =
 						{
 							.range = {
-								.StartAddress   = resources.GetDevicePointer(rayGenTable),
-								.SizeInBytes    = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
+								.StartAddress	= resources.GetDevicePointer(rayGenTable),
+								.SizeInBytes	= D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
 							}
 						},
 					};
@@ -768,10 +768,10 @@ namespace FlexKit
 		}
 
 		void BuildScene(
-			FrameGraph&                     frameGraph,
-			Scene&                          scene,
-			GatherPassesTask&               passes,
-			ReserveConstantBufferFunction   reserveCB)
+			FrameGraph&						frameGraph,
+			Scene&							scene,
+			GatherPassesTask&				passes,
+			ReserveConstantBufferFunction	reserveCB)
 		{
 			lightingEngine.VoxelizeScene(
 				frameGraph,
@@ -781,15 +781,15 @@ namespace FlexKit
 		}
 
 		void RayTrace(
-			UpdateDispatcher&               dispatcher,
-			FrameGraph&                     frameGraph,
-			const CameraHandle              camera,
-			GatherPassesTask&               passes,
-			ResourceHandle                  depthTarget,
-			FrameResourceHandle             renderTarget,
-			GBuffer&                        gbuffer,
-			ReserveConstantBufferFunction   reserveCB,
-			iAllocator*                     allocator)
+			UpdateDispatcher&				dispatcher,
+			FrameGraph&						frameGraph,
+			const CameraHandle				camera,
+			GatherPassesTask&				passes,
+			ResourceHandle					depthTarget,
+			FrameResourceHandle				renderTarget,
+			GBuffer&						gbuffer,
+			ReserveConstantBufferFunction	reserveCB,
+			iAllocator*						allocator)
 		{
 			lightingEngine.RayTrace(
 				dispatcher,
@@ -816,11 +816,11 @@ namespace FlexKit
 		{
 			switch (renderSystem.features.RT_Level)
 			{
-			case RenderSystem::AvailableFeatures::Raytracing::RT_FeatureLevel_NOTAVAILABLE:
+			case AvailableFeatures::Raytracing::RT_FeatureLevel_NOTAVAILABLE:
 				techniqueEnum = EGITECHNIQUE::VXGL;
 				break;
-			case RenderSystem::AvailableFeatures::Raytracing::RT_FeatureLevel_1:
-			case RenderSystem::AvailableFeatures::Raytracing::RT_FeatureLevel_1_1:
+			case AvailableFeatures::Raytracing::RT_FeatureLevel_1:
+			case AvailableFeatures::Raytracing::RT_FeatureLevel_1_1:
 				techniqueEnum = EGITECHNIQUE::RT_SURFELS;
 				break;
 			}
@@ -868,10 +868,10 @@ namespace FlexKit
 
 
 	void GlobalIlluminationEngine::BuildScene(
-		FrameGraph&                     frameGraph,
-		Scene&                          scene,
-		GatherPassesTask&               passes,
-		ReserveConstantBufferFunction   reserveCB)
+		FrameGraph&						frameGraph,
+		Scene&							scene,
+		GatherPassesTask&				passes,
+		ReserveConstantBufferFunction	reserveCB)
 	{
 		if (technique)
 			technique->BuildScene(
@@ -886,15 +886,15 @@ namespace FlexKit
 
 
 	void GlobalIlluminationEngine::RayTrace(
-		UpdateDispatcher&               dispatcher,
-		FrameGraph&                     frameGraph,
-		const CameraHandle              camera,
-		GatherPassesTask&               passes,
-		ResourceHandle                  depthTarget,
-		FrameResourceHandle             renderTarget,
-		GBuffer&                        gbuffer,
-		ReserveConstantBufferFunction   reserveCB,
-		iAllocator*                     allocator)
+		UpdateDispatcher&				dispatcher,
+		FrameGraph&						frameGraph,
+		const CameraHandle				camera,
+		GatherPassesTask&				passes,
+		ResourceHandle					depthTarget,
+		FrameResourceHandle				renderTarget,
+		GBuffer&						gbuffer,
+		ReserveConstantBufferFunction	reserveCB,
+		iAllocator*						allocator)
 	{
 		if (technique)
 			technique->RayTrace(

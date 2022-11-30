@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="..\packages\Microsoft.Direct3D.D3D12.1.606.3\build\native\Microsoft.Direct3D.D3D12.props" Condition="Exists('..\packages\Microsoft.Direct3D.D3D12.1.606.3\build\native\Microsoft.Direct3D.D3D12.props')" />
+  <Import Project="..\packages\Microsoft.Direct3D.D3D12.1.606.4\build\native\Microsoft.Direct3D.D3D12.props" Condition="Exists('..\packages\Microsoft.Direct3D.D3D12.1.606.4\build\native\Microsoft.Direct3D.D3D12.props')" />
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
@@ -34,6 +34,7 @@
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
     <PlatformToolset>v143</PlatformToolset>
+    <EnableUnitySupport>true</EnableUnitySupport>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -156,81 +157,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\source\AnimationComponents.h" />
-    <ClInclude Include="..\source\AnimationRendering.h" />
-    <ClInclude Include="..\source\AnimationRuntimeUtilities.H" />
-    <ClInclude Include="..\source\AnimationUtilities.h" />
-    <ClInclude Include="..\source\Application.h" />
-    <ClInclude Include="..\source\Assets.h" />
-    <ClInclude Include="..\source\buildsettings.h" />
-    <ClInclude Include="..\source\CameraUtilities.h" />
-    <ClInclude Include="..\source\ClusteredRendering.h" />
-    <ClInclude Include="..\source\CommonStructs.h" />
-    <ClInclude Include="..\source\ComponentBlobs.h" />
-    <ClInclude Include="..\source\Components.h" />
-    <ClInclude Include="..\source\Console.h" />
-    <ClInclude Include="..\source\containers.h" />
-    <ClInclude Include="..\source\CoreSceneObjects.h" />
-    <ClInclude Include="..\source\DDSUtilities.h" />
-    <ClInclude Include="..\source\DebugPanel.h" />
-    <ClInclude Include="..\source\DebugUI.h" />
-    <ClInclude Include="..\source\defaultpipelinestates.h" />
-    <ClInclude Include="..\source\DepthBuffer.h" />
-    <ClInclude Include="..\source\DungeonGen.h" />
-    <ClInclude Include="..\source\EngineCore.h" />
-    <ClInclude Include="..\source\Events.h" />
-    <ClInclude Include="..\source\Fonts.h" />
-    <ClInclude Include="..\source\FrameGraph.h" />
-    <ClInclude Include="..\source\GameFramework.h" />
-    <ClInclude Include="..\source\Geometry.h" />
-    <ClInclude Include="..\source\GILightingUtilities.h" />
-    <ClInclude Include="..\source\graphics.h" />
-    <ClInclude Include="..\source\GraphicsComponents.h" />
-    <ClInclude Include="..\source\GuiUtilities.h" />
-    <ClInclude Include="..\source\Handle.h" />
-    <ClInclude Include="..\source\Input.h" />
-    <ClInclude Include="..\source\intersection.h" />
-    <ClInclude Include="..\source\KeycodesEnums.h" />
-    <ClInclude Include="..\source\KeyValueIds.h" />
-    <ClInclude Include="..\source\Logging.h" />
-    <ClInclude Include="..\source\Materials.h" />
-    <ClInclude Include="..\source\MathUtils.h" />
-    <ClInclude Include="..\source\memoryutilities.h" />
-    <ClInclude Include="..\source\MeshUtils.h" />
-    <ClInclude Include="..\source\ModifiableShape.h" />
-    <ClInclude Include="..\source\NetworkUtilities.h" />
-    <ClInclude Include="..\source\ParticleRendering.hpp" />
-    <ClInclude Include="..\source\Particles.h" />
-    <ClInclude Include="..\source\PhysicsDebugVis.h" />
-    <ClInclude Include="..\source\physicsutilities.h" />
-    <ClInclude Include="..\source\PipelineState.h" />
-    <ClInclude Include="..\source\ProfilingUtilities.h" />
-    <ClInclude Include="..\source\RayTracingUtilities.h" />
-    <ClInclude Include="..\source\ResourceHandles.h" />
-    <ClInclude Include="..\source\RuntimeComponentIDs.h" />
-    <ClInclude Include="..\source\Scene.h" />
-    <ClInclude Include="..\source\SceneLoadingContext.h" />
-    <ClInclude Include="..\source\SceneManager.h" />
-    <ClInclude Include="..\source\ScriptingRuntime.h" />
-    <ClInclude Include="..\source\Serialization.hpp" />
-    <ClInclude Include="..\source\ShadowMapping.h" />
-    <ClInclude Include="..\source\Signal.h" />
-    <ClInclude Include="..\source\SSReflections.h" />
-    <ClInclude Include="..\source\static_vector.h" />
-    <ClInclude Include="..\source\SVOGI.h" />
-    <ClInclude Include="..\source\TerrainRendering.h" />
-    <ClInclude Include="..\source\TextRendering.h" />
-    <ClInclude Include="..\source\TextureStreamingUtilities.h" />
-    <ClInclude Include="..\source\TextureUtilities.h" />
-    <ClInclude Include="..\source\ThreadUtilities.h" />
-    <ClInclude Include="..\source\timeutilities.h" />
-    <ClInclude Include="..\source\Transforms.h" />
-    <ClInclude Include="..\source\Transparency.h" />
-    <ClInclude Include="..\source\type.h" />
-    <ClInclude Include="..\source\VertexBuffer.h" />
-    <ClInclude Include="..\source\Win32Graphics.h" />
-    <ClInclude Include="..\source\WorldRender.h" />
-    <ClInclude Include="..\source\XMMathConversion.h" />
     <ClInclude Include="AIUtilities.h" />
     <ClInclude Include="BaseState.h" />
     <ClInclude Include="Client.h" />
@@ -253,183 +179,6 @@
     <ClInclude Include="ThirdPersonUtilities.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\source\AllSourceFiles.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\AnimationComponents.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\AnimationRendering.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\AnimationRuntimeUtilities.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\AnimationUtilities.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\Application.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\Assets.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\CameraUtilities.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\ClusteredRendering.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\Components.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\Console.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\CoreSceneObjects.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\DDSUtilities.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\DebugPanel.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\DebugUI.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\defaultpipelinestates.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\DungeonGen.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\EngineCore.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\Fonts.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\FrameGraph.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\GameFramework.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\Geometry.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\GILightingUtilities.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\graphics.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\GraphicsComponents.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\GuiUtilities.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\Handle.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\Intersection.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\Logging.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\Materials.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\MathUtils.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\memoryutilities.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\Meshutils.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\ModifiableShape.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\NetworkUtilities.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\ParticleRendering.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\Particles.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\PhysicsDebugVis.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\physicsutilities.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\PipelineState.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\ProfilingUtilities.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\RayTracingUtilities.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\Scene.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\ScriptingRuntime.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\Serialization.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\SHADOWMAPPING.CPP">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\signal.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\SSReflections.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\SVOGI.cpp" />
-    <ClCompile Include="..\source\TerrainRendering.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\TextRendering.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\TextureStreamingUtilities.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\TextureUtilities.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\ThreadUtilities.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\timeutilities.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\Transforms.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\Transparency.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\type.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\source\WorldRender.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="BaseState.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
@@ -439,11 +188,7 @@
     <ClCompile Include="Enemy1.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="EngineTu.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">false</ExcludedFromBuild>
-    </ClCompile>
+    <ClCompile Include="EngineTu.cpp" />
     <ClCompile Include="ExternalTU.cpp" />
     <ClCompile Include="GamepadInput.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
@@ -790,17 +535,22 @@
   <ItemGroup>
     <Natvis Include="containers.natvis" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Engine\Engine.vcxproj">
+      <Project>{4522c393-e928-4aaa-9c7e-b0d4a5e011d6}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="..\packages\Microsoft.Direct3D.D3D12.1.606.3\build\native\Microsoft.Direct3D.D3D12.targets" Condition="Exists('..\packages\Microsoft.Direct3D.D3D12.1.606.3\build\native\Microsoft.Direct3D.D3D12.targets')" />
     <Import Project="..\packages\WinPixEventRuntime.1.0.220810001\build\WinPixEventRuntime.targets" Condition="Exists('..\packages\WinPixEventRuntime.1.0.220810001\build\WinPixEventRuntime.targets')" />
+    <Import Project="..\packages\Microsoft.Direct3D.D3D12.1.606.4\build\native\Microsoft.Direct3D.D3D12.targets" Condition="Exists('..\packages\Microsoft.Direct3D.D3D12.1.606.4\build\native\Microsoft.Direct3D.D3D12.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('..\packages\Microsoft.Direct3D.D3D12.1.606.3\build\native\Microsoft.Direct3D.D3D12.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Direct3D.D3D12.1.606.3\build\native\Microsoft.Direct3D.D3D12.props'))" />
-    <Error Condition="!Exists('..\packages\Microsoft.Direct3D.D3D12.1.606.3\build\native\Microsoft.Direct3D.D3D12.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Direct3D.D3D12.1.606.3\build\native\Microsoft.Direct3D.D3D12.targets'))" />
     <Error Condition="!Exists('..\packages\WinPixEventRuntime.1.0.220810001\build\WinPixEventRuntime.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\WinPixEventRuntime.1.0.220810001\build\WinPixEventRuntime.targets'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.Direct3D.D3D12.1.606.4\build\native\Microsoft.Direct3D.D3D12.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Direct3D.D3D12.1.606.4\build\native\Microsoft.Direct3D.D3D12.props'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.Direct3D.D3D12.1.606.4\build\native\Microsoft.Direct3D.D3D12.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Direct3D.D3D12.1.606.4\build\native\Microsoft.Direct3D.D3D12.targets'))" />
   </Target>
 </Project>

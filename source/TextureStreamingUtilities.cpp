@@ -172,7 +172,7 @@ namespace FlexKit
 
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);    // enable conservative rast
 
-		if(RS->features.conservativeRast == RenderSystem::AvailableFeatures::ConservativeRast_AVAILABLE)
+		if(RS->features.conservativeRast == AvailableFeatures::ConservativeRast_AVAILABLE)
 			Rast_Desc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -221,7 +221,7 @@ namespace FlexKit
 
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT); // enable conservative rast
 
-		if(RS->features.conservativeRast == RenderSystem::AvailableFeatures::ConservativeRast_AVAILABLE)
+		if(RS->features.conservativeRast == AvailableFeatures::ConservativeRast_AVAILABLE)
 			Rast_Desc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -629,8 +629,8 @@ namespace FlexKit
 
 							for (size_t I = 0; I < subMeshCount; I++)
 							{
-								auto& subMesh               = lod.subMeshes[I];
-								const auto passMaterial     = materials[material.SubMaterials[I]];
+								auto& subMesh				= lod.subMeshes[I];
+								const auto passMaterial		= materials[material.SubMaterials[I]];
 
 								DescriptorHeap srvHeap;
 

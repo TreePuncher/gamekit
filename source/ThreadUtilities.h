@@ -517,12 +517,12 @@ namespace FlexKit
 
 		size_t GetThreadCount() const noexcept;
 
-		auto GetThreadsBegin()	{ return threads.begin(); }
-		auto GetThreadsEnd()	{ return threads.end(); }
+		auto GetThreadsBegin()	const noexcept { return threads.begin(); }
+		auto GetThreadsEnd()	const noexcept { return threads.end(); }
 
 	private:
-		WorkerList	            threads;
-		_BackgrounWorkQueue     backgroundQueue;
+		WorkerList				threads;
+		_BackgrounWorkQueue		backgroundQueue;
 
 		std::condition_variable		CV;
 		std::condition_variable		workerWait;
@@ -533,10 +533,10 @@ namespace FlexKit
 		iAllocator*					allocator;
 		std::mutex					exclusive;
 
-		CircularStealingQueue<iWork*>   mainThreadQueue;
+		CircularStealingQueue<iWork*>	mainThreadQueue;
 
-		Vector<CircularStealingQueue<iWork*>*>	        workQueues;
-		StackAllocator                                  localAllocator;
+		Vector<CircularStealingQueue<iWork*>*>			workQueues;
+		StackAllocator									localAllocator;
 		std::unique_ptr<std::array<byte, MEGABYTE * 16>> buffer;
 	};
 
@@ -550,7 +550,7 @@ namespace FlexKit
 		WorkBarrier(
 			ThreadManager&	IN_threads,
 			iAllocator*		allocator = FlexKit::SystemAllocator) :
-				PostEvents	{ allocator     },
+				PostEvents	{ allocator		},
 				threads		{ IN_threads	} {}
 
 		~WorkBarrier() { Join(); }
@@ -558,17 +558,19 @@ namespace FlexKit
 		WorkBarrier(const WorkBarrier&)					= delete;
 		WorkBarrier& operator = (const WorkBarrier&)	= delete;
 
-		size_t  GetDependentCount		() const { return tasksInProgress; }
-		void    AddWork                 (iWork& Work);
-		void    AddOnCompletionEvent	(OnCompletionEvent Callback);
-		void    Wait					();
+		size_t	GetDependentCount		() const { return tasksInProgress; }
+		void	AddWork					(iWork& Work);
+		void	AddOnCompletionEvent	(OnCompletionEvent Callback);
+		void	Wait					();
 
-		void    Join        ();
-		void    JoinLocal   ();
+		void	Join		();
+		void	JoinLocal	();
 
-		void    Reset();
+		void 	Reset();
+
 	private:
-		void    _OnEnd()
+
+		void _OnEnd()
 		{
 			for (auto& evt : PostEvents)
 				evt();
@@ -577,8 +579,8 @@ namespace FlexKit
 		}
 
 
-		std::atomic_int	    tasksInProgress = 0;
-		std::atomic_bool    inProgress      = false;
+		std::atomic_int		tasksInProgress	= 0;
+		std::atomic_bool	inProgress		= false;
 
 		ThreadManager&				threads;
 		Vector<OnCompletionEvent>	PostEvents;
@@ -604,19 +606,21 @@ namespace FlexKit
 		return
 			[FN_Construct = FN_Construct, _state = MakeSharedRef<_State>(allocator)](auto&& ... args) mutable -> TY&
 			{
-				if (!_state.Get().ready)
+				auto& state = _state.Get();
+
+				if (!state.ready.load(std::memory_order_relaxed))
 				{
-					if (_state.Get().m.try_lock())
+					if (state.m.try_lock())
 					{
-						_state.Get().constructable	= FN_Construct(std::forward<decltype(args)>(args)...);
-						_state.Get().ready			= true;
-						_state.Get().m.unlock();
+						state.constructable	= FN_Construct(std::forward<decltype(args)>(args)...);
+						state.ready.store(true, std::memory_order_release);
+						state.m.unlock();
 					}
 					else
-						while(!_state.Get().ready);
+						while(!state.ready);
 				}
 
-				return _state.Get().constructable;
+				return state.constructable;
 			};
 	}
 
@@ -636,8 +640,8 @@ namespace FlexKit
 
 
 		SynchronizedOperation(SynchronizedOperation&& rhs) :
-			operation       { std::move(rhs.operation) },
-			criticalSection { std::move(rhs.criticalSection) } {}
+			operation		{ std::move(rhs.operation) },
+			criticalSection	{ std::move(rhs.criticalSection) } {}
 
 
 		SynchronizedOperation& operator = (SynchronizedOperation&& rhs)
@@ -655,8 +659,8 @@ namespace FlexKit
 
 
 	private:
-		TY_OP       operation;
-		std::mutex  criticalSection;
+		TY_OP		operation;
+		std::mutex	criticalSection;
 	};
 
 	template<typename TY_OP>
@@ -671,20 +675,20 @@ namespace FlexKit
 
 	template<typename ITERATOR_TY, typename FN_TY>
 	void Parallel_For(
-		ThreadManager&  threads,
-		iAllocator&     allocator,
-		ITERATOR_TY     begin,
-		ITERATOR_TY     end,
-		const size_t    blockSize,
-		FN_TY           task)
+		ThreadManager&	threads,
+		iAllocator&		allocator,
+		ITERATOR_TY		begin,
+		ITERATOR_TY		end,
+		const size_t	blockSize,
+		FN_TY			task)
 	{
 		ProfileFunction();
 
 		const size_t taskCount = std::distance(begin, end);
 
-		const size_t temp           = taskCount / blockSize;
-		const size_t temp2          = taskCount % blockSize != 0;
-		const size_t threadCount    = Max(temp + temp2, 1);
+		const size_t temp			= taskCount / blockSize;
+		const size_t temp2			= taskCount % blockSize != 0;
+		const size_t threadCount	= Max(temp + temp2, 1);
 
 
 
@@ -700,10 +704,10 @@ namespace FlexKit
 			Task() : iWork{ nullptr } {}
 
 			Task(ITERATOR IN_begin, ITERATOR IN_end, FN_TY* IN_FN) :
-					iWork       { nullptr },
-					begin       { IN_begin  },
-					end         { IN_end    },
-					task_FN     { IN_FN     }
+					iWork		{ nullptr	},
+					begin		{ IN_begin	},
+					end			{ IN_end	},
+					task_FN		{ IN_FN		}
 			{
 				int x = 0;
 			}
@@ -756,20 +760,20 @@ namespace FlexKit
 
 		template<typename ITERATOR_TY, typename FN_TY>
 	void Parallel_For2(
-		ThreadManager&  threads,
-		iAllocator&     allocator,
-		ITERATOR_TY     begin,
-		ITERATOR_TY     end,
-		const size_t    blockSize,
-		FN_TY           task)
+		ThreadManager&	threads,
+		iAllocator&		allocator,
+		ITERATOR_TY		begin,
+		ITERATOR_TY		end,
+		const size_t	blockSize,
+		FN_TY			task)
 	{
 		ProfileFunction();
 
 		const size_t taskCount = std::distance(begin, end);
 
-		const size_t temp           = taskCount / blockSize;
-		const size_t temp2          = taskCount % blockSize != 0;
-		const size_t threadCount    = Max(temp + temp2, 1);
+		const size_t temp			= taskCount / blockSize;
+		const size_t temp2			= taskCount % blockSize != 0;
+		const size_t threadCount	= Max(temp + temp2, 1);
 
 		struct Task : public iWork
 		{
@@ -784,11 +788,11 @@ namespace FlexKit
 			Task() : iWork{ nullptr } {}
 
 			Task(ITERATOR IN_begin, ITERATOR IN_end, size_t IN_dispatchID, FN_TY* IN_FN) :
-					iWork       { nullptr },
-					begin       { IN_begin  },
-					end         { IN_end    },
-					task_FN     { IN_FN     },
-					dispatchID  { IN_dispatchID } {}
+					iWork		{ nullptr		},
+					begin		{ IN_begin		},
+					end			{ IN_end		},
+					task_FN		{ IN_FN			},
+					dispatchID	{ IN_dispatchID	} {}
 
 			~Task(){}
 
@@ -830,7 +834,6 @@ namespace FlexKit
 		else
 			task(begin, end, 0, allocator);
 	}
-
 
 
 	/************************************************************************************************/

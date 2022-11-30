@@ -254,18 +254,18 @@ namespace FlexKit
 
 	struct DEBUG_WorldRenderTimingValues
 	{
-		float gBufferPass       = 0;
-		float shadingPass       = 0;
-		float ClusterCreation   = 0;
-		float BVHConstruction   = 0;
+		float gBufferPass		= 0;
+		float shadingPass		= 0;
+		float ClusterCreation	= 0;
+		float BVHConstruction	= 0;
 	};
 
 	struct EntityConstants
 	{
-		CreateOnceReserveBufferFunction getConstantBuffer;
-		GatherPassesTask&               passes;
+		CreateOnceReserveBufferFunction	getConstantBuffer;
+		GatherPassesTask&				passes;
 
-		CBPushBuffer&                   GetConstants()
+		CBPushBuffer&					GetConstants()
 		{
 			const auto reserveSize = passes.GetData().solid.size() * AlignedSize<Brush::VConstantsLayout>();
 			return getConstantBuffer(reserveSize);
@@ -274,34 +274,34 @@ namespace FlexKit
 
 	struct OcclusionCullingResults
 	{
-		GatherPassesTask&               passes;
-		EntityConstants&                entityConstants;
-		ReserveConstantBufferFunction   reserveCB;
+		GatherPassesTask&				passes;
+		EntityConstants&				entityConstants;
+		ReserveConstantBufferFunction	reserveCB;
 
-		FrameResourceHandle             depthBuffer;
-		FrameResourceHandle             ZPyramid;
+		FrameResourceHandle				depthBuffer;
+		FrameResourceHandle				ZPyramid;
 	};
 
 	struct DrawOutputs
 	{
-		GatherPassesTask&           passes;
-		GatherSkinnedTask&          skinnedDraws;
-		EntityConstants&            entityConstants;
-		PointLightShadowGatherTask& pointLights;
-		FrameResourceHandle         visibilityBuffer;
+		GatherPassesTask&			passes;
+		GatherSkinnedTask&			skinnedDraws;
+		EntityConstants&			entityConstants;
+		PointLightShadowGatherTask&	pointLights;
+		FrameResourceHandle			visibilityBuffer;
 	};
 
 
 	class ParticleSystemInterface;
 
 
-	size_t GetRTPoolSize(const RenderSystem::AvailableFeatures& features, const uint2 WH = uint2{ 1920, 1080 });
+	size_t GetRTPoolSize(const AvailableFeatures& features, const uint2 WH = uint2{ 1920, 1080 });
 
 	struct PoolSizes
 	{
-		size_t UAVPoolByteSize          = 64 * MEGABYTE;
-		size_t RTPoolByteSize           = 1024 * MEGABYTE;
-		size_t UAVTexturePoolByteSize   = 1024 * MEGABYTE;
+		size_t UAVPoolByteSize			= 64 * MEGABYTE;
+		size_t RTPoolByteSize			= 1024 * MEGABYTE;
+		size_t UAVTexturePoolByteSize	= 1024 * MEGABYTE;
 	};
 
 	class FLEXKITAPI WorldRender
@@ -315,97 +315,97 @@ namespace FlexKit
 
 
 		DrawOutputs DrawScene(
-				UpdateDispatcher&               dispatcher,
-				FrameGraph&                     frameGraph,
-				DrawSceneDescription&           drawSceneDesc,
-				WorldRender_Targets             targets,
-				iAllocator*                     persistent,
-				ThreadSafeAllocator&            temporary);
+				UpdateDispatcher&				dispatcher,
+				FrameGraph&						frameGraph,
+				DrawSceneDescription&			drawSceneDesc,
+				WorldRender_Targets				targets,
+				iAllocator*						persistent,
+				ThreadSafeAllocator&			temporary);
 
 
 		EntityConstants& BuildEntityConstantsBuffer(
-				FrameGraph&                     frameGraph,
-				UpdateDispatcher&               dispatcher,
-				GatherPassesTask&               passes,
-				ReserveConstantBufferFunction&  reserveConstants,
-				iAllocator&                     allocator);
+				FrameGraph&						frameGraph,
+				UpdateDispatcher&				dispatcher,
+				GatherPassesTask&				passes,
+				ReserveConstantBufferFunction&	reserveConstants,
+				iAllocator&						allocator);
 
 
 		OcclusionCullingResults& OcclusionCulling(
-				UpdateDispatcher&               dispatcher,
-				FrameGraph&                     frameGraph,
-				EntityConstants&                entityConstants,
-				GatherPassesTask&               passes,
-				CameraHandle                    camera,
-				ReserveConstantBufferFunction&  reserveConstants,
-				DepthBuffer&                    depthBuffer,
-				ThreadSafeAllocator&            temporary);
+				UpdateDispatcher&				dispatcher,
+				FrameGraph&						frameGraph,
+				EntityConstants&				entityConstants,
+				GatherPassesTask&				passes,
+				CameraHandle					camera,
+				ReserveConstantBufferFunction&	reserveConstants,
+				DepthBuffer&					depthBuffer,
+				ThreadSafeAllocator&			temporary);
 
 
 		DepthPass& DepthPrePass(
-				UpdateDispatcher&               dispatcher,
-				FrameGraph&                     frameGraph,
-				const CameraHandle              camera,
-				GatherPassesTask&               passes,
-				const ResourceHandle            depthBufferTarget,
-				ReserveConstantBufferFunction   reserveCB,
-				iAllocator*                     tempAllocator);
+				UpdateDispatcher&				dispatcher,
+				FrameGraph&						frameGraph,
+				const CameraHandle				camera,
+				GatherPassesTask&				passes,
+				const ResourceHandle			depthBufferTarget,
+				ReserveConstantBufferFunction	reserveCB,
+				iAllocator*						tempAllocator);
 
 
 		BackgroundEnvironmentPass& BackgroundPass(
-				UpdateDispatcher&               dispatcher,
-				FrameGraph&                     frameGraph,
-				const CameraHandle              camera,
-				const ResourceHandle            renderTarget,
-				const ResourceHandle            hdrMap,
-				ReserveConstantBufferFunction   reserveCB,
-				ReserveVertexBufferFunction     reserveVB,
-				iAllocator*                     tempMemory);
+				UpdateDispatcher&				dispatcher,
+				FrameGraph&						frameGraph,
+				const CameraHandle				camera,
+				const ResourceHandle			renderTarget,
+				const ResourceHandle			hdrMap,
+				ReserveConstantBufferFunction	reserveCB,
+				ReserveVertexBufferFunction		reserveVB,
+				iAllocator*						tempMemory);
 
 		BackgroundEnvironmentPass& RenderPBR_IBL_Deferred(
-				UpdateDispatcher&               dispatcher,
-				FrameGraph&                     frameGraph,
-				const SceneDescription&         sceneDescription,
-				const CameraHandle              camera,
-				const ResourceHandle            renderTarget,
-				const ResourceHandle            depthTarget,
-				GBuffer&                        gbuffer,
-				ReserveConstantBufferFunction   reserveCB,
-				ReserveVertexBufferFunction     reserveVB,
-				const float                     t,
-				iAllocator*                     tempMemory);
+				UpdateDispatcher&				dispatcher,
+				FrameGraph&						frameGraph,
+				const SceneDescription&			sceneDescription,
+				const CameraHandle				camera,
+				const ResourceHandle			renderTarget,
+				const ResourceHandle			depthTarget,
+				GBuffer&						gbuffer,
+				ReserveConstantBufferFunction	reserveCB,
+				ReserveVertexBufferFunction		reserveVB,
+				const float						t,
+				iAllocator*						tempMemory);
 
 		BilateralBlurPass&  BilateralBlur(
-				FrameGraph&                     frameGraph,
-				const ResourceHandle            source,
-				const ResourceHandle            temp1,
-				const ResourceHandle            temp2,
-				const ResourceHandle            temp3,
-				const ResourceHandle            destination,
-				GBuffer&                        gbuffer,
-				const ResourceHandle            depthBuffer,
-				ReserveConstantBufferFunction   reserveCB,
-				ReserveVertexBufferFunction     reserveVB,
-				iAllocator*                     tempMemory);
+				FrameGraph&						frameGraph,
+				const ResourceHandle			source,
+				const ResourceHandle			temp1,
+				const ResourceHandle			temp2,
+				const ResourceHandle			temp3,
+				const ResourceHandle			destination,
+				GBuffer&						gbuffer,
+				const ResourceHandle			depthBuffer,
+				ReserveConstantBufferFunction	reserveCB,
+				ReserveVertexBufferFunction		reserveVB,
+				iAllocator*						tempMemory);
 
 		ToneMap& RenderPBR_ToneMapping(
-				UpdateDispatcher&               dispatcher,
-				FrameGraph&                     frameGraph,
-				FrameResourceHandle             source,
-				ResourceHandle                  target,
-				ReserveConstantBufferFunction   reserveCB,
-				ReserveVertexBufferFunction     reserveVB,
-				float                           t,
-				iAllocator*                     allocator);
+				UpdateDispatcher&				dispatcher,
+				FrameGraph&						frameGraph,
+				FrameResourceHandle				source,
+				ResourceHandle					target,
+				ReserveConstantBufferFunction	reserveCB,
+				ReserveVertexBufferFunction		reserveVB,
+				float							t,
+				iAllocator*						allocator);
 
 		DEBUG_WorldRenderTimingValues GetTimingValues() const { return timingValues; }
 
 
 		struct PassData
 		{
-			GatherPassesTask&               passes;
-			ReserveConstantBufferFunction&  reserveCB;
-			ReserveVertexBufferFunction&    reserveVB;
+			GatherPassesTask&				passes;
+			ReserveConstantBufferFunction&	reserveCB;
+			ReserveVertexBufferFunction&	reserveVB;
 		};
 
 
@@ -419,10 +419,10 @@ namespace FlexKit
 
 
 		void BuildSceneGI(
-			FrameGraph&                     frameGraph,
-			Scene&                          scene,
-			GatherPassesTask&               passes,
-			ReserveConstantBufferFunction&  reserveCB)
+			FrameGraph&						frameGraph,
+			Scene&							scene,
+			GatherPassesTask&				passes,
+			ReserveConstantBufferFunction&	reserveCB)
 		{
 			lightingEngine.BuildScene(frameGraph, scene, passes, reserveCB);
 		}
@@ -435,30 +435,30 @@ namespace FlexKit
 
 		RenderSystem&			renderSystem;
 
-		MemoryPoolAllocator                 UAVPool;
-		MemoryPoolAllocator                 RTPool;
-		std::optional<MemoryPoolAllocator>  UAVTexturePool;
+		MemoryPoolAllocator					UAVPool;
+		MemoryPoolAllocator					RTPool;
+		std::optional<MemoryPoolAllocator>	UAVTexturePool;
 
-		MemoryPoolAllocator*    activePools[3] = { nullptr, nullptr, nullptr };
+		MemoryPoolAllocator*	activePools[3] = { nullptr, nullptr, nullptr };
 
-		QueryHandle             timeStats;
-		ReadBackResourceHandle  timingReadBack;
+		QueryHandle				timeStats;
+		ReadBackResourceHandle	timingReadBack;
 
-		ResourceHandle          clusterBuffer = InvalidHandle;
+		ResourceHandle			clusterBuffer = InvalidHandle;
 
-		ClusteredRender             clusteredRender;
-		ShadowMapper                shadowMapping;
-		Transparency                transparency;
-		GlobalIlluminationEngine    lightingEngine;
+		ClusteredRender				clusteredRender;
+		ShadowMapper				shadowMapping;
+		Transparency				transparency;
+		GlobalIlluminationEngine	lightingEngine;
 
-		static_vector<RenderTask>   pendingGPUTasks; // Tasks must be completed prior to rendering
+		static_vector<RenderTask>	pendingGPUTasks; // Tasks must be completed prior to rendering
 
 		CircularBuffer<ReadBackResourceHandle, 6> readBackBuffers;
 
-		TextureStreamingEngine&	    streamingEngine;
-		bool                        enableOcclusionCulling;
+		TextureStreamingEngine&		streamingEngine;
+		bool						enableOcclusionCulling;
 
-		FlexKit::RootSignature      rootSignatureToneMapping;
+		FlexKit::RootSignature		rootSignatureToneMapping;
 
 		DEBUG_WorldRenderTimingValues timingValues;
 	};
