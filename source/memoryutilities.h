@@ -1,27 +1,3 @@
-/**********************************************************************
-
-Copyright (c) 2015 - 2021 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
 #ifndef MEMORYUTILITIES_INLUDED
 #define MEMORYUTILITIES_INLUDED
 
@@ -801,7 +777,7 @@ namespace FlexKit
 		{
 			std::unique_lock ul(mu);
 
-			if (InSmallRange(reinterpret_cast<byte*>(_ptr)) && false)
+			if (InSmallRange(reinterpret_cast<byte*>(_ptr)))
 				SmallBlockAlloc.free(reinterpret_cast<void*>(_ptr));
 			else if (InMediumRange(reinterpret_cast<byte*>(_ptr)))
 				MediumBlockAlloc.free(reinterpret_cast<void*>(_ptr));
@@ -884,7 +860,7 @@ namespace FlexKit
 			byte* bottom = (byte*)(SmallBlockAlloc.Blocks);
 			byte* top    = ((byte*)SmallBlockAlloc.Blocks) + Small;
 
-			return (bottom <= a_ptr) && (a_ptr < top) && false;
+			return (bottom <= a_ptr) && (a_ptr < top);
 		}
 
 		bool InMediumRange(byte* a_ptr)
@@ -1004,10 +980,9 @@ namespace FlexKit
 			return Get()(std::forward<TY_Args>(args)...);
 		}
 
-		operator TY& ()	noexcept { return reference; }
+		operator TY& ()		noexcept { return reference; }
 		TY&		Get()		noexcept { return reference; }
-
-		TY*		ptr()	    noexcept { return &reference; }
+		TY*		ptr()		noexcept { return &reference; }
 
 		void AddRef()
 		{
@@ -1026,14 +1001,16 @@ namespace FlexKit
 			{
 				deleter(&reference);
 				counter_ref.store((int)-1);
-				allocator->release(&counter_ref);
+				allocator->release(counter_ref);
 			}
 		}
+
+		[[nodiscard]] int GetRefCount() const noexcept { return counter_ref.load(std::memory_order_relaxed); }
 
 	protected:
 		DELETER_FN			deleter;
 		iAllocator*			allocator;
-		TY&				    reference;
+		TY&					reference;
 		std::atomic_int&	counter_ref;
 	};
 
@@ -1118,6 +1095,44 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-}
+
+	template<typename TY>
+	struct NonAliasingPointer
+	{
+		explicit NonAliasingPointer(TY* IN_ptr) : _ptr{ IN_ptr } {}
+
+		TY* __restrict _ptr;
+
+		TY* operator -> ()	{ return _ptr; }
+		TY& operator * ()	{ return *_ptr; }
+	};
+
+
+}	/************************************************************************************************/
 
 #endif
+
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2022 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

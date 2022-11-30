@@ -20,6 +20,7 @@ ThirdParty/*
 Tessellation/x64/**
 FlexKitResourceCompiler/obj/**
 Temp/*
+HairRenderingExample/x64/*
 
 # files #
 *.tlog
@@ -43,7 +44,7 @@ Temp/*
 /assets
 /hdrs
 *.ini
+*.ifc
 
 *.recipe
 *.enc
-

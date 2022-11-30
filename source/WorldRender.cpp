@@ -550,9 +550,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t GetRTPoolSize(const RenderSystem::AvailableFeatures& features, const uint2 WH)
+	size_t GetRTPoolSize(const AvailableFeatures& features, const uint2 WH)
 	{
-		if (features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier1)
+		if (features.resourceHeapTier == AvailableFeatures::ResourceHeapTier::HeapTier1)
 			return 128 * 3 * MEGABYTE;
 		else
 			return 128 * 2 * MEGABYTE;
@@ -563,31 +563,31 @@ namespace FlexKit
 
 
 	WorldRender::WorldRender(RenderSystem& IN_renderSystem, TextureStreamingEngine& IN_streamingEngine, iAllocator* persistent, const PoolSizes& poolSizes) :
-			renderSystem                { IN_renderSystem },
-			enableOcclusionCulling	    { false	},
+			renderSystem				{ IN_renderSystem },
+			enableOcclusionCulling		{ false	},
 
-			UAVPool                     { renderSystem, poolSizes.UAVPoolByteSize, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
-			RTPool                      { renderSystem, poolSizes.RTPoolByteSize, DefaultBlockSize,
-											renderSystem.features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier2 ?
+			UAVPool						{ renderSystem, poolSizes.UAVPoolByteSize, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
+			RTPool						{ renderSystem, poolSizes.RTPoolByteSize, DefaultBlockSize,
+											renderSystem.features.resourceHeapTier == AvailableFeatures::ResourceHeapTier::HeapTier2 ?
 												DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget : DeviceHeapFlags::RenderTarget, persistent },
 
-			timeStats                   { renderSystem.CreateTimeStampQuery(256) },
-			timingReadBack              { renderSystem.CreateReadBackBuffer(512) }, 
+			timeStats					{ renderSystem.CreateTimeStampQuery(256) },
+			timingReadBack				{ renderSystem.CreateReadBackBuffer(512) }, 
 
-			streamingEngine		        { IN_streamingEngine },
+			streamingEngine				{ IN_streamingEngine },
 
-			lightingEngine              { renderSystem, *persistent, EGITECHNIQUE::DISABLE },
-			shadowMapping               { renderSystem, *persistent },
-			clusteredRender             { renderSystem, *persistent },
-			transparency                { renderSystem },
+			lightingEngine				{ renderSystem, *persistent, EGITECHNIQUE::DISABLE },
+			shadowMapping				{ renderSystem, *persistent },
+			clusteredRender				{ renderSystem, *persistent },
+			transparency				{ renderSystem },
 
-			rootSignatureToneMapping    { persistent }
+			rootSignatureToneMapping	{ persistent }
 	{
 		FlexKit::DesciptorHeapLayout layout{};
 		layout.SetParameterAsSRV(0, 0, 2, 0);
 		layout.SetParameterAsShaderUAV(1, 1, 1, 0);
 
-		if (renderSystem.features.resourceHeapTier == RenderSystem::AvailableFeatures::ResourceHeapTier::HeapTier1)
+		if (renderSystem.features.resourceHeapTier == AvailableFeatures::ResourceHeapTier::HeapTier1)
 			UAVTexturePool.emplace(renderSystem, poolSizes.UAVTexturePoolByteSize, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent);
 
 		rootSignatureToneMapping.AllowIA = true;
@@ -597,23 +597,23 @@ namespace FlexKit
 		rootSignatureToneMapping.Build(renderSystem, persistent);
 
 
-		renderSystem.RegisterPSOLoader(FORWARDDRAW,			            { &renderSystem.Library.RS6CBVs4SRVs,       CreateForwardDrawPSO,		  });
-		renderSystem.RegisterPSOLoader(FORWARDDRAWINSTANCED,	        { &renderSystem.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO });
+		renderSystem.RegisterPSOLoader(FORWARDDRAW,						{ &renderSystem.Library.RS6CBVs4SRVs,       CreateForwardDrawPSO,		  });
+		renderSystem.RegisterPSOLoader(FORWARDDRAWINSTANCED,			{ &renderSystem.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO });
 
-		renderSystem.RegisterPSOLoader(LIGHTPREPASS,			        { &renderSystem.Library.ComputeSignature,   CreateLightPassPSO			  });
-		renderSystem.RegisterPSOLoader(DEPTHPREPASS,			        { &renderSystem.Library.RS6CBVs4SRVs,       CreateDepthPrePassPSO         });
+		renderSystem.RegisterPSOLoader(LIGHTPREPASS,					{ &renderSystem.Library.ComputeSignature,   CreateLightPassPSO			  });
+		renderSystem.RegisterPSOLoader(DEPTHPREPASS,					{ &renderSystem.Library.RS6CBVs4SRVs,       CreateDepthPrePassPSO         });
 
-		renderSystem.RegisterPSOLoader(ENVIRONMENTPASS,                 { &renderSystem.Library.RS6CBVs4SRVs,       CreateEnvironmentPassPSO      });
+		renderSystem.RegisterPSOLoader(ENVIRONMENTPASS,					{ &renderSystem.Library.RS6CBVs4SRVs,       CreateEnvironmentPassPSO      });
 
-		renderSystem.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL,     { &renderSystem.Library.RSDefault, CreateBilaterialBlurHorizontalPSO });
-		renderSystem.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,       { &renderSystem.Library.RSDefault, CreateBilaterialBlurVerticalPSO   });
+		renderSystem.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL,		{ &renderSystem.Library.RSDefault, CreateBilaterialBlurHorizontalPSO });
+		renderSystem.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,		{ &renderSystem.Library.RSDefault, CreateBilaterialBlurVerticalPSO   });
 
-		renderSystem.RegisterPSOLoader(ZPYRAMIDBUILDLEVEL,              { &renderSystem.Library.RSDefault, CreateBuildZLayer });
-		renderSystem.RegisterPSOLoader(DEPTHCOPY,                       { &renderSystem.Library.RSDefault, CreateDepthBufferCopy });
+		renderSystem.RegisterPSOLoader(ZPYRAMIDBUILDLEVEL,				{ &renderSystem.Library.RSDefault, CreateBuildZLayer });
+		renderSystem.RegisterPSOLoader(DEPTHCOPY,						{ &renderSystem.Library.RSDefault, CreateDepthBufferCopy });
 
-		renderSystem.RegisterPSOLoader(AVERAGELUMINANCE_BLOCK,          { &renderSystem.Library.RSDefault, [&](auto renderSystem){ return CreateAverageLumanceLocal(renderSystem); } });
-		renderSystem.RegisterPSOLoader(AVERAGELUMANANCE_GLOBAL,         { &renderSystem.Library.RSDefault, [&](auto renderSystem){ return CreateAverageLumanceGlobal(renderSystem); } });
-		renderSystem.RegisterPSOLoader(TONEMAP,                         { &renderSystem.Library.RSDefault, [&](auto renderSystem){ return CreateToneMapping(renderSystem); } });
+		renderSystem.RegisterPSOLoader(AVERAGELUMINANCE_BLOCK,			{ &renderSystem.Library.RSDefault, [&](auto renderSystem){ return CreateAverageLumanceLocal(renderSystem); } });
+		renderSystem.RegisterPSOLoader(AVERAGELUMANANCE_GLOBAL,			{ &renderSystem.Library.RSDefault, [&](auto renderSystem){ return CreateAverageLumanceGlobal(renderSystem); } });
+		renderSystem.RegisterPSOLoader(TONEMAP,							{ &renderSystem.Library.RSDefault, [&](auto renderSystem){ return CreateToneMapping(renderSystem); } });
 
 		renderSystem.QueuePSOLoad(GBUFFERPASS);
 		renderSystem.QueuePSOLoad(GBUFFERPASS_SKINNED);

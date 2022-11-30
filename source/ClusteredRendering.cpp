@@ -956,7 +956,7 @@ namespace FlexKit
 							{ WS_position, pointLight.R } });
 				}
 
-				const size_t uploadSize = pointLightValues.size() * sizeof(GPUPointLight);
+				const uint32_t uploadSize = pointLightValues.size() * sizeof(GPUPointLight);
 				const ConstantBufferDataSet pointLights_GPU{ (char*)pointLightValues.data(), uploadSize, constantBuffer };
 
 

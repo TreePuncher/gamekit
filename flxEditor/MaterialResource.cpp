@@ -1,6 +1,6 @@
 #include "PCH.h"
 #include "MaterialResource.h"
-
+#include "Materials.h"
 
 /************************************************************************************************/
 
@@ -77,6 +77,61 @@ private:
 /************************************************************************************************/
 
 
+struct MaterialFactory : public IComponentFactory
+{
+	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
+	{
+		auto& materialComponentView = gameObject.AddView<FlexKit::MaterialView>(FlexKit::MaterialComponent::GetComponent().CreateMaterial());
+		FlexKit::SetMaterialHandle(gameObject, FlexKit::GetMaterialHandle(gameObject));
+
+		return materialComponentView;
+	}
+
+	inline static const std::string name = "Material";
+	const std::string& ComponentName() const noexcept { return name; }
+	FlexKit::ComponentID	ComponentID() const noexcept { return FlexKit::MaterialComponentID; }
+
+	static bool Register()
+	{
+		EditorInspectorView::AddComponentFactory(std::make_unique<MaterialFactory>());
+		return true;
+	}
+
+	inline static bool _registered = Register();
+};
+
+void MaterialInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
+{
+	auto& material = static_cast<FlexKit::MaterialView&>(component);
+
+	panelCtx.AddHeader("Material");
+
+	auto passes = material.GetPasses();
+	auto subMaterials = material.HasSubMaterials();
+	panelCtx.AddText("Passes");
+
+	if (passes.size())
+	{
+		panelCtx.PushVerticalLayout();
+		for (auto& pass : passes)
+			panelCtx.AddText(std::string{} + std::format("{}", pass.to_uint()));
+
+		panelCtx.Pop();
+	}
+
+	if (passes.size())
+	{
+		panelCtx.PushVerticalLayout();
+		for (auto& pass : passes)
+			panelCtx.AddText(std::string{} + std::format("{}", pass.to_uint()));
+
+		panelCtx.Pop();
+	}
+	panelCtx.AddText("Pass Count" + std::format("{}", passes.size()));
+	panelCtx.AddButton("Add Pass", [&]() {});
+}
+
+/*
 class MaterialFactory : public IComponentFactory
 {
 public:
@@ -92,7 +147,7 @@ public:
 
 	inline static const std::string name = "Material";
 };
-
+*/
 
 void RegisterMaterialInspector()
 {
