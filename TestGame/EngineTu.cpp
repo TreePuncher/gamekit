@@ -1,3 +1,3 @@
 #ifdef UNITY
-#include "allsourcefiles.cpp"
 #endif
+#include "allsourcefiles.cpp"

@@ -715,7 +715,13 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		Ty* data()
+		Ty* data() noexcept
+		{
+			return A;
+		}
+
+
+		const Ty* data() const noexcept
 		{
 			return A;
 		}

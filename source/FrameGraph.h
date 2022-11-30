@@ -1113,11 +1113,11 @@ namespace FlexKit
 		Vector<FrameObjectLink>	Readables;
 		Vector<FrameObjectLink>	Retirees;
 
-		iAllocator*             tempAllocator;
-		ThreadManager&          threads;
-		WorkBarrier             pendingTasks;
-		FrameResources&         resources;
-		RenderSystem&           renderSystem;
+		iAllocator*				tempAllocator;
+		ThreadManager&			threads;
+		WorkBarrier				pendingTasks;
+		FrameResources&			resources;
+		RenderSystem&			renderSystem;
 	};
 
 
@@ -1128,20 +1128,20 @@ namespace FlexKit
 	{
 	public:
 		FrameGraphNodeBuilder(
-			Vector<UpdateTask*>&        IN_DataDependencies,
+			Vector<UpdateTask*>&		IN_DataDependencies,
 			FrameResources*				IN_Resources, 
 			FrameGraphNode&				IN_Node,
 			FrameGraphResourceContext&	IN_context,
 			iAllocator*					IN_allocator) :
-				DataDependencies    { IN_DataDependencies	},
-				Context			    { IN_context			},
-				inputNodes          { IN_allocator			},
-				Node			    { IN_Node				},
-				Resources		    { IN_Resources			},
-				RetiredObjects      { IN_allocator          },
-				Transitions		    { IN_allocator			},
-				temporaryObjects    { IN_allocator          },
-				acquiredResources   { IN_allocator          } {}
+				DataDependencies	{ IN_DataDependencies	},
+				Context				{ IN_context			},
+				inputNodes			{ IN_allocator			},
+				Node				{ IN_Node				},
+				Resources			{ IN_Resources			},
+				RetiredObjects		{ IN_allocator			},
+				Transitions			{ IN_allocator			},
+				temporaryObjects	{ IN_allocator			},
+				acquiredResources	{ IN_allocator			}{}
 
 
 		// No Copying
@@ -1153,38 +1153,38 @@ namespace FlexKit
 
 		void AddDataDependency(UpdateTask& task);
 
-		FrameResourceHandle AccelerationStructure   (ResourceHandle);
+		FrameResourceHandle AccelerationStructure	(ResourceHandle);
 
-		FrameResourceHandle PixelShaderResource	    (ResourceHandle);
+		FrameResourceHandle PixelShaderResource		(ResourceHandle);
 
 		FrameResourceHandle NonPixelShaderResource	(ResourceHandle);
-		FrameResourceHandle NonPixelShaderResource  (FrameResourceHandle);
+		FrameResourceHandle NonPixelShaderResource	(FrameResourceHandle);
 
 
-		FrameResourceHandle CopyDest            (ResourceHandle);
-		FrameResourceHandle CopySource          (ResourceHandle);
+		FrameResourceHandle CopyDest			(ResourceHandle);
+		FrameResourceHandle CopySource			(ResourceHandle);
 
-		FrameResourceHandle RenderTarget	    (ResourceHandle);
-		FrameResourceHandle RenderTarget        (FrameResourceHandle);
+		FrameResourceHandle RenderTarget		(ResourceHandle);
+		FrameResourceHandle RenderTarget		(FrameResourceHandle);
 
-		FrameResourceHandle	Present             (ResourceHandle);
+		FrameResourceHandle	Present				(ResourceHandle);
 
-		FrameResourceHandle DepthRead           (ResourceHandle);
-		FrameResourceHandle	DepthTarget         (ResourceHandle);
+		FrameResourceHandle	DepthRead			(ResourceHandle);
+		FrameResourceHandle	DepthTarget			(ResourceHandle);
 
-		FrameResourceHandle AcquireVirtualResource(const GPUResourceDesc desc, DeviceResourceState initialState, bool temp = true);
-		FrameResourceHandle AcquireVirtualResource(PoolAllocatorInterface& allocator, const GPUResourceDesc desc, DeviceResourceState initialState, bool temp = true);
+		FrameResourceHandle	AcquireVirtualResource(const GPUResourceDesc desc, DeviceResourceState initialState, bool temp = true);
+		FrameResourceHandle	AcquireVirtualResource(PoolAllocatorInterface& allocator, const GPUResourceDesc desc, DeviceResourceState initialState, bool temp = true);
 
-		void                ReleaseVirtualResource(FrameResourceHandle handle);
+		void				ReleaseVirtualResource(FrameResourceHandle handle);
 
 
 		FrameResourceHandle	UnorderedAccess (ResourceHandle, DeviceResourceState state = DeviceResourceState::DRS_UAV);
 
 		FrameResourceHandle	VertexBuffer	(SOResourceHandle);
-		FrameResourceHandle	StreamOut	    (SOResourceHandle);
+		FrameResourceHandle	StreamOut		(SOResourceHandle);
 
-		FrameResourceHandle ReadTransition  (FrameResourceHandle handle, DeviceResourceState state);
-		FrameResourceHandle WriteTransition (FrameResourceHandle handle, DeviceResourceState state);
+		FrameResourceHandle ReadTransition	(FrameResourceHandle handle, DeviceResourceState state);
+		FrameResourceHandle WriteTransition	(FrameResourceHandle handle, DeviceResourceState state);
 
 
 		void SetDebugName(FrameResourceHandle handle, const char* debugName)
@@ -1292,17 +1292,17 @@ namespace FlexKit
 
 
 		static CheckStateRes CheckResourceSituation(
-			Vector<FrameObjectLink>&  Set1,
-			Vector<FrameObjectLink>&  Set2,
+			Vector<FrameObjectLink>&	Set1,
+			Vector<FrameObjectLink>&	Set2,
 			FrameObjectLink&			Object);
 
-		Vector<FrameGraphNode*>	    inputNodes;
+		Vector<FrameGraphNode*>			inputNodes;
 
-		Vector<ResourceTransition>	Transitions;
-		Vector<FrameObjectLink>	    RetiredObjects;
-		Vector<UpdateTask*>&	    DataDependencies;
-		Vector<FrameObjectLink>	    temporaryObjects;
-		Vector<ResourceAcquisition>	acquiredResources;
+		Vector<ResourceTransition>		Transitions;
+		Vector<FrameObjectLink>			RetiredObjects;
+		Vector<UpdateTask*>&			DataDependencies;
+		Vector<FrameObjectLink>			temporaryObjects;
+		Vector<ResourceAcquisition>		acquiredResources;
 
 		FrameGraphResourceContext&		Context;
 		FrameGraphNode&					Node;
@@ -1333,24 +1333,24 @@ namespace FlexKit
 		FrameGraph& operator =	(const FrameGraph& RHS) = delete;
 
 
-		template<typename TY, typename INITIAL_TY, typename SetupFN, typename DrawFN>
-		TY& AddNode(INITIAL_TY&& initial, SetupFN&& Setup, DrawFN&& Draw)
+		template<typename TY, typename SetupFN, typename DrawFN>
+		TY& AddNode(TY&& initial, SetupFN&& Setup, DrawFN&& Draw)
 		{
 			struct NodeData
 			{
-				NodeData(INITIAL_TY&& IN_initial, DrawFN&& IN_DrawFN) :
-					draw    { std::move(IN_DrawFN)  },
-					fields  { std::move(IN_initial) } {}
+				NodeData(TY&& IN_initial, DrawFN&& IN_DrawFN) :
+					draw	{ std::move(IN_DrawFN)  },
+					fields	{ std::move(IN_initial) } {}
 
 				~NodeData() = default;
 
-				TY      fields;
-				DrawFN  draw;
+				TY		fields;
+				DrawFN	draw;
 			};
 
-			auto& data  = Memory->allocate_aligned<NodeData>(std::move(std::forward<INITIAL_TY>(initial)), std::move(Draw));
-			auto idx    = Nodes.emplace_back(
-				FrameGraphNode{
+			auto& data	= Memory->allocate_aligned<NodeData>(std::move(std::forward<TY>(initial)), std::move(Draw));
+
+			auto idx	= Nodes.emplace_back(
 					[](
 					FrameGraphNode&	node,
 					FrameResources&	resources,
@@ -1377,7 +1377,7 @@ namespace FlexKit
 						}
 					},
 					&data,
-					Memory});
+					Memory);
 
 			FrameGraphNodeBuilder Builder(dataDependencies, &Resources, Nodes[idx], ResourceContext, Memory);
 
@@ -1389,9 +1389,9 @@ namespace FlexKit
 
 
 		void AddRenderTarget	(ResourceHandle Texture);
-		void AddMemoryPool      (PoolAllocatorInterface* poolAllocator);
+		void AddMemoryPool		(PoolAllocatorInterface* poolAllocator);
 
-		FrameResourceHandle     AddResource(ResourceHandle resource);
+		FrameResourceHandle		AddResource(ResourceHandle resource);
 
 
 		struct FrameGraphNodeWork

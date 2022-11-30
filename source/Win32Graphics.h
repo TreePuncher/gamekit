@@ -13,7 +13,6 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
-
 	struct Win32RenderWindow;
 
 	// Globals
@@ -805,7 +804,6 @@ namespace FlexKit
 	inline FLEXKITAPI std::pair<Win32RenderWindow, bool> CreateWin32RenderWindowFromHWND (RenderSystem& renderSystem, HWND hwnd)
 	{
 		Win32RenderWindow renderWindow;
-
 
 		DXGI_SWAP_CHAIN_DESC1 SwapChainDesc = {};
 		SwapChainDesc.Stereo			= false;
