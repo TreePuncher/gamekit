@@ -5,8 +5,8 @@
 
 
 namespace SLNet{
-    const SystemAddress UNASSIGNED_SYSTEM_ADDRESS;
-    const RakNetGUID    UNASSIGNED_RAKNET_GUID(-1);
+	const SystemAddress UNASSIGNED_SYSTEM_ADDRESS;
+	const RakNetGUID    UNASSIGNED_RAKNET_GUID(-1);
 }
 
 
@@ -21,7 +21,7 @@ NetworkState::~NetworkState()
 		packet.Release();
 	}
 
-    SLNet::RakPeerInterface::DestroyInstance(&raknet);
+	SLNet::RakPeerInterface::DestroyInstance(&raknet);
 }
 
 
@@ -29,15 +29,15 @@ NetworkState::~NetworkState()
 
 void NetworkState::Startup(short port)
 {
-    raknet.InitializeSecurity(0, 0, false);
-    SLNet::SocketDescriptor socketDescriptor;
-    socketDescriptor.port = port;
+	raknet.InitializeSecurity(0, 0, false);
+	SLNet::SocketDescriptor socketDescriptor;
+	socketDescriptor.port = port;
 
-    const auto res = raknet.Startup(10, &socketDescriptor, 1);
-    FK_ASSERT(res, "Failed to startup Raknet!");
+	const auto res = raknet.Startup(10, &socketDescriptor, 1);
+	FK_ASSERT(res, "Failed to startup Raknet!");
 
-    raknet.SetOccasionalPing(true);
-    raknet.SetUnreliableTimeout(1000);
+	raknet.SetOccasionalPing(true);
+	raknet.SetUnreliableTimeout(1000);
 }
 
 
@@ -49,51 +49,51 @@ UpdateTask* NetworkState::Update(EngineCore& core, UpdateDispatcher& dispatcher,
 	// Recieve Packets
 	for(auto packet = raknet.Receive(); packet != nullptr; raknet.DeallocatePacket(packet), packet = raknet.Receive())
 	{
-        //FK_LOG_INFO("Packet Recieved!");
+		//FK_LOG_INFO("Packet Recieved!");
 
 		switch(packet->data[0])
 		{
-        case ID_CONNECTION_REQUEST_ACCEPTED:
-        {
-            std::random_device random;
-            openConnections.push_back(openSocket{
-                                        0,
-                                        0,
-                                        packet->systemAddress,
-                                        ConnectionHandle{ random() } });
+		case ID_CONNECTION_REQUEST_ACCEPTED:
+		{
+			std::random_device random;
+			openConnections.push_back(openSocket{
+										0,
+										0,
+										packet->systemAddress,
+										ConnectionHandle{ random() } });
 
-            if(Accepted)
-                Accepted(openConnections.back().handle);
-        }   break;
-        case ID_CONNECTION_LOST:
+			if(Accepted)
+				Accepted(openConnections.back().handle);
+		}   break;
+		case ID_CONNECTION_LOST:
 		case ID_DISCONNECTION_NOTIFICATION:
 		{
-            FK_LOG_INFO("Detected disconnection!");
+			FK_LOG_INFO("Detected disconnection!");
 
-            auto handle = FindConnectionHandle(packet->systemAddress);
-            if (handle == InvalidHandle) {
-                SystemInError();
-                return nullptr;
-            }
+			auto handle = FindConnectionHandle(packet->systemAddress);
+			if (handle == InvalidHandle) {
+				SystemInError();
+				return nullptr;
+			}
 
-            HandleDisconnection(handle);
+			HandleDisconnection(handle);
 		}   break;
 		case ID_NEW_INCOMING_CONNECTION:
 		{
-            FK_LOG_INFO("New incoming connection!");
+			FK_LOG_INFO("New incoming connection!");
 
 			std::random_device random;
-            const uint64_t id = random();
-            openConnections.emplace_back(
-                0u,
-                0u,
-                packet->systemAddress,
-                ConnectionHandle{ id });
+			const uint64_t id = random();
+			openConnections.emplace_back(
+				0u,
+				0u,
+				packet->systemAddress,
+				ConnectionHandle{ id });
 
-            raknet.Ping(packet->systemAddress);
+			raknet.Ping(packet->systemAddress);
 
-            if(HandleNewConnection)
-                HandleNewConnection(openConnections.back().handle);
+			if(HandleNewConnection)
+				HandleNewConnection(openConnections.back().handle);
 		}   break;
 		case EBP_USERPACKET:
 		{   // Process packets in a deferred manner
@@ -109,7 +109,7 @@ UpdateTask* NetworkState::Update(EngineCore& core, UpdateDispatcher& dispatcher,
 		}   break;
 		default:
 		{
-            FK_LOG_INFO("Unrecognized packet, dropped!  Packet ID: $u", uint32_t(packet->data[0]));
+			FK_LOG_INFO("Unrecognized packet, dropped!  Packet ID: $u", uint32_t(packet->data[0]));
 
 		}   break;
 		}
@@ -130,17 +130,17 @@ UpdateTask* NetworkState::Update(EngineCore& core, UpdateDispatcher& dispatcher,
 	}
 
 
-    if (timer > 1.0f)
-    {
-        for (auto& socket : openConnections) {
-            socket.latency = raknet.GetLastPing(socket.address);
-            raknet.Ping(socket.address);// ping hosts every second to get latencies
-        }
-    }
-    else
-        timer += dT;
+	if (timer > 1.0f)
+	{
+		for (auto& socket : openConnections) {
+			socket.latency = raknet.GetLastPing(socket.address);
+			raknet.Ping(socket.address);// ping hosts every second to get latencies
+		}
+	}
+	else
+		timer += dT;
 
-    return nullptr;
+	return nullptr;
 }
 
 
@@ -149,8 +149,8 @@ UpdateTask* NetworkState::Update(EngineCore& core, UpdateDispatcher& dispatcher,
 
 void NetworkState::Broadcast(const UserPacketHeader& packet)
 {
-    for (auto socket : openConnections)
-        raknet.Send((const char*)&packet, (int)packet.packetSize, PacketPriority::MEDIUM_PRIORITY, PacketReliability::UNRELIABLE, 0, socket.address, false, 0);
+	for (auto socket : openConnections)
+		raknet.Send((const char*)&packet, (int)packet.packetSize, PacketPriority::MEDIUM_PRIORITY, PacketReliability::UNRELIABLE, 0, socket.address, false, 0);
 }
 
 
@@ -159,12 +159,12 @@ void NetworkState::Broadcast(const UserPacketHeader& packet)
 
 void NetworkState::Send(const UserPacketHeader& packet, ConnectionHandle destination)
 {
-    if (destination == InvalidHandle)
-        return;
+	if (destination == InvalidHandle)
+		return;
 
-    auto socket = GetConnection(destination);
+	auto socket = GetConnection(destination);
 
-    raknet.Send((const char*)&packet, (int)packet.packetSize, PacketPriority::MEDIUM_PRIORITY, PacketReliability::UNRELIABLE, 0, socket.address, false, 0);
+	raknet.Send((const char*)&packet, (int)packet.packetSize, PacketPriority::MEDIUM_PRIORITY, PacketReliability::UNRELIABLE, 0, socket.address, false, 0);
 }
 
 
@@ -173,7 +173,7 @@ void NetworkState::Send(const UserPacketHeader& packet, ConnectionHandle destina
 
 void NetworkState::PushHandler(Vector<PacketHandler*>& handler)
 {
-    handlerStack.push_back(&handler);
+	handlerStack.push_back(&handler);
 }
 
 
@@ -182,7 +182,7 @@ void NetworkState::PushHandler(Vector<PacketHandler*>& handler)
 
 void NetworkState::PopHandler()
 {
-    handlerStack.pop_back();
+	handlerStack.pop_back();
 }
 
 
@@ -191,11 +191,11 @@ void NetworkState::PopHandler()
 
 void NetworkState::Connect(const char* address, uint16_t port)
 {
-    auto socketDesc = SLNet::SocketDescriptor();
+	auto socketDesc = SLNet::SocketDescriptor();
 
-    raknet.Startup(16, &socketDesc, 1);
+	raknet.Startup(16, &socketDesc, 1);
 
-    auto res = raknet.Connect("127.0.0.1", port, nullptr, 0);
+	auto res = raknet.Connect("127.0.0.1", port, nullptr, 0);
 }
 
 
@@ -204,8 +204,8 @@ void NetworkState::Connect(const char* address, uint16_t port)
 
 void NetworkState::Disconnect()
 {
-    openConnections.clear();
-    raknet.Shutdown(0);
+	openConnections.clear();
+	raknet.Shutdown(0);
 }
 
 
@@ -214,8 +214,8 @@ void NetworkState::Disconnect()
 
 void NetworkState::CloseConnection(ConnectionHandle handle)
 {
-    auto socket = GetConnection(handle);
-    raknet.CloseConnection(socket.address, true);
+	auto socket = GetConnection(handle);
+	raknet.CloseConnection(socket.address, true);
 }
 
 
@@ -224,11 +224,11 @@ void NetworkState::CloseConnection(ConnectionHandle handle)
 
 ConnectionHandle NetworkState::FindConnectionHandle(SLNet::SystemAddress address)
 {
-    for (size_t i = 0; i < openConnections.size(); i++)
-        if (openConnections[i].address == address)
-            return openConnections[i].handle;
+	for (size_t i = 0; i < openConnections.size(); i++)
+		if (openConnections[i].address == address)
+			return openConnections[i].handle;
 
-    return InvalidHandle;
+	return InvalidHandle;
 }
 
 
@@ -237,11 +237,11 @@ ConnectionHandle NetworkState::FindConnectionHandle(SLNet::SystemAddress address
 
 NetworkState::openSocket NetworkState::GetConnection(ConnectionHandle handle)
 {
-    for (size_t i = 0; i < openConnections.size(); i++)
-        if (openConnections[i].handle == handle)
-            return openConnections[i];
+	for (size_t i = 0; i < openConnections.size(); i++)
+		if (openConnections[i].handle == handle)
+			return openConnections[i];
 
-    return openSocket{};
+	return openSocket{};
 }
 
 
@@ -250,12 +250,12 @@ NetworkState::openSocket NetworkState::GetConnection(ConnectionHandle handle)
 
 void NetworkState::RemoveConnectionHandle(SLNet::SystemAddress address)
 {
-    for (size_t i = 0; i < openConnections.size(); i++)
-        if (openConnections[i].address == address)
-        {
-            openConnections[i] = openConnections.back();
-            openConnections.pop_back();
-        }
+	for (size_t i = 0; i < openConnections.size(); i++)
+		if (openConnections[i].address == address)
+		{
+			openConnections[i] = openConnections.back();
+			openConnections.pop_back();
+		}
 }
 
 
@@ -264,7 +264,7 @@ void NetworkState::RemoveConnectionHandle(SLNet::SystemAddress address)
 
 void NetworkState::SystemInError()
 {
-    framework.core.End = true;
+	framework.core.End = true;
 }
 
 

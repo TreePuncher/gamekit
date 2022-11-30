@@ -20,7 +20,6 @@
 #include "Geometry.h"
 #include "TextureUtilities.h"
 
-#include <iso646.h>
 #include <algorithm>
 #include <concepts>
 #include <string>
@@ -623,9 +622,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	{
 		iAllocator*		Memory;
 		iAllocator*		TempMemory;
-		bool			DebugRenderMode;
-		bool			Fullscreen;
 		uint32_t		SlaveThreadCount;
+		bool			Fullscreen						= false;
+		bool			DX_DebugMode					= false;
+		bool			DX_GPUvalidation				= false;
+		bool			DX_SynchronizedQueueValidation	= false;
 	};
 
 	enum class SHADER_TYPE
@@ -1279,8 +1280,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 
 		bool SetParameterAsCBV(
-			size_t Index, size_t Register, size_t RegisterSpace, 
-			PIPELINE_DESTINATION AccessableStages, size_t Tag = -1)
+			size_t Index, size_t Register, size_t RegisterSpace = 0, 
+			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL, size_t Tag = -1)
 		{
 			RootEntry Desc;
 			Desc.Type							= RootSignatureEntryType::ConstantBuffer;
@@ -1305,8 +1306,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 
 		bool SetParameterAsUAV(
-			size_t Index, size_t Register, size_t RegisterSpace,
-			PIPELINE_DESTINATION AccessableStages, size_t Tag = -1)
+			size_t Index, size_t Register, size_t RegisterSpace = 0,
+			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL, size_t Tag = -1)
 		{
 			RootEntry Desc;
 			Desc.Type							= RootSignatureEntryType::UnorderedAcess;
@@ -3208,6 +3209,40 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	constexpr PSOHandle CLEARBUFFERPSO = PSOHandle(GetTypeGUID(CLEARBUFFERPSO));
 
+	struct AvailableFeatures
+	{
+		enum struct Raytracing
+		{
+			RT_FeatureLevel_NOTAVAILABLE,
+			RT_FeatureLevel_1,
+			RT_FeatureLevel_1_1,
+		} RT_Level;
+
+		enum ConservativeRasterization
+		{
+			ConservativeRast_AVAILABLE,
+			ConservativeRast_NOTAVAILABLE,
+		} conservativeRast;
+
+		enum struct HLSLCompiler
+		{
+			HLSL_CompilerEnabled,
+			HLSL_CompilerDisabled
+		} Compiler;
+
+		enum struct ResourceHeapTier
+		{
+			HeapTier1,
+			HeapTier2,
+		}	resourceHeapTier;
+	};
+
+	struct ShaderOptions
+	{
+		bool enable16BitTypes	= false;
+		bool hlsl2021			= false;
+	};
+
 	FLEXKITAPI class RenderSystem
 	{
 	public:
@@ -3229,9 +3264,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		}
 
 		size_t						GetCurrentFrame();
-		size_t                      GetCurrentCounter();
-		ID3D12PipelineState*        GetPSO(PSOHandle StateID);
-		const RootSignature* const  GetPSORootSignature(PSOHandle StateID) const;
+		size_t						GetCurrentCounter();
+		ID3D12PipelineState*		GetPSO(PSOHandle StateID);
+		const RootSignature* const	GetPSORootSignature(PSOHandle StateID) const;
 
 
 		void BuildLibrary(PSOHandle State, const PipelineStateLibraryDesc);
@@ -3239,10 +3274,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void QueuePSOLoad(PSOHandle State);
 
 
-		void        BeginSubmission();
-		SyncPoint   Submit(Vector<Context*>& CLs, std::optional<SyncPoint> sync = {});
-		void        _UpdateCounters();
-		void        _UpdateSubResources(ResourceHandle handle, ID3D12Resource** resources, const size_t size);
+		void		BeginSubmission();
+		SyncPoint	Submit(Vector<Context*>& CLs, std::optional<SyncPoint> sync = {});
+		void		_UpdateCounters();
+		void		_UpdateSubResources(ResourceHandle handle, ID3D12Resource** resources, const size_t size);
 
 		void WaitforGPU();
 
@@ -3251,19 +3286,19 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		size_t						GetVertexBufferSize(const VertexBufferHandle);
 		D3D12_GPU_VIRTUAL_ADDRESS	GetVertexBufferAddress(const VertexBufferHandle VB);
 		D3D12_GPU_VIRTUAL_ADDRESS	GetConstantBufferAddress(const ConstantBufferHandle CB);
-		BLAS_PreBuildInfo           GetBLASPreBuildInfo(VertexBuffer&);
+		BLAS_PreBuildInfo			GetBLASPreBuildInfo(VertexBuffer&);
 
 
 		size_t	GetTextureFrameGraphIndex(ResourceHandle);
 		void	SetTextureFrameGraphIndex(ResourceHandle, size_t);
 
-		void    MarkTextureUsed(ResourceHandle Handle);
+		void	MarkTextureUsed(ResourceHandle Handle);
 
-		const size_t    GetResourceSize(ConstantBufferHandle handle) const noexcept;
-		const size_t    GetResourceSize(ResourceHandle desc) const noexcept;
+		const size_t	GetResourceSize(ConstantBufferHandle handle) const noexcept;
+		const size_t	GetResourceSize(ResourceHandle desc) const noexcept;
 
-		const size_t    GetAllocationSize(ResourceHandle handle) const noexcept; // Includes padding and alignment
-		const size_t    GetAllocationSize(GPUResourceDesc desc) const noexcept; // Includes padding and alignment
+		const size_t	GetAllocationSize(ResourceHandle handle) const noexcept; // Includes padding and alignment
+		const size_t	GetAllocationSize(GPUResourceDesc desc) const noexcept; // Includes padding and alignment
 
 
 		const size_t	GetTextureElementSize(ResourceHandle   Handle) const;
@@ -3271,49 +3306,49 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		DeviceFormat	GetTextureFormat(ResourceHandle Handle) const;
 		DXGI_FORMAT		GetTextureDeviceFormat(ResourceHandle Handle) const;
-		uint8_t         GetTextureMipCount(ResourceHandle Handle) const;
-		uint2           GetTextureTilingWH(ResourceHandle Handle, const uint mipLevel) const;
-		uint2           GetHeapOffset(ResourceHandle Handle, uint subResourceID = 0) const;
+		uint8_t			GetTextureMipCount(ResourceHandle Handle) const;
+		uint2			GetTextureTilingWH(ResourceHandle Handle, const uint mipLevel) const;
+		uint2			GetHeapOffset(ResourceHandle Handle, uint subResourceID = 0) const;
 
-		SyncPoint           UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator);
-		void                UpdateTextureTileMappings(const ResourceHandle Handle, const TileMapList&);
-		const TileMapList&  GetTileMappings(const ResourceHandle Handle);
+		SyncPoint			UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator);
+		void				UpdateTextureTileMappings(const ResourceHandle Handle, const TileMapList&);
+		const TileMapList&	GetTileMappings(const ResourceHandle Handle);
 
 
-		TextureDimension GetTextureDimension(ResourceHandle handle) const;
-		size_t           GetTextureArraySize(ResourceHandle handle) const;
+		TextureDimension	GetTextureDimension(ResourceHandle handle) const;
+		size_t				GetTextureArraySize(ResourceHandle handle) const;
 
 		void			UploadTexture(ResourceHandle, CopyContextHandle, byte* buffer, size_t bufferSize); // Uses Upload Queue
-		void            UploadTexture(ResourceHandle handle, CopyContextHandle, TextureBuffer* buffer, size_t resourceCount); // Uses Upload Queue
-		void			UpdateResourceByUploadQueue(ID3D12Resource* Dest, CopyContextHandle, void* Data, size_t Size, size_t ByteSize, DeviceResourceState EndState);
+		void			UploadTexture(ResourceHandle handle, CopyContextHandle, TextureBuffer* buffer, size_t resourceCount); // Uses Upload Queue
+		void			UpdateResourceByUploadQueue(ID3D12Resource* Dest, CopyContextHandle, const void* Data, size_t Size, size_t ByteSize, DeviceResourceState EndState);
 
-		Shader  LoadShader(const char* entryPoint, const char* ShaderType, const char* file, bool enable16Bit = false);
+		Shader  LoadShader(const char* entryPoint, const char* ShaderType, const char* file, const ShaderOptions& options = {});
 
 		PipelineStateLibraryDesc    CreatePipelibrary();
 
 		// Resource Creation and Destruction
-		[[nodiscard]] DeviceHeapHandle          CreateHeap                  (const size_t heapSize, const uint32_t flags);
-		[[nodiscard]] ConstantBufferHandle	    CreateConstantBuffer		(size_t BufferSize, bool GPUResident = true);
+		[[nodiscard]] DeviceHeapHandle			CreateHeap                  (const size_t heapSize, const uint32_t flags);
+		[[nodiscard]] ConstantBufferHandle		CreateConstantBuffer		(size_t BufferSize, bool GPUResident = true);
 		[[nodiscard]] VertexBufferHandle		CreateVertexBuffer			(size_t BufferSize, bool GPUResident = true);
 		[[nodiscard]] ResourceHandle			CreateDepthBuffer			(const uint2 WH, const bool UseFloat = false, size_t bufferCount = 3);
 		[[nodiscard]] ResourceHandle			CreateDepthBufferArray		(const uint2 WH, const bool UseFloat = false, const size_t arraySize = 1, const bool buffered = true, const ResourceAllocationType = ResourceAllocationType::Committed);
 		[[nodiscard]] ResourceHandle			CreateGPUResource			(const GPUResourceDesc& desc);
 		[[nodiscard]] ResourceHandle			CreateGPUResourceHandle     ();
 		[[nodiscard]] QueryHandle				CreateOcclusionBuffer		(size_t Size);
-		[[nodiscard]] ResourceHandle		    CreateUAVBufferResource		(size_t bufferHandle, bool tripleBuffer = true);
-		[[nodiscard]] ResourceHandle		    CreateUAVTextureResource	(const uint2 WH, const DeviceFormat, const bool RenderTarget = false);
-		[[nodiscard]] SOResourceHandle		    CreateStreamOutResource		(size_t bufferHandle, bool tripleBuffer = true);
+		[[nodiscard]] ResourceHandle			CreateUAVBufferResource		(size_t bufferHandle, bool tripleBuffer = true);
+		[[nodiscard]] ResourceHandle			CreateUAVTextureResource	(const uint2 WH, const DeviceFormat, const bool RenderTarget = false);
+		[[nodiscard]] SOResourceHandle			CreateStreamOutResource		(size_t bufferHandle, bool tripleBuffer = true);
 		[[nodiscard]] QueryHandle				CreateSOQuery				(size_t SOIndex, size_t count);
 		[[nodiscard]] QueryHandle				CreateTimeStampQuery		(size_t count);
 		[[nodiscard]] IndirectLayout			CreateIndirectLayout		(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, RootSignature* signature = nullptr);
-		[[nodiscard]] ReadBackResourceHandle    CreateReadBackBuffer        (const size_t bufferSize);
+		[[nodiscard]] ReadBackResourceHandle	CreateReadBackBuffer		(const size_t bufferSize);
 
 		void BackResource(ResourceHandle, const GPUResourceDesc& desc);
 
-		void                        SetReadBackEvent    (ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler);
-		std::pair<void*, size_t>    OpenReadBackBuffer  (ReadBackResourceHandle readbackBuffer, const size_t readSize = -1);
-		void                        CloseReadBackBuffer (ReadBackResourceHandle readbackBuffer);
-		void                        FlushPendingReadBacks();
+		void						SetReadBackEvent    (ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler);
+		std::pair<void*, size_t>	OpenReadBackBuffer  (ReadBackResourceHandle readbackBuffer, const size_t readSize = -1);
+		void						CloseReadBackBuffer (ReadBackResourceHandle readbackBuffer);
+		void						FlushPendingReadBacks();
 
 		void SetObjectState(SOResourceHandle	handle,	DeviceResourceState state);
 		void SetObjectState(ResourceHandle		handle, DeviceResourceState state);
@@ -3324,30 +3359,22 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		DeviceResourceState GetObjectState(const ResourceHandle		handle) const;
 
 
-		ID3D12Heap*         GetDeviceResource(const DeviceHeapHandle        handle) const;
-		ID3D12Resource*     GetDeviceResource(const ReadBackResourceHandle	handle) const;
+		ID3D12Heap*			GetDeviceResource(const DeviceHeapHandle        handle) const;
+		ID3D12Resource*		GetDeviceResource(const ReadBackResourceHandle	handle) const;
 		ID3D12Resource*		GetDeviceResource(const ConstantBufferHandle	handle) const;
 		ID3D12Resource*		GetDeviceResource(const ResourceHandle		    handle) const;
 		ID3D12Resource*		GetDeviceResource(const SOResourceHandle		handle) const;
-		ID3D12Resource*     GetSOCounterResource(const SOResourceHandle handle) const;
+		ID3D12Resource*		GetSOCounterResource(const SOResourceHandle handle) const;
 		size_t				GetStreamOutBufferSize(const SOResourceHandle handle) const;
 
 		UAVResourceLayout	GetUAVBufferLayout(const ResourceHandle) const noexcept;
 		void				SetUAVBufferLayout(const ResourceHandle, const UAVResourceLayout) noexcept;
-		size_t              GetUAVBufferSize(const ResourceHandle) const noexcept;
+		size_t				GetUAVBufferSize(const ResourceHandle) const noexcept;
 
-		size_t              GetHeapSize(const DeviceHeapHandle heap) const;
+		size_t				GetHeapSize(const DeviceHeapHandle heap) const;
 
-		auto GetRTFeatureLevel() const
-		{
-			return features.RT_Level;
-		}
-
-		bool RTAvailable() const
-		{
-			return (features.RT_Level != AvailableFeatures::Raytracing::RT_FeatureLevel_NOTAVAILABLE);
-		}
-
+		AvailableFeatures::Raytracing	GetRTFeatureLevel() const noexcept;
+		bool							RTAvailable() const noexcept;
 
 		void ResetQuery(QueryHandle handle);
 
@@ -3357,34 +3384,34 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void ReleaseReadBack(ReadBackResourceHandle);
 		void ReleaseHeap(DeviceHeapHandle);
 
-		SyncPoint           SubmitUploadQueues(uint32_t flags, CopyContextHandle* handle, size_t count = 1, std::optional<SyncPoint> sync = {});
-		CopyContextHandle   OpenUploadQueue();
-		CopyContextHandle   GetImmediateUploadQueue();
-		Context&            GetCommandList();
+		SyncPoint			SubmitUploadQueues(uint32_t flags, CopyContextHandle* handle, size_t count = 1, std::optional<SyncPoint> sync = {});
+		CopyContextHandle	OpenUploadQueue();
+		CopyContextHandle	GetImmediateUploadQueue();
+		Context&			GetCommandList();
 		// Internal
 		//ResourceHandle			_AddBackBuffer						(Texture2D_Desc& Desc, ID3D12Resource* Res, uint32_t Tag);
 		static ConstantBuffer	_CreateConstantBufferResource(RenderSystem* RS, ConstantBuffer_desc* desc);
 		VertexResourceBuffer	_CreateVertexBufferDeviceResource(const size_t ResourceSize, bool GPUResident = true);
-		ResourceHandle          _CreateDefaultTexture();
+		ResourceHandle			_CreateDefaultTexture();
 
-		void                    _PushDelayReleasedResource(ID3D12Resource*, CopyContextHandle = InvalidHandle);
+		void					_PushDelayReleasedResource(ID3D12Resource*, CopyContextHandle = InvalidHandle);
 
-		void    _ForceReleaseTexture(ResourceHandle handle);
-		void    _InsertBarrier(const Vector<Barrier>& vector);
-		void    _InsertBarrier(Barrier vector);
+		void	_ForceReleaseTexture(ResourceHandle handle);
+		void	_InsertBarrier(const Vector<Barrier>& vector);
+		void	_InsertBarrier(Barrier vector);
 
-		size_t  _GetVidMemUsage();
+		size_t	_GetVidMemUsage();
 
 
-		ID3D12QueryHeap*    _GetQueryResource(QueryHandle handle);
-		CopyContext&        _GetCopyContext(CopyContextHandle handle = InvalidHandle);
-		auto*               _GetCopyQueue() { return copyEngine.copyQueue; }
+		ID3D12QueryHeap*	_GetQueryResource(QueryHandle handle);
+		CopyContext&		_GetCopyContext(CopyContextHandle handle = InvalidHandle);
+		auto*				_GetCopyQueue() { return copyEngine.copyQueue; }
 
-		void                _OnCrash();
+		void				_OnCrash();
 
-		bool                DEBUG_AttachPIX();
-		bool                DEBUG_BeginPixCapture();
-		bool                DEBUG_EndPixCapture();
+		bool				DEBUG_AttachPIX();
+		bool				DEBUG_BeginPixCapture();
+		bool				DEBUG_EndPixCapture();
 
 #if USING(PIX)
 		IDXGraphicsAnalysis* pix = nullptr;
@@ -3409,25 +3436,25 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		operator RenderSystem* () { return this; }
 
-		ID3D12Device1*      pDevice         = nullptr;
-		ID3D12Device9*      pDevice9        = nullptr;
-		ID3D12CommandQueue* GraphicsQueue   = nullptr;
-		ID3D12CommandQueue* ComputeQueue    = nullptr;
+		ID3D12Device1*		pDevice			= nullptr;
+		ID3D12Device9*		pDevice9		= nullptr;
+		ID3D12CommandQueue*	GraphicsQueue	= nullptr;
+		ID3D12CommandQueue*	ComputeQueue	= nullptr;
 
-		size_t              pendingFrames[3]            = { 0, 0, 0 };
-		size_t              frameIdx                    = 0;
-		size_t              CurrentFrame                = 0;
-		std::atomic_uint    graphicsSubmissionCounter   = 0;
-		ID3D12Fence*        Fence                       = nullptr;
+		size_t				pendingFrames[3]			= { 0, 0, 0 };
+		size_t				frameIdx					= 0;
+		size_t				CurrentFrame				= 0;
+		std::atomic_uint	graphicsSubmissionCounter	= 0;
+		ID3D12Fence*		Fence						= nullptr;
 
-		CopyContextHandle   ImmediateUpload = InvalidHandle;
+		CopyContextHandle	ImmediateUpload = InvalidHandle;
 
-		IDXGIFactory2*      pGIFactory		= nullptr;
-		IDXGIFactory5*      pGIFactory5		= nullptr;
-		IDXGIAdapter3*      pDXGIAdapter	= nullptr;
-		IDXGIAdapter4*      pDXGIAdapter4	= nullptr;
+		IDXGIFactory2*		pGIFactory		= nullptr;
+		IDXGIFactory5*		pGIFactory5		= nullptr;
+		IDXGIAdapter3*		pDXGIAdapter	= nullptr;
+		IDXGIAdapter4*		pDXGIAdapter4	= nullptr;
 
-		ResourceHandle      DefaultTexture;
+		ResourceHandle		DefaultTexture;
 
 		size_t BufferCount = 0;
 		size_t DescriptorRTVSize = 0;
@@ -3443,13 +3470,13 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		struct RootSigLibrary
 		{
 			RootSigLibrary(iAllocator* allocator) :
-				RSDefault           { allocator },
-				ShadingRTSig        { allocator },
-				RS4CBVs_SO          { allocator },
-				RS6CBVs4SRVs        { allocator },
-				RS2UAVs4SRVs4CBs    { allocator },
-				ComputeSignature    { allocator },
-				ClearBuffer         { allocator } {}
+				RSDefault			{ allocator },
+				ShadingRTSig		{ allocator },
+				RS4CBVs_SO			{ allocator },
+				RS6CBVs4SRVs		{ allocator },
+				RS2UAVs4SRVs4CBs	{ allocator },
+				ComputeSignature	{ allocator },
+				ClearBuffer			{ allocator } {}
 
 			void Initiate(RenderSystem* RS, iAllocator* TempMemory);
 
@@ -3472,46 +3499,20 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			RootSignature ClearBuffer;
 		}Library;
 
-		Vector<Context>             Contexts;
-		size_t                      contextIdx = 0;
+		Vector<Context>				Contexts;
+		size_t						contextIdx = 0;
 
-		HeapTable                   heaps;
-		CopyEngine		            copyEngine;
-		ConstantBufferTable		    ConstantBuffers;
-		QueryTable				    Queries;
+		HeapTable					heaps;
+		CopyEngine					copyEngine;
+		ConstantBufferTable			ConstantBuffers;
+		QueryTable					Queries;
 		VertexBufferStateTable		VertexBuffers;
 		TextureStateTable			Textures;
 		SOResourceTable				StreamOutTable;
 		PipelineStateTable			PipelineStates;
-		ReadBackStateTable          ReadBackTable;
+		ReadBackStateTable			ReadBackTable;
 
-		struct AvailableFeatures
-		{
-			enum struct Raytracing
-			{
-				RT_FeatureLevel_NOTAVAILABLE,
-				RT_FeatureLevel_1,
-				RT_FeatureLevel_1_1,
-			} RT_Level;
-
-			enum ConservativeRasterization
-			{
-				ConservativeRast_AVAILABLE,
-				ConservativeRast_NOTAVAILABLE,
-			} conservativeRast;
-
-			enum struct HLSLCompiler
-			{
-				HLSL_CompilerEnabled,
-				HLSL_CompilerDisabled
-			} Compiler;
-
-			enum struct ResourceHeapTier
-			{
-				HeapTier1,
-				HeapTier2,
-			}   resourceHeapTier;
-		}features;
+		AvailableFeatures features;
 
 
 		struct FreeEntry
@@ -5343,11 +5344,11 @@ private:
 
 	/************************************************************************************************/
 
-
+	[[nodiscard]]
 	inline auto CreateVertexBufferReserveObject(
-		VertexBufferHandle  vertexBuffer,
-		RenderSystem*       renderSystem,
-		iAllocator*         allocator)
+		VertexBufferHandle	vertexBuffer,
+		RenderSystem*		renderSystem,
+		iAllocator*			allocator)
 	{
 		return MakeSynchonized(
 			[=](size_t reserveSize) -> VBPushBuffer
@@ -5357,10 +5358,11 @@ private:
 			allocator);
 	}
 
+	[[nodiscard]]
 	inline auto CreateConstantBufferReserveObject(
-		ConstantBufferHandle    constantBuffer,
-		RenderSystem*           renderSystem,
-		iAllocator*             allocator)
+		ConstantBufferHandle	constantBuffer,
+		RenderSystem*			renderSystem,
+		iAllocator*				allocator)
 	{
 		return MakeSynchonized(
 			[=](const size_t reserveSize) -> CBPushBuffer
@@ -5371,9 +5373,10 @@ private:
 			allocator);
 	}
 
-	using ReserveVertexBufferFunction   = decltype(CreateVertexBufferReserveObject(InvalidHandle, nullptr, nullptr));
-	using ReserveConstantBufferFunction = decltype(CreateConstantBufferReserveObject(InvalidHandle, nullptr, nullptr));
+	using ReserveVertexBufferFunction	= decltype(CreateVertexBufferReserveObject(InvalidHandle, nullptr, nullptr));
+	using ReserveConstantBufferFunction	= decltype(CreateConstantBufferReserveObject(InvalidHandle, nullptr, nullptr));
 
+	[[nodiscard]]
 	inline auto CreateOnceReserveBuffer(ReserveConstantBufferFunction& reserveConstants, iAllocator* allocator)
 	{
 		return MakeLazyObject<CBPushBuffer>(
@@ -5390,12 +5393,13 @@ private:
 	/************************************************************************************************/
 
 
-	using RunOnceDrawEvent = FlexKit::TypeErasedCallable<void ()>;
 
-
+	template<typename TY_Signature>
 	class RunOnceQueue
 	{
 	public:
+		using Callable_TY = FlexKit::TypeErasedCallable<TY_Signature>;
+
 		RunOnceQueue(iAllocator& allocator) : events{ &allocator } {}
 		~RunOnceQueue() = default;
 
@@ -5406,21 +5410,22 @@ private:
 		RunOnceQueue& operator = (RunOnceQueue&&)       = default;
 
 
-		void push_back(RunOnceDrawEvent&& runOnce)
+		void push_back(Callable_TY&& runOnce)
 		{
 			events.push_back(std::move(runOnce));
 		}
 
 
-		void Process()
+		template<typename ... TY_Args>
+		void Process(TY_Args&& ... args) requires std::is_invocable_v<Callable_TY, TY_Args...>
 		{
 			for (auto& evt : events)
-				evt();
+				evt(std::forward<TY_Args>(args)...);
 
 			events.clear();
 		}
 	private:
-		Vector<RunOnceDrawEvent> events;
+		Vector<Callable_TY> events;
 	};
 
 

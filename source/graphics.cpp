@@ -183,14 +183,14 @@ namespace FlexKit
 
 		UpdateCurrentBuffer(Handle);
 
-		const uint32_t size		   = buffer.size;
-		const uint32_t offset	   = buffer.offset;
+		const uint32_t size		= buffer.size;
+		const uint32_t offset	= buffer.offset;
 
 		const size_t alignOffset	= 256 - offset % 256;
 		const size_t adjustedOffset = (alignOffset == 256) ? 0 : offset;
 		const size_t alignedOffset  = offset + adjustedOffset;
 
-		buffer.offset       = alignedOffset;
+		buffer.offset = alignedOffset;
 
 		return alignedOffset;
 	}
@@ -1866,8 +1866,8 @@ namespace FlexKit
 		for (auto RT : RenderTargets)
 		{
 			auto WH = renderSystem->GetTextureWH(RT);
-			VPs.push_back	({ 0, 0,	(FLOAT)WH[0], (FLOAT)WH[1], 0, 1 });
-			Rects.push_back	({ 0,0,	(LONG)WH[0], (LONG)WH[1] });
+			VPs.emplace_back	(0.0f, 0.0f, (float)WH[0], (float)WH[1], 0.0f, 1.0f);
+			Rects.emplace_back	(LONG(0), LONG(0), LONG(WH[0]), LONG(WH[1]));
 		}
 
 		SetViewports(VPs);
@@ -1885,8 +1885,8 @@ namespace FlexKit
 		for (auto RT : RenderTargets)
 		{
 			auto WH = renderSystem->GetTextureWH(RT) / std::pow(2, MIPMapOffset);
-			VPs.push_back({ 0, 0,	(FLOAT)WH[0], (FLOAT)WH[1], 0, 1 });
-			Rects.push_back({ 0,0,	(LONG)WH[0], (LONG)WH[1] });
+			VPs.emplace_back	(0.0f, 0.0f,	(FLOAT)WH[0], (FLOAT)WH[1], 0.0f, 1.0f);
+			Rects.emplace_back	(LONG(0),LONG(0),	LONG(WH[0]), LONG(WH[1]));
 		}
 
 		SetViewports(VPs);
@@ -4202,19 +4202,19 @@ namespace FlexKit
 	{
 		Vector<ID3D12DeviceChild*> ObjectsCreated(in->Memory);
 
-		Memory			   = in->Memory;
+		Memory = in->Memory;
 		Settings.AAQuality = 0;
 		Settings.AASamples = 1;
-		UINT DeviceFlags   = 0;
+		UINT DeviceFlags = 0;
 
-		ID3D12Device1*		Device;
-		ID3D12Debug1*		Debug;
-		ID3D12DebugDevice*	DebugDevice;
+		ID3D12Device1* Device = nullptr;
+		ID3D12Debug1* Debug = nullptr;
+		ID3D12DebugDevice* DebugDevice = nullptr;
 
 
 #if USING(ENABLEDRED)
 		ID3D12DeviceRemovedExtendedDataSettings1* dredSettings;
-		if(auto HR = D3D12GetDebugInterface(IID_PPV_ARGS(&dredSettings)); FAILED(HR))
+		if (auto HR = D3D12GetDebugInterface(IID_PPV_ARGS(&dredSettings)); FAILED(HR))
 			FK_LOG_ERROR("Failed to enable Dred!");
 		else
 		{
@@ -4227,39 +4227,34 @@ namespace FlexKit
 #endif
 
 
-		HRESULT HR;
-#if USING( DEBUGGRAPHICS )
-		HR = D3D12GetDebugInterface(__uuidof(ID3D12Debug1), (void**)&Debug);
-
-		if (!FAILED(HR))
+		if (in->DX_DebugMode && !FAILED(D3D12GetDebugInterface(__uuidof(ID3D12Debug1), (void**)&Debug)))
 		{
 			Debug->EnableDebugLayer();
 
-			HR = D3D12GetDebugInterface(__uuidof(ID3D12Debug5), (void**)&pDebug5);
-			if (!FAILED(HR))
+			if (!FAILED(D3D12GetDebugInterface(__uuidof(ID3D12Debug5), (void**)&pDebug5)))
 			{
-				if (pDebug5)
-				{
-					//Debug->SetEnableSynchronizedCommandQueueValidation(true);
-					pDebug5->SetEnableAutoName(true);
+				pDebug5->SetEnableAutoName(true);
+
+				if (in->DX_GPUvalidation)
+					Debug->SetEnableSynchronizedCommandQueueValidation(true);
+				if (in->DX_GPUvalidation)
 					pDebug5->SetEnableGPUBasedValidation(true);
-				}
 			}
 		}
-#else
-		Debug = nullptr;
-		DebugDevice = nullptr;
-#endif	
+		else
+		{
+			Debug		= nullptr;
+			DebugDevice = nullptr;
+		}
+
 		bool InitiateComplete = false;
 
-		HR = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&Device));
-		if(FAILED(HR))
+		if(FAILED(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&Device))))
 		{
 			FK_LOG_ERROR("Failed to create A DX12 Device!");
 
 			// Trying again with a DX11 Feature Level
-			HR = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&Device));
-			if (FAILED(HR))
+			if (FAILED(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&Device))))
 			{
 				FK_LOG_ERROR("Failed to create A DX11 Device!");
 				return false;
@@ -4314,7 +4309,6 @@ namespace FlexKit
 		}
 
 #if USING(AFTERMATH)
-
 		auto res2 = GFSDK_Aftermath_EnableGpuCrashDumps(
 			GFSDK_Aftermath_Version_API,
 			GFSDK_Aftermath_GpuCrashDumpWatchedApiFlags_DX,
@@ -4331,17 +4325,15 @@ namespace FlexKit
 		else
 			FK_LOG_INFO("Aftermath disabled");
 #endif
-		{
-			ID3D12Fence* NewFence = nullptr;
-			HR = Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&NewFence));
-			//FK_ASSERT(FAILED(HR), "FAILED TO CREATE FENCE!");
-			SETDEBUGNAME(NewFence, "GRAPHICS FENCE");
 
-			FK_LOG_9("GRAPHICS FENCE CREATED: %u", NewFence);
+		ID3D12Fence* NewFence = nullptr;
+		FK_ASSERT(FAILED(Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&NewFence))), "FAILED TO CREATE FENCE!");
+		SETDEBUGNAME(NewFence, "GRAPHICS FENCE");
 
-			Fence = NewFence;
-			ObjectsCreated.push_back(NewFence);
-		}
+		FK_LOG_9("GRAPHICS FENCE CREATED: %u", NewFence);
+
+		Fence = NewFence;
+		ObjectsCreated.push_back(NewFence);
 		
 		D3D12_COMMAND_QUEUE_DESC CQD		= {};
 		CQD.Flags							            = D3D12_COMMAND_QUEUE_FLAGS::D3D12_COMMAND_QUEUE_FLAG_NONE;
@@ -4355,8 +4347,8 @@ namespace FlexKit
 		IDXGIAdapter4*				DXGIAdapter			= nullptr;
 		
 
-		HR = Device->CreateCommandQueue(&CQD,			IID_PPV_ARGS(&GraphicsQueue));		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND QUEUE!");
-		HR = Device->CreateCommandQueue(&ComputeCQD,	IID_PPV_ARGS(&ComputeQueue));		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND QUEUE!");
+		FK_ASSERT(FAILED(Device->CreateCommandQueue(&CQD,			IID_PPV_ARGS(&GraphicsQueue))), "FAILED TO CREATE COMMAND QUEUE!");
+		FK_ASSERT(FAILED(Device->CreateCommandQueue(&ComputeCQD,	IID_PPV_ARGS(&ComputeQueue))), "FAILED TO CREATE COMMAND QUEUE!");
 
 		ObjectsCreated.push_back(GraphicsQueue);
 		ObjectsCreated.push_back(ComputeQueue);
@@ -4392,10 +4384,13 @@ namespace FlexKit
 			0;
 #endif
 
-		HR = CreateDXGIFactory2(DXGIFLAGS, IID_PPV_ARGS(&DXGIFactory));
-		DXGIFactory->EnumAdapterByLuid(Device->GetAdapterLuid(), IID_PPV_ARGS(&DXGIAdapter));
+		if (FAILED(CreateDXGIFactory2(DXGIFLAGS, IID_PPV_ARGS(&DXGIFactory))))
+		{
+			FK_LOG_ERROR("FAILED TO CREATE DXGIFactory!");
+			return false;
+		}
 
-		FK_ASSERT(FAILED(HR), "FAILED TO CREATE DXGIFactory!"  );
+		DXGIFactory->EnumAdapterByLuid(Device->GetAdapterLuid(), IID_PPV_ARGS(&DXGIAdapter));
 
 		FINALLY
 			if (!InitiateComplete)
@@ -4484,9 +4479,12 @@ namespace FlexKit
 
 #if USING(DEBUGGRAPHICS)
 		// Prints Detailed Report
-		pDebugDevice->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL);
-		pDebugDevice->Release();
-		pDebug->Release();
+		if (pDebugDevice && pDebug)
+		{
+			pDebugDevice->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL);
+			pDebugDevice->Release();
+			pDebug->Release();
+		}
 #endif
 
 		Memory = nullptr;
@@ -5790,6 +5788,24 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	AvailableFeatures::Raytracing RenderSystem::GetRTFeatureLevel() const noexcept
+	{
+		return features.RT_Level;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool RenderSystem::RTAvailable() const noexcept
+	{
+		return (features.RT_Level != AvailableFeatures::Raytracing::RT_FeatureLevel_NOTAVAILABLE);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void RenderSystem::ResetQuery(QueryHandle handle)
 	{
 		Queries.LockUntil(handle, CurrentFrame);
@@ -6082,23 +6098,23 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::UpdateResourceByUploadQueue(ID3D12Resource* Dest, CopyContextHandle uploadQueue, void* Data, size_t Size, size_t ByteSize, DeviceResourceState EndState)
+	void RenderSystem::UpdateResourceByUploadQueue(ID3D12Resource* dest, CopyContextHandle uploadQueue, const void* data, size_t Size, size_t byteSize, DeviceResourceState endState)
 	{
-		FK_ASSERT(Data);
-		FK_ASSERT(Dest);
+		if (nullptr == data || nullptr == dest) [[unlikely]]
+			return;
 
 		auto& copyCtx = _GetCopyContext(uploadQueue);
 
 		const auto reservedSpace = copyCtx.Reserve(Size);
 
-		memcpy(reservedSpace.buffer, Data, Size);
+		memcpy(reservedSpace.buffer, data, Size);
 
-		copyCtx.CopyBuffer(Dest, 0, reservedSpace);
+		copyCtx.CopyBuffer(dest, 0, reservedSpace);
 
 		copyCtx.Barrier(
-			Dest,
+			dest,
 			DRS_CopyDest,
-			EndState);
+			endState);
 	}
 
 
@@ -6137,7 +6153,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Shader  RenderSystem::LoadShader(const char* entryPoint, const char* profile, const char* file, bool enable16Bit)
+	Shader  RenderSystem::LoadShader(const char* entryPoint, const char* profile, const char* file, const ShaderOptions& options)
 	{
 		std::filesystem::path filePath{ file };
 		auto parentPath = filePath.parent_path();
@@ -6159,6 +6175,25 @@ namespace FlexKit
 		IDxcBlobEncoding* blob;
 		auto HR1 = hlslLibrary->CreateBlobFromFile(fileW, nullptr, &blob);
 
+		if (FAILED(HR1))
+		{
+			LPSTR string = nullptr;
+
+			const auto msgLen = FormatMessageA(
+				FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+				nullptr,
+				HR1,
+				MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+				(LPSTR)&string,
+				0,
+				nullptr);
+
+			FK_LOG_ERROR("Shader failed to load: %s", string);
+
+			LocalFree(string);
+
+			return {};
+		}
 
 		IncludeHandler includeHandler;
 		includeHandler.includePath      = parentPath;
@@ -6174,14 +6209,13 @@ namespace FlexKit
 		arguments.push_back(L"-Od");
 		arguments.push_back(L"/Zi");
 		arguments.push_back(L"-Qembed_debug");
-
-		if(enable16Bit)
-			arguments.push_back(L"-enable-16bit-types");
-#else
-
-		if (enable16Bit)
-			arguments.push_back(L"-enable-16bit-types");
 #endif
+
+		if(options.enable16BitTypes)
+			arguments.push_back(L"-enable-16bit-types");
+
+		if (options.hlsl2021)
+			arguments.push_back(L"-HV 2021");
 
 		IDxcOperationResult* result = nullptr;
 		auto HR2 = hlslCompiler->Compile(blob, filenameW, entryPoint != nullptr ? entryPointW : nullptr, profileW, arguments.data(), (UINT)arguments.size(), nullptr, 0, &includeHandler, &result);
@@ -8010,17 +8044,17 @@ namespace FlexKit
 		switch (reason)
 		{
 		case DXGI_ERROR_DEVICE_HUNG:
-			FK_LOG_ERROR("DXGI_ERROR_DEVICE_HUNG");             break;
-		case DXGI_ERROR_DEVICE_REMOVED:                         
-			FK_LOG_ERROR("DXGI_ERROR_DEVICE_REMOVED");          break;
-		case DXGI_ERROR_DEVICE_RESET:                           
-			FK_LOG_ERROR("DXGI_ERROR_DEVICE_RESET");            break;
-		case DXGI_ERROR_DRIVER_INTERNAL_ERROR:                  
-			FK_LOG_ERROR("DXGI_ERROR_DRIVER_INTERNAL_ERROR");   break;
-		case DXGI_ERROR_INVALID_CALL:                           
-			FK_LOG_ERROR("DXGI_ERROR_INVALID_CALL");            break;
+			FK_LOG_ERROR("DXGI_ERROR_DEVICE_HUNG");				break;
+		case DXGI_ERROR_DEVICE_REMOVED:
+			FK_LOG_ERROR("DXGI_ERROR_DEVICE_REMOVED");			break;
+		case DXGI_ERROR_DEVICE_RESET:
+			FK_LOG_ERROR("DXGI_ERROR_DEVICE_RESET");			break;
+		case DXGI_ERROR_DRIVER_INTERNAL_ERROR:
+			FK_LOG_ERROR("DXGI_ERROR_DRIVER_INTERNAL_ERROR");	break;
+		case DXGI_ERROR_INVALID_CALL:
+			FK_LOG_ERROR("DXGI_ERROR_INVALID_CALL");			break;
 		case S_OK:
-			FK_LOG_ERROR("???? S_OK ????");                     break;
+			FK_LOG_ERROR("???? S_OK ????");						break;
 		}
 
 #if USING(AFTERMATH)
