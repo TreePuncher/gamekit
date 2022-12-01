@@ -1,0 +1,11 @@
+D:\repos\MergePath\x64\Debug\D3D12\D3D12Core.dll
+D:\repos\MergePath\x64\Debug\D3D12\D3D12Core.pdb
+D:\repos\MergePath\x64\Debug\D3D12\D3D12SDKLayers.dll
+D:\repos\MergePath\x64\Debug\D3D12\D3D12SDKLayers.pdb
+D:\repos\MergePath\x64\Debug\WinPixEventRuntime.dll
+D:\repos\MergePath\builds\Debug\D3D12\D3D12Core.dll
+D:\repos\MergePath\builds\Debug\D3D12\D3D12Core.pdb
+D:\repos\MergePath\builds\Debug\D3D12\D3D12SDKLayers.dll
+D:\repos\MergePath\builds\Debug\D3D12\D3D12SDKLayers.pdb
+D:\repos\MergePath\builds\Debug\WinPixEventRuntime.dll
+D:\repos\MergePath\MergePathSortTest\x64\Debug\MergePathSortTest.vcxproj.CopyComplete
