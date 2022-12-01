@@ -287,7 +287,10 @@ namespace FlexKit
 		}
 
 
-		inline			Ty& operator [](size_t index) noexcept          { return A[index]; }
+		inline			Ty& operator [](size_t index) noexcept
+		{
+			return A[index];
+		}
 		inline const	Ty& operator [](size_t index) const noexcept    { return A[index]; }
 
 

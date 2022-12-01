@@ -60,7 +60,7 @@ namespace FlexKit
 #endif
 		{}
 
-		constexpr Handle_t(const Handle_t<HandleSize>& in)
+		constexpr Handle_t(const Handle_t<HandleSize>& in) noexcept
 		{
 			INDEX = in.INDEX;
 #if USING( DEBUGHANDLES )
@@ -108,6 +108,12 @@ namespace FlexKit
 			return INDEX;
 		}
 
+
+		Handle_t& operator =(const Handle_t<HandleSize>& in) noexcept
+		{
+			INDEX = in.index;
+			return (*this);
+		}
 
 		Handle_t<HandleSize, ID> operator = (_InvalidHandle_t)
 		{

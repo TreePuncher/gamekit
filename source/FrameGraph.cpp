@@ -444,7 +444,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle  FrameGraphNodeBuilder::AcquireVirtualResource(const GPUResourceDesc desc, DeviceResourceState initialState, bool temp)
+	FrameResourceHandle  FrameGraphNodeBuilder::AcquireVirtualResource(const GPUResourceDesc& desc, DeviceResourceState initialState, bool temp)
 	{
 		ProfileFunction();
 
@@ -583,7 +583,7 @@ namespace FlexKit
 	}
 
 
-	FrameResourceHandle  FrameGraphNodeBuilder::AcquireVirtualResource(PoolAllocatorInterface& allocator, const GPUResourceDesc desc, DeviceResourceState initialState, bool temp)
+	FrameResourceHandle  FrameGraphNodeBuilder::AcquireVirtualResource(PoolAllocatorInterface& allocator, const GPUResourceDesc& desc, DeviceResourceState initialState, bool temp)
 	{
 		auto NeededFlags = 0;
 		NeededFlags |= !desc.unordered && desc.Dimensions == TextureDimension::Texture1D ? DeviceHeapFlags::RenderTarget : 0;

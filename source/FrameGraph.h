@@ -670,16 +670,18 @@ namespace FlexKit
 
 		ResourceHandle Transition(const FrameResourceHandle resource, DeviceResourceState state, Context& ctx) const
 		{
-			auto currentState   = GetObjectState(resource);
-			auto UAVBuffer      = globalResources.Resources[resource].shaderResource;
+			auto& currentObject	= _FindSubNodeResource(resource);
+			auto currentState	= currentObject.currentState;
+			auto& resource_ref	= globalResources.Resources[resource];
+			auto resourceHandle	= resource_ref.shaderResource;
 
 			if (state != currentState)
 			{
-				ctx.AddResourceBarrier(UAVBuffer, currentState, state);
-				_FindSubNodeResource(resource).currentState = state;
+				ctx.AddResourceBarrier(resourceHandle, currentState, state);
+				currentObject.currentState = state;
 			}
 
-			return UAVBuffer;
+			return resourceHandle;
 		}
 
 		ResourceHandle Transition(const FrameResourceHandle resource, DeviceResourceState state, uint32_t subresource, Context& ctx) const
@@ -1172,8 +1174,8 @@ namespace FlexKit
 		FrameResourceHandle	DepthRead			(ResourceHandle);
 		FrameResourceHandle	DepthTarget			(ResourceHandle);
 
-		FrameResourceHandle	AcquireVirtualResource(const GPUResourceDesc desc, DeviceResourceState initialState, bool temp = true);
-		FrameResourceHandle	AcquireVirtualResource(PoolAllocatorInterface& allocator, const GPUResourceDesc desc, DeviceResourceState initialState, bool temp = true);
+		FrameResourceHandle	AcquireVirtualResource(const GPUResourceDesc& desc, DeviceResourceState initialState, bool temp = true);
+		FrameResourceHandle	AcquireVirtualResource(PoolAllocatorInterface& allocator, const GPUResourceDesc& desc, DeviceResourceState initialState, bool temp = true);
 
 		void				ReleaseVirtualResource(FrameResourceHandle handle);
 
