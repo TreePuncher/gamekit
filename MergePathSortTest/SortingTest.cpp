@@ -110,7 +110,7 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 		},
 		[=, &sortingRootSignature = sortingRootSignature, backBuffer = renderWindow.GetBackBuffer(), this](RenderStrands& data, const FlexKit::ResourceHandler& resources, FlexKit::Context& ctx, FlexKit::iAllocator& threadLocalAllocator)
 		{
-			const uint32_t bufferSize = 1024 * 8;
+			const uint32_t bufferSize = 1024 * 4;
 
 			ctx.SetComputeRootSignature(sortingRootSignature);
 			ctx.SetComputeConstantValue(0, 1, &bufferSize, 0);
@@ -118,18 +118,19 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 			ctx.Dispatch(resources.GetPipelineState(InitiateBuffer), { bufferSize / 1024, 1, 1 });
 			ctx.AddUAVBarrier(resources.GetResource(data.sourceBuffer));
 
-			ctx.Dispatch(resources.GetPipelineState(LocalSort), { bufferSize / 1024, 1, 1 });
-			ctx.AddUAVBarrier(resources.GetResource(data.sourceBuffer));
+			//ctx.Dispatch(resources.GetPipelineState(LocalSort), { bufferSize / 1024, 1, 1 });
+			//ctx.AddUAVBarrier(resources.GetResource(data.sourceBuffer));
 
-			const uint32_t p = 8;
+			const uint32_t p = 4;
 			struct
 			{
 				uint32_t p;
 				uint32_t blockSize;
 				uint32_t blockCount;
 			} constants = {
-				.p = p,
-				.blockSize = bufferSize / 2,
+				.p			= p,
+				.blockSize	= bufferSize / 2,
+				.blockCount = 2
 			};
 
 			ctx.DiscardResource(resources.GetResource(data.mergePathBuffer));
@@ -157,7 +158,7 @@ void SortTest::PostDrawUpdate(FlexKit::EngineCore&, double dT)
 	renderWindow.Present(1, 0);
 }
 
-
+ 
 /************************************************************************************************/
 
 
