@@ -1,7 +1,18 @@
-RWStructuredBuffer<uint>	buffer : register(u0);
-RWStructuredBuffer<uint>	global : register(u0);
+StructuredBuffer<uint>		sourceBuffer	: register(t0);
+StructuredBuffer<uint2>		mergePathTable	: register(t1);
+RWStructuredBuffer<uint>	outputBuffer	: register(u0);
 
-groupshared uint			local[1024];
+cbuffer constants : register(b0)
+{
+	uint p;
+	uint blockSize;
+	uint blockCount;
+}
+
+
+/************************************************************************************************/
+
+groupshared uint local[1024];
 
 void __CmpSwap(uint lhs, uint rhs, uint op)
 { 
@@ -37,18 +48,20 @@ void BitonicSort(const uint localThreadID)
 			BitonicPass(localThreadID, I, J);
 } 
 
-cbuffer constants : register(b0)
-{
-	uint bufferSize;
-}
+
+/************************************************************************************************/
+
 
 [numthreads(1024, 1, 1)]
-void LocalBitonicSort(const uint3 dispatchID : SV_DispatchThreadID, const uint groupIdx : SV_GroupIndex)
+void GlobalMerge(const uint3 dispatchID : SV_DispatchThreadID, const uint3 groupID : SV_GroupID, const uint groupIdx : SV_GroupIndex)
 {
-	if (dispatchID.x < bufferSize)
-		local[groupIdx] = global[dispatchID.x];
+	const uint2 begin	= mergePathTable[groupID.x];
+	const uint2 end		= mergePathTable[groupID.x + 1];
+
+	if (begin.x <= dispatchID.x && dispatchID.x < end.x)
+		local[groupIdx] = sourceBuffer[begin.x + groupIdx + (groupID.x / 2 + 0) * blockSize];
 	else
-		local[groupIdx] = -1;
+		local[groupIdx] = sourceBuffer[begin.y + groupIdx + (groupID.x / 2 + 1) * blockSize];
 
 	GroupMemoryBarrierWithGroupSync();
 
@@ -56,8 +69,9 @@ void LocalBitonicSort(const uint3 dispatchID : SV_DispatchThreadID, const uint g
 
 	GroupMemoryBarrierWithGroupSync();
 
-	global[dispatchID.x] = local[groupIdx];
+	outputBuffer[groupIdx + groupID.x * blockSize] = local[groupIdx];
 }
+
 
 /**********************************************************************
 

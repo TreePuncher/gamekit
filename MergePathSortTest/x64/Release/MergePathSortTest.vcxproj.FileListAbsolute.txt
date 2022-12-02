@@ -1,0 +1,6 @@
+D:\repos\MergePath\builds\Release\D3D12\D3D12Core.dll
+D:\repos\MergePath\builds\Release\D3D12\D3D12Core.pdb
+D:\repos\MergePath\builds\Release\D3D12\D3D12SDKLayers.dll
+D:\repos\MergePath\builds\Release\D3D12\D3D12SDKLayers.pdb
+D:\repos\MergePath\builds\Release\WinPixEventRuntime.dll
+D:\repos\MergePath\MergePathSortTest\x64\Release\MergePathSortTest.vcxproj.CopyComplete

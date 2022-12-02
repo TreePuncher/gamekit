@@ -4,9 +4,10 @@
 /************************************************************************************************/
 
 
-constexpr FlexKit::PSOHandle InitiateBuffer = FlexKit::PSOHandle{ GetCRCGUID(InitiateBuffer) };
-constexpr FlexKit::PSOHandle LocalSort		= FlexKit::PSOHandle{ GetCRCGUID(LocalSort) };
-constexpr FlexKit::PSOHandle GlobalSort		= FlexKit::PSOHandle{ GetCRCGUID(GlobalSort) };
+constexpr FlexKit::PSOHandle InitiateBuffer		= FlexKit::PSOHandle{ GetCRCGUID(InitiateBuffer) };
+constexpr FlexKit::PSOHandle LocalSort			= FlexKit::PSOHandle{ GetCRCGUID(LocalSort) };
+constexpr FlexKit::PSOHandle CreateMergePath	= FlexKit::PSOHandle{ GetCRCGUID(CreateMergePath) };
+constexpr FlexKit::PSOHandle GlobalMerge		= FlexKit::PSOHandle{ GetCRCGUID(GlobalMerge) };
 
 
 /************************************************************************************************/
@@ -49,9 +50,13 @@ SortTest::SortTest(FlexKit::GameFramework& IN_framework) :
 		.rootSignature = &sortingRootSignature,
 		.loadState = [&](auto) { return CreateLocalSortPSO(); } });
 
-	framework.GetRenderSystem().RegisterPSOLoader(GlobalSort, {
+	framework.GetRenderSystem().RegisterPSOLoader(CreateMergePath, {
 		.rootSignature = &sortingRootSignature,
-		.loadState = [&](auto) { return CreateGlobalSortPSO(); } });
+		.loadState = [&](auto) { return CreateMergePathPSO(); } });
+
+	framework.GetRenderSystem().RegisterPSOLoader(GlobalMerge, {
+		.rootSignature = &sortingRootSignature,
+		.loadState = [&](auto) { return CreateGlobalMergePSO(); } });
 }
 
 /************************************************************************************************/
@@ -110,7 +115,9 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 		},
 		[=, &sortingRootSignature = sortingRootSignature, backBuffer = renderWindow.GetBackBuffer(), this](RenderStrands& data, const FlexKit::ResourceHandler& resources, FlexKit::Context& ctx, FlexKit::iAllocator& threadLocalAllocator)
 		{
-			const uint32_t bufferSize = 1024 * 4;
+			const uint32_t p			= 2;
+			const uint32_t blockCount	= 2;
+			const uint32_t bufferSize	= 1024 * blockCount;
 
 			ctx.SetComputeRootSignature(sortingRootSignature);
 			ctx.SetComputeConstantValue(0, 1, &bufferSize, 0);
@@ -121,7 +128,7 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 			//ctx.Dispatch(resources.GetPipelineState(LocalSort), { bufferSize / 1024, 1, 1 });
 			//ctx.AddUAVBarrier(resources.GetResource(data.sourceBuffer));
 
-			const uint32_t p = 4;
+
 			struct
 			{
 				uint32_t p;
@@ -129,18 +136,22 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 				uint32_t blockCount;
 			} constants = {
 				.p			= p,
-				.blockSize	= bufferSize / 2,
-				.blockCount = 2
+				.blockSize	= bufferSize / blockCount,
+				.blockCount = blockCount
 			};
 
 			ctx.DiscardResource(resources.GetResource(data.mergePathBuffer));
+			ctx.DiscardResource(resources.GetResource(data.destinationBuffer));
 
 			ctx.SetComputeConstantValue(0, 3, &constants, 0);
 			ctx.SetComputeShaderResourceView(1, resources.NonPixelShaderResource(data.sourceBuffer, ctx), 0  * 4);
-			ctx.SetComputeShaderResourceView(2, resources.NonPixelShaderResource(data.sourceBuffer, ctx), (bufferSize / 2) * 4);
 			ctx.SetComputeUnorderedAccessView(3, resources.UAV(data.mergePathBuffer, ctx));
-			ctx.Dispatch(resources.GetPipelineState(GlobalSort), { 1, 1, 1 });
-			ctx.AddUAVBarrier(resources.GetResource(data.mergePathBuffer));
+			ctx.Dispatch(resources.GetPipelineState(CreateMergePath), { 1, 1, 1 });
+
+			ctx.SetComputeShaderResourceView(2, resources.NonPixelShaderResource(data.mergePathBuffer, ctx));
+			ctx.SetComputeUnorderedAccessView(3, resources.UAV(data.destinationBuffer, ctx));
+			//ctx.Dispatch(resources.GetPipelineState(GlobalMerge), { bufferSize / 1024, 1, 1 });
+			ctx.Dispatch(resources.GetPipelineState(GlobalMerge), { 2, 1, 1 });
 		});
 
 
@@ -233,10 +244,10 @@ ID3D12PipelineState* SortTest::CreateLocalSortPSO()
 /************************************************************************************************/
 
 
-ID3D12PipelineState* SortTest::CreateGlobalSortPSO()
+ID3D12PipelineState* SortTest::CreateMergePathPSO()
 {
 	auto& renderSystem = framework.GetRenderSystem();
-	FlexKit::Shader CShader = renderSystem.LoadShader("GlobalMergePathSort", "cs_6_2", R"(assets\shaders\Sorting\MergePath.hlsl)");
+	FlexKit::Shader CShader = renderSystem.LoadShader("CreateMergePath", "cs_6_2", R"(assets\shaders\Sorting\MergePath.hlsl)");
 
 	struct
 	{
@@ -259,6 +270,39 @@ ID3D12PipelineState* SortTest::CreateGlobalSortPSO()
 
 	return PSO;
 }
+
+
+/************************************************************************************************/
+
+
+ID3D12PipelineState* SortTest::CreateGlobalMergePSO()
+{
+	auto& renderSystem = framework.GetRenderSystem();
+	FlexKit::Shader CShader = renderSystem.LoadShader("GlobalMerge", "cs_6_2", R"(assets\shaders\Sorting\Merge.hlsl)");
+
+	struct
+	{
+		D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type1 = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE;
+		ID3D12RootSignature* rootSig;
+		D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type2 = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS;
+		D3D12_SHADER_BYTECODE					byteCode;
+	} stream = {
+		.rootSig = sortingRootSignature,
+		.byteCode = CShader,
+	};
+
+	D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
+		.SizeInBytes = sizeof(stream),
+		.pPipelineStateSubobjectStream = &stream
+	};
+
+	ID3D12PipelineState* PSO = nullptr;
+	auto HR = renderSystem.pDevice9->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
+
+	return PSO;
+}
+
+
 
 
 /************************************************************************************************/
