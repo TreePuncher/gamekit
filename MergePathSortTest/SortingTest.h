@@ -16,7 +16,8 @@ public:
 
 	ID3D12PipelineState* CreateInitiateDataPSO();
 	ID3D12PipelineState* CreateLocalSortPSO();
-	ID3D12PipelineState* CreateGlobalSortPSO();
+	ID3D12PipelineState* CreateMergePathPSO();
+	ID3D12PipelineState* CreateGlobalMergePSO();
 
 	void PostDrawUpdate(FlexKit::EngineCore&, double dT) final;
 	bool EventHandler(FlexKit::Event evt) final;

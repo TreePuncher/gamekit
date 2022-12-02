@@ -46,5 +46,8 @@
     <FxCompile Include="..\shaders\HairRendering\Simulation.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="..\shaders\Sorting\Merge.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

@@ -1,6 +1,5 @@
-StructuredBuffer<uint> sourceBuffer : register(t0);
-
-RWStructuredBuffer<uint2> outputBuffer	: register(u0);
+StructuredBuffer<uint>		sourceBuffer	: register(t0);
+RWStructuredBuffer<uint2>	outputBuffer	: register(u0);
 
 cbuffer constants : register(b0)
 {
@@ -8,6 +7,10 @@ cbuffer constants : register(b0)
 	uint blockSize;
 	uint blockCount;
 }
+
+
+/************************************************************************************************/
+
 
 uint2 DiagonalIntersection(const uint i, const uint a_begin, const uint b_begin)
 {
@@ -44,12 +47,16 @@ uint2 DiagonalIntersection(const uint i, const uint a_begin, const uint b_begin)
 	return uint2(-1, -1);
 }
 
+
+/************************************************************************************************/
+
+
 [numthreads(32, 1, 1)]
-void GlobalMergePathSort(const uint3 dispatchID : SV_DispatchThreadID, const uint3 groupID : SV_GroupThreadID)
+void CreateMergePath(const uint3 dispatchID : SV_DispatchThreadID, const uint3 groupID : SV_GroupThreadID)
 {
 	if (dispatchID.x < (p * blockCount / 2))
 	{
-		const uint blockStep	= (p * blockCount / 2) / 2;
+		const uint blockStep	= (p * blockCount / 2);
 		const uint blockIdx		= dispatchID.x / blockStep;
 		const uint i			= dispatchID.x % blockStep;
 
