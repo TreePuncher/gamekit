@@ -6,24 +6,28 @@ cbuffer constants : register(b0)
 {
 	uint p;
 	uint blockSize;
+	uint blockCount;
 }
 
-uint2 DiagonalIntersection(const uint i)
+uint2 DiagonalIntersection(const uint i, const uint a_begin, const uint b_begin)
 {
 	const uint index	= i * (blockSize + blockSize) / p;
 	uint a_top			= index > blockSize ? blockSize : index;
 	uint b_top			= index > blockSize ? index - blockSize : 0;
 	uint a_bottom		= b_top;
 
-	for(uint j = 0; j < 4; j++)
+	for(uint j = 0; j < 14; j++)
 	{
 		const uint offset	= (a_top - a_bottom) / 2;
 		const uint a_itr	= a_top - offset;
 		const uint b_itr	= b_top + offset;
 
-		if (a[a_itr] > b[b_itr - 1])
+		if (a_itr >= blockSize || b_itr >= blockSize || a_itr == 0 || b_itr == 0)
+			return uint2(a_itr, b_itr);
+
+		if (sourceBuffer[a_begin + a_itr] > sourceBuffer[b_begin + b_itr - 1])
 		{
-			if ((a[a_itr - 1]) <= b[b_itr])
+			if ((sourceBuffer[a_begin + a_itr - 1]) <= sourceBuffer[b_begin + b_itr])
 			{
 				return uint2(a_itr, b_itr);
 			}
@@ -43,12 +47,19 @@ uint2 DiagonalIntersection(const uint i)
 [numthreads(32, 1, 1)]
 void GlobalMergePathSort(const uint3 dispatchID : SV_DispatchThreadID, const uint3 groupID : SV_GroupThreadID)
 {
-	if (dispatchID.x < p && dispatchID.x >= 1)
-		outputBuffer[dispatchID.x] = DiagonalIntersection(dispatchID.x);
-	else if (dispatchID.x == 0)
+	if (dispatchID.x < (p * blockCount / 2))
 	{
-		outputBuffer[0] = uint2(0, 0);
-		outputBuffer[p]	= uint2(blockSize, blockSize);
+		const uint blockStep	= (p * blockCount / 2) / 2;
+		const uint blockIdx		= dispatchID.x / blockStep;
+		const uint i			= dispatchID.x % blockStep;
+
+		if (i < p && i >= 1)
+			outputBuffer[blockIdx * (p + 1) + i] = DiagonalIntersection(i, blockSize * (blockIdx + 0), blockSize * (blockIdx + 1));
+		else if (i == 0)
+		{
+			outputBuffer[blockIdx * (p + 1) + i]		= uint2(0, 0);
+			outputBuffer[blockIdx * (p + 1) + i + p]	= uint2(blockSize, blockSize);
+		}
 	}
 }
 

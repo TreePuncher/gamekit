@@ -33,8 +33,10 @@ void Initiate(const uint3 dispatchID : SV_DispatchThreadID)
 	*/
 
 
-	buffer[dispatchID.x] =
+	buffer[dispatchID.x] = dispatchID.x;//
+	/*
 		dispatchID.x < bufferSize / 2 ?
-			(bufferSize / 2 - dispatchID.x) :
-			(bufferSize / 2 - dispatchID.x - bufferSize / 2);
+			(dispatchID.x) :
+			(2 * (dispatchID.x - (bufferSize / 2)));
+	*/
 }
