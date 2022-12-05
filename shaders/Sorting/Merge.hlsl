@@ -12,50 +12,11 @@ cbuffer constants : register(b0)
 
 /************************************************************************************************/
 
-groupshared uint local[1024];
 
-void __CmpSwap(uint lhs, uint rhs, uint op)
-{ 
-	const uint LValue = local[lhs];
-	const uint RValue = local[rhs];
-
-	const uint V1 = op == 0 ? min(LValue, RValue) : max(LValue, RValue);
-	const uint V2 = op == 0 ? max(LValue, RValue) : min(LValue, RValue);
-
-	local[lhs] = V1;
-	local[rhs] = V2;
-}
-
-void BitonicPass(const uint localThreadID, const int I, const int J)
+void Merge(uint2 ASpan, uint2 BSpan, uint outItr, uint outEnd)
 {
-	const uint swapMask = (1 << (J + 1)) - 1;
-	const uint offset   = 1 << J;
-
-	if((localThreadID & swapMask) < offset) 
-	{ 
-		const uint op  = (localThreadID >> (I + 1)) & 0x01;
-		__CmpSwap(localThreadID, localThreadID + offset, op);
-	}
-
-	GroupMemoryBarrierWithGroupSync();
-}
-
-
-void BitonicSort(const uint localThreadID)
-{ 
-	for(int I = 0; I < log2(1024); I++) 
-		for(int J = I; J >= 0; J--) 
-			BitonicPass(localThreadID, I, J);
-} 
-
-
-/************************************************************************************************/
-
-
-void Merge(int2 ASpan, int2 BSpan, int2 OutSpan)
-{
-	int a_itr = ASpan.x;
-	int b_itr = BSpan.x;
+	uint a_itr = ASpan.x;
+	uint b_itr = BSpan.x;
 
 	if (a_itr < 0 || b_itr < 0)
 		return;
@@ -69,33 +30,33 @@ void Merge(int2 ASpan, int2 BSpan, int2 OutSpan)
 		{
 			if (a <= b)
 			{
-				outputBuffer[OutSpan.x] = a;
+				outputBuffer[outItr] = a;
 				a_itr++;
 				a = sourceBuffer[a_itr];
 			}
 			else
 			{
-				outputBuffer[OutSpan.x] = b;
+				outputBuffer[outItr] = b;
 				b_itr++;
 				b = sourceBuffer[b_itr];
 			}
 
-			OutSpan.x++;
+			outItr++;
 		}
 		else
 		{
-			while (a_itr < ASpan.y && OutSpan.x < OutSpan.y)
+			while (a_itr < ASpan.y && outItr < outEnd)
 			{
-				outputBuffer[OutSpan.x] = a;
-				OutSpan.x++;
+				outputBuffer[outItr] = a;
+				outItr++;
 				a_itr++;
 				a = sourceBuffer[a_itr];
 			}
 
-			while (b_itr < BSpan.y && OutSpan.x < OutSpan.y)
+			while (b_itr < BSpan.y && outItr < outEnd)
 			{
-				outputBuffer[OutSpan.x] = b;
-				OutSpan.x++;
+				outputBuffer[outItr] = b;
+				outItr++;
 				b_itr++;
 				b = sourceBuffer[b_itr];
 			}
@@ -109,27 +70,30 @@ void Merge(int2 ASpan, int2 BSpan, int2 OutSpan)
 /************************************************************************************************/
 
 
-
-
 [numthreads(16, 1, 1)]
 void GlobalMerge(const uint3 dispatchID : SV_DispatchThreadID, const uint3 groupID : SV_GroupID, const uint groupIdx : SV_GroupIndex)
 {
 	if (dispatchID.x >= blockCount / 2 * p)
 		return;
 
-	const int blockIdx	= dispatchID.x / p;
-	const int i			= dispatchID.x % p;
+	const uint blockIdx	= dispatchID.x / p;
+	const uint i		= dispatchID.x % p;
 
-	const int2 begin	=  (i == 0) ? uint2(blockSize * (2 * blockIdx + 0), blockSize * (2 * blockIdx + 1)) : mergePathTable[dispatchID.x - 1];
-	const int2 end		= mergePathTable[dispatchID.x];
+	const uint a = blockSize * (2 * blockIdx + 0);
+	const uint b = blockSize * (2 * blockIdx + 1);
+
+	const uint2 begin	=  (i == 0) ? uint2(a, b) : mergePathTable[dispatchID.x - 1];
+	const uint2 end		= mergePathTable[dispatchID.x];
+
+	const uint outBegin = (dispatchID.x + 0) * 32;
+	const uint outEnd	= (dispatchID.x + 1) * 32;
 
 	Merge(
-		int2(begin.x, end.x),
-		int2(begin.y, end.y),
-		int2(
-			2 * blockIdx * blockSize + i * 2 * blockSize / p,
-			2 * blockIdx * blockSize + i * 2 * blockSize / p + 32));
+		uint2(begin.x, end.x),
+		uint2(begin.y, end.y),
+		outBegin, outEnd);
 }
+
 
 /**********************************************************************
 
