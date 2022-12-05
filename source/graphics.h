@@ -3241,6 +3241,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	{
 		bool enable16BitTypes	= false;
 		bool hlsl2021			= false;
+		bool enableDebug		= false;
 	};
 
 	FLEXKITAPI class RenderSystem

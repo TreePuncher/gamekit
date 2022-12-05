@@ -19,7 +19,7 @@ SortTest::SortTest(FlexKit::GameFramework& IN_framework) :
 	cameras						{ IN_framework.core.GetBlockMemory() },
 	runOnceQueue				{ IN_framework.core.GetBlockMemory() },
 	sortingRootSignature		{ IN_framework.core.GetBlockMemory() },
-	gpuAllocator				{ IN_framework.core.RenderSystem, 64 * MEGABYTE, 64 * KILOBYTE, FlexKit::DeviceHeapFlags::UAVBuffer, IN_framework.core.GetBlockMemory() }
+	gpuAllocator				{ IN_framework.core.RenderSystem, 128 * MEGABYTE, 64 * KILOBYTE, FlexKit::DeviceHeapFlags::UAVBuffer, IN_framework.core.GetBlockMemory() }
 {
 	auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 });
 
@@ -83,6 +83,12 @@ FlexKit::UpdateTask* SortTest::Update(FlexKit::EngineCore&, FlexKit::UpdateDispa
 /************************************************************************************************/
 
 
+
+constexpr uint32_t p			= 64;
+constexpr uint32_t blockCount	= 2048;
+constexpr uint32_t bufferSize	= 1024 * blockCount;
+
+
 FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT, FlexKit::FrameGraph& frameGraph)
 {
 	FlexKit::ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), { 1, 0, 1, 0 });
@@ -105,8 +111,8 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 		},
 		[&](FlexKit::FrameGraphNodeBuilder& builder, RenderStrands& data)
 		{
-			data.sourceBuffer		= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(4 * MEGABYTE), FlexKit::DeviceResourceState::DRS_UAV);
-			data.destinationBuffer	= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(4 * MEGABYTE), FlexKit::DeviceResourceState::DRS_UAV);
+			data.sourceBuffer		= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(bufferSize * 4), FlexKit::DeviceResourceState::DRS_UAV);
+			data.destinationBuffer	= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(bufferSize * 4), FlexKit::DeviceResourceState::DRS_UAV);
 			data.mergePathBuffer	= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(MEGABYTE), FlexKit::DeviceResourceState::DRS_UAV);
 
 			builder.SetDebugName(data.sourceBuffer, "sourceBuffer");
@@ -115,19 +121,15 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 		},
 		[=, &sortingRootSignature = sortingRootSignature, backBuffer = renderWindow.GetBackBuffer(), this](RenderStrands& data, const FlexKit::ResourceHandler& resources, FlexKit::Context& ctx, FlexKit::iAllocator& threadLocalAllocator)
 		{
-			const uint32_t p			= 2;
-			const uint32_t blockCount	= 2;
-			const uint32_t bufferSize	= 1024 * blockCount;
-
 			ctx.SetComputeRootSignature(sortingRootSignature);
 			ctx.SetComputeConstantValue(0, 1, &bufferSize, 0);
 			ctx.SetComputeUnorderedAccessView(3, resources.UAV(data.sourceBuffer, ctx));
 			ctx.Dispatch(resources.GetPipelineState(InitiateBuffer), { bufferSize / 1024, 1, 1 });
 			ctx.AddUAVBarrier(resources.GetResource(data.sourceBuffer));
 
-			//ctx.Dispatch(resources.GetPipelineState(LocalSort), { bufferSize / 1024, 1, 1 });
-			//ctx.AddUAVBarrier(resources.GetResource(data.sourceBuffer));
+			ctx.BeginEvent_DEBUG("Merge Sort");
 
+			ctx.Dispatch(resources.GetPipelineState(LocalSort), { blockCount, 1, 1 });
 
 			struct
 			{
@@ -140,18 +142,39 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 				.blockCount = blockCount
 			};
 
-			ctx.DiscardResource(resources.GetResource(data.mergePathBuffer));
-			ctx.DiscardResource(resources.GetResource(data.destinationBuffer));
+			auto input				= data.sourceBuffer;
+			auto output				= data.destinationBuffer;
+			const uint32_t mergeX	= blockCount * 2;
+			uint32_t passX			= blockCount;
 
-			ctx.SetComputeConstantValue(0, 3, &constants, 0);
-			ctx.SetComputeShaderResourceView(1, resources.NonPixelShaderResource(data.sourceBuffer, ctx), 0  * 4);
-			ctx.SetComputeUnorderedAccessView(3, resources.UAV(data.mergePathBuffer, ctx));
-			ctx.Dispatch(resources.GetPipelineState(CreateMergePath), { 1, 1, 1 });
+			const auto passes = (uint32_t)std::ceilf(std::log2(blockCount));
 
-			ctx.SetComputeShaderResourceView(2, resources.NonPixelShaderResource(data.mergePathBuffer, ctx));
-			ctx.SetComputeUnorderedAccessView(3, resources.UAV(data.destinationBuffer, ctx));
-			//ctx.Dispatch(resources.GetPipelineState(GlobalMerge), { bufferSize / 1024, 1, 1 });
-			ctx.Dispatch(resources.GetPipelineState(GlobalMerge), { 2, 1, 1 });
+			ctx.BeginEvent_DEBUG("Merges");
+			for(size_t i = 0; i < passes; i++)
+			{
+				ctx.BeginEvent_DEBUG("Merge Pass");
+
+				ctx.SetComputeConstantValue(0, 3, &constants, 0);
+				ctx.SetComputeShaderResourceView(1, resources.NonPixelShaderResource(input, ctx), 0  * 4);
+				ctx.SetComputeUnorderedAccessView(3, resources.UAV(data.mergePathBuffer, ctx));
+				ctx.Dispatch(resources.GetPipelineState(CreateMergePath), { blockCount * p / 128, 1, 1 });
+
+				ctx.SetComputeShaderResourceView(2, resources.NonPixelShaderResource(data.mergePathBuffer, ctx));
+				ctx.SetComputeUnorderedAccessView(3, resources.UAV(output, ctx));
+
+				ctx.Dispatch(resources.GetPipelineState(GlobalMerge), { mergeX, 1, 1 });
+
+				constants.p				*= 2;
+				constants.blockSize		*= 2;
+				constants.blockCount	/= 2;
+				passX *= 2;
+
+				std::swap(input, output);
+				ctx.EndEvent_DEBUG();
+			}
+
+			ctx.EndEvent_DEBUG();
+			ctx.EndEvent_DEBUG();
 		});
 
 
@@ -278,7 +301,7 @@ ID3D12PipelineState* SortTest::CreateMergePathPSO()
 ID3D12PipelineState* SortTest::CreateGlobalMergePSO()
 {
 	auto& renderSystem = framework.GetRenderSystem();
-	FlexKit::Shader CShader = renderSystem.LoadShader("GlobalMerge", "cs_6_2", R"(assets\shaders\Sorting\Merge.hlsl)");
+	FlexKit::Shader CShader = renderSystem.LoadShader("GlobalMerge", "cs_6_2", R"(assets\shaders\Sorting\Merge.hlsl)", { .hlsl2021 = true });
 
 	struct
 	{

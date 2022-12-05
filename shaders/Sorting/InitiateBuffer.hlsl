@@ -6,9 +6,20 @@ cbuffer constants : register(b0)
 
 RWStructuredBuffer<uint> buffer : register(u0);
 
+uint rand_xorshift(uint rng_state)
+{
+	// Xorshift algorithm from George Marsaglia's paper
+	rng_state ^= (rng_state << 13);
+	rng_state ^= (rng_state >> 17);
+	rng_state ^= (rng_state << 5);
+	return rng_state;
+}
+
+
 [numthreads(1024, 1, 1)]
 void Initiate(const uint3 dispatchID : SV_DispatchThreadID)
 {
+
 	/*
 	static const uint testSet[] = {
 		41, 288, 292, 1869, 2995, 3902, 4639, 4827,
@@ -32,11 +43,12 @@ void Initiate(const uint3 dispatchID : SV_DispatchThreadID)
 	};
 	*/
 
-
-	buffer[dispatchID.x] = dispatchID.x;//
-	/*
-		dispatchID.x < bufferSize / 2 ?
-			(dispatchID.x) :
-			(2 * (dispatchID.x - (bufferSize / 2)));
-	*/
+#if 0
+	uint rng_state = dispatchID.x;
+	buffer[dispatchID.x] = rand_xorshift(rng_state++);//
+#elif 1
+	buffer[dispatchID.x] = bufferSize - dispatchID.x;
+#else
+	buffer[dispatchID.x] = dispatchID.x;
+#endif
 }
