@@ -43,7 +43,7 @@ void Initiate(const uint3 dispatchID : SV_DispatchThreadID)
 	};
 	*/
 
-#if 0
+#if 1
 	uint rng_state = dispatchID.x;
 	buffer[dispatchID.x] = rand_xorshift(rng_state++);//
 #elif 1
