@@ -52,26 +52,84 @@ void BitonicSort(const uint localThreadID)
 /************************************************************************************************/
 
 
-[numthreads(1024, 1, 1)]
-void GlobalMerge(const uint3 dispatchID : SV_DispatchThreadID, const uint3 groupID : SV_GroupID, const uint groupIdx : SV_GroupIndex)
+void Merge(int2 ASpan, int2 BSpan, int2 OutSpan)
 {
-	const uint2 begin	= mergePathTable[groupID.x];
-	const uint2 end		= mergePathTable[groupID.x + 1];
+	int a_itr = ASpan.x;
+	int b_itr = BSpan.x;
 
-	if (begin.x <= dispatchID.x && dispatchID.x < end.x)
-		local[groupIdx] = sourceBuffer[begin.x + groupIdx + (groupID.x / 2 + 0) * blockSize];
-	else
-		local[groupIdx] = sourceBuffer[begin.y + groupIdx + (groupID.x / 2 + 1) * blockSize];
+	if (a_itr < 0 || b_itr < 0)
+		return;
 
-	GroupMemoryBarrierWithGroupSync();
+	uint a = sourceBuffer[a_itr];
+	uint b = sourceBuffer[b_itr];
 
-	BitonicSort(groupIdx);
+	while (a_itr < ASpan.y || b_itr < BSpan.y)
+	{
+		if (a_itr < ASpan.y && b_itr < BSpan.y)
+		{
+			if (a <= b)
+			{
+				outputBuffer[OutSpan.x] = a;
+				a_itr++;
+				a = sourceBuffer[a_itr];
+			}
+			else
+			{
+				outputBuffer[OutSpan.x] = b;
+				b_itr++;
+				b = sourceBuffer[b_itr];
+			}
 
-	GroupMemoryBarrierWithGroupSync();
+			OutSpan.x++;
+		}
+		else
+		{
+			while (a_itr < ASpan.y && OutSpan.x < OutSpan.y)
+			{
+				outputBuffer[OutSpan.x] = a;
+				OutSpan.x++;
+				a_itr++;
+				a = sourceBuffer[a_itr];
+			}
 
-	outputBuffer[groupIdx + groupID.x * blockSize] = local[groupIdx];
+			while (b_itr < BSpan.y && OutSpan.x < OutSpan.y)
+			{
+				outputBuffer[OutSpan.x] = b;
+				OutSpan.x++;
+				b_itr++;
+				b = sourceBuffer[b_itr];
+			}
+
+			return;
+		}
+	}
 }
 
+
+/************************************************************************************************/
+
+
+
+
+[numthreads(16, 1, 1)]
+void GlobalMerge(const uint3 dispatchID : SV_DispatchThreadID, const uint3 groupID : SV_GroupID, const uint groupIdx : SV_GroupIndex)
+{
+	if (dispatchID.x >= blockCount / 2 * p)
+		return;
+
+	const int blockIdx	= dispatchID.x / p;
+	const int i			= dispatchID.x % p;
+
+	const int2 begin	=  (i == 0) ? uint2(blockSize * (2 * blockIdx + 0), blockSize * (2 * blockIdx + 1)) : mergePathTable[dispatchID.x - 1];
+	const int2 end		= mergePathTable[dispatchID.x];
+
+	Merge(
+		int2(begin.x, end.x),
+		int2(begin.y, end.y),
+		int2(
+			2 * blockIdx * blockSize + i * 2 * blockSize / p,
+			2 * blockIdx * blockSize + i * 2 * blockSize / p + 32));
+}
 
 /**********************************************************************
 

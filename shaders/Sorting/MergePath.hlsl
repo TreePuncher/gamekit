@@ -19,20 +19,20 @@ uint2 DiagonalIntersection(const uint i, const uint a_begin, const uint b_begin)
 	uint b_top			= index > blockSize ? index - blockSize : 0;
 	uint a_bottom		= b_top;
 
-	for(uint j = 0; j < 14; j++)
+	for(uint j = 0; j < 64; j++)
 	{
 		const uint offset	= (a_top - a_bottom) / 2;
 		const uint a_itr	= a_top - offset;
 		const uint b_itr	= b_top + offset;
 
 		if (a_itr >= blockSize || b_itr >= blockSize || a_itr == 0 || b_itr == 0)
-			return uint2(a_itr, b_itr);
+			return uint2(a_begin + a_itr, b_begin + b_itr);
 
 		if (sourceBuffer[a_begin + a_itr] > sourceBuffer[b_begin + b_itr - 1])
 		{
 			if ((sourceBuffer[a_begin + a_itr - 1]) <= sourceBuffer[b_begin + b_itr])
 			{
-				return uint2(a_itr, b_itr);
+				return uint2(a_begin + a_itr, b_begin + b_itr);
 			}
 			else
 			{
@@ -51,22 +51,16 @@ uint2 DiagonalIntersection(const uint i, const uint a_begin, const uint b_begin)
 /************************************************************************************************/
 
 
-[numthreads(32, 1, 1)]
-void CreateMergePath(const uint3 dispatchID : SV_DispatchThreadID, const uint3 groupID : SV_GroupThreadID)
+[numthreads(128, 1, 1)]
+void CreateMergePath(const uint3 dispatchID : SV_DispatchThreadID)
 {
 	if (dispatchID.x < (p * blockCount / 2))
 	{
-		const uint blockStep	= (p * blockCount / 2);
-		const uint blockIdx		= dispatchID.x / blockStep;
-		const uint i			= dispatchID.x % blockStep;
+		const uint blockIdx		= dispatchID.x / p;
+		const uint i			= dispatchID.x % p;
 
-		if (i < p && i >= 1)
-			outputBuffer[blockIdx * (p + 1) + i] = DiagonalIntersection(i, blockSize * (blockIdx + 0), blockSize * (blockIdx + 1));
-		else if (i == 0)
-		{
-			outputBuffer[blockIdx * (p + 1) + i]		= uint2(0, 0);
-			outputBuffer[blockIdx * (p + 1) + i + p]	= uint2(blockSize, blockSize);
-		}
+		if (i < p)
+			outputBuffer[blockIdx * p + i] = DiagonalIntersection(i + 1, blockSize * (2 * blockIdx + 0), blockSize * (2 * blockIdx + 1));
 	}
 }
 
