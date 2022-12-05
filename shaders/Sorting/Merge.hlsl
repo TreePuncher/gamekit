@@ -85,8 +85,8 @@ void GlobalMerge(const uint3 dispatchID : SV_DispatchThreadID, const uint3 group
 	const uint2 begin	=  (i == 0) ? uint2(a, b) : mergePathTable[dispatchID.x - 1];
 	const uint2 end		= mergePathTable[dispatchID.x];
 
-	const uint outBegin = (dispatchID.x + 0) * 32;
-	const uint outEnd	= (dispatchID.x + 1) * 32;
+	const uint outBegin = (dispatchID.x + 0) * 256;
+	const uint outEnd	= (dispatchID.x + 1) * 256;
 
 	Merge(
 		uint2(begin.x, end.x),

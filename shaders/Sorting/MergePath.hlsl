@@ -14,13 +14,12 @@ cbuffer constants : register(b0)
 
 uint2 DiagonalIntersection(const uint i, const uint a_begin, const uint b_begin)
 {
-	//const uint64_t index = uint64_t(i) / uint64_t(p) * uint64_t(blockSize + blockSize);
 	const uint64_t index	= uint64_t(i) * uint64_t(blockSize + blockSize) / uint64_t(p);
 	uint a_top			= index > blockSize ? blockSize : index;
 	uint b_top			= index > blockSize ? index - blockSize : 0;
 	uint a_bottom		= b_top;
 
-	for(uint j = 0; j < 64; j++)
+	for(uint j = 0; j < 32; j++)
 	{
 		const uint offset	= (a_top - a_bottom) / 2;
 		const uint a_itr	= a_top - offset;

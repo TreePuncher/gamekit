@@ -84,7 +84,7 @@ FlexKit::UpdateTask* SortTest::Update(FlexKit::EngineCore&, FlexKit::UpdateDispa
 
 
 
-constexpr uint32_t p			= 64;
+constexpr uint32_t p			= 8;
 constexpr uint32_t blockCount	= 2048;
 constexpr uint32_t bufferSize	= 1024 * blockCount;
 
@@ -144,7 +144,7 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 
 			auto input				= data.sourceBuffer;
 			auto output				= data.destinationBuffer;
-			const uint32_t mergeX	= blockCount * 2;
+			const uint32_t mergeX	= blockCount;
 			uint32_t passX			= blockCount;
 
 			const auto passes = (uint32_t)std::ceilf(std::log2(blockCount));
@@ -157,7 +157,7 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 				ctx.SetComputeConstantValue(0, 3, &constants, 0);
 				ctx.SetComputeShaderResourceView(1, resources.NonPixelShaderResource(input, ctx), 0  * 4);
 				ctx.SetComputeUnorderedAccessView(3, resources.UAV(data.mergePathBuffer, ctx));
-				ctx.Dispatch(resources.GetPipelineState(CreateMergePath), { blockCount * p / 128, 1, 1 });
+				ctx.Dispatch(resources.GetPipelineState(CreateMergePath), { blockCount * p / 16, 1, 1 });
 
 				ctx.SetComputeShaderResourceView(2, resources.NonPixelShaderResource(data.mergePathBuffer, ctx));
 				ctx.SetComputeUnorderedAccessView(3, resources.UAV(output, ctx));
