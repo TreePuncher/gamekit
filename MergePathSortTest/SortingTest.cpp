@@ -113,7 +113,7 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 		{
 			data.sourceBuffer		= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(bufferSize * 4), FlexKit::DeviceResourceState::DRS_UAV);
 			data.destinationBuffer	= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(bufferSize * 4), FlexKit::DeviceResourceState::DRS_UAV);
-			data.mergePathBuffer	= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(MEGABYTE), FlexKit::DeviceResourceState::DRS_UAV);
+			data.mergePathBuffer	= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(bufferSize / 32 * 8), FlexKit::DeviceResourceState::DRS_UAV);
 
 			builder.SetDebugName(data.sourceBuffer, "sourceBuffer");
 			builder.SetDebugName(data.destinationBuffer, "destinationBuffer");
@@ -270,7 +270,7 @@ ID3D12PipelineState* SortTest::CreateLocalSortPSO()
 ID3D12PipelineState* SortTest::CreateMergePathPSO()
 {
 	auto& renderSystem = framework.GetRenderSystem();
-	FlexKit::Shader CShader = renderSystem.LoadShader("CreateMergePath", "cs_6_2", R"(assets\shaders\Sorting\MergePath.hlsl)");
+	FlexKit::Shader CShader = renderSystem.LoadShader("CreateMergePath", "cs_6_6", R"(assets\shaders\Sorting\MergePath.hlsl)");
 
 	struct
 	{
@@ -301,7 +301,7 @@ ID3D12PipelineState* SortTest::CreateMergePathPSO()
 ID3D12PipelineState* SortTest::CreateGlobalMergePSO()
 {
 	auto& renderSystem = framework.GetRenderSystem();
-	FlexKit::Shader CShader = renderSystem.LoadShader("GlobalMerge", "cs_6_2", R"(assets\shaders\Sorting\Merge.hlsl)", { .hlsl2021 = true });
+	FlexKit::Shader CShader = renderSystem.LoadShader("GlobalMerge", "cs_6_6", R"(assets\shaders\Sorting\Merge.hlsl)", { .hlsl2021 = true });
 
 	struct
 	{
