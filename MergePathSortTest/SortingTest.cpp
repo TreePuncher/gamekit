@@ -31,7 +31,7 @@ SortTest::SortTest(FlexKit::GameFramework& IN_framework) :
 	sub._ptr = &framework;
 
 	renderWindow.Handler->Subscribe(sub);
-	renderWindow.SetWindowTitle("Hair Rendering - WIP");
+	renderWindow.SetWindowTitle("Sorting Test - WIP");
 
 	sortingRootSignature.AllowIA = true;
 	sortingRootSignature.SetParameterAsUINT(0, 16, 0, 0);

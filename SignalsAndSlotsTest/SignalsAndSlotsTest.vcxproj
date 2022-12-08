@@ -216,6 +216,11 @@
   <ItemGroup>
     <ClCompile Include="SignalsAndSlotsTest.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Engine\Engine.vcxproj">
+      <Project>{4522c393-e928-4aaa-9c7e-b0d4a5e011d6}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

@@ -675,7 +675,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline FLEXKITAPI std::pair<Win32RenderWindow, bool> CreateWin32RenderWindow(RenderSystem& renderSystem, const Win32RenderWindowDesc& renderWindowDesc)
+	inline FLEXKITAPI std::optional<Win32RenderWindow> CreateWin32RenderWindow(RenderSystem& renderSystem, const Win32RenderWindowDesc& renderWindowDesc)
 	{
 		static bool _TEMP   =
 			[]
@@ -758,7 +758,7 @@ namespace FlexKit
 		{
 			std::cout << "Failed to Create Swap Chain!\n";
 			FK_ASSERT(FAILED(HR), "FAILED TO CREATE SWAP CHAIN!");
-			return { {}, false };
+			return {};
 		}
 
 		renderWindow.swapChain  = static_cast<IDXGISwapChain4*>(NewSwapChain_ptr);
@@ -772,7 +772,7 @@ namespace FlexKit
 			NewSwapChain_ptr->GetBuffer( I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
 			if (!buffer[I]) {
 				FK_ASSERT(buffer[I], "Failed to Create Back Buffer!");
-				return { {}, false };
+				return {};
 			}
 
 		}
@@ -794,7 +794,7 @@ namespace FlexKit
 
 		memset(renderWindow.InputBuffer, 0, sizeof(renderWindow.InputBuffer));
 
-		return { renderWindow, true };
+		return renderWindow;
 	}
 
 

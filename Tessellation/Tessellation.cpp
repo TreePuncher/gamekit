@@ -434,11 +434,11 @@ public:
 
 	ID3D12PipelineState* LoadPSO(FlexKit::RenderSystem* renderSystem, bool wireframe = false)
 	{
-		auto ACC_VShader = renderSystem->LoadShader("VS_Main", "vs_6_2", "assets\\shaders\\ACCQuad.hlsl", true);
-		auto ACC_DShader = renderSystem->LoadShader("DS_Main", "ds_6_2", "assets\\shaders\\ACCQuad.hlsl", true);
-		auto ACC_HShader = renderSystem->LoadShader("HS_Main", "hs_6_2", "assets\\shaders\\ACCQuad.hlsl", true);
+		auto ACC_VShader = renderSystem->LoadShader("VS_Main", "vs_6_2", "assets\\shaders\\ACCQuad.hlsl", FlexKit::ShaderOptions{ .enable16BitTypes= true });
+		auto ACC_DShader = renderSystem->LoadShader("DS_Main", "ds_6_2", "assets\\shaders\\ACCQuad.hlsl", FlexKit::ShaderOptions{ .enable16BitTypes= true });
+		auto ACC_HShader = renderSystem->LoadShader("HS_Main", "hs_6_2", "assets\\shaders\\ACCQuad.hlsl", FlexKit::ShaderOptions{ .enable16BitTypes= true });
 		auto ACC_PShader = renderSystem->LoadShader(
-			wireframe ? "PS_Main2" : "PS_Main", "ps_6_2", "assets\\shaders\\ACCQuad.hlsl", true);
+			wireframe ? "PS_Main2" : "PS_Main", "ps_6_2", "assets\\shaders\\ACCQuad.hlsl", FlexKit::ShaderOptions{ .enable16BitTypes = true });
 
 
 		/*
@@ -507,9 +507,9 @@ public:
 
 	ID3D12PipelineState* LoadPSO2(FlexKit::RenderSystem* renderSystem)
 	{
-		auto Debug_VShader = renderSystem->LoadShader("VS_Main", "vs_6_2", "assets\\shaders\\ACCDebug.hlsl", true);
+		auto Debug_VShader = renderSystem->LoadShader("VS_Main", "vs_6_2", "assets\\shaders\\ACCDebug.hlsl", FlexKit::ShaderOptions{ .enable16BitTypes = true });
 		auto Debug_GShader = renderSystem->LoadShader("GS_Main", "gs_6_0", "assets\\shaders\\ACCDebug.hlsl");
-		auto Debug_PShader = renderSystem->LoadShader("PS_Main", "ps_6_2", "assets\\shaders\\ACCDebug.hlsl", true);
+		auto Debug_PShader = renderSystem->LoadShader("PS_Main", "ps_6_2", "assets\\shaders\\ACCDebug.hlsl", FlexKit::ShaderOptions{ .enable16BitTypes = true });
 
 		/*
 		typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -568,8 +568,8 @@ public:
 
 	ID3D12PipelineState* LoadPSO3(FlexKit::RenderSystem* renderSystem)
 	{
-		auto Debug_VShader = renderSystem->LoadShader("VS2_Main", "vs_6_2", "assets\\shaders\\ACCDebug.hlsl", true);
-		auto Debug_PShader = renderSystem->LoadShader("PS2_Main", "ps_6_2",  "assets\\shaders\\ACCDebug.hlsl", true);
+		auto Debug_VShader = renderSystem->LoadShader("VS2_Main", "vs_6_2", "assets\\shaders\\ACCDebug.hlsl", FlexKit::ShaderOptions{ .enable16BitTypes = true });
+		auto Debug_PShader = renderSystem->LoadShader("PS2_Main", "ps_6_2",  "assets\\shaders\\ACCDebug.hlsl", FlexKit::ShaderOptions{ .enable16BitTypes = true });
 
 		/*
 		typedef struct D3D12_INPUT_ELEMENT_DESC

@@ -4336,8 +4336,8 @@ namespace FlexKit
 		ObjectsCreated.push_back(NewFence);
 		
 		D3D12_COMMAND_QUEUE_DESC CQD		= {};
-		CQD.Flags							            = D3D12_COMMAND_QUEUE_FLAGS::D3D12_COMMAND_QUEUE_FLAG_NONE;
-		CQD.Type								        = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT;
+		CQD.Flags										= D3D12_COMMAND_QUEUE_FLAGS::D3D12_COMMAND_QUEUE_FLAG_NONE;
+		CQD.Type										= D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT;
 
 		D3D12_COMMAND_QUEUE_DESC ComputeCQD = {};
 		ComputeCQD.Flags								= D3D12_COMMAND_QUEUE_FLAGS::D3D12_COMMAND_QUEUE_FLAG_NONE;
@@ -6498,7 +6498,7 @@ namespace FlexKit
 			{ Buffer[0], Buffer[1], Buffer[2] },
 			BufferSize,
 			0, 
-			_Map(Buffer[0]),
+			GPUResident ? nullptr : _Map(Buffer[0]),
 			Buffers[Buffer[0]].Resource,
 			false,
 			handle});
@@ -8011,10 +8011,31 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	[[nodiscard]] ID3D12DescriptorHeap* RenderSystem::_CreateShaderVisibleHeap(const size_t numDescriptors)
+	{
+		ID3D12DescriptorHeap* heap;
+
+		HRESULT HR;
+		D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapdesc;
+		descriptorHeapdesc.Flags			= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+		descriptorHeapdesc.NumDescriptors	= numDescriptors;
+		descriptorHeapdesc.NodeMask			= 0;
+		descriptorHeapdesc.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		HR									= pDevice->CreateDescriptorHeap(&descriptorHeapdesc, IID_PPV_ARGS(&heap));
+		FK_ASSERT(HR, "FAILED TO CREATE DESCRIPTOR HEAP");
+
+		return heap;
+	}
+
+
+	/************************************************************************************************/
+
+
 	ID3D12QueryHeap* RenderSystem::_GetQueryResource(QueryHandle Handle)
 	{
 		return Queries.GetAsset(Handle);
 	}
+
 
 
 	/************************************************************************************************/
