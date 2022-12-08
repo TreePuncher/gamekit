@@ -1,5 +1,4 @@
-#ifndef MEMORYUTILITIES_INLUDED
-#define MEMORYUTILITIES_INLUDED
+#pragma once
 
 #include "buildsettings.h"
 #include "Logging.h"
@@ -1109,9 +1108,6 @@ namespace FlexKit
 
 
 }	/************************************************************************************************/
-
-#endif
-
 
 /**********************************************************************
 

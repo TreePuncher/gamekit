@@ -51,7 +51,7 @@ uint VMain(const uint ID : SV_VertexID) : PRIMITIVEID
 [maxvertexcount(16)]
 void GMain(point uint primitiveID[1] : PRIMITIVEID, inout TriangleStream<StrandVertex> triangleStream)
 {
-	const uint id = primitiveID[0] + primitiveID[0] / (6 - 1);
+	const uint id = primitiveID[0] + primitiveID[0] / (21 - 1);
 
 	const ControlPoint controlPoints[2] =
 	{

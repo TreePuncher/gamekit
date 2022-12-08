@@ -7,9 +7,12 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestGame", "TestGame\TestGa
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "flxEditor", "flxEditor\flxEditor.vcxproj", "{31EBEF0D-793C-4B4D-84A1-EAF0AE305B60}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Temp", "Temp\Temp.vcxproj", "{90611E9C-5078-49DF-B5CF-B772032BAB5D}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TriangleTriangleIntersectionTest", "Temp\Temp.vcxproj", "{90611E9C-5078-49DF-B5CF-B772032BAB5D}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SignalsAndSlotsTest", "SignalsAndSlotsTest\SignalsAndSlotsTest.vcxproj", "{D57D7D90-B393-48D7-ABF1-5814E8CA0CA3}"
+	ProjectSection(ProjectDependencies) = postProject
+		{4522C393-E928-4AAA-9C7E-B0D4A5E011D6} = {4522C393-E928-4AAA-9C7E-B0D4A5E011D6}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Tessellation", "Tessellation\Tessellation.vcxproj", "{4F20EA09-A847-459E-98B7-1E36D7636727}"
 EndProject
@@ -18,6 +21,10 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HairRenderingExample", "HairRenderingExample\HairRenderingExample.vcxproj", "{31215F1A-28AA-46AA-85B0-31343BC63786}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MergePathSortTest", "MergePathSortTest\MergePathSortTest.vcxproj", "{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DescriptorHeapAllocatorTest", "DescriptorHeapAllocatorTest\DescriptorHeapAllocatorTest.vcxproj", "{9525E7C4-56AF-40B0-A81B-B1A17CB5FBE5}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TextureStreamingTest", "TextureStreamingTest\TextureStreamingTest.vcxproj", "{233CC021-9348-439B-8D0F-3E714DBE39F8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -89,23 +96,43 @@ Global
 		{31215F1A-28AA-46AA-85B0-31343BC63786}.UnityBuild|x86.ActiveCfg = Debug|Win32
 		{31215F1A-28AA-46AA-85B0-31343BC63786}.UnityBuild|x86.Build.0 = Debug|Win32
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.Debug|x64.ActiveCfg = Debug|x64
-		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.Debug|x64.Build.0 = Debug|x64
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.Debug|x86.ActiveCfg = Debug|Win32
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.Debug|x86.Build.0 = Debug|Win32
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.Release|x64.ActiveCfg = Release|x64
-		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.Release|x64.Build.0 = Release|x64
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.Release|x86.ActiveCfg = Release|Win32
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.Release|x86.Build.0 = Release|Win32
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.UnityBuild|x64.ActiveCfg = Debug|x64
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.UnityBuild|x64.Build.0 = Debug|x64
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.UnityBuild|x86.ActiveCfg = Debug|Win32
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.UnityBuild|x86.Build.0 = Debug|Win32
+		{9525E7C4-56AF-40B0-A81B-B1A17CB5FBE5}.Debug|x64.ActiveCfg = Debug|x64
+		{9525E7C4-56AF-40B0-A81B-B1A17CB5FBE5}.Debug|x86.ActiveCfg = Debug|Win32
+		{9525E7C4-56AF-40B0-A81B-B1A17CB5FBE5}.Debug|x86.Build.0 = Debug|Win32
+		{9525E7C4-56AF-40B0-A81B-B1A17CB5FBE5}.Release|x64.ActiveCfg = Release|x64
+		{9525E7C4-56AF-40B0-A81B-B1A17CB5FBE5}.Release|x86.ActiveCfg = Release|Win32
+		{9525E7C4-56AF-40B0-A81B-B1A17CB5FBE5}.Release|x86.Build.0 = Release|Win32
+		{9525E7C4-56AF-40B0-A81B-B1A17CB5FBE5}.UnityBuild|x64.ActiveCfg = Debug|x64
+		{9525E7C4-56AF-40B0-A81B-B1A17CB5FBE5}.UnityBuild|x64.Build.0 = Debug|x64
+		{9525E7C4-56AF-40B0-A81B-B1A17CB5FBE5}.UnityBuild|x86.ActiveCfg = Debug|Win32
+		{9525E7C4-56AF-40B0-A81B-B1A17CB5FBE5}.UnityBuild|x86.Build.0 = Debug|Win32
+		{233CC021-9348-439B-8D0F-3E714DBE39F8}.Debug|x64.ActiveCfg = Debug|x64
+		{233CC021-9348-439B-8D0F-3E714DBE39F8}.Debug|x64.Build.0 = Debug|x64
+		{233CC021-9348-439B-8D0F-3E714DBE39F8}.Debug|x86.ActiveCfg = Debug|Win32
+		{233CC021-9348-439B-8D0F-3E714DBE39F8}.Debug|x86.Build.0 = Debug|Win32
+		{233CC021-9348-439B-8D0F-3E714DBE39F8}.Release|x64.ActiveCfg = Release|x64
+		{233CC021-9348-439B-8D0F-3E714DBE39F8}.Release|x64.Build.0 = Release|x64
+		{233CC021-9348-439B-8D0F-3E714DBE39F8}.Release|x86.ActiveCfg = Release|Win32
+		{233CC021-9348-439B-8D0F-3E714DBE39F8}.Release|x86.Build.0 = Release|Win32
+		{233CC021-9348-439B-8D0F-3E714DBE39F8}.UnityBuild|x64.ActiveCfg = Debug|x64
+		{233CC021-9348-439B-8D0F-3E714DBE39F8}.UnityBuild|x64.Build.0 = Debug|x64
+		{233CC021-9348-439B-8D0F-3E714DBE39F8}.UnityBuild|x86.ActiveCfg = Debug|Win32
+		{233CC021-9348-439B-8D0F-3E714DBE39F8}.UnityBuild|x86.Build.0 = Debug|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {4F8D44AA-933C-484E-B443-E8BC15140F28}
 		Qt5Version = qt5
+		SolutionGuid = {4F8D44AA-933C-484E-B443-E8BC15140F28}
 	EndGlobalSection
 EndGlobal

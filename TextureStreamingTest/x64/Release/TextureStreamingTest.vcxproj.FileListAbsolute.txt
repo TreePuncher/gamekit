@@ -1,0 +1,6 @@
+D:\repos\MergePath\x64\Release\WinPixEventRuntime.dll
+D:\repos\MergePath\x64\Release\D3D12\D3D12Core.dll
+D:\repos\MergePath\x64\Release\D3D12\D3D12Core.pdb
+D:\repos\MergePath\x64\Release\D3D12\D3D12SDKLayers.dll
+D:\repos\MergePath\x64\Release\D3D12\D3D12SDKLayers.pdb
+D:\repos\MergePath\TextureStreamingTest\x64\Release\TextureStreamingTest.vcxproj.CopyComplete

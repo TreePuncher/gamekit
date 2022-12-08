@@ -76,7 +76,7 @@ std::expected<ImportedStyleBuffer, int> ImportCSV(const std::filesystem::path& p
 		return std::unexpected{ 1 };
 
 	FILE* f = nullptr;
-	auto err = fopen_s(&f, path.string().c_str(), "r");
+	auto err = fopen_s(&f, path.string().c_str(), "rb");
 
 	if (err)
 		return std::unexpected{ 2 };
