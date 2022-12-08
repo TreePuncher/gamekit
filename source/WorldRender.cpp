@@ -695,9 +695,9 @@ namespace FlexKit
 	{
 		ProfileFunction();
 
-		auto&       scene           = drawSceneDesc.scene;
+		      auto& scene           = drawSceneDesc.scene;
 		const auto  camera          = drawSceneDesc.camera;
-		auto&       gbuffer         = drawSceneDesc.gbuffer;
+		      auto& gbuffer         = drawSceneDesc.gbuffer;
 		const auto  t               = drawSceneDesc.t;
 
 		auto&       depthTarget     = targets.DepthTarget;
@@ -767,7 +767,7 @@ namespace FlexKit
 
 		pendingGPUTasks.clear();
 
-		ClearGBuffer(gbuffer, frameGraph);
+		ClearGBuffer(frameGraph, gbuffer);
 
 		auto& entityConstants =
 			BuildEntityConstantsBuffer(

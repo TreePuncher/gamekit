@@ -653,7 +653,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ClearGBuffer(GBuffer& gbuffer, FrameGraph& frameGraph)
+	void ClearGBuffer(FrameGraph& frameGraph, GBuffer& gbuffer)
 	{
 		struct GBufferClear
 		{

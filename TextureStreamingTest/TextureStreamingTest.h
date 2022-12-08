@@ -1,6 +1,7 @@
 #pragma once
 #include <Application.h>
 #include <Scene.h>
+#include <physicsutilities.h>
 #include <TextureStreamingUtilities.h>
 #include <WorldRender.h>
 #include <Win32Graphics.h>
@@ -19,20 +20,35 @@ public:
 
 
 
-	FlexKit::CameraComponent			cameras;
-	FlexKit::SceneNodeComponent			sceneNodes;
-	FlexKit::MaterialComponent			materials;
-	FlexKit::SceneVisibilityComponent	visibilityComponent;
-	FlexKit::BrushComponent				brushes;
-	FlexKit::PointLightComponent		pointLights;
+	FlexKit::AnimatorComponent				animators;
+	FlexKit::CameraComponent				cameras;
+	FlexKit::CameraControllerComponent		orbitCameras;
+	FlexKit::SceneNodeComponent				sceneNodes;
+	FlexKit::MaterialComponent				materials;
+	FlexKit::SceneVisibilityComponent		visibilityComponent;
+	FlexKit::BrushComponent					brushes;
+	FlexKit::PointLightComponent			pointLights;
+	FlexKit::PointLightShadowMap			pointLightShadowMaps;
+	FlexKit::FABRIKComponent				ikComponent;
+	FlexKit::SkeletonComponent				skeletons;
 
+	FlexKit::PhysXComponent					physx;
+	FlexKit::RigidBodyComponent				rigidBodies;
+	FlexKit::StaticBodyComponent			staticBodies;
+
+	FlexKit::GBuffer				gbuffer;
+	FlexKit::DepthBuffer			depthBuffer;
 	FlexKit::Win32RenderWindow		renderWindow;
 	FlexKit::ConstantBufferHandle	constantBuffer;
 	FlexKit::VertexBufferHandle		vertexBuffer;
 
 	FlexKit::WorldRender			renderer;
 	FlexKit::TextureStreamingEngine	textureStreamingEngine;
+
+	FlexKit::LayerHandle			layer;
 	FlexKit::Scene					scene;
+
+	FlexKit::CameraHandle			activeCamera;
 
 	FlexKit::RunOnceQueue<void(FlexKit::UpdateDispatcher&, FlexKit::FrameGraph&)>	runOnceQueue;
 };

@@ -32,7 +32,7 @@ namespace FlexKit
 	};
 
 
-    void ClearGBuffer(GBuffer& gbuffer, FrameGraph& frameGraph);
+    void ClearGBuffer(FrameGraph& frameGraph, GBuffer& gbuffer);
     void AddGBufferResource(GBuffer& gbuffer, FrameGraph& frameGraph);
 
 
