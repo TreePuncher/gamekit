@@ -364,9 +364,9 @@ namespace FlexKit
 				data.octree             = builder.UnorderedAccess(octreeBuffer);
 
 				data.depthTarget        = builder.NonPixelShaderResource(depthTarget);
-				data.counters           = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(8192), DRS_UAV);
-				data.indirectArgs       = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DRS_UAV);
-				data.sampleBuffer       = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(8 * MEGABYTE), DRS_UAV);
+				data.counters           = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(8192), DASUAV);
+				data.indirectArgs       = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DASUAV);
+				data.sampleBuffer       = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(8 * MEGABYTE), DASUAV);
 
 				builder.SetDebugName(data.counters,     "Counters");
 				builder.SetDebugName(data.indirectArgs, "IndirectArgs");
@@ -404,10 +404,10 @@ namespace FlexKit
 			[&](FrameGraphNodeBuilder& builder, SVO_RayTrace& data)
 			{
 				data.depthTarget    = builder.DepthRead(depthTarget);
-				data.renderTarget   = builder.WriteTransition(renderTarget, DRS_RenderTarget);
+				data.renderTarget   = builder.WriteTransition(renderTarget, DASRenderTarget);
 				data.normals        = builder.PixelShaderResource(gbuffer.normal);
 				data.albedo         = builder.PixelShaderResource(gbuffer.albedo);
-				data.indirectArgs   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DRS_UAV);
+				data.indirectArgs   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DASUAV);
 				data.octree         = builder.NonPixelShaderResource(octreeBuffer);
 			},
 			[mipOffset](SVO_RayTrace& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
@@ -990,10 +990,10 @@ namespace FlexKit
 			},
 			[&](FrameGraphNodeBuilder& builder, VoxelizePass& data)
 			{
-				data.sampleBuffer   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource((256 + 128)* MEGABYTE ), DRS_UAV);
-				data.tempBuffer     = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(32 * MEGABYTE), DRS_UAV);
-				data.argBuffer      = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4096), DRS_UAV);
-				data.parentBuffer   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(32 * MEGABYTE), DRS_UAV);
+				data.sampleBuffer   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource((256 + 128)* MEGABYTE ), DASUAV);
+				data.tempBuffer     = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(32 * MEGABYTE), DASUAV);
+				data.argBuffer      = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4096), DASUAV);
+				data.parentBuffer   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(32 * MEGABYTE), DASUAV);
 				data.octree         = builder.UnorderedAccess(octreeBuffer);
 			},
 			[&scene, this](VoxelizePass& data, ResourceHandler& resources, Context& ctx, iAllocator& TL_allocator)

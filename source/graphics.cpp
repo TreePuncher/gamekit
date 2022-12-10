@@ -1241,10 +1241,11 @@ namespace FlexKit
 		SETDEBUGNAME(descHeapRTV, "GPURESOURCEHEAP");
 		SETDEBUGNAME(descHeapDSV, "RENDERTARGETHEAP");
 
-		HR = renderSystem->pDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator)); FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
-		HR = renderSystem->pDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator, nullptr, __uuidof(ID3D12CommandList), (void**)&DeviceContext);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
+		HR = renderSystem->pDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator));												FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
+		HR = renderSystem->pDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator, nullptr, IID_PPV_ARGS(&DeviceContext));	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
 
-
+		DeviceContext->QueryInterface(IID_PPV_ARGS(&debugCommandList));
+		
 		SETDEBUGNAME(DeviceContext, "GraphicsContext");
 		SETDEBUGNAME(DeviceContext, "GraphicsContextAllocator");
 
@@ -1256,8 +1257,11 @@ namespace FlexKit
 	}
 
 
-	void Context::AddRenderTargetBarrier(ResourceHandle Handle, DeviceResourceState Before, DeviceResourceState New)
+	void Context::AddRenderTargetBarrier(ResourceHandle Handle, DeviceAccessState Before, DeviceAccessState New)
 	{
+		FK_ASSERT(0);
+
+		/*
 		Barrier NewBarrier;
 		NewBarrier.OldState				= Before;
 		NewBarrier.NewState				= New;
@@ -1265,6 +1269,7 @@ namespace FlexKit
 		NewBarrier.resourceHandle   	= Handle;
 
 		PendingBarriers.push_back(NewBarrier);
+		*/
 	}
 
 
@@ -1276,6 +1281,7 @@ namespace FlexKit
 		CurrentRootSignature	= RHS.CurrentRootSignature;
 		CurrentPipelineState	= RHS.CurrentPipelineState;
 		renderSystem			= RHS.renderSystem;
+		debugCommandList		= RHS.debugCommandList;
 
 		RTV_CPU = RHS.RTV_CPU;
 
@@ -1296,17 +1302,17 @@ namespace FlexKit
 		VBViews					= RHS.VBViews;
 		PendingBarriers			= RHS.PendingBarriers;
 		Memory					= RHS.Memory;
-		commandAllocator        = RHS.commandAllocator;
-
+		commandAllocator		= RHS.commandAllocator;
 
 		// Null out old Context
-		RHS.commandAllocator        = nullptr;
+		RHS.commandAllocator		= nullptr;
 		RHS.DeviceContext			= nullptr;
 		RHS.CurrentRootSignature	= nullptr;
+		RHS.debugCommandList		= nullptr;
 
-		RHS.RenderTargetCount	    = 0;
-		RHS.DepthStencilEnabled     = false;
-		RHS.Memory				    = nullptr;
+		RHS.RenderTargetCount		= 0;
+		RHS.DepthStencilEnabled		= false;
+		RHS.Memory					= nullptr;
 
 		RHS.Viewports.clear();
 		RHS.DesciptorHeaps.clear();
@@ -1340,6 +1346,7 @@ namespace FlexKit
 		CurrentRootSignature	= RHS.CurrentRootSignature;
 		CurrentPipelineState	= RHS.CurrentPipelineState;
 		renderSystem			= RHS.renderSystem;
+		debugCommandList		= RHS.debugCommandList;
 
 		RTV_CPU = RHS.RTV_CPU;
 
@@ -1360,16 +1367,17 @@ namespace FlexKit
 		VBViews					= RHS.VBViews;
 		PendingBarriers			= RHS.PendingBarriers;
 		Memory					= RHS.Memory;
-		commandAllocator        = RHS.commandAllocator;
+		commandAllocator		= RHS.commandAllocator;
 
 		// Null out old Context
-		RHS.commandAllocator        = nullptr;
+		RHS.commandAllocator		= nullptr;
 		RHS.DeviceContext			= nullptr;
 		RHS.CurrentRootSignature	= nullptr;
+		RHS.debugCommandList		= nullptr;
 
-		RHS.RenderTargetCount	    = 0;
-		RHS.DepthStencilEnabled     = false;
-		RHS.Memory				    = nullptr;
+		RHS.RenderTargetCount		= 0;
+		RHS.DepthStencilEnabled		= false;
+		RHS.Memory					= nullptr;
 
 		RHS.Viewports.clear();
 		RHS.DesciptorHeaps.clear();
@@ -1421,6 +1429,9 @@ namespace FlexKit
 		if(commandAllocator)
 			commandAllocator->Release();
 
+		if (debugCommandList)
+			debugCommandList->Release();
+
 		if(DeviceContext)
 			DeviceContext->Release();
 
@@ -1431,6 +1442,7 @@ namespace FlexKit
 		descHeapSRVLocal     = nullptr;
 		commandAllocator     = nullptr;
 		DeviceContext        = nullptr;
+		debugCommandList	 = nullptr;
 		CurrentPipelineState = nullptr;
 	}
 
@@ -1485,9 +1497,11 @@ namespace FlexKit
 
 	void Context::DiscardResource(ResourceHandle resource)
 	{
+		DebugBreak();
+
 		UpdateResourceStates();
 
-		DeviceContext->DiscardResource(renderSystem->GetDeviceResource(resource), nullptr);
+		//DeviceContext->DiscardResource(renderSystem->GetDeviceResource(resource), nullptr);
 	}
 
 
@@ -1496,6 +1510,9 @@ namespace FlexKit
 
 	void Context::AddAliasingBarrier(ResourceHandle before, ResourceHandle after)
 	{
+		DebugBreak();
+
+		/*
 		auto res = find(PendingBarriers,
 			[&](Barrier& rhs) -> bool
 			{
@@ -1523,6 +1540,7 @@ namespace FlexKit
 
 			PendingBarriers.push_back(barrier);
 		}
+		*/
 	}
 
 
@@ -1531,6 +1549,9 @@ namespace FlexKit
 
 	void Context::AddUAVBarrier(ResourceHandle handle, uint32_t subresource)
 	{
+		DebugBreak();
+
+		/*
 		auto res = find(PendingBarriers,
 			[&](Barrier& rhs) -> bool
 			{
@@ -1548,29 +1569,37 @@ namespace FlexKit
 
 			PendingBarriers.push_back(barrier);
 		}
+		*/
 	}
 
 
 	/************************************************************************************************/
 
 
-	void Context::AddPresentBarrier(ResourceHandle Handle, DeviceResourceState Before)
+	void Context::AddPresentBarrier(ResourceHandle Handle, DeviceAccessState Before)
 	{
+		DebugBreak();
+
+		/*
 		Barrier NewBarrier;
 		NewBarrier.OldState		    = Before;
-		NewBarrier.NewState		    = DeviceResourceState::DRS_Present;
+		NewBarrier.NewState		    = DeviceAccessState::DASPresent;
 		NewBarrier.Type			    = Barrier::Type::Resource;
 		NewBarrier.resourceHandle	= Handle;
 
 		PendingBarriers.push_back(NewBarrier);
+		*/
 	}
 
 
 	/************************************************************************************************/
 
 
-	void Context::AddStreamOutBarrier(SOResourceHandle streamOut, DeviceResourceState Before, DeviceResourceState State)
+	void Context::AddStreamOutBarrier(SOResourceHandle streamOut, DeviceAccessState Before, DeviceAccessState State)
 	{
+		DebugBreak();
+
+		/*
 		auto res = find(PendingBarriers, 
 			[&](Barrier& rhs) -> bool
 			{
@@ -1592,14 +1621,26 @@ namespace FlexKit
 
 			PendingBarriers.push_back(NewBarrier);
 		}
+		*/
+	}
+
+
+	/************************************************************************************************/
+
+	void Context::AddGlobalBarrier()
+	{
+		DebugBreak();
 	}
 
 
 	/************************************************************************************************/
 
 
-	void Context::AddResourceBarrier(ResourceHandle resource, DeviceResourceState Before, DeviceResourceState State, uint32_t subResource)
+	void Context::AddTextureBarrier(ResourceHandle Handle,	DeviceAccessState state, uint32_t subResource)
 	{
+		DebugBreak();
+
+		/*
 		auto res = find(PendingBarriers, 
 			[&](Barrier& rhs) -> bool
 			{
@@ -1625,19 +1666,42 @@ namespace FlexKit
 			Barrier NewBarrier;
 			NewBarrier.OldState			= Before;
 			NewBarrier.NewState			= State;
-			NewBarrier.Type				= Barrier::Type::Resource;
+			NewBarrier.Type				= Barrier::Type::Texture;
 			NewBarrier.resourceHandle	= resource;
 
 			PendingBarriers.push_back(NewBarrier);
 		}
+		*/
 	}
 
 
 	/************************************************************************************************/
 
 
-	void Context::AddCopyResourceBarrier(ResourceHandle resource, DeviceResourceState Before, DeviceResourceState State)
+	void Context::AddBufferBarrier()
 	{
+		DebugBreak();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::AddBarriers(std::span<const Barrier> barriers)
+	{
+		for(auto& barrier : barriers)
+			PendingBarriers.push_back(barrier);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::AddCopyResourceBarrier(ResourceHandle resource, DeviceAccessState Before, DeviceAccessState State)
+	{
+		DebugBreak();
+
+		/*
 		auto res = find(PendingBarriers,
 			[&](Barrier& rhs) -> bool
 			{
@@ -1659,6 +1723,7 @@ namespace FlexKit
 
 			PendingBarriers.push_back(NewBarrier);
 		}
+		*/
 	}
 
 
@@ -2326,8 +2391,8 @@ namespace FlexKit
 			static_vector<ID3D12Resource*>		destinations,
 			static_vector<size_t>				destinationOffset,
 			static_vector<size_t>				copySize,
-			static_vector<DeviceResourceState>	currentStates,
-			static_vector<DeviceResourceState>	finalStates)
+			static_vector<DeviceAccessState>	currentStates,
+			static_vector<DeviceAccessState>	finalStates)
 	{
 		FK_ASSERT(sources.size() == destinations.size(), "Invalid argument!");
 
@@ -2339,8 +2404,8 @@ namespace FlexKit
 			auto resource	= destinations[itr];
 			auto state		= currentStates[itr];
 
-			if(prevResource != resource && state != DeviceResourceState::DRS_CopyDest)
-				_AddBarrier(resource, state, DeviceResourceState::DRS_CopyDest);
+			if(prevResource != resource && state != DeviceAccessState::DASCopyDest)
+				_AddBarrier(resource, state, DeviceAccessState::DASCopyDest);
 
 			prevResource	= resource;
 		}
@@ -2360,7 +2425,7 @@ namespace FlexKit
 				copySize[itr]);
 		}
 
-		DeviceResourceState prevState	= DeviceResourceState::DRS_ERROR;
+		DeviceAccessState prevState	= DeviceAccessState::DASERROR;
 		prevResource					= nullptr;
 
 		for (size_t itr = 0; itr < destinations.size(); ++itr)
@@ -2368,8 +2433,8 @@ namespace FlexKit
 			auto resource	= destinations[itr];
 			auto state		= finalStates[itr];
 
-			if (prevResource != resource && prevState != state && state != DeviceResourceState::DRS_CopyDest)
-				_AddBarrier(resource, DeviceResourceState::DRS_CopyDest, state);
+			if (prevResource != resource && prevState != state && state != DeviceAccessState::DASCopyDest)
+				_AddBarrier(resource, DeviceAccessState::DASCopyDest, state);
 
 			prevResource	= resource;
 			prevState       = state;
@@ -2383,8 +2448,8 @@ namespace FlexKit
 	void Context::ImmediateWrite(
 		static_vector<ResourceHandle>		    handles,
 		static_vector<size_t>					value,
-		static_vector<DeviceResourceState>		currentStates,
-		static_vector<DeviceResourceState>		finalStates)
+		static_vector<DeviceAccessState>		currentStates,
+		static_vector<DeviceAccessState>		finalStates)
 	{
 		FK_ASSERT(handles.size() == currentStates.size(), "Invalid argument!");
 
@@ -2396,7 +2461,7 @@ namespace FlexKit
 		} 	D3D12_WRITEBUFFERIMMEDIATE_PARAMETER;
 		*/
 
-		DeviceResourceState prevState		= DeviceResourceState::DRS_ERROR;
+		DeviceAccessState prevState		= DeviceAccessState::DASERROR;
 		ID3D12Resource*		prevResource	= nullptr;
 
 		for (size_t itr = 0; itr < handles.size(); ++itr)
@@ -2405,7 +2470,7 @@ namespace FlexKit
 			auto state		= currentStates[itr];
 
 			if(prevResource != resource && prevState != state)
-				_AddBarrier(resource, state, DeviceResourceState::DRS_CopyDest);
+				_AddBarrier(resource, state, DeviceAccessState::DASCopyDest);
 
 			prevResource	= resource;
 			prevState		= state;
@@ -2428,7 +2493,7 @@ namespace FlexKit
 			DeviceContext->WriteBufferImmediate(1, params, nullptr);
 		}
 
-		prevState		= DeviceResourceState::DRS_ERROR;
+		prevState		= DeviceAccessState::DASERROR;
 		prevResource	= nullptr;
 
 		for (size_t itr = 0; itr < handles.size(); ++itr)
@@ -2437,7 +2502,7 @@ namespace FlexKit
 			auto state		= currentStates[itr];
 
 			if (prevResource != resource && prevState != state)
-				_AddBarrier(resource, DeviceResourceState::DRS_CopyDest, state);
+				_AddBarrier(resource, DeviceAccessState::DASCopyDest, state);
 
 			prevResource	= resource;
 			prevState		= prevState;
@@ -2448,7 +2513,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	// Requires SO resources to be in DeviceResourceState::DRS::STREAMOUTCLEAR!
+	// Requires SO resources to be in DeviceAccessState::DRS::STREAMOUTCLEAR!
 	void Context::ClearSOCounters(static_vector<SOResourceHandle> handles)
 	{
 		/*
@@ -2464,8 +2529,8 @@ namespace FlexKit
 		static_vector<ID3D12Resource*>		destinations;
 		static_vector<size_t>				destinationOffset;
 		static_vector<size_t>				copySize;
-		static_vector<DeviceResourceState>	currentSOStates;
-		static_vector<DeviceResourceState>	finalStates;
+		static_vector<DeviceAccessState>	currentSOStates;
+		static_vector<DeviceAccessState>	finalStates;
 
 		for (auto& s : handles)
 			sources.push_back(nullptr);
@@ -2483,10 +2548,10 @@ namespace FlexKit
 			copySize.push_back(16);
 
 		for (auto& s : handles)
-			currentSOStates.push_back(DeviceResourceState::DRS_CopyDest);
+			currentSOStates.push_back(DeviceAccessState::DASCopyDest);
 
 		for (auto& s : handles)
-			finalStates.push_back(DeviceResourceState::DRS_CopyDest);
+			finalStates.push_back(DeviceAccessState::DASCopyDest);
 
 
 		CopyBufferRegion(
@@ -2505,10 +2570,10 @@ namespace FlexKit
 
 	void Context::CopyUInt64(
 		static_vector<ID3D12Resource*>			sources,
-		static_vector<DeviceResourceState>		sourceState,
+		static_vector<DeviceAccessState>		sourceState,
 		static_vector<size_t>					sourceOffsets,
 		static_vector<ID3D12Resource*>			destinations,
-		static_vector<DeviceResourceState>		destinationState,
+		static_vector<DeviceAccessState>		destinationState,
 		static_vector<size_t>					destinationOffset)
 	{
 		FK_ASSERT(sources.size()		== sourceState.size(),			"Invalid argument!");
@@ -2530,14 +2595,14 @@ namespace FlexKit
 		{
 			auto resource	= sources[itr];
 			auto state		= sourceState[itr];
-			_AddBarrier(resource, state, DeviceResourceState::DRS_CopySrc);
+			_AddBarrier(resource, state, DeviceAccessState::DASCopySrc);
 		}
 
 		for (size_t itr = 0; itr < sources.size(); ++itr)
 		{
 			auto resource	= destinations[itr];
 			auto state		= destinationState[itr];
-			_AddBarrier(resource, state, DeviceResourceState::DRS_CopyDest);
+			_AddBarrier(resource, state, DeviceAccessState::DASCopyDest);
 		}
 
 		FlushBarriers();
@@ -2558,14 +2623,14 @@ namespace FlexKit
 		{
 			auto resource	= sources[itr];
 			auto state		= sourceState[itr];
-			_AddBarrier(resource, DeviceResourceState::DRS_CopySrc, state);
+			_AddBarrier(resource, DeviceAccessState::DASCopySrc, state);
 		}
 
 		for (size_t itr = 0; itr < sources.size(); ++itr)
 		{
 			auto resource	= destinations[itr];
 			auto state		= destinationState[itr];
-			_AddBarrier(resource, DeviceResourceState::DRS_CopyDest, state);
+			_AddBarrier(resource, DeviceAccessState::DASCopyDest, state);
 		}
 	}
 
@@ -3221,8 +3286,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::_AddBarrier(ID3D12Resource* resource, DeviceResourceState currentState, DeviceResourceState newState)
+	void Context::_AddBarrier(ID3D12Resource* resource, DeviceAccessState currentState, DeviceAccessState newState)
 	{
+		DebugBreak();
+
+		/*
 		Barrier barrier;
 		barrier.Type		    = Barrier::Type::Generic;
 		barrier.resource_ptr    = resource;
@@ -3233,6 +3301,7 @@ namespace FlexKit
 			FlushBarriers();
 
 		PendingBarriers.push_back(barrier);
+		*/
 	}
 
 
@@ -3275,96 +3344,62 @@ namespace FlexKit
 		if (!PendingBarriers.size())
 			return;
 
-		static_vector<D3D12_RESOURCE_BARRIER, 64> Barriers;
+		static_vector<D3D12_GLOBAL_BARRIER, 32>		globalBarriers;
+		static_vector<D3D12_TEXTURE_BARRIER, 32>	textureBarriers;
+		static_vector<D3D12_BUFFER_BARRIER, 32>		bufferBarriers;
 
-		for (auto& B : PendingBarriers)
+		for (const Barrier& barrier : PendingBarriers)
 		{
-			switch(B.Type)
+			switch(barrier.type)
 			{
-				case Barrier::Type::ConstantBuffer:
-				case Barrier::Type::VertexBuffer:
-					break;
-				case Barrier::Type::StreamOut:
-				{
+			case BarrierType::Global:
+			{
+			}	break;
+			case BarrierType::Buffer:
+			{
+			}	break;
+			case BarrierType::Texture:
+			{
+				D3D12_TEXTURE_BARRIER textureBarrier;
+				textureBarrier.AccessBefore		= DAS2AccessState(barrier.accessBefore);
+				textureBarrier.AccessAfter		= DAS2AccessState(barrier.accessAfter);
+				textureBarrier.LayoutBefore		= DeviceBarrierLayout2DX(barrier.texture.layoutBefore);
+				textureBarrier.LayoutAfter		= DeviceBarrierLayout2DX(barrier.texture.layoutAfter);
+				textureBarrier.Flags			= D3D12_TEXTURE_BARRIER_FLAG_NONE;
+				textureBarrier.pResource		= renderSystem->GetDeviceResource(barrier.resource);
 
-					if (DeviceResourceState::DRS_STREAMOUTCLEAR == B.OldState || DeviceResourceState::DRS_STREAMOUTCLEAR == B.NewState) {
-						auto handle				= B.streamOut;
-						auto SOresource			= renderSystem->GetDeviceResource(handle);
-						auto resource			= renderSystem->GetSOCounterResource(handle);
-						auto currentState		= DRS2D3DState((B.OldState == DeviceResourceState::DRS_VERTEXBUFFER) ? DeviceResourceState::DRS_STREAMOUT : B.OldState);
-						auto newState			= DRS2D3DState((B.NewState == DeviceResourceState::DRS_VERTEXBUFFER) ? DeviceResourceState::DRS_STREAMOUT : B.NewState);
+				textureBarrier.Subresources		= D3D12_BARRIER_SUBRESOURCE_RANGE{
+					.IndexOrFirstMipLevel	= 0,
+					.NumMipLevels			= renderSystem->GetTextureMipCount(barrier.resource),
+					.FirstArraySlice		= 0,
+					.NumArraySlices			= 0,
+					.FirstPlane				= 0,
+					.NumPlanes				= (uint32_t)renderSystem->GetTextureArraySize(barrier.resource),
+				};
 
-						auto currentSOState		= DRS2D3DState((B.OldState == DeviceResourceState::DRS_STREAMOUTCLEAR) ? DeviceResourceState::DRS_STREAMOUT : B.OldState);
-						auto newSOState			= DRS2D3DState((B.NewState == DeviceResourceState::DRS_STREAMOUTCLEAR) ? DeviceResourceState::DRS_STREAMOUT : B.NewState);
-
-						if (B.OldState != B.NewState)
-							Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(resource,	currentState, newState, B.subResource));
-
-						if(currentSOState != newSOState)
-							Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(SOresource, currentSOState, newSOState, B.subResource));
-					}
-					else
-					{
-						auto handle				= B.streamOut;
-						auto resource			= renderSystem->GetDeviceResource(handle);
-						auto currentState		= DRS2D3DState(B.OldState);
-						auto newState			= DRS2D3DState(B.NewState);
-
-						if (B.OldState != B.NewState)
-							Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(resource, currentState, newState, B.subResource));
-					}
-				}	break;
-				case Barrier::Type::Generic:
-				{
-					auto resource		= B.resource_ptr;
-					auto currentState	= DRS2D3DState(B.OldState);
-					auto newState		= DRS2D3DState(B.NewState);
-
-					/*
-					#ifdef _DEBUG
-						std::cout << "Transitioning Resource: " << Resource
-							<< " From State: " << CurrentState << " To State: "
-							<< NewState << "\n";
-					#endif
-					*/
-
-					if (B.OldState != B.NewState)
-						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-							resource, currentState, newState, B.subResource));
-				}	break;
-				case Barrier::Type::Resource:
-				{
-					auto resource		= renderSystem->GetDeviceResource(B.resourceHandle);
-					auto currentState	= DRS2D3DState(B.OldState);
-					auto newState		= DRS2D3DState(B.NewState);
-
-					if (B.OldState != B.NewState)
-						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-							resource, currentState, newState, B.subResource));
-				}	break;
-				case Barrier::Type::Aliasing:
-				{
-					auto before = renderSystem->GetDeviceResource(B.aliasedResources[0]);
-					auto after  = renderSystem->GetDeviceResource(B.aliasedResources[1]);
-					const auto aliasingBarrier = CD3DX12_RESOURCE_BARRIER::Aliasing(before, after);
-
-					Barriers.push_back(aliasingBarrier);
-				}   break;
-				case Barrier::Type::UAV:
-				{
-					const auto UAVBarrier = CD3DX12_RESOURCE_BARRIER::UAV(renderSystem->GetDeviceResource(B.resourceHandle));
-					Barriers.push_back(UAVBarrier);
-
-				}   break;
-				default:
-					FK_ASSERT(0);
+				textureBarriers.push_back(textureBarrier);
+			}	break;
+			default:
+				FK_ASSERT(0);
 			};
 		}
 
-		if (Barriers.size())
-			DeviceContext->ResourceBarrier((UINT)Barriers.size(), Barriers.data());
+		static_vector<D3D12_BARRIER_GROUP>		groups;
+		if (globalBarriers.size()) groups.emplace_back(D3D12_BARRIER_GROUP{ .Type = D3D12_BARRIER_TYPE::D3D12_BARRIER_TYPE_GLOBAL, .NumBarriers = (uint32_t)globalBarriers.size(), .pGlobalBarriers = globalBarriers.data()});
+		if (globalBarriers.size()) groups.emplace_back(D3D12_BARRIER_GROUP{ .Type = D3D12_BARRIER_TYPE::D3D12_BARRIER_TYPE_TEXTURE, .NumBarriers = (uint32_t)textureBarriers.size(), .pTextureBarriers = textureBarriers.data() });
+		if (globalBarriers.size()) groups.emplace_back(D3D12_BARRIER_GROUP{ .Type = D3D12_BARRIER_TYPE::D3D12_BARRIER_TYPE_BUFFER, .NumBarriers =  (uint32_t)bufferBarriers.size(), .pBufferBarriers = bufferBarriers.data() });
 
-		Barriers.clear();
+		DeviceContext->Barrier(3, groups);
+
+#if USING(DEBUGGRAPHICS)
+		if (debugCommandList)
+		{
+			//for (const auto& barrier : Barriers)
+			//	if (barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION)
+			//		debugCommandList->AssertResourceState(barrier.Transition.pResource, barrier.Transition.Subresource, barrier.Transition.StateAfter);
+		}
+#endif
+
 		PendingBarriers.clear();
 	}
 
@@ -3699,7 +3734,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CopyContext::Barrier(ID3D12Resource* resource, const DeviceResourceState before, const DeviceResourceState after)
+	void CopyContext::Barrier(ID3D12Resource* resource, const DeviceAccessState before, const DeviceAccessState after)
 	{
 		D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
 			resource,
@@ -4207,7 +4242,7 @@ namespace FlexKit
 		Settings.AASamples = 1;
 		UINT DeviceFlags = 0;
 
-		ID3D12Device1* Device = nullptr;
+		ID3D12Device10* Device = nullptr;
 		ID3D12Debug1* Debug = nullptr;
 		ID3D12DebugDevice* DebugDevice = nullptr;
 
@@ -4249,7 +4284,7 @@ namespace FlexKit
 
 		bool InitiateComplete = false;
 
-		if(FAILED(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&Device))))
+		if(FAILED(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&Device))))
 		{
 			FK_LOG_ERROR("Failed to create A DX12 Device!");
 
@@ -4266,13 +4301,23 @@ namespace FlexKit
 			FK_LOG_ERROR("Failed to enable Dred!");
 #endif
 
+		Device->QueryInterface(__uuidof(ID3D12Device10), (void**)&pDevice10);
+
 		D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
-		Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
+		pDevice10->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
-		Device->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
+		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
 
-		Device->QueryInterface(__uuidof(ID3D12Device9), (void**)&pDevice9);
+		D3D12_FEATURE_DATA_D3D12_OPTIONS6 options6 = {};
+		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS6, &options6, sizeof(options6));
+
+		D3D12_FEATURE_DATA_D3D12_OPTIONS7 options7 = {};
+		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS7, &options7, sizeof(options7));
+
+		D3D12_FEATURE_DATA_D3D12_OPTIONS12 options12;
+		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS12, &options12, sizeof(options12));
+
 
 		switch (options5.RaytracingTier)
 		{
@@ -4794,9 +4839,9 @@ namespace FlexKit
 		desc.subResourceStart   = 0;
 		desc.format             = format;
 
-		_UpdateSubResourceByUploadQueue(this, queue, resource, &desc, DRS_Common);
+		_UpdateSubResourceByUploadQueue(this, queue, resource, &desc, DASCommon);
 
-		Textures.SetState(handle, DeviceResourceState::DRS_Common);
+		Textures.SetState(handle, DeviceAccessState::DASCommon);
 	}
 
 
@@ -4813,9 +4858,9 @@ namespace FlexKit
 		desc.subResourceCount   = resourceCount;
 		desc.format             = format;
 
-		_UpdateSubResourceByUploadQueue(this, queue, resource, &desc, DRS_Common);
+		_UpdateSubResourceByUploadQueue(this, queue, resource, &desc, DASCommon);
 
-		Textures.SetState(handle, DeviceResourceState::DRS_Common);
+		Textures.SetState(handle, DeviceAccessState::DASCommon);
 	}
 
 
@@ -4859,7 +4904,7 @@ namespace FlexKit
 		inputs.Flags            = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
 
 		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info;
-		pDevice9->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
+		pDevice10->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
 
 		return {
 			.BLAS_byteSize          = info.ResultDataMaxSizeInBytes,
@@ -4959,18 +5004,14 @@ namespace FlexKit
 	{
 		ProfileFunction();
 
-		if (desc.backBuffer)
+		if (desc.PreCreated)
 		{
-			return Textures.AddResource(desc, DRS_Present);
-		}
-		else if (desc.PreCreated)
-		{
-			return Textures.AddResource(desc, DRS_GenericRead);
+			return Textures.AddResource(desc, desc.initialState);
 		}
 		else
 		{
-			size_t byteSize                   = desc.CalculateByteSize();
-			D3D12_RESOURCE_DESC Resource_DESC = desc.GetD3D12ResourceDesc();
+			size_t byteSize						= desc.CalculateByteSize();
+			D3D12_RESOURCE_DESC Resource_DESC	= desc.GetD3D12ResourceDesc();
 
 			D3D12_HEAP_PROPERTIES HEAP_Props	={};
 			HEAP_Props.CPUPageProperty			= D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
@@ -4979,27 +5020,12 @@ namespace FlexKit
 			HEAP_Props.CreationNodeMask			= 0;
 			HEAP_Props.VisibleNodeMask			= 0;
 
-			D3D12_CLEAR_VALUE CV;
-			CV.Color[0] = desc.depthTarget ? 1.0f : 0.0f;
-			CV.Color[1] = 0.0f;
-			CV.Color[2] = 0.0f;
-			CV.Color[3] = 0.0f;
-			CV.Format	= TextureFormat2DXGIFormat(desc.format);
-		
-			auto flags = D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES |
-				(desc.unordered ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE);
+			const auto flags	= D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES | (desc.type == ResourceType::UnorderedAccess ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE);
 
-
-			D3D12_CLEAR_VALUE* pCV = (desc.CVFlag | desc.renderTarget | desc.depthTarget) ? &CV : nullptr;
-
-
-			D3D12_RESOURCE_STATES InitialState =
-				desc.renderTarget       ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RENDER_TARGET :
-				desc.depthTarget        ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_WRITE   :
-				desc.rayTraceStructure  ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE : 
-				D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
-
-			ID3D12Resource* NewResource[3] = { nullptr, nullptr, nullptr };
+			const D3D12_CLEAR_VALUE* pCV = desc.clearValue ? &desc.clearValue.value() : nullptr;
+			
+			D3D12_RESOURCE_STATES InitialState	= DRS2D3DState(desc.initialState);
+			ID3D12Resource* NewResource[3]		= { nullptr, nullptr, nullptr };
 
 			FK_ASSERT(desc.bufferCount <= 3);
 
@@ -5016,14 +5042,14 @@ namespace FlexKit
 
 					Resource_DESC.Layout = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
 					
-					HRESULT HR = pDevice->CreateReservedResource(
+					HRESULT HR = pDevice10->CreateReservedResource(
 									&Resource_DESC,
 									InitialState,
 									pCV,
 									IID_PPV_ARGS(&NewResource[itr]));
 
 					CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE VIRTUAL MEMORY FOR TEXTURE"));
-				}   break;
+				}	break;
 				case ResourceAllocationType::Committed:
 				{
 					ProfileFunctionLabeled(Committed);
@@ -5059,12 +5085,10 @@ namespace FlexKit
 
 			auto filledDesc = desc;
 
-			auto initialState = filledDesc.InitialResourceState();
-
 			filledDesc.resources    = NewResource;
 			filledDesc.byteSize     = byteSize;
 
-			return Textures.AddResource(filledDesc, initialState);
+			return Textures.AddResource(filledDesc, filledDesc.initialState);
 		}
 
 		return InvalidHandle;
@@ -5078,35 +5102,21 @@ namespace FlexKit
 	{
 		ProfileFunction();
 
-		size_t byteSize                   = desc.CalculateByteSize();
-		D3D12_RESOURCE_DESC Resource_DESC = desc.GetD3D12ResourceDesc();
+		size_t byteSize						= desc.CalculateByteSize();
+		D3D12_RESOURCE_DESC Resource_DESC	= desc.GetD3D12ResourceDesc();
 
-		D3D12_HEAP_PROPERTIES HEAP_Props	={};
+		D3D12_HEAP_PROPERTIES HEAP_Props	= {};
 		HEAP_Props.CPUPageProperty			= D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
 		HEAP_Props.Type						= D3D12_HEAP_TYPE_DEFAULT;
 		HEAP_Props.MemoryPoolPreference		= D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
 		HEAP_Props.CreationNodeMask			= 0;
 		HEAP_Props.VisibleNodeMask			= 0;
 
-		D3D12_CLEAR_VALUE CV;
-		CV.Color[0] = desc.depthTarget ? 1.0f : 0.0f;
-		CV.Color[1] = 0.0f;
-		CV.Color[2] = 0.0f;
-		CV.Color[3] = 0.0f;
-		CV.Format	= TextureFormat2DXGIFormat(desc.format);
-		
-		auto flags = D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES |
-			(desc.unordered ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE);
+		const auto flags = D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES | (desc.type == ResourceType::UnorderedAccess ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE);
 
+		const D3D12_CLEAR_VALUE* pCV = desc.clearValue ? &desc.clearValue.value() : nullptr;
 
-		D3D12_CLEAR_VALUE* pCV = (desc.CVFlag | desc.renderTarget | desc.depthTarget) ? &CV : nullptr;
-
-
-		D3D12_RESOURCE_STATES InitialState =
-			desc.renderTarget       ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RENDER_TARGET :
-			desc.depthTarget        ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_WRITE   :
-			desc.rayTraceStructure  ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE : 
-			D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
+		D3D12_RESOURCE_STATES InitialState = DRS2D3DState(desc.initialState);
 
 		ID3D12Resource* NewResource[3] = { nullptr, nullptr, nullptr };
 
@@ -5167,13 +5177,11 @@ namespace FlexKit
 		}
 
 		auto filledDesc     = desc;
-		auto initialState   = filledDesc.InitialResourceState();
-
 
 		filledDesc.resources    = NewResource;
 		filledDesc.byteSize     = byteSize;
 
-		Textures.SetResource(handle, filledDesc, initialState);
+		Textures.SetResource(handle, filledDesc, filledDesc.initialState);
 	}
 
 
@@ -5279,7 +5287,7 @@ namespace FlexKit
 			SETDEBUGNAME(Counter, "StreamOutCounter" );
 		}
 
-		return StreamOutTable.AddResource(resources, counters, resourceSize, DeviceResourceState::DRS_STREAMOUT);
+		return StreamOutTable.AddResource(resources, counters, resourceSize, DeviceAccessState::DASSTREAMOUT);
 	}
 
 
@@ -5640,7 +5648,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::SetObjectState(SOResourceHandle handle, DeviceResourceState state)
+	void RenderSystem::SetObjectAccessState(SOResourceHandle handle, DeviceAccessState state)
 	{
 		StreamOutTable.SetResourceState(handle, state);
 	}
@@ -5649,7 +5657,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::SetObjectState(ResourceHandle handle, DeviceResourceState state)
+	void RenderSystem::SetObjectAccessState(ResourceHandle handle, DeviceAccessState state)
 	{
 		Textures.SetState(handle, state);
 	}
@@ -5658,7 +5666,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DeviceResourceState RenderSystem::GetObjectState(const QueryHandle handle) const
+	DeviceAccessState RenderSystem::GetObjectState(const QueryHandle handle) const
 	{
 		return Queries.GetAssetState(handle);
 	}
@@ -5667,7 +5675,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DeviceResourceState RenderSystem::GetObjectState(const SOResourceHandle handle) const
+	DeviceAccessState RenderSystem::GetObjectState(const SOResourceHandle handle) const
 	{
 		return StreamOutTable.GetAssetState(handle);
 	}
@@ -5676,7 +5684,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DeviceResourceState RenderSystem::GetObjectState(const ResourceHandle handle) const
+	DeviceAccessState RenderSystem::GetObjectState(const ResourceHandle handle) const
 	{
 		return Textures.GetState(handle);
 	}
@@ -6066,13 +6074,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void _UpdateSubResourceByUploadQueue(RenderSystem* RS, CopyContextHandle uploadHandle, ID3D12Resource* destinationResource, SubResourceUpload_Desc* Desc, DeviceResourceState EndState)
+	FLEXKITAPI void _UpdateSubResourceByUploadQueue(RenderSystem* RS, CopyContextHandle uploadHandle, ID3D12Resource* destinationResource, SubResourceUpload_Desc* Desc, DeviceAccessState EndState)
 	{
 		auto& copyCtx   = RS->_GetCopyContext(uploadHandle);
 
 		for (size_t I = 0; I < Desc->subResourceCount; ++I)
 		{
-			const auto region       = copyCtx.Reserve(Desc->buffers[I].Size, 512);
+			const auto region	= copyCtx.Reserve(Desc->buffers[I].Size, 512);
 
 			memcpy(
 				(char*)region.buffer,
@@ -6090,7 +6098,7 @@ namespace FlexKit
 
 		copyCtx.Barrier(
 			destinationResource,
-			DRS_CopyDest,
+			DASCopyDest,
 			EndState);
 	}
 
@@ -6098,7 +6106,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::UpdateResourceByUploadQueue(ID3D12Resource* dest, CopyContextHandle uploadQueue, const void* data, size_t Size, size_t byteSize, DeviceResourceState endState)
+	void RenderSystem::UpdateResourceByUploadQueue(ID3D12Resource* dest, CopyContextHandle uploadQueue, const void* data, size_t Size, size_t byteSize, DeviceAccessState endState)
 	{
 		if (nullptr == data || nullptr == dest) [[unlikely]]
 			return;
@@ -6113,7 +6121,7 @@ namespace FlexKit
 
 		copyCtx.Barrier(
 			dest,
-			DRS_CopyDest,
+			DASCopyDest,
 			endState);
 	}
 
@@ -6386,23 +6394,23 @@ namespace FlexKit
 					FK_ASSERT(0);
 				}
 
-				Barrier b = {
-					._ptr           = NewBuffer,
-					.type           = Barrier::ResourceType::PTR,
-					.beforeState    = DRS_Common,
-					.afterState     = DRS_INDEXBUFFER,
+				CopyBarrier b = {
+					._ptr			= NewBuffer,
+					.type			= CopyBarrier::ResourceType::PTR,
+					.beforeState	= DASCommon,
+					.afterState		= DASINDEXBUFFER,
 				};
 
-				RS->_InsertBarrier(b);
+				RS->_InsertCopyBarrier(b);
 
-				cctx.Barrier(NewBuffer, DRS_Common, DRS_CopyDest);
+				cctx.Barrier(NewBuffer, DASCommon, DASCopyDest);
 
 				RS->UpdateResourceByUploadQueue(
 					NewBuffer, 
 					handle,
 					Buffers[itr]->GetBuffer(),
 					Buffers[itr]->GetBufferSizeRaw(), 1,
-					DRS_Common);
+					DASCommon);
 
 				SETDEBUGNAME(NewBuffer, "INDEXBUFFER");
 
@@ -6454,23 +6462,23 @@ namespace FlexKit
 					break;
 				}
 
-				Barrier b = {
+				CopyBarrier b = {
 					._ptr           = NewBuffer,
-					.type           = Barrier::ResourceType::PTR,
-					.beforeState    = DRS_Common,
-					.afterState     = DRS_VERTEXBUFFER,
+					.type           = CopyBarrier::ResourceType::PTR,
+					.beforeState    = DASCommon,
+					.afterState     = DASVERTEXBUFFER,
 				};
 
-				RS->_InsertBarrier(b);
+				RS->_InsertCopyBarrier(b);
 
-				cctx.Barrier(NewBuffer, DRS_Common, DRS_CopyDest);
+				cctx.Barrier(NewBuffer, DASCommon, DASCopyDest);
 
 				RS->UpdateResourceByUploadQueue(
 					NewBuffer,
 					handle,
 					Buffers[itr]->GetBuffer(),
 					Buffers[itr]->GetBufferSizeRaw(), 1, 
-					DRS_Common);
+					DASCommon);
 
 				DVB_Out.VertexBuffers[itr].Buffer				= NewBuffer;
 				DVB_Out.VertexBuffers[itr].BufferStride			= (uint32_t)Buffers[itr]->GetElementSize();
@@ -6901,7 +6909,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceHandle TextureStateTable::AddResource(const GPUResourceDesc& Desc, const DeviceResourceState InitialState)
+	ResourceHandle TextureStateTable::AddResource(const GPUResourceDesc& Desc, const DeviceAccessState InitialState)
 	{
 		std::scoped_lock lock{m};
 
@@ -6954,7 +6962,7 @@ namespace FlexKit
 
 		Handles[Handle]         = (UINT)UserEntries.push_back(Entry);
 
-		if (Desc.buffered && Desc.bufferCount > 1)
+		if (Desc.bufferCount > 1)
 			BufferedResources.push_back(Handle);
 
 		return Handle;
@@ -6964,7 +6972,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::SetResource(ResourceHandle handle, const GPUResourceDesc& Desc, const DeviceResourceState InitialState)
+	void TextureStateTable::SetResource(ResourceHandle handle, const GPUResourceDesc& Desc, const DeviceAccessState InitialState)
 	{
 		std::scoped_lock lock{ m };
 
@@ -7015,7 +7023,7 @@ namespace FlexKit
 
 		Handles[handle]         = (UINT)UserEntries.push_back(Entry);
 
-		if (Desc.buffered && Desc.bufferCount > 1)
+		if (Desc.bufferCount > 1)
 			BufferedResources.push_back(handle);
 	}
 
@@ -7120,7 +7128,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::SetState(ResourceHandle handle, DeviceResourceState State)
+	void TextureStateTable::SetState(ResourceHandle handle, DeviceAccessState State)
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7552,7 +7560,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DeviceResourceState TextureStateTable::GetState(ResourceHandle Handle) const
+	DeviceAccessState TextureStateTable::GetState(ResourceHandle Handle) const
 	{
 		auto    Idx			    = Handles[Handle];
 		auto    ResourceIdx	    = UserEntries[Idx].ResourceIdx;
@@ -7979,7 +7987,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::_InsertBarrier(const Vector<Barrier>& vector)
+	void RenderSystem::_InsertCopyBarriers(const Vector<CopyBarrier>& vector)
 	{
 		std::unique_lock lock{ barrierLock };
 		PendingBarriers += vector;
@@ -7989,7 +7997,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::_InsertBarrier(Barrier b)
+	void RenderSystem::_InsertCopyBarrier(CopyBarrier b)
 	{
 		PendingBarriers.push_back(b);
 	}
@@ -8583,18 +8591,18 @@ namespace FlexKit
 			cls.push_back(context.GetCommandList());
 
 			for (auto barrier : PendingBarriers) {
-				if (barrier.type == Barrier::ResourceType::PTR)
+				if (barrier.type == CopyBarrier::ResourceType::PTR)
 					context._AddBarrier(
 						barrier._ptr,
 						barrier.beforeState,
 						barrier.afterState);
-				else if (barrier.type == Barrier::ResourceType::HNDL) {
+				else if (barrier.type == CopyBarrier::ResourceType::HNDL) {
 					context._AddBarrier(
 						GetDeviceResource(barrier.handle),
 						barrier.beforeState,
 						barrier.afterState);
 
-					SetObjectState(barrier.handle, barrier.afterState);
+					SetObjectAccessState(barrier.handle, barrier.afterState);
 				}
 			}
 
@@ -9739,7 +9747,10 @@ namespace FlexKit
 	{
 		FK_ASSERT(MIPCount < std::numeric_limits<uint8_t>::max());
 
-		auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer[0].WH, format, (uint8_t)MIPCount, arrayCount));
+		auto textureDesc			= GPUResourceDesc::ShaderResource(buffer[0].WH, format, (uint8_t)MIPCount, arrayCount);
+		textureDesc.initialState	= DASCopyDest;
+
+		auto textureHandle = RS->CreateGPUResource(textureDesc);
 		RS->UploadTexture(textureHandle, handle, buffer, arrayCount * MIPCount);
 		RS->SetDebugName(textureHandle, "MoveTextureBuffersToVRAM");
 
@@ -9761,11 +9772,11 @@ namespace FlexKit
 		auto deviceResource = RS->GetDeviceResource(bufferResource);
 		auto ctx = RS->_GetCopyContext(copyCtx);
 
-		if(auto state = RS->GetObjectState(bufferResource); state!= DRS_CopyDest)
-			ctx.Barrier(deviceResource, state, DRS_CopyDest);
+		if(auto state = RS->GetObjectState(bufferResource); state!= DASCopyDest)
+			ctx.Barrier(deviceResource, state, DASCopyDest);
 
 		ctx.CopyBuffer(deviceResource, 0, upload.resource, upload.offset, upload.uploadSize);
-		ctx.Barrier(deviceResource, DRS_CopyDest, DRS_Common);
+		ctx.Barrier(deviceResource, DASCopyDest, DASCommon);
 
 		return bufferResource;
 	}
@@ -9794,9 +9805,9 @@ namespace FlexKit
 			handle,
 			RS->GetDeviceResource(texture),
 			&desc,
-			DRS_GenericRead);
+			DASGenericRead);
 
-		RS->Textures.SetState(texture, DeviceResourceState::DRS_GenericRead);
+		RS->Textures.SetState(texture, DeviceAccessState::DASGenericRead);
 		RS->SetDebugName(texture, "LOADTEXTURE");
 
 		return texture;

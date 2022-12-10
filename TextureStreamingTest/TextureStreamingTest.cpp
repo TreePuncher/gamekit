@@ -134,7 +134,7 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 		.cameraDependency		= cameraUpdate
 	};
 
-	renderer.DrawScene(
+	auto res = renderer.DrawScene(
 		dispatcher,
 		frameGraph,
 		drawSceneDesc,
@@ -142,6 +142,8 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 		core.GetBlockMemory(),
 		core.GetTempMemoryMT()
 	);
+
+	//textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, { 128, 128 }, res.passes, res.skinnedDraws, reserveCB, reserveVB);
 
 	FlexKit::PresentBackBuffer(frameGraph, renderWindow);
 

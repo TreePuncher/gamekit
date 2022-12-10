@@ -57,11 +57,11 @@ void ReleaseStyle(HairStyle& style, FlexKit::RenderSystem& renderSystem)
 void UploadHairStyle(HairStyle& style, const ImportedStyleBuffer& stylePoints, FlexKit::RenderSystem& renderSystem)
 {
 	auto copyCtx = renderSystem.GetImmediateUploadQueue();
-	renderSystem.UpdateResourceByUploadQueue(renderSystem.GetDeviceResource(style.hairBuffers[0]), copyCtx, stylePoints.controlPoints.data(), stylePoints.controlPoints.ByteSize(), 1, DRS_Common);
-	renderSystem.UpdateResourceByUploadQueue(renderSystem.GetDeviceResource(style.styleBuffer), copyCtx, stylePoints.controlPoints.data(), stylePoints.controlPoints.ByteSize(), 1, DRS_Common);
+	renderSystem.UpdateResourceByUploadQueue(renderSystem.GetDeviceResource(style.hairBuffers[0]), copyCtx, stylePoints.controlPoints.data(), stylePoints.controlPoints.ByteSize(), 1, DASCommon);
+	renderSystem.UpdateResourceByUploadQueue(renderSystem.GetDeviceResource(style.styleBuffer), copyCtx, stylePoints.controlPoints.data(), stylePoints.controlPoints.ByteSize(), 1, DASCommon);
 
-	renderSystem.SetObjectState(style.hairBuffers[0], DRS_Common);
-	renderSystem.SetObjectState(style.styleBuffer, DRS_Common);
+	renderSystem.SetObjectAccessState(style.hairBuffers[0], DASCommon);
+	renderSystem.SetObjectAccessState(style.styleBuffer, DASCommon);
 	
 	style.currentBuffer = 0;
 }
