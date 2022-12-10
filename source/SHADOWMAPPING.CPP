@@ -434,8 +434,9 @@ namespace FlexKit
 								};
 
 
-								if (auto state = resources.renderSystem().GetObjectState(depthTarget); state != DRS_DEPTHBUFFERWRITE)
-									ctx.AddResourceBarrier(depthTarget, state, DRS_DEPTHBUFFERWRITE);
+								DebugBreak();
+								//if (auto state = resources.renderSystem().GetObjectState(depthTarget); state != DASDEPTHBUFFERWRITE)
+								//	ctx.AddResourceBarrier(depthTarget, state, DASDEPTHBUFFERWRITE);
 
 
 								CBPushBuffer animatedConstantBuffer = data.reserveCB((AlignedSize<Brush::VConstantsLayout>() + AlignedSize<PoseConstants>()) * animatedBrushes.size());
@@ -634,8 +635,9 @@ namespace FlexKit
 							}
 
 							for (const auto target : shadowMaps) {
-								ctx.AddResourceBarrier(target, DRS_DEPTHBUFFERWRITE, DRS_PixelShaderResource);
-								ctx.renderSystem->SetObjectState(target, DRS_PixelShaderResource);
+								DebugBreak();
+								//ctx.AddResourceBarrier(target, DASDEPTHBUFFERWRITE, DASPixelShaderResource);
+								ctx.renderSystem->SetObjectAccessState(target, DASPixelShaderResource);
 							}
 						}
 						ctx.EndEvent_DEBUG();

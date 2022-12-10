@@ -21,10 +21,8 @@ SortTest::SortTest(FlexKit::GameFramework& IN_framework) :
 	sortingRootSignature		{ IN_framework.core.GetBlockMemory() },
 	gpuAllocator				{ IN_framework.core.RenderSystem, 128 * MEGABYTE, 64 * KILOBYTE, FlexKit::DeviceHeapFlags::UAVBuffer, IN_framework.core.GetBlockMemory() }
 {
-	auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 });
-
-	if (res.second)
-		renderWindow = res.first;
+	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
+		renderWindow = std::move(res.value());
 
 	FlexKit::EventNotifier<>::Subscriber sub;
 	sub.Notify = &FlexKit::EventsWrapper;
@@ -105,15 +103,16 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 
 	frameGraph.AddMemoryPool(&gpuAllocator);
 
+	if(0)
 	frameGraph.AddNode(
 		RenderStrands{
 			.reserveCB = reserveCB
 		},
 		[&](FlexKit::FrameGraphNodeBuilder& builder, RenderStrands& data)
 		{
-			data.sourceBuffer		= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(bufferSize * 4), FlexKit::DeviceResourceState::DRS_UAV);
-			data.destinationBuffer	= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(bufferSize * 4), FlexKit::DeviceResourceState::DRS_UAV);
-			data.mergePathBuffer	= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(bufferSize / 32 * 8), FlexKit::DeviceResourceState::DRS_UAV);
+			data.sourceBuffer		= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(bufferSize * 4), FlexKit::DeviceAccessState::DASUAV);
+			data.destinationBuffer	= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(bufferSize * 4), FlexKit::DeviceAccessState::DASUAV);
+			data.mergePathBuffer	= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(bufferSize / 32 * 8), FlexKit::DeviceAccessState::DASUAV);
 
 			builder.SetDebugName(data.sourceBuffer, "sourceBuffer");
 			builder.SetDebugName(data.destinationBuffer, "destinationBuffer");
@@ -227,7 +226,7 @@ ID3D12PipelineState* SortTest::CreateInitiateDataPSO()
 	};
 
 	ID3D12PipelineState* PSO = nullptr;
-	auto HR = renderSystem.pDevice9->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
+	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
 	return PSO;
 }
@@ -258,7 +257,7 @@ ID3D12PipelineState* SortTest::CreateLocalSortPSO()
 	};
 
 	ID3D12PipelineState* PSO = nullptr;
-	auto HR = renderSystem.pDevice9->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
+	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
 	return PSO;
 }
@@ -289,7 +288,7 @@ ID3D12PipelineState* SortTest::CreateMergePathPSO()
 	};
 
 	ID3D12PipelineState* PSO = nullptr;
-	auto HR = renderSystem.pDevice9->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
+	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
 	return PSO;
 }
@@ -320,7 +319,7 @@ ID3D12PipelineState* SortTest::CreateGlobalMergePSO()
 	};
 
 	ID3D12PipelineState* PSO = nullptr;
-	auto HR = renderSystem.pDevice9->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
+	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
 	return PSO;
 }

@@ -169,8 +169,8 @@ namespace FlexKit
 				const auto WH = builder.GetRenderSystem().GetTextureWH(depthTarget);
 
 				data.depthTarget		= builder.DepthRead(depthTarget);
-				data.accumalatorObject	= builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DRS_RenderTarget, false);
-				data.counterObject		= builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DRS_RenderTarget, false);
+				data.accumalatorObject	= builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DASRenderTarget, false);
+				data.counterObject		= builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DASRenderTarget, false);
 
 				builder.SetDebugName(data.accumalatorObject,	"Accumalator");
 				builder.SetDebugName(data.counterObject,		"counterObject");
@@ -318,7 +318,7 @@ namespace FlexKit
 			OITBlend{},
 			[&](FrameGraphNodeBuilder& builder, OITBlend& data)
 			{
-				data.renderTargetObject	= builder.WriteTransition(renderTarget, DRS_RenderTarget);
+				data.renderTargetObject	= builder.WriteTransition(renderTarget, DASRenderTarget);
 				data.accumalatorObject	= OITPass.accumalatorObject;
 				data.counterObject		= OITPass.counterObject;
 

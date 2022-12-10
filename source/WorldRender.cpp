@@ -997,8 +997,8 @@ namespace FlexKit
 				const uint2 WH          = builder.GetRenderSystem().GetTextureWH(depthBuffer.Get());
 				const uint MipLevels    = log2(Max(WH[0], WH[1]));
 
-				data.depthBuffer    = builder.AcquireVirtualResource(GPUResourceDesc::DepthTarget(WH, DeviceFormat::D32_FLOAT), DRS_DEPTHBUFFERWRITE);
-				data.ZPyramid       = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT, true, MipLevels), DRS_UAV);
+				data.depthBuffer    = builder.AcquireVirtualResource(GPUResourceDesc::DepthTarget(WH, DeviceFormat::D32_FLOAT), DASDEPTHBUFFERWRITE);
+				data.ZPyramid       = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT, true, MipLevels), DASUAV);
 
 				builder.SetDebugName(data.depthBuffer, "depthBuffer");
 				builder.SetDebugName(data.ZPyramid, "ZPyramid");
@@ -1114,11 +1114,11 @@ namespace FlexKit
 
 				DescriptorHeap SRVHeap;
 				SRVHeap.Init2(ctx, rootSignature.GetDescHeap(0), 1, &allocator);
-				SRVHeap.SetSRV(ctx, 0, resources.Transition(data.depthBuffer, DRS_NonPixelShaderResource, ctx), DeviceFormat::R32_FLOAT);
+				SRVHeap.SetSRV(ctx, 0, resources.Transition(data.depthBuffer, DASNonPixelShaderResource, ctx), DeviceFormat::R32_FLOAT);
 
 				DescriptorHeap UAVHeap;
 				UAVHeap.Init2(ctx, rootSignature.GetDescHeap(1), 1, &allocator);
-				UAVHeap.SetUAVTexture(ctx, 0, 0, resources.Transition(data.ZPyramid, DRS_UAV, ctx), DeviceFormat::R32_FLOAT);
+				UAVHeap.SetUAVTexture(ctx, 0, 0, resources.Transition(data.ZPyramid, DASUAV, ctx), DeviceFormat::R32_FLOAT);
 
 				ctx.SetComputeConstantBufferView(0, computeCB);
 				ctx.SetComputeDescriptorTable(4, SRVHeap);
@@ -1146,7 +1146,7 @@ namespace FlexKit
 
 					DescriptorHeap UAVHeap;
 					UAVHeap.Init2(ctx, rootSignature.GetDescHeap(1), 1, &allocator);
-					UAVHeap.SetUAVTexture(ctx, 0, I + 1, resources.Transition(data.ZPyramid, DRS_NonPixelShaderResource, ctx), DeviceFormat::R32_FLOAT);
+					UAVHeap.SetUAVTexture(ctx, 0, I + 1, resources.Transition(data.ZPyramid, DASNonPixelShaderResource, ctx), DeviceFormat::R32_FLOAT);
 
 					ctx.SetComputeDescriptorTable(4, SRVHeap);
 					ctx.SetComputeDescriptorTable(5, UAVHeap);
@@ -1497,10 +1497,10 @@ namespace FlexKit
 				DescriptorHeap descHeap2;
 				descHeap2.Init2(ctx, renderSystem.Library.RSDefault.GetDescHeap(0), 5, &allocator);
 
-				descHeap2.SetSRV(ctx, 0, frameResources.Transition(data.TempObject1, DRS_PixelShaderResource, ctx));
+				descHeap2.SetSRV(ctx, 0, frameResources.Transition(data.TempObject1, DASPixelShaderResource, ctx));
 				descHeap2.SetSRV(ctx, 1, frameResources.GetResource(data.NormalSource));
 				descHeap2.SetSRV(ctx, 2, frameResources.GetResource(data.DepthSource), DeviceFormat::R32_FLOAT);
-				descHeap2.SetSRV(ctx, 3, frameResources.Transition(data.TempObject2, DRS_PixelShaderResource, ctx));
+				descHeap2.SetSRV(ctx, 3, frameResources.Transition(data.TempObject2, DASPixelShaderResource, ctx));
 
 				ctx.SetPipelineState(frameResources.GetPipelineState(BILATERALBLURPASSVERTICAL));
 				ctx.SetGraphicsDescriptorTable(5, descHeap2);
@@ -1603,9 +1603,9 @@ namespace FlexKit
 				data.sourceTarget   = builder.NonPixelShaderResource(source);
 
 				//data.outputTarget = builder.RenderTarget(target);
-				//data.sourceTarget   = builder.ReadTransition(source, DRS_NonPixelShaderResource);
-				//data.temp1Buffer    = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(2048, DeviceFormat::R32_FLOAT), DRS_UAV);
-				//data.temp2Buffer    = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT), DRS_UAV);
+				//data.sourceTarget   = builder.ReadTransition(source, DASNonPixelShaderResource);
+				//data.temp1Buffer    = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(2048, DeviceFormat::R32_FLOAT), DASUAV);
+				//data.temp2Buffer    = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT), DASUAV);
 			},
 			[&]
 			(ToneMap& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)

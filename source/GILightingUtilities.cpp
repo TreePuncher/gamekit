@@ -369,7 +369,7 @@ namespace FlexKit
 				}
 			};
 
-			if (FAILED(renderSystem.pDevice9->CreateStateObject(descs, IID_PPV_ARGS(&stateObject))))
+			if (FAILED(renderSystem.pDevice10->CreateStateObject(descs, IID_PPV_ARGS(&stateObject))))
 				FK_LOG_ERROR("Failed to create State Object");
 
 		}
@@ -472,8 +472,8 @@ namespace FlexKit
 						},
 						{ 0, 0, 0 },
 						{ sizeof(hitTable), /* sizeof(missTable), sizeof(rayGen)  },
-						{ DRS_CopyDest, /* DRS_CopyDest, DRS_CopyDest  },
-						{ DRS_CopyDest, /* DRS_CopyDest, DRS_CopyDest  });
+						{ DASCopyDest, /* DASCopyDest, DASCopyDest  },
+						{ DASCopyDest, /* DASCopyDest, DASCopyDest  });
 					*/
 				});
 
@@ -542,7 +542,7 @@ namespace FlexKit
 						const auto prebuildInfo	= frameGraph.GetRenderSystem().GetBLASPreBuildInfo(lod.vertexBuffer);
 						scratchSpaceSize		= Max(prebuildInfo.scratchPad_byteSize, scratchSpaceSize);
 
-						auto blAS				= builder.AcquireVirtualResource(GPUResourceDesc::RayTracingStructure(prebuildInfo.BLAS_byteSize), DRS_ACCELERATIONSTRUCTURE, false);
+						auto blAS				= builder.AcquireVirtualResource(GPUResourceDesc::RayTracingStructure(prebuildInfo.BLAS_byteSize), DASACCELERATIONSTRUCTURE_WRITE, false);
 						builder.SetDebugName(blAS, "Bottom Level Acceleration Structure");
 
 						data.buildList.emplace_back(blAS, *meshHandle);
@@ -552,7 +552,7 @@ namespace FlexKit
 					builder.NonPixelShaderResource(missShaderTable);
 					builder.NonPixelShaderResource(rayGenTable);
 
-					data.scratchSpace = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(scratchSpaceSize), DRS_UAV);
+					data.scratchSpace = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(scratchSpaceSize), DASUAV);
 				},
 				[&](buildScene_data& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 				{
@@ -610,9 +610,9 @@ namespace FlexKit
 					builder.NonPixelShaderResource(missShaderTable);
 					builder.NonPixelShaderResource(rayGenTable);
 
-					data.tlAS		= builder.AccelerationStructure(tlAS);// builder.AcquireVirtualResource(GPUResourceDesc::RayTracingStructure(1 * MEGABYTE), DRS_ACCELERATIONSTRUCTURE);
-					data.scratchPad	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1 * MEGABYTE), DRS_UAV);
-					data.temporary	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1 * MEGABYTE), DRS_CopyDest);
+					data.tlAS		= builder.AccelerationStructureRead(tlAS);// builder.AcquireVirtualResource(GPUResourceDesc::RayTracingStructure(1 * MEGABYTE), DASACCELERATIONSTRUCTURE);
+					data.scratchPad	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1 * MEGABYTE), DASUAV);
+					data.temporary	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1 * MEGABYTE), DASCopyDest);
 					data.target2D	= builder.RenderTarget(renderTarget);
 
 					data.depthBuffer	= builder.NonPixelShaderResource(depthTarget);

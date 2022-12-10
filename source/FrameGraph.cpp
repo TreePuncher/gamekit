@@ -6,119 +6,33 @@
 namespace FlexKit
 {	/************************************************************************************************/
 
-
-	void ResourceTransition::ProcessTransition(FrameResources& Resources, Context* ctx) const
-	{
-		auto& resourceObject = Resources.Resources[Object];
-
-		switch (resourceObject.Type)
-		{
-		case OT_StreamOut:
-		{
-			switch (AfterState)
-			{
-			case DRS_VERTEXBUFFER:
-			case DRS_STREAMOUT: {
-				ctx->AddStreamOutBarrier(
-					resourceObject.SOBuffer,
-					BeforeState,
-					AfterState);
-			}	break;
-			}
-		}	break;
-
-		case OT_Virtual:
-		case OT_Resource:
-		case OT_BackBuffer:
-		case OT_DepthBuffer:
-		{
-			switch (AfterState)
-			{
-			case DRS_DEPTHBUFFERWRITE:
-			case DRS_DEPTHBUFFERREAD:
-			case DRS_PixelShaderResource:
-			case DRS_NonPixelShaderResource:
-			case DRS_RenderTarget:
-			case DRS_Present:
-			case DRS_STREAMOUT:
-			case DRS_STREAMOUTCLEAR:
-			case DRS_UAV:
-			case DRS_CopyDest:
-			case DRS_CopySrc:
-			case DRS_ACCELERATIONSTRUCTURE:
-				ctx->AddResourceBarrier(
-					resourceObject.shaderResource,
-					BeforeState,
-					AfterState);
-				break;
-			case DRS_Retired:
-				ctx->AddAliasingBarrier(resourceObject.shaderResource, InvalidHandle);
-				break;
-			default:
-				FK_ASSERT(0);
-			}
-		}	break;
-		default:
-			switch (AfterState)
-			{
-			case DRS_Present:
-			{
-				ctx->AddPresentBarrier(
-					Resources.GetRenderTarget(resourceObject.Handle),
-					BeforeState);
-			}	break;
-			case DRS_DEPTHBUFFERWRITE:
-			case DRS_RenderTarget:
-				ctx->AddRenderTargetBarrier(
-					Resources.GetRenderTarget(resourceObject.Handle),
-					BeforeState,
-					AfterState);
-				break;
-			case DRS_STREAMOUT:
-			case DRS_CONSTANTBUFFER:
-			case DRS_PREDICATE:
-			case DRS_INDIRECTARGS:
-			case DRS_UNKNOWN:
-			default:
-				FK_ASSERT(0); // Unimplemented
-			}
-
-		}
-
-
-	}
-
-
-	/************************************************************************************************/
-
-
 	FrameGraphNode::FrameGraphNode(FN_NodeAction IN_action, void* IN_nodeData, iAllocator* IN_allocator) :
 			InputObjects	{ IN_allocator	},
 			OutputObjects	{ IN_allocator	},
 			Sources			{ IN_allocator	},
-			Transitions		{ IN_allocator	},
-			NodeAction		{ IN_action     },
-			nodeData        { IN_nodeData   },
-			Executed		{ false		    },
-			subNodeTracking { IN_allocator  },
+			barriers		{ IN_allocator	},
+			NodeAction		{ IN_action		},
+			nodeData		{ IN_nodeData	},
+			Executed		{ false			},
+			subNodeTracking { IN_allocator	},
 
-			createdObjects  { IN_allocator  },
-			retiredObjects  { IN_allocator  },
-			acquiredObjects { IN_allocator  } {}
+			createdObjects	{ IN_allocator	},
+			retiredObjects	{ IN_allocator	},
+			acquiredObjects	{ IN_allocator	} {}
 
 
 	FrameGraphNode::FrameGraphNode(FrameGraphNode&& RHS) :
-			Sources			{ std::move(RHS.Sources)	        },
-			InputObjects	{ std::move(RHS.InputObjects)	    },
-			OutputObjects	{ std::move(RHS.OutputObjects)      },
-			Transitions		{ std::move(RHS.Transitions)        },
-			NodeAction		{ std::move(RHS.NodeAction)	        },
-			nodeData        { std::move(RHS.nodeData)           },
-			retiredObjects  { std::move(RHS.retiredObjects)     },
-			subNodeTracking { std::move(RHS.subNodeTracking)    },
-			Executed		{ std::move(RHS.Executed)           },
-			createdObjects  { std::move(RHS.createdObjects)     },
-			acquiredObjects { std::move(RHS.acquiredObjects)    } {}
+			Sources			{ std::move(RHS.Sources)			},
+			InputObjects	{ std::move(RHS.InputObjects)		},
+			OutputObjects	{ std::move(RHS.OutputObjects)		},
+			barriers		{ std::move(RHS.barriers)			},
+			NodeAction		{ std::move(RHS.NodeAction)			},
+			nodeData		{ std::move(RHS.nodeData)			},
+			retiredObjects	{ std::move(RHS.retiredObjects)		},
+			subNodeTracking	{ std::move(RHS.subNodeTracking)	},
+			Executed		{ std::move(RHS.Executed)			},
+			createdObjects	{ std::move(RHS.createdObjects)		},
+			acquiredObjects	{ std::move(RHS.acquiredObjects)	} {}
 
 
 	/************************************************************************************************/
@@ -129,17 +43,16 @@ namespace FlexKit
 		for (const auto& virtualResource : acquiredObjects)
 			Ctx.AddAliasingBarrier(virtualResource.overlap, virtualResource.resource);
 
-		for (const auto& T : Transitions) 
-			T.ProcessTransition(Resources, &Ctx);
+		Ctx.AddBarriers(barriers);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void FrameGraphNode::AddTransition(const ResourceTransition& transition)
+	void FrameGraphNode::AddBarrier(const Barrier& transition)
 	{
-		Transitions.push_back(transition);
+		barriers.push_back(transition);
 	}
 
 
@@ -186,7 +99,7 @@ namespace FlexKit
 			case FrameObjectResourceType::OT_BackBuffer:
 			case FrameObjectResourceType::OT_RenderTarget:
 			case FrameObjectResourceType::OT_Resource:
-				ctx->AddResourceBarrier(resource.shaderResource, currentState, nodeState);
+				DebugBreak();
 				break;
 			case FrameObjectResourceType::OT_ConstantBuffer:
 			case FrameObjectResourceType::OT_IndirectArguments:
@@ -272,7 +185,7 @@ namespace FlexKit
 			Node.Sources.erase(res, Node.Sources.end());
 		}
 
-		Node.Transitions        += Transitions;
+		Node.barriers			+= barriers;
 		Node.acquiredObjects    += acquiredResources;
 		Context.Retirees        += RetiredObjects;
 
@@ -283,7 +196,7 @@ namespace FlexKit
 		}
 
 		temporaryObjects.clear();
-		Transitions.clear();
+		barriers.clear();
 	}
 
 
@@ -299,25 +212,42 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle FrameGraphNodeBuilder::AccelerationStructure(ResourceHandle handle)
+	FrameResourceHandle FrameGraphNodeBuilder::AccelerationStructureRead(ResourceHandle handle)
 	{
-		if (auto frameResource = AddWriteableResource(handle, DeviceResourceState::DRS_ACCELERATIONSTRUCTURE); frameResource != InvalidHandle)
+		if (auto frameResource = AddReadableResource(handle, DeviceAccessState::DASACCELERATIONSTRUCTURE_READ); frameResource != InvalidHandle)
 			return frameResource;
 
 		Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
 
-		return AddWriteableResource(handle, DeviceResourceState::DRS_ACCELERATIONSTRUCTURE);
+		return AddWriteableResource(handle, DeviceAccessState::DASACCELERATIONSTRUCTURE_READ);
 	}
+
+
+	/************************************************************************************************/
+
+
+	FrameResourceHandle FrameGraphNodeBuilder::AccelerationStructureWrite(ResourceHandle handle)
+	{
+		if (auto frameResource = AddWriteableResource(handle, DeviceAccessState::DASACCELERATIONSTRUCTURE_WRITE); frameResource != InvalidHandle)
+			return frameResource;
+
+		Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
+
+		return AddWriteableResource(handle, DeviceAccessState::DASACCELERATIONSTRUCTURE_WRITE);
+	}
+
+
+	/************************************************************************************************/
 
 
 	FrameResourceHandle FrameGraphNodeBuilder::PixelShaderResource(ResourceHandle handle)
 	{
-		if (auto frameResource = AddReadableResource(handle, DeviceResourceState::DRS_PixelShaderResource); frameResource != InvalidHandle)
+		if (auto frameResource = AddReadableResource(handle, DeviceAccessState::DASPixelShaderResource); frameResource != InvalidHandle)
 			return frameResource;
 
 		Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
 
-		return AddReadableResource(handle, DeviceResourceState::DRS_PixelShaderResource);
+		return AddReadableResource(handle, DeviceAccessState::DASPixelShaderResource);
 	}
 
 
@@ -326,12 +256,12 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::NonPixelShaderResource(ResourceHandle handle)
 	{
-		if (auto frameResource = AddReadableResource(handle, DeviceResourceState::DRS_NonPixelShaderResource); frameResource != InvalidHandle)
+		if (auto frameResource = AddReadableResource(handle, DeviceAccessState::DASNonPixelShaderResource); frameResource != InvalidHandle)
 			return frameResource;
 
 		Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
 
-		return AddReadableResource(handle, DeviceResourceState::DRS_NonPixelShaderResource);
+		return AddReadableResource(handle, DeviceAccessState::DASNonPixelShaderResource);
 	}
 
 
@@ -340,7 +270,7 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::NonPixelShaderResource(FrameResourceHandle handle)
 	{
-		return AddReadableResource(handle, DeviceResourceState::DRS_NonPixelShaderResource);
+		return AddReadableResource(handle, DeviceAccessState::DASNonPixelShaderResource);
 	}
 
 
@@ -349,12 +279,12 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::CopySource(ResourceHandle handle)
 	{
-		if (auto frameResource = AddReadableResource(handle, DeviceResourceState::DRS_CopySrc); frameResource != InvalidHandle)
+		if (auto frameResource = AddReadableResource(handle, DeviceAccessState::DASCopySrc); frameResource != InvalidHandle)
 			return frameResource;
 
 		Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
 
-		return AddReadableResource(handle, DeviceResourceState::DRS_CopySrc);
+		return AddReadableResource(handle, DeviceAccessState::DASCopySrc);
 	}
 
 	/************************************************************************************************/
@@ -362,12 +292,12 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::CopyDest(ResourceHandle  handle)
 	{
-		if (auto frameResource = AddWriteableResource(handle, DeviceResourceState::DRS_CopyDest); frameResource != InvalidHandle)
+		if (auto frameResource = AddWriteableResource(handle, DeviceAccessState::DASCopyDest); frameResource != InvalidHandle)
 			return frameResource;
 
 		Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
 
-		return AddWriteableResource(handle, DeviceResourceState::DRS_CopyDest);
+		return AddWriteableResource(handle, DeviceAccessState::DASCopyDest);
 	}
 
 
@@ -376,7 +306,16 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::RenderTarget(ResourceHandle target)
 	{
-		const auto resourceHandle = AddWriteableResource(target, DeviceResourceState::DRS_RenderTarget);
+		Barrier barrier;
+		barrier.type		= BarrierType::Texture;
+		barrier.src			= Sync_All;
+		barrier.dst			= Sync_All;
+		barrier.accessAfter	= DASRenderTarget;
+
+		barrier.texture.layoutAfter		= BarrierLayout_RenderTarget;
+		barrier.texture.layoutBefore	= BarrierLayout_Unknown;
+
+		const auto resourceHandle = AddWriteableResource(target, DeviceAccessState::DASRenderTarget, barrier);
 
 		if (resourceHandle == InvalidHandle)
 		{
@@ -398,7 +337,7 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::RenderTarget(FrameResourceHandle target)
 	{
-		return WriteTransition(target, DRS_RenderTarget);
+		return WriteTransition(target, DASRenderTarget);
 	}
 
 
@@ -407,7 +346,29 @@ namespace FlexKit
 
 	FrameResourceHandle	FrameGraphNodeBuilder::Present(ResourceHandle renderTarget)
 	{
-		return AddReadableResource(renderTarget, DeviceResourceState::DRS_Present);
+		Barrier barrier;
+		barrier.type		= BarrierType::Texture;
+		barrier.src			= Sync_All;
+		barrier.dst			= Sync_All;
+		barrier.accessAfter	= DASPresent;
+
+		barrier.texture.layoutAfter		= BarrierLayout_Unknown;
+		barrier.texture.layoutBefore	= BarrierLayout_RenderTarget;
+
+		auto resourceHandle = AddReadableResource(renderTarget, DeviceAccessState::DASPresent, barrier);
+
+		if (resourceHandle == InvalidHandle)
+		{
+			Resources->AddResource(renderTarget, true);
+			return Present(renderTarget);
+		}
+
+		auto resource = Resources->GetAssetObject(resourceHandle);
+
+		if (!resource)
+			return InvalidHandle;
+
+		return resourceHandle;
 	}
 
 
@@ -416,7 +377,7 @@ namespace FlexKit
 
 	FrameResourceHandle	FrameGraphNodeBuilder::DepthRead(ResourceHandle handle)
 	{
-		if (auto frameObject = AddReadableResource(handle, DeviceResourceState::DRS_DEPTHBUFFERREAD); frameObject == InvalidHandle)
+		if (auto frameObject = AddReadableResource(handle, DeviceAccessState::DASDEPTHBUFFERREAD); frameObject == InvalidHandle)
 		{
 			Resources->AddResource(handle, true);
 			return DepthRead(handle);
@@ -431,7 +392,7 @@ namespace FlexKit
 
 	FrameResourceHandle	FrameGraphNodeBuilder::DepthTarget(ResourceHandle handle)
 	{
-		if (auto frameObject = AddWriteableResource(handle, DeviceResourceState::DRS_DEPTHBUFFERWRITE); frameObject == InvalidHandle)
+		if (auto frameObject = AddWriteableResource(handle, DeviceAccessState::DASDEPTHBUFFERWRITE); frameObject == InvalidHandle)
 		{
 			Resources->AddResource(handle, true);
 			return DepthTarget(handle);
@@ -444,21 +405,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle  FrameGraphNodeBuilder::AcquireVirtualResource(const GPUResourceDesc& desc, DeviceResourceState initialState, bool temp)
+	FrameResourceHandle  FrameGraphNodeBuilder::AcquireVirtualResource(const GPUResourceDesc& desc, DeviceAccessState initialState, bool temp)
 	{
 		ProfileFunction();
 
 		auto NeededFlags = 0;
-		NeededFlags |= !desc.unordered && desc.Dimensions == TextureDimension::Texture1D ? DeviceHeapFlags::RenderTarget : 0;
-		NeededFlags |= !desc.unordered && desc.Dimensions == TextureDimension::Texture2D ? DeviceHeapFlags::RenderTarget : 0;
-		NeededFlags |= !desc.unordered && desc.Dimensions == TextureDimension::Texture3D ? DeviceHeapFlags::RenderTarget : 0;
-		NeededFlags |= !desc.unordered && desc.Dimensions == TextureDimension::Texture2DArray ? DeviceHeapFlags::RenderTarget : 0;
+		NeededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture1D ? DeviceHeapFlags::RenderTarget : 0;
+		NeededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture2D ? DeviceHeapFlags::RenderTarget : 0;
+		NeededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture3D ? DeviceHeapFlags::RenderTarget : 0;
+		NeededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture2DArray ? DeviceHeapFlags::RenderTarget : 0;
 
-		NeededFlags |= desc.unordered && desc.Dimensions == TextureDimension::Buffer    ? DeviceHeapFlags::UAVBuffer : 0;
-		NeededFlags |= desc.unordered && desc.Dimensions == TextureDimension::Texture1D ? DeviceHeapFlags::UAVTextures : 0;
-		NeededFlags |= desc.unordered && desc.Dimensions == TextureDimension::Texture2D ? DeviceHeapFlags::UAVTextures : 0;
-		NeededFlags |= desc.unordered && desc.Dimensions == TextureDimension::Texture3D ? DeviceHeapFlags::UAVTextures : 0;
-		NeededFlags |= desc.renderTarget ? DeviceHeapFlags::RenderTarget : 0;
+		NeededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Buffer    ? DeviceHeapFlags::UAVBuffer : 0;
+		NeededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture1D ? DeviceHeapFlags::UAVTextures : 0;
+		NeededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture2D ? DeviceHeapFlags::UAVTextures : 0;
+		NeededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture3D ? DeviceHeapFlags::UAVTextures : 0;
+		NeededFlags |= (desc.type == ResourceType::RenderTarget) ? DeviceHeapFlags::RenderTarget : 0;
 
 		auto FindResourcePool =
 			[&]() -> PoolAllocatorInterface*
@@ -491,41 +452,40 @@ namespace FlexKit
 				auto [resource, _overlap, offset, heap] = memoryPool->AcquireDeferred(desc, temp);
 				Context.AddDeferredCreation(resource, offset, heap, desc);
 
-				virtualResource = resource;
-				overlap         = _overlap;
+				virtualResource	= resource;
+				overlap			= _overlap;
 			}
 
 			if (virtualResource == InvalidHandle)
 				return InvalidHandle;
 
-			FrameObject virtualObject       = FrameObject::VirtualObject();
-			virtualObject.shaderResource    = virtualResource;
-			virtualObject.State             = initialState;
-			virtualObject.virtualState      = VirtualResourceState::Virtual_Temporary;
-			virtualObject.pool              = memoryPool;
+			FrameObject virtualObject		= FrameObject::VirtualObject();
+			virtualObject.shaderResource	= virtualResource;
+			virtualObject.State				= initialState;
+			virtualObject.virtualState		= VirtualResourceState::Virtual_Temporary;
+			virtualObject.pool				= memoryPool;
 
 
 			auto virtualResourceHandle = FrameResourceHandle{ Resources->Resources.emplace_back(virtualObject) };
 			Resources->Resources[virtualResourceHandle].Handle = virtualResourceHandle;
 			Resources->virtualResources.push_back(virtualResourceHandle);
 
-			const auto defaultState = desc.InitialResourceState();
+			const auto defaultState = desc.initialState;
 
 			FrameObjectLink outputObject;
-				outputObject.neededState    = initialState;
-				outputObject.Source         = &Node;
-				outputObject.handle         = virtualResourceHandle;
-
-			//Resources->renderSystem.SetDebugName(virtualResource, "un-named virtual resources");
-			//FK_LOG_9("Allocated Resource: %u", Resources->GetObjectResource(virtualResource));
-			//Resources->renderSystem.SetDebugName(virtualResource, "Virtual Resource");
+				outputObject.neededState	= initialState;
+				outputObject.Source			= &Node;
+				outputObject.handle			= virtualResourceHandle;
 
 			Context.AddWriteable(outputObject);
 			Node.OutputObjects.push_back(outputObject);
 			Node.createdObjects.push_back(outputObject);
 
-			if (initialState != defaultState)
-				Node.AddTransition(ResourceTransition{ virtualResourceHandle, defaultState, initialState });
+			if (initialState != defaultState) {
+				DebugBreak();
+				Barrier barrier;
+				Node.AddBarrier(barrier);
+			}
 
 			if (temp) {
 				Node.retiredObjects.push_back(outputObject);
@@ -583,19 +543,19 @@ namespace FlexKit
 	}
 
 
-	FrameResourceHandle  FrameGraphNodeBuilder::AcquireVirtualResource(PoolAllocatorInterface& allocator, const GPUResourceDesc& desc, DeviceResourceState initialState, bool temp)
+	FrameResourceHandle  FrameGraphNodeBuilder::AcquireVirtualResource(PoolAllocatorInterface& allocator, const GPUResourceDesc& desc, DeviceAccessState initialState, bool temp)
 	{
 		auto NeededFlags = 0;
-		NeededFlags |= !desc.unordered && desc.Dimensions == TextureDimension::Texture1D ? DeviceHeapFlags::RenderTarget : 0;
-		NeededFlags |= !desc.unordered && desc.Dimensions == TextureDimension::Texture2D ? DeviceHeapFlags::RenderTarget : 0;
-		NeededFlags |= !desc.unordered && desc.Dimensions == TextureDimension::Texture3D ? DeviceHeapFlags::RenderTarget : 0;
-		NeededFlags |= !desc.unordered && desc.Dimensions == TextureDimension::Texture2DArray ? DeviceHeapFlags::RenderTarget : 0;
+		NeededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture1D ? DeviceHeapFlags::RenderTarget : 0;
+		NeededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture2D ? DeviceHeapFlags::RenderTarget : 0;
+		NeededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture3D ? DeviceHeapFlags::RenderTarget : 0;
+		NeededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture2DArray ? DeviceHeapFlags::RenderTarget : 0;
 
-		NeededFlags |= desc.unordered && desc.Dimensions == TextureDimension::Buffer    ? DeviceHeapFlags::UAVBuffer : 0;
-		NeededFlags |= desc.unordered && desc.Dimensions == TextureDimension::Texture1D ? DeviceHeapFlags::UAVTextures : 0;
-		NeededFlags |= desc.unordered && desc.Dimensions == TextureDimension::Texture2D ? DeviceHeapFlags::UAVTextures : 0;
-		NeededFlags |= desc.unordered && desc.Dimensions == TextureDimension::Texture3D ? DeviceHeapFlags::UAVTextures : 0;
-		NeededFlags |= desc.renderTarget ? DeviceHeapFlags::RenderTarget : 0;
+		NeededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Buffer    ? DeviceHeapFlags::UAVBuffer : 0;
+		NeededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture1D ? DeviceHeapFlags::UAVTextures : 0;
+		NeededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture2D ? DeviceHeapFlags::UAVTextures : 0;
+		NeededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture3D ? DeviceHeapFlags::UAVTextures : 0;
+		NeededFlags |= (desc.type == ResourceType::RenderTarget) ? DeviceHeapFlags::RenderTarget : 0;
 
 		if (!((allocator.Flags() & NeededFlags) == NeededFlags))
 		{
@@ -659,7 +619,11 @@ namespace FlexKit
 		Node.createdObjects.push_back(outputObject);
 
 		if (initialState != outputObject.neededState)
-			Node.AddTransition(ResourceTransition{ virtualResourceHandle, outputObject.neededState, initialState });
+		{
+			DebugBreak();
+			Barrier barrier;
+			Node.AddBarrier(barrier);
+		}
 
 		if (temp) {
 			Node.retiredObjects.push_back(outputObject);
@@ -681,7 +645,7 @@ namespace FlexKit
 		auto& resource              = Resources->Resources[handle];
 
 		FrameObjectLink freeObject;
-		freeObject.neededState      = DeviceResourceState::DRS_Retired;
+		freeObject.neededState      = DeviceAccessState::DASRetired;
 		freeObject.Source           = &Node;
 		freeObject.handle           = handle;
 
@@ -695,7 +659,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle	FrameGraphNodeBuilder::UnorderedAccess(ResourceHandle handle, DeviceResourceState state)
+	FrameResourceHandle	FrameGraphNodeBuilder::UnorderedAccess(ResourceHandle handle, DeviceAccessState state)
 	{
 		if (auto frameResource = AddWriteableResource(handle, state); frameResource != InvalidHandle)
 			return frameResource;
@@ -711,7 +675,7 @@ namespace FlexKit
 
 	FrameResourceHandle	FrameGraphNodeBuilder::VertexBuffer(SOResourceHandle handle)
 	{
-		return AddReadableResource(handle, DeviceResourceState::DRS_VERTEXBUFFER);
+		return AddReadableResource(handle, DeviceAccessState::DASVERTEXBUFFER);
 	}
 
 
@@ -720,14 +684,14 @@ namespace FlexKit
 
 	FrameResourceHandle	FrameGraphNodeBuilder::StreamOut(SOResourceHandle handle)
 	{
-		return AddWriteableResource(handle, DeviceResourceState::DRS_STREAMOUT);
+		return AddWriteableResource(handle, DeviceAccessState::DASSTREAMOUT);
 	}
 
 
 	/************************************************************************************************/
 
 
-	FrameResourceHandle FrameGraphNodeBuilder::ReadTransition(FrameResourceHandle handle, DeviceResourceState state)
+	FrameResourceHandle FrameGraphNodeBuilder::ReadTransition(FrameResourceHandle handle, DeviceAccessState state)
 	{
 		return AddReadableResource(handle, state);
 	}
@@ -736,7 +700,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle FrameGraphNodeBuilder::WriteTransition(FrameResourceHandle handle, DeviceResourceState state)
+	FrameResourceHandle FrameGraphNodeBuilder::WriteTransition(FrameResourceHandle handle, DeviceAccessState state)
 	{
 		return AddWriteableResource(handle, state);
 	}
@@ -890,8 +854,6 @@ namespace FlexKit
 			return;
 
 		auto& ctx = *contexts.front();
-		for (auto acquired : acquiredResources)
-			ctx.AddAliasingBarrier(acquired, InvalidHandle);
 
 		ResourceContext.WaitFor();
 
@@ -960,7 +922,7 @@ namespace FlexKit
 				auto SOBuffer	= I.SOBuffer;
 				auto state		= I.State;
 
-				Resources.renderSystem.SetObjectState(SOBuffer, state);
+				Resources.renderSystem.SetObjectAccessState(SOBuffer, state);
 			}	break;
 			case OT_BackBuffer:
 			case OT_DepthBuffer:
@@ -970,11 +932,11 @@ namespace FlexKit
 				auto shaderResource = I.shaderResource;
 				auto state			= I.State;
 
-				Resources.renderSystem.SetObjectState(shaderResource, state);
+				Resources.renderSystem.SetObjectAccessState(shaderResource, state);
 			}	break;
 			case OT_Virtual:
 			{
-				Resources.renderSystem.SetObjectState(I.shaderResource, I.State);
+				Resources.renderSystem.SetObjectAccessState(I.shaderResource, I.State);
 
 				if (I.virtualState == VirtualResourceState::Virtual_Released || I.virtualState == VirtualResourceState::Virtual_Temporary) {
 					Resources.renderSystem.ReleaseResource(I.shaderResource);

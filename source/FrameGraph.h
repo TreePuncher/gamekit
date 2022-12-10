@@ -107,7 +107,7 @@ namespace FlexKit
 
 		FrameResourceHandle		Handle; // For Fast Search
 		FrameObjectResourceType Type;
-		DeviceResourceState		State;
+		DeviceAccessState		State;
 		VirtualResourceState    virtualState    = VirtualResourceState::NonVirtual;
 		FrameGraphNode*         lastModifier    = nullptr;
 		PoolAllocatorInterface* pool            = nullptr;
@@ -128,7 +128,7 @@ namespace FlexKit
 		static FrameObject PixelShaderResourceObject(ResourceHandle handle)
 		{
 			FrameObject RenderTarget;
-			RenderTarget.State			= DeviceResourceState::DRS_PixelShaderResource;
+			RenderTarget.State			= DeviceAccessState::DASPixelShaderResource;
 			RenderTarget.Type			= OT_RenderTarget;
 			RenderTarget.shaderResource = handle;
 
@@ -139,7 +139,7 @@ namespace FlexKit
 		static FrameObject RenderTargetObject(ResourceHandle handle)
 		{
 			FrameObject RenderTarget;
-			RenderTarget.State		    = DeviceResourceState::DRS_RenderTarget;
+			RenderTarget.State		    = DeviceAccessState::DASRenderTarget;
 			RenderTarget.Type		    = OT_RenderTarget;
 			RenderTarget.shaderResource = handle;
 
@@ -147,7 +147,7 @@ namespace FlexKit
 		}
 
 
-		static FrameObject BackBufferObject(ResourceHandle handle, DeviceResourceState InitialState = DeviceResourceState::DRS_RenderTarget)
+		static FrameObject BackBufferObject(ResourceHandle handle, DeviceAccessState InitialState = DeviceAccessState::DASRenderTarget)
 		{
 			FrameObject RenderTarget;
 			RenderTarget.State			= InitialState;
@@ -158,7 +158,7 @@ namespace FlexKit
 		}
 
 
-		static FrameObject DepthBufferObject(ResourceHandle handle, DeviceResourceState InitialState = DeviceResourceState::DRS_DEPTHBUFFER)
+		static FrameObject DepthBufferObject(ResourceHandle handle, DeviceAccessState InitialState = DeviceAccessState::DASDEPTHBUFFER)
 		{
 			FrameObject RenderTarget;
 			RenderTarget.State          = InitialState;
@@ -169,7 +169,7 @@ namespace FlexKit
 		}
 
 
-		static FrameObject TextureObject(ResourceHandle handle, DeviceResourceState InitialState)
+		static FrameObject TextureObject(ResourceHandle handle, DeviceAccessState InitialState)
 		{
 			FrameObject shaderResource;
 			shaderResource.State            = InitialState;
@@ -180,7 +180,7 @@ namespace FlexKit
 		}
 
 
-		static FrameObject SOBufferObject(SOResourceHandle Handle, DeviceResourceState InitialState = DeviceResourceState::DRS_Common)
+		static FrameObject SOBufferObject(SOResourceHandle Handle, DeviceAccessState InitialState = DeviceAccessState::DASCommon)
 		{
 			FrameObject Streamout;
 			Streamout.State                = InitialState;
@@ -191,7 +191,7 @@ namespace FlexKit
 		}
 
 
-		static FrameObject QueryObject(QueryHandle handle, DeviceResourceState initialState = DeviceResourceState::DRS_Common)
+		static FrameObject QueryObject(QueryHandle handle, DeviceAccessState initialState = DeviceAccessState::DASCommon)
 		{
 			FrameObject query;
 			query.State		= initialState;
@@ -210,7 +210,7 @@ namespace FlexKit
 		{
 			FrameObject virtualObject;
 			virtualObject.virtualState  = VirtualResourceState::Virtual_Null;
-			virtualObject.State         = DeviceResourceState::DRS_UNKNOWN;
+			virtualObject.State         = DeviceAccessState::DASUNKNOWN;
 			virtualObject.Type		    = OT_Virtual;
 
 			return virtualObject;
@@ -224,8 +224,8 @@ namespace FlexKit
 	struct LocallyTrackedResource
 	{
 		FrameResourceHandle resource;
-		DeviceResourceState currentState;
-		DeviceResourceState nodeState;
+		DeviceAccessState currentState;
+		DeviceAccessState nodeState;
 	};
 
 	typedef Vector<FrameObject>		        PassObjectList;
@@ -277,7 +277,7 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		void AddRenderTarget(ResourceHandle Handle, DeviceResourceState InitialState = DeviceResourceState::DRS_RenderTarget)
+		void AddRenderTarget(ResourceHandle Handle, DeviceAccessState InitialState = DeviceAccessState::DASRenderTarget)
 		{
 			Resources.push_back(
 				FrameObject::BackBufferObject(Handle, InitialState));
@@ -300,7 +300,7 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		void AddDepthBuffer(ResourceHandle Handle, DeviceResourceState InitialState)
+		void AddDepthBuffer(ResourceHandle Handle, DeviceAccessState InitialState)
 		{
 			Resources.push_back(
 				FrameObject::DepthBufferObject(Handle, InitialState));
@@ -314,7 +314,7 @@ namespace FlexKit
 
 		void AddSOResource(SOResourceHandle handle)
 		{
-			DeviceResourceState initialState = renderSystem.GetObjectState(handle);
+			DeviceAccessState initialState = renderSystem.GetObjectState(handle);
 
 			Resources.push_back(
 				FrameObject::SOBufferObject(handle, initialState));
@@ -328,7 +328,7 @@ namespace FlexKit
 
 		FrameResourceHandle AddResource(ResourceHandle handle, const bool renderTarget = false)
 		{
-			DeviceResourceState initialState = renderSystem.GetObjectState(handle);
+			DeviceAccessState initialState = renderSystem.GetObjectState(handle);
 
 			if (auto res = FindFrameResource(handle); res != InvalidHandle)
 				return res;
@@ -352,7 +352,7 @@ namespace FlexKit
 		{
 			std::scoped_lock lock{};
 
-			DeviceResourceState initialState = renderSystem.GetObjectState(handle);
+			DeviceAccessState initialState = renderSystem.GetObjectState(handle);
 
 			Resources.push_back(
 				FrameObject::TextureObject(handle, initialState));
@@ -369,7 +369,7 @@ namespace FlexKit
 
 		void AddQuery(QueryHandle handle)
 		{
-			DeviceResourceState initialState = renderSystem.GetObjectState(handle);
+			DeviceAccessState initialState = renderSystem.GetObjectState(handle);
 
 			Resources.push_back(
 				FrameObject::QueryObject(handle, initialState));
@@ -418,7 +418,7 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		DeviceResourceState GetAssetObjectState(FrameResourceHandle Handle)
+		DeviceAccessState GetAssetObjectState(FrameResourceHandle Handle)
 		{
 			return Resources[Handle].State;
 		}
@@ -588,7 +588,7 @@ namespace FlexKit
 		size_t                  GetVertexBufferOffset(VertexBufferHandle handle, size_t vertexSize) { return globalResources.GetVertexBufferOffset(handle, vertexSize); }
 		size_t                  GetVertexBufferOffset(VertexBufferHandle handle) { return globalResources.GetVertexBufferOffset(handle); }
 
-		DeviceResourceState     GetAssetObjectState(FrameResourceHandle handle) { return globalResources.GetAssetObjectState(handle); }
+		DeviceAccessState     GetAssetObjectState(FrameResourceHandle handle) { return globalResources.GetAssetObjectState(handle); }
 		FrameObject*            GetAssetObject(FrameResourceHandle handle) { return globalResources.GetAssetObject(handle); }
 
 		ResourceHandle          GetRenderTarget(FrameResourceHandle handle) const { return globalResources.GetRenderTarget(handle); }
@@ -653,10 +653,10 @@ namespace FlexKit
 			auto SOHandle		= globalResources.Resources[res.resource].SOBuffer;
 			auto deviceResource = renderSystem().GetDeviceResource(SOHandle);
 
-			if (res.currentState != DRS_VERTEXBUFFER) 
-				ctx.AddStreamOutBarrier(SOHandle, res.currentState, DRS_VERTEXBUFFER);
+			if (res.currentState != DASVERTEXBUFFER) 
+				ctx.AddStreamOutBarrier(SOHandle, res.currentState, DASVERTEXBUFFER);
 
-			res.currentState = DRS_VERTEXBUFFER;
+			res.currentState = DASVERTEXBUFFER;
 
 			D3D12_VERTEX_BUFFER_VIEW view = {
 				deviceResource->GetGPUVirtualAddress(),
@@ -668,7 +668,7 @@ namespace FlexKit
 		}
 
 
-		ResourceHandle Transition(const FrameResourceHandle resource, DeviceResourceState state, Context& ctx) const
+		ResourceHandle Transition(const FrameResourceHandle resource, DeviceAccessState state, Context& ctx) const
 		{
 			auto& currentObject	= _FindSubNodeResource(resource);
 			auto currentState	= currentObject.currentState;
@@ -677,21 +677,23 @@ namespace FlexKit
 
 			if (state != currentState)
 			{
-				ctx.AddResourceBarrier(resourceHandle, currentState, state);
+				DebugBreak();
+				//ctx.AddResourceBarrier(resourceHandle, currentState, state);
 				currentObject.currentState = state;
 			}
 
 			return resourceHandle;
 		}
 
-		ResourceHandle Transition(const FrameResourceHandle resource, DeviceResourceState state, uint32_t subresource, Context& ctx) const
+		ResourceHandle Transition(const FrameResourceHandle resource, DeviceAccessState state, uint32_t subresource, Context& ctx) const
 		{
 			auto currentState   = GetObjectState(resource);
 			auto UAVBuffer      = globalResources.Resources[resource].shaderResource;
 
 			if (state != currentState)
 			{
-				ctx.AddResourceBarrier(UAVBuffer, currentState, state, subresource);
+				DebugBreak();
+				//ctx.AddResourceBarrier(UAVBuffer, currentState, state, subresource);
 				_FindSubNodeResource(resource).currentState = state;
 			}
 
@@ -700,45 +702,45 @@ namespace FlexKit
 
 		ResourceHandle CopyDest(FrameResourceHandle resource, Context& ctx)
 		{
-			return Transition(resource, DRS_CopyDest, ctx);
+			return Transition(resource, DASCopyDest, ctx);
 		}
 
 		ResourceHandle CopySrc(FrameResourceHandle resource, Context& ctx)
 		{
-			return Transition(resource, DRS_CopySrc, ctx);
+			return Transition(resource, DASCopySrc, ctx);
 		}
 
 		ResourceHandle UAV(const FrameResourceHandle resource, Context& ctx) const
 		{
-			return Transition(resource, DRS_UAV, ctx);
+			return Transition(resource, DASUAV, ctx);
 		}
 
 		ResourceHandle RenderTarget(const FrameResourceHandle resource, Context& ctx) const
 		{
-			return Transition(resource, DRS_RenderTarget, ctx);
+			return Transition(resource, DASRenderTarget, ctx);
 		}
 
 		ResourceHandle PixelShaderResource(const FrameResourceHandle resource, Context& ctx) const
 		{
-			return Transition(resource, DRS_PixelShaderResource, ctx);
+			return Transition(resource, DASPixelShaderResource, ctx);
 		}
 
 		ResourceHandle NonPixelShaderResource(const FrameResourceHandle resource, Context& ctx) const
 		{
-			return Transition(resource, DRS_NonPixelShaderResource, ctx);
+			return Transition(resource, DASNonPixelShaderResource, ctx);
 		}
 
 		ResourceHandle IndirectArgs(const FrameResourceHandle resource, Context& ctx) const
 		{
-			return Transition(resource, DRS_INDIRECTARGS, ctx);
+			return Transition(resource, DASINDIRECTARGS, ctx);
 		}
 
 		ResourceHandle VertexBuffer(const FrameResourceHandle resource, Context& ctx) const
 		{
-			return Transition(resource, DRS_VERTEXBUFFER, ctx);
+			return Transition(resource, DASVERTEXBUFFER, ctx);
 		}
 
-		DeviceResourceState GetObjectState(FrameResourceHandle handle) const
+		DeviceAccessState GetObjectState(FrameResourceHandle handle) const
 		{
 			auto res = find(SubNodeTracking,
 				[&](const auto& rhs) -> bool
@@ -769,10 +771,10 @@ namespace FlexKit
 			auto& localResourceObj  = _FindSubNodeResource(handle);
 			auto& resource          = globalResources.Resources[localResourceObj.resource];
 
-			if (localResourceObj.currentState != DRS_STREAMOUT)
-				ctx->AddStreamOutBarrier(resource.SOBuffer, localResourceObj.currentState, DRS_STREAMOUT);
+			if (localResourceObj.currentState != DASSTREAMOUT)
+				ctx->AddStreamOutBarrier(resource.SOBuffer, localResourceObj.currentState, DASSTREAMOUT);
 
-			localResourceObj.currentState = DRS_STREAMOUT;
+			localResourceObj.currentState = DASSTREAMOUT;
 
 			/*
 			typedef struct D3D12_STREAM_OUTPUT_BUFFER_VIEW
@@ -794,22 +796,6 @@ namespace FlexKit
 
 			return view;
 		}
-
-
-		SOResourceHandle ClearStreamOut(FrameResourceHandle handle, Context& ctx)
-		{
-			auto& resource = _FindSubNodeResource(handle);
-			
-			if (resource.currentState != DRS_STREAMOUTCLEAR)
-				ctx.AddStreamOutBarrier(
-					globalResources.Resources[resource.resource].SOBuffer,
-					resource.currentState, DRS_STREAMOUTCLEAR);
-
-			resource.currentState = DRS_STREAMOUTCLEAR;
-
-			return GetSOResource(handle);
-		}
-
 
 		RenderSystem& renderSystem() const { return *globalResources.renderSystem; }
 
@@ -853,7 +839,7 @@ namespace FlexKit
 		FrameObjectLink(
 			FrameResourceHandle IN_handle           = InvalidHandle,
 			FrameGraphNode*		IN_SourceObject		= nullptr,
-			DeviceResourceState	IN_neededState		= DRS_UNKNOWN) :
+			DeviceAccessState	IN_neededState		= DASUNKNOWN) :
 				Source			{ IN_SourceObject },
 				neededState		{ IN_neededState },
 				handle          { IN_handle } {}
@@ -861,7 +847,7 @@ namespace FlexKit
 
 		FrameGraphNode*		Source;
 		FrameResourceHandle handle;
-		DeviceResourceState	neededState;
+		DeviceAccessState	neededState;
 	};
 
 
@@ -891,20 +877,6 @@ namespace FlexKit
 		};
 	}
 
-	
-	/************************************************************************************************/
-
-
-	class ResourceTransition
-	{
-	public:
-		void ProcessTransition	(FrameResources& Resources, Context* Ctx) const;
-
-		FrameResourceHandle Object      = InvalidHandle;
-		DeviceResourceState	BeforeState = DRS_UNKNOWN;
-		DeviceResourceState	AfterState  = DRS_UNKNOWN;
-	};
-
 
 	/************************************************************************************************/
 
@@ -918,8 +890,8 @@ namespace FlexKit
 
 	struct ResusableResourceQuery
 	{
-		FrameResourceHandle object = InvalidHandle;
-		bool                success = false;
+		FrameResourceHandle	object = InvalidHandle;
+		bool				success = false;
 	};
 
 	FLEXKITAPI class FrameGraphNode
@@ -936,30 +908,30 @@ namespace FlexKit
 
 
 		void HandleBarriers	(FrameResources& Resouces, Context& Ctx);
-		void AddTransition	(const ResourceTransition& Dep);
+		void AddBarrier		(const Barrier& Dep);
 
-		void RestoreResourceStates  (Context* ctx, FrameResources& resources, LocallyTrackedObjectList& locallyTrackedObjects);
-		void AcquireResources       (FrameResources& resources, Context& ctx);
-		void ReleaseResources       (FrameResources& resources, Context& ctx);
+		void RestoreResourceStates	(Context* ctx, FrameResources& resources, LocallyTrackedObjectList& locallyTrackedObjects);
+		void AcquireResources		(FrameResources& resources, Context& ctx);
+		void ReleaseResources		(FrameResources& resources, Context& ctx);
 
 
-		ResusableResourceQuery      FindReuseableResource(PoolAllocatorInterface& allocator, size_t allocationSize, uint32_t flags, FrameResources& handler);
+		ResusableResourceQuery		FindReuseableResource(PoolAllocatorInterface& allocator, size_t allocationSize, uint32_t flags, FrameResources& handler);
 
 		Vector<FrameGraphNode*>		GetNodeDependencies()	{ return (nullptr); } 
 
-		void*                           nodeData;
+		void*							nodeData;
 		bool							Executed;
 		FN_NodeAction					NodeAction;
 		Vector<FrameGraphNode*>			Sources;// Nodes that this node reads from
-		Vector<FrameObjectLink>	        InputObjects;
-		Vector<FrameObjectLink>	        OutputObjects;
-		Vector<ResourceTransition>		Transitions;
+		Vector<FrameObjectLink>			InputObjects;
+		Vector<FrameObjectLink>			OutputObjects;
+		Vector<Barrier>					barriers;
 
-		Vector<ResourceAcquisition>	    acquiredObjects;
-		Vector<FrameObjectLink>	        retiredObjects;
-		Vector<FrameObjectLink>	        createdObjects;
+		Vector<ResourceAcquisition>		acquiredObjects;
+		Vector<FrameObjectLink>			retiredObjects;
+		Vector<FrameObjectLink>			createdObjects;
 
-		LocallyTrackedObjectList        subNodeTracking;
+		LocallyTrackedObjectList		subNodeTracking;
 	};
 
 
@@ -1059,10 +1031,11 @@ namespace FlexKit
 			auto& workItem = CreateWorkItem(
 				[=, &renderSystem = renderSystem, desc = desc](auto& allocator) mutable
 				{
-					desc.bufferCount    = 1;
-					desc.allocationType = ResourceAllocationType::Placed;
-					desc.placed.heap    = heap;
-					desc.placed.offset  = offset;
+					desc.bufferCount			= 1;
+					desc.allocationType			= ResourceAllocationType::Placed;
+					desc.placed.heap			= heap;
+					desc.placed.offset			= offset;
+					desc.placed.initialState	= DASNOACCESS;
 
 					renderSystem.BackResource(resource, desc);
 					renderSystem.SetDebugName(resource, "Deferred Resource");
@@ -1141,7 +1114,7 @@ namespace FlexKit
 				Node				{ IN_Node				},
 				Resources			{ IN_Resources			},
 				RetiredObjects		{ IN_allocator			},
-				Transitions			{ IN_allocator			},
+				barriers			{ IN_allocator			},
 				temporaryObjects	{ IN_allocator			},
 				acquiredResources	{ IN_allocator			}{}
 
@@ -1155,7 +1128,8 @@ namespace FlexKit
 
 		void AddDataDependency(UpdateTask& task);
 
-		FrameResourceHandle AccelerationStructure	(ResourceHandle);
+		FrameResourceHandle AccelerationStructureRead(ResourceHandle);
+		FrameResourceHandle AccelerationStructureWrite(ResourceHandle);
 
 		FrameResourceHandle PixelShaderResource		(ResourceHandle);
 
@@ -1174,19 +1148,19 @@ namespace FlexKit
 		FrameResourceHandle	DepthRead			(ResourceHandle);
 		FrameResourceHandle	DepthTarget			(ResourceHandle);
 
-		FrameResourceHandle	AcquireVirtualResource(const GPUResourceDesc& desc, DeviceResourceState initialState, bool temp = true);
-		FrameResourceHandle	AcquireVirtualResource(PoolAllocatorInterface& allocator, const GPUResourceDesc& desc, DeviceResourceState initialState, bool temp = true);
+		FrameResourceHandle	AcquireVirtualResource(const GPUResourceDesc& desc, DeviceAccessState initialState, bool temp = true);
+		FrameResourceHandle	AcquireVirtualResource(PoolAllocatorInterface& allocator, const GPUResourceDesc& desc, DeviceAccessState initialState, bool temp = true);
 
 		void				ReleaseVirtualResource(FrameResourceHandle handle);
 
 
-		FrameResourceHandle	UnorderedAccess (ResourceHandle, DeviceResourceState state = DeviceResourceState::DRS_UAV);
+		FrameResourceHandle	UnorderedAccess (ResourceHandle, DeviceAccessState state = DeviceAccessState::DASUAV);
 
 		FrameResourceHandle	VertexBuffer	(SOResourceHandle);
 		FrameResourceHandle	StreamOut		(SOResourceHandle);
 
-		FrameResourceHandle ReadTransition	(FrameResourceHandle handle, DeviceResourceState state);
-		FrameResourceHandle WriteTransition	(FrameResourceHandle handle, DeviceResourceState state);
+		FrameResourceHandle ReadTransition	(FrameResourceHandle handle, DeviceAccessState state);
+		FrameResourceHandle WriteTransition	(FrameResourceHandle handle, DeviceAccessState state);
 
 
 		void SetDebugName(FrameResourceHandle handle, const char* debugName)
@@ -1206,8 +1180,10 @@ namespace FlexKit
 	private:
 
 		template<typename TY>
-		FrameResourceHandle AddReadableResource(TY handle, DeviceResourceState state)
+		FrameResourceHandle AddReadableResource(TY handle, DeviceAccessState state, Barrier barrier = {})
 		{
+			FK_ASSERT(barrier.type != BarrierType::Unknown);
+
 			FrameResourceHandle frameResourceHandle = Context.GetFrameObject(handle);
 
 			if (frameResourceHandle == InvalidHandle)
@@ -1220,7 +1196,7 @@ namespace FlexKit
 
 			if (frameObject.State != state)
 			{
-				if (frameObject.State & DRS_WriteFlag)
+				if (frameObject.State & DASWriteFlag)
 					Context.RemoveWriteable(frameResourceHandle);
 
 				frameObject.lastModifier = &Node;
@@ -1228,13 +1204,9 @@ namespace FlexKit
 				FrameObjectLink dependency{ frameResourceHandle, &Node, state };
 				Context.AddReadable(dependency);
 
-				ResourceTransition transition = {
-					frameResourceHandle,
-					frameObject.State,
-					state,
-				};
-
-				Transitions.push_back(transition);
+				barrier.accessBefore	= frameObject.State;
+				barrier.resource		= frameObject.shaderResource;
+				barriers.push_back(barrier);
 
 				frameObject.State = state;
 			}
@@ -1246,8 +1218,10 @@ namespace FlexKit
 
 
 		template<typename TY>
-		FrameResourceHandle AddWriteableResource(TY handle, DeviceResourceState state)
+		FrameResourceHandle AddWriteableResource(TY handle, DeviceAccessState state, Barrier barrier = {})
 		{
+			FK_ASSERT(barrier.type != BarrierType::Unknown);
+
 			FrameResourceHandle frameResourceHandle = Context.GetFrameObject(handle);
 
 			if (frameResourceHandle == InvalidHandle)
@@ -1260,19 +1234,15 @@ namespace FlexKit
 
 			if (frameObject.State != state)
 			{
-				if (frameObject.State & DRS_ReadFlag)
+				if (frameObject.State & DASReadFlag)
 					Context.RemoveReadable(frameResourceHandle);
 
 				FrameObjectLink dependency{ frameResourceHandle, &Node, state };
 				Context.AddWriteable(dependency);
 
-				ResourceTransition transition = {
-					frameResourceHandle,
-					frameObject.State,
-					state,
-				};
-
-				Transitions.push_back(transition);
+				barrier.accessBefore	= frameObject.State;
+				barrier.resource		= frameObject.shaderResource;
+				barriers.push_back(barrier);
 
 				frameObject.State = state;
 			}
@@ -1300,7 +1270,7 @@ namespace FlexKit
 
 		Vector<FrameGraphNode*>			inputNodes;
 
-		Vector<ResourceTransition>		Transitions;
+		Vector<Barrier>					barriers;
 		Vector<FrameObjectLink>			RetiredObjects;
 		Vector<UpdateTask*>&			DataDependencies;
 		Vector<FrameObjectLink>			temporaryObjects;

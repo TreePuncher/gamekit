@@ -33,7 +33,7 @@ CSGRender::CSGRenderData& CSGRender::Render(
         [&](FlexKit::FrameGraphNodeBuilder& builder, CSGRenderData& data)
         {
             builder.AddDataDependency(updateGeometryTask);
-            builder.WriteTransition(renderTarget, FlexKit::DRS_RenderTarget);
+            builder.WriteTransition(renderTarget, FlexKit::DASRenderTarget);
         },
         [&](CSGRenderData& data, FlexKit::ResourceHandler& resourceStates, FlexKit::Context& ctx, FlexKit::iAllocator& threadLocal)
         {

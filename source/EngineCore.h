@@ -128,7 +128,7 @@ namespace FlexKit
 		~EngineCore();
 
 
-		bool Initiate(EngineMemory* Memory, const bool debugmode = false);
+		bool Initiate(EngineMemory* Memory, const bool debugmode = false, const bool gpuValidation = false, const bool syncQueues = false);
 		void Release();
 
 		EngineCore				(const EngineCore&) = delete;
