@@ -160,7 +160,7 @@ namespace FlexKit
 					ConstantBufferDataSet	cameraConstants	{ GetCameraConstants(camera), CBuffer };
 					ConstantBufferDataSet	entityConstants	{ passConsants, CBuffer };
 
-					const auto rt	= frameResources.GetRenderTarget(pass.renderTarget);
+					const auto rt	= frameResources.GetResource(pass.renderTarget);
 					static auto PSO = frameResources.GetPipelineState(Wireframe);
 					ctx.SetRootSignature(frameResources.renderSystem().Library.RS6CBVs4SRVs);
 					ctx.SetScissorAndViewports({ rt });

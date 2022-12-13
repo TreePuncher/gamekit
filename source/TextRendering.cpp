@@ -132,7 +132,7 @@ namespace FlexKit
 			size_t					VertexCount;
 			size_t					VertexOffset;
 
-            uint2                   WH;
+			uint2                   WH;
 		};
 
 		frameGraph.AddNode<DrawSpriteText>(
@@ -151,9 +151,9 @@ namespace FlexKit
 				Data.VertexBuffer	= Buffer;
 				Data.VertexCount	= StrLen;
 				Data.VertexOffset	= GetCurrentVBufferOffset<TextEntry>(Buffer, frameGraph.Resources);
-                Data.WH             = frameGraph.GetRenderSystem().GetTextureWH(renderTarget);
+				Data.WH             = frameGraph.GetRenderSystem().GetTextureWH(renderTarget);
 
-                const float XBegin	= Formatting.StartingPOS.x;
+				const float XBegin	= Formatting.StartingPOS.x;
 				const float YBegin	= Formatting.StartingPOS.y;
 
 				float CurrentX	= Formatting.CurrentX;
@@ -218,7 +218,7 @@ namespace FlexKit
 						
 					Text.push_back(Character);
 					YAdvance  = Max(YAdvance, GlyphArea.y);
-                    CurrentX += XAdvance * Formatting.Scale.x;
+					CurrentX += XAdvance * Formatting.Scale.x;
 					itr_2++;
 				}
 
@@ -238,11 +238,11 @@ namespace FlexKit
 			},
 			[spriteSheet = Font.Texture](DrawSpriteText& data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
-                DescriptorHeap descHeap;
-                descHeap.Init(
-                    ctx,
-                    resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
-                    &allocator);
+				DescriptorHeap descHeap;
+				descHeap.Init(
+					ctx,
+					resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
+					&allocator);
 
 				descHeap.SetSRV(ctx, 0, spriteSheet);
 				descHeap.NullFill(ctx);
@@ -250,7 +250,7 @@ namespace FlexKit
 				ctx.SetRootSignature				(resources.renderSystem().Library.RS6CBVs4SRVs);
 				ctx.SetPipelineState				(resources.GetPipelineState(DRAW_SPRITE_TEXT_PSO));
 
-				ctx.SetScissorAndViewports			({ resources.GetRenderTarget(data.renderTarget) });
+				ctx.SetScissorAndViewports			({ resources.GetResource(data.renderTarget) });
 				ctx.SetRenderTargets				({ resources.GetResource(data.renderTarget) }, false);
 
 				ctx.SetGraphicsDescriptorTable		(0, descHeap);
