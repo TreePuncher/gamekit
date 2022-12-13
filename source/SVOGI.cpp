@@ -449,12 +449,12 @@ namespace FlexKit
 				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 
 				ctx.SetScissorAndViewports({
-						resources.GetRenderTarget(data.renderTarget),
+						resources.GetResource(data.renderTarget),
 					});
 
 				ctx.SetRenderTargets(
 					{
-						resources.GetRenderTarget(data.renderTarget),
+						resources.GetResource(data.renderTarget),
 					},
 					false,
 					resources.GetResource(data.depthTarget));

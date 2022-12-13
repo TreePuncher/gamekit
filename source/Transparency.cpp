@@ -187,8 +187,8 @@ namespace FlexKit
 				TriMesh*		triMesh			= nullptr;
 				MaterialHandle	prevMaterial	= InvalidHandle;
 
-				ctx.ClearRenderTarget(resources.GetRenderTarget(data.accumalatorObject));
-				ctx.ClearRenderTarget(resources.GetRenderTarget(data.counterObject), float4{ 1, 1, 1, 1 });
+				ctx.ClearRenderTarget(resources.GetResource(data.accumalatorObject));
+				ctx.ClearRenderTarget(resources.GetResource(data.counterObject), float4{ 1, 1, 1, 1 });
 
 				auto& passes	= data.PVS.GetData().passes;
 				const PVS* pvs	= nullptr;
@@ -224,17 +224,17 @@ namespace FlexKit
 				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 
 				ctx.SetScissorAndViewports({
-						resources.GetRenderTarget(data.accumalatorObject),
-						resources.GetRenderTarget(data.counterObject),
+						resources.GetResource(data.accumalatorObject),
+						resources.GetResource(data.counterObject),
 					});
 
 				ctx.SetRenderTargets(
 					{
-						resources.GetRenderTarget(data.accumalatorObject),
-						resources.GetRenderTarget(data.counterObject),
+						resources.GetResource(data.accumalatorObject),
+						resources.GetResource(data.counterObject),
 					},
 					true,
-					resources.GetRenderTarget(data.depthTarget)
+					resources.GetResource(data.depthTarget)
 				);
 
 				for (auto& draw : *pvs)
@@ -345,12 +345,10 @@ namespace FlexKit
 				ctx.SetRootSignature(rootSig);
 				ctx.SetGraphicsDescriptorTable(4, descHeap);
 
-				ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.renderTargetObject), });
+				ctx.SetScissorAndViewports({ resources.GetResource(data.renderTargetObject), });
 
 				ctx.SetRenderTargets(
-					{
-						resources.GetRenderTarget(data.renderTargetObject),
-					},
+					{	resources.GetResource(data.renderTargetObject), },
 					false);
 
 				ctx.Draw(6);

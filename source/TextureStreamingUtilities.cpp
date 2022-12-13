@@ -486,16 +486,16 @@ namespace FlexKit
 
 
 				ctx.SetPrimitiveTopology(EIT_TRIANGLELIST);
-				ctx.ClearDepthBuffer(resources.GetRenderTarget(data.feedbackDepth), 1.0f);
+				ctx.ClearDepthBuffer(resources.GetResource(data.feedbackDepth), 1.0f);
 
-				ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.feedbackDepth) });
-				ctx.SetRenderTargets({}, true, resources.GetRenderTarget(data.feedbackDepth));
+				ctx.SetScissorAndViewports({ resources.GetResource(data.feedbackDepth) });
+				ctx.SetRenderTargets({}, true, resources.GetResource(data.feedbackDepth));
 
-				ctx.DiscardResource(resources.Transition(data.feedbackBlockOffsets,	DASUAV, ctx));
-				ctx.DiscardResource(resources.Transition(data.feedbackBlockSizes,	DASUAV, ctx));
-				ctx.DiscardResource(resources.Transition(data.feedbackCounters,		DASUAV, ctx));
-				ctx.DiscardResource(resources.Transition(data.feedbackBuffers[0],	DASUAV, ctx));
-				ctx.DiscardResource(resources.Transition(data.feedbackBuffers[1],	DASUAV, ctx));
+				ctx.DiscardResource(resources.UAV(data.feedbackBlockOffsets,	ctx));
+				ctx.DiscardResource(resources.UAV(data.feedbackBlockSizes,		ctx));
+				ctx.DiscardResource(resources.UAV(data.feedbackCounters,		ctx));
+				ctx.DiscardResource(resources.UAV(data.feedbackBuffers[0],		ctx));
+				ctx.DiscardResource(resources.UAV(data.feedbackBuffers[1],		ctx));
 
 				struct alignas(512) constantBufferLayout
 				{
@@ -560,8 +560,8 @@ namespace FlexKit
 				uavHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 1, &allocator);
 				uavHeap.SetUAVStructured(
 					ctx, 0,
-					resources.Transition(data.feedbackBuffers[0], DASUAV, ctx),
-					resources.Transition(data.feedbackCounters, DASUAV, ctx),
+					resources.UAV(data.feedbackBuffers[0], ctx),
+					resources.UAV(data.feedbackCounters, ctx),
 					sizeof(uint64_t), 0);
 
 				ctx.SetGraphicsDescriptorTable(5, uavHeap);
@@ -700,9 +700,9 @@ namespace FlexKit
 
 					DescriptorHeap uavCompressHeap;
 					uavCompressHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 3, &allocator);
-					uavCompressHeap.SetUAVBuffer	(ctx, 0, resources.Transition(data.feedbackCounters, DASUAV, ctx));
+					uavCompressHeap.SetUAVBuffer	(ctx, 0, resources.UAV(data.feedbackCounters, ctx));
 					uavCompressHeap.SetUAVStructured(ctx, 1, resources.GetResource(Source), sizeof(uint64_t));
-					uavCompressHeap.SetUAVBuffer	(ctx, 2, resources.Transition(data.feedbackBlockSizes, DASUAV, ctx));
+					uavCompressHeap.SetUAVBuffer	(ctx, 2, resources.UAV(data.feedbackBlockSizes, ctx));
 
 					const uint32_t blockCount = (MEGABYTE * 4) / (1024 * sizeof(uint64_t));
 
@@ -722,11 +722,11 @@ namespace FlexKit
 					// Prefix Sum
 					DescriptorHeap srvPreFixSumHeap;
 					srvPreFixSumHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), 1, &allocator);
-					srvPreFixSumHeap.SetStructuredResource(ctx, 0, resources.Transition(data.feedbackBlockSizes, DASNonPixelShaderResource, ctx), sizeof(uint32_t));
+					srvPreFixSumHeap.SetStructuredResource(ctx, 0, resources.NonPixelShaderResource(data.feedbackBlockSizes, ctx), sizeof(uint32_t));
 
 					DescriptorHeap uavPreFixSumHeap;
 					uavPreFixSumHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 1, &allocator);
-					uavPreFixSumHeap.SetUAVStructured(ctx, 0, resources.Transition(data.feedbackBlockOffsets, DASUAV, ctx), sizeof(uint32_t));
+					uavPreFixSumHeap.SetUAVStructured(ctx, 0, resources.UAV(data.feedbackBlockOffsets, ctx), sizeof(uint32_t));
 
 					ctx.SetComputeDescriptorTable(4, srvPreFixSumHeap);
 					ctx.SetComputeDescriptorTable(5, uavPreFixSumHeap);
@@ -738,14 +738,14 @@ namespace FlexKit
 					//  Merge partial blocks
 					DescriptorHeap srvMergeHeap;
 					srvMergeHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), 3, &allocator);
-					srvMergeHeap.SetStructuredResource(ctx, 0, resources.Transition(Source,						DASNonPixelShaderResource, ctx), sizeof(uint64_t));
-					srvMergeHeap.SetStructuredResource(ctx, 1, resources.Transition(data.feedbackBlockSizes,	DASNonPixelShaderResource, ctx), sizeof(uint32_t));
-					srvMergeHeap.SetStructuredResource(ctx, 2, resources.Transition(data.feedbackBlockOffsets,	DASNonPixelShaderResource, ctx), sizeof(uint32_t));
+					srvMergeHeap.SetStructuredResource(ctx, 0, resources.NonPixelShaderResource(Source,						ctx), sizeof(uint64_t));
+					srvMergeHeap.SetStructuredResource(ctx, 1, resources.NonPixelShaderResource(data.feedbackBlockSizes,	ctx), sizeof(uint32_t));
+					srvMergeHeap.SetStructuredResource(ctx, 2, resources.NonPixelShaderResource(data.feedbackBlockOffsets,	ctx), sizeof(uint32_t));
 
 					DescriptorHeap uavMergeHeap;
 					uavMergeHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 2, &allocator);
-					uavMergeHeap.SetUAVStructured(ctx, 0, resources.Transition(Destination,			DASUAV, ctx), sizeof(uint64_t));
-					uavMergeHeap.SetUAVBuffer(ctx, 1, resources.Transition(data.feedbackCounters,	DASUAV, ctx), sizeof(uint32_t));
+					uavMergeHeap.SetUAVStructured(ctx, 0, resources.UAV(Destination, ctx), sizeof(uint64_t));
+					uavMergeHeap.SetUAVBuffer(ctx, 1, resources.UAV(data.feedbackCounters,	ctx), sizeof(uint32_t));
 
 					ctx.SetComputeDescriptorTable(4, srvMergeHeap);
 					ctx.SetComputeDescriptorTable(5, uavMergeHeap);
@@ -768,8 +768,8 @@ namespace FlexKit
 
 				// Write out
 				ctx.CopyBufferRegion(
-					{   resources.GetDeviceResource(resources.Transition(data.feedbackCounters,					DASCopySrc, ctx)) ,
-						resources.GetDeviceResource(resources.Transition(data.feedbackBuffers[passCount % 2],	DASCopySrc, ctx)) },
+					{   resources.GetDeviceResource(resources.CopySrc(data.feedbackCounters, ctx)) ,
+						resources.GetDeviceResource(resources.CopySrc(data.feedbackBuffers[passCount % 2],	ctx)) },
 					{ 0, 0 },
 					{   resources.GetDeviceResource(data.readbackBuffer),
 						resources.GetDeviceResource(data.readbackBuffer) },
@@ -1088,6 +1088,8 @@ namespace FlexKit
 				}),
 			std::end(allocatedResourceList));
 
+		DebugBreak();
+		/*
 		for (const auto& block : allocatedResourceList)
 		{
 			const auto resource = block.resource;
@@ -1096,7 +1098,8 @@ namespace FlexKit
 				continue;
 
 			const auto deviceResource   = renderSystem.GetDeviceResource(block.resource);
-			const auto resourceState    = renderSystem.GetObjectState(block.resource);
+
+			//const auto resourceState    = renderSystem.GetObjectState(block.resource);
 
 			if (resourceState != DeviceAccessState::DASCommon)
 			{
@@ -1289,6 +1292,7 @@ namespace FlexKit
 		renderSystem.UpdateTileMappings(updatedTextures.begin(), updatedTextures.end(), &threadLocalAllocator);
 		renderSystem.SubmitUploadQueues(SYNC_Graphics, &ctxHandle, 1, sync);
 		renderSystem._InsertCopyBarriers(barriers);
+		*/
 	}
 
 

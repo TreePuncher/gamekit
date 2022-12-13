@@ -637,7 +637,7 @@ namespace FlexKit
 							for (const auto target : shadowMaps) {
 								DebugBreak();
 								//ctx.AddResourceBarrier(target, DASDEPTHBUFFERWRITE, DASPixelShaderResource);
-								ctx.renderSystem->SetObjectAccessState(target, DASPixelShaderResource);
+								//ctx.renderSystem->SetObjectAccessState(target, DASPixelShaderResource);
 							}
 						}
 						ctx.EndEvent_DEBUG();

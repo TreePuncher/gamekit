@@ -24,7 +24,7 @@
 extern "C" __declspec(dllexport) DWORD  NvOptimusEnablement = 1;
 extern "C" __declspec(dllexport) int    AmdPowerXpressRequestHighPerformance = 1;
 
-extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 608; }
+extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 706; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath      = ".\\D3D12\\"; }
 
 namespace FlexKit
@@ -1195,7 +1195,7 @@ namespace FlexKit
 				RenderSystem*	renderSystem_IN,
 				iAllocator*		allocator) :
 			CurrentRootSignature	{ nullptr			},
-			PendingBarriers			{ },
+			pendingBarriers			{ },
 			renderSystem			{ renderSystem_IN	},
 			Memory					{ allocator			},
 			RenderTargetCount		{ 0					},
@@ -1244,8 +1244,10 @@ namespace FlexKit
 		HR = renderSystem->pDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator));												FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
 		HR = renderSystem->pDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator, nullptr, IID_PPV_ARGS(&DeviceContext));	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
 
+#if USING(DEBUGGRAPHICS)
 		DeviceContext->QueryInterface(IID_PPV_ARGS(&debugCommandList));
-		
+#endif
+
 		SETDEBUGNAME(DeviceContext, "GraphicsContext");
 		SETDEBUGNAME(DeviceContext, "GraphicsContextAllocator");
 
@@ -1281,7 +1283,10 @@ namespace FlexKit
 		CurrentRootSignature	= RHS.CurrentRootSignature;
 		CurrentPipelineState	= RHS.CurrentPipelineState;
 		renderSystem			= RHS.renderSystem;
+
+#if USING(DEBUGGRAPHICS)
 		debugCommandList		= RHS.debugCommandList;
+#endif
 
 		RTV_CPU = RHS.RTV_CPU;
 
@@ -1300,7 +1305,7 @@ namespace FlexKit
 		Viewports				= RHS.Viewports;
 		DesciptorHeaps			= RHS.DesciptorHeaps;
 		VBViews					= RHS.VBViews;
-		PendingBarriers			= RHS.PendingBarriers;
+		pendingBarriers			= RHS.pendingBarriers;
 		Memory					= RHS.Memory;
 		commandAllocator		= RHS.commandAllocator;
 
@@ -1308,7 +1313,10 @@ namespace FlexKit
 		RHS.commandAllocator		= nullptr;
 		RHS.DeviceContext			= nullptr;
 		RHS.CurrentRootSignature	= nullptr;
+
+#if USING(DEBUGGRAPHICS)
 		RHS.debugCommandList		= nullptr;
+#endif
 
 		RHS.RenderTargetCount		= 0;
 		RHS.DepthStencilEnabled		= false;
@@ -1317,7 +1325,7 @@ namespace FlexKit
 		RHS.Viewports.clear();
 		RHS.DesciptorHeaps.clear();
 		RHS.VBViews.clear();
-		RHS.PendingBarriers.clear();
+		RHS.pendingBarriers.clear();
 
 		RHS.RTV_CPU = { 0 };
 
@@ -1346,7 +1354,10 @@ namespace FlexKit
 		CurrentRootSignature	= RHS.CurrentRootSignature;
 		CurrentPipelineState	= RHS.CurrentPipelineState;
 		renderSystem			= RHS.renderSystem;
+
+#if USING(DEBUGGRAPHICS)
 		debugCommandList		= RHS.debugCommandList;
+#endif
 
 		RTV_CPU = RHS.RTV_CPU;
 
@@ -1365,7 +1376,7 @@ namespace FlexKit
 		Viewports				= RHS.Viewports;
 		DesciptorHeaps			= RHS.DesciptorHeaps;
 		VBViews					= RHS.VBViews;
-		PendingBarriers			= RHS.PendingBarriers;
+		pendingBarriers			= RHS.pendingBarriers;
 		Memory					= RHS.Memory;
 		commandAllocator		= RHS.commandAllocator;
 
@@ -1373,7 +1384,10 @@ namespace FlexKit
 		RHS.commandAllocator		= nullptr;
 		RHS.DeviceContext			= nullptr;
 		RHS.CurrentRootSignature	= nullptr;
+
+#if USING(DEBUGGRAPHICS)
 		RHS.debugCommandList		= nullptr;
+#endif
 
 		RHS.RenderTargetCount		= 0;
 		RHS.DepthStencilEnabled		= false;
@@ -1382,7 +1396,7 @@ namespace FlexKit
 		RHS.Viewports.clear();
 		RHS.DesciptorHeaps.clear();
 		RHS.VBViews.clear();
-		RHS.PendingBarriers.clear();
+		RHS.pendingBarriers.clear();
 
 		RHS.RTV_CPU = { 0 };
 
@@ -1429,8 +1443,10 @@ namespace FlexKit
 		if(commandAllocator)
 			commandAllocator->Release();
 
+#if USING(DEBUGGRAPHICS)
 		if (debugCommandList)
 			debugCommandList->Release();
+#endif
 
 		if(DeviceContext)
 			DeviceContext->Release();
@@ -1442,8 +1458,11 @@ namespace FlexKit
 		descHeapSRVLocal     = nullptr;
 		commandAllocator     = nullptr;
 		DeviceContext        = nullptr;
-		debugCommandList	 = nullptr;
 		CurrentPipelineState = nullptr;
+
+#if USING(DEBUGGRAPHICS)
+		debugCommandList	 = nullptr;
+#endif
 	}
 
 
@@ -1547,29 +1566,30 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::AddUAVBarrier(ResourceHandle handle, uint32_t subresource)
+	void Context::AddUAVBarrier(ResourceHandle resource, uint32_t subresource)
 	{
-		DebugBreak();
+		const auto dimension = renderSystem->GetTextureDimension(resource);
+		Barrier barrier;
+		barrier.resource		= resource;
+		barrier.accessBefore	= DASUAV;
+		barrier.accessAfter		= DASUAV;
+		barrier.src				= DeviceSyncPoint::Sync_Compute;
+		barrier.dst				= DeviceSyncPoint::Sync_Compute;
 
-		/*
-		auto res = find(PendingBarriers,
-			[&](Barrier& rhs) -> bool
-			{
-				return
-					rhs.Type == Barrier::Type::UAV &&
-					rhs.resourceHandle == handle;
-			});
-
-		if (std::end(PendingBarriers) == res)
+		switch (dimension)
 		{
-			Barrier barrier;
-			barrier.Type            = Barrier::Type::UAV;
-			barrier.resourceHandle  = handle;
-			barrier.subResource     = subresource;
-
-			PendingBarriers.push_back(barrier);
+		case TextureDimension::Buffer:
+			barrier.type = BarrierType::Buffer;
+			break;
+		case TextureDimension::Texture1D:
+		case TextureDimension::Texture2D:
+		case TextureDimension::Texture3D:
+		case TextureDimension::Texture2DArray:
+		case TextureDimension::TextureCubeMap:
+			DebugBreak();
 		}
-		*/
+
+		pendingBarriers.push_back(barrier);
 	}
 
 
@@ -1627,60 +1647,85 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	void Context::AddGlobalBarrier()
+	void Context::AddGlobalBarrier(ResourceHandle resource, DeviceAccessState accessBefore, DeviceAccessState accessAfter, DeviceSyncPoint syncBefore, DeviceSyncPoint syncAfter)
 	{
-		DebugBreak();
+		Barrier barrier;
+		barrier.accessBefore	= accessBefore;
+		barrier.accessAfter		= accessAfter;
+		barrier.src				= syncBefore;
+		barrier.dst				= syncAfter;
+		barrier.resource		= resource;
+		barrier.type			= BarrierType::Global;
+
+		auto res = find(pendingBarriers, [&](const auto& i) { return (i.resource == resource); });
+
+		if (res == std::end(pendingBarriers))
+			pendingBarriers.push_back(barrier);
+		else
+			(*res) = barrier;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void Context::AddTextureBarrier(ResourceHandle Handle,	DeviceAccessState state, uint32_t subResource)
+	void Context::AddTextureBarrier(ResourceHandle resource, DeviceAccessState accessBefore, DeviceAccessState accessAfter, DeviceLayout layoutBefore, DeviceLayout layoutAfter, DeviceSyncPoint syncBefore, DeviceSyncPoint syncAfter, BarrierSubResourceRange range)
 	{
-		DebugBreak();
+		auto res = find(pendingBarriers,
+			[&](Barrier& rhs) -> bool { return (rhs.resource == resource); });
 
-		/*
-		auto res = find(PendingBarriers, 
-			[&](Barrier& rhs) -> bool
-			{
-				switch (rhs.Type)
-				{
-				case Barrier::Type::Generic:
-					return rhs.resource_ptr == renderSystem->GetDeviceResource(resource);
-				case Barrier::Type::Resource:
-					return rhs.resourceHandle == resource;
-				default:
-					return false;
-				}
-			});
+		if (res != pendingBarriers.end())
+		{
+			DebugBreak();
 
-		if (res != PendingBarriers.end()) {
-			if (res->OldState == State)
-				PendingBarriers.remove_unstable(res);
-			else
-				res->NewState = State;
+			res->accessAfter			= accessAfter;
+			res->texture.layoutAfter	= layoutAfter;
 		}
 		else
 		{
-			Barrier NewBarrier;
-			NewBarrier.OldState			= Before;
-			NewBarrier.NewState			= State;
-			NewBarrier.Type				= Barrier::Type::Texture;
-			NewBarrier.resourceHandle	= resource;
+			Barrier barrier;
+			barrier.accessBefore	= accessBefore;
+			barrier.accessAfter		= accessAfter;
+			barrier.src				= syncBefore;
+			barrier.dst				= syncAfter;
+			barrier.resource		= resource;
+			barrier.type = BarrierType::Texture;
 
-			PendingBarriers.push_back(NewBarrier);
+			barrier.texture.layoutBefore	= layoutBefore;
+			barrier.texture.layoutAfter		= layoutAfter;
+			barrier.texture.flags			= 0;
+
+			pendingBarriers.push_back(barrier);
 		}
-		*/
 	}
 
 
 	/************************************************************************************************/
 
 
-	void Context::AddBufferBarrier()
+	void Context::AddBufferBarrier(ResourceHandle resource, DeviceAccessState accessBefore, DeviceAccessState accessAfter, DeviceSyncPoint syncBefore, DeviceSyncPoint syncAfter)
 	{
-		DebugBreak();
+		auto res = find(pendingBarriers,
+			[&](Barrier& rhs) -> bool { return (rhs.resource == resource); });
+
+		if (res != pendingBarriers.end())
+		{
+			DebugBreak();
+
+			res->accessAfter		= accessAfter;
+		}
+		else
+		{
+			Barrier barrier;
+			barrier.accessBefore	= accessBefore;
+			barrier.accessAfter		= accessAfter;
+			barrier.src				= syncBefore;
+			barrier.dst				= syncAfter;
+			barrier.resource		= resource;
+			barrier.type			= BarrierType::Buffer;
+
+			pendingBarriers.push_back(barrier);
+		}
 	}
 
 
@@ -1690,7 +1735,7 @@ namespace FlexKit
 	void Context::AddBarriers(std::span<const Barrier> barriers)
 	{
 		for(auto& barrier : barriers)
-			PendingBarriers.push_back(barrier);
+			pendingBarriers.push_back(barrier);
 	}
 
 
@@ -2301,7 +2346,7 @@ namespace FlexKit
 		if (query == InvalidHandle)
 			return;
 
-		auto resource	= renderSystem->Queries.GetAsset(query);
+		auto resource	= renderSystem->Queries.GetDeviceObject(query);
 		auto queryType	= renderSystem->Queries.GetType(query);
 
 		DeviceContext->BeginQuery(resource, queryType, (UINT)idx);
@@ -2313,7 +2358,7 @@ namespace FlexKit
 		if (query == InvalidHandle)
 			return;
 
-		auto resource	= renderSystem->Queries.GetAsset(query);
+		auto resource	= renderSystem->Queries.GetDeviceObject(query);
 		auto queryType	= renderSystem->Queries.GetType(query);
 
 		DeviceContext->EndQuery(resource, queryType, (UINT)idx);
@@ -2325,7 +2370,7 @@ namespace FlexKit
 		if (query == InvalidHandle)
 			return;
 
-		auto resource   = renderSystem->Queries.GetAsset(query);
+		auto resource   = renderSystem->Queries.GetDeviceObject(query);
 		auto queryType  = renderSystem->Queries.GetType(query);
 
 		DeviceContext->EndQuery(resource, queryType, (UINT)idx);
@@ -2969,7 +3014,7 @@ namespace FlexKit
 
 		auto res			= renderSystem->GetDeviceResource(destination);
 		auto type			= renderSystem->Queries.GetType(query);
-		auto queryResource	= renderSystem->Queries.GetAsset(query);
+		auto queryResource	= renderSystem->Queries.GetDeviceObject(query);
 
 		UpdateResourceStates();
 
@@ -2986,7 +3031,7 @@ namespace FlexKit
 			return;
 
 		auto type			= renderSystem->Queries.GetType(query);
-		auto queryResource	= renderSystem->Queries.GetAsset(query);
+		auto queryResource	= renderSystem->Queries.GetDeviceObject(query);
 
 		UpdateResourceStates();
 
@@ -3149,14 +3194,13 @@ namespace FlexKit
 
 	void Context::Clear()
 	{
-		PendingBarriers.clear();
+		pendingBarriers.clear();
 		RenderTargets.clear();
 		Viewports.clear();
 		DesciptorHeaps.clear();
 		VBViews.clear();
 
 		TrackedSOBuffers.clear();
-		PendingBarriers.clear();
 
 		CurrentPipelineState = nullptr;
 
@@ -3225,7 +3269,7 @@ namespace FlexKit
 		_ResetSRV();
 
 		TrackedSOBuffers.clear();
-		PendingBarriers.clear();
+		pendingBarriers.clear();
 		queuedBarriers.clear();
 		renderTargetViews.clear();
 		depthStencilViews.clear();
@@ -3341,32 +3385,51 @@ namespace FlexKit
 
 	void Context::UpdateResourceStates()
 	{
-		if (!PendingBarriers.size())
+		if (!pendingBarriers.size())
 			return;
 
 		static_vector<D3D12_GLOBAL_BARRIER, 32>		globalBarriers;
 		static_vector<D3D12_TEXTURE_BARRIER, 32>	textureBarriers;
 		static_vector<D3D12_BUFFER_BARRIER, 32>		bufferBarriers;
 
-		for (const Barrier& barrier : PendingBarriers)
+		for (const Barrier& barrier : pendingBarriers)
 		{
 			switch(barrier.type)
 			{
 			case BarrierType::Global:
 			{
+				D3D12_GLOBAL_BARRIER globalBarrier;
+				globalBarrier.AccessBefore	= DAS2AccessState(barrier.accessBefore);
+				globalBarrier.AccessAfter	= DAS2AccessState(barrier.accessAfter);
+				globalBarrier.SyncBefore	= SyncPoint2DX(barrier.src);
+				globalBarrier.SyncAfter		= SyncPoint2DX(barrier.dst);
+
+				globalBarriers.push_back(globalBarrier);
 			}	break;
 			case BarrierType::Buffer:
 			{
+				D3D12_BUFFER_BARRIER bufferBarrier;
+				bufferBarrier.pResource		= renderSystem->GetDeviceResource(barrier.resource);
+				bufferBarrier.AccessBefore	= DAS2AccessState(barrier.accessBefore);
+				bufferBarrier.AccessAfter	= DAS2AccessState(barrier.accessAfter);
+				bufferBarrier.SyncBefore	= SyncPoint2DX(barrier.src);
+				bufferBarrier.SyncAfter		= SyncPoint2DX(barrier.dst);
+				bufferBarrier.Offset		= 0;// barrier.buffer.rangeBegin;
+				bufferBarrier.Size			= UINT64_MAX;//barrier.buffer.rangeEnd - barrier.buffer.rangeBegin;
+
+				bufferBarriers.push_back(bufferBarrier);
 			}	break;
 			case BarrierType::Texture:
 			{
 				D3D12_TEXTURE_BARRIER textureBarrier;
 				textureBarrier.AccessBefore		= DAS2AccessState(barrier.accessBefore);
 				textureBarrier.AccessAfter		= DAS2AccessState(barrier.accessAfter);
-				textureBarrier.LayoutBefore		= DeviceBarrierLayout2DX(barrier.texture.layoutBefore);
-				textureBarrier.LayoutAfter		= DeviceBarrierLayout2DX(barrier.texture.layoutAfter);
+				textureBarrier.LayoutBefore		= DeviceLayout2DX(barrier.texture.layoutBefore);
+				textureBarrier.LayoutAfter		= DeviceLayout2DX(barrier.texture.layoutAfter);
 				textureBarrier.Flags			= D3D12_TEXTURE_BARRIER_FLAG_NONE;
 				textureBarrier.pResource		= renderSystem->GetDeviceResource(barrier.resource);
+				textureBarrier.SyncAfter		= SyncPoint2DX(barrier.src);//D3D12_BARRIER_SYNC_ALL;
+				textureBarrier.SyncBefore		= SyncPoint2DX(barrier.dst);
 
 				textureBarrier.Subresources		= D3D12_BARRIER_SUBRESOURCE_RANGE{
 					.IndexOrFirstMipLevel	= 0,
@@ -3385,22 +3448,14 @@ namespace FlexKit
 		}
 
 		static_vector<D3D12_BARRIER_GROUP>		groups;
-		if (globalBarriers.size()) groups.emplace_back(D3D12_BARRIER_GROUP{ .Type = D3D12_BARRIER_TYPE::D3D12_BARRIER_TYPE_GLOBAL, .NumBarriers = (uint32_t)globalBarriers.size(), .pGlobalBarriers = globalBarriers.data()});
-		if (globalBarriers.size()) groups.emplace_back(D3D12_BARRIER_GROUP{ .Type = D3D12_BARRIER_TYPE::D3D12_BARRIER_TYPE_TEXTURE, .NumBarriers = (uint32_t)textureBarriers.size(), .pTextureBarriers = textureBarriers.data() });
-		if (globalBarriers.size()) groups.emplace_back(D3D12_BARRIER_GROUP{ .Type = D3D12_BARRIER_TYPE::D3D12_BARRIER_TYPE_BUFFER, .NumBarriers =  (uint32_t)bufferBarriers.size(), .pBufferBarriers = bufferBarriers.data() });
+		if (globalBarriers.size())	groups.emplace_back(D3D12_BARRIER_GROUP{ .Type = D3D12_BARRIER_TYPE::D3D12_BARRIER_TYPE_GLOBAL, .NumBarriers = (uint32_t)globalBarriers.size(), .pGlobalBarriers = globalBarriers.data()});
+		if (textureBarriers.size())	groups.emplace_back(D3D12_BARRIER_GROUP{ .Type = D3D12_BARRIER_TYPE::D3D12_BARRIER_TYPE_TEXTURE, .NumBarriers = (uint32_t)textureBarriers.size(), .pTextureBarriers = textureBarriers.data() });
+		if (bufferBarriers.size())	groups.emplace_back(D3D12_BARRIER_GROUP{ .Type = D3D12_BARRIER_TYPE::D3D12_BARRIER_TYPE_BUFFER, .NumBarriers =  (uint32_t)bufferBarriers.size(), .pBufferBarriers = bufferBarriers.data() });
 
-		DeviceContext->Barrier(3, groups);
+		if(groups.size())
+			DeviceContext->Barrier(groups.size(), groups);
 
-#if USING(DEBUGGRAPHICS)
-		if (debugCommandList)
-		{
-			//for (const auto& barrier : Barriers)
-			//	if (barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION)
-			//		debugCommandList->AssertResourceState(barrier.Transition.pResource, barrier.Transition.Subresource, barrier.Transition.StateAfter);
-		}
-#endif
-
-		PendingBarriers.clear();
+		pendingBarriers.clear();
 	}
 
 
@@ -4823,6 +4878,8 @@ namespace FlexKit
 
 	void RenderSystem::UploadTexture(ResourceHandle handle, CopyContextHandle queue, byte* buffer, size_t bufferSize)
 	{
+		DebugBreak();
+		/*
 		auto resource	= GetDeviceResource(handle);
 		auto wh			= GetTextureWH(handle);
 		auto formatSize = GetTextureElementSize(handle); FK_ASSERT(formatSize != -1);
@@ -4842,6 +4899,7 @@ namespace FlexKit
 		_UpdateSubResourceByUploadQueue(this, queue, resource, &desc, DASCommon);
 
 		Textures.SetState(handle, DeviceAccessState::DASCommon);
+		*/
 	}
 
 
@@ -4854,13 +4912,11 @@ namespace FlexKit
 		auto format		= GetTextureFormat(handle);
 
 		SubResourceUpload_Desc desc;
-		desc.buffers            = buffers;
-		desc.subResourceCount   = resourceCount;
-		desc.format             = format;
+		desc.buffers			= buffers;
+		desc.subResourceCount	= resourceCount;
+		desc.format				= format;
 
-		_UpdateSubResourceByUploadQueue(this, queue, resource, &desc, DASCommon);
-
-		Textures.SetState(handle, DeviceAccessState::DASCommon);
+		_UpdateSubResourceByUploadQueue(this, queue, resource, &desc);
 	}
 
 
@@ -4872,7 +4928,6 @@ namespace FlexKit
 		// TODO: deal with Push Buffer Offsets
 		return ConstantBuffers.GetDeviceResource(CB)->GetGPUVirtualAddress();
 	}
-
 
 
 	/************************************************************************************************/
@@ -4890,10 +4945,10 @@ namespace FlexKit
 		desc.Triangles.IndexBuffer  = indexBuffer.GetDevicePointer();
 		desc.Triangles.IndexCount   = (UINT)indexBuffer.Size();
 
-		desc.Triangles.VertexFormat                 = DXGI_FORMAT_R32G32B32_FLOAT;
-		desc.Triangles.VertexBuffer.StartAddress    = positionBuffer->GetDevicePointer();
-		desc.Triangles.VertexBuffer.StrideInBytes   = positionBuffer->BufferStride;
-		desc.Triangles.VertexCount                  = (UINT)positionBuffer->Size();
+		desc.Triangles.VertexFormat					= DXGI_FORMAT_R32G32B32_FLOAT;
+		desc.Triangles.VertexBuffer.StartAddress	= positionBuffer->GetDevicePointer();
+		desc.Triangles.VertexBuffer.StrideInBytes	= positionBuffer->BufferStride;
+		desc.Triangles.VertexCount					= (UINT)positionBuffer->Size();
 
 
 		D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs;
@@ -5006,25 +5061,25 @@ namespace FlexKit
 
 		if (desc.PreCreated)
 		{
-			return Textures.AddResource(desc, desc.initialState);
+			return Textures.AddResource(desc, desc.initialLayout);
 		}
 		else
 		{
 			size_t byteSize						= desc.CalculateByteSize();
-			D3D12_RESOURCE_DESC Resource_DESC	= desc.GetD3D12ResourceDesc();
+			D3D12_RESOURCE_DESC1 Resource_DESC	= desc.GetD3D12ResourceDesc1();
 
-			D3D12_HEAP_PROPERTIES HEAP_Props	={};
-			HEAP_Props.CPUPageProperty			= D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-			HEAP_Props.Type						= D3D12_HEAP_TYPE_DEFAULT;
-			HEAP_Props.MemoryPoolPreference		= D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
-			HEAP_Props.CreationNodeMask			= 0;
-			HEAP_Props.VisibleNodeMask			= 0;
+			D3D12_HEAP_PROPERTIES heapProperties	={};
+			heapProperties.CPUPageProperty			= D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			heapProperties.Type						= D3D12_HEAP_TYPE_DEFAULT;
+			heapProperties.MemoryPoolPreference		= D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
+			heapProperties.CreationNodeMask			= 0;
+			heapProperties.VisibleNodeMask			= 0;
 
 			const auto flags	= D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES | (desc.type == ResourceType::UnorderedAccess ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE);
 
-			const D3D12_CLEAR_VALUE* pCV = desc.clearValue ? &desc.clearValue.value() : nullptr;
+			const D3D12_CLEAR_VALUE* clearValue = desc.clearValue ? &desc.clearValue.value() : nullptr;
 			
-			D3D12_RESOURCE_STATES InitialState	= DRS2D3DState(desc.initialState);
+			D3D12_BARRIER_LAYOUT initialLayout = DeviceLayout2DX(desc.initialLayout);
 			ID3D12Resource* NewResource[3]		= { nullptr, nullptr, nullptr };
 
 			FK_ASSERT(desc.bufferCount <= 3);
@@ -5038,34 +5093,45 @@ namespace FlexKit
 				{
 				case ResourceAllocationType::Tiled:
 				{
+					DebugBreak();
+					/*
 					ProfileFunctionLabeled(Tiled);
 
 					Resource_DESC.Layout = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
 					
-					HRESULT HR = pDevice10->CreateReservedResource(
+					HRESULT HR = pDevice10->CreateReservedResource2(
 									&Resource_DESC,
 									InitialState,
 									pCV,
 									IID_PPV_ARGS(&NewResource[itr]));
 
 					CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE VIRTUAL MEMORY FOR TEXTURE"));
+					*/
 				}	break;
 				case ResourceAllocationType::Committed:
 				{
 					ProfileFunctionLabeled(Committed);
 
-					HRESULT HR = pDevice->CreateCommittedResource(
-									&HEAP_Props, 
-									flags,
-									&Resource_DESC, InitialState, pCV, IID_PPV_ARGS(&NewResource[itr]));
+					auto HR = pDevice10->CreateCommittedResource3(
+						&heapProperties,
+						flags,
+						&Resource_DESC,
+						initialLayout,
+						clearValue,
+						nullptr, // protected sessction,
+						0, // castable formats,
+						nullptr,
+						IID_PPV_ARGS(&NewResource[itr]));
 
 					CheckHR(HR, ASSERTONFAIL("FAILED TO COMMIT MEMORY FOR TEXTURE"));
 				}   break;
 				case ResourceAllocationType::Placed:
 				{
+					DebugBreak();
 					ProfileFunctionLabeled(Placed);
 
-					HRESULT HR = pDevice->CreatePlacedResource(
+					/*
+					HRESULT HR = pDevice10->CreatePlacedResource(
 						desc.placed.heap != InvalidHandle ? GetDeviceResource(desc.placed.heap) : desc.placed.customHeap,
 						desc.placed.offset,
 						&Resource_DESC,
@@ -5077,6 +5143,7 @@ namespace FlexKit
 
 					if (FAILED(HR))
 						_OnCrash();
+					*/
 				}   break;
 				}
 				FK_ASSERT(NewResource[itr], "Failed to Create Texture!");
@@ -5088,7 +5155,7 @@ namespace FlexKit
 			filledDesc.resources    = NewResource;
 			filledDesc.byteSize     = byteSize;
 
-			return Textures.AddResource(filledDesc, filledDesc.initialState);
+			return Textures.AddResource(filledDesc, filledDesc.initialLayout);
 		}
 
 		return InvalidHandle;
@@ -5103,7 +5170,7 @@ namespace FlexKit
 		ProfileFunction();
 
 		size_t byteSize						= desc.CalculateByteSize();
-		D3D12_RESOURCE_DESC Resource_DESC	= desc.GetD3D12ResourceDesc();
+		D3D12_RESOURCE_DESC1 Resource_DESC	= desc.GetD3D12ResourceDesc1();
 
 		D3D12_HEAP_PROPERTIES HEAP_Props	= {};
 		HEAP_Props.CPUPageProperty			= D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
@@ -5116,13 +5183,14 @@ namespace FlexKit
 
 		const D3D12_CLEAR_VALUE* pCV = desc.clearValue ? &desc.clearValue.value() : nullptr;
 
-		D3D12_RESOURCE_STATES InitialState = DRS2D3DState(desc.initialState);
+		D3D12_BARRIER_LAYOUT initialLayout = DeviceLayout2DX(desc.initialLayout);
 
 		ID3D12Resource* NewResource[3] = { nullptr, nullptr, nullptr };
 
 		FK_ASSERT(desc.bufferCount <= 3);
 
 		FK_LOG_9("Creating Texture!");
+
 
 		const size_t end = desc.bufferCount;
 		for (size_t itr = 0; itr < end; ++itr)
@@ -5131,6 +5199,9 @@ namespace FlexKit
 			{
 			case ResourceAllocationType::Tiled:
 			{
+				DebugBreak();
+
+				/*
 				ProfileFunctionLabeled(Tiled);
 
 				Resource_DESC.Layout = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
@@ -5142,9 +5213,13 @@ namespace FlexKit
 								IID_PPV_ARGS(&NewResource[itr]));
 
 				CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE VIRTUAL MEMORY FOR TEXTURE"));
+				*/
 			}   break;
 			case ResourceAllocationType::Committed:
 			{
+				DebugBreak();
+
+				/*
 				ProfileFunctionLabeled(Committed);
 
 				HRESULT HR = pDevice->CreateCommittedResource(
@@ -5153,18 +5228,29 @@ namespace FlexKit
 								&Resource_DESC, InitialState, pCV, IID_PPV_ARGS(&NewResource[itr]));
 
 				CheckHR(HR, ASSERTONFAIL("FAILED TO COMMIT MEMORY FOR TEXTURE"));
+				*/
 			}   break;
 			case ResourceAllocationType::Placed:
 			{
 				ProfileFunctionLabeled(Placed);
 
-				HRESULT HR = pDevice->CreatePlacedResource(
+				HRESULT HR = pDevice10->CreatePlacedResource2(
 					desc.placed.heap != InvalidHandle ? GetDeviceResource(desc.placed.heap) : desc.placed.customHeap,
+					desc.placed.offset,
+					&Resource_DESC,
+					initialLayout,
+					pCV,
+					0,
+					nullptr,
+					IID_PPV_ARGS(&NewResource[itr]));
+				/*
+				HRESULT HR = pDevice->CreatePlacedResource(
 					desc.placed.offset,
 					&Resource_DESC,
 					InitialState,
 					pCV,
 					IID_PPV_ARGS(&NewResource[itr]));
+				*/
 
 				CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE PLACED RESOURCE"));
 
@@ -5181,7 +5267,7 @@ namespace FlexKit
 		filledDesc.resources    = NewResource;
 		filledDesc.byteSize     = byteSize;
 
-		Textures.SetResource(handle, filledDesc, filledDesc.initialState);
+		Textures.SetResource(handle, filledDesc, filledDesc.initialLayout);
 	}
 
 
@@ -5270,13 +5356,13 @@ namespace FlexKit
 
 			HR = pDevice->CreateCommittedResource(
 								&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES,
-								&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_STREAM_OUT, nullptr,
+								&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON, nullptr,
 								IID_PPV_ARGS(&Resource));
 			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE STREAMOUT RESOURCE!"));
 
 			HR = pDevice->CreateCommittedResource(
 								&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES,
-								&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_STREAM_OUT, nullptr,
+								&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON, nullptr,
 								IID_PPV_ARGS(&Counter));
 
 			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE STREAMOUT RESOURCE!"));
@@ -5287,7 +5373,7 @@ namespace FlexKit
 			SETDEBUGNAME(Counter, "StreamOutCounter" );
 		}
 
-		return StreamOutTable.AddResource(resources, counters, resourceSize, DeviceAccessState::DASSTREAMOUT);
+		return StreamOutTable.AddResource(resources, counters, resourceSize, DeviceLayout_Common);
 	}
 
 
@@ -5648,45 +5734,45 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::SetObjectAccessState(SOResourceHandle handle, DeviceAccessState state)
+	void RenderSystem::SetObjectLayout(SOResourceHandle handle, DeviceLayout layout)
 	{
-		StreamOutTable.SetResourceState(handle, state);
+		StreamOutTable.SetLayout(handle, layout);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void RenderSystem::SetObjectAccessState(ResourceHandle handle, DeviceAccessState state)
+	void RenderSystem::SetObjectLayout(ResourceHandle handle, DeviceLayout layout)
 	{
-		Textures.SetState(handle, state);
+		Textures.SetLayout(handle, layout);
 	}
 
 
 	/************************************************************************************************/
 
 
-	DeviceAccessState RenderSystem::GetObjectState(const QueryHandle handle) const
+	DeviceLayout RenderSystem::GetObjectLayout(const QueryHandle handle) const
 	{
-		return Queries.GetAssetState(handle);
+		return Queries.GetLayout(handle);
 	}
 
 
 	/************************************************************************************************/
 
 
-	DeviceAccessState RenderSystem::GetObjectState(const SOResourceHandle handle) const
+	DeviceLayout RenderSystem::GetObjectLayout(const SOResourceHandle handle) const
 	{
-		return StreamOutTable.GetAssetState(handle);
+		return StreamOutTable.GetLayout(handle);
 	}
 
 
 	/************************************************************************************************/
 
 
-	DeviceAccessState RenderSystem::GetObjectState(const ResourceHandle handle) const
+	DeviceLayout RenderSystem::GetObjectLayout(const ResourceHandle handle) const
 	{
-		return Textures.GetState(handle);
+		return Textures.GetLayout(handle);
 	}
 
 
@@ -6074,7 +6160,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void _UpdateSubResourceByUploadQueue(RenderSystem* RS, CopyContextHandle uploadHandle, ID3D12Resource* destinationResource, SubResourceUpload_Desc* Desc, DeviceAccessState EndState)
+	FLEXKITAPI void _UpdateSubResourceByUploadQueue(RenderSystem* RS, CopyContextHandle uploadHandle, ID3D12Resource* destinationResource, SubResourceUpload_Desc* Desc)
 	{
 		auto& copyCtx   = RS->_GetCopyContext(uploadHandle);
 
@@ -6095,11 +6181,6 @@ namespace FlexKit
 				Desc->buffers[I].WH,
 				Desc->format);
 		}
-
-		copyCtx.Barrier(
-			destinationResource,
-			DASCopyDest,
-			EndState);
 	}
 
 
@@ -6834,7 +6915,7 @@ namespace FlexKit
 
 		for (size_t itr = 0; itr < 3; ++itr)
 		{
-			newResEntry.resourceState[itr] = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
+			newResEntry.layouts[itr] = DeviceLayout_Common;
 			newResEntry.resourceLocks[itr] = 0;
 			RS->pDevice->CreateQueryHeap(
 				&heapDesc,
@@ -6871,7 +6952,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::Release()
+	void ResourceStateTable::Release()
 	{
 		for (size_t I = 0; I < UserEntries.size(); ++I)
 		{
@@ -6895,7 +6976,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceHandle TextureStateTable::GetFreeHandle()
+	ResourceHandle ResourceStateTable::GetFreeHandle()
 	{
 		std::scoped_lock lock{ m };
 
@@ -6909,7 +6990,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceHandle TextureStateTable::AddResource(const GPUResourceDesc& Desc, const DeviceAccessState InitialState)
+	ResourceHandle ResourceStateTable::AddResource(const GPUResourceDesc& Desc, const DeviceLayout layout)
 	{
 		std::scoped_lock lock{m};
 
@@ -6921,7 +7002,7 @@ namespace FlexKit
 			0,
 			{ nullptr, nullptr, nullptr },
 			{ 0, 0, 0 },
-			{ InitialState, InitialState , InitialState },
+			{ layout, layout, layout },
 			TextureFormat2DXGIFormat(Desc.format),
 			Desc.MipLevels,
 			Desc.WH,
@@ -6972,7 +7053,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::SetResource(ResourceHandle handle, const GPUResourceDesc& Desc, const DeviceAccessState InitialState)
+	void ResourceStateTable::SetResource(ResourceHandle handle, const GPUResourceDesc& Desc, const DeviceLayout layout)
 	{
 		std::scoped_lock lock{ m };
 
@@ -6982,7 +7063,7 @@ namespace FlexKit
 			0,
 			{ nullptr, nullptr, nullptr },
 			{ 0, 0, 0 },
-			{ InitialState, InitialState , InitialState },
+			{ layout, layout , layout },
 			TextureFormat2DXGIFormat(Desc.format),
 			Desc.MipLevels,
 			Desc.WH,
@@ -7031,7 +7112,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::ReleaseTexture(ResourceHandle handle, const int64_t idx)
+	void ResourceStateTable::ReleaseTexture(ResourceHandle handle, const int64_t idx)
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7079,7 +7160,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::_ReleaseTextureForceRelease(ResourceHandle handle)
+	void ResourceStateTable::_ReleaseTextureForceRelease(ResourceHandle handle)
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7109,7 +7190,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Texture2D TextureStateTable::operator[](ResourceHandle handle)
+	Texture2D ResourceStateTable::operator[](ResourceHandle handle)
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7128,21 +7209,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::SetState(ResourceHandle handle, DeviceAccessState State)
+	void ResourceStateTable::SetLayout(ResourceHandle handle, DeviceLayout layout)
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
 		auto UserIdx = Handles[handle];
 		auto ResIdx  = UserEntries[UserIdx].ResourceIdx;
 
-		Resources[ResIdx].SetState(State);
+		Resources[ResIdx].SetLayout(layout);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void TextureStateTable::SetDebug(ResourceHandle handle, const char* string)
+	void ResourceStateTable::SetDebug(ResourceHandle handle, const char* string)
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7154,7 +7235,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::SetBufferedIdx(ResourceHandle handle, uint32_t idx)
+	void ResourceStateTable::SetBufferedIdx(ResourceHandle handle, uint32_t idx)
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7168,7 +7249,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::SetDebugName(ResourceHandle handle, const char* str)
+	void ResourceStateTable::SetDebugName(ResourceHandle handle, const char* str)
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7191,7 +7272,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t TextureStateTable::GetFrameGraphIndex(ResourceHandle handle, size_t FrameID) const
+	size_t ResourceStateTable::GetFrameGraphIndex(ResourceHandle handle, size_t FrameID) const
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7208,7 +7289,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::SetFrameGraphIndex(ResourceHandle handle, size_t FrameID, size_t Index)
+	void ResourceStateTable::SetFrameGraphIndex(ResourceHandle handle, size_t FrameID, size_t Index)
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7221,7 +7302,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DXGI_FORMAT TextureStateTable::GetFormat(ResourceHandle handle) const
+	DXGI_FORMAT ResourceStateTable::GetFormat(ResourceHandle handle) const
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7233,7 +7314,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TextureDimension TextureStateTable::GetDimension(ResourceHandle handle) const
+	TextureDimension ResourceStateTable::GetDimension(ResourceHandle handle) const
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7245,7 +7326,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t TextureStateTable::GetArraySize(ResourceHandle handle) const
+	size_t ResourceStateTable::GetArraySize(ResourceHandle handle) const
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7257,7 +7338,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	uint8_t TextureStateTable::GetMIPCount(ResourceHandle handle) const
+	uint8_t ResourceStateTable::GetMIPCount(ResourceHandle handle) const
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7269,7 +7350,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::SetExtra(ResourceHandle handle, GPUResourceExtra_t extra)
+	void ResourceStateTable::SetExtra(ResourceHandle handle, GPUResourceExtra_t extra)
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7281,7 +7362,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	GPUResourceExtra_t  TextureStateTable::GetExtra(ResourceHandle handle) const
+	GPUResourceExtra_t  ResourceStateTable::GetExtra(ResourceHandle handle) const
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7293,7 +7374,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const char* TextureStateTable::GetDebug(ResourceHandle handle)
+	const char* ResourceStateTable::GetDebug(ResourceHandle handle)
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7305,7 +7386,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	uint2 TextureStateTable::GetWH(ResourceHandle handle) const
+	uint2 ResourceStateTable::GetWH(ResourceHandle handle) const
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7317,7 +7398,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	uint3 TextureStateTable::GetXYZ(ResourceHandle handle) const
+	uint3 ResourceStateTable::GetXYZ(ResourceHandle handle) const
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7332,7 +7413,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::UpdateTileMappings(ResourceHandle handle, const TileMapping* begin, const TileMapping* end)
+	void ResourceStateTable::UpdateTileMappings(ResourceHandle handle, const TileMapping* begin, const TileMapping* end)
 	{
 		if (handle == InvalidHandle)
 			return;
@@ -7379,7 +7460,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::SubmitTileUpdates(ID3D12CommandQueue* queue, RenderSystem& renderSystem, iAllocator* allocator_temp)
+	void ResourceStateTable::SubmitTileUpdates(ID3D12CommandQueue* queue, RenderSystem& renderSystem, iAllocator* allocator_temp)
 	{
 		Vector<D3D12_TILED_RESOURCE_COORDINATE> coordinates { allocator_temp };
 		Vector<D3D12_TILE_REGION_SIZE>          regionSize  { allocator_temp };
@@ -7454,7 +7535,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const TileMapList& TextureStateTable::GetTileMappings(const ResourceHandle handle) const
+	const TileMapList& ResourceStateTable::GetTileMappings(const ResourceHandle handle) const
 	{
 		auto UserIdx = Handles[handle];
 		return UserEntries[UserIdx].tileMappings;
@@ -7464,7 +7545,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TileMapList& TextureStateTable::_GetTileMappings(const ResourceHandle handle)
+	TileMapList& ResourceStateTable::_GetTileMappings(const ResourceHandle handle)
 	{
 		auto UserIdx = Handles[handle];
 		return UserEntries[UserIdx].tileMappings;
@@ -7474,7 +7555,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::MarkRTUsed(ResourceHandle Handle)
+	void ResourceStateTable::MarkRTUsed(ResourceHandle Handle)
 	{
 		auto UserIdx = Handles[Handle];
 		UserEntries[UserIdx].Flags |= TF_INUSE;
@@ -7484,7 +7565,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::LockUntil(size_t FrameID)
+	void ResourceStateTable::LockUntil(size_t FrameID)
 	{
 		for (auto bufferedResource : BufferedResources)
 		{
@@ -7504,7 +7585,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::UpdateLocks(ThreadManager& threads, const int64_t currentIdx)
+	void ResourceStateTable::UpdateLocks(ThreadManager& threads, const int64_t currentIdx)
 	{
 		ProfileFunction();
 
@@ -7520,14 +7601,17 @@ namespace FlexKit
 				freeList.push_back(res.resource);
 		}
 
-		auto& workItem = FlexKit::CreateWorkItem(
-			[freeList = std::move(freeList)](auto& threadLocalAllocator)
-			{
-				for (auto res : freeList)
+		if (freeList.size())
+		{
+			auto& workItem = FlexKit::CreateWorkItem(
+				[freeList = std::move(freeList)](auto& threadLocalAllocator)
+				{
+					for (auto res : freeList)
 					res->Release();
-			}, delayRelease.Allocator);
+				}, delayRelease.Allocator);
 
-		threads.AddBackgroundWork(workItem);
+			threads.AddBackgroundWork(workItem);
+		}
 
 		delayRelease.erase(
 			std::remove_if(
@@ -7535,7 +7619,7 @@ namespace FlexKit
 				delayRelease.end(),
 				[&](auto& res)
 				{
-					return int(res.idx) < currentIdx;
+					return int(res.idx + 3) < currentIdx;
 				}),
 
 		delayRelease.end());
@@ -7545,7 +7629,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::ResourceEntry::Release()
+	void ResourceStateTable::ResourceEntry::Release()
 	{
 		for (auto& R : Resources)
 		{
@@ -7560,20 +7644,20 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DeviceAccessState TextureStateTable::GetState(ResourceHandle Handle) const
+	DeviceLayout ResourceStateTable::GetLayout(ResourceHandle Handle) const
 	{
 		auto    Idx			    = Handles[Handle];
 		auto    ResourceIdx	    = UserEntries[Idx].ResourceIdx;
 		const   auto& resources = Resources[ResourceIdx];
 
-		return resources.States[resources.CurrentResource];
+		return resources.layouts[resources.CurrentResource];
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12Resource* TextureStateTable::GetResource(ResourceHandle Handle, ID3D12Device* device) const
+	ID3D12Resource* ResourceStateTable::GetResource(ResourceHandle Handle, ID3D12Device* device) const
 	{
 		if (Handle >= Handles.size())
 			return nullptr;
@@ -7590,7 +7674,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t TextureStateTable::GetResourceSize(ResourceHandle Handle) const
+	size_t ResourceStateTable::GetResourceSize(ResourceHandle Handle) const
 	{
 		auto  Idx			= Handles[Handle];
 		return UserEntries[Idx].resourceSize;
@@ -7600,7 +7684,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	uint2 TextureStateTable::GetHeapOffset(ResourceHandle Handle, uint subResourceIdx) const
+	uint2 ResourceStateTable::GetHeapOffset(ResourceHandle Handle, uint subResourceIdx) const
 	{
 		auto Idx = Handles[Handle];
 
@@ -7611,7 +7695,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceHandle TextureStateTable::FindResourceHandle(ID3D12Resource* deviceResource) const
+	ResourceHandle ResourceStateTable::FindResourceHandle(ID3D12Resource* deviceResource) const
 	{
 		auto res = std::find_if(
 			Resources.begin(), Resources.end(),
@@ -7649,7 +7733,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::ReplaceResources(ResourceHandle handle, ID3D12Resource** begin, size_t size)
+	void ResourceStateTable::ReplaceResources(ResourceHandle handle, ID3D12Resource** begin, size_t size)
 	{
 		auto  Idx                   = Handles[handle];
 		auto  ResourceIdx           = UserEntries[Idx].ResourceIdx;
@@ -8026,8 +8110,8 @@ namespace FlexKit
 		HRESULT HR;
 		D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapdesc;
 		descriptorHeapdesc.Flags			= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		descriptorHeapdesc.NumDescriptors	= numDescriptors;
-		descriptorHeapdesc.NodeMask			= 0;
+		descriptorHeapdesc.NumDescriptors	= (uint32_t)numDescriptors;
+		descriptorHeapdesc.NodeMask			= 0u;
 		descriptorHeapdesc.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		HR									= pDevice->CreateDescriptorHeap(&descriptorHeapdesc, IID_PPV_ARGS(&heap));
 		FK_ASSERT(HR, "FAILED TO CREATE DESCRIPTOR HEAP");
@@ -8041,7 +8125,7 @@ namespace FlexKit
 
 	ID3D12QueryHeap* RenderSystem::_GetQueryResource(QueryHandle Handle)
 	{
-		return Queries.GetAsset(Handle);
+		return Queries.GetDeviceObject(Handle);
 	}
 
 
@@ -8590,6 +8674,9 @@ namespace FlexKit
 			auto& context = GetCommandList();
 			cls.push_back(context.GetCommandList());
 
+
+			DebugBreak();
+			/*
 			for (auto barrier : PendingBarriers) {
 				if (barrier.type == CopyBarrier::ResourceType::PTR)
 					context._AddBarrier(
@@ -8602,9 +8689,11 @@ namespace FlexKit
 						barrier.beforeState,
 						barrier.afterState);
 
-					SetObjectAccessState(barrier.handle, barrier.afterState);
+					//GetObjectLayout(barrier.handle, barrier.afterState);
 				}
 			}
+			*/
+
 
 			context.FlushBarriers();
 			context.Close(counter);
@@ -9732,7 +9821,10 @@ namespace FlexKit
 	{
 		FK_ASSERT(resourceCount < std::numeric_limits<uint8_t>::max());
 
-		auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer[0].WH, format, (uint8_t)resourceCount));
+		auto texture_desc = GPUResourceDesc::ShaderResource(buffer[0].WH, format, (uint8_t)resourceCount);
+		texture_desc.initialLayout = DeviceLayout_Common;
+
+		auto textureHandle = RS->CreateGPUResource(texture_desc);
 		RS->UploadTexture(textureHandle, handle, buffer, resourceCount);
 		RS->SetDebugName(textureHandle, "MoveTextureBuffersToVRAM");
 
@@ -9748,7 +9840,7 @@ namespace FlexKit
 		FK_ASSERT(MIPCount < std::numeric_limits<uint8_t>::max());
 
 		auto textureDesc			= GPUResourceDesc::ShaderResource(buffer[0].WH, format, (uint8_t)MIPCount, arrayCount);
-		textureDesc.initialState	= DASCopyDest;
+		textureDesc.initialLayout	= DeviceLayout_Common;
 
 		auto textureHandle = RS->CreateGPUResource(textureDesc);
 		RS->UploadTexture(textureHandle, handle, buffer, arrayCount * MIPCount);
@@ -9772,8 +9864,8 @@ namespace FlexKit
 		auto deviceResource = RS->GetDeviceResource(bufferResource);
 		auto ctx = RS->_GetCopyContext(copyCtx);
 
-		if(auto state = RS->GetObjectState(bufferResource); state!= DASCopyDest)
-			ctx.Barrier(deviceResource, state, DASCopyDest);
+		DebugBreak();
+		//ctx.Barrier(deviceResource, state, DASCopyDest);
 
 		ctx.CopyBuffer(deviceResource, 0, upload.resource, upload.offset, upload.uploadSize);
 		ctx.Barrier(deviceResource, DASCopyDest, DASCommon);
@@ -9787,27 +9879,26 @@ namespace FlexKit
 
 	ResourceHandle LoadTexture(TextureBuffer* Buffer, CopyContextHandle handle, RenderSystem* RS, iAllocator* Memout, DeviceFormat format)
 	{
-		GPUResourceDesc GPUResourceDesc = GPUResourceDesc::ShaderResource(Buffer->WH, format);
-		GPUResourceDesc.initial     = Buffer->Buffer;
+		GPUResourceDesc GPUResourceDesc	= GPUResourceDesc::ShaderResource(Buffer->WH, format);
+		GPUResourceDesc.initial			= Buffer->Buffer;
+		GPUResourceDesc.initialLayout	= DeviceLayout_Common;
 
-		size_t elementSize          = GetFormatElementSize(TextureFormat2DXGIFormat(format));
-		size_t ResourceSizes[]      = { Buffer->Size };
+		size_t elementSize			= GetFormatElementSize(TextureFormat2DXGIFormat(format));
+		size_t ResourceSizes[]		= { Buffer->Size };
 
 		auto texture = RS->CreateGPUResource(GPUResourceDesc);
 		SubResourceUpload_Desc desc = {};
-		desc.buffers                         = Buffer;
-		desc.subResourceCount                = 1;
-		desc.subResourceStart                = 0;
-		desc.format                          = format;
+		desc.buffers						= Buffer;
+		desc.subResourceCount				= 1;
+		desc.subResourceStart				= 0;
+		desc.format							= format;
 
 		_UpdateSubResourceByUploadQueue(
 			RS,
 			handle,
 			RS->GetDeviceResource(texture),
-			&desc,
-			DASGenericRead);
+			&desc);
 
-		RS->Textures.SetState(texture, DeviceAccessState::DASGenericRead);
 		RS->SetDebugName(texture, "LOADTEXTURE");
 
 		return texture;

@@ -107,15 +107,17 @@ namespace FlexKit
 
 		FrameResourceHandle		Handle; // For Fast Search
 		FrameObjectResourceType Type;
-		DeviceAccessState		State;
-		VirtualResourceState    virtualState    = VirtualResourceState::NonVirtual;
-		FrameGraphNode*         lastModifier    = nullptr;
-		PoolAllocatorInterface* pool            = nullptr;
-		uint32_t                resourceFlags   = 0;
+		DeviceAccessState		access			= DeviceAccessState::DASCommon;
+		DeviceLayout			layout;
+		TextureDimension		dimensions;
+		VirtualResourceState	virtualState	= VirtualResourceState::NonVirtual;
+		FrameGraphNode*			lastModifier	= nullptr;
+		PoolAllocatorInterface*	pool			= nullptr;
+		uint32_t				resourceFlags	= 0;
 
 		union
 		{
-			ResourceHandle      shaderResource;
+			ResourceHandle		shaderResource;
 			QueryHandle			query;
 			SOResourceHandle	SOBuffer;
 
@@ -125,12 +127,13 @@ namespace FlexKit
 		};
 
 
-		static FrameObject PixelShaderResourceObject(ResourceHandle handle)
+		static FrameObject PixelShaderResourceObject(ResourceHandle handle, TextureDimension dimensions)
 		{
 			FrameObject RenderTarget;
-			RenderTarget.State			= DeviceAccessState::DASPixelShaderResource;
+			RenderTarget.layout			= DeviceLayout::DeviceLayout_ShaderResource;
 			RenderTarget.Type			= OT_RenderTarget;
 			RenderTarget.shaderResource = handle;
+			RenderTarget.dimensions		= dimensions;
 
 			return RenderTarget;
 		}
@@ -139,64 +142,70 @@ namespace FlexKit
 		static FrameObject RenderTargetObject(ResourceHandle handle)
 		{
 			FrameObject RenderTarget;
-			RenderTarget.State		    = DeviceAccessState::DASRenderTarget;
-			RenderTarget.Type		    = OT_RenderTarget;
+			RenderTarget.layout			= DeviceLayout::DeviceLayout_RenderTarget;
+			RenderTarget.Type			= OT_RenderTarget;
 			RenderTarget.shaderResource = handle;
+			RenderTarget.dimensions		= TextureDimension::Texture2D;
 
 			return RenderTarget;
 		}
 
 
-		static FrameObject BackBufferObject(ResourceHandle handle, DeviceAccessState InitialState = DeviceAccessState::DASRenderTarget)
+		static FrameObject BackBufferObject(ResourceHandle handle, DeviceLayout initialLayout = DeviceLayout::DeviceLayout_RenderTarget)
 		{
 			FrameObject RenderTarget;
-			RenderTarget.State			= InitialState;
+			RenderTarget.layout			= initialLayout;
 			RenderTarget.Type			= OT_BackBuffer;
 			RenderTarget.shaderResource = handle;
+			RenderTarget.dimensions		= TextureDimension::Texture2D;
 
 			return RenderTarget;
 		}
 
 
-		static FrameObject DepthBufferObject(ResourceHandle handle, DeviceAccessState InitialState = DeviceAccessState::DASDEPTHBUFFER)
+		static FrameObject DepthBufferObject(ResourceHandle handle, DeviceLayout initialLayout)
 		{
 			FrameObject RenderTarget;
-			RenderTarget.State          = InitialState;
-			RenderTarget.Type           = OT_DepthBuffer;
-			RenderTarget.shaderResource = handle;
+			RenderTarget.layout			= initialLayout;
+			RenderTarget.Type			= OT_DepthBuffer;
+			RenderTarget.shaderResource	= handle;
+			RenderTarget.dimensions		= TextureDimension::Texture2D;
 
 			return RenderTarget;
 		}
 
 
-		static FrameObject TextureObject(ResourceHandle handle, DeviceAccessState InitialState)
+		static FrameObject TextureObject(ResourceHandle handle, DeviceLayout initialLayout, TextureDimension dimensions)
 		{
 			FrameObject shaderResource;
-			shaderResource.State            = InitialState;
-			shaderResource.Type             = OT_Resource;
-			shaderResource.shaderResource   = handle;
+			shaderResource.layout			= initialLayout;
+			shaderResource.Type				= OT_Resource;
+			shaderResource.shaderResource	= handle;
+			shaderResource.dimensions		= dimensions;
 
 			return shaderResource;
 		}
 
 
-		static FrameObject SOBufferObject(SOResourceHandle Handle, DeviceAccessState InitialState = DeviceAccessState::DASCommon)
+		static FrameObject SOBufferObject(SOResourceHandle Handle, DeviceLayout initialLayout = DeviceLayout::DeviceLayout_Common)
 		{
 			FrameObject Streamout;
-			Streamout.State                = InitialState;
-			Streamout.Type                 = OT_StreamOut;
-			Streamout.SOBuffer			   = Handle;
+			Streamout.layout		= initialLayout;
+			Streamout.Type			= OT_StreamOut;
+			Streamout.SOBuffer		= Handle;
+			Streamout.dimensions	= TextureDimension::Texture2D;
 
 			return Streamout;
 		}
 
 
-		static FrameObject QueryObject(QueryHandle handle, DeviceAccessState initialState = DeviceAccessState::DASCommon)
+		static FrameObject QueryObject(QueryHandle handle, DeviceLayout initialLayout = DeviceLayout::DeviceLayout_Common)
 		{
 			FrameObject query;
-			query.State		= initialState;
-			query.Type		= OT_Query;
-			query.query		= handle;
+			query.layout		= initialLayout;
+			query.Type			= OT_Query;
+			query.query			= handle;
+			query.dimensions	= TextureDimension::Texture2D;
 
 			return query;
 		}
@@ -209,9 +218,10 @@ namespace FlexKit
 		static FrameObject VirtualObject()
 		{
 			FrameObject virtualObject;
-			virtualObject.virtualState  = VirtualResourceState::Virtual_Null;
-			virtualObject.State         = DeviceAccessState::DASUNKNOWN;
-			virtualObject.Type		    = OT_Virtual;
+			virtualObject.virtualState		= VirtualResourceState::Virtual_Null;
+			virtualObject.access			= DeviceAccessState::DASNOACCESS;
+			virtualObject.layout			= DeviceLayout::DeviceLayout_Common;
+			virtualObject.Type				= OT_Virtual;
 
 			return virtualObject;
 		}
@@ -224,13 +234,16 @@ namespace FlexKit
 	struct LocallyTrackedResource
 	{
 		FrameResourceHandle resource;
-		DeviceAccessState currentState;
-		DeviceAccessState nodeState;
+		DeviceAccessState	access;
+		DeviceLayout		layout;
+
+		DeviceAccessState	finalAccess;
+		DeviceLayout		finalLayout;
 	};
 
-	typedef Vector<FrameObject>		        PassObjectList;
+	typedef Vector<FrameObject>				PassObjectList;
 	typedef Vector<LocallyTrackedResource>	LocallyTrackedObjectList;
-	typedef Vector<FrameResourceHandle>	    TemporaryPassObjectList;
+	typedef Vector<FrameResourceHandle>		TemporaryPassObjectList;
 
 	class FrameGraph;
 
@@ -242,16 +255,16 @@ namespace FlexKit
 	{
 	public:
 		FrameResources(RenderSystem& IN_renderSystem, iAllocator* IN_allocator) : 
-			Resources		    { IN_allocator		},
-			virtualResources    { IN_allocator      },
-			renderSystem	    { IN_renderSystem	},
-			memoryPools         { IN_allocator      },
-			allocator           { IN_allocator      } {}
+			Resources			{ IN_allocator		},
+			virtualResources	{ IN_allocator		},
+			renderSystem		{ IN_renderSystem	},
+			memoryPools			{ IN_allocator		},
+			allocator			{ IN_allocator		} {}
 
-		PassObjectList			        Resources;
-		TemporaryPassObjectList         virtualResources;
-		Vector<PoolAllocatorInterface*> memoryPools;
-		std::mutex                      m;
+		PassObjectList					Resources;
+		TemporaryPassObjectList			virtualResources;
+		Vector<PoolAllocatorInterface*>	memoryPools;
+		std::mutex						m;
 
 		void AddMemoryPool(PoolAllocatorInterface* heapAllocator)
 		{
@@ -260,7 +273,7 @@ namespace FlexKit
 
 
 		RenderSystem&			renderSystem;
-		iAllocator*             allocator;
+		iAllocator*				allocator;
 
 
 		/************************************************************************************************/
@@ -270,17 +283,17 @@ namespace FlexKit
 		{
 			AddRenderTarget(
 				Handle,
-				renderSystem.GetObjectState(Handle));
+				renderSystem.GetObjectLayout(Handle));
 		}
 
 
 		/************************************************************************************************/
 
 
-		void AddRenderTarget(ResourceHandle Handle, DeviceAccessState InitialState = DeviceAccessState::DASRenderTarget)
+		void AddRenderTarget(ResourceHandle Handle, DeviceLayout layout = DeviceLayout_Common)
 		{
 			Resources.push_back(
-				FrameObject::BackBufferObject(Handle, InitialState));
+				FrameObject::BackBufferObject(Handle, layout));
 
 			Resources.back().Handle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
 		}
@@ -293,14 +306,14 @@ namespace FlexKit
 		{
 			AddDepthBuffer(
 				Handle,
-				renderSystem.GetObjectState(Handle));
+				renderSystem.GetObjectLayout(Handle));
 		}
 
 
 		/************************************************************************************************/
 
 
-		void AddDepthBuffer(ResourceHandle Handle, DeviceAccessState InitialState)
+		void AddDepthBuffer(ResourceHandle Handle, DeviceLayout InitialState)
 		{
 			Resources.push_back(
 				FrameObject::DepthBufferObject(Handle, InitialState));
@@ -314,10 +327,10 @@ namespace FlexKit
 
 		void AddSOResource(SOResourceHandle handle)
 		{
-			DeviceAccessState initialState = renderSystem.GetObjectState(handle);
+			DeviceLayout layout = renderSystem.GetObjectLayout(handle);
 
 			Resources.push_back(
-				FrameObject::SOBufferObject(handle, initialState));
+				FrameObject::SOBufferObject(handle, layout));
 
 			Resources.back().Handle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
 		}
@@ -328,14 +341,15 @@ namespace FlexKit
 
 		FrameResourceHandle AddResource(ResourceHandle handle, const bool renderTarget = false)
 		{
-			DeviceAccessState initialState = renderSystem.GetObjectState(handle);
+			DeviceLayout		layout		= renderSystem.GetObjectLayout(handle);
+			TextureDimension	dimensions	= renderSystem.GetTextureDimension(handle);
 
 			if (auto res = FindFrameResource(handle); res != InvalidHandle)
 				return res;
 			else
 			{
 				Resources.push_back(
-					FrameObject::TextureObject(handle, initialState));
+					FrameObject::TextureObject(handle, layout, dimensions));
 
 				auto resourceHandle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
 				Resources.back().Handle = resourceHandle;
@@ -352,10 +366,11 @@ namespace FlexKit
 		{
 			std::scoped_lock lock{};
 
-			DeviceAccessState initialState = renderSystem.GetObjectState(handle);
+			DeviceLayout layout = renderSystem.GetObjectLayout(handle);
+			auto	dimensions	= renderSystem.GetTextureDimension(handle);
 
 			Resources.push_back(
-				FrameObject::TextureObject(handle, initialState));
+				FrameObject::TextureObject(handle, layout, dimensions));
 
 			auto resourceHandle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
 			Resources.back().Handle = resourceHandle;
@@ -369,10 +384,10 @@ namespace FlexKit
 
 		void AddQuery(QueryHandle handle)
 		{
-			DeviceAccessState initialState = renderSystem.GetObjectState(handle);
+			DeviceLayout layout = renderSystem.GetObjectLayout(handle);
 
 			Resources.push_back(
-				FrameObject::QueryObject(handle, initialState));
+				FrameObject::QueryObject(handle, layout));
 
 			Resources.back().Handle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
 		}
@@ -382,7 +397,7 @@ namespace FlexKit
 
 
 		template<typename TY>
-		ID3D12Resource* GetObjectResource(TY handle) const
+		ID3D12Resource* GetDeviceResource(TY handle) const
 		{
 			return renderSystem.GetDeviceResource(handle);
 		}
@@ -418,16 +433,25 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		DeviceAccessState GetAssetObjectState(FrameResourceHandle Handle)
+		DeviceAccessState GetResourceAccess(FrameResourceHandle Handle)
 		{
-			return Resources[Handle].State;
+			return Resources[Handle].access;
 		}
 
 
 		/************************************************************************************************/
 
 
-		FrameObject* GetAssetObject(FrameResourceHandle Handle)
+		DeviceLayout GetResourceLayout(FrameResourceHandle Handle)
+		{
+			return Resources[Handle].layout;
+		}
+
+
+		/************************************************************************************************/
+
+
+		FrameObject* GetResourceObject(FrameResourceHandle Handle)
 		{
 			return &Resources[Handle];
 		}
@@ -436,16 +460,7 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		ResourceHandle GetRenderTarget(FrameResourceHandle Handle) const
-		{
-			return Resources[Handle].shaderResource;
-		}
-
-
-		/************************************************************************************************/
-
-
-		ResourceHandle GetTexture(FrameResourceHandle Handle) const
+		ResourceHandle GetResource(FrameResourceHandle Handle) const
 		{
 			return Resources[Handle].shaderResource;
 		}
@@ -556,7 +571,7 @@ namespace FlexKit
 
 		uint2 GetTextureWH(FrameResourceHandle handle) const
 		{
-			if (auto res = GetTexture(handle); res != InvalidHandle)
+			if (auto res = GetResource(handle); res != InvalidHandle)
 				return renderSystem.GetTextureWH(res);
 			else
 				return { 0, 0 };
@@ -577,25 +592,24 @@ namespace FlexKit
 		/************************************************************************************************/
 
 		template<typename TY>
-		ID3D12Resource*         GetDeviceResource   (TY handle) const                      { return globalResources.GetObjectResource(handle); }
-		ID3D12Resource*         GetDeviceResource   (FrameResourceHandle handle) const     { return globalResources.GetObjectResource(GetResource(handle)); }
+		ID3D12Resource*			GetDeviceResource(TY handle) const						{ return globalResources.GetDeviceResource(handle); }
+		ID3D12Resource*			GetDeviceResource(FrameResourceHandle handle) const		{ return globalResources.GetDeviceResource(GetResource(handle)); }
 
 		template<typename TY>
-		DevicePointer           GetDevicePointer    (TY handle) const { return { GetDeviceResource(handle)->GetGPUVirtualAddress() }; }
+		DevicePointer			GetDevicePointer(TY handle) const						{ return { GetDeviceResource(handle)->GetGPUVirtualAddress() }; }
 
-		ID3D12PipelineState*    GetPipelineState(PSOHandle state) const                 { return globalResources.GetPipelineState(state); }
+		ID3D12PipelineState*	GetPipelineState(PSOHandle state) const					{ return globalResources.GetPipelineState(state); }
 
-		size_t                  GetVertexBufferOffset(VertexBufferHandle handle, size_t vertexSize) { return globalResources.GetVertexBufferOffset(handle, vertexSize); }
-		size_t                  GetVertexBufferOffset(VertexBufferHandle handle) { return globalResources.GetVertexBufferOffset(handle); }
+		size_t					GetVertexBufferOffset(VertexBufferHandle handle, size_t vertexSize)	{ return globalResources.GetVertexBufferOffset(handle, vertexSize); }
+		size_t					GetVertexBufferOffset(VertexBufferHandle handle)					{ return globalResources.GetVertexBufferOffset(handle); }
 
-		DeviceAccessState     GetAssetObjectState(FrameResourceHandle handle) { return globalResources.GetAssetObjectState(handle); }
-		FrameObject*            GetAssetObject(FrameResourceHandle handle) { return globalResources.GetAssetObject(handle); }
+		ResourceHandle			GetResource(FrameResourceHandle handle) const	{ return globalResources.GetResource(handle); }
+		DeviceLayout			GetResourceLayout(FrameResourceHandle handle)	{ return globalResources.GetResourceLayout(handle); }
+		DeviceAccessState		GetResourceAccess(FrameResourceHandle handle)	{ return globalResources.GetResourceAccess(handle); }
+		FrameObject*			GetResourceObject(FrameResourceHandle handle)	{ return globalResources.GetResourceObject(handle); }
 
-		ResourceHandle          GetRenderTarget(FrameResourceHandle handle) const { return globalResources.GetRenderTarget(handle); }
-		ResourceHandle          GetResource(FrameResourceHandle handle) const { return globalResources.GetTexture(handle); }
 
-
-		ResourceHandle          operator[](FrameResourceHandle handle) const
+		ResourceHandle			operator[](FrameResourceHandle handle) const
 		{
 			return GetResource(handle);
 		}
@@ -629,7 +643,8 @@ namespace FlexKit
 					});
 
 				FK_ASSERT(res != globalResources.Resources.end());
-				SubNodeTracking.push_back({ res->Handle, res->State });
+				DebugBreak();
+				//SubNodeTracking.push_back({ res->Handle, res->State });
 
 				return res->SOBuffer;
 			}
@@ -653,10 +668,11 @@ namespace FlexKit
 			auto SOHandle		= globalResources.Resources[res.resource].SOBuffer;
 			auto deviceResource = renderSystem().GetDeviceResource(SOHandle);
 
-			if (res.currentState != DASVERTEXBUFFER) 
-				ctx.AddStreamOutBarrier(SOHandle, res.currentState, DASVERTEXBUFFER);
+			DebugBreak();
+			if (res.access != DASVERTEXBUFFER && res.layout != DeviceLayout_GenericRead) 
+				ctx.AddStreamOutBarrier(SOHandle, res.access, DASVERTEXBUFFER);
 
-			res.currentState = DASVERTEXBUFFER;
+			res.access = DASVERTEXBUFFER;
 
 			D3D12_VERTEX_BUFFER_VIEW view = {
 				deviceResource->GetGPUVirtualAddress(),
@@ -668,18 +684,34 @@ namespace FlexKit
 		}
 
 
-		ResourceHandle Transition(const FrameResourceHandle resource, DeviceAccessState state, Context& ctx) const
+		ResourceHandle Transition(const FrameResourceHandle resource, DeviceAccessState access, DeviceLayout layout, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
 			auto& currentObject	= _FindSubNodeResource(resource);
-			auto currentState	= currentObject.currentState;
+			auto currentLayout	= currentObject.layout;
 			auto& resource_ref	= globalResources.Resources[resource];
 			auto resourceHandle	= resource_ref.shaderResource;
 
-			if (state != currentState)
+			if (access != currentObject.access || layout != currentObject.layout)
 			{
-				DebugBreak();
-				//ctx.AddResourceBarrier(resourceHandle, currentState, state);
-				currentObject.currentState = state;
+				switch (renderSystem().GetTextureDimension(resource_ref.shaderResource))
+				{
+				case TextureDimension::Buffer:
+					if (access != currentObject.access)
+					{
+						ctx.AddBufferBarrier(resource_ref.shaderResource, currentObject.access, access, before, after);
+						currentObject.access = access;
+					}
+					break;
+				case TextureDimension::Texture1D:
+				case TextureDimension::Texture2D:
+				case TextureDimension::Texture2DArray:
+				case TextureDimension::Texture3D:
+				case TextureDimension::TextureCubeMap:
+					ctx.AddTextureBarrier(resource_ref.shaderResource, currentObject.access, access, currentObject.layout, layout, before, after);
+					currentObject.access = access;
+					currentObject.layout = layout;
+					break;
+				}
 			}
 
 			return resourceHandle;
@@ -687,60 +719,62 @@ namespace FlexKit
 
 		ResourceHandle Transition(const FrameResourceHandle resource, DeviceAccessState state, uint32_t subresource, Context& ctx) const
 		{
-			auto currentState   = GetObjectState(resource);
-			auto UAVBuffer      = globalResources.Resources[resource].shaderResource;
+			DebugBreak();
+			auto UAVBuffer		= globalResources.Resources[resource].shaderResource;
 
+			/*
+			auto currentState   = GetObjectState(resource);
 			if (state != currentState)
 			{
 				DebugBreak();
 				//ctx.AddResourceBarrier(UAVBuffer, currentState, state, subresource);
 				_FindSubNodeResource(resource).currentState = state;
 			}
-
+			*/
 			return UAVBuffer;
 		}
 
 		ResourceHandle CopyDest(FrameResourceHandle resource, Context& ctx)
 		{
-			return Transition(resource, DASCopyDest, ctx);
+			return Transition(resource, DASCopyDest, DeviceLayout::DeviceLayout_DirectQueueCopyDst, ctx);
 		}
 
 		ResourceHandle CopySrc(FrameResourceHandle resource, Context& ctx)
 		{
-			return Transition(resource, DASCopySrc, ctx);
+			return Transition(resource, DASCopySrc, DeviceLayout::DeviceLayout_DirectQueueCopySrc, ctx);
 		}
 
 		ResourceHandle UAV(const FrameResourceHandle resource, Context& ctx) const
 		{
-			return Transition(resource, DASUAV, ctx);
+			return Transition(resource, DASUAV, DeviceLayout::DeviceLayout_DirectQueueUnorderedAccess, ctx);
 		}
 
 		ResourceHandle RenderTarget(const FrameResourceHandle resource, Context& ctx) const
 		{
-			return Transition(resource, DASRenderTarget, ctx);
+			return Transition(resource, DASRenderTarget, DeviceLayout::DeviceLayout_RenderTarget, ctx);
 		}
 
 		ResourceHandle PixelShaderResource(const FrameResourceHandle resource, Context& ctx) const
 		{
-			return Transition(resource, DASPixelShaderResource, ctx);
+			return Transition(resource, DASPixelShaderResource, DeviceLayout::DeviceLayout_DirectQueueShaderResource, ctx);
 		}
 
 		ResourceHandle NonPixelShaderResource(const FrameResourceHandle resource, Context& ctx) const
 		{
-			return Transition(resource, DASNonPixelShaderResource, ctx);
+			return Transition(resource, DASNonPixelShaderResource, DeviceLayout::DeviceLayout_ShaderResource, ctx);
 		}
 
 		ResourceHandle IndirectArgs(const FrameResourceHandle resource, Context& ctx) const
 		{
-			return Transition(resource, DASINDIRECTARGS, ctx);
+			return Transition(resource, DASINDIRECTARGS, DeviceLayout::DeviceLayout_DirectQueueGenericRead, ctx, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_All);
 		}
 
 		ResourceHandle VertexBuffer(const FrameResourceHandle resource, Context& ctx) const
 		{
-			return Transition(resource, DASVERTEXBUFFER, ctx);
+			return Transition(resource, DASVERTEXBUFFER, DeviceLayout::DeviceLayout_DirectQueueGenericRead, ctx);
 		}
 
-		DeviceAccessState GetObjectState(FrameResourceHandle handle) const
+		std::pair<DeviceAccessState, DeviceLayout> GetObjectStates(FrameResourceHandle handle) const
 		{
 			auto res = find(SubNodeTracking,
 				[&](const auto& rhs) -> bool
@@ -757,25 +791,27 @@ namespace FlexKit
 					});
 
 				FK_ASSERT(res != globalResources.Resources.end());
-				SubNodeTracking.push_back({ res->Handle, res->State });
+				DebugBreak();
+				//SubNodeTracking.push_back({ res->Handle, res->State });
 
-				return res->State;
+				return { res->access, res->layout };
 			}
 			else
-				return res->currentState;
+				return { res->access, res->layout };
 		}
-
 
 		D3D12_STREAM_OUTPUT_BUFFER_VIEW WriteStreamOut(FrameResourceHandle handle, Context* ctx, size_t inputStride) const
 		{
 			auto& localResourceObj  = _FindSubNodeResource(handle);
 			auto& resource          = globalResources.Resources[localResourceObj.resource];
 
+			DebugBreak();
+			/*
 			if (localResourceObj.currentState != DASSTREAMOUT)
 				ctx->AddStreamOutBarrier(resource.SOBuffer, localResourceObj.currentState, DASSTREAMOUT);
 
 			localResourceObj.currentState = DASSTREAMOUT;
-
+			*/
 			/*
 			typedef struct D3D12_STREAM_OUTPUT_BUFFER_VIEW
 			{
@@ -825,8 +861,8 @@ namespace FlexKit
 			return *res;
 		}
 
-		LocallyTrackedObjectList&   SubNodeTracking;
-		FrameResources&             globalResources;
+		LocallyTrackedObjectList&	SubNodeTracking;
+		FrameResources&				globalResources;
 	};
 
 	/************************************************************************************************/
@@ -837,17 +873,19 @@ namespace FlexKit
 	struct FrameObjectLink
 	{
 		FrameObjectLink(
-			FrameResourceHandle IN_handle           = InvalidHandle,
-			FrameGraphNode*		IN_SourceObject		= nullptr,
-			DeviceAccessState	IN_neededState		= DASUNKNOWN) :
-				Source			{ IN_SourceObject },
-				neededState		{ IN_neededState },
-				handle          { IN_handle } {}
+			FrameResourceHandle IN_handle			= InvalidHandle,
+			FrameGraphNode*		IN_sourceObject		= nullptr,
+			DeviceAccessState	IN_neededAccess		= DeviceAccessState::DASUNKNOWN,
+			DeviceLayout		IN_neededLayout		= DeviceLayout::DeviceLayout_Unknown) :
+				source			{ IN_sourceObject },
+				neededAccess	{ IN_neededAccess },
+				neededLayout	{ IN_neededLayout },
+				handle			{ IN_handle } {}
 
-
-		FrameGraphNode*		Source;
+		FrameGraphNode*		source;
 		FrameResourceHandle handle;
-		DeviceAccessState	neededState;
+		DeviceAccessState	neededAccess;
+		DeviceLayout		neededLayout;
 	};
 
 
@@ -940,11 +978,11 @@ namespace FlexKit
 
 	struct PendingAcquire
 	{
-		ResourceHandle          resourecHandle;
-		uint64_t                offset;
-		uint64_t                size;
+		ResourceHandle			resourecHandle;
+		uint64_t				offset;
+		uint64_t				size;
 
-		const GPUResourceDesc   desc;
+		const GPUResourceDesc	desc;
 	};
 
 
@@ -1036,6 +1074,7 @@ namespace FlexKit
 					desc.placed.heap			= heap;
 					desc.placed.offset			= offset;
 					desc.placed.initialState	= DASNOACCESS;
+					desc.initialLayout			= DeviceLayout::DeviceLayout_Unknown;
 
 					renderSystem.BackResource(resource, desc);
 					renderSystem.SetDebugName(resource, "Deferred Resource");
@@ -1148,8 +1187,8 @@ namespace FlexKit
 		FrameResourceHandle	DepthRead			(ResourceHandle);
 		FrameResourceHandle	DepthTarget			(ResourceHandle);
 
-		FrameResourceHandle	AcquireVirtualResource(const GPUResourceDesc& desc, DeviceAccessState initialState, bool temp = true);
-		FrameResourceHandle	AcquireVirtualResource(PoolAllocatorInterface& allocator, const GPUResourceDesc& desc, DeviceAccessState initialState, bool temp = true);
+		FrameResourceHandle	AcquireVirtualResource(const GPUResourceDesc& desc, DeviceAccessState, bool temp = true);
+		FrameResourceHandle	AcquireVirtualResource(PoolAllocatorInterface& allocator, const GPUResourceDesc& desc, DeviceAccessState, bool temp = true);
 
 		void				ReleaseVirtualResource(FrameResourceHandle handle);
 
@@ -1163,11 +1202,7 @@ namespace FlexKit
 		FrameResourceHandle WriteTransition	(FrameResourceHandle handle, DeviceAccessState state);
 
 
-		void SetDebugName(FrameResourceHandle handle, const char* debugName)
-		{
-			if(auto res = Resources->GetTexture(handle); res != InvalidHandle)
-				Resources->renderSystem.SetDebugName(res, debugName);
-		}
+		void SetDebugName(FrameResourceHandle handle, const char* debugName);
 
 		size_t							GetDescriptorTableSize			(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
 		const DesciptorHeapLayout<16>&	GetDescriptorTableLayout		(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
@@ -1180,7 +1215,7 @@ namespace FlexKit
 	private:
 
 		template<typename TY>
-		FrameResourceHandle AddReadableResource(TY handle, DeviceAccessState state, Barrier barrier = {})
+		FrameResourceHandle AddReadableResource(TY handle, DeviceAccessState access, DeviceLayout layout, Barrier barrier = {}, std::optional<std::pair<DeviceAccessState, DeviceLayout>> finalTransition = {})
 		{
 			FK_ASSERT(barrier.type != BarrierType::Unknown);
 
@@ -1194,31 +1229,50 @@ namespace FlexKit
 			if (frameObject.lastModifier)
 				inputNodes.push_back(frameObject.lastModifier);
 
-			if (frameObject.State != state)
+			if (layout == DeviceLayout_Unknown)
+				layout = frameObject.layout;
+
+			if (frameObject.layout != layout || !CheckCompatibleAccessState(frameObject.layout, frameObject.access))
 			{
-				if (frameObject.State & DASWriteFlag)
+				if (IsWriteAccessState(frameObject.access))
 					Context.RemoveWriteable(frameResourceHandle);
 
 				frameObject.lastModifier = &Node;
 
-				FrameObjectLink dependency{ frameResourceHandle, &Node, state };
+				FrameObjectLink dependency{ frameResourceHandle, &Node, access, layout };
 				Context.AddReadable(dependency);
 
-				barrier.accessBefore	= frameObject.State;
-				barrier.resource		= frameObject.shaderResource;
+				switch (barrier.type)
+				{
+				case BarrierType::Buffer:
+					barrier.accessBefore			= frameObject.access;
+					barrier.accessAfter				= access;
+					barrier.resource				= frameObject.shaderResource;
+					break;
+				case BarrierType::Texture:
+					barrier.accessBefore			= frameObject.access;
+					barrier.accessAfter				= access;
+					barrier.resource				= frameObject.shaderResource;
+					barrier.texture.layoutBefore	= frameObject.layout;
+					barrier.texture.layoutAfter		= layout;
+					break;
+				}
+
 				barriers.push_back(barrier);
 
-				frameObject.State = state;
+				frameObject.access	= access;
+				frameObject.layout	= layout;
 			}
 
-			Node.subNodeTracking.push_back({ frameResourceHandle, state, state });
+			const auto p = std::make_pair(access, layout);
+			Node.subNodeTracking.push_back({ frameResourceHandle, access, layout, std::get<0>(finalTransition.value_or(p)), std::get<1>(finalTransition.value_or(p)) }); 
 
 			return frameResourceHandle;
 		}
 
 
 		template<typename TY>
-		FrameResourceHandle AddWriteableResource(TY handle, DeviceAccessState state, Barrier barrier = {})
+		FrameResourceHandle AddWriteableResource(TY handle, DeviceAccessState access, DeviceLayout layout, Barrier barrier = {}, std::optional<std::pair<DeviceAccessState, DeviceLayout>> finalTransition = {})
 		{
 			FK_ASSERT(barrier.type != BarrierType::Unknown);
 
@@ -1232,24 +1286,43 @@ namespace FlexKit
 			if (frameObject.lastModifier)
 				inputNodes.push_back(frameObject.lastModifier);
 
-			if (frameObject.State != state)
+			if (layout == DeviceLayout_Unknown)
+				layout = frameObject.layout;
+
+			if (frameObject.layout != layout || !CheckCompatibleAccessState(frameObject.layout, frameObject.access))
 			{
-				if (frameObject.State & DASReadFlag)
+				if (IsReadAccessState(frameObject.access))
 					Context.RemoveReadable(frameResourceHandle);
 
-				FrameObjectLink dependency{ frameResourceHandle, &Node, state };
+				FrameObjectLink dependency{ frameResourceHandle, &Node, access, layout };
 				Context.AddWriteable(dependency);
 
-				barrier.accessBefore	= frameObject.State;
-				barrier.resource		= frameObject.shaderResource;
+				switch (barrier.type)
+				{
+				case BarrierType::Buffer:
+					barrier.accessBefore			= frameObject.access;
+					barrier.accessAfter				= access;
+					barrier.resource				= frameObject.shaderResource;
+					break;
+				case BarrierType::Texture:
+					barrier.accessBefore			= frameObject.access;
+					barrier.accessAfter				= access;
+					barrier.resource				= frameObject.shaderResource;
+					barrier.texture.layoutBefore	= frameObject.layout;
+					barrier.texture.layoutAfter		= layout;
+					break;
+				}
+
 				barriers.push_back(barrier);
 
-				frameObject.State = state;
+				frameObject.access	= access;
+				frameObject.layout	= layout;
 			}
 
 			frameObject.lastModifier = &Node;
 
-			Node.subNodeTracking.push_back({ frameResourceHandle, state, state });
+			const auto p = std::make_pair(access, layout);
+			Node.subNodeTracking.push_back({ frameResourceHandle, access, layout, std::get<0>(finalTransition.value_or(p)), std::get<1>(finalTransition.value_or(p)) });
 
 			return frameResourceHandle;
 		}
@@ -1292,14 +1365,14 @@ namespace FlexKit
 	{
 	public:
 		FrameGraph(RenderSystem& RS, ThreadManager& IN_threads, iAllocator* Temp) :
-			Resources		    { RS, Temp },
-			threads             { IN_threads },
-			dataDependencies    { Temp },
-			ResourceContext	    { Resources, IN_threads, RS, Temp },
-			Memory			    { Temp },
-			Nodes			    { Temp },
-			acquiredResources   { Temp },
-			pendingAcquire      { Temp } {}
+			Resources			{ RS, Temp },
+			threads				{ IN_threads },
+			dataDependencies	{ Temp },
+			ResourceContext		{ Resources, IN_threads, RS, Temp },
+			Memory				{ Temp },
+			Nodes				{ Temp },
+			acquiredResources	{ Temp },
+			pendingAcquire		{ Temp } {}
 
 		FrameGraph				(const FrameGraph& RHS) = delete;
 		FrameGraph& operator =	(const FrameGraph& RHS) = delete;
@@ -2078,9 +2151,9 @@ namespace FlexKit
 			{	// Multi-threadable Section
 				auto WH = frameResources.GetTextureWH(data.renderTarget);
 
-				context.SetScissorAndViewports({ frameResources.GetRenderTarget(data.renderTarget)} );
+				context.SetScissorAndViewports({ frameResources.GetResource(data.renderTarget)} );
 				context.SetRenderTargets(
-					{ frameResources.GetRenderTarget(data.renderTarget) },
+					{ frameResources.GetResource(data.renderTarget) },
 					false);
 
 				context.SetRootSignature		(frameResources.renderSystem().Library.RS6CBVs4SRVs);
@@ -2235,10 +2308,10 @@ namespace FlexKit
 
 				setup(data, resources, ctx);
 
-				ctx->SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
+				ctx->SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
 				ctx->SetRenderTargets(
-					{	resources.GetRenderTarget(data.renderTarget) }, true,
-						resources.GetRenderTarget(data.depthBuffer));
+					{	resources.GetResource(data.renderTarget) }, true,
+						resources.GetResource(data.depthBuffer));
 
 				// Bind resources
 				VertexBufferList instancedBuffers;
@@ -2395,7 +2468,7 @@ namespace FlexKit
 				ctx.SetVertexBuffers({ Data.vertexBuffer });
 
 				ctx.SetRenderTargets(
-					{ resources.GetRenderTarget(Data.RenderTarget) }, false);
+					{ resources.GetResource(Data.RenderTarget) }, false);
 
 				ctx.SetPrimitiveTopology(EInputTopology::EIT_LINE);
 				ctx.SetGraphicsDescriptorTable		(0, descHeap);
@@ -2542,10 +2615,10 @@ namespace FlexKit
 				ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
 				ctx.SetPipelineState(resources.GetPipelineState(DRAW_LINE3D_PSO));
 
-				ctx.SetScissorAndViewports({ resources.GetRenderTarget(Data.RenderTarget) });
+				ctx.SetScissorAndViewports({ resources.GetResource(Data.RenderTarget) });
 				ctx.SetRenderTargets(
-					{	resources.GetRenderTarget(Data.RenderTarget) }, false,
-						resources.GetRenderTarget(Data.DepthBuffer));
+					{	resources.GetResource(Data.RenderTarget) }, false,
+						resources.GetResource(Data.DepthBuffer));
 
 				ctx.SetPrimitiveTopology(EInputTopology::EIT_LINE);
 				ctx.SetVertexBuffers({ Data.vertexBuffer });

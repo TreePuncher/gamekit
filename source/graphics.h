@@ -117,9 +117,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	enum DeviceAccessState
 	{
 		DASReadFlag					= 0x0001,
-		DASRetired					= 0x1000,
-
 		DASWriteFlag				= 0x0002,
+
+		DASRetired					= 0x1000,
 		DASPresent					= 0x1005,
 		DASRenderTarget				= 0x0006,
 		DASPixelShaderResource		= 0x0009,
@@ -134,8 +134,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		DASACCELERATIONSTRUCTURE_WRITE	= 0x00B2 | DASWriteFlag,
 		DASACCELERATIONSTRUCTURE_READ	= 0x00B2 | DASReadFlag,
 
-		DASPREDICATE				= 0x0015,
-		DASINDIRECTARGS				= 0x0019,
+		DASPREDICATE				= 0x0010 | DASReadFlag,
+		DASINDIRECTARGS				= 0x0010 | DASReadFlag,
 
 		DASNonPixelShaderResource	= 0x0050 | DASWriteFlag,
 
@@ -144,13 +144,26 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		DASINDEXBUFFER				= 0x0080 | DASReadFlag,
 
+		DASGenericRead				= 0x0020 | DASReadFlag,
+		DASCommon					= 0x0090 | DASReadFlag,
 
-		DASUNKNOWN					= 0x0040, 
-		DASGenericRead				= 0x0020,
-		DASCommon					= 0x0090,
-		DASVIRTUAL					= 0x00A0,
-		DASNOACCESS					= 0x00B0,
-		DASERROR					= 0xFFFF 
+		DASShadingRateSrc			= 0x00C | DASReadFlag,
+		DASShadingRateDst			= 0x00C | DASWriteFlag,
+
+		DASDecodeWrite				= 0x00D0 | DASWriteFlag,
+
+		DASProcessRead				= 0x00E0 | DASReadFlag,
+		DASProcessWrite				= 0x00E0 | DASWriteFlag,
+
+		DASEncodeRead				= 0x0100 | DASReadFlag,
+		DASEncodeWrite				= 0x0100 | DASReadFlag,
+
+		DASResolveRead				= 0x0200 | DASReadFlag,
+		DASResolveWrite				= 0x0200 | DASWriteFlag,
+
+		DASNOACCESS					= 0xF000,
+		DASERROR					= 0xFFFF ,
+		DASUNKNOWN					= 0x0040,
 	};
 
 	enum DeviceSyncPoint
@@ -187,42 +200,42 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	enum DeviceBarrierLayout
+	enum DeviceLayout
 	{
-		BarrierLayout_Common,
-		BarrierLayout_Present,
-		BarrierLayout_GenericRead,
-		BarrierLayout_RenderTarget,
-		BarrierLayout_UnorderedAccess,
-		BarrierLayout_DepthStencilWrite,
-		BarrierLayout_StencilRead,
-		BarrierLayout_ShaderResource,
-		BarrierLayout_CopySrc,
-		BarrierLayout_CopyDst,
-		BarrierLayout_ResolveSrc,
-		BarrierLayout_ResolveDst,
-		BarrierLayout_ShadingRateSrc,
-		BarrierLayout_VideoDecodeRead,
-		BarrierLayout_DecodeWrite,
-		BarrierLayout_ProcessRead,
-		BarrierLayout_ProcessWrite,
-		BarrierLayout_EncodeRead,
-		BarrierLayout_EncodeWrite,
-		BarrierLayout_DirectQueueCommon,
-		BarrierLayout_DirectQueueGenericRead,
-		BarrierLayout_DirectQueueUnorderedAccess,
-		BarrierLayout_DirectQueueShaderResource,
-		BarrierLayout_DirectQueueCopySrc,
-		BarrierLayout_DirectQueueCopyDst,
-		BarrierLayout_ComputeQueueCommon,
-		BarrierLayout_ComputeQueueGenericRead,
-		BarrierLayout_ComputeQueueUnorderedAccess,
-		BarrierLayout_ComputeQueueShaderResource,
-		BarrierLayout_ComputeQueueCopySrc,
-		BarrierLayout_ComputeQueueCopyDst,
-		BarrierLayout_VideoQueueCommon,
+		DeviceLayout_Common,
+		DeviceLayout_Present,
+		DeviceLayout_GenericRead,
+		DeviceLayout_RenderTarget,
+		DeviceLayout_UnorderedAccess,
+		DeviceLayout_DepthStencilWrite,
+		DeviceLayout_DepthStencilRead,
+		DeviceLayout_ShaderResource,
+		DeviceLayout_CopySrc,
+		DeviceLayout_CopyDst,
+		DeviceLayout_ResolveSrc,
+		DeviceLayout_ResolveDst,
+		DeviceLayout_ShadingRateSrc,
+		DeviceLayout_VideoDecodeRead,
+		DeviceLayout_DecodeWrite,
+		DeviceLayout_ProcessRead,
+		DeviceLayout_ProcessWrite,
+		DeviceLayout_EncodeRead,
+		DeviceLayout_EncodeWrite,
+		DeviceLayout_DirectQueueCommon,
+		DeviceLayout_DirectQueueGenericRead,
+		DeviceLayout_DirectQueueUnorderedAccess,
+		DeviceLayout_DirectQueueShaderResource,
+		DeviceLayout_DirectQueueCopySrc,
+		DeviceLayout_DirectQueueCopyDst,
+		DeviceLayout_ComputeQueueCommon,
+		DeviceLayout_ComputeQueueGenericRead,
+		DeviceLayout_ComputeQueueUnorderedAccess,
+		DeviceLayout_ComputeQueueShaderResource,
+		DeviceLayout_ComputeQueueCopySrc,
+		DeviceLayout_ComputeQueueCopyDst,
+		DeviceLayout_VideoQueueCommon,
 
-		BarrierLayout_Unknown = 0xffffffff,
+		DeviceLayout_Unknown = 0xffffffff,
 	};
 
 	/************************************************************************************************/
@@ -358,80 +371,80 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	/************************************************************************************************/
 
-
-	inline constexpr D3D12_BARRIER_LAYOUT DeviceBarrierLayout2DX(const DeviceBarrierLayout layout)
+	inline constexpr D3D12_BARRIER_LAYOUT DeviceLayout2DX(const DeviceLayout layout)
 	{
 		switch (layout)
 		{
-		case BarrierLayout_Common:
+		case DeviceLayout_Common:
 			return D3D12_BARRIER_LAYOUT_COMMON;
-		case BarrierLayout_Present:
+		case DeviceLayout_Present:
 			return D3D12_BARRIER_LAYOUT_PRESENT;
-		case BarrierLayout_GenericRead:
+		case DeviceLayout_GenericRead:
 			return D3D12_BARRIER_LAYOUT_GENERIC_READ;
-		case BarrierLayout_RenderTarget:
+		case DeviceLayout_RenderTarget:
 			return D3D12_BARRIER_LAYOUT_RENDER_TARGET;
-		case BarrierLayout_UnorderedAccess:
+		case DeviceLayout_UnorderedAccess:
 			return D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS;
-		case BarrierLayout_DepthStencilWrite:
+		case DeviceLayout_DepthStencilWrite:
 			return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE;
-		case BarrierLayout_StencilRead:
+		case DeviceLayout_DepthStencilRead:
 			return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_READ;
-		case BarrierLayout_ShaderResource:
+		case DeviceLayout_ShaderResource:
 			return D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
-		case BarrierLayout_CopySrc:
+		case DeviceLayout_CopySrc:
 			return D3D12_BARRIER_LAYOUT_COPY_SOURCE;
-		case BarrierLayout_CopyDst:
+		case DeviceLayout_CopyDst:
 			return D3D12_BARRIER_LAYOUT_COPY_DEST;
-		case BarrierLayout_ResolveSrc:
+		case DeviceLayout_ResolveSrc:
 			return D3D12_BARRIER_LAYOUT_RESOLVE_SOURCE;
-		case BarrierLayout_ResolveDst:
+		case DeviceLayout_ResolveDst:
 			return D3D12_BARRIER_LAYOUT_RESOLVE_DEST;
-		case BarrierLayout_ShadingRateSrc:
+		case DeviceLayout_ShadingRateSrc:
 			return D3D12_BARRIER_LAYOUT_SHADING_RATE_SOURCE;
-		case BarrierLayout_VideoDecodeRead:
+		case DeviceLayout_VideoDecodeRead:
 			return D3D12_BARRIER_LAYOUT_VIDEO_DECODE_READ;
-		case BarrierLayout_DecodeWrite:
+		case DeviceLayout_DecodeWrite:
 			return D3D12_BARRIER_LAYOUT_VIDEO_DECODE_WRITE;
-		case BarrierLayout_ProcessRead:
+		case DeviceLayout_ProcessRead:
 			return D3D12_BARRIER_LAYOUT_VIDEO_PROCESS_READ;
-		case BarrierLayout_ProcessWrite:
+		case DeviceLayout_ProcessWrite:
 			return D3D12_BARRIER_LAYOUT_VIDEO_PROCESS_WRITE;
-		case BarrierLayout_EncodeRead:
+		case DeviceLayout_EncodeRead:
 			return D3D12_BARRIER_LAYOUT_VIDEO_ENCODE_READ;
-		case BarrierLayout_EncodeWrite:
+		case DeviceLayout_EncodeWrite:
 			return D3D12_BARRIER_LAYOUT_VIDEO_ENCODE_WRITE;
-		case BarrierLayout_DirectQueueCommon:
+		case DeviceLayout_DirectQueueCommon:
 			return D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COMMON;
-		case BarrierLayout_DirectQueueGenericRead:
+		case DeviceLayout_DirectQueueGenericRead:
 			return D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_GENERIC_READ;
-		case BarrierLayout_DirectQueueUnorderedAccess:
+		case DeviceLayout_DirectQueueUnorderedAccess:
 			return D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_UNORDERED_ACCESS;
-		case BarrierLayout_DirectQueueShaderResource:
+		case DeviceLayout_DirectQueueShaderResource:
 			return D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_SHADER_RESOURCE;
-		case BarrierLayout_DirectQueueCopySrc:
+		case DeviceLayout_DirectQueueCopySrc:
 			return D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COPY_SOURCE;
-		case BarrierLayout_DirectQueueCopyDst:
+		case DeviceLayout_DirectQueueCopyDst:
 			return D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COPY_DEST;
-		case BarrierLayout_ComputeQueueCommon:
+		case DeviceLayout_ComputeQueueCommon:
 			return D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COMMON;
-		case BarrierLayout_ComputeQueueGenericRead:
+		case DeviceLayout_ComputeQueueGenericRead:
 			return D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_GENERIC_READ;
-		case BarrierLayout_ComputeQueueUnorderedAccess:
+		case DeviceLayout_ComputeQueueUnorderedAccess:
 			return D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_UNORDERED_ACCESS;
-		case BarrierLayout_ComputeQueueShaderResource:
+		case DeviceLayout_ComputeQueueShaderResource:
 			return D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_SHADER_RESOURCE;
-		case BarrierLayout_ComputeQueueCopySrc:
+		case DeviceLayout_ComputeQueueCopySrc:
 			return D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_SOURCE;
-		case BarrierLayout_ComputeQueueCopyDst:
+		case DeviceLayout_ComputeQueueCopyDst:
 			return D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_DEST;
-		case BarrierLayout_VideoQueueCommon:
+		case DeviceLayout_VideoQueueCommon:
 			return D3D12_BARRIER_LAYOUT_VIDEO_QUEUE_COMMON;
-		case BarrierLayout_Unknown:
+		case DeviceLayout_Unknown:
 		default:
 			return D3D12_BARRIER_LAYOUT_UNDEFINED;
 		};
 	}
+
 
 	/************************************************************************************************/
 
@@ -440,6 +453,130 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	{
 		FK_ASSERT(0);
 		return DeviceAccessState::DASERROR;
+	}
+
+	/************************************************************************************************/
+
+
+	inline D3D12_BARRIER_SYNC SyncPoint2DX(const DeviceSyncPoint syncPoint)
+	{
+		switch (syncPoint)
+		{
+			case Sync_None:
+				return D3D12_BARRIER_SYNC_NONE;
+			case Sync_All:
+				return D3D12_BARRIER_SYNC_ALL;
+			case Sync_Draw:
+				return D3D12_BARRIER_SYNC_DRAW;
+			case Sync_Compute:
+				return D3D12_BARRIER_SYNC_COMPUTE_SHADING;
+			case Sync_InputAssmebler:
+				return D3D12_BARRIER_SYNC_INPUT_ASSEMBLER;
+			case Sync_VertexShader:
+				return D3D12_BARRIER_SYNC_VERTEX_SHADING;
+			case Sync_PixelShader:
+				return D3D12_BARRIER_SYNC_PIXEL_SHADING;
+			case Sync_DepthStencil:
+				return D3D12_BARRIER_SYNC_DEPTH_STENCIL;
+			case Sync_RenderTarget:
+				return D3D12_BARRIER_SYNC_RENDER_TARGET;
+			case Sync_Raytracing:
+				return D3D12_BARRIER_SYNC_RAYTRACING;
+			case Sync_Copy:
+				return D3D12_BARRIER_SYNC_COPY;
+			case Sync_Resolve:
+				return D3D12_BARRIER_SYNC_RESOLVE;
+			case Sync_ExecuteIndirect:
+				return D3D12_BARRIER_SYNC_EXECUTE_INDIRECT;
+			case Sync_Predication:
+				return D3D12_BARRIER_SYNC_PREDICATION;
+			case Sync_All_Shading:
+				return D3D12_BARRIER_SYNC_ALL_SHADING;
+			case Sync_NonPixelShading:
+				return D3D12_BARRIER_SYNC_NON_PIXEL_SHADING;
+			case Sync_EmitRaytracingAccellerationStructurePostBuildInfo:
+				return D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO;
+			case Sync_VideoDecode:
+				return D3D12_BARRIER_SYNC_VIDEO_DECODE;
+			case Sync_VideoProcess:
+				return D3D12_BARRIER_SYNC_VIDEO_PROCESS;
+			case Sync_VideoEncode:
+				return D3D12_BARRIER_SYNC_VIDEO_ENCODE;
+			case Sync_BuildRaytracingAccellerationStructure:
+				return D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
+			case Sync_CopyRaytracingAccellerationStructure:
+				return D3D12_BARRIER_SYNC_RAYTRACING;
+			case Sync_Split:
+				return D3D12_BARRIER_SYNC_SPLIT;
+			case Sync_Unknown:
+				return D3D12_BARRIER_SYNC_NONE;
+		}
+	}
+
+
+	inline bool CheckCompatibleAccessState(const DeviceLayout layout, const DeviceAccessState access)
+	{
+		switch (layout)
+		{
+		case DeviceLayout_Common:
+			return (access & DASReadFlag);
+		case DeviceLayout_Present:
+			return (access & DASReadFlag);
+		case DeviceLayout_GenericRead:
+			return (access & DASReadFlag);
+		case DeviceLayout_RenderTarget:
+			return (access & DASRenderTarget);
+		case DeviceLayout_UnorderedAccess:
+			return (access & DASUAV);
+		case DeviceLayout_DepthStencilWrite:
+			return (access & DASDEPTHBUFFERWRITE);
+		case DeviceLayout_DepthStencilRead:
+			return (access & DASDEPTHBUFFERREAD);
+		case DeviceLayout_ShaderResource:
+			return (access & DASPixelShaderResource);
+		case DeviceLayout_CopySrc:
+			return (access & DASCopySrc);
+		case DeviceLayout_CopyDst:
+			return (access & DASCopyDest);
+		case DeviceLayout_ResolveSrc:
+		case DeviceLayout_ResolveDst:
+			return true;
+		case DeviceLayout_ShadingRateSrc:
+			return (access & DASShadingRateSrc);
+		case DeviceLayout_VideoDecodeRead:
+			return (access & DASShadingRateSrc);
+		case DeviceLayout_DecodeWrite:
+		case DeviceLayout_ProcessRead:
+		case DeviceLayout_ProcessWrite:
+		case DeviceLayout_EncodeRead:
+		case DeviceLayout_EncodeWrite:
+		case DeviceLayout_DirectQueueCommon:
+		case DeviceLayout_DirectQueueGenericRead:
+		case DeviceLayout_DirectQueueUnorderedAccess:
+		case DeviceLayout_DirectQueueShaderResource:
+		case DeviceLayout_DirectQueueCopySrc:
+		case DeviceLayout_DirectQueueCopyDst:
+		case DeviceLayout_ComputeQueueCommon:
+		case DeviceLayout_ComputeQueueGenericRead:
+		case DeviceLayout_ComputeQueueUnorderedAccess:
+		case DeviceLayout_ComputeQueueShaderResource:
+		case DeviceLayout_ComputeQueueCopySrc:
+		case DeviceLayout_ComputeQueueCopyDst:
+		case DeviceLayout_VideoQueueCommon:
+		default:
+			return false;
+		}
+		return false;
+	}
+
+	inline bool IsReadAccessState(const DeviceAccessState access)
+	{
+		return access & DASReadFlag;
+	}
+
+	inline bool IsWriteAccessState(const DeviceAccessState access)
+	{
+		return access & DASWriteFlag;
 	}
 
 	/************************************************************************************************/
@@ -2000,9 +2137,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	FLEXKITAPI struct QueryTable
 	{
 		QueryTable(iAllocator* persistent, RenderSystem* RS_in) :
-			users       { persistent },
-			resources   { persistent },
-			RS          { RS_in } {}
+			users		{ persistent },
+			resources	{ persistent },
+			RS			{ RS_in } {}
 
 
 		~QueryTable()
@@ -2034,18 +2171,18 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		}
 
 
-		DeviceAccessState GetAssetState(const QueryHandle handle) const
+		DeviceLayout GetLayout(const QueryHandle handle) const
 		{
-			return D3DState2DRS(_GetAssetState(handle));
+			return _GetLayout(handle);
 		}
 
-		D3D12_RESOURCE_STATES _GetAssetState(const QueryHandle handle) const
+		DeviceLayout _GetLayout(const QueryHandle handle) const
 		{
 			auto& res = resources[users[handle].resourceIdx];
-			return res.resourceState[res.currentResource];
+			return res.layouts[res.currentResource];
 		}
 
-		ID3D12QueryHeap*	GetAsset	(QueryHandle handle)
+		ID3D12QueryHeap*	GetDeviceObject(QueryHandle handle)
 		{
 			auto& res = resources[users[handle].resourceIdx];
 
@@ -2072,7 +2209,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		struct ResourceEntry
 		{
 			ID3D12QueryHeap*		resources[3];
-			D3D12_RESOURCE_STATES	resourceState[3];
+			DeviceLayout			layouts[3];
 			size_t					resourceLocks[3];
 			size_t					currentResource;
 			D3D12_QUERY_TYPE		type;
@@ -2153,7 +2290,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		TextureDimension		Dimensions		= TextureDimension::Texture2D;
 		ResourceAllocationType	allocationType	= ResourceAllocationType::Committed;
 		DeviceFormat			format;
-		DeviceAccessState		initialState	= DASCommon;
+		DeviceLayout			initialLayout	= DeviceLayout_Common;
 
 		// Dimensions
 		uint2					WH;
@@ -2264,6 +2401,61 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			return desc;
 		}
 
+		D3D12_RESOURCE_DESC1 GetD3D12ResourceDesc1() const
+		{
+			const auto dxgiFormat = TextureFormat2DXGIFormat(format);
+			D3D12_RESOURCE_DESC1 desc;
+
+			switch (Dimensions)
+			{
+			case TextureDimension::Buffer:
+				desc = CD3DX12_RESOURCE_DESC1::Buffer(WH[0]);
+
+				break;
+			case TextureDimension::Texture1D:
+				desc = CD3DX12_RESOURCE_DESC1::Tex1D(
+					dxgiFormat,
+					WH[0],
+					arraySize,
+					MipLevels);
+
+				break;
+			case TextureDimension::Texture2D:
+				desc = CD3DX12_RESOURCE_DESC1::Tex2D(
+					dxgiFormat,
+					WH[0],
+					WH[1],
+					arraySize,
+					MipLevels);
+
+				break;
+			case TextureDimension::Texture3D:
+				desc = CD3DX12_RESOURCE_DESC1::Tex3D(
+					dxgiFormat,
+					WH[0],
+					WH[1],
+					arraySize,
+					MipLevels);
+
+				break;
+			case TextureDimension::TextureCubeMap:
+				desc = CD3DX12_RESOURCE_DESC1::Tex2D(
+					dxgiFormat,
+					WH[0],
+					WH[1],
+					6,
+					MipLevels);
+				break;
+			};
+
+			desc.Flags = type == ResourceType::RenderTarget ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+			desc.Flags |= type == ResourceType::UnorderedAccess ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+			desc.Flags |= type == ResourceType::DepthTarget ? D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+
+			desc.MipLevels = Min(Max(MipLevels, 1), 15);
+
+			return desc;
+		}
 
 		static GPUResourceDesc RenderTarget(uint2 IN_WH, DeviceFormat IN_format, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
 		{
@@ -2430,7 +2622,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				.Dimensions		= TextureDimension::Texture2D,
 				.allocationType = ResourceAllocationType::Committed,
 				.format			= format,
-				.initialState	= DASPresent,
+				.initialLayout	= DeviceLayout_Present,
 
 
 				.WH				= WH,
@@ -2595,19 +2787,19 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	using GPUResourceExtra_t = std::variant<UAVResourceLayout, UAVTextureLayout>;
 
 
-	FLEXKITAPI class TextureStateTable
+	FLEXKITAPI class ResourceStateTable
 	{
 	public:
-		TextureStateTable(iAllocator* IN_allocator) :
-			Handles		        { IN_allocator },
-			UserEntries	        { IN_allocator },
-			Resources	        { IN_allocator },
-			BufferedResources   { IN_allocator },
-			delayRelease        { IN_allocator },
-			allocator           { IN_allocator } {}
+		ResourceStateTable(iAllocator* IN_allocator) :
+			Handles				{ IN_allocator },
+			UserEntries			{ IN_allocator },
+			Resources			{ IN_allocator },
+			BufferedResources	{ IN_allocator },
+			delayRelease		{ IN_allocator },
+			allocator			{ IN_allocator } {}
 
 
-		~TextureStateTable()
+		~ResourceStateTable()
 		{
 			Release();
 		}
@@ -2617,15 +2809,15 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 
 		// No Copy
-		TextureStateTable				(const TextureStateTable&) = delete;
-		TextureStateTable& operator =	(const TextureStateTable&) = delete;
+		ResourceStateTable				(const ResourceStateTable&) = delete;
+		ResourceStateTable& operator =	(const ResourceStateTable&) = delete;
 
 		Texture2D			operator[]		(ResourceHandle Handle);
 
 		ResourceHandle		GetFreeHandle();
-		ResourceHandle		AddResource		(const GPUResourceDesc& Desc, const DeviceAccessState InitialState);
-		void				SetResource		(ResourceHandle handle, const GPUResourceDesc& Desc, const DeviceAccessState InitialState);
-		void				SetState		(ResourceHandle Handle, DeviceAccessState State);
+		ResourceHandle		AddResource		(const GPUResourceDesc& Desc, const DeviceLayout InitialState);
+		void				SetResource		(ResourceHandle handle, const GPUResourceDesc& Desc, const DeviceLayout InitialState);
+		void				SetLayout		(ResourceHandle Handle, DeviceLayout);
 		void				SetDebug		(ResourceHandle Handle, const char* string);
 
 		const char*			GetDebug(ResourceHandle Handle);
@@ -2651,7 +2843,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void				MarkRTUsed		(ResourceHandle Handle);
 
-		DeviceAccessState	GetState		(ResourceHandle Handle) const;
+		DeviceLayout		GetLayout		(ResourceHandle Handle) const;
+
 		ID3D12Resource*		GetResource		(ResourceHandle Handle, ID3D12Device* device) const;
 		size_t				GetResourceSize	(ResourceHandle Handle) const;
 		uint2				GetHeapOffset	(ResourceHandle Handle, uint subResourceIdx) const;
@@ -2689,16 +2882,16 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		struct ResourceEntry
 		{
 			void			Release();
-			void			SetState(DeviceAccessState State) { States[CurrentResource]		= State;    }
-			void			SetFrameLock(size_t FrameID)		{ FrameLocks[CurrentResource]	= FrameID;	}
-			ID3D12Resource* GetAsset() const					{ return Resources[CurrentResource];		}
-			void			IncreaseIdx()						{ CurrentResource = ++CurrentResource % 3;	}
+			void			SetLayout(DeviceLayout layout)	{ layouts[CurrentResource]		= layout;	}
+			void			SetFrameLock(size_t FrameID)	{ FrameLocks[CurrentResource]	= FrameID;	}
+			ID3D12Resource* GetAsset() const				{ return Resources[CurrentResource];		}
+			void			IncreaseIdx()					{ CurrentResource = ++CurrentResource % 3;	}
 
 			size_t				ResourceCount   = 0;
 			size_t				CurrentResource = 0;
 			ID3D12Resource*		Resources[3];
 			size_t				FrameLocks[3];
-			DeviceAccessState	States[3];
+			DeviceLayout		layouts[3];
 			DXGI_FORMAT			Format;
 			uint8_t				mipCount;
 			uint2				WH;
@@ -2791,7 +2984,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			static_vector<ID3D12Resource*, 3>	resources;			// assumes triple buffering
 			static_vector<ID3D12Resource*, 3>	resourceCounters;	// assumes triple buffering
 			size_t								resourceSize;
-			DeviceAccessState					resourceStates[3];
+			DeviceLayout						layouts[3];
 			SOResourceHandle					resourceHandle;
 			uint8_t								resourceIdx;
 		};
@@ -2800,8 +2993,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		SOResourceHandle AddResource(
 			static_vector<ID3D12Resource*,3>	newResources, 
 			static_vector<ID3D12Resource*, 3>	counters, 
-			size_t resourceSize, 
-			DeviceAccessState initialState)
+			size_t								resourceSize, 
+			DeviceLayout						initialLayout)
 		{
 			auto newHandle		= handles.GetNewHandle();
 			handles[newHandle]	= 
@@ -2809,7 +3002,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 						newResources,
 						counters,
 						resourceSize,
-						{initialState, initialState, initialState},
+						{ initialLayout, initialLayout, initialLayout },
 						newHandle,
 						0 });
 
@@ -2838,17 +3031,17 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		}
 
 
-		DeviceAccessState	GetAssetState(SOResourceHandle handle) const
+		DeviceLayout GetLayout(SOResourceHandle handle) const
 		{
 			auto& resourceEntry = resources[handles[handle]];
-			return resourceEntry.resourceStates[resourceEntry.resourceIdx];
+			return resourceEntry.layouts[resourceEntry.resourceIdx];
 		}
 
 
-		void SetResourceState(SOResourceHandle handle, DeviceAccessState state)
+		void SetLayout(SOResourceHandle handle, DeviceLayout layout)
 		{
 			auto& resourceEntry = resources[handles[handle]];
-			resourceEntry.resourceStates[resourceEntry.resourceIdx] = state;
+			resourceEntry.layouts[resourceEntry.resourceIdx] = layout;
 		}
 
 
@@ -3330,6 +3523,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		Unknown,
 	};
 
+
+	struct BarrierSubResourceRange
+	{
+	};
+
 	struct Barrier
 	{
 		Barrier() {}
@@ -3345,21 +3543,19 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		ResourceHandle resource;
 		union
 		{
-			struct Global
-			{
-			} global;
-
 			struct Texture
 			{
-				DeviceBarrierLayout layoutBefore;
-				DeviceBarrierLayout layoutAfter;
+				DeviceLayout layoutBefore;
+				DeviceLayout layoutAfter;
 
-				uint32_t		flags;
-				uint8_t			subResource = 0xff;
+				uint32_t				flags;
+				BarrierSubResourceRange	range;
 			} texture;
 
 			struct Buffer
 			{
+				uint64_t rangeBegin	= 0;
+				uint64_t rangeEnd	= UINT64_MAX;
 			} buffer;
 		};
 
@@ -3368,8 +3564,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	struct CopyBarrier
 	{
-		ResourceHandle  handle;
-		ID3D12Resource* _ptr;
+		ResourceHandle	handle;
+		ID3D12Resource*	_ptr;
 
 		enum class ResourceType
 		{
@@ -3380,6 +3576,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		DeviceAccessState beforeState;
 		DeviceAccessState afterState;
 	};
+
 
 
 	FLEXKITAPI class RenderSystem
@@ -3489,13 +3686,13 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void						CloseReadBackBuffer (ReadBackResourceHandle readbackBuffer);
 		void						FlushPendingReadBacks();
 
-		void SetObjectAccessState(SOResourceHandle	handle,	DeviceAccessState state);
-		void SetObjectAccessState(ResourceHandle		handle, DeviceAccessState state);
+		void SetObjectLayout(SOResourceHandle	handle, DeviceLayout state);
+		void SetObjectLayout(ResourceHandle		handle, DeviceLayout state);
 
 
-		DeviceAccessState GetObjectState(const QueryHandle		handle) const;
-		DeviceAccessState GetObjectState(const SOResourceHandle	handle) const;
-		DeviceAccessState GetObjectState(const ResourceHandle		handle) const;
+		DeviceLayout GetObjectLayout(const QueryHandle		handle) const;
+		DeviceLayout GetObjectLayout(const SOResourceHandle	handle) const;
+		DeviceLayout GetObjectLayout(const ResourceHandle	handle) const;
 
 
 		ID3D12Heap*			GetDeviceResource(const DeviceHeapHandle        handle) const;
@@ -3647,7 +3844,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		ConstantBufferTable			ConstantBuffers;
 		QueryTable					Queries;
 		VertexBufferStateTable		VertexBuffers;
-		TextureStateTable			Textures;
+		ResourceStateTable			Textures;
 		SOResourceTable				StreamOutTable;
 		PipelineStateTable			PipelineStates;
 		ReadBackStateTable			ReadBackTable;
@@ -3697,6 +3894,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	
 	/************************************************************************************************/
 
+
 	using ReadBackEventHandler = TypeErasedCallable<void (ReadBackResourceHandle), 64>;
 
 
@@ -3729,11 +3927,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void AddStreamOutBarrier		(SOResourceHandle,		DeviceAccessState Before, DeviceAccessState State);
 		void AddCopyResourceBarrier		(ResourceHandle Handle, DeviceAccessState Before, DeviceAccessState State);
 
-		void AddGlobalBarrier			();
-		void AddTextureBarrier			(ResourceHandle Handle,	DeviceAccessState state, uint32_t subResource = -1);
-		void AddBufferBarrier			();
+		void AddGlobalBarrier			(ResourceHandle resource, DeviceAccessState accessBefore, DeviceAccessState accessAfter, DeviceSyncPoint syncBefore, DeviceSyncPoint syncAfter);
+		void AddTextureBarrier			(ResourceHandle Handle, DeviceAccessState, DeviceAccessState, DeviceLayout, DeviceLayout, DeviceSyncPoint, DeviceSyncPoint, BarrierSubResourceRange range = {});
+		void AddBufferBarrier			(ResourceHandle Handle, DeviceAccessState, DeviceAccessState, DeviceSyncPoint, DeviceSyncPoint);
 		void AddBarriers				(std::span<const Barrier> barriers);
-
 
 		void ClearDepthBuffer		(ResourceHandle Texture, float ClearDepth = 0.0f); // Assumes full-screen Clear
 		void ClearRenderTarget		(ResourceHandle Texture, float4 ClearColor = float4(0.0f)); // Assumes full-screen Clear
@@ -3794,15 +3991,15 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetGraphicsUnorderedAccessView (size_t idx, ResourceHandle resource, size_t offset = 0);
 
 
-		void SetComputeDescriptorTable      (size_t idx);
+		void SetComputeDescriptorTable		(size_t idx);
 		void SetComputeDescriptorTable		(size_t idx, const DescriptorHeap& DH);
 		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferHandle, size_t offset);
-		void SetComputeConstantBufferView   (size_t idx, const ConstantBufferDataSet& CB);
-		void SetComputeConstantBufferView   (size_t idx, ResourceHandle, size_t offset = 0, size_t bufferSize = 256);
+		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferDataSet& CB);
+		void SetComputeConstantBufferView	(size_t idx, ResourceHandle, size_t offset = 0, size_t bufferSize = 256);
 		void SetComputeShaderResourceView	(size_t idx, Texture2D&		texture);
 		void SetComputeShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0);
 		void SetComputeUnorderedAccessView	(size_t idx, ResourceHandle resource, size_t offset = 0);
-		void SetComputeConstantValue        (size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0);
+		void SetComputeConstantValue		(size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0);
 
 
 		void BeginQuery	(QueryHandle query, size_t idx);
@@ -3853,7 +4050,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetVertexBuffers2		(const std::initializer_list<D3D12_VERTEX_BUFFER_VIEW>&	list);
 		void SetVertexBuffers2		(const std::span<const D3D12_VERTEX_BUFFER_VIEW>		list);
 
-		void SetSOTargets		(static_vector<D3D12_STREAM_OUTPUT_BUFFER_VIEW, 4> SOViews);
+		void SetSOTargets			(static_vector<D3D12_STREAM_OUTPUT_BUFFER_VIEW, 4> SOViews);
 
 		void Draw					(const size_t VertexCount, const size_t BaseVertex = 0, const size_t baseIndex = 0);
 		void DrawInstanced			(const size_t VertexCount, const size_t BaseVertex = 0, const size_t instanceCount = 0, size_t instanceOffset = 0);
@@ -3866,8 +4063,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void ExecuteIndirect		(ResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset = 0, size_t executionCount = 1);
 		void Dispatch				(const uint3);
-		void Dispatch               (ID3D12PipelineState* PSO, const uint3 xyz) { SetPipelineState(PSO); Dispatch(xyz); }
-		void DispatchRays           (const uint3, const DispatchDesc desc);
+		void Dispatch				(ID3D12PipelineState* PSO, const uint3 xyz) { SetPipelineState(PSO); Dispatch(xyz); }
+		void DispatchRays			(const uint3, const DispatchDesc desc);
 
 		void FlushBarriers();
 
@@ -3889,8 +4086,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetRTWrite	(ResourceHandle Handle);
 		void SetRTFree	(ResourceHandle Handle);
 
-		void     Close(const size_t counter);
-		Context& Reset();
+		void		Close(const size_t counter);
+		Context&	Reset();
 
 		void SetDebugName(const char* ID)
 		{
@@ -3905,17 +4102,17 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void _QueueReadBacks();
 
-		DescHeapPOS _ReserveDSV(size_t count);
-		DescHeapPOS _ReserveSRV(size_t count);
-		DescHeapPOS _ReserveRTV(size_t count);
-		DescHeapPOS _ReserveSRVLocal(size_t count);
+		DescHeapPOS	_ReserveDSV(size_t count);
+		DescHeapPOS	_ReserveSRV(size_t count);
+		DescHeapPOS	_ReserveRTV(size_t count);
+		DescHeapPOS	_ReserveSRVLocal(size_t count);
 
 
-		void        _ResetRTV();
-		void        _ResetDSV();
-		void        _ResetSRV();
+		void		_ResetRTV();
+		void		_ResetDSV();
+		void		_ResetSRV();
 
-		uint64_t    _GetCounter() { return counter;  }
+		uint64_t	_GetCounter() { return counter; }
 		ID3D12GraphicsCommandList*	GetCommandList() { return DeviceContext; }
 
 		RenderSystem* renderSystem = nullptr;
@@ -3928,9 +4125,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	//private:
 
 		DescHeapPOS _GetDepthDesciptor(ResourceHandle resource);
-
-
-
 
 		void UpdateResourceStates();
 
@@ -3982,7 +4176,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		};
 
 		static_vector<StreamOutResource, 128>		TrackedSOBuffers;
-		static_vector<Barrier, 128>					PendingBarriers; // Barriers potentially needed
+		static_vector<Barrier, 128>					pendingBarriers; // Barriers potentially needed
 		static_vector<Barrier, 128>					queuedBarriers; // Barriers required
 		static_vector<RTV_View, 128>				renderTargetViews;
 		static_vector<RTV_View, 128>				depthStencilViews;
@@ -5343,7 +5537,7 @@ private:
 		DeviceFormat       format;
 	};
 
-	FLEXKITAPI void _UpdateSubResourceByUploadQueue (RenderSystem* RS, CopyContextHandle, ID3D12Resource* Dest, SubResourceUpload_Desc* Desc, DeviceAccessState EndState);
+	FLEXKITAPI void _UpdateSubResourceByUploadQueue (RenderSystem* RS, CopyContextHandle, ID3D12Resource* Dest, SubResourceUpload_Desc* Desc);
 
 
 	/************************************************************************************************/

@@ -1005,7 +1005,7 @@ namespace FlexKit
 				clusterCreationResources.SetUAVTexture(ctx, 1, resources.UAV(data.indexBufferObject, ctx));
 
 				// SRV's start at 4
-				clusterCreationResources.SetSRV(ctx, 4, resources.Transition(data.depthBufferObject, DASNonPixelShaderResource, ctx), DeviceFormat::R32_FLOAT);
+				clusterCreationResources.SetSRV(ctx, 4, resources.NonPixelShaderResource(data.depthBufferObject, ctx), DeviceFormat::R32_FLOAT);
 
 				// CBV's start at 8
 				clusterCreationResources.SetCBV(ctx, 8, cameraConstantsBuffer);
@@ -1031,7 +1031,7 @@ namespace FlexKit
 				BVH_Phase1_Resources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
 				BVH_Phase1_Resources.SetUAVStructured		(ctx, 0, resources.UAV(data.lightBVH, ctx), sizeof(BVH_Node), 0);
 				BVH_Phase1_Resources.SetUAVStructured		(ctx, 1, resources.UAV(data.lightLookupObject, ctx), sizeof(uint), 0);
-				BVH_Phase1_Resources.SetStructuredResource	(ctx, 4, resources.Transition(data.lightBufferObject, DASNonPixelShaderResource, ctx), sizeof(GPUPointLight));
+				BVH_Phase1_Resources.SetStructuredResource	(ctx, 4, resources.NonPixelShaderResource(data.lightBufferObject, ctx), sizeof(GPUPointLight));
 				BVH_Phase1_Resources.SetCBV(ctx, 8, constants);
 
 				ctx.BeginEvent_DEBUG("Build BVH");
@@ -1067,7 +1067,7 @@ namespace FlexKit
 						DescriptorHeap BVH_Phase2_Resources;
 						BVH_Phase2_Resources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
 						BVH_Phase2_Resources.SetUAVStructured(ctx, 0,		resources.UAV(data.lightBVH, ctx), sizeof(BVH_Node), 0);
-						BVH_Phase2_Resources.SetStructuredResource(ctx, 4,	resources.Transition(data.lightBufferObject, DASNonPixelShaderResource, ctx), sizeof(GPUPointLight));
+						BVH_Phase2_Resources.SetStructuredResource(ctx, 4,	resources.NonPixelShaderResource(data.lightBufferObject, ctx), sizeof(GPUPointLight));
 						BVH_Phase2_Resources.SetCBV(ctx, 8, constantSet);
 
 						ctx.BeginEvent_DEBUG("BVH Phase2");
@@ -1096,9 +1096,9 @@ namespace FlexKit
 
 				DescriptorHeap createArgumentResources;
 				createArgumentResources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
-				createArgumentResources.SetUAVStructured(ctx, 0, resources.Transition(data.argumentBufferObject, DASUAV, ctx), sizeof(uint4), 0);
-				createArgumentResources.SetUAVStructured(ctx, 1, resources.Transition(data.lightCounterObject, DASUAV, ctx), sizeof(uint32_t), 0);
-				createArgumentResources.SetStructuredResource(ctx, 4, resources.Transition(data.counterObject, DASNonPixelShaderResource, ctx), sizeof(uint32_t));
+				createArgumentResources.SetUAVStructured(ctx, 0, resources.UAV(data.argumentBufferObject, ctx), sizeof(uint4), 0);
+				createArgumentResources.SetUAVStructured(ctx, 1, resources.UAV(data.lightCounterObject, ctx), sizeof(uint32_t), 0);
+				createArgumentResources.SetStructuredResource(ctx, 4, resources.PixelShaderResource(data.counterObject, ctx), sizeof(uint32_t));
 				createArgumentResources.NullFill(ctx);
 
 				ctx.BeginEvent_DEBUG("Create Light Lists");
@@ -1124,27 +1124,27 @@ namespace FlexKit
 
 				DescriptorHeap createLightList_ShaderResources;
 				createLightList_ShaderResources.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), 4, &allocator);
-				createLightList_ShaderResources.SetStructuredResource(ctx, 0, resources.Transition(data.lightBVH,				DASNonPixelShaderResource, ctx), sizeofBVH_Node);
-				createLightList_ShaderResources.SetStructuredResource(ctx, 1, resources.Transition(data.lightLookupObject,		DASNonPixelShaderResource, ctx), sizeof(uint32_t));
-				createLightList_ShaderResources.SetStructuredResource(ctx, 2, resources.Transition(data.lightBufferObject,		DASNonPixelShaderResource, ctx), sizeof(GPUPointLight));
-				createLightList_ShaderResources.SetStructuredResource(ctx, 3, resources.Transition(data.clusterBufferObject,	DASNonPixelShaderResource, ctx), sizeof(GPUCluster), 0);
+				createLightList_ShaderResources.SetStructuredResource(ctx, 0, resources.NonPixelShaderResource(data.lightBVH,				ctx), sizeofBVH_Node);
+				createLightList_ShaderResources.SetStructuredResource(ctx, 1, resources.NonPixelShaderResource(data.lightLookupObject,		ctx), sizeof(uint32_t));
+				createLightList_ShaderResources.SetStructuredResource(ctx, 2, resources.NonPixelShaderResource(data.lightBufferObject,		ctx), sizeof(GPUPointLight));
+				createLightList_ShaderResources.SetStructuredResource(ctx, 3, resources.NonPixelShaderResource(data.clusterBufferObject,	ctx), sizeof(GPUCluster), 0);
 
 				DescriptorHeap createLightList_UAVResources;
 				createLightList_UAVResources.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 3, &allocator);
-				createLightList_UAVResources.SetUAVStructured(ctx, 0, resources.Transition(data.lightLists,				DASUAV, ctx), sizeof(uint2), 0);
-				createLightList_UAVResources.SetUAVStructured(ctx, 1, resources.Transition(data.lightListBuffer,		DASUAV, ctx), sizeof(uint32_t), 0);
-				createLightList_UAVResources.SetUAVStructured(ctx, 2, resources.Transition(data.lightCounterObject,		DASUAV, ctx), sizeof(uint32_t), 0);
+				createLightList_UAVResources.SetUAVStructured(ctx, 0, resources.NonPixelShaderResource(data.lightLists,				ctx), sizeof(uint2), 0);
+				createLightList_UAVResources.SetUAVStructured(ctx, 1, resources.NonPixelShaderResource(data.lightListBuffer,		ctx), sizeof(uint32_t), 0);
+				createLightList_UAVResources.SetUAVStructured(ctx, 2, resources.NonPixelShaderResource(data.lightCounterObject,		ctx), sizeof(uint32_t), 0);
 
 				ctx.SetComputeRootSignature(resources.renderSystem().Library.RSDefault);
 				ctx.SetPipelineState(CreateLightLists);
 
 				ctx.SetComputeConstantBufferView(0, lightListConstantSet);
-				ctx.SetComputeConstantBufferView(1, resources.Transition(data.counterObject, DASNonPixelShaderResource, ctx), 0, 256);
+				ctx.SetComputeConstantBufferView(1, resources.NonPixelShaderResource(data.counterObject, ctx), 0, 256);
 
 				ctx.SetComputeDescriptorTable(4, createLightList_ShaderResources);
 				ctx.SetComputeDescriptorTable(5, createLightList_UAVResources);
 
-				ctx.ExecuteIndirect(resources.Transition(data.argumentBufferObject, DASINDIRECTARGS, ctx), data.indirectLayout);
+				ctx.ExecuteIndirect(resources.IndirectArgs(data.argumentBufferObject, ctx), data.indirectLayout);
 
 				//ctx.TimeStamp(timeStats, 7);
 
@@ -1172,11 +1172,11 @@ namespace FlexKit
 					DescriptorHeap resolutionMatchShadowMaps;
 					resolutionMatchShadowMaps.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
 
-					resolutionMatchShadowMaps.SetUAVStructured(ctx, 0,		resources.Transition(data.lightResolutionObject,	DASUAV, ctx), 4, 0);
-					resolutionMatchShadowMaps.SetStructuredResource(ctx, 4,	resources.Transition(data.clusterBufferObject,		DASNonPixelShaderResource, ctx), sizeof(GPUCluster), 0);
-					resolutionMatchShadowMaps.SetStructuredResource(ctx, 5,	resources.Transition(data.lightListBuffer,			DASNonPixelShaderResource, ctx), sizeof(uint32_t), 0);
-					resolutionMatchShadowMaps.SetStructuredResource(ctx, 6,	resources.Transition(data.lightBufferObject,		DASNonPixelShaderResource, ctx), sizeof(GPUPointLight));
-					resolutionMatchShadowMaps.SetStructuredResource(ctx, 7,	resources.Transition(data.counterObject,			DASNonPixelShaderResource, ctx), sizeof(uint32_t));
+					resolutionMatchShadowMaps.SetUAVStructured(ctx, 0,		resources.UAV(data.lightResolutionObject,	ctx), 4, 0);
+					resolutionMatchShadowMaps.SetStructuredResource(ctx, 4,	resources.NonPixelShaderResource(data.clusterBufferObject,	ctx), sizeof(GPUCluster), 0);
+					resolutionMatchShadowMaps.SetStructuredResource(ctx, 5,	resources.NonPixelShaderResource(data.lightListBuffer,		ctx), sizeof(uint32_t), 0);
+					resolutionMatchShadowMaps.SetStructuredResource(ctx, 6,	resources.NonPixelShaderResource(data.lightBufferObject,	ctx), sizeof(GPUPointLight));
+					resolutionMatchShadowMaps.SetStructuredResource(ctx, 7,	resources.NonPixelShaderResource(data.counterObject,		ctx), sizeof(uint32_t));
 
 					resolutionMatchShadowMaps.SetCBV(ctx, 8, lightListConstantSet);
 
@@ -1188,11 +1188,11 @@ namespace FlexKit
 					ctx.AddUAVBarrier(resources.GetResource(data.lightResolutionObject));
 
 					ctx.SetPipelineState(resolutionMatchShadowsMaps);
-					ctx.ExecuteIndirect(resources.Transition(data.argumentBufferObject, DASINDIRECTARGS, ctx), data.indirectLayout);
+					ctx.ExecuteIndirect(resources.IndirectArgs(data.argumentBufferObject, ctx), data.indirectLayout);
 
 					// Write out
 					ctx.CopyBufferRegion(
-						{ resources.GetDeviceResource(resources.Transition(data.lightResolutionObject, DASCopySrc, ctx)) }, // Sources Offsets
+						{ resources.GetDeviceResource(resources.CopySrc(data.lightResolutionObject, ctx)) }, // Sources Offsets
 						{ 0 },  // Source Offsets
 						{ resources.GetDeviceResource(data.readBackHandle) }, // Destination
 						{ 0 },  // Destination Offsets
@@ -1699,7 +1699,7 @@ namespace FlexKit
 				descHeap.SetSRV(ctx, 5, resources.GetResource(data.lightMapObject));
 				descHeap.SetStructuredResource(ctx, 6, resources.GetResource(data.lightLists), sizeof(uint2));
 				descHeap.SetStructuredResource(ctx, 7, resources.GetResource(data.lightListBuffer), sizeof(uint32_t));
-				descHeap.SetStructuredResource(ctx, 8, resources.Transition(data.pointLightBufferObject, DASPixelShaderResource, ctx), sizeof(GPUPointLight));
+				descHeap.SetStructuredResource(ctx, 8, resources.NonPixelShaderResource(data.pointLightBufferObject, ctx), sizeof(GPUPointLight));
 
 
 				for (size_t shadowMapIdx = 0; shadowMapIdx < pointLightCount; shadowMapIdx++)
@@ -1835,8 +1835,8 @@ namespace FlexKit
 
 				const auto cameraConstants = GetCameraConstants(data.camera);
 
-				ctx.SetRenderTargets({ resources.GetRenderTarget(data.renderTarget) }, false);
-				ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
+				ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) }, false);
+				ctx.SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
 
 				ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
 				ctx.SetComputeRootSignature(resources.renderSystem().Library.RSDefault);
@@ -1883,8 +1883,8 @@ namespace FlexKit
 
 				DescriptorHeap descHeap;
 				descHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), 3, &allocator);
-				descHeap.SetStructuredResource(ctx, 0, resources.Transition(data.lightBVH, DASNonPixelShaderResource, ctx), 4, 0);
-				descHeap.SetStructuredResource(ctx, 1, resources.Transition(data.clusters, DASNonPixelShaderResource, ctx), sizeof(GPUCluster), 0);
+				descHeap.SetStructuredResource(ctx, 0, resources.NonPixelShaderResource(data.lightBVH, ctx), 4, 0);
+				descHeap.SetStructuredResource(ctx, 1, resources.NonPixelShaderResource(data.clusters, ctx), sizeof(GPUCluster), 0);
 				descHeap.SetStructuredResource(ctx, 2, resources.GetResource(data.pointLights), sizeof(float4[2]), 0);
 				descHeap.NullFill(ctx, 2);
 
@@ -1920,7 +1920,7 @@ namespace FlexKit
 
 				case ClusterDebugDrawMode::Clusters:
 					ctx.SetPipelineState(debugClusterVISPSO);
-					ctx.ExecuteIndirect(resources.Transition(data.indirectArgs, DASINDIRECTARGS, ctx), draw);
+					ctx.ExecuteIndirect(resources.IndirectArgs(data.indirectArgs, ctx), draw);
 					break;
 
 				case ClusterDebugDrawMode::Lights:
@@ -2020,7 +2020,7 @@ namespace FlexKit
 
 				auto vertices       = VertexBufferDataSet{ verts.data(), verts.size() * sizeof(Vertex), vertexBuffer };
 				auto constants      = ConstantBufferDataSet{ constantData, constantBuffer };
-				auto renderTargets  = { resources.GetRenderTarget(desc.renderTargetObject) };
+				auto renderTargets  = { resources.GetResource(desc.renderTargetObject) };
 
 				ctx.SetRenderTargets(renderTargets, false);
 				ctx.SetScissorAndViewports(renderTargets);

@@ -103,7 +103,6 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 
 	frameGraph.AddMemoryPool(&gpuAllocator);
 
-	if(0)
 	frameGraph.AddNode(
 		RenderStrands{
 			.reserveCB = reserveCB
@@ -114,9 +113,9 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 			data.destinationBuffer	= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(bufferSize * 4), FlexKit::DeviceAccessState::DASUAV);
 			data.mergePathBuffer	= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(bufferSize / 32 * 8), FlexKit::DeviceAccessState::DASUAV);
 
-			builder.SetDebugName(data.sourceBuffer, "sourceBuffer");
-			builder.SetDebugName(data.destinationBuffer, "destinationBuffer");
-			builder.SetDebugName(data.mergePathBuffer, "mergePathBuffer");
+			//builder.SetDebugName(data.sourceBuffer, "sourceBuffer");
+			//builder.SetDebugName(data.destinationBuffer, "destinationBuffer");
+			//builder.SetDebugName(data.mergePathBuffer, "mergePathBuffer");
 		},
 		[=, &sortingRootSignature = sortingRootSignature, backBuffer = renderWindow.GetBackBuffer(), this](RenderStrands& data, const FlexKit::ResourceHandler& resources, FlexKit::Context& ctx, FlexKit::iAllocator& threadLocalAllocator)
 		{
@@ -129,6 +128,7 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 			ctx.BeginEvent_DEBUG("Merge Sort");
 
 			ctx.Dispatch(resources.GetPipelineState(LocalSort), { blockCount, 1, 1 });
+
 
 			struct
 			{
