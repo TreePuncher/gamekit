@@ -5589,10 +5589,6 @@ private:
 	/************************************************************************************************/
 
 
-	
-	/************************************************************************************************/
-
-
 	FLEXKITAPI Texture2D		GetBackBufferTexture	( RenderWindow* Window );
 	FLEXKITAPI ID3D12Resource*	GetBackBufferResource	( RenderWindow* Window );
 

@@ -5065,8 +5065,7 @@ namespace FlexKit
 		}
 		else
 		{
-			size_t byteSize						= desc.CalculateByteSize();
-			D3D12_RESOURCE_DESC1 Resource_DESC	= desc.GetD3D12ResourceDesc1();
+			size_t byteSize							= desc.CalculateByteSize();
 
 			D3D12_HEAP_PROPERTIES heapProperties	={};
 			heapProperties.CPUPageProperty			= D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
@@ -5093,12 +5092,22 @@ namespace FlexKit
 				{
 				case ResourceAllocationType::Tiled:
 				{
-					DebugBreak();
-					/*
 					ProfileFunctionLabeled(Tiled);
+					D3D12_RESOURCE_DESC Resource_DESC = desc.GetD3D12ResourceDesc();
 
 					Resource_DESC.Layout = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
-					
+					HRESULT HR = pDevice10->CreateReservedResource2(
+									&Resource_DESC,
+									initialLayout,
+									clearValue,
+									nullptr,
+									0,
+									nullptr,
+									IID_PPV_ARGS(&NewResource[itr]));
+
+					CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE VIRTUAL MEMORY FOR TEXTURE"));
+
+					/*
 					HRESULT HR = pDevice10->CreateReservedResource2(
 									&Resource_DESC,
 									InitialState,
@@ -5111,6 +5120,7 @@ namespace FlexKit
 				case ResourceAllocationType::Committed:
 				{
 					ProfileFunctionLabeled(Committed);
+					D3D12_RESOURCE_DESC1 Resource_DESC = desc.GetD3D12ResourceDesc1();
 
 					auto HR = pDevice10->CreateCommittedResource3(
 						&heapProperties,
@@ -7596,7 +7606,7 @@ namespace FlexKit
 #if _DEBUG
 			if ((res.idx + 3) < currentIdx)
 #else
-			if ((res.idx) < currentIdx)
+			if ((res.idx + 3) < currentIdx)
 #endif
 				freeList.push_back(res.resource);
 		}
@@ -7607,7 +7617,7 @@ namespace FlexKit
 				[freeList = std::move(freeList)](auto& threadLocalAllocator)
 				{
 					for (auto res : freeList)
-					res->Release();
+						res->Release();
 				}, delayRelease.Allocator);
 
 			threads.AddBackgroundWork(workItem);

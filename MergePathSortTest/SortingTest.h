@@ -4,6 +4,7 @@
 #include <Win32Graphics.h>
 #include <filesystem>
 #include <expected>
+#include <DebugUI.h>
 
 class SortTest : public FlexKit::FrameworkState
 {
@@ -26,14 +27,20 @@ public:
 	FlexKit::CameraComponent		cameras;
 	FlexKit::SceneNodeComponent		sceneNodes;
 
-	bool							pause		= false;
-	bool							debugVis	= false;
+	bool									pause		= false;
+	bool									debugVis	= false;
+	bool									sampleTime	= true;
+	FlexKit::CircularBuffer<double, 256>	samples;
 
 	FlexKit::RootSignature			sortingRootSignature;
 	FlexKit::Win32RenderWindow		renderWindow;
 
-	FlexKit::ConstantBufferHandle	constantBuffer;
+	FlexKit::ImGUIIntegrator		debugUI;
 
+	FlexKit::ReadBackResourceHandle	readBackBuffer;
+	FlexKit::QueryHandle			timingQueries;
+	FlexKit::ConstantBufferHandle	constantBuffer;
+	FlexKit::VertexBufferHandle		vertexBuffer;
 	FlexKit::RunOnceQueue<void (FlexKit::UpdateDispatcher&, FlexKit::FrameGraph&)>	runOnceQueue;
 };
 

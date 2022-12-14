@@ -1,5 +1,7 @@
 #include "SortingTest.h"
-
+#include <imgui.h>
+#include <fmt\format.h>
+#include <implot.h>
 
 /************************************************************************************************/
 
@@ -16,10 +18,14 @@ constexpr FlexKit::PSOHandle GlobalMerge		= FlexKit::PSOHandle{ GetCRCGUID(Globa
 SortTest::SortTest(FlexKit::GameFramework& IN_framework) :
 	FrameworkState				{ IN_framework },
 	constantBuffer				{ IN_framework.GetRenderSystem().CreateConstantBuffer(16 * MEGABYTE, false) },
+	vertexBuffer				{ IN_framework.GetRenderSystem().CreateVertexBuffer(16 * MEGABYTE, false) },
 	cameras						{ IN_framework.core.GetBlockMemory() },
 	runOnceQueue				{ IN_framework.core.GetBlockMemory() },
 	sortingRootSignature		{ IN_framework.core.GetBlockMemory() },
-	gpuAllocator				{ IN_framework.core.RenderSystem, 128 * MEGABYTE, 64 * KILOBYTE, FlexKit::DeviceHeapFlags::UAVBuffer, IN_framework.core.GetBlockMemory() }
+	timingQueries				{ IN_framework.core.RenderSystem.CreateTimeStampQuery(512) },
+	readBackBuffer				{ IN_framework.core.RenderSystem.CreateReadBackBuffer(512) },
+	debugUI						{ IN_framework.core.RenderSystem, IN_framework.core.GetBlockMemory() },
+	gpuAllocator				{ IN_framework.core.RenderSystem, 512 * MEGABYTE, 64 * KILOBYTE, FlexKit::DeviceHeapFlags::UAVBuffer, IN_framework.core.GetBlockMemory() }
 {
 	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
 		renderWindow = std::move(res.value());
@@ -70,9 +76,38 @@ SortTest::~SortTest()
 /************************************************************************************************/
 
 
-FlexKit::UpdateTask* SortTest::Update(FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT)
+FlexKit::UpdateTask* SortTest::Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
 	FlexKit::UpdateInput();
+	debugUI.Update(renderWindow, core, dispatcher, dT);
+	ImGui::NewFrame();
+	ImGui::Begin("Hello");
+
+	double meanTime = 0.0f;
+	double graph_x[256];
+	double graph_y[256];
+	memset(graph_x, 0.0f, sizeof(graph_x));
+
+	for (size_t I = 0; I < samples.size(); I++)
+	{
+		meanTime += samples[I];
+		graph_y[I] = samples[I];
+		graph_x[I] = I * 4.0 / 144.0;
+	}
+
+	meanTime /= samples.size();
+
+	auto str = fmt::format("Mean Sort Time: {}ms\n", meanTime);
+	ImGui::Text(str.c_str());
+	ImPlot::BeginPlot("Timing History");
+	ImPlot::PlotLine("", graph_x, graph_y, samples.size());
+	ImPlot::EndPlot();
+	ImPlot::BeginPlot("Timing Histogram");
+	ImPlot::PlotHistogram("", graph_y,samples.size(), -2, true, 0);
+	ImPlot::EndPlot();
+	ImGui::End();
+	ImGui::EndFrame();
+	ImGui::Render();
 
 	return nullptr;
 }
@@ -87,22 +122,25 @@ constexpr uint32_t blockCount	= 2048;
 constexpr uint32_t bufferSize	= 1024 * blockCount;
 
 
-FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT, FlexKit::FrameGraph& frameGraph)
+FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore&, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
-	FlexKit::ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), { 1, 0, 1, 0 });
+	FlexKit::ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), { 0, 0, 0, 0 });
 
 	auto reserveCB = FlexKit::CreateConstantBufferReserveObject(constantBuffer, framework.GetRenderSystem(), framework.core.GetTempMemory());
+	auto reserveVB = FlexKit::CreateVertexBufferReserveObject(vertexBuffer, framework.GetRenderSystem(), framework.core.GetTempMemory());
 
 	struct RenderStrands
 	{
 		FlexKit::FrameResourceHandle			sourceBuffer;
 		FlexKit::FrameResourceHandle			destinationBuffer;
 		FlexKit::FrameResourceHandle			mergePathBuffer;
+		FlexKit::FrameResourceHandle			timingResults;
 		FlexKit::ReserveConstantBufferFunction	reserveCB;
 	};
 
 	frameGraph.AddMemoryPool(&gpuAllocator);
 
+	for(size_t J = 0; J < 4; J++)
 	frameGraph.AddNode(
 		RenderStrands{
 			.reserveCB = reserveCB
@@ -111,11 +149,12 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 		{
 			data.sourceBuffer		= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(bufferSize * 4), FlexKit::DeviceAccessState::DASUAV);
 			data.destinationBuffer	= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(bufferSize * 4), FlexKit::DeviceAccessState::DASUAV);
-			data.mergePathBuffer	= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(bufferSize / 32 * 8), FlexKit::DeviceAccessState::DASUAV);
+			data.mergePathBuffer	= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(bufferSize / 32 * p), FlexKit::DeviceAccessState::DASUAV);
+			data.timingResults		= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(512), FlexKit::DeviceAccessState::DASUAV);
 
-			//builder.SetDebugName(data.sourceBuffer, "sourceBuffer");
-			//builder.SetDebugName(data.destinationBuffer, "destinationBuffer");
-			//builder.SetDebugName(data.mergePathBuffer, "mergePathBuffer");
+			builder.SetDebugName(data.sourceBuffer, "sourceBuffer");
+			builder.SetDebugName(data.destinationBuffer, "destinationBuffer");
+			builder.SetDebugName(data.mergePathBuffer, "mergePathBuffer");
 		},
 		[=, &sortingRootSignature = sortingRootSignature, backBuffer = renderWindow.GetBackBuffer(), this](RenderStrands& data, const FlexKit::ResourceHandler& resources, FlexKit::Context& ctx, FlexKit::iAllocator& threadLocalAllocator)
 		{
@@ -126,9 +165,9 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 			ctx.AddUAVBarrier(resources.GetResource(data.sourceBuffer));
 
 			ctx.BeginEvent_DEBUG("Merge Sort");
+			ctx.TimeStamp(timingQueries, 2 * J + 0);
 
 			ctx.Dispatch(resources.GetPipelineState(LocalSort), { blockCount, 1, 1 });
-
 
 			struct
 			{
@@ -172,10 +211,37 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 				ctx.EndEvent_DEBUG();
 			}
 
+			ctx.TimeStamp(timingQueries, 2 * J + 1);
+
+			if (sampleTime)
+			{
+				sampleTime = false;
+
+				ctx.ResolveQuery(timingQueries, (2 * J), (2 + 2 * J), resources.ResolveDst(readBackBuffer, ctx), 2 * J * 8);
+
+				ctx.QueueReadBack(readBackBuffer,
+					[&renderSystem = resources.renderSystem(), this](FlexKit::ReadBackResourceHandle readBack)
+					{
+						auto [buffer, size] = renderSystem.OpenReadBackBuffer(readBack);
+
+						size_t timing[2];
+						UINT64 freq;
+						memcpy(timing, buffer, sizeof(timing));
+						auto HR = renderSystem.GraphicsQueue->GetTimestampFrequency(&freq);
+						renderSystem.CloseReadBackBuffer(readBack);
+
+						samples.push_back((timing[1] - timing[0]) / double(freq));
+
+						sampleTime = true;
+					});
+
+			}
 			ctx.EndEvent_DEBUG();
 			ctx.EndEvent_DEBUG();
 		});
 
+
+	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow.GetBackBuffer());
 
 	PresentBackBuffer(frameGraph, renderWindow);
 
@@ -188,7 +254,7 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 
 void SortTest::PostDrawUpdate(FlexKit::EngineCore&, double dT)
 {
-	renderWindow.Present(1, 0);
+	renderWindow.Present(0, 0);
 }
 
  
@@ -197,7 +263,14 @@ void SortTest::PostDrawUpdate(FlexKit::EngineCore&, double dT)
 
 bool SortTest::EventHandler(FlexKit::Event evt)
 {
-	return false;
+	if ((evt.InputSource == FlexKit::Event::Keyboard && evt.mData1.mKC[0] == FlexKit::KC_ESC) ||
+		(evt.InputSource == FlexKit::Event::E_SystemEvent && evt.Action == FlexKit::Event::Exit))
+	{
+		framework.quit = true;
+		return true;
+	}
+	else
+		return debugUI.HandleInput(evt);
 }
 
 
@@ -212,7 +285,7 @@ ID3D12PipelineState* SortTest::CreateInitiateDataPSO()
 	struct
 	{
 		D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type1 = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE;
-		ID3D12RootSignature* rootSig;
+		ID3D12RootSignature*					rootSig;
 		D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type2 = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS;
 		D3D12_SHADER_BYTECODE					byteCode;
 	} stream = {
@@ -305,7 +378,7 @@ ID3D12PipelineState* SortTest::CreateGlobalMergePSO()
 	struct
 	{
 		D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type1 = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE;
-		ID3D12RootSignature* rootSig;
+		ID3D12RootSignature*					rootSig;
 		D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type2 = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS;
 		D3D12_SHADER_BYTECODE					byteCode;
 	} stream = {
@@ -323,8 +396,6 @@ ID3D12PipelineState* SortTest::CreateGlobalMergePSO()
 
 	return PSO;
 }
-
-
 
 
 /************************************************************************************************/

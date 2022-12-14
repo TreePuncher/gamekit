@@ -112,8 +112,7 @@ namespace FlexKit
 				switch (object->dimensions)
 				{
 					case TextureDimension::Buffer:
-						DebugBreak();
-						//ctx->AddBufferBarrier();
+						ctx->AddBufferBarrier(resource, currentAccess, finalAccess, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_All);
 						break;
 					case TextureDimension::Texture1D:
 					case TextureDimension::Texture2D:
@@ -276,8 +275,7 @@ namespace FlexKit
 		if (auto frameResource = AddReadableResource(handle, DASPixelShaderResource, DeviceLayout_ShaderResource); frameResource != InvalidHandle)
 			return frameResource;
 
-		DebugBreak();
-		//Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
+		Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectLayout(handle));
 
 		return AddReadableResource(handle, DASPixelShaderResource, DeviceLayout_ShaderResource);
 	}
@@ -291,8 +289,7 @@ namespace FlexKit
 		if (auto frameResource = AddReadableResource(handle, DASNonPixelShaderResource, DeviceLayout_ShaderResource); frameResource != InvalidHandle)
 			return frameResource;
 
-		DebugBreak();
-		//Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
+		Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectLayout(handle));
 
 		return AddReadableResource(handle, DASNonPixelShaderResource, DeviceLayout_ShaderResource);
 	}
@@ -348,7 +345,7 @@ namespace FlexKit
 		barrier.accessAfter				= DASRenderTarget;
 		barrier.texture.layoutAfter		= DeviceLayout_RenderTarget;
 
-		const auto resourceHandle = AddWriteableResource(target, DASRenderTarget, DeviceLayout_RenderTarget, barrier);
+		const auto resourceHandle = AddWriteableResource(target, DASRenderTarget, DeviceLayout_RenderTarget);
 
 		if (resourceHandle == InvalidHandle)
 		{
@@ -377,14 +374,7 @@ namespace FlexKit
 
 	FrameResourceHandle	FrameGraphNodeBuilder::Present(ResourceHandle renderTarget)
 	{
-		Barrier barrier;
-		barrier.type					= BarrierType::Texture;
-		barrier.src						= Sync_All;
-		barrier.dst						= Sync_All;
-		barrier.accessAfter				= DASPresent;
-		barrier.texture.layoutAfter		= DeviceLayout_Common;
-
-		auto resourceHandle = AddReadableResource(renderTarget, DeviceAccessState::DASPresent, DeviceLayout_Present, barrier);
+		auto resourceHandle = AddReadableResource(renderTarget, DeviceAccessState::DASPresent, DeviceLayout_Present);
 
 		if (resourceHandle == InvalidHandle)
 		{
@@ -490,7 +480,7 @@ namespace FlexKit
 
 			FrameObject virtualObject		= FrameObject::VirtualObject();
 			virtualObject.shaderResource	= virtualResource;
-
+			virtualObject.dimensions		= desc.Dimensions;
 			virtualObject.layout			= desc.initialLayout;
 			virtualObject.access			= temp ? DASNOACCESS : access;
 			virtualObject.virtualState		= VirtualResourceState::Virtual_Temporary;
@@ -668,7 +658,6 @@ namespace FlexKit
 
 		FrameObject virtualObject		= FrameObject::VirtualObject();
 		virtualObject.shaderResource	= virtualResource;
-		//virtualObject.State				= initialState;
 		virtualObject.virtualState		= VirtualResourceState::Virtual_Temporary;
 		virtualObject.pool				= &allocator;
 		virtualObject.resourceFlags		= NeededFlags;
@@ -767,18 +756,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle FrameGraphNodeBuilder::ReadTransition(FrameResourceHandle handle, DeviceAccessState access)
+	FrameResourceHandle FrameGraphNodeBuilder::ReadTransition(FrameResourceHandle handle, DeviceAccessState access, std::pair<DeviceSyncPoint, DeviceSyncPoint> syncPoints)
 	{
-		return AddReadableResource(handle, access, DeviceLayout_Unknown);
+		auto object = Resources->GetResourceObject(handle);
+
+		return AddReadableResource(handle, access, object->layout);
 	}
 
 
 	/************************************************************************************************/
 
 
-	FrameResourceHandle FrameGraphNodeBuilder::WriteTransition(FrameResourceHandle handle, DeviceAccessState state)
+	FrameResourceHandle FrameGraphNodeBuilder::WriteTransition(FrameResourceHandle handle, DeviceAccessState access, std::pair<DeviceSyncPoint, DeviceSyncPoint> syncPoints)
 	{
-		return AddWriteableResource(handle, state, DeviceLayout_Unknown);
+		auto object = Resources->GetResourceObject(handle);
+
+		return AddWriteableResource(handle, access, object->layout);
 	}
 
 
