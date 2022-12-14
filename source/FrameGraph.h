@@ -655,15 +655,6 @@ namespace FlexKit
 
 		D3D12_VERTEX_BUFFER_VIEW ReadStreamOut(FrameResourceHandle handle, Context& ctx, size_t vertexSize) const
 		{
-			/*
-			typedef struct D3D12_VERTEX_BUFFER_VIEW
-			{
-			D3D12_GPU_VIRTUAL_ADDRESS BufferLocation;
-			UINT SizeInBytes;
-			UINT StrideInBytes;
-			} 	D3D12_VERTEX_BUFFER_VIEW;
-			*/
-
 			auto& res			= _FindSubNodeResource(handle);
 			auto SOHandle		= globalResources.Resources[res.resource].SOBuffer;
 			auto deviceResource = renderSystem().GetDeviceResource(SOHandle);
@@ -693,7 +684,7 @@ namespace FlexKit
 
 			if (access != currentObject.access || layout != currentObject.layout)
 			{
-				switch (renderSystem().GetTextureDimension(resource_ref.shaderResource))
+				switch (resource_ref.dimensions)
 				{
 				case TextureDimension::Buffer:
 					if (access != currentObject.access)
@@ -717,61 +708,60 @@ namespace FlexKit
 			return resourceHandle;
 		}
 
-		ResourceHandle Transition(const FrameResourceHandle resource, DeviceAccessState state, uint32_t subresource, Context& ctx) const
+		ResourceHandle CopyDest(FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All)
 		{
-			DebugBreak();
-			auto UAVBuffer		= globalResources.Resources[resource].shaderResource;
-
-			/*
-			auto currentState   = GetObjectState(resource);
-			if (state != currentState)
-			{
-				DebugBreak();
-				//ctx.AddResourceBarrier(UAVBuffer, currentState, state, subresource);
-				_FindSubNodeResource(resource).currentState = state;
-			}
-			*/
-			return UAVBuffer;
+			return Transition(resource, DASCopyDest, DeviceLayout::DeviceLayout_DirectQueueCopyDst, ctx, before, after);
 		}
 
-		ResourceHandle CopyDest(FrameResourceHandle resource, Context& ctx)
+		ResourceHandle CopySrc(FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All)
 		{
-			return Transition(resource, DASCopyDest, DeviceLayout::DeviceLayout_DirectQueueCopyDst, ctx);
+			return Transition(resource, DASCopySrc, DeviceLayout::DeviceLayout_DirectQueueCopySrc, ctx, before, after);
 		}
 
-		ResourceHandle CopySrc(FrameResourceHandle resource, Context& ctx)
+		ResourceHandle UAV(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASCopySrc, DeviceLayout::DeviceLayout_DirectQueueCopySrc, ctx);
+			return Transition(resource, DASUAV, DeviceLayout::DeviceLayout_DirectQueueUnorderedAccess, ctx, before, after);
 		}
 
-		ResourceHandle UAV(const FrameResourceHandle resource, Context& ctx) const
+		ResourceHandle RenderTarget(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASUAV, DeviceLayout::DeviceLayout_DirectQueueUnorderedAccess, ctx);
+			return Transition(resource, DASRenderTarget, DeviceLayout::DeviceLayout_RenderTarget, ctx, before, after);
 		}
 
-		ResourceHandle RenderTarget(const FrameResourceHandle resource, Context& ctx) const
+		ResourceHandle PixelShaderResource(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASRenderTarget, DeviceLayout::DeviceLayout_RenderTarget, ctx);
+			return Transition(resource, DASPixelShaderResource, DeviceLayout::DeviceLayout_DirectQueueShaderResource, ctx, before, after);
 		}
 
-		ResourceHandle PixelShaderResource(const FrameResourceHandle resource, Context& ctx) const
+		ResourceHandle NonPixelShaderResource(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASPixelShaderResource, DeviceLayout::DeviceLayout_DirectQueueShaderResource, ctx);
+			return Transition(resource, DASNonPixelShaderResource, DeviceLayout::DeviceLayout_ShaderResource, ctx, before, after);
 		}
 
-		ResourceHandle NonPixelShaderResource(const FrameResourceHandle resource, Context& ctx) const
+		ResourceHandle IndirectArgs(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASNonPixelShaderResource, DeviceLayout::DeviceLayout_ShaderResource, ctx);
+			return Transition(resource, DASINDIRECTARGS, DeviceLayout::DeviceLayout_DirectQueueGenericRead, ctx, before, after);
 		}
 
-		ResourceHandle IndirectArgs(const FrameResourceHandle resource, Context& ctx) const
+		ResourceHandle VertexBuffer(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASINDIRECTARGS, DeviceLayout::DeviceLayout_DirectQueueGenericRead, ctx, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_All);
+			return Transition(resource, DASVERTEXBUFFER, DeviceLayout::DeviceLayout_DirectQueueGenericRead, ctx, before, after);
 		}
 
-		ResourceHandle VertexBuffer(const FrameResourceHandle resource, Context& ctx) const
+		ResourceHandle ResolveDst(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASVERTEXBUFFER, DeviceLayout::DeviceLayout_DirectQueueGenericRead, ctx);
+			return Transition(resource, DASVERTEXBUFFER, DeviceLayout::DeviceLayout_ResolveDst, ctx, before, after);
+		}
+
+		ResourceHandle ResolveSrc(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
+		{
+			return Transition(resource, DASVERTEXBUFFER, DeviceLayout::DeviceLayout_ResolveSrc, ctx, before, after);
+		}
+
+		ID3D12Resource* ResolveDst(const ReadBackResourceHandle resource, Context& ctx) const
+		{
+			return renderSystem().GetDeviceResource(resource);
+			//return Transition(resource, DASVERTEXBUFFER, DeviceLayout::DeviceLayout_ResolveDst, ctx, before, after);
 		}
 
 		std::pair<DeviceAccessState, DeviceLayout> GetObjectStates(FrameResourceHandle handle) const
@@ -1198,8 +1188,8 @@ namespace FlexKit
 		FrameResourceHandle	VertexBuffer	(SOResourceHandle);
 		FrameResourceHandle	StreamOut		(SOResourceHandle);
 
-		FrameResourceHandle ReadTransition	(FrameResourceHandle handle, DeviceAccessState state);
-		FrameResourceHandle WriteTransition	(FrameResourceHandle handle, DeviceAccessState state);
+		FrameResourceHandle ReadTransition	(FrameResourceHandle handle, DeviceAccessState state, std::pair<DeviceSyncPoint, DeviceSyncPoint> syncPoints = { Sync_All, Sync_All });
+		FrameResourceHandle WriteTransition	(FrameResourceHandle handle, DeviceAccessState state, std::pair<DeviceSyncPoint, DeviceSyncPoint> syncPoints = { Sync_All, Sync_All });
 
 
 		void SetDebugName(FrameResourceHandle handle, const char* debugName);
@@ -1215,10 +1205,8 @@ namespace FlexKit
 	private:
 
 		template<typename TY>
-		FrameResourceHandle AddReadableResource(TY handle, DeviceAccessState access, DeviceLayout layout, Barrier barrier = {}, std::optional<std::pair<DeviceAccessState, DeviceLayout>> finalTransition = {})
+		FrameResourceHandle AddReadableResource(TY handle, DeviceAccessState access, DeviceLayout layout, std::optional<std::pair<DeviceAccessState, DeviceLayout>> finalTransition = {}, std::pair<DeviceSyncPoint, DeviceSyncPoint> syncPoints = { Sync_All, Sync_All })
 		{
-			FK_ASSERT(barrier.type != BarrierType::Unknown);
-
 			FrameResourceHandle frameResourceHandle = Context.GetFrameObject(handle);
 
 			if (frameResourceHandle == InvalidHandle)
@@ -1242,16 +1230,20 @@ namespace FlexKit
 				FrameObjectLink dependency{ frameResourceHandle, &Node, access, layout };
 				Context.AddReadable(dependency);
 
-				switch (barrier.type)
+				Barrier barrier;
+				barrier.accessBefore	= frameObject.access;
+				barrier.accessAfter		= access;
+				barrier.src				= std::get<0>(syncPoints);
+				barrier.dst				= std::get<1>(syncPoints);
+
+				switch (frameObject.dimensions)
 				{
-				case BarrierType::Buffer:
-					barrier.accessBefore			= frameObject.access;
-					barrier.accessAfter				= access;
+				case TextureDimension::Buffer:
+					barrier.type					= BarrierType::Buffer;
 					barrier.resource				= frameObject.shaderResource;
 					break;
-				case BarrierType::Texture:
-					barrier.accessBefore			= frameObject.access;
-					barrier.accessAfter				= access;
+				default:
+					barrier.type					= BarrierType::Texture;
 					barrier.resource				= frameObject.shaderResource;
 					barrier.texture.layoutBefore	= frameObject.layout;
 					barrier.texture.layoutAfter		= layout;
@@ -1272,10 +1264,8 @@ namespace FlexKit
 
 
 		template<typename TY>
-		FrameResourceHandle AddWriteableResource(TY handle, DeviceAccessState access, DeviceLayout layout, Barrier barrier = {}, std::optional<std::pair<DeviceAccessState, DeviceLayout>> finalTransition = {})
+		FrameResourceHandle AddWriteableResource(TY handle, DeviceAccessState access, DeviceLayout layout, std::optional<std::pair<DeviceAccessState, DeviceLayout>> finalTransition = {}, std::pair<DeviceSyncPoint, DeviceSyncPoint> syncPoints = { Sync_All, Sync_All })
 		{
-			FK_ASSERT(barrier.type != BarrierType::Unknown);
-
 			FrameResourceHandle frameResourceHandle = Context.GetFrameObject(handle);
 
 			if (frameResourceHandle == InvalidHandle)
@@ -1297,16 +1287,20 @@ namespace FlexKit
 				FrameObjectLink dependency{ frameResourceHandle, &Node, access, layout };
 				Context.AddWriteable(dependency);
 
-				switch (barrier.type)
+				Barrier barrier;
+				barrier.accessBefore	= frameObject.access;
+				barrier.accessAfter		= access;
+				barrier.src				= std::get<0>(syncPoints);
+				barrier.dst				= std::get<1>(syncPoints);
+
+				switch (frameObject.dimensions)
 				{
-				case BarrierType::Buffer:
-					barrier.accessBefore			= frameObject.access;
-					barrier.accessAfter				= access;
+				case TextureDimension::Buffer:
+					barrier.type					= BarrierType::Buffer;
 					barrier.resource				= frameObject.shaderResource;
 					break;
-				case BarrierType::Texture:
-					barrier.accessBefore			= frameObject.access;
-					barrier.accessAfter				= access;
+				default:
+					barrier.type					= BarrierType::Texture;
 					barrier.resource				= frameObject.shaderResource;
 					barrier.texture.layoutBefore	= frameObject.layout;
 					barrier.texture.layoutAfter		= layout;
