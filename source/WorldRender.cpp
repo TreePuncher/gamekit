@@ -824,6 +824,8 @@ namespace FlexKit
 				temporary,
 				drawSceneDesc.debugDisplay != DebugVisMode::ClusterVIS);
 
+
+		/*
 		auto& shadowMapPass =
 			shadowMapping.ShadowMapPass(
 				frameGraph,
@@ -836,8 +838,9 @@ namespace FlexKit
 				drawSceneDesc.additionalShadowPasses,
 				t,
 				&temporary);
-
+		*/
 		/*
+
 		auto& updateVolumes =
 			lightingEngine.UpdateVoxelVolumes(
 				dispatcher,
@@ -848,6 +851,7 @@ namespace FlexKit
 				temporary);
 		*/
 
+
 		auto& shadingPass =
 			clusteredRender.ClusteredShading(
 				dispatcher,
@@ -857,12 +861,13 @@ namespace FlexKit
 				gbufferPass,
 				depthTarget.Get(),
 				renderTarget,
-				shadowMapPass,
+				//shadowMapPass,
 				lightPass,
 				reserveCB, reserveVB,
 				t,
 				temporary);
 
+		/*
 		lightingEngine.RayTrace(
 				dispatcher,
 				frameGraph,
@@ -891,6 +896,7 @@ namespace FlexKit
 				OIT_pass,
 				shadingPass.renderTargetObject,
 				temporary);
+		*/
 
 		auto& toneMapped =
 			RenderPBR_ToneMapping(
@@ -902,8 +908,7 @@ namespace FlexKit
 				reserveVB,
 				drawSceneDesc.dt,
 				temporary);
-
-
+		/*
 		if (drawSceneDesc.debugDisplay == DebugVisMode::ClusterVIS)
 		{
 			clusteredRender.DEBUGVIS_DrawLightBVH(
@@ -929,6 +934,7 @@ namespace FlexKit
 				drawSceneDesc.BVHVisMode,
 				temporary);
 		}
+		*/
 
 		clusteredRender.ReleaseFrameResources(
 			frameGraph,

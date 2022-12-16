@@ -1516,7 +1516,7 @@ namespace FlexKit
 
 	void Context::DiscardResource(ResourceHandle resource)
 	{
-		DebugBreak();
+		//DebugBreak();
 
 		UpdateResourceStates();
 
@@ -1568,28 +1568,34 @@ namespace FlexKit
 
 	void Context::AddUAVBarrier(ResourceHandle resource, uint32_t subresource)
 	{
-		const auto dimension = renderSystem->GetTextureDimension(resource);
-		Barrier barrier;
-		barrier.resource		= resource;
-		barrier.accessBefore	= DASUAV;
-		barrier.accessAfter		= DASUAV;
-		barrier.src				= DeviceSyncPoint::Sync_Compute;
-		barrier.dst				= DeviceSyncPoint::Sync_Compute;
-
-		switch (dimension)
+		if(resource != FlexKit::InvalidHandle)
 		{
-		case TextureDimension::Buffer:
-			barrier.type = BarrierType::Buffer;
-			break;
-		case TextureDimension::Texture1D:
-		case TextureDimension::Texture2D:
-		case TextureDimension::Texture3D:
-		case TextureDimension::Texture2DArray:
-		case TextureDimension::TextureCubeMap:
-			DebugBreak();
-		}
+			const auto dimension = renderSystem->GetTextureDimension(resource);
+			Barrier barrier;
+			barrier.resource		= resource;
+			barrier.accessBefore	= DASUAV;
+			barrier.accessAfter		= DASUAV;
+			barrier.src				= DeviceSyncPoint::Sync_Compute;
+			barrier.dst				= DeviceSyncPoint::Sync_Compute;
 
-		pendingBarriers.push_back(barrier);
+			switch (dimension)
+			{
+			case TextureDimension::Buffer:
+				barrier.type = BarrierType::Buffer;
+				break;
+			case TextureDimension::Texture1D:
+			case TextureDimension::Texture2D:
+			case TextureDimension::Texture3D:
+			case TextureDimension::Texture2DArray:
+			case TextureDimension::TextureCubeMap:
+				DebugBreak();
+			}
+
+			pendingBarriers.push_back(barrier);
+		}
+		else
+		{
+		}
 	}
 
 
@@ -1710,8 +1716,6 @@ namespace FlexKit
 
 		if (res != pendingBarriers.end())
 		{
-			DebugBreak();
-
 			res->accessAfter		= accessAfter;
 		}
 		else
@@ -2439,6 +2443,9 @@ namespace FlexKit
 			static_vector<DeviceAccessState>	currentStates,
 			static_vector<DeviceAccessState>	finalStates)
 	{
+		DebugBreak();
+
+		/*
 		FK_ASSERT(sources.size() == destinations.size(), "Invalid argument!");
 
 
@@ -2484,6 +2491,77 @@ namespace FlexKit
 			prevResource	= resource;
 			prevState       = state;
 		}
+		*/
+	}
+
+
+	void Context::CopyBufferRegion(
+		ResourceHandle	destination,
+		ResourceHandle	source,
+		size_t			size,
+		size_t			destinationOffset,
+		size_t			sourceOffset)
+	{
+		FlushBarriers();
+
+		DeviceContext->CopyBufferRegion(
+			renderSystem->GetDeviceResource(destination),
+			destinationOffset,
+			renderSystem->GetDeviceResource(source),
+			sourceOffset,
+			size);
+	}
+
+	void Context::CopyBufferRegion(
+		ResourceHandle	destination,
+		ID3D12Resource* source,
+		size_t			size,
+		size_t			destinationOffset,
+		size_t			sourceOffset
+	)
+	{
+		FlushBarriers();
+
+		DeviceContext->CopyBufferRegion(
+			renderSystem->GetDeviceResource(destination),
+			destinationOffset,
+			source,
+			sourceOffset,
+			size);
+	}
+
+	void Context::CopyBufferRegion(
+		ID3D12Resource* destination,
+		ResourceHandle	source,
+		size_t			size,
+		size_t			destinationOffset,
+		size_t			sourceOffset)
+	{
+		FlushBarriers();
+
+		DeviceContext->CopyBufferRegion(
+			destination,
+			destinationOffset,
+			renderSystem->GetDeviceResource(source),
+			sourceOffset,
+			size);
+	}
+
+	void Context::CopyBufferRegion(
+		ID3D12Resource*	destination,
+		ID3D12Resource* source,
+		size_t			size,
+		size_t			destinationOffset,
+		size_t			sourceOffset)
+	{
+		FlushBarriers();
+
+		DeviceContext->CopyBufferRegion(
+			destination,
+			destinationOffset,
+			source,
+			sourceOffset,
+			size);
 	}
 
 
@@ -2496,6 +2574,8 @@ namespace FlexKit
 		static_vector<DeviceAccessState>		currentStates,
 		static_vector<DeviceAccessState>		finalStates)
 	{
+		DebugBreak();
+
 		FK_ASSERT(handles.size() == currentStates.size(), "Invalid argument!");
 
 		/*
@@ -2505,7 +2585,7 @@ namespace FlexKit
 		UINT32 Value;
 		} 	D3D12_WRITEBUFFERIMMEDIATE_PARAMETER;
 		*/
-
+		/*
 		DeviceAccessState prevState		= DeviceAccessState::DASERROR;
 		ID3D12Resource*		prevResource	= nullptr;
 
@@ -2552,6 +2632,7 @@ namespace FlexKit
 			prevResource	= resource;
 			prevState		= prevState;
 		}
+		*/
 	}
 
 
@@ -2621,6 +2702,8 @@ namespace FlexKit
 		static_vector<DeviceAccessState>		destinationState,
 		static_vector<size_t>					destinationOffset)
 	{
+		DebugBreak();
+
 		FK_ASSERT(sources.size()		== sourceState.size(),			"Invalid argument!");
 		FK_ASSERT(sources.size()		== sourceOffsets.size(),		"Invalid argument!");
 		FK_ASSERT(destinations.size()	== destinationState.size(),		"Invalid argument!");
@@ -2634,6 +2717,7 @@ namespace FlexKit
 		UINT32 Value;
 		} 	D3D12_WRITEBUFFERIMMEDIATE_PARAMETER;
 		*/
+		/*
 
 		// transition source resources
 		for (size_t itr = 0; itr < sources.size(); ++itr) 
@@ -2677,6 +2761,7 @@ namespace FlexKit
 			auto state		= destinationState[itr];
 			_AddBarrier(resource, DeviceAccessState::DASCopyDest, state);
 		}
+		*/
 	}
 
 
@@ -3330,28 +3415,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::_AddBarrier(ID3D12Resource* resource, DeviceAccessState currentState, DeviceAccessState newState)
-	{
-		DebugBreak();
-
-		/*
-		Barrier barrier;
-		barrier.Type		    = Barrier::Type::Generic;
-		barrier.resource_ptr    = resource;
-		barrier.OldState	    = currentState;
-		barrier.NewState	    = newState;
-
-		if (PendingBarriers.full())
-			FlushBarriers();
-
-		PendingBarriers.push_back(barrier);
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
 	DescHeapPOS Context::_GetDepthDesciptor(ResourceHandle depthBuffer)
 	{
 		auto DSV_CPU_HANDLE = DescHeapPOS{};
@@ -3428,8 +3491,8 @@ namespace FlexKit
 				textureBarrier.LayoutAfter		= DeviceLayout2DX(barrier.texture.layoutAfter);
 				textureBarrier.Flags			= D3D12_TEXTURE_BARRIER_FLAG_NONE;
 				textureBarrier.pResource		= renderSystem->GetDeviceResource(barrier.resource);
-				textureBarrier.SyncAfter		= SyncPoint2DX(barrier.src);//D3D12_BARRIER_SYNC_ALL;
-				textureBarrier.SyncBefore		= SyncPoint2DX(barrier.dst);
+				textureBarrier.SyncAfter		= SyncPoint2DX(barrier.dst);
+				textureBarrier.SyncBefore		= SyncPoint2DX(barrier.src);
 
 				textureBarrier.Subresources		= D3D12_BARRIER_SUBRESOURCE_RANGE{
 					.IndexOrFirstMipLevel	= 0,
@@ -5137,23 +5200,24 @@ namespace FlexKit
 				}   break;
 				case ResourceAllocationType::Placed:
 				{
-					DebugBreak();
+					//DebugBreak();
 					ProfileFunctionLabeled(Placed);
+					D3D12_RESOURCE_DESC1 Resource_DESC = desc.GetD3D12ResourceDesc1();
 
-					/*
-					HRESULT HR = pDevice10->CreatePlacedResource(
+					HRESULT HR = pDevice10->CreatePlacedResource2(
 						desc.placed.heap != InvalidHandle ? GetDeviceResource(desc.placed.heap) : desc.placed.customHeap,
 						desc.placed.offset,
 						&Resource_DESC,
-						InitialState,
-						pCV,
+						initialLayout,
+						clearValue,
+						0,
+						nullptr,
 						IID_PPV_ARGS(&NewResource[itr]));
 
 					CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE PLACED RESOURCE"));
 
 					if (FAILED(HR))
 						_OnCrash();
-					*/
 				}   break;
 				}
 				FK_ASSERT(NewResource[itr], "Failed to Create Texture!");
@@ -8679,34 +8743,15 @@ namespace FlexKit
 
 		if (PendingBarriers.size())
 		{
+			/*
 			std::unique_lock lock{ barrierLock };
 
 			auto& context = GetCommandList();
 			cls.push_back(context.GetCommandList());
 
-
-			DebugBreak();
-			/*
-			for (auto barrier : PendingBarriers) {
-				if (barrier.type == CopyBarrier::ResourceType::PTR)
-					context._AddBarrier(
-						barrier._ptr,
-						barrier.beforeState,
-						barrier.afterState);
-				else if (barrier.type == CopyBarrier::ResourceType::HNDL) {
-					context._AddBarrier(
-						GetDeviceResource(barrier.handle),
-						barrier.beforeState,
-						barrier.afterState);
-
-					//GetObjectLayout(barrier.handle, barrier.afterState);
-				}
-			}
-			*/
-
-
 			context.FlushBarriers();
 			context.Close(counter);
+			*/
 			PendingBarriers.clear();
 		}
 

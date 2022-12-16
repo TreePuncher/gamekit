@@ -11,21 +11,21 @@ using namespace FlexKit;
 TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework) :
 	FrameworkState		{ IN_framework },
 
-	animators			{ framework.core.GetBlockMemory() },
-	brushes				{ framework.core.GetBlockMemory(), framework.GetRenderSystem() },
-	cameras				{ framework.core.GetBlockMemory() },
-	sceneNodes			{},
-	materials			{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
-	visibilityComponent	{ framework.core.GetBlockMemory() },
-	pointLights			{ framework.core.GetBlockMemory() },
-	orbitCameras		{ framework.core.GetBlockMemory() },
-	pointLightShadowMaps{ framework.core.GetBlockMemory() },
-	ikComponent			{ framework.core.GetBlockMemory() },
-	skeletons			{ framework.core.GetBlockMemory() },
+	animators				{ framework.core.GetBlockMemory() },
+	brushes					{ framework.core.GetBlockMemory(), framework.GetRenderSystem() },
+	cameras					{ framework.core.GetBlockMemory() },
+	sceneNodes				{},
+	materials				{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
+	visibilityComponent		{ framework.core.GetBlockMemory() },
+	pointLights				{ framework.core.GetBlockMemory() },
+	orbitCameras			{ framework.core.GetBlockMemory() },
+	pointLightShadowMaps	{ framework.core.GetBlockMemory() },
+	ikComponent				{ framework.core.GetBlockMemory() },
+	skeletons				{ framework.core.GetBlockMemory() },
 
-	physx				{ framework.core.Threads, framework.core.GetBlockMemory() },
-	rigidBodies			{ physx },
-	staticBodies		{ physx },
+	physx					{ framework.core.Threads, framework.core.GetBlockMemory() },
+	rigidBodies				{ physx },
+	staticBodies			{ physx },
 
 	renderer				{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
 	textureStreamingEngine	{ framework.GetRenderSystem(), framework.core.GetBlockMemory() },
@@ -95,14 +95,12 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore&, FlexKit:
 
 FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
-	ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), { 1, 0, 1, 0 });
 	ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
-
+	ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), { 1, 0, 1, 0 });
 	FlexKit::WorldRender_Targets targets{
-		.RenderTarget	= renderWindow.GetBackBuffer(),
-		.DepthTarget	= depthBuffer,
+		.RenderTarget = renderWindow.GetBackBuffer(),
+		.DepthTarget = depthBuffer,
 	};
-
 	ReserveConstantBufferFunction	reserveCB = FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory());
 	ReserveVertexBufferFunction		reserveVB = FlexKit::CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory());
 

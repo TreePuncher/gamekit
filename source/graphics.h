@@ -131,32 +131,32 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		DASDEPTHBUFFERREAD			= 0x0030 | DASReadFlag,
 		DASDEPTHBUFFERWRITE			= 0x0030 | DASWriteFlag,
 
-		DASACCELERATIONSTRUCTURE_WRITE	= 0x00B2 | DASWriteFlag,
-		DASACCELERATIONSTRUCTURE_READ	= 0x00B2 | DASReadFlag,
+		DASACCELERATIONSTRUCTURE_WRITE	= 0x00D0 | DASWriteFlag,
+		DASACCELERATIONSTRUCTURE_READ	= 0x00D0 | DASReadFlag,
 
 		DASPREDICATE				= 0x0010 | DASReadFlag,
-		DASINDIRECTARGS				= 0x0010 | DASReadFlag,
+		DASINDIRECTARGS				= 0x0020 | DASReadFlag,
 
-		DASNonPixelShaderResource	= 0x0050 | DASWriteFlag,
+		DASNonPixelShaderResource	= 0x0040 | DASWriteFlag,
 
-		DASCopyDest					= 0x0060 | DASWriteFlag,
-		DASCopySrc					= 0x0070 | DASReadFlag,
+		DASCopyDest					= 0x0050 | DASWriteFlag,
+		DASCopySrc					= 0x0050 | DASReadFlag,
 
-		DASINDEXBUFFER				= 0x0080 | DASReadFlag,
+		DASINDEXBUFFER				= 0x0060 | DASReadFlag,
 
-		DASGenericRead				= 0x0020 | DASReadFlag,
-		DASCommon					= 0x0090 | DASReadFlag,
+		DASGenericRead				= 0x0070 | DASReadFlag,
+		DASCommon					= 0x0080 | DASReadFlag,
 
-		DASShadingRateSrc			= 0x00C | DASReadFlag,
-		DASShadingRateDst			= 0x00C | DASWriteFlag,
+		DASShadingRateSrc			= 0x00A0 | DASReadFlag,
+		DASShadingRateDst			= 0x00A0 | DASWriteFlag,
 
-		DASDecodeWrite				= 0x00D0 | DASWriteFlag,
+		DASDecodeWrite				= 0x00B0 | DASWriteFlag,
 
 		DASProcessRead				= 0x00E0 | DASReadFlag,
 		DASProcessWrite				= 0x00E0 | DASWriteFlag,
 
 		DASEncodeRead				= 0x0100 | DASReadFlag,
-		DASEncodeWrite				= 0x0100 | DASReadFlag,
+		DASEncodeWrite				= 0x0100 | DASWriteFlag,
 
 		DASResolveRead				= 0x0200 | DASReadFlag,
 		DASResolveWrite				= 0x0200 | DASWriteFlag,
@@ -234,6 +234,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		DeviceLayout_ComputeQueueCopySrc,
 		DeviceLayout_ComputeQueueCopyDst,
 		DeviceLayout_VideoQueueCommon,
+		DeviceLayout_Undefined,
 
 		DeviceLayout_Unknown = 0xffffffff,
 	};
@@ -439,9 +440,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			return D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_DEST;
 		case DeviceLayout_VideoQueueCommon:
 			return D3D12_BARRIER_LAYOUT_VIDEO_QUEUE_COMMON;
+		case DeviceLayout_Undefined:
+			return D3D12_BARRIER_LAYOUT_UNDEFINED;
 		case DeviceLayout_Unknown:
 		default:
-			return D3D12_BARRIER_LAYOUT_UNDEFINED;
+			DebugBreak();
 		};
 	}
 
@@ -2467,6 +2470,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				.WH				= IN_WH,
 				.bufferCount	= 3,
 				.MipLevels		= 1,
+
+				.clearValue		= { D3D12_CLEAR_VALUE{
+										.Format = TextureFormat2DXGIFormat(IN_format),
+										.Color{ 0.0f, 0.0f, 0.0f, 0.0f }}}
 			};
 		}
 
@@ -2478,6 +2485,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				.Dimensions		= TextureDimension::Texture2D,
 				.allocationType = allocationType,
 				.format			= IN_format,
+				.initialLayout	= DeviceLayout_DepthStencilWrite,
 
 				.WH				= IN_WH,
 				.arraySize		= arraySize,
@@ -2486,7 +2494,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 				.clearValue		= { D3D12_CLEAR_VALUE{
 										.Format = TextureFormat2DXGIFormat(IN_format),
-										.DepthStencil{ .Depth = 1.0f, .Stencil = 0xff } }}
+										.DepthStencil{ .Depth = 1.0f, .Stencil = 0xff }}}
 			};
 		}
 
@@ -2529,6 +2537,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				.Dimensions		= TextureDimension::Buffer,
 				.allocationType = ResourceAllocationType::Committed,
 				.format			= DeviceFormat::UNKNOWN,
+				.initialLayout	= DeviceLayout_Undefined,
 
 				.WH				= { bufferSize, 1 },
 				.arraySize		= 1,
@@ -2545,6 +2554,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				.Dimensions		= TextureDimension::Buffer, // dimensions
 				.allocationType = ResourceAllocationType::Committed,
 				.format			= DeviceFormat::UNKNOWN,
+				.initialLayout	= DeviceLayout_Undefined,
 
 				.WH				= uint2{ (uint32_t)bufferSize, 1 },
 				.bufferCount	= 3,
@@ -2563,6 +2573,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				.Dimensions		= TextureDimension::Buffer,
 				.allocationType = ResourceAllocationType::Committed,
 				.format			= IN_format,
+				.initialLayout	= DeviceLayout_Undefined,
+
 
 				.WH				= uint2{ (uint32_t)bufferSize, 1 },
 				.bufferCount	= 3,
@@ -3541,6 +3553,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		BarrierType type = BarrierType::Unknown;
 
 		ResourceHandle resource;
+
 		union
 		{
 			struct Texture
@@ -4015,6 +4028,34 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void CopyResource(ResourceHandle dest, ResourceHandle src);
 
 		void CopyBufferRegion(
+			ResourceHandle	destination,
+			ResourceHandle	source,
+			size_t			size,
+			size_t			destinationOffset	= 0,
+			size_t			sourceOffset		= 0);
+
+		void CopyBufferRegion(
+			ResourceHandle	destination,
+			ID3D12Resource*	source,
+			size_t			size,
+			size_t			destinationOffset	= 0,
+			size_t			sourceOffset		= 0);
+
+		void CopyBufferRegion(
+			ID3D12Resource*	destination,
+			ResourceHandle	source,
+			size_t			size,
+			size_t			destinationOffset	= 0,
+			size_t			sourceOffset		= 0);
+
+		void CopyBufferRegion(
+			ID3D12Resource*	destination,
+			ID3D12Resource* source,
+			size_t			size,
+			size_t			destinationOffset	= 0,
+			size_t			sourceOffset		= 0);
+
+		void CopyBufferRegion(
 			static_vector<ID3D12Resource*>		sources,
 			static_vector<size_t>				sourceOffset,
 			static_vector<ID3D12Resource*>		destinations,
@@ -4119,8 +4160,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void BeginMarker(const char* str);
 		void EndMarker(const char* str);
-
-		void _AddBarrier(ID3D12Resource* resource, DeviceAccessState currentState, DeviceAccessState newState);
 
 	//private:
 
