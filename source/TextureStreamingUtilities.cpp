@@ -160,7 +160,7 @@ namespace FlexKit
 	ID3D12PipelineState* CreateTextureFeedbackPassPSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("Forward_VS",				"vs_6_5", "assets\\shaders\\forwardRender.hlsl");
-		auto PShader = RS->LoadShader("TextureFeedback_PS",		"ps_6_5", "assets\\shaders\\TextureFeedback.hlsl");
+		auto PShader = RS->LoadShader("TextureFeedback_PS",		"ps_6_5", "assets\\shaders\\TextureFeedback\\TextureFeedback.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -194,7 +194,8 @@ namespace FlexKit
 
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
-		FK_ASSERT(SUCCEEDED(HR));
+
+		FK_ASSERT(SUCCEEDED(HR), "Failed to create Texture feedback PS");
 
 		return PSO;
 	}
@@ -243,6 +244,7 @@ namespace FlexKit
 
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+
 		FK_ASSERT(SUCCEEDED(HR));
 
 		return PSO;
@@ -254,9 +256,12 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateTextureFeedbackCompressorPSO(RenderSystem* RS)
 	{
+		const char* file = RS->vendorID == DeviceVendor::AMD ?
+				"assets\\shaders\\TextureFeedback\\TextureFeedbackCompressor_AMD.hlsl" :
+				"assets\\shaders\\TextureFeedback\\TextureFeedbackCompressor.hlsl";
+
 		auto computeShader = RS->LoadShader(
-			"CompressBlocks", "cs_6_5",
-			"assets\\shaders\\TextureFeedbackCompressor.hlsl");
+			"CompressBlocks", "cs_6_7", file);
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			RS->Library.RSDefault,
@@ -267,6 +272,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateComputePipelineState(
 			&desc,
 			IID_PPV_ARGS(&PSO));
+
+		FK_ASSERT(SUCCEEDED(HR), "Failed to create Texture feedback compressor shader");
 
 		return PSO;
 	}
@@ -279,7 +286,7 @@ namespace FlexKit
 	{
 		auto computeShader = RS->LoadShader(
 			"PreFixSumBlockSizes", "cs_6_5",
-			"assets\\shaders\\TextureFeedbackBlockPreFixSum.hlsl");
+			"assets\\shaders\\TextureFeedback\\TextureFeedbackBlockPreFixSum.hlsl");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			RS->Library.RSDefault,
@@ -290,6 +297,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateComputePipelineState(
 			&desc,
 			IID_PPV_ARGS(&PSO));
+
+		FK_ASSERT(SUCCEEDED(HR), "Failed to create Texture feedback prefix sum shader");
 
 		return PSO;
 	}
@@ -302,7 +311,7 @@ namespace FlexKit
 	{
 		auto computeShader = RS->LoadShader(
 			"MergeBlocks", "cs_6_5",
-			"assets\\shaders\\TextureFeedbackMergeBlocks.hlsl");
+			"assets\\shaders\\TextureFeedback\\TextureFeedbackMergeBlocks.hlsl");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			RS->Library.RSDefault,
@@ -313,6 +322,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateComputePipelineState(
 			&desc,
 			IID_PPV_ARGS(&PSO));
+
+		FK_ASSERT(SUCCEEDED(HR), "Failed to create Merge Block shader");
 
 		return PSO;
 	}
@@ -325,7 +336,7 @@ namespace FlexKit
 	{
 		auto computeShader = RS->LoadShader(
 			"SetBlockCounters", "cs_6_5",
-			"assets\\shaders\\TextureFeedbackMergeBlocks.hlsl");
+			"assets\\shaders\\TextureFeedback\\TextureFeedbackMergeBlocks.hlsl");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			RS->Library.RSDefault,
@@ -336,6 +347,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateComputePipelineState(
 			&desc,
 			IID_PPV_ARGS(&PSO));
+
+		FK_ASSERT(SUCCEEDED(HR));
 
 		return PSO;
 	}
@@ -390,14 +403,14 @@ namespace FlexKit
 				if (!updateInProgress)
 					return;
 
+				return;
 				taskInProgress = true;
 				auto& task = allocator->allocate<TextureStreamUpdate>(resource, *this, allocator);
 				renderSystem.threads.AddBackgroundWork(task);
 			});
 
-		//renderSystem.QueuePSOLoad(TEXTUREFEEDBACKPASS);
+		renderSystem.QueuePSOLoad(TEXTUREFEEDBACKPASS);
 		//renderSystem.QueuePSOLoad(TEXTUREFEEDBACKANIMATEDPASS);
-
 		//renderSystem.QueuePSOLoad(TEXTUREFEEDBACKCOMPRESSOR);
 		//renderSystem.QueuePSOLoad(TEXTUREFEEDBACKPREFIXSUMBLOCKSIZES);
 		//renderSystem.QueuePSOLoad(TEXTUREFEEDBACKMERGEBLOCKS);
@@ -767,6 +780,7 @@ namespace FlexKit
 					CompressionPass(data.feedbackBuffers[itr % 2], data.feedbackBuffers[(itr + 1) % 2]);
 
 				// Write out
+				/*
 				ctx.CopyBufferRegion(
 					{   resources.GetDeviceResource(resources.CopySrc(data.feedbackCounters, ctx)) ,
 						resources.GetDeviceResource(resources.CopySrc(data.feedbackBuffers[passCount % 2],	ctx)) },
@@ -777,7 +791,7 @@ namespace FlexKit
 					{ 8, 2048 * sizeof(uint2) },
 					{ DASCopyDest, DASCopyDest },
 					{ DASCopyDest, DASCopyDest });
-
+				*/
 				//ctx.ResolveQuery(timeStats, 0, 4, resources.GetObjectResource(data.readbackBuffer), 8);
 				ctx.QueueReadBack(data.readbackBuffer);
 

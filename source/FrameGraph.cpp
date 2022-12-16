@@ -146,7 +146,17 @@ namespace FlexKit
 			if (resource.virtualState == VirtualResourceState::Virtual_Temporary ||
 				resource.virtualState == VirtualResourceState::Virtual_Released)
 			{
-				ctx->AddGlobalBarrier(resource.shaderResource, retired.neededAccess, DASNOACCESS, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_None);
+				switch (retired.neededLayout)
+				{
+					// Layout Transition required
+				case DeviceLayout_DepthStencilRead:
+				case DeviceLayout_DepthStencilWrite:
+						ctx->AddTextureBarrier(resource.shaderResource, retired.neededAccess, DASNOACCESS, retired.neededLayout, DeviceLayout_Undefined, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_None);
+					break;
+				default:
+						ctx->AddGlobalBarrier(resource.shaderResource, retired.neededAccess, DASNOACCESS, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_None);
+					break;
+				}
 			}
 		}
 	}

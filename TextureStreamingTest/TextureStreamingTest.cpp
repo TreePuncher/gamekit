@@ -141,7 +141,7 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 		core.GetTempMemoryMT()
 	);
 
-	//textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, { 128, 128 }, res.passes, res.skinnedDraws, reserveCB, reserveVB);
+	textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, { 128, 128 }, res.passes, res.skinnedDraws, reserveCB, reserveVB);
 
 	FlexKit::PresentBackBuffer(frameGraph, renderWindow);
 
