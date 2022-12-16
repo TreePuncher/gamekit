@@ -862,10 +862,10 @@ namespace FlexKit
 				data.lightBufferObject		= builder.AcquireVirtualResource(GPUResourceDesc::StructuredResource(512 * KILOBYTE), DASCopyDest, false);
 
 				// Temporaries
-				data.lightBVH				= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512 * KILOBYTE),  DASUAV, releaseTemporaries);
-				data.lightLookupObject		= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512 * KILOBYTE),  DASUAV, releaseTemporaries);
-				data.lightCounterObject		= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512),             DASUAV, releaseTemporaries);
-				data.lightResolutionObject	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(64 * KILOBYTE),   DASUAV);
+				data.lightBVH				= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512 * KILOBYTE),	DASUAV, releaseTemporaries);
+				data.lightLookupObject		= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512 * KILOBYTE),	DASUAV, releaseTemporaries);
+				data.lightCounterObject		= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512),				DASUAV, releaseTemporaries);
+				data.lightResolutionObject	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(64 * KILOBYTE),	DASUAV);
 				data.counterObject			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DASUAV, releaseTemporaries);
 				data.argumentBufferObject	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DASUAV, releaseTemporaries);
 
@@ -959,36 +959,23 @@ namespace FlexKit
 				const uint32_t uploadSize = pointLightValues.size() * sizeof(GPUPointLight);
 				const ConstantBufferDataSet pointLights_GPU{ (char*)pointLightValues.data(), uploadSize, constantBuffer };
 
+				resources.UAV(data.counterObject, ctx);
+				resources.UAV(data.indexBufferObject, ctx);
 
-				ctx.ClearUAVTextureUint(resources.UAV(data.indexBufferObject, ctx), uint4{(uint)-1, (uint)-1, (uint)-1, (uint)-1 });
+				ctx.ClearUAVTextureUint(resources.GetResource(data.indexBufferObject), uint4{(uint)-1, (uint)-1, (uint)-1, (uint)-1 });
 
-				ctx.DiscardResource(resources.GetResource(data.clusterBufferObject));
-				ctx.DiscardResource(resources.GetResource(data.lightListBuffer));
-				ctx.DiscardResource(resources.GetResource(data.lightBufferObject));
-
-				ctx.DiscardResource(resources.GetResource(data.lightLists));
-				ctx.DiscardResource(resources.GetResource(data.lightBVH));
-				ctx.DiscardResource(resources.GetResource(data.lightLookupObject));
-				ctx.DiscardResource(resources.GetResource(data.lightCounterObject));
-				ctx.DiscardResource(resources.GetResource(data.lightResolutionObject));
-				ctx.DiscardResource(resources.GetResource(data.counterObject));
-				ctx.DiscardResource(resources.GetResource(data.argumentBufferObject));
+				resources.CopyDest(data.lightBufferObject, ctx);
 
 				ctx.CopyBufferRegion(
-					{ resources.GetDeviceResource(pointLights_GPU.Handle()) },
-					{ pointLights_GPU.Offset() },
-					{ resources.GetDeviceResource(resources.CopyDest(data.lightBufferObject, ctx)) },
-					{ 0 },
-					{ uploadSize },
-					{ DASCopyDest },
-					{ DASCopyDest }
-				);
+					resources.GetDeviceResource(pointLights_GPU.Handle()),
+					resources.GetResource(data.lightBufferObject),
+					uploadSize);
 
 				ctx.SetComputeRootSignature(resources.renderSystem().Library.ComputeSignature);
 
 				DescriptorHeap clearHeap;
 				clearHeap.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
-				clearHeap.SetUAVStructured(ctx, 2, resources.UAV(data.counterObject, ctx), sizeof(UINT), 0);
+				clearHeap.SetUAVStructured(ctx, 2, resources.GetResource(data.counterObject), sizeof(UINT), 0);
 				clearHeap.NullFill(ctx);
 
 
@@ -1039,7 +1026,7 @@ namespace FlexKit
 				//ctx.TimeStamp(timeStats, 6);
 				ctx.SetComputeDescriptorTable(0, BVH_Phase1_Resources);
 				ctx.Dispatch(CreateBVH_Phase1, { 1, 1, 1 }); // Two dispatches to sync across calls
-				
+
 				auto Phase2_Pass =
 					[&](const uint32_t nodeOffset, const uint32_t nodeCount)
 					{
@@ -1086,7 +1073,6 @@ namespace FlexKit
 
 				for (uint32_t I = 0; I < passCount; I++)
 				{
-
 					Phase2_Pass(offset, nodeCount);
 					offset		+= nodeCount;
 					nodeCount	= uint32_t(std::ceilf(float(nodeCount) / BVH_ELEMENT_COUNT));
@@ -1561,7 +1547,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TiledDeferredShade& ClusteredRender::ClusteredShading(
+	ClusteredDeferredShading& ClusteredRender::ClusteredShading(
 		UpdateDispatcher&				dispatcher,
 		FrameGraph&						frameGraph,
 		PointLightShadowGatherTask&		pointLightShadowMaps,
@@ -1569,7 +1555,7 @@ namespace FlexKit
 		GBufferPass&					gbufferPass,
 		ResourceHandle					depthTarget,
 		ResourceHandle					renderTarget,
-		ShadowMapPassData&				shadowMaps,
+		//ShadowMapPassData&				shadowMaps,
 		LightBufferUpdate&				lightPass,
 		ReserveConstantBufferFunction	reserveCB,
 		ReserveVertexBufferFunction		reserveVB,
@@ -1582,15 +1568,15 @@ namespace FlexKit
 			float4 PR;	// XYZ + radius in W
 		};
 
-		auto& pass = frameGraph.AddNode<TiledDeferredShade>(
-			TiledDeferredShade{
+		auto& pass = frameGraph.AddNode<ClusteredDeferredShading>(
+			ClusteredDeferredShading{
 				gbufferPass,
 				pointLightgather,
 				lightPass,
 				pointLightShadowMaps,
-				shadowMaps
+				//shadowMaps
 			},
-			[&](FrameGraphNodeBuilder& builder, TiledDeferredShade& data)
+			[&](FrameGraphNodeBuilder& builder, ClusteredDeferredShading& data)
 			{
 				builder.AddDataDependency(pointLightShadowMaps);
 				builder.AddDataDependency(pointLightgather);
@@ -1620,7 +1606,7 @@ namespace FlexKit
 				builder.SetDebugName(data.renderTargetObject, "renderTargetObject");
 			},
 			[camera = gbufferPass.camera, renderTarget, t]
-			(TiledDeferredShade& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			(ClusteredDeferredShading& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
 				ProfileFunction();
 
@@ -1688,7 +1674,6 @@ namespace FlexKit
 
 				const size_t descriptorTableSize = 20 + pointLightCount;
 
-				ctx.DiscardResource(resources.GetResource(data.renderTargetObject));
 
 				DescriptorHeap descHeap;
 				descHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), descriptorTableSize, &allocator);
@@ -1702,11 +1687,13 @@ namespace FlexKit
 				descHeap.SetStructuredResource(ctx, 8, resources.NonPixelShaderResource(data.pointLightBufferObject, ctx), sizeof(GPUPointLight));
 
 
+				/*
 				for (size_t shadowMapIdx = 0; shadowMapIdx < pointLightCount; shadowMapIdx++)
 				{
 					auto shadowMap = lightComponent[visableLights[shadowMapIdx]].shadowMap;
 					descHeap.SetSRV(ctx, 10 + shadowMapIdx, shadowMap, DeviceFormat::R32_FLOAT);
 				}
+				*/
 
 				descHeap.NullFill(ctx, descriptorTableSize);
 
@@ -1763,16 +1750,16 @@ namespace FlexKit
 
 
 	void ClusteredRender::ReleaseFrameResources(
-		FrameGraph&         frameGraph,
-		LightBufferUpdate&  lightPass,
-		TiledDeferredShade& TiledDeferredShade)
+		FrameGraph&					frameGraph,
+		LightBufferUpdate&			lightPass,
+		ClusteredDeferredShading&	clusteredDeferredShading)
 	{
 		struct _{};
 		frameGraph.AddNode<_>(
 			_{},
 			[&](FrameGraphNodeBuilder& builder, _& data)
 			{
-				builder.ReleaseVirtualResource(TiledDeferredShade.renderTargetObject);
+				builder.ReleaseVirtualResource(clusteredDeferredShading.renderTargetObject);
 
 				builder.ReleaseVirtualResource(lightPass.lightLists);
 				builder.ReleaseVirtualResource(lightPass.lightLists);

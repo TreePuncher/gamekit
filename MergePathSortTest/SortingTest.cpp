@@ -97,7 +97,7 @@ FlexKit::UpdateTask* SortTest::Update(FlexKit::EngineCore& core, FlexKit::Update
 
 	meanTime /= samples.size();
 
-	auto str = fmt::format("Mean Sort Time: {}ms\n", meanTime);
+	auto str = fmt::format("Mean Sort Time: {}ms\n", meanTime / 1000.0);
 	ImGui::Text(str.c_str());
 	ImPlot::BeginPlot("Timing History");
 	ImPlot::PlotLine("", graph_x, graph_y, samples.size());

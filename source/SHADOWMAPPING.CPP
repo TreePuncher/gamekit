@@ -443,7 +443,6 @@ namespace FlexKit
 
 								const DepthStencilView_Options DSV_desc{ 0, 0, depthTarget };
 
-								ctx.DiscardResource(depthTarget);
 								ctx.ClearDepthBuffer(depthTarget, 1.0f);
 
 								ctx.SetPipelineState(shadowMapPSO);

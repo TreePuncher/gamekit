@@ -720,7 +720,7 @@ namespace FlexKit
 
 		ResourceHandle UAV(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASUAV, DeviceLayout::DeviceLayout_DirectQueueUnorderedAccess, ctx, before, after);
+			return Transition(resource, DASUAV, DeviceLayout::DeviceLayout_UnorderedAccess, ctx, before, after);
 		}
 
 		ResourceHandle RenderTarget(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
@@ -1064,7 +1064,6 @@ namespace FlexKit
 					desc.placed.heap			= heap;
 					desc.placed.offset			= offset;
 					desc.placed.initialState	= DASNOACCESS;
-					desc.initialLayout			= DeviceLayout::DeviceLayout_Unknown;
 
 					renderSystem.BackResource(resource, desc);
 					renderSystem.SetDebugName(resource, "Deferred Resource");

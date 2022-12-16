@@ -424,6 +424,74 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	DeviceLayout GuessLayoutFromAccess(DeviceAccessState access)
+	{
+		switch (access)
+		{
+		case DASRetired:
+			return DeviceLayout_Unknown;
+		case DASPresent:
+			return DeviceLayout_Present;
+		case DASRenderTarget:
+			return DeviceLayout_RenderTarget;
+		case DASPixelShaderResource:
+			return DeviceLayout_ShaderResource;
+		case DASUAV:
+			return DeviceLayout_UnorderedAccess;
+		case DASSTREAMOUT:
+			return DeviceLayout_UnorderedAccess;
+		case DASVERTEXBUFFER:
+			return DeviceLayout_GenericRead;
+		case DASDEPTHBUFFER:
+			return DeviceLayout_DepthStencilWrite;
+		case DASDEPTHBUFFERREAD:
+			return DeviceLayout_DepthStencilRead;
+		case DASDEPTHBUFFERWRITE:
+			return DeviceLayout_DepthStencilWrite;
+		case DASACCELERATIONSTRUCTURE_WRITE:
+		case DASACCELERATIONSTRUCTURE_READ:
+			return DeviceLayout_UnorderedAccess;
+		case DASPREDICATE:
+			return DeviceLayout_GenericRead;
+		case DASINDIRECTARGS:
+			return DeviceLayout_GenericRead;
+		case DASNonPixelShaderResource:
+			return DeviceLayout_ShaderResource;
+		case DASCopyDest:
+			return DeviceLayout_CopyDst;
+		case DASCopySrc:
+			return DeviceLayout_CopySrc;
+		case DASINDEXBUFFER:
+			return DeviceLayout_Common;
+		case DASGenericRead:
+			return DeviceLayout_GenericRead;
+		case DASCommon:
+			return DeviceLayout_Common;
+		case DASShadingRateSrc:
+			return DeviceLayout_ShadingRateSrc;
+		case DASShadingRateDst:
+			return DeviceLayout_UnorderedAccess;
+		case DASDecodeWrite:
+			return DeviceLayout_DecodeWrite;
+		case DASProcessRead:
+			return DeviceLayout_ProcessRead;
+		case DASProcessWrite:
+			return DeviceLayout_ProcessWrite;
+		case DASEncodeRead:
+			return DeviceLayout_EncodeRead;
+		case DASEncodeWrite:
+			return DeviceLayout_EncodeWrite;
+		case DASResolveRead:
+			return DeviceLayout_ResolveSrc;
+		case DASResolveWrite:
+			return DeviceLayout_ResolveDst;
+		case DASNOACCESS:
+		case DASERROR:
+		case DASUNKNOWN:
+			return DeviceLayout_Unknown;
+		}
+	}
+
 	FrameResourceHandle  FrameGraphNodeBuilder::AcquireVirtualResource(const GPUResourceDesc& desc, DeviceAccessState access, bool temp)
 	{
 		ProfileFunction();
@@ -478,14 +546,15 @@ namespace FlexKit
 			if (virtualResource == InvalidHandle)
 				return InvalidHandle;
 
+			const auto layout = GuessLayoutFromAccess(access);
+
 			FrameObject virtualObject		= FrameObject::VirtualObject();
 			virtualObject.shaderResource	= virtualResource;
 			virtualObject.dimensions		= desc.Dimensions;
-			virtualObject.layout			= desc.initialLayout;
+			virtualObject.layout			= layout;
 			virtualObject.access			= temp ? DASNOACCESS : access;
 			virtualObject.virtualState		= VirtualResourceState::Virtual_Temporary;
 			virtualObject.pool				= memoryPool;
-
 
 			auto virtualResourceHandle = FrameResourceHandle{ Resources->Resources.emplace_back(virtualObject) };
 			Resources->Resources[virtualResourceHandle].Handle = virtualResourceHandle;
@@ -522,8 +591,8 @@ namespace FlexKit
 			case TextureDimension::TextureCubeMap:
 			{
 				barrier.type					= BarrierType::Texture;
-				barrier.texture.layoutBefore	= DeviceLayout_Unknown;
-				barrier.texture.layoutAfter		= desc.initialLayout;
+				barrier.texture.layoutBefore	= desc.initialLayout;
+				barrier.texture.layoutAfter		= layout;
 				barrier.texture.flags			= D3D12_TEXTURE_BARRIER_FLAG_DISCARD;
 			}	break;
 			}
@@ -551,9 +620,9 @@ namespace FlexKit
 			Node.subNodeTracking.push_back({
 				.resource		= virtualResourceHandle,
 				.access			= access,
-				.layout			= desc.initialLayout,
+				.layout			= layout,
 				.finalAccess	= access,
-				.finalLayout	= desc.initialLayout });
+				.finalLayout	= layout });
 
 			return virtualResourceHandle;
 		}
@@ -710,7 +779,7 @@ namespace FlexKit
 		auto& resource				= Resources->Resources[handle];
 
 		FrameObjectLink freeObject;
-		freeObject.neededAccess		= DeviceAccessState::DASNOACCESS;
+		freeObject.neededAccess		= resource.access;
 		freeObject.source			= &Node;
 		freeObject.handle			= handle;
 
@@ -870,7 +939,7 @@ namespace FlexKit
 		};
 
 
-		const size_t workerCount	= 4;//Min(taskList.size(), renderSystem.threads.GetThreadCount());
+		const size_t workerCount	= 1;//Min(taskList.size(), renderSystem.threads.GetThreadCount());
 		const size_t blockSize		= (taskList.size() / workerCount) + (taskList.size() % workerCount == 0 ? 0 : 1);
 
 		static_vector<SubmissionWorkRange, 64> workList;

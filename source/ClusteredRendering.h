@@ -93,7 +93,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    struct ComputeTiledDeferredShadeDesc
+    struct ComputeClusteredDeferredShadingDesc
 	{
 		PointLightGatherTask&   pointLightGather;
 		GBuffer&                gbuffer;
@@ -182,13 +182,13 @@ namespace FlexKit
 	};
 
 
-    struct TiledDeferredShade
+    struct ClusteredDeferredShading
 	{
         GBufferPass&                        gbuffer;
 		const PointLightGatherTask&         lights;
 		LightBufferUpdate&                  lightPass;
 		const PointLightShadowGatherTask&   pointLightShadowMaps;
-		ShadowMapPassData&                  shadowMaps;
+		//ShadowMapPassData&                  shadowMaps;
 
 		const Vector<PointLightHandle>* pointLightHandles;
 
@@ -324,7 +324,7 @@ namespace FlexKit
 								bool								releaseTemporaries = true);
 
 
-	    TiledDeferredShade& ClusteredShading(
+	    ClusteredDeferredShading& ClusteredShading(
 								UpdateDispatcher&				dispatcher,
 								FrameGraph&						frameGraph,
 								PointLightShadowGatherTask&		pointLightShadowMaps,
@@ -332,7 +332,7 @@ namespace FlexKit
 								GBufferPass&					gbufferPass,
 								ResourceHandle					depthTarget,
 								ResourceHandle					renderTarget,
-								ShadowMapPassData&				shadowMaps,
+								//ShadowMapPassData&				shadowMaps,
 								LightBufferUpdate&				lightPass,
 								ReserveConstantBufferFunction	reserveCB,
 								ReserveVertexBufferFunction		reserveVB,
@@ -343,7 +343,7 @@ namespace FlexKit
         void ReleaseFrameResources(
 								FrameGraph&						rameGraph,
 								LightBufferUpdate&				lightPass,
-								TiledDeferredShade&				TiledDeferredShade);
+								ClusteredDeferredShading&		ClusteredDeferredShading);
 
 
         DEBUGVIS_DrawBVH& DEBUGVIS_DrawLightBVH(

@@ -395,12 +395,12 @@ namespace FlexKit
 				renderSystem.threads.AddBackgroundWork(task);
 			});
 
-		renderSystem.QueuePSOLoad(TEXTUREFEEDBACKPASS);
-		renderSystem.QueuePSOLoad(TEXTUREFEEDBACKANIMATEDPASS);
+		//renderSystem.QueuePSOLoad(TEXTUREFEEDBACKPASS);
+		//renderSystem.QueuePSOLoad(TEXTUREFEEDBACKANIMATEDPASS);
 
-		renderSystem.QueuePSOLoad(TEXTUREFEEDBACKCOMPRESSOR);
-		renderSystem.QueuePSOLoad(TEXTUREFEEDBACKPREFIXSUMBLOCKSIZES);
-		renderSystem.QueuePSOLoad(TEXTUREFEEDBACKMERGEBLOCKS);
+		//renderSystem.QueuePSOLoad(TEXTUREFEEDBACKCOMPRESSOR);
+		//renderSystem.QueuePSOLoad(TEXTUREFEEDBACKPREFIXSUMBLOCKSIZES);
+		//renderSystem.QueuePSOLoad(TEXTUREFEEDBACKMERGEBLOCKS);
 	}
 
 
