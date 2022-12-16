@@ -3590,7 +3590,13 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		DeviceAccessState afterState;
 	};
 
-
+	enum class DeviceVendor
+	{
+		AMD,
+		NVIDIA,
+		INTEL,
+		UNKNOWN
+	};
 
 	FLEXKITAPI class RenderSystem
 	{
@@ -3894,6 +3900,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		IDxcCompiler*			hlslCompiler		= nullptr;
 		IDxcIncludeHandler*		hlslIncludeHandler	= nullptr;
 
+		DeviceVendor			vendorID		= DeviceVendor::UNKNOWN;
 		ID3D12Debug1*			pDebug			= nullptr;
 		ID3D12Debug5*			pDebug5			= nullptr;
 		ID3D12DebugDevice*		pDebugDevice	= nullptr;

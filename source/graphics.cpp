@@ -4424,6 +4424,15 @@ namespace FlexKit
 		D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
 		pDevice10->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
 
+		D3D12_FEATURE_DATA_D3D12_OPTIONS2 options2 = {};
+		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS2, &options2, sizeof(options2));
+
+		D3D12_FEATURE_DATA_D3D12_OPTIONS3 options3 = {};
+		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS3, &options3, sizeof(options3));
+
+		D3D12_FEATURE_DATA_D3D12_OPTIONS4 options4 = {};
+		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS4, &options4, sizeof(options4));
+
 		D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
 		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
 
@@ -4433,9 +4442,20 @@ namespace FlexKit
 		D3D12_FEATURE_DATA_D3D12_OPTIONS7 options7 = {};
 		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS7, &options7, sizeof(options7));
 
+		D3D12_FEATURE_DATA_D3D12_OPTIONS8 options8 = {};
+		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS8, &options8, sizeof(options8));
+
+		D3D12_FEATURE_DATA_D3D12_OPTIONS9 options9 = {};
+		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS9, &options9, sizeof(options9));
+
+		D3D12_FEATURE_DATA_D3D12_OPTIONS10 options10 = {};
+		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS10, &options10, sizeof(options10));
+
+		D3D12_FEATURE_DATA_D3D12_OPTIONS11 options11 = {};
+		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS11, &options11, sizeof(options11));
+
 		D3D12_FEATURE_DATA_D3D12_OPTIONS12 options12;
 		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS12, &options12, sizeof(options12));
-
 
 		switch (options5.RaytracingTier)
 		{
@@ -4554,6 +4574,26 @@ namespace FlexKit
 		}
 
 		DXGIFactory->EnumAdapterByLuid(Device->GetAdapterLuid(), IID_PPV_ARGS(&DXGIAdapter));
+
+		DXGI_ADAPTER_DESC1 desc;
+		DXGIAdapter->GetDesc1(&desc);
+
+		switch (desc.VendorId)
+		{
+		case 0x1002:
+			vendorID = DeviceVendor::AMD;
+			break;
+		case 0x10de:
+			vendorID = DeviceVendor::NVIDIA;
+			break;
+		case 0x8086:
+			vendorID = DeviceVendor::INTEL;
+			break;
+		default:
+			vendorID = DeviceVendor::UNKNOWN;
+		}	
+
+		int x = 0;
 
 		FINALLY
 			if (!InitiateComplete)
