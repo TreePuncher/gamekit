@@ -224,10 +224,12 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 	const float NdotV		= saturate(dot(N.xyz, V));
 
 	float4 color = float4(ambientLight * albedo * saturate(dot(float3(0, -1, 0), V)), 1);
-	for(uint I = 0; I < localLightCount; I++)
+	//for (uint I = 0; I < localLightCount; I++)
+	for(uint I = 0; I < lightCount; I++)
 	{
-		const uint pointLightIdx	= lightListBuffer[localLightList + I];
-		const PointLight light		= pointLights[pointLightIdx];
+		//const uint pointLightIdx	= lightListBuffer[localLightList + I];
+		//const PointLight light		= pointLights[pointLightIdx];
+		const PointLight light		= pointLights[I];
 
 		const float3 Lc			= light.KI.rgb;
 		const float3 Lp			= mul(View, float4(light.PR.xyz, 1));
@@ -253,7 +255,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			const float3 specular = F_r(V, H, L, N.xyz, roughness) * length(albedo);
 		#endif
 
-		#if 0// skip shadowmaping
+		#if 1// skip shadowmaping
 			const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
 			color += max(float4(colorSample, 0), 0.0f);
 		#else
@@ -389,7 +391,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		//return pow(Colors[lightListKey % 8] * color, 1.0f);
 		//return pow(Colors[clusterKey % 8] * (float(localLightCount) / float(lightCount)), 1.0f);
 		//return color * (float(localLightCount) / float(lightCount));
-		//return (float(localLightCount) / float(lightCount));
+		return (float(localLightCount) / float(lightCount));
 		// 
 		//return pow(Colors[clusterKey % 8], 1.0f);
 		//return pow(Colors[GetSliceIdx(-positionVS.z) % 8], 1.0f);
@@ -405,7 +407,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 	//return float4(T.xyz, 1);
 	//return float4(N.xyz, 1);
 	//return pow(float4(roughness, metallic, 0, 0), 2.2f);
-	return float4(N.xyz / 2 + 0.5f, 1);
+	//return float4(N.xyz / 2 + 0.5f, 1);
 	//return float4(N.xyz / 2 + 0.5f, 1) * (float(localLightCount) / float(lightCount));
 	//return lerp(float4(0, 0, 0, 0), float4(1, 1, 1, 0), float(localLightCount) / float(lightCount));
 	//return float4(albedo, 1);

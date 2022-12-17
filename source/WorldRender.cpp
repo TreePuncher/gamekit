@@ -158,8 +158,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateBilaterialBlurHorizontalPSO(RenderSystem* RS)
 	{
-		auto VShader = RS->LoadShader("ShadingPass_VS",             "vs_6_0", "assets\\shaders\\deferredRender.hlsl");
-		auto PShader = RS->LoadShader("BilateralBlurHorizontal_PS", "ps_6_0", "assets\\shaders\\BilateralBlur.hlsl");
+		auto VShader = RS->LoadShader("BlurVShader",				"vs_6_0", "assets\\shaders\\BilateralBlur.hlsl");
+		auto PShader = RS->LoadShader("BilateralBlurHorizontal_PS",	"ps_6_0", "assets\\shaders\\BilateralBlur.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -201,8 +201,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateBilaterialBlurVerticalPSO(RenderSystem* RS)
 	{
-		auto VShader = RS->LoadShader("ShadingPass_VS",             "vs_6_0", "assets\\shaders\\deferredRender.hlsl");
-		auto PShader = RS->LoadShader("BilateralBlurVertical_PS",   "ps_6_0", "assets\\shaders\\BilateralBlur.hlsl");
+		auto VShader = RS->LoadShader("BlurVShader",				"vs_6_0", "assets\\shaders\\BilateralBlur.hlsl");
+		auto PShader = RS->LoadShader("BilateralBlurVertical_PS",	"ps_6_0", "assets\\shaders\\BilateralBlur.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -695,34 +695,34 @@ namespace FlexKit
 	{
 		ProfileFunction();
 
-		      auto& scene           = drawSceneDesc.scene;
-		const auto  camera          = drawSceneDesc.camera;
-		      auto& gbuffer         = drawSceneDesc.gbuffer;
-		const auto  t               = drawSceneDesc.t;
+				auto& scene			= drawSceneDesc.scene;
+		const	auto  camera			= drawSceneDesc.camera;
+				auto& gbuffer			= drawSceneDesc.gbuffer;
+		const	auto  t				= drawSceneDesc.t;
 
-		auto&       depthTarget     = targets.DepthTarget;
-		auto        renderTarget    = targets.RenderTarget;
+		auto&		depthTarget		= targets.DepthTarget;
+		auto		renderTarget	= targets.RenderTarget;
 
 		auto& passes = GatherScene(dispatcher, &scene, camera, temporary);
 
 		passes.AddInput(drawSceneDesc.transformDependency);
 		passes.AddInput(drawSceneDesc.cameraDependency);
 
-		auto& pointLightGather      = scene.GetPointLights(dispatcher, temporary);
-		auto& sceneBVH              = scene.UpdateSceneBVH(dispatcher, drawSceneDesc.transformDependency, temporary);
-		auto& visablePointLights    = scene.GetVisableLights(dispatcher, camera, sceneBVH, temporary);
-		auto& pointLightUpdate      = scene.UpdatePointLights(dispatcher, sceneBVH, visablePointLights, temporary, persistent);
-		auto& shadowMaps            = shadowMapping.AcquireShadowMaps(dispatcher, frameGraph.GetRenderSystem(), RTPool, pointLightUpdate);
+		auto& pointLightGather		= scene.GetPointLights(dispatcher, temporary);
+		auto& sceneBVH				= scene.UpdateSceneBVH(dispatcher, drawSceneDesc.transformDependency, temporary);
+		auto& visablePointLights	= scene.GetVisableLights(dispatcher, camera, sceneBVH, temporary);
+		auto& pointLightUpdate		= scene.UpdatePointLights(dispatcher, sceneBVH, visablePointLights, temporary, persistent);
+		auto& shadowMaps			= shadowMapping.AcquireShadowMaps(dispatcher, frameGraph.GetRenderSystem(), RTPool, pointLightUpdate);
 
 		LoadLodLevels(dispatcher, passes, drawSceneDesc.camera, renderSystem, *persistent);
 
 		pointLightGather.AddInput(drawSceneDesc.transformDependency);
 		pointLightGather.AddInput(drawSceneDesc.cameraDependency);
 
-		auto& IKUpdate          = UpdateIKControllers(dispatcher, drawSceneDesc.dt);
-		auto& animationUpdate   = UpdateAnimations(dispatcher, drawSceneDesc.dt);
-		auto& skinnedObjects    = GatherSkinned(dispatcher, scene, camera, temporary);
-		auto& updatedPoses      = UpdatePoses(dispatcher, skinnedObjects);
+		auto& IKUpdate			= UpdateIKControllers(dispatcher, drawSceneDesc.dt);
+		auto& animationUpdate	= UpdateAnimations(dispatcher, drawSceneDesc.dt);
+		auto& skinnedObjects	= GatherSkinned(dispatcher, scene, camera, temporary);
+		auto& updatedPoses		= UpdatePoses(dispatcher, skinnedObjects);
 
 		// [skinned Objects] -> [update Poses]
 		IKUpdate.AddInput(drawSceneDesc.transformDependency);
@@ -824,7 +824,6 @@ namespace FlexKit
 				temporary,
 				drawSceneDesc.debugDisplay != DebugVisMode::ClusterVIS);
 
-
 		/*
 		auto& shadowMapPass =
 			shadowMapping.ShadowMapPass(
@@ -840,7 +839,6 @@ namespace FlexKit
 				&temporary);
 		*/
 		/*
-
 		auto& updateVolumes =
 			lightingEngine.UpdateVoxelVolumes(
 				dispatcher,
@@ -850,7 +848,6 @@ namespace FlexKit
 				reserveCB,
 				temporary);
 		*/
-
 
 		auto& shadingPass =
 			clusteredRender.ClusteredShading(

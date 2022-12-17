@@ -63,6 +63,11 @@ float ColorStrength(in float3 col)
     return (col.r + col.g + col.b) * 0.33333;
 }
 
+float4 BlurVShader(float4 position : POSITION) : SV_Position
+{
+	return position;
+}
+
 HorizontalOut BilateralBlurHorizontal_PS(float4 position : SV_Position)
 {
     HorizontalOut output;

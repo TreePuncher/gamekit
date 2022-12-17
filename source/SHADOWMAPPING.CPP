@@ -297,17 +297,17 @@ namespace FlexKit
 
 
 	ShadowMapPassData& ShadowMapper::ShadowMapPass(
-		FrameGraph&                             frameGraph,
-		const PointLightShadowGatherTask&       shadowMaps,
-		UpdateTask&                             cameraUpdate,
-		GatherPassesTask&                       gather,
-		UpdateTask&                             shadowMapAcquire,
-		ReserveConstantBufferFunction&          reserveCB,
-		ReserveVertexBufferFunction&            reserveVB,
-		static_vector<AdditionalShadowMapPass>& additional,
-		const double                            t,
-		iAllocator*                             allocator,
-		AnimationPoseUpload*                    poses)
+		FrameGraph&								frameGraph,
+		const PointLightShadowGatherTask&		shadowMaps,
+		UpdateTask&								cameraUpdate,
+		GatherPassesTask&						gather,
+		UpdateTask&								shadowMapAcquire,
+		ReserveConstantBufferFunction&			reserveCB,
+		ReserveVertexBufferFunction&			reserveVB,
+		static_vector<AdditionalShadowMapPass>&	additional,
+		const double							t,
+		iAllocator*								allocator,
+		AnimationPoseUpload*					poses)
 	{
 		auto& shadowMapPass = allocator->allocate<ShadowMapPassData>(ShadowMapPassData{ allocator->allocate<Vector<TemporaryFrameResourceHandle>>(allocator) });
 

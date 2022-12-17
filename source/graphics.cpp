@@ -1595,6 +1595,14 @@ namespace FlexKit
 		}
 		else
 		{
+			Barrier barrier;
+			barrier.accessBefore	= DASUAV;
+			barrier.accessAfter		= DASUAV;
+			barrier.src				= DeviceSyncPoint::Sync_Compute;
+			barrier.dst				= DeviceSyncPoint::Sync_Compute;
+			barrier.type			= BarrierType::Global;
+
+			pendingBarriers.push_back(barrier);
 		}
 	}
 

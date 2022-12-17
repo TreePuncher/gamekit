@@ -80,7 +80,7 @@ void BitonicPass(const uint localThreadID, const int I, const int J)
 		const uint2 RValue = localTextureSamples[rhs];
 
 		const uint2 V1 = op == 0 ? uint2_min(LValue, RValue) : uint2_max(LValue, RValue);
-		const uint2 V2 = op == 0 ? uint2_max(LValue, RValue) : uint2_min(LValue, RValue);
+		const uint2 V2 = op == 1 ? uint2_max(LValue, RValue) : uint2_min(LValue, RValue);
 
 		localTextureSamples[lhs] = V1;
 		localTextureSamples[rhs] = V2;

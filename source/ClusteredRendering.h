@@ -9,20 +9,20 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
-    struct AnimationPoseUpload;
+	struct AnimationPoseUpload;
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    class GBuffer
+	class GBuffer
 	{
 	public:
-        GBuffer(const uint2 WH, RenderSystem& RS_IN);
+		GBuffer(const uint2 WH, RenderSystem& RS_IN);
 
-        ~GBuffer();
+		~GBuffer();
 
-        void Resize(const uint2 WH);
+		void Resize(const uint2 WH);
 
 		ResourceHandle albedo;	 // rgba_UNORM, Albedo + Metal
 		ResourceHandle MRIA;	 // rgba_UNORM, Metal + roughness + IOR + ANISO
@@ -32,11 +32,11 @@ namespace FlexKit
 	};
 
 
-    void ClearGBuffer(FrameGraph& frameGraph, GBuffer& gbuffer);
-    void AddGBufferResource(GBuffer& gbuffer, FrameGraph& frameGraph);
+	void ClearGBuffer(FrameGraph& frameGraph, GBuffer& gbuffer);
+	void AddGBufferResource(GBuffer& gbuffer, FrameGraph& frameGraph);
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	struct GPUPointLightLayout
@@ -58,14 +58,14 @@ namespace FlexKit
 		float4 PositionR;
 	};
 
-    struct GPUCluster
-    {
-        float3 Min;
-        float3 Max;
-    };
+	struct GPUCluster
+	{
+		float3 Min;
+		float3 Max;
+	};
 
 
-    struct LighBufferCPUUpdate
+	struct LighBufferCPUUpdate
 	{
 		struct visableLightEntry
 		{
@@ -90,10 +90,10 @@ namespace FlexKit
 	};
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    struct ComputeClusteredDeferredShadingDesc
+	struct ComputeClusteredDeferredShadingDesc
 	{
 		PointLightGatherTask&   pointLightGather;
 		GBuffer&                gbuffer;
@@ -130,11 +130,11 @@ namespace FlexKit
 
 	};
 
-    struct GBufferPass
+	struct GBufferPass
 	{
 		GBuffer&                            gbuffer;
-        const GatherPassesTask&             passes;
-        const CameraHandle                  camera;
+		const GatherPassesTask&             passes;
+		const CameraHandle                  camera;
 
 		ReserveConstantBufferFunction   reserveCB;
 
@@ -147,44 +147,44 @@ namespace FlexKit
 	};
 
 
-    struct LightBufferUpdate 
+	struct LightBufferUpdate 
 	{
-        ~LightBufferUpdate()
-        {
-            ProfileFunction();
-        }
+		~LightBufferUpdate()
+		{
+			ProfileFunction();
+		}
 
 		const Vector<PointLightHandle>&	visableLights;
 
 		CameraHandle			        camera;
 		ReserveConstantBufferFunction   reserveCB;
-        IndirectLayout&                 indirectLayout;
+		IndirectLayout&                 indirectLayout;
 
-        const size_t counterOffset = 0;
+		const size_t counterOffset = 0;
 
-        FrameResourceHandle	lightLists;
+		FrameResourceHandle	lightLists;
 
 		FrameResourceHandle	lightListBuffer;
 		FrameResourceHandle	lightBufferObject;
-        FrameResourceHandle	lightBVH;
-        FrameResourceHandle	lightLookupObject;
-        FrameResourceHandle	lightCounterObject;
-        FrameResourceHandle	lightResolutionObject;
+		FrameResourceHandle	lightBVH;
+		FrameResourceHandle	lightLookupObject;
+		FrameResourceHandle	lightCounterObject;
+		FrameResourceHandle	lightResolutionObject;
 
-        ReadBackResourceHandle  readBackHandle;
+		ReadBackResourceHandle  readBackHandle;
 
-        FrameResourceHandle	clusterBufferObject;
+		FrameResourceHandle	clusterBufferObject;
 
-        FrameResourceHandle	counterObject;
-        FrameResourceHandle	depthBufferObject;
-        FrameResourceHandle	indexBufferObject;
-        FrameResourceHandle argumentBufferObject;
+		FrameResourceHandle	counterObject;
+		FrameResourceHandle	depthBufferObject;
+		FrameResourceHandle	indexBufferObject;
+		FrameResourceHandle argumentBufferObject;
 	};
 
 
-    struct ClusteredDeferredShading
+	struct ClusteredDeferredShading
 	{
-        GBufferPass&                        gbuffer;
+		GBufferPass&                        gbuffer;
 		const PointLightGatherTask&         lights;
 		LightBufferUpdate&                  lightPass;
 		const PointLightShadowGatherTask&   pointLightShadowMaps;
@@ -199,100 +199,100 @@ namespace FlexKit
 		FrameResourceHandle     NormalTargetObject;     // RGBA16Float
 		FrameResourceHandle     MRIATargetObject;
 		FrameResourceHandle     depthBufferTargetObject;
-        FrameResourceHandle     lightMapObject;
-        FrameResourceHandle     lightListBuffer;
-        FrameResourceHandle     lightLists;
+		FrameResourceHandle     lightMapObject;
+		FrameResourceHandle     lightListBuffer;
+		FrameResourceHandle     lightLists;
 
 		FrameResourceHandle		pointLightBufferObject;
 		FrameResourceHandle     renderTargetObject;
 	};
 
 
-    struct DEBUGVIS_DrawBVH
-    {
-        ReserveConstantBufferFunction   reserveCB;
-        LightBufferUpdate&              lightBufferUpdateData;
+	struct DEBUGVIS_DrawBVH
+	{
+		ReserveConstantBufferFunction   reserveCB;
+		LightBufferUpdate&              lightBufferUpdateData;
 
-        FrameResourceHandle	            lightBVH;
-        FrameResourceHandle	            clusters;
-        FrameResourceHandle             renderTarget;
-        FrameResourceHandle	            pointLights;
+		FrameResourceHandle	            lightBVH;
+		FrameResourceHandle	            clusters;
+		FrameResourceHandle             renderTarget;
+		FrameResourceHandle	            pointLights;
 
-        FrameResourceHandle             indirectArgs;
-        FrameResourceHandle             counterBuffer;
+		FrameResourceHandle             indirectArgs;
+		FrameResourceHandle             counterBuffer;
 
-        CameraHandle			        camera;
-    };
-
-
-    /************************************************************************************************/
+		CameraHandle			        camera;
+	};
 
 
-    constexpr PSOHandle LIGHTPREPASS                    = PSOHandle(GetTypeGUID(LIGHTPREPASS));
-    constexpr PSOHandle CREATECLUSTERS                  = PSOHandle(GetTypeGUID(CREATECLUSTERS));
-    constexpr PSOHandle CREATECLUSTERBUFFER             = PSOHandle(GetTypeGUID(CREATECLUSTERBUFFER));
-    constexpr PSOHandle CLEARCOUNTERSPSO                = PSOHandle(GetTypeGUID(CLEARCOUNTERSPSO));
-    constexpr PSOHandle CREATECLUSTERLIGHTLISTS         = PSOHandle(GetTypeGUID(CREATECLUSTERLIGHTLISTS));
+	/************************************************************************************************/
 
-    constexpr PSOHandle CREATELIGHTBVH_PHASE1           = PSOHandle(GetTypeGUID(CREATELIGHTPVH1123));
-    constexpr PSOHandle CREATELIGHTBVH_PHASE2           = PSOHandle(GetTypeGUID(CREATELIGHTPVH2));
-    constexpr PSOHandle LIGHTBVH_DEBUGVIS_PSO           = PSOHandle(GetTypeGUID(LIGHTBVH_DEBUGVIS_PSO));
-    constexpr PSOHandle CLUSTER_DEBUGVIS_PSO            = PSOHandle(GetTypeGUID(CLUSTER_DEBUGVIS_PSO));
-    constexpr PSOHandle CLUSTER_DEBUGARGSVIS_PSO        = PSOHandle(GetTypeGUID(CLUSTER_DEBUGARGSVIS_PSO));
-    constexpr PSOHandle CREATELIGHTLISTARGS_PSO         = PSOHandle(GetTypeGUID(CREATELIGHTLISTARGS_POS));
-    constexpr PSOHandle CREATELIGHTDEBUGVIS_PSO         = PSOHandle(GetTypeGUID(CREATELIGHTDEBUGVIS_PSO));
-    constexpr PSOHandle RESOLUTIONMATCHSHADOWMAPS       = PSOHandle(GetTypeGUID(RESOLUTIONMATCHSHADOWMAPS));
-    constexpr PSOHandle CLEARSHADOWRESOLUTIONBUFFER     = PSOHandle(GetTypeGUID(CLEARSHADOWRESOLUTIONBUFFER));
-    constexpr PSOHandle COMPUTETILEDSHADINGPASS         = PSOHandle(GetTypeGUID(COMPUTETILEDSHADINGPASS));
 
-    constexpr PSOHandle GBUFFERPASS                     = PSOHandle(GetTypeGUID(GBUFFERPASS));
+	constexpr PSOHandle LIGHTPREPASS                    = PSOHandle(GetTypeGUID(LIGHTPREPASS));
+	constexpr PSOHandle CREATECLUSTERS                  = PSOHandle(GetTypeGUID(CREATECLUSTERS));
+	constexpr PSOHandle CREATECLUSTERBUFFER             = PSOHandle(GetTypeGUID(CREATECLUSTERBUFFER));
+	constexpr PSOHandle CLEARCOUNTERSPSO                = PSOHandle(GetTypeGUID(CLEARCOUNTERSPSO));
+	constexpr PSOHandle CREATECLUSTERLIGHTLISTS         = PSOHandle(GetTypeGUID(CREATECLUSTERLIGHTLISTS));
+
+	constexpr PSOHandle CREATELIGHTBVH_PHASE1           = PSOHandle(GetTypeGUID(CREATELIGHTPVH1123));
+	constexpr PSOHandle CREATELIGHTBVH_PHASE2           = PSOHandle(GetTypeGUID(CREATELIGHTPVH2));
+	constexpr PSOHandle LIGHTBVH_DEBUGVIS_PSO           = PSOHandle(GetTypeGUID(LIGHTBVH_DEBUGVIS_PSO));
+	constexpr PSOHandle CLUSTER_DEBUGVIS_PSO            = PSOHandle(GetTypeGUID(CLUSTER_DEBUGVIS_PSO));
+	constexpr PSOHandle CLUSTER_DEBUGARGSVIS_PSO        = PSOHandle(GetTypeGUID(CLUSTER_DEBUGARGSVIS_PSO));
+	constexpr PSOHandle CREATELIGHTLISTARGS_PSO         = PSOHandle(GetTypeGUID(CREATELIGHTLISTARGS_POS));
+	constexpr PSOHandle CREATELIGHTDEBUGVIS_PSO         = PSOHandle(GetTypeGUID(CREATELIGHTDEBUGVIS_PSO));
+	constexpr PSOHandle RESOLUTIONMATCHSHADOWMAPS       = PSOHandle(GetTypeGUID(RESOLUTIONMATCHSHADOWMAPS));
+	constexpr PSOHandle CLEARSHADOWRESOLUTIONBUFFER     = PSOHandle(GetTypeGUID(CLEARSHADOWRESOLUTIONBUFFER));
+	constexpr PSOHandle COMPUTETILEDSHADINGPASS         = PSOHandle(GetTypeGUID(COMPUTETILEDSHADINGPASS));
+
+	constexpr PSOHandle GBUFFERPASS                     = PSOHandle(GetTypeGUID(GBUFFERPASS));
 	constexpr PSOHandle GBUFFERPASS_SKINNED             = PSOHandle(GetTypeGUID(GBUFFERPASS_SKINNED));
 	constexpr PSOHandle SHADINGPASS                     = PSOHandle(GetTypeGUID(SHADINGPASS));
 	constexpr PSOHandle SHADINGPASSCOMPUTE              = PSOHandle(GetTypeGUID(SHADINGPASSCOMPUTE));
 
-    constexpr PSOHandle DEBUG_DrawBVH                   = PSOHandle(GetTypeGUID(DEBUG_DrawBVH1));
+	constexpr PSOHandle DEBUG_DrawBVH                   = PSOHandle(GetTypeGUID(DEBUG_DrawBVH1));
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    enum class ClusterDebugDrawMode
-    {
-        BVH,
-        Lights,
-        Clusters
-    };
+	enum class ClusterDebugDrawMode
+	{
+		BVH,
+		Lights,
+		Clusters
+	};
 
-    enum class BVHVisMode
-    {
-        Both,
-        BVH,
-        BoundingVolumes
-    };
+	enum class BVHVisMode
+	{
+		Both,
+		BVH,
+		BoundingVolumes
+	};
 
-    enum class DebugVisMode
-    {
-        Disabled,
-        ClusterVIS,
-        BVHVIS
-    };
-
-
-    constexpr PassHandle GBufferPassID          = PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) };
-    constexpr PassHandle GBufferAnimatedPassID  = PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED_ANIMATED) };
-
-    /************************************************************************************************/
+	enum class DebugVisMode
+	{
+		Disabled,
+		ClusterVIS,
+		BVHVIS
+	};
 
 
-    class ClusteredRender
-    {
-    public:
+	constexpr PassHandle GBufferPassID          = PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) };
+	constexpr PassHandle GBufferAnimatedPassID  = PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED_ANIMATED) };
 
-        ClusteredRender(RenderSystem&, iAllocator& persistent);
+	/************************************************************************************************/
 
 
-        FlexKit::TypeErasedCallable<void (FrameGraph&), 48>
-            CreateClusterBuffer(
+	class ClusteredRender
+	{
+	public:
+
+		ClusteredRender(RenderSystem&, iAllocator& persistent);
+
+
+		FlexKit::TypeErasedCallable<void (FrameGraph&), 48>
+			CreateClusterBuffer(
 								RenderSystem&					renderSystem,
 								uint2							WH,
 								CameraHandle					camera,
@@ -300,7 +300,7 @@ namespace FlexKit
 								ReserveConstantBufferFunction&	reserveCB);
 
 
-        GBufferPass& FillGBuffer(
+		GBufferPass& FillGBuffer(
 								UpdateDispatcher&				dispatcher,
 								FrameGraph&						frameGraph,
 								GatherPassesTask&				passes,
@@ -312,7 +312,7 @@ namespace FlexKit
 								AnimationPoseUpload*			poses = nullptr);
 
 
-        LightBufferUpdate& UpdateLightBuffers(
+		LightBufferUpdate& UpdateLightBuffers(
 								UpdateDispatcher&					dispatcher,
 								FrameGraph&							graph,
 								const CameraHandle					camera,
@@ -324,7 +324,7 @@ namespace FlexKit
 								bool								releaseTemporaries = true);
 
 
-	    ClusteredDeferredShading& ClusteredShading(
+		ClusteredDeferredShading& ClusteredShading(
 								UpdateDispatcher&				dispatcher,
 								FrameGraph&						frameGraph,
 								PointLightShadowGatherTask&		pointLightShadowMaps,
@@ -340,13 +340,13 @@ namespace FlexKit
 								iAllocator*						allocator);
 
 
-        void ReleaseFrameResources(
+		void ReleaseFrameResources(
 								FrameGraph&						rameGraph,
 								LightBufferUpdate&				lightPass,
 								ClusteredDeferredShading&		ClusteredDeferredShading);
 
 
-        DEBUGVIS_DrawBVH& DEBUGVIS_DrawLightBVH(
+		DEBUGVIS_DrawBVH& DEBUGVIS_DrawLightBVH(
 								UpdateDispatcher&				dispatcher,
 								FrameGraph&						frameGraph,
 								const CameraHandle				camera,
@@ -357,7 +357,7 @@ namespace FlexKit
 								iAllocator*						tempMemory);
 
 
-        void DEBUGVIS_BVH(
+		void DEBUGVIS_BVH(
 								UpdateDispatcher&				dispatcher,
 								FrameGraph&						frameGraph,
 								SceneBVH&						bvh,
@@ -369,7 +369,7 @@ namespace FlexKit
 								iAllocator*						allocator);
 
 
-    private:
+	private:
 		ResourceHandle clusterBuffer = InvalidHandle;
 		IndirectLayout dispatch;
 		IndirectLayout gather;
@@ -398,5 +398,30 @@ namespace FlexKit
 		static ID3D12PipelineState* CreateClearClusterCountersPSO   (RenderSystem* RS);
 		static ID3D12PipelineState* CreateDEBUGBVHVIS               (RenderSystem* RS);
 
-    };
+	};
 }
+
+
+/**********************************************************************
+
+Copyright (c) 2014-2022 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/
