@@ -139,8 +139,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* ClusteredRender::CreateDeferredShadingPassPSO(RenderSystem* RS)
 	{
-		auto VShader = RS->LoadShader("ShadingPass_VS",     "vs_6_0",	"assets\\shaders\\deferredRender.hlsl");
-		auto PShader = RS->LoadShader("DeferredShade_PS",   "ps_6_0",	"assets\\shaders\\deferredRender.hlsl");
+		auto VShader = RS->LoadShader("ShadingPass_VS",     "vs_6_0",	"assets\\shaders\\ClusteredShading\\deferredRender.hlsl");
+		auto PShader = RS->LoadShader("DeferredShade_PS",   "ps_6_0",	"assets\\shaders\\ClusteredShading\\deferredRender.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -190,7 +190,7 @@ namespace FlexKit
 
 	ID3D12PipelineState* ClusteredRender::CreateDeferredShadingPassComputePSO(RenderSystem* RS)
 	{
-		auto CShader = RS->LoadShader("ClusteredShading", "cs_6_0", "assets\\shaders\\ClusteredShading.hlsl");
+		auto CShader = RS->LoadShader("ClusteredShading", "cs_6_0", "assets\\shaders\\ClusteredShading\\ClusteredShading.hlsl");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_Desc = {};
 		PSO_Desc.pRootSignature	= RS->Library.RSDefault;
@@ -209,7 +209,7 @@ namespace FlexKit
 
 	ID3D12PipelineState* ClusteredRender::CreateClearClusterCountersPSO(RenderSystem* RS)
 	{
-		Shader computeShader = RS->LoadShader("ClearCounters", "cs_6_0", R"(assets\shaders\ClusteredRendering.hlsl)");
+		Shader computeShader = RS->LoadShader("ClearCounters", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusteredRendering.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			RS->Library.ComputeSignature,
@@ -230,9 +230,9 @@ namespace FlexKit
 
 	ID3D12PipelineState* ClusteredRender::CreateLight_DEBUGARGSVIS_PSO(RenderSystem* RS)
 	{
-		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\lightBVH_DEBUGVIS.hlsl");
-		auto PShader = RS->LoadShader("PMain", "ps_6_1", "assets\\shaders\\lightBVH_DEBUGVIS.hlsl");
-		auto GShader = RS->LoadShader("GMain3", "gs_6_0", "assets\\shaders\\lightBVH_DEBUGVIS.hlsl");
+		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
+		auto PShader = RS->LoadShader("PMain", "ps_6_1", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
+		auto GShader = RS->LoadShader("GMain3", "gs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
 
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -271,7 +271,7 @@ namespace FlexKit
 
 	ID3D12PipelineState* ClusteredRender::CreateLightBVH_PHASE1_PSO(RenderSystem* RS)
 	{
-		Shader computeShader = RS->LoadShader("CreateLightBVH_PHASE1", "cs_6_0", R"(assets\shaders\LightBVH.hlsl)");
+		Shader computeShader = RS->LoadShader("CreateLightBVH_PHASE1", "cs_6_0", R"(assets\shaders\ClusteredShading\LightBVH.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			RS->Library.ComputeSignature,
@@ -291,7 +291,7 @@ namespace FlexKit
 
 	ID3D12PipelineState* ClusteredRender::CreateLightBVH_PHASE2_PSO(RenderSystem* RS)
 	{
-		Shader computeShader = RS->LoadShader("CreateLightBVH_PHASE2", "cs_6_0", R"(assets\shaders\LightBVH.hlsl)");
+		Shader computeShader = RS->LoadShader("CreateLightBVH_PHASE2", "cs_6_0", R"(assets\shaders\ClusteredShading\LightBVH.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			RS->Library.ComputeSignature,
@@ -312,9 +312,9 @@ namespace FlexKit
 
 	ID3D12PipelineState* ClusteredRender::CreateLightBVH_DEBUGVIS_PSO(RenderSystem* RS)
 	{
-		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\lightBVH_DEBUGVIS.hlsl");
-		auto PShader = RS->LoadShader("PMain", "ps_6_1", "assets\\shaders\\lightBVH_DEBUGVIS.hlsl");
-		auto GShader = RS->LoadShader("GMain", "gs_6_0", "assets\\shaders\\lightBVH_DEBUGVIS.hlsl");
+		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
+		auto PShader = RS->LoadShader("PMain", "ps_6_1", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
+		auto GShader = RS->LoadShader("GMain", "gs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
 
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -353,7 +353,7 @@ namespace FlexKit
 
 	ID3D12PipelineState* ClusteredRender::CreateCluster_DEBUGARGSVIS_PSO(RenderSystem* RS)
 	{
-		Shader computeShader = RS->LoadShader("CreateArguments", "cs_6_0", R"(assets\shaders\ClusterArgsDebugVis.hlsl)");
+		Shader computeShader = RS->LoadShader("CreateArguments", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusterArgsDebugVis.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			RS->Library.RSDefault,
@@ -374,7 +374,7 @@ namespace FlexKit
 
 	ID3D12PipelineState* ClusteredRender::CreateLightListArgs_PSO(RenderSystem* RS)
 	{
-		Shader computeShader = RS->LoadShader("CreateLightListArguents", "cs_6_0", R"(assets\shaders\LightListArguementIndirect.hlsl)");
+		Shader computeShader = RS->LoadShader("CreateLightListArguents", "cs_6_0", R"(assets\shaders\ClusteredShading\LightListArguementIndirect.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			RS->Library.ComputeSignature,
@@ -395,7 +395,7 @@ namespace FlexKit
 
 	ID3D12PipelineState* ClusteredRender::CreateClusterLightListsPSO(RenderSystem* RS)
 	{
-		Shader computeShader = RS->LoadShader("CreateClustersLightLists", "cs_6_0", R"(assets\shaders\lightListConstruction.hlsl)");
+		Shader computeShader = RS->LoadShader("CreateClustersLightLists", "cs_6_0", R"(assets\shaders\ClusteredShading\lightListConstruction.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			RS->Library.RSDefault,
@@ -457,7 +457,7 @@ namespace FlexKit
 
 	ID3D12PipelineState* ClusteredRender::CreateClustersPSO(RenderSystem* RS)
 	{
-		Shader computeShader = RS->LoadShader("CreateClusters", "cs_6_0", R"(assets\shaders\ClusteredRendering.hlsl)");
+		Shader computeShader = RS->LoadShader("CreateClusters", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusteredRendering.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			RS->Library.ComputeSignature,
@@ -477,9 +477,9 @@ namespace FlexKit
 
 	ID3D12PipelineState* ClusteredRender::CreateCluster_DEBUGVIS_PSO(RenderSystem* RS)
 	{
-		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\lightBVH_DEBUGVIS.hlsl");
-		auto PShader = RS->LoadShader("PMain", "ps_6_1", "assets\\shaders\\lightBVH_DEBUGVIS.hlsl");
-		auto GShader = RS->LoadShader("GMain2", "gs_6_0", "assets\\shaders\\lightBVH_DEBUGVIS.hlsl");
+		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
+		auto PShader = RS->LoadShader("PMain", "ps_6_1", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
+		auto GShader = RS->LoadShader("GMain2", "gs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
 
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -518,9 +518,9 @@ namespace FlexKit
 
 	ID3D12PipelineState* ClusteredRender::CreateDEBUGBVHVIS(RenderSystem* RS)
 	{
-		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\DebugVISBVH.hlsl");
-		auto GShader = RS->LoadShader("GMain", "gs_6_0", "assets\\shaders\\DebugVISBVH.hlsl");
-		auto PShader = RS->LoadShader("PMain", "ps_6_0", "assets\\shaders\\DebugVISBVH.hlsl");
+		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\DebugVISBVH.hlsl");
+		auto GShader = RS->LoadShader("GMain", "gs_6_0", "assets\\shaders\\ClusteredShading\\DebugVISBVH.hlsl");
+		auto PShader = RS->LoadShader("PMain", "ps_6_0", "assets\\shaders\\ClusteredShading\\DebugVISBVH.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "MIN", 0,     DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	 D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -564,7 +564,7 @@ namespace FlexKit
 
 	ID3D12PipelineState* ClusteredRender::CreateClusterBufferPSO(RenderSystem* RS)
 	{
-		Shader computeShader = RS->LoadShader("CreateClusterBuffer", "cs_6_0", R"(assets\shaders\ClusterBuffer.hlsl)");
+		Shader computeShader = RS->LoadShader("CreateClusterBuffer", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusterBuffer.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			RS->Library.ComputeSignature,
@@ -585,7 +585,7 @@ namespace FlexKit
 
 	ID3D12PipelineState* ClusteredRender::CreateComputeTiledDeferredPSO(RenderSystem* RS)
 	{
-		Shader computeShader = RS->LoadShader("csmain", "cs_6_0", R"(assets\shaders\computedeferredtiledshading.hlsl)");
+		Shader computeShader = RS->LoadShader("csmain", "cs_6_0", R"(assets\shaders\ClusteredShading\computedeferredtiledshading.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			RS->Library.RSDefault,
@@ -1686,7 +1686,6 @@ namespace FlexKit
 				descHeap.SetStructuredResource(ctx, 7, resources.GetResource(data.lightListBuffer), sizeof(uint32_t));
 				descHeap.SetStructuredResource(ctx, 8, resources.NonPixelShaderResource(data.pointLightBufferObject, ctx), sizeof(GPUPointLight));
 
-
 				/*
 				for (size_t shadowMapIdx = 0; shadowMapIdx < pointLightCount; shadowMapIdx++)
 				{
@@ -2025,3 +2024,28 @@ namespace FlexKit
 
 }   /************************************************************************************************/
 
+
+
+/**********************************************************************
+
+Copyright (c) 2014-2022 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

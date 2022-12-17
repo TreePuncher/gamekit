@@ -8,16 +8,16 @@ cbuffer LocalConstants : register(b1)
 // W  - PADDING
 cbuffer PassConstants : register(b2)
 {
-	uint2 bufferSize;
+    uint2 bufferSize;
 }
 
 
 /************************************************************************************************/
 
 
-RWStructuredBuffer<uint>		UAVCounters 	: register(u0);
-RWStructuredBuffer<uint64_t>	textureSamples 	: register(u1);
-RWStructuredBuffer<uint>		segmentSizes  	: register(u2);
+RWStructuredBuffer<uint>        UAVCounters 	: register(u0);
+RWStructuredBuffer<uint64_t>    textureSamples 	: register(u1);
+RWStructuredBuffer<uint>        segmentSizes  	: register(u2);
 
 
 /************************************************************************************************/
@@ -27,46 +27,50 @@ RWStructuredBuffer<uint>		segmentSizes  	: register(u2);
 #define ThreadCount (BlockSize / 2)
 #define BlockCount BlockSize / ThreadCount
 
-groupshared uint64_t	localTextureSamples[BlockSize];
-groupshared uint		offset[BlockSize];
+groupshared uint64_t    localTextureSamples[BlockSize];
+groupshared uint        offset[BlockSize];
 
 
 /************************************************************************************************/
 
 
+void __CmpSwap(uint lhs, uint rhs, uint op)
+{
+    const uint64_t LValue = localTextureSamples[lhs];
+    const uint64_t RValue = localTextureSamples[rhs];
+	
+    const uint64_t V1 = op == 0 ? min(LValue, RValue) : max(LValue, RValue);
+    const uint64_t V2 = op == 0 ? max(LValue, RValue) : min(LValue, RValue);
+	
+    localTextureSamples[lhs] = V1;
+    localTextureSamples[rhs] = V2;
+}
+
+
 void BitonicPass(const uint localThreadID, const int I, const int J)
 {
-	const uint swapMask = (1 << (J + 1)) - 1;
-	const uint offset   = 1 << J;
+    const uint swapMask = (1 << (J + 1)) - 1;
+    const uint offset   = 1 << J;
 
-	if((localThreadID & swapMask) < offset)
-	{
-		const uint lhs = localThreadID;
-		const uint rhs = localThreadID + offset;
-		const uint op  = (localThreadID >> (I + 1)) & 0x01;
+    if((localThreadID & swapMask) < offset)
+    {
+        const uint op  = (localThreadID >> (I + 1)) & 0x01;
+        __CmpSwap(localThreadID, localThreadID + offset, op);
+    }
 
-		const uint64_t LValue = localTextureSamples[lhs];
-		const uint64_t RValue = localTextureSamples[rhs];
-
-		const uint64_t V1 = op == 0 ? uint2_min(LValue, RValue) : uint2_max(LValue, RValue);
-		const uint64_t V2 = op == 0 ? uint2_max(LValue, RValue) : uint2_min(LValue, RValue);
-
-		localTextureSamples[lhs] = V1;
-		localTextureSamples[rhs] = V2;
-	}
-
-	GroupMemoryBarrierWithGroupSync();
+    GroupMemoryBarrierWithGroupSync();
 }
 
 
 /************************************************************************************************/
 
+
 // Pad extra elements with -1
 void LocalBitonicSort(const uint localThreadID)
 {
-	for(int I = 0; I < log2(BlockSize); I++)
-		for(int J = I; J >= 0; J--)
-			BitonicPass(localThreadID, I, J);
+	for(int I = 0; I < log2(1024); I++)
+        for(int J = I; J >= 0; J--)
+        	BitonicPass(localThreadID, I, J);
 }
 
 
@@ -76,7 +80,7 @@ void LocalBitonicSort(const uint localThreadID)
 void ParallelPreFixSum(const uint threadID)
 {
 	// https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda
-	GroupMemoryBarrierWithGroupSync();
+    GroupMemoryBarrierWithGroupSync();
 	
 	// Up-Sweep
 	for(uint D = 0; D < log2(BlockSize - 1); D++)
@@ -130,21 +134,21 @@ void CompactSamples(const uint localThreadID)
 {	
 	GroupMemoryBarrierWithGroupSync();
 
-	const uint waveCount = BlockSize / ThreadCount;
-	const uint waveSize  = BlockSize / waveCount;
+    const uint waveCount = BlockSize / ThreadCount;      
+    const uint waveSize  = BlockSize / waveCount;
 
-	const uint idx		= localThreadID;
-	const uint2 A 		= localTextureSamples[idx];
-	const uint2 B 		= localTextureSamples[idx - 1];
+	const uint idx      = localThreadID;
+	const uint64_t A 	= localTextureSamples[idx];
+	const uint64_t B 	= localTextureSamples[idx - 1];
 	
 	const uint m = idx != 0 ? !(A == B) : 1;
 	offset[idx] = m != 0;
 	
 	GroupMemoryBarrierWithGroupSync();
 
-	ParallelPreFixSum(localThreadID);		
+    ParallelPreFixSum(localThreadID);		
 
-	GroupMemoryBarrierWithGroupSync();
+    GroupMemoryBarrierWithGroupSync();
 
 	if(m)
 		localTextureSamples[offset[idx]] = A;
@@ -158,12 +162,12 @@ void CompactSamples(const uint localThreadID)
 
 void LoadLocalValues(const uint threadID, const uint groupID, const uint sampleCount)
 {
-	uint64_t tileID = -1;
+    uint64_t tileID = -1;
 
 	if(threadID + groupID * BlockSize < sampleCount)
-	{
+    {
 		tileID = textureSamples[threadID + groupID * BlockSize];
-		tileID = (tileID != 0) ? tileID : -1;
+    	tileID = (tileID != 0) ? tileID : -1;
 	}
 
 	localTextureSamples[threadID] = tileID;
@@ -177,19 +181,19 @@ void LoadLocalValues(const uint threadID, const uint groupID, const uint sampleC
 
 void WriteBackValues(const uint threadID, const uint groupID)
 {
-	GroupMemoryBarrierWithGroupSync();
+    GroupMemoryBarrierWithGroupSync();
 
-	const uint end = offset[BlockSize - 1];
+    const uint end = offset[BlockSize - 1];
 	
 	if(threadID < end)
 		textureSamples[threadID + groupID * BlockSize] = localTextureSamples[threadID];
 	else
 		textureSamples[threadID + groupID * BlockSize] = -1;
 
-	if(threadID == 0)
-		segmentSizes[groupID] = end - (localTextureSamples[BlockSize - 1] == -1 ? 1 : 0);
+    if(threadID == 0)
+        segmentSizes[groupID] = end - (localTextureSamples[BlockSize - 1] == -1 ? 1 : 0);
 
-	GroupMemoryBarrierWithGroupSync();
+    GroupMemoryBarrierWithGroupSync();
 }
 
 
@@ -206,10 +210,10 @@ void CompressBlocks(const uint threadID : SV_GroupIndex, const uint3 groupID : S
 		return;
 	}
 
-	LoadLocalValues(threadID, groupID.x, sampleCount);
-	LocalBitonicSort(threadID);
-	CompactSamples(threadID);
-	WriteBackValues(threadID, groupID.x);
+    LoadLocalValues(threadID, groupID.x, sampleCount);
+    LocalBitonicSort(threadID);
+    CompactSamples(threadID);
+    WriteBackValues(threadID, groupID.x);
 }
 
 
@@ -218,7 +222,7 @@ void CompressBlocks(const uint threadID : SV_GroupIndex, const uint3 groupID : S
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2022 Robert May
+Copyright (c) 2015 - 2020 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
