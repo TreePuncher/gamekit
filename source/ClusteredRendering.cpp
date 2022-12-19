@@ -1367,51 +1367,43 @@ namespace FlexKit
 				defaultHeap.SetSRV(ctx, 3, resources.renderSystem().DefaultTexture);
 				defaultHeap.NullFill(ctx);
 
-				auto PushMaterial = [&](auto&& material, auto& descriptors, auto& constants, Brush::VConstantsLayout& constantData)
+
+				auto& materials = MaterialComponent::GetComponent();
+
+				auto GetConstants = [&](auto& brush, auto& constants)
 				{
-					descriptors.emplace_back();
-					auto& descHeap = descriptors.back();
 
-					constantData.textureCount = (uint32_t)material.Textures.size();
-					constants.emplace_back(constantData, entityConstantBuffer);
-
-					if (material.Textures.size())
-					{
-						descHeap.Init(
-							ctx,
-							resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0u),
-							&allocator);
-
-						for (size_t I = 0; I < Min(material.Textures.size(), 4u); I++)
-							descHeap.SetSRV(ctx, I, material.Textures[I]);
-
-						descHeap.NullFill(ctx);
-					}
-					else
-						descHeap.Mirror(defaultHeap);
-				};
-
-				auto GetConstants = [&](auto& brush, auto& constants, auto& descriptors)
-				{
 					auto brushConstants = brush->GetConstants();
-					auto& materials		= MaterialComponent::GetComponent();
 					const auto material = materials[brush->material];
 
 					if (!material.SubMaterials.empty())
 					{
 						for (auto subMaterial : material.SubMaterials)
-							PushMaterial(materials[subMaterial], descriptors, constants, brushConstants);
+						{
+							brushConstants.textureCount = (uint32_t)material.Textures.size();
+							constants.emplace_back(brushConstants, entityConstantBuffer);
+						}
 					}
 					else
-						PushMaterial(material, descriptors, constants, brushConstants);
+					{
+						brushConstants.textureCount = (uint32_t)material.Textures.size();
+						constants.emplace_back(brushConstants, entityConstantBuffer);
+					}
 				};
 
 				for (auto& brush : pass->pvs)
 				{
 					static_vector<ConstantBufferDataSet>	constants;
-					static_vector<DescriptorHeap>			descriptors;
+					static_vector<DescriptorRange>			descriptors;
 
-					GetConstants(brush, constants, descriptors);
+					GetConstants(brush, constants);
+					const auto& material = materials[brush->material];
+
+					if (material.SubMaterials.size() == 0)
+						descriptors.push_back(materials.GetTextureDescriptors(material.handle));
+					else
+						for (auto sm : material.SubMaterials)
+							descriptors.push_back(materials.GetTextureDescriptors(sm));
 
 					const	size_t meshCount = brush->meshes.size();
 					for (auto I = 0; I < meshCount; I++)
@@ -1441,8 +1433,11 @@ namespace FlexKit
 						auto& submeshes = lod->subMeshes;
 						for (size_t I = 0; I < submeshes.size(); I++)
 						{
-							auto materialIdx = Min(I, descriptors.size() - 1);
-							ctx.SetGraphicsDescriptorTable(0, descriptors[materialIdx]);
+							auto materialIdx = Min(I, material.SubMaterials.size() - 1);
+
+							if(descriptors.size() && descriptors[materialIdx].size)
+								ctx.SetGraphicsDescriptorTable(0, descriptors[materialIdx]);
+
 							ctx.SetGraphicsConstantBufferView(2, constants[materialIdx]);
 
 							ctx.DrawIndexed(
@@ -1479,11 +1474,20 @@ namespace FlexKit
 
 					for (size_t I = 0; I < animatedBrushes.size(); I++)
 					{
-						static_vector<ConstantBufferDataSet>	constants;
-						static_vector<DescriptorHeap>			descriptors;
+						const auto& pvs = animatedBrushes[I];
 
-						const auto& pvs			= animatedBrushes[I];
-						GetConstants(pvs.brush, constants, descriptors);
+						const auto& material = materials[pvs.brush->material];
+
+						static_vector<ConstantBufferDataSet>	constants;
+						static_vector<DescriptorRange>			descriptors;
+
+						if (material.SubMaterials.size() == 0)
+							descriptors.push_back(materials.GetTextureDescriptors(material.handle));
+						else
+							for (auto sm : material.SubMaterials)
+								descriptors.push_back(materials.GetTextureDescriptors(sm));
+
+						GetConstants(pvs.brush, constants);
 						ctx.SetGraphicsConstantBufferView(4, poses[I]);
 
 						const auto& meshes		= pvs.brush->meshes;
@@ -1517,10 +1521,14 @@ namespace FlexKit
 
 							auto& lod		= triMesh->lods[lodLevel];
 							auto& submeshes = lod.subMeshes;
+
 							for (size_t I = 0; I < submeshes.size(); I++)
 							{
 								auto materialIdx = Min(I, descriptors.size() - 1);
-								ctx.SetGraphicsDescriptorTable(0, descriptors[materialIdx]);
+
+								if (descriptors.size() && descriptors[materialIdx].size)
+									ctx.SetGraphicsDescriptorTable(0, descriptors[materialIdx]);
+
 								ctx.SetGraphicsConstantBufferView(2, constants[materialIdx]);
 
 								ctx.DrawIndexed(

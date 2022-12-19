@@ -4099,6 +4099,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferDataSet& CB);
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBuffer& CB);
 		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorHeap& DH);
+		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorRange& range);
 		void SetGraphicsShaderResourceView	(size_t idx, FrameBufferedResource* Resource, size_t Count, size_t ElementSize);
 		void SetGraphicsShaderResourceView	(size_t idx, Texture2D& Texture);
 		void SetGraphicsShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0);

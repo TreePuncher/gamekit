@@ -140,8 +140,9 @@ namespace FlexKit
 
 		if (refCount.load(std::memory_order_acquire) == 0)
 		{
-			auto& textures = materials[idx].Textures;
-			auto parent = materials[idx].parent;
+			auto& material_ref	= materials[idx];
+			auto& textures		= material_ref.Textures;
+			auto parent			= material_ref.parent;
 
 			if (parent != InvalidHandle)
 				ReleaseMaterial(parent);
@@ -149,6 +150,8 @@ namespace FlexKit
 			for (auto& texture : textures)
 				ReleaseTexture(texture);
 
+			if (material_ref.textureDescriptors.size)
+				renderSystem._ReleaseDescriptorRange(material_ref.textureDescriptors, material_ref.lastUsed);
 
 			materials[idx] = materials.back();
 			materials.pop_back();
@@ -383,6 +386,20 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void MaterialComponent::MaterialView::SetTextureCount(size_t size)
+	{
+		if (Shared())
+		{
+			auto newHandle = GetComponent().CloneMaterial(handle);
+			GetComponent().ReleaseMaterial(handle);
+
+			handle = newHandle;
+		}
+
+		ReadContext rdCtx{};
+	}
+
+
 	void MaterialComponent::MaterialView::PushTexture(GUID_t textureAsset, bool LoadLowest)
 	{
 		if (Shared())
@@ -596,6 +613,8 @@ namespace FlexKit
 
 		gameObject.AddView<MaterialView>(newMaterial);
 		SetMaterialHandle(gameObject, newMaterial);
+
+		UpdateTextureDescriptors(newMaterial);
 	}
 
 
@@ -617,6 +636,66 @@ namespace FlexKit
 
 		if (auto res = std::find(activePasses.begin(), activePasses.end(), ID); res == activePasses.end())
 			activePasses.push_back(ID);
+	}
+
+
+	/************************************************************************************************/
+
+
+	DescriptorRange	MaterialComponent::GetTextureDescriptors(MaterialHandle material)
+	{
+		if (material == InvalidHandle)
+			return {};
+
+		auto& materialData = materials[handles[material]];
+
+		if (materialData.textureDescriptors.size == 0)
+			UpdateTextureDescriptors(material);
+
+		const uint64_t current = renderSystem.SyncCounter;
+
+		if(materialData.lastUsed < current)
+			materialData.lastUsed = current;
+
+		return materialData.textureDescriptors;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void MaterialComponent::UpdateTextureDescriptors(MaterialHandle material)
+	{
+		if (material == InvalidHandle)
+			return;
+
+		auto& materialData = materials[handles[material]];
+
+		if (materialData.textureDescriptors.size)
+			renderSystem._ReleaseDescriptorRange(materialData.textureDescriptors, renderSystem.SyncCounter);
+
+		auto textureCount		= materialData.Textures.size();
+
+		if (textureCount == 0)
+			return;
+
+		auto res				= renderSystem._AllocateDescriptorRange(textureCount);
+		if (!res.has_value())
+			DebugBreak();
+
+		auto& descriptorRange	= res.value();
+
+		FK_ASSERT(res.has_value(), "Failed to allocate Descriptor Heap Range");
+
+		for (size_t I = 0; I < textureCount; I++)
+		{
+			auto resource	= materialData.Textures[I];
+			auto format		= renderSystem.GetTextureFormat(resource);
+			auto dxFormat	= FlexKit::TextureFormat2DXGIFormat(format);
+			PushTextureToDescHeap(renderSystem, dxFormat, resource, descriptorRange[I]);
+		}
+
+		materialData.textureDescriptors = descriptorRange;
 	}
 
 
