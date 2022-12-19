@@ -28,6 +28,7 @@
 #include <DirectXMath/DirectXMath.h>
 #include <dxgi1_6.h>
 #include <concepts>
+#include <expected>
 #include <tuple>
 #include <variant>
 #include <optional>
@@ -847,6 +848,88 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
+	using DescHeapPOS = Pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE>;
+	using VertexResourceBuffer = ID3D12Resource*;
+
+
+	/************************************************************************************************/
+
+
+	struct DescriptorRange
+	{
+		FlexKit::DescHeapPOS	begin;
+		uint32_t				size;
+		uint32_t				stride;
+
+		FlexKit::DescHeapPOS operator [](size_t idx)
+		{
+			return { begin.V1.ptr + idx * stride,  begin.V2.ptr + idx * stride, };
+		}
+
+		operator FlexKit::DescHeapPOS () const { return begin; }
+	};
+
+
+	/************************************************************************************************/
+
+
+	class DescriptorHeapAllocator
+	{
+	public:
+		~DescriptorHeapAllocator();
+
+
+		void							Initialize	(FlexKit::RenderSystem& IN_renderSystem, const size_t numDescCount, FlexKit::iAllocator* IN_allocator);
+
+		std::optional<DescriptorRange>	Alloc_ST	(const size_t size, uint64_t completedIdx) noexcept;
+		auto							Alloc		(const size_t size, uint64_t completedIdx) noexcept;
+
+		void							Release_ST	(const DescriptorRange range, uint64_t lockIdx, uint64_t completed) noexcept;
+		void							Release	(const DescriptorRange range, uint64_t lockIdx, uint64_t completed);
+
+		ID3D12DescriptorHeap* Heap() { return descHeap; }
+		private:
+
+		struct Node
+		{
+			size_t begin;
+			size_t end;
+			size_t lockUntil;
+			
+			bool free		= true;
+			Node* left		= nullptr;
+			Node* right		= nullptr;
+			Node* parent	= nullptr;
+
+			void Split(FlexKit::iAllocator* allocator);
+			void Collapse(FlexKit::iAllocator* allocator);
+			bool Collapsable(uint64_t completed);
+
+			void Release(iAllocator* allocator);
+
+			std::pair<size_t, size_t> SplitSizes();
+			size_t BlockCount() const noexcept { return end - begin; }
+			size_t FreeCount() const noexcept;
+
+		};
+
+		Node* LocateNode(size_t offset);
+
+		Node						root;
+		FlexKit::Vector<Node*>		freeList;
+		FlexKit::iAllocator*		allocator;
+		FlexKit::RenderSystem*		renderSystem;
+		size_t						descriptorSize;
+		D3D12_GPU_DESCRIPTOR_HANDLE	gpuHeap;
+		D3D12_CPU_DESCRIPTOR_HANDLE	cpuHeap;
+		std::mutex					mutex;
+		ID3D12DescriptorHeap*		descHeap;
+	};
+
+
+	/************************************************************************************************/
+
+
 	const static size_t MaxBufferedSize = 3;
 
 	template<typename TY_>
@@ -914,11 +997,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	typedef FrameBufferedResource											ShaderResourceBuffer;
 	typedef FrameBufferedResource											StreamOutBuffer;
 	typedef	FrameBufferedObject<ID3D12QueryHeap>							QueryResource;
-
-	// New
-	typedef Pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE>	DescHeapPOS;
-
-	typedef ID3D12Resource*													VertexResourceBuffer;
 
 	/************************************************************************************************/
 
@@ -1229,8 +1307,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	struct SyncPoint
 	{
-		UINT            syncCounter = 0;
-		ID3D12Fence*    fence       = nullptr;
+		uint64_t		syncCounter	= 0;
+		ID3D12Fence*	fence		= nullptr;
 	};
 
 	class CopyContext
@@ -1274,8 +1352,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void Wait(CopyContextHandle handle);
 		void Close(CopyContextHandle handle);
 
-		SyncPoint   Submit(CopyContextHandle* begin, CopyContextHandle* end, std::optional<SyncPoint> sync = {});
-		void        Signal(ID3D12Fence* fence, const size_t counter);
+		void		Submit(CopyContextHandle* begin, CopyContextHandle* end, std::optional<SyncPoint> sync = {});
+		void		Signal(ID3D12Fence* fence, const size_t counter);
+		void		Signal(SyncPoint);
 
 		void Push_Temporary(ID3D12Resource* resource, CopyContextHandle handle);
 
@@ -1283,11 +1362,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		bool Initiate(ID3D12Device*, const size_t threadCount, Vector<ID3D12DeviceChild*>& ObjectsCreated, iAllocator*);
 
-		ID3D12CommandQueue*                 copyQueue       = nullptr;
-		ID3D12Fence*                        fence           = nullptr;
-		std::atomic_uint                    idx             = 0;
-		std::atomic_uint                    counter         = 0;
-		CircularBuffer<CopyContext, 64>     copyContexts;
+		ID3D12CommandQueue*					copyQueue		= nullptr;
+		ID3D12Fence*						fence			= nullptr;
+		std::atomic_uint					idx				= 0;
+		std::atomic_uint					counter			= 0;
+		CircularBuffer<CopyContext, 64>		copyContexts;
 	};
 
 
@@ -2047,9 +2126,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	FLEXKITAPI struct ConstantBufferTable
 	{
 		ConstantBufferTable(iAllocator* allocator, RenderSystem* IN_renderSystem) :
-			handles         { allocator         },
-			renderSystem    { IN_renderSystem   },
-			buffers         { allocator         }
+			handles			{ allocator			},
+			renderSystem	{ IN_renderSystem	},
+			buffers			{ allocator			}
 		{}
 
 		~ConstantBufferTable()
@@ -2090,11 +2169,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			bool GPUResident;
 			bool writeFlag;
 
-			char                    locks[3];
-			uint8_t                 currentRes;
-			ConstantBufferHandle    handle;
+			char					locks[3];
+			uint8_t					currentRes;
+			ConstantBufferHandle	handle;
 
-			ID3D12Resource*         resources[3];
+			ID3D12Resource*			resources[3];
 		};
 
 
@@ -2104,7 +2183,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		ID3D12Resource*			GetDeviceResource		(const ConstantBufferHandle Handle) const;
 		size_t					GetBufferOffset			(const ConstantBufferHandle Handle) const;
-		size_t                  GetBufferSize           (const ConstantBufferHandle Handle) const;
+		size_t					GetBufferSize           (const ConstantBufferHandle Handle) const;
 
 
 		size_t					AlignNext               (ConstantBufferHandle Handle);
@@ -2113,14 +2192,14 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		SubAllocation			Reserve					(ConstantBufferHandle Handle, size_t Size);
 
 		void					LockFor(uint8_t frameCount);
-		void                    DecrementLocks();
+		void					DecrementLocks();
 
 	private:
 		void					UpdateCurrentBuffer(ConstantBufferHandle Handle);
 
 		RenderSystem*				renderSystem;
 		Vector<UserConstantBuffer>	buffers;
-		std::mutex                  criticalSection;
+		std::mutex					criticalSection;
 
 		HandleUtilities::HandleTable<ConstantBufferHandle>	handles;
 	};
@@ -3629,6 +3708,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void QueuePSOLoad(PSOHandle State);
 
 
+		SyncPoint	GetSyncDirect();
 		void		BeginSubmission();
 		SyncPoint	Submit(Vector<Context*>& CLs, std::optional<SyncPoint> sync = {});
 		void		_UpdateCounters();
@@ -3739,17 +3819,30 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void ReleaseReadBack(ReadBackResourceHandle);
 		void ReleaseHeap(DeviceHeapHandle);
 
-		SyncPoint			SubmitUploadQueues(uint32_t flags, CopyContextHandle* handle, size_t count = 1, std::optional<SyncPoint> sync = {});
+		void				SubmitUploadQueues(uint32_t flags, CopyContextHandle* handle, size_t count = 1, std::optional<SyncPoint> sync = {});
 		CopyContextHandle	OpenUploadQueue();
 		CopyContextHandle	GetImmediateUploadQueue();
 		Context&			GetCommandList();
+		void				GetCommandLists(size_t n, std::span<Context*>& out);
+
+
 		// Internal
 		//ResourceHandle			_AddBackBuffer						(Texture2D_Desc& Desc, ID3D12Resource* Res, uint32_t Tag);
 		static ConstantBuffer	_CreateConstantBufferResource(RenderSystem* RS, ConstantBuffer_desc* desc);
 		VertexResourceBuffer	_CreateVertexBufferDeviceResource(const size_t ResourceSize, bool GPUResident = true);
 		ResourceHandle			_CreateDefaultTexture();
 
-		void					_PushDelayReleasedResource(ID3D12Resource*, CopyContextHandle = InvalidHandle);
+		enum class DescriptorRangeAllocationError
+		{
+			OutOfSpace,
+			NotEnoughContiguousDescriptors
+		};
+		using AllocationResult = std::expected<DescriptorRange, DescriptorRangeAllocationError>;
+
+		AllocationResult	_AllocateDescriptorRange(const size_t size);
+		void				_ReleaseDescriptorRange(DescriptorRange range, uint64_t lockIdx);
+
+		void				_PushDelayReleasedResource(ID3D12Resource*, CopyContextHandle = InvalidHandle);
 
 		void	_ForceReleaseTexture(ResourceHandle handle);
 		void	_InsertCopyBarriers(const Vector<CopyBarrier>& vector);
@@ -3867,6 +3960,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		SOResourceTable				StreamOutTable;
 		PipelineStateTable			PipelineStates;
 		ReadBackStateTable			ReadBackTable;
+		DescriptorHeapAllocator		descriptorHeapAllocator;
 
 		AvailableFeatures features;
 
@@ -4134,8 +4228,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetRTWrite	(ResourceHandle Handle);
 		void SetRTFree	(ResourceHandle Handle);
 
-		void		Close(const size_t counter);
-		Context&	Reset();
+		void		Close();
+		Context&	Reset(DescriptorRange range, const size_t newDispatchIdx, ID3D12DescriptorHeap* heap);
 
 		void SetDebugName(const char* ID)
 		{
@@ -4150,8 +4244,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void _QueueReadBacks();
 
+		std::optional<DescHeapPOS>	_ReserveSRV(size_t count);
 		DescHeapPOS	_ReserveDSV(size_t count);
-		DescHeapPOS	_ReserveSRV(size_t count);
 		DescHeapPOS	_ReserveRTV(size_t count);
 		DescHeapPOS	_ReserveSRVLocal(size_t count);
 
@@ -4160,7 +4254,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void		_ResetDSV();
 		void		_ResetSRV();
 
-		uint64_t	_GetCounter() { return counter; }
+		uint64_t	_GetCounter() { return dispatchIdx; }
 		ID3D12GraphicsCommandList*	GetCommandList() { return DeviceContext; }
 
 		RenderSystem* renderSystem = nullptr;
@@ -4187,15 +4281,15 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		ID3D12PipelineState*			CurrentPipelineState		= nullptr;
 
 		ID3D12DescriptorHeap*			descHeapRTV				= nullptr;
-		ID3D12DescriptorHeap*			descHeapSRV				= nullptr;
 		ID3D12DescriptorHeap*			descHeapSRVLocal		= nullptr; // CPU visable only
 		ID3D12DescriptorHeap*			descHeapDSV				= nullptr;
 
+
+		DescriptorRange				shaderResources;
+		size_t						heapUsed	= 0;
+		uint64_t					dispatchIdx = 0;
+
 		D3D12_CPU_DESCRIPTOR_HANDLE RTV_CPU;
-
-		D3D12_CPU_DESCRIPTOR_HANDLE SRV_CPU;
-		D3D12_GPU_DESCRIPTOR_HANDLE SRV_GPU;
-
 		D3D12_CPU_DESCRIPTOR_HANDLE DSV_CPU;
 
 		D3D12_CPU_DESCRIPTOR_HANDLE RTVPOSCPU;
@@ -4228,7 +4322,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		static_vector<RTV_View, 128>				depthStencilViews;
 		static_vector<ReadBackResourceHandle, 128>	queuedReadBacks;
 
-		uint64_t									counter = 0;
 		iAllocator*									Memory;
 
 #if USING(AFTERMATH)

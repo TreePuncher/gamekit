@@ -63,6 +63,263 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
+	DescriptorHeapAllocator::~DescriptorHeapAllocator()
+	{
+		if (descHeap)
+		{
+			root.Release(allocator);
+			freeList.clear();
+
+			descHeap->Release();
+
+			descHeap		= nullptr;
+			allocator		= nullptr;
+			renderSystem	= nullptr;
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	std::optional<DescriptorRange> DescriptorHeapAllocator::Alloc_ST(const size_t size, uint64_t completedIdx) noexcept
+	{
+		for (auto& freeNode : freeList)
+		{
+			if (freeNode->BlockCount() > size && freeNode->lockUntil <= completedIdx)
+			{
+				auto node						= freeNode;
+				auto potentialSplit				= node->SplitSizes();
+				auto& [leftSplit, rightSplit]	= potentialSplit;
+
+				freeList.erase(std::remove(freeList.begin(), freeList.end(), freeNode), freeList.end());
+
+				while(leftSplit >= size || rightSplit >= size)
+				{
+					node->Split(allocator);
+					auto lhs = node->left;
+					auto rhs = node->right;
+
+					if (rhs->BlockCount() >= size)
+					{
+						node = rhs;
+						freeList.push_back(lhs);
+					}
+					else
+					{
+						node = lhs;
+						freeList.push_back(rhs);
+					}
+
+					potentialSplit = node->SplitSizes();
+				}
+
+				node->free = false;
+
+				const auto offset = descriptorSize * node->begin;
+
+				return DescriptorRange{
+							.begin	= { cpuHeap.ptr + offset, gpuHeap.ptr + offset },
+							.size	= (uint32_t)size,
+						};
+			}
+		}
+
+		return {};
+	}
+
+
+	/************************************************************************************************/
+
+
+	void DescriptorHeapAllocator::Initialize(FlexKit::RenderSystem& IN_renderSystem, const size_t numDescCount, FlexKit::iAllocator* IN_allocator)
+	{
+		descHeap		= IN_renderSystem._CreateShaderVisibleHeap(numDescCount);
+		renderSystem	= &IN_renderSystem;
+		root			= Node{ .begin = 0, .end = numDescCount };
+		freeList		= FlexKit::Vector<Node*>{ IN_allocator };
+		allocator		= IN_allocator;
+
+		freeList.push_back(&root);
+
+		gpuHeap = descHeap->GetGPUDescriptorHandleForHeapStart();
+		cpuHeap = descHeap->GetCPUDescriptorHandleForHeapStart();
+
+		descriptorSize = renderSystem->DescriptorCBVSRVUAVSize;
+	}
+
+
+	/************************************************************************************************/
+
+
+	auto DescriptorHeapAllocator::Alloc(const size_t size, uint64_t completedIdx) noexcept
+	{
+		std::scoped_lock lock{ mutex };
+
+		return Alloc_ST(size, completedIdx);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void DescriptorHeapAllocator::Release_ST(const DescriptorRange range, uint64_t lockIdx, uint64_t completedIdx) noexcept
+	{
+		auto& [cpu_ptr, gpu_ptr] = range.begin;
+		auto offset1 = (gpu_ptr.ptr - gpuHeap.ptr) / descriptorSize;
+		auto offset2 = (cpu_ptr.ptr - cpuHeap.ptr) / descriptorSize;
+
+		FK_ASSERT(offset1 == offset2); // quick sanity check
+
+		auto node = LocateNode(offset1);
+		node->free		= true;
+		node->lockUntil = lockIdx;
+
+		while (node->parent)
+		{
+			if (node->parent->left->Collapsable(completedIdx) && node->parent->right->Collapsable(completedIdx))
+			{
+				auto n = node->parent->left != node ? node->parent->left : node->parent->right;
+
+				freeList.erase(std::remove(freeList.begin(), freeList.end(), n), freeList.end());
+
+				node = node->parent;
+
+				node->Collapse(allocator);
+			}
+			else
+				break;
+		}
+
+		freeList.push_back(node);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void DescriptorHeapAllocator::Release(const DescriptorRange range, uint64_t lockIdx, uint64_t completedIdx)
+	{
+		std::scoped_lock lock{mutex};
+
+		Release_ST(range, lockIdx, completedIdx);
+	}
+
+
+	/************************************************************************************************/
+
+
+	size_t DescriptorHeapAllocator::Node::FreeCount() const noexcept
+	{
+		if (left && right)
+			return left->FreeCount() + right->FreeCount();
+		if (free)
+			return BlockCount();
+		else
+			return 0;
+	}
+
+
+	/************************************************************************************************/
+
+
+	std::pair<size_t, size_t> DescriptorHeapAllocator::Node::SplitSizes()
+	{
+		const auto numBlocks = BlockCount();
+		return { 3 * numBlocks >> 2, numBlocks >> 2 };
+	}
+
+
+	/************************************************************************************************/
+
+
+	void DescriptorHeapAllocator::Node::Split(FlexKit::iAllocator* allocator)
+	{
+		auto lhs = &allocator->allocate<Node>();
+		auto rhs = &allocator->allocate<Node>();
+		const auto numBlocks = BlockCount();
+
+		lhs->begin	= begin;
+		lhs->end	= begin + 3 * (numBlocks >> 2);
+		lhs->parent = this;
+
+		rhs->begin	= begin + 3 * (numBlocks >> 2);
+		rhs->end	= end;
+		rhs->parent = this;
+
+		left = lhs;
+		right = rhs;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void DescriptorHeapAllocator::Node::Collapse(FlexKit::iAllocator* allocator)
+	{
+		allocator->release(left);
+		allocator->release(right);
+
+		left	= nullptr;
+		right	= nullptr;
+		free	= true;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool DescriptorHeapAllocator::Node::Collapsable(uint64_t completed)
+	{
+		return (free && lockUntil <= completed);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void DescriptorHeapAllocator::Node::Release(iAllocator* allocator)
+	{
+		if (left)
+		{
+			left->Release(allocator);
+			allocator->free(left);
+		}
+
+		if (right)
+		{
+			right->Release(allocator);
+			allocator->free(right);
+		}
+
+		left	= nullptr;
+		right	= nullptr;
+	}
+
+	/************************************************************************************************/
+
+
+	DescriptorHeapAllocator::Node* DescriptorHeapAllocator::LocateNode(size_t offset)
+	{
+		auto node = &root;
+
+		while (node->left && node->right)
+		{
+			if (node->left->begin <= offset && offset < node->left->end)
+				node = node->left;
+			else if (node->right->begin <= offset && offset < node->right->end)
+				node = node->right;
+		}
+
+		if (!node->left && !node->right)
+			return node;
+		else
+			return nullptr;
+	}
+
 
 	/************************************************************************************************/
 
@@ -341,7 +598,7 @@ namespace FlexKit
 		FK_ASSERT(TempMemory);
 
 		const size_t EntryCount = Layout_IN.size();
-		descriptorHeap	= ctx._ReserveSRV(EntryCount);
+		descriptorHeap	= ctx._ReserveSRV(EntryCount).value();
 		Layout			= &Layout_IN;
 
 		for (size_t I = 0; I < EntryCount; I++)
@@ -368,9 +625,9 @@ namespace FlexKit
 
 	DescriptorHeap& DescriptorHeap::operator = (DescriptorHeap&& rhs)
 	{
-		descriptorHeap      = rhs.descriptorHeap;
-		FillState           = std::move(rhs.FillState);
-		Layout              = rhs.Layout;
+		descriptorHeap		= rhs.descriptorHeap;
+		FillState			= std::move(rhs.FillState);
+		Layout				= rhs.Layout;
 
 		rhs.descriptorHeap = DescHeapPOS{ 0u, 0u };
 		rhs.Layout = nullptr;
@@ -387,9 +644,9 @@ namespace FlexKit
 		FK_ASSERT(TempMemory);
 		FillState = Vector<bool>(TempMemory);
 
-		const size_t EntryCount = Layout_IN.size();
-		descriptorHeap = ctx._ReserveSRV(EntryCount);
-		Layout = &Layout_IN;
+		const size_t EntryCount	= Layout_IN.size();
+		descriptorHeap			= ctx._ReserveSRV(EntryCount).value();
+		Layout					= &Layout_IN;
 
 		for (size_t I = 0; I < EntryCount; I++)
 			FillState.push_back(false);
@@ -407,7 +664,7 @@ namespace FlexKit
 		FillState = Vector<bool>(TempMemory);
 
 		const size_t EntryCount = Layout_IN.size() * reserveCount;
-		descriptorHeap = ctx._ReserveSRV(EntryCount);
+		descriptorHeap = ctx._ReserveSRV(EntryCount).value();
 		Layout = &Layout_IN;
 
 		for (size_t I = 0; I < EntryCount; I++)
@@ -425,7 +682,7 @@ namespace FlexKit
 		FK_ASSERT(TempMemory);
 		FillState = Vector<bool>(TempMemory, reserveCount);
 
-		descriptorHeap = ctx._ReserveSRV(reserveCount);
+		descriptorHeap = ctx._ReserveSRV(reserveCount).value();
 		Layout = &Layout_IN;
 
 		for (size_t I = 0; I < reserveCount; I++)
@@ -1203,41 +1460,34 @@ namespace FlexKit
 			TrackedSOBuffers		{ }
 	{
 		HRESULT HR;
-		D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapdesc;
-		descriptorHeapdesc.Flags            = D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		descriptorHeapdesc.NumDescriptors   = 1024 * 128;
-		descriptorHeapdesc.NodeMask         = 0;
-		descriptorHeapdesc.Type             = D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		HR = renderSystem->pDevice->CreateDescriptorHeap(&descriptorHeapdesc, IID_PPV_ARGS(&descHeapSRV));
-		FK_ASSERT(HR, "FAILED TO CREATE DESCRIPTOR HEAP");
 
 		D3D12_DESCRIPTOR_HEAP_DESC cpuDescriptorHeapdesc;
-		cpuDescriptorHeapdesc.Flags            = D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		cpuDescriptorHeapdesc.NumDescriptors   = 1024;
-		cpuDescriptorHeapdesc.NodeMask         = 0;
-		cpuDescriptorHeapdesc.Type             = D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		cpuDescriptorHeapdesc.Flags				= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+		cpuDescriptorHeapdesc.NumDescriptors	= 1024;
+		cpuDescriptorHeapdesc.NodeMask			= 0;
+		cpuDescriptorHeapdesc.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		HR = renderSystem->pDevice->CreateDescriptorHeap(&cpuDescriptorHeapdesc, IID_PPV_ARGS(&descHeapSRVLocal));
 		FK_ASSERT(HR, "FAILED TO CREATE DESCRIPTOR HEAP");
 
-		descriptorHeapdesc.Flags             = D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		descriptorHeapdesc.NumDescriptors    = 128;
-		descriptorHeapdesc.NodeMask          = 0;
-		descriptorHeapdesc.Type              = D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+		D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapdesc;
+		descriptorHeapdesc.Flags			= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+		descriptorHeapdesc.NumDescriptors	= 128;
+		descriptorHeapdesc.NodeMask			= 0;
+		descriptorHeapdesc.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 		HR = renderSystem->pDevice->CreateDescriptorHeap(&descriptorHeapdesc, IID_PPV_ARGS(&descHeapRTV));
 		FK_ASSERT(HR, "FAILED TO CREATE DESCRIPTOR HEAP");
 
-		descriptorHeapdesc.Flags             = D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		descriptorHeapdesc.NumDescriptors    = 128;
-		descriptorHeapdesc.NodeMask          = 0;
-		descriptorHeapdesc.Type              = D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+		descriptorHeapdesc.Flags			= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+		descriptorHeapdesc.NumDescriptors	= 128;
+		descriptorHeapdesc.NodeMask			= 0;
+		descriptorHeapdesc.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 		HR = renderSystem->pDevice->CreateDescriptorHeap(&descriptorHeapdesc, IID_PPV_ARGS(&descHeapDSV));
 		FK_ASSERT(HR, "FAILED TO CREATE DESCRIPTOR HEAP");
 
-		FK_LOG_9("GRAPHICS SRV DESCRIPTOR HEAP CREATED: %u", descHeapSRV);
+		FK_LOG_9("GRAPHICS SRV DESCRIPTOR HEAP CREATED: %u", descHeapSRVLocal);
 		FK_LOG_9("GRAPHICS RTV DESCRIPTOR HEAP CREATED: %u", descHeapRTV);
 		FK_LOG_9("GRAPHICS DSV DESCRIPTOR HEAP CREATED: %u", descHeapDSV);
 
-		SETDEBUGNAME(descHeapSRV, "RESOURCEHEAP");
 		SETDEBUGNAME(descHeapRTV, "GPURESOURCEHEAP");
 		SETDEBUGNAME(descHeapDSV, "RENDERTARGETHEAP");
 
@@ -1290,13 +1540,12 @@ namespace FlexKit
 
 		RTV_CPU = RHS.RTV_CPU;
 
-		SRV_CPU = RHS.SRV_CPU;
-		SRV_GPU = RHS.SRV_GPU;
+		shaderResources = RHS.shaderResources;
+		heapUsed		= RHS.heapUsed;
 
 		DSV_CPU = RHS.DSV_CPU;
 
 		descHeapRTV = RHS.descHeapRTV;
-		descHeapSRV = RHS.descHeapSRV;
 		descHeapDSV = RHS.descHeapDSV;
 
 		RenderTargetCount		= RHS.RenderTargetCount;
@@ -1329,13 +1578,11 @@ namespace FlexKit
 
 		RHS.RTV_CPU = { 0 };
 
-		RHS.SRV_CPU = { 0 };
-		RHS.SRV_GPU = { 0 };
+		RHS.shaderResources = {};
+		RHS.heapUsed		= 0;
 
 		RHS.DSV_CPU = { 0 };
-
 		RHS.descHeapRTV = nullptr;
-		RHS.descHeapSRV = nullptr;
 		RHS.descHeapDSV = nullptr;
 
 #if USING(AFTERMATH)
@@ -1359,15 +1606,16 @@ namespace FlexKit
 		debugCommandList		= RHS.debugCommandList;
 #endif
 
-		RTV_CPU = RHS.RTV_CPU;
+		
+		shaderResources = RHS.shaderResources;
+		heapUsed		= RHS.heapUsed;
 
-		SRV_CPU = RHS.SRV_CPU;
-		SRV_GPU = RHS.SRV_GPU;
+
+		RTV_CPU = RHS.RTV_CPU;
 
 		DSV_CPU = RHS.DSV_CPU;
 
 		descHeapRTV = RHS.descHeapRTV;
-		descHeapSRV = RHS.descHeapSRV;
 		descHeapDSV = RHS.descHeapDSV;
 
 		RenderTargetCount		= RHS.RenderTargetCount;
@@ -1398,15 +1646,12 @@ namespace FlexKit
 		RHS.VBViews.clear();
 		RHS.pendingBarriers.clear();
 
-		RHS.RTV_CPU = { 0 };
-
-		RHS.SRV_CPU = { 0 };
-		RHS.SRV_GPU = { 0 };
-
-		RHS.DSV_CPU = { 0 };
+		RHS.DSV_CPU			= { 0 };
+		RHS.RTV_CPU			= { 0 };
+		RHS.shaderResources = {};
+		RHS.heapUsed		= 0;
 
 		RHS.descHeapRTV = nullptr;
-		RHS.descHeapSRV = nullptr;
 		RHS.descHeapDSV = nullptr;
 
 
@@ -1431,9 +1676,6 @@ namespace FlexKit
 		if(descHeapRTV)
 			descHeapRTV->Release();
 
-		if (descHeapSRV)
-			descHeapSRV->Release();
-
 		if (descHeapSRVLocal)
 			descHeapSRVLocal->Release();
 
@@ -1451,14 +1693,16 @@ namespace FlexKit
 		if(DeviceContext)
 			DeviceContext->Release();
 
+		renderSystem->_ReleaseDescriptorRange(shaderResources, dispatchIdx);
 
-		descHeapDSV          = nullptr;
-		descHeapRTV          = nullptr;
-		descHeapSRV          = nullptr;
-		descHeapSRVLocal     = nullptr;
-		commandAllocator     = nullptr;
-		DeviceContext        = nullptr;
-		CurrentPipelineState = nullptr;
+		shaderResources			= {};
+		heapUsed				= 0;
+		descHeapDSV				= nullptr;
+		descHeapRTV				= nullptr;
+		descHeapSRVLocal		= nullptr;
+		commandAllocator		= nullptr;
+		DeviceContext			= nullptr;
+		CurrentPipelineState	= nullptr;
 
 #if USING(DEBUGGRAPHICS)
 		debugCommandList	 = nullptr;
@@ -2985,6 +3229,8 @@ namespace FlexKit
 		auto GPUview    = _ReserveSRV(1);
 		auto resource   = renderSystem->GetDeviceResource(UAV);
 
+		FK_ASSERT(GPUview.has_value(), "Failed to allocated descriptor");
+
 		Texture2D tex{
 			renderSystem->GetDeviceResource(UAV),
 			renderSystem->GetTextureWH(UAV),
@@ -3000,10 +3246,10 @@ namespace FlexKit
 		PushUAV2DToDescHeap(
 			renderSystem,
 			tex,
-			GPUview);
+			GPUview.value());
 
 		const auto CPUHandle = CPUview.Get<0>();
-		const auto GPUHandle = GPUview.Get<1>();
+		const auto GPUHandle = GPUview.value().Get<1>();
 
 		FlushBarriers();
 
@@ -3334,9 +3580,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::Close(const size_t IN_counter)
+	void Context::Close()
 	{
-		counter = IN_counter;
+		renderSystem->_ReleaseDescriptorRange(shaderResources, dispatchIdx);
+
 		if (auto HR = DeviceContext->Close(); FAILED(HR)) {
 			FK_LOG_ERROR("Failed to close graphics context!");
 			renderSystem->_OnCrash();
@@ -3347,8 +3594,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Context& Context::Reset()
+	Context& Context::Reset(DescriptorRange range, const size_t newDispatchIdx, ID3D12DescriptorHeap* heap)
 	{
+		shaderResources = range;
+
 		CurrentPipelineState = nullptr;
 
 		if (FAILED(commandAllocator->Reset()))
@@ -3368,9 +3617,10 @@ namespace FlexKit
 		depthStencilViews.clear();
 		queuedReadBacks.clear();
 
-		ID3D12DescriptorHeap* heaps[]{ descHeapSRV };
+		heapUsed	= 0;
+		dispatchIdx	= newDispatchIdx;
 
-		DeviceContext->SetDescriptorHeaps(sizeof(heaps) / sizeof(heaps[0]), heaps);
+		DeviceContext->SetDescriptorHeaps(1, &heap);
 
 		return *this;
 	}
@@ -3568,14 +3818,25 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescHeapPOS Context::_ReserveSRV(size_t count)
+	std::optional<DescHeapPOS> Context::_ReserveSRV(size_t count)
 	{
+		/*
 		auto currentCPU = SRV_CPU;
 		auto currentGPU = SRV_GPU;
 		SRV_CPU.ptr = SRV_CPU.ptr + renderSystem->DescriptorCBVSRVUAVSize * count;
 		SRV_GPU.ptr = SRV_GPU.ptr + renderSystem->DescriptorCBVSRVUAVSize * count;
+		*/
 
-		return { currentCPU, currentGPU };
+
+		if (shaderResources.size > heapUsed + count)
+		{
+			auto out = shaderResources[heapUsed];
+
+			heapUsed += count;
+			return { out };
+		}
+		else
+			return {};
 	}
 
 
@@ -3630,8 +3891,10 @@ namespace FlexKit
 
 	void Context::_ResetSRV()
 	{
-		SRV_CPU = descHeapSRV->GetCPUDescriptorHandleForHeapStart();
-		SRV_GPU = descHeapSRV->GetGPUDescriptorHandleForHeapStart();
+		heapUsed = 0;
+
+		//SRV_CPU = descHeapSRV->GetCPUDescriptorHandleForHeapStart();
+		//SRV_GPU = descHeapSRV->GetGPUDescriptorHandleForHeapStart();
 
 		SRV_LOCAL_CPU = descHeapSRVLocal->GetCPUDescriptorHandleForHeapStart();
 		//descHeapSRVLocal->GetGPUDescriptorHandleForHeapStart();
@@ -3784,8 +4047,8 @@ namespace FlexKit
 
 
 	UploadBuffer::UploadBuffer(ID3D12Device* pDevice)  :
-		parentDevice{ pDevice       },
-		Size        { MEGABYTE * 16 }
+		parentDevice	{ pDevice		},
+		Size			{ MEGABYTE * 16	}
 	{
 		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(MEGABYTE * 16);
 		D3D12_HEAP_PROPERTIES HEAP_Props    = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
@@ -3816,10 +4079,10 @@ namespace FlexKit
 		deviceBuffer->Unmap(0, nullptr);
 		deviceBuffer->Release();
 
-		Position        = 0;
-		Size            = 0;
-		deviceBuffer    = nullptr;
-		Buffer          = nullptr;
+		Position		= 0;
+		Size			= 0;
+		deviceBuffer	= nullptr;
+		Buffer			= nullptr;
 	}
 
 
@@ -3844,10 +4107,10 @@ namespace FlexKit
 			nullptr,
 			IID_PPV_ARGS(&newDeviceBuffer));
 
-		Position       = 0;
-		Last	       = 0;
-		Size           = size;
-		deviceBuffer   = newDeviceBuffer;
+		Position		= 0;
+		Last			= 0;
+		Size			= size;
+		deviceBuffer	= newDeviceBuffer;
 		SETDEBUGNAME(newDeviceBuffer, "TEMPORARY");
 
 		CD3DX12_RANGE Range(0, 0);
@@ -3977,31 +4240,31 @@ namespace FlexKit
 
 
 	void CopyContext::CopyTextureRegion(
-		ID3D12Resource*     destination,
-		size_t              subResourceIdx,
-		uint3               XYZ,
-		UploadReservation   source,
-		uint2               WH,
-		DeviceFormat        format)
+		ID3D12Resource*		destination,
+		size_t				subResourceIdx,
+		uint3				XYZ,
+		UploadReservation	source,
+		uint2				WH,
+		DeviceFormat		format)
 	{
 		flushPendingBarriers();
 
-		const auto      deviceFormat    = TextureFormat2DXGIFormat(format);
-		const size_t    formatSize      = GetFormatElementSize(deviceFormat);
-		const bool      BCformat        = IsDDS(format);
-		const size_t rowPitch           = Max((!BCformat ? formatSize * WH[0] : formatSize * WH[0] / 4) / 256, 1) * 256;
+		const auto		deviceFormat	= TextureFormat2DXGIFormat(format);
+		const size_t	formatSize		= GetFormatElementSize(deviceFormat);
+		const bool		BCformat		= IsDDS(format);
+		const size_t	rowPitch		= Max((!BCformat ? formatSize * WH[0] : formatSize * WH[0] / 4) / 256, 1) * 256;
 		//size_t alignmentOffset    = rowPitch & 0x01ff;
 
 		D3D12_PLACED_SUBRESOURCE_FOOTPRINT SubRegion;
-		SubRegion.Footprint.Depth       = 1;
-		SubRegion.Footprint.Format      = deviceFormat;
-		SubRegion.Footprint.RowPitch    = (UINT)rowPitch;
-		SubRegion.Footprint.Width       = WH[0];
-		SubRegion.Footprint.Height      = WH[1];
-		SubRegion.Offset                = source.offset;
+		SubRegion.Footprint.Depth		= 1;
+		SubRegion.Footprint.Format		= deviceFormat;
+		SubRegion.Footprint.RowPitch	= (UINT)rowPitch;
+		SubRegion.Footprint.Width		= WH[0];
+		SubRegion.Footprint.Height		= WH[1];
+		SubRegion.Offset				= source.offset;
 
-		auto destinationLocation    = CD3DX12_TEXTURE_COPY_LOCATION(destination, (UINT)subResourceIdx);
-		auto sourceLocation         = CD3DX12_TEXTURE_COPY_LOCATION(source.resource, SubRegion);
+		auto destinationLocation	= CD3DX12_TEXTURE_COPY_LOCATION(destination, (UINT)subResourceIdx);
+		auto sourceLocation			= CD3DX12_TEXTURE_COPY_LOCATION(source.resource, SubRegion);
 
 		commandList->CopyTextureRegion(
 			&destinationLocation,
@@ -4021,17 +4284,17 @@ namespace FlexKit
 		auto desc = dest->GetDesc();
 
 		D3D12_TILED_RESOURCE_COORDINATE coordinate;
-		coordinate.X              = (UINT)destTile[0];
-		coordinate.Y              = (UINT)destTile[1];
-		coordinate.Z              = (UINT)0;
-		coordinate.Subresource    = (UINT)destTile[2];
+		coordinate.X			= (UINT)destTile[0];
+		coordinate.Y			= (UINT)destTile[1];
+		coordinate.Z			= (UINT)0;
+		coordinate.Subresource	= (UINT)destTile[2];
 		
 		D3D12_TILE_REGION_SIZE regionSize;
-		regionSize.NumTiles   = 1;
-		regionSize.UseBox     = false;
-		regionSize.Width      = 1;
-		regionSize.Height     = 1;
-		regionSize.Depth      = 1;
+		regionSize.NumTiles		= 1;
+		regionSize.UseBox		= false;
+		regionSize.Width		= 1;
+		regionSize.Height		= 1;
+		regionSize.Depth		= 1;
 
 		commandList->CopyTiles(
 			dest,
@@ -4051,11 +4314,11 @@ namespace FlexKit
 		ID3D12Device* device = nullptr;
 		commandList->GetDevice(IID_PPV_ARGS(&device));
 
-		UINT                        TileCount = 0;
-		D3D12_PACKED_MIP_INFO       packedMipInfo;
-		D3D12_TILE_SHAPE            TileShape;
-		UINT                        subResourceTilingCount = 1;
-		D3D12_SUBRESOURCE_TILING    subResourceTiling_Packed;
+		UINT						TileCount = 0;
+		D3D12_PACKED_MIP_INFO		packedMipInfo;
+		D3D12_TILE_SHAPE			TileShape;
+		UINT						subResourceTilingCount = 1;
+		D3D12_SUBRESOURCE_TILING	subResourceTiling_Packed;
 
 		device->GetResourceTiling(resource, &TileCount, &packedMipInfo, &TileShape, &subResourceTilingCount, 0, &subResourceTiling_Packed);
 
@@ -4074,11 +4337,11 @@ namespace FlexKit
 		ID3D12Device* device = nullptr;
 		commandList->GetDevice(IID_PPV_ARGS(&device));
 
-		UINT                        TileCount = 0;
-		D3D12_PACKED_MIP_INFO       packedMipInfo;
-		D3D12_TILE_SHAPE            TileShape;
-		UINT                        subResourceTilingCount = 1;
-		D3D12_SUBRESOURCE_TILING    subResourceTiling_Packed;
+		UINT						TileCount = 0;
+		D3D12_PACKED_MIP_INFO		packedMipInfo;
+		D3D12_TILE_SHAPE			TileShape;
+		UINT						subResourceTilingCount = 1;
+		D3D12_SUBRESOURCE_TILING	subResourceTiling_Packed;
 
 		device->GetResourceTiling(resource, &TileCount, &packedMipInfo, &TileShape, &subResourceTilingCount, (UINT)level, &subResourceTiling_Packed);
 
@@ -4154,7 +4417,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	SyncPoint CopyEngine::Submit(CopyContextHandle* begin, CopyContextHandle* end, std::optional<SyncPoint> syncOpt)
+	void CopyEngine::Submit(CopyContextHandle* begin, CopyContextHandle* end, std::optional<SyncPoint> syncOpt)
 	{
 		const size_t localCounter = ++counter;
 		static_vector<ID3D12CommandList*, 64> cmdLists;
@@ -4164,8 +4427,8 @@ namespace FlexKit
 			auto& context = copyContexts[*itr];
 			cmdLists.push_back(context.commandList);
 
-			context.counter             = localCounter;
-			context.uploadBuffer.Last   = context.uploadBuffer.Position;
+			context.counter				= localCounter;
+			context.uploadBuffer.Last	= context.uploadBuffer.Position;
 			
 			Close(*itr);
 		}
@@ -4174,10 +4437,9 @@ namespace FlexKit
 			copyQueue->Wait(syncPoint.fence, syncPoint.syncCounter);
 
 		copyQueue->ExecuteCommandLists((UINT)cmdLists.size(), cmdLists);
+
 		if (const auto HR = copyQueue->Signal(fence, localCounter); FAILED(HR))
 			FK_LOG_ERROR("FAILED TO SUBMIT TO COPY ENGINE!");
-
-		return { (UINT)localCounter, fence };
 	}
 
 
@@ -4187,6 +4449,12 @@ namespace FlexKit
 	void CopyEngine::Signal(ID3D12Fence* fence, const size_t counter)
 	{
 		if (auto HR = copyQueue->Signal(fence, counter); FAILED(HR))
+			FK_LOG_ERROR("Failed to Signal");
+	}
+
+	void CopyEngine::Signal(SyncPoint sync)
+	{
+		if (auto HR = copyQueue->Signal(sync.fence, sync.syncCounter); FAILED(HR))
 			FK_LOG_ERROR("Failed to Signal");
 	}
 
@@ -4610,19 +4878,19 @@ namespace FlexKit
 
 		{
 			// Copy temp resources over
-			pDevice					    = Device;
-			pGIFactory				    = DXGIFactory;
-			pDXGIAdapter			    = DXGIAdapter;
-			pDebugDevice			    = DebugDevice;
-			pDebug					    = Debug;
-			BufferCount				    = 3;
+			pDevice						= Device;
+			pGIFactory					= DXGIFactory;
+			pDXGIAdapter				= DXGIAdapter;
+			pDebugDevice				= DebugDevice;
+			pDebug						= Debug;
+			BufferCount					= 3;
 			graphicsSubmissionCounter	= 0;
-			DescriptorRTVSize		    = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-			DescriptorDSVSize		    = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-			DescriptorCBVSRVUAVSize     = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+			DescriptorRTVSize			= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+			DescriptorDSVSize			= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+			DescriptorCBVSRVUAVSize		= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		}
 
-
+		descriptorHeapAllocator.Initialize(*this, 1'000'000, in->Memory);
 		heaps.Init(pDevice);
 		copyEngine.Initiate(Device, (threads.GetThreadCount() + 1) * 1.5, ObjectsCreated, in->Memory);
 
@@ -4634,9 +4902,9 @@ namespace FlexKit
 		Library.Initiate(this, in->TempMemory);
 		ReadBackTable.Initiate(Device);
 
-		FreeList_GraphicsQueue.Allocator    = in->Memory;
-		FreeList_CopyQueue.Allocator        = in->Memory;
-		DefaultTexture                      = _CreateDefaultTexture();
+		FreeList_GraphicsQueue.Allocator	= in->Memory;
+		FreeList_CopyQueue.Allocator		= in->Memory;
+		DefaultTexture						= _CreateDefaultTexture();
 
 		RegisterPSOLoader(CLEARBUFFERPSO, { &Library.ClearBuffer, CreateClearBufferPSO });
 		QueuePSOLoad(CLEARBUFFERPSO);
@@ -8172,6 +8440,31 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	RenderSystem::AllocationResult	RenderSystem::_AllocateDescriptorRange(const size_t size)
+	{
+		uint64_t completed = Fence->GetCompletedValue();
+
+		auto res = descriptorHeapAllocator.Alloc(size, completed);
+
+		if (res)
+			return res.value();
+		else
+			return std::unexpected{ RenderSystem::DescriptorRangeAllocationError::OutOfSpace };
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::_ReleaseDescriptorRange(DescriptorRange range, uint64_t lock)
+	{
+		descriptorHeapAllocator.Release(range, lock, Fence->GetCompletedValue());
+	}
+
+
+	/************************************************************************************************/
+
+
 	void RenderSystem::_PushDelayReleasedResource(ID3D12Resource* resource, CopyContextHandle uploadQueue)
 	{
 		if (uploadQueue != InvalidHandle)
@@ -8729,7 +9022,8 @@ namespace FlexKit
 
 	Context& RenderSystem::GetCommandList()
 	{
-		const size_t completedCounter = Fence->GetCompletedValue();
+		const size_t completedCounter	= Fence->GetCompletedValue();
+		const size_t submissionId		= ++graphicsSubmissionCounter;
 
 		for(auto& _ : Contexts)
 		{
@@ -8738,7 +9032,9 @@ namespace FlexKit
 
 			Context& context = Contexts[idx];
 			if (context._GetCounter() <= completedCounter)
-				return context.Reset();
+			{
+				return context.Reset(_AllocateDescriptorRange(1024).value(), submissionId, descriptorHeapAllocator.Heap());
+			}
 		}
 
 		FK_ASSERT(0, "Failed to get a free context!");
@@ -8747,8 +9043,21 @@ namespace FlexKit
 	}
 
 
+	void RenderSystem::GetCommandLists(size_t n, std::span<Context*>& out)
+	{
+	}
+
+
+
 	/************************************************************************************************/
 
+	SyncPoint RenderSystem::GetSyncDirect()
+	{
+		auto value = ++graphicsSubmissionCounter;
+		GraphicsQueue->Wait(Fence, value);
+
+		return { value, Fence };
+	}
 
 	void RenderSystem::BeginSubmission()
 	{
@@ -8785,8 +9094,6 @@ namespace FlexKit
 			ImmediateUpload = InvalidHandle;
 		}
 
-		const auto counter = graphicsSubmissionCounter++;
-
 		static_vector<ID3D12CommandList*, 64> cls;
 
 		if (PendingBarriers.size())
@@ -8800,13 +9107,18 @@ namespace FlexKit
 			context.FlushBarriers();
 			context.Close(counter);
 			*/
+
 			PendingBarriers.clear();
 		}
 
+		uint64_t dispatchIdx = 0;
+
 		for (auto context : contexts)
 		{
+			dispatchIdx = Max(context->dispatchIdx, dispatchIdx);
+
 			cls.push_back(context->GetCommandList());
-			context->Close(counter);
+			context->Close();
 		}
 
 		if (auto sync = syncOptional.value_or(SyncPoint{}); syncOptional.has_value())
@@ -8814,7 +9126,7 @@ namespace FlexKit
 
 		GraphicsQueue->ExecuteCommandLists((UINT)cls.size(), cls.begin());
 
-		if (auto HR = GraphicsQueue->Signal(Fence, counter); FAILED(HR))
+		if (auto HR = GraphicsQueue->Signal(Fence, dispatchIdx); FAILED(HR))
 			FK_LOG_ERROR("Failed to Signal");
 
 		for (auto context : contexts)
@@ -8824,34 +9136,26 @@ namespace FlexKit
 		ConstantBuffers.LockFor(2);
 		Textures.LockUntil(GetCurrentFrame() + 1);
 
-		pendingFrames[frameIdx] = counter;
+		pendingFrames[frameIdx] = dispatchIdx;
 		frameIdx = ++frameIdx % 2;
 
 		ReadBackTable.Update();
 
 		_UpdateCounters();
 
-		return { counter, Fence };
+		return { dispatchIdx, Fence };
 	}
 
 
 	/************************************************************************************************/
 
 
-	SyncPoint RenderSystem::SubmitUploadQueues(uint32_t flags, CopyContextHandle* handles, size_t count, std::optional<SyncPoint> sync)
+	void RenderSystem::SubmitUploadQueues(uint32_t flags, CopyContextHandle* handles, size_t count, std::optional<SyncPoint> sync)
 	{
-		auto syncPoint = copyEngine.Submit(handles, handles + count, sync);
+		copyEngine.Submit(handles, handles + count);
 
-		if (SYNC_Graphics & flags)
-		{
-			auto HR = GraphicsQueue->Wait(syncPoint.fence, syncPoint.syncCounter);  FK_ASSERT(SUCCEEDED(HR));
-		}
-
-		if (SYNC_Compute & flags)
-		{
-		}
-
-		return syncPoint;
+		if(sync)
+			copyEngine.Signal(sync.value());
 	}
 
 

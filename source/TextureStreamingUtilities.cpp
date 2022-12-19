@@ -1006,6 +1006,8 @@ namespace FlexKit
 			blockChanges.packedAllocations.size() &&
 			blockChanges.reallocations.size()) return;
 
+		SyncPoint sync = renderSystem.GetSyncDirect();
+
 		auto ctxHandle		= renderSystem.OpenUploadQueue();
 		auto& ctx			= renderSystem._GetCopyContext(ctxHandle);
 		auto uploadQueue	= renderSystem._GetCopyQueue();
@@ -1203,7 +1205,6 @@ namespace FlexKit
 				std::end(updatedTextures)),
 			std::end(updatedTextures));
 
-		std::optional<SyncPoint> sync;
 
 		renderSystem.UpdateTileMappings(updatedTextures.begin(), updatedTextures.end(), &threadLocalAllocator);
 		renderSystem.SubmitUploadQueues(SYNC_Graphics, &ctxHandle, 1, sync);
