@@ -144,6 +144,8 @@ namespace FlexKit
 			auto& textures		= material_ref.Textures;
 			auto parent			= material_ref.parent;
 
+			FK_ASSERT(handles[material_ref.handle] == idx);
+
 			if (parent != InvalidHandle)
 				ReleaseMaterial(parent);
 
@@ -153,7 +155,12 @@ namespace FlexKit
 			if (material_ref.textureDescriptors.size)
 				renderSystem._ReleaseDescriptorRange(material_ref.textureDescriptors, material_ref.lastUsed);
 
-			materials[idx] = materials.back();
+			if (materials.size() > 1 && idx != materials.size() - 1)
+			{
+				materials[idx] = materials.back();
+				handles[materials[idx].handle] = idx;
+			}
+
 			materials.pop_back();
 
 			if (materials.size())

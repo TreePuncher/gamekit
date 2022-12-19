@@ -637,12 +637,15 @@ namespace FlexKit
 			auto visable	= entity->GetView(visableID);
 			entity->RemoveView(visable);
 		}
+
 		sceneEntities.clear();
 
-		for (auto* gameObject : ownedGameObjects) {
+		for (auto* gameObject : ownedGameObjects)
+		{
 			gameObject->Release();
 			allocator->release(*gameObject);
 		}
+
 		ownedGameObjects.clear();
 
 		bvh = SceneBVH(*allocator);
@@ -1168,7 +1171,8 @@ namespace FlexKit
 
 							EntityBlock::Header entityBlock;
 							memcpy(&entityBlock, block, sizeof(entityBlock));
-							auto& gameObject = allocator->allocate<GameObject>(allocator);
+							auto& gameObject = ctx.scene.allocator->allocate<GameObject>(allocator);
+
 							ctx.scene.ownedGameObjects.push_back(&gameObject);
 
 							size_t itr                  = 0;

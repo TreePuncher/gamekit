@@ -37,7 +37,8 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 
 	constantBuffer	{ framework.GetRenderSystem().CreateConstantBuffer(64 * MEGABYTE, false) },
 	vertexBuffer	{ framework.GetRenderSystem().CreateVertexBuffer(64 * MEGABYTE, false) },
-	runOnceQueue	{ framework.core.GetBlockMemory() }
+	runOnceQueue	{ framework.core.GetBlockMemory() },
+	scene			{ framework.core.GetBlockMemory() }
 
 {	// Setup Window and input
 	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
@@ -73,6 +74,8 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 
 TextureStreamingTest::~TextureStreamingTest()
 {
+	scene.ClearScene();
+
 	renderWindow.Release();
 	framework.GetRenderSystem().ReleaseVB(vertexBuffer);
 	framework.GetRenderSystem().ReleaseCB(constantBuffer);
