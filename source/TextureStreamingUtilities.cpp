@@ -658,18 +658,11 @@ namespace FlexKit
 
 								if(constantData.textureCount)
 								{
-									for (size_t I = 0; I < textures.size(); I++)
-									{
-										srvHeap.SetSRV(ctx, I, textures[I]);
-										constantData.textureHandles[I] = uint4{ 256, 256, textures[I].to_uint() };
-									}
-
-									srvHeap.NullFill(ctx);
-
 									const auto constants = ConstantBufferDataSet{ constantData, passConstantBuffer };
+									const auto& textureDescriptors = passMaterial.textureDescriptors;
+									ctx.SetGraphicsDescriptorTable(4, textureDescriptors);
 
 									ctx.SetGraphicsConstantBufferView(1, constants);
-									ctx.SetGraphicsDescriptorTable(4, srvHeap);
 									ctx.DrawIndexed(subMesh.IndexCount, subMesh.BaseIndex);
 								}
 							}
@@ -678,20 +671,13 @@ namespace FlexKit
 						{
 							if (materialHandle != prevMaterial)
 							{
-								const auto& textures = materials[materialHandle].Textures;
+								const auto& textureDescriptors = materials[materialHandle].textureDescriptors;
 
-								if(textures.size())
-								{
-									DescriptorHeap srvHeap;
-									srvHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), textures.size(), &allocator);
-									ctx.SetGraphicsDescriptorTable(4, srvHeap);
+								if (textureDescriptors.size == 0)
+									continue;
 
-									for (size_t I = 0; I < textures.size(); I++)
-										srvHeap.SetSRV(ctx, I, textures[I]);
-								}
+								ctx.SetGraphicsDescriptorTable(4, textureDescriptors);
 							}
-
-							const auto& textures = materials[materialHandle].Textures;
 
 							prevMaterial = materialHandle;
 

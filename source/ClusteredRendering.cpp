@@ -1437,6 +1437,8 @@ namespace FlexKit
 
 							if(descriptors.size() && descriptors[materialIdx].size)
 								ctx.SetGraphicsDescriptorTable(0, descriptors[materialIdx]);
+							else
+								ctx.SetGraphicsDescriptorTable(0, defaultHeap);
 
 							ctx.SetGraphicsConstantBufferView(2, constants[materialIdx]);
 
@@ -1528,6 +1530,8 @@ namespace FlexKit
 
 								if (descriptors.size() && descriptors[materialIdx].size)
 									ctx.SetGraphicsDescriptorTable(0, descriptors[materialIdx]);
+								else
+									ctx.SetGraphicsDescriptorTable(0, defaultHeap);
 
 								ctx.SetGraphicsConstantBufferView(2, constants[materialIdx]);
 
