@@ -10,13 +10,10 @@ DescriptorAllocatorTest::DescriptorAllocatorTest(FlexKit::GameFramework& IN_fram
 	cameras					{ IN_framework.core.GetBlockMemory() },
 	runOnceQueue			{ IN_framework.core.GetBlockMemory() },
 	sortingRootSignature	{ IN_framework.core.GetBlockMemory() },
-	descHeapAllocator		{ IN_framework.core.RenderSystem, 1000000, IN_framework.core.GetBlockMemory() },
 	gpuAllocator			{ IN_framework.core.RenderSystem, 128 * MEGABYTE, 64 * KILOBYTE, FlexKit::DeviceHeapFlags::UAVBuffer, IN_framework.core.GetBlockMemory() }
 {
-	auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 });
-
-	if (res.second)
-		renderWindow = res.first;
+	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
+		renderWindow = std::move(res.value());
 
 	FlexKit::EventNotifier<>::Subscriber sub;
 	sub.Notify = &FlexKit::EventsWrapper;
@@ -24,9 +21,6 @@ DescriptorAllocatorTest::DescriptorAllocatorTest(FlexKit::GameFramework& IN_fram
 
 	renderWindow.Handler->Subscribe(sub);
 	renderWindow.SetWindowTitle("Sorting Test - WIP");
-
-	auto offset = descHeapAllocator.Alloc(64);
-	descHeapAllocator.Release(offset);
 }
 
 
@@ -44,6 +38,8 @@ DescriptorAllocatorTest::~DescriptorAllocatorTest()
 
 FlexKit::UpdateTask* DescriptorAllocatorTest::Update(FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT)
 {
+	FlexKit::UpdateInput();
+
 	return nullptr;
 }
 
