@@ -1712,8 +1712,6 @@ namespace FlexKit
 		if(DeviceContext)
 			DeviceContext->Release();
 
-		renderSystem->_ReleaseDescriptorRange(shaderResources, dispatchIdx);
-
 		shaderResources			= {};
 		heapUsed				= 0;
 		descHeapDSV				= nullptr;
@@ -3257,7 +3255,7 @@ namespace FlexKit
 		auto GPUview    = _ReserveSRV(1);
 		auto resource   = renderSystem->GetDeviceResource(UAV);
 
-		FK_ASSERT(GPUview.has_value(), "Failed to allocated descriptor");
+		FK_ASSERT(GPUview.has_value() != false, "Failed to allocated descriptor");
 
 		Texture2D tex{
 			renderSystem->GetDeviceResource(UAV),
@@ -3611,6 +3609,7 @@ namespace FlexKit
 	void Context::Close()
 	{
 		renderSystem->_ReleaseDescriptorRange(shaderResources, dispatchIdx);
+		shaderResources = {};
 
 		if (auto HR = DeviceContext->Close(); FAILED(HR)) {
 			FK_LOG_ERROR("Failed to close graphics context!");
@@ -3848,14 +3847,6 @@ namespace FlexKit
 
 	std::optional<DescHeapPOS> Context::_ReserveSRV(size_t count)
 	{
-		/*
-		auto currentCPU = SRV_CPU;
-		auto currentGPU = SRV_GPU;
-		SRV_CPU.ptr = SRV_CPU.ptr + renderSystem->DescriptorCBVSRVUAVSize * count;
-		SRV_GPU.ptr = SRV_GPU.ptr + renderSystem->DescriptorCBVSRVUAVSize * count;
-		*/
-
-
 		if (shaderResources.size > heapUsed + count)
 		{
 			auto out = shaderResources[heapUsed];
@@ -3925,11 +3916,7 @@ namespace FlexKit
 	{
 		heapUsed = 0;
 
-		//SRV_CPU = descHeapSRV->GetCPUDescriptorHandleForHeapStart();
-		//SRV_GPU = descHeapSRV->GetGPUDescriptorHandleForHeapStart();
-
 		SRV_LOCAL_CPU = descHeapSRVLocal->GetCPUDescriptorHandleForHeapStart();
-		//descHeapSRVLocal->GetGPUDescriptorHandleForHeapStart();
 	}
 
 
