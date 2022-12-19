@@ -196,7 +196,7 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
     float height        = 0;
     source.GetDimensions(0u, width, height, MIPCount);
 
-    float mip = source.CalculateLevelOfDetail(textureSampler, UV);
+    float mip = source.CalculateLevelOfDetail(textureSampler, UV) - 1;
 
     while(mip < MIPCount)
     {

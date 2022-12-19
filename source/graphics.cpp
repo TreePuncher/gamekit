@@ -87,6 +87,12 @@ namespace FlexKit
 
 	std::optional<DescriptorRange> DescriptorHeapAllocator::Alloc_ST(const size_t size, uint64_t completedIdx) noexcept
 	{
+		auto cmp_less = [](Node* lhs, Node* rhs) { return lhs->BlockCount() < rhs->BlockCount(); };
+
+		if (freeList.size() > 64) std::ranges::partial_sort(freeList, freeList.begin() + 32, cmp_less );
+		else
+			std::ranges::sort(freeList, cmp_less);
+
 		for (auto& freeNode : freeList)
 		{
 			if (freeNode->BlockCount() > size && freeNode->lockUntil <= completedIdx)
@@ -97,13 +103,25 @@ namespace FlexKit
 
 				freeList.erase(std::remove(freeList.begin(), freeList.end(), freeNode), freeList.end());
 
-				while(leftSplit >= size || rightSplit >= size)
+				while((leftSplit > size || rightSplit > size)  && (leftSplit > 0 && rightSplit > 0))
 				{
 					node->Split(allocator);
 					auto lhs = node->left;
 					auto rhs = node->right;
 
-					if (rhs->BlockCount() >= size)
+					if (rhs->BlockCount() == size)
+					{
+						node = rhs;
+						freeList.push_back(lhs);
+						break;
+					}
+					else if (lhs->BlockCount() == size)
+					{
+						node = lhs;
+						freeList.push_back(rhs);
+						break;
+					}
+					else if (rhs->BlockCount() > size)
 					{
 						node = rhs;
 						freeList.push_back(lhs);
@@ -124,6 +142,7 @@ namespace FlexKit
 				return DescriptorRange{
 							.begin	= { cpuHeap.ptr + offset, gpuHeap.ptr + offset },
 							.size	= (uint32_t)size,
+							.stride = (uint32_t)descriptorSize,
 						};
 			}
 		}
@@ -2477,6 +2496,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void Context::SetGraphicsDescriptorTable(size_t idx, const DescriptorRange& range)
+	{
+		DeviceContext->SetGraphicsRootDescriptorTable((UINT)idx, range.begin.V2);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void Context::SetGraphicsShaderResourceView(size_t idx, FrameBufferedResource* Resource, size_t Count, size_t ElementSize)
 	{
 		DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, Resource->Get()->GetGPUVirtualAddress());
@@ -3836,8 +3864,12 @@ namespace FlexKit
 			return { out };
 		}
 		else
+		{
+			DebugBreak();
 			return {};
+		}
 	}
+
 
 
 	/************************************************************************************************/

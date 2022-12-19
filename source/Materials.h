@@ -30,7 +30,7 @@ namespace FlexKit
 			ID		{ IN_ID },
 			value	{ IN_value } {}
 
-		using ValueVarient = std::variant<float, float2, float3, float4, uint, uint2, uint3, uint4, ResourceHandle>;
+		using ValueVarient = std::variant<float, float2, float3, float4, uint, uint2, uint3, uint4, ResourceHandle, DescriptorRange>;
 
 		uint32_t		ID = -1;
 		ValueVarient	value;
@@ -48,6 +48,8 @@ namespace FlexKit
 		uint32_t							refCount;
 		MaterialHandle						handle;
 		MaterialHandle						parent;
+		DescriptorRange						textureDescriptors;
+		uint64_t							lastUsed = -1;
 
 		Vector<PassHandle, 8, uint8_t>			Passes;
 		Vector<MaterialProperty, 8, uint8_t>	Properties;
@@ -61,15 +63,6 @@ namespace FlexKit
 		uint32_t		refCount;
 		ResourceHandle	texture;
 		GUID_t			assetID;
-	};
-
-
-	/************************************************************************************************/
-
-
-	struct MaterialComponentEventHandler
-	{
-		void OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
 	};
 
 
@@ -131,6 +124,8 @@ namespace FlexKit
 			std::optional<TY> GetProperty(const uint32_t ID) const { return GetComponent().GetProperty(handle, ID); }
 
 
+			void						SetTextureCount(size_t size);
+
 			void						PushTexture(GUID_t textureAsset, bool LoadLowest = false);
 			void						PushTexture(ResourceHandle);
 
@@ -143,6 +138,8 @@ namespace FlexKit
 			void						RemoveTexture(ResourceHandle);
 
 			const std::span<GUID_t>		GetTextures() const;
+			DescriptorRange				GetTextureDescriptors() const;
+			void						UpdateTextureDescriptors();
 
 			bool						HasSubMaterials() const;
 			std::span<MaterialHandle>	GetSubMaterials() const;
@@ -167,6 +164,10 @@ namespace FlexKit
 		void AddComponentView(GameObject& gameObject, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 
 		void Add2Pass(MaterialHandle& material, const PassHandle ID);
+
+		void						SetTextureCount			(MaterialHandle material, size_t size);
+		DescriptorRange				GetTextureDescriptors	(MaterialHandle material);
+		void						UpdateTextureDescriptors(MaterialHandle material);
 
 		Vector<PassHandle, 16, uint8_t>	GetPasses(MaterialHandle material) const;
 		Vector<PassHandle>				GetActivePasses(iAllocator& allocator) const;

@@ -1,7 +1,5 @@
 #include "common.hlsl"
 
-#define NODESIZE 12
-
 cbuffer EntityConstants : register(b1)
 {
     float4      Albedo;

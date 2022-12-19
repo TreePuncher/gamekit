@@ -60,9 +60,6 @@ void UploadHairStyle(HairStyle& style, const ImportedStyleBuffer& stylePoints, F
 	renderSystem.UpdateResourceByUploadQueue(renderSystem.GetDeviceResource(style.hairBuffers[0]), copyCtx, stylePoints.controlPoints.data(), stylePoints.controlPoints.ByteSize(), 1, DASCommon);
 	renderSystem.UpdateResourceByUploadQueue(renderSystem.GetDeviceResource(style.styleBuffer), copyCtx, stylePoints.controlPoints.data(), stylePoints.controlPoints.ByteSize(), 1, DASCommon);
 
-	renderSystem.SetObjectAccessState(style.hairBuffers[0], DASCommon);
-	renderSystem.SetObjectAccessState(style.styleBuffer, DASCommon);
-	
 	style.currentBuffer = 0;
 }
 
@@ -188,7 +185,7 @@ ID3D12PipelineState* HairRenderingTest::CreateApplyForcesPSO()
 	};
 
 	ID3D12PipelineState* PSO = nullptr;
-	auto HR = renderSystem.pDevice9->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
+	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
 	return PSO;
 }
@@ -219,7 +216,7 @@ ID3D12PipelineState* HairRenderingTest::CreateApplyShapeConstraintsPSO()
 	};
 
 	ID3D12PipelineState* PSO = nullptr;
-	auto HR = renderSystem.pDevice9->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
+	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
 	return PSO;
 }
@@ -250,7 +247,7 @@ ID3D12PipelineState* HairRenderingTest::CreateApplyEdgeLengthConstraintPSO()
 	};
 
 	ID3D12PipelineState* PSO = nullptr;
-	auto HR = renderSystem.pDevice9->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
+	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
 	return PSO;
 }
@@ -268,10 +265,10 @@ HairRenderingTest::HairRenderingTest(GameFramework& IN_framework) :
 	runOnceQueue				{ IN_framework.core.GetBlockMemory() },
 	depthBuffer					{ IN_framework.GetRenderSystem().CreateDepthBuffer({ 1920, 1080 }, true) }
 {
-	auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), {.height = 1080, .width = 1920 });
-
-	if (res.second)
-		renderWindow = res.first;
+	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
+		renderWindow = std::move(res.value());
+	else
+		throw std::runtime_error{ "Unable to create render window!" };
 
 	EventNotifier<>::Subscriber sub;
 	sub.Notify = &EventsWrapper;
