@@ -470,7 +470,7 @@ namespace FlexKit
 
 
 	template<typename TY_FN>
-	iWork& CreateWorkItem(
+	[[nodiscard]] iWork& CreateWorkItem(
 		TY_FN		FNIN, 
 		iAllocator* objectAllocator,
 		iAllocator* workitemAllocator)
@@ -479,7 +479,7 @@ namespace FlexKit
 	}
 
 	template<typename TY_FN>
-	iWork& CreateWorkItem(
+	[[nodiscard]] iWork& CreateWorkItem(
 		TY_FN		FNIN,
 		iAllocator* allocator = SystemAllocator)
 	{

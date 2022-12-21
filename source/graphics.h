@@ -2057,8 +2057,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 
 		void				Release();
-		void				ReleaseVertexBuffer(VertexBufferHandle Handle);
-		void                ReleaseFree();
+		void				ReleaseVertexBuffer(VertexBufferHandle Handle, uint64_t current);
+		void                ReleaseFree(uint64_t current);
 
 	private:
 		typedef size_t VBufferHandle;
@@ -2074,7 +2074,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		{
 			ID3D12Resource* Resource		= nullptr;
 			size_t			ResourceSize	= 0;
-			char			lockCounter;
+			size_t			lockCounter;
 		};
 
 
@@ -2169,7 +2169,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			bool GPUResident;
 			bool writeFlag;
 
-			char					locks[3];
+			uint64_t				locks[3];
 			uint8_t					currentRes;
 			ConstantBufferHandle	handle;
 
@@ -2183,19 +2183,18 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		ID3D12Resource*			GetDeviceResource		(const ConstantBufferHandle Handle) const;
 		size_t					GetBufferOffset			(const ConstantBufferHandle Handle) const;
-		size_t					GetBufferSize           (const ConstantBufferHandle Handle) const;
+		size_t					GetBufferSize			(const ConstantBufferHandle Handle) const;
 
 
-		size_t					AlignNext               (ConstantBufferHandle Handle);
-		std::optional<size_t>	Push			        (ConstantBufferHandle Handle, void* _Ptr, size_t PushSize);
+		size_t					AlignNext				(ConstantBufferHandle Handle, uint64_t current);
+		std::optional<size_t>	Push					(ConstantBufferHandle Handle, void* _Ptr, size_t PushSize, uint64_t current);
 		
-		SubAllocation			Reserve					(ConstantBufferHandle Handle, size_t Size);
+		SubAllocation			Reserve					(ConstantBufferHandle Handle, size_t Size, uint64_t current);
 
-		void					LockFor(uint8_t frameCount);
-		void					DecrementLocks();
+		void					LockFor(uint64_t frameCount);
 
 	private:
-		void					UpdateCurrentBuffer(ConstantBufferHandle Handle);
+		void					UpdateCurrentBuffer(ConstantBufferHandle Handle, uint64_t current);
 
 		RenderSystem*				renderSystem;
 		Vector<UserConstantBuffer>	buffers;
@@ -2382,6 +2381,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		bool					backBuffer		= false;
 		bool					PreCreated		= false;
+		bool					denyShaderUsage = false;
 
 		std::optional<D3D12_CLEAR_VALUE>	clearValue;
 
@@ -2533,6 +2533,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			desc.Flags = type == ResourceType::RenderTarget ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
 			desc.Flags |= type == ResourceType::UnorderedAccess ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
 			desc.Flags |= type == ResourceType::DepthTarget ? D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+			desc.Flags |= denyShaderUsage ? D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE : D3D12_RESOURCE_FLAG_NONE;
 
 			desc.MipLevels = Min(Max(MipLevels, 1), 15);
 
@@ -2946,10 +2947,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void ReplaceResources(ResourceHandle handle, ID3D12Resource** begin, size_t size);
 
 
-		void ReleaseTexture	(ResourceHandle Handle, const int64_t idx);
+		void ReleaseTexture	(ResourceHandle Handle, const uint64_t idx);
 		void LockUntil		(size_t FrameID);
 
-		void UpdateLocks(ThreadManager& thread, const int64_t currentIdx);
+		void UpdateLocks(ThreadManager& thread, const uint64_t currentIdx);
 		void SubmitTileUpdates(ID3D12CommandQueue* queue, RenderSystem& renderSystem, iAllocator* allocator_temp);
 
 		void _ReleaseTextureForceRelease(ResourceHandle Handle);
@@ -3004,7 +3005,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		struct UnusedResource
 		{
 			ID3D12Resource* resource;
-			int64_t			idx;
+			uint64_t			idx;
 		};
 
 		Vector<UnusedResource>	delayRelease;
@@ -3845,8 +3846,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void				_PushDelayReleasedResource(ID3D12Resource*, CopyContextHandle = InvalidHandle);
 
 		void	_ForceReleaseTexture(ResourceHandle handle);
-		void	_InsertCopyBarriers(const Vector<CopyBarrier>& vector);
-		void	_InsertCopyBarrier(CopyBarrier vector);
 
 		size_t	_GetVidMemUsage();
 
@@ -3982,11 +3981,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			size_t			waitCounter;
 		};
 
-		std::atomic_uint				SyncCounter = 0;
 		Vector<UploadSyncPoint>			Syncs;
 		Vector<FreeEntry>				FreeList_GraphicsQueue;
 		Vector<FreeEntry>				FreeList_CopyQueue;
-		Vector<CopyBarrier>				PendingBarriers;
 
 		ThreadManager&			threads;
 
@@ -4904,12 +4901,12 @@ private:
 
 		CBPushBuffer(ConstantBufferHandle IN_CB, size_t reserveSize, RenderSystem& renderSystem)
 		{
-			auto reserverdBuffer = renderSystem.ConstantBuffers.Reserve(IN_CB, reserveSize);
+			auto reservedBuffer = renderSystem.ConstantBuffers.Reserve(IN_CB, reserveSize, renderSystem.Fence->GetCompletedValue());
 
 			CB				= IN_CB;
-			buffer			= reserverdBuffer.Data;
+			buffer			= reservedBuffer.Data;
 			pushBufferSize	= reserveSize;
-			pushBufferBegin	= reserverdBuffer.offsetBegin;
+			pushBufferBegin	= reservedBuffer.offsetBegin;
 		}
 
 
@@ -5110,7 +5107,7 @@ private:
 	inline CBPushBuffer Reserve(ConstantBufferHandle CB, size_t pushSize, size_t count, RenderSystem& renderSystem)
 	{
 		size_t reserveSize = (pushSize / 256 + 1) * 256 * count;
-		auto buffer = renderSystem.ConstantBuffers.Reserve(CB, reserveSize);
+		auto buffer = renderSystem.ConstantBuffers.Reserve(CB, reserveSize, renderSystem.Fence->GetCompletedValue());
 
 		return { CB, buffer.Data, buffer.offsetBegin, reserveSize };
 	}

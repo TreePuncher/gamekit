@@ -107,7 +107,7 @@ namespace FlexKit
 			FK_LOG_ERROR("Console has Null font, aborting draw!");
 			return;
 		}
-		const auto WindowWH = graph.Resources.renderSystem.GetTextureWH(renderTarget);
+		const auto WindowWH = graph.GetRenderSystem().GetTextureWH(renderTarget);
 
 		const float		HeightScale			= 0.5f;
 		const auto		FontSize			= font->FontSize;

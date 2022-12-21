@@ -688,9 +688,9 @@ namespace FlexKit
 
 	void AddGBufferResource(GBuffer& gbuffer, FrameGraph& frameGraph)
 	{
-		frameGraph.Resources.AddResource(gbuffer.albedo, true);
-		frameGraph.Resources.AddResource(gbuffer.MRIA, true);
-		frameGraph.Resources.AddResource(gbuffer.normal, true);
+		frameGraph.resources.AddResource(gbuffer.albedo, true);
+		frameGraph.resources.AddResource(gbuffer.MRIA, true);
+		frameGraph.resources.AddResource(gbuffer.normal, true);
 	}
 
 	ClusteredRender::ClusteredRender(RenderSystem& renderSystem, iAllocator& persistent) :
@@ -856,18 +856,18 @@ namespace FlexKit
 
 				// Output Objects
 				data.clusterBufferObject	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1 * MEGABYTE), DASUAV);
-				data.lightLists				= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(2 * MEGABYTE), DASUAV, false);
-				data.indexBufferObject		= builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture({ WH }, DeviceFormat::R32_UINT), DASUAV, false);
-				data.lightListBuffer		= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1024 * KILOBYTE), DASUAV, false);
-				data.lightBufferObject		= builder.AcquireVirtualResource(GPUResourceDesc::StructuredResource(512 * KILOBYTE), DASCopyDest, false);
+				data.lightLists				= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(2 * MEGABYTE), DASUAV, VirtualResourceScope::Frame);
+				data.indexBufferObject		= builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture({ WH }, DeviceFormat::R32_UINT), DASUAV, VirtualResourceScope::Frame);
+				data.lightListBuffer		= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1024 * KILOBYTE), DASUAV, VirtualResourceScope::Frame);
+				data.lightBufferObject		= builder.AcquireVirtualResource(GPUResourceDesc::StructuredResource(512 * KILOBYTE), DASNonPixelShaderResource, VirtualResourceScope::Frame);
 
 				// Temporaries
-				data.lightBVH				= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512 * KILOBYTE),	DASUAV, releaseTemporaries);
-				data.lightLookupObject		= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512 * KILOBYTE),	DASUAV, releaseTemporaries);
-				data.lightCounterObject		= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512),				DASUAV, releaseTemporaries);
+				data.lightBVH				= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512 * KILOBYTE),	DASUAV);
+				data.lightLookupObject		= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512 * KILOBYTE),	DASUAV);
+				data.lightCounterObject		= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512),				DASUAV);
 				data.lightResolutionObject	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(64 * KILOBYTE),	DASUAV);
-				data.counterObject			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DASUAV, releaseTemporaries);
-				data.argumentBufferObject	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DASUAV, releaseTemporaries);
+				data.counterObject			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DASUAV);
+				data.argumentBufferObject	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DASUAV);
 
 				data.depthBufferObject		= builder.DepthTarget(depthBuffer);
 				data.camera					= camera;
@@ -948,8 +948,8 @@ namespace FlexKit
 				for (const auto light : data.visableLights)
 				{
 					const PointLight& pointLight	= pointLights[light];
-					const float3 WS_position	    = GetPositionW(pointLight.Position);
-					const float3 VS_position        = (constantsValues.view * float4(WS_position, 1)).xyz();
+					const float3 WS_position		= GetPositionW(pointLight.Position);
+					const float3 VS_position		= (constantsValues.view * float4(WS_position, 1)).xyz();
 
 					pointLightValues.push_back(
 						{	{ pointLight.K, pointLight.I },
@@ -964,12 +964,12 @@ namespace FlexKit
 
 				ctx.ClearUAVTextureUint(resources.GetResource(data.indexBufferObject), uint4{(uint)-1, (uint)-1, (uint)-1, (uint)-1 });
 
-				resources.CopyDest(data.lightBufferObject, ctx);
-
 				ctx.CopyBufferRegion(
+					resources.CopyDest(data.lightBufferObject, ctx),
 					resources.GetDeviceResource(pointLights_GPU.Handle()),
-					resources.GetResource(data.lightBufferObject),
-					uploadSize);
+					uploadSize,
+					0,
+					pointLights_GPU.Offset());
 
 				ctx.SetComputeRootSignature(resources.renderSystem().Library.ComputeSignature);
 
@@ -1220,6 +1220,7 @@ namespace FlexKit
 		const CameraHandle				camera,
 		GBuffer&						gbuffer,
 		ResourceHandle					depthTarget,
+		FrameResourceHandle				entityConstants,
 		ReserveConstantBufferFunction	reserveCB,
 		iAllocator*						allocator,
 		AnimationPoseUpload*			animationPoses)
@@ -1235,10 +1236,11 @@ namespace FlexKit
 			{
 				builder.AddDataDependency(passes);
 
-				data.AlbedoTargetObject		= builder.RenderTarget(gbuffer.albedo);
-				data.MRIATargetObject		= builder.RenderTarget(gbuffer.MRIA);
-				data.NormalTargetObject		= builder.RenderTarget(gbuffer.normal);
-				data.depthBufferTargetObject= builder.DepthTarget(depthTarget);
+				data.entityConstants			= builder.ReadConstantBuffer(entityConstants);
+				data.AlbedoTargetObject			= builder.RenderTarget(gbuffer.albedo);
+				data.MRIATargetObject			= builder.RenderTarget(gbuffer.MRIA);
+				data.NormalTargetObject			= builder.RenderTarget(gbuffer.normal);
+				data.depthBufferTargetObject	= builder.DepthTarget(depthTarget);
 			},
 			[animationPoses](GBufferPass& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
@@ -1608,7 +1610,7 @@ namespace FlexKit
 				data.renderTargetObject			= builder.AcquireVirtualResource(
 													GPUResourceDesc::RenderTarget(
 														builder.GetRenderSystem().GetTextureWH(renderTarget),
-														DeviceFormat::R16G16B16A16_FLOAT), FlexKit::DASRenderTarget, false);
+														DeviceFormat::R16G16B16A16_FLOAT), FlexKit::DASRenderTarget, VirtualResourceScope::Frame);
 
 				data.pointLightBufferObject		= builder.ReadTransition(lightPass.lightBufferObject,		DASPixelShaderResource);
 
@@ -1773,7 +1775,6 @@ namespace FlexKit
 				builder.ReleaseVirtualResource(clusteredDeferredShading.renderTargetObject);
 
 				builder.ReleaseVirtualResource(lightPass.lightLists);
-				builder.ReleaseVirtualResource(lightPass.lightLists);
 				builder.ReleaseVirtualResource(lightPass.indexBufferObject);
 				builder.ReleaseVirtualResource(lightPass.lightListBuffer);
 				builder.ReleaseVirtualResource(lightPass.lightBufferObject);
@@ -1808,7 +1809,7 @@ namespace FlexKit
 				data.lightBVH       = builder.ReadTransition(lightBufferUpdate.lightBVH,              DASNonPixelShaderResource);
 				data.clusters       = builder.ReadTransition(lightBufferUpdate.clusterBufferObject,   DASNonPixelShaderResource);
 				data.renderTarget   = builder.RenderTarget(renderTarget);
-				data.indirectArgs   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DASUAV, true);
+				data.indirectArgs   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DASUAV);
 				data.counterBuffer  = builder.ReadTransition(lightBufferUpdate.counterObject,     DASNonPixelShaderResource);
 				data.pointLights    = builder.ReadTransition(lightBufferUpdate.lightBufferObject, DASNonPixelShaderResource);
 				data.camera         = camera;

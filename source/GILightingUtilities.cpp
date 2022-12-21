@@ -542,7 +542,7 @@ namespace FlexKit
 						const auto prebuildInfo	= frameGraph.GetRenderSystem().GetBLASPreBuildInfo(lod.vertexBuffer);
 						scratchSpaceSize		= Max(prebuildInfo.scratchPad_byteSize, scratchSpaceSize);
 
-						auto blAS				= builder.AcquireVirtualResource(GPUResourceDesc::RayTracingStructure(prebuildInfo.BLAS_byteSize), DASACCELERATIONSTRUCTURE_WRITE, false);
+						auto blAS				= builder.AcquireVirtualResource(GPUResourceDesc::RayTracingStructure(prebuildInfo.BLAS_byteSize), DASACCELERATIONSTRUCTURE_WRITE, VirtualResourceScope::Frame);
 						builder.SetDebugName(blAS, "Bottom Level Acceleration Structure");
 
 						data.buildList.emplace_back(blAS, *meshHandle);

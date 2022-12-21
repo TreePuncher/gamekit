@@ -169,8 +169,8 @@ namespace FlexKit
 				const auto WH = builder.GetRenderSystem().GetTextureWH(depthTarget);
 
 				data.depthTarget		= builder.DepthRead(depthTarget);
-				data.accumalatorObject	= builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DASRenderTarget, false);
-				data.counterObject		= builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DASRenderTarget, false);
+				data.accumalatorObject	= builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DASRenderTarget, VirtualResourceScope::Frame);
+				data.counterObject		= builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DASRenderTarget, VirtualResourceScope::Frame);
 
 				builder.SetDebugName(data.accumalatorObject,	"Accumalator");
 				builder.SetDebugName(data.counterObject,		"counterObject");

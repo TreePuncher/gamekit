@@ -262,6 +262,7 @@ namespace FlexKit
 
 	struct EntityConstants
 	{
+		FrameResourceHandle				constants;
 		CreateOnceReserveBufferFunction	getConstantBuffer;
 		GatherPassesTask&				passes;
 

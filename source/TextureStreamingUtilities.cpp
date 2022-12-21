@@ -207,7 +207,7 @@ namespace FlexKit
 	ID3D12PipelineState* CreateTextureFeedbackAnimatedPassPSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("ForwardSkinned_VS",  "vs_6_0", "assets\\shaders\\forwardRender.hlsl");
-		auto PShader = RS->LoadShader("TextureFeedback_PS", "ps_6_0", "assets\\shaders\\TextureFeedback.hlsl");
+		auto PShader = RS->LoadShader("TextureFeedback_PS", "ps_6_0", "assets\\shaders\\TextureFeedback\\TextureFeedback.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -465,12 +465,15 @@ namespace FlexKit
 			{
 				builder.AddDataDependency(sceneGather);
 
+				auto depthBufferDesc = GPUResourceDesc::DepthTarget({ 128, 128 }, DeviceFormat::D32_FLOAT);
+				depthBufferDesc.denyShaderUsage = true;
+
 				data.feedbackBuffers[0]			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4 * MEGABYTE), DASUAV);
 				data.feedbackBuffers[1]			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4 * MEGABYTE), DASUAV);
 				data.feedbackCounters			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DASUAV);
 				data.feedbackBlockSizes			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DASUAV);
 				data.feedbackBlockOffsets		= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DASUAV);
-				data.feedbackDepth				= builder.AcquireVirtualResource(GPUResourceDesc::DepthTarget({ 128, 128 }, DeviceFormat::D32_FLOAT), DASDEPTHBUFFERWRITE);
+				data.feedbackDepth				= builder.AcquireVirtualResource(depthBufferDesc, DASDEPTHBUFFERWRITE);
 
 				data.readbackBuffer				= feedbackReturnBuffer;
 

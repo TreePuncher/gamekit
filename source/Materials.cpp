@@ -659,7 +659,7 @@ namespace FlexKit
 		if (materialData.textureDescriptors.size == 0)
 			UpdateTextureDescriptors(material);
 
-		const uint64_t current = renderSystem.SyncCounter;
+		const uint64_t current = renderSystem.graphicsSubmissionCounter;
 
 		if(materialData.lastUsed < current)
 			materialData.lastUsed = current;
@@ -679,7 +679,7 @@ namespace FlexKit
 		auto& materialData = materials[handles[material]];
 
 		if (materialData.textureDescriptors.size)
-			renderSystem._ReleaseDescriptorRange(materialData.textureDescriptors, renderSystem.SyncCounter);
+			renderSystem._ReleaseDescriptorRange(materialData.textureDescriptors, renderSystem.graphicsSubmissionCounter);
 
 		auto textureCount		= materialData.Textures.size();
 
@@ -692,7 +692,7 @@ namespace FlexKit
 
 		auto& descriptorRange	= res.value();
 
-		FK_ASSERT(res.has_value(), "Failed to allocate Descriptor Heap Range");
+		FK_ASSERT(res.has_value() == true, "Failed to allocate Descriptor Heap Range");
 
 		for (size_t I = 0; I < textureCount; I++)
 		{

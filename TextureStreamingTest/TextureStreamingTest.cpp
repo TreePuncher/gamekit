@@ -64,7 +64,7 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	auto loadSuccess = LoadScene(framework.core, loadCtx, 1234);
 
 	// Setup Camera
-	activeCamera = cameras.CreateCamera(pi / 3.5f, renderWindow.GetAspectRatio());
+	activeCamera = cameras.CreateCamera((float)pi / 4.0f, renderWindow.GetAspectRatio());
 	SetCameraNode(activeCamera, GetZeroedNode());
 	TranslateWorld(GetCameraNode(activeCamera), { 0, 3, 0 });
 }
@@ -98,8 +98,10 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore&, FlexKit:
 
 FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
+	frameGraph.AddOutput(renderWindow.GetBackBuffer());
+
 	ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
-	ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), { 1, 0, 1, 0 });
+
 	FlexKit::WorldRender_Targets targets{
 		.RenderTarget = renderWindow.GetBackBuffer(),
 		.DepthTarget = depthBuffer,
@@ -107,13 +109,11 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 	ReserveConstantBufferFunction	reserveCB = FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory());
 	ReserveVertexBufferFunction		reserveVB = FlexKit::CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory());
 
-	Yaw(GetCameraNode(activeCamera), pi * dT / 2.0f);
+	Yaw(GetCameraNode(activeCamera), pi * dT / 3.0f);
 	cameras.MarkDirty(activeCamera);
 
 	static double T = 0.0;
 	T += dT;
-
-	std::cout << dT << "\n";
 
 	auto& transformUpdate	= FlexKit::QueueTransformUpdateTask(dispatcher);
 	auto& cameraUpdate		= cameras.QueueCameraUpdate(dispatcher);
@@ -144,7 +144,41 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 		core.GetTempMemoryMT()
 	);
 
-	textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, { 128, 128 }, res.passes, res.skinnedDraws, reserveCB, reserveVB);
+	/*
+	struct TestPass
+	{
+		FrameResourceHandle renderTarget;
+		FrameResourceHandle depthTarget;
+	};
+
+	auto getPass =
+		[&passTable = res.passes.GetData()](PassHandle pass) -> const PassPVS*
+		{
+			return passTable.GetPass(pass).value_or(nullptr);
+		};
+
+	frameGraph.AddTaskDependency(res.passes);
+
+	PassDescription<TestPass> pass =
+	{
+		.materialPassID		= GBufferPassID,
+		.sharedData			= TestPass{},
+		.getPass			= getPass,
+	};
+
+	auto setupFn = [&](FrameGraphNodeBuilder& builder, TestPass& data)
+	{
+		data.renderTarget	= builder.PixelShaderResource(targets.RenderTarget);
+		data.depthTarget	= builder.DepthTarget(targets.DepthTarget.Get());
+	};
+
+	auto drawFN = [](auto begin, auto end, auto& ctx)
+	{
+	};
+	*/
+	//auto& newPass = frameGraph.AddPass(pass, setupFn, drawFN);
+	
+	textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, { 256, 256 }, res.passes, res.skinnedDraws, reserveCB, reserveVB);
 
 	FlexKit::PresentBackBuffer(frameGraph, renderWindow);
 
