@@ -132,16 +132,18 @@ namespace FlexKit
 
 	struct GBufferPass
 	{
-		GBuffer&                            gbuffer;
-		const GatherPassesTask&             passes;
-		const CameraHandle                  camera;
+		GBuffer&							gbuffer;
+		const GatherPassesTask&				passes;
+		const CameraHandle					camera;
 
-		ReserveConstantBufferFunction   reserveCB;
+		ReserveConstantBufferFunction		reserveCB;
 
-		FrameResourceHandle AlbedoTargetObject;     // RGBA8
-		FrameResourceHandle NormalTargetObject;     // RGBA16Float
+		FrameResourceHandle entityConstants;
+
+		FrameResourceHandle AlbedoTargetObject;		// RGBA8
+		FrameResourceHandle NormalTargetObject;		// RGBA16Float
 		FrameResourceHandle MRIATargetObject;
-		FrameResourceHandle IOR_ANISOTargetObject;  // RGBA8
+		FrameResourceHandle IOR_ANISOTargetObject;	// RGBA8
 
 		FrameResourceHandle depthBufferTargetObject;
 	};
@@ -307,6 +309,7 @@ namespace FlexKit
 								const CameraHandle				camera,
 								GBuffer&						gbuffer,
 								ResourceHandle					depthTarget,
+								FrameResourceHandle				constants,
 								ReserveConstantBufferFunction	reserveCB,
 								iAllocator*						allocator,
 								AnimationPoseUpload*			poses = nullptr);

@@ -140,7 +140,7 @@ namespace FlexKit
 			[&](FrameGraphNodeBuilder& Builder, DrawSpriteText& Data)
 			{
 				if (Formatting.PixelSize == float2{ 1.0f, 1.0f })
-					Formatting.PixelSize = float2{ 1.0f, 1.0f } / frameGraph.Resources.renderSystem.GetTextureWH(renderTarget);
+					Formatting.PixelSize = float2{ 1.0f, 1.0f } / frameGraph.GetRenderSystem().GetTextureWH(renderTarget);
 
 				Data.renderTarget	= Builder.RenderTarget(renderTarget);
 
@@ -150,7 +150,7 @@ namespace FlexKit
 
 				Data.VertexBuffer	= Buffer;
 				Data.VertexCount	= StrLen;
-				Data.VertexOffset	= GetCurrentVBufferOffset<TextEntry>(Buffer, frameGraph.Resources);
+				Data.VertexOffset	= GetCurrentVBufferOffset<TextEntry>(Buffer, frameGraph.resources);
 				Data.WH             = frameGraph.GetRenderSystem().GetTextureWH(renderTarget);
 
 				const float XBegin	= Formatting.StartingPOS.x;
@@ -233,7 +233,7 @@ namespace FlexKit
 				{
 					auto Character2 = Character;
 					Character2.POS = Position2SS(Character2.POS);
-					FlexKit::PushVertex(Character2, Buffer, frameGraph.Resources);
+					FlexKit::PushVertex(Character2, Buffer, frameGraph.resources);
 				}
 			},
 			[spriteSheet = Font.Texture](DrawSpriteText& data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)

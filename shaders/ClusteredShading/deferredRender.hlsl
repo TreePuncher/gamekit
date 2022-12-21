@@ -34,17 +34,17 @@ cbuffer LocalConstants : register(b1)
 
 #define ARRAY 1
 
-Texture2D<float4> AlbedoBuffer      : register(t0);
-Texture2D<float4> MRIABuffer        : register(t1); // metallic, roughness, IOR, anisotropic
-Texture2D<float2> NormalBuffer      : register(t2);
-Texture2D<float>  DepthBuffer       : register(t4);
+Texture2D<float4> AlbedoBuffer	: register(t0);
+Texture2D<float4> MRIABuffer	: register(t1); // metallic, roughness, IOR, anisotropic
+Texture2D<float2> NormalBuffer	: register(t2);
+Texture2D<float>  DepthBuffer	: register(t4);
 
 // light and shadow map resources
-Texture2D<uint> 			    lightMap        : register(t5);
-StructuredBuffer<uint2> 	    lightLists	    : register(t6);
-StructuredBuffer<uint> 		    lightListBuffer : register(t7);
-StructuredBuffer<PointLight> 	pointLights	    : register(t8);
-Texture2DArray<float> 			shadowMaps[]    : register(t10);
+Texture2D<uint> 			    lightMap		: register(t5);
+StructuredBuffer<uint2> 	    lightLists		: register(t6);
+StructuredBuffer<uint> 		    lightListBuffer	: register(t7);
+StructuredBuffer<PointLight> 	pointLights		: register(t8);
+Texture2DArray<float> 			shadowMaps[]	: register(t10);
 
 
 SamplerState BiLinear     : register(s0);
@@ -224,12 +224,10 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 	const float NdotV		= saturate(dot(N.xyz, V));
 
 	float4 color = float4(ambientLight * albedo * saturate(dot(float3(0, -1, 0), V)), 1);
-	//for (uint I = 0; I < localLightCount; I++)
-	for(uint I = 0; I < lightCount; I++)
+	for (uint I = 0; I < localLightCount; I++)
 	{
-		//const uint pointLightIdx	= lightListBuffer[localLightList + I];
-		//const PointLight light		= pointLights[pointLightIdx];
-		const PointLight light		= pointLights[I];
+		const uint pointLightIdx	= lightListBuffer[localLightList + I];
+		const PointLight light		= pointLights[pointLightIdx];
 
 		const float3 Lc			= light.KI.rgb;
 		const float3 Lp			= mul(View, float4(light.PR.xyz, 1));
@@ -243,23 +241,23 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		const float  NdotL		= saturate(dot(N.xyz, L));
 		const float3 H			= normalize(V + L);
 		 
-		#if 1
-			const float3 diffuse	= saturate(albedo * F_d(V, H, L, N.xyz, roughness));
+		#if 0
+			const float3 diffuse	= max(albedo * F_d(V, H, L, N.xyz, roughness), 0.0f);
 		#else
 			const float3 diffuse	= NdotL * albedo * INV_PI;
 		#endif
 
-		#if 1
+		#if 0
 			const float3 specular = F_r_said(V, H, L, N.xyz, albedo, roughness, 0);
 		#else
 			const float3 specular = F_r(V, H, L, N.xyz, roughness) * length(albedo);
 		#endif
 
 		#if 1// skip shadowmaping
-			const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
+			const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI * Lc;
 			color += max(float4(colorSample, 0), 0.0f);
 		#else
-			const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
+			const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI * Lc;
 
 			const float3 mapVectors[] = {
 				float3( 1,  0,  0), // right
@@ -288,15 +286,15 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			const float4 lightPosition_DC 	= mul(pl[6 * pointLightIdx + fieldID].PV,   float4(positionWS.xyz, 1));
 			const float4 lightPosition_VS 	= mul(pl[6 * pointLightIdx + fieldID].V,    float4(positionWS.xyz, 1));
 			const float3 lightPosition_PS 	= lightPosition_DC / lightPosition_DC.a;
-			const float lightDepth          = -lightPosition_VS.z / Lr;
+			const float lightDepth			= -lightPosition_VS.z / Lr;
 
-			const float2 shadowMapUV    = float2(0.5f + lightPosition_PS.x / 2.0f, 0.5f - lightPosition_PS.y / 2.0f);
+			const float2 shadowMapUV	= float2(0.5f + lightPosition_PS.x / 2.0f, 0.5f - lightPosition_PS.y / 2.0f);
 
 			float Elements;
 			float2 resolution;
 			shadowMaps[pointLightIdx].GetDimensions(resolution.x, resolution.y, Elements);
-			const float2 resolution_INV = 1.0f / resolution;
-			const float2 uv             = shadowMapUV * resolution;
+			const float2 resolution_INV	= 1.0f / resolution;
+			const float2 uv				= shadowMapUV * resolution;
 			float2 base_uv;
 			base_uv.x = floor(uv.x + 0.5);
 			base_uv.y = floor(uv.y + 0.5);
@@ -365,7 +363,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		#endif 
 	}
 
-#if 1
+#ifdef DEBUG
 	static float4 Colors[] = {
 		float4(0.5f, 0.5f, 0.5f, 0), 
 		float4(1, 0, 0, 0), 
@@ -388,7 +386,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		//return pow(depth * 100, 1.0f);
 		// 
 		//return pow(Colors[localLightCount % 8], 2.0f) * color;
-		//return pow(Colors[lightListKey % 8] * color, 1.0f);
+		return pow(Colors[lightListKey % 8] * color, 1.0f);
 		//return pow(Colors[clusterKey % 8] * (float(localLightCount) / float(lightCount)), 1.0f);
 		//return color * (float(localLightCount) / float(lightCount));
 		//return (float(localLightCount) / float(lightCount));
@@ -399,7 +397,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		//return pow(-positionVS.z / 128, 10.0f);
 		//return depth;
 		//return float4(N / 2.0f + 0.5f);
-	return Albedo * Albedo;
+	//return Albedo * Albedo;
 	//return float4(positionW, 0);
 	//return pow(roughness, 2.2f);
 	//return pow(MRIA, 2.2f);

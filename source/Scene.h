@@ -578,6 +578,17 @@ namespace FlexKit
 		UpdateTask*		task;
 		Vector<PassPVS> passes;
 
+		std::optional<const PassPVS*> GetPass(PassHandle passID) const
+		{
+			for (auto& pass : passes)
+			{
+				if (pass.pass == passID)
+					return &pass;
+			}
+
+			return {};
+		}
+
 		operator UpdateTask*() { return task; }
 	};
 

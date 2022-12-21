@@ -450,14 +450,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t ConstantBufferTable::AlignNext(ConstantBufferHandle Handle)
+	size_t ConstantBufferTable::AlignNext(ConstantBufferHandle Handle, uint64_t current)
 	{
 		auto& buffer = buffers[handles[Handle]];
 
 		if (buffer.GPUResident)
 			return -1; // Cannot directly push to GPU Resident Memory
 
-		UpdateCurrentBuffer(Handle);
+		UpdateCurrentBuffer(Handle, current);
 
 		const uint32_t size		= buffer.size;
 		const uint32_t offset	= buffer.offset;
@@ -466,7 +466,7 @@ namespace FlexKit
 		const size_t adjustedOffset = (alignOffset == 256) ? 0 : offset;
 		const size_t alignedOffset  = offset + adjustedOffset;
 
-		buffer.offset = alignedOffset;
+		buffer.offset = (uint32_t)alignedOffset;
 
 		return alignedOffset;
 	}
@@ -475,7 +475,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	std::optional<size_t> ConstantBufferTable::Push(ConstantBufferHandle Handle, void* _Ptr, size_t pushSize)
+	std::optional<size_t> ConstantBufferTable::Push(ConstantBufferHandle Handle, void* _Ptr, size_t pushSize, uint64_t current)
 	{
 		auto& buffer = buffers[handles[Handle]];
 
@@ -484,8 +484,7 @@ namespace FlexKit
 
 		const char* Debug_mapped_Ptr = (char*)buffer.mapped_ptr;
 
-
-		UpdateCurrentBuffer(Handle);
+		UpdateCurrentBuffer(Handle, current);
 
 		const uint32_t size     = (uint32_t)buffer.size;
 		const uint32_t offset   = (uint32_t)buffer.offset;
@@ -497,7 +496,7 @@ namespace FlexKit
 		if (size < offset + pushSize)
 			return {}; // Buffer To small to accommodate Push
 
-		buffer.offset += pushSize;
+		buffer.offset += (uint32_t)pushSize;
 
 		if(!buffer.writeFlag)
 			buffer.writeFlag = true;
@@ -514,9 +513,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ConstantBufferTable::SubAllocation ConstantBufferTable::Reserve(ConstantBufferHandle CB, size_t reserveSize)
+	ConstantBufferTable::SubAllocation ConstantBufferTable::Reserve(ConstantBufferHandle CB, size_t reserveSize, uint64_t completed)
 	{
-		const auto res = Push(CB, nullptr, reserveSize);
+		const auto res = Push(CB, nullptr, reserveSize, completed);
 		if (!res.has_value())
 			DebugBreak();
 
@@ -532,21 +531,20 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ConstantBufferTable::LockFor(uint8_t frameCount)
+	void ConstantBufferTable::LockFor(uint64_t frameCount)
 	{
-		for (auto& buffer : buffers) 
-			buffer.locks[buffer.currentRes] = frameCount;
-	}
+		for (auto& buffer : buffers) {
+			if (buffer.offset && !buffer.GPUResident)
+			{
+				buffer.locks[buffer.currentRes] = frameCount;
+				buffer.currentRes = (buffer.currentRes + 1) % 3;
+				buffer.offset = 0;
 
-
-	/************************************************************************************************/
-
-
-	void ConstantBufferTable::DecrementLocks()
-	{
-		for (auto& buffer : buffers)
-			for (auto& lock : buffer.locks)
-				if(lock) lock--;
+				char* mapped_Ptr = nullptr;
+				auto HR = buffer.resources[buffer.currentRes]->Map(0, nullptr, (void**)&mapped_Ptr);
+				buffer.mapped_ptr = mapped_Ptr;
+			}
+		}
 	}
 
 
@@ -557,8 +555,8 @@ namespace FlexKit
 	{
 		std::scoped_lock lock(criticalSection);
 
-		const size_t UserIdx    = handles[handle];
-		auto&  buffer           = buffers[UserIdx];
+		const size_t UserIdx	= handles[handle];
+		auto&  buffer			= buffers[UserIdx];
 
 		for (auto& res : buffer.resources)
 		{
@@ -579,7 +577,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ConstantBufferTable::UpdateCurrentBuffer(ConstantBufferHandle Handle)
+	void ConstantBufferTable::UpdateCurrentBuffer(ConstantBufferHandle Handle, uint64_t current)
 	{
 		const size_t UserIdx	= handles[Handle];
 		auto& buffer            = buffers[UserIdx];
@@ -589,13 +587,16 @@ namespace FlexKit
 		{
 			char*  mapped_Ptr = nullptr;
 
-			if(buffer.locks[buffer.currentRes])
+			if(buffer.locks[buffer.currentRes] > current)
 			{
 				D3D12_RANGE range{ 0, buffer.offset };
 				buffer.resources[buffer.currentRes]->Unmap(0, &range);
 
 				buffer.currentRes = (buffer.currentRes + 1) % 3;
-				FK_ASSERT(buffer.locks[buffer.currentRes] == 0, "Constant buffer lock error! possibly all buffers locked!");
+
+				if (buffer.locks[buffer.currentRes] > current)
+					DebugBreak();
+				FK_ASSERT(buffer.locks[buffer.currentRes] > current, "Constant buffer lock error! possibly all buffers locked!");
 
 				auto HR = buffer.resources[buffer.currentRes]->Map(0, nullptr, (void**)&mapped_Ptr);
 				FK_ASSERT(FAILED(HR), "Failed to map Constant Buffer");
@@ -604,7 +605,6 @@ namespace FlexKit
 				buffer.offset = 0;
 			}
 		}
-
 	}
 
 
@@ -1241,34 +1241,6 @@ namespace FlexKit
 		return true;
 	}
 
-
-	/************************************************************************************************/
-
-
-	/*
-	bool DescriptorHeap::SetStructuredResource(Context& ctx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
-	{
-		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
-			return false;
-
-		FillState[idx] = true;
-
-		const auto size = ctx.renderSystem->GetUAVBufferSize(handle);
-		
-		PushSRVToDescHeap(
-			ctx.renderSystem,
-			ctx.renderSystem->GetDeviceResource(handle),
-			IncrementHeapPOS(descriptorHeap,
-				ctx.renderSystem->DescriptorCBVSRVUAVSize,
-				idx),
-			size / stride,
-			stride,
-			D3D12_BUFFER_SRV_FLAG_NONE,
-			offset);
-
-		return true;
-	}
-	*/
 
 	/************************************************************************************************/
 
@@ -3801,7 +3773,7 @@ namespace FlexKit
 		if (bufferBarriers.size())	groups.emplace_back(D3D12_BARRIER_GROUP{ .Type = D3D12_BARRIER_TYPE::D3D12_BARRIER_TYPE_BUFFER, .NumBarriers =  (uint32_t)bufferBarriers.size(), .pBufferBarriers = bufferBarriers.data() });
 
 		if(groups.size())
-			DeviceContext->Barrier(groups.size(), groups);
+			DeviceContext->Barrier((uint32_t)groups.size(), groups);
 
 		pendingBarriers.clear();
 	}
@@ -4631,7 +4603,6 @@ namespace FlexKit
 			VertexBuffers	{ IN_allocator },
 			ConstantBuffers	{ IN_allocator, this },
 			PipelineStates	{ IN_allocator, this, IN_Threads },
-			PendingBarriers	{ IN_allocator },
 			StreamOutTable	{ IN_allocator },
 			ReadBackTable	{ IN_allocator },
 			threads			{ *IN_Threads },
@@ -5063,8 +5034,6 @@ namespace FlexKit
 	{
 		Textures.UpdateLocks(threads, Fence->GetCompletedValue());
 
-		ConstantBuffers.DecrementLocks();
-
 		++CurrentFrame;
 	}
 
@@ -5401,7 +5370,7 @@ namespace FlexKit
 
 	ConstantBufferHandle RenderSystem::CreateConstantBuffer(size_t BufferSize, bool GPUResident)
 	{
-		return ConstantBuffers.CreateConstantBuffer(BufferSize, GPUResident);
+		return ConstantBuffers.CreateConstantBuffer((uint32_t)BufferSize, GPUResident);
 	}
 
 
@@ -6329,7 +6298,7 @@ namespace FlexKit
 
 	void RenderSystem::ReleaseVB(VertexBufferHandle Handle)
 	{
-		VertexBuffers.ReleaseVertexBuffer(Handle);
+		VertexBuffers.ReleaseVertexBuffer(Handle, graphicsSubmissionCounter);
 	}
 
 
@@ -6891,8 +6860,6 @@ namespace FlexKit
 					.afterState		= DASINDEXBUFFER,
 				};
 
-				RS->_InsertCopyBarrier(b);
-
 				cctx.Barrier(NewBuffer, DASCommon, DASCopyDest);
 
 				RS->UpdateResourceByUploadQueue(
@@ -6909,7 +6876,7 @@ namespace FlexKit
 				DVB_Out.VertexBuffers[itr].BufferStride			= (uint32_t)Buffers[itr]->GetElementSize();
 				DVB_Out.VertexBuffers[itr].Type					= Buffers[itr]->GetBufferType();
 				DVB_Out.MD.IndexBuffer_Index					= itr;
-				DVB_Out.MD.InputElementCount                    = Buffers[itr]->GetBufferSize();
+				DVB_Out.MD.InputElementCount					= Buffers[itr]->GetBufferSize();
 			}
 			else if (Buffers[itr] && Buffers[itr]->GetBufferSize())
 			{
@@ -6958,10 +6925,6 @@ namespace FlexKit
 					.beforeState    = DASCommon,
 					.afterState     = DASVERTEXBUFFER,
 				};
-
-				RS->_InsertCopyBarrier(b);
-
-				cctx.Barrier(NewBuffer, DASCommon, DASCopyDest);
 
 				RS->UpdateResourceByUploadQueue(
 					NewBuffer,
@@ -7055,7 +7018,7 @@ namespace FlexKit
 			if (!userBuffer.WrittenTo)
 				continue;
 
-			Buffers[userBuffer.GetCurrentBuffer()].lockCounter = 3;
+			Buffers[userBuffer.GetCurrentBuffer()].lockCounter = Frame;
 
 			_UnMap(userBuffer.GetCurrentBuffer(), userBuffer.Offset);
 
@@ -7155,12 +7118,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool VertexBufferStateTable::CurrentlyAvailable(VertexBufferHandle Handle, size_t CurrentFrame) const
+	bool VertexBufferStateTable::CurrentlyAvailable(VertexBufferHandle Handle, size_t completed) const
 	{
 		auto UserIdx	= Handles[Handle];
 		auto BufferIdx	= UserBuffers[UserIdx].GetCurrentBuffer();
 
-		return Buffers[Handle].lockCounter == 0;
+		return Buffers[Handle].lockCounter <= completed;
 	}
 
 
@@ -7208,7 +7171,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void VertexBufferStateTable::ReleaseVertexBuffer(VertexBufferHandle handle)
+	void VertexBufferStateTable::ReleaseVertexBuffer(VertexBufferHandle handle, uint64_t current)
 	{
 		auto userIdx		= Handles[handle];
 		auto& userEntry     = UserBuffers[userIdx];
@@ -7217,7 +7180,7 @@ namespace FlexKit
 
 		for (const auto ResourceIdx : userEntry.Buffers)
 			if(ResourceIdx != INVALIDHANDLE)
-				FreeBuffers.push_back({ 3, ResourceIdx});
+				FreeBuffers.push_back({ current, ResourceIdx});
 			else
 				break;
 
@@ -7236,16 +7199,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void VertexBufferStateTable::ReleaseFree()
+	void VertexBufferStateTable::ReleaseFree(uint64_t current)
 	{
 		std::scoped_lock(criticalSection);
 
 		for (auto freeBuffer : FreeBuffers)
 		{
-			if (Buffers[freeBuffer.BufferIdx].lockCounter <= 0)
+			if (Buffers[freeBuffer.BufferIdx].lockCounter <= current)
 				Buffers[freeBuffer.BufferIdx].Resource->Release();
-
-			Buffers[freeBuffer.BufferIdx].lockCounter--;
 		}
 
 		std::sort(FreeBuffers.begin(), FreeBuffers.end());
@@ -7256,7 +7217,7 @@ namespace FlexKit
 				FreeBuffers.end(),
 				[&](auto buffer)-> bool
 				{
-					return Buffers[buffer].lockCounter <= 0;
+					return Buffers[buffer].lockCounter <= current;
 				}),
 			FreeBuffers.end());
 	}
@@ -7521,7 +7482,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ResourceStateTable::ReleaseTexture(ResourceHandle handle, const int64_t idx)
+	void ResourceStateTable::ReleaseTexture(ResourceHandle handle, const uint64_t idx)
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7994,7 +7955,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ResourceStateTable::UpdateLocks(ThreadManager& threads, const int64_t currentIdx)
+	void ResourceStateTable::UpdateLocks(ThreadManager& threads, const uint64_t completed)
 	{
 		ProfileFunction();
 
@@ -8002,11 +7963,7 @@ namespace FlexKit
 
 		for (auto& res : delayRelease)
 		{
-#if _DEBUG
-			if ((res.idx + 3) < currentIdx)
-#else
-			if ((res.idx + 3) < currentIdx)
-#endif
+			if ((res.idx + 2) < completed)
 				freeList.push_back(res.resource);
 		}
 
@@ -8028,7 +7985,7 @@ namespace FlexKit
 				delayRelease.end(),
 				[&](auto& res)
 				{
-					return int(res.idx + 3) < currentIdx;
+					return (res.idx + 2) < completed;
 				}),
 
 		delayRelease.end());
@@ -8499,25 +8456,6 @@ namespace FlexKit
 	void RenderSystem::_ForceReleaseTexture(ResourceHandle handle)
 	{
 		Textures._ReleaseTextureForceRelease(handle);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void RenderSystem::_InsertCopyBarriers(const Vector<CopyBarrier>& vector)
-	{
-		std::unique_lock lock{ barrierLock };
-		PendingBarriers += vector;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void RenderSystem::_InsertCopyBarrier(CopyBarrier b)
-	{
-		PendingBarriers.push_back(b);
 	}
 
 
@@ -9115,21 +9053,6 @@ namespace FlexKit
 
 		static_vector<ID3D12CommandList*, 64> cls;
 
-		if (PendingBarriers.size())
-		{
-			/*
-			std::unique_lock lock{ barrierLock };
-
-			auto& context = GetCommandList();
-			cls.push_back(context.GetCommandList());
-
-			context.FlushBarriers();
-			context.Close(counter);
-			*/
-
-			PendingBarriers.clear();
-		}
-
 		uint64_t dispatchIdx = 0;
 
 		for (auto context : contexts)
@@ -9151,9 +9074,9 @@ namespace FlexKit
 		for (auto context : contexts)
 			context->_QueueReadBacks();
 
-		VertexBuffers.LockUntil(GetCurrentFrame() + 1);
-		ConstantBuffers.LockFor(2);
-		Textures.LockUntil(GetCurrentFrame() + 1);
+		VertexBuffers.LockUntil(dispatchIdx);
+		ConstantBuffers.LockFor(dispatchIdx);
+		Textures.LockUntil(dispatchIdx);
 
 		pendingFrames[frameIdx] = dispatchIdx;
 		frameIdx = ++frameIdx % 2;

@@ -123,7 +123,7 @@ namespace FlexKit
 	bool EngineCore::Initiate(EngineMemory* Memory, const bool debugMode, const bool gpuValidation, const bool syncQueues)
 	{
 		Graphics_Desc	desc	= { 0 };
-		desc.Memory			    = GetBlockMemory();
+		desc.Memory				= GetBlockMemory();
 		desc.TempMemory			= GetTempMemory();
 
 		desc.DX_DebugMode					= debugMode;
