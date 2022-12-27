@@ -1,6 +1,10 @@
 #include "pch.h"
 #include "TextureStreamingTest.h"
 #include <SceneLoadingContext.h>
+#include <imgui.h>
+#include <fmt\format.h>
+#include <CameraUtilities.h>
+
 
 using namespace FlexKit;
 
@@ -34,12 +38,11 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	depthBuffer		{ framework.GetRenderSystem(), { 1920, 1080 } },
 	renderWindow	{},
 
-
 	constantBuffer	{ framework.GetRenderSystem().CreateConstantBuffer(64 * MEGABYTE, false) },
 	vertexBuffer	{ framework.GetRenderSystem().CreateVertexBuffer(64 * MEGABYTE, false) },
 	runOnceQueue	{ framework.core.GetBlockMemory() },
-	scene			{ framework.core.GetBlockMemory() }
-
+	scene			{ framework.core.GetBlockMemory() },
+	debugUI			{ framework.core.RenderSystem, framework.core.GetBlockMemory() }
 {	// Setup Window and input
 	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
 		renderWindow = std::move(res.value());
@@ -64,9 +67,16 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	auto loadSuccess = LoadScene(framework.core, loadCtx, 1234);
 
 	// Setup Camera
-	activeCamera = cameras.CreateCamera((float)pi / 4.0f, renderWindow.GetAspectRatio());
-	SetCameraNode(activeCamera, GetZeroedNode());
-	TranslateWorld(GetCameraNode(activeCamera), { 0, 3, 0 });
+	auto& orbitComponent = orbitCamera.AddView<OrbitCameraBehavior>();
+	activeCamera = orbitComponent.camera;
+
+	if(!rotate)
+		renderWindow.ToggleMouseCapture();
+
+	SetCameraAspectRatio(orbitComponent.camera, renderWindow.GetAspectRatio());
+	SetCameraFOV(orbitComponent.camera, (float)pi / 4.0f);
+
+	OrbitCameraTranslate(orbitCamera, { 0, 3, 0 });
 }
 
 /************************************************************************************************/
@@ -85,10 +95,51 @@ TextureStreamingTest::~TextureStreamingTest()
 /************************************************************************************************/
 
 
-FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT)
+FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
 	FlexKit::UpdateInput();
+	renderWindow.UpdateCapturedMouseInput(dT);
+	OrbitCameraUpdate(orbitCamera, renderWindow.mouseState, dT);
 
+	if(rotate)
+	OrbitCameraYaw(orbitCamera, pi * dT / 3.0f);
+	//cameras.MarkDirty(activeCamera);
+
+	debugUI.Update(renderWindow, core, dispatcher, dT);
+
+
+	ImGui::NewFrame();
+	ImGui::SetNextWindowPos({ (float)renderWindow.WH[0] - 400.0f, 0});
+	ImGui::SetNextWindowSize({ 400, 400 });
+
+	ImGui::Begin("Debug Stats", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
+
+	const auto memoryStats = framework.core.GetBlockMemory().GetStats();
+
+	auto memoryInUse = (memoryStats.smallBlocksAllocated * 64 +
+		memoryStats.mediumBlocksAllocated * 2048 +
+		memoryStats.largeBlocksAllocated * KILOBYTE * 128) / MEGABYTE;
+
+	auto str = fmt::format(
+		"Debug Stats\n"
+		"SmallBlocks: {} / {}\n"
+		"MediumBlocks: {} / {}\n"
+		"LargeBlocks: {} / {}\n"
+		"Memory in use: {}mb\n"
+		"M to toggle mouse\n"
+		"T to toggle texture streaming\n"
+		"R to toggle rotating camera\n",
+		memoryStats.smallBlocksAllocated, memoryStats.totalSmallBlocks,
+		memoryStats.mediumBlocksAllocated, memoryStats.totalMediumBlocks,
+		memoryStats.largeBlocksAllocated, memoryStats.totalLargeBlocks,
+		memoryInUse
+	);
+
+	ImGui::Text(str.c_str());
+
+	ImGui::End();
+	ImGui::EndFrame();
+	ImGui::Render();
 	return nullptr;
 }
 
@@ -99,6 +150,7 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore&, FlexKit:
 FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
 	frameGraph.AddOutput(renderWindow.GetBackBuffer());
+	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 
 	ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
 
@@ -109,8 +161,6 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 	ReserveConstantBufferFunction	reserveCB = FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory());
 	ReserveVertexBufferFunction		reserveVB = FlexKit::CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory());
 
-	Yaw(GetCameraNode(activeCamera), pi * dT / 3.0f);
-	cameras.MarkDirty(activeCamera);
 
 	static double T = 0.0;
 	T += dT;
@@ -144,41 +194,10 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 		core.GetTempMemoryMT()
 	);
 
-	/*
-	struct TestPass
-	{
-		FrameResourceHandle renderTarget;
-		FrameResourceHandle depthTarget;
-	};
+	if(streamingUpdates)
+		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, { 1920, 1080 }, res.entityConstants, res.passes, res.skinnedDraws, reserveCB, reserveVB);
 
-	auto getPass =
-		[&passTable = res.passes.GetData()](PassHandle pass) -> const PassPVS*
-		{
-			return passTable.GetPass(pass).value_or(nullptr);
-		};
-
-	frameGraph.AddTaskDependency(res.passes);
-
-	PassDescription<TestPass> pass =
-	{
-		.materialPassID		= GBufferPassID,
-		.sharedData			= TestPass{},
-		.getPass			= getPass,
-	};
-
-	auto setupFn = [&](FrameGraphNodeBuilder& builder, TestPass& data)
-	{
-		data.renderTarget	= builder.PixelShaderResource(targets.RenderTarget);
-		data.depthTarget	= builder.DepthTarget(targets.DepthTarget.Get());
-	};
-
-	auto drawFN = [](auto begin, auto end, auto& ctx)
-	{
-	};
-	*/
-	//auto& newPass = frameGraph.AddPass(pass, setupFn, drawFN);
-	
-	textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, { 256, 256 }, res.passes, res.skinnedDraws, reserveCB, reserveVB);
+	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow.GetBackBuffer());
 
 	FlexKit::PresentBackBuffer(frameGraph, renderWindow);
 
@@ -191,7 +210,7 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 
 void TextureStreamingTest::PostDrawUpdate(FlexKit::EngineCore&, double dT)
 {
-	renderWindow.Present(1, 0);
+	renderWindow.Present(0, 0);
 }
 
 
@@ -200,7 +219,48 @@ void TextureStreamingTest::PostDrawUpdate(FlexKit::EngineCore&, double dT)
 
 bool TextureStreamingTest::EventHandler(FlexKit::Event evt)
 {
-	return false;
+	switch (evt.InputSource)
+	{
+		case Event::Keyboard:
+		{
+			switch (evt.Action)
+			{
+			case Event::Release:
+			{
+				switch (evt.mData1.mKC[0])
+				{
+				case KC_M:
+					rotate = false;
+					renderWindow.ToggleMouseCapture();
+
+					return true;
+				case KC_T:
+					streamingUpdates = !streamingUpdates;
+					return true;
+				case KC_R:
+					rotate = !rotate;
+
+					if(rotate)
+						renderWindow.EnableCaptureMouse(false);
+					return true;
+				}
+			}	break;
+			}
+		}	break;
+		default:
+			break;
+	}
+
+	OrbitCameraHandleEvent(orbitCamera, evt);
+
+	if ((evt.InputSource == FlexKit::Event::Keyboard && evt.mData1.mKC[0] == FlexKit::KC_ESC) ||
+		(evt.InputSource == FlexKit::Event::E_SystemEvent && evt.Action == FlexKit::Event::Exit))
+	{
+		framework.quit = true;
+		return true;
+	}
+	else
+		return debugUI.HandleInput(evt);
 }
 
 

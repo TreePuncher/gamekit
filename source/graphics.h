@@ -447,6 +447,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		default:
 			DebugBreak();
 		};
+
+		std::unreachable();
 	}
 
 
@@ -515,6 +517,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			case Sync_Unknown:
 				return D3D12_BARRIER_SYNC_NONE;
 		}
+
+		std::unreachable();
 	}
 
 
@@ -570,7 +574,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		default:
 			return false;
 		}
-		return false;
+
+		std::unreachable();
 	}
 
 	inline bool IsReadAccessState(const DeviceAccessState access)
@@ -732,6 +737,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			return -1;
 			break;
 		}
+
+		std::unreachable();
 	}
 
 
@@ -783,7 +790,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		default:
 			break;
 		}
-		return D3D12_SHADER_VISIBILITY_ALL;
+
+		std::unreachable();
 	}
 
 
@@ -1349,6 +1357,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		CopyContextHandle Open();
 
+		void Wait(SyncPoint syncTo);
 		void Wait(CopyContextHandle handle);
 		void Close(CopyContextHandle handle);
 
@@ -2178,24 +2187,21 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 
 
-		ConstantBufferHandle	CreateConstantBuffer	(uint32_t BufferSize, bool GPUResident = false);
-		void					ReleaseBuffer			(ConstantBufferHandle Handle);
+		ConstantBufferHandle	CreateConstantBuffer	(uint32_t size, bool GPUResident = false);
+		void					ReleaseBuffer			(ConstantBufferHandle);
+		void					Reset					(ConstantBufferHandle);
 
-		ID3D12Resource*			GetDeviceResource		(const ConstantBufferHandle Handle) const;
-		size_t					GetBufferOffset			(const ConstantBufferHandle Handle) const;
-		size_t					GetBufferSize			(const ConstantBufferHandle Handle) const;
+		ID3D12Resource*			GetDeviceResource		(const ConstantBufferHandle) const;
+		size_t					GetBufferOffset			(const ConstantBufferHandle) const;
+		size_t					GetBufferSize			(const ConstantBufferHandle) const;
 
 
-		size_t					AlignNext				(ConstantBufferHandle Handle, uint64_t current);
-		std::optional<size_t>	Push					(ConstantBufferHandle Handle, void* _Ptr, size_t PushSize, uint64_t current);
+		size_t					AlignNext				(ConstantBufferHandle);
+		std::optional<size_t>	Push					(ConstantBufferHandle, void* ptr, size_t size);
 		
-		SubAllocation			Reserve					(ConstantBufferHandle Handle, size_t Size, uint64_t current);
-
-		void					LockFor(uint64_t frameCount);
+		SubAllocation			Reserve					(ConstantBufferHandle, size_t size);
 
 	private:
-		void					UpdateCurrentBuffer(ConstantBufferHandle Handle, uint64_t current);
-
 		RenderSystem*				renderSystem;
 		Vector<UserConstantBuffer>	buffers;
 		std::mutex					criticalSection;
@@ -2836,6 +2842,14 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	{
 		return TileID_t{ (mipLevel & 0x7f) << 24 | (x & 0x0f) << 12 | y };
 	}
+
+	inline TileID_t CreatePackedID()
+	{
+		TileID_t id = { 0 };
+		id.segments.packed = 1;
+		return id;
+	}
+
 
 	enum class TileMapState
 	{
@@ -3698,7 +3712,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			op();
 		}
 
-		size_t						GetCurrentFrame();
 		size_t						GetCurrentCounter();
 		ID3D12PipelineState*		GetPSO(PSOHandle StateID);
 		const RootSignature* const	GetPSORootSignature(PSOHandle StateID) const;
@@ -3709,9 +3722,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void QueuePSOLoad(PSOHandle State);
 
 
+		SyncPoint	SyncWithDirect();
 		SyncPoint	GetSyncDirect();
-		void		BeginSubmission();
-		SyncPoint	Submit(Vector<Context*>& CLs, std::optional<SyncPoint> sync = {});
+		SyncPoint	GetSubmissionTicket();
+		SyncPoint	Submit(std::span<Context*> CLs, std::optional<SyncPoint> sync = {});
 		void		_UpdateCounters();
 		void		_UpdateSubResources(ResourceHandle handle, ID3D12Resource** resources, const size_t size);
 
@@ -3747,7 +3761,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		uint2			GetHeapOffset(ResourceHandle Handle, uint subResourceID = 0) const;
 
 		SyncPoint			UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator);
-		void				UpdateTextureTileMappings(const ResourceHandle Handle, const TileMapList&);
+		void				UpdateTextureTileMappings(const ResourceHandle Handle, std::span<const TileMapping>);
 		const TileMapList&	GetTileMappings(const ResourceHandle Handle);
 
 
@@ -3812,6 +3826,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		AvailableFeatures::Raytracing	GetRTFeatureLevel() const noexcept;
 		bool							RTAvailable() const noexcept;
 
+		void ResetConstantBuffer(ConstantBufferHandle constant);
 		void ResetQuery(QueryHandle handle);
 
 		void ReleaseCB(ConstantBufferHandle);
@@ -3820,12 +3835,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void ReleaseReadBack(ReadBackResourceHandle);
 		void ReleaseHeap(DeviceHeapHandle);
 
-		void				SubmitUploadQueues(uint32_t flags, CopyContextHandle* handle, size_t count = 1, std::optional<SyncPoint> sync = {});
+		void				SubmitUploadQueues(uint32_t flags, CopyContextHandle* handle, size_t count = 1, std::optional<SyncPoint> syncBefore = {}, std::optional<SyncPoint> syncAfter = {});
 		CopyContextHandle	OpenUploadQueue();
-		CopyContextHandle	GetImmediateUploadQueue();
-		Context&			GetCommandList();
-		void				GetCommandLists(size_t n, std::span<Context*>& out);
-
+		CopyContextHandle	GetImmediateCopyQueue();
+		Context&			GetCommandList(std::optional<SyncPoint> ticket = {});
 
 		// Internal
 		//ResourceHandle			_AddBackBuffer						(Texture2D_Desc& Desc, ID3D12Resource* Res, uint32_t Tag);
@@ -3891,7 +3904,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		size_t				pendingFrames[3]			= { 0, 0, 0 };
 		size_t				frameIdx					= 0;
-		size_t				CurrentFrame				= 0;
 		std::atomic_uint	graphicsSubmissionCounter	= 0;
 		ID3D12Fence*		Fence						= nullptr;
 
@@ -4395,11 +4407,11 @@ private:
 	{
 		virtual ~PoolAllocatorInterface() {};
 
-		virtual AcquireResult       Acquire         (GPUResourceDesc desc, bool temporary = false) = 0;
-		virtual AcquireDeferredRes  AcquireDeferred (GPUResourceDesc desc, bool temporary = false) = 0;
+		virtual AcquireResult		Acquire			(GPUResourceDesc desc, bool temporary = false) = 0;
+		virtual AcquireDeferredRes	AcquireDeferred	(GPUResourceDesc desc, bool temporary = false) = 0;
 
-		virtual AcquireResult   Recycle(ResourceHandle resource, GPUResourceDesc desc) = 0;
-		virtual void            Release(ResourceHandle handle, const bool freeResourceImmedate = true, const bool allowImmediateReuse = true) = 0;
+		virtual AcquireResult		Recycle(ResourceHandle resource, GPUResourceDesc desc) = 0;
+		virtual void				Release(ResourceHandle handle, const bool freeResourceImmedate = true, const bool allowImmediateReuse = true) = 0;
 
 		virtual uint32_t Flags() const = 0;
 	};
@@ -4901,7 +4913,7 @@ private:
 
 		CBPushBuffer(ConstantBufferHandle IN_CB, size_t reserveSize, RenderSystem& renderSystem)
 		{
-			auto reservedBuffer = renderSystem.ConstantBuffers.Reserve(IN_CB, reserveSize, renderSystem.Fence->GetCompletedValue());
+			auto reservedBuffer = renderSystem.ConstantBuffers.Reserve(IN_CB, reserveSize);
 
 			CB				= IN_CB;
 			buffer			= reservedBuffer.Data;
@@ -5107,15 +5119,15 @@ private:
 	inline CBPushBuffer Reserve(ConstantBufferHandle CB, size_t pushSize, size_t count, RenderSystem& renderSystem)
 	{
 		size_t reserveSize = (pushSize / 256 + 1) * 256 * count;
-		auto buffer = renderSystem.ConstantBuffers.Reserve(CB, reserveSize, renderSystem.Fence->GetCompletedValue());
+		auto buffer = renderSystem.ConstantBuffers.Reserve(CB, reserveSize);
 
 		return { CB, buffer.Data, buffer.offsetBegin, reserveSize };
 	}
 
 
-	inline VBPushBuffer Reserve(VertexBufferHandle VB, size_t reserveSize, RenderSystem& renderSystem)
+	inline VBPushBuffer Reserve(VertexBufferHandle VB, size_t reserveSize, Context& ctx)
 	{
-		auto buffer = renderSystem.VertexBuffers.Reserve(VB, reserveSize);
+		auto buffer = ctx.renderSystem->VertexBuffers.Reserve(VB, reserveSize);
 		return { VB, buffer.Data, buffer.offsetBegin, reserveSize };
 	}
 

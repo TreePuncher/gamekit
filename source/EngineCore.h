@@ -159,16 +159,7 @@ namespace FlexKit
 
 
 	void ReleaseEngineMemory(EngineMemory* Memory);
-
-
-	/************************************************************************************************/
-
-
-	void EnableMouseInput   ();
-	void DisableMouseInput  ();
-	void UpdateMouseInput	(MouseInputState* State,	RenderWindow* Window);
 	void PushCmdArg			(EngineCore* Engine,		const char* arg);
-
 
 
 }	/************************************************************************************************/

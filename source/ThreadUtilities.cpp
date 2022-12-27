@@ -260,19 +260,34 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	WorkBarrier::WorkBarrier(
+		ThreadManager&	IN_threads,
+		iAllocator*		IN_allocator) :
+		PostEvents	{ IN_allocator },
+		threads		{ IN_threads } { }
+
+
+	/************************************************************************************************/
+
+
+	WorkBarrier::~WorkBarrier()
+	{
+		JoinLocal();
+	}
+
+
+	/************************************************************************************************/
+
 
 	void WorkBarrier::AddWork(iWork& work)
 	{
 		++tasksInProgress;
-		inProgress = true;
+		++tasksScheduled;
 
 		work.Subscribe(
 			[&]
 			{
-				const auto prev = tasksInProgress.fetch_sub(1, std::memory_order::memory_order_seq_cst); FK_ASSERT(prev > 0);
-
-				if (prev == 1)
-					_OnEnd();
+				tasksInProgress.fetch_sub(1, std::memory_order::memory_order_seq_cst);
 			});
 	}
 
@@ -291,13 +306,16 @@ namespace FlexKit
 
 	void WorkBarrier::Wait()
 	{
-		ProfileFunction();
+		joined = true;
 
 		do
-		{
-			if (!inProgress.load(std::memory_order::acquire))
+		{	// TODO: Add some progressive sleeps to lower contention
+			if (!tasksInProgress.load(std::memory_order::acquire))
 				return;
 		} while (true);
+
+		if(tasksScheduled.load(std::memory_order::acquire) == 0)
+			OnEnd();
 	}
 
 
@@ -306,22 +324,24 @@ namespace FlexKit
 
 	void WorkBarrier::Join()
 	{
-		ProfileFunction();
+		if (joined.load(std::memory_order::acquire))
+			return;
 
-		if (!inProgress.load(std::memory_order::acquire))
+		joined.store(true, std::memory_order::release);
+
+		if (!tasksInProgress.load(std::memory_order::acquire))
 			return;
 
 		do
-		{
-			if (!inProgress.load(std::memory_order::acquire))
-				return;
+		{	// TODO: Add some progressive sleeps to lower contention
+			if (!tasksInProgress.load(std::memory_order::acquire))
+				break;
 
 			for(auto work = threads.FindWork(); work; work = threads.FindWork())
 				RunTask(*work);
-
 		} while (true);
 
-		Reset();
+		OnEnd();
 	}
 
 
@@ -330,12 +350,12 @@ namespace FlexKit
 
 	void WorkBarrier::JoinLocal()
 	{
-		ProfileFunction();
-
-		if (!inProgress.load(std::memory_order::acquire))
+		if (joined.load(std::memory_order::acquire))
 			return;
 
-		while(inProgress.load(std::memory_order::acquire))
+		joined.store(true, std::memory_order::release);
+
+		while(tasksInProgress.load(std::memory_order::acquire))
 		{
 			ProfileFunctionLabeled(Joined);
 
@@ -346,7 +366,6 @@ namespace FlexKit
 		}
 
 		Wait();
-		Reset();
 	}
 
 
@@ -355,8 +374,24 @@ namespace FlexKit
 
 	void WorkBarrier::Reset()
 	{
-		tasksInProgress = 0;
-		inProgress      = false;
+		tasksInProgress	= 0;
+		tasksScheduled	= 0;
+		joined			= false;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void WorkBarrier::OnEnd()
+	{
+		if (joined.load(std::memory_order_relaxed))
+		{
+			for (auto& evt : PostEvents)
+				evt();
+
+			PostEvents.clear();
+		}
 	}
 
 
@@ -367,10 +402,10 @@ namespace FlexKit
 		threads				{ },
 		allocator			{ IN_allocator		},
 		workingThreadCount	{ 0					},
-		workerCount			{ threadCount       },
-		workQueues          { IN_allocator      },
-		mainThreadQueue     { IN_allocator      },
-		backgroundQueue     { IN_allocator      }
+		workerCount			{ threadCount		},
+		workQueues			{ IN_allocator		},
+		mainThreadQueue		{ IN_allocator		},
+		backgroundQueue		{ IN_allocator		}
 	{
 		FK_ASSERT(WorkerThread::Manager == nullptr);
 

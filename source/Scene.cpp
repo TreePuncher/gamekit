@@ -548,7 +548,7 @@ namespace FlexKit
 			auto [triMesh, loaded] = FindMesh(guid);
 
 			if (!loaded)
-				triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), guid);
+				triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateCopyQueue(), guid);
 
 			if (triMesh == InvalidHandle)
 				return;

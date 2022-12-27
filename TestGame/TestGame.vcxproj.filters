@@ -4,10 +4,7 @@
     <Filter Include="game">
       <UniqueIdentifier>{56EB95D1-428D-C0A7-2B48-D4FB178947F8}</UniqueIdentifier>
     </Filter>
-    <Filter Include="engine">
-      <UniqueIdentifier>{bfa25357-6262-45ad-862b-d0a6745dccd1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="engine\shaders">
+    <Filter Include="shaders">
       <UniqueIdentifier>{BA8400C4-2610-6E88-2F21-F17C9B2BCA88}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -116,223 +113,223 @@
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\shaders\ACCQuad.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\BilateralBlur.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\ClearRenderTarget.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\ComputeAuto.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\CopyOut.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\DrawInstancedPShader.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\DrawInstancedVShader.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\ForwardPassPShader.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\ForwardPassVShader.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\FullscreenQuad.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\SSRCompute.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\StaticMeshBatcher.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\Temp.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\TextRendering.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\TextureFeedback.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\TextureFeedbackCompressor.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\VPP.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\VSFullscreenQuad.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\common.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\computedeferredtiledshading.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\cshader.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\cullterrain.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\deferredRender.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\forwardRender.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\forwardRenderTerrain.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\forwardRenderTerrainDEBUG.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\gshader.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\imguiShaders.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\lightPass.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\pbr.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\pshader.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\tdshader.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\terrainRenderingCommon.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\texture2Cubemap.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\tgshader.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\thshader.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\tvshader.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\vshader.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\CubeMapShadowMapping.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\algorithms.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\ClearBuffer.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\ClusterArgsDebugVis.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\ClusterBuffer.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\ClusteredRendering.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\DebugVISBVH.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\HZB.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\LightBVH.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\lightBVH_DEBUGVIS.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\LightListArguementIndirect.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\lightListConstruction.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\OITBlend.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\OITPass.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\ParticleRendering.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\ParticleShadowMapping.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\ResolutionMatch.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\SVO_VoxelGatherArgs.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\SVO_VoxelSortBlock.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\SVO_VoxelSortMultipleBlock.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\TextureFeedbackBlockPreFixSum.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\TextureFeedbackMergeBlocks.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\ToneMapping.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\ToneMapping-CreatePyramid.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\VoxelDebugVis.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\Voxelizer.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\VXGI.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\VXGI_common.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\VXGI_DecrementCounter.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\VXGI_DispatchArgs.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\VXGI_DrawArgs.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\VXGI_Erase.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\VXGI_InitOctree.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\VXGI_Remove.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shaders\VXGI_RemoveArgs.hlsl">
-      <Filter>engine\shaders</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>

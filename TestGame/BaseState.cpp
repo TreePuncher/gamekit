@@ -118,6 +118,8 @@ UpdateTask* BaseState::Update(EngineCore& core, UpdateDispatcher& dispatcher, do
 
 	BeginPixCapture();
 
+	core.RenderSystem.ResetConstantBuffer(constantBuffer);
+
 	return nullptr;
 }
 

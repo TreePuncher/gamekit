@@ -99,12 +99,12 @@ void EditorRenderer::DrawRenderWindow(DXRenderWindow* renderWindow)
 FlexKit::TriMeshHandle EditorRenderer::LoadMesh(FlexKit::MeshResource& mesh)
 {
 	auto& renderSystem	= framework.GetRenderSystem();
-	auto  copyContext	= renderSystem.GetImmediateUploadQueue();
+	auto  copyContext	= renderSystem.GetImmediateCopyQueue();
 
 	TriMesh newMesh;
 
 	auto meshBlob = mesh.CreateBlob();
-	FlexKit::TriMeshHandle handle = FlexKit::LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), meshBlob.buffer, meshBlob.bufferSize);
+	FlexKit::TriMeshHandle handle = FlexKit::LoadTriMeshIntoTable(copyContext, meshBlob.buffer, meshBlob.bufferSize);
 
 	return handle;
 }

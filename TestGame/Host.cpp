@@ -523,7 +523,7 @@ void HostState::SendGameStart()
 LobbyState& HostGame(const GameInfo& info, FlexKit::GameFramework& framework, BaseState& base, NetworkState& net)
 {
 	auto asset = LoadGameAsset("1x1x1Cube");
-	LoadTriMeshIntoTable(framework.core.RenderSystem.GetImmediateUploadQueue(), "1x1x1Cube");
+	LoadTriMeshIntoTable(framework.core.RenderSystem.GetImmediateCopyQueue(), "1x1x1Cube");
 	FreeAsset(asset);
 
 	auto& host  = framework.PushState<HostState>(info, base, net);

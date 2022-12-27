@@ -650,10 +650,10 @@ namespace FlexKit
 						}
 					}
 
-					const uint32_t arraySize = FlexKit::AlignedSize(sceneElements.size() * sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
+					const uint32_t arraySize = (uint32_t)(FlexKit::AlignedSize(sceneElements.size() * sizeof(D3D12_RAYTRACING_INSTANCE_DESC)));
 
 					const uint32_t bufferSize =
-						arraySize + FlexKit::AlignedSize<Camera::ConstantBuffer>();
+						arraySize + (uint32_t)FlexKit::AlignedSize<Camera::ConstantBuffer>();
 
 					auto constantBuffer		= data.reserveCB(bufferSize);
 					ConstantBufferDataSet	rayTracingInstances{(char*)sceneElements.data(), arraySize, constantBuffer};

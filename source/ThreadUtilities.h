@@ -547,18 +547,13 @@ namespace FlexKit
 	class WorkBarrier
 	{
 	public:
-		WorkBarrier(
-			ThreadManager&	IN_threads,
-			iAllocator*		allocator = FlexKit::SystemAllocator) :
-				PostEvents	{ allocator		},
-				threads		{ IN_threads	} {}
-
-		~WorkBarrier() { Join(); }
+		WorkBarrier(ThreadManager& IN_threads, iAllocator* allocator = FlexKit::SystemAllocator);
+		~WorkBarrier();
 
 		WorkBarrier(const WorkBarrier&)					= delete;
 		WorkBarrier& operator = (const WorkBarrier&)	= delete;
 
-		size_t	GetDependentCount		() const { return tasksInProgress; }
+		size_t	GetPendingWorkCount() const	{ return tasksInProgress; }
 		void	AddWork					(iWork& Work);
 		void	AddOnCompletionEvent	(OnCompletionEvent Callback);
 		void	Wait					();
@@ -570,17 +565,11 @@ namespace FlexKit
 
 	private:
 
-		void _OnEnd()
-		{
-			for (auto& evt : PostEvents)
-				evt();
+		void OnEnd();
 
-			inProgress = false;
-		}
-
-
-		std::atomic_int		tasksInProgress	= 0;
-		std::atomic_bool	inProgress		= false;
+		std::atomic_int		tasksInProgress = 0;
+		std::atomic_int		tasksScheduled	= 0;
+		std::atomic_bool	joined			= false;
 
 		ThreadManager&				threads;
 		Vector<OnCompletionEvent>	PostEvents;

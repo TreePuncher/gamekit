@@ -1,28 +1,3 @@
-/**********************************************************************
-
-Copyright (c) 2019 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
-
 #include "CameraUtilities.h"
 #include "EngineCore.h"
 
@@ -60,7 +35,7 @@ namespace FlexKit
 		float3 movementVector	{ 0 };
 		float3 forward			{ GetForwardVector() };
 		float3 right			{ GetRightVector() };
-        float3 up               { 0, 1, 0 };
+		float3 up				{ 0, 1, 0 };
 
 		if (keyStates.forward)
 			movementVector +=  forward;
@@ -74,24 +49,24 @@ namespace FlexKit
 		if (keyStates.left)
 			movementVector += -right;
 
-        if (keyStates.up)
-            movementVector += up;
+		if (keyStates.up)
+			movementVector += up;
 
-        if (keyStates.down)
-            movementVector += -up;
+		if (keyStates.down)
+			movementVector += -up;
 
 
-        movementVector.normalize();
+		movementVector.normalize();
 
 		if (keyStates.KeyPressed())
 			velocity += movementVector * acceleration * dt;
 
-        if (velocity.magnitudeSq() > 0.01f) {
-            velocity -= velocity * drag * dt;
-            TranslateWorld(velocity * dt);
-        }
-        else
-            velocity = 0.0f;
+		if (velocity.magnitudeSq() > 0.01f) {
+			velocity -= velocity * drag * dt;
+			TranslateWorld(velocity * dt);
+		}
+		else
+			velocity = 0.0f;
 	}
 
 
@@ -136,7 +111,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void OrbitCameraBehavior::HandleEvent(FlexKit::Event evt)
+	void OrbitCameraBehavior::HandleEvent(const FlexKit::Event& evt)
 	{
 		if (evt.InputSource == FlexKit::Event::Keyboard)
 		{
@@ -144,30 +119,30 @@ namespace FlexKit
 
 			switch (evt.mData1.mINT[0])
 			{
-            case KC_W:
+			case KC_W:
 			case OCE_MoveForward:
 				keyStates.forward	= state;
 				break;
-            case KC_S:
+			case KC_S:
 			case OCE_MoveBackward:
 				keyStates.backward	= state;
 				break;
-            case KC_A:
+			case KC_A:
 			case OCE_MoveLeft:
 				keyStates.left		= state;
 				break;
-            case KC_D:
+			case KC_D:
 			case OCE_MoveRight:
 				keyStates.right		= state;
 				break;
-            case KC_E:
-            case OCE_MoveUp:
-                keyStates.up        = state;
-                break;
-            case KC_Q:
-            case OCE_MoveDown:
-                keyStates.down      = state;
-                break;
+			case KC_E:
+			case OCE_MoveUp:
+				keyStates.up		= state;
+				break;
+			case KC_Q:
+			case OCE_MoveDown:
+				keyStates.down		= state;
+				break;
 			}
 		}
 	}
@@ -240,7 +215,64 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    UpdateTask& QueueOrbitCameraUpdateTask(
+	void OrbitCameraUpdate(
+		GameObject&				gameObject,
+		MouseInputState			mouseState,
+		float					dt)
+	{
+		Apply(gameObject,
+			[&](OrbitCameraBehavior& orbitCamera)
+			{
+				orbitCamera.Update(mouseState, dt);
+			});
+	}
+
+
+	/************************************************************************************************/
+
+
+	void OrbitCameraHandleEvent(
+		GameObject&		gameObject,
+		const Event&	evt)
+	{
+		Apply(gameObject,
+			[&](OrbitCameraBehavior& orbitCamera)
+			{
+				orbitCamera.HandleEvent(evt);
+			});
+	}
+
+
+	/************************************************************************************************/
+
+
+	void OrbitCameraTranslate(
+		GameObject& gameObject,
+		const float3 xyz)
+	{
+		Apply(gameObject,
+			[&](OrbitCameraBehavior& orbitCamera)
+			{
+				orbitCamera.TranslateWorld(xyz);
+			});
+	}
+
+	void OrbitCameraYaw(
+		GameObject& gameObject,
+		const float t)
+	{
+		Apply(gameObject,
+			[&](OrbitCameraBehavior& orbitCamera)
+			{
+				orbitCamera.Rotate({0, t, 0});
+			});
+	}
+
+
+	/************************************************************************************************/
+
+
+	UpdateTask& QueueOrbitCameraUpdateTask(
 					UpdateDispatcher&		dispatcher, 
 					OrbitCameraBehavior&	orbitCamera, 
 					MouseInputState			mouseState, 
@@ -252,7 +284,7 @@ namespace FlexKit
 			float					dt;
 		};
 
-        UpdateTask& data = dispatcher.Add<OrbitCameraUpdateData>(
+		UpdateTask& data = dispatcher.Add<OrbitCameraUpdateData>(
 			[&](UpdateDispatcher::UpdateBuilder& Builder, OrbitCameraUpdateData& data)
 			{
 				Builder.SetDebugString("OrbitCamera Update");
@@ -262,7 +294,7 @@ namespace FlexKit
 			},
 			[&orbitCamera](auto& data, iAllocator& threadAllocator)
 			{
-                ProfileFunction();
+				ProfileFunction();
 
 				FK_LOG_9("OrbitCamera Update");
 
@@ -274,3 +306,29 @@ namespace FlexKit
 
 
 }	/************************************************************************************************/
+
+
+/**********************************************************************
+
+Copyright (c) 2022 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/
+

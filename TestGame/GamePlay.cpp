@@ -65,7 +65,7 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
 	//auto [triMesh, loaded] = FindMesh(playerModel);
 
 	//if (!loaded)
-	//    triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), playerModel);
+	//    triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateCopyQueue(), playerModel);
 
 	auto& player        = gameObject.AddView<PlayerView>(
 		PlayerState{
@@ -106,7 +106,7 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
 	auto [triMesh, loaded] = FindMesh(9021);
 
 	if (!loaded)
-		triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), 9021);
+		triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateCopyQueue(), 9021);
 
 	auto& materials = MaterialComponent::GetComponent();
 	auto material   = materials.CreateMaterial();
@@ -232,7 +232,7 @@ GameObject& GameWorld::AddRemotePlayer(MultiplayerPlayerID_t playerID, Connectio
 	auto [triMesh, loaded] = FindMesh(playerModel);
 
 	if (!loaded)
-		triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), playerModel);
+		triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateCopyQueue(), playerModel);
 
 	const auto& characterController = gameObject.AddView<CharacterControllerView>(layer, float3{ 0.0f, 0.0f, 0.0f }, GetZeroedNode(), 1.0f, 1.0f);
 	gameObject.AddView<SceneNodeView<>>(characterController.GetNode());
@@ -256,7 +256,7 @@ void GameWorld::AddCube(float3 POS)
 	auto& gameObject = objectPool.Allocate();
 
 	if (!loaded)
-		triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), cube1X1X1);
+		triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateCopyQueue(), cube1X1X1);
 
 			auto& rigidBody = gameObject.AddView<RigidBodyView>(layer, POS);
 	const	auto& sceneNode = gameObject.AddView<SceneNodeView<>>(GetRigidBodyNode(gameObject));

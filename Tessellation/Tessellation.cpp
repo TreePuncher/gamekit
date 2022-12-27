@@ -18,9 +18,9 @@ public:
 	TessellationTest(FlexKit::GameFramework& IN_framework, int test) :
 		FrameworkState{ IN_framework },
 		renderWindow    {
-			std::get<0>(CreateWin32RenderWindow(
+			CreateWin32RenderWindow(
 				IN_framework.GetRenderSystem(),
-				FlexKit::DefaultWindowDesc(uint2{ 1920, 1080 } * 2))) },
+				FlexKit::DefaultWindowDesc(uint2{ 1920, 1080 } * 2)).value() },
 		rootSig         { IN_framework.core.GetBlockMemory() },
 		vertexBuffer    { IN_framework.GetRenderSystem().CreateVertexBuffer(MEGABYTE, false) },
 		constantBuffer  { IN_framework.GetRenderSystem().CreateConstantBuffer(MEGABYTE, false) },
@@ -238,15 +238,17 @@ public:
 
 		auto& cameraUpdate = CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
 
+		frameGraph.AddOutput(renderWindow.GetBackBuffer());
+
 		frameGraph.AddNode<DrawPatch>(
 			DrawPatch{},
 			[&](FrameGraphNodeBuilder& builder, DrawPatch& draw)
 			{
 				builder.AddDataDependency(cameraUpdate);
-				draw.renderTarget   = builder.RenderTarget(renderWindow.GetBackBuffer());
-				draw.depthTarget    = builder.DepthTarget(depthBuffer);
-				draw.debug1Buffer    = builder.UnorderedAccess(debug1Buffer);
-				draw.debug2Buffer    = builder.UnorderedAccess(debug2Buffer);
+				draw.renderTarget	= builder.RenderTarget(renderWindow.GetBackBuffer());
+				draw.depthTarget	= builder.DepthTarget(depthBuffer);
+				draw.debug1Buffer	= builder.UnorderedAccess(debug1Buffer);
+				draw.debug2Buffer	= builder.UnorderedAccess(debug2Buffer);
 			},
 			[&](DrawPatch& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
@@ -272,8 +274,8 @@ public:
 				ctx.SetPrimitiveTopology(EInputTopology::EIT_PATCH_CP_32);
 				ctx.SetVertexBuffers({ VB });
 				ctx.SetIndexBuffer(IB);
-				ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
-				ctx.SetRenderTargets({ resources.GetRenderTarget(data.renderTarget) }, true, depthBuffer);
+				ctx.SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
+				ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) }, true, depthBuffer);
 
 				const float maxExpansionRate = tesselationLevel;// 1 + cos(t) * 63.0f / 2 + 63.0f / 2.0f;
 
@@ -322,6 +324,7 @@ public:
 	FlexKit::UpdateTask* Draw(FlexKit::UpdateTask* updateTask, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 	{
 		ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), { 0.1f, 0.1f, 0.1f, 1.0f });
+		core.RenderSystem.ResetConstantBuffer(constantBuffer);
 
 		renderWindow.UpdateCapturedMouseInput(dT);
 
@@ -674,8 +677,8 @@ int main()
 		auto& state = app.PushState<TessellationTest>(0);
 
 		app.GetCore().FPSLimit  = 90;
-		app.GetCore().FrameLock = true;
-		app.GetCore().vSync     = true;
+		app.GetCore().FrameLock = false;
+		app.GetCore().vSync     = false;
 		app.Run();
 	}
 	catch (...) { }

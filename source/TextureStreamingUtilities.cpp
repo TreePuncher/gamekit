@@ -360,8 +360,8 @@ namespace FlexKit
 
 
 	TextureStreamingEngine::TextureStreamingEngine(
-				RenderSystem&   IN_renderSystem,
-				iAllocator*     IN_allocator,
+				RenderSystem&	IN_renderSystem,
+				iAllocator*		IN_allocator,
 				const TextureCacheDesc& desc) : 
 			allocator				{ IN_allocator		},
 			textureBlockAllocator	{ desc.textureCacheSize / desc.blockSize,   IN_allocator },
@@ -438,13 +438,13 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
 	void TextureStreamingEngine::TextureFeedbackPass(
 			UpdateDispatcher&				dispatcher,
 			FrameGraph&						frameGraph,
 			CameraHandle					camera,
 			uint2							renderTargetWH,
-			GatherPassesTask&				sceneGather,
+			EntityConstants&				entityConstants,
+			GatherPassesTask&				passes,
 			GatherSkinnedTask&				skinnedModelsGather,
 			ReserveConstantBufferFunction&	reserveCB,
 			ReserveVertexBufferFunction&	reserveVB)
@@ -454,247 +454,203 @@ namespace FlexKit
 
 		updateInProgress = true;
 
-		frameGraph.AddNode<TextureFeedbackPass_Data>(
+		auto initiateFeedbackPass = frameGraph.AddNode<TextureFeedbackPass_Data>(
 			TextureFeedbackPass_Data{
 				camera,
-				sceneGather,
+				passes,
 				skinnedModelsGather,
 				reserveCB,
 			},
 			[&](FrameGraphNodeBuilder& builder, TextureFeedbackPass_Data& data)
 			{
-				builder.AddDataDependency(sceneGather);
+				builder.AddDataDependency(passes);
 
 				auto depthBufferDesc = GPUResourceDesc::DepthTarget({ 128, 128 }, DeviceFormat::D32_FLOAT);
 				depthBufferDesc.denyShaderUsage = true;
 
-				data.feedbackBuffers[0]			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4 * MEGABYTE), DASUAV);
-				data.feedbackBuffers[1]			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4 * MEGABYTE), DASUAV);
-				data.feedbackCounters			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DASUAV);
-				data.feedbackBlockSizes			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DASUAV);
-				data.feedbackBlockOffsets		= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DASUAV);
-				data.feedbackDepth				= builder.AcquireVirtualResource(depthBufferDesc, DASDEPTHBUFFERWRITE);
-
-				data.readbackBuffer				= feedbackReturnBuffer;
-
-				builder.SetDebugName(data.feedbackBuffers[0],	"feedbackBuffer0");
-				builder.SetDebugName(data.feedbackBuffers[1],	"feedbackBuffer1");
-				builder.SetDebugName(data.feedbackCounters,		"feedbackCounters");
-				builder.SetDebugName(data.feedbackBlockSizes,	"feedbackBlockSizes");
-				builder.SetDebugName(data.feedbackBlockOffsets,	"feedbackBlockOffsets");
-				builder.SetDebugName(data.feedbackDepth,		"feedbackDepth");
+				data.feedbackBuffers[0]			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4 * MEGABYTE), DASUAV, VirtualResourceScope::Frame);
+				data.feedbackBuffers[1]			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4 * MEGABYTE), DASUAV, VirtualResourceScope::Frame);
+				data.feedbackCounters			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DASUAV, VirtualResourceScope::Frame);
+				data.feedbackBlockSizes			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DASUAV, VirtualResourceScope::Frame);
+				data.feedbackBlockOffsets		= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DASUAV, VirtualResourceScope::Frame);
+				data.feedbackDepth				= builder.AcquireVirtualResource(depthBufferDesc, DASDEPTHBUFFERWRITE, VirtualResourceScope::Frame);
 			},
 			[=](TextureFeedbackPass_Data& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
-				ProfileFunction();
-
-				ctx.BeginEvent_DEBUG("Texture Feedback");
-
-				auto& brushes			= data.pvs.GetData().solid;
-				auto& materials			= MaterialComponent::GetComponent();
-				auto& skinnedBrushes	= data.skinnedModels.GetData().skinned;
-
-				if (!brushes.size()) {
-					updateInProgress = false;
-					return;
-				}
-
-
-				ctx.SetPrimitiveTopology(EIT_TRIANGLELIST);
 				ctx.ClearDepthBuffer(resources.GetResource(data.feedbackDepth), 1.0f);
-
-				ctx.SetScissorAndViewports({ resources.GetResource(data.feedbackDepth) });
-				ctx.SetRenderTargets({}, true, resources.GetResource(data.feedbackDepth));
-
-				ctx.DiscardResource(resources.UAV(data.feedbackBlockOffsets,	ctx));
-				ctx.DiscardResource(resources.UAV(data.feedbackBlockSizes,		ctx));
-				ctx.DiscardResource(resources.UAV(data.feedbackCounters,		ctx));
-				ctx.DiscardResource(resources.UAV(data.feedbackBuffers[0],		ctx));
-				ctx.DiscardResource(resources.UAV(data.feedbackBuffers[1],		ctx));
-
-				struct alignas(512) constantBufferLayout
-				{
-					float		bias;
-					float		padding[3];
-					uint32_t	zeroBlock[256];
-				} constants =
-				{
-					std::log2f(128.0f / renderTargetWH[0]),
-					{ 0.0f }
-				};
-
-				struct alignas(512) animationConstantsLayout
-				{
-					float4x4 m[512];
-				};
-
-				memset(constants.zeroBlock, 0, sizeof(constants.zeroBlock));
-
-				size_t totalDrawCallCount = 0;
-				for (auto& brush : brushes)
-				{
-					auto end = brush->meshes.size();
-					for (size_t I = 0; I < end; I++)
-					{
-						auto mesh			= brush->meshes[I];
-						auto* triMesh		= GetMeshResource(mesh);
-						totalDrawCallCount += triMesh->lods[brush.LODlevel[I]].subMeshes.size();
-					}
-				}
-				for (auto& skinnedDraw : skinnedBrushes)
-				{
-					auto end = skinnedDraw.brush->meshes.size();
-					for (size_t I = 0; I < end; I++)
-					{
-						auto mesh			= skinnedDraw.brush->meshes[I];
-						const auto LODlevel = skinnedDraw.lodLevel[I];
-						const auto brush	= skinnedDraw.brush;
-						auto* triMesh		= GetMeshResource(skinnedDraw.brush->meshes[I]);
-
-						totalDrawCallCount += triMesh->lods[LODlevel].subMeshes.size();
-					}
-				}
-
-				const size_t bufferSize =
-					AlignedSize<Brush::VConstantsLayout>() * totalDrawCallCount +
-					AlignedSize<constantBufferLayout>() +
-					AlignedSize<Camera::ConstantBuffer>();
-
-				CBPushBuffer passConstantBuffer		{ data.reserveCB(bufferSize) };
-				CBPushBuffer skinnedConstantsBuffer	{ data.reserveCB(sizeof(animationConstantsLayout) * skinnedBrushes.size()) };
-
-				const auto passConstants	= ConstantBufferDataSet{ constants, passConstantBuffer };
-				const auto cameraConstants	= ConstantBufferDataSet{ GetCameraConstants(camera), passConstantBuffer };
-
 				ctx.ClearUAVBufferRange(resources.GetResource(data.feedbackCounters), 0, 4096);
 				ctx.AddUAVBarrier(resources.GetResource(data.feedbackCounters));
+			});
 
-				ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
+		auto getPass =
+			[&passTable = passes.GetData()](PassHandle pass) -> const PassPVS*
+			{
+				return passTable.GetPass(pass).value_or(nullptr);
+			};
 
-				DescriptorHeap uavHeap;
-				uavHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 1, &allocator);
-				uavHeap.SetUAVStructured(
-					ctx, 0,
-					resources.UAV(data.feedbackBuffers[0], ctx),
-					resources.UAV(data.feedbackCounters, ctx),
-					sizeof(uint64_t), 0);
+		PassDescription<TextureFeedbackPass_Data> pass =
+		{
+			.materialPassID		= GBufferPassID,
+			.sharedData			= {
+				.camera			= camera,
+				.pvs			= passes,
+				.skinnedModels	= skinnedModelsGather,
+				.reserveCB		= reserveCB },
+			.getPass			= getPass,
+		};
 
-				ctx.SetGraphicsDescriptorTable(5, uavHeap);
-				ctx.SetGraphicsConstantBufferView(0, cameraConstants);
-				ctx.SetGraphicsConstantBufferView(2, passConstants);
-				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
+		auto passSetupFn = [&](FrameGraphNodeBuilder& builder, TextureFeedbackPass_Data& data)
+		{
+			auto depthBufferDesc			= GPUResourceDesc::DepthTarget({ 128, 128 }, DeviceFormat::D32_FLOAT);
+			depthBufferDesc.denyShaderUsage = true;
 
-				TriMesh*		prevMesh		= nullptr;
-				MaterialHandle	prevMaterial	= InvalidHandle;
+			builder.ReadConstantBuffer(entityConstants.constants);
 
-				ctx.TimeStamp(timeStats, 0);
+			data.feedbackBuffers[0]			= builder.WriteTransition(initiateFeedbackPass.feedbackBuffers[0], DASUAV);
+			data.feedbackCounters			= builder.WriteTransition(initiateFeedbackPass.feedbackCounters, DASUAV);
+			data.feedbackDepth				= builder.WriteTransition(initiateFeedbackPass.feedbackDepth, DASDEPTHBUFFERWRITE);
+		};
+		
+		auto passDrawFN = [&entityConstants = entityConstants, renderTargetWH](const PVEntry* begin, const PVEntry* end, const PassPVS& pass, TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+		{
+			ctx.BeginEvent_DEBUG("Texture feedback pass");
 
-				ctx.BeginEvent_DEBUG("Texture Feedback Pass");
+			struct alignas(512) constantBufferLayout
+			{
+				float		bias;
+				float		padding[3];
+				uint32_t	zeroBlock[256];
+			} passConstantValues =
+			{
+				std::log2f(128.0f / renderTargetWH[0]),
+				{ 0.0f }
+			};
 
-				size_t element = 0;
-				for (size_t J = element; J < brushes.size(); J++)
+			auto& materials			= MaterialComponent::GetComponent();
+			auto& constantBuffer	= entityConstants.GetConstants();
+			auto constants			= FlexKit::CreateCBIterator<Brush::VConstantsLayout>(constantBuffer);
+
+			const size_t bufferSize =
+				AlignedSize<constantBufferLayout>() +
+				AlignedSize<Camera::ConstantBuffer>();
+
+			CBPushBuffer passConstantBuffer		{ data.reserveCB(bufferSize) };
+
+			auto cameraConstantValues	= GetCameraConstants(data.camera);
+
+			// Widen FOV to avoid some pop in when rotating camera
+			cameraConstantValues.FOV *= 1.2f;
+			cameraConstantValues = CalculateCameraConstants(
+				cameraConstantValues.AspectRatio,
+				cameraConstantValues.FOV,
+				cameraConstantValues.MinZ,
+				cameraConstantValues.MaxZ,
+				cameraConstantValues.ViewI.Transpose(),
+				cameraConstantValues.View.Transpose());
+
+			const auto passConstants	= ConstantBufferDataSet{ passConstantValues, passConstantBuffer };
+			const auto cameraConstants	= ConstantBufferDataSet{ cameraConstantValues, passConstantBuffer };
+
+			ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
+
+			DescriptorHeap uavHeap;
+			uavHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 1, &allocator);
+			uavHeap.SetUAVStructured(
+				ctx, 0,
+				resources.GetResource(data.feedbackBuffers[0]),
+				resources.GetResource(data.feedbackCounters),
+				sizeof(uint64_t), 0);
+
+			ctx.SetScissorAndViewports({ resources.GetResource(data.feedbackDepth) });
+			ctx.SetRenderTargets({}, true, resources.GetResource(data.feedbackDepth));
+
+			ctx.SetGraphicsDescriptorTable(5, uavHeap);
+			ctx.SetGraphicsConstantBufferView(0, cameraConstants);
+			ctx.SetGraphicsConstantBufferView(2, passConstants);
+			ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
+
+			ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKPASS));
+
+			TriMeshHandle	prevMesh	= InvalidHandle;
+			TriMesh*		triMesh		= nullptr;
+
+			for (auto itr = begin; itr < end; itr++)
+			{
+				ctx.BeginEvent_DEBUG("Draw entity");
+
+				auto entityIdx					= std::distance(pass.pvs.begin(), itr);
+				auto constantsBegin				= entityConstants.entityTable[entityIdx];
+				const auto& material			= materials[itr->brush->material];
+				const auto& textureDescriptors	= material.textureDescriptors;
+
+				for (size_t I = 0; I < itr->brush->meshes.size() && textureDescriptors.size; I++)
 				{
-					auto& brush = brushes[J];
-					size_t end	= brush->meshes.size();
-					for(size_t I = 0; I < end; I++)
+					ctx.BeginEvent_DEBUG("Draw sub-mesh");
+
+					auto triMeshHandle = itr->brush->meshes[I];
+					if (triMeshHandle != prevMesh)
 					{
-						auto* triMesh = GetMeshResource(brush->meshes[I]);
+						prevMesh = triMeshHandle;
 
-						ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKPASS));
+						triMesh = GetMeshResource(triMeshHandle);
 
-						if (triMesh != prevMesh)
-						{
-							prevMesh = triMesh;
-
-							ctx.AddIndexBuffer(triMesh, brush.LODlevel[I]);
-							ctx.AddVertexBuffers(
-								triMesh,
-								brush.LODlevel[I],
-								{
-									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
-									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
-									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
-									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
-									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
-								}
-							);
-						}
-
-						const auto materialHandle	= brush->material;
-						const auto& lod				= triMesh->lods[brush.LODlevel[I]];
-
-						if (!materials[materialHandle].SubMaterials.empty())
-						{
-							const auto subMeshCount = lod.subMeshes.size();
-							auto material = MaterialComponent::GetComponent()[brush->material];
-
-							bool animated = false;
-							if (animated)
+						ctx.AddIndexBuffer(triMesh, itr->LODlevel[I]);
+						ctx.AddVertexBuffers(
+							triMesh,
+							itr->LODlevel[I],
 							{
-								animationConstantsLayout constants;
-								auto skinnedConstants = ConstantBufferDataSet{ constants, passConstantBuffer };
-
-								ctx.SetGraphicsConstantBufferView(2, passConstants);
-
-								ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKANIMATEDPASS));
+								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
+								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
+								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
+								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
 							}
-							else
-								ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKPASS));
-
-							for (size_t I = 0; I < subMeshCount; I++)
-							{
-								auto& subMesh				= lod.subMeshes[I];
-								const auto passMaterial		= materials[material.SubMaterials[I]];
-
-								DescriptorHeap srvHeap;
-
-								const auto& textures = passMaterial.Textures;
-
-								srvHeap.Init(
-									ctx,
-									resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
-									&allocator);
-
-								auto constantData = brush->GetConstants();
-								constantData.textureCount = textures.size();
-
-								if(constantData.textureCount)
-								{
-									const auto constants = ConstantBufferDataSet{ constantData, passConstantBuffer };
-									const auto& textureDescriptors = passMaterial.textureDescriptors;
-									ctx.SetGraphicsDescriptorTable(4, textureDescriptors);
-
-									ctx.SetGraphicsConstantBufferView(1, constants);
-									ctx.DrawIndexed(subMesh.IndexCount, subMesh.BaseIndex);
-								}
-							}
-						}
-						else
-						{
-							if (materialHandle != prevMaterial)
-							{
-								const auto& textureDescriptors = materials[materialHandle].textureDescriptors;
-
-								if (textureDescriptors.size == 0)
-									continue;
-
-								ctx.SetGraphicsDescriptorTable(4, textureDescriptors);
-							}
-
-							prevMaterial = materialHandle;
-
-							const auto constants = ConstantBufferDataSet{ brush->GetConstants(), passConstantBuffer };
-
-							ctx.SetGraphicsConstantBufferView(1, constants);
-							ctx.DrawIndexed(lod.GetIndexCount());
-						}
+						);
 					}
+
+					const auto& lod = triMesh->lods[itr->LODlevel[I]];
+
+					ctx.SetGraphicsDescriptorTable(4, textureDescriptors);
+					ctx.SetGraphicsConstantBufferView(1, constants[constantsBegin + I]);
+					ctx.DrawIndexed(lod.GetIndexCount());
+
+					ctx.EndEvent_DEBUG();
 				}
 
 				ctx.EndEvent_DEBUG();
-				ctx.TimeStamp(timeStats, 1);
+			}
 
+			ctx.EndEvent_DEBUG();
+		};
+
+		frameGraph.AddPass(pass, passSetupFn, passDrawFN);
+
+		auto readBackNode = frameGraph.AddNode<TextureFeedbackPass_Data>(
+			TextureFeedbackPass_Data{
+				camera,
+				passes,
+				skinnedModelsGather,
+				reserveCB,
+			},
+			[&](FrameGraphNodeBuilder& builder, TextureFeedbackPass_Data& data)
+			{
+				builder.AddDataDependency(passes);
+
+				auto depthBufferDesc = GPUResourceDesc::DepthTarget({ 128, 128 }, DeviceFormat::D32_FLOAT);
+				depthBufferDesc.denyShaderUsage = true;
+
+				data.feedbackBuffers[0]			= builder.WriteTransition(initiateFeedbackPass.feedbackBuffers[0], DASUAV);
+				data.feedbackBuffers[1]			= builder.WriteTransition(initiateFeedbackPass.feedbackBuffers[1], DASUAV);
+				data.feedbackCounters			= builder.WriteTransition(initiateFeedbackPass.feedbackCounters, DASUAV);
+				data.feedbackBlockSizes			= builder.WriteTransition(initiateFeedbackPass.feedbackBlockSizes, DASUAV);
+				data.feedbackBlockOffsets		= builder.WriteTransition(initiateFeedbackPass.feedbackBlockOffsets, DASUAV);
+
+				builder.ReadBack(feedbackReturnBuffer);
+				data.readbackBuffer = feedbackReturnBuffer;
+			},
+			[=](TextureFeedbackPass_Data& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			{
 				auto CompressionPass = [&](auto Source, auto Destination)
 				{
 					ctx.BeginEvent_DEBUG("CompressBlock");
@@ -778,10 +734,8 @@ namespace FlexKit
 				ctx.QueueReadBack(data.readbackBuffer);
 
 				ctx.EndEvent_DEBUG();
-				ctx.EndEvent_DEBUG();
 			});
 	}
-
 
 	/************************************************************************************************/
 
@@ -855,9 +809,9 @@ namespace FlexKit
 			requests + requestCount,
 			lg_comparitor);
 
-		auto end            = std::unique(requests, requests + requestCount, eq_comparitor);
-		auto uniqueCount    = (size_t)(end - requests);
-		size_t itr          = 0;
+		auto end			= std::unique(requests, requests + requestCount, eq_comparitor);
+		auto uniqueCount	= (size_t)(end - requests);
+		size_t itr			= 0;
 
 		while ((end - 1)->TextureID == -1 && uniqueCount) { end--; uniqueCount--; }
 
@@ -889,13 +843,13 @@ namespace FlexKit
 
 				if(packBegin > mipLevel){
 					const gpuTileID newTile = {
-						.TextureID  = tile.TextureID,
-						.tileID     = TileID_t{
+						.TextureID	= tile.TextureID,
+						.tileID		= TileID_t{
 							.segments = {
-								.ytile      = tileY,
-								.xtile      = tileX,
-								.mipLevel   = mipLevel,
-								.packed     = false,
+								.ytile		= tileY,
+								.xtile		= tileX,
+								.mipLevel	= mipLevel,
+								.packed		= false,
 							}
 						}
 					};
@@ -905,13 +859,13 @@ namespace FlexKit
 				else
 				{
 					const gpuTileID newTile = {
-						.TextureID  = tile.TextureID,
-						.tileID     = TileID_t{
+						.TextureID	= tile.TextureID,
+						.tileID		= TileID_t{
 							.segments = {
-								.ytile      = 0,
-								.xtile      = 0,
-								.mipLevel   = (uint)packBegin,
-								.packed     = true
+								.ytile		= 0,
+								.xtile		= 0,
+								.mipLevel	= (uint)packBegin,
+								.packed		= true
 							}
 						}
 					};
@@ -926,8 +880,8 @@ namespace FlexKit
 		end			= std::unique(requests, requests + uniqueCount, eq_comparitor);
 		uniqueCount	= (size_t)(end - requests);
 
-		const auto stateUpdateRes     = textureStreamEngine.UpdateTileStates(requests, requests + uniqueCount, &threadLocalAllocator);
-		const auto blockAllocations   = textureStreamEngine.AllocateTiles(stateUpdateRes.begin(), stateUpdateRes.end());
+		const auto stateUpdateRes	= textureStreamEngine.UpdateTileStates(requests, requests + uniqueCount, &threadLocalAllocator);
+		const auto blockAllocations	= textureStreamEngine.AllocateTiles(stateUpdateRes.begin(), stateUpdateRes.end());
 
 		if(blockAllocations)
 			textureStreamEngine.PostUpdatedTiles(blockAllocations, threadLocalAllocator);
@@ -995,7 +949,7 @@ namespace FlexKit
 			blockChanges.packedAllocations.size() &&
 			blockChanges.reallocations.size()) return;
 
-		SyncPoint sync = renderSystem.GetSyncDirect();
+		//renderSystem.copyEngine.Wait(renderSystem.SyncWithDirect());
 
 		auto ctxHandle		= renderSystem.OpenUploadQueue();
 		auto& ctx			= renderSystem._GetCopyContext(ctxHandle);
@@ -1046,10 +1000,10 @@ namespace FlexKit
 			for (const AllocatedBlock& block : blocks)
 			{
 				const TileMapping mapping = {
-					.tileID     = block.tileID,
-					.heap       = heap,
-					.state      = TileMapState::Null,
-					.heapOffset = block.tileIdx,
+					.tileID		= block.tileID,
+					.heap		= heap,
+					.state		= TileMapState::Null,
+					.heapOffset	= block.tileIdx,
 				};
 
 				mappings.push_back(mapping);
@@ -1174,8 +1128,8 @@ namespace FlexKit
 
 				const auto MIPLevelInfo = GetMIPLevelInfo(level, streamContext.WH(), streamContext.Format());
 
-				const TileID_t tileID   = CreateTileID( 0, 0, level );
-				const auto tile         = streamContext.Read(MIPLevelInfo.WH, ctx);
+				const TileID_t tileID	= CreateTileID( 0, 0, level );
+				const auto tile			= streamContext.Read(MIPLevelInfo.WH, ctx);
 
 				ctx.CopyTextureRegion(deviceResource, level, { 0, 0, 0 }, tile, MIPLevelInfo.WH, streamContext.Format());
 			}
@@ -1194,9 +1148,9 @@ namespace FlexKit
 				std::end(updatedTextures)),
 			std::end(updatedTextures));
 
-
+		SyncPoint syncAfter		= renderSystem.GetSyncDirect();
 		renderSystem.UpdateTileMappings(updatedTextures.begin(), updatedTextures.end(), &threadLocalAllocator);
-		renderSystem.SubmitUploadQueues(SYNC_Graphics, &ctxHandle, 1, sync);
+		renderSystem.SubmitUploadQueues(SYNC_Graphics, &ctxHandle, 1, {}, syncAfter);
 	}
 
 
@@ -1242,16 +1196,16 @@ namespace FlexKit
 				continue;
 
 			if (auto res = findInuse(*itr); res) {
-				res->state              = TextureBlockAllocator::EBlockState::InUse;
-				res->staleFrameCount    = 0;
+				res->state				= TextureBlockAllocator::EBlockState::InUse;
+				res->staleFrameCount	= 0;
 			}
 			else if (auto res = findstale(*itr); res)
 			{
 				auto staleTile = *res;
 				stale.remove_unstable(res);
 
-				staleTile.state             = TextureBlockAllocator::EBlockState::InUse;
-				staleTile.staleFrameCount   = 0;
+				staleTile.state				= TextureBlockAllocator::EBlockState::InUse;
+				staleTile.staleFrameCount	= 0;
 
 				inuse.push_back(staleTile);
 			}
@@ -1289,9 +1243,9 @@ namespace FlexKit
 
 	BlockAllocation TextureBlockAllocator::AllocateBlocks(const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator)
 	{
-		AllocatedBlockList allocatedBlocks      { allocator };
-		AllocatedBlockList reallocatedBlocks    { allocator };
-		AllocatedBlockList packedBlocks         { allocator };
+		AllocatedBlockList allocatedBlocks	{ allocator };
+		AllocatedBlockList reallocatedBlocks{ allocator };
+		AllocatedBlockList packedBlocks		{ allocator };
 
 		std::sort(inuse.begin(), inuse.end(),
 			[&](const auto lhs, const auto rhs)
@@ -1411,6 +1365,57 @@ namespace FlexKit
 	BlockAllocation TextureStreamingEngine::AllocateTiles(const gpuTileID* begin, const gpuTileID* end)
 	{
 		return textureBlockAllocator.AllocateBlocks(begin, end, allocator);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void TextureStreamingEngine::LoadLowestLevel(ResourceHandle textureResource, CopyContextHandle copyQueue)
+	{
+		auto& copyCtx				= renderSystem.copyEngine.copyContexts[copyQueue];
+		const auto deviceResource	= renderSystem.GetDeviceResource(textureResource);
+		const auto packedBlockInfo	= copyCtx.GetPackedTileInfo(deviceResource);
+
+		const auto mipCount			= renderSystem.GetTextureMipCount(textureResource);
+		auto tileID					= CreatePackedID();
+		tileID.segments.mipLevel	= packedBlockInfo.startingLevel;
+
+		const gpuTileID gpuID		= { textureResource, tileID };
+		auto allocation				= textureBlockAllocator.AllocateBlocks(&gpuID, &gpuID + 1, allocator);
+
+		if (!allocation.packedAllocations.size())
+			return;
+
+		TextureStreamContext	streamContext = { allocator };
+		auto asset = GetResourceAsset(textureResource);
+
+		if (!asset.has_value())
+			return;
+
+
+		for (auto level = packedBlockInfo.startingLevel; level < packedBlockInfo.endingLevel; level++)
+		{
+			if (!streamContext.Open(level, asset.value()))
+				continue;
+
+			const auto MIPLevelInfo = GetMIPLevelInfo(level, streamContext.WH(), streamContext.Format());
+
+			const TileID_t tileID	= CreateTileID( 0, 0, level );
+			const auto tile			= streamContext.Read(MIPLevelInfo.WH, copyCtx);
+
+			copyCtx.CopyTextureRegion(deviceResource, level, { 0, 0, 0 }, tile, MIPLevelInfo.WH, streamContext.Format());
+		}
+
+		const TileMapping mapping[] = { {
+			.tileID		= tileID,
+			.heap		= heap,
+			.state		= TileMapState::InUse,
+			.heapOffset	= allocation.packedAllocations.front().tileIdx,
+		} };
+
+		renderSystem.UpdateTextureTileMappings(textureResource, { mapping, 1 });
+		renderSystem.UpdateTileMappings(&textureResource, &textureResource + 1, allocator);
 	}
 
 

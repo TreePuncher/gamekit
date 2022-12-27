@@ -17,9 +17,6 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	
-	using PassHandle = Handle_t<32u, PassHandleID>;
-
 
 	struct MaterialProperty
 	{

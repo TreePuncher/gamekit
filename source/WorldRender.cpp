@@ -968,21 +968,58 @@ namespace FlexKit
 						.constants			= builder.CreateConstantBuffer(),
 						.getConstantBuffer	= CreateOnceReserveBuffer(reserveConstants, &allocator),
 						.passes				= passes,
+						.entityTable		= Vector<uint32_t>{ allocator },
 					};
 			},
-			[](EntityConstants& data, FrameResources& resources, iAllocator& localAllocator) // before other task sections begin
+			[](EntityConstants& data, FrameResources& resources, iAllocator& localAllocator) // before submission task sections begin
 			{
+				auto& brushes	= data.passes.GetData().solid;
+				auto& materials = MaterialComponent::GetComponent();
+
+				data.entityTable.reserve(brushes.size());
+
+				size_t offset = 0;
+				for(auto brush : brushes)
+				{
+					data.entityTable.push_back((uint32_t)offset);
+					offset += Max(materials[brush.brush->material].SubMaterials.size(), 1);
+				}
+
 				resources.objects[data.constants].constantBuffer = &data.GetConstants();
 			},
-			[](EntityConstants& data, FrameResources& resources, iAllocator& localAllocator) // in parallel with all other tasks
+			[](EntityConstants& data, iAllocator& localAllocator) // in parallel with all other tasks
 			{
 				auto& brushes			= data.passes.GetData().solid;
 				auto& constantBuffer	= data.GetConstants();
+				auto& materials			= MaterialComponent::GetComponent();
 
 				for (auto& brush : brushes)
-					constantBuffer.Push(brush->GetConstants());
+				{
+					const auto& mainMaterial	= materials[brush.brush->material];
+					const auto& subMaterials	= mainMaterial.SubMaterials;
+					auto constants				= brush->GetConstants();
 
-				DebugBreak();
+					if (subMaterials.size())
+					{
+						for (auto& sm : subMaterials)
+						{
+							const auto& subMaterial = materials[sm];
+							constants.textureCount	= subMaterial.Textures.size();
+							auto& textures = subMaterial.Textures;
+
+							size_t idx = 0;
+							for (auto& texture : textures)
+								constants.textureHandles[idx++] = uint4{ 256, 256, texture.to_uint() };
+
+							constantBuffer.Push(constants);
+						}
+					}
+					else
+					{
+						constants.textureCount = mainMaterial.Textures.size();
+						constantBuffer.Push(constants);
+					}
+				}
 			});
 
 		/*

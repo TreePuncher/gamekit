@@ -5,6 +5,7 @@
 #include <TextureStreamingUtilities.h>
 #include <WorldRender.h>
 #include <Win32Graphics.h>
+#include <DebugUI.h>
 
 class TextureStreamingTest : public FlexKit::FrameworkState
 {
@@ -18,7 +19,8 @@ public:
 	void PostDrawUpdate(FlexKit::EngineCore&, double dT) final;
 	bool EventHandler(FlexKit::Event evt) final;
 
-
+	bool rotate = false;
+	bool streamingUpdates = true;
 
 	FlexKit::AnimatorComponent				animators;
 	FlexKit::CameraComponent				cameras;
@@ -47,8 +49,11 @@ public:
 
 	FlexKit::LayerHandle			layer;
 	FlexKit::Scene					scene;
-
 	FlexKit::CameraHandle			activeCamera;
 
+	FlexKit::GameObject				orbitCamera;
+
 	FlexKit::RunOnceQueue<void(FlexKit::UpdateDispatcher&, FlexKit::FrameGraph&)>	runOnceQueue;
+
+	FlexKit::ImGUIIntegrator		debugUI;
 };

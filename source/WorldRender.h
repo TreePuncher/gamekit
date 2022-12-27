@@ -262,9 +262,15 @@ namespace FlexKit
 
 	struct EntityConstants
 	{
+		struct EntityConstantOffsets
+		{
+			static_vector<uint32_t, 16> subMaterial;
+		};
+
 		FrameResourceHandle				constants;
 		CreateOnceReserveBufferFunction	getConstantBuffer;
 		GatherPassesTask&				passes;
+		Vector<uint32_t>				entityTable;
 
 		CBPushBuffer&					GetConstants()
 		{

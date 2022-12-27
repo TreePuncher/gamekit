@@ -103,7 +103,7 @@ namespace FlexKit
 		UpdateTask* Update      (UpdateDispatcher& dispatcher, double dT);
 		UpdateTask* Draw	    (UpdateTask* update, UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT);
 
-		void        PostDraw    (iAllocator* TempMemory, double dT);
+		void		PostDraw    (iAllocator* TempMemory, double dT);
 
 		void Release();
 
@@ -112,6 +112,7 @@ namespace FlexKit
 		bool DispatchEvent(const Event& evt);
 
 		void DrawDebugHUD(double dT, VertexBufferHandle TextBuffer, ResourceHandle renderTarget, FrameGraph& Graph);
+		void PrintMemoryStats() const;
 
 		void PostPhysicsUpdate	();
 		void PrePhysicsUpdate	();

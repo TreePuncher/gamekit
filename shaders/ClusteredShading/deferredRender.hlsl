@@ -32,8 +32,6 @@ cbuffer LocalConstants : register(b1)
 	ShadowMap pl[256];
 }
 
-#define ARRAY 1
-
 Texture2D<float4> AlbedoBuffer	: register(t0);
 Texture2D<float4> MRIABuffer	: register(t1); // metallic, roughness, IOR, anisotropic
 Texture2D<float2> NormalBuffer	: register(t2);
@@ -363,7 +361,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		#endif 
 	}
 
-#ifdef DEBUG
+#if 0
 	static float4 Colors[] = {
 		float4(0.5f, 0.5f, 0.5f, 0), 
 		float4(1, 0, 0, 0), 
@@ -383,10 +381,11 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		//return float4(positionWS * float3(0, 0, -0.01), 1);
 		//return float4(N);
 		//return float4(positionWS, 1);
+		//return float4(positionVS, 1);
 		//return pow(depth * 100, 1.0f);
 		// 
 		//return pow(Colors[localLightCount % 8], 2.0f) * color;
-		return pow(Colors[lightListKey % 8] * color, 1.0f);
+		//return pow(Colors[lightListKey % 8] * color, 1.0f);
 		//return pow(Colors[clusterKey % 8] * (float(localLightCount) / float(lightCount)), 1.0f);
 		//return color * (float(localLightCount) / float(lightCount));
 		//return (float(localLightCount) / float(lightCount));
@@ -408,7 +407,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 	//return float4(N.xyz / 2 + 0.5f, 1);
 	//return float4(N.xyz / 2 + 0.5f, 1) * (float(localLightCount) / float(lightCount));
 	//return lerp(float4(0, 0, 0, 0), float4(1, 1, 1, 0), float(localLightCount) / float(lightCount));
-	//return float4(albedo, 1);
+	return float4(albedo, 1);
 #endif
 	
 	return color;

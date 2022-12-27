@@ -87,18 +87,18 @@ namespace FlexKit
 	{
 	public:
 		VertexBufferView();
-        VertexBufferView(const VertexBufferView&) = delete;
-        VertexBufferView(VertexBufferView&&) = delete;
+		VertexBufferView(const VertexBufferView&) = delete;
+		VertexBufferView(VertexBufferView&&) = delete;
 
 		VertexBufferView(char* _ptr, size_t size);
-        VertexBufferView(char* _ptr, size_t size, VERTEXBUFFER_FORMAT format, VERTEXBUFFER_TYPE type);
+		VertexBufferView(char* _ptr, size_t size, VERTEXBUFFER_FORMAT format, VERTEXBUFFER_TYPE type);
 
 		~VertexBufferView();
 
 		//VertexBufferView& operator += (const VertexBufferView& RHS);
 
 		VertexBufferView& operator = (const VertexBufferView& RHS);	// Assignment Operator
-        VertexBufferView& operator = (VertexBufferView&& RHS );	// Movement Operator
+		VertexBufferView& operator = (VertexBufferView&& RHS );	// Movement Operator
 
 
 		template<typename Ty>
@@ -193,14 +193,14 @@ namespace FlexKit
 		template<>
 		inline bool Push(const float3& in)
 		{
-            if (mBufferUsed + static_cast<uint32_t>(mBufferFormat) > mBufferSize) {
-                mBufferinError = true;
-                return false;
-            }
+			if (mBufferUsed + static_cast<uint32_t>(mBufferFormat) > mBufferSize) {
+				mBufferinError = true;
+				return false;
+			}
 
-            const size_t elementSize = static_cast<uint32_t>(mBufferFormat);
-            memcpy(mBuffer + mBufferUsed, &in, elementSize);
-            mBufferUsed += elementSize;
+			const size_t elementSize = static_cast<uint32_t>(mBufferFormat);
+			memcpy(mBuffer + mBufferUsed, &in, elementSize);
+			mBufferUsed += elementSize;
 
 			return !mBufferinError;
 		}
@@ -280,19 +280,19 @@ namespace FlexKit
 
 		void SetTypeFormatSize(VERTEXBUFFER_TYPE, VERTEXBUFFER_FORMAT, size_t count);
 
-        void Serialize(auto& ar)
-        {
-            void* temp = mBuffer;
-            ar& RawBuffer{ temp, mBufferSize };
-            ar& mBufferUsed;
-            ar& mBufferElementSize;
-            ar& mBufferFormat;
-            ar& mBufferType;
-            ar& mBufferinError;
-            ar& mBufferLock;
+		void Serialize(auto& ar)
+		{
+			void* temp = mBuffer;
+			ar& RawBuffer{ temp, mBufferSize };
+			ar& mBufferUsed;
+			ar& mBufferElementSize;
+			ar& mBufferFormat;
+			ar& mBufferType;
+			ar& mBufferinError;
+			ar& mBufferLock;
 
-            mBuffer = reinterpret_cast<char*>(temp);
-        }
+			mBuffer = reinterpret_cast<char*>(temp);
+		}
 
 	private:
 		bool _combine(const VertexBufferView& LHS, const VertexBufferView& RHS, char* out);
@@ -326,18 +326,18 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    inline void CreateBufferView(byte* buffer, size_t bufferSize, VertexBufferView*& View, VERTEXBUFFER_TYPE T, VERTEXBUFFER_FORMAT F, iAllocator* allocator)
-    {
-        size_t blobSize = bufferSize + sizeof(VertexBufferView);
-        char* blob = (char*)allocator->malloc(blobSize);
+	inline void CreateBufferView(byte* buffer, size_t bufferSize, VertexBufferView*& View, VERTEXBUFFER_TYPE T, VERTEXBUFFER_FORMAT F, iAllocator* allocator)
+	{
+		size_t blobSize = bufferSize + sizeof(VertexBufferView);
+		char* blob = (char*)allocator->malloc(blobSize);
 
-        View = new(blob) VertexBufferView(blob + sizeof(VertexBufferView), bufferSize, F, T);
+		View = new(blob) VertexBufferView(blob + sizeof(VertexBufferView), bufferSize, F, T);
 
-        memcpy(blob + sizeof(VertexBufferView), buffer, bufferSize);
-    }
+		memcpy(blob + sizeof(VertexBufferView), buffer, bufferSize);
+	}
 
 
 	/************************************************************************************************/
@@ -363,22 +363,22 @@ namespace FlexKit
 	{
 		for (uint32_t itr = 0; itr < vertexCount; ++itr) {
 			auto Vert = Translate(Fetch(itr, Container));
-            Scan(Vert);
+			Scan(Vert);
 		}
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    template<typename Ty_Container, typename ProcessFN>
-    void TransformBuffer(Ty_Container& Container, ProcessFN Transform)
-    {
-        const auto end = Container.end();
-        for (auto e = Container.begin(); e != end; e++) {
-            *e = Transform(*e);
-        }
-    }
+	template<typename Ty_Container, typename ProcessFN>
+	void TransformBuffer(Ty_Container& Container, ProcessFN Transform)
+	{
+		const auto end = Container.end();
+		for (auto e = Container.begin(); e != end; e++) {
+			*e = Transform(*e);
+		}
+	}
 
 
 	/************************************************************************************************/
@@ -470,7 +470,7 @@ namespace FlexKit
 	};
 
 
-    bool GenerateTangents(static_vector<VertexBufferView*>& buffers, iAllocator*);
+	bool GenerateTangents(static_vector<VertexBufferView*>& buffers, iAllocator*);
 
 
 }	/************************************************************************************************/

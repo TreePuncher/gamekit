@@ -334,7 +334,7 @@ namespace FlexKit
 			size_t AllocationFootPrint = sizeof(Block);
 			Size = BufferSize / AllocationFootPrint;
 			Blocks = reinterpret_cast<Block*>(Buffer);
-
+			allocated = 0;
 #ifdef _DEBUG
 			for (size_t itr = 0; itr < Size; ++itr)
 			{
@@ -359,6 +359,7 @@ namespace FlexKit
 						{
 							Blocks[itr].state[itr2] = (Block::Allocated | Aligned) ? Block::Aligned : 0;
 							//if(itr2 == Block::BlockCount) Blocks[itr].BlockFull = true;
+							allocated++;
 							return (byte*)&Blocks[itr].data[itr2];
 						}
 					}
@@ -375,6 +376,8 @@ namespace FlexKit
 		{
 			Blocks[BlockID].state[SBlockID] = Block::Free;
 			Blocks[BlockID].BlockFull = false;
+
+			allocated--;
 		}
 
 		void free(void* _ptr)
@@ -391,8 +394,7 @@ namespace FlexKit
 				return;
 			}
 #endif
-				_FreeBlock(BlockID, SBlockID);
-
+			_FreeBlock(BlockID, SBlockID);
 		}
 
 		void _aligned_free(void* _ptr)
@@ -427,6 +429,7 @@ namespace FlexKit
 		}*Blocks;
 
 		size_t Size;
+		size_t allocated;
 	};
 
 
@@ -444,6 +447,8 @@ namespace FlexKit
 
 			for (size_t I = 0; I < Size; ++I)
 				BlockTable[I].state = BlockData::Free;
+
+			blocksAllocated = 0;
 		}
 
 		// TODO: maybe Multi-Thread?
@@ -464,6 +469,8 @@ namespace FlexKit
 						BlockData::Allocated | 
 						(ALIGNED		? BlockData::Aligned : 0) | 
 						(DebugMetaData	? BlockData::DebugMD : 0);
+
+					blocksAllocated++;
 					return (byte*)&Blocks[i];
 				}
 
@@ -487,6 +494,7 @@ namespace FlexKit
 			if (index > Size)
 				throw(std::runtime_error("Invalid Free"));
 
+			blocksAllocated--;
 			BlockTable[index].state = BlockData::Free;
 		}
 
@@ -503,6 +511,7 @@ namespace FlexKit
 			FK_ASSERT(BlockTable[index].state & BlockData::Aligned, "_ALIGNED_FREE CALLED ON NON_ALIGNED FLAGGED BLOCK!!");
 #endif
 
+			blocksAllocated--;
 			BlockTable[index].state = BlockData::Free;
 		}
 
@@ -524,6 +533,7 @@ namespace FlexKit
 		}*BlockTable;
 
 		size_t Size;
+		size_t blocksAllocated;
 	};
 
 
@@ -547,6 +557,8 @@ namespace FlexKit
 				BlockTable[itr] = { BlockData::UNUSED, 0 };
 
 			BlockTable[0] = { BlockData::Free, 0, uint16_t(BufferSize / AllocationFootPrint) };
+
+			allocatedBlockCount = 0;
 		}
 
 		// TODO: maybe Multi-Thread?
@@ -573,14 +585,15 @@ namespace FlexKit
 						//}
 						if(NextBlockData < Size && BlockTable[NextBlockData].state == BlockData::UNUSED)
 						{// Split Block
-							BlockTable[NextBlockData].state          = BlockData::Free;
-							BlockTable[NextBlockData].AllocationSize = static_cast<uint16_t>(BlockTable[currentBlock].AllocationSize - BlocksNeeded);
-							BlockTable[currentBlock].AllocationSize  = static_cast<uint16_t>(BlocksNeeded);
+							BlockTable[NextBlockData].state				= BlockData::Free;
+							BlockTable[NextBlockData].AllocationSize	= static_cast<uint16_t>(BlockTable[currentBlock].AllocationSize - BlocksNeeded);
+							BlockTable[currentBlock].AllocationSize		= static_cast<uint16_t>(BlocksNeeded);
 
 							FK_ASSERT(BlockTable[NextBlockData].AllocationSize);
 						}
 					}
 
+					allocatedBlockCount += BlocksNeeded;
 					return (byte*)Blocks[i].data;
 				}
 			}
@@ -615,6 +628,8 @@ namespace FlexKit
 #if _DEBUG
 			FK_ASSERT((index < Size),  "FREE ERROR!\n");
 #endif
+
+			allocatedBlockCount -= BlockTable[index].AllocationSize;
 
 			BlockTable[index].state = BlockData::Free;
 			Collapse(index);
@@ -668,6 +683,7 @@ namespace FlexKit
 		}*BlockTable;
 
 		size_t Size;
+		size_t allocatedBlockCount;
 	};
 
 
@@ -679,6 +695,19 @@ namespace FlexKit
 		size_t SmallBlock;
 		size_t MediumBlock;
 		size_t LargeBlock;
+	};
+
+
+	struct BlockAllocatorStats
+	{
+		size_t smallBlocksAllocated = -1;
+		size_t totalSmallBlocks		= -1;
+
+		size_t mediumBlocksAllocated	= -1;
+		size_t totalMediumBlocks		= -1;
+
+		size_t largeBlocksAllocated		= -1;
+		size_t totalLargeBlocks			= -1;
 	};
 
 
@@ -876,6 +905,21 @@ namespace FlexKit
 			byte* top    = ((byte*)LargeBlockAlloc.Blocks) + Large;
 
 			return(bottom <= a_ptr && a_ptr < top);
+		}
+
+		BlockAllocatorStats GetStats() const
+		{
+			BlockAllocatorStats stats;
+			stats.totalSmallBlocks		= SmallBlockAlloc.Size;
+			stats.smallBlocksAllocated	= SmallBlockAlloc.allocated;
+
+			stats.totalMediumBlocks		= MediumBlockAlloc.Size;;
+			stats.mediumBlocksAllocated = MediumBlockAlloc.blocksAllocated;
+
+			stats.totalLargeBlocks		= LargeBlockAlloc.Size;
+			stats.largeBlocksAllocated	= LargeBlockAlloc.allocatedBlockCount;
+
+			return stats;
 		}
 
 		struct iBlockAllocator : public iAllocator

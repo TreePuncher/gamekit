@@ -122,8 +122,6 @@ namespace FlexKit
 					case TextureDimension::TextureCubeMap:
 					case TextureDimension::Texture2DArray:
 					{
-						uint subResourceRange;
-
 						ctx->AddTextureBarrier(resource, currentAccess, finalAccess, currentLayout, finalLayout, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_All);
 					}	break;
 				default:
@@ -195,15 +193,6 @@ namespace FlexKit
 	void FrameGraph::AddTaskDependency(UpdateTask& task)
 	{
 		dataDependencies.push_back(&task);
-	}
-
-
-	/************************************************************************************************/
-
-	
-	void FrameGraph::UpdateFrameGraph(RenderSystem* RS, iAllocator* Temp)
-	{
-		RS->BeginSubmission();
 	}
 
 
@@ -595,6 +584,8 @@ namespace FlexKit
 		case DASUNKNOWN:
 			return DeviceLayout_Unknown;
 		}
+
+		std::unreachable();
 	}
 
 	FrameResourceHandle  FrameGraphNodeBuilder::AcquireVirtualResource(const GPUResourceDesc& desc, DeviceAccessState access, VirtualResourceScope lifeSpan)
@@ -712,18 +703,6 @@ namespace FlexKit
 				temporaryObjects.push_back(outputObject);
 			}
 
-			/*
-			struct LocallyTrackedResource
-			{
-				FrameResourceHandle resource;
-				DeviceAccessState	access;
-				DeviceLayout		layout;
-
-				DeviceAccessState	finalAccess;
-				DeviceLayout		finalLayout;
-			};
-			*/
-
 			acquiredResources.push_back({ virtualResource, overlap });
 			node.subNodeTracking.push_back({
 				.resource		= virtualResourceHandle,
@@ -731,6 +710,8 @@ namespace FlexKit
 				.layout			= layout,
 				.finalAccess	= access,
 				.finalLayout	= layout });
+
+			resources->virtualResourceCount++;
 
 			return virtualResourceHandle;
 		}
@@ -877,6 +858,8 @@ namespace FlexKit
 		acquiredResources.push_back({ virtualResource, overlap });
 		//Node.subNodeTracking.push_back({ virtualResourceHandle, initialState, initialState });
 
+		resources->virtualResourceCount++;
+
 		return  virtualResourceHandle;
 	}
 
@@ -957,6 +940,25 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	FrameResourceHandle	FrameGraphNodeBuilder::ReadBack(ReadBackResourceHandle readBackBuffer)
+	{
+		FrameResourceHandle resource = context.frameResources.AddReadBackBuffer(readBackBuffer);
+
+		auto& object_ref = resources->objects[resource];
+		object_ref.lastUsers.push_back(node.handle);
+
+		FrameObjectLink dependency{ resource, node.handle };
+		context.AddWriteable(dependency);
+
+		node.subNodeTracking.push_back({ resource });
+
+		return resource;
+	}
+
+
+	/************************************************************************************************/
+
+
 	void FrameGraphNodeBuilder::SetDebugName(FrameResourceHandle handle, const char* debugName)
 	{
 		if (auto res = resources->GetResource(handle); res != InvalidHandle)
@@ -1011,26 +1013,19 @@ namespace FlexKit
 
 		Vector<FrameGraphNode*> orderedWorkList{ threadLocalAllocator };
 
-		for (auto& pass : passes)
-		{
-			auto passPVS	= pass.getPass(pass.materialPassID);
-			auto size		= passPVS->pvs.size();
-		}
-
 		auto visitNode =
 			[&](this auto self, FrameGraphNode& node) -> void
-			{
-				if (node.executed)
-					return;
+		{
+			if (node.executed)
+				return;
 
-				node.executed = true;
+			node.executed = true;
 
-				for (auto& handle : node.sources)
-					self(nodes[handle]);
+			for (auto& handle : node.sources)
+				self(nodes[handle]);
 
-				orderedWorkList.push_back(&node);
-			};
-
+			orderedWorkList.push_back(&node);
+		};
 
 		for (auto outputObject : resources.outputObjects)
 		{
@@ -1047,8 +1042,8 @@ namespace FlexKit
 		// Retire resource at last user
 		for (auto& resource : resources.objects)
 		{
-			if (resource.type			== OT_Virtual &&
-				resource.virtualState	== VirtualResourceState::Virtual_Created)
+			if (resource.type == OT_Virtual &&
+				resource.virtualState == VirtualResourceState::Virtual_Created)
 			{
 				auto& users = resource.lastUsers;
 
@@ -1065,18 +1060,15 @@ namespace FlexKit
 				if (r_itr >= orderedWorkList.begin())
 				{
 					FrameObjectLink outputObject;
-					outputObject.neededAccess	= resource.access;
-					outputObject.neededLayout	= resource.layout;
-					outputObject.source			= InvalidHandle;
-					outputObject.handle			= resource.handle;
+					outputObject.neededAccess = resource.access;
+					outputObject.neededLayout = resource.layout;
+					outputObject.source = InvalidHandle;
+					outputObject.handle = resource.handle;
 
 					(*r_itr)->retiredObjects.push_back(outputObject);
 				}
-				else // All users were pruned, mark for final release
-				{
-					resource.virtualState = VirtualResourceState::Virtual_Released;
-				}
 
+				resource.virtualState = VirtualResourceState::Virtual_Released;
 				resource.pool->Release(resource.shaderResource, false);
 			}
 		}
@@ -1096,55 +1088,78 @@ namespace FlexKit
 			Vector<FrameGraphNodeWorkItem>::Iterator end;
 		};
 
-		const size_t workerCount	= 1;//Min(taskList.size(), renderSystem.threads.GetThreadCount());
-		const size_t blockSize		= (workList.size() / workerCount) + (workList.size() % workerCount == 0 ? 0 : 1);
-
-
 		static_vector<SubmissionWorkRange, 64> workerTaskList;
-		for (size_t I = 0; I < workerCount; I++)
+
+		auto workRangeBegin = workList.begin();
+
+		size_t workBlockSize = 0;
+		for (auto itr = workList.begin(); itr < workList.end(); itr++)
 		{
+			auto& workItem = *itr;
+
+			if (workBlockSize >= 1000)
+			{
+				workerTaskList.push_back(
+					{
+						workRangeBegin,
+						itr
+					});
+
+				workRangeBegin = itr;
+				workBlockSize = 0;
+			}
+
+			workBlockSize += workItem.workWeight;
+		}
+
+		if (workRangeBegin != workList.end())
 			workerTaskList.push_back(
 				{
-					workList.begin() + Min((I + 0) * blockSize, workList.size()),
-					workList.begin() + Min((I + 1) * blockSize, workList.size())
+					workRangeBegin,
+					 workList.end()
 				});
-		}
+
+		std::atomic_uint workerCount = 0;
 
 		class RenderWorker : public iWork
 		{
 		public:
-			RenderWorker(SubmissionWorkRange IN_work, Context* IN_ctx, FrameResources& IN_resources, iAllocator& persistentAllocator) :
-				iWork		{ &persistentAllocator },
+			RenderWorker(SubmissionWorkRange IN_work, Context& IN_ctx, FrameResources& IN_resources, std::atomic_uint& IN_count) :
+				iWork		{ nullptr },
 				work		{ IN_work },
 				resources	{ IN_resources },
+				workerCount	{ IN_count },
 				ctx			{ IN_ctx } {}
 
 			void Run(iAllocator& tempAllocator) override
 			{
 				ProfileFunction();
+				workerCount++;
 
 				std::for_each(work.begin, work.end,
 					[&](auto& item)
 					{
 						ProfileFunction();
 
-						item(ctx, resources, tempAllocator);
+				item(ctx, resources, tempAllocator);
 					});
-				ctx->FlushBarriers();
+				ctx.FlushBarriers();
 			}
 
 			void Release() {}
 
+			std::atomic_uint&	workerCount;
 			SubmissionWorkRange work;
-			Context*			ctx;
+			Context&			ctx;
 			FrameResources&		resources;
 		};
 
 		static_vector<RenderWorker*, 64> workers;
 
+
 		for (auto& workerTask : workerTaskList)
 		{
-			auto& context = renderSystem.GetCommandList();
+			auto& context = renderSystem.GetCommandList(submissionTicket);
 			contexts.push_back(&context);
 
 #if USING(DEBUGGRAPHICS)
@@ -1152,23 +1167,21 @@ namespace FlexKit
 			context.SetDebugName(ID.c_str());
 #endif
 
-			auto& worker = threadLocalAllocator.allocate<RenderWorker>(workerTask, &context, resources, threadLocalAllocator);
+			auto& worker = threadLocalAllocator.allocate<RenderWorker>(workerTask, context, resources, workerCount);
 			workers.push_back(&worker);
 			barrier.AddWork(worker);
 		}
 
-		if (!contexts.size())
-			return;
-
-		auto& ctx = *contexts.front();
-
 		resourceContext.WaitFor();
 
-		for (auto& worker : workers)
-			threads.AddWork(*worker);
+		for (auto worker : workers)
+			threads.AddWork(worker);
 
-		barrier.Join();
+		barrier.JoinLocal();
 
+		if (barrier.GetPendingWorkCount() != 0)
+			DebugBreak();
+		
 		UpdateResourceFinalState();
 
 		renderSystem.Submit(contexts);
@@ -1179,9 +1192,9 @@ namespace FlexKit
 	{
 		struct SubmitData
 		{
-			FrameGraph*		    frameGraph;
-			RenderSystem*	    renderSystem;
-			RenderWindow*	    renderWindow;
+			FrameGraph*		frameGraph;
+			RenderSystem*	renderSystem;
+			RenderWindow*	renderWindow;
 		};
 
 		auto framegraph = this;
@@ -1220,6 +1233,8 @@ namespace FlexKit
 
 		auto& Objects = resources.objects;
 
+		size_t resourcesFreed = 0;
+
 		for (auto& I : Objects)
 		{
 			switch (I.type)
@@ -1248,15 +1263,20 @@ namespace FlexKit
 				auto shaderResource = I.shaderResource;
 				auto layout			= I.layout;
 
-				resources.renderSystem.SetObjectLayout(shaderResource, layout);
-
-				if (I.virtualState == VirtualResourceState::Virtual_Released) {
+				if (I.virtualState == VirtualResourceState::Virtual_Released)
+				{
 					resources.renderSystem.ReleaseResource(I.shaderResource);
+					resourcesFreed++;
 				}
-			}   break;
+			}	break;
 			default:
 				FK_ASSERT(false, "UN-IMPLEMENTED BLOCK!");
 			}
+		}
+
+		if (resources.virtualResourceCount != resourcesFreed)
+		{
+			DebugBreak();
 		}
 	}
 

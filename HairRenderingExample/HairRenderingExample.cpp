@@ -2,11 +2,12 @@
 #include <Win32Graphics.h>
 #include <FrameGraph.h>
 #include <fmt/printf.h>
+#include <fmt/format.h>
 #include <cstdio>
 #include <fp16.h>
 #include <scn/scn.h>
 #include <ranges>
-
+#include <imgui.h>
 
 /************************************************************************************************/
 
@@ -33,7 +34,7 @@ HairStyle CreateStyle(FlexKit::RenderSystem& renderSystem, const uint32_t strand
 	style.hairBuffers[1] = renderSystem.CreateUAVBufferResource(bufferSize, false);
 
 	style.strandbuffer	= renderSystem.CreateUAVBufferResource(bufferSize, false);
-	style.styleBuffer	= renderSystem.CreateGPUResource(GPUResourceDesc::StructuredResource(bufferSize));
+	style.styleBuffer	= renderSystem.CreateGPUResource(GPUResourceDesc::StructuredResource((uint32_t)bufferSize));
 
 	style.strandCount	= strandCount;
 	style.strandLength	= strandLength;
@@ -56,7 +57,7 @@ void ReleaseStyle(HairStyle& style, FlexKit::RenderSystem& renderSystem)
 
 void UploadHairStyle(HairStyle& style, const ImportedStyleBuffer& stylePoints, FlexKit::RenderSystem& renderSystem)
 {
-	auto copyCtx = renderSystem.GetImmediateUploadQueue();
+	auto copyCtx = renderSystem.GetImmediateCopyQueue();
 	renderSystem.UpdateResourceByUploadQueue(renderSystem.GetDeviceResource(style.hairBuffers[0]), copyCtx, stylePoints.controlPoints.data(), stylePoints.controlPoints.ByteSize(), 1, DASCommon);
 	renderSystem.UpdateResourceByUploadQueue(renderSystem.GetDeviceResource(style.styleBuffer), copyCtx, stylePoints.controlPoints.data(), stylePoints.controlPoints.ByteSize(), 1, DASCommon);
 
@@ -263,7 +264,8 @@ HairRenderingTest::HairRenderingTest(GameFramework& IN_framework) :
 	strandRenderRootSignature	{ IN_framework.core.GetBlockMemory() },
 	cameras						{ IN_framework.core.GetBlockMemory() },
 	runOnceQueue				{ IN_framework.core.GetBlockMemory() },
-	depthBuffer					{ IN_framework.GetRenderSystem().CreateDepthBuffer({ 1920, 1080 }, true) }
+	depthBuffer					{ IN_framework.GetRenderSystem().CreateDepthBuffer({ 1920, 1080 }, true) },
+	debugUI						{ IN_framework.GetRenderSystem(), IN_framework.core.GetBlockMemory() }
 {
 	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
 		renderWindow = std::move(res.value());
@@ -462,10 +464,11 @@ void HairRenderingTest::ClearStyleBuffers(HairStyle& style)
 /************************************************************************************************/
 
 
-UpdateTask* HairRenderingTest::Update(FlexKit::EngineCore&, FlexKit::UpdateDispatcher& dispatcher, double dT)
+UpdateTask* HairRenderingTest::Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
 	UpdateInput();
 	renderWindow.UpdateCapturedMouseInput(dT);
+
 
 	auto cameraNode = cameras.GetCamera(camera).Node;
 	FlexKit::Yaw(cameraRig, pi / 8.0f * dT);
@@ -476,6 +479,34 @@ UpdateTask* HairRenderingTest::Update(FlexKit::EngineCore&, FlexKit::UpdateDispa
 	auto& cameraUpdate		= cameras.QueueCameraUpdate(dispatcher);
 
 	cameraUpdate.AddInput(transformUpdate);
+
+	debugUI.Update(renderWindow, core, dispatcher, dT);
+
+	counter++;
+
+
+	ImGui::NewFrame();
+	ImGui::Begin("Hello");
+
+	auto str = fmt::format(
+		"FrameRate: {}hz\n"
+		"Update Time: {}ms\n",
+		fps, framework.stats.du_average);
+
+	ImGui::Text(str.c_str());
+
+	ImGui::End();
+	ImGui::EndFrame();
+	ImGui::Render();
+
+	T += dT;
+
+	if (T >= 1.0f)
+	{
+		T = 0;
+		fps = counter;
+		counter = 0;
+	}
 
 	return &cameraUpdate;
 }
@@ -529,13 +560,13 @@ void HairRenderingTest::Simulate(
 				uint32_t strandLength;
 			} shaderConstants
 			{
-				.dT				= (float)1.0 / 60.0f,
+				.dT				= (float)dT,
 				.T				= (float)T,
 				.strandCount	= style.strandCount,
 				.strandLength	= style.strandLength
 			};
 
-			T += 1.0/60.0f;
+			T += dT;
 
 			ctx.SetComputeRootSignature(rootSignature);
 
@@ -694,6 +725,10 @@ UpdateTask* HairRenderingTest::Draw(
 	double						dT,
 	FrameGraph&					frameGraph)
 {
+	core.RenderSystem.ResetConstantBuffer(constantBuffer);
+
+	frameGraph.AddOutput(renderWindow.GetBackBuffer());
+
 	ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), { 0.0f, 0.0f, 0.0f, 0.0f });
 	ClearVertexBuffer(frameGraph, vertexBuffer);
 	ClearDepthBuffer(frameGraph, depthBuffer, 1.0f);
@@ -711,6 +746,8 @@ UpdateTask* HairRenderingTest::Draw(
 	if(debugVis)
 		DrawDebug(update, core, dispatcher, dT, frameGraph, reserveVB, reserveCB);
 
+	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow.GetBackBuffer());
+
 	PresentBackBuffer(frameGraph, renderWindow);
 
 	return nullptr;
@@ -722,7 +759,7 @@ UpdateTask* HairRenderingTest::Draw(
 
 void HairRenderingTest::PostDrawUpdate(EngineCore&, double dT)
 {
-	renderWindow.Present(4);
+	renderWindow.Present();
 }
 
 
@@ -765,7 +802,7 @@ bool HairRenderingTest::EventHandler(Event evt)
 		framework.GetRenderSystem().QueuePSOLoad(ApplyEdgeLengthConstraintPSO);
 	}
 
-	return false;
+	return debugUI.HandleInput(evt);
 }
 
 
