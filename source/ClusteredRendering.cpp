@@ -956,7 +956,7 @@ namespace FlexKit
 							{ WS_position, pointLight.R } });
 				}
 
-				const uint32_t uploadSize = pointLightValues.size() * sizeof(GPUPointLight);
+				const uint32_t uploadSize = (uint32_t)pointLightValues.size() * sizeof(GPUPointLight);
 				const ConstantBufferDataSet pointLights_GPU{ (char*)pointLightValues.data(), uploadSize, constantBuffer };
 
 				resources.UAV(data.counterObject, ctx);
@@ -1136,9 +1136,9 @@ namespace FlexKit
 
 				ctx.EndEvent_DEBUG();
 
-
 				if(data.readBackHandle != InvalidHandle && false)
 				{
+					/*
 					ctx.BeginEvent_DEBUG("Resolution Match Shadow Maps");
 					FK_LOG_INFO("ReadBack Buffer : %u", data.readBackHandle.to_uint());
 
@@ -1186,7 +1186,6 @@ namespace FlexKit
 						{ DASCopyDest },
 						{ DASCopyDest });
 
-					/*
 					if(false)
 					ctx.QueueReadBack(data.readBackHandle,
 						[&, &readBackBuffers = readBackBuffers, &renderSystem = *ctx.renderSystem](ReadBackResourceHandle readBack)
@@ -1245,7 +1244,6 @@ namespace FlexKit
 			[animationPoses](GBufferPass& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
 				ProfileFunction();
-
 				struct EntityPoses
 				{
 					float4x4 transforms[512];
@@ -1496,17 +1494,18 @@ namespace FlexKit
 
 						const auto& meshes		= pvs.brush->meshes;
 						const size_t meshCount	= meshes.size();
-						for (auto I = 0; I < meshCount; I++)
+						for (size_t I = 0; I < meshCount; I++)
 						{
+
 							const auto&		mesh		= meshes[I];
 							auto*			triMesh		= GetMeshResource(mesh);
-							const size_t	lodLevel	= pvs.LODlevel[I];
+							const uint32_t	lodLevel	= pvs.LODlevel[I];
 
 							if (triMesh != prevMesh)
 							{
 								prevMesh = triMesh;
 
-								ctx.AddIndexBuffer(triMesh, triMesh->GetHighestLoadedLodIdx());
+								ctx.AddIndexBuffer(triMesh, lodLevel);
 								ctx.AddVertexBuffers(
 									triMesh,
 									lodLevel,
@@ -1549,7 +1548,6 @@ namespace FlexKit
 
 				ctx.EndEvent_DEBUG();
 				ctx.EndEvent_DEBUG();
-
 				//ctx.TimeStamp(timeStats, 1u);
 			}
 			);

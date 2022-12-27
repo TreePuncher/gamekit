@@ -12,6 +12,7 @@ namespace FlexKit
 
 
 	class RenderSystem;
+	struct EntityConstants;
 
 
 	/************************************************************************************************/
@@ -272,10 +273,10 @@ namespace FlexKit
 
 	struct AllocatedBlock
 	{
-		TileID_t        tileID;
-		ResourceHandle  resource;
-		uint32_t        offset;
-		uint32_t        tileIdx;
+		TileID_t		tileID;
+		ResourceHandle	resource;
+		uint32_t		offset;
+		uint32_t		tileIdx;
 	};
 
 	struct gpuTileID
@@ -363,7 +364,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-
 	class FLEXKITAPI TextureStreamingEngine
 	{
 	public:
@@ -374,14 +374,15 @@ namespace FlexKit
 
 
 		void TextureFeedbackPass(
-			UpdateDispatcher&               dispatcher,
-			FrameGraph&                     frameGraph,
-			CameraHandle                    camera,
-			uint2                           renderTargetWH,
-			GatherPassesTask&               passes,
-			GatherSkinnedTask&              skinnedModelsGather,
-			ReserveConstantBufferFunction&  reserveCB,
-			ReserveVertexBufferFunction&    reserveVB);
+			UpdateDispatcher&				dispatcher,
+			FrameGraph&						frameGraph,
+			CameraHandle					camera,
+			uint2							renderTargetWH,
+			EntityConstants&				constants,
+			GatherPassesTask&				passes,
+			GatherSkinnedTask&				skinnedModelsGather,
+			ReserveConstantBufferFunction&	reserveCB,
+			ReserveVertexBufferFunction&	reserveVB);
 
 
 		struct TextureStreamUpdate : public FlexKit::iWork
@@ -399,31 +400,23 @@ namespace FlexKit
 			TextureStreamingEngine& textureStreamEngine;
 			ReadBackResourceHandle  resource;
 
-			iAllocator* allocator       = nullptr;
+			iAllocator* allocator	= nullptr;
 		};
 
 
-		void LoadLowestLevel(ResourceHandle textureResource)
-		{
-			const auto mipCount     = renderSystem.GetTextureMipCount(textureResource);
-			const auto tileID       = CreateTileID(0, 0, mipCount - 1);
-			const gpuTileID gpuID   = { tileID, textureResource };
+		void LoadLowestLevel(ResourceHandle textureResource, CopyContextHandle copyQueue);
 
-			textureBlockAllocator.AllocateBlocks(&gpuID, &gpuID + 1, allocator);
-		}
+		gpuTileList		UpdateTileStates	(const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
+		BlockAllocation	AllocateTiles		(const gpuTileID* begin, const gpuTileID* end);
 
-
-		gpuTileList     UpdateTileStates    (const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
-		BlockAllocation AllocateTiles       (const gpuTileID* begin, const gpuTileID* end);
-
-		void                        BindAsset           (const AssetHandle textureAsset, const ResourceHandle  resource);
-		std::optional<AssetHandle>  GetResourceAsset    (const ResourceHandle  resource) const;
+		void						BindAsset			(const AssetHandle textureAsset, const ResourceHandle  resource);
+		std::optional<AssetHandle>	GetResourceAsset	(const ResourceHandle  resource) const;
 
 		void PostUpdatedTiles(const BlockAllocation& blocks, iAllocator& threadLocalAllocator);
 		void MarkUpdateCompleted() { updateInProgress = false; taskInProgress = false; }
 
-		float debug_GetPassTime()       const { return passTime; }
-		float debug_GetUpdateTime()     const { return updateTime; }
+		float debug_GetPassTime()	const { return passTime; }
+		float debug_GetUpdateTime()	const { return updateTime; }
 
 	private:
 

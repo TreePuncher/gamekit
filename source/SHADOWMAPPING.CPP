@@ -237,10 +237,10 @@ namespace FlexKit
 
 				size_t idx = 0;
 
-				auto& lights        = PointLightComponent::GetComponent();
-				auto itr            = dirtyList.begin();
-				const auto end      = dirtyList.end();
-				const auto frameID  = renderSystem.GetCurrentFrame();
+				auto&			lights		= PointLightComponent::GetComponent();
+				auto			itr			= dirtyList.begin();
+				const auto		end			= dirtyList.end();
+				const uint64_t	frameID		= renderSystem.graphicsSubmissionCounter;
 
 				for (;itr != end; itr++)
 				{
@@ -285,7 +285,7 @@ namespace FlexKit
 						light.shadowMap     = shadowMap;
 
 #if USING(DEBUGGRAPHICS)
-						auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.GetCurrentFrame(), light.shadowMap);
+						auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.graphicsSubmissionCounter, light.shadowMap);
 						renderSystem.SetDebugName(shadowMap, debugName.c_str());
 #endif
 					});

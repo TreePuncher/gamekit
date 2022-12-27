@@ -544,13 +544,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct PassPVS
-	{
-		PassHandle  pass;
-		PVS         pvs;
-	};
-
-
 	auto FindPass(auto begin, auto end, PassHandle passID)
 	{
 		if (auto res = std::find_if(begin, end,

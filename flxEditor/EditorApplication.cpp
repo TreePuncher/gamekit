@@ -140,7 +140,7 @@ struct TextureResourceViewer : public IResourceViewer
 		FlexKit::TextureBuffer  uploadBuffer{ WH, (FlexKit::byte*)textureBuffer, textureResource->MIPlevels[0].bufferSize, 16, nullptr };
 
 		auto& renderSystem	= renderer.framework.GetRenderSystem();
-		auto queue			= renderSystem.GetImmediateUploadQueue();
+		auto queue			= renderSystem.GetImmediateCopyQueue();
 		auto texture		= FlexKit::MoveTextureBufferToVRAM(renderSystem, queue, &uploadBuffer, FlexKit::DeviceFormat::R32G32B32A32_FLOAT);
 
 		auto docklet		= new QDockWidget{ parent };

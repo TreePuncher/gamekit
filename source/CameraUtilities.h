@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2019 Robert May
+Copyright (c) 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -48,7 +48,7 @@ namespace FlexKit
 	};
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	class OrbitCameraBehavior :
@@ -67,7 +67,7 @@ namespace FlexKit
 		void Roll				(float Degree);
 		void Rotate				(float3 xyz); // Three Angles
 
-		void HandleEvent(FlexKit::Event evt);
+		void HandleEvent(const FlexKit::Event& evt);
 
 		Quaternion	GetOrientation();
 		float3		GetForwardVector();
@@ -82,9 +82,9 @@ namespace FlexKit
 		NodeHandle		rollNode;
 		float			moveRate;
 
-		float3          velocity        = 0;
-		float           acceleration    = 50;
-		float           drag            = 5.0;
+		float3			velocity		= 0;
+		float			acceleration	= 50;
+		float			drag			= 5.0;
 
 		struct KeyStates
 		{
@@ -106,11 +106,28 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void OrbitCameraUpdate(
+		GameObject&		gameObject,
+		MouseInputState	mouseState,
+		float			dt);
+
+	void OrbitCameraHandleEvent(
+		GameObject&		gameObject,
+		const Event&	evt);
+
+	void OrbitCameraTranslate(
+		GameObject&		gameObject,
+		const float3	xyz);
+
+	void OrbitCameraYaw(
+		GameObject&		gameObject,
+		const float		t);
+
 	UpdateTask&	QueueOrbitCameraUpdateTask(
-        UpdateDispatcher&       dispatcher,
-        OrbitCameraBehavior&    orbitCamera,
-        MouseInputState			mouseState,
-        float					dt);
+		UpdateDispatcher&		dispatcher,
+		OrbitCameraBehavior&	orbitCamera,
+		MouseInputState			mouseState,
+		float					dt);
 
 
 }	/************************************************************************************************/

@@ -27,7 +27,7 @@ namespace FlexKit
 	struct Event;
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	class KeyEventContainer
@@ -55,7 +55,7 @@ namespace FlexKit
 	};
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	class MouseInputOberver
@@ -85,7 +85,7 @@ namespace FlexKit
 	};
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	class InputInterface
@@ -125,25 +125,25 @@ namespace FlexKit
 	};
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    struct MouseInputState
-    {
-        FlexKit::int2	dPos = { 0, 0 };
-        FlexKit::float2	Normalized_dPos = { 0, 0 };
-        FlexKit::float2	Position = { 0, 0 };
-        FlexKit::float2	NormalizedPos = { 0, 0 };
-        FlexKit::float2	NormalizedScreenCord = { 0, 0 };
+	struct MouseInputState
+	{
+		FlexKit::int2	dPos = { 0, 0 };
+		FlexKit::float2	Normalized_dPos = { 0, 0 };
+		FlexKit::float2	Position = { 0, 0 };
+		FlexKit::float2	NormalizedPos = { 0, 0 };
+		FlexKit::float2	NormalizedScreenCord = { 0, 0 };
 
 
-        bool LMB_Pressed    = false;
-        bool RMB_Pressed    = false;
-        bool Enabled        = false;
+		bool LMB_Pressed	= false;
+		bool RMB_Pressed	= false;
+		bool Enabled		= false;
 
-        double LMB_Duration = 0.0;
-        double RMB_Duration = 0.0;
-    };
+		double LMB_Duration = 0.0;
+		double RMB_Duration = 0.0;
+	};
 
 
 
@@ -152,7 +152,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

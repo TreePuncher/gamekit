@@ -179,8 +179,8 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
 		pl.SetIntensity(pl.GetIntensity() * 10.0f);
 	}
 
-	//playerCharacterModel    = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), CharacterModelAsset);
-	//auto model              = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), PlaceHolderAsset);
+	//playerCharacterModel    = LoadTriMeshIntoTable(renderSystem.GetImmediateCopyQueue(), CharacterModelAsset);
+	//auto model              = LoadTriMeshIntoTable(renderSystem.GetImmediateCopyQueue(), PlaceHolderAsset);
 
 	//auto& ikNodeView    = IKTarget.AddView<SceneNodeView<>>();
 	//auto& ikBrushView   = IKTarget.AddView<BrushView>(model, GetSceneNode(IKTarget));
@@ -359,7 +359,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 		auto [triMesh, loaded] = FindMesh(7894);
 
 		if (!loaded)
-			triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateUploadQueue(), 7894);
+			triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateCopyQueue(), 7894);
 
 
 		DrawSceneDescription sceneDesc =

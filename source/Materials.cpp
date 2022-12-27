@@ -77,7 +77,7 @@ namespace FlexKit
 		streamEngine.BindAsset(textureAsset, textureResource);
 
 		if(loadLowest)
-			streamEngine.LoadLowestLevel(textureResource);
+			streamEngine.LoadLowestLevel(textureResource, renderSystem.GetImmediateCopyQueue());
 
 		const auto idx = textures.push_back({ 1, textureResource, textureAsset });
 
@@ -609,13 +609,13 @@ namespace FlexKit
 				AddSubMaterial(newMaterial, newSubMaterial);
 
 				for (auto& texture : subMaterial.textures)
-					PushTexture(newSubMaterial, texture, rdCtx);
+					PushTexture(newSubMaterial, texture, rdCtx, true);
 			}
 		}
 		else if (materialBlob.materials.size() == 1)
 		{
 			for (auto& texture : materialBlob.materials[0].textures)
-				PushTexture(newMaterial, texture, rdCtx);
+				PushTexture(newMaterial, texture, rdCtx, true);
 		}
 
 		gameObject.AddView<MaterialView>(newMaterial);

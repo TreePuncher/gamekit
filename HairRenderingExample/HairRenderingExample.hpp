@@ -4,6 +4,8 @@
 #include <Win32Graphics.h>
 #include <filesystem>
 #include <expected>
+#include <DebugUI.h>
+
 
 /************************************************************************************************/
 
@@ -113,8 +115,13 @@ public:
 
 	bool							pause		= false;
 	bool							debugVis	= false;
+	size_t							fps			= 0;
+	size_t							counter		= 0;
+	double							T			= 0.0;
 
 	HairStyle						style;
+
+	FlexKit::ImGUIIntegrator		debugUI;
 
 	FlexKit::NodeHandle				cameraRig;
 	FlexKit::CameraHandle			camera;

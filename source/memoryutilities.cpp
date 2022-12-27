@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -48,9 +48,9 @@ namespace FlexKit
 
 	void* StackAllocator::malloc(size_t s)
 	{
-        //std::unique_lock l{ m };
+		//std::unique_lock l{ m };
 
-        const auto adjustedSize = s + 64;
+		const auto adjustedSize = s + 64;
 
 		void* memory = nullptr;
 		if (used + adjustedSize < size)
@@ -86,7 +86,7 @@ namespace FlexKit
 
 	void StackAllocator::clear()
 	{
-        //std::unique_lock l{ m };
+		//std::unique_lock l{ m };
 
 		used = 0;
 #ifdef _DEBUG
@@ -104,19 +104,19 @@ namespace FlexKit
 		WCHAR Temp[512];
 		mbstowcs_s(&newSize, Temp, strLoc, ::strlen(strLoc));
 
-        FILE* file;
-        fopen_s(&file, strLoc, "rb");
+		FILE* file;
+		fopen_s(&file, strLoc, "rb");
 
-        if (!file)
-            return false;
+		if (!file)
+			return false;
 
-        auto res = fread(buffer, 1, bufferSize, file);
+		auto res = fread(buffer, 1, bufferSize, file);
 
-        //__debugbreak();
+		//__debugbreak();
 
-        return true;
+		return true;
 
-        /*
+		/*
 		auto F = CreateFile(Temp, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 		LARGE_INTEGER LSize; 
 		auto res        = ::GetFileSizeEx(F, &LSize);
@@ -145,7 +145,7 @@ namespace FlexKit
 			return (BytesRead == Size);
 
 		}
-        */
+		*/
 
 		return false;
 	}

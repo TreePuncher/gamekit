@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TextRendering.h"
 #include "TextureUtilities.h"
 #include "Logging.h"
+#include <fmt/printf.h>
 
 // Todo List
 //	Gameplay:
@@ -239,8 +240,6 @@ namespace FlexKit
 
 		FrameGraph&	frameGraph = TempMemory->allocate_aligned<FrameGraph>(core.RenderSystem, core.Threads, TempMemory);
 
-		frameGraph.UpdateFrameGraph(core.RenderSystem, core.GetTempMemory());
-
 		subStates.back()->Draw(update, core, dispatcher, dT, frameGraph);
 
 		Free_DelayedReleaseResources(core.RenderSystem);
@@ -270,6 +269,7 @@ namespace FlexKit
 
 
 		FK_LOG_9("Frame Begin");
+
 		if (!subStates.size() && !deferredPushes.size())
 		{
 			FK_LOG_9("State stack empty!");
@@ -310,6 +310,7 @@ namespace FlexKit
 				subStates.pop_back();
 			}
 		}
+
 		deferredFrees.clear();
 
 		// Memory -----------------------------------------------------------------------------------
@@ -401,6 +402,20 @@ namespace FlexKit
 				renderTarget, 
 				core.GetTempMemory(), 
 				Format);
+	}
+
+
+	void GameFramework::PrintMemoryStats() const
+	{
+		const auto stats = core.GetBlockMemory().GetStats();
+
+		fmt::print(
+			"SmallBlocks: {} / {}\n"
+			"MediumBlocks: {} / {}\n"
+			"LargeBlocks: {} / {}\n",
+			stats.smallBlocksAllocated, stats.totalSmallBlocks,
+			stats.mediumBlocksAllocated, stats.totalMediumBlocks,
+			stats.largeBlocksAllocated, stats.totalLargeBlocks);
 	}
 
 

@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2018 Robert May
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -146,7 +146,7 @@ namespace FlexKit
     FLEXKITAPI LT_Entry		GetLocal					( NodeHandle Node );
     FLEXKITAPI float3		GetLocalScale				( NodeHandle Node );
     FLEXKITAPI void			GetTransform				( NodeHandle Node,	DirectX::XMMATRIX* __restrict out );
-    FLEXKITAPI float4x4     GetWT                       ( NodeHandle Node );
+    FLEXKITAPI float4x4		GetWT						( NodeHandle Node );
     FLEXKITAPI void			GetTransform				( NodeHandle node,	float4x4* __restrict out );
     FLEXKITAPI Quaternion	GetOrientation				( NodeHandle Node );
     FLEXKITAPI float3		GetPositionW				( NodeHandle Node );

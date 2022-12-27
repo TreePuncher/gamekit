@@ -1092,7 +1092,7 @@ namespace FlexKit
 			GeometryTable.GeometryIDs.push_back		(nullptr);
 			GeometryTable.Guids.push_back			(0);
 			GeometryTable.ReferenceCounts.push_back	(0);
-			GeometryTable.Handle.push_back          (Handle);
+			GeometryTable.Handle.push_back			(Handle);
 
 
 			if(Buffer2TriMesh(GeometryTable.renderSystem, handle, buffer, bufferSize, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
@@ -1297,7 +1297,7 @@ namespace FlexKit
 						strcpy_s(Fonts[I].FontDir, BufferSize, dir);
 						strcat_s(Fonts[I].FontDir, BufferSize, FONTPATH + I * FontPathLen);
 
-						auto Texture					= LoadDDSTextureFromFile(Fonts[I].FontDir, RS, RS->GetImmediateUploadQueue(), outMem);
+						auto Texture					= LoadDDSTextureFromFile(Fonts[I].FontDir, RS, RS->GetImmediateCopyQueue(), outMem);
 						Fonts[I].Texture				= Texture;
 						Fonts[I].TextSheetDimensions	= { CB.ScaleW, CB.ScaleH };
 					}

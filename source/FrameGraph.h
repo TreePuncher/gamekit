@@ -76,6 +76,7 @@ namespace FlexKit
 		OT_Query,
 		OT_StreamOut,
 		OT_Resource,
+		OT_ReadBack,
 		OT_VertexBuffer,
 		OT_IndirectArguments,
 		OT_Virtual,
@@ -119,73 +120,87 @@ namespace FlexKit
 
 		union
 		{
-			ResourceHandle		shaderResource;
-			CBPushBuffer*		constantBuffer;
-			QueryHandle			query;
-			SOResourceHandle	SOBuffer;
+			ResourceHandle			shaderResource;
+			CBPushBuffer*			constantBuffer;
+			QueryHandle				query;
+			ReadBackResourceHandle	readBackBuffer;
+			SOResourceHandle		SOBuffer;
 		};
 
 
 		static FrameObject PixelShaderResourceObject(ResourceHandle resource, TextureDimension dimensions, iAllocator& allocator)
 		{
-			FrameObject RenderTarget;
-			RenderTarget.layout			= DeviceLayout::DeviceLayout_ShaderResource;
-			RenderTarget.type			= OT_RenderTarget;
-			RenderTarget.shaderResource = resource;
-			RenderTarget.dimensions		= dimensions;
-			RenderTarget.lastUsers		= Vector<FrameGraphNodeHandle>{ allocator };
+			FrameObject shaderResource;
+			shaderResource.layout			= DeviceLayout::DeviceLayout_ShaderResource;
+			shaderResource.type				= OT_RenderTarget;
+			shaderResource.shaderResource	= resource;
+			shaderResource.dimensions		= dimensions;
+			shaderResource.lastUsers		= Vector<FrameGraphNodeHandle>{ allocator };
 
-			return RenderTarget;
+			return shaderResource;
 		}
 
 
 		static FrameObject RenderTargetObject(ResourceHandle resource, iAllocator& allocator)
 		{
-			FrameObject RenderTarget;
-			RenderTarget.layout			= DeviceLayout::DeviceLayout_RenderTarget;
-			RenderTarget.type			= OT_RenderTarget;
-			RenderTarget.shaderResource = resource;
-			RenderTarget.dimensions		= TextureDimension::Texture2D;
-			RenderTarget.lastUsers		= Vector<FrameGraphNodeHandle>{ allocator };
+			FrameObject renderTarget;
+			renderTarget.layout			= DeviceLayout::DeviceLayout_RenderTarget;
+			renderTarget.type			= OT_RenderTarget;
+			renderTarget.shaderResource = resource;
+			renderTarget.dimensions		= TextureDimension::Texture2D;
+			renderTarget.lastUsers		= Vector<FrameGraphNodeHandle>{ allocator };
 
-			return RenderTarget;
+			return renderTarget;
 		}
 
 
 		static FrameObject BackBufferObject(ResourceHandle resource, iAllocator& allocator, DeviceLayout initialLayout = DeviceLayout::DeviceLayout_RenderTarget)
 		{
-			FrameObject RenderTarget;
-			RenderTarget.layout			= initialLayout;
-			RenderTarget.type			= OT_BackBuffer;
-			RenderTarget.shaderResource = resource;
-			RenderTarget.dimensions		= TextureDimension::Texture2D;
-			RenderTarget.lastUsers		= Vector<FrameGraphNodeHandle>{ allocator };
+			FrameObject renderTarget;
+			renderTarget.layout			= initialLayout;
+			renderTarget.type			= OT_BackBuffer;
+			renderTarget.shaderResource = resource;
+			renderTarget.dimensions		= TextureDimension::Texture2D;
+			renderTarget.lastUsers		= Vector<FrameGraphNodeHandle>{ allocator };
 
-			return RenderTarget;
+			return renderTarget;
 		}
 
 		static FrameObject ConstantBufferObject(FrameResourceHandle handle, iAllocator& allocator)
 		{
-			FrameObject RenderTarget;
-			RenderTarget.handle			= handle;
-			RenderTarget.type			= OT_ConstantBuffer;
-			RenderTarget.dimensions		= TextureDimension::Buffer;
-			RenderTarget.lastUsers		= Vector<FrameGraphNodeHandle>{ allocator };
+			FrameObject constantBuffer;
+			constantBuffer.handle		= handle;
+			constantBuffer.type			= OT_ConstantBuffer;
+			constantBuffer.dimensions	= TextureDimension::Buffer;
+			constantBuffer.lastUsers	= Vector<FrameGraphNodeHandle>{ allocator };
 
-			return RenderTarget;
+			return constantBuffer;
 		}
 
 
 		static FrameObject DepthBufferObject(ResourceHandle resource, DeviceLayout initialLayout, iAllocator& allocator)
 		{
-			FrameObject RenderTarget;
-			RenderTarget.layout			= initialLayout;
-			RenderTarget.type			= OT_DepthBuffer;
-			RenderTarget.shaderResource	= resource;
-			RenderTarget.dimensions		= TextureDimension::Texture2D;
-			RenderTarget.lastUsers		= Vector<FrameGraphNodeHandle>{ allocator };
+			FrameObject depthBufferTarget;
+			depthBufferTarget.layout			= initialLayout;
+			depthBufferTarget.type				= OT_DepthBuffer;
+			depthBufferTarget.shaderResource	= resource;
+			depthBufferTarget.dimensions		= TextureDimension::Texture2D;
+			depthBufferTarget.lastUsers			= Vector<FrameGraphNodeHandle>{ allocator };
 
-			return RenderTarget;
+			return depthBufferTarget;
+		}
+
+
+		static FrameObject ReadBackBufferObject(FrameResourceHandle handle, ReadBackResourceHandle readback, iAllocator& allocator)
+		{
+			FrameObject readBackBuffer;
+			readBackBuffer.handle			= handle;
+			readBackBuffer.type				= OT_ReadBack;
+			readBackBuffer.dimensions		= TextureDimension::Buffer;
+			readBackBuffer.lastUsers		= Vector<FrameGraphNodeHandle>{ allocator };
+			readBackBuffer.readBackBuffer	= readback;
+
+			return readBackBuffer;
 		}
 
 
@@ -289,6 +304,7 @@ namespace FlexKit
 		RenderSystem&	renderSystem;
 		iAllocator*		allocator;
 
+		uint32_t virtualResourceCount = 0;
 
 		/************************************************************************************************/
 
@@ -331,6 +347,20 @@ namespace FlexKit
 		{
 			auto handle = FrameResourceHandle{ (uint32_t)objects.size() };
 			objects.push_back(FrameObject::ConstantBufferObject(handle, * allocator));
+
+			return handle;
+		}
+
+
+		/************************************************************************************************/
+
+
+		FrameResourceHandle AddReadBackBuffer(ReadBackResourceHandle)
+		{
+			auto handle = FrameResourceHandle{ (uint32_t)objects.size() };
+			objects.push_back(FrameObject::ConstantBufferObject(handle, * allocator));
+
+			MarkResourceObjectAsOutput(handle);
 
 			return handle;
 		}
@@ -961,15 +991,15 @@ namespace FlexKit
 
 	struct FrameGraphNodeWorkItem
 	{
-		using FN_NodeAction = TypeErasedCallable<void (FrameGraphNode& node, FrameResources& Resources, Context& ctx, iAllocator& tempAllocator), 16>;
+		using FN_NodeAction = TypeErasedCallable<void (FrameGraphNode& node, FrameResources& Resources, Context& ctx, iAllocator& tempAllocator), 64>;
 
 		size_t			workWeight = 0;
 		FN_NodeAction	action;
 		FrameGraphNode* node;
 
-		void operator () (Context* ctx, FrameResources& resources, iAllocator& allocator)
+		void operator () (Context& ctx, FrameResources& resources, iAllocator& allocator)
 		{
-			action(*node, resources, *ctx, allocator);
+			action(*node, resources, ctx, allocator);
 		}
 
 	};
@@ -1198,6 +1228,7 @@ namespace FlexKit
 				context				{ IN_context			},
 				inputNodes			{ IN_allocator			},
 				node				{ IN_Node				},
+				nodeTable			{ IN_nodeTable			},
 				resources			{ IN_Resources			},
 				retiredObjects		{ IN_allocator			},
 				barriers			{ IN_allocator			},
@@ -1252,6 +1283,7 @@ namespace FlexKit
 		FrameResourceHandle ReadTransition	(FrameResourceHandle handle, DeviceAccessState state, std::pair<DeviceSyncPoint, DeviceSyncPoint> syncPoints = { Sync_All, Sync_All });
 		FrameResourceHandle WriteTransition	(FrameResourceHandle handle, DeviceAccessState state, std::pair<DeviceSyncPoint, DeviceSyncPoint> syncPoints = { Sync_All, Sync_All });
 
+		FrameResourceHandle	ReadBack(ReadBackResourceHandle);
 
 		void SetDebugName(FrameResourceHandle handle, const char* debugName);
 
@@ -1442,9 +1474,9 @@ namespace FlexKit
 			resourceContext		{ resources, IN_threads, RS, Temp },
 			memory				{ Temp },
 			nodes				{ Temp },
-			passes				{ Temp },
 			acquiredResources	{ Temp },
-			pendingAcquire		{ Temp } {}
+			pendingAcquire		{ Temp },
+			submissionTicket	{ RS.GetSubmissionTicket() }{}
 
 		FrameGraph				(const FrameGraph& RHS) = delete;
 		FrameGraph& operator =	(const FrameGraph& RHS) = delete;
@@ -1529,8 +1561,9 @@ namespace FlexKit
 				{
 					NodeData* data = reinterpret_cast<NodeData*>(node.nodeData);
 					auto& threadedTask = CreateWorkItem(
-						[&](auto& tempAllocator)
+						[data](auto& tempAllocator)
 						{
+							data->task(data->userData, tempAllocator);
 						}, tempAllocator);
 
 					data->creation(data->userData, resources, tempAllocator);
@@ -1556,33 +1589,85 @@ namespace FlexKit
 		}
 
 		template<typename TY_Shared, typename TY_Setup, typename TY_Draw>
-		decltype(auto) AddPass(PassDescription<TY_Shared>& shared, TY_Setup setup, TY_Draw draw)
+		decltype(auto) AddPass(PassDescription<TY_Shared>& shared, TY_Setup setupLinkage, TY_Draw draw)
 		{
-			struct PassStartData
+			struct PassData
 			{
-				TY_Shared	shared;
-				TY_Draw		draw;
-			} &start = memory->allocate_aligned<PassStartData>(std::move(std::forward<TY_Shared>(shared.sharedData)), std::move(draw));
+				TY_Shared			shared;
+				TY_Draw				draw;
+				GetPassFN			getPass;
+				PassHandle			materialPassID;
+				std::atomic_uint	refCount = 0;
+			} &start = memory->allocate_aligned<PassData>(
+									std::move(std::forward<TY_Shared>(shared.sharedData)),
+									std::move(draw),
+									std::move(shared.getPass),
+									shared.materialPassID);
 
 			auto startNodeIdx = nodes.emplace_back(
-				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& out, FlexKit::WorkBarrier& barrier, iAllocator& tempAllocator) {},
+				FrameGraphNodeHandle{ nodes.size() },
+				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& tasks_out, FlexKit::WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
+				{
+					PassData* passData = reinterpret_cast<PassData*>(node.nodeData);
+
+					const PassPVS* passPVS = passData->getPass(passData->materialPassID);
+
+					auto size		= passPVS->pvs.size();
+					auto blockCount = size / 1000 + (size % 1000 > 0 ? 1 : 0);
+					auto blockSize	= size / blockCount;
+
+					passData->refCount = blockCount;
+
+					for (size_t i = 0; i < blockCount; i++)
+					{
+						auto begin	= passPVS->pvs.begin() + Min((i + 0) * blockSize, size);
+						auto end	= passPVS->pvs.begin() + Min((i + 1) * blockSize, size);
+
+						FrameGraphNodeWorkItem newWorkItem;
+						newWorkItem.node		= &node;
+						newWorkItem.workWeight	= std::distance(begin, end);
+						newWorkItem.action	=
+								[begin, end, i, blockCount, passPVS](
+								FrameGraphNode&	node,
+								FrameResources&	resources,
+								Context&		ctx,
+								iAllocator&		localAllocator)
+							{
+								ProfileFunction();
+
+								PassData& data = *reinterpret_cast<PassData*>(node.nodeData);
+
+								if(i == 0)
+									node.HandleBarriers(resources, ctx);
+
+								LocallyTrackedObjectList localTracking{ &localAllocator };
+								localTracking = node.subNodeTracking;
+
+								ResourceHandler handler{ resources, localTracking };
+								data.draw(begin, end, *passPVS, data.shared, resources, ctx, localAllocator);
+
+								if(i == blockCount - 1)
+									node.RestoreResourceStates(&ctx, resources, localTracking);
+
+								auto refCount = data.refCount--;
+
+								if(refCount == 1)
+								{
+									ProfileFunctionLabeled(Destruction);
+									data.~PassData();
+								}
+							};
+
+						tasks_out.emplace_back(std::move(newWorkItem));
+					}
+				},
 				&start,
 				memory);
 
-			struct PassEndData
-			{
-				PassStartData&	start;
-				uint32_t		startNodeIdx;
-			} &end = memory->allocate_aligned<PassEndData>(start, (uint32_t)startNodeIdx);
 
-			FrameGraphNodeBuilder builder(dataDependencies, &resources, nodes[startNodeIdx], resourceContext, memory);
-			setup(builder, start.shared);
+			FrameGraphNodeBuilder builder(nodes, dataDependencies, &resources, nodes[startNodeIdx], resourceContext, memory);
+			setupLinkage(builder, start.shared);
 			builder.BuildNode(this);
-
-			passes.emplace_back(shared.materialPassID,
-								std::move(shared.getPass),
-								(uint32_t)startNodeIdx,
-								(uint32_t)0);
 
 			return start;
 		}
@@ -1593,29 +1678,6 @@ namespace FlexKit
 		FrameResourceHandle		AddResource	(ResourceHandle resource);
 		FrameResourceHandle		AddOutput	(ResourceHandle resource);
 
-		struct FrameGraphNodeWork
-		{
-			/*
-			FrameGraphNode::FN_NodeAction	action;
-			FrameGraphNode*					node;
-			FrameResources*					resources;
-
-			void operator () (Context* ctx, iAllocator& allocator)
-			{
-				action(*node, *resources, *ctx, allocator);
-			}
-			*/
-		};
-
-		struct FrameGraphPass
-		{
-			PassHandle	materialPassID;
-			GetPassFN	getPass;
-			uint32_t	nodeStart;
-			uint32_t	nodeEnd;
-		};
-
-		void			UpdateFrameGraph(RenderSystem* RS, iAllocator* Temp);// 
 		UpdateTask&		SubmitFrameGraph(UpdateDispatcher& dispatcher, RenderSystem* RS, iAllocator* persistentAllocator);
 
 		RenderSystem&	GetRenderSystem() { return resources.renderSystem; }
@@ -1626,9 +1688,9 @@ namespace FlexKit
 		FrameGraphResourceContext	resourceContext;
 		iAllocator*					memory;
 		Vector<FrameGraphNode>		nodes;
-		Vector<FrameGraphPass>		passes;
 		ThreadManager&				threads;
 		DataDependencyList			dataDependencies;
+		SyncPoint					submissionTicket;
 
 		void _SubmitFrameGraph(iAllocator& allocator);
 	private:
@@ -1697,16 +1759,16 @@ namespace FlexKit
 
 	inline size_t BeginNewConstantBuffer(ConstantBufferHandle CB, FrameResources& Resources)
 	{
-		return Resources.renderSystem.ConstantBuffers.AlignNext(CB, Resources.renderSystem.Fence->GetCompletedValue());
+		return Resources.renderSystem.ConstantBuffers.AlignNext(CB);
 	}
 
 
 	/************************************************************************************************/
 
 	[[deprecated]]
-	inline bool PushConstantBufferData(char* _ptr, size_t Size, ConstantBufferHandle Buffer, FrameResources& Resources)
+	inline bool PushConstantBufferData(char* _ptr, size_t size, ConstantBufferHandle buffer, FrameResources& resources)
 	{
-		const auto res = Resources.renderSystem.ConstantBuffers.Push(Buffer, _ptr, Size, Resources.renderSystem.Fence->GetCompletedValue());
+		const auto res = resources.renderSystem.ConstantBuffers.Push(buffer, _ptr, size);
 		FK_ASSERT(res, "Failed to Push Constants!");
 		return res.has_value();
 	}
@@ -1716,9 +1778,9 @@ namespace FlexKit
 
 
 	template<typename TY_CB>
-	[[deprecated]] bool PushConstantBufferData(const TY_CB& Constants, ConstantBufferHandle Buffer, FrameResources& Resources)
+	[[deprecated]] bool PushConstantBufferData(const TY_CB& constants, ConstantBufferHandle buffer, FrameResources& resources)
 	{
-		const auto res = Resources.renderSystem.ConstantBuffers.Push(Buffer, (void*)&Constants, sizeof(TY_CB), Resources.renderSystem.Fence->GetCompletedValue());
+		const auto res = resources.renderSystem.ConstantBuffers.Push(Buffer, (void*)&constants, sizeof(TY_CB));
 		FK_ASSERT(res, "Failed to Push Constants!");
 		return res.has_value();
 	}
@@ -2055,10 +2117,10 @@ namespace FlexKit
 
 
 		void AddShapeDraw(
-			DrawList&				        DrawList,
-			ReserveVertexBufferFunction&    reserveVB,
-			ReserveConstantBufferFunction&  reserveCB,
-			FrameResources&			        Resources) override
+			DrawList&						DrawList,
+			ReserveVertexBufferFunction&	reserveVB,
+			ReserveConstantBufferFunction&	reserveCB,
+			FrameResources&					Resources) override
 		{
 			auto VBBuffer   = reserveVB(sizeof(ShapeVert) * 2 * Lines.size());
 			auto range      = MakeRange(0, Lines.size());
