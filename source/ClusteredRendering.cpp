@@ -728,7 +728,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FlexKit::TypeErasedCallable<void (FrameGraph&), 48> ClusteredRender::CreateClusterBuffer(RenderSystem& renderSystem, uint2 WH, CameraHandle camera, MemoryPoolAllocator& UAVPool, ReserveConstantBufferFunction& reserveCB)
+	FlexKit::TypeErasedCallable<void (FrameGraph&), 64> ClusteredRender::CreateClusterBuffer(RenderSystem& renderSystem, uint2 WH, CameraHandle camera, MemoryPoolAllocator& UAVPool, ReserveConstantBufferFunction& reserveCB)
 	{
 		return
 			[&, camera = camera, WH = WH](FrameGraph& frameGraph)
@@ -1567,7 +1567,7 @@ namespace FlexKit
 		GBufferPass&					gbufferPass,
 		ResourceHandle					depthTarget,
 		ResourceHandle					renderTarget,
-		//ShadowMapPassData&				shadowMaps,
+		ShadowMapPassData&				shadowMaps,
 		LightBufferUpdate&				lightPass,
 		ReserveConstantBufferFunction	reserveCB,
 		ReserveVertexBufferFunction		reserveVB,
@@ -1592,6 +1592,7 @@ namespace FlexKit
 			{
 				builder.AddDataDependency(pointLightShadowMaps);
 				builder.AddDataDependency(pointLightgather);
+				builder.AddNodeDependency(shadowMaps.multiPass);
 
 				auto& renderSystem				= frameGraph.GetRenderSystem();
 
@@ -1683,9 +1684,7 @@ namespace FlexKit
 					float4(-1,   3, 0, 1),
 				};
 
-
 				const size_t descriptorTableSize = 20 + pointLightCount;
-
 
 				DescriptorHeap descHeap;
 				descHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), descriptorTableSize, &allocator);
@@ -1698,13 +1697,13 @@ namespace FlexKit
 				descHeap.SetStructuredResource(ctx, 7, resources.GetResource(data.lightListBuffer), sizeof(uint32_t));
 				descHeap.SetStructuredResource(ctx, 8, resources.NonPixelShaderResource(data.pointLightBufferObject, ctx), sizeof(GPUPointLight));
 
-				/*
 				for (size_t shadowMapIdx = 0; shadowMapIdx < pointLightCount; shadowMapIdx++)
 				{
 					auto shadowMap = lightComponent[visableLights[shadowMapIdx]].shadowMap;
-					descHeap.SetSRV(ctx, 10 + shadowMapIdx, shadowMap, DeviceFormat::R32_FLOAT);
+
+					if(shadowMap != InvalidHandle)
+						descHeap.SetSRV(ctx, 10 + shadowMapIdx, shadowMap, DeviceFormat::R32_FLOAT);
 				}
-				*/
 
 				descHeap.NullFill(ctx, descriptorTableSize);
 

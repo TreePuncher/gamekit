@@ -244,8 +244,8 @@ namespace FlexKit
 
 				for (;itr != end; itr++)
 				{
-					auto lightHandle    = *itr;
-					auto& light         = lights[lightHandle];
+					auto lightHandle	= *itr;
+					auto& light			= lights[lightHandle];
 
 					if (light.shadowMap != InvalidHandle)
 					{
@@ -263,8 +263,8 @@ namespace FlexKit
 
 				for (auto i = itr; i != end; i++)
 				{
-					auto lightHandle    = *i;
-					auto& light         = lights[lightHandle];
+					auto lightHandle	= *i;
+					auto& light			= lights[lightHandle];
 
 					if (light.shadowMap != InvalidHandle)
 					{
@@ -280,9 +280,9 @@ namespace FlexKit
 					{
 						ProfileFunction();
 
-						auto& light         = lights[lightHandle];
-						auto [shadowMap, _] = shadowMapAllocator.Acquire(GPUResourceDesc::DepthTarget({ 256, 256 }, DeviceFormat::D32_FLOAT, 6), false);
-						light.shadowMap     = shadowMap;
+						auto& light			= lights[lightHandle];
+						auto [shadowMap, _]	= shadowMapAllocator.Acquire(GPUResourceDesc::DepthTarget({ 256, 256 }, DeviceFormat::D32_FLOAT, 6), false);
+						light.shadowMap		= shadowMap;
 
 #if USING(DEBUGGRAPHICS)
 						auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.graphicsSubmissionCounter, light.shadowMap);
@@ -298,349 +298,343 @@ namespace FlexKit
 
 	ShadowMapPassData& ShadowMapper::ShadowMapPass(
 		FrameGraph&								frameGraph,
-		const PointLightShadowGatherTask&		shadowMaps,
+		const PointLightShadowGatherTask&		shadowMapsGather,
 		UpdateTask&								cameraUpdate,
 		GatherPassesTask&						gather,
-		UpdateTask&								shadowMapAcquire,
+		AcquireShadowMapTask&					shadowMapAcquire,
 		ReserveConstantBufferFunction&			reserveCB,
 		ReserveVertexBufferFunction&			reserveVB,
 		static_vector<AdditionalShadowMapPass>&	additional,
 		const double							t,
-		iAllocator*								allocator,
+		iAllocator&								tempAllocator,
 		AnimationPoseUpload*					poses)
 	{
-		auto& shadowMapPass = allocator->allocate<ShadowMapPassData>(ShadowMapPassData{ allocator->allocate<Vector<TemporaryFrameResourceHandle>>(allocator) });
+		auto& shadowMapPass = tempAllocator.allocate<ShadowMapPassData>();
 
-		constexpr size_t workerThreadCount = 3;
-		for(size_t I = 0; I < workerThreadCount; I++)
-			frameGraph.AddNode<LocalShadowMapPassData>(
-					LocalShadowMapPassData{
-						I,
-						workerThreadCount,
-						shadowMaps.GetData().pointLightShadows,
-						shadowMapPass,
-						reserveCB,
-						reserveVB,
-						additional
-					},
-					[&](FrameGraphNodeBuilder& builder, LocalShadowMapPassData& data)
+		struct Common_Data
+		{
+			ReserveConstantBufferFunction	reserveCB;
+			ReserveVertexBufferFunction		reserveVB;
+			FrameResourceHandle				shadowMapTarget;
+		};
+
+		auto& pointLights = PointLightComponent::GetComponent();
+
+		auto& shadowMap_data	= shadowMapsGather.GetData();
+		auto& shadowMaps		= shadowMap_data.pointLightShadows;
+
+		struct PassData
+		{
+			ResourceHandle		renderTarget;
+			PointLightHandle	pointLightHandle;
+			CubeMapState*		shadowMapData;
+		};
+
+		auto getPasses =
+			[&](iAllocator& allocator) -> Vector<PassData>
+			{
+				auto& shadowMap_data	= shadowMapsGather.GetData();
+				auto& shadowMaps		= shadowMap_data.pointLightShadows;
+
+				Vector<PassData> passes{ allocator };
+
+				for (auto lightHandle : shadowMaps)
+				{
+					auto& pointLight = pointLights[lightHandle];
+
+					if (pointLight.state != LightStateFlags::Dirty || pointLight.shadowMap == InvalidHandle)
+						continue;
+
+					passes.emplace_back(pointLight.shadowMap, lightHandle, pointLight.shadowState);
+				}
+
+				return std::move(passes);
+			};
+
+		auto getPVS =
+			[&](PassData& pass) -> std::span<VisibilityHandle>
+			{
+				return { pass.shadowMapData->visableObjects };
+			};
+
+		DataDrivenMultiPassDescription<Common_Data, PassData, VisibilityHandle> passDesc =
+		{
+			.sharedData = {
+				.reserveCB = reserveCB,
+				.reserveVB = reserveVB },
+			.getPVS		= getPVS,
+			.getPasses	= getPasses,
+		};
+
+		auto passSetupFn = [&](FrameGraphNodeBuilder& builder, Common_Data& data)
+		{
+			builder.AddDataDependency(shadowMapAcquire);
+			shadowMapPass.multiPass = builder.GetNodeHandle();
+		};
+
+		auto passDrawFN = [&, this](auto begin, auto end, std::span<VisibilityHandle> pvs, PassData& pass, Common_Data& common, FrameResources& resources, Context& ctx, iAllocator& allocator)
+		{
+			ProfileFunction();
+
+			if (begin == pvs.begin())
+			{
+				const auto initialLayout = ctx.renderSystem->GetObjectLayout(pass.renderTarget);
+
+				ctx.AddTextureBarrier(pass.renderTarget,
+					DASCommon, DASDEPTHBUFFERWRITE,
+					initialLayout, DeviceLayout_DepthStencilWrite,
+					Sync_All, Sync_All);
+
+				ctx.ClearDepthBuffer(pass.renderTarget, 1.0f);
+
+				ctx.AddTextureBarrier(pass.renderTarget,
+					DASDEPTHBUFFERWRITE, DASDEPTHBUFFERWRITE,
+					DeviceLayout_DepthStencilWrite, DeviceLayout_DepthStencilWrite,
+					Sync_All, Sync_DepthStencil);
+			}
+
+			auto&			visiblityComponent	= SceneVisibilityComponent::GetComponent();
+			auto&			pointLight			= pointLights[pass.pointLightHandle];
+			const float3	pointLightPosition	= GetPositionW(pointLight.Position);
+			auto&			materials			= MaterialComponent::GetComponent();
+
+			PVS						brushes	{ allocator, (size_t)std::distance(begin, end) };
+			Vector<GameObject*>		animatedBrushes{ allocator };
+
+			for (auto itr = begin; itr < end; itr++)
+			{
+				VisibilityFields& visible = visiblityComponent[*itr];
+				auto& entity = *visible.entity;
+
+				Apply(entity,
+					[&](BrushView& view)
 					{
-						builder.AddDataDependency(cameraUpdate);
-						builder.AddDataDependency(gather);
-						builder.AddDataDependency(shadowMapAcquire);
-					},
-					[this, &gather, t = t](LocalShadowMapPassData& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
-					{
-						ProfileFunction();
+						auto passes = materials.GetPasses(view.GetMaterial());
 
-						auto shadowMapPSO = resources.GetPipelineState(SHADOWMAPPASS);
-						ctx.SetRootSignature(rootSignature);
-
-						auto& visableLights = data.pointLightShadows;
-						auto& pointLights  = PointLightComponent::GetComponent();
-					
-						Vector<ResourceHandle>          shadowMaps      { &allocator, visableLights.size() };
-						Vector<ConstantBufferDataSet>   passConstant2   { &allocator, visableLights.size() };
-
-						ctx.BeginEvent_DEBUG("Shadow Mapping");
-
-						const uint32_t workCount  = (uint32_t)(visableLights.size() / data.threadTotal) + (visableLights.size() % (uint32_t)data.threadTotal != 0 ? 1 : 0);
-						const uint32_t begin      = (uint32_t)(workCount * (uint32_t)data.threadIdx);
-						const uint32_t end        = Min(begin + workCount, (uint32_t)visableLights.size());
-
-
-						for (uint32_t I = begin; I < end; I++)
-						{
-							ProfileFunction();
-
-							ctx.BeginEvent_DEBUG("Shadow Map Pass");
-
-							auto& lightHandle   = visableLights[I];
-							auto& pointLight    = pointLights[lightHandle];
-
-							if (pointLight.state == LightStateFlags::Dirty && pointLight.shadowMap != InvalidHandle)
+						if (auto res = std::find_if(passes.begin(), passes.end(),
+							[](auto& pass)
 							{
-								pointLight.state = LightStateFlags::Clean;
-
-								const auto& visibilityComponent = SceneVisibilityComponent::GetComponent();
-								const auto& visables            = pointLight.shadowState->visableObjects;
-								const auto depthTarget          = pointLight.shadowMap;
-								const float3 pointLightPosition = GetPositionW(pointLight.Position);
-
-								if (!visables.size())
-									return;
-
-								static const Quaternion Orientations[6] = {
-									Quaternion{   0,  90, 0 }, // Right
-									Quaternion{   0, -90, 0 }, // Left
-									Quaternion{ -90,   0, 0 }, // Top
-									Quaternion{  90,   0, 0 }, // Bottom
-									Quaternion{   0, 180, 0 }, // Backward
-									Quaternion{   0,   0, 0 }, // Forward
-								};
-
-								const Frustum fustrum[] =
-								{
-									GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[0]),
-									GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[1]),
-									GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[2]),
-									GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[3]),
-									GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[4]),
-									GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[5]),
-								};
-
-								PVS                 brushes         { &allocator, visables.size() };
-								Vector<GameObject*> animatedBrushes { &allocator, visables.size() };
-
-								auto& materials = MaterialComponent::GetComponent();
-
-								for (auto& visable : visables)
-								{
-									ProfileFunctionLabeled(VISIBILITY);
-
-									auto entity = visibilityComponent[visable].entity;
-
-									Apply(*entity,
-										[&](BrushView& view)
-										{
-											auto passes = materials.GetPasses(view.GetMaterial());
-
-											if (auto res = std::find_if(passes.begin(), passes.end(),
-												[](auto& pass)
-												{
-													return pass == SHADOWMAPPASS;
-												}); res != passes.end())
-											{
-												PushPV(*entity, view.GetBrush(), brushes, pointLightPosition);
-											}
-
-											if (auto res = std::find_if(passes.begin(), passes.end(),
-												[](auto& pass)
-												{
-													return pass == SHADOWMAPANIMATEDPASS;
-												}); res != passes.end())
-											{
-												animatedBrushes.push_back(entity);
-											}
-										});
-								}
-
-								const float3 Position   = FlexKit::GetPositionW(pointLight.Position);
-								const auto matrices     = CalculateShadowMapMatrices(Position, pointLight.R, (float)t);
-
-								struct PoseConstants
-								{
-									float4x4 M[256];
-								};
-
-
-								DebugBreak();
-								//if (auto state = resources.renderSystem().GetObjectState(depthTarget); state != DASDEPTHBUFFERWRITE)
-								//	ctx.AddResourceBarrier(depthTarget, state, DASDEPTHBUFFERWRITE);
-
-
-								CBPushBuffer animatedConstantBuffer = data.reserveCB((AlignedSize<Brush::VConstantsLayout>() + AlignedSize<PoseConstants>()) * animatedBrushes.size());
-
-								const DepthStencilView_Options DSV_desc{ 0, 0, depthTarget };
-
-								ctx.ClearDepthBuffer(depthTarget, 1.0f);
-
-								ctx.SetPipelineState(shadowMapPSO);
-								ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
-								ctx.SetScissorAndViewports({ depthTarget });
-								ctx.SetRenderTargets2({}, 0, DSV_desc);
-
-								TriMeshHandle   currentMesh     = InvalidHandle;
-								size_t          currentLodIdx   = 0xffffffffffffffff;
-								size_t          indexCount      = 0;
-								BoundingSphere  BS;
-
-
-								for(uint32_t brushIdx = 0; brushIdx < (uint32_t)brushes.size(); brushIdx++)
-								{
-									auto& PV            = brushes[brushIdx];
-									const auto lodLevel = PV.LODlevel;
-									auto& meshes        = PV.brush->meshes;
-
-									const size_t meshCount = meshes.size();
-									for(size_t I = 0; I < meshCount; I++)
-									{
-										auto& mesh			= meshes[I];
-										auto meshLodLevel	= lodLevel[I];
-
-										if( currentMesh != mesh || currentLodIdx != meshLodLevel)
-										{
-											currentMesh = mesh;
-
-											auto* const triMesh = GetMeshResource(currentMesh);
-
-											currentLodIdx       = Max(meshLodLevel, triMesh->GetHighestLoadedLodIdx());
-											auto& lod           = triMesh->lods[currentLodIdx];
-											indexCount          = lod.GetIndexCount();
-
-											ctx.AddIndexBuffer(triMesh, (uint32_t)currentLodIdx);
-											ctx.AddVertexBuffers(triMesh,
-												(uint32_t)currentLodIdx,
-												{ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
-
-											BS = triMesh->BS;
-										}
-
-										const float4x4 WT   = GetWT(PV.brush->Node);
-										const float3 POS    = GetPositionW(PV.brush->Node);
-										const float4 POS_WT = POS + (WT * float4(BS.xyz(), 0)).xyz();
-										const float scale   = Max(WT[0][0], Max(WT[1][1], WT[2][2]));
-
-										auto brushBoundingSphere = BoundingSphere{ POS_WT.xyz(), BS.w * scale };
-										bool intersections[] =
-										{
-											Intersects(fustrum[0], brushBoundingSphere), // Left
-											Intersects(fustrum[1], brushBoundingSphere), // Right
-											Intersects(fustrum[2], brushBoundingSphere), // Top
-											Intersects(fustrum[3], brushBoundingSphere), // Bottom
-											Intersects(fustrum[4], brushBoundingSphere), // Forward
-											Intersects(fustrum[5], brushBoundingSphere), // Backward
-										};
-
-										if (intersections[0] || intersections[1] || intersections[2] ||
-											intersections[3] || intersections[4] || intersections[5])
-										{
-
-											ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
-
-											for (uint32_t itr = 0; itr < 6; itr++)
-											{
-												if (intersections[itr])
-												{
-													struct
-													{
-														float4x4 PV;
-														float4x4 View;
-														uint32_t Idx;
-														float    maxZ;
-													}tempConstants = {
-															.PV     = matrices.PV[itr],
-															.View   = matrices.View[itr],
-															.Idx    = itr,
-															.maxZ   = pointLight.R };
-
-													ctx.SetGraphicsConstantValue(0, 34, &tempConstants);
-													ctx.DrawIndexedInstanced(indexCount);
-												}
-											}
-										}
-									}
-								}
-
-								if(animatedBrushes.size())
-								{
-									auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS);
-									ctx.SetPipelineState(PSOAnimated);
-									ctx.SetScissorAndViewports({ depthTarget });
-									ctx.SetRenderTargets2({}, 0, DSV_desc);
-									ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
-
-									for (const auto& brush : animatedBrushes)
-									{
-										Apply(*brush,
-											[&](const SceneNodeView<>&    nodeView,
-												const BrushView&          brushView,
-												const SkeletonView&       poseView)
-											{
-												const auto& draw      = brushView.GetBrush();
-												const auto& pose      = poseView.GetPoseState();
-												const auto& skeleton  = *pose.Sk;
-
-												PoseConstants poseTemp;
-
-												const size_t end = pose.JointCount;
-												for (size_t I = 0; I < end; ++I)
-													poseTemp.M[I] = skeleton.IPose[I] * pose.CurrentPose[I];
-
-												for(auto mesh : draw.meshes)
-												{
-													const auto      triMesh         = GetMeshResource(mesh);
-													const auto      lodLevelIdx     = triMesh->GetHighestLoadedLodIdx();
-													const auto&     lodLevel        = triMesh->GetHighestLoadedLod();
-													const size_t    indexCount      = triMesh->GetHighestLoadedLod().GetIndexCount();
-
-													ctx.AddIndexBuffer(triMesh, lodLevelIdx);
-													ctx.AddVertexBuffers(triMesh,
-														lodLevelIdx,
-														{   VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-															VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
-															VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
-														});
-
-													const auto poseConstants = ConstantBufferDataSet{ poseTemp, animatedConstantBuffer };
-
-													const float4x4 WT           = nodeView.GetWT();
-													const float4 brushPOS_WT    = WT * float4(triMesh->BS.xyz(), 1);
-
-													ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
-													ctx.SetGraphicsConstantBufferView(3, poseConstants);
-
-													for (uint32_t itr = 0; itr < 6; itr++)
-													{
-														struct 
-														{
-															float4x4    PV;
-															float4x4    View;
-															uint32_t    Idx;
-															float       maxZ;
-														}tempConstants = {
-																.PV     = matrices.PV[itr],
-																.View   = matrices.View[itr],
-																.Idx    = itr,
-																.maxZ   = pointLight.R
-														};
-
-														if (FlexKit::Intersects(fustrum[itr], float4{ brushPOS_WT.xyz(), triMesh->BS.w }))
-														{
-															ctx.SetGraphicsConstantValue(0, 40, &tempConstants);
-															ctx.DrawIndexedInstanced(indexCount);
-														}
-													}
-												}
-											});
-									}
-								}
-
-								shadowMaps.push_back(depthTarget);
-							}
-
-							ctx.EndEvent_DEBUG();
-						}
-
-						if(shadowMaps.size())
+								return pass == SHADOWMAPPASS;
+							}); res != passes.end())
 						{
-							ProfileFunctionLabeled(Barriers);
-
-							for (auto& additionalPass : data.additionalShadowPass)
-							{
-								ctx.BeginEvent_DEBUG("Additional Shadow Map Pass");
-
-								additionalPass(
-									data.reserveCB,
-									data.reserveVB,
-									passConstant2.data(),
-									shadowMaps.data(),
-									(uint32_t)shadowMaps.size(),
-									resources,
-									ctx,
-									allocator);
-
-								ctx.EndEvent_DEBUG();
-							}
-
-							for (const auto target : shadowMaps) {
-								DebugBreak();
-								//ctx.AddResourceBarrier(target, DASDEPTHBUFFERWRITE, DASPixelShaderResource);
-								//ctx.renderSystem->SetObjectAccessState(target, DASPixelShaderResource);
-							}
+							PushPV(entity, view.GetBrush(), brushes, pointLightPosition);
 						}
-						ctx.EndEvent_DEBUG();
+						else if (auto res = std::find_if(passes.begin(), passes.end(),
+								[](auto& pass)
+								{
+									return pass == SHADOWMAPANIMATEDPASS;
+								}); res != passes.end())
+							{
+								animatedBrushes.push_back(&entity);
+							}
 					});
+			}
+
+			static const Quaternion Orientations[6] = {
+				Quaternion{   0,  90, 0 }, // Right
+				Quaternion{   0, -90, 0 }, // Left
+				Quaternion{ -90,   0, 0 }, // Top
+				Quaternion{  90,   0, 0 }, // Bottom
+				Quaternion{   0, 180, 0 }, // Backward
+				Quaternion{   0,   0, 0 }, // Forward
+			};
+
+			const Frustum fustrum[] =
+			{
+				GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[0]),
+				GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[1]),
+				GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[2]),
+				GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[3]),
+				GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[4]),
+				GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[5]),
+			};
+
+			const DepthStencilView_Options DSV_desc{ 0, 0, pass.renderTarget };
+
+			auto shadowMapPSO = resources.GetPipelineState(SHADOWMAPPASS);
+			ctx.SetRootSignature(rootSignature);
+			ctx.SetPipelineState(shadowMapPSO);
+			ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+			ctx.SetScissorAndViewports({ pass.renderTarget });
+			ctx.SetRenderTargets2({}, 0, DSV_desc);
+
+			TriMeshHandle	currentMesh		= InvalidHandle;
+			size_t			currentLodIdx	= 0xffffffffffffffff;
+			size_t			indexCount		= 0;
+			BoundingSphere	BS;
+
+			const float3 position	= FlexKit::GetPositionW(pointLight.Position);
+			const auto matrices		= CalculateShadowMapMatrices(position, pointLight.R, (float)t);
+
+			for(uint32_t brushIdx = 0; brushIdx < (uint32_t)brushes.size(); brushIdx++)
+			{
+				auto& PV			= brushes[brushIdx];
+				const auto lodLevel	= PV.LODlevel;
+				auto& meshes		= PV.brush->meshes;
+
+				const size_t meshCount = meshes.size();
+				for(size_t I = 0; I < meshCount; I++)
+				{
+					auto& mesh			= meshes[I];
+					auto meshLodLevel	= lodLevel[I];
+
+					if( currentMesh != mesh || currentLodIdx != meshLodLevel)
+					{
+						currentMesh = mesh;
+
+						auto* const triMesh = GetMeshResource(currentMesh);
+
+						currentLodIdx	= Max(meshLodLevel, triMesh->GetHighestLoadedLodIdx());
+						auto& lod		= triMesh->lods[currentLodIdx];
+						indexCount		= lod.GetIndexCount();
+
+						ctx.AddIndexBuffer(triMesh, (uint32_t)currentLodIdx);
+						ctx.AddVertexBuffers(triMesh,
+							(uint32_t)currentLodIdx,
+							{ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
+
+						BS = triMesh->BS;
+					}
+
+					const float4x4 WT   = GetWT(PV.brush->Node);
+					const float3 POS    = GetPositionW(PV.brush->Node);
+					const float4 POS_WT = POS + (WT * float4(BS.xyz(), 0)).xyz();
+					const float scale   = Max(WT[0][0], Max(WT[1][1], WT[2][2]));
+
+					auto brushBoundingSphere = BoundingSphere{ POS_WT.xyz(), BS.w * scale };
+					bool intersections[] =
+					{
+						Intersects(fustrum[0], brushBoundingSphere), // Left
+						Intersects(fustrum[1], brushBoundingSphere), // Right
+						Intersects(fustrum[2], brushBoundingSphere), // Top
+						Intersects(fustrum[3], brushBoundingSphere), // Bottom
+						Intersects(fustrum[4], brushBoundingSphere), // Forward
+						Intersects(fustrum[5], brushBoundingSphere), // Backward
+					};
+
+					if (intersections[0] || intersections[1] || intersections[2] ||
+						intersections[3] || intersections[4] || intersections[5])
+					{
+
+						ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
+
+						for (uint32_t itr = 0; itr < 6; itr++)
+						{
+							if (intersections[itr])
+							{
+								struct
+								{
+									float4x4 PV;
+									float4x4 View;
+									uint32_t Idx;
+									float	maxZ;
+								}tempConstants = {
+										.PV		= matrices.PV[itr],
+										.View	= matrices.View[itr],
+										.Idx	= itr,
+										.maxZ	= pointLight.R };
+
+								ctx.SetGraphicsConstantValue(0, 34, &tempConstants);
+								ctx.DrawIndexedInstanced(indexCount);
+							}
+						}
+					}
+				}
+			}
+
+			struct PoseConstants
+			{
+				float4x4 M[256];
+			};
+
+			CBPushBuffer animatedConstantBuffer = common.reserveCB((AlignedSize<Brush::VConstantsLayout>() + AlignedSize<PoseConstants>()) * animatedBrushes.size());
+			if(animatedBrushes.size())
+			{
+				auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS);
+				ctx.SetPipelineState(PSOAnimated);
+				ctx.SetScissorAndViewports({ pass.renderTarget });
+				ctx.SetRenderTargets2({}, 0, DSV_desc);
+				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+
+				for (const auto& brush : animatedBrushes)
+				{
+					Apply(*brush,
+						[&](const SceneNodeView<>&    nodeView,
+							const BrushView&          brushView,
+							const SkeletonView&       poseView)
+						{
+							const auto& draw      = brushView.GetBrush();
+							const auto& pose      = poseView.GetPoseState();
+							const auto& skeleton  = *pose.Sk;
+
+							PoseConstants poseTemp;
+
+							const size_t end = pose.JointCount;
+							for (size_t I = 0; I < end; ++I)
+								poseTemp.M[I] = skeleton.IPose[I] * pose.CurrentPose[I];
+
+							for(auto mesh : draw.meshes)
+							{
+								const auto		triMesh		= GetMeshResource(mesh);
+								const auto		lodLevelIdx	= triMesh->GetHighestLoadedLodIdx();
+								const auto&		lodLevel	= triMesh->GetHighestLoadedLod();
+								const size_t	indexCount	= triMesh->GetHighestLoadedLod().GetIndexCount();
+
+								ctx.AddIndexBuffer(triMesh, lodLevelIdx);
+								ctx.AddVertexBuffers(triMesh,
+									lodLevelIdx,
+									{   VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
+										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
+									});
+
+								const auto poseConstants = ConstantBufferDataSet{ poseTemp, animatedConstantBuffer };
+
+								const float4x4 WT			= nodeView.GetWT();
+								const float4 brushPOS_WT	= WT * float4(triMesh->BS.xyz(), 1);
+
+								ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
+								ctx.SetGraphicsConstantBufferView(3, poseConstants);
+
+								for (uint32_t itr = 0; itr < 6; itr++)
+								{
+									struct 
+									{
+										float4x4	PV;
+										float4x4	View;
+										uint32_t	Idx;
+										float		maxZ;
+									}tempConstants = {
+											.PV		= matrices.PV[itr],
+											.View	= matrices.View[itr],
+											.Idx	= itr,
+											.maxZ	= pointLight.R
+									};
+
+									if (Intersects(fustrum[itr], float4{ brushPOS_WT.xyz(), triMesh->BS.w }))
+									{
+										ctx.SetGraphicsConstantValue(0, 40, &tempConstants);
+										ctx.DrawIndexedInstanced(indexCount);
+									}
+								}
+							}
+						});
+				}
+			}
+
+			if (end == pvs.end())
+			{
+				ctx.AddTextureBarrier(pass.renderTarget,
+					DASDEPTHBUFFERWRITE, DASPixelShaderResource,
+					DeviceLayout_DepthStencilWrite, DeviceLayout_ShaderResource,
+					Sync_DepthStencil, Sync_Draw);
+
+				ctx.renderSystem->SetObjectLayout(pass.renderTarget, DeviceLayout_ShaderResource);
+			}
+
+		};
+
+		frameGraph.AddDataDrivenMultiPass(passDesc, passSetupFn, passDrawFN);
 
 		return shadowMapPass;
 	}

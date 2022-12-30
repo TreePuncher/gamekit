@@ -319,11 +319,8 @@ namespace FlexKit
 			[&](FrameGraphNodeBuilder& builder, OITBlend& data)
 			{
 				data.renderTargetObject	= builder.WriteTransition(renderTarget, DASRenderTarget);
-				data.accumalatorObject	= OITPass.accumalatorObject;
-				data.counterObject		= OITPass.counterObject;
-
-				builder.ReleaseVirtualResource(OITPass.accumalatorObject);
-				builder.ReleaseVirtualResource(OITPass.counterObject);
+				data.accumalatorObject	= builder.ReadTransition(OITPass.accumalatorObject, DASPixelShaderResource);
+				data.counterObject		= builder.ReadTransition(OITPass.counterObject, DASPixelShaderResource);
 			},
 			[=](OITBlend& data, ResourceHandler& resources, Context& ctx, iAllocator& tempAllocator)
 			{

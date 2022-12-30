@@ -461,8 +461,6 @@ namespace FlexKit
 		if (buffer.GPUResident)
 			return -1; // Cannot directly push to GPU Resident Memory
 
-		//UpdateCurrentBuffer(Handle);
-
 		const uint32_t size		= buffer.size;
 		const uint32_t offset	= buffer.offset;
 
@@ -1894,8 +1892,6 @@ namespace FlexKit
 
 		if (res != pendingBarriers.end())
 		{
-			DebugBreak();
-
 			res->accessAfter			= accessAfter;
 			res->texture.layoutAfter	= layoutAfter;
 		}
@@ -3732,9 +3728,9 @@ namespace FlexKit
 					.IndexOrFirstMipLevel	= 0,
 					.NumMipLevels			= renderSystem->GetTextureMipCount(barrier.resource),
 					.FirstArraySlice		= 0,
-					.NumArraySlices			= 0,
+					.NumArraySlices			= (uint32_t)renderSystem->GetTextureArraySize(barrier.resource),
 					.FirstPlane				= 0,
-					.NumPlanes				= (uint32_t)renderSystem->GetTextureArraySize(barrier.resource),
+					.NumPlanes				= 1,
 				};
 
 				textureBarriers.push_back(textureBarrier);

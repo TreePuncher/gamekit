@@ -194,8 +194,8 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 		core.GetTempMemoryMT()
 	);
 
-	if(streamingUpdates)
-		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, { 1920, 1080 }, res.entityConstants, res.passes, res.skinnedDraws, reserveCB, reserveVB);
+	if (streamingUpdates)
+		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.skinnedDraws, reserveCB, reserveVB);
 
 	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow.GetBackBuffer());
 
@@ -210,7 +210,7 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 
 void TextureStreamingTest::PostDrawUpdate(FlexKit::EngineCore&, double dT)
 {
-	renderWindow.Present(0, 0);
+	renderWindow.Present(1, 0);
 }
 
 
