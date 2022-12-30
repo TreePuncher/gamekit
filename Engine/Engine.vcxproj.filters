@@ -155,7 +155,7 @@
     <ClCompile Include="..\source\Serialization.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\source\SHADOWMAPPING.CPP">
+    <ClCompile Include="..\source\ShadowMapping.CPP">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\source\signal.cpp">

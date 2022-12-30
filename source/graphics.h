@@ -1319,6 +1319,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		ID3D12Fence*	fence		= nullptr;
 	};
 
+
+	class CopyEngine;
+
 	class CopyContext
 	{
 	public:
@@ -1335,6 +1338,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		bool                    IsSubResourceTiled(ID3D12Resource* Resource, const size_t level) const;
 
 		void                    flushPendingBarriers();
+
+		ID3D12GraphicsCommandList* GetAPIObject() { return commandList; }
 
 		ID3D12CommandAllocator*		commandAllocator    = nullptr;
 		ID3D12GraphicsCommandList*	commandList         = nullptr;

@@ -483,20 +483,19 @@ namespace FlexKit
 			});
 
 		auto getPass =
-			[&passTable = passes.GetData()](PassHandle pass) -> const PassPVS*
+			[&passTable = passes.GetData()] () -> std::span<const PVEntry>
 			{
-				return passTable.GetPass(pass).value_or(nullptr);
+				return passTable.GetPass(GBufferPassID).value_or(nullptr)->pvs;
 			};
 
 		PassDescription<TextureFeedbackPass_Data> pass =
 		{
-			.materialPassID		= GBufferPassID,
 			.sharedData			= {
 				.camera			= camera,
 				.pvs			= passes,
 				.skinnedModels	= skinnedModelsGather,
 				.reserveCB		= reserveCB },
-			.getPass			= getPass,
+			.getPVS				= getPass,
 		};
 
 		auto passSetupFn = [&](FrameGraphNodeBuilder& builder, TextureFeedbackPass_Data& data)
@@ -511,7 +510,7 @@ namespace FlexKit
 			data.feedbackDepth				= builder.WriteTransition(initiateFeedbackPass.feedbackDepth, DASDEPTHBUFFERWRITE);
 		};
 		
-		auto passDrawFN = [&entityConstants = entityConstants, renderTargetWH](const PVEntry* begin, const PVEntry* end, const PassPVS& pass, TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+		auto passDrawFN = [&entityConstants = entityConstants, renderTargetWH](const auto begin, const auto end, std::span<const PVEntry> pvs, TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
 		{
 			ctx.BeginEvent_DEBUG("Texture feedback pass");
 
@@ -578,7 +577,7 @@ namespace FlexKit
 			{
 				ctx.BeginEvent_DEBUG("Draw entity");
 
-				auto entityIdx					= std::distance(pass.pvs.begin(), itr);
+				auto entityIdx					= std::distance(pvs.begin(), itr);
 				auto constantsBegin				= entityConstants.entityTable[entityIdx];
 				const auto& material			= materials[itr->brush->material];
 				const auto& textureDescriptors	= material.textureDescriptors;

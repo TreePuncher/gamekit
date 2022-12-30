@@ -931,7 +931,7 @@ namespace FlexKit
 				const UINT64	uploadBufferSize	= GetRequiredIntermediateSize(*texture, 0, num2DSubresources);
 
 				ID3D12Resource* textureUploadHeap	= nullptr;
-				ID3D12GraphicsCommandList* cmdList	= RS->_GetCopyContext(handle).commandList;
+				ID3D12GraphicsCommandList* cmdList	= RS->_GetCopyContext(handle).GetAPIObject();
 
 				auto heapProperties     = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 				auto resDesc            = CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize);

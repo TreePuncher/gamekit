@@ -34,6 +34,7 @@ namespace FlexKit
 	using CopyContextHandle				= Handle_t<32u, GetTypeGUID(CopyContextHandle)>;
 	using DeviceHeapHandle				= Handle_t<32u, GetTypeGUID(DeviceHeapHandle)>;
 	using FrameResourceHandle			= Handle_t<16u, GetTypeGUID(FrameResource)>;
+	using FrameGraphNodeHandle			= Handle_t<16,	GetTypeGUID(FrameGraphNode)>;
 	using LayerHandle					= Handle_t<16u, GetTypeGUID(LayerHandle)>;
 	using MaterialHandle				= Handle_t<16u, GetTypeGUID(Material)>;
 	using NodeHandle					= Handle_t<32u, GetTypeGUID(SceneNode)>;
@@ -48,5 +49,4 @@ namespace FlexKit
 	using ResourceHandle				= Handle_t<32u, GetTypeGUID(ResourceHandle)>;
 	using TriMeshHandle					= Handle_t<16u, GetTypeGUID(TriMesh)>;
 	using VertexBufferHandle			= Handle_t<32u, GetTypeGUID(VertexBuffer)>;
-	using TemporaryFrameResourceHandle	= Handle_t<16u, GetTypeGUID(TempFrameResourceHandle)>;
 }

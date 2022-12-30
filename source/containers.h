@@ -706,8 +706,9 @@ namespace FlexKit
 		void reserve(size_t NewSize)
 		{
 			if (!NewSize)
-				clear();
-			else if (!A || Max < NewSize)
+				return;
+
+			if (!A || Max < NewSize)
 			{// Increase Size
 				FK_ASSERT(Allocator);
 				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * NewSize);
@@ -2466,12 +2467,12 @@ namespace FlexKit
 			template<typename TY_CALLABLE>
 			static const VTable* Assign(void* buffer, TY_CALLABLE&& callable)
 			{
-				static_assert(sizeof(TY_CALLABLE) <= STORAGESIZE, "Callable object too large for this TypeErasedCallable!");
+				static_assert(sizeof(TY_CALLABLE) <= STORAGESIZE - sizeof(VTable*), "Callable object too large for this TypeErasedCallable!");
 
 				constexpr size_t alignment = std::alignment_of_v<TY_CALLABLE>;
 				const size_t offset = GetOffset(alignment, buffer, STORAGESIZE);
 
-				if (sizeof(TY_CALLABLE) + offset > STORAGESIZE)
+				if (sizeof(TY_CALLABLE) + offset > STORAGESIZE - sizeof(VTable*))
 					throw std::runtime_error("Failed to create type erased callable. size + alignment offset larger than buffer size.");
 
 				new((char*)buffer + offset) std::decay_t<TY_CALLABLE>{ callable };
@@ -2482,12 +2483,12 @@ namespace FlexKit
 			template<typename TY_CALLABLE>
 			static const VTable* Assign(void* buffer, const TY_CALLABLE& callable)
 			{
-				static_assert(sizeof(TY_CALLABLE) <= STORAGESIZE, "Callable object too large for this TypeErasedCallable!");
+				static_assert(sizeof(TY_CALLABLE) <= STORAGESIZE - sizeof(VTable*), "Callable object too large for this TypeErasedCallable!");
 
 				constexpr size_t alignment = std::alignment_of_v<TY_CALLABLE>;
 				const size_t offset = GetOffset(alignment, buffer, STORAGESIZE);
 
-				if (sizeof(TY_CALLABLE) + offset > STORAGESIZE)
+				if (sizeof(TY_CALLABLE) + offset > STORAGESIZE - sizeof(VTable*))
 					throw std::runtime_error("Failed to create type erased callable. size + alignment offset larger than buffer size.");
 
 				new((char*)buffer + offset) TY_CALLABLE{ callable };

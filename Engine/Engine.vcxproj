@@ -186,7 +186,7 @@
     <ClCompile Include="..\source\Scene.cpp" />
     <ClCompile Include="..\source\ScriptingRuntime.cpp" />
     <ClCompile Include="..\source\Serialization.cpp" />
-    <ClCompile Include="..\source\SHADOWMAPPING.CPP" />
+    <ClCompile Include="..\source\ShadowMapping.CPP" />
     <ClCompile Include="..\source\signal.cpp" />
     <ClCompile Include="..\source\SSReflections.cpp" />
     <ClCompile Include="..\source\SVOGI.cpp" />

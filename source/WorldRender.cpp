@@ -825,7 +825,7 @@ namespace FlexKit
 				temporary,
 				drawSceneDesc.debugDisplay != DebugVisMode::ClusterVIS);
 
-		/*
+#if 1
 		auto& shadowMapPass =
 			shadowMapping.ShadowMapPass(
 				frameGraph,
@@ -837,8 +837,9 @@ namespace FlexKit
 				reserveVB,
 				drawSceneDesc.additionalShadowPasses,
 				t,
-				&temporary);
-		*/
+				temporary);
+#endif
+
 		/*
 		auto& updateVolumes =
 			lightingEngine.UpdateVoxelVolumes(
@@ -859,7 +860,7 @@ namespace FlexKit
 				gbufferPass,
 				depthTarget.Get(),
 				renderTarget,
-				//shadowMapPass,
+				shadowMapPass,
 				lightPass,
 				reserveCB, reserveVB,
 				t,
@@ -876,7 +877,9 @@ namespace FlexKit
 				gbuffer,
 				reserveCB,
 				temporary);
+		*/
 
+		/*
 		auto& OIT_pass =
 			transparency.OIT_WB_Pass(
 				dispatcher,
@@ -933,12 +936,6 @@ namespace FlexKit
 				temporary);
 		}
 		*/
-
-		if(0)
-		clusteredRender.ReleaseFrameResources(
-			frameGraph,
-			lightPass,
-			shadingPass);
 
 		return DrawOutputs{
 					passes,
@@ -1021,22 +1018,6 @@ namespace FlexKit
 					}
 				}
 			});
-
-		/*
-		return frameGraph.AddNode<EntityConstants>(
-,
-			[&](FrameGraphNodeBuilder& builder, EntityConstants& data)
-			{
-			},
-			[](EntityConstants& data, const ResourceHandler& resourecs, Context& ctx, iAllocator& allocator)
-			{
-				auto& constantBuffer	= data.GetConstants();
-				auto& brushes			= data.passes.GetData().solid;
-
-				for (auto& brush : brushes)
-					constantBuffer.Push(brush->GetConstants());
-			});
-		*/
 	}
 
 

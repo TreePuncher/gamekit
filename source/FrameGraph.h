@@ -98,8 +98,6 @@ namespace FlexKit
 		Virtual_Reused,
 	};
 
-	using FrameGraphNodeHandle = Handle_t<16, GetTypeGUID(FrameGraphNodeHandle)>;
-
 	struct FrameObject
 	{
 		FrameObject(iAllocator* allocator = nullptr) :
@@ -945,6 +943,14 @@ namespace FlexKit
 		DeviceLayout			neededLayout;
 	};
 
+	struct InputObject
+	{
+		FrameGraphNodeHandle	source;
+		FrameResourceHandle		handle;
+
+		DeviceAccessState		initialAccess;
+		DeviceLayout			initialLayout;
+	};
 
 	inline auto MakePred(FrameResourceHandle handle, const PassObjectList& resources)
 	{
@@ -1023,16 +1029,16 @@ namespace FlexKit
 		void AcquireResources		(FrameResources& resources, Context& ctx);
 		void ReleaseResources		(FrameResources& resources, Context& ctx);
 
-		ResusableResourceQuery		FindReuseableResource(PoolAllocatorInterface& allocator, size_t allocationSize, uint32_t flags, FrameResources& handler, std::span<FrameGraphNode> nodes);
+		ResusableResourceQuery			FindReuseableResource(PoolAllocatorInterface& allocator, size_t allocationSize, uint32_t flags, FrameResources& handler, std::span<FrameGraphNode> nodes);
+		std::optional<InputObject>		GetInputObject(FrameResourceHandle);
 
-		Vector<FrameGraphNode*>		GetNodeDependencies()	{ return (nullptr); } 
 
 		FrameGraphNodeHandle			handle;
 		void*							nodeData;
 		bool							executed = false;
 		FN_NodeGetWorkItems				nodeAction;
 		Vector<FrameGraphNodeHandle>	sources;// Nodes that this node reads from
-		Vector<FrameObjectLink>			inputObjects;
+		Vector<InputObject>				inputObjects;
 		Vector<FrameObjectLink>			outputObjects;
 		Vector<Barrier>					barriers;
 
@@ -1214,6 +1220,8 @@ namespace FlexKit
 		Frame,
 	};
 
+	DeviceLayout GuessLayoutFromAccess(DeviceAccessState access);
+
 	FLEXKITAPI class FrameGraphNodeBuilder
 	{
 	public:
@@ -1245,6 +1253,10 @@ namespace FlexKit
 		void BuildPass(FrameGraph* FrameGraph, FrameGraphNode& endNode);
 
 		void AddDataDependency(UpdateTask& task);
+		void AddNodeDependency(FrameGraphNodeHandle node);
+
+
+		FrameGraphNodeHandle GetNodeHandle() const;
 
 		FrameResourceHandle CreateConstantBuffer();
 		FrameResourceHandle ReadConstantBuffer(FrameResourceHandle);
@@ -1267,7 +1279,7 @@ namespace FlexKit
 		FrameResourceHandle	Present				(ResourceHandle);
 
 		FrameResourceHandle	DepthRead			(ResourceHandle);
-		FrameResourceHandle	DepthTarget			(ResourceHandle);
+		FrameResourceHandle	DepthTarget			(ResourceHandle, DeviceAccessState finalState = DeviceAccessState::DASDEPTHBUFFERWRITE);
 
 		FrameResourceHandle	AcquireVirtualResource(const GPUResourceDesc& desc, DeviceAccessState, VirtualResourceScope lifeSpan = VirtualResourceScope::Temporary);
 		FrameResourceHandle	AcquireVirtualResource(PoolAllocatorInterface& allocator, const GPUResourceDesc& desc, DeviceAccessState, VirtualResourceScope lifeSpan = VirtualResourceScope::Temporary);
@@ -1313,6 +1325,9 @@ namespace FlexKit
 			if (layout == DeviceLayout_Unknown)
 				layout = frameObject.layout;
 
+			InputObject inputObject{ node.handle, frameResourceHandle, frameObject.access, frameObject.layout };
+			node.inputObjects.push_back(inputObject);
+
 			if (frameObject.layout != layout || !CheckCompatibleAccessState(frameObject.layout, frameObject.access))
 			{
 				frameObject.lastUsers.clear();
@@ -1342,6 +1357,7 @@ namespace FlexKit
 					barrier.texture.layoutAfter		= layout;
 					break;
 				}
+
 
 				barriers.push_back(barrier);
 
@@ -1378,11 +1394,13 @@ namespace FlexKit
 			{
 				frameObject.lastUsers.clear();
 
-				if (IsReadAccessState(frameObject.access))
+				if (IsReadAccessState(frameObject.access) && !(finalTransition.has_value() && IsReadAccessState(finalTransition.value().first)))
+				{
 					context.RemoveReadable(frameResourceHandle);
 
-				FrameObjectLink dependency{ frameResourceHandle, node.handle, access, layout };
-				context.AddWriteable(dependency);
+					FrameObjectLink dependency{ frameResourceHandle, node.handle, access, layout };
+					context.AddWriteable(dependency);
+				}
 
 				Barrier barrier;
 				barrier.accessBefore	= frameObject.access;
@@ -1453,16 +1471,28 @@ namespace FlexKit
 
 	using DataDependencyList = Vector<UpdateTask*>;
 	struct PassPVS;
-	using GetPassFN = TypeErasedCallable<const PassPVS* (PassHandle)>;
 
-	template<typename Shared_TY>
+	template<typename Shared_TY, typename TY = const PVEntry>
 	struct PassDescription
 	{
-		PassHandle	materialPassID;
-		Shared_TY	sharedData;
-		GetPassFN	getPass;
+		Shared_TY							sharedData;
+		TypeErasedCallable<std::span<TY>()>	getPVS;
+
+		using Shared		= Shared_TY;
+		using GetPass_TY	= TypeErasedCallable<std::span<TY> ()>;
 	};
 
+	template<typename Shared_TY, typename TY_PassData, typename TY_PVSElements = const PVEntry>
+	struct DataDrivenMultiPassDescription
+	{
+		Shared_TY														sharedData;
+		TypeErasedCallable<std::span<TY_PVSElements> (TY_PassData&)>	getPVS;
+		TypeErasedCallable<Vector<TY_PassData> (iAllocator&)>			getPasses;
+
+		using Shared			= Shared_TY;
+		using GetPassPVS_TY		= TypeErasedCallable<std::span<TY_PVSElements> (TY_PassData&)>;
+		using GetPassData_TY	= TypeErasedCallable<Vector<TY_PassData> (iAllocator&)>;
+	};
 
 	FLEXKITAPI class FrameGraph
 	{
@@ -1588,21 +1618,21 @@ namespace FlexKit
 			return data.userData;
 		}
 
-		template<typename TY_Shared, typename TY_Setup, typename TY_Draw>
-		decltype(auto) AddPass(PassDescription<TY_Shared>& shared, TY_Setup setupLinkage, TY_Draw draw)
+		template<typename TY_Shared, typename TY, typename TY_Setup, typename TY_Draw>
+		decltype(auto) AddPass(PassDescription<TY_Shared, TY>& IN_shared, TY_Setup setupLinkage, TY_Draw draw)
 		{
+			using GetPass_TY = PassDescription<TY_Shared, TY>::GetPass_TY;
+
 			struct PassData
 			{
 				TY_Shared			shared;
 				TY_Draw				draw;
-				GetPassFN			getPass;
-				PassHandle			materialPassID;
+				GetPass_TY			getPVS;
 				std::atomic_uint	refCount = 0;
 			} &start = memory->allocate_aligned<PassData>(
-									std::move(std::forward<TY_Shared>(shared.sharedData)),
+									std::move(std::forward<TY_Shared>(IN_shared.sharedData)),
 									std::move(draw),
-									std::move(shared.getPass),
-									shared.materialPassID);
+									std::move(IN_shared.getPVS));
 
 			auto startNodeIdx = nodes.emplace_back(
 				FrameGraphNodeHandle{ nodes.size() },
@@ -1610,24 +1640,25 @@ namespace FlexKit
 				{
 					PassData* passData = reinterpret_cast<PassData*>(node.nodeData);
 
-					const PassPVS* passPVS = passData->getPass(passData->materialPassID);
+					auto passPVS = passData->getPVS();
 
-					auto size		= passPVS->pvs.size();
-					auto blockCount = size / 1000 + (size % 1000 > 0 ? 1 : 0);
-					auto blockSize	= size / blockCount;
+					auto size			= passPVS.size();
+					uint16_t blockCount = (uint16_t)(size / 1000 + (size % 1000 > 0 ? 1 : 0));
+					uint16_t blockSize	= (uint16_t)(size / blockCount);
 
 					passData->refCount = blockCount;
 
-					for (size_t i = 0; i < blockCount; i++)
+					for (uint16_t i = 0; i < blockCount; i++)
 					{
-						auto begin	= passPVS->pvs.begin() + Min((i + 0) * blockSize, size);
-						auto end	= passPVS->pvs.begin() + Min((i + 1) * blockSize, size);
+						auto begin	= Min((i + 0) * blockSize, size);
+						auto end	= Min((i + 1) * blockSize, size);
 
 						FrameGraphNodeWorkItem newWorkItem;
 						newWorkItem.node		= &node;
-						newWorkItem.workWeight	= std::distance(begin, end);
+						newWorkItem.workWeight	= end - begin;
+
 						newWorkItem.action	=
-								[begin, end, i, blockCount, passPVS](
+							[i, blockCount, blockSize, passPVS](
 								FrameGraphNode&	node,
 								FrameResources&	resources,
 								Context&		ctx,
@@ -1637,6 +1668,9 @@ namespace FlexKit
 
 								PassData& data = *reinterpret_cast<PassData*>(node.nodeData);
 
+								auto begin	= passPVS.begin() + Min((i + 0) * blockSize, passPVS.size());
+								auto end	= passPVS.begin() + Min((i + 1) * blockSize, passPVS.size());
+
 								if(i == 0)
 									node.HandleBarriers(resources, ctx);
 
@@ -1644,7 +1678,7 @@ namespace FlexKit
 								localTracking = node.subNodeTracking;
 
 								ResourceHandler handler{ resources, localTracking };
-								data.draw(begin, end, *passPVS, data.shared, resources, ctx, localAllocator);
+								data.draw(begin, end, passPVS, data.shared, resources, ctx, localAllocator);
 
 								if(i == blockCount - 1)
 									node.RestoreResourceStates(&ctx, resources, localTracking);
@@ -1659,6 +1693,107 @@ namespace FlexKit
 							};
 
 						tasks_out.emplace_back(std::move(newWorkItem));
+					}
+				},
+				&start,
+				memory);
+
+
+			FrameGraphNodeBuilder builder(nodes, dataDependencies, &resources, nodes[startNodeIdx], resourceContext, memory);
+			setupLinkage(builder, start.shared);
+			builder.BuildNode(this);
+
+			return start;
+		}
+
+		template<typename TY_Shared, typename TY_Pass, typename TY_PassElements, typename TY_Setup, typename TY_Draw>
+		decltype(auto) AddDataDrivenMultiPass(DataDrivenMultiPassDescription<TY_Shared, TY_Pass, TY_PassElements>& IN_shared, TY_Setup setupLinkage, TY_Draw draw)
+		{
+			using GetPassPVS_TY		= std::decay_t<decltype(IN_shared)>::GetPassPVS_TY;
+			using GetPassData_TY	= std::decay_t<decltype(IN_shared)>::GetPassData_TY;
+
+			struct PassData
+			{
+				TY_Shared			shared;
+				TY_Draw				draw;
+				GetPassPVS_TY		getPVS;
+				GetPassData_TY		getPasses;
+				Vector<TY_Pass>		passes;
+				std::atomic_uint	refCount = 0;
+			} &start = memory->allocate_aligned<PassData>(
+									std::move(std::forward<TY_Shared>(IN_shared.sharedData)),
+									std::move(draw),
+									std::move(IN_shared.getPVS),
+									std::move(IN_shared.getPasses));
+
+			auto startNodeIdx = nodes.emplace_back(
+				FrameGraphNodeHandle{ nodes.size() },
+				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& tasks_out, FlexKit::WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
+				{
+					PassData* passData	= reinterpret_cast<PassData*>(node.nodeData);
+					passData->passes	= passData->getPasses(tempAllocator);
+
+					for(auto& pass : passData->passes)
+					{
+						auto passPVS		= passData->getPVS(pass);
+						auto size			= passPVS.size();
+
+						uint16_t blockCount = (uint16_t)(size / 1000 + (size % 1000 > 0 ? 1 : 0));
+						uint16_t blockSize	= (uint16_t)(size / blockCount);
+
+						passData->refCount = blockCount;
+
+						for (uint16_t i = 0; i < blockCount; i++)
+						{
+							auto begin	= Min((i + 0) * blockSize, size);
+							auto end	= Min((i + 1) * blockSize, size);
+
+							FrameGraphNodeWorkItem newWorkItem;
+							newWorkItem.node		= &node;
+							newWorkItem.workWeight	= end - begin;
+
+							newWorkItem.action	=
+								[i, blockCount, blockSize, passPVS, &pass](
+									FrameGraphNode&	node,
+									FrameResources&	resources,
+									Context&		ctx,
+									iAllocator&		localAllocator)
+								{
+									ProfileFunction();
+
+									PassData& data = *reinterpret_cast<PassData*>(node.nodeData);
+
+									auto begin	= passPVS.begin() + Min((i + 0) * blockSize, passPVS.size());
+									auto end	= passPVS.begin() + Min((i + 1) * blockSize, passPVS.size());
+
+									if (i == 0)
+									{
+										node.HandleBarriers(resources, ctx);
+										ctx.BeginEvent_DEBUG("Multi-Pass Begin");
+									}
+									LocallyTrackedObjectList localTracking{ &localAllocator };
+									localTracking = node.subNodeTracking;
+
+									ResourceHandler handler{ resources, localTracking };
+									data.draw(begin, end, passPVS, pass, data.shared, resources, ctx, localAllocator);
+
+									if (i == blockCount - 1)
+									{
+										node.RestoreResourceStates(&ctx, resources, localTracking);
+										ctx.EndEvent_DEBUG();
+									}
+
+									auto refCount = data.refCount--;
+
+									if(refCount == 1)
+									{
+										ProfileFunctionLabeled(Destruction);
+										data.~PassData();
+									}
+								};
+
+							tasks_out.emplace_back(std::move(newWorkItem));
+						}
 					}
 				},
 				&start,

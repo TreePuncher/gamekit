@@ -294,6 +294,24 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void FrameGraphNodeBuilder::AddNodeDependency(FrameGraphNodeHandle dependency)
+	{
+		node.sources.push_back(dependency);
+	}
+
+
+	/************************************************************************************************/
+
+
+	FrameGraphNodeHandle FrameGraphNodeBuilder::GetNodeHandle() const
+	{
+		return node.handle;
+	}
+
+
+	/************************************************************************************************/
+
+
 	FrameResourceHandle FrameGraphNodeBuilder::CreateConstantBuffer()
 	{
 		FrameResourceHandle resource = context.frameResources.AddConstantBuffer();
@@ -503,12 +521,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle	FrameGraphNodeBuilder::DepthTarget(ResourceHandle handle)
+	FrameResourceHandle	FrameGraphNodeBuilder::DepthTarget(ResourceHandle handle, DeviceAccessState finalAccessState)
 	{
-		if (auto frameObject = AddWriteableResource(handle, DeviceAccessState::DASDEPTHBUFFERWRITE, DeviceLayout_DepthStencilWrite); frameObject == InvalidHandle)
+		if (auto frameObject = AddWriteableResource(handle, DeviceAccessState::DASDEPTHBUFFERWRITE, DeviceLayout_DepthStencilWrite,
+													{ { finalAccessState, GuessLayoutFromAccess(finalAccessState), } });
+			frameObject == InvalidHandle)
 		{
 			resources->AddResource(handle, true);
-			return DepthTarget(handle);
+			return DepthTarget(handle, finalAccessState);
 		}
 		else
 			return frameObject;
@@ -764,6 +784,16 @@ namespace FlexKit
 		return { InvalidHandle, false };
 	}
 
+	std::optional<InputObject> FrameGraphNode::GetInputObject(FrameResourceHandle handle)
+	{
+		for (auto& inputObject : inputObjects)
+		{
+			if (inputObject.handle == handle)
+				return inputObject;
+		}
+
+		return {};
+	}
 
 	FrameResourceHandle  FrameGraphNodeBuilder::AcquireVirtualResource(PoolAllocatorInterface& poolAllocator, const GPUResourceDesc& desc, DeviceAccessState access, VirtualResourceScope lifeSpan)
 	{
@@ -922,7 +952,7 @@ namespace FlexKit
 	{
 		auto object = resources->GetResourceObject(handle);
 
-		return AddReadableResource(handle, access, object->layout);
+		return AddReadableResource(handle, access, GuessLayoutFromAccess(access));
 	}
 
 
@@ -933,7 +963,7 @@ namespace FlexKit
 	{
 		auto object = resources->GetResourceObject(handle);
 
-		return AddWriteableResource(handle, access, object->layout);
+		return AddWriteableResource(handle, access, GuessLayoutFromAccess(access));
 	}
 
 
@@ -1256,7 +1286,17 @@ namespace FlexKit
 				auto shaderResource	= I.shaderResource;
 				auto layout			= I.layout;
 
-				resources.renderSystem.SetObjectLayout(shaderResource, layout);
+				auto nodeIdx = I.lastUsers.back();
+				if(nodes[nodeIdx].executed)
+					resources.renderSystem.SetObjectLayout(shaderResource, layout);
+				else
+				{
+					auto res = nodes[nodeIdx].GetInputObject(I.handle);
+					if (!res)
+						DebugBreak();
+					
+					resources.renderSystem.SetObjectLayout(shaderResource, res.value().initialLayout);
+				}
 			}	break;
 			case OT_Virtual:
 			{

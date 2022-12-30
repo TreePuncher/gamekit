@@ -293,7 +293,7 @@ namespace FlexKit
 		ClusteredRender(RenderSystem&, iAllocator& persistent);
 
 
-		FlexKit::TypeErasedCallable<void (FrameGraph&), 48>
+		FlexKit::TypeErasedCallable<void (FrameGraph&), 64>
 			CreateClusterBuffer(
 								RenderSystem&					renderSystem,
 								uint2							WH,
@@ -335,7 +335,7 @@ namespace FlexKit
 								GBufferPass&					gbufferPass,
 								ResourceHandle					depthTarget,
 								ResourceHandle					renderTarget,
-								//ShadowMapPassData&				shadowMaps,
+								ShadowMapPassData&				shadowMaps,
 								LightBufferUpdate&				lightPass,
 								ReserveConstantBufferFunction	reserveCB,
 								ReserveVertexBufferFunction		reserveVB,
