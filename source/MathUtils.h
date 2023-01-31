@@ -22,21 +22,21 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 	template<class T>
-	concept isScaler = std::is_integral_v<T> || std::is_floating_point_v<T>;
+	concept Scaler_t = std::is_integral_v<T> || std::is_floating_point_v<T>;
 
 	template<class T>
-	concept isVector = !isScaler<T> && requires(T t)
+	concept Vector_t = !Scaler_t<T> && requires(T t)
 	{
 		t[0];
 		t.size();
 	};
 
-	template<isScaler TY_1, isScaler TY_2> [[nodiscard]] constexpr auto Floor		(const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x > (TY_1)y) ? y : x);   }
-	template<isScaler TY_1, isScaler TY_2> [[nodiscard]] constexpr auto Min		(const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x > (TY_1)y) ? y : x);   }
-	template<isScaler TY_1, isScaler TY_2> [[nodiscard]] constexpr auto Max		(const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x > (TY_1)y) ? x : y);   }
-	template<isScaler TY_1, isScaler TY_2> [[nodiscard]] constexpr auto Fastmod		(const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x < (TY_1)y) ? x : x%y); }
+	template<Scaler_t TY_1, Scaler_t TY_2> [[nodiscard]] constexpr auto Floor		(const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x > (TY_1)y) ? y : x);   }
+	template<Scaler_t TY_1, Scaler_t TY_2> [[nodiscard]] constexpr auto Min			(const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x > (TY_1)y) ? y : x);   }
+	template<Scaler_t TY_1, Scaler_t TY_2> [[nodiscard]] constexpr auto Max			(const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x > (TY_1)y) ? x : y);   }
+	template<Scaler_t TY_1, Scaler_t TY_2> [[nodiscard]] constexpr auto Fastmod		(const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x < (TY_1)y) ? x : x%y); }
 
-	template<isVector TY_V> [[nodiscard]] constexpr auto Floor(const TY_V x, const TY_V y) noexcept
+	template<Vector_t TY_V> [[nodiscard]] constexpr auto Floor(const TY_V x, const TY_V y) noexcept
 	{
 		TY_V out;
 		for (size_t I = 0; I < TY_V::size(); I++)
@@ -45,7 +45,7 @@ namespace FlexKit
 		return out;
 	}
 
-	template<isVector TY_V> [[nodiscard]] constexpr auto Min(const TY_V x, const TY_V y) noexcept
+	template<Vector_t TY_V> [[nodiscard]] constexpr auto Min(const TY_V x, const TY_V y) noexcept
 	{
 		TY_V out;
 		for (size_t I = 0; I < TY_V::size(); I++)
@@ -54,7 +54,7 @@ namespace FlexKit
 		return out;
 	}
 
-	template<isVector TY_V> [[nodiscard]] constexpr auto Max(const TY_V x, const TY_V y) noexcept
+	template<Vector_t TY_V> [[nodiscard]] constexpr auto Max(const TY_V x, const TY_V y) noexcept
 	{
 		TY_V out;
 		for (size_t I = 0; I < TY_V::size(); I++)
@@ -63,7 +63,7 @@ namespace FlexKit
 		return out;
 	}
 
-	template<isVector TY_V> [[nodiscard]] constexpr auto Fastmod(const TY_V x, const TY_V y) noexcept
+	template<Vector_t TY_V> [[nodiscard]] constexpr auto Fastmod(const TY_V x, const TY_V y) noexcept
 	{
 		TY_V out;
 		for (size_t I = 0; I < TY_V::size(); I++)
@@ -601,16 +601,25 @@ namespace FlexKit
 		}
 
 
-		template<typename TY_2>
-		THISTYPE operator + (const Vect<SIZE, TY_2>& in) const noexcept
+		template<Scaler_t TY_2>
+		THISTYPE operator + (const Vect<SIZE, TY_2>& rhs) const noexcept
 		{
 			THISTYPE temp = *this;
 			for (auto I = 0; I < SIZE; ++I)
-				temp[I] += in[I];
+				temp[I] += rhs[I];
 			
 			return temp;
 		}
 
+		template<typename TY_2>
+		THISTYPE operator + (const TY_2 rhs) const noexcept
+		{
+			THISTYPE temp = *this;
+			for (auto I = 0; I < SIZE; ++I)
+				temp[I] += rhs;
+
+			return temp;
+		}
 
 		template<typename TY_2>
 		THISTYPE& operator += (const Vect<SIZE, TY_2>& in) noexcept
@@ -622,13 +631,24 @@ namespace FlexKit
 		}
 
 
-		template<typename TY_2>
+		template<Scaler_t TY_2>
 		THISTYPE operator - (const Vect<SIZE, TY_2>& in) const noexcept
 		{
 			THISTYPE temp = *this;
 			for (auto I = 0; I < SIZE; ++I)
 				temp[I] -= in[I];
 			
+			return temp;
+		}
+
+
+		template<typename TY_2>
+		THISTYPE operator - (const TY_2 rhs) const noexcept
+		{
+			THISTYPE temp = *this;
+			for (auto I = 0; I < SIZE; ++I)
+				temp[I] -= rhs;
+
 			return temp;
 		}
 

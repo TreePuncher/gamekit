@@ -1,5 +1,7 @@
 #pragma once
 
+#include <filesystem>
+
 class asIScriptContext;
 class asIScriptEngine;
 class asIScriptFunction;
@@ -39,6 +41,7 @@ namespace FlexKit
     void AddGlobal		(const char* str, void*);
     void ReleaseGlobal	(const char* str);
 
+	[[nodiscard]] asIScriptModule* LoadScriptFile		(const char* moduleName, std::filesystem::path, iAllocator&);
     [[nodiscard]] asIScriptModule* LoadByteCode			(const char* moduleName, const char* byteCode, size_t);
     [[nodiscard]] asIScriptModule* LoadByteCodeAsset	(uint64_t assetID);
 

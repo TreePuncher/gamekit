@@ -1012,11 +1012,71 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	uint3 uint3Add(const uint3* self, const uint3& rhs)
+	{
+		return (*self) + rhs;
+	}
+
+	uint3 uint3Sub(const uint3* self, const uint3& rhs)
+	{
+		return (*self) - rhs;
+	}
+
+	uint3 uint3Mul(const uint3* self, const uint3& rhs)
+	{
+		return (*self) * rhs;
+	}
+
+	uint3 uint3Div(const uint3* self, const uint3& rhs)
+	{
+		return (*self) / rhs;
+	}
+
+	uint3 uint3AddScaler(const uint3* self, const uint32_t rhs)
+	{
+		return (*self) + rhs;
+	}
+
+	uint3 uint3SubScaler(const uint3* self, const uint32_t rhs)
+	{
+		return (*self) - rhs;
+	}
+
+	uint3 uint3MulScaler(const uint3* self, const uint32_t rhs)
+	{
+		return (*self) * rhs;
+	}
+
+	uint3 uint3DivScaler(const uint3* self, const uint32_t rhs)
+	{
+		return (*self) / rhs;
+	}
+
+	/************************************************************************************************/
+
+
 	void RegisterMathTypes(asIScriptEngine* scriptEngine, iAllocator* IN_allocator)
 	{
 		allocator = IN_allocator;
 		int res;
-		
+
+		res = scriptEngine->RegisterObjectType("uint3", sizeof(uint3), asOBJ_VALUE | asOBJ_POD);																								FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectProperty("uint3", "uint32 x", 0);																														FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectProperty("uint3", "uint32 y", 4);																														FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectProperty("uint3", "uint32 z", 8);																														FK_ASSERT(res >= 0);
+
+		res = scriptEngine->RegisterObjectMethod("uint3", "uint32 opAdd(const uint3& in)", asFUNCTION(uint3Add), asCALL_CDECL_OBJFIRST);																	FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectMethod("uint3", "uint32 opSub(const uint3& in)", asFUNCTION(uint3Sub), asCALL_CDECL_OBJFIRST);																	FK_ASSERT(res >= 0);
+
+		res = scriptEngine->RegisterObjectMethod("uint3", "uint32 opAdd(const uint32)", asFUNCTION(uint3AddScaler), asCALL_CDECL_OBJFIRST);																	FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectMethod("uint3", "uint32 opSub(const uint32)", asFUNCTION(uint3SubScaler), asCALL_CDECL_OBJFIRST);																	FK_ASSERT(res >= 0);
+
+		res = scriptEngine->RegisterObjectMethod("uint3", "uint32 opMul(const uint3& in)", asFUNCTION(uint3Mul), asCALL_CDECL_OBJFIRST);																	FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectMethod("uint3", "uint32 opDiv(const uint3& in)", asFUNCTION(uint3Div), asCALL_CDECL_OBJFIRST);																	FK_ASSERT(res >= 0);
+
+		res = scriptEngine->RegisterObjectMethod("uint3", "uint32 opMul(const uint32)", asFUNCTION(uint3DivScaler), asCALL_CDECL_OBJFIRST);																	FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectMethod("uint3", "uint32 opDiv(const uint32)", asFUNCTION(uint3MulScaler), asCALL_CDECL_OBJFIRST);
+
 		res = scriptEngine->RegisterObjectType("float3", 0, asOBJ_REF | asOBJ_SCOPED );                                                                                                                     FK_ASSERT(res >= 0);
 		res = scriptEngine->RegisterObjectBehaviour("float3", asBEHAVE_FACTORY, "float3@ ConstructFloat3()",                     asFUNCTION(ConstructFloat3),    asCALL_CDECL);                             FK_ASSERT(res >= 0);
 		res = scriptEngine->RegisterObjectBehaviour("float3", asBEHAVE_FACTORY, "float3@ ConstructFloat3(float, float, float)",  asFUNCTION(ConstructFloat3_2),  asCALL_CDECL);                             FK_ASSERT(res >= 0);
@@ -1218,6 +1278,39 @@ namespace FlexKit
 		size_t      streamSize;
 		size_t      offset = 0;
 	};
+
+
+	/************************************************************************************************/
+
+
+	asIScriptModule* LoadScriptFile(const char* moduleName, std::filesystem::path path, iAllocator& tempAllocator)
+	{
+		auto test = path.is_relative();
+
+		if (!std::filesystem::exists(path))
+			return nullptr;
+
+		const auto fileSize = std::filesystem::file_size(path);
+		auto fileBuffer = (byte*)tempAllocator.malloc(fileSize);
+
+		auto cPath = path.string();
+		if (!FlexKit::LoadFileIntoBuffer(cPath.c_str(), fileBuffer, fileSize))
+			return nullptr;
+
+		CScriptBuilder builder{};
+		builder.StartNewModule(scriptEngine, moduleName);
+
+		if (auto r = builder.AddSectionFromMemory(moduleName, (const char*)fileBuffer, fileSize); r < 0)
+			return nullptr;
+
+		if (auto r = builder.BuildModule(); r < 0)
+			return nullptr;
+
+		auto asModule = builder.GetModule();
+
+		return asModule;
+	}
+
 
 	/************************************************************************************************/
 

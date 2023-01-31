@@ -10,6 +10,8 @@
 #include <..\source\Signal.h>
 #include <ScriptingRuntime.h>
 
+#include "Generator.h"
+
 class GenerationTest : public FlexKit::FrameworkState
 {
 public:
@@ -17,6 +19,7 @@ public:
 	~GenerationTest() final;
 
 	void RegisterGenerationAPI();
+	void RegisterConstraint(asIScriptObject* object);
 
 	FlexKit::UpdateTask* Update(FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT) final;
 	FlexKit::UpdateTask* Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT, FlexKit::FrameGraph& frameGraph) final;
@@ -50,6 +53,8 @@ public:
 
 	FlexKit::WorldRender					renderer;
 	FlexKit::TextureStreamingEngine			textureStreamingEngine;
+
+	ConstraintTable							constraints;
 
 	FlexKit::LayerHandle					layer;
 	FlexKit::Scene							scene;

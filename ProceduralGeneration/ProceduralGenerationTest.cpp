@@ -36,6 +36,8 @@ GenerationTest::GenerationTest(FlexKit::GameFramework& IN_framework) :
 	renderer				{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
 	textureStreamingEngine	{ framework.GetRenderSystem(), framework.core.GetBlockMemory() },
 
+	constraints		{ framework.core.GetBlockMemory() },
+
 	gbuffer			{ { 1920, 1080 }, framework.GetRenderSystem() },
 	depthBuffer		{ framework.GetRenderSystem(), { 1920, 1080 } },
 	renderWindow	{},
@@ -55,6 +57,26 @@ GenerationTest::GenerationTest(FlexKit::GameFramework& IN_framework) :
 
 	RegisterGenerationAPI();
 
+	auto generatorModule	= LoadScriptFile("Generator", R"(assets\scripts\TestConstraints.as)", framework.core.GetTempMemory());
+	auto func				= generatorModule->GetFunctionByName("ProcGenMain");
+
+	if (!func)
+	{
+		FK_LOG_ERROR("Failed to load ProcGen Script");
+	}
+	else
+	{
+		auto scriptContext = GetContext();
+		scriptContext->Prepare(func);
+		scriptContext->Execute();
+		scriptContext->Unprepare();
+
+		ReleaseContext(scriptContext);
+	}
+
+	SparseMap map{ framework.core.GetTempMemory() };
+	map.Generate(constraints, int3{ 256, 256, 1 }, framework.core.GetTempMemory());
+
 	layer = physx.CreateLayer();
 
 	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
@@ -65,7 +87,7 @@ GenerationTest::GenerationTest(FlexKit::GameFramework& IN_framework) :
 	sub._ptr = &framework;
 
 	renderWindow.Handler->Subscribe(sub);
-	renderWindow.SetWindowTitle("Texture Streaming");
+	renderWindow.SetWindowTitle("Procedural Generation");
 
 	// Load Test Scene
 	SceneLoadingContext loadCtx{
@@ -113,9 +135,105 @@ GenerationTest::~GenerationTest()
 
 void TileSet_Construct(TileSet* tileSet)
 {
-	new(tileSet) TileSet();
+	new(tileSet) TileSet{};
 }
 
+void TileSet_Deconstruct(TileSet* tileSet)
+{
+	tileSet->~static_vector();
+}
+
+void TileSet_CopyConstruct(TileSet* tileSet, TileSet& rhs)
+{
+	new(tileSet) TileSet{ rhs };
+}
+
+
+/************************************************************************************************/
+
+
+struct ScriptConstraint : public iConstraint
+{
+	ScriptConstraint(asIScriptObject* obj_ptr) :
+		object { obj_ptr }
+	{
+		type = object->GetObjectType();
+	}
+
+	bool Constraint(const	SparseMap& map, const CellCoord coord)	const noexcept final
+	{
+		auto ctx = GetContext();
+
+		auto function = type->GetMethodByName("Constraint");
+		ctx->Prepare(function);
+		ctx->SetObject(object);
+		ctx->SetArgAddress(0, (void*)&map);
+		ctx->SetArgObject(1, (void*)&coord);
+		ctx->Execute();
+
+		auto byte = ctx->GetReturnByte();
+
+		ctx->Unprepare();
+		ReleaseContext(ctx);
+
+		return byte;
+	}
+
+	bool Apply(SparseMap& map, const CellCoord coord)	const noexcept final
+	{
+		auto ctx = GetContext();
+
+		auto function = type->GetMethodByName("Apply");
+		ctx->Prepare(function);
+		ctx->SetObject(object);
+		ctx->SetArgAddress(0, (void*)&map);
+		ctx->SetArgObject(1, (void*)&coord);
+		ctx->Execute();
+
+		auto byte = ctx->GetReturnByte();
+
+		ctx->Unprepare();
+		ReleaseContext(ctx);
+
+		return byte;
+	}
+
+	TileSet GetInvalidTiles(const	SparseMap& map, const CellCoord coord)	const noexcept final
+	{
+		auto ctx = GetContext();
+
+		auto function = type->GetMethodByName("GetInvalidTiles");
+		auto res = ctx->Prepare(function);
+		ctx->SetObject(object);
+		ctx->SetArgAddress(0, (void*)&map);
+		ctx->SetArgObject(1, (void*)&coord);
+		res = ctx->Execute();
+
+		FlexKit::static_vector<CellState_t, CellStates::Count> tileSet{ *((TileSet*)(ctx->GetAddressOfReturnValue())) };
+
+		ctx->Unprepare();
+		ReleaseContext(ctx);
+
+		return tileSet;
+	}
+
+	asITypeInfo*		type	= nullptr;
+	asIScriptObject*	object	= nullptr;
+};
+
+void GenerationTest::RegisterConstraint(asIScriptObject* object)
+{
+	constraints.push_back(std::make_unique<ScriptConstraint>(object));
+}
+
+
+/************************************************************************************************/
+
+
+TileSet SparseMapGetSuperState(SparseMap* map, uint3& xyz)
+{
+	return map->GetSuperState(xyz);
+}
 
 void GenerationTest::RegisterGenerationAPI()
 {
@@ -124,16 +242,23 @@ void GenerationTest::RegisterGenerationAPI()
 	int res = -1;
 
 	res = engine_ptr->RegisterObjectType("TileSet", sizeof(TileSet), asOBJ_VALUE | asOBJ_APP_CLASS_CAK);	FK_ASSERT(res >= 0);
-	res = engine_ptr->RegisterObjectBehaviour("TileSet", asBEHAVE_CONSTRUCT, "void Construct()", asFUNCTION(TileSet_Construct), asCALL_CDECL_OBJFIRST);	FK_ASSERT(res >= 0);
-	res = engine_ptr->RegisterObjectMethod("TileSet", "void opAssign(const TileSet& rhs)", asMETHODPR(TileSet, operator=, TileSet&, TileSet&), asCALL_THISCALL);	FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterObjectBehaviour("TileSet", asBEHAVE_CONSTRUCT, "void Construct()",					asFUNCTION(TileSet_Construct),		asCALL_CDECL_OBJFIRST);	FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterObjectBehaviour("TileSet", asBEHAVE_CONSTRUCT, "void Construct(const TileSet& in)",	asFUNCTION(TileSet_CopyConstruct),	asCALL_CDECL_OBJFIRST);	FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterObjectBehaviour("TileSet", asBEHAVE_DESTRUCT,  "void Deconstruct()",					asFUNCTION(TileSet_Deconstruct),	asCALL_CDECL_OBJFIRST);	FK_ASSERT(res >= 0);
+
+	res = engine_ptr->RegisterObjectMethod("TileSet", "void opAssign(const TileSet& in)",	asMETHODPR(TileSet, operator=, (const TileSet&), TileSet&), asCALL_THISCALL);	FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterObjectMethod("TileSet", "uint64 push_back(uint8& in)",		asMETHOD(TileSet, push_back), asCALL_THISCALL);	FK_ASSERT(res >= 0);
 
 
-	res = engine_ptr->RegisterObjectType("SparseMap", 0, asOBJ_REF | asOBJ_NOCOUNT);						FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterObjectType("SparseMap", 0, asOBJ_REF | asOBJ_NOCOUNT);		FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterObjectMethod("SparseMap", "TileSet GetSuperState(uint3& in)",		asFUNCTION(SparseMapGetSuperState), asCALL_CDECL_OBJFIRST);	FK_ASSERT(res >= 0);
 
-	res = engine_ptr->RegisterInterface("iConstraint");																			FK_ASSERT(res >= 0);
-	res = engine_ptr->RegisterInterfaceMethod("iConstraint", "bool	Constraint			(SparseMap& map, const uint3 coord");	FK_ASSERT(res >= 0);
-	res = engine_ptr->RegisterInterfaceMethod("iConstraint", "bool	Apply				(SparseMap& map, const uint3 coord");	FK_ASSERT(res >= 0);
-	res = engine_ptr->RegisterInterfaceMethod("iConstraint", "TileSet GetInvalidTiles	(SparseMap& map, const uint3 coord");	FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterInterface("iConstraint");																		FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterInterfaceMethod("iConstraint", "bool	Constraint			(SparseMap@, const uint3)");		FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterInterfaceMethod("iConstraint", "bool	Apply				(SparseMap@, const uint3)");		FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterInterfaceMethod("iConstraint", "TileSet GetInvalidTiles	(SparseMap@, const uint3)");		FK_ASSERT(res >= 0);
+
+	res = engine_ptr->RegisterGlobalFunction("void RegisterConstraint(iConstraint@)", asMETHOD(GenerationTest, RegisterConstraint), asCALL_THISCALL_ASGLOBAL, this);	FK_ASSERT(res >= 0);
 }
 
 
