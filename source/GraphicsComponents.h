@@ -162,8 +162,12 @@ namespace FlexKit
 			_CameraDirty();
 		}
 
+		NodeHandle GetNode() const
+		{
+			return GetComponent().GetCameraNode(camera);
+		}
 
-		NodeHandle GetCameraNode()
+		NodeHandle GetCameraNode() const
 		{
 			return GetComponent().GetCameraNode(camera);
 		}

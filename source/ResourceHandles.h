@@ -42,6 +42,7 @@ namespace FlexKit
 	using QueryHandle					= Handle_t<32u, GetTypeGUID(QueryBuffer)>;
 	using ReadBackResourceHandle		= Handle_t<32u, GetTypeGUID(ReadBackResourceHandle)>;
 	using RigidBodyHandle				= Handle_t<16u, GetTypeGUID(RigidBodyHandle)>;
+	using SignalGroupHandle				= Handle_t<16u, GetTypeGUID(SignalGroupHandle)>;
 	using StreamingTexture2DHandle		= Handle_t<32u, GetTypeGUID(StreamTexture2DHandle)>;
 	using ShaderResourceHandle			= Handle_t<32u, GetTypeGUID(ShaderResourceHandle)>;
 	using SOResourceHandle				= Handle_t<32u, GetTypeGUID(SOResourceHandle)>;

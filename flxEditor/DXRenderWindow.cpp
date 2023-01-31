@@ -68,7 +68,7 @@ void DXRenderWindow::Draw(FlexKit::EngineCore& Engine, TemporaryBuffers& tempora
 		}
 		else
 		{
-			frameGraph.AddRenderTarget(renderWindow.backBuffer);
+			frameGraph.AddResource(renderWindow.backBuffer);
 
 			FlexKit::ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), FlexKit::float4{ 0.0f, 0.0f, 0.0f, 1 });
 			FlexKit::PresentBackBuffer(frameGraph, renderWindow.GetBackBuffer());
@@ -148,6 +148,15 @@ void DXRenderWindow::resizeEvent(QResizeEvent* evt)
 
 	if (onResize)
 		onResize({ (uint32_t)width, (uint32_t)height });
+}
+
+
+/************************************************************************************************/
+
+
+FlexKit::ResourceHandle DXRenderWindow::GetBackBuffer() const
+{
+	return renderWindow.GetBackBuffer();
 }
 
 

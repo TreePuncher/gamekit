@@ -1,10 +1,10 @@
 #include "pch.h"
 #include "Gregory.h"
 
-constexpr FlexKit::PSOHandle ACCQuad                = FlexKit::PSOHandle(GetTypeGUID(ACCQuad));
-constexpr FlexKit::PSOHandle ACCQuadWireframe       = FlexKit::PSOHandle(GetTypeGUID(ACCQuadWireframe));
-constexpr FlexKit::PSOHandle ACCDebugNormals        = FlexKit::PSOHandle(GetTypeGUID(ACCDebugNormals));
-constexpr FlexKit::PSOHandle ACCDebugControlpoints  = FlexKit::PSOHandle(GetTypeGUID(ACCDebugControlpoints));
+constexpr FlexKit::PSOHandle ACCQuad				= FlexKit::PSOHandle(GetTypeGUID(ACCQuad));
+constexpr FlexKit::PSOHandle ACCQuadWireframe		= FlexKit::PSOHandle(GetTypeGUID(ACCQuadWireframe));
+constexpr FlexKit::PSOHandle ACCDebugNormals		= FlexKit::PSOHandle(GetTypeGUID(ACCDebugNormals));
+constexpr FlexKit::PSOHandle ACCDebugControlpoints	= FlexKit::PSOHandle(GetTypeGUID(ACCDebugControlpoints));
 
 using namespace FlexKit;
 
@@ -16,25 +16,25 @@ class TessellationTest : public FlexKit::FrameworkState
 {
 public:
 	TessellationTest(FlexKit::GameFramework& IN_framework, int test) :
-		FrameworkState{ IN_framework },
-		renderWindow    {
+		FrameworkState	{ IN_framework },
+		renderWindow	{
 			CreateWin32RenderWindow(
 				IN_framework.GetRenderSystem(),
 				FlexKit::DefaultWindowDesc(uint2{ 1920, 1080 } * 2)).value() },
-		rootSig         { IN_framework.core.GetBlockMemory() },
-		vertexBuffer    { IN_framework.GetRenderSystem().CreateVertexBuffer(MEGABYTE, false) },
-		constantBuffer  { IN_framework.GetRenderSystem().CreateConstantBuffer(MEGABYTE, false) },
-		cameras         { IN_framework.core.GetBlockMemory() },
-		depthBuffer     { IN_framework.GetRenderSystem().CreateDepthBuffer(uint2{ 1920, 1080 } * 2, true) },
-		debug1Buffer    { IN_framework.GetRenderSystem().CreateUAVBufferResource(MEGABYTE * 16, false) },
-		debug2Buffer    { IN_framework.GetRenderSystem().CreateUAVBufferResource(MEGABYTE, false) },
-		indices         { IN_framework.core.GetBlockMemory() },
-		orbitCamera     { gameObject, CameraComponent::GetComponent().CreateCamera(), 10.0f },
-		nodes           {}
+		rootSig			{ IN_framework.core.GetBlockMemory() },
+		vertexBuffer	{ IN_framework.GetRenderSystem().CreateVertexBuffer(MEGABYTE, false) },
+		constantBuffer	{ IN_framework.GetRenderSystem().CreateConstantBuffer(MEGABYTE, false) },
+		cameras			{ IN_framework.core.GetBlockMemory() },
+		depthBuffer		{ IN_framework.GetRenderSystem().CreateDepthBuffer(uint2{ 1920, 1080 } * 2, true) },
+		debug1Buffer	{ IN_framework.GetRenderSystem().CreateUAVBufferResource(MEGABYTE * 16, false) },
+		debug2Buffer	{ IN_framework.GetRenderSystem().CreateUAVBufferResource(MEGABYTE, false) },
+		indices			{ IN_framework.core.GetBlockMemory() },
+		orbitCamera		{ gameObject, CameraComponent::GetComponent().CreateCamera(), 10.0f },
+		nodes			{}
 	{
-		patches     = PreComputePatches(IN_framework.core.GetBlockMemory() );
-		vertices    = GetGregoryVertexBuffer(shape, framework.core.GetBlockMemory());
-		patchBuffer = MoveBufferToDevice(framework.GetRenderSystem(), (const char*)patches.data(), patches.ByteSize());
+		patches		= PreComputePatches(IN_framework.core.GetBlockMemory() );
+		vertices	= GetGregoryVertexBuffer(shape, framework.core.GetBlockMemory());
+		patchBuffer	= MoveBufferToDevice(framework.GetRenderSystem(), (const char*)patches.data(), patches.ByteSize());
 
 		rootSig.SetParameterAsSRV(0, 0, 0);
 		rootSig.SetParameterAsCBV(1, 0, 0, PIPELINE_DEST_ALL);
@@ -48,20 +48,20 @@ public:
 		rootSig.AllowSO = false;
 		FK_ASSERT(rootSig.Build(IN_framework.GetRenderSystem(), IN_framework.core.GetTempMemory()));
 
-		framework.GetRenderSystem().RegisterPSOLoader(ACCQuad,                  { &rootSig, [&](auto* renderSystem) { return LoadPSO(renderSystem); } });
-		framework.GetRenderSystem().RegisterPSOLoader(ACCQuadWireframe,         { &rootSig, [&](auto* renderSystem) { return LoadPSO(renderSystem, true); } });
-		framework.GetRenderSystem().RegisterPSOLoader(ACCDebugControlpoints,    { &rootSig, [&](auto* renderSystem) { return LoadPSO2(renderSystem); } });
-		framework.GetRenderSystem().RegisterPSOLoader(ACCDebugNormals,          { &rootSig, [&](auto* renderSystem) { return LoadPSO3(renderSystem); } });
+		framework.GetRenderSystem().RegisterPSOLoader(ACCQuad,					{ &rootSig, [&](auto* renderSystem) { return LoadPSO(renderSystem); } });
+		framework.GetRenderSystem().RegisterPSOLoader(ACCQuadWireframe,			{ &rootSig, [&](auto* renderSystem) { return LoadPSO(renderSystem, true); } });
+		framework.GetRenderSystem().RegisterPSOLoader(ACCDebugControlpoints,	{ &rootSig, [&](auto* renderSystem) { return LoadPSO2(renderSystem); } });
+		framework.GetRenderSystem().RegisterPSOLoader(ACCDebugNormals,			{ &rootSig, [&](auto* renderSystem) { return LoadPSO3(renderSystem); } });
 
 		FlexKit::EventNotifier<>::Subscriber sub;
-		sub.Notify  = &FlexKit::EventsWrapper;
-		sub._ptr    = &framework;
+		sub.Notify	= &FlexKit::EventsWrapper;
+		sub._ptr	= &framework;
 
 		renderWindow.Handler->Subscribe(sub);
 		renderWindow.SetWindowTitle("[Tessellation Test]");
 		renderWindow.EnableCaptureMouse(true);
-		//activeCamera    = CameraComponent::GetComponent().CreateCamera((float)pi/3.0f, 1920.0f / 1080.0f);
-		node            = GetZeroedNode();
+		//activeCamera	= CameraComponent::GetComponent().CreateCamera((float)pi/3.0f, 1920.0f / 1080.0f);
+		node			= GetZeroedNode();
 		orbitCamera.SetCameraAspectRatio(1920.0f / 1080.0f);
 		orbitCamera.SetCameraFOV((float)pi / 3.0f);
 		//TranslateWorld(node, float3( 0, -3, -20.0f ));
@@ -627,36 +627,36 @@ public:
 	/************************************************************************************************/
 
 
-	ModifiableShape         shape;
-	Vector<GPUVertex>       vertices;
-	Vector<uint32_t>        indices;
-	Vector<GPUPatch>        patches;
-	NodeHandle              node;
+	ModifiableShape			shape;
+	Vector<GPUVertex>		vertices;
+	Vector<uint32_t>		indices;
+	Vector<GPUPatch>		patches;
+	NodeHandle				node;
 
 	
-	ResourceHandle          patchBuffer;
-	VertexBufferHandle      vertexBuffer;
-	ConstantBufferHandle    constantBuffer;
-	RootSignature           rootSig;
-	Win32RenderWindow       renderWindow;
-	ResourceHandle          depthBuffer;
-	ResourceHandle          debug1Buffer;
-	ResourceHandle          debug2Buffer;
+	ResourceHandle			patchBuffer;
+	VertexBufferHandle		vertexBuffer;
+	ConstantBufferHandle	constantBuffer;
+	RootSignature			rootSig;
+	Win32RenderWindow		renderWindow;
+	ResourceHandle			depthBuffer;
+	ResourceHandle			debug1Buffer;
+	ResourceHandle			debug2Buffer;
 
-	CameraComponent         cameras;
-	SceneNodeComponent      nodes;
+	CameraComponent			cameras;
+	SceneNodeComponent		nodes;
 
-	double  t                   = 0.0f;
-	int     tesselationLevel    = 16;
-	bool    wireframe           = false;
-	bool    markers             = false;
-	bool    normals             = false;
-	bool    forward             = false;
-	bool    backward            = false;
+	double  t					= 0.0f;
+	int     tesselationLevel	= 16;
+	bool    wireframe			= false;
+	bool    markers				= false;
+	bool    normals				= false;
+	bool    forward				= false;
+	bool    backward			= false;
 
-	MouseInputState         mouseState;
-	GameObject              gameObject;
-	OrbitCameraBehavior     orbitCamera;
+	MouseInputState			mouseState;
+	GameObject				gameObject;
+	OrbitCameraBehavior		orbitCamera;
 };
 
 

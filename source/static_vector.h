@@ -451,7 +451,7 @@ namespace FlexKit
 		}
 		
 		typedef TY_ TYPE;
-	private:
+
 		size_t  Size = 0;                       // Used Counter
 		char	Padding[0x10 - sizeof(size_t)];	// 8-Byte Pad to keep 16byte Alignment of Elements
 		char    buffer[TSIZE * sizeof(TY_)];

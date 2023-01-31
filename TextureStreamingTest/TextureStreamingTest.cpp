@@ -36,7 +36,7 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 
 	gbuffer			{ { 1920, 1080 }, framework.GetRenderSystem() },
 	depthBuffer		{ framework.GetRenderSystem(), { 1920, 1080 } },
-	renderWindow	{},
+	renderWindow	{ },
 
 	constantBuffer	{ framework.GetRenderSystem().CreateConstantBuffer(64 * MEGABYTE, false) },
 	vertexBuffer	{ framework.GetRenderSystem().CreateVertexBuffer(64 * MEGABYTE, false) },
@@ -97,16 +97,17 @@ TextureStreamingTest::~TextureStreamingTest()
 
 FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
-	FlexKit::UpdateInput();
+	UpdateInput();
 	renderWindow.UpdateCapturedMouseInput(dT);
+
 	OrbitCameraUpdate(orbitCamera, renderWindow.mouseState, dT);
 
 	if(rotate)
-	OrbitCameraYaw(orbitCamera, pi * dT / 3.0f);
-	//cameras.MarkDirty(activeCamera);
+		OrbitCameraYaw(orbitCamera, pi * dT / 3.0f);
+
+	cameras.MarkDirty(activeCamera);
 
 	debugUI.Update(renderWindow, core, dispatcher, dT);
-
 
 	ImGui::NewFrame();
 	ImGui::SetNextWindowPos({ (float)renderWindow.WH[0] - 400.0f, 0});
@@ -140,6 +141,7 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 	ImGui::End();
 	ImGui::EndFrame();
 	ImGui::Render();
+
 	return nullptr;
 }
 

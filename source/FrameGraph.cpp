@@ -1065,11 +1065,15 @@ namespace FlexKit
 				visitNode(nodes[handle]);
 		}
 
-		if (!orderedWorkList.size())
-			return;
+		//if (!orderedWorkList.size())
+		//	return;
 
 		// Handle dangling resources
 		// Retire resource at last user
+
+		const auto r_begin	= orderedWorkList.end();
+		const auto r_end	= orderedWorkList.begin();
+
 		for (auto& resource : resources.objects)
 		{
 			if (resource.type == OT_Virtual &&
@@ -1077,25 +1081,27 @@ namespace FlexKit
 			{
 				auto& users = resource.lastUsers;
 
-				auto r_itr = orderedWorkList.end() - 1;
-				auto r_end = orderedWorkList.begin();
-
-				for (; r_end <= r_itr; r_itr--)
+				if (r_begin != r_end)
 				{
-					const auto handle = (*r_itr)->handle;
-					if (std::find(users.begin(), users.end(), handle) != users.end())
-						break;
-				}
+					auto r_itr	= r_begin - 1;
 
-				if (r_itr >= orderedWorkList.begin())
-				{
-					FrameObjectLink outputObject;
-					outputObject.neededAccess = resource.access;
-					outputObject.neededLayout = resource.layout;
-					outputObject.source = InvalidHandle;
-					outputObject.handle = resource.handle;
+					for (; r_end <= r_itr; r_itr--)
+					{
+						const auto handle = (*r_itr)->handle;
+						if (std::find(users.begin(), users.end(), handle) != users.end())
+							break;
+					}
 
-					(*r_itr)->retiredObjects.push_back(outputObject);
+					if (r_itr >= orderedWorkList.begin())
+					{
+						FrameObjectLink outputObject;
+						outputObject.neededAccess = resource.access;
+						outputObject.neededLayout = resource.layout;
+						outputObject.source = InvalidHandle;
+						outputObject.handle = resource.handle;
+
+						(*r_itr)->retiredObjects.push_back(outputObject);
+					}
 				}
 
 				resource.virtualState = VirtualResourceState::Virtual_Released;
@@ -1214,7 +1220,10 @@ namespace FlexKit
 		
 		UpdateResourceFinalState();
 
-		renderSystem.Submit(contexts);
+		if(contexts.size())
+			renderSystem.Submit(contexts);
+		else
+			renderSystem.Signal(submissionTicket);
 	}
 
 
@@ -1285,6 +1294,9 @@ namespace FlexKit
 			{
 				auto shaderResource	= I.shaderResource;
 				auto layout			= I.layout;
+
+				if (I.lastUsers.size() == 0)
+					continue;
 
 				auto nodeIdx = I.lastUsers.back();
 				if(nodes[nodeIdx].executed)

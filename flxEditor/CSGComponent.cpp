@@ -1241,8 +1241,8 @@ public:
 					ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
 					ctx.SetPipelineState(resources.GetPipelineState(FlexKit::DRAW_TRI3D_PSO));
 
-					ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
-					ctx.SetRenderTargets({ resources.GetRenderTarget(data.renderTarget) }, true, resources.GetRenderTarget(data.depthBuffer));
+					ctx.SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
+					ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) }, true, resources.GetResource(data.depthBuffer));
 
 					ctx.SetPrimitiveTopology(FlexKit::EInputTopology::EIT_TRIANGLE);
 

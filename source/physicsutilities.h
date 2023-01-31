@@ -1026,8 +1026,8 @@ namespace FlexKit
 	using CameraControllerView			= CameraControllerComponent::View;
 
 
-	CameraHandle	GetCameraControllerCamera(GameObject& GO);
-	GameObject&		CreateThirdPersonCameraController(GameObject& gameObject, LayerHandle layer, iAllocator& allocator, const float R = 1, const float H = 1);
+	CameraHandle			GetCameraControllerCamera(GameObject& GO);
+	CameraControllerView&	CreateThirdPersonCameraController(GameObject& gameObject, LayerHandle layer, iAllocator& allocator, const float R = 1, const float H = 1);
 
 	float3			GetCameraControllerHeadPosition(GameObject& GO);
 	float3			GetCameraControllerForwardVector(GameObject& GO);
@@ -1061,7 +1061,7 @@ namespace FlexKit
 	};
 
 
-	bool HandleEvents(GameObject& GO, Event evt);
+	bool HandleTPCEvents(GameObject& GO, Event evt);
 
 
 	/************************************************************************************************/

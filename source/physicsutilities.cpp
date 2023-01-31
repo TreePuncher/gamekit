@@ -1031,7 +1031,7 @@ namespace FlexKit
 	}
 
 
-	bool HandleEvents(GameObject& GO, Event evt)
+	bool HandleTPCEvents(GameObject& GO, Event evt)
 	{
 		return Apply(GO,
 			[&](CameraControllerView& cameraController)
@@ -1070,11 +1070,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	GameObject& CreateThirdPersonCameraController(GameObject& gameObject, LayerHandle layer, iAllocator& allocator, const float R, const float H)
+	CameraControllerView& CreateThirdPersonCameraController(GameObject& gameObject, LayerHandle layer, iAllocator& allocator, const float R, const float H)
 	{
-#if 0
-		gameObject.AddView<OrbitCameraBehavior>();
-#else
 		auto& characterController = gameObject.AddView<CharacterControllerView>(layer, float3{ 0, 10, 0 });
 
 		auto& cameraController = gameObject.AddView<CameraControllerView>(
@@ -1083,10 +1080,9 @@ namespace FlexKit
 					GetControllerHandle(gameObject),
 					GetControllerNode(gameObject))));
 
-		gameObject.AddView<CameraView>(cameraController.GetData().camera);
+		auto& cameraView = gameObject.AddView<CameraView>(cameraController.GetData().camera);
 
-#endif
-		return gameObject;
+		return cameraController;
 	}
 
 
@@ -1262,7 +1258,10 @@ namespace FlexKit
 	void UpdateThirdPersonCameraControllers(const float2& mouseInput, const double dT)
 	{
 		for (auto& controller : CameraControllerComponent::GetComponent())
+		{
 			controller.componentData.UpdateCharacter(mouseInput, dT);
+			controller.componentData.UpdateCamera(mouseInput, { mouseInput.x, mouseInput.y }, dT);
+		}
 	}
 
 
@@ -1426,7 +1425,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	
 	NodeHandle GetControllerNode(GameObject& gameObject)
 	{
 		return Apply(gameObject, [](CharacterControllerView& controller)
@@ -1683,8 +1681,10 @@ namespace FlexKit
 			if (velocity.magnitudeSq() < 0.1f || velocity.isNaN())
 				velocity = 0.0f;
 
+			auto controller = controllerImpl.controller;
+
 			PxControllerState state;
-			controllerImpl.controller->getState(state);
+			controller->getState(state);
 
 			if(!floorContact)
 				velocity += -up * gravity;
@@ -1692,11 +1692,11 @@ namespace FlexKit
 			velocity -= velocity * drag * (float)deltaTime;
 
 			const auto  desiredMove    = velocity * (float)deltaTime;
-			const auto& pxPrevPos      = controllerImpl.controller->getPosition();
+			const auto& pxPrevPos      = controller->getPosition();
 			const auto  prevPos        = float3{ (float)pxPrevPos.x, (float)pxPrevPos.y, (float)pxPrevPos.z };
 
 			physx::PxControllerFilters filters;
-			auto collision = controllerImpl.controller->move(
+			auto collision = controller->move(
 				{   desiredMove.x,
 					desiredMove.y,
 					desiredMove.z },
@@ -1706,12 +1706,17 @@ namespace FlexKit
 
 			floorContact = PxControllerCollisionFlag::eCOLLISION_DOWN & collision;
 
-			const auto      pxPostPos   = controllerImpl.controller->getPosition();
+			const auto      pxPostPos   = controller->getFootPosition();
 			const float3    postPos     = pxVec3ToFloat3(pxPostPos);
 			const auto      deltaPos    = prevPos - postPos;
 
+			FlexKit::printfloat3(postPos);
+			printf("\n");
+
 			if (desiredMove.magnitudeSq() * 0.5f >= deltaPos.magnitude())
 				velocity = 0.0f;
+
+			FlexKit::SetPositionW(controllerImpl.node, pxVec3ToFloat3(controller->getPosition()));
 		}
 	}
 

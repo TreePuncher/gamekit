@@ -12,7 +12,7 @@ EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FK
 	vertexBuffer	{ IN_framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 32, false) },
 	constantBuffer	{ IN_framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 128, false) },
 	textureEngine	{ IN_framework.core.RenderSystem, IN_framework.core.GetBlockMemory() },
-	worldRender		{ IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory(), },
+	worldRender		{ IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory(), { .UAVPoolByteSize = 512 * MEGABYTE, .RTPoolByteSize = 2 * GIGABYTE, .UAVTexturePoolByteSize = 2 * GIGABYTE }},
 
 	csg						{ IN_framework.core.GetBlockMemory() },
 	brushComponent			{ IN_framework.core.GetBlockMemory(), IN_framework.core.RenderSystem },
@@ -142,6 +142,7 @@ FlexKit::UpdateTask* EditorRenderer::Draw(FlexKit::UpdateTask* update, FlexKit::
 {
 	drawInProgress = true;
 
+	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 	FlexKit::ClearVertexBuffer(frameGraph, vertexBuffer);
 
 	TemporaryBuffers temporaries{
@@ -150,7 +151,10 @@ FlexKit::UpdateTask* EditorRenderer::Draw(FlexKit::UpdateTask* update, FlexKit::
 	};
 
 	for (auto renderWindow : renderWindows)
+	{
+		frameGraph.AddOutput(renderWindow->GetBackBuffer());
 		renderWindow->Draw(core, temporaries, dispatcher, dT, frameGraph, threadedAllocator);
+	}
 
 	return nullptr;
 }
