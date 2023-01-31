@@ -47,6 +47,8 @@ public:
 
 	void            resizeEvent(QResizeEvent* evt);
 
+	FlexKit::ResourceHandle GetBackBuffer() const;
+
 public slots:
 	void OnFrame();
 

@@ -52,7 +52,7 @@ namespace FlexKit
 			if (!swapChain)
 				return false;
 
-			auto res = SUCCEEDED(swapChain->Present(syncInternal, flags));
+			auto res = SUCCEEDED(swapChain->Present(syncInternal, flags | (syncInternal == 0 ? DXGI_PRESENT_ALLOW_TEARING : 0)));
 
 			if (!res)
 				renderSystem->_OnCrash();
@@ -745,7 +745,8 @@ namespace FlexKit
 		SwapChainDesc.BufferUsage		= DXGI_USAGE_RENDER_TARGET_OUTPUT;
 		SwapChainDesc.SwapEffect		= DXGI_SWAP_EFFECT_FLIP_DISCARD;
 		SwapChainDesc.SampleDesc.Count	= 1;
-		SwapChainDesc.Flags             = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+		SwapChainDesc.Flags				= DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+
 		ShowWindow(windowHWND, 5);
 
 		IDXGISwapChain1* NewSwapChain_ptr = nullptr;

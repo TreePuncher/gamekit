@@ -24,7 +24,7 @@
 extern "C" __declspec(dllexport) DWORD  NvOptimusEnablement = 1;
 extern "C" __declspec(dllexport) int    AmdPowerXpressRequestHighPerformance = 1;
 
-extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 706; }
+extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 608; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath      = ".\\D3D12\\"; }
 
 namespace FlexKit
@@ -4696,6 +4696,9 @@ namespace FlexKit
 		D3D12_FEATURE_DATA_D3D12_OPTIONS12 options12;
 		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS12, &options12, sizeof(options12));
 
+		if (!options12.EnhancedBarriersSupported)
+			FK_LOG_ERROR("Required Feature: 'Enhanced Barriers' not available.");
+
 		switch (options5.RaytracingTier)
 		{
 		case D3D12_RAYTRACING_TIER_1_0:
@@ -9038,6 +9041,16 @@ namespace FlexKit
 		_UpdateCounters();
 
 		return { dispatchIdx, Fence };
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::Signal(SyncPoint syncPoint)
+	{
+		if (auto HR = GraphicsQueue->Signal(syncPoint.fence, syncPoint.syncCounter); FAILED(HR))
+			FK_LOG_ERROR("Failed to Signal");
 	}
 
 

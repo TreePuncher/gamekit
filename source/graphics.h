@@ -3731,6 +3731,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		SyncPoint	GetSyncDirect();
 		SyncPoint	GetSubmissionTicket();
 		SyncPoint	Submit(std::span<Context*> CLs, std::optional<SyncPoint> sync = {});
+		void		Signal(SyncPoint);
+
 		void		_UpdateCounters();
 		void		_UpdateSubResources(ResourceHandle handle, ID3D12Resource** resources, const size_t size);
 

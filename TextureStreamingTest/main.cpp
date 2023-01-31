@@ -14,7 +14,7 @@ int main()
 		app->PushState<TextureStreamingTest>();
 		app->GetCore().FPSLimit		= 90;
 		app->GetCore().FrameLock	= false;
-		app->GetCore().vSync		= false;
+		app->GetCore().vSync		= true;
 		app->Run();
 	}
 	catch (...)

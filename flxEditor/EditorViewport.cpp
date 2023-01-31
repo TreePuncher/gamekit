@@ -1262,7 +1262,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 		depthBuffer.Increment();
 
 		FlexKit::ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
-		FlexKit::ClearGBuffer(gbuffer, frameGraph);
+		FlexKit::ClearGBuffer(frameGraph, gbuffer);
 		FlexKit::ClearBackBuffer(frameGraph, renderTarget);
 
 		FlexKit::WorldRender_Targets targets {
@@ -1296,7 +1296,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 			dispatcher, frameGraph,
 			temporaries.ReserveConstantBuffer,
 			temporaries.ReserveVertexBuffer,
-			frameGraph.Resources.AddResource(targets.RenderTarget, true),
+			frameGraph.AddResource(targets.RenderTarget),
 			dT);
 
 		auto drawSceneRes = renderer.worldRender.DrawScene(dispatcher, frameGraph, sceneDesc, targets, FlexKit::SystemAllocator, allocator);
@@ -1321,11 +1321,11 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 			frameGraph,
 			viewportCamera,
 			depthBuffer.WH,
+			drawSceneRes.entityConstants,
 			drawSceneRes.passes,
 			drawSceneRes.skinnedDraws,
 			temporaries.ReserveConstantBuffer,
 			temporaries.ReserveVertexBuffer);
-
 	}
 	else
 		FlexKit::ClearBackBuffer(frameGraph, renderTarget, { 0.25f, 0.25f, 0.25f, 0 });
@@ -1395,8 +1395,8 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 			ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
 			ctx.SetPipelineState(resources.GetPipelineState(FlexKit::DRAW_LINE3D_PSO));
 
-			ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
-			ctx.SetRenderTargets({ resources.GetRenderTarget(data.renderTarget) }, false);
+			ctx.SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
+			ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) }, false);
 
 			ctx.SetPrimitiveTopology(FlexKit::EInputTopology::EIT_LINE);
 

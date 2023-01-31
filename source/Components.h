@@ -571,14 +571,7 @@ namespace FlexKit
 	template<typename TY>
 	bool Filter(const GameObject& go, TY& ty)
 	{
-		if (go.hasView(TY::ValueType::GetComponentID()))
-		{
-			auto& value = *(typename TY::ValueType*)go.GetView(TY::ValueType::GetComponentID());
-
-			return ty.IsValid(value);
-		}
-		else
-			return false;
+		return (ty.Available(go));
 	}
 
 
@@ -591,8 +584,10 @@ namespace FlexKit
 		bool available  = (Filter(go, requests) && ...);
 		using Tuple_TY = std::tuple<typename TY_ARGS::Type...>;
 
+		auto _getValue = [&](auto& value) -> decltype(auto) { return value.GetValue(go); };
+
 		if (available)
-			return std::optional{ Tuple_TY(GetView<typename TY_ARGS::ValueType>(go)... ) };
+			return std::optional{ Tuple_TY{ _getValue(requests) ... } };
 		else
 			return std::optional<Tuple_TY>{};
 	}
@@ -877,6 +872,19 @@ namespace FlexKit
 		{
 			return STRCMP_Helper(stringID, std::make_integer_sequence<int, sizeof ... (TY)>());
 		}
+
+		bool Available(const GameObject& gameObject)
+		{
+			if (gameObject.hasView(StringIDView::GetComponentID()))
+				return IsValid(GetView<StringIDView>(gameObject));
+			else return false;
+		}
+
+		decltype(auto) GetValue(GameObject& gameObject)
+		{
+			
+			return GetView<StringIDView>(gameObject);// .GetView(StringIDView::GetComponentID());
+		};
 	};
 
 	template<IsConstCharStar ... TY>
@@ -908,6 +916,18 @@ namespace FlexKit
 		{
 			return STRCMP_Helper(stringID, std::make_integer_sequence<int, sizeof ... (TY)>());
 		}
+
+		bool Available(const GameObject& gameObject)
+		{
+			if (gameObject.hasView(StringIDView::GetComponentID()))
+				return IsValid(GetView<StringIDView>(gameObject));
+			else return false;
+		}
+
+		decltype(auto) GetValue(GameObject& gameObject)
+		{
+			return GetView<StringIDView>(gameObject);
+		};
 	};
 
 	
@@ -924,6 +944,39 @@ namespace FlexKit
 			pattern{ IN_pattern } {}
 
 		bool IsValid(const StringIDView& stringID) const noexcept;
+
+		bool Available(const GameObject& gameObject)
+		{
+			if (gameObject.hasView(StringIDView::GetComponentID()))
+				return IsValid(GetView<StringIDView>(gameObject));
+			else return false;
+		}
+
+		decltype(auto) GetValue(GameObject& gameObject)
+		{
+			return GetView<StringIDView>(gameObject);
+		};
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct GameObjectReq
+	{
+		using Type		= GameObject&;
+		using ValueType = GameObject&;
+		static constexpr bool IsConst() { return false; }
+
+		bool Available(const GameObject& gameObject)
+		{
+			return true;
+		}
+
+		decltype(auto) GetValue(GameObject& gameObject)
+		{
+			return gameObject;
+		}
 	};
 
 

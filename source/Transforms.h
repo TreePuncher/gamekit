@@ -264,7 +264,7 @@ namespace FlexKit
 
 
     template<typename Overrides_TY = NullSceneNodeBehaviorOverrides>
-    class SceneNodeView: 
+    class SceneNodeView : 
         public ComponentView_t<SceneNodeComponent>,
         public Overrides_TY
     {
@@ -465,6 +465,28 @@ namespace FlexKit
 
     void SetWT(GameObject& go, const float4x4 newMatrix);
     void SetOrientation(GameObject& go, const Quaternion q);
+
+
+	/************************************************************************************************/
+
+
+	struct SceneNodeReq
+	{
+		using Type		= SceneNodeView<>&;
+		using ValueType = SceneNodeView<>;
+
+		static constexpr bool IsConst() { return false; }
+
+		bool Available(const GameObject& gameObject)
+		{
+			return gameObject.hasView(SceneNodeView<>::GetComponentID());
+		}
+
+		decltype(auto) GetValue(GameObject& gameObject)
+		{
+			return GetView<SceneNodeView<>>(gameObject);
+		}
+	};
 
 
 }	/************************************************************************************************/

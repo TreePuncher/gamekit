@@ -97,11 +97,11 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
                     FlexKit::CBPushBuffer           constantBuffer = data.ReserveConstantBuffer(1024);
                     FlexKit::ConstantBufferDataSet  constantBufferSet{ constants, constantBuffer };
 
-                    context.ClearRenderTarget(frameResources.GetRenderTarget(data.renderTarget));
+                    context.ClearRenderTarget(frameResources.GetResource(data.renderTarget));
 
-                    context.SetScissorAndViewports({ frameResources.GetRenderTarget(data.renderTarget) });
+                    context.SetScissorAndViewports({ frameResources.GetResource(data.renderTarget) });
                     context.SetRenderTargets(
-                        { frameResources.GetRenderTarget(data.renderTarget) },
+                        { frameResources.GetResource(data.renderTarget) },
                         false);
 
                     context.SetRootSignature(frameResources.renderSystem().Library.RS6CBVs4SRVs);

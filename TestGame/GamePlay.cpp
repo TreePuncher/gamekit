@@ -1248,9 +1248,9 @@ void CreateMultiplayerScene(GameWorld& world, const WorldAssets& assets, iAlloca
 
 	auto& physics		= PhysXComponent::GetComponent();
 	auto& floorCollider	= world.objectPool.Allocate();
-	auto floorShape		= physics.CreateCubeShape({ 200, 1, 200 });
 	auto& staticBody	= floorCollider.AddView<StaticBodyView>(world.layer, float3{ 0, -1.0f, 0 } );
 
+	auto floorShape = physics.CreateCubeShape({ 200, 1, 200 });
 	staticBody.AddShape(floorShape);
 
 	auto& layer = PhysXComponent::GetComponent().GetLayer_ref(world.layer);
