@@ -91,9 +91,9 @@ struct SparseMap;
 
 struct iConstraint
 {
-	virtual bool		Constraint	(const	SparseMap& map, const CellCoord coord)	const noexcept = 0;
-	virtual bool		Apply		(SparseMap& map, const CellCoord coord)	const noexcept = 0;
-	virtual				GetInvalidTiles(const	SparseMap& map, const CellCoord coord)	const noexcept = 0;
+	virtual bool		Constraint			(const	SparseMap& map, const CellCoord coord)	const noexcept = 0;
+	virtual bool		Apply				(SparseMap& map, const CellCoord coord)	const noexcept = 0;
+	virtual	TileSet		GetInvalidTiles		(const	SparseMap& map, const CellCoord coord)	const noexcept = 0;
 };
 
 
@@ -102,6 +102,8 @@ using ConstraintSpan = std::span<std::unique_ptr<iConstraint>>;
 
 struct SparseMap
 {
+	SparseMap(iAllocator& allocator) : chunks{ allocator } {}
+
 	ChunkedChunkMap chunks;
 
 	auto operator [](CellCoord cord) const
