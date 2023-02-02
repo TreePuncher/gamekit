@@ -151,9 +151,9 @@ FlexKit::EntityComponent_ptr PrefabGameObjectResource::FindComponent(FlexKit::Co
 /************************************************************************************************/
 
 
-void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface& ctx)
+void LoadEntity(FlexKit::SceneEntity& entity, LoadEntityContextInterface& ctx)
 {
-	for (auto& componentEntry : components)
+	for (auto& componentEntry : entity.components)
 	{
 		switch (componentEntry->id)
 		{
@@ -244,7 +244,8 @@ void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface
 			auto layer = ctx.LayerHandle();
 			static_vector<FlexKit::KeyValuePair> values{
 				{ FlexKit::LoadEntityContextInterfaceKID, &ctx },
-				{ FlexKit::PhysicsLayerKID, &layer  } };
+				{ FlexKit::PhysicsLayerKID, &layer },
+				{ FlexKit::SceneEntityKID, &entity } };
 
 			component.AddComponentView(ctx.GameObject(), values, blob, blob.size(), FlexKit::SystemAllocator);
 			

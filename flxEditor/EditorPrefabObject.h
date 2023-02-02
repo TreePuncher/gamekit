@@ -87,7 +87,7 @@ struct LoadEntityContextInterface
 	virtual FlexKit::SceneEntity*			Resource()											= 0;
 };
 
-void LoadEntity(FlexKit::ComponentVector& components, LoadEntityContextInterface& ctx);
+void LoadEntity(FlexKit::SceneEntity& components, LoadEntityContextInterface& ctx);
 
 
 /**********************************************************************

@@ -47,9 +47,9 @@ namespace FlexKit
 
 		ResourceBlob CreateBlob() const override;
 
-				ResourceID_t  GetResourceTypeID()	const noexcept override { return CubeMapResourceTypeID; }
-		const	std::string&  GetResourceID()		const noexcept final { return ID; }
-				uint64_t      GetResourceGUID()		const noexcept final { return GUID; }
+				ResourceID_t	GetResourceTypeID()	const noexcept override	{ return CubeMapResourceTypeID; }
+		const	std::string&	GetResourceID()		const noexcept final	{ return ID; }
+				uint64_t		GetResourceGUID()	const noexcept final	{ return GUID; }
 
 		void SetResourceGUID(uint64_t newGUID)			noexcept final { GUID = newGUID; }
 		void SetResourceID(const std::string& newID)	noexcept final { ID = newID; }

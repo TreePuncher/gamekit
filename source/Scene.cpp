@@ -1205,6 +1205,7 @@ namespace FlexKit
 								{
 									static_vector<KeyValuePair> values;
 									values.emplace_back(SceneLoadingContextKID, &ctx);
+									values.emplace_back(PhysicsLayerKID, &ctx.layer);
 
 									GetComponent(ID).AddComponentView(
 														gameObject,

@@ -72,6 +72,8 @@ struct BrushComponentUpdate
 
 		//brush.material = runtimeBrush.material;
 		// TODO: update material component data
+		brush.meshes.clear();
+
 		for (auto mesh : runtimeBrush.meshes)
 			brush.meshes.push_back(FlexKit::GetMeshResource(mesh)->assetHandle);
 	}

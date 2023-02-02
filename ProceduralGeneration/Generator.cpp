@@ -31,7 +31,7 @@ constexpr uint8_t GetIdBit(const CellState_t id)
 	return 1 << id;
 }
 
-constexpr float CellWeights[] = { 1, 1, 1, 1, 1, 1 };
+constexpr float CellWeights[] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
 
 template<size_t ... ints>
 consteval auto _GetCellState_tsCollectionHelper(std::integer_sequence<size_t, ints...> int_seq)

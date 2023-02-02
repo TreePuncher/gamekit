@@ -919,7 +919,7 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
 			gbufferPass
 		};
 
-		LoadEntity(entity.components, ctx);
+		LoadEntity(entity, ctx);
 	}
 
 	scene = viewportScene;
@@ -1500,6 +1500,22 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 			if(layer.debugGeometry.size())
 			{
 				ctx.BeginEvent_DEBUG("PhysX Debug");
+
+				struct {
+					float4		unused1;
+					float4		unused2;
+					float4x4	transform;
+				} CB_Data {
+					.unused1	= float4{ 1, 1, 1, 1 },
+					.unused2	= float4{ 1, 1, 1, 1 },
+					.transform	= FlexKit::TranslationMatrix(float3::Zero())
+				};
+
+				auto constantBuffer = data.ReserveConstantBuffer(256);
+				FlexKit::ConstantBufferDataSet constants{ CB_Data, constantBuffer };
+
+				ctx.SetGraphicsConstantBufferView(2, constants);
+
 				FlexKit::VBPushBuffer VBBuffer = data.ReserveVertexBuffer(sizeof(FlexKit::PhysicsLayer::DebugVertex) * layer.debugGeometry.size());
 				const FlexKit::VertexBufferDataSet vertexBuffer{ layer.debugGeometry, VBBuffer };
 

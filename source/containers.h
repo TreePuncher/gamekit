@@ -681,7 +681,7 @@ namespace FlexKit
 
 			while (I != end() && (I + 1) != end())
 			{
-				*I = *(I + 1);
+				*I = std::move(*(I + 1));
 				++I;
 			}
 			pop_back();
@@ -693,7 +693,7 @@ namespace FlexKit
 
 		Ty pop_back()
 		{
-			auto Temp = back();
+			auto Temp = std::move(back());
 			A[--Size].~Ty();
 
 			return Temp;

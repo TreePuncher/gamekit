@@ -412,27 +412,37 @@ struct ColliderComponentFactory : public IComponentFactory
 
 	static void AddEditorColliderData(FlexKit::GameObject& gameObject, const char* userData_ptr, size_t userData_size, FlexKit::ValueMap map)
 	{
-		auto ctx = FlexKit::FindValue<LoadEntityContextInterface*>(map, FlexKit::LoadEntityContextInterfaceKID);
+		auto ctx	= FlexKit::FindValue<LoadEntityContextInterface*>(map, FlexKit::LoadEntityContextInterfaceKID);
 
 		if (userData_ptr && ctx)
 		{   // Loading collider from disk
+			auto entity	= FlexKit::FindValue<FlexKit::SceneEntity*>(map, FlexKit::SceneEntityKID).value_or(ctx.value()->Resource());
+
 			FlexKit::StaticBodyHeaderBlob header;
 			memcpy(&header, (void*)userData_ptr, sizeof(header));
 
-			auto shapes_ptr = ((FlexKit::StaticBodyShape*)(userData_ptr + sizeof(header)));
-			auto shapes     = std::span{ shapes_ptr, header.shapeCount };
+			auto& _ptr		= ctx.value();
+			auto shapes_ptr	= ((FlexKit::StaticBodyShape*)(userData_ptr + sizeof(header)));
+			auto shapes		= std::span{ shapes_ptr, header.shapeCount };
 
-			auto staticBodyComponent = std::static_pointer_cast<EditorColliderComponent>(ctx.value()->Resource()->FindComponent(FlexKit::StaticBodyComponentID));
-
-			if (ctx && staticBodyComponent)
+			if (entity)
 			{
-				FlexKit::Apply(gameObject,
-					[&](FlexKit::StaticBodyView& view)
-					{
-						auto editorData = new StaticColliderEditorData{};
-						editorData->colliders = staticBodyComponent->colliders;
-						view.SetUserData(editorData);
-					});
+				auto staticBodyComponent = std::static_pointer_cast<EditorColliderComponent>(entity->FindComponent(FlexKit::StaticBodyComponentID));
+
+				if (staticBodyComponent)
+				{
+					FlexKit::Apply(gameObject,
+						[&](FlexKit::StaticBodyView& view)
+						{
+							auto editorData = new StaticColliderEditorData{};
+					editorData->colliders = staticBodyComponent->colliders;
+					view.SetUserData(editorData);
+						});
+				}
+			}
+			else
+			{
+				FK_LOG_INFO("Failed to create collider component");
 			}
 		}
 	}

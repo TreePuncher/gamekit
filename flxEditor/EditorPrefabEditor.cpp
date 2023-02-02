@@ -329,7 +329,7 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 						loadRes(sk->skeletonResourceID);
 					}
 
-					LoadEntity(prefabObjectRes->entity.components, context);
+					LoadEntity(prefabObjectRes->entity, context);
 
 					localSelection->ID		= prefabObjectRes->GetResourceGUID();
 					localSelection->prefab	= prefabObjectRes;
