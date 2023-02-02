@@ -11,7 +11,5 @@
 #include <angelscript/scriptmath/scriptmath.cpp>
 #include <angelscript/scriptmath/scriptmathcomplex.cpp>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
 
 #include "Serialization.cpp"

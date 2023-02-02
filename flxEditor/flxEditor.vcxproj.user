@@ -16,12 +16,12 @@
     <ShowAllFiles>false</ShowAllFiles>
   </PropertyGroup>
   <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <QtLastBackgroundBuild>2023-01-15T02:26:50.0428527Z</QtLastBackgroundBuild>
+    <QtLastBackgroundBuild>2023-02-01T16:24:28.2601883Z</QtLastBackgroundBuild>
   </PropertyGroup>
   <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <QtLastBackgroundBuild>2023-01-15T02:26:51.0283550Z</QtLastBackgroundBuild>
+    <QtLastBackgroundBuild>2023-02-01T16:45:49.5209153Z</QtLastBackgroundBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'" Label="QtSettings">
-    <QtLastBackgroundBuild>2023-01-15T02:26:51.8764295Z</QtLastBackgroundBuild>
+    <QtLastBackgroundBuild>2023-02-01T16:24:12.5280014Z</QtLastBackgroundBuild>
   </PropertyGroup>
 </Project>

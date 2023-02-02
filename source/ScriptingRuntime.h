@@ -10,44 +10,44 @@ class asIScriptModule;
 
 namespace FlexKit
 {
-    class iAllocator;
+	class iAllocator;
 
-    struct ScriptContext
-    {
-        asIScriptContext*   ctx;
-        void*               scriptState;
-        asIScriptModule*    scriptModule;
-    };
+	struct ScriptContext
+	{
+		asIScriptContext*   ctx;
+		void*               scriptState;
+		asIScriptModule*    scriptModule;
+	};
 
-    struct ScriptResourceBlob : public Resource
-    {
-        ScriptResourceBlob(size_t byteCodeSize);
+	struct ScriptResourceBlob : public Resource
+	{
+		ScriptResourceBlob(size_t byteCodeSize);
 
-        size_t blobSize;
-    };
+		size_t blobSize;
+	};
 
-    enum RegisterFlags
-    {
-        REGISTER_ALL,
-        EXCLUDE_LOADANIMATION,
-    };
+	enum RegisterFlags
+	{
+		REGISTER_ALL,
+		EXCLUDE_LOADANIMATION,
+	};
 
-    void RegisterRuntimeAPI	(asIScriptEngine*, RegisterFlags flags = REGISTER_ALL);
-    void RegisterMathTypes	(asIScriptEngine*, iAllocator* allocator);
+	void RegisterRuntimeAPI	(asIScriptEngine*, RegisterFlags flags = REGISTER_ALL);
+	void RegisterMathTypes	(asIScriptEngine*, iAllocator* allocator);
 
-    void InitiateScriptRuntime();
-    void ReleaseScriptRuntime();
+	void InitiateScriptRuntime();
+	void ReleaseScriptRuntime();
 
-    void AddGlobal		(const char* str, void*);
-    void ReleaseGlobal	(const char* str);
+	void AddGlobal		(const char* str, void*);
+	void ReleaseGlobal	(const char* str);
 
 	[[nodiscard]] asIScriptModule* LoadScriptFile		(const char* moduleName, std::filesystem::path, iAllocator&);
-    [[nodiscard]] asIScriptModule* LoadByteCode			(const char* moduleName, const char* byteCode, size_t);
-    [[nodiscard]] asIScriptModule* LoadByteCodeAsset	(uint64_t assetID);
+	[[nodiscard]] asIScriptModule* LoadByteCode			(const char* moduleName, const char* byteCode, size_t);
+	[[nodiscard]] asIScriptModule* LoadByteCodeAsset	(uint64_t assetID);
 
-    asIScriptEngine*	GetScriptEngine();
-    asIScriptContext*	GetContext();
-    void				ReleaseContext(asIScriptContext*);
+	asIScriptEngine*	GetScriptEngine();
+	asIScriptContext*	GetContext();
+	void				ReleaseContext(asIScriptContext*);
 }
 
 

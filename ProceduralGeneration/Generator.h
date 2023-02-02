@@ -12,7 +12,7 @@ using FlexKit::static_vector;
 
 using CellCoord		= FlexKit::int3;
 using ChunkCoord	= FlexKit::int3;
-using CellState_t	= uint8_t;
+using CellState_t	= uint16_t;
 
 
 int64_t GetChunkIndex(ChunkCoord coord);
@@ -21,10 +21,23 @@ int64_t GetTileID(const ChunkCoord cord) noexcept;
 enum CellStates : CellState_t
 {
 	TileE,
-	TileEW,
+	TileS,
 	TileN,
+	TileW,
+
+	TileEW,
 	TileNS,
+
+	TileNE,
+	TileNW,
+	TileSE,
+	TileSW,
+
 	TileNSE,
+	TileNSW,
+	TileSWE,
+	TileNWE,
+
 	TileNSEW,
 	Count,
 	Super,
@@ -155,10 +168,10 @@ struct SparseMap
 
 	struct Neighbor
 	{
-		uint8_t c;
-		int3    xyz;
+		CellState_t	c;
+		int3		xyz;
 
-		operator uint8_t& () { return c; }
+		operator CellState_t& () { return c; }
 	};
 
 	auto GetChunk(FlexKit::uint3 xyz)

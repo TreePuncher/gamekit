@@ -716,9 +716,13 @@ namespace FlexKit
 			if (vertexBuffer.size)
 			{
 				float* temp = (float*)(buffer + vertexBuffer.Begin);
-				auto View = new (memory._aligned_malloc(sizeof(VertexBufferView))) VertexBufferView(buffer + vertexBuffer.Begin, vertexBuffer.size);
-				View->SetTypeFormatSize((VERTEXBUFFER_TYPE)vertexBuffer.Type, (VERTEXBUFFER_FORMAT)vertexBuffer.Format, vertexBuffer.size / vertexBuffer.Format );
-				lod.buffers.push_back(View);
+				char* viewBuffer	= (char*)memory._aligned_malloc(sizeof(VertexBufferView) + vertexBuffer.size);
+				auto view			= new (viewBuffer) VertexBufferView(viewBuffer + sizeof(VertexBufferView), vertexBuffer.size);
+
+				memcpy(view->GetBuffer(), vertexBuffer.Begin + buffer, vertexBuffer.size);
+
+				view->SetTypeFormatSize((VERTEXBUFFER_TYPE)vertexBuffer.Type, (VERTEXBUFFER_FORMAT)vertexBuffer.Format, vertexBuffer.size / vertexBuffer.Format );
+				lod.buffers.push_back(view);
 			}
 		}
 

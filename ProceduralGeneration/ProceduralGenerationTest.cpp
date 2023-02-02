@@ -5,6 +5,7 @@
 #include <SceneLoadingContext.h>
 #include <imgui.h>
 #include <angelscript.h>
+#include <ranges>
 
 using namespace FlexKit;
 
@@ -36,7 +37,8 @@ GenerationTest::GenerationTest(FlexKit::GameFramework& IN_framework) :
 	renderer				{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
 	textureStreamingEngine	{ framework.GetRenderSystem(), framework.core.GetBlockMemory() },
 
-	constraints		{ framework.core.GetBlockMemory() },
+	constraints			{ framework.core.GetBlockMemory() },
+	scriptConstraints	{ framework.core.GetBlockMemory() },
 
 	gbuffer			{ { 1920, 1080 }, framework.GetRenderSystem() },
 	depthBuffer		{ framework.GetRenderSystem(), { 1920, 1080 } },
@@ -58,24 +60,32 @@ GenerationTest::GenerationTest(FlexKit::GameFramework& IN_framework) :
 	RegisterGenerationAPI();
 
 	auto generatorModule	= LoadScriptFile("Generator", R"(assets\scripts\TestConstraints.as)", framework.core.GetTempMemory());
-	auto func				= generatorModule->GetFunctionByName("ProcGenMain");
+	auto initate			= generatorModule->GetFunctionByName("ProcGenInitate");
+	auto release			= generatorModule->GetFunctionByName("ProcGenRelease");
 
-	if (!func)
+	if (!initate)
 	{
 		FK_LOG_ERROR("Failed to load ProcGen Script");
 	}
 	else
 	{
 		auto scriptContext = GetContext();
-		scriptContext->Prepare(func);
+		scriptContext->Prepare(initate);
 		scriptContext->Execute();
-		scriptContext->Unprepare();
+
+		SparseMap map{ framework.core.GetTempMemory() };
+		map.SetCell({ 0, 0, 0, }, CellStates::TileNSEW);
+		map.Generate(constraints, int3{ 256, 256, 1 }, framework.core.GetTempMemory());
 
 		ReleaseContext(scriptContext);
+		scriptContext->Unprepare();
+
+		scriptContext->Prepare(release);
+		scriptContext->Execute();
+
+		generatorModule->Discard();
 	}
 
-	SparseMap map{ framework.core.GetTempMemory() };
-	map.Generate(constraints, int3{ 256, 256, 1 }, framework.core.GetTempMemory());
 
 	layer = physx.CreateLayer();
 
@@ -226,6 +236,28 @@ void GenerationTest::RegisterConstraint(asIScriptObject* object)
 	constraints.push_back(std::make_unique<ScriptConstraint>(object));
 }
 
+void GenerationTest::UnregisterConstraint(asIScriptObject* object)
+{
+	auto res = std::ranges::find_if(
+		scriptConstraints,
+		[&](auto& v) -> bool
+		{
+			return v.object == object;
+		});
+
+	if (res != scriptConstraints.end())
+	{
+		constraints.erase(
+				std::remove_if(
+					constraints.begin(),
+					constraints.end(),
+					[&](auto& _ptr) { return _ptr.get() == res; }),
+				constraints.end());
+				
+		scriptConstraints.remove_unstable(res);
+	}
+}
+
 
 /************************************************************************************************/
 
@@ -241,16 +273,41 @@ void GenerationTest::RegisterGenerationAPI()
 
 	int res = -1;
 
-	res = engine_ptr->RegisterObjectType("TileSet", sizeof(TileSet), asOBJ_VALUE | asOBJ_APP_CLASS_CAK);	FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterEnum("CellStates");
+	res = engine_ptr->RegisterEnumValue("CellStates", "TileE", CellStates::TileE);			FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterEnumValue("CellStates", "TileS", CellStates::TileS);			FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterEnumValue("CellStates", "TileN", CellStates::TileN);			FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterEnumValue("CellStates", "TileW", CellStates::TileW);			FK_ASSERT(res >= 0);
+
+	res = engine_ptr->RegisterEnumValue("CellStates", "TileEW", CellStates::TileEW);		FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterEnumValue("CellStates", "TileSW", CellStates::TileSW);		FK_ASSERT(res >= 0);
+
+	res = engine_ptr->RegisterEnumValue("CellStates", "TileNE", CellStates::TileNE);		FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterEnumValue("CellStates", "TileNW", CellStates::TileNW);		FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterEnumValue("CellStates", "TileSE", CellStates::TileSE);		FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterEnumValue("CellStates", "TileSW", CellStates::TileSW);		FK_ASSERT(res >= 0);
+
+	res = engine_ptr->RegisterEnumValue("CellStates", "TileNSE", CellStates::TileNSE);		FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterEnumValue("CellStates", "TileNSW", CellStates::TileNSW);		FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterEnumValue("CellStates", "TileSWE", CellStates::TileSWE);		FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterEnumValue("CellStates", "TileNWE", CellStates::TileNWE);		FK_ASSERT(res >= 0);
+
+	res = engine_ptr->RegisterEnumValue("CellStates", "TileNSEW", CellStates::TileNSEW);	FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterEnumValue("CellStates", "TileCount", CellStates::Count);		FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterEnumValue("CellStates", "TileSuper", CellStates::Super);		FK_ASSERT(res >= 0);
+
+	res = engine_ptr->RegisterEnumValue("CellStates", "TileError", CellStates::Error);		FK_ASSERT(res >= 0);
+
+	res = engine_ptr->RegisterObjectType("TileSet", sizeof(TileSet), asOBJ_VALUE | asOBJ_APP_CLASS_CAK);																		FK_ASSERT(res >= 0);
 	res = engine_ptr->RegisterObjectBehaviour("TileSet", asBEHAVE_CONSTRUCT, "void Construct()",					asFUNCTION(TileSet_Construct),		asCALL_CDECL_OBJFIRST);	FK_ASSERT(res >= 0);
 	res = engine_ptr->RegisterObjectBehaviour("TileSet", asBEHAVE_CONSTRUCT, "void Construct(const TileSet& in)",	asFUNCTION(TileSet_CopyConstruct),	asCALL_CDECL_OBJFIRST);	FK_ASSERT(res >= 0);
 	res = engine_ptr->RegisterObjectBehaviour("TileSet", asBEHAVE_DESTRUCT,  "void Deconstruct()",					asFUNCTION(TileSet_Deconstruct),	asCALL_CDECL_OBJFIRST);	FK_ASSERT(res >= 0);
 
-	res = engine_ptr->RegisterObjectMethod("TileSet", "void opAssign(const TileSet& in)",	asMETHODPR(TileSet, operator=, (const TileSet&), TileSet&), asCALL_THISCALL);	FK_ASSERT(res >= 0);
-	res = engine_ptr->RegisterObjectMethod("TileSet", "uint64 push_back(uint8& in)",		asMETHOD(TileSet, push_back), asCALL_THISCALL);	FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterObjectMethod("TileSet", "void opAssign(const TileSet& in)",	asMETHODPR(TileSet, operator=, (const TileSet&), TileSet&), asCALL_THISCALL);		FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterObjectMethod("TileSet", "uint64 push_back(uint8& in)",		asMETHOD(TileSet, push_back), asCALL_THISCALL);										FK_ASSERT(res >= 0);
 
 
-	res = engine_ptr->RegisterObjectType("SparseMap", 0, asOBJ_REF | asOBJ_NOCOUNT);		FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterObjectType("SparseMap", 0, asOBJ_REF | asOBJ_NOCOUNT);																		FK_ASSERT(res >= 0);
 	res = engine_ptr->RegisterObjectMethod("SparseMap", "TileSet GetSuperState(uint3& in)",		asFUNCTION(SparseMapGetSuperState), asCALL_CDECL_OBJFIRST);	FK_ASSERT(res >= 0);
 
 	res = engine_ptr->RegisterInterface("iConstraint");																		FK_ASSERT(res >= 0);
@@ -258,7 +315,8 @@ void GenerationTest::RegisterGenerationAPI()
 	res = engine_ptr->RegisterInterfaceMethod("iConstraint", "bool	Apply				(SparseMap@, const uint3)");		FK_ASSERT(res >= 0);
 	res = engine_ptr->RegisterInterfaceMethod("iConstraint", "TileSet GetInvalidTiles	(SparseMap@, const uint3)");		FK_ASSERT(res >= 0);
 
-	res = engine_ptr->RegisterGlobalFunction("void RegisterConstraint(iConstraint@)", asMETHOD(GenerationTest, RegisterConstraint), asCALL_THISCALL_ASGLOBAL, this);	FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterGlobalFunction("void RegisterConstraint(iConstraint@)",	asMETHOD(GenerationTest, RegisterConstraint), asCALL_THISCALL_ASGLOBAL, this);		FK_ASSERT(res >= 0);
+	res = engine_ptr->RegisterGlobalFunction("void UnregisterConstraint(iConstraint@)", asMETHOD(GenerationTest, UnregisterConstraint), asCALL_THISCALL_ASGLOBAL, this);	FK_ASSERT(res >= 0);
 }
 
 
@@ -330,6 +388,7 @@ FlexKit::UpdateTask* GenerationTest::Draw(FlexKit::UpdateTask* update, FlexKit::
 	ReserveConstantBufferFunction	reserveCB = FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory());
 	ReserveVertexBufferFunction		reserveVB = FlexKit::CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory());
 
+	/*
 	auto& physicsUpdate = physx.Update(dispatcher, dT);
 	
 	static double T = 0.0;
@@ -366,6 +425,7 @@ FlexKit::UpdateTask* GenerationTest::Draw(FlexKit::UpdateTask* update, FlexKit::
 	);
 
 	textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.skinnedDraws, reserveCB, reserveVB);
+	*/
 
 	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow.GetBackBuffer());
 

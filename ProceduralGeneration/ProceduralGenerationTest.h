@@ -12,6 +12,8 @@
 
 #include "Generator.h"
 
+struct ScriptConstraint;
+
 class GenerationTest : public FlexKit::FrameworkState
 {
 public:
@@ -20,6 +22,7 @@ public:
 
 	void RegisterGenerationAPI();
 	void RegisterConstraint(asIScriptObject* object);
+	void UnregisterConstraint(asIScriptObject* object);
 
 	FlexKit::UpdateTask* Update(FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT) final;
 	FlexKit::UpdateTask* Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT, FlexKit::FrameGraph& frameGraph) final;
@@ -55,6 +58,7 @@ public:
 	FlexKit::TextureStreamingEngine			textureStreamingEngine;
 
 	ConstraintTable							constraints;
+	Vector<ScriptConstraint>				scriptConstraints;
 
 	FlexKit::LayerHandle					layer;
 	FlexKit::Scene							scene;

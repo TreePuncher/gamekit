@@ -370,19 +370,19 @@ namespace FlexKit
 			reversedIndices.push_back(indices[I + 1]);
 		}
 
-		meshDesc.triangles.count    = indexCount / 3;
-		meshDesc.triangles.stride   = 3 * sizeof(uint32_t);
-		meshDesc.triangles.data     = reversedIndices.data();
+		meshDesc.triangles.count	= indexCount / 3;
+		meshDesc.triangles.stride	= 3 * sizeof(uint32_t);
+		meshDesc.triangles.data		= reversedIndices.data();
 
 		auto oven = GetCooker()->validateTriangleMesh(meshDesc);
 
 		BlobStream ouputStream;
 		auto res = cooker->cookTriangleMesh(meshDesc, ouputStream);
 
-		if (res)
+		if(res)
 			return ouputStream.blob;
-		else
-			return {};
+
+		return {};
 	}
 
 

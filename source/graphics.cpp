@@ -1894,6 +1894,7 @@ namespace FlexKit
 		{
 			res->accessAfter			= accessAfter;
 			res->texture.layoutAfter	= layoutAfter;
+			res->dst					= syncAfter;
 		}
 		else
 		{
@@ -8622,11 +8623,16 @@ namespace FlexKit
 		else
 			FK_LOG_ERROR("Dumping Breadcrumbs");
 
-		D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 DredAutoBreadcrumbsOutput;
-		D3D12_DRED_PAGE_FAULT_OUTPUT DredPageFaultOutput;
+		D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 DredAutoBreadcrumbsOutput	= {};
+		D3D12_DRED_PAGE_FAULT_OUTPUT		DredPageFaultOutput			= {};
+
+		std::this_thread::sleep_for(1s);
 
 		if (auto HR = dred->GetAutoBreadcrumbsOutput1(&DredAutoBreadcrumbsOutput); FAILED(HR))
+		{
 			FK_LOG_ERROR("Failed to get Breadcrumbs!");
+			exit(-1);
+		}
 
 		if (auto HR = dred->GetPageFaultAllocationOutput(&DredPageFaultOutput); FAILED(HR))
 			FK_LOG_ERROR("Failed to get Fault Allocation Info!");

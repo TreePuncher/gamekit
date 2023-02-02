@@ -1640,25 +1640,71 @@ namespace FlexKit
 				{
 					PassData* passData = reinterpret_cast<PassData*>(node.nodeData);
 
-					auto passPVS = passData->getPVS();
+					const auto& passPVS	= passData->getPVS();
+					const auto size		= passPVS.size();
 
-					auto size			= passPVS.size();
-					uint16_t blockCount = (uint16_t)(size / 1000 + (size % 1000 > 0 ? 1 : 0));
-					uint16_t blockSize	= (uint16_t)(size / blockCount);
+					if(size > 0)
+					{ 
+						uint16_t blockCount = (uint16_t)(size / 1000 + (size % 1000 > 0 ? 1 : 0));
+						uint16_t blockSize	= (uint16_t)(size / blockCount);
 
-					passData->refCount = blockCount;
+						passData->refCount = blockCount;
 
-					for (uint16_t i = 0; i < blockCount; i++)
+						for (uint16_t i = 0; i < blockCount; i++)
+						{
+							auto begin	= Min((i + 0) * blockSize, size);
+							auto end	= Min((i + 1) * blockSize, size);
+
+							FrameGraphNodeWorkItem newWorkItem;
+							newWorkItem.node		= &node;
+							newWorkItem.workWeight	= end - begin;
+
+							newWorkItem.action	=
+								[i, blockCount, blockSize, passPVS](
+									FrameGraphNode&	node,
+									FrameResources&	resources,
+									Context&		ctx,
+									iAllocator&		localAllocator)
+								{
+									ProfileFunction();
+
+									PassData& data = *reinterpret_cast<PassData*>(node.nodeData);
+
+									auto begin	= passPVS.begin() + Min((i + 0) * blockSize, passPVS.size());
+									auto end	= passPVS.begin() + Min((i + 1) * blockSize, passPVS.size());
+
+									if(i == 0)
+										node.HandleBarriers(resources, ctx);
+
+									LocallyTrackedObjectList localTracking{ &localAllocator };
+									localTracking = node.subNodeTracking;
+
+									ResourceHandler handler{ resources, localTracking };
+									data.draw(begin, end, passPVS, data.shared, resources, ctx, localAllocator);
+
+									if(i == blockCount - 1)
+										node.RestoreResourceStates(&ctx, resources, localTracking);
+
+									auto refCount = data.refCount--;
+
+									if(refCount == 1)
+									{
+										ProfileFunctionLabeled(Destruction);
+										data.~PassData();
+									}
+								};
+
+							tasks_out.emplace_back(std::move(newWorkItem));
+						}
+					}
+					else
 					{
-						auto begin	= Min((i + 0) * blockSize, size);
-						auto end	= Min((i + 1) * blockSize, size);
-
 						FrameGraphNodeWorkItem newWorkItem;
 						newWorkItem.node		= &node;
-						newWorkItem.workWeight	= end - begin;
+						newWorkItem.workWeight	= 1;
 
 						newWorkItem.action	=
-							[i, blockCount, blockSize, passPVS](
+							[](
 								FrameGraphNode&	node,
 								FrameResources&	resources,
 								Context&		ctx,
@@ -1667,29 +1713,20 @@ namespace FlexKit
 								ProfileFunction();
 
 								PassData& data = *reinterpret_cast<PassData*>(node.nodeData);
+								const auto& pvs = data.getPVS();
 
-								auto begin	= passPVS.begin() + Min((i + 0) * blockSize, passPVS.size());
-								auto end	= passPVS.begin() + Min((i + 1) * blockSize, passPVS.size());
-
-								if(i == 0)
-									node.HandleBarriers(resources, ctx);
+								node.HandleBarriers(resources, ctx);
 
 								LocallyTrackedObjectList localTracking{ &localAllocator };
 								localTracking = node.subNodeTracking;
 
 								ResourceHandler handler{ resources, localTracking };
-								data.draw(begin, end, passPVS, data.shared, resources, ctx, localAllocator);
+								data.draw(pvs.begin(), pvs.end(), pvs, data.shared, resources, ctx, localAllocator);
 
-								if(i == blockCount - 1)
-									node.RestoreResourceStates(&ctx, resources, localTracking);
+								node.RestoreResourceStates(&ctx, resources, localTracking);
 
-								auto refCount = data.refCount--;
-
-								if(refCount == 1)
-								{
-									ProfileFunctionLabeled(Destruction);
-									data.~PassData();
-								}
+								ProfileFunctionLabeled(Destruction);
+								data.~PassData();
 							};
 
 						tasks_out.emplace_back(std::move(newWorkItem));
