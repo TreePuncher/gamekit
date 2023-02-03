@@ -124,7 +124,7 @@ public:
 				FlexKit::GetSceneNode(newParent->viewportObject->gameObject),
 				FlexKit::GetSceneNode(viewportObject->gameObject));
 
-			newParent->insertChild(idx, this);
+			newParent->addChild(this);
 		}
 	}
 };
@@ -273,7 +273,7 @@ void SceneTreeWidget::UpdateLabels()
 			{
 				auto node = FlexKit::GetParentNode(obj->gameObject);
 
-				if (node == FlexKit::NodeHandle{ 0 } || node == FlexKit::InvalidHandle)
+				if (node == FlexKit::InvalidHandle)
 				{
 					AddAtTopLevel(obj);
 					continue;
@@ -287,7 +287,7 @@ void SceneTreeWidget::UpdateLabels()
 					{
 						auto item = new HierarchyItem(obj);
 						widgetMap[obj->objectID] = item;
-						item->SetParent(widget, scene, 0);
+						item->SetParent(widget, scene, item->childCount());
 					}
 				}
 				else
@@ -372,6 +372,10 @@ SceneOutliner::~SceneOutliner()
 void SceneOutliner::Update()
 {
 	treeWidget.UpdateLabels();
+	treeWidget.update();
+	treeWidget.repaint();
+
+	timer->stop();
 	timer->start(500ms);
 }
 
@@ -390,7 +394,7 @@ void SceneOutliner::on_clicked()
 	selection.viewportObjects.push_back(selectedItem->viewportObject);
 
 	uint64_t		prevObjId = 0xffffffffffffffff;
-	HierarchyItem* prevItem = nullptr;
+	HierarchyItem*	prevItem = nullptr;
 
 	if (selectionCtx.type == ViewportObjectList_ID)
 	{
@@ -447,21 +451,16 @@ void SceneOutliner::on_clicked()
 /************************************************************************************************/
 
 
-HierarchyItem* SceneOutliner::CreateObject() noexcept
+HierarchyItem* SceneOutliner::CreateObject(HierarchyItem* parent) noexcept
 {
 	auto& scene = viewport.GetScene();
 	if (!scene)
 		return nullptr;
 
-	HierarchyItem* item = new HierarchyItem(scene->CreateObject());
-	treeWidget.widgetMap[item->viewportObject->objectID] = item;
+	auto obj	= scene->CreateObject(parent != nullptr ? parent->viewportObject.get() : nullptr);
+	auto widget = treeWidget.widgetMap[obj->objectID];
 
-	auto ID = fmt::format("obj.{}", item->viewportObject->objectID);
-	item->setData(0, Qt::DisplayRole, ID.c_str());
-
-	treeWidget.addTopLevelItem(item);
-
-	return item;
+	return widget;
 }
 
 
@@ -512,7 +511,7 @@ HierarchyItem* SceneOutliner::CreatePointLight() noexcept
 
 void SceneOutliner::ShowContextMenu(const QPoint& point)
 {
-	auto index = treeWidget.indexAt(point);
+	auto index			= treeWidget.indexAt(point);
 
 	if (index.isValid())
 	{
@@ -533,28 +532,16 @@ void SceneOutliner::ShowContextMenu(const QPoint& point)
 				delete currentItem;
 			});
 		auto addChildAction = contextMenu.addAction("Create Child",
-			[&]()
+			[&, point]()
 			{
 				if (viewport.GetScene() == nullptr)
 					return;
 
-				auto& scene = *viewport.GetScene();
+				auto index			= treeWidget.indexAt(point);
+				auto parentWidget	= (HierarchyItem*)treeWidget.currentItem();
 
-				auto newItem = CreateObject();
-
-				treeWidget.removeItemWidget(newItem, 0);
-				treeWidget.currentItem()->addChild(newItem);
-
-				HierarchyItem* parentItem = static_cast<HierarchyItem*>(treeWidget.currentItem());
-				auto& parent = parentItem->viewportObject->gameObject;
-				
-				if (!parent.hasView(FlexKit::TransformComponentID))
-					parent.AddView<FlexKit::SceneNodeView<>>();
-
-				scene.sceneObjects.push_back(newItem->viewportObject);
-				auto& nodeView = newItem->viewportObject->gameObject.AddView<FlexKit::SceneNodeView<>>();
-
-				nodeView.SetParentNode(FlexKit::GetSceneNode(parent));
+				auto& scene			= *viewport.GetScene();
+				auto newItem		= CreateObject(parentWidget);
 			});
 
 		contextMenu.exec(treeWidget.viewport()->mapToGlobal(point));

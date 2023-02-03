@@ -44,7 +44,7 @@ public slots:
 	void ShowContextMenu(const QPoint&);
 
 private:
-	HierarchyItem* CreateObject() noexcept;
+	HierarchyItem* CreateObject(HierarchyItem* parent = nullptr) noexcept;
 	HierarchyItem* CreatePointLight() noexcept;
 
 	void on_clicked();
