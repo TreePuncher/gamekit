@@ -1304,10 +1304,10 @@ namespace FlexKit
 				else
 				{
 					auto res = nodes[nodeIdx].GetInputObject(I.handle);
-					if (!res)
-						DebugBreak();
-					
-					resources.renderSystem.SetObjectLayout(shaderResource, res.value().initialLayout);
+					if (res)
+						resources.renderSystem.SetObjectLayout(shaderResource, res.value().initialLayout);
+					//else
+					//	DebugBreak();
 				}
 			}	break;
 			case OT_Virtual:

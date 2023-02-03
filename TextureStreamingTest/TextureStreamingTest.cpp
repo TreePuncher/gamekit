@@ -63,11 +63,8 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 		.nodes = Vector<FlexKit::NodeHandle>{ framework.core.GetBlockMemory() }
 	};
 
-	//AddAssetFile(R"(assets\TextureStreaming.gameres)");
-	//auto loadSuccess = LoadScene(framework.core, loadCtx, 1234);
-
-	AddAssetFile(R"(assets\spawnRoom.gameres)");
-	auto loadSuccess = LoadScene(framework.core, loadCtx, 7106);
+	AddAssetFile(R"(assets\TextureStreaming.gameres)");
+	auto loadSuccess = LoadScene(framework.core, loadCtx, 1234);
 
 	// Setup Camera
 	auto& orbitComponent = orbitCamera.AddView<OrbitCameraBehavior>();

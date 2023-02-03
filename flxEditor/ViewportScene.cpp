@@ -153,12 +153,23 @@ ViewportObjectList ViewportScene::RayCast(FlexKit::Ray v) const
 /************************************************************************************************/
 
 
-ViewportGameObject_ptr ViewportScene::CreateObject()
+ViewportGameObject_ptr ViewportScene::CreateObject(ViewportGameObject* parent)
 {
 	auto obj = std::make_shared<ViewportGameObject>();
 	obj->objectID = rand();
 
 	sceneObjects.push_back(obj);
+
+	if (parent)
+	{
+		auto parentNode = FlexKit::GetSceneNode(parent->gameObject);
+
+		if(parentNode == FlexKit::InvalidHandle)
+			parentNode = parent->gameObject.AddView<FlexKit::SceneNodeView<>>();
+
+		auto& node = obj->gameObject.AddView<FlexKit::SceneNodeView<>>();
+		node.SetParentNode(parentNode);
+	}
 
 	OnSceneChange();
 

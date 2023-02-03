@@ -84,7 +84,7 @@ struct ViewportScene
 
 	void Update();
 
-	ViewportGameObject_ptr	CreateObject();
+	ViewportGameObject_ptr	CreateObject(ViewportGameObject* parent = nullptr);
 	ViewportGameObject_ptr	CreatePointLight();
 	ViewportGameObject_ptr	FindObject(uint64_t);
 	ViewportGameObject_ptr	FindObject(FlexKit::NodeHandle);
