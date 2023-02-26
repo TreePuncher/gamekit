@@ -25,6 +25,7 @@
 
 /************************************************************************************************/
 
+
 class TextureResource;
 class EditorScriptEngine;
 class EditorPrefabEditor;
@@ -32,13 +33,14 @@ class EditorProject;
 class EditorViewport;
 class EditorRenderer;
 
+
 /************************************************************************************************/
 
 
 using FlexKit::ResourceList;
-using high_resolution_clock = std::chrono::high_resolution_clock;
-using time_point            = high_resolution_clock::time_point;
-using duration_t            = std::chrono::duration<double>;
+using high_resolution_clock	= std::chrono::high_resolution_clock;
+using time_point			= high_resolution_clock::time_point;
+using duration_t			= std::chrono::duration<double>;
 
 
 /************************************************************************************************/
@@ -94,25 +96,25 @@ signals:
 	void onClose();
 
 private:
-	time_point          frameEnd;
-	time_point          frameBegin;
+	time_point			frameEnd;
+	time_point			frameBegin;
 
-	SelectionContext    selectionContext;
-	EditorScriptEngine& scriptEngine;
+	SelectionContext	selectionContext;
+	EditorScriptEngine&	scriptEngine;
 
-	QTabWidget*             tabBar;
-	EditorViewport*         viewport;
-	QApplication&           QtApplication;
-	EditorProject&          project;
-	EditorRenderer&         renderer;
+	QTabWidget*			tabBar;
+	EditorViewport*		viewport;
+	QApplication&		QtApplication;
+	EditorProject&		project;
+	EditorRenderer&		renderer;
 
-	EditorPrefabEditor*     prefabEditor;
+	EditorPrefabEditor*	prefabEditor;
 
-	QMenu*              fileMenu    = nullptr;
-	QMenu*              editMenu    = nullptr;
-	QMenu*              importMenu  = nullptr;
-	QMenu*              exportMenu  = nullptr;
-	QMenu*              gadgetMenu  = nullptr;
+	QMenu*				fileMenu	= nullptr;
+	QMenu*				editMenu	= nullptr;
+	QMenu*				importMenu	= nullptr;
+	QMenu*				exportMenu	= nullptr;
+	QMenu*				gadgetMenu	= nullptr;
 };
 
 

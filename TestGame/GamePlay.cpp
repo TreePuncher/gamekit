@@ -83,7 +83,7 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
 
 	auto node = GetCameraControllerNode(gameObject);
 
-	gameObject.AddView<SceneNodeView<>>(node);
+	gameObject.AddView<SceneNodeView>(node);
 	//gameObject.AddView<BrushView>(triMesh, node);
 
 	//auto& materials     = MaterialComponent::GetComponent();
@@ -114,7 +114,7 @@ GameObject& GameWorld::CreatePlayer(const PlayerDesc& desc)
 	materials.Add2Pass(material, GBufferPassID);
 
 	auto& prefab    = objectPool.Allocate();
-	auto& nodeView  = prefab.AddView<SceneNodeView<>>();
+	auto& nodeView  = prefab.AddView<SceneNodeView>();
 	auto& brush     = prefab.AddView<BrushView>(triMesh);
 
 	nodeView.Scale(float3{ 3 });
@@ -235,7 +235,7 @@ GameObject& GameWorld::AddRemotePlayer(MultiplayerPlayerID_t playerID, Connectio
 		triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateCopyQueue(), playerModel);
 
 	const auto& characterController = gameObject.AddView<CharacterControllerView>(layer, float3{ 0.0f, 0.0f, 0.0f }, GetZeroedNode(), 1.0f, 1.0f);
-	gameObject.AddView<SceneNodeView<>>(characterController.GetNode());
+	gameObject.AddView<SceneNodeView>(characterController.GetNode());
 	gameObject.AddView<BrushView>(triMesh);
 
 	scene.AddGameObject(gameObject, GetSceneNode(gameObject));
@@ -259,7 +259,7 @@ void GameWorld::AddCube(float3 POS)
 		triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateCopyQueue(), cube1X1X1);
 
 			auto& rigidBody = gameObject.AddView<RigidBodyView>(layer, POS);
-	const	auto& sceneNode = gameObject.AddView<SceneNodeView<>>(GetRigidBodyNode(gameObject));
+	const	auto& sceneNode = gameObject.AddView<SceneNodeView>(GetRigidBodyNode(gameObject));
 	const	auto& brushView = gameObject.AddView<BrushView>(triMesh);
 
 	rigidBody.AddShape(cubeShape);

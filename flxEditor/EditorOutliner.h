@@ -55,7 +55,7 @@ private:
 	EditorViewport&					viewport;
 	QTimer*							timer;
 
-	FlexKit::Signal<void()>::Slots	sceneChangeSlot;
+	FlexKit::Signal<void()>::Slot	sceneChangeSlot;
 };
 
 

@@ -234,7 +234,7 @@ namespace FlexKit
 		D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		Rast_Desc.FillMode		        = D3D12_FILL_MODE::D3D12_FILL_MODE_WIREFRAME;
 		Rast_Desc.CullMode		        = D3D12_CULL_MODE::D3D12_CULL_MODE_NONE;
-        //Rast_Desc.ConservativeRaster    = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
+		//Rast_Desc.ConservativeRaster    = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
@@ -265,10 +265,10 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    ID3D12PipelineState* CreateDrawTri3DStatePSO(RenderSystem* RS)
+	ID3D12PipelineState* CreateDrawTri3DStatePSO(RenderSystem* RS)
 	{
 		auto DrawRectVShader = RS->LoadShader("V11Main",	        "vs_6_0",	"assets\\shaders\\vshader.hlsl");
 		auto DrawRectPShader = RS->LoadShader("DrawFlatTriangle",	"ps_6_0",	"assets\\shaders\\pshader.hlsl");
@@ -357,7 +357,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-    /*
+	/*
 
 	OcclusionCuller CreateOcclusionCuller(RenderSystem* RS, uint32_t count, uint2 OcclusionBufferSize, bool Float)
 	{
@@ -394,7 +394,7 @@ namespace FlexKit
 		Tex2D_Desc.Write			= false;
 		*/
 
-        /*
+		/*
 		DepthBuffer DB;
 		FlexKit::DepthBuffer_Desc Depth_Desc;
 		Depth_Desc.BufferCount		= 3;
@@ -417,14 +417,14 @@ namespace FlexKit
 		Out.OcclusionBuffer = DB;
 		Out.HW              = OcclusionBufferSize;
 
-        return {};
+		return {};
 	}
-    */
+	*/
 
 	/************************************************************************************************/
 
 
-        /*
+		/*
 	void OcclusionPass(RenderSystem* RS, PVS* Set, OcclusionCuller* OC, ID3D12GraphicsCommandList* CL, Camera* C)
 	{
 		FK_ASSERT(0);
@@ -449,12 +449,12 @@ namespace FlexKit
 
 		CL->RSSetViewports(1, VPs);
 		CL->OMSetRenderTargets(0, nullptr, false, &(D3D12_CPU_DESCRIPTOR_HANDLE)DSV);
-        CL->SetPipelineState(RS->GetPSO(OCCLUSION_CULLING));
+		CL->SetPipelineState(RS->GetPSO(OCCLUSION_CULLING));
 		CL->SetGraphicsRootSignature(RS->Library.RS6CBVs4SRVs);
 
 		for (uint32_t I = 0; I < Set->size(); ++I)
-        {
-            uint32_t QueryID = OC->GetNext();
+		{
+			uint32_t QueryID = OC->GetNext();
 
 			auto& P			= Set->at(I);
 			P.OcclusionID	= QueryID;
@@ -467,7 +467,7 @@ namespace FlexKit
 			auto DTable			= DHeap;
 
 			{	// Fill Descriptor Table With Nulls
-                FK_ASSERT(0);
+				FK_ASSERT(0);
 				//auto Next = Push2DSRVToDescHeap(RS, RS->NullSRV, DHeap);
 				//Next = Push2DSRVToDescHeap(RS, RS->NullSRV, Next);
 				//Next = Push2DSRVToDescHeap(RS, RS->NullSRV, Next);
@@ -508,52 +508,52 @@ namespace FlexKit
 		CL->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(OC->Predicates.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT));
 	}
-        */
+		*/
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    ID3D12PipelineState* LoadClearRenderTarget_RG32(RenderSystem* renderSystem)
-    {
-        auto VShader = renderSystem->LoadShader("FullscreenQuad", "vs_6_0", "assets\\shaders\\FullscreenQuad.hlsl");
-        auto PShader = renderSystem->LoadShader("ClearRenderTargetUINT2", "ps_6_0", "assets\\shaders\\ClearRenderTarget.hlsl");
+	ID3D12PipelineState* LoadClearRenderTarget_RG32(RenderSystem* renderSystem)
+	{
+		auto VShader = renderSystem->LoadShader("FullscreenQuad", "vs_6_0", "assets\\shaders\\FullscreenQuad.hlsl");
+		auto PShader = renderSystem->LoadShader("ClearRenderTargetUINT2", "ps_6_0", "assets\\shaders\\ClearRenderTarget.hlsl");
 
-        D3D12_INPUT_ELEMENT_DESC InputElements[] = {
-                { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        };
-
-
-        D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC{ D3D12_DEFAULT };
-        D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC{ D3D12_DEFAULT };
-        Depth_Desc.DepthEnable = false;
-
-        D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-            PSO_Desc.pRootSignature = renderSystem->Library.RSDefault;
-            PSO_Desc.VS = VShader;
-            PSO_Desc.PS = PShader;
-            PSO_Desc.RasterizerState = Rast_Desc;
-            PSO_Desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-            PSO_Desc.SampleMask = UINT_MAX;
-            PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-            PSO_Desc.NumRenderTargets = 1;
-            PSO_Desc.RTVFormats[0] = DXGI_FORMAT_R32G32_UINT;
-            PSO_Desc.SampleDesc.Count = 1;
-            PSO_Desc.SampleDesc.Quality = 0;
-            PSO_Desc.DSVFormat = DXGI_FORMAT_UNKNOWN;
-            PSO_Desc.InputLayout = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
-            PSO_Desc.DepthStencilState = Depth_Desc;
-
-            PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
-        }
+		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		};
 
 
-        ID3D12PipelineState* PSO = nullptr;
-        const auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
-        FK_ASSERT(SUCCEEDED(HR));
+		D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC{ D3D12_DEFAULT };
+		D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC{ D3D12_DEFAULT };
+		Depth_Desc.DepthEnable = false;
 
-        return PSO;
-    }
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+			PSO_Desc.pRootSignature = renderSystem->Library.RSDefault;
+			PSO_Desc.VS = VShader;
+			PSO_Desc.PS = PShader;
+			PSO_Desc.RasterizerState = Rast_Desc;
+			PSO_Desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask = UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSO_Desc.NumRenderTargets = 1;
+			PSO_Desc.RTVFormats[0] = DXGI_FORMAT_R32G32_UINT;
+			PSO_Desc.SampleDesc.Count = 1;
+			PSO_Desc.SampleDesc.Quality = 0;
+			PSO_Desc.DSVFormat = DXGI_FORMAT_UNKNOWN;
+			PSO_Desc.InputLayout = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
+			PSO_Desc.DepthStencilState = Depth_Desc;
+
+			PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
+		}
+
+
+		ID3D12PipelineState* PSO = nullptr;
+		const auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		return PSO;
+	}
 
 
 

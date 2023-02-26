@@ -4,12 +4,15 @@
 
 namespace FlexKit
 {
-    class Scene;
+	class Scene;
 
-    struct SceneLoadingContext
-    {
-        Scene&              scene;
-        LayerHandle         layer;
-        Vector<NodeHandle>  nodes;
-    };
+	using PostLoadAction = TypeErasedCallable<void(Scene&)>;
+
+	struct SceneLoadingContext
+	{
+		Scene&					scene;
+		LayerHandle				layer;
+		Vector<NodeHandle>		nodes;
+		Vector<PostLoadAction>	pendingActions;
+	};
 }

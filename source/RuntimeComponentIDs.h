@@ -18,4 +18,5 @@ namespace FlexKit
 	constexpr uint32_t SkeletonComponentID			= GetTypeGUID(Skeleton);
 	constexpr uint32_t StringComponentID			= GetTypeGUID(StringID);
 	constexpr uint32_t TransformComponentID			= GetTypeGUID(TransformComponent);
+	constexpr uint32_t TriggerComponentID			= GetTypeGUID(TriggerComponent);
 }

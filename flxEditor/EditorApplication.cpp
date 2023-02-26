@@ -2,14 +2,17 @@
 
 #include "angelscript.h"
 #include "EditorApplication.h"
-#include "TextureUtilities.h"
+#include "EditorColliderComponent.h"
+#include "EditorGameplayComponents.hpp"
 #include "EditorTextureResources.h"
+#include "MaterialResource.h"
+#include "TextureUtilities.h"
 
 #include <stb_image_write.h>
 #include <filesystem>
 #include <QKeySequence>
-#include "EditorColliderComponent.h"
-#include "MaterialResource.h"
+
+
 
 using namespace std::chrono_literals;
 
@@ -166,14 +169,13 @@ struct SceneResourceViewer : public IResourceViewer
 
 	void operator () (FlexKit::Resource_ptr resource) override
 	{
-		if (auto res = std::find_if(std::begin(project.scenes), std::end(project.scenes), [&](auto res) { return res->sceneResource == resource; });
-			res != std::end(project.scenes))
-				mainWindow.Get3DView().SetScene(*res);
+		if (auto res = std::ranges::find_if(project.scenes, [&](auto res) { return res->sceneResource == resource; });  res != std::end(project.scenes))
+			mainWindow.Get3DView().SetScene(*res, project);
 	}
 
-	EditorProject&      project;
-	EditorRenderer&     renderer;
-	EditorMainWindow&   mainWindow;
+	EditorProject&		project;
+	EditorRenderer&		renderer;
+	EditorMainWindow&	mainWindow;
 };
 
 
@@ -220,15 +222,22 @@ bool gltfImporter::Import(const std::string fileDir)
 
 
 EditorApplication::EditorApplication(QApplication& IN_qtApp) :
-	qtApp               { IN_qtApp },
-	editorRenderer      { fkApplication.PushState<EditorRenderer>(fkApplication, IN_qtApp) },
-	mainWindow          { editorRenderer, *scripts, project, qtApp },
-	scripts             { new EditorScriptEngine{} },
-	gltfImporter        { new ::gltfImporter{ project } },
-	gameResExporter     { new GameResExporter{ project } },
-	projectConnector    { new EditorProjectScriptConnector {&mainWindow.Get3DView(), mainWindow.GetSelectionCtx(), project} }
+	qtApp				{ IN_qtApp },
+	editorRenderer		{ fkApplication.PushState<EditorRenderer>(fkApplication, IN_qtApp) },
+	mainWindow			{ editorRenderer, *scripts, project, qtApp },
+	scripts				{ new EditorScriptEngine{} },
+	gltfImporter		{ new ::gltfImporter	{ project } },
+	gameResExporter		{ new GameResExporter	{ project } },
+	projectConnector	{ new EditorProjectScriptConnector { &mainWindow.Get3DView(), mainWindow.GetSelectionCtx(), project } }
 {
 	currentProject = &project;
+
+	SceneBrushEditorComponent::Register(project, mainWindow.Get3DView());
+
+	RegisterCSGInspector(mainWindow.Get3DView());
+	RegisterRigidBodyInspector(mainWindow.Get3DView(), project);
+	RegisterColliderInspector(mainWindow.Get3DView(), project);
+	RegisterPortalComponent(project);
 
 	qApp->setStyle(QStyleFactory::create("fusion"));
 
@@ -302,16 +311,6 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 	for (auto& gadget : scripts->GetGadgets())
 		mainWindow.RegisterGadget(&gadget);
 
-	EditorInspectorView::AddComponentInspector<TransformInspector>();
-	EditorInspectorView::AddComponentInspector<VisibilityInspector>();
-	EditorInspectorView::AddComponentInspector<PointLightInspector>();
-	EditorInspectorView::AddComponentInspector<PointLightShadowInspector>();
-	EditorInspectorView::AddComponentInspector<SceneBrushInspector>(project, mainWindow.Get3DView());
-
-	RegisterCSGInspector(mainWindow.Get3DView());
-	RegisterColliderInspector(mainWindow.Get3DView(), project);
-	RegisterMaterialInspector();
-
 	FlexKit::SetLoadFailureHandler(
 		[&](FlexKit::GUID_t guid) -> FlexKit::AssetHandle
 		{
@@ -327,6 +326,11 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 
 			return INVALIDHANDLE;
 		});
+
+
+	mainWindow.AddSceneOutliner();
+	mainWindow.AddInspector();
+	mainWindow.AddResourceList();
 }
 
 
@@ -355,12 +359,12 @@ void SceneReference::Register(asIScriptEngine* engine)
 	// Life Cycle behaviors
 	//c = engine->RegisterObjectBehaviour("Scene@", asBEHAVE_FACTORY,   "void f()", asFunctionPtr(SceneReference::Factory),   asCALL_CDECL_OBJLAST);    assert(c >= 0);
 
-	c = engine->RegisterObjectBehaviour("Scene", asBEHAVE_ADDREF,     "void f()", asFunctionPtr(SceneReference::AddRef),    asCALL_CDECL_OBJLAST);    assert(c >= 0);
-	c = engine->RegisterObjectBehaviour("Scene", asBEHAVE_RELEASE,    "void f()", asFunctionPtr(SceneReference::Release),   asCALL_CDECL_OBJLAST);    assert(c >= 0);
+	c = engine->RegisterObjectBehaviour("Scene", asBEHAVE_ADDREF,     "void f()",	asFunctionPtr(SceneReference::AddRef),    asCALL_CDECL_OBJLAST);    assert(c >= 0);
+	c = engine->RegisterObjectBehaviour("Scene", asBEHAVE_RELEASE,    "void f()",	asFunctionPtr(SceneReference::Release),   asCALL_CDECL_OBJLAST);    assert(c >= 0);
 
 	// Methods
-	c = engine->RegisterObjectMethod("Scene", "bool RayCast(float, float, float)",    asFunctionPtr(SceneReference::RayCast),     asCALL_CDECL_OBJLAST); assert(c >= 0);
-	c = engine->RegisterObjectMethod("Scene", "bool IsValid()",                       asFunctionPtr(SceneReference::IsValid),     asCALL_CDECL_OBJLAST); assert(c >= 0);
+	c = engine->RegisterObjectMethod("Scene", "bool RayCast(float, float, float)",	asFunctionPtr(SceneReference::RayCast),     asCALL_CDECL_OBJLAST); assert(c >= 0);
+	c = engine->RegisterObjectMethod("Scene", "bool IsValid()",						asFunctionPtr(SceneReference::IsValid),     asCALL_CDECL_OBJLAST); assert(c >= 0);
 }
 
 SceneReference* SceneReference::Factory()
@@ -497,7 +501,7 @@ void EditorProjectScriptConnector::CreateTexture2DResource(FlexKit::TextureBuffe
 
 /**********************************************************************
 
-Copyright (c) 2021 Robert May
+Copyright (c) 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

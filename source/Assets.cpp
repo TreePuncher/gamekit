@@ -1,27 +1,3 @@
-/**********************************************************************
-
-Copyright (c) 2015 - 2022 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
 #include "Assets.h"
 #include "graphics.h"
 
@@ -825,17 +801,17 @@ namespace FlexKit
 		memcpy(&Blob, buffer, sizeof(Blob));
 
 		size_t BufferCount		= 0;
-		triMesh->SkinTable		= nullptr;
-		triMesh->Info.Min.x		= Blob.header.Info.maxx;
-		triMesh->Info.Min.y		= Blob.header.Info.maxy;
-		triMesh->Info.Min.z		= Blob.header.Info.maxz;
-		triMesh->Info.Max.x		= Blob.header.Info.minx;
-		triMesh->Info.Max.y		= Blob.header.Info.miny;
-		triMesh->Info.Max.z		= Blob.header.Info.minz;
-		triMesh->Info.r			= Blob.header.Info.r;
-		triMesh->Memory			= Memory;
+		triMesh->skinTable		= nullptr;
+		triMesh->info.Min.x		= Blob.header.Info.maxx;
+		triMesh->info.Min.y		= Blob.header.Info.maxy;
+		triMesh->info.Min.z		= Blob.header.Info.maxz;
+		triMesh->info.Max.x		= Blob.header.Info.minx;
+		triMesh->info.Max.y		= Blob.header.Info.miny;
+		triMesh->info.Max.z		= Blob.header.Info.minz;
+		triMesh->info.r			= Blob.header.Info.r;
+		triMesh->allocator		= Memory;
 		triMesh->assetHandle	= Blob.header.GUID;
-		triMesh->TriMeshID		= Blob.header.GUID;
+		triMesh->triMeshID		= Blob.header.GUID;
 
 		triMesh->BS     = { { Blob.header.BS[0], Blob.header.BS[1], Blob.header.BS[2] }, Blob.header.BS[3] };
 		triMesh->AABB   =
@@ -962,7 +938,7 @@ namespace FlexKit
 
 			auto RHandle = LoadGameAsset(GUID);
 			auto GameRes = GetAsset(RHandle);
-			if( Asset2TriMesh(GeometryTable.renderSystem, handle, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
+			if( Asset2TriMesh(GeometryTable.renderSystem, handle, RHandle, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
 			{
 				FreeAsset(RHandle);
 
@@ -989,7 +965,7 @@ namespace FlexKit
 			auto RHandle = LoadGameAsset(GUID);
 			auto GameRes = GetAsset(RHandle);
 			
-			if(Asset2TriMesh(GeometryTable.renderSystem, handle, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
+			if(Asset2TriMesh(GeometryTable.renderSystem, handle, RHandle, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
 			{
 				FreeAsset(RHandle);
 
@@ -1025,7 +1001,7 @@ namespace FlexKit
 			GeometryTable.GeometryIDs.push_back		(nullptr);
 			GeometryTable.Guids.push_back			(0);
 			GeometryTable.ReferenceCounts.push_back	(0);
-			GeometryTable.Handle.push_back          (Handle);
+			GeometryTable.Handle.push_back			(Handle);
 
 			auto Available = isAssetAvailable(ID);
 			FK_ASSERT(Available);
@@ -1033,7 +1009,7 @@ namespace FlexKit
 			auto RHandle = LoadGameAsset(ID);
 			auto GameRes = GetAsset(RHandle);
 			
-			if(Asset2TriMesh(GeometryTable.renderSystem, handle, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
+			if(Asset2TriMesh(GeometryTable.renderSystem, handle, RHandle, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
 			{
 				FreeAsset(RHandle);
 
@@ -1060,7 +1036,7 @@ namespace FlexKit
 			auto RHandle = LoadGameAsset(ID);
 			auto GameRes = GetAsset(RHandle);
 
-			if(Asset2TriMesh(GeometryTable.renderSystem, handle, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
+			if(Asset2TriMesh(GeometryTable.renderSystem, handle, RHandle, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
 			{
 				FreeAsset(RHandle);
 
@@ -1099,7 +1075,7 @@ namespace FlexKit
 			GeometryTable.Handle.push_back			(Handle);
 
 
-			if(Buffer2TriMesh(GeometryTable.renderSystem, handle, buffer, bufferSize, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
+			if(Buffer2TriMesh(GeometryTable.renderSystem, handle, buffer, bufferSize, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
 			{
 				GeometryTable.Handles[Handle]			= (index_t)Index;
 				GeometryTable.GeometryIDs[Index]		= Blob->header.ID;
@@ -1116,7 +1092,7 @@ namespace FlexKit
 
 			Handle		= GeometryTable.Handles.GetNewHandle();
 
-			if(Buffer2TriMesh(GeometryTable.renderSystem, handle, buffer, bufferSize, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
+			if(Buffer2TriMesh(GeometryTable.renderSystem, handle, buffer, bufferSize, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
 			{
 				GeometryTable.Handles[Handle]			= (FlexKit::index_t)Index;
 				GeometryTable.GeometryIDs[Index]		= Blob->header.ID;
@@ -1419,3 +1395,28 @@ namespace FlexKit
 
 	/************************************************************************************************/
 }
+
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2023 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

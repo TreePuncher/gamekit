@@ -52,7 +52,7 @@ struct TransformComponentUpdate
 	static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& base, ViewportSceneContext& scene)
 	{
 		auto& sceneNode	= static_cast<FlexKit::EntitySceneNodeComponent&>(component);
-		auto& runtime	= static_cast<FlexKit::SceneNodeView<>&>(base);
+		auto& runtime	= static_cast<FlexKit::SceneNodeView&>(base);
 
 		sceneNode.nodeIdx = scene.MapNode(runtime.node);
 
@@ -165,9 +165,9 @@ ViewportGameObject_ptr ViewportScene::CreateObject(ViewportGameObject* parent)
 		auto parentNode = FlexKit::GetSceneNode(parent->gameObject);
 
 		if(parentNode == FlexKit::InvalidHandle)
-			parentNode = parent->gameObject.AddView<FlexKit::SceneNodeView<>>();
+			parentNode = parent->gameObject.AddView<FlexKit::SceneNodeView>();
 
-		auto& node = obj->gameObject.AddView<FlexKit::SceneNodeView<>>();
+		auto& node = obj->gameObject.AddView<FlexKit::SceneNodeView>();
 		node.SetParentNode(parentNode);
 	}
 

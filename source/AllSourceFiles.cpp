@@ -38,6 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Scene.cpp"
 #include "Handle.cpp"
 #include "intersection.cpp"
+#include "level.cpp"
 #include "logging.cpp"
 #include "MathUtils.cpp"
 #include "Materials.cpp"
@@ -77,5 +78,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TextureUtilities.cpp"
 #include "TextureStreamingUtilities.cpp"
 #include "TextRendering.cpp"
+#include "TriggerComponent.cpp"
 
 #include "physicsutilities.cpp"

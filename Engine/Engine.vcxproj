@@ -169,6 +169,7 @@
     <ClCompile Include="..\source\GuiUtilities.cpp" />
     <ClCompile Include="..\source\Handle.cpp" />
     <ClCompile Include="..\source\Intersection.cpp" />
+    <ClCompile Include="..\source\Level.cpp" />
     <ClCompile Include="..\source\Logging.cpp" />
     <ClCompile Include="..\source\Materials.cpp" />
     <ClCompile Include="..\source\MathUtils.cpp" />
@@ -187,7 +188,7 @@
     <ClCompile Include="..\source\ScriptingRuntime.cpp" />
     <ClCompile Include="..\source\Serialization.cpp" />
     <ClCompile Include="..\source\ShadowMapping.CPP" />
-    <ClCompile Include="..\source\signal.cpp" />
+    <ClCompile Include="..\source\signals.cpp" />
     <ClCompile Include="..\source\SSReflections.cpp" />
     <ClCompile Include="..\source\SVOGI.cpp" />
     <ClCompile Include="..\source\TerrainRendering.cpp" />
@@ -198,6 +199,7 @@
     <ClCompile Include="..\source\timeutilities.cpp" />
     <ClCompile Include="..\source\Transforms.cpp" />
     <ClCompile Include="..\source\Transparency.cpp" />
+    <ClCompile Include="..\source\TriggerComponent.cpp" />
     <ClCompile Include="..\source\type.cpp" />
     <ClCompile Include="..\source\WorldRender.cpp" />
   </ItemGroup>
@@ -239,6 +241,7 @@
     <ClInclude Include="..\source\intersection.h" />
     <ClInclude Include="..\source\KeycodesEnums.h" />
     <ClInclude Include="..\source\KeyValueIds.h" />
+    <ClInclude Include="..\source\Level.hpp" />
     <ClInclude Include="..\source\Logging.h" />
     <ClInclude Include="..\source\Materials.h" />
     <ClInclude Include="..\source\MathUtils.h" />
@@ -260,7 +263,7 @@
     <ClInclude Include="..\source\ScriptingRuntime.h" />
     <ClInclude Include="..\source\Serialization.hpp" />
     <ClInclude Include="..\source\ShadowMapping.h" />
-    <ClInclude Include="..\source\Signal.h" />
+    <ClInclude Include="..\source\Signals.h" />
     <ClInclude Include="..\source\SSReflections.h" />
     <ClInclude Include="..\source\static_vector.h" />
     <ClInclude Include="..\source\SVOGI.h" />
@@ -272,6 +275,7 @@
     <ClInclude Include="..\source\timeutilities.h" />
     <ClInclude Include="..\source\Transforms.h" />
     <ClInclude Include="..\source\Transparency.h" />
+    <ClInclude Include="..\source\TriggerSlotIDs.hpp" />
     <ClInclude Include="..\source\type.h" />
     <ClInclude Include="..\source\VertexBuffer.h" />
     <ClInclude Include="..\source\Win32Graphics.h" />
@@ -280,6 +284,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\source\TriggerComponent.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

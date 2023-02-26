@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GameFramework.h"
 #include "Fonts.h"
 #include "graphics.h"
+#include "Level.hpp"
 #include "TextRendering.h"
 #include "TextureUtilities.h"
 #include "Logging.h"
@@ -169,10 +170,11 @@ namespace FlexKit
 
 	GameFramework::GameFramework(EngineCore& IN_core) :
 		console				{ DefaultAssets.Font, IN_core.RenderSystem, IN_core.GetBlockMemory() },
-		core				{ IN_core	                },
-		fixStepAccumulator	{ 0.0		                }
+		core				{ IN_core	},
+		fixStepAccumulator	{ 0.0		}
 	{
 		Initiate();
+		InitLevelTable(core.GetBlockMemory());
 	}
 
 
@@ -181,7 +183,7 @@ namespace FlexKit
 
 	void GameFramework::Initiate()
 	{
-		InitiateAssetTable	    (core.GetBlockMemory());
+		InitiateAssetTable		(core.GetBlockMemory());
 		InitiateGeometryTable	(&core.RenderSystem, core.GetBlockMemory());
 
 		quit						= false;

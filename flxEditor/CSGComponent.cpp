@@ -1885,15 +1885,15 @@ public:
 		}
 	}selectionContext;
 
-	ImGuizmo::MODE      space       = ImGuizmo::MODE::WORLD;
-	ImGuizmo::OPERATION operation   = ImGuizmo::OPERATION::TRANSLATE;
+	ImGuizmo::MODE		space		= ImGuizmo::MODE::WORLD;
+	ImGuizmo::OPERATION	operation	= ImGuizmo::OPERATION::TRANSLATE;
 
 	bool drawNormals = false;
 
-	EditorViewport&             viewport;
-	CSGView&                    selection;
-	FlexKit::ImGUIIntegrator&   hud;
-	FlexKit::int2               previousMousePosition = FlexKit::int2{ -160000, -160000 };
+	EditorViewport&				viewport;
+	CSGView&					selection;
+	FlexKit::ImGUIIntegrator&	hud;
+	FlexKit::int2				previousMousePosition = FlexKit::int2{ -160000, -160000 };
 };
 
 
@@ -1903,14 +1903,14 @@ public:
 constexpr ViewportModeID CSGSliceModeID = GetTypeGUID(CSGEditMode);
 
 
-class CSGSliceMode : public IEditorViewportMode
+class CSGSliceMode final : public IEditorViewportMode
 {
 public:
 	CSGSliceMode(CSGEditMode& IN_CSGMode, FlexKit::ImGUIIntegrator& IN_hud, CSGView& IN_selection, EditorViewport& IN_viewport) :
-		CSGMode     { IN_CSGMode    },
-		hud         { IN_hud        },
-		selection   { IN_selection  },
-		viewport    { IN_viewport   } {}
+		CSGMode		{ IN_CSGMode	},
+		hud			{ IN_hud		},
+		selection	{ IN_selection	},
+		viewport	{ IN_viewport	} {}
 
 	ViewportModeID GetModeID() const override { return CSGSliceModeID; };
 
@@ -1933,11 +1933,11 @@ public:
 		CSGMode.keyReleaseEvent(evt);
 	}
 
-	CSGEditMode&                CSGMode;
-	EditorViewport&             viewport;
-	CSGView&                    selection;
-	FlexKit::ImGUIIntegrator&   hud;
-	FlexKit::int2               previousMousePosition = FlexKit::int2{ -160000, -160000 };
+	CSGEditMode&				CSGMode;
+	EditorViewport&				viewport;
+	CSGView&					selection;
+	FlexKit::ImGUIIntegrator&	hud;
+	FlexKit::int2				previousMousePosition = FlexKit::int2{ -160000, -160000 };
 };
 
 /************************************************************************************************/
@@ -1978,119 +1978,6 @@ void UpdateCSGComponent(CSGComponentData& brushComponent)
 /************************************************************************************************/
 
 
-class CSGInspector : public IComponentInspector
-{
-public:
-	CSGInspector(EditorViewport& IN_viewport) :
-		viewport{ IN_viewport } {}
-
-	FlexKit::ComponentID ComponentID() override
-	{
-		return CSGComponentID;
-	}
-
-	std::string ComponentName() const noexcept final
-	{
-		return "Constructive Solid Geometry";
-	}
-
-	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& view) override
-	{
-		CSGView& csgView = static_cast<CSGView&>(view);
-
-		panelCtx.AddButton(
-			"Edit",
-			[&]
-			{
-				viewport.PushMode(std::make_shared<CSGEditMode>(viewport.GetHUD(), csgView, viewport));
-			});
-
-		panelCtx.AddButton(
-			"Add Brush",
-			[&]
-			{
-				CSGBrush newBrush;
-				newBrush.op         = CSG_OP::CSG_ADD;
-				newBrush.shape      = CreateCubeCSGShape();
-				newBrush.position   = FlexKit::float3{ 0, 0, 0 };
-				newBrush.dirty      = true;
-
-				csgView->brushes.push_back(newBrush);
-				csgView->selectedBrush = csgView->brushes.size() - 1;
-			});
-
-		panelCtx.AddButton(
-			"Remove",
-			[&]
-			{
-				if (csgView->selectedBrush != -1)
-				{
-					csgView->brushes.erase(csgView->brushes.begin() + csgView->selectedBrush);
-					csgView->selectedBrush = -1;
-				}
-			});
-
-		panelCtx.AddButton(
-			"Test",
-			[&]
-			{
-				auto& csg = csgView.GetData();
-
-				if(csg.brushes.size() == 0)
-				{
-					CSGBrush brush1;
-					brush1.op       = CSG_OP::CSG_ADD;
-					brush1.shape    = CreateCubeCSGShape();
-					brush1.position = FlexKit::float3{ 0 };
-					brush1.shape.Build();
-
-					csg.brushes.emplace_back(std::move(brush1));
-					csg.selectedBrush = -1;
-				}
-
-				ModifiableShape& shape = csg.brushes.back().shape;
-				shape = CreateCubeCSGShape();
-
-				const auto end = shape.wFaces.size();
-				for (uint32_t faceIdx = 0; faceIdx < end; faceIdx++)
-					shape.SplitTri(faceIdx);
-
-				shape.Build();
-
-				csg.debugVal1++;
-			});
-
-		panelCtx.AddList(
-			[&]() -> size_t
-			{    // Update Size
-				return csgView.GetData().brushes.size();
-			}, 
-			[&](auto idx, QListWidgetItem* item)
-			{   // Update Contents
-				auto op = csgView.GetData().brushes[idx].op;
-
-				std::string label = op == CSG_OP::CSG_ADD ? "Add" :
-									op == CSG_OP::CSG_SUB ? "Sub" : "";
-
-				item->setData(Qt::DisplayRole, label.c_str());
-			},             
-			[&](QListWidget* listWidget)
-			{   // On Event
-				listWidget->setSelectionMode(QAbstractItemView::SelectionMode::SingleSelection);
-				auto idx = listWidget->indexFromItem(listWidget->currentItem()).row();
-				csgView.GetData().selectedBrush = idx;
-			}              
-		);
-
-		panelCtx.Pop();
-	}
-
-	EditorViewport& viewport;
-};
-
-
-/************************************************************************************************/
-
 
 FlexKit::Blob EditorComponentCSG::GetBlob()
 {
@@ -2120,8 +2007,112 @@ void CSGComponentEventHandler::OnCreateView(FlexKit::GameObject& gameObject, Fle
 	csgView->brushes = std::move(csgComponent.brushes);
 }
 
-struct CSGComponentFactory : public IComponentFactory
+
+/************************************************************************************************/
+
+
+struct CSGEditorComponent final : public IEditorComponent
 {
+	CSGEditorComponent(EditorViewport& IN_viewport) :
+		viewport{ IN_viewport } {}
+
+
+	FlexKit::ComponentID	ComponentID()	const noexcept { return CSGComponentID; }
+	const std::string&		ComponentName()	const noexcept { return name; }
+
+
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& view) override
+	{
+		CSGView& csgView = static_cast<CSGView&>(view);
+
+		panelCtx.AddButton(
+			"Edit",
+			[&]
+			{
+				viewport.PushMode(std::make_shared<CSGEditMode>(viewport.GetHUD(), csgView, viewport));
+			});
+
+		panelCtx.AddButton(
+			"Add Brush",
+			[&]
+			{
+				CSGBrush newBrush;
+			newBrush.op = CSG_OP::CSG_ADD;
+			newBrush.shape = CreateCubeCSGShape();
+			newBrush.position = FlexKit::float3{ 0, 0, 0 };
+			newBrush.dirty = true;
+
+			csgView->brushes.push_back(newBrush);
+			csgView->selectedBrush = csgView->brushes.size() - 1;
+			});
+
+		panelCtx.AddButton(
+			"Remove",
+			[&]
+			{
+				if (csgView->selectedBrush != -1)
+				{
+					csgView->brushes.erase(csgView->brushes.begin() + csgView->selectedBrush);
+					csgView->selectedBrush = -1;
+				}
+			});
+
+		panelCtx.AddButton(
+			"Test",
+			[&]
+			{
+				auto& csg = csgView.GetData();
+
+			if (csg.brushes.size() == 0)
+			{
+				CSGBrush brush1;
+				brush1.op = CSG_OP::CSG_ADD;
+				brush1.shape = CreateCubeCSGShape();
+				brush1.position = FlexKit::float3{ 0 };
+				brush1.shape.Build();
+
+				csg.brushes.emplace_back(std::move(brush1));
+				csg.selectedBrush = -1;
+			}
+
+			ModifiableShape& shape = csg.brushes.back().shape;
+			shape = CreateCubeCSGShape();
+
+			const auto end = shape.wFaces.size();
+			for (uint32_t faceIdx = 0; faceIdx < end; faceIdx++)
+				shape.SplitTri(faceIdx);
+
+			shape.Build();
+
+			csg.debugVal1++;
+			});
+
+		panelCtx.AddList(
+			[&]() -> size_t
+			{    // Update Size
+				return csgView.GetData().brushes.size();
+			},
+			[&](auto idx, QListWidgetItem* item)
+			{   // Update Contents
+				auto op = csgView.GetData().brushes[idx].op;
+
+			std::string label = op == CSG_OP::CSG_ADD ? "Add" :
+				op == CSG_OP::CSG_SUB ? "Sub" : "";
+
+			item->setData(Qt::DisplayRole, label.c_str());
+			},
+				[&](QListWidget* listWidget)
+			{   // On Event
+				listWidget->setSelectionMode(QAbstractItemView::SelectionMode::SingleSelection);
+			auto idx = listWidget->indexFromItem(listWidget->currentItem()).row();
+			csgView.GetData().selectedBrush = idx;
+			}
+			);
+
+		panelCtx.Pop();
+	}
+
+
 	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
 	{
 		return gameObject.AddView<CSGView>();
@@ -2129,27 +2120,18 @@ struct CSGComponentFactory : public IComponentFactory
 
 	inline static const std::string name = "CSG";
 
-	const std::string&      ComponentName() const noexcept { return name; }
-	FlexKit::ComponentID    ComponentID() const noexcept { return CSGComponentID; }
-
-	static bool Register()
-	{
-		EditorInspectorView::AddComponentFactory(std::make_unique<CSGComponentFactory>());
-
-		return true;
-	}
 
 	static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& base, ViewportSceneContext& scene)
 	{
-		auto& editorCSGComponent    = static_cast<EditorComponentCSG&>(component);
-		auto& csgView               = static_cast<CSGView&>(base);
+		auto& editorCSGComponent	= static_cast<EditorComponentCSG&>(component);
+		auto& csgView				= static_cast<CSGView&>(base);
 
-		editorCSGComponent.brushes  = csgView->brushes;
+		editorCSGComponent.brushes	= csgView->brushes;
 	}
 
-	inline static IEntityComponentRuntimeUpdater::RegisterConstructorHelper<CSGComponentFactory, CSGComponentID> _register;
+	EditorViewport& viewport;
 
-	inline static bool _registered = Register();
+	inline static IEntityComponentRuntimeUpdater::RegisterConstructorHelper<CSGEditorComponent, CSGComponentID> _register;
 };
 
 
@@ -2158,13 +2140,15 @@ struct CSGComponentFactory : public IComponentFactory
 
 void RegisterCSGInspector(EditorViewport& viewport)
 {
-	EditorInspectorView::AddComponentInspector<CSGInspector>(viewport);
+	static CSGEditorComponent component{ viewport };
+
+	EditorInspectorView::AddComponent(component);
 }
 
 
 /**********************************************************************
 
-Copyright (c) 2022 Robert May
+Copyright (c) 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

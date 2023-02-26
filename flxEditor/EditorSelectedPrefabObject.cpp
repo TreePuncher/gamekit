@@ -372,13 +372,6 @@ void EditorSelectedPrefabObject::Release()
 /************************************************************************************************/
 
 
-bool EditorSelectedPrefabObject::RegisterInterface(EditorScriptEngine& engine)
-{
-
-	return true;
-}
-
-
 
 /**********************************************************************
 

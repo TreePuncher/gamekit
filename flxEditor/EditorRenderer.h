@@ -12,6 +12,7 @@
 #include "TextureStreamingUtilities.h"
 #include "WorldRender.h"
 
+#include <TriggerComponent.h>
 
 class QWidget;
 
@@ -63,33 +64,35 @@ private:
 	FlexKit::ConstantBufferHandle	constantBuffer;
 
 	// Components
-	FlexKit::SceneNodeComponent         sceneNodes;
-	FlexKit::BrushComponent             brushComponent;
-	FlexKit::StringIDComponent          stringIDComponent;
-	FlexKit::MaterialComponent          materialComponent;
-	FlexKit::CameraComponent            cameraComponent;
-	FlexKit::SceneVisibilityComponent   visibilityComponent;
-	FlexKit::SkeletonComponent          skeletonComponent;
-	FlexKit::AnimatorComponent          animatorComponent;
-	FlexKit::PointLightComponent        pointLightComponent;
-	FlexKit::PointLightShadowMap        pointLightShadowMaps;
+	FlexKit::SceneNodeComponent			sceneNodes;
+	FlexKit::BrushComponent				brushComponent;
+	FlexKit::StringIDComponent			stringIDComponent;
+	FlexKit::MaterialComponent			materialComponent;
+	FlexKit::CameraComponent			cameraComponent;
+	FlexKit::SceneVisibilityComponent	visibilityComponent;
+	FlexKit::SkeletonComponent			skeletonComponent;
+	FlexKit::AnimatorComponent			animatorComponent;
+	FlexKit::PointLightComponent		pointLightComponent;
+	FlexKit::PointLightShadowMap		pointLightShadowMaps;
 
-	FlexKit::FABRIKTargetComponent      ikTargetComponent;
-	FlexKit::FABRIKComponent            ikComponent;
+	FlexKit::FABRIKTargetComponent		ikTargetComponent;
+	FlexKit::FABRIKComponent			ikComponent;
+
+	FlexKit::TriggerComponent			triggers;
 
 	// physX components
-	FlexKit::PhysXComponent                 physX;
-	FlexKit::StaticBodyComponent            staticBodies;
-	FlexKit::RigidBodyComponent             rigidBodies;
-	FlexKit::CharacterControllerComponent   characterControllers;
+	FlexKit::PhysXComponent					physX;
+	FlexKit::StaticBodyComponent			staticBodies;
+	FlexKit::RigidBodyComponent				rigidBodies;
+	FlexKit::CharacterControllerComponent	characterControllers;
 
 	// Editor Only Components
 	CSGComponent csg;
 
 
-	QApplication&                   QtApplication;
-	FlexKit::FKApplication&         application;
-	std::vector<DXRenderWindow*>    renderWindows;
+	QApplication&					QtApplication;
+	FlexKit::FKApplication&			application;
+	std::vector<DXRenderWindow*>	renderWindows;
 };
 
 

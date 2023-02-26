@@ -1,9 +1,12 @@
 #include "buildsettings.h"
 #include "Assets.h"
+#include "KeyValueIds.h"
 #include "physicsutilities.h"
 #include "SceneLoadingContext.h"
-#include "KeyValueIds.h"
+#include "TriggerComponent.h"
+#include "TriggerSlotIDs.hpp"
 
+#include <any>
 #include <PxFoundation.h>
 #include <PxPhysics.h>
 #include <extensions/PxExtensionsAPI.h>
@@ -50,9 +53,9 @@ namespace FlexKit
 				if (collider.actor->isSleeping())
 					continue;
 
-				physx::PxTransform  pose = collider.actor->getGlobalPose();
-				Quaternion	        orientation = Quaternion{ pose.q.x, pose.q.y, pose.q.z, pose.q.w };
-				float3		        position = float3{ pose.p.x, pose.p.y, pose.p.z };
+				physx::PxTransform	pose = collider.actor->getGlobalPose();
+				Quaternion			orientation = Quaternion{ pose.q.x, pose.q.y, pose.q.z, pose.q.w };
+				float3				position = float3{ pose.p.x, pose.p.y, pose.p.z };
 
 				SetPositionW(collider.node, position);
 				SetOrientation(collider.node, orientation);
@@ -107,10 +110,12 @@ namespace FlexKit
 	PhysXComponent::PhysXComponent(ThreadManager& IN_threads, iAllocator* IN_allocator) :
 		threads		{ IN_threads				},
 		scenes		{ IN_allocator				},
-		shapes      { IN_allocator              },
+		shapes		{ IN_allocator				},
 		allocator	{ IN_allocator				},
 		dispatcher	{ IN_threads, IN_allocator	}
 	{
+		scenes.reserve(10);
+
 #ifdef _DEBUG
 		bool recordMemoryAllocations = false;
 #else
@@ -189,7 +194,7 @@ namespace FlexKit
 		desc.gpuDynamicsConfig.patchStreamSize			= 8096 * sizeof(PxContactPatch);
 
 		if(cudaContextmanager != nullptr)
-			desc.flags              |= PxSceneFlag::eENABLE_GPU_DYNAMICS;
+			desc.flags	|= PxSceneFlag::eENABLE_GPU_DYNAMICS;
 
 		auto pScene			= physxAPI->createScene(desc);
 		auto idx			= scenes.emplace_back(pScene, *this, allocator);
@@ -446,7 +451,8 @@ namespace FlexKit
 	void PhysXComponent::Simulate(double dt, WorkBarrier* barrier, iAllocator* temp_allocator)
 	{
 		for (PhysicsLayer& scene : scenes)
-			scene.Update(dt, barrier, temp_allocator);
+			if(!scene.paused)
+				scene.Update(dt, barrier, temp_allocator);
 	}
 
 
@@ -581,8 +587,8 @@ namespace FlexKit
 
 	void StaticColliderSystem::Release()
 	{
-		for (auto& collider : colliders)
-			collider.actor->release();
+		//for (auto& collider : colliders)
+		//	collider.actor->release();
 
 		colliders.Release();
 		dirtyFlags.Release();
@@ -682,7 +688,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PhysicsLayer::PhysicsLayer(physx::PxScene* IN_scene, PhysXComponent& IN_system, iAllocator* IN_memory) :
+	PhysicsLayer::PhysicsLayer(physx::PxScene* IN_scene, PhysXComponent& IN_system, iAllocator* IN_memory) noexcept :
 		scene			    { IN_scene			},
 		system			    { IN_system			},
 		memory			    { IN_memory			},
@@ -705,7 +711,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PhysicsLayer::PhysicsLayer(PhysicsLayer&& IN_scene) :
+	PhysicsLayer::PhysicsLayer(PhysicsLayer&& IN_scene) noexcept :
 		staticColliders		{ std::move(IN_scene.staticColliders)	},
 		rbColliders			{ std::move(IN_scene.rbColliders)		},
 		scene				{ IN_scene.scene						},
@@ -855,7 +861,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	StaticBodyHandle PhysicsLayer::CreateStaticCollider(GameObject* go, float3 initialPosition, Quaternion initialQ)
+	StaticBodyHandle PhysicsLayer::CreateStaticCollider(GameObject* gameObject, float3 initialPosition, Quaternion initialQ)
 	{
 		physx::PxTransform pxInitialPose =
 			physx::PxTransform{ PxMat44(PxIdentity) };
@@ -864,20 +870,55 @@ namespace FlexKit
 		pxInitialPose.p = physx::PxVec3{ initialPosition.x, initialPosition.y, initialPosition.z };
 
 		auto rigidStaticActor	= system.physxAPI->createRigidStatic(pxInitialPose);
+		rigidStaticActor->userData = gameObject;
 
-		auto node = GetSceneNode(*go);
+		auto node = GetSceneNode(*gameObject);
 
 		if (node == InvalidHandle)
 		{
 			node = GetZeroedNode();
-			go->AddView<SceneNodeView<>>(node);
+			auto& sceneNode			= gameObject->AddView<SceneNodeView>(node);
 		}
+
+		auto& triggerView	= gameObject->AddView<TriggerView>();
+		auto& sceneNodeView = gameObject->AddView<SceneNodeView>();
+
+		sceneNodeView.triggerEnable = true;
+
+		triggerView->CreateSlot(ChangePositionStaticBodySlot,
+			[gameObject](void* _ptr, uint64_t typeID)
+			{
+				FK_ASSERT(typeID == GetTypeGUID(float3));
+
+				auto& xyz = *(float3*)_ptr;
+
+				StaticBodySetWorldPosition(*gameObject, xyz);
+			});
+
+		triggerView->CreateSlot(ChangeOrientationStaticBodySlot,
+			[gameObject](void* _ptr, uint64_t typeID)
+			{
+				FK_ASSERT(typeID == GetTypeGUID(Quaternion));
+
+				auto& q = *(Quaternion*)(_ptr);
+
+				StaticBodySetWorldOrientation(*gameObject, q.Conjugate());
+			});
+
+		triggerView->Connect(TranslationSignalID,		ChangePositionStaticBodySlot);
+		triggerView->Connect(SetOrientationmSignalID,	ChangeOrientationStaticBodySlot);
+		triggerView->Connect(SetTransformSignalID,		ChangePositionStaticBodySlot,
+			[gameObject](void* _ptr, uint64_t typeID)
+			{
+				StaticBodySetWorldPosition(*gameObject,		GetLocalPosition(*gameObject));
+				StaticBodySetWorldOrientation(*gameObject,	GetOrientationLocal(*gameObject).Conjugate());
+			});
 
 		auto handle = staticColliders.AddCollider(
 			{	.node		= node,
 				.handle		= InvalidHandle,
 				.actor		= rigidStaticActor,
-				.gameObject	= go
+				.gameObject	= gameObject
 			}, true);
 
 		scene->addActor(*rigidStaticActor);
@@ -889,7 +930,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	RigidBodyHandle PhysicsLayer::CreateRigidBodyCollider(GameObject* go, float3 initialPosition, Quaternion initialQ)
+	RigidBodyHandle PhysicsLayer::CreateRigidBodyCollider(GameObject* gameObject, float3 initialPosition, Quaternion initialQ)
 	{
 		auto node = GetZeroedNode();
 		SetOrientation	(node, initialQ);
@@ -901,6 +942,8 @@ namespace FlexKit
 		pxInitialPose.p = physx::PxVec3{ initialPosition.x, initialPosition.y, initialPosition.z };
 
 		PxRigidDynamic* rigidBodyActor = system.physxAPI->createRigidDynamic(pxInitialPose);
+		rigidBodyActor->userData = gameObject;
+
 
 		size_t handleIdx = rbColliders.colliders.push_back({	node,
 																rigidBodyActor });
@@ -1354,9 +1397,9 @@ namespace FlexKit
 		Apply(gameObject,
 			[&](StaticBodyView& staticBody)
 			{
-				auto actor              = staticBody->actor;
-				PxTransform transform   = actor->getGlobalPose();
-				transform.p             = physx::PxVec3{ xyz.x, xyz.y, xyz.z };
+				auto actor				= staticBody->actor;
+				PxTransform transform	= actor->getGlobalPose();
+				transform.p				= physx::PxVec3{ xyz.x, xyz.y, xyz.z };
 				actor->setGlobalPose(transform);
 			});
 	}
@@ -1414,7 +1457,7 @@ namespace FlexKit
 			{
 				auto actor = staticBody->actor;
 				PxTransform transform = actor->getGlobalPose();
-				transform.q = physx::PxQuat{ q.x, q.y, q.z, q.w };
+				transform.q = physx::PxQuat{ q.x, q.y, q.z, -q.w };
 				actor->setGlobalPose(transform);
 				transform = actor->getGlobalPose();
 
@@ -1710,9 +1753,6 @@ namespace FlexKit
 			const float3    postPos     = pxVec3ToFloat3(pxPostPos);
 			const auto      deltaPos    = prevPos - postPos;
 
-			FlexKit::printfloat3(postPos);
-			printf("\n");
-
 			if (desiredMove.magnitudeSq() * 0.5f >= deltaPos.magnitude())
 				velocity = 0.0f;
 
@@ -1728,20 +1768,20 @@ namespace FlexKit
 	{
 		auto& controllerImpl = CharacterControllerComponent::GetComponent()[controller];
 
-		const float focusHeight     = controllerImpl.focusHeight;
-		const float cameraDistance  = controllerImpl.cameraDistance;
+		const float focusHeight		= controllerImpl.focusHeight;
+		const float cameraDistance	= controllerImpl.cameraDistance;
 
 		
-		const float3 footPosition   = pxVec3ToFloat3(controllerImpl.controller->getFootPosition());
+		const float3 footPosition	= pxVec3ToFloat3(controllerImpl.controller->getFootPosition());
 
 		auto& layer = PhysXComponent::GetComponent().GetLayer_ref(controllerImpl.layer);
 
-		const float3 forward    { (GetForwardVector() * float3(1, 0, 1)).normal() };
-		const float3 right      { GetRightVector() };
-		const float3 up         { 0, 1, 0 };
+		const float3 forward	{ (GetForwardVector() * float3(1, 0, 1)).normal() };
+		const float3 right		{ GetRightVector() };
+		const float3 up			{ 0, 1, 0 };
 
-		const float3 origin1    = footPosition + up * 3 + 2.0f * -forward;
-		const float3 ray1       = -forward.normal();
+		const float3 origin1	= footPosition + up * 3 + 2.0f * -forward;
+		const float3 ray1		= -forward.normal();
 
 		float cameraZ = cameraDistance;
 
@@ -1752,9 +1792,9 @@ namespace FlexKit
 				return false;
 			});
 
-		const float3 origin2 = footPosition - forward * cameraZ + up * 10.0f;
-		const float3 ray2    = (-up).normal();
-		float cameraMinY     = 0;
+		const float3 origin2	= footPosition - forward * cameraZ + up * 10.0f;
+		const float3 ray2		= (-up).normal();
+		float cameraMinY		= 0;
 
 		layer.RayCast(origin2, ray2, 100,
 			[&](auto hit)
@@ -1763,13 +1803,13 @@ namespace FlexKit
 				return false;
 			});
 
-		const auto cameraY      = Max(focusHeight - std::tanf(pitch) * cameraZ, cameraMinY);
+		const auto cameraY		= Max(focusHeight - std::tanf(pitch) * cameraZ, cameraMinY);
 
 		SetPositionW(objectNode, footPosition);
 
-		const auto position             = footPosition - forward * cameraZ + up * cameraY;
-		const auto newCameraPosition    = lerp(position, cameraPosition, 0.65f);
-		cameraPosition                  = newCameraPosition;
+		const auto position				= footPosition - forward * cameraZ + up * cameraY;
+		const auto newCameraPosition	= lerp(position, cameraPosition, 0.65f);
+		cameraPosition					= newCameraPosition;
 
 		SetPositionW(yawNode, cameraPosition);
 
@@ -1801,7 +1841,24 @@ namespace FlexKit
 
 		LayerHandle* layer = FindValue<LayerHandle*>(userValues, PhysicsLayerKID).value_or(nullptr);
 
-		auto& staticBody = gameObject.hasView(StaticBodyComponentID) ? static_cast<StaticBodyView&>(*gameObject.GetView(StaticBodyComponentID)) : gameObject.AddView<StaticBodyView>(*layer);
+		auto& staticBody	= gameObject.hasView(StaticBodyComponentID) ? static_cast<StaticBodyView&>(*gameObject.GetView(StaticBodyComponentID)) : gameObject.AddView<StaticBodyView>(*layer);
+
+		auto currentPOS		= GetLocalPosition(gameObject);
+		auto currentQ		= GetOrientationLocal(gameObject);
+		auto globalPose		= staticBody->actor->getGlobalPose();
+
+		globalPose.p = PxVec3{
+			currentPOS.x,
+			currentPOS.y,
+			currentPOS.z };
+
+		globalPose.q = PxQuat{
+			currentQ.x,
+			currentQ.y,
+			currentQ.z,
+			-currentQ.w };
+
+		staticBody->actor->setGlobalPose(globalPose);
 
 		for (size_t I = 0; I < header.shapeCount; I++)
 		{
@@ -1832,7 +1889,7 @@ namespace FlexKit
 
 				Blob triMeshBlob{ ((char*)resource) + sizeof(Resource), resource->ResourceSize - sizeof(Resource) };
 				shape = physX.LoadTriMeshShape(triMeshBlob);
-			}   break;
+			}	break;
 			case StaticBodyType::BoundingVolume:
 			{
 				auto boundingVolume = GetBoundingSphere(gameObject);
@@ -1881,7 +1938,7 @@ namespace FlexKit
 
 	void StaticBodyComponent::Remove(LayerHandle layer, StaticBodyHandle sb) noexcept
 	{
-		auto& layer_ref		= GetComponent().GetLayer(layer);
+		auto& layer_ref		= GetComponent().GetLayer_ref(layer);
 		auto& staticBody	= layer_ref[sb];
 		staticBody.actor->release();
 		layer_ref.ReleaseCollider(sb);
@@ -1892,39 +1949,45 @@ namespace FlexKit
 
 
 	StaticBodyView::StaticBodyView(GameObject& gameObject, StaticBodyHandle IN_staticBody, LayerHandle IN_layer) :
-			staticBody  { IN_staticBody },
-			layer       { IN_layer } {}
+			staticBody	{ IN_staticBody },
+			layer		{ IN_layer } {}
+
 
 	StaticBodyView::StaticBodyView(GameObject& gameObject, LayerHandle IN_layer, float3 pos, Quaternion q) :
-			staticBody  { GetComponent().Create(&gameObject, layer, pos, q) },
-			layer       { IN_layer } {}
+			staticBody	{ GetComponent().Create(&gameObject, layer, pos, q) },
+			layer		{ IN_layer } {}
+
 
 	StaticBodyView::~StaticBodyView()
 	{
 		RemoveAll();
+		GetComponent().Remove(layer, staticBody);
 	}
 
 
 	NodeHandle StaticBodyView::GetNode() const
 	{
-		return GetComponent().GetLayer(layer)[staticBody].node;
+		return GetComponent().GetLayer_ref(layer)[staticBody].node;
 	}
+
 
 	GameObject& StaticBodyView::GetGameObject() const
 	{
-		return *GetComponent().GetLayer(layer)[staticBody].gameObject;
+		return *GetComponent().GetLayer_ref(layer)[staticBody].gameObject;
 	}
+
 
 	void StaticBodyView::AddShape(Shape shape)
 	{
-		auto& staticBody_data = GetComponent().GetLayer(layer)[staticBody];
+		auto& staticBody_data = GetComponent().GetLayer_ref(layer)[staticBody];
 
 		staticBody_data.actor->attachShape(*shape._ptr);
 	}
 
+
 	void StaticBodyView::RemoveShape(uint32_t idx)
 	{
-		auto& staticBody_data = GetComponent().GetLayer(layer)[staticBody];
+		auto& staticBody_data = GetComponent().GetLayer_ref(layer)[staticBody];
 
 		if (idx >= staticBody_data.actor->getNbShapes())
 			return;
@@ -1935,9 +1998,10 @@ namespace FlexKit
 		staticBody_data.actor->detachShape(*shape);
 	}
 
+
 	void StaticBodyView::RemoveAll()
 	{
-		auto& staticBody_data = GetComponent().GetLayer(layer)[staticBody];
+		auto& staticBody_data = GetComponent().GetLayer_ref(layer)[staticBody];
 
 		PxShape* shape = nullptr;
 
@@ -1948,9 +2012,10 @@ namespace FlexKit
 		}
 	}
 
+
 	physx::PxShape* StaticBodyView::GetShape(size_t idx)
 	{
-		auto& staticBody_data = GetComponent().GetLayer(layer)[staticBody];
+		auto& staticBody_data = GetComponent().GetLayer_ref(layer)[staticBody];
 
 		physx::PxShape* shape;
 		staticBody_data.actor->getShapes(&shape, sizeof(shape), idx);
@@ -1958,31 +2023,36 @@ namespace FlexKit
 		return shape;
 	}
 
+
 	size_t StaticBodyView::GetShapeCount() const noexcept
 	{
-		auto& staticBody_data = GetComponent().GetLayer(layer)[staticBody];
+		auto& staticBody_data = GetComponent().GetLayer_ref(layer)[staticBody];
 
 		return staticBody_data.actor->getNbShapes();
 	}
 
+
 	StaticColliderSystem::StaticColliderObject* StaticBodyView::operator -> ()
 	{
-		auto& staticBody_data = GetComponent().GetLayer(layer)[staticBody];
+		auto& staticBody_data = GetComponent().GetLayer_ref(layer)[staticBody];
 
 		return &staticBody_data;
 	};
 
+
 	void StaticBodyView::SetUserData(void* _ptr) noexcept
 	{
-		auto& staticBody_data = GetComponent().GetLayer(layer)[staticBody];
+		auto& staticBody_data = GetComponent().GetLayer_ref(layer)[staticBody];
 		staticBody_data.User = _ptr;
 	}
 
+
 	void* StaticBodyView::GetUserData() noexcept
 	{
-		auto& staticBody_data = GetComponent().GetLayer(layer)[staticBody];
+		auto& staticBody_data = GetComponent().GetLayer_ref(layer)[staticBody];
 		return staticBody_data.User;
 	}
+
 
 	/************************************************************************************************/
 

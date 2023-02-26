@@ -29,8 +29,6 @@ struct EditorSelectedPrefabObject
     void		UpdateValue(uint32_t idx, const std::string& value);
 
     void		Release();
-
-    static bool	RegisterInterface(EditorScriptEngine& engine);
 };
 
 

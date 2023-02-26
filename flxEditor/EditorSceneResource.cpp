@@ -858,14 +858,13 @@ namespace FlexKit
 			entityHeader.componentCount	= 1;//2 + entity.components.size() + 1; // TODO: Create a proper material component
 
 			Blob componentBlock;
-			componentBlock      += CreateIDComponent(entity.id);
+			componentBlock		+= CreateIDComponent(entity.id);
 
 			for (auto& component : entity.components)
 			{
 				if (component->id == GetTypeGUID(Brush))
 				{
 					auto brushComponent = std::dynamic_pointer_cast<EntityBrushComponent>(component);
-					//const auto ID       = TranslateID(brushComponent->meshes.front(), translationTable); // TODO: ID Translation was used for FBX, but FBX is broken, so considering removing or fixing FBX import
 
 					componentBlock += CreateBrushComponent(
 										brushComponent->meshes,
@@ -891,11 +890,11 @@ namespace FlexKit
 
 		// Create Scene Resource Header
 		SceneResourceBlob	header;
-		header.blockCount   = 2 + entities.size();
-		header.GUID         = guid;
+		header.blockCount	= 2 + entities.size();
+		header.GUID			= guid;
 		strncpy(header.ID, ID.c_str(), 64);
-		header.Type         = EResourceType::EResource_Scene;
-		header.ResourceSize = sizeof(header) + nodeBlob.size() + entityBlock.size();
+		header.Type			= EResourceType::EResource_Scene;
+		header.ResourceSize	= sizeof(header) + nodeBlob.size() + entityBlock.size();
 		Blob headerBlob{ header };
 
 
@@ -929,14 +928,20 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	Blob CreateSceneNodeComponent(uint32_t nodeIdx)
 	{
 		SceneNodeComponentBlob nodeblob;
-		nodeblob.excludeFromScene   = false;
-		nodeblob.nodeIdx            = nodeIdx;
+		nodeblob.excludeFromScene	= false;
+		nodeblob.nodeIdx			= nodeIdx;
 
 		return { nodeblob };
 	}
+
+
+	/************************************************************************************************/
 
 
 	Blob CreateIDComponent(const std::string& string)
@@ -946,6 +951,9 @@ namespace FlexKit
 
 		return { IDblob };
 	}
+
+
+	/************************************************************************************************/
 
 
 	Blob CreateBrushComponent(std::span<uint64_t> meshGUIDs, const float4 albedo, const float4 specular)
@@ -965,6 +973,9 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	Blob CreateMaterialComponent(BrushMaterial material)
 	{
 		MaterialComponentBlob materialComponent;
@@ -982,14 +993,40 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	Blob CreatePointLightComponent(float3 K, float2 IR)
 	{
 		PointLightComponentBlob blob;
-		blob.IR = IR;
-		blob.K  = K;
+		blob.IR		= IR;
+		blob.K		= K;
 
 		return blob;
 	}
+
+
+	/************************************************************************************************/
+
+
+	uint64_t EntityStringIDComponent::GetStringHash() const
+	{
+		std::hash<std::string_view> hash;
+		return hash(stringID);
+	}
+
+
+	/************************************************************************************************/
+
+
+	Blob EntityTriggerComponent::GetBlob()
+	{
+		TriggerComponentBlob blob;
+		return blob;
+	}
+
+
+	/************************************************************************************************/
 
 
 	Blob EntitySkeletonComponent::GetBlob()
@@ -1007,7 +1044,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2021 Robert May
+Copyright (c) 2015 - 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

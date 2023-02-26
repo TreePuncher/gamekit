@@ -1,46 +1,75 @@
-#pragma once
-#include "EditorResource.h"
-#include "Serialization.hpp"
-#include <string>
-#include <EditorInspectorView.h>
+#include "PCH.h"
+#include "EditorSelectObjectDialog.h"
+#include <QListWidgetItem>
 
 
 /************************************************************************************************/
 
 
-class MaterialResource : public FlexKit::Serializable<MaterialResource, FlexKit::iResource, GetTypeGUID(MaterialResource)>
+EditorSelectObjectDialog::EditorSelectObjectDialog(FlexKit::SceneResource* IN_scene, QWidget* parent) :
+	scene { IN_scene }
 {
-public:
-	void Serialize(auto& ar)
+	ui.setupUi(this);
+
+	connect(
+		ui.selectButton, &QPushButton::pressed,
+		[&]()
+		{
+			auto selected = ui.listWidget->selectedItems();
+
+			if (selected.size())
+			{
+				OnSelection(ui.listWidget->indexFromItem(selected.first()).row());
+				delete this;
+			}
+		});
+
+	connect(
+		ui.cancelButton, &QPushButton::pressed,
+		[&]()
+		{
+			delete this;
+		});
+}
+
+
+/************************************************************************************************/
+
+
+EditorSelectObjectDialog::~EditorSelectObjectDialog()
+{
+
+}
+
+
+/************************************************************************************************/
+
+
+void EditorSelectObjectDialog::UpdateContents()
+{
+	auto currentCount = ui.listWidget->count();
+	auto updatedCount = GetItemCount();
+
+
+	for (size_t i = 0; i < currentCount; i++)
 	{
-		FlexKit::ValueStore fields;
+		auto item = ui.listWidget->item(i);
 
-		BindValue(fields, id);
-		BindValue(fields, guid);
-
-		ar& fields;
+		auto label = GetItemLabel(i);
+		item->setText(label.c_str());
 	}
 
-	FlexKit::ResourceBlob	CreateBlob() const override;
-	const std::string&		GetResourceID() const noexcept override;
-
-	uint64_t		GetResourceGUID()	const noexcept override;
-	ResourceID_t	GetResourceTypeID() const noexcept;
-
-	void			SetResourceID	(const std::string& IN_id)	noexcept;
-	void			SetResourceGUID	(uint64_t IN_guid) noexcept;
-
-	std::string			id		= fmt::format("Material_{}", rand());
-	FlexKit::GUID_t		guid	= 0xfffffffffffffff;
-};
-
-
-/************************************************************************************************/
+	for (size_t i = currentCount; i < updatedCount; i++)
+	{
+		auto label = GetItemLabel(i);
+		ui.listWidget->addItem(label.c_str());
+	}
+}
 
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2022 Robert May
+Copyright (c) 2021 - 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

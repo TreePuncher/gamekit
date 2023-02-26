@@ -19,60 +19,60 @@ using FlexKit::Triangle;
 
 enum class CSG_OP
 {
-    CSG_ADD,
-    CSG_SUB,
-    CSG_INTERSECTION,
+	CSG_ADD,
+	CSG_SUB,
+	CSG_INTERSECTION,
 };
 
 
 struct CSGBrush
 {
-    ModifiableShape             shape;
-    CSG_OP                      op;
-    bool                        dirty = false;
+	ModifiableShape				shape;
+	CSG_OP						op;
+	bool						dirty = false;
 
-    FlexKit::float3             position;
-    FlexKit::Quaternion         orientation;
-    FlexKit::float3             scale;
+	FlexKit::float3				position;
+	FlexKit::Quaternion			orientation;
+	FlexKit::float3				scale;
 
-    std::shared_ptr<CSGBrush>   left;
-    std::shared_ptr<CSGBrush>   right;
+	std::shared_ptr<CSGBrush>	left;
+	std::shared_ptr<CSGBrush>	right;
 
-    struct TrianglePair
-    {
-        Triangle A;
-        Triangle B;
-    };
+	struct TrianglePair
+	{
+		Triangle A;
+		Triangle B;
+	};
 
-    struct RayCast_result
-    {
-        ModifiableShape*    shape;
-        uint32_t            faceIdx;
-        uint32_t            faceSubIdx;
-        float               distance;
-        FlexKit::float3     BaryCentricResult;
-    };
+	struct RayCast_result
+	{
+		ModifiableShape*	shape;
+		uint32_t			faceIdx;
+		uint32_t			faceSubIdx;
+		float				distance;
+		FlexKit::float3		BaryCentricResult;
+	};
 
-    std::optional<RayCast_result> RayCast(const FlexKit::Ray& r) const noexcept;
+	std::optional<RayCast_result> RayCast(const FlexKit::Ray& r) const noexcept;
 
-    std::vector<TrianglePair> intersections;
+	std::vector<TrianglePair> intersections;
 
-    bool                        IsLeaf() const noexcept;
-    FlexKit::AABB               GetAABB() const noexcept;
-    void                        Rebuild() noexcept;
+	bool			IsLeaf() const noexcept;
+	FlexKit::AABB	GetAABB() const noexcept;
+	void			Rebuild() noexcept;
 
-    void Serialize(auto& ar)
-    {
-        ar& shape;
-        ar& op;
+	void Serialize(auto& ar)
+	{
+		ar& shape;
+		ar& op;
 
-        ar& position;
-        ar& orientation;
-        ar& scale;
+		ar& position;
+		ar& orientation;
+		ar& scale;
 
-        ar& left;
-        ar& right;
-    }
+		ar& left;
+		ar& right;
+	}
 };
 
 
@@ -80,24 +80,24 @@ struct CSGBrush
 
 
 class EditorComponentCSG :
-    public FlexKit::Serializable<EditorComponentCSG, FlexKit::EntityComponent, CSGComponentID>
+	public FlexKit::Serializable<EditorComponentCSG, FlexKit::EntityComponent, CSGComponentID>
 {
 public:
-    EditorComponentCSG() :
-        Serializable{ CSGComponentID } {}
+	EditorComponentCSG() :
+		Serializable{ CSGComponentID } {}
 
-    void Serialize(auto& ar)
-    {
-        EntityComponent::Serialize(ar);
+	void Serialize(auto& ar)
+	{
+		EntityComponent::Serialize(ar);
 
-        ar& brushes;
-    }
+		ar& brushes;
+	}
 
-    FlexKit::Blob GetBlob() override;
+	FlexKit::Blob GetBlob() override;
 
-    std::vector<CSGBrush>   brushes;
+	std::vector<CSGBrush>	brushes;
 
-    inline static RegisterConstructorHelper<EditorComponentCSG, CSGComponentID> registered{};
+	inline static RegisterConstructorHelper<EditorComponentCSG, CSGComponentID> registered{};
 };
 
 
@@ -106,19 +106,19 @@ public:
 
 struct CSGComponentData
 {
-    std::vector<CSGBrush>   brushes;
-    int32_t                 selectedBrush = -1;
-    int                     debugVal1 = 0;
+	std::vector<CSGBrush>	brushes;
+	int32_t					selectedBrush = -1;
+	int						debugVal1 = 0;
 };
 
 struct CSGComponentEventHandler
 {
-    static void OnCreateView(FlexKit::GameObject& gameObject, FlexKit::ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
+	static void OnCreateView(FlexKit::GameObject& gameObject, FlexKit::ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
 };
 
-using CSGHandle     = FlexKit::Handle_t<32, CSGComponentID>;
-using CSGComponent  = FlexKit::BasicComponent_t<CSGComponentData, CSGHandle, CSGComponentID, CSGComponentEventHandler>;
-using CSGView       = CSGComponent::View;
+using CSGHandle		= FlexKit::Handle_t<32, CSGComponentID>;
+using CSGComponent	= FlexKit::BasicComponent_t<CSGComponentData, CSGHandle, CSGComponentID, CSGComponentEventHandler>;
+using CSGView		= CSGComponent::View;
 
 
 /************************************************************************************************/
@@ -128,14 +128,14 @@ class EditorViewport;
 
 struct Vertex
 {
-    FlexKit::float4 Position;
-    FlexKit::float4 Color;
-    FlexKit::float2 UV;
+	FlexKit::float4 Position;
+	FlexKit::float4 Color;
+	FlexKit::float2 UV;
 };
 
 
-void                        RegisterCSGInspector(EditorViewport& viewport);
-static_vector<Vertex, 24>   CreateWireframeCube(const float halfW);
+void						RegisterCSGInspector(EditorViewport& viewport);
+static_vector<::Vertex, 24>	CreateWireframeCube(const float halfW);
 
 
 /**********************************************************************

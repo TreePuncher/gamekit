@@ -265,15 +265,15 @@ namespace FlexKit
 	class PhysicsLayer
 	{
 	public:
-		PhysicsLayer(physx::PxScene* IN_scene, PhysXComponent& IN_system, iAllocator* IN_memory);
-		PhysicsLayer(PhysicsLayer&& IN_scene);
+		PhysicsLayer(physx::PxScene* IN_scene, PhysXComponent& IN_system, iAllocator* IN_memory) noexcept;
+		PhysicsLayer(PhysicsLayer&& IN_scene) noexcept;
 
 		~PhysicsLayer();
 
 
 		// uncopyable
-		PhysicsLayer(const PhysicsLayer& scene)                 = delete;
-		PhysicsLayer& operator = (const PhysicsLayer& scene)    = delete;
+		PhysicsLayer(const PhysicsLayer& scene)					= delete;
+		PhysicsLayer& operator = (const PhysicsLayer& scene)	= delete;
 
 
 		void Release();
@@ -305,8 +305,9 @@ namespace FlexKit
 
 		struct RayCastHit
 		{
-			const float     distance;
-			const float3    normal;
+			const float		distance;
+			const float3	normal;
+			GameObject*		gameObject;
 		};
 
 		template<typename FN_callable>
@@ -320,8 +321,9 @@ namespace FlexKit
 			{
 				return hitHandler(
 					RayCastHit{
-						.distance   = (float)hit->distance,
-						.normal     = pxVec3ToFloat3(hit->normal) } );
+						.distance	= (float)hit->distance,
+						.normal		= pxVec3ToFloat3(hit->normal),
+						.gameObject	= static_cast<GameObject*>(hit->actor->userData) });
 			}
 
 			void finalizeQuery() final override
@@ -329,8 +331,9 @@ namespace FlexKit
 				if(hasBlock)
 					hitHandler(
 						RayCastHit{
-							.distance   = (float)block.distance,
-							.normal     = pxVec3ToFloat3(block.normal) });
+							.distance	= (float)block.distance,
+							.normal		= pxVec3ToFloat3(block.normal),
+							.gameObject	= static_cast<GameObject*>(block.actor->userData) });
 			}
 
 			FN_callable hitHandler;
@@ -347,6 +350,17 @@ namespace FlexKit
 			return scene->raycast(pxOrigin, pxRay, maxDistance, hitCallback);
 		}
 
+		template<typename TY_HITFN>
+		bool RayCast(const Ray& ray, const float maxDistance, TY_HITFN OnHit)
+		{
+			const auto pxOrigin = Float3TopxVec3(ray.O);
+			const auto pxRay	= Float3TopxVec3(ray.D);
+
+			HitCallback<TY_HITFN> hitCallback{ OnHit };
+
+			return scene->raycast(pxOrigin, pxRay, maxDistance, hitCallback);
+		}
+
 		physx::PxControllerManager& GetCharacterController() { return *controllerManager; }
 
 
@@ -357,7 +371,7 @@ namespace FlexKit
 		double	stepSize	= 1.0 / 120.0f;
 		double	T			= 0.0;
 		bool	updateColliders;
-
+		bool	paused		= false;
 
 		struct DebugVertex
 		{
@@ -367,9 +381,9 @@ namespace FlexKit
 		};
 
 
-		Vector<PhysicsLayerUpdateCallback>  userCallback;
-		StaticColliderSystem		        staticColliders;
-		RigidBodyColliderSystem		        rbColliders;
+		Vector<PhysicsLayerUpdateCallback>	userCallback;
+		StaticColliderSystem				staticColliders;
+		RigidBodyColliderSystem				rbColliders;
 
 		PhysXComponent&				system;
 
@@ -527,7 +541,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	constexpr ComponentID StaticBodyComponentID  = GetTypeGUID(StaticBodyComponentID);
+	constexpr ComponentID StaticBodyComponentID			= GetTypeGUID(StaticBodyComponentID);
 
 	enum class StaticBodyType
 	{
@@ -610,7 +624,7 @@ namespace FlexKit
 		void AddComponentView(GameObject& GO, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 		void Remove(LayerHandle layer, StaticBodyHandle sb) noexcept;
 
-		auto& GetLayer(LayerHandle layer)
+		auto& GetLayer_ref(LayerHandle layer)
 		{
 			return physx.GetLayer_ref(layer);
 		}
@@ -622,8 +636,8 @@ namespace FlexKit
 		static void ClearCallback()									{ onConstruction.Release(); }
 
 	private:
-		PhysXComponent&                         physx;
-		inline static OnConstructionHandler     onConstruction;
+		PhysXComponent&							physx;
+		inline static OnConstructionHandler		onConstruction;
 	};
 
 
@@ -650,11 +664,11 @@ namespace FlexKit
 
 		StaticColliderSystem::StaticColliderObject* operator -> ();
 
-		void    SetUserData(void*) noexcept;
-		void*   GetUserData() noexcept;
+		void	SetUserData(void*) noexcept;
+		void*	GetUserData() noexcept;
 
-		const LayerHandle       layer;
-		const StaticBodyHandle  staticBody;
+		const LayerHandle		layer;
+		const StaticBodyHandle	staticBody;
 	};
 
 
@@ -679,11 +693,11 @@ namespace FlexKit
 	public:
 		RigidBodyComponent(PhysXComponent& IN_physx);
 
-		RigidBodyHandle CreateRigidBody(GameObject* gameObject, LayerHandle layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 });
-		void            AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
+		RigidBodyHandle	CreateRigidBody(GameObject* gameObject, LayerHandle layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 });
+		void			AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 
-		void            Remove(RigidBodyView& rigidBody);
-		PhysicsLayer&   GetLayer(LayerHandle layer);
+		void			Remove(RigidBodyView& rigidBody);
+		PhysicsLayer&	GetLayer(LayerHandle layer);
 
 	private:
 		PhysXComponent& physx;
@@ -744,9 +758,9 @@ namespace FlexKit
 	{
 	public:
 		CharacterControllerComponent(PhysXComponent& IN_physx, iAllocator* allocator) :
-			physx       { IN_physx  },
-			handles     { allocator },
-			controllers { allocator } {}
+			physx		{ IN_physx  },
+			handles		{ allocator },
+			controllers	{ allocator } {}
 
 
 		CharacterControllerHandle Create(const LayerHandle layer, GameObject& gameObject, const NodeHandle node = GetZeroedNode(), const float3 initialPosition = {}, const float R = 1, const float H = 1)
@@ -754,7 +768,7 @@ namespace FlexKit
 			auto& manager = physx.GetLayer_ref(layer).GetCharacterController();
 
 			if (!gameObject.hasView(TransformComponentID))
-				gameObject.AddView<SceneNodeView<>>(node);
+				gameObject.AddView<SceneNodeView>(node);
 
 			SetPositionW(node, initialPosition + float3{0, H / 2, 0});
 
@@ -897,6 +911,18 @@ namespace FlexKit
 		}
 
 
+		void ChangeLayer(LayerHandle layer)
+		{
+			auto& ref			= GetComponent()[controller];
+			auto& currentLayer	= GetComponent().GetLayer(ref.layer);
+			auto& newLayer		= GetComponent().GetLayer(layer);
+
+			currentLayer.scene->removeActor(*ref.controller->getActor());
+			newLayer.scene->addActor(*ref.controller->getActor());
+
+			ref.layer = layer;
+		}
+
 		CharacterControllerHandle controller;
 	};
 
@@ -1017,6 +1043,8 @@ namespace FlexKit
 
 	struct ThirdPersonEventHandler
 	{
+		static decltype(auto) OnCreate(auto&& args) { return args; }
+
 		void OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
 		{
 		}

@@ -43,33 +43,17 @@ FlexKit::Blob AnimatorComponent::GetBlob()
 /************************************************************************************************/
 
 
-class SkeletonInspector : public IComponentInspector
+
+struct SkeletonEditorCompoment : public IEditorComponent
 {
-public:
-	SkeletonInspector(EditorProject& IN_project, EditorViewport& IN_viewport)
+	EditorViewport&	viewport;
+	EditorProject&	project;
+
+	SkeletonEditorCompoment(EditorProject& IN_project, EditorViewport& IN_viewport)
 		: viewport	{ IN_viewport }
-		, project	{ IN_project }{}
+		, project	{ IN_project } {}
 
 
-	FlexKit::ComponentID ComponentID() override
-	{
-		return FlexKit::SkeletonComponentID;
-	}
-
-	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override
-	{
-		panelCtx.PushVerticalLayout("Skeleton", true);
-		panelCtx.AddText("TODO: ME!");
-		panelCtx.Pop();
-	}
-
-	EditorViewport& viewport;
-	EditorProject& project;
-};
-
-
-struct SkeletonFactory : public IComponentFactory
-{
 	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
 	{
 		if (gameObject.hasView(FlexKit::BrushComponentID) && !gameObject.hasView(FlexKit::SkeletonComponentID) && FlexKit::GetBrush(gameObject)->meshes.size())
@@ -78,19 +62,29 @@ struct SkeletonFactory : public IComponentFactory
 			return *gameObject.GetView(FlexKit::SkeletonComponentID);
 	}
 
+
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override
+	{
+		panelCtx.PushVerticalLayout("Skeleton", true);
+		panelCtx.AddText("TODO: ME!");
+		panelCtx.Pop();
+	}
+
+
 	inline static const std::string name = "Skeleton";
 
-	const std::string&		ComponentName() const noexcept { return name; }
-	FlexKit::ComponentID	ComponentID()   const noexcept { return FlexKit::SkeletonComponentID; }
 
-	static bool Register()
+	const std::string&		ComponentName() const noexcept { return name; }
+	FlexKit::ComponentID	ComponentID()	const noexcept { return FlexKit::SkeletonComponentID; }
+
+
+	static bool Register(EditorProject& project, EditorViewport& viewport)
 	{
-		EditorInspectorView::AddComponentFactory(std::make_unique<SkeletonFactory>());
+		static SkeletonEditorCompoment component{ project, viewport };
+		EditorInspectorView::AddComponent(component);
 
 		return true;
 	}
-
-	inline static bool _registered = Register();
 };
 
 

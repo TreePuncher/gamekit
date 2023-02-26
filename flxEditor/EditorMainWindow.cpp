@@ -23,19 +23,19 @@ using namespace std::chrono_literals;
 
 
 EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngine& IN_scriptEngine, EditorProject& IN_project, QApplication& IN_application, QWidget* parent) :
-	QMainWindow     { parent            },
-	QtApplication   { IN_application    },
-	prefabEditor    { new EditorPrefabEditor{ selectionContext, IN_scriptEngine, IN_renderer, IN_project } },
-	project         { IN_project        },
-	renderer        { IN_renderer       },
-	scriptEngine    { IN_scriptEngine   },
-	viewport        { new EditorViewport{ IN_renderer, selectionContext, this } },
-	tabBar          { new QTabWidget{} }
+	QMainWindow		{ parent            },
+	QtApplication	{ IN_application    },
+	prefabEditor	{ new EditorPrefabEditor{ selectionContext, IN_scriptEngine, IN_renderer, IN_project } },
+	project			{ IN_project        },
+	renderer		{ IN_renderer       },
+	scriptEngine	{ IN_scriptEngine   },
+	viewport		{ new EditorViewport{ IN_renderer, selectionContext, this } },
+	tabBar			{ new QTabWidget{} }
 {
-	fileMenu       = menuBar()->addMenu("File");
-	editMenu       = menuBar()->addMenu("Edit");
-	importMenu     = fileMenu->addMenu("Import");
-	exportMenu     = fileMenu->addMenu("Export");
+	fileMenu	= menuBar()->addMenu("File");
+	editMenu	= menuBar()->addMenu("Edit");
+	importMenu	= fileMenu->addMenu("Import");
+	exportMenu	= fileMenu->addMenu("Export");
 
 
 	tabBar->addTab(viewport, "Scene");
@@ -43,8 +43,8 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
 
 	setCentralWidget(tabBar);
 
-	auto viewMenu   = menuBar()->addMenu("View");
-	auto Add3DView  = viewMenu->addAction("Add 3D AddViewPort");
+	auto viewMenu	= menuBar()->addMenu("View");
+	auto Add3DView	= viewMenu->addAction("Add 3D AddViewPort");
 	connect(Add3DView, &QAction::triggered, this, &EditorMainWindow::AddViewPort);
 
 	auto AddTextView = viewMenu->addAction("Add Text View");
@@ -91,16 +91,12 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
 	setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowTabbedDocks | QMainWindow::AllowNestedDocks | QMainWindow::VerticalTabs);
 	tabPosition(Qt::TopDockWidgetArea);
 
-	AddSceneOutliner();
-	AddInspector();
-	AddResourceList();
-
 	showMaximized();
 
 	show();
 
-	frameEnd    = high_resolution_clock::now();
-	frameBegin  = frameEnd;
+	frameEnd	= high_resolution_clock::now();
+	frameBegin	= frameEnd;
 }
 
 
@@ -167,10 +163,10 @@ void EditorMainWindow::AddImporter(iEditorImportor* importer)
 	connect(importAction, &QAction::triggered, this,
 		[=]
 		{
-			const auto importText   = std::string{ "Import " } + importer->GetFileTypeName();
-			const auto fileMenuText = std::string{ "Files (*." } + importer->GetFileExt() + ")";
-			const auto fileDir      = QFileDialog::getOpenFileName(this, tr(importText.c_str()), QDir::currentPath(), fileMenuText.c_str());
-			const auto fileStr      = fileDir.toStdString();
+			const auto importText	= std::string{ "Import " } + importer->GetFileTypeName();
+			const auto fileMenuText	= std::string{ "Files (*." } + importer->GetFileExt() + ")";
+			const auto fileDir		= QFileDialog::getOpenFileName(this, tr(importText.c_str()), QDir::currentPath(), fileMenuText.c_str());
+			const auto fileStr		= fileDir.toStdString();
 
 			if (fileDir.size() && !importer->Import(fileStr))
 			{   // Log Error
@@ -187,10 +183,10 @@ void EditorMainWindow::AddExporter(iEditorExporter* exporter)
 	connect(exportAction, &QAction::triggered, this,
 		[=]
 		{
-			const auto exportLabel  = std::string{ "Export" } + exporter->GetFileTypeName();
-			const auto fileMenuText = std::string{ "Files (*." } + exporter->GetFileExt() + ")";
-			const auto fileDir      = QFileDialog::getSaveFileName(this, tr(exportLabel.c_str()), QDir::currentPath(), fileMenuText.c_str());
-			const auto fileStr      = fileDir.toStdString();
+			const auto exportLabel	= std::string{ "Export" } + exporter->GetFileTypeName();
+			const auto fileMenuText	= std::string{ "Files (*." } + exporter->GetFileExt() + ")";
+			const auto fileDir		= QFileDialog::getSaveFileName(this, tr(exportLabel.c_str()), QDir::currentPath(), fileMenuText.c_str());
+			const auto fileStr		= fileDir.toStdString();
 
 			std::vector<FlexKit::Resource_ptr> selectedResources{};
 
@@ -266,8 +262,8 @@ DXRenderWindow* EditorMainWindow::AddViewPort()
 
 ResourceBrowserWidget* EditorMainWindow::AddResourceList()
 {
-	auto docklet            = new QDockWidget{ this };
-	auto resourceBrowser    = new ResourceBrowserWidget(project, renderer, this);
+	auto docklet			= new QDockWidget{ this };
+	auto resourceBrowser	= new ResourceBrowserWidget(project, renderer, this);
 
 	resourceBrowser->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
 

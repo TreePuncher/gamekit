@@ -357,7 +357,7 @@ namespace FlexKit
 						auto state = Blocks[itr].state[itr2];
 						if (state == Block::Free)
 						{
-							Blocks[itr].state[itr2] = (Block::Allocated | Aligned) ? Block::Aligned : 0;
+							Blocks[itr].state[itr2] = (Block::Allocated || Aligned) ? Block::Aligned : 0;
 							//if(itr2 == Block::BlockCount) Blocks[itr].BlockFull = true;
 							allocated++;
 							return (byte*)&Blocks[itr].data[itr2];
@@ -606,7 +606,7 @@ namespace FlexKit
 				if (LB[I].state != FlexKit::LargeBlockAllocator::BlockData::Free)
 				{
 					printf( "Block: %i : %i : ", (int)I, (int)BlockTable[I].AllocationSize);
-					if (LB[I].state && FlexKit::MediumBlockAllocator::BlockData::Aligned)
+					if (LB[I].state & FlexKit::MediumBlockAllocator::BlockData::Aligned)
 						printf("Allocated and Aligned\n");
 					else
 						printf("Allocated\n");
@@ -803,6 +803,9 @@ namespace FlexKit
 		
 		void free(void* _ptr)
 		{
+			if (_ptr == nullptr)
+				return;
+
 			std::unique_lock ul(mu);
 
 			if (InSmallRange(reinterpret_cast<byte*>(_ptr)))

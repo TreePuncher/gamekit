@@ -245,7 +245,9 @@
   <ItemGroup>
     <ClCompile Include="EditorSelectedPrefabObject.cpp" />
     <ClCompile Include="EditorPrefabRenderer.cpp" />
+    <QtMoc Include="EditorSelectObjectDialog.h" />
     <ClInclude Include="EditorUndoRedo.h" />
+    <ClCompile Include="EditorSelectObjectDialog.cpp" />
     <ClCompile Include="EditorUndoRedo.cpp" />
     <ClCompile Include="ExtraTu.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
@@ -310,6 +312,7 @@
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">%(Filename).moc</QtMocFileName>
     </ClCompile>
+    <ClCompile Include="EditorGameplayComponents.cpp" />
     <ClCompile Include="MaterialResource.cpp" />
     <ClCompile Include="MeshResource.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
@@ -368,6 +371,7 @@
     <ClInclude Include="EditorPrefabObject.h" />
     <ClInclude Include="EditorPrefabRenderer.h" />
     <ClInclude Include="FBXResourceUtilities.h" />
+    <ClInclude Include="EditorGameplayComponents.hpp" />
     <ClInclude Include="MaterialResource.h" />
     <ClInclude Include="MeshResource.h" />
     <ClInclude Include="MetaData.h" />
@@ -381,6 +385,7 @@
     <ClInclude Include="SelectionContext.h" />
     <ClInclude Include="Serialization.h" />
     <ClInclude Include="EditorTextureResources.h" />
+    <ClInclude Include="TriggerSlotStrings.hpp" />
     <ClInclude Include="TTFontLoader.h" />
     <ClInclude Include="ViewportScene.h" />
     <QtMoc Include="EditorViewport.h" />
@@ -406,6 +411,7 @@
     <QtUic Include="EditorCodeEditor.ui" />
     <QtUic Include="EditorOutputWindow.ui" />
     <QtUic Include="EditorResourcePickerDialog.ui" />
+    <QtUic Include="EditorSelectObjectDialog.ui" />
     <QtUic Include="ModelViewerWidget.ui" />
     <QtUic Include="ResourceBrowserWidget.ui" />
     <QtUic Include="SceneOutliner.ui" />

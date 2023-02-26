@@ -158,7 +158,7 @@
     <ClCompile Include="..\source\ShadowMapping.CPP">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\source\signal.cpp">
+    <ClCompile Include="..\source\signals.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\source\SSReflections.cpp">
@@ -195,6 +195,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\source\WorldRender.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\TriggerComponent.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\Level.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -373,7 +379,7 @@
     <ClInclude Include="..\source\ShadowMapping.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\source\Signal.h">
+    <ClInclude Include="..\source\Signals.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\source\SSReflections.h">
@@ -422,6 +428,15 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\source\XMMathConversion.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\TriggerComponent.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\TriggerSlotIDs.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\Level.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

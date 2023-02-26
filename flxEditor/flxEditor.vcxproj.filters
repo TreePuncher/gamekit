@@ -65,6 +65,7 @@
     <QtMoc Include="EditorTextureViewer.h">
       <Filter>Headers</Filter>
     </QtMoc>
+    <QtMoc Include="EditorSelectObjectDialog.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DXRenderWindow.cpp">
@@ -202,6 +203,12 @@
     <ClCompile Include="EditorUndoRedo.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="EditorGameplayComponents.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="EditorSelectObjectDialog.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Serialization.h">
@@ -303,6 +310,12 @@
     <ClInclude Include="EditorUndoRedo.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="TriggerSlotStrings.hpp">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorGameplayComponents.hpp">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="ResourceBrowserWidget.ui">
@@ -336,6 +349,9 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="EditorAnimationInputTab.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="EditorSelectObjectDialog.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>

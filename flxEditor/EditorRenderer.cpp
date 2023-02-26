@@ -26,6 +26,8 @@ EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FK
 	pointLightComponent		{ IN_framework.core.GetBlockMemory() },
 	pointLightShadowMaps	{ IN_framework.core.GetBlockMemory() },
 
+	triggers				{ IN_framework.core.GetBlockMemory(), IN_framework.core.GetBlockMemory() },
+
 	physX					{ IN_framework.core.Threads, IN_framework.core.GetBlockMemory() },
 	staticBodies			{ physX },
 	rigidBodies				{ physX },
@@ -174,7 +176,7 @@ void EditorRenderer::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 
 /**********************************************************************
 
-Copyright (c) 2019-2022 Robert May
+Copyright (c) 2019-2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

@@ -248,7 +248,7 @@ namespace FlexKit
 		template<typename TY, typename... TY_ARGS>
 		void Create(iAllocator& allocator, GameObject& gameObject, TY_ARGS&& ... args)
 		{
-			componentSize = (uint8_t)Min(sizeof(TY), 0xff);
+			componentSize = (uint8_t)sizeof(TY);
 
 			if (componentSize > sizeof(buffer))
 				_ptr = &allocator.allocate<TY>(gameObject, std::forward<TY_ARGS>(args)...);
@@ -292,8 +292,8 @@ namespace FlexKit
 		uint8_t		componentSize = 0;
 		union
 		{
-			ComponentViewBase* _ptr;
-			char                buffer[24];
+			ComponentViewBase*	_ptr;
+			char				buffer[24];
 		};
 	};
 
@@ -304,8 +304,7 @@ namespace FlexKit
 		GameObject(iAllocator* IN_allocator = SystemAllocator) :
 			allocator	{ IN_allocator },
 			ids			{ IN_allocator },
-			views		{ IN_allocator }
-		{}
+			views		{ IN_allocator } {}
 
 
 		~GameObject()
@@ -389,6 +388,14 @@ namespace FlexKit
 			return nullptr;
 		}
 
+		template<typename TY_View>
+		TY_View* GetView()
+		{
+			if (auto res = GetView(TY_View::GetComponentID()); res)
+				return static_cast<TY_View*>(res);
+			else
+				return nullptr;
+		}
 
 		bool hasView(ComponentID id) const
 		{
@@ -407,9 +414,8 @@ namespace FlexKit
 		auto end()		const { return views.end(); }
 
 	private:
-
-		Vector<uint32_t, 16, uint8_t>					ids;	// component + Code
-		Vector<ComponentViewContainer, 16, uint8_t>		views;	// component + Code
+		Vector<uint32_t, 8, uint8_t>					ids;	// component + Code
+		Vector<ComponentViewContainer, 8, uint8_t>		views;	// component + Code
 		iAllocator*										allocator;
 };
 
@@ -641,10 +647,23 @@ namespace FlexKit
 
 	struct BasicComponentEventHandler
 	{
+		static decltype(auto) OnCreate(auto&& args)
+		{
+			return args;
+		}
+
 		static void OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
 		{
 		}
 	};
+
+
+	template<typename TY>
+	concept VoidCreator = requires(TY creationHandler)
+	{
+		creationHandler.OnCreate();
+	};
+
 
 	template<typename TY, typename TY_Handle, ComponentID ID, typename TY_EventHandler = BasicComponentEventHandler>
 	class BasicComponent_t : public Component<BasicComponent_t<TY, TY_Handle, ID, TY_EventHandler>, ID>
@@ -656,12 +675,12 @@ namespace FlexKit
 		template<typename ... TY_args>
 		BasicComponent_t(iAllocator* allocator, TY_args&&... args) :
 			eventHandler	{ std::forward<TY_args>(args)... },
-			elements		{ allocator },
-			handles			{ allocator } {}
+			elements		{  allocator },
+			handles			{  allocator } {}
 
 		BasicComponent_t(iAllocator* allocator) :
-			elements		{ allocator },
-			handles			{ allocator } {}
+			elements		{  allocator },
+			handles			{  allocator } {}
 
 		~BasicComponent_t()
 		{
@@ -680,7 +699,7 @@ namespace FlexKit
 		TY_Handle Create(const TY& initial)
 		{
 			auto handle		= handles.GetNewHandle();
-			handles[handle] = (index_t)elements.push_back({ handle, initial });
+			handles[handle] = (index_t)elements.push_back({ handle, eventHandler.OnCreate(initial) });
 
 			return handle;
 		}
@@ -689,16 +708,25 @@ namespace FlexKit
 		TY_Handle Create(TY&& initial)
 		{
 			auto handle = handles.GetNewHandle();
-			handles[handle] = (index_t)elements.emplace_back(handle, std::move(initial));
+			handles[handle] = (index_t)elements.emplace_back(handle, std::move(eventHandler.OnCreate(initial)));
 
 			return handle;
 		}
 
 
-		TY_Handle Create()
+		TY_Handle Create() requires VoidCreator<TY_EventHandler>
 		{
 			auto handle = handles.GetNewHandle();
-			handles[handle] = (index_t)elements.emplace_back(handle, TY{});
+			handles[handle] = (index_t)elements.emplace_back(handle, std::move(eventHandler.OnCreate()));
+
+			return handle;
+		}
+
+
+		TY_Handle Create() requires !VoidCreator<TY_EventHandler>
+		{
+			auto handle = handles.GetNewHandle();
+			handles[handle] = (index_t)elements.emplace_back(handle);
 
 			return handle;
 		}
@@ -712,8 +740,8 @@ namespace FlexKit
 
 		void Remove(TY_Handle handle)
 		{
-			auto lastElement			= elements.back();
-			elements[handles[handle]]	= lastElement;
+			auto lastElement			= std::move(elements.back());
+			elements[handles[handle]]	= std::move(lastElement);
 			elements.pop_back();
 
 			handles[lastElement.handle] = handles[handle];
@@ -797,7 +825,10 @@ namespace FlexKit
 	class StringIDView : public ComponentView_t<StringIDComponent>
 	{
 	public:
-		StringIDView(GameObject& gameObject, const char* id, size_t idLen) : ID{ GetComponent().Create(id, idLen) } {}
+		StringIDView(GameObject& gameObject, const char* id, size_t idLen) : ID{ GetComponent().Create(id, idLen) }
+		{
+			IDHash = std::hash<std::string_view>{}(std::string_view{ id, idLen });
+		}
 
 		char* GetString() const
 		{
@@ -806,13 +837,15 @@ namespace FlexKit
 
 		void SetString(const char* string)
 		{
+			IDHash = std::hash<std::string_view>{}(string);
 			strncpy_s(GetComponent()[ID].ID, 64, string, 64);
 		}
 
 				StringIDComponent::StringID* operator -> ()			{ return &GetComponent()[ID]; }
-		const   StringIDComponent::StringID* operator -> () const	{ return &GetComponent()[ID]; }
+		const	StringIDComponent::StringID* operator -> () const	{ return &GetComponent()[ID]; }
 
-		StringIDHandle ID;
+		StringIDHandle	ID;
+		uint64_t		IDHash;
 	};
 
 
@@ -835,7 +868,7 @@ namespace FlexKit
 		Apply(gameObject,
 			[&](StringIDView& ID)
 			{
-				strncpy_s(ID.GetString(), 64, str, 64);
+				ID.SetString(str);
 			});
 	}
 
@@ -890,8 +923,8 @@ namespace FlexKit
 	template<IsConstCharStar ... TY>
 	struct ROStringQuery
 	{
-		using Type          = const StringIDView&;
-		using ValueType     = StringIDView;
+		using Type			= const StringIDView&;
+		using ValueType		= StringIDView;
 		static constexpr bool IsConst() { return true; }
 
 		const std::tuple<TY...> IDs;
@@ -958,6 +991,37 @@ namespace FlexKit
 		};
 	};
 
+
+	struct StringHashQuery
+	{
+		using Type		= StringIDView&;
+		using ValueType = StringIDView;
+		static constexpr bool IsConst() { return false; }
+
+		uint64_t hash;
+
+		StringHashQuery() = default;
+
+		StringHashQuery(uint64_t IN_hash) :
+			hash{ IN_hash } {}
+
+		bool IsValid(const StringIDView& stringID)
+		{
+			return stringID.IDHash == hash;
+		}
+
+		bool Available(const GameObject& gameObject)
+		{
+			if (gameObject.hasView(StringIDView::GetComponentID()))
+				return IsValid(GetView<StringIDView>(gameObject));
+			else return false;
+		}
+
+		decltype(auto) GetValue(GameObject& gameObject)
+		{
+			return GetView<StringIDView>(gameObject);// .GetView(StringIDView::GetComponentID());
+		};
+	};
 
 	/************************************************************************************************/
 
@@ -1252,7 +1316,7 @@ namespace FlexKit
 
 		UpdateID_t			ID			= (uint32_t)-1;
 		iUpdateFN&			Update;
-		char*			    Data;
+		char*				Data;
 	};
 
 
@@ -1438,7 +1502,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2021 Robert May
+Copyright (c) 2015 - 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
