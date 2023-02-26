@@ -1,46 +1,37 @@
-#pragma once
-#include "EditorResource.h"
-#include "Serialization.hpp"
-#include <string>
-#include <EditorInspectorView.h>
+#include <unordered_map>
+#include <string_view>
+#include <TriggerSlotIds.hpp>
 
 
 /************************************************************************************************/
 
 
-class MaterialResource : public FlexKit::Serializable<MaterialResource, FlexKit::iResource, GetTypeGUID(MaterialResource)>
+inline const std::unordered_map<uint32_t, std::string_view>  TriggerIDStringMappings =
 {
-public:
-	void Serialize(auto& ar)
-	{
-		FlexKit::ValueStore fields;
-
-		BindValue(fields, id);
-		BindValue(fields, guid);
-
-		ar& fields;
-	}
-
-	FlexKit::ResourceBlob	CreateBlob() const override;
-	const std::string&		GetResourceID() const noexcept override;
-
-	uint64_t		GetResourceGUID()	const noexcept override;
-	ResourceID_t	GetResourceTypeID() const noexcept;
-
-	void			SetResourceID	(const std::string& IN_id)	noexcept;
-	void			SetResourceGUID	(uint64_t IN_guid) noexcept;
-
-	std::string			id		= fmt::format("Material_{}", rand());
-	FlexKit::GUID_t		guid	= 0xfffffffffffffff;
+	{ FlexKit::ParentChangeSignalID,	"Parent Change"			},
+	{ FlexKit::TranslationSignalID,		"Translation Change"	},
+	{ FlexKit::SetOrientationmSignalID, "Orientation Change"	},
+	{ FlexKit::SetScaleSignalID,		"Scale Change"			},
+	{ FlexKit::SetTransformSignalID,	"Transform Change"		},
+	{ FlexKit::ActivateTrigger,			"User Acivate"			},
 };
 
 
 /************************************************************************************************/
 
 
+inline const std::unordered_map<uint32_t, std::string_view>  SlotIDStringMappings =
+{
+	{ FlexKit::LightSetRaidusSlotID,			"Set Light Radius"				},
+	{ FlexKit::ChangePositionStaticBodySlot,	"Set Static Body Position"		},
+	{ FlexKit::ChangeOrientationStaticBodySlot,	"Set Static Body Orientation"	},
+	{ FlexKit::PortalSlot,						"Activate Portal"				},
+};
+
+
 /**********************************************************************
 
-Copyright (c) 2015 - 2022 Robert May
+Copyright (c) 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

@@ -47,19 +47,19 @@ namespace FlexKit
 	inline constexpr PSOHandle DRAW_LINE_PSO				= PSOHandle(GetTypeGUID(DRAW_LINE_PSO));
 	inline constexpr PSOHandle DRAW_LINE3D_PSO				= PSOHandle(GetTypeGUID(DRAW_LINE3D_PSO));
 	inline constexpr PSOHandle DRAW_SPRITE_TEXT_PSO			= PSOHandle(GetTypeGUID(DRAW_SPRITE_TEXT_PSO));
-    inline constexpr PSOHandle CLEARRENDERTARGET_RG32       = PSOHandle(GetTypeGUID(CLEARRENDERTARGET_RG32));
+	inline constexpr PSOHandle CLEARRENDERTARGET_RG32		= PSOHandle(GetTypeGUID(CLEARRENDERTARGET_RG32));
 
-    inline constexpr PSOHandle DRAW_TRI3D_PSO               = PSOHandle(GetTypeGUID(DRAW_TRI3D_PSO));
+	inline constexpr PSOHandle DRAW_TRI3D_PSO				= PSOHandle(GetTypeGUID(DRAW_TRI3D_PSO));
 
 	ID3D12PipelineState* CreateDrawTriStatePSO		(RenderSystem* RS);
 	ID3D12PipelineState* CreateTexturedTriStatePSO	(RenderSystem* RS);
 	ID3D12PipelineState* CreateDrawLineStatePSO		(RenderSystem* RS);
 	ID3D12PipelineState* CreateDraw2StatePSO		(RenderSystem* RS);
 
-    ID3D12PipelineState* CreateDrawTri3DStatePSO      (RenderSystem* RS);
+	ID3D12PipelineState* CreateDrawTri3DStatePSO	(RenderSystem* RS);
 
 
-    ID3D12PipelineState* LoadClearRenderTarget_RG32 (RenderSystem* renderSystem);
+	ID3D12PipelineState* LoadClearRenderTarget_RG32 (RenderSystem* renderSystem);
 
 
 	/************************************************************************************************/

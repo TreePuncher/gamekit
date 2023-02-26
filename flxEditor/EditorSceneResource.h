@@ -209,6 +209,8 @@ namespace FlexKit
 			return CreateIDComponent(stringID);
 		}
 
+		uint64_t GetStringHash() const;
+
 		std::string stringID;
 
 		inline static RegisterConstructorHelper<EntityStringIDComponent, FlexKit::StringComponentID> registered{};
@@ -396,6 +398,39 @@ namespace FlexKit
 
 		inline static RegisterConstructorHelper<EntityPointLightComponent, FlexKit::PointLightComponentID> registered{};
 	};
+
+
+	/************************************************************************************************/
+
+
+	class EntityTriggerComponent : 
+		public Serializable<EntityTriggerComponent, EntityComponent, GetTypeGUID(EntityTriggerComponent)>
+	{
+	public:
+		EntityTriggerComponent() :
+			Serializable	{ GetTypeGUID(EntityTriggerComponent) } {}
+
+		Blob GetBlob() override;
+
+		void Serialize(auto& ar)
+		{
+			EntityComponent::Serialize(ar);
+
+			ar& triggerID;
+			ar& stringID;
+		}
+
+
+		std::vector<uint32_t>		triggerID;
+		std::vector<std::string>	stringID; // human readable
+
+	private:
+
+		inline static RegisterConstructorHelper<EntityTriggerComponent, FlexKit::TriggerComponentID> registered{};
+	};
+
+
+	/************************************************************************************************/
 
 
 	using EntityComponent_ptr	= std::shared_ptr<EntityComponent>;

@@ -64,8 +64,6 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 	, scriptEngine		{ IN_engine }
 	, inputVariables	{ new EditorPrefabInputTab }
 {
-	static auto _REGISTERED = EditorSelectedPrefabObject::RegisterInterface(scriptEngine);
-
 	auto engine		= FlexKit::GetScriptEngine();
 
 	int res;
@@ -141,7 +139,7 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 							codeEditor->SetResource(scriptResource);
 
 							// Build Editor object
-							gameObject.AddView<FlexKit::SceneNodeView<>>();
+							gameObject.AddView<FlexKit::SceneNodeView>();
 							gameObject.AddView<FlexKit::BrushView>(mesh);
 							gameObject.AddView<FlexKit::SkeletonView>(skeleton->resource->GetResourceGUID());
 							gameObject.AddView<FlexKit::AnimatorView>();
@@ -461,11 +459,11 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 					}
 				}
 			}
-			timer->start(500ms);
+			timer->start(100ms);
 		});
 
 	timer->setTimerType(Qt::PreciseTimer);
-	timer->start(500ms);
+	timer->start(100ms);
 }
 
 

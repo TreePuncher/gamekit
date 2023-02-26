@@ -94,6 +94,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	Ray ViewRay(CameraHandle, const float2 UV);
+	Ray ViewRay(GameObject&, const float2 UV);
+
+
 	inline void								SetCameraAspectRatio		(CameraHandle camera, float a)				{ CameraComponent::GetComponent().SetCameraAspectRatio(camera, a);	}
 	inline void								SetCameraNode				(CameraHandle camera, NodeHandle node)		{ CameraComponent::GetComponent().SetCameraNode(camera, node);		}
 	inline void								SetCameraFOV				(CameraHandle camera, float a)				{ CameraComponent::GetComponent().SetCameraFOV(camera, a);			}

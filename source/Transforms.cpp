@@ -1,30 +1,8 @@
-/**********************************************************************
-
-Copyright (c) 2015 - 2022 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
-
-#include "Transforms.h"
 #include "XMMathConversion.h"
+#include "Transforms.h"
+#include "TriggerSlotIDs.hpp"
+
+#include <any>
 #include <iostream>
 
 namespace FlexKit
@@ -113,15 +91,16 @@ namespace FlexKit
 
 	size_t FindFreeIndex()
 	{
-		size_t FreeIndex = -1;
-		for (size_t I = 0; I >= 0; ++I)
+				size_t FreeIndex	= -1;
+		const	size_t end			= SceneNodeTable.Flags.size();
+
+		for (size_t I = 0; I < end; ++I)
 		{
-			if (SceneNodeTable.Flags[I] & SceneNodes::FREE) {
-				FreeIndex = I;
-				break;
-			}
+			if (SceneNodeTable.Flags[I] & SceneNodes::FREE)
+				return I;
 		}
-		return FreeIndex;
+
+		return -1;
 	}
 
 	void SortNodes(StackAllocator* Temp)
@@ -639,6 +618,248 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	SceneNodeView::SceneNodeView(GameObject& gameObject, const float3 XYZ) :
+		node{ GetComponent().CreateNode() }
+	{
+		auto& triggerView = gameObject.AddView<TriggerView>();
+		triggerView->CreateTrigger(ParentChangeSignalID);
+		triggerView->CreateTrigger(TranslationSignalID);
+		triggerView->CreateTrigger(SetOrientationmSignalID);
+		triggerView->CreateTrigger(SetTransformSignalID);
+
+		triggers = triggerView.handle;
+
+		SetPosition(XYZ);
+	}
+
+
+	/************************************************************************************************/
+
+
+	SceneNodeView::SceneNodeView(GameObject& gameObject, NodeHandle IN_Node) :
+		node{ IN_Node }
+	{
+		auto& triggerView = gameObject.AddView<TriggerView>();
+		triggerView->CreateTrigger(ParentChangeSignalID);
+		triggerView->CreateTrigger(TranslationSignalID);
+		triggerView->CreateTrigger(SetOrientationmSignalID);
+		triggerView->CreateTrigger(SetTransformSignalID);
+
+		triggers = triggerView.handle;
+	}
+
+
+	/************************************************************************************************/
+
+
+	SceneNodeView::~SceneNodeView()
+	{
+		if (node != InvalidHandle)
+			ReleaseNode(node);
+	}
+
+
+	/************************************************************************************************/
+
+
+	SceneNodeView::SceneNodeView(SceneNodeView&& rhs)
+	{
+		node			= rhs.node;
+		triggers		= rhs.triggers;
+		triggerEnable	= rhs.triggerEnable;
+
+		rhs.node			= InvalidHandle;
+		rhs.triggers		= InvalidHandle;
+		rhs.triggerEnable	= false;
+	}
+
+
+	/************************************************************************************************/
+
+
+	SceneNodeView& SceneNodeView::operator = (SceneNodeView&& rhs)
+	{
+		node			= rhs.node;
+		triggers		= rhs.triggers;
+		triggerEnable	= rhs.triggerEnable;
+
+		rhs.node			= InvalidHandle;
+		rhs.triggers		= InvalidHandle;
+		rhs.triggerEnable	= false;
+
+		return *this;
+	}
+
+
+	/************************************************************************************************/
+
+
+	SceneNodeView::operator NodeHandle () const noexcept { return node; }
+
+
+	/************************************************************************************************/
+
+
+	NodeHandle SceneNodeView::GetParentNode() const
+	{
+		return FlexKit::GetParentNode(node);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void SceneNodeView::SetParentNode(NodeHandle parent) noexcept
+	{
+		FlexKit::SetParentNode(parent, node);
+
+		TriggerComponent::GetComponent()[triggers].Trigger(ParentChangeSignalID, &parent, GetTypeGUID(NodeHandle));
+	}
+
+
+	void SceneNodeView::Yaw(float r) noexcept
+	{
+		FlexKit::Yaw(node, r);
+
+		if (triggerEnable)
+			TriggerComponent::GetComponent()[triggers].Trigger(SetOrientationmSignalID, &r, GetTypeGUID(float));
+	}
+
+
+	void SceneNodeView::Roll(float r) noexcept
+	{
+		FlexKit::Roll(node, r);
+
+		if (triggerEnable)
+			TriggerComponent::GetComponent()[triggers].Trigger(SetOrientationmSignalID, &r, GetTypeGUID(float));
+	}
+
+
+	void SceneNodeView::Pitch(float r) noexcept
+	{
+		FlexKit::Pitch(node, r);
+
+		if (triggerEnable)
+			TriggerComponent::GetComponent()[triggers].Trigger(SetOrientationmSignalID, &r, GetTypeGUID(float));
+	}
+
+	void SceneNodeView::Scale(float3 xyz) noexcept
+	{
+		FlexKit::Scale(node, xyz);
+
+		if (triggerEnable)
+			TriggerComponent::GetComponent()[triggers].Trigger(SetScaleSignalID);
+	}
+
+
+	void SceneNodeView::TranslateLocal(float3 xyz) noexcept
+	{
+		FlexKit::TranslateLocal(node, xyz);
+
+		if (triggerEnable)
+			TriggerComponent::GetComponent()[triggers].Trigger(TranslationSignalID);
+	}
+
+
+	void SceneNodeView::TranslateWorld(float3 xyz) noexcept
+	{
+		FlexKit::TranslateWorld(node, xyz);
+
+		if (triggerEnable)
+			TriggerComponent::GetComponent()[triggers].Trigger(TranslationSignalID, {});
+	}
+
+
+	void SceneNodeView::ToggleScaling(bool scalable) noexcept
+	{
+		SetFlag(node, SceneNodes::SCALE);
+	}
+
+
+	float3	SceneNodeView::GetPosition() const noexcept
+	{
+		return FlexKit::GetPositionW(node);
+	}
+
+	float3	SceneNodeView::GetPositionL() const noexcept
+	{
+		return FlexKit::GetPositionL(node);
+	}
+
+	float3	SceneNodeView::GetScale() const noexcept
+	{
+		return GetLocalScale(node);
+	}
+
+	Quaternion SceneNodeView::GetOrientation() const noexcept
+	{
+
+		return FlexKit::GetOrientation(node);
+	}
+
+	Quaternion SceneNodeView::GetOrientationL() const noexcept
+	{
+
+		return FlexKit::GetOrientationLocal(node);
+	}
+
+	float4x4 SceneNodeView::GetWT() const noexcept
+	{
+		return FlexKit::GetWT(node);
+	}
+
+	void SceneNodeView::SetScale(float3 scale) noexcept
+	{
+		FlexKit::SetScale(node, scale);
+
+		if (triggerEnable)
+			TriggerComponent::GetComponent()[triggers].Trigger(SetScaleSignalID);
+	}
+
+	void SceneNodeView::SetPosition(const float3 xyz) noexcept
+	{
+		FlexKit::SetPositionW(node, xyz);
+
+		if (triggerEnable)
+			TriggerComponent::GetComponent()[triggers].Trigger(TranslationSignalID);
+	}
+
+	void SceneNodeView::SetPositionL(const float3 xyz) noexcept
+	{
+		FlexKit::SetPositionL(node, xyz);
+
+		if (triggerEnable)
+			TriggerComponent::GetComponent()[triggers].Trigger(TranslationSignalID);
+	}
+
+	void SceneNodeView::SetOrientation(const Quaternion q) noexcept
+	{
+		FlexKit::SetOrientation(node, q);
+
+		if (triggerEnable)
+			TriggerComponent::GetComponent()[triggers].Trigger(SetOrientationmSignalID, (void*)&q, GetTypeGUID(Quaternion));
+	}
+
+	void SceneNodeView::SetOrientationL(const Quaternion q) noexcept
+	{
+		FlexKit::SetOrientationL(node, q);
+
+		if (triggerEnable)
+			TriggerComponent::GetComponent()[triggers].Trigger(SetOrientationmSignalID, (void*)&q, GetTypeGUID(Quaternion));
+	}
+
+	void SceneNodeView::SetWT(const float4x4& wt) noexcept
+	{
+		FlexKit::SetWT(node, wt);
+
+		if (triggerEnable)
+			TriggerComponent::GetComponent()[triggers].Trigger(SetTransformSignalID, (void*)&wt, GetTypeGUID(float4x4));
+	}
+
+
+	/************************************************************************************************/
+
+
 	NodeHandle ZeroNode(NodeHandle node)
 	{
 		FlexKit::LT_Entry LT;
@@ -785,7 +1006,7 @@ namespace FlexKit
 	void Translate(GameObject& go, const float3 xyz)
 	{
 		Apply(go,
-			[&](SceneNodeView<>& node)
+			[&](SceneNodeView& node)
 			{
 				node.TranslateWorld(xyz);
 			});
@@ -797,7 +1018,7 @@ namespace FlexKit
 	float3 GetLocalPosition(GameObject& go)
 	{
 		return Apply(go, 
-			[&](SceneNodeView<>& node)
+			[&](SceneNodeView& node)
 			{	return node.GetPositionL(); }, 
 			[]
 			{ return float3{ 0, 0, 0 }; });
@@ -810,7 +1031,7 @@ namespace FlexKit
 	float3 GetWorldPosition(GameObject& go)
 	{
 		return Apply(go,
-			[&](SceneNodeView<>& node)
+			[&](SceneNodeView& node)
 			{	return node.GetPosition(); },
 			[]
 			{ return float3{ 0, 0, 0 }; });
@@ -823,7 +1044,7 @@ namespace FlexKit
 	void SetWorldPosition(GameObject& go, const float3 pos)
 	{
 		return Apply(go,
-			[&](SceneNodeView<>& view)
+			[&](SceneNodeView& view)
 			{   SetPositionW(view.node, pos); });
 	}
 
@@ -834,10 +1055,9 @@ namespace FlexKit
 	void SetLocalPosition(GameObject& go, const float3 pos)
 	{
 		return Apply(go,
-			[&](SceneNodeView<>& view)
+			[&](SceneNodeView& view)
 			{   SetPositionL(view.node, pos); });
 	}
-
 
 
 	/************************************************************************************************/
@@ -846,7 +1066,7 @@ namespace FlexKit
 	float3 GetScale(GameObject& go)
 	{
 		return Apply(go,
-			[&](SceneNodeView<>& node)
+			[&](SceneNodeView& node)
 			{ return node.GetScale(); },
 			[]
 			{ return float3{ 1, 1, 1 }; });
@@ -854,10 +1074,10 @@ namespace FlexKit
 
 	float3 GetScale(NodeHandle node)
 	{
-		const float4x4 WT               = GetWT(node);
-		const Quaternion Q              = Matrix2Quat(WT);
-		const float4x4 InverseRotation  = Quaternion2Matrix(Q.Inverse());
-		const float4x4 scaleMatrix      = InverseRotation * WT;
+		const float4x4 WT				= GetWT(node);
+		const Quaternion Q				= Matrix2Quat(WT);
+		const float4x4 InverseRotation	= Quaternion2Matrix(Q.Inverse());
+		const float4x4 scaleMatrix		= InverseRotation * WT;
 
 		return { scaleMatrix[0][0], scaleMatrix[1][1], scaleMatrix[2][2] };
 	}
@@ -869,7 +1089,7 @@ namespace FlexKit
 	void ClearParent(GameObject& go)
 	{
 		return Apply(go,
-			[&](SceneNodeView<>& node)
+			[&](SceneNodeView& node)
 			{
 				return node.SetParentNode(node.GetComponent().GetRoot());
 			}
@@ -883,7 +1103,7 @@ namespace FlexKit
 	NodeHandle GetParentNode(GameObject& go)
 	{
 		return Apply(go,
-			[&](const SceneNodeView<>& node) -> NodeHandle
+			[&](const SceneNodeView& node) -> NodeHandle
 			{
 				return node.GetParentNode();
 			},
@@ -901,7 +1121,7 @@ namespace FlexKit
 	void EnableScale(GameObject& go, bool scale)
 	{
 		return Apply(go,
-			[&](SceneNodeView<>& node)
+			[&](SceneNodeView& node)
 			{
 				return node.ToggleScaling(scale);
 			});
@@ -914,7 +1134,7 @@ namespace FlexKit
 	void SetScale(GameObject& go, float3 scale)
 	{
 		return Apply(go,
-			[&](SceneNodeView<>& node)
+			[&](SceneNodeView& node)
 			{
 				return node.SetScale(scale);
 			}
@@ -928,7 +1148,7 @@ namespace FlexKit
 	void Pitch(GameObject& go, float theta)
 	{
 		return Apply(go,
-			[&](SceneNodeView<>& node)
+			[&](SceneNodeView& node)
 			{
 				return node.Pitch(theta);
 			}
@@ -942,7 +1162,7 @@ namespace FlexKit
 	void Yaw(GameObject& go, float theta)
 	{
 		return Apply(go,
-			[&](SceneNodeView<>& node)
+			[&](SceneNodeView& node)
 			{
 				return node.Yaw(theta);
 			}
@@ -956,8 +1176,17 @@ namespace FlexKit
 	Quaternion GetOrientation(GameObject& go)
 	{
 		return Apply(go,
-			[&](const SceneNodeView<>& node)
+			[&](const SceneNodeView& node)
 			{ return node.GetOrientation(); },
+			[]
+			{ return Quaternion{ 0, 0, 0, 1 }; });
+	}
+
+	Quaternion	GetOrientationLocal(GameObject& go)
+	{
+		return Apply(go,
+			[&](const SceneNodeView& node)
+			{ return node.GetOrientationL(); },
 			[]
 			{ return Quaternion{ 0, 0, 0, 1 }; });
 	}
@@ -970,7 +1199,7 @@ namespace FlexKit
 	{
 		return Apply(
 			go,
-			[](SceneNodeView<>& node)
+			[](SceneNodeView& node)
 			{
 				return node.node;
 			},
@@ -995,18 +1224,25 @@ namespace FlexKit
 
 	void SetWT(GameObject& go, const float4x4 newMatrix)
 	{
-		const auto node     = GetSceneNode(go);
-		const auto parentWT = GetWT(FlexKit::GetParentNode(node));
+		auto* sceneNodeView		= go.GetView<SceneNodeView>();
+		if (!sceneNodeView)
+			return;
 
-		auto PI         = Inverse(parentWT);
-		auto localT     = newMatrix * PI.Transpose();
+		const auto node			= sceneNodeView->node;
+		const auto parentWT		= GetWT(FlexKit::GetParentNode(node));
 
-		FlexKit::LT_Entry local = FlexKit::GetLocal(node);
-		local.R                 = Matrix2Quat(localT);
-		local.T                 = FlexKit::Vect4ToFloat4(localT[3]).xyz();
+		auto PI			= Inverse(parentWT);
+		auto localT		= newMatrix * PI.Transpose();
+
+		FlexKit::LT_Entry local	= FlexKit::GetLocal(node);
+		local.R					= Matrix2Quat(localT);
+		local.T					= FlexKit::Vect4ToFloat4(localT[3]).xyz();
 
 		FlexKit::SetLocal(node, &local);
 		FlexKit::SetFlag(node, SceneNodes::StateFlags::UPDATED);
+
+		if(sceneNodeView->triggerEnable)
+			Trigger(go, SetTransformSignalID, (void*)&newMatrix, GetTypeGUID(float4x4));
 	}
 
 
@@ -1016,9 +1252,48 @@ namespace FlexKit
 	void SetOrientation(GameObject& go, const Quaternion q)
 	{
 		return Apply(go,
-			[&](SceneNodeView<>& view)
+			[&](SceneNodeView& view)
 			{ SetOrientation(view.node, q); });
 	}
 
 
+	/************************************************************************************************/
+
+
+	void SetOrientationLocal(GameObject& go, const Quaternion q)
+	{
+		return Apply(go,
+			[&](SceneNodeView& view)
+			{ SetOrientation(view.node, q); });
+	}
+
+
+
 }   /************************************************************************************************/
+
+
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2023 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/
+

@@ -160,8 +160,8 @@ void LoadEntity(FlexKit::SceneEntity& entity, LoadEntityContextInterface& ctx)
 		case FlexKit::TransformComponentID:
 		{
 			auto nodeComponent = std::static_pointer_cast<FlexKit::EntitySceneNodeComponent>(componentEntry);
-			ctx.GameObject().AddView<FlexKit::SceneNodeView<>>(ctx.GetNode(nodeComponent->nodeIdx));
-		}   break;
+			ctx.GameObject().AddView<FlexKit::SceneNodeView>(ctx.GetNode(nodeComponent->nodeIdx));
+		}	break;
 		case FlexKit::BrushComponentID:
 		{
 			auto brushComponent = std::static_pointer_cast<FlexKit::EntityBrushComponent>(componentEntry);
@@ -217,29 +217,29 @@ void LoadEntity(FlexKit::SceneEntity& entity, LoadEntityContextInterface& ctx)
 				ctx.GameObject().AddView<FlexKit::MaterialView>(material);
 
 				if(ctx.Scene() && !ctx.GameObject().hasView(FlexKit::SceneVisibilityComponentID))
-				   ctx.Scene()->AddGameObject(ctx.GameObject(), FlexKit::GetSceneNode(ctx.GameObject()));
+					ctx.Scene()->AddGameObject(ctx.GameObject(), FlexKit::GetSceneNode(ctx.GameObject()));
 
 				FlexKit::SetBoundingSphereFromMesh(ctx.GameObject());
 			}
-		}   break;
+		}	break;
 		case FlexKit::PointLightComponentID:
 		{
 			if (ctx.Scene() && !ctx.GameObject().hasView(FlexKit::SceneVisibilityComponentID))
 				ctx.Scene()->AddGameObject(ctx.GameObject(), FlexKit::GetSceneNode(ctx.GameObject()));
 
-			auto  blob          = componentEntry->GetBlob();
-			auto& component     = FlexKit::ComponentBase::GetComponent(componentEntry->id);
+			auto  blob			= componentEntry->GetBlob();
+			auto& component		= FlexKit::ComponentBase::GetComponent(componentEntry->id);
 
 			static_vector<FlexKit::KeyValuePair> values;
 			values.emplace_back(FlexKit::LoadEntityContextInterfaceKID, &ctx);
 
 			component.AddComponentView(ctx.GameObject(), values, blob, blob.size(), FlexKit::SystemAllocator);
 			FlexKit::SetBoundingSphereFromLight(ctx.GameObject());
-		}   break;
+		}	break;
 		default:
 		{
-			auto  blob              = componentEntry->GetBlob();
-			auto& component         = FlexKit::ComponentBase::GetComponent(componentEntry->id);
+			auto  blob				= componentEntry->GetBlob();
+			auto& component			= FlexKit::ComponentBase::GetComponent(componentEntry->id);
 
 			auto layer = ctx.LayerHandle();
 			static_vector<FlexKit::KeyValuePair> values{
@@ -249,7 +249,7 @@ void LoadEntity(FlexKit::SceneEntity& entity, LoadEntityContextInterface& ctx)
 
 			component.AddComponentView(ctx.GameObject(), values, blob, blob.size(), FlexKit::SystemAllocator);
 			
-		}   break;
+		}	break;
 		}
 	}
 }
@@ -260,7 +260,7 @@ void LoadEntity(FlexKit::SceneEntity& entity, LoadEntityContextInterface& ctx)
 
 /**********************************************************************
 
-Copyright (c) 2021 - 2022 Robert May
+Copyright (c) 2021 - 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

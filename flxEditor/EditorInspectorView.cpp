@@ -3,6 +3,8 @@
 #include "EditorSelectedPrefabObject.h"
 #include "ViewportScene.h"
 #include "qtoolbox.h"
+#include <ranges>
+
 
 /************************************************************************************************/
 
@@ -48,7 +50,7 @@ QLabel* ComponentViewPanelContext::AddText(const std::string txt)
 /************************************************************************************************/
 
 
-void ComponentViewPanelContext::AddInputBox(const std::string txt, FieldUpdateCallback update, FieldChangeCallback change)
+QTextEdit* ComponentViewPanelContext::AddInputBox(const std::string txt, FieldUpdateCallback update, FieldChangeCallback change)
 {
 	std::string initial;
 	update(initial);
@@ -90,13 +92,15 @@ void ComponentViewPanelContext::AddInputBox(const std::string txt, FieldUpdateCa
 	propertyItems.push_back(label);
 	propertyItems.push_back(inputBox);
 	propertyItems.push_back(timer);
+
+	return inputBox;
 }
 
 
 /************************************************************************************************/
 
 
-void ComponentViewPanelContext::AddButton(std::string label, ButtonCallback callback)
+QPushButton* ComponentViewPanelContext::AddButton(std::string label, ButtonCallback callback)
 {
 	auto button = new QPushButton(label.c_str());
 
@@ -107,6 +111,8 @@ void ComponentViewPanelContext::AddButton(std::string label, ButtonCallback call
 
 	layoutStack.back()->addWidget(button);
 	propertyItems.push_back(button);
+
+	return button;
 }
 
 
@@ -255,9 +261,12 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
 {
 	auto addComponentMenu = menu->addMenu("Add");
 
-	for (auto& factory : availableComponents)
+	for (auto& component : availableComponents)
 	{
-		auto action = addComponentMenu->addAction(factory->ComponentName().c_str());
+		if (!component->Constructable())
+			continue;
+
+		auto action = addComponentMenu->addAction(component->ComponentName().c_str());
 		action->connect(action, &QAction::triggered,
 			[&]()
 			{
@@ -289,7 +298,7 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
 					} ctx{ selection };
 
 					if(selection.viewportObjects.size())
-						factory->Construct(*selection.viewportObjects.front(), ctx);
+						component->Construct(*selection.viewportObjects.front(), ctx);
 				}	break;
 				case AnimatorObject_ID:
 				{
@@ -315,7 +324,7 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
 					} ctx{ selection };
 
 					if(selection)
-						factory->Construct(selection->gameObject, ctx);
+						component->Construct(selection->gameObject, ctx);
 				}	break;
 				default:
 					break;
@@ -393,8 +402,8 @@ void EditorInspectorView::UpdatePropertiesViewportObjectInspector()
 	auto& gameObject				= selection->gameObject;
 	auto gameObjectPropertyCount	= std::distance(gameObject.begin(), gameObject.end());
 
-	if( objectID        != selectedObject ||
-		propertyCount   != gameObjectPropertyCount)
+	if( objectID		!= selectedObject ||
+		propertyCount	!= gameObjectPropertyCount)
 	{
 		menu->setEnabled(true);
 
@@ -431,13 +440,15 @@ void EditorInspectorView::UpdateAnimatorObjectInspector()
 /************************************************************************************************/
 
 
-void clearLayout(QLayout* layout) {
+void ClearLayout(QLayout* layout)
+{
 	if (layout == NULL)
 		return;
 	QLayoutItem* item;
-	while ((item = layout->takeAt(0))) {
+	while ((item = layout->takeAt(0)))
+	{
 		if (item->layout()) {
-			clearLayout(item->layout());
+			ClearLayout(item->layout());
 			item->layout()->setParent(nullptr);
 			delete item->layout();
 		}
@@ -451,6 +462,10 @@ void clearLayout(QLayout* layout) {
 	}
 }
 
+
+/************************************************************************************************/
+
+
 void EditorInspectorView::ClearPanel()
 {
 	if (selectedObject == -1)
@@ -462,7 +477,7 @@ void EditorInspectorView::ClearPanel()
 
 	propertyItems.clear();
 
-	clearLayout(contentLayout);
+	ClearLayout(contentLayout);
 
 	QLabel* label = new QLabel{};
 	label->setText("Nothing Selected");
@@ -476,6 +491,17 @@ void EditorInspectorView::ClearPanel()
 
 	selectedObject  = -1;
 	propertyCount   = 0;
+}
+
+
+/************************************************************************************************/
+
+
+IEditorComponent* EditorInspectorView::FindComponent(uint32_t componentID)
+{
+	auto res = std::ranges::find_if(availableComponents, [&](auto& i) -> bool { return i->ComponentID() == componentID; });
+
+	return res != availableComponents.end() ? *res : nullptr;
 }
 
 
@@ -522,11 +548,11 @@ void EditorInspectorView::UpdateUI(FlexKit::GameObject& gameObject)
 		
 		ComponentViewPanelContext context{ layout, propertyItems, properties, this };
 
-		if (auto res = componentInspectors.find(componentView.GetID()); res != componentInspectors.end())
+		if (auto res = FindComponent(componentView.GetID()); res)
 		{
-			toolBox->addItem(scrollable, fmt::format("{}", res->second->ComponentName()).c_str());
+			toolBox->addItem(scrollable, fmt::format("{}", res->ComponentName()).c_str());
 
-			res->second->Inspect(context, gameObject, componentView.Get_ref());
+			res->Inspect(context, gameObject, componentView.Get_ref());
 		}
 		else
 		{

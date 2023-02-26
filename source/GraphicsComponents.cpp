@@ -47,12 +47,12 @@ namespace FlexKit
 
 	Camera& CameraComponent::GetCamera(CameraHandle handle)
 	{
-        const auto idx = handles[handle];
-        if (DirtyFlags[idx])
-        {
-            Cameras[idx].UpdateMatrices();
-            DirtyFlags[idx] = false;
-        }
+		const auto idx = handles[handle];
+		if (DirtyFlags[idx])
+		{
+			Cameras[idx].UpdateMatrices();
+			DirtyFlags[idx] = false;
+		}
 		return Cameras[handles[handle]];
 	}
 
@@ -156,13 +156,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    Camera::ConstantBuffer CameraComponent::GetCameraPreviousConstants(CameraHandle handle)
-    {
-        return GetCamera(handle).GetCameraPreviousConstants();
-    }
+	Camera::ConstantBuffer CameraComponent::GetCameraPreviousConstants(CameraHandle handle)
+	{
+		return GetCamera(handle).GetCameraPreviousConstants();
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	Camera::ConstantBuffer CameraComponent::GetCameraConstants(CameraHandle handle)
@@ -174,6 +174,39 @@ namespace FlexKit
 	float4x4 CameraComponent::GetCameraPV(CameraHandle handle)
 	{
 		return GetCamera(handle).GetPV();
+	}
+
+
+	/************************************************************************************************/
+
+
+	Ray ViewRay(CameraHandle camera, const float2 UV)
+	{
+		const auto cameraConstants		= FlexKit::GetCameraConstants(camera);
+		const auto cameraOrientation	= FlexKit::GetOrientation(FlexKit::GetCameraNode(camera));
+
+		const FlexKit::float3 v_dir	= cameraOrientation * (Inverse(cameraConstants.Proj) * FlexKit::float4{ UV.x, UV.y,  1.0f, 1.0f }).xyz().normal();
+		const FlexKit::float3 v_o	= cameraConstants.WPOS.xyz();
+
+		return { .D = v_dir, .O = v_o };
+	}
+
+
+	/************************************************************************************************/
+
+
+	Ray ViewRay(GameObject& gameObject, const float2 UV)
+	{
+		return Apply(gameObject,
+			[&](CameraView& view)
+			{
+				return ViewRay(view, UV);
+			},
+			[]() -> Ray
+			{
+				FK_LOG_WARNING("ViewRay Called on gameObject without camera component");
+				return {};
+			});
 	}
 
 

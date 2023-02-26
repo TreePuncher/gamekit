@@ -18,6 +18,7 @@
 #include <angelscript/scriptstdstring/scriptstdstring.h>
 #include <angelscript/scriptbuilder/scriptbuilder.h>
 #include <imgui.h>
+#include <TriggerComponent.hpp>
 
 #include <fmt/printf.h>
 
@@ -118,7 +119,7 @@ public:
 
 /**********************************************************************
 
-Copyright (c) 2022 Robert May
+Copyright (c) 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

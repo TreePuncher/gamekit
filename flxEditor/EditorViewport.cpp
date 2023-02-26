@@ -603,7 +603,7 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
 
 			ViewportGameObject_ptr obj = scene->CreateObject();
 
-			obj->gameObject.AddView<FlexKit::SceneNodeView<>>();
+			obj->gameObject.AddView<FlexKit::SceneNodeView>();
 			obj->gameObject.AddView<FlexKit::PointLightView>(float3{ 1, 1, 1 }, 10, 10);
 
 			scene->scene.AddGameObject(*obj, FlexKit::GetSceneNode(*obj));
@@ -753,8 +753,8 @@ FlexKit::TriMeshHandle EditorViewport::LoadTriMeshResource(ProjectResource_ptr r
 	}
 	else
 	{
-		auto& renderSystem  = renderer.framework.GetRenderSystem();
-		const auto guid     = res->resource->GetResourceGUID();
+		auto& renderSystem	= renderer.framework.GetRenderSystem();
+		const auto guid		= res->resource->GetResourceGUID();
 
 		if (!FlexKit::isAssetAvailable(guid))
 		{
@@ -780,12 +780,14 @@ struct LoadEntityContext : public LoadEntityContextInterface
 		EditorScene_ptr						IN_viewportscene,
 		EditorViewport&						IN_viewport,
 		ViewportScene&						IN_scene,
+		EditorProject&						IN_proj,
 		FlexKit::GameObject&				IN_gameObject,
 		FlexKit::MaterialHandle				IN_defaultMaterial)
 		: nodes				{ IN_nodes				}
 		, viewportscene		{ IN_viewportscene		}
 		, viewport			{ IN_viewport			}
 		, scene				{ IN_scene				}
+		, proj				{ IN_proj				}
 		, gameObject		{ IN_gameObject			}
 		, defaultMaterial	{ IN_defaultMaterial	} {}
 
@@ -794,6 +796,7 @@ struct LoadEntityContext : public LoadEntityContextInterface
 	EditorScene_ptr						viewportscene;
 	EditorViewport&						viewport;
 	ViewportScene&						scene;
+	EditorProject&						proj;
 	FlexKit::GameObject&				gameObject;
 	FlexKit::MaterialHandle				defaultMaterial;
 
@@ -809,7 +812,20 @@ struct LoadEntityContext : public LoadEntityContextInterface
 
 	ProjectResource_ptr FindSceneResource(uint64_t assetIdx) override
 	{
-		return viewportscene->FindSceneResource(assetIdx);
+		if (auto res = viewportscene->FindSceneResource(assetIdx); res)
+			return res;
+		else
+		{
+			auto projRes = proj.FindProjectResource(assetIdx);
+
+			if (projRes)
+			{
+				viewportscene->sceneResources.push_back(projRes);
+				return projRes;
+			}
+			else
+				FK_LOG_ERROR("Could not find project resource!");
+		}
 	}
 
 	FlexKit::TriMeshHandle LoadTriMeshResource(ProjectResource_ptr resource) override
@@ -842,7 +858,7 @@ struct LoadEntityContext : public LoadEntityContextInterface
 /************************************************************************************************/
 
 
-void EditorViewport::SetScene(EditorScene_ptr newScene)
+void EditorViewport::SetScene(EditorScene_ptr newScene, EditorProject& proj)
 {
 	if (scene)
 	{
@@ -905,7 +921,7 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
 		viewportScene->sceneObjects.emplace_back(viewObject);
 
 		//if (entity.Node != -1)
-		//    viewObject->gameObject.AddView<FlexKit::SceneNodeView<>>(nodes[entity.Node]);
+		//    viewObject->gameObject.AddView<FlexKit::SceneNodeView>(nodes[entity.Node]);
 
 		if (entity.id.size())
 			viewObject->gameObject.AddView<FlexKit::StringIDView>(entity.id.c_str(), entity.id.size());
@@ -915,6 +931,7 @@ void EditorViewport::SetScene(EditorScene_ptr newScene)
 			newScene,
 			*this,
 			*viewportScene,
+			proj,
 			viewObject->gameObject,
 			gbufferPass
 		};
@@ -1408,7 +1425,7 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 			ctx.NullGraphicsConstantBufferView(6);
 
 			struct PassConstants {
-				FlexKit::float4x4 x;
+				FlexKit::float4x4 x = FlexKit::float4x4::Identity();
 			} passConstantData;
 
 			auto constantBuffer = data.ReserveConstantBuffer(
@@ -1416,8 +1433,8 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 				FlexKit::AlignedSize<PassConstants>());
 
 			
-			FlexKit::ConstantBufferDataSet cameraConstants  { FlexKit::GetCameraConstants(viewportCamera), constantBuffer };
-			FlexKit::ConstantBufferDataSet passConstants    { passConstantData, constantBuffer };
+			FlexKit::ConstantBufferDataSet cameraConstants	{ FlexKit::GetCameraConstants(viewportCamera), constantBuffer };
+			FlexKit::ConstantBufferDataSet passConstants	{ passConstantData, constantBuffer };
 
 			auto selection = selectionContext.GetSelectionType() == ViewportObjectList_ID ? selectionContext.GetSelection<ViewportSelection>() : ViewportSelection{};
 
@@ -1480,7 +1497,7 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 					float4		unused2;
 					float4x4	transform;
 				} CB_Data {
-					.unused1	= float4{ 1, 1, 1, 1 },
+					.unused1	= float4{ 0, 0, 0, 1 },
 					.unused2	= float4{ 1, 1, 1, 1 },
 					.transform	= FlexKit::TranslationMatrix(position)
 				};
@@ -1506,9 +1523,9 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 					float4		unused2;
 					float4x4	transform;
 				} CB_Data {
-					.unused1	= float4{ 1, 1, 1, 1 },
-					.unused2	= float4{ 1, 1, 1, 1 },
-					.transform	= FlexKit::TranslationMatrix(float3::Zero())
+					.unused1	= float4{ 0, 0, 0, 0 },
+					.unused2	= float4{ 0, 0, 0, 0 },
+					.transform	= FlexKit::float4x4::Identity()
 				};
 
 				auto constantBuffer = data.ReserveConstantBuffer(256);
@@ -1604,7 +1621,7 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 						float4		unused2;
 						float4x4	transform;
 					} CB_Data {
-						.unused1	= float4{ 1, 1, 1, 1 },
+						.unused1	= float4{ 0, 0, 0, 1 },
 						.unused2	= float4{ 1, 1, 1, 1 },
 						.transform	= GetWT(node).Transpose()
 					};

@@ -66,7 +66,7 @@ public:
 	~EditorViewport();
 
 	void resizeEvent	(QResizeEvent* event) override;
-	void SetScene		(EditorScene_ptr scene);
+	void SetScene		(EditorScene_ptr scene, EditorProject& proj);
 
 	std::shared_ptr<ViewportScene>& GetScene();
 	SelectionContext&				GetSelectionContext();

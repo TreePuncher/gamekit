@@ -48,6 +48,12 @@ namespace FlexKit
 	{
 		BrushComponentEventHandler(RenderSystem& IN_renderSystem) : renderSystem{ IN_renderSystem }{}
 
+		Brush OnCreate(Brush args)
+		{
+			return args;
+		}
+
+
 		void OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
 
 		RenderSystem& renderSystem;
@@ -164,10 +170,11 @@ namespace FlexKit
 	class PointLightEventHandler
 	{
 	public:
-		static void OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
+		static PointLight	OnCreate();
+		static void			OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
 	};
 
-	using PointLightComponent					= BasicComponent_t<PointLight, PointLightHandle, PointLightComponentID, PointLightEventHandler>;
+	using PointLightComponent	= BasicComponent_t<PointLight, PointLightHandle, PointLightComponentID, PointLightEventHandler>;
 
 	class PointLightView : public ComponentView_t<PointLightComponent>
 	{
@@ -368,11 +375,15 @@ namespace FlexKit
 
 				for (auto childIdx = node.children; childIdx < end; ++childIdx)
 				{
-					const auto child	= elements[childIdx];
-					const auto aabb		= visabilityComponent[child.handle].GetAABB();
+					const auto	child			= elements[childIdx];
+					const auto&	visibleObject	= visabilityComponent[child.handle];
+					const AABB	aabb			= visibleObject.GetAABB();
 
 					if (auto res = Intersects(bv, aabb); res)
-						IntersectionHandler(child.handle, res);
+					{
+						const auto	gameObject = visibleObject.entity;
+						IntersectionHandler(child.handle, res, gameObject);
+					}
 				}
 			}
 			else
@@ -450,10 +461,14 @@ namespace FlexKit
 
 	struct SceneRayCastResult
 	{
-		VisibilityHandle    visibileObject;
-		float               d;
+		VisibilityHandle	visibileObject;
+		float				d;
+		GameObject*			gameObject	= nullptr;
 	};
 
+
+	template<typename ... TY_Queries>
+	using QueryResultObject = decltype(FlexKit::Query(std::declval<GameObject&>(), TY_Queries{}...));
 
 	class Scene
 	{
@@ -506,6 +521,30 @@ namespace FlexKit
 			return results;
 		}
 
+		template<typename ... TY_Queries>
+		void Query(auto& outVector, uint32_t max, TY_Queries ... queries)
+		{
+			auto& visables = SceneVisibilityComponent::GetComponent();
+
+			using Optional_ty = decltype(FlexKit::Query(std::declval<GameObject&>(), queries...));
+			Vector<Optional_ty> results{ &allocator };
+
+			uint32_t count = 0;
+
+			for (auto entity : sceneEntities)
+			{
+				auto& gameObject = *visables[entity].entity;
+				if (auto res = FlexKit::Query(gameObject, queries...); res)
+				{
+					outVector.emplace_back(std::move(res));
+
+					count++;
+					if (count >= max)
+						return;
+				}
+			}
+		}
+
 		template<typename TY_FN, typename ... TY_Queries>
 		void QueryFor(TY_FN FN, const TY_Queries& ... queries)
 		{
@@ -522,7 +561,7 @@ namespace FlexKit
 		auto begin()	{ return sceneEntities.begin(); }
 		auto end()		{ return sceneEntities.end(); }
 
-		const SceneHandle					sceneID;
+		const SceneHandle	sceneID;
 
 		HandleUtilities::HandleTable<SceneEntityHandle> HandleTable;
 
@@ -630,14 +669,14 @@ namespace FlexKit
 
 	struct _PointLightShadowCaster
 	{
-		PointLightHandle    pointLight  = InvalidHandle;
-		NodeHandle          node        = InvalidHandle;
-		ResourceHandle      shadowMap   = InvalidHandle;
-		float4x4            matrix      = float4x4::Identity();
+		PointLightHandle	pointLight	= InvalidHandle;
+		NodeHandle			node		= InvalidHandle;
+		ResourceHandle		shadowMap	= InvalidHandle;
+		float4x4			matrix		= float4x4::Identity();
 	};
 
-	using PointLightShadowMap       = BasicComponent_t<_PointLightShadowCaster, PointLightShadowHandle, PointLightShadowMapID>;
-	using PointLightShadowMapView   = PointLightShadowMap::View;
+	using PointLightShadowMap		= BasicComponent_t<_PointLightShadowCaster, PointLightShadowHandle, PointLightShadowMapID>;
+	using PointLightShadowMapView	= PointLightShadowMap::View;
 
 
 	void EnablePointLightShadows(GameObject& gameObject);

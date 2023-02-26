@@ -154,13 +154,13 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
 	auto& scene         = worldState.GetScene();
 	auto& allocator     = IN_framework.core.GetTempMemory();
 	
-	auto res = scene.Query(allocator, Mut<SceneNodeView<>>{}, StringQuery{ "Light", "smolina" });
+	auto res = scene.Query(allocator, Mut<SceneNodeView>{}, StringQuery{ "Light", "smolina" });
 
 	pointLight1 = FlexKit::FindGameObject(worldState.GetScene(), "Light").value_or(nullptr);
 	smolina     = FlexKit::FindGameObject(worldState.GetScene(), "smolina").value_or(nullptr);
 
 
-	particleEmitter.AddView<SceneNodeView<>>();
+	particleEmitter.AddView<SceneNodeView>();
 	auto& emitterView       = particleEmitter.AddView<ParticleEmitterView>(ParticleEmitterData{ &testParticleSystem, GetSceneNode(particleEmitter) });
 	auto& emitterProperties = emitterView.GetData().properties;
 
@@ -182,13 +182,13 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
 	//playerCharacterModel    = LoadTriMeshIntoTable(renderSystem.GetImmediateCopyQueue(), CharacterModelAsset);
 	//auto model              = LoadTriMeshIntoTable(renderSystem.GetImmediateCopyQueue(), PlaceHolderAsset);
 
-	//auto& ikNodeView    = IKTarget.AddView<SceneNodeView<>>();
+	//auto& ikNodeView    = IKTarget.AddView<SceneNodeView>();
 	//auto& ikBrushView   = IKTarget.AddView<BrushView>(model, GetSceneNode(IKTarget));
 	//auto& ikTargetView  = IKTarget.AddView<FABRIKTargetView>(FABRIKTarget{ GetSceneNode(IKTarget), (iAllocator*)framework.core.GetBlockMemory() });
 
 	//Translate(IKTarget, { 0, 6.0f, 0 });
 
-	//testAnimation.AddView<SceneNodeView<>>();
+	//testAnimation.AddView<SceneNodeView>();
 	//auto& brushView     = testAnimation.AddView<BrushView>(playerCharacterModel, GetSceneNode(testAnimation));
 	//auto& skeletonView  = testAnimation.AddView<SkeletonView>(playerCharacterModel, CharacterSkeletonAsset);
 	//auto& IKController  = testAnimation.AddView<FABRIKView>();
@@ -217,7 +217,7 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
 		for (size_t X = 0; X < 20; X++)
 		{
 			auto& transparentObject = worldState.CreateGameObject();
-			auto& sceneNodeView     = transparentObject.AddView<SceneNodeView<>>(float3{ 10, 0, 0 } + float3{ X * 1.0f,  0.0f, Y * 1.0f });
+			auto& sceneNodeView     = transparentObject.AddView<SceneNodeView>(float3{ 10, 0, 0 } + float3{ X * 1.0f,  0.0f, Y * 1.0f });
 			auto& brushView         = transparentObject.AddView<BrushView>(playerCharacterModel,GetSceneNode(transparentObject));
 			auto& materialView      = transparentObject.AddView<MaterialComponentView>(materials.CreateMaterial(defaultMaterial));
 

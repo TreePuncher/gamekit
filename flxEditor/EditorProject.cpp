@@ -32,11 +32,10 @@ bool EditorProject::LoadProject(const std::string& projectDir)
 	if (!f)
 		return false;
 
-	{
-		FlexKit::LoadFileArchiveContext archive{ f };
-		archive& resources;
-		archive& scenes;
-	}
+	FlexKit::LoadFileArchiveContext archive{ f };
+	archive& resources;
+	archive& scenes;
+
 
 	fclose(f);
 
@@ -124,6 +123,9 @@ FlexKit::ResourceList EditorProject::GetResources() const
 
 void EditorProject::RemoveResource(FlexKit::Resource_ptr resource)
 {
+	if (resource->GetResourceTypeID() == SceneResourceTypeID)
+		std::erase_if(scenes, [&](auto& res) -> bool { return (res->sceneResource == resource); });
+
 	std::erase_if(resources, [&](auto& res) -> bool { return (res->resource == resource); });
 }
 

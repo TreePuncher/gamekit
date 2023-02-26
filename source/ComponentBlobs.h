@@ -35,7 +35,7 @@ namespace FlexKit
 			uint32_t blockSize;
 			uint32_t nodeCount;
 		} header;
-		static const size_t GetHeaderSize() { return sizeof(Header); }
+		static const size_t GetHeaderSize() noexcept { return sizeof(Header); }
 
 		struct SceneNode
 		{
@@ -99,18 +99,47 @@ namespace FlexKit
 		float3 K;
 	};
 
+
+	struct InterObjectConnection
+	{
+		uint32_t foreignObjectID;
+		uint32_t triggerID;
+		uint32_t slotID;
+	};
+
+
+	struct TriggerComponentBlob
+	{
+		ComponentBlock::Header  header = {
+			0,
+			EntityComponentBlock,
+			sizeof(TriggerComponentBlob),
+			FlexKit::TriggerComponentID
+		};
+
+		uint32_t TriggerOffset()	const noexcept { return sizeof(header); }
+		uint32_t SlotOffset()		const noexcept { return TriggerOffset() + sizeof(uint32_t) * triggerCount; }
+		uint32_t ConnectionOffset()	const noexcept { return SlotOffset()	+ sizeof(uint32_t) * slotCount; }
+
+		uint32_t triggerCount		= 0;
+		uint32_t slotCount			= 0;
+		uint32_t connectionCount	= 0;
+	};
+
+
 	struct SubMaterial
 	{
 		static_vector<uint64_t>  textures;
 	};
 
+
 	struct BrushComponentBlob
 	{
 		ComponentBlock::Header  header = {
-		   0,
-		   EntityComponentBlock,
-		   sizeof(BrushComponentBlob),
-		   GetTypeGUID(Brush)
+			0,
+			EntityComponentBlock,
+			sizeof(BrushComponentBlob),
+			GetTypeGUID(Brush)
 		};
 
 		float4 albedo_smoothness;
@@ -122,14 +151,14 @@ namespace FlexKit
 	struct MaterialComponentBlob
 	{
 		ComponentBlock::Header  header = {
-		   0,
-		   EntityComponentBlock,
-		   sizeof(MaterialComponentBlob),
-		   MaterialComponentID
+			0,
+			EntityComponentBlock,
+			sizeof(MaterialComponentBlob),
+			MaterialComponentID
 		};
 
-		GUID_t                          resourceID;
-		static_vector<SubMaterial, 32>  materials;
+		GUID_t							resourceID;
+		static_vector<SubMaterial, 32>	materials;
 
 		float4 albedo_smoothness;
 		float4 specular_metal;
@@ -158,8 +187,8 @@ namespace FlexKit
 			GetTypeGUID(TransformComponent)
 		};
 
-		uint32_t    nodeIdx             = 0;
-		bool        excludeFromScene    = false;
+		uint32_t	nodeIdx				= 0;
+		bool		excludeFromScene	= false;
 	};
 
 
@@ -174,7 +203,35 @@ namespace FlexKit
 
 		uint64_t assetID; // SkeletonAsset ID
 	};
-}   // namespace FlexKit
+
+
+	struct PortalComponentBlob
+	{
+		ComponentBlock::Header  header = {
+			0,
+			EntityComponentBlock,
+			sizeof(PortalComponentBlob),
+			GetTypeGUID(PortalComponentID)
+		};
+
+		uint64_t spawnObjectID;
+		uint64_t sceneID;
+	};
+
+
+	struct SpawnComponentBlob
+	{
+		ComponentBlock::Header  header = {
+			0,
+			EntityComponentBlock,
+			sizeof(SpawnComponentBlob),
+			GetTypeGUID(SpawnCompomentID),
+		};
+
+		float3		spawnOffset;
+		Quaternion	spawnDirection;
+	};
+}	// namespace FlexKit
 
 
 /**********************************************************************

@@ -21,8 +21,8 @@ int main(int argc, char* argv[])
 	auto seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
 	srand(seed);
 
-	auto qtApplication      = new QApplication{ argc, argv };
-	auto editor             = new EditorApplication{ *qtApplication };
+	auto qtApplication	= new QApplication{ argc, argv };
+	auto editor			= new EditorApplication{ *qtApplication };
 
 	return qtApplication->exec();
 }

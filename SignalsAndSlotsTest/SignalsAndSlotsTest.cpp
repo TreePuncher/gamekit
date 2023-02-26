@@ -1,38 +1,40 @@
 #include <iostream>
-#include "Signal.h"
+#include "Signals.h"
 #include <fmt\format.h>
 
 int main()
 {
-    {
-        FlexKit::Signal<void (int)>::Slots R;
+	{
+		FlexKit::Signal<void (int)>::Slot R;
 
-        {
-            FlexKit::Signal<void (int)> signal;
+		{
+			FlexKit::Signal<void (int)> signal;
 
-            signal.Connect(R,
-                [](int x)
-                {
-                    fmt::print("Hello World 1 : {}\n", x);
-                });
+			signal.Connect(R,
+				[](int x)
+				{
+					fmt::print("Hello World 1 : {}\n", x);
+				});
 
-            {
-                FlexKit::Signal<void(int)>::Slots S;
+			{
+				FlexKit::Signal<void(int)>::Slot s;
 
-                signal.Connect(S,
-                    [](int x)
-                    {
-                        fmt::print("Hello World 2 : {}\n", x);
-                    });
+				s.Bind(
+					[](int x)
+					{
+						fmt::print("Hello World 2 : {}\n", x);
+					});
 
-                signal(1);
-            }
+				signal.Connect(s);
 
-            signal(2);
-        }
+				signal(1);
+			}
 
-        int x = 0;
-    }
+			signal(2);
+		}
 
-    return 0;
+		int x = 0;
+	}
+
+	return 0;
 }

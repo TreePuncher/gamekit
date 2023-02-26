@@ -1,50 +1,149 @@
 #include "pch.h"
+#include "level.hpp"
 #include "PhysicsTest.h"
+#include <KeyValueIds.h>
 #include <SceneLoadingContext.h>
 #include <imgui.h>
+#include <PhysicsDebugVis.h>
+#include <TriggerSlotIDs.hpp>
+
 
 using namespace FlexKit;
 
 
-PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
-	FrameworkState		{ IN_framework },
+/************************************************************************************************/
 
-	animators				{ framework.core.GetBlockMemory() },
-	brushes					{ framework.core.GetBlockMemory(), framework.GetRenderSystem() },
-	cameras					{ framework.core.GetBlockMemory() },
-	sceneNodes				{ },
-	materials				{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
-	visibilityComponent		{ framework.core.GetBlockMemory() },
-	pointLights				{ framework.core.GetBlockMemory() },
-	orbitCameras			{ framework.core.GetBlockMemory() },
-	pointLightShadowMaps	{ framework.core.GetBlockMemory() },
-	ikComponent				{ framework.core.GetBlockMemory() },
-	skeletons				{ framework.core.GetBlockMemory() },
-	stringIDs				{ framework.core.GetBlockMemory() },
 
-	signalGroups			{ framework.core.GetBlockMemory() },
+PortalFactory::PortalFactory(PhysicsTest* IN_test) : test{ IN_test } {}
 
-	physx					{ framework.core.Threads, framework.core.GetBlockMemory() },
-	rigidBodies				{ physx },
-	staticBodies			{ physx },
-	characterController		{ physx, framework.core.GetBlockMemory() },
 
-	renderer				{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
-	textureStreamingEngine	{ framework.GetRenderSystem(), framework.core.GetBlockMemory() },
-
-	gbuffer			{ { 1920, 1080 }, framework.GetRenderSystem() },
-	depthBuffer		{ framework.GetRenderSystem(), { 1920, 1080 } },
-	renderWindow	{},
-
-	constantBuffer	{ framework.GetRenderSystem().CreateConstantBuffer(64 * MEGABYTE, false) },
-	vertexBuffer	{ framework.GetRenderSystem().CreateVertexBuffer(64 * MEGABYTE, false) },
-	runOnceQueue	{ framework.core.GetBlockMemory() },
-	scene			{ framework.core.GetBlockMemory() },
-	debugUI			{ framework.core.RenderSystem, framework.core.GetBlockMemory() },
-
-	inputMap		{ framework.core.GetBlockMemory() }
+void PortalFactory::OnCreateView(
+	FlexKit::GameObject&	gameObject,
+	FlexKit::ValueMap		userValues,
+	const std::byte*		buffer,
+	const size_t			bufferSize,
+	FlexKit::iAllocator*	allocator)
 {
-	layer = physx.CreateLayer();
+	PortalComponentBlob portal;
+	memcpy(&portal, buffer, sizeof(portal));
+
+	auto& triggers			= gameObject.AddView<TriggerView>();
+	auto& portalView		= gameObject.AddView<PortalView>();
+	portalView->levelID			= portal.sceneID;
+	portalView->spawnPointID	= portal.spawnObjectID;
+
+	triggers->CreateTrigger(ActivateTrigger);
+	triggers->CreateSlot(PortalSlot,
+		[&](void*, uint64_t)
+		{
+			auto& portalView	= *gameObject.GetView<PortalView>();
+			auto levelID		= portalView->levelID;
+			auto spawnPointID	= portalView->spawnPointID;
+
+			if (!LoadLevel(levelID, test->framework.core))
+				throw std::runtime_error("Failed to load Level!");
+
+			auto currentLevel	= GetActiveLevel();
+			auto level			= GetLevel(levelID);
+
+			if (!level)
+				return;
+
+			level->scene.QueryFor(
+				[&](auto& gameObject, auto&& res)
+				{
+					const float3 newPosition = GetWorldPosition(gameObject);
+
+					SetControllerPosition(test->cameraRig, newPosition);
+
+					if (levelID != GetActiveLevelID())
+					{
+						// Remove Character Controller
+						// Readd new Character controller in new layer
+						SetActiveLevel(levelID);
+
+						test->physx.GetLayer_ref(currentLevel->layer).paused = true;
+						test->physx.GetLayer_ref(level->layer).paused = false;
+
+						currentLevel->scene.RemoveEntity(test->cameraRig);
+						level->scene.AddGameObject(test->cameraRig);
+
+						Apply(gameObject,
+							[&](CharacterControllerView& ccv)
+							{
+								ccv.ChangeLayer(level->layer);
+							});
+					}
+				},
+				FlexKit::StringHashQuery{ spawnPointID });
+
+
+			int x = 0;
+		});
+
+	triggers->Connect(ActivateTrigger, PortalSlot);
+}
+
+
+void SpawnFactory::OnCreateView(
+	FlexKit::GameObject&	gameObject,
+	FlexKit::ValueMap		user_ptr,
+	const std::byte*		buffer,
+	const size_t			bufferSize,
+	FlexKit::iAllocator*	allocator)
+{
+	SpawnComponentBlob spawn;
+}
+
+
+/************************************************************************************************/
+
+
+PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
+	FrameworkState{ IN_framework },
+
+	animators{ framework.core.GetBlockMemory() },
+	brushes{ framework.core.GetBlockMemory(), framework.GetRenderSystem() },
+	cameras{ framework.core.GetBlockMemory() },
+	sceneNodes{ },
+	materials{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
+	visibilityComponent{ framework.core.GetBlockMemory() },
+	pointLights{ framework.core.GetBlockMemory() },
+	orbitCameras{ framework.core.GetBlockMemory() },
+	pointLightShadowMaps{ framework.core.GetBlockMemory() },
+	ikComponent{ framework.core.GetBlockMemory() },
+	skeletons{ framework.core.GetBlockMemory() },
+	stringIDs{ framework.core.GetBlockMemory() },
+	triggers{ framework.core.GetBlockMemory(), framework.core.GetBlockMemory() },
+
+	physx{ framework.core.Threads, framework.core.GetBlockMemory() },
+	rigidBodies{ physx },
+	staticBodies{ physx },
+	characterController{ physx, framework.core.GetBlockMemory() },
+
+	renderer{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
+	textureStreamingEngine{ framework.GetRenderSystem(), framework.core.GetBlockMemory() },
+
+	gbuffer{ { 1920, 1080 }, framework.GetRenderSystem() },
+	depthBuffer{ framework.GetRenderSystem(), { 1920, 1080 } },
+	renderWindow{},
+
+	constantBuffer{ framework.GetRenderSystem().CreateConstantBuffer(64 * MEGABYTE, false) },
+	vertexBuffer{ framework.GetRenderSystem().CreateVertexBuffer(64 * MEGABYTE, false) },
+	runOnceQueue{ framework.core.GetBlockMemory() },
+	debugUI{ framework.core.RenderSystem, framework.core.GetBlockMemory() },
+
+	inputMap{ framework.core.GetBlockMemory() },
+
+	portalComponent{ framework.core.GetBlockMemory(), this },
+	spawnComponent{ framework.core.GetBlockMemory() }
+{
+	auto& rs = IN_framework.GetRenderSystem();
+	rs.RegisterPSOLoader(DRAW_LINE_PSO, { &rs.Library.RS6CBVs4SRVs, CreateDrawLineStatePSO });
+	rs.RegisterPSOLoader(DRAW_LINE3D_PSO, { &rs.Library.RS6CBVs4SRVs, CreateDraw2StatePSO });
+
+	RegisterPhysicsDebugVis(framework.GetRenderSystem());
+	AddAssetFile(R"(assets\spawnRoom2.gameres)");
 
 	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
 		renderWindow = std::move(res.value());
@@ -54,26 +153,17 @@ PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
 	sub._ptr = &framework;
 
 	renderWindow.Handler->Subscribe(sub);
-	renderWindow.SetWindowTitle("Texture Streaming");
+	renderWindow.SetWindowTitle("Physics Test");
 
-	// Load Test Scene
-	SceneLoadingContext loadCtx{
-		.scene = scene,
-		.layer = layer,
-		.nodes = Vector<FlexKit::NodeHandle>{ framework.core.GetBlockMemory() }
-	};
+	if (!LoadLevel(32688, framework.core))
+		throw std::runtime_error("Failed to load Level!");
 
-	AddAssetFile(R"(assets\TextureStreaming.gameres)");
-	auto loadSuccess = LoadScene(framework.core, loadCtx, 1234);
-
-	// Create Floor
-	auto& staticBody	= floorCollider.AddView<StaticBodyView>(layer, float3{ 0, -1.0f, 0 });
-	auto floorShape		= physx.CreateCubeShape({ 200, 1, 200 });
-	staticBody.AddShape(floorShape);
-
+	auto level = GetActiveLevel();
 
 	// Setup Camera
-	auto& tpc = CreateThirdPersonCameraController(cameraRig, layer, framework.core.GetBlockMemory());
+	auto& tpc = CreateThirdPersonCameraController(cameraRig, level->layer, framework.core.GetBlockMemory());
+
+	tpc->SetPosition({ 0, 100, 0 });
 
 	auto cameraHandle = GetCameraControllerCamera(cameraRig);
 	SetCameraAspectRatio(cameraHandle, renderWindow.GetAspectRatio());
@@ -81,13 +171,13 @@ PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
 
 	activeCamera = cameraHandle;
 
-	auto res = scene.Query(framework.core.GetTempMemory(), GameObjectReq{}, SceneNodeReq{}, ROStringQuery{ "guramesh" });
+	auto res = level->scene.Query(framework.core.GetTempMemory(), GameObjectReq{}, SceneNodeReq{}, ROStringQuery{ "guramesh" });
 
 	if (res.size())
 	{
 		auto& [gameObject, sceneNode, ID] = res.front().value();
 
-		sceneNode.SetPositionL({ 0, 0, 0 });
+		sceneNode.SetPositionL({ 0, 10, 0 });
 		sceneNode.SetParentNode(tpc->objectNode);
 	}
 
@@ -98,10 +188,17 @@ PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
 }
 
 
+/************************************************************************************************/
+
+
 PhysicsTest::~PhysicsTest()
 {
-
+	cameraRig.Release();
+	ReleaseAllLevels();
 }
+
+
+/************************************************************************************************/
 
 
 FlexKit::UpdateTask* PhysicsTest::Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
@@ -152,6 +249,9 @@ FlexKit::UpdateTask* PhysicsTest::Update(FlexKit::EngineCore& core, FlexKit::Upd
 }
 
 
+/************************************************************************************************/
+
+
 FlexKit::UpdateTask* PhysicsTest::Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
 	frameGraph.AddOutput(renderWindow.GetBackBuffer());
@@ -177,9 +277,11 @@ FlexKit::UpdateTask* PhysicsTest::Draw(FlexKit::UpdateTask* update, FlexKit::Eng
 	transformUpdate.AddInput(physicsUpdate);
 	cameraUpdate.AddInput(transformUpdate);
 
+	auto currentLevel = GetActiveLevel();
+
 	FlexKit::DrawSceneDescription drawSceneDesc{
 		.camera = activeCamera,
-		.scene	= scene,
+		.scene	= currentLevel->scene,
 		.dt		= dT,
 		.t		= T,
 
@@ -202,8 +304,27 @@ FlexKit::UpdateTask* PhysicsTest::Draw(FlexKit::UpdateTask* update, FlexKit::Eng
 	);
 
 	textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.skinnedDraws, reserveCB, reserveVB);
+	RenderPhysicsOverlay(frameGraph, targets.RenderTarget, depthBuffer.Get(), currentLevel->layer, activeCamera, reserveVB, reserveCB);
 
 	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow.GetBackBuffer());
+
+	LineSegments segments{ core.GetTempMemory() };
+	auto constants = GetCameraConstants(activeCamera);
+
+	auto PV = constants.PV;// .Transpose();
+
+	const auto A_DC = PV * float4{ A, 1 };
+	const auto B_DC = PV * float4{ B, 1 };
+
+	if (!(A_DC.w <= 0 || B_DC.w <= 0))
+	{
+		const auto A_NDC = A_DC.xyz() / A_DC.w;
+		const auto B_NDC = B_DC.xyz() / B_DC.w;
+		segments.emplace_back(A_NDC, float3{ 1, 0, 1 }, B_NDC, FlexKit::float3{ 1, 0, 1 });
+	}
+
+	DrawShapes(DRAW_LINE_PSO, frameGraph, reserveVB, reserveCB, targets.RenderTarget, core.GetTempMemoryMT(),
+		LineShape{ segments });
 
 	FlexKit::PresentBackBuffer(frameGraph, renderWindow);
 
@@ -211,10 +332,44 @@ FlexKit::UpdateTask* PhysicsTest::Draw(FlexKit::UpdateTask* update, FlexKit::Eng
 }
 
 
+/************************************************************************************************/
+
+
 void PhysicsTest::PostDrawUpdate(FlexKit::EngineCore&, double dT)
 {
-	renderWindow.Present(0, 0);
+	renderWindow.Present(1, 0);
 }
+
+
+/************************************************************************************************/
+
+
+void PhysicsTest::Action()
+{
+	const auto r	= FlexKit::ViewRay(activeCamera, { 0.0f, 0.0f });
+
+	auto layer		= GetActiveLevel()->layer;
+
+	auto& layer_ref	= physx.GetLayer_ref(layer);
+
+	std::cout << layer.INDEX << "\n";
+
+	layer_ref.RayCast({ r.D, r.O }, 100,
+		[&](PhysicsLayer::RayCastHit hit)
+		{
+			auto stringID = GetStringID(*hit.gameObject);
+			std::cout << stringID << "\n";
+
+			A = r.O;
+			B = r.R(hit.distance);
+
+			Trigger(*hit.gameObject, ActivateTrigger, nullptr);
+			return false;
+		});
+}
+
+
+/************************************************************************************************/
 
 
 bool PhysicsTest::EventHandler(FlexKit::Event evt)
@@ -229,29 +384,68 @@ bool PhysicsTest::EventHandler(FlexKit::Event evt)
 
 			switch (evt.Action)
 			{
-				case Event::Release:
+			case Event::Release:
+			{
+				switch (evt.mData1.mKC[0])
 				{
-					switch (evt.mData1.mKC[0])
-					{
-					case KC_M:
-						renderWindow.ToggleMouseCapture();
-
-						return true;
-					}
-				}	break;
-
-			}	break;
-			default:
-				if ((evt.InputSource == FlexKit::Event::Keyboard && evt.mData1.mKC[0] == FlexKit::KC_ESC) ||
-					(evt.InputSource == FlexKit::Event::E_SystemEvent && evt.Action == FlexKit::Event::Exit))
-				{
-					framework.quit = true;
+				case KC_M:
+					renderWindow.ToggleMouseCapture();
+					return true;
+				case KC_SPACE:
+					Action();
 					return true;
 				}
-				else
-					return debugUI.HandleInput(evt);
-		}
+			}	break;
+			}	break;
+		default:
+			if ((evt.InputSource == FlexKit::Event::Keyboard && evt.mData1.mKC[0] == FlexKit::KC_ESC) ||
+				(evt.InputSource == FlexKit::Event::E_SystemEvent && evt.Action == FlexKit::Event::Exit))
+			{
+				framework.quit = true;
+				return true;
+			}
+			else
+				return debugUI.HandleInput(evt);
+		}	break;
+		case Event::Mouse:
+		{
+			switch (evt.Action)
+			{
+			case Event::Pressed:
+				switch (evt.mData1.mKC[0])
+				{
+				case KC_MOUSELEFT:
+				{
+				}	break;
+				}	break;
+			}
+		}	break;
 	}
 
 	return false;
 }
+
+
+/**********************************************************************
+
+Copyright (c) 2019-2023 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

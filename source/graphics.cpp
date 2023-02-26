@@ -8066,17 +8066,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InitiateGeometryTable(RenderSystem* renderSystem, iAllocator* Memory)
+	void InitiateGeometryTable(RenderSystem* renderSystem, iAllocator* allocator)
 	{
-		GeometryTable.Handles.Initiate(Memory);
-		GeometryTable.Handle			= Vector<TriMeshHandle>(Memory);
-		GeometryTable.Geometry			= Vector<TriMesh>(Memory);
-		GeometryTable.ReferenceCounts	= Vector<size_t>(Memory);
-		GeometryTable.Guids				= Vector<GUID_t>(Memory);
-		GeometryTable.GeometryIDs		= Vector<const char*>(Memory);
-		GeometryTable.FreeList			= Vector<size_t>(Memory);
-		GeometryTable.Memory			= Memory;
-		GeometryTable.renderSystem      = renderSystem;
+		GeometryTable.Handles.Initiate(allocator);
+		GeometryTable.Handle			= Vector<TriMeshHandle>(allocator);
+		GeometryTable.Geometry			= Vector<TriMesh>(allocator);
+		GeometryTable.ReferenceCounts	= Vector<size_t>(allocator);
+		GeometryTable.Guids				= Vector<GUID_t>(allocator);
+		GeometryTable.GeometryIDs		= Vector<const char*>(allocator);
+		GeometryTable.FreeList			= Vector<size_t>(allocator);
+		GeometryTable.allocator			= allocator;
+		GeometryTable.renderSystem		= renderSystem;
 	}
 
 
@@ -8218,7 +8218,7 @@ namespace FlexKit
 	BoundingSphere GetMeshBoundingSphere(TriMeshHandle TMHandle)
 	{
 		auto Mesh = &GeometryTable.Geometry[GeometryTable.Handles[TMHandle]];
-		return float4{ float3{0}, Mesh->Info.r };
+		return float4{ float3{0}, Mesh->info.r };
 	}
 
 
@@ -10063,19 +10063,19 @@ namespace FlexKit
 
 	void ReleaseTriMesh(TriMesh* T)
 	{
-		if(T->Memory){
+		if(T->allocator){
 			for (auto& details : T->lods) {
 				Release(&details.vertexBuffer);
 
 				for (auto& buffer : details.buffers)
 				{
 					if (buffer)
-						T->Memory->free(buffer);
+						T->allocator->free(buffer);
 
 					buffer = nullptr;
 				}
 			}
-			T->Memory->free((void*)T->ID);
+			T->allocator->free((void*)T->ID);
 		}
 	}
 
@@ -10092,7 +10092,7 @@ namespace FlexKit
 			for (auto& B : detailLevel.buffers)
 			{
 				if (B)
-					T->Memory->free(B);
+					T->allocator->free(B);
 
 				B = nullptr;
 			}
@@ -10100,7 +10100,7 @@ namespace FlexKit
 			detailLevel.vertexBuffer.clear();
 		}
 
-		T->Memory->free((void*)T->ID);
+		T->allocator->free((void*)T->ID);
 	}
 
 

@@ -4541,29 +4541,8 @@ private:
 
 	struct TriMesh
 	{
-		TriMesh()
-		{
-			ID              = nullptr;
-			AnimationData   = EAD_None;
-			Memory          = nullptr;
-		}
-
-
+		TriMesh() = default;
 		TriMesh(const TriMesh& rhs) = default;
-
-		size_t AnimationData;
-		size_t TriMeshID;
-
-		struct SubDivInfo
-		{
-			size_t  numVertices;
-			size_t  numFaces;
-			int* numVertsPerFace;
-			int* IndicesPerFace;
-		}*SubDiv;
-
-		const char*		ID;
-		SkinDeformer*	SkinTable;
 
 		struct LOD_Runtime
 		{
@@ -4725,11 +4704,25 @@ private:
 			return lods.back();
 		}
 
-		const uint32_t      GetLowestLodIdx()       const { return uint32_t(lods.size() - 1); }
-		const LOD_Runtime&  GetLowestLoadedLod()    const { return lods.back(); }
+		const uint32_t		GetLowestLodIdx()		const { return uint32_t(lods.size() - 1); }
+		const LOD_Runtime&	GetLowestLoadedLod()	const { return lods.back(); }
 
-		GUID_t                          assetHandle;
-		static_vector<LOD_Runtime>      lods;
+		size_t animationData	 = EAD_None;
+		size_t triMeshID		= INVALIDHANDLE;
+
+		struct SubDivInfo
+		{
+			size_t  numVertices;
+			size_t  numFaces;
+			int* numVertsPerFace;
+			int* IndicesPerFace;
+		}*subDiv = nullptr;
+
+		const char*		ID			= nullptr;
+		SkinDeformer*	skinTable	= nullptr;
+
+		GUID_t							assetHandle = INVALIDHANDLE;
+		static_vector<LOD_Runtime>		lods;
 
 
 		struct RInfo
@@ -4737,17 +4730,17 @@ private:
 			float3 Offset;
 			float3 Min, Max;
 			float  r;
-		}Info;
+		}info;
 
 		// Visibility Information
 		AABB			AABB;
 		BoundingSphere	BS;
 
-		size_t		    SkeletonGUID;
-		iAllocator*     Memory;
+		size_t			skeletonGUID	= INVALIDHANDLE;
+		iAllocator*		allocator		= nullptr;
 
-		static_vector<MorphTarget>      morphTargets;
-		static_vector<MorphTargetAsset> morphTargetAssets;
+		static_vector<MorphTarget>		morphTargets;
+		static_vector<MorphTargetAsset>	morphTargetAssets;
 	};
 
 
@@ -5304,7 +5297,7 @@ private:
 		Vector<const char*>								GeometryIDs;
 		Vector<TriMeshHandle>							Handle;
 		Vector<size_t>									FreeList;
-		iAllocator*										Memory;
+		iAllocator*										allocator;
 		RenderSystem*									renderSystem	= nullptr;
 	}GeometryTable;
 

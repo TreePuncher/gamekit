@@ -559,9 +559,9 @@ namespace FlexKit
 				for (const auto& brush : animatedBrushes)
 				{
 					Apply(*brush,
-						[&](const SceneNodeView<>&    nodeView,
-							const BrushView&          brushView,
-							const SkeletonView&       poseView)
+						[&](const SceneNodeView&	nodeView,
+							const BrushView&		brushView,
+							const SkeletonView&		poseView)
 						{
 							const auto& draw      = brushView.GetBrush();
 							const auto& pose      = poseView.GetPoseState();

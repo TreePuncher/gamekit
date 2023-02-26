@@ -59,26 +59,40 @@ void MaterialResource::SetResourceGUID(uint64_t IN_guid) noexcept
 /************************************************************************************************/
 
 
-class MaterialInspector : public IComponentInspector
+struct MaterialEditorComponent final : public IEditorComponent
 {
-public:
-	MaterialInspector() {}
-	~MaterialInspector() {}
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
+	{
+		auto& material = static_cast<FlexKit::MaterialView&>(component);
 
-	FlexKit::ComponentID	ComponentID()					final { return FlexKit::MaterialComponentID; }
-	std::string				ComponentName() const noexcept	final { return "Material"; }
+		panelCtx.AddHeader("Material");
 
-	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
+		auto passes = material.GetPasses();
+		auto subMaterials = material.HasSubMaterials();
+		panelCtx.AddText("Passes");
 
-private:
-};
+		if (passes.size())
+		{
+			panelCtx.PushVerticalLayout();
+			for (auto& pass : passes)
+				panelCtx.AddText(std::string{} + std::format("{}", pass.to_uint()));
+
+			panelCtx.Pop();
+		}
+
+		if (passes.size())
+		{
+			panelCtx.PushVerticalLayout();
+			for (auto& pass : passes)
+				panelCtx.AddText(std::string{} + std::format("{}", pass.to_uint()));
+
+			panelCtx.Pop();
+		}
+		panelCtx.AddText("Pass Count" + std::format("{}", passes.size()));
+		panelCtx.AddButton("Add Pass", [&]() {});
+	}
 
 
-/************************************************************************************************/
-
-
-struct MaterialFactory : public IComponentFactory
-{
 	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
 	{
 		auto& materialComponentView = gameObject.AddView<FlexKit::MaterialView>(FlexKit::MaterialComponent::GetComponent().CreateMaterial());
@@ -87,73 +101,21 @@ struct MaterialFactory : public IComponentFactory
 		return materialComponentView;
 	}
 
+
 	inline static const std::string name = "Material";
-	const std::string& ComponentName() const noexcept { return name; }
-	FlexKit::ComponentID	ComponentID() const noexcept { return FlexKit::MaterialComponentID; }
+	const std::string&		ComponentName()	const noexcept { return name; }
+	FlexKit::ComponentID	ComponentID()	const noexcept { return FlexKit::MaterialComponentID; }
 
 	static bool Register()
 	{
-		EditorInspectorView::AddComponentFactory(std::make_unique<MaterialFactory>());
+		static MaterialEditorComponent materialComponent;
+		EditorInspectorView::AddComponent(materialComponent);
+
 		return true;
 	}
 
 	inline static bool _registered = Register();
 };
-
-void MaterialInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
-{
-	auto& material = static_cast<FlexKit::MaterialView&>(component);
-
-	panelCtx.AddHeader("Material");
-
-	auto passes = material.GetPasses();
-	auto subMaterials = material.HasSubMaterials();
-	panelCtx.AddText("Passes");
-
-	if (passes.size())
-	{
-		panelCtx.PushVerticalLayout();
-		for (auto& pass : passes)
-			panelCtx.AddText(std::string{} + std::format("{}", pass.to_uint()));
-
-		panelCtx.Pop();
-	}
-
-	if (passes.size())
-	{
-		panelCtx.PushVerticalLayout();
-		for (auto& pass : passes)
-			panelCtx.AddText(std::string{} + std::format("{}", pass.to_uint()));
-
-		panelCtx.Pop();
-	}
-	panelCtx.AddText("Pass Count" + std::format("{}", passes.size()));
-	panelCtx.AddButton("Add Pass", [&]() {});
-}
-
-/*
-class MaterialFactory : public IComponentFactory
-{
-public:
-	~MaterialFactory() {}
-
-	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
-	{
-		return gameObject.AddView<FlexKit::StringIDView>(nullptr, 0);
-	}
-
-	const std::string&		ComponentName() const noexcept { return name; }
-	FlexKit::ComponentID	ComponentID()	const noexcept { return FlexKit::MaterialComponentID; }
-
-	inline static const std::string name = "Material";
-};
-*/
-
-void RegisterMaterialInspector()
-{
-	EditorInspectorView::AddComponentFactory(std::make_unique<MaterialFactory>());
-	EditorInspectorView::AddComponentInspector<MaterialInspector>();
-}
 
 
 

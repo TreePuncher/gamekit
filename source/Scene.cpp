@@ -8,7 +8,10 @@
 #include "ProfilingUtilities.h"
 #include "SceneLoadingContext.h"
 #include "KeyValueIds.h"
+#include "TriggerComponent.h"
+#include "TriggerSlotIDs.hpp"
 
+#include <any>
 #include <cmath>
 
 namespace FlexKit
@@ -283,12 +286,12 @@ namespace FlexKit
 		Position    = rhs.Position;
 		shadowMap   = rhs.shadowMap;
 
-		forceDisableShadowMapping   = rhs.forceDisableShadowMapping;
-		state                       = rhs.state;
-		shadowState                 = rhs.shadowState;
+		forceDisableShadowMapping	= rhs.forceDisableShadowMapping;
+		state						= rhs.state;
+		shadowState					= rhs.shadowState;
 
-		rhs.shadowMap       = InvalidHandle;
-		rhs.shadowState     = nullptr;
+		rhs.shadowMap	= InvalidHandle;
+		rhs.shadowState	= nullptr;
 	}
 
 
@@ -301,15 +304,15 @@ namespace FlexKit
 		I = rhs.I;
 		R = rhs.R;
 
-		Position    = rhs.Position;
-		shadowMap   = rhs.shadowMap;
+		Position	= rhs.Position;
+		shadowMap	= rhs.shadowMap;
 
-		forceDisableShadowMapping   = rhs.forceDisableShadowMapping;
-		state                       = rhs.state;
-		shadowState                 = rhs.shadowState;
+		forceDisableShadowMapping	= rhs.forceDisableShadowMapping;
+		state						= rhs.state;
+		shadowState					= rhs.shadowState;
 
-		rhs.shadowMap       = InvalidHandle;
-		rhs.shadowState     = nullptr;
+		rhs.shadowMap		= InvalidHandle;
+		rhs.shadowState		= nullptr;
 
 		return *this;
 	}
@@ -317,11 +320,20 @@ namespace FlexKit
 
 	PointLightView::PointLightView(GameObject& gameObject, float3 color, float intensity, float radius, NodeHandle node) : light{ GetComponent().Create() }
 	{
-		auto& poingLight        = GetComponent()[light];
-		poingLight.K			= color;
-		poingLight.I			= intensity;
-		poingLight.R			= radius;
-		poingLight.Position		= node != InvalidHandle ? node : FlexKit::GetSceneNode(gameObject);
+		auto& pointLight		= GetComponent()[light];
+		pointLight.K			= color;
+		pointLight.I			= intensity;
+		pointLight.R			= radius;
+		pointLight.Position		= node != InvalidHandle ? node : FlexKit::GetSceneNode(gameObject);
+
+		auto& triggers = gameObject.AddView<TriggerView>();
+		triggers->CreateSlot(LightSetRaidusSlotID, [&gameObject](void* _ptr, uint64_t typeID)
+			{
+				FK_ASSERT(typeID == GetTypeGUID(float));
+
+				auto& pointLight = *gameObject.GetView<PointLightView>();
+				pointLight.SetRadius(*static_cast<float*>(_ptr));
+			});
 	}
 
 	float PointLightView::GetRadius() const noexcept
@@ -530,7 +542,7 @@ namespace FlexKit
 			node = GetZeroedNode();
 
 		if (!gameObject.hasView(TransformComponentID))
-			gameObject.AddView<SceneNodeView<>>(node);
+			gameObject.AddView<SceneNodeView>(node);
 
 		BrushComponentBlob brushComponent;
 		memcpy(&brushComponent, buffer, sizeof(BrushComponentBlob));
@@ -562,7 +574,12 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	
+
+	PointLight PointLightEventHandler::OnCreate()
+	{
+		return PointLight{};
+	}
+
 	void PointLightEventHandler::OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
 	{
 		PointLightComponentBlob pointLight;
@@ -1110,16 +1127,17 @@ namespace FlexKit
 
 			EXITSCOPE(FreeAsset(RHandle));
 
-			if (R != nullptr) {
+			if (R != nullptr)
+			{
 				SceneResourceBlob* sceneBlob = (SceneResourceBlob*)R;
 				char* buffer = (char*)R;
 
 				const auto blockCount = sceneBlob->blockCount;
 				
-				size_t						offset                  = 0;
-				size_t						currentBlock            = 0;
-				SceneNodeBlock*				nodeBlock               = nullptr;
-				ComponentRequirementBlock*	componentRequirement    = nullptr;
+				size_t						offset					= 0;
+				size_t						currentBlock			= 0;
+				SceneNodeBlock*				nodeBlock				= nullptr;
+				ComponentRequirementBlock*	componentRequirement	= nullptr;
 
 				while (offset < sceneBlob->ResourceSize && currentBlock < blockCount)
 				{
@@ -1175,9 +1193,9 @@ namespace FlexKit
 
 							ctx.scene.ownedGameObjects.push_back(&gameObject);
 
-							size_t itr                  = 0;
-							size_t componentOffset      = 0;
-							const size_t componentCount = entityBlock.componentCount;
+							size_t itr					= 0;
+							size_t componentOffset		= 0;
+							const size_t componentCount	= entityBlock.componentCount;
 
 							while(itr < componentCount)
 							{
@@ -1190,13 +1208,13 @@ namespace FlexKit
 								const ComponentID ID = component.componentID;
 								if (component.blockType != EntityComponentBlock) // malformed blob?
 									break;
-								else if (ID == SceneNodeView<>::GetComponentID())
+								else if (ID == SceneNodeView::GetComponentID())
 								{
 									SceneNodeComponentBlob blob;
 									memcpy(&blob, (std::byte*)block + sizeof(entityBlock) + componentOffset, sizeof(blob));
 
 									auto node = ctx.nodes[blob.nodeIdx];
-									gameObject.AddView<SceneNodeView<>>(node);
+									gameObject.AddView<SceneNodeView>(node);
 
 									if (!blob.excludeFromScene)
 										ctx.scene.AddGameObject(gameObject, node);
@@ -1235,10 +1253,14 @@ namespace FlexKit
 
 				UpdateTransforms();
 
+				for (auto& postAction : ctx.pendingActions)
+					postAction(ctx.scene);
+
+				ctx.pendingActions.clear();
+
 				return true;
 			}
 		}
-
 
 		return false;
 	}
@@ -1251,18 +1273,15 @@ namespace FlexKit
 	{
 		if (isAssetAvailable(LevelName))
 		{
-			auto RHandle = LoadGameAsset(LevelName);
-			auto R = GetAsset(RHandle);
+			auto assetHandle	= LoadGameAsset(LevelName);
+			auto asset			= GetAsset(assetHandle);
 
-			FINALLY
-			{
-				FreeAsset(RHandle);
-			}
-			FINALLYOVER
+			EXITSCOPE(FreeAsset(assetHandle));
 
-			return LoadScene(RS, ctx, R->GUID, allocator, Temp);
+			return LoadScene(RS, ctx, asset->GUID, allocator, Temp);
 		}
-		return false;
+		else
+			return false;
 	}
 
 
@@ -1279,9 +1298,9 @@ namespace FlexKit
 			Apply(*visables[entity].entity,
 				[&](PointLightView&			pointLight,
 					SceneVisibilityView&	visibility,
-					SceneNodeView<>&		sceneNode)
+					SceneNodeView&			sceneNode)
 				{
-					const auto position	    = sceneNode.GetPosition();
+					const auto position		= sceneNode.GetPosition();
 					const auto scale		= sceneNode.GetScale();
 					const auto radius		= pointLight.GetRadius();
 
@@ -1309,8 +1328,8 @@ namespace FlexKit
 				FK_LOG_9("Build BVH");
 				ProfileFunction();
 
-				bvh         = bvh.Build(*this, threadAllocator).Copy(*allocator);
-				data.bvh    = &bvh;
+				bvh			= bvh.Build(*this, threadAllocator).Copy(*allocator);
+				data.bvh	= &bvh;
 			}
 		);
 	}
@@ -1341,8 +1360,8 @@ namespace FlexKit
 				{
 
 					Apply(*visables[entity].entity,
-						[&](PointLightView&         pointLight,
-							SceneVisibilityView&    visibility)
+						[&](PointLightView&			pointLight,
+							SceneVisibilityView&	visibility)
 						{
 							tempList.emplace_back(pointLight);
 						});
@@ -1388,10 +1407,9 @@ namespace FlexKit
 				else
 				{
 					bvh->Traverse(frustum,
-						[&](VisibilityHandle intersector, auto& intersectionResult)
+						[&](VisibilityHandle intersector, auto& intersectionResult, auto gameObject)
 						{
-							GameObject& go = *visabilityComponent[intersector].entity;
-							Apply(go,
+							Apply(*gameObject,
 								[&](PointLightView& light)
 								{
 									visablePointLights.push_back(light);
@@ -1414,10 +1432,10 @@ namespace FlexKit
 		{
 		public:
 			Task(PointLightHandle IN_light, SceneBVH& IN_bvh, iAllocator& IN_allocator) :
-				iWork           {},
-				persistentMemory{ IN_allocator },
-				lightHandle     { IN_light },
-				bvh             { IN_bvh }
+				iWork				{},
+				persistentMemory	{ IN_allocator },
+				lightHandle			{ IN_light },
+				bvh					{ IN_bvh }
 			{
 				_debugID = "PointLightUpdate_Task";
 			}
@@ -1426,18 +1444,21 @@ namespace FlexKit
 			{
 				ProfileFunction();
 
-				auto& visables  = SceneVisibilityComponent::GetComponent();
-				auto& lights    = PointLightComponent::GetComponent();
+				auto& visables		= SceneVisibilityComponent::GetComponent();
+				auto& lights		= PointLightComponent::GetComponent();
 
-				auto& light         = lights[lightHandle];
-				const float3 POS    = GetPositionW(light.Position);
-				const float  r      = light.R;
+				auto& light			= lights[lightHandle];
+				const float3 POS	= GetPositionW(light.Position);
+				const float  r		= light.R;
 				AABB lightAABB{ POS - r, POS + r };
 
 				Vector<VisibilityHandle> PVS{ &threadLocalAllocator };
 
 				bvh.Traverse(lightAABB,
-					[&](VisibilityHandle visable, auto& intersionResult)
+					[&](
+						VisibilityHandle visable,
+						[[maybe_unused]] auto& intersionResult,
+						[[maybe_unused]] GameObject* )
 					{
 						PVS.push_back(visable);
 					});
@@ -1501,9 +1522,9 @@ namespace FlexKit
 
 			void Release() {}
 
-			iAllocator&             persistentMemory;
-			SceneBVH&               bvh;
-			const PointLightHandle  lightHandle = InvalidHandle;
+			iAllocator&				persistentMemory;
+			SceneBVH&				bvh;
+			const PointLightHandle	lightHandle = InvalidHandle;
 		};
 
 		return dispatcher.Add<PointLightUpdate_DATA>(
@@ -1515,18 +1536,18 @@ namespace FlexKit
 
 				data.dirtyList = Vector<PointLightHandle>{ temporaryMemory };
 			},
-			[   this,
-				&bvh                = bvh.GetData().bvh,
-				&visablePointLights = visablePointLights.GetData().pointLightShadows,
-				persistentMemory    = persistentMemory,
-				&threads            = *dispatcher.threads
+			[	this,
+				&bvh				= bvh.GetData().bvh,
+				&visablePointLights	= visablePointLights.GetData().pointLightShadows,
+				persistentMemory	= persistentMemory,
+				&threads			= *dispatcher.threads
 			]
 			(PointLightUpdate_DATA& data, iAllocator& threadAllocator)
 			{
 				ProfileFunction();
 
-				WorkBarrier     barrier{ threads, &threadAllocator };
-				Vector<Task*>   taskList{ &threadAllocator, visablePointLights.size() };
+				WorkBarrier		barrier{ threads, &threadAllocator };
+				Vector<Task*>	taskList{ &threadAllocator, visablePointLights.size() };
 
 				for (auto visableLight : visablePointLights)
 				{
@@ -1564,9 +1585,9 @@ namespace FlexKit
 			const_cast<SceneBVH&>(bvh) = bvh.Build(*this, allocator);
 
 		bvh.Traverse(v,
-			[&](auto& visable, const auto& intersectionResult)
+			[&](auto& visable, const auto& intersectionResult, [[maybe_unused]] GameObject* gameObject)
 			{
-				results.emplace_back(visable, intersectionResult.value());
+				results.emplace_back(visable, intersectionResult.value(), gameObject);
 			});
 
 		std::sort(
@@ -1610,30 +1631,30 @@ namespace FlexKit
 
 		if (material != InvalidHandle)
 		{
-			const auto albedo       = materials.GetProperty<float4>(material, GetCRCGUID(PBR_ALBEDO)).value_or(float4{ 0.7f, 0.7f, 0.7f, 0.3f });
-			const auto specular     = materials.GetProperty<float4>(material, GetCRCGUID(PBR_SPECULAR)).value_or(float4{ 1.0f, 1.0f, 1.0f, 1.0f });
-			const auto roughness    = materials.GetProperty<float>(material,  GetCRCGUID(PBR_ROUGHNESS)).value_or(1.0f);
-			const auto metal        = materials.GetProperty<float>(material,  GetCRCGUID(PBR_METAL)).value_or(1.0f);
+			const auto albedo		= materials.GetProperty<float4>(material, GetCRCGUID(PBR_ALBEDO)).value_or(float4{ 0.7f, 0.7f, 0.7f, 0.3f });
+			const auto specular		= materials.GetProperty<float4>(material, GetCRCGUID(PBR_SPECULAR)).value_or(float4{ 1.0f, 1.0f, 1.0f, 1.0f });
+			const auto roughness	= materials.GetProperty<float>(material,  GetCRCGUID(PBR_ROUGHNESS)).value_or(1.0f);
+			const auto metal		= materials.GetProperty<float>(material,  GetCRCGUID(PBR_METAL)).value_or(1.0f);
 
-			constants.MP.albedo     = albedo.xyz();
-			constants.MP.roughness  = roughness;
-			constants.MP.kS         = specular.x;
-			constants.MP.metallic   = metal;
+			constants.MP.albedo		= albedo.xyz();
+			constants.MP.roughness	= roughness;
+			constants.MP.kS			= specular.x;
+			constants.MP.metallic	= metal;
 		}
 		else
 		{
-			constants.MP.albedo     = float3{ 0.7f, 0.7f, 0.7f };
-			constants.MP.roughness  = 0.7f;
-			constants.MP.kS         = 1.0f;
-			constants.MP.metallic   = 0.0f;
+			constants.MP.albedo		= float3{ 0.7f, 0.7f, 0.7f };
+			constants.MP.roughness	= 0.7f;
+			constants.MP.kS			= 1.0f;
+			constants.MP.metallic	= 0.0f;
 		}
 
 		constants.Transform = XMMatrixToFloat4x4(WT).Transpose();
 
 		if (material != InvalidHandle)
 		{
-			const auto& textures    = MaterialComponent::GetComponent()[material].Textures;
-			constants.textureCount  = (uint32_t)textures.size();
+			const auto& textures	= MaterialComponent::GetComponent()[material].Textures;
+			constants.textureCount	= (uint32_t)textures.size();
 
 			for (auto& texture : textures)
 				constants.textureHandles[std::distance(std::begin(textures), &texture)] = uint4{ 256, 256, texture.to_uint() };

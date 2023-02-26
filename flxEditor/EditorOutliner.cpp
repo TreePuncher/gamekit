@@ -116,9 +116,9 @@ public:
 			} ctx{ scene, viewportObject };
 
 			if (!viewportObject->gameObject.hasView(FlexKit::TransformComponentID))
-				TransformComponentFactory::ConstructNode(*viewportObject, ctx);
+				TransformEditorComponent::ConstructNode(*viewportObject, ctx);
 			else if (!newParent->viewportObject->gameObject.hasView(FlexKit::TransformComponentID))
-				TransformComponentFactory::ConstructNode(*newParent->viewportObject, ctx);
+				TransformEditorComponent::ConstructNode(*newParent->viewportObject, ctx);
 
 			FlexKit::SetParentNode(
 				FlexKit::GetSceneNode(newParent->viewportObject->gameObject),
@@ -291,7 +291,7 @@ void SceneTreeWidget::UpdateLabels()
 					}
 				}
 				else
-					continue;
+					AddAtTopLevel(obj);
 			}
 			else
 				AddAtTopLevel(obj);
@@ -353,7 +353,10 @@ SceneOutliner::SceneOutliner(EditorViewport& IN_viewport, QWidget *parent) :
 	viewport.sceneChangeSlot.Connect(sceneChangeSlot,
 		[&]
 		{
-			viewport.GetScene()->OnSceneChange.Connect(sceneChangeSlot, [&] { Update();	});
+			treeWidget.clear();
+			treeWidget.widgetMap.clear();
+
+			viewport.GetScene()->OnSceneChange.Connect(sceneChangeSlot, [&] { Update(); });
 		});
 }
 
@@ -500,7 +503,7 @@ HierarchyItem* SceneOutliner::CreatePointLight() noexcept
 		ViewportGameObject&	object;
 	} ctx{ *scene, *obj->viewportObject };
 
-	PointLightFactory::ConstructPointLight(*obj->viewportObject, ctx);
+	PointLightEditorComponent::ConstructPointLight(*obj->viewportObject, ctx);
 
 	return obj;
 }
@@ -527,9 +530,6 @@ void SceneOutliner::ShowContextMenu(const QPoint& point)
 				currentItem->ClearChildren(*viewport.GetScene());
 
 				viewport.GetScene()->RemoveObject(currentItem->viewportObject);
-				treeWidget.removeItemWidget(currentItem, 0);
-
-				delete currentItem;
 			});
 		auto addChildAction = contextMenu.addAction("Create Child",
 			[&, point]()

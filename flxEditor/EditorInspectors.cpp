@@ -3,12 +3,13 @@
 #include "EditorResourcePickerDialog.h"
 #include "ResourceIDs.h"
 #include "EditorViewport.h"
+#include <TriggerSlotStrings.hpp>
 
 
 /************************************************************************************************/
 
 
-void StringIDInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
+void StringIDEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
 {
 	auto& stringIDView = static_cast<FlexKit::StringIDView&>(component);
 
@@ -33,381 +34,373 @@ void StringIDInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::Ga
 /************************************************************************************************/
 
 
-void TransformInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
+void TransformEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
 {
-	auto& sceneNodeView = static_cast<FlexKit::SceneNodeView<>&>(component);
+	auto& sceneNodeView = static_cast<FlexKit::SceneNodeView&>(component);
 
-	const auto initialPos       = sceneNodeView.GetPosition();
-	const auto initialPosLcl    = sceneNodeView.GetPositionL();
-	const auto scale            = sceneNodeView.GetScale();
-	const auto orientation      = sceneNodeView.GetOrientation();
+	const auto initialPos		= sceneNodeView.GetPosition();
+	const auto initialPosLcl	= sceneNodeView.GetPositionL();
+	const auto scale			= sceneNodeView.GetScale();
+	const auto orientation		= sceneNodeView.GetOrientation();
 
-	{
-		panelCtx.PushHorizontalLayout("Linkage", true);
+	panelCtx.PushHorizontalLayout("Linkage", true);
 
-		panelCtx.AddText(fmt::format("Node: {}", sceneNodeView.node.to_uint()));
-		panelCtx.AddText(fmt::format("Parent: {}", sceneNodeView.GetParentNode().to_uint()));
-		panelCtx.AddButton(
-			"DisconnectNode",
-			[&]()
-			{
-				sceneNodeView.SetParentNode(FlexKit::NodeHandle{ 0 });
-			});
+	panelCtx.AddText(fmt::format("Node: {}", sceneNodeView.node.to_uint()));
+	panelCtx.AddText(fmt::format("Parent: {}", sceneNodeView.GetParentNode().to_uint()));
+	panelCtx.AddButton(
+		"DisconnectNode",
+		[&]()
+		{
+			sceneNodeView.SetParentNode(FlexKit::NodeHandle{ 0 });
+		});
 
-		panelCtx.AddButton(
-			"Clear",
-			[&]()
-			{
-				sceneNodeView.SetParentNode(FlexKit::NodeHandle{ 0 });
-				sceneNodeView.SetOrientation({ 0, 0, 0, 1 });
-				sceneNodeView.SetPosition({ 0, 0, 0 });
-				sceneNodeView.SetScale({ 1, 1, 1 });
-				sceneNodeView.SetWT(FlexKit::float4x4::Identity());
-			});
-		panelCtx.Pop();
-	}
+	panelCtx.AddButton(
+		"Clear",
+		[&]()
+		{
+			sceneNodeView.SetParentNode(FlexKit::NodeHandle{ 0 });
+			sceneNodeView.SetOrientation({ 0, 0, 0, 1 });
+			sceneNodeView.SetPosition({ 0, 0, 0 });
+			sceneNodeView.SetScale({ 1, 1, 1 });
+			sceneNodeView.SetWT(FlexKit::float4x4::Identity());
+		});
+	panelCtx.Pop();
 
 	auto positionTxt = panelCtx.AddText(fmt::format("Global: [{}, {}, {}]", initialPos.x, initialPos.y, initialPos.z));
-	{
-		panelCtx.PushHorizontalLayout("", true);
+	panelCtx.PushHorizontalLayout("", true);
 
-		panelCtx.AddInputBox(
-			"X",
-			[&](std::string& txt)
+	panelCtx.AddInputBox(
+		"X",
+		[&](std::string& txt)
+		{
+			auto pos = sceneNodeView.GetPosition();
+			txt = fmt::format("{}", pos.x);
+		},
+		[&, positionTxt = positionTxt](const std::string& txt)
+		{
+			char* p;
+			const float x = strtof(txt.c_str(), &p);
+			if (!*p)
 			{
-				auto pos = sceneNodeView.GetPosition();
-				txt = fmt::format("{}", pos.x);
-			},
-			[&, positionTxt = positionTxt](const std::string& txt)
-			{
-				char* p;
-				const float x = strtof(txt.c_str(), &p);
-				if (!*p)
+				auto position = sceneNodeView.GetPosition();
+
+				if (position.x != x)
 				{
-					auto position = sceneNodeView.GetPosition();
-
-					if (position.x != x)
-					{
-						position.x = x;
-						sceneNodeView.SetPosition(position);
-						positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
-					}
+					position.x = x;
+					sceneNodeView.SetPosition(position);
+					positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
 				}
-			});
+			}
+		});
 
-		panelCtx.AddInputBox(
-			"Y",
-			[&](std::string& txt)
+	panelCtx.AddInputBox(
+		"Y",
+		[&](std::string& txt)
+		{
+			auto pos = sceneNodeView.GetPosition();
+			txt = fmt::format("{}", pos.y);
+		},
+		[&, positionTxt = positionTxt](const std::string& txt)
+		{
+			char* p;
+			const float y = strtof(txt.c_str(), &p);
+			if (!*p)
 			{
-				auto pos = sceneNodeView.GetPosition();
-				txt = fmt::format("{}", pos.y);
-			},
-			[&, positionTxt = positionTxt](const std::string& txt)
-			{
-				char* p;
-				const float y = strtof(txt.c_str(), &p);
-				if (!*p)
+				auto position = sceneNodeView.GetPosition();
+
+				if (position.y != y)
 				{
-					auto position = sceneNodeView.GetPosition();
-
-					if (position.y != y)
-					{
-						position.y = y;
-						sceneNodeView.SetPosition(position);
-						positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
-					}
+					position.y = y;
+					sceneNodeView.SetPosition(position);
+					positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
 				}
-			});
+			}
+		});
 
-		panelCtx.AddInputBox(
-			"Z",
-			[&](std::string& txt)
+	panelCtx.AddInputBox(
+		"Z",
+		[&](std::string& txt)
+		{
+			auto pos = sceneNodeView.GetPosition();
+			txt = fmt::format("{}", pos.z);
+		},
+		[&, positionTxt = positionTxt](const std::string& txt)
+		{
+			char* p;
+			const float z = strtof(txt.c_str(), &p);
+			if (!*p)
 			{
-				auto pos = sceneNodeView.GetPosition();
-				txt = fmt::format("{}", pos.z);
-			},
-			[&, positionTxt = positionTxt](const std::string& txt)
-			{
-				char* p;
-				const float z = strtof(txt.c_str(), &p);
-				if (!*p)
+				auto position = sceneNodeView.GetPosition();
+
+				if (position.z != z)
 				{
-					auto position = sceneNodeView.GetPosition();
-
-					if (position.z != z)
-					{
-						position.z = z;
-						sceneNodeView.SetPosition(position);
-						positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
-					}
+					position.z = z;
+					sceneNodeView.SetPosition(position);
+					positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
 				}
-			});
+			}
+		});
 
-		panelCtx.Pop();
-	}
-	{
-		auto lclPosTxt = panelCtx.AddText(fmt::format("Local: [{}, {}, {}]", initialPosLcl.x, initialPosLcl.y, initialPosLcl.z));
+	panelCtx.Pop();
 
-		panelCtx.PushHorizontalLayout("", true);
+	auto lclPosTxt = panelCtx.AddText(fmt::format("Local: [{}, {}, {}]", initialPosLcl.x, initialPosLcl.y, initialPosLcl.z));
 
-		panelCtx.AddInputBox(
-			"X",
-			[&](std::string& txt)
+	panelCtx.PushHorizontalLayout("", true);
+
+	panelCtx.AddInputBox(
+		"X",
+		[&](std::string& txt)
+		{
+			auto pos = sceneNodeView.GetPositionL();
+			txt = fmt::format("{}", pos.x);
+		},
+		[&, positionTxt = positionTxt](const std::string& txt)
+		{
+			char* p;
+			const float x = strtof(txt.c_str(), &p);
+			if (!*p)
 			{
-				auto pos = sceneNodeView.GetPositionL();
-				txt = fmt::format("{}", pos.x);
-			},
-			[&, positionTxt = positionTxt](const std::string& txt)
-			{
-				char* p;
-				const float x = strtof(txt.c_str(), &p);
-				if (!*p)
+				auto position = sceneNodeView.GetPositionL();
+
+				if (position.x != x)
 				{
-					auto position = sceneNodeView.GetPositionL();
-
-					if (position.x != x)
-					{
-						position.x = x;
-						sceneNodeView.SetPositionL(position);
-						positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
-					}
+					position.x = x;
+					sceneNodeView.SetPositionL(position);
+					positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
 				}
-			});
+			}
+		});
 
-		panelCtx.AddInputBox(
-			"Y",
-			[&](std::string& txt)
+	panelCtx.AddInputBox(
+		"Y",
+		[&](std::string& txt)
+		{
+			auto pos = sceneNodeView.GetPositionL();
+			txt = fmt::format("{}", pos.y);
+		},
+		[&, positionTxt = positionTxt](const std::string& txt)
+		{
+			char* p;
+			const float y = strtof(txt.c_str(), &p);
+			if (!*p)
 			{
-				auto pos = sceneNodeView.GetPositionL();
-				txt = fmt::format("{}", pos.y);
-			},
-			[&, positionTxt = positionTxt](const std::string& txt)
-			{
-				char* p;
-				const float y = strtof(txt.c_str(), &p);
-				if (!*p)
+				auto position = sceneNodeView.GetPositionL();
+
+				if (position.y != y)
 				{
-					auto position = sceneNodeView.GetPositionL();
-
-					if (position.y != y)
-					{
-						position.y = y;
-						sceneNodeView.SetPositionL(position);
-						positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
-					}
+					position.y = y;
+					sceneNodeView.SetPositionL(position);
+					positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
 				}
-			});
+			}
+		});
 
-		panelCtx.AddInputBox(
-			"Z",
-			[&](std::string& txt)
+	panelCtx.AddInputBox(
+		"Z",
+		[&](std::string& txt)
+		{
+			auto pos = sceneNodeView.GetPositionL();
+			txt = fmt::format("{}", pos.z);
+		},
+		[&, positionTxt = positionTxt](const std::string& txt)
+		{
+			char* p;
+			const float z = strtof(txt.c_str(), &p);
+			if (!*p)
 			{
-				auto pos = sceneNodeView.GetPositionL();
-				txt = fmt::format("{}", pos.z);
-			},
-			[&, positionTxt = positionTxt](const std::string& txt)
-			{
-				char* p;
-				const float z = strtof(txt.c_str(), &p);
-				if (!*p)
+				auto position = sceneNodeView.GetPositionL();
+
+				if (position.z != z)
 				{
-					auto position = sceneNodeView.GetPositionL();
-
-					if (position.z != z)
-					{
-						position.z = z;
-						sceneNodeView.SetPositionL(position);
-						positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
-					}
+					position.z = z;
+					sceneNodeView.SetPositionL(position);
+					positionTxt->setText(fmt::format("Position: [{}, {}, {}]", position.x, position.y, position.z).c_str());
 				}
-			});
+			}
+		});
 
-		panelCtx.Pop();
-	}
-	{
-		panelCtx.PushHorizontalLayout("Scale", true);
+	panelCtx.Pop();
 
-		panelCtx.AddInputBox(
-			"X",
-			[&](std::string& txt)
+	panelCtx.PushHorizontalLayout("Scale", true);
+
+	panelCtx.AddInputBox(
+		"X",
+		[&](std::string& txt)
+		{
+			auto scale = sceneNodeView.GetScale();
+			txt = fmt::format("{}", scale.x);
+		},
+		[&, positionTxt = positionTxt](const std::string& txt)
+		{
+			char* p;
+			const float x = strtof(txt.c_str(), &p);
+			if (!*p)
 			{
 				auto scale = sceneNodeView.GetScale();
-				txt = fmt::format("{}", scale.x);
-			},
-			[&, positionTxt = positionTxt](const std::string& txt)
-			{
-				char* p;
-				const float x = strtof(txt.c_str(), &p);
-				if (!*p)
+
+				if (scale.x != x)
 				{
-					auto scale = sceneNodeView.GetScale();
-
-					if (scale.x != x)
-					{
-						scale.x = x;
-						sceneNodeView.SetScale(scale);
-						positionTxt->setText(fmt::format("Scale: [{}, {}, {}]", scale.x, scale.y, scale.z).c_str());
-					}
+					scale.x = x;
+					sceneNodeView.SetScale(scale);
+					positionTxt->setText(fmt::format("Scale: [{}, {}, {}]", scale.x, scale.y, scale.z).c_str());
 				}
-			});
+			}
+		});
 
-		panelCtx.AddInputBox(
-			"Y",
-			[&](std::string& txt)
+	panelCtx.AddInputBox(
+		"Y",
+		[&](std::string& txt)
+		{
+			auto scale = sceneNodeView.GetScale();
+			txt = fmt::format("{}", scale.y);
+		},
+		[&, positionTxt = positionTxt](const std::string& txt)
+		{
+			char* p;
+			const float y = strtof(txt.c_str(), &p);
+			if (!*p)
 			{
-				auto scale = sceneNodeView.GetScale();
-				txt = fmt::format("{}", scale.y);
-			},
-			[&, positionTxt = positionTxt](const std::string& txt)
-			{
-				char* p;
-				const float y = strtof(txt.c_str(), &p);
-				if (!*p)
+				auto scale = sceneNodeView.GetPositionL();
+
+				if (scale.y != y)
 				{
-					auto scale = sceneNodeView.GetPositionL();
-
-					if (scale.y != y)
-					{
-						scale.y = y;
-						sceneNodeView.SetScale(scale);
-						positionTxt->setText(fmt::format("Scale: [{}, {}, {}]", scale.x, scale.y, scale.z).c_str());
-					}
+					scale.y = y;
+					sceneNodeView.SetScale(scale);
+					positionTxt->setText(fmt::format("Scale: [{}, {}, {}]", scale.x, scale.y, scale.z).c_str());
 				}
-			});
+			}
+		});
 
-		panelCtx.AddInputBox(
-			"Z",
-			[&](std::string& txt)
+	panelCtx.AddInputBox(
+		"Z",
+		[&](std::string& txt)
+		{
+			auto scale = sceneNodeView.GetScale();
+			txt = fmt::format("{}", scale.z);
+		},
+		[&, positionTxt = positionTxt](const std::string& txt)
+		{
+			char* p;
+			const float z = strtof(txt.c_str(), &p);
+			if (!*p)
 			{
-				auto scale = sceneNodeView.GetScale();
-				txt = fmt::format("{}", scale.z);
-			},
-			[&, positionTxt = positionTxt](const std::string& txt)
-			{
-				char* p;
-				const float z = strtof(txt.c_str(), &p);
-				if (!*p)
+				auto scale = sceneNodeView.GetPositionL();
+
+				if (scale.z != z)
 				{
-					auto scale = sceneNodeView.GetPositionL();
-
-					if (scale.z != z)
-					{
-						scale.z = z;
-						sceneNodeView.SetScale(scale);
-						positionTxt->setText(fmt::format("Scale: [{}, {}, {}]", scale.x, scale.y, scale.z).c_str());
-					}
+					scale.z = z;
+					sceneNodeView.SetScale(scale);
+					positionTxt->setText(fmt::format("Scale: [{}, {}, {}]", scale.x, scale.y, scale.z).c_str());
 				}
-			});
+			}
+		});
 
-		panelCtx.Pop();
-	}
-	{
-		panelCtx.PushHorizontalLayout("Orientation", true);
+	panelCtx.Pop();
+	panelCtx.PushHorizontalLayout("Orientation", true);
 
-		panelCtx.AddInputBox(
-			"X",
-			[&](std::string& txt)
+	panelCtx.AddInputBox(
+		"X",
+		[&](std::string& txt)
+		{
+			auto q = sceneNodeView.GetOrientation();
+			txt = fmt::format("{}", q.x);
+		},
+		[&, positionTxt = positionTxt](const std::string& txt)
+		{
+			char* p;
+			const float x = strtof(txt.c_str(), &p);
+			if (!*p)
 			{
 				auto q = sceneNodeView.GetOrientation();
-				txt = fmt::format("{}", q.x);
-			},
-			[&, positionTxt = positionTxt](const std::string& txt)
-			{
-				char* p;
-				const float x = strtof(txt.c_str(), &p);
-				if (!*p)
+
+				if (q.x != x)
 				{
-					auto q = sceneNodeView.GetOrientation();
-
-					if (q.x != x)
-					{
-						q.x = x;
-						sceneNodeView.SetOrientation(q);
-						positionTxt->setText(fmt::format("Scale: [{}, {}, {}, {}]", q.x, q.y, q.z, q.w).c_str());
-					}
+					q.x = x;
+					sceneNodeView.SetOrientation(q);
+					positionTxt->setText(fmt::format("Scale: [{}, {}, {}, {}]", q.x, q.y, q.z, q.w).c_str());
 				}
-			});
+			}
+		});
 
-		panelCtx.AddInputBox(
-			"Y",
-			[&](std::string& txt)
+	panelCtx.AddInputBox(
+		"Y",
+		[&](std::string& txt)
+		{
+			auto q = sceneNodeView.GetOrientation();
+			txt = fmt::format("{}", q.y);
+		},
+		[&, positionTxt = positionTxt](const std::string& txt)
+		{
+			char* p;
+			const float y = strtof(txt.c_str(), &p);
+			if (!*p)
 			{
 				auto q = sceneNodeView.GetOrientation();
-				txt = fmt::format("{}", q.y);
-			},
-			[&, positionTxt = positionTxt](const std::string& txt)
-			{
-				char* p;
-				const float y = strtof(txt.c_str(), &p);
-				if (!*p)
+				if (q.y != y)
 				{
-					auto q = sceneNodeView.GetOrientation();
-					if (q.y != y)
-					{
-						q.y = y;
-						sceneNodeView.SetOrientation(q);
-						positionTxt->setText(fmt::format("Scale: [{}, {}, {}, {}]", q.x, q.y, q.z, q.w).c_str());
-					}
+					q.y = y;
+					sceneNodeView.SetOrientation(q);
+					positionTxt->setText(fmt::format("Scale: [{}, {}, {}, {}]", q.x, q.y, q.z, q.w).c_str());
 				}
-			});
+			}
+		});
 
-		panelCtx.AddInputBox(
-			"Z",
-			[&](std::string& txt)
+	panelCtx.AddInputBox(
+		"Z",
+		[&](std::string& txt)
+		{
+			auto q = sceneNodeView.GetOrientation();
+			txt = fmt::format("{}", q.z);
+		},
+		[&, positionTxt = positionTxt](const std::string& txt)
+		{
+			char* p;
+			const float z = strtof(txt.c_str(), &p);
+			if (!*p)
 			{
 				auto q = sceneNodeView.GetOrientation();
-				txt = fmt::format("{}", q.z);
-			},
-			[&, positionTxt = positionTxt](const std::string& txt)
-			{
-				char* p;
-				const float z = strtof(txt.c_str(), &p);
-				if (!*p)
+
+				if (q.z != z)
 				{
-					auto q = sceneNodeView.GetOrientation();
-
-					if (q.z != z)
-					{
-						q.z = z;
-						sceneNodeView.SetOrientation(q);
-						positionTxt->setText(fmt::format("Scale: [{}, {}, {}, {}]", q.x, q.y, q.z, q.w).c_str());
-					}
+					q.z = z;
+					sceneNodeView.SetOrientation(q);
+					positionTxt->setText(fmt::format("Scale: [{}, {}, {}, {}]", q.x, q.y, q.z, q.w).c_str());
 				}
-			});
+			}
+		});
 
-		panelCtx.AddInputBox(
-			"W",
-			[&](std::string& txt)
+	panelCtx.AddInputBox(
+		"W",
+		[&](std::string& txt)
+		{
+			auto q = sceneNodeView.GetOrientation();
+			txt = fmt::format("{}", q.w);
+		},
+		[&, positionTxt = positionTxt](const std::string& txt)
+		{
+			char* p;
+			const float w = strtof(txt.c_str(), &p);
+			if (!*p)
 			{
 				auto q = sceneNodeView.GetOrientation();
-				txt = fmt::format("{}", q.w);
-			},
-			[&, positionTxt = positionTxt](const std::string& txt)
-			{
-				char* p;
-				const float w = strtof(txt.c_str(), &p);
-				if (!*p)
+
+				if (q.w != w)
 				{
-					auto q = sceneNodeView.GetOrientation();
-
-					if (q.w != w)
-					{
-						q.w = w;
-						sceneNodeView.SetOrientation(q);
-						positionTxt->setText(fmt::format("Scale: [{}, {}, {}, {}]", q.x, q.y, q.z, q.w).c_str());
-					}
+					q.w = w;
+					sceneNodeView.SetOrientation(q);
+					positionTxt->setText(fmt::format("Scale: [{}, {}, {}, {}]", q.x, q.y, q.z, q.w).c_str());
 				}
-			});
+			}
+		});
 
-		panelCtx.Pop();
-	}
+	panelCtx.Pop();
 }
 
 
 /************************************************************************************************/
 
 
-void VisibilityInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
+void VisibilityEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
 {
 	auto& visibility = static_cast<FlexKit::SceneVisibilityView&>(component);
 
@@ -437,7 +430,7 @@ void VisibilityInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::
 /************************************************************************************************/
 
 
-void PointLightInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
+void PointLightEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
 {
 	auto& pointLight = static_cast<FlexKit::PointLightView&>(component);
 
@@ -487,12 +480,12 @@ void PointLightInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::
 /************************************************************************************************/
 
 
-SceneBrushInspector::SceneBrushInspector(EditorProject& IN_project, EditorViewport& IN_viewport)
-	: project   { IN_project }
-	, viewport  { IN_viewport } {}
+SceneBrushEditorComponent::SceneBrushEditorComponent(EditorProject& IN_project, EditorViewport& IN_viewport)
+	: project	{ IN_project }
+	, viewport	{ IN_viewport } {}
 
 
-void SceneBrushInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& component)
+void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& component)
 {
 	auto& brush = static_cast<FlexKit::BrushView&>(component);
 
@@ -567,9 +560,83 @@ void SceneBrushInspector::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::
 /************************************************************************************************/
 
 
+void TriggerEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
+{
+	auto& triggers = static_cast<FlexKit::TriggerView&>(component);
+
+	panelCtx.PushVerticalLayout("Available Triggers", true);
+
+	auto list = panelCtx.AddList(
+		[&triggers]
+		{
+			return triggers->triggers.size();
+		},
+		[&triggers](size_t idx, QListWidgetItem* item)
+		{
+			const uint32_t id = triggers->triggerIDs[idx];
+			auto res = TriggerIDStringMappings.find(id);
+			if (res != TriggerIDStringMappings.end())
+				item->setText(res->second.data());
+			else
+				item->setText(fmt::format("Unknown Trigger  ID: {}", id).c_str());
+		},
+		[&](QListWidget* item)
+		{
+		});
+
+	panelCtx.AddButton("Connect",
+		[&triggers, list]
+		{
+			auto data		= triggers->userData;
+			auto editorData	= std::any_cast<TriggerEditorComponent::EditorTriggerData>(&triggers->userData);
+		});
+
+	panelCtx.Pop();
+
+	panelCtx.PushVerticalLayout("Slots", true);
+
+	auto textBox = panelCtx.AddList(
+		[&triggers]
+		{
+			return triggers->actionSlots.size();
+		},
+		[list, &triggers](size_t idx, QListWidgetItem* item)
+		{
+			const uint32_t id = triggers->actionSlotIDs[idx];
+			auto res = SlotIDStringMappings.find(id);
+			if (res != SlotIDStringMappings.end())
+				item->setText(res->second.data());
+			else
+				item->setText(fmt::format("Unknown Slot ID: {}", id).c_str());
+		},
+		[&](QListWidget* item)
+		{
+		});
+
+	panelCtx.AddButton("Inspect",
+		[&triggers, list]
+		{
+		});
+
+
+	/*
+	textBox->connect(
+		list,
+		&QListWidget::itemChanged,
+		textBox,
+		[=] { textBox->update(); });
+	*/
+
+	panelCtx.Pop();
+}
+
+
+/************************************************************************************************/
+
+
 /**********************************************************************
 
-Copyright (c) 2021 - 2022 Robert May
+Copyright (c) 2021 - 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

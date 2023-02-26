@@ -59,8 +59,8 @@ public:
 /************************************************************************************************/
 
 
-using GameObject_ptr        = std::shared_ptr<FlexKit::GameObject>;
-using ProjectResource_ptr   = std::shared_ptr<ProjectResource>;
+using GameObject_ptr		= std::shared_ptr<FlexKit::GameObject>;
+using ProjectResource_ptr	= std::shared_ptr<ProjectResource>;
 
 
 class EditorScene
@@ -108,7 +108,7 @@ public:
 	void					AddScene	(EditorScene_ptr scene);
 	ProjectResource_ptr		AddResource	(FlexKit::Resource_ptr resource);
 
-	FlexKit::ResourceList GetResources() const;
+	FlexKit::ResourceList	GetResources() const;
 
 	void					RemoveResource(FlexKit::Resource_ptr resource);
 	ProjectResource_ptr		FindProjectResource(uint64_t assetID);

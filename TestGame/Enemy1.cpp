@@ -153,7 +153,7 @@ namespace FlexKit
 		auto& brushView				= gameObject.AddView<BrushView>(guraModel);
 		brushView.GetBrush().Node	= node;
 
-		auto& nodeView = gameObject.AddView<SceneNodeView<>>(controllerNode);
+		auto& nodeView = gameObject.AddView<SceneNodeView>(controllerNode);
 
 		gameObject.AddView<CharacterControllerView>(desc.layer, desc.initialPos, controllerNode);
 		gameObject.AddView<Enemey_1_View>(Enemy1_state{ &gameObject, desc.layer });

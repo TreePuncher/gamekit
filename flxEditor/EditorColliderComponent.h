@@ -7,6 +7,10 @@
 #include "type.h"
 
 
+
+/************************************************************************************************/
+
+
 struct Collider
 {
 	FlexKit::StaticBodyShape	shape;
@@ -24,6 +28,10 @@ struct StaticColliderEditorData
 	std::vector<Collider>	colliders;
 	uint64_t				editorId;
 };
+
+
+/************************************************************************************************/
+
 
 class EditorColliderComponent :
 	public FlexKit::Serializable<EditorColliderComponent, FlexKit::EntityComponent, FlexKit::StaticBodyComponentID>
@@ -47,6 +55,10 @@ public:
 	inline static RegisterConstructorHelper<EditorColliderComponent, FlexKit::StaticBodyComponentID> registered{};
 };
 
+
+/************************************************************************************************/
+
+
 class EditorRigidBodyComponent :
 	public FlexKit::Serializable<EditorRigidBodyComponent, FlexKit::EntityComponent, FlexKit::RigidBodyComponentID>
 {
@@ -66,12 +78,19 @@ public:
 	inline static RegisterConstructorHelper<EditorColliderComponent, FlexKit::RigidBodyComponentID> registered{};
 };
 
+
+/************************************************************************************************/
+
+
 class EditorViewport;
 class EditorProject;
+
 
 void RegisterColliderInspector  (EditorViewport& viewport, EditorProject& project);
 void RegisterRigidBodyInspector (EditorViewport& viewport, EditorProject& project);
 
+
+/************************************************************************************************/
 
 
 /**********************************************************************
