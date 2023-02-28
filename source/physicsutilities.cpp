@@ -1476,6 +1476,7 @@ namespace FlexKit
 			},
 			[]
 			{
+				FK_LOG_WARNING("Failed to retrieve character controller node");
 				return (NodeHandle)InvalidHandle;
 			});
 	}
@@ -1489,6 +1490,7 @@ namespace FlexKit
 			},
 			[]
 			{
+				FK_LOG_WARNING("Failed to retrieve character controller handle");
 				return (CharacterControllerHandle)InvalidHandle;
 			});
 	}

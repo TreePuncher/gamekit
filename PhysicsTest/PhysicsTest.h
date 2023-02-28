@@ -102,6 +102,7 @@ public:
 
 	FlexKit::InputMap						inputMap;
 	FlexKit::GameObject						cameraRig;
+	FlexKit::GameObject						character;
 
 	FlexKit::GameObject						floorCollider;
 

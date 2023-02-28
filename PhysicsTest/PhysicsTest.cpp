@@ -6,6 +6,7 @@
 #include <imgui.h>
 #include <PhysicsDebugVis.h>
 #include <TriggerSlotIDs.hpp>
+#include <ScriptingRuntime.h>
 
 
 using namespace FlexKit;
@@ -102,41 +103,41 @@ void SpawnFactory::OnCreateView(
 PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
 	FrameworkState{ IN_framework },
 
-	animators{ framework.core.GetBlockMemory() },
-	brushes{ framework.core.GetBlockMemory(), framework.GetRenderSystem() },
-	cameras{ framework.core.GetBlockMemory() },
-	sceneNodes{ },
-	materials{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
-	visibilityComponent{ framework.core.GetBlockMemory() },
-	pointLights{ framework.core.GetBlockMemory() },
-	orbitCameras{ framework.core.GetBlockMemory() },
-	pointLightShadowMaps{ framework.core.GetBlockMemory() },
-	ikComponent{ framework.core.GetBlockMemory() },
-	skeletons{ framework.core.GetBlockMemory() },
-	stringIDs{ framework.core.GetBlockMemory() },
-	triggers{ framework.core.GetBlockMemory(), framework.core.GetBlockMemory() },
+	animators				{ framework.core.GetBlockMemory() },
+	brushes					{ framework.core.GetBlockMemory(), framework.GetRenderSystem() },
+	cameras					{ framework.core.GetBlockMemory() },
+	sceneNodes				{ },
+	materials				{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
+	visibilityComponent		{ framework.core.GetBlockMemory() },
+	pointLights				{ framework.core.GetBlockMemory() },
+	orbitCameras			{ framework.core.GetBlockMemory() },
+	pointLightShadowMaps	{ framework.core.GetBlockMemory() },
+	ikComponent				{ framework.core.GetBlockMemory() },
+	skeletons				{ framework.core.GetBlockMemory() },
+	stringIDs				{ framework.core.GetBlockMemory() },
+	triggers				{ framework.core.GetBlockMemory(), framework.core.GetBlockMemory() },
 
-	physx{ framework.core.Threads, framework.core.GetBlockMemory() },
-	rigidBodies{ physx },
-	staticBodies{ physx },
-	characterController{ physx, framework.core.GetBlockMemory() },
+	physx					{ framework.core.Threads, framework.core.GetBlockMemory() },
+	rigidBodies				{ physx },
+	staticBodies			{ physx },
+	characterController		{ physx, framework.core.GetBlockMemory() },
 
-	renderer{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
-	textureStreamingEngine{ framework.GetRenderSystem(), framework.core.GetBlockMemory() },
+	renderer				{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
+	textureStreamingEngine	{ framework.GetRenderSystem(), framework.core.GetBlockMemory() },
 
-	gbuffer{ { 1920, 1080 }, framework.GetRenderSystem() },
-	depthBuffer{ framework.GetRenderSystem(), { 1920, 1080 } },
-	renderWindow{},
+	gbuffer			{ { 1920, 1080 }, framework.GetRenderSystem() },
+	depthBuffer		{ framework.GetRenderSystem(), { 1920, 1080 } },
+	renderWindow	{ },
 
-	constantBuffer{ framework.GetRenderSystem().CreateConstantBuffer(64 * MEGABYTE, false) },
-	vertexBuffer{ framework.GetRenderSystem().CreateVertexBuffer(64 * MEGABYTE, false) },
-	runOnceQueue{ framework.core.GetBlockMemory() },
-	debugUI{ framework.core.RenderSystem, framework.core.GetBlockMemory() },
+	constantBuffer	{ framework.GetRenderSystem().CreateConstantBuffer(64 * MEGABYTE, false) },
+	vertexBuffer	{ framework.GetRenderSystem().CreateVertexBuffer(64 * MEGABYTE, false) },
+	runOnceQueue	{ framework.core.GetBlockMemory() },
+	debugUI			{ framework.core.RenderSystem, framework.core.GetBlockMemory() },
 
-	inputMap{ framework.core.GetBlockMemory() },
+	inputMap		{ framework.core.GetBlockMemory() },
 
-	portalComponent{ framework.core.GetBlockMemory(), this },
-	spawnComponent{ framework.core.GetBlockMemory() }
+	portalComponent	{ framework.core.GetBlockMemory(), this },
+	spawnComponent	{ framework.core.GetBlockMemory() }
 {
 	auto& rs = IN_framework.GetRenderSystem();
 	rs.RegisterPSOLoader(DRAW_LINE_PSO, { &rs.Library.RS6CBVs4SRVs, CreateDrawLineStatePSO });
@@ -144,13 +145,19 @@ PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
 
 	RegisterPhysicsDebugVis(framework.GetRenderSystem());
 	AddAssetFile(R"(assets\spawnRoom2.gameres)");
+	AddAssetFile(R"(assets\MainCharacterPrefab.gameres)");
+
+	InitiateScriptRuntime();
+
+	RegisterMathTypes(GetScriptEngine(), framework.core.GetBlockMemory());
+	RegisterRuntimeAPI(GetScriptEngine());
 
 	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
 		renderWindow = std::move(res.value());
 
 	EventNotifier<>::Subscriber sub;
-	sub.Notify = &FlexKit::EventsWrapper;
-	sub._ptr = &framework;
+	sub.Notify		= &FlexKit::EventsWrapper;
+	sub._ptr		= &framework;
 
 	renderWindow.Handler->Subscribe(sub);
 	renderWindow.SetWindowTitle("Physics Test");
@@ -169,7 +176,24 @@ PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
 	SetCameraAspectRatio(cameraHandle, renderWindow.GetAspectRatio());
 	SetCameraFOV(cameraHandle, (float)FlexKit::pi / 4.0f);
 
+	auto loadPrefabRes = FlexKit::LoadPrefab(character, 21536, framework.core.GetBlockMemory());
+	level->scene.AddGameObject(character);
+
+	auto& material = character.AddView<MaterialView>();
+	auto material1 = material.CreateSubMaterial();
+	auto material2 = material.CreateSubMaterial();
+	auto material3 = material.CreateSubMaterial();
+	SetMaterialHandle(character, material.handle);
+
+	auto& materials = MaterialComponent::GetComponent();
+	material.Add2Pass(GBufferPassID);
+	materials.Add2Pass(material1, GBufferPassID);
+	materials.Add2Pass(material2, GBufferPassID);
+	materials.Add2Pass(material3, GBufferPassID);
+
 	activeCamera = cameraHandle;
+
+	SetParentNode(character, tpc->objectNode);
 
 	auto res = level->scene.Query(framework.core.GetTempMemory(), GameObjectReq{}, SceneNodeReq{}, ROStringQuery{ "guramesh" });
 
@@ -195,6 +219,7 @@ PhysicsTest::~PhysicsTest()
 {
 	cameraRig.Release();
 	ReleaseAllLevels();
+	ReleaseScriptRuntime();
 }
 
 

@@ -1114,6 +1114,15 @@ namespace FlexKit
 		);
 	}
 
+	void SetParentNode(GameObject& go, NodeHandle node)
+	{
+		return Apply(go,
+			[&](SceneNodeView& nodeView)
+			{
+				nodeView.SetParentNode(node);
+			});
+	}
+
 
 	/************************************************************************************************/
 
