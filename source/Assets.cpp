@@ -143,12 +143,13 @@ namespace FlexKit
 			ResourceGUIDs.Allocator		= nullptr;
 		}
 
+
 		Vector<ResourceTable*>		Tables;
 		Vector<ResourceDirectory>	ResourceFiles;
 		Vector<Resource*>			ResourcesLoaded;
 		Vector<GUID_t>				ResourceGUIDs;
 		iAllocator*					ResourceMemory;
-		AssetFailureHandler			failureHandler = [](GUID_t) -> AssetHandle { return INVALIDHANDLE; };
+		AssetFailureHandler			failureHandler = [](AssetIdentifier) -> AssetHandle { return INVALIDHANDLE; };
 	}inline Resources;
 
 
@@ -603,7 +604,14 @@ namespace FlexKit
 			}
 		}
 
-		return false;
+		auto res = Resources.failureHandler(ID);
+		if (res != INVALIDHANDLE)
+		{
+			FreeAsset(res);
+			return true;
+		}
+		else
+			return false;
 	}
 
 
@@ -624,7 +632,14 @@ namespace FlexKit
 			}
 		}
 
-		return false;
+		auto res = Resources.failureHandler(ID);
+		if (res != INVALIDHANDLE)
+		{
+			FreeAsset(res);
+			return true;
+		}
+		else
+			return false;
 	}
 
 

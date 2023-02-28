@@ -132,8 +132,30 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 							FlexKit::AddAssetBuffer((FlexKit::Resource*)buffer);
 
 							// Create Script Object
-							auto scriptResource = std::make_shared<ScriptResource>();
-							auto context        = scriptEngine.BuildModule(scriptResource->source);
+							auto scriptResource		= std::make_shared<ScriptResource>();
+							scriptResource->source	=
+
+R"(
+class EmptyAnimatorObject : AnimatorInterface
+{
+	void PreUpdate(GameObject@ object, double dt)
+	{
+	}
+
+	void PostUpdate(GameObject@ object, double dt)
+	{
+	}
+};
+
+EmptyAnimatorObject object;
+
+EmptyAnimatorObject@ InitiateAnimator(GameObject@)
+{
+	return object;
+}
+)";
+
+							auto context		= scriptEngine.BuildModule(scriptResource->source);
 
 							project.AddResource(scriptResource);
 							codeEditor->SetResource(scriptResource);
@@ -357,7 +379,7 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 	auto toggleSkeletonOverlay	= viewMenu->addAction("Skeleton");
 	auto toggleTurnTable		= viewMenu->addAction("Turntable");
 	auto toggleAnimation		= viewMenu->addAction("Animation");
-	auto toggleQDTree			= viewMenu->addAction("QT Tree vis");
+	auto toggleQDTree			= viewMenu->addAction("KD Tree Debug Vis");
 	auto boundingVolumeVis		= viewMenu->addAction("Brush Bounding Volume");
 	auto subMeshVolumesVis		= viewMenu->addAction("SubMesh Bounding Volumes");
 

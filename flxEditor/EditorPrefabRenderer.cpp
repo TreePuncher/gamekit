@@ -296,14 +296,14 @@ void EditorPrefabPreview::RenderStatic(
 			using namespace FlexKit;
 			auto brush = GetBrush(gameObject);
 
-			if (!brush || brush->meshes.empty() || brush->material == FlexKit::InvalidHandle)
+			if (!brush || brush->meshes.empty())
 				return;
 
 			auto materialHndl	= brush->material;
 			auto constants		= brush->GetConstants();
 
-			auto& materials			= MaterialComponent::GetComponent();
-			const auto materialData	= MaterialComponent::GetComponent()[materialHndl];
+			//auto& materials			= MaterialComponent::GetComponent();
+			//const auto materialData	= MaterialComponent::GetComponent()[materialHndl];
 			auto skeleton			= FlexKit::GetSkeleton(gameObject);
 			auto poseState			= FlexKit::GetPoseState(gameObject);
 

@@ -317,6 +317,7 @@ namespace FlexKit
 	float3		GetScale(NodeHandle node);
 
 	NodeHandle	GetParentNode(GameObject& go);
+	void		SetParentNode(GameObject& go, NodeHandle);
 	void		EnableScale(GameObject& go, bool scale);
 
 	void		Pitch(GameObject& go, float theta);

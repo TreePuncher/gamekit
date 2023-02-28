@@ -220,6 +220,8 @@ bool gltfImporter::Import(const std::string fileDir)
 /************************************************************************************************/
 
 
+template<class... Ts> struct Overloaded : Ts... { using Ts::operator()...; };
+
 
 EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 	qtApp				{ IN_qtApp },
@@ -311,22 +313,43 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 	for (auto& gadget : scripts->GetGadgets())
 		mainWindow.RegisterGadget(&gadget);
 
+
 	FlexKit::SetLoadFailureHandler(
-		[&](FlexKit::GUID_t guid) -> FlexKit::AssetHandle
+		[&](FlexKit::AssetIdentifier identifier) -> FlexKit::AssetHandle
 		{
-			for(auto& res : project.resources)
-				if (res->resource->GetResourceGUID() == guid)
-				{
-					auto blob = res->resource->CreateBlob();
-					FlexKit::AddAssetBuffer((FlexKit::Resource*)blob.buffer);
+			auto loadAsset = [&](FlexKit::iResource* resource)  -> FlexKit::AssetHandle
+			{
+				auto blob = resource->CreateBlob();
+				FlexKit::AddAssetBuffer((FlexKit::Resource*)blob.buffer);
 
-					blob.buffer = nullptr;
-					return FlexKit::LoadGameAsset(guid);
-				}
+				blob.buffer = nullptr;
 
-			return INVALIDHANDLE;
+				return FlexKit::LoadGameAsset(resource->GetResourceGUID());
+			};
+
+			return std::visit(
+				Overloaded{
+					[&, loadAsset](FlexKit::GUID_t guid) -> FlexKit::AssetHandle
+					{
+						for (auto& res : project.resources)
+							if (res->resource->GetResourceGUID() == guid)
+								return loadAsset(res->resource.get());
+
+						return INVALIDHANDLE;
+					},
+					[&, loadAsset](const char* string) -> FlexKit::AssetHandle
+					{
+						const std::string_view ID{ string };
+
+						for (auto& res : project.resources)
+							if (res->resource->GetResourceID() == ID)
+								return loadAsset(res->resource.get());
+
+						return INVALIDHANDLE;
+					},
+					[](auto) -> FlexKit::AssetHandle { return INVALIDHANDLE; }
+				}, identifier);
 		});
-
 
 	mainWindow.AddSceneOutliner();
 	mainWindow.AddInspector();

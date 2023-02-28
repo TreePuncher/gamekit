@@ -99,12 +99,19 @@ FlexKit::UpdateTask* SortTest::Update(FlexKit::EngineCore& core, FlexKit::Update
 
 	auto str = fmt::format("Mean Sort Time: {}ms\n", meanTime / 1000.0);
 	ImGui::Text(str.c_str());
-	ImPlot::BeginPlot("Timing History");
-	ImPlot::PlotLine("", graph_x, graph_y, (int)samples.size());
-	ImPlot::EndPlot();
-	ImPlot::BeginPlot("Timing Histogram");
-	ImPlot::PlotHistogram("", graph_y, (int)samples.size(), -2, true, false);
-	ImPlot::EndPlot();
+
+	if (ImPlot::BeginPlot("Timing History"))
+	{
+		ImPlot::PlotLine("", graph_x, graph_y, (int)samples.size());
+		ImPlot::EndPlot();
+	}
+
+	if (ImPlot::BeginPlot("Timing Histogram"))
+	{
+		ImPlot::PlotHistogram("", graph_y, (int)samples.size(), -2, true, false);
+		ImPlot::EndPlot();
+	}
+
 	ImGui::End();
 	ImGui::EndFrame();
 	ImGui::Render();

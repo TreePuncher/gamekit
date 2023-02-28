@@ -94,7 +94,8 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	using AssetFailureHandler = TypeErasedCallable<AssetHandle(AssetHandle)>;
+	using AssetIdentifier = std::variant<const char*, GUID_t>;
+	using AssetFailureHandler = TypeErasedCallable<AssetHandle (AssetIdentifier)>;
 	struct ResourceTable;
 
 	FLEXKITAPI void			InitiateAssetTable	(iAllocator* Memory);

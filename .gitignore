@@ -5,22 +5,20 @@ builds/*
 Dependencies/*
 CodeGraphData/*
 .vs/*
-x64/*
-x86/*
-Debug/*
-Release/*
+**/x64/*
+**/x86/*
 flxEditor/x64/**
 TestGame/obj/**
 SignalsAndSlotsTest/x64/**
-EditorWinUI/Generated Files/winrt
 packages
 vcpkg_installed
 */VTune Profiler Results/**
-ThirdParty/*
-Tessellation/x64/**
-FlexKitResourceCompiler/obj/**
-Temp/*
-HairRenderingExample/x64/*
+**/Debug/*
+**/Release/*
+**/ThirdParty/*
+**/Temp/*
+**/Generated Files/*
+**/obj/*
 
 # files #
 *.tlog
