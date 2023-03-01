@@ -179,7 +179,7 @@ namespace FlexKit
 	class PointLightView : public ComponentView_t<PointLightComponent>
 	{
 	public:
-		PointLightView(GameObject& gameObject, float3 color = { 1, 1, 1 }, float intensity = 100, float radius = 100, NodeHandle node = InvalidHandle);
+		PointLightView(GameObject& gameObject, float3 color = { 1, 1, 1 }, float intensity = 100, float radius = 100, NodeHandle node = InvalidHandle, bool triggerLess = false);
 
 
 		float3		GetK();
@@ -240,55 +240,169 @@ namespace FlexKit
 		}
 	};
 
-	using SceneVisibilityComponent = BasicComponent_t<VisibilityFields, VisibilityHandle, SceneVisibilityComponentID>;
 
-	class SceneVisibilityView : public ComponentView_t<SceneVisibilityComponent>
+	class SceneVisibilityComponent : public Component<SceneVisibilityComponent, SceneVisibilityComponentID>
 	{
 	public:
-		SceneVisibilityView(GameObject& go, const NodeHandle node, const SceneHandle scene) :
-			visibility	{ GetComponent().Create(VisibilityFields{}) }
+		template<typename ... TY_args>
+		SceneVisibilityComponent(iAllocator* allocator, TY_args&&... args) :
+			elements		{  allocator },
+			handles			{  allocator } {}
+
+
+		SceneVisibilityComponent(iAllocator* allocator) :
+			elements		{  allocator },
+			handles			{  allocator } {}
+
+
+		~SceneVisibilityComponent()
 		{
-			auto& vis_ref	= GetComponent()[visibility];
-			vis_ref.entity	= &go;
-			vis_ref.node	= node;
-			vis_ref.scene	= scene;
+			elements.Release();
 		}
 
 
-		~SceneVisibilityView() override
+		struct ElementData
 		{
-			GetComponent().Remove(visibility);
-			visibility = InvalidHandle;
+			VisibilityHandle handle;
+			VisibilityFields componentData;
+		};
+
+
+		VisibilityHandle Create(const VisibilityFields& initial)
+		{
+			auto handle		= handles.GetNewHandle();
+			handles[handle] = (index_t)elements.push_back({ handle, initial });
+
+			return handle;
 		}
 
 
-		BoundingSphere GetBoundingSphere() const
+		VisibilityHandle Create(VisibilityFields&& initial)
 		{
-			return GetComponent()[visibility].boundingSphere;
+			auto handle = handles.GetNewHandle();
+			handles[handle] = (index_t)elements.emplace_back(handle, initial);
+
+			return handle;
 		}
 
 
-		void SetBoundingSphere(const BoundingSphere boundingSphere)
+		VisibilityHandle Create()
 		{
-			GetComponent()[visibility].boundingSphere = boundingSphere;
+			auto handle = handles.GetNewHandle();
+			handles[handle] = (index_t)elements.emplace_back(handle);
+
+			return handle;
 		}
 
 
-		void SetVisable(bool v)
+		void AddComponentView(GameObject& GO, ValueMap values, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
 		{
-			GetComponent()[visibility].visable = v;
 		}
 
 
-		void SetTransparency(bool t)
+		void FreeComponentView(void* _ptr) final
 		{
-			GetComponent()[visibility].transparent = t;
+			static_cast<View*>(_ptr)->Release();
 		}
 
-		operator VisibilityHandle() { return visibility; }
 
-		VisibilityHandle visibility;
+		void Remove(VisibilityHandle handle)
+		{
+			auto lastElement			= std::move(elements.back());
+			elements[handles[handle]]	= std::move(lastElement);
+			elements.pop_back();
+
+			handles[lastElement.handle] = handles[handle];
+			handles.RemoveHandle(handle);
+		}
+
+
+		Vector<VisibilityFields> GetElements_copy(iAllocator* tempMemory) const
+		{
+			Vector<VisibilityFields>	out{ tempMemory };
+
+			for (auto& I : elements)
+				out.push_back({ I.componentData });
+
+			return out;
+		}
+
+
+		auto& operator[] (VisibilityHandle handle)
+		{
+			return elements[handles[handle]].componentData;
+		}
+
+		auto operator[] (VisibilityHandle handle) const
+		{
+			return elements[handles[handle]].componentData;
+		}
+
+		auto begin()
+		{
+			return elements.begin();
+		}
+
+		auto end()
+		{
+			return elements.end();
+		}
+
+		
+		class View : public ComponentView_t<SceneVisibilityComponent>
+		{
+		public:
+			View(GameObject& go, const NodeHandle node, const SceneHandle scene) :
+				visibility	{ GetComponent().Create(VisibilityFields{}) }
+			{
+				auto& vis_ref	= GetComponent()[visibility];
+				vis_ref.entity	= &go;
+				vis_ref.node	= node;
+				vis_ref.scene	= scene;
+			}
+
+
+			void Release()
+			{
+				GetComponent().Remove(visibility);
+				visibility = InvalidHandle;
+			}
+
+
+			BoundingSphere GetBoundingSphere() const
+			{
+				return GetComponent()[visibility].boundingSphere;
+			}
+
+
+			void SetBoundingSphere(const BoundingSphere boundingSphere)
+			{
+				GetComponent()[visibility].boundingSphere = boundingSphere;
+			}
+
+
+			void SetVisable(bool v)
+			{
+				GetComponent()[visibility].visable = v;
+			}
+
+
+			void SetTransparency(bool t)
+			{
+				GetComponent()[visibility].transparent = t;
+			}
+
+			operator VisibilityHandle() { return visibility; }
+
+			VisibilityHandle visibility;
+		};
+
+		HandleUtilities::HandleTable<VisibilityHandle>	handles;
+		Vector<ElementData>								elements;
 	};
+
+
+	using SceneVisibilityView = SceneVisibilityComponent::View;
 
 
 	/************************************************************************************************/

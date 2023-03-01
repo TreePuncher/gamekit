@@ -548,7 +548,7 @@ void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 			auto meshes = brush.GetMeshes();
 
 			if(meshes.size() > item)
-				brush.RemoveMesh(brush.GetMeshes()[item]);
+				brush.RemoveMesh(meshes[item]);
 		});
 
 	panelCtx.Pop();

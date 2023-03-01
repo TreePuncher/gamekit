@@ -4978,7 +4978,10 @@ private:
 		{
 			constexpr size_t alignedSize = CalculateOffset<_TY>();
 			if (pushBufferUsed + alignedSize > pushBufferSize)
+			{
+				FK_LOG_ERROR("Failed To Push Constants");
 				return -1;
+			}
 
 			const size_t offset = pushBufferUsed;
 			memcpy(buffer + pushBufferBegin + offset, (char*)&data, sizeof(data));

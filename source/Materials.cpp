@@ -132,6 +132,9 @@ namespace FlexKit
 
 	void MaterialComponent::ReleaseMaterial(MaterialHandle material)
 	{
+		if (material == InvalidHandle)
+			return;
+
 		const auto idx = handles[material];
 		std::atomic_ref refCount(materials[idx].refCount);
 
@@ -346,7 +349,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	MaterialComponent::MaterialView::~MaterialView()
+	void MaterialComponent::MaterialView::Release()
 	{
 		GetComponent().ReleaseMaterial(handle);
 	}

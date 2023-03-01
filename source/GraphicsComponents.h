@@ -27,6 +27,8 @@ namespace FlexKit
 
 		~CameraComponent() {}
 
+		void FreeComponentView(void* _ptr) final;
+
 		CameraHandle CreateCamera(
 			const float	FOV			= pi/3,
 			const float	AspectRatio = 1.0f,
@@ -34,7 +36,7 @@ namespace FlexKit
 			const float	Far			= 10000.0f,
 			const bool	Invert		= false);
 
-		void							ReleaseCamera(CameraHandle camera);
+		void							Release(CameraHandle camera);
 
 		Camera&							GetCamera(CameraHandle);
 
@@ -119,57 +121,52 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct DefaultCameraInteractor
-	{
-		using ParentType_t = void*;
-
-		template<typename TY>
-		void OnDirty(TY* cameraBehavior, void*)
-		{
-			CameraComponent::GetComponent().MarkDirty(cameraBehavior->camera);
-		}
-	};
-
-	template<typename TY_Interactor = DefaultCameraInteractor>
-	class CameraView_t : 
-		public ComponentView_t<CameraComponent>,
-		public DefaultCameraInteractor
+	class CameraView : 
+		public ComponentView_t<CameraComponent>
 	{
 	public:
-		CameraView_t(GameObject& go, CameraHandle IN_camera = CameraComponent::GetComponent().CreateCamera()) :
+		CameraView(GameObject& go, CameraHandle IN_camera = CameraComponent::GetComponent().CreateCamera()) :
 			camera{IN_camera}{}
 
 
-		~CameraView_t()
+		void Release()
 		{
-			GetComponent().ReleaseCamera(camera);
+			GetComponent().Release(camera);
 		}
 
 
 		void SetCameraAspectRatio(float AspectRatio)
 		{
 			GetComponent().SetCameraAspectRatio(camera, AspectRatio);
-			_CameraDirty();
+			GetComponent().MarkDirty(camera);
 		}
 
 
 		void SetCameraNode(NodeHandle Node)
 		{
 			GetComponent().SetCameraNode(camera, Node);
-			_CameraDirty();
+			GetComponent().MarkDirty(camera);
 		}
 
 
 		void SetCameraFOV(float r)
 		{
 			GetComponent().SetCameraFOV(camera, r);
-			_CameraDirty();
+			GetComponent().MarkDirty(camera);
 		}
+
+
+		void MarkCameraDirty()
+		{
+			GetComponent().MarkDirty(camera);
+		}
+
 
 		NodeHandle GetNode() const
 		{
 			return GetComponent().GetCameraNode(camera);
 		}
+
 
 		NodeHandle GetCameraNode() const
 		{
@@ -190,13 +187,6 @@ namespace FlexKit
 
 
 		CameraHandle camera;
-
-	protected:
-
-		void _CameraDirty()
-		{
-			OnDirty(this, static_cast<typename TY_Interactor::ParentType_t>(this));
-		}
 	};
 
 
@@ -238,8 +228,6 @@ namespace FlexKit
 		PassHandle	pass;
 		PVS			pvs;
 	};
-
-	using CameraView = CameraView_t<>;
 
 
 	/************************************************************************************************/

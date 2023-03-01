@@ -20,8 +20,8 @@ int main()
 		auto& state = app->PushState<HairRenderingTest>();
 
 		app->GetCore().FPSLimit		= 144;
-		app->GetCore().FrameLock	= false;
-		app->GetCore().vSync		= false;
+		app->GetCore().FrameLock	= true;
+		app->GetCore().vSync		= true;
 		app->Run();
 	}
 	catch (...)

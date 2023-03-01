@@ -550,6 +550,31 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	CBPushBuffer& EntityConstants::GetConstantBuffer(size_t IN_reservationSize)
+	{
+		if (reservationSize == -1)
+			reservationSize = IN_reservationSize;
+		else
+			FK_ASSERT(reservationSize == IN_reservationSize);
+
+		const auto bufferSize = IN_reservationSize * AlignedSize<Brush::VConstantsLayout>();
+		return getConstantBuffer(bufferSize);
+	}
+
+
+	CBPushBuffer& EntityConstants::GetConstantBuffer()
+	{
+		FK_ASSERT(reservationSize != -1);
+
+		const auto bufferSize = reservationSize * AlignedSize<Brush::VConstantsLayout>();
+		return getConstantBuffer(bufferSize);
+	}
+
+
+
+	/************************************************************************************************/
+
+
 	size_t GetRTPoolSize(const AvailableFeatures& features, const uint2 WH)
 	{
 		if (features.resourceHeapTier == AvailableFeatures::ResourceHeapTier::HeapTier1)
@@ -982,12 +1007,12 @@ namespace FlexKit
 					offset += Max(materials[brush.brush->material].SubMaterials.size(), 1);
 				}
 
-				resources.objects[data.constants].constantBuffer = &data.GetConstants();
+				resources.objects[data.constants].constantBuffer = &data.GetConstantBuffer(offset);
 			},
 			[](EntityConstants& data, iAllocator& localAllocator) // in parallel with all other tasks
 			{
 				auto& brushes			= data.passes.GetData().solid;
-				auto& constantBuffer	= data.GetConstants();
+				auto& constantBuffer	= data.GetConstantBuffer();
 				auto& materials			= MaterialComponent::GetComponent();
 
 				for (auto& brush : brushes)
@@ -1059,8 +1084,8 @@ namespace FlexKit
 				ctx.BeginEvent_DEBUG("Occlusion Culling");
 				ctx.BeginEvent_DEBUG("Occluder Pass");
 
-				auto& constants             = data.entityConstants.GetConstants();
-				auto ZPassConstantsBuffer   = data.reserveCB(AlignedSize<Camera::ConstantBuffer>());
+				auto& constants				= data.entityConstants.GetConstantBuffer();
+				auto ZPassConstantsBuffer	= data.reserveCB(AlignedSize<Camera::ConstantBuffer>());
 
 				const auto cameraConstants = ConstantBufferDataSet{ GetCameraConstants(camera), ZPassConstantsBuffer };
 

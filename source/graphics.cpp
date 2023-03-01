@@ -8155,6 +8155,7 @@ namespace FlexKit
 			GeometryTable.FreeList.push_back(Index);
 			GeometryTable.Geometry[Index]   = TriMesh();
 			GeometryTable.Handles[TMHandle] = -1;
+			GeometryTable.Handles.RemoveHandle(TMHandle);
 		}
 	}
 

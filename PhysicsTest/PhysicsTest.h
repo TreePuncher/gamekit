@@ -68,7 +68,12 @@ public:
 	void PostDrawUpdate(FlexKit::EngineCore&, double dT) final;
 	bool EventHandler(FlexKit::Event evt) final;
 
+	bool jumpInProgress = false;
+
 	void Action();
+	void Jump();
+	void Fall();
+
 
 	FlexKit::AnimatorComponent				animators;
 	FlexKit::CameraComponent				cameras;

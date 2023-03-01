@@ -84,7 +84,7 @@ namespace FlexKit
 				FPSTimer						= 0.0f;
 			}
 
-			if (Core.FrameLock && false)// FPS Locked
+			if (Core.FrameLock)// FPS Locked
 			{
 				auto sleepTime  = desiredFrameTime - updateDuration;
 				auto timePointA = std::chrono::high_resolution_clock::now();

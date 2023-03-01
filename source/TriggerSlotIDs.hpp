@@ -13,16 +13,19 @@ namespace FlexKit
 	constexpr uint32_t SetScaleSignalID			= GetCRCGUID(SetScaleSignalID);
 	constexpr uint32_t SetTransformSignalID		= GetCRCGUID(SetTransformSignalID);
 
+	// Scene Triggers
+	constexpr uint32_t AddedToSceneID			= GetCRCGUID(AddedToSceneID);
+	constexpr uint32_t SceneChangedSlot			= GetCRCGUID(SceneChangedSlot);
+
+
 	// Light Slot IDs
 	constexpr uint32_t LightSetRaidusSlotID		= GetTypeGUID(LightSetRaidusSlotID);
-
 
 	// Gamplay Triggers
 	constexpr uint32_t ActivateTrigger			= GetTypeGUID(ActivateTrigger);
 
 	// Gamplay Slots
 	constexpr uint32_t PortalSlot				= GetTypeGUID(PortalSlot);
-
 
 	// Collider Slots
 	constexpr uint32_t	ChangePositionStaticBodySlot	= GetTypeGUID(ChangePositionStaticBodySlot);

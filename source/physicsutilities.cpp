@@ -970,7 +970,16 @@ namespace FlexKit
 	{
 		scene->removeActor(*staticColliders.colliders[handle].actor);
 
-		staticColliders.colliders.remove_unstable(staticColliders.colliders.begin() + handle);
+		auto temp = staticColliders.colliders.back().handle;
+
+		if (temp == handle)
+			return;
+
+		staticColliders.colliders[staticColliders.handles[handle]] = staticColliders.colliders.back();
+		staticColliders.handles[temp] = staticColliders.handles[handle];
+
+		staticColliders.colliders.pop_back();
+		staticColliders.handles.RemoveHandle(handle);
 	}
 
 
@@ -1113,9 +1122,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	CameraControllerView& CreateThirdPersonCameraController(GameObject& gameObject, LayerHandle layer, iAllocator& allocator, const float R, const float H)
+	CameraControllerView& CreateThirdPersonCameraController(GameObject& gameObject, LayerHandle layer, iAllocator& allocator, const float r, const float h)
 	{
-		auto& characterController = gameObject.AddView<CharacterControllerView>(layer, float3{ 0, 10, 0 });
+		auto& characterController = gameObject.AddView<CharacterControllerView>(layer, float3{ 0, 0, 0 });
+		characterController.Resize(h);
 
 		auto& cameraController = gameObject.AddView<CameraControllerView>(
 			CameraControllerComponent::GetComponent().Create(
@@ -1387,6 +1397,98 @@ namespace FlexKit
 			},
 			[] { return (NodeHandle)InvalidHandle; });
 	}
+
+
+	/************************************************************************************************/
+
+
+	CharacterControllerComponent::CharacterControllerComponent(PhysXComponent& IN_physx, iAllocator* allocator) :
+			physx		{ IN_physx  },
+			handles		{ allocator },
+			controllers	{ allocator } {}
+
+
+	/************************************************************************************************/
+
+
+	CharacterControllerHandle CharacterControllerComponent::Create(const LayerHandle layer, GameObject& gameObject, const NodeHandle node, const float3 initialPosition, const float R, const float H)
+	{
+		auto& manager = physx.GetLayer_ref(layer).GetCharacterController();
+
+		if (!gameObject.hasView(TransformComponentID))
+			gameObject.AddView<SceneNodeView>(node);
+
+		SetPositionW(node, initialPosition + float3{0, H / 2, 0});
+
+		physx::PxCapsuleControllerDesc CCDesc;
+		CCDesc.material			= physx.GetDefaultMaterial();
+		CCDesc.radius			= R;
+		CCDesc.height			= H;
+		CCDesc.contactOffset	= 0.1f;
+		CCDesc.position			= { initialPosition.x, initialPosition.y, initialPosition.z };
+		CCDesc.climbingMode		= physx::PxCapsuleClimbingMode::eEASY;
+		CCDesc.stepOffset		= 0.2f;
+
+		auto controller = manager.createController(CCDesc);
+
+		auto newHandle	= handles.GetNewHandle();
+		auto idx		= controllers.push_back(
+			CharacterController{
+				newHandle,
+				node,
+				&gameObject,
+				layer,
+				controller
+			});
+
+		controller->setUserData(&gameObject);
+
+		handles[newHandle] = (index_t)idx;
+
+		return newHandle;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void CharacterControllerComponent::AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+	{
+		FK_ASSERT(0);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void CharacterControllerComponent::FreeComponentView(void* _ptr)
+	{
+		static_cast<CharacterControllerView*>(_ptr)->Release();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void CharacterControllerComponent::Remove(CharacterControllerHandle handle)
+	{
+		const auto idx				= handles[handle];
+		auto& characterController	= controllers[idx];
+
+		characterController.controller->release();
+		characterController = controllers.back();
+
+		controllers.pop_back();
+
+		handles[characterController.handle] = idx;
+	}
+
+
+	/************************************************************************************************/
+
+
+	PhysicsLayer&			CharacterControllerComponent::GetLayer		(LayerHandle layer)						{ return physx.GetLayer_ref(layer); }
+	CharacterController&	CharacterControllerComponent::operator[]	(CharacterControllerHandle controller)	{ return controllers[controller]; }
 
 
 	/************************************************************************************************/
@@ -1833,6 +1935,9 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	void StaticBodyComponent::AddComponentView(GameObject& gameObject, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
 	{
 		if (userValues.empty())
@@ -1938,6 +2043,18 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
+	void StaticBodyComponent::FreeComponentView(void* _ptr)
+	{
+		static_cast<StaticBodyView*>(_ptr)->Release();
+	}
+
+
+	/************************************************************************************************/
+
+
 	void StaticBodyComponent::Remove(LayerHandle layer, StaticBodyHandle sb) noexcept
 	{
 		auto& layer_ref		= GetComponent().GetLayer_ref(layer);
@@ -1960,10 +2077,13 @@ namespace FlexKit
 			layer		{ IN_layer } {}
 
 
-	StaticBodyView::~StaticBodyView()
+	void StaticBodyView::Release()
 	{
 		RemoveAll();
 		GetComponent().Remove(layer, staticBody);
+
+		layer		= InvalidHandle;
+		staticBody	= InvalidHandle;
 	}
 
 
@@ -2068,10 +2188,18 @@ namespace FlexKit
 		return physx.CreateRigidBodyCollider(gameObject, layer, pos, q);
 	}
 
+
 	void RigidBodyComponent::AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
 	{
 		FK_ASSERT(0);
 	}
+
+
+	void RigidBodyComponent::FreeComponentView(void* _ptr)
+	{
+		static_cast<RigidBodyView*>(_ptr)->Release();
+	}
+
 
 	void RigidBodyComponent::Remove(RigidBodyView& rigidBody)
 	{

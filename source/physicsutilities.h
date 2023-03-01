@@ -411,6 +411,8 @@ namespace FlexKit
 		PhysXComponent(ThreadManager& threads, iAllocator* allocator);
 		~PhysXComponent();
 
+		void FreeComponentView(void*) final {}
+
 		void							Release();
 		void							ReleaseScene				(LayerHandle);
 
@@ -622,6 +624,7 @@ namespace FlexKit
 		StaticBodyHandle Create(GameObject* gameObject, LayerHandle layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 });
 
 		void AddComponentView(GameObject& GO, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
+		void FreeComponentView(void* _ptr);
 		void Remove(LayerHandle layer, StaticBodyHandle sb) noexcept;
 
 		auto& GetLayer_ref(LayerHandle layer)
@@ -650,7 +653,7 @@ namespace FlexKit
 		StaticBodyView(GameObject& gameObject, StaticBodyHandle IN_staticBody, LayerHandle IN_layer);
 		StaticBodyView(GameObject& gameObject, LayerHandle IN_layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 });
 
-		~StaticBodyView();
+		void Release();
 
 		NodeHandle  GetNode() const;
 		GameObject& GetGameObject() const;
@@ -667,8 +670,8 @@ namespace FlexKit
 		void	SetUserData(void*) noexcept;
 		void*	GetUserData() noexcept;
 
-		const LayerHandle		layer;
-		const StaticBodyHandle	staticBody;
+		LayerHandle			layer;
+		StaticBodyHandle	staticBody;
 	};
 
 
@@ -695,9 +698,11 @@ namespace FlexKit
 
 		RigidBodyHandle	CreateRigidBody(GameObject* gameObject, LayerHandle layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 });
 		void			AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
+		void			FreeComponentView(void*) final;
 
 		void			Remove(RigidBodyView& rigidBody);
 		PhysicsLayer&	GetLayer(LayerHandle layer);
+
 
 	private:
 		PhysXComponent& physx;
@@ -711,12 +716,14 @@ namespace FlexKit
 	{
 	public:
 		RigidBodyView(GameObject& gameObject, RigidBodyHandle IN_rigidBody, LayerHandle IN_layer) :
-			staticBody	{ IN_rigidBody },
-			layer		{ IN_layer      } {}
+			staticBody	{ IN_rigidBody	},
+			layer		{ IN_layer		} {}
 
 		RigidBodyView(GameObject& gameObject, LayerHandle IN_layer, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 }) :
 			staticBody	{ GetComponent().CreateRigidBody(&gameObject, IN_layer, pos, q) },
 			layer		{ IN_layer } {}
+
+		void Release() { GetComponent().Remove(*this); }
 
 		NodeHandle		GetNode() const;
 		void			AddShape(Shape shape);
@@ -757,80 +764,20 @@ namespace FlexKit
 	class CharacterControllerComponent : public Component<CharacterControllerComponent, CharacterControllerComponentID>
 	{
 	public:
-		CharacterControllerComponent(PhysXComponent& IN_physx, iAllocator* allocator) :
-			physx		{ IN_physx  },
-			handles		{ allocator },
-			controllers	{ allocator } {}
+		CharacterControllerComponent(PhysXComponent& IN_physx, iAllocator* allocator);
+
+		CharacterControllerHandle Create(const LayerHandle layer, GameObject& gameObject, const NodeHandle node = GetZeroedNode(), const float3 initialPosition = {}, const float R = 1, const float H = 1);
 
 
-		CharacterControllerHandle Create(const LayerHandle layer, GameObject& gameObject, const NodeHandle node = GetZeroedNode(), const float3 initialPosition = {}, const float R = 1, const float H = 1)
-		{
-			auto& manager = physx.GetLayer_ref(layer).GetCharacterController();
+		void AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 
-			if (!gameObject.hasView(TransformComponentID))
-				gameObject.AddView<SceneNodeView>(node);
+		void FreeComponentView(void*) final;
 
-			SetPositionW(node, initialPosition + float3{0, H / 2, 0});
+		void Remove(CharacterControllerHandle handle);
 
-			physx::PxCapsuleControllerDesc CCDesc;
-			CCDesc.material			= physx.GetDefaultMaterial();
-			CCDesc.radius			= R;
-			CCDesc.height			= H;
-			CCDesc.contactOffset	= 0.1f;
-			CCDesc.position			= { initialPosition.x, initialPosition.y, initialPosition.z };
-			CCDesc.climbingMode		= physx::PxCapsuleClimbingMode::eEASY;
-			CCDesc.stepOffset		= 0.2f;
+		PhysicsLayer& GetLayer(LayerHandle layer);
 
-			auto controller = manager.createController(CCDesc);
-
-			auto newHandle	= handles.GetNewHandle();
-			auto idx		= controllers.push_back(
-				CharacterController{
-					newHandle,
-					node,
-					&gameObject,
-					layer,
-					controller
-				});
-
-			controller->setUserData(&gameObject);
-
-			handles[newHandle] = (index_t)idx;
-
-			return newHandle;
-		}
-
-
-		void AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
-		{
-			FK_ASSERT(0);
-		}
-
-
-		void Remove(CharacterControllerHandle handle)
-		{
-			const auto idx				= handles[handle];
-			auto& characterController	= controllers[idx];
-
-			characterController.controller->release();
-			characterController = controllers.back();
-
-			controllers.pop_back();
-
-			handles[characterController.handle] = idx;
-		}
-
-
-		auto& GetLayer(LayerHandle layer)
-		{
-			return physx.GetLayer_ref(layer);
-		}
-
-
-		CharacterController& operator[] (CharacterControllerHandle controller)
-		{
-			return controllers[controller];
-		}
+		CharacterController& operator[] (CharacterControllerHandle controller);
 
 	private:
 
@@ -863,12 +810,12 @@ namespace FlexKit
 
 
 		CharacterControllerView(
-			GameObject&                 gameObject,
-			CharacterControllerHandle   IN_controller) :
+			GameObject&					gameObject,
+			CharacterControllerHandle	IN_controller) :
 				controller  { IN_controller } {}
 
 
-		~CharacterControllerView()
+		void Release()
 		{
 			GetComponent().Remove(controller);
 		}
@@ -900,6 +847,13 @@ namespace FlexKit
 		{
 			auto& ref = GetComponent()[controller];
 			FlexKit::SetOrientation(ref.node, q);
+		}
+
+
+		void Resize(float h)
+		{
+			auto& ref = GetComponent()[controller];
+			ref.controller->resize(h);
 		}
 
 

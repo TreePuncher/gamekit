@@ -759,7 +759,7 @@ UpdateTask* HairRenderingTest::Draw(
 
 void HairRenderingTest::PostDrawUpdate(EngineCore&, double dT)
 {
-	renderWindow.Present(1);
+	renderWindow.Present(0);
 }
 
 

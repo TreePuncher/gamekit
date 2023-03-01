@@ -200,11 +200,11 @@ namespace FlexKit
 		public Component<SceneNodeComponent, TransformComponentID>
 	{
 	public:
-
 		~SceneNodeComponent()
 		{
 			SceneNodeTable.Release();
 		}
+		void FreeComponentView(void* _ptr) final;
 
 		NodeHandle CreateZeroedNode()
 		{
@@ -260,7 +260,7 @@ namespace FlexKit
 		SceneNodeView(GameObject& gameObject, NodeHandle IN_Node = GetComponent().CreateZeroedNode());
 		SceneNodeView(SceneNodeView&& rhs);
 
-		~SceneNodeView() override;
+		void Release();
 
 		SceneNodeView& operator = (SceneNodeView&& rhs);
 

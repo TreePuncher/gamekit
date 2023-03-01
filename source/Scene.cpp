@@ -85,6 +85,21 @@ namespace FlexKit
 
 	BrushView::BrushView(GameObject& gameObject)
 	{
+		Apply(gameObject,
+			[&](TriggerView& view)
+			{
+				view->CreateTrigger(AddedToSceneID);
+				view->CreateSlot(
+					SceneChangedSlot,
+					[&gameObject](...)
+					{
+						FlexKit::SetBoundingSphereFromMesh(gameObject);
+					});
+
+				view->Connect(AddedToSceneID, SceneChangedSlot);
+			});
+
+		
 		auto node = GetSceneNode(gameObject);
 
 		GetComponent()[brush].Node = node != InvalidHandle ? node : GetZeroedNode();
@@ -96,6 +111,20 @@ namespace FlexKit
 
 	BrushView::BrushView(GameObject& gameObject, TriMeshHandle	triMesh)
 	{
+		Apply(gameObject,
+			[&](TriggerView& view)
+			{
+				view->CreateTrigger(AddedToSceneID);
+				view->CreateSlot(
+					SceneChangedSlot,
+					[&gameObject](...)
+					{
+						FlexKit::SetBoundingSphereFromMesh(gameObject);
+					});
+
+				view->Connect(AddedToSceneID, SceneChangedSlot);
+			});
+
 		auto node = GetSceneNode(gameObject);
 
 		auto& meshes = GetComponent()[brush].meshes;
@@ -247,7 +276,8 @@ namespace FlexKit
 
 	void BrushView::RemoveMesh(const TriMeshHandle mesh) noexcept
 	{
-		auto& meshes = GetComponent()[brush].meshes;
+		auto& brush_ref	= GetComponent()[brush];
+		auto& meshes	= brush_ref.meshes;
 
 		if(auto itr = std::ranges::find(meshes, mesh); itr != meshes.end())
 			meshes.remove_unstable(itr);
@@ -318,7 +348,7 @@ namespace FlexKit
 	}
 
 
-	PointLightView::PointLightView(GameObject& gameObject, float3 color, float intensity, float radius, NodeHandle node) : light{ GetComponent().Create() }
+	PointLightView::PointLightView(GameObject& gameObject, float3 color, float intensity, float radius, NodeHandle node, bool triggerless) : light{ GetComponent().Create() }
 	{
 		auto& pointLight		= GetComponent()[light];
 		pointLight.K			= color;
@@ -326,14 +356,27 @@ namespace FlexKit
 		pointLight.R			= radius;
 		pointLight.Position		= node != InvalidHandle ? node : FlexKit::GetSceneNode(gameObject);
 
-		auto& triggers = gameObject.AddView<TriggerView>();
-		triggers->CreateSlot(LightSetRaidusSlotID, [&gameObject](void* _ptr, uint64_t typeID)
-			{
-				FK_ASSERT(typeID == GetTypeGUID(float));
+		if (triggerless)
+		{
+			auto& triggers = gameObject.AddView<TriggerView>();
+			triggers->CreateSlot(LightSetRaidusSlotID, [&gameObject](void* _ptr, uint64_t typeID)
+				{
+					FK_ASSERT(typeID == GetTypeGUID(float));
 
-				auto& pointLight = *gameObject.GetView<PointLightView>();
-				pointLight.SetRadius(*static_cast<float*>(_ptr));
-			});
+					auto& pointLight = *gameObject.GetView<PointLightView>();
+					pointLight.SetRadius(*static_cast<float*>(_ptr));
+				});
+
+			triggers->CreateSlot(GetTypeGUID(PointLightInternalSlot));
+
+			triggers->Connect(
+				AddedToSceneID,
+				GetTypeGUID(PointLightInternalSlot),
+				[&gameObject](...)
+				{
+					SetBoundingSphereFromLight(gameObject);
+				});
+		}
 	}
 
 	float PointLightView::GetRadius() const noexcept
@@ -610,12 +653,16 @@ namespace FlexKit
 	{
 		auto& view = go.AddView<SceneVisibilityView>(node, sceneID);
 		sceneEntities.push_back(view);
+
+		Trigger(go, AddedToSceneID);
 	}
 
 	void Scene::AddGameObject(GameObject& go)
 	{
 		auto& view = go.AddView<SceneVisibilityView>(GetSceneNode(go), sceneID);
 		sceneEntities.push_back(view);
+
+		Trigger(go, AddedToSceneID);
 	}
 
 

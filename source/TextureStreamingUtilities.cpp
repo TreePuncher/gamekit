@@ -526,7 +526,7 @@ namespace FlexKit
 			};
 
 			auto& materials			= MaterialComponent::GetComponent();
-			auto& constantBuffer	= entityConstants.GetConstants();
+			auto& constantBuffer	= entityConstants.GetConstantBuffer();
 			auto constants			= FlexKit::CreateCBIterator<Brush::VConstantsLayout>(constantBuffer);
 
 			const size_t bufferSize =

@@ -11,6 +11,7 @@
 
 #define WINDOW_LEAN_AND_MEAN
 
+#include <variant>
 #include <iostream>
 #include <Windows.h>
 
@@ -94,8 +95,8 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	using AssetIdentifier = std::variant<const char*, GUID_t>;
-	using AssetFailureHandler = TypeErasedCallable<AssetHandle (AssetIdentifier)>;
+	using AssetIdentifier		= std::variant<const char*, GUID_t>;
+	using AssetFailureHandler	= TypeErasedCallable<AssetHandle (AssetIdentifier)>;
 	struct ResourceTable;
 
 	FLEXKITAPI void			InitiateAssetTable	(iAllocator* Memory);

@@ -88,8 +88,10 @@ namespace FlexKit
 			return handle;
 		}
 
+		void Release(SkeletonHandle handle);
 
 		void AddComponentView(GameObject& GO, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
+		void FreeComponentView(void* _ptr) final;
 
 
 		struct SkeletonState
@@ -113,7 +115,7 @@ namespace FlexKit
 		Vector<LoadedSkeleton>							skeletons;
 
 		HandleUtilities::HandleTable<SkeletonHandle>	handles;
-		iAllocator*                                     allocator;
+		iAllocator*										allocator;
 	};
 
 
@@ -121,6 +123,11 @@ namespace FlexKit
 	{
 	public:
 		SkeletonView(GameObject& gameObject, const AssetHandle asset) : handle{ GetComponent().Create(asset) } {}
+
+		void Release()
+		{
+			GetComponent().Release(handle);
+		}
 
 		auto& GetPoseState(this auto&& self)
 		{
@@ -309,7 +316,15 @@ namespace FlexKit
 			return handle;
 		}
 
+
 		void AddComponentView(GameObject& GO, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
+
+
+		void FreeComponentView(void* _ptr) final { static_cast<AnimatorView*>(_ptr)->Release(); }
+
+
+		void Release(AnimatorHandle handle) { FK_LOG_WARNING("AnimatorComponent::Release(): Unimplemented! Leaking memory"); }
+
 
 		struct AnimationStateContext
 		{
@@ -484,6 +499,12 @@ namespace FlexKit
 			AnimatorView(GameObject& IN_gameObject, AnimatorHandle IN_animatorHandle = InvalidHandle) :
 				animator{ IN_animatorHandle != InvalidHandle ? IN_animatorHandle : GetComponent().Create(IN_gameObject) } {}
 
+			void Release()
+			{
+				GetComponent().Release(animator);
+				animator = InvalidHandle;
+			}
+
 			PlayID_t    Play(Animation& anim, bool loop = false);
 			void        Stop(PlayID_t playID);
 			void        Pause(PlayID_t playID);
@@ -591,6 +612,10 @@ namespace FlexKit
 			return handle;
 		}
 
+		void FreeComponentView(void* _ptr)
+		{
+			static_cast<FABRIKView*>(_ptr)->~FABRIKView();
+		}
 
 		struct FABRIK
 		{
