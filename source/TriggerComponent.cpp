@@ -88,6 +88,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void TriggerData::RemoveSlot(const uint32_t slot)
+	{
+
+	}
+
+
+	void TriggerData::RemoveTrigger(const uint32_t signal)
+	{
+
+	}
+
+
+	/************************************************************************************************/
+
+
 	void TriggerData::Trigger(uint32_t id, void* args, uint64_t ID)
 	{
 		const size_t end = triggerIDs.size();

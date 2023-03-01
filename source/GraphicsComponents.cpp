@@ -32,7 +32,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CameraComponent::ReleaseCamera(CameraHandle camera)
+	void CameraComponent::FreeComponentView(void* _ptr)
+	{
+		static_cast<CameraView*>(_ptr)->Release();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void CameraComponent::Release(CameraHandle camera)
 	{
 		GetCamera(handleRef.back()) = Cameras.back();
 		handles[handleRef.back()]	= handles[camera];

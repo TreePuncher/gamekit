@@ -76,6 +76,8 @@ namespace FlexKit
 	void OrbitCameraBehavior::SetCameraPosition(float3 xyz)
 	{
 		SetPositionW(yawNode, xyz);
+
+		MarkCameraDirty();
 	}
 
 
@@ -86,7 +88,7 @@ namespace FlexKit
 	{
 		FlexKit::TranslateWorld(yawNode, xyz);
 
-		_CameraDirty();
+		MarkCameraDirty();
 	}
 
 
@@ -104,7 +106,7 @@ namespace FlexKit
 		if (xyz[2] != 0.0f)
 			FlexKit::Roll(pitchNode, xyz[2]);
 
-		_CameraDirty();
+		MarkCameraDirty();
 	}
 
 

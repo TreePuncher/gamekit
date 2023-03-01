@@ -55,7 +55,10 @@ namespace FlexKit
 			auto res = SUCCEEDED(swapChain->Present(syncInternal, flags | (syncInternal == 0 ? DXGI_PRESENT_ALLOW_TEARING : 0)));
 
 			if (!res)
+			{
+				FK_LOG_ERROR("Failed to Present SwapChain! : Args { %u, %u }", syncInternal, flags);
 				renderSystem->_OnCrash();
+			}
 
 			renderSystem->Textures.SetBufferedIdx(backBuffer, swapChain->GetCurrentBackBufferIndex());
 

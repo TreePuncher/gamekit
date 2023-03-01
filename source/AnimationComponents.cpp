@@ -797,6 +797,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void SkeletonComponent::Release(SkeletonHandle handle)
+	{
+		FK_LOG_WARNING("SkeletonComponent::Release Unimplemented! Memory Leak!");
+	}
+
+
+	/************************************************************************************************/
+
+
 	void SkeletonComponent::AddComponentView(GameObject& gameObject, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
 	{
 		SkeletonComponentBlob blob;
@@ -804,6 +813,15 @@ namespace FlexKit
 
 		if (blob.assetID != INVALIDHANDLE)
 			auto& sk = gameObject.AddView<SkeletonView>(blob.assetID);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void SkeletonComponent::FreeComponentView(void* _ptr)
+	{
+		static_cast<SkeletonView*>(_ptr)->Release();
 	}
 
 

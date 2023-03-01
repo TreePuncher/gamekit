@@ -122,7 +122,7 @@ namespace FlexKit
 				uint64_t	ID;
 			};
 
-			TypeErasedCallable<FNDef, 48>		callable;
+			TypeErasedCallable<FNDef, 32>		callable;
 			Vector<SignalEntry, 4, uint32_t>	signalTable;
 		};
 
@@ -143,7 +143,7 @@ namespace FlexKit
 			uint64_t	ID;
 			Slot*		slot;
 
-			TypeErasedCallable<FNDef, 48>*	callable = nullptr;
+			TypeErasedCallable<FNDef, 32>*	callable = nullptr;
 		};
 
 	public:
@@ -200,7 +200,7 @@ namespace FlexKit
 				SlotEntry{
 					outputSlots.size(),
 					&slot,
-					new TypeErasedCallable<FNDef, 48>{ callable } });
+					new TypeErasedCallable<FNDef, 32>{ callable } });
 		}
 
 

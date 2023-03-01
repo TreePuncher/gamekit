@@ -80,6 +80,8 @@ namespace FlexKit
 			materials.reserve(256);
 		}
 
+		void FreeComponentView(void* _ptr) { static_cast<MaterialView*>(_ptr)->Release(); }
+
 
 		MaterialComponentData operator [](const MaterialHandle handle) const;
 		MaterialHandle CreateMaterial(MaterialHandle IN_parent = InvalidHandle);
@@ -104,7 +106,7 @@ namespace FlexKit
 			MaterialView(GameObject& gameObject, MaterialHandle IN_handle) noexcept;
 			MaterialView(GameObject& gameObject) noexcept;
 
-			~MaterialView() override;
+			void Release();
 
 			MaterialComponentData GetData() const;
 

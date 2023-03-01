@@ -12,7 +12,8 @@ namespace FlexKit
 		auto handle = handles.GetNewHandle();
 
 		StringID newID;
-		newID.ID[length] = '\0';
+		newID.ID[length]	= '\0';
+		newID.handle		= handle;
 		strncpy_s(newID.ID, initial, Min(sizeof(StringID), length));
 
 		handles[handle] = static_cast<index_t>(IDs.push_back(newID));
@@ -26,6 +27,9 @@ namespace FlexKit
 
 	void StringIDComponent::Remove(StringIDHandle handle)
 	{
+		if (handle == InvalidHandle)
+			return;
+
 		auto lastElement = IDs.back();
 		IDs[handles[handle]] = lastElement;
 		IDs.pop_back();
@@ -51,6 +55,15 @@ namespace FlexKit
 			gameObject.AddView<StringIDView>(blob.ID, IDLen);
 		else
 			SetStringID(gameObject, blob.ID);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void StringIDComponent::FreeComponentView(void* _ptr)
+	{
+		static_cast<StringIDView*>(_ptr)->Release();
 	}
 
 

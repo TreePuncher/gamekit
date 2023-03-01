@@ -41,6 +41,9 @@ void PortalFactory::OnCreateView(
 			auto levelID		= portalView->levelID;
 			auto spawnPointID	= portalView->spawnPointID;
 
+			if (levelID == INVALIDHANDLE)
+				return;
+
 			if (!LoadLevel(levelID, test->framework.core))
 				throw std::runtime_error("Failed to load Level!");
 
@@ -144,7 +147,7 @@ PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
 	rs.RegisterPSOLoader(DRAW_LINE3D_PSO, { &rs.Library.RS6CBVs4SRVs, CreateDraw2StatePSO });
 
 	RegisterPhysicsDebugVis(framework.GetRenderSystem());
-	AddAssetFile(R"(assets\spawnRoom2.gameres)");
+	AddAssetFile(R"(assets\spawnRoom.gameres)");
 	AddAssetFile(R"(assets\MainCharacterPrefab.gameres)");
 
 	InitiateScriptRuntime();
@@ -168,7 +171,7 @@ PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
 	auto level = GetActiveLevel();
 
 	// Setup Camera
-	auto& tpc = CreateThirdPersonCameraController(cameraRig, level->layer, framework.core.GetBlockMemory());
+	auto& tpc = CreateThirdPersonCameraController(cameraRig, level->layer, framework.core.GetBlockMemory(), 1.0f, 4.0f);
 
 	tpc->SetPosition({ 0, 100, 0 });
 
@@ -336,7 +339,7 @@ FlexKit::UpdateTask* PhysicsTest::Draw(FlexKit::UpdateTask* update, FlexKit::Eng
 	LineSegments segments{ core.GetTempMemory() };
 	auto constants = GetCameraConstants(activeCamera);
 
-	auto PV = constants.PV;// .Transpose();
+	auto PV = constants.PV;
 
 	const auto A_DC = PV * float4{ A, 1 };
 	const auto B_DC = PV * float4{ B, 1 };
@@ -371,7 +374,7 @@ void PhysicsTest::PostDrawUpdate(FlexKit::EngineCore&, double dT)
 
 void PhysicsTest::Action()
 {
-	const auto r	= FlexKit::ViewRay(activeCamera, { 0.0f, 0.0f });
+	const auto r	= FlexKit::ViewRay(activeCamera, { 0.0f, 0.5f });
 
 	auto layer		= GetActiveLevel()->layer;
 
@@ -382,8 +385,8 @@ void PhysicsTest::Action()
 	layer_ref.RayCast({ r.D, r.O }, 100,
 		[&](PhysicsLayer::RayCastHit hit)
 		{
-			auto stringID = GetStringID(*hit.gameObject);
-			std::cout << stringID << "\n";
+			if(auto stringID = GetStringID(*hit.gameObject); stringID)
+				std::cout << stringID << "\n";
 
 			A = r.O;
 			B = r.R(hit.distance);
@@ -391,6 +394,22 @@ void PhysicsTest::Action()
 			Trigger(*hit.gameObject, ActivateTrigger, nullptr);
 			return false;
 		});
+}
+
+
+/************************************************************************************************/
+
+
+void PhysicsTest::Jump()
+{
+}
+
+
+/************************************************************************************************/
+
+
+void PhysicsTest::Fall()
+{
 }
 
 
@@ -409,6 +428,15 @@ bool PhysicsTest::EventHandler(FlexKit::Event evt)
 
 			switch (evt.Action)
 			{
+			case Event::Pressed:
+			{
+				switch (evt.mData1.mKC[0])
+				{
+				case KC_SPACE:
+					Jump();
+					return true;
+				}
+			}	break;
 			case Event::Release:
 			{
 				switch (evt.mData1.mKC[0])
@@ -416,11 +444,13 @@ bool PhysicsTest::EventHandler(FlexKit::Event evt)
 				case KC_M:
 					renderWindow.ToggleMouseCapture();
 					return true;
-				case KC_SPACE:
+				case KC_E:
 					Action();
 					return true;
+				case KC_SPACE:
+					Fall();
+					return true;
 				}
-			}	break;
 			}	break;
 		default:
 			if ((evt.InputSource == FlexKit::Event::Keyboard && evt.mData1.mKC[0] == FlexKit::KC_ESC) ||
@@ -434,17 +464,8 @@ bool PhysicsTest::EventHandler(FlexKit::Event evt)
 		}	break;
 		case Event::Mouse:
 		{
-			switch (evt.Action)
-			{
-			case Event::Pressed:
-				switch (evt.mData1.mKC[0])
-				{
-				case KC_MOUSELEFT:
-				{
-				}	break;
-				}	break;
-			}
 		}	break;
+		}
 	}
 
 	return false;

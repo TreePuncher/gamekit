@@ -1396,6 +1396,9 @@ namespace FlexKit
 					static_vector<ConstantBufferDataSet>	constants;
 					static_vector<DescriptorRange>			descriptors;
 
+					if (!brush->meshes.size())
+						continue;
+
 					GetConstants(brush, constants);
 					const auto& material = materials[brush->material];
 

@@ -34,6 +34,13 @@ namespace FlexKit
 			return actionSlots[idx];
 		}
 
+		Slot_t& CreateSlot(uint32_t id)
+		{
+			auto idx = actionSlots.emplace_back();
+			actionSlotIDs.emplace_back(id);
+
+			return actionSlots[idx];
+		}
 
 		void		Trigger(uint32_t,		void* args = nullptr, uint64_t typeID = NullTypeID);
 		void		TriggerSlot(uint32_t,	void* args = nullptr, uint64_t typeID = NullTypeID);
@@ -59,6 +66,10 @@ namespace FlexKit
 		}
 
 		void Connect(const uint32_t signal, const uint32_t slot);
+
+		void RemoveSlot		(const uint32_t slot);
+		void RemoveTrigger	(const uint32_t signal);
+
 
 		SignalVector		triggers;
 		Vector<uint32_t>	triggerIDs;

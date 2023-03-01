@@ -618,6 +618,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void SceneNodeComponent::FreeComponentView(void* _ptr)
+	{
+		static_cast<SceneNodeView*>(_ptr)->Release();
+	}
+
+
+	/************************************************************************************************/
+
+
 	SceneNodeView::SceneNodeView(GameObject& gameObject, const float3 XYZ) :
 		node{ GetComponent().CreateNode() }
 	{
@@ -652,10 +661,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	SceneNodeView::~SceneNodeView()
+	void SceneNodeView::Release()
 	{
 		if (node != InvalidHandle)
 			ReleaseNode(node);
+
+		node = InvalidHandle;
 	}
 
 

@@ -139,8 +139,8 @@ namespace FlexKit
 		}
 
 
-		virtual void AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) {};
-
+		virtual void AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) {}
+		virtual void FreeComponentView(void*) = 0;
 
 		inline static static_vector<ComponentEntry, 128> Components = static_vector<ComponentBase::ComponentEntry, 128>();
 	};
@@ -218,7 +218,10 @@ namespace FlexKit
 		ComponentViewBase(ComponentID IN_ID) :
 			ID{ IN_ID } {}
 
-		virtual ~ComponentViewBase() {}
+		~ComponentViewBase()
+		{
+			GetComponent(ID).FreeComponentView(this);
+		}
 
 		ComponentBase& GetComponentRef()	{ return ComponentBase::GetComponent(ID); }
 
@@ -231,7 +234,6 @@ namespace FlexKit
 	{
 	public:
 		ComponentView_t() : ComponentViewBase{ ComponentTY::GetComponentID() } {}
-		virtual ~ComponentView_t() override {}
 
 		static ComponentID		GetComponentID()	{ return ComponentTY::GetComponentID(); }
 		static decltype(auto)	GetComponent()		{ return ComponentTY::GetComponent(); }
@@ -240,7 +242,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
+	#pragma pack(push, 1)
 	struct ComponentViewContainer
 	{
 		ComponentViewContainer() = default;
@@ -248,7 +250,7 @@ namespace FlexKit
 		template<typename TY, typename... TY_ARGS>
 		void Create(iAllocator& allocator, GameObject& gameObject, TY_ARGS&& ... args)
 		{
-			componentSize = (uint8_t)sizeof(TY);
+			componentSize = Min((uint8_t)sizeof(TY), 0xff);
 
 			if (componentSize > sizeof(buffer))
 				_ptr = &allocator.allocate<TY>(gameObject, std::forward<TY_ARGS>(args)...);
@@ -289,13 +291,15 @@ namespace FlexKit
 				allocator->release(_ptr);
 		}
 
-		uint8_t		componentSize = 0;
 		union
 		{
 			ComponentViewBase*	_ptr;
-			char				buffer[24];
+			char				buffer[23];
 		};
+
+		uint8_t		componentSize = 0;
 	};
+	#pragma pack(pop)
 
 
 	class GameObject
@@ -306,12 +310,10 @@ namespace FlexKit
 			ids			{ IN_allocator },
 			views		{ IN_allocator } {}
 
-
 		~GameObject()
 		{
 			Release();
 		}
-
 
 		GameObject				(const GameObject& rhs) = delete;
 		GameObject& operator =	(const GameObject& rhs) = delete;
@@ -614,18 +616,18 @@ namespace FlexKit
 		template<typename ... TY_Args>
 		BasicComponentView_t(GameObject& gameObject, TY_Args ... args) : handle{ ComponentView_t<TY_Component>::GetComponent().Create(std::forward<TY_Args>(args)...) } {}
 
-		virtual ~BasicComponentView_t() final
+		void Release() 
 		{
 			TY_Component::GetComponent().Remove(handle);
+			handle = InvalidHandle;
 		}
 
-
 		// No moving
-		BasicComponentView_t(const BasicComponentView_t&)               = delete;
-		BasicComponentView_t& operator = (const BasicComponentView_t&)  = delete;
+		BasicComponentView_t(const BasicComponentView_t&)				= delete;
+		BasicComponentView_t& operator = (const BasicComponentView_t&)	= delete;
 
-		BasicComponentView_t(BasicComponentView_t&&)                = delete;
-		BasicComponentView_t& operator = (BasicComponentView_t&&)   = delete;
+		BasicComponentView_t(BasicComponentView_t&&)					= delete;
+		BasicComponentView_t& operator = (BasicComponentView_t&&)		= delete;
 
 
 		decltype(auto) operator -> ()
@@ -738,6 +740,12 @@ namespace FlexKit
 		}
 
 
+		void FreeComponentView(void* _ptr) override
+		{
+			reinterpret_cast<View*>(_ptr)->Release();
+		}
+
+
 		void Remove(TY_Handle handle)
 		{
 			auto lastElement			= std::move(elements.back());
@@ -813,6 +821,7 @@ namespace FlexKit
 		StringID& operator[] (StringIDHandle handle) { return IDs[handles[handle]]; }
 
 		void AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
+		void FreeComponentView(void* _ptr) final;
 
 		HandleUtilities::HandleTable<StringIDHandle>	handles;
 		Vector<StringID>								IDs;
@@ -822,9 +831,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	class StringIDView : public ComponentView_t<StringIDComponent>
+	struct StringIDView : public ComponentView_t<StringIDComponent>
 	{
-	public:
 		StringIDView(GameObject& gameObject, const char* id, size_t idLen) : ID{ GetComponent().Create(id, idLen) }
 		{
 			IDHash = std::hash<std::string_view>{}(std::string_view{ id, idLen });
@@ -839,6 +847,12 @@ namespace FlexKit
 		{
 			IDHash = std::hash<std::string_view>{}(string);
 			strncpy_s(GetComponent()[ID].ID, 64, string, 64);
+		}
+
+		void Release()
+		{
+			GetComponent().Remove(ID);
+			ID = InvalidHandle;
 		}
 
 				StringIDComponent::StringID* operator -> ()			{ return &GetComponent()[ID]; }
@@ -1066,13 +1080,46 @@ namespace FlexKit
 			// do release
 		}
 
+
+		void FreeComponentView(void* _ptr) final
+		{
+			static_cast<View*>(_ptr)->Release();
+		}
+
 		struct Entity
 		{
 			int x;
 		};
 
+		class View : public ComponentView_t<SampleComponent>
+		{
+		public:
+			View(GameObject& gameObject) :
+				handle{ GetComponent().CreateComponent() } {}
+
+
+			~View()
+			{
+				GetComponent().ReleaseEntity(handle);
+			}
+
+
+			void DoSomething()
+			{
+				std::cout << "SampleBehavior1::DoSomething()\n";
+				GetComponent().entities[handle].x++;
+			}
+
+			void Release() {}
+
+			SampleHandle handle;
+		};
+
 		Vector<Entity> entities;
 	};
+
+
+	using SampleView = SampleComponent::View;
 
 
 	constexpr ComponentID SampleComponent2ID = GetTypeGUID(SampleComponent2ID);
@@ -1093,6 +1140,36 @@ namespace FlexKit
 		{
 			// do release
 		}
+
+		void FreeComponentView(void* _ptr) final
+		{
+			static_cast<View*>(_ptr)->Release();
+		}
+
+		class View : public ComponentView_t<SampleComponent2>
+		{
+		public:
+			View(GameObject& gameObject) :
+				handle{ GetComponent().CreateComponent() } {}
+
+
+			~View()
+			{
+				GetComponent().ReleaseEntity(handle);
+			}
+
+
+			void DoSomething()
+			{
+				std::cout << "SampleBehavior3::DoSomething()\n";
+				GetComponent().entities[handle].x++;
+			}
+
+			void Release() {}
+
+
+			Sample2Handle handle;
+		};
 
 		struct Entity
 		{
@@ -1121,6 +1198,36 @@ namespace FlexKit
 			// do release
 		}
 
+		void FreeComponentView(void* _ptr) final
+		{
+			static_cast<View*>(_ptr)->Release();
+		}
+
+
+		class View : public ComponentView_t<SampleComponent3>
+		{
+		public:
+			View(GameObject& gameObject) :
+				handle{ GetComponent().CreateComponent() } {}
+
+
+			~View()
+			{
+				GetComponent().ReleaseEntity(handle);
+			}
+
+
+			void DoSomething()
+			{
+				std::cout << "SampleBehavior2::DoSomething()\n";
+				GetComponent().entities[handle].x++;
+			}
+
+			void Release() {}
+
+			Sample3Handle handle;
+		};
+
 		struct Entity
 		{
 			int x;
@@ -1130,73 +1237,8 @@ namespace FlexKit
 	};
 
 
-	class SampleView : public ComponentView_t<SampleComponent>
-	{
-	public:
-		SampleView(GameObject& gameObject) :
-			handle{ GetComponent().CreateComponent() } {}
-
-
-		~SampleView()
-		{
-			GetComponent().ReleaseEntity(handle);
-		}
-
-
-		void DoSomething()
-		{
-			std::cout << "SampleBehavior1::DoSomething()\n";
-			GetComponent().entities[handle].x++;
-		}
-
-		SampleHandle handle;
-	};
-
-
-	class SampleView2: public ComponentView_t<SampleComponent2>
-	{
-	public:
-		SampleView2(GameObject& gameObject) :
-			handle{ GetComponent().CreateComponent() } {}
-
-
-		~SampleView2()
-		{
-			GetComponent().ReleaseEntity(handle);
-		}
-
-
-		void DoSomething()
-		{
-			std::cout << "SampleBehavior2::DoSomething()\n";
-			GetComponent().entities[handle].x++;
-		}
-
-		Sample2Handle handle;
-	};
-
-
-	class SampleView3 : public ComponentView_t<SampleComponent3>
-	{
-	public:
-		SampleView3(GameObject& gameObject) :
-			handle{ GetComponent().CreateComponent() } {}
-
-
-		~SampleView3()
-		{
-			GetComponent().ReleaseEntity(handle);
-		}
-
-
-		void DoSomething()
-		{
-			std::cout << "SampleBehavior3::DoSomething()\n";
-			GetComponent().entities[handle].x++;
-		}
-
-		Sample3Handle handle;
-	};
+	using SampleView2 = SampleComponent2::View;
+	using SampleView3 = SampleComponent3::View;
 	
 
 	/************************************************************************************************/

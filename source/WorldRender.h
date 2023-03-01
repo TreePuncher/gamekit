@@ -271,12 +271,11 @@ namespace FlexKit
 		CreateOnceReserveBufferFunction	getConstantBuffer;
 		GatherPassesTask&				passes;
 		Vector<uint32_t>				entityTable;
+		size_t							reservationSize = (size_t)-1;
 
-		CBPushBuffer&					GetConstants()
-		{
-			const auto reserveSize = passes.GetData().solid.size() * AlignedSize<Brush::VConstantsLayout>();
-			return getConstantBuffer(reserveSize);
-		}
+
+		CBPushBuffer&					GetConstantBuffer(size_t IN_reservationSize);
+		CBPushBuffer&					GetConstantBuffer();
 	};
 
 	struct OcclusionCullingResults
