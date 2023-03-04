@@ -296,7 +296,7 @@ void TransformEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Flex
 		});
 
 	panelCtx.Pop();
-	panelCtx.PushHorizontalLayout("Orientation", true);
+	panelCtx.PushHorizontalLayout("Orientation:World", true);
 
 	panelCtx.AddInputBox(
 		"X",
@@ -394,6 +394,102 @@ void TransformEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Flex
 		});
 
 	panelCtx.Pop();
+
+	panelCtx.PushHorizontalLayout("Orientation:Local", true);
+
+	panelCtx.AddInputBox(
+		"X",
+		[&](std::string& txt)
+		{
+			auto q = sceneNodeView.GetOrientationL();
+			txt = fmt::format("{}", q.x);
+		},
+		[&, positionTxt = positionTxt](const std::string& txt)
+		{
+			char* p;
+			const float x = strtof(txt.c_str(), &p);
+			if (!*p)
+			{
+				auto q = sceneNodeView.GetOrientationL();
+
+				if (q.x != x)
+				{
+					q.x = x;
+					sceneNodeView.SetOrientationL(q);
+				}
+			}
+		});
+
+	panelCtx.AddInputBox(
+		"Y",
+		[&](std::string& txt)
+		{
+			auto q = sceneNodeView.GetOrientationL();
+			txt = fmt::format("{}", q.y);
+		},
+		[&](const std::string& txt)
+		{
+			char* p;
+			const float y = strtof(txt.c_str(), &p);
+			if (!*p)
+			{
+				auto q = sceneNodeView.GetOrientationL();
+				if (q.y != y)
+				{
+					q.y = y;
+					sceneNodeView.SetOrientationL(q);
+				}
+			}
+		});
+
+	panelCtx.AddInputBox(
+		"Z",
+		[&](std::string& txt)
+		{
+			auto q = sceneNodeView.GetOrientationL();
+			txt = fmt::format("{}", q.z);
+		},
+		[&](const std::string& txt)
+		{
+			char* p;
+			const float z = strtof(txt.c_str(), &p);
+			if (!*p)
+			{
+				auto q = sceneNodeView.GetOrientationL();
+
+				if (q.z != z)
+				{
+					q.z = z;
+					sceneNodeView.SetOrientationL(q);
+				}
+			}
+		});
+
+	panelCtx.AddInputBox(
+		"W",
+		[&](std::string& txt)
+		{
+			auto q = sceneNodeView.GetOrientationL();
+			txt = fmt::format("{}", q.w);
+		},
+		[&](const std::string& txt)
+		{
+			char* p;
+			const float w = strtof(txt.c_str(), &p);
+			if (!*p)
+			{
+				auto q = sceneNodeView.GetOrientationL();
+
+				if (q.w != w)
+				{
+					q.w = w;
+					sceneNodeView.SetOrientationL(q);
+				}
+			}
+		});
+
+	panelCtx.Pop();
+
 }
 
 

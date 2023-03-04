@@ -13,6 +13,10 @@ namespace FlexKit
 	constexpr uint32_t SetScaleSignalID			= GetCRCGUID(SetScaleSignalID);
 	constexpr uint32_t SetTransformSignalID		= GetCRCGUID(SetTransformSignalID);
 
+	// Character Controller Triggers
+	constexpr uint32_t OnFloorContact			= GetCRCGUID(OnFloorContact);
+
+
 	// Scene Triggers
 	constexpr uint32_t AddedToSceneID			= GetCRCGUID(AddedToSceneID);
 	constexpr uint32_t SceneChangedSlot			= GetCRCGUID(SceneChangedSlot);

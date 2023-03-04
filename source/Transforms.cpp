@@ -49,6 +49,12 @@ namespace FlexKit
 		SceneNodeTable.Flags    = { persistent, 2048 };
 		SceneNodeTable.Children = { persistent, 2048 };
 
+		SceneNodeTable.Nodes.reserve(1024);
+		SceneNodeTable.LT.reserve(1024);
+		SceneNodeTable.WT.reserve(1024);
+		SceneNodeTable.Flags.reserve(1024);
+		SceneNodeTable.Children.reserve(1024);
+
 		SceneNodeTable.Indexes.Initiate( persistent );
 
 		SceneNodeTable.root = GetZeroedNode();
@@ -419,7 +425,8 @@ namespace FlexKit
 
 	void SetLocal(NodeHandle node, LT_Entry* __restrict In, uint32_t extraFlags)
 	{
-		SceneNodeTable.LT[_SNHandleToIndex(node)] = *In;
+		auto& lt = SceneNodeTable.LT[_SNHandleToIndex(node)];
+		lt = *In;
 		SetFlag(node, SceneNodes::StateFlags::DIRTY | extraFlags);
 	}
 

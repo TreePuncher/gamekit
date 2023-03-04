@@ -147,7 +147,7 @@ PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
 	rs.RegisterPSOLoader(DRAW_LINE3D_PSO, { &rs.Library.RS6CBVs4SRVs, CreateDraw2StatePSO });
 
 	RegisterPhysicsDebugVis(framework.GetRenderSystem());
-	AddAssetFile(R"(assets\spawnRoom.gameres)");
+	AddAssetFile(R"(assets\TestRoom2.gameres)");
 	AddAssetFile(R"(assets\MainCharacterPrefab.gameres)");
 
 	InitiateScriptRuntime();
@@ -165,15 +165,29 @@ PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
 	renderWindow.Handler->Subscribe(sub);
 	renderWindow.SetWindowTitle("Physics Test");
 
-	if (!LoadLevel(32688, framework.core))
+	if (!LoadLevel(10597, framework.core))
 		throw std::runtime_error("Failed to load Level!");
 
 	auto level = GetActiveLevel();
 
 	// Setup Camera
 	auto& tpc = CreateThirdPersonCameraController(cameraRig, level->layer, framework.core.GetBlockMemory(), 1.0f, 4.0f);
+	auto& playerTriggers = *cameraRig.GetView<TriggerView>();
 
+	tpc->drag		= 8.0f;
+	tpc->gravity	= 20.0f;
+	tpc->moveRate	= moveRate;
 	tpc->SetPosition({ 0, 100, 0 });
+
+	playerTriggers->CreateSlot(GetCRCGUID(ResetMovement),
+		[&](auto ...)
+		{
+			tpc->moveRate	= moveRate;
+			tpc->gravity	= 20.0f;
+		});
+
+	playerTriggers->CreateTrigger(OnFloorContact);
+	playerTriggers->Connect(OnFloorContact, GetCRCGUID(ResetMovement));
 
 	auto cameraHandle = GetCameraControllerCamera(cameraRig);
 	SetCameraAspectRatio(cameraHandle, renderWindow.GetAspectRatio());
@@ -252,22 +266,40 @@ FlexKit::UpdateTask* PhysicsTest::Update(FlexKit::EngineCore& core, FlexKit::Upd
 		memoryStats.mediumBlocksAllocated * 2048 +
 		memoryStats.largeBlocksAllocated * KILOBYTE * 128) / MEGABYTE;
 
+	auto [velocity, gravity] = Apply(cameraRig,
+		[&](CameraControllerView& cameraController){ return std::make_tuple(cameraController->velocity, cameraController->gravity); },
+		[]{ return std::make_tuple(float3::Zero(), 0.0f);  });
+
 	auto str = fmt::format(
 		"Debug Stats\n"
 		"SmallBlocks: {} / {}\n"
 		"MediumBlocks: {} / {}\n"
 		"LargeBlocks: {} / {}\n"
 		"Memory in use: {}mb\n"
-		"M to toggle mouse\n"
-		"T to toggle texture streaming\n"
-		"R to toggle rotating camera\n",
+		"Player Velocity: {}, {}, {}\n"
+		"Player Gravity: {}\n"
+		"Press M to toggle mouse look",
 		memoryStats.smallBlocksAllocated, memoryStats.totalSmallBlocks,
 		memoryStats.mediumBlocksAllocated, memoryStats.totalMediumBlocks,
 		memoryStats.largeBlocksAllocated, memoryStats.totalLargeBlocks,
-		memoryInUse
-	);
+		memoryInUse,
+		velocity.x, velocity.y, velocity.z,
+		gravity);
 
 	ImGui::Text(str.c_str());
+	ImGui::SliderFloat("Jump height", &jumpSpeed, 10, 50);
+
+
+	if (ImGui::SliderFloat("In Air speed ratio", &airMovementRatio, 0.0f, 1.0f) ||
+		ImGui::SliderFloat("MoveRate", &moveRate, 10, 100))
+	{
+		Apply(cameraRig,
+			[&](CameraControllerView& cameraController)
+			{
+				cameraController->moveRate = moveRate;
+				cameraController->airMovementRatio = airMovementRatio;
+			});
+	}
 
 	ImGui::End();
 	ImGui::EndFrame();
@@ -339,18 +371,35 @@ FlexKit::UpdateTask* PhysicsTest::Draw(FlexKit::UpdateTask* update, FlexKit::Eng
 	LineSegments segments{ core.GetTempMemory() };
 	auto constants = GetCameraConstants(activeCamera);
 
-	auto PV = constants.PV;
+	const auto P	= constants.Proj;
+	const auto V	= constants.View;
+	const auto PV	= constants.PV;
 
 	const auto A_DC = PV * float4{ A, 1 };
 	const auto B_DC = PV * float4{ B, 1 };
 
-	if (!(A_DC.w <= 0 || B_DC.w <= 0))
+	//if (A_DC.w > 0 && B_DC.w > 0)
 	{
 		const auto A_NDC = A_DC.xyz() / A_DC.w;
 		const auto B_NDC = B_DC.xyz() / B_DC.w;
 		segments.emplace_back(A_NDC, float3{ 1, 0, 1 }, B_NDC, FlexKit::float3{ 1, 0, 1 });
 	}
+	/*
+	else if ((A_DC.w > 0 && B_DC.w < 0) || (A_DC.w < 0 && B_DC.w > 0) )
+	{
+		const auto V1_vs = V * float4{ A, 1 };
+		const auto V2_vs = V * float4{ B, 1};
 
+		const auto z	= float3(0, 0, -1).dot(V1_vs.xyz() + float3(0, 0, 0.01f));
+		auto dir		= (V1_vs - V2_vs).xyz().normal();
+		auto asdf		= V1_vs + dir * z;
+
+		const auto A_DC		= P * float4(asdf.xyz(), 1);
+		const auto A_NDC	= A_DC.xyz() / A_DC.w;
+		const auto B_NDC	= B_DC.xyz() / B_DC.w;
+		segments.emplace_back(A_NDC, float3{ 1, 0, 1 }, B_NDC, FlexKit::float3{ 1, 0, 1 });
+	}
+	*/
 	DrawShapes(DRAW_LINE_PSO, frameGraph, reserveVB, reserveCB, targets.RenderTarget, core.GetTempMemoryMT(),
 		LineShape{ segments });
 
@@ -402,6 +451,14 @@ void PhysicsTest::Action()
 
 void PhysicsTest::Jump()
 {
+	Apply(cameraRig, [&](CameraControllerView& view)
+		{
+			if (view->floorContact && jumpEnable)
+			{
+				CharacterControllerApplyForce(cameraRig, float3{ 0.0f, jumpSpeed, 0.0f });
+				jumpEnable = false;
+			}
+		});
 }
 
 
@@ -410,6 +467,15 @@ void PhysicsTest::Jump()
 
 void PhysicsTest::Fall()
 {
+	Apply(cameraRig, [&](CameraControllerView& view)
+		{
+			if (!view->floorContact)
+			{
+				view->gravity *= fallGravityRatio;
+			}
+		});
+
+	jumpEnable = true;
 }
 
 
@@ -450,6 +516,9 @@ bool PhysicsTest::EventHandler(FlexKit::Event evt)
 				case KC_SPACE:
 					Fall();
 					return true;
+				case KC_ESC:
+					framework.quit = true;
+					return true;
 				}
 			}	break;
 		default:
@@ -468,7 +537,10 @@ bool PhysicsTest::EventHandler(FlexKit::Event evt)
 		}
 	}
 
-	return false;
+	if(!renderWindow.mouseCapture)
+		return debugUI.HandleInput(evt);
+	else
+		return false;
 }
 
 

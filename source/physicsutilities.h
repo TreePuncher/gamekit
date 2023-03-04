@@ -148,7 +148,8 @@ namespace FlexKit
 
 	struct Shape
 	{
-		physx::PxShape* _ptr;
+		physx::PxShape*	_ptr	= nullptr;
+		uint64_t		assetID = INVALIDHANDLE;
 
 		operator bool() const noexcept { return _ptr != nullptr; }
 	};
@@ -435,6 +436,7 @@ namespace FlexKit
 		Shape							CookMesh	(float3* geometry, size_t geometrySize, uint32_t* indices, size_t indexCount);
 		Blob							CookMesh2	(float3* geometry, size_t geometrySize, uint32_t* indices, size_t indexCount);
 
+		Shape							LoadTriMeshShape(uint64_t assetID);
 		Shape							LoadTriMeshShape(const Blob&);
 		physx::PxPhysics*				GetAPI() { return physxAPI; }
 
@@ -590,15 +592,35 @@ namespace FlexKit
 			BoudingVolumeCollider	bv;
 		};
 
-		float3          position;
-		Quaternion      orientation;
+		float3			position;
+		Quaternion		orientation;
 
 		void Serialize(auto& ar)
 		{
 			ar& position;
 			ar& orientation;
-			ar& cube;
 			ar& type;
+
+			switch (type)
+			{
+			case StaticBodyType::TriangleMesh:
+				ar& triMeshResource;
+				break;
+			case StaticBodyType::Cube:
+				ar& cube;
+				break;
+			case StaticBodyType::Capsule:
+				ar& capsule;
+				break;
+			case StaticBodyType::Sphere:
+				ar& sphere;
+				break;
+			case StaticBodyType::BoundingVolume:
+				ar& bv;
+				break;
+			default:
+				break;
+			}
 		}
 	};
 
@@ -881,12 +903,13 @@ namespace FlexKit
 	};
 
 
-	NodeHandle					GetControllerNode			(GameObject&);
-	CharacterControllerHandle	GetControllerHandle			(GameObject&);
-	float3						GetControllerPosition		(GameObject&);
-	void						SetControllerPosition		(GameObject&, const float3);
-	void						SetControllerOrientation	(GameObject&, const Quaternion);
-	void						MoveController				(GameObject&, const float3&, physx::PxControllerFilters& filters, double dt);
+	NodeHandle					GetControllerNode				(GameObject&);
+	CharacterControllerHandle	GetControllerHandle				(GameObject&);
+	float3						GetControllerPosition			(GameObject&);
+	void						SetControllerPosition			(GameObject&, const float3);
+	void						SetControllerOrientation		(GameObject&, const Quaternion);
+	void						MoveController					(GameObject&, const float3&, physx::PxControllerFilters& filters, double dt);
+	void						CharacterControllerApplyForce	(GameObject&, const float3);
 
 
 	/************************************************************************************************/
@@ -928,8 +951,8 @@ namespace FlexKit
 
 		struct KeyStates
 		{
-			float x;
-			float y;
+			float x = 0.0f;
+			float y = 0.0f;
 		};
 
 		Quaternion	GetOrientation()	const;
@@ -945,7 +968,6 @@ namespace FlexKit
 		void SetPosition(const float3 xyz);
 
 		float3 GetHeadPosition() const;
-
 
 		void UpdateCharacter(const float2 mouseInput, const double dt);
 		void UpdateCharacter(const float2 mouseInput, const KeyStates& keyState, const double dt);
@@ -981,11 +1003,12 @@ namespace FlexKit
 		float			roll	= 0; // Parented to pitch
 		float			yaw		= 0; 
 
-		float3			velocity		= 0;
-		float			acceleration	= 100;
-		float			drag			= 5.0f;
-		float			moveRate		= 50;
-		float			gravity			= 9.8f;
+		float3			velocity			= 0;
+		float			acceleration		= 100;
+		float			drag				= 5.0f;
+		float			moveRate			= 50;
+		float			airMovementRatio	= 0.5f;
+		float			gravity				= 9.8f;
 
 		bool			floorContact = false;
 

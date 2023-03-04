@@ -318,7 +318,7 @@ namespace FlexKit
 			}
 
 			clear();
-
+			
 			reserve(RHS.size());
 
 			for (const auto& E : RHS)
