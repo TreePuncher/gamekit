@@ -237,8 +237,7 @@ namespace FlexKit
 
 		explicit float2(const float in_f) noexcept { x = in_f; y = in_f; }
 
-		template<typename TY>
-		float2(const TY& vect) noexcept
+		float2(const Vector_t auto& vect) noexcept
 		{
 			x = vect[0];
 			y = vect[1];

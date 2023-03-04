@@ -200,6 +200,71 @@ public:
 
 		panelCtx.Pop();
 
+		auto& list = *panelCtx.AddList(
+			[&]() -> size_t 
+			{   // Size update
+				auto& staticBody = static_cast<FlexKit::StaticBodyView&>(view);
+				auto* editorData = (StaticColliderEditorData*)staticBody.GetUserData();
+
+				if (editorData)
+					return editorData->colliders.size();
+				else return 0;
+			},
+			[&](auto idx, QListWidgetItem* item)
+			{   // Update Contents
+				auto& staticBody = static_cast<FlexKit::StaticBodyView&>(view);
+				auto* editorData = (StaticColliderEditorData*)staticBody.GetUserData();
+
+				Collider& collider	= editorData->colliders[idx];
+				auto& shapeName		= collider.shapeName;
+
+
+				if (shapeName == "")
+				{
+					switch (collider.shape.type)
+					{
+					case FlexKit::StaticBodyType::TriangleMesh:
+						shapeName = project.FindProjectResource(collider.shape.triMeshResource)->resource->GetResourceID();
+						break;
+					case FlexKit::StaticBodyType::Cube:
+					{
+						const auto x = collider.shape.cube.dimensions[0];
+						const auto y = collider.shape.cube.dimensions[1];
+						const auto z = collider.shape.cube.dimensions[2];
+						shapeName = fmt::format("Cube[{}x{}x{}].{}", x, y, z, idx);
+					}	break;
+					case FlexKit::StaticBodyType::Capsule:
+					{
+						const auto h = collider.shape.capsule.height;
+						const auto r = collider.shape.capsule.radius;
+
+						shapeName = fmt::format("Capsule[{},{}].{}", h, r, idx);
+					}	break;
+					case FlexKit::StaticBodyType::Sphere:
+					{
+						auto r		= collider.shape.sphere.radius;
+						shapeName	= fmt::format("Sphere[radius].{}", idx);
+					}	break;
+					case FlexKit::StaticBodyType::BoundingVolume:
+					{	shapeName = fmt::format("BoundingVolume.{}", idx);
+					}	break;
+					}
+				}
+
+				std::string label{ std::format("{}", shapeName)};
+
+				if(item->text() != label.c_str())
+					item->setData(Qt::DisplayRole, label.c_str());
+			},
+			[&](QListWidget* listWidget)
+			{   // On Event
+				auto item   = listWidget->currentItem();
+				auto idx    = listWidget->indexFromItem(item);
+
+				listWidget->setCurrentIndex(idx);
+			}
+		);
+
 		panelCtx.AddButton(
 			"Add TriMesh Collider",
 			[&]()
@@ -214,8 +279,17 @@ public:
 						auto& physx			= FlexKit::PhysXComponent::GetComponent();
 						auto shape			= physx.LoadTriMeshShape(colliderResource->colliderBlob);
 						auto& staticBody	= static_cast<FlexKit::StaticBodyView&>(view);
+						auto* editorData	= (StaticColliderEditorData*)staticBody.GetUserData();
+
+						Collider collider;
+						collider.shapeName				= colliderResource->GetResourceID();
+						collider.shape.type				= FlexKit::StaticBodyType::TriangleMesh;
+						collider.shape.triMeshResource	= colliderResource->GetResourceGUID();
+						collider.shape.position			= float3{ 0, 0, 0 };
+						collider.shape.orientation		= Quaternion{ 0, 0, 0, 1 };
 
 						staticBody.AddShape(shape);
+						editorData->colliders.emplace_back(collider);
 					});
 
 				resourcePicker->show();
@@ -248,37 +322,6 @@ public:
 				collider.shapeName = "CubeShape 1x1x1";
 				editorData->colliders.push_back(collider);
 			});
-
-
-		auto& list = *panelCtx.AddList(
-			[&]() -> size_t 
-			{   // Size update
-				auto& staticBody = static_cast<FlexKit::StaticBodyView&>(view);
-				auto* editorData = (StaticColliderEditorData*)staticBody.GetUserData();
-
-				if (editorData)
-					return editorData->colliders.size();
-				else return 0;
-			},
-			[&](auto idx, QListWidgetItem* item)
-			{   // Update Contents
-				auto& staticBody = static_cast<FlexKit::StaticBodyView&>(view);
-				auto* editorData = (StaticColliderEditorData*)staticBody.GetUserData();
-
-				auto resourceID = editorData->colliders[idx].shape.triMeshResource;
-				std::string label{ std::format("{}", resourceID)};
-
-				if(item->text() != label.c_str())
-					item->setData(Qt::DisplayRole, label.c_str());
-			},
-			[&](QListWidget* listWidget)
-			{   // On Event
-				auto item   = listWidget->currentItem();
-				auto idx    = listWidget->indexFromItem(item);
-
-				listWidget->setCurrentIndex(idx);
-			}
-		);
 
 		panelCtx.AddButton(
 			"Remove Collider",
@@ -366,6 +409,14 @@ public:
 		editorData->editorId			= ctx.GetEditorIdentifier();
 		auto& staticBody				= gameObject.AddView<FlexKit::StaticBodyView>(layerHandle);
 
+		auto p = FlexKit::GetWorldPosition(gameObject);
+		auto q = FlexKit::GetOrientation(gameObject).Conjugate();
+
+		physx::PxTransform transform;
+		transform.q = physx::PxQuat{ q.x, q.y, q.z, q.w };
+		transform.p = physx::PxVec3{ p.x, p.y, p.z };
+
+		staticBody->actor->setGlobalPose(transform);
 		staticBody.SetUserData(editorData);
 
 		return staticBody;

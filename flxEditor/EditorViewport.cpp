@@ -814,18 +814,17 @@ struct LoadEntityContext : public LoadEntityContextInterface
 	{
 		if (auto res = viewportscene->FindSceneResource(assetIdx); res)
 			return res;
-		else
-		{
-			auto projRes = proj.FindProjectResource(assetIdx);
 
-			if (projRes)
-			{
-				viewportscene->sceneResources.push_back(projRes);
-				return projRes;
-			}
-			else
-				FK_LOG_ERROR("Could not find project resource!");
+		auto projRes = proj.FindProjectResource(assetIdx);
+
+		if (!projRes)
+		{
+			FK_LOG_ERROR("Could not find project resource!");
+			return nullptr;
 		}
+
+		viewportscene->sceneResources.push_back(projRes);
+		return projRes;
 	}
 
 	FlexKit::TriMeshHandle LoadTriMeshResource(ProjectResource_ptr resource) override
@@ -905,7 +904,7 @@ void EditorViewport::SetScene(EditorScene_ptr newScene, EditorProject& proj)
 		const auto orientation	= node.orientation;
 
 		FlexKit::SetScale(newNode, float3{ node.scale.x, node.scale.x, node.scale.x });
-		FlexKit::SetOrientationL(newNode, orientation);
+		FlexKit::SetOrientation(newNode, orientation);
 		FlexKit::SetPositionL(newNode, position);
 
 		if(node.parent != -1)

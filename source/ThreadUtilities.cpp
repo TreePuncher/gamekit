@@ -94,7 +94,7 @@ namespace FlexKit
 
 					Manager->IncrementActiveWorkerCount();
 
-					if (auto workItem = Manager->FindWork(true); workItem)
+					if (auto workItem = Manager->FindWork(!Quit); workItem)
 					{
 						I = 0;
 						hasJob.store(true, std::memory_order_release);
@@ -120,7 +120,7 @@ namespace FlexKit
 
 			Manager->WaitForWork();
 
-			if (Quit)
+			if (Quit && localWorkQueue->size() == 0)
 				return;
 		}
 

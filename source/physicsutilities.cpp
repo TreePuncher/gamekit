@@ -133,6 +133,8 @@ namespace FlexKit
 #if USING(PHYSX_PVD)
 		if (remoteDebuggerEnabled || true)
 		{
+			FK_LOG_INFO("CONNECTING TO PVD!");
+
 			physx::PxPvd*			pvd			= physx::PxCreatePvd(*foundation);
 			physx::PxPvdTransport*	transport	= physx::PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 10);
 
@@ -141,13 +143,15 @@ namespace FlexKit
 			if (!res) {
 				pvd->release();
 				transport->release();
-				FK_LOG_WARNING("FAILED TO CONNECT TO PHYSX REMOVE DEBUGGER");
+				FK_LOG_WARNING("FAILED TO CONNECT TO PVD");
 				visualDebugger              = nullptr;
 				visualDebuggerConnection    = nullptr;
 
 			}
 			else
 			{
+				FK_LOG_INFO("CONNECTED TO PVD!");
+
 				visualDebugger              = pvd;
 				visualDebuggerConnection    = transport;
 			}
@@ -166,12 +170,7 @@ namespace FlexKit
 		if (!PxInitExtensions(*physxAPI, nullptr))
 			FK_ASSERT(0);
 
-#ifdef USING(PHYSX_PVD)
 		remoteDebuggerEnabled = visualDebugger != nullptr;
-#else
-		remoteDebuggerEnabled = false;
-#endif
-
 
 		// Create Default Material
 		defaultMaterial = physxAPI->createMaterial(0.5f, 0.5f, .1f);
@@ -427,6 +426,33 @@ namespace FlexKit
 		const Blob& blob;
 	};
 
+	Shape PhysXComponent::LoadTriMeshShape(uint64_t assetID)
+	{
+		auto res = std::ranges::find_if(
+			shapes,
+			[&](auto& shape)
+			{
+				return shape.assetID == assetID;
+			});
+
+		if (res != shapes.end())
+			return *res;
+
+		FK_LOG_INFO("Loading TriMeshShape: AssetID %u", assetID);
+
+		auto assetHandle	= LoadGameAsset(assetID);
+		Resource* resource	= GetAsset(assetHandle);
+
+		Blob triMeshBlob{ ((char*)resource) + sizeof(Resource), resource->ResourceSize - sizeof(Resource) };
+		auto shape		= LoadTriMeshShape(triMeshBlob);
+		shape.assetID	= assetID;
+
+		shapes.emplace_back(shape);
+
+		return shape;
+	}
+
+
 	Shape PhysXComponent::LoadTriMeshShape(const Blob& blob)
 	{
 		BlobInputStream stream{ blob };
@@ -434,9 +460,18 @@ namespace FlexKit
 		auto triangleMesh = physxAPI->createTriangleMesh(stream);
 
 		if (!triangleMesh)
+		{
+			FK_LOG_ERROR("Failed to create TriangleMeshCollider!");
 			return { nullptr };
+		}
 
-		auto pxShape = physxAPI->createShape(PxTriangleMeshGeometry(triangleMesh), *defaultMaterial);
+		physx::PxShape* pxShape = physxAPI->createShape(PxTriangleMeshGeometry(triangleMesh), *defaultMaterial);
+
+		if (!triangleMesh)
+		{
+			FK_LOG_ERROR("Failed to Create Shape: physxAPI->createShape(PxTriangleMeshGeometry)!");
+			return { nullptr };
+		}
 
 		Shape shape;
 		shape._ptr = pxShape;
@@ -1616,6 +1651,8 @@ namespace FlexKit
 	}
 
 
+
+
 	void SetControllerOrientation(GameObject& gameObject, const Quaternion q)
 	{
 		Apply(gameObject, [&](CharacterControllerView& controller)
@@ -1633,6 +1670,14 @@ namespace FlexKit
 			});
 	}
 
+
+	void CharacterControllerApplyForce(GameObject& gameObject, const float3 force)
+	{
+		Apply(gameObject, [&](CameraControllerView& controller)
+			{
+				controller->velocity += force;
+			});
+	}
 
 
 	/************************************************************************************************/
@@ -1784,7 +1829,8 @@ namespace FlexKit
 
 	void ThirdPersonCamera::UpdateCharacter(const float2 mouseInput, const ThirdPersonCamera::KeyStates& keyStates, const double dt)
 	{
-		auto& controllerImpl = CharacterControllerComponent::GetComponent()[controller];
+		auto&	controllerImpl = CharacterControllerComponent::GetComponent()[controller];
+		auto	controller = controllerImpl.controller;
 
 		controllerImpl.updateTimer += dt;
 		controllerImpl.mouseMoved += mouseInput;
@@ -1812,10 +1858,21 @@ namespace FlexKit
 			const float3 right      { GetRightVector() };
 			const float3 up         { 0, 1, 0 };
 
-			movementVector += keyStates.x * right;
-			movementVector += keyStates.y * forward;
 
-			float3 newVelocity = velocity;
+			PxControllerState state;
+			controller->getState(state);
+			controller->setContactOffset(0.001f);
+
+			if (PxControllerCollisionFlag::eCOLLISION_DOWN & state.collisionFlags)
+			{
+				movementVector += keyStates.x * right;
+				movementVector += keyStates.y * forward;
+			}
+			else
+			{
+				Quaternion q{ 0.0f, (float)(keyStates.x * dt * 45.0f), 0.0f};
+				velocity = q * velocity;
+			}
 
 			if (movementVector.magnitudeSq() > 0.05f)
 			{
@@ -1825,22 +1882,17 @@ namespace FlexKit
 				velocity += movementVector * acceleration * (float)deltaTime;
 			}
 			
-			if (velocity.magnitudeSq() < 0.1f || velocity.isNaN())
+			if (velocity.magnitudeSq() < 0.0001f || velocity.isNaN())
 				velocity = 0.0f;
 
-			auto controller = controllerImpl.controller;
+			velocity += -up * gravity * (float)deltaTime;
 
-			PxControllerState state;
-			controller->getState(state);
+			if(floorContact)
+				velocity -= velocity * drag * (float)deltaTime;
 
-			if(!floorContact)
-				velocity += -up * gravity;
-
-			velocity -= velocity * drag * (float)deltaTime;
-
-			const auto  desiredMove    = velocity * (float)deltaTime;
-			const auto& pxPrevPos      = controller->getPosition();
-			const auto  prevPos        = float3{ (float)pxPrevPos.x, (float)pxPrevPos.y, (float)pxPrevPos.z };
+			const auto  desiredMove	= velocity * (float)deltaTime;
+			const auto& pxPrevPos	= controller->getFootPosition();
+			const auto  prevPos		= float3{ (float)pxPrevPos.x, (float)pxPrevPos.y, (float)pxPrevPos.z };
 
 			physx::PxControllerFilters filters;
 			auto collision = controller->move(
@@ -1848,19 +1900,22 @@ namespace FlexKit
 					desiredMove.y,
 					desiredMove.z },
 				0.001f,
-				dt,
+				deltaTime,
 				filters);
 
 			floorContact = PxControllerCollisionFlag::eCOLLISION_DOWN & collision;
 
-			const auto      pxPostPos   = controller->getFootPosition();
-			const float3    postPos     = pxVec3ToFloat3(pxPostPos);
-			const auto      deltaPos    = prevPos - postPos;
-
-			if (desiredMove.magnitudeSq() * 0.5f >= deltaPos.magnitude())
-				velocity = 0.0f;
+			const auto		pxPostPos	= controller->getFootPosition();
+			const float3	postPos		= pxVec3ToFloat3(pxPostPos);
+			const auto		deltaPos	= prevPos - postPos;
 
 			FlexKit::SetPositionW(controllerImpl.node, pxVec3ToFloat3(controller->getPosition()));
+
+			if ((PxControllerCollisionFlag::eCOLLISION_DOWN & state.collisionFlags) == false &&
+				(floorContact == true))
+			{
+				Trigger(*controllerImpl.gameObject, OnFloorContact);
+			}
 		}
 	}
 
@@ -1967,6 +2022,8 @@ namespace FlexKit
 
 		staticBody->actor->setGlobalPose(globalPose);
 
+		FK_LOG_INFO("Loading Static Body Component, shape count %i", header.shapeCount);
+
 		for (size_t I = 0; I < header.shapeCount; I++)
 		{
 			StaticBodyShape triMeshShape;
@@ -1991,11 +2048,7 @@ namespace FlexKit
 			}   break;
 			case StaticBodyType::TriangleMesh:
 			{
-				auto assetHandle    = LoadGameAsset(triMeshShape.triMeshResource);
-				Resource* resource  = GetAsset(assetHandle);
-
-				Blob triMeshBlob{ ((char*)resource) + sizeof(Resource), resource->ResourceSize - sizeof(Resource) };
-				shape = physX.LoadTriMeshShape(triMeshBlob);
+				shape = physX.LoadTriMeshShape(triMeshShape.triMeshResource);
 			}	break;
 			case StaticBodyType::BoundingVolume:
 			{
@@ -2033,8 +2086,10 @@ namespace FlexKit
 				triMeshShape.orientation.z,
 				triMeshShape.orientation.w };
 
-			shape._ptr->setLocalPose(localPose);
+			if (!shape)
+				FK_LOG_ERROR("Failed to create shape!");
 
+			shape._ptr->setLocalPose(localPose);
 			staticBody.AddShape(shape);
 		}
 
@@ -2059,7 +2114,7 @@ namespace FlexKit
 	{
 		auto& layer_ref		= GetComponent().GetLayer_ref(layer);
 		auto& staticBody	= layer_ref[sb];
-		staticBody.actor->release();
+
 		layer_ref.ReleaseCollider(sb);
 	}
 

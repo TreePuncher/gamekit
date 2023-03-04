@@ -30,20 +30,24 @@ namespace FlexKit
 
 	bool	LoadLevel(uint64_t ID, EngineCore& core)
 	{
-		if (GetLevel(ID) != nullptr)
-			return true;
+		if (bool res = CreateLevel(ID, core); !res)
+			return false;
 
-		iAllocator& allocator = core.GetBlockMemory();
-		auto& physX = PhysXComponent::GetComponent();
-		auto& loadedLevel = allocator.allocate<LoadedLevel>();
+		auto res = std::ranges::find_if(loadedLevels,
+			[&](auto level) -> bool
+			{
+				return level->ID == ID;
+			});
 
-		loadedLevel.level.layer	= physX.CreateLayer(true);
-		loadedLevel.allocator	= &allocator;
-		loadedLevel.ID			= ID;
-		loadedLevels.push_back(&loadedLevel);
+		if (res == loadedLevels.end())
+			return false;
+
+		auto& loadedLevel = **res;
 
 		if (!activeLevel)
 			activeLevel = &loadedLevel;
+
+		iAllocator& allocator = core.GetBlockMemory();
 
 		// Load Test Scene
 		SceneLoadingContext loadCtx{
@@ -73,6 +77,30 @@ namespace FlexKit
 			return &(*res)->level;
 
 		std::unreachable();
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool CreateLevel(uint64_t ID, EngineCore& core)
+	{
+		if (GetLevel(ID) != nullptr)
+			return false;
+
+		iAllocator& allocator	= core.GetBlockMemory();
+		auto& physX				= PhysXComponent::GetComponent();
+		auto& loadedLevel		= allocator.allocate<LoadedLevel>();
+
+		loadedLevel.level.layer	= physX.CreateLayer(true);
+		loadedLevel.allocator	= &allocator;
+		loadedLevel.ID			= ID;
+		loadedLevels.push_back(&loadedLevel);
+
+		if (!activeLevel)
+			activeLevel = &loadedLevel;
+
+		return true;
 	}
 
 

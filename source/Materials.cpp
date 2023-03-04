@@ -155,6 +155,8 @@ namespace FlexKit
 			for (auto& texture : textures)
 				ReleaseTexture(texture);
 
+			const auto idx = handles[material];
+
 			if (material_ref.textureDescriptors.size)
 				renderSystem._ReleaseDescriptorRange(material_ref.textureDescriptors, material_ref.lastUsed);
 
@@ -165,12 +167,7 @@ namespace FlexKit
 			}
 
 			materials.pop_back();
-
-			if (materials.size())
-			{
-				handles[materials[idx].handle] = idx;
-				handles.RemoveHandle(material);
-			}
+			handles.RemoveHandle(material);
 		}
 	}
 

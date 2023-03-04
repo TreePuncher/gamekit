@@ -442,6 +442,7 @@ namespace FlexKit
 
 		std::atomic_bool        updateInProgress    = false;
 		std::atomic_bool        taskInProgress      = false;
+		std::atomic_bool        taskStarted			= false;
 
 		ReadBackResourceHandle  feedbackReturnBuffer; // CPU + GPU
 

@@ -74,7 +74,6 @@ public:
 	void Jump();
 	void Fall();
 
-
 	FlexKit::AnimatorComponent				animators;
 	FlexKit::CameraComponent				cameras;
 	FlexKit::CameraControllerComponent		orbitCameras;
@@ -117,6 +116,13 @@ public:
 
 	FlexKit::float3 A = { 0, 0, 0 };
 	FlexKit::float3 B = { 0, 10, 0 };
+
+	float jumpSpeed			= 25.0f;
+	float gravity			= 19.0f;
+	float fallGravityRatio	= 2.0f;
+	float airMovementRatio	= 0.5f;
+	float moveRate			= 50.0f;
+	bool  jumpEnable		= true;
 
 	PortalComponent	portalComponent;
 	SpawnComponent	spawnComponent;

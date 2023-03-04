@@ -403,8 +403,9 @@ namespace FlexKit
 				if (!updateInProgress)
 					return;
 
-				taskInProgress = true;
-				auto& task = allocator->allocate<TextureStreamUpdate>(resource, *this, allocator);
+				taskInProgress	= true;
+				taskStarted		= false;
+				auto& task		= allocator->allocate<TextureStreamUpdate>(resource, *this, allocator);
 				renderSystem.threads.AddBackgroundWork(task);
 			});
 
@@ -427,7 +428,8 @@ namespace FlexKit
 			feedbackReturnBuffer,
 			[](ReadBackResourceHandle resource){});
 
-		while (taskInProgress);
+		if(taskStarted)
+			while (taskInProgress);
 
 		renderSystem.WaitforGPU(); // Flush any pending reads
 		renderSystem.FlushPendingReadBacks();
@@ -754,11 +756,14 @@ namespace FlexKit
 
 	void TextureStreamingEngine::TextureStreamUpdate::Run(iAllocator& threadLocalAllocator)
 	{
+		textureStreamEngine.taskStarted = true;
+
 		uint32_t	requestCount	= 0;
 		gpuTileID*	requests		= nullptr;
 
 		auto [buffer, bufferSize] = textureStreamEngine.renderSystem.OpenReadBackBuffer(resource);
 		EXITSCOPE(textureStreamEngine.renderSystem.CloseReadBackBuffer(resource));
+		EXITSCOPE(textureStreamEngine.updateInProgress = false);
 
 		std::chrono::high_resolution_clock Clock;
 		auto Before = Clock.now();
@@ -884,8 +889,6 @@ namespace FlexKit
 
 		if(blockAllocations)
 			textureStreamEngine.PostUpdatedTiles(blockAllocations, threadLocalAllocator);
-
-		textureStreamEngine.updateInProgress = false;
 	}
 
 
