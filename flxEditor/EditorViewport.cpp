@@ -663,16 +663,37 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
 			IN_renderer.framework.GetRenderSystem().QueuePSOLoad(FlexKit::CREATECLUSTERS);
 		});
 
-	auto viewMenu		= menuBar->addMenu("View");
-	auto overlayToggle	= viewMenu->addAction("Toggle Overlay");
-	overlayToggle->setChecked(true);
-	overlayToggle->setCheckable(true);
+	auto viewMenu				= menuBar->addMenu("View");
 
-	connect(overlayToggle, &QAction::triggered,
-		[&, toggle = overlayToggle]
+	auto boundingBoxOverlayToggle	= viewMenu->addAction("BoundingBox Overlay");
+	auto physicsOverlayToggle		= viewMenu->addAction("Physics Overlay");
+	auto lightOverlayToggle			= viewMenu->addAction("Light Overlay");
+
+	boundingBoxOverlayToggle->setCheckable(true);
+	boundingBoxOverlayToggle->setChecked(boundingBoxOverlay);
+
+	physicsOverlayToggle->setCheckable(true);
+	physicsOverlayToggle->setChecked(phyicsOverlay);
+
+	lightOverlayToggle->setCheckable(true);
+	lightOverlayToggle->setChecked(lightOverlay);
+
+	connect(boundingBoxOverlayToggle, &QAction::triggered,
+		[&, boundingBoxOverlayToggle]
 		{
-			overlayEnabled = toggle->isChecked();
-			toggle->setChecked(overlayEnabled);
+			boundingBoxOverlay = boundingBoxOverlayToggle->isChecked();
+		});
+
+	connect(physicsOverlayToggle, &QAction::triggered,
+		[&, physicsOverlayToggle]
+		{
+			phyicsOverlay = physicsOverlayToggle->isChecked();
+		});
+
+	connect(lightOverlayToggle, &QAction::triggered,
+		[&, lightOverlayToggle]
+		{
+			lightOverlay = lightOverlayToggle->isChecked();
 		});
 
 	menuBar->show();
@@ -1326,8 +1347,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 			.allocator		= allocator
 		};
 
-		if(overlayEnabled)
-			DrawSceneOverlay(dispatcher, frameGraph, desc);
+		DrawSceneOverlays(dispatcher, frameGraph, desc);
 
 		if (mode.size())
 			mode.back()->Draw(dispatcher, frameGraph, temporaries, renderTarget, depthBuffer.Get());
@@ -1356,7 +1376,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 /************************************************************************************************/
 
 
-void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, EditorViewport::DrawSceneOverlay_Desc& desc)
+void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, EditorViewport::DrawSceneOverlay_Desc& desc)
 {
 	if (!isVisible())
 		return;
@@ -1440,80 +1460,83 @@ void EditorViewport::DrawSceneOverlay(FlexKit::UpdateDispatcher& Dispatcher, Fle
 			ctx.SetGraphicsConstantBufferView(1, cameraConstants);
 
 			// Draw Point Lights
-			for (const auto& lightHandle : pointLights)
+			if(lightOverlay)
 			{
-				bool selectedLight = false;
-				for (auto& viewportObject : selection.viewportObjects)
+				for (const auto& lightHandle : pointLights)
 				{
-					FlexKit::PointLightHandle pointlight = FlexKit::GetPointLight(viewportObject->gameObject);
-					if (pointlight == lightHandle)
-						selectedLight = true;
-				}
-
-				struct Vertex
-				{
-					FlexKit::float4 position;
-					FlexKit::float4 color;
-					FlexKit::float2 UV;
-				};
-
-				const float3 position	= FlexKit::GetPositionW(pointLightComponnet[lightHandle].Position);
-				const float radius		= pointLightComponnet[lightHandle].R;
-
-				const size_t divisions  = 64;
-				FlexKit::VBPushBuffer VBBuffer   = data.ReserveVertexBuffer(sizeof(Vertex) * 6 * divisions);
-
-				const float Step = 2.0f * (float)FlexKit::pi / divisions;
-				const auto range = FlexKit::MakeRange(0, divisions);
-				const float4 color = selectedLight ? float4{ 1, 1, 0, 1 } : float4{ 1, 1, 1, 1 };
-
-				const FlexKit::VertexBufferDataSet vertices{
-					FlexKit::SET_TRANSFORM_OP,
-					range,
-					[&](const size_t I, auto& pushBuffer) -> Vertex
+					bool selectedLight = false;
+					for (auto& viewportObject : selection.viewportObjects)
 					{
-						const float3 V1 = { radius * cos(Step * (I + 1)),	0.0f, (radius * sin(Step * (I + 1))) };
-						const float3 V2 = { radius * cos(Step * I),		    0.0f, (radius * sin(Step * I)) };
+						FlexKit::PointLightHandle pointlight = FlexKit::GetPointLight(viewportObject->gameObject);
+						if (pointlight == lightHandle)
+							selectedLight = true;
+					}
 
-						pushBuffer.Push(Vertex{ float4{ V1, 1 }, color, float2{ 0, 0 } });
-						pushBuffer.Push(Vertex{ float4{ V2, 1 }, color, float2{ 1, 1 } });
+					struct Vertex
+					{
+						FlexKit::float4 position;
+						FlexKit::float4 color;
+						FlexKit::float2 UV;
+					};
 
-						pushBuffer.Push(Vertex{ float4{ V1.x, V1.z, 0, 1 }, color, float2{ 0, 0 } });
-						pushBuffer.Push(Vertex{ float4{ V2.x, V2.z, 0, 1 }, color, float2{ 1, 1 } });
+					const float3 position	= FlexKit::GetPositionW(pointLightComponnet[lightHandle].Position);
+					const float radius		= pointLightComponnet[lightHandle].R;
+
+					const size_t divisions  = 64;
+					FlexKit::VBPushBuffer VBBuffer   = data.ReserveVertexBuffer(sizeof(Vertex) * 6 * divisions);
+
+					const float Step = 2.0f * (float)FlexKit::pi / divisions;
+					const auto range = FlexKit::MakeRange(0, divisions);
+					const float4 color = selectedLight ? float4{ 1, 1, 0, 1 } : float4{ 1, 1, 1, 1 };
+
+					const FlexKit::VertexBufferDataSet vertices{
+						FlexKit::SET_TRANSFORM_OP,
+						range,
+						[&](const size_t I, auto& pushBuffer) -> Vertex
+						{
+							const float3 V1 = { radius * cos(Step * (I + 1)),	0.0f, (radius * sin(Step * (I + 1))) };
+							const float3 V2 = { radius * cos(Step * I),		    0.0f, (radius * sin(Step * I)) };
+
+							pushBuffer.Push(Vertex{ float4{ V1, 1 }, color, float2{ 0, 0 } });
+							pushBuffer.Push(Vertex{ float4{ V2, 1 }, color, float2{ 1, 1 } });
+
+							pushBuffer.Push(Vertex{ float4{ V1.x, V1.z, 0, 1 }, color, float2{ 0, 0 } });
+							pushBuffer.Push(Vertex{ float4{ V2.x, V2.z, 0, 1 }, color, float2{ 1, 1 } });
 
 						
-						pushBuffer.Push(Vertex{ float4{ 0, V1.x, V1.z, 1 }, color, float2{ 0, 0 } });
-						pushBuffer.Push(Vertex{ float4{ 0, V2.x, V2.z, 1 }, color, float2{ 1, 1 } });
+							pushBuffer.Push(Vertex{ float4{ 0, V1.x, V1.z, 1 }, color, float2{ 0, 0 } });
+							pushBuffer.Push(Vertex{ float4{ 0, V2.x, V2.z, 1 }, color, float2{ 1, 1 } });
 
-						return {};
-					},
-					VBBuffer };
+							return {};
+						},
+						VBBuffer };
 
-				ctx.SetVertexBuffers({ vertices });
+					ctx.SetVertexBuffers({ vertices });
 
-				struct {
-					float4		unused1;
-					float4		unused2;
-					float4x4	transform;
-				} CB_Data {
-					.unused1	= float4{ 0, 0, 0, 1 },
-					.unused2	= float4{ 1, 1, 1, 1 },
-					.transform	= FlexKit::TranslationMatrix(position)
-				};
+					struct {
+						float4		unused1;
+						float4		unused2;
+						float4x4	transform;
+					} CB_Data {
+						.unused1	= float4{ 0, 0, 0, 1 },
+						.unused2	= float4{ 1, 1, 1, 1 },
+						.transform	= FlexKit::TranslationMatrix(position)
+					};
 
-				auto constantBuffer = data.ReserveConstantBuffer(256);
-				FlexKit::ConstantBufferDataSet constants{ CB_Data, constantBuffer };
+					auto constantBuffer = data.ReserveConstantBuffer(256);
+					FlexKit::ConstantBufferDataSet constants{ CB_Data, constantBuffer };
 
-				ctx.SetGraphicsConstantBufferView(2, constants);
+					ctx.SetGraphicsConstantBufferView(2, constants);
 
-				ctx.Draw(divisions * 6);
+					ctx.Draw(divisions * 6);
+				}
 			}
 
 
 			auto& physX = FlexKit::PhysXComponent::GetComponent();
 			auto& layer = physX.GetLayer_ref(scene->GetLayer());
 
-			if(layer.debugGeometry.size())
+			if(phyicsOverlay && layer.debugGeometry.size())
 			{
 				ctx.BeginEvent_DEBUG("PhysX Debug");
 

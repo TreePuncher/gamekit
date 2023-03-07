@@ -10,6 +10,7 @@ namespace FlexKit
 
 
 	struct AnimationPoseUpload;
+	struct EntityConstants;
 
 
 	/************************************************************************************************/
@@ -286,6 +287,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+
 	class ClusteredRender
 	{
 	public:
@@ -309,7 +311,7 @@ namespace FlexKit
 								const CameraHandle				camera,
 								GBuffer&						gbuffer,
 								ResourceHandle					depthTarget,
-								FrameResourceHandle				constants,
+								EntityConstants& entityConstants,
 								ReserveConstantBufferFunction	reserveCB,
 								iAllocator*						allocator,
 								AnimationPoseUpload*			poses = nullptr);

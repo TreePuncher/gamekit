@@ -168,11 +168,12 @@ void LoadEntity(FlexKit::SceneEntity& entity, LoadEntityContextInterface& ctx)
 
 			if (brushComponent)
 			{
-				auto& materials = FlexKit::MaterialComponent::GetComponent();
-				auto material   = materials.CreateMaterial(ctx.DefaultMaterial());
+				//auto& materials = FlexKit::MaterialComponent::GetComponent();
+				//auto material   = materials.CreateMaterial(ctx.DefaultMaterial());
 
 
 				//TODO: Seems the issue if further up the asset pipeline. Improve material generation?
+				/*
 				if (brushComponent->material.subMaterials.size() > 1)
 				{
 					for (auto& subMaterialData : brushComponent->material.subMaterials)
@@ -194,6 +195,7 @@ void LoadEntity(FlexKit::SceneEntity& entity, LoadEntityContextInterface& ctx)
 					for (auto texture : subMaterialData.textures)
 						materials.PushTexture(material, texture, rdCtx);
 				}
+				*/
 
 				auto& meshes = brushComponent->meshes;
 
@@ -211,10 +213,7 @@ void LoadEntity(FlexKit::SceneEntity& entity, LoadEntityContextInterface& ctx)
 					component.AddComponentView(ctx.GameObject(), values, blob, blob.size(), FlexKit::SystemAllocator);
 
 					auto& brush			= FlexKit::GetView<FlexKit::BrushView>(ctx.GameObject()).GetBrush();
-					brush.material		= material;
 				}
-
-				ctx.GameObject().AddView<FlexKit::MaterialView>(material);
 
 				if(ctx.Scene() && !ctx.GameObject().hasView(FlexKit::SceneVisibilityComponentID))
 					ctx.Scene()->AddGameObject(ctx.GameObject(), FlexKit::GetSceneNode(ctx.GameObject()));
@@ -239,6 +238,10 @@ void LoadEntity(FlexKit::SceneEntity& entity, LoadEntityContextInterface& ctx)
 		default:
 		{
 			auto  blob				= componentEntry->GetBlob();
+
+			if (!FlexKit::ComponentBase::isComponentAvailable(componentEntry->id))
+				continue;
+
 			auto& component			= FlexKit::ComponentBase::GetComponent(componentEntry->id);
 
 			auto layer = ctx.LayerHandle();
@@ -248,7 +251,6 @@ void LoadEntity(FlexKit::SceneEntity& entity, LoadEntityContextInterface& ctx)
 				{ FlexKit::SceneEntityKID, &entity } };
 
 			component.AddComponentView(ctx.GameObject(), values, blob, blob.size(), FlexKit::SystemAllocator);
-			
 		}	break;
 		}
 	}

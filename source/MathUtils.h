@@ -365,7 +365,7 @@ namespace FlexKit
 
 
 		template<typename TY_vect, int ... ints>
-		static auto extractVect(const TY_vect& vect, const std::integer_sequence<int, ints...> x) noexcept
+		static decltype(auto) ExtractVect(const TY_vect& vect, const std::integer_sequence<int, ints...> x) noexcept
 		{
 			return std::make_tuple(vect[ints]...);
 		}
@@ -387,7 +387,7 @@ namespace FlexKit
 		template<size_t vectorSize>
 		static auto BuildTuple(const Vect<vectorSize, TY> vect)
 		{
-			return extractVect(vect, std::make_integer_sequence<int, vectorSize>());
+			return ExtractVect(vect, std::make_integer_sequence<int, vectorSize>());
 		}
 
 
@@ -422,9 +422,9 @@ namespace FlexKit
 		{
 			static_assert(sizeof ... (args) <= SIZE, "Input value count must be less than container size!");
 
-			const auto          tuple      = BuildTuple(args...);
-			constexpr size_t    valueCount = std::tuple_size_v<decltype(tuple)>;
-			const auto          indexes    = std::make_integer_sequence<int, valueCount>{};
+			const auto			tuple		= BuildTuple(args...);
+			constexpr size_t	valueCount	= std::tuple_size_v<decltype(tuple)>;
+			const auto			indexes		= std::make_integer_sequence<int, valueCount>{};
 
 			helper(tuple, indexes);
 		}
@@ -977,11 +977,11 @@ namespace FlexKit
 	public:
 		float3() noexcept {}
 
-		float3(float val)	noexcept { pfloats = _mm_set_ps1(val); }
-		float3(float X, float Y, float Z)	    noexcept { pfloats = _mm_set_ps(0.0f, Z, Y, X); }
+		float3(float val)						noexcept { pfloats = _mm_set_ps1(val); }
+		float3(float X, float Y, float Z)		noexcept { pfloats = _mm_set_ps(0.0f, Z, Y, X); }
 		float3(const float2 in, float Z = 0)	noexcept { pfloats = _mm_setr_ps(in.x, in.y, Z, 0.0f); }
-		float3(const float3& a)     noexcept { pfloats = a.pfloats; }
-		float3(const __m128& in)    noexcept { pfloats = in; }
+		float3(const float3& a)					noexcept { pfloats = _mm_load_ps(a); }
+		float3(const __m128& in)				noexcept { pfloats = in; }
 
 		float2 xy() const noexcept { return { x, y }; }
 		float2 yz() const noexcept { return { y, z }; }
@@ -1002,9 +1002,9 @@ namespace FlexKit
 		}
 
 
-		float3& operator = (float F) noexcept
+		float3& operator = (float f) noexcept
 		{
-			pfloats = _mm_set_ps1(F);
+			pfloats = _mm_set_ps1(f);
 			return *this;
 		}
 
@@ -1016,17 +1016,17 @@ namespace FlexKit
 		}
 
 
-		float& operator[] (const size_t index)	        noexcept { return *GetElement_ptr(pfloats, index); }
-		float operator[]  (const size_t index)	const   noexcept { return GetElement(pfloats, index); }
+		float& operator[] (const size_t index)			noexcept { return *GetElement_ptr(pfloats, index); }
+		float operator[]  (const size_t index)	const	noexcept { return GetElement(pfloats, index); }
 
 		// Operator Overloads
-		float3 operator - ()	        noexcept                { return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
-		float3 operator - ()	const   noexcept                { return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
-		float3 operator + (const float& rhs)	const noexcept  { return _mm_add_ps(pfloats, _mm_set_ps1(rhs)); }
-		float3 operator + (const float3& rhs)	const noexcept  { return _mm_add_ps(pfloats, rhs); }
+		float3 operator - ()			noexcept				{ return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
+		float3 operator - ()	const	noexcept				{ return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
+		float3 operator + (const float rhs)		const noexcept	{ return _mm_add_ps(pfloats, _mm_set_ps1(rhs)); }
+		float3 operator + (const float3 rhs)	const noexcept	{ return _mm_add_ps(pfloats, rhs); }
 
 
-		float3& operator += (const float3& rhs) noexcept
+		float3& operator += (const float3 rhs) noexcept
 		{
 			pfloats = _mm_add_ps(pfloats, rhs);
 
@@ -1046,7 +1046,7 @@ namespace FlexKit
 		}
 
 
-		float3& operator -= (const float3& rhs) noexcept
+		float3& operator -= (const float3 rhs) noexcept
 		{
 			pfloats = _mm_sub_ps(pfloats, rhs.pfloats);
 
@@ -1061,7 +1061,7 @@ namespace FlexKit
 		}
 
 
-		bool operator == (const float3& rhs) const noexcept
+		bool operator == (const float3 rhs) const noexcept
 		{
 			if (rhs.x == x)
 				if (rhs.y == y)
@@ -1071,18 +1071,18 @@ namespace FlexKit
 		}
 
 
-		float3 operator - (const float3& a) const noexcept
+		float3 operator - (const float3 a) const noexcept
 		{
 			return _mm_sub_ps(pfloats, a);
 		}
 
-		static bool Compare(const float3& lhs, const float3& rhs, float ep = 0.001f) noexcept
+		static bool Compare(const float3 lhs, const float3 rhs, float ep = 0.001f) noexcept
 		{
 			float3 temp = lhs - rhs;
 			return (temp.x < ep) && (temp.y < ep) && (temp.z < ep);
 		}
 
-		float3 operator *	(const float3& a) const noexcept
+		float3 operator *	(const float3 a) const noexcept
 		{
 #if USING(FASTMATH)
 			return _mm_mul_ps(a.pfloats, pfloats);
@@ -1103,7 +1103,7 @@ namespace FlexKit
 		}
 
 
-		float3& operator *=	(const float3& a) noexcept
+		float3& operator *=	(const float3 a) noexcept
 		{
 			pfloats = _mm_mul_ps(pfloats, a);
 
@@ -1125,7 +1125,7 @@ namespace FlexKit
 		}
 
 
-		float3 operator / (const float3& a) const noexcept
+		float3 operator / (const float3 a) const noexcept
 		{
 			return _mm_div_ps(pfloats, a);
 		}
@@ -1138,7 +1138,7 @@ namespace FlexKit
 		}
 
 
-		float3& operator /= (const float3& a) noexcept
+		float3& operator /= (const float3 a) noexcept
 		{
 			pfloats = _mm_div_ps(pfloats, a);
 			return *this;
@@ -1158,19 +1158,19 @@ namespace FlexKit
 		}
 
 		// Identities
-		const float3 cross(const float3& rhs) const noexcept
+		const float3 cross(const float3 rhs) const noexcept
 		{
 			return CrossProduct(pfloats, rhs.pfloats);
 		}
 
 
-		const float3 distance(const float3& b) const noexcept
+		const float3 distance(const float3 b) const noexcept
 		{
 			return (*this - b).magnitude();
 		}
 
 
-		float dot(const float3& b) const noexcept
+		float dot(const float3 b) const noexcept
 		{
 			__m128 res = _mm_dp_ps(pfloats, b.pfloats, 0b01110001);
 
@@ -1253,8 +1253,9 @@ namespace FlexKit
 
 		operator __m128 () const	 { return pfloats; }
 
-		inline float* toFloat3_ptr() noexcept   { return reinterpret_cast<float*>( &pfloats ); }
-		operator float* () noexcept             { return toFloat3_ptr(); }
+		inline float* toFloat3_ptr()		noexcept { return reinterpret_cast<float*>( &pfloats ); }
+		operator		float* ()			noexcept { return toFloat3_ptr(); }
+		operator const	float* () const		noexcept { return reinterpret_cast<const float*>(&pfloats); }
 
 		operator Vect3 () const		 { return { x, y, z }; }
 		operator float2() const		 { return { x, y }; }
@@ -1352,7 +1353,7 @@ namespace FlexKit
 	public:
 		float4() {}
 
-		inline float4( float r ) 
+		inline float4(float r) 
 		{
 #if USING(FASTMATH)
 			pFloats = _mm_set1_ps(r);
@@ -1364,7 +1365,7 @@ namespace FlexKit
 #endif
 		}
 
-		inline float4( float X, float Y, float Z, float W  ) 
+		inline float4(float X, float Y, float Z, float W) 
 		{
 #if USING(FASTMATH)
 			pFloats = _mm_set_ps(W, Z, Y, X);
@@ -1376,17 +1377,15 @@ namespace FlexKit
 #endif
 		}
 
-		inline float4( const float3& V,  const float W = 0) 
+		inline float4(const float3& V,  const float W = 0) noexcept
 		{
-			x = V[0];
-			y = V[1];
-			z = V[2];
-			w = W;
+			pFloats	= _mm_load_ps(V);
+			w		= W;
 		}
 
-		inline float4( __m128 in ) : pFloats(in){}
+		inline float4(__m128 in) noexcept : pFloats{ in } {}
 
-		inline float4( const float2& V1, const float2& V2  ) 
+		inline float4(const float2 V1, const float2 V2 ) noexcept
 		{
 			x = V1[0];
 			y = V1[1];
@@ -1401,7 +1400,7 @@ namespace FlexKit
 		inline float operator[]  ( const size_t index )	const	{ return GetElement( pFloats, index); }
 		inline operator __m128	 ()						const	{ return pFloats;} 
 
-		inline float4 operator+ ( const float4& rhs ) const 
+		inline float4 operator+ (const float4 rhs) const noexcept
 		{
 #if USING(FASTMATH)
 			return _mm_add_ps(pFloats, rhs.pFloats);
@@ -1413,7 +1412,7 @@ namespace FlexKit
 #endif
 		}
 
-		inline float4 operator+ (const float rhs) const
+		inline float4 operator+ (const float rhs) const noexcept
 		{
 #if USING(FASTMATH)
 			return _mm_add_ps(pFloats, _mm_set1_ps(rhs));
@@ -1425,7 +1424,7 @@ namespace FlexKit
 #endif
 		}
 
-		inline float4 operator- ( const float4& rhs) const
+		inline float4 operator- (const float4 rhs) const noexcept
 		{
 #if USING(FASTMATH)
 			return _mm_sub_ps(pFloats, rhs);
@@ -1437,7 +1436,7 @@ namespace FlexKit
 #endif
 		}
 
-		inline float4 operator- ( const float rhs) const
+		inline float4 operator- ( const float rhs) const noexcept
 		{
 #if USING(FASTMATH)
 			return _mm_sub_ps(pFloats, _mm_set1_ps(rhs));
@@ -1449,19 +1448,13 @@ namespace FlexKit
 #endif
 		}
 
-		//inline float4 operator* ( const float4 a ) const
-		//{
-#if USING(FASTMATH)
-		//	return _mm_mul_ps(pFloats, a);
-#else
-			return float4(	x * rhs.x, 
-							y * rhs.y, 
-							z * rhs.z, 
-							w * rhs.w );
-#endif
-		//}
+		inline float4 operator* (const float4 a) const noexcept
+		{
+			return _mm_mul_ps(pFloats, a);
+		}
 
-		inline float4 operator* (const float rhs) const
+
+		inline float4 operator* (const float rhs) const noexcept
 		{
 #if USING(FASTMATH)
 			return _mm_mul_ps(pFloats, _mm_set1_ps(rhs));
@@ -1473,7 +1466,7 @@ namespace FlexKit
 #endif
 		}
 
-		inline float4 operator += (const float4& rhs)
+		inline float4 operator += (const float4 rhs) noexcept
 		{
 #if USING(FASTMATH)
 			pFloats = _mm_add_ps(pFloats, rhs);
@@ -1486,7 +1479,7 @@ namespace FlexKit
 			return pFloats;
 		}
 
-		inline float4 operator / (const float4& rhs) const
+		inline float4 operator / (const float4 rhs) const noexcept
 		{
 #if USING(FASTMATH)
 			return _mm_div_ps(pFloats, rhs);
@@ -1497,6 +1490,7 @@ namespace FlexKit
 							w / rhs.w );
 #endif
 		}
+
 
 		inline float4& operator /= (const float rhs)
 		{
@@ -1512,7 +1506,15 @@ namespace FlexKit
 #endif
 		}
 
-		inline float4 operator / (const float rhs) const
+
+		inline float4& operator*= (const float4 a) noexcept
+		{
+			pFloats = (*this) * a;
+			return *this;
+		}
+
+
+		inline float4 operator / (const float rhs) const noexcept
 		{
 #if USING(FASTMATH)
 			return _mm_div_ps(pFloats, _mm_set1_ps(rhs));
@@ -1524,12 +1526,20 @@ namespace FlexKit
 #endif
 		}
 
-		inline float4 operator % (const float4& rhs) const
+
+		inline float4& operator /= (const float4 a) noexcept
 		{
-			return float4(	std::fmod( x, rhs.x ), 
-							std::fmod( y, rhs.y ),
-							std::fmod( z, rhs.z ),
-							std::fmod( w, rhs.w ) );
+			pFloats = (*this) / a;
+			return *this;
+		}
+
+
+		inline float4 operator % (const float4 rhs) const noexcept
+		{
+			return float4(	std::fmod(x, rhs.x), 
+							std::fmod(y, rhs.y),
+							std::fmod(z, rhs.z),
+							std::fmod(w, rhs.w) );
 		}
 
 		float Max() const noexcept
@@ -1557,8 +1567,8 @@ namespace FlexKit
 			return { x, y, z };
 		}
 
-		operator Vect4 ()		{ return{ x, y, z, w }; };
-		operator Vect4 () const { return{ x, y, z, w }; };
+		operator Vect4 ()		noexcept { return{ x, y, z, w }; };
+		operator Vect4 () const	noexcept { return{ x, y, z, w }; };
 
 		constexpr static size_t Size() { return 4; }
 
@@ -1576,7 +1586,6 @@ namespace FlexKit
 	};
 
 	inline float  F4Dot		(float4 rhs, float4 lhs)				{ return DotProduct4(lhs, rhs); }
-	inline float4 operator* (float4 lhs, float4 rhs)				{ return _mm_mul_ps(lhs, rhs); }
 	inline float4 F4MUL		(const float4 lhs, const float4 rhs)	{ return _mm_mul_ps(lhs, rhs); }
 
 
@@ -1615,13 +1624,13 @@ namespace FlexKit
 		}
 
 
-		inline explicit Quaternion( float* in )
+		inline explicit Quaternion(float* in)
 		{
 			_mm_store_ps( in, floats );
 		}
 
 
-		inline explicit Quaternion( const Quaternion& in ) :
+		inline explicit Quaternion(const Quaternion& in) :
 			floats( in.floats )	{}
 
 
@@ -1647,28 +1656,28 @@ namespace FlexKit
 		}
 
 
-		inline Quaternion& operator *= (const Quaternion& rhs )
+		inline Quaternion& operator *= (const Quaternion rhs ) noexcept
 		{
 			(*this) = GrassManProduct(*this, rhs);
 			return (*this);
 		}
 
 
-		inline Quaternion& operator = (const Quaternion& rhs )
+		inline Quaternion& operator = (const Quaternion rhs) noexcept
 		{
 			floats = rhs.floats;
 			return (*this);
 		}
 
 
-		inline Quaternion& operator = (const  __m128 rhs )
+		inline Quaternion& operator = (const  __m128 rhs ) noexcept
 		{
 			floats = rhs;
 			return (*this);
 		}
 
 
-		inline Quaternion operator * (const Quaternion q) const
+		inline Quaternion operator * (const Quaternion q) const noexcept
 		{
 			return GrassManProduct(q, *this);
 		}
@@ -1677,13 +1686,15 @@ namespace FlexKit
 		inline float& operator [] (const size_t index)			{ return GetElement_ref	(floats, index); }
 		inline float operator  [] (const size_t index) const	{ return GetElement		(floats, index); }
 
-		inline float& operator [] (const int index)		    { return GetElement_ref	(floats, index); }
+		inline float& operator [] (const int index)			{ return GetElement_ref	(floats, index); }
 		inline float operator  [] (const int index) const	{ return GetElement		(floats, index); }
+
 
 		inline operator		  float* ()			{ return (float*)&floats; }
 		inline operator const float* () const	{ return (float*)&floats; }
 		inline operator		  __m128 ()			{ return floats; }
 		inline operator const __m128 () const	{ return floats; }
+
 
 		template< typename Ty_2 >
 		inline Quaternion& operator = ( const float4& rhs )
@@ -1695,6 +1706,7 @@ namespace FlexKit
 
 			return (*this);
 		}
+
 
 		inline Quaternion Conjugate() const noexcept
 		{
@@ -1710,17 +1722,21 @@ namespace FlexKit
 			return Conjugate;
 		}
 		inline Quaternion Inverse() const { return  Conjugate(); }
-		
+
+
 		inline float dot(Quaternion rhs) const noexcept
 		{ 
 			return V().dot(rhs.V()) + w * rhs.w; 
 		}
 
-		inline Quaternion operator / (float denom)		{return { x / denom , y / denom , z / denom , w / denom };}
-		inline Quaternion operator + (Quaternion RHS)	{return { x + RHS.x, y + RHS.y, z + RHS.z, w + RHS.w }; }
+
+		inline Quaternion operator / (float denom)		{ return { x / denom , y / denom , z / denom , w / denom }; }
+		inline Quaternion operator + (Quaternion RHS)	{ return { x + RHS.x, y + RHS.y, z + RHS.z, w + RHS.w }; }
+
 
 		inline float3 XYZ() const { return float3(x, y, z); }
 		inline float3 V()   const { return float3(x, y, z); }
+
 
 		inline float Magnitude() const noexcept
 		{
@@ -1733,6 +1749,7 @@ namespace FlexKit
 			return x * x + y * y + z * z + w * w;
 #endif
 		}
+
 
 		inline Quaternion& normalize() noexcept
 		{
@@ -1817,7 +1834,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI inline float3		operator * (const Quaternion P, const float3 V)
+	FLEXKITAPI inline float3		operator * (const Quaternion P, const float3 V) noexcept
 	{
 		auto v		= -1 * P.XYZ();
 		auto vXV	= v.cross(V);
@@ -1827,7 +1844,7 @@ namespace FlexKit
 	}
 
 
-	FLEXKITAPI inline Quaternion operator * (const Quaternion Q, const float scaler)
+	FLEXKITAPI inline Quaternion operator * (const Quaternion Q, const float scaler) noexcept
 	{
 		__m128 r = Q;
 		__m128 s = _mm_set1_ps(scaler);

@@ -1315,6 +1315,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void SetThirdPersonCharacterActive(GameObject& gameObject, const bool active)
+	{
+		Apply(gameObject, [&](CameraControllerView& cameraController) { cameraController->active = active; });
+	}
+
+
+	/************************************************************************************************/
+
+
 	void SetCameraControllerCameraHeightOffset(GameObject& GO, const float offset)
 	{
 		Apply(GO, [&](CameraControllerView& cameraController)
@@ -1832,6 +1841,9 @@ namespace FlexKit
 		auto&	controllerImpl = CharacterControllerComponent::GetComponent()[controller];
 		auto	controller = controllerImpl.controller;
 
+		if (!active)
+			return;
+
 		controllerImpl.updateTimer += dt;
 		controllerImpl.mouseMoved += mouseInput;
 
@@ -2089,7 +2101,7 @@ namespace FlexKit
 			if (!shape)
 				FK_LOG_ERROR("Failed to create shape!");
 
-			shape._ptr->setLocalPose(localPose);
+			//shape._ptr->setLocalPose(localPose);
 			staticBody.AddShape(shape);
 		}
 
