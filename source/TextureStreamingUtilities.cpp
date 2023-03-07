@@ -582,9 +582,8 @@ namespace FlexKit
 				auto entityIdx					= std::distance(pvs.begin(), itr);
 				auto constantsBegin				= entityConstants.entityTable[entityIdx];
 				const auto& material			= materials[itr->brush->material];
-				const auto& textureDescriptors	= material.textureDescriptors;
 
-				for (size_t I = 0; I < itr->brush->meshes.size() && textureDescriptors.size; I++)
+				for (size_t I = 0; I < itr->brush->meshes.size(); I++)
 				{
 					ctx.BeginEvent_DEBUG("Draw sub-mesh");
 
@@ -612,9 +611,33 @@ namespace FlexKit
 
 					const auto& lod = triMesh->lods[itr->LODlevel[I]];
 
-					ctx.SetGraphicsDescriptorTable(4, textureDescriptors);
-					ctx.SetGraphicsConstantBufferView(1, constants[constantsBegin + I]);
-					ctx.DrawIndexed(lod.GetIndexCount());
+					size_t subMeshCount = lod.subMeshes.size();
+					if (subMeshCount == 1)
+					{
+						const auto& textureDescriptors = material.textureDescriptors;
+
+						if (textureDescriptors.size != 0)
+						{
+							ctx.SetGraphicsDescriptorTable(4, textureDescriptors);
+							ctx.SetGraphicsConstantBufferView(1, constants[constantsBegin + I]);
+							ctx.DrawIndexed(lod.GetIndexCount());
+						}
+					}
+					else
+					{
+						for (size_t itr = 0; itr < subMeshCount; itr++)
+						{
+							const auto subMesh		= lod.subMeshes[itr];
+							const auto& subMaterial	= materials[material.SubMaterials[itr]];
+
+							if (subMaterial.textureDescriptors.size != 0)
+							{
+								ctx.SetGraphicsDescriptorTable(4, subMaterial.textureDescriptors);
+								ctx.SetGraphicsConstantBufferView(1, constants[constantsBegin + itr]);
+								ctx.DrawIndexed(subMesh.IndexCount, subMesh.BaseIndex);
+							}
+						}
+					}
 
 					ctx.EndEvent_DEBUG();
 				}

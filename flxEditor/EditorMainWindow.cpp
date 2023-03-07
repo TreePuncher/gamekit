@@ -37,7 +37,6 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
 	importMenu	= fileMenu->addMenu("Import");
 	exportMenu	= fileMenu->addMenu("Export");
 
-
 	tabBar->addTab(viewport, "Scene");
 	tabBar->addTab(prefabEditor, "Prefab");
 
@@ -91,9 +90,12 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
 	setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowTabbedDocks | QMainWindow::AllowNestedDocks | QMainWindow::VerticalTabs);
 	tabPosition(Qt::TopDockWidgetArea);
 
+	this->setMaximumHeight(3000);
+	this->setMaximumWidth(6000);
+
 	showMaximized();
 
-	show();
+	QTimer::singleShot(0, this, SLOT(showMaximized()));
 
 	frameEnd	= high_resolution_clock::now();
 	frameBegin	= frameEnd;

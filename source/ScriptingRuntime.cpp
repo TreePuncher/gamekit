@@ -18,11 +18,6 @@ namespace FlexKit
 
 	iAllocator* allocator;
 
-	//float2* ConstructFloat2();
-	float3* ConstructFloat3() noexcept;
-	float4* ConstructFloat4() noexcept;
-	Quaternion* ConstructQuaternion();
-
 
 	/************************************************************************************************/
 
@@ -133,31 +128,21 @@ namespace FlexKit
 	}
 	*/
 
-	float3* AnimatorGetFloat3_AS(AnimatorView* view, uint32_t idx)
+	float3 AnimatorGetFloat3_AS(AnimatorView* view, uint32_t idx)
 	{
 		if (auto res = view->GetInputValue(idx); res.has_value())
-		{
-			auto outValue = ConstructFloat3();
-			auto animatorValue = res.value();
-
-			*outValue = animatorValue->xyz;
-			return outValue;
-		}
-		else return nullptr;
+			return res.value()->xyz;
+		else
+			return {};
 	}
 
 
-	float4* AnimatorGetFloat4_AS(AnimatorView* view, uint32_t idx)
+	float4 AnimatorGetFloat4_AS(AnimatorView* view, uint32_t idx)
 	{
 		if (auto res = view->GetInputValue(idx); res.has_value())
-		{
-			auto outValue = ConstructFloat4();
-			auto animatorValue = res.value();
-
-			*outValue = animatorValue->xyzw;
-			return outValue;
-		}
-		else return nullptr;
+			return res.value()->xyzw;
+		else
+			return {};
 	}
 
 	void* AnimatorGetCallback_AS(AnimatorView* view, uint32_t idx)
@@ -239,12 +224,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	float3* JointPoseGetPosition(JointPose* jp)
+	float3 JointPoseGetPosition(JointPose* jp)
 	{
-		auto& vec = allocator->allocate_aligned<float3>();
-		vec = jp->ts.xyz();
-
-		return &vec;
+		return jp->ts.xyz();
 	}
 
 
@@ -281,12 +263,9 @@ namespace FlexKit
 	}
 
 
-	Quaternion* JointPoseGetOrientation(JointPose* jp)
+	Quaternion JointPoseGetOrientation(JointPose* jp)
 	{
-		auto& p = allocator->allocate_aligned<Quaternion>();
-		p = jp->r;
-
-		return &p;
+		return jp->r;
 	}
 
 
@@ -330,10 +309,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	auto GetWorldPosition_AS   (GameObject* obj) { auto* f3 = ConstructFloat3();       *f3 = FlexKit::GetWorldPosition(*obj);  return f3; };
-	auto GetLocalPosition_AS   (GameObject* obj) { auto* f3 = ConstructFloat3();       *f3 = FlexKit::GetLocalPosition(*obj);  return f3; };
-	auto GetOrientation_AS     (GameObject* obj) { auto* q  = ConstructQuaternion();   *q  = FlexKit::GetOrientation(*obj);    return q;  };
-	auto GetScale_AS           (GameObject* obj) { auto* f3 = ConstructFloat3();       *f3 = FlexKit::GetScale(*obj);          return f3; };
+	auto GetWorldPosition_AS   (GameObject* obj) { return FlexKit::GetWorldPosition(*obj);	};
+	auto GetLocalPosition_AS   (GameObject* obj) { return FlexKit::GetLocalPosition(*obj);	};
+	auto GetOrientation_AS     (GameObject* obj) { return FlexKit::GetOrientation(*obj);	};
+	auto GetScale_AS           (GameObject* obj) { return FlexKit::GetScale(*obj);			};
 	
 	auto SetWorldPosition_AS   (GameObject* obj, float3& v)        { FlexKit::SetWorldPosition(*obj, v); };
 	auto SetLocalPosition_AS   (GameObject* obj, float3& v)        { FlexKit::SetLocalPosition(*obj, v); };
@@ -422,9 +401,9 @@ namespace FlexKit
 		res = scriptEngine->RegisterObjectMethod("JointPose", "void SetPosition(float3& in)",           asFUNCTION(JointPoseSetPosition),       asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
 		res = scriptEngine->RegisterObjectMethod("JointPose", "void SetScale(float)",                   asFUNCTION(JointPoseSetScale),          asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
 
-		res = scriptEngine->RegisterObjectMethod("JointPose", "Quaternion@  GetOrientation()",          asFUNCTION(JointPoseGetOrientation),    asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("JointPose", "float3@      GetPosition()",             asFUNCTION(JointPoseGetPosition),       asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("JointPose", "float        GetScale()",                asFUNCTION(JointPoseGetScale),          asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("JointPose", "Quaternion	GetOrientation()",          asFUNCTION(JointPoseGetOrientation),    asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("JointPose", "float3		GetPosition()",             asFUNCTION(JointPoseGetPosition),       asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("JointPose", "float		GetScale()",                asFUNCTION(JointPoseGetScale),          asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
 
 
 		/************************************************************************************************/
@@ -467,49 +446,49 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		res = scriptEngine->RegisterObjectType("Animator", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                               FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectMethod("Animator", "uint ValueType(uint)",            asFUNCTION(AnimatorViewGetInputType_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("Animator", "void SetFloat(uint, float)",      asFUNCTION(AnimatorSetFloat1_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		//res = scriptEngine->RegisterObjectMethod("Animator", "void SetFloat2(idx, float2)",    asFUNCTION(AnimatorSetFloat2_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("Animator", "void SetFloat3(uint, float3 &in)",asFUNCTION(AnimatorSetFloat3_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("Animator", "void SetFloat4(uint, float4 &in)",asFUNCTION(AnimatorSetFloat4_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("Animator", "float  GetFloat(uint)",           asFUNCTION(AnimatorGetFloat1_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		//res = scriptEngine->RegisterObjectMethod("Animator", "float2@ GetFloat2(idx)",           asFUNCTION(AnimatorGetFloat2_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("Animator", "float3@ GetFloat3(uint)",          asFUNCTION(AnimatorGetFloat3_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("Animator", "float4@ GetFloat4(uint)",          asFUNCTION(AnimatorGetFloat4_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectType("Animator", 0, asOBJ_REF | asOBJ_NOCOUNT);																					FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectMethod("Animator", "uint ValueType(uint)",				asFUNCTION(AnimatorViewGetInputType_AS), asCALL_CDECL_OBJFIRST);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Animator", "void SetFloat(uint, float)",			asFUNCTION(AnimatorSetFloat1_AS), asCALL_CDECL_OBJFIRST);				FK_ASSERT(res > 0);
+		//res = scriptEngine->RegisterObjectMethod("Animator", "void SetFloat2(idx, float2)",		asFUNCTION(AnimatorSetFloat2_AS), asCALL_CDECL_OBJFIRST);				FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Animator", "void SetFloat3(uint, float3 &in)",	asFUNCTION(AnimatorSetFloat3_AS), asCALL_CDECL_OBJFIRST);				FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Animator", "void SetFloat4(uint, float4 &in)",	asFUNCTION(AnimatorSetFloat4_AS), asCALL_CDECL_OBJFIRST);				FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Animator", "float  GetFloat(uint)",				asFUNCTION(AnimatorGetFloat1_AS), asCALL_CDECL_OBJFIRST);				FK_ASSERT(res > 0);
+		//res = scriptEngine->RegisterObjectMethod("Animator", "float2@ GetFloat2(idx)",			asFUNCTION(AnimatorGetFloat2_AS), asCALL_CDECL_OBJFIRST);				FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Animator", "float3 GetFloat3(uint)",				asFUNCTION(AnimatorGetFloat3_AS), asCALL_CDECL_OBJFIRST);				FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Animator", "float4 GetFloat4(uint)",				asFUNCTION(AnimatorGetFloat4_AS), asCALL_CDECL_OBJFIRST);				FK_ASSERT(res > 0);
 
-		res = scriptEngine->RegisterObjectMethod("Animator", "AnimatorCallback@ GetCallback(uint)", asFUNCTION(AnimatorGetCallback_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Animator", "AnimatorCallback@ GetCallback(uint)",	asFUNCTION(AnimatorGetCallback_AS), asCALL_CDECL_OBJFIRST);				FK_ASSERT(res > 0);
 
-		res = scriptEngine->RegisterObjectMethod("Animator", "PlayID Play(Animation@, bool)",    asFUNCTION(AnimatorPlayAnimation_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("Animator", "void Stop(PlayID)",                asFUNCTION(AnimatorStopAnimation_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("Animator", "void Pause(PlayID)",               asFUNCTION(AnimatorPauseAnimation_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("Animator", "void SetProgress(PlayID, float)",  asFUNCTION(AnimatorSetProgressAnimation_AS), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-
-
-		/************************************************************************************************/
-
-
-		res = scriptEngine->RegisterObjectMethod("GameObject", "bool            Query(ComponentID_t)",  asFUNCTION(QueryForComponent), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("GameObject", "PoseState@      GetPoseState()",        asFUNCTION(GetPoseState_AS),   asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("GameObject", "Animator@       GetAnimator()",         asFUNCTION(GetAnimator_AS),    asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-
-		res = scriptEngine->RegisterObjectMethod("GameObject", "float3@         GetWorldPosition()",    asFUNCTION(&GetWorldPosition_AS), asCALL_CDECL_OBJFIRST);   FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("GameObject", "float3@         GetLocalPosition()",    asFUNCTION(&GetLocalPosition_AS), asCALL_CDECL_OBJFIRST);   FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("GameObject", "Quaternion@     GetOrientation()",      asFUNCTION(&GetOrientation_AS), asCALL_CDECL_OBJFIRST);     FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("GameObject", "float3@         GetScale()",            asFUNCTION(&GetScale_AS),   asCALL_CDECL_OBJFIRST);         FK_ASSERT(res > 0);
-
-		res = scriptEngine->RegisterObjectMethod("GameObject", "void SetWorldPosition(float3& in)",     asFUNCTION(SetWorldPosition_AS), asCALL_CDECL_OBJFIRST);   FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("GameObject", "void SetLocalPosition(float3& in)",     asFUNCTION(SetLocalPosition_AS), asCALL_CDECL_OBJFIRST);   FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("GameObject", "void SetOrientation(Quaternion& in)",   asFUNCTION(SetOrientation_AS), asCALL_CDECL_OBJFIRST);     FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("GameObject", "void SetScale(float3& in)",             asFUNCTION(SetScale_AS), asCALL_CDECL_OBJFIRST);           FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Animator", "PlayID Play(Animation@, bool)",		asFUNCTION(AnimatorPlayAnimation_AS), asCALL_CDECL_OBJFIRST);			FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Animator", "void Stop(PlayID)",					asFUNCTION(AnimatorStopAnimation_AS), asCALL_CDECL_OBJFIRST);			FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Animator", "void Pause(PlayID)",					asFUNCTION(AnimatorPauseAnimation_AS), asCALL_CDECL_OBJFIRST);			FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Animator", "void SetProgress(PlayID, float)",		asFUNCTION(AnimatorSetProgressAnimation_AS), asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
 
 
 		/************************************************************************************************/
 
 
-		res = scriptEngine->RegisterInterface("AnimatorInterface");                                                             FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterInterfaceMethod("AnimatorInterface", "void PreUpdate(GameObject@ object, double dt)");      FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterInterfaceMethod("AnimatorInterface", "void PostUpdate(GameObject@ object, double dt)");     FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("GameObject", "bool			Query(ComponentID_t)",	asFUNCTION(QueryForComponent),		asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("GameObject", "PoseState@		GetPoseState()",		asFUNCTION(GetPoseState_AS),		asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("GameObject", "Animator@		GetAnimator()",			asFUNCTION(GetAnimator_AS),			asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
+
+		res = scriptEngine->RegisterObjectMethod("GameObject", "float3			GetWorldPosition()",	asFUNCTION(GetWorldPosition_AS),	asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("GameObject", "float3			GetLocalPosition()",	asFUNCTION(GetLocalPosition_AS),	asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("GameObject", "Quaternion		GetOrientation()",		asFUNCTION(GetOrientation_AS),		asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("GameObject", "float3			GetScale()",			asFUNCTION(GetScale_AS),			asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
+
+		res = scriptEngine->RegisterObjectMethod("GameObject", "void SetWorldPosition(float3& in)",		asFUNCTION(SetWorldPosition_AS), asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("GameObject", "void SetLocalPosition(float3& in)",		asFUNCTION(SetLocalPosition_AS), asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("GameObject", "void SetOrientation(Quaternion& in)",	asFUNCTION(SetOrientation_AS), asCALL_CDECL_OBJFIRST);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("GameObject", "void SetScale(float3& in)",				asFUNCTION(SetScale_AS), asCALL_CDECL_OBJFIRST);			FK_ASSERT(res > 0);
+
+
+		/************************************************************************************************/
+
+
+		res = scriptEngine->RegisterInterface("AnimatorInterface");																									FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterInterfaceMethod("AnimatorInterface", "void PreUpdate(GameObject@ object, double dt)");											FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterInterfaceMethod("AnimatorInterface", "void PostUpdate(GameObject@ object, double dt)");											FK_ASSERT(res > 0);
 
 
 	}   /************************************************************************************************/
@@ -523,426 +502,6 @@ namespace FlexKit
 		allocator->_aligned_free(s);
 	}
 
-	float3* ConstructFloat3() noexcept
-	{
-		return new(allocator->_aligned_malloc(sizeof(float3))) float3{};
-	}
-
-	float3* ConstructFloat3_2(float x, float y, float z)
-	{
-		return new(allocator->_aligned_malloc(sizeof(float3))) float3(x, y, z);
-	}
-
-	Quaternion* ConstructQuaternion()
-	{
-		return new(allocator->_aligned_malloc(sizeof(Quaternion))) Quaternion{};
-	}
-
-	Quaternion* ConstructQuaternion_2(float x, float y, float z, float w, iAllocator* allocator)
-	{
-		return new(allocator->_aligned_malloc(sizeof(Quaternion))) Quaternion{ x, y, z, w };
-	}
-
-	Quaternion* ConstructQuaternion_3(float x, float y, float z)
-	{
-		return new(allocator->_aligned_malloc(sizeof(Quaternion))) Quaternion{ x, y, z };
-	}
-
-	Quaternion* QuaternionMul(Quaternion* lhs, Quaternion* rhs)
-	{
-		auto Q = ConstructQuaternion();
-
-		*Q = *lhs * *rhs;
-
-		return Q;
-	}
-
-	float3* QMULF3(Quaternion* lhs, float3* rhs)
-	{
-		auto out = ConstructFloat3();
-		*out = *lhs * *rhs;
-
-		return out;
-	}
-
-	Quaternion& QuatAssign_AS(Quaternion* lhs, float3* rhs)
-	{
-		*lhs = *rhs;
-		return *lhs;
-	}
-
-	Quaternion& QuatMulAssign_AS(Quaternion* lhs, Quaternion* rhs)
-	{
-		*lhs *= *rhs;
-		return *lhs;
-	}
-
-	Quaternion* QuatConjugate_AS(Quaternion* lhs)
-	{
-		auto Q = ConstructQuaternion();
-
-		*Q = lhs->Conjugate();
-		return Q;
-	}
-
-	float QuatDot_AS(Quaternion* lhs, Quaternion* rhs)
-	{
-		return lhs->dot(*rhs);
-	}
-
-	float QuatMag_AS(Quaternion* lhs, Quaternion* rhs)
-	{
-		return lhs->Magnitude();
-	}
-
-	Quaternion* QuatNormalize_AS(Quaternion* lhs)
-	{
-		lhs->normalize();
-
-		return lhs;
-	}
-
-	Quaternion* QuatNormal_AS(Quaternion* lhs)
-	{
-		auto Q = ConstructQuaternion();
-
-		*Q = lhs->normal();
-
-		return Q;
-	}
-
-
-	/************************************************************************************************/
-
-
-	float3* float3_OpAssign(float3* lhs, float3* rhs)
-	{
-		*lhs = *rhs;
-		return lhs;
-	}
-
-
-	/************************************************************************************************/
-
-
-	float3* float3_OpAdd(float3* lhs, float3* rhs)
-	{
-		auto out = new(allocator->_aligned_malloc(sizeof(float3))) float3{};
-
-		*out = *lhs + *rhs;
-
-		return out;
-	}
-
-
-	/************************************************************************************************/
-
-
-	float3* float3_OpSub(float3* lhs, float3* rhs)
-	{
-		auto out = new(allocator->_aligned_malloc(sizeof(float3))) float3{};
-
-		*out = *lhs - *rhs;
-
-		return out;
-	}
-
-
-	/************************************************************************************************/
-
-
-	float3* float3_OpMul(float3* lhs, float3* rhs)
-	{
-		auto out = new(allocator->_aligned_malloc(sizeof(float3))) float3{};
-
-		*out = *lhs * *rhs;
-
-		return out;
-	}
-
-	/************************************************************************************************/
-
-
-	float3* float3_OpDiv(float3* lhs, float3* rhs)
-	{
-		auto out = new(allocator->_aligned_malloc(sizeof(float3))) float3{};
-
-		*out = *lhs / *rhs;
-
-		return out;
-	}
-
-
-	/************************************************************************************************/
-
-
-	float3& float3_OpAddAssign1(float3* lhs, float3* rhs)
-	{
-		*lhs = *lhs + *rhs;
-
-		return *lhs;
-	}
-
-
-	/************************************************************************************************/
-
-
-	float3& float3_OpAddAssign2(float3* lhs, float rhs)
-	{
-		*lhs = *lhs + rhs;
-
-		return *lhs;
-	}
-
-
-	/************************************************************************************************/
-
-
-	float3& float3_OpSubAssign1(float3* lhs, float3* rhs)
-	{
-		*lhs = *lhs - *rhs;
-
-		return *lhs;
-	}
-
-
-	/************************************************************************************************/
-
-
-	float3& float3_OpSubAssign2(float3* lhs, float rhs)
-	{
-		*lhs = *lhs - rhs;
-
-		return *lhs;
-	}
-
-	/************************************************************************************************/
-
-
-	float3& float3_OpMulAssign1(float3* lhs, float3* rhs)
-	{
-		*lhs = *lhs * *rhs;
-
-		return *lhs;
-	}
-
-
-	/************************************************************************************************/
-
-
-	float3& float3_OpMulAssign2(float3* lhs, float rhs)
-	{
-		*lhs *= rhs;
-
-		return *lhs;
-	}
-
-	/************************************************************************************************/
-
-
-	float3& float3_OpDivAssign1(float3* lhs, float3* rhs)
-	{
-		*lhs = *lhs / *rhs;
-
-		return *lhs;
-	}
-
-
-	/************************************************************************************************/
-
-
-	float3& float3_OpDivAssign2(float3* lhs, float rhs)
-	{
-		*lhs /= rhs;
-
-		return *lhs;
-	}
-
-
-	/************************************************************************************************/
-
-
-	float3* float3_Inverse(float3* lhs)
-	{
-		auto out = new(allocator->_aligned_malloc(sizeof(float3))) float3{};
-
-		*out = lhs->inverse();
-
-		return out;
-	}
-
-
-	/************************************************************************************************/
-
-
-	float3* float3_Cross(float3* lhs, float3* rhs)
-	{
-		auto out = new(allocator->_aligned_malloc(sizeof(float3))) float3{};
-
-		*out = lhs->cross(*rhs);
-
-		return out;
-	}
-
-
-	/************************************************************************************************/
-
-
-	float float3_Dot(float3* lhs, float3* rhs)
-	{
-		return lhs->dot(*rhs);
-	}
-
-	/************************************************************************************************/
-
-
-	float float3_Magnitude(float3* lhs)
-	{
-		return lhs->magnitude();
-	}
-
-
-	/************************************************************************************************/
-
-
-	float float3_MagnitudeSq(float3* lhs)
-	{
-		return lhs->magnitudeSq();
-	}
-
-
-	/************************************************************************************************/
-
-
-	float3* float3_Abs(float3* lhs)
-	{
-		auto out = new(allocator->_aligned_malloc(sizeof(float3))) float3{};
-		*out = lhs->abs();
-		return out;
-	}
-
-
-	/************************************************************************************************/
-
-
-	bool float3_IsNan(float3* lhs)
-	{
-		return lhs->isNaN();
-	}
-
-
-	/************************************************************************************************/
-
-
-	float3* float3_Normalize(float3* lhs)
-	{
-		lhs->normalize();
-		return lhs;
-	}
-
-	/************************************************************************************************/
-
-
-	float3* float3_Normal(float3* lhs)
-	{
-		auto out = new(allocator->_aligned_malloc(sizeof(float3))) float3{};
-		*out = lhs->normal();
-
-		return out;
-	}
-
-
-	bool float3_Compare(float3* lhs, float3* rhs, float e)
-	{
-		return float3::Compare(*lhs, *rhs, e);
-	}
-
-
-	float3* float3_Zero()
-	{
-		auto out = new(allocator->_aligned_malloc(sizeof(float3))) float3{};
-		*out = float3::Zero();
-
-		return out;
-	}
-
-
-	/************************************************************************************************/
-
-
-	float4* ConstructFloat4() noexcept
-	{
-		return new(allocator->_aligned_malloc(16)) float4();
-
-	}
-
-	float4* ConstructFloat4_2(float x, float y, float z, float w) noexcept
-	{
-		return new(allocator->_aligned_malloc(16)) float4(x, y, z, w);
-	}
-
-
-	float4* float4Add(float4* lhs, float4& rhs) noexcept
-	{
-		auto f4 = ConstructFloat4();
-		*f4 = *lhs + rhs;
-
-		return f4;
-	}
-
-	float4* float4Sub(float4* lhs, float4& rhs) noexcept
-	{
-		auto f4 = ConstructFloat4();
-		*f4 = *lhs - rhs;
-
-		return f4;
-	}
-
-	float4* float4Mul(float4* lhs, float4& rhs) noexcept
-	{
-		auto f4 = ConstructFloat4();
-		*f4 = *lhs * rhs;
-
-		return f4;
-	}
-
-	float4* float4Div(float4* lhs, float4& rhs) noexcept
-	{
-		auto f4 = ConstructFloat4();
-		*f4 = *lhs / rhs;
-
-		return f4;
-	}
-
-	/************************************************************************************************/
-
-	float4& float4AddAssign(float4* lhs, float4& rhs) noexcept
-	{
-		*lhs = *lhs + rhs;
-
-		return *lhs;
-	}
-
-	float4& float4SubAssign(float4* lhs, float4& rhs) noexcept
-	{
-		*lhs = *lhs - rhs;
-
-		return *lhs;
-	}
-
-	float4& float4MulAssign(float4* lhs, float4& rhs) noexcept
-	{
-		*lhs = *lhs * rhs;
-
-		return *lhs;
-	}
-
-	float4& float4DivAssign(float4* lhs, float4& rhs) noexcept
-	{
-		*lhs = *lhs / rhs;
-
-		return *lhs;
-	}
 
 	/************************************************************************************************/
 
@@ -1055,129 +614,147 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void ConstructQuaternion_2(void* _ptr, float x, float y, float z)
+	{
+		new(_ptr) Quaternion{ x, y, z, 1 };
+	}
+
+
+	void ConstructQuaternion_3(void* _ptr, float x, float y, float z, float w)
+	{
+		new(_ptr) Quaternion{ x, y, z, w };
+	}
+
+
+	/************************************************************************************************/
+
+
 	void RegisterMathTypes(asIScriptEngine* scriptEngine, iAllocator* IN_allocator)
 	{
 		allocator = IN_allocator;
 		int res;
 
-		res = scriptEngine->RegisterObjectType("uint3", sizeof(uint3), asOBJ_VALUE | asOBJ_POD);																								FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectProperty("uint3", "uint32 x", 0);																														FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectProperty("uint3", "uint32 y", 4);																														FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectProperty("uint3", "uint32 z", 8);																														FK_ASSERT(res >= 0);
-
-		res = scriptEngine->RegisterObjectMethod("uint3", "uint32 opAdd(const uint3& in)", asFUNCTION(uint3Add), asCALL_CDECL_OBJFIRST);																	FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectMethod("uint3", "uint32 opSub(const uint3& in)", asFUNCTION(uint3Sub), asCALL_CDECL_OBJFIRST);																	FK_ASSERT(res >= 0);
-
-		res = scriptEngine->RegisterObjectMethod("uint3", "uint32 opAdd(const uint32)", asFUNCTION(uint3AddScaler), asCALL_CDECL_OBJFIRST);																	FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectMethod("uint3", "uint32 opSub(const uint32)", asFUNCTION(uint3SubScaler), asCALL_CDECL_OBJFIRST);																	FK_ASSERT(res >= 0);
-
-		res = scriptEngine->RegisterObjectMethod("uint3", "uint32 opMul(const uint3& in)", asFUNCTION(uint3Mul), asCALL_CDECL_OBJFIRST);																	FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectMethod("uint3", "uint32 opDiv(const uint3& in)", asFUNCTION(uint3Div), asCALL_CDECL_OBJFIRST);																	FK_ASSERT(res >= 0);
-
-		res = scriptEngine->RegisterObjectMethod("uint3", "uint32 opMul(const uint32)", asFUNCTION(uint3DivScaler), asCALL_CDECL_OBJFIRST);																	FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectMethod("uint3", "uint32 opDiv(const uint32)", asFUNCTION(uint3MulScaler), asCALL_CDECL_OBJFIRST);
-
-		res = scriptEngine->RegisterObjectType("float3", 0, asOBJ_REF | asOBJ_SCOPED );                                                                                                                     FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectBehaviour("float3", asBEHAVE_FACTORY, "float3@ ConstructFloat3()",                     asFUNCTION(ConstructFloat3),    asCALL_CDECL);                             FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectBehaviour("float3", asBEHAVE_FACTORY, "float3@ ConstructFloat3(float, float, float)",  asFUNCTION(ConstructFloat3_2),  asCALL_CDECL);                             FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectBehaviour("float3", asBEHAVE_RELEASE, "void ReleaseFloat3()",                          asFUNCTION(ScopedRelease),      asCALL_CDECL_OBJFIRST);                    FK_ASSERT(res >= 0);
-
-		res = scriptEngine->RegisterObjectMethod("float3", "float3@ opAssign(const float3 &in)",      asFUNCTION(float3_OpAssign), asCALL_CDECL_OBJFIRST);                                                  FK_ASSERT(res >= 0);
-
-		res = scriptEngine->RegisterObjectMethod("float3", "float3@ opAdd(const float3 &in)",         asFUNCTION(float3_OpAdd), asCALL_CDECL_OBJFIRST);                                                     FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3@ opSub(const float3 &in)",         asFUNCTION(float3_OpSub), asCALL_CDECL_OBJFIRST);                                                     FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3@ opMul(const float3 &in)",         asFUNCTION(float3_OpMul), asCALL_CDECL_OBJFIRST);                                                     FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3@ opDiv(const float3 &in)",         asFUNCTION(float3_OpDiv), asCALL_CDECL_OBJFIRST);                                                     FK_ASSERT(res > 0);
-
-		res = scriptEngine->RegisterObjectMethod("float3", "float3& opAddAssign(const float3 &in)",     asFUNCTION(float3_OpAddAssign1), asCALL_CDECL_OBJFIRST);                                            FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3& opAddAssign(float)",                asFUNCTION(float3_OpAddAssign2), asCALL_CDECL_OBJFIRST);                                            FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3& opSubAssign(const float3 &in)",     asFUNCTION(float3_OpSubAssign1), asCALL_CDECL_OBJFIRST);                                            FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3& opSubAssign(float)",                asFUNCTION(float3_OpSubAssign2), asCALL_CDECL_OBJFIRST);                                            FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3& opMulAssign(const float3 &in)",     asFUNCTION(float3_OpMulAssign1), asCALL_CDECL_OBJFIRST);                                            FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3& opMulAssign(float)",                asFUNCTION(float3_OpMulAssign2), asCALL_CDECL_OBJFIRST);                                            FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3& opDivAssign(const float3 &in)",     asFUNCTION(float3_OpDivAssign1), asCALL_CDECL_OBJFIRST);                                            FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3& opDivAssign(float)",                asFUNCTION(float3_OpDivAssign2), asCALL_CDECL_OBJFIRST);                                            FK_ASSERT(res > 0);
-
-		res = scriptEngine->RegisterObjectMethod("float3", "float3@ Inverse()",             asFUNCTION(float3_Inverse),       asCALL_CDECL_OBJFIRST);                                                       FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3@ Cross(float3& in)",     asFUNCTION(float3_Cross),         asCALL_CDECL_OBJFIRST);                                                       FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float   Dot(float3& in)",       asFUNCTION(float3_Dot),           asCALL_CDECL_OBJFIRST);                                                       FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float   Magnitude()",           asFUNCTION(float3_Magnitude),     asCALL_CDECL_OBJFIRST);                                                       FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float   MagnitudeSq()",         asFUNCTION(float3_MagnitudeSq),   asCALL_CDECL_OBJFIRST);                                                       FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3@ Abs()",                 asFUNCTION(float3_Abs),           asCALL_CDECL_OBJFIRST);                                                       FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3@ isNan()",               asFUNCTION(float3_IsNan),         asCALL_CDECL_OBJFIRST);                                                       FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "void    Normalize()",           asFUNCTION(float3_Normalize),     asCALL_CDECL_OBJFIRST);                                                       FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3@ Normal()",              asFUNCTION(float3_Normal),        asCALL_CDECL_OBJFIRST);                                                       FK_ASSERT(res > 0);
-
-		res = scriptEngine->RegisterGlobalFunction("bool Compare(const float3 &in, const float3 &in, float e)", asFUNCTION(float3_Compare), asCALL_CDECL);                                                  FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterGlobalFunction("float3@ Zero()",                                            asFUNCTION(float3_Zero), asCALL_CDECL, allocator);                                          FK_ASSERT(res > 0);
-
-		res = scriptEngine->RegisterObjectProperty("float3", "float x", asOFFSET(float3, x));                                                                                                               FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectProperty("float3", "float y", asOFFSET(float3, y));                                                                                                               FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectProperty("float3", "float z", asOFFSET(float3, z));                                                                                                               FK_ASSERT(res >= 0);
 
 		/************************************************************************************************/
 
-		res = scriptEngine->RegisterObjectType("float4", 0, asOBJ_REF | asOBJ_SCOPED);                                                                                                                      FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectBehaviour("float4", asBEHAVE_FACTORY, "float4@ ConstructFloat4()",                             asFUNCTION(ConstructFloat4),    asCALL_CDECL);                     FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectBehaviour("float4", asBEHAVE_FACTORY, "float4@ ConstructFloat4(float, float, float, float)",   asFUNCTION(ConstructFloat4_2),  asCALL_CDECL);                     FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectBehaviour("float4", asBEHAVE_RELEASE, "void f()",                                              asFUNCTION(ScopedRelease),     asCALL_CDECL_OBJFIRST);             FK_ASSERT(res > 0);
 
-		res = scriptEngine->RegisterObjectMethod("float4", "float4@ opAdd(float4& in)", asFUNCTION(float4Add), asCALL_CDECL_OBJFIRST);                                                                      FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float4", "float4@ opSub(float4& in)", asFUNCTION(float4Sub), asCALL_CDECL_OBJFIRST);                                                                      FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float4", "float4@ opMul(float4& in)", asFUNCTION(float4Mul), asCALL_CDECL_OBJFIRST);                                                                      FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float4", "float4@ opDiv(float4& in)", asFUNCTION(float4Div), asCALL_CDECL_OBJFIRST);                                                                      FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectType("uint3", sizeof(uint3), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS);																							FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectProperty("uint3", "uint32 x", 0);																																	FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectProperty("uint3", "uint32 y", 4);																																	FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectProperty("uint3", "uint32 z", 8);																																	FK_ASSERT(res >= 0);
 
-		res = scriptEngine->RegisterObjectMethod("float4", "float4& opAddAssign(float4& in)", asFUNCTION(float4AddAssign), asCALL_CDECL_OBJFIRST);                                                          FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float4", "float4& opSubAssign(float4& in)", asFUNCTION(float4SubAssign), asCALL_CDECL_OBJFIRST);                                                          FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float4", "float4& opMulAssign(float4& in)", asFUNCTION(float4MulAssign), asCALL_CDECL_OBJFIRST);                                                          FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float4", "float4& opDivAssign(float4& in)", asFUNCTION(float4DivAssign), asCALL_CDECL_OBJFIRST);                                                          FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("uint3", "uint3 opAdd(const uint3& in)", asFUNCTION(uint3Add), asCALL_CDECL_OBJFIRST);																		FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectMethod("uint3", "uint3 opSub(const uint3& in)", asFUNCTION(uint3Sub), asCALL_CDECL_OBJFIRST);																		FK_ASSERT(res >= 0);
 
-		res = scriptEngine->RegisterObjectProperty("float4", "float x", asOFFSET(float4, x));                                                                                                               FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectProperty("float4", "float y", asOFFSET(float4, y));                                                                                                               FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectProperty("float4", "float z", asOFFSET(float4, z));                                                                                                               FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectProperty("float4", "float w", asOFFSET(float4, w));                                                                                                               FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectMethod("uint3", "uint3 opAdd(const uint32)", asFUNCTION(uint3AddScaler), asCALL_CDECL_OBJFIRST);																	FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectMethod("uint3", "uint3 opSub(const uint32)", asFUNCTION(uint3SubScaler), asCALL_CDECL_OBJFIRST);																	FK_ASSERT(res >= 0);
+
+		res = scriptEngine->RegisterObjectMethod("uint3", "uint3 opMul(const uint3& in)", asFUNCTION(uint3Mul), asCALL_CDECL_OBJFIRST);																		FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectMethod("uint3", "uint3 opDiv(const uint3& in)", asFUNCTION(uint3Div), asCALL_CDECL_OBJFIRST);																		FK_ASSERT(res >= 0);
+
+		res = scriptEngine->RegisterObjectMethod("uint3", "uint3 opMul(const uint32)", asFUNCTION(uint3DivScaler), asCALL_CDECL_OBJFIRST);																	FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectMethod("uint3", "uint3 opDiv(const uint32)", asFUNCTION(uint3MulScaler), asCALL_CDECL_OBJFIRST);
+
 
 		/************************************************************************************************/
 
-		res = scriptEngine->RegisterObjectType("Quaternion", sizeof(Quaternion), asOBJ_REF | asOBJ_SCOPED);                                                                                                 FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_FACTORY, "Quaternion@ ConstructQuat(float, float, float, float)", asFUNCTION(ConstructQuaternion_2), asCALL_CDECL);              FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_FACTORY, "Quaternion@ ConstructQuat(float, float, float)",        asFUNCTION(ConstructQuaternion_3), asCALL_CDECL);              FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_FACTORY, "Quaternion@ ConstructQuat()",                           asFUNCTION(ConstructQuaternion), asCALL_CDECL);                FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_RELEASE, "void f()",                                              asFUNCTION(ScopedRelease), asCALL_CDECL_OBJFIRST);             FK_ASSERT(res > 0);
 
-		res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion@  opMul(Quaternion& in)",   asFUNCTION(QuaternionMul),   asCALL_CDECL_OBJFIRST);                                                 FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("Quaternion", "float3@      opMul(float3& in)",       asFUNCTION(QMULF3),          asCALL_CDECL_OBJFIRST);                                                 FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectType("float3", sizeof(float3), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS);																				FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3& opAssign(float3)",				asMETHODPR(float3, operator =, (const float3&) noexcept, float3&), asCALL_THISCALL);			FK_ASSERT(res >= 0);
 
-		res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion& opAssign(Quaternion& in)",    asFUNCTION(QuatAssign_AS), asCALL_CDECL_OBJFIRST);                                                FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion& opMulAssign(Quaternion& in)", asFUNCTION(QuatMulAssign_AS), asCALL_CDECL_OBJFIRST);                                             FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3 opAdd(const float3)",			asMETHODPR(float3, operator+, (const float3) const noexcept, float3),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3 opSub(const float3)",			asMETHODPR(float3, operator -, (const float3) const noexcept, float3),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3 opMul(const float3)",			asMETHODPR(float3, operator *, (const float3) const noexcept, float3),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3 opDiv(const float3)",			asMETHODPR(float3, operator *, (const float3) const noexcept, float3),	asCALL_THISCALL);		FK_ASSERT(res > 0);
 
-		res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion@  Conjugate()",              asFUNCTION(QuatConjugate_AS), asCALL_CDECL_OBJFIRST);                                               FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("Quaternion", "float Dot(Quaternion& in)",             asFUNCTION(QuatDot_AS), asCALL_CDECL_OBJFIRST);                                                     FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("Quaternion", "float Magnitude()",                     asFUNCTION(QuatMag_AS), asCALL_CDECL_OBJFIRST);                                                     FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion@  Normalize()",              asFUNCTION(QuatNormalize_AS), asCALL_CDECL_OBJFIRST);                                               FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion@  Normal()",                 asFUNCTION(QuatNormal_AS), asCALL_CDECL_OBJFIRST);                                                  FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3& opAddAssign(const float3)",		asMETHODPR(float3, operator +=, (const float3) noexcept,	float3&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3& opAddAssign(float)",			asMETHODPR(float3, operator +=, (const float) noexcept,		float3&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3& opSubAssign(const float3)",		asMETHODPR(float3, operator -=, (const float3) noexcept,	float3&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3& opSubAssign(float)",			asMETHODPR(float3, operator -=, (const float) noexcept,		float3&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3& opMulAssign(const float3)",		asMETHODPR(float3, operator *=, (const float) noexcept,		float3&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3& opMulAssign(float)",			asMETHODPR(float3, operator *=, (const float) noexcept,		float3&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3& opDivAssign(const float3)",		asMETHODPR(float3, operator /=, (const float3) noexcept,	float3&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3& opDivAssign(float)",			asMETHODPR(float3, operator /=, (const float) noexcept,		float3&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
 
-		res = scriptEngine->RegisterObjectProperty("Quaternion", "float x", asOFFSET(Quaternion, x));                                                                                                       FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectProperty("Quaternion", "float y", asOFFSET(Quaternion, y));                                                                                                       FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectProperty("Quaternion", "float z", asOFFSET(Quaternion, z));                                                                                                       FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectProperty("Quaternion", "float w", asOFFSET(Quaternion, w));                                                                                                       FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3	Inverse()",				asMETHOD(float3, inverse),		asCALL_THISCALL);														FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3	Cross(float3)",			asMETHOD(float3, cross),		asCALL_THISCALL);														FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float	Dot(float3)",			asMETHOD(float3, dot),			asCALL_THISCALL);														FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float	Magnitude()",			asMETHOD(float3, magnitude),	asCALL_THISCALL);														FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float	MagnitudeSq()",			asMETHOD(float3, magnitudeSq),	asCALL_THISCALL);														FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3&	Abs()",					asMETHOD(float3, abs),			asCALL_THISCALL);														FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "bool	isNan()",				asMETHOD(float3, isNaN),		asCALL_THISCALL);														FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "void	Normalize()",			asMETHOD(float3, normalize),	asCALL_THISCALL);														FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3&	Normal()",				asMETHOD(float3, normal),		asCALL_THISCALL);														FK_ASSERT(res > 0);
+
+		res = scriptEngine->RegisterGlobalFunction("bool Compare(float3, float3, float)",	asFUNCTION(float3::Compare),	asCALL_CDECL);															FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterGlobalFunction("float3 Zero()",							asFUNCTION(float3::Zero),		asCALL_CDECL);															FK_ASSERT(res > 0);
+
+		res = scriptEngine->RegisterObjectProperty("float3", "float x", asOFFSET(float3, x));																										FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectProperty("float3", "float y", asOFFSET(float3, y));																										FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectProperty("float3", "float z", asOFFSET(float3, z));																										FK_ASSERT(res >= 0);
+
 
 		/************************************************************************************************/
 
-		res = scriptEngine->RegisterObjectType("float4x4", sizeof(float4x4), asOBJ_REF | asOBJ_SCOPED);                                                                                                     FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectBehaviour("float4x4", asBEHAVE_FACTORY, "float4x4@ ConstructF4x4()",  asFUNCTION(ConstructFloat4x4),  asCALL_CDECL);                                              FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectBehaviour("float4x4", asBEHAVE_RELEASE, "void f()",                   asFUNCTION(ScopedRelease),      asCALL_CDECL_OBJFIRST);                                     FK_ASSERT(res > 0);
 
-		res = scriptEngine->RegisterObjectMethod("float4x4", "float4&   opIndex(int)",          asFUNCTION(VectorIndexFloat4x4),    asCALL_CDECL_OBJFIRST);                                                 FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float4x4", "float&    opIndex(int, int)",     asFUNCTION(ScalerIndexFloat4x4),    asCALL_CDECL_OBJFIRST);                                                 FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float4x4", "float4x4@ opMul(float4x4& in)",   asFUNCTION(MulFloat4x4_1),          asCALL_CDECL_OBJFIRST);                                                 FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float4x4", "float4@   opMul(float4& in)",     asFUNCTION(MulFloat4x4_2),          asCALL_CDECL_OBJFIRST);                                                 FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float4x4", "float4x4@ opMul(float)",          asFUNCTION(MulFloat4x4_3),          asCALL_CDECL_OBJFIRST);                                                 FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float4x4", "float4x4@ Inverse()",             asFUNCTION(Float4x4Inverse),        asCALL_CDECL_OBJFIRST);                                                 FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectType("float4", sizeof(float4), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS);																				FK_ASSERT(res > 0);
+		
+		res = scriptEngine->RegisterObjectMethod("float4", "float4 opAdd(float4)", asMETHODPR(float4, operator +, (const float4) const noexcept, float4), asCALL_THISCALL);							FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float4", "float4 opSub(float4)", asMETHODPR(float4, operator -, (const float4) const noexcept, float4), asCALL_THISCALL);							FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float4", "float4 opMul(float4)", asMETHODPR(float4, operator *, (const float4) const noexcept, float4), asCALL_THISCALL);							FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float4", "float4 opDiv(float4)", asMETHODPR(float4, operator /, (const float4) const noexcept, float4), asCALL_THISCALL);							FK_ASSERT(res > 0);
+			
+		res = scriptEngine->RegisterObjectMethod("float4", "float4& opAddAssign(float4)", asMETHODPR(float4, operator *=, (const float4) noexcept, float4&), asCALL_THISCALL);				FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float4", "float4& opSubAssign(float4)", asMETHODPR(float4, operator *=, (const float4) noexcept, float4&), asCALL_THISCALL);				FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float4", "float4& opMulAssign(float4)", asMETHODPR(float4, operator *=, (const float4) noexcept, float4&), asCALL_THISCALL);				FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float4", "float4& opDivAssign(float4)", asMETHODPR(float4, operator *=, (const float4) noexcept, float4&), asCALL_THISCALL);				FK_ASSERT(res > 0);
 
-		res = scriptEngine->RegisterGlobalFunction("float4x4@ Identity()", asFUNCTION(Float4x4Identity), asCALL_CDECL);                                                                                     FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectProperty("float4", "float x", asOFFSET(float4, x));																										FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectProperty("float4", "float y", asOFFSET(float4, y));																										FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectProperty("float4", "float z", asOFFSET(float4, z));																										FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectProperty("float4", "float w", asOFFSET(float4, w));																										FK_ASSERT(res >= 0);
 
 
+		/************************************************************************************************/
+
+
+		res = scriptEngine->RegisterObjectType("Quaternion", sizeof(Quaternion), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS);																			FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void ConstructQuat(float, float, float, float)",	asFUNCTION(ConstructQuaternion_2),	asCALL_CDECL_OBJFIRST);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void ConstructQuat(float, float, float)",		asFUNCTION(ConstructQuaternion_3),	asCALL_CDECL_OBJFIRST);		FK_ASSERT(res > 0);
+
+		res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion	opMul(Quaternion)",		asMETHODPR(Quaternion, operator *, (const Quaternion) const	noexcept,	Quaternion),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Quaternion", "float3		opMul(float3)",			asFUNCTIONPR(operator *, (const Quaternion, const float3)	noexcept,	float3),		asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
+
+		res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion& opAssign(Quaternion)",			asMETHODPR(Quaternion, operator =,	(const Quaternion) noexcept, Quaternion&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion& opMulAssign(Quaternion)",		asMETHODPR(Quaternion, operator *=,	(const Quaternion) noexcept, Quaternion&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+
+		res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion  Conjugate()",		asMETHOD(Quaternion, Conjugate),	asCALL_THISCALL);													FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Quaternion", "float Dot(Quaternion& in)",		asMETHOD(Quaternion, dot),			asCALL_THISCALL);													FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Quaternion", "float Magnitude()",				asMETHOD(Quaternion, Magnitude),	asCALL_THISCALL);													FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion&		Normalize()",	asMETHOD(Quaternion, normalize),	asCALL_THISCALL);													FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion		Normal()",		asMETHOD(Quaternion, normal),		asCALL_THISCALL);													FK_ASSERT(res > 0);
+
+		res = scriptEngine->RegisterObjectProperty("Quaternion", "float x", asOFFSET(Quaternion, x));																									FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectProperty("Quaternion", "float y", asOFFSET(Quaternion, y));																									FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectProperty("Quaternion", "float z", asOFFSET(Quaternion, z));																									FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectProperty("Quaternion", "float w", asOFFSET(Quaternion, w));																									FK_ASSERT(res >= 0);
+
+
+		/************************************************************************************************/
+
+
+		res = scriptEngine->RegisterObjectType("float4x4", sizeof(float4x4), asOBJ_REF | asOBJ_SCOPED);																									FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectBehaviour("float4x4", asBEHAVE_FACTORY, "float4x4@ ConstructF4x4()",	asFUNCTION(ConstructFloat4x4),	asCALL_CDECL);											FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectBehaviour("float4x4", asBEHAVE_RELEASE, "void f()",					asFUNCTION(ScopedRelease),		asCALL_CDECL_OBJFIRST);									FK_ASSERT(res > 0);
+
+		res = scriptEngine->RegisterObjectMethod("float4x4", "float4&   opIndex(int)",			asFUNCTION(VectorIndexFloat4x4),	asCALL_CDECL_OBJFIRST);												FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float4x4", "float&    opIndex(int, int)",		asFUNCTION(ScalerIndexFloat4x4),	asCALL_CDECL_OBJFIRST);												FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float4x4", "float4x4@ opMul(float4x4& in)",	asFUNCTION(MulFloat4x4_1),			asCALL_CDECL_OBJFIRST);												FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float4x4", "float4&   opMul(float4& in)",		asFUNCTION(MulFloat4x4_2),			asCALL_CDECL_OBJFIRST);												FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float4x4", "float4x4@ opMul(float)",			asFUNCTION(MulFloat4x4_3),			asCALL_CDECL_OBJFIRST);												FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float4x4", "float4x4@ Inverse()",				asFUNCTION(Float4x4Inverse),		asCALL_CDECL_OBJFIRST);												FK_ASSERT(res > 0);
+
+		res = scriptEngine->RegisterGlobalFunction("float4x4@ Identity()", asFUNCTION(Float4x4Identity), asCALL_CDECL);																					FK_ASSERT(res > 0);
 	}
 
 
@@ -1187,9 +764,9 @@ namespace FlexKit
 	ScriptResourceBlob::ScriptResourceBlob(size_t byteCodeSize) :
 		blobSize{ byteCodeSize }
 	{
-		ResourceSize    = sizeof(ScriptResourceBlob) + byteCodeSize;
-		Type            = EResourceType::EResource_ByteCode;
-		State           = Resource::ResourceState::EResourceState_UNLOADED;		// Runtime Member
+		ResourceSize	= sizeof(ScriptResourceBlob) + byteCodeSize;
+		Type			= EResourceType::EResource_ByteCode;
+		State			= Resource::ResourceState::EResourceState_UNLOADED;		// Runtime Member
 	}
 
 

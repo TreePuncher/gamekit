@@ -10,6 +10,8 @@ EditorSelectObjectDialog::EditorSelectObjectDialog(FlexKit::SceneResource* IN_sc
 	scene { IN_scene }
 {
 	ui.setupUi(this);
+	
+	setAttribute(Qt::WA_DeleteOnClose, true);
 
 	connect(
 		ui.selectButton, &QPushButton::pressed,

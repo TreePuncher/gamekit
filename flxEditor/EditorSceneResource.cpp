@@ -398,7 +398,7 @@ namespace FlexKit
 	}
 
 
-	ResourceList GatherScenes(tinygltf::Model& model, std::vector<size_t>& meshMap, std::map<int, Resource_ptr>& imageMap, std::vector<Resource_ptr>& skinMap)
+	ResourceList GatherScenes(tinygltf::Model& model, std::vector<size_t>& meshMap, std::map<int, Resource_ptr>& imageMap, std::vector<Resource_ptr>& skinMap, const gltfImportOptions& options)
 	{
 		using namespace tinygltf;
 
@@ -408,9 +408,7 @@ namespace FlexKit
 		{
 			SceneResource_ptr	sceneResource_ptr = std::make_shared<SceneResource>();
 
-			auto& name		= scene.name;
-			//auto& metaData  = FindRelatedMetaData({}, MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE, name); // TODO: allow for meta data to be included from external files
-
+			auto& name = scene.name;
 			std::map<int, int> sceneNodeMap;
 
 			auto AddNode =
@@ -455,13 +453,14 @@ namespace FlexKit
 
 					if (node.mesh != -1)
 					{
-						auto brush = std::make_shared<EntityBrushComponent>(meshMap[node.mesh]);
+						auto brush				= std::make_shared<EntityBrushComponent>(meshMap[node.mesh]);
+						auto materialComponent	= std::make_shared<EntityMaterialComponent>();
 
 						for (auto& subEntity : model.meshes[node.mesh].primitives)
 						{
-							BrushMaterial newMaterial;
+							EntityMaterial subMaterial;
 
-							if (subEntity.material != -1)
+							if (options.importMaterials && subEntity.material != -1)
 							{
 								auto& material = model.materials[subEntity.material];
 
@@ -477,7 +476,7 @@ namespace FlexKit
 
 											std::cout << "Searched for " << string << ". Found resource: " << resource->GetResourceID() << "\n";
 
-											newMaterial.textures.push_back(assetGUID);
+											subMaterial.textures.push_back(assetGUID);
 										}
 										else
 										{
@@ -487,41 +486,48 @@ namespace FlexKit
 								};
 
 
-								if (material.pbrMetallicRoughness.baseColorTexture.index != -1)
+								if(options.importTextures)
 								{
-									if (model.textures.size() > material.pbrMetallicRoughness.baseColorTexture.index)
+									if (material.pbrMetallicRoughness.baseColorTexture.index != -1)
 									{
-										auto idx = model.textures[material.pbrMetallicRoughness.baseColorTexture.index].source;
+										if (model.textures.size() > material.pbrMetallicRoughness.baseColorTexture.index)
+										{
+											auto idx = model.textures[material.pbrMetallicRoughness.baseColorTexture.index].source;
 
-										if (imageMap.size() > idx && imageMap.at(idx) != nullptr)
-											newMaterial.textures.push_back(imageMap.at(idx)->GetResourceGUID());
+											if (imageMap.size() > idx && imageMap.at(idx) != nullptr)
+												subMaterial.textures.push_back(imageMap.at(idx)->GetResourceGUID());
+										}
 									}
-								}
-								if (material.normalTexture.index != -1)
-								{
-									if (model.textures.size() > material.normalTexture.index)
-									{
-										auto idx = model.textures[material.normalTexture.index].source;
 
-										if (imageMap.size() > idx && imageMap.at(idx) != nullptr)
-											newMaterial.textures.push_back(imageMap.at(idx)->GetResourceGUID());
+									if (material.normalTexture.index != -1)
+									{
+										if (model.textures.size() > material.normalTexture.index)
+										{
+											auto idx = model.textures[material.normalTexture.index].source;
+
+											if (imageMap.size() > idx && imageMap.at(idx) != nullptr)
+												subMaterial.textures.push_back(imageMap.at(idx)->GetResourceGUID());
+										}
 									}
-								}
 
-								if (material.pbrMetallicRoughness.metallicRoughnessTexture.index != -1)
-								{
-									if (model.textures.size() > material.pbrMetallicRoughness.metallicRoughnessTexture.index)
+									if (material.pbrMetallicRoughness.metallicRoughnessTexture.index != -1)
 									{
-										auto idx = model.textures[material.pbrMetallicRoughness.metallicRoughnessTexture.index].source;
+										if (model.textures.size() > material.pbrMetallicRoughness.metallicRoughnessTexture.index)
+										{
+											auto idx = model.textures[material.pbrMetallicRoughness.metallicRoughnessTexture.index].source;
 
-										if (imageMap.size() > idx && imageMap.at(idx) != nullptr)
-											newMaterial.textures.push_back(imageMap.at(idx)->GetResourceGUID());
+											if (imageMap.size() > idx && imageMap.at(idx) != nullptr)
+												subMaterial.textures.push_back(imageMap.at(idx)->GetResourceGUID());
+										}
 									}
 								}
 							}
-							brush->material.subMaterials.push_back(newMaterial);
+
+							materialComponent->materials.emplace_back(std::move(subMaterial));
 						}
+
 						entity.components.push_back(brush);
+						entity.components.push_back(materialComponent);
 					}
 
 					if (node.skin != -1)
@@ -592,12 +598,16 @@ namespace FlexKit
 		tinygltf::Model&				model;
 		ResourceList&					resources;
 		std::map<int, Resource_ptr>&	imageMap;
+		bool							enableImageLoading;
 	};
 
 
 	bool loadImage(tinygltf::Image* image, const int image_idx, std::string* err, std::string* warn, int req_width, int req_height, const unsigned char* bytes, int size, void* user_ptr)
 	{
 		ImageLoaderDesc* loader = reinterpret_cast<ImageLoaderDesc*>(user_ptr);
+
+		if (!loader->enableImageLoading)
+			return false;
 
 		int x		= 0;
 		int y		= 0;
@@ -777,7 +787,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceList CreateSceneFromGlTF(const std::filesystem::path& fileDir, MetaDataList& MD)
+	ResourceList CreateSceneFromGlTF(const std::filesystem::path& fileDir, const gltfImportOptions& options, MetaDataList& MD)
 	{
 		using namespace tinygltf;
 		Model model;
@@ -785,35 +795,48 @@ namespace FlexKit
 		std::string err;
 		std::string warn;
 
-		ResourceList				resources;
+		ResourceList				textureResources;
 		std::map<int, Resource_ptr>	imageMap;
 
-		ImageLoaderDesc imageLoader{ model, resources, imageMap };
-		loader.SetImageLoader(loadImage, &imageLoader);
+		ImageLoaderDesc imageLoader{ model, textureResources, imageMap };
+		imageLoader.enableImageLoading = options.importTextures;
 
+		loader.SetImageLoader(loadImage, &imageLoader);
+		
 		if (auto res = loader.LoadBinaryFromFile(&model, &err, &warn, fileDir.string()); res == true)
 		{
-
 			auto deformers					= GatherDeformers(model);
 			auto animations					= GatherAnimations(model);
 			auto [meshResources, meshMap]	= GatherGeometry(model);
 
-			auto scenes = GatherScenes(model, meshMap, imageMap, deformers);
+			auto scenes = GatherScenes(model, meshMap, imageMap, deformers, options);
 
-			for (auto resource : animations)
-				resources.push_back(resource);
+			ResourceList resources;
 
-			for (auto resource : deformers)
-				resources.push_back(resource);
+			if(options.importAnimations)
+				for (auto resource : animations)
+					resources.push_back(resource);
 
-			for (auto resource : meshResources)
-				resources.push_back(resource);
+			if (options.importDeformers)
+				for (auto resource : deformers)
+					resources.push_back(resource);
 
-			for (auto resource : scenes)
-				resources.push_back(resource);
+			if(options.importMeshes)
+				for (auto resource : meshResources)
+					resources.push_back(resource);
+
+			if (options.importScenes)
+				for (auto resource : scenes)
+					resources.push_back(resource);
+
+			if (options.importTextures)
+				for (auto resource : textureResources)
+					resources.push_back(resource);
+
+			return resources;
 		}
 
-		return resources;
+		return {};
 	}
 
 
@@ -862,24 +885,8 @@ namespace FlexKit
 
 			for (auto& component : entity.components)
 			{
-				if (component->id == GetTypeGUID(Brush))
-				{
-					auto brushComponent = std::dynamic_pointer_cast<EntityBrushComponent>(component);
-
-					componentBlock += CreateBrushComponent(
-										brushComponent->meshes,
-										brushComponent->material.albedo,
-										brushComponent->material.specular);
-	
-					componentBlock += CreateMaterialComponent(brushComponent->material);
-
-					entityHeader.componentCount+= 2;
-				}
-				else
-				{
-					componentBlock += component->GetBlob();
-					entityHeader.componentCount++;
-				}
+				componentBlock += component->GetBlob();
+				entityHeader.componentCount++;
 			}
 
 			entityHeader.blockSize += componentBlock.size();
@@ -956,11 +963,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Blob CreateBrushComponent(std::span<uint64_t> meshGUIDs, const float4 albedo, const float4 specular)
+	Blob CreateBrushComponent(std::span<uint64_t> meshGUIDs)
 	{
 		BrushComponentBlob brushComponent;
-		brushComponent.albedo_smoothness	= albedo;
-		brushComponent.specular_metal		= specular;
 		brushComponent.meshCount			= (uint8_t)meshGUIDs.size();
 		brushComponent.header.blockSize += sizeof(uint64_t) * meshGUIDs.size();
 		Blob blob;
@@ -976,20 +981,93 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Blob CreateMaterialComponent(BrushMaterial material)
+	Blob EntityMaterial::CreateSubMaterialBlob() const noexcept
 	{
-		MaterialComponentBlob materialComponent;
+		SubMaterialHeader header;
+		header.propertyCount	= properties.size();
+		header.textureCount		= textures.size();
 
-		for (auto& subMat : material.subMaterials)
+		Blob propertyBlob;
+		for (size_t itr = 0; itr < properties.size(); itr++)
 		{
-			SubMaterial subMaterialBlob;
-			for (const auto texture : subMat.textures)
-				subMaterialBlob.textures.push_back(texture);
+			const MaterialProperty& property = properties[itr];
 
-			materialComponent.materials.push_back(subMaterialBlob);
+			std::visit(
+				Overloaded
+				{
+					[&](float x)
+					{
+						propertyBlob += (uint8_t)MaterialPropertyBlobValueType::FLOAT;
+						propertyBlob += propertyGUID[itr];
+						propertyBlob += x;
+					},
+					[&](float2 xy)
+					{
+						propertyBlob += (uint8_t)MaterialPropertyBlobValueType::FLOAT2;
+						propertyBlob += propertyGUID[itr];
+						propertyBlob += xy;
+					},
+					[&](float3 xyz)
+					{
+						propertyBlob += (uint8_t)MaterialPropertyBlobValueType::FLOAT3;
+						propertyBlob += propertyGUID[itr];
+						propertyBlob += xyz;
+					},
+					[&](float4 xyzw)
+					{
+						propertyBlob += (uint8_t)MaterialPropertyBlobValueType::FLOAT4;
+						propertyBlob += propertyGUID[itr];
+						propertyBlob += xyzw;
+					},
+					[&](uint32_t x)
+					{
+						propertyBlob += (uint8_t)MaterialPropertyBlobValueType::UINT;
+						propertyBlob += propertyGUID[itr];
+						propertyBlob += x;
+					},
+					[&](uint2 xy)
+					{
+						propertyBlob += (uint8_t)MaterialPropertyBlobValueType::UINT2;
+						propertyBlob += propertyGUID[itr];
+						propertyBlob += xy;
+					},
+					[&](uint3 xyz)
+					{
+						propertyBlob += (uint8_t)MaterialPropertyBlobValueType::UINT3;
+						propertyBlob += propertyGUID[itr];
+						propertyBlob += xyz;
+					},
+					[&](uint4 xyzw)
+					{
+						propertyBlob += (uint8_t)MaterialPropertyBlobValueType::UINT4;
+						propertyBlob += propertyGUID[itr];
+						propertyBlob += xyzw;
+					},
+					[](auto) {}
+				},	property);
 		}
 
-		return { materialComponent };
+		Blob textureBlob;
+		for (auto texture : textures)
+			textureBlob += texture;
+
+		header.materialSize = sizeof(header) + propertyBlob.size() + textureBlob.size();
+
+		return Blob{ header } + propertyBlob + textureBlob;
+	}
+
+
+	Blob EntityMaterialComponent::GetBlob()
+	{
+		Blob subMaterials;
+		for (const auto& subMaterial : materials)
+			subMaterials += subMaterial.CreateSubMaterialBlob();
+
+		MaterialComponentBlob materialComponent;
+		materialComponent.materialCount = materials.size();
+		materialComponent.header.blockSize += sizeof(materialComponent) + subMaterials.size();
+
+		return Blob{ materialComponent } + subMaterials;
 	}
 
 

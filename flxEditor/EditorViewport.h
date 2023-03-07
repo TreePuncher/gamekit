@@ -115,10 +115,12 @@ private:
 	void DeleteSelectionItem();
 
 	void Render				(FlexKit::UpdateDispatcher& Dispatcher, double dT, TemporaryBuffers&, FlexKit::FrameGraph& graph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator);
-	void DrawSceneOverlay	(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, DrawSceneOverlay_Desc& desc);
+	void DrawSceneOverlays	(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, DrawSceneOverlay_Desc& desc);
 
 	double							T = 0.0f;
-	bool							overlayEnabled = true;
+	bool							phyicsOverlay		= true;
+	bool							boundingBoxOverlay	= true;
+	bool							lightOverlay		= true;
 
 	std::vector<ViewportMode_ptr>	mode;
 

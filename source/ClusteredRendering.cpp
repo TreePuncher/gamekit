@@ -3,6 +3,8 @@
 #include "AnimationComponents.h"
 #include "AnimationRendering.h"
 #include "ClusteredRendering.h"
+#include "WorldRender.h"
+
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -1219,7 +1221,7 @@ namespace FlexKit
 		const CameraHandle				camera,
 		GBuffer&						gbuffer,
 		ResourceHandle					depthTarget,
-		FrameResourceHandle				entityConstants,
+		EntityConstants&				entityConstants,
 		ReserveConstantBufferFunction	reserveCB,
 		iAllocator*						allocator,
 		AnimationPoseUpload*			animationPoses)
@@ -1235,13 +1237,13 @@ namespace FlexKit
 			{
 				builder.AddDataDependency(passes);
 
-				data.entityConstants			= builder.ReadConstantBuffer(entityConstants);
+				data.entityConstants			= builder.ReadConstantBuffer(entityConstants.constants);
 				data.AlbedoTargetObject			= builder.RenderTarget(gbuffer.albedo);
 				data.MRIATargetObject			= builder.RenderTarget(gbuffer.MRIA);
 				data.NormalTargetObject			= builder.RenderTarget(gbuffer.normal);
 				data.depthBufferTargetObject	= builder.DepthTarget(depthTarget);
 			},
-			[animationPoses](GBufferPass& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[animationPoses, &entityConstants](GBufferPass& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
 				ProfileFunction();
 				struct EntityPoses
@@ -1261,6 +1263,7 @@ namespace FlexKit
 				if (!pass && !pass->pvs.size())
 					return;
 
+				/*
 				size_t brushCount = 0;
 				for (auto& brush : pass->pvs)
 				{
@@ -1278,7 +1281,9 @@ namespace FlexKit
 
 					brushCount += maxSubMeshCount;
 				}
+				*/
 
+				size_t brushCount = 0;
 				if (animatedPass)
 				{
 					for (auto& brush : animatedPass->pvs)
@@ -1313,7 +1318,7 @@ namespace FlexKit
 					AlignedSize<ForwardDrawConstants>();
 
 				auto passConstantBuffer		= data.reserveCB(passBufferSize);
-				auto entityConstantBuffer	= data.reserveCB(entityBufferSize);
+				//auto entityConstantBuffer	= data.reserveCB(entityBufferSize);
 
 				const auto cameraConstants	= ConstantBufferDataSet{ GetCameraConstants(data.camera), passConstantBuffer };
 				const auto passConstants	= ConstantBufferDataSet{ ForwardDrawConstants{ 1, 1 }, passConstantBuffer };
@@ -1368,8 +1373,11 @@ namespace FlexKit
 				defaultHeap.NullFill(ctx);
 
 
-				auto& materials = MaterialComponent::GetComponent();
+				auto& materials			= MaterialComponent::GetComponent();
+				auto& constantBuffer	= entityConstants.GetConstantBuffer();
+				auto constants			= FlexKit::CreateCBIterator<Brush::VConstantsLayout>(constantBuffer);
 
+				/*
 				auto GetConstants = [&](auto& brush, auto& constants)
 				{
 
@@ -1390,30 +1398,25 @@ namespace FlexKit
 						constants.emplace_back(brushConstants, entityConstantBuffer);
 					}
 				};
+				*/
 
-				for (auto& brush : pass->pvs)
+				const size_t end = pass->pvs.size();
+				for (size_t I = 0; I < end; I++)
 				{
-					static_vector<ConstantBufferDataSet>	constants;
-					static_vector<DescriptorRange>			descriptors;
+					auto& brush = pass->pvs[I];
 
 					if (!brush->meshes.size())
 						continue;
 
-					GetConstants(brush, constants);
-					const auto& material = materials[brush->material];
+					const auto& material		= materials[brush->material];
+					const auto beginConstants	= entityConstants.entityTable[I];
 
-					if (material.SubMaterials.size() == 0)
-						descriptors.push_back(materials.GetTextureDescriptors(material.handle));
-					else
-						for (auto sm : material.SubMaterials)
-							descriptors.push_back(materials.GetTextureDescriptors(sm));
-
-					const	size_t meshCount = brush->meshes.size();
-					for (auto I = 0; I < meshCount; I++)
+					const size_t meshCount	= brush->meshes.size();
+					for (size_t J = 0; J < meshCount; J++)
 					{
-						auto mesh		= brush->meshes[I];
+						auto mesh		= brush->meshes[J];
 						auto* triMesh	= GetMeshResource(mesh);
-						auto  lodIdx	= brush.LODlevel[I];
+						auto  lodIdx	= brush.LODlevel[J];
 						auto  lod		= &triMesh->lods[lodIdx];
 
 						if (triMesh != prevMesh || prevLOD != lod)
@@ -1433,21 +1436,22 @@ namespace FlexKit
 								});
 						}
 
-						auto& submeshes = lod->subMeshes;
-						for (size_t I = 0; I < submeshes.size(); I++)
+						auto&			submeshes		= lod->subMeshes;
+						const size_t	subMeshesEnd	= submeshes.size();
+
+						for (size_t K = 0; K < subMeshesEnd; K++)
 						{
-							auto materialIdx = Min(I, material.SubMaterials.size() - 1);
+							const auto	subMesh		= submeshes[K];
+							const auto& subMaterial	= (subMeshesEnd == 1) ? material : materials[material.SubMaterials[K]];
 
-							if(descriptors.size() && descriptors[materialIdx].size)
-								ctx.SetGraphicsDescriptorTable(0, descriptors[materialIdx]);
-							else
-								ctx.SetGraphicsDescriptorTable(0, defaultHeap);
+							if (subMaterial.textureDescriptors.size != 0)
+								ctx.SetGraphicsDescriptorTable(0, subMaterial.textureDescriptors);
 
-							ctx.SetGraphicsConstantBufferView(2, constants[materialIdx]);
+							ctx.SetGraphicsConstantBufferView(2, constants[beginConstants + K]);
 
 							ctx.DrawIndexed(
-								submeshes[I].IndexCount,
-								submeshes[I].BaseIndex);
+								subMesh.IndexCount,
+								subMesh.BaseIndex);
 						}
 					}
 				}
@@ -1472,6 +1476,7 @@ namespace FlexKit
 				ctx.SetGraphicsConstantBufferView(1, cameraConstants);
 				ctx.SetGraphicsConstantBufferView(3, passConstants);
 
+				/*
 				if (animationPoses)
 				{
 					prevMesh	= nullptr;
@@ -1548,6 +1553,7 @@ namespace FlexKit
 						}
 					}
 				}
+				*/
 
 				ctx.EndEvent_DEBUG();
 				ctx.EndEvent_DEBUG();

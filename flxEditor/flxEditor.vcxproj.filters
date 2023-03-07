@@ -65,7 +65,9 @@
     <QtMoc Include="EditorTextureViewer.h">
       <Filter>Headers</Filter>
     </QtMoc>
-    <QtMoc Include="EditorSelectObjectDialog.h" />
+    <QtMoc Include="EditorSelectObjectDialog.h">
+      <Filter>Headers</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DXRenderWindow.cpp">
@@ -209,6 +211,9 @@
     <ClCompile Include="EditorSelectObjectDialog.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="gltfImport.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Serialization.h">
@@ -316,6 +321,9 @@
     <ClInclude Include="EditorGameplayComponents.hpp">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="gltfImport.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="ResourceBrowserWidget.ui">
@@ -352,6 +360,9 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="EditorSelectObjectDialog.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="EditorImportGLTF.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>
