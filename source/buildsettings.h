@@ -212,6 +212,8 @@ namespace FlexKit {
 	using GUID_t		= uint64_t;
 }
 
+template<class... Ts> struct Overloaded : Ts... { using Ts::operator()...; };
+
 #define NOMINMAX
 
 #include <Windows.h>

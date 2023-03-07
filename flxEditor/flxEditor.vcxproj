@@ -313,6 +313,7 @@
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">%(Filename).moc</QtMocFileName>
     </ClCompile>
     <ClCompile Include="EditorGameplayComponents.cpp" />
+    <ClCompile Include="gltfImport.cpp" />
     <ClCompile Include="MaterialResource.cpp" />
     <ClCompile Include="MeshResource.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
@@ -372,6 +373,7 @@
     <ClInclude Include="EditorPrefabRenderer.h" />
     <ClInclude Include="FBXResourceUtilities.h" />
     <ClInclude Include="EditorGameplayComponents.hpp" />
+    <ClInclude Include="gltfImport.h" />
     <ClInclude Include="MaterialResource.h" />
     <ClInclude Include="MeshResource.h" />
     <ClInclude Include="MetaData.h" />
@@ -409,6 +411,7 @@
     <QtUic Include="EditorAnimationEditor.ui" />
     <QtUic Include="EditorAnimationInputTab.ui" />
     <QtUic Include="EditorCodeEditor.ui" />
+    <QtUic Include="EditorImportGLTF.ui" />
     <QtUic Include="EditorOutputWindow.ui" />
     <QtUic Include="EditorResourcePickerDialog.ui" />
     <QtUic Include="EditorSelectObjectDialog.ui" />

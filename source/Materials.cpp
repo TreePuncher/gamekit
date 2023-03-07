@@ -585,7 +585,7 @@ namespace FlexKit
 		MaterialComponentBlob materialBlob;
 		memcpy(&materialBlob, buffer, Min(sizeof(materialBlob), bufferSize));
 
-		const static auto parentMaterial = [&]() {
+		const static auto pbrMaterial = [&]() {
 			auto newMaterial = CreateMaterial();
 
 			Add2Pass(newMaterial, PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
@@ -598,30 +598,129 @@ namespace FlexKit
 			return newMaterial;
 		}();
 
-		auto newMaterial = CreateMaterial(parentMaterial);
+		auto newMaterial	= CreateMaterial(pbrMaterial);
+		auto rdCtx			= ReadContext{};
+		
+		const auto materialCount = materialBlob.materialCount;
 
-		auto rdCtx = ReadContext{};
-		if (materialBlob.materials.size() > 1)
+		const char* cursor = (char*)(buffer + sizeof(materialBlob));
+
+		auto LoadMaterial = [&](MaterialHandle handle)
 		{
-			for (auto& subMaterial : materialBlob.materials)
-			{
-				auto newSubMaterial = CreateMaterial(newMaterial);
-				AddSubMaterial(newMaterial, newSubMaterial);
+			SubMaterialHeader header;
+			memcpy(&header, cursor, sizeof(header));
+			cursor += sizeof(header);
 
-				for (auto& texture : subMaterial.textures)
-					PushTexture(newSubMaterial, texture, rdCtx, true);
+			// Load Properties
+			const size_t propertyCount = header.propertyCount;
+			for (size_t itr = 0; itr < propertyCount; itr++)
+			{
+				uint8_t		typeID;
+				uint32_t	propertyID;
+				memcpy(&typeID,		cursor + 0, 1);
+				memcpy(&propertyID, cursor + 1, 4);
+
+				cursor += 5;
+
+				switch (typeID)
+				{
+				case MaterialPropertyBlobValueType::FLOAT:
+				{
+					float x;
+					memcpy(&x, cursor, 4);
+					cursor += 4;
+
+					SetProperty(handle, propertyID, x);
+				}	break;
+				case MaterialPropertyBlobValueType::FLOAT2:
+				{
+					float2 xy;
+					memcpy(&xy, cursor, 8);
+					SetProperty(handle, propertyID, xy);
+
+					cursor += 8;
+				}	break;
+				case MaterialPropertyBlobValueType::FLOAT3:
+				{
+					float3 xyz;
+					memcpy(&xyz, cursor, 12);
+					SetProperty(handle, propertyID, xyz);
+
+					cursor += 12;
+				}	break;
+				case MaterialPropertyBlobValueType::FLOAT4:
+				{
+					float4 xyzw;
+					memcpy(&xyzw, cursor, 16);
+					SetProperty(handle, propertyID, xyzw);
+
+					cursor += 16;
+				}	break;
+				case MaterialPropertyBlobValueType::UINT:
+				{
+					uint32_t x;
+					memcpy(&x, cursor, 4);
+					SetProperty(handle, propertyID, x);
+
+					cursor += 4;
+				}	break;
+				case MaterialPropertyBlobValueType::UINT2:
+				{
+					uint2 xy;
+					memcpy(&xy, cursor, 8);
+					SetProperty(handle, propertyID, xy);
+
+					cursor += 8;
+				}	break;
+				case MaterialPropertyBlobValueType::UINT3:
+				{
+					uint3 xyz;
+					memcpy(&xyz, cursor, 12);
+					SetProperty(handle, propertyID, xyz);
+
+					cursor += 12;
+				}	break;
+				case MaterialPropertyBlobValueType::UINT4:
+				{
+					uint4 xyzw;
+					memcpy(&xyzw, cursor, 16);
+					SetProperty(handle, propertyID, xyzw);
+
+					cursor += 16;
+				}	break;
+				}
+			}
+
+			// Load Textures
+			const size_t textureCount = header.textureCount;
+			for (size_t itr = 0; itr < textureCount; itr++)
+			{
+				size_t texture = 0;
+				memcpy(&texture, cursor, sizeof(texture));
+
+				cursor += 8;
+
+				PushTexture(handle, texture, rdCtx, true);
+			}
+
+			UpdateTextureDescriptors(handle);
+		};
+
+		if (materialCount > 1)
+		{
+			for (size_t itr = 0; itr < materialCount; itr++)
+			{
+				auto material = CreateMaterial(newMaterial);
+				AddSubMaterial(newMaterial, material);
+
+				LoadMaterial(material);
 			}
 		}
-		else if (materialBlob.materials.size() == 1)
-		{
-			for (auto& texture : materialBlob.materials[0].textures)
-				PushTexture(newMaterial, texture, rdCtx, true);
-		}
+		else
+			LoadMaterial(newMaterial);
 
 		gameObject.AddView<MaterialView>(newMaterial);
 		SetMaterialHandle(gameObject, newMaterial);
-
-		UpdateTextureDescriptors(newMaterial);
 	}
 
 

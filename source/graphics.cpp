@@ -5209,8 +5209,6 @@ namespace FlexKit
 
 	void RenderSystem::UploadTexture(ResourceHandle handle, CopyContextHandle queue, byte* buffer, size_t bufferSize)
 	{
-		DebugBreak();
-		/*
 		auto resource	= GetDeviceResource(handle);
 		auto wh			= GetTextureWH(handle);
 		auto formatSize = GetTextureElementSize(handle); FK_ASSERT(formatSize != -1);
@@ -5227,10 +5225,9 @@ namespace FlexKit
 		desc.subResourceStart   = 0;
 		desc.format             = format;
 
-		_UpdateSubResourceByUploadQueue(this, queue, resource, &desc, DASCommon);
+		_UpdateSubResourceByUploadQueue(this, queue, resource, &desc);
 
-		Textures.SetState(handle, DeviceAccessState::DASCommon);
-		*/
+		Textures.SetLayout(handle, DeviceLayout_Common);
 	}
 
 
