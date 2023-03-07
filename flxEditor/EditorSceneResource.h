@@ -158,6 +158,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	/*
 	struct BrushMaterial
 	{
 		float4 albedo;
@@ -175,15 +176,14 @@ namespace FlexKit
 		ar& material.textures;
 		ar& material.subMaterials;
 	}
-
+	*/
 
 	/************************************************************************************************/
 
 
 	Blob CreateSceneNodeComponent	(uint32_t nodeIdx);
 	Blob CreateIDComponent			(const std::string& string);
-	Blob CreateBrushComponent		(std::span<GUID_t> meshGUIDs, const float4 albedo, const float4 specular);
-	Blob CreateMaterialComponent	(BrushMaterial material);
+	Blob CreateBrushComponent		(std::span<GUID_t> meshGUIDs);
 	Blob CreatePointLightComponent	(float3 K, float2 IR);
 
 
@@ -263,16 +263,14 @@ namespace FlexKit
 
 			ar& meshes;
 			ar& Collider;
-			ar& material;
 		}
 
 		Blob GetBlob() override
 		{
-			return CreateBrushComponent(meshes, material.albedo, material.specular);
+			return CreateBrushComponent(meshes);
 		}
 
 		GUID_t					Collider = INVALIDHANDLE;
-		BrushMaterial			material;
 		std::vector<GUID_t>		meshes;
 
 		inline static RegisterConstructorHelper<EntityBrushComponent, FlexKit::BrushComponentID> registered{};
@@ -311,19 +309,52 @@ namespace FlexKit
 
 	struct EntityMaterial
 	{
-		using MaterialProperty = std::variant<std::string, float4, float3, float2, float>;
+		using MaterialProperty = std::variant<std::string, float, float2, float3, float4, uint, uint2, uint3, uint4>;
+
+		size_t							versionNumber	= 1;
 
 		GUID_t							resource;		// Resource
+		std::vector<uint64_t>			textures;
 		std::vector<MaterialProperty>	properties;		// Properties override data in the resource
 		std::vector<std::string>		propertyID;
 		std::vector<uint32_t>			propertyGUID;
+		std::vector<EntityMaterial>		subMaterials;
+
+		/*
+		struct Version1
+		{
+			using MaterialProperty = std::variant<std::string, float4, float3, float2, float>;
+
+			GUID_t							resource;		// Resource
+			std::vector<uint64_t>			textures;
+			std::vector<MaterialProperty>	properties;		// Properties override data in the resource
+			std::vector<std::string>		propertyID;
+			std::vector<uint32_t>			propertyGUID;
+			std::vector<EntityMaterial>		subMaterials;
+		};
+		*/
+
+		Blob CreateSubMaterialBlob() const noexcept;
 
 		template<class Archive>
 		void Serialize(Archive& ar)
 		{
-			ar& properties;
-			ar& propertyID;
-			ar& propertyGUID;
+			ar& versionNumber;
+			switch(versionNumber)
+			{
+				case 1:
+				{	ar& resource;
+					ar& textures;
+					ar& properties;
+					ar& propertyID;
+					ar& propertyGUID;
+					ar& subMaterials;
+				}	break;
+
+				default:
+					FK_LOG_ERROR("Serialization Error");
+					throw std::runtime_error("Serialization Error");
+			}
 		}
 	};
 
@@ -338,11 +369,7 @@ namespace FlexKit
 		EntityMaterialComponent() :
 			Serializable{ GetTypeGUID(Material) } {}
 
-
-		Blob GetBlob() override
-		{
-			return {};
-		}
+		Blob GetBlob() override;
 
 		void Serialize(auto& ar)
 		{
@@ -548,8 +575,17 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	struct gltfImportOptions
+	{
+		bool importAnimations	= true;
+		bool importDeformers	= true;
+		bool importMeshes		= true;
+		bool importMaterials	= true;
+		bool importScenes		= true;
+		bool importTextures		= true;
+	};
 
-	ResourceList CreateSceneFromGlTF(const std::filesystem::path& fileDir, MetaDataList&);
+	ResourceList CreateSceneFromGlTF(const std::filesystem::path& fileDir, const gltfImportOptions& options, MetaDataList&);
 
 
 }   /************************************************************************************************/

@@ -830,7 +830,7 @@ namespace FlexKit
 				camera,
 				gbuffer,
 				depthTarget.Get(),
-				entityConstants.constants,
+				entityConstants,
 				reserveCB,
 				temporary,
 				&poses);

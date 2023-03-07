@@ -127,12 +127,6 @@ namespace FlexKit
 	};
 
 
-	struct SubMaterial
-	{
-		static_vector<uint64_t>  textures;
-	};
-
-
 	struct BrushComponentBlob
 	{
 		ComponentBlock::Header  header = {
@@ -148,6 +142,30 @@ namespace FlexKit
 	};
 
 
+	namespace MaterialPropertyBlobValueType
+	{
+		enum TypeIDs
+		{
+			FLOAT,
+			FLOAT2,
+			FLOAT3,
+			FLOAT4,
+			UINT,
+			UINT2,
+			UINT3,
+			UINT4
+		};
+	}
+
+
+	struct SubMaterialHeader
+	{
+		uint32_t	materialSize;
+		uint8_t		textureCount;
+		uint8_t		propertyCount;
+	};
+
+
 	struct MaterialComponentBlob
 	{
 		ComponentBlock::Header  header = {
@@ -157,11 +175,8 @@ namespace FlexKit
 			MaterialComponentID
 		};
 
-		GUID_t							resourceID;
-		static_vector<SubMaterial, 32>	materials;
-
-		float4 albedo_smoothness;
-		float4 specular_metal;
+		GUID_t	resourceID;
+		uint8_t materialCount;
 	};
 
 

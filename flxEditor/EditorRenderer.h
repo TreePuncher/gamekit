@@ -39,13 +39,13 @@ protected:
 
 	void PostDrawUpdate(FlexKit::EngineCore& core, double dT) override;
 
-	std::atomic_bool                drawInProgress = false;
+	std::atomic_bool				drawInProgress = false;
 
 
 public:
-	FlexKit::TextureStreamingEngine textureEngine;
-	FlexKit::WorldRender            worldRender;
-	CSGRender                       csgRender;
+	FlexKit::TextureStreamingEngine	textureEngine;
+	FlexKit::WorldRender			worldRender;
+	CSGRender						csgRender;
 
 private:
 	struct TempBuffer
@@ -54,10 +54,10 @@ private:
 	};
 
 
-	std::unique_ptr<TempBuffer>     temporaryBuffer = std::make_unique<TempBuffer>();
+	std::unique_ptr<TempBuffer>		temporaryBuffer = std::make_unique<TempBuffer>();
 
-	FlexKit::StackAllocator         allocator;
-	FlexKit::ThreadSafeAllocator    threadedAllocator{ FlexKit::SystemAllocator };
+	FlexKit::StackAllocator			allocator;
+	FlexKit::ThreadSafeAllocator	threadedAllocator{ FlexKit::SystemAllocator };
 
 	// Temp Buffers
 	FlexKit::VertexBufferHandle		vertexBuffer;

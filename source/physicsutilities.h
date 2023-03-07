@@ -986,6 +986,7 @@ namespace FlexKit
 			return out;
 		}
 
+		bool						active		= true;
 		CharacterControllerHandle	controller	= InvalidHandle;
 		CameraHandle				camera		= InvalidHandle;
 
@@ -1043,6 +1044,8 @@ namespace FlexKit
 	Quaternion		GetCameraControllerModelOrientation(GameObject& GO);
 
 	void			YawCameraController(GameObject& GO, float rad);
+
+	void			SetThirdPersonCharacterActive(GameObject& GO, const bool);
 
 	void			SetCameraControllerCameraHeightOffset(GameObject& GO, const float offset);
 	void			SetCameraControllerCameraBackOffset(GameObject& GO, const float offset);
