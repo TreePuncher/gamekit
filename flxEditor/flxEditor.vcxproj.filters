@@ -214,6 +214,9 @@
     <ClCompile Include="gltfImport.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="EditorSceneEntityComponents.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Serialization.h">
@@ -322,6 +325,9 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="gltfImport.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorSceneEntityComponents.h">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1249,6 +1249,9 @@ namespace FlexKit
 								if (((char*)&entityBlock) + componentOffset >= ((char*)&entityBlock) + entityBlock.blockSize)
 									break;
 
+								if (itr >= componentCount)
+									break;
+
 								ComponentBlock::Header component;
 								memcpy(&component, (std::byte*)block + sizeof(entityBlock) + componentOffset, sizeof(component));
 
@@ -1272,18 +1275,19 @@ namespace FlexKit
 									values.emplace_back(SceneLoadingContextKID, &ctx);
 									values.emplace_back(PhysicsLayerKID, &ctx.layer);
 
-									GetComponent(ID).AddComponentView(
+									auto& componentSystem = GetComponent(ID);
+									componentSystem.AddComponentView(
 														gameObject,
 														std::span{ values },
 														(std::byte*)(block) + sizeof(entityBlock) + componentOffset,
 														component.blockSize,
 														allocator);
 								}
+								else
+									FK_LOG_WARNING("Component Unavailable");
 
 								++itr;
 								componentOffset += component.blockSize;
-								if (itr >= componentCount)
-									break;
 							}
 
 							SetBoundingSphereFromMesh(gameObject);

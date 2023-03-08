@@ -13,7 +13,7 @@
 
 ProjectResource_ptr EditorScene::FindSceneResource(uint64_t resourceID)
 {
-	for (auto& resource : sceneResources)
+	for (auto& resource : resources)
 		if (resource->resource->GetResourceGUID() == resourceID)
 			return resource;
 
@@ -124,7 +124,7 @@ FlexKit::ResourceList EditorProject::GetResources() const
 void EditorProject::RemoveResource(FlexKit::Resource_ptr resource)
 {
 	if (resource->GetResourceTypeID() == SceneResourceTypeID)
-		std::erase_if(scenes, [&](auto& res) -> bool { return (res->sceneResource == resource); });
+		std::erase_if(scenes, [&](auto& res) -> bool { return (res->resource == resource); });
 
 	std::erase_if(resources, [&](auto& res) -> bool { return (res->resource == resource); });
 }

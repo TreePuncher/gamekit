@@ -1,18 +1,19 @@
 #pragma once
 #include <ui_EditorSelectObjectDialog.h>
 #include <functional>
+#include <type.h>
 
 namespace FlexKit
 {
-	class SceneResource;
-};
+	class SceneObject;
+}
 
 class EditorSelectObjectDialog : public QDialog
 {
 	Q_OBJECT
 public:
 	
-	EditorSelectObjectDialog(FlexKit::SceneResource*, QWidget* parent = Q_NULLPTR);
+	EditorSelectObjectDialog(FlexKit::SceneObject*, QWidget* parent = Q_NULLPTR);
 	~EditorSelectObjectDialog();
 
 	void UpdateContents();
@@ -22,7 +23,7 @@ public:
 	std::function<void (size_t)>		OnSelection		= [](size_t) {};
 
 
-	Ui::SelectSceneObjectDialog ui;
-	FlexKit::SceneResource*		scene;
+	Ui::SelectSceneObjectDialog		ui;
+	FlexKit::SceneObject*			scene;
 };
 

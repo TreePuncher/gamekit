@@ -6,7 +6,7 @@
 /************************************************************************************************/
 
 
-EditorSelectObjectDialog::EditorSelectObjectDialog(FlexKit::SceneResource* IN_scene, QWidget* parent) :
+EditorSelectObjectDialog::EditorSelectObjectDialog(FlexKit::SceneObject* IN_scene, QWidget* parent) :
 	scene { IN_scene }
 {
 	ui.setupUi(this);

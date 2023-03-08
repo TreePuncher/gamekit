@@ -9,6 +9,7 @@
 #include "EditorPrefabRenderer.h"
 #include "EditorRenderer.h"
 #include "EditorResourcePickerDialog.h"
+#include "EditorSceneEntityComponents.h"
 #include "EditorScriptEngine.h"
 #include "EditorPrefabEditor.h"
 #include "SelectionContext.h"
