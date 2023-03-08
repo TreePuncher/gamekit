@@ -64,13 +64,13 @@ public:
 	DXRenderWindow*				renderWindow;
 	FlexKit::CameraHandle		viewportCamera;
 
-	SelectionContext&               selectionContext;
-	std::shared_ptr<ViewportScene>  scene;
+	SelectionContext&				selectionContext;
+	std::shared_ptr<ViewportScene>	scene;
 
-	inline static float zoomSpeed = 1.0f;
+	inline static float zoomSpeed	= 1.0f;
+	inline static float panSpeed	= 5.0f;
 
 	FlexKit::int2 previousMousePosition = FlexKit::int2{ -160000, -160000 };
-	float panSpeed = 10.0f;
 };
 
 
@@ -577,7 +577,7 @@ void EditorVewportPanMode::wheelEvent(QWheelEvent* event)
 	const auto node	= FlexKit::GetCameraNode(viewportCamera);
 	const auto q	= FlexKit::GetOrientation(node);
 
-	TranslateWorld(node, q * float3{ 0, 0, event->angleDelta().x() / -500.0f });
+	TranslateWorld(node, q * float3{ 0, 0, zoomSpeed * event->angleDelta().x() / -2000.0f });
 	MarkCameraDirty(viewportCamera);
 }
 
@@ -594,7 +594,8 @@ void EditorVewportPanMode::DrawImguI()
 
 		if (ImGui::Begin("Pan"))
 		{
-			ImGui::SliderFloat("Zoom Speed", &zoomSpeed, 0.0f, 50.0f);
+			ImGui::SliderFloat("Zoom", &zoomSpeed, 0.0f, 20.0f);
+			ImGui::SliderFloat("Pan", &panSpeed, 0.0f, 20.0f);
 			ImGui::End();
 		}
 	}

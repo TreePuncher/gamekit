@@ -63,6 +63,9 @@ struct CSGBrush
 
 	void Serialize(auto& ar)
 	{
+		uint32_t version = 1;
+		ar& version;
+
 		ar& shape;
 		ar& op;
 
@@ -89,6 +92,9 @@ public:
 	void Serialize(auto& ar)
 	{
 		EntityComponent::Serialize(ar);
+
+		uint32_t version = 1;
+		ar& version;
 
 		ar& brushes;
 	}
