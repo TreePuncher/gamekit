@@ -28,6 +28,9 @@ namespace FlexKit
 		{
 			EntityComponent::Serialize(ar);
 
+			uint32_t version = 1;
+			ar& version;
+
 			ar& stringID;
 		}
 
@@ -56,6 +59,9 @@ namespace FlexKit
 
 		void Serialize(auto& ar)
 		{
+			uint32_t version = 1;
+			ar& version;
+
 			ar& nodeIdx;
 		}
 
@@ -64,7 +70,7 @@ namespace FlexKit
 			return CreateSceneNodeComponent(nodeIdx);
 		}
 
-		size_t nodeIdx;
+		size_t		nodeIdx;
 
 		inline static RegisterConstructorHelper<EntitySceneNodeComponent, FlexKit::TransformComponentID> registered{};
 	};
@@ -87,6 +93,9 @@ namespace FlexKit
 		void Serialize(auto& ar)
 		{
 			EntityComponent::Serialize(ar);
+
+			uint32_t version = 1;
+			ar& version;
 
 			ar& meshes;
 			ar& Collider;
@@ -120,12 +129,15 @@ namespace FlexKit
 		{
 			EntityComponent::Serialize(ar);
 
+			uint32_t version = 1;
+			ar& version;
+
 			ar& skeletonResourceID;
 		}
 
 		Blob GetBlob() override;
 
-		GUID_t skeletonResourceID;
+		GUID_t		skeletonResourceID;
 
 		inline static RegisterConstructorHelper<EntitySkeletonComponent, FlexKit::SkeletonComponentID> registered{};
 	};
@@ -137,8 +149,6 @@ namespace FlexKit
 	struct EntityMaterial
 	{
 		using MaterialProperty = std::variant<std::string, float, float2, float3, float4, uint, uint2, uint3, uint4>;
-
-		size_t							versionNumber	= 1;
 
 		GUID_t							resource;		// Resource
 		std::vector<uint64_t>			textures;
@@ -166,8 +176,10 @@ namespace FlexKit
 		template<class Archive>
 		void Serialize(Archive& ar)
 		{
-			ar& versionNumber;
-			switch(versionNumber)
+			uint32_t version = 1;
+			ar& version;
+
+			switch(version)
 			{
 				case 1:
 				{	ar& resource;
@@ -202,12 +214,15 @@ namespace FlexKit
 		{
 			EntityComponent::Serialize(ar);
 
+			uint32_t version = 1;
+			ar& version;
+
 			ar& materials;
 		}
 
 		bool ExportComponent() const final { return false; }
 
-		std::vector<EntityMaterial> materials;
+		std::vector<EntityMaterial>	materials;
 
 		inline static RegisterConstructorHelper<EntityMaterialComponent, FlexKit::MaterialComponentID> registered{};
 	};
@@ -238,11 +253,13 @@ namespace FlexKit
 		{
 			EntityComponent::Serialize(ar);
 
+			uint32_t version = 1;
+			ar& version;
+
 			ar& I;
 			ar& R;
 			ar& K;
 		}
-
 
 		float	I;
 		float   R;
@@ -270,10 +287,12 @@ namespace FlexKit
 		{
 			EntityComponent::Serialize(ar);
 
+			uint32_t version = 1;
+			ar& version;
+
 			ar& triggerID;
 			ar& stringID;
 		}
-
 
 		std::vector<uint32_t>		triggerID;
 		std::vector<std::string>	stringID; // human readable

@@ -54,9 +54,12 @@ public:
 
 	void Serialize(auto& archive)
 	{
-		archive& stringID;
-		archive& guid;
-		archive& colliderBlob;
+		uint32_t version = 1;
+		ar& version;
+
+		ar& stringID;
+		ar& guid;
+		ar& colliderBlob;
 	}
 
 	FlexKit::Blob	colliderBlob;
