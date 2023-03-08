@@ -23,6 +23,7 @@ struct Collider
 	}
 };
 
+
 struct StaticColliderEditorData
 {
 	std::vector<Collider>	colliders;
@@ -44,11 +45,13 @@ public:
 	{
 		EntityComponent::Serialize(ar);
 
+		ar& version;
 		ar& colliders;
 	}
 
 	FlexKit::Blob GetBlob() override;
 
+	uint32_t				version = 1;
 	uint32_t				editorId;
 	std::vector<Collider>	colliders;
 
@@ -69,10 +72,18 @@ public:
 	void Serialize(auto& ar)
 	{
 		EntityComponent::Serialize(ar);
+
+		ar& version;
 	}
+
+	struct Version1_RigidBodyCollider
+	{
+
+	};
 
 	FlexKit::Blob GetBlob() override;
 
+	uint32_t				version = 1;
 	FlexKit::ResourceHandle ColliderResourceID;
 
 	inline static RegisterConstructorHelper<EditorColliderComponent, FlexKit::RigidBodyComponentID> registered{};

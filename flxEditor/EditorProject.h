@@ -66,33 +66,33 @@ using ProjectResource_ptr	= std::shared_ptr<ProjectResource>;
 class EditorScene
 {
 public:
-	EditorScene(FlexKit::SceneResource_ptr IN_scene = nullptr) : sceneResource{ IN_scene } {}
+	EditorScene(FlexKit::SceneResource_ptr IN_scene = nullptr) : resource{ IN_scene } {}
 
 	ProjectResource_ptr	FindSceneResource(uint64_t resourceID);
 
 	void Serialize(auto& archive)
 	{
-		archive& sceneName;
-		archive& sceneResources;
+		archive& name;
+		archive& resources;
 
 		if (archive.Loading())
 		{
-			std::shared_ptr<FlexKit::iResource> resource;
-			archive& resource;
+			std::shared_ptr<FlexKit::iResource> resource_temp;
+			archive& resource_temp;
 
-			sceneResource = std::static_pointer_cast<FlexKit::SceneResource>(resource);
+			resource = std::static_pointer_cast<FlexKit::SceneResource>(resource_temp);
 		}
 		else
 		{
-			auto casted = std::static_pointer_cast<FlexKit::SceneResource>(sceneResource);
+			auto casted = std::static_pointer_cast<FlexKit::SceneResource>(resource);
 			archive& casted;
 		}
 
 	}
 
-	std::string							sceneName;
-	FlexKit::SceneResource_ptr			sceneResource;
-	std::vector<ProjectResource_ptr>	sceneResources;
+	std::string							name;
+	FlexKit::SceneResource_ptr			resource;
+	std::vector<ProjectResource_ptr>	resources;
 };
 
 

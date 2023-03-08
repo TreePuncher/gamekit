@@ -3,6 +3,7 @@
 #include "ResourceIDs.h"
 #include "EditorScriptEngine.h"
 #include "KeyValueIds.h"
+#include "EditorSceneEntityComponents.h"
 
 
 /************************************************************************************************/

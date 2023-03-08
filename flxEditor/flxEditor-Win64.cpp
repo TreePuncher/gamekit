@@ -11,10 +11,8 @@
 
 #define TINYGLTF_NO_STB_IMAGE
 #define TINYGLTF_NO_STB_IMAGE_WRITE
-#define TINYGLTF_NO_INCLUDE_JSON
 #define TINYGLTF_IMPLEMENTATION
 #include <tiny_gltf.h>
-
 
 int main(int argc, char* argv[])
 {

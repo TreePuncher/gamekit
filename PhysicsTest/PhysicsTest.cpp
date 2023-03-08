@@ -147,7 +147,7 @@ PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
 	rs.RegisterPSOLoader(DRAW_LINE3D_PSO, { &rs.Library.RS6CBVs4SRVs, CreateDraw2StatePSO });
 
 	RegisterPhysicsDebugVis(framework.GetRenderSystem());
-	AddAssetFile(R"(assets\TestRoom2.gameres)");
+	AddAssetFile(R"(assets\TestWorld.gameres)");
 	AddAssetFile(R"(assets\MainCharacterPrefab.gameres)");
 
 	InitiateScriptRuntime();
@@ -165,7 +165,7 @@ PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
 	renderWindow.Handler->Subscribe(sub);
 	renderWindow.SetWindowTitle("Physics Test");
 
-	if (!LoadLevel(10597, framework.core))
+	if (!LoadLevel(21654, framework.core))
 		throw std::runtime_error("Failed to load Level!");
 
 	auto level = GetActiveLevel();

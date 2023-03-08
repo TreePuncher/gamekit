@@ -2,10 +2,16 @@
 #include "EditorSceneResource.h"
 #include "ComponentBlobs.h"
 #include "MeshUtils.h"
+#include "EditorSceneEntityComponents.h"
 #include "EditorTextureResources.h"
 #include "MeshResource.h"
 #include "ResourceUtilities.h"
 
+#define TINYGLTF_NO_STB_IMAGE
+#define TINYGLTF_NO_STB_IMAGE_WRITE
+#define TINYGLTF_NO_INCLUDE_JSON
+
+#include <nlohmann\json.hpp>
 #include <fstream>
 #include <memory>
 #include <sstream>
@@ -14,6 +20,7 @@
 #include <fmt\format.h>
 #include <stb_image.h>
 #include <stb_image_write.h>
+#include <tiny_gltf.h>
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -406,7 +413,8 @@ namespace FlexKit
 
 		for (auto& scene : model.scenes)
 		{
-			SceneResource_ptr	sceneResource_ptr = std::make_shared<SceneResource>();
+			SceneResource_ptr	sceneResource_ptr	= std::make_shared<SceneResource>();
+			auto&				sceneObject			= sceneResource_ptr->Object();
 
 			auto& name = scene.name;
 			std::map<int, int> sceneNodeMap;
@@ -442,8 +450,8 @@ namespace FlexKit
 					node.children.size() ||
 					node.extensions.find("KHR_lights_punctual") != node.extensions.end())
 				{
-					const auto nodeHndl = sceneResource_ptr->AddSceneNode(newNode);
-					sceneNodeMap[nodeIdx] = nodeHndl;
+					const auto nodeHndl		= sceneObject->AddSceneNode(newNode);
+					sceneNodeMap[nodeIdx]	= nodeHndl;
 
 					SceneEntity entity;
 					entity.id = node.name;
@@ -567,7 +575,7 @@ namespace FlexKit
 						}
 					}
 
-					sceneResource_ptr->AddSceneEntity(entity);
+					sceneObject->AddSceneEntity(entity);
 				}
 
 				for (auto child : node.children)
@@ -580,6 +588,8 @@ namespace FlexKit
 
 			if (scene.extras.Has("ResourceID"))
 				sceneResource_ptr->SetResourceGUID(scene.extras.Get("ResourceID").Get<int>());
+			else
+				sceneResource_ptr->SetResourceGUID(rand());
 
 			sceneResource_ptr->ID = scene.name;
 
@@ -843,8 +853,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceBlob SceneResource::CreateBlob() const
-	{ 
+	ResourceBlob SceneObject::CreateBlob() const
+	{
 		// Create Scene Node Table
 		SceneNodeBlock::Header sceneNodeHeader;
 		sceneNodeHeader.blockSize = (uint32_t)(SceneNodeBlock::GetHeaderSize() + sizeof(SceneNodeBlock::SceneNode) * nodes.size());
@@ -932,187 +942,6 @@ namespace FlexKit
 			});
 
 		return res != std::end(components) ? *res : nullptr;
-	}
-
-
-	/************************************************************************************************/
-
-
-	Blob CreateSceneNodeComponent(uint32_t nodeIdx)
-	{
-		SceneNodeComponentBlob nodeblob;
-		nodeblob.excludeFromScene	= false;
-		nodeblob.nodeIdx			= nodeIdx;
-
-		return { nodeblob };
-	}
-
-
-	/************************************************************************************************/
-
-
-	Blob CreateIDComponent(const std::string& string)
-	{
-		IDComponentBlob IDblob;
-		strncpy_s(IDblob.ID, 64, string.c_str(), string.size());
-
-		return { IDblob };
-	}
-
-
-	/************************************************************************************************/
-
-
-	Blob CreateBrushComponent(std::span<uint64_t> meshGUIDs)
-	{
-		BrushComponentBlob brushComponent;
-		brushComponent.meshCount			= (uint8_t)meshGUIDs.size();
-		brushComponent.header.blockSize += sizeof(uint64_t) * meshGUIDs.size();
-		Blob blob;
-		blob += brushComponent;
-
-		for (auto GUID : meshGUIDs)
-			blob += GUID;
-
-		return blob;
-	}
-
-
-	/************************************************************************************************/
-
-
-	Blob EntityMaterial::CreateSubMaterialBlob() const noexcept
-	{
-		SubMaterialHeader header;
-		header.propertyCount	= properties.size();
-		header.textureCount		= textures.size();
-
-		Blob propertyBlob;
-		for (size_t itr = 0; itr < properties.size(); itr++)
-		{
-			const MaterialProperty& property = properties[itr];
-
-			std::visit(
-				Overloaded
-				{
-					[&](float x)
-					{
-						propertyBlob += (uint8_t)MaterialPropertyBlobValueType::FLOAT;
-						propertyBlob += propertyGUID[itr];
-						propertyBlob += x;
-					},
-					[&](float2 xy)
-					{
-						propertyBlob += (uint8_t)MaterialPropertyBlobValueType::FLOAT2;
-						propertyBlob += propertyGUID[itr];
-						propertyBlob += xy;
-					},
-					[&](float3 xyz)
-					{
-						propertyBlob += (uint8_t)MaterialPropertyBlobValueType::FLOAT3;
-						propertyBlob += propertyGUID[itr];
-						propertyBlob += xyz;
-					},
-					[&](float4 xyzw)
-					{
-						propertyBlob += (uint8_t)MaterialPropertyBlobValueType::FLOAT4;
-						propertyBlob += propertyGUID[itr];
-						propertyBlob += xyzw;
-					},
-					[&](uint32_t x)
-					{
-						propertyBlob += (uint8_t)MaterialPropertyBlobValueType::UINT;
-						propertyBlob += propertyGUID[itr];
-						propertyBlob += x;
-					},
-					[&](uint2 xy)
-					{
-						propertyBlob += (uint8_t)MaterialPropertyBlobValueType::UINT2;
-						propertyBlob += propertyGUID[itr];
-						propertyBlob += xy;
-					},
-					[&](uint3 xyz)
-					{
-						propertyBlob += (uint8_t)MaterialPropertyBlobValueType::UINT3;
-						propertyBlob += propertyGUID[itr];
-						propertyBlob += xyz;
-					},
-					[&](uint4 xyzw)
-					{
-						propertyBlob += (uint8_t)MaterialPropertyBlobValueType::UINT4;
-						propertyBlob += propertyGUID[itr];
-						propertyBlob += xyzw;
-					},
-					[](auto) {}
-				},	property);
-		}
-
-		Blob textureBlob;
-		for (auto texture : textures)
-			textureBlob += texture;
-
-		header.materialSize = sizeof(header) + propertyBlob.size() + textureBlob.size();
-
-		return Blob{ header } + propertyBlob + textureBlob;
-	}
-
-
-	Blob EntityMaterialComponent::GetBlob()
-	{
-		Blob subMaterials;
-		for (const auto& subMaterial : materials)
-			subMaterials += subMaterial.CreateSubMaterialBlob();
-
-		MaterialComponentBlob materialComponent;
-		materialComponent.materialCount = materials.size();
-		materialComponent.header.blockSize += sizeof(materialComponent) + subMaterials.size();
-
-		return Blob{ materialComponent } + subMaterials;
-	}
-
-
-	/************************************************************************************************/
-
-
-	Blob CreatePointLightComponent(float3 K, float2 IR)
-	{
-		PointLightComponentBlob blob;
-		blob.IR		= IR;
-		blob.K		= K;
-
-		return blob;
-	}
-
-
-	/************************************************************************************************/
-
-
-	uint64_t EntityStringIDComponent::GetStringHash() const
-	{
-		std::hash<std::string_view> hash;
-		return hash(stringID);
-	}
-
-
-	/************************************************************************************************/
-
-
-	Blob EntityTriggerComponent::GetBlob()
-	{
-		TriggerComponentBlob blob;
-		return blob;
-	}
-
-
-	/************************************************************************************************/
-
-
-	Blob EntitySkeletonComponent::GetBlob()
-	{
-		SkeletonComponentBlob blob;
-		blob.assetID = skeletonResourceID;
-
-		return { blob };
 	}
 
 

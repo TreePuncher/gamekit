@@ -1,6 +1,7 @@
 #include "EditorGameplayComponents.hpp"
 #include "EditorInspectorView.h"
 #include "EditorResourcePickerDialog.h"
+#include "EditorSceneEntityComponents.h"
 #include "ViewportScene.h"
 
 #include "EditorSelectObjectDialog.h"
@@ -77,7 +78,7 @@ struct PortalEditorComponent final : public IEditorComponent
 				diag->OnSelection(
 					[&, diag, level, spawn](ProjectResource_ptr proj)
 					{
-						auto* editorScene		= static_cast<FlexKit::SceneResource*>(proj->resource.get());
+						auto* editorScene		= static_cast<FlexKit::SceneResource*>(proj->resource.get())->Object().get();
 						auto& editorPortalView	= static_cast<EditorPortalView&>(view);
 
 						auto dialog = new EditorSelectObjectDialog{ editorScene };

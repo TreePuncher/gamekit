@@ -141,7 +141,7 @@ public:
 								auto projectResource = project.AddResource(resource);
 
 								if(viewport.GetScene())
-									viewport.GetScene()->sceneResource->sceneResources.push_back(projectResource);
+									viewport.GetScene()->sceneResource->resources.push_back(projectResource);
 							}
 							else
 								return;
@@ -194,7 +194,7 @@ public:
 
 							auto projectResource = project.AddResource(resource);
 
-							viewport.GetScene()->sceneResource->sceneResources.push_back(projectResource);
+							viewport.GetScene()->sceneResource->resources.push_back(projectResource);
 						});
 				});
 

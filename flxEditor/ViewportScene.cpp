@@ -1,7 +1,8 @@
 #include "PCH.h"
 #include "AnimationComponents.h"
-#include "ViewportScene.h"
 #include "CSGComponent.h"
+#include "EditorSceneEntityComponents.h"
+#include "ViewportScene.h"
 
 
 /************************************************************************************************/
@@ -395,7 +396,11 @@ void ViewportScene::Update()
 	if (!sceneResource)
 		return;
 
-	auto& entities = sceneResource->sceneResource->entities; // TODO: make this not dumb
+	auto& scene_impl	= sceneResource->resource->Object();
+	auto& entities		= scene_impl->entities; // TODO: make this not dumb
+
+	sceneResource->resource->dirtyFlag = true;
+
 	ViewportSceneContext ctx;
 
 	for (auto& object : sceneObjects)
@@ -457,7 +462,7 @@ void ViewportScene::Update()
 		}
 	}
 
-	auto& nodes = sceneResource->sceneResource->nodes;
+	auto& nodes = sceneResource->resource->Object()->nodes;
 	nodes.clear();
 
 	for (const auto& node : ctx.nodes)

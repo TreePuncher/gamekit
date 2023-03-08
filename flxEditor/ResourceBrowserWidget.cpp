@@ -56,8 +56,8 @@ ResourceBrowserWidget::ResourceBrowserWidget(EditorProject& IN_project, EditorRe
 			auto scene			= std::make_shared<FlexKit::SceneResource>();
 			auto editorScene	= std::make_shared<EditorScene>(scene);
 
-			scene->ID				= "NewScene";
-			editorScene->sceneName	= "NewScene";
+			scene->ID			= "NewScene";
+			editorScene->name	= "NewScene";
 			
 			IN_project.AddScene(editorScene);
 			IN_project.AddResource(std::static_pointer_cast<FlexKit::iResource>(scene));

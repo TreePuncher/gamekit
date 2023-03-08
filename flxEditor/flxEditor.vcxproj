@@ -243,9 +243,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="EditorSceneEntityComponents.cpp" />
     <ClCompile Include="EditorSelectedPrefabObject.cpp" />
     <ClCompile Include="EditorPrefabRenderer.cpp" />
     <QtMoc Include="EditorSelectObjectDialog.h" />
+    <ClInclude Include="EditorSceneEntityComponents.h" />
     <ClInclude Include="EditorUndoRedo.h" />
     <ClCompile Include="EditorSelectObjectDialog.cpp" />
     <ClCompile Include="EditorUndoRedo.cpp" />

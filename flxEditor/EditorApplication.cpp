@@ -152,7 +152,7 @@ struct SceneResourceViewer : public IResourceViewer
 
 	void operator () (FlexKit::Resource_ptr resource) override
 	{
-		if (auto res = std::ranges::find_if(project.scenes, [&](auto res) { return res->sceneResource == resource; });  res != std::end(project.scenes))
+		if (auto res = std::ranges::find_if(project.scenes, [&](auto res) { return res->resource == resource; });  res != std::end(project.scenes))
 			mainWindow.Get3DView().SetScene(*res, project);
 	}
 
