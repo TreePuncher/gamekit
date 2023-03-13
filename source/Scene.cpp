@@ -83,7 +83,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	BrushView::BrushView(GameObject& gameObject)
+	BrushView::BrushView(GameObject& gameObject) :
+		brush{ GetComponent().Create(gameObject, Brush{}) }
 	{
 		Apply(gameObject,
 			[&](TriggerView& view)
@@ -109,7 +110,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	BrushView::BrushView(GameObject& gameObject, TriMeshHandle	triMesh)
+	BrushView::BrushView(GameObject& gameObject, TriMeshHandle	triMesh) :
+		brush{ GetComponent().Create(gameObject, Brush{}) }
 	{
 		Apply(gameObject,
 			[&](TriggerView& view)
@@ -125,9 +127,8 @@ namespace FlexKit
 				view->Connect(AddedToSceneID, SceneChangedSlot);
 			});
 
-		auto node = GetSceneNode(gameObject);
-
-		auto& meshes = GetComponent()[brush].meshes;
+		auto node		= GetSceneNode(gameObject);
+		auto& meshes	= GetComponent()[brush].meshes;
 
 		GetComponent()[brush].meshes.push_back(triMesh);
 		GetComponent()[brush].Node = node != InvalidHandle ? node : GetZeroedNode();
@@ -348,7 +349,7 @@ namespace FlexKit
 	}
 
 
-	PointLightView::PointLightView(GameObject& gameObject, float3 color, float intensity, float radius, NodeHandle node, bool triggerless) : light{ GetComponent().Create() }
+	PointLightView::PointLightView(GameObject& gameObject, float3 color, float intensity, float radius, NodeHandle node, bool triggerless) : light{ GetComponent().Create(gameObject) }
 	{
 		auto& pointLight		= GetComponent()[light];
 		pointLight.K			= color;
@@ -618,7 +619,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PointLight PointLightEventHandler::OnCreate()
+	PointLight PointLightEventHandler::OnCreate(GameObject& gameObject)
 	{
 		return PointLight{};
 	}

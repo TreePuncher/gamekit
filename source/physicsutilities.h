@@ -315,8 +315,8 @@ namespace FlexKit
 		struct HitCallback : public physx::PxRaycastCallback
 		{
 			HitCallback(FN_callable callable) :
-				physx::PxRaycastCallback{ nullptr, 0 },
-				hitHandler{ callable }{}
+				physx::PxRaycastCallback	{ nullptr, 0 },
+				hitHandler					{ callable } {}
 
 			physx::PxAgain processTouches(const physx::PxRaycastHit* hit, physx::PxU32 nbHits) final
 			{
@@ -360,6 +360,17 @@ namespace FlexKit
 			HitCallback<TY_HITFN> hitCallback{ OnHit };
 
 			return scene->raycast(pxOrigin, pxRay, maxDistance, hitCallback);
+		}
+
+		template<typename TY_HITFN>
+		bool RayCast(const Ray& ray, const float maxDistance, const physx::PxQueryFilterData& filterData, TY_HITFN OnHit)
+		{
+			const auto pxOrigin = Float3TopxVec3(ray.O);
+			const auto pxRay = Float3TopxVec3(ray.D);
+
+			HitCallback<TY_HITFN> hitCallback{ OnHit };
+
+			return scene->raycast(pxOrigin, pxRay, maxDistance, hitCallback, physx::PxHitFlag::eDEFAULT, filterData);
 		}
 
 		physx::PxControllerManager& GetCharacterController() { return *controllerManager; }
@@ -767,6 +778,8 @@ namespace FlexKit
 	constexpr ComponentID CharacterControllerComponentID = GetTypeGUID(CharacterControllerComponentID);
 	using CharacterControllerHandle = Handle_t<32, CharacterControllerComponentID>;
 
+	inline static constexpr uint32_t CharacterControllerBitMask = 0x01;
+
 	struct CharacterController
 	{
 		CharacterControllerHandle	handle;
@@ -775,6 +788,9 @@ namespace FlexKit
 		LayerHandle					layer;
 
 		physx::PxController*		controller;
+
+		float						height;
+		float						radius;
 
 		float						focusHeight		= 4.0f;
 		float						cameraDistance	= 10.0f;
@@ -879,11 +895,11 @@ namespace FlexKit
 		}
 
 
-		uint32_t Move(const float3 v, double dt, physx::PxControllerFilters& filters)
+		uint32_t Move(const float3 v, double dt, const physx::PxControllerFilters& filters)
 		{
 			auto& ref = GetComponent()[controller];
 
-			return ref.controller->move({ v.x, v.y, v.z }, 0.01f, (float)dt, filters);
+			return ref.controller->move({ v.x, v.y, v.z }, 0.001f, (float)dt, filters);
 		}
 
 
@@ -908,7 +924,7 @@ namespace FlexKit
 	float3						GetControllerPosition			(GameObject&);
 	void						SetControllerPosition			(GameObject&, const float3);
 	void						SetControllerOrientation		(GameObject&, const Quaternion);
-	void						MoveController					(GameObject&, const float3&, physx::PxControllerFilters& filters, double dt);
+	void						MoveController					(GameObject&, const float3&, const physx::PxControllerFilters& filters, double dt);
 	void						CharacterControllerApplyForce	(GameObject&, const float3);
 
 
@@ -956,6 +972,7 @@ namespace FlexKit
 		};
 
 		Quaternion	GetOrientation()	const;
+		float3		GetUpVector()		const;
 		float3		GetForwardVector()	const;
 		float3		GetRightVector()	const;
 
@@ -968,6 +985,8 @@ namespace FlexKit
 		void SetPosition(const float3 xyz);
 
 		float3 GetHeadPosition() const;
+		float3 GetPosition() const;
+		float3 GetFootPosition() const;
 
 		void UpdateCharacter(const float2 mouseInput, const double dt);
 		void UpdateCharacter(const float2 mouseInput, const KeyStates& keyState, const double dt);
@@ -1009,7 +1028,7 @@ namespace FlexKit
 		float			drag				= 5.0f;
 		float			moveRate			= 50;
 		float			airMovementRatio	= 0.5f;
-		float			gravity				= 9.8f;
+		float3			gravity				= float3{ 0, -9.8f, 0 };
 
 		bool			floorContact = false;
 
@@ -1021,7 +1040,7 @@ namespace FlexKit
 
 	struct ThirdPersonEventHandler
 	{
-		static decltype(auto) OnCreate(auto&& args) { return args; }
+		static decltype(auto) OnCreate(GameObject&, auto&& args) { return args; }
 
 		void OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
 		{

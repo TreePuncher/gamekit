@@ -12,7 +12,10 @@ namespace FlexKit
 
 	void TriggerData::CreateTrigger(uint32_t id)
 	{
-		triggers.emplace_back();
+		if (GetTrigger(id) != nullptr)
+			return;
+
+		triggers.emplace_back(allocator);
 		triggerIDs.emplace_back(id);
 	}
 
@@ -129,20 +132,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TriggerData TriggerComponentEventHandler::OnCreate() noexcept
+	TriggerData TriggerComponentEventHandler::OnCreate(GameObject&) noexcept
 	{
 		return TriggerData{
 			.triggers		= { allocator },
 			.triggerIDs		= { allocator },
 			.actionSlots	= { allocator },
-			.actionSlotIDs	= { allocator }
+			.actionSlotIDs	= { allocator },
+			.allocator		= allocator
 		};
-	}
-
-
-	TriggerData TriggerComponentEventHandler::OnCreate(auto&& args) noexcept
-	{
-		return OnCreate();
 	}
 
 

@@ -144,22 +144,21 @@ namespace FlexKit
 				pvd->release();
 				transport->release();
 				FK_LOG_WARNING("FAILED TO CONNECT TO PVD");
-				visualDebugger              = nullptr;
-				visualDebuggerConnection    = nullptr;
-
+				visualDebugger				= nullptr;
+				visualDebuggerConnection	= nullptr;
 			}
 			else
 			{
 				FK_LOG_INFO("CONNECTED TO PVD!");
 
-				visualDebugger              = pvd;
-				visualDebuggerConnection    = transport;
+				visualDebugger				= pvd;
+				visualDebuggerConnection	= transport;
 			}
 		}
 		else
 		{
-			visualDebugger              = nullptr;
-			visualDebuggerConnection    = nullptr;
+			visualDebugger				= nullptr;
+			visualDebuggerConnection	= nullptr;
 		}
 #endif
 		physxAPI = PxCreatePhysics(PX_PHYSICS_VERSION, *foundation, physx::PxTolerancesScale(), recordMemoryAllocations, visualDebugger);
@@ -218,10 +217,10 @@ namespace FlexKit
 
 
 	StaticBodyHandle PhysXComponent::CreateStaticCollider(
-		GameObject*             gameObject,
-		const LayerHandle       layerHandle,
-		const float3            pos,
-		const Quaternion        q)
+		GameObject*			gameObject,
+		const LayerHandle	layerHandle,
+		const float3		pos,
+		const Quaternion	q)
 	{
 		auto& layer = GetLayer_ref(layerHandle);
 		return layer.CreateStaticCollider(gameObject, pos, q);
@@ -232,10 +231,10 @@ namespace FlexKit
 
 
 	RigidBodyHandle PhysXComponent::CreateRigidBodyCollider(
-		GameObject*             gameObject,
-		const LayerHandle       layerHandle,
-		const float3            pos,
-		const Quaternion        q)
+		GameObject*			gameObject,
+		const LayerHandle	layerHandle,
+		const float3		pos,
+		const Quaternion	q)
 	{
 		auto& layer = GetLayer_ref(layerHandle);
 		return layer.CreateRigidBodyCollider(gameObject, pos, q);
@@ -318,13 +317,13 @@ namespace FlexKit
 	Shape PhysXComponent::CookMesh(float3* geometry, size_t geometrySize, uint32_t* indices, size_t indexCount)
 	{
 		physx::PxTriangleMeshDesc meshDesc;
-		meshDesc.points.count   = geometrySize;
-		meshDesc.points.stride  = sizeof(FlexKit::float3);
-		meshDesc.points.data    = geometry;
+		meshDesc.points.count		= geometrySize;
+		meshDesc.points.stride		= sizeof(FlexKit::float3);
+		meshDesc.points.data		= geometry;
 
-		meshDesc.triangles.count    = indexCount / 3;
-		meshDesc.triangles.stride   = 3 * sizeof(uint32_t);
-		meshDesc.triangles.data     = indices;
+		meshDesc.triangles.count	= indexCount / 3;
+		meshDesc.triangles.stride	= 3 * sizeof(uint32_t);
+		meshDesc.triangles.data		= indices;
 
 		auto res = GetCooker()->validateTriangleMesh(meshDesc);
 
@@ -361,9 +360,9 @@ namespace FlexKit
 	Blob PhysXComponent::CookMesh2(float3* geometry, size_t geometrySize, uint32_t* indices, size_t indexCount)
 	{
 		physx::PxTriangleMeshDesc meshDesc;
-		meshDesc.points.count   = geometrySize;
-		meshDesc.points.stride  = 12;
-		meshDesc.points.data    = geometry;
+		meshDesc.points.count	= geometrySize;
+		meshDesc.points.stride	= 12;
+		meshDesc.points.data	= geometry;
 
 		std::vector<uint32_t> reversedIndices;
 		reversedIndices.reserve(indexCount);
@@ -494,28 +493,6 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
-
-	/*
-	ColliderHandle LoadTriMeshCollider(FlexKit::PhysicsSystem* PS, GUID_t Guid)
-	{
-		if (isAssetAvailable(Guid))
-		{
-			auto RHandle		= LoadGameAsset(Guid);
-			auto Resource		= (ColliderResourceBlob*)GetAsset(RHandle);
-			size_t ResourceSize = Resource->ResourceSize - sizeof(ColliderResourceBlob);
-
-			PxDefaultMemoryInputData readBuffer(Resource->Buffer, ResourceSize);
-			auto Mesh = PS->Physx->createTriangleMesh(readBuffer);
-
-			FreeAsset(RHandle);
-
-			return AddCollider(&PS->Colliders, {Mesh, 1});
-		}
-
-		return static_cast<ColliderHandle>(INVALIDHANDLE);
-	}
-	*/
 
 	/*
 	physx::PxHeightField*	LoadHeightFieldCollider(PhysicsSystem* PS, GUID_t Guid)
@@ -1084,6 +1061,11 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	float3 ThirdPersonCamera::GetUpVector() const
+	{
+		Quaternion Q = GetOrientation();
+		return -(Q * float3(0, 1, 0)).normal();
+	}
 
 	float3 ThirdPersonCamera::GetForwardVector() const
 	{
@@ -1164,6 +1146,7 @@ namespace FlexKit
 
 		auto& cameraController = gameObject.AddView<CameraControllerView>(
 			CameraControllerComponent::GetComponent().Create(
+				gameObject,
 				ThirdPersonCamera(
 					GetControllerHandle(gameObject),
 					GetControllerNode(gameObject))));
@@ -1177,9 +1160,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	float3 GetCameraControllerHeadPosition(GameObject& GO)
+	float3 GetCameraControllerHeadPosition(GameObject& gameObject)
 	{
-		return Apply(GO, [](CameraControllerView& cameraController)
+		return Apply(gameObject, [](CameraControllerView& cameraController)
 			{
 				return cameraController.GetData().GetHeadPosition();
 			},
@@ -1194,9 +1177,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	float3 GetCameraControllerModelPosition(GameObject& GO)
+	float3 GetCameraControllerModelPosition(GameObject& gameObject)
 	{
-		return Apply(GO, [](CameraControllerView& cameraController)
+		return Apply(gameObject, [](CameraControllerView& cameraController)
 			{
 				return GetPositionW(cameraController.GetData().objectNode);
 			},
@@ -1210,9 +1193,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Quaternion GetCameraControllerModelOrientation(GameObject& GO)
+	Quaternion GetCameraControllerModelOrientation(GameObject& gameObject)
 	{
-		return Apply(GO, [](CameraControllerView& cameraController)
+		return Apply(gameObject, [](CameraControllerView& cameraController)
 			{
 				return GetOrientation(cameraController.GetData().objectNode);
 			},
@@ -1226,9 +1209,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	float3 GetCameraControllerForwardVector(GameObject& GO)
+	float3 GetCameraControllerForwardVector(GameObject& gameObject)
 	{
-		return Apply(GO, [](CameraControllerView& cameraController)
+		return Apply(gameObject, [](CameraControllerView& cameraController)
 			{
 				return cameraController.GetData().GetForwardVector();
 			},
@@ -1242,9 +1225,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Quaternion GetCameraControllerOrientation(GameObject& GO)
+	Quaternion GetCameraControllerOrientation(GameObject& gameObject)
 	{
-		return Apply(GO,
+		return Apply(gameObject,
 			[](CameraControllerView& cameraController)
 			{
 				return GetOrientation(cameraController.GetData().cameraNode);
@@ -1259,9 +1242,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	NodeHandle GetCameraControllerNode(GameObject& GO)
+	NodeHandle GetCameraControllerNode(GameObject& gameObject)
 	{
-		return Apply(GO,
+		return Apply(gameObject,
 			[](CameraControllerView& cameraController)
 			{
 				return cameraController.GetData().objectNode;
@@ -1273,27 +1256,27 @@ namespace FlexKit
 	}
 
 
-	void YawCameraController(GameObject& GO, float rad)
+	void YawCameraController(GameObject& gameObject, float rad)
 	{
-		Apply(GO,
+		Apply(gameObject,
 			[&](CameraControllerView& view)
 			{
 				view.GetData().Yaw(rad);
 			});
 	}
 
-	void PitchCameraController(GameObject& GO, float rad)
+	void PitchCameraController(GameObject& gameObject, float rad)
 	{
-		Apply(GO,
+		Apply(gameObject,
 			[&](CameraControllerView& view)
 			{
 				view.GetData().Pitch(rad);
 			});
 	}
 
-	void RollCameraController(GameObject& GO, float rad)
+	void RollCameraController(GameObject& gameObject, float rad)
 	{
-		Apply(GO,
+		Apply(gameObject,
 			[&](CameraControllerView& view)
 			{
 				view.GetData().Roll(rad);
@@ -1303,9 +1286,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void SetCameraControllerPosition(GameObject& GO, const float3 pos)
+	void SetCameraControllerPosition(GameObject& gameObject, const float3 pos)
 	{
-		Apply(GO, [&](CameraControllerView& cameraController)
+		Apply(gameObject, [&](CameraControllerView& cameraController)
 			{
 				cameraController.GetData().SetPosition(pos);
 			});
@@ -1324,9 +1307,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void SetCameraControllerCameraHeightOffset(GameObject& GO, const float offset)
+	void SetCameraControllerCameraHeightOffset(GameObject& gameObject, const float offset)
 	{
-		Apply(GO, [&](CameraControllerView& cameraController)
+		Apply(gameObject, [&](CameraControllerView& cameraController)
 			{
 				auto& controller = cameraController.GetData();
 
@@ -1338,9 +1321,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void SetCameraControllerCameraBackOffset(GameObject& GO, const float offset)
+	void SetCameraControllerCameraBackOffset(GameObject& gameObject, const float offset)
 	{
-		Apply(GO, [&](CameraControllerView& cameraController)
+		Apply(gameObject, [&](CameraControllerView& cameraController)
 			{
 				auto& controller = cameraController.GetData();
 
@@ -1455,25 +1438,29 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	CharacterControllerHandle CharacterControllerComponent::Create(const LayerHandle layer, GameObject& gameObject, const NodeHandle node, const float3 initialPosition, const float R, const float H)
+	CharacterControllerHandle CharacterControllerComponent::Create(const LayerHandle layer, GameObject& gameObject, const NodeHandle node, const float3 initialPosition, const float radius, const float height)
 	{
 		auto& manager = physx.GetLayer_ref(layer).GetCharacterController();
 
 		if (!gameObject.hasView(TransformComponentID))
 			gameObject.AddView<SceneNodeView>(node);
 
-		SetPositionW(node, initialPosition + float3{0, H / 2, 0});
+		SetPositionW(node, initialPosition + float3{0, height / 2, 0});
 
 		physx::PxCapsuleControllerDesc CCDesc;
 		CCDesc.material			= physx.GetDefaultMaterial();
-		CCDesc.radius			= R;
-		CCDesc.height			= H;
+		CCDesc.radius			= radius;
+		CCDesc.height			= height;
 		CCDesc.contactOffset	= 0.1f;
 		CCDesc.position			= { initialPosition.x, initialPosition.y, initialPosition.z };
 		CCDesc.climbingMode		= physx::PxCapsuleClimbingMode::eEASY;
 		CCDesc.stepOffset		= 0.2f;
-
+		
 		auto controller = manager.createController(CCDesc);
+
+		physx::PxShape* shape = nullptr;
+		controller->getActor()->getShapes(&shape, 1);
+		shape->setQueryFilterData({ CharacterControllerBitMask, 0, 0, 0 });
 
 		auto newHandle	= handles.GetNewHandle();
 		auto idx		= controllers.push_back(
@@ -1482,10 +1469,10 @@ namespace FlexKit
 				node,
 				&gameObject,
 				layer,
-				controller
+				controller,
+				height,
+				radius
 			});
-
-		controller->setUserData(&gameObject);
 
 		handles[newHandle] = (index_t)idx;
 
@@ -1671,7 +1658,7 @@ namespace FlexKit
 	}
 
 
-	void MoveController(GameObject& gameObject, const float3& v, physx::PxControllerFilters& filters, double dt)
+	void MoveController(GameObject& gameObject, const float3& v, const physx::PxControllerFilters& filters, double dt)
 	{
 		Apply(gameObject, [&](CharacterControllerView& controller)
 			{
@@ -1821,9 +1808,43 @@ namespace FlexKit
 
 	float3 ThirdPersonCamera::GetHeadPosition() const
 	{
-		auto& controllerImpl = CharacterControllerComponent::GetComponent()[controller];
-		auto pxPos = controllerImpl.controller->getPosition();
-		return { (float)pxPos.x, (float)pxPos.y , (float)pxPos.z };
+		auto& controllerImpl	= CharacterControllerComponent::GetComponent()[controller];
+		auto pxPos				= controllerImpl.controller->getPosition();
+
+		return {
+			(float)pxPos.x,
+			(float)pxPos.y + controllerImpl.height + controllerImpl.radius,
+			(float)pxPos.z };
+	}
+
+
+	/************************************************************************************************/
+
+
+	float3 ThirdPersonCamera::GetPosition() const
+	{
+		auto& controllerImpl	= CharacterControllerComponent::GetComponent()[controller];
+		auto pxPos				= controllerImpl.controller->getPosition();
+
+		return {
+			(float)pxPos.x,
+			(float)pxPos.y,
+			(float)pxPos.z };
+	}
+
+
+	/************************************************************************************************/
+
+
+	float3 ThirdPersonCamera::GetFootPosition() const
+	{
+		auto&	controllerImpl	= CharacterControllerComponent::GetComponent()[controller];
+		auto	pxPos			= controllerImpl.controller->getFootPosition();
+
+		return {
+			(float)pxPos.x,
+			(float)pxPos.y,
+			(float)pxPos.z };
 	}
 
 
@@ -1840,9 +1861,6 @@ namespace FlexKit
 	{
 		auto&	controllerImpl = CharacterControllerComponent::GetComponent()[controller];
 		auto	controller = controllerImpl.controller;
-
-		if (!active)
-			return;
 
 		controllerImpl.updateTimer += dt;
 		controllerImpl.mouseMoved += mouseInput;
@@ -1865,68 +1883,71 @@ namespace FlexKit
 
 			SetRotation({ pitch, yaw, roll });
 
-			float3 movementVector   { 0 };
-			const float3 forward    { (GetForwardVector() * float3(1, 0, 1)).normal() };
-			const float3 right      { GetRightVector() };
-			const float3 up         { 0, 1, 0 };
-
-
-			PxControllerState state;
-			controller->getState(state);
-			controller->setContactOffset(0.001f);
-
-			if (PxControllerCollisionFlag::eCOLLISION_DOWN & state.collisionFlags)
+			if(active)
 			{
-				movementVector += keyStates.x * right;
-				movementVector += keyStates.y * forward;
-			}
-			else
-			{
-				Quaternion q{ 0.0f, (float)(keyStates.x * dt * 45.0f), 0.0f};
-				velocity = q * velocity;
-			}
+				float3 movementVector   { 0 };
+				const float3 forward    { (GetForwardVector() * float3(1, 0, 1)).normal() };
+				const float3 right      { GetRightVector() };
+				const float3 up         { 0, 1, 0 };
 
-			if (movementVector.magnitudeSq() > 0.05f)
-			{
-				movementVector.normalize();
-				movementVector *= float2(keyStates.x, keyStates.y).Magnitude();
 
-				velocity += movementVector * acceleration * (float)deltaTime;
-			}
+				PxControllerState state;
+				controller->getState(state);
+				controller->setContactOffset(0.001f);
+
+				if (PxControllerCollisionFlag::eCOLLISION_DOWN & state.collisionFlags)
+				{
+					movementVector += keyStates.x * right;
+					movementVector += keyStates.y * forward;
+				}
+				else
+				{
+					Quaternion q{ 0.0f, (float)(keyStates.x * dt * 45.0f), 0.0f};
+					velocity = q * velocity;
+				}
+
+				if (movementVector.magnitudeSq() > 0.05f)
+				{
+					movementVector.normalize();
+					movementVector *= float2(keyStates.x, keyStates.y).Magnitude();
+
+					velocity += movementVector * acceleration * (float)deltaTime;
+				}
 			
-			if (velocity.magnitudeSq() < 0.0001f || velocity.isNaN())
-				velocity = 0.0f;
+				if (velocity.magnitudeSq() < 0.0001f || velocity.isNaN())
+					velocity = 0.0f;
 
-			velocity += -up * gravity * (float)deltaTime;
+				velocity += gravity * (float)deltaTime;
 
-			if(floorContact)
-				velocity -= velocity * drag * (float)deltaTime;
+				if(floorContact)
+					velocity -= velocity * drag * (float)deltaTime;
 
-			const auto  desiredMove	= velocity * (float)deltaTime;
-			const auto& pxPrevPos	= controller->getFootPosition();
-			const auto  prevPos		= float3{ (float)pxPrevPos.x, (float)pxPrevPos.y, (float)pxPrevPos.z };
+				const auto  desiredMove	= velocity * (float)deltaTime;
+				const auto& pxPrevPos	= controller->getFootPosition();
+				const auto  prevPos		= float3{ (float)pxPrevPos.x, (float)pxPrevPos.y, (float)pxPrevPos.z };
 
-			physx::PxControllerFilters filters;
-			auto collision = controller->move(
-				{   desiredMove.x,
-					desiredMove.y,
-					desiredMove.z },
-				0.001f,
-				deltaTime,
-				filters);
+				physx::PxControllerFilters filters;
+				auto collision = controller->move(
+					{   desiredMove.x,
+						desiredMove.y,
+						desiredMove.z },
+					0.001f,
+					deltaTime,
+					filters);
 
-			floorContact = PxControllerCollisionFlag::eCOLLISION_DOWN & collision;
+				floorContact = PxControllerCollisionFlag::eCOLLISION_DOWN & collision;
 
-			const auto		pxPostPos	= controller->getFootPosition();
-			const float3	postPos		= pxVec3ToFloat3(pxPostPos);
-			const auto		deltaPos	= prevPos - postPos;
+				const auto		pxPostPos	= controller->getFootPosition();
+				const float3	postPos		= pxVec3ToFloat3(pxPostPos);
+				const auto		deltaPos	= prevPos - postPos;
 
-			FlexKit::SetPositionW(controllerImpl.node, pxVec3ToFloat3(controller->getPosition()));
+				FlexKit::SetPositionW(controllerImpl.node, pxVec3ToFloat3(controller->getPosition()));
 
-			if ((PxControllerCollisionFlag::eCOLLISION_DOWN & state.collisionFlags) == false &&
-				(floorContact == true))
-			{
-				Trigger(*controllerImpl.gameObject, OnFloorContact);
+				if ((PxControllerCollisionFlag::eCOLLISION_DOWN & state.collisionFlags) == false &&
+					(floorContact == true))
+				{
+					Trigger(*controllerImpl.gameObject, OnFloorContact);
+				}
 			}
 		}
 	}

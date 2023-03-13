@@ -56,6 +56,9 @@ namespace FlexKit
 		template<typename T>
 		void release(T* _ptr)
 		{
+			if (_ptr == nullptr)
+				return;
+
 			_ptr->~T();
 			free(_ptr);
 		}
@@ -63,6 +66,9 @@ namespace FlexKit
 		template<typename T>
 		void release(T& _ref)
 		{
+			if (&_ref == nullptr)
+				return;
+
 			_ref.~T();
 			free(&_ref);
 		}

@@ -51,13 +51,16 @@ namespace FlexKit
 		Signal_t*	GetTrigger(uint32_t id);
 		Slot_t*		GetSlot(uint32_t id);
 
-		void Connect(uint32_t id, const uint32_t slot, auto&& connectMe)
+		void Connect(uint32_t signal, const uint32_t slot, auto&& connectMe)
 		{
-			const auto triggerIdx	= GetSignalIdx(id);
+			const auto triggerIdx	= GetSignalIdx(signal);
 			const auto slotIdx		= GetSlotIdx(slot);
 
 			if (triggerIdx == -1 || slotIdx == -1)
+			{
+				FK_LOG_ERROR("Failed to connect trigger(%u) to slot(%u)", signal, slot);
 				return;
+			}
 
 			auto& trigger_ref	= triggers[triggerIdx];
 			auto& slot_ref		= actionSlots[slotIdx];
@@ -66,6 +69,22 @@ namespace FlexKit
 		}
 
 		void Connect(const uint32_t signal, const uint32_t slot);
+
+		void Connect(const uint32_t signal, Slot_t& slot, auto&& connectMe)
+		{
+			const auto triggerIdx = GetSignalIdx(signal);
+
+			if (triggerIdx == -1)
+			{
+				FK_LOG_ERROR("Failed to connect trigger(%u) to slot(%u)", signal, &slot);
+				return;
+			}
+
+			auto& trigger_ref = triggers[triggerIdx];
+
+			trigger_ref.Connect(slot, connectMe);
+		}
+
 
 		void RemoveSlot		(const uint32_t slot);
 		void RemoveTrigger	(const uint32_t signal);
@@ -77,7 +96,9 @@ namespace FlexKit
 		Vector<Signal<void (void*, uint64_t)>::Slot>	actionSlots;
 		Vector<uint32_t>								actionSlotIDs;
 
-		std::any			userData;
+		iAllocator*		allocator;
+
+		std::any		userData;
 	};
 
 	struct TriggerComponentEventHandler
@@ -85,8 +106,7 @@ namespace FlexKit
 		TriggerComponentEventHandler(iAllocator& IN_allocator) :
 			allocator	{ &IN_allocator } {}
 
-		TriggerData OnCreate() noexcept;
-		TriggerData OnCreate(auto&& args) noexcept;
+		TriggerData OnCreate(GameObject&) noexcept;
 
 		void OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) noexcept;
 

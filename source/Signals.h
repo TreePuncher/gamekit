@@ -76,6 +76,8 @@ namespace FlexKit
 
 				for (auto& slot : rhs.signalTable)
 					slot.signal->MoveSlot(&rhs, this);
+
+				return *this;
 			}
 
 
@@ -157,19 +159,26 @@ namespace FlexKit
 		}
 
 
-		Signal(Signal&& rhs) noexcept : outputSlots{ std::move(rhs.outputSlots) }
+		Signal(Signal&& rhs) noexcept :
+			outputSlots	{ std::move(rhs.outputSlots) },
+			allocator	{ rhs.allocator }
 		{
 			for (SlotEntry& slot : outputSlots)
 				slot.slot->MoveSignal(&rhs, this);
+
+			rhs.allocator = nullptr;
 		}
 
 
 		Signal& operator =	(Signal&& rhs)
 		{
 			outputSlots = std::move(rhs.outputSlots);
+			allocator	= rhs.allocator;
 
 			for (SlotEntry& slot : outputSlots)
 				slot.slot->MoveSignal(&rhs, this);
+
+			rhs.allocator = nullptr;
 		}
 
 
@@ -244,7 +253,7 @@ namespace FlexKit
 
 	private:
 		Vector<SlotEntry, 4, uint32_t>	outputSlots;
-		iAllocator*						allocator;
+		iAllocator*						allocator = nullptr;
 	};
 
 
