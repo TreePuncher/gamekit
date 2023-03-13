@@ -52,7 +52,7 @@ public:
 		return out;
 	}
 
-	void Serialize(auto& archive)
+	void Serialize(auto& ar)
 	{
 		uint32_t version = 1;
 		ar& version;

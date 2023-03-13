@@ -48,7 +48,7 @@ namespace FlexKit
 	{
 		BrushComponentEventHandler(RenderSystem& IN_renderSystem) : renderSystem{ IN_renderSystem }{}
 
-		Brush OnCreate(Brush args)
+		Brush OnCreate(GameObject& gameObject, Brush args)
 		{
 			return args;
 		}
@@ -102,7 +102,7 @@ namespace FlexKit
 		// Brush::Meshes can store up to 256 meshes. 
 		void SetOptionalAllocator(iAllocator& allocator) noexcept;
 
-		BrushHandle	brush = GetComponent().Create(Brush{});
+		BrushHandle	brush;
 	};
 
 
@@ -170,7 +170,7 @@ namespace FlexKit
 	class PointLightEventHandler
 	{
 	public:
-		static PointLight	OnCreate();
+		static PointLight	OnCreate(GameObject& gameObject);
 		static void			OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
 	};
 

@@ -7,7 +7,7 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
-	StringIDHandle StringIDComponent::Create(const char* initial, size_t length)
+	StringIDHandle StringIDComponent::Create(GameObject& gameObject, const char* initial, size_t length)
 	{
 		auto handle = handles.GetNewHandle();
 

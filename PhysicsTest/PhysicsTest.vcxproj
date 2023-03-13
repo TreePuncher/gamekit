@@ -158,10 +158,12 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="PhysicsTest.cpp" />
+    <ClCompile Include="Player.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="PhysicsTest.h" />
+    <ClInclude Include="Player.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

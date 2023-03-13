@@ -614,7 +614,7 @@ namespace FlexKit
 
 
 		template<typename ... TY_Args>
-		BasicComponentView_t(GameObject& gameObject, TY_Args ... args) : handle{ ComponentView_t<TY_Component>::GetComponent().Create(std::forward<TY_Args>(args)...) } {}
+		BasicComponentView_t(GameObject& gameObject, TY_Args ... args) : handle{ ComponentView_t<TY_Component>::GetComponent().Create(gameObject, std::forward<TY_Args>(args)...) } {}
 
 		void Release() 
 		{
@@ -649,7 +649,7 @@ namespace FlexKit
 
 	struct BasicComponentEventHandler
 	{
-		static decltype(auto) OnCreate(auto&& args)
+		static decltype(auto) OnCreate(GameObject&, auto&& args)
 		{
 			return args;
 		}
@@ -661,11 +661,16 @@ namespace FlexKit
 
 
 	template<typename TY>
-	concept VoidCreator = requires(TY creationHandler)
+	concept ComponentVoidCreator = requires(TY creationHandler, GameObject& gameObject)
 	{
-		creationHandler.OnCreate();
+		creationHandler.OnCreate(gameObject);
 	};
 
+	template<typename TY>
+	concept ComponentBlobCreator = requires(TY creationHandler, GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+	{
+		creationHandler.OnCreate(gameObject, user_ptr, buffer, bufferSize, allocator);
+	};
 
 	template<typename TY, typename TY_Handle, ComponentID ID, typename TY_EventHandler = BasicComponentEventHandler>
 	class BasicComponent_t : public Component<BasicComponent_t<TY, TY_Handle, ID, TY_EventHandler>, ID>
@@ -673,6 +678,8 @@ namespace FlexKit
 	public:
 		using ThisType		= BasicComponent_t<TY, TY_Handle, ID, TY_EventHandler>;
 		using EventHandler	= TY_EventHandler;
+
+
 
 		template<typename ... TY_args>
 		BasicComponent_t(iAllocator* allocator, TY_args&&... args) :
@@ -698,34 +705,34 @@ namespace FlexKit
 		using View = BasicComponentView_t<BasicComponent_t<TY, TY_Handle, ID, TY_EventHandler>>;
 
 
-		TY_Handle Create(const TY& initial)
+		TY_Handle Create(GameObject& gameObject, const TY& initial)
 		{
 			auto handle		= handles.GetNewHandle();
-			handles[handle] = (index_t)elements.push_back({ handle, eventHandler.OnCreate(initial) });
+			handles[handle] = (index_t)elements.push_back({ handle, eventHandler.OnCreate(gameObject, initial) });
 
 			return handle;
 		}
 
 
-		TY_Handle Create(TY&& initial)
+		TY_Handle Create(GameObject& gameObject, TY&& initial)
 		{
 			auto handle = handles.GetNewHandle();
-			handles[handle] = (index_t)elements.emplace_back(handle, std::move(eventHandler.OnCreate(initial)));
+			handles[handle] = (index_t)elements.emplace_back(handle, std::move(eventHandler.OnCreate(gameObject, initial)));
 
 			return handle;
 		}
 
 
-		TY_Handle Create() requires VoidCreator<TY_EventHandler>
+		TY_Handle Create(GameObject& gameObject) requires ComponentVoidCreator<TY_EventHandler>
 		{
 			auto handle = handles.GetNewHandle();
-			handles[handle] = (index_t)elements.emplace_back(handle, std::move(eventHandler.OnCreate()));
+			handles[handle] = (index_t)elements.emplace_back(handle, std::move(eventHandler.OnCreate(gameObject)));
 
 			return handle;
 		}
 
 
-		TY_Handle Create() requires !VoidCreator<TY_EventHandler>
+		TY_Handle Create(GameObject& gameObject) requires !ComponentVoidCreator<TY_EventHandler>
 		{
 			auto handle = handles.GetNewHandle();
 			handles[handle] = (index_t)elements.emplace_back(handle);
@@ -734,9 +741,9 @@ namespace FlexKit
 		}
 
 
-		void AddComponentView(GameObject& GO, ValueMap values, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
+		void AddComponentView(GameObject& gameObject, ValueMap values, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override 
 		{
-			eventHandler.OnCreateView(GO, values, buffer, bufferSize, allocator);
+			eventHandler.OnCreateView(gameObject, values, buffer, bufferSize, allocator);
 		}
 
 
@@ -814,7 +821,7 @@ namespace FlexKit
 		};
 
 
-		StringIDHandle Create(const char* initial = nullptr, size_t length = 0);
+		StringIDHandle Create(GameObject& gameObject, const char* initial = nullptr, size_t length = 0);
 
 		void Remove(StringIDHandle handle);
 
@@ -833,7 +840,7 @@ namespace FlexKit
 
 	struct StringIDView : public ComponentView_t<StringIDComponent>
 	{
-		StringIDView(GameObject& gameObject, const char* id, size_t idLen) : ID{ GetComponent().Create(id, idLen) }
+		StringIDView(GameObject& gameObject, const char* id, size_t idLen) : ID{ GetComponent().Create(gameObject, id, idLen) }
 		{
 			IDHash = std::hash<std::string_view>{}(std::string_view{ id, idLen });
 		}

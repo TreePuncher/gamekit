@@ -248,7 +248,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		#if 0
 			const float3 specular = F_r_said(V, H, L, N.xyz, albedo, roughness, 0);
 		#else
-			const float3 specular = F_r(V, H, L, N.xyz, roughness) * length(albedo);
+			const float3 specular = F_r(V, H, L, N.xyz, roughness) * length(albedo) * albedo;
 		#endif
 
 		#if 0// skip shadowmaping

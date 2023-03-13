@@ -22,6 +22,15 @@ namespace FlexKit
 	constexpr uint32_t SceneChangedSlot			= GetCRCGUID(SceneChangedSlot);
 
 
+	// Player Triggers
+	constexpr uint32_t OnJumpTriggerID			= GetCRCGUID(OnJump);
+	constexpr uint32_t OnJumpReleaseTriggerID	= GetCRCGUID(OnJumpRelease);
+	constexpr uint32_t OnCrouchTriggerID		= GetCRCGUID(OnCrouch);
+	constexpr uint32_t OnCrouchReleaseTriggerID = GetCRCGUID(OnCrouchRelease);
+
+	// Player Slots
+	constexpr uint32_t PlayerInternal			= GetCRCGUID(OnCrouchRelease);
+
 	// Light Slot IDs
 	constexpr uint32_t LightSetRaidusSlotID		= GetTypeGUID(LightSetRaidusSlotID);
 

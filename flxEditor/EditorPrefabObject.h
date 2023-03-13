@@ -27,6 +27,9 @@ public:
 
 	void Serialize(auto& ar)
 	{
+		uint32_t version = 1;
+		ar& version;
+
 		ar& guid;
 		ar& source;
 		ar& ID;
@@ -60,6 +63,9 @@ public:
 
 	void Serialize(auto& ar)
 	{
+		uint32_t version = 1;
+		ar& version;
+
 		ar& guid;
 		ar& ID;
 		ar& entity;

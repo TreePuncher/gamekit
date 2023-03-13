@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Player.hpp"
 #include <Application.h>
 #include <Scene.h>
 #include <physicsutilities.h>
@@ -41,7 +42,6 @@ struct Spawn
 {
 };
 
-
 struct SpawnFactory
 {
 	static void OnCreateView(
@@ -54,7 +54,9 @@ struct SpawnFactory
 
 using SpawnHandle		= FlexKit::Handle_t<32, GetTypeGUID(SpawnComponentBlob)>;
 using SpawnComponent	= FlexKit::BasicComponent_t<Spawn, SpawnHandle, GetTypeGUID(SpawnComponentBlob), SpawnFactory>;
-using SpawnView			= PortalComponent::View;
+using SpawnView			= SpawnComponent::View;
+
+
 
 class PhysicsTest : public FlexKit::FrameworkState
 {
@@ -67,12 +69,6 @@ public:
 
 	void PostDrawUpdate(FlexKit::EngineCore&, double dT) final;
 	bool EventHandler(FlexKit::Event evt) final;
-
-	bool jumpInProgress = false;
-
-	void Action();
-	void Jump();
-	void Fall();
 
 	FlexKit::AnimatorComponent				animators;
 	FlexKit::CameraComponent				cameras;
@@ -105,7 +101,7 @@ public:
 	FlexKit::CameraHandle					activeCamera = FlexKit::InvalidHandle;
 
 	FlexKit::InputMap						inputMap;
-	FlexKit::GameObject						cameraRig;
+	FlexKit::GameObject						playerObject;
 	FlexKit::GameObject						character;
 
 	FlexKit::GameObject						floorCollider;
@@ -114,18 +110,17 @@ public:
 
 	FlexKit::ImGUIIntegrator		debugUI;
 
-	FlexKit::float3 A = { 0, 0, 0 };
-	FlexKit::float3 B = { 0, 10, 0 };
+	struct DebugRayCast
+	{
+		FlexKit::float3 A = { 0, 0, 0 };
+		FlexKit::float3 B = { 0, 10, 0 };
+	};
 
-	float jumpSpeed			= 25.0f;
-	float gravity			= 19.0f;
-	float fallGravityRatio	= 2.0f;
-	float airMovementRatio	= 0.5f;
-	float moveRate			= 50.0f;
-	bool  jumpEnable		= true;
+	FlexKit::Vector<DebugRayCast> debugRays;
 
 	PortalComponent	portalComponent;
 	SpawnComponent	spawnComponent;
+	PlayerComponent	playerComponent;
 };
 
 

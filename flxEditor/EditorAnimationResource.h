@@ -95,6 +95,9 @@ namespace FlexKit
 
 	void Serialize(auto& ar, AnimationTrackTarget& track)
 	{
+		uint32_t version = 1;
+		ar& version;
+
 		ar& track.Channel;
 		ar& track.Target;
 		ar& track.type;
@@ -106,6 +109,9 @@ namespace FlexKit
 	{
 		void Serialize(auto& ar)
 		{
+			uint32_t version = 1;
+			ar& version;
+
 			ar& ID;
 			ar& guid;
 			ar& tracks;
@@ -135,6 +141,9 @@ namespace FlexKit
 
 	void Serialize(auto& ar, AnimationResource::Track& track)
 	{
+		uint32_t version = 1;
+		ar& version;
+
 		ar& track.targetChannel;
 		ar& track.KeyFrames;
 	}
@@ -163,6 +172,9 @@ namespace FlexKit
 
 		void Serialize(auto& ar)
 		{
+			uint32_t version = 1;
+			ar& version;
+
 			ar& JointCount;
 			ar& guid;
 			ar& ID;
