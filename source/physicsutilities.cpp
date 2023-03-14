@@ -205,6 +205,7 @@ namespace FlexKit
 			pScene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_AABBS, 1.0f);
 			pScene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_STATIC, 1.0f);
 			pScene->setVisualizationParameter(PxVisualizationParameter::eACTOR_AXES, 2.0f);
+			pScene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_POINT, 2.0f);
 
 			scenes[idx].debugMode = PhysicsDebugOverlayMode::Wireframe;
 		}
@@ -1451,10 +1452,10 @@ namespace FlexKit
 		CCDesc.material			= physx.GetDefaultMaterial();
 		CCDesc.radius			= radius;
 		CCDesc.height			= height;
-		CCDesc.contactOffset	= 0.1f;
+		CCDesc.contactOffset	= 0.25f;
 		CCDesc.position			= { initialPosition.x, initialPosition.y, initialPosition.z };
 		CCDesc.climbingMode		= physx::PxCapsuleClimbingMode::eEASY;
-		CCDesc.stepOffset		= 0.2f;
+		CCDesc.stepOffset		= 0.5f;
 		
 		auto controller = manager.createController(CCDesc);
 
@@ -1465,6 +1466,7 @@ namespace FlexKit
 		auto newHandle	= handles.GetNewHandle();
 		auto idx		= controllers.push_back(
 			CharacterController{
+				true,
 				newHandle,
 				node,
 				&gameObject,
@@ -1645,8 +1647,6 @@ namespace FlexKit
 				controller.SetPosition(xyz);
 			});
 	}
-
-
 
 
 	void SetControllerOrientation(GameObject& gameObject, const Quaternion q)
@@ -1873,16 +1873,18 @@ namespace FlexKit
 		{
 			controllerImpl.updateTimer -= deltaTime;
 
-			yaw     += controllerImpl.mouseMoved[0] * deltaTime * pi * 50;
-			pitch   += controllerImpl.mouseMoved[1] * deltaTime * pi * 50;
+			if(controllerImpl.rotationEnabled)
+			{
+				yaw     += controllerImpl.mouseMoved[0] * deltaTime * pi * 50;
+				pitch   += controllerImpl.mouseMoved[1] * deltaTime * pi * 50;
 
-			yaw     = fmod(yaw, DegreetoRad(360.0f));
-			pitch   = clamp(DegreetoRad(-85.0f), pitch, DegreetoRad(75.0f));
+				yaw     = fmod(yaw, DegreetoRad(360.0f));
+				pitch   = clamp(DegreetoRad(-85.0f), pitch, DegreetoRad(75.0f));
 
-			controllerImpl.mouseMoved = { 0.0f, 0.0f };
+				controllerImpl.mouseMoved = { 0.0f, 0.0f };
 
-			SetRotation({ pitch, yaw, roll });
-
+				SetRotation({ pitch, yaw, roll });
+			}
 			if(active)
 			{
 				float3 movementVector   { 0 };
@@ -1891,11 +1893,11 @@ namespace FlexKit
 				const float3 up         { 0, 1, 0 };
 
 
-				PxControllerState state;
-				controller->getState(state);
+				PxControllerState initialState;
+				controller->getState(initialState);
 				controller->setContactOffset(0.001f);
 
-				if (PxControllerCollisionFlag::eCOLLISION_DOWN & state.collisionFlags)
+				if (PxControllerCollisionFlag::eCOLLISION_DOWN & initialState.collisionFlags)
 				{
 					movementVector += keyStates.x * right;
 					movementVector += keyStates.y * forward;
@@ -1931,7 +1933,7 @@ namespace FlexKit
 					{   desiredMove.x,
 						desiredMove.y,
 						desiredMove.z },
-					0.001f,
+					0.01f,
 					deltaTime,
 					filters);
 
@@ -1943,7 +1945,7 @@ namespace FlexKit
 
 				FlexKit::SetPositionW(controllerImpl.node, pxVec3ToFloat3(controller->getPosition()));
 
-				if ((PxControllerCollisionFlag::eCOLLISION_DOWN & state.collisionFlags) == false &&
+				if ((PxControllerCollisionFlag::eCOLLISION_DOWN & initialState.collisionFlags) == false &&
 					(floorContact == true))
 				{
 					Trigger(*controllerImpl.gameObject, OnFloorContact);

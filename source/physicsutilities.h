@@ -782,12 +782,13 @@ namespace FlexKit
 
 	struct CharacterController
 	{
-		CharacterControllerHandle	handle;
-		NodeHandle					node;
-		GameObject*					gameObject;
-		LayerHandle					layer;
+		bool						rotationEnabled = true;
+		CharacterControllerHandle	handle			= InvalidHandle;
+		NodeHandle					node			= InvalidHandle;
+		GameObject*					gameObject		= nullptr;
+		LayerHandle					layer			= InvalidHandle;
 
-		physx::PxController*		controller;
+		physx::PxController*		controller		= nullptr;
 
 		float						height;
 		float						radius;
@@ -913,6 +914,11 @@ namespace FlexKit
 			newLayer.scene->addActor(*ref.controller->getActor());
 
 			ref.layer = layer;
+		}
+
+		CharacterController& GetData()
+		{
+			return GetComponent()[controller];
 		}
 
 		CharacterControllerHandle controller;

@@ -15,7 +15,8 @@ struct Player
 		Walking,
 		Jumping,
 		Hanging,
-		Climbing,
+		ClimbUp,
+		ClimbDown,
 	}	state = EPlayerState::Walking;
 
 	FlexKit::GameObject* gameObject = nullptr;
@@ -25,25 +26,26 @@ struct Player
 	float fallGravityRatio	= 2.0f;
 	float airMovementRatio	= 0.5f;
 	float moveRate			= 50.0f;
-	float climbRate			= 1.0f;
+	float climbRate			= 10.0f;
 
 	float shimmyDirection	= 0.0f;
 
-	bool  jumpEnable		= true;
-	bool  grabLedge			= false;
-	bool  hangPossible		= false;
-	bool  jumpInProgress	= false;
+	bool jumpEnable			= true;
+	bool grabLedge			= false;
+	bool hangPossible		= false;
+	bool jumpInProgress		= false;
+	bool climbDownPossible	= false;
 
 	FlexKit::Slot_t		playerSlot;
 
 	void Action();
 
-	void OnJump();
+	void OnJumpPress();
 	void OnJumpRelease();
 
 	void OnFloorContact();
 
-	void OnCrouch();
+	void OnCrouchPress();
 	void OnCrouchRelease();
 
 	bool HandleEvents	(FlexKit::Event& evt);
