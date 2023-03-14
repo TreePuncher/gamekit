@@ -7913,7 +7913,10 @@ namespace FlexKit
 		for (auto& res : delayRelease)
 		{
 			if ((res.idx + 2) < completed)
+			{
 				freeList.push_back(res.resource);
+				res.resource =  nullptr;
+			}
 		}
 
 		if (freeList.size())
@@ -7932,10 +7935,7 @@ namespace FlexKit
 			std::remove_if(
 				delayRelease.begin(),
 				delayRelease.end(),
-				[&](auto& res)
-				{
-					return (res.idx + 2) < completed;
-				}),
+				[&](auto& res) { return res.resource == nullptr; }),
 
 		delayRelease.end());
 	}

@@ -107,7 +107,7 @@ namespace FlexKit
 		KC_SYMBOLS_BEGIN,
 
 		KC_HASH,
-		KC_DOLLER,
+		KC_DOLLAR,
 
 		KC_PERCENT,
 		KC_CHEVRON,

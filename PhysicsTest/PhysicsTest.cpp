@@ -181,7 +181,7 @@ PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
 	tpc->drag		= 8.0f;
 	tpc->gravity	= float3{ 0, -20.0f, 0 };
 	tpc->moveRate	= player.moveRate;
-	tpc->SetPosition({ 0, 100, 0 });
+	tpc->SetPosition({ 7.0f, 10.0f, -55.0f });
 
 	playerTriggers->CreateSlot(GetCRCGUID(ResetMovement),
 		[&](auto ...)
@@ -199,6 +199,9 @@ PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
 
 	auto loadPrefabRes = FlexKit::LoadPrefab(character, 21536, framework.core.GetBlockMemory());
 	level->scene.AddGameObject(character);
+
+	if (!loadPrefabRes)
+		FK_LOG_WARNING("Failed to load player prefab!");
 
 	auto& material = character.AddView<MaterialView>();
 	auto material1 = material.CreateSubMaterial();
@@ -273,14 +276,14 @@ FlexKit::UpdateTask* PhysicsTest::Update(FlexKit::EngineCore& core, FlexKit::Upd
 		memoryStats.mediumBlocksAllocated * 2048 +
 		memoryStats.largeBlocksAllocated * KILOBYTE * 128) / MEGABYTE;
 
-	auto [position, velocity, gravity, hangState, jumpSpeed, airMovementRatio, moveRate] =
+	auto [position, velocity, gravity, hangState, jumpSpeed, airMovementRatio, moveRate, climbDown] =
 		Apply(playerObject,
 			[&](CameraControllerView& cameraController,
 				PlayerView&				playerView){
 					return std::make_tuple(
 									cameraController->GetPosition(), cameraController->velocity, cameraController->gravity,
-									playerView->hangPossible, playerView->jumpSpeed, playerView->airMovementRatio, playerView->moveRate); },
-					[]{ return std::make_tuple(float3::Zero(), float3::Zero(), float3::Zero(), false, 0.0f, 0.0f, 0.0f);  });
+									playerView->hangPossible, playerView->jumpSpeed, playerView->airMovementRatio, playerView->moveRate, playerView->climbDownPossible); },
+					[]{ return std::make_tuple(float3::Zero(), float3::Zero(), float3::Zero(), false, 0.0f, 0.0f, 0.0f, false);  });
 
 	auto str = fmt::format(
 		"Debug Stats\n"
@@ -292,6 +295,7 @@ FlexKit::UpdateTask* PhysicsTest::Update(FlexKit::EngineCore& core, FlexKit::Upd
 		"Player Velocity: {}, {}, {}\n"
 		"Player Gravity: {}, {}, {}\n"
 		"{}"
+		"{}"
 		"Press M to toggle mouse look",
 		memoryStats.smallBlocksAllocated, memoryStats.totalSmallBlocks,
 		memoryStats.mediumBlocksAllocated, memoryStats.totalMediumBlocks,
@@ -300,7 +304,8 @@ FlexKit::UpdateTask* PhysicsTest::Update(FlexKit::EngineCore& core, FlexKit::Upd
 		position.x, position.y, position.z,
 		velocity.x, velocity.y, velocity.z,
 		gravity.x, gravity.y, gravity.z,
-		hangState ? "Hang Found!\n" : "No Hang\n");
+		hangState ? "Hang Found!\n" : "No Hang\n",
+		climbDown ? "Climb Down Ledge Found!\n" : "");
 
 	ImGui::Text(str.c_str());
 	if (ImGui::SliderFloat("Jump height", &jumpSpeed, 10.0f, 50.0f))

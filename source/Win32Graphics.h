@@ -533,7 +533,7 @@ namespace FlexKit
 						Param = '#';
 						break;
 					case 0x34:
-						ev.mData1.mKC[0] = KC_DOLLER;
+						ev.mData1.mKC[0] = KC_DOLLAR;
 						Param = '$';
 						break;
 					case 0x35:
@@ -599,6 +599,9 @@ namespace FlexKit
 				if (ShiftState) {
 					ev.mData1.mKC[0] = KC_TILDA;
 				}
+				break;
+			case VK_CONTROL:
+				ev.mData1.mKC[0] = KC_LEFTCTRL;
 				break;
 			default:
 

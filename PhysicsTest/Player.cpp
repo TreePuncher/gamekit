@@ -29,7 +29,7 @@ Player PlayerFactory::OnCreate(FlexKit::GameObject& gameObject)
 		[&gameObject](auto...)
 		{
 			auto& player = gameObject.AddView<PlayerView>().GetData();
-			player.OnJump();
+			player.OnJumpPress();
 		});
 
 	triggers.Connect(OnJumpReleaseTriggerID, player.playerSlot,
@@ -43,7 +43,7 @@ Player PlayerFactory::OnCreate(FlexKit::GameObject& gameObject)
 		[&gameObject](auto...)
 		{
 			auto& player = gameObject.AddView<PlayerView>().GetData();
-			player.OnCrouch();
+			player.OnCrouchPress();
 		});
 
 	triggers.Connect(OnCrouchReleaseTriggerID, player.playerSlot,
@@ -89,52 +89,62 @@ FlexKit::UpdateTask& QueuePlayerUpdate(GameObject& playerObject, FlexKit::Update
 		[&](auto& builder, auto& data) {},
 		[&, dT](_&, iAllocator& threadAllocator)
 		{
-			auto& controllerView = *playerObject.GetView<CameraControllerView>();
-			auto& playerView = *playerObject.GetView<PlayerView>();
-			auto& controller = controllerView.GetData();
-			auto& player = playerView.GetData();
+			auto& controllerView	= *playerObject.GetView<CameraControllerView>();
+			auto& characterView		= *playerObject.GetView<CharacterControllerView>();
+			auto& playerView		= *playerObject.GetView<PlayerView>();
+			auto& controller		= controllerView.GetData();
+			auto& player			= playerView.GetData();
+			auto& character			= characterView.GetData();
 
 			switch (player.state)
 			{
 			case Player::EPlayerState::Walking:
 			{
 				controller.active = true;
+				character.rotationEnabled = true;
 
 				const auto right	= controllerView->GetRightVector();
 				const auto down		= controllerView->gravity.normal();
 				const auto body		= controllerView->GetPosition();
+				const auto foot		= controllerView->GetFootPosition();
 				const auto forward	= right.cross(down);
 				const auto head		= body + forward + -down * 1.5f;
+				const bool floorContanct = controllerView->floorContact;
 
 				auto	level	= GetActiveLevel();
 				auto& layer_ref = FlexKit::PhysXComponent::GetComponent().GetLayer_ref(level->layer);
 
-				const FlexKit::Ray ray1{ .D = down,		.O = head + forward * 1.1f + -down * 0.5f };
-				const FlexKit::Ray ray2{ .D = forward,	.O = body + forward };
+				const physx::PxQueryFilterData	filterData{ physx::PxQueryFlag::eANY_HIT | physx::PxQueryFlag::eSTATIC };
+
+				const FlexKit::Ray ledgeRay	{ .D = down,	.O = head + forward * 1.1f + -down * 0.5f };
+				const FlexKit::Ray wallRay	{ .D = forward,	.O = body + forward };
+				const FlexKit::Ray edgeRay	{ .D = down,	.O = body - forward * 2.5f };
 
 				GameObject* obj1 = nullptr;
 				GameObject* obj2 = nullptr;
 
 				float3 normal;
 
-				auto hit1 = layer_ref.RayCast(ray1, 1.5f,
+				const bool hit1 = layer_ref.RayCast(ledgeRay, 1.5f, filterData,
 					[&](FlexKit::PhysicsLayer::RayCastHit res)
 					{
-						if (res.distance <= 0)
-							return false;
-
 						obj1	= res.gameObject;
 						normal	= res.normal;
 
 						return false;
 					});
 
-				auto hit2 = layer_ref.RayCast(ray2, 1.5f,
+				const bool hit2 = layer_ref.RayCast(wallRay, 1.5f, filterData,
 					[&](FlexKit::PhysicsLayer::RayCastHit res)
 					{
-						if (res.distance <= 0)
-							return false;
+						obj2 = res.gameObject;
 
+						return false;
+					});
+
+				const bool hit3 = layer_ref.RayCast(edgeRay, 5.5f, filterData,
+					[&](FlexKit::PhysicsLayer::RayCastHit res)
+					{
 						obj2 = res.gameObject;
 
 						return false;
@@ -146,13 +156,16 @@ FlexKit::UpdateTask& QueuePlayerUpdate(GameObject& playerObject, FlexKit::Update
 				}
 				else player.hangPossible = false;
 
+				player.climbDownPossible = !hit3 & floorContanct;
+
 				if (player.grabLedge && player.hangPossible)
 					player.state = Player::EPlayerState::Hanging;
 			}	break;
 			case Player::EPlayerState::Hanging:
 			{
-				controller.active	= false;
-				controller.velocity = float3::Zero();
+				character.rotationEnabled	= true;
+				controller.active			= false;
+				controller.velocity			= float3::Zero();
 
 				if (player.shimmyDirection != 0.0f)
 				{
@@ -171,16 +184,22 @@ FlexKit::UpdateTask& QueuePlayerUpdate(GameObject& playerObject, FlexKit::Update
 					const physx::PxQueryFilterData		filterData{ { 0, 0, 0, 0 }, physx::PxQueryFlag::eANY_HIT | physx::PxQueryFlag::eSTATIC };
 
 					float3 hitNormal = float3::Zero();
+					float wallDistance = 0.0f;
+
 					auto hit1 = layer_ref.RayCast(ray1, 5.5f, filterData,
 						[&](FlexKit::PhysicsLayer::RayCastHit res)
 						{
-							hitNormal = res.normal;
+							hitNormal		= res.normal;
+							wallDistance	= res.distance;
 
 							return false;
 						});
 
 					if (!hit1)
 						return;
+
+					if(wallDistance > 1.0f)
+						MoveController(*player.gameObject, -hitNormal * (wallDistance - 1.0f), filters, dT);
 
 					const float3 bodyLeft	= hitNormal.cross(down);
 					const float3 bodyRight	= -bodyLeft;
@@ -193,21 +212,70 @@ FlexKit::UpdateTask& QueuePlayerUpdate(GameObject& playerObject, FlexKit::Update
 						auto moveClear = !layer_ref.RayCast(rayRight, 4.5f, filterData, [&](FlexKit::PhysicsLayer::RayCastHit res) { return false; });
 
 						if(moveClear)
-							MoveController(*player.gameObject, bodyLeft * player.climbRate * (float)dT * player.shimmyDirection * 10.0f, filters, dT);
+							MoveController(*player.gameObject, bodyLeft * player.climbRate * (float)dT * player.shimmyDirection * player.climbRate, filters, dT);
 					}
 					else
 					{
 						auto moveClear = !layer_ref.RayCast(rayLeft, 4.5f, filterData, [&](FlexKit::PhysicsLayer::RayCastHit res) { return false; });
 
 						if (moveClear)
-							MoveController(*player.gameObject, bodyLeft * player.climbRate * (float)dT * player.shimmyDirection * 10.0f, filters, dT);
+							MoveController(*player.gameObject, bodyLeft * player.climbRate * (float)dT * player.shimmyDirection * player.climbRate, filters, dT);
 					}
 				}
 
 				player.shimmyDirection = 0.0f;
 			}	break;
-			case Player::EPlayerState::Climbing:
+			case Player::EPlayerState::ClimbUp:
 			{
+				character.rotationEnabled	= false;
+				controller.velocity			= float3::Zero();
+
+				const auto right	= controllerView->GetRightVector();
+				const auto down		= controllerView->gravity.normal();
+				const auto up		= -down;
+				const auto body		= controllerView->GetPosition();
+				const auto foot		= controllerView->GetFootPosition();
+				const auto forward	= right.cross(down);
+				const auto head		= body + -down * 1.5f;
+
+				auto	level		= GetActiveLevel();
+				auto&	layer_ref	= FlexKit::PhysXComponent::GetComponent().GetLayer_ref(level->layer);
+
+				const FlexKit::Ray ray1{ .D = down,		.O = head + forward * 3.5f + -down * 0.5f };
+				const FlexKit::Ray ray2{ .D = down,		.O = foot };
+
+				float		distance = 0.0f;
+				const float	height = 4.5f;
+
+				auto hit1 = layer_ref.RayCast(ray1, height,
+					[&](FlexKit::PhysicsLayer::RayCastHit res)
+					{
+						distance = res.distance;
+
+						return false;
+					});
+
+				auto hit2 = layer_ref.RayCast(ray2, 0.1f,
+					[&](FlexKit::PhysicsLayer::RayCastHit res)
+					{
+						distance = res.distance;
+
+						return false;
+					});
+
+				if (hit1 && distance < height)
+					MoveController(*player.gameObject, up * player.climbRate * (float)dT + forward * (float)dT, {}, dT);
+				else if (!hit2)
+					MoveController(*player.gameObject, forward * (float)dT * player.climbRate, {}, dT);
+				else
+					player.state = Player::EPlayerState::Walking;
+			}	break;
+			case Player::EPlayerState::ClimbDown:
+			{
+				character.rotationEnabled	= false;
+				controller.active			= false;
+				controller.velocity			= float3::Zero();
+
 				const auto right	= controllerView->GetRightVector();
 				const auto down		= controllerView->gravity.normal();
 				const auto up		= -down;
@@ -219,47 +287,45 @@ FlexKit::UpdateTask& QueuePlayerUpdate(GameObject& playerObject, FlexKit::Update
 				auto	level = GetActiveLevel();
 				auto& layer_ref = FlexKit::PhysXComponent::GetComponent().GetLayer_ref(level->layer);
 
-				const FlexKit::Ray ray1{ .D = down,		.O = head + forward * 3.5f + -down * 0.5f };
-				const FlexKit::Ray ray2{ .D = down,		.O = foot };
+				const physx::PxQueryFilterData	filterData{ physx::PxQueryFlag::eSTATIC };
 
-				float distance = 0.0f;
-				const float height = 4.5f;
+				const FlexKit::Ray frontRay		{ .D = down, .O = foot + forward * 1.5f + up };
+				const FlexKit::Ray backRay		{ .D = down, .O = foot - forward * 1.5f + up };
+				const FlexKit::Ray forwardRay	{ .D = down, .O = foot };
+				const FlexKit::Ray ledgeRay		{ .D = down, .O = head + forward * 2.5f };
 
-				auto hit1 = layer_ref.RayCast(ray1, height,
+				float distance		= 0.0f;
+				const float height	= 4.5f;
+
+				const auto hit1 = layer_ref.RayCast(ledgeRay, 5.8f, filterData,
 					[&](FlexKit::PhysicsLayer::RayCastHit res)
 					{
-						if (res.distance <= 0)
-							return true;
-
 						distance = res.distance;
-
 						return false;
 					});
 
-				auto hit2 = layer_ref.RayCast(ray2, 0.1f,
-					[&](FlexKit::PhysicsLayer::RayCastHit res)
-					{
-						if (res.distance <= 0)
-							return true;
-
-						distance = res.distance;
-
-						return false;
-					});
-
-				if (hit1 && distance < height)
+				if (!hit1)
 				{
-					physx::PxControllerFilters filters;
-					MoveController(*player.gameObject, up * player.climbRate * (float)dT * 10.0 + forward * dT, filters, dT);
+					FK_LOG_ERROR("Player climbing down in air!");
+					player.state = Player::EPlayerState::Walking;// ERROR!
+					return;
 				}
-				else if (!hit2)
-				{
-					physx::PxControllerFilters filters;
-					MoveController(*player.gameObject, forward * dT * 2.0f, filters, dT);
-				}
+
+				const auto hit2 = layer_ref.RayCast(frontRay, 1.5f, filterData, [&](FlexKit::PhysicsLayer::RayCastHit res) { return false; });
+				const auto hit3 = layer_ref.RayCast(backRay, 1.5f, filterData,	[&](FlexKit::PhysicsLayer::RayCastHit res) { return false; });
+
+				if (distance <= 0.1f)
+					player.state = Player::EPlayerState::Hanging;
 				else
-					player.state = Player::EPlayerState::Walking;
-			}	break;
+				{
+					if (hit2 || hit3)
+						 MoveController(*player.gameObject, -forward * player.climbRate * (float)dT, {}, dT);
+
+					if(!hit2 && !hit3 && distance > 0.0f)
+						MoveController(*player.gameObject, down * player.climbRate * (float)dT, {}, dT);
+				}
+
+			}	return;
 			default:
 				break;
 			}
@@ -326,7 +392,7 @@ bool Player::HandleEvents(FlexKit::Event& evt)
 /************************************************************************************************/
 
 
-void Player::OnJump()
+void Player::OnJumpPress()
 {
 	switch (state)
 	{
@@ -346,13 +412,15 @@ void Player::OnJump()
 		}
 		else
 		{	// Begin Hang
-			state = EPlayerState::Hanging;
+			if(jumpEnable)
+				state = EPlayerState::Hanging;
 		}
 	}	break;
 	case EPlayerState::Hanging:
 	{
-		state = EPlayerState::Climbing;
-	}
+		if (jumpEnable)
+			state = EPlayerState::ClimbUp;
+	}	break;
 	};
 }
 
@@ -362,19 +430,28 @@ void Player::OnJump()
 
 void Player::OnJumpRelease()
 {
-	Apply(*gameObject, [&](CameraControllerView& view)
-		{
-			switch (state)
+	switch (state)
+	{
+	case EPlayerState::Walking:
+		Apply(*gameObject, [&](CameraControllerView& view)
 			{
-			case EPlayerState::Jumping:
-				if (!view->floorContact)
-					view->gravity *= fallGravityRatio;
-				break;
-			}	
-		});
+				switch (state)
+				{
+				case EPlayerState::Jumping:
+					if (!view->floorContact)
+						view->gravity *= fallGravityRatio;
+					break;
+				}
+			});
 
-	grabLedge	= false;
-	jumpEnable	= true;
+		grabLedge	= false;
+		jumpEnable	= true;
+		break;
+	case EPlayerState::Hanging:
+		grabLedge	= false;
+		jumpEnable	= true;
+		break;
+	}
 }
 
 
@@ -383,21 +460,38 @@ void Player::OnJumpRelease()
 
 void Player::OnFloorContact()
 {
-	Apply(*gameObject, [&](CameraControllerView& view)
-		{
-			view->gravity = gravity;
-		});
-
-	state = EPlayerState::Walking;
+	switch (state)
+	{
+	case EPlayerState::Walking:
+	{
+		Apply(*gameObject, [&](CameraControllerView& view)
+			{
+				view->gravity = gravity;
+			});
+		state = EPlayerState::Walking;
+	}	break;
+	}
 }
 
 
 /************************************************************************************************/
 
 
-void Player::OnCrouch()
+void Player::OnCrouchPress()
 {
+	switch (state)
+	{
+	case EPlayerState::Hanging:
+		Apply(*gameObject, [&](CameraControllerView& view)
+			{
+				view->gravity = float3{ 0, -gravity, 0 };
+			});
 
+		state = EPlayerState::Walking;
+		break;
+	default:
+		break;
+	}
 }
 
 
@@ -406,7 +500,24 @@ void Player::OnCrouch()
 
 void Player::OnCrouchRelease()
 {
+	switch (state)
+	{
+	case EPlayerState::Walking:
+	{
+		if(climbDownPossible)
+			state = EPlayerState::ClimbDown;
+	}	break;
+	case EPlayerState::Hanging:
+		Apply(*gameObject, [&](CameraControllerView& view)
+			{
+				view->gravity = float3{ 0, -gravity, 0 };
+			});
 
+		state = EPlayerState::Walking;
+		break;
+	default:
+		break;
+	}
 }
 
 
