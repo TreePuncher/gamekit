@@ -2050,10 +2050,10 @@ namespace FlexKit
 
 			for( size_t i = 0; i < ROW; ++i )
 			{
-				const auto v = *((Vect<4>*)matrix[i]);
+				const auto v = matrix[i];
 				for( size_t i2 = 0; i2 < COL; ++i2 )
 				{
-					const auto v2 = *((Vect<4>*)transposed[i2]);
+					const auto v2 = transposed[i2];
 					out[i][i2] = v.Dot(v2);
 				}
 			}

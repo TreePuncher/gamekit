@@ -118,11 +118,11 @@ namespace FlexKit
 
 
 	class EntitySkeletonComponent :
-		public Serializable<EntitySkeletonComponent, EntityComponent, GetTypeGUID(EntitySkeletonComponent)>
+		public Serializable<EntitySkeletonComponent, EntityComponent, FlexKit::SkeletonComponentID>
 	{
 	public:
 		EntitySkeletonComponent(GUID_t IN_skeletonResourceID = -1) :
-			Serializable		{ GetTypeGUID(Skeleton) },
+			Serializable		{ FlexKit::SkeletonComponentID },
 			skeletonResourceID	{ IN_skeletonResourceID } {}
 
 		void Serialize(auto& ar)

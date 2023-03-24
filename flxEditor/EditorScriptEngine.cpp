@@ -20,10 +20,10 @@
 
 AngelScriptGadget::AngelScriptGadget(asIScriptObject* IN_object) : object  { IN_object }
 {
-    object->AddRef();
+	object->AddRef();
 
-    asfnExecute = object->GetObjectType()->GetMethodByDecl("void Execute()");
-    asfnGetID   = object->GetObjectType()->GetMethodByDecl("string GadgetID()");
+	asfnExecute = object->GetObjectType()->GetMethodByDecl("void Execute()");
+	asfnGetID   = object->GetObjectType()->GetMethodByDecl("string GadgetID()");
 }
 
 
@@ -32,8 +32,8 @@ AngelScriptGadget::AngelScriptGadget(asIScriptObject* IN_object) : object  { IN_
 
 AngelScriptGadget::~AngelScriptGadget()
 {
-    if(object)
-        object->Release();
+	if(object)
+		object->Release();
 }
 
 
@@ -42,11 +42,11 @@ AngelScriptGadget::~AngelScriptGadget()
 
 AngelScriptGadget::AngelScriptGadget(AngelScriptGadget&& rhs)
 {
-    object      = rhs.object;
-    asfnExecute = rhs.asfnExecute;
-    asfnGetID   = rhs.asfnGetID;
+	object      = rhs.object;
+	asfnExecute = rhs.asfnExecute;
+	asfnGetID   = rhs.asfnGetID;
 
-    rhs.object = nullptr;
+	rhs.object = nullptr;
 }
 
 
@@ -55,13 +55,13 @@ AngelScriptGadget::AngelScriptGadget(AngelScriptGadget&& rhs)
 
 AngelScriptGadget& AngelScriptGadget::operator = (AngelScriptGadget& rhs)
 {
-    object      = rhs.object;
-    asfnExecute = rhs.asfnExecute;
-    asfnGetID   = rhs.asfnGetID;
+	object      = rhs.object;
+	asfnExecute = rhs.asfnExecute;
+	asfnGetID   = rhs.asfnGetID;
 
-    rhs.object  = nullptr;
+	rhs.object  = nullptr;
 
-    return *this;
+	return *this;
 }
 
 
@@ -70,13 +70,13 @@ AngelScriptGadget& AngelScriptGadget::operator = (AngelScriptGadget& rhs)
 
 void AngelScriptGadget::Execute()
 {
-    auto ctx = FlexKit::GetContext();
+	auto ctx = FlexKit::GetContext();
 
-    ctx->Prepare(asfnExecute);
-    ctx->SetObject(object);
-    ctx->Execute();
+	ctx->Prepare(asfnExecute);
+	ctx->SetObject(object);
+	ctx->Execute();
 
-    FlexKit::ReleaseContext(ctx);
+	FlexKit::ReleaseContext(ctx);
 }
 
 
@@ -85,16 +85,16 @@ void AngelScriptGadget::Execute()
 
 std::string AngelScriptGadget::GadgetID()
 {
-    auto ctx = FlexKit::GetContext();
+	auto ctx = FlexKit::GetContext();
 
-    ctx->Prepare(asfnGetID);
-    ctx->SetObject(object);
-    ctx->Execute();
+	ctx->Prepare(asfnGetID);
+	ctx->SetObject(object);
+	ctx->Execute();
 
-    auto ret_value = std::move(*(std::string*)ctx->GetReturnObject());
-    FlexKit::ReleaseContext(ctx);
+	auto ret_value = std::move(*(std::string*)ctx->GetReturnObject());
+	FlexKit::ReleaseContext(ctx);
 
-    return ret_value;
+	return ret_value;
 }
 
 /************************************************************************************************/
@@ -102,25 +102,25 @@ std::string AngelScriptGadget::GadgetID()
 
 void EditorScriptEngine::MessageCallback(const asSMessageInfo* msg, EditorScriptEngine* param)
 {
-    param->PrintToErrorWindow(msg->message);
+	param->PrintToErrorWindow(msg->message);
 
 #ifdef DEBUG
 
-    const auto strLen = strlen(msg->message);
-    WCHAR*  strBuffer = new WCHAR[strLen + 1];
+	const auto strLen = strlen(msg->message);
+	WCHAR*  strBuffer = new WCHAR[strLen + 1];
 
-    auto mbsSize = mbstowcs(strBuffer, msg->message, strLen + 1);
+	auto mbsSize = mbstowcs(strBuffer, msg->message, strLen + 1);
 
 
-    if (mbsSize != -1)
-    {
+	if (mbsSize != -1)
+	{
 
-        strBuffer[mbsSize] = '\0';
-        OutputDebugString(strBuffer);
-        OutputDebugString(L"\n");
-    }
+		strBuffer[mbsSize] = '\0';
+		OutputDebugString(strBuffer);
+		OutputDebugString(L"\n");
+	}
 
-    delete[] strBuffer;
+	delete[] strBuffer;
 
 #endif
 }
@@ -131,7 +131,7 @@ void EditorScriptEngine::MessageCallback(const asSMessageInfo* msg, EditorScript
 
 void EditorScriptEngine::PrintToOutputWindow(std::string* str)
 {
-    outputTextBuffer += *str + "\n";
+	outputTextBuffer += *str + "\n";
 }
 
 
@@ -140,7 +140,7 @@ void EditorScriptEngine::PrintToOutputWindow(std::string* str)
 
 void EditorScriptEngine::PrintToErrorWindow(const char* str)
 {
-    errorTextBuffer += str;
+	errorTextBuffer += str;
 }
 
 
@@ -149,15 +149,15 @@ void EditorScriptEngine::PrintToErrorWindow(const char* str)
 
 EditorScriptEngine::EditorScriptEngine(FlexKit::iAllocator* allocator)
 {
-    FlexKit::InitiateScriptRuntime();
+	FlexKit::InitiateScriptRuntime();
 
-    auto engine     = FlexKit::GetScriptEngine();
+	auto engine     = FlexKit::GetScriptEngine();
 
-    auto r          = FlexKit::GetScriptEngine()->SetMessageCallback(asFUNCTION(EditorScriptEngine::MessageCallback), this, asCALL_CDECL); assert(r >= 0);
+	auto r          = FlexKit::GetScriptEngine()->SetMessageCallback(asFUNCTION(EditorScriptEngine::MessageCallback), this, asCALL_CDECL); assert(r >= 0);
 
-    //scriptContext->SetLineCallback(asMETHOD(CDebugger, LineCallback), debugger, asCALL_THISCALL);
+	//scriptContext->SetLineCallback(asMETHOD(CDebugger, LineCallback), debugger, asCALL_THISCALL);
 
-    RegisterAPI(allocator);
+	RegisterAPI(allocator);
 }
 
 
@@ -170,10 +170,10 @@ EditorScriptEngine::~EditorScriptEngine()
 
 void EditorScriptEngine::RegisterGadget(asIScriptObject* gObj)
 {
-    auto func   = gObj->GetObjectType()->GetMethodByDecl("void Execute()");
-    auto engine = gObj->GetEngine();
+	auto func   = gObj->GetObjectType()->GetMethodByDecl("void Execute()");
+	auto engine = gObj->GetEngine();
 
-    gadgets.emplace_back(AngelScriptGadget{ gObj });
+	gadgets.emplace_back(AngelScriptGadget{ gObj });
 }
 
 
@@ -182,21 +182,21 @@ void EditorScriptEngine::RegisterGadget(asIScriptObject* gObj)
 
 void EditorScriptEngine::RegisterCoreTypesAPI(FlexKit::iAllocator* allocator)
 {
-    FlexKit::RegisterMathTypes(FlexKit::GetScriptEngine(), allocator);
-    FlexKit::RegisterRuntimeAPI(FlexKit::GetScriptEngine(), FlexKit::EXCLUDE_LOADANIMATION);
+	FlexKit::RegisterMathTypes(FlexKit::GetScriptEngine(), allocator);
+	FlexKit::RegisterRuntimeAPI(FlexKit::GetScriptEngine(), FlexKit::EXCLUDE_LOADANIMATION);
 }
 
 
 void EditorScriptEngine::RegisterGadgetAPI()
 {
-    auto engine = FlexKit::GetScriptEngine();
+	auto engine = FlexKit::GetScriptEngine();
 
-    auto n = engine->RegisterInterface("iGadget");                        assert(n >= 0);
-    n = engine->RegisterInterfaceMethod("iGadget", "void Execute()");     assert(n >= 0);
-    n = engine->RegisterInterfaceMethod("iGadget", "string GadgetID()");  assert(n >= 0);
+	auto n = engine->RegisterInterface("iGadget");                        assert(n >= 0);
+	n = engine->RegisterInterfaceMethod("iGadget", "void Execute()");     assert(n >= 0);
+	n = engine->RegisterInterfaceMethod("iGadget", "string GadgetID()");  assert(n >= 0);
 
-    n = engine->RegisterGlobalFunction("void RegisterGadget(iGadget@ gadget)",    asMETHOD(EditorScriptEngine, RegisterGadget), asCALL_THISCALL_ASGLOBAL, this);      assert(n >= 0);
-    n = engine->RegisterGlobalFunction("void Print(string text)",                 asMETHOD(EditorScriptEngine, PrintToOutputWindow), asCALL_THISCALL_ASGLOBAL, this); assert(n >= 0);
+	n = engine->RegisterGlobalFunction("void RegisterGadget(iGadget@ gadget)",    asMETHOD(EditorScriptEngine, RegisterGadget), asCALL_THISCALL_ASGLOBAL, this);      assert(n >= 0);
+	n = engine->RegisterGlobalFunction("void Print(string text)",                 asMETHOD(EditorScriptEngine, PrintToOutputWindow), asCALL_THISCALL_ASGLOBAL, this); assert(n >= 0);
 }
 
 
@@ -205,12 +205,12 @@ void EditorScriptEngine::RegisterGadgetAPI()
 
 void EditorScriptEngine::RegisterAPI(FlexKit::iAllocator* allocator)
 {
-    auto engine = FlexKit::GetScriptEngine();
+	auto engine = FlexKit::GetScriptEngine();
 
-    RegisterCoreTypesAPI(allocator);
-    RegisterGadgetAPI();
+	RegisterCoreTypesAPI(allocator);
+	RegisterGadgetAPI();
 
-    engine->RegisterGlobalProperty("AllocatorHandle@ SystemAllocator", (FlexKit::iAllocator*)FlexKit::SystemAllocator);
+	engine->RegisterGlobalProperty("AllocatorHandle@ SystemAllocator", (FlexKit::iAllocator*)FlexKit::SystemAllocator);
 }
 
 
@@ -219,39 +219,39 @@ void EditorScriptEngine::RegisterAPI(FlexKit::iAllocator* allocator)
 
 void EditorScriptEngine::LoadModules()
 {
-    std::filesystem::path scriptsPath{ "assets/editorscripts" };
-    if (std::filesystem::exists(scriptsPath) && std::filesystem::is_directory(scriptsPath))
-    {
-        CScriptBuilder builder{};
-        auto scriptEngine   = FlexKit::GetScriptEngine();
-        auto ctx            = FlexKit::GetContext();
-        auto tmp            = std::filesystem::directory_iterator{ scriptsPath };
+	std::filesystem::path scriptsPath{ "assets/editorscripts" };
+	if (std::filesystem::exists(scriptsPath) && std::filesystem::is_directory(scriptsPath))
+	{
+		CScriptBuilder builder{};
+		auto scriptEngine   = FlexKit::GetScriptEngine();
+		auto ctx            = FlexKit::GetContext();
+		auto tmp            = std::filesystem::directory_iterator{ scriptsPath };
 
-        for (auto file : tmp)
-        {
-            auto temp = file.path().extension();
+		for (auto file : tmp)
+		{
+			auto temp = file.path().extension();
 
-            if (file.path().extension() == ".as")
-            {
-                auto moduleName = file.path().filename().string();
-                builder.StartNewModule(scriptEngine, moduleName.c_str());
+			if (file.path().extension() == ".as")
+			{
+				auto moduleName = file.path().filename().string();
+				builder.StartNewModule(scriptEngine, moduleName.c_str());
 
-                if(auto r = builder.AddSectionFromFile(file.path().string().c_str()); r < 0)
-                    continue;
+				if(auto r = builder.AddSectionFromFile(file.path().string().c_str()); r < 0)
+					continue;
 
-                if (auto r = builder.BuildModule(); r < 0)
-                    continue;
+				if (auto r = builder.BuildModule(); r < 0)
+					continue;
 
-                auto asModule = builder.GetModule();
-                auto func   = asModule->GetFunctionByDecl("void Register()");
+				auto asModule = builder.GetModule();
+				auto func   = asModule->GetFunctionByDecl("void Register()");
 
-                ctx->Prepare(func);
-                ctx->Execute();
-            }
-        }
+				ctx->Prepare(func);
+				ctx->Execute();
+			}
+		}
 
-        FlexKit::ReleaseContext(ctx);
-    }
+		FlexKit::ReleaseContext(ctx);
+	}
 }
 
 
@@ -260,8 +260,10 @@ void EditorScriptEngine::LoadModules()
 
 void RunSTDStringMessageHandler(const asSMessageInfo* msg, ErrorCallbackFN* callback)
 {
-    if(callback)
-        (*callback)(msg->col, msg->row, msg->message, msg->section, msg->type);
+	if(callback)
+		(*callback)(msg->col, msg->row, msg->message, msg->section, msg->type);
+
+	fmt::print("AngelScript: Failure to build module! [ {}, {}, {}, {}, {} ]", msg->col, msg->row, msg->message, msg->section, msg->type);
 }
 
 
@@ -270,32 +272,32 @@ void RunSTDStringMessageHandler(const asSMessageInfo* msg, ErrorCallbackFN* call
 
 Module EditorScriptEngine::BuildModule(const std::string& string, ErrorCallbackFN errorCallback)
 {
-    try
-    {
-        auto scriptEngine = FlexKit::GetScriptEngine();
+	try
+	{
+		auto scriptEngine = FlexKit::GetScriptEngine();
 
-        CScriptBuilder builder{};
-        builder.StartNewModule(scriptEngine, "temp");
+		CScriptBuilder builder{};
+		builder.StartNewModule(scriptEngine, "temp");
 
-        scriptEngine->SetMessageCallback(asFUNCTION(RunSTDStringMessageHandler), &errorCallback, asCALL_CDECL);
+		scriptEngine->SetMessageCallback(asFUNCTION(RunSTDStringMessageHandler), &errorCallback, asCALL_CDECL);
 
-        if (auto r = builder.AddSectionFromMemory("Memory", string.c_str(), string.size()); r < 0)
-            return nullptr;
+		if (auto r = builder.AddSectionFromMemory("Memory", string.c_str(), string.size()); r < 0)
+			return nullptr;
 
-        if (auto r = builder.BuildModule(); r < 0)
-            return nullptr;
+		if (auto r = builder.BuildModule(); r < 0)
+			return nullptr;
 
-        auto r          = scriptEngine->SetMessageCallback(asFUNCTION(EditorScriptEngine::MessageCallback), this, asCALL_CDECL); assert(r >= 0);
-        auto asModule   = builder.GetModule();
+		auto r          = scriptEngine->SetMessageCallback(asFUNCTION(EditorScriptEngine::MessageCallback), this, asCALL_CDECL); assert(r >= 0);
+		auto asModule   = builder.GetModule();
 
-        return asModule;
-    }
-    catch (...)
-    {
-        OutputDebugString(L"Unknown error. Continuing as usual.\n");
-    }
+		return asModule;
+	}
+	catch (...)
+	{
+		OutputDebugString(L"Unknown error. Continuing as usual.\n");
+	}
 
-    return nullptr;
+	return nullptr;
 }
 
 
@@ -304,8 +306,8 @@ Module EditorScriptEngine::BuildModule(const std::string& string, ErrorCallbackF
 
 void EditorScriptEngine::ReleaseModule(Module module)
 {
-    if(module)
-        module->Discard();
+	if(module)
+		module->Discard();
 }
 
 
@@ -315,37 +317,37 @@ void EditorScriptEngine::ReleaseModule(Module module)
 class BytecodeBlobStream : public asIBinaryStream
 {
 public:
-    int Write(const void* ptr, asUINT size)
-    {
-        FlexKit::Blob temp{ (const char*)ptr, size };
-        blob += temp;
+	int Write(const void* ptr, asUINT size)
+	{
+		FlexKit::Blob temp{ (const char*)ptr, size };
+		blob += temp;
 
-        return size;
-    }
+		return size;
+	}
 
-    int Read(void* ptr, asUINT size) { return 0; }
+	int Read(void* ptr, asUINT size) { return 0; }
 
-    FlexKit::Blob GetBlob()
-    {
-        return std::move(blob);
-    }
+	FlexKit::Blob GetBlob()
+	{
+		return std::move(blob);
+	}
 
-    FlexKit::Blob blob;
+	FlexKit::Blob blob;
 };
 
 std::optional<FlexKit::Blob> EditorScriptEngine::GetByteCode(const std::string& moduleName)
 {
-    auto engine = FlexKit::GetScriptEngine();
+	auto engine = FlexKit::GetScriptEngine();
 
-    auto scriptModule = engine->GetModule(moduleName.c_str());
+	auto scriptModule = engine->GetModule(moduleName.c_str());
 
-    if (!scriptModule)
-        return {};
+	if (!scriptModule)
+		return {};
 
-    BytecodeBlobStream stream;
-    scriptModule->SaveByteCode(&stream, false);
+	BytecodeBlobStream stream;
+	scriptModule->SaveByteCode(&stream, false);
 
-    return stream.GetBlob();
+	return stream.GetBlob();
 }
 
 
@@ -354,37 +356,37 @@ std::optional<FlexKit::Blob> EditorScriptEngine::GetByteCode(const std::string& 
 
 std::optional<FlexKit::Blob> EditorScriptEngine::CompileToBlob(const std::string& string, ErrorCallbackFN errorCallback)
 {
-    try
-    {
-        auto engine = FlexKit::GetScriptEngine();
+	try
+	{
+		auto engine = FlexKit::GetScriptEngine();
 
-        CScriptBuilder builder{};
-        auto randomModuleName = fmt::format("{}", rand());
-        builder.StartNewModule(engine, randomModuleName.c_str());
+		CScriptBuilder builder{};
+		auto randomModuleName = fmt::format("{}", rand());
+		builder.StartNewModule(engine, randomModuleName.c_str());
 
-        engine->SetMessageCallback(asFUNCTION(RunSTDStringMessageHandler), &errorCallback, asCALL_CDECL);
+		engine->SetMessageCallback(asFUNCTION(RunSTDStringMessageHandler), &errorCallback, asCALL_CDECL);
 
-        if (auto r = builder.AddSectionFromMemory(randomModuleName.c_str(), string.c_str(), string.size()); r < 0)
-            return {};
+		if (auto r = builder.AddSectionFromMemory(randomModuleName.c_str(), string.c_str(), string.size()); r < 0)
+			return {};
 
-        if (auto r = builder.BuildModule(); r < 0)
-            return {};
+		if (auto r = builder.BuildModule(); r < 0)
+			return {};
 
-        auto r          = engine->SetMessageCallback(asFUNCTION(EditorScriptEngine::MessageCallback), nullptr, asCALL_CDECL); assert(r >= 0);
-        auto asModule   = builder.GetModule();
+		auto r          = engine->SetMessageCallback(asFUNCTION(EditorScriptEngine::MessageCallback), nullptr, asCALL_CDECL); assert(r >= 0);
+		auto asModule   = builder.GetModule();
 
-        auto blob = GetByteCode(randomModuleName);
+		auto blob = GetByteCode(randomModuleName);
 
-        asModule->Discard();
+		asModule->Discard();
 
-        return blob;
-    }
-    catch (...)
-    {
-        OutputDebugString(L"Unknown angelscript error. Continuing as usual.\n");
-    }
+		return blob;
+	}
+	catch (...)
+	{
+		OutputDebugString(L"Unknown angelscript error. Continuing as usual.\n");
+	}
 
-    return {};
+	return {};
 }
 
 
@@ -393,7 +395,7 @@ std::optional<FlexKit::Blob> EditorScriptEngine::CompileToBlob(const std::string
 
 ScriptContext EditorScriptEngine::CreateContext()
 {
-    return FlexKit::GetContext();
+	return FlexKit::GetContext();
 }
 
 
@@ -402,7 +404,7 @@ ScriptContext EditorScriptEngine::CreateContext()
 
 void EditorScriptEngine::ReleaseContext(ScriptContext context)
 {
-    FlexKit::ReleaseContext(context);
+	FlexKit::ReleaseContext(context);
 }
 
 
@@ -411,34 +413,34 @@ void EditorScriptEngine::ReleaseContext(ScriptContext context)
 
 void EditorScriptEngine::CompileString(const std::string& string, asIScriptContext* ctx, ErrorCallbackFN errorCallback)
 {
-    try
-    {
-        auto engine = FlexKit::GetScriptEngine();
+	try
+	{
+		auto engine = FlexKit::GetScriptEngine();
 
-        CScriptBuilder builder{};
-        auto temp = fmt::format("{}", rand());
-        builder.StartNewModule(engine, temp.c_str());
+		CScriptBuilder builder{};
+		auto temp = fmt::format("{}", rand());
+		builder.StartNewModule(engine, temp.c_str());
 
-        engine->SetMessageCallback(asFUNCTION(RunSTDStringMessageHandler), &errorCallback, asCALL_CDECL);
+		engine->SetMessageCallback(asFUNCTION(RunSTDStringMessageHandler), &errorCallback, asCALL_CDECL);
 
-        if (auto r = builder.AddSectionFromMemory(temp.c_str(), string.c_str(), string.size()); r < 0)
-        {
-            // TODO: show error in output window
-        }
+		if (auto r = builder.AddSectionFromMemory(temp.c_str(), string.c_str(), string.size()); r < 0)
+		{
+			// TODO: show error in output window
+		}
 
-        if (auto r = builder.BuildModule(); r < 0)
-        {
-            // TODO: show error in output window
-        }
+		if (auto r = builder.BuildModule(); r < 0)
+		{
+			// TODO: show error in output window
+		}
 
-        auto r          = engine->SetMessageCallback(asFUNCTION(EditorScriptEngine::MessageCallback), nullptr, asCALL_CDECL); assert(r >= 0);
-        auto asModule   = builder.GetModule();
-        asModule->Discard();
-    }
-    catch (...)
-    {
-        OutputDebugString(L"Unknown angelscript error. Continuing as usual.\n");
-    }
+		auto r          = engine->SetMessageCallback(asFUNCTION(EditorScriptEngine::MessageCallback), nullptr, asCALL_CDECL); assert(r >= 0);
+		auto asModule   = builder.GetModule();
+		asModule->Discard();
+	}
+	catch (...)
+	{
+		OutputDebugString(L"Unknown angelscript error. Continuing as usual.\n");
+	}
 }
 
 
@@ -447,37 +449,37 @@ void EditorScriptEngine::CompileString(const std::string& string, asIScriptConte
 
 void EditorScriptEngine::RunStdString(const std::string& string, asIScriptContext* ctx, ErrorCallbackFN errorCallback)
 {
-    try
-    {
-        auto engine = FlexKit::GetScriptEngine();
+	try
+	{
+		auto engine = FlexKit::GetScriptEngine();
 
-        CScriptBuilder builder{};
-        builder.StartNewModule(engine, "temp");
+		CScriptBuilder builder{};
+		builder.StartNewModule(engine, "temp");
 
-        engine->SetMessageCallback(asFUNCTION(RunSTDStringMessageHandler), &errorCallback, asCALL_CDECL);
+		engine->SetMessageCallback(asFUNCTION(RunSTDStringMessageHandler), &errorCallback, asCALL_CDECL);
 
-        if (auto r = builder.AddSectionFromMemory("Memory", string.c_str(), string.size()); r < 0)
-            return;
+		if (auto r = builder.AddSectionFromMemory("Memory", string.c_str(), string.size()); r < 0)
+			return;
 
-        if (auto r = builder.BuildModule(); r < 0)
-            return;
+		if (auto r = builder.BuildModule(); r < 0)
+			return;
 
-        auto r          = engine->SetMessageCallback(asFUNCTION(EditorScriptEngine::MessageCallback), nullptr, asCALL_CDECL); assert(r >= 0);
-        auto asModule   = builder.GetModule();
-        auto func       = asModule->GetFunctionByDecl("void main()");
+		auto r          = engine->SetMessageCallback(asFUNCTION(EditorScriptEngine::MessageCallback), nullptr, asCALL_CDECL); assert(r >= 0);
+		auto asModule   = builder.GetModule();
+		auto func       = asModule->GetFunctionByDecl("void main()");
 
-        if (func)
-        {
-            ctx->Prepare(func);
-            ctx->Execute();
-        }
+		if (func)
+		{
+			ctx->Prepare(func);
+			ctx->Execute();
+		}
 
-        asModule->Discard();
-    }
-    catch (...)
-    {
-        OutputDebugString(L"Unknown error. Continuing as usual.\n");
-    }
+		asModule->Discard();
+	}
+	catch (...)
+	{
+		OutputDebugString(L"Unknown error. Continuing as usual.\n");
+	}
 }
 
 
@@ -486,19 +488,19 @@ void EditorScriptEngine::RunStdString(const std::string& string, asIScriptContex
 
 bool RunScriptFunction(ScriptContext ctx, Module module, const std::string_view view)
 {
-    if (!module)
-        return false;
+	if (!module)
+		return false;
 
-    auto r = ctx->GetEngine()->SetMessageCallback(asFUNCTION(RunSTDStringMessageHandler), nullptr, asCALL_CDECL); assert(r >= 0);
+	auto r = ctx->GetEngine()->SetMessageCallback(asFUNCTION(RunSTDStringMessageHandler), nullptr, asCALL_CDECL); assert(r >= 0);
 
-    auto func = module->GetFunctionByName(view.data());
-    if (!func)
-        return false;
+	auto func = module->GetFunctionByName(view.data());
+	if (!func)
+		return false;
 
-    ctx->Prepare(func);
-    auto res = ctx->Execute();
+	ctx->Prepare(func);
+	auto res = ctx->Execute();
 
-    return res >= 0;
+	return res >= 0;
 }
 
 
@@ -507,7 +509,7 @@ bool RunScriptFunction(ScriptContext ctx, Module module, const std::string_view 
 
 void* GetReturnObject(ScriptContext ctx)
 {
-    return ctx->GetReturnObject();
+	return ctx->GetReturnObject();
 }
 
 
@@ -516,7 +518,7 @@ void* GetReturnObject(ScriptContext ctx)
 
 void SetArg(ScriptContext ctx, uint32_t idx, void* obj)
 {
-    ctx->SetArgObject(idx, obj);
+	ctx->SetArgObject(idx, obj);
 }
 
 
@@ -525,7 +527,7 @@ void SetArg(ScriptContext ctx, uint32_t idx, void* obj)
 
 void SetArgAddress(ScriptContext ctx, uint32_t idx, void* obj)
 {
-    ctx->SetArgAddress(idx, obj);
+	ctx->SetArgAddress(idx, obj);
 }
 
 

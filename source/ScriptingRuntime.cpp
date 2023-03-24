@@ -194,12 +194,23 @@ namespace FlexKit
 
 	int PoseStatePoseCount(FlexKit::PoseState* poseState)
 	{
-		return 0;
+		return poseState->poses.size();
 	}
 
 	PoseState::Pose* PoseStateGetPose(FlexKit::PoseState* poseState, int idx)
 	{
 		return &poseState->poses[idx];
+	}
+
+
+	/************************************************************************************************/
+
+
+	uint32_t PoseStateCreatePose(FlexKit::PoseState* poseState, uint32_t poseID, iAllocator* allocator)
+	{
+		poseState->CreateSubPose(poseID, *allocator);
+
+		return poseState->poses.size() - 1;
 	}
 
 
@@ -257,9 +268,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void JointPoseSetOrientation(JointPose* jp, const Quaternion* Q)
+	void JointPoseSetOrientation(JointPose* jp, const Quaternion& Q)
 	{
-		jp->r = *Q;
+		jp->r = Q;
 	}
 
 
@@ -322,10 +333,10 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	void Log_AS(std::string& in)
-	{
-		FK_LOG_INFO(in.c_str());
-	}
+	void		Log_AS(std::string& in)	{ FK_LOG_INFO(in.c_str()); }
+	iAllocator* GetSystemAllocator()	{ return SystemAllocator; }
+
+	/************************************************************************************************/
 
 	void RegisterRuntimeAPI(asIScriptEngine* scriptEngine, RegisterFlags flags)
 	{
@@ -394,12 +405,16 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		res = scriptEngine->RegisterObjectType("AllocatorHandle", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                        FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectType("AllocatorHandle", 0, asOBJ_REF | asOBJ_NOCOUNT);																		FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterGlobalFunction("AllocatorHandle@ GetSystemAllocator()", asFUNCTION(GetSystemAllocator), asCALL_CDECL);									FK_ASSERT(res >= 0);
+
+		/************************************************************************************************/
+
 
 		res = scriptEngine->RegisterObjectType("JointPose", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                              FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectMethod("JointPose", "void SetOrientation(Quaternion& in)",    asFUNCTION(JointPoseSetOrientation),    asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("JointPose", "void SetPosition(float3& in)",           asFUNCTION(JointPoseSetPosition),       asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("JointPose", "void SetScale(float)",                   asFUNCTION(JointPoseSetScale),          asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("JointPose", "void SetOrientation(const Quaternion& in)",	asFUNCTION(JointPoseSetOrientation),    asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("JointPose", "void SetPosition(float3& in)",				asFUNCTION(JointPoseSetPosition),       asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("JointPose", "void SetScale(float)",						asFUNCTION(JointPoseSetScale),          asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
 
 		res = scriptEngine->RegisterObjectMethod("JointPose", "Quaternion	GetOrientation()",          asFUNCTION(JointPoseGetOrientation),    asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
 		res = scriptEngine->RegisterObjectMethod("JointPose", "float3		GetPosition()",             asFUNCTION(JointPoseGetPosition),       asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
@@ -418,9 +433,10 @@ namespace FlexKit
 
 
 		res = scriptEngine->RegisterObjectType("PoseState", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                              FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectMethod("PoseState", "int GetPoseCount()",                             asFUNCTION(PoseStatePoseCount), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("PoseState", "Pose@ GetPose(int)",                             asFUNCTION(PoseStateGetPose),   asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("PoseState", "JointHandle FindJoint(string)",                  asFUNCTION(GetBone),            asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("PoseState", "int GetPoseCount()",									asFUNCTION(PoseStatePoseCount), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("PoseState", "Pose@ GetPose(int)",									asFUNCTION(PoseStateGetPose),   asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("PoseState", "uint	 CreatePose(uint poseID, AllocatorHandle@)",	asFUNCTION(PoseStateCreatePose), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("PoseState", "JointHandle FindJoint(string)",						asFUNCTION(GetBone),            asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
 
 
 		/************************************************************************************************/
@@ -430,9 +446,9 @@ namespace FlexKit
 
 		if(!(flags & EXCLUDE_LOADANIMATION))
 		{
-			res = scriptEngine->RegisterGlobalFunction("Animation@ LoadAnimation(AssetHandle, AllocatorHandle@)",   asFUNCTION(LoadAnimation1_AS), asCALL_CDECL);               FK_ASSERT(res > 0);
-			res = scriptEngine->RegisterGlobalFunction("Animation@ LoadAnimation(string& in)",                      asFUNCTION(LoadAnimation2_AS), asCALL_CDECL, allocator);    FK_ASSERT(res > 0);
-			res = scriptEngine->RegisterGlobalFunction("Animation@ ReleaseAnimation(Animation& in)",                asFUNCTION(ReleaseAnimation_AS), asCALL_CDECL, allocator);  FK_ASSERT(res > 0);
+			res = scriptEngine->RegisterGlobalFunction("Animation@	LoadAnimation(AssetHandle, AllocatorHandle@)",   asFUNCTION(LoadAnimation1_AS), asCALL_CDECL);               FK_ASSERT(res > 0);
+			res = scriptEngine->RegisterGlobalFunction("Animation@	LoadAnimation(string& in)",                      asFUNCTION(LoadAnimation2_AS), asCALL_CDECL, allocator);    FK_ASSERT(res > 0);
+			res = scriptEngine->RegisterGlobalFunction("void		ReleaseAnimation(Animation& in)",                asFUNCTION(ReleaseAnimation_AS), asCALL_CDECL, allocator);  FK_ASSERT(res > 0);
 		}
 
 
@@ -616,7 +632,7 @@ namespace FlexKit
 
 	void ConstructQuaternion_2(void* _ptr, float x, float y, float z)
 	{
-		new(_ptr) Quaternion{ x, y, z, 1 };
+		new(_ptr) Quaternion{ x, y, z };
 	}
 
 
@@ -719,8 +735,8 @@ namespace FlexKit
 
 
 		res = scriptEngine->RegisterObjectType("Quaternion", sizeof(Quaternion), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS);																			FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void ConstructQuat(float, float, float, float)",	asFUNCTION(ConstructQuaternion_2),	asCALL_CDECL_OBJFIRST);		FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void ConstructQuat(float, float, float)",		asFUNCTION(ConstructQuaternion_3),	asCALL_CDECL_OBJFIRST);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void ConstructQuat(float, float, float, float)",	asFUNCTION(ConstructQuaternion_3),	asCALL_CDECL_OBJFIRST);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void ConstructQuat(float, float, float)",		asFUNCTION(ConstructQuaternion_2),	asCALL_CDECL_OBJFIRST);		FK_ASSERT(res > 0);
 
 		res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion	opMul(Quaternion)",		asMETHODPR(Quaternion, operator *, (const Quaternion) const	noexcept,	Quaternion),	asCALL_THISCALL);		FK_ASSERT(res > 0);
 		res = scriptEngine->RegisterObjectMethod("Quaternion", "float3		opMul(float3)",			asFUNCTIONPR(operator *, (const Quaternion, const float3)	noexcept,	float3),		asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
@@ -755,7 +771,15 @@ namespace FlexKit
 		res = scriptEngine->RegisterObjectMethod("float4x4", "float4x4@ Inverse()",				asFUNCTION(Float4x4Inverse),		asCALL_CDECL_OBJFIRST);												FK_ASSERT(res > 0);
 
 		res = scriptEngine->RegisterGlobalFunction("float4x4@ Identity()", asFUNCTION(Float4x4Identity), asCALL_CDECL);																					FK_ASSERT(res > 0);
-	}
+
+
+		/************************************************************************************************/
+
+
+		res = scriptEngine->RegisterGlobalFunction("Quaternion Vector2Quat(const float3& in, const float3& in, const float3& in)", asFUNCTION(Vector2Quaternion), asCALL_CDECL);						FK_ASSERT(res > 0);
+
+
+	}	/************************************************************************************************/
 
 
 	/************************************************************************************************/

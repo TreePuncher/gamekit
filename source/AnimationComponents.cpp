@@ -438,9 +438,13 @@ namespace FlexKit
 	void AnimatorComponent::AnimatorView::SetObj(void* _ptr) noexcept
 	{
 		auto& state = GetState();
-		state.obj   = (asIScriptObject*)_ptr;
+		if (state.obj)
+			state.obj->Release();
 
-		state.obj->AddRef();
+		state.obj = (asIScriptObject*)_ptr;
+
+		if(state.obj)
+			state.obj->AddRef();
 	}
 
 
