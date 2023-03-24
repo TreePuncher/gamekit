@@ -20,12 +20,12 @@ public:
 		renderWindow	{
 			CreateWin32RenderWindow(
 				IN_framework.GetRenderSystem(),
-				FlexKit::DefaultWindowDesc(uint2{ 1920, 1080 } * 2)).value() },
+				FlexKit::DefaultWindowDesc(uint2{ 1920, 1080 })).value() },
 		rootSig			{ IN_framework.core.GetBlockMemory() },
 		vertexBuffer	{ IN_framework.GetRenderSystem().CreateVertexBuffer(MEGABYTE, false) },
 		constantBuffer	{ IN_framework.GetRenderSystem().CreateConstantBuffer(MEGABYTE, false) },
 		cameras			{ IN_framework.core.GetBlockMemory() },
-		depthBuffer		{ IN_framework.GetRenderSystem().CreateDepthBuffer(uint2{ 1920, 1080 } * 2, true) },
+		depthBuffer		{ IN_framework.GetRenderSystem().CreateDepthBuffer(uint2{ 1920, 1080 }, true) },
 		debug1Buffer	{ IN_framework.GetRenderSystem().CreateUAVBufferResource(MEGABYTE * 16, false) },
 		debug2Buffer	{ IN_framework.GetRenderSystem().CreateUAVBufferResource(MEGABYTE, false) },
 		indices			{ IN_framework.core.GetBlockMemory() },

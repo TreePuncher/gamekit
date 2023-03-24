@@ -343,7 +343,7 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 						codeEditor->SetResource(scriptRes);
 					}
 
-					if (auto res = components.FindComponent(GetTypeGUID(EntitySkeletonComponent)); res)
+					if (auto res = components.FindComponent(FlexKit::SkeletonComponentID); res)
 					{
 						auto sk = std::static_pointer_cast<FlexKit::EntitySkeletonComponent>(res);
 

@@ -333,14 +333,14 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
     <Natvis Include="containers.natvis" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="GameAssets.h">
       <Filter>game</Filter>
     </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>
