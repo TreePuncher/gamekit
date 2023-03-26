@@ -260,7 +260,7 @@ namespace FlexKit
 		float BVHConstruction	= 0;
 	};
 
-	struct EntityConstants
+	struct BrushConstants
 	{
 		struct EntityConstantOffsets
 		{
@@ -281,7 +281,7 @@ namespace FlexKit
 	struct OcclusionCullingResults
 	{
 		GatherPassesTask&				passes;
-		EntityConstants&				entityConstants;
+		BrushConstants&				entityConstants;
 		ReserveConstantBufferFunction	reserveCB;
 
 		FrameResourceHandle				depthBuffer;
@@ -292,7 +292,7 @@ namespace FlexKit
 	{
 		GatherPassesTask&			passes;
 		GatherSkinnedTask&			skinnedDraws;
-		EntityConstants&			entityConstants;
+		BrushConstants&			entityConstants;
 		PointLightShadowGatherTask&	pointLights;
 		FrameResourceHandle			visibilityBuffer;
 	};
@@ -320,7 +320,7 @@ namespace FlexKit
 		void Release();
 
 
-		DrawOutputs DrawScene(
+		DrawOutputs					DrawScene(
 				UpdateDispatcher&				dispatcher,
 				FrameGraph&						frameGraph,
 				DrawSceneDescription&			drawSceneDesc,
@@ -329,7 +329,7 @@ namespace FlexKit
 				ThreadSafeAllocator&			temporary);
 
 
-		EntityConstants& BuildEntityConstantsBuffer(
+		BrushConstants&				BuildBrushConstantsBuffer(
 				FrameGraph&						frameGraph,
 				UpdateDispatcher&				dispatcher,
 				GatherPassesTask&				passes,
@@ -337,10 +337,18 @@ namespace FlexKit
 				iAllocator&						allocator);
 
 
-		OcclusionCullingResults& OcclusionCulling(
+		const ResourceAllocation&	AcquireAnimatedResources(
+				FrameGraph&						frameGraph,
+				UpdateDispatcher&				dispatcher,
+				GatherPassesTask&				passes,
+				ReserveConstantBufferFunction&	reserveConstants,
+				iAllocator&						allocator);
+
+
+		OcclusionCullingResults&	OcclusionCulling(
 				UpdateDispatcher&				dispatcher,
 				FrameGraph&						frameGraph,
-				EntityConstants&				entityConstants,
+				BrushConstants&					entityConstants,
 				GatherPassesTask&				passes,
 				CameraHandle					camera,
 				ReserveConstantBufferFunction&	reserveConstants,
@@ -348,7 +356,7 @@ namespace FlexKit
 				ThreadSafeAllocator&			temporary);
 
 
-		DepthPass& DepthPrePass(
+		DepthPass&					DepthPrePass(
 				UpdateDispatcher&				dispatcher,
 				FrameGraph&						frameGraph,
 				const CameraHandle				camera,
@@ -368,6 +376,7 @@ namespace FlexKit
 				ReserveVertexBufferFunction		reserveVB,
 				iAllocator*						tempMemory);
 
+
 		BackgroundEnvironmentPass& RenderPBR_IBL_Deferred(
 				UpdateDispatcher&				dispatcher,
 				FrameGraph&						frameGraph,
@@ -380,6 +389,7 @@ namespace FlexKit
 				ReserveVertexBufferFunction		reserveVB,
 				const float						t,
 				iAllocator*						tempMemory);
+
 
 		BilateralBlurPass&  BilateralBlur(
 				FrameGraph&						frameGraph,
@@ -394,6 +404,7 @@ namespace FlexKit
 				ReserveVertexBufferFunction		reserveVB,
 				iAllocator*						tempMemory);
 
+
 		ToneMap& RenderPBR_ToneMapping(
 				UpdateDispatcher&				dispatcher,
 				FrameGraph&						frameGraph,
@@ -403,6 +414,7 @@ namespace FlexKit
 				ReserveVertexBufferFunction		reserveVB,
 				float							t,
 				iAllocator*						allocator);
+
 
 		DEBUG_WorldRenderTimingValues GetTimingValues() const { return timingValues; }
 

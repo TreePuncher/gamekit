@@ -144,6 +144,7 @@ namespace FlexKit
 			std::span<MaterialHandle>	GetSubMaterials() const;
 			MaterialHandle				CreateSubMaterial();
 
+			operator MaterialHandle () const noexcept { return handle; }
 
 			MaterialHandle	handle;
 		};

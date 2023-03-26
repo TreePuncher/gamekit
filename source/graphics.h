@@ -1280,30 +1280,56 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
+	struct UploadSegment
+	{
+		size_t				offset		= 0;
+		size_t				uploadSize	= 0;
+		char*				buffer		= nullptr;
+		ID3D12Resource*		resource	= nullptr;
+	};
+
+
+	enum class ReserveErrors
+	{
+		Success,
+		OutOfSpace,
+		Unknown
+	};
+
 	struct UploadBuffer
 	{
 		UploadBuffer() = default;
 		UploadBuffer(ID3D12Device* pDevice);
 
+		UploadBuffer(UploadBuffer&&);
+		UploadBuffer& operator = (UploadBuffer&&) noexcept;
+
+						UploadBuffer(const UploadBuffer&) = delete;
+		UploadBuffer&	operator =	(const UploadBuffer&) = delete;
+
+		~UploadBuffer();
+
 		void Release();
+
+		std::expected<UploadSegment, ReserveErrors> Reserve(const size_t size, const size_t reserveAlignement);
 
 		ID3D12Resource* Resize(const size_t size); // Returns old resource
 
-		ID3D12Resource* deviceBuffer    = nullptr;
-		size_t			Position        = 0;    
-		size_t			Last            = 0;
-		size_t			Size            = 0;
-		char*           Buffer          = nullptr;
-		ID3D12Device*   parentDevice    = nullptr;
+		ID3D12Resource* deviceBuffer	= nullptr;
+		size_t			Position		= 0;
+		size_t			Last			= 0;
+		size_t			Size			= 0;
+		char*			Buffer			= nullptr;
+		ID3D12Device*	parentDevice	= nullptr;
 	};
 
 
 	struct UploadReservation
 	{
-		ID3D12Resource* resource        = nullptr;
-		const size_t    reserveSize     = 0;
-		const size_t    offset          = 0;
-		char*           buffer          = 0;
+		ID3D12Resource*	resource		= nullptr;
+		const size_t	reserveSize		= 0;
+		const size_t	offset			= 0;
+		char*			buffer			= 0;
 	};
 
 	struct PackedResourceTileInfo
@@ -1982,15 +2008,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 
 	/************************************************************************************************/
-
-
-	struct UploadSegment 
-	{
-		size_t	            offset		= 0;
-		size_t	            uploadSize	= 0;
-		char*	            buffer		= nullptr;
-		ID3D12Resource*     resource    = nullptr;
-	};
 
 
 	template<size_t I = 0, typename TY_Tuple, typename FN>
@@ -3852,12 +3869,14 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		static ConstantBuffer	_CreateConstantBufferResource(RenderSystem* RS, ConstantBuffer_desc* desc);
 		VertexResourceBuffer	_CreateVertexBufferDeviceResource(const size_t ResourceSize, bool GPUResident = true);
 		ResourceHandle			_CreateDefaultTexture();
+		UploadSegment			_ReserveDirectUploadSpace(size_t resourceSize, size_t alignment);
 
 		enum class DescriptorRangeAllocationError
 		{
 			OutOfSpace,
 			NotEnoughContiguousDescriptors
 		};
+
 		using AllocationResult = std::expected<DescriptorRange, DescriptorRangeAllocationError>;
 
 		AllocationResult	_AllocateDescriptorRange(const size_t size);
@@ -3999,6 +4018,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			CopyContextHandle queue;
 			size_t			waitCounter;
 		};
+
+		std::mutex						directUploadBufferMutex;
+		UploadBuffer					directUploadBuffer;
 
 		Vector<UploadSyncPoint>			Syncs;
 		Vector<FreeEntry>				FreeList_GraphicsQueue;
@@ -4253,6 +4275,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			SETDEBUGNAME(DeviceContext, ID);
 		}
 
+
+		UploadSegment ReserveDirectUploadSpace(size_t size, size_t alignment = 256);
 
 		// Not Yet Implemented
 		void SetUAVRead();

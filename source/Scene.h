@@ -179,7 +179,7 @@ namespace FlexKit
 	class PointLightView : public ComponentView_t<PointLightComponent>
 	{
 	public:
-		PointLightView(GameObject& gameObject, float3 color = { 1, 1, 1 }, float intensity = 100, float radius = 100, NodeHandle node = InvalidHandle, bool triggerLess = false);
+		PointLightView(GameObject& gameObject, float3 color = { 1, 1, 1 }, float intensity = 100, float radius = 100, NodeHandle node = InvalidHandle, bool triggered = false);
 
 
 		float3		GetK();
@@ -192,7 +192,7 @@ namespace FlexKit
 		void		SetNode			(NodeHandle node) const noexcept;
 		void		SetRadius		(float r) noexcept;
 
-		PointLight*	operator -> (this auto& self) noexcept  { return &self.GetComponent()[light]; }
+		PointLight*	operator -> (this auto& self) noexcept  { return &GetComponent()[self.light]; }
 
 		operator PointLightHandle () { return light; }
 
@@ -724,12 +724,12 @@ namespace FlexKit
 		UpdateTask*		task;
 		Vector<PassPVS> passes;
 
-		std::optional<const PassPVS*> GetPass(PassHandle passID) const
+		std::span<const PVEntry> GetPass(PassHandle passID) const
 		{
 			for (auto& pass : passes)
 			{
 				if (pass.pass == passID)
-					return &pass;
+					return std::span<const PVEntry>{ pass.pvs };
 			}
 
 			return {};

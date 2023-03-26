@@ -550,7 +550,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	CBPushBuffer& EntityConstants::GetConstantBuffer(size_t IN_reservationSize)
+	CBPushBuffer& BrushConstants::GetConstantBuffer(size_t IN_reservationSize)
 	{
 		if (reservationSize == -1)
 			reservationSize = IN_reservationSize;
@@ -562,14 +562,13 @@ namespace FlexKit
 	}
 
 
-	CBPushBuffer& EntityConstants::GetConstantBuffer()
+	CBPushBuffer& BrushConstants::GetConstantBuffer()
 	{
 		FK_ASSERT(reservationSize != -1);
 
 		const auto bufferSize = reservationSize * AlignedSize<Brush::VConstantsLayout>();
 		return getConstantBuffer(bufferSize);
 	}
-
 
 
 	/************************************************************************************************/
@@ -795,7 +794,15 @@ namespace FlexKit
 		ClearGBuffer(frameGraph, gbuffer);
 
 		auto& entityConstants =
-			BuildEntityConstantsBuffer(
+			BuildBrushConstantsBuffer(
+				frameGraph,
+				dispatcher,
+				passes,
+				drawSceneDesc.reserveCB,
+				temporary);
+
+		auto& animationResources =
+			AcquireAnimatedResources(
 				frameGraph,
 				dispatcher,
 				passes,
@@ -831,6 +838,7 @@ namespace FlexKit
 				gbuffer,
 				depthTarget.Get(),
 				entityConstants,
+				animationResources,
 				reserveCB,
 				temporary,
 				&poses);
@@ -975,17 +983,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EntityConstants& WorldRender::BuildEntityConstantsBuffer(
+	BrushConstants& WorldRender::BuildBrushConstantsBuffer(
 		FrameGraph&						frameGraph,
 		UpdateDispatcher&				dispatcher,
 		GatherPassesTask&				passes,
 		ReserveConstantBufferFunction&	reserveConstants,
 		iAllocator&						allocator)
 	{
-		return frameGraph.BuildSharedConstants<EntityConstants>(
-			[&](FrameGraphNodeBuilder& builder) -> EntityConstants
+		return frameGraph.BuildSharedConstants<BrushConstants>(
+			[&](FrameGraphNodeBuilder& builder) -> BrushConstants
 			{
-				return EntityConstants
+				return BrushConstants
 					{
 						.constants			= builder.CreateConstantBuffer(),
 						.getConstantBuffer	= CreateOnceReserveBuffer(reserveConstants, &allocator),
@@ -993,23 +1001,27 @@ namespace FlexKit
 						.entityTable		= Vector<uint32_t>{ allocator },
 					};
 			},
-			[](EntityConstants& data, FrameResources& resources, iAllocator& localAllocator) // before submission task sections begin
+			[](BrushConstants& data, FrameResources& resources, iAllocator& localAllocator) // before submission task sections begin
 			{
-				auto& brushes	= data.passes.GetData().solid;
 				auto& materials = MaterialComponent::GetComponent();
 
-				data.entityTable.reserve(brushes.size());
-
-				size_t offset = 0;
-				for(auto brush : brushes)
+				// static
 				{
-					data.entityTable.push_back((uint32_t)offset);
-					offset += Max(materials[brush.brush->material].SubMaterials.size(), 1);
-				}
+					auto& brushes	= data.passes.GetData().solid;
 
-				resources.objects[data.constants].constantBuffer = &data.GetConstantBuffer(offset);
+					data.entityTable.reserve(brushes.size());
+
+					size_t offset = 0;
+					for (const auto& brush : brushes)
+					{
+						data.entityTable.push_back((uint32_t)offset);
+						offset += Max(materials[brush.brush->material].SubMaterials.size(), 1);
+					}
+
+					resources.objects[data.constants].constantBuffer = &data.GetConstantBuffer(offset);
+				}
 			},
-			[](EntityConstants& data, iAllocator& localAllocator) // in parallel with all other tasks
+			[](BrushConstants& data, iAllocator& localAllocator) // in parallel with all other tasks
 			{
 				auto& brushes			= data.passes.GetData().solid;
 				auto& constantBuffer	= data.GetConstantBuffer();
@@ -1049,10 +1061,44 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	const ResourceAllocation& WorldRender::AcquireAnimatedResources(
+		FrameGraph&						frameGraph,
+		UpdateDispatcher&				dispatcher,
+		GatherPassesTask&				passes,
+		ReserveConstantBufferFunction&	reserveConstants,
+		iAllocator&						allocator)
+	{
+		PassDrivenResourceAllocation allocation {
+			.getPass			= [&passes] { return passes.GetData().GetPass(GBufferAnimatedPassID); },
+			.initializeResources =
+				[](std::span<const PVEntry> brushes, std::span<const FrameResourceHandle> handles, auto& transferContext)
+				{
+					auto itr = handles.begin();
+
+					for (auto&& [sortID, brush, gameObject, occlusionID, LODlevel] : brushes)
+					{
+						auto poseState = GetPoseState(*gameObject);
+						transferContext.CreateResource(*(itr++), sizeof(float4x4) * poseState->JointCount, poseState->CurrentPose);
+					}
+				},
+
+			.layout	= FlexKit::DeviceLayout::DeviceLayout_Common,
+			.access	= FlexKit::DeviceAccessState::DASNonPixelShaderResource,
+			.max	= 64,
+			.pool	= &UAVPool
+		};
+
+		return frameGraph.AllocateResourceSet(allocation);
+	}
+
+
+	/************************************************************************************************/
+
+
 	OcclusionCullingResults& WorldRender::OcclusionCulling(
 				UpdateDispatcher&				dispatcher,
 				FrameGraph&						frameGraph,
-				EntityConstants&				entityConstants,
+				BrushConstants&					brushConstants,
 				GatherPassesTask&				passes,
 				CameraHandle					camera,
 				ReserveConstantBufferFunction&	reserveConstants,
@@ -1062,16 +1108,16 @@ namespace FlexKit
 		auto& occlusion = frameGraph.AddNode<OcclusionCullingResults>(
 			OcclusionCullingResults{
 				passes,
-				entityConstants,
+				brushConstants,
 				reserveConstants,
 			},
 			[&](FrameGraphNodeBuilder& builder, OcclusionCullingResults& data)
 			{
-				const uint2 WH          = builder.GetRenderSystem().GetTextureWH(depthBuffer.Get());
-				const uint MipLevels    = log2(Max(WH[0], WH[1]));
+				const uint2 WH			= builder.GetRenderSystem().GetTextureWH(depthBuffer.Get());
+				const uint MipLevels	= log2(Max(WH[0], WH[1]));
 
-				data.depthBuffer    = builder.AcquireVirtualResource(GPUResourceDesc::DepthTarget(WH, DeviceFormat::D32_FLOAT), DASDEPTHBUFFERWRITE);
-				data.ZPyramid       = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT, true, MipLevels), DASUAV);
+				data.depthBuffer	= builder.AcquireVirtualResource(GPUResourceDesc::DepthTarget(WH, DeviceFormat::D32_FLOAT), DASDEPTHBUFFERWRITE);
+				data.ZPyramid		= builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT, true, MipLevels), DASUAV);
 
 				builder.SetDebugName(data.depthBuffer, "depthBuffer");
 				builder.SetDebugName(data.ZPyramid, "ZPyramid");
@@ -1123,9 +1169,9 @@ namespace FlexKit
 					auto& meshes = brushes[I]->meshes;
 					for(auto mesh : meshes)
 						{
-							auto* const triMesh = GetMeshResource(mesh);
-							const auto& lod     = triMesh->GetLowestLoadedLod();
-							const auto& lodIdx  = triMesh->GetLowestLodIdx();
+							auto* const triMesh	= GetMeshResource(mesh);
+							const auto& lod		= triMesh->GetLowestLoadedLod();
+							const auto& lodIdx	= triMesh->GetLowestLodIdx();
 
 						if (triMesh != prevMesh)
 						{

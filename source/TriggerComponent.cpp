@@ -106,26 +106,26 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TriggerData::Trigger(uint32_t id, void* args, uint64_t ID)
+	void TriggerData::Trigger(uint32_t id, void* args, uint64_t argID)
 	{
 		const size_t end = triggerIDs.size();
 
 		for (size_t I = 0; I < end; I++)
 			if (triggerIDs[I] == id)
-				triggers[I](args, ID);
+				triggers[I](args, argID);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void TriggerData::TriggerSlot(uint32_t id, void* args, uint64_t ID)
+	void TriggerData::TriggerSlot(uint32_t id, void* args, uint64_t argID)
 	{
 		const size_t end = triggerIDs.size();
 
 		for (size_t I = 0; I < end; I++)
 			if (actionSlotIDs[I] == id)
-				actionSlots[I](args, ID);
+				actionSlots[I](args, argID);
 	}
 
 

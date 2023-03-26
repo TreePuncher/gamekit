@@ -10,6 +10,7 @@
 #include <DebugUI.h>
 #include <imgui.h>
 #include <..\source\Signals.h>
+#include <CameraUtilities.h>
 
 using namespace FlexKit;
 
@@ -52,11 +53,9 @@ public:
 		constantBuffer	{ framework.GetRenderSystem().CreateConstantBuffer(64 * MEGABYTE, false) },
 		vertexBuffer	{ framework.GetRenderSystem().CreateVertexBuffer(64 * MEGABYTE, false) },
 		runOnceQueue	{ framework.core.GetBlockMemory() },
-		debugUI			{ framework.core.RenderSystem, framework.core.GetBlockMemory() },
-
-		inputMap		{ framework.core.GetBlockMemory() }
+		debugUI			{ framework.core.RenderSystem, framework.core.GetBlockMemory() }
 	{
-			auto& rs = IN_framework.GetRenderSystem();
+		auto& rs = IN_framework.GetRenderSystem();
 		rs.RegisterPSOLoader(DRAW_LINE_PSO, { &rs.Library.RS6CBVs4SRVs, CreateDrawLineStatePSO });
 		rs.RegisterPSOLoader(DRAW_LINE3D_PSO, { &rs.Library.RS6CBVs4SRVs, CreateDraw2StatePSO });
 
@@ -65,6 +64,7 @@ public:
 		RegisterMathTypes(GetScriptEngine(), framework.core.GetBlockMemory());
 		RegisterRuntimeAPI(GetScriptEngine());
 
+		AddAssetFile(R"(assets\shapeKeyTestAsset.gameres)");
 
 		if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
 			renderWindow = std::move(res.value());
@@ -75,12 +75,54 @@ public:
 
 		renderWindow.Handler->Subscribe(sub);
 		renderWindow.SetWindowTitle("Shape Key Test");
+
+		activeCamera = orbitCamera.AddView<OrbitCameraBehavior>();
+		SetCameraAspectRatio(activeCamera, 1920.0f / 1080.0f);
+
+		// Load Model
+		auto meshHandle = FlexKit::GetMesh("Player.mesh");
+		if (meshHandle == InvalidHandle)
+			throw std::runtime_error("Failed to setup scene");
+
+		auto& brushView		= object.AddView<BrushView>(meshHandle);
+		auto& materialView	= object.AddView<MaterialView>();
+		auto& skeleton		= object.AddView<SkeletonView>(3568);
+		auto& animator		= object.AddView<AnimatorView>();
+
+		brushView.SetMaterial(materialView);
+		materialView.Add2Pass(GBufferAnimatedPassID);
+		//materialView.Add2Pass(GBufferPassID);
+		scene.AddGameObject(object);
+		SetBoundingSphereFromMesh(object);
+
+
+		// Create 3 point lighting
+		{
+			auto& pointLightNode = light1.AddView<SceneNodeView>();
+			auto& pointLightView = light1.AddView<PointLightView>(float3{ 1, 1, 1 }, 1000, 20, pointLightNode.node, true);
+			pointLightNode.SetPosition({ 10, 10, -5 });
+			scene.AddGameObject(light1, pointLightNode);
+		}
+		{
+			auto& pointLightNode = light2.AddView<SceneNodeView>();
+			auto& pointLightView = light2.AddView<PointLightView>(float3{ 1, 1, 1 }, 1000, 20, pointLightNode.node, true);
+			pointLightNode.SetPosition({ -10, 10, -5 });
+			scene.AddGameObject(light2, pointLightNode);
+		}
+		{
+			auto& pointLightNode = light3.AddView<SceneNodeView>();
+			auto& pointLightView = light3.AddView<PointLightView>(float3{ 1, 1, 1 }, 1000, 20, pointLightNode.node, true);
+			pointLightNode.SetPosition({ 0, 10, 10 });
+			scene.AddGameObject(light3, pointLightNode);
+		}
 	}
+
 
 	~ShapeKeyTest() final
 	{
-
+		scene.ClearScene();
 	}
+
 
 	FlexKit::UpdateTask* Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT) final
 	{
@@ -103,6 +145,7 @@ public:
 		return nullptr;
 	}
 
+
 	FlexKit::UpdateTask* Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph) final
 	{
 		frameGraph.AddOutput(renderWindow.GetBackBuffer());
@@ -118,6 +161,42 @@ public:
 		ReserveConstantBufferFunction	reserveCB = FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory());
 		ReserveVertexBufferFunction		reserveVB = FlexKit::CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory());
 
+		static double T = 0.0;
+		T += dT;
+
+		auto& transformUpdate	= FlexKit::QueueTransformUpdateTask(dispatcher);
+		auto& cameraUpdate		= cameras.QueueCameraUpdate(dispatcher);
+		auto& orbitCameraUpdate = QueueOrbitCameraUpdateTask(dispatcher, *orbitCamera.GetView<OrbitCameraBehavior>(), renderWindow.mouseState, dT);
+
+		transformUpdate.AddInput(orbitCameraUpdate);
+		cameraUpdate.AddInput(transformUpdate);
+
+		FlexKit::DrawSceneDescription drawSceneDesc{
+			.camera = activeCamera,
+			.scene	= scene,
+			.dt		= dT,
+			.t		= T,
+
+			.gbuffer = gbuffer,
+
+			.reserveVB = reserveVB, 
+			.reserveCB = reserveCB, 
+
+			.transformDependency	= transformUpdate,
+			.cameraDependency		= cameraUpdate
+		};
+
+		auto res = renderer.DrawScene(
+			dispatcher,
+			frameGraph,
+			drawSceneDesc,
+			targets,
+			core.GetBlockMemory(),
+			core.GetTempMemoryMT()
+		);
+
+		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.skinnedDraws, reserveCB, reserveVB);
+
 		debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow.GetBackBuffer());
 
 		FlexKit::PresentBackBuffer(frameGraph, renderWindow);
@@ -125,46 +204,62 @@ public:
 		return nullptr;
 	}
 
+
 	void PostDrawUpdate(FlexKit::EngineCore&, double dT) final
 	{
 		renderWindow.Present(1, 0);
 	}
 
+
 	bool EventHandler(FlexKit::Event evt) final
 	{
-		switch (evt.InputSource)
+		if(!OrbitCameraHandleEvent(orbitCamera, evt))
 		{
-			case Event::Keyboard:
+			switch (evt.InputSource)
 			{
-				switch (evt.Action)
+				case Event::Keyboard:
 				{
-				case Event::Pressed:
+					switch (evt.Action)
+					{
+						case Event::Pressed:
+						{
+							switch (evt.mData1.mKC[0])
+							{
+							case KC_M:
+								renderWindow.EnableCaptureMouse(true);
+								return true;
+							case KC_ESC:
+								framework.quit = true;
+								return true;
+							}
+						}	break;
+						case Event::Release:
+						{
+						}	break;
+					}
+				default:
+					if ((evt.InputSource == FlexKit::Event::Keyboard && evt.mData1.mKC[0] == FlexKit::KC_ESC) ||
+						(evt.InputSource == FlexKit::Event::E_SystemEvent && evt.Action == FlexKit::Event::Exit))
+					{
+						framework.quit = true;
+						return true;
+					}
+					else
+						return debugUI.HandleInput(evt);
+				}	break;
+				case Event::Mouse:
 				{
 				}	break;
-				case Event::Release:
-				{
-				}	break;
-			default:
-				if ((evt.InputSource == FlexKit::Event::Keyboard && evt.mData1.mKC[0] == FlexKit::KC_ESC) ||
-					(evt.InputSource == FlexKit::Event::E_SystemEvent && evt.Action == FlexKit::Event::Exit))
-				{
-					framework.quit = true;
-					return true;
-				}
-				else
-					return debugUI.HandleInput(evt);
-			}	break;
-			case Event::Mouse:
-			{
-			}	break;
 			}
-		}
 
-		if(!renderWindow.mouseCapture)
-			return debugUI.HandleInput(evt);
-		else
-			return false;
+			if(!renderWindow.mouseCapture)
+				return debugUI.HandleInput(evt);
+			else
+				return false;
 		}
+		else return true;
+	}
+
 
 	FlexKit::AnimatorComponent				animators;
 	FlexKit::CameraComponent				cameras;
@@ -194,13 +289,15 @@ public:
 	FlexKit::WorldRender					renderer;
 	FlexKit::TextureStreamingEngine			textureStreamingEngine;
 
+	FlexKit::Scene							scene;
+
 	FlexKit::CameraHandle					activeCamera = FlexKit::InvalidHandle;
+	FlexKit::GameObject						orbitCamera;
 
-	FlexKit::InputMap						inputMap;
-	FlexKit::GameObject						playerObject;
-	FlexKit::GameObject						character;
-
-	FlexKit::GameObject						floorCollider;
+	FlexKit::GameObject						object;
+	FlexKit::GameObject						light1;
+	FlexKit::GameObject						light2;
+	FlexKit::GameObject						light3;
 
 	FlexKit::RunOnceQueue<void(FlexKit::UpdateDispatcher&, FlexKit::FrameGraph&)>	runOnceQueue;
 
