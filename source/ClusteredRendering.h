@@ -10,7 +10,7 @@ namespace FlexKit
 
 
 	struct AnimationPoseUpload;
-	struct EntityConstants;
+	struct BrushConstants;
 
 
 	/************************************************************************************************/
@@ -311,7 +311,8 @@ namespace FlexKit
 								const CameraHandle				camera,
 								GBuffer&						gbuffer,
 								ResourceHandle					depthTarget,
-								EntityConstants& entityConstants,
+								BrushConstants&					entityConstants,
+								const ResourceAllocation&		animationResources,
 								ReserveConstantBufferFunction	reserveCB,
 								iAllocator*						allocator,
 								AnimationPoseUpload*			poses = nullptr);

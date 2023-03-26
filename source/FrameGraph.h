@@ -467,6 +467,11 @@ namespace FlexKit
 			return renderSystem.GetDeviceResource(handle);
 		}
 
+		ID3D12Resource* GetDeviceResource(FrameResourceHandle handle) const
+		{
+			return renderSystem.GetDeviceResource(GetResource(handle));
+		}
+
 
 		/************************************************************************************************/
 
@@ -1163,6 +1168,12 @@ namespace FlexKit
 		}
 
 
+		void AddResourceTask(iWork& workItem)
+		{
+			pendingTasks.AddWork(workItem);
+			threads.AddWork(&workItem);
+		}
+
 		void WaitFor()
 		{
 			pendingTasks.JoinLocal();
@@ -1281,6 +1292,7 @@ namespace FlexKit
 		FrameResourceHandle	DepthRead			(ResourceHandle);
 		FrameResourceHandle	DepthTarget			(ResourceHandle, DeviceAccessState finalState = DeviceAccessState::DASDEPTHBUFFERWRITE);
 
+		FrameResourceHandle	AcquireResourceHandle(DeviceAccessState, DeviceLayout, PoolAllocatorInterface* = nullptr);
 		FrameResourceHandle	AcquireVirtualResource(const GPUResourceDesc& desc, DeviceAccessState, VirtualResourceScope lifeSpan = VirtualResourceScope::Temporary);
 		FrameResourceHandle	AcquireVirtualResource(PoolAllocatorInterface& allocator, const GPUResourceDesc& desc, DeviceAccessState, VirtualResourceScope lifeSpan = VirtualResourceScope::Temporary);
 
@@ -1493,6 +1505,26 @@ namespace FlexKit
 		using GetPassPVS_TY		= TypeErasedCallable<std::span<TY_PVSElements> (TY_PassData&)>;
 		using GetPassData_TY	= TypeErasedCallable<Vector<TY_PassData> (iAllocator&)>;
 	};
+
+
+	struct ResourceAllocation
+	{
+		Vector<FrameResourceHandle> handles;
+		FrameGraphNodeHandle		node;
+	};
+
+	template<typename FillData_TY, typename GetPass_TY>
+	struct PassDrivenResourceAllocation
+	{
+		GetPass_TY				getPass;
+		FillData_TY				initializeResources;
+
+		DeviceLayout			layout;
+		DeviceAccessState		access;
+		size_t					max			= 16;
+		PoolAllocatorInterface* pool		= nullptr;
+	};
+
 
 	FLEXKITAPI class FrameGraph
 	{
@@ -1842,6 +1874,178 @@ namespace FlexKit
 			builder.BuildNode(this);
 
 			return start;
+		}
+
+		template<typename DESC_TY>
+		const ResourceAllocation& AllocateResourceSet(DESC_TY& desc)
+			requires requires(DESC_TY& temp)
+			{
+				{ temp.getPass() } -> std::convertible_to<std::span<const PVEntry>>;
+			}
+		{
+			struct ResourceInitializationContext;
+
+			struct InitialData
+			{
+				void*					_ptr;
+				size_t					size;
+				FrameResourceHandle		handle;
+			};
+
+			struct NodeData
+			{
+				TypeErasedCallable<std::span<const PVEntry>()>	getPass;
+				TypeErasedCallable<void (std::span<const PVEntry>, std::span<FrameResourceHandle>, ResourceInitializationContext&)>	initializeResources;
+
+				ResourceAllocation		resources;
+				Vector<InitialData>		resourceAllocations;
+				size_t					uploadSize = 0;
+				PoolAllocatorInterface* pool;
+
+				DeviceAccessState			access;
+				FrameGraphResourceContext&	resourceContext;
+				UploadSegment				uploadSegment;
+			};
+
+			auto nodeHandle	= FrameGraphNodeHandle{ nodes.size() }; 
+			NodeData& data	= memory->allocate_aligned<NodeData>(
+								desc.getPass,
+								desc.initializeResources,
+								ResourceAllocation	{ memory, nodeHandle },
+								Vector<InitialData>	{ memory },
+								0,
+								desc.pool,
+								desc.access,
+								resourceContext);
+
+			data.resourceAllocations.reserve(desc.max);
+
+			struct ResourceInitializationContext
+			{
+				FrameResources& frameResources;
+				NodeData*		nodeData;
+
+				void CreateResource(FrameResourceHandle dstResource, size_t resourceSize, void* initialData)
+				{
+					nodeData->resourceAllocations.emplace_back(initialData, resourceSize, dstResource);
+
+					std::atomic_ref ref{ frameResources.virtualResourceCount };
+					ref++;
+
+					auto [resourceHandle, overlap] = nodeData->pool->Acquire(GPUResourceDesc::StructuredResource(resourceSize));
+
+					auto frameObject				= frameResources.GetResourceObject(dstResource);
+					frameObject->shaderResource		= resourceHandle;
+					frameObject->pool				= nodeData->pool;
+					frameObject->virtualState		= VirtualResourceState::Virtual_Created;
+
+					nodeData->uploadSize += resourceSize;
+				}
+			};
+
+			static_assert(
+				requires(DESC_TY desc)
+				{
+					desc.initializeResources(
+						std::span<const PVEntry>{},
+						std::span<FrameResourceHandle>{},
+						std::declval<ResourceInitializationContext&>());
+				}, "Invalid resourceInitializer!");
+
+			auto nodeIdx	= nodes.emplace_back(
+				nodeHandle,
+				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& tasks_out, FlexKit::WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
+				{
+					NodeData* nodeData = reinterpret_cast<NodeData*>(node.nodeData);
+
+					const auto	passPVS = nodeData->getPass();
+					const auto	size	= passPVS.size();
+
+					if (!size)
+						return;
+
+					auto& threadedTask = CreateWorkItem(
+						[nodeData, &resources, passPVS](auto& tempAllocator)
+						{
+							ResourceInitializationContext transferCtx{ resources, nodeData };
+							nodeData->initializeResources(passPVS, nodeData->resources.handles, transferCtx);
+
+							auto uploadSegment = resources.renderSystem._ReserveDirectUploadSpace(nodeData->uploadSize, 256);
+							size_t offset = 0;
+
+							// Copy Data into resources, insert barrier/transition
+							for (auto&& [_ptr, size, resource] : nodeData->resourceAllocations)
+							{
+								memcpy(uploadSegment.buffer + offset, _ptr, size);
+								offset += size;
+							}
+
+							nodeData->uploadSegment = uploadSegment;
+
+						}, tempAllocator);
+
+					nodeData->resourceContext.AddResourceTask(threadedTask);
+
+					FrameGraphNodeWorkItem newWorkItem;
+					newWorkItem.node		= &node;
+					newWorkItem.workWeight	= size;
+
+					newWorkItem.action =
+						[nodeData](
+							FrameGraphNode& node,
+							FrameResources& resources,
+							Context&		ctx,
+							iAllocator&		localAllocator)
+						{
+							ctx.BeginEvent_DEBUG("Initiate Resources");
+
+							auto uploadSegment = nodeData->uploadSegment;
+							size_t offset = 0;
+
+							if (nodeData->resourceAllocations.size() == 0 && uploadSegment.uploadSize == 0)
+							{
+								FK_LOG_ERROR("Failed to get allocation upload segment");
+								return;
+							}
+
+							// Insert Barrier
+							for (auto&& [_ptr, size, resource] : nodeData->resourceAllocations)
+								ctx.AddBufferBarrier(resources.GetResource(resource), DeviceAccessState::DASCommon, DeviceAccessState::DASCopyDest, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_Copy);
+
+							// Copy Data into resources
+							for (auto&& [_ptr, size, resource] : nodeData->resourceAllocations)
+							{
+								ctx.CopyBufferRegion(
+									resources.GetDeviceResource(resource), uploadSegment.resource,	// dst_res, src_res
+									size,															// copy size
+									0, uploadSegment.offset + offset);								// dst_offset, src offset
+
+								offset += size;
+							}
+
+							for (auto&& [_ptr, size, resource] : nodeData->resourceAllocations)
+								ctx.AddBufferBarrier(resources.GetResource(resource), DeviceAccessState::DASCopyDest, nodeData->access, DeviceSyncPoint::Sync_Copy, DeviceSyncPoint::Sync_All);
+
+							ctx.EndEvent_DEBUG();
+						};
+
+					tasks_out.emplace_back(std::move(newWorkItem));
+				},
+				&data,
+				memory);
+
+			FrameGraphNodeBuilder builder(nodes, dataDependencies, &resources, nodes[nodeIdx], resourceContext, memory);
+
+			data.resources.handles.reserve(desc.max);
+
+			for (size_t i = 0; i < desc.max; i++)
+			{
+				auto resource = builder.AcquireResourceHandle(desc.access, desc.layout);
+				data.resources.handles.push_back(resource);
+			}
+			builder.BuildNode(this);
+
+			return data.resources;
 		}
 
 		void AddMemoryPool		(PoolAllocatorInterface* poolAllocator);

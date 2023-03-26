@@ -3602,6 +3602,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	UploadSegment Context::ReserveDirectUploadSpace(size_t size, size_t alignment)
+	{
+		return renderSystem->_ReserveDirectUploadSpace(size, alignment);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void Context::SetUAVRead() 
 	{
 		FK_ASSERT(0);
@@ -4052,10 +4061,111 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	UploadBuffer::UploadBuffer(UploadBuffer&& rhs)
+	{
+		Release();
+
+		Position		= rhs.Position;
+		Size			= rhs.Size;
+		deviceBuffer	= rhs.deviceBuffer;
+		Buffer			= rhs.Buffer;
+
+		rhs.Position		= 0;
+		rhs.Size			= 0;
+		rhs.deviceBuffer	= nullptr;
+		rhs.Buffer			= nullptr;
+	}
+
+
+	UploadBuffer& UploadBuffer::operator = (UploadBuffer&& rhs) noexcept
+	{
+		Release();
+
+		Position		= rhs.Position;
+		Size			= rhs.Size;
+		deviceBuffer	= rhs.deviceBuffer;
+		Buffer			= rhs.Buffer;
+
+		rhs.Position		= 0;
+		rhs.Size			= 0;
+		rhs.deviceBuffer	= nullptr;
+		rhs.Buffer			= nullptr;
+
+		return *this;
+	}
+
+
+	UploadBuffer::~UploadBuffer()
+	{
+		Release();
+	}
+
+
+	/************************************************************************************************/
+
+
+	std::expected<UploadSegment, ReserveErrors> UploadBuffer::Reserve(const size_t reserveSize, const size_t alignment)
+	{
+		// Not enough remaining Space in Buffer GOTO Beginning if space in front of upload buffer is available
+		if	(Position + reserveSize > Size && Last != 0)
+			Position = 0;
+
+		auto GetOffset = [&]() {
+			auto offset = alignment - (Position & (alignment - 1));
+			return (offset == alignment) ? 0 : offset;
+		};
+
+		// Buffer too Small
+		if (Position + reserveSize + GetOffset() > Size)
+			return std::unexpected{ ReserveErrors::OutOfSpace };
+
+		if (Last > Position)
+		{	// Potential Overlap condition
+			if (Position + reserveSize + GetOffset() >= Last)
+				return std::unexpected{ ReserveErrors::OutOfSpace };  // Resize Buffer and then upload
+
+			const auto alignmentOffset  = GetOffset();
+			char*           buffer      = Buffer + Position + alignmentOffset;
+			const size_t    offset      = Position + alignmentOffset;
+
+			Position += reserveSize + alignmentOffset;
+
+			return UploadSegment{
+				.offset		= offset,
+				.uploadSize = reserveSize,
+				.buffer		= buffer,
+				.resource	= deviceBuffer
+			};
+		}
+
+		if(Last <= Position)
+		{	// Safe, Do Upload
+			const auto alignmentOffset = GetOffset();
+
+			char* buffer		= Buffer + Position + alignmentOffset;
+			size_t offset		= Position + alignmentOffset;
+			Position			+= reserveSize + alignmentOffset;
+
+			return UploadSegment{
+				.offset		= offset,
+				.uploadSize = reserveSize,
+				.buffer		= buffer,
+				.resource	= deviceBuffer };
+		}
+
+		return std::unexpected{ ReserveErrors::Unknown };
+	}
+
+
+	/************************************************************************************************/
+
+
 	ID3D12Resource* UploadBuffer::Resize(const size_t size)
 	{
+		if(deviceBuffer)
+			deviceBuffer->Unmap(0, 0);
+
 		auto previousBuffer = deviceBuffer;
-		deviceBuffer->Unmap(0, 0);
 
 		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(size);
 		D3D12_HEAP_PROPERTIES HEAP_Props	= CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
@@ -4836,7 +4946,6 @@ namespace FlexKit
 			vendorID = DeviceVendor::UNKNOWN;
 		}	
 
-		int x = 0;
 
 		FINALLY
 			if (!InitiateComplete)
@@ -4873,6 +4982,8 @@ namespace FlexKit
 
 		RegisterPSOLoader(CLEARBUFFERPSO, { &Library.ClearBuffer, CreateClearBufferPSO });
 		QueuePSOLoad(CLEARBUFFERPSO);
+
+		directUploadBuffer = UploadBuffer(pDevice);
 
 		SetDebugName(DefaultTexture, "Default Texture");
 
@@ -4911,6 +5022,7 @@ namespace FlexKit
 		PipelineStates.ReleasePSOs();
 		ReadBackTable.Release();
 		Queries.Release();
+		directUploadBuffer.Release();
 
 		Library.Release();
 
@@ -8932,6 +9044,34 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	UploadSegment RenderSystem::_ReserveDirectUploadSpace(size_t size, size_t alignment)
+	{
+		std::scoped_lock lock{ directUploadBufferMutex };
+		auto res = directUploadBuffer.Reserve(size, alignment);
+
+		if (res)
+			return res.value();
+		else if(res.error() == ReserveErrors::OutOfSpace)
+		{
+			auto oldBuffer = directUploadBuffer.Resize(directUploadBuffer.Size * 2);
+
+			if (oldBuffer)
+			{
+				FreeList_GraphicsQueue.emplace_back(
+					oldBuffer,
+					graphicsSubmissionCounter.load(std::memory_order_relaxed));
+			}
+
+			return directUploadBuffer.Reserve(size, alignment).value_or(UploadSegment{});
+		}
+
+		return UploadSegment{};
+	}
+
+
+	/************************************************************************************************/
+
+
 	Context& RenderSystem::GetCommandList(std::optional<SyncPoint> ticket)
 	{
 		const uint64_t completedCounter	= Fence->GetCompletedValue();
@@ -10190,8 +10330,8 @@ namespace FlexKit
 		UploadSegment upload = ReserveUploadBuffer(*RS, byteSize);
 		MoveBuffer2UploadBuffer(upload, (const byte*)buffer, byteSize);
 
-		auto deviceResource = RS->GetDeviceResource(bufferResource);
-		auto ctx = RS->_GetCopyContext(copyCtx);
+		auto	deviceResource	= RS->GetDeviceResource(bufferResource);
+		auto&	ctx				= RS->_GetCopyContext(copyCtx);
 
 		ctx.CopyBuffer(deviceResource, 0, upload.resource, upload.offset, upload.uploadSize);
 
@@ -10408,8 +10548,8 @@ namespace FlexKit
 		const uint64_t frameIdx	= renderSystem.graphicsSubmissionCounter;
 		const uint64_t size		= renderSystem.GetAllocationSize(desc);
 
-		const size_t requestedBlockCount = (size / blockSize) + ((size % blockSize == 0) ? 0 : 1);
-		auto allocation = GetMemory(requestedBlockCount, frameIdx, Clear);
+		const size_t requestedBlockCount	= (size / blockSize) + ((size % blockSize == 0) ? 0 : 1);
+		auto allocation						= GetMemory(requestedBlockCount, frameIdx, Clear);
 
 		if (allocation.offset / blockSize > blockCount) {
 			FK_LOG_ERROR("MemoryPoolAllocator Allocated a block beyond range!");

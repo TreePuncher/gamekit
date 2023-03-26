@@ -608,7 +608,33 @@ namespace FlexKit
 		std::unreachable();
 	}
 
-	FrameResourceHandle  FrameGraphNodeBuilder::AcquireVirtualResource(const GPUResourceDesc& desc, DeviceAccessState access, VirtualResourceScope lifeSpan)
+
+	/************************************************************************************************/
+
+
+	FrameResourceHandle	FrameGraphNodeBuilder::AcquireResourceHandle(DeviceAccessState access, DeviceLayout layout, PoolAllocatorInterface* pool)
+	{
+		FrameObject virtualObject		= FrameObject::VirtualObject(*allocator);
+		virtualObject.shaderResource	= InvalidHandle;
+		virtualObject.dimensions		= TextureDimension::Buffer;
+		virtualObject.layout			= layout;
+		virtualObject.access			= access;
+		virtualObject.virtualState		= VirtualResourceState::Virtual_Null;
+		virtualObject.pool				= pool;
+
+		auto virtualResourceHandle	= FrameResourceHandle{ resources->objects.emplace_back(virtualObject) };
+		auto& object_ref			= resources->objects[virtualResourceHandle];
+		object_ref.handle			= virtualResourceHandle;
+		object_ref.lastUsers.push_back(node.handle);
+
+		return virtualResourceHandle;
+	}
+
+
+	/************************************************************************************************/
+
+
+	FrameResourceHandle	FrameGraphNodeBuilder::AcquireVirtualResource(const GPUResourceDesc& desc, DeviceAccessState access, VirtualResourceScope lifeSpan)
 	{
 		ProfileFunction();
 
@@ -1074,40 +1100,48 @@ namespace FlexKit
 		const auto r_begin	= orderedWorkList.end();
 		const auto r_end	= orderedWorkList.begin();
 
-		for (auto& resource : resources.objects)
-		{
-			if (resource.type == OT_Virtual &&
-				resource.virtualState == VirtualResourceState::Virtual_Created)
+		auto releaseVirtualObjects =
+			[&]
 			{
-				auto& users = resource.lastUsers;
-
-				if (r_begin != r_end)
+				for (auto& resource : resources.objects)
 				{
-					auto r_itr	= r_begin - 1;
-
-					for (; r_end <= r_itr; r_itr--)
+					if (resource.type			== OT_Virtual &&
+						resource.virtualState	== VirtualResourceState::Virtual_Created &&
+						resource.pool			!= nullptr)
 					{
-						const auto handle = (*r_itr)->handle;
-						if (std::find(users.begin(), users.end(), handle) != users.end())
-							break;
-					}
+						auto& users = resource.lastUsers;
 
-					if (r_itr >= orderedWorkList.begin())
-					{
-						FrameObjectLink outputObject;
-						outputObject.neededAccess = resource.access;
-						outputObject.neededLayout = resource.layout;
-						outputObject.source = InvalidHandle;
-						outputObject.handle = resource.handle;
+						if (r_begin != r_end)
+						{
+							auto r_itr	= r_begin - 1;
 
-						(*r_itr)->retiredObjects.push_back(outputObject);
+							for (; r_end <= r_itr; r_itr--)
+							{
+								const auto handle = (*r_itr)->handle;
+
+								if (std::find(users.begin(), users.end(), handle) != users.end())
+									break;
+							}
+
+							if (r_itr >= orderedWorkList.begin())
+							{
+								FrameObjectLink outputObject;
+								outputObject.neededAccess = resource.access;
+								outputObject.neededLayout = resource.layout;
+								outputObject.source = InvalidHandle;
+								outputObject.handle = resource.handle;
+
+								(*r_itr)->retiredObjects.push_back(outputObject);
+							}
+						}
+
+						resource.virtualState = VirtualResourceState::Virtual_Released;
+						resource.pool->Release(resource.shaderResource, false);
 					}
 				}
+		};
 
-				resource.virtualState = VirtualResourceState::Virtual_Released;
-				resource.pool->Release(resource.shaderResource, false);
-			}
-		}
+		releaseVirtualObjects();
 
 		FlexKit::WorkBarrier barrier{ threads, &threadLocalAllocator };
 
@@ -1177,7 +1211,7 @@ namespace FlexKit
 					{
 						ProfileFunction();
 
-				item(ctx, resources, tempAllocator);
+						item(ctx, resources, tempAllocator);
 					});
 				ctx.FlushBarriers();
 			}
@@ -1217,7 +1251,8 @@ namespace FlexKit
 
 		if (barrier.GetPendingWorkCount() != 0)
 			DebugBreak();
-		
+
+		releaseVirtualObjects();
 		UpdateResourceFinalState();
 
 		if(contexts.size())

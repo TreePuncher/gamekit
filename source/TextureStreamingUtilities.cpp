@@ -445,7 +445,7 @@ namespace FlexKit
 			FrameGraph&						frameGraph,
 			CameraHandle					camera,
 			uint2							renderTargetWH,
-			EntityConstants&				entityConstants,
+			BrushConstants&					brushConstants,
 			GatherPassesTask&				passes,
 			GatherSkinnedTask&				skinnedModelsGather,
 			ReserveConstantBufferFunction&	reserveCB,
@@ -484,11 +484,7 @@ namespace FlexKit
 				ctx.AddUAVBarrier(resources.GetResource(data.feedbackCounters));
 			});
 
-		auto getPass =
-			[&passTable = passes.GetData()] () -> std::span<const PVEntry>
-			{
-				return passTable.GetPass(GBufferPassID).value_or(nullptr)->pvs;
-			};
+		auto getPass = [&passTable = passes.GetData()] () -> std::span<const PVEntry> { return passTable.GetPass(GBufferPassID); };
 
 		PassDescription<TextureFeedbackPass_Data> pass =
 		{
@@ -505,14 +501,14 @@ namespace FlexKit
 			auto depthBufferDesc			= GPUResourceDesc::DepthTarget({ 128, 128 }, DeviceFormat::D32_FLOAT);
 			depthBufferDesc.denyShaderUsage = true;
 
-			builder.ReadConstantBuffer(entityConstants.constants);
+			builder.ReadConstantBuffer(brushConstants.constants);
 
 			data.feedbackBuffers[0]			= builder.WriteTransition(initiateFeedbackPass.feedbackBuffers[0], DASUAV);
 			data.feedbackCounters			= builder.WriteTransition(initiateFeedbackPass.feedbackCounters, DASUAV);
 			data.feedbackDepth				= builder.WriteTransition(initiateFeedbackPass.feedbackDepth, DASDEPTHBUFFERWRITE);
 		};
 		
-		auto passDrawFN = [&entityConstants = entityConstants, renderTargetWH](const auto begin, const auto end, std::span<const PVEntry> pvs, TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+		auto passDrawFN = [&brushConstants, renderTargetWH](const auto begin, const auto end, std::span<const PVEntry> pvs, TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
 		{
 			ctx.BeginEvent_DEBUG("Texture feedback pass");
 
@@ -528,7 +524,7 @@ namespace FlexKit
 			};
 
 			auto& materials			= MaterialComponent::GetComponent();
-			auto& constantBuffer	= entityConstants.GetConstantBuffer();
+			auto& constantBuffer	= brushConstants.GetConstantBuffer();
 			auto constants			= FlexKit::CreateCBIterator<Brush::VConstantsLayout>(constantBuffer);
 
 			const size_t bufferSize =
@@ -580,7 +576,7 @@ namespace FlexKit
 				ctx.BeginEvent_DEBUG("Draw entity");
 
 				auto entityIdx					= std::distance(pvs.begin(), itr);
-				auto constantsBegin				= entityConstants.entityTable[entityIdx];
+				auto constantsBegin				= brushConstants.entityTable[entityIdx];
 				const auto& material			= materials[itr->brush->material];
 
 				for (size_t I = 0; I < itr->brush->meshes.size(); I++)

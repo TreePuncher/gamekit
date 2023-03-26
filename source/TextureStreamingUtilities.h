@@ -12,7 +12,7 @@ namespace FlexKit
 
 
 	class RenderSystem;
-	struct EntityConstants;
+	struct BrushConstants;
 
 
 	/************************************************************************************************/
@@ -378,7 +378,7 @@ namespace FlexKit
 			FrameGraph&						frameGraph,
 			CameraHandle					camera,
 			uint2							renderTargetWH,
-			EntityConstants&				constants,
+			BrushConstants&				constants,
 			GatherPassesTask&				passes,
 			GatherSkinnedTask&				skinnedModelsGather,
 			ReserveConstantBufferFunction&	reserveCB,

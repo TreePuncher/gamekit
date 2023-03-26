@@ -360,6 +360,9 @@ namespace FlexKit
 		if (triggerless)
 		{
 			auto& triggers = gameObject.AddView<TriggerView>();
+
+			triggers->CreateTrigger(AddedToSceneID);
+
 			triggers->CreateSlot(LightSetRaidusSlotID, [&gameObject](void* _ptr, uint64_t typeID)
 				{
 					FK_ASSERT(typeID == GetTypeGUID(float));
@@ -695,7 +698,7 @@ namespace FlexKit
 
 		for (auto visHandle : sceneEntities)
 		{
-			if (!visHandle)
+			if (visHandle == InvalidHandle)
 				continue;
 
 			auto entity		= visables[visHandle].entity;

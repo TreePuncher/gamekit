@@ -113,7 +113,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void OrbitCameraBehavior::HandleEvent(const FlexKit::Event& evt)
+	bool OrbitCameraBehavior::HandleEvent(const FlexKit::Event& evt)
 	{
 		if (evt.InputSource == FlexKit::Event::Keyboard)
 		{
@@ -124,29 +124,33 @@ namespace FlexKit
 			case KC_W:
 			case OCE_MoveForward:
 				keyStates.forward	= state;
-				break;
+				return true;
 			case KC_S:
 			case OCE_MoveBackward:
 				keyStates.backward	= state;
-				break;
+				return true;
 			case KC_A:
 			case OCE_MoveLeft:
 				keyStates.left		= state;
-				break;
+				return true;
 			case KC_D:
 			case OCE_MoveRight:
 				keyStates.right		= state;
-				break;
+				return true;
 			case KC_E:
 			case OCE_MoveUp:
 				keyStates.up		= state;
-				break;
+				return true;
 			case KC_Q:
 			case OCE_MoveDown:
 				keyStates.down		= state;
-				break;
+				return true;
+			default:
+				return false;
 			}
 		}
+
+		return false;
 	}
 
 
@@ -233,15 +237,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void OrbitCameraHandleEvent(
+	bool OrbitCameraHandleEvent(
 		GameObject&		gameObject,
 		const Event&	evt)
 	{
-		Apply(gameObject,
-			[&](OrbitCameraBehavior& orbitCamera)
+		return Apply(gameObject,
+			[&](OrbitCameraBehavior& orbitCamera) -> bool
 			{
-				orbitCamera.HandleEvent(evt);
-			});
+				return orbitCamera.HandleEvent(evt);
+			},
+			[] { return false; });
 	}
 
 

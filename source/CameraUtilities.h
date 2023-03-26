@@ -67,7 +67,7 @@ namespace FlexKit
 		void Roll				(float Degree);
 		void Rotate				(float3 xyz); // Three Angles
 
-		void HandleEvent(const FlexKit::Event& evt);
+		bool HandleEvent(const FlexKit::Event& evt);
 
 		Quaternion	GetOrientation();
 		float3		GetForwardVector();
@@ -111,7 +111,7 @@ namespace FlexKit
 		MouseInputState	mouseState,
 		float			dt);
 
-	void OrbitCameraHandleEvent(
+	bool OrbitCameraHandleEvent(
 		GameObject&		gameObject,
 		const Event&	evt);
 
