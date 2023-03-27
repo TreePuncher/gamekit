@@ -4,7 +4,8 @@
 #include "AnimationRendering.h"
 #include "ClusteredRendering.h"
 #include "WorldRender.h"
-
+#include <numeric>
+#include <ranges>
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -100,6 +101,10 @@ namespace FlexKit
 
 			{ "BLENDWEIGHT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	4, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 			{ "BLENDINDICES",	0, DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_UINT,	5, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+
+			{ "BLENDPOS",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	6, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "BLENDNORM",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	7, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "BLENDTAN",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	8, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		};
 
 
@@ -1224,9 +1229,11 @@ namespace FlexKit
 		BrushConstants&					entityConstants,
 		const ResourceAllocation&		animationResources,
 		ReserveConstantBufferFunction	reserveCB,
-		iAllocator*						allocator,
-		AnimationPoseUpload*			animationPoses)
+		iAllocator*						allocator)
 	{
+		using std::views::zip;
+		using std::views::iota;
+
 		auto& pass = frameGraph.AddNode<GBufferPass>(
 			GBufferPass{
 				gbuffer,
@@ -1245,48 +1252,17 @@ namespace FlexKit
 				data.NormalTargetObject			= builder.RenderTarget(gbuffer.normal);
 				data.depthBufferTargetObject	= builder.DepthTarget(depthTarget);
 			},
-			[animationPoses, &entityConstants](GBufferPass& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[&entityConstants, &animationResources](GBufferPass& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
 				ProfileFunction();
-				struct EntityPoses
-				{
-					float4x4 transforms[512];
-
-					auto& operator [](size_t idx)
-					{
-						return transforms[idx];
-					}
-				};
 
 				auto& passes		= data.passes.GetData().passes;
 				auto pass			= FindPass(passes.begin(), passes.end(), GBufferPassID);
 				auto animatedPass	= FindPass(passes.begin(), passes.end(), GBufferAnimatedPassID);
 
-				if ((!pass || !pass->pvs.size()) && (!animatedPass || animatedPass->pvs.size()))
+				if ((!pass || !pass->pvs.size()) && (!animatedPass || !animatedPass->pvs.size()))
 					return;
 
-
-				/*
-				size_t brushCount = 0;
-				if (animatedPass)
-				{
-					for (auto& brush : animatedPass->pvs)
-					{
-								size_t maxSubMeshCount	= 0;
-						const	size_t meshCount		= brush->meshes.size();
-						for (auto I = 0; I < meshCount; I++)
-						{
-							auto mesh			= brush->meshes[I];
-							auto* triMesh		= GetMeshResource(mesh);
-							const auto lodIdx	= brush.LODlevel[I];
-							auto& detailLevel	= triMesh->lods[lodIdx];
-							maxSubMeshCount		= Max(detailLevel.subMeshes.size(), maxSubMeshCount);
-						}
-
-						brushCount += maxSubMeshCount;
-					}
-				}
-				*/
 
 				struct ForwardDrawConstants
 				{
@@ -1336,10 +1312,6 @@ namespace FlexKit
 				ctx.SetGraphicsConstantBufferView(1, cameraConstants);
 				ctx.SetGraphicsConstantBufferView(3, passConstants);
 
-				// submit draw calls
-				TriMesh*					prevMesh = nullptr;
-				const TriMesh::LOD_Runtime*	prevLOD  = nullptr;
-
 				ctx.BeginEvent_DEBUG("G-Buffer Pass");
 				ctx.BeginEvent_DEBUG("Static Objects");
 
@@ -1364,6 +1336,9 @@ namespace FlexKit
 
 				if(pass && pass->pvs.size())
 				{
+					TriMesh*					prevMesh	= nullptr;
+					const TriMesh::LOD_Runtime* prevLOD		= nullptr;
+
 					const size_t end = pass->pvs.size();
 					for (size_t I = 0; I < end; I++)
 					{
@@ -1432,56 +1407,44 @@ namespace FlexKit
 
 				ctx.BeginEvent_DEBUG("Skinned Objects");
 
-				auto& animatedBrushes		= animatedPass->pvs;
-				const size_t poseBufferSize	= AlignedSize<EntityPoses>() * animatedBrushes.size();
-				auto poseBuffer				= data.reserveCB(poseBufferSize);
 
-				ctx.SetPipelineState(resources.GetPipelineState(GBUFFERPASS_SKINNED));
-
-				ctx.SetGraphicsConstantBufferView(1, cameraConstants);
-				ctx.SetGraphicsConstantBufferView(3, passConstants);
-
-				if (animationPoses)
+				if(animatedPass && animatedPass->pvs.size())
 				{
-					prevMesh	= nullptr;
-					auto poses	= animationPoses->GetIterator();
+					auto& animatedBrushes = animatedPass->pvs;
 
-					for (size_t I = 0; I < animatedBrushes.size(); I++)
+					ctx.SetPipelineState(resources.GetPipelineState(GBUFFERPASS_SKINNED));
+
+					ctx.SetGraphicsConstantBufferView(1, cameraConstants);
+					ctx.SetGraphicsConstantBufferView(3, passConstants);
+
+					TriMesh*					prevMesh	= nullptr;
+					const TriMesh::LOD_Runtime* prevLOD		= nullptr;
+
+					for (auto&& [idx, brush] : zip(iota(0), animatedBrushes))
 					{
-						const auto& pvs = animatedBrushes[I];
+						if (!brush->meshes.size())
+							continue;
 
-						const auto& material = materials[pvs.brush->material];
+						const auto& material		= materials[brush->material];
+						const auto beginConstants	= entityConstants.entityTable[brush.submissionID];
 
-						static_vector<ConstantBufferDataSet>	constants;
-						static_vector<DescriptorRange>			descriptors;
-
-						if (material.SubMaterials.size() == 0)
-							descriptors.push_back(materials.GetTextureDescriptors(material.handle));
-						else
-							for (auto sm : material.SubMaterials)
-								descriptors.push_back(materials.GetTextureDescriptors(sm));
-
-						//GetConstants(pvs.brush, constants);
-						ctx.SetGraphicsConstantBufferView(4, poses[I]);
-
-				/*
-						const auto& meshes		= pvs.brush->meshes;
-						const size_t meshCount	= meshes.size();
-						for (size_t I = 0; I < meshCount; I++)
+						const size_t meshCount	= brush->meshes.size();
+						for (size_t J = 0; J < meshCount; J++)
 						{
+							auto mesh		= brush->meshes[J];
+							auto* triMesh	= GetMeshResource(mesh);
+							auto  lodIdx	= brush.LODlevel[J];
+							auto  lod		= &triMesh->lods[lodIdx];
 
-							const auto&		mesh		= meshes[I];
-							auto*			triMesh		= GetMeshResource(mesh);
-							const uint32_t	lodLevel	= pvs.LODlevel[I];
-
-							if (triMesh != prevMesh)
+							if (triMesh != prevMesh || prevLOD != lod)
 							{
-								prevMesh = triMesh;
+								prevMesh	= triMesh;
+								prevLOD		= lod;
 
-								ctx.AddIndexBuffer(triMesh, lodLevel);
+								ctx.AddIndexBuffer(triMesh, lodIdx);
 								ctx.AddVertexBuffers(
 									triMesh,
-									lodLevel,
+									lodIdx,
 									{
 										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
 										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
@@ -1489,34 +1452,29 @@ namespace FlexKit
 										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
 										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
 										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
-									}
-								);
+									});
 							}
 
-							ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet{ constants, entityConstantBuffer });
+							auto&			submeshes		= lod->subMeshes;
+							const size_t	subMeshesEnd	= submeshes.size();
 
-							auto& lod		= triMesh->lods[lodLevel];
-							auto& submeshes = lod.subMeshes;
-
-							for (size_t I = 0; I < submeshes.size(); I++)
+							for (size_t K = 0; K < subMeshesEnd; K++)
 							{
-								auto materialIdx = Min(I, descriptors.size() - 1);
+								const auto	subMesh		= submeshes[K];
+								const auto& subMaterial	= (subMeshesEnd == 1) ? material : materials[material.SubMaterials[K]];
 
-								if (descriptors.size() && descriptors[materialIdx].size)
-									ctx.SetGraphicsDescriptorTable(0, descriptors[materialIdx]);
-								else
-									ctx.SetGraphicsDescriptorTable(0, defaultHeap);
+								if (subMaterial.textureDescriptors.size != 0)
+									ctx.SetGraphicsDescriptorTable(0, subMaterial.textureDescriptors);
 
-								ctx.SetGraphicsConstantBufferView(2, constants[materialIdx]);
+								auto poseBuffer = resources.GetResource(animationResources.handles[0]);
+								ctx.SetGraphicsConstantBufferView(2, constants[beginConstants + K]);
+								ctx.SetGraphicsShaderResourceView(7, poseBuffer);
 
 								ctx.DrawIndexed(
-									submeshes[I].IndexCount,
-									submeshes[I].BaseIndex);
+									subMesh.IndexCount,
+									subMesh.BaseIndex);
 							}
-
-							ctx.DrawIndexed(lod.GetIndexCount());
 						}
-				*/
 					}
 				}
 
@@ -2012,7 +1970,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2014-2022 Robert May
+Copyright (c) 2014-2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

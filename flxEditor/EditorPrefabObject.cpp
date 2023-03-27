@@ -169,35 +169,6 @@ void LoadEntity(FlexKit::SceneEntity& entity, LoadEntityContextInterface& ctx)
 
 			if (brushComponent)
 			{
-				//auto& materials = FlexKit::MaterialComponent::GetComponent();
-				//auto material   = materials.CreateMaterial(ctx.DefaultMaterial());
-
-
-				//TODO: Seems the issue if further up the asset pipeline. Improve material generation?
-				/*
-				if (brushComponent->material.subMaterials.size() > 1)
-				{
-					for (auto& subMaterialData : brushComponent->material.subMaterials)
-					{
-						auto subMaterial = materials.CreateMaterial();
-						materials.AddSubMaterial(material, subMaterial);
-
-						FlexKit::ReadContext rdCtx{};
-						for (auto texture : subMaterialData.textures)
-							materials.PushTexture(subMaterial, texture, rdCtx);
-					}
-				}
-				else if(brushComponent->material.subMaterials.size() == 1)
-				{
-					auto& subMaterialData = brushComponent->material.subMaterials[0];
-
-					FlexKit::ReadContext rdCtx{};
-
-					for (auto texture : subMaterialData.textures)
-						materials.PushTexture(material, texture, rdCtx);
-				}
-				*/
-
 				auto& meshes = brushComponent->meshes;
 
 				for(auto& mesh : meshes)

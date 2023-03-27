@@ -25,7 +25,7 @@ cbuffer PassConstants : register(b2)
 }
 
 AppendStructuredBuffer<uint2>   UAVBuffer : register(u0);
-Texture2D<float4>               textures[16] : register(t0);
+Texture2D<float4>               textures[16] : register(t1);
 SamplerState                    defaultSampler : register(s1);
 
 uint Packed(uint TextureIdx, const float2 UV, const uint lod)

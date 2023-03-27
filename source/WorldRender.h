@@ -281,7 +281,7 @@ namespace FlexKit
 	struct OcclusionCullingResults
 	{
 		GatherPassesTask&				passes;
-		BrushConstants&				entityConstants;
+		BrushConstants&					entityConstants;
 		ReserveConstantBufferFunction	reserveCB;
 
 		FrameResourceHandle				depthBuffer;
@@ -291,8 +291,8 @@ namespace FlexKit
 	struct DrawOutputs
 	{
 		GatherPassesTask&			passes;
-		GatherSkinnedTask&			skinnedDraws;
-		BrushConstants&			entityConstants;
+		BrushConstants&				entityConstants;
+		const ResourceAllocation&	animationResources;
 		PointLightShadowGatherTask&	pointLights;
 		FrameResourceHandle			visibilityBuffer;
 	};
@@ -328,7 +328,6 @@ namespace FlexKit
 				iAllocator*						persistent,
 				ThreadSafeAllocator&			temporary);
 
-
 		BrushConstants&				BuildBrushConstantsBuffer(
 				FrameGraph&						frameGraph,
 				UpdateDispatcher&				dispatcher,
@@ -336,14 +335,12 @@ namespace FlexKit
 				ReserveConstantBufferFunction&	reserveConstants,
 				iAllocator&						allocator);
 
-
 		const ResourceAllocation&	AcquireAnimatedResources(
 				FrameGraph&						frameGraph,
 				UpdateDispatcher&				dispatcher,
 				GatherPassesTask&				passes,
 				ReserveConstantBufferFunction&	reserveConstants,
 				iAllocator&						allocator);
-
 
 		OcclusionCullingResults&	OcclusionCulling(
 				UpdateDispatcher&				dispatcher,
@@ -354,7 +351,6 @@ namespace FlexKit
 				ReserveConstantBufferFunction&	reserveConstants,
 				DepthBuffer&					depthBuffer,
 				ThreadSafeAllocator&			temporary);
-
 
 		DepthPass&					DepthPrePass(
 				UpdateDispatcher&				dispatcher,

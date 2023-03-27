@@ -314,8 +314,7 @@ namespace FlexKit
 								BrushConstants&					entityConstants,
 								const ResourceAllocation&		animationResources,
 								ReserveConstantBufferFunction	reserveCB,
-								iAllocator*						allocator,
-								AnimationPoseUpload*			poses = nullptr);
+								iAllocator*						allocator);
 
 
 		LightBufferUpdate& UpdateLightBuffers(

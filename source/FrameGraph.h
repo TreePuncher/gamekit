@@ -1895,7 +1895,7 @@ namespace FlexKit
 			struct NodeData
 			{
 				TypeErasedCallable<std::span<const PVEntry>()>	getPass;
-				TypeErasedCallable<void (std::span<const PVEntry>, std::span<FrameResourceHandle>, ResourceInitializationContext&)>	initializeResources;
+				TypeErasedCallable<void (std::span<const PVEntry>, std::span<FrameResourceHandle>, ResourceInitializationContext&, iAllocator&)>	initializeResources;
 
 				ResourceAllocation		resources;
 				Vector<InitialData>		resourceAllocations;
@@ -1904,6 +1904,7 @@ namespace FlexKit
 
 				DeviceAccessState			access;
 				FrameGraphResourceContext&	resourceContext;
+				iAllocator*					allocator;
 				UploadSegment				uploadSegment;
 			};
 
@@ -1916,7 +1917,8 @@ namespace FlexKit
 								0,
 								desc.pool,
 								desc.access,
-								resourceContext);
+								resourceContext,
+								memory);
 
 			data.resourceAllocations.reserve(desc.max);
 
@@ -1949,7 +1951,8 @@ namespace FlexKit
 					desc.initializeResources(
 						std::span<const PVEntry>{},
 						std::span<FrameResourceHandle>{},
-						std::declval<ResourceInitializationContext&>());
+						std::declval<ResourceInitializationContext&>(),
+						std::declval<iAllocator&>());
 				}, "Invalid resourceInitializer!");
 
 			auto nodeIdx	= nodes.emplace_back(
@@ -1968,7 +1971,7 @@ namespace FlexKit
 						[nodeData, &resources, passPVS](auto& tempAllocator)
 						{
 							ResourceInitializationContext transferCtx{ resources, nodeData };
-							nodeData->initializeResources(passPVS, nodeData->resources.handles, transferCtx);
+							nodeData->initializeResources(passPVS, nodeData->resources.handles, transferCtx, *nodeData->allocator);
 
 							auto uploadSegment = resources.renderSystem._ReserveDirectUploadSpace(nodeData->uploadSize, 256);
 							size_t offset = 0;
@@ -1981,7 +1984,6 @@ namespace FlexKit
 							}
 
 							nodeData->uploadSegment = uploadSegment;
-
 						}, tempAllocator);
 
 					nodeData->resourceContext.AddResourceTask(threadedTask);

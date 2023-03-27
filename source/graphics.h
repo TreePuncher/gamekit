@@ -756,6 +756,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		PIPELINE_DEST_CS = 0x20,
 		PIPELINE_DEST_OM = 0x30,
 		PIPELINE_DEST_DS = 0x40,
+		PIPELINE_DEST_AS = 0x40,
+		PIPELINE_DEST_MS = 0x50,
+
 		PIPELINE_DEST_ALL = 0xFF
 	};
 
@@ -1475,7 +1478,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		template<size_t RHS_SIZE>
 		DesciptorHeapLayout(const DesciptorHeapLayout<RHS_SIZE>& RHS)
 		{
-			FK_ASSERT(ENTRYCOUNT >= RHS.size());
+			static_assert(ENTRYCOUNT >= RHS_SIZE);
 
 			Entries = RHS.Entries;
 
@@ -1852,7 +1855,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				struct
 				{
 					uint32_t				HeapIdx;
-					uint32_t                size;
+					uint32_t				size;
 					uint32_t				Register;
 					uint32_t				RegisterSpace;
 					PIPELINE_DESTINATION	Accessibility;

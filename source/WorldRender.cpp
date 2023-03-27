@@ -793,7 +793,7 @@ namespace FlexKit
 
 		ClearGBuffer(frameGraph, gbuffer);
 
-		auto& entityConstants =
+		auto& staticConstants =
 			BuildBrushConstantsBuffer(
 				frameGraph,
 				dispatcher,
@@ -837,11 +837,10 @@ namespace FlexKit
 				camera,
 				gbuffer,
 				depthTarget.Get(),
-				entityConstants,
+				staticConstants,
 				animationResources,
 				reserveCB,
-				temporary,
-				&poses);
+				temporary);
 
 		for (auto& pass : drawSceneDesc.additionalGbufferPasses)
 			pass();
@@ -971,10 +970,10 @@ namespace FlexKit
 		*/
 
 		return DrawOutputs{
-					passes,
-					skinnedObjects,
-					entityConstants,
-					visablePointLights,
+					.passes				= passes,
+					.entityConstants	= staticConstants,
+					.animationResources	= animationResources,
+					.pointLights		= visablePointLights,
 					//occlutionConstants.ZPyramid
 		};
 	}
@@ -1004,22 +1003,18 @@ namespace FlexKit
 			[](BrushConstants& data, FrameResources& resources, iAllocator& localAllocator) // before submission task sections begin
 			{
 				auto& materials = MaterialComponent::GetComponent();
+				auto& brushes	= data.passes.GetData().solid;
 
-				// static
+				data.entityTable.reserve(brushes.size());
+
+				size_t offset = 0;
+				for (const auto& brush : brushes)
 				{
-					auto& brushes	= data.passes.GetData().solid;
-
-					data.entityTable.reserve(brushes.size());
-
-					size_t offset = 0;
-					for (const auto& brush : brushes)
-					{
-						data.entityTable.push_back((uint32_t)offset);
-						offset += Max(materials[brush.brush->material].SubMaterials.size(), 1);
-					}
-
-					resources.objects[data.constants].constantBuffer = &data.GetConstantBuffer(offset);
+					data.entityTable.push_back((uint32_t)offset);
+					offset += Max(materials[brush.brush->material].SubMaterials.size(), 1);
 				}
+
+				resources.objects[data.constants].constantBuffer = &data.GetConstantBuffer(offset);
 			},
 			[](BrushConstants& data, iAllocator& localAllocator) // in parallel with all other tasks
 			{
@@ -1071,14 +1066,23 @@ namespace FlexKit
 		PassDrivenResourceAllocation allocation {
 			.getPass			= [&passes] { return passes.GetData().GetPass(GBufferAnimatedPassID); },
 			.initializeResources =
-				[](std::span<const PVEntry> brushes, std::span<const FrameResourceHandle> handles, auto& transferContext)
+				[](std::span<const PVEntry> brushes, std::span<const FrameResourceHandle> handles, auto& transferContext, iAllocator& allocator)
 				{
 					auto itr = handles.begin();
 
-					for (auto&& [sortID, brush, gameObject, occlusionID, LODlevel] : brushes)
+					for (auto&& [sortID, brush, gameObject, occlusionID, submissionID, LODlevel] : brushes)
 					{
+
 						auto poseState = GetPoseState(*gameObject);
-						transferContext.CreateResource(*(itr++), sizeof(float4x4) * poseState->JointCount, poseState->CurrentPose);
+						auto skeleton = poseState->Sk;
+
+						const size_t poseSize = sizeof(float4x4) * poseState->JointCount;
+						float4x4* pose = (float4x4*)allocator.malloc(poseSize);
+
+						for (size_t I = 0; I < poseState->JointCount; I++)
+							pose[I] = (skeleton->IPose[I] * poseState->CurrentPose[I]);
+
+						transferContext.CreateResource(*(itr++), poseSize, pose);
 					}
 				},
 

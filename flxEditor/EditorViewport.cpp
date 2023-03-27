@@ -1449,7 +1449,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 			depthBuffer.WH,
 			drawSceneRes.entityConstants,
 			drawSceneRes.passes,
-			drawSceneRes.skinnedDraws,
+			drawSceneRes.animationResources,
 			temporaries.ReserveConstantBuffer,
 			temporaries.ReserveVertexBuffer);
 	}

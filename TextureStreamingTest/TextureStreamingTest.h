@@ -6,6 +6,8 @@
 #include <WorldRender.h>
 #include <Win32Graphics.h>
 #include <DebugUI.h>
+#include <TriggerComponent.h>
+
 
 class TextureStreamingTest : public FlexKit::FrameworkState
 {
@@ -33,6 +35,7 @@ public:
 	FlexKit::PointLightShadowMap			pointLightShadowMaps;
 	FlexKit::FABRIKComponent				ikComponent;
 	FlexKit::SkeletonComponent				skeletons;
+	FlexKit::TriggerComponent				triggers;
 
 	FlexKit::PhysXComponent					physx;
 	FlexKit::RigidBodyComponent				rigidBodies;

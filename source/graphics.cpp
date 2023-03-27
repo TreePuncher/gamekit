@@ -2462,7 +2462,10 @@ namespace FlexKit
 
 	void Context::SetGraphicsShaderResourceView(size_t idx, ResourceHandle resource, size_t offset)
 	{
-		DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress());
+		if(resource != InvalidHandle)
+			DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress());
+		else
+			DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, { 0 });
 	}
 
 
@@ -3925,6 +3928,7 @@ namespace FlexKit
 			RS->Library.RS6CBVs4SRVs.SetParameterAsCBV(4, 3, 0, PIPELINE_DEST_ALL);
 			RS->Library.RS6CBVs4SRVs.SetParameterAsCBV(5, 4, 0, PIPELINE_DEST_ALL);
 			RS->Library.RS6CBVs4SRVs.SetParameterAsCBV(6, 5, 0, PIPELINE_DEST_ALL);
+			RS->Library.RS6CBVs4SRVs.SetParameterAsSRV(7, 7, 0, PIPELINE_DEST_VS);
 			RS->Library.RS6CBVs4SRVs.Build(RS, TempMemory);
 			SETDEBUGNAME(RS->Library.RS6CBVs4SRVs, "RS4CBVs4SRVs");
 		}
@@ -9181,6 +9185,8 @@ namespace FlexKit
 		frameIdx = ++frameIdx % 2;
 
 		ReadBackTable.Update();
+
+		directUploadBuffer.Last = directUploadBuffer.Position;
 
 		_UpdateCounters();
 

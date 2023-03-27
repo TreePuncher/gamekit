@@ -1929,10 +1929,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI inline float Vect4FDot( const Vect4& lhs, const Vect4& rhs )
+	FLEXKITAPI inline float Vect4FDot(const Vect4 lhs, const Vect4 rhs)
 	{
-		auto temp1 = _mm_loadr_ps(lhs.Vector); //_mm_set_ps(lhs.Vector[3], lhs.Vector[2], lhs.Vector[1], lhs.Vector[0]);
-		auto temp2 = _mm_loadr_ps(rhs.Vector); //_mm_set_ps(rhs.Vector[3], rhs.Vector[2], rhs.Vector[1], rhs.Vector[0]);
+		auto temp1 = _mm_loadu_ps(lhs.Vector); //_mm_set_ps(lhs.Vector[3], lhs.Vector[2], lhs.Vector[1], lhs.Vector[0]);
+		auto temp2 = _mm_loadu_ps(rhs.Vector); //_mm_set_ps(rhs.Vector[3], rhs.Vector[2], rhs.Vector[1], rhs.Vector[0]);
 
 		__m128 res = _mm_dp_ps(temp1, temp2, 0xFF);
 
@@ -1947,7 +1947,7 @@ namespace FlexKit
 #pragma warning(disable : 4324)
 	// Row Major
 	template< const int ROW, const int COL, typename Ty = float >
-	union alignas(16) Matrix
+	union Matrix
 	{
 	private:
 		template<typename TY_tuple, int ... ints>
@@ -2082,7 +2082,7 @@ namespace FlexKit
 		}
 
 
-		Matrix<4, 4> operator*( const Matrix<4, 4>& rhs ) const noexcept
+		Matrix<4, 4> operator * ( const Matrix<4, 4>& rhs ) const noexcept
 		{
 			Matrix<4, 4> out;
 			auto transposed = rhs.Transpose();
@@ -2099,6 +2099,13 @@ namespace FlexKit
 			}
 
 			return out;
+		}
+
+
+		Matrix<4, 4>& operator = (const Matrix<4, 4>& rhs) noexcept
+		{
+			memcpy(&matrix, &rhs.matrix, sizeof(Matrix<4, 4>));
+			return *this;
 		}
 
 

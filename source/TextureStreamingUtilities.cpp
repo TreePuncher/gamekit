@@ -157,10 +157,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateTextureFeedbackPassPSO(RenderSystem* RS)
+	ID3D12PipelineState* TextureStreamingEngine::CreateTextureFeedbackPassPSO(RenderSystem* RS)
 	{
-		auto VShader = RS->LoadShader("Forward_VS",				"vs_6_5", "assets\\shaders\\forwardRender.hlsl");
-		auto PShader = RS->LoadShader("TextureFeedback_PS",		"ps_6_5", "assets\\shaders\\TextureFeedback\\TextureFeedback.hlsl");
+		auto VShader = RS->LoadShader("Forward_VS",				"vs_6_0", R"(assets\shaders\TextureFeedback\TextureFeedback_VS.hlsl)");
+		auto PShader = RS->LoadShader("TextureFeedback_PS",		"ps_6_5", R"(assets\shaders\TextureFeedback\TextureFeedback.hlsl)");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -179,7 +179,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable      = true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = { 0 };
-		PSO_Desc.pRootSignature			= RS->Library.RSDefault;
+		PSO_Desc.pRootSignature			= feedbackPassRootSignature;
 		PSO_Desc.VS						= VShader;
 		PSO_Desc.PS						= PShader;
 		PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
@@ -204,10 +204,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateTextureFeedbackAnimatedPassPSO(RenderSystem* RS)
+	ID3D12PipelineState* TextureStreamingEngine::CreateTextureFeedbackAnimatedPassPSO(RenderSystem* RS)
 	{
-		auto VShader = RS->LoadShader("ForwardSkinned_VS",  "vs_6_0", "assets\\shaders\\forwardRender.hlsl");
-		auto PShader = RS->LoadShader("TextureFeedback_PS", "ps_6_0", "assets\\shaders\\TextureFeedback\\TextureFeedback.hlsl");
+		auto VShader = RS->LoadShader("ForwardSkinned_VS",  "vs_6_0", R"(assets\shaders\TextureFeedback\TextureFeedback_VS.hlsl)");
+		auto PShader = RS->LoadShader("TextureFeedback_PS", "ps_6_0", R"(assets\shaders\TextureFeedback\TextureFeedback.hlsl)");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -217,6 +217,10 @@ namespace FlexKit
 
 			{ "BLENDWEIGHT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	4, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 			{ "BLENDINDICES",	0, DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_UINT,	5, 0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+
+			{ "BLENDPOS",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	6, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "BLENDNORM",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	7, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "BLENDTAN",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	8, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		};
 
 
@@ -229,7 +233,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable      = true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = { 0 };
-		PSO_Desc.pRootSignature			= RS->Library.RSDefault;
+		PSO_Desc.pRootSignature			= feedbackPassRootSignature;
 		PSO_Desc.VS						= VShader;
 		PSO_Desc.PS						= PShader;
 		PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
@@ -363,22 +367,44 @@ namespace FlexKit
 				RenderSystem&	IN_renderSystem,
 				iAllocator*		IN_allocator,
 				const TextureCacheDesc& desc) : 
-			allocator				{ IN_allocator		},
-			textureBlockAllocator	{ desc.textureCacheSize / desc.blockSize,   IN_allocator },
-			renderSystem			{ IN_renderSystem	},
-			settings				{ desc				},
-			feedbackReturnBuffer	{ IN_renderSystem.CreateReadBackBuffer(2 * MEGABYTE) },
-			heap					{ IN_renderSystem.CreateHeap(desc.textureCacheSize, 0) },
-			mappedAssets			{ IN_allocator },
-			timeStats				{ IN_renderSystem.CreateTimeStampQuery(512) }
+			allocator					{ IN_allocator		},
+			textureBlockAllocator		{ desc.textureCacheSize / desc.blockSize,   IN_allocator },
+			renderSystem				{ IN_renderSystem	},
+			settings					{ desc				},
+			feedbackReturnBuffer		{ IN_renderSystem.CreateReadBackBuffer(2 * MEGABYTE) },
+			heap						{ IN_renderSystem.CreateHeap(desc.textureCacheSize, 0) },
+			mappedAssets				{ IN_allocator },
+			timeStats					{ IN_renderSystem.CreateTimeStampQuery(512) },
+			feedbackPassRootSignature	{ IN_allocator }
 	{
+		feedbackPassRootSignature.AllowIA = true;
+
+
+		DesciptorHeapLayout<1> uavHeap;
+		uavHeap.SetParameterAsShaderUAV(0, 0, 1);
+		FK_ASSERT(uavHeap.Check());
+
+		DesciptorHeapLayout<1> srvHeap;
+		srvHeap.SetParameterAsSRV(0, 1, -1);
+		FK_ASSERT(srvHeap.Check());
+
+		feedbackPassRootSignature.SetParameterAsCBV(0, 0);
+		feedbackPassRootSignature.SetParameterAsCBV(1, 1, 0);
+		feedbackPassRootSignature.SetParameterAsCBV(2, 2, 0, PIPELINE_DEST_PS);
+		feedbackPassRootSignature.SetParameterAsDescriptorTable(3, uavHeap, -1, PIPELINE_DEST_PS);
+		feedbackPassRootSignature.SetParameterAsDescriptorTable(4, srvHeap, -1, PIPELINE_DEST_PS);
+		feedbackPassRootSignature.SetParameterAsSRV(5, 0);
+
+		feedbackPassRootSignature.Build(IN_renderSystem, IN_allocator);
+		SETDEBUGNAME(feedbackPassRootSignature, "textureFeedbackPassSignature");
+
 		renderSystem.RegisterPSOLoader(
 			TEXTUREFEEDBACKPASS,
-			{ &renderSystem.Library.RSDefault, CreateTextureFeedbackPassPSO });
+			{ &feedbackPassRootSignature, [&](auto rs) { return CreateTextureFeedbackPassPSO(rs); } });
 
 		renderSystem.RegisterPSOLoader(
 			TEXTUREFEEDBACKANIMATEDPASS,
-			{ &renderSystem.Library.RSDefault, CreateTextureFeedbackAnimatedPassPSO });
+			{ &feedbackPassRootSignature, [&](auto rs) { return CreateTextureFeedbackAnimatedPassPSO(rs); } });
 
 		renderSystem.RegisterPSOLoader(
 			TEXTUREFEEDBACKCOMPRESSOR,
@@ -447,7 +473,7 @@ namespace FlexKit
 			uint2							renderTargetWH,
 			BrushConstants&					brushConstants,
 			GatherPassesTask&				passes,
-			GatherSkinnedTask&				skinnedModelsGather,
+			const ResourceAllocation&		animationResources,
 			ReserveConstantBufferFunction&	reserveCB,
 			ReserveVertexBufferFunction&	reserveVB)
 	{
@@ -460,7 +486,6 @@ namespace FlexKit
 			TextureFeedbackPass_Data{
 				camera,
 				passes,
-				skinnedModelsGather,
 				reserveCB,
 			},
 			[&](FrameGraphNodeBuilder& builder, TextureFeedbackPass_Data& data)
@@ -484,19 +509,29 @@ namespace FlexKit
 				ctx.AddUAVBarrier(resources.GetResource(data.feedbackCounters));
 			});
 
-		auto getPass = [&passTable = passes.GetData()] () -> std::span<const PVEntry> { return passTable.GetPass(GBufferPassID); };
+		auto getStaticPass		= [&passTable = passes.GetData()]() -> std::span<const PVEntry> { return passTable.GetPass(GBufferPassID); };
+		auto getAnimatedPass	= [&passTable = passes.GetData()] () -> std::span<const PVEntry> { return passTable.GetPass(GBufferAnimatedPassID); };
 
-		PassDescription<TextureFeedbackPass_Data> pass =
+		PassDescription<TextureFeedbackPass_Data> staticPass =
 		{
 			.sharedData			= {
 				.camera			= camera,
 				.pvs			= passes,
-				.skinnedModels	= skinnedModelsGather,
 				.reserveCB		= reserveCB },
-			.getPVS				= getPass,
+			.getPVS				= getStaticPass,
 		};
 
-		auto passSetupFn = [&](FrameGraphNodeBuilder& builder, TextureFeedbackPass_Data& data)
+		PassDescription<TextureFeedbackPass_Data> animatedPass =
+		{
+			.sharedData			= {
+				.camera			= camera,
+				.pvs			= passes,
+				.reserveCB		= reserveCB },
+			.getPVS				= getAnimatedPass,
+		};
+
+
+		auto staticPassSetupFn = [&](FrameGraphNodeBuilder& builder, TextureFeedbackPass_Data& data)
 		{
 			auto depthBufferDesc			= GPUResourceDesc::DepthTarget({ 128, 128 }, DeviceFormat::D32_FLOAT);
 			depthBufferDesc.denyShaderUsage = true;
@@ -507,8 +542,10 @@ namespace FlexKit
 			data.feedbackCounters			= builder.WriteTransition(initiateFeedbackPass.feedbackCounters, DASUAV);
 			data.feedbackDepth				= builder.WriteTransition(initiateFeedbackPass.feedbackDepth, DASDEPTHBUFFERWRITE);
 		};
-		
-		auto passDrawFN = [&brushConstants, renderTargetWH](const auto begin, const auto end, std::span<const PVEntry> pvs, TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+
+		auto& feedbackPassRootSignature = this->feedbackPassRootSignature;
+
+		auto staticPassDrawFN = [&brushConstants, renderTargetWH, &feedbackPassRootSignature](const auto begin, const auto end, std::span<const PVEntry> pvs, TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
 		{
 			ctx.BeginEvent_DEBUG("Texture feedback pass");
 
@@ -548,10 +585,10 @@ namespace FlexKit
 			const auto passConstants	= ConstantBufferDataSet{ passConstantValues, passConstantBuffer };
 			const auto cameraConstants	= ConstantBufferDataSet{ cameraConstantValues, passConstantBuffer };
 
-			ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
+			ctx.SetRootSignature(feedbackPassRootSignature);
 
 			DescriptorHeap uavHeap;
-			uavHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 1, &allocator);
+			uavHeap.Init2(ctx, feedbackPassRootSignature.GetDescHeap(0), 1, &allocator);
 			uavHeap.SetUAVStructured(
 				ctx, 0,
 				resources.GetResource(data.feedbackBuffers[0]),
@@ -561,9 +598,9 @@ namespace FlexKit
 			ctx.SetScissorAndViewports({ resources.GetResource(data.feedbackDepth) });
 			ctx.SetRenderTargets({}, true, resources.GetResource(data.feedbackDepth));
 
-			ctx.SetGraphicsDescriptorTable(5, uavHeap);
 			ctx.SetGraphicsConstantBufferView(0, cameraConstants);
 			ctx.SetGraphicsConstantBufferView(2, passConstants);
+			ctx.SetGraphicsDescriptorTable(3, uavHeap);
 			ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 
 			ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKPASS));
@@ -575,8 +612,8 @@ namespace FlexKit
 			{
 				ctx.BeginEvent_DEBUG("Draw entity");
 
-				auto entityIdx					= std::distance(pvs.begin(), itr);
-				auto constantsBegin				= brushConstants.entityTable[entityIdx];
+				auto submissionID				= itr->submissionID;
+				auto constantsBegin				= brushConstants.entityTable[submissionID];
 				const auto& material			= materials[itr->brush->material];
 
 				for (size_t I = 0; I < itr->brush->meshes.size(); I++)
@@ -599,8 +636,6 @@ namespace FlexKit
 								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
 								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
 								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
-								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
-								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
 							}
 						);
 					}
@@ -644,13 +679,165 @@ namespace FlexKit
 			ctx.EndEvent_DEBUG();
 		};
 
-		frameGraph.AddPass(pass, passSetupFn, passDrawFN);
+		auto animatedPassSetupFn = [&](FrameGraphNodeBuilder& builder, TextureFeedbackPass_Data& data)
+		{
+			auto depthBufferDesc			= GPUResourceDesc::DepthTarget({ 128, 128 }, DeviceFormat::D32_FLOAT);
+			depthBufferDesc.denyShaderUsage = true;
+
+			builder.ReadConstantBuffer(brushConstants.constants);
+			builder.AddNodeDependency(animationResources.node);
+
+			data.feedbackBuffers[0]			= builder.WriteTransition(initiateFeedbackPass.feedbackBuffers[0], DASUAV);
+			data.feedbackCounters			= builder.WriteTransition(initiateFeedbackPass.feedbackCounters, DASUAV);
+			data.feedbackDepth				= builder.WriteTransition(initiateFeedbackPass.feedbackDepth, DASDEPTHBUFFERWRITE);
+		};
+
+		auto animatedPassDrawFN = [&brushConstants, renderTargetWH, &feedbackPassRootSignature, &animationResources](const auto begin, const auto end, std::span<const PVEntry> pvs, TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+		{
+			ctx.BeginEvent_DEBUG("Texture feedback pass");
+
+			struct alignas(512) constantBufferLayout
+			{
+				float		bias;
+				float		padding[3];
+				uint32_t	zeroBlock[256];
+			} passConstantValues =
+			{
+				std::log2f(128.0f / renderTargetWH[0]),
+				{ 0.0f }
+			};
+
+			auto& materials			= MaterialComponent::GetComponent();
+			auto& constantBuffer	= brushConstants.GetConstantBuffer();
+			auto constants			= FlexKit::CreateCBIterator<Brush::VConstantsLayout>(constantBuffer);
+
+			const size_t bufferSize =
+				AlignedSize<constantBufferLayout>() +
+				AlignedSize<Camera::ConstantBuffer>();
+
+			CBPushBuffer passConstantBuffer		{ data.reserveCB(bufferSize) };
+
+			auto cameraConstantValues	= GetCameraConstants(data.camera);
+
+			// Widen FOV to avoid some pop in when rotating camera
+			cameraConstantValues.FOV *= 1.2f;
+			cameraConstantValues = CalculateCameraConstants(
+				cameraConstantValues.AspectRatio,
+				cameraConstantValues.FOV,
+				cameraConstantValues.MinZ,
+				cameraConstantValues.MaxZ,
+				cameraConstantValues.ViewI.Transpose(),
+				cameraConstantValues.View.Transpose());
+
+			const auto passConstants	= ConstantBufferDataSet{ passConstantValues, passConstantBuffer };
+			const auto cameraConstants	= ConstantBufferDataSet{ cameraConstantValues, passConstantBuffer };
+
+			ctx.SetRootSignature(feedbackPassRootSignature);
+
+			DescriptorHeap uavHeap;
+			uavHeap.Init2(ctx, feedbackPassRootSignature.GetDescHeap(1), 1, &allocator);
+			uavHeap.SetUAVStructured(
+				ctx, 0,
+				resources.GetResource(data.feedbackBuffers[0]),
+				resources.GetResource(data.feedbackCounters),
+				sizeof(uint64_t), 0);
+
+			ctx.SetScissorAndViewports({ resources.GetResource(data.feedbackDepth) });
+			ctx.SetRenderTargets({}, true, resources.GetResource(data.feedbackDepth));
+
+			ctx.SetGraphicsDescriptorTable(3, uavHeap);
+			ctx.SetGraphicsConstantBufferView(0, cameraConstants);
+			ctx.SetGraphicsConstantBufferView(2, passConstants);
+			ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
+
+			ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKANIMATEDPASS));
+
+			TriMeshHandle	prevMesh	= InvalidHandle;
+			TriMesh*		triMesh		= nullptr;
+
+			for (auto itr = begin; itr < end; itr++)
+			{
+				ctx.BeginEvent_DEBUG("Draw entity");
+
+				auto submissionID		= itr->submissionID;
+				auto constantsBegin		= brushConstants.entityTable[submissionID];
+				const auto& material	= materials[itr->brush->material];
+				auto animationPose		= resources.GetResource(animationResources.handles[std::distance(pvs.begin(), itr)]);
+				
+				for (size_t I = 0; I < itr->brush->meshes.size(); I++)
+				{
+					ctx.BeginEvent_DEBUG("Draw sub-mesh");
+
+					auto triMeshHandle = itr->brush->meshes[I];
+					if (triMeshHandle != prevMesh)
+					{
+						prevMesh = triMeshHandle;
+
+						triMesh = GetMeshResource(triMeshHandle);
+
+						ctx.AddIndexBuffer(triMesh, itr->LODlevel[I]);
+						ctx.AddVertexBuffers(
+							triMesh,
+							itr->LODlevel[I],
+							{
+								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
+								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
+								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
+								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
+							}
+						);
+					}
+
+					const auto& lod = triMesh->lods[itr->LODlevel[I]];
+
+					ctx.SetGraphicsShaderResourceView(5, animationPose);
+
+					size_t subMeshCount = lod.subMeshes.size();
+					if (subMeshCount == 1)
+					{
+						const auto& textureDescriptors = material.textureDescriptors;
+
+						if (textureDescriptors.size != 0)
+						{
+							ctx.SetGraphicsDescriptorTable(4, textureDescriptors);
+							ctx.SetGraphicsConstantBufferView(1, constants[constantsBegin + I]);
+							ctx.DrawIndexed(lod.GetIndexCount());
+						}
+					}
+					else
+					{
+						for (size_t itr = 0; itr < subMeshCount; itr++)
+						{
+							const auto subMesh		= lod.subMeshes[itr];
+							const auto& subMaterial	= materials[material.SubMaterials[itr]];
+
+							if (subMaterial.textureDescriptors.size != 0)
+							{
+								ctx.SetGraphicsDescriptorTable(4, subMaterial.textureDescriptors);
+								ctx.SetGraphicsConstantBufferView(1, constants[constantsBegin + itr]);
+								ctx.DrawIndexed(subMesh.IndexCount, subMesh.BaseIndex);
+							}
+						}
+					}
+
+					ctx.EndEvent_DEBUG();
+				}
+
+				ctx.EndEvent_DEBUG();
+			}
+
+			ctx.EndEvent_DEBUG();
+		};
+
+		frameGraph.AddPass(staticPass, staticPassSetupFn, staticPassDrawFN);
+		frameGraph.AddPass(animatedPass, animatedPassSetupFn, animatedPassDrawFN);
 
 		auto readBackNode = frameGraph.AddNode<TextureFeedbackPass_Data>(
 			TextureFeedbackPass_Data{
 				camera,
 				passes,
-				skinnedModelsGather,
 				reserveCB,
 			},
 			[&](FrameGraphNodeBuilder& builder, TextureFeedbackPass_Data& data)

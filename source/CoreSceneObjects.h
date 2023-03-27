@@ -178,7 +178,8 @@ namespace FlexKit
 		size_t			SortID			= 0;
 		const Brush*	brush			= nullptr;
 		GameObject*		gameObject		= nullptr;
-		uint32_t		OcclusionID		= -1;
+		uint32_t		OcclusionID		= (uint32_t)-1;
+		uint32_t		submissionID	= (uint32_t)-1;
 
 		static_vector<uint8_t>	LODlevel{ 0 };
 

@@ -223,9 +223,6 @@ namespace FlexKit
 	inline const PSOHandle TEXTUREFEEDBACKSETBLOCKSIZES         = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKSETBLOCKSIZES));
 
 
-	ID3D12PipelineState* CreateTextureFeedbackPassPSO(RenderSystem* RS);
-	ID3D12PipelineState* CreateTextureFeedbackAnimatedPassPSO(RenderSystem* RS);
-
 	ID3D12PipelineState* CreateTextureFeedbackCompressorPSO(RenderSystem* RS);
 	ID3D12PipelineState* CreateTextureFeedbackBlockSizePreFixSum(RenderSystem* RS);
 	ID3D12PipelineState* CreateTextureFeedbackMergeBlocks(RenderSystem* RS);
@@ -239,7 +236,6 @@ namespace FlexKit
 	{
 		CameraHandle                    camera;
 		const GatherPassesTask&         pvs;
-		const GatherSkinnedTask&        skinnedModels;
 		ReserveConstantBufferFunction   reserveCB;
 
 		FrameResourceHandle             feedbackBuffers[2];
@@ -346,18 +342,18 @@ namespace FlexKit
 
 		TextureBlockAllocator(const size_t blockCount, iAllocator* IN_allocator);
 
-		Vector<gpuTileID>   UpdateTileStates    (const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
-		BlockAllocation     AllocateBlocks      (const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
-		BlockAllocation     AllocateBlock       (TileID_t, iAllocator* allocator);
+		Vector<gpuTileID>	UpdateTileStates	(const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
+		BlockAllocation		AllocateBlocks		(const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
+		BlockAllocation		AllocateBlock		(TileID_t, iAllocator* allocator);
 
-		const static uint32_t   blockSize   = 64 * KILOBYTE;
-		uint32_t                last        = 0;
+		const static uint32_t	blockSize	= 64 * KILOBYTE;
+		uint32_t				last		= 0;
 
-		Vector<Block>           free;
-		Vector<Block>           stale;
-		Vector<Block>           inuse;
+		Vector<Block>			free;
+		Vector<Block>			stale;
+		Vector<Block>			inuse;
 
-		iAllocator*             allocator;
+		iAllocator*				allocator;
 	};
 
 
@@ -368,8 +364,6 @@ namespace FlexKit
 	{
 	public:
 		TextureStreamingEngine(RenderSystem&, iAllocator* IN_allocator = SystemAllocator, const TextureCacheDesc& desc    = {});
-
-
 		~TextureStreamingEngine();
 
 
@@ -378,9 +372,9 @@ namespace FlexKit
 			FrameGraph&						frameGraph,
 			CameraHandle					camera,
 			uint2							renderTargetWH,
-			BrushConstants&				constants,
+			BrushConstants&					constants,
 			GatherPassesTask&				passes,
-			GatherSkinnedTask&				skinnedModelsGather,
+			const ResourceAllocation&		animationResources,
 			ReserveConstantBufferFunction&	reserveCB,
 			ReserveVertexBufferFunction&	reserveVB);
 
@@ -420,6 +414,9 @@ namespace FlexKit
 
 	private:
 
+		ID3D12PipelineState* CreateTextureFeedbackPassPSO			(RenderSystem* RS);
+		ID3D12PipelineState* CreateTextureFeedbackAnimatedPassPSO	(RenderSystem* RS);
+
 		inline static const size_t OffsetBufferSize = 240 * 240 * sizeof(uint32_t);
 
 		struct MappedAsset
@@ -444,6 +441,7 @@ namespace FlexKit
 		std::atomic_bool        taskInProgress      = false;
 		std::atomic_bool        taskStarted			= false;
 
+		RootSignature			feedbackPassRootSignature;
 		ReadBackResourceHandle  feedbackReturnBuffer; // CPU + GPU
 
 		Vector<MappedAsset>     mappedAssets;
