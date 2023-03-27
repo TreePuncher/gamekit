@@ -158,8 +158,8 @@ public:
 			.DepthTarget	= depthBuffer,
 		};
 
-		ReserveConstantBufferFunction	reserveCB = FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory());
-		ReserveVertexBufferFunction		reserveVB = FlexKit::CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory());
+		ReserveConstantBufferFunction	reserveCB = CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory());
+		ReserveVertexBufferFunction		reserveVB = CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory());
 
 		static double T = 0.0;
 		T += dT;
@@ -195,7 +195,7 @@ public:
 			core.GetTempMemoryMT()
 		);
 
-		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.skinnedDraws, reserveCB, reserveVB);
+		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, reserveCB, reserveVB);
 
 		debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow.GetBackBuffer());
 

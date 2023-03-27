@@ -53,9 +53,9 @@ namespace FlexKit
 		using CreateFN = decltype(CreateGetFN(std::declval<iAllocator&>()));
 		using PoseView = decltype(CreateCBIterator<BrushPoseBlock>(std::declval<CBPushBuffer&>()));
 
-		CreateFN                        GetBuffer;
-		GatherPassesTask&               passes;
-		ReserveConstantBufferFunction&  reserve;
+		CreateFN						GetBuffer;
+		GatherPassesTask&				passes;
+		ReserveConstantBufferFunction&	reserve;
 
 		PoseView        GetIterator();
 		CBPushBuffer&   GetData();

@@ -13,6 +13,8 @@
 
 #include <any>
 #include <cmath>
+#include <numeric>
+#include <ranges>
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -1030,6 +1032,9 @@ namespace FlexKit
 
 	GatherPassesTask& GatherScene(UpdateDispatcher& dispatcher, Scene* scene, CameraHandle C, iAllocator& allocator)
 	{
+		using std::views::zip;
+		using std::views::iota;
+
 		auto& task = dispatcher.Add<GetPVSTaskData>(
 			[&](auto& builder, auto& data)
 			{
@@ -1048,6 +1053,9 @@ namespace FlexKit
 
 				GatherScene(data.scene, data.camera, pvs);
 				SortPVS(&pvs, &CameraComponent::GetComponent().GetCamera(data.camera));
+
+				for (auto&& [submissionId, PV] : zip(iota(0), pvs))
+					PV.submissionID = submissionId;
 
 				Vector<PassPVS> passes{ &allocator };
 
@@ -1761,7 +1769,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2022 Robert May
+Copyright (c) 2015 - 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

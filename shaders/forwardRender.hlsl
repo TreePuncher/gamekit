@@ -26,13 +26,15 @@ cbuffer ShadingConstants : register(b2)
 	uint2 WH;
 }
 
+/*
 cbuffer Poses : register(b3)
 {
 	float4x4 Poses[768];
 }
+*/
 
-Texture2D<float4> albedoTexture  : register(t0);
-Texture2D<float4> normalTexture  : register(t1);
+Texture2D<float4> albedoTexture			: register(t0);
+Texture2D<float4> normalTexture			: register(t1);
 Texture2D<float4> roughnessMetalTexture : register(t2);
 
 //TextureCube<float4>             HDRMap          : register(t3);
@@ -40,6 +42,8 @@ Texture2D<float4>		        MRIATexture     : register(t4);
 
 StructuredBuffer<uint>		    lightLists	    : register(t5);
 ByteAddressBuffer               pointLights     : register(t6);
+StructuredBuffer<float4x4>		Poses			: register(t7);
+
 
 sampler BiLinear : register(s0); 
 sampler NearestPoint : register(s1); // Nearest point
@@ -106,38 +110,37 @@ Forward_VS_OUT Forward_VS(Vertex In)
 
 struct VertexSkinned
 {
-	float3 POS		: POSITION;
-	float3 Normal	: NORMAL;
-	float3 Tangent	: Tangent;
-	float2 UV		: TEXCOORD;
-	float3 Weights  : BLENDWEIGHT;
-	uint4  Indices  : BLENDINDICES; 
+	float3 POS				: POSITION;
+	float3 Normal			: NORMAL;
+	float3 Tangent			: Tangent;
+	float2 UV				: TEXCOORD;
+	float3 Weights			: BLENDWEIGHT;
+	uint4  Indices			: BLENDINDICES;
+	float3 POS_Blend		: BLENDPOS;
+	float3 Normal_Blend		: BLENDNORM;
+	float3 Tangent_Blend	: BLENDTAN;
 };
 
 Forward_VS_OUT ForwardSkinned_VS(VertexSkinned In)
 {
+	//float4 P = float4(In.POS_Blend, 0.0f);
+	//float4 N = float4(In.Normal_Blend, 0.0f);
+	//float4 T = float4(In.Tangent_Blend, 0.0f);
+
+	float4 P = float4(0.0f, 0.0f, 0.0f, 0.0f);
 	float4 N = float4(0.0f, 0.0f, 0.0f, 0.0f);
 	float4 T = float4(0.0f, 0.0f, 0.0f, 0.0f);
-	float4 V = float4(0.0f, 0.0f, 0.0f, 0.0f);
 	float4 W = float4(In.Weights.xyz, 1 - In.Weights.x - In.Weights.y - In.Weights.z);
-
-	float4x4 MTs[4] =
-	{
-		Poses[In.Indices[0]],
-		Poses[In.Indices[1]],
-		Poses[In.Indices[2]],
-		Poses[In.Indices[3]],
-	};
 
 	[unroll(4)]
 	for (uint I = 0; I < 4; ++I)
 	{
-		V += mul(MTs[I], float4(In.POS, 1)) * W[I];
-		N += mul(MTs[I], float4(In.Normal, 0)) * W[I];
-		T += mul(MTs[I], float4(In.Tangent, 0)) * W[I];
+		P += mul(Poses[In.Indices[I]], float4(In.POS, 1)) * W[I];
+		N += mul(Poses[In.Indices[I]], float4(In.Normal, 0)) * W[I];
+		T += mul(Poses[In.Indices[I]], float4(In.Tangent, 0)) * W[I];
 	}
 
-	const float3 POS_WS = mul(WT, float4(V.xyz, 1));
+	const float3 POS_WS = mul(WT, float4(P.xyz, 1));
 	const float3 POS_VS = mul(View, float4(POS_WS, 1));
 
 	Forward_VS_OUT Out;

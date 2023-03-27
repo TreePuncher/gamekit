@@ -26,6 +26,7 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	pointLightShadowMaps	{ framework.core.GetBlockMemory() },
 	ikComponent				{ framework.core.GetBlockMemory() },
 	skeletons				{ framework.core.GetBlockMemory() },
+	triggers				{ framework.core.GetBlockMemory(), framework.core.GetBlockMemory() },
 
 	physx					{ framework.core.Threads, framework.core.GetBlockMemory() },
 	rigidBodies				{ physx },
@@ -197,7 +198,7 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 	);
 
 	if (streamingUpdates)
-		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.skinnedDraws, reserveCB, reserveVB);
+		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, reserveCB, reserveVB);
 
 	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow.GetBackBuffer());
 
