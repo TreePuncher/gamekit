@@ -11,6 +11,7 @@
 #include <imgui.h>
 #include <..\source\Signals.h>
 #include <CameraUtilities.h>
+#include <SceneLoadingContext.h>
 
 using namespace FlexKit;
 
@@ -64,7 +65,8 @@ public:
 		RegisterMathTypes(GetScriptEngine(), framework.core.GetBlockMemory());
 		RegisterRuntimeAPI(GetScriptEngine());
 
-		AddAssetFile(R"(assets\shapeKeyTestAsset.gameres)");
+		//AddAssetFile(R"(assets\aerith.gameres)");
+		AddAssetFile(R"(assets\ShadowTestScene.gameres)");
 
 		if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
 			renderWindow = std::move(res.value());
@@ -79,6 +81,16 @@ public:
 		activeCamera = orbitCamera.AddView<OrbitCameraBehavior>();
 		SetCameraAspectRatio(activeCamera, 1920.0f / 1080.0f);
 
+		SceneLoadingContext ctx
+		{
+			.scene	= scene,
+			.nodes			{ framework.core.GetBlockMemory() },
+			.pendingActions	{ framework.core.GetBlockMemory() }
+		};
+
+		LoadScene(framework.core, ctx, "Scene");
+
+		/*
 		// Load Model
 		auto meshHandle = FlexKit::GetMesh("Player.mesh");
 		if (meshHandle == InvalidHandle)
@@ -91,29 +103,35 @@ public:
 
 		brushView.SetMaterial(materialView);
 		materialView.Add2Pass(GBufferAnimatedPassID);
+		materialView.Add2Pass(PassHandle{ GetCRCGUID(MorphTargetID) });
 		//materialView.Add2Pass(GBufferPassID);
+
 		scene.AddGameObject(object);
 		SetBoundingSphereFromMesh(object);
+		*/
 
 
 		// Create 3 point lighting
+		if(false)
 		{
-			auto& pointLightNode = light1.AddView<SceneNodeView>();
-			auto& pointLightView = light1.AddView<PointLightView>(float3{ 1, 1, 1 }, 1000, 20, pointLightNode.node, true);
-			pointLightNode.SetPosition({ 10, 10, -5 });
-			scene.AddGameObject(light1, pointLightNode);
-		}
-		{
-			auto& pointLightNode = light2.AddView<SceneNodeView>();
-			auto& pointLightView = light2.AddView<PointLightView>(float3{ 1, 1, 1 }, 1000, 20, pointLightNode.node, true);
-			pointLightNode.SetPosition({ -10, 10, -5 });
-			scene.AddGameObject(light2, pointLightNode);
-		}
-		{
-			auto& pointLightNode = light3.AddView<SceneNodeView>();
-			auto& pointLightView = light3.AddView<PointLightView>(float3{ 1, 1, 1 }, 1000, 20, pointLightNode.node, true);
-			pointLightNode.SetPosition({ 0, 10, 10 });
-			scene.AddGameObject(light3, pointLightNode);
+			{
+				auto& pointLightNode = light1.AddView<SceneNodeView>();
+				auto& pointLightView = light1.AddView<PointLightView>(float3{ 1, 1, 1 }, 1000, 20, pointLightNode.node, true);
+				pointLightNode.SetPosition({ 10, 10, -5 });
+				scene.AddGameObject(light1, pointLightNode);
+			}
+			{
+				auto& pointLightNode = light2.AddView<SceneNodeView>();
+				auto& pointLightView = light2.AddView<PointLightView>(float3{ 1, 1, 1 }, 1000, 20, pointLightNode.node, true);
+				pointLightNode.SetPosition({ -10, 10, -5 });
+				scene.AddGameObject(light2, pointLightNode);
+			}
+			{
+				auto& pointLightNode = light3.AddView<SceneNodeView>();
+				auto& pointLightView = light3.AddView<PointLightView>(float3{ 1, 1, 1 }, 1000, 20, pointLightNode.node, true);
+				pointLightNode.SetPosition({ 0, 10, 10 });
+				scene.AddGameObject(light3, pointLightNode);
+			}
 		}
 	}
 
@@ -225,8 +243,11 @@ public:
 						{
 							switch (evt.mData1.mKC[0])
 							{
+							case KC_R:
+								framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
+								return true;
 							case KC_M:
-								renderWindow.EnableCaptureMouse(true);
+								renderWindow.ToggleMouseCapture();
 								return true;
 							case KC_ESC:
 								framework.quit = true;

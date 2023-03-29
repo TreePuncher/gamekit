@@ -23,7 +23,16 @@ namespace FlexKit
 		std::scoped_lock lock{ m };
 
 		const auto handle		= handles.GetNewHandle();
-		const auto materialIdx = (index_t)materials.push_back({ (uint32_t)0, handle, IN_parent, {}, {}, {} });
+		const auto materialIdx	= (index_t)materials.emplace_back(
+			MaterialComponentData{
+				.refCount	= (uint32_t)0,
+				.handle		= handle,
+				.parent		= IN_parent,
+				.lastUsed	= size_t(-1),
+				.Passes			{ allocator },
+				.Properties		{ allocator },
+				.Textures		{ allocator },
+				.SubMaterials	{ allocator }});
 
 		if(IN_parent != InvalidHandle)
 			AddRef(IN_parent);

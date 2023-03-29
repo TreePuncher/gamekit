@@ -1633,8 +1633,8 @@ namespace FlexKit
 				{
 					auto shadowMap = lightComponent[visableLights[shadowMapIdx]].shadowMap;
 
-					if(shadowMap != InvalidHandle)
-						descHeap.SetSRV(ctx, 10 + shadowMapIdx, shadowMap, DeviceFormat::R32_FLOAT);
+					if (shadowMap != InvalidHandle)
+						descHeap.SetSRVCubemap(ctx, 10 + shadowMapIdx, shadowMap, DeviceFormat::R32G32_FLOAT);
 				}
 
 				descHeap.NullFill(ctx, descriptorTableSize);

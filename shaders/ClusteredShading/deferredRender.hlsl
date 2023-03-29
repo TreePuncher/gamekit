@@ -1,6 +1,24 @@
 #include "common.hlsl"
 #include "pbr.hlsl"
 
+// 0 - BURLEY
+// 1 - FROSTBYTE
+// 2 - DISABALED
+#define DIFFUSETECHNIQUE 0
+
+// 0 - FROSTBYTE
+// 1 - SAIDs
+// 2 - DISABALED
+#define SPECULARTECHNIQUE 0
+
+
+
+// 0 - off
+// 1 - VSM
+// 2 - PCF
+#define SHADOWTECHNIQUE 1
+#define DEBUGLIGHT 1
+
 
 struct PointLight
 {
@@ -42,8 +60,12 @@ Texture2D<uint> 			    lightMap		: register(t5);
 StructuredBuffer<uint2> 	    lightLists		: register(t6);
 StructuredBuffer<uint> 		    lightListBuffer	: register(t7);
 StructuredBuffer<PointLight> 	pointLights		: register(t8);
-Texture2DArray<float> 			shadowMaps[]	: register(t10);
 
+#if SHADOWTECHNIQUE == 1
+TextureCube<float2> 			shadowCubes[]	: register(t10);
+#elif SHADOWTECHNIQUE == 2
+//Texture2DArray<float2> 			shadowMaps[]	: register(t10);
+#endif
 
 SamplerState BiLinear     : register(s0);
 SamplerState NearestPoint : register(s1);
@@ -176,11 +198,42 @@ float2 ComputeReceiverPlaneDepthBias(float3 texCoordDX, float3 texCoordDY)
 	return biasUV;
 }
 
+
+#if SHADOWTECHNIQUE == 2
 float SampleShadowMap(in float2 base_uv, in float u, in float v, in float2 shadowMapSizeInv, in uint fieldID, in Texture2DArray<float> shadowMap, in float depth, in float2 receiverPlaneDepthBias)
 {
-	const float2 uv   = base_uv + float2(u, v) * shadowMapSizeInv;
+	const float2 uv  = base_uv + float2(u, v) * shadowMapSizeInv;
+	return saturate(shadowMap.SampleCmpLevelZero(ShadowSampler, float3(uv, fieldID), float2(depth, 0.0f)));
+}
+#endif
 
-	return saturate(shadowMap.SampleCmpLevelZero(ShadowSampler, float3(uv, fieldID), depth));
+float GetLuminance(float3 RGB)
+{
+	return 0.2126f * RGB.x + 0.7152f * RGB.y + 0.0722f * RGB.z;
+}
+
+#define g_minVariance 0.00002f
+
+float linstep(float min, float max, float v)
+{
+	return clamp((v - min) / (max - min), 0, 1);
+}
+
+float ReduceLightBleed(float p_max, float amount)
+{
+	return linstep(amount, 1.0f, p_max);
+}
+
+float ChebyshevUpperBound(const float2 moments, const float t)
+{
+	const float p = step(t, moments.x);
+
+	const float variance = max(moments.y - (moments.x * moments.x), g_minVariance);
+
+	const float d = t - moments.x;
+	const float p_max = variance / (variance + d * d);
+
+	return ReduceLightBleed(saturate(max(p, p_max)), 0.35f);
 }
 
 float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
@@ -205,17 +258,17 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 	const float4 MRIA		= MRIABuffer.Load(uint3(px.xy, 0));
 
 	const float3 N			= float3(N_xy, sqrt(saturate(1.0f - dot(N_xy, N_xy))));
-	const float4 N_WS		= mul(ViewI, N);
+	const float3 N_WS		= mul(ViewI, N).xyz;
 
 	const float2 UV			= SampleCoord * WH_I; // [0;1]
 	const float3 V			= -GetViewVector_VS(UV);
 	const float3 positionVS	= GetViewSpacePosition(UV, depth);
-	const float3 positionWS	= GetWorldSpacePosition(UV, depth);
+	const float3 positionWS = mul(ViewI, float4(positionVS, 1)); //GetWorldSpacePosition(UV, depth);
 
 	const float ior			= MRIA.b;
-	const float metallic	= 1 - MRIA.r > 0.1f ? 1.0f : 0.0f; 
-	const float3 albedo		= pow(Albedo.rgb, 2.2f);
-	const float roughness	= MRIA.g;
+	const float metallic	= 0;//1 - MRIA.r > 0.1f ? 1.0f : 0.0f; 
+	const float3 albedo		= pow(Albedo.rgb, 2.1f);
+	const float roughness	= 0.3f;//MRIA.g;
 
 	const float Ks			= lerp(0, 0.4f, saturate(Albedo.w));
 	const float Kd			= (1.0 - Ks) * (1.0 - metallic);
@@ -230,31 +283,51 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		const float3 Lc			= light.KI.rgb;
 		const float3 Lp			= mul(View, float4(light.PR.xyz, 1));
 		const float3 L			= normalize(Lp - positionVS);
-		const float  Ld			= length(positionVS - Lp);
+		const float  Ld			= length(Lp - positionVS);
 		const float  Li			= light.KI.w;
 		const float  Lr			= light.PR.w;
 		const float  ld_2		= Ld * Ld;
 		const float  La			= (Li / ld_2) * (1 - (pow(Ld, 10) / pow(Lr, 10)));
 
-		const float  NdotL		= saturate(dot(N.xyz, L));
+		const float  NdotL		= saturate(dot(N, L));
 		const float3 H			= normalize(V + L);
 		 
-		#if 0
+		#if DIFFUSETECHNIQUE == 0
 			const float3 diffuse	= max(albedo * F_d(V, H, L, N.xyz, roughness), 0.0f);
-		#else
+		#elif DIFFUSETECHNIQUE == 1
 			const float3 diffuse	= NdotL * albedo * INV_PI;
+		#elif DIFFUSETECHNIQUE == 2
+			const float3 diffuse	= float3(0, 0, 0);
 		#endif
 
-		#if 0
-			const float3 specular = F_r_said(V, H, L, N.xyz, albedo, roughness, 0);
-		#else
-			const float3 specular = F_r(V, H, L, N.xyz, roughness) * length(albedo) * albedo;
+		#if SPECULARTECHNIQUE == 0
+			const float3 specular	= F_r(V, H, L, N.xyz, roughness);
+		#elif SPECULARTECHNIQUE == 1
+			const float3 specular	= F_r_said(V, H, L, N.xyz, albedo, roughness, 0);
+		#elif SPECULARTECHNIQUE == 2
+			const float3 specular	= float3(0, 0, 0);
 		#endif
 
-		#if 0// skip shadowmaping
+		#if SHADOWTECHNIQUE == 0 // Skip
+
+			const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
+			color += float4(max(colorSample, 0), 0);
+
+		#elif SHADOWTECHNIQUE == 1 // Variance shadow mapping
 			const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI * Lc;
-			color += max(float4(colorSample, 0), 0.0f);
-		#else
+
+			const float2	momentSample	= shadowCubes[pointLightIdx].Sample(BiLinear, mul(ViewI, -L));
+			const float		depth			= saturate(length(Lp - positionVS - 0.1f) / Lr);
+
+			color += float4(ChebyshevUpperBound(momentSample, depth) * colorSample, 0);
+			//color += max(float4(colorSample * Lc * step(depth, momentSample.x), 0), 0);
+			//color += max(float4((-L + 1.0f) / 2.0f, 0), 0);
+			//color += max(dot(float3(0, -1, 0), -L), 0);
+			//color += max(float4(momentSample, depth, 0), 0);
+			//color += max(float4(float3(momentSample, 1) * (L + 1.0f) / 2.0f, 0), 0);
+
+		#elif SHADOWTECHNIQUE == 2 // PCF
+
 			const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI * Lc;
 
 			const float3 mapVectors[] = {
@@ -268,8 +341,29 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 
 			int fieldID = 0;
 			float a = -1.0f;
-
 			const float3 L_WS = mul(ViewI, -L);
+
+			for (int II = 0; II < 6; II++)
+			{
+				const float b = dot(mapVectors[II], L_WS);
+
+				if (b > a)
+				{
+					fieldID = II;
+					a = b;
+				}
+			}
+
+			const float4 lightPosition_DC = mul(pl[6 * pointLightIdx + fieldID].PV, float4(positionWS.xyz, 1));
+			const float4 lightPosition_VS = mul(pl[6 * pointLightIdx + fieldID].V, float4(positionWS.xyz, 1));
+			const float3 lightPosition_PS = lightPosition_DC / lightPosition_DC.a;
+			
+			const float lightDepth	= -lightPosition_VS.z / Lr;
+
+			const float2 momentSample = shadowMaps[pointLightIdx].Sample(BiLinear, L_WS);
+			color += max(float4(colorSample * Lc * step(momentSample.x, lightDepth), 0), 0);
+
+
 			for (int II = 0; II < 6; II++)
 			{
 				const float b = dot(mapVectors[II], L_WS);
@@ -348,6 +442,8 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			sum += uw2 * vw3 * SampleShadowMap(base_uv, u2, v3, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
 			sum += uw3 * vw3 * SampleShadowMap(base_uv, u3, v3, resolution_INV, fieldID, shadowMaps[pointLightIdx], lightDepth, receiverPlaneDepthBias);
 
+			sum *= 1.0f / 2704.0f;
+
 			static float4 Colors[] = {
 				float4(1, 0, 0, 0),
 				float4(0, 1, 0, 0),
@@ -357,7 +453,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 				float4(1, 0, 1, 1),
 			};
 
-			color += max(float4(colorSample * Lc * sum * 1.0f / 2704.0f, 0), 0);
+			//color += max(float4(colorSample * Lc * sum * 1.0f / 2704.0f, 0), 0);
 		#endif 
 	}
 
@@ -397,17 +493,17 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		//return depth;
 		//return float4(N / 2.0f + 0.5f);
 	//return Albedo * Albedo;
-	//return float4(positionW, 0);
+	//return float4(positionWS, 0);
 	//return pow(roughness, 2.2f);
 	//return pow(MRIA, 2.2f);
 	//return pow(float4(albedo, 1), 2.2f);
 	//return float4(T.xyz, 1);
 	//return float4(N.xyz, 1);
 	//return pow(float4(roughness, metallic, 0, 0), 2.2f);
-	//return float4(N.xyz / 2 + 0.5f, 1);
+	return float4(N_WS, 1);
 	//return float4(N.xyz / 2 + 0.5f, 1) * (float(localLightCount) / float(lightCount));
 	//return lerp(float4(0, 0, 0, 0), float4(1, 1, 1, 0), float(localLightCount) / float(lightCount));
-	return float4(albedo, 1);
+	//return float4(albedo, 1);
 #endif
 	
 	return color;

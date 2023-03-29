@@ -51,7 +51,7 @@ namespace FlexKit
 		Vector<PassHandle, 8, uint8_t>			Passes;
 		Vector<MaterialProperty, 8, uint8_t>	Properties;
 		Vector<ResourceHandle, 8, uint8_t>		Textures;
-		Vector<MaterialHandle, 16, uint8_t>		SubMaterials;
+		Vector<MaterialHandle, 4, uint8_t>		SubMaterials;
 	};
 
 

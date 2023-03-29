@@ -1943,6 +1943,11 @@ namespace FlexKit
 
 					nodeData->uploadSize += resourceSize;
 				}
+
+				void CreateZeroedResource(FrameResourceHandle dstResource)
+				{
+
+				}
 			};
 
 			static_assert(

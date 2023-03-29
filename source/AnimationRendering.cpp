@@ -1,8 +1,11 @@
 #include "AnimationRendering.h"
 #include "graphics.h"
+#include <ranges>
 
 namespace FlexKit
-{
+{	/************************************************************************************************/
+
+
 	AnimationPoseUpload::PoseView AnimationPoseUpload::GetIterator()
 	{
 		auto& buffer = GetBuffer(reserve, passes);
@@ -58,6 +61,145 @@ namespace FlexKit
 
 					ConstantBufferDataSet((char*)&poses, sizeof(pose->JointCount) * sizeof(float4x4), poseBuffer);
 				}
+			});
+	}
+
+
+	/************************************************************************************************/
+
+
+	const ResourceAllocation& AcquirePoseResources(
+		FrameGraph&						frameGraph,
+		UpdateDispatcher&				dispatcher,
+		GatherPassesTask&				passes,
+		ReserveConstantBufferFunction&	reserveConstants,
+		PoolAllocatorInterface&			pool,
+		iAllocator&						allocator)
+	{
+		PassDrivenResourceAllocation allocation {
+			.getPass			= [&passes] { return passes.GetData().GetPass(GBufferAnimatedPassID); },
+			.initializeResources =
+				[](std::span<const PVEntry> brushes, std::span<const FrameResourceHandle> handles, auto& transferContext, iAllocator& allocator)
+				{
+					auto itr = handles.begin();
+
+					for (auto&& [sortID, brush, gameObject, occlusionID, submissionID, LODlevel] : brushes)
+					{
+
+						auto poseState = GetPoseState(*gameObject);
+						auto skeleton = poseState->Sk;
+
+						const size_t poseSize = sizeof(float4x4) * poseState->JointCount;
+						float4x4* pose = (float4x4*)allocator.malloc(poseSize);
+
+						for (size_t I = 0; I < poseState->JointCount; I++)
+							pose[I] = (skeleton->IPose[I] * poseState->CurrentPose[I]);
+
+						transferContext.CreateResource(*(itr++), poseSize, pose);
+					}
+				},
+
+			.layout	= FlexKit::DeviceLayout::DeviceLayout_Common,
+			.access	= FlexKit::DeviceAccessState::DASNonPixelShaderResource,
+			.max	= 32,
+			.pool	= &pool
+		};
+
+		return frameGraph.AllocateResourceSet(allocation);
+	}
+
+
+	/************************************************************************************************/
+
+
+	UpdateTask& LoadNeededMorphTargets(UpdateDispatcher& dispatcher, GatherPassesTask& passes)
+	{
+		using std::views::zip;
+
+		struct _ {};
+		return dispatcher.Add<_>(
+			[&](auto& builder, _&)
+			{
+				builder.AddInput(passes);
+			},
+			[&passes](_& data, iAllocator& threadAllocator)
+			{
+				ProfileFunction();
+
+				FK_LOG_9("Start Loading Needed Morph Targets Updates.");
+
+				const auto& pass = passes.GetData().GetPass(MorphTargetID);
+
+				for (const auto& [sortID, brush, gameObject, occlusioID, submissionID, lods] : pass)
+				{
+					for (auto [lod, mesh] : zip(lods, brush->meshes))
+					{
+						if (lod == 0 && gameObject->hasView(AnimatorComponentID))
+						{
+							AnimatorView& animator = *gameObject->GetView<AnimatorView>();
+							auto resource = FlexKit::GetMeshResource(mesh);
+							for (auto& morphTarget : resource->morphTargetAssets)
+							{
+								fmt::print("{} : offset {} : size {}\n", morphTarget.name, morphTarget.offset, morphTarget.size);
+							}
+						}
+					}
+				}
+
+				FK_LOG_9("Done Loading Needed Morph Targets Updates");
+			});
+	}
+
+
+	/************************************************************************************************/
+
+
+	const MorphTargets&	BuildMorphTargets(
+			FrameGraph&						frameGraph,
+			UpdateDispatcher&				dispatcher,
+			GatherPassesTask&				passes,
+			UpdateTask&						loadedMorphs,
+			ReserveConstantBufferFunction&	reserveConstants,
+			PoolAllocatorInterface&			pool,
+			iAllocator&						allocator)
+	{
+		PassDrivenResourceAllocation desc {
+			.getPass			= [&passes] { return passes.GetData().GetPass(MorphTargetID); },
+			.initializeResources =
+				[](std::span<const PVEntry> brushes, std::span<const FrameResourceHandle> handles, auto& transferContext, iAllocator& allocator)
+				{
+					auto itr = handles.begin();
+
+					for (auto&& [sortID, brush, gameObject, occlusionID, submissionID, LODlevel] : brushes)
+					{
+						auto poseState	= GetPoseState(*gameObject);
+						auto skeleton	= poseState->Sk;
+
+						transferContext.CreateZeroedResource(*(itr++));
+					}
+				},
+
+			.layout	= FlexKit::DeviceLayout::DeviceLayout_Common,
+			.access	= FlexKit::DeviceAccessState::DASNonPixelShaderResource,
+			.max	= 32,
+			.pool	= &pool
+		};
+
+		auto& allocation = frameGraph.AllocateResourceSet(desc);
+
+		return frameGraph.AddNode<MorphTargets>(
+			{
+				Vector<MorphTarget>{ allocator },
+				allocation
+			},
+			[&](FrameGraphNodeBuilder& builder, MorphTargets& data)
+			{
+				builder.AddNodeDependency(allocation.node);
+				builder.AddDataDependency(loadedMorphs);
+			},
+			[&](MorphTargets& data, ResourceHandler& resources, Context& ctx, iAllocator& localAllocator)
+			{
+
 			});
 	}
 

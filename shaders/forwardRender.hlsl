@@ -26,22 +26,15 @@ cbuffer ShadingConstants : register(b2)
 	uint2 WH;
 }
 
-/*
-cbuffer Poses : register(b3)
-{
-	float4x4 Poses[768];
-}
-*/
-
 Texture2D<float4> albedoTexture			: register(t0);
 Texture2D<float4> normalTexture			: register(t1);
 Texture2D<float4> roughnessMetalTexture : register(t2);
 
-//TextureCube<float4>             HDRMap          : register(t3);
-Texture2D<float4>		        MRIATexture     : register(t4);
+//TextureCube<float4>			HDRMap			: register(t3);
+Texture2D<float4>				MRIATexture		: register(t4);
 
-StructuredBuffer<uint>		    lightLists	    : register(t5);
-ByteAddressBuffer               pointLights     : register(t6);
+StructuredBuffer<uint>			lightLists		: register(t5);
+ByteAddressBuffer				pointLights		: register(t6);
 StructuredBuffer<float4x4>		Poses			: register(t7);
 
 
@@ -131,6 +124,13 @@ Forward_VS_OUT ForwardSkinned_VS(VertexSkinned In)
 	float4 N = float4(0.0f, 0.0f, 0.0f, 0.0f);
 	float4 T = float4(0.0f, 0.0f, 0.0f, 0.0f);
 	float4 W = float4(In.Weights.xyz, 1 - In.Weights.x - In.Weights.y - In.Weights.z);
+
+	float4x4 Identity =
+		float4x4(
+			1, 0, 0, 0,
+			0, 1, 0, 0,
+			0, 0, 1, 0,
+			0, 0, 0, 1);
 
 	[unroll(4)]
 	for (uint I = 0; I < 4; ++I)
@@ -285,6 +285,12 @@ float4 ColoredPolys(Forward_PS_IN IN, uint primitiveID : SV_PrimitiveID) : SV_TA
 	};
 
 	return colors[primitiveID % 3] * saturate(dot(float3(0, 0, 1), mul(View, IN.Normal)));
+}
+
+
+float4 GreyPolys(Forward_PS_IN IN) : SV_TARGET
+{
+	return float4(0.5f, 0.5f, 0.5f, 1) * saturate(dot(float3(0, 0, 1), mul(View, IN.Normal)));
 }
 
 

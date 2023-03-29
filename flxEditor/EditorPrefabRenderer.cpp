@@ -11,8 +11,8 @@
 
 ID3D12PipelineState* CreateFlatSkinnedPassPSO(RenderSystem* RS)
 {
-	auto DrawRectVShader = RS->LoadShader("ForwardSkinned_VS",  "vs_6_0", "assets\\shaders\\forwardRender.hlsl");
-	auto DrawRectPShader = RS->LoadShader("ColoredPolys",       "ps_6_0", "assets\\shaders\\forwardRender.hlsl");
+	auto DrawRectVShader = RS->LoadShader("ForwardSkinned_VS",	"vs_6_0", "assets\\shaders\\forwardRender.hlsl");
+	auto DrawRectPShader = RS->LoadShader("GreyPolys",			"ps_6_0", "assets\\shaders\\forwardRender.hlsl");
 
 	/*
 	typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -28,13 +28,17 @@ ID3D12PipelineState* CreateFlatSkinnedPassPSO(RenderSystem* RS)
 	*/
 
 	D3D12_INPUT_ELEMENT_DESC InputElements[] = {
-		{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "NORMAL",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "TANGENT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 2, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 3, 0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 3, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 
 		{ "BLENDWEIGHT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    4, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "BLENDINDICES",	0, DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_UINT,  5, 0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "BLENDINDICES",	0, DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_UINT,  5, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+
+		{ "BLENDPOS",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,  6, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "BLENDNORM",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,  7, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "BLENDTAN",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,  8, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 	};
 
 
@@ -78,7 +82,7 @@ ID3D12PipelineState* CreateFlatSkinnedPassPSO(RenderSystem* RS)
 ID3D12PipelineState* CreateFlatPassPSO(RenderSystem* RS)
 {
 	auto DrawRectVShader = RS->LoadShader("Forward_VS", "vs_6_0", R"(assets\shaders\forwardRender.hlsl)");
-	auto DrawRectPShader = RS->LoadShader("ColoredPolys", "ps_6_0", R"(assets\shaders\forwardRender.hlsl)");
+	auto DrawRectPShader = RS->LoadShader("GreyPolys",	"ps_6_0", R"(assets\shaders\forwardRender.hlsl)");
 
 	/*
 	typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -94,10 +98,10 @@ ID3D12PipelineState* CreateFlatPassPSO(RenderSystem* RS)
 	*/
 
 	D3D12_INPUT_ELEMENT_DESC InputElements[] = {
-		{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "NORMAL",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "TANGENT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 2, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 3, 0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 3, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 	};
 
 
@@ -233,7 +237,7 @@ void EditorPrefabPreview::resizeEvent(QResizeEvent* evt)
 	QWidget::resizeEvent(evt);
 
 	auto size = evt->size();
-	FlexKit::uint2 newWH = { evt->size().width() * 1.5, evt->size().height() * 1.5 };
+	FlexKit::uint2 newWH = { FlexKit::Max(1, evt->size().width() * 1.5), FlexKit::Max(1, evt->size().height() * 1.5) };
 
 
 	renderWindow->resizeEvent(evt);
@@ -262,6 +266,7 @@ void EditorPrefabPreview::RenderStatic(
 
 		FlexKit::FrameResourceHandle renderTarget;
 		FlexKit::FrameResourceHandle depthTarget;
+		FlexKit::FrameResourceHandle poseBuffer;
 	};
 
 	auto WH = frameGraph.GetRenderSystem().GetTextureWH(renderTarget);
@@ -273,6 +278,8 @@ void EditorPrefabPreview::RenderStatic(
 
 	cameras.AddInput(transforms);
 
+	renderer.worldRender.AddMemoryPools(frameGraph);
+
 	frameGraph.AddNode<Pass>(
 		Pass{
 			temporaryBuffers.ReserveConstantBuffer,
@@ -280,8 +287,9 @@ void EditorPrefabPreview::RenderStatic(
 		},
 		[&](FlexKit::FrameGraphNodeBuilder& builder, Pass& data)
 		{
-			data.renderTarget   = builder.RenderTarget(renderTarget);
-			data.depthTarget    = builder.DepthTarget(depthBuffer.Get());
+			data.renderTarget	= builder.RenderTarget(renderTarget);
+			data.depthTarget	= builder.DepthTarget(depthBuffer.Get());
+			data.poseBuffer		= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::StructuredResource(64 * 1024), FlexKit::DASCopyDest);
 
 			builder.AddDataDependency(cameras);
 
@@ -299,13 +307,13 @@ void EditorPrefabPreview::RenderStatic(
 			if (!brush || brush->meshes.empty())
 				return;
 
-			auto materialHndl	= brush->material;
-			auto constants		= brush->GetConstants();
+			auto materialHndl = brush->material;
+			auto constants = brush->GetConstants();
 
 			//auto& materials			= MaterialComponent::GetComponent();
 			//const auto materialData	= MaterialComponent::GetComponent()[materialHndl];
-			auto skeleton			= FlexKit::GetSkeleton(gameObject);
-			auto poseState			= FlexKit::GetPoseState(gameObject);
+			auto skeleton = FlexKit::GetSkeleton(gameObject);
+			auto poseState = FlexKit::GetPoseState(gameObject);
 
 			struct ForwardDrawConstants
 			{
@@ -334,14 +342,19 @@ void EditorPrefabPreview::RenderStatic(
 			const size_t poseBufferSize =
 				AlignedSize<EntityPoses>();
 
-			auto passConstantBuffer   = data.reserveCB(passBufferSize);
+			auto passConstantBuffer = data.reserveCB(passBufferSize);
 			auto entityConstantBuffer = data.reserveCB(entityBufferSize);
-			auto poseBuffer           = data.reserveCB(poseBufferSize);
+			auto poseBuffer = data.reserveCB(poseBufferSize);
 
-			const auto cameraConstants  = ConstantBufferDataSet{ GetCameraConstants(previewCamera), passConstantBuffer };
-			const auto passConstants    = ConstantBufferDataSet{ ForwardDrawConstants{ 1, 1 }, passConstantBuffer };
+			const auto cameraConstants	= ConstantBufferDataSet{ GetCameraConstants(previewCamera), passConstantBuffer };
+			const auto passConstants	= ConstantBufferDataSet{ ForwardDrawConstants{ 1, 1 }, passConstantBuffer };
 
-			ctx.SetRootSignature(frameResources.renderSystem().Library.RS6CBVs4SRVs);
+			auto& rootSignature = frameResources.renderSystem().Library.RS6CBVs4SRVs;
+			ctx.SetRootSignature(rootSignature);
+
+			DescriptorHeap emptyHeap(ctx, rootSignature.GetDescHeap(0), allocator);
+			emptyHeap.NullFill(ctx);
+			ctx.SetGraphicsDescriptorTable(0, emptyHeap);
 
 			if (poseState)
 			{
@@ -353,17 +366,24 @@ void EditorPrefabPreview::RenderStatic(
 					{ frameResources.GetResource({ data.renderTarget }) },
 					true, frameResources.GetResource(data.depthTarget));
 
-				auto& poses = allocator.allocate<EntityPoses>();
+				auto poseSize	= poseState->JointCount * sizeof(float4x4);
+				auto poseBuffer = ctx.ReserveDirectUploadSpace(poseSize);
 
 				FlexKit::UpdatePose(*poseState, allocator);
 
 				for (size_t I = 0; I < poseState->JointCount; I++)
-					poses[I] = skeleton->IPose[I] * poseState->CurrentPose[I];
+				{
+					auto pose = skeleton->IPose[I] * poseState->CurrentPose[I];
+					memcpy(((float4x4*)poseBuffer.buffer) + I, &pose, sizeof(float4x4));
+				}
+
+				ctx.CopyBufferRegion(frameResources.GetResource(data.poseBuffer), poseBuffer.resource, poseSize, 0, poseBuffer.offset);
 
 				ctx.SetGraphicsConstantBufferView(1, cameraConstants);
 				ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
 				ctx.SetGraphicsConstantBufferView(3, passConstants);
-				ctx.SetGraphicsConstantBufferView(4, ConstantBufferDataSet(poses, poseBuffer));
+
+				ctx.SetGraphicsShaderResourceView(7, frameResources.PixelShaderResource(data.poseBuffer, ctx, FlexKit::DeviceSyncPoint::Sync_Copy, FlexKit::DeviceSyncPoint::Sync_VertexShader));
 
 				for (auto mesh : brush->meshes)
 				{

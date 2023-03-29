@@ -21,15 +21,87 @@
 #include <stb_image.h>
 #include <stb_image_write.h>
 #include <tiny_gltf.h>
+#include <ranges>
 
 namespace FlexKit
 {	/************************************************************************************************/
 
+	using std::views::zip;
+	using std::views::iota;
 
 	std::optional<MeshResource_ptr> ExtractGeometry(tinygltf::Mesh& mesh)
 	{
 		return {};
 	}
+
+	float3 Rejection(float3 lhs, float3 rhs)
+	{
+		return lhs.dot(rhs) * rhs - lhs;
+	}
+
+	void GenerateTangents(auto indices, auto points, auto normals, auto uvCoords, auto& tangentsOut)
+	{
+		tangentsOut.clear();
+
+		std::vector<float3> tangentBuffer;
+		std::vector<float3> bitangentBuffer;
+		tangentBuffer.resize(normals.size());
+		bitangentBuffer.resize(normals.size());
+		memset(tangentBuffer.data(), 0, tangentBuffer.size() * sizeof(float3));
+		memset(bitangentBuffer.data(), 0, bitangentBuffer.size() * sizeof(float3));
+
+		for (auto itr = indices.begin(); itr < indices.end(); itr+= 3)
+		{
+			const uint32_t idx0 = *(itr + 0);
+			const uint32_t idx1 = *(itr + 1);
+			const uint32_t idx2 = *(itr + 2);
+
+			const float3 p0 = points[idx0];
+			const float3 p1 = points[idx1];
+			const float3 p2 = points[idx2];
+
+			const float2 w0 = uvCoords[idx0];
+			const float2 w1 = uvCoords[idx1];
+			const float2 w2 = uvCoords[idx2];
+
+			const float3 e1 = p1 - p0;
+			const float3 e2 = p2 - p0;
+
+			const float x1 = w1.x - w0.x;
+			const float x2 = w2.x - w0.x;
+
+			const float y1 = w1.y - w0.y;
+			const float y2 = w2.y - w0.y;
+
+			const float r = 1.0f / (x1 * y2 - x2 * y1);
+			const float3 tangent	= (e1 * y2 - e2 * y1) * r;
+			const float3 bitangent	= (e2 * x1 - e1 * x2) * r;
+
+			tangentBuffer[idx0] += tangent;
+			tangentBuffer[idx1] += tangent;
+			tangentBuffer[idx2] += tangent;
+			bitangentBuffer[idx0] += bitangent;
+			bitangentBuffer[idx1] += bitangent;
+			bitangentBuffer[idx2] += bitangent;
+		}
+
+		for (auto&& [t, b, n] : zip(tangentBuffer, bitangentBuffer, normals))
+		{
+			const auto rejected = Rejection(t, n).normal();
+			const auto dp = t.cross(b).dot(n);
+
+			t = rejected * (dp > 0.0f ? 1.0f : -1.0f);
+		}
+
+		tangentsOut.reserve(tangentBuffer.size());
+
+		for (float3& t : tangentBuffer)
+			tangentsOut.push_back(t);
+	}
+
+
+	/************************************************************************************************/
+
 
 	std::pair<ResourceList, std::vector<size_t>>  GatherGeometry(tinygltf::Model& model)
 	{
@@ -118,10 +190,51 @@ namespace FlexKit
 				auto&	primitives = sourceMesh->primitives;
 				auto	meshTokens = FlexKit::MeshUtilityFunctions::TokenList{ SystemAllocator };
 
+				struct XYZ {
+					float x;
+					float y;
+					float z;
+
+					XYZ() = default;
+
+					XYZ(const float3& xyz)
+					{
+						x = xyz.x;
+						y = xyz.y;
+						z = xyz.z;
+					}
+
+					XYZ& operator = (const float3& xyz)
+					{
+						x = xyz.x;
+						y = xyz.y;
+						z = xyz.z;
+
+						return *this;
+					}
+
+					operator float3 () const { return { x, y, z }; }
+				};
+
+				struct UV {
+					float x;
+					float y;
+
+					operator float2 () const { return { x, y };		}
+					operator float3 () const { return { x, y, 0 };	}
+				};
+
+
 				LODLevel lod;
 				for(auto& primitive : primitives)
 				{
 					MeshDesc newMesh;
+
+					std::span<uint32_t>			indices;
+					std::span<XYZ>				points;
+					std::span<XYZ>				normals;
+					std::span<float4>			tangents;
+					std::vector<std::span<UV>>	UVChannels;
 
 					for(auto& attribute : primitive.attributes)
 					{
@@ -132,64 +245,26 @@ namespace FlexKit
 						auto stride			= bufferView.byteStride == 0 ? GetComponentSizeInBytes(bufferAcessor.componentType) * GetNumComponentsInType(bufferAcessor.type) : bufferView.byteStride;
 						auto elementCount	= bufferView.byteLength / stride;
 
-						std::regex texcoordPattern	{ R"(TEXCOORD_[0-9]+)" };
-						std::regex jointPattern		{ R"(JOINTS_[0-9]+)" };
-
+						static const std::regex texcoordPattern		{ R"(TEXCOORD_[0-9]+)" };
+						static const std::regex jointPattern		{ R"(JOINTS_[0-9]+)" };
 
 						if (attribute.first == "POSITION")
-						{
-							for (size_t I = 0; I < elementCount; I++)
-							{
-								float3 xyz;
-
-								memcpy(&xyz, buffer + stride * I, stride);
-								MeshUtilityFunctions::OBJ_Tools::AddVertexToken(xyz, meshTokens);
-							}
-							
+						{							
 							for (size_t i = 0; i < bufferAcessor.minValues.size(); i++)
 							{
 								newMesh.MinV[i] = (float)bufferAcessor.minValues[i];
 								newMesh.MaxV[i] = (float)bufferAcessor.maxValues[i];
 							}
+
+							points = { (XYZ*)buffer, elementCount };
+						}
+						else if (attribute.first == "TANGENT")
+						{
+							//tangents = { (float4*)buffer, elementCount };
 						}
 						else if (attribute.first == "NORMAL")
 						{
-							if (primitive.attributes.find("TANGENT") != primitive.attributes.end())
-							{
-								newMesh.Normals		= true;
-								newMesh.Tangents	= true;
-
-								auto& tangentAcessor	= model.accessors[primitive.attributes["TANGENT"]];
-								auto& tangentView		= model.bufferViews[tangentAcessor.bufferView];
-								auto* tangentbuffer		= model.buffers[tangentView.buffer].data.data() + tangentView.byteOffset;
-
-								auto tangentStride		= tangentView.byteStride == 0 ? GetComponentSizeInBytes(tangentAcessor.componentType) * GetNumComponentsInType(tangentAcessor.type) : tangentView.byteStride;
-
-								for (size_t I = 0; I < elementCount; I++)
-								{
-									float4 normal;
-									float4 tangent;
-
-									memcpy(&normal, buffer + stride * I, stride);
-									memcpy(&tangent, tangentbuffer + tangentStride * I, tangentStride);
-
-									tangent = float4{ tangent.xyz() * tangent.w, tangent.w };
-
-									MeshUtilityFunctions::OBJ_Tools::AddNormalToken(normal.xyz(), tangent.xyz(), meshTokens);
-								}
-							}
-							else
-							{
-								newMesh.Normals = true;
-
-								for (size_t I = 0; I < elementCount; I++)
-								{
-									float3 normal;
-
-									memcpy(&normal, buffer + stride * I, stride);
-									MeshUtilityFunctions::OBJ_Tools::AddNormalToken(normal, meshTokens);
-								}
-							}
+							normals = { (XYZ*)buffer, elementCount };
 						}
 						else if (std::regex_search(attribute.first, texcoordPattern))
 						{
@@ -207,14 +282,7 @@ namespace FlexKit
 
 							idx = res ? std::atoi(results.begin()->str().c_str()) : 0;
 
-
-							for (size_t I = 0; I < elementCount; I++)
-							{
-								float3 coord;
-
-								memcpy(&coord, buffer + stride * I, stride);
-								MeshUtilityFunctions::OBJ_Tools::AddTexCordToken(coord, idx, meshTokens);
-							}
+							UVChannels.emplace_back((UV*)buffer, elementCount);
 						}
 						else if (std::regex_search(attribute.first, jointPattern))
 						{
@@ -266,6 +334,56 @@ namespace FlexKit
 
 					}
 
+					auto& indexAccessor		= model.accessors[primitive.indices];
+					auto& indexBufferView	= model.bufferViews[indexAccessor.bufferView];
+					auto& indexBuffer		= model.buffers[indexBufferView.buffer];
+					 
+					const auto indexComponentType	= indexAccessor.componentType;
+					const auto indexType			= indexAccessor.type;
+
+					const auto indexStride	= indexBufferView.byteStride == 0 ? GetComponentSizeInBytes(indexComponentType) * GetNumComponentsInType(indexType) : indexBufferView.byteStride;
+					const auto indexCount	= indexBufferView.byteLength / indexStride;
+
+					auto* buffer = model.buffers[indexBufferView.buffer].data.data() + indexBufferView.byteOffset;
+
+
+					std::vector<uint32_t>	uint32Indices;
+					std::vector<float4>		generatedTangents;
+
+					if (indexStride == 2)
+					{
+						std::span<uint16_t> uint16Indices{ (uint16_t*)buffer, indexCount };
+						std::ranges::copy(uint16Indices, std::back_inserter(uint32Indices));
+
+						indices = uint32Indices;
+					}
+					else if(indexStride == 4)
+						indices = { (uint32_t*)buffer, indexCount };
+
+
+					if (!tangents.size() && normals.size() && UVChannels.size()) // Generate Tangents
+					{
+						GenerateTangents(indices, points, normals, UVChannels[0], generatedTangents);
+						tangents = generatedTangents;
+					}
+
+					for (auto& point : points)
+						MeshUtilityFunctions::OBJ_Tools::AddVertexToken(point, meshTokens);
+
+					if (normals.size() && tangents.size())
+					{
+						for (auto&& [normal, tangent] : zip(normals, tangents))
+						{
+							auto tangentAdjusted = (tangent.w != 0) ? float4{ tangent.xyz() * tangent.w, tangent.w } : tangent;
+
+							MeshUtilityFunctions::OBJ_Tools::AddNormalToken(normal, tangentAdjusted.xyz(), meshTokens);
+						}
+					}
+
+					for (auto&& [idx, uvs] : zip(iota(0), UVChannels))
+						for(auto uv : uvs)
+							MeshUtilityFunctions::OBJ_Tools::AddTexCordToken(uv, idx, meshTokens);
+
 					size_t					morphTargetCount = 0;
 					uint32_t				morphTargetVertexCount = 0;
 					std::vector<uint32_t>	morphTargetStart;
@@ -276,42 +394,73 @@ namespace FlexKit
 						auto tangent		= morphChannels.find("TANGENT");
 						auto normal			= morphChannels.find("NORMAL");
 
-						if (tangent == morphChannels.end() || normal == morphChannels.end() || position == morphChannels.end())
-							continue;
-
 						morphTargetStart.push_back(morphTargetVertexCount);
 
-						auto& positionAcessor	= model.accessors[position->second];
-						auto& positionView		= model.bufferViews[positionAcessor.bufferView];
-						auto* positionBuffer	= model.buffers[positionView.buffer].data.data() + positionView.byteOffset;
+						std::span<XYZ>		morphPointSpan;
+						std::span<XYZ>		morphNormalSpan;// { (XYZ*)normalBuffer, normalElementCount };
+						std::span<float4>	morphTangentSpan;// = tangentbuffer != nullptr ? std::span<XYZ>{ (XYZ*)normalBuffer, normalElementCount } : std::span<XYZ>{};
 
-						auto& normalAcessor		= model.accessors[normal->second];
-						auto& normalView		= model.bufferViews[normalAcessor.bufferView];
-						auto* normalBuffer		= model.buffers[normalView.buffer].data.data() + normalView.byteOffset;
+						auto& positionAcessor		= model.accessors[position->second];
+						auto& positionView			= model.bufferViews[positionAcessor.bufferView];
+						auto* positionBuffer		= model.buffers[positionView.buffer].data.data() + positionView.byteOffset;
 
-						auto& tangentAcessor	= model.accessors[tangent->second];
-						auto& tangentView		= model.bufferViews[tangentAcessor.bufferView];
-						auto* tangentbuffer		= model.buffers[tangentView.buffer].data.data() + tangentView.byteOffset;
+						auto& normalAcessor			= model.accessors[normal->second];
+						auto& normalView			= model.bufferViews[normalAcessor.bufferView];
+						auto* normalBuffer			= model.buffers[normalView.buffer].data.data() + normalView.byteOffset;
 
 						auto positionStride			= positionView.byteStride == 0 ? GetComponentSizeInBytes(positionAcessor.componentType) * GetNumComponentsInType(positionAcessor.type) : positionView.byteStride;
 						auto positionElementCount	= positionView.byteLength / positionStride;
-
-						auto tangentStride			= tangentView.byteStride == 0 ? GetComponentSizeInBytes(tangentAcessor.componentType) * GetNumComponentsInType(tangentAcessor.type) : tangentView.byteStride;
-						auto tangentElementCount	= tangentView.byteLength / tangentStride;
+						morphPointSpan = { (XYZ*)positionBuffer, positionElementCount };;
 
 						auto normalStride			= normalView.byteStride == 0 ? GetComponentSizeInBytes(normalAcessor.componentType) * GetNumComponentsInType(normalAcessor.type) : normalView.byteStride;
 						auto normalElementCount		= normalView.byteLength / normalStride;
+						morphNormalSpan = { (XYZ*)normalBuffer, normalElementCount };
 
-						for (size_t I = 0; I < normalElementCount; I++)
+						if (tangent != morphChannels.end())
 						{
-							float3 position;
-							float3 normal;
-							float3 tangent;
+							auto& tangentAcessor		= model.accessors[tangent->second];
+							auto& tangentView			= model.bufferViews[tangentAcessor.bufferView];
+							auto* tangentbuffer			= model.buffers[tangentView.buffer].data.data() + tangentView.byteOffset;
 
-							memcpy(&position,	positionBuffer + positionStride * I, positionStride);
-							memcpy(&normal,		normalBuffer  + normalStride  * I, normalStride);
-							memcpy(&tangent,	tangentbuffer + tangentStride * I, tangentStride);
+							auto tangentStride			= tangentView.byteStride == 0 ? GetComponentSizeInBytes(tangentAcessor.componentType) * GetNumComponentsInType(tangentAcessor.type) : tangentView.byteStride;
+							auto tangentElementCount	= tangentView.byteLength / tangentStride;
+							morphTangentSpan = std::span<float4>{ (float4*)tangentbuffer, tangentElementCount };
+						}
 
+						std::vector<float4> generatedMorphTangents;
+
+						if (!morphTangentSpan.size())
+						{	// Generate Tangents
+							std::vector<float3>	morphPoints;
+							std::vector<float3>	morphNormals;
+
+							morphPoints.reserve(points.size());
+							morphPoints.reserve(normals.size());
+
+							std::ranges::copy(points, std::back_inserter(morphPoints));
+							std::ranges::copy(normals, std::back_inserter(morphNormals));
+
+							for (auto&& [mp, p, mn, n] : zip(morphPoints, morphPointSpan, morphNormals, morphNormalSpan))
+							{
+								//mp += p;
+								//mn += n;
+							}
+
+							GenerateTangents(indices, morphPoints, morphNormals, UVChannels[0], generatedMorphTangents);
+
+							for (auto&& [mt, t] : zip(generatedMorphTangents, tangents))
+							{
+								auto tangentAdjusted = (t.w != 0) ? float4{ t.xyz() * t.w, 0 } : t;
+
+								mt = float4{ mt.xyz(), 0 } - tangentAdjusted;
+								//mt = float4{ mt.xyz() * mt.w, 0 } - float4{ t.xyz() * t.w, 0 };
+							}
+
+							morphTangentSpan = generatedMorphTangents;
+						}
+
+						for (auto&& [position, normal, tangent] : zip(morphPointSpan, morphNormalSpan, morphTangentSpan))
+						{
 							const MorphTargetVertexToken token{
 								.position	= position,
 								.normal		= normal,
@@ -326,26 +475,17 @@ namespace FlexKit
 						morphTargetCount++;
 					}
 
-					auto& indexAccessor		= model.accessors[primitive.indices];
-					auto& indexBufferView	= model.bufferViews[indexAccessor.bufferView];
-					auto& indexBuffer		= model.buffers[indexBufferView.buffer];
-					 
-					const auto componentType	= indexAccessor.componentType;
-					const auto type				= indexAccessor.type;
+					newMesh.Normals		= normals.size() != 0;
+					newMesh.Tangents	= tangents.size() != 0;
 
-					const auto stride			= indexBufferView.byteStride == 0 ? GetComponentSizeInBytes(componentType) * GetNumComponentsInType(type) : indexBufferView.byteStride;
-					const auto elementCount		= indexBufferView.byteLength / stride;
-
-					auto* buffer = model.buffers[indexBufferView.buffer].data.data() + indexBufferView.byteOffset;
-
-					for (size_t I = 0; I < elementCount; I+=3)
+					for (size_t I = 0; I < indexCount; I+=3)
 					{
 						VertexToken tokens[3];
 
 						for(size_t II = 0; II < 3; II++)
 						{
 							uint32_t idx = 0;
-							memcpy(&idx, buffer + stride * (I + II), stride);
+							memcpy(&idx, buffer + indexStride * (I + II), indexStride);
 
 							tokens[II].vertex.push_back(VertexField{ idx, VertexField::Point });
 							tokens[II].vertex.push_back(VertexField{ idx, VertexField::Normal });
@@ -379,7 +519,7 @@ namespace FlexKit
 					}
 
 					newMesh.tokens		= std::move(meshTokens);
-					newMesh.faceCount	= elementCount;
+					newMesh.faceCount	= indexCount / 3;
 					
 					lod.subMeshs.emplace_back(std::move(newMesh));
 				}
@@ -403,6 +543,9 @@ namespace FlexKit
 
 		return { resources, meshMap };
 	}
+
+
+	/************************************************************************************************/
 
 
 	ResourceList GatherScenes(tinygltf::Model& model, std::vector<size_t>& meshMap, std::map<int, Resource_ptr>& imageMap, std::vector<Resource_ptr>& skinMap, const gltfImportOptions& options)

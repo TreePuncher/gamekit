@@ -1424,6 +1424,19 @@ namespace FlexKit
 #endif
 		}
 
+		inline float4& operator+= (this float4& self, const float4 rhs) noexcept
+		{
+#if USING(FASTMATH)
+			self = self + rhs;
+			return self;
+#else
+			return float4(x - rhs.x,
+				y - rhs.y,
+				z - rhs.z,
+				w - rhs.w);
+#endif
+		}
+
 		inline float4 operator- (const float4 rhs) const noexcept
 		{
 #if USING(FASTMATH)
@@ -1433,6 +1446,19 @@ namespace FlexKit
 							y - rhs.y, 
 							z - rhs.z, 
 							w - rhs.w );
+#endif
+		}
+
+		inline float4& operator-= (this float4& self, const float4 rhs) noexcept
+		{
+#if USING(FASTMATH)
+			self = self - rhs;
+			return self;
+#else
+			return float4(x - rhs.x,
+				y - rhs.y,
+				z - rhs.z,
+				w - rhs.w);
 #endif
 		}
 
@@ -1466,18 +1492,6 @@ namespace FlexKit
 #endif
 		}
 
-		inline float4 operator += (const float4 rhs) noexcept
-		{
-#if USING(FASTMATH)
-			pFloats = _mm_add_ps(pFloats, rhs);
-#else
-			return float4(	x + rhs.x, 
-							y + rhs.y, 
-							z + rhs.z, 
-							w + rhs.w );
-#endif
-			return pFloats;
-		}
 
 		inline float4 operator / (const float4 rhs) const noexcept
 		{

@@ -85,11 +85,13 @@ namespace FlexKit
 			renderSystem->WaitforGPU();
 			renderSystem->_ForceReleaseTexture(backBuffer);
 
-			const auto HR = swapChain->ResizeBuffers(0, WH[0], WH[1], DXGI_FORMAT_R16G16B16A16_FLOAT, flags);
-			if (FAILED(HR))
+			try
 			{
-				FK_ASSERT(0, "Failed to resize back buffer!");
+				const auto HR = swapChain->ResizeBuffers(0, WH[0], WH[1], DXGI_FORMAT_R16G16B16A16_FLOAT, flags);
+				if (FAILED(HR))
+					FK_ASSERT(0, "Failed to resize back buffer!");
 			}
+			catch (...) {}
 
 			//recreateBackBuffer
 			ID3D12Resource* buffer[3];

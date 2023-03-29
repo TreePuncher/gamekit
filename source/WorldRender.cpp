@@ -747,6 +747,7 @@ namespace FlexKit
 		auto& animationUpdate	= UpdateAnimations(dispatcher, drawSceneDesc.dt);
 		auto& skinnedObjects	= GatherSkinned(dispatcher, scene, camera, temporary);
 		auto& updatedPoses		= UpdatePoses(dispatcher, skinnedObjects);
+		auto& loadMorphs		= LoadNeededMorphTargets(dispatcher, passes);
 
 		// [skinned Objects] -> [update Poses]
 		IKUpdate.AddInput(drawSceneDesc.transformDependency);
@@ -802,18 +803,21 @@ namespace FlexKit
 				temporary);
 
 		auto& animationResources =
-			AcquireAnimatedResources(
+			AcquirePoseResources(
 				frameGraph,
 				dispatcher,
 				passes,
 				drawSceneDesc.reserveCB,
+				UAVPool,
 				temporary);
 
-		auto& poses =
-			UploadPoses(
+		auto& morphTargets = BuildMorphTargets(
 				frameGraph,
+				dispatcher,
 				passes,
+				loadMorphs,
 				drawSceneDesc.reserveCB,
+				UAVPool,
 				temporary);
 
 		/*
@@ -1050,49 +1054,6 @@ namespace FlexKit
 					}
 				}
 			});
-	}
-
-
-	/************************************************************************************************/
-
-
-	const ResourceAllocation& WorldRender::AcquireAnimatedResources(
-		FrameGraph&						frameGraph,
-		UpdateDispatcher&				dispatcher,
-		GatherPassesTask&				passes,
-		ReserveConstantBufferFunction&	reserveConstants,
-		iAllocator&						allocator)
-	{
-		PassDrivenResourceAllocation allocation {
-			.getPass			= [&passes] { return passes.GetData().GetPass(GBufferAnimatedPassID); },
-			.initializeResources =
-				[](std::span<const PVEntry> brushes, std::span<const FrameResourceHandle> handles, auto& transferContext, iAllocator& allocator)
-				{
-					auto itr = handles.begin();
-
-					for (auto&& [sortID, brush, gameObject, occlusionID, submissionID, LODlevel] : brushes)
-					{
-
-						auto poseState = GetPoseState(*gameObject);
-						auto skeleton = poseState->Sk;
-
-						const size_t poseSize = sizeof(float4x4) * poseState->JointCount;
-						float4x4* pose = (float4x4*)allocator.malloc(poseSize);
-
-						for (size_t I = 0; I < poseState->JointCount; I++)
-							pose[I] = (skeleton->IPose[I] * poseState->CurrentPose[I]);
-
-						transferContext.CreateResource(*(itr++), poseSize, pose);
-					}
-				},
-
-			.layout	= FlexKit::DeviceLayout::DeviceLayout_Common,
-			.access	= FlexKit::DeviceAccessState::DASNonPixelShaderResource,
-			.max	= 64,
-			.pool	= &UAVPool
-		};
-
-		return frameGraph.AllocateResourceSet(allocation);
 	}
 
 

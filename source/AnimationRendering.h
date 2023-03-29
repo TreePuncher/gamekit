@@ -6,7 +6,15 @@
 #include "ThreadUtilities.h"
 
 namespace FlexKit
-{
+{	/************************************************************************************************/
+
+
+	constexpr PassHandle MorphTargetID = PassHandle{ GetCRCGUID(MorphTargetID) };
+
+
+	/************************************************************************************************/
+
+
 	struct BrushPoseBlock
 	{
 		float4x4 transforms[8];
@@ -16,6 +24,10 @@ namespace FlexKit
 			return transforms[idx];
 		}
 	};
+
+
+	/************************************************************************************************/
+
 
 	inline auto CreateGetFN(iAllocator& allocator)
 	{
@@ -40,15 +52,19 @@ namespace FlexKit
 			});
 	}
 
+
+	/************************************************************************************************/
+
+
 	struct AnimationPoseUpload
 	{
 		AnimationPoseUpload(
-			ReserveConstantBufferFunction&  IN_reserve,
-			GatherPassesTask&               IN_passes,
-			iAllocator&                     IN_allocator) :
-				GetBuffer   { CreateGetFN(IN_allocator) },
-				passes      { IN_passes },
-				reserve     { IN_reserve } {}
+			ReserveConstantBufferFunction&	IN_reserve,
+			GatherPassesTask&				IN_passes,
+			iAllocator&						IN_allocator) :
+				GetBuffer	{ CreateGetFN(IN_allocator) },
+				passes		{ IN_passes },
+				reserve		{ IN_reserve } {}
 
 		using CreateFN = decltype(CreateGetFN(std::declval<iAllocator&>()));
 		using PoseView = decltype(CreateCBIterator<BrushPoseBlock>(std::declval<CBPushBuffer&>()));
@@ -57,17 +73,58 @@ namespace FlexKit
 		GatherPassesTask&				passes;
 		ReserveConstantBufferFunction&	reserve;
 
-		PoseView        GetIterator();
-		CBPushBuffer&   GetData();
+		PoseView		GetIterator();
+		CBPushBuffer&	GetData();
 	};
 
 	AnimationPoseUpload& UploadPoses(FrameGraph&, GatherPassesTask& passes, ReserveConstantBufferFunction& reserveCB, iAllocator& allocator);
-}
+
+
+	/************************************************************************************************/
+
+
+	const ResourceAllocation&	AcquirePoseResources(
+			FrameGraph&						frameGraph,
+			UpdateDispatcher&				dispatcher,
+			GatherPassesTask&				passes,
+			ReserveConstantBufferFunction&	reserveConstants,
+			PoolAllocatorInterface&			pool,
+			iAllocator&						allocator);
+
+
+	/************************************************************************************************/
+
+
+	UpdateTask& LoadNeededMorphTargets(UpdateDispatcher& dispatcher, GatherPassesTask&);
+
+
+	struct MorphTarget
+	{
+
+	};
+
+	struct MorphTargets
+	{
+		Vector<MorphTarget>			targets;
+		const ResourceAllocation&	resources;
+	};
+
+	const MorphTargets&	BuildMorphTargets(
+			FrameGraph&						frameGraph,
+			UpdateDispatcher&				dispatcher,
+			GatherPassesTask&				passes,
+			UpdateTask&						loadedMorphs,
+			ReserveConstantBufferFunction&	reserveConstants,
+			PoolAllocatorInterface&			pool,
+			iAllocator&						allocator);
+
+
+}	/************************************************************************************************/
 
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2022 Robert May
+Copyright (c) 2015 - 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
