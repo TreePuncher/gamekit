@@ -85,11 +85,29 @@ Vertex VS_Skinned_Main(Skinned_Vertex IN)
     return Out;
 }
 
-float PS_Main(Vertex IN, const bool frontFacing : SV_IsFrontFace) : SV_DEPTH
+struct DepthSample
 {
-    if (frontFacing)
-        return (-IN.pos_VS.z / maxZ) - 0.000015f;
-    else
-        return (-IN.pos_VS.z / maxZ) + 0.000015f;
+	float depth : SV_DEPTH;
+	float2 moments : SV_TARGET0;
+};
 
+float2 ComputeMoments(const float depth)
+{
+	float2 moments;
+	moments.x = depth;
+
+	const float dx = ddx(depth);
+	const float dy = ddy(depth);
+
+	moments.y = depth * depth + 0.25f * (dx * dx + dy * dy);
+	return moments;
+}
+
+DepthSample PS_Main(Vertex IN, const bool frontFacing : SV_IsFrontFace)
+{
+	DepthSample depthSample;
+	depthSample.depth	= -IN.pos_VS.z / maxZ;
+	depthSample.moments = ComputeMoments(depthSample.depth);
+
+	return depthSample;
 }

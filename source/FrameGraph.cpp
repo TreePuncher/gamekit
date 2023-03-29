@@ -782,7 +782,7 @@ namespace FlexKit
 					auto resourceObject = handler.GetResourceObject(retiredResource.handle);
 					resourceObject->resourceFlags;
 
-					DebugBreak();
+					//DebugBreak();
 					/*
 					if  (resourceObject->virtualState == VirtualResourceState::Virtual_Released &&
 						(resourceObject->resourceFlags & flags) == flags)
@@ -798,13 +798,11 @@ namespace FlexKit
 					else */continue;
 				}
 			}
-			else
-			{
-				const auto [resource, success] = sourceNode.FindReuseableResource(allocator, allocationSize, flags, handler, nodes);
 
-				if (success)
-					return { resource, success };
-			}
+			const auto [resource, success] = sourceNode.FindReuseableResource(allocator, allocationSize, flags, handler, nodes);
+
+			if (success)
+				return { resource, success };
 		}
 
 		return { InvalidHandle, false };

@@ -335,13 +335,6 @@ namespace FlexKit
 				ReserveConstantBufferFunction&	reserveConstants,
 				iAllocator&						allocator);
 
-		const ResourceAllocation&	AcquireAnimatedResources(
-				FrameGraph&						frameGraph,
-				UpdateDispatcher&				dispatcher,
-				GatherPassesTask&				passes,
-				ReserveConstantBufferFunction&	reserveConstants,
-				iAllocator&						allocator);
-
 		OcclusionCullingResults&	OcclusionCulling(
 				UpdateDispatcher&				dispatcher,
 				FrameGraph&						frameGraph,
@@ -424,6 +417,16 @@ namespace FlexKit
 
 
 		using RenderTask = FlexKit::TypeErasedCallable<void (FrameGraph&, PassData&), 48>;
+
+
+		void AddMemoryPools(FrameGraph& frameGraph)
+		{
+			frameGraph.AddMemoryPool(&UAVPool);
+			frameGraph.AddMemoryPool(&RTPool);
+
+			if(UAVTexturePool)
+				frameGraph.AddMemoryPool(&UAVTexturePool.value());
+		}
 
 
 		void AddTask(RenderTask&& task)

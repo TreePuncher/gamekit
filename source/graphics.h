@@ -607,6 +607,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		case DXGI_FORMAT_R32G32B32_FLOAT:
 			return sizeof(float) * 3;
 		case DXGI_FORMAT_R32G32B32_UINT:
+		case DXGI_FORMAT_R32G32B32_SINT:
 			return sizeof(float) * 3;
 		case DXGI_FORMAT_R16G16B16A16_TYPELESS:
 		case DXGI_FORMAT_R16G16B16A16_FLOAT:
@@ -615,7 +616,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		case DXGI_FORMAT_R16G16B16A16_SNORM:
 		case DXGI_FORMAT_R16G16B16A16_SINT:
 			return sizeof(uint16_t[4]);
-		case DXGI_FORMAT_R32G32B32_SINT:
 		case DXGI_FORMAT_R32G32_TYPELESS:
 		case DXGI_FORMAT_R32G32_FLOAT:
 		case DXGI_FORMAT_R32G32_UINT:
@@ -624,12 +624,12 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
 		case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
 		case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
+			return sizeof(float[2]);
 		case DXGI_FORMAT_R10G10B10A2_TYPELESS:
 		case DXGI_FORMAT_R10G10B10A2_UNORM:
 		case DXGI_FORMAT_R10G10B10A2_UINT:
 		case DXGI_FORMAT_R11G11B10_FLOAT:
-			throw; // unimplemented argument
-			return -1;
+			return 4;
 		case DXGI_FORMAT_R16_TYPELESS:
 		case DXGI_FORMAT_R16_FLOAT:
 		case DXGI_FORMAT_D16_UNORM:

@@ -1346,12 +1346,12 @@ namespace FlexKit
 		CD3DX12_ROOT_SIGNATURE_DESC RootSignatureDesc;
 
 		CD3DX12_STATIC_SAMPLER_DESC	 Samplers[] = {
-			CD3DX12_STATIC_SAMPLER_DESC{0, D3D12_FILTER_ANISOTROPIC,
+			CD3DX12_STATIC_SAMPLER_DESC{0, D3D12_FILTER::D3D12_FILTER_MIN_MAG_MIP_LINEAR,
 											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_WRAP,
 											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_WRAP,
 											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_WRAP},
 
-			CD3DX12_STATIC_SAMPLER_DESC{1, D3D12_FILTER::D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR },
+			CD3DX12_STATIC_SAMPLER_DESC{1, D3D12_FILTER::D3D12_FILTER_MIN_MAG_MIP_POINT },
 			CD3DX12_STATIC_SAMPLER_DESC{2,  D3D12_FILTER::D3D12_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR,
 											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
 											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
@@ -4073,11 +4073,13 @@ namespace FlexKit
 		Size			= rhs.Size;
 		deviceBuffer	= rhs.deviceBuffer;
 		Buffer			= rhs.Buffer;
+		parentDevice	= rhs.parentDevice;
 
 		rhs.Position		= 0;
 		rhs.Size			= 0;
 		rhs.deviceBuffer	= nullptr;
 		rhs.Buffer			= nullptr;
+		rhs.parentDevice	= nullptr;
 	}
 
 
@@ -4089,11 +4091,13 @@ namespace FlexKit
 		Size			= rhs.Size;
 		deviceBuffer	= rhs.deviceBuffer;
 		Buffer			= rhs.Buffer;
+		parentDevice	= rhs.parentDevice;
 
 		rhs.Position		= 0;
 		rhs.Size			= 0;
 		rhs.deviceBuffer	= nullptr;
 		rhs.Buffer			= nullptr;
+		rhs.parentDevice	= nullptr;
 
 		return *this;
 	}
@@ -6483,6 +6487,8 @@ namespace FlexKit
 			return DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
 		case FlexKit::DeviceFormat::R32G32_UINT:
 			return DXGI_FORMAT::DXGI_FORMAT_R32G32_UINT;
+		case FlexKit::DeviceFormat::R32G32_FLOAT:
+			return DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT;
 		case FlexKit::DeviceFormat::R32G32B32_UINT:
 			return DXGI_FORMAT::DXGI_FORMAT_R32G32B32_UINT;
 		case FlexKit::DeviceFormat::R32G32B32A32_UINT:
@@ -9078,12 +9084,13 @@ namespace FlexKit
 
 	Context& RenderSystem::GetCommandList(std::optional<SyncPoint> ticket)
 	{
-		const uint64_t completedCounter	= Fence->GetCompletedValue();
 		const uint64_t submissionId		= ticket ? ticket.value().syncCounter : ++graphicsSubmissionCounter;
-
 
 		while (true)
 		{
+			const uint64_t completedCounter = Fence->GetCompletedValue();
+
+
 			for (auto& _ : Contexts)
 			{
 				const size_t idx = contextIdx;

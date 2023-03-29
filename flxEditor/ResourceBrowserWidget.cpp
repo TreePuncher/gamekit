@@ -35,7 +35,7 @@ ResourceBrowserWidget::ResourceBrowserWidget(EditorProject& IN_project, EditorRe
 	table->setContextMenuPolicy(Qt::CustomContextMenu);
 	table->setUpdatesEnabled(true);
 	table->setColumnCount(4);
-	table->setSelectionMode(QAbstractItemView::MultiSelection);
+	table->setSelectionMode(QAbstractItemView::SelectionMode::ContiguousSelection);
 
 	connect(table, &QTableWidget::cellChanged, this, &ResourceBrowserWidget::OnCellChange);
 
@@ -103,6 +103,11 @@ void ResourceBrowserWidget::Update()
 		{ TextureResourceTypeID,	"Texture" },
 		{ MeshResourceTypeID,		"Mesh" },
 		{ SceneResourceTypeID,		"Scene" },
+		{ SkeletonResourceTypeID,	"Skeleton"},
+		{ TriMeshColliderTypeID,	"Triangle Collider" },
+		{ ScriptResourceTypeID,		"Script" },
+		{ PrefabObjectTypeID,		"Prefab" },
+		{ AnimationResourceTypeID,	"Animation" }
 	};
 
 	for (size_t I = 0; I < resourceCount; I++)

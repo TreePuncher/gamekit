@@ -169,7 +169,7 @@ void LoadEntity(FlexKit::SceneEntity& entity, LoadEntityContextInterface& ctx)
 
 			if (brushComponent)
 			{
-				auto& meshes = brushComponent->meshes;
+				auto meshes = brushComponent->meshes;
 
 				for(auto& mesh : meshes)
 				{
