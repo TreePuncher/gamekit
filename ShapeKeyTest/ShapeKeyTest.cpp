@@ -245,6 +245,9 @@ public:
 							{
 							case KC_R:
 								framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
+								framework.core.RenderSystem.QueuePSOLoad(BUILD2DSAT);
+								framework.core.RenderSystem.QueuePSOLoad(SHADOWMAPPASS);
+								framework.core.RenderSystem.QueuePSOLoad(SHADOWMAPANIMATEDPASS);
 								return true;
 							case KC_M:
 								renderWindow.ToggleMouseCapture();

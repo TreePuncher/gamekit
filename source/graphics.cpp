@@ -878,6 +878,31 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	bool DescriptorHeap::SetSRVArray(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
+	{
+		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
+			return false;
+
+		FillState[idx] = true;
+
+		auto dxFormat = TextureFormat2DXGIFormat(format);
+
+		PushTextureToDescHeap(
+			ctx.renderSystem,
+			dxFormat,
+			handle,
+			IncrementHeapPOS(
+				descriptorHeap,
+				ctx.renderSystem->DescriptorCBVSRVUAVSize,
+				idx));
+
+		return true;
+	}
+
+
+	/************************************************************************************************/
+
+
 	bool DescriptorHeap::SetSRV3D(Context& ctx, size_t idx, ResourceHandle resource)
 	{
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
@@ -1089,6 +1114,29 @@ namespace FlexKit
 				descriptorHeap,
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
 				idx));
+
+		return true;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool DescriptorHeap::SetUAVCubemap(Context& ctx, size_t idx, ResourceHandle	handle)
+	{
+		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
+			return false;
+
+		FillState[idx] = true;
+
+		PushUAVCubeMapToDescHeap(
+			ctx.renderSystem,
+			ctx.renderSystem->GetTextureDeviceFormat(handle),
+			ctx.renderSystem->GetDeviceResource(handle),
+			IncrementHeapPOS(
+					descriptorHeap, 
+					ctx.renderSystem->DescriptorCBVSRVUAVSize, 
+					idx));
 
 		return true;
 	}
@@ -1768,7 +1816,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::AddUAVBarrier(ResourceHandle resource, uint32_t subresource)
+	void Context::AddUAVBarrier(ResourceHandle resource, uint32_t subresource, DeviceLayout layout)
 	{
 		if(resource != FlexKit::InvalidHandle)
 		{
@@ -1785,8 +1833,13 @@ namespace FlexKit
 			case TextureDimension::Buffer:
 				barrier.type = BarrierType::Buffer;
 				break;
-			case TextureDimension::Texture1D:
 			case TextureDimension::Texture2D:
+			{
+				barrier.type					= BarrierType::Texture;
+				barrier.texture.layoutAfter		= layout;
+				barrier.texture.layoutBefore	= layout;
+			}	break;
+			case TextureDimension::Texture1D:
 			case TextureDimension::Texture3D:
 			case TextureDimension::Texture2DArray:
 			case TextureDimension::TextureCubeMap:
@@ -2026,11 +2079,26 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::SetRenderTargets(const static_vector<ResourceHandle> RTs, bool DepthStecil, ResourceHandle depthStencil, const size_t MIPMapOffset)
+	void Context::SetRenderTargets(const static_vector<ResourceHandle> RTs, bool enableDepthStencil, ResourceHandle depthStencil, const size_t MIPMapOffset)
 	{
 		static_vector<D3D12_CPU_DESCRIPTOR_HANDLE> RTV_CPU_HANDLES;
 
-		if (!MIPMapOffset)
+
+		bool WHsAllEqual = true;
+
+		uint2 depthWH;
+		uint2 textureWH;
+
+		if (RTs.size() && enableDepthStencil)
+		{
+			depthWH = renderSystem->GetTextureWH(depthStencil);
+			textureWH = renderSystem->GetTextureWH(RTs.front());
+
+			WHsAllEqual = depthWH == textureWH;;
+		}
+
+
+		if (!MIPMapOffset && WHsAllEqual)
 		{
 			for (auto renderTarget : RTs) {
 				auto res = std::find_if(
@@ -2060,6 +2128,8 @@ namespace FlexKit
 			
 			for (auto& renderTarget : RTs)
 			{
+				auto WH = Min(depthWH, textureWH);
+
 				RTV_CPU_HANDLES.push_back(view);
 				view = PushRenderTarget(renderSystem, renderTarget, view, MIPMapOffset);
 			}
@@ -2067,7 +2137,7 @@ namespace FlexKit
 
 		auto DSV_CPU_HANDLE = D3D12_CPU_DESCRIPTOR_HANDLE{};
 
-		if(DepthStecil)
+		if(enableDepthStencil)
 		{
 			if (auto res = std::find_if(
 					depthStencilViews.begin(),
@@ -2091,8 +2161,8 @@ namespace FlexKit
 		DeviceContext->OMSetRenderTargets(
 			(UINT)RTV_CPU_HANDLES.size(),
 			RTV_CPU_HANDLES.begin(),
-			DepthStecil,
-			DepthStecil ? &DSV_CPU_HANDLE : nullptr);
+			enableDepthStencil,
+			enableDepthStencil ? &DSV_CPU_HANDLE : nullptr);
 	}
 
 
@@ -4687,6 +4757,142 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	HeapTable::HeapTable(ID3D12Device* IN_device, iAllocator* allocator) :
+		pDevice	{ IN_device },
+		handles	{ allocator },
+		heaps	{ allocator } {}
+
+
+	/************************************************************************************************/
+
+
+	HeapTable::~HeapTable()
+	{
+		for (auto& heap : heaps)
+			heap.Release();
+
+		heaps.clear();
+		handles.Clear();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void HeapTable::Init(ResourceHeapTier IN_tier, ID3D12Device* IN_device)
+	{
+		tier	= IN_tier;
+		pDevice = IN_device;
+	}
+
+
+	/************************************************************************************************/
+
+
+	DeviceHeapHandle HeapTable::CreateHeap(const size_t size, const uint32_t flags)
+	{
+		D3D12_HEAP_PROPERTIES HEAP_Props	={};
+		HEAP_Props.CPUPageProperty			= D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		HEAP_Props.Type						= D3D12_HEAP_TYPE_DEFAULT;
+		HEAP_Props.MemoryPoolPreference		= D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
+		HEAP_Props.CreationNodeMask			= 0;
+		HEAP_Props.VisibleNodeMask			= 0;
+
+		D3D12_HEAP_DESC heapDesc;
+
+		switch (tier)
+		{
+		case ResourceHeapTier::HeapTier1:
+		{
+			heapDesc = D3D12_HEAP_DESC
+			{
+				size,
+				HEAP_Props,
+				D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
+				((flags == DeviceHeapFlags::NONE)			? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE) |
+				((flags &  DeviceHeapFlags::RenderTarget)	? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE) |
+				((flags &  DeviceHeapFlags::UAVBuffer)		? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS | D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS: D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE) | 
+				((flags &  DeviceHeapFlags::UAVTextures)	? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS | D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES: D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE)
+			};
+		}	break;
+		case ResourceHeapTier::HeapTier2:
+		{
+			heapDesc = D3D12_HEAP_DESC
+			{
+				size,
+				HEAP_Props,
+				D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
+				D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE
+			};
+		}	break;
+		default:
+			break;
+		}
+
+
+		ID3D12Heap1* heap_ptr = nullptr;
+
+		const auto HR = pDevice->CreateHeap(&heapDesc, IID_PPV_ARGS(&heap_ptr));
+
+		if (SUCCEEDED(HR))
+		{
+			auto localLock = std::scoped_lock{ m };
+
+			auto handle = handles.GetNewHandle();
+			handles[handle] = (index_t)heaps.push_back({ heap_ptr, handle });
+
+			return handle;
+		}
+		else
+		{
+			FK_LOG_ERROR("Failed to create Heap. Flags: %u", flags);
+			return InvalidHandle;
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void HeapTable::ReleaseHeap(DeviceHeapHandle heap)
+	{
+		const auto idx = handles[heap];
+		heaps[idx].Release();
+
+		auto localLock = std::scoped_lock{ m };
+		handles.RemoveHandle(heap);
+
+		if (heaps.size() > 1)
+		{
+			heaps[idx] = heaps.back();
+			handles[heaps[idx].handle] = idx;
+		}
+
+		heaps.pop_back();
+	}
+
+
+	/************************************************************************************************/
+
+
+	size_t HeapTable::GetHeapSize(DeviceHeapHandle heap) const
+	{
+		auto desc = heaps[handles[heap]].heap->GetDesc();
+		return desc.SizeInBytes;
+	}
+
+
+	/************************************************************************************************/
+
+
+	ID3D12Heap* HeapTable::GetDeviceResource(DeviceHeapHandle handle) const
+	{
+		return heaps[handles[handle]].heap;
+	}
+
+	/************************************************************************************************/
+
+
 	RenderSystem::RenderSystem(iAllocator* IN_allocator, ThreadManager* IN_Threads) :
 			Memory			{ IN_allocator },
 			Library			{ IN_allocator },
@@ -4843,10 +5049,10 @@ namespace FlexKit
 		switch (options.ResourceHeapTier)
 		{
 		case D3D12_RESOURCE_HEAP_TIER_1:
-			features.resourceHeapTier = AvailableFeatures::ResourceHeapTier::HeapTier1;
+			features.resourceHeapTier = ResourceHeapTier::HeapTier1;
 			break;
 		case D3D12_RESOURCE_HEAP_TIER_2:
-			features.resourceHeapTier = AvailableFeatures::ResourceHeapTier::HeapTier2;
+			features.resourceHeapTier = ResourceHeapTier::HeapTier2;
 			break;
 		default:
 			break;
@@ -4973,7 +5179,7 @@ namespace FlexKit
 		DescriptorCBVSRVUAVSize		= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		descriptorHeapAllocator.Initialize(*this, 1'000'000, in->Memory);
-		heaps.Init(pDevice);
+		heaps.Init(features.resourceHeapTier, pDevice);
 		copyEngine.Initiate(Device, (threads.GetThreadCount() + 1) * 1.5, ObjectsCreated, in->Memory);
 
 		for (size_t I = 0; I < 3 * (1 + threads.GetThreadCount()); ++I)
@@ -5520,7 +5726,10 @@ namespace FlexKit
 			heapProperties.CreationNodeMask			= 0;
 			heapProperties.VisibleNodeMask			= 0;
 
-			const auto flags	= D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES | (desc.type == ResourceType::UnorderedAccess ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE);
+			const auto flags	=
+				D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES |
+				(desc.type == ResourceType::UnorderedAccess ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE) |
+				(desc.type == ResourceType::UnorderedAccessRenderTarget ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE);
 
 			const D3D12_CLEAR_VALUE* clearValue = desc.clearValue ? &desc.clearValue.value() : nullptr;
 			
@@ -5700,14 +5909,6 @@ namespace FlexKit
 					0,
 					nullptr,
 					IID_PPV_ARGS(&NewResource[itr]));
-				/*
-				HRESULT HR = pDevice->CreatePlacedResource(
-					desc.placed.offset,
-					&Resource_DESC,
-					InitialState,
-					pCV,
-					IID_PPV_ARGS(&NewResource[itr]));
-				*/
 
 				CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE PLACED RESOURCE"));
 
@@ -9670,6 +9871,7 @@ namespace FlexKit
 	}
 
 
+
 	/************************************************************************************************/
 
 
@@ -9986,6 +10188,27 @@ namespace FlexKit
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
+
+
+	
+	/************************************************************************************************/
+
+
+	DescHeapPOS PushUAVCubeMapToDescHeap(RenderSystem* RS, DXGI_FORMAT format, ID3D12Resource* resource, DescHeapPOS POS)
+	{
+		D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc;
+		UAVDesc.Format							= format;
+		UAVDesc.ViewDimension					= D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+		UAVDesc.Texture2DArray.MipSlice			= 0;
+		UAVDesc.Texture2DArray.FirstArraySlice	= 0;
+		UAVDesc.Texture2DArray.ArraySize		= 6;
+		UAVDesc.Texture2DArray.PlaneSlice		= 0;
+
+		RS->pDevice->CreateUnorderedAccessView(resource, nullptr, &UAVDesc, POS);
+
+		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
+	}
+
 
 	/************************************************************************************************/
 

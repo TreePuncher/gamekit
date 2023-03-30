@@ -423,9 +423,7 @@ namespace FlexKit
 		{
 			frameGraph.AddMemoryPool(&UAVPool);
 			frameGraph.AddMemoryPool(&RTPool);
-
-			if(UAVTexturePool)
-				frameGraph.AddMemoryPool(&UAVTexturePool.value());
+			frameGraph.AddMemoryPool(&UAVTexturePool);
 		}
 
 
@@ -452,9 +450,9 @@ namespace FlexKit
 
 		RenderSystem&			renderSystem;
 
-		MemoryPoolAllocator					UAVPool;
-		MemoryPoolAllocator					RTPool;
-		std::optional<MemoryPoolAllocator>	UAVTexturePool;
+		MemoryPoolAllocator		UAVPool;
+		MemoryPoolAllocator		RTPool;
+		MemoryPoolAllocator		UAVTexturePool;
 
 		MemoryPoolAllocator*	activePools[3] = { nullptr, nullptr, nullptr };
 

@@ -736,7 +736,7 @@ namespace FlexKit
 			case TextureDimension::TextureCubeMap:
 			{
 				barrier.type					= BarrierType::Texture;
-				barrier.texture.layoutBefore	= desc.initialLayout;
+				barrier.texture.layoutBefore	= DeviceLayout_Undefined;
 				barrier.texture.layoutAfter		= layout;
 				barrier.texture.flags			= D3D12_TEXTURE_BARRIER_FLAG_DISCARD;
 			}	break;
