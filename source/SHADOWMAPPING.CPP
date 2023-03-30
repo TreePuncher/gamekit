@@ -8,6 +8,26 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
+	ID3D12PipelineState* ShadowMapper::Fill2DPlanes(RenderSystem* RS)
+	{
+		auto CShader = RS->LoadShader("CS_Main", "cs_6_0", "assets\\shaders\\SACM\\Create2DSAT.hlsl");
+
+
+		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_Desc = {};
+		PSO_Desc.pRootSignature	= rootSignature;
+		PSO_Desc.CS				= CShader;
+
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = RS->pDevice->CreateComputePipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		return PSO;
+	}
+
+
+	/************************************************************************************************/
+
+
 	ID3D12PipelineState* ShadowMapper::CreateShadowMapPass(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("VS_Main", "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
@@ -49,7 +69,7 @@ namespace FlexKit
 			PSO_Desc.NumRenderTargets                       = 1;
 			PSO_Desc.SampleDesc.Count                       = 1;
 			PSO_Desc.SampleDesc.Quality                     = 0;
-			PSO_Desc.RTVFormats[0]							= DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT;
+			PSO_Desc.RTVFormats[0]							= DXGI_FORMAT::DXGI_FORMAT_R32_FLOAT;
 			PSO_Desc.DSVFormat                              = DXGI_FORMAT_D32_FLOAT;
 			PSO_Desc.InputLayout                            = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
 			PSO_Desc.DepthStencilState                      = Depth_Desc;
@@ -111,7 +131,7 @@ namespace FlexKit
 			PSO_Desc.NumRenderTargets                       = 1;
 			PSO_Desc.SampleDesc.Count                       = 1;
 			PSO_Desc.SampleDesc.Quality                     = 0;
-			PSO_Desc.RTVFormats[0]							= DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT;
+			PSO_Desc.RTVFormats[0]							= DXGI_FORMAT::DXGI_FORMAT_R32_FLOAT;
 			PSO_Desc.DSVFormat                              = DXGI_FORMAT_D32_FLOAT;
 			PSO_Desc.InputLayout                            = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
 			PSO_Desc.DepthStencilState                      = Depth_Desc;
@@ -165,7 +185,7 @@ namespace FlexKit
 		{
 			const XMMATRIX ViewI            = ViewOrientations[I] * DirectX::XMMatrixTranslationFromVector(pos);
 			const XMMATRIX View             = DirectX::XMMatrixInverse(nullptr, ViewI);
-			const XMMATRIX perspective      = DirectX::XMMatrixPerspectiveFovRH(float(pi/2), 1, 0.01f, r);
+			const XMMATRIX perspective      = DirectX::XMMatrixPerspectiveFovRH(DegreetoRad(90.0f), 1, 0.01f, r);
 			const XMMATRIX PV               = DirectX::XMMatrixTranspose(perspective) * XMMatrixTranspose(View);
 
 			out.PV[I]       = XMMatrixToFloat4x4(PV).Transpose();
@@ -228,20 +248,28 @@ namespace FlexKit
 		rootSignature   { &allocator },
 		resourcePool    { &allocator }
 	{
+		DesciptorHeapLayout heapLayout;
+		heapLayout.SetParameterAsSRV(0, 0, 1);			// input
+		heapLayout.SetParameterAsShaderUAV(1, 0, 1);	// output
+
 		rootSignature.AllowIA = true;
 		rootSignature.AllowSO = false;
 		rootSignature.SetParameterAsUINT(   0, 40,  3, 0,   PIPELINE_DEST_ALL);
 		rootSignature.SetParameterAsCBV(    1, 0,   0,      PIPELINE_DEST_ALL);
 		rootSignature.SetParameterAsUINT(   2, 16,  1, 0,   PIPELINE_DEST_ALL);
 		rootSignature.SetParameterAsCBV(    3, 2,   0,      PIPELINE_DEST_ALL);
+		rootSignature.SetParameterAsDescriptorTable(4, heapLayout);
+
 		rootSignature.Build(renderSystem, &allocator);
 
-		renderSystem.RegisterPSOLoader(SHADOWMAPPASS,          { &renderSystem.Library.RS6CBVs4SRVs, [&](RenderSystem* rs) { return CreateShadowMapPass(rs); }});
-		renderSystem.RegisterPSOLoader(SHADOWMAPANIMATEDPASS,  { &renderSystem.Library.RS6CBVs4SRVs, [&](RenderSystem* rs) { return CreateShadowMapAnimatedPass(rs); } });
+		renderSystem.RegisterPSOLoader(SHADOWMAPPASS,			{ &rootSignature, [&](RenderSystem* rs) { return CreateShadowMapPass(rs); }});
+		renderSystem.RegisterPSOLoader(SHADOWMAPANIMATEDPASS,	{ &rootSignature, [&](RenderSystem* rs) { return CreateShadowMapAnimatedPass(rs); } });
+
+		renderSystem.RegisterPSOLoader(BUILD2DSAT,				{ &rootSignature, [&](RenderSystem* rs) { return Fill2DPlanes(rs); } });
 	}
 
 
-	AcquireShadowMapTask& ShadowMapper::AcquireShadowMaps(UpdateDispatcher& dispatcher, RenderSystem& renderSystem, MemoryPoolAllocator& RTPool, PointLightUpdate& pointLightUpdate)
+	AcquireShadowMapTask& ShadowMapper::AcquireShadowMaps(UpdateDispatcher& dispatcher, RenderSystem& renderSystem, MemoryPoolAllocator& UAVPool, PointLightUpdate& pointLightUpdate)
 	{
 		return dispatcher.Add<AcquireShadowMapResources>(
 			[&](UpdateDispatcher::UpdateBuilder& builder, AcquireShadowMapResources& data)
@@ -250,7 +278,7 @@ namespace FlexKit
 
 				builder.AddInput(pointLightUpdate);
 			},
-			[&dirtyList = pointLightUpdate.GetData().dirtyList, &renderSystem = renderSystem, &shadowMapAllocator = RTPool, this]
+			[&dirtyList = pointLightUpdate.GetData().dirtyList, &renderSystem = renderSystem, &shadowMapAllocator = UAVPool, this]
 			(AcquireShadowMapResources& data, iAllocator& threadLocalAllocator)
 			{
 				ProfileFunction();
@@ -300,14 +328,12 @@ namespace FlexKit
 					{
 						ProfileFunction();
 
-						D3D12_CLEAR_VALUE clearValue;
-						clearValue.Format = DXGI_FORMAT_R32G32_FLOAT;
-						clearValue.Color[0] = 1.0f;
-						clearValue.Color[1] = 1.0f;
-						clearValue.Color[2] = 1.0f;
-						clearValue.Color[3] = 1.0f;
+						D3D12_CLEAR_VALUE clearValue{
+							.Format = DXGI_FORMAT_R32_FLOAT,
+							.Color	{ 0, 0, 0, 0 }
+						};
 
-						auto desc		= GPUResourceDesc::CubeMap({ 512, 512 }, DeviceFormat::R32G32_FLOAT, 1, true);
+						auto desc		= GPUResourceDesc::CubeMapUAV({ ShadowMapSize - 3, ShadowMapSize - 3 }, DeviceFormat::R32_FLOAT, 1);
 						desc.clearValue = clearValue;
 
 						auto& light			= lights[lightHandle];
@@ -346,6 +372,8 @@ namespace FlexKit
 			ReserveConstantBufferFunction	reserveCB;
 			ReserveVertexBufferFunction		reserveVB;
 			FrameResourceHandle				depthTempBuffer;
+			FrameResourceHandle				intermediateBuffer;
+			FrameResourceHandle				generationBuffer;
 		};
 
 		auto& pointLights = PointLightComponent::GetComponent();
@@ -360,7 +388,7 @@ namespace FlexKit
 			CubeMapState*		shadowMapData;
 		};
 
-		auto getPasses =
+		auto getPasses = 
 			[&](iAllocator& allocator) -> Vector<PassData>
 			{
 				auto& shadowMap_data	= shadowMapsGather.GetData();
@@ -381,11 +409,7 @@ namespace FlexKit
 				return std::move(passes);
 			};
 
-		auto getPVS =
-			[&](PassData& pass) -> std::span<VisibilityHandle>
-			{
-				return { pass.shadowMapData->visableObjects };
-			};
+		auto getPVS = [&](PassData& pass) -> std::span<VisibilityHandle> { return { pass.shadowMapData->visableObjects }; };
 
 		DataDrivenMultiPassDescription<Common_Data, PassData, VisibilityHandle> passDesc =
 		{
@@ -398,38 +422,68 @@ namespace FlexKit
 
 		auto passSetupFn = [&](FrameGraphNodeBuilder& builder, Common_Data& data)
 		{
+			auto CubeMapDesc = FlexKit::GPUResourceDesc::CubeMap({ ShadowMapSize - 3, ShadowMapSize - 3}, DeviceFormat::R32_FLOAT, 1, true );
+
+			CubeMapDesc.clearValue	= D3D12_CLEAR_VALUE{
+							.Format = DXGI_FORMAT_R32_FLOAT,
+							.Color{ 0.0f, 0.0f, 0.0f, 0.0f }
+			};
+
 			builder.AddDataDependency(shadowMapAcquire);
-			data.depthTempBuffer		= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::DepthTarget({ 512, 512 }, DeviceFormat::D32_FLOAT, 6), DeviceAccessState::DASDEPTHBUFFERWRITE);
+			data.intermediateBuffer		= builder.AcquireVirtualResource(CubeMapDesc,		DeviceAccessState::DASRenderTarget);
+			data.depthTempBuffer		= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::DepthTarget	({ ShadowMapSize - 3, ShadowMapSize - 3 },	DeviceFormat::D32_FLOAT, 6),		DeviceAccessState::DASDEPTHBUFFERWRITE);
+			data.generationBuffer		= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::CubeMapUAV	({ ShadowMapSize, ShadowMapSize },			DeviceFormat::R32_FLOAT, 1),		DeviceAccessState::DASRenderTarget);
 			shadowMapPass.multiPass		= builder.GetNodeHandle();
 		};
 
 		auto passDrawFN = [&, this](auto begin, auto end, std::span<VisibilityHandle> pvs, PassData& pass, Common_Data& common, FrameResources& resources, Context& ctx, iAllocator& allocator)
 		{
 			ProfileFunction();
+			ctx.BeginEvent_DEBUG("DepthPass");
+
+			const ResourceHandle depthTempBuffer	= resources.GetResource(common.depthTempBuffer);
+			const ResourceHandle intermediateBuffer	= resources.GetResource(common.intermediateBuffer);
+			const ResourceHandle generation			= resources.GetResource(common.generationBuffer);
+			const ResourceHandle passTarget			= pass.renderTarget;
+
+			resources.renderSystem.SetDebugName(depthTempBuffer,	"depthTempBuffer");
+			resources.renderSystem.SetDebugName(intermediateBuffer, "intermediateBuffer");
+			resources.renderSystem.SetDebugName(passTarget,			"passTarget");
 
 			if (begin == pvs.begin())
 			{
-				const auto initialLayout = ctx.renderSystem->GetObjectLayout(pass.renderTarget);
+				const auto initialLayout = ctx.renderSystem->GetObjectLayout(passTarget);
 
-				ctx.AddTextureBarrier(pass.renderTarget,
-					DASCommon, DASRenderTarget,
-					initialLayout, DeviceLayout_RenderTarget,
+				ctx.AddTextureBarrier(passTarget,
+					DASCommon,		DASRenderTarget,
+					initialLayout,	DeviceLayout_RenderTarget,
 					Sync_All, Sync_All);
 
-				ctx.AddTextureBarrier(resources.GetResource(common.depthTempBuffer),
+				ctx.AddTextureBarrier(intermediateBuffer,
+					DASRenderTarget,		DASRenderTarget,
+					DeviceLayout_Common,	DeviceLayout_RenderTarget,
+					Sync_All,				Sync_RenderTarget);
+				
+				ctx.AddTextureBarrier(depthTempBuffer,
 					DASDEPTHBUFFERWRITE, DASDEPTHBUFFERWRITE,
 					DeviceLayout_DepthStencilWrite, DeviceLayout_DepthStencilWrite,
 					Sync_All, Sync_All);
-
-				ctx.ClearDepthBuffer(resources.GetResource(common.depthTempBuffer), 1.0f);
-				ctx.ClearRenderTarget(pass.renderTarget, float4(1.0f, 1.0f, 1.0f, 1.0f));
-
-				ctx.AddTextureBarrier(resources.GetResource(common.depthTempBuffer),
+				
+				ctx.ClearDepthBuffer(depthTempBuffer, 1.0f);
+				ctx.ClearRenderTarget(intermediateBuffer, float4(0.0f, 0.0f, 0.0f, 0.0f));
+				ctx.ClearRenderTarget(passTarget, float4(0.0f, 0.0f, 0.0f, 0.0f));
+				
+				ctx.AddTextureBarrier(depthTempBuffer,
 					DASDEPTHBUFFERWRITE, DASDEPTHBUFFERWRITE,
 					DeviceLayout_DepthStencilWrite, DeviceLayout_DepthStencilWrite,
 					Sync_All, Sync_DepthStencil);
+				
+				ctx.AddTextureBarrier(intermediateBuffer,
+					DASRenderTarget,			DASRenderTarget,
+					DeviceLayout_RenderTarget,	DeviceLayout_RenderTarget,
+					Sync_All,					Sync_RenderTarget);
 
-				ctx.AddTextureBarrier(pass.renderTarget,
+				ctx.AddTextureBarrier(passTarget,
 					DASRenderTarget, DASRenderTarget,
 					DeviceLayout_RenderTarget, DeviceLayout_RenderTarget,
 					Sync_All, Sync_RenderTarget);
@@ -498,12 +552,15 @@ namespace FlexKit
 				GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[5]),
 			};
 
-			auto shadowMapPSO = resources.GetPipelineState(SHADOWMAPPASS);
+			auto shadowMapPSO	= resources.GetPipelineState(SHADOWMAPPASS);
+			auto Build2DSATPSO	= resources.GetPipelineState(SHADOWMAPPASS);
+
+
 			ctx.SetRootSignature(rootSignature);
 			ctx.SetPipelineState(shadowMapPSO);
 			ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
-			ctx.SetScissorAndViewports({ pass.renderTarget });
-			ctx.SetRenderTargets({ pass.renderTarget }, true, resources.GetResource(common.depthTempBuffer));
+			ctx.SetScissorAndViewports({ intermediateBuffer });
+			ctx.SetRenderTargets({ intermediateBuffer }, true, depthTempBuffer);
 
 			TriMeshHandle	currentMesh		= InvalidHandle;
 			size_t			currentLodIdx	= 0xffffffffffffffff;
@@ -559,14 +616,14 @@ namespace FlexKit
 						Intersects(fustrum[5], brushBoundingSphere), // Backward
 					};
 
-					//if (intersections[0] || intersections[1] || intersections[2] ||
-					//	intersections[3] || intersections[4] || intersections[5])
+					if (intersections[0] || intersections[1] || intersections[2] ||
+						intersections[3] || intersections[4] || intersections[5])
 					{
 						ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
 
 						for (uint32_t itr = 0; itr < 6; itr++)
 						{
-							//if (intersections[itr])
+							if (intersections[itr])
 							{
 								struct
 								{
@@ -598,8 +655,8 @@ namespace FlexKit
 			{
 				auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS);
 				ctx.SetPipelineState(PSOAnimated);
-				ctx.SetScissorAndViewports({ pass.renderTarget });
-				ctx.SetRenderTargets({ GetResource(pass.renderTarget) }, true, resources.GetResource(common.depthTempBuffer));
+				ctx.SetScissorAndViewports({ passTarget });
+				ctx.SetRenderTargets({ passTarget }, true, depthTempBuffer);
 				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 
 				for (const auto& brush : animatedBrushes)
@@ -609,9 +666,9 @@ namespace FlexKit
 							const BrushView&		brushView,
 							const SkeletonView&		poseView)
 						{
-							const auto& draw      = brushView.GetBrush();
-							const auto& pose      = poseView.GetPoseState();
-							const auto& skeleton  = *pose.Sk;
+							const auto& draw		= brushView.GetBrush();
+							const auto& pose		= poseView.GetPoseState();
+							const auto& skeleton	= *pose.Sk;
 
 							PoseConstants poseTemp;
 
@@ -668,16 +725,40 @@ namespace FlexKit
 				}
 			}
 
+			ctx.EndEvent_DEBUG();
+
 			if (end == pvs.end())
 			{
-				ctx.AddTextureBarrier(pass.renderTarget,
-					DASRenderTarget, DASPixelShaderResource,
-					DeviceLayout_RenderTarget, DeviceLayout_ShaderResource,
-					Sync_RenderTarget, Sync_PixelShader);
+				ctx.BeginEvent_DEBUG("Build SACM");
+
+				ctx.AddTextureBarrier(intermediateBuffer,
+				DASRenderTarget,			DASNonPixelShaderResource,
+				DeviceLayout_RenderTarget,	DeviceLayout_ShaderResource,
+				Sync_RenderTarget,			Sync_Compute);
+			
+				DescriptorHeap heap(ctx, rootSignature.GetDescHeap(0), allocator);
+				heap.SetSRVArray(ctx, 0,	intermediateBuffer, DeviceFormat::R32_FLOAT);
+				heap.SetUAVCubemap(ctx, 1,	passTarget);
+			
+				ctx.SetComputeRootSignature(rootSignature);
+				ctx.SetPipelineState(resources.GetPipelineState(BUILD2DSAT));
+				ctx.SetComputeDescriptorTable(4, heap);
+				ctx.Dispatch({ ShadowMapSize / 32, ShadowMapSize / 32, 6 });
+			
+				ctx.AddTextureBarrier(intermediateBuffer,
+					DASNonPixelShaderResource,		DASRenderTarget,
+					DeviceLayout_ShaderResource,	DeviceLayout_RenderTarget,
+					Sync_Compute,					Sync_RenderTarget);
+
+				ctx.AddTextureBarrier(passTarget,
+					DASRenderTarget,			DASPixelShaderResource,
+					DeviceLayout_RenderTarget,	DeviceLayout_ShaderResource,
+					Sync_RenderTarget,			Sync_PixelShader);
+
+				ctx.EndEvent_DEBUG();
 
 				ctx.renderSystem->SetObjectLayout(pass.renderTarget, DeviceLayout_ShaderResource);
 			}
-
 		};
 
 		auto& multiPass = frameGraph.AddDataDrivenMultiPass(passDesc, passSetupFn, passDrawFN);

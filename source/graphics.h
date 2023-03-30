@@ -373,6 +373,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	/************************************************************************************************/
 
+
 	inline constexpr D3D12_BARRIER_LAYOUT DeviceLayout2DX(const DeviceLayout layout)
 	{
 		switch (layout)
@@ -1607,27 +1608,29 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		bool SetSRV					(Context& ctx, size_t idx, ResourceHandle);
 		bool SetSRV					(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
-		bool SetSRV                 (Context& ctx, size_t idx, ResourceHandle, uint MipOffset, DeviceFormat format);
+		bool SetSRV					(Context& ctx, size_t idx, ResourceHandle, uint MipOffset, DeviceFormat format);
+		bool SetSRVArray			(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
 
 		bool SetSRV3D               (Context& ctx, size_t idx, ResourceHandle);
 
 		//bool SetSRV					(Context& ctx, size_t idx, ResourceHandle		Handle);
 		//bool SetSRV					(Context& ctx, size_t idx, ResourceHandle	Handle);
-		bool SetSRVCubemap          (Context& ctx, size_t idx, ResourceHandle		Handle);
-		bool SetSRVCubemap          (Context& ctx, size_t idx, ResourceHandle		Handle, DeviceFormat format);
+		bool SetSRVCubemap			(Context& ctx, size_t idx, ResourceHandle		Handle);
+		bool SetSRVCubemap			(Context& ctx, size_t idx, ResourceHandle		Handle, DeviceFormat format);
 
 		bool SetUAVBuffer			(Context& ctx, size_t idx, ResourceHandle, size_t   offset = 0);
 
 		bool SetUAVTexture			(Context& ctx, size_t idx, ResourceHandle);
 
 		bool SetUAVTexture			(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
-		bool SetUAVTexture          (Context& ctx, size_t idx, size_t mipLevel, ResourceHandle, DeviceFormat format);
+		bool SetUAVTexture			(Context& ctx, size_t idx, size_t mipLevel, ResourceHandle, DeviceFormat format);
 
-		bool SetUAVTexture3D        (Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
+		bool SetUAVCubemap			(Context& ctx, size_t idx, ResourceHandle handle);
 
+		bool SetUAVTexture3D		(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
 
-		bool SetUAVStructured       (Context& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset = 0);
-		bool SetUAVStructured       (Context& ctx, size_t idx, ResourceHandle resource, ResourceHandle counter, size_t stride, size_t Offset);
+		bool SetUAVStructured		(Context& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset = 0);
+		bool SetUAVStructured		(Context& ctx, size_t idx, ResourceHandle resource, ResourceHandle counter, size_t stride, size_t Offset);
 
 		bool SetStructuredResource	(Context& ctx, size_t idx, ResourceHandle, size_t stride = 4, size_t offset = 0); //
 
@@ -2393,6 +2396,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		RenderTarget,
 		DepthTarget,
 		UnorderedAccess,
+		UnorderedAccessRenderTarget,
 		ShaderResource
 	};
 
@@ -2505,9 +2509,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				break;
 			};
 
-			desc.Flags = type == ResourceType::RenderTarget ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
-			desc.Flags |= type == ResourceType::UnorderedAccess ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
-			desc.Flags |= type == ResourceType::DepthTarget ? D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+			desc.Flags = type	== ResourceType::RenderTarget					? D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET : D3D12_RESOURCE_FLAG_NONE;
+			desc.Flags |= type	== ResourceType::UnorderedAccess				? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE;
+			desc.Flags |= type	== ResourceType::UnorderedAccessRenderTarget	? D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+			desc.Flags |= type	== ResourceType::DepthTarget					? D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL : D3D12_RESOURCE_FLAG_NONE;
 
 			desc.MipLevels = Min(Max(MipLevels, 1), 15);
 
@@ -2564,9 +2569,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			desc.Flags = type == ResourceType::RenderTarget ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
 			desc.Flags |= type == ResourceType::UnorderedAccess ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
 			desc.Flags |= type == ResourceType::DepthTarget ? D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+			desc.Flags |= type == ResourceType::UnorderedAccessRenderTarget ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
 			desc.Flags |= denyShaderUsage ? D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE : D3D12_RESOURCE_FLAG_NONE;
 
-			desc.MipLevels = Min(Max(MipLevels, 1), 15);
+			desc.MipLevels	= Min(Max(MipLevels, 1), 15);
 
 			return desc;
 		}
@@ -2798,6 +2804,21 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				.WH				= WH,
 				.arraySize		= 6,
 				.MipLevels		= mipCount,
+			};
+		}
+
+		static GPUResourceDesc CubeMapUAV(uint2 WH, DeviceFormat format, uint8_t mipCount, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
+		{
+			 return {
+				.type			= ResourceType::UnorderedAccessRenderTarget,
+				.Dimensions		= TextureDimension::TextureCubeMap,
+				.allocationType = allocationType,
+				.format			= format,
+
+				.WH				= WH,
+				.arraySize		= 6,
+				.MipLevels		= mipCount,
+				.clearValue		= D3D12_CLEAR_VALUE{ .Format = TextureFormat2DXGIFormat(format), .Color = { 0.0f, 0.0f, 0.0f, 0.0f } }
 			};
 		}
 	};
@@ -3251,109 +3272,33 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		}
 	};
 
+	enum struct ResourceHeapTier
+	{
+		HeapTier1,
+		HeapTier2,
+	};
 
 	class HeapTable
 	{
 	public:
-		HeapTable(ID3D12Device* IN_device, iAllocator* allocator) :
-			pDevice { IN_device },
-			handles { allocator },
-			heaps   { allocator } {}
+		HeapTable(ID3D12Device* IN_device, iAllocator* allocator);
+		~HeapTable();
 
+		void				Init(ResourceHeapTier, ID3D12Device* IN_device);
 
-		~HeapTable()
-		{
-			for (auto& heap : heaps)
-				heap.Release();
+		DeviceHeapHandle	CreateHeap(const size_t size, const uint32_t flags);
+		void				ReleaseHeap(DeviceHeapHandle heap);
 
-			heaps.clear();
-			handles.Clear();
-		}
-
-
-		void Init(ID3D12Device* IN_device)
-		{
-			pDevice = IN_device;
-		}
-
-
-		DeviceHeapHandle CreateHeap(const size_t size, const uint32_t flags)
-		{
-			D3D12_HEAP_PROPERTIES HEAP_Props	={};
-			HEAP_Props.CPUPageProperty			= D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-			HEAP_Props.Type						= D3D12_HEAP_TYPE_DEFAULT;
-			HEAP_Props.MemoryPoolPreference		= D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
-			HEAP_Props.CreationNodeMask			= 0;
-			HEAP_Props.VisibleNodeMask			= 0;
-
-			D3D12_HEAP_DESC heapDesc =
-			{
-				size,
-				HEAP_Props,
-				D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
-				((flags == DeviceHeapFlags::NONE)			? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE) |
-				((flags == DeviceHeapFlags::RenderTarget)	? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE) |
-				((flags == DeviceHeapFlags::UAVBuffer)		? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS | D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS: D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE) | 
-				((flags == DeviceHeapFlags::UAVTextures)	? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS | D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES: D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE)
-			};
-
-			ID3D12Heap1* heap_ptr = nullptr;
-
-			const auto HR = pDevice->CreateHeap(&heapDesc, IID_PPV_ARGS(&heap_ptr));
-
-			if (SUCCEEDED(HR))
-			{
-				auto localLock = std::scoped_lock{ m };
-
-				auto handle = handles.GetNewHandle();
-				handles[handle] = (index_t)heaps.push_back({ heap_ptr, handle });
-
-				return handle;
-			}
-			else
-			{
-				FK_LOG_ERROR("Failed to create Heap. Flags: %u", flags);
-				return InvalidHandle;
-			}
-		}
-
-
-		void ReleaseHeap(DeviceHeapHandle heap)
-		{
-			const auto idx = handles[heap];
-			heaps[idx].Release();
-
-			auto localLock = std::scoped_lock{ m };
-			handles.RemoveHandle(heap);
-
-			if (heaps.size() > 1)
-			{
-				heaps[idx] = heaps.back();
-				handles[heaps[idx].handle] = idx;
-			}
-
-			heaps.pop_back();
-		}
-
-
-		size_t GetHeapSize(DeviceHeapHandle heap) const
-		{
-			auto desc = heaps[handles[heap]].heap->GetDesc();
-			return desc.SizeInBytes;
-		}
-
-
-		ID3D12Heap* GetDeviceResource(DeviceHeapHandle handle) const
-		{
-			return heaps[handles[handle]].heap;
-		}
-
+		size_t			GetHeapSize(DeviceHeapHandle heap) const;
+		ID3D12Heap*		GetDeviceResource(DeviceHeapHandle handle) const;
 
 	private:
-		std::mutex										m;
+
 		Vector<DeviceHeap>								heaps;
 		HandleUtilities::HandleTable<DeviceHeapHandle>	handles;
 		ID3D12Device*									pDevice;
+		ResourceHeapTier								tier;
+		std::mutex										m;
 	};
 
 
@@ -3632,11 +3577,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			HLSL_CompilerDisabled
 		} Compiler;
 
-		enum struct ResourceHeapTier
-		{
-			HeapTier1,
-			HeapTier2,
-		}	resourceHeapTier;
+		ResourceHeapTier resourceHeapTier;
 	};
 
 	struct ShaderOptions
@@ -4076,7 +4017,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void DiscardResource(ResourceHandle resource);
 
 		void AddAliasingBarrier			(ResourceHandle before, ResourceHandle after);
-		void AddUAVBarrier				(ResourceHandle Handle = InvalidHandle, uint32_t subresource = -1);
+		void AddUAVBarrier				(ResourceHandle Handle = InvalidHandle, uint32_t subresource = -1, DeviceLayout layout = DeviceLayout::DeviceLayout_Unknown);
 		void AddPresentBarrier			(ResourceHandle Handle,	DeviceAccessState Before);
 		void AddRenderTargetBarrier		(ResourceHandle Handle,	DeviceAccessState Before, DeviceAccessState State = DeviceAccessState::DASRenderTarget);
 		void AddStreamOutBarrier		(SOResourceHandle,		DeviceAccessState Before, DeviceAccessState State);
@@ -4551,6 +4492,7 @@ private:
 
 	FLEXKITAPI DescHeapPOS PushUAVBufferToDescHeap		(RenderSystem* RS, UAVBuffer buffer, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushUAVBufferToDescHeap2		(RenderSystem* RS, UAVBuffer buffer, ID3D12Resource* counter, DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS PushUAVCubeMapToDescHeap		(RenderSystem* RS, DXGI_FORMAT format, ID3D12Resource* resource, DescHeapPOS POS);
 
 
 	/************************************************************************************************/

@@ -4,12 +4,12 @@
 // 0 - BURLEY
 // 1 - FROSTBYTE
 // 2 - DISABALED
-#define DIFFUSETECHNIQUE 0
+#define DIFFUSETECHNIQUE 1
 
 // 0 - FROSTBYTE
 // 1 - SAIDs
 // 2 - DISABALED
-#define SPECULARTECHNIQUE 0
+#define SPECULARTECHNIQUE 1
 
 
 
@@ -17,7 +17,6 @@
 // 1 - VSM
 // 2 - PCF
 #define SHADOWTECHNIQUE 1
-#define DEBUGLIGHT 1
 
 
 struct PointLight
@@ -62,7 +61,7 @@ StructuredBuffer<uint> 		    lightListBuffer	: register(t7);
 StructuredBuffer<PointLight> 	pointLights		: register(t8);
 
 #if SHADOWTECHNIQUE == 1
-TextureCube<float2> 			shadowCubes[]	: register(t10);
+TextureCube<float> 				shadowCubes[]	: register(t10);
 #elif SHADOWTECHNIQUE == 2
 //Texture2DArray<float2> 			shadowMaps[]	: register(t10);
 #endif
@@ -221,10 +220,10 @@ float linstep(float min, float max, float v)
 
 float ReduceLightBleed(float p_max, float amount)
 {
-	return linstep(amount, 1.0f, p_max);
+	return smoothstep(amount, 1.0f, p_max);
 }
 
-float ChebyshevUpperBound(const float2 moments, const float t)
+float ChebyshevUpperBound(const float4 moments, const float t)
 {
 	const float p = step(t, moments.x);
 
@@ -233,8 +232,14 @@ float ChebyshevUpperBound(const float2 moments, const float t)
 	const float d = t - moments.x;
 	const float p_max = variance / (variance + d * d);
 
-	return ReduceLightBleed(saturate(max(p, p_max)), 0.35f);
+	return ReduceLightBleed(saturate(max(p, p_max)), 0.0f);
 }
+
+float ExponentialShadowSample(const float exponentialDepth, const float t)
+{
+	return exp(-80.0f * t) * exponentialDepth;
+}
+
 
 float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 {
@@ -268,13 +273,13 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 	const float ior			= MRIA.b;
 	const float metallic	= 0;//1 - MRIA.r > 0.1f ? 1.0f : 0.0f; 
 	const float3 albedo		= pow(Albedo.rgb, 2.1f);
-	const float roughness	= 0.3f;//MRIA.g;
+	const float roughness	= 0.8f;//MRIA.g;
 
-	const float Ks			= lerp(0, 0.4f, saturate(Albedo.w));
+	const float Ks			= lerp(0, 0.4f, saturate(1.0f));
 	const float Kd			= (1.0 - Ks) * (1.0 - metallic);
 	const float NdotV		= saturate(dot(N.xyz, V));
 
-	float4 color = float4(ambientLight * albedo * saturate(dot(float3(0, -1, 0), V)), 1);
+	float4 color = float4(0, 0, 0, 1);
 	for (uint I = 0; I < localLightCount; I++)
 	{
 		const uint pointLightIdx	= lightListBuffer[localLightList + I];
@@ -284,8 +289,8 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		const float3 Lp			= mul(View, float4(light.PR.xyz, 1));
 		const float3 L			= normalize(Lp - positionVS);
 		const float  Ld			= length(Lp - positionVS);
-		const float  Li			= light.KI.w;
-		const float  Lr			= light.PR.w;
+		const float  Li			= 5000;
+		const float  Lr			= 2000;
 		const float  ld_2		= Ld * Ld;
 		const float  La			= (Li / ld_2) * (1 - (pow(Ld, 10) / pow(Lr, 10)));
 
@@ -310,16 +315,17 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 
 		#if SHADOWTECHNIQUE == 0 // Skip
 
-			const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
+			const float3 colorSample = (diffuse * Kd + specular * Ks) * La * saturate(NdotL) * INV_PI;
 			color += float4(max(colorSample, 0), 0);
 
 		#elif SHADOWTECHNIQUE == 1 // Variance shadow mapping
 			const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI * Lc;
 
-			const float2	momentSample	= shadowCubes[pointLightIdx].Sample(BiLinear, mul(ViewI, -L));
-			const float		depth			= saturate(length(Lp - positionVS - 0.1f) / Lr);
+			const float	depth	= saturate(length(Lp - positionVS - 0.01f) / Lr);
 
-			color += float4(ChebyshevUpperBound(momentSample, depth) * colorSample, 0);
+			float exponentialDepth = shadowCubes[pointLightIdx].Sample(BiLinear, mul(ViewI, -L));
+			color += float4(colorSample * ExponentialShadowSample(exponentialDepth, depth), 0);
+
 			//color += max(float4(colorSample * Lc * step(depth, momentSample.x), 0), 0);
 			//color += max(float4((-L + 1.0f) / 2.0f, 0), 0);
 			//color += max(dot(float3(0, -1, 0), -L), 0);

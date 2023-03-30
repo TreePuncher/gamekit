@@ -576,7 +576,7 @@ namespace FlexKit
 
 	size_t GetRTPoolSize(const AvailableFeatures& features, const uint2 WH)
 	{
-		if (features.resourceHeapTier == AvailableFeatures::ResourceHeapTier::HeapTier1)
+		if (features.resourceHeapTier == ResourceHeapTier::HeapTier1)
 			return 128 * 3 * MEGABYTE;
 		else
 			return 128 * 2 * MEGABYTE;
@@ -592,8 +592,10 @@ namespace FlexKit
 
 			UAVPool						{ renderSystem, poolSizes.UAVPoolByteSize, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
 			RTPool						{ renderSystem, poolSizes.RTPoolByteSize, DefaultBlockSize,
-											renderSystem.features.resourceHeapTier == AvailableFeatures::ResourceHeapTier::HeapTier2 ?
+											renderSystem.features.resourceHeapTier == ResourceHeapTier::HeapTier2 ?
 												DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget : DeviceHeapFlags::RenderTarget, persistent },
+
+			UAVTexturePool				{ renderSystem, poolSizes.UAVTexturePoolByteSize, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent },
 
 			timeStats					{ renderSystem.CreateTimeStampQuery(256) },
 			timingReadBack				{ renderSystem.CreateReadBackBuffer(512) }, 
@@ -611,8 +613,7 @@ namespace FlexKit
 		layout.SetParameterAsSRV(0, 0, 2, 0);
 		layout.SetParameterAsShaderUAV(1, 1, 1, 0);
 
-		if (renderSystem.features.resourceHeapTier == AvailableFeatures::ResourceHeapTier::HeapTier1)
-			UAVTexturePool.emplace(renderSystem, poolSizes.UAVTexturePoolByteSize, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent);
+		//if (renderSystem.features.resourceHeapTier == AvailableFeatures::ResourceHeapTier::HeapTier1)
 
 		rootSignatureToneMapping.AllowIA = true;
 		rootSignatureToneMapping.SetParameterAsDescriptorTable(0, layout);
@@ -736,7 +737,7 @@ namespace FlexKit
 		auto& sceneBVH				= scene.UpdateSceneBVH(dispatcher, drawSceneDesc.transformDependency, temporary);
 		auto& visablePointLights	= scene.GetVisableLights(dispatcher, camera, sceneBVH, temporary);
 		auto& pointLightUpdate		= scene.UpdatePointLights(dispatcher, sceneBVH, visablePointLights, temporary, persistent);
-		auto& shadowMaps			= shadowMapping.AcquireShadowMaps(dispatcher, frameGraph.GetRenderSystem(), RTPool, pointLightUpdate);
+		auto& shadowMaps			= shadowMapping.AcquireShadowMaps(dispatcher, frameGraph.GetRenderSystem(), UAVTexturePool, pointLightUpdate);
 
 		LoadLodLevels(dispatcher, passes, drawSceneDesc.camera, renderSystem, *persistent);
 
@@ -775,9 +776,7 @@ namespace FlexKit
 		AddGBufferResource(gbuffer, frameGraph);
 		frameGraph.AddMemoryPool(&UAVPool);
 		frameGraph.AddMemoryPool(&RTPool);
-
-		if(UAVTexturePool)
-			frameGraph.AddMemoryPool(&UAVTexturePool.value());
+		frameGraph.AddMemoryPool(&UAVTexturePool);
 
 		frameGraph.dataDependencies.push_back(&IKUpdate);
 

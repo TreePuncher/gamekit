@@ -63,12 +63,16 @@ namespace FlexKit
 	constexpr PSOHandle SHADOWMAPPASS				= PSOHandle(GetTypeGUID(SHADOWMAPPASS));
 	constexpr PSOHandle SHADOWMAPANIMATEDPASS		= PSOHandle(GetTypeGUID(SHADOWMAPANIMATEDPASS));
 
+	constexpr PSOHandle BUILD2DSAT					= PSOHandle(GetTypeGUID(BUILD2DSAT));
 
 	constexpr PassHandle ShadowMapPassID			= PassHandle{ GetTypeGUID(SHADOWMAPPASS) };
 	constexpr PassHandle ShadowMapAnimatedPassID	= PassHandle{ GetTypeGUID(SHADOWMAPANIMATEDPASS) };
 
 
 	/************************************************************************************************/
+
+
+	inline static constexpr size_t ShadowMapSize = 1024;
 
 	class ShadowMapper
 	{
@@ -78,7 +82,7 @@ namespace FlexKit
 		AcquireShadowMapTask& AcquireShadowMaps(
 								UpdateDispatcher&		dispatcher,
 								RenderSystem&			renderSystem,
-								MemoryPoolAllocator&	shadowMapAllocator,
+								MemoryPoolAllocator&	UAVPool,
 								PointLightUpdate&		pointLightUpdate);
 
 
@@ -110,6 +114,8 @@ namespace FlexKit
 
 		ID3D12PipelineState* CreateShadowMapPass(RenderSystem* RS);
 		ID3D12PipelineState* CreateShadowMapAnimatedPass(RenderSystem* RS);
+
+		ID3D12PipelineState* Fill2DPlanes(RenderSystem* RS);
 
 		FlexKit::RootSignature rootSignature;
 	};
