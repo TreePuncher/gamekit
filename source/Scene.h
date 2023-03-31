@@ -16,11 +16,11 @@
 namespace FlexKit
 {
 	// Handles
-	using BrushHandle				= Handle_t<32, BrushComponentID>;
-	using PointLightHandle			= Handle_t<32, GetTypeGUID(PointLight)>;
-	using PointLightShadowHandle	= Handle_t<32, PointLightShadowMapID>;
-	using SceneHandle				= Handle_t<32, GetTypeGUID(SceneID)>;
-	using VisibilityHandle			= Handle_t<32, GetTypeGUID(BrushID)>;
+	using BrushHandle		= Handle_t<32, BrushComponentID>;
+	using LightHandle		= Handle_t<32, GetTypeGUID(PointLight)>;
+	using LightShadowHandle	= Handle_t<32, PointLightShadowMapID>;
+	using SceneHandle		= Handle_t<32, GetTypeGUID(SceneID)>;
+	using VisibilityHandle	= Handle_t<32, GetTypeGUID(BrushID)>;
 
 
 	//Forward Declarations 
@@ -145,18 +145,27 @@ namespace FlexKit
 	};
 
 
-	struct PointLight
+	enum class LightType
 	{
-		PointLight() = default;
-		~PointLight();
+		PointLight,
+		SpotLight,
+		Direction
+	};
 
-		PointLight(PointLight&& rhs);
+	struct Light
+	{
+		Light() = default;
+		~Light();
 
-		PointLight& operator = (PointLight&& rhs);
-		PointLight& operator = (const PointLight& rhs) = delete;
+		Light(Light&& rhs);
 
-		float3 K;
-		float I, R;
+		Light& operator = (Light&& rhs);
+		Light& operator = (const Light& rhs) = delete;
+
+		float3		K;
+		float		I, R;
+		float3		direction;
+		LightType	type;
 
 		NodeHandle		Position;
 		ResourceHandle	shadowMap = InvalidHandle;
@@ -167,19 +176,19 @@ namespace FlexKit
 	};
 
 
-	class PointLightEventHandler
+	class LightFactory
 	{
 	public:
-		static PointLight	OnCreate(GameObject& gameObject);
-		static void			OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
+		static Light	OnCreate(GameObject& gameObject);
+		static void		OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
 	};
 
-	using PointLightComponent	= BasicComponent_t<PointLight, PointLightHandle, PointLightComponentID, PointLightEventHandler>;
+	using LightComponent	= BasicComponent_t<Light, LightHandle, LightComponentID, LightFactory>;
 
-	class PointLightView : public ComponentView_t<PointLightComponent>
+	class LightView : public ComponentView_t<LightComponent>
 	{
 	public:
-		PointLightView(GameObject& gameObject, float3 color = { 1, 1, 1 }, float intensity = 100, float radius = 100, NodeHandle node = InvalidHandle, bool triggered = false);
+		LightView(GameObject& gameObject, float3 color = { 1, 1, 1 }, float intensity = 100, float radius = 100, NodeHandle node = InvalidHandle, bool triggered = false);
 
 
 		float3		GetK();
@@ -192,29 +201,27 @@ namespace FlexKit
 		void		SetNode			(NodeHandle node) const noexcept;
 		void		SetRadius		(float r) noexcept;
 
-		PointLight*	operator -> (this auto& self) noexcept  { return &GetComponent()[self.light]; }
+		Light*	operator -> (this auto& self) noexcept  { return &GetComponent()[self.light]; }
 
-		operator PointLightHandle () { return light; }
+		operator LightHandle () { return light; }
 
-		PointLightHandle	light;
+		LightHandle	light;
 	};
 
 
-	PointLightHandle GetPointLight(GameObject& go);
+	LightHandle GetLight(GameObject& go);
 
 
 	template<IsConstCharStar ... TY>
-	struct PointLightQuery
+	struct LightQuery
 	{
-		using Type		= PointLightView&;
-		using ValueType	= PointLightView;
-
+		using Type		= LightView&;
+		using ValueType	= LightView;
 		static constexpr bool IsConst() { return false; }
 
-		bool IsValid(const PointLightView& stringID)
-		{
-			return true;
-		}
+		bool		IsValid		(const LightView&)				{ return true; }
+		bool		Available	(const GameObject& gameObject)	{ return gameObject.hasView(LightComponentID); }
+		LightView&	GetValue	(GameObject& gameObject)		{ return GetView<LightView>(gameObject); }
 	};
 
 
@@ -423,16 +430,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct PointLightGather
+	struct LightGather
 	{
-		Vector<PointLightHandle>	pointLights;
-		const Scene*				scene;
+		Vector<LightHandle>	lights;
+		const Scene*		scene;
 	};
 
-	struct PointLightShadowGather
+	struct LightShadowGather
 	{
-		Vector<PointLightHandle>	pointLightShadows;
-		const Scene*				scene;
+		Vector<LightHandle>	lights;
+		const Scene*		scene;
 	};
 
 	struct alignas(64) SceneBVH
@@ -553,15 +560,15 @@ namespace FlexKit
 	};
 
 
-	struct PointLightUpdate_DATA
+	struct LightUpdate_DATA
 	{
-		Vector<PointLightHandle> dirtyList;
+		Vector<LightHandle> dirtyList;
 	};
 
-	using PointLightGatherTask			= UpdateTaskTyped<PointLightGather>;
-	using PointLightShadowGatherTask	= UpdateTaskTyped<PointLightShadowGather>;
-	using BuildBVHTask					= UpdateTaskTyped<SceneBVHBuild>;
-	using PointLightUpdate				= UpdateTaskTyped<PointLightUpdate_DATA>;
+	using LightGatherTask			= UpdateTaskTyped<LightGather>;
+	using LightShadowGatherTask		= UpdateTaskTyped<LightShadowGather>;
+	using BuildBVHTask				= UpdateTaskTyped<SceneBVHBuild>;
+	using PointLightUpdate			= UpdateTaskTyped<LightUpdate_DATA>;
 
 	struct ComputeLod_RES
 	{
@@ -605,15 +612,15 @@ namespace FlexKit
 
 		void				ClearScene();
 
-		Vector<PointLightHandle>	FindPointLights(const Frustum& f, iAllocator* tempMemory) const;
+		Vector<LightHandle>	FindLights(const Frustum& f, iAllocator* tempMemory) const;
 
 		BuildBVHTask&				UpdateSceneBVH(UpdateDispatcher&, UpdateTask& transformDependency, iAllocator* persistent);
-		PointLightGatherTask&		GetPointLights(UpdateDispatcher&, iAllocator* tempMemory) const;
-		size_t						GetPointLightCount();
+		LightGatherTask&			GetLights(UpdateDispatcher&, iAllocator* tempMemory) const;
+		size_t						GetLightCount();
 
 
-		PointLightShadowGatherTask&	GetVisableLights(UpdateDispatcher&, CameraHandle, BuildBVHTask&, iAllocator* tempMemory) const;
-		PointLightUpdate&			UpdatePointLights(UpdateDispatcher&, BuildBVHTask&, PointLightShadowGatherTask&, iAllocator* temporaryMemory, iAllocator* persistentMemory) const;
+		LightShadowGatherTask&		GetVisableLights(UpdateDispatcher&, CameraHandle, BuildBVHTask&, iAllocator* tempMemory) const;
+		PointLightUpdate&			UpdateLights(UpdateDispatcher&, BuildBVHTask&, LightShadowGatherTask&, iAllocator* temporaryMemory, iAllocator* persistentMemory) const;
 
 		Vector<SceneRayCastResult>	RayCast(FlexKit::Ray v, iAllocator& allocator = SystemAllocator) const;
 
@@ -781,19 +788,19 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct _PointLightShadowCaster
+	struct ShadowCaster
 	{
-		PointLightHandle	pointLight	= InvalidHandle;
+		LightHandle	pointLight	= InvalidHandle;
 		NodeHandle			node		= InvalidHandle;
 		ResourceHandle		shadowMap	= InvalidHandle;
 		float4x4			matrix		= float4x4::Identity();
 	};
 
-	using PointLightShadowMap		= BasicComponent_t<_PointLightShadowCaster, PointLightShadowHandle, PointLightShadowMapID>;
-	using PointLightShadowMapView	= PointLightShadowMap::View;
+	using ShadowMapComponent	= BasicComponent_t<ShadowCaster, LightShadowHandle, PointLightShadowMapID>;
+	using ShadowMapView			= ShadowMapComponent::View;
 
 
-	void EnablePointLightShadows(GameObject& gameObject);
+	void EnableShadows(GameObject& gameObject);
 
 
 }	/************************************************************************************************/

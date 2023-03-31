@@ -300,7 +300,8 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	PointLight::~PointLight()
+
+	Light::~Light()
 	{
 		if (shadowState)
 			shadowState->Release();
@@ -310,7 +311,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PointLight::PointLight(PointLight&& rhs)
+	Light::Light(Light&& rhs)
 	{
 		K = rhs.K;
 		I = rhs.I;
@@ -331,7 +332,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PointLight& PointLight::operator = (PointLight&& rhs)
+	Light& Light::operator = (Light&& rhs)
 	{
 		K = rhs.K;
 		I = rhs.I;
@@ -351,12 +352,13 @@ namespace FlexKit
 	}
 
 
-	PointLightView::PointLightView(GameObject& gameObject, float3 color, float intensity, float radius, NodeHandle node, bool triggerless) : light{ GetComponent().Create(gameObject) }
+	LightView::LightView(GameObject& gameObject, float3 color, float intensity, float radius, NodeHandle node, bool triggerless) : light{ GetComponent().Create(gameObject) }
 	{
 		auto& pointLight		= GetComponent()[light];
 		pointLight.K			= color;
 		pointLight.I			= intensity;
 		pointLight.R			= radius;
+		pointLight.type			= LightType::PointLight;
 		pointLight.Position		= node != InvalidHandle ? node : FlexKit::GetSceneNode(gameObject);
 
 		if (triggerless)
@@ -369,7 +371,7 @@ namespace FlexKit
 				{
 					FK_ASSERT(typeID == GetTypeGUID(float));
 
-					auto& pointLight = *gameObject.GetView<PointLightView>();
+					auto& pointLight = *gameObject.GetView<LightView>();
 					pointLight.SetRadius(*static_cast<float*>(_ptr));
 				});
 
@@ -385,42 +387,42 @@ namespace FlexKit
 		}
 	}
 
-	float PointLightView::GetRadius() const noexcept
+	float LightView::GetRadius() const noexcept
 	{
 		return GetComponent()[light].R;
 	}
 
-	void PointLightView::SetRadius(float r) noexcept
+	void LightView::SetRadius(float r) noexcept
 	{
 		GetComponent()[light].R = Max(r, 0.1f);
 	}
 
-	float PointLightView::GetIntensity()
+	float LightView::GetIntensity()
 	{
 		return GetComponent()[light].I;
 	}
 
-	float3 PointLightView::GetK()
+	float3 LightView::GetK()
 	{
 		return GetComponent()[light].K;
 	}
 
-	void PointLightView::SetK(float3 color)
+	void LightView::SetK(float3 color)
 	{
 		GetComponent()[light].K = color;
 	}
 
-	void PointLightView::SetIntensity(float I)
+	void LightView::SetIntensity(float I)
 	{
 		GetComponent()[light].I = I;
 	}
 
-	void PointLightView::SetNode(NodeHandle node) const noexcept
+	void LightView::SetNode(NodeHandle node) const noexcept
 	{
 		GetComponent()[light].Position = node;
 	}
 
-	NodeHandle PointLightView::GetNode() const noexcept
+	NodeHandle LightView::GetNode() const noexcept
 	{
 		return GetComponent()[light].Position;
 	}
@@ -429,15 +431,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PointLightHandle GetPointLight(GameObject& go)
+	LightHandle GetLight(GameObject& go)
 	{
 		return Apply(
 			go,
-			[](PointLightView& pointLight) -> PointLightHandle
+			[](LightView& pointLight) -> LightHandle
 			{
 				return pointLight;
 			},
-			[]() -> PointLightHandle
+			[]() -> LightHandle
 			{
 				return InvalidHandle;
 			});
@@ -511,8 +513,8 @@ namespace FlexKit
 	{
 		Apply(
 			go,
-			[](	SceneVisibilityView&    visibility,
-				PointLightView&	        pointLight)
+			[](	SceneVisibilityView&	visibility,
+				LightView&				pointLight)
 			{
 				visibility.SetBoundingSphere({ 0, 0, 0, pointLight.GetRadius() });
 			});
@@ -624,22 +626,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PointLight PointLightEventHandler::OnCreate(GameObject& gameObject)
+	Light LightFactory::OnCreate(GameObject& gameObject)
 	{
-		return PointLight{};
+		return Light{};
 	}
 
-	void PointLightEventHandler::OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+	void LightFactory::OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
 	{
-		PointLightComponentBlob pointLight;
+		LightComponentBlob pointLight;
 
 		memcpy(&pointLight, buffer, sizeof(pointLight));
 
-		if(!gameObject.hasView(PointLightComponentID))
-			gameObject.AddView<PointLightView>(pointLight.K, pointLight.IR[0], pointLight.IR[1], GetSceneNode(gameObject));
+		if(!gameObject.hasView(LightComponentID))
+			gameObject.AddView<LightView>(pointLight.K, pointLight.IR[0], pointLight.IR[1], GetSceneNode(gameObject));
 		else
 		{
-			auto* pointLightView = static_cast<PointLightView*>(gameObject.GetView(PointLightComponentID));
+			auto* pointLightView = static_cast<LightView*>(gameObject.GetView(LightComponentID));
 			pointLightView->SetK(pointLight.K);
 			pointLightView->SetIntensity(pointLight.IR[0]);
 			pointLightView->SetRadius(pointLight.IR[1]);
@@ -648,7 +650,7 @@ namespace FlexKit
 
 		SetBoundingSphereFromLight(gameObject);
 
-		EnablePointLightShadows(gameObject);
+		EnableShadows(gameObject);
 	}
 
 
@@ -1351,15 +1353,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Vector<PointLightHandle> Scene::FindPointLights(const Frustum &f, iAllocator* tempMemory) const
+	Vector<LightHandle> Scene::FindLights(const Frustum &f, iAllocator* tempMemory) const
 	{
-		Vector<PointLightHandle> lights{tempMemory};
+		Vector<LightHandle> lights{tempMemory};
 
 		auto& visables = SceneVisibilityComponent::GetComponent();
 
 		for (auto entity : sceneEntities)
 			Apply(*visables[entity].entity,
-				[&](PointLightView&			pointLight,
+				[&](LightView&				pointLight,
 					SceneVisibilityView&	visibility,
 					SceneNodeView&			sceneNode)
 				{
@@ -1401,36 +1403,36 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PointLightGatherTask& Scene::GetPointLights(UpdateDispatcher& dispatcher, iAllocator* tempMemory) const
+	LightGatherTask& Scene::GetLights(UpdateDispatcher& dispatcher, iAllocator* tempMemory) const
 	{
-		return dispatcher.Add<PointLightGather>(
-			[&](UpdateDispatcher::UpdateBuilder& builder, PointLightGather& data)
+		return dispatcher.Add<LightGather>(
+			[&](UpdateDispatcher::UpdateBuilder& builder, LightGather& data)
 			{
-				data.pointLights	= Vector<PointLightHandle>{ tempMemory, 64 };
-				data.scene			= this;
+				data.lights	= Vector<LightHandle>{ tempMemory, 64 };
+				data.scene	= this;
 
 				builder.SetDebugString("Point Light Gather");
 			},
-			[this](PointLightGather& data, iAllocator& threadAllocator)
+			[this](LightGather& data, iAllocator& threadAllocator)
 			{
 				FK_LOG_9("Point Light Gather");
 				ProfileFunction();
 
-				Vector<PointLightHandle> tempList{ &threadAllocator, 64 };
+				Vector<LightHandle> tempList{ &threadAllocator, 64 };
 				auto& visables = SceneVisibilityComponent::GetComponent();
 
 				for (auto entity : sceneEntities)
 				{
 
 					Apply(*visables[entity].entity,
-						[&](PointLightView&			pointLight,
+						[&](LightView&				pointLight,
 							SceneVisibilityView&	visibility)
 						{
 							tempList.emplace_back(pointLight);
 						});
 				}
 
-				data.pointLights = tempList;
+				data.lights = tempList;
 			}
 		);
 	}
@@ -1439,27 +1441,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PointLightShadowGatherTask& Scene::GetVisableLights(UpdateDispatcher& dispatcher, CameraHandle camera, BuildBVHTask& bvh, iAllocator* temporaryMemory) const
+	LightShadowGatherTask& Scene::GetVisableLights(UpdateDispatcher& dispatcher, CameraHandle camera, BuildBVHTask& bvh, iAllocator* temporaryMemory) const
 	{
-		return dispatcher.Add<PointLightShadowGather>(
-			[&](UpdateDispatcher::UpdateBuilder& builder, PointLightShadowGather& data)
+		return dispatcher.Add<LightShadowGather>(
+			[&](UpdateDispatcher::UpdateBuilder& builder, LightShadowGather& data)
 			{
 				builder.SetDebugString("Point Light Shadow Gather");
 				builder.AddInput(bvh);
 
-				data.pointLightShadows = Vector<PointLightHandle>{ temporaryMemory };
+				data.lights = Vector<LightHandle>{ temporaryMemory };
 			},
-			[this, &bvh = bvh.GetData().bvh, camera = camera](PointLightShadowGather& data, iAllocator& threadAllocator)
+			[this, &bvh = bvh.GetData().bvh, camera = camera](LightShadowGather& data, iAllocator& threadAllocator)
 			{
 				FK_LOG_9("Point Light Shadow Gather");
 				ProfileFunction();
 
-				Vector<PointLightHandle> visablePointLights{ &threadAllocator };
+				Vector<LightHandle> visablePointLights{ &threadAllocator };
 				auto& visabilityComponent = SceneVisibilityComponent::GetComponent();
 
 				const auto frustum = GetFrustum(camera);
 
-				auto& lights = PointLightComponent::GetComponent();
+				auto& lights = LightComponent::GetComponent();
 
 
 				if constexpr (false)
@@ -1473,14 +1475,14 @@ namespace FlexKit
 						[&](VisibilityHandle intersector, auto& intersectionResult, auto gameObject)
 						{
 							Apply(*gameObject,
-								[&](PointLightView& light)
+								[&](LightView& light)
 								{
 									visablePointLights.push_back(light);
 								}
 							);
 						});
 				}
-				data.pointLightShadows = visablePointLights;
+				data.lights = visablePointLights;
 			}
 		);
 	}
@@ -1489,12 +1491,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PointLightUpdate& Scene::UpdatePointLights(UpdateDispatcher& dispatcher, BuildBVHTask& bvh, PointLightShadowGatherTask& visablePointLights, iAllocator* temporaryMemory, iAllocator* persistentMemory) const
+	PointLightUpdate& Scene::UpdateLights(UpdateDispatcher& dispatcher, BuildBVHTask& bvh, LightShadowGatherTask& visablePointLights, iAllocator* temporaryMemory, iAllocator* persistentMemory) const
 	{
 		class Task : public iWork
 		{
 		public:
-			Task(PointLightHandle IN_light, SceneBVH& IN_bvh, iAllocator& IN_allocator) :
+			Task(LightHandle IN_light, SceneBVH& IN_bvh, iAllocator& IN_allocator) :
 				iWork				{},
 				persistentMemory	{ IN_allocator },
 				lightHandle			{ IN_light },
@@ -1508,7 +1510,7 @@ namespace FlexKit
 				ProfileFunction();
 
 				auto& visables		= SceneVisibilityComponent::GetComponent();
-				auto& lights		= PointLightComponent::GetComponent();
+				auto& lights		= LightComponent::GetComponent();
 
 				auto& light			= lights[lightHandle];
 				const float3 POS	= GetPositionW(light.Position);
@@ -1587,25 +1589,25 @@ namespace FlexKit
 
 			iAllocator&				persistentMemory;
 			SceneBVH&				bvh;
-			const PointLightHandle	lightHandle = InvalidHandle;
+			const LightHandle	lightHandle = InvalidHandle;
 		};
 
-		return dispatcher.Add<PointLightUpdate_DATA>(
-			[&](UpdateDispatcher::UpdateBuilder& builder, PointLightUpdate_DATA& data)
+		return dispatcher.Add<LightUpdate_DATA>(
+			[&](UpdateDispatcher::UpdateBuilder& builder, LightUpdate_DATA& data)
 			{
 				builder.SetDebugString("Point Light Shadow Gather");
 				builder.AddInput(bvh);
 				builder.AddInput(visablePointLights);
 
-				data.dirtyList = Vector<PointLightHandle>{ temporaryMemory };
+				data.dirtyList = Vector<LightHandle>{ temporaryMemory };
 			},
 			[	this,
 				&bvh				= bvh.GetData().bvh,
-				&visablePointLights	= visablePointLights.GetData().pointLightShadows,
+				&visablePointLights	= visablePointLights.GetData().lights,
 				persistentMemory	= persistentMemory,
 				&threads			= *dispatcher.threads
 			]
-			(PointLightUpdate_DATA& data, iAllocator& threadAllocator)
+			(LightUpdate_DATA& data, iAllocator& threadAllocator)
 			{
 				ProfileFunction();
 
@@ -1624,7 +1626,7 @@ namespace FlexKit
 
 				barrier.Join();
 				
-				auto& lights = PointLightComponent::GetComponent();
+				auto& lights = LightComponent::GetComponent();
 
 				for (auto visableLight : visablePointLights)
 				{
@@ -1667,14 +1669,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t	Scene::GetPointLightCount()
+	size_t	Scene::GetLightCount()
 	{
 		auto& visables		= SceneVisibilityComponent::GetComponent();
 		size_t lightCount	= 0;
 
 		for (auto entity : sceneEntities)
 			Apply(*visables[entity].entity,
-				[&](PointLightView& pointLight) { lightCount++; });
+				[&](LightView& pointLight) { lightCount++; });
 
 		return lightCount;
 	}
@@ -1745,16 +1747,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void EnablePointLightShadows(GameObject& gameObject)
+	void EnableShadows(GameObject& gameObject)
 	{
 		if (!Apply(gameObject,
-			[](PointLightShadowMapView& pointLight){ return true; }, []{ return false; }))
+			[](ShadowMapView& pointLight){ return true; }, []{ return false; }))
 		{
 			Apply(gameObject,
-				[&](PointLightView& pointLight)
+				[&](LightView& pointLight)
 				{
-					gameObject.AddView<PointLightShadowMapView>(
-						_PointLightShadowCaster{
+					gameObject.AddView<ShadowMapView>(
+						ShadowCaster{
 							pointLight,
 							pointLight.GetNode()
 						}

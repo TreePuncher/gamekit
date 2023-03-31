@@ -3,6 +3,7 @@
 #include "AnimationComponents.h"
 #include "AnimationRendering.h"
 #include <fmt/format.h>
+#include <limits>
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -10,7 +11,7 @@ namespace FlexKit
 
 	ID3D12PipelineState* ShadowMapper::Fill2DPlanes(RenderSystem* RS)
 	{
-		auto CShader = RS->LoadShader("CS_Main", "cs_6_0", "assets\\shaders\\SACM\\Create2DSAT.hlsl");
+		auto CShader = RS->LoadShader("ColumnSumsMain", "cs_6_0", "assets\\shaders\\SACM\\Create2DSAT.hlsl");
 
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_Desc = {};
@@ -53,7 +54,7 @@ namespace FlexKit
 
 		D3D12_RASTERIZER_DESC Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		Rast_Desc.FillMode = D3D12_FILL_MODE_SOLID;
-		Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
+		Rast_Desc.CullMode = D3D12_CULL_MODE_FRONT;
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
@@ -66,10 +67,10 @@ namespace FlexKit
 			PSO_Desc.BlendState                             = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask                             = UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType                  = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-			PSO_Desc.NumRenderTargets                       = 1;
+			PSO_Desc.NumRenderTargets                       = 0;
 			PSO_Desc.SampleDesc.Count                       = 1;
 			PSO_Desc.SampleDesc.Quality                     = 0;
-			PSO_Desc.RTVFormats[0]							= DXGI_FORMAT::DXGI_FORMAT_R32_FLOAT;
+			//PSO_Desc.RTVFormats[0]							= DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT;
 			PSO_Desc.DSVFormat                              = DXGI_FORMAT_D32_FLOAT;
 			PSO_Desc.InputLayout                            = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
 			PSO_Desc.DepthStencilState                      = Depth_Desc;
@@ -115,7 +116,7 @@ namespace FlexKit
 
 		D3D12_RASTERIZER_DESC Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		Rast_Desc.FillMode = D3D12_FILL_MODE_SOLID;
-		Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
+		Rast_Desc.CullMode = D3D12_CULL_MODE_FRONT;
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
@@ -128,10 +129,10 @@ namespace FlexKit
 			PSO_Desc.BlendState                             = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask                             = UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType                  = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-			PSO_Desc.NumRenderTargets                       = 1;
+			PSO_Desc.NumRenderTargets                       = 0;
 			PSO_Desc.SampleDesc.Count                       = 1;
 			PSO_Desc.SampleDesc.Quality                     = 0;
-			PSO_Desc.RTVFormats[0]							= DXGI_FORMAT::DXGI_FORMAT_R32_FLOAT;
+			//PSO_Desc.RTVFormats[0]							= DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT;
 			PSO_Desc.DSVFormat                              = DXGI_FORMAT_D32_FLOAT;
 			PSO_Desc.InputLayout                            = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
 			PSO_Desc.DepthStencilState                      = Depth_Desc;
@@ -162,7 +163,7 @@ namespace FlexKit
 					   +1,  0,  0, 0,
 					    0,  0,  0, 1 },
 			XMMATRIX{  +1,  0,  0, 0,	// +Y
-						0,  0, +1, 0,
+						0,  0, -1, 0,
 					    0, -1,  0, 0,
 						0,  0,  0, 1 },
 			XMMATRIX{  +1,  0,  0, 0,	// -Y
@@ -285,7 +286,7 @@ namespace FlexKit
 
 				size_t idx = 0;
 
-				auto&			lights		= PointLightComponent::GetComponent();
+				auto&			lights		= LightComponent::GetComponent();
 				auto			itr			= dirtyList.begin();
 				const auto		end			= dirtyList.end();
 				const uint64_t	frameID		= renderSystem.graphicsSubmissionCounter;
@@ -329,16 +330,19 @@ namespace FlexKit
 						ProfileFunction();
 
 						D3D12_CLEAR_VALUE clearValue{
-							.Format = DXGI_FORMAT_R32_FLOAT,
-							.Color	{ 0, 0, 0, 0 }
+							.Format = DXGI_FORMAT_D32_FLOAT,
+							.Color	{ 1, 1, 1, 1 }
 						};
 
-						auto desc		= GPUResourceDesc::CubeMapUAV({ ShadowMapSize - 3, ShadowMapSize - 3 }, DeviceFormat::R32_FLOAT, 1);
+						auto desc		= GPUResourceDesc::DepthTarget({ ShadowMapSize, ShadowMapSize }, DeviceFormat::D32_FLOAT, 6);
 						desc.clearValue = clearValue;
 
 						auto& light			= lights[lightHandle];
 						auto [shadowMap, _]	= shadowMapAllocator.Acquire(desc, false);
 						light.shadowMap		= shadowMap;
+
+						if (shadowMap == InvalidHandle)
+							DebugBreak();
 
 #if USING(DEBUGGRAPHICS)
 						auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.graphicsSubmissionCounter, light.shadowMap);
@@ -354,7 +358,7 @@ namespace FlexKit
 
 	ShadowMapPassData& ShadowMapper::ShadowMapPass(
 		FrameGraph&								frameGraph,
-		const PointLightShadowGatherTask&		shadowMapsGather,
+		const LightShadowGatherTask&			shadowMapsGather,
 		UpdateTask&								cameraUpdate,
 		GatherPassesTask&						gather,
 		AcquireShadowMapTask&					shadowMapAcquire,
@@ -371,20 +375,17 @@ namespace FlexKit
 		{
 			ReserveConstantBufferFunction	reserveCB;
 			ReserveVertexBufferFunction		reserveVB;
-			FrameResourceHandle				depthTempBuffer;
-			FrameResourceHandle				intermediateBuffer;
-			FrameResourceHandle				generationBuffer;
 		};
 
-		auto& pointLights = PointLightComponent::GetComponent();
+		auto& lights = LightComponent::GetComponent();
 
 		auto& shadowMap_data	= shadowMapsGather.GetData();
-		auto& shadowMaps		= shadowMap_data.pointLightShadows;
+		auto& shadowMaps		= shadowMap_data.lights;
 
 		struct PassData
 		{
 			ResourceHandle		renderTarget;
-			PointLightHandle	pointLightHandle;
+			LightHandle	pointLightHandle;
 			CubeMapState*		shadowMapData;
 		};
 
@@ -392,18 +393,19 @@ namespace FlexKit
 			[&](iAllocator& allocator) -> Vector<PassData>
 			{
 				auto& shadowMap_data	= shadowMapsGather.GetData();
-				auto& shadowMaps		= shadowMap_data.pointLightShadows;
+				auto& lightList			= shadowMap_data.lights;
 
 				Vector<PassData> passes{ allocator };
+				passes.reserve(shadowMaps.size());
 
-				for (auto lightHandle : shadowMaps)
+				for (auto lightHandle : lightList)
 				{
-					auto& pointLight = pointLights[lightHandle];
+					auto& light = lights[lightHandle];
 
-					if (pointLight.state != LightStateFlags::Dirty || pointLight.shadowMap == InvalidHandle)
+					if (light.state != LightStateFlags::Dirty || light.shadowMap == InvalidHandle)
 						continue;
 
-					passes.emplace_back(pointLight.shadowMap, lightHandle, pointLight.shadowState);
+					passes.emplace_back(light.shadowMap, lightHandle, light.shadowState);
 				}
 
 				return std::move(passes);
@@ -422,17 +424,7 @@ namespace FlexKit
 
 		auto passSetupFn = [&](FrameGraphNodeBuilder& builder, Common_Data& data)
 		{
-			auto CubeMapDesc = FlexKit::GPUResourceDesc::CubeMap({ ShadowMapSize - 3, ShadowMapSize - 3}, DeviceFormat::R32_FLOAT, 1, true );
-
-			CubeMapDesc.clearValue	= D3D12_CLEAR_VALUE{
-							.Format = DXGI_FORMAT_R32_FLOAT,
-							.Color{ 0.0f, 0.0f, 0.0f, 0.0f }
-			};
-
 			builder.AddDataDependency(shadowMapAcquire);
-			data.intermediateBuffer		= builder.AcquireVirtualResource(CubeMapDesc,		DeviceAccessState::DASRenderTarget);
-			data.depthTempBuffer		= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::DepthTarget	({ ShadowMapSize - 3, ShadowMapSize - 3 },	DeviceFormat::D32_FLOAT, 6),		DeviceAccessState::DASDEPTHBUFFERWRITE);
-			data.generationBuffer		= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::CubeMapUAV	({ ShadowMapSize, ShadowMapSize },			DeviceFormat::R32_FLOAT, 1),		DeviceAccessState::DASRenderTarget);
 			shadowMapPass.multiPass		= builder.GetNodeHandle();
 		};
 
@@ -441,57 +433,32 @@ namespace FlexKit
 			ProfileFunction();
 			ctx.BeginEvent_DEBUG("DepthPass");
 
-			const ResourceHandle depthTempBuffer	= resources.GetResource(common.depthTempBuffer);
-			const ResourceHandle intermediateBuffer	= resources.GetResource(common.intermediateBuffer);
-			const ResourceHandle generation			= resources.GetResource(common.generationBuffer);
-			const ResourceHandle passTarget			= pass.renderTarget;
+			const ResourceHandle passTarget	= pass.renderTarget;
+			if (passTarget == InvalidHandle)
+				DebugBreak();
 
-			resources.renderSystem.SetDebugName(depthTempBuffer,	"depthTempBuffer");
-			resources.renderSystem.SetDebugName(intermediateBuffer, "intermediateBuffer");
-			resources.renderSystem.SetDebugName(passTarget,			"passTarget");
+			resources.renderSystem.SetDebugName(passTarget,	"passTarget");
 
 			if (begin == pvs.begin())
 			{
 				const auto initialLayout = ctx.renderSystem->GetObjectLayout(passTarget);
 
 				ctx.AddTextureBarrier(passTarget,
-					DASCommon,		DASRenderTarget,
-					initialLayout,	DeviceLayout_RenderTarget,
-					Sync_All, Sync_All);
+					DASCommon,			DASDEPTHBUFFERWRITE,
+					initialLayout,		DeviceLayout_DepthStencilWrite,
+					Sync_PixelShader,	Sync_All);
 
-				ctx.AddTextureBarrier(intermediateBuffer,
-					DASRenderTarget,		DASRenderTarget,
-					DeviceLayout_Common,	DeviceLayout_RenderTarget,
-					Sync_All,				Sync_RenderTarget);
+				ctx.ClearDepthBuffer(passTarget, 1.0f);
 				
-				ctx.AddTextureBarrier(depthTempBuffer,
-					DASDEPTHBUFFERWRITE, DASDEPTHBUFFERWRITE,
-					DeviceLayout_DepthStencilWrite, DeviceLayout_DepthStencilWrite,
-					Sync_All, Sync_All);
-				
-				ctx.ClearDepthBuffer(depthTempBuffer, 1.0f);
-				ctx.ClearRenderTarget(intermediateBuffer, float4(0.0f, 0.0f, 0.0f, 0.0f));
-				ctx.ClearRenderTarget(passTarget, float4(0.0f, 0.0f, 0.0f, 0.0f));
-				
-				ctx.AddTextureBarrier(depthTempBuffer,
-					DASDEPTHBUFFERWRITE, DASDEPTHBUFFERWRITE,
-					DeviceLayout_DepthStencilWrite, DeviceLayout_DepthStencilWrite,
-					Sync_All, Sync_DepthStencil);
-				
-				ctx.AddTextureBarrier(intermediateBuffer,
-					DASRenderTarget,			DASRenderTarget,
-					DeviceLayout_RenderTarget,	DeviceLayout_RenderTarget,
-					Sync_All,					Sync_RenderTarget);
-
 				ctx.AddTextureBarrier(passTarget,
-					DASRenderTarget, DASRenderTarget,
-					DeviceLayout_RenderTarget, DeviceLayout_RenderTarget,
-					Sync_All, Sync_RenderTarget);
+					DASDEPTHBUFFERWRITE,			DASDEPTHBUFFERWRITE,
+					DeviceLayout_DepthStencilWrite, DeviceLayout_DepthStencilWrite,
+					Sync_All,						Sync_DepthStencil);
 			}
 
 			auto&			visiblityComponent	= SceneVisibilityComponent::GetComponent();
-			auto&			pointLight			= pointLights[pass.pointLightHandle];
-			const float3	pointLightPosition	= GetPositionW(pointLight.Position);
+			auto&			light				= lights[pass.pointLightHandle];
+			const float3	lightPosition		= GetPositionW(light.Position);
 			auto&			materials			= MaterialComponent::GetComponent();
 
 			PVS						brushes	{ allocator, (size_t)std::distance(begin, end) };
@@ -513,7 +480,7 @@ namespace FlexKit
 								return pass == SHADOWMAPPASS;
 							}); res != passes.end())
 						{
-							PushPV(entity, view.GetBrush(), brushes, pointLightPosition);
+							PushPV(entity, view.GetBrush(), brushes, lightPosition);
 						}
 						else if (auto res = std::find_if(passes.begin(), passes.end(),
 								[](auto& pass)
@@ -544,31 +511,33 @@ namespace FlexKit
 
 			const Frustum fustrum[] =
 			{
-				GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[0]),
-				GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[1]),
-				GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[2]),
-				GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[3]),
-				GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[4]),
-				GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, pointLight.R, pointLightPosition, Orientations[5]),
+				GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, light.R, lightPosition, Orientations[0]),
+				GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, light.R, lightPosition, Orientations[1]),
+				GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, light.R, lightPosition, Orientations[2]),
+				GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, light.R, lightPosition, Orientations[3]),
+				GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, light.R, lightPosition, Orientations[4]),
+				GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, light.R, lightPosition, Orientations[5]),
 			};
 
 			auto shadowMapPSO	= resources.GetPipelineState(SHADOWMAPPASS);
 			auto Build2DSATPSO	= resources.GetPipelineState(SHADOWMAPPASS);
 
 
+			const DepthStencilView_Options DSV_desc{ 0, 0, pass.renderTarget };
+
 			ctx.SetRootSignature(rootSignature);
 			ctx.SetPipelineState(shadowMapPSO);
 			ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
-			ctx.SetScissorAndViewports({ intermediateBuffer });
-			ctx.SetRenderTargets({ intermediateBuffer }, true, depthTempBuffer);
+			ctx.SetScissorAndViewports({ passTarget });
+			ctx.SetRenderTargets2({}, 0, DSV_desc);
 
 			TriMeshHandle	currentMesh		= InvalidHandle;
 			size_t			currentLodIdx	= 0xffffffffffffffff;
 			size_t			indexCount		= 0;
 			BoundingSphere	BS;
 
-			const float3 position	= FlexKit::GetPositionW(pointLight.Position);
-			const auto matrices		= CalculateShadowMapMatrices(position, pointLight.R, (float)t);
+			const float3 position	= FlexKit::GetPositionW(light.Position);
+			const auto matrices		= CalculateShadowMapMatrices(position, light.R, (float)t);
 
 			for(uint32_t brushIdx = 0; brushIdx < (uint32_t)brushes.size(); brushIdx++)
 			{
@@ -635,7 +604,7 @@ namespace FlexKit
 										.PV		= matrices.PV[itr],
 										.View	= matrices.View[itr],
 										.Idx	= itr,
-										.maxZ	= pointLight.R };
+										.maxZ	= light.R };
 
 								ctx.SetGraphicsConstantValue(0, 34, &tempConstants);
 								ctx.DrawIndexedInstanced(indexCount);
@@ -656,7 +625,7 @@ namespace FlexKit
 				auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS);
 				ctx.SetPipelineState(PSOAnimated);
 				ctx.SetScissorAndViewports({ passTarget });
-				ctx.SetRenderTargets({ passTarget }, true, depthTempBuffer);
+				ctx.SetRenderTargets({}, true, passTarget);
 				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 
 				for (const auto& brush : animatedBrushes)
@@ -711,7 +680,7 @@ namespace FlexKit
 											.PV		= matrices.PV[itr],
 											.View	= matrices.View[itr],
 											.Idx	= itr,
-											.maxZ	= pointLight.R
+											.maxZ	= light.R
 									};
 
 									if (Intersects(fustrum[itr], float4{ brushPOS_WT.xyz(), triMesh->BS.w }))
@@ -729,33 +698,10 @@ namespace FlexKit
 
 			if (end == pvs.end())
 			{
-				ctx.BeginEvent_DEBUG("Build SACM");
-
-				ctx.AddTextureBarrier(intermediateBuffer,
-				DASRenderTarget,			DASNonPixelShaderResource,
-				DeviceLayout_RenderTarget,	DeviceLayout_ShaderResource,
-				Sync_RenderTarget,			Sync_Compute);
-			
-				DescriptorHeap heap(ctx, rootSignature.GetDescHeap(0), allocator);
-				heap.SetSRVArray(ctx, 0,	intermediateBuffer, DeviceFormat::R32_FLOAT);
-				heap.SetUAVCubemap(ctx, 1,	passTarget);
-			
-				ctx.SetComputeRootSignature(rootSignature);
-				ctx.SetPipelineState(resources.GetPipelineState(BUILD2DSAT));
-				ctx.SetComputeDescriptorTable(4, heap);
-				ctx.Dispatch({ ShadowMapSize / 32, ShadowMapSize / 32, 6 });
-			
-				ctx.AddTextureBarrier(intermediateBuffer,
-					DASNonPixelShaderResource,		DASRenderTarget,
-					DeviceLayout_ShaderResource,	DeviceLayout_RenderTarget,
-					Sync_Compute,					Sync_RenderTarget);
-
 				ctx.AddTextureBarrier(passTarget,
-					DASRenderTarget,			DASPixelShaderResource,
-					DeviceLayout_RenderTarget,	DeviceLayout_ShaderResource,
-					Sync_RenderTarget,			Sync_PixelShader);
-
-				ctx.EndEvent_DEBUG();
+					DASDEPTHBUFFERWRITE,			DASPixelShaderResource,
+					DeviceLayout_DepthStencilWrite,	DeviceLayout_ShaderResource,
+					Sync_DepthStencil,				Sync_PixelShader);
 
 				ctx.renderSystem->SetObjectLayout(pass.renderTarget, DeviceLayout_ShaderResource);
 			}

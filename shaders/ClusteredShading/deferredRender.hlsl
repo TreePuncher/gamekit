@@ -1,20 +1,20 @@
-#include "common.hlsl"
+﻿#include "common.hlsl"
 #include "pbr.hlsl"
 
-// 0 - BURLEY
-// 1 - FROSTBYTE
+// 0 - FROSTBYTE
+// 1 - BURLEY
 // 2 - DISABALED
-#define DIFFUSETECHNIQUE 1
+#define DIFFUSETECHNIQUE 0
 
 // 0 - FROSTBYTE
 // 1 - SAIDs
 // 2 - DISABALED
-#define SPECULARTECHNIQUE 1
+#define SPECULARTECHNIQUE 0
 
 
 
 // 0 - off
-// 1 - VSM
+// 1 - Cubemap PCF
 // 2 - PCF
 #define SHADOWTECHNIQUE 1
 
@@ -23,6 +23,8 @@ struct PointLight
 {
 	float4 KI;	// Color + intensity in W
 	float4 PR;	// XYZ + radius in W
+	float4 DS;	// Direction + Spread + Type
+	uint4  TypeExtra;
 };
 
 struct ShadowMap
@@ -63,7 +65,7 @@ StructuredBuffer<PointLight> 	pointLights		: register(t8);
 #if SHADOWTECHNIQUE == 1
 TextureCube<float> 				shadowCubes[]	: register(t10);
 #elif SHADOWTECHNIQUE == 2
-//Texture2DArray<float2> 			shadowMaps[]	: register(t10);
+//Texture2DArray<float2> 		shadowMaps[]	: register(t10);
 #endif
 
 SamplerState BiLinear     : register(s0);
@@ -108,7 +110,7 @@ ENVIRONMENT_PS passthrough_VS(float4 position : POSITION)
 #define MAX_ENV_LOD 2.0
 #define MAX_CUBEMAP_SAMPLES 8
 #define SEED_SCALE 1000000
-
+#define PI 3.14159265359f
 
 float RandUniform(float seed)
 {
@@ -188,6 +190,30 @@ float3 SampleFocusedRay(float theta, float2 seed)
 	return (cos(phi) * r, sin(phi) * r, u1 );
 }
 
+float3 AxisAngle(float3 e, float theta, float3 v)
+{
+	return (cos(theta) * v + sin(theta) * (cross(e, v)) + (1.0f - cos(theta)) * dot(v, e) * e) * theta;
+}
+
+bool IsNaN(float x)
+{
+	return (asuint(x) & 0x7fffffff) > 0x7f800000;
+}
+
+float3 VogelDiskSample(int sampleIndex, int samplesCount, float phi, float3 e)
+{
+	float GoldenAngle = 2.4f;
+
+	float r = sqrt(sampleIndex + 0.5f) / sqrt(samplesCount);
+	float theta = sampleIndex * GoldenAngle + phi;
+
+	float3 v = normalize(cross(float3(0, 1, 0), e)) * r;
+	if (IsNaN(v.x) || IsNaN(v.y) || IsNaN(v.z))
+		v = float3(1, 0, 0);
+
+	return normalize(e + AxisAngle(e, theta, v) * 0.00019f);
+}
+
 float2 ComputeReceiverPlaneDepthBias(float3 texCoordDX, float3 texCoordDY)
 {
 	float2 biasUV;
@@ -211,19 +237,20 @@ float GetLuminance(float3 RGB)
 	return 0.2126f * RGB.x + 0.7152f * RGB.y + 0.0722f * RGB.z;
 }
 
-#define g_minVariance 0.00002f
 
 float linstep(float min, float max, float v)
 {
-	return clamp((v - min) / (max - min), 0, 1);
+	return clamp((v - min) / (max - min), 0.0f, 1);
 }
 
 float ReduceLightBleed(float p_max, float amount)
 {
-	return smoothstep(amount, 1.0f, p_max);
+	return linstep(amount, 1.0f, p_max);
 }
 
-float ChebyshevUpperBound(const float4 moments, const float t)
+#define g_minVariance 0.0015f
+
+float ChebyshevUpperBound(const float2 moments, const float t)
 {
 	const float p = step(t, moments.x);
 
@@ -232,7 +259,7 @@ float ChebyshevUpperBound(const float4 moments, const float t)
 	const float d = t - moments.x;
 	const float p_max = variance / (variance + d * d);
 
-	return ReduceLightBleed(saturate(max(p, p_max)), 0.0f);
+	return ReduceLightBleed(saturate(max(p, p_max)), 0.01f);
 }
 
 float ExponentialShadowSample(const float exponentialDepth, const float t)
@@ -240,6 +267,32 @@ float ExponentialShadowSample(const float exponentialDepth, const float t)
 	return exp(-80.0f * t) * exponentialDepth;
 }
 
+float InterleavedGradientNoise(float2 position_screen)
+{
+	float3 magic = float3(0.06711056f, 0.00583715f, 52.9829189f);
+	return frac(magic.z * frac(dot(position_screen, magic.xy)));
+}
+
+float2 VectorToSphere(float3 XYZ)
+{
+	const float theta	= atan(XYZ.y / XYZ.x);
+	const float phi		= acos(XYZ.z);
+
+	return float2( theta < 0.0f ? PI + theta : theta, phi );
+}
+
+float3 SphereToVector(float2 UV)
+{
+	float cosTheta;
+	float sinTheta;
+	float cosPhi;
+	float sinPhi;
+
+	sincos(UV.x, sinTheta, cosTheta);
+	sincos(UV.y, sinPhi, cosPhi);
+
+	return float3( sinPhi * cosTheta, sinPhi * sinTheta, cosPhi );
+}
 
 float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 {
@@ -263,7 +316,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 	const float4 MRIA		= MRIABuffer.Load(uint3(px.xy, 0));
 
 	const float3 N			= float3(N_xy, sqrt(saturate(1.0f - dot(N_xy, N_xy))));
-	const float3 N_WS		= mul(ViewI, N).xyz;
+	const float3 N_WS		= mul(ViewI, N);
 
 	const float2 UV			= SampleCoord * WH_I; // [0;1]
 	const float3 V			= -GetViewVector_VS(UV);
@@ -271,9 +324,9 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 	const float3 positionWS = mul(ViewI, float4(positionVS, 1)); //GetWorldSpacePosition(UV, depth);
 
 	const float ior			= MRIA.b;
-	const float metallic	= 0;//1 - MRIA.r > 0.1f ? 1.0f : 0.0f; 
+	const float metallic	= 1 - MRIA.r > 0.1f ? 1.0f : 0.0f; 
 	const float3 albedo		= pow(Albedo.rgb, 2.1f);
-	const float roughness	= 0.8f;//MRIA.g;
+	const float roughness	= MRIA.g;
 
 	const float Ks			= lerp(0, 0.4f, saturate(1.0f));
 	const float Kd			= (1.0 - Ks) * (1.0 - metallic);
@@ -289,8 +342,8 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		const float3 Lp			= mul(View, float4(light.PR.xyz, 1));
 		const float3 L			= normalize(Lp - positionVS);
 		const float  Ld			= length(Lp - positionVS);
-		const float  Li			= 5000;
-		const float  Lr			= 2000;
+		const float  Li			= light.KI.w/10;
+		const float  Lr			= light.PR.w;
 		const float  ld_2		= Ld * Ld;
 		const float  La			= (Li / ld_2) * (1 - (pow(Ld, 10) / pow(Lr, 10)));
 
@@ -298,12 +351,12 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		const float3 H			= normalize(V + L);
 		 
 		#if DIFFUSETECHNIQUE == 0
-			const float3 diffuse	= max(albedo * F_d(V, H, L, N.xyz, roughness), 0.0f);
-		#elif DIFFUSETECHNIQUE == 1
 			const float3 diffuse	= NdotL * albedo * INV_PI;
+		#elif DIFFUSETECHNIQUE == 1
+			const float3 diffuse	= max(albedo * F_d(V, H, L, N.xyz, roughness), 0.0f);
 		#elif DIFFUSETECHNIQUE == 2
 			const float3 diffuse	= float3(0, 0, 0);
-		#endif
+		#endif 
 
 		#if SPECULARTECHNIQUE == 0
 			const float3 specular	= F_r(V, H, L, N.xyz, roughness);
@@ -315,22 +368,33 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 
 		#if SHADOWTECHNIQUE == 0 // Skip
 
-			const float3 colorSample = (diffuse * Kd + specular * Ks) * La * saturate(NdotL) * INV_PI;
+			const float3 colorSample = (diffuse * Kd + specular * Ks) * NdotL * La * INV_PI;
 			color += float4(max(colorSample, 0), 0);
 
-		#elif SHADOWTECHNIQUE == 1 // Variance shadow mapping
-			const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI * Lc;
+		#elif SHADOWTECHNIQUE == 1 // CubeMap PCF
+			float3 v_WS		= mul(ViewI, -L);
 
-			const float	depth	= saturate(length(Lp - positionVS - 0.01f) / Lr);
+			const float3	colorSample	= (diffuse * Kd + specular * Ks) * NdotL * La * Lc;
+			const float		depth		= length(Lp - positionVS);
 
-			float exponentialDepth = shadowCubes[pointLightIdx].Sample(BiLinear, mul(ViewI, -L));
-			color += float4(colorSample * ExponentialShadowSample(exponentialDepth, depth), 0);
+			float t = 0;
 
-			//color += max(float4(colorSample * Lc * step(depth, momentSample.x), 0), 0);
-			//color += max(float4((-L + 1.0f) / 2.0f, 0), 0);
-			//color += max(dot(float3(0, -1, 0), -L), 0);
-			//color += max(float4(momentSample, depth, 0), 0);
-			//color += max(float4(float3(momentSample, 1) * (L + 1.0f) / 2.0f, 0), 0);
+			static const int sampleCount = 16;
+			for (int i = 0; i < sampleCount; i++)
+			{
+				const float3	sampleVector	= VogelDiskSample(i, sampleCount, InterleavedGradientNoise(px), v_WS);
+				const float		bias			= 5.0f;
+				const float		shadowDepth		= shadowCubes[pointLightIdx].Gather(NearestPoint, sampleVector) * Lr;
+
+				t += depth - bias < shadowDepth ? 1.0f / sampleCount : 0.0f;
+			}
+
+			//t = shadowCubes[pointLightIdx].SampleCmpLevelZero(ShadowSampler, float4(v_WS, 0), depth) * 10;
+
+			color	+= saturate(t * max(float4((colorSample * (t / sampleCount)), 1), 0));
+			//color += max(float4((colorSample * ChebyshevUpperBound(t, depth)), 1), 0);
+			//color += max(float4(float3(10, 1, 1) * saturate(ExponentialShadowSample(t.y / sampleCount, depth)), 0), 0);
+			//color += max(float4(colorSample, 0), 0);
 
 		#elif SHADOWTECHNIQUE == 2 // PCF
 
@@ -506,7 +570,9 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 	//return float4(T.xyz, 1);
 	//return float4(N.xyz, 1);
 	//return pow(float4(roughness, metallic, 0, 0), 2.2f);
-	return float4(N_WS, 1);
+	//return float4(N_WS, 1);
+	return float4(N_WS / 2 + 0.5f, 1);
+	// 
 	//return float4(N.xyz / 2 + 0.5f, 1) * (float(localLightCount) / float(lightCount));
 	//return lerp(float4(0, 0, 0, 0), float4(1, 1, 1, 0), float(localLightCount) / float(lightCount));
 	//return float4(albedo, 1);

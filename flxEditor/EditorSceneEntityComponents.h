@@ -11,7 +11,7 @@ namespace FlexKit
 	Blob CreateSceneNodeComponent	(uint32_t nodeIdx);
 	Blob CreateIDComponent			(const std::string& string);
 	Blob CreateBrushComponent		(std::span<GUID_t> meshGUIDs);
-	Blob CreatePointLightComponent	(float3 K, float2 IR);
+	Blob CreateLightComponent	(float3 K, float2 IR);
 
 
 	/************************************************************************************************/
@@ -234,11 +234,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	class EntityPointLightComponent : 
-		public Serializable<EntityPointLightComponent, EntityComponent, GetTypeGUID(EntityPointLightComponent)>
+	class EntityLightComponent : 
+		public Serializable<EntityLightComponent, EntityComponent, GetTypeGUID(EntityLightComponent)>
 	{
 	public:
-		EntityPointLightComponent(const FlexKit::float3 IN_K = {}, const float2 IR = {}) :
+		EntityLightComponent(const FlexKit::float3 IN_K = {}, const float2 IR = {}) :
 			Serializable	{ GetTypeGUID(PointLight) },
 			K				{ IN_K },
 			I				{ IR.x },
@@ -246,7 +246,7 @@ namespace FlexKit
 
 		Blob GetBlob() override
 		{
-			return CreatePointLightComponent(K, float2{ I, R });
+			return CreateLightComponent(K, float2{ I, R });
 		}
 
 		void Serialize(auto& ar)
@@ -267,7 +267,7 @@ namespace FlexKit
 
 	private:
 
-		inline static RegisterConstructorHelper<EntityPointLightComponent, FlexKit::PointLightComponentID> registered{};
+		inline static RegisterConstructorHelper<EntityLightComponent, FlexKit::LightComponentID> registered{};
 	};
 
 

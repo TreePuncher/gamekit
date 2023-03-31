@@ -171,7 +171,7 @@ LocalGameState::LocalGameState(GameFramework& IN_framework, WorldStateMangagerIn
 	Translate(particleEmitter, { 0, 10, 0 });
 
 
-	auto pointLightSearch = scene.Query(framework.core.GetTempMemory(), PointLightQuery{});
+	auto pointLightSearch = scene.Query(framework.core.GetTempMemory(), LightQuery{});
 
 	for (auto& query : pointLightSearch)
 	{
@@ -311,8 +311,8 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 {
 	ProfileFunction();
 
-	frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
-	frameGraph.Resources.AddDepthBuffer(base.depthBuffer.Get());
+	frameGraph.resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
+	frameGraph.resources.AddDepthBuffer(base.depthBuffer.Get());
 
 	const CameraHandle activeCamera = worldState.GetActiveCamera();
 	SetCameraAspectRatio(activeCamera, base.renderWindow.GetAspectRatio());
@@ -434,8 +434,9 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 								frameGraph,
 								activeCamera,
 								base.renderWindow.GetWH(),
+								drawnScene.entityConstants,
 								drawnScene.passes,
-								drawnScene.skinnedDraws,
+								drawnScene.animationResources,
 								reserveCB,
 								reserveVB);
 	}
@@ -491,7 +492,7 @@ UpdateTask* LocalGameState::Draw(UpdateTask* updateTask, EngineCore& core, Updat
 				const float Step            = 2.0f * (float)FlexKit::pi / divisions;
 
 				auto lightHandle = GetPointLight(*pointLight1);
-				const auto& light = PointLightComponent::GetComponent()[lightHandle];
+				const auto& light = LightComponent::GetComponent()[lightHandle];
 				const auto pointLightPosition = GetPositionW(light.Position);
 
 				auto f = GetFrustum(1.0f, (float)pi / 2.0f, 1.0f, light.R, pointLightPosition, Quaternion{ 0.0f,  90.0f, 0.0f });

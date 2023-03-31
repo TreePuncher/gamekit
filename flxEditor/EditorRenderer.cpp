@@ -23,8 +23,8 @@ EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FK
 	skeletonComponent		{ IN_framework.core.GetBlockMemory() },
 	animatorComponent		{ IN_framework.core.GetBlockMemory() },
 
-	pointLightComponent		{ IN_framework.core.GetBlockMemory() },
-	pointLightShadowMaps	{ IN_framework.core.GetBlockMemory() },
+	lightComponent			{ IN_framework.core.GetBlockMemory() },
+	shadowMaps				{ IN_framework.core.GetBlockMemory() },
 
 	triggers				{ IN_framework.core.GetBlockMemory(), IN_framework.core.GetBlockMemory() },
 

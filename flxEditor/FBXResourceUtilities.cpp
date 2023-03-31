@@ -1264,7 +1264,7 @@ namespace FlexKit
                 entity.Node = Nodehndl;
                 entity.id = std::string(Node->GetName());
 
-                entity.components.push_back(std::make_shared<PointLightComponent>(TranslateToFloat3(K), float2{ 40, 40 }));
+                entity.components.push_back(std::make_shared<LightComponent>(TranslateToFloat3(K), float2{ 40, 40 }));
 
                 scene->AddSceneEntity(entity);
             }	break;

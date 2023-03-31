@@ -109,19 +109,19 @@ struct SkeletonComponentUpdate
 };
 
 
-struct PointLightComponentUpdate
+struct LightComponentUpdate
 {
 	static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& base, ViewportSceneContext& scene)
 	{
-		auto& pointlight	= static_cast<FlexKit::EntityPointLightComponent&>(component);
-		auto& runtime		= static_cast<FlexKit::PointLightView&>(base);
+		auto& pointlight	= static_cast<FlexKit::EntityLightComponent&>(component);
+		auto& runtime		= static_cast<FlexKit::LightView&>(base);
 
 		pointlight.I = runtime.GetIntensity();
 		pointlight.K = runtime.GetK();
 		pointlight.R = runtime.GetRadius();
 	}
 
-	IEntityComponentRuntimeUpdater::RegisterConstructorHelper<PointLightComponentUpdate, FlexKit::PointLightComponentID> _register;
+	IEntityComponentRuntimeUpdater::RegisterConstructorHelper<LightComponentUpdate, FlexKit::LightComponentID> _register;
 };
 
 

@@ -86,12 +86,12 @@ namespace FlexKit
 	};
 
 
-	struct PointLightComponentBlob
+	struct LightComponentBlob
 	{
 		ComponentBlock::Header  header = {
 		   0,
 		   EntityComponentBlock,
-		   sizeof(PointLightComponentBlob),
+		   sizeof(LightComponentBlob),
 		   GetTypeGUID(PointLight)
 		};
 

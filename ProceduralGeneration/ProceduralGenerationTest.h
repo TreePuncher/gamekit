@@ -7,7 +7,7 @@
 #include <WorldRender.h>
 #include <Win32Graphics.h>
 #include <DebugUI.h>
-#include <..\source\Signal.h>
+#include <..\source\Signals.h>
 #include <ScriptingRuntime.h>
 
 #include "Generator.h"
@@ -37,8 +37,8 @@ public:
 	FlexKit::MaterialComponent				materials;
 	FlexKit::SceneVisibilityComponent		visibilityComponent;
 	FlexKit::BrushComponent					brushes;
-	FlexKit::PointLightComponent			pointLights;
-	FlexKit::PointLightShadowMap			pointLightShadowMaps;
+	FlexKit::LightComponent					pointLights;
+	FlexKit::ShadowMapComponent						pointLightShadowMaps;
 	FlexKit::FABRIKComponent				ikComponent;
 	FlexKit::SkeletonComponent				skeletons;
 	FlexKit::StringIDComponent				stringIDs;

@@ -158,7 +158,7 @@ public:
 
 	void OnGameEnd();
 
-	RunOnceQueue                    runOnceDrawEvents;
+	RunOnceQueue<void ()>			runOnceDrawEvents;
 
 	//Animation*                      testAnimationResource = nullptr;
 	BaseState&                      base;
@@ -235,8 +235,8 @@ public:
 			base.depthBuffer.Get()
 		};
 
-		frameGraph.Resources.AddBackBuffer(targets.RenderTarget);
-		frameGraph.Resources.AddDepthBuffer(targets.DepthTarget);
+		frameGraph.resources.AddBackBuffer(targets.RenderTarget);
+		frameGraph.resources.AddDepthBuffer(targets.DepthTarget);
 
 		ClearVertexBuffer   (frameGraph, base.vertexBuffer);
 		ClearBackBuffer     (frameGraph, targets.RenderTarget, 0.0f);

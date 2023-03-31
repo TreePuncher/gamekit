@@ -77,8 +77,8 @@ public:
 	FlexKit::MaterialComponent				materials;
 	FlexKit::SceneVisibilityComponent		visibilityComponent;
 	FlexKit::BrushComponent					brushes;
-	FlexKit::PointLightComponent			pointLights;
-	FlexKit::PointLightShadowMap			pointLightShadowMaps;
+	FlexKit::LightComponent					pointLights;
+	FlexKit::ShadowMapComponent						shadowMaps;
 	FlexKit::FABRIKComponent				ikComponent;
 	FlexKit::SkeletonComponent				skeletons;
 	FlexKit::StringIDComponent				stringIDs;

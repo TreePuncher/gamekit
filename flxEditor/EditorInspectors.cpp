@@ -528,7 +528,7 @@ void VisibilityEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 
 void PointLightEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
 {
-	auto& pointLight = static_cast<FlexKit::PointLightView&>(component);
+	auto& pointLight = static_cast<FlexKit::LightView&>(component);
 
 	panelCtx.AddHeader("Point Light");
 

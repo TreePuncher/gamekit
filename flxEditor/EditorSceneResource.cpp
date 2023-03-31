@@ -713,7 +713,7 @@ namespace FlexKit
 								GetNumber(color.Get(2)),
 							};
 
-							const auto pointLight = std::make_shared<EntityPointLightComponent>(K, float2{ intensity, range });
+							const auto pointLight = std::make_shared<EntityLightComponent>(K, float2{ intensity, range });
 							entity.components.push_back(pointLight);
 						}
 					}

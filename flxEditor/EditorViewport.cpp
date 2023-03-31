@@ -692,7 +692,7 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
 			ViewportGameObject_ptr obj = scene->CreateObject();
 
 			obj->gameObject.AddView<FlexKit::SceneNodeView>();
-			obj->gameObject.AddView<FlexKit::PointLightView>(float3{ 1, 1, 1 }, 10, 10);
+			obj->gameObject.AddView<FlexKit::LightView>(float3{ 1, 1, 1 }, 10, 10);
 
 			scene->scene.AddGameObject(*obj, FlexKit::GetSceneNode(*obj));
 
@@ -1485,7 +1485,7 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 	frameGraph.AddNode<DrawOverlay>(
 		DrawOverlay{
 			desc.brushes,
-			desc.lights.GetData().pointLightShadows,
+			desc.lights.GetData().lights,
 
 			desc.buffers.ReserveVertexBuffer,
 			desc.buffers.ReserveConstantBuffer,
@@ -1509,7 +1509,7 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 			auto& pointLights	= data.lights;
 
 			auto& visibilityComponent = FlexKit::SceneVisibilityComponent::GetComponent();
-			auto& pointLightComponnet = FlexKit::PointLightComponent::GetComponent();
+			auto& pointLightComponnet = FlexKit::LightComponent::GetComponent();
 
 			FlexKit::DescriptorHeap descHeap;
 			descHeap.Init(
@@ -1557,7 +1557,7 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 					bool selectedLight = false;
 					for (auto& viewportObject : selection.viewportObjects)
 					{
-						FlexKit::PointLightHandle pointlight = FlexKit::GetPointLight(viewportObject->gameObject);
+						FlexKit::LightHandle pointlight = FlexKit::GetLight(viewportObject->gameObject);
 						if (pointlight == lightHandle)
 							selectedLight = true;
 					}
