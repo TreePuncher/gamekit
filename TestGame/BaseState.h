@@ -18,7 +18,7 @@
 #include <angelscript/scriptstdstring/scriptstdstring.h>
 #include <angelscript/scriptbuilder/scriptbuilder.h>
 #include <imgui.h>
-#include <TriggerComponent.hpp>
+#include <TriggerComponent.h>
 
 #include <fmt/printf.h>
 
@@ -100,9 +100,9 @@ public:
 	BrushComponent					brushes;
 	MaterialComponent				materials;
 	SceneVisibilityComponent		visables;
-	PointLightComponent				pointLights;
+	LightComponent					pointLights;
 	SkeletonComponent				skeletonComponent;
-	PointLightShadowMap				shadowCasters;
+	ShadowMapComponent				shadowMaps;
 	PhysXComponent  				physics;
 	RigidBodyComponent				rigidBodies;
 	StaticBodyComponent				staticBodies;

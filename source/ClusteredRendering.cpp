@@ -841,7 +841,7 @@ namespace FlexKit
 		FrameGraph&							graph,
 		const CameraHandle					camera,
 		const Scene&						scene,
-		const PointLightShadowGatherTask&	pointLightsShadowMaps,
+		const LightShadowGatherTask&		pointLightsShadowMaps,
 		ResourceHandle						depthBuffer,
 		ReserveConstantBufferFunction		reserveCB,
 		iAllocator*							tempMemory,
@@ -852,7 +852,7 @@ namespace FlexKit
 
 		auto& lightBufferData = graph.AddNode<LightBufferUpdate>(
 			LightBufferUpdate{
-					pointLightsShadowMaps.GetData().pointLightShadows,
+					pointLightsShadowMaps.GetData().lights,
 					camera,
 					reserveCB,
 					dispatch
@@ -935,12 +935,12 @@ namespace FlexKit
 					(uint32_t)lightCount
 				};
 
-				PointLightComponent& pointLights = PointLightComponent::GetComponent();
+				LightComponent& pointLights = LightComponent::GetComponent();
 
 				const uint32_t nodeReservation = uint32_t(ceilf(std::logf(float(lightCount)) / std::logf(BVH_ELEMENT_COUNT)));
 
 				CBPushBuffer    constantBuffer = data.reserveCB(
-					AlignedSize( sizeof(FlexKit::GPUPointLight) * data.visableLights.size() ) +
+					AlignedSize( sizeof(FlexKit::GPULight) * data.visableLights.size() ) +
 					AlignedSize<ConstantsLayout>() * (1 + nodeReservation) +
 					AlignedSize<Camera::ConstantBuffer>());
 
@@ -950,20 +950,20 @@ namespace FlexKit
 				const ConstantBufferDataSet constants{ constantsValues, constantBuffer };
 				const ConstantBufferDataSet cameraConstantsBuffer{ cameraConstants, constantBuffer };
 
-				Vector<FlexKit::GPUPointLight> pointLightValues{ &allocator };
+				Vector<FlexKit::GPULight> pointLightValues{ &allocator };
 
 				for (const auto light : data.visableLights)
 				{
-					const PointLight& pointLight	= pointLights[light];
-					const float3 WS_position		= GetPositionW(pointLight.Position);
-					const float3 VS_position		= (constantsValues.view * float4(WS_position, 1)).xyz();
+					const Light& pointLight		= pointLights[light];
+					const float3 WS_position	= GetPositionW(pointLight.Position);
+					const float3 VS_position	= (constantsValues.view * float4(WS_position, 1)).xyz();
 
 					pointLightValues.push_back(
 						{	{ pointLight.K, pointLight.I },
 							{ WS_position, pointLight.R } });
 				}
 
-				const uint32_t uploadSize = (uint32_t)pointLightValues.size() * sizeof(GPUPointLight);
+				const uint32_t uploadSize = (uint32_t)pointLightValues.size() * sizeof(GPULight);
 				const ConstantBufferDataSet pointLights_GPU{ (char*)pointLightValues.data(), uploadSize, constantBuffer };
 
 				resources.UAV(data.counterObject, ctx);
@@ -1025,7 +1025,7 @@ namespace FlexKit
 				BVH_Phase1_Resources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
 				BVH_Phase1_Resources.SetUAVStructured		(ctx, 0, resources.UAV(data.lightBVH, ctx), sizeof(BVH_Node), 0);
 				BVH_Phase1_Resources.SetUAVStructured		(ctx, 1, resources.UAV(data.lightLookupObject, ctx), sizeof(uint), 0);
-				BVH_Phase1_Resources.SetStructuredResource	(ctx, 4, resources.NonPixelShaderResource(data.lightBufferObject, ctx), sizeof(GPUPointLight));
+				BVH_Phase1_Resources.SetStructuredResource	(ctx, 4, resources.NonPixelShaderResource(data.lightBufferObject, ctx), sizeof(GPULight));
 				BVH_Phase1_Resources.SetCBV(ctx, 8, constants);
 
 				ctx.BeginEvent_DEBUG("Build BVH");
@@ -1061,7 +1061,7 @@ namespace FlexKit
 						DescriptorHeap BVH_Phase2_Resources;
 						BVH_Phase2_Resources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
 						BVH_Phase2_Resources.SetUAVStructured(ctx, 0,		resources.UAV(data.lightBVH, ctx), sizeof(BVH_Node), 0);
-						BVH_Phase2_Resources.SetStructuredResource(ctx, 4,	resources.NonPixelShaderResource(data.lightBufferObject, ctx), sizeof(GPUPointLight));
+						BVH_Phase2_Resources.SetStructuredResource(ctx, 4,	resources.NonPixelShaderResource(data.lightBufferObject, ctx), sizeof(GPULight));
 						BVH_Phase2_Resources.SetCBV(ctx, 8, constantSet);
 
 						ctx.BeginEvent_DEBUG("BVH Phase2");
@@ -1119,7 +1119,7 @@ namespace FlexKit
 				createLightList_ShaderResources.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), 4, &allocator);
 				createLightList_ShaderResources.SetStructuredResource(ctx, 0, resources.NonPixelShaderResource(data.lightBVH,				ctx), sizeofBVH_Node);
 				createLightList_ShaderResources.SetStructuredResource(ctx, 1, resources.NonPixelShaderResource(data.lightLookupObject,		ctx), sizeof(uint32_t));
-				createLightList_ShaderResources.SetStructuredResource(ctx, 2, resources.NonPixelShaderResource(data.lightBufferObject,		ctx), sizeof(GPUPointLight));
+				createLightList_ShaderResources.SetStructuredResource(ctx, 2, resources.NonPixelShaderResource(data.lightBufferObject,		ctx), sizeof(GPULight));
 				createLightList_ShaderResources.SetStructuredResource(ctx, 3, resources.NonPixelShaderResource(data.clusterBufferObject,	ctx), sizeof(GPUCluster), 0);
 
 				DescriptorHeap createLightList_UAVResources;
@@ -1494,8 +1494,8 @@ namespace FlexKit
 	ClusteredDeferredShading& ClusteredRender::ClusteredShading(
 		UpdateDispatcher&				dispatcher,
 		FrameGraph&						frameGraph,
-		PointLightShadowGatherTask&		pointLightShadowMaps,
-		PointLightGatherTask&			pointLightgather,
+		LightShadowGatherTask&			pointLightShadowMaps,
+		LightGatherTask&				pointLightgather,
 		GBufferPass&					gbufferPass,
 		ResourceHandle					depthTarget,
 		ResourceHandle					renderTarget,
@@ -1506,12 +1506,6 @@ namespace FlexKit
 		float							t,
 		iAllocator*						allocator)
 	{
-		struct PointLight
-		{
-			float4 KI;	// Color + intensity in W
-			float4 PR;	// XYZ + radius in W
-		};
-
 		auto& pass = frameGraph.AddNode<ClusteredDeferredShading>(
 			ClusteredDeferredShading{
 				gbufferPass,
@@ -1528,7 +1522,7 @@ namespace FlexKit
 
 				auto& renderSystem				= frameGraph.GetRenderSystem();
 
-				data.pointLightHandles			= &pointLightShadowMaps.GetData().pointLightShadows;
+				data.pointLightHandles			= &pointLightShadowMaps.GetData().lights;
 
 				data.AlbedoTargetObject			= builder.PixelShaderResource(gbufferPass.gbuffer.albedo);
 				data.NormalTargetObject			= builder.PixelShaderResource(gbufferPass.gbuffer.normal);
@@ -1557,7 +1551,7 @@ namespace FlexKit
 
 				ctx.BeginEvent_DEBUG("Clustered Shading");
 
-				PointLightComponent&	lightComponent	= PointLightComponent::GetComponent();
+				LightComponent&	lightComponent	= LightComponent::GetComponent();
 				const auto&				visableLights	= *data.pointLightHandles;
 
 				auto& renderSystem			= resources.renderSystem();
@@ -1627,14 +1621,25 @@ namespace FlexKit
 				descHeap.SetSRV(ctx, 5, resources.GetResource(data.lightMapObject));
 				descHeap.SetStructuredResource(ctx, 6, resources.GetResource(data.lightLists), sizeof(uint2));
 				descHeap.SetStructuredResource(ctx, 7, resources.GetResource(data.lightListBuffer), sizeof(uint32_t));
-				descHeap.SetStructuredResource(ctx, 8, resources.NonPixelShaderResource(data.pointLightBufferObject, ctx), sizeof(GPUPointLight));
+				descHeap.SetStructuredResource(ctx, 8, resources.NonPixelShaderResource(data.pointLightBufferObject, ctx), sizeof(GPULight));
 
 				for (size_t shadowMapIdx = 0; shadowMapIdx < pointLightCount; shadowMapIdx++)
 				{
-					auto shadowMap = lightComponent[visableLights[shadowMapIdx]].shadowMap;
+					auto& light = lightComponent[visableLights[shadowMapIdx]];
 
-					if (shadowMap != InvalidHandle)
-						descHeap.SetSRVCubemap(ctx, 10 + shadowMapIdx, shadowMap, DeviceFormat::R32_FLOAT);
+					if (light.shadowMap != InvalidHandle)
+					{
+						switch (light.type)
+						{
+						case LightType::PointLight:
+							descHeap.SetSRVCubemap(ctx, 10 + shadowMapIdx, light.shadowMap, DeviceFormat::R32_FLOAT);
+							break;
+						case LightType::SpotLight:
+						case LightType::Direction:
+							descHeap.SetSRV(ctx, 10 + shadowMapIdx, light.shadowMap, DeviceFormat::R32_FLOAT);
+							break;
+						}
+					}
 				}
 
 				descHeap.NullFill(ctx, descriptorTableSize);

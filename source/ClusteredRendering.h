@@ -53,10 +53,12 @@ namespace FlexKit
 	};
 
 
-	struct GPUPointLight
+	struct GPULight
 	{
 		float4 KI;
 		float4 PositionR;
+		float4 directionSpread;
+		uint4  typeExtra;
 	};
 
 	struct GPUCluster
@@ -71,7 +73,7 @@ namespace FlexKit
 		struct visableLightEntry
 		{
 			uint2				pixel;
-			PointLightHandle	light;
+			LightHandle	light;
 			uint32_t			ID(uint2 wh) { return pixel[0] + pixel[1] * wh[0]; };
 		};
 
@@ -81,7 +83,7 @@ namespace FlexKit
 		float2			splitSpan;
 		size_t			sceneLightCount;
 		CameraHandle	camera;
-		Scene*	        scene;
+		Scene*			scene;
 
 		TextureBuffer				lightMapBuffer;
 		Vector<uint32_t>			lightLists;
@@ -96,13 +98,13 @@ namespace FlexKit
 
 	struct ComputeClusteredDeferredShadingDesc
 	{
-		PointLightGatherTask&   pointLightGather;
-		GBuffer&                gbuffer;
-		ResourceHandle          depthTarget;
-		ResourceHandle          renderTarget;
+		LightGatherTask&	pointLightGather;
+		GBuffer&			gbuffer;
+		ResourceHandle		depthTarget;
+		ResourceHandle		renderTarget;
 
-		CameraHandle            activeCamera;
-		iAllocator*             allocator;
+		CameraHandle		activeCamera;
+		iAllocator*			allocator;
 	};
 
 
@@ -111,8 +113,8 @@ namespace FlexKit
 
 	struct ComputeTiledPass
 	{
-		ReserveConstantBufferFunction   constantBufferAllocator;
-		PointLightGatherTask&           pointLights;
+		ReserveConstantBufferFunction	constantBufferAllocator;
+		LightGatherTask&				pointLights;
 
 		uint3               dispatchDims;
 		uint2               WH;
@@ -157,7 +159,7 @@ namespace FlexKit
 			ProfileFunction();
 		}
 
-		const Vector<PointLightHandle>&	visableLights;
+		const Vector<LightHandle>&	visableLights;
 
 		CameraHandle			        camera;
 		ReserveConstantBufferFunction   reserveCB;
@@ -187,13 +189,13 @@ namespace FlexKit
 
 	struct ClusteredDeferredShading
 	{
-		GBufferPass&                        gbuffer;
-		const PointLightGatherTask&         lights;
-		LightBufferUpdate&                  lightPass;
-		const PointLightShadowGatherTask&   pointLightShadowMaps;
-		//ShadowMapPassData&                  shadowMaps;
+		GBufferPass&					gbuffer;
+		const LightGatherTask&			lights;
+		LightBufferUpdate&				lightPass;
+		const LightShadowGatherTask&	pointLightShadowMaps;
+		//ShadowMapPassData&			shadowMaps;
 
-		const Vector<PointLightHandle>* pointLightHandles;
+		const Vector<LightHandle>* pointLightHandles;
 
 		CBPushBuffer            passConstants;
 		VBPushBuffer            passVertices;
@@ -318,22 +320,22 @@ namespace FlexKit
 
 
 		LightBufferUpdate& UpdateLightBuffers(
-								UpdateDispatcher&					dispatcher,
-								FrameGraph&							graph,
-								const CameraHandle					camera,
-								const Scene&						scene,
-								const PointLightShadowGatherTask&	pointLightsShadowMaps,
-								ResourceHandle						depthBuffer,
-								ReserveConstantBufferFunction		reserveCB,
-								iAllocator*							tempMemory,
-								bool								releaseTemporaries = true);
+								UpdateDispatcher&				dispatcher,
+								FrameGraph&						graph,
+								const CameraHandle				camera,
+								const Scene&					scene,
+								const LightShadowGatherTask&	pointLightsShadowMaps,
+								ResourceHandle					depthBuffer,
+								ReserveConstantBufferFunction	reserveCB,
+								iAllocator*						tempMemory,
+								bool							releaseTemporaries = true);
 
 
 		ClusteredDeferredShading& ClusteredShading(
 								UpdateDispatcher&				dispatcher,
 								FrameGraph&						frameGraph,
-								PointLightShadowGatherTask&		pointLightShadowMaps,
-								PointLightGatherTask&			pointLightgather,
+								LightShadowGatherTask&			pointLightShadowMaps,
+								LightGatherTask&				pointLightgather,
 								GBufferPass&					gbufferPass,
 								ResourceHandle					depthTarget,
 								ResourceHandle					renderTarget,

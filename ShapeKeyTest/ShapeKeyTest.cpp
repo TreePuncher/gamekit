@@ -78,7 +78,8 @@ public:
 		renderWindow.Handler->Subscribe(sub);
 		renderWindow.SetWindowTitle("Shape Key Test");
 
-		activeCamera = orbitCamera.AddView<OrbitCameraBehavior>();
+		auto& orbitCameraView = orbitCamera.AddView<OrbitCameraBehavior>();
+		activeCamera = orbitCameraView;
 		SetCameraAspectRatio(activeCamera, 1920.0f / 1080.0f);
 
 		SceneLoadingContext ctx
@@ -116,22 +117,31 @@ public:
 		{
 			{
 				auto& pointLightNode = light1.AddView<SceneNodeView>();
-				auto& pointLightView = light1.AddView<PointLightView>(float3{ 1, 1, 1 }, 1000, 20, pointLightNode.node, true);
+				auto& pointLightView = light1.AddView<LightView>(float3{ 1, 1, 1 }, 1000, 20, pointLightNode.node, true);
 				pointLightNode.SetPosition({ 10, 10, -5 });
 				scene.AddGameObject(light1, pointLightNode);
 			}
 			{
 				auto& pointLightNode = light2.AddView<SceneNodeView>();
-				auto& pointLightView = light2.AddView<PointLightView>(float3{ 1, 1, 1 }, 1000, 20, pointLightNode.node, true);
+				auto& pointLightView = light2.AddView<LightView>(float3{ 1, 1, 1 }, 1000, 20, pointLightNode.node, true);
 				pointLightNode.SetPosition({ -10, 10, -5 });
 				scene.AddGameObject(light2, pointLightNode);
 			}
 			{
 				auto& pointLightNode = light3.AddView<SceneNodeView>();
-				auto& pointLightView = light3.AddView<PointLightView>(float3{ 1, 1, 1 }, 1000, 20, pointLightNode.node, true);
+				auto& pointLightView = light3.AddView<LightView>(float3{ 1, 1, 1 }, 1000, 20, pointLightNode.node, true);
 				pointLightNode.SetPosition({ 0, 10, 10 });
 				scene.AddGameObject(light3, pointLightNode);
 			}
+		}
+
+		auto res = scene.Query(framework.core.GetBlockMemory(), LightQuery{});
+
+		if (res.size())
+		{
+			auto& [pointLightView] = res.front().value();
+			auto pos = GetPositionW(pointLightView.GetNode());
+			orbitCameraView.SetCameraPosition(pos);
 		}
 	}
 
@@ -292,8 +302,8 @@ public:
 	FlexKit::MaterialComponent				materials;
 	FlexKit::SceneVisibilityComponent		visibilityComponent;
 	FlexKit::BrushComponent					brushes;
-	FlexKit::PointLightComponent			pointLights;
-	FlexKit::PointLightShadowMap			pointLightShadowMaps;
+	FlexKit::LightComponent					pointLights;
+	FlexKit::ShadowMapComponent						pointLightShadowMaps;
 	FlexKit::FABRIKComponent				ikComponent;
 	FlexKit::SkeletonComponent				skeletons;
 	FlexKit::StringIDComponent				stringIDs;

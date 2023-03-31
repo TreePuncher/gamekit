@@ -114,7 +114,7 @@ PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
 	visibilityComponent		{ framework.core.GetBlockMemory() },
 	pointLights				{ framework.core.GetBlockMemory() },
 	orbitCameras			{ framework.core.GetBlockMemory() },
-	pointLightShadowMaps	{ framework.core.GetBlockMemory() },
+	shadowMaps				{ framework.core.GetBlockMemory() },
 	ikComponent				{ framework.core.GetBlockMemory() },
 	skeletons				{ framework.core.GetBlockMemory() },
 	stringIDs				{ framework.core.GetBlockMemory() },

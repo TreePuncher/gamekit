@@ -733,11 +733,11 @@ namespace FlexKit
 		passes.AddInput(drawSceneDesc.transformDependency);
 		passes.AddInput(drawSceneDesc.cameraDependency);
 
-		auto& pointLightGather		= scene.GetPointLights(dispatcher, temporary);
+		auto& pointLightGather		= scene.GetLights(dispatcher, temporary);
 		auto& sceneBVH				= scene.UpdateSceneBVH(dispatcher, drawSceneDesc.transformDependency, temporary);
 		auto& visablePointLights	= scene.GetVisableLights(dispatcher, camera, sceneBVH, temporary);
-		auto& pointLightUpdate		= scene.UpdatePointLights(dispatcher, sceneBVH, visablePointLights, temporary, persistent);
-		auto& shadowMaps			= shadowMapping.AcquireShadowMaps(dispatcher, frameGraph.GetRenderSystem(), UAVTexturePool, pointLightUpdate);
+		auto& pointLightUpdate		= scene.UpdateLights(dispatcher, sceneBVH, visablePointLights, temporary, persistent);
+		auto& shadowMaps			= shadowMapping.AcquireShadowMaps(dispatcher, frameGraph.GetRenderSystem(), RTPool, pointLightUpdate);
 
 		LoadLodLevels(dispatcher, passes, drawSceneDesc.camera, renderSystem, *persistent);
 

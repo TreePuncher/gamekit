@@ -104,8 +104,8 @@ private:
 
 	struct DrawSceneOverlay_Desc
 	{
-		const FlexKit::PVS&						brushes;
-		FlexKit::PointLightShadowGatherTask&	lights;
+		const FlexKit::PVS&					brushes;
+		FlexKit::LightShadowGatherTask&		lights;
 
 		TemporaryBuffers&				buffers;
 		FlexKit::ResourceHandle			renderTarget;

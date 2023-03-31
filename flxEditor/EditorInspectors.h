@@ -117,7 +117,7 @@ class VisibilityEditorComponent final : public IEditorComponent
 class PointLightEditorComponent final : public IEditorComponent
 {
 public:
-	FlexKit::ComponentID	ComponentID()	const noexcept { return FlexKit::PointLightComponentID; }
+	FlexKit::ComponentID	ComponentID()	const noexcept { return FlexKit::LightComponentID; }
 	const std::string&		ComponentName() const noexcept { return name; }
 
 
@@ -129,12 +129,12 @@ public:
 		if (!gameObject.hasView(FlexKit::TransformComponentID))
 			gameObject.AddView<FlexKit::SceneNodeView>();
 
-		gameObject.AddView<FlexKit::PointLightView>();
+		gameObject.AddView<FlexKit::LightView>();
 
 		if (!gameObject.hasView(FlexKit::SceneVisibilityComponentID))
 			ctx.AddToScene(gameObject);
 
-		return *gameObject.GetView(FlexKit::PointLightComponentID);
+		return *gameObject.GetView(FlexKit::LightComponentID);
 	}
 
 	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
@@ -167,7 +167,7 @@ public:
 
 	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override
 	{
-		auto& cubeShadowMapView = static_cast<FlexKit::PointLightShadowMapView&>(component);
+		auto& cubeShadowMapView = static_cast<FlexKit::ShadowMapView&>(component);
 
 		panelCtx.AddHeader("Point Light Shadow Map");
 		panelCtx.AddText("No Fields!");
@@ -184,12 +184,12 @@ struct CubicShadowMapFactory : public IComponentFactory
 {
 	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
 	{
-		if(gameObject.GetView(FlexKit::PointLightComponent::GetComponentID()))
+		if(gameObject.GetView(FlexKit::LightComponent::GetComponentID()))
 			gameObject.AddView<FlexKit::PointLightShadowMapView>(
 				FlexKit::_PointLightShadowCaster{ FlexKit::GetPointLight(gameObject),
 				FlexKit::GetSceneNode(gameObject) } );
 
-		return *gameObject.GetView(FlexKit::PointLightComponent::GetComponentID());
+		return *gameObject.GetView(FlexKit::LightComponent::GetComponentID());
 	}
 
 	inline static const std::string name = "Cubic Shadow Map";

@@ -72,8 +72,8 @@ private:
 	FlexKit::SceneVisibilityComponent	visibilityComponent;
 	FlexKit::SkeletonComponent			skeletonComponent;
 	FlexKit::AnimatorComponent			animatorComponent;
-	FlexKit::PointLightComponent		pointLightComponent;
-	FlexKit::PointLightShadowMap		pointLightShadowMaps;
+	FlexKit::LightComponent				lightComponent;
+	FlexKit::ShadowMapComponent			shadowMaps;
 
 	FlexKit::FABRIKTargetComponent		ikTargetComponent;
 	FlexKit::FABRIKComponent			ikComponent;

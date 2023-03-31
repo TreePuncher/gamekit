@@ -5697,19 +5697,6 @@ private:
 	/************************************************************************************************/
 
 
-	typedef Handle_t<16> LightHandle;
-
-	struct LightDesc{
-		NodeHandle	Hndl;
-		float3		K;
-		float		I;
-		float		R;
-	};
-
-	
-	/************************************************************************************************/
-
-
 	FLEXKITAPI Texture2D		GetBackBufferTexture	( RenderWindow* Window );
 	FLEXKITAPI ID3D12Resource*	GetBackBufferResource	( RenderWindow* Window );
 

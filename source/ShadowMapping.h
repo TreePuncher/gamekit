@@ -27,7 +27,7 @@ namespace FlexKit
 
 	struct LocalShadowMapPassData
 	{
-		const Vector<PointLightHandle>&		pointLightShadows;
+		const Vector<LightHandle>&		pointLightShadows;
 		ShadowMapPassData&					sharedData;
 		ReserveConstantBufferFunction		reserveCB;
 		ReserveVertexBufferFunction			reserveVB;
@@ -88,7 +88,7 @@ namespace FlexKit
 
 		ShadowMapPassData&  ShadowMapPass(
 								FrameGraph&								frameGraph,
-								const PointLightShadowGatherTask&		shadowMaps,
+								const LightShadowGatherTask&			shadowMaps,
 								UpdateTask&								cameraUpdate,
 								GatherPassesTask&						passes,
 								AcquireShadowMapTask&					shadowMapAcquire,

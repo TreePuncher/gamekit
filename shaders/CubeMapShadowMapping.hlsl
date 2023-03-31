@@ -87,28 +87,23 @@ Vertex VS_Skinned_Main(Skinned_Vertex IN)
 
 struct DepthSample
 {
-	float depth				: SV_DEPTH;
-	float exponentialDepth	: SV_TARGET0;
+	float	depth	: SV_DEPTH;
+	float2	moment	: SV_TARGET0;
 };
 
-float4 ComputeMoments(const float depth)
+float2 ComputeMoments(const float depth)
 {
-	float4 moments;
+	float2 moments;
 	moments.x = depth;
 
 	const float dx = ddx(depth);
 	const float dy = ddy(depth);
 
-	moments.y = depth * depth;// +0.25f * (dx * dx + dy * dy);
-	moments.z = exp(80.0f * depth);
+	moments.y = depth * depth + 0.25f * (dx * dx + dy * dy);
 	return moments;
 }
 
-DepthSample PS_Main(Vertex IN, const bool frontFacing : SV_IsFrontFace)
+float PS_Main(Vertex IN, const bool frontFacing : SV_IsFrontFace) : SV_DEPTH
 {
-	DepthSample depthSample;
-	depthSample.depth				= -IN.pos_VS.z / maxZ;
-	depthSample.exponentialDepth	= exp(80.0f * depthSample.depth);
-
-	return depthSample;
+	return (-IN.pos_VS.z) / maxZ;
 }

@@ -18,7 +18,7 @@ BaseState::BaseState(
 		streamingEngine		{ IN_Framework.core.RenderSystem, IN_Framework.core.GetBlockMemory() },
 		//sounds				{ IN_Framework.core.Threads,      IN_Framework.core.GetBlockMemory() },
 
-		renderWindow{ std::get<0>(CreateWin32RenderWindow(IN_Framework.GetRenderSystem(), DefaultWindowDesc(WH, fullscreen) )) },
+		renderWindow{ CreateWin32RenderWindow(IN_Framework.GetRenderSystem(), DefaultWindowDesc(WH, fullscreen) ).value() },
 
 		render	{	IN_Framework.core.RenderSystem,
 					streamingEngine,
@@ -191,7 +191,7 @@ void BaseState::DEBUG_PrintDebugStats(EngineCore& core)
 	uint32_t VRamUsage			= (uint32_t)(core.RenderSystem._GetVidMemUsage() / MEGABYTE);
 	char* TempBuffer			= (char*)core.GetTempMemory().malloc(bufferSize);
 	auto updateTime				= framework.stats.dispatchTime;
-	const char* RTFeatureStr	= core.RenderSystem.GetRTFeatureLevel() == RenderSystem::AvailableFeatures::Raytracing::RT_FeatureLevel_NOTAVAILABLE ? "Not Available" : "Available";
+	const char* RTFeatureStr	= core.RenderSystem.GetRTFeatureLevel() == AvailableFeatures::Raytracing::RT_FeatureLevel_NOTAVAILABLE ? "Not Available" : "Available";
 
 	const auto shadingStats			= render.GetTimingValues();
 	const auto texturePassTime		= streamingEngine.debug_GetPassTime();

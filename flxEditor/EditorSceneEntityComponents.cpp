@@ -141,9 +141,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Blob CreatePointLightComponent(float3 K, float2 IR)
+	Blob CreateLightComponent(float3 K, float2 IR)
 	{
-		PointLightComponentBlob blob;
+		LightComponentBlob blob;
 		blob.IR		= IR;
 		blob.K		= K;
 

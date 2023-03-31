@@ -64,13 +64,13 @@ namespace FlexKit
 
 	struct SceneDescription
 	{
-		CameraHandle                            camera;
-		PointLightGatherTask&	                lights;
-		PointLightShadowGatherTask&	            pointLightMaps;
-		UpdateTask&	                            shadowMapAcquire;
-		UpdateTask&							    transforms;
-		UpdateTask&							    cameras;
-		GatherPassesTask&	                    passes;
+		CameraHandle							camera;
+		LightGatherTask&						lights;
+		LightShadowGatherTask&					pointLightMaps;
+		UpdateTask&								shadowMapAcquire;
+		UpdateTask&								transforms;
+		UpdateTask&								cameras;
+		GatherPassesTask&						passes;
 		UpdateTaskTyped<GatherSkinnedTaskData>&	skinned;
 	};
 
@@ -157,7 +157,7 @@ namespace FlexKit
 		CBPushBuffer entityConstantsBuffer;
 	};
 
-	using PointLightHandleList = Vector<PointLightHandle>;
+	using PointLightHandleList = Vector<LightHandle>;
 
 
 	struct ForwardDrawConstants
@@ -293,7 +293,7 @@ namespace FlexKit
 		GatherPassesTask&			passes;
 		BrushConstants&				entityConstants;
 		const ResourceAllocation&	animationResources;
-		PointLightShadowGatherTask&	pointLights;
+		LightShadowGatherTask&		pointLights;
 		FrameResourceHandle			visibilityBuffer;
 	};
 

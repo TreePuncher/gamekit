@@ -193,7 +193,7 @@ void LoadEntity(FlexKit::SceneEntity& entity, LoadEntityContextInterface& ctx)
 				FlexKit::SetBoundingSphereFromMesh(ctx.GameObject());
 			}
 		}	break;
-		case FlexKit::PointLightComponentID:
+		case FlexKit::LightComponentID:
 		{
 			if (ctx.Scene() && !ctx.GameObject().hasView(FlexKit::SceneVisibilityComponentID))
 				ctx.Scene()->AddGameObject(ctx.GameObject(), FlexKit::GetSceneNode(ctx.GameObject()));

@@ -562,8 +562,10 @@ namespace FlexKit
 		using Type          = const TY&;
 		using ValueType     = TY;
 
-		static constexpr bool IsConst() { return true; }
-		bool IsValid(auto&) { return true; }
+		static constexpr bool	IsConst()								{ return true; }
+		bool					IsValid(auto&)							{ return true; }
+		bool					Available(const GameObject& gameObject) { return gameObject.hasView(TY::GetComponentID()); }
+		decltype(auto)			GetValue(GameObject& gameObject)		{ return GetView<TY>(gameObject); }
 	};
 
 	template<typename TY>
@@ -572,8 +574,10 @@ namespace FlexKit
 		using Type      = TY&;
 		using ValueType = TY;
 
-		static constexpr bool IsConst() { return false; }
-		bool IsValid(auto&) { return true; }
+		static constexpr bool	IsConst()								{ return false; }
+		bool					IsValid(auto&)							{ return true; }
+		bool					Available(const GameObject& gameObject) { return gameObject.hasView(TY::GetComponentID()); }
+		decltype(auto)			GetValue(GameObject& gameObject)		{ return GetView<TY>(gameObject); }
 	};
 
 	template<typename TY>
