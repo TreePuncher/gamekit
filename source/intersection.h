@@ -34,6 +34,9 @@ namespace FlexKit
 
 	typedef float4 BoundingSphere;
 
+	/************************************************************************************************/
+
+
 	// Axis Aligned Bounding Box
 	static const float inf = std::numeric_limits<float>::infinity();
 
@@ -61,12 +64,9 @@ namespace FlexKit
 
 		AABB    Offset(const float3 offset) const noexcept;
 		float   AABBArea() const noexcept;
+
+		operator BoundingSphere () const noexcept;
 	};
-
-
-
-
-
 
 
 	/************************************************************************************************/
@@ -94,6 +94,17 @@ namespace FlexKit
 
 	typedef Vector<Ray> RaySet;
 
+
+	/************************************************************************************************/
+
+
+	struct Cone
+	{
+		float3 O;
+		float3 D;
+		float length;
+		float theta;
+	};
 
 
 	/************************************************************************************************/
@@ -162,6 +173,7 @@ namespace FlexKit
 	bool                    Intersects(const AABB a, const AABB b) noexcept;
 	std::optional<float>    Intersects(const Ray r, const AABB b);
 	std::optional<float>    Intersects(const Ray r, const BoundingSphere b);
+	bool					Intersects(const Cone c, const AABB);
 
 
 	/************************************************************************************************/

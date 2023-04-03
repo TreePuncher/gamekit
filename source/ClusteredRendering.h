@@ -160,10 +160,11 @@ namespace FlexKit
 		}
 
 		const Vector<LightHandle>&	visableLights;
+		FrameResourceHandle			shadowMatrices;
 
-		CameraHandle			        camera;
-		ReserveConstantBufferFunction   reserveCB;
-		IndirectLayout&                 indirectLayout;
+		CameraHandle					camera;
+		ReserveConstantBufferFunction	reserveCB;
+		IndirectLayout&					indirectLayout;
 
 		const size_t counterOffset = 0;
 
@@ -377,15 +378,16 @@ namespace FlexKit
 
 
 	private:
-		ResourceHandle clusterBuffer = InvalidHandle;
-		IndirectLayout dispatch;
-		IndirectLayout gather;
-		IndirectLayout draw;
+		RootSignature	rootSignature;
+		ResourceHandle	clusterBuffer = InvalidHandle;
+		IndirectLayout	dispatch;
+		IndirectLayout	gather;
+		IndirectLayout	draw;
 
 		static ID3D12PipelineState* CreateLightPassPSO                  (RenderSystem* RS);
 		static ID3D12PipelineState* CreateGBufferPassPSO                (RenderSystem* RS);
 		static ID3D12PipelineState* CreateGBufferSkinnedPassPSO         (RenderSystem* RS);
-		static ID3D12PipelineState* CreateDeferredShadingPassPSO        (RenderSystem* RS);
+			   ID3D12PipelineState* CreateDeferredShadingPassPSO        (RenderSystem* RS);
 		static ID3D12PipelineState* CreateDeferredShadingPassComputePSO (RenderSystem* RS);
 		static ID3D12PipelineState* CreateComputeTiledDeferredPSO       (RenderSystem* RS);
 

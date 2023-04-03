@@ -634,11 +634,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle	FrameGraphNodeBuilder::AcquireVirtualResource(const GPUResourceDesc& desc, DeviceAccessState access, VirtualResourceScope lifeSpan)
+	uint32_t	GetNeededFlags(const GPUResourceDesc& desc)
 	{
-		ProfileFunction();
-
-		auto NeededFlags = 0;
+		uint32_t NeededFlags = 0;
 		NeededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture1D ? DeviceHeapFlags::RenderTarget : 0;
 		NeededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture2D ? DeviceHeapFlags::RenderTarget : 0;
 		NeededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture3D ? DeviceHeapFlags::RenderTarget : 0;
@@ -650,26 +648,28 @@ namespace FlexKit
 		NeededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture3D ? DeviceHeapFlags::UAVTextures : 0;
 		NeededFlags |= (desc.type == ResourceType::RenderTarget) ? DeviceHeapFlags::RenderTarget : 0;
 
-		auto FindResourcePool =
-			[&]() -> PoolAllocatorInterface*
-			{
-				for (auto pool : resources->memoryPools)
-				{
-					if ((pool->Flags() & NeededFlags) == NeededFlags)
-						return pool;
-				}
+		return NeededFlags;
+	}
 
-				return nullptr;
-			};
 
-		for(auto memoryPool = FindResourcePool(); memoryPool; memoryPool = FindResourcePool())
+	/************************************************************************************************/
+
+
+
+	FrameResourceHandle	FrameGraphNodeBuilder::AcquireVirtualResource(const GPUResourceDesc& desc, DeviceAccessState access, VirtualResourceScope lifeSpan)
+	{
+		ProfileFunction();
+
+		const uint32_t neededFlags = GetNeededFlags(desc);
+
+		for(auto memoryPool = resources->FindMemoryPool(neededFlags); memoryPool; memoryPool = resources->FindMemoryPool(neededFlags))
 		{
 			auto allocationSize = resources->renderSystem.GetAllocationSize(desc);
 
 			ResourceHandle virtualResource	= InvalidHandle;
 			ResourceHandle overlap			= InvalidHandle;
 
-			auto [reuseableResource, found] = node.FindReuseableResource(*memoryPool, allocationSize, NeededFlags, *resources, nodeTable);
+			auto [reuseableResource, found] = node.FindReuseableResource(*memoryPool, allocationSize, neededFlags, *resources, nodeTable);
 
 			if (found || reuseableResource != InvalidHandle)
 			{

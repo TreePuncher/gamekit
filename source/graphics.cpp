@@ -2219,7 +2219,7 @@ namespace FlexKit
 		{
 			auto descriptor = _GetDepthDesciptor(DSV.depthStencil);
 
-			PushDepthStencilArray(renderSystem, DSV.depthStencil, DSV.ArraySliceOffset, DSV.MipOffset, descriptor);
+			PushDepthStencilArray(renderSystem, DSV.depthStencil, DSV.ArraySliceOffset, DSV.MipOffset, descriptor, DSV.arraySize);
 
 			DSV_CPU_HANDLE = descriptor;
 		}
@@ -4052,7 +4052,7 @@ namespace FlexKit
 			RS->Library.RSDefault.AllowIA = true;
 
 			DesciptorHeapLayout<16> DescriptorHeapSRV;
-			DescriptorHeapSRV.SetParameterAsSRV(0, 0, -1);
+			DescriptorHeapSRV.SetParameterAsSRV(0, 0, -1, 0);
 			FK_ASSERT(DescriptorHeapSRV.Check());
 
 			DesciptorHeapLayout<16> DescriptorHeapUAV;
@@ -9890,9 +9890,9 @@ namespace FlexKit
 		return IncrementHeapPOS(POS, RS->DescriptorDSVSize, 1);
 	}
 
-	DescHeapPOS PushDepthStencilArray(RenderSystem* RS, ResourceHandle Target, size_t arrayOffset, size_t MipSlice, DescHeapPOS POS)
+	DescHeapPOS PushDepthStencilArray(RenderSystem* RS, ResourceHandle Target, size_t arrayOffset, size_t MipSlice, DescHeapPOS POS, size_t IN_arraySize)
 	{
-		const size_t arraySize = RS->GetTextureArraySize(Target);
+		const size_t arraySize = IN_arraySize == -1 ? RS->GetTextureArraySize(Target) : IN_arraySize;
 
 		D3D12_DEPTH_STENCIL_VIEW_DESC DSVDesc = {};
 		DSVDesc.Format                          = RS->GetTextureDeviceFormat(Target);
