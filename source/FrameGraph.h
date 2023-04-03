@@ -563,6 +563,20 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
+		PoolAllocatorInterface* FindMemoryPool(uint32_t neededFlags) noexcept
+		{
+			for (auto pool : memoryPools)
+			{
+				if ((pool->Flags() & neededFlags) == neededFlags)
+					return pool;
+			}
+
+			return nullptr;
+		}
+
+
+		/************************************************************************************************/
+
 		FrameResourceHandle	FindFrameResource(ShaderResourceHandle Handle)
 		{
 			auto res = find(objects,
@@ -1231,7 +1245,8 @@ namespace FlexKit
 		Frame,
 	};
 
-	DeviceLayout GuessLayoutFromAccess(DeviceAccessState access);
+	DeviceLayout	GuessLayoutFromAccess(DeviceAccessState access);
+	uint32_t		GetNeededFlags(const GPUResourceDesc& desc);
 
 	FLEXKITAPI class FrameGraphNodeBuilder
 	{
@@ -1516,13 +1531,14 @@ namespace FlexKit
 	template<typename FillData_TY, typename GetPass_TY>
 	struct PassDrivenResourceAllocation
 	{
-		GetPass_TY				getPass;
-		FillData_TY				initializeResources;
+		GetPass_TY				getPass;				// std::span<ty> ()
+		FillData_TY				initializeResources;	// void (std::span<ty>, std::span<FrameResourceHandles>, ResourceInitializationContext& transferCtx, iAllocator&);
 
 		DeviceLayout			layout;
 		DeviceAccessState		access;
 		size_t					max			= 16;
 		PoolAllocatorInterface* pool		= nullptr;
+		UpdateTask*				dependency	= nullptr;
 	};
 
 
@@ -1878,13 +1894,7 @@ namespace FlexKit
 
 		template<typename DESC_TY>
 		const ResourceAllocation& AllocateResourceSet(DESC_TY& desc)
-			requires requires(DESC_TY& temp)
-			{
-				{ temp.getPass() } -> std::convertible_to<std::span<const PVEntry>>;
-			}
 		{
-			struct ResourceInitializationContext;
-
 			struct InitialData
 			{
 				void*					_ptr;
@@ -1894,8 +1904,8 @@ namespace FlexKit
 
 			struct NodeData
 			{
-				TypeErasedCallable<std::span<const PVEntry>()>	getPass;
-				TypeErasedCallable<void (std::span<const PVEntry>, std::span<FrameResourceHandle>, ResourceInitializationContext&, iAllocator&)>	initializeResources;
+				decltype(desc.getPass)				getPass;
+				decltype(desc.initializeResources)	initializeResources;
 
 				ResourceAllocation		resources;
 				Vector<InitialData>		resourceAllocations;
@@ -1934,11 +1944,26 @@ namespace FlexKit
 					std::atomic_ref ref{ frameResources.virtualResourceCount };
 					ref++;
 
-					auto [resourceHandle, overlap] = nodeData->pool->Acquire(GPUResourceDesc::StructuredResource(resourceSize));
+
+					auto GetMemoryPool = [&]
+					{
+						if (!nodeData->pool)
+						{
+							const auto& desc = GPUResourceDesc::StructuredResource(resourceSize);
+							const auto	flags = GetNeededFlags(desc);
+							return frameResources.FindMemoryPool(flags);
+						}
+						else
+							return nodeData->pool;
+					};
+
+					auto pool = GetMemoryPool();
+					auto [resourceHandle, overlap] = pool->Acquire(GPUResourceDesc::StructuredResource(resourceSize));
+
 
 					auto frameObject				= frameResources.GetResourceObject(dstResource);
 					frameObject->shaderResource		= resourceHandle;
-					frameObject->pool				= nodeData->pool;
+					frameObject->pool				= pool;
 					frameObject->virtualState		= VirtualResourceState::Virtual_Created;
 
 					nodeData->uploadSize += resourceSize;
@@ -1950,15 +1975,17 @@ namespace FlexKit
 				}
 			};
 
+			/*
 			static_assert(
-				requires(DESC_TY desc)
+				requires(DESC_TY& getPass)
 				{
 					desc.initializeResources(
 						std::span<const PVEntry>{},
-						std::span<FrameResourceHandle>{},
+						std::span<const FrameResourceHandle>{},
 						std::declval<ResourceInitializationContext&>(),
 						std::declval<iAllocator&>());
-				}, "Invalid resourceInitializer!");
+				}, "Invalid Resource Initializer!");
+			*/
 
 			auto nodeIdx	= nodes.emplace_back(
 				nodeHandle,
@@ -2042,6 +2069,9 @@ namespace FlexKit
 				memory);
 
 			FrameGraphNodeBuilder builder(nodes, dataDependencies, &resources, nodes[nodeIdx], resourceContext, memory);
+
+			if (desc.dependency)
+				builder.AddDataDependency(*desc.dependency);
 
 			data.resources.handles.reserve(desc.max);
 

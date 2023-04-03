@@ -4052,7 +4052,7 @@ namespace FlexKit
 			RS->Library.RSDefault.AllowIA = true;
 
 			DesciptorHeapLayout<16> DescriptorHeapSRV;
-			DescriptorHeapSRV.SetParameterAsSRV(0, 0, -1);
+			DescriptorHeapSRV.SetParameterAsSRV(0, 0, -1, 0);
 			FK_ASSERT(DescriptorHeapSRV.Check());
 
 			DesciptorHeapLayout<16> DescriptorHeapUAV;

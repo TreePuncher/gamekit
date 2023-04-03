@@ -12,6 +12,7 @@
 #include <..\source\Signals.h>
 #include <CameraUtilities.h>
 #include <SceneLoadingContext.h>
+#include <ranges>
 
 using namespace FlexKit;
 
@@ -56,6 +57,8 @@ public:
 		runOnceQueue	{ framework.core.GetBlockMemory() },
 		debugUI			{ framework.core.RenderSystem, framework.core.GetBlockMemory() }
 	{
+		using namespace std::views;
+
 		auto& rs = IN_framework.GetRenderSystem();
 		rs.RegisterPSOLoader(DRAW_LINE_PSO, { &rs.Library.RS6CBVs4SRVs, CreateDrawLineStatePSO });
 		rs.RegisterPSOLoader(DRAW_LINE3D_PSO, { &rs.Library.RS6CBVs4SRVs, CreateDraw2StatePSO });
@@ -81,7 +84,8 @@ public:
 		auto& orbitCameraView = orbitCamera.AddView<OrbitCameraBehavior>();
 		activeCamera = orbitCameraView;
 		SetCameraAspectRatio(activeCamera, 1920.0f / 1080.0f);
-
+		//SetCameraFOV(activeCamera, pi / 8);
+		//SetCameraFar(activeCamera, 100.0f);
 		SceneLoadingContext ctx
 		{
 			.scene	= scene,
@@ -135,11 +139,22 @@ public:
 			}
 		}
 
-		auto res = scene.Query(framework.core.GetBlockMemory(), LightQuery{});
+		auto res = scene.Query(framework.core.GetBlockMemory(), LightQuery{}, GameObjectReq{});
+
+		for (auto&& [idx, queryRes] : zip(iota(0),  res))
+		{
+			auto& [lightView, gameObject] = queryRes.value();
+			lightView.SetType(LightType::SpotLight);
+			lightView.SetRadius(150.0f);
+			lightView.SetIntensity(500000.0f);
+			lightView.SetOuterRadius(pi / 4);
+			lightView.SetOuterRadius(pi / 1.5);
+			SetOrientation(lightView.GetNode(), Quaternion{ 0.0f, idx * 90.0f, 0.0f });
+		}
 
 		if (res.size())
 		{
-			auto& [pointLightView] = res.front().value();
+			auto& [pointLightView, gameObject] = res.front().value();
 			auto pos = GetPositionW(pointLightView.GetNode());
 			orbitCameraView.SetCameraPosition(pos);
 		}
@@ -156,6 +171,13 @@ public:
 	{
 		UpdateInput();
 		renderWindow.UpdateCapturedMouseInput(dT);
+
+		for (auto& queryRes : scene.Query(framework.core.GetBlockMemory(), LightQuery{}))
+		{
+			auto& [lightView] = queryRes.value();
+
+			Pitch(lightView.GetNode(), dT * pi / 4);
+		}
 
 		debugUI.Update(renderWindow, core, dispatcher, dT);
 

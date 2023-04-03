@@ -6,9 +6,11 @@
 #include "WorldRender.h"
 #include <numeric>
 #include <ranges>
+#include <bit>
 
 namespace FlexKit
 {   /************************************************************************************************/
+	using namespace std::views;
 
 
 	ID3D12PipelineState* ClusteredRender::CreateGBufferPassPSO(RenderSystem* RS)
@@ -159,7 +161,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable					= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= RS->Library.RSDefault;
+			PSO_Desc.pRootSignature			= rootSignature;
 			PSO_Desc.VS						= VShader;
 			PSO_Desc.PS						= PShader;
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -197,7 +199,7 @@ namespace FlexKit
 
 	ID3D12PipelineState* ClusteredRender::CreateDeferredShadingPassComputePSO(RenderSystem* RS)
 	{
-		auto CShader = RS->LoadShader("ClusteredShading", "cs_6_0", "assets\\shaders\\ClusteredShading\\ClusteredShading.hlsl");
+		auto CShader = RS->LoadShader("ClusteredShading", "cs_6_6", "assets\\shaders\\ClusteredShading\\ClusteredShading.hlsl");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_Desc = {};
 		PSO_Desc.pRootSignature	= RS->Library.RSDefault;
@@ -701,8 +703,9 @@ namespace FlexKit
 	}
 
 	ClusteredRender::ClusteredRender(RenderSystem& renderSystem, iAllocator& persistent) :
-		dispatch    { renderSystem.CreateIndirectLayout({ { ILE_DispatchCall } },	&persistent) },
-		draw        { renderSystem.CreateIndirectLayout({ { ILE_DrawCall } },		&persistent) }
+		dispatch		{ renderSystem.CreateIndirectLayout({ { ILE_DispatchCall } },	&persistent) },
+		draw			{ renderSystem.CreateIndirectLayout({ { ILE_DrawCall } },		&persistent) },
+		rootSignature	{ persistent }
 	{
 		renderSystem.RegisterPSOLoader(COMPUTETILEDSHADINGPASS,		{ &renderSystem.Library.RSDefault, CreateComputeTiledDeferredPSO });
 
@@ -723,10 +726,28 @@ namespace FlexKit
 
 		renderSystem.RegisterPSOLoader(GBUFFERPASS,				{ &renderSystem.Library.RS6CBVs4SRVs, CreateGBufferPassPSO			});
 		renderSystem.RegisterPSOLoader(GBUFFERPASS_SKINNED,		{ &renderSystem.Library.RS6CBVs4SRVs, CreateGBufferSkinnedPassPSO	});
-		renderSystem.RegisterPSOLoader(SHADINGPASS,				{ &renderSystem.Library.RS6CBVs4SRVs, CreateDeferredShadingPassPSO	});
+		renderSystem.RegisterPSOLoader(SHADINGPASS,				{ &renderSystem.Library.RS6CBVs4SRVs, [this](auto rs){ return CreateDeferredShadingPassPSO(rs);	} });
 		renderSystem.RegisterPSOLoader(SHADINGPASSCOMPUTE,		{ &renderSystem.Library.RS6CBVs4SRVs, CreateDeferredShadingPassComputePSO });
 
 		renderSystem.RegisterPSOLoader(DEBUG_DrawBVH, { &renderSystem.Library.RSDefault, CreateDEBUGBVHVIS });
+
+
+		rootSignature.AllowIA = true;
+
+		DesciptorHeapLayout<16> DescriptorHeapSRV1;
+		DescriptorHeapSRV1.SetParameterAsSRV(0, 0, -1, 0);
+		DesciptorHeapLayout<16> DescriptorHeapSRV2;
+		DescriptorHeapSRV2.SetParameterAsSRV(0, 0, -1, 1);
+
+		rootSignature.SetParameterAsCBV(0, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
+		rootSignature.SetParameterAsCBV(1, 1, 0, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
+		rootSignature.SetParameterAsCBV(2, 2, 0, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
+		rootSignature.SetParameterAsCBV(3, 3, 0, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
+		rootSignature.SetParameterAsDescriptorTable(4, DescriptorHeapSRV1, -1, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
+		rootSignature.SetParameterAsDescriptorTable(5, DescriptorHeapSRV2, -1, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
+		rootSignature.Build(renderSystem, persistent);
+
+		SETDEBUGNAME(rootSignature.Get_ptr(), "Shading");
 	}
 
 
@@ -838,7 +859,7 @@ namespace FlexKit
 
 	LightBufferUpdate& ClusteredRender::UpdateLightBuffers(
 		UpdateDispatcher&					dispatcher,
-		FrameGraph&							graph,
+		FrameGraph&							frameGraph,
 		const CameraHandle					camera,
 		const Scene&						scene,
 		const LightShadowGatherTask&		pointLightsShadowMaps,
@@ -846,20 +867,65 @@ namespace FlexKit
 		ReserveConstantBufferFunction		reserveCB,
 		iAllocator*							tempMemory,
 		bool								releaseTemporaries)
-
 	{
-		auto WH = graph.GetRenderSystem().GetTextureWH(depthBuffer);
+		PassDrivenResourceAllocation allocationDesc
+		{
+			.getPass				= [&]() -> std::span<const LightHandle>
+			{
+				return pointLightsShadowMaps.GetData().lights;
+			},
+			.initializeResources	= [](std::span<const LightHandle> visibleLights, std::span<const FrameResourceHandle> resourceHandles, auto& transferCtx, iAllocator& allocator)
+			{
+				Vector<float4x4> shadowMaps{ allocator };
+				shadowMaps.resize(visibleLights.size());
 
-		auto& lightBufferData = graph.AddNode<LightBufferUpdate>(
+				auto& lights = LightComponent::GetComponent();
+
+				for (auto [idx, lightHandle] : zip(iota(0), visibleLights))
+				{
+					auto& light = lights[lightHandle];
+					switch (light.type)
+					{
+					case LightType::Direction:
+					case LightType::SpotLight:
+					{
+						const float3		position	= GetPositionW(light.node);
+						const Quaternion	Q			= GetOrientation(light.node);
+
+						const auto [PV, view] = CalculateSpotLightMatrices(position, Q, light.R, light.outerAngle);
+
+						shadowMaps[idx] = PV;
+					}	break;
+					case LightType::PointLight:
+						break;
+					}
+				}
+
+				transferCtx.CreateResource(resourceHandles[0], shadowMaps.ByteSize(),	shadowMaps.data());
+			},
+
+			.layout		= DeviceLayout::DeviceLayout_Common,
+			.access		= DeviceAccessState::DASPixelShaderResource,
+			.max		= 1,
+			.pool		= nullptr,
+			.dependency = pointLightsShadowMaps
+		};
+
+		const ResourceAllocation& allocation = frameGraph.AllocateResourceSet(allocationDesc);
+
+		auto WH = frameGraph.GetRenderSystem().GetTextureWH(depthBuffer);
+		auto& lightBufferData = frameGraph.AddNode<LightBufferUpdate>(
 			LightBufferUpdate{
-					pointLightsShadowMaps.GetData().lights,
-					camera,
-					reserveCB,
-					dispatch
+					.visableLights	= pointLightsShadowMaps.GetData().lights,
+					.shadowMatrices	= allocation.handles[0],
+					.camera			= camera,
+					.reserveCB		= reserveCB,
+					.indirectLayout	= dispatch
 			},
 			[&, this](FrameGraphNodeBuilder& builder, LightBufferUpdate& data)
 			{
-				auto& renderSystem			= graph.GetRenderSystem();
+
+				auto& renderSystem			= frameGraph.GetRenderSystem();
 
 				// Output Objects
 				data.clusterBufferObject	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1 * MEGABYTE), DASUAV);
@@ -898,6 +964,7 @@ namespace FlexKit
 				builder.SetDebugName(data.counterObject,			"counterObject");
 				builder.SetDebugName(data.argumentBufferObject,		"argumentBufferObject");
 
+				builder.AddNodeDependency(allocation.node);
 				//builder.AddDataDependency(sceneDescription.lights);
 				//builder.AddDataDependency(sceneDescription.cameras);
 			},
@@ -947,24 +1014,28 @@ namespace FlexKit
 				auto constantBuffer2ReserveSize = AlignedSize<ConstantsLayout>() * (1 + nodeReservation);
 				CBPushBuffer    constantBuffer2 = data.reserveCB(constantBuffer2ReserveSize);
 
-				const ConstantBufferDataSet constants{ constantsValues, constantBuffer };
-				const ConstantBufferDataSet cameraConstantsBuffer{ cameraConstants, constantBuffer };
+				const ConstantBufferDataSet constants				{ constantsValues, constantBuffer };
+				const ConstantBufferDataSet cameraConstantsBuffer	{ cameraConstants, constantBuffer };
 
-				Vector<FlexKit::GPULight> pointLightValues{ &allocator };
+				Vector<FlexKit::GPULight> lightValues{ &allocator };
 
-				for (const auto light : data.visableLights)
+				for (const auto lightHandle : data.visableLights)
 				{
-					const Light& pointLight		= pointLights[light];
-					const float3 WS_position	= GetPositionW(pointLight.Position);
-					const float3 VS_position	= (constantsValues.view * float4(WS_position, 1)).xyz();
+					const Light& light				= pointLights[lightHandle];
+					const float3 WS_position		= GetPositionW(light.node);
+					const Quaternion WS_orientation = GetOrientation(light.node);
 
-					pointLightValues.push_back(
-						{	{ pointLight.K, pointLight.I },
-							{ WS_position, pointLight.R } });
+					lightValues.emplace_back(
+						GPULight{
+							.KI					= { light.K, light.I },
+							.PositionR			= { WS_position, light.R },
+							.directionSpread	= { WS_orientation.Inverse() * float3{ 0, 0, 1 }, light.outerAngle },
+							.typeExtra			= { light.type, light.GetExtra() }
+						});
 				}
 
-				const uint32_t uploadSize = (uint32_t)pointLightValues.size() * sizeof(GPULight);
-				const ConstantBufferDataSet pointLights_GPU{ (char*)pointLightValues.data(), uploadSize, constantBuffer };
+				const uint32_t uploadSize = (uint32_t)lightValues.size() * sizeof(GPULight);
+				const ConstantBufferDataSet pointLights_GPU{ (char*)lightValues.data(), uploadSize, constantBuffer };
 
 				resources.UAV(data.counterObject, ctx);
 				resources.UAV(data.indexBufferObject, ctx);
@@ -1007,8 +1078,6 @@ namespace FlexKit
 				clusterCreationResources.NullFill(ctx);
 
 				//ctx.TimeStamp(timeStats, 2);
-
-				
 
 				const auto threadsWH = uint2{ (Vect2{ resources.GetTextureWH(data.depthBufferObject) } / 32.0f).Ceil() };
 				ctx.SetComputeDescriptorTable(0, clusterCreationResources);
@@ -1512,7 +1581,6 @@ namespace FlexKit
 				pointLightgather,
 				lightPass,
 				pointLightShadowMaps,
-				//shadowMaps
 			},
 			[&](FrameGraphNodeBuilder& builder, ClusteredDeferredShading& data)
 			{
@@ -1544,7 +1612,7 @@ namespace FlexKit
 
 				builder.SetDebugName(data.renderTargetObject, "renderTargetObject");
 			},
-			[camera = gbufferPass.camera, renderTarget, t]
+			[camera = gbufferPass.camera, renderTarget, t, &rootSignature = this->rootSignature]
 			(ClusteredDeferredShading& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
 				ProfileFunction();
@@ -1552,15 +1620,12 @@ namespace FlexKit
 				ctx.BeginEvent_DEBUG("Clustered Shading");
 
 				LightComponent&	lightComponent	= LightComponent::GetComponent();
-				const auto&				visableLights	= *data.pointLightHandles;
+				const auto&		visableLights	= *data.pointLightHandles;
 
 				auto& renderSystem			= resources.renderSystem();
 				const auto WH				= resources.renderSystem().GetTextureWH(renderTarget);
 				const auto cameraConstants	= GetCameraConstants(camera);
 				const auto pointLightCount	= (uint32_t)visableLights.size();
-
-				//if (!pointLightCount)
-				//    return;
 
 				struct ShadowMap
 				{
@@ -1570,13 +1635,12 @@ namespace FlexKit
 
 				struct
 				{
-					float2      WH;
-					float2      WH_I;
-					float       time;
-					uint32_t    lightCount;
-					float4      ambientLight;
-					ShadowMap   PV[256];
-				}passConstants =
+					float2		WH;
+					float2		WH_I;
+					float		time;
+					uint32_t	lightCount;
+					float4		ambientLight;
+				}	passConstants =
 				{
 					{(float)WH[0], (float)WH[1]},
 					{1.0f / (float)WH[0], 1.0f / (float)WH[1]},
@@ -1585,35 +1649,20 @@ namespace FlexKit
 					{ 0.1f, 0.1f, 0.1f, 0 }
 				};
 
-				{
-					uint32_t lightID = 0;
-					for (auto lightHandle : visableLights)
-					{
-						auto& light             = lightComponent[lightHandle];
-						const float3 position   = GetPositionW(light.Position);
-						const auto matrices     = CalculateShadowMapMatrices(position, light.R, t);
-
-						for (size_t II = 0; II < 6; II++)
-							passConstants.PV[6 * lightID + II] = { .PV = matrices.PV[II], .View = matrices.View[II] };
-
-						lightID++;
-					}
-				}
-
 				struct
 				{
 					float4 Position;
 				}   vertices[] =
 				{
-					float4( 3,  -1, 0, 1),
-					float4(-1,  -1, 0, 1),
-					float4(-1,   3, 0, 1),
+					float4{ 3,  -1, 0, 1 },
+					float4{-1,  -1, 0, 1 },
+					float4{-1,   3, 0, 1 },
 				};
 
 				const size_t descriptorTableSize = 20 + pointLightCount;
 
 				DescriptorHeap descHeap;
-				descHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), descriptorTableSize, &allocator);
+				descHeap.Init2(ctx, rootSignature.GetDescHeap(0), descriptorTableSize, &allocator);
 				descHeap.SetSRV(ctx, 0, resources.GetResource(data.AlbedoTargetObject));
 				descHeap.SetSRV(ctx, 1, resources.GetResource(data.MRIATargetObject));
 				descHeap.SetSRV(ctx, 2, resources.GetResource(data.NormalTargetObject));
@@ -1622,6 +1671,7 @@ namespace FlexKit
 				descHeap.SetStructuredResource(ctx, 6, resources.GetResource(data.lightLists), sizeof(uint2));
 				descHeap.SetStructuredResource(ctx, 7, resources.GetResource(data.lightListBuffer), sizeof(uint32_t));
 				descHeap.SetStructuredResource(ctx, 8, resources.NonPixelShaderResource(data.pointLightBufferObject, ctx), sizeof(GPULight));
+				descHeap.SetStructuredResource(ctx, 9, resources.NonPixelShaderResource(data.lightPass.shadowMatrices, ctx), sizeof(float4x4));
 
 				for (size_t shadowMapIdx = 0; shadowMapIdx < pointLightCount; shadowMapIdx++)
 				{
@@ -1647,7 +1697,7 @@ namespace FlexKit
 #if 1
 				ctx.ClearRenderTarget(resources.GetResource({ data.renderTargetObject }));
 
-				ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
+				ctx.SetRootSignature(rootSignature);
 				ctx.SetPipelineState(resources.GetPipelineState(SHADINGPASS));
 				ctx.SetPrimitiveTopology(EIT_TRIANGLELIST);
 
@@ -1657,6 +1707,7 @@ namespace FlexKit
 				ctx.SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
 				ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
 				ctx.SetGraphicsDescriptorTable(4, descHeap);
+				ctx.SetGraphicsDescriptorTable(5, descHeap);
 
 				ctx.Draw(3);
 #else
@@ -1707,7 +1758,6 @@ namespace FlexKit
 			[&](FrameGraphNodeBuilder& builder, _& data)
 			{
 				builder.ReleaseVirtualResource(clusteredDeferredShading.renderTargetObject);
-
 				builder.ReleaseVirtualResource(lightPass.lightLists);
 				builder.ReleaseVirtualResource(lightPass.indexBufferObject);
 				builder.ReleaseVirtualResource(lightPass.lightListBuffer);
@@ -1740,14 +1790,13 @@ namespace FlexKit
 			},
 			[&, this](FrameGraphNodeBuilder& builder, DEBUGVIS_DrawBVH& data)
 			{
-				data.lightBVH       = builder.ReadTransition(lightBufferUpdate.lightBVH,              DASNonPixelShaderResource);
-				data.clusters       = builder.ReadTransition(lightBufferUpdate.clusterBufferObject,   DASNonPixelShaderResource);
-				data.renderTarget   = builder.RenderTarget(renderTarget);
-				data.indirectArgs   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DASUAV);
-				data.counterBuffer  = builder.ReadTransition(lightBufferUpdate.counterObject,     DASNonPixelShaderResource);
-				data.pointLights    = builder.ReadTransition(lightBufferUpdate.lightBufferObject, DASNonPixelShaderResource);
-				data.camera         = camera;
-
+				data.lightBVH		= builder.ReadTransition(lightBufferUpdate.lightBVH,              DASNonPixelShaderResource);
+				data.clusters		= builder.ReadTransition(lightBufferUpdate.clusterBufferObject,   DASNonPixelShaderResource);
+				data.renderTarget	= builder.RenderTarget(renderTarget);
+				data.indirectArgs	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DASUAV);
+				data.counterBuffer	= builder.ReadTransition(lightBufferUpdate.counterObject,     DASNonPixelShaderResource);
+				data.pointLights	= builder.ReadTransition(lightBufferUpdate.lightBufferObject, DASNonPixelShaderResource);
+				data.camera			= camera;
 
 				builder.SetDebugName(data.indirectArgs, "indirectArgs");
 
@@ -1761,10 +1810,10 @@ namespace FlexKit
 			{
 				ProfileFunction();
 
-				auto debugBVHVISPSO         = resources.GetPipelineState(LIGHTBVH_DEBUGVIS_PSO);
-				auto debugClusterVISPSO     = resources.GetPipelineState(CLUSTER_DEBUGVIS_PSO);
-				auto debugClusterArgsVISPSO = resources.GetPipelineState(CLUSTER_DEBUGARGSVIS_PSO);
-				auto debugLightVISPSO       = resources.GetPipelineState(CREATELIGHTDEBUGVIS_PSO);
+				auto debugBVHVISPSO			= resources.GetPipelineState(LIGHTBVH_DEBUGVIS_PSO);
+				auto debugClusterVISPSO		= resources.GetPipelineState(CLUSTER_DEBUGVIS_PSO);
+				auto debugClusterArgsVISPSO	= resources.GetPipelineState(CLUSTER_DEBUGARGSVIS_PSO);
+				auto debugLightVISPSO		= resources.GetPipelineState(CREATELIGHTDEBUGVIS_PSO);
 
 				const auto cameraConstants = GetCameraConstants(data.camera);
 
@@ -1833,8 +1882,8 @@ namespace FlexKit
 				ctx.SetGraphicsDescriptorTable(4, descHeap);
 				ctx.SetGraphicsDescriptorTable(5, nullHeap);
 
-				size_t accumlator   = 0u;
-				size_t nodeCount    = uint32_t(std::ceilf(float(lightCount) / BVH_ELEMENT_COUNT));
+				size_t accumlator	= 0u;
+				size_t nodeCount	= uint32_t(std::ceilf(float(lightCount) / BVH_ELEMENT_COUNT));
 
 				const uint32_t passCount = uint32_t(std::floor(std::log(lightCount) / std::log(BVH_ELEMENT_COUNT)));
 

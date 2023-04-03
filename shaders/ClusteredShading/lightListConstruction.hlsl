@@ -53,7 +53,7 @@ StructuredBuffer<PointLight>  PointLights       : register(t2);
 StructuredBuffer<Cluster>     ClusterBuffer     : register(t3); 
 
 
-AABB GetClusterAABB(Cluster C)
+AABB GetClusterAABB(in Cluster C)
 {
 	AABB aabb;
 	aabb.MinPoint = C.MinPoint;
@@ -63,7 +63,7 @@ AABB GetClusterAABB(Cluster C)
 }
 
 
-AABB GetBVHAABB(BVH_Node n)
+AABB GetBVHAABB(in BVH_Node n)
 {
 	AABB aabb;
 	aabb.MinPoint = n.MinPoint;
@@ -73,7 +73,7 @@ AABB GetBVHAABB(BVH_Node n)
 }
 
 
-AABB GetPointLightAABB(uint lightID)
+AABB GetPointLightAABB(in uint lightID)
 {
 	PointLight pointLight = PointLights[lightID];
 	const float3 pos_VS = mul(View, float4(pointLight.PR.xyz, 1));
@@ -86,7 +86,7 @@ AABB GetPointLightAABB(uint lightID)
 }
 
 
-float4 GetPointLightBS(uint lightID)
+float4 GetPointLightBS(in uint lightID)
 {
 	PointLight pointLight = PointLights[lightID];
 	const float4 pos_WS = float4(pointLight.PR.xyz, 1);
@@ -96,7 +96,7 @@ float4 GetPointLightBS(uint lightID)
 }
 
 
-bool CompareBSToAABB(const float4 BS, const AABB aabb)
+bool CompareBSToAABB(in const float4 BS, in const AABB aabb)
 {
 	const float radiusSquared = BS.w * BS.w;
 	const float3 closestPoint = clamp(BS.xyz, aabb.MinPoint, aabb.MaxPoint);
@@ -108,8 +108,50 @@ bool CompareBSToAABB(const float4 BS, const AABB aabb)
 	return  d2 < radiusSquared;
 }
 
+// https://bartwronski.com/2017/04/13/cull-that-cone/
+bool TestConeVsSphere(in float3 origin, in float3 forward, in float size, in float angle, in float4 testSphere)
+{
+	const float3	V		= testSphere.xyz - origin;
+	const float		VlenSq	= dot(V, V);
+	const float		V1len	= dot(V, forward);
+	const float		distanceClosestPoint = cos(angle) * sqrt(VlenSq - V1len * V1len) - V1len * sin(angle);
 
-bool CompareAABBToAABB(AABB A, AABB B)
+	const bool	angleCull	= distanceClosestPoint > testSphere.w;
+	const bool	frontCull	= V1len > testSphere.w + size;
+	const bool	backCull	= V1len < -testSphere.w;
+	return !(angleCull || frontCull || backCull);
+}
+
+bool CompareLightToAABB(in const uint lightID, in const AABB aabb)
+{
+	uint type = PointLights[lightID].TypeExtra[0];
+	switch (type)
+	{
+	case 0:// PointLight
+	{
+		const float4 BS = GetPointLightBS(lightID);
+		return CompareBSToAABB(BS, aabb);
+	}
+	case 1:// SpotLight
+	{
+		const float3 center = (aabb.MinPoint + aabb.MaxPoint) / 2;
+		const float  r		= length(aabb.MaxPoint - aabb.MinPoint) / 2;
+
+		const float4 posr	= PointLights[lightID].PR;
+		const float4 da		= PointLights[lightID].DA;
+
+		const float3 pos_VS = mul(View, float4(posr.xyz, 1));
+		const float3 d_VS	= mul(View, float4(da.xyz, 0));
+
+		return TestConeVsSphere(pos_VS, -d_VS, posr.w, da.w, float4(center, r));
+	}
+	}
+
+	return true;
+}
+
+
+bool CompareAABBToAABB(in AABB A, in AABB B)
 {
 	return  (A.MinPoint.x <= B.MaxPoint.x && B.MinPoint.x <= A.MaxPoint.x) &&
 			(A.MinPoint.y <= B.MaxPoint.y && B.MinPoint.y <= A.MaxPoint.y) &&
@@ -117,19 +159,19 @@ bool CompareAABBToAABB(AABB A, AABB B)
 }
 
 
-bool IsLeafNode(const BVH_Node node)
+bool IsLeafNode(in const BVH_Node node)
 {
 	return node.Leaf == 1;
 }
 
 
-uint GetFirstChild(const BVH_Node node)
+uint GetFirstChild(in const BVH_Node node)
 {
 	return node.Offset;
 }
 
 
-uint GetChildCount(const BVH_Node node)
+uint GetChildCount(in const BVH_Node node)
 {
 	return node.Count;
 }
@@ -144,42 +186,6 @@ groupshared uint lights[lightBufferSize];
 groupshared uint lightCount;
 groupshared uint offset;
 
-/*
-void CmpSwap(const uint const lhs, const uint rhs, const uint op)
-{ 
-	const uint LValue = lights[lhs]; 
-	const uint RValue = lights[rhs];
-
-	const uint V1 = op == 0 ? min(LValue, RValue) : max(LValue, RValue);
-	const uint V2 = op == 0 ? max(LValue, RValue) : min(LValue, RValue);
-
-	lights[lhs] = V1;
-	lights[rhs] = V2;
-}
-
-void BitonicPass(const uint localThreadID, const int I, const int J)
-{
-	const uint swapMask = (1 << (J + 1)) - 1;
-	const uint offset   = 1 << J;
-
-	if((localThreadID & swapMask) < offset)
-	{
-		const uint op  = (localThreadID >> (I + 1)) & 0x01;
-		CmpSwap(localThreadID, localThreadID + offset, op);
-	}
-
-	GroupMemoryBarrierWithGroupSync();
-} 
-
-// Pad extra elements with -1
-void SortLights(const uint localThreadID)
-{
-	for(int I = 0; I < log2(32); I++)
-		for(int J = I; J >= 0; J--)
-			BitonicPass(localThreadID, I, J);
-} 
-*/
-
 void InitStack()
 {
 	stackSize   = 0;
@@ -187,7 +193,7 @@ void InitStack()
 	parentIdx   = rootNode;
 }
 
-void PushLight(const uint lightID)
+void PushLight(in const uint lightID)
 {
 	uint i;
 	InterlockedAdd(lightCount, 1, i);
@@ -195,7 +201,7 @@ void PushLight(const uint lightID)
 	lights[i] = lightID;
 }
 
-void PushNode(const uint nodeID)
+void PushNode(in const uint nodeID)
 {
 	uint i;
 	InterlockedAdd(stackSize, 1, i);
@@ -209,7 +215,7 @@ uint PopNode()
 	return stack[stackSize];
 }
 
-uint GetClusterIdx(const uint clusterID)
+uint GetClusterIdx(in const uint clusterID)
 {
 	const uint X            = (clusterID >> 16) & 0xf;
 	const uint Y            = (clusterID >> 8)  & 0xf;
@@ -251,8 +257,7 @@ void CreateClustersLightLists(const uint threadID : SV_GroupIndex, const uint3 g
 					const uint idx      = GetFirstChild(parent) + threadID;
 					const uint lightID  = LightLookup[idx];
 
-					const float4 bs     = GetPointLightBS(lightID);
-					if (CompareBSToAABB(bs, aabb))
+					if (CompareLightToAABB(lightID, aabb))
 						PushLight(lightID);
 				}
 				else

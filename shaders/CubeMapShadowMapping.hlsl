@@ -78,9 +78,9 @@ Vertex VS_Skinned_Main(Skinned_Vertex IN)
 	const float4 POS_VS = mul(View, float4(POS_WT, 1));
 
 	Vertex Out;
-	Out.pos                 = POS_DC;
-	Out.pos_VS              = POS_VS;
-	Out.arrayTargetIndex    = arrayTarget;
+	Out.pos					= POS_DC;
+	Out.pos_VS				= POS_DC;
+	Out.arrayTargetIndex	= arrayTarget;
 
 	return Out;
 }
@@ -99,11 +99,11 @@ float2 ComputeMoments(const float depth)
 	const float dx = ddx(depth);
 	const float dy = ddy(depth);
 
-	moments.y = depth * depth + 0.25f * (dx * dx + dy * dy);
+	moments.y = depth * depth + 0.35f * (dx * dx + dy * dy);
 	return moments;
 }
 
 float PS_Main(Vertex IN, const bool frontFacing : SV_IsFrontFace) : SV_DEPTH
 {
-	return (-IN.pos_VS.z) / maxZ;
+	return (-IN.pos_VS.z + 0.25f) / maxZ;
 }

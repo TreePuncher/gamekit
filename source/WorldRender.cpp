@@ -735,9 +735,9 @@ namespace FlexKit
 
 		auto& pointLightGather		= scene.GetLights(dispatcher, temporary);
 		auto& sceneBVH				= scene.UpdateSceneBVH(dispatcher, drawSceneDesc.transformDependency, temporary);
-		auto& visablePointLights	= scene.GetVisableLights(dispatcher, camera, sceneBVH, temporary);
-		auto& pointLightUpdate		= scene.UpdateLights(dispatcher, sceneBVH, visablePointLights, temporary, persistent);
-		auto& shadowMaps			= shadowMapping.AcquireShadowMaps(dispatcher, frameGraph.GetRenderSystem(), RTPool, pointLightUpdate);
+		auto& visableLights			= scene.GetVisableLights(dispatcher, camera, sceneBVH, temporary);
+		auto& lightUpdate			= scene.UpdateLights(dispatcher, sceneBVH, visableLights, temporary, persistent);
+		auto& shadowMaps			= shadowMapping.AcquireShadowMaps(dispatcher, frameGraph.GetRenderSystem(), RTPool, lightUpdate);
 
 		LoadLodLevels(dispatcher, passes, drawSceneDesc.camera, renderSystem, *persistent);
 
@@ -761,7 +761,7 @@ namespace FlexKit
 		const SceneDescription sceneDesc = {
 			drawSceneDesc.camera,
 			pointLightGather,
-			visablePointLights,
+			visableLights,
 			shadowMaps,
 			drawSceneDesc.transformDependency,
 			drawSceneDesc.cameraDependency,
@@ -864,7 +864,7 @@ namespace FlexKit
 		auto& shadowMapPass =
 			shadowMapping.ShadowMapPass(
 				frameGraph,
-				visablePointLights,
+				visableLights,
 				drawSceneDesc.cameraDependency,
 				passes,
 				shadowMaps,
@@ -976,7 +976,7 @@ namespace FlexKit
 					.passes				= passes,
 					.entityConstants	= staticConstants,
 					.animationResources	= animationResources,
-					.pointLights		= visablePointLights,
+					.pointLights		= visableLights,
 					//occlutionConstants.ZPyramid
 		};
 	}
