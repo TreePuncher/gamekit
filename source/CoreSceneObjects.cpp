@@ -1,28 +1,3 @@
-/**********************************************************************
-
-Copyright (c) 2015 - 2022 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
-
 #include "CoreSceneObjects.h"
 #include "MathUtils.h"
 
@@ -416,33 +391,36 @@ namespace FlexKit
 		DirectX::XMMATRIX XMView = DirectX::XMMatrixInverse(nullptr, XMWT);
 
 		Camera::ConstantBuffer NewData;
-		NewData.Proj            = previous.Proj;
+		NewData.Proj			= previous.Proj;
 		NewData.View			= previous.View.Transpose();
-		NewData.ViewI           = previous.WT.Transpose();
-		NewData.PV              = XMMatrixToFloat4x4(XMMatrixTranspose(XMMatrixTranspose(Float4x4ToXMMATIRX(NewData.Proj)) * XMView));
-		NewData.PVI             = XMMatrixToFloat4x4(XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, XMMatrixTranspose(Float4x4ToXMMATIRX(NewData.Proj)) * XMView)));
-		NewData.MinZ            = previous.nearClip;
-		NewData.MaxZ            = previous.farClip;
+		NewData.ViewI			= previous.WT.Transpose();
+		NewData.PV				= XMMatrixToFloat4x4(XMMatrixTranspose(XMMatrixTranspose(Float4x4ToXMMATIRX(NewData.Proj)) * XMView));
+		NewData.PVI				= XMMatrixToFloat4x4(XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, XMMatrixTranspose(Float4x4ToXMMATIRX(NewData.Proj)) * XMView)));
+		NewData.MinZ			= previous.nearClip;
+		NewData.MaxZ			= previous.farClip;
 
-		NewData.WPOS[0]         = previous.WT[0][3];
-		NewData.WPOS[1]         = previous.WT[1][3];
-		NewData.WPOS[2]         = previous.WT[2][3];
-		NewData.WPOS[3]         = 0;
+		NewData.WPOS[0]			= previous.WT[0][3];
+		NewData.WPOS[1]			= previous.WT[1][3];
+		NewData.WPOS[2]			= previous.WT[2][3];
+		NewData.WPOS[3]			= 0;
 
 		const float Y = tan(previous.FOV / 2) * Far;
 		const float X = Y * previous.aspectRatio;
 
-		NewData.TLCorner_VS = float3(-X, Y, -Far);
-		NewData.TRCorner_VS = float3(X, Y, -Far);
+		NewData.TLCorner_VS	= float3(-X, Y, -Far);
+		NewData.TRCorner_VS	= float3(X, Y, -Far);
 
-		NewData.BLCorner_VS = float3(-X, -Y, -Far);
-		NewData.BRCorner_VS = float3(X, -Y, -Far);
+		NewData.BLCorner_VS	= float3(-X, -Y, -Far);
+		NewData.BRCorner_VS	= float3(X, -Y, -Far);
 
-		NewData.FOV         = previous.FOV;
-		NewData.AspectRatio = previous.aspectRatio;
+		NewData.FOV			= previous.FOV;
+		NewData.AspectRatio	= previous.aspectRatio;
 
 		return NewData;
 	}
+
+
+	/************************************************************************************************/
 
 
 	float4x4 Camera::GetPV()
@@ -453,3 +431,28 @@ namespace FlexKit
 
 	/************************************************************************************************/
 }
+
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2023 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

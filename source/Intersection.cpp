@@ -154,6 +154,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	AABB::operator BoundingSphere() const noexcept
+	{
+		const float3 center = (Min + Max) / 2;
+		const float  r		= (Max - Min).magnitude() / 2;
+
+		return { center, r };
+	}
+
+
+	/************************************************************************************************/
+
+
 	float Intersects(const Ray& R, const Plane& P) noexcept
 	{
 		const auto w = P.o - R.O;
@@ -264,6 +276,27 @@ namespace FlexKit
 		const auto Q    = sqrt(R2 - M2);
 
 		return (L2 > R2) ? S - Q : S + Q;
+	}
+
+
+	/************************************************************************************************/
+
+
+	// https://bartwronski.com/2017/04/13/cull-that-cone/
+	bool Intersects(const Cone c, const AABB aabb)
+	{
+		const BoundingSphere BS = aabb;
+
+		const float3	V		= BS.xyz() - c.O;
+		const float		VlenSq	= dot(V, V);
+		const float		V1len	= dot(V, c.D);
+		const float		distanceClosestPoint = cos(c.theta) * sqrt(VlenSq - V1len * V1len) - V1len * sin(c.theta);
+
+		const bool	angleCull	= distanceClosestPoint > BS.w;
+		const bool	frontCull	= V1len > BS.w + c.length;
+		const bool	backCull	= V1len < -BS.w;
+
+		return !(angleCull || frontCull || backCull);
 	}
 
 

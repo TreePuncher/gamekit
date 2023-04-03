@@ -16,6 +16,8 @@
 #include <numeric>
 #include <ranges>
 
+using std::ranges::sort;
+
 namespace FlexKit
 {	/************************************************************************************************/
 
@@ -317,8 +319,8 @@ namespace FlexKit
 		I = rhs.I;
 		R = rhs.R;
 
-		Position    = rhs.Position;
-		shadowMap   = rhs.shadowMap;
+		node		= rhs.node;
+		shadowMap	= rhs.shadowMap;
 
 		forceDisableShadowMapping	= rhs.forceDisableShadowMapping;
 		state						= rhs.state;
@@ -338,7 +340,7 @@ namespace FlexKit
 		I = rhs.I;
 		R = rhs.R;
 
-		Position	= rhs.Position;
+		node		= rhs.node;
 		shadowMap	= rhs.shadowMap;
 
 		forceDisableShadowMapping	= rhs.forceDisableShadowMapping;
@@ -352,14 +354,42 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
+	uint3 Light::GetExtra() const
+	{
+		switch (type)
+		{
+		case LightType::SpotLight:
+		{
+			const float innerCos = cos(Min(outerAngle / 2.0f, innerAngle / 2.0f));
+			const float outerCos = cos(outerAngle / 2.0f);
+
+			const float lightAngleScale		= 1.0f / Max(0.001f, innerCos - outerCos);
+			const float lightAngleOffset	= -outerCos * lightAngleScale;
+
+			return uint3{
+				std::bit_cast<uint32_t, float>(lightAngleScale),
+				std::bit_cast<uint32_t, float>(lightAngleOffset) };
+		}
+		}
+
+		return uint3{};
+	}
+
+
+	/************************************************************************************************/
+
+
 	LightView::LightView(GameObject& gameObject, float3 color, float intensity, float radius, NodeHandle node, bool triggerless) : light{ GetComponent().Create(gameObject) }
 	{
-		auto& pointLight		= GetComponent()[light];
-		pointLight.K			= color;
-		pointLight.I			= intensity;
-		pointLight.R			= radius;
-		pointLight.type			= LightType::PointLight;
-		pointLight.Position		= node != InvalidHandle ? node : FlexKit::GetSceneNode(gameObject);
+		auto& pointLight	= GetComponent()[light];
+		pointLight.K		= color;
+		pointLight.I		= intensity;
+		pointLight.R		= radius;
+		pointLight.type		= LightType::PointLight;
+		pointLight.node		= node != InvalidHandle ? node : FlexKit::GetSceneNode(gameObject);
 
 		if (triggerless)
 		{
@@ -397,6 +427,21 @@ namespace FlexKit
 		GetComponent()[light].R = Max(r, 0.1f);
 	}
 
+	void LightView::SetOuterRadius(float r) noexcept
+	{
+		GetComponent()[light].outerAngle = r;
+	}
+
+	void LightView::SetType(LightType type) noexcept
+	{
+		GetComponent()[light].type = type;
+	}
+
+	LightType LightView::GetType() const noexcept
+	{
+		return GetComponent()[light].type;
+	}
+
 	float LightView::GetIntensity()
 	{
 		return GetComponent()[light].I;
@@ -419,12 +464,12 @@ namespace FlexKit
 
 	void LightView::SetNode(NodeHandle node) const noexcept
 	{
-		GetComponent()[light].Position = node;
+		GetComponent()[light].node = node;
 	}
 
 	NodeHandle LightView::GetNode() const noexcept
 	{
-		return GetComponent()[light].Position;
+		return GetComponent()[light].node;
 	}
 
 
@@ -1513,30 +1558,53 @@ namespace FlexKit
 				auto& lights		= LightComponent::GetComponent();
 
 				auto& light			= lights[lightHandle];
-				const float3 POS	= GetPositionW(light.Position);
+				const float3 POS	= GetPositionW(light.node);
 				const float  r		= light.R;
-				AABB lightAABB{ POS - r, POS + r };
 
 				Vector<VisibilityHandle> PVS{ &threadLocalAllocator };
 
-				bvh.Traverse(lightAABB,
-					[&](
-						VisibilityHandle visable,
-						[[maybe_unused]] auto& intersionResult,
-						[[maybe_unused]] GameObject* )
-					{
-						PVS.push_back(visable);
-					});
+				switch (light.type)
+				{
+				case LightType::PointLight:
+				{
+					AABB lightAABB{ POS - r, POS + r };
 
-				if(const auto flags = GetFlags(light.Position); flags & (SceneNodes::DIRTY | SceneNodes::UPDATED))
+					bvh.Traverse(lightAABB,
+						[&](
+							VisibilityHandle visable,
+							[[maybe_unused]] auto& intersionResult,
+							[[maybe_unused]] GameObject*)
+						{
+							PVS.push_back(visable);
+						});
+				}	break;
+				case LightType::SpotLight:
+				{
+					const auto position	= GetPositionW(light.node);
+					const auto q		= GetOrientation(light.node);
+
+					const Cone c{
+						.O		= position,
+						.D		= q.Inverse() * float3{ 0, 0, -1 },
+						.length	= light.R,
+						.theta	= light.outerAngle
+					};
+
+					bvh.Traverse(c,
+						[&](
+												VisibilityHandle	visable,
+							[[maybe_unused]]	auto&				intersionResult,
+							[[maybe_unused]]	GameObject*			gameObject)
+						{
+							PVS.push_back(visable);
+						});
+				}	break;
+				}
+
+				if(const auto flags = GetFlags(light.node); flags & (SceneNodes::DIRTY | SceneNodes::UPDATED))
 					light.state = LightStateFlags::Dirty;
 
-				std::sort(
-					std::begin(PVS), std::end(PVS),
-					[](const auto& lhs, const auto& rhs)
-					{
-						return lhs < rhs;
-					});
+				sort(PVS);
 
 				auto markDirty =
 					[&]
