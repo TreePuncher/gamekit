@@ -194,7 +194,7 @@ namespace FlexKit
 
 	int PoseStatePoseCount(FlexKit::PoseState* poseState)
 	{
-		return poseState->poses.size();
+		return (int)poseState->poses.size();
 	}
 
 	PoseState::Pose* PoseStateGetPose(FlexKit::PoseState* poseState, int idx)
@@ -210,7 +210,7 @@ namespace FlexKit
 	{
 		poseState->CreateSubPose(poseID, *allocator);
 
-		return poseState->poses.size() - 1;
+		return (uint32_t)(poseState->poses.size() - 1);
 	}
 
 

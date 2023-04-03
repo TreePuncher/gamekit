@@ -21,17 +21,17 @@ cbuffer PoseConstants : register(b2)
 
 cbuffer DrawConstants : register(b3)
 {
-	float4x4    PV;
-	float4x4    View;
-	uint        arrayTarget;
-	float       maxZ;
+	float4x4	PV;
+	float4x4	View;
+	uint		arrayTarget;
+	float		maxZ;
 };
 
 struct Vertex
 {
-	float4 pos              : SV_POSITION;
-	float3 pos_VS           : POSITION;
-	uint   arrayTargetIndex : SV_RenderTargetArrayIndex;
+	float4	pos					: SV_POSITION;
+	float3	pos_VS				: POSITION_VS;
+	uint	arrayTargetIndex	: SV_RenderTargetArrayIndex;
 };
 
 Vertex VS_Main(float3 POS : POSITION)
@@ -41,9 +41,9 @@ Vertex VS_Main(float3 POS : POSITION)
 	const float4 POS_VS = mul(View, float4(POS_WT, 1));
 
 	Vertex Out;
-	Out.pos                 = POS_DC;
-	Out.pos_VS              = POS_VS;
-	Out.arrayTargetIndex    = arrayTarget;
+	Out.pos					= POS_DC;
+	Out.pos_VS				= POS_VS;
+	Out.arrayTargetIndex	= arrayTarget;
 
 	return Out;
 }
@@ -78,18 +78,13 @@ Vertex VS_Skinned_Main(Skinned_Vertex IN)
 	const float4 POS_VS = mul(View, float4(POS_WT, 1));
 
 	Vertex Out;
-	Out.pos                 = POS_DC;
-	Out.pos_VS              = POS_VS;
-	Out.arrayTargetIndex    = arrayTarget;
+	Out.pos					= POS_DC;
+	Out.pos_VS				= POS_VS;
+	Out.arrayTargetIndex	= arrayTarget;
 
 	return Out;
 }
 
-struct DepthSample
-{
-	float	depth	: SV_DEPTH;
-	float2	moment	: SV_TARGET0;
-};
 
 float2 ComputeMoments(const float depth)
 {
@@ -99,11 +94,11 @@ float2 ComputeMoments(const float depth)
 	const float dx = ddx(depth);
 	const float dy = ddy(depth);
 
-	moments.y = depth * depth + 0.25f * (dx * dx + dy * dy);
+	moments.y = depth * depth + 0.35f * (dx * dx + dy * dy);
 	return moments;
 }
 
-float PS_Main(Vertex IN, const bool frontFacing : SV_IsFrontFace) : SV_DEPTH
+float PS_Main(Vertex IN, const bool frontFacing : SV_IsFrontFace) : SV_TARGET0
 {
-	return (-IN.pos_VS.z) / maxZ;
+	return exp(80.0f * (length(IN.pos_VS)) / maxZ);
 }

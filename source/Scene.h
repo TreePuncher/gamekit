@@ -149,7 +149,8 @@ namespace FlexKit
 	{
 		PointLight,
 		SpotLight,
-		Direction
+		Direction,
+		PointLightNoShadows
 	};
 
 	struct Light
@@ -162,17 +163,20 @@ namespace FlexKit
 		Light& operator = (Light&& rhs);
 		Light& operator = (const Light& rhs) = delete;
 
+		uint3 GetExtra() const;
+
+		LightType			type;
+		bool				enabled						= true;
+		bool				forceDisableShadowMapping	= false;
+		LightStateFlags		state;
+		NodeHandle			node			= InvalidHandle;
+		CubeMapState*		shadowState		= nullptr;
+		ResourceHandle		shadowMap		= InvalidHandle;
+
 		float3		K;
 		float		I, R;
-		float3		direction;
-		LightType	type;
-
-		NodeHandle		Position;
-		ResourceHandle	shadowMap = InvalidHandle;
-
-		bool				forceDisableShadowMapping = false;
-		LightStateFlags		state;
-		CubeMapState*		shadowState = nullptr;
+		float		innerAngle = (float)pi / 16.0f;
+		float		outerAngle = (float)pi / 8.0f;
 	};
 
 
@@ -200,6 +204,10 @@ namespace FlexKit
 		void		SetIntensity	(float I);
 		void		SetNode			(NodeHandle node) const noexcept;
 		void		SetRadius		(float r) noexcept;
+		void		SetOuterRadius	(float r) noexcept;
+
+		void		SetType(LightType) noexcept;
+		LightType	GetType() const noexcept;
 
 		Light*	operator -> (this auto& self) noexcept  { return &GetComponent()[self.light]; }
 
@@ -808,7 +816,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2022 Robert May
+Copyright (c) 2015 - 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

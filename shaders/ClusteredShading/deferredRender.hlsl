@@ -42,13 +42,11 @@ struct Cluster
 
 cbuffer LocalConstants : register(b1)
 {
-	float2  WH;
-	float2  WH_I;
-	float   Time;
-	uint   	lightCount;
-	float4  ambientLight;
-
-	ShadowMap pl[256];
+	float2	WH;
+	float2	WH_I;
+	float	Time;
+	uint	lightCount;
+	float4	ambientLight;
 }
 
 Texture2D<float4> AlbedoBuffer	: register(t0);
@@ -57,16 +55,14 @@ Texture2D<float2> NormalBuffer	: register(t2);
 Texture2D<float>  DepthBuffer	: register(t4);
 
 // light and shadow map resources
-Texture2D<uint> 			    lightMap		: register(t5);
-StructuredBuffer<uint2> 	    lightLists		: register(t6);
-StructuredBuffer<uint> 		    lightListBuffer	: register(t7);
+Texture2D<uint> 				lightMap		: register(t5);
+StructuredBuffer<uint2> 		lightLists		: register(t6);
+StructuredBuffer<uint> 			lightListBuffer	: register(t7);
 StructuredBuffer<PointLight> 	pointLights		: register(t8);
 
-#if SHADOWTECHNIQUE == 1
-TextureCube<float> 				shadowCubes[]	: register(t10);
-#elif SHADOWTECHNIQUE == 2
-//Texture2DArray<float2> 		shadowMaps[]	: register(t10);
-#endif
+StructuredBuffer<float4x4> 		shadowMatrices	: register(t9);
+TextureCube<float> 				shadowCubes[]	: register(t10, space0);
+Texture2DArray<float2> 			shadowMaps[]	: register(t10, space1);
 
 SamplerState BiLinear     : register(s0);
 SamplerState NearestPoint : register(s1);
@@ -117,12 +113,9 @@ float RandUniform(float seed)
 	return Hash(seed);
 }
 
-
-float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
-{
+float4 environment_PS(ENVIRONMENT_PS input) : SV_Target {
 	return float4(1, 0, 1, 1.0);
-}
-
+} 
 
 uint GetSliceIdx(float z)
 {
@@ -200,8 +193,11 @@ bool IsNaN(float x)
 	return (asuint(x) & 0x7fffffff) > 0x7f800000;
 }
 
-float3 VogelDiskSample(int sampleIndex, int samplesCount, float phi, float3 e)
+float3 VogelDiskSample3D(int sampleIndex, int samplesCount, float phi, float3 e, float f)
 {
+	if (samplesCount == 1)
+		return e;
+
 	float GoldenAngle = 2.4f;
 
 	float r = sqrt(sampleIndex + 0.5f) / sqrt(samplesCount);
@@ -211,7 +207,23 @@ float3 VogelDiskSample(int sampleIndex, int samplesCount, float phi, float3 e)
 	if (IsNaN(v.x) || IsNaN(v.y) || IsNaN(v.z))
 		v = float3(1, 0, 0);
 
-	return normalize(e + AxisAngle(e, theta, v) * 0.00019f);
+	return normalize(e + AxisAngle(e, theta, v) * f);
+}
+
+float2 VogelDiskSample2D(int sampleIndex, int samplesCount, float phi)
+{
+	if (samplesCount == 1)
+		return float2(0.0f, 0.0f);
+
+	float GoldenAngle = 2.4f;
+
+	float r		= sqrt(sampleIndex + 0.5f) / sqrt(samplesCount);
+	float theta	= sampleIndex * GoldenAngle + phi;
+
+	float sine, cosine;
+	sincos(theta, sine, cosine);
+
+	return float2(r * cosine, r * sine);
 }
 
 float2 ComputeReceiverPlaneDepthBias(float3 texCoordDX, float3 texCoordDY)
@@ -222,7 +234,6 @@ float2 ComputeReceiverPlaneDepthBias(float3 texCoordDX, float3 texCoordDY)
 	biasUV *= 1.0f / ((texCoordDX.x * texCoordDY.y) - (texCoordDX.y * texCoordDY.x));
 	return biasUV;
 }
-
 
 #if SHADOWTECHNIQUE == 2
 float SampleShadowMap(in float2 base_uv, in float u, in float v, in float2 shadowMapSizeInv, in uint fieldID, in Texture2DArray<float> shadowMap, in float depth, in float2 receiverPlaneDepthBias)
@@ -236,7 +247,6 @@ float GetLuminance(float3 RGB)
 {
 	return 0.2126f * RGB.x + 0.7152f * RGB.y + 0.0722f * RGB.z;
 }
-
 
 float linstep(float min, float max, float v)
 {
@@ -294,6 +304,14 @@ float3 SphereToVector(float2 UV)
 	return float3( sinPhi * cosTheta, sinPhi * sinTheta, cosPhi );
 }
 
+float smoothDistanceAtt(float squaredDistance, float invSqrAttRadius)
+{
+	float factor		= squaredDistance * invSqrAttRadius;
+	float smoothFactor	= saturate(1.0f - factor * factor);
+
+	return smoothFactor * smoothFactor;
+}
+
 float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 {
 	const float2 SampleCoord	= Position;
@@ -335,14 +353,14 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 	float4 color = float4(0, 0, 0, 1);
 	for (uint I = 0; I < localLightCount; I++)
 	{
-		const uint pointLightIdx	= lightListBuffer[localLightList + I];
-		const PointLight light		= pointLights[pointLightIdx];
+		const uint lightIdx		= lightListBuffer[localLightList + I];
+		const PointLight light	= pointLights[lightIdx];
 
 		const float3 Lc			= light.KI.rgb;
 		const float3 Lp			= mul(View, float4(light.PR.xyz, 1));
 		const float3 L			= normalize(Lp - positionVS);
 		const float  Ld			= length(Lp - positionVS);
-		const float  Li			= light.KI.w/10;
+		const float  Li			= light.KI.w;
 		const float  Lr			= light.PR.w;
 		const float  ld_2		= Ld * Ld;
 		const float  La			= (Li / ld_2) * (1 - (pow(Ld, 10) / pow(Lr, 10)));
@@ -366,35 +384,81 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			const float3 specular	= float3(0, 0, 0);
 		#endif
 
-		#if SHADOWTECHNIQUE == 0 // Skip
-
-			const float3 colorSample = (diffuse * Kd + specular * Ks) * NdotL * La * INV_PI;
-			color += float4(max(colorSample, 0), 0);
-
-		#elif SHADOWTECHNIQUE == 1 // CubeMap PCF
-			float3 v_WS		= mul(ViewI, -L);
-
-			const float3	colorSample	= (diffuse * Kd + specular * Ks) * NdotL * La * Lc;
-			const float		depth		= length(Lp - positionVS);
+		switch (light.TypeExtra[0])
+		{
+		case 0:	// Point Light
+		{
+					float3	v_WS		= mul(ViewI, -L);
+			const	float	depth		= length(Lp - positionVS) / Lr;
 
 			float t = 0;
-
 			static const int sampleCount = 16;
 			for (int i = 0; i < sampleCount; i++)
 			{
-				const float3	sampleVector	= VogelDiskSample(i, sampleCount, InterleavedGradientNoise(px), v_WS);
-				const float		bias			= 5.0f;
-				const float		shadowDepth		= shadowCubes[pointLightIdx].Gather(NearestPoint, sampleVector) * Lr;
+				const float3	sampleVector	= VogelDiskSample3D(i, sampleCount, InterleavedGradientNoise(px), v_WS, 0.00019f);
+				const float		expDepth		= shadowCubes[NonUniformResourceIndex(lightIdx)].Sample(BiLinear, sampleVector);
 
-				t += depth - bias < shadowDepth ? 1.0f / sampleCount : 0.0f;
+				t += saturate(ExponentialShadowSample(expDepth, depth)) / sampleCount;
 			}
 
-			//t = shadowCubes[pointLightIdx].SampleCmpLevelZero(ShadowSampler, float4(v_WS, 0), depth) * 10;
+			const float3 colorSample = (diffuse * Kd + specular * Ks) * NdotL * La * Lc;
+			color += max(float4(colorSample, 0), 0) * t;
+			break;
+		}
+		case 1: // Spot light
+		{
+			const float	dp					= saturate(dot(L, mul(View, light.DS.xyz)));
+			const float lightAngleScale		= asfloat(light.TypeExtra[1]);
+			const float lightAngleOffset	= asfloat(light.TypeExtra[2]);
 
-			color	+= saturate(t * max(float4((colorSample * (t / sampleCount)), 1), 0));
-			//color += max(float4((colorSample * ChebyshevUpperBound(t, depth)), 1), 0);
-			//color += max(float4(float3(10, 1, 1) * saturate(ExponentialShadowSample(t.y / sampleCount, depth)), 0), 0);
-			//color += max(float4(colorSample, 0), 0);
+			float a = saturate(dp * lightAngleScale + lightAngleOffset);
+			a *= a;
+
+			const float3	v_WS		= mul(ViewI, -L);
+			const float4	SC			= mul(shadowMatrices[lightIdx], float4(positionWS, 1));
+			const float3	N_DC		= SC.xyz / SC.w;
+			const float2	shadowMapUV = float2(0.5f + N_DC.x / 2.0f, 0.5f - N_DC.y / 2.0f);
+
+			if (shadowMapUV.x < 0.0f || shadowMapUV.x > 1.0f |
+				shadowMapUV.y < 0.0f || shadowMapUV.y > 1.0f)
+				continue;
+
+			float		shadowing		= 0;
+			float		gradientNoise	= InterleavedGradientNoise(px);
+			const float	depth			= length(positionVS - Lp) / Lr;
+
+			uint sampleCount = 16;
+			for (uint i = 0; i < sampleCount; i++)
+			{
+				const float		penumbraFilterMaxSize	= 0.0025f;
+				const float2	sampleUVOffset			= VogelDiskSample2D(i, sampleCount, gradientNoise);
+				const float2	sampleUV				= clamp(shadowMapUV + sampleUVOffset * penumbraFilterMaxSize, 0.0f, 1.0f);
+
+				const float	expDepth = shadowMaps[NonUniformResourceIndex(lightIdx)].Sample(BiLinear, float3(sampleUV, 0.0f));
+
+				shadowing += saturate(ExponentialShadowSample(expDepth, depth)) / sampleCount;
+			}
+
+			const float3	colorSample = (diffuse * Kd + specular * Ks) * NdotL * INV_PI * La * a * dp;
+			color += float4(max(colorSample, 0), 0) * shadowing;
+		}	break;
+		case 2:	// DirectionalLight
+		{
+			const float3	colorSample = (diffuse * Kd + specular * Ks) * NdotL * INV_PI;
+			const float		shadowDepth = shadowMaps[NonUniformResourceIndex(lightIdx)].Gather(BiLinear, float3( 0.5, 0.5, 0.0f ));
+			
+			color += float4(max(colorSample, 0), 0) * shadowDepth;
+		}	break;
+		case 3: // PointLight no shadows
+		{
+			const float3 colorSample = (diffuse * Kd + specular * Ks) * NdotL * La * INV_PI;
+			color += float4(max(colorSample, 0), 0);
+		}	break;
+		}
+
+		#if SHADOWTECHNIQUE == 0 // Skip
+
+		#elif SHADOWTECHNIQUE == 1 // CubeMap PCF
 
 		#elif SHADOWTECHNIQUE == 2 // PCF
 
@@ -571,9 +635,13 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 	//return float4(N.xyz, 1);
 	//return pow(float4(roughness, metallic, 0, 0), 2.2f);
 	//return float4(N_WS, 1);
-	return float4(N_WS / 2 + 0.5f, 1);
+	//return float4(N_WS / 2 + 0.5f, 1);
 	// 
-	//return float4(N.xyz / 2 + 0.5f, 1) * (float(localLightCount) / float(lightCount));
+	//return float4(N_WS.xyz / 2 + 0.5f, 1) * smoothstep(0.2, 1.0f, (float(localLightCount) / float(lightCount)));
+	//return color * (float(localLightCount) / float(lightCount));
+	//return max(color, float4(0.3f, 0.3f, 0.3f, 1.0f)) * float4(N.xyz / 2 + 0.5f, 1) * (float(localLightCount) / float(lightCount));
+	//return max(color, float4(0.3f, 0.3f, 0.3f, 1.0f)) * (float(localLightCount) / float(lightCount));
+	return max(color, float4(0.3f, 0.3f, 0.3f, 1.0f)); * (float(localLightCount) / float(lightCount));
 	//return lerp(float4(0, 0, 0, 0), float4(1, 1, 1, 0), float(localLightCount) / float(lightCount));
 	//return float4(albedo, 1);
 #endif

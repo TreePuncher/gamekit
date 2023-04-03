@@ -2034,6 +2034,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		size_t MipOffset        = 0;
 
 		ResourceHandle depthStencil;
+
+		size_t arraySize	= -1;
 	};
 
 
@@ -2717,7 +2719,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		static GPUResourceDesc UAVTexture(const uint2 IN_WH, const DeviceFormat IN_format, bool renderTarget = false, uint32_t mipCount = 1)
 		{
 			return {
-				.type			= ResourceType::UnorderedAccess,
+				.type			= renderTarget ? ResourceType::UnorderedAccessRenderTarget : ResourceType::UnorderedAccess,
 				.Dimensions		= TextureDimension::Texture2D,
 				.allocationType = ResourceAllocationType::Committed,
 				.format			= IN_format,
@@ -4469,7 +4471,7 @@ private:
 
 
 	FLEXKITAPI DescHeapPOS PushDepthStencil				(RenderSystem* RS, ResourceHandle Target, DescHeapPOS POS);
-	FLEXKITAPI DescHeapPOS PushDepthStencilArray		(RenderSystem* RS, ResourceHandle Target, size_t arrayOffset, size_t MipSlice, DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS PushDepthStencilArray		(RenderSystem* RS, ResourceHandle Target, size_t arrayOffset, size_t MipSlice, DescHeapPOS POS, size_t arraySize = -1);
 	FLEXKITAPI DescHeapPOS PushCBToDescHeap				(RenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, size_t BufferSize, size_t offset = 0);
 	FLEXKITAPI DescHeapPOS PushSRVToDescHeap			(RenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, size_t ElementCount, size_t Stride, D3D12_BUFFER_SRV_FLAGS Flags = D3D12_BUFFER_SRV_FLAG_NONE, size_t offset = 0);
 	FLEXKITAPI DescHeapPOS Push2DSRVToDescHeap			(RenderSystem* RS, ID3D12Resource* Buffer, const DescHeapPOS POS, const D3D12_BUFFER_SRV_FLAGS = D3D12_BUFFER_SRV_FLAG_NONE, const DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN);

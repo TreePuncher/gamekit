@@ -1387,6 +1387,8 @@ namespace FlexKit
 			{
 				return *(reinterpret_cast<TY*>(Data));
 			}
+
+			operator UpdateTask* () const { return (UpdateTask*)(this); }
 		};
 
 
