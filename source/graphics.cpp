@@ -1837,6 +1837,7 @@ namespace FlexKit
 				barrier.type = BarrierType::Buffer;
 				break;
 			case TextureDimension::Texture2D:
+			case TextureDimension::Texture2DArray:
 			{
 				barrier.type					= BarrierType::Texture;
 				barrier.texture.layoutAfter		= layout;
@@ -1844,7 +1845,6 @@ namespace FlexKit
 			}	break;
 			case TextureDimension::Texture1D:
 			case TextureDimension::Texture3D:
-			case TextureDimension::Texture2DArray:
 			case TextureDimension::TextureCubeMap:
 				DebugBreak();
 			}

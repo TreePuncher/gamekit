@@ -226,19 +226,6 @@ float2 VogelDiskSample2D(int sampleIndex, int samplesCount, float phi)
 	return float2(r * cosine, r * sine);
 }
 
-float2 VogelDiskSample2D(int sampleIndex, int samplesCount, float phi)
-{
-	float GoldenAngle = 2.4f;
-
-	float r		= sqrt(sampleIndex + 0.5f) / sqrt(samplesCount);
-	float theta	= sampleIndex * GoldenAngle + phi;
-
-	float sine, cosine;
-	sincos(theta, sine, cosine);
-
-	return float2(r * cosine, r * sine);
-}
-
 float2 ComputeReceiverPlaneDepthBias(float3 texCoordDX, float3 texCoordDY)
 {
 	float2 biasUV;
@@ -317,12 +304,27 @@ float3 SphereToVector(float2 UV)
 	return float3( sinPhi * cosTheta, sinPhi * sinTheta, cosPhi );
 }
 
+float square(in float a)
+{
+	return a * a;
+}
+
 float smoothDistanceAtt(float squaredDistance, float invSqrAttRadius)
 {
 	float factor		= squaredDistance * invSqrAttRadius;
 	float smoothFactor	= saturate(1.0f - factor * factor);
 
 	return smoothFactor * smoothFactor;
+}
+
+float CalcSearchWidth(float lightSize, float receiverDepth, float minZ)
+{
+	return lightSize * (receiverDepth - minZ) / receiverDepth;
+}
+
+float CalcPenumbraSize(in float lightSize, in float receiverDepth, in float blockerDepth)
+{
+	return lightSize * (receiverDepth - blockerDepth) / blockerDepth;
 }
 
 float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
@@ -373,7 +375,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		const float3 Lp			= mul(View, float4(light.PR.xyz, 1));
 		const float3 L			= normalize(Lp - positionVS);
 		const float  Ld			= length(Lp - positionVS);
-		const float  Li			= light.KI.w;
+		const float  Li			= light.KI.w / 2;
 		const float  Lr			= light.PR.w;
 		const float  ld_2		= Ld * Ld;
 		const float  La			= (Li / ld_2) * (1 - (pow(Ld, 10) / pow(Lr, 10)));
@@ -415,7 +417,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			}
 
 			const float3 colorSample = (diffuse * Kd + specular * Ks) * NdotL * La * Lc;
-			color += max(float4(colorSample, 0), 0) * t;
+			color += max(float4(colorSample, 0.0f), 0.0f) * t;
 			break;
 		}
 		case 1: // Spot light
@@ -424,8 +426,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			const float lightAngleScale		= asfloat(light.TypeExtra[1]);
 			const float lightAngleOffset	= asfloat(light.TypeExtra[2]);
 
-			float a = saturate(dp * lightAngleScale + lightAngleOffset);
-			a *= a;
+			const float a = square(saturate(dp * lightAngleScale + lightAngleOffset));
 
 			const float3	v_WS		= mul(ViewI, -L);
 			const float4	SC			= mul(shadowMatrices[lightIdx], float4(positionWS, 1));
@@ -436,21 +437,71 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 				shadowMapUV.y < 0.0f || shadowMapUV.y > 1.0f)
 				continue;
 
+			float		lightSize		= 0.5;
 			float		shadowing		= 0;
 			float		gradientNoise	= InterleavedGradientNoise(px);
 			const float	depth			= length(positionVS - Lp) / Lr;
 
-			uint sampleCount = 16;
-			for (uint i = 0; i < sampleCount; i++)
+#if 1
+			const uint blockerSampleCount	= 16;
+			const float maxSearchDistance	= (sqrt(blockerSampleCount + 0.5f) / sqrt(blockerSampleCount)) / 10.0f;
+			const float searchWidth			= CalcSearchWidth(lightSize, depth, 0.1f);
+			float blockerDistance			= 0.0f;
+			uint blockerCount				= 0;
+
+			for (uint i = 0; i < blockerSampleCount; i++)
 			{
-				const float		penumbraFilterMaxSize	= 0.0025f;
-				const float2	sampleUVOffset			= VogelDiskSample2D(i, sampleCount, gradientNoise);
+				const float		penumbraFilterMaxSize	= 1.0f;
+				const float2	sampleUVOffset			= searchWidth * VogelDiskSample2D(i, blockerSampleCount, gradientNoise + lightIdx) * maxSearchDistance;
 				const float2	sampleUV				= clamp(shadowMapUV + sampleUVOffset * penumbraFilterMaxSize, 0.0f, 1.0f);
+				const float		expDepth				= shadowMaps[NonUniformResourceIndex(lightIdx)].Sample(BiLinear, float3(sampleUV, 0.0f));
 
-				const float	expDepth = shadowMaps[NonUniformResourceIndex(lightIdx)].Sample(BiLinear, float3(sampleUV, 0.0f));
-
-				shadowing += saturate(ExponentialShadowSample(expDepth, depth)) / sampleCount;
+				if (ExponentialShadowSample(expDepth, depth) < 1.0f)
+				{
+					const float sampleDepth = log(expDepth) / 80.0f;
+					blockerDistance += sampleDepth;
+					blockerCount++;
+				}
 			}
+
+			if (blockerCount == 0)
+				shadowing = 1.0f;
+			else
+			{
+				blockerDistance /= blockerCount;
+
+				const float penumbraSize	= CalcPenumbraSize(lightSize, depth, blockerDistance);
+				const float sampleCount		= penumbraSize < 0.5f ? 16 : 32;// clamp(16, 64, lerp(1, 64, (blockerDistance - depth) * 4.0f));
+
+				for (uint j = 0; j < sampleCount; j++)
+				{
+					const float		penumbraFilterMaxSize	= 0.05f;
+					const float2	sampleUVOffset			= VogelDiskSample2D(j, sampleCount, gradientNoise) * penumbraSize;
+					const float2	sampleUV				= clamp(shadowMapUV + sampleUVOffset * penumbraFilterMaxSize, 0.0f, 1.0f);
+
+					const float	expDepth = shadowMaps[NonUniformResourceIndex(lightIdx)].Sample(BiLinear, float3(sampleUV, 0.0f));
+					shadowing += saturate(step(1.0f, ExponentialShadowSample(expDepth, depth))) / sampleCount;
+				}
+			}
+#else
+			//s1 ---- s2
+			//|		   |
+			//|		   |
+			//|		   |
+			//s3 ---- s4
+
+			const float pixelWidth		= 3.5f;
+			const float sampleWidth		= (0.5f / 1024.0f) * pixelWidth;
+			const float2 sampleWindow	= float2(sampleWidth, sampleWidth);
+			const float	sample1	= shadowMaps[NonUniformResourceIndex(lightIdx)].Sample(BiLinear, float3(clamp(shadowMapUV - sampleWindow,								0.0, 1.0f), 0.0f));
+			const float	sample2 = shadowMaps[NonUniformResourceIndex(lightIdx)].Sample(BiLinear, float3(clamp(shadowMapUV + float2(sampleWindow.x, -sampleWindow.y),	0.0, 1.0f), 0.0f));
+			const float	sample3 = shadowMaps[NonUniformResourceIndex(lightIdx)].Sample(BiLinear, float3(clamp(shadowMapUV - float2(sampleWindow.x, -sampleWindow.y),	0.0, 1.0f), 0.0f));
+			const float	sample4 = shadowMaps[NonUniformResourceIndex(lightIdx)].Sample(BiLinear, float3(clamp(shadowMapUV + sampleWindow,								0.0, 1.0f), 0.0f));
+
+			const float temp = (sample4 - sample3 - sample2 + sample1) / (pixelWidth * pixelWidth);
+			
+			shadowing = saturate(ExponentialShadowSample(exp(80.0f * temp), depth));
+#endif
 
 			const float3	colorSample = (diffuse * Kd + specular * Ks) * NdotL * INV_PI * La * a * dp;
 			color += float4(max(colorSample, 0), 0) * shadowing;

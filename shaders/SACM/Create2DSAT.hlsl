@@ -1,48 +1,97 @@
-Texture2DArray<float>		input	: register(s0);
-RWTexture2DArray<float>		output : register(u0);
+RWTexture2DArray<float>		target : register(u0);
 
-[numthreads(32, 32, 1)]
-void ColumnSumsMain(
-	const int3	groupID     : SV_GroupThreadID, 
-	const int3	group       : SV_GroupID, 
-	uint3		globalID    : SV_DispatchThreadID, 
-	uint		threadID    : SV_GroupIndex)
+#define BLOCKSIZE 1024
+
+groupshared float array[BLOCKSIZE];
+
+void ParallelPreFixSum(const uint threadID)
 {
-	const uint arrayIdx			= group.z;
-	float f = 0;
+	// https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda
+	GroupMemoryBarrierWithGroupSync();
 
-	const uint quadrant = (group.x > 15) + ((group.y > 15) ? 2 : 0);
-
-	static const int blurWidth = 0;
-	for (int x = -blurWidth / 2; x < blurWidth / 2; x++)
-		for (int y = -blurWidth / 2; y < blurWidth / 2; y ++)
-				f += input.Load(int4(globalID.xy + int2(x, y), arrayIdx, 0)) / (blurWidth * blurWidth);
-
-	if(blurWidth == 0)
-		f = input.Load(int4(globalID.xy, arrayIdx, 0));
-
-	const int2 outputOffset	= int2(1 + (group.x > 15), 1 + (group.y > 15));
-
-	//-, +
-	//+, -
-
-	switch (quadrant)
+	// Up-Sweep
+	for (uint D = 0; D < log2(BLOCKSIZE - 1); D++)
 	{
-	case 0: // Upper Left
-	{
-		output[int3(outputOffset + globalID.xy, arrayIdx)] = f;
-	}	break;
-	case 1: // Upper Right
-	{
-		output[int3(outputOffset + globalID.xy, arrayIdx)] = f;
-	}	break;
-	case 2: // Lower Left
-	{
-		output[int3(outputOffset + globalID.xy, arrayIdx)] = f;
-	}	break;
-	case 3: // Lower Right
-	{
-		output[int3(outputOffset + globalID.xy, arrayIdx)] = f;
-	}	break;
+		const uint step = pow(2, D + 1);
+		const uint K = threadID * step;
+
+		if (threadID < BLOCKSIZE / step)
+		{
+			const uint lhsIdx = K + pow(2, D) - 1;
+			const uint rhsIdx = K + step - 1;
+
+			array[rhsIdx] = array[lhsIdx] + array[rhsIdx];
+		}
+
+		GroupMemoryBarrierWithGroupSync();
 	}
+
+	if (threadID == 0)
+		array[BLOCKSIZE - 1] = 0;
+
+	GroupMemoryBarrierWithGroupSync();
+
+	// Down-Sweep
+	uint step = BLOCKSIZE;
+	for (int I = 0; I < log2(BLOCKSIZE - 1); I++)
+	{
+		step = step >> 1;
+
+		if (threadID <= 1 << I)
+		{
+			const uint ai = step * (threadID * 2 + 1) - 1;
+			const uint bi = step * (threadID * 2 + 2) - 1;
+
+			const float temp = array[ai];
+
+			array[ai] = array[bi];
+			array[bi] += temp;
+		}
+
+		GroupMemoryBarrierWithGroupSync();
+	}
+}
+
+[numthreads(1024, 1, 1)]
+void RowSumsMain(
+	const int3	groupID		: SV_GroupThreadID, 
+	const int3	group		: SV_GroupID, 
+	uint3		globalID	: SV_DispatchThreadID, 
+	uint		threadID	: SV_GroupIndex)
+{
+	const uint row		= group.y;
+
+	float temp		= target.Load(int4(threadID, row, 0, 0));
+	array[threadID]	= temp;
+
+	GroupMemoryBarrierWithGroupSync();
+
+	ParallelPreFixSum(threadID);
+
+	GroupMemoryBarrierWithGroupSync();
+
+	temp = array[threadID];
+	target[int3(threadID, row, 0)] = temp;
+}
+
+
+[numthreads(1024, 1, 1)]
+void ColumnSumsMain(
+	const int3	groupID		: SV_GroupThreadID,
+	const int3	group		: SV_GroupID,
+	uint3		globalID	: SV_DispatchThreadID,
+	uint		threadID	: SV_GroupIndex)
+{
+	const uint column	= group.x;
+
+	float temp		= target.Load(int4(column, threadID, 0, 0));
+	array[threadID] = temp;
+
+	GroupMemoryBarrierWithGroupSync();
+
+	ParallelPreFixSum(threadID);
+
+	GroupMemoryBarrierWithGroupSync();
+
+	target[int3(column, threadID, 0)] = array[threadID];
 }

@@ -82,7 +82,7 @@ namespace FlexKit
 		ImGui::CreateContext();
 		ImPlot::CreateContext();
 
-		ImPlot::GetStyle().AntiAliasedLines = true;
+		//ImPlot::GetStyle().AntiAliasedLines = true;
 
 		FlexKit::CopyContextHandle  uploadQueue = renderSystem.ImmediateUpload;
 		ImGuiIO& io                     = ImGui::GetIO();
@@ -113,7 +113,7 @@ namespace FlexKit
 
 	ImGUIIntegrator::~ImGUIIntegrator()
 	{
-		ImPlot::DestroyContext();
+		ImPlot:: DestroyContext();
 		ImGui::DestroyContext();
 	}
 

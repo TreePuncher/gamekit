@@ -30,7 +30,7 @@ cbuffer DrawConstants : register(b3)
 struct Vertex
 {
 	float4	pos					: SV_POSITION;
-	float3	pos_VS				: POSITION_VS;
+	float	length				: LENGTH;
 	uint	arrayTargetIndex	: SV_RenderTargetArrayIndex;
 };
 
@@ -42,7 +42,7 @@ Vertex VS_Main(float3 POS : POSITION)
 
 	Vertex Out;
 	Out.pos					= POS_DC;
-	Out.pos_VS				= POS_VS;
+	Out.length				= exp(80.0f * length(POS_VS) / maxZ);
 	Out.arrayTargetIndex	= arrayTarget;
 
 	return Out;
@@ -79,7 +79,7 @@ Vertex VS_Skinned_Main(Skinned_Vertex IN)
 
 	Vertex Out;
 	Out.pos					= POS_DC;
-	Out.pos_VS				= POS_VS;
+	Out.length				= exp(80.0f * length(POS_VS) / maxZ);
 	Out.arrayTargetIndex	= arrayTarget;
 
 	return Out;
@@ -100,5 +100,5 @@ float2 ComputeMoments(const float depth)
 
 float PS_Main(Vertex IN, const bool frontFacing : SV_IsFrontFace) : SV_TARGET0
 {
-	return exp(80.0f * (length(IN.pos_VS)) / maxZ);
+	return IN.length;
 }

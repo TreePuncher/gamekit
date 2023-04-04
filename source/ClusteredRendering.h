@@ -194,7 +194,6 @@ namespace FlexKit
 		const LightGatherTask&			lights;
 		LightBufferUpdate&				lightPass;
 		const LightShadowGatherTask&	pointLightShadowMaps;
-		//ShadowMapPassData&			shadowMaps;
 
 		const Vector<LightHandle>* pointLightHandles;
 

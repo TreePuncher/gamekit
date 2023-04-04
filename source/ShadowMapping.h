@@ -68,7 +68,8 @@ namespace FlexKit
 	constexpr PSOHandle SHADOWMAPPASS				= PSOHandle(GetTypeGUID(SHADOWMAPPASS));
 	constexpr PSOHandle SHADOWMAPANIMATEDPASS		= PSOHandle(GetTypeGUID(SHADOWMAPANIMATEDPASS));
 
-	constexpr PSOHandle BUILD2DSAT					= PSOHandle(GetTypeGUID(BUILD2DSAT));
+	constexpr PSOHandle BUILDROWSUMS				= PSOHandle(GetTypeGUID(BUILDROWSUMS));
+	constexpr PSOHandle BUILDCOLUMNSUMS				= PSOHandle(GetTypeGUID(BUILDCOLUMNSUMS));
 
 	constexpr PassHandle ShadowMapPassID			= PassHandle{ GetTypeGUID(SHADOWMAPPASS) };
 	constexpr PassHandle ShadowMapAnimatedPassID	= PassHandle{ GetTypeGUID(SHADOWMAPANIMATEDPASS) };
@@ -142,7 +143,8 @@ namespace FlexKit
 		ID3D12PipelineState* CreateShadowMapPass(RenderSystem* RS);
 		ID3D12PipelineState* CreateShadowMapAnimatedPass(RenderSystem* RS);
 
-		ID3D12PipelineState* Fill2DPlanes(RenderSystem* RS);
+		ID3D12PipelineState* CreateRowSums(RenderSystem* RS);
+		ID3D12PipelineState* CreateColumnSums(RenderSystem* RS);
 
 		FlexKit::RootSignature rootSignature;
 	};
