@@ -9,14 +9,34 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
-	ID3D12PipelineState* ShadowMapper::Fill2DPlanes(RenderSystem* RS)
+	ID3D12PipelineState* ShadowMapper::CreateRowSums(RenderSystem* RS)
 	{
-		auto CShader = RS->LoadShader("ColumnSumsMain", "cs_6_0", "assets\\shaders\\SACM\\Create2DSAT.hlsl");
+		auto CShader = RS->LoadShader("RowSumsMain", "cs_6_0", "assets\\shaders\\SACM\\Create2DSAT.hlsl");
 
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_Desc = {};
 		PSO_Desc.pRootSignature	= rootSignature;
 		PSO_Desc.CS				= CShader;
+
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = RS->pDevice->CreateComputePipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		return PSO;
+	}
+
+
+	/************************************************************************************************/
+
+
+	ID3D12PipelineState* ShadowMapper::CreateColumnSums(RenderSystem* RS)
+	{
+		auto CShader = RS->LoadShader("ColumnSumsMain", "cs_6_0", "assets\\shaders\\SACM\\Create2DSAT.hlsl");
+
+
+		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_Desc = {};
+		PSO_Desc.pRootSignature = rootSignature;
+		PSO_Desc.CS = CShader;
 
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateComputePipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
@@ -190,7 +210,7 @@ namespace FlexKit
 			const XMMATRIX perspective      = DirectX::XMMatrixPerspectiveFovRH(DegreetoRad(90.0f), 1, 0.01f, r);
 			const XMMATRIX PV               = DirectX::XMMatrixTranspose(perspective) * XMMatrixTranspose(View);
 
-			out.PV[I]       = XMMatrixToFloat4x4(PV);
+			out.PV[I]       = XMMatrixToFloat4x4(PV).Transpose();
 			out.ViewI[I]    = XMMatrixToFloat4x4(ViewI);
 			out.View[I]     = XMMatrixToFloat4x4(View);
 		}
@@ -266,8 +286,7 @@ namespace FlexKit
 		resourcePool    { &allocator }
 	{
 		DesciptorHeapLayout heapLayout;
-		heapLayout.SetParameterAsSRV(0, 0, 1);			// input
-		heapLayout.SetParameterAsShaderUAV(1, 0, 1);	// output
+		heapLayout.SetParameterAsShaderUAV(0, 0, 1);	// output
 
 		rootSignature.AllowIA = true;
 		rootSignature.AllowSO = false;
@@ -281,8 +300,8 @@ namespace FlexKit
 
 		renderSystem.RegisterPSOLoader(SHADOWMAPPASS,			{ &rootSignature, [&](RenderSystem* rs) { return CreateShadowMapPass(rs); }});
 		renderSystem.RegisterPSOLoader(SHADOWMAPANIMATEDPASS,	{ &rootSignature, [&](RenderSystem* rs) { return CreateShadowMapAnimatedPass(rs); } });
-
-		renderSystem.RegisterPSOLoader(BUILD2DSAT,				{ &rootSignature, [&](RenderSystem* rs) { return Fill2DPlanes(rs); } });
+		renderSystem.RegisterPSOLoader(BUILDROWSUMS,			{ &rootSignature, [&](RenderSystem* rs) { return CreateRowSums(rs); } });
+		renderSystem.RegisterPSOLoader(BUILDCOLUMNSUMS,			{ &rootSignature, [&](RenderSystem* rs) { return CreateColumnSums(rs); } });
 	}
 
 
@@ -357,7 +376,7 @@ namespace FlexKit
 						{
 						case LightType::PointLight:
 						{
-							auto desc		= GPUResourceDesc::CubeMap({ ShadowMapSize, ShadowMapSize }, DeviceFormat::R32_FLOAT, 1, true);
+							auto desc		= GPUResourceDesc::CubeMapUAV({ ShadowMapSize, ShadowMapSize }, DeviceFormat::R32_FLOAT, 1, true);
 							desc.clearValue = clearValue;
 
 							auto [shadowMap, _] = shadowMapAllocator.Acquire(desc, false);
@@ -373,9 +392,6 @@ namespace FlexKit
 						{
 							auto desc		= GPUResourceDesc::UAVTexture({ ShadowMapSize, ShadowMapSize }, DeviceFormat::R32_FLOAT, true);
 							desc.clearValue = clearValue;
-
-							auto [shadowMap, _] = shadowMapAllocator.Acquire(desc, false);
-							light.shadowMap		= shadowMap;
 
 							auto [shadowMap, _] = shadowMapAllocator.Acquire(desc, false);
 							light.shadowMap		= shadowMap;
@@ -534,10 +550,6 @@ namespace FlexKit
 					break;
 				case LightType::SpotLight:
 					BuildSummedAreaTable(passTarget, resources, ctx, allocator);
-					ctx.AddTextureBarrier(passTarget,
-						DASRenderTarget,			DASPixelShaderResource,
-						DeviceLayout_RenderTarget,	DeviceLayout_ShaderResource,
-						Sync_RenderTarget,			Sync_PixelShader);
 					break;
 				}
 
@@ -624,7 +636,6 @@ namespace FlexKit
 		};
 
 		auto shadowMapPSO	= resources.GetPipelineState(SHADOWMAPPASS);
-		auto Build2DSATPSO	= resources.GetPipelineState(SHADOWMAPPASS);
 
 		ctx.SetPipelineState(shadowMapPSO);
 		ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
@@ -980,7 +991,39 @@ namespace FlexKit
 
 	void ShadowMapper::BuildSummedAreaTable(ResourceHandle target, FrameResources& resources, Context& ctx, iAllocator& allocator)
 	{
+#if 0 
+		auto rowPSO		= resources.GetPipelineState(BUILDROWSUMS);
+		auto columnPSO	= resources.GetPipelineState(BUILDCOLUMNSUMS);
 
+		ctx.SetComputeRootSignature(rootSignature);
+
+
+		ctx.AddTextureBarrier(target,
+			DASRenderTarget,			DASUAV,
+			DeviceLayout_RenderTarget,	DeviceLayout_UnorderedAccess,
+			Sync_RenderTarget,			Sync_Compute);
+
+		DescriptorHeap heap{ ctx, rootSignature.GetDescHeap(0), allocator };
+		heap.SetUAVTexture(ctx, 0, target);
+
+		ctx.SetComputeDescriptorTable(4, heap);
+		ctx.Dispatch(rowPSO, { 1, 1024, 1});
+
+		ctx.AddUAVBarrier(target, -1, DeviceLayout_UnorderedAccess);
+
+		ctx.Dispatch(columnPSO, { 1024, 1, 1 });
+
+		ctx.AddTextureBarrier(target,
+			DASUAV,							DASPixelShaderResource,
+			DeviceLayout_UnorderedAccess,	DeviceLayout_ShaderResource,
+			Sync_Compute,					Sync_PixelShader);
+#else
+	ctx.AddTextureBarrier(target,
+		DASRenderTarget,			DASPixelShaderResource,
+		DeviceLayout_RenderTarget,	DeviceLayout_ShaderResource,
+		Sync_RenderTarget,			Sync_PixelShader);
+
+#endif
 	}
 
 

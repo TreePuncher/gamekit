@@ -473,7 +473,6 @@ bool PhysicsTest::EventHandler(FlexKit::Event evt)
 					return true;
 				case KC_T:
 					framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
-					framework.core.RenderSystem.QueuePSOLoad(BUILD2DSAT);
 					framework.core.RenderSystem.QueuePSOLoad(SHADOWMAPPASS);
 					framework.core.RenderSystem.QueuePSOLoad(SHADOWMAPANIMATEDPASS);
 					return true;

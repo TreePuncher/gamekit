@@ -174,8 +174,9 @@ public:
 
 		for (auto& queryRes : scene.Query(framework.core.GetBlockMemory(), LightQuery{}))
 		{
-			auto& [lightView] = queryRes.value();
+			const auto& [lightView] = queryRes.value();
 
+			Pitch(lightView.GetNode(), dT * pi / 4);
 			Yaw(lightView.GetNode(), dT * pi / 4);
 		}
 
@@ -185,10 +186,10 @@ public:
 		ImGui::SetNextWindowPos({ (float)renderWindow.WH[0] - 600.0f, 0 });
 		ImGui::SetNextWindowSize({ 600, 400 });
 
-		ImGui::Begin("Debug Stats", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
-		ImGui::Text("Hello world!");
+		//ImGui::Begin("Debug Stats", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
+		//ImGui::Text("Hello world!");
 
-		ImGui::End();
+		//ImGui::End();
 		ImGui::EndFrame();
 		ImGui::Render();
 
@@ -277,7 +278,8 @@ public:
 							{
 							case KC_R:
 								framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
-								framework.core.RenderSystem.QueuePSOLoad(BUILD2DSAT);
+								framework.core.RenderSystem.QueuePSOLoad(BUILDROWSUMS);
+								framework.core.RenderSystem.QueuePSOLoad(BUILDCOLUMNSUMS);
 								framework.core.RenderSystem.QueuePSOLoad(SHADOWMAPPASS);
 								framework.core.RenderSystem.QueuePSOLoad(SHADOWMAPANIMATEDPASS);
 								return true;

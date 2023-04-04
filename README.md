@@ -27,6 +27,7 @@ Hit F7 to build. Vcpkg will grab all other dependencies.
 ![Clustered Light Culling](/screenshots/CLC.jpg)
 ### PCF Shadow Mapping
 ![PCF Shadow Mapping](/screenshots/PCFShadowMapping.jpg)
+![Contact hardening with PCSS](/screenshots/PercentageCloserSoftShadows.jpg)
 ### Streaming Tiled Textures
 ![TextureStreaming And Tiled Resources](/screenshots/StreamingTiledTextures.jpg)
 ### Basic Profiler

@@ -23,8 +23,8 @@
 #include <algorithm>
 #include <concepts>
 #include <string>
-#include <directx/d3d12.h>
-#include <directx/d3d12sdklayers.h>
+#include <d3d12.h>
+#include <d3d12sdklayers.h>
 #include <DirectXMath/DirectXMath.h>
 #include <dxgi1_6.h>
 #include <concepts>
@@ -174,7 +174,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		Sync_Draw,
 		Sync_Compute,
 
-		Sync_InputAssmebler,
 		Sync_VertexShader,
 		Sync_PixelShader,
 		Sync_DepthStencil,
@@ -477,8 +476,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				return D3D12_BARRIER_SYNC_DRAW;
 			case Sync_Compute:
 				return D3D12_BARRIER_SYNC_COMPUTE_SHADING;
-			case Sync_InputAssmebler:
-				return D3D12_BARRIER_SYNC_INPUT_ASSEMBLER;
 			case Sync_VertexShader:
 				return D3D12_BARRIER_SYNC_VERTEX_SHADING;
 			case Sync_PixelShader:
@@ -2809,10 +2806,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			};
 		}
 
-		static GPUResourceDesc CubeMapUAV(uint2 WH, DeviceFormat format, uint8_t mipCount, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
+		static GPUResourceDesc CubeMapUAV(uint2 WH, DeviceFormat format, uint8_t mipCount, bool renderTarget = false, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
 		{
 			 return {
-				.type			= ResourceType::UnorderedAccessRenderTarget,
+				.type			= renderTarget ? ResourceType::UnorderedAccessRenderTarget : ResourceType::UnorderedAccess,
 				.Dimensions		= TextureDimension::TextureCubeMap,
 				.allocationType = allocationType,
 				.format			= format,
