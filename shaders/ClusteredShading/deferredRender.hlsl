@@ -226,6 +226,19 @@ float2 VogelDiskSample2D(int sampleIndex, int samplesCount, float phi)
 	return float2(r * cosine, r * sine);
 }
 
+float2 VogelDiskSample2D(int sampleIndex, int samplesCount, float phi)
+{
+	float GoldenAngle = 2.4f;
+
+	float r		= sqrt(sampleIndex + 0.5f) / sqrt(samplesCount);
+	float theta	= sampleIndex * GoldenAngle + phi;
+
+	float sine, cosine;
+	sincos(theta, sine, cosine);
+
+	return float2(r * cosine, r * sine);
+}
+
 float2 ComputeReceiverPlaneDepthBias(float3 texCoordDX, float3 texCoordDY)
 {
 	float2 biasUV;
