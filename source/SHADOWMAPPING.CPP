@@ -54,7 +54,7 @@ namespace FlexKit
 
 		D3D12_RASTERIZER_DESC Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		Rast_Desc.FillMode = D3D12_FILL_MODE_SOLID;
-		Rast_Desc.CullMode = D3D12_CULL_MODE_FRONT;
+		Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
@@ -116,7 +116,7 @@ namespace FlexKit
 
 		D3D12_RASTERIZER_DESC Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		Rast_Desc.FillMode = D3D12_FILL_MODE_SOLID;
-		Rast_Desc.CullMode = D3D12_CULL_MODE_FRONT;
+		Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
 
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -190,7 +190,7 @@ namespace FlexKit
 			const XMMATRIX perspective      = DirectX::XMMatrixPerspectiveFovRH(DegreetoRad(90.0f), 1, 0.01f, r);
 			const XMMATRIX PV               = DirectX::XMMatrixTranspose(perspective) * XMMatrixTranspose(View);
 
-			out.PV[I]       = XMMatrixToFloat4x4(PV).Transpose();
+			out.PV[I]       = XMMatrixToFloat4x4(PV);
 			out.ViewI[I]    = XMMatrixToFloat4x4(ViewI);
 			out.View[I]     = XMMatrixToFloat4x4(View);
 		}
@@ -373,6 +373,9 @@ namespace FlexKit
 						{
 							auto desc		= GPUResourceDesc::UAVTexture({ ShadowMapSize, ShadowMapSize }, DeviceFormat::R32_FLOAT, true);
 							desc.clearValue = clearValue;
+
+							auto [shadowMap, _] = shadowMapAllocator.Acquire(desc, false);
+							light.shadowMap		= shadowMap;
 
 							auto [shadowMap, _] = shadowMapAllocator.Acquire(desc, false);
 							light.shadowMap		= shadowMap;
