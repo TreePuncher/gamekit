@@ -678,8 +678,9 @@ void PointLightEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 			"Point Light",
 			"Spot Light",
 			"Directional Light",
-			"Spot Light No Shadows",
+			"Point Light No Shadows",
 			"Spot light No Shadows",
+			"Spot light Basic Shadows",
 		};
 
 		panelCtx.AddComboBox(

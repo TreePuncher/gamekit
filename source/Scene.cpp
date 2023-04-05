@@ -362,6 +362,8 @@ namespace FlexKit
 		switch (type)
 		{
 		case LightType::SpotLight:
+		case LightType::SpotLightNoShadows:
+		case LightType::SpotLightBasicShadows:
 		{
 			const float innerCos = cos(Min(outerAngle / 2.0f, innerAngle / 2.0f));
 			const float outerCos = cos(outerAngle / 2.0f);
@@ -1618,13 +1620,14 @@ namespace FlexKit
 						});
 				}	break;
 				case LightType::SpotLight:
+				case LightType::SpotLightBasicShadows:
 				{
 					const auto position	= GetPositionW(light.node);
 					const auto q		= GetOrientation(light.node);
 
 					const Cone c{
 						.O		= position,
-						.D		= q.Inverse() * float3{ 0, 0, -1 },
+						.D		= q * float3{ 0, 0, -1 },
 						.length	= light.R,
 						.theta	= light.outerAngle
 					};
