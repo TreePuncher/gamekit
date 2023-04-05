@@ -150,7 +150,9 @@ namespace FlexKit
 		PointLight,
 		SpotLight,
 		Direction,
-		PointLightNoShadows
+		PointLightNoShadows,
+		SpotLightNoShadows,
+		SpotLightBasicShadows,
 	};
 
 	struct Light

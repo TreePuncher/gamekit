@@ -141,18 +141,23 @@ public:
 
 		auto res = scene.Query(framework.core.GetBlockMemory(), LightQuery{}, GameObjectReq{});
 
-		/*
 		for (auto&& [idx, queryRes] : zip(iota(0),  res))
 		{
 			auto& [lightView, gameObject] = queryRes.value();
-			lightView.SetType(LightType::SpotLight);
 			lightView.SetRadius(250.0f);
-			lightView.SetIntensity(500000.0f);
+			lightView.SetIntensity(50000.0f);
 			lightView.SetOuterAngle((float)pi / 4.0f);
 			lightView.SetOuterAngle((float)pi / 1.5f);
-			SetOrientation(lightView.GetNode(), Quaternion{ 45.0f, 0, 0.0f });
+			lightView.SetType(LightType::SpotLightBasicShadows);
+			SetOrientation(lightView.GetNode(), Quaternion{ 0, 45.0f, 0.0f });
 		}
-		*/
+
+		{
+			//auto& [lightView, gameObject] = res[0].value();
+			//lightView.SetType(LightType::PointLight);
+			//lightView.SetIntensity(5000.0f);
+		}
+
 		if (res.size())
 		{
 			auto& [pointLightView, gameObject] = res.front().value();
@@ -178,7 +183,7 @@ public:
 			const auto& [lightView] = queryRes.value();
 
 			//Pitch(lightView.GetNode(), dT * pi / 4);
-			//Yaw(lightView.GetNode(), dT * pi / 4);
+			Yaw(lightView.GetNode(), dT * pi / 4);
 
 			//lightView.SetSize(std::cos(t) / 4.0f + 0.25);
 		}

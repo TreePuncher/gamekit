@@ -482,6 +482,52 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			const float3 colorSample = (diffuse * Kd + specular * Ks) * NdotL * La * INV_PI;
 			color += float4(max(colorSample, 0), 0);
 		}	break;
+		case 4: // Spot Light no shadows
+		{
+			const float	dp					= saturate(dot(L, mul(View, light.DS.xyz)));
+			const float lightAngleScale		= asfloat(light.TypeExtra[1]);
+			const float lightAngleOffset	= asfloat(light.TypeExtra[2]);
+			const float lightSize			= asfloat(light.TypeExtra[3]);
+
+			const float a = square(saturate(dp * lightAngleScale + lightAngleOffset));
+
+			const float3	colorSample = (diffuse * Kd + specular * Ks) * NdotL * INV_PI * La * a * dp;
+			color += float4(max(colorSample, 0), 0);
+		}	break;
+		case 5:	// Spot light basic PCF shadows
+		{
+			const float	dp					= saturate(dot(L, mul(View, light.DS.xyz)));
+			const float lightAngleScale		= asfloat(light.TypeExtra[1]);
+			const float lightAngleOffset	= asfloat(light.TypeExtra[2]);
+
+			const float a = square(saturate(dp * lightAngleScale + lightAngleOffset));
+
+			const float3	v_WS		= mul(ViewI, -L);
+			const float4	SC			= mul(shadowMatrices[lightIdx], float4(positionWS, 1));
+			const float3	N_DC		= SC.xyz / SC.w;
+			const float2	shadowMapUV = float2(0.5f + N_DC.x / 2.0f, 0.5f - N_DC.y / 2.0f);
+
+			if (shadowMapUV.x < 0.0f || shadowMapUV.x > 1.0f |
+				shadowMapUV.y < 0.0f || shadowMapUV.y > 1.0f)
+				continue;
+
+			float		shadowing		= 0;
+			float		gradientNoise	= InterleavedGradientNoise(px);
+			const float	depth			= length(positionVS - Lp) / Lr;
+			const float sampleCount		= 16;
+
+			for (uint j = 0; j < 16; j++)
+			{
+				const float2	sampleUVOffset			= 5.0f / 1024.0f * VogelDiskSample2D(j, sampleCount, gradientNoise);
+				const float2	sampleUV				= clamp(shadowMapUV + sampleUVOffset, 0.0f, 1.0f);
+
+				const float	expDepth = shadowMaps[NonUniformResourceIndex(lightIdx)].Sample(BiLinear, float3(sampleUV, 0.0f));
+				shadowing += saturate(ExponentialShadowSample(expDepth, depth)) / sampleCount;
+			}
+
+			const float3 colorSample = (diffuse * Kd + specular * Ks) * NdotL * INV_PI * La * a * dp;
+			color += float4(max(colorSample, 0), 0) * shadowing;
+		}	break;
 		}
 	}
 

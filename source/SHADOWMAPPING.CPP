@@ -225,7 +225,7 @@ namespace FlexKit
 	ShadowMapMatrices CalculateSpotLightMatrices(const float3 pos, const Quaternion q, const float r, const float a)
 	{
 		const XMMATRIX viewOrientation	= DirectX::XMMatrixRotationQuaternion(q);
-		const XMMATRIX viewI			= viewOrientation * DirectX::XMMatrixTranslationFromVector(pos);
+		const XMMATRIX viewI			= DirectX::XMMatrixTranspose(viewOrientation) * DirectX::XMMatrixTranslationFromVector(pos);
 		const XMMATRIX view				= DirectX::XMMatrixInverse(nullptr, viewI);
 		const XMMATRIX perspective		= DirectX::XMMatrixPerspectiveFovRH(a, 1, 0.01f, r);
 		const XMMATRIX pv				= DirectX::XMMatrixTranspose(perspective) * DirectX::XMMatrixTranspose(view);
@@ -389,6 +389,7 @@ namespace FlexKit
 							break;
 						}
 						case LightType::SpotLight:
+						case LightType::SpotLightBasicShadows:
 						{
 							auto desc		= GPUResourceDesc::UAVTexture({ ShadowMapSize, ShadowMapSize }, DeviceFormat::R32_FLOAT, true);
 							desc.clearValue = clearValue;
@@ -442,7 +443,7 @@ namespace FlexKit
 				{
 					auto& light = lights[lightHandle];
 
-					if (light.state != LightStateFlags::Dirty || light.shadowMap == InvalidHandle || light.type == LightType::PointLightNoShadows)
+					if (light.state != LightStateFlags::Dirty || light.shadowMap == InvalidHandle || light.type == LightType::PointLightNoShadows || light.type == LightType::SpotLightNoShadows)
 						continue;
 
 					passes.emplace_back(light.shadowMap, lightHandle, light.shadowState);
@@ -523,6 +524,7 @@ namespace FlexKit
 					RenderPointLightShadowMap(begin, end, pass, common, resources, ctx, allocator);
 				}	break;
 				case LightType::SpotLight:
+				case LightType::SpotLightBasicShadows:
 				{
 					const DepthStencilView_Options DSV_desc{ 0, 0, depthBuffer, 1 };
 
@@ -549,6 +551,7 @@ namespace FlexKit
 						Sync_RenderTarget,			Sync_PixelShader);
 					break;
 				case LightType::SpotLight:
+				case LightType::SpotLightBasicShadows:
 					BuildSummedAreaTable(passTarget, resources, ctx, allocator);
 					break;
 				}

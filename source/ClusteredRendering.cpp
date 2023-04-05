@@ -888,6 +888,7 @@ namespace FlexKit
 					{
 					case LightType::Direction:
 					case LightType::SpotLight:
+					case LightType::SpotLightBasicShadows:
 					{
 						const float3		position	= GetPositionW(light.node);
 						const Quaternion	Q			= GetOrientation(light.node);
@@ -1029,7 +1030,7 @@ namespace FlexKit
 						GPULight{
 							.KI					= { light.K, light.I },
 							.PositionR			= { WS_position, light.R },
-							.directionSpread	= { WS_orientation.Inverse() * float3{ 0, 0, 1 }, light.outerAngle },
+							.directionSpread	= { WS_orientation * float3{ 0, 0, 1 }, light.outerAngle },
 							.typeExtra			= { light.type, light.GetExtra() }
 						});
 				}
@@ -1688,6 +1689,7 @@ namespace FlexKit
 							descHeap.SetSRVCubemap(ctx, 10 + shadowMapIdx, light.shadowMap, DeviceFormat::R32_FLOAT);
 							break;
 						case LightType::SpotLight:
+						case LightType::SpotLightBasicShadows:
 						case LightType::Direction:
 							descHeap.SetSRV(ctx, 10 + shadowMapIdx, light.shadowMap, DeviceFormat::R32_FLOAT);
 							break;
