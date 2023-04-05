@@ -1627,6 +1627,9 @@ namespace FlexKit
 				const auto cameraConstants	= GetCameraConstants(camera);
 				const auto pointLightCount	= (uint32_t)visableLights.size();
 
+				if (!pointLightCount)
+					return;
+
 				struct ShadowMap
 				{
 					float4x4 PV;

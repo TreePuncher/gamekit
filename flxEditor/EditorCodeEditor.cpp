@@ -833,7 +833,7 @@ void EditorCodeEditor::LineCallback(asIScriptContext* ctx)
             int numVars = ctx->GetVarCount(stackLevel);
             for (int variableIdx = 0; variableIdx < numVars; variableIdx++)
             {
-                int typeId          = ctx->GetVarTypeId(variableIdx, stackLevel);
+                int typeId          = ctx->GetVar(variableIdx, stackLevel, nullptr);
                 auto variableDecl   = ctx->GetVarDeclaration(variableIdx, stackLevel);
 
 

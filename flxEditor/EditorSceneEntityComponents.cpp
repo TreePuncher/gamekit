@@ -141,11 +141,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Blob CreateLightComponent(float3 K, float2 IR)
+	Blob CreateLightComponent(float3 K, float2 IR, float innerAngle, float outerAngle, float size, uint type)
 	{
 		LightComponentBlob blob;
-		blob.IR		= IR;
-		blob.K		= K;
+		blob.IR			= IR;
+		blob.K			= K;
+		blob.innerAngle	= innerAngle;
+		blob.outerAngle	= outerAngle;
+		blob.size		= size;
+		blob.type		= type;
 
 		return blob;
 	}

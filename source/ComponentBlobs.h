@@ -95,8 +95,12 @@ namespace FlexKit
 		   GetTypeGUID(PointLight)
 		};
 
-		float2 IR;
-		float3 K;
+		float2	IR;
+		float3	K;
+		float	innerAngle;
+		float	outerAngle;
+		float	size;
+		uint8_t	type;
 	};
 
 

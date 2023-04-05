@@ -4,7 +4,8 @@
 #include "ViewportScene.h"
 #include "qtoolbox.h"
 #include <ranges>
-
+#include <qslider.h>
+#include <qcombobox.h>
 
 /************************************************************************************************/
 
@@ -244,6 +245,112 @@ QListWidget* ComponentViewPanelContext::AddList(ListSizeUpdateCallback size, Lis
 
 
 	return list;
+}
+
+
+/************************************************************************************************/
+
+
+QSlider* ComponentViewPanelContext::AddSliderHorizontal(std::string label, float minValue, float maxValue, SliderUpdateCallback update, SliderEventCallback callback)
+{
+	QSlider* newSlider = new QSlider{};
+
+	newSlider->setOrientation(Qt::Horizontal);
+
+	newSlider->setValue(0);
+	newSlider->setValue(100);
+
+
+	newSlider->connect(newSlider, &QSlider::valueChanged,
+		[minValue, maxValue, callback, newSlider](int tick)
+		{
+			const float step		= float(maxValue - minValue) / 100;
+			const float newValue	= minValue + step * tick;
+
+			callback(newValue);
+		});
+
+	auto timer = new QTimer{ newSlider };
+	newSlider->connect(
+		timer,
+		&QTimer::timeout,
+		[update, newSlider, minValue, maxValue]()
+		{
+			float	newValue	= update();
+			int		value		= ((newValue - minValue) / (maxValue - minValue)) * 100;
+			newSlider->setValue(value);
+		});
+
+	timer->start(250);
+
+	layoutStack.back()->addWidget(newSlider);
+
+	return newSlider;
+}
+
+
+/************************************************************************************************/
+
+
+QSlider* ComponentViewPanelContext::AddSliderVertical(std::string label, float minValue, float maxValue, SliderUpdateCallback update, SliderEventCallback callback)
+{
+	QSlider* newSlider = new QSlider{};
+
+	newSlider->setOrientation(Qt::Vertical);
+
+	newSlider->setValue(0);
+	newSlider->setValue(100);
+	newSlider->setTickInterval(1000);
+
+	newSlider->connect(newSlider, &QSlider::valueChanged,
+		[minValue, maxValue, callback](int tick)
+		{
+			const float step		= float(maxValue - minValue) / 1000.0f;
+			const float newValue	= minValue + step * tick;
+
+			callback(newValue);
+		});
+
+	auto timer = new QTimer{ newSlider };
+	newSlider->connect(
+		timer,
+		&QTimer::timeout,
+		[update, newSlider, minValue, maxValue]()
+		{
+			float	newValue	= update();
+			int		value		= ((newValue - minValue) / (maxValue - minValue)) * 1000;
+			newSlider->setValue(value);
+		});
+
+	timer->start(250);
+
+	layoutStack.back()->addWidget(newSlider);
+
+	return newSlider;
+}
+
+
+/************************************************************************************************/
+
+
+QComboBox* ComponentViewPanelContext::AddComboBox(std::span<const char*> items, ComboBoxUpdateCallback update, ComboBoxEventCallback onChange)
+{
+	QComboBox* comboBox = new QComboBox{};
+
+	for (auto item : items)
+		comboBox->addItem(item);
+
+	comboBox->setCurrentIndex(update());
+	comboBox->connect(comboBox, &QComboBox::currentIndexChanged,
+		[onChange, update, comboBox](int item)
+		{
+			onChange((uint32_t)item);
+			comboBox->setCurrentIndex(update());
+		});
+
+	layoutStack.back()->addWidget(comboBox);
+
+	return comboBox;
 }
 
 

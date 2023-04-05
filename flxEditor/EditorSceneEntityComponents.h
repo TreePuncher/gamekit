@@ -11,7 +11,7 @@ namespace FlexKit
 	Blob CreateSceneNodeComponent	(uint32_t nodeIdx);
 	Blob CreateIDComponent			(const std::string& string);
 	Blob CreateBrushComponent		(std::span<GUID_t> meshGUIDs);
-	Blob CreateLightComponent	(float3 K, float2 IR);
+	Blob CreateLightComponent		(float3 K, float2 IR, float innerAngle, float outerAngle, float size, uint type);
 
 
 	/************************************************************************************************/
@@ -246,24 +246,41 @@ namespace FlexKit
 
 		Blob GetBlob() override
 		{
-			return CreateLightComponent(K, float2{ I, R });
+			return CreateLightComponent(K, float2{ I, R }, innerRadius, outerRadius, size, type);
 		}
 
 		void Serialize(auto& ar)
 		{
 			EntityComponent::Serialize(ar);
 
-			uint32_t version = 1;
+			uint32_t version = 2;
 			ar& version;
 
-			ar& I;
-			ar& R;
-			ar& K;
+			switch (version)
+			{
+			case 2:
+				ar& innerRadius;
+				ar& outerRadius;
+				ar& size;
+				ar& type;
+
+			[[fallthrough]];
+			case 1:
+				ar& I;
+				ar& R;
+				ar& K;
+				break;
+			}
 		}
 
-		float	I;
-		float   R;
-		float3	K;
+		float	I;	// intensity
+		float	R;	// radius
+		float3	K;	// color
+
+		float	innerRadius = 0.0f;
+		float	outerRadius	= FlexKit::pi / 4;
+		float	size		= 0.25f;
+		uint	type		= 3;	// Light type, default is Point Light no shadows.
 
 	private:
 

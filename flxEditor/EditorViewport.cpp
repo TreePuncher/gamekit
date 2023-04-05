@@ -1569,7 +1569,7 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 						FlexKit::float2 UV;
 					};
 
-					const float3 position	= FlexKit::GetPositionW(pointLightComponnet[lightHandle].Position);
+					const float3 position	= FlexKit::GetPositionW(pointLightComponnet[lightHandle].node);
 					const float radius		= pointLightComponnet[lightHandle].R;
 
 					const size_t divisions  = 64;
