@@ -758,7 +758,7 @@ namespace FlexKit
 
 	bool DescriptorHeap::SetSRV(Context& ctx, size_t idx, ResourceHandle handle)
 	{
-		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
+		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 			return false;
 
 
@@ -782,7 +782,7 @@ namespace FlexKit
 
 	bool DescriptorHeap::SetSRVCubemap(Context& ctx, size_t idx, ResourceHandle	handle)
 	{
-		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
+		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 			return false;
 
 		FillState[idx] = true;
@@ -832,7 +832,7 @@ namespace FlexKit
 
 	bool DescriptorHeap::SetSRV(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
-		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
+		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 			return false;
 
 		FillState[idx] = true;
@@ -857,7 +857,7 @@ namespace FlexKit
 
 	bool DescriptorHeap::SetSRV(Context& ctx, size_t idx, ResourceHandle handle, uint MipOffset, DeviceFormat format)
 	{
-		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
+		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 			return false;
 
 		FillState[idx] = true;
@@ -883,7 +883,7 @@ namespace FlexKit
 
 	bool DescriptorHeap::SetSRVArray(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
-		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
+		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 			return false;
 
 		FillState[idx] = true;
@@ -908,7 +908,7 @@ namespace FlexKit
 
 	bool DescriptorHeap::SetSRV3D(Context& ctx, size_t idx, ResourceHandle resource)
 	{
-		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
+		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || resource == InvalidHandle)
 			return false;
 
 		FillState[idx] = true;
@@ -962,14 +962,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetCBV(Context& ctx, size_t idx, ConstantBufferHandle	Handle, size_t offset, size_t bufferSize)
+	bool DescriptorHeap::SetCBV(Context& ctx, size_t idx, ConstantBufferHandle	handle, size_t offset, size_t bufferSize)
 	{
-		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx))
+		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx) || handle == InvalidHandle)
 			return false;
 
 		FillState[idx] = true;
 
-		auto resource = ctx.renderSystem->GetDeviceResource(Handle);
+		auto resource = ctx.renderSystem->GetDeviceResource(handle);
 		PushCBToDescHeap(
 			ctx.renderSystem,
 			resource,
@@ -987,14 +987,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetCBV(Context& ctx, size_t idx, ResourceHandle	Handle, size_t offset, size_t bufferSize)
+	bool DescriptorHeap::SetCBV(Context& ctx, size_t idx, ResourceHandle	handle, size_t offset, size_t bufferSize)
 	{
-		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx))
+		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx) || handle == InvalidHandle)
 			return false;
 
 		FillState[idx] = true;
 
-		auto resource = ctx.renderSystem->GetDeviceResource(Handle);
+		auto resource = ctx.renderSystem->GetDeviceResource(handle);
 		PushCBToDescHeap(
 			ctx.renderSystem,
 			resource,
@@ -1017,7 +1017,7 @@ namespace FlexKit
 		FK_ASSERT(idx < std::numeric_limits<uint32_t>::max());
 		FK_ASSERT(offset < std::numeric_limits<uint32_t>::max());
 
-		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
+		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 			return false;
 
 		FillState[idx] = true;
@@ -1042,7 +1042,7 @@ namespace FlexKit
 
 	bool DescriptorHeap::SetUAVTexture(Context& ctx, size_t idx, ResourceHandle handle)
 	{
-		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
+		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 			return false;
 
 		FillState[idx] = true;
@@ -1069,7 +1069,7 @@ namespace FlexKit
 
 	bool DescriptorHeap::SetUAVTexture(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
-		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
+		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 			return false;
 
 		FillState[idx] = true;
@@ -1099,7 +1099,7 @@ namespace FlexKit
 		FK_ASSERT(idx < std::numeric_limits<uint32_t>::max());
 		FK_ASSERT(mipLevel < std::numeric_limits<uint32_t>::max());
 
-		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
+		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 			return false;
 
 		FillState[idx] = true;
@@ -1127,7 +1127,7 @@ namespace FlexKit
 
 	bool DescriptorHeap::SetUAVCubemap(Context& ctx, size_t idx, ResourceHandle	handle)
 	{
-		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
+		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 			return false;
 
 		FillState[idx] = true;
@@ -1150,7 +1150,7 @@ namespace FlexKit
 
 	bool DescriptorHeap::SetUAVTexture3D(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
-		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
+		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 			return false;
 
 		FillState[idx] = true;
@@ -1178,7 +1178,7 @@ namespace FlexKit
 
 	bool DescriptorHeap::SetUAVStructured(Context& ctx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
 	{
-		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
+		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 			return false;
 
 		FillState[idx] = true;
@@ -1213,7 +1213,7 @@ namespace FlexKit
 		FK_ASSERT(stride < std::numeric_limits<uint32_t>::max());
 		FK_ASSERT(counterOffset < std::numeric_limits<uint32_t>::max());
 
-		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
+		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || resource == InvalidHandle)
 			return false;
 
 		FillState[idx] = true;
@@ -1240,7 +1240,7 @@ namespace FlexKit
 
 	bool DescriptorHeap::SetStructuredResource(Context& ctx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
 	{
-		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
+		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 			return false;
 
 		FillState[idx] = true;

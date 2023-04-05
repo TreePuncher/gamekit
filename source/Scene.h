@@ -175,8 +175,9 @@ namespace FlexKit
 
 		float3		K;
 		float		I, R;
-		float		innerAngle = (float)pi / 16.0f;
-		float		outerAngle = (float)pi / 8.0f;
+		float		size		= 0.25f;
+		float		innerAngle	= (float)pi / 16.0f;
+		float		outerAngle	= (float)pi / 8.0f;
 	};
 
 
@@ -194,7 +195,6 @@ namespace FlexKit
 	public:
 		LightView(GameObject& gameObject, float3 color = { 1, 1, 1 }, float intensity = 100, float radius = 100, NodeHandle node = InvalidHandle, bool triggered = false);
 
-
 		float3		GetK();
 		float		GetIntensity();
 		NodeHandle	GetNode() const noexcept;
@@ -204,14 +204,19 @@ namespace FlexKit
 		void		SetIntensity	(float I);
 		void		SetNode			(NodeHandle node) const noexcept;
 		void		SetRadius		(float r) noexcept;
-		void		SetOuterRadius	(float r) noexcept;
-
+		void		SetInnerAngle	(float r) noexcept;
+		void		SetOuterAngle	(float r) noexcept;
+		void		SetSize			(float r) noexcept;
 		void		SetType(LightType) noexcept;
+
 		LightType	GetType() const noexcept;
+		float		GetInnerAngle	() const noexcept;
+		float		GetOuterAngle	() const noexcept;
+		float		GetSize			() const noexcept;
 
 		Light*	operator -> (this auto& self) noexcept  { return &GetComponent()[self.light]; }
-
-		operator LightHandle () { return light; }
+		Light& operator *	() noexcept					{ return GetComponent()[light]; }
+		operator LightHandle ()							{ return light; }
 
 		LightHandle	light;
 	};

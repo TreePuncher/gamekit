@@ -1824,7 +1824,7 @@ namespace FlexKit
 						auto size			= passPVS.size();
 
 						uint16_t blockCount = (uint16_t)(size / 1000 + (size % 1000 > 0 ? 1 : 0));
-						uint16_t blockSize	= (uint16_t)(size / blockCount);
+						uint16_t blockSize	= blockCount > 0 ? (uint16_t)(size / blockCount) : 1;
 
 						passData->refCount = blockCount;
 

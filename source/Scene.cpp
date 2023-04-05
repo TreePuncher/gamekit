@@ -371,7 +371,8 @@ namespace FlexKit
 
 			return uint3{
 				std::bit_cast<uint32_t, float>(lightAngleScale),
-				std::bit_cast<uint32_t, float>(lightAngleOffset) };
+				std::bit_cast<uint32_t, float>(lightAngleOffset),
+				std::bit_cast<uint32_t, float>(size)};
 		}
 		}
 
@@ -427,9 +428,19 @@ namespace FlexKit
 		GetComponent()[light].R = Max(r, 0.1f);
 	}
 
-	void LightView::SetOuterRadius(float r) noexcept
+	void LightView::SetInnerAngle(float r) noexcept
+	{
+		GetComponent()[light].innerAngle = r;
+	}
+
+	void LightView::SetOuterAngle(float r) noexcept
 	{
 		GetComponent()[light].outerAngle = r;
+	}
+
+	void LightView::SetSize(float r) noexcept
+	{
+		GetComponent()[light].size = r;;
 	}
 
 	void LightView::SetType(LightType type) noexcept
@@ -440,6 +451,21 @@ namespace FlexKit
 	LightType LightView::GetType() const noexcept
 	{
 		return GetComponent()[light].type;
+	}
+
+	float LightView::GetInnerAngle() const noexcept
+	{
+		return GetComponent()[light].innerAngle;
+	}
+
+	float LightView::GetOuterAngle() const noexcept
+	{
+		return GetComponent()[light].outerAngle;
+	}
+
+	float LightView::GetSize() const noexcept
+	{
+		return GetComponent()[light].size;
 	}
 
 	float LightView::GetIntensity()
@@ -682,15 +708,28 @@ namespace FlexKit
 
 		memcpy(&pointLight, buffer, sizeof(pointLight));
 
-		if(!gameObject.hasView(LightComponentID))
-			gameObject.AddView<LightView>(pointLight.K, pointLight.IR[0], pointLight.IR[1], GetSceneNode(gameObject));
+		if (!gameObject.hasView(LightComponentID))
+		{
+			auto& view = gameObject.AddView<LightView>(pointLight.K, pointLight.IR[0], pointLight.IR[1], GetSceneNode(gameObject));
+			auto& light = *view;
+
+			light.innerAngle	= pointLight.innerAngle;
+			light.outerAngle	= pointLight.outerAngle;
+			light.size			= pointLight.size;
+			light.type			= (LightType)pointLight.type;
+		}
 		else
 		{
-			auto* pointLightView = static_cast<LightView*>(gameObject.GetView(LightComponentID));
-			pointLightView->SetK(pointLight.K);
-			pointLightView->SetIntensity(pointLight.IR[0]);
-			pointLightView->SetRadius(pointLight.IR[1]);
-			pointLightView->SetNode(GetSceneNode(gameObject));
+			auto& pointLightView	= *static_cast<LightView*>(gameObject.GetView(LightComponentID));
+			auto& light				= *pointLightView;
+
+			light.K				= pointLight.K;
+			light.I				= pointLight.IR[0];
+			light.R				= pointLight.IR[1];
+			light.node			= GetSceneNode(gameObject);
+			light.innerAngle	= pointLight.innerAngle;
+			light.outerAngle	= pointLight.outerAngle;
+			light.type			= (LightType)pointLight.type;
 		}
 
 		SetBoundingSphereFromLight(gameObject);

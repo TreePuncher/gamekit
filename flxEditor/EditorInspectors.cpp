@@ -570,6 +570,129 @@ void PointLightEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 					pointLight.SetIntensity(i);
 			}
 		});
+
+	{
+		panelCtx.PushHorizontalLayout();
+
+		auto inputBox = panelCtx.AddInputBox(
+			"Outer Range",
+			[&](std::string& string) {
+				string = fmt::format("{}", pointLight.GetOuterAngle());
+			},
+			[&](const std::string& txt)
+			{
+				char* p;
+				float i = strtof(txt.c_str(), &p);
+				if (!*p)
+				{
+					auto currentIntensity = pointLight.GetOuterAngle();
+
+					if (currentIntensity != i)
+						pointLight.SetOuterAngle(i);
+				}
+			});
+
+		panelCtx.AddSliderHorizontal(
+			"", 0.0f, FlexKit::pi / 2,
+			[&pointLight]() { return  pointLight.GetOuterAngle(); },
+			[inputBox, &pointLight](float outerRange)
+			{
+				pointLight.SetOuterAngle(outerRange);
+				inputBox->update();
+			});
+
+
+		panelCtx.Pop();
+	}
+
+	{
+		panelCtx.PushHorizontalLayout();
+
+		auto inputBox = panelCtx.AddInputBox(
+			"Inner Range",
+			[&](std::string& string) {
+				string = fmt::format("{}", pointLight.GetInnerAngle());
+			},
+			[&](const std::string& txt)
+			{
+				char* p;
+				float i = strtof(txt.c_str(), &p);
+				if (!*p)
+				{
+					auto currentIntensity = pointLight.GetInnerAngle();
+
+					if (currentIntensity != i)
+						pointLight.SetInnerAngle(i);
+				}
+			});
+
+		panelCtx.AddSliderHorizontal(
+			"", 0.0f, FlexKit::pi / 2,
+			[&pointLight]() { return  pointLight.GetInnerAngle(); },
+			[inputBox, &pointLight](float innerangle)
+			{
+				pointLight.SetInnerAngle(innerangle);
+				inputBox->update();
+			});
+
+
+		panelCtx.Pop();
+	}
+
+	{
+		panelCtx.PushHorizontalLayout();
+
+		auto inputBox = panelCtx.AddInputBox(
+			"Light Size",
+			[&](std::string& string) {
+				string = fmt::format("{}", pointLight.GetSize());
+			},
+			[&](const std::string& txt)
+			{
+				char* p;
+				float i = strtof(txt.c_str(), &p);
+				if (!*p)
+				{
+					auto currentSizd = pointLight.GetSize();
+
+					if (currentSizd != i)
+						pointLight.SetSize(i);
+				}
+			});
+
+		panelCtx.AddSliderHorizontal(
+			"", 0.0f, 1.0f,
+			[&pointLight]() { return  pointLight.GetSize(); },
+			[inputBox, &pointLight](float innerangle)
+			{
+				pointLight.SetSize(innerangle);
+				inputBox->update();
+			});
+
+
+		panelCtx.Pop();
+	}
+
+	{
+		static const char* typeNames[] = {
+			"Point Light",
+			"Spot Light",
+			"Directional Light",
+			"Spot Light No Shadows",
+			"Spot light No Shadows",
+		};
+
+		panelCtx.AddComboBox(
+			typeNames,
+			[&pointLight]() -> uint32_t
+			{
+				return (uint32_t)pointLight.GetType();
+			},
+			[&pointLight](uint32_t item)
+			{
+				pointLight.SetType(FlexKit::LightType(item));
+			});
+	}
 }
 
 

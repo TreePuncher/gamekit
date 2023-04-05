@@ -108,7 +108,7 @@ FlexKit::UpdateTask* SortTest::Update(FlexKit::EngineCore& core, FlexKit::Update
 
 	if (ImPlot::BeginPlot("Timing Histogram"))
 	{
-		ImPlot::PlotHistogram("", graph_y, (int)samples.size(), -2, true, false);
+		ImPlot::PlotHistogram("", graph_y, (int)samples.size());
 		ImPlot::EndPlot();
 	}
 

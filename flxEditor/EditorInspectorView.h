@@ -7,6 +7,7 @@
 #include <QtWidgets/qwidget.h>
 #include <QObject>
 
+class QComboBox;
 class QObject;
 class QLabel;
 class QBoxLayout;
@@ -29,6 +30,11 @@ using ListSizeUpdateCallback	= std::function<size_t()>;
 using ListContentUpdateCallback	= std::function<void (size_t, QListWidgetItem*)>;
 using ListEventCallback			= std::function<void (QListWidget*)>;
 
+using SliderUpdateCallback		= std::function<float ()>;
+using SliderEventCallback		= std::function<void (float)>;
+
+using ComboBoxUpdateCallback	= std::function<uint32_t ()>;
+using ComboBoxEventCallback		= std::function<void(uint32_t)>;
 
 namespace FlexKit
 {
@@ -50,6 +56,11 @@ public:
 
 	QPushButton*	AddButton	(std::string label, ButtonCallback);
 	QListWidget*	AddList		(ListSizeUpdateCallback, ListContentUpdateCallback, ListEventCallback);
+
+	QSlider*	AddSliderHorizontal	(std::string label, float minValue, float maxValue, SliderUpdateCallback, SliderEventCallback);
+	QSlider*	AddSliderVertical	(std::string label, float minValue, float maxValue, SliderUpdateCallback, SliderEventCallback);
+
+	QComboBox*	AddComboBox	(std::span<const char*> items, ComboBoxUpdateCallback update, ComboBoxEventCallback onChange);
 
 	void PushVerticalLayout		(std::string groupName = {}, bool goup = false);
 	void PushHorizontalLayout	(std::string groupName = {}, bool goup = false);

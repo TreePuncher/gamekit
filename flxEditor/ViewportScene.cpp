@@ -113,12 +113,16 @@ struct LightComponentUpdate
 {
 	static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& base, ViewportSceneContext& scene)
 	{
-		auto& pointlight	= static_cast<FlexKit::EntityLightComponent&>(component);
-		auto& runtime		= static_cast<FlexKit::LightView&>(base);
+		auto& light		= static_cast<FlexKit::EntityLightComponent&>(component);
+		auto& runtime	= static_cast<FlexKit::LightView&>(base);
 
-		pointlight.I = runtime.GetIntensity();
-		pointlight.K = runtime.GetK();
-		pointlight.R = runtime.GetRadius();
+		light.I				= runtime.GetIntensity();
+		light.K				= runtime.GetK();
+		light.R				= runtime.GetRadius();
+		light.outerRadius	= runtime.GetOuterAngle();
+		light.innerRadius	= runtime.GetInnerAngle();
+		light.size			= runtime.GetSize();
+		light.type			= (uint32_t)runtime.GetType();
 	}
 
 	IEntityComponentRuntimeUpdater::RegisterConstructorHelper<LightComponentUpdate, FlexKit::LightComponentID> _register;
