@@ -21,7 +21,15 @@ namespace FlexKit
 
 	struct ShadowMapPassData
 	{
-		FrameGraphNodeHandle multiPass;
+		const ResourceAllocation&	acquireMaps;
+		FrameGraphNodeHandle		multiPass;
+
+		operator FrameGraphNodeHandle () const noexcept { return multiPass; }
+
+		FrameResourceHandle	operator [](size_t idx) const noexcept
+		{
+			return acquireMaps.handles[idx];
+		}
 	};
 
 	struct LocalShadowMapPassData
@@ -85,23 +93,17 @@ namespace FlexKit
 		public:
 		ShadowMapper(RenderSystem& renderSystem, iAllocator& allocator);
 
-		AcquireShadowMapTask& AcquireShadowMaps(
-								UpdateDispatcher&		dispatcher,
-								RenderSystem&			renderSystem,
-								MemoryPoolAllocator&	UAVPool,
-								PointLightUpdate&		pointLightUpdate);
-
-
 		ShadowMapPassData&  ShadowMapPass(
 								FrameGraph&								frameGraph,
-								const LightShadowGatherTask&			shadowMaps,
+								const GatherVisibleLightsTask&			visibleLights,
+								LightUpdate&							lightUpdate,
 								UpdateTask&								cameraUpdate,
 								GatherPassesTask&						passes,
-								AcquireShadowMapTask&					shadowMapAcquire,
 								ReserveConstantBufferFunction&			reserveCB,
 								ReserveVertexBufferFunction&			reserveVB,
 								static_vector<AdditionalShadowMapPass>&	additional,
 								const double							t,
+								MemoryPoolAllocator&					shadowMapPool,
 								iAllocator&								tempAllocator,
 								AnimationPoseUpload*					poses = nullptr);
 
@@ -109,7 +111,7 @@ namespace FlexKit
 
 		struct PassData
 		{
-			ResourceHandle	renderTarget;
+			uint32_t		passIdx;
 			LightHandle		pointLightHandle;
 			CubeMapState*	shadowMapData;
 		};
@@ -133,8 +135,8 @@ namespace FlexKit
 
 		using Iterator_TY = std::span<VisibilityHandle>::iterator;
 
-		void RenderPointLightShadowMap	(Iterator_TY begin, Iterator_TY end, PassData& pass, ShadowMapper::Common_Data& common, FrameResources& resources, Context& ctx, iAllocator& allocator);
-		void RenderSpotLightShadowMap	(Iterator_TY begin, Iterator_TY end, PassData& pass, ShadowMapper::Common_Data& common, FrameResources& resources, Context& ctx, iAllocator& allocator);
+		void RenderPointLightShadowMap	(Iterator_TY begin, Iterator_TY end, PassData& pass, ShadowMapper::Common_Data& common, ResourceHandle renderTarget, FrameResources& resources, Context& ctx, iAllocator& allocator);
+		void RenderSpotLightShadowMap	(Iterator_TY begin, Iterator_TY end, PassData& pass, ShadowMapper::Common_Data& common, ResourceHandle renderTarget, FrameResources& resources, Context& ctx, iAllocator& allocator);
 		void BuildSummedAreaTable		(ResourceHandle target, FrameResources& resources, Context& ctx, iAllocator& allocator);
 
 

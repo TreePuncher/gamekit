@@ -5,6 +5,7 @@
 #include "EditorColliderComponent.h"
 #include "EditorGameplayComponents.hpp"
 #include "EditorTextureResources.h"
+#include "EditorTextureImporter.h"
 #include "gltfImport.h"
 #include "MaterialResource.h"
 #include "TextureUtilities.h"
@@ -171,6 +172,9 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 	mainWindow			{ editorRenderer, *scripts, project, qtApp },
 	scripts				{ new EditorScriptEngine{} },
 	gltfImporter		{ new ::gltfImporter	{ project } },
+
+	textureImporter		{ std::make_unique<EditorTextureImporter>(project, editorRenderer) },
+
 	gameResExporter		{ new GameResExporter	{ project } },
 	projectConnector	{ new EditorProjectScriptConnector { &mainWindow.Get3DView(), mainWindow.GetSelectionCtx(), project } }
 {
@@ -185,6 +189,7 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 
 	qApp->setStyle(QStyleFactory::create("fusion"));
 
+	/*
 	QPalette palette;
 	palette.setColor(QPalette::Window, QColor(53, 53, 53));
 	palette.setColor(QPalette::WindowText, Qt::white);
@@ -203,10 +208,12 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 	palette.setColor(QPalette::Disabled, QPalette::Text, Qt::darkGray);
 	palette.setColor(QPalette::Disabled, QPalette::ButtonText, Qt::darkGray);
 
-	qApp->setPalette(palette);
-
+	//qApp->setPalette(palette);
+	*/
 
 	mainWindow.AddImporter(gltfImporter.get());
+	mainWindow.AddImporter(textureImporter.get());
+
 	mainWindow.AddExporter(gameResExporter.get());
 
 	projectConnector->Register(*scripts);

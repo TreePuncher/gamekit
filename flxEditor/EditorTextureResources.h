@@ -33,13 +33,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	class CubeMapTexture : public iResource
+	class CubeMapTexture_IMPL : public iResource
 	{
 	public:
 		CubeMapFace					Faces[6];
 		size_t						GUID;
 		std::string					ID;
-		FlexKit::DeviceFormat		format;
+		std::string					format;
 
 		size_t						Width   = 0;
 		size_t						Height  = 0;
@@ -56,6 +56,7 @@ namespace FlexKit
 	};
 
 
+	using CubeMapTexture = FileObjectResource<CubeMapTexture_IMPL, GetTypeGUID(CubeMapResourceTypeID)>;
 	inline std::shared_ptr<iResource> CreateCubeMapResource(std::shared_ptr<TextureCubeMap_MetaData> metaData);
 
 

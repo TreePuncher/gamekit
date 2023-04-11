@@ -1526,13 +1526,20 @@ namespace FlexKit
 	{
 		Vector<FrameResourceHandle> handles;
 		FrameGraphNodeHandle		node;
+
+		operator FrameGraphNodeHandle() const noexcept { return node; }
+
+		FrameResourceHandle operator [](size_t idx) const noexcept { return handles[idx]; }
+
+		auto begin()	const noexcept { return handles.begin(); }
+		auto end()		const noexcept { return handles.end(); }
 	};
 
 	template<typename FillData_TY, typename GetPass_TY>
 	struct PassDrivenResourceAllocation
 	{
 		GetPass_TY				getPass;				// std::span<ty> ()
-		FillData_TY				initializeResources;	// void (std::span<ty>, std::span<FrameResourceHandles>, ResourceInitializationContext& transferCtx, iAllocator&);
+		FillData_TY				initializeResources;	// void (std::span<ty>, std::span<FrameResourceHandle>, ResourceInitializationContext& transferCtx, iAllocator&);
 
 		DeviceLayout			layout;
 		DeviceAccessState		access;
@@ -1908,7 +1915,7 @@ namespace FlexKit
 				decltype(desc.initializeResources)	initializeResources;
 
 				ResourceAllocation		resources;
-				Vector<InitialData>		resourceAllocations;
+				Vector<InitialData>		pendingCopies;
 				size_t					uploadSize = 0;
 				PoolAllocatorInterface* pool;
 
@@ -1930,16 +1937,16 @@ namespace FlexKit
 								resourceContext,
 								memory);
 
-			data.resourceAllocations.reserve(desc.max);
+			data.pendingCopies.reserve(desc.max);
 
 			struct ResourceInitializationContext
 			{
 				FrameResources& frameResources;
 				NodeData*		nodeData;
 
-				void CreateResource(FrameResourceHandle dstResource, size_t resourceSize, void* initialData)
+				AcquireResult CreateResource(FrameResourceHandle dstResource, size_t resourceSize, void* initialData)
 				{
-					nodeData->resourceAllocations.emplace_back(initialData, resourceSize, dstResource);
+					nodeData->pendingCopies.emplace_back(initialData, resourceSize, dstResource);
 
 					std::atomic_ref ref{ frameResources.virtualResourceCount };
 					ref++;
@@ -1967,11 +1974,35 @@ namespace FlexKit
 					frameObject->virtualState		= VirtualResourceState::Virtual_Created;
 
 					nodeData->uploadSize += resourceSize;
+
+					return { resourceHandle, overlap };
 				}
 
-				void CreateZeroedResource(FrameResourceHandle dstResource)
+				AcquireResult AcquireResource(FrameResourceHandle dstResource, const GPUResourceDesc& desc)
 				{
+					std::atomic_ref ref{ frameResources.virtualResourceCount };
+					ref++;
 
+					auto GetMemoryPool = [&]
+					{
+						if (!nodeData->pool)
+						{
+							const auto	flags = GetNeededFlags(desc);
+							return frameResources.FindMemoryPool(flags);
+						}
+						else
+							return nodeData->pool;
+					};
+
+					auto pool = GetMemoryPool();
+					auto [resourceHandle, overlap] = pool->Acquire(desc);
+
+					auto frameObject				= frameResources.GetResourceObject(dstResource);
+					frameObject->shaderResource		= resourceHandle;
+					frameObject->pool				= pool;
+					frameObject->virtualState		= VirtualResourceState::Virtual_Created;
+
+					return {resourceHandle, overlap};
 				}
 			};
 
@@ -2009,7 +2040,7 @@ namespace FlexKit
 							size_t offset = 0;
 
 							// Copy Data into resources, insert barrier/transition
-							for (auto&& [_ptr, size, resource] : nodeData->resourceAllocations)
+							for (auto&& [_ptr, size, resource] : nodeData->pendingCopies)
 							{
 								memcpy(uploadSegment.buffer + offset, _ptr, size);
 								offset += size;
@@ -2032,22 +2063,20 @@ namespace FlexKit
 							iAllocator&		localAllocator)
 						{
 							ctx.BeginEvent_DEBUG("Initiate Resources");
+							EXITSCOPE(ctx.EndEvent_DEBUG());
 
 							auto uploadSegment = nodeData->uploadSegment;
 							size_t offset = 0;
 
-							if (nodeData->resourceAllocations.size() == 0 && uploadSegment.uploadSize == 0)
-							{
-								FK_LOG_ERROR("Failed to get allocation upload segment");
+							if (nodeData->pendingCopies.size() == 0 && uploadSegment.uploadSize == 0)
 								return;
-							}
 
 							// Insert Barrier
-							for (auto&& [_ptr, size, resource] : nodeData->resourceAllocations)
+							for (auto&& [_ptr, size, resource] : nodeData->pendingCopies)
 								ctx.AddBufferBarrier(resources.GetResource(resource), DeviceAccessState::DASCommon, DeviceAccessState::DASCopyDest, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_Copy);
 
 							// Copy Data into resources
-							for (auto&& [_ptr, size, resource] : nodeData->resourceAllocations)
+							for (auto&& [_ptr, size, resource] : nodeData->pendingCopies)
 							{
 								ctx.CopyBufferRegion(
 									resources.GetDeviceResource(resource), uploadSegment.resource,	// dst_res, src_res
@@ -2057,10 +2086,8 @@ namespace FlexKit
 								offset += size;
 							}
 
-							for (auto&& [_ptr, size, resource] : nodeData->resourceAllocations)
+							for (auto&& [_ptr, size, resource] : nodeData->pendingCopies)
 								ctx.AddBufferBarrier(resources.GetResource(resource), DeviceAccessState::DASCopyDest, nodeData->access, DeviceSyncPoint::Sync_Copy, DeviceSyncPoint::Sync_All);
-
-							ctx.EndEvent_DEBUG();
 						};
 
 					tasks_out.emplace_back(std::move(newWorkItem));

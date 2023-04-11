@@ -144,12 +144,12 @@ public:
 		for (auto&& [idx, queryRes] : zip(iota(0),  res))
 		{
 			auto& [lightView, gameObject] = queryRes.value();
-			lightView.SetRadius(250.0f);
+			lightView.SetRadius(50.0f);
 			lightView.SetIntensity(50000.0f);
 			lightView.SetOuterAngle((float)pi / 4.0f);
 			lightView.SetOuterAngle((float)pi / 1.5f);
-			lightView.SetType(LightType::SpotLightBasicShadows);
-			SetOrientation(lightView.GetNode(), Quaternion{ 0, 45.0f, 0.0f });
+			lightView.SetType(LightType::SpotLight);
+			//SetOrientation(lightView.GetNode(), Quaternion{ 0, 45.0f, 0.0f });
 		}
 
 		{
@@ -183,9 +183,9 @@ public:
 			const auto& [lightView] = queryRes.value();
 
 			//Pitch(lightView.GetNode(), dT * pi / 4);
-			Yaw(lightView.GetNode(), dT * pi / 4);
+			//Yaw(lightView.GetNode(), dT * pi / 4);
 
-			//lightView.SetSize(std::cos(t) / 4.0f + 0.25);
+			lightView.SetSize(std::cos(t) / 4.0f + 0.25);
 		}
 
 

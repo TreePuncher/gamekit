@@ -862,7 +862,7 @@ namespace FlexKit
 		FrameGraph&							frameGraph,
 		const CameraHandle					camera,
 		const Scene&						scene,
-		const LightShadowGatherTask&		pointLightsShadowMaps,
+		const GatherVisibleLightsTask&		visibleLightsTask,
 		ResourceHandle						depthBuffer,
 		ReserveConstantBufferFunction		reserveCB,
 		iAllocator*							tempMemory,
@@ -872,7 +872,7 @@ namespace FlexKit
 		{
 			.getPass				= [&]() -> std::span<const LightHandle>
 			{
-				return pointLightsShadowMaps.GetData().lights;
+				return visibleLightsTask.GetData().lights;
 			},
 			.initializeResources	= [](std::span<const LightHandle> visibleLights, std::span<const FrameResourceHandle> resourceHandles, auto& transferCtx, iAllocator& allocator)
 			{
@@ -909,7 +909,7 @@ namespace FlexKit
 			.access		= DeviceAccessState::DASPixelShaderResource,
 			.max		= 1,
 			.pool		= nullptr,
-			.dependency = pointLightsShadowMaps
+			.dependency = visibleLightsTask
 		};
 
 		const ResourceAllocation& allocation = frameGraph.AllocateResourceSet(allocationDesc);
@@ -917,7 +917,7 @@ namespace FlexKit
 		auto WH = frameGraph.GetRenderSystem().GetTextureWH(depthBuffer);
 		auto& lightBufferData = frameGraph.AddNode<LightBufferUpdate>(
 			LightBufferUpdate{
-					.visableLights	= pointLightsShadowMaps.GetData().lights,
+					.visableLights	= visibleLightsTask.GetData().lights,
 					.shadowMatrices	= allocation.handles[0],
 					.camera			= camera,
 					.reserveCB		= reserveCB,
@@ -1564,12 +1564,11 @@ namespace FlexKit
 	ClusteredDeferredShading& ClusteredRender::ClusteredShading(
 		UpdateDispatcher&				dispatcher,
 		FrameGraph&						frameGraph,
-		LightShadowGatherTask&			pointLightShadowMaps,
-		LightGatherTask&				pointLightgather,
+		ShadowMapPassData&				lightShadowMaps,
+		LightGatherTask&				lightGather,
 		GBufferPass&					gbufferPass,
 		ResourceHandle					depthTarget,
 		ResourceHandle					renderTarget,
-		ShadowMapPassData&				shadowMaps,
 		LightBufferUpdate&				lightPass,
 		ReserveConstantBufferFunction	reserveCB,
 		ReserveVertexBufferFunction		reserveVB,
@@ -1578,21 +1577,22 @@ namespace FlexKit
 	{
 		auto& pass = frameGraph.AddNode<ClusteredDeferredShading>(
 			ClusteredDeferredShading{
-				gbufferPass,
-				pointLightgather,
-				lightPass,
-				pointLightShadowMaps,
+				.gbuffer	= gbufferPass,
+				.lights		= lightGather,
+				.lightPass	= lightPass,
+				.shadowPass	= lightShadowMaps,
 			},
 			[&](FrameGraphNodeBuilder& builder, ClusteredDeferredShading& data)
 			{
-				builder.AddDataDependency(pointLightShadowMaps);
-				builder.AddDataDependency(pointLightgather);
-				builder.AddNodeDependency(shadowMaps.multiPass);
+				builder.AddNodeDependency(lightShadowMaps.multiPass);
+				builder.AddDataDependency(lightGather);
 
 				auto& renderSystem				= frameGraph.GetRenderSystem();
 
-				data.pointLightHandles			= &pointLightShadowMaps.GetData().lights;
+				for (const auto shadowMap : lightShadowMaps.acquireMaps)
+					builder.ReadTransition(shadowMap, DASPixelShaderResource, { Sync_All, Sync_PixelShader });
 
+				data.pointLightHandles			= &lightGather.GetData().lights;
 				data.AlbedoTargetObject			= builder.PixelShaderResource(gbufferPass.gbuffer.albedo);
 				data.NormalTargetObject			= builder.PixelShaderResource(gbufferPass.gbuffer.normal);
 				data.MRIATargetObject			= builder.PixelShaderResource(gbufferPass.gbuffer.MRIA);
@@ -1612,8 +1612,8 @@ namespace FlexKit
 				data.passVertices				= reserveVB(sizeof(float4) * 6);
 
 				builder.SetDebugName(data.renderTargetObject, "renderTargetObject");
-			},
-			[camera = gbufferPass.camera, renderTarget, t, &rootSignature = this->rootSignature]
+			}, 
+			[camera = gbufferPass.camera, renderTarget, t, &rootSignature = this->rootSignature, &shadowMaps = lightShadowMaps.acquireMaps]
 			(ClusteredDeferredShading& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
 				ProfileFunction();
@@ -1681,17 +1681,19 @@ namespace FlexKit
 				{
 					auto& light = lightComponent[visableLights[shadowMapIdx]];
 
-					if (light.shadowMap != InvalidHandle)
+					auto shadowMap = resources.GetResource(shadowMaps[shadowMapIdx]);
+
+					if (shadowMap != InvalidHandle)
 					{
 						switch (light.type)
 						{
 						case LightType::PointLight:
-							descHeap.SetSRVCubemap(ctx, 10 + shadowMapIdx, light.shadowMap, DeviceFormat::R32_FLOAT);
+							descHeap.SetSRVCubemap(ctx, 10 + shadowMapIdx, shadowMap, DeviceFormat::R32_FLOAT);
 							break;
 						case LightType::SpotLight:
 						case LightType::SpotLightBasicShadows:
 						case LightType::Direction:
-							descHeap.SetSRV(ctx, 10 + shadowMapIdx, light.shadowMap, DeviceFormat::R32_FLOAT);
+							descHeap.SetSRV(ctx, 10 + shadowMapIdx, shadowMap, DeviceFormat::R32_FLOAT);
 							break;
 						}
 					}

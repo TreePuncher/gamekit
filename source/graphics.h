@@ -2981,7 +2981,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		TextureDimension	GetDimension(ResourceHandle) const;
 		size_t				GetArraySize(ResourceHandle) const;
 		uint8_t				GetMIPCount(ResourceHandle) const;
-		
+
+		void				SetWH(ResourceHandle handle, uint2 WH);
 		void				SetExtra(ResourceHandle handle, GPUResourceExtra_t);
 		GPUResourceExtra_t	GetExtra(ResourceHandle handle) const;
 
@@ -5672,8 +5673,8 @@ private:
 	/************************************************************************************************/
 
 
-	FLEXKITAPI ResourceHandle	LoadDDSTextureFromFile			(char* file, RenderSystem* RS, CopyContextHandle, iAllocator* Memout);
-	FLEXKITAPI ResourceHandle   LoadTexture						(TextureBuffer* Buffer,  RenderSystem* RS, iAllocator* Memout, DeviceFormat format = DeviceFormat::R8G8B8A8_UNORM);
+	FLEXKITAPI ResourceHandle	LoadDDSTextureFromFile	(char* file, RenderSystem* RS, CopyContextHandle, iAllocator* Memout);
+	FLEXKITAPI ResourceHandle   LoadTexture				(TextureBuffer* Buffer, CopyContextHandle handle, RenderSystem* RS, iAllocator* Memout, DeviceFormat format = DeviceFormat::R8G8B8A8_UNORM);
 
 
 	//FLEXKITAPI Shader           LoadShader_OLD                  (const char* Entry, const char* ShaderVersion, const char* File);

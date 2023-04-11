@@ -176,7 +176,7 @@ namespace FlexKit
 						auto poseState	= GetPoseState(*gameObject);
 						auto skeleton	= poseState->Sk;
 
-						transferContext.CreateZeroedResource(*(itr++));
+						//transferContext.CreateZeroedResource(*(itr++));
 					}
 				},
 

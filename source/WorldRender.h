@@ -66,8 +66,6 @@ namespace FlexKit
 	{
 		CameraHandle							camera;
 		LightGatherTask&						lights;
-		LightShadowGatherTask&					pointLightMaps;
-		UpdateTask&								shadowMapAcquire;
 		UpdateTask&								transforms;
 		UpdateTask&								cameras;
 		GatherPassesTask&						passes;
@@ -293,7 +291,7 @@ namespace FlexKit
 		GatherPassesTask&			passes;
 		BrushConstants&				entityConstants;
 		const ResourceAllocation&	animationResources;
-		LightShadowGatherTask&		pointLights;
+		GatherVisibleLightsTask&	pointLights;
 		FrameResourceHandle			visibilityBuffer;
 	};
 

@@ -51,7 +51,7 @@ namespace FlexKit
 		const bool debugMode = false;
 #endif
 
-		if (!Initiate(memory, debugMode, false, false))
+		if (!Initiate(memory, debugMode, true, false))
 			throw std::runtime_error{"Failed to initiate core"};
 	}
 

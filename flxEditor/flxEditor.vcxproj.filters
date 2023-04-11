@@ -217,6 +217,9 @@
     <ClCompile Include="EditorSceneEntityComponents.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="EditorTextureImporter.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Serialization.h">
@@ -330,6 +333,9 @@
     <ClInclude Include="EditorSceneEntityComponents.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="EditorTextureImporter.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="ResourceBrowserWidget.ui">
@@ -369,6 +375,9 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="EditorImportGLTF.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="EditorTextureImport.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>
