@@ -1755,6 +1755,18 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 /************************************************************************************************/
 
 
+void EditorViewport::enterEvent(QMouseEvent* event)
+{
+	if (!isActiveWindow())
+		activateWindow();
+
+	renderWindow->DEBUG_SetActiveWindow();
+}
+
+
+/************************************************************************************************/
+
+
 std::shared_ptr<FlexKit::TriMesh> EditorViewport::BuildTriMesh(FlexKit::MeshUtilityFunctions::OptimizedMesh& mesh) const
 {
 	return {};

@@ -85,6 +85,14 @@ namespace FlexKit
 			renderSystem->WaitforGPU();
 			renderSystem->_ForceReleaseTexture(backBuffer);
 
+			ID3D12Resource* before_ptr[3];
+			swapChain->GetBuffer(0, __uuidof(ID3D12Resource), (void**)(before_ptr + 0));
+			swapChain->GetBuffer(1, __uuidof(ID3D12Resource), (void**)(before_ptr + 1));
+			swapChain->GetBuffer(2, __uuidof(ID3D12Resource), (void**)(before_ptr + 2));
+
+			for (auto r : before_ptr)
+				r->Release();
+
 			try
 			{
 				const auto HR = swapChain->ResizeBuffers(0, WH[0], WH[1], DXGI_FORMAT_R16G16B16A16_FLOAT, flags);
@@ -255,6 +263,14 @@ namespace FlexKit
 		IDXGISwapChain4* _GetSwapChain() const override
 		{
 			return swapChain;
+		}
+
+		void PIX_SetActiveWindow()
+		{
+			auto pix = renderSystem->pix;
+
+			if (pix)	// if pix attached, set active pix target
+				PIXSetTargetWindow(hWindow);
 		}
 
 

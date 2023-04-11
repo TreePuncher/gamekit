@@ -116,6 +116,8 @@
     <Link>
       <AdditionalLibraryDirectories>$(QtInstallDir)$(Qt_LIBPATH_);..\Dependencies\libs\release;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\lib\vs2017\x64\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>$(Qt_LIBS_);%(AdditionalDependencies)</AdditionalDependencies>
+      <EntryPointSymbol>
+      </EntryPointSymbol>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">
@@ -166,14 +168,14 @@
     </Link>
   </ItemDefinitionGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">
-    <QtInstall>6.3.1_msvc2019_64</QtInstall>
+    <QtInstall>6.5.0_msvc2019_64</QtInstall>
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
     <QtLibrarySearchPath>/lib/</QtLibrarySearchPath>
     <QtVars>$(QMake_DEFINES_);$(QMake_INCLUDEPATH_);$(QMake_LIBPATH_)</QtVars>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
-    <QtInstall>6.3.1_msvc2019_64</QtInstall>
+    <QtInstall>6.5.0_msvc2019_64</QtInstall>
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>release</QtBuildConfig>
     <QtLibrarySearchPath>/lib/</QtLibrarySearchPath>
@@ -248,8 +250,10 @@
     <ClCompile Include="EditorPrefabRenderer.cpp" />
     <QtMoc Include="EditorSelectObjectDialog.h" />
     <ClInclude Include="EditorSceneEntityComponents.h" />
+    <ClInclude Include="EditorTextureImporter.h" />
     <ClInclude Include="EditorUndoRedo.h" />
     <ClCompile Include="EditorSelectObjectDialog.cpp" />
+    <ClCompile Include="EditorTextureImporter.cpp" />
     <ClCompile Include="EditorUndoRedo.cpp" />
     <ClCompile Include="ExtraTu.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
@@ -421,6 +425,7 @@
     <QtUic Include="ResourceBrowserWidget.ui" />
     <QtUic Include="SceneOutliner.ui" />
     <QtUic Include="TaskManager.ui" />
+    <QtUic Include="EditorTextureImport.ui" />
     <QtUic Include="TextureViewer.ui" />
     <QtUic Include="EditorViewport.ui" />
   </ItemGroup>

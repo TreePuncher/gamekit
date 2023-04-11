@@ -140,7 +140,6 @@ void DXRenderWindow::resizeEvent(QResizeEvent* evt)
 	const auto newWidth     = evt->size().width() * 1.5;
 	const auto newHeight    = evt->size().height() * 1.5;
 
-	//resizeSwapChain(evt->size().width(), evt->size().height());
 	resizeSwapChain(newWidth, newHeight);
 
 	if (ResizeEventHandler)

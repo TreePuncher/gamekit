@@ -62,9 +62,10 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
                     float aspectRatio = (XY[0]) / float(XY[1]);
 
                     FlexKit::float4 Color   { FlexKit::WHITE };
-                    FlexKit::float2 POS     { 0, 0 };
-                    FlexKit::float2 WH      { 1, aspectRatio };
+                    FlexKit::float2 WH      = (aspectRatio < 1.0f ) ? float2{ 1.0,	aspectRatio } : FlexKit::float2{ 1.0f / aspectRatio, 1.0f };
+                    FlexKit::float2 POS     = (aspectRatio < 1.0f) ? float2{ 0,	(1 - WH[1]) / 2.0f} : float2{ (1 - WH[0])/ 2.0f, 0.0f };
 
+					fmt::print("aspectration: {}\n", aspectRatio);
 
                     FlexKit::float2 RectUpperLeft   = POS;
                     FlexKit::float2 RectBottomRight = POS + WH;

@@ -397,7 +397,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 				const float3	sampleVector	= VogelDiskSample3D(i, sampleCount, InterleavedGradientNoise(px), v_WS, 0.00019f);
 				const float		expDepth		= shadowCubes[NonUniformResourceIndex(lightIdx)].Sample(BiLinear, sampleVector);
 
-				t += saturate(ExponentialShadowSample(expDepth, depth)) / sampleCount;
+				t += saturate(step(1.0f, ExponentialShadowSample(expDepth, depth))) / sampleCount;
 			}
 
 			const float3 colorSample = (diffuse * Kd + specular * Ks) * NdotL * La * Lc;
@@ -454,11 +454,11 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 				blockerDistance /= blockerCount;
 
 				const float penumbraSize	= CalcPenumbraSize(lightSize, depth, blockerDistance);
-				const float sampleCount		= penumbraSize < 0.5f ? 16 : 32;
+				const float sampleCount		= blockerCount == blockerSampleCount ? 8 : 16;
 
 				for (uint j = 0; j < sampleCount; j++)
 				{
-					const float		penumbraFilterMaxSize	= 0.05f;
+					const float		penumbraFilterMaxSize	= 0.075f;
 					const float2	sampleUVOffset			= VogelDiskSample2D(j, sampleCount, gradientNoise) * penumbraSize;
 					const float2	sampleUV				= clamp(shadowMapUV + sampleUVOffset * penumbraFilterMaxSize, 0.0f, 1.0f);
 
@@ -516,13 +516,13 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			const float	depth			= length(positionVS - Lp) / Lr;
 			const float sampleCount		= 16;
 
-			for (uint j = 0; j < 16; j++)
+			for (uint j = 0; j < sampleCount; j++)
 			{
 				const float2	sampleUVOffset			= 5.0f / 1024.0f * VogelDiskSample2D(j, sampleCount, gradientNoise);
 				const float2	sampleUV				= clamp(shadowMapUV + sampleUVOffset, 0.0f, 1.0f);
 
 				const float	expDepth = shadowMaps[NonUniformResourceIndex(lightIdx)].Sample(BiLinear, float3(sampleUV, 0.0f));
-				shadowing += saturate(ExponentialShadowSample(expDepth, depth)) / sampleCount;
+				shadowing += saturate(step(1.0f, ExponentialShadowSample(expDepth, depth))) / sampleCount;
 			}
 
 			const float3 colorSample = (diffuse * Kd + specular * Ks) * NdotL * INV_PI * La * a * dp;
@@ -531,7 +531,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		}
 	}
 
-#if 1
+#if 0
 	static float4 Colors[] = {
 		float4(0.5f, 0.5f, 0.5f, 0), 
 		float4(1, 0, 0, 0), 
@@ -575,7 +575,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 	//return float4(N.xyz, 1);
 	//return pow(float4(roughness, metallic, 0, 0), 2.2f);
 	//return float4(N_WS, 1);
-	//return float4(N_WS / 2 + 0.5f, 1);
+	return float4(N_WS / 2 + 0.5f, 1);
 	// 
 	//return float4(N_WS.xyz / 2 + 0.5f, 1);// *smoothstep(0.2, 1.0f, (float(localLightCount) / float(lightCount)));
 	//return color * (float(localLightCount) / float(lightCount));

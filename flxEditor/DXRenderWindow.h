@@ -45,7 +45,17 @@ public:
 
 	FlexKit::uint2 WH() const { return renderWindow.GetWH(); }
 
-	void            resizeEvent(QResizeEvent* evt);
+	void resizeEvent(QResizeEvent* evt);
+
+	void enterEvent(QMouseEvent* event)
+	{
+		renderWindow.PIX_SetActiveWindow();
+	}
+
+	void DEBUG_SetActiveWindow()
+	{
+		renderWindow.PIX_SetActiveWindow();
+	}
 
 	FlexKit::ResourceHandle GetBackBuffer() const;
 

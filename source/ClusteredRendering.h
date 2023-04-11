@@ -190,10 +190,10 @@ namespace FlexKit
 
 	struct ClusteredDeferredShading
 	{
-		GBufferPass&					gbuffer;
-		const LightGatherTask&			lights;
-		LightBufferUpdate&				lightPass;
-		const LightShadowGatherTask&	pointLightShadowMaps;
+		GBufferPass&			gbuffer;
+		const LightGatherTask&	lights;
+		LightBufferUpdate&		lightPass;
+		ShadowMapPassData&		shadowPass;
 
 		const Vector<LightHandle>* pointLightHandles;
 
@@ -324,7 +324,7 @@ namespace FlexKit
 								FrameGraph&						graph,
 								const CameraHandle				camera,
 								const Scene&					scene,
-								const LightShadowGatherTask&	pointLightsShadowMaps,
+								const GatherVisibleLightsTask&	visibleLights,
 								ResourceHandle					depthBuffer,
 								ReserveConstantBufferFunction	reserveCB,
 								iAllocator*						tempMemory,
@@ -334,12 +334,11 @@ namespace FlexKit
 		ClusteredDeferredShading& ClusteredShading(
 								UpdateDispatcher&				dispatcher,
 								FrameGraph&						frameGraph,
-								LightShadowGatherTask&			pointLightShadowMaps,
-								LightGatherTask&				pointLightgather,
+								ShadowMapPassData&				shadowMaps,
+								LightGatherTask&				lightGather,
 								GBufferPass&					gbufferPass,
 								ResourceHandle					depthTarget,
 								ResourceHandle					renderTarget,
-								ShadowMapPassData&				shadowMaps,
 								LightBufferUpdate&				lightPass,
 								ReserveConstantBufferFunction	reserveCB,
 								ReserveVertexBufferFunction		reserveVB,

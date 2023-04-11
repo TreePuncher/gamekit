@@ -733,16 +733,16 @@ namespace FlexKit
 		passes.AddInput(drawSceneDesc.transformDependency);
 		passes.AddInput(drawSceneDesc.cameraDependency);
 
-		auto& pointLightGather		= scene.GetLights(dispatcher, temporary);
-		auto& sceneBVH				= scene.UpdateSceneBVH(dispatcher, drawSceneDesc.transformDependency, temporary);
-		auto& visableLights			= scene.GetVisableLights(dispatcher, camera, sceneBVH, temporary);
-		auto& lightUpdate			= scene.UpdateLights(dispatcher, sceneBVH, visableLights, temporary, persistent);
-		auto& shadowMaps			= shadowMapping.AcquireShadowMaps(dispatcher, frameGraph.GetRenderSystem(), RTPool, lightUpdate);
+		auto& lightGather		= scene.GetLights(dispatcher, temporary);
+		auto& sceneBVH			= scene.UpdateSceneBVH(dispatcher, drawSceneDesc.transformDependency, temporary);
+		auto& visableLights		= scene.GetVisableLights(dispatcher, camera, sceneBVH, temporary);
+		auto& lightUpdate		= scene.UpdateLights(dispatcher, sceneBVH, visableLights, temporary, persistent);
+		//auto& shadowMaps		= shadowMapping.AcquireShadowMaps(dispatcher, frameGraph.GetRenderSystem(), RTPool, lightUpdate);
 
 		LoadLodLevels(dispatcher, passes, drawSceneDesc.camera, renderSystem, *persistent);
 
-		pointLightGather.AddInput(drawSceneDesc.transformDependency);
-		pointLightGather.AddInput(drawSceneDesc.cameraDependency);
+		lightGather.AddInput(drawSceneDesc.transformDependency);
+		lightGather.AddInput(drawSceneDesc.cameraDependency);
 
 		auto& IKUpdate			= UpdateIKControllers(dispatcher, drawSceneDesc.dt);
 		auto& animationUpdate	= UpdateAnimations(dispatcher, drawSceneDesc.dt);
@@ -757,17 +757,6 @@ namespace FlexKit
 		skinnedObjects.AddInput(drawSceneDesc.cameraDependency);
 		updatedPoses.AddInput(skinnedObjects);
 		updatedPoses.AddInput(animationUpdate);
-
-		const SceneDescription sceneDesc = {
-			drawSceneDesc.camera,
-			pointLightGather,
-			visableLights,
-			shadowMaps,
-			drawSceneDesc.transformDependency,
-			drawSceneDesc.cameraDependency,
-			passes,
-			skinnedObjects
-		};
 
 		auto& reserveCB = drawSceneDesc.reserveCB;
 		auto& reserveVB = drawSceneDesc.reserveVB;
@@ -848,32 +837,32 @@ namespace FlexKit
 		for (auto& pass : drawSceneDesc.additionalGbufferPasses)
 			pass();
 
+
+		auto& shadowMapPass =
+			shadowMapping.ShadowMapPass(
+				frameGraph,
+				visableLights,
+				lightUpdate,
+				drawSceneDesc.cameraDependency,
+				passes,
+				reserveCB,
+				reserveVB,
+				drawSceneDesc.additionalShadowPasses,
+				t,
+				RTPool,
+				temporary);
+
 		auto& lightPass =
 			clusteredRender.UpdateLightBuffers(
 				dispatcher,
 				frameGraph,
 				camera,
 				scene,
-				sceneDesc.pointLightMaps,
+				visableLights,
 				depthTarget.Get(),
 				reserveCB,
 				temporary,
 				drawSceneDesc.debugDisplay != DebugVisMode::ClusterVIS);
-
-#if 1
-		auto& shadowMapPass =
-			shadowMapping.ShadowMapPass(
-				frameGraph,
-				visableLights,
-				drawSceneDesc.cameraDependency,
-				passes,
-				shadowMaps,
-				reserveCB,
-				reserveVB,
-				drawSceneDesc.additionalShadowPasses,
-				t,
-				temporary);
-#endif
 
 		/*
 		auto& updateVolumes =
@@ -890,12 +879,11 @@ namespace FlexKit
 			clusteredRender.ClusteredShading(
 				dispatcher,
 				frameGraph,
-				sceneDesc.pointLightMaps,
-				pointLightGather,
+				shadowMapPass,
+				lightGather,
 				gbufferPass,
 				depthTarget.Get(),
 				renderTarget,
-				shadowMapPass,
 				lightPass,
 				reserveCB, reserveVB,
 				t,

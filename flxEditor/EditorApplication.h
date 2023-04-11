@@ -25,12 +25,14 @@ class EditorScriptEngine;
 
 class gltfImporter;
 class GameResExporter;
+class EditorTextureImporter;
 
 using EditorProjectScriptConnector_ptr	= std::unique_ptr<EditorProjectScriptConnector>;
 using EditorScriptEngine_ptr			= std::unique_ptr<EditorScriptEngine>;
 
 
 using gltfImporter_ptr		= std::unique_ptr<gltfImporter>;
+using TextureImporter_ptr	= std::unique_ptr<EditorTextureImporter>;
 using GameResExporter_ptr	= std::unique_ptr<GameResExporter>;
 
 class EditorApplication
@@ -45,12 +47,17 @@ public:
 	EditorProjectScriptConnector_ptr	projectConnector;
 	EditorScriptEngine_ptr				scripts;
 
-	gltfImporter_ptr				gltfImporter;
-	GameResExporter_ptr				gameResExporter;
-
 	EditorProject					project;
 	EditorRenderer&					editorRenderer;
 	EditorMainWindow				mainWindow;
+
+
+	gltfImporter_ptr				gltfImporter;
+	TextureImporter_ptr				textureImporter;
+	TextureImporter_ptr				cubeMapImporter;
+
+	GameResExporter_ptr				gameResExporter;
+
 
 	std::string	currentProjectFile = "";
 

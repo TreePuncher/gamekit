@@ -45,9 +45,9 @@ namespace FlexKit
 
 		for (auto& mipLevel : mipLevels)
 		{
-			offsets += Blob{ currentOffset };
-			sizes += Blob{ mipLevel.Size };
-			currentOffset += mipLevel.Size;
+			offsets			+= Blob{ currentOffset };
+			sizes			+= Blob{ mipLevel.Size };
+			currentOffset	+= mipLevel.Size;
 
 			Blob textureBuffer;
 			textureBuffer.resize(mipLevel.BufferSize());
@@ -63,7 +63,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceBlob CubeMapTexture::CreateBlob() const
+	ResourceBlob CubeMapTexture_IMPL::CreateBlob() const
 	{
 		struct Header
 		{
@@ -98,7 +98,7 @@ namespace FlexKit
 		header.Height		= Height;
 		header.Width		= Width;
 		header.MipCount		= Faces[0].mipLevels.size();
-		header.Format		= (size_t)format;
+		header.Format		= (size_t)FormatStringToDeviceFormat(format);
 
 		auto [_ptr, size] = (Blob{ header } + TextureBlob).Release();
 
@@ -119,11 +119,13 @@ namespace FlexKit
 	inline std::shared_ptr<iResource> CreateCubeMapResource(std::shared_ptr<TextureCubeMap_MetaData> metaData)
 	{
 		auto resource		= std::make_shared<CubeMapTexture>();
-		resource->GUID		= metaData->Guid;
-		resource->ID		= metaData->ID;
-		resource->format	= FormatStringToDeviceFormat(metaData->format);
+		resource->SetResourceGUID(metaData->Guid);
+		resource->SetResourceID(metaData->ID);
 
-		for (auto& face : resource->Faces)
+		auto& impl		= resource->Object();
+		impl->format	= metaData->format;
+
+		for (auto& face : impl->Faces)
 			face.mipLevels.resize(metaData->mipLevels.size());
 
 		for (auto& mipLevel : metaData->mipLevels)
@@ -131,11 +133,11 @@ namespace FlexKit
 			auto cubeMap = std::static_pointer_cast<TextureCubeMapMipLevel_MetaData>(mipLevel);
 
 			for (size_t itr = 0; itr < 6; ++itr)
-				resource->Faces[itr].mipLevels[cubeMap->level] = FlexKit::LoadHDR(cubeMap->TextureFiles[itr].c_str(), 1)[0];
+				impl->Faces[itr].mipLevels[cubeMap->level] = FlexKit::LoadHDR(cubeMap->TextureFiles[itr].c_str(), 1)[0];
 		}
 
-		resource->Height = resource->Faces[0].mipLevels[0].WH[0];
-		resource->Width = resource->Faces[0].mipLevels[0].WH[1];
+		impl->Height	= impl->Faces[0].mipLevels[0].WH[0];
+		impl->Width		= impl->Faces[0].mipLevels[0].WH[1];
 
 		return resource;
 	}

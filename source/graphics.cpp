@@ -2003,8 +2003,11 @@ namespace FlexKit
 
 	void Context::AddBarriers(std::span<const Barrier> barriers)
 	{
-		for(auto& barrier : barriers)
-			pendingBarriers.push_back(barrier);
+		for (auto& barrier : barriers)
+		{
+			if (barrier.resource != InvalidHandle)
+				pendingBarriers.push_back(barrier);
+		}
 	}
 
 
@@ -4406,7 +4409,7 @@ namespace FlexKit
 		const auto		deviceFormat	= TextureFormat2DXGIFormat(format);
 		const size_t	formatSize		= GetFormatElementSize(deviceFormat);
 		const bool		BCformat		= IsDDS(format);
-		const size_t	rowPitch		= Max((!BCformat ? formatSize * WH[0] : formatSize * WH[0] / 4) / 256, 1) * 256;
+		const size_t	rowPitch		= AlignedSize(BCformat ? formatSize * WH[0] / 4 : formatSize * WH[0]);
 		//size_t alignmentOffset    = rowPitch & 0x01ff;
 
 		D3D12_PLACED_SUBRESOURCE_FOOTPRINT SubRegion;
@@ -7989,6 +7992,18 @@ namespace FlexKit
 
 		auto UserIdx = Handles[handle];
 		return Resources[UserEntries[UserIdx].ResourceIdx].mipCount;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ResourceStateTable::SetWH(ResourceHandle handle, uint2 WH)
+	{
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
+		auto UserIdx									= Handles[handle];
+		Resources[UserEntries[UserIdx].ResourceIdx].WH	= WH;
 	}
 
 

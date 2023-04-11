@@ -315,18 +315,16 @@ namespace FlexKit
 
 	Light::Light(Light&& rhs)
 	{
-		K = rhs.K;
-		I = rhs.I;
-		R = rhs.R;
-
-		node		= rhs.node;
-		shadowMap	= rhs.shadowMap;
+		K		= rhs.K;
+		I		= rhs.I;
+		R		= rhs.R;
+		type	= rhs.type;
+		node	= rhs.node;
 
 		forceDisableShadowMapping	= rhs.forceDisableShadowMapping;
 		state						= rhs.state;
 		shadowState					= rhs.shadowState;
 
-		rhs.shadowMap	= InvalidHandle;
 		rhs.shadowState	= nullptr;
 	}
 
@@ -336,18 +334,16 @@ namespace FlexKit
 
 	Light& Light::operator = (Light&& rhs)
 	{
-		K = rhs.K;
-		I = rhs.I;
-		R = rhs.R;
-
-		node		= rhs.node;
-		shadowMap	= rhs.shadowMap;
+		K		= rhs.K;
+		I		= rhs.I;
+		R		= rhs.R;
+		type	= rhs.type;
+		node	= rhs.node;
 
 		forceDisableShadowMapping	= rhs.forceDisableShadowMapping;
 		state						= rhs.state;
 		shadowState					= rhs.shadowState;
 
-		rhs.shadowMap		= InvalidHandle;
 		rhs.shadowState		= nullptr;
 
 		return *this;
@@ -1527,17 +1523,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LightShadowGatherTask& Scene::GetVisableLights(UpdateDispatcher& dispatcher, CameraHandle camera, BuildBVHTask& bvh, iAllocator* temporaryMemory) const
+	GatherVisibleLightsTask& Scene::GetVisableLights(UpdateDispatcher& dispatcher, CameraHandle camera, BuildBVHTask& bvh, iAllocator* temporaryMemory) const
 	{
-		return dispatcher.Add<LightShadowGather>(
-			[&](UpdateDispatcher::UpdateBuilder& builder, LightShadowGather& data)
+		return dispatcher.Add<VisibleLightGather>(
+			[&](UpdateDispatcher::UpdateBuilder& builder, VisibleLightGather& data)
 			{
 				builder.SetDebugString("Point Light Shadow Gather");
 				builder.AddInput(bvh);
 
 				data.lights = Vector<LightHandle>{ temporaryMemory };
 			},
-			[this, &bvh = bvh.GetData().bvh, camera = camera](LightShadowGather& data, iAllocator& threadAllocator)
+			[this, &bvh = bvh.GetData().bvh, camera = camera](VisibleLightGather& data, iAllocator& threadAllocator)
 			{
 				FK_LOG_9("Point Light Shadow Gather");
 				ProfileFunction();
@@ -1577,7 +1573,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PointLightUpdate& Scene::UpdateLights(UpdateDispatcher& dispatcher, BuildBVHTask& bvh, LightShadowGatherTask& visablePointLights, iAllocator* temporaryMemory, iAllocator* persistentMemory) const
+	LightUpdate& Scene::UpdateLights(UpdateDispatcher& dispatcher, BuildBVHTask& bvh, GatherVisibleLightsTask& visablePointLights, iAllocator* temporaryMemory, iAllocator* persistentMemory) const
 	{
 		class Task : public iWork
 		{

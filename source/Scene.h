@@ -173,7 +173,7 @@ namespace FlexKit
 		LightStateFlags		state;
 		NodeHandle			node			= InvalidHandle;
 		CubeMapState*		shadowState		= nullptr;
-		ResourceHandle		shadowMap		= InvalidHandle;
+		//ResourceHandle		shadowMap		= InvalidHandle;
 
 		float3		K;
 		float		I, R;
@@ -451,7 +451,7 @@ namespace FlexKit
 		const Scene*		scene;
 	};
 
-	struct LightShadowGather
+	struct VisibleLightGather
 	{
 		Vector<LightHandle>	lights;
 		const Scene*		scene;
@@ -581,9 +581,9 @@ namespace FlexKit
 	};
 
 	using LightGatherTask			= UpdateTaskTyped<LightGather>;
-	using LightShadowGatherTask		= UpdateTaskTyped<LightShadowGather>;
+	using GatherVisibleLightsTask	= UpdateTaskTyped<VisibleLightGather>;
 	using BuildBVHTask				= UpdateTaskTyped<SceneBVHBuild>;
-	using PointLightUpdate			= UpdateTaskTyped<LightUpdate_DATA>;
+	using LightUpdate				= UpdateTaskTyped<LightUpdate_DATA>;
 
 	struct ComputeLod_RES
 	{
@@ -634,8 +634,8 @@ namespace FlexKit
 		size_t						GetLightCount();
 
 
-		LightShadowGatherTask&		GetVisableLights(UpdateDispatcher&, CameraHandle, BuildBVHTask&, iAllocator* tempMemory) const;
-		PointLightUpdate&			UpdateLights(UpdateDispatcher&, BuildBVHTask&, LightShadowGatherTask&, iAllocator* temporaryMemory, iAllocator* persistentMemory) const;
+		GatherVisibleLightsTask&	GetVisableLights(UpdateDispatcher&, CameraHandle, BuildBVHTask&, iAllocator* tempMemory) const;
+		LightUpdate&				UpdateLights(UpdateDispatcher&, BuildBVHTask&, GatherVisibleLightsTask&, iAllocator* temporaryMemory, iAllocator* persistentMemory) const;
 
 		Vector<SceneRayCastResult>	RayCast(FlexKit::Ray v, iAllocator& allocator = SystemAllocator) const;
 

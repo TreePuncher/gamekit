@@ -105,7 +105,7 @@ private:
 	struct DrawSceneOverlay_Desc
 	{
 		const FlexKit::PVS&					brushes;
-		FlexKit::LightShadowGatherTask&		lights;
+		FlexKit::GatherVisibleLightsTask&	lights;
 
 		TemporaryBuffers&				buffers;
 		FlexKit::ResourceHandle			renderTarget;
@@ -116,6 +116,8 @@ private:
 
 	void Render				(FlexKit::UpdateDispatcher& Dispatcher, double dT, TemporaryBuffers&, FlexKit::FrameGraph& graph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator);
 	void DrawSceneOverlays	(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, DrawSceneOverlay_Desc& desc);
+
+	void enterEvent(QMouseEvent* event);
 
 	double							T = 0.0f;
 	bool							phyicsOverlay		= true;

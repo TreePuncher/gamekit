@@ -799,6 +799,8 @@ namespace FlexKit
 			return elements.end();
 		}
 
+		size_t size() const noexcept { return elements.size(); }
+
 		HandleUtilities::HandleTable<TY_Handle>	handles;
 		Vector<elementData>						elements;
 		TY_EventHandler							eventHandler;

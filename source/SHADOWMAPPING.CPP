@@ -305,148 +305,117 @@ namespace FlexKit
 	}
 
 
-	AcquireShadowMapTask& ShadowMapper::AcquireShadowMaps(UpdateDispatcher& dispatcher, RenderSystem& renderSystem, MemoryPoolAllocator& UAVPool, PointLightUpdate& pointLightUpdate)
-	{
-		return dispatcher.Add<AcquireShadowMapResources>(
-			[&](UpdateDispatcher::UpdateBuilder& builder, AcquireShadowMapResources& data)
-			{
-				ProfileFunction();
-
-				builder.AddInput(pointLightUpdate);
-			},
-			[&dirtyList = pointLightUpdate.GetData().dirtyList, &renderSystem = renderSystem, &shadowMapAllocator = UAVPool, this]
-			(AcquireShadowMapResources& data, iAllocator& threadLocalAllocator)
-			{
-				ProfileFunction();
-
-				size_t idx = 0;
-
-				auto&			lights		= LightComponent::GetComponent();
-				auto			itr			= dirtyList.begin();
-				const auto		end			= dirtyList.end();
-				const uint64_t	frameID		= renderSystem.graphicsSubmissionCounter;
-
-				for (;itr != end; itr++)
-				{
-					auto lightHandle	= *itr;
-					auto& light			= lights[lightHandle];
-
-					if (light.shadowMap != InvalidHandle)
-					{
-						AddResource(light.shadowMap, frameID);
-						light.shadowMap = InvalidHandle;
-					}
-
-					if (auto res = GetResource(frameID); res != InvalidHandle)
-					{
-						light.shadowMap = res;
-					}
-					else
-						break;
-				}
-
-				for (auto i = itr; i != end; i++)
-				{
-					auto lightHandle	= *i;
-					auto& light			= lights[lightHandle];
-
-					if (light.shadowMap != InvalidHandle)
-					{
-						AddResource(light.shadowMap, frameID);
-						light.shadowMap == InvalidHandle;
-					}
-				}
-
-
-				Parallel_For(
-					renderSystem.threads, threadLocalAllocator, itr, end, 1,
-					[&](auto lightHandle, iAllocator& threadLocalAllocator)
-					{
-						ProfileFunction();
-						
-						constexpr float f_max = std::numeric_limits<float>::max();
-						static const D3D12_CLEAR_VALUE clearValue{
-							.Format = DXGI_FORMAT_R32_FLOAT,
-							.Color	{ f_max, f_max, f_max, f_max }
-						};
-
-						auto& light	= lights[lightHandle];
-
-						switch(light.type)
-						{
-						case LightType::PointLight:
-						{
-							auto desc		= GPUResourceDesc::CubeMapUAV({ ShadowMapSize, ShadowMapSize }, DeviceFormat::R32_FLOAT, 1, true);
-							desc.clearValue = clearValue;
-
-							auto [shadowMap, _] = shadowMapAllocator.Acquire(desc, false);
-							light.shadowMap		= shadowMap;
-
-#if USING(DEBUGGRAPHICS)
-							auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.graphicsSubmissionCounter, light.shadowMap);
-							renderSystem.SetDebugName(shadowMap, debugName.c_str());
-#endif
-							break;
-						}
-						case LightType::SpotLight:
-						case LightType::SpotLightBasicShadows:
-						{
-							auto desc		= GPUResourceDesc::UAVTexture({ ShadowMapSize, ShadowMapSize }, DeviceFormat::R32_FLOAT, true);
-							desc.clearValue = clearValue;
-
-							auto [shadowMap, _] = shadowMapAllocator.Acquire(desc, false);
-							light.shadowMap		= shadowMap;
-
-#if USING(DEBUGGRAPHICS)
-							auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.graphicsSubmissionCounter, light.shadowMap);
-							renderSystem.SetDebugName(shadowMap, debugName.c_str());
-#endif
-						}	break;
-						}
-			});
-			});
-	}
-
-
 	/************************************************************************************************/
 
 
 	ShadowMapPassData& ShadowMapper::ShadowMapPass(
-		FrameGraph&								frameGraph,
-		const LightShadowGatherTask&			shadowMapsGather,
-		UpdateTask&								cameraUpdate,
-		GatherPassesTask&						gather,
-		AcquireShadowMapTask&					shadowMapAcquire,
-		ReserveConstantBufferFunction&			reserveCB,
-		ReserveVertexBufferFunction&			reserveVB,
-		static_vector<AdditionalShadowMapPass>&	additional,
-		const double							t,
-		iAllocator&								tempAllocator,
-		AnimationPoseUpload*					poses)
+								FrameGraph&								frameGraph,
+								const GatherVisibleLightsTask&			visibleLights,
+								LightUpdate&							lightUpdate,
+								UpdateTask&								cameraUpdate,
+								GatherPassesTask&						passes,
+								ReserveConstantBufferFunction&			reserveCB,
+								ReserveVertexBufferFunction&			reserveVB,
+								static_vector<AdditionalShadowMapPass>&	additional,
+								const double							t,
+								MemoryPoolAllocator&					shadowMapPool,
+								iAllocator&								tempAllocator,
+								AnimationPoseUpload*					poses)
 	{
-		auto& shadowMapPass		= tempAllocator.allocate<ShadowMapPassData>();
-		auto& lights			= LightComponent::GetComponent();
+		PassDrivenResourceAllocation allocation
+		{
+			.getPass			=
+				[&]() -> std::span<const LightHandle>
+				{
+					return visibleLights.GetData().lights;
+				},
+			.initializeResources =
+				[&](std::span<const LightHandle> lights, std::span<FrameResourceHandle> frameHandles, auto& resourceCtx, iAllocator&)
+				{
+					ProfileFunction();
+						
+					constexpr float f_max = std::numeric_limits<float>::max();
+					static const D3D12_CLEAR_VALUE clearValue{
+						.Format = DXGI_FORMAT_R32_FLOAT,
+						.Color	{ f_max, f_max, f_max, f_max }
+					};
 
-		auto& shadowMap_data	= shadowMapsGather.GetData();
-		auto& shadowMaps		= shadowMap_data.lights;
+					LightComponent& lightComponent = LightComponent::GetComponent();
+
+					for(auto [handleIdx, lightHandle] : zip(iota(0), lights))
+					{
+						auto& light = lightComponent[lightHandle];
+
+						switch(light.type)
+						{
+							case LightType::PointLight:
+							{
+								auto desc		= GPUResourceDesc::CubeMapUAV({ ShadowMapSize, ShadowMapSize }, DeviceFormat::R32_FLOAT, 1, true);
+								desc.clearValue = clearValue;
+
+								
+								auto [shadowMap, _] = resourceCtx.AcquireResource(frameHandles[handleIdx], desc);
+#if USING(DEBUGGRAPHICS)
+								auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.graphicsSubmissionCounter, light.shadowMap);
+								renderSystem.SetDebugName(shadowMap, debugName.c_str());
+#endif
+								break;
+							}
+							case LightType::SpotLight:
+							case LightType::SpotLightBasicShadows:
+							{
+								auto desc		= GPUResourceDesc::UAVTexture({ ShadowMapSize, ShadowMapSize }, DeviceFormat::R32_FLOAT, true);
+								desc.clearValue = clearValue;
+
+								auto [shadowMap, _] = resourceCtx.AcquireResource(frameHandles[handleIdx], desc);
+#if USING(DEBUGGRAPHICS)
+								auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.graphicsSubmissionCounter, light.shadowMap);
+								renderSystem.SetDebugName(shadowMap, debugName.c_str());
+#endif
+							}	break;
+						}
+					}
+				},
+			.layout		= DeviceLayout::DeviceLayout_DepthStencilWrite,
+			.access		= DeviceAccessState::DASDEPTHBUFFERWRITE,
+			.max		= ShadowMapComponent::GetComponent().size(),
+			.pool		= &shadowMapPool,
+			.dependency	= visibleLights
+		};
+
+		const ResourceAllocation& acquireMaps = frameGraph.AllocateResourceSet(allocation);
+
+		auto& shadowMapPass		= tempAllocator.allocate<ShadowMapPassData>(acquireMaps);
+		auto& lights			= LightComponent::GetComponent();
 
 		auto getPasses = 
 			[&](iAllocator& allocator) -> Vector<PassData>
 			{
-				auto& shadowMap_data	= shadowMapsGather.GetData();
-				auto& lightList			= shadowMap_data.lights;
+				auto& lightList			= visibleLights.GetData().lights;
 
 				Vector<PassData> passes{ allocator };
-				passes.reserve(shadowMaps.size());
+				passes.reserve(lightList.size());
 
-				for (auto lightHandle : lightList)
+				for (auto [idx, lightHandle] : zip(iota(0), lightList))
 				{
 					auto& light = lights[lightHandle];
 
-					if (light.state != LightStateFlags::Dirty || light.shadowMap == InvalidHandle || light.type == LightType::PointLightNoShadows || light.type == LightType::SpotLightNoShadows)
+					switch (light.type)
+					{
+					case LightType::PointLightNoShadows:
+					case LightType::SpotLightNoShadows:
 						continue;
-
-					passes.emplace_back(light.shadowMap, lightHandle, light.shadowState);
+					case LightType::PointLight:
+					case LightType::SpotLight:
+					case LightType::SpotLightBasicShadows:
+						passes.emplace_back(
+							(uint32_t)idx,
+							lightHandle,
+							light.shadowState);
+						break;
+					default:
+						DebugBreak();
+					}
 				}
 
 				return std::move(passes);
@@ -465,9 +434,14 @@ namespace FlexKit
 
 		auto passSetupFn = [&](FrameGraphNodeBuilder& builder, Common_Data& data)
 		{
-			builder.AddDataDependency(shadowMapAcquire);
 			shadowMapPass.multiPass	= builder.GetNodeHandle();
 			data.depthBuffer		= builder.AcquireVirtualResource(GPUResourceDesc::DepthTarget({ ShadowMapSize, ShadowMapSize }, DeviceFormat::D32_FLOAT, 6), DASDEPTHBUFFERWRITE);
+
+			for (const auto map : acquireMaps)
+				builder.WriteTransition(map, DASDEPTHBUFFERWRITE);
+
+			builder.AddDataDependency(lightUpdate);
+			builder.AddNodeDependency(acquireMaps);
 		};
 
 		auto passDrawFN = [&, this](auto begin, auto end, std::span<VisibilityHandle> pvs, PassData& pass, Common_Data& common, FrameResources& resources, Context& ctx, iAllocator& allocator)
@@ -475,8 +449,14 @@ namespace FlexKit
 			ProfileFunction();
 			ctx.BeginEvent_DEBUG("DepthPass");
 
-			const ResourceHandle passTarget		= pass.renderTarget;
+			const ResourceHandle passTarget		= resources.GetResource(acquireMaps[pass.passIdx]);
 			const ResourceHandle depthBuffer	= resources.GetResource(common.depthBuffer);
+
+			auto& light = LightComponent::GetComponent()[pass.pointLightHandle];
+
+			if (light.type == LightType::PointLightNoShadows ||
+				light.type == LightType::SpotLightNoShadows)
+				return;
 
 			if (passTarget == InvalidHandle)
 				DebugBreak();
@@ -507,7 +487,6 @@ namespace FlexKit
 					DeviceLayout_RenderTarget,		DeviceLayout_RenderTarget,
 					Sync_All,						Sync_RenderTarget);
 			}
-			auto& light = LightComponent::GetComponent()[pass.pointLightHandle];
 
 
 			ctx.SetRootSignature(rootSignature);
@@ -521,7 +500,7 @@ namespace FlexKit
 					ctx.SetScissorAndViewports({ passTarget });
 					ctx.SetRenderTargets2({ passTarget }, 0, DSV_desc);
 
-					RenderPointLightShadowMap(begin, end, pass, common, resources, ctx, allocator);
+					RenderPointLightShadowMap(begin, end, pass, common, passTarget, resources, ctx, allocator);
 				}	break;
 				case LightType::SpotLight:
 				case LightType::SpotLightBasicShadows:
@@ -531,7 +510,7 @@ namespace FlexKit
 					ctx.SetScissorAndViewports({ passTarget });
 					ctx.SetRenderTargets2({ passTarget }, 0, DSV_desc);
 
-					RenderSpotLightShadowMap(begin, end, pass, common, resources, ctx, allocator);
+					RenderSpotLightShadowMap(begin, end, pass, common, passTarget, resources, ctx, allocator);
 				}	break;
 			}
 
@@ -556,7 +535,7 @@ namespace FlexKit
 					break;
 				}
 
-				ctx.renderSystem->SetObjectLayout(pass.renderTarget, DeviceLayout_ShaderResource);
+				//ctx.renderSystem->SetObjectLayout(pass.renderTarget, DeviceLayout_ShaderResource);
 			}
 		};
 
@@ -569,12 +548,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ShadowMapper::RenderPointLightShadowMap(ShadowMapper::Iterator_TY begin, ShadowMapper::Iterator_TY end, ShadowMapper::PassData& pass, ShadowMapper::Common_Data& common, FrameResources& resources, Context& ctx, iAllocator& allocator)
+	void ShadowMapper::RenderPointLightShadowMap(ShadowMapper::Iterator_TY begin, ShadowMapper::Iterator_TY end, ShadowMapper::PassData& pass, ShadowMapper::Common_Data& common, ResourceHandle passTarget, FrameResources& resources, Context& ctx, iAllocator& allocator)
 	{
 		PVS						brushes			{ allocator, (size_t)std::distance(begin, end) };
 		Vector<GameObject*>		animatedBrushes	{ allocator };
 
-		const ResourceHandle	passTarget			= pass.renderTarget;
 		auto&					lights				= LightComponent::GetComponent();
 		auto&					visiblityComponent	= SceneVisibilityComponent::GetComponent();
 		auto&					light				= lights[pass.pointLightHandle];
@@ -698,13 +676,13 @@ namespace FlexKit
 				};
 
 				if (intersections[0] || intersections[1] || intersections[2] ||
-					intersections[3] || intersections[4] || intersections[5] || true)
+					intersections[3] || intersections[4] || intersections[5])
 				{
 					ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
 
 					for (uint32_t itr = 0; itr < 6; itr++)
 					{
-						if (intersections[itr] || true)
+						if (intersections[itr])
 						{
 							struct
 							{
@@ -809,12 +787,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ShadowMapper::RenderSpotLightShadowMap(Iterator_TY begin, Iterator_TY end, PassData& pass, ShadowMapper::Common_Data& common, FrameResources& resources, Context& ctx, iAllocator& allocator)
+	void ShadowMapper::RenderSpotLightShadowMap(Iterator_TY begin, Iterator_TY end, PassData& pass, ShadowMapper::Common_Data& common, ResourceHandle passTarget, FrameResources& resources, Context& ctx, iAllocator& allocator)
 	{
 		PVS						brushes			{ allocator, (size_t)std::distance(begin, end) };
 		Vector<GameObject*>		animatedBrushes	{ allocator };
 
-		const ResourceHandle	passTarget			= pass.renderTarget;
 		auto&					lights				= LightComponent::GetComponent();
 		auto&					visiblityComponent	= SceneVisibilityComponent::GetComponent();
 		auto&					light				= lights[pass.pointLightHandle];
