@@ -63,7 +63,7 @@ namespace FlexKit
 	};
 
 
-	std::optional<DDSDecompressor*> CreateDDSDecompressor(ReadContext& readCtx, const uint32_t MIPlevel, AssetHandle asset, iAllocator* allocator);
+	DDSDecompressor* CreateDDSDecompressor(ReadContext& readCtx, const uint32_t MIPlevel, AssetHandle asset, iAllocator* allocator);
 
 
 	/************************************************************************************************/
@@ -157,12 +157,12 @@ namespace FlexKit
 
 				FK_ASSERT(res, "Failed to create texture asset decompressor!");
 
-				decompressor    = res.value_or(nullptr);
+				decompressor    = res;
 				format          = decompressor->GetFormat(); // TODO: correctly extract the format
 				currentLevel    = MIPlevel;
 				currentAsset    = asset;
 
-				return res.has_value();
+				return res != nullptr;
 			}
 			else
 				__debugbreak();
@@ -217,38 +217,7 @@ namespace FlexKit
 	inline const PSOHandle TEXTUREFEEDBACKPASS                  = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKPASS));
 	inline const PSOHandle TEXTUREFEEDBACKANIMATEDPASS          = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKANIMATEDPASS));
 
-	inline const PSOHandle TEXTUREFEEDBACKCOMPRESSOR            = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKCOMPRESSOR));
-	inline const PSOHandle TEXTUREFEEDBACKMERGEBLOCKS           = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKMERGEBLOCKS));
-	inline const PSOHandle TEXTUREFEEDBACKPREFIXSUMBLOCKSIZES   = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKPREFIXSUMBLOCKSIZES));
-	inline const PSOHandle TEXTUREFEEDBACKSETBLOCKSIZES         = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKSETBLOCKSIZES));
-
-
-	ID3D12PipelineState* CreateTextureFeedbackCompressorPSO(RenderSystem* RS);
-	ID3D12PipelineState* CreateTextureFeedbackBlockSizePreFixSum(RenderSystem* RS);
-	ID3D12PipelineState* CreateTextureFeedbackMergeBlocks(RenderSystem* RS);
-	ID3D12PipelineState* CreateTextureFeedbackSetBlockSizes(RenderSystem* RS);
-
 	
-	/************************************************************************************************/
-
-
-	struct TextureFeedbackPass_Data
-	{
-		CameraHandle                    camera;
-		const GatherPassesTask&         pvs;
-		ReserveConstantBufferFunction   reserveCB;
-
-		FrameResourceHandle             feedbackBuffers[2];
-
-		FrameResourceHandle             feedbackDepth;
-		FrameResourceHandle             feedbackCounters;
-		FrameResourceHandle             feedbackBlockSizes;
-		FrameResourceHandle             feedbackBlockOffsets;
-
-		ReadBackResourceHandle          readbackBuffer;
-	};
-
-
 	/************************************************************************************************/
 
 
@@ -294,8 +263,8 @@ namespace FlexKit
 	};
 
 
-	using AllocatedBlockList    = Vector<AllocatedBlock>;
-	using gpuTileList           = Vector<gpuTileID>;
+	using AllocatedBlockList	= Vector<AllocatedBlock>;
+	using gpuTileList			= Vector<gpuTileID>;
 
 	struct BlockAllocation
 	{
@@ -312,11 +281,11 @@ namespace FlexKit
 
 		struct Block
 		{
-			TileID_t        tileID;
-			ResourceHandle  resource            = InvalidHandle;
-			uint8_t         state               = EBlockState::Free;
-			uint64_t        staleFrameCount     = 0;
-			uint32_t        blockID;
+			TileID_t		tileID;
+			ResourceHandle	resource			= InvalidHandle;
+			uint8_t			state				= EBlockState::Free;
+			uint64_t		staleFrameCount		= 0;
+			uint32_t		blockID;
 
 			operator uint64_t() const
 			{
@@ -342,8 +311,8 @@ namespace FlexKit
 
 		TextureBlockAllocator(const size_t blockCount, iAllocator* IN_allocator);
 
-		Vector<gpuTileID>	UpdateTileStates	(const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
-		BlockAllocation		AllocateBlocks		(const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
+		Vector<gpuTileID>	UpdateTileStates	(std::span<const gpuTileID> blocks, iAllocator* allocator);
+		BlockAllocation		AllocateBlocks		(std::span<const gpuTileID> blocks, iAllocator* allocator);
 		BlockAllocation		AllocateBlock		(TileID_t, iAllocator* allocator);
 
 		const static uint32_t	blockSize	= 64 * KILOBYTE;
@@ -354,6 +323,48 @@ namespace FlexKit
 		Vector<Block>			inuse;
 
 		iAllocator*				allocator;
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct FeedbackTable
+	{
+		FeedbackTable(iAllocator& IN_allocator);
+
+		uint32_t	_GetTextureOffset(ResourceHandle handle);
+		void		_InsertItem(ResourceHandle handle, uint32_t IN_offset, uint32_t IN_size);
+
+		uint32_t	GetTextureOffset(ResourceHandle handle);
+		void		Expand();
+		void		InsertItem(ResourceHandle handle, uint32_t offset, uint32_t size);
+		void		Clear();
+
+		static constexpr auto									hashFN = std::hash<size_t>{};
+		size_t													textureCount = 0;
+		Vector<std::tuple<ResourceHandle, uint32_t, uint32_t>>	mappings;
+
+		std::shared_mutex	m;
+		iAllocator& allocator;
+	};
+
+
+	struct PassResults
+	{
+		FeedbackTable			table;
+		std::atomic_uint32_t	offsets;
+
+		uint32_t Reserve(uint32_t size) noexcept
+		{
+			return offsets.fetch_add(size);
+		}
+
+		void Reset()
+		{
+			table.Clear();
+			offsets = 0;
+		}
 	};
 
 
@@ -376,7 +387,8 @@ namespace FlexKit
 			GatherPassesTask&				passes,
 			const ResourceAllocation&		animationResources,
 			ReserveConstantBufferFunction&	reserveCB,
-			ReserveVertexBufferFunction&	reserveVB);
+			ReserveVertexBufferFunction&	reserveVB,
+			iAllocator&						tempAllocator);
 
 
 		struct TextureStreamUpdate : public FlexKit::iWork
@@ -414,8 +426,8 @@ namespace FlexKit
 
 	private:
 
-		ID3D12PipelineState* CreateTextureFeedbackPassPSO			(RenderSystem* RS);
-		ID3D12PipelineState* CreateTextureFeedbackAnimatedPassPSO	(RenderSystem* RS);
+		ID3D12PipelineState* CreateTextureFeedbackPassPSO			(RenderSystem*);
+		ID3D12PipelineState* CreateTextureFeedbackAnimatedPassPSO	(RenderSystem*);
 
 		inline static const size_t OffsetBufferSize = 240 * 240 * sizeof(uint32_t);
 
@@ -437,24 +449,26 @@ namespace FlexKit
 
 		RenderSystem&			renderSystem;
 
-		std::atomic_bool        updateInProgress    = false;
-		std::atomic_bool        taskInProgress      = false;
-		std::atomic_bool        taskStarted			= false;
+		std::atomic_bool		updateInProgress	= false;
+		std::atomic_bool		taskInProgress		= false;
+		std::atomic_bool		taskStarted			= false;
 
 		RootSignature			feedbackPassRootSignature;
-		ReadBackResourceHandle  feedbackReturnBuffer; // CPU + GPU
+		RootSignature			sortingRootSignature;
+		ReadBackResourceHandle	feedbackReturnBuffer; // CPU + GPU
 
-		Vector<MappedAsset>     mappedAssets;
+		Vector<MappedAsset>		mappedAssets;
 		TextureBlockAllocator	textureBlockAllocator;
-		DeviceHeapHandle        heap;
+		DeviceHeapHandle		heap;
 
-		QueryHandle             timeStats;
+		QueryHandle				timeStats;
 
-		iAllocator*             allocator;
+		PassResults				pendingResults;
+		iAllocator*				allocator;
 		const TextureCacheDesc	settings;
 
-		float passTime      = 0;
-		float updateTime    = 0;
+		float passTime		= 0;
+		float updateTime	= 0;
 	};
 
 

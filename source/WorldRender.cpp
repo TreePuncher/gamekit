@@ -577,9 +577,9 @@ namespace FlexKit
 	size_t GetRTPoolSize(const AvailableFeatures& features, const uint2 WH)
 	{
 		if (features.resourceHeapTier == ResourceHeapTier::HeapTier1)
-			return 128 * 3 * MEGABYTE;
+			return 512 * 3 * MEGABYTE;
 		else
-			return 128 * 2 * MEGABYTE;
+			return 512 * 2 * MEGABYTE;
 	}
 
 

@@ -566,7 +566,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		//return pow(-positionVS.z / 128, 10.0f);
 		//return depth;
 		//return float4(N / 2.0f + 0.5f);
-	//return Albedo * Albedo;
+	return Albedo * Albedo;
 	//return float4(positionWS, 0);
 	//return pow(roughness, 2.2f);
 	//return pow(MRIA, 2.2f);

@@ -202,6 +202,15 @@ namespace FlexKit
 		byte Green;
 		byte Blue;
 		byte Reserved;
+
+		RGBA& operator = (const RGB& rhs) noexcept
+		{
+			Red		= rhs.Red;
+			Green	= rhs.Green;
+			Blue	= rhs.Blue;
+
+			return *this;
+		}
 	};
 
 

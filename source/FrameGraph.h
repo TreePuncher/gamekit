@@ -2107,6 +2107,7 @@ namespace FlexKit
 				auto resource = builder.AcquireResourceHandle(desc.access, desc.layout);
 				data.resources.handles.push_back(resource);
 			}
+
 			builder.BuildNode(this);
 
 			return data.resources;

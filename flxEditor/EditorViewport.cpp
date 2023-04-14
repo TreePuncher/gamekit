@@ -1451,7 +1451,8 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 			drawSceneRes.passes,
 			drawSceneRes.animationResources,
 			temporaries.ReserveConstantBuffer,
-			temporaries.ReserveVertexBuffer);
+			temporaries.ReserveVertexBuffer,
+			allocator);
 	}
 	else
 		FlexKit::ClearBackBuffer(frameGraph, renderTarget, { 0.25f, 0.25f, 0.25f, 0 });

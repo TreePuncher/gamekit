@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2022 Robert May
+Copyright (c) 2015 - 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -51,7 +51,7 @@ namespace FlexKit
 		const bool debugMode = false;
 #endif
 
-		if (!Initiate(memory, debugMode, true, false))
+		if (!Initiate(memory, debugMode, false, false))
 			throw std::runtime_error{"Failed to initiate core"};
 	}
 

@@ -356,8 +356,8 @@ namespace FlexKit
 								
 								auto [shadowMap, _] = resourceCtx.AcquireResource(frameHandles[handleIdx], desc);
 #if USING(DEBUGGRAPHICS)
-								auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.graphicsSubmissionCounter, light.shadowMap);
-								renderSystem.SetDebugName(shadowMap, debugName.c_str());
+								//auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.graphicsSubmissionCounter, light.shadowMap);
+								//renderSystem.SetDebugName(shadowMap, debugName.c_str());
 #endif
 								break;
 							}
@@ -369,8 +369,8 @@ namespace FlexKit
 
 								auto [shadowMap, _] = resourceCtx.AcquireResource(frameHandles[handleIdx], desc);
 #if USING(DEBUGGRAPHICS)
-								auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.graphicsSubmissionCounter, light.shadowMap);
-								renderSystem.SetDebugName(shadowMap, debugName.c_str());
+								//auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.graphicsSubmissionCounter, light.shadowMap);
+								//renderSystem.SetDebugName(shadowMap, debugName.c_str());
 #endif
 							}	break;
 						}
