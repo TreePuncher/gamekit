@@ -19,7 +19,6 @@ cbuffer EntityConstants : register(b1)
 	uint     textureCount;
 }
 
-
 StructuredBuffer<float4x4> Poses : register(t0);
 
 struct Vertex

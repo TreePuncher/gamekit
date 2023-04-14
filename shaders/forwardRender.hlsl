@@ -201,15 +201,13 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
 
 	float mip = source.CalculateLevelOfDetail(textureSampler, UV);
 	uint state1;
-	uint state2;
 
-	source.SampleLevel(textureSampler, UV, trunc(mip) + 0, 0, state1);
-	source.SampleLevel(textureSampler, UV, trunc(mip) + 1, 0, state2);
+	float4 texel = source.Sample(textureSampler, UV, 0, 0.0, state1);
 
-	if (CheckAccessFullyMapped(state1) && CheckAccessFullyMapped(state2))
-		return source.Sample(textureSampler, UV);
+	if (CheckAccessFullyMapped(state1))
+		return texel;
 
-	mip = ceil(mip);
+	mip = floor(mip);
 
 	while(mip < MIPCount)
 	{
@@ -224,6 +222,39 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
 	return float4(1.0f, 0.0f, 1.0f, 0.0f); // NO PAGES LOADED!
 }
 
+
+float4 VirtualTextureDebug(Texture2D source, in sampler textureSampler, in float2 UV)
+{
+	float MIPCount		= 1;
+	float width			= 0;
+	float height		= 0;
+	source.GetDimensions(0u, width, height, MIPCount);
+
+	float4 colors[] = {
+		float4(0.25f, 0.25f, 0.25f, 1),
+		float4(0.5f, 0.5f, 0.5f, 1),
+		float4(1.0f, 1.0f, 0.0f, 1),
+		float4(0.0f, 1.0f, 1.0f, 1),
+		float4(0.0f, 0.0f, 1.0f, 1),
+		float4(1.0f, 0.0f, 1.0f, 1),
+		float4(0.75f, 0.75f, 0.75f, 1),
+		float4(1.0f, 1.0f, 1.0f, 1),
+	};
+
+	int mip = 0;
+	while (mip < MIPCount)
+	{
+		uint state1;
+		float4 texel = source.SampleLevel(textureSampler, UV, trunc(mip), 0, state1);
+
+		if (CheckAccessFullyMapped(state1))
+			return colors[mip % 8];
+
+		mip += 1;
+	}
+
+	return float4(1, 0, 1, 0);
+}
 
 /************************************************************************************************/
 

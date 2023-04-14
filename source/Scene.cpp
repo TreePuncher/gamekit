@@ -1224,8 +1224,11 @@ namespace FlexKit
 					}
 				}
 
-				if(submit)
-					renderSystem.SubmitUploadQueues(SYNC_Graphics, &copyHandle);
+				if (submit)
+				{
+					renderSystem.SubmitUploadQueues(&copyHandle);
+					renderSystem.SyncDirectTo(renderSystem.SyncUploadTicket());
+				}
 
 				//m.unlock();
 			});

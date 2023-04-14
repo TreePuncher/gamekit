@@ -740,6 +740,48 @@ namespace FlexKit
 		}
 
 
+		THISTYPE operator << (const auto sl) const noexcept
+		{
+			THISTYPE v = *this;
+
+			for (auto& n : v)
+				n = v << sl;
+
+			return v;
+		}
+
+		THISTYPE operator >> (const auto sr) const noexcept
+		{
+			THISTYPE v = *this;
+
+			for (auto& n : v)
+				n = n >> sr;
+
+			return v;
+		}
+
+		THISTYPE operator << (const THISTYPE sl) const noexcept
+		{
+			THISTYPE v = *this;
+
+			size_t i = 0;
+			for (auto& n : v)
+				v[i] = v[i] << sl[i];
+
+			return v;
+		}
+
+		THISTYPE operator >> (const THISTYPE sr) const noexcept
+		{
+			THISTYPE v = *this;
+
+			size_t i = 0;
+			for (auto& n : v)
+				v[i] = v[i] >> sr[i];
+
+			return v;
+		}
+
 		template<size_t ... TY_ARGS>
 		auto Swizzle(this auto& self)
 		{

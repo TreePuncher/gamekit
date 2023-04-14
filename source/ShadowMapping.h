@@ -42,12 +42,6 @@ namespace FlexKit
 		static_vector<AdditionalShadowMapPass>	additionalShadowPass;
 	};
 
-	struct AcquireShadowMapResources
-	{
-	};
-
-	using AcquireShadowMapTask = UpdateTaskTyped<AcquireShadowMapResources>;
-
 
 	struct ShadowCubeMatrices
 	{

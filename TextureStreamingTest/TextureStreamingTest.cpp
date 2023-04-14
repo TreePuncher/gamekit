@@ -70,6 +70,8 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	// Setup Camera
 	auto& orbitComponent = orbitCamera.AddView<OrbitCameraBehavior>();
 	activeCamera = orbitComponent.camera;
+	orbitComponent.moveRate = 400;
+	orbitComponent.acceleration = 100;
 
 	if(!rotate)
 		renderWindow.ToggleMouseCapture();
@@ -198,7 +200,7 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 	);
 
 	if (streamingUpdates)
-		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, reserveCB, reserveVB);
+		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, reserveCB, reserveVB, core.GetTempMemoryMT());
 
 	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow.GetBackBuffer());
 

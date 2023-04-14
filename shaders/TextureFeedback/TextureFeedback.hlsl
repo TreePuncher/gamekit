@@ -10,139 +10,134 @@ cbuffer EntityConstants : register(b1)
 	float		Metallic;
 	float4x4	WT;
 	uint		textureCount;
-	uint4		Textures[16];
+	uint4		texturesInfo[16]; // XY - SIZE, ID, Padding
 }
 
-
-// XY - SIZE
-// Z  - ID
-// W  - PADDING
 cbuffer PassConstants : register(b2)
 {
-	float  feedbackBias;
-	float  padding;
-	uint4  zeroBlock[2];
+	float	feedbackBias;
+	uint	offset0;
+	uint	offset1;
+	uint	offset2;
+	uint	offset3;
+	uint	offset4;
+	uint	offset5;
+	uint	offset6;
+	uint	offset7;
+	uint	offset8;
+	uint	offset9;
+	uint	offset10;
+	uint	offset11;
+	uint	offset12;
+	uint	offset13;
+	uint	offset14;
+	uint	offset15;
 }
 
-AppendStructuredBuffer<uint2>   UAVBuffer : register(u0);
-Texture2D<float4>               textures[16] : register(t1);
-SamplerState                    defaultSampler : register(s1);
-
-uint Packed(uint TextureIdx, const float2 UV, const uint lod)
-{
-	const uint2 blockSize   = Textures[TextureIdx].xy;
-	
-	uint2 MIPWH     = 0;
-	uint MIPCount   = 0;
-	
-	textures[TextureIdx].GetDimensions(lod, MIPWH.x, MIPWH.y, MIPCount);
-	const int packed = MIPWH.x < blockSize.x;
-
-	return packed;
-}
-
-uint CreateTileID(const uint2 XY, const uint mipLevel, const bool packed, const uint mipCount)
-{
-	if(packed)
-		return (packed << 31) | (mipLevel << 24);
-	else
-		return (packed << 31) | (mipLevel << 24) | (packed ? 0 : ((0xFF & XY.x) << 12) | (0xFF & XY.y));
-}
-
-void PushSample(const float2 UV, const uint desiredLod, const uint TextureIdx, uint2 XY)
-{
-	uint2 MIPWH     = 0;
-	uint MIPCount   = 0;
-
-	const uint textureID    = Textures[TextureIdx].z;
-	const uint2 blockSize   = Textures[TextureIdx].xy;
-	
-	textures[TextureIdx].GetDimensions(desiredLod, MIPWH.x, MIPWH.y, MIPCount);
-
-	if (MIPWH.x == 0 || MIPWH.y == 0)
-		return;
-		
-	int lod             = desiredLod;
-	const int packed    = MIPWH.x < blockSize.x;
-	
-	if (packed)
-	{
-		uint2 WH;
-		int MIPCount;
-		int mipLevel = 0;
-			
-		for (int mipLevel = 0; mipLevel < 16; mipLevel++)
-		{
-			textures[TextureIdx].GetDimensions(mipLevel, WH.x, WH.y, MIPCount);
-			if (WH.x < blockSize.x)
-				break;
-		}
-
-		lod = mipLevel;
-		textures[TextureIdx].GetDimensions(lod, MIPWH.x, MIPWH.y, MIPCount);
-	}
-	
-	const uint2 blockArea   = max(uint2(MIPWH / blockSize), uint2(1, 1));
-	const uint2 blockXY     = min(blockArea * saturate(UV), blockArea - uint2(1, 1));
-	const uint  blockID     = CreateTileID(blockXY, lod, packed, MIPCount);
-
-	UAVBuffer.Append(uint2(textureID, blockID));
-}
-
-bool CheckLoaded(Texture2D source, in sampler textureSampler, in float2 UV, uint mip)
-{
-	uint state;
-	const float4 texel = source.SampleLevel(textureSampler, UV, mip, 0.0f, state);
-
-	return CheckAccessFullyMapped(state);
-}
+globallycoherent	RWStructuredBuffer<uint>	texturesFeedback	: register(u0);
+					Texture2D<float4>			textures[]			: register(t0);
+SamplerState									defaultSampler		: register(s1);
 
 struct Forward_VS_OUT
 {
-	float4 POS      : SV_POSITION;
-	float  depth    : DEPTH;
+	float4 POS		: SV_POSITION;
+	float  depth	: DEPTH;
 	float3 Normal	: NORMAL;
 	float3 Tangent	: TANGENT;
 	float2 UV		: TEXCOORD;
 };
 
+uint GetOffset(uint idx)
+{
+	switch (idx)
+	{
+	case 0:
+		return offset0;
+	case 1:
+		return offset1;
+	case 2:
+		return offset2;
+	case 3:
+		return offset3;
+	case 4:
+		return offset4;
+	case 5:
+		return offset5;
+	case 6:
+		return offset6;
+	case 7:
+		return offset7;
+	case 8:
+		return offset8;
+	case 9:
+		return offset9;
+	case 10:
+		return offset10;
+	case 11:
+		return offset11;
+	case 12:
+		return offset12;
+	case 13:
+		return offset13;
+	case 14:
+		return offset14;
+	case 15:
+		return offset15;
+	default:
+		return -1;
+	}
+}
+
 [earlydepthstencil]  
 void TextureFeedback_PS(Forward_VS_OUT IN)
 {
-	const float4 XY				= IN.POS;
-	const float maxAniso		= 4;
-	const float maxAnisoLog2	= log2(maxAniso);
-	const float2 UV				= IN.UV % 1.0f;
-	
+	const float2 UV	= IN.UV % 1.0f;
+
 	for(uint I = 0; I < textureCount; I++)
 	{
 		uint2 WH = uint2(0, 0);
 		uint MIPCount = 0;
-		textures[I].GetDimensions(0.0f, WH.x, WH.y, MIPCount);
+		textures[NonUniformResourceIndex(I)].GetDimensions(0.0f, WH.x, WH.y, MIPCount);
 
-		const float2 dx = ddx(UV * WH);
-		const float2 dy = ddy(UV * WH);
+		const float mip_temp		= textures[NonUniformResourceIndex(I)].CalculateLevelOfDetail(defaultSampler, UV);
+		const float desiredLod		= clamp(mip_temp + feedbackBias, 0.0f, MIPCount - 1.0f);
 
-		const float px = dot(dx, dx);
-		const float py = dot(dy, dy);
+		const uint2 tileSize		= texturesInfo[I].xy;
+		const uint2 tileArea		= WH / tileSize;
+		const uint textureOffset	= GetOffset(I);
 
-		const float maxLod = 0.5 * log2(max(px, py));
-		const float minLod = 0.5 * log2(min(px, py));
-
-		float mip_temp = textures[I].CalculateLevelOfDetail(defaultSampler, UV);
-
-		const float anisoLOD	= maxLod - min(maxLod - minLod, maxAnisoLog2);
-		const float desiredLod	= max(min(mip_temp + feedbackBias - 3, MIPCount - 1), 0);
-
-		for(int lod = MIPCount - 1; lod > 0 && lod >= floor(desiredLod); --lod)
+		for (int lod = desiredLod; lod < MIPCount; ++lod)
 		{
-			if(!CheckLoaded(textures[I], defaultSampler, UV, lod))
-			{
-				PushSample(UV, lod, I, XY.xy);
-				return;
-			}
-		}
+			const uint2 tile = uint2(tileArea * UV) >> lod;
+			InterlockedOr(texturesFeedback[(tile.x + tile.y * tileArea.x) + textureOffset], 0x01 << lod);
 
-		PushSample(UV, floor(desiredLod), I, XY.xy);
+			//const uint offset = (tile.x + tile.y * tileArea.x) + textureOffset;
+			//InterlockedOr(texturesFeedback[offset / 4], (0x01 << lod) << ((offset % 4) * 8));
+		}
 	}
 }
+
+
+/**********************************************************************
+
+Copyright (c) 2023 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

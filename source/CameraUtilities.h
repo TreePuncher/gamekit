@@ -75,7 +75,6 @@ namespace FlexKit
 
 		NodeHandle	GetCameraNode();
 
-	private:
 		NodeHandle		cameraNode;
 		NodeHandle		yawNode;
 		NodeHandle		pitchNode;

@@ -1361,7 +1361,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void                CopyTextureRegion(ID3D12Resource*, size_t subResourceIdx, uint3 XYZ, UploadReservation source, uint2 WH, DeviceFormat format);
 		void                CopyTile(ID3D12Resource* dest, const uint3 destTile, const size_t tileOffset, const UploadReservation src);
 
-		PackedResourceTileInfo  GetPackedTileInfo(ID3D12Resource* resource) const;
 		bool                    IsSubResourceTiled(ID3D12Resource* Resource, const size_t level) const;
 
 		void                    flushPendingBarriers();
@@ -3687,9 +3686,18 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void RegisterPSOLoader(PSOHandle State, PipelineStateDescription desc);
 		void QueuePSOLoad(PSOHandle State);
 
+		PackedResourceTileInfo  GetPackedTileInfo(ID3D12Resource*)	const;
+		PackedResourceTileInfo  GetPackedTileInfo(ResourceHandle)	const;
 
-		SyncPoint	SyncWithDirect();
-		SyncPoint	GetSyncDirect();
+		void		SyncUploadTo(SyncPoint);
+		SyncPoint	SyncUploadPoint();
+		SyncPoint	SyncUploadTicket();
+
+
+		void		SyncDirectTo(SyncPoint);
+		SyncPoint	SyncDirectPoint();
+		SyncPoint	SyncDirectTicket();
+
 		SyncPoint	GetSubmissionTicket();
 		SyncPoint	Submit(std::span<Context*> CLs, std::optional<SyncPoint> sync = {});
 		void		Signal(SyncPoint);
@@ -3728,7 +3736,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		uint2			GetTextureTilingWH(ResourceHandle Handle, const uint mipLevel) const;
 		uint2			GetHeapOffset(ResourceHandle Handle, uint subResourceID = 0) const;
 
-		SyncPoint			UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator);
+		void				SubmitTileMappings(std::span<ResourceHandle> resources, iAllocator* allocator);
 		void				UpdateTextureTileMappings(const ResourceHandle Handle, std::span<const TileMapping>);
 		const TileMapList&	GetTileMappings(const ResourceHandle Handle);
 
@@ -3803,7 +3811,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void ReleaseReadBack(ReadBackResourceHandle);
 		void ReleaseHeap(DeviceHeapHandle);
 
-		void				SubmitUploadQueues(uint32_t flags, CopyContextHandle* handle, size_t count = 1, std::optional<SyncPoint> syncBefore = {}, std::optional<SyncPoint> syncAfter = {});
+		void				SubmitUploadQueues(CopyContextHandle* handle, size_t count = 1, std::optional<SyncPoint> syncBefore = {}, std::optional<SyncPoint> syncAfter = {});
 		CopyContextHandle	OpenUploadQueue();
 		CopyContextHandle	GetImmediateCopyQueue();
 		Context&			GetCommandList(std::optional<SyncPoint> ticket = {});

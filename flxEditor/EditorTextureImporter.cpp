@@ -35,9 +35,7 @@ struct TextureImporterDialog
 			for (size_t x_itr = 0; x_itr < wh[0]; x_itr++)
 			{
 				FlexKit::uint2 px = { x_itr, y_itr };
-				outputView[px].Red		= inputView[px].Red;
-				outputView[px].Green	= inputView[px].Green;
-				outputView[px].Blue		= inputView[px].Blue;
+				outputView[px] = inputView[px];
 			}
 		}
 

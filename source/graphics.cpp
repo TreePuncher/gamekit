@@ -4466,29 +4466,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PackedResourceTileInfo CopyContext::GetPackedTileInfo(ID3D12Resource* resource) const
-	{
-		ID3D12Device* device = nullptr;
-		commandList->GetDevice(IID_PPV_ARGS(&device));
-
-		UINT						TileCount = 0;
-		D3D12_PACKED_MIP_INFO		packedMipInfo;
-		D3D12_TILE_SHAPE			TileShape;
-		UINT						subResourceTilingCount = 1;
-		D3D12_SUBRESOURCE_TILING	subResourceTiling_Packed;
-
-		device->GetResourceTiling(resource, &TileCount, &packedMipInfo, &TileShape, &subResourceTilingCount, 0, &subResourceTiling_Packed);
-
-		return {
-			size_t(packedMipInfo.NumStandardMips),
-			size_t(packedMipInfo.NumStandardMips + packedMipInfo.NumPackedMips),
-			packedMipInfo.StartTileIndexInOverallResource };
-	}
-
-
-	/************************************************************************************************/
-
-
 	bool CopyContext::IsSubResourceTiled(ID3D12Resource* resource, const size_t level) const
 	{
 		ID3D12Device* device = nullptr;
@@ -4957,11 +4934,8 @@ namespace FlexKit
 			if (!FAILED(D3D12GetDebugInterface(__uuidof(ID3D12Debug5), (void**)&pDebug5)))
 			{
 				pDebug5->SetEnableAutoName(true);
-
-				if (in->DX_GPUvalidation)
-					Debug->SetEnableSynchronizedCommandQueueValidation(true);
-				if (in->DX_GPUvalidation)
-					pDebug5->SetEnableGPUBasedValidation(true);
+				pDebug5->SetEnableGPUBasedValidation(in->DX_GPUvalidation);
+				Debug->SetEnableSynchronizedCommandQueueValidation(in->DX_GPUvalidation);
 			}
 		}
 		else
@@ -4976,10 +4950,9 @@ namespace FlexKit
 		{
 			FK_LOG_ERROR("Failed to create A DX12 Device!");
 
-			// Trying again with a DX11 Feature Level
-			if (FAILED(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&Device))))
+			if (FAILED(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&Device))))
 			{
-				FK_LOG_ERROR("Failed to create A DX11 Device!");
+				FK_LOG_ERROR("Failed to create A DX12 Device!");
 				return false;
 			}
 		}
@@ -6130,18 +6103,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	SyncPoint RenderSystem::UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator)
+	void RenderSystem::SubmitTileMappings(std::span<ResourceHandle> resources, iAllocator* allocator)
 	{
 		FK_LOG_9("Updating tile mappings for frame: %u", graphicsSubmissionCounter.load(std::memory_order_relaxed));
 
-		auto itr = begin;
-		while(itr < end)
+		for(const auto resource : resources)
 		{
-			FK_ASSERT(*itr >= Textures.Handles.size(), "Invalid Handle Detected");
+			FK_ASSERT(resource >= Textures.Handles.size(), "Invalid Handle Detected");
 
-			auto& mappings		= Textures._GetTileMappings(*itr);
-			auto deviceResource	= GetDeviceResource(*itr);
-			const auto mipCount	= Textures.GetMIPCount(*itr);
+			auto& mappings		= Textures._GetTileMappings(resource);
+			auto deviceResource	= GetDeviceResource(resource);
+			const auto mipCount	= Textures.GetMIPCount(resource);
 
 			Vector<D3D12_TILED_RESOURCE_COORDINATE>	coordinates	{ allocator };
 			Vector<D3D12_TILE_REGION_SIZE>			regionSizes	{ allocator };
@@ -6163,10 +6135,10 @@ namespace FlexKit
 					const auto flag = D3D12_TILE_RANGE_FLAG_NULL;
 
 					D3D12_TILED_RESOURCE_COORDINATE coordinate;
-					coordinate.Subresource  = mapping.tileID.GetMipLevel();
-					coordinate.X            = mapping.tileID.GetTileX();
-					coordinate.Y            = mapping.tileID.GetTileY();
-					coordinate.Z            = 0;
+					coordinate.Subresource	= mapping.tileID.GetMipLevel();
+					coordinate.X			= mapping.tileID.GetTileX();
+					coordinate.Y			= mapping.tileID.GetTileY();
+					coordinate.Z			= 0;
 
 					if (mapping.tileID.bytes != -1)
 					{
@@ -6214,10 +6186,10 @@ namespace FlexKit
 					const auto flag = D3D12_TILE_RANGE_FLAG_NONE;
 
 					D3D12_TILED_RESOURCE_COORDINATE coordinate;
-					coordinate.Subresource  = mapping.tileID.GetMipLevel();
-					coordinate.X            = mapping.tileID.GetTileX();
-					coordinate.Y            = mapping.tileID.GetTileY();
-					coordinate.Z            = 0;
+					coordinate.Subresource	= mapping.tileID.GetMipLevel();
+					coordinate.X			= mapping.tileID.GetTileX();
+					coordinate.Y			= mapping.tileID.GetTileY();
+					coordinate.Z			= 0;
 
 #if _DEBUG
 					if(flag == D3D12_TILE_RANGE_FLAG_NONE)
@@ -6231,12 +6203,12 @@ namespace FlexKit
 						coordinates.push_back(coordinate);
 
 						D3D12_TILE_REGION_SIZE regionSize;
-						regionSize.Depth    = 1;
-						regionSize.Height   = 1;
-						regionSize.Width    = 1;
+						regionSize.Depth	= 1;
+						regionSize.Height	= 1;
+						regionSize.Width	= 1;
 
-						regionSize.NumTiles = 1;
-						regionSize.UseBox = false;
+						regionSize.NumTiles	= 1;
+						regionSize.UseBox	= false;
 
 						regionSizes.push_back(regionSize);
 
@@ -6291,21 +6263,9 @@ namespace FlexKit
 				offsets.clear();
 				tileRanges.clear();
 			}
-
-			itr++;
 		}
 
 		FK_LOG_9("Completed file mapping update");
-
-		/*/
-		const auto counter = ++FenceCounter;
-		if (auto HR = GraphicsQueue->Signal(Fence, counter); FAILED(HR))
-			FK_LOG_ERROR("Failed to Signal");
-
-		return { counter, Fence };
-		*/
-
-		return {};
 	}
 
 
@@ -6437,6 +6397,46 @@ namespace FlexKit
 	DeviceLayout RenderSystem::GetObjectLayout(const ResourceHandle handle) const
 	{
 		return Textures.GetLayout(handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	PackedResourceTileInfo RenderSystem::GetPackedTileInfo(ID3D12Resource* resource) const
+	{
+		UINT						TileCount = 0;
+		D3D12_PACKED_MIP_INFO		packedMipInfo;
+		D3D12_TILE_SHAPE			TileShape;
+		UINT						subResourceTilingCount = 1;
+		D3D12_SUBRESOURCE_TILING	subResourceTiling_Packed;
+
+		pDevice->GetResourceTiling(resource, &TileCount, &packedMipInfo, &TileShape, &subResourceTilingCount, 0, &subResourceTiling_Packed);
+
+		return {
+			size_t(packedMipInfo.NumStandardMips),
+			size_t(packedMipInfo.NumStandardMips + packedMipInfo.NumPackedMips),
+			packedMipInfo.StartTileIndexInOverallResource };
+	}
+
+
+	/************************************************************************************************/
+
+
+	PackedResourceTileInfo RenderSystem::GetPackedTileInfo(ResourceHandle resource)	const
+	{
+		UINT						tileCount = 0;
+		D3D12_PACKED_MIP_INFO		packedMipInfo;
+		D3D12_TILE_SHAPE			tileShape;
+		UINT						subResourceTilingCount = 1;
+		D3D12_SUBRESOURCE_TILING	subResourceTiling_Packed;
+
+		pDevice->GetResourceTiling(GetDeviceResource(resource), &tileCount, &packedMipInfo, &tileShape, &subResourceTilingCount, 0, &subResourceTiling_Packed);
+
+		return {
+			size_t(packedMipInfo.NumStandardMips),
+			size_t(packedMipInfo.NumStandardMips + packedMipInfo.NumPackedMips),
+			packedMipInfo.StartTileIndexInOverallResource };
 	}
 
 
@@ -8976,7 +8976,7 @@ namespace FlexKit
 		if (auto HR = dred->GetPageFaultAllocationOutput(&DredPageFaultOutput); FAILED(HR))
 			FK_LOG_ERROR("Failed to get Fault Allocation Info!");
 
-		auto node = DredAutoBreadcrumbsOutput.pHeadAutoBreadcrumbNode;
+		const D3D12_AUTO_BREADCRUMB_NODE1* node = DredAutoBreadcrumbsOutput.pHeadAutoBreadcrumbNode;
 
 		if(!node) 
 			FK_LOG_ERROR("No Breadcrumbs!");
@@ -8991,7 +8991,7 @@ namespace FlexKit
 				case D3D12_AUTO_BREADCRUMB_OP_SETMARKER:
 					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_SETMARKER"); break;
 				case D3D12_AUTO_BREADCRUMB_OP_BEGINEVENT:
-					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_BEGINEVENT"); break;
+					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_BEGINEVENT: command list %s", node->pCommandListDebugNameA); break;
 				case D3D12_AUTO_BREADCRUMB_OP_ENDEVENT:
 					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_ENDEVENT"); break;
 				case D3D12_AUTO_BREADCRUMB_OP_DRAWINSTANCED:
@@ -9075,6 +9075,12 @@ namespace FlexKit
 				case D3D12_AUTO_BREADCRUMB_OP_DISPATCHMESH: 
 					FK_LOG_ERROR("D3D12_AUTO_BREADCRUMB_OP_DISPATCHMESH");  break;
 				};
+			}
+
+			const size_t ctxCount = node->BreadcrumbContextsCount;
+			for (size_t i = 0; i < ctxCount; i++)
+			{
+				std::wcout << "BreadCrumb: " << node->pBreadcrumbContexts[i].BreadcrumbIndex << " | " << node->pBreadcrumbContexts[i].pContextString << '\n';
 			}
 			node = node->pNext;
 		}
@@ -9264,7 +9270,9 @@ namespace FlexKit
 			DeviceFormat::R8G8B8A8_UNORM);
 
 		SetDebugName(defaultTexture, "Default Texture");
-		SubmitUploadQueues(0, &upload);
+		SubmitUploadQueues(&upload);
+
+		SyncDirectTo(SyncUploadTicket());
 
 		return defaultTexture;
 	}
@@ -9339,21 +9347,40 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	SyncPoint RenderSystem::SyncWithDirect()
+	void RenderSystem::SyncUploadTo(SyncPoint sp)
+	{
+		copyEngine.copyQueue->Wait(sp.fence, sp.syncCounter);
+	}
+
+	SyncPoint RenderSystem::SyncUploadPoint()
+	{
+		return { copyEngine.counter, copyEngine.fence };
+	}
+
+	SyncPoint RenderSystem::SyncUploadTicket()
+	{
+		auto counter = ++copyEngine.counter;
+		copyEngine.copyQueue->Signal(copyEngine.fence, counter);
+
+		return { counter, copyEngine.fence };
+	}
+
+	void RenderSystem::SyncDirectTo(SyncPoint sp)
+	{
+		GraphicsQueue->Wait(sp.fence, sp.syncCounter);
+	}
+
+	SyncPoint RenderSystem::SyncDirectPoint()
 	{
 		return { graphicsSubmissionCounter, Fence };
 	}
 
-
-	/************************************************************************************************/
-
-
-	SyncPoint RenderSystem::GetSyncDirect()
+	SyncPoint RenderSystem::SyncDirectTicket()
 	{
-		auto value = ++graphicsSubmissionCounter;
-		GraphicsQueue->Wait(Fence, value);
+		auto counter = ++graphicsSubmissionCounter;
+		GraphicsQueue->Signal(Fence, counter);
 
-		return { value, Fence };
+		return { counter, Fence };
 	}
 
 
@@ -9377,8 +9404,10 @@ namespace FlexKit
 
 		if (ImmediateUpload != InvalidHandle)
 		{
-			SubmitUploadQueues(SYNC_Graphics, &ImmediateUpload);
+			SubmitUploadQueues(&ImmediateUpload, 1, {});
 			ImmediateUpload = InvalidHandle;
+
+			SyncDirectTo(SyncUploadTicket());
 		}
 
 		static_vector<ID3D12CommandList*, 64> cls;
@@ -9433,20 +9462,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::SubmitUploadQueues(uint32_t flags, CopyContextHandle* handles, size_t count, std::optional<SyncPoint> syncBefore, std::optional<SyncPoint> syncAfter)
+	void RenderSystem::SubmitUploadQueues(CopyContextHandle* handles, size_t count, std::optional<SyncPoint> syncBefore, std::optional<SyncPoint> syncAfter)
 	{
-
 		if(syncBefore)
 			copyEngine.Wait(syncBefore.value());
 
 		if(count)
 			copyEngine.Submit(handles, handles + count);
-
-		if (SubmitCopyFlags::SYNC_Graphics & flags)
-		{
-			copyEngine.copyQueue->Signal(copyEngine.fence, copyEngine.counter);
-			GraphicsQueue->Wait(copyEngine.fence, copyEngine.counter);
-		}
 
 		if(syncAfter)
 			copyEngine.Signal(syncAfter.value());
