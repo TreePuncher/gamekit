@@ -324,7 +324,6 @@ public:
 	FlexKit::UpdateTask* Draw(FlexKit::UpdateTask* updateTask, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 	{
 		ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), { 0.1f, 0.1f, 0.1f, 1.0f });
-		core.RenderSystem.ResetConstantBuffer(constantBuffer);
 
 		renderWindow.UpdateCapturedMouseInput(dT);
 
@@ -362,6 +361,8 @@ public:
 	void PostDrawUpdate(FlexKit::EngineCore& core, double dT) override
 	{
 		renderWindow.Present(core.vSync ? 1 : 0, 0);
+
+		core.RenderSystem.ResetConstantBuffer(constantBuffer);
 	}
 
 

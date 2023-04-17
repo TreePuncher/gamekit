@@ -12,6 +12,8 @@ using namespace FlexKit;
 /************************************************************************************************/
 
 
+const uint2 resolution = uint2{ 1920, 1080 };
+
 TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework) :
 	FrameworkState		{ IN_framework },
 
@@ -35,8 +37,8 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	renderer				{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
 	textureStreamingEngine	{ framework.GetRenderSystem(), framework.core.GetBlockMemory() },
 
-	gbuffer			{ { 1920, 1080 }, framework.GetRenderSystem() },
-	depthBuffer		{ framework.GetRenderSystem(), { 1920, 1080 } },
+	gbuffer			{ { resolution }, framework.GetRenderSystem() },
+	depthBuffer		{ framework.GetRenderSystem(), { resolution } },
 	renderWindow	{ },
 
 	constantBuffer	{ framework.GetRenderSystem().CreateConstantBuffer(64 * MEGABYTE, false) },
@@ -45,7 +47,7 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	scene			{ framework.core.GetBlockMemory() },
 	debugUI			{ framework.core.RenderSystem, framework.core.GetBlockMemory() }
 {	// Setup Window and input
-	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
+	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .fullscreen = true, .height = resolution[1], .width = resolution[0],}); res)
 		renderWindow = std::move(res.value());
 
 	FlexKit::EventNotifier<>::Subscriber sub;
@@ -155,7 +157,6 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
 	frameGraph.AddOutput(renderWindow.GetBackBuffer());
-	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 
 	ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
 
@@ -213,9 +214,11 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 /************************************************************************************************/
 
 
-void TextureStreamingTest::PostDrawUpdate(FlexKit::EngineCore&, double dT)
+void TextureStreamingTest::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 {
 	renderWindow.Present(1, 0);
+
+	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 }
 
 

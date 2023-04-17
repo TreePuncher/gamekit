@@ -725,8 +725,6 @@ UpdateTask* HairRenderingTest::Draw(
 	double						dT,
 	FrameGraph&					frameGraph)
 {
-	core.RenderSystem.ResetConstantBuffer(constantBuffer);
-
 	frameGraph.AddOutput(renderWindow.GetBackBuffer());
 
 	ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), { 0.0f, 0.0f, 0.0f, 0.0f });
@@ -757,9 +755,11 @@ UpdateTask* HairRenderingTest::Draw(
 /************************************************************************************************/
 
 
-void HairRenderingTest::PostDrawUpdate(EngineCore&, double dT)
+void HairRenderingTest::PostDrawUpdate(EngineCore& core, double dT)
 {
 	renderWindow.Present(0);
+
+	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 }
 
 

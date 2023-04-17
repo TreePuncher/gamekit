@@ -52,7 +52,7 @@ namespace FlexKit
 			if (!swapChain)
 				return false;
 
-			auto res = SUCCEEDED(swapChain->Present(syncInternal, flags | (syncInternal == 0 ? DXGI_PRESENT_ALLOW_TEARING : 0)));
+			auto res = SUCCEEDED(swapChain->Present(syncInternal, flags | ((syncInternal == 0 && !fullscreen)? DXGI_PRESENT_ALLOW_TEARING : 0)));
 
 			if (!res)
 			{
@@ -289,6 +289,7 @@ namespace FlexKit
 		uint2                       LastMousePOS;
 		Viewport					VP;
 
+		bool						fullscreen = false;
 		bool                        mouseCapture = false;
 		double                      T = 0.0f;
 		MouseInputState             mouseState;
@@ -302,6 +303,8 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
+	inline uint2 internal_WH = {};
 
 	inline LRESULT CALLBACK WindowProcess( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 	{
@@ -332,6 +335,8 @@ namespace FlexKit
 			ev.mData2.mINT[0] = (lParam & 0x00000000ffff0000) >> 16;	// Heigth
 
 			eventHandler->NotifyEvent(ev);
+
+			internal_WH = { ev.mData1.mINT[0], ev.mData2.mINT[0] };
 		}
 			break;
 		case WM_PAINT:
@@ -718,15 +723,15 @@ namespace FlexKit
 
 		// Register Window Class
 		auto windowHWND = CreateWindow( L"RENDER_WINDOW", L"Render Window", WS_OVERLAPPEDWINDOW | WS_SIZEBOX,
-							   renderWindowDesc.POS_X,
-							   renderWindowDesc.POS_Y,
-							   renderWindowDesc.width,
-							   renderWindowDesc.height,
-							   nullptr,
-							   nullptr,
-							   gInstance,
-							   (void*)renderWindow.Handler.get());
-		
+								renderWindowDesc.POS_X,
+								renderWindowDesc.POS_Y,
+								renderWindowDesc.width,
+								renderWindowDesc.height,
+								nullptr,
+								nullptr,
+								gInstance,
+								(void*)renderWindow.Handler.get());
+
 		RECT ClientRect;
 		RECT WindowRect;
 		GetClientRect(windowHWND, &ClientRect);
@@ -750,7 +755,8 @@ namespace FlexKit
 		SetCursorPos	( NewCursorPOS.x, NewCursorPOS.y );
 		GetCursorPos	( &cursor );
 
-		renderWindow.LastMousePOS   = uint2{ (uint32_t)cursor.x, (uint32_t)cursor.y };
+		renderWindow.LastMousePOS = uint2{ (uint32_t)cursor.x, (uint32_t)cursor.y };
+
 		renderWindow.hWindow        = windowHWND;
 		renderWindow.VP.Height	    = renderWindowDesc.height;
 		renderWindow.VP.Width	    = renderWindowDesc.width;
@@ -758,6 +764,10 @@ namespace FlexKit
 		renderWindow.VP.Y		    = 0;
 		renderWindow.VP.Max	        = 1.0f;
 		renderWindow.VP.Min         = 0.0f;
+
+
+
+		IDXGISwapChain1* NewSwapChain_ptr = nullptr;
 
 		// Create Swap Chain
 		DXGI_SWAP_CHAIN_DESC1 SwapChainDesc = {};
@@ -769,19 +779,17 @@ namespace FlexKit
 		SwapChainDesc.BufferUsage		= DXGI_USAGE_RENDER_TARGET_OUTPUT;
 		SwapChainDesc.SwapEffect		= DXGI_SWAP_EFFECT_FLIP_DISCARD;
 		SwapChainDesc.SampleDesc.Count	= 1;
-		SwapChainDesc.Flags				= DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+		SwapChainDesc.Flags				=
+			DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH |
+			(!renderWindowDesc.fullscreen ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0);
 
-		ShowWindow(windowHWND, 5);
-
-		IDXGISwapChain1* NewSwapChain_ptr = nullptr;
-		HRESULT HR = renderSystem.pGIFactory->CreateSwapChainForHwnd( 
+		HRESULT HR = renderSystem.pGIFactory->CreateSwapChainForHwnd(
 			renderSystem.GraphicsQueue, windowHWND,
 			&SwapChainDesc, nullptr, nullptr,
-			&NewSwapChain_ptr );
+			&NewSwapChain_ptr);
 
-		if ( FAILED( HR ) )
+		if (FAILED(HR))
 		{
-			std::cout << "Failed to Create Swap Chain!\n";
 			FK_ASSERT(FAILED(HR), "FAILED TO CREATE SWAP CHAIN!");
 			return {};
 		}
@@ -792,6 +800,9 @@ namespace FlexKit
 		//CreateBackBuffer
 		ID3D12Resource* buffer[3];
 
+		if (renderWindowDesc.fullscreen)
+			ShowWindow(windowHWND, 5);
+
 		for (UINT I = 0; I < SwapChainDesc.BufferCount; ++I)
 		{
 			NewSwapChain_ptr->GetBuffer( I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
@@ -799,7 +810,38 @@ namespace FlexKit
 				FK_ASSERT(buffer[I], "Failed to Create Back Buffer!");
 				return {};
 			}
+		}
 
+
+		if(!renderWindowDesc.fullscreen)
+			SetActiveWindow(windowHWND);
+
+		renderWindow.WH             = { SwapChainDesc.Width, SwapChainDesc.Height };
+		renderWindow.Format		    = SwapChainDesc.Format;
+		renderWindow.renderSystem   = renderSystem;
+		renderWindow.fullscreen		= renderWindowDesc.fullscreen;
+
+		memset(renderWindow.InputBuffer, 0, sizeof(renderWindow.InputBuffer));
+
+		if (renderWindowDesc.fullscreen)
+		{
+			auto res = NewSwapChain_ptr->SetFullscreenState(true, nullptr);
+
+			for (auto& b : buffer)
+				b->Release();
+
+			NewSwapChain_ptr->ResizeBuffers(3, internal_WH[0], internal_WH[1], DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+			renderWindow.WH = internal_WH;
+
+			for (UINT I = 0; I < SwapChainDesc.BufferCount; ++I)
+			{
+				NewSwapChain_ptr->GetBuffer(I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
+				if (!buffer[I]) {
+					FK_ASSERT(buffer[I], "Failed to Create Back Buffer!");
+					return {};
+				}
+
+			}
 		}
 
 		renderWindow.backBuffer = renderSystem.CreateGPUResource(
@@ -810,14 +852,6 @@ namespace FlexKit
 
 		renderSystem.SetDebugName(renderWindow.backBuffer, "BackBuffer");
 		renderSystem.Textures.SetBufferedIdx(renderWindow.backBuffer, renderWindow.swapChain->GetCurrentBackBufferIndex());
-
-		SetActiveWindow(windowHWND);
-
-		renderWindow.WH             = { SwapChainDesc.Width, SwapChainDesc.Height };
-		renderWindow.Format		    = SwapChainDesc.Format;
-		renderWindow.renderSystem   = renderSystem;
-
-		memset(renderWindow.InputBuffer, 0, sizeof(renderWindow.InputBuffer));
 
 		return renderWindow;
 	}
@@ -882,6 +916,7 @@ namespace FlexKit
 		renderWindow.WH             = { SwapChainDesc.Width, SwapChainDesc.Height };
 		renderWindow.Format         = SwapChainDesc.Format;
 		renderWindow.renderSystem   = renderSystem;
+		renderWindow.fullscreen		= false;
 
 		memset(renderWindow.InputBuffer, 0, sizeof(renderWindow.InputBuffer));
 

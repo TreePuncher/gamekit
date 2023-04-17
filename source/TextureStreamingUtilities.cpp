@@ -1448,9 +1448,11 @@ namespace FlexKit
 				std::end(updatedTextures)),
 			std::end(updatedTextures));
 
+		renderSystem.SyncUploadTo(renderSystem.SyncDirectPoint());
 		renderSystem.SyncUploadTo(renderSystem.SyncUploadPoint());
 		renderSystem.SubmitTileMappings(updatedTextures, &threadLocalAllocator);
-		renderSystem.SubmitUploadQueues(&ctxHandle, 1, {});
+		renderSystem.SubmitUploadQueues(&ctxHandle, 1);
+		renderSystem.SyncDirectTicket();
 		renderSystem.SyncDirectTo(renderSystem.SyncUploadTicket());
 	}
 
@@ -1559,7 +1561,6 @@ namespace FlexKit
 			});
 
 		Vector<TextureBlockAllocator::Block> usedBlocks	{ allocator };
-		Vector<TextureBlockAllocator::Block> temp		{ allocator };
 
 		std::for_each(blocks.begin(), blocks.end(),
 			[&](gpuTileID tile)
@@ -1572,75 +1573,73 @@ namespace FlexKit
 
 				if (free.size())
 				{
-					auto block      = free.pop_back();
-					block.tileID    = tile.tileID;
-					block.resource  = ResourceHandle{ tile.TextureID };
-					block.state     = EBlockState::InUse;
+					auto block		= free.pop_back();
+					block.tileID	= tile.tileID;
+					block.resource	= ResourceHandle{ tile.TextureID };
+					block.state		= EBlockState::InUse;
 					usedBlocks.push_back(block);
 
 					return;
 				}
 
-				EXITSCOPE(
-					for (auto& b : temp)
-						inuse.push_back(b);
-
-					temp.clear();
-				);
-
-				for(auto itr = stale.end() - 1; itr > stale.begin(); itr--)
+				if (stale.size())
 				{
-					auto block  = *itr;
-					if (block.tileID.packed() || block.tileID.GetMipLevel() > tile.tileID.GetMipLevel())
-						continue;
-
-					AllocatedBlock reallocation{
-						.tileID		= block.tileID,
-						.resource	= block.resource,
-						.offset		= block.blockID * 64 * KILOBYTE,
-						.tileIdx	= block.blockID
-					};
-
-					block.tileID			= tile.tileID;
-					block.resource			= ResourceHandle{ tile.TextureID };
-					block.state				= EBlockState::InUse;
-					block.staleFrameCount	= 0;
-
-					reallocatedBlocks.push_back(reallocation);
-					usedBlocks.push_back(block);
-					stale.remove_unstable(itr);
-
-					return;
-				}
-
-
-				for (auto itr = stale.end() - 1; itr > stale.begin(); itr--)
-				{
-					auto block = *itr;
-
-					if (block.tileID.packed() || block.tileID.GetMipLevel() > tile.tileID.GetMipLevel())
+					for (auto itr = stale.end() - 1; itr > stale.begin(); itr--)
 					{
-						temp.push_back(block);
-						continue;
+						auto block = *itr;
+						if (block.tileID.packed() || block.tileID.GetMipLevel() > tile.tileID.GetMipLevel())
+							continue;
+
+						AllocatedBlock reallocation{
+							.tileID		= block.tileID,
+							.resource	= block.resource,
+							.offset		= block.blockID * 64 * KILOBYTE,
+							.tileIdx	= block.blockID
+						};
+
+						block.tileID	= tile.tileID;
+						block.resource	= ResourceHandle{ tile.TextureID };
+						block.state		= EBlockState::InUse;
+						block.staleFrameCount = 0;
+
+						reallocatedBlocks.push_back(reallocation);
+						usedBlocks.push_back(block);
+						stale.remove_unstable(itr);
+
+						return;
 					}
+				}
 
-					AllocatedBlock reallocation{
-						.tileID		= block.tileID,
-						.resource	= block.resource,
-						.offset		= block.blockID * 64 * KILOBYTE,
-						.tileIdx	= block.blockID
-					};
+				if (inuse.size())
+				{
+					for (auto itr = inuse.end() - 1; itr > inuse.begin(); itr--)
+					{
+						auto block = *itr;
 
-					block.tileID			= tile.tileID;
-					block.resource			= ResourceHandle{ tile.TextureID };
-					block.state				= EBlockState::InUse;
-					block.staleFrameCount	= 0;
+						if (block.resource != tile.TextureID)
+							continue;
 
-					reallocatedBlocks.push_back(reallocation);
-					usedBlocks.push_back(block);
-					stale.remove_unstable(itr);
+						if (block.tileID.packed() || block.tileID.GetMipLevel() > tile.tileID.GetMipLevel() || block.staleFrameCount <= 10)
+							continue;
 
-					return;
+						AllocatedBlock reallocation{
+							.tileID		= block.tileID,
+							.resource	= block.resource,
+							.offset		= block.blockID * 64 * KILOBYTE,
+							.tileIdx	= block.blockID
+						};
+
+						block.tileID	= tile.tileID;
+						block.resource	= ResourceHandle{ tile.TextureID };
+						block.state		= EBlockState::InUse;
+						block.staleFrameCount = 0;
+
+						reallocatedBlocks.push_back(reallocation);
+						usedBlocks.push_back(block);
+						inuse.remove_unstable(itr);
+
+						return;
+					}
 				}
 			});
 

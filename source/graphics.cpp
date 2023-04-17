@@ -564,9 +564,10 @@ namespace FlexKit
 		auto& buffer			= buffers[UserIdx];
 
 		const uint64_t current = renderSystem->Fence->GetCompletedValue();
-
+		buffer.locks[buffer.currentRes] = renderSystem->GetCurrentCounter();
 		buffer.currentRes = (buffer.currentRes + 1) % 3;
-		FK_ASSERT(buffer.locks[buffer.currentRes] <= current, "Constant buffer lock error! possibly all buffers locked!");
+
+		renderSystem->WaitFor(buffer.locks[buffer.currentRes]);
 
 		char* mapped_Ptr	= nullptr;
 		auto HR				= buffer.resources[buffer.currentRes]->Map(0, nullptr, (void**)&mapped_Ptr);
@@ -5325,12 +5326,27 @@ namespace FlexKit
 
 		if (completedValue < graphicsSubmissionCounter)
 		{
-			const size_t currentCounter = ++graphicsSubmissionCounter;
-
-			GraphicsQueue->Signal(Fence, graphicsSubmissionCounter);
+			const size_t currentCounter = graphicsSubmissionCounter;
 
 			const HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS); FK_ASSERT(eventHandle != 0);
 			Fence->SetEventOnCompletion(currentCounter, eventHandle);
+			WaitForSingleObject(eventHandle, INFINITE);
+			CloseHandle(eventHandle);
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::WaitFor(uint64_t counter)
+	{
+		const size_t completedValue	= Fence->GetCompletedValue();
+
+		if (completedValue < counter)
+		{
+			const HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS); FK_ASSERT(eventHandle != 0);
+			Fence->SetEventOnCompletion(counter, eventHandle);
 			WaitForSingleObject(eventHandle, INFINITE);
 			CloseHandle(eventHandle);
 		}

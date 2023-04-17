@@ -336,7 +336,6 @@ FlexKit::UpdateTask* PhysicsTest::Update(FlexKit::EngineCore& core, FlexKit::Upd
 FlexKit::UpdateTask* PhysicsTest::Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
 	frameGraph.AddOutput(renderWindow.GetBackBuffer());
-	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 
 	ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
 
@@ -440,9 +439,11 @@ FlexKit::UpdateTask* PhysicsTest::Draw(FlexKit::UpdateTask* update, FlexKit::Eng
 /************************************************************************************************/
 
 
-void PhysicsTest::PostDrawUpdate(FlexKit::EngineCore&, double dT)
+void PhysicsTest::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 {
 	renderWindow.Present(1, 0);
+
+	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 }
 
 

@@ -377,7 +377,6 @@ FlexKit::UpdateTask* GenerationTest::Update(FlexKit::EngineCore& core, FlexKit::
 FlexKit::UpdateTask* GenerationTest::Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
 	frameGraph.AddOutput(renderWindow.GetBackBuffer());
-	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 
 	ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
 
@@ -438,9 +437,11 @@ FlexKit::UpdateTask* GenerationTest::Draw(FlexKit::UpdateTask* update, FlexKit::
 /************************************************************************************************/
 
 
-void GenerationTest::PostDrawUpdate(FlexKit::EngineCore&, double dT)
+void GenerationTest::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 {
 	renderWindow.Present(0, 0);
+
+	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 }
 
 

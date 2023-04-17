@@ -131,8 +131,6 @@ constexpr uint32_t bufferSize	= 1024 * blockCount;
 
 FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
-	core.RenderSystem.ResetConstantBuffer(constantBuffer);
-
 	FlexKit::ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), { 0, 0, 0, 0 });
 
 	auto reserveCB = FlexKit::CreateConstantBufferReserveObject(constantBuffer, framework.GetRenderSystem(), framework.core.GetTempMemory());
@@ -264,9 +262,11 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 /************************************************************************************************/
 
 
-void SortTest::PostDrawUpdate(FlexKit::EngineCore&, double dT)
+void SortTest::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 {
 	renderWindow.Present(0, 0);
+
+	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 }
 
  
