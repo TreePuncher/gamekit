@@ -230,7 +230,7 @@ void TransformEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Flex
 			auto scale = sceneNodeView.GetScale();
 			txt = fmt::format("{}", scale.x);
 		},
-		[&, positionTxt = positionTxt](const std::string& txt)
+		[&](const std::string& txt)
 		{
 			char* p;
 			const float x = strtof(txt.c_str(), &p);
@@ -242,7 +242,6 @@ void TransformEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Flex
 				{
 					scale.x = x;
 					sceneNodeView.SetScale(scale);
-					positionTxt->setText(fmt::format("Scale: [{}, {}, {}]", scale.x, scale.y, scale.z).c_str());
 				}
 			}
 		});
@@ -254,19 +253,18 @@ void TransformEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Flex
 			auto scale = sceneNodeView.GetScale();
 			txt = fmt::format("{}", scale.y);
 		},
-		[&, positionTxt = positionTxt](const std::string& txt)
+		[&](const std::string& txt)
 		{
 			char* p;
 			const float y = strtof(txt.c_str(), &p);
 			if (!*p)
 			{
-				auto scale = sceneNodeView.GetPositionL();
+				auto scale = sceneNodeView.GetScale();
 
 				if (scale.y != y)
 				{
 					scale.y = y;
 					sceneNodeView.SetScale(scale);
-					positionTxt->setText(fmt::format("Scale: [{}, {}, {}]", scale.x, scale.y, scale.z).c_str());
 				}
 			}
 		});
@@ -278,19 +276,18 @@ void TransformEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Flex
 			auto scale = sceneNodeView.GetScale();
 			txt = fmt::format("{}", scale.z);
 		},
-		[&, positionTxt = positionTxt](const std::string& txt)
+		[&](const std::string& txt)
 		{
 			char* p;
 			const float z = strtof(txt.c_str(), &p);
 			if (!*p)
 			{
-				auto scale = sceneNodeView.GetPositionL();
+				auto scale = sceneNodeView.GetScale();
 
 				if (scale.z != z)
 				{
 					scale.z = z;
 					sceneNodeView.SetScale(scale);
-					positionTxt->setText(fmt::format("Scale: [{}, {}, {}]", scale.x, scale.y, scale.z).c_str());
 				}
 			}
 		});
@@ -317,7 +314,6 @@ void TransformEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Flex
 				{
 					q.x = x;
 					sceneNodeView.SetOrientation(q);
-					positionTxt->setText(fmt::format("Scale: [{}, {}, {}, {}]", q.x, q.y, q.z, q.w).c_str());
 				}
 			}
 		});
@@ -340,7 +336,6 @@ void TransformEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Flex
 				{
 					q.y = y;
 					sceneNodeView.SetOrientation(q);
-					positionTxt->setText(fmt::format("Scale: [{}, {}, {}, {}]", q.x, q.y, q.z, q.w).c_str());
 				}
 			}
 		});
@@ -364,7 +359,6 @@ void TransformEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Flex
 				{
 					q.z = z;
 					sceneNodeView.SetOrientation(q);
-					positionTxt->setText(fmt::format("Scale: [{}, {}, {}, {}]", q.x, q.y, q.z, q.w).c_str());
 				}
 			}
 		});
@@ -376,7 +370,7 @@ void TransformEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Flex
 			auto q = sceneNodeView.GetOrientation();
 			txt = fmt::format("{}", q.w);
 		},
-		[&, positionTxt = positionTxt](const std::string& txt)
+		[&](const std::string& txt)
 		{
 			char* p;
 			const float w = strtof(txt.c_str(), &p);
@@ -388,7 +382,6 @@ void TransformEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Flex
 				{
 					q.w = w;
 					sceneNodeView.SetOrientation(q);
-					positionTxt->setText(fmt::format("Scale: [{}, {}, {}, {}]", q.x, q.y, q.z, q.w).c_str());
 				}
 			}
 		});

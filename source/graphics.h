@@ -3706,6 +3706,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void		_UpdateSubResources(ResourceHandle handle, ID3D12Resource** resources, const size_t size);
 
 		void WaitforGPU();
+		void WaitFor(uint64_t);
+
 
 		void SetDebugName(ResourceHandle, const char*);
 

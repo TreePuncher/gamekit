@@ -228,7 +228,7 @@ namespace FlexKit
 
 	struct TextureCacheDesc
 	{
-		const size_t textureCacheSize	= 64 * MEGABYTE;
+		const size_t textureCacheSize	= 32 * MEGABYTE;
 		const size_t blockSize			= GetTileByteSize();
 	};
 

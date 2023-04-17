@@ -212,7 +212,6 @@ public:
 	FlexKit::UpdateTask* Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph) final
 	{
 		frameGraph.AddOutput(renderWindow.GetBackBuffer());
-		core.RenderSystem.ResetConstantBuffer(constantBuffer);
 
 		ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
 
@@ -268,9 +267,11 @@ public:
 	}
 
 
-	void PostDrawUpdate(FlexKit::EngineCore&, double dT) final
+	void PostDrawUpdate(FlexKit::EngineCore& core, double dT) final
 	{
 		renderWindow.Present(1, 0);
+
+		core.RenderSystem.ResetConstantBuffer(constantBuffer);
 	}
 
 

@@ -463,7 +463,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 					const float2	sampleUV				= clamp(shadowMapUV + sampleUVOffset * penumbraFilterMaxSize, 0.0f, 1.0f);
 
 					const float	expDepth = shadowMaps[NonUniformResourceIndex(lightIdx)].Sample(BiLinear, float3(sampleUV, 0.0f));
-					shadowing += saturate(step(1.0f, ExponentialShadowSample(expDepth, depth))) / sampleCount;
+					shadowing += saturate(ExponentialShadowSample(expDepth, depth)) / sampleCount;
 				}
 			}
 

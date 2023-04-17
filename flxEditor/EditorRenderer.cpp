@@ -144,7 +144,6 @@ FlexKit::UpdateTask* EditorRenderer::Draw(FlexKit::UpdateTask* update, FlexKit::
 {
 	drawInProgress = true;
 
-	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 	FlexKit::ClearVertexBuffer(frameGraph, vertexBuffer);
 
 	TemporaryBuffers temporaries{
@@ -170,6 +169,7 @@ void EditorRenderer::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 	for (auto renderWindow : renderWindows)
 		renderWindow->Present();
 
+	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 	drawInProgress = false;
 }
 
