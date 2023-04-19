@@ -645,8 +645,8 @@ namespace FlexKit
 				auto depthBufferDesc = GPUResourceDesc::DepthTarget({ 128, 128 }, DeviceFormat::D32_FLOAT);
 				depthBufferDesc.denyShaderUsage = true;
 
-				data.feedbackBuffers[0]			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4 * MEGABYTE), DASCommon, VirtualResourceScope::Frame);
 				data.feedbackBuffers[1]			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4 * MEGABYTE), DASUAV, VirtualResourceScope::Frame);
+				data.feedbackBuffers[0]			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4 * MEGABYTE), DASCommon, VirtualResourceScope::Frame);
 				data.feedbackCounters			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DASUAV, VirtualResourceScope::Frame);
 				data.feedbackBlockSizes			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DASUAV, VirtualResourceScope::Frame);
 				data.feedbackBlockOffsets		= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DASUAV, VirtualResourceScope::Frame);
@@ -1619,7 +1619,7 @@ namespace FlexKit
 						if (block.resource != tile.TextureID)
 							continue;
 
-						if (block.tileID.packed() || block.tileID.GetMipLevel() > tile.tileID.GetMipLevel() || block.staleFrameCount <= 10)
+						if (block.tileID.packed() || block.tileID.GetMipLevel() > tile.tileID.GetMipLevel() || block.staleFrameCount <= 100)
 							continue;
 
 						AllocatedBlock reallocation{

@@ -800,9 +800,6 @@ namespace FlexKit
 		//CreateBackBuffer
 		ID3D12Resource* buffer[3];
 
-		if (renderWindowDesc.fullscreen)
-			ShowWindow(windowHWND, 5);
-
 		for (UINT I = 0; I < SwapChainDesc.BufferCount; ++I)
 		{
 			NewSwapChain_ptr->GetBuffer( I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
@@ -813,8 +810,6 @@ namespace FlexKit
 		}
 
 
-		if(!renderWindowDesc.fullscreen)
-			SetActiveWindow(windowHWND);
 
 		renderWindow.WH             = { SwapChainDesc.Width, SwapChainDesc.Height };
 		renderWindow.Format		    = SwapChainDesc.Format;
@@ -852,6 +847,9 @@ namespace FlexKit
 
 		renderSystem.SetDebugName(renderWindow.backBuffer, "BackBuffer");
 		renderSystem.Textures.SetBufferedIdx(renderWindow.backBuffer, renderWindow.swapChain->GetCurrentBackBufferIndex());
+
+		SetActiveWindow(windowHWND);
+		ShowWindow(windowHWND, 5);
 
 		return renderWindow;
 	}

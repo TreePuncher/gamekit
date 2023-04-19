@@ -48,8 +48,8 @@ public:
 		renderer				{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
 		textureStreamingEngine	{ framework.GetRenderSystem(), framework.core.GetBlockMemory() },
 
-		gbuffer			{ { 1920 * 2, 1080 * 2}, framework.GetRenderSystem() },
-		depthBuffer		{ framework.GetRenderSystem(), { 1920 * 2, 1080 * 2} },
+		gbuffer			{ { 1920, 1080 }, framework.GetRenderSystem() },
+		depthBuffer		{ framework.GetRenderSystem(), { 1920, 1080 } },
 		renderWindow	{ },
 
 		constantBuffer	{ framework.GetRenderSystem().CreateConstantBuffer(64 * MEGABYTE, false) },
@@ -71,7 +71,7 @@ public:
 		//AddAssetFile(R"(assets\aerith.gameres)");
 		AddAssetFile(R"(assets\ShadowTestScene.gameres)");
 
-		if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080 * 2, .width = 1920 * 2 }); res)
+		if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
 			renderWindow = std::move(res.value());
 
 		EventNotifier<>::Subscriber sub;
