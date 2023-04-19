@@ -2522,6 +2522,10 @@ namespace FlexKit
 
 	void Context::SetGraphicsShaderResourceView(size_t idx, FrameBufferedResource* Resource, size_t Count, size_t ElementSize)
 	{
+#if USING(DEBUGGRAPHICS)
+		debugCommandList->AssertResourceState(Resource->Get(), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
+#endif
+
 		DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, Resource->Get()->GetGPUVirtualAddress());
 	}
 
@@ -2530,6 +2534,10 @@ namespace FlexKit
 
 	void Context::SetGraphicsShaderResourceView(size_t idx, Texture2D& Texture)
 	{
+#if USING(DEBUGGRAPHICS)
+		debugCommandList->AssertResourceState(Texture, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
+#endif
+
 		DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, Texture->GetGPUVirtualAddress());
 	}
 
@@ -2539,6 +2547,11 @@ namespace FlexKit
 
 	void Context::SetGraphicsShaderResourceView(size_t idx, ResourceHandle resource, size_t offset)
 	{
+#if USING(DEBUGGRAPHICS)
+		if (resource != InvalidHandle)
+			debugCommandList->AssertResourceState(renderSystem->GetDeviceResource(resource), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
+#endif
+
 		if(resource != InvalidHandle)
 			DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress());
 		else
@@ -2552,6 +2565,10 @@ namespace FlexKit
 	void Context::SetGraphicsUnorderedAccessView(size_t idx, ResourceHandle UAVresource, size_t offset)
 	{
 		auto resource = renderSystem->GetDeviceResource(UAVresource);
+
+#if USING(DEBUGGRAPHICS)
+		debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+#endif
 
 		DeviceContext->SetGraphicsRootUnorderedAccessView((UINT)idx, resource->GetGPUVirtualAddress() + offset);
 	}
@@ -2577,6 +2594,11 @@ namespace FlexKit
 
 	void Context::SetComputeConstantBufferView(size_t idx, const ConstantBufferHandle CB, size_t offset)
 	{
+#if USING(DEBUGGRAPHICS)
+		auto resource = renderSystem->GetDeviceResource(CB);
+		debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_COMMON);
+#endif
+
 		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, renderSystem->GetConstantBufferAddress(CB) + offset);
 	}
 
@@ -2586,6 +2608,11 @@ namespace FlexKit
 
 	void Context::SetComputeConstantBufferView(size_t idx, const ConstantBufferDataSet& CB)
 	{
+#if USING(DEBUGGRAPHICS)
+		auto resource = renderSystem->GetDeviceResource(CB.Handle());
+		debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_COMMON);
+#endif
+
 		DeviceContext->SetComputeRootConstantBufferView((UINT)idx, renderSystem->GetConstantBufferAddress(CB.Handle()) + CB.Offset());
 	}
 
@@ -2598,6 +2625,10 @@ namespace FlexKit
 		auto deviceResource     = renderSystem->GetDeviceResource(resource);
 		auto gpuAddress         = deviceResource->GetGPUVirtualAddress();
 
+#if USING(DEBUGGRAPHICS)
+		debugCommandList->AssertResourceState(deviceResource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_COMMON);
+#endif
+
 		DeviceContext->SetComputeRootConstantBufferView((UINT)idx, gpuAddress + offset);
 	}
 
@@ -2607,6 +2638,10 @@ namespace FlexKit
 
 	void Context::SetComputeShaderResourceView(size_t idx, Texture2D& Texture)
 	{
+#if USING(DEBUGGRAPHICS)
+		debugCommandList->AssertResourceState(Texture, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+#endif
+
 		DeviceContext->SetComputeRootShaderResourceView((UINT)idx, Texture->GetGPUVirtualAddress());
 	}
 
@@ -2616,6 +2651,10 @@ namespace FlexKit
 
 	void Context::SetComputeShaderResourceView(size_t idx, ResourceHandle resource, const size_t offset)
 	{
+#if USING(DEBUGGRAPHICS)
+		debugCommandList->AssertResourceState(renderSystem->GetDeviceResource(resource), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+#endif
+
 		DeviceContext->SetComputeRootShaderResourceView((UINT)idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress() + offset);
 	}
 
@@ -2626,6 +2665,10 @@ namespace FlexKit
 	void Context::SetComputeUnorderedAccessView(size_t idx, ResourceHandle UAVresource, size_t offset)
 	{
 		auto resource = renderSystem->GetDeviceResource(UAVresource);
+
+#if USING(DEBUGGRAPHICS)
+		debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+#endif
 
 		DeviceContext->SetComputeRootUnorderedAccessView((UINT)idx, resource->GetGPUVirtualAddress() + offset);
 	}
@@ -9230,9 +9273,11 @@ namespace FlexKit
 		if (pix)
 			return true;
 
-		HRESULT hr = DXGIGetDebugInterface1(0, IID_PPV_ARGS(&pix));
-
-		return SUCCEEDED(hr);
+		if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&pix))))
+		{
+			FK_LOG_INFO("Pix Attached.");
+			return true;
+		}
 #else
 		return false;
 #endif
@@ -9243,7 +9288,10 @@ namespace FlexKit
 	{
 #if USING(PIX)
 		if (pix)
+		{
 			pix->BeginCapture();
+			FK_LOG_INFO("Pix capture started.");
+		}
 
 		return pix != nullptr;
 #else
@@ -9256,7 +9304,10 @@ namespace FlexKit
 	{
 #if USING(PIX)
 		if (pix)
+		{
 			pix->EndCapture();
+			FK_LOG_INFO("Pix capture ended.");
+		}
 
 		return pix != nullptr;
 #else
@@ -10697,6 +10748,7 @@ namespace FlexKit
 		FK_ASSERT(requestBlockCount < std::numeric_limits<uint32_t>::max());
 
 		std::scoped_lock localLock{ m };
+		auto completionCount = renderSystem.Fence->GetCompletedValue();
 
 		std::sort(freeRanges.begin(), freeRanges.end());
 
@@ -10709,7 +10761,7 @@ namespace FlexKit
 				if (range.blockCount >= requestBlockCount)
 				{
 					if  (range.flags == Clear ||
-						(range.flags == Locked && range.frameID < frameID))
+						range.flags == Locked && range.frameID <= completionCount)
 						//|| (!(range.flags | AllowReallocation) && range.frameID == frameID))
 					{
 						GPUHeapAllocation heapAllocation = {
@@ -10752,7 +10804,7 @@ namespace FlexKit
 
 	void MemoryPoolAllocator::Coalesce()
 	{
-		const uint64_t frameID = renderSystem.graphicsSubmissionCounter;
+		const uint64_t completedID = renderSystem.Fence->GetCompletedValue();
 
 		FK_LOG_9("Coalesce");
 
@@ -10769,8 +10821,8 @@ namespace FlexKit
 		while (I + 1 < freeRanges.size())
 		{
 			if (freeRanges[I].offset + freeRanges[I].blockCount == freeRanges[I + 1].offset &&
-				freeRanges[I].frameID  < frameID &&
-				freeRanges[I + 1].frameID < frameID)
+				freeRanges[I].frameID  <= completedID &&
+				freeRanges[I + 1].frameID <= completedID)
 			{
 				freeRanges[I].blockCount += freeRanges[I + 1].blockCount;
 				freeRanges.remove_stable(freeRanges.begin() + I + 1);
@@ -10888,6 +10940,7 @@ namespace FlexKit
 		std::scoped_lock localLock{ m };
 
 		const uint64_t frameIdx				= renderSystem.graphicsSubmissionCounter;
+		const uint64_t completedIdx			= renderSystem.Fence->GetCompletedValue();
 		const uint64_t size					= renderSystem.GetAllocationSize(desc);
 		const size_t requestedBlockCount	= (size / blockSize) + (size % blockSize == 0) ? 0 : 1;
 
@@ -10912,6 +10965,8 @@ namespace FlexKit
 				else if (res->blockCount < requestedBlockCount)
 					return { InvalidHandle, InvalidHandle }; // ERROR!?
 
+				if (res->frameID > completedIdx)
+					FK_LOG_WARNING("POTENTIAL MEMORY INTERFERENCE DETECTED!");
 
 				GPUHeapAllocation heapAllocation = {
 						rangeDescriptor.offset * blockSize,

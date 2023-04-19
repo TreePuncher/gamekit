@@ -246,7 +246,8 @@ namespace FlexKit
 
 		Free_DelayedReleaseResources(core.RenderSystem);
 
-		return &frameGraph.SubmitFrameGraph(dispatcher, core.RenderSystem, core.GetBlockMemory());
+		auto temp = &frameGraph.SubmitFrameGraph(dispatcher, core.RenderSystem, core.GetBlockMemory());
+		return temp;
 	}
 
 

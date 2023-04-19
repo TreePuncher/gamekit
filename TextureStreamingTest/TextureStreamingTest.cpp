@@ -47,8 +47,10 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	scene			{ framework.core.GetBlockMemory() },
 	debugUI			{ framework.core.RenderSystem, framework.core.GetBlockMemory() }
 {	// Setup Window and input
-	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .fullscreen = true, .height = resolution[1], .width = resolution[0],}); res)
+	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .fullscreen = false, .height = resolution[1], .width = resolution[0],}); res)
 		renderWindow = std::move(res.value());
+
+	framework.GetRenderSystem().DEBUG_AttachPIX();
 
 	FlexKit::EventNotifier<>::Subscriber sub;
 	sub.Notify = &FlexKit::EventsWrapper;
@@ -103,6 +105,7 @@ TextureStreamingTest::~TextureStreamingTest()
 FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
 	UpdateInput();
+
 	renderWindow.UpdateCapturedMouseInput(dT);
 
 	OrbitCameraUpdate(orbitCamera, renderWindow.mouseState, dT);
@@ -216,7 +219,7 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 
 void TextureStreamingTest::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 {
-	renderWindow.Present(1, 0);
+	renderWindow.Present(0, 0);
 
 	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 }
@@ -241,6 +244,12 @@ bool TextureStreamingTest::EventHandler(FlexKit::Event evt)
 					rotate = false;
 					renderWindow.ToggleMouseCapture();
 
+					return true;
+				case KC_P:
+					framework.GetRenderSystem().DEBUG_BeginPixCapture();
+					return true;
+				case KC_L:
+					framework.GetRenderSystem().DEBUG_EndPixCapture();
 					return true;
 				case KC_T:
 					streamingUpdates = !streamingUpdates;

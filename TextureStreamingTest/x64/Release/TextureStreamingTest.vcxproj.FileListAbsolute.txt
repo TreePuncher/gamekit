@@ -9,9 +9,9 @@ D:\repos\MergePath\builds\Release\D3D12\D3D12Core.pdb
 D:\repos\MergePath\builds\Release\D3D12\D3D12SDKLayers.dll
 D:\repos\MergePath\builds\Release\D3D12\D3D12SDKLayers.pdb
 D:\repos\MergePath\TextureStreamingTest\x64\Release\TextureStreamingTest.vcxproj.CopyComplete
-D:\repos\FlexKit\builds\Release\WinPixEventRuntime.dll
 D:\repos\FlexKit\builds\Release\D3D12\D3D12Core.dll
 D:\repos\FlexKit\builds\Release\D3D12\D3D12Core.pdb
 D:\repos\FlexKit\builds\Release\D3D12\D3D12SDKLayers.dll
 D:\repos\FlexKit\builds\Release\D3D12\D3D12SDKLayers.pdb
+D:\repos\FlexKit\builds\Release\WinPixEventRuntime.dll
 D:\repos\FlexKit\TextureStreamingTest\x64\Release\TextureStreamingTest.vcxproj.CopyComplete
