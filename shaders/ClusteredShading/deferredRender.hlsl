@@ -4,12 +4,12 @@
 // 0 - FROSTBYTE
 // 1 - BURLEY
 // 2 - DISABALED
-#define DIFFUSETECHNIQUE 1
+#define DIFFUSETECHNIQUE 0
 
 // 0 - FROSTBYTE
 // 1 - SAIDs
 // 2 - DISABALED
-#define SPECULARTECHNIQUE 1
+#define SPECULARTECHNIQUE 0
 
 struct PointLight
 {
@@ -267,25 +267,53 @@ float InterleavedGradientNoise(float2 position_screen)
 	return frac(magic.z * frac(dot(position_screen, magic.xy)));
 }
 
+float2 OctWrap(float2 v)
+{
+	return (1.0 - abs(v.yx)) * (v.xy >= 0.0 ? 1.0 : -1.0);
+}
+
+float2 Encode(float3 n)
+{
+	n /= (abs(n.x) + abs(n.y) + abs(n.z));
+	n.xy = n.z >= 0.0 ? n.xy : OctWrap(n.xy);
+	n.xy = n.xy * 0.5 + 0.5;
+	return n.xy;
+}
+
+float3 Decode(float2 f)
+{
+	f = f * 2.0 - 1.0;
+
+	// https://twitter.com/Stubbesaurus/status/937994790553227264
+	float3 n = float3(f.x, f.y, 1.0 - abs(f.x) - abs(f.y));
+	float t = saturate(-n.z);
+	n.xy += n.xy >= 0.0 ? -t : t;
+	return normalize(n);
+}
+
 float2 VectorToSphere(float3 XYZ)
 {
-	const float theta	= atan(XYZ.y / XYZ.x);
-	const float phi		= acos(XYZ.z);
+	const float theta	= atan2(XYZ.x, XYZ.y) / PI;
+	const float phi		= XYZ.z;
 
-	return float2( theta < 0.0f ? PI + theta : theta, phi );
+	return float2(theta, phi) / 2.0f + 0.5f;
 }
 
 float3 SphereToVector(float2 UV)
 {
-	float cosTheta;
-	float sinTheta;
-	float cosPhi;
-	float sinPhi;
+	const float2 ang = UV * 2.0f - 1.0f;
 
-	sincos(UV.x, sinTheta, cosTheta);
-	sincos(UV.y, sinPhi, cosPhi);
+	float2 scth; // theta
+	sincos(ang.x * PI, scth.x, scth.y);
 
-	return float3( sinPhi * cosTheta, sinPhi * sinTheta, cosPhi );
+	float2 scphi = float2(sqrt(1.0 - ang.y * ang.y), ang.y);
+
+	float3 n;
+	n.x = scth.y * scphi.x;
+	n.y = scth.x * scphi.x;
+	n.z = scphi.y;
+
+	return n;
 }
 
 float square(in float a)
@@ -311,6 +339,11 @@ float CalcPenumbraSize(in float lightSize, in float receiverDepth, in float bloc
 	return lightSize * (receiverDepth - blockerDepth) / blockerDepth;
 }
 
+float3 UnpackNormal(uint2 px)
+{
+	return Decode(NormalBuffer.Load(uint3(px, 0)));
+}
+
 float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 {
 	const float2 SampleCoord	= Position;
@@ -329,11 +362,10 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 	if (lightListKey == -1)
 		return pow(float4(ambientLight * Albedo.xyz, 1), 2.2f);
 
-	const float2 N_xy		= NormalBuffer.Load(uint3(px.xy, 0));
 	const float4 MRIA		= MRIABuffer.Load(uint3(px.xy, 0));
 
-	const float3 N			= float3(N_xy, sqrt(saturate(1.0f - dot(N_xy, N_xy))));
-	const float3 N_WS		= mul(ViewI, N);
+	const float3 N_WS		= normalize(UnpackNormal(px));
+	const float3 N			= normalize(mul(View, N_WS));
 
 	const float2 UV			= SampleCoord * WH_I; // [0;1]
 	const float3 V			= -GetViewVector_VS(UV);
@@ -394,7 +426,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			static const int sampleCount = 16;
 			for (int i = 0; i < sampleCount; i++)
 			{
-				const float3	sampleVector	= VogelDiskSample3D(i, sampleCount, InterleavedGradientNoise(px), v_WS, 0.00019f);
+				const float3	sampleVector	= VogelDiskSample3D(i, sampleCount, InterleavedGradientNoise(px), v_WS, 0.000125f);
 				const float		expDepth		= shadowCubes[NonUniformResourceIndex(lightIdx)].Sample(BiLinear, sampleVector);
 
 				t += saturate(step(1.0f, ExponentialShadowSample(expDepth, depth))) / sampleCount;
@@ -566,7 +598,8 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		//return pow(-positionVS.z / 128, 10.0f);
 		//return depth;
 		//return float4(N / 2.0f + 0.5f);
-	return Albedo * Albedo;
+	//return float4(0, 0, 0, 0);
+	//return Albedo * Albedo;
 	//return float4(positionWS, 0);
 	//return pow(roughness, 2.2f);
 	//return pow(MRIA, 2.2f);
@@ -575,7 +608,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 	//return float4(N.xyz, 1);
 	//return pow(float4(roughness, metallic, 0, 0), 2.2f);
 	//return float4(N_WS, 1);
-	return float4(N_WS / 2 + 0.5f, 1);
+	return float4(N / 2 + 0.5f, 1);
 	// 
 	//return float4(N_WS.xyz / 2 + 0.5f, 1);// *smoothstep(0.2, 1.0f, (float(localLightCount) / float(lightCount)));
 	//return color * (float(localLightCount) / float(lightCount));

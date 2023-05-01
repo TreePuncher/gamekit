@@ -242,6 +242,21 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
+	inline constexpr DeviceLayout DecayLayout(DeviceLayout layout)
+	{
+		switch (layout)
+		{
+		case DeviceLayout_ShaderResource:
+			return DeviceLayout_Common;
+		default:
+			return layout;
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
 	inline constexpr D3D12_RESOURCE_STATES DRS2D3DState(DeviceAccessState state)
 	{
 		switch (state)
@@ -517,6 +532,16 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		}
 
 		std::unreachable();
+	}
+
+
+	inline bool CheckCompatibleLayout(const DeviceLayout currentLayout, const DeviceLayout requestedLayout)
+	{
+		switch (currentLayout)
+		{
+		default:
+			return currentLayout == requestedLayout;
+		}
 	}
 
 
@@ -828,6 +853,18 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		operator D3D12_GPU_VIRTUAL_ADDRESS () const
 		{
 			return address;
+		}
+
+		DevicePointer& operator = (const DevicePointer& rhs) noexcept
+		{
+			address = rhs.address;
+			return *this;
+		}
+
+		DevicePointer& operator = (DevicePointer& rhs) noexcept
+		{
+			address = rhs.address;
+			return *this;
 		}
 	};
 
@@ -1247,18 +1284,18 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		{
 			ID3D12Resource*		Buffer;
 			uint32_t			BufferSizeInBytes;
-			uint32_t            BufferStride;
+			uint32_t			BufferStride;
 			VERTEXBUFFER_TYPE	Type;
 
 			size_t Size() const { return BufferSizeInBytes / BufferStride; }
 
-			DevicePointer GetDevicePointer() { return { Buffer->GetGPUVirtualAddress() }; }
+			DevicePointer GetDevicePointer() const noexcept { return { Buffer->GetGPUVirtualAddress() }; }
 
-			operator bool()	{ return Buffer != nullptr; }
-			operator ID3D12Resource* ()	{ return Buffer; }
+			operator bool() const noexcept		{ return Buffer != nullptr; }
+			operator ID3D12Resource* const ()	{ return Buffer; }
 		};
 
-		auto Find(const VERTEXBUFFER_TYPE type)
+		auto Find(const VERTEXBUFFER_TYPE type) const
 		{
 			return std::find_if(
 				VertexBuffers.begin(),
@@ -1281,21 +1318,21 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	struct UploadSegment
-	{
-		size_t				offset		= 0;
-		size_t				uploadSize	= 0;
-		char*				buffer		= nullptr;
-		ID3D12Resource*		resource	= nullptr;
-	};
-
-
 	enum class ReserveErrors
 	{
 		Success,
 		OutOfSpace,
 		Unknown
 	};
+
+	struct UploadReservation
+	{
+		ID3D12Resource*	resource		= nullptr;
+		size_t			size			= 0;
+		size_t			offset			= 0;
+		char*			buffer			= 0;
+	};
+
 
 	struct UploadBuffer
 	{
@@ -1312,7 +1349,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void Release();
 
-		std::expected<UploadSegment, ReserveErrors> Reserve(const size_t size, const size_t reserveAlignement);
+		std::expected<UploadReservation, ReserveErrors> Reserve(const size_t size, const size_t reserveAlignement);
 
 		ID3D12Resource* Resize(const size_t size); // Returns old resource
 
@@ -1322,15 +1359,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		size_t			Size			= 0;
 		char*			Buffer			= nullptr;
 		ID3D12Device*	parentDevice	= nullptr;
-	};
-
-
-	struct UploadReservation
-	{
-		ID3D12Resource*	resource		= nullptr;
-		const size_t	reserveSize		= 0;
-		const size_t	offset			= 0;
-		char*			buffer			= 0;
 	};
 
 	struct PackedResourceTileInfo
@@ -1344,6 +1372,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	{
 		uint64_t		syncCounter	= 0;
 		ID3D12Fence*	fence		= nullptr;
+
+		operator bool() const noexcept { return fence != nullptr; }
 	};
 
 
@@ -2395,7 +2425,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		DepthTarget,
 		UnorderedAccess,
 		UnorderedAccessRenderTarget,
-		ShaderResource
+		ShaderResource,
+		RayTracingStructure,
 	};
 
 	struct GPUResourceDesc
@@ -2568,6 +2599,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			desc.Flags |= type == ResourceType::UnorderedAccess ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
 			desc.Flags |= type == ResourceType::DepthTarget ? D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
 			desc.Flags |= type == ResourceType::UnorderedAccessRenderTarget ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+			desc.Flags |= type == ResourceType::RayTracingStructure ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
 			desc.Flags |= denyShaderUsage ? D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE : D3D12_RESOURCE_FLAG_NONE;
 
 			desc.MipLevels	= Min(Max(MipLevels, 1), 15);
@@ -2665,14 +2697,14 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		static GPUResourceDesc RayTracingStructure(const size_t bufferSize)
 		{
 			GPUResourceDesc desc{
-				.type			= ResourceType::UnorderedAccess,
+				.type			= ResourceType::RayTracingStructure,
 				.Dimensions		= TextureDimension::Buffer, // dimensions
 				.allocationType = ResourceAllocationType::Committed,
 				.format			= DeviceFormat::UNKNOWN,
 				.initialLayout	= DeviceLayout_Undefined,
 
 				.WH				= uint2{ (uint32_t)bufferSize, 1 },
-				.bufferCount	= 3,
+				.bufferCount	= 1,
 				.MipLevels		= 1,
 			};
 
@@ -2723,6 +2755,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				.WH				= IN_WH,
 				.bufferCount	= 3,
 				.MipLevels		= (uint8_t)mipCount,
+
+				.clearValue		= renderTarget ? std::optional<D3D12_CLEAR_VALUE>{ D3D12_CLEAR_VALUE{
+									.Format = TextureFormat2DXGIFormat(IN_format),
+									.Color{ 0.0f, 0.0f, 0.0f, 0.0f }} }
+								:	std::optional<D3D12_CLEAR_VALUE>{},
 			};
 		}
 
@@ -3063,8 +3100,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		struct UnusedResource
 		{
-			ID3D12Resource* resource;
-			uint64_t			idx;
+			ID3D12Resource*		resource;
+			uint64_t			submissionID;
 		};
 
 		Vector<UnusedResource>	delayRelease;
@@ -3678,7 +3715,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		}
 
 		size_t						GetCurrentCounter();
-		ID3D12PipelineState*		GetPSO(PSOHandle StateID);
+		ID3D12PipelineState* GetPSO(PSOHandle StateID);
 		const RootSignature* const	GetPSORootSignature(PSOHandle StateID) const;
 
 
@@ -3698,23 +3735,28 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		SyncPoint	SyncDirectPoint();
 		SyncPoint	SyncDirectTicket();
 
-		SyncPoint	GetSubmissionTicket();
+		void		SignalDirect(uint64_t);
+
+
+		SyncPoint	GetSubmissionTicket(uint32_t count = 1);
 		SyncPoint	Submit(std::span<Context*> CLs, std::optional<SyncPoint> sync = {});
+		void		EndFrame();
 		void		Signal(SyncPoint);
 
 		void		_UpdateCounters();
 		void		_UpdateSubResources(ResourceHandle handle, ID3D12Resource** resources, const size_t size);
 
-		void WaitforGPU();
+		void WaitForGPU();
 		void WaitFor(uint64_t);
 
 
 		void SetDebugName(ResourceHandle, const char*);
+		void SetDebugName(DeviceHeapHandle, const char*);
 
 		size_t						GetVertexBufferSize(const VertexBufferHandle);
 		D3D12_GPU_VIRTUAL_ADDRESS	GetVertexBufferAddress(const VertexBufferHandle VB);
 		D3D12_GPU_VIRTUAL_ADDRESS	GetConstantBufferAddress(const ConstantBufferHandle CB);
-		BLAS_PreBuildInfo			GetBLASPreBuildInfo(VertexBuffer&);
+		BLAS_PreBuildInfo			GetBLASPreBuildInfo(const VertexBuffer&);
 
 
 		size_t	GetTextureFrameGraphIndex(ResourceHandle);
@@ -3740,7 +3782,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void				SubmitTileMappings(std::span<ResourceHandle> resources, iAllocator* allocator);
 		void				UpdateTextureTileMappings(const ResourceHandle Handle, std::span<const TileMapping>);
-		const TileMapList&	GetTileMappings(const ResourceHandle Handle);
+		const TileMapList& GetTileMappings(const ResourceHandle Handle);
 
 
 		TextureDimension	GetTextureDimension(ResourceHandle handle) const;
@@ -3755,27 +3797,27 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		PipelineStateLibraryDesc    CreatePipelibrary();
 
 		// Resource Creation and Destruction
-		[[nodiscard]] DeviceHeapHandle			CreateHeap                  (const size_t heapSize, const uint32_t flags);
-		[[nodiscard]] ConstantBufferHandle		CreateConstantBuffer		(size_t BufferSize, bool GPUResident = true);
-		[[nodiscard]] VertexBufferHandle		CreateVertexBuffer			(size_t BufferSize, bool GPUResident = true);
-		[[nodiscard]] ResourceHandle			CreateDepthBuffer			(const uint2 WH, const bool UseFloat = false, size_t bufferCount = 3);
-		[[nodiscard]] ResourceHandle			CreateDepthBufferArray		(const uint2 WH, const bool UseFloat = false, const size_t arraySize = 1, const bool buffered = true, const ResourceAllocationType = ResourceAllocationType::Committed);
-		[[nodiscard]] ResourceHandle			CreateGPUResource			(const GPUResourceDesc& desc);
-		[[nodiscard]] ResourceHandle			CreateGPUResourceHandle     ();
-		[[nodiscard]] QueryHandle				CreateOcclusionBuffer		(size_t Size);
-		[[nodiscard]] ResourceHandle			CreateUAVBufferResource		(size_t bufferHandle, bool tripleBuffer = true);
-		[[nodiscard]] ResourceHandle			CreateUAVTextureResource	(const uint2 WH, const DeviceFormat, const bool RenderTarget = false);
-		[[nodiscard]] SOResourceHandle			CreateStreamOutResource		(size_t bufferHandle, bool tripleBuffer = true);
-		[[nodiscard]] QueryHandle				CreateSOQuery				(size_t SOIndex, size_t count);
-		[[nodiscard]] QueryHandle				CreateTimeStampQuery		(size_t count);
-		[[nodiscard]] IndirectLayout			CreateIndirectLayout		(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, RootSignature* signature = nullptr);
-		[[nodiscard]] ReadBackResourceHandle	CreateReadBackBuffer		(const size_t bufferSize);
+		[[nodiscard]] DeviceHeapHandle			CreateHeap(const size_t heapSize, const uint32_t flags);
+		[[nodiscard]] ConstantBufferHandle		CreateConstantBuffer(size_t BufferSize, bool GPUResident = true);
+		[[nodiscard]] VertexBufferHandle		CreateVertexBuffer(size_t BufferSize, bool GPUResident = true);
+		[[nodiscard]] ResourceHandle			CreateDepthBuffer(const uint2 WH, const bool UseFloat = false, size_t bufferCount = 3);
+		[[nodiscard]] ResourceHandle			CreateDepthBufferArray(const uint2 WH, const bool UseFloat = false, const size_t arraySize = 1, const bool buffered = true, const ResourceAllocationType = ResourceAllocationType::Committed);
+		[[nodiscard]] ResourceHandle			CreateGPUResource(const GPUResourceDesc& desc);
+		[[nodiscard]] ResourceHandle			CreateGPUResourceHandle();
+		[[nodiscard]] QueryHandle				CreateOcclusionBuffer(size_t Size);
+		[[nodiscard]] ResourceHandle			CreateUAVBufferResource(size_t bufferHandle, bool tripleBuffer = true);
+		[[nodiscard]] ResourceHandle			CreateUAVTextureResource(const uint2 WH, const DeviceFormat, const bool RenderTarget = false);
+		[[nodiscard]] SOResourceHandle			CreateStreamOutResource(size_t bufferHandle, bool tripleBuffer = true);
+		[[nodiscard]] QueryHandle				CreateSOQuery(size_t SOIndex, size_t count);
+		[[nodiscard]] QueryHandle				CreateTimeStampQuery(size_t count);
+		[[nodiscard]] IndirectLayout			CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, RootSignature* signature = nullptr);
+		[[nodiscard]] ReadBackResourceHandle	CreateReadBackBuffer(const size_t bufferSize);
 
 		void BackResource(ResourceHandle, const GPUResourceDesc& desc);
 
-		void						SetReadBackEvent    (ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler);
-		std::pair<void*, size_t>	OpenReadBackBuffer  (ReadBackResourceHandle readbackBuffer, const size_t readSize = -1);
-		void						CloseReadBackBuffer (ReadBackResourceHandle readbackBuffer);
+		void						SetReadBackEvent(ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler);
+		std::pair<void*, size_t>	OpenReadBackBuffer(ReadBackResourceHandle readbackBuffer, const size_t readSize = -1);
+		void						CloseReadBackBuffer(ReadBackResourceHandle readbackBuffer);
 		void						FlushPendingReadBacks();
 
 		void SetObjectLayout(SOResourceHandle	handle, DeviceLayout state);
@@ -3787,12 +3829,12 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		DeviceLayout GetObjectLayout(const ResourceHandle	handle) const;
 
 
-		ID3D12Heap*			GetDeviceResource(const DeviceHeapHandle        handle) const;
-		ID3D12Resource*		GetDeviceResource(const ReadBackResourceHandle	handle) const;
-		ID3D12Resource*		GetDeviceResource(const ConstantBufferHandle	handle) const;
-		ID3D12Resource*		GetDeviceResource(const ResourceHandle		    handle) const;
-		ID3D12Resource*		GetDeviceResource(const SOResourceHandle		handle) const;
-		ID3D12Resource*		GetSOCounterResource(const SOResourceHandle handle) const;
+		ID3D12Heap* GetDeviceResource(const DeviceHeapHandle        handle) const;
+		ID3D12Resource* GetDeviceResource(const ReadBackResourceHandle	handle) const;
+		ID3D12Resource* GetDeviceResource(const ConstantBufferHandle	handle) const;
+		ID3D12Resource* GetDeviceResource(const ResourceHandle		    handle) const;
+		ID3D12Resource* GetDeviceResource(const SOResourceHandle		handle) const;
+		ID3D12Resource* GetSOCounterResource(const SOResourceHandle handle) const;
 		size_t				GetStreamOutBufferSize(const SOResourceHandle handle) const;
 
 		UAVResourceLayout	GetUAVBufferLayout(const ResourceHandle) const noexcept;
@@ -3823,7 +3865,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		static ConstantBuffer	_CreateConstantBufferResource(RenderSystem* RS, ConstantBuffer_desc* desc);
 		VertexResourceBuffer	_CreateVertexBufferDeviceResource(const size_t ResourceSize, bool GPUResident = true);
 		ResourceHandle			_CreateDefaultTexture();
-		UploadSegment			_ReserveDirectUploadSpace(size_t resourceSize, size_t alignment);
+		UploadReservation		_ReserveDirectUploadSpace(size_t resourceSize, size_t alignment);
 
 		enum class DescriptorRangeAllocationError
 		{
@@ -3840,7 +3882,13 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void	_ForceReleaseTexture(ResourceHandle handle);
 
-		size_t	_GetVidMemUsage();
+		struct VidMemoryStates
+		{
+			size_t used;
+			size_t available;
+		};
+
+		VidMemoryStates _GetVidMemStats();
 
 		[[nodiscard]] ID3D12DescriptorHeap* _CreateShaderVisibleHeap(const size_t);
 
@@ -3882,10 +3930,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		ID3D12CommandQueue*	GraphicsQueue	= nullptr;
 		ID3D12CommandQueue*	ComputeQueue	= nullptr;
 
-		size_t				pendingFrames[3]			= { 0, 0, 0 };
-		size_t				frameIdx					= 0;
-		std::atomic_uint	graphicsSubmissionCounter	= 0;
-		ID3D12Fence*		Fence						= nullptr;
+		std::atomic_uint64_t	directSubmissionCounter		= 0;
+		uint64_t				directSubmittedCounter		= 0;
+		ID3D12Fence*			directFence					= nullptr;
 
 		CopyContextHandle	ImmediateUpload = InvalidHandle;
 
@@ -4149,14 +4196,19 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			size_t			destinationOffset	= 0,
 			size_t			sourceOffset		= 0);
 
-		void CopyBufferRegion(
-			static_vector<ID3D12Resource*>		sources,
-			static_vector<size_t>				sourceOffset,
-			static_vector<ID3D12Resource*>		destinations,
-			static_vector<size_t>				destinationOffset,
-			static_vector<size_t>				copySize,
-			static_vector<DeviceAccessState>	currentStates,
-			static_vector<DeviceAccessState>	finalStates);
+		void CopyTextureRegion(
+			ID3D12Resource*		destination,
+			size_t				subResourceIdx,
+			uint3				XYZ,
+			UploadReservation	source,
+			uint2				WH,
+			DeviceFormat		format);
+
+		void CopyTile(
+			ID3D12Resource*			dest,
+			const uint3				destTile,
+			const size_t			tileOffset,
+			const UploadReservation src);
 
 		void ImmediateWrite(
 			static_vector<ResourceHandle>	handles,
@@ -4164,7 +4216,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			static_vector<DeviceAccessState>	currentStates,
 			static_vector<DeviceAccessState>	finalStates);
 
-		void ClearSOCounters(static_vector<SOResourceHandle> handles);
+		//void ClearSOCounters(static_vector<SOResourceHandle> handles);
 
 		void CopyUInt64(
 			static_vector<ID3D12Resource*>			source,
@@ -4205,8 +4257,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void SetPredicate(bool Enable, QueryHandle Handle = {}, size_t = 0);
 
-		void CopyBuffer		(const UploadSegment src, const ResourceHandle destination, const size_t destOffset = 0);
-		void CopyTexture2D	(const UploadSegment src, const ResourceHandle destination, const uint2 BufferSize);
+		void CopyBuffer		(const UploadReservation src, const ResourceHandle destination, const size_t destOffset = 0);
+		void CopyTexture2D	(const UploadReservation src, const ResourceHandle destination, const uint2 BufferSize);
 
 		void CopyTexture2D(auto des, auto src)
 		{
@@ -4230,7 +4282,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		}
 
 
-		UploadSegment ReserveDirectUploadSpace(size_t size, size_t alignment = 256);
+		UploadReservation ReserveDirectUploadSpace(size_t size, size_t alignment = 256);
 
 		// Not Yet Implemented
 		void SetUAVRead();
@@ -4368,7 +4420,7 @@ private:
 		size_t offset   = 0;
 		size_t size     = 0;
 
-		ResourceHandle Overlap = InvalidHandle;
+		ResourceHandle overlap = InvalidHandle;
 
 		operator bool() { return size > 0; }
 	};
@@ -4396,7 +4448,9 @@ private:
 		virtual AcquireDeferredRes	AcquireDeferred	(GPUResourceDesc desc, bool temporary = false) = 0;
 
 		virtual AcquireResult		Recycle(ResourceHandle resource, GPUResourceDesc desc) = 0;
-		virtual void				Release(ResourceHandle handle, const bool freeResourceImmedate = true, const bool allowImmediateReuse = true) = 0;
+		virtual void				Release(ResourceHandle handle, uint64_t submissionID,  const bool freeResourceImmedate = true, const bool allowImmediateReuse = true) = 0;
+
+		virtual void				LockRange(uint64_t begin, uint64_t end) = 0;
 
 		virtual uint32_t Flags() const = 0;
 	};
@@ -4414,10 +4468,11 @@ private:
 
 		enum NodeFlags
 		{
-			Clear               = 0x00,
-			AllowReallocation   = 0x2,
-			Locked              = 0x4,
-			Temporary           = 0x8,
+			Clear				= 0x00,
+			AllowReallocation	= 0x02,
+			Locked				= 0x04,
+			Temporary			= 0x08,
+			Allocated			= 0x10,
 		};
 		
 		GPUHeapAllocation   GetMemory       (const size_t requestBlockCount, const uint64_t frameID, const uint64_t flags);
@@ -4427,7 +4482,8 @@ private:
 
 		uint32_t Flags() const final override;
 
-		void Release(ResourceHandle handle, const bool freeResourceImmedate = true, const bool allowImmediateReuse = true) final override;
+		void Release(ResourceHandle handle, uint64_t submissionID, const bool freeResourceImmedate = true, const bool allowImmediateReuse = true) final override;
+		void LockRange(uint64_t begin, uint64_t end);
 
 		void Coalesce();
 
@@ -4448,7 +4504,7 @@ private:
 
 			friend bool operator < (MemoryRange& lhs, MemoryRange& rhs)
 			{
-				return lhs.blockCount < rhs.blockCount;
+				return lhs.offset < rhs.offset;
 			}
 		};
 
@@ -4459,8 +4515,15 @@ private:
 			size_t          frameID;
 			uint64_t        flags;
 			ResourceHandle  resource = InvalidHandle;
+
+			friend bool operator < (Allocation& lhs, Allocation& rhs)
+			{
+				return lhs.offset < rhs.offset;
+			}
 		};
 
+
+		size_t				estimatedBlocksAvailable = 0;
 		Vector<MemoryRange> freeRanges;
 		Vector<Allocation>  allocations;
 
@@ -4472,8 +4535,8 @@ private:
 	/************************************************************************************************/
 
 	// INTERNAL USE ONLY!
-	FLEXKITAPI UploadSegment		ReserveUploadBuffer		(RenderSystem& renderSystem, const size_t uploadSize, CopyContextHandle = InvalidHandle);
-	FLEXKITAPI void					MoveBuffer2UploadBuffer	(const UploadSegment& data, const byte* source, const size_t uploadSize);
+	FLEXKITAPI UploadReservation	ReserveUploadBuffer		(RenderSystem& renderSystem, const size_t uploadSize, CopyContextHandle = InvalidHandle);
+	FLEXKITAPI void					MoveBuffer2UploadBuffer	(const UploadReservation& data, const byte* source, const size_t uploadSize);
 
 	FLEXKITAPI DescHeapPOS PushRenderTarget				(RenderSystem* RS, ResourceHandle    target, DescHeapPOS POS, const size_t MIPOffset = 0);
 
@@ -4627,12 +4690,12 @@ private:
 				GPUResourceEvicted
 			};
 
-			static_vector<VertexBufferView*>    buffers;
-			FlexKit::VertexBuffer		        vertexBuffer;
-			D3D12_GPU_VIRTUAL_ADDRESS           blAS = -1; // TODO(Wrap this type)
+			static_vector<VertexBufferView*>	buffers;
+			FlexKit::VertexBuffer				vertexBuffer;
+			DevicePointer						blAS = { (D3D12_GPU_VIRTUAL_ADDRESS)-1}; // TODO(Wrap this type)
 
-			std::atomic<LOD_State>      state   = LOD_State::Unloaded;
-			static_vector<SubMesh, 32>  subMeshes;
+			std::atomic<LOD_State>		state   = LOD_State::Unloaded;
+			static_vector<SubMesh, 32>	subMeshes;
 		};
 
 
@@ -4683,8 +4746,10 @@ private:
 			return lods.back();
 		}
 
-		const uint32_t		GetLowestLodIdx()		const { return uint32_t(lods.size() - 1); }
-		const LOD_Runtime&	GetLowestLoadedLod()	const { return lods.back(); }
+		const	uint32_t		GetLowestLodIdx()		const	noexcept { return uint32_t(lods.size() - 1); }
+		const	LOD_Runtime&	GetLowestLoadedLod()	const	noexcept { return lods.back(); }
+				LOD_Runtime&	GetLowestLoadedLod()			noexcept { return lods.back(); }
+
 
 		size_t animationData	 = EAD_None;
 		size_t triMeshID		= INVALIDHANDLE;

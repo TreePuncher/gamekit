@@ -1827,14 +1827,14 @@ namespace FlexKit
 
 		if (material != InvalidHandle)
 		{
-			const auto& textures	= MaterialComponent::GetComponent()[material].Textures;
-			constants.textureCount	= (uint32_t)textures.size();
+			const auto& textures	= MaterialComponent::GetComponent()[material].textures;
+			constants.textures		= 0;
 
 			for (auto& texture : textures)
 				constants.textureHandles[std::distance(std::begin(textures), &texture)] = uint4{ 256, 256, texture.to_uint() };
 		}
 		else
-			constants.textureCount = 0;
+			constants.textures = 0;
 
 		return constants;
 	}

@@ -295,6 +295,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void WorkBarrier::AddWork(WorkBarrier& barrier)
+	{
+		++tasksInProgress;
+		++tasksScheduled;
+
+		barrier.AddOnCompletionEvent(
+			[&]
+			{
+				tasksInProgress.fetch_sub(1, std::memory_order::memory_order_seq_cst);
+			});
+	}
+
+
+	/************************************************************************************************/
+
+
 	void WorkBarrier::AddOnCompletionEvent(OnCompletionEvent Callback)
 	{
 		PostEvents.emplace_back(std::move(Callback));
@@ -311,7 +327,7 @@ namespace FlexKit
 		do
 		{	// TODO: Add some progressive sleeps to lower contention
 			if (!tasksInProgress.load(std::memory_order::acquire))
-				return;
+				return OnEnd();
 		} while (true);
 
 		if(tasksScheduled.load(std::memory_order::acquire) == 0)
@@ -594,6 +610,43 @@ namespace FlexKit
 
 
 	ThreadManager* WorkerThread::Manager = nullptr;
+
+
+	/************************************************************************************************/
+
+
+	void DependencyBarrier::AddInput(iWork* work)
+	{
+		dependencyCounter.fetch_add(1);
+		work->Subscribe([&] { (*this)(); });
+	}
+
+
+	/************************************************************************************************/
+
+
+	void DependencyBarrier::operator() ()
+	{
+		auto index = dependencyCounter.fetch_sub(1);
+
+		if (index == 1 && work != nullptr)
+		{
+			PushToLocalQueue(*work);
+			work = nullptr;
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void DependencyBarrier::Start(iWork& IN_work)
+	{
+		work = &IN_work;
+
+		if (dependencyCounter == 0)
+			PushToLocalQueue(*work);
+	}
 
 
 }	/************************************************************************************************/

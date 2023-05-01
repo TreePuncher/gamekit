@@ -188,6 +188,8 @@ ID3D12PipelineState* HairRenderingTest::CreateApplyForcesPSO()
 	ID3D12PipelineState* PSO = nullptr;
 	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
+	SETDEBUGNAME(PSO, "ApplyForces");
+
 	return PSO;
 }
 
@@ -219,6 +221,8 @@ ID3D12PipelineState* HairRenderingTest::CreateApplyShapeConstraintsPSO()
 	ID3D12PipelineState* PSO = nullptr;
 	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
+	SETDEBUGNAME(PSO, "ApplyShapeConstraints");
+
 	return PSO;
 }
 
@@ -249,6 +253,8 @@ ID3D12PipelineState* HairRenderingTest::CreateApplyEdgeLengthConstraintPSO()
 
 	ID3D12PipelineState* PSO = nullptr;
 	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
+
+	SETDEBUGNAME(PSO, "ApplyEdgeLengthContraints");
 
 	return PSO;
 }
@@ -380,6 +386,8 @@ ID3D12PipelineState* HairRenderingTest::CreateStrandRenderPSO()
 	ID3D12PipelineState* pso = nullptr;
 	renderSystem.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&pso));
 
+	SETDEBUGNAME(pso, "DrawStrands");
+
 	return pso;
 }
 
@@ -423,6 +431,8 @@ ID3D12PipelineState* HairRenderingTest::CreateDebugRenderPSO()
 	
 	ID3D12PipelineState* pso = nullptr;
 	renderSystem.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&pso));
+
+	SETDEBUGNAME(pso, "DrawStrandsDebug");
 
 	return pso;
 }

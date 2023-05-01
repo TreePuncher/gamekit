@@ -38,7 +38,7 @@ namespace FlexKit
 	class FKApplication
 	{
 	public:
-		FKApplication(EngineMemory* Memory, size_t threadCount = 4);
+		FKApplication(EngineMemory* Memory, const CoreOptions& options = {});
 
 		~FKApplication();
 

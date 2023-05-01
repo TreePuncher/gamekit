@@ -1,13 +1,13 @@
 
 cbuffer LocalConstants : register(b0)
 {
-    uint clearValueX;
-    uint clearValueY;
-    uint clearValueZ;
-    uint clearValueW;
+	uint clearValueX;
+	uint clearValueY;
+	uint clearValueZ;
+	uint clearValueW;
 
-    uint begin;
-    uint end;
+	uint begin;
+	uint end;
 
 };
 
@@ -16,8 +16,11 @@ RWByteAddressBuffer ClearTarget : register(u0);
 [numthreads(1024, 1, 1)]
 void Clear(uint3 threadID : SV_DispatchThreadID)
 {
-    if(threadID.x < (end - begin))
-        ClearTarget.Store4(begin + threadID.x * 16, uint4(clearValueX, clearValueY, clearValueZ, clearValueW));
+	uint size = 0;
+	ClearTarget.GetDimensions(size);
+
+	if(threadID.x < (end - begin) && begin + threadID.x * 16 < size)
+		ClearTarget.Store4(begin + threadID.x * 16, uint4(clearValueX, clearValueY, clearValueZ, clearValueW));
 }
 
 

@@ -6,6 +6,7 @@
 namespace FlexKit
 {	/************************************************************************************************/
 
+
 	FrameGraphNode::FrameGraphNode(FrameGraphNodeHandle IN_handle, FN_NodeGetWorkItems IN_action, void* IN_nodeData, iAllocator* IN_allocator) :
 			handle			{ IN_handle		},
 			inputObjects	{ IN_allocator	},
@@ -19,7 +20,8 @@ namespace FlexKit
 
 			createdObjects	{ IN_allocator	},
 			retiredObjects	{ IN_allocator	},
-			acquiredObjects	{ IN_allocator	} {}
+			acquiredObjects	{ IN_allocator	},
+			dataDependencies{ IN_allocator	} {}
 
 
 	FrameGraphNode::FrameGraphNode(FrameGraphNode&& RHS) :
@@ -34,7 +36,8 @@ namespace FlexKit
 			subNodeTracking	{ std::move(RHS.subNodeTracking)	},
 			executed		{ std::move(RHS.executed)			},
 			createdObjects	{ std::move(RHS.createdObjects)		},
-			acquiredObjects	{ std::move(RHS.acquiredObjects)	} {}
+			acquiredObjects	{ std::move(RHS.acquiredObjects)	},
+			dataDependencies{ std::move(RHS.dataDependencies)	} {}
 
 
 	/************************************************************************************************/
@@ -141,7 +144,8 @@ namespace FlexKit
 
 		for (auto& retired : retiredObjects)
 		{
-			auto object_ref = frameResources.objects[retired.handle];
+			auto& object_ref = frameResources.objects[retired.handle];
+			auto accessState = object_ref.lastSubmission == submissionID ? retired.neededAccess : DASCommon;
 
 			if (object_ref.virtualState == VirtualResourceState::Virtual_Released)
 			{
@@ -150,10 +154,10 @@ namespace FlexKit
 					// Layout Transition required
 				case DeviceLayout_DepthStencilRead:
 				case DeviceLayout_DepthStencilWrite:
-						ctx->AddTextureBarrier(object_ref.shaderResource, retired.neededAccess, DASNOACCESS, retired.neededLayout, DeviceLayout_Undefined, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_None);
+						ctx->AddTextureBarrier(object_ref.shaderResource, accessState, DASNOACCESS, retired.neededLayout, DeviceLayout_Undefined, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_None);
 					break;
 				default:
-						ctx->AddGlobalBarrier(object_ref.shaderResource, retired.neededAccess, DASNOACCESS, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_None);
+						ctx->AddGlobalBarrier(object_ref.shaderResource, accessState, DASNOACCESS, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_None);
 					break;
 				}
 			}
@@ -192,7 +196,7 @@ namespace FlexKit
 
 	void FrameGraph::AddTaskDependency(UpdateTask& task)
 	{
-		dataDependencies.push_back(&task);
+		globalDependencies.push_back(&task);
 	}
 
 
@@ -224,7 +228,7 @@ namespace FlexKit
 		for (auto& temporary : temporaryObjects)
 		{
 			auto& object_ref = resources->objects[temporary.handle];
-			object_ref.pool->Release(object_ref.shaderResource, false);
+			object_ref.pool->Release(object_ref.shaderResource, FrameGraph->GetRenderSystem().directSubmissionCounter, false);
 			object_ref.virtualState = VirtualResourceState::Virtual_Released;
 		}
 
@@ -287,7 +291,7 @@ namespace FlexKit
 
 	void FrameGraphNodeBuilder::AddDataDependency(UpdateTask& task)
 	{
-		dataDependencies.push_back(&task);
+		node.dataDependencies.push_back(&task);
 	}
 
 
@@ -357,8 +361,7 @@ namespace FlexKit
 		if (auto frameResource = AddReadableResource(handle, DASACCELERATIONSTRUCTURE_READ, DeviceLayout_UnorderedAccess); frameResource != InvalidHandle)
 			return frameResource;
 
-		DebugBreak();
-		//Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
+		context.frameResources.AddResource(handle);
 
 		return AddWriteableResource(handle, DASACCELERATIONSTRUCTURE_READ, DeviceLayout_UnorderedAccess);
 	}
@@ -372,10 +375,23 @@ namespace FlexKit
 		if (auto frameResource = AddWriteableResource(handle, DASACCELERATIONSTRUCTURE_WRITE, DeviceLayout_UnorderedAccess); frameResource != InvalidHandle)
 			return frameResource;
 
-		DebugBreak();
-		//Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
+		context.frameResources.AddResource(handle);
 
 		return AddWriteableResource(handle, DASACCELERATIONSTRUCTURE_WRITE, DeviceLayout_UnorderedAccess);
+	}
+
+
+	/************************************************************************************************/
+
+
+	FrameResourceHandle FrameGraphNodeBuilder::Common(ResourceHandle handle)
+	{
+		if (auto frameResource = AddReadableResource(handle, DASCommon, DeviceLayout_Common); frameResource != InvalidHandle)
+			return frameResource;
+
+		context.frameResources.AddResource(handle);
+
+		return AddReadableResource(handle, DASCommon, DeviceLayout_Common);
 	}
 
 
@@ -387,7 +403,7 @@ namespace FlexKit
 		if (auto frameResource = AddReadableResource(handle, DASPixelShaderResource, DeviceLayout_ShaderResource); frameResource != InvalidHandle)
 			return frameResource;
 
-		context.frameResources.AddResource(handle, context.frameResources.renderSystem.GetObjectLayout(handle));
+		context.frameResources.AddResource(handle);
 
 		return AddReadableResource(handle, DASPixelShaderResource, DeviceLayout_ShaderResource);
 	}
@@ -401,7 +417,7 @@ namespace FlexKit
 		if (auto frameResource = AddReadableResource(handle, DASNonPixelShaderResource, DeviceLayout_ShaderResource); frameResource != InvalidHandle)
 			return frameResource;
 
-		context.frameResources.AddResource(handle, context.frameResources.renderSystem.GetObjectLayout(handle));
+		context.frameResources.AddResource(handle);
 
 		return AddReadableResource(handle, DASNonPixelShaderResource, DeviceLayout_ShaderResource);
 	}
@@ -424,8 +440,7 @@ namespace FlexKit
 		if (auto frameResource = AddReadableResource(handle, DASCopySrc, DeviceLayout_DecodeWrite); frameResource != InvalidHandle)
 			return frameResource;
 
-		DebugBreak();
-		//Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
+		context.frameResources.AddResource(handle);
 
 		return AddReadableResource(handle, DASCopySrc, DeviceLayout_DecodeWrite);
 	}
@@ -438,8 +453,7 @@ namespace FlexKit
 		if (auto frameResource = AddWriteableResource(handle, DASCopyDest, DeviceLayout_CopyDst); frameResource != InvalidHandle)
 			return frameResource;
 
-		DebugBreak();
-		//Context.resources.AddResource(handle, Context.resources.renderSystem.GetObjectState(handle));
+		context.frameResources.AddResource(handle);
 
 		return AddWriteableResource(handle, DASCopyDest, DeviceLayout_CopyDst);
 	}
@@ -461,7 +475,7 @@ namespace FlexKit
 
 		if (resourceHandle == InvalidHandle)
 		{
-			resources->AddResource(target, true);
+			resources->AddResource(target);
 			return RenderTarget(target);
 		}
 
@@ -490,7 +504,7 @@ namespace FlexKit
 
 		if (resourceHandle == InvalidHandle)
 		{
-			resources->AddResource(renderTarget, true);
+			resources->AddResource(renderTarget);
 			return Present(renderTarget);
 		}
 
@@ -510,7 +524,7 @@ namespace FlexKit
 	{
 		if (auto frameObject = AddReadableResource(handle, DeviceAccessState::DASDEPTHBUFFERREAD, DeviceLayout_DepthStencilRead); frameObject == InvalidHandle)
 		{
-			resources->AddResource(handle, true);
+			resources->AddResource(handle);
 			return DepthRead(handle);
 		}
 		else
@@ -527,7 +541,7 @@ namespace FlexKit
 													{ { finalAccessState, GuessLayoutFromAccess(finalAccessState), } });
 			frameObject == InvalidHandle)
 		{
-			resources->AddResource(handle, true);
+			resources->AddResource(handle);
 			return DepthTarget(handle, finalAccessState);
 		}
 		else
@@ -663,106 +677,117 @@ namespace FlexKit
 		const uint32_t neededFlags = GetNeededFlags(desc);
 
 		for(auto memoryPool = resources->FindMemoryPool(neededFlags); memoryPool; memoryPool = resources->FindMemoryPool(neededFlags))
-		{
-			auto allocationSize = resources->renderSystem.GetAllocationSize(desc);
-
-			ResourceHandle virtualResource	= InvalidHandle;
-			ResourceHandle overlap			= InvalidHandle;
-
-			auto [reuseableResource, found] = node.FindReuseableResource(*memoryPool, allocationSize, neededFlags, *resources, nodeTable);
-
-			if (found || reuseableResource != InvalidHandle)
-			{
-				auto reusedResource = resources->objects[reuseableResource].shaderResource;
-				auto deviceResource = resources->renderSystem.GetHeapOffset(reusedResource);
-			}
-			else
-			{
-				auto [resource, _overlap, offset, heap] = memoryPool->AcquireDeferred(desc, VirtualResourceScope::Temporary == lifeSpan);
-				context.AddDeferredCreation(resource, offset, heap, desc);
-
-				virtualResource	= resource;
-				overlap			= _overlap;
-			}
-
-			if (virtualResource == InvalidHandle)
-				return InvalidHandle;
-
-			const auto layout = GuessLayoutFromAccess(access);
-
-			FrameObject virtualObject		= FrameObject::VirtualObject(*allocator);
-			virtualObject.shaderResource	= virtualResource;
-			virtualObject.dimensions		= desc.Dimensions;
-			virtualObject.layout			= layout;
-			virtualObject.access			= (VirtualResourceScope::Temporary == lifeSpan) ? DASNOACCESS : access;
-			virtualObject.virtualState		= VirtualResourceState::Virtual_Created;
-			virtualObject.pool				= memoryPool;
-
-			auto virtualResourceHandle = FrameResourceHandle{ resources->objects.emplace_back(virtualObject) };
-			auto& object_ref	= resources->objects[virtualResourceHandle];
-			object_ref.handle	= virtualResourceHandle;
-			object_ref.lastUsers.push_back(node.handle);
-
-			resources->virtualResources.push_back(virtualResourceHandle);
-
-			FrameObjectLink outputObject;
-			outputObject.neededAccess	= access;
-			outputObject.neededLayout	= desc.initialLayout;
-			outputObject.source			= node.handle;
-			outputObject.handle			= virtualResourceHandle;
-
-			context.AddWriteable(outputObject);
-			node.outputObjects.push_back(outputObject);
-			node.createdObjects.push_back(outputObject);
-
-			Barrier barrier;
-			barrier.resource		= virtualResource;
-			barrier.accessBefore	= DASNOACCESS;
-			barrier.accessAfter		= access;
-			barrier.src				= DeviceSyncPoint::Sync_None;
-			barrier.dst				= DeviceSyncPoint::Sync_All;
-
-			switch (desc.Dimensions)
-			{
-			case TextureDimension::Buffer:
-			{
-				barrier.type = BarrierType::Buffer;
-
-			}	break;
-			case TextureDimension::Texture1D:
-			case TextureDimension::Texture2D:
-			case TextureDimension::Texture2DArray:
-			case TextureDimension::Texture3D:
-			case TextureDimension::TextureCubeMap:
-			{
-				barrier.type					= BarrierType::Texture;
-				barrier.texture.layoutBefore	= DeviceLayout_Undefined;
-				barrier.texture.layoutAfter		= layout;
-				barrier.texture.flags			= D3D12_TEXTURE_BARRIER_FLAG_DISCARD;
-			}	break;
-			}
-
-			node.AddBarrier(barrier);
-
-			if (VirtualResourceScope::Temporary == lifeSpan) {
-				node.retiredObjects.push_back(outputObject);
-				temporaryObjects.push_back(outputObject);
-			}
-
-			acquiredResources.push_back({ virtualResource, overlap });
-			node.subNodeTracking.push_back({
-				.resource		= virtualResourceHandle,
-				.access			= access,
-				.layout			= layout,
-				.finalAccess	= access,
-				.finalLayout	= layout });
-
-			resources->virtualResourceCount++;
-
-			return virtualResourceHandle;
-		}
+			return AcquireVirtualResource(desc, access, memoryPool, lifeSpan);
 
 		return InvalidHandle;
+	}
+
+
+	/************************************************************************************************/
+
+
+	FrameResourceHandle	FrameGraphNodeBuilder::AcquireVirtualResource(const GPUResourceDesc& desc, DeviceAccessState access, PoolAllocatorInterface* memoryPool, VirtualResourceScope lifeSpan)
+	{
+		ProfileFunction();
+
+		const uint32_t neededFlags = GetNeededFlags(desc);
+
+		auto allocationSize = resources->renderSystem.GetAllocationSize(desc);
+
+		ResourceHandle virtualResource	= InvalidHandle;
+		ResourceHandle overlap			= InvalidHandle;
+
+		auto [reuseableResource, found] = node.FindReuseableResource(*memoryPool, allocationSize, neededFlags, *resources, nodeTable);
+
+		if (found || reuseableResource != InvalidHandle)
+		{
+			auto reusedResource = resources->objects[reuseableResource].shaderResource;
+			auto deviceResource = resources->renderSystem.GetHeapOffset(reusedResource);
+		}
+		else
+		{
+			auto [resource, _overlap, offset, heap] = memoryPool->AcquireDeferred(desc, VirtualResourceScope::Temporary == lifeSpan);
+			context.AddDeferredCreation(resource, offset, heap, desc);
+
+			virtualResource	= resource;
+			overlap			= _overlap;
+		}
+
+		if (virtualResource == InvalidHandle)
+			return InvalidHandle;
+
+		const auto layout = GuessLayoutFromAccess(access);
+
+		FrameObject virtualObject		= FrameObject::VirtualObject(*allocator);
+		virtualObject.shaderResource	= virtualResource;
+		virtualObject.dimensions		= desc.Dimensions;
+		virtualObject.layout			= layout;
+		virtualObject.access			= (VirtualResourceScope::Temporary == lifeSpan) ? DASNOACCESS : access;
+		virtualObject.virtualState		= VirtualResourceState::Virtual_Created;
+		virtualObject.pool				= memoryPool;
+
+		auto virtualResourceHandle = FrameResourceHandle{ resources->objects.emplace_back(virtualObject) };
+		auto& object_ref	= resources->objects[virtualResourceHandle];
+		object_ref.handle	= virtualResourceHandle;
+		object_ref.lastUsers.push_back(node.handle);
+
+		resources->virtualResources.push_back(virtualResourceHandle);
+
+		FrameObjectLink outputObject;
+		outputObject.neededAccess	= access;
+		outputObject.neededLayout	= desc.initialLayout;
+		outputObject.source			= node.handle;
+		outputObject.handle			= virtualResourceHandle;
+
+		context.AddWriteable(outputObject);
+		node.outputObjects.push_back(outputObject);
+		node.createdObjects.push_back(outputObject);
+
+		Barrier barrier;
+		barrier.resource		= virtualResource;
+		barrier.accessBefore	= DASNOACCESS;
+		barrier.accessAfter		= access;
+		barrier.src				= DeviceSyncPoint::Sync_None;
+		barrier.dst				= DeviceSyncPoint::Sync_All;
+
+		switch (desc.Dimensions)
+		{
+		case TextureDimension::Buffer:
+		{
+			barrier.type = BarrierType::Buffer;
+
+		}	break;
+		case TextureDimension::Texture1D:
+		case TextureDimension::Texture2D:
+		case TextureDimension::Texture2DArray:
+		case TextureDimension::Texture3D:
+		case TextureDimension::TextureCubeMap:
+		{
+			barrier.type					= BarrierType::Texture;
+			barrier.texture.layoutBefore	= DeviceLayout_Undefined;
+			barrier.texture.layoutAfter		= layout;
+			barrier.texture.flags			= D3D12_TEXTURE_BARRIER_FLAG_DISCARD;
+		}	break;
+		}
+
+		node.AddBarrier(barrier);
+
+		if (VirtualResourceScope::Temporary == lifeSpan) {
+			node.retiredObjects.push_back(outputObject);
+			temporaryObjects.push_back(outputObject);
+		}
+
+		acquiredResources.push_back({ virtualResource, overlap });
+		node.subNodeTracking.push_back({
+			.resource		= virtualResourceHandle,
+			.access			= access,
+			.layout			= layout,
+			.finalAccess	= access,
+			.finalLayout	= layout });
+
+		resources->virtualResourceCount++;
+
+		return virtualResourceHandle;
 	}
 
 
@@ -1061,7 +1086,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void FrameGraph::_SubmitFrameGraph(iAllocator& threadLocalAllocator)
+	void FrameGraph::_FinalSubmit(iAllocator& threadLocalAllocator)
 	{
 		ProfileFunction();
 
@@ -1069,17 +1094,17 @@ namespace FlexKit
 
 		auto visitNode =
 			[&](this auto self, FrameGraphNode& node) -> void
-		{
-			if (node.executed)
-				return;
+			{
+				if (node.executed)
+					return;
 
-			node.executed = true;
+				node.executed = true;
 
-			for (auto& handle : node.sources)
-				self(nodes[handle]);
+				for (auto& handle : node.sources)
+					self(nodes[handle]);
 
-			orderedWorkList.push_back(&node);
-		};
+				orderedWorkList.push_back(&node);
+			};
 
 		for (auto outputObject : resources.outputObjects)
 		{
@@ -1089,179 +1114,267 @@ namespace FlexKit
 				visitNode(nodes[handle]);
 		}
 
-		//if (!orderedWorkList.size())
-		//	return;
-
-		// Handle dangling resources
-		// Retire resource at last user
-
-		const auto r_begin	= orderedWorkList.end();
-		const auto r_end	= orderedWorkList.begin();
-
-		auto releaseVirtualObjects =
-			[&]
-			{
-				for (auto& resource : resources.objects)
-				{
-					if (resource.type			== OT_Virtual &&
-						resource.virtualState	== VirtualResourceState::Virtual_Created &&
-						resource.pool			!= nullptr)
-					{
-						auto& users = resource.lastUsers;
-
-						if (r_begin != r_end)
-						{
-							auto r_itr	= r_begin - 1;
-
-							for (; r_end <= r_itr; r_itr--)
-							{
-								const auto handle = (*r_itr)->handle;
-
-								if (std::find(users.begin(), users.end(), handle) != users.end())
-									break;
-							}
-
-							if (r_itr >= orderedWorkList.begin())
-							{
-								FrameObjectLink outputObject;
-								outputObject.neededAccess = resource.access;
-								outputObject.neededLayout = resource.layout;
-								outputObject.source = InvalidHandle;
-								outputObject.handle = resource.handle;
-
-								(*r_itr)->retiredObjects.push_back(outputObject);
-							}
-						}
-
-						resource.virtualState = VirtualResourceState::Virtual_Released;
-						resource.pool->Release(resource.shaderResource, false);
-					}
-				}
-		};
-
-		releaseVirtualObjects();
-
 		FlexKit::WorkBarrier barrier{ threads, &threadLocalAllocator };
-
 		Vector<FrameGraphNodeWorkItem> workList{ threadLocalAllocator };
+
 		for (auto node : orderedWorkList)
 			node->nodeAction(*node, workList, barrier, resources, threadLocalAllocator);
 
-		auto& renderSystem = resources.renderSystem;
-		Vector<Context*> contexts{ &threadLocalAllocator };
+		barrier.AddOnCompletionEvent([&] { ReleaseVirtualObjects(orderedWorkList); });
 
-		struct SubmissionWorkRange
+		std::ranges::stable_sort(
+			workList,
+			[](const FrameGraphNodeWorkItem& lhs, const FrameGraphNodeWorkItem& rhs) -> bool { return lhs.submissionID < rhs.submissionID; });
+
+		auto& renderSystem = resources.renderSystem;
+
+		Vector<FrameGraphNodeWorkItem*> submissionNodes{ threadLocalAllocator };
+		WorkBarrier*	previousBarrier = nullptr;
+		SyncPoint		prevTicket;
+
+		struct SubmissionContext
 		{
-			Vector<FrameGraphNodeWorkItem>::Iterator begin;
-			Vector<FrameGraphNodeWorkItem>::Iterator end;
+			static_vector<Context*, 16> contexts;
+			SyncPoint					prev;
+			SyncPoint					sync;
 		};
 
-		static_vector<SubmissionWorkRange, 64> workerTaskList;
+		Vector<SubmissionContext>		queuedSubmissions{ threadLocalAllocator };
+		static_vector<WorkBarrier*, 16> barriers;
 
-		auto workRangeBegin = workList.begin();
+		const auto tickets = renderSystem.GetSubmissionTicket((uint32_t)submissions.size());
 
-		size_t workBlockSize = 0;
-		for (auto itr = workList.begin(); itr < workList.end(); itr++)
+		for(const auto&& [pass, idx] : zip(submissions, iota(0)))
 		{
-			auto& workItem = *itr;
-
-			if (workBlockSize >= 1000)
+			switch (pass.queue)
 			{
-				workerTaskList.push_back(
-					{
-						workRangeBegin,
-						itr
-					});
+			case Submission::Queue::Direct:
+			{
+				static_vector<Context*, 16> contexts{};
 
-				workRangeBegin = itr;
-				workBlockSize = 0;
-			}
-
-			workBlockSize += workItem.workWeight;
-		}
-
-		if (workRangeBegin != workList.end())
-			workerTaskList.push_back(
+				struct SubmissionWorkRange
 				{
-					workRangeBegin,
-					 workList.end()
-				});
+					Vector<FrameGraphNodeWorkItem> workList;
+				};
 
-		std::atomic_uint workerCount = 0;
+				static_vector<SubmissionWorkRange, 64> workerTaskList;
 
-		class RenderWorker : public iWork
-		{
-		public:
-			RenderWorker(SubmissionWorkRange IN_work, Context& IN_ctx, FrameResources& IN_resources, std::atomic_uint& IN_count) :
-				iWork		{ nullptr },
-				work		{ IN_work },
-				resources	{ IN_resources },
-				workerCount	{ IN_count },
-				ctx			{ IN_ctx } {}
+				for (auto& workItem : workList)
+				{
+					if (workItem.submissionID == idx)
+						submissionNodes.push_back(&workItem);
+				}
 
-			void Run(iAllocator& tempAllocator) override
-			{
-				ProfileFunction();
-				workerCount++;
+				size_t workBlockSize = 0;
+				Vector<FrameGraphNodeWorkItem> workList{ threadLocalAllocator };
+				workList.reserve(16);
 
-				std::for_each(work.begin, work.end,
-					[&](auto& item)
+				for (auto itr = submissionNodes.begin(); itr < submissionNodes.end(); itr++)
+				{
+					auto& workItem = *itr;
+
+					if (workBlockSize >= 1000)
+					{
+						workerTaskList.emplace_back(std::move(workList));
+						workBlockSize	= 0;
+					}
+
+					workList.push_back(*workItem);
+					workBlockSize += workItem->workWeight;
+				}
+
+				if(workBlockSize < 1000)
+					workerTaskList.emplace_back(std::move(workList));
+
+				std::atomic_uint workerCount = 0;
+
+				class RenderWorker : public iWork
+				{
+				public:
+					RenderWorker(SubmissionWorkRange IN_work, Context& IN_ctx, FrameResources& IN_resources, std::atomic_uint& IN_count) :
+						iWork		{ nullptr },
+						work		{ IN_work },
+						resources	{ IN_resources },
+						workerCount	{ IN_count },
+						ctx			{ IN_ctx } {}
+
+					void Run(iAllocator& tempAllocator) override
 					{
 						ProfileFunction();
+						workerCount++;
 
-						item(ctx, resources, tempAllocator);
-					});
-				ctx.FlushBarriers();
-			}
+						for(auto& item : work.workList)
+						{
+							ProfileFunction();
 
-			void Release() {}
+							item(ctx, resources, tempAllocator);
+						}
 
-			std::atomic_uint&	workerCount;
-			SubmissionWorkRange work;
-			Context&			ctx;
-			FrameResources&		resources;
-		};
+						ctx.FlushBarriers();
+					}
 
-		static_vector<RenderWorker*, 64> workers;
+					void Release() {}
 
+					std::atomic_uint&	workerCount;
+					SubmissionWorkRange work;
+					Context&			ctx;
+					FrameResources&		resources;
+				};
 
-		for (auto& workerTask : workerTaskList)
-		{
-			auto& context = renderSystem.GetCommandList(submissionTicket);
-			contexts.push_back(&context);
+				static_vector<RenderWorker*, 64> workers;
+
+				auto& submissionBarrier = threadLocalAllocator.allocate<WorkBarrier>(threads, &threadLocalAllocator);
+				barriers.push_back(&submissionBarrier);
+
+				if (previousBarrier)
+					submissionBarrier.AddWork(*previousBarrier);
+
+				SyncPoint submissionTicket {
+					.syncCounter	= tickets.syncCounter + idx + 1,
+					.fence			= tickets.fence };
+
+				for (auto& workerTask : workerTaskList)
+				{
+					auto& context = renderSystem.GetCommandList(submissionTicket);
+					contexts.push_back(&context);
 
 #if USING(DEBUGGRAPHICS)
-			auto ID = fmt::format("CommandList{}", contexts.size() - 1);
-			context.SetDebugName(ID.c_str());
+					auto ID = fmt::format("CommandList{}", contexts.size() - 1);
+					context.SetDebugName(ID.c_str());
 #endif
 
-			auto& worker = threadLocalAllocator.allocate<RenderWorker>(workerTask, context, resources, workerCount);
-			workers.push_back(&worker);
-			barrier.AddWork(worker);
+					auto& worker = threadLocalAllocator.allocate<RenderWorker>(workerTask, context, resources, workerCount);
+					workers.push_back(&worker);
+					submissionBarrier.AddWork(worker);
+				}
+
+				queuedSubmissions.emplace_back(contexts, prevTicket, submissionTicket);
+				prevTicket = submissionTicket;
+
+				if(previousBarrier != nullptr)
+					previousBarrier->AddOnCompletionEvent(
+						[&queuedSubmissions, idx = queuedSubmissions.size() - 2, &renderSystem, submissionTicket, &submissionBarrier]() mutable
+						{
+							auto& contexts	= queuedSubmissions[idx].contexts;
+							auto prev		= queuedSubmissions[idx].prev;
+
+							//if (prev)
+							//	renderSystem.SyncDirectTo(prev);
+							//
+							//if (contexts.size())
+								renderSystem.Submit(contexts);
+							//else
+							//	renderSystem.Signal(submissionTicket);
+
+							submissionBarrier.JoinLocal();
+						});
+
+				previousBarrier = &submissionBarrier;
+
+				directStateContext.WaitFor();
+				computeStateContext.WaitFor();
+				barrier.JoinLocal();
+
+				for (auto worker : workers)
+					threads.AddWork(worker);
+
+				submissionNodes.clear();
+			}	break;
+			case Submission::Queue::Compute:
+			{
+				submissionNodes.clear();
+				DebugBreak();
+			}	break;
+			}
 		}
 
-		resourceContext.WaitFor();
+		if (previousBarrier)
+		{
+			previousBarrier->AddOnCompletionEvent(
+				[&, &a = queuedSubmissions.back()]() mutable
+				{
+					if (a.contexts.size())
+					{
+						FK_LOG_9("Submitting %u", a.sync.syncCounter);
 
-		for (auto worker : workers)
-			threads.AddWork(worker);
+						renderSystem.Submit(a.contexts);
+						renderSystem.SignalDirect(tickets.syncCounter);
+					}
+				});
+		}
 
-		barrier.JoinLocal();
+		if(barriers.size())
+			barriers.front()->JoinLocal();
 
-		if (barrier.GetPendingWorkCount() != 0)
-			DebugBreak();
-
-		releaseVirtualObjects();
+		renderSystem.EndFrame();
 		UpdateResourceFinalState();
-
-		if(contexts.size())
-			renderSystem.Submit(contexts);
-		else
-			renderSystem.Signal(submissionTicket);
 	}
 
 
-	UpdateTask& FrameGraph::SubmitFrameGraph(UpdateDispatcher& dispatcher, RenderSystem* renderSystem, iAllocator* persistentAllocator)
+	/************************************************************************************************/
+
+
+	uint32_t FrameGraph::SubmitDirect(UpdateDispatcher& dispatcher, RenderSystem* renderSystem, iAllocator* persistentAllocator)
 	{
+		if (pendingDirectNodes.empty())
+			return -1;
+
+		const auto submissionID = (uint32_t)submissions.size();
+		for (auto node : pendingDirectNodes)
+			node->submissionID = submissionID;
+
+		directStateContext.SetLastUsed(submissionID);
+		directStateContext.usedResources.clear();
+
+		submissions.emplace_back(
+			Submission{
+				.nodes = std::move(pendingDirectNodes),
+				.queue = Submission::Queue::Direct,
+				.syncs = directSyncs });
+
+		return (uint32_t)(submissions.size() - 1);
+	}
+
+
+	/************************************************************************************************/
+
+
+	uint32_t FrameGraph::SubmitCompute(UpdateDispatcher& dispatcher, RenderSystem* renderSystem, iAllocator* persistentAllocator)
+	{
+		if (pendingComputeNodes.empty())
+			return -1;
+
+		for (auto node : pendingComputeNodes)
+			node->submissionID = (uint32_t)submissions.size();
+
+		submissions.emplace_back(
+			Submission{
+				.nodes = std::move(pendingComputeNodes),
+				.queue = Submission::Queue::Compute,
+				.syncs = computeSyncs });
+
+		computeSyncs.clear();
+		return (uint32_t)(submissions.size() - 1);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void FrameGraph::SyncDirectTo(uint32_t id)
+	{
+		directSyncs.push_back(id);
+	}
+
+
+	/************************************************************************************************/
+
+
+	UpdateTask& FrameGraph::Finish(UpdateDispatcher& dispatcher, RenderSystem* renderSystem, iAllocator* persistentAllocator)
+	{
+		SubmitDirect(dispatcher, renderSystem, persistentAllocator);
+		SubmitCompute(dispatcher, renderSystem, persistentAllocator);
+
 		struct SubmitData
 		{
 			FrameGraph*		frameGraph;
@@ -1271,10 +1384,18 @@ namespace FlexKit
 
 		auto framegraph = this;
 
-		std::sort(dataDependencies.begin(), dataDependencies.end());
-		dataDependencies.erase(std::unique(dataDependencies.begin(), dataDependencies.end()), dataDependencies.end());
+		for (auto& node : nodes)
+		{
+			for (auto& d : node.dataDependencies)
+				globalDependencies.push_back(d);
+		}
 
-		return dispatcher.Add<SubmitData>(
+		std::ranges::sort(globalDependencies);
+		auto endCap = std::ranges::unique(globalDependencies);
+
+		globalDependencies.resize(globalDependencies.size() - endCap.size());
+
+		auto& node = dispatcher.Add<SubmitData>(
 			[&](auto& builder, SubmitData& data)
 			{
 				FK_LOG_9("Frame Graph Single-Thread Section Begin");
@@ -1283,7 +1404,7 @@ namespace FlexKit
 				data.frameGraph		= framegraph;
 				data.renderSystem	= renderSystem;
 
-				for (auto dependency : dataDependencies)
+				for (auto dependency : globalDependencies)
 					builder.AddInput(*dependency);
 
 				FK_LOG_9("Frame Graph Single-Thread Section End");
@@ -1291,8 +1412,59 @@ namespace FlexKit
 			[=](SubmitData& data, iAllocator& threadAllocator)
 			{
 				ProfileFunction();
-				data.frameGraph->_SubmitFrameGraph(threadAllocator);
+				data.frameGraph->_FinalSubmit(threadAllocator);
 			});
+
+		globalDependencies.clear();
+
+		return node;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void FrameGraph::ReleaseVirtualObjects(std::span<FrameGraphNode*> workList)
+	{
+		const auto r_begin	= workList.end();
+		const auto r_end	= workList.begin();
+
+		for (auto& resource : resources.objects)
+		{
+			if (resource.type			== OT_Virtual &&
+				resource.virtualState	== VirtualResourceState::Virtual_Created &&
+				resource.pool			!= nullptr)
+			{
+				auto& users = resource.lastUsers;
+
+				if (r_begin != r_end)
+				{
+					auto r_itr	= r_begin - 1;
+
+					for (; r_end <= r_itr; r_itr--)
+					{
+						const auto handle = (*r_itr)->handle;
+
+						if (std::find(users.begin(), users.end(), handle) != users.end())
+							break;
+					}
+
+					if (r_itr >= workList.begin())
+					{
+						FrameObjectLink outputObject;
+						outputObject.neededAccess	= resource.access;
+						outputObject.neededLayout	= resource.layout;
+						outputObject.source			= InvalidHandle;
+						outputObject.handle			= resource.handle;
+
+						(*r_itr)->retiredObjects.push_back(outputObject);
+					}
+				}
+
+				resource.virtualState = VirtualResourceState::Virtual_Released;
+				resource.pool->Release(resource.shaderResource, GetRenderSystem().directSubmissionCounter, false);
+			}
+		}
 	}
 
 

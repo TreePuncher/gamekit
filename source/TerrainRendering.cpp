@@ -105,6 +105,8 @@ namespace FlexKit
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 
+		SETDEBUGNAME(PSO, "CullTerrain");
+
 		return PSO;
 	}
 
@@ -155,6 +157,8 @@ namespace FlexKit
 
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+
+		SETDEBUGNAME(PSO, "DrawTerrain");
 
 		return PSO;
 	}
@@ -210,6 +214,8 @@ namespace FlexKit
 
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+
+		SETDEBUGNAME(PSO, "DrawTerrainWireframe");
 
 		return PSO;
 	}

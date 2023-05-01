@@ -121,10 +121,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct CoreOptions
+	{
+		uint32_t	threadCount		= 4;
+		bool		GPUdebugMode	= false;
+		bool		GPUValidation	= false;
+		bool		GPUSyncQueues	= false;
+	};
+
 	class EngineCore
 	{
 	public:
-		EngineCore(EngineMemory* memory, size_t threadCount);
+		EngineCore(EngineMemory* memory, const CoreOptions& options = {});
 		~EngineCore();
 
 

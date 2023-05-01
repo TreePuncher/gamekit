@@ -9,7 +9,14 @@ int main()
 		auto* allocator = FlexKit::CreateEngineMemory();
 		EXITSCOPE(ReleaseEngineMemory(allocator));
 
-		auto app = std::make_unique<FlexKit::FKApplication>(allocator, FlexKit::Max(std::thread::hardware_concurrency() / 2, 1u) - 1);
+		FlexKit::CoreOptions options{
+			.threadCount	= FlexKit::Max(std::thread::hardware_concurrency() / 2, 1u) - 1,
+			.GPUdebugMode	= true,
+			.GPUValidation	= false,
+			.GPUSyncQueues	= false,
+		};
+
+		auto app = std::make_unique<FlexKit::FKApplication>(allocator, options);
 
 		app->PushState<TextureStreamingTest>();
 		app->GetCore().FPSLimit		= 90;

@@ -1,6 +1,7 @@
 {
     "name": "flexkit",
     "version-string": "0.0.1",
+    "supports": "(!x86 & windows)",
     "dependencies": [
         {
             "name": "angelscript",
@@ -10,6 +11,7 @@
             "name": "directxtex",
             "features": [ "dx12", "openexr" ]
         },
+        "boost-interprocess",
         "cppcoro",
 		"cpptoml",
         "directx-dxc",
