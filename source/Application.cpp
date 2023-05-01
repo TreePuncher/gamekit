@@ -2,9 +2,9 @@
 
 namespace FlexKit
 {
-	FKApplication::FKApplication(EngineMemory* IN_Memory, size_t threadCount) :
+	FKApplication::FKApplication(EngineMemory* IN_Memory, const CoreOptions& options) :
 		Memory		{ IN_Memory },
-		Core		{ IN_Memory, threadCount },
+		Core		{ IN_Memory, options },
 		framework	{ Core } {}
 
 
@@ -24,7 +24,7 @@ namespace FlexKit
 	{
 		if (Memory)
 		{
-			Core.RenderSystem.WaitforGPU();
+			Core.RenderSystem.WaitForGPU();
 			framework.Release();
 			Core.Release();
 			Memory = nullptr;

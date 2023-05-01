@@ -69,6 +69,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "GBufferPassPSO");
+
 		return PSO;
 	}
 
@@ -139,6 +141,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "GBufferSkinnedPassPSO");
+
 		return PSO;
 	}
 
@@ -190,6 +194,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "DeferredShadingPSO");
+
 		return PSO;
 	}
 
@@ -208,6 +214,8 @@ namespace FlexKit
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateComputePipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
+
+		SETDEBUGNAME(PSO, "DeferredShadingComputePSO");
 
 		return PSO;
 	}
@@ -229,6 +237,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+		SETDEBUGNAME(PSO, "ClearClusteredCounters");
 
 		return PSO;
 	}
@@ -271,6 +281,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "CreateLightBuffers_DEBUGVIS");
+
 		return PSO;
 	}
 
@@ -292,6 +304,8 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
+		SETDEBUGNAME(PSO, "CreateLightBVH_PHASE1");
+
 		return PSO;
 	}
 
@@ -311,6 +325,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+		SETDEBUGNAME(PSO, "CreateLightBVH_PHASE2");
 
 		return PSO;
 	}
@@ -353,6 +369,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "CreateLightBVH_DEBUGVIS");
+
 		return PSO;
 	}
 
@@ -373,6 +391,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+		SETDEBUGNAME(PSO, "CreateClusterArguments");
 
 		return PSO;
 	}
@@ -395,6 +415,8 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
+		SETDEBUGNAME(PSO, "CreateLightListArgs");
+
 		return PSO;
 	}
 
@@ -415,6 +437,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+		SETDEBUGNAME(PSO, "CreateLightLists");
 
 		return PSO;
 	}
@@ -437,6 +461,8 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
+		SETDEBUGNAME(PSO, "ResolutionMatch_UNUSED");
+
 		return PSO;
 	}
 
@@ -456,6 +482,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+		SETDEBUGNAME(PSO, "ResolutionMatchClear_UNUSED");
 
 		return PSO;
 	}
@@ -477,6 +505,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+		SETDEBUGNAME(PSO, "CreateClusters");
 
 		return PSO;
 	}
@@ -517,6 +547,8 @@ namespace FlexKit
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
+
+		SETDEBUGNAME(PSO, "CreateClusters");
 
 		return PSO;
 	}
@@ -564,6 +596,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "CreateBVH_DEBUGVIS");
+
 		return PSO;
 	}
 
@@ -584,6 +618,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
+
+		SETDEBUGNAME(PSO, "CreateClusterBuffer");
 
 		return PSO;
 	}
@@ -606,6 +642,8 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
+		SETDEBUGNAME(PSO, "CreateComputeTiledDeferred");
+
 		return PSO;
 	}
 
@@ -619,6 +657,20 @@ namespace FlexKit
 		MRIA			{ RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM)) },
 		normal			{ RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16_FLOAT)) }
 	{
+
+		/*
+		auto albedoDesc = GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM);
+		auto mriaDesc = GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM);
+		auto normalDesc = GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16_FLOAT);
+
+		albedoDesc.bufferCount = 1;
+		mriaDesc.bufferCount = 1;
+		normalDesc.bufferCount = 1;
+
+		albedo = RS.CreateGPUResource(albedoDesc);
+		MRIA = RS.CreateGPUResource(mriaDesc);
+		normal = RS.CreateGPUResource(normalDesc);
+		*/
 		RS.SetDebugName(albedo,		"Albedo");
 		RS.SetDebugName(MRIA,		"MRIA");
 		RS.SetDebugName(normal,		"Normal");
@@ -675,17 +727,21 @@ namespace FlexKit
 			GBufferClear{},
 			[&](FrameGraphNodeBuilder& builder, GBufferClear& data)
 			{
+				auto temp = builder.GetRenderSystem().GetDeviceResource(gbuffer.albedo);
+
 				data.albedo  = builder.RenderTarget(gbuffer.albedo);
 				data.MRIA    = builder.RenderTarget(gbuffer.MRIA);
 				data.normal  = builder.RenderTarget(gbuffer.normal);
 			},
-			[](GBufferClear& data, ResourceHandler& resources, Context& ctx, iAllocator&)
+			[&gbuffer](GBufferClear& data, ResourceHandler& resources, Context& ctx, iAllocator&)
 			{
+				auto temp = resources.renderSystem().GetDeviceResource(gbuffer.albedo);
+
 				ctx.BeginEvent_DEBUG("Clear GBuffer");
 
-				ctx.ClearRenderTarget(resources.GetResource(data.albedo));
-				ctx.ClearRenderTarget(resources.GetResource(data.MRIA));
-				ctx.ClearRenderTarget(resources.GetResource(data.normal));
+				ctx.ClearRenderTarget(gbuffer.albedo);
+				ctx.ClearRenderTarget(gbuffer.MRIA);
+				ctx.ClearRenderTarget(gbuffer.normal);
 
 				ctx.EndEvent_DEBUG();
 			});
@@ -694,13 +750,6 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
-	void AddGBufferResource(GBuffer& gbuffer, FrameGraph& frameGraph)
-	{
-		frameGraph.resources.AddResource(gbuffer.albedo, true);
-		frameGraph.resources.AddResource(gbuffer.MRIA, true);
-		frameGraph.resources.AddResource(gbuffer.normal, true);
-	}
 
 	ClusteredRender::ClusteredRender(RenderSystem& renderSystem, iAllocator& persistent) :
 		dispatch		{ renderSystem.CreateIndirectLayout({ { ILE_DispatchCall } },	&persistent) },
@@ -925,7 +974,6 @@ namespace FlexKit
 			},
 			[&, this](FrameGraphNodeBuilder& builder, LightBufferUpdate& data)
 			{
-
 				auto& renderSystem			= frameGraph.GetRenderSystem();
 
 				// Output Objects
@@ -1322,7 +1370,7 @@ namespace FlexKit
 				data.NormalTargetObject			= builder.RenderTarget(gbuffer.normal);
 				data.depthBufferTargetObject	= builder.DepthTarget(depthTarget);
 			},
-			[&entityConstants, &animationResources](GBufferPass& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[&entityConstants, &animationResources, &gbuffer](GBufferPass& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
 				ProfileFunction();
 
@@ -1368,9 +1416,9 @@ namespace FlexKit
 					});
 
 				RenderTargetList renderTargets = {
-					resources.GetResource(data.AlbedoTargetObject),
-					resources.GetResource(data.MRIATargetObject),
-					resources.GetResource(data.NormalTargetObject),
+					gbuffer.albedo,
+					gbuffer.MRIA,
+					gbuffer.normal,
 				};
 
 				ctx.SetRenderTargets(
@@ -1409,8 +1457,7 @@ namespace FlexKit
 					TriMesh*					prevMesh	= nullptr;
 					const TriMesh::LOD_Runtime* prevLOD		= nullptr;
 
-					const size_t end = pass->pvs.size();
-					for (size_t I = 0; I < end; I++)
+					for (auto&& [I, brush] : zip(iota(0), pass->pvs))
 					{
 						auto& brush = pass->pvs[I];
 
@@ -1451,7 +1498,7 @@ namespace FlexKit
 							for (size_t K = 0; K < subMeshesEnd; K++)
 							{
 								const auto	subMesh		= submeshes[K];
-								const auto& subMaterial	= (subMeshesEnd == 1) ? material : materials[material.SubMaterials[K]];
+								const auto& subMaterial	= (subMeshesEnd == 1) ? material : materials[material.subMaterials[K]];
 
 								if (subMaterial.textureDescriptors.size != 0)
 									ctx.SetGraphicsDescriptorTable(0, subMaterial.textureDescriptors);
@@ -1531,7 +1578,7 @@ namespace FlexKit
 							for (size_t K = 0; K < subMeshesEnd; K++)
 							{
 								const auto	subMesh		= submeshes[K];
-								const auto& subMaterial	= (subMeshesEnd == 1) ? material : materials[material.SubMaterials[K]];
+								const auto& subMaterial	= (subMeshesEnd == 1) ? material : materials[material.subMaterials[K]];
 
 								if (subMaterial.textureDescriptors.size != 0)
 									ctx.SetGraphicsDescriptorTable(0, subMaterial.textureDescriptors);
@@ -1593,18 +1640,18 @@ namespace FlexKit
 					builder.ReadTransition(shadowMap, DASPixelShaderResource, { Sync_All, Sync_PixelShader });
 
 				data.pointLightHandles			= &lightGather.GetData().lights;
-				data.AlbedoTargetObject			= builder.PixelShaderResource(gbufferPass.gbuffer.albedo);
-				data.NormalTargetObject			= builder.PixelShaderResource(gbufferPass.gbuffer.normal);
-				data.MRIATargetObject			= builder.PixelShaderResource(gbufferPass.gbuffer.MRIA);
+				data.AlbedoTargetObject			= builder.Common(gbufferPass.gbuffer.albedo);
+				data.NormalTargetObject			= builder.Common(gbufferPass.gbuffer.normal);
+				data.MRIATargetObject			= builder.Common(gbufferPass.gbuffer.MRIA);
 				data.depthBufferTargetObject	= builder.PixelShaderResource(depthTarget);
 				data.lightMapObject				= builder.ReadTransition(lightPass.indexBufferObject,		DASPixelShaderResource);
 				data.lightListBuffer			= builder.ReadTransition(lightPass.lightListBuffer,			DASPixelShaderResource);
 				data.lightLists					= builder.ReadTransition(lightPass.lightLists,				DASPixelShaderResource);
 
 				data.renderTargetObject			= builder.AcquireVirtualResource(
-													GPUResourceDesc::RenderTarget(
+													GPUResourceDesc::UAVTexture(
 														builder.GetRenderSystem().GetTextureWH(renderTarget),
-														DeviceFormat::R16G16B16A16_FLOAT), FlexKit::DASRenderTarget, VirtualResourceScope::Frame);
+														DeviceFormat::R16G16B16A16_FLOAT, true), FlexKit::DASRenderTarget, VirtualResourceScope::Frame);
 
 				data.pointLightBufferObject		= builder.ReadTransition(lightPass.lightBufferObject,		DASPixelShaderResource);
 
@@ -1613,7 +1660,7 @@ namespace FlexKit
 
 				builder.SetDebugName(data.renderTargetObject, "renderTargetObject");
 			}, 
-			[camera = gbufferPass.camera, renderTarget, t, &rootSignature = this->rootSignature, &shadowMaps = lightShadowMaps.acquireMaps]
+			[camera = gbufferPass.camera, renderTarget, t, &rootSignature = this->rootSignature, &shadowMaps = lightShadowMaps.acquireMaps, &gbuffer = gbufferPass.gbuffer]
 			(ClusteredDeferredShading& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
 				ProfileFunction();
@@ -1626,9 +1673,9 @@ namespace FlexKit
 				auto& renderSystem			= resources.renderSystem();
 				const auto WH				= resources.renderSystem().GetTextureWH(renderTarget);
 				const auto cameraConstants	= GetCameraConstants(camera);
-				const auto pointLightCount	= (uint32_t)visableLights.size();
+				const auto lightCount		= (uint32_t)visableLights.size();
 
-				if (!pointLightCount)
+				if (!lightCount)
 					return;
 
 				struct ShadowMap
@@ -1649,7 +1696,7 @@ namespace FlexKit
 					{(float)WH[0], (float)WH[1]},
 					{1.0f / (float)WH[0], 1.0f / (float)WH[1]},
 					t,
-					pointLightCount,
+					lightCount,
 					{ 0.1f, 0.1f, 0.1f, 0 }
 				};
 
@@ -1663,21 +1710,21 @@ namespace FlexKit
 					float4{-1,   3, 0, 1 },
 				};
 
-				const size_t descriptorTableSize = 20 + pointLightCount;
+				const size_t descriptorTableSize = 20 + lightCount;
 
 				DescriptorHeap descHeap;
 				descHeap.Init2(ctx, rootSignature.GetDescHeap(0), descriptorTableSize, &allocator);
-				descHeap.SetSRV(ctx, 0, resources.GetResource(data.AlbedoTargetObject));
-				descHeap.SetSRV(ctx, 1, resources.GetResource(data.MRIATargetObject));
-				descHeap.SetSRV(ctx, 2, resources.GetResource(data.NormalTargetObject));
+				descHeap.SetSRV(ctx, 0, gbuffer.albedo);
+				descHeap.SetSRV(ctx, 1, gbuffer.MRIA);
+				descHeap.SetSRV(ctx, 2, gbuffer.normal);
 				descHeap.SetSRV(ctx, 4, resources.GetResource(data.depthBufferTargetObject), DeviceFormat::R32_FLOAT);
 				descHeap.SetSRV(ctx, 5, resources.GetResource(data.lightMapObject));
 				descHeap.SetStructuredResource(ctx, 6, resources.GetResource(data.lightLists), sizeof(uint2));
 				descHeap.SetStructuredResource(ctx, 7, resources.GetResource(data.lightListBuffer), sizeof(uint32_t));
-				descHeap.SetStructuredResource(ctx, 8, resources.NonPixelShaderResource(data.pointLightBufferObject, ctx), sizeof(GPULight));
-				descHeap.SetStructuredResource(ctx, 9, resources.NonPixelShaderResource(data.lightPass.shadowMatrices, ctx), sizeof(float4x4));
+				descHeap.SetStructuredResource(ctx, 8, resources.PixelShaderResource(data.pointLightBufferObject, ctx), sizeof(GPULight));
+				descHeap.SetStructuredResource(ctx, 9, resources.PixelShaderResource(data.lightPass.shadowMatrices, ctx), sizeof(float4x4));
 
-				for (size_t shadowMapIdx = 0; shadowMapIdx < pointLightCount; shadowMapIdx++)
+				for (size_t shadowMapIdx = 0; shadowMapIdx < lightCount; shadowMapIdx++)
 				{
 					auto& light = lightComponent[visableLights[shadowMapIdx]];
 

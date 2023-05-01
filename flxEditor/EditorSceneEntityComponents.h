@@ -145,13 +145,18 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	struct EntityTexture
+	{
+		uint64_t asset;
+		uint32_t tag;
+	};
 
 	struct EntityMaterial
 	{
 		using MaterialProperty = std::variant<std::string, float, float2, float3, float4, uint, uint2, uint3, uint4>;
 
 		GUID_t							resource;		// Resource
-		std::vector<uint64_t>			textures;
+		std::vector<EntityTexture>		textures;
 		std::vector<MaterialProperty>	properties;		// Properties override data in the resource
 		std::vector<std::string>		propertyID;
 		std::vector<uint32_t>			propertyGUID;

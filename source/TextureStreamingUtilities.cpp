@@ -54,9 +54,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	UploadReservation DDSDecompressor::ReadTile(ReadContext& readCtx, const TileID_t id, const uint2 TileSize, CopyContext& ctx)
+	void DDSDecompressor::ReadTile(ReadContext& readCtx, const TileID_t id, const uint2 TileSize, UploadReservation& reservation)
 	{
-		const auto reservation		= ctx.Reserve(64 * KILOBYTE);
 		const auto blockSize		= BlockSize(format);
 		const auto blocksX			= 256 / 4;
 		const auto localRowPitch	= blocksX * blockSize;
@@ -73,15 +72,13 @@ namespace FlexKit
 				reservation.buffer + row * localRowPitch,
 				localRowPitch,
 				mipLevelOffset + row * textureRowWidth + textureRowWidth * tileY * blocksY + localRowPitch * tileX);
-
-		return reservation;
 	}
 
 
 	/************************************************************************************************/
 
 
-	UploadReservation DDSDecompressor::Read(ReadContext& readCtx, const uint2 WH, CopyContext& ctx)
+	void DDSDecompressor::Read(ReadContext& readCtx, const uint2 WH, UploadReservation& reservation)
 	{
 		const auto blockSize				= BlockSize(format);
 		const size_t destinationRowPitch	= Max(blockSize * WH[0]/4, 256);
@@ -89,7 +86,6 @@ namespace FlexKit
 		const size_t columnCount			= Max(WH[0] / 4, 1);
 		const size_t blockCount				= rowCount * columnCount;
 		const size_t allocationSize			= rowCount * destinationRowPitch;
-		const auto   reservation			= ctx.Reserve(allocationSize, 512);
 		const size_t sourceRowPitch			= blockSize * columnCount;
 
 		if (buffer)
@@ -109,8 +105,6 @@ namespace FlexKit
 				reservation.buffer,
 				blockCount * blockSize,
 				mipLevelOffset);
-
-		return reservation;
 	}
 
 
@@ -543,13 +537,10 @@ namespace FlexKit
 			feedbackReturnBuffer,
 			[&, textureStreamingEngine = this](ReadBackResourceHandle resource)
 			{
-				if (!updateInProgress)
-					return;
-
-				taskInProgress	= true;
-				taskStarted		= false;
-				auto& task		= allocator->allocate<TextureStreamUpdate>(resource, *this, allocator);
-				renderSystem.threads.AddBackgroundWork(task);
+				if (async)
+					StartAsyncTask(resource);
+				else
+					CopyResults(resource);
 			});
 
 		renderSystem.QueuePSOLoad(TEXTUREFEEDBACKPASS);
@@ -571,7 +562,7 @@ namespace FlexKit
 		if(taskStarted)
 			while (taskInProgress);
 
-		renderSystem.WaitforGPU(); // Flush any pending reads
+		renderSystem.WaitForGPU(); // Flush any pending reads
 		renderSystem.FlushPendingReadBacks();
 
 		renderSystem.ReleaseReadBack(feedbackReturnBuffer);
@@ -615,7 +606,64 @@ namespace FlexKit
 		return size_t(mip0TileCount.Product());
 	}
 
+
 	void TextureStreamingEngine::TextureFeedbackPass(
+		UpdateDispatcher&				dispatcher,
+		FrameGraph&						frameGraph,
+		CameraHandle					camera,
+		uint2							renderTargetWH,
+		BrushConstants&					constants,
+		GatherPassesTask&				passes,
+		const ResourceAllocation&		animationResources,
+		ReserveConstantBufferFunction&	reserveCB,
+		ReserveVertexBufferFunction&	reserveVB,
+		iAllocator&						tempAllocator)
+	{
+		if (async)
+		{
+			if (updateInProgress)
+				return;
+
+			updateInProgress = true;
+
+			_FeedbackPass(
+				dispatcher,
+				frameGraph,
+				camera,
+				renderTargetWH,
+				constants,
+				passes,
+				animationResources,
+				reserveCB,
+				reserveVB,
+				tempAllocator);
+		}
+		else
+		{
+			return;
+			if (updateInProgress)
+			{
+				_FeedbackPass(
+					dispatcher,
+					frameGraph,
+					camera,
+					renderTargetWH,
+					constants,
+					passes,
+					animationResources,
+					reserveCB,
+					reserveVB,
+					tempAllocator);
+			}
+			else if (updateReturned)
+			{
+				updateInProgress = false;
+			}
+		}
+	}
+
+
+	void TextureStreamingEngine::_FeedbackPass(
 			UpdateDispatcher&				dispatcher,
 			FrameGraph&						frameGraph,
 			CameraHandle					camera,
@@ -627,11 +675,6 @@ namespace FlexKit
 			ReserveVertexBufferFunction&	reserveVB,
 			iAllocator&						tempAllocator)
 	{
-		if (updateInProgress)
-			return;
-
-		updateInProgress = true;
-
 		auto initiateFeedbackPass = frameGraph.AddNode<TextureFeedbackPass_Data>(
 			TextureFeedbackPass_Data{
 				camera,
@@ -690,6 +733,7 @@ namespace FlexKit
 			auto depthBufferDesc			= GPUResourceDesc::DepthTarget({ 128, 128 }, DeviceFormat::D32_FLOAT);
 			depthBufferDesc.denyShaderUsage = true;
 
+			builder.AddDataDependency(passes);
 			builder.ReadConstantBuffer(brushConstants.constants);
 
 			data.feedbackBuffers[0]			= builder.WriteTransition(initiateFeedbackPass.feedbackBuffers[0], DASUAV);
@@ -785,7 +829,7 @@ namespace FlexKit
 						{
 							FeedbackPassConstants passConstants{ .bias = bias };
 
-							for (auto [idx, texture] : zip(iota(0), material.Textures))
+							for (auto [idx, texture] : zip(iota(0), material.textures))
 							{
 								uint32_t offset = feedbackTable.table.GetTextureOffset(texture);
 
@@ -810,13 +854,13 @@ namespace FlexKit
 						for (size_t itr = 0; itr < subMeshCount; itr++)
 						{
 							const auto subMesh		= lod.subMeshes[itr];
-							const auto& subMaterial	= materials[material.SubMaterials[itr]];
+							const auto& subMaterial	= materials[material.subMaterials[itr]];
 
 							if (subMaterial.textureDescriptors.size != 0)
 							{
 								FeedbackPassConstants passConstants{ .bias = bias };
 
-								for (auto [idx, texture] : zip(iota(0), subMaterial.Textures))
+								for (auto [idx, texture] : zip(iota(0), subMaterial.textures))
 								{
 									uint32_t offset = feedbackTable.table.GetTextureOffset(texture);
 
@@ -855,6 +899,7 @@ namespace FlexKit
 
 			builder.ReadConstantBuffer(brushConstants.constants);
 			builder.AddNodeDependency(animationResources.node);
+			builder.AddDataDependency(passes);
 
 			data.feedbackBuffers[0]			= builder.WriteTransition(initiateFeedbackPass.feedbackBuffers[0], DASUAV);
 			data.feedbackCounters			= builder.WriteTransition(initiateFeedbackPass.feedbackCounters, DASUAV);
@@ -950,7 +995,7 @@ namespace FlexKit
 						{
 							FeedbackPassConstants passConstants{ .bias = bias };
 
-							for (auto [idx, texture] : zip(iota(0), material.Textures))
+							for (auto [idx, texture] : zip(iota(0), material.textures))
 							{
 								uint32_t offset = feedbackTable.table.GetTextureOffset(texture);
 
@@ -975,13 +1020,13 @@ namespace FlexKit
 						for (size_t itr = 0; itr < subMeshCount; itr++)
 						{
 							const auto subMesh		= lod.subMeshes[itr];
-							const auto& subMaterial	= materials[material.SubMaterials[itr]];
+							const auto& subMaterial	= materials[material.subMaterials[itr]];
 
 							if (subMaterial.textureDescriptors.size != 0)
 							{
 								FeedbackPassConstants passConstants{ .bias = bias };
 
-								for (auto [idx, texture] : zip(iota(0), subMaterial.Textures))
+								for (auto [idx, texture] : zip(iota(0), subMaterial.textures))
 								{
 									uint32_t offset = feedbackTable.table.GetTextureOffset(texture);
 
@@ -1185,7 +1230,7 @@ namespace FlexKit
 		const auto blockAllocations	= textureStreamEngine.AllocateTiles(stateUpdateRes.begin(), stateUpdateRes.end());
 
 		if(blockAllocations)
-			textureStreamEngine.PostUpdatedTiles(blockAllocations, threadLocalAllocator);
+			textureStreamEngine.PostUpdatedTilesAsync(blockAllocations, threadLocalAllocator);
 	}
 
 
@@ -1242,7 +1287,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStreamingEngine::PostUpdatedTiles(const BlockAllocation& blockChanges, iAllocator& threadLocalAllocator)
+	void TextureStreamingEngine::PostUpdatedTilesAsync(const BlockAllocation& blockChanges, iAllocator& threadLocalAllocator)
 	{
 		if (blockChanges.allocations.size() == 0 &&
 			blockChanges.packedAllocations.size() &&
@@ -1251,7 +1296,6 @@ namespace FlexKit
 		auto ctxHandle		= renderSystem.OpenUploadQueue();
 		auto& ctx			= renderSystem._GetCopyContext(ctxHandle);
 		auto uploadQueue	= renderSystem._GetCopyQueue();
-		auto deviceHeap		= renderSystem.GetDeviceResource(heap);
 
 		Vector<ResourceHandle>	updatedTextures		= { &threadLocalAllocator  };
 		ResourceHandle			prevResource		= InvalidHandle;
@@ -1448,12 +1492,255 @@ namespace FlexKit
 				std::end(updatedTextures)),
 			std::end(updatedTextures));
 
+		renderSystem.SyncUploadTo(renderSystem.SyncDirectTicket());
+		renderSystem.SubmitTileMappings(updatedTextures, &threadLocalAllocator);
+		renderSystem.SubmitUploadQueues(&ctxHandle, 1);
+		renderSystem.SyncDirectTo(renderSystem.SyncUploadTicket());
+	}
+
+
+	/************************************************************************************************/
+
+
+	void TextureStreamingEngine::PostUpdatedTilesDirect(const BlockAllocation& blockChanges, Context& ctx, iAllocator& threadLocalAllocator)
+	{
+		if (blockChanges.allocations.size() == 0 &&
+			blockChanges.packedAllocations.size() &&
+			blockChanges.reallocations.size()) return;
+
+		Vector<ResourceHandle>	updatedTextures		= { &threadLocalAllocator  };
+		ResourceHandle			prevResource		= InvalidHandle;
+		TextureStreamContext	streamContext		= { &threadLocalAllocator };
+		uint2					blockSize			= { 256, 256 };
+		TileMapList				mappings			= { &threadLocalAllocator };
+
+		Vector<ResourceHandle>		incompatibleResources	= { &threadLocalAllocator  };
+		Vector<DeviceAccessState>	incompatibleState		= { &threadLocalAllocator  };
+
+		// Process reallocated blocks
+		auto reallocatedResourceList = blockChanges.reallocations;
+
+		auto cmp_less	= [&](auto& lhs, auto& rhs) { return lhs.resource < rhs.resource; };
+		auto cmp_eql	= [&](auto& lhs, auto& rhs) { return lhs.resource == rhs.resource; };
+		auto cmp_mipGtr = [&](auto& lhs, auto& rhs) { return lhs.tileID.GetMipLevel() > rhs.tileID.GetMipLevel(); };
+
+		std::sort(
+			std::begin(reallocatedResourceList),
+			std::end(reallocatedResourceList),
+			cmp_less);
+
+		reallocatedResourceList.erase(
+			std::unique(
+				std::begin(reallocatedResourceList),
+				std::end(reallocatedResourceList),
+				cmp_eql),
+			std::end(reallocatedResourceList));
+
+		for (const auto& block : reallocatedResourceList)
+		{
+			TileMapList mappings{ allocator };
+
+			const auto resource = block.resource;
+			const auto blocks	= filter(
+				blockChanges.reallocations,
+				[&](auto& block)
+				{
+					return block.resource == resource;
+				});
+
+			for (const AllocatedBlock& block : blocks)
+			{
+				const TileMapping mapping = {
+					.tileID		= block.tileID,
+					.heap		= heap,
+					.state		= TileMapState::Null,
+					.heapOffset	= block.tileIdx,
+				};
+
+				mappings.push_back(mapping);
+			}
+
+			renderSystem.UpdateTextureTileMappings(resource, mappings);
+			updatedTextures.push_back(resource);
+		}
+
+		// process newly allocated blocks
+		auto allocatedResourceList = blockChanges.allocations;
+
+		std::sort(
+			std::begin(allocatedResourceList),
+			std::end(allocatedResourceList),
+			cmp_less);
+
+		allocatedResourceList.erase(
+			std::unique(
+				std::begin(allocatedResourceList),
+				std::end(allocatedResourceList),
+				cmp_eql),
+			std::end(allocatedResourceList));
+
+		for (const auto& block : allocatedResourceList)
+		{
+			const auto resource = block.resource;
+			auto asset = GetResourceAsset(resource);
+			if (!asset) // Skipped unmapped blocks
+				continue;
+
+			const auto deviceResource   = renderSystem.GetDeviceResource(block.resource);
+
+			const auto blocks = [&]
+			{
+				auto blocks = filter(
+					blockChanges.allocations,
+					[&](auto& block)
+					{
+						return block.resource == resource;
+					});
+
+				std::sort(
+					std::begin(blocks),
+					std::end(blocks),
+					cmp_mipGtr);
+
+				return blocks;
+			}();
+
+			TileMapList mappings{ &threadLocalAllocator };
+			for (const AllocatedBlock& block : blocks)
+			{
+				const auto level = block.tileID.GetMipLevel();
+				if (asset && !streamContext.Open(level, asset.value()))
+				{
+					FK_LOG_ERROR("FAILED TO OPEN STREAM CONTEXT!");
+					continue;
+				}
+
+				mappings.push_back(
+					TileMapping{
+						block.tileID,
+						heap,
+						TileMapState::Updated,
+						block.tileIdx
+					});
+
+				const auto tile = streamContext.ReadTile(block.tileID, blockSize, ctx);
+
+				FK_LOG_9("CopyTile to tile index: %u, tileID { %u, %u, %u }", block.tileIdx, block.tileID.GetTileX(), block.tileID.GetTileY(), block.tileID.GetMipLevel());
+
+				ctx.CopyTile(
+					deviceResource,
+					block.tileID,
+					block.tileIdx,
+					tile);
+			}
+
+			renderSystem.UpdateTextureTileMappings(resource, mappings);
+			updatedTextures.push_back(resource);
+		}
+
+
+		auto packedAllocations = blockChanges.packedAllocations;
+		// process newly allocated tiled blocks
+		std::sort(
+			std::begin(packedAllocations),
+			std::end(packedAllocations),
+			[&](auto& lhs, auto& rhs)
+			{
+				return lhs.resource < rhs.resource;
+			});
+
+		for (auto& packedBlock : packedAllocations)
+		{
+			const auto resource			= packedBlock.resource;
+			const auto asset			= GetResourceAsset(resource);
+
+			if (!asset) {
+				continue;
+			}
+
+			const auto deviceResource	= renderSystem.GetDeviceResource(resource);
+			const auto packedBlockInfo	= renderSystem.GetPackedTileInfo(deviceResource);
+
+			const auto startingLevel	= packedBlockInfo.startingLevel;
+			const auto endingLevel		= packedBlockInfo.endingLevel;
+
+			TileMapList mappings{ &threadLocalAllocator };
+
+			mappings.push_back(
+				TileMapping{
+					packedBlock.tileID,
+					heap,
+					TileMapState::Updated,
+					packedBlock.tileIdx
+				});
+
+
+			for (auto level = startingLevel; level < endingLevel; level++)
+			{
+				if (!streamContext.Open(level, asset.value()))
+					continue;
+
+				const auto MIPLevelInfo = GetMIPLevelInfo(level, streamContext.WH(), streamContext.Format());
+
+				const TileID_t tileID	= CreateTileID( 0, 0, level );
+				const auto tile			= streamContext.Read(MIPLevelInfo.WH, ctx);
+
+				ctx.CopyTextureRegion(deviceResource, level, { 0, 0, 0 }, tile, MIPLevelInfo.WH, streamContext.Format());
+			}
+
+			renderSystem.UpdateTextureTileMappings(resource, mappings);
+			updatedTextures.push_back(resource);
+			mappings.clear();
+		}
+
+		// Submit Texture tiling changes
+		std::sort(std::begin(updatedTextures), std::end(updatedTextures));
+
+		updatedTextures.erase(
+			std::unique(
+				std::begin(updatedTextures),
+				std::end(updatedTextures)),
+			std::end(updatedTextures));
+
+		/*
 		renderSystem.SyncUploadTo(renderSystem.SyncDirectPoint());
 		renderSystem.SyncUploadTo(renderSystem.SyncUploadPoint());
 		renderSystem.SubmitTileMappings(updatedTextures, &threadLocalAllocator);
 		renderSystem.SubmitUploadQueues(&ctxHandle, 1);
 		renderSystem.SyncDirectTicket();
 		renderSystem.SyncDirectTo(renderSystem.SyncUploadTicket());
+		*/
+	}
+
+
+	/************************************************************************************************/
+
+
+	void TextureStreamingEngine::StartAsyncTask(ReadBackResourceHandle resource)
+	{
+		if (!updateInProgress)
+			return;
+
+		taskInProgress	= true;
+		taskStarted		= false;
+		auto& task		= allocator->allocate<TextureStreamUpdate>(resource, *this, allocator);
+		renderSystem.threads.AddBackgroundWork(task);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void TextureStreamingEngine::CopyResults(ReadBackResourceHandle resource)
+	{
+		taskStarted = true;
+
+		auto [samples, bufferSize] = renderSystem.OpenReadBackBuffer(resource);
+		EXITSCOPE(renderSystem.CloseReadBackBuffer(resource));
+		EXITSCOPE(updateInProgress = false);
+		EXITSCOPE(pendingResults.Reset());
+
+		memcpy(buffer.data(), samples, pendingResults.offsets);
 	}
 
 

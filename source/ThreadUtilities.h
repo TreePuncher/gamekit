@@ -84,20 +84,21 @@ namespace FlexKit
 		iWork(const iWork&) = delete;
 		iWork(iWork&&)      = delete;
 
-		virtual void Run(iAllocator& threadLocalAllocatoDDr) { FK_ASSERT(0); }
-		virtual void Release() {}
-
-
 		void DoWork(iAllocator& threadLocalAllocator)
 		{
 			Run(threadLocalAllocator);
+			completed = true;
+
 			ReleaseAndNotifyWatchers();
 		}
 
 		template<typename TY_Callable>
-		void Subscribe(TY_Callable subscriber)
-		{ 
-			subscribers.push_back(subscriber);
+		void Subscribe(TY_Callable&& subscriber)
+		{
+			if (completed)
+				subscriber();
+			else
+				subscribers.emplace_back(subscriber);
 		}
 
 
@@ -106,6 +107,8 @@ namespace FlexKit
 		const char*         _debugID;
 
 	protected:
+		virtual void Run(iAllocator& threadLocalAllocatoDDr) { FK_ASSERT(0); }
+		virtual void Release() {}
 
 		void ReleaseAndNotifyWatchers()
 		{
@@ -119,6 +122,28 @@ namespace FlexKit
 
 	private:
 		static_vector<OnCompletionEvent, 8>	subscribers;
+		std::atomic_bool					completed = false;
+	};
+
+
+	struct DependencyBarrier
+	{
+		DependencyBarrier() = default;
+
+		DependencyBarrier& operator =	(const DependencyBarrier& rhs) = delete;
+		DependencyBarrier				(const DependencyBarrier& rhs) = delete;
+
+		DependencyBarrier& operator =	(DependencyBarrier&& rhs) = delete;
+		DependencyBarrier				(DependencyBarrier&& rhs) = delete;
+
+		void AddInput(iWork* work);
+		void operator() ();
+		void Increment() { dependencyCounter.fetch_add(1); }
+
+		void Start(iWork& IN_work);
+
+		std::atomic_uint64_t dependencyCounter = 0;
+		iWork* work	= nullptr;
 	};
 
 
@@ -555,6 +580,7 @@ namespace FlexKit
 
 		size_t	GetPendingWorkCount() const	{ return tasksInProgress; }
 		void	AddWork					(iWork& Work);
+		void	AddWork					(WorkBarrier& barrier);
 		void	AddOnCompletionEvent	(OnCompletionEvent Callback);
 		void	Wait					();
 

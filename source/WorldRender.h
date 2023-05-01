@@ -303,9 +303,9 @@ namespace FlexKit
 
 	struct PoolSizes
 	{
-		size_t UAVPoolByteSize			= 64 * MEGABYTE;
-		size_t RTPoolByteSize			= 1024 * MEGABYTE;
-		size_t UAVTexturePoolByteSize	= 1024 * MEGABYTE;
+		size_t UAVPoolByteSize			= 512	* MEGABYTE;
+		size_t RTPoolByteSize			= 1024	* MEGABYTE;
+		size_t UAVTexturePoolByteSize	= 512	* MEGABYTE;
 	};
 
 	class FLEXKITAPI WorldRender
@@ -435,12 +435,13 @@ namespace FlexKit
 			FrameGraph&						frameGraph,
 			Scene&							scene,
 			GatherPassesTask&				passes,
-			ReserveConstantBufferFunction&	reserveCB)
+			ReserveConstantBufferFunction&	reserveCB,
+			iAllocator&						allocator)
 		{
-			lightingEngine.BuildScene(frameGraph, scene, passes, reserveCB);
+			lightingEngine.BuildScene(frameGraph, scene, passes, reserveCB, allocator);
 		}
 
-	private:
+	//private:
 		ID3D12PipelineState* CreateAverageLumanceLocal(RenderSystem* rs);
 		ID3D12PipelineState* CreateAverageLumanceGlobal(RenderSystem* rs);
 		ID3D12PipelineState* CreateToneMapping(RenderSystem* rs);

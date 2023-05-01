@@ -1,9 +1,16 @@
 #include "Materials.h"
 #include "Scene.h"
 #include "TextureStreamingUtilities.h"
+#include <ranges>
 
 namespace FlexKit
 {	/************************************************************************************************/
+
+
+	bool MaterialComponentData::HasTexture(uint32_t tag) const noexcept
+	{
+		return std::ranges::find(textureTags, tag) != textureTags.end();
+	}
 
 
 	MaterialComponentData MaterialComponent::operator [](const MaterialHandle handle) const
@@ -29,10 +36,11 @@ namespace FlexKit
 				.handle		= handle,
 				.parent		= IN_parent,
 				.lastUsed	= size_t(-1),
-				.Passes			{ allocator },
-				.Properties		{ allocator },
-				.Textures		{ allocator },
-				.SubMaterials	{ allocator }});
+				.passes			{ allocator },
+				.properties		{ allocator },
+				.textures		{ allocator },
+				.textureTags	{ allocator },
+				.subMaterials	{ allocator }});
 
 		if(IN_parent != InvalidHandle)
 			AddRef(IN_parent);
@@ -58,7 +66,7 @@ namespace FlexKit
 
 	void MaterialComponent::AddSubMaterial(MaterialHandle material, MaterialHandle subMaterial)
 	{
-		materials[handles[material]].SubMaterials.push_back(subMaterial);
+		materials[handles[material]].subMaterials.push_back(subMaterial);
 	}
 
 
@@ -153,7 +161,7 @@ namespace FlexKit
 		if (refCount.load(std::memory_order_acquire) == 0)
 		{
 			auto& material_ref	= materials[idx];
-			auto& textures		= material_ref.Textures;
+			auto& textures		= material_ref.textures;
 			auto parent			= material_ref.parent;
 
 			FK_ASSERT(handles[material_ref.handle] == idx);
@@ -216,19 +224,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void MaterialComponent::PushTexture(MaterialHandle material, GUID_t textureAsset, ReadContext& readContext, const bool loadLowest)
+	void MaterialComponent::PushTexture(MaterialHandle material, GUID_t textureAsset, uint32_t tag, ReadContext& readContext, const bool loadLowest)
 	{
 		auto res = _FindTextureAsset(textureAsset);
+		auto& material_ref = materials[handles[material]];
 
 		if (res == std::end(textures))
 		{
 			auto assets = _AddTextureAsset(textureAsset, readContext, loadLowest);
-			materials[handles[material]].Textures.push_back(assets->texture);
+			material_ref.textures.push_back(assets->texture);
+			material_ref.textureTags.push_back(tag);
 		}
 		else
 		{
 			std::atomic_ref(res->refCount).fetch_add(1, std::memory_order_acq_rel);
-			materials[handles[material]].Textures.push_back(res->texture);
+			material_ref.textures.push_back(res->texture);
+			material_ref.textureTags.push_back(tag);
 		}
 	}
 
@@ -236,20 +247,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void MaterialComponent::PushTexture(MaterialHandle material, ResourceHandle texture)
+	void MaterialComponent::PushTexture(MaterialHandle material, ResourceHandle texture, uint32_t tag)
 	{
 		auto res = _FindTextureAsset(texture);
+		auto& material_ref = materials[handles[material]];
 
 		if (res == std::end(textures))
-		{
-			textures.push_back({ 1, texture, 0xfffffffffffffff });
-			materials[handles[material]].Textures.push_back(texture);
-		}
+			textures.push_back({ 1, texture, 0xffffffffffffffff });
 		else
-		{
 			std::atomic_ref(res->refCount).fetch_add(1, std::memory_order_acq_rel);
-			materials[handles[material]].Textures.push_back(texture);
-		}
+
+		material_ref.textures.push_back(texture);
+		material_ref.textureTags.push_back(tag);
 	}
 
 
@@ -259,12 +268,18 @@ namespace FlexKit
 	void MaterialComponent::RemoveTexture(MaterialHandle material, GUID_t guid)
 	{
 		auto& material_ref = materials[handles[material]];
+		auto& textures = material_ref.textures;
+		auto& textureTags = material_ref.textureTags;
 
 		auto res = _FindTextureAsset(guid);
 
-		if (auto res2 = std::ranges::find(material_ref.Textures, res->texture); res2 != material_ref.Textures.end())
+		if (auto res2 = std::ranges::find(material_ref.textures, res->texture); res2 != material_ref.textures.end())
 		{
-			material_ref.Textures.remove_stable(res2);
+			size_t idx = std::distance(textures.begin(), res2);
+
+			textures.remove_stable(res2);
+			textureTags.remove_stable(material_ref.textureTags.begin() + idx);
+
 			_ReleaseTexture(res);
 		}
 	}
@@ -277,9 +292,13 @@ namespace FlexKit
 	{
 		auto& material_ref = materials[handles[material]];
 
-		if (auto res = std::ranges::find(material_ref.Textures, resource); res != material_ref.Textures.end())
+		auto& textures = material_ref.textures;
+		if (auto res = std::ranges::find(textures, resource); res != textures.end())
 		{
-			material_ref.Textures.remove_stable(res);
+			size_t idx = std::distance(textures.begin(), res);
+			material_ref.textures.remove_stable(res);
+			material_ref.textureTags.remove_stable(material_ref.textureTags.begin() + idx);
+
 			ReleaseTexture(resource);
 		}
 	}
@@ -291,9 +310,10 @@ namespace FlexKit
 	void MaterialComponent::RemoveTextureAt(MaterialHandle material, int idx)
 	{
 		auto& material_ref = materials[handles[material]];
-		const auto t = material_ref.Textures[idx];
+		const auto t = material_ref.textures[idx];
 
-		material_ref.Textures.remove_stable(material_ref.Textures.begin() + idx);
+		material_ref.textures.remove_stable(material_ref.textures.begin() + idx);
+		material_ref.textureTags.remove_stable(material_ref.textureTags.begin() + idx);
 		ReleaseTexture(t);
 	}
 
@@ -310,9 +330,11 @@ namespace FlexKit
 		else
 			std::atomic_ref(asset->refCount).fetch_add(1, std::memory_order_acq_rel);
 
-		auto& textures = materials[handles[material]].Textures;
+		auto& textures		= materials[handles[material]].textures;
+		auto& textureTags	= materials[handles[material]].textureTags;
 
 		textures.insert(textures.begin() + I, asset->texture);
+		textureTags.insert(textureTags.begin() + I, 0xffffffff);
 	}
 
 
@@ -328,9 +350,11 @@ namespace FlexKit
 
 		std::atomic_ref(asset->refCount).fetch_add(1, std::memory_order_acq_rel);
 
-		auto& textures = materials[handles[material]].Textures;
+		auto& textures		= materials[handles[material]].textures;
+		auto& textureTags	= materials[handles[material]].textureTags;
 
 		textures.insert(textures.begin() + I, asset->texture);
+		textureTags.insert(textureTags.begin() + I, 0xffffffff);
 	}
 
 
@@ -402,7 +426,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void MaterialComponent::MaterialView::SetTextureCount(size_t size)
+	void MaterialComponent::MaterialView::PushTexture(GUID_t textureAsset, uint32_t tag, bool LoadLowest)
 	{
 		if (Shared())
 		{
@@ -413,28 +437,14 @@ namespace FlexKit
 		}
 
 		ReadContext rdCtx{};
-	}
-
-
-	void MaterialComponent::MaterialView::PushTexture(GUID_t textureAsset, bool LoadLowest)
-	{
-		if (Shared())
-		{
-			auto newHandle = GetComponent().CloneMaterial(handle);
-			GetComponent().ReleaseMaterial(handle);
-
-			handle = newHandle;
-		}
-
-		ReadContext rdCtx{};
-		GetComponent().PushTexture(handle, textureAsset, rdCtx, LoadLowest);
+		GetComponent().PushTexture(handle, textureAsset, tag, rdCtx, LoadLowest);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void MaterialComponent::MaterialView::PushTexture(ResourceHandle resource)
+	void MaterialComponent::MaterialView::PushTexture(ResourceHandle resource, uint32_t tag)
 	{
 		if (Shared())
 		{
@@ -445,7 +455,7 @@ namespace FlexKit
 		}
 
 		ReadContext rdCtx{};
-		GetComponent().PushTexture(handle, 0xfffffffffffffff, rdCtx);
+		GetComponent().PushTexture(handle, 0xfffffffffffffff, tag, rdCtx);
 	}
 
 
@@ -557,7 +567,7 @@ namespace FlexKit
 
 	bool MaterialComponent::MaterialView::HasSubMaterials() const
 	{
-		return !GetComponent()[handle].SubMaterials.empty();
+		return !GetComponent()[handle].subMaterials.empty();
 	}
 
 
@@ -704,12 +714,15 @@ namespace FlexKit
 			const size_t textureCount = header.textureCount;
 			for (size_t itr = 0; itr < textureCount; itr++)
 			{
-				size_t texture = 0;
+				struct {
+					uint64_t asset;
+					uint32_t tag;
+				} texture;
 				memcpy(&texture, cursor, sizeof(texture));
 
 				cursor += 8;
 
-				PushTexture(handle, texture, rdCtx, true);
+				PushTexture(handle, texture.asset, texture.tag, rdCtx, true);
 			}
 
 			UpdateTextureDescriptors(handle);
@@ -746,7 +759,7 @@ namespace FlexKit
 			material = newHandle;
 		}
 
-		auto& passes = materials[handles[material]].Passes;
+		auto& passes = materials[handles[material]].passes;
 		passes.emplace_back(ID);
 
 		if (auto res = std::find(activePasses.begin(), activePasses.end(), ID); res == activePasses.end())
@@ -767,7 +780,7 @@ namespace FlexKit
 		if (materialData.textureDescriptors.size == 0)
 			UpdateTextureDescriptors(material);
 
-		const uint64_t current = renderSystem.graphicsSubmissionCounter;
+		const uint64_t current = renderSystem.directSubmissionCounter;
 
 		if(materialData.lastUsed < current)
 			materialData.lastUsed = current;
@@ -787,9 +800,9 @@ namespace FlexKit
 		auto& materialData = materials[handles[material]];
 
 		if (materialData.textureDescriptors.size)
-			renderSystem._ReleaseDescriptorRange(materialData.textureDescriptors, renderSystem.graphicsSubmissionCounter);
+			renderSystem._ReleaseDescriptorRange(materialData.textureDescriptors, renderSystem.directSubmissionCounter);
 
-		auto textureCount		= materialData.Textures.size();
+		auto textureCount		= materialData.textures.size();
 
 		if (textureCount == 0)
 			return;
@@ -804,7 +817,7 @@ namespace FlexKit
 
 		for (size_t I = 0; I < textureCount; I++)
 		{
-			auto resource	= materialData.Textures[I];
+			auto resource	= materialData.textures[I];
 			auto format		= renderSystem.GetTextureFormat(resource);
 			auto dxFormat	= FlexKit::TextureFormat2DXGIFormat(format);
 			PushTextureToDescHeap(renderSystem, dxFormat, resource, descriptorRange[I]);
@@ -829,8 +842,8 @@ namespace FlexKit
 		if (materialData.parent != InvalidHandle)
 			out = GetPasses(materialData.parent);
 
-		if (materialData.Passes.size())
-			out += materialData.Passes;
+		if (materialData.passes.size())
+			out += materialData.passes;
 
 		return out;
 	}

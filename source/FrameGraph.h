@@ -94,7 +94,7 @@ namespace FlexKit
 		Virtual_Null,
 		Virtual_Created,
 		Virtual_Released,
-		Virtual_LongLived,
+		Virtual_Persistent,
 		Virtual_Reused,
 	};
 
@@ -108,8 +108,11 @@ namespace FlexKit
 
 		FrameResourceHandle				handle; // For Fast Search
 		FrameObjectResourceType			type;
+
+		uint32_t						lastSubmission	= -1;
 		DeviceAccessState				access			= DeviceAccessState::DASCommon;
 		DeviceLayout					layout;
+
 		TextureDimension				dimensions;
 		VirtualResourceState			virtualState	= VirtualResourceState::NonVirtual;
 		Vector<FrameGraphNodeHandle>	lastUsers		= nullptr;
@@ -404,20 +407,20 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		FrameResourceHandle AddResource(ResourceHandle handle, const bool renderTarget = false)
+		FrameResourceHandle AddResource(ResourceHandle handle)
 		{
-			DeviceLayout		layout		= renderSystem.GetObjectLayout(handle);
-			TextureDimension	dimensions	= renderSystem.GetTextureDimension(handle);
+			const DeviceLayout		layout		= renderSystem.GetObjectLayout(handle);
+			const TextureDimension	dimensions	= renderSystem.GetTextureDimension(handle);
 
 			if (auto res = FindFrameResource(handle); res != InvalidHandle)
 				return res;
 			else
 			{
-				objects.push_back(
-					FrameObject::TextureObject(handle, layout, dimensions, *allocator));
-
-				auto resourceHandle = FrameResourceHandle{ (uint32_t)objects.size() - 1 };
-				objects.back().handle = resourceHandle;
+				const auto resourceHandle =
+					FrameResourceHandle{
+						objects.push_back(FrameObject::TextureObject(handle, layout, dimensions, *allocator))};
+				
+				objects[resourceHandle].handle = resourceHandle;
 
 				return resourceHandle;
 			}
@@ -427,18 +430,18 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		FrameResourceHandle AddResourceMT(ResourceHandle handle, const bool renderTarget = false)
+		FrameResourceHandle AddResourceMT(ResourceHandle handle)
 		{
 			std::scoped_lock lock{};
 
-			DeviceLayout layout = renderSystem.GetObjectLayout(handle);
-			auto	dimensions	= renderSystem.GetTextureDimension(handle);
+			const DeviceLayout		layout		= renderSystem.GetObjectLayout(handle);
+			const TextureDimension	dimensions	= renderSystem.GetTextureDimension(handle);
 
-			objects.push_back(
-				FrameObject::TextureObject(handle, layout, dimensions, *allocator));
+			const auto resourceHandle =
+				FrameResourceHandle{
+					objects.push_back(FrameObject::TextureObject(handle, layout, dimensions, *allocator)) };
 
-			auto resourceHandle = FrameResourceHandle{ (uint32_t)objects.size() - 1 };
-			objects.back().handle = resourceHandle;
+			objects[resourceHandle].handle = resourceHandle;
 
 			return resourceHandle;
 		}
@@ -1018,7 +1021,8 @@ namespace FlexKit
 	{
 		using FN_NodeAction = TypeErasedCallable<void (FrameGraphNode& node, FrameResources& Resources, Context& ctx, iAllocator& tempAllocator), 64>;
 
-		size_t			workWeight = 0;
+		size_t			workWeight		= 0;
+		size_t			submissionID	= -1;
 		FN_NodeAction	action;
 		FrameGraphNode* node;
 
@@ -1054,6 +1058,7 @@ namespace FlexKit
 
 		FrameGraphNodeHandle			handle;
 		void*							nodeData;
+		uint32_t						submissionID = -1;
 		bool							executed = false;
 		FN_NodeGetWorkItems				nodeAction;
 		Vector<FrameGraphNodeHandle>	sources;// Nodes that this node reads from
@@ -1064,6 +1069,7 @@ namespace FlexKit
 		Vector<ResourceAcquisition>		acquiredObjects;
 		Vector<FrameObjectLink>			retiredObjects;
 		Vector<FrameObjectLink>			createdObjects;
+		Vector<UpdateTask*>				dataDependencies;
 
 		LocallyTrackedObjectList		subNodeTracking;
 	};
@@ -1085,25 +1091,29 @@ namespace FlexKit
 	FLEXKITAPI class FrameGraphResourceContext
 	{
 	public:
-		FrameGraphResourceContext(FrameResources& IN_resources, ThreadManager& IN_threads, RenderSystem& IN_renderSystem, iAllocator* Temp) :
+		FrameGraphResourceContext(FrameResources& IN_resources, ThreadManager& IN_threads, RenderSystem& IN_renderSystem, iAllocator& Temp) :
 			frameResources	{ IN_resources		},
 			writables		{ Temp				},
 			readables		{ Temp				},
 			retirees		{ Temp				},
 			threads			{ IN_threads		},
 			pendingTasks	{ IN_threads		},
-			renderSystem	{ IN_renderSystem	} {}
+			usedResources	{ Temp				},
+			renderSystem	{ IN_renderSystem	},
+			tempAllocator	{ Temp				} {}
 
 
 		void AddWriteable(const FrameObjectLink& NewObject)
 		{
 			writables.push_back(NewObject);
+			usedResources.push_back(NewObject.handle);
 		}
 
 
 		void AddReadable(const FrameObjectLink& NewObject)
 		{
 			readables.push_back(NewObject);
+			usedResources.push_back(NewObject.handle);
 		}
 
 
@@ -1224,11 +1234,29 @@ namespace FlexKit
 		}
 
 
-		Vector<FrameObjectLink>	writables;
-		Vector<FrameObjectLink>	readables;
-		Vector<FrameObjectLink>	retirees;
+		void SetLastUsed(uint32_t ID)
+		{
+			std::ranges::sort(usedResources);
+			usedResources.resize(usedResources.size() - std::ranges::unique(usedResources).size());
 
-		iAllocator*				tempAllocator;
+			for (auto resource : usedResources)
+				frameResources.GetResourceObject(resource)->lastSubmission = ID;
+		}
+
+		void Reset()
+		{
+			writables.clear();
+			readables.clear();
+			retirees.clear();
+			usedResources.clear();
+		}
+
+		Vector<FrameObjectLink>		writables;
+		Vector<FrameObjectLink>		readables;
+		Vector<FrameObjectLink>		retirees;
+		Vector<FrameResourceHandle>	usedResources;
+
+		iAllocator&				tempAllocator;
 		ThreadManager&			threads;
 		WorkBarrier				pendingTasks;
 		FrameResources&			frameResources;
@@ -1253,22 +1281,20 @@ namespace FlexKit
 	public:
 		FrameGraphNodeBuilder(
 			std::span<FrameGraphNode>	IN_nodeTable,
-			Vector<UpdateTask*>&		IN_DataDependencies,
 			FrameResources*				IN_Resources, 
 			FrameGraphNode&				IN_Node,
 			FrameGraphResourceContext&	IN_context,
 			iAllocator*					IN_allocator) :
-				dataDependencies	{ IN_DataDependencies	},
-				context				{ IN_context			},
-				inputNodes			{ IN_allocator			},
-				node				{ IN_Node				},
-				nodeTable			{ IN_nodeTable			},
-				resources			{ IN_Resources			},
-				retiredObjects		{ IN_allocator			},
-				barriers			{ IN_allocator			},
-				temporaryObjects	{ IN_allocator			},
-				acquiredResources	{ IN_allocator			},
-				allocator			{ IN_allocator			} {}
+				context				{ IN_context	},
+				inputNodes			{ IN_allocator	},
+				node				{ IN_Node		},
+				nodeTable			{ IN_nodeTable	},
+				resources			{ IN_Resources	},
+				retiredObjects		{ IN_allocator	},
+				barriers			{ IN_allocator	},
+				temporaryObjects	{ IN_allocator	},
+				acquiredResources	{ IN_allocator	},
+				allocator			{ IN_allocator	} {}
 
 
 		// No Copying
@@ -1290,11 +1316,12 @@ namespace FlexKit
 		FrameResourceHandle AccelerationStructureRead(ResourceHandle);
 		FrameResourceHandle AccelerationStructureWrite(ResourceHandle);
 
+		FrameResourceHandle Common					(ResourceHandle);
+
 		FrameResourceHandle PixelShaderResource		(ResourceHandle);
 
 		FrameResourceHandle NonPixelShaderResource	(ResourceHandle);
 		FrameResourceHandle NonPixelShaderResource	(FrameResourceHandle);
-
 
 		FrameResourceHandle CopyDest			(ResourceHandle);
 		FrameResourceHandle CopySource			(ResourceHandle);
@@ -1309,6 +1336,7 @@ namespace FlexKit
 
 		FrameResourceHandle	AcquireResourceHandle(DeviceAccessState, DeviceLayout, PoolAllocatorInterface* = nullptr);
 		FrameResourceHandle	AcquireVirtualResource(const GPUResourceDesc& desc, DeviceAccessState, VirtualResourceScope lifeSpan = VirtualResourceScope::Temporary);
+		FrameResourceHandle	AcquireVirtualResource(const GPUResourceDesc& desc, DeviceAccessState, PoolAllocatorInterface*, VirtualResourceScope lifeSpan = VirtualResourceScope::Temporary);
 		FrameResourceHandle	AcquireVirtualResource(PoolAllocatorInterface& allocator, const GPUResourceDesc& desc, DeviceAccessState, VirtualResourceScope lifeSpan = VirtualResourceScope::Temporary);
 
 		void				ReleaseVirtualResource(FrameResourceHandle handle);
@@ -1417,7 +1445,7 @@ namespace FlexKit
 			if (layout == DeviceLayout_Unknown)
 				layout = frameObject.layout;
 
-			if (frameObject.layout != layout || !CheckCompatibleAccessState(frameObject.layout, frameObject.access))
+			if (!CheckCompatibleLayout(frameObject.layout, layout) || !CheckCompatibleAccessState(frameObject.layout, frameObject.access))
 			{
 				frameObject.lastUsers.clear();
 
@@ -1482,7 +1510,6 @@ namespace FlexKit
 		Vector<FrameGraphNodeHandle>	inputNodes;
 		Vector<Barrier>					barriers;
 		Vector<FrameObjectLink>			retiredObjects;
-		Vector<UpdateTask*>&			dataDependencies;
 		Vector<FrameObjectLink>			temporaryObjects;
 		Vector<ResourceAcquisition>		acquiredResources;
 
@@ -1552,16 +1579,23 @@ namespace FlexKit
 	FLEXKITAPI class FrameGraph
 	{
 	public:
-		FrameGraph(RenderSystem& RS, ThreadManager& IN_threads, iAllocator* Temp) :
+		FrameGraph(RenderSystem& RS, ThreadManager& IN_threads, iAllocator& Temp) :
 			resources			{ RS, Temp },
 			threads				{ IN_threads },
-			dataDependencies	{ Temp },
-			resourceContext		{ resources, IN_threads, RS, Temp },
+			globalDependencies	{ Temp },
+			computeStateContext	{ resources, IN_threads, RS, Temp },
+			directStateContext	{ resources, IN_threads, RS, Temp },
 			memory				{ Temp },
 			nodes				{ Temp },
+			pendingDirectNodes	{ Temp },
+			pendingComputeNodes	{ Temp },
+			submissions			{ Temp },
 			acquiredResources	{ Temp },
-			pendingAcquire		{ Temp },
-			submissionTicket	{ RS.GetSubmissionTicket() }{}
+			pendingAcquire		{ Temp }
+		{
+			nodes.reserve(64);
+			beginIdx = RS.directSubmissionCounter.fetch_add(1) + 1;
+		}
 
 		FrameGraph				(const FrameGraph& RHS) = delete;
 		FrameGraph& operator =	(const FrameGraph& RHS) = delete;
@@ -1589,7 +1623,9 @@ namespace FlexKit
 				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& tasks_out, FlexKit::WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
 				{
 					FrameGraphNodeWorkItem newWorkItem;
-					newWorkItem.node	= &node;
+					newWorkItem.node			= &node;
+					newWorkItem.submissionID	= node.submissionID;
+
 					newWorkItem.action	=
 						[](	FrameGraphNode&	node,
 							FrameResources&	resources,
@@ -1621,10 +1657,12 @@ namespace FlexKit
 				&data,
 				memory);
 
-			FrameGraphNodeBuilder builder(nodes, dataDependencies, &resources, nodes[idx], resourceContext, memory);
+			FrameGraphNodeBuilder builder(nodes, &resources, nodes[idx], directStateContext, memory);
 
 			setup(builder, data.fields);
 			builder.BuildNode(this);
+
+			pendingDirectNodes.push_back(&nodes[idx]);
 
 			return data.fields;
 		}
@@ -1663,12 +1701,14 @@ namespace FlexKit
 				nullptr,
 				memory);
 
-			FrameGraphNodeBuilder builder(nodes, dataDependencies, &resources, nodes[idx], resourceContext, memory);
+			FrameGraphNodeBuilder builder(nodes, &resources, nodes[idx], directStateContext, memory);
 
 			auto& data = memory->allocate_aligned<NodeData>(setupLinkage(builder), std::move(resourceCreation), std::move(threadedTask));
 			nodes[idx].nodeData = &data;
 
 			builder.BuildNode(this);
+
+			pendingDirectNodes.push_back(&nodes[idx]);
 
 			return data.userData;
 		}
@@ -1683,7 +1723,7 @@ namespace FlexKit
 				TY_Shared			shared;
 				TY_Draw				draw;
 				GetPass_TY			getPVS;
-				std::atomic_uint	refCount = 0;
+				std::atomic_uint	refCount = 1;
 			} &start = memory->allocate_aligned<PassData>(
 									std::move(std::forward<TY_Shared>(IN_shared.sharedData)),
 									std::move(draw),
@@ -1711,8 +1751,9 @@ namespace FlexKit
 							auto end	= Min((i + 1) * blockSize, size);
 
 							FrameGraphNodeWorkItem newWorkItem;
-							newWorkItem.node		= &node;
-							newWorkItem.workWeight	= end - begin;
+							newWorkItem.node			= &node;
+							newWorkItem.workWeight		= end - begin;
+							newWorkItem.submissionID	= node.submissionID;
 
 							newWorkItem.action	=
 								[i, blockCount, blockSize, passPVS](
@@ -1754,46 +1795,48 @@ namespace FlexKit
 					}
 					else
 					{
-						FrameGraphNodeWorkItem newWorkItem;
-						newWorkItem.node		= &node;
-						newWorkItem.workWeight	= 1;
+						tasks_out.emplace_back(
+							FrameGraphNodeWorkItem{
+								.workWeight		= 1,
+								.submissionID	= node.submissionID,
+								.action			=
+									[](
+										FrameGraphNode& node,
+										FrameResources& resources,
+										Context&		ctx,
+										iAllocator&		localAllocator)
+									{
+										ProfileFunction();
 
-						newWorkItem.action	=
-							[](
-								FrameGraphNode&	node,
-								FrameResources&	resources,
-								Context&		ctx,
-								iAllocator&		localAllocator)
-							{
-								ProfileFunction();
+										PassData& data = *reinterpret_cast<PassData*>(node.nodeData);
+										const auto& pvs = data.getPVS();
 
-								PassData& data = *reinterpret_cast<PassData*>(node.nodeData);
-								const auto& pvs = data.getPVS();
+										node.HandleBarriers(resources, ctx);
 
-								node.HandleBarriers(resources, ctx);
+										LocallyTrackedObjectList localTracking{ &localAllocator };
+										localTracking = node.subNodeTracking;
 
-								LocallyTrackedObjectList localTracking{ &localAllocator };
-								localTracking = node.subNodeTracking;
+										ResourceHandler handler{ resources, localTracking };
+										data.draw(pvs.begin(), pvs.end(), pvs, data.shared, resources, ctx, localAllocator);
 
-								ResourceHandler handler{ resources, localTracking };
-								data.draw(pvs.begin(), pvs.end(), pvs, data.shared, resources, ctx, localAllocator);
+										node.RestoreResourceStates(&ctx, resources, localTracking);
 
-								node.RestoreResourceStates(&ctx, resources, localTracking);
-
-								ProfileFunctionLabeled(Destruction);
-								data.~PassData();
-							};
-
-						tasks_out.emplace_back(std::move(newWorkItem));
+										ProfileFunctionLabeled(Destruction);
+										data.~PassData();
+									},
+								.node = &node,
+							});
 					}
 				},
 				&start,
 				memory);
 
 
-			FrameGraphNodeBuilder builder(nodes, dataDependencies, &resources, nodes[startNodeIdx], resourceContext, memory);
+			FrameGraphNodeBuilder builder(nodes, &resources, nodes[startNodeIdx], directStateContext, memory);
 			setupLinkage(builder, start.shared);
 			builder.BuildNode(this);
+
+			pendingDirectNodes.push_back(&nodes[startNodeIdx]);
 
 			return start;
 		}
@@ -1818,7 +1861,7 @@ namespace FlexKit
 									std::move(IN_shared.getPVS),
 									std::move(IN_shared.getPasses));
 
-			auto startNodeIdx = nodes.emplace_back(
+			const auto startNodeIdx = nodes.emplace_back(
 				FrameGraphNodeHandle{ nodes.size() },
 				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& tasks_out, FlexKit::WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
 				{
@@ -1841,8 +1884,9 @@ namespace FlexKit
 							auto end	= Min((i + 1) * blockSize, size);
 
 							FrameGraphNodeWorkItem newWorkItem;
-							newWorkItem.node		= &node;
-							newWorkItem.workWeight	= end - begin;
+							newWorkItem.node			= &node;
+							newWorkItem.workWeight		= end - begin;
+							newWorkItem.submissionID	= node.submissionID;
 
 							newWorkItem.action	=
 								[i, blockCount, blockSize, passPVS, &pass](
@@ -1892,9 +1936,11 @@ namespace FlexKit
 				memory);
 
 
-			FrameGraphNodeBuilder builder(nodes, dataDependencies, &resources, nodes[startNodeIdx], resourceContext, memory);
+			FrameGraphNodeBuilder builder(nodes, &resources, nodes[startNodeIdx], directStateContext, memory);
 			setupLinkage(builder, start.shared);
 			builder.BuildNode(this);
+
+			pendingDirectNodes.push_back(&nodes[startNodeIdx]);
 
 			return start;
 		}
@@ -1922,20 +1968,35 @@ namespace FlexKit
 				DeviceAccessState			access;
 				FrameGraphResourceContext&	resourceContext;
 				iAllocator*					allocator;
-				UploadSegment				uploadSegment;
+				UploadReservation			uploadReservation;
+
+				struct BLSABuild
+				{
+					ResourceHandle			resource;
+					TriMesh::LOD_Runtime*	source;
+				};
+
+				size_t					scratchPadSize = 0;
+				FrameResourceHandle		scratchPad = InvalidHandle;
+				Vector<BLSABuild>		BVHBuilds;
 			};
 
-			auto nodeHandle	= FrameGraphNodeHandle{ nodes.size() }; 
+			auto nodeHandle	= FrameGraphNodeHandle{ (uint32_t)nodes.size() }; 
 			NodeData& data	= memory->allocate_aligned<NodeData>(
-								desc.getPass,
-								desc.initializeResources,
-								ResourceAllocation	{ memory, nodeHandle },
-								Vector<InitialData>	{ memory },
-								0,
-								desc.pool,
-								desc.access,
-								resourceContext,
-								memory);
+								NodeData{
+									.getPass				= desc.getPass,
+									.initializeResources	= desc.initializeResources,
+									.resources				= ResourceAllocation{ memory, nodeHandle },
+									.pendingCopies			= Vector<InitialData>{ memory },
+									.uploadSize				= 0,
+									.pool					= desc.pool,
+									.access					= desc.access,
+									.resourceContext		= directStateContext,
+									.allocator				= memory,
+									.scratchPadSize			= 0,
+									.scratchPad				= InvalidHandle,
+									.BVHBuilds{	memory },
+								});
 
 			data.pendingCopies.reserve(desc.max);
 
@@ -1956,7 +2017,7 @@ namespace FlexKit
 					{
 						if (!nodeData->pool)
 						{
-							const auto& desc = GPUResourceDesc::StructuredResource(resourceSize);
+							const auto& desc = GPUResourceDesc::StructuredResource((uint32_t)resourceSize);
 							const auto	flags = GetNeededFlags(desc);
 							return frameResources.FindMemoryPool(flags);
 						}
@@ -1964,8 +2025,8 @@ namespace FlexKit
 							return nodeData->pool;
 					};
 
-					auto pool = GetMemoryPool();
-					auto [resourceHandle, overlap] = pool->Acquire(GPUResourceDesc::StructuredResource(resourceSize));
+					PoolAllocatorInterface* pool = GetMemoryPool();
+					auto [resourceHandle, overlap] = pool->Acquire(GPUResourceDesc::StructuredResource((uint32_t)resourceSize));
 
 
 					auto frameObject				= frameResources.GetResourceObject(dstResource);
@@ -1978,7 +2039,7 @@ namespace FlexKit
 					return { resourceHandle, overlap };
 				}
 
-				AcquireResult AcquireResource(FrameResourceHandle dstResource, const GPUResourceDesc& desc)
+				AcquireResult AcquireTemporary(FrameResourceHandle dstResource, const GPUResourceDesc& desc)
 				{
 					std::atomic_ref ref{ frameResources.virtualResourceCount };
 					ref++;
@@ -1994,7 +2055,7 @@ namespace FlexKit
 							return nodeData->pool;
 					};
 
-					auto pool = GetMemoryPool();
+					PoolAllocatorInterface* pool = GetMemoryPool();
 					auto [resourceHandle, overlap] = pool->Acquire(desc);
 
 					auto frameObject				= frameResources.GetResourceObject(dstResource);
@@ -2004,6 +2065,57 @@ namespace FlexKit
 
 					return {resourceHandle, overlap};
 				}
+
+				AcquireResult AllocateResource(FrameResourceHandle dstResource, const GPUResourceDesc& desc)
+				{
+					auto GetMemoryPool = [&]
+					{
+						if (!nodeData->pool)
+						{
+							const auto	flags = GetNeededFlags(desc);
+							return frameResources.FindMemoryPool(flags);
+						}
+						else
+							return nodeData->pool;
+					};
+
+					PoolAllocatorInterface* pool = GetMemoryPool();
+					auto [resourceHandle, overlap] = pool->Acquire(desc);
+
+					auto frameObject				= frameResources.GetResourceObject(dstResource);
+					frameObject->shaderResource		= resourceHandle;
+					frameObject->pool				= pool;
+					frameObject->virtualState		= VirtualResourceState::Virtual_Persistent;
+
+					return {resourceHandle, overlap};
+				}
+
+				void BuildBLAS(FrameResourceHandle resource, TriMesh::LOD_Runtime& src_lod)
+				{
+					const auto prebuildInfo	= frameResources.renderSystem.GetBLASPreBuildInfo(src_lod.vertexBuffer);
+					const auto desc			= GPUResourceDesc::RayTracingStructure(prebuildInfo.BLAS_byteSize);
+
+					auto [handle, _] = AllocateResource(resource, desc);
+
+					nodeData->scratchPadSize = Max(nodeData->scratchPadSize, prebuildInfo.BLAS_byteSize * 1.25);
+					nodeData->BVHBuilds.emplace_back(handle, &src_lod);
+
+					src_lod.blAS = GetDevicePointer(resource);
+				}
+
+				ResourceHandle	GetResource(FrameResourceHandle resource) const
+				{
+					return frameResources.GetResource(resource);
+				}
+
+				DevicePointer	GetDevicePointer(FrameResourceHandle resource) const
+				{
+					if (auto deviceObject = frameResources.GetDeviceResource(resource); deviceObject)
+						return { deviceObject->GetGPUVirtualAddress() };
+					else
+						return {};
+				}
+
 			};
 
 			/*
@@ -2036,24 +2148,41 @@ namespace FlexKit
 							ResourceInitializationContext transferCtx{ resources, nodeData };
 							nodeData->initializeResources(passPVS, nodeData->resources.handles, transferCtx, *nodeData->allocator);
 
-							auto uploadSegment = resources.renderSystem._ReserveDirectUploadSpace(nodeData->uploadSize, 256);
+							if (nodeData->scratchPadSize != 0)
+							{
+								auto pool = resources.FindMemoryPool(GetNeededFlags(GPUResourceDesc::UAVResource(0)));
+								if (pool)
+								{
+									std::atomic_ref{ resources.virtualResourceCount }++;
+
+									auto resource = pool->Acquire(GPUResourceDesc::UAVResource(nodeData->scratchPadSize * 1.5), true).resource;
+
+									auto& object			= *resources.GetResourceObject(nodeData->scratchPad);
+									object.shaderResource	= resource;
+									object.pool				= pool;
+									object.virtualState		= VirtualResourceState::Virtual_Created;
+								}
+							}
+
+							auto uploadReservation = resources.renderSystem._ReserveDirectUploadSpace(nodeData->uploadSize, 256);
 							size_t offset = 0;
 
 							// Copy Data into resources, insert barrier/transition
 							for (auto&& [_ptr, size, resource] : nodeData->pendingCopies)
 							{
-								memcpy(uploadSegment.buffer + offset, _ptr, size);
+								memcpy(uploadReservation.buffer + offset, _ptr, size);
 								offset += size;
 							}
 
-							nodeData->uploadSegment = uploadSegment;
+							nodeData->uploadReservation = uploadReservation;
 						}, tempAllocator);
 
 					nodeData->resourceContext.AddResourceTask(threadedTask);
 
 					FrameGraphNodeWorkItem newWorkItem;
-					newWorkItem.node		= &node;
-					newWorkItem.workWeight	= size;
+					newWorkItem.node			= &node;
+					newWorkItem.workWeight		= size;
+					newWorkItem.submissionID	= node.submissionID;
 
 					newWorkItem.action =
 						[nodeData](
@@ -2065,10 +2194,10 @@ namespace FlexKit
 							ctx.BeginEvent_DEBUG("Initiate Resources");
 							EXITSCOPE(ctx.EndEvent_DEBUG());
 
-							auto uploadSegment = nodeData->uploadSegment;
+							auto uploadReservation = nodeData->uploadReservation;
 							size_t offset = 0;
 
-							if (nodeData->pendingCopies.size() == 0 && uploadSegment.uploadSize == 0)
+							if (nodeData->pendingCopies.size() == 0 && uploadReservation.size == 0 && nodeData->BVHBuilds.size() == 0)
 								return;
 
 							// Insert Barrier
@@ -2079,15 +2208,29 @@ namespace FlexKit
 							for (auto&& [_ptr, size, resource] : nodeData->pendingCopies)
 							{
 								ctx.CopyBufferRegion(
-									resources.GetDeviceResource(resource), uploadSegment.resource,	// dst_res, src_res
-									size,															// copy size
-									0, uploadSegment.offset + offset);								// dst_offset, src offset
+									resources.GetDeviceResource(resource), uploadReservation.resource,	// dst_res, src_res
+									size,																// copy size
+									0, uploadReservation.offset + offset);								// dst_offset, src offset
 
 								offset += size;
 							}
 
+							if (nodeData->BVHBuilds.size())
+							{
+								auto scratchPad = resources.GetResource(nodeData->scratchPad);
+
+								for (auto&& [resource, lod] : nodeData->BVHBuilds)
+								{
+									ctx.BuildBLAS(lod->vertexBuffer, resource, scratchPad);
+									ctx.AddUAVBarrier(scratchPad);
+								}
+							}
+
 							for (auto&& [_ptr, size, resource] : nodeData->pendingCopies)
 								ctx.AddBufferBarrier(resources.GetResource(resource), DeviceAccessState::DASCopyDest, nodeData->access, DeviceSyncPoint::Sync_Copy, DeviceSyncPoint::Sync_All);
+
+							for (auto&& [resource, _] : nodeData->BVHBuilds)
+								ctx.AddBufferBarrier(resource, DeviceAccessState::DASACCELERATIONSTRUCTURE_WRITE, nodeData->access, DeviceSyncPoint::Sync_BuildRaytracingAccellerationStructure, DeviceSyncPoint::Sync_All);
 						};
 
 					tasks_out.emplace_back(std::move(newWorkItem));
@@ -2095,7 +2238,7 @@ namespace FlexKit
 				&data,
 				memory);
 
-			FrameGraphNodeBuilder builder(nodes, dataDependencies, &resources, nodes[nodeIdx], resourceContext, memory);
+			FrameGraphNodeBuilder builder(nodes, &resources, nodes[nodeIdx], directStateContext, memory);
 
 			if (desc.dependency)
 				builder.AddDataDependency(*desc.dependency);
@@ -2104,11 +2247,16 @@ namespace FlexKit
 
 			for (size_t i = 0; i < desc.max; i++)
 			{
-				auto resource = builder.AcquireResourceHandle(desc.access, desc.layout);
+				auto resource	= builder.AcquireResourceHandle(desc.access, desc.layout);
+
 				data.resources.handles.push_back(resource);
 			}
 
+			data.scratchPad = builder.AcquireResourceHandle(DASUAV, DeviceLayout_UnorderedAccess);
+
 			builder.BuildNode(this);
+
+			pendingDirectNodes.push_back(&nodes[nodeIdx]);
 
 			return data.resources;
 		}
@@ -2119,23 +2267,53 @@ namespace FlexKit
 		FrameResourceHandle		AddResource	(ResourceHandle resource);
 		FrameResourceHandle		AddOutput	(ResourceHandle resource);
 
-		UpdateTask&		SubmitFrameGraph(UpdateDispatcher& dispatcher, RenderSystem* RS, iAllocator* persistentAllocator);
+		uint32_t				SubmitDirect	(UpdateDispatcher& dispatcher, RenderSystem* renderSystem, iAllocator* persistentAllocator);
+		uint32_t				SubmitCompute	(UpdateDispatcher& dispatcher, RenderSystem* renderSystem, iAllocator* persistentAllocator);
 
-		RenderSystem&	GetRenderSystem() { return resources.renderSystem; }
+		void SyncDirectTo(uint32_t);
+
+		UpdateTask&		Finish(UpdateDispatcher& dispatcher, RenderSystem* RS, iAllocator* persistentAllocator);
+		RenderSystem&	GetRenderSystem() noexcept { return resources.renderSystem; }
 
 		FrameResources				resources;
 		Vector<ResourceHandle>		acquiredResources;
 		Vector<PendingAcquire>		pendingAcquire;
-		FrameGraphResourceContext	resourceContext;
+		FrameGraphResourceContext	computeStateContext;
+		FrameGraphResourceContext	directStateContext;
 		iAllocator*					memory;
 		Vector<FrameGraphNode>		nodes;
 		ThreadManager&				threads;
-		DataDependencyList			dataDependencies;
-		SyncPoint					submissionTicket;
+		DataDependencyList			globalDependencies;
 
-		void _SubmitFrameGraph(iAllocator& allocator);
+
 	private:
 
+		void _FinalSubmit(iAllocator& allocator);
+
+		struct Submission
+		{
+			Vector<FrameGraphNode*>	nodes;
+
+			enum class Queue
+			{
+				Direct,
+				Compute,
+				Error
+			}	queue = Queue::Error;
+
+			static_vector<uint32_t, 8> syncs;
+		};
+
+		static_vector<uint32_t, 8>	directSyncs;
+		static_vector<uint32_t, 8>	computeSyncs;
+
+		Vector<FrameGraphNode*>		pendingDirectNodes;
+		Vector<FrameGraphNode*>		pendingComputeNodes;
+		Vector<Submission>			submissions;
+
+		uint64_t					beginIdx = -1;
+
+		void ReleaseVirtualObjects(std::span<FrameGraphNode*> workList);
 		void UpdateResourceFinalState();
 	};
 

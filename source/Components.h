@@ -1357,7 +1357,7 @@ namespace FlexKit
 
 
 		template<typename TY_FN>
-		void AddContinuationTask(TY_FN task)
+		void AddContinuationTask(TY_FN&& task)
 		{
 			threadTask.Subscribe(task);
 		}
@@ -1485,7 +1485,7 @@ namespace FlexKit
 		private:
 
 			UpdateDispatcher&	dispatcher;
-			UpdateTask&		newNode;
+			UpdateTask&			newNode;
 		};
 
 
@@ -1529,9 +1529,9 @@ namespace FlexKit
 				FN_UPDATE	function;
 			};
 
-			auto& functor		= allocator->allocate_aligned<data_BoilderPlate>(std::move(UpdateFN));
-			auto& newNode		= allocator->allocate_aligned<Task<TY_NODEDATA>>(threads, functor, allocator);
-			newNode.Data		= reinterpret_cast<char*>(&functor.locals);
+			auto& functor	= allocator->allocate_aligned<data_BoilderPlate>(std::move(UpdateFN));
+			auto& newNode	= allocator->allocate_aligned<Task<TY_NODEDATA>>(threads, functor, allocator);
+			newNode.Data	= reinterpret_cast<char*>(&functor.locals);
 
 			UpdateBuilder Builder{ newNode, *this };
 			LinkageSetup(Builder, functor.locals);

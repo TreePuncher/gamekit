@@ -48,10 +48,13 @@ namespace FlexKit
 		DescriptorRange						textureDescriptors;
 		uint64_t							lastUsed = -1;
 
-		Vector<PassHandle, 8, uint8_t>			Passes;
-		Vector<MaterialProperty, 8, uint8_t>	Properties;
-		Vector<ResourceHandle, 8, uint8_t>		Textures;
-		Vector<MaterialHandle, 4, uint8_t>		SubMaterials;
+		Vector<PassHandle, 8, uint8_t>			passes;
+		Vector<MaterialProperty, 8, uint8_t>	properties;
+		Vector<ResourceHandle, 8, uint8_t>		textures;
+		Vector<uint32_t, 8, uint32_t>			textureTags;
+		Vector<MaterialHandle, 4, uint8_t>		subMaterials;
+
+		bool HasTexture(uint32_t tag) const noexcept;
 	};
 
 
@@ -123,10 +126,8 @@ namespace FlexKit
 			std::optional<TY> GetProperty(const uint32_t ID) const { return GetComponent().GetProperty(handle, ID); }
 
 
-			void						SetTextureCount(size_t size);
-
-			void						PushTexture(GUID_t textureAsset, bool LoadLowest = false);
-			void						PushTexture(ResourceHandle);
+			void						PushTexture(GUID_t textureAsset, uint32_t tag = 0xffffffff, bool LoadLowest = false);
+			void						PushTexture(ResourceHandle, uint32_t tag = 0xffffffff);
 
 			void						InsertTexture(GUID_t, int idx, ReadContext& readContext, const bool loadLowest = false);
 			void						InsertTexture(ResourceHandle, int idx);
@@ -151,8 +152,8 @@ namespace FlexKit
 
 		using View = MaterialView;
 
-		void PushTexture(MaterialHandle material, GUID_t textureAsset,ReadContext& readContext, const bool LoadLowest = false);
-		void PushTexture(MaterialHandle material, ResourceHandle texture);
+		void PushTexture(MaterialHandle material, GUID_t textureAsset, uint32_t tag, ReadContext& readContext,  const bool LoadLowest = false);
+		void PushTexture(MaterialHandle material, ResourceHandle texture, uint32_t tag = 0xffffffff);
 
 		void RemoveTexture(MaterialHandle material, GUID_t);
 		void RemoveTexture(MaterialHandle material, ResourceHandle);
@@ -183,7 +184,7 @@ namespace FlexKit
 				material = newHandle;
 			}
 
-			auto& properties = materials[handles[material]].Properties;
+			auto& properties = materials[handles[material]].properties;
 
 			if (MaterialProperty* prop =
 					std::find_if(
@@ -199,7 +200,7 @@ namespace FlexKit
 		std::optional<TY> GetProperty(MaterialHandle handle, const uint32_t ID) const
 		{
 			auto& material		= materials[handles[handle]];
-			auto& properties	= material.Properties;
+			auto& properties	= material.properties;
 
 			if (auto res = std::find_if(
 					properties.begin(), properties.end(),
@@ -253,7 +254,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2022 Robert May
+Copyright (c) 2015 - 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

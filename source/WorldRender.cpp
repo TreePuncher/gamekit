@@ -92,7 +92,9 @@ namespace FlexKit
 
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
-		//FK_ASSERT(SUCCEEDED(HR));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		SETDEBUGNAME(PSO, "ForwardDraw");
 
 		return PSO;
 	}
@@ -149,6 +151,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "DepthPrePass");
+
 		return PSO;
 	}
 
@@ -192,6 +196,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "HorizontalBlur");
+
 		return PSO;
 	}
 
@@ -233,6 +239,8 @@ namespace FlexKit
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
+
+		SETDEBUGNAME(PSO, "VerticalBlur");
 
 		return PSO;
 	}
@@ -285,6 +293,8 @@ namespace FlexKit
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
+
+		SETDEBUGNAME(PSO, "EnvironmentalLightingPass");
 
 		return PSO;
 	}
@@ -353,6 +363,8 @@ namespace FlexKit
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
+
+		SETDEBUGNAME(PSO, "DrawFlatWhite");
 
 		return PSO;
 	}
@@ -453,6 +465,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "OcclusionCulling");
+
 		return PSO;
 	}
 
@@ -498,6 +512,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "Texture2CubeMapIrradiance");
+
 		return PSO;
 	}
 
@@ -542,6 +558,8 @@ namespace FlexKit
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
+
+		SETDEBUGNAME(PSO, "Texture2CubeMapGGX");
 
 		return PSO;
 	}
@@ -613,14 +631,11 @@ namespace FlexKit
 		layout.SetParameterAsSRV(0, 0, 2, 0);
 		layout.SetParameterAsShaderUAV(1, 1, 1, 0);
 
-		//if (renderSystem.features.resourceHeapTier == AvailableFeatures::ResourceHeapTier::HeapTier1)
-
 		rootSignatureToneMapping.AllowIA = true;
 		rootSignatureToneMapping.SetParameterAsDescriptorTable(0, layout);
 		rootSignatureToneMapping.SetParameterAsUAV(1, 0, 0, PIPELINE_DEST_ALL);
 		rootSignatureToneMapping.SetParameterAsUINT(2, 16, 0, 0);
 		rootSignatureToneMapping.Build(renderSystem, persistent);
-
 
 		renderSystem.RegisterPSOLoader(FORWARDDRAW,						{ &renderSystem.Library.RS6CBVs4SRVs,       CreateForwardDrawPSO,		  });
 		renderSystem.RegisterPSOLoader(FORWARDDRAWINSTANCED,			{ &renderSystem.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO });
@@ -737,12 +752,12 @@ namespace FlexKit
 		auto& sceneBVH			= scene.UpdateSceneBVH(dispatcher, drawSceneDesc.transformDependency, temporary);
 		auto& visableLights		= scene.GetVisableLights(dispatcher, camera, sceneBVH, temporary);
 		auto& lightUpdate		= scene.UpdateLights(dispatcher, sceneBVH, visableLights, temporary, persistent);
-		//auto& shadowMaps		= shadowMapping.AcquireShadowMaps(dispatcher, frameGraph.GetRenderSystem(), RTPool, lightUpdate);
 
 		LoadLodLevels(dispatcher, passes, drawSceneDesc.camera, renderSystem, *persistent);
 
 		lightGather.AddInput(drawSceneDesc.transformDependency);
 		lightGather.AddInput(drawSceneDesc.cameraDependency);
+
 
 		auto& IKUpdate			= UpdateIKControllers(dispatcher, drawSceneDesc.dt);
 		auto& animationUpdate	= UpdateAnimations(dispatcher, drawSceneDesc.dt);
@@ -762,12 +777,10 @@ namespace FlexKit
 		auto& reserveVB = drawSceneDesc.reserveVB;
 
 		// Add Resources
-		AddGBufferResource(gbuffer, frameGraph);
 		frameGraph.AddMemoryPool(&UAVPool);
 		frameGraph.AddMemoryPool(&RTPool);
 		frameGraph.AddMemoryPool(&UAVTexturePool);
-
-		frameGraph.dataDependencies.push_back(&IKUpdate);
+		frameGraph.AddTaskDependency(IKUpdate);
 
 		PassData data = {
 			.passes		= passes,
@@ -834,6 +847,7 @@ namespace FlexKit
 				reserveCB,
 				temporary);
 
+
 		for (auto& pass : drawSceneDesc.additionalGbufferPasses)
 			pass();
 
@@ -864,16 +878,13 @@ namespace FlexKit
 				temporary,
 				drawSceneDesc.debugDisplay != DebugVisMode::ClusterVIS);
 
-		/*
-		auto& updateVolumes =
-			lightingEngine.UpdateVoxelVolumes(
-				dispatcher,
+		auto updateVolumes =
+			lightingEngine.BuildScene(
 				frameGraph,
-				camera,
-				depthTarget.Get(),
+				scene,
+				passes,
 				reserveCB,
 				temporary);
-		*/
 
 		auto& shadingPass =
 			clusteredRender.ClusteredShading(
@@ -889,20 +900,18 @@ namespace FlexKit
 				t,
 				temporary);
 
-		/*
 		lightingEngine.RayTrace(
 				dispatcher,
 				frameGraph,
 				camera,
-				sceneDesc.passes,
+				passes,
+				updateVolumes,
 				depthTarget.Get(),
 				shadingPass.renderTargetObject,
 				gbuffer,
 				reserveCB,
 				temporary);
-		*/
 
-		/*
 		auto& OIT_pass =
 			transparency.OIT_WB_Pass(
 				dispatcher,
@@ -920,7 +929,6 @@ namespace FlexKit
 				OIT_pass,
 				shadingPass.renderTargetObject,
 				temporary);
-		*/
 
 		auto& toneMapped =
 			RenderPBR_ToneMapping(
@@ -983,6 +991,8 @@ namespace FlexKit
 		return frameGraph.BuildSharedConstants<BrushConstants>(
 			[&](FrameGraphNodeBuilder& builder) -> BrushConstants
 			{
+				builder.AddDataDependency(passes);
+
 				return BrushConstants
 					{
 						.constants			= builder.CreateConstantBuffer(),
@@ -1002,7 +1012,7 @@ namespace FlexKit
 				for (const auto& brush : brushes)
 				{
 					data.entityTable.push_back((uint32_t)offset);
-					offset += Max(materials[brush.brush->material].SubMaterials.size(), 1);
+					offset += Max(materials[brush.brush->material].subMaterials.size(), 1);
 				}
 
 				resources.objects[data.constants].constantBuffer = &data.GetConstantBuffer(offset);
@@ -1016,7 +1026,7 @@ namespace FlexKit
 				for (auto& brush : brushes)
 				{
 					const auto& mainMaterial	= materials[brush.brush->material];
-					const auto& subMaterials	= mainMaterial.SubMaterials;
+					const auto& subMaterials	= mainMaterial.subMaterials;
 					auto constants				= brush->GetConstants();
 
 					if (subMaterials.size())
@@ -1024,8 +1034,13 @@ namespace FlexKit
 						for (auto& sm : subMaterials)
 						{
 							const auto& subMaterial = materials[sm];
-							constants.textureCount	= subMaterial.Textures.size();
-							auto& textures = subMaterial.Textures;
+
+							constants.textures =
+								subMaterial.HasTexture(GetTypeGUID(ALBEDO)) << 0 |
+								subMaterial.HasTexture(GetTypeGUID(NORMAL)) << 1 |
+								subMaterial.HasTexture(GetTypeGUID(METALLICROUGHNESS)) << 2;
+
+							auto& textures			= subMaterial.textures;
 
 							size_t idx = 0;
 							for (auto& texture : textures)
@@ -1036,7 +1051,11 @@ namespace FlexKit
 					}
 					else
 					{
-						constants.textureCount = mainMaterial.Textures.size();
+						constants.textures =
+							mainMaterial.HasTexture(GetTypeGUID(ALBEDO)) << 0 |
+							mainMaterial.HasTexture(GetTypeGUID(NORMAL)) << 1 |
+							mainMaterial.HasTexture(GetTypeGUID(METALLICROUGHNESS)) << 2;
+
 						constantBuffer.Push(constants);
 					}
 				}
@@ -1613,6 +1632,8 @@ namespace FlexKit
 		auto HR = renderSystem->pDevice->CreateComputePipelineState(&PSO_desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "CalculateLuminance");
+
 		return PSO;
 	}
 
@@ -1646,6 +1667,8 @@ namespace FlexKit
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
+
+		SETDEBUGNAME(PSO, "ToneMapping");
 
 		return PSO;
 	}
