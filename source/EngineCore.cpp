@@ -36,11 +36,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EngineCore::EngineCore(EngineMemory* memory, size_t threadCount) :
+	EngineCore::EngineCore(EngineMemory* memory, const CoreOptions& options) :
 		Memory			{ memory										},
 		CmdArguments	{ memory->BlockAllocator						},
 		Time			{ memory->BlockAllocator						},
-		Threads			{ threadCount, memory->BlockAllocator			},
+		Threads			{ options.threadCount, memory->BlockAllocator	},
 		RenderSystem	{ *(new FlexKit::RenderSystem{ memory->BlockAllocator, &Threads }) }
 	{
 		InitiateSceneNodeBuffer(memory->BlockAllocator);
@@ -51,7 +51,7 @@ namespace FlexKit
 		const bool debugMode = false;
 #endif
 
-		if (!Initiate(memory, debugMode, false, false))
+		if (!Initiate(memory, options.GPUdebugMode, options.GPUValidation, options.GPUSyncQueues))
 			throw std::runtime_error{"Failed to initiate core"};
 	}
 

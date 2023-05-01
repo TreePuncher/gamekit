@@ -168,9 +168,19 @@ namespace FlexKit
 
 				const auto WH = builder.GetRenderSystem().GetTextureWH(depthTarget);
 
+				const auto counterDesc =
+					[&] {
+					auto renderTarget = GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT);
+					renderTarget.clearValue = D3D12_CLEAR_VALUE{
+						.Format = DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_FLOAT,
+						.Color  = { 1.0f, 1.0f, 1.0f, 1.0f },
+					};
+
+					return renderTarget; }();
+
 				data.depthTarget		= builder.DepthRead(depthTarget);
 				data.accumalatorObject	= builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DASRenderTarget, VirtualResourceScope::Frame);
-				data.counterObject		= builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DASRenderTarget, VirtualResourceScope::Frame);
+				data.counterObject		= builder.AcquireVirtualResource(counterDesc, DASRenderTarget, VirtualResourceScope::Frame);
 
 				builder.SetDebugName(data.accumalatorObject,	"Accumalator");
 				builder.SetDebugName(data.counterObject,		"counterObject");
@@ -186,7 +196,7 @@ namespace FlexKit
 				TriMeshHandle	previous		= InvalidHandle;
 				TriMesh*		triMesh			= nullptr;
 				MaterialHandle	prevMaterial	= InvalidHandle;
-
+				
 				ctx.ClearRenderTarget(resources.GetResource(data.accumalatorObject));
 				ctx.ClearRenderTarget(resources.GetResource(data.counterObject), float4{ 1, 1, 1, 1 });
 
@@ -207,6 +217,7 @@ namespace FlexKit
 					return;
 
 				ctx.BeginEvent_DEBUG("OIT - PASS");
+
 
 				ctx.SetRootSignature(rootSig);
 				ctx.SetPipelineState(resources.GetPipelineState(OITDRAW));
@@ -272,7 +283,7 @@ namespace FlexKit
 
 						if (material != prevMaterial)
 						{
-							const auto& textures = materials[material].Textures;
+							const auto& textures = materials[material].textures;
 
 							DescriptorHeap heap;
 
@@ -284,7 +295,7 @@ namespace FlexKit
 							ctx.SetGraphicsDescriptorTable(4, heap);
 						}
 
-						const auto textureCount     = materials[material].Textures.size();
+						const auto textureCount     = materials[material].textures.size();
 						const auto constantValues   = draw.brush->GetConstants();
 
 						const ConstantBufferDataSet localConstants{ constantValues, constantBuffer };

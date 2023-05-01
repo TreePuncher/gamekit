@@ -53,8 +53,8 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	framework.GetRenderSystem().DEBUG_AttachPIX();
 
 	FlexKit::EventNotifier<>::Subscriber sub;
-	sub.Notify = &FlexKit::EventsWrapper;
-	sub._ptr = &framework;
+	sub.Notify	= &FlexKit::EventsWrapper;
+	sub._ptr	= &framework;
 
 	renderWindow.Handler->Subscribe(sub);
 	renderWindow.SetWindowTitle("Texture Streaming");
@@ -104,6 +104,8 @@ TextureStreamingTest::~TextureStreamingTest()
 
 FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
+	FK_LOG_9("Frame Begin");
+
 	UpdateInput();
 
 	renderWindow.UpdateCapturedMouseInput(dT);
@@ -129,6 +131,28 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 		memoryStats.mediumBlocksAllocated * 2048 +
 		memoryStats.largeBlocksAllocated * KILOBYTE * 128) / MEGABYTE;
 
+	auto temp = core.RenderSystem.directFence->GetCompletedValue();
+	size_t space0 = 0;
+	size_t space1 = 0;
+	size_t space2 = 0;
+	for (auto& a : renderer.UAVPool.freeRanges)
+		if(a.frameID < temp)
+			space0 += a.blockCount;
+
+	for (auto& a : renderer.RTPool.freeRanges)
+		if (a.frameID < temp)
+			space1 += a.blockCount;
+
+	for (auto& a : renderer.UAVTexturePool.freeRanges)
+		if (a.frameID < temp)
+			space2 += a.blockCount;
+
+	space0 = (space0 * 64 * KILOBYTE) / MEGABYTE;
+	space1 = (space1 * 64 * KILOBYTE) / MEGABYTE;
+	space2 = (space2 * 64 * KILOBYTE) / MEGABYTE;
+
+	auto vidMemStats = core.RenderSystem._GetVidMemStats();
+
 	auto str = fmt::format(
 		"Debug Stats\n"
 		"SmallBlocks: {} / {}\n"
@@ -137,12 +161,18 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 		"Memory in use: {}mb\n"
 		"M to toggle mouse\n"
 		"T to toggle texture streaming\n"
-		"R to toggle rotating camera\n",
+		"R to toggle rotating camera\n"
+		"UAV buffer   Pool space left: {}MB\n"
+		"RenderTarget Pool space left: {}MB\n"
+		"UAV texture  Pool space left: {}MB\n"
+		"Video Memory {}/{}\n",
 		memoryStats.smallBlocksAllocated, memoryStats.totalSmallBlocks,
 		memoryStats.mediumBlocksAllocated, memoryStats.totalMediumBlocks,
 		memoryStats.largeBlocksAllocated, memoryStats.totalLargeBlocks,
-		memoryInUse
-	);
+		memoryInUse,
+		space0, space1, space2,
+		vidMemStats.used / MEGABYTE, vidMemStats.available / MEGABYTE);
+
 
 	ImGui::Text(str.c_str());
 
@@ -167,6 +197,7 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 		.RenderTarget = renderWindow.GetBackBuffer(),
 		.DepthTarget = depthBuffer,
 	};
+
 	ReserveConstantBufferFunction	reserveCB = FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory());
 	ReserveVertexBufferFunction		reserveVB = FlexKit::CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory());
 
@@ -203,12 +234,14 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 		core.GetTempMemoryMT()
 	);
 
+	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow.GetBackBuffer());
+	FlexKit::PresentBackBuffer(frameGraph, renderWindow);
+
+	frameGraph.SubmitDirect(dispatcher, core.RenderSystem, core.GetTempMemoryMT());
+
 	if (streamingUpdates)
 		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, reserveCB, reserveVB, core.GetTempMemoryMT());
 
-	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow.GetBackBuffer());
-
-	FlexKit::PresentBackBuffer(frameGraph, renderWindow);
 
 	return nullptr;
 }
@@ -219,9 +252,14 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 
 void TextureStreamingTest::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 {
-	renderWindow.Present(0, 0);
+	FK_LOG_9("Frame End");
+
+	renderWindow.Present(vsync ? 1 : 0, 0);
+
+	depthBuffer.Increment();
 
 	core.RenderSystem.ResetConstantBuffer(constantBuffer);
+	core.RenderSystem.WaitForGPU();
 }
 
 
@@ -240,10 +278,12 @@ bool TextureStreamingTest::EventHandler(FlexKit::Event evt)
 			{
 				switch (evt.mData1.mKC[0])
 				{
+				case KC_O:
+					framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
+					return true;
 				case KC_M:
 					rotate = false;
 					renderWindow.ToggleMouseCapture();
-
 					return true;
 				case KC_P:
 					framework.GetRenderSystem().DEBUG_BeginPixCapture();
@@ -253,6 +293,9 @@ bool TextureStreamingTest::EventHandler(FlexKit::Event evt)
 					return true;
 				case KC_T:
 					streamingUpdates = !streamingUpdates;
+					return true;
+				case KC_V:
+					vsync = !vsync;
 					return true;
 				case KC_R:
 					rotate = !rotate;
@@ -283,7 +326,7 @@ bool TextureStreamingTest::EventHandler(FlexKit::Event evt)
 
 /**********************************************************************
 
-Copyright (c) 2014-2022 Robert May
+Copyright (c) 2014-2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

@@ -14,21 +14,30 @@
 #include <d3d12.h>
 #include <d3dcompiler.h>
 #include <filesystem>
+#include <fmt\format.h>
 #include <fstream>
 #include <memory>
 #include <string>
 #include <iostream>
+#include <ranges>
 #include <Windows.h>
-#include <windowsx.h>
 
 extern "C" __declspec(dllexport) DWORD  NvOptimusEnablement = 1;
 extern "C" __declspec(dllexport) int    AmdPowerXpressRequestHighPerformance = 1;
 
-extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 608; }
+extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 610; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath      = ".\\D3D12\\"; }
 
 namespace FlexKit
 {
+	using std::ranges::sort;
+	using std::views::iota;
+	using std::views::zip;
+
+
+	/************************************************************************************************/
+
+
 	void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size)
 	{
 #if USING(DEBUGGRAPHICS)
@@ -563,11 +572,12 @@ namespace FlexKit
 		const size_t UserIdx	= handles[Handle];
 		auto& buffer			= buffers[UserIdx];
 
-		const uint64_t current = renderSystem->Fence->GetCompletedValue();
+		const uint64_t current = renderSystem->directFence->GetCompletedValue();
 		buffer.locks[buffer.currentRes] = renderSystem->GetCurrentCounter();
 		buffer.currentRes = (buffer.currentRes + 1) % 3;
 
-		renderSystem->WaitFor(buffer.locks[buffer.currentRes]);
+		//renderSystem->WaitFor(buffer.locks[buffer.currentRes]);
+		renderSystem->WaitForGPU();
 
 		char* mapped_Ptr	= nullptr;
 		auto HR				= buffer.resources[buffer.currentRes]->Map(0, nullptr, (void**)&mapped_Ptr);
@@ -2523,7 +2533,8 @@ namespace FlexKit
 	void Context::SetGraphicsShaderResourceView(size_t idx, FrameBufferedResource* Resource, size_t Count, size_t ElementSize)
 	{
 #if USING(DEBUGGRAPHICS)
-		debugCommandList->AssertResourceState(Resource->Get(), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
+		if(debugCommandList)
+			debugCommandList->AssertResourceState(Resource->Get(), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
 #endif
 
 		DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, Resource->Get()->GetGPUVirtualAddress());
@@ -2535,7 +2546,8 @@ namespace FlexKit
 	void Context::SetGraphicsShaderResourceView(size_t idx, Texture2D& Texture)
 	{
 #if USING(DEBUGGRAPHICS)
-		debugCommandList->AssertResourceState(Texture, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
+		if (debugCommandList)
+			debugCommandList->AssertResourceState(Texture, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
 #endif
 
 		DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, Texture->GetGPUVirtualAddress());
@@ -2548,7 +2560,7 @@ namespace FlexKit
 	void Context::SetGraphicsShaderResourceView(size_t idx, ResourceHandle resource, size_t offset)
 	{
 #if USING(DEBUGGRAPHICS)
-		if (resource != InvalidHandle)
+		if (resource != InvalidHandle && debugCommandList)
 			debugCommandList->AssertResourceState(renderSystem->GetDeviceResource(resource), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
 #endif
 
@@ -2567,7 +2579,8 @@ namespace FlexKit
 		auto resource = renderSystem->GetDeviceResource(UAVresource);
 
 #if USING(DEBUGGRAPHICS)
-		debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		if(debugCommandList)
+			debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 #endif
 
 		DeviceContext->SetGraphicsRootUnorderedAccessView((UINT)idx, resource->GetGPUVirtualAddress() + offset);
@@ -2596,7 +2609,9 @@ namespace FlexKit
 	{
 #if USING(DEBUGGRAPHICS)
 		auto resource = renderSystem->GetDeviceResource(CB);
-		debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_COMMON);
+
+		if (debugCommandList)
+			debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_COMMON);
 #endif
 
 		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, renderSystem->GetConstantBufferAddress(CB) + offset);
@@ -2610,7 +2625,9 @@ namespace FlexKit
 	{
 #if USING(DEBUGGRAPHICS)
 		auto resource = renderSystem->GetDeviceResource(CB.Handle());
-		debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_COMMON);
+
+		if(debugCommandList)
+			debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_COMMON);
 #endif
 
 		DeviceContext->SetComputeRootConstantBufferView((UINT)idx, renderSystem->GetConstantBufferAddress(CB.Handle()) + CB.Offset());
@@ -2626,7 +2643,8 @@ namespace FlexKit
 		auto gpuAddress         = deviceResource->GetGPUVirtualAddress();
 
 #if USING(DEBUGGRAPHICS)
-		debugCommandList->AssertResourceState(deviceResource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_COMMON);
+		if (debugCommandList)
+			debugCommandList->AssertResourceState(deviceResource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_COMMON);
 #endif
 
 		DeviceContext->SetComputeRootConstantBufferView((UINT)idx, gpuAddress + offset);
@@ -2639,7 +2657,8 @@ namespace FlexKit
 	void Context::SetComputeShaderResourceView(size_t idx, Texture2D& Texture)
 	{
 #if USING(DEBUGGRAPHICS)
-		debugCommandList->AssertResourceState(Texture, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		if (debugCommandList)
+			debugCommandList->AssertResourceState(Texture, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 #endif
 
 		DeviceContext->SetComputeRootShaderResourceView((UINT)idx, Texture->GetGPUVirtualAddress());
@@ -2652,7 +2671,8 @@ namespace FlexKit
 	void Context::SetComputeShaderResourceView(size_t idx, ResourceHandle resource, const size_t offset)
 	{
 #if USING(DEBUGGRAPHICS)
-		debugCommandList->AssertResourceState(renderSystem->GetDeviceResource(resource), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		if (debugCommandList)
+			debugCommandList->AssertResourceState(renderSystem->GetDeviceResource(resource), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 #endif
 
 		DeviceContext->SetComputeRootShaderResourceView((UINT)idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress() + offset);
@@ -2667,7 +2687,8 @@ namespace FlexKit
 		auto resource = renderSystem->GetDeviceResource(UAVresource);
 
 #if USING(DEBUGGRAPHICS)
-		debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		if(debugCommandList)
+			debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 #endif
 
 		DeviceContext->SetComputeRootUnorderedAccessView((UINT)idx, resource->GetGPUVirtualAddress() + offset);
@@ -2775,65 +2796,73 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::CopyBufferRegion(
-			static_vector<ID3D12Resource*>		sources,
-			static_vector<size_t>				sourceOffset,
-			static_vector<ID3D12Resource*>		destinations,
-			static_vector<size_t>				destinationOffset,
-			static_vector<size_t>				copySize,
-			static_vector<DeviceAccessState>	currentStates,
-			static_vector<DeviceAccessState>	finalStates)
+	void Context::CopyTextureRegion(
+		ID3D12Resource*		destination,
+		size_t				subResourceIdx,
+		uint3				XYZ,
+		UploadReservation	source,
+		uint2				WH,
+		DeviceFormat		format)
 	{
-		DebugBreak();
-
-		/*
-		FK_ASSERT(sources.size() == destinations.size(), "Invalid argument!");
-
-
-		ID3D12Resource*		prevResource	= nullptr;
-
-		for (size_t itr = 0; itr < sources.size(); ++itr)
-		{
-			auto resource	= destinations[itr];
-			auto state		= currentStates[itr];
-
-			if(prevResource != resource && state != DeviceAccessState::DASCopyDest)
-				_AddBarrier(resource, state, DeviceAccessState::DASCopyDest);
-
-			prevResource	= resource;
-		}
-
 		FlushBarriers();
 
-		for (size_t itr = 0; itr < sources.size(); ++itr)
-		{
-			auto sourceResource			= sources[itr];
-			auto destinationResource	= destinations[itr];
+		const auto		deviceFormat	= TextureFormat2DXGIFormat(format);
+		const size_t	formatSize		= GetFormatElementSize(deviceFormat);
+		const bool		BCformat		= IsDDS(format);
+		const size_t	rowPitch		= AlignedSize(BCformat ? formatSize * WH[0] / 4 : formatSize * WH[0]);
 
-			DeviceContext->CopyBufferRegion(
-				destinationResource,
-				destinationOffset[itr],
-				sourceResource,
-				sourceOffset[itr],
-				copySize[itr]);
-		}
+		D3D12_PLACED_SUBRESOURCE_FOOTPRINT SubRegion;
+		SubRegion.Footprint.Depth		= 1;
+		SubRegion.Footprint.Format		= deviceFormat;
+		SubRegion.Footprint.RowPitch	= (UINT)rowPitch;
+		SubRegion.Footprint.Width		= WH[0];
+		SubRegion.Footprint.Height		= WH[1];
+		SubRegion.Offset				= source.offset;
 
-		DeviceAccessState prevState	= DeviceAccessState::DASERROR;
-		prevResource					= nullptr;
+		auto destinationLocation	= CD3DX12_TEXTURE_COPY_LOCATION(destination, (UINT)subResourceIdx);
+		auto sourceLocation			= CD3DX12_TEXTURE_COPY_LOCATION(source.resource, SubRegion);
 
-		for (size_t itr = 0; itr < destinations.size(); ++itr)
-		{
-			auto resource	= destinations[itr];
-			auto state		= finalStates[itr];
-
-			if (prevResource != resource && prevState != state && state != DeviceAccessState::DASCopyDest)
-				_AddBarrier(resource, DeviceAccessState::DASCopyDest, state);
-
-			prevResource	= resource;
-			prevState       = state;
-		}
-		*/
+		DeviceContext->CopyTextureRegion(
+			&destinationLocation,
+			XYZ[0], XYZ[1], XYZ[2],
+			&sourceLocation,
+			nullptr);
 	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::CopyTile(ID3D12Resource* dest, const uint3 destTile, const size_t tileOffset, const UploadReservation src)
+	{
+		FlushBarriers();
+
+		auto desc = dest->GetDesc();
+
+		D3D12_TILED_RESOURCE_COORDINATE coordinate;
+		coordinate.X			= (UINT)destTile[0];
+		coordinate.Y			= (UINT)destTile[1];
+		coordinate.Z			= (UINT)0;
+		coordinate.Subresource	= (UINT)destTile[2];
+		
+		D3D12_TILE_REGION_SIZE regionSize;
+		regionSize.NumTiles		= 1;
+		regionSize.UseBox		= false;
+		regionSize.Width		= 1;
+		regionSize.Height		= 1;
+		regionSize.Depth		= 1;
+
+		DeviceContext->CopyTiles(
+			dest,
+			&coordinate,
+			&regionSize,
+			src.resource,
+			src.offset,
+			D3D12_TILE_COPY_FLAG_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE);
+	}
+
+
+	/************************************************************************************************/
 
 
 	void Context::CopyBufferRegion(
@@ -2981,15 +3010,16 @@ namespace FlexKit
 
 
 	// Requires SO resources to be in DeviceAccessState::DRS::STREAMOUTCLEAR!
+	/*
 	void Context::ClearSOCounters(static_vector<SOResourceHandle> handles)
 	{
-		/*
-		typedef struct D3D12_WRITEBUFFERIMMEDIATE_PARAMETER
-		{
-		D3D12_GPU_VIRTUAL_ADDRESS Dest;
-		UINT32 Value;
-		} 	D3D12_WRITEBUFFERIMMEDIATE_PARAMETER;
-		*/
+		
+		//typedef struct D3D12_WRITEBUFFERIMMEDIATE_PARAMETER
+		//{
+		//D3D12_GPU_VIRTUAL_ADDRESS Dest;
+		//UINT32 Value;
+		//} 	D3D12_WRITEBUFFERIMMEDIATE_PARAMETER;
+		
 
 		static_vector<ID3D12Resource*>		sources;
 		static_vector<size_t>				sourceOffset;
@@ -3030,6 +3060,7 @@ namespace FlexKit
 			currentSOStates,	// source initial state
 			finalStates);		// source final	state
 	}
+	*/
 
 
 	/************************************************************************************************/
@@ -3575,21 +3606,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::CopyBuffer(const UploadSegment src, const ResourceHandle destination, const size_t destOffset)
+	void Context::CopyBuffer(const UploadReservation src, const ResourceHandle destination, const size_t destOffset)
 	{
 		const auto destinationResource	= renderSystem->GetDeviceResource(destination);
 		const auto sourceResource       = src.resource;
 
 		UpdateResourceStates();
 
-		DeviceContext->CopyBufferRegion(destinationResource, destOffset, sourceResource, src.offset, src.uploadSize);
+		DeviceContext->CopyBufferRegion(destinationResource, destOffset, sourceResource, src.offset, src.size);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void Context::CopyTexture2D(const UploadSegment src, const ResourceHandle destination, const uint2 BufferSize)
+	void Context::CopyTexture2D(const UploadReservation src, const ResourceHandle destination, const uint2 BufferSize)
 	{
 		const auto destinationResource		= renderSystem->GetDeviceResource(destination);
 		const auto WH						= renderSystem->GetTextureWH(destination);
@@ -3725,7 +3756,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	UploadSegment Context::ReserveDirectUploadSpace(size_t size, size_t alignment)
+	UploadReservation Context::ReserveDirectUploadSpace(size_t size, size_t alignment)
 	{
 		return renderSystem->_ReserveDirectUploadSpace(size, alignment);
 	}
@@ -3893,7 +3924,7 @@ namespace FlexKit
 		for (const auto readBackHandle : queuedReadBacks)
 		{
 			auto& readBack	= renderSystem->ReadBackTable[readBackHandle];
-			auto fence		= renderSystem->Fence;
+			auto fence		= renderSystem->directFence;
 
 			auto HR	= fence->SetEventOnCompletion(dispatchIdx, readBack.event); FK_ASSERT(SUCCEEDED(HR));
 			renderSystem->GraphicsQueue->Signal(fence, dispatchIdx);
@@ -4144,9 +4175,9 @@ namespace FlexKit
 
 	UploadBuffer::UploadBuffer(ID3D12Device* pDevice)  :
 		parentDevice	{ pDevice		},
-		Size			{ MEGABYTE * 16	}
+		Size			{ MEGABYTE * 64	}
 	{
-		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(MEGABYTE * 16);
+		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(Size);
 		D3D12_HEAP_PROPERTIES HEAP_Props    = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 
 		HRESULT HR = pDevice->CreateCommittedResource(
@@ -4232,7 +4263,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	std::expected<UploadSegment, ReserveErrors> UploadBuffer::Reserve(const size_t reserveSize, const size_t alignment)
+	std::expected<UploadReservation, ReserveErrors> UploadBuffer::Reserve(const size_t reserveSize, const size_t alignment)
 	{
 		// Not enough remaining Space in Buffer GOTO Beginning if space in front of upload buffer is available
 		if	(Position + reserveSize > Size && Last != 0)
@@ -4258,11 +4289,11 @@ namespace FlexKit
 
 			Position += reserveSize + alignmentOffset;
 
-			return UploadSegment{
+			return UploadReservation{
+				.resource	= deviceBuffer,
+				.size		= reserveSize,
 				.offset		= offset,
-				.uploadSize = reserveSize,
 				.buffer		= buffer,
-				.resource	= deviceBuffer
 			};
 		}
 
@@ -4274,11 +4305,12 @@ namespace FlexKit
 			size_t offset		= Position + alignmentOffset;
 			Position			+= reserveSize + alignmentOffset;
 
-			return UploadSegment{
+			return UploadReservation{
+				.resource	= deviceBuffer,
+				.size		= reserveSize,
 				.offset		= offset,
-				.uploadSize = reserveSize,
 				.buffer		= buffer,
-				.resource	= deviceBuffer };
+			};
 		}
 
 		return std::unexpected{ ReserveErrors::Unknown };
@@ -4387,7 +4419,12 @@ namespace FlexKit
 
 			uploadBuffer.Position += reserveSize + alignmentOffset;
 
-			return { uploadBuffer.deviceBuffer, reserveSize, offset, buffer };
+			return UploadReservation{
+				.resource	= uploadBuffer.deviceBuffer,
+				.size		= reserveSize,
+				.offset		= offset,
+				.buffer		= buffer
+			};
 		}
 
 		if(uploadBuffer.Last <= uploadBuffer.Position)
@@ -4398,7 +4435,12 @@ namespace FlexKit
 			size_t offset           = uploadBuffer.Position + alignmentOffset;
 			uploadBuffer.Position  += reserveSize + alignmentOffset;
 
-			return { uploadBuffer.deviceBuffer, reserveSize, offset, buffer };
+			return UploadReservation{
+				.resource	= uploadBuffer.deviceBuffer,
+				.size		= reserveSize,
+				.offset		= offset,
+				.buffer		= buffer
+			};
 		}
 
 		return {};
@@ -4417,7 +4459,7 @@ namespace FlexKit
 			destinationOffset,
 			source.resource,
 			source.offset,
-			source.reserveSize);
+			source.size);
 	}
 
 
@@ -4861,6 +4903,11 @@ namespace FlexKit
 
 		const auto HR = pDevice->CreateHeap(&heapDesc, IID_PPV_ARGS(&heap_ptr));
 
+#if USING(DEBUGGRAPHICS)
+		auto temp = fmt::format("Heap {}", heaps.size());
+		SETDEBUGNAME(heap_ptr, temp.c_str());
+#endif
+
 		if (SUCCEEDED(HR))
 		{
 			auto localLock = std::scoped_lock{ m };
@@ -5105,7 +5152,7 @@ namespace FlexKit
 
 		FK_LOG_9("GRAPHICS FENCE CREATED: %u", NewFence);
 
-		Fence = NewFence;
+		directFence = NewFence;
 		ObjectsCreated.push_back(NewFence);
 		
 		D3D12_COMMAND_QUEUE_DESC CQD		= {};
@@ -5196,7 +5243,7 @@ namespace FlexKit
 		pDebugDevice				= DebugDevice;
 		pDebug						= Debug;
 		BufferCount					= 3;
-		graphicsSubmissionCounter	= 0;
+		directSubmissionCounter		= 0;
 		DescriptorRTVSize			= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		DescriptorDSVSize			= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 		DescriptorCBVSRVUAVSize		= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
@@ -5236,7 +5283,10 @@ namespace FlexKit
 		if (!Memory)
 			return;
 
-		WaitforGPU();
+		const size_t completedValue = directFence->GetCompletedValue();
+
+		SyncDirectTo(SyncUploadTicket());
+		WaitFor(SyncDirectTicket());
 
 		FK_LOG_9("Releasing RenderSystem");
 
@@ -5268,7 +5318,7 @@ namespace FlexKit
 		if(pGIFactory)		pGIFactory->Release();
 		if(pDXGIAdapter)	pDXGIAdapter->Release();
 		if(pDevice)			pDevice->Release();
-		if(Fence)			Fence->Release();
+		if(directFence)		directFence->Release();
 
 #if USING(DEBUGGRAPHICS)
 		// Prints Detailed Report
@@ -5338,7 +5388,7 @@ namespace FlexKit
 
 	size_t RenderSystem::GetCurrentCounter()
 	{
-		return graphicsSubmissionCounter;
+		return directSubmissionCounter.load(std::memory_order_relaxed);
 	}
 
 
@@ -5347,7 +5397,7 @@ namespace FlexKit
 	
 	void RenderSystem::_UpdateCounters()
 	{
-		Textures.UpdateLocks(threads, Fence->GetCompletedValue());
+		Textures.UpdateLocks(threads, directFence->GetCompletedValue());
 	}
 
 
@@ -5363,16 +5413,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::WaitforGPU()
+	void RenderSystem::WaitForGPU()
 	{
-		const size_t completedValue	= Fence->GetCompletedValue();
+		const size_t completedValue	= directFence->GetCompletedValue();
 
-		if (completedValue < graphicsSubmissionCounter)
+		if (completedValue < directSubmittedCounter)
 		{
-			const size_t currentCounter = graphicsSubmissionCounter;
+			const size_t currentCounter = directSubmittedCounter;
 
 			const HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS); FK_ASSERT(eventHandle != 0);
-			Fence->SetEventOnCompletion(currentCounter, eventHandle);
+			directFence->SetEventOnCompletion(currentCounter, eventHandle);
 			WaitForSingleObject(eventHandle, INFINITE);
 			CloseHandle(eventHandle);
 		}
@@ -5384,12 +5434,13 @@ namespace FlexKit
 
 	void RenderSystem::WaitFor(uint64_t counter)
 	{
-		const size_t completedValue	= Fence->GetCompletedValue();
-
+		const size_t completedValue	= directFence->GetCompletedValue();
 		if (completedValue < counter)
 		{
+			GraphicsQueue->Signal(directFence, counter);
+
 			const HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS); FK_ASSERT(eventHandle != 0);
-			Fence->SetEventOnCompletion(counter, eventHandle);
+			directFence->SetEventOnCompletion(counter, eventHandle);
 			WaitForSingleObject(eventHandle, INFINITE);
 			CloseHandle(eventHandle);
 		}
@@ -5402,6 +5453,15 @@ namespace FlexKit
 	void RenderSystem::SetDebugName(ResourceHandle handle, const char* str)
 	{
 		Textures.SetDebugName(handle, str);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::SetDebugName(DeviceHeapHandle heap, const char* str)
+	{
+		SETDEBUGNAME(heaps.GetDeviceResource(heap), str);
 	}
 
 
@@ -5625,7 +5685,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	BLAS_PreBuildInfo RenderSystem::GetBLASPreBuildInfo(VertexBuffer& vertexBuffer)
+	BLAS_PreBuildInfo RenderSystem::GetBLASPreBuildInfo(const VertexBuffer& vertexBuffer)
 	{
 		auto& indexBuffer    = vertexBuffer.VertexBuffers[vertexBuffer.MD.IndexBuffer_Index];
 		auto* positionBuffer = vertexBuffer.Find(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION);
@@ -5666,7 +5726,7 @@ namespace FlexKit
 
 	size_t RenderSystem::GetTextureFrameGraphIndex(ResourceHandle Texture)
 	{
-		return Textures.GetFrameGraphIndex(Texture, graphicsSubmissionCounter);
+		return Textures.GetFrameGraphIndex(Texture, directSubmissionCounter);
 	}
 
 
@@ -5675,7 +5735,7 @@ namespace FlexKit
 
 	void RenderSystem::SetTextureFrameGraphIndex(ResourceHandle Texture, size_t Index)
 	{
-		Textures.SetFrameGraphIndex(Texture, graphicsSubmissionCounter, Index);
+		Textures.SetFrameGraphIndex(Texture, directSubmissionCounter, Index);
 	}
 
 
@@ -6164,7 +6224,7 @@ namespace FlexKit
 
 	void RenderSystem::SubmitTileMappings(std::span<ResourceHandle> resources, iAllocator* allocator)
 	{
-		FK_LOG_9("Updating tile mappings for frame: %u", graphicsSubmissionCounter.load(std::memory_order_relaxed));
+		FK_LOG_9("Updating tile mappings for frame: %u", directSubmissionCounter.load(std::memory_order_relaxed));
 
 		for(const auto resource : resources)
 		{
@@ -6287,8 +6347,8 @@ namespace FlexKit
 
 					if (!coordinates.size())
 					{
-						D3D12_TILE_RANGE_FLAGS rangeFlags = D3D12_TILE_RANGE_FLAG_NULL;
-						copyEngine.copyQueue->UpdateTileMappings(deviceResource, 1, NULL, NULL, NULL, 1, &rangeFlags, NULL, NULL, D3D12_TILE_MAPPING_FLAG_NONE);
+						//D3D12_TILE_RANGE_FLAGS rangeFlags = D3D12_TILE_RANGE_FLAG_NULL;
+						//copyEngine.copyQueue->UpdateTileMappings(deviceResource, 1, NULL, NULL, NULL, 1, &rangeFlags, NULL, NULL, D3D12_TILE_MAPPING_FLAG_NONE);
 					}
 					else
 					{
@@ -6634,7 +6694,7 @@ namespace FlexKit
 
 	void RenderSystem::ResetQuery(QueryHandle handle)
 	{
-		Queries.LockUntil(handle, graphicsSubmissionCounter);
+		Queries.LockUntil(handle, directSubmissionCounter);
 	}
 
 
@@ -6652,7 +6712,7 @@ namespace FlexKit
 
 	void RenderSystem::ReleaseVB(VertexBufferHandle Handle)
 	{
-		VertexBuffers.ReleaseVertexBuffer(Handle, graphicsSubmissionCounter);
+		VertexBuffers.ReleaseVertexBuffer(Handle, directSubmissionCounter);
 	}
 
 
@@ -6661,7 +6721,7 @@ namespace FlexKit
 
 	void RenderSystem::ReleaseResource(ResourceHandle Handle)
 	{
-		Textures.ReleaseTexture(Handle, graphicsSubmissionCounter);
+		Textures.ReleaseTexture(Handle, directSubmissionCounter);
 	}
 
 
@@ -6688,7 +6748,7 @@ namespace FlexKit
 
 	void Push_DelayedRelease(RenderSystem* RS, ID3D12Resource* Res)
 	{
-		RS->FreeList_GraphicsQueue.push_back({ Res, RS->graphicsSubmissionCounter });
+		RS->FreeList_GraphicsQueue.push_back({ Res, RS->directSubmissionCounter });
 	}
 
 
@@ -6707,7 +6767,7 @@ namespace FlexKit
 	void Free_DelayedReleaseResources(RenderSystem* RS)
 	{
 		{
-			auto completed = RS->Fence->GetCompletedValue();
+			auto completed = RS->directFence->GetCompletedValue();
 			for (auto& R : RS->FreeList_GraphicsQueue)
 				if (completed > R.Counter)
 					SAFERELEASE(R.Resource);
@@ -7090,29 +7150,21 @@ namespace FlexKit
 
 
 	// If uploadQueue is InvalidHandle, pushes temporaries to a different free list
-	UploadSegment ReserveUploadBuffer(
+	UploadReservation ReserveUploadBuffer(
 		RenderSystem&		renderSystem,
 		const size_t		uploadSize,
 		CopyContextHandle	uploadQueue)
 	{
-		auto reserve = renderSystem._GetCopyContext(uploadQueue).Reserve(uploadSize, 512);
-
-
-		return {
-			reserve.offset,
-			reserve.reserveSize,
-			reserve.buffer,
-			reserve.resource
-		};
+		return renderSystem._GetCopyContext(uploadQueue).Reserve(uploadSize, 512);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void MoveBuffer2UploadBuffer(const UploadSegment& data, const byte* source, const size_t uploadSize)
+	void MoveBuffer2UploadBuffer(const UploadReservation& data, const byte* source, const size_t uploadSize)
 	{
-		memcpy(data.buffer, source, data.uploadSize > uploadSize ? uploadSize : data.uploadSize);
+		memcpy(data.buffer, source, data.size > uploadSize ? uploadSize : data.size);
 	}
 
 
@@ -7819,7 +7871,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ResourceStateTable::ReleaseTexture(ResourceHandle handle, const uint64_t idx)
+	void ResourceStateTable::ReleaseTexture(ResourceHandle handle, const uint64_t submissionID)
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7840,14 +7892,8 @@ namespace FlexKit
 		for (auto res : resource.Resources)
 		{
 			if (res)
-				delayRelease.push_back({ res, idx });
+				delayRelease.push_back({ res, submissionID });
 		}
-
-#if USING(AFTERMATH)
-		for (auto res : resource.aftermathResource)
-			if(res)
-				GFSDK_Aftermath_DX12_UnregisterResource(res);
-#endif
 
 		const auto TempHandle	= UserEntries.back().Handle;
 		UserEntry				= UserEntries.back();
@@ -8310,12 +8356,12 @@ namespace FlexKit
 
 		Vector<ID3D12Resource*> freeList = { delayRelease.Allocator };
 
-		for (auto& res : delayRelease)
+		for (auto& [resource, submissionID] : delayRelease)
 		{
-			if ((res.idx + 2) < completed)
+			if (completed > submissionID)
 			{
-				freeList.push_back(res.resource);
-				res.resource =  nullptr;
+				freeList.push_back(resource);
+				resource = nullptr;
 			}
 		}
 
@@ -8325,7 +8371,14 @@ namespace FlexKit
 				[freeList = std::move(freeList)](auto& threadLocalAllocator)
 				{
 					for (auto res : freeList)
+					{
+#if USING(AFTERMATH)
+						if (res)
+							GFSDK_Aftermath_DX12_UnregisterResource(res);
+#endif
+
 						res->Release();
+					}
 				}, delayRelease.Allocator);
 
 			threads.AddBackgroundWork(workItem);
@@ -8377,10 +8430,11 @@ namespace FlexKit
 		if (Handle >= Handles.size())
 			return nullptr;
 
-		auto  Idx			= Handles[Handle];
-		auto  ResourceIdx	= UserEntries[Idx].ResourceIdx;
-		auto& resources     = Resources[ResourceIdx].Resources;
-		auto  currentIdx    = Resources[ResourceIdx].CurrentResource;
+		auto  idx			= Handles[Handle];
+		auto  resourceIdx	= UserEntries[idx].ResourceIdx;
+		auto& resource		= Resources[resourceIdx];
+		auto& resources		= resource.Resources;
+		auto  currentIdx	= resource.CurrentResource;
 
 		return resources[currentIdx];
 	}
@@ -8768,7 +8822,7 @@ namespace FlexKit
 
 	RenderSystem::AllocationResult	RenderSystem::_AllocateDescriptorRange(const size_t size)
 	{
-		uint64_t completed = Fence->GetCompletedValue();
+		uint64_t completed = directFence->GetCompletedValue();
 
 		auto res = descriptorHeapAllocator.Alloc(size, completed);
 
@@ -8784,7 +8838,7 @@ namespace FlexKit
 
 	void RenderSystem::_ReleaseDescriptorRange(DescriptorRange range, uint64_t lock)
 	{
-		descriptorHeapAllocator.Release(range, lock, Fence->GetCompletedValue());
+		descriptorHeapAllocator.Release(range, lock, directFence->GetCompletedValue());
 	}
 
 
@@ -8812,13 +8866,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t RenderSystem::_GetVidMemUsage()
+	RenderSystem::VidMemoryStates RenderSystem::_GetVidMemStats()
 	{
 		DXGI_QUERY_VIDEO_MEMORY_INFO VideoMemInfo = {0};
 		if(pDXGIAdapter)
 			pDXGIAdapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &VideoMemInfo);
 
-		return VideoMemInfo.CurrentUsage;
+		return { VideoMemInfo.CurrentUsage, VideoMemInfo.Budget };
 	}
 
 
@@ -9278,9 +9332,8 @@ namespace FlexKit
 			FK_LOG_INFO("Pix Attached.");
 			return true;
 		}
-#else
-		return false;
 #endif
+		return false;
 	}
 
 
@@ -9348,7 +9401,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	UploadSegment RenderSystem::_ReserveDirectUploadSpace(size_t size, size_t alignment)
+	UploadReservation RenderSystem::_ReserveDirectUploadSpace(size_t size, size_t alignment)
 	{
 		std::scoped_lock lock{ directUploadBufferMutex };
 		auto res = directUploadBuffer.Reserve(size, alignment);
@@ -9363,13 +9416,13 @@ namespace FlexKit
 			{
 				FreeList_GraphicsQueue.emplace_back(
 					oldBuffer,
-					graphicsSubmissionCounter.load(std::memory_order_relaxed));
+					directSubmissionCounter.load(std::memory_order_relaxed));
 			}
 
-			return directUploadBuffer.Reserve(size, alignment).value_or(UploadSegment{});
+			return directUploadBuffer.Reserve(size, alignment).value_or(UploadReservation{});
 		}
 
-		return UploadSegment{};
+		return UploadReservation{};
 	}
 
 
@@ -9378,12 +9431,13 @@ namespace FlexKit
 
 	Context& RenderSystem::GetCommandList(std::optional<SyncPoint> ticket)
 	{
-		const uint64_t submissionId		= ticket ? ticket.value().syncCounter : ++graphicsSubmissionCounter;
+		const uint64_t submissionId		= ticket ? ticket.value().syncCounter : ++directSubmissionCounter;
 
 		while (true)
 		{
-			const uint64_t completedCounter = Fence->GetCompletedValue();
+			const uint64_t completedCounter = directFence->GetCompletedValue();
 
+			uint64_t lowest = -1;
 
 			for (auto& _ : Contexts)
 			{
@@ -9400,9 +9454,11 @@ namespace FlexKit
 
 					return context.Reset(range.value(), submissionId, descriptorHeapAllocator.Heap());
 				}
+				else
+					lowest = Min(lowest, context._GetCounter());
 			}
 
-			WaitforGPU();
+			WaitFor(lowest);
 		}
 
 		std::unreachable();
@@ -9426,7 +9482,7 @@ namespace FlexKit
 
 	SyncPoint RenderSystem::SyncUploadTicket()
 	{
-		auto counter = ++copyEngine.counter;
+		const uint64_t counter = ++copyEngine.counter;
 		copyEngine.copyQueue->Signal(copyEngine.fence, counter);
 
 		return { counter, copyEngine.fence };
@@ -9439,26 +9495,31 @@ namespace FlexKit
 
 	SyncPoint RenderSystem::SyncDirectPoint()
 	{
-		return { graphicsSubmissionCounter, Fence };
+		return { directSubmissionCounter, directFence };
 	}
 
 	SyncPoint RenderSystem::SyncDirectTicket()
 	{
-		auto counter = ++graphicsSubmissionCounter;
-		GraphicsQueue->Signal(Fence, counter);
+		auto counter = ++directSubmissionCounter;
+		GraphicsQueue->Signal(directFence, counter);
 
-		return { counter, Fence };
+		return { counter, directFence };
 	}
 
+	void RenderSystem::SignalDirect(uint64_t value)
+	{
+		GraphicsQueue->Signal(directFence, value);
+		directSubmittedCounter = Max(value, directSubmittedCounter);
+	}
 
 	/************************************************************************************************/
 
 
-	SyncPoint RenderSystem::GetSubmissionTicket()
+	SyncPoint RenderSystem::GetSubmissionTicket(uint32_t count)
 	{
-		auto value = ++graphicsSubmissionCounter;
+		auto value = directSubmissionCounter.fetch_add(count) + count;
 
-		return { value, Fence };
+		return { value, directFence };
 	}
 
 
@@ -9494,25 +9555,32 @@ namespace FlexKit
 
 		GraphicsQueue->ExecuteCommandLists((UINT)cls.size(), cls.begin());
 
-		if (auto HR = GraphicsQueue->Signal(Fence, dispatchIdx); FAILED(HR))
+		if (auto HR = GraphicsQueue->Signal(directFence, dispatchIdx); FAILED(HR))
 			FK_LOG_ERROR("Failed to Signal");
 
 		for (auto context : contexts)
 			context->_QueueReadBacks();
 
+		directUploadBuffer.Last = directUploadBuffer.Position;
+
+
+		return { dispatchIdx, directFence };
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::EndFrame()
+	{
+		static auto dispatchIdx = directSubmissionCounter.load(std::memory_order_relaxed);
+
 		VertexBuffers.LockUntil(dispatchIdx);
 		Textures.LockUntil(dispatchIdx);
 
-		pendingFrames[frameIdx] = dispatchIdx;
-		frameIdx = ++frameIdx % 2;
-
 		ReadBackTable.Update();
 
-		directUploadBuffer.Last = directUploadBuffer.Position;
-
 		_UpdateCounters();
-
-		return { dispatchIdx, Fence };
 	}
 
 
@@ -10670,13 +10738,13 @@ namespace FlexKit
 		FK_ASSERT(byteSize < std::numeric_limits<uint32_t>::max());
 
 		auto bufferResource = RS->CreateGPUResource(GPUResourceDesc::StructuredResource((uint32_t)byteSize));
-		UploadSegment upload = ReserveUploadBuffer(*RS, byteSize);
+		UploadReservation upload = ReserveUploadBuffer(*RS, byteSize);
 		MoveBuffer2UploadBuffer(upload, (const byte*)buffer, byteSize);
 
 		auto	deviceResource	= RS->GetDeviceResource(bufferResource);
 		auto&	ctx				= RS->_GetCopyContext(copyCtx);
 
-		ctx.CopyBuffer(deviceResource, 0, upload.resource, upload.offset, upload.uploadSize);
+		ctx.CopyBuffer(deviceResource, 0, upload.resource, upload.offset, upload.size);
 
 		return bufferResource;
 	}
@@ -10727,6 +10795,8 @@ namespace FlexKit
 		flags			{ IN_flags }
 	{
 		freeRanges.push_back({ 0, (uint32_t)blockCount, Clear });
+
+		estimatedBlocksAvailable = blockCount;
 	}
 
 
@@ -10748,9 +10818,17 @@ namespace FlexKit
 		FK_ASSERT(requestBlockCount < std::numeric_limits<uint32_t>::max());
 
 		std::scoped_lock localLock{ m };
-		auto completionCount = renderSystem.Fence->GetCompletedValue();
+		const auto completionCount = renderSystem.directFence->GetCompletedValue();
 
-		std::sort(freeRanges.begin(), freeRanges.end());
+		std::sort(
+			freeRanges.begin(), freeRanges.end(),
+			[](auto& lhs, auto& rhs)
+			{
+				const auto t1 = uint64_t(lhs.flags & 0x5) << 59 | lhs.frameID << 24 | uint64_t(lhs.blockCount);
+				const auto t2 = uint64_t(rhs.flags & 0x5) << 59 | rhs.frameID << 24 | uint64_t(rhs.blockCount);
+
+				return t1 < t2;
+			});
 
 		auto _GetMemory = [&]() -> GPUHeapAllocation {
 			for (auto& range : freeRanges)
@@ -10761,34 +10839,34 @@ namespace FlexKit
 				if (range.blockCount >= requestBlockCount)
 				{
 					if  (range.flags == Clear ||
-						range.flags == Locked && range.frameID <= completionCount)
+						(range.flags == Locked && range.frameID <= completionCount && range.frameID < frameID))
 						//|| (!(range.flags | AllowReallocation) && range.frameID == frameID))
 					{
 						GPUHeapAllocation heapAllocation = {
-							range.offset * blockSize,
-							requestBlockCount * blockSize,
-							(range.priorAllocation != InvalidHandle &&
-							 range.flags | AllowReallocation &&
-							 range.frameID == frameID) ?
-								range.priorAllocation : InvalidHandle
+							.offset		= range.offset * blockSize,
+							.size		= requestBlockCount * blockSize,
+							.overlap	= (range.priorAllocation != InvalidHandle && (range.flags & AllowReallocation) && range.frameID == frameID) ? range.priorAllocation : InvalidHandle
 						};
 
-						FK_LOG_9("Allocated Blocks %u - %u", range.offset, range.offset + range.blockCount);
+						FK_LOG_9("Allocated Blocks %u - %u from Heap %u during %u; Completed count %u; Last Used: %u", range.offset, range.offset + requestBlockCount, heap.INDEX, frameID, completionCount, range.frameID);
 
 						if (range.blockCount > requestBlockCount)
 						{
-							range.blockCount	-= (uint32_t)requestBlockCount;
-							range.offset		+= (uint32_t)requestBlockCount;
+							range.blockCount	-= (uint32_t)(requestBlockCount);
+							range.offset		+= (uint32_t)(requestBlockCount);
 						}
 						else if (range.blockCount == requestBlockCount) {
 							freeRanges.remove_unstable(&range);
 						}
+
+						estimatedBlocksAvailable -= requestBlockCount;
 
 						return heapAllocation;
 					}
 				}
 			}
 
+			//exit(-10);
 			return {};
 		};
 		auto res = _GetMemory();
@@ -10804,28 +10882,26 @@ namespace FlexKit
 
 	void MemoryPoolAllocator::Coalesce()
 	{
-		const uint64_t completedID = renderSystem.Fence->GetCompletedValue();
+		const uint64_t completedID = renderSystem.directFence->GetCompletedValue();
 
 		FK_LOG_9("Coalesce");
 
-		std::sort(
-			std::begin(freeRanges),
-			std::end(freeRanges),
-			[&](auto& lhs, auto& rhs)
-			{
-				return lhs.offset < rhs.offset;
-			}
-		);
+		std::sort(freeRanges.begin(), freeRanges.end());
 
 		size_t I = 0; 
 		while (I + 1 < freeRanges.size())
 		{
-			if (freeRanges[I].offset + freeRanges[I].blockCount == freeRanges[I + 1].offset &&
-				freeRanges[I].frameID  <= completedID &&
-				freeRanges[I + 1].frameID <= completedID)
+			auto& range1 = freeRanges[I];
+			auto& range2 = freeRanges[I + 1];
+
+			if ((range1.offset + range1.blockCount) == range2.offset &&
+				range1.frameID < completedID && range2.frameID < completedID)
 			{
-				freeRanges[I].blockCount += freeRanges[I + 1].blockCount;
-				freeRanges.remove_stable(freeRanges.begin() + I + 1);
+				range1.blockCount += range2.blockCount;
+				range1.frameID = 0;
+				range1.flags = Clear;
+
+				freeRanges.remove_stable(&range2);
 			}
 			else
 				I++;
@@ -10839,20 +10915,35 @@ namespace FlexKit
 	{
 		ProfileFunction();
 
-		const uint64_t frameIdx	= renderSystem.graphicsSubmissionCounter;
+		const uint64_t frameIdx	= renderSystem.directSubmissionCounter;
 		const uint64_t size		= renderSystem.GetAllocationSize(desc);
 
-		const size_t requestedBlockCount = (size / blockSize) + ((size % blockSize == 0) ? 0 : 1);
-		auto allocation = GetMemory(requestedBlockCount, frameIdx, Clear);
+		const size_t	requestedBlockCount	= Max((size / blockSize) + ((size % blockSize == 0) ? 0 : 1), 1);
+		auto			allocation			= GetMemory(requestedBlockCount, frameIdx, Clear);
+
+		FK_LOG_9("Allocating Block with size %u", requestedBlockCount);
 
 		if (allocation.offset / blockSize > blockCount) {
 			FK_LOG_ERROR("MemoryPoolAllocator Allocated a block beyond range!");
 			return { InvalidHandle, InvalidHandle };
 		}
 
-		if (!allocation) {
-			FK_LOG_ERROR("MemoryPoolAllocator Ran out of memory!");
-			return { InvalidHandle, InvalidHandle };
+		if (!allocation)
+		{
+			if (estimatedBlocksAvailable > requestedBlockCount)
+				FK_LOG_INFO("High Fragmentation Detected in Pool %u.", heap.INDEX);
+
+			FK_LOG_INFO("MemoryPoolAllocator Caused Stall!; Pool %u", heap.INDEX);
+			renderSystem.WaitForGPU();
+
+			Coalesce();
+			allocation = GetMemory(requestedBlockCount, frameIdx, Clear);
+
+			if (!allocation)
+			{
+				FK_LOG_ERROR("MemoryPoolAllocator Ran out of memory! Pool %u.", heap.INDEX);
+				return { InvalidHandle, InvalidHandle };
+			}
 		}
 
 		desc.bufferCount    = 1;
@@ -10872,13 +10963,13 @@ namespace FlexKit
 				(uint32_t)(allocation.offset / blockSize),
 				(uint32_t)(allocation.size / blockSize),
 				frameIdx,
-				(uint64_t)(temporary ? Temporary : Clear),
+				(uint64_t)(temporary ? Temporary : Allocated),
 				resource });
 		}
 		else
 			__debugbreak();
 
-		return { resource, allocation.Overlap };
+		return { resource, allocation.overlap };
 	}
 
 
@@ -10889,11 +10980,13 @@ namespace FlexKit
 	{
 		ProfileFunction();
 
-		const uint64_t frameIdx	= renderSystem.graphicsSubmissionCounter;
+		const uint64_t frameIdx	= renderSystem.directSubmissionCounter;
 		const uint64_t size		= renderSystem.GetAllocationSize(desc);
 
-		const size_t requestedBlockCount	= (size / blockSize) + ((size % blockSize == 0) ? 0 : 1);
+		const size_t requestedBlockCount	= Max((size / blockSize) + ((size % blockSize == 0) ? 0 : 1), 1);
 		auto allocation						= GetMemory(requestedBlockCount, frameIdx, Clear);
+
+		FK_LOG_9("Allocating Block with size %u", requestedBlockCount);
 
 		if (allocation.offset / blockSize > blockCount) {
 			FK_LOG_ERROR("MemoryPoolAllocator Allocated a block beyond range!");
@@ -10901,8 +10994,20 @@ namespace FlexKit
 		}
 
 		if (!allocation) {
-			FK_LOG_ERROR("MemoryPoolAllocator Ran out of memory!");
-			return { InvalidHandle, InvalidHandle };
+			if(estimatedBlocksAvailable > requestedBlockCount)
+				FK_LOG_INFO("High Fragmentation Detected in Pool %u.", heap.INDEX);
+
+			FK_LOG_INFO("MemoryPoolAllocator Caused Stall!; Pool %u", heap.INDEX);
+			renderSystem.WaitForGPU();
+
+			Coalesce();
+
+			allocation = GetMemory(requestedBlockCount, frameIdx, Clear);
+			if (!allocation)
+			{
+				FK_LOG_ERROR("MemoryPoolAllocator Ran out of memory! Pool %u.", heap.INDEX);
+				return { InvalidHandle, InvalidHandle };
+			}
 		}
 
 		desc.bufferCount    = 1;
@@ -10920,13 +11025,13 @@ namespace FlexKit
 				(uint32_t)(allocation.offset / blockSize),
 				(uint32_t)(allocation.size / blockSize),
 				frameIdx,
-				(uint64_t)(temporary ? Temporary : Clear),
+				(uint64_t)(temporary ? Temporary : Allocated),
 				resource });
 		}
 		else
 			__debugbreak();
 
-		return { resource, allocation.Overlap, allocation.offset, heap };
+		return { resource, allocation.overlap, allocation.offset, heap };
 	}
 
 
@@ -10939,8 +11044,7 @@ namespace FlexKit
 
 		std::scoped_lock localLock{ m };
 
-		const uint64_t frameIdx				= renderSystem.graphicsSubmissionCounter;
-		const uint64_t completedIdx			= renderSystem.Fence->GetCompletedValue();
+		const uint64_t frameIdx				= renderSystem.directSubmissionCounter;
 		const uint64_t size					= renderSystem.GetAllocationSize(desc);
 		const size_t requestedBlockCount	= (size / blockSize) + (size % blockSize == 0) ? 0 : 1;
 
@@ -10960,13 +11064,10 @@ namespace FlexKit
 				else if(res->blockCount > requestedBlockCount)
 				{
 					res->offset     += (uint32_t)requestedBlockCount;
-					res->blockCount -= (uint32_t)requestedBlockCount;
+					res->blockCount -= (uint32_t)(requestedBlockCount + 1);
 				}
 				else if (res->blockCount < requestedBlockCount)
 					return { InvalidHandle, InvalidHandle }; // ERROR!?
-
-				if (res->frameID > completedIdx)
-					FK_LOG_WARNING("POTENTIAL MEMORY INTERFERENCE DETECTED!");
 
 				GPUHeapAllocation heapAllocation = {
 						rangeDescriptor.offset * blockSize,
@@ -11017,7 +11118,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void MemoryPoolAllocator::Release(ResourceHandle handle, const bool freeResourceImmedate, const bool allowImmediateReuse)
+	void MemoryPoolAllocator::Release(ResourceHandle handle, uint64_t submissionID, const bool freeResourceImmedate, const bool allowImmediateReuse)
 	{
 		std::scoped_lock localLock{ m };
 
@@ -11033,21 +11134,35 @@ namespace FlexKit
 #if DEBUG
 			if (res->offset > blockCount || res->offset + res->blockCount > blockCount)
 				__debugbreak();
+
+			FK_LOG_9("Releasing Blocks %u - %u from Heap %u during %u", res->offset, res->offset + res->blockCount, heap.INDEX, submissionID);
 #endif
 
+			estimatedBlocksAvailable += res->blockCount;
 
 			freeRanges.push_back(
 				{
 					res->offset,
 					res->blockCount,
-					uint64_t(res->flags == AllowReallocation ? AllowReallocation : Locked),
-					res->frameID,
+					Locked,
+					Max(submissionID, res->frameID),
 					handle
 				});
 
-			FK_LOG_9("Released Blocks %u - %u : flags[%u]", res->offset, res->offset + res->blockCount, flags);
-
 			allocations.remove_unstable(res);
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void MemoryPoolAllocator::LockRange(uint64_t begin, uint64_t end)
+	{
+		for (auto& range : freeRanges)
+		{
+			if (range.frameID >= begin)
+				range.frameID = end;
 		}
 	}
 
@@ -11058,7 +11173,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2014-2022 Robert May
+Copyright (c) 2014-2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

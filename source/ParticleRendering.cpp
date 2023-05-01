@@ -48,6 +48,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "DrawParticleMeshInstances");
+
 		return PSO;
 	}
 
@@ -92,6 +94,8 @@ namespace FlexKit
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
+
+		SETDEBUGNAME(PSO, "DrawParticleMeshInstancesDepth");
 
 		return PSO;
 	}

@@ -627,7 +627,7 @@ namespace FlexKit
 
 											std::cout << "Searched for " << string << ". Found resource: " << resource->GetResourceID() << "\n";
 
-											subMaterial.textures.push_back(assetGUID);
+											subMaterial.textures.emplace_back(assetGUID, 0xffffffff);
 										}
 										else
 										{
@@ -646,7 +646,7 @@ namespace FlexKit
 											auto idx = model.textures[material.pbrMetallicRoughness.baseColorTexture.index].source;
 
 											if (imageMap.size() > idx && imageMap.at(idx) != nullptr)
-												subMaterial.textures.push_back(imageMap.at(idx)->GetResourceGUID());
+												subMaterial.textures.emplace_back(imageMap.at(idx)->GetResourceGUID(), GetTypeGUID(ALBEDO));
 										}
 									}
 
@@ -657,7 +657,7 @@ namespace FlexKit
 											auto idx = model.textures[material.normalTexture.index].source;
 
 											if (imageMap.size() > idx && imageMap.at(idx) != nullptr)
-												subMaterial.textures.push_back(imageMap.at(idx)->GetResourceGUID());
+												subMaterial.textures.emplace_back(imageMap.at(idx)->GetResourceGUID(), GetTypeGUID(NORMAL));
 										}
 									}
 
@@ -668,7 +668,7 @@ namespace FlexKit
 											auto idx = model.textures[material.pbrMetallicRoughness.metallicRoughnessTexture.index].source;
 
 											if (imageMap.size() > idx && imageMap.at(idx) != nullptr)
-												subMaterial.textures.push_back(imageMap.at(idx)->GetResourceGUID());
+												subMaterial.textures.emplace_back(imageMap.at(idx)->GetResourceGUID(), GetTypeGUID(METALLICROUGHNESS));
 										}
 									}
 								}

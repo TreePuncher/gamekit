@@ -69,6 +69,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "DrawRect");
+
 		return PSO;
 	}
 
@@ -113,6 +115,8 @@ namespace FlexKit
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
+
+		SETDEBUGNAME(PSO, "DrawRectTextured");
 
 		return PSO;
 	}
@@ -160,6 +164,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "DrawTextured");
+
 		return PSO;
 	}
 
@@ -205,6 +211,8 @@ namespace FlexKit
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
+
+		SETDEBUGNAME(PSO, "DrawLine");
 
 		return PSO;
 	}
@@ -261,6 +269,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "Draw2");
+
 		return PSO;
 	}
 
@@ -307,6 +317,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "DrawMeshFlat");
+
 		return PSO;
 	}
 
@@ -350,6 +362,8 @@ namespace FlexKit
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&GDesc, IID_PPV_ARGS(&PSO));
 		CheckHR(HR, ASSERTONFAIL("Failed to Create PSO for Occlusion Culling!"));
+
+		SETDEBUGNAME(PSO, "DrawOcclusion");
 
 		return PSO;
 	}
@@ -551,6 +565,8 @@ namespace FlexKit
 		ID3D12PipelineState* PSO = nullptr;
 		const auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
+
+		SETDEBUGNAME(PSO, "ClearRenderTargetUINT2");
 
 		return PSO;
 	}

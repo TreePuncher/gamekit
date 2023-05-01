@@ -66,6 +66,8 @@ namespace FlexKit
 		auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "DrawIMGUI");
+
 		return PSO;
 	}
 

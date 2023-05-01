@@ -5,8 +5,8 @@ builds/*
 Dependencies/*
 CodeGraphData/*
 .vs/*
-**/x64/*
-**/x86/*
+**/x64/**
+**/x86/**
 flxEditor/x64/**
 TestGame/obj/**
 SignalsAndSlotsTest/x64/**
@@ -47,3 +47,4 @@ vcpkg_installed
 *.recipe
 *.enc
 *.ilk
+/TextureStreamingTest/x64/Debug/TextureStreamingTest.vcxproj.FileListAbsolute.txt
