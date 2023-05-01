@@ -102,6 +102,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "ShadowMapPass");
+
 		return PSO;
 	}
 
@@ -164,6 +166,8 @@ namespace FlexKit
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
+
+		SETDEBUGNAME(PSO, "ShadowMapAnimatedPass");
 
 		return PSO;
 	}
@@ -353,12 +357,7 @@ namespace FlexKit
 								auto desc		= GPUResourceDesc::CubeMapUAV({ ShadowMapSize, ShadowMapSize }, DeviceFormat::R32_FLOAT, 1, true);
 								desc.clearValue = clearValue;
 
-								
-								auto [shadowMap, _] = resourceCtx.AcquireResource(frameHandles[handleIdx], desc);
-#if USING(DEBUGGRAPHICS)
-								//auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.graphicsSubmissionCounter, light.shadowMap);
-								//renderSystem.SetDebugName(shadowMap, debugName.c_str());
-#endif
+								auto [shadowMap, _] = resourceCtx.AcquireTemporary(frameHandles[handleIdx], desc);
 								break;
 							}
 							case LightType::SpotLight:
@@ -367,11 +366,7 @@ namespace FlexKit
 								auto desc		= GPUResourceDesc::UAVTexture({ ShadowMapSize, ShadowMapSize }, DeviceFormat::R32_FLOAT, true);
 								desc.clearValue = clearValue;
 
-								auto [shadowMap, _] = resourceCtx.AcquireResource(frameHandles[handleIdx], desc);
-#if USING(DEBUGGRAPHICS)
-								//auto debugName = fmt::format("ShadowMap:{}:{}", renderSystem.graphicsSubmissionCounter, light.shadowMap);
-								//renderSystem.SetDebugName(shadowMap, debugName.c_str());
-#endif
+								auto [shadowMap, _] = resourceCtx.AcquireTemporary(frameHandles[handleIdx], desc);
 							}	break;
 						}
 					}
@@ -380,7 +375,7 @@ namespace FlexKit
 			.access		= DeviceAccessState::DASDEPTHBUFFERWRITE,
 			.max		= ShadowMapComponent::GetComponent().size(),
 			.pool		= &shadowMapPool,
-			.dependency	= visibleLights
+			.dependency	= lightUpdate
 		};
 
 		const ResourceAllocation& acquireMaps = frameGraph.AllocateResourceSet(allocation);
@@ -461,10 +456,11 @@ namespace FlexKit
 			if (passTarget == InvalidHandle)
 				DebugBreak();
 
-			resources.renderSystem.SetDebugName(passTarget,	"passTarget");
-
 			if (begin == pvs.begin())
 			{
+				resources.renderSystem.SetDebugName(passTarget, "passTarget");
+				resources.renderSystem.SetDebugName(depthBuffer, "depthBuffer");
+
 				const auto initialLayout = ctx.renderSystem->GetObjectLayout(passTarget);
 
 				constexpr float f_max = std::numeric_limits<float>::max();

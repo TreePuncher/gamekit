@@ -70,10 +70,10 @@ namespace FlexKit
 
 		void Initiate();
 
-		UpdateTask* Update      (UpdateDispatcher& dispatcher, double dT);
-		UpdateTask* Draw	    (UpdateTask* update, UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT);
+		UpdateTask* Update		(UpdateDispatcher& dispatcher, double dT);
+		UpdateTask* Draw		(UpdateTask* update, UpdateDispatcher& dispatcher, iAllocator& TempMemory, double dT);
 
-		void		PostDraw    (iAllocator* TempMemory, double dT);
+		void		PostDraw	(iAllocator* TempMemory, double dT);
 
 		void Release();
 

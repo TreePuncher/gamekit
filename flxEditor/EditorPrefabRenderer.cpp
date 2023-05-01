@@ -72,6 +72,8 @@ ID3D12PipelineState* CreateFlatSkinnedPassPSO(RenderSystem* RS)
 	auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 	FK_ASSERT(SUCCEEDED(HR));
 
+	SETDEBUGNAME(PSO, "DrawGrayPrefab");
+
 	return PSO;
 }
 
@@ -134,6 +136,8 @@ ID3D12PipelineState* CreateFlatPassPSO(RenderSystem* RS)
 	ID3D12PipelineState* PSO = nullptr;
 	auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 	FK_ASSERT(SUCCEEDED(HR));
+
+	SETDEBUGNAME(PSO, "DrawFlatPrefab");
 
 	return PSO;
 }

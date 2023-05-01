@@ -23,10 +23,10 @@ namespace FlexKit
 	public:
 		virtual ~iDecompressor() {}
 
-		virtual UploadReservation   ReadTile(ReadContext&, const TileID_t id, const uint2 TileSize, CopyContext& ctx) = 0;
-		virtual UploadReservation   Read(ReadContext&, const uint2 WH, CopyContext& ctx) = 0;
-		virtual uint2               GetTextureWH() const = 0;
-		virtual DeviceFormat        GetFormat() const = 0;
+		virtual void				ReadTile(ReadContext&, const TileID_t id, const uint2 TileSize, UploadReservation& dst) = 0;
+		virtual void				Read(ReadContext&, const uint2 WH, UploadReservation& dst) = 0;
+		virtual uint2				GetTextureWH() const = 0;
+		virtual DeviceFormat		GetFormat() const = 0;
 
 	};
 
@@ -41,25 +41,25 @@ namespace FlexKit
 		DDSDecompressor(ReadContext& readCtx, const uint32_t mipLevel, AssetHandle asset, iAllocator* IN_allocator);
 		~DDSDecompressor();
 
-		UploadReservation   ReadTile(ReadContext&, const TileID_t id, const uint2 TileSize, CopyContext& ctx) override;
-		UploadReservation   Read(ReadContext&, const uint2 WH, CopyContext& ctx) override;
-		uint2               GetTextureWH() const override;
-		DeviceFormat        GetFormat() const override { return format; };
+		void				ReadTile(ReadContext&, const TileID_t id, const uint2 TileSize, UploadReservation& dst) override;
+		void				Read(ReadContext&, const uint2 WH, UploadReservation& dst) override;
+		uint2				GetTextureWH() const override;
+		DeviceFormat		GetFormat() const override { return format; };
 
 		size_t mipLevelOffset;
 
-		size_t      rowPitch;
-		size_t      bufferSize;
-		size_t      mipLevel;
+		size_t	rowPitch;
+		size_t	bufferSize;
+		size_t	mipLevel;
 
-		uint2       WH;
+		uint2	WH;
 
 		DeviceFormat format;
 
 		char* buffer = nullptr;
 
-		AssetHandle     asset;
-		iAllocator*     allocator;
+		AssetHandle	asset;
+		iAllocator*	allocator;
 	};
 
 
@@ -179,15 +179,38 @@ namespace FlexKit
 
 		UploadReservation ReadTile(const TileID_t id, const uint2 TileSize, CopyContext& ctx)
 		{
-			return decompressor->ReadTile(readContext, id, TileSize, ctx);
+			auto reservation = ctx.Reserve(64 * KILOBYTE);
+			decompressor->ReadTile(readContext, id, TileSize, reservation);
+
+			return reservation;
 		}
 
 
 		UploadReservation Read(const uint2 WH, CopyContext& ctx)
 		{
-			return decompressor->Read(readContext, WH, ctx);
+			auto reservation = ctx.Reserve(64 * KILOBYTE);
+			decompressor->Read(readContext, WH, reservation);
+
+			return reservation;
 		}
 
+
+		UploadReservation ReadTile(const TileID_t id, const uint2 TileSize, Context& ctx)
+		{
+			auto reservation = ctx.ReserveDirectUploadSpace(64 * KILOBYTE);
+			decompressor->ReadTile(readContext, id, TileSize, reservation);
+
+			return reservation;
+		}
+
+
+		UploadReservation Read(const uint2 WH, Context& ctx)
+		{
+			auto reservation = ctx.ReserveDirectUploadSpace(64 * KILOBYTE);
+			decompressor->Read(readContext, WH, reservation);
+
+			return reservation;
+		}
 
 		uint2 GetBlockSize() const
 		{
@@ -391,6 +414,19 @@ namespace FlexKit
 			iAllocator&						tempAllocator);
 
 
+		void _FeedbackPass(
+			UpdateDispatcher&				dispatcher,
+			FrameGraph&						frameGraph,
+			CameraHandle					camera,
+			uint2							renderTargetWH,
+			BrushConstants&					constants,
+			GatherPassesTask&				passes,
+			const ResourceAllocation&		animationResources,
+			ReserveConstantBufferFunction&	reserveCB,
+			ReserveVertexBufferFunction&	reserveVB,
+			iAllocator&						tempAllocator);
+
+
 		struct TextureStreamUpdate : public FlexKit::iWork
 		{
 			TextureStreamUpdate(ReadBackResourceHandle resource, TextureStreamingEngine& IN_textureStreamEngine, iAllocator* IN_allocator);
@@ -418,13 +454,18 @@ namespace FlexKit
 		void						BindAsset			(const AssetHandle textureAsset, const ResourceHandle  resource);
 		std::optional<AssetHandle>	GetResourceAsset	(const ResourceHandle  resource) const;
 
-		void PostUpdatedTiles(const BlockAllocation& blocks, iAllocator& threadLocalAllocator);
+		void PostUpdatedTilesAsync	(const BlockAllocation& blocks, iAllocator& threadLocalAllocator);
+		void PostUpdatedTilesDirect	(const BlockAllocation& blocks, Context&, iAllocator& threadLocalAllocator);
+
 		void MarkUpdateCompleted() { updateInProgress = false; taskInProgress = false; }
 
 		float debug_GetPassTime()	const { return passTime; }
 		float debug_GetUpdateTime()	const { return updateTime; }
 
 	private:
+
+		void StartAsyncTask	(ReadBackResourceHandle resource);
+		void CopyResults	(ReadBackResourceHandle resource);
 
 		ID3D12PipelineState* CreateTextureFeedbackPassPSO			(RenderSystem*);
 		ID3D12PipelineState* CreateTextureFeedbackAnimatedPassPSO	(RenderSystem*);
@@ -466,6 +507,11 @@ namespace FlexKit
 		PassResults				pendingResults;
 		iAllocator*				allocator;
 		const TextureCacheDesc	settings;
+
+		bool	async			= true;
+		bool	updateReturned	= false;
+
+		Vector<char> buffer;
 
 		float passTime		= 0;
 		float updateTime	= 0;

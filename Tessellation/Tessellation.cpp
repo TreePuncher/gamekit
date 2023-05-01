@@ -502,6 +502,8 @@ public:
 		auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "DrawTessellatedObject");
+
 		return PSO;
 	}
 
@@ -566,6 +568,8 @@ public:
 		auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "DrawTessellatedObjectDebug");
+
 		return PSO;
 	}
 
@@ -621,6 +625,8 @@ public:
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
+
+		SETDEBUGNAME(PSO, "DrawTessellatedObjectDebug2");
 
 		return PSO;
 	}

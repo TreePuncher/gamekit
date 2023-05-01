@@ -82,7 +82,7 @@ namespace FlexKit
 
 			WH = newWH;
 
-			renderSystem->WaitforGPU();
+			renderSystem->WaitForGPU();
 			renderSystem->_ForceReleaseTexture(backBuffer);
 
 			ID3D12Resource* before_ptr[3];
@@ -267,10 +267,12 @@ namespace FlexKit
 
 		void PIX_SetActiveWindow()
 		{
+#if USING(PIX)
 			auto pix = renderSystem->pix;
 
 			if (pix)	// if pix attached, set active pix target
 				PIXSetTargetWindow(hWindow);
+#endif
 		}
 
 

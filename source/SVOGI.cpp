@@ -743,6 +743,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "UpdateVolumeVisualization");
+
 		return PSO;
 	}
 
@@ -789,6 +791,8 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
+		SETDEBUGNAME(PSO, "Voxelizer");
+
 		return PSO;
 	}
 
@@ -798,10 +802,14 @@ namespace FlexKit
 
 	ID3D12PipelineState* StaticVoxelizer::CreateGatherArgsPSO(RenderSystem* RS)
 	{
-		return LoadComputeShader(
+		auto pso = LoadComputeShader(
 			RS->LoadShader("Main", "cs_6_5", R"(assets\shaders\SVO_VoxelGatherArgs.hlsl)"),
 			markSignature,
 			*RS);
+
+		SETDEBUGNAME(pso, "GatherVoxelArgs");
+
+		return pso;
 	}
 
 
@@ -810,10 +818,14 @@ namespace FlexKit
 
 	ID3D12PipelineState* StaticVoxelizer::CreateMarkNodesPSO(RenderSystem* RS)
 	{
-		return LoadComputeShader(
+		auto pso = LoadComputeShader(
 			RS->LoadShader("MarkNodes", "cs_6_5", R"(assets\shaders\Voxelizer_MarkNodes.hlsl)"),
 			markSignature,
 			*RS);
+
+		SETDEBUGNAME(pso, "MarkNodes");
+
+		return pso;
 	}
 
 
@@ -822,10 +834,14 @@ namespace FlexKit
 
 	ID3D12PipelineState* StaticVoxelizer::CreateExpandNodesPSO(RenderSystem* RS)
 	{
-		return LoadComputeShader(
+		auto pso = LoadComputeShader(
 			RS->LoadShader("ExpandNodes", "cs_6_5", R"(assets\shaders\Voxelizer_ExpandNodes.hlsl)"),
 			markSignature,
 			*RS);
+
+		SETDEBUGNAME(pso, "ExpandNodes");
+
+		return pso;
 	}
 
 
@@ -834,10 +850,14 @@ namespace FlexKit
 
 	ID3D12PipelineState* StaticVoxelizer::CreateFillAttributesPSO(RenderSystem* RS)
 	{
-		return LoadComputeShader(
+		auto pso = LoadComputeShader(
 			RS->LoadShader("FillNodes", "cs_6_5", R"(assets\shaders\Voxelizer_BuildHighestMipLevel.hlsl)"),
 			markSignature,
 			*RS);
+
+		SETDEBUGNAME(pso, "FillNodes");
+
+		return pso;
 	}
 
 
@@ -846,10 +866,14 @@ namespace FlexKit
 
 	ID3D12PipelineState* StaticVoxelizer::CreateBuildMIPLevelPSO(RenderSystem* RS)
 	{
-		return LoadComputeShader(
+		auto pso = LoadComputeShader(
 			RS->LoadShader("BuildLevel", "cs_6_5", R"(assets\shaders\Voxelizer_BuildMIPLevel.hlsl)"),
 			markSignature,
 			*RS);
+
+		SETDEBUGNAME(pso, "BuildLevel");
+
+		return pso;
 	}
 
 

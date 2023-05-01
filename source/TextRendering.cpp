@@ -112,6 +112,8 @@ namespace FlexKit
 		HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE PIPELINE STATE OBJECT"));
 
+		SETDEBUGNAME(PSO, "DrawText");
+
 		return PSO;
 	}
 

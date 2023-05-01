@@ -236,17 +236,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	UpdateTask* GameFramework::Draw(UpdateTask* update, UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT)
+	UpdateTask* GameFramework::Draw(UpdateTask* update, UpdateDispatcher& dispatcher, iAllocator& TempMemory, double dT)
 	{
 		ProfileFunction();
 
-		FrameGraph&	frameGraph = TempMemory->allocate_aligned<FrameGraph>(core.RenderSystem, core.Threads, TempMemory);
+		FrameGraph&	frameGraph = TempMemory.allocate_aligned<FrameGraph>(core.RenderSystem, core.Threads, TempMemory);
 
 		subStates.back()->Draw(update, core, dispatcher, dT, frameGraph);
 
 		Free_DelayedReleaseResources(core.RenderSystem);
 
-		auto temp = &frameGraph.SubmitFrameGraph(dispatcher, core.RenderSystem, core.GetBlockMemory());
+		auto temp = &frameGraph.Finish(dispatcher, core.RenderSystem, core.GetBlockMemory());
 		return temp;
 	}
 
@@ -329,7 +329,7 @@ namespace FlexKit
 		core.Threads.SendShutdown();
 		core.Threads.WaitForWorkersToComplete(core.Memory->TempAllocator);
 
-		GetRenderSystem().WaitforGPU();
+		GetRenderSystem().WaitForGPU();
 
 		for (auto state : deferredFrees) {
 			core.GetBlockMemory().release_allocation(*state);
@@ -372,7 +372,7 @@ namespace FlexKit
 
 	void GameFramework::DrawDebugHUD(double dT, VertexBufferHandle textBuffer, ResourceHandle renderTarget, FrameGraph& frameGraph)
 	{
-		uint32_t VRamUsage			= (uint32_t)(core.RenderSystem._GetVidMemUsage() / MEGABYTE);
+		uint32_t VRamUsage			= (uint32_t)(core.RenderSystem._GetVidMemStats().used / MEGABYTE);
 		char* TempBuffer			= (char*)core.GetTempMemory().malloc(512);
 		auto DrawTiming				= 0.0f;
 		const char* RTFeatureStr	= core.RenderSystem.GetRTFeatureLevel() == AvailableFeatures::Raytracing::RT_FeatureLevel_NOTAVAILABLE ? "Not Available" : "Available";
