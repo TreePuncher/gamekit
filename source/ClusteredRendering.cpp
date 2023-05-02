@@ -1675,6 +1675,8 @@ namespace FlexKit
 				const auto cameraConstants	= GetCameraConstants(camera);
 				const auto lightCount		= (uint32_t)visableLights.size();
 
+				ctx.ClearRenderTarget(resources.GetResource({ data.renderTargetObject }));
+
 				if (!lightCount)
 					return;
 
@@ -1749,7 +1751,6 @@ namespace FlexKit
 				descHeap.NullFill(ctx, descriptorTableSize);
 
 #if 1
-				ctx.ClearRenderTarget(resources.GetResource({ data.renderTargetObject }));
 
 				ctx.SetRootSignature(rootSignature);
 				ctx.SetPipelineState(resources.GetPipelineState(SHADINGPASS));
@@ -1800,29 +1801,6 @@ namespace FlexKit
 		return pass;
 	}
 
-
-	void ClusteredRender::ReleaseFrameResources(
-		FrameGraph&					frameGraph,
-		LightBufferUpdate&			lightPass,
-		ClusteredDeferredShading&	clusteredDeferredShading)
-	{
-		struct _{};
-		frameGraph.AddNode<_>(
-			_{},
-			[&](FrameGraphNodeBuilder& builder, _& data)
-			{
-				builder.ReleaseVirtualResource(clusteredDeferredShading.renderTargetObject);
-				builder.ReleaseVirtualResource(lightPass.lightLists);
-				builder.ReleaseVirtualResource(lightPass.indexBufferObject);
-				builder.ReleaseVirtualResource(lightPass.lightListBuffer);
-				builder.ReleaseVirtualResource(lightPass.lightBufferObject);
-			},
-			[](_& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
-			{
-				ProfileFunction();
-
-			});
-	}
 
 	/************************************************************************************************/
 

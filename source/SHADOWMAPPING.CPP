@@ -348,6 +348,9 @@ namespace FlexKit
 
 					for(auto [handleIdx, lightHandle] : zip(iota(0), lights))
 					{
+						if (handleIdx >= frameHandles.size())
+							return;
+
 						auto& light = lightComponent[lightHandle];
 
 						switch(light.type)
@@ -373,9 +376,9 @@ namespace FlexKit
 				},
 			.layout		= DeviceLayout::DeviceLayout_DepthStencilWrite,
 			.access		= DeviceAccessState::DASDEPTHBUFFERWRITE,
-			.max		= ShadowMapComponent::GetComponent().size(),
+			.max		= Max(ShadowMapComponent::GetComponent().size(), 16),
 			.pool		= &shadowMapPool,
-			.dependency	= lightUpdate
+			.dependency	= visibleLights
 		};
 
 		const ResourceAllocation& acquireMaps = frameGraph.AllocateResourceSet(allocation);

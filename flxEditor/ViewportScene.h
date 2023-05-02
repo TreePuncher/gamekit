@@ -78,7 +78,10 @@ struct DeletionHandle
 struct ViewportScene
 {
 	ViewportScene(EditorScene_ptr IN_sceneResource) :
-			sceneResource	{ IN_sceneResource  } {}
+			sceneResource	{ IN_sceneResource  }
+	{
+		OnSceneChangeSignal.SetDebugPtr("ViewportScene::OnSceneChange");
+	}
 
 	ViewportObjectList  RayCast(FlexKit::Ray v) const;
 
@@ -101,7 +104,7 @@ struct ViewportScene
 
 	FlexKit::Scene						scene				{ FlexKit::SystemAllocator };
 	FlexKit::LayerHandle				physicsLayer		= FlexKit::InvalidHandle;
-	FlexKit::Signal<void ()>			OnSceneChange;
+	FlexKit::Signal<void ()>			OnSceneChangeSignal;
 };
 
 struct ViewportSelection

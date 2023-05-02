@@ -25,11 +25,11 @@ using namespace std::chrono_literals;
 EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngine& IN_scriptEngine, EditorProject& IN_project, QApplication& IN_application, QWidget* parent) :
 	QMainWindow		{ parent            },
 	QtApplication	{ IN_application    },
-	prefabEditor	{ new EditorPrefabEditor{ selectionContext, IN_scriptEngine, IN_renderer, IN_project } },
+	prefabEditor	{ std::make_unique<EditorPrefabEditor>( selectionContext, IN_scriptEngine, IN_renderer, IN_project ) },
 	project			{ IN_project        },
 	renderer		{ IN_renderer       },
 	scriptEngine	{ IN_scriptEngine   },
-	viewport		{ new EditorViewport{ IN_renderer, selectionContext, this } },
+	viewport		{ std::make_unique<EditorViewport>( IN_renderer, selectionContext, this ) },
 	tabBar			{ new QTabWidget{} }
 {
 	fileMenu	= menuBar()->addMenu("File");
@@ -37,8 +37,8 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
 	importMenu	= fileMenu->addMenu("Import");
 	exportMenu	= fileMenu->addMenu("Export");
 
-	tabBar->addTab(viewport, "Scene");
-	tabBar->addTab(prefabEditor, "Prefab");
+	tabBar->addTab(viewport.get(), "Scene");
+	tabBar->addTab(prefabEditor.get(), "Prefab");
 
 	setCentralWidget(tabBar);
 
@@ -89,9 +89,6 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
 
 	setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowTabbedDocks | QMainWindow::AllowNestedDocks | QMainWindow::VerticalTabs);
 	tabPosition(Qt::TopDockWidgetArea);
-
-	this->setMaximumHeight(3000);
-	this->setMaximumWidth(6000);
 
 	showMaximized();
 
@@ -382,8 +379,16 @@ void EditorMainWindow::timerEvent(QTimerEvent* event)
 /************************************************************************************************/
 
 
+void EditorMainWindow::Release()
+{
+	viewport.reset();
+	prefabEditor.reset();
+}
+
+
 EditorMainWindow::~EditorMainWindow()
 {
+	Release();
 }
 
 

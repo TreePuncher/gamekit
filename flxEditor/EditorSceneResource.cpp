@@ -197,6 +197,13 @@ namespace FlexKit
 
 					XYZ() = default;
 
+					XYZ(const float IN_x, const float IN_y, const float IN_z)
+					{
+						x = IN_x;
+						y = IN_y;
+						z = IN_z;
+					}
+
 					XYZ(const float3& xyz)
 					{
 						x = xyz.x;
@@ -212,6 +219,8 @@ namespace FlexKit
 
 						return *this;
 					}
+
+					XYZ Inverse() const noexcept { return XYZ{ -x, -y, -z }; }
 
 					operator float3 () const { return { x, y, z }; }
 				};
@@ -410,11 +419,11 @@ namespace FlexKit
 
 						auto positionStride			= positionView.byteStride == 0 ? GetComponentSizeInBytes(positionAcessor.componentType) * GetNumComponentsInType(positionAcessor.type) : positionView.byteStride;
 						auto positionElementCount	= positionView.byteLength / positionStride;
-						morphPointSpan = { (XYZ*)positionBuffer, positionElementCount };;
+						morphPointSpan				= { (XYZ*)positionBuffer, positionElementCount };;
 
 						auto normalStride			= normalView.byteStride == 0 ? GetComponentSizeInBytes(normalAcessor.componentType) * GetNumComponentsInType(normalAcessor.type) : normalView.byteStride;
 						auto normalElementCount		= normalView.byteLength / normalStride;
-						morphNormalSpan = { (XYZ*)normalBuffer, normalElementCount };
+						morphNormalSpan				= { (XYZ*)normalBuffer, normalElementCount };
 
 						if (tangent != morphChannels.end())
 						{
@@ -464,7 +473,7 @@ namespace FlexKit
 							const MorphTargetVertexToken token{
 								.position	= position,
 								.normal		= normal,
-								.tangent	= tangent,
+								.tangent	= tangent * -1.0f,
 								.morphIdx	= (uint32_t)morphTargetCount,
 							};
 

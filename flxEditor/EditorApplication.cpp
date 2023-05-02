@@ -169,14 +169,14 @@ struct SceneResourceViewer : public IResourceViewer
 EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 	qtApp				{ IN_qtApp },
 	editorRenderer		{ fkApplication.PushState<EditorRenderer>(fkApplication, IN_qtApp) },
-	mainWindow			{ editorRenderer, *scripts, project, qtApp },
-	scripts				{ new EditorScriptEngine{} },
-	gltfImporter		{ new ::gltfImporter	{ project } },
+	mainWindow			{ editorRenderer, *scripts, project, qtApp	},
+	scripts				{ std::make_unique<EditorScriptEngine>()	},
+	gltfImporter		{ std::make_unique<::gltfImporter>(project) },
 
 	textureImporter		{ std::make_unique<EditorTextureImporter>(project, editorRenderer) },
 
-	gameResExporter		{ new GameResExporter	{ project } },
-	projectConnector	{ new EditorProjectScriptConnector { &mainWindow.Get3DView(), mainWindow.GetSelectionCtx(), project } }
+	gameResExporter		{ std::make_unique<GameResExporter>( project ) },
+	projectConnector	{ std::make_unique<EditorProjectScriptConnector>(&mainWindow.Get3DView(), mainWindow.GetSelectionCtx(), project) }
 {
 	currentProject = &project;
 
@@ -188,28 +188,6 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 	RegisterPortalComponent(project);
 
 	qApp->setStyle(QStyleFactory::create("fusion"));
-
-	/*
-	QPalette palette;
-	palette.setColor(QPalette::Window, QColor(53, 53, 53));
-	palette.setColor(QPalette::WindowText, Qt::white);
-	palette.setColor(QPalette::Base, QColor(15, 15, 15));
-	palette.setColor(QPalette::AlternateBase, QColor(53, 53, 53));
-	palette.setColor(QPalette::ToolTipBase, Qt::white);
-	palette.setColor(QPalette::ToolTipText, Qt::white);
-	palette.setColor(QPalette::Text, Qt::white);
-	palette.setColor(QPalette::Button, QColor(53, 53, 53));
-	palette.setColor(QPalette::ButtonText, Qt::white);
-	palette.setColor(QPalette::BrightText, Qt::red);
-
-	palette.setColor(QPalette::Highlight, QColor(142, 45, 197).lighter());
-	palette.setColor(QPalette::HighlightedText, Qt::black);
-
-	palette.setColor(QPalette::Disabled, QPalette::Text, Qt::darkGray);
-	palette.setColor(QPalette::Disabled, QPalette::ButtonText, Qt::darkGray);
-
-	//qApp->setPalette(palette);
-	*/
 
 	mainWindow.AddImporter(gltfImporter.get());
 	mainWindow.AddImporter(textureImporter.get());
@@ -311,6 +289,7 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 
 EditorApplication::~EditorApplication()
 {
+	mainWindow.Release();
 	fkApplication.Release();
 }
 
@@ -329,8 +308,6 @@ void SceneReference::Register(asIScriptEngine* engine)
 	int c = engine->RegisterObjectType("Scene", 0, asOBJ_REF);                   assert(c >= 0);
 
 	// Life Cycle behaviors
-	//c = engine->RegisterObjectBehaviour("Scene@", asBEHAVE_FACTORY,   "void f()", asFunctionPtr(SceneReference::Factory),   asCALL_CDECL_OBJLAST);    assert(c >= 0);
-
 	c = engine->RegisterObjectBehaviour("Scene", asBEHAVE_ADDREF,     "void f()",	asFunctionPtr(SceneReference::AddRef),    asCALL_CDECL_OBJLAST);    assert(c >= 0);
 	c = engine->RegisterObjectBehaviour("Scene", asBEHAVE_RELEASE,    "void f()",	asFunctionPtr(SceneReference::Release),   asCALL_CDECL_OBJLAST);    assert(c >= 0);
 

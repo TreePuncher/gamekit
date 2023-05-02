@@ -176,7 +176,7 @@ ViewportGameObject_ptr ViewportScene::CreateObject(ViewportGameObject* parent)
 		node.SetParentNode(parentNode);
 	}
 
-	OnSceneChange();
+	OnSceneChangeSignal();
 
 	return obj;
 }
@@ -363,7 +363,7 @@ void ViewportScene::_RemoveObject(ViewportGameObject_ptr object)
 			return obj == object;
 		});
 
-	OnSceneChange();
+	OnSceneChangeSignal();
 }
 
 
@@ -376,7 +376,7 @@ void ViewportScene::_ReAddObject(ViewportGameObject_ptr object)
 	scene.AddGameObject(object->gameObject);
 	sceneObjects.push_back(object);
 
-	OnSceneChange();
+	OnSceneChangeSignal();
 }
 
 

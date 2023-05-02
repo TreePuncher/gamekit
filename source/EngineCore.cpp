@@ -81,18 +81,6 @@ namespace FlexKit
 
 	EngineMemory* CreateEngineMemory()
 	{
-		bool ThrowAway;
-		return CreateEngineMemory(ThrowAway);
-	}
-
-
-	/************************************************************************************************/
-
-
-	EngineMemory* CreateEngineMemory(bool& Success)
-	{
-		Success = false;
-
 		const auto preallocationSize = sizeof(EngineMemory);
 		auto* Memory = new(_aligned_malloc(preallocationSize, 0x40)) EngineMemory{};
 
@@ -102,7 +90,6 @@ namespace FlexKit
 			return nullptr;
 		}
 
-		Success = true;
 		return Memory;
 	}
 

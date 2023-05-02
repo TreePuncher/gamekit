@@ -67,6 +67,7 @@ public:
 
 	void resizeEvent	(QResizeEvent* event) override;
 	void SetScene		(EditorScene_ptr scene, EditorProject& proj);
+	void ClearScene		();
 
 	std::shared_ptr<ViewportScene>& GetScene();
 	SelectionContext&				GetSelectionContext();
@@ -86,7 +87,7 @@ public:
 	FlexKit::TriMeshHandle LoadTriMeshResource(ProjectResource_ptr res);
 
 	FlexKit::MaterialHandle	gbufferPass;
-	FlexKit::Signal<void()>	sceneChangeSlot;
+	FlexKit::Signal<void()>	sceneChangeSignal;
 
 protected:
 	void keyPressEvent		(QKeyEvent* event) override;
