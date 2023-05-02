@@ -26,7 +26,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TextRendering.h"
 #include "defaultpipelinestates.h"
 
-
 namespace FlexKit
 {	/************************************************************************************************/
 
@@ -45,10 +44,10 @@ namespace FlexKit
 
 
 	Console::Console(SpriteFontAsset* IN_font, RenderSystem& IN_renderSystem, iAllocator* IN_allocator) :
-        vertexBuffer    { IN_renderSystem.CreateVertexBuffer(8096 * 64, false)     },
-        textBuffer      { IN_renderSystem.CreateVertexBuffer(8096 * 64, false)     },
-        constantBuffer  { IN_renderSystem.CreateConstantBuffer(1024 * 32, false)   },
-        renderSystem    { IN_renderSystem }
+		vertexBuffer    { IN_renderSystem.CreateVertexBuffer(8096 * 64, false)     },
+		textBuffer      { IN_renderSystem.CreateVertexBuffer(8096 * 64, false)     },
+		constantBuffer  { IN_renderSystem.CreateConstantBuffer(1024 * 32, false)   },
+		renderSystem    { IN_renderSystem }
 	{
 		lines.clear();
 		allocator					 = IN_allocator;
@@ -116,19 +115,19 @@ namespace FlexKit
 		const float		AspectRatio			= float(WindowWH[0]) / float(WindowWH[1]);
 		const float2	StartingPosition	= float2{ 1	, 0.5f + (FontSize[1] * PixelSize[1]) };
 
-        FK_ASSERT(0);
-        /*
+		FK_ASSERT(0);
+		/*
 		DrawShapes(
 				DRAW_PSO, graph, 
 				vertexBuffer,
 				constantBuffer,
 				renderTarget,
 				allocator,
-            RectangleShape{
-                float2{0.0f	, 0.0f},
-                StartingPosition, //
-                { 0.25f, 0.25f, 0.25f, 1.0f } });
-        */
+			RectangleShape{
+				float2{0.0f	, 0.0f},
+				StartingPosition, //
+				{ 0.25f, 0.25f, 0.25f, 1.0f } });
+		*/
 
 		size_t	itr				= 1;
 		float	y				= 0.5f - float(1 + (itr)) * LineHeight;
@@ -219,7 +218,7 @@ namespace FlexKit
 			if (!strncmp(
 				variable.VariableIdentifier.str, 
 				variableIdentifier, 
-                Min(strlen(
+				Min(strlen(
 					variable.VariableIdentifier.str), Arguments->Data_size)))
 			{
 				if (variable.Type == ConsoleVariableType::CONSOLE_BOOL) {

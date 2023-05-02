@@ -10,10 +10,10 @@ namespace FlexKit
 	struct DebugPanel : public FrameworkState
 	{
 		DebugPanel(GameFramework& framework, FrameworkState& IN_topState) :
-            FrameworkState  { framework         },
-            topState        { IN_topState       },
-            core            { framework.core    },
-            console         { framework.console }
+			FrameworkState  { framework         },
+			topState        { IN_topState       },
+			core            { framework.core    },
+			console         { framework.console }
 		{
 			pauseBackgroundLogic = true;
 		}
@@ -28,8 +28,8 @@ namespace FlexKit
 		size_t			recallIndex;
 		Console&		console;
 		EngineCore&		core;
-        FrameworkState& topState;
-        IRenderWindow*  renderWindow = nullptr;
+		FrameworkState& topState;
+		IRenderWindow*  renderWindow = nullptr;
 
 		void IncrementRecallIndex();
 		void DecrementRecallIndex();

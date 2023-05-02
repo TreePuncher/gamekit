@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Application.h>
 #include <CameraUtilities.h>
 #include <MathUtils.h>
 #include <ModifiableShape.h>

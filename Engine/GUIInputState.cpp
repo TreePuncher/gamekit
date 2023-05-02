@@ -81,6 +81,7 @@ namespace FlexKit
 	}
 
 
+	/*
 	InputState*	CreateTextBoxInputState(GameFramework* framework, GUITextBoxHandle Handle, iAllocator* Memory, size_t BufferSize)
 	{
 		InputState* State = &Memory->allocate_aligned<InputState>();
@@ -93,5 +94,6 @@ namespace FlexKit
 
 		return State;
 	}
+	*/
 
 }// Namespace FlexKit

@@ -15,7 +15,7 @@ int main()
 		auto* allocator = FlexKit::CreateEngineMemory();
 		EXITSCOPE(ReleaseEngineMemory(allocator));
 
-		auto app = std::make_unique<FlexKit::FKApplication>(allocator, FlexKit::Max(std::thread::hardware_concurrency() / 2, 1u) - 1);
+		auto app = std::make_unique<FlexKit::FKApplication>(allocator);
 		
 		auto& state = app->PushState<HairRenderingTest>();
 

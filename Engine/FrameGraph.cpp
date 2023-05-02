@@ -2,9 +2,14 @@
 #include "FrameGraph.h"
 #include "Logging.h"
 #include <fmt/core.h>
+#include <ranges>
+
 
 namespace FlexKit
 {	/************************************************************************************************/
+
+	using std::views::iota;
+	using std::views::zip;
 
 
 	FrameGraphNode::FrameGraphNode(FrameGraphNodeHandle IN_handle, FN_NodeGetWorkItems IN_action, void* IN_nodeData, iAllocator* IN_allocator) :

@@ -1,10 +1,17 @@
-#include "TextureStreamingUtilities.h"
-#include "ProfilingUtilities.h"
+#include "ClusteredRendering.h"
+#include "CoreSceneObjects.h"
 #include "Graphics.h"
+#include "ProfilingUtilities.h"
+#include "TextureStreamingUtilities.h"
+#include "WorldRender.h"
 #include <range/v3/all.hpp>
+#include <ranges>
+
 
 namespace FlexKit
 {   /************************************************************************************************/
+	using std::views::iota;
+	using std::views::zip;
 
 
 	DDSInfo GetDDSInfo(AssetHandle assetID, ReadContext& ctx)

@@ -7,7 +7,7 @@
 #include <WorldRender.h>
 #include <Win32Graphics.h>
 #include <DebugUI.h>
-#include <..\source\Signals.h>
+#include <Signals.h>
 #include <ScriptingRuntime.h>
 
 #include "Generator.h"

@@ -127,9 +127,6 @@
     <ClCompile Include="EditorOutliner.cpp">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="PCH.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
     <ClCompile Include="ExtraTu.cpp">
       <Filter>Source</Filter>
     </ClCompile>
@@ -218,6 +215,9 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorTextureImporter.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
       <Filter>Source</Filter>
     </ClCompile>
   </ItemGroup>

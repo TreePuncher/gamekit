@@ -29,9 +29,6 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ThirdPartyTU.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="TextureStreamingTest.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

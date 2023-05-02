@@ -7,7 +7,7 @@
 #include <PhysicsDebugVis.h>
 #include <TriggerSlotIDs.hpp>
 #include <ScriptingRuntime.h>
-
+#include <fmt/format.h>
 
 using namespace FlexKit;
 
@@ -384,7 +384,7 @@ FlexKit::UpdateTask* PhysicsTest::Draw(FlexKit::UpdateTask* update, FlexKit::Eng
 		core.GetTempMemoryMT()
 	);
 
-	textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, reserveCB, reserveVB);
+	textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, reserveCB, reserveVB, core.GetTempMemoryMT());
 	RenderPhysicsOverlay(frameGraph, targets.RenderTarget, depthBuffer.Get(), currentLevel->layer, activeCamera, reserveVB, reserveCB);
 
 	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow.GetBackBuffer());

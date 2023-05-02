@@ -1,5 +1,9 @@
 #include "pch.h"
+#include "Application.h"
+#include "CameraUtilities.h"
 #include "Gregory.h"
+#include "PipelineState.h"
+#include "Win32Graphics.h"
 
 constexpr FlexKit::PSOHandle ACCQuad				= FlexKit::PSOHandle(GetTypeGUID(ACCQuad));
 constexpr FlexKit::PSOHandle ACCQuadWireframe		= FlexKit::PSOHandle(GetTypeGUID(ACCQuadWireframe));
@@ -331,7 +335,7 @@ public:
 		auto& transformUpdate   = QueueTransformUpdateTask(dispatcher);
 		auto& cameraUpdate      = CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
 
-		frameGraph.dataDependencies.push_back(&orbitCameraUpdate);
+		frameGraph.AddTaskDependency(orbitCameraUpdate);
 
 		DrawPatch(dispatcher, frameGraph);
 
@@ -679,7 +683,7 @@ int main()
 		auto* allocator = FlexKit::CreateEngineMemory();
 		EXITSCOPE(ReleaseEngineMemory(allocator));
 
-		FlexKit::FKApplication app{ allocator, FlexKit::Max(std::thread::hardware_concurrency() / 2, 1u) - 1 };
+		FlexKit::FKApplication app{ allocator };
 
 		auto& state = app.PushState<TessellationTest>(0);
 

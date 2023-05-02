@@ -1,9 +1,13 @@
 #include "GILightingUtilities.h"
 #include "SVOGI.h"
 #include <range/v3/all.hpp>
+#include <ranges>
+
 
 namespace FlexKit
 {   /************************************************************************************************/
+	using std::views::iota;
+	using std::views::zip;
 
 
 	class Null_Technqiue : public GITechniqueInterface

@@ -43,7 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-	typedef uint2 TileID;
+	typedef uint2 MapTileID;
 
 	struct FLEXKITAPI DungeonGenerator
 	{
@@ -75,7 +75,7 @@ namespace FlexKit
 			DoorWay       = 'A',
 			Corridor      = '_',
 			Connector     = 'X',
-			DEBUG         = 'D'
+			Debug         = 'D'
 		};
 
 		typedef void(*ScanCallBack)(byte* _ptr, Tile in[3][3], uint2 POS, uint2 BPOS, DungeonGenerator* D);
@@ -83,19 +83,19 @@ namespace FlexKit
 		void BlockScanCallBack	(ScanCallBack out, byte* _ptr, uint2 XY, uint2 HW);
 		void DungeonScanCallBack(ScanCallBack out, byte* _ptr);
 
-		TileID TileStack[DUNGEONGRIDHEIGHT * DUNGEONGRIDWIDTH];
+		MapTileID TileStack[DUNGEONGRIDHEIGHT * DUNGEONGRIDWIDTH];
 		size_t TileStackSize;
 
 
-		TileID PopBack();
+		MapTileID PopBack();
 		void RemoveTileID(size_t i);
 
-		inline void PushBackTileID(TileID c) { TileStack[TileStackSize++] = c; }
+		inline void PushBackTileID(MapTileID c) { TileStack[TileStackSize++] = c; }
 		inline void ClearStack(){ TileStackSize = 0; }
 
-		inline TileID	GetTile()					{ return TileStack[TileStackSize - 1]; } // Gets Last Node }
-		inline Tile		GetTile(TileID POS)			{ return Tiles[POS[1]][POS[0]]; }
-		inline void		SetTile(TileID POS, Tile t)	{ Tiles[POS[1]][POS[0]] = t; }
+		inline MapTileID	GetTile()					{ return TileStack[TileStackSize - 1]; } // Gets Last Node }
+		inline Tile			GetTile(MapTileID POS)			{ return Tiles[POS[1]][POS[0]]; }
+		inline void			SetTile(MapTileID POS, Tile t)	{ Tiles[POS[1]][POS[0]] = t; }
 
 		Tile	Tiles[DUNGEONGRIDHEIGHT][DUNGEONGRIDWIDTH];
 		struct  Room
@@ -122,12 +122,12 @@ namespace FlexKit
 		void	ConnectRooms();
 		void	GenerateHallways();
 
-		bool	isTileIDInGrid	(TileID C);
-		bool	CanCarve		(TileID C);
-		bool	CanCarveInD		(TileID C, int D);
+		bool	isTileIDInGrid	(MapTileID C);
+		bool	CanCarve		(MapTileID C);
+		bool	CanCarveInD		(MapTileID C, int D);
 
-		int		NeighborCount		(TileID C);
-		int		DiagnalNeighborCount(TileID C);
+		int		NeighborCount		(MapTileID C);
+		int		DiagnalNeighborCount(MapTileID C);
 
 		void	GrowMaze	(size_t x, size_t y);
 		void	RemoveRoom	(size_t I);

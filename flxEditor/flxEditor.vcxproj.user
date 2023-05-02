@@ -22,6 +22,6 @@
     <QtLastBackgroundBuild>2023-04-07T02:41:10.5529293Z</QtLastBackgroundBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'" Label="QtSettings">
-    <QtLastBackgroundBuild>2023-04-07T02:41:10.6697591Z</QtLastBackgroundBuild>
+    <QtLastBackgroundBuild>2023-05-02T19:30:47.4630804Z</QtLastBackgroundBuild>
   </PropertyGroup>
 </Project>

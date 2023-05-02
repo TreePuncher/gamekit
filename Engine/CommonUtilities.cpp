@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2016 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -22,46 +22,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#ifndef GUIINPUTSTATE_H
-#define GUIINPUTSTATE_H
+#include "CommonStructs.h"
+#include "memoryutilities.h"
+#include "graphics.h"
+#include "MeshUtils.h"
 
-#include "GameFramework.h"
-#include "GuiUtilities.h"
+using FlexKit::RenderSystem;
+using FlexKit::static_vector;
+using FlexKit::SceneNodes;
 
-namespace FlexKit
-{
-	struct InputState;
 
-	struct ARROW_DIRECTION
-	{
-		enum : char
-		{
-			UP,
-			DOWN,
-			LEFT,
-			RIGHT
-		};
-	};
-
-	typedef char ARROW_DIR;
-
-	typedef void (*InputStateCallback_ARROW)		(InputState* InputState, ARROW_DIR);
-	typedef void (*InputStateCallback_CHARACTER)	(InputState* InputState, char c);
-	typedef void (*InputStateCallback_KEY)			(InputState* InputState);
-
-	struct InputState : public FlexKit::FrameworkState
-	{
-		InputStateCallback_ARROW		OnArrow		= nullptr;	
-		InputStateCallback_CHARACTER	OnChar		= nullptr;
-		InputStateCallback_KEY			OnEnter		= nullptr;
-		InputStateCallback_KEY			OnBackSpace	= nullptr;
-
-		void* USR;
-	};
-
-	InputState*	CreateTextBoxInputState(GameFramework* framework, GUITextBoxHandle Handle, iAllocator* Memory, size_t BufferSize);
-
-	bool GUIInputEventHandler_Helper(FrameworkState* StateMemory, Event evt);
-}
-
-#endif
+/************************************************************************************************/

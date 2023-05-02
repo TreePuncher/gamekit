@@ -537,11 +537,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	inline bool CheckCompatibleLayout(const DeviceLayout currentLayout, const DeviceLayout requestedLayout)
 	{
-		switch (currentLayout)
-		{
-		default:
+		//switch (currentLayout)
+		//{
+		//default:
 			return currentLayout == requestedLayout;
-		}
+		//}
 	}
 
 

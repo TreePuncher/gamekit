@@ -1,6 +1,8 @@
 #include "AnimationRendering.h"
 #include "graphics.h"
+#include <fmt/format.h>
 #include <ranges>
+
 
 namespace FlexKit
 {	/************************************************************************************************/
