@@ -201,7 +201,7 @@ namespace FlexKit
 
 	void DungeonGenerator::GrowMaze(size_t x, size_t y)
 	{
-		TileID c = {x, y};
+		MapTileID c = {x, y};
 
 		PushBackTileID(c);
 		char LastDir = 1;
@@ -293,7 +293,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	int DungeonGenerator::DiagnalNeighborCount(TileID C)
+	int DungeonGenerator::DiagnalNeighborCount(MapTileID C)
 	{
 		auto tile = GetTile(C);
 
@@ -329,7 +329,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	int DungeonGenerator::NeighborCount(TileID C)
+	int DungeonGenerator::NeighborCount(MapTileID C)
 	{
 		auto tile = GetTile(C);
 
@@ -361,7 +361,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	bool DungeonGenerator::CanCarveInD(TileID C, int D)
+	bool DungeonGenerator::CanCarveInD(MapTileID C, int D)
 	{
 		// Redo this Function to Use Step Values instead
 		int m = 3;
@@ -448,7 +448,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	bool DungeonGenerator::CanCarve(TileID C)
+	bool DungeonGenerator::CanCarve(MapTileID C)
 	{
 		auto Y = C[1];
 		auto X = C[0];
@@ -469,7 +469,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	bool DungeonGenerator::isTileIDInGrid(TileID C)
+	bool DungeonGenerator::isTileIDInGrid(MapTileID C)
 	{
 		auto Y = C[1];
 		auto X = C[0];
@@ -518,8 +518,8 @@ namespace FlexKit
 			uint2 ScanPosition = ScanStart;
 
 #ifdef _DEBUG
-			SetTile(RoomPOS, DEBUG);
-			SetTile(ScanStart, DEBUG);
+			SetTile(RoomPOS, Tile::Debug);
+			SetTile(ScanStart, Tile::Debug);
 #endif	
 
 			int2 debug = int2{ int(r.Width / 2), int(r.Height / 2) };
@@ -622,13 +622,13 @@ namespace FlexKit
 					// Connection Between Rooms and Hallways
 					if ((GetTile(POS) == Empty) && (GetTile(POS + Directions[dir]) == FLOOR_Dungeon) && (GetTile(POS - Directions[dir]) == Corridor))
 					{
-						PushBackTileID(TileID(POS));
+						PushBackTileID(MapTileID(POS));
 						SetTile(POS, Connector);
 					}
 					// Connection Between Rooms
 					if ((GetTile(POS) == Empty) && (GetTile(POS + Directions[dir]) == FLOOR_Dungeon) && (GetTile(POS - Directions[dir]) == FLOOR_Dungeon))
 					{
-						PushBackTileID(TileID(POS));
+						PushBackTileID(MapTileID(POS));
 						SetTile(POS, Connector);
 					}
 				}
@@ -738,8 +738,8 @@ namespace FlexKit
 		for (size_t i = 0; i < WOffset; ++i)
 			for (size_t i2 = 0; i2 < WOffset; ++i2)
 			{
-				if (isTileIDInGrid(TileID{ size_t(XStart - 1), size_t(YStart - 1) }) &&
-					isTileIDInGrid(TileID{ size_t(XStart + 1), size_t(YStart + 1) }))
+				if (isTileIDInGrid(MapTileID{ size_t(XStart - 1), size_t(YStart - 1) }) &&
+					isTileIDInGrid(MapTileID{ size_t(XStart + 1), size_t(YStart + 1) }))
 				{
 					// Gather Tiles
 					for (size_t i3 = 0; i3 < 3; ++i3)
@@ -781,7 +781,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	TileID DungeonGenerator::PopBack()
+	MapTileID DungeonGenerator::PopBack()
 	{
 		return TileStack[--TileStackSize];
 	}
@@ -790,7 +790,7 @@ namespace FlexKit
 
 	void DungeonGenerator::RemoveTileID(size_t i)
 	{
-		TileID t = TileStack[i];
+		MapTileID t = TileStack[i];
 		TileStack[i] = TileStack[TileStackSize - 1];
 		TileStackSize--; 
 	}

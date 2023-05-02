@@ -733,15 +733,18 @@ namespace FlexKit
 		BlockAllocator& operator = (const BlockAllocator&) = delete;
 
 
-		void Init( BlockAllocator_desc& in )
+		void Init(BlockAllocator_desc& in)
 		{
 			Small	= in.SmallBlock;
 			Medium	= in.MediumBlock;
 			Large	= in.LargeBlock;
 
-			SmallBlockAlloc.Initialise	(in.SmallBlock,		(byte*)::_aligned_malloc(Small,		0x40));
-			MediumBlockAlloc.Initialise	(in.MediumBlock,	(byte*)::_aligned_malloc(Medium,	0x40));
-			LargeBlockAlloc.Initialise	(in.LargeBlock,		(byte*)::_aligned_malloc(Large,		0x40));
+			if (in._ptr == nullptr)
+				in._ptr = (byte*)::_aligned_malloc(Small + Medium + Large, 16);
+
+			SmallBlockAlloc.Initialise	(in.SmallBlock,		in._ptr + 0);
+			MediumBlockAlloc.Initialise	(in.MediumBlock,	in._ptr + Small);
+			LargeBlockAlloc.Initialise	(in.LargeBlock,		in._ptr + Small + Medium);
 
 			new(&AllocatorInterface) iBlockAllocator(this);
 		}

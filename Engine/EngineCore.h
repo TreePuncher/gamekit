@@ -94,27 +94,22 @@ namespace FlexKit
 
 	struct EngineMemory
 	{
-		EngineMemory() :
+		EngineMemory(BlockAllocator_desc& desc, size_t tempAllocatorSize = TEMPBUFFERSIZE) :
 			BlockAllocator	{},
 			TempAllocator	{},
 			TempAllocatorMT	{ TempAllocator }
 		{
-			BlockAllocator_desc BAdesc;
-			BAdesc.SmallBlock   = BLOCKALLOCSIZE / 4;
-			BAdesc.MediumBlock  = BLOCKALLOCSIZE / 4;
-			BAdesc.LargeBlock   = BLOCKALLOCSIZE / 2;
-
-			BlockAllocator.Init(BAdesc);
-			TempAllocator.Init((byte*)_aligned_malloc(TEMPBUFFERSIZE, 0x10), TEMPBUFFERSIZE);
+			BlockAllocator.Init(desc);
+			TempAllocator.Init((byte*)_aligned_malloc(TEMPBUFFERSIZE, 0x10), tempAllocatorSize);
 		}
 
-		BlockAllocator	    BlockAllocator;
-		StackAllocator	    TempAllocator;
-		ThreadSafeAllocator TempAllocatorMT;
+		BlockAllocator		BlockAllocator;
+		StackAllocator		TempAllocator;
+		ThreadSafeAllocator	TempAllocatorMT;
 
-		auto GetBlockMemory() -> auto&	    { return BlockAllocator;    }
-		auto GetTempMemory()  -> auto&	    { return TempAllocator;     }
-		auto GetTempMemoryMT()  -> auto&	{ return TempAllocatorMT;   }
+		auto GetBlockMemory() -> auto&	{ return BlockAllocator;	}
+		auto GetTempMemory() -> auto&	{ return TempAllocator;		}
+		auto GetTempMemoryMT() -> auto&	{ return TempAllocatorMT;	}
 	};
 
 

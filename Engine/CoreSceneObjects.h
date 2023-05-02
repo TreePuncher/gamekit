@@ -199,6 +199,7 @@ namespace FlexKit
 	typedef Vector<PVEntry> PVS;
 
 	size_t CreateSortingID(bool Posed, bool Textured, size_t Depth);
+	Camera::ConstantBuffer CalculateCameraConstants(const float aspectRatio, const float FOV, const float minZ, const float maxZ, const float4x4& WT, const float4x4& View);
 
 	FLEXKITAPI void SortPVS				(PVS* PVS_, Camera* C);
 	FLEXKITAPI void SortPVSTransparent	(PVS* PVS_, Camera* C);

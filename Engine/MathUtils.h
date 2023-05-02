@@ -18,6 +18,14 @@
 #include <type_traits>
 #include <concepts>
 
+#ifdef max
+#undef max
+#endif
+
+#ifdef min
+#undef min
+#endif
+
 namespace FlexKit
 {   /************************************************************************************************/
 

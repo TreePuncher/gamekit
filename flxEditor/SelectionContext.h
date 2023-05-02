@@ -4,7 +4,7 @@
 #include <optional>
 
 #include "type.h"
-#include "Signal.h"
+#include "Signals.h"
 
 using SelectionTypeID = std::uint32_t;
 

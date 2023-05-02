@@ -21,12 +21,6 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\source\AllSourceFiles.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdPartyTU.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="HairRenderingExample.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

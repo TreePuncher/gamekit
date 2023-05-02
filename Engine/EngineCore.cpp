@@ -81,8 +81,13 @@ namespace FlexKit
 
 	EngineMemory* CreateEngineMemory()
 	{
+		BlockAllocator_desc BAdesc;
+		BAdesc.SmallBlock   = BLOCKALLOCSIZE / 4;
+		BAdesc.MediumBlock  = BLOCKALLOCSIZE / 4;
+		BAdesc.LargeBlock   = BLOCKALLOCSIZE / 2;
+
 		const auto preallocationSize = sizeof(EngineMemory);
-		auto* Memory = new(_aligned_malloc(preallocationSize, 0x40)) EngineMemory{};
+		auto* Memory = new(_aligned_malloc(preallocationSize, 0x40)) EngineMemory{ BAdesc };
 
 		FK_ASSERT(Memory != nullptr, "Memory Allocation Error!");
 

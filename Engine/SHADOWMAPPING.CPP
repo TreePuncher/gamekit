@@ -4,9 +4,12 @@
 #include "AnimationRendering.h"
 #include <fmt/format.h>
 #include <limits>
+#include <ranges>
 
 namespace FlexKit
 {   /************************************************************************************************/
+	using std::views::iota;
+	using std::views::zip;
 
 
 	ID3D12PipelineState* ShadowMapper::CreateRowSums(RenderSystem* RS)

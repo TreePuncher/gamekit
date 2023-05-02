@@ -1,4 +1,6 @@
-#include "pch.h"
+#include <fmt\printf.h>
+#include <fp16.h>
+
 
 #include <Application.h>
 #include <Scene.h>
@@ -9,13 +11,15 @@
 #include <Win32Graphics.h>
 #include <DebugUI.h>
 #include <imgui.h>
-#include <..\source\Signals.h>
+#include <Signals.h>
 #include <CameraUtilities.h>
 #include <SceneLoadingContext.h>
 #include <ranges>
 
 using namespace FlexKit;
 
+using std::views::iota;
+using std::views::zip;
 
 /************************************************************************************************/
 
@@ -141,7 +145,7 @@ public:
 
 		auto res = scene.Query(framework.core.GetBlockMemory(), LightQuery{}, GameObjectReq{});
 
-		for (auto&& [idx, queryRes] : zip(iota(0),  res))
+		for (auto&& [idx, queryRes] : zip(std::views::iota(0),  res))
 		{
 			auto& [lightView, gameObject] = queryRes.value();
 			lightView.SetRadius(50.0f);
@@ -388,7 +392,7 @@ int main()
 		auto* allocator = FlexKit::CreateEngineMemory();
 		EXITSCOPE(ReleaseEngineMemory(allocator));
 
-		auto app = std::make_unique<FlexKit::FKApplication>(allocator, FlexKit::Max(std::thread::hardware_concurrency() / 2, 1u) - 1);
+		auto app = std::make_unique<FlexKit::FKApplication>(allocator);
 
 		app->PushState<ShapeKeyTest>();
 		app->GetCore().FPSLimit = 144;

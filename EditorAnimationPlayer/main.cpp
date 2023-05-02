@@ -1,6 +1,7 @@
-#include "pch.h"
 #include <Application.h>
 #include <boost/interprocess/shared_memory_object.hpp>
+#include <boost/interprocess/mapped_region.hpp>
+#include <SharedEngineMemory.hpp>
 
 using namespace boost::interprocess;
 
@@ -8,19 +9,16 @@ int main()
 {
 	try
 	{
-		shared_memory_object shm_obj
-		(	open_or_create			//open or create
-			, "shared_memory"		//name
-			, read_only				//read-only mode
-		);
+		shared_memory_object shm_obj(
+			open_or_create,
+			"shared_memory",
+			read_write);
 
-		shm_obj.truncate(4096 * MEGABYTE);
+		auto sharedMemory = AllocateSharedEngineMemory(shm_obj);
+		EXITSCOPE(ReleaseSharedEngineMemory(sharedMemory));
 
-		auto* allocator = FlexKit::CreateEngineMemory();
-		EXITSCOPE(ReleaseEngineMemory(allocator));
-
-		auto app = std::make_unique<FlexKit::FKApplication>(allocator);
-
+		auto app = std::make_unique<FlexKit::FKApplication>(sharedMemory.allocation);
+		
 		app->GetCore().FPSLimit		= 90;
 		app->GetCore().FrameLock	= false;
 		app->GetCore().vSync		= true;
