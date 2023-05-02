@@ -819,6 +819,8 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
 
 			return material;
 		}();
+
+	sceneChangeSignal.SetDebugPtr("EditorViewport::sceneChangeSignal");
 }
 
 
@@ -827,6 +829,7 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
 
 EditorViewport ::~EditorViewport()
 {
+	ClearScene();
 }
 
 
@@ -1050,7 +1053,17 @@ void EditorViewport::SetScene(EditorScene_ptr newScene, EditorProject& proj)
 	}
 
 	scene = viewportScene;
-	sceneChangeSlot();
+	sceneChangeSignal();
+}
+
+
+/************************************************************************************************/
+
+
+void EditorViewport::ClearScene()
+{
+	scene.reset();
+	sceneChangeSignal();
 }
 
 

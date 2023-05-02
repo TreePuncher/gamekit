@@ -53,6 +53,7 @@ public:
 	EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngine& scriptEngine, EditorProject& IN_project, QApplication& application, QWidget *parent = Q_NULLPTR);
 	~EditorMainWindow();
 
+	void Release();
 
 	void					AddImporter(iEditorImportor* importer);
 	void					AddExporter(iEditorExporter* exporter);
@@ -75,7 +76,7 @@ public:
 
 	EditorViewport&			Get3DView()			{ return *viewport; }
 	SelectionContext&		GetSelectionCtx()	{ return selectionContext; };
-	EditorPrefabEditor*		GetPrefabEditor()	{ return prefabEditor; };
+	EditorPrefabEditor*		GetPrefabEditor()	{ return prefabEditor.get(); };
 
 
 	void RegisterGadget(iEditorGadget* gadget);
@@ -86,6 +87,7 @@ public:
 	void showEvent(QShowEvent* event) override {}
 
 	QMenu* GetFileMenu() { return fileMenu; }
+
 
 public slots:
 
@@ -102,13 +104,14 @@ private:
 	SelectionContext	selectionContext;
 	EditorScriptEngine&	scriptEngine;
 
-	QTabWidget*			tabBar;
-	EditorViewport*		viewport;
+	QTabWidget*							tabBar;
+
 	QApplication&		QtApplication;
 	EditorProject&		project;
 	EditorRenderer&		renderer;
 
-	EditorPrefabEditor*	prefabEditor;
+	std::unique_ptr<EditorViewport>		viewport;
+	std::unique_ptr<EditorPrefabEditor>	prefabEditor;
 
 	QMenu*				fileMenu	= nullptr;
 	QMenu*				editMenu	= nullptr;

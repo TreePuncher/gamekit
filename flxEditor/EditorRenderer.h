@@ -89,7 +89,6 @@ private:
 	// Editor Only Components
 	CSGComponent csg;
 
-
 	QApplication&					QtApplication;
 	FlexKit::FKApplication&			application;
 	std::vector<DXRenderWindow*>	renderWindows;

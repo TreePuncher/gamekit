@@ -115,6 +115,12 @@ namespace FlexKit
 					callable(std::forward<TY_args>(args)...);
 			}
 
+			void SetDebugPtr(const char* _ptr)
+			{
+#if _DEBUG
+				debug = _ptr;
+#endif
+			}
 
 		private:
 
@@ -126,6 +132,10 @@ namespace FlexKit
 
 			TypeErasedCallable<FNDef, 32>		callable;
 			Vector<SignalEntry, 4, uint32_t>	signalTable;
+
+#if _DEBUG
+			const char*							debug;
+#endif
 		};
 
 	protected:
@@ -244,16 +254,25 @@ namespace FlexKit
 
 		void DiconnectAll()
 		{
-			for( auto entry : outputSlots )
-				entry.slot->Remove(this);
+			auto outputSlots_temp = std::move(outputSlots);
 
-			outputSlots.clear();
+			for( auto entry : outputSlots_temp)
+				entry.slot->Remove(this);
 		}
 
-
+		void SetDebugPtr(const char* _ptr)
+		{
+#if _DEBUG
+			debug = _ptr;
+#endif
+		}
 	private:
 		Vector<SlotEntry, 4, uint32_t>	outputSlots;
 		iAllocator*						allocator = nullptr;
+
+#if _DEBUG
+		const char*						debug = nullptr;
+#endif
 	};
 
 

@@ -350,14 +350,17 @@ SceneOutliner::SceneOutliner(EditorViewport& IN_viewport, QWidget *parent) :
 		SIGNAL(customContextMenuRequested(const QPoint&)),
 		SLOT(ShowContextMenu(const QPoint&)));
 
-	viewport.sceneChangeSlot.Connect(sceneChangeSlot,
+	viewport.sceneChangeSignal.Connect(sceneChangeSlot,
 		[&]
 		{
 			treeWidget.clear();
 			treeWidget.widgetMap.clear();
 
-			viewport.GetScene()->OnSceneChange.Connect(sceneChangeSlot, [&] { Update(); });
+			if(auto& scene = viewport.GetScene(); scene)
+				scene->OnSceneChangeSignal.Connect(sceneChangeSlot, [&] { Update(); });
 		});
+
+	sceneChangeSlot.SetDebugPtr("SceneOutliner::sceneChangeSlot");
 }
 
 
@@ -379,7 +382,7 @@ void SceneOutliner::Update()
 	treeWidget.repaint();
 
 	timer->stop();
-	timer->start(500ms);
+	timer->start(100ms);
 }
 
 

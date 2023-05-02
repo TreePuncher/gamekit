@@ -14,10 +14,12 @@ int main()
 			, read_only				//read-only mode
 		);
 
+		shm_obj.truncate(4096 * MEGABYTE);
+
 		auto* allocator = FlexKit::CreateEngineMemory();
 		EXITSCOPE(ReleaseEngineMemory(allocator));
 
-		auto app = std::make_unique<FlexKit::FKApplication>(allocator, FlexKit::Max(std::thread::hardware_concurrency() / 2, 1u) - 1);
+		auto app = std::make_unique<FlexKit::FKApplication>(allocator);
 
 		app->GetCore().FPSLimit		= 90;
 		app->GetCore().FrameLock	= false;

@@ -19,10 +19,14 @@ int main(int argc, char* argv[])
 	auto seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
 	srand(seed);
 
-	auto qtApplication	= new QApplication{ argc, argv };
-	auto editor			= new EditorApplication{ *qtApplication };
+	auto qtApplication	= std::make_unique<QApplication>( argc, argv );
+	auto editor			= std::make_unique<EditorApplication>(*qtApplication);
 
-	return qtApplication->exec();
+	auto ret = qtApplication->exec();
+
+	editor.reset();
+
+	return ret;
 }
 
 

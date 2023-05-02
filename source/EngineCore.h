@@ -95,9 +95,9 @@ namespace FlexKit
 	struct EngineMemory
 	{
 		EngineMemory() :
-			BlockAllocator{},
-			TempAllocator{},
-			TempAllocatorMT{ TempAllocator }
+			BlockAllocator	{},
+			TempAllocator	{},
+			TempAllocatorMT	{ TempAllocator }
 		{
 			BlockAllocator_desc BAdesc;
 			BAdesc.SmallBlock   = BLOCKALLOCSIZE / 4;
@@ -123,7 +123,7 @@ namespace FlexKit
 
 	struct CoreOptions
 	{
-		uint32_t	threadCount		= 4;
+		uint32_t	threadCount		= FlexKit::Max(std::thread::hardware_concurrency() / 2, 1u) - 1;
 		bool		GPUdebugMode	= false;
 		bool		GPUValidation	= false;
 		bool		GPUSyncQueues	= false;

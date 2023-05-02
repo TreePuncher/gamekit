@@ -345,12 +345,6 @@ namespace FlexKit
 								iAllocator*						allocator);
 
 
-		void ReleaseFrameResources(
-								FrameGraph&						rameGraph,
-								LightBufferUpdate&				lightPass,
-								ClusteredDeferredShading&		ClusteredDeferredShading);
-
-
 		DEBUGVIS_DrawBVH& DEBUGVIS_DrawLightBVH(
 								UpdateDispatcher&				dispatcher,
 								FrameGraph&						frameGraph,
