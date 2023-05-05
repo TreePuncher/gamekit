@@ -1,5 +1,7 @@
 #pragma once
 
+#include <buildsettings.h>
+
 #include <filesystem>
 #include <iostream>
 #include <map>

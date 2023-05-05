@@ -254,10 +254,19 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="EditorPlayer.cpp" />
     <ClCompile Include="EditorSceneEntityComponents.cpp" />
     <ClCompile Include="EditorSelectedPrefabObject.cpp" />
-    <ClCompile Include="EditorPrefabRenderer.cpp" />
+    <ClCompile Include="EditorPrefabRenderer.cpp">
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">%(Filename).moc</QtMocFileName>
+    </ClCompile>
     <QtMoc Include="EditorSelectObjectDialog.h" />
+    <ClInclude Include="EditorPlayer.h" />
     <ClInclude Include="EditorSceneEntityComponents.h" />
     <ClInclude Include="EditorTextureImporter.h" />
     <ClInclude Include="EditorUndoRedo.h" />
@@ -383,7 +392,7 @@
     <QtMoc Include="EditorInspectorView.h" />
     <QtMoc Include="EditorResourcePickerDialog.h" />
     <ClInclude Include="EditorPrefabObject.h" />
-    <ClInclude Include="EditorPrefabRenderer.h" />
+    <QtMoc Include="EditorPrefabRenderer.h" />
     <ClInclude Include="FBXResourceUtilities.h" />
     <ClInclude Include="EditorGameplayComponents.hpp" />
     <ClInclude Include="gltfImport.h" />

@@ -1363,9 +1363,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	struct PackedResourceTileInfo
 	{
-		size_t startingLevel;
-		size_t endingLevel;
-		size_t startingTileIndex;
+		uint32_t startingLevel;
+		uint32_t endingLevel;
+		uint32_t startingTileIndex;
 	};
 
 	struct SyncPoint
@@ -4925,9 +4925,8 @@ private:
 	/************************************************************************************************/
 
 		
-	constexpr size_t AlignedSize(const size_t unalignedSize)
+	constexpr size_t AlignedSize(const size_t unalignedSize, const size_t alignment = 256)
 	{
-		const auto alignment        = 256;
 		const auto mask             = alignment - 1;
 		const auto offset           = unalignedSize & mask;
 		const auto adjustedOffset   = offset != 0 ? 256 - offset : 0;

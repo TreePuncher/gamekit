@@ -1,4 +1,5 @@
 #pragma once
+#include <buildsettings.h>
 
 #include "qwidget.h"
 #include "ResourceHandles.h"
@@ -21,6 +22,30 @@ namespace FlexKit
 }
 
 struct TemporaryBuffers;
+struct PlayerContext;
+
+struct SharedWindow : public QWidget
+{
+	Q_OBJECT
+
+public:
+	SharedWindow(QWidget* parent) :
+		QWidget			{ parent }
+	{
+		setMinimumSize(100, 100);
+		resize(800, 600);
+
+		setFocusPolicy(Qt::StrongFocus);
+		setAttribute(Qt::WA_NativeWindow);
+		setAttribute(Qt::WA_PaintOnScreen);
+		setAttribute(Qt::WA_NoSystemBackground);
+		setContentsMargins(1, 1, 1, 1);
+
+		show();
+	}
+
+	HWND	GetHWND() { return (HWND)winId(); }
+};
 
 class EditorPrefabPreview : public QWidget
 {
@@ -29,30 +54,33 @@ public:
 
 	void resizeEvent(QResizeEvent* evt) override;
 
+	void Update(
+		double							dT,
+		FlexKit::UpdateDispatcher&		dispatcher,
+		FlexKit::ThreadSafeAllocator&	allocator);
 
 	void RenderStatic(
-		FlexKit::GameObject&			gameObject,
 		FlexKit::UpdateDispatcher&		dispatcher,
+		FlexKit::FrameGraph&			frameGraph,
+		FlexKit::GameObject&			gameObject,
 		double							dT,
 		TemporaryBuffers&				temporaryBuffers,
-		FlexKit::FrameGraph&			frameGraph,
 		FlexKit::ResourceHandle			renderTarget,
 		FlexKit::ThreadSafeAllocator&	allocator);
 
-
 	void RenderAnimated(
 		FlexKit::UpdateDispatcher&		dispatcher,
+		FlexKit::FrameGraph&			frameGraph,
 		double							dT,
 		TemporaryBuffers&				temporaryBuffers,
-		FlexKit::FrameGraph&			frameGraph,
 		FlexKit::ResourceHandle			renderTarget,
 		FlexKit::ThreadSafeAllocator&	allocator);
 
 	void RenderOverlays(
 		FlexKit::UpdateDispatcher&		dispatcher,
+		FlexKit::FrameGraph&			frameGraph,
 		double							dT,
 		TemporaryBuffers&				temporaryBuffers,
-		FlexKit::FrameGraph&			frameGraph,
 		FlexKit::ResourceHandle			renderTarget,
 		FlexKit::ThreadSafeAllocator&	allocator);
 
@@ -69,10 +97,13 @@ public:
 	void CenterCamera();
 
 private:
-	FlexKit::CameraHandle		previewCamera;
-	EditorRenderer&				renderer;
-	EditorProject&				project;
-	DXRenderWindow*				renderWindow;
-	EditorSelectedPrefabObject*	selection;
-	FlexKit::DepthBuffer		depthBuffer;
+	FlexKit::CameraHandle			previewCamera;
+	EditorRenderer&					renderer;
+	EditorProject&					project;
+	DXRenderWindow*					renderWindow;
+	SharedWindow					sharedWindow;
+	EditorSelectedPrefabObject*		selection;
+	//FlexKit::DepthBuffer			depthBuffer;
+
+	std::unique_ptr<PlayerContext>	playerContext;
 };

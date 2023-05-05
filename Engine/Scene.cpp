@@ -1002,7 +1002,7 @@ namespace FlexKit
 
 		auto temp = pow((distanceFromView) / maxZ, 1.0f / 5.0f);
 
-		const uint32_t requestedLodLevel	= temp * maxLod;
+		const uint32_t requestedLodLevel	= uint32_t(temp * maxLod);
 		const uint32_t usableLodLevel		= Max(requestedLodLevel, highestLoadedLod);
 
 		return ComputeLod_RES{
@@ -1050,7 +1050,7 @@ namespace FlexKit
 
 			const auto normalizedAdjustedDistance = pow((distanceFromView) / maxZ, 1.0f / 5.0f);
 			
-			const uint32_t requestedLodLevel    = normalizedAdjustedDistance * maxLod;
+			const uint32_t requestedLodLevel    = uint32_t(normalizedAdjustedDistance * maxLod);
 			lodLevels.push_back(Max(requestedLodLevel, highestLoadedLod));
 		}
 

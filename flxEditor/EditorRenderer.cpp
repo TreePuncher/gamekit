@@ -14,27 +14,15 @@ EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FK
 	textureEngine	{ IN_framework.core.RenderSystem, IN_framework.core.GetBlockMemory() },
 	worldRender		{ IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory(), { .UAVPoolByteSize = 512 * MEGABYTE, .RTPoolByteSize = 2 * GIGABYTE, .UAVTexturePoolByteSize = 2 * GIGABYTE }},
 
-	csg						{ IN_framework.core.GetBlockMemory() },
-	brushComponent			{ IN_framework.core.GetBlockMemory(), IN_framework.core.RenderSystem },
-	stringIDComponent		{ IN_framework.core.GetBlockMemory() },
-	materialComponent		{ IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory() },
-	cameraComponent			{ IN_framework.core.GetBlockMemory() },
-	visibilityComponent		{ IN_framework.core.GetBlockMemory() },
-	skeletonComponent		{ IN_framework.core.GetBlockMemory() },
-	animatorComponent		{ IN_framework.core.GetBlockMemory() },
+	brushComponent		{ IN_framework.core.GetBlockMemory(), IN_framework.GetRenderSystem() },
+	materialComponent	{ IN_framework.GetRenderSystem(), textureEngine, IN_framework.core.GetBlockMemory() },
 
-	lightComponent			{ IN_framework.core.GetBlockMemory() },
-	shadowMaps				{ IN_framework.core.GetBlockMemory() },
+	physX				{ IN_framework.core.Threads, IN_framework.core.GetBlockMemory() },
+	staticBodies		{ physX },
+	rigidBodies			{ physX },
+	characterControllers{ physX, IN_framework.core.GetBlockMemory() },
 
-	triggers				{ IN_framework.core.GetBlockMemory(), IN_framework.core.GetBlockMemory() },
-
-	physX					{ IN_framework.core.Threads, IN_framework.core.GetBlockMemory() },
-	staticBodies			{ physX },
-	rigidBodies				{ physX },
-	characterControllers	{ physX, IN_framework.core.GetBlockMemory() },
-
-	ikTargetComponent		{ IN_framework.core.GetBlockMemory() },
-	ikComponent				{ IN_framework.core.GetBlockMemory() }
+	csg				{ IN_framework.core.GetBlockMemory() }
 {
 	auto& renderSystem = framework.GetRenderSystem();
 	renderSystem.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_PSO,	{ &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateTexturedTriStatePSO });
@@ -47,6 +35,31 @@ EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FK
 	renderSystem.QueuePSOLoad(FlexKit::DRAW_TRI3D_PSO);
 
 	allocator.Init((byte*)temporaryBuffer->buffer, sizeof(TempBuffer));
+
+	static shared_memory_object shm_obj(
+		open_or_create,
+		"shared_memory",
+		read_write);
+
+	components = InitiateSharedMemory(shm_obj);
+}
+
+
+/************************************************************************************************/
+
+
+size_t EditorRenderer::GetSharedAddress() const noexcept
+{
+	return (size_t)components;
+}
+
+
+/************************************************************************************************/
+
+
+SharedEngineMemory* EditorRenderer::GetSharedMemory() const noexcept
+{
+	return components;
 }
 
 

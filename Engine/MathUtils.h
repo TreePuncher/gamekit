@@ -211,20 +211,20 @@ namespace FlexKit
 	bool VectorCompare(TY A, TY B, float E) noexcept { return (A - B).magnitudeSq() < E * E; }
 
 
-	FLEXKITAPI inline const float* GetArray_ptr_const(const __m128& V)  noexcept { return reinterpret_cast<const float*>(&V); }
-	FLEXKITAPI inline       float* GetArray_ptr(__m128& V)              noexcept { return reinterpret_cast<float*>(&V); }
+	FLEXKITAPI inline const	float* GetArray_ptr_const(const __m128& V)  noexcept { return reinterpret_cast<const float*>(&V); }
+	FLEXKITAPI inline		float* GetArray_ptr(__m128& V)              noexcept { return reinterpret_cast<float*>(&V); }
 
 	FLEXKITAPI inline const float& GetElement(const __m128& V, const size_t idx) noexcept { return GetArray_ptr_const(V)[idx]; }
 
 	FLEXKITAPI inline float* GetElement_ptr(__m128& V, const size_t idx ) noexcept { return GetArray_ptr(V) + idx; }
 	FLEXKITAPI inline float& GetElement_ref(__m128& V, const size_t idx)  noexcept { return GetArray_ptr(V)[idx]; }
 
-	FLEXKITAPI inline void SetElement   (__m128& V, float X, const size_t idx) noexcept { GetArray_ptr(V)[idx] = X;	}
+	FLEXKITAPI inline void SetElement	(__m128& V, float X, const size_t idx) noexcept { GetArray_ptr(V)[idx] = X;	}
 
 	FLEXKITAPI inline float GetFirst	(const __m128& V) noexcept { return GetElement(V, 0); } // Should Return the X Component
-	FLEXKITAPI inline float GetLast	    (const __m128& V) noexcept { return GetElement(V, 2); } // SHould Return the W Component
+	FLEXKITAPI inline float GetLast		(const __m128& V) noexcept { return GetElement(V, 2); } // SHould Return the W Component
 
-	FLEXKITAPI inline void SetFirst	    (__m128& V, const float X) noexcept { return SetElement(V, X, 0); }
+	FLEXKITAPI inline void SetFirst		(__m128& V, const float X) noexcept { return SetElement(V, X, 0); }
 	FLEXKITAPI inline void SetLast		(__m128& V, const float W) noexcept { return SetElement(V, W, 3); }
 
 
@@ -247,8 +247,8 @@ namespace FlexKit
 
 		float2(const Vector_t auto& vect) noexcept
 		{
-			x = vect[0];
-			y = vect[1];
+			x = (float)vect[0];
+			y = (float)vect[1];
 		}
 
 

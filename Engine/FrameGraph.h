@@ -2097,7 +2097,7 @@ namespace FlexKit
 
 					auto [handle, _] = AllocateResource(resource, desc);
 
-					nodeData->scratchPadSize = Max(nodeData->scratchPadSize, prebuildInfo.BLAS_byteSize * 1.25);
+					nodeData->scratchPadSize = Max(nodeData->scratchPadSize, prebuildInfo.BLAS_byteSize);
 					nodeData->BVHBuilds.emplace_back(handle, &src_lod);
 
 					src_lod.blAS = GetDevicePointer(resource);
@@ -2155,7 +2155,7 @@ namespace FlexKit
 								{
 									std::atomic_ref{ resources.virtualResourceCount }++;
 
-									auto resource = pool->Acquire(GPUResourceDesc::UAVResource(nodeData->scratchPadSize * 1.5), true).resource;
+									auto resource = pool->Acquire(GPUResourceDesc::UAVResource(nodeData->scratchPadSize), true).resource;
 
 									auto& object			= *resources.GetResourceObject(nodeData->scratchPad);
 									object.shaderResource	= resource;

@@ -205,6 +205,16 @@ namespace FlexKit
 			return component != nullptr;
 		}
 
+		static void ManualRegistration(TY* _ptr)
+		{
+			if (component)
+				throw std::runtime_error("Component Already Registered!");
+
+			component = _ptr;
+
+			ComponentBase::AddComponent(*static_cast<ComponentBase*>(component));
+		}
+
 		virtual void AddComponentView(GameObject& GO, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override {}
 	};
 

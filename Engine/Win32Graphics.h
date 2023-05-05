@@ -864,16 +864,19 @@ namespace FlexKit
 	{
 		Win32RenderWindow renderWindow;
 
+		RECT rect;
+		GetWindowRect(hwnd, &rect);
+
 		DXGI_SWAP_CHAIN_DESC1 SwapChainDesc = {};
 		SwapChainDesc.Stereo			= false;
 		SwapChainDesc.BufferCount		= 3;
-		SwapChainDesc.Width				= 800;
-		SwapChainDesc.Height			= 600;
+		SwapChainDesc.Width				= rect.right - rect.left;
+		SwapChainDesc.Height			= rect.bottom - rect.top;
 		SwapChainDesc.Format			= DXGI_FORMAT_R16G16B16A16_FLOAT;
 		SwapChainDesc.BufferUsage		= DXGI_USAGE_RENDER_TARGET_OUTPUT;
 		SwapChainDesc.SwapEffect		= DXGI_SWAP_EFFECT_FLIP_DISCARD;
 		SwapChainDesc.SampleDesc.Count	= 1;
-		SwapChainDesc.Flags             = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
+		SwapChainDesc.Flags				= DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
 		IDXGISwapChain1* NewSwapChain_ptr = nullptr;
 		HRESULT HR = renderSystem.pGIFactory->CreateSwapChainForHwnd(

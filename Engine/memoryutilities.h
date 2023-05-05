@@ -695,7 +695,7 @@ namespace FlexKit
 
 	struct BlockAllocator_desc
 	{
-		byte* _ptr;
+		byte* _ptr = nullptr;
 		size_t PoolSize;
 
 		size_t SmallBlock;

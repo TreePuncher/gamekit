@@ -2294,7 +2294,7 @@ namespace FlexKit
 
 		for (auto RT : RenderTargets)
 		{
-			auto WH = renderSystem->GetTextureWH(RT) / std::pow(2, MIPMapOffset);
+			auto WH = float2{ renderSystem->GetTextureWH(RT) } / std::pow(2.0f, (float)MIPMapOffset);
 			VPs.emplace_back	(0.0f, 0.0f,	(FLOAT)WH[0], (FLOAT)WH[1], 0.0f, 1.0f);
 			Rects.emplace_back	(LONG(0),LONG(0),	LONG(WH[0]), LONG(WH[1]));
 		}
@@ -4617,7 +4617,7 @@ namespace FlexKit
 		if (fence->GetCompletedValue() < ctx.counter)
 		{
 			fence->SetEventOnCompletion(ctx.counter, ctx.eventHandle);
-			WaitForSingleObject(ctx.eventHandle, INFINITY);
+			WaitForSingleObject(ctx.eventHandle, 0xffffffff);
 		}
 	}
 
@@ -4705,7 +4705,7 @@ namespace FlexKit
 			if (fence->GetCompletedValue() < ctx.counter)
 			{
 				fence->SetEventOnCompletion(ctx.counter, ctx.eventHandle);
-				WaitForSingleObject(ctx.eventHandle, INFINITY);
+				WaitForSingleObject(ctx.eventHandle, 0xffffffff);
 			}
 
 			for (auto resource : ctx.freeResources)
@@ -5250,7 +5250,7 @@ namespace FlexKit
 
 		descriptorHeapAllocator.Initialize(*this, 1'000'000, in->Memory);
 		heaps.Init(features.resourceHeapTier, pDevice);
-		copyEngine.Initiate(Device, (threads.GetThreadCount() + 1) * 1.5, ObjectsCreated, in->Memory);
+		copyEngine.Initiate(Device, uint32_t((threads.GetThreadCount() + 1) * 1.5), ObjectsCreated, in->Memory);
 
 		for (size_t I = 0; I < 3 * (1 + threads.GetThreadCount()); ++I)
 			Contexts.emplace_back(this, Memory);
@@ -6291,7 +6291,7 @@ namespace FlexKit
 			offsets.clear();
 			tileRanges.clear();
 
-			uint32_t I = std::distance(mappings.begin(), nullEnd);
+			uint32_t I = (uint32_t)std::distance(mappings.begin(), nullEnd);
 			while(I < mappings.size())
 			{
 				heap = mappings[I].heap;
@@ -10224,7 +10224,7 @@ namespace FlexKit
 			ViewDesc.ViewDimension                      = D3D12_SRV_DIMENSION_TEXTURE3D;
 			ViewDesc.Texture3D.MipLevels                = mipCount;
 			ViewDesc.Texture3D.MostDetailedMip          = highestDetailMip;
-			ViewDesc.Texture3D.ResourceMinLODClamp      = minLODClamp;
+			ViewDesc.Texture3D.ResourceMinLODClamp      = (float)minLODClamp;
 		}
 
 		auto debug = RS->GetDeviceResource(handle);

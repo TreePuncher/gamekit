@@ -5,6 +5,7 @@
 #include "EditorConfig.h"
 #include "EditorMainWindow.h"
 #include "EditorApplication.h"
+#include "EditorPlayer.h"
 
 //#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
@@ -14,7 +15,8 @@
 #define TINYGLTF_IMPLEMENTATION
 #include <tiny_gltf.h>
 
-int main(int argc, char* argv[])
+
+int EditorMain(int argc, char* argv[])
 {
 	auto seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
 	srand(seed);
@@ -29,10 +31,39 @@ int main(int argc, char* argv[])
 	return ret;
 }
 
+enum class ApplicationMode
+{
+	Editor,
+	Player
+};
+
+int main(int argc, char* argv[])
+{
+	ApplicationMode mode = ApplicationMode::Editor;
+
+	for (int i = 0; i < argc; i++)
+	{
+		std::string_view arg{ argv[i] };
+
+		if (arg == "--player")
+			mode = ApplicationMode::Player;
+	}
+
+	switch (mode)
+	{
+	case ApplicationMode::Editor:
+		return EditorMain(argc, argv);
+	case ApplicationMode::Player:
+		return PlayerMain(argc, argv);
+	}
+
+	return -1;
+}
+
 
 /**********************************************************************
 
-Copyright (c) 2021 Robert May
+Copyright (c) 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

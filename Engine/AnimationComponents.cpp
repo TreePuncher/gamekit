@@ -558,10 +558,10 @@ namespace FlexKit
 		}
 
 		if(state != State::Paused)
-			T += dT;
+			T += (float)dT;
 
 		if (state == State::Looping && T >= endT)
-			T = 0.0;
+			T = 0.0f;
 		else if (state == State::Playing && T >= endT)
 			state = State::Finished;
 
