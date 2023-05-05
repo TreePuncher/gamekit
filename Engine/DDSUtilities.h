@@ -111,14 +111,24 @@ namespace FlexKit
 
 	};
 
-	typedef FlexKit::Pair<DDSTexture2D*, bool> DDSTexture2DLoad_RES;
-	typedef FlexKit::Pair<DDSTexture3D*, bool> DDSTexture3DLoad_RES; // Not-Implemented
+	typedef FlexKit::Pair<DDSTexture2D*, bool>	DDSTexture2DLoad_RES;
+	typedef FlexKit::Pair<DDSTexture3D*, bool>	DDSTexture3DLoad_RES; // Not-Implemented
+	typedef FlexKit::Pair<ResourceHandle, bool>	LoadDDSTexture2DFromFile_RES;
 
-	FLEXKITAPI DDSTexture2DLoad_RES LoadDDSTexture2DFromFile(const char* File, iAllocator* In, RenderSystem* RS, CopyContextHandle);
-	FLEXKITAPI DDSTexture3DLoad_RES LoadDDSTexture3DFromFile();
+	FLEXKITAPI DDSTexture2DLoad_RES			LoadDDSTexture2DFromFile(const char* File, iAllocator* In, RenderSystem* RS, CopyContextHandle);
+	FLEXKITAPI DDSTexture3DLoad_RES			LoadDDSTexture3DFromFile();
+	FLEXKITAPI LoadDDSTexture2DFromFile_RES LoadDDSTexture2DFromFile_2(const char* File, iAllocator* Memory, RenderSystem* RS, CopyContextHandle);
 
-	typedef FlexKit::Pair<ResourceHandle, bool> LoadDDSTexture2DFromFile_RES;
-	FLEXKITAPI	LoadDDSTexture2DFromFile_RES LoadDDSTexture2DFromFile_2(const char* File, iAllocator* Memory, RenderSystem* RS, CopyContextHandle);
+	FLEXKITAPI bool	CreateDDSTextureFromFile12(
+		RenderSystem*		RS,
+		CopyContextHandle	handle,
+		const wchar_t*		szFileName,
+		ID3D12Resource**	texture,
+		size_t				maxsize,
+		DDS_ALPHA_MODE*		alphaMode,
+		uint2*				WH,
+		uint32_t*			MIPLevels,
+		DXGI_FORMAT*		FormatOut);
 
 	FLEXKITAPI Texture2D LoadDDSIntoResource();
 }

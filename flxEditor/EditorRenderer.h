@@ -13,14 +13,15 @@
 #include "WorldRender.h"
 
 #include <TriggerComponent.h>
+#include <SharedEngineMemory.hpp>
 
 class QWidget;
+
 
 class EditorRenderer : public FlexKit::FrameworkState
 {
 public:
 	EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FKApplication& IN_application, QApplication& IN_QtApplication);
-
 	~EditorRenderer();
 
 	void DrawOneFrame(double dT);
@@ -33,6 +34,9 @@ public:
 
 	FlexKit::UpdateTask& UpdatePhysx(FlexKit::UpdateDispatcher& dispatcher, double dT);
 
+	size_t				GetSharedAddress() const noexcept;
+	SharedEngineMemory*	GetSharedMemory() const noexcept;
+
 protected:
 	FlexKit::UpdateTask* Update (FlexKit::EngineCore& Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT) override;
 	FlexKit::UpdateTask* Draw   (FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph) override;
@@ -40,7 +44,6 @@ protected:
 	void PostDrawUpdate(FlexKit::EngineCore& core, double dT) override;
 
 	std::atomic_bool				drawInProgress = false;
-
 
 public:
 	FlexKit::TextureStreamingEngine	textureEngine;
@@ -53,32 +56,11 @@ private:
 		char buffer[MEGABYTE * 32];
 	};
 
+	BlockAllocator		sharedAllocator;
+	SharedEngineMemory*	components	= nullptr;
 
-	std::unique_ptr<TempBuffer>		temporaryBuffer = std::make_unique<TempBuffer>();
-
-	FlexKit::StackAllocator			allocator;
-	FlexKit::ThreadSafeAllocator	threadedAllocator{ FlexKit::SystemAllocator };
-
-	// Temp Buffers
-	FlexKit::VertexBufferHandle		vertexBuffer;
-	FlexKit::ConstantBufferHandle	constantBuffer;
-
-	// Components
-	FlexKit::SceneNodeComponent			sceneNodes;
-	FlexKit::BrushComponent				brushComponent;
-	FlexKit::StringIDComponent			stringIDComponent;
-	FlexKit::MaterialComponent			materialComponent;
-	FlexKit::CameraComponent			cameraComponent;
-	FlexKit::SceneVisibilityComponent	visibilityComponent;
-	FlexKit::SkeletonComponent			skeletonComponent;
-	FlexKit::AnimatorComponent			animatorComponent;
-	FlexKit::LightComponent				lightComponent;
-	FlexKit::ShadowMapComponent			shadowMaps;
-
-	FlexKit::FABRIKTargetComponent		ikTargetComponent;
-	FlexKit::FABRIKComponent			ikComponent;
-
-	FlexKit::TriggerComponent			triggers;
+	FlexKit::BrushComponent		brushComponent;
+	FlexKit::MaterialComponent	materialComponent;
 
 	// physX components
 	FlexKit::PhysXComponent					physX;
@@ -89,6 +71,15 @@ private:
 	// Editor Only Components
 	CSGComponent csg;
 
+	std::unique_ptr<TempBuffer>		temporaryBuffer = std::make_unique<TempBuffer>();
+
+	FlexKit::StackAllocator			allocator;
+	FlexKit::ThreadSafeAllocator	threadedAllocator{ FlexKit::SystemAllocator };
+
+	// Temp Buffers
+	FlexKit::VertexBufferHandle		vertexBuffer;
+	FlexKit::ConstantBufferHandle	constantBuffer;
+
 	QApplication&					QtApplication;
 	FlexKit::FKApplication&			application;
 	std::vector<DXRenderWindow*>	renderWindows;
@@ -97,7 +88,7 @@ private:
 
 /**********************************************************************
 
-Copyright (c) 2019-2021 Robert May
+Copyright (c) 2019-2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

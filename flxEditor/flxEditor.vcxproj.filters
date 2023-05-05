@@ -68,6 +68,9 @@
     <QtMoc Include="EditorSelectObjectDialog.h">
       <Filter>Headers</Filter>
     </QtMoc>
+    <QtMoc Include="EditorPrefabRenderer.h">
+      <Filter>Headers</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DXRenderWindow.cpp">
@@ -196,9 +199,6 @@
     <ClCompile Include="EditorRenderer.h">
       <Filter>Headers</Filter>
     </ClCompile>
-    <ClCompile Include="EditorPrefabRenderer.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
     <ClCompile Include="EditorUndoRedo.cpp">
       <Filter>Source</Filter>
     </ClCompile>
@@ -218,6 +218,12 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="pch.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="EditorPlayer.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="EditorPrefabRenderer.cpp">
       <Filter>Source</Filter>
     </ClCompile>
   </ItemGroup>
@@ -315,9 +321,6 @@
     <ClInclude Include="TTFontLoader.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="EditorPrefabRenderer.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
     <ClInclude Include="EditorUndoRedo.h">
       <Filter>Headers</Filter>
     </ClInclude>
@@ -334,6 +337,9 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="EditorTextureImporter.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorPlayer.h">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>

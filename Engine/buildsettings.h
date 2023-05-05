@@ -215,7 +215,7 @@ namespace FlexKit {
 template<class... Ts> struct Overloaded : Ts... { using Ts::operator()...; };
 
 #define NOMINMAX
-
+#include <winsock2.h>
 #include <Windows.h>
 #include <debugapi.h>
 

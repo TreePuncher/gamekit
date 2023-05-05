@@ -842,7 +842,7 @@ namespace FlexKit
 
 								if (offset == -1)
 								{
-									uint32_t blockSize	= GetTextureBlockSize(texture, resources.renderSystem);
+									uint32_t blockSize	= (uint32_t)GetTextureBlockSize(texture, resources.renderSystem);
 									offset				= feedbackTable.Reserve(blockSize);
 									feedbackTable.table.InsertItem(texture, offset, blockSize);
 								}
@@ -873,7 +873,7 @@ namespace FlexKit
 
 									if (offset == -1)
 									{
-										uint32_t blockSize	= GetTextureBlockSize(texture, resources.renderSystem);
+										uint32_t blockSize	= (uint32_t)GetTextureBlockSize(texture, resources.renderSystem);
 										offset				= feedbackTable.Reserve(blockSize);
 										feedbackTable.table.InsertItem(texture, offset, blockSize);
 									}
@@ -1008,7 +1008,7 @@ namespace FlexKit
 
 								if (offset == -1)
 								{
-									uint32_t blockSize	= GetTextureBlockSize(texture, resources.renderSystem);
+									uint32_t blockSize	= (uint32_t)GetTextureBlockSize(texture, resources.renderSystem);
 									offset				= feedbackTable.Reserve(blockSize);
 									feedbackTable.table.InsertItem(texture, offset, blockSize);
 								}
@@ -1039,7 +1039,7 @@ namespace FlexKit
 
 									if (offset == -1)
 									{
-										uint32_t blockSize	= GetTextureBlockSize(texture, resources.renderSystem);
+										uint32_t blockSize	= (uint32_t)GetTextureBlockSize(texture, resources.renderSystem);
 										offset				= feedbackTable.Reserve(blockSize);
 										feedbackTable.table.InsertItem(texture, offset, blockSize);
 									}

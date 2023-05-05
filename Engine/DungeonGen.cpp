@@ -107,8 +107,8 @@ namespace FlexKit
 
 		if (ScanRegion(x_1, y, x_2, EY))
 		{
-			float EY = x + length;
-			float EX = x;
+			float EY = (float)x + (float)length;
+			float EX = (float)x;
 			size_t step = length / abs(length);
 
 			for (auto I = 0; I < length; ++I)

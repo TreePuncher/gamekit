@@ -16,6 +16,7 @@
 #include "EditorTextureResources.h"
 #include <QtWidgets/qstylefactory.h>
 
+#include "SharedEngineMemory.hpp"
 
 /************************************************************************************************/
 

@@ -380,8 +380,8 @@ namespace FlexKit
 		physx::PxControllerManager*	controllerManager	= nullptr;
 		physx::PxClientID			CID;
 
-		double	stepSize	= 1.0 / 120.0f;
 		double	T			= 0.0;
+		float	stepSize	= 1.0f / 120.0f;
 		bool	updateColliders;
 		bool	paused		= false;
 
@@ -695,7 +695,7 @@ namespace FlexKit
 		void RemoveShape(uint32_t);
 		void RemoveAll();
 
-		physx::PxShape*	GetShape(size_t);
+		physx::PxShape*	GetShape(uint32_t);
 		size_t			GetShapeCount() const noexcept;
 
 		StaticColliderSystem::StaticColliderObject* operator -> ();

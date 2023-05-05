@@ -1206,15 +1206,15 @@ namespace FlexKit
 
 
 	bool CreateDDSTextureFromFile12(
-		RenderSystem*				RS,
-		CopyContextHandle           handle,
-		const wchar_t*				szFileName,
-		ID3D12Resource**			texture,
-		size_t						maxsize,
-		DDS_ALPHA_MODE*				alphaMode, 
-		uint2*						WH,
-		uint64_t*					MIPLevels,
-		DXGI_FORMAT*				FormatOut)
+		RenderSystem*		RS,
+		CopyContextHandle	handle,
+		const wchar_t*		szFileName,
+		ID3D12Resource**	texture,
+		size_t				maxsize,
+		DDS_ALPHA_MODE*		alphaMode, 
+		uint2*				WH,
+		uint32_t*			MIPLevels,
+		DXGI_FORMAT*		FormatOut)
 	{
 		if (*texture)
 			texture = nullptr;
@@ -1269,7 +1269,7 @@ namespace FlexKit
 		ID3D12Resource* UploadHeap = nullptr;
 		DDS_ALPHA_MODE	AlphaMode;
 		uint2			WH;
-		uint64_t		MipLevels;
+		uint32_t		MipLevels;
 		DXGI_FORMAT		Format;
 
 		auto res = CreateDDSTextureFromFile12(RS, handle, wstr, &Texture, 4096, &AlphaMode, &WH, &MipLevels, &Format);
@@ -1278,7 +1278,7 @@ namespace FlexKit
 		TextureOut->Alpha		 = AlphaMode;
 		TextureOut->Texture		 = Texture;
 		TextureOut->WH			 = WH;
-		TextureOut->MipMapLevels = MipLevels;
+		TextureOut->MipMapLevels = (uint32_t)MipLevels;
 		TextureOut->Format		 = Format;
 		SetDebugName(TextureOut->Texture, File, strnlen(File, 256));
 
@@ -1300,7 +1300,7 @@ namespace FlexKit
 		ID3D12Resource* UploadHeap = nullptr;
 		DDS_ALPHA_MODE	AlphaMode;
 		uint2			WH;
-		uint64_t		MipLevels;
+		uint32_t		MipLevels;
 		DXGI_FORMAT		Format;
 
 		auto res = CreateDDSTextureFromFile12(RS, handle, wstr, &TextureResources, 4096, &AlphaMode, &WH, &MipLevels, &Format);

@@ -901,7 +901,7 @@ namespace FlexKit
 		CScriptBuilder builder{};
 		builder.StartNewModule(scriptEngine, moduleName);
 
-		if (auto r = builder.AddSectionFromMemory(moduleName, (const char*)fileBuffer, fileSize); r < 0)
+		if (auto r = builder.AddSectionFromMemory(moduleName, (const char*)fileBuffer, (uint32_t)fileSize); r < 0)
 			return nullptr;
 
 		if (auto r = builder.BuildModule(); r < 0)

@@ -897,7 +897,7 @@ namespace FlexKit
 				renderTarget,
 				lightPass,
 				reserveCB, reserveVB,
-				t,
+				(float)t,
 				temporary);
 
 		lightingEngine.RayTrace(
@@ -938,7 +938,7 @@ namespace FlexKit
 				renderTarget,
 				reserveCB,
 				reserveVB,
-				drawSceneDesc.dt,
+				(float)drawSceneDesc.dt,
 				temporary);
 		/*
 		if (drawSceneDesc.debugDisplay == DebugVisMode::ClusterVIS)
@@ -1085,7 +1085,7 @@ namespace FlexKit
 			[&](FrameGraphNodeBuilder& builder, OcclusionCullingResults& data)
 			{
 				const uint2 WH			= builder.GetRenderSystem().GetTextureWH(depthBuffer.Get());
-				const uint MipLevels	= log2(Max(WH[0], WH[1]));
+				const uint MipLevels	= (uint)log2((float)Max(WH[0], WH[1]));
 
 				data.depthBuffer	= builder.AcquireVirtualResource(GPUResourceDesc::DepthTarget(WH, DeviceFormat::D32_FLOAT), DASDEPTHBUFFERWRITE);
 				data.ZPyramid		= builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT, true, MipLevels), DASUAV);
@@ -1397,7 +1397,10 @@ namespace FlexKit
 				struct
 				{
 					float2 WH;
-				}passConstants = { float2(WH[0], WH[1]) };
+				}passConstants =
+					{ float2(
+						(float)WH[0],
+						(float)WH[1]) };
 
 				ctx.SetRootSignature(frameResources.renderSystem().Library.RSDefault);
 				ctx.SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS));
@@ -1452,9 +1455,9 @@ namespace FlexKit
 			},
 			[=](BackgroundEnvironmentPass& data, const ResourceHandler& frameResources, Context& ctx, iAllocator& allocator)
 			{
-				auto& renderSystem          = frameResources.renderSystem();
-				const auto WH               = renderSystem.GetTextureWH(renderTarget);
-				const auto cameraConstants  = GetCameraConstants(camera);
+				auto& renderSystem			= frameResources.renderSystem();
+				const float2 WH				= renderSystem.GetTextureWH(renderTarget);
+				const auto cameraConstants	= GetCameraConstants(camera);
 
 				struct
 				{
@@ -1539,8 +1542,8 @@ namespace FlexKit
 			},
 			[=](BilateralBlurPass& data, const ResourceHandler& frameResources, Context& ctx, iAllocator& allocator)
 			{
-				auto& renderSystem          = frameResources.renderSystem();
-				const auto WH               = frameResources.renderSystem().GetTextureWH(destination);
+				auto& renderSystem	= frameResources.renderSystem();
+				const float2 WH		= frameResources.renderSystem().GetTextureWH(destination);
 
 				auto constantBuffer = data.reserveCB(2048);
 				auto vertexBuffer   = data.reserveVB(2048);

@@ -25,7 +25,7 @@ DXRenderWindow::DXRenderWindow(FlexKit::RenderSystem& renderSystem, QWidget *par
 	setAttribute(Qt::WA_NativeWindow);
 	setAttribute(Qt::WA_PaintOnScreen);
 	setAttribute(Qt::WA_NoSystemBackground);
-	setContentsMargins(0, 0, 0, 0);
+	setContentsMargins(1, 1, 1, 1);
 
 	adjustSize();
 

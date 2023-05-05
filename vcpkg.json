@@ -12,6 +12,7 @@
             "features": [ "dx12", "openexr" ]
         },
         "boost-interprocess",
+        "boost-process",
         "cppcoro",
 		"cpptoml",
         "directx-dxc",

@@ -318,11 +318,11 @@ namespace FlexKit
 	Shape PhysXComponent::CookMesh(float3* geometry, size_t geometrySize, uint32_t* indices, size_t indexCount)
 	{
 		physx::PxTriangleMeshDesc meshDesc;
-		meshDesc.points.count		= geometrySize;
+		meshDesc.points.count		= (uint32_t)geometrySize;
 		meshDesc.points.stride		= sizeof(FlexKit::float3);
 		meshDesc.points.data		= geometry;
 
-		meshDesc.triangles.count	= indexCount / 3;
+		meshDesc.triangles.count	= (uint32_t)(indexCount / 3);
 		meshDesc.triangles.stride	= 3 * sizeof(uint32_t);
 		meshDesc.triangles.data		= indices;
 
@@ -361,7 +361,7 @@ namespace FlexKit
 	Blob PhysXComponent::CookMesh2(float3* geometry, size_t geometrySize, uint32_t* indices, size_t indexCount)
 	{
 		physx::PxTriangleMeshDesc meshDesc;
-		meshDesc.points.count	= geometrySize;
+		meshDesc.points.count	= (uint32_t)geometrySize;
 		meshDesc.points.stride	= 12;
 		meshDesc.points.data	= geometry;
 
@@ -374,7 +374,7 @@ namespace FlexKit
 			reversedIndices.push_back(indices[I + 1]);
 		}
 
-		meshDesc.triangles.count	= indexCount / 3;
+		meshDesc.triangles.count	= (uint32_t)(indexCount / 3);
 		meshDesc.triangles.stride	= 3 * sizeof(uint32_t);
 		meshDesc.triangles.data		= reversedIndices.data();
 
@@ -401,7 +401,7 @@ namespace FlexKit
 
 		uint32_t getLength() const
 		{
-			return blob.size();
+			return (uint32_t)blob.size();
 		}
 
 		uint32_t read(void* dest, uint32_t count) override
@@ -419,7 +419,7 @@ namespace FlexKit
 
 		uint32_t tell() const override
 		{
-			return offset;
+			return (uint32_t)offset;
 		}
 
 		size_t offset = 0;
@@ -638,7 +638,7 @@ namespace FlexKit
 		const auto idx				= colliders.push_back(object);
 		const auto handle			= handles.GetNewHandle();
 		colliders[handle].handle	= handle;
-		handles[handle]				= idx;
+		handles[handle]				= (uint32_t)idx;
 
 		return handle;
 	}
@@ -823,7 +823,7 @@ namespace FlexKit
 		{
 			if (T >= stepSize && !updateColliders)
 			{
-				scene->simulate(stepSize);
+				scene->simulate((float)stepSize);
 				updateColliders = true;
 			}
 
@@ -1115,16 +1115,16 @@ namespace FlexKit
 					switch (evt.mData1.mINT[0])
 					{
 					case TPC_MoveForward:
-						keyStates.y	= state ? 1 : 0;
+						keyStates.y	= state ? 1.0f : 0.0f;
 						return true;
 					case TPC_MoveBackward:
-						keyStates.y = state ? -1 : 0;
+						keyStates.y = state ? -1.0f : 0.0f;
 						return true;
 					case TPC_MoveLeft:
-						keyStates.x = state ? -1 : 0;
+						keyStates.x = state ? -1.0f : 0.0f;
 						return true;
 					case TPC_MoveRight:
-						keyStates.x = state ? 1 : 0;
+						keyStates.x = state ? 1.0f : 0.0f;
 						return true;
 					case TPC_MoveUp:
 						return true;
@@ -1868,15 +1868,15 @@ namespace FlexKit
 		const float focusHeight     = controllerImpl.focusHeight;
 		const float cameraDistance  = controllerImpl.cameraDistance;
 
-		const double deltaTime = dt;
+		const float deltaTime = float(dt);
 		while(controllerImpl.updateTimer >= deltaTime)
 		{
 			controllerImpl.updateTimer -= deltaTime;
 
 			if(controllerImpl.rotationEnabled)
 			{
-				yaw     += controllerImpl.mouseMoved[0] * deltaTime * pi * 50;
-				pitch   += controllerImpl.mouseMoved[1] * deltaTime * pi * 50;
+				yaw     += controllerImpl.mouseMoved[0] * deltaTime * float(pi) * 50.0f;
+				pitch   += controllerImpl.mouseMoved[1] * deltaTime * float(pi) * 50.0f;
 
 				yaw     = fmod(yaw, DegreetoRad(360.0f));
 				pitch   = clamp(DegreetoRad(-85.0f), pitch, DegreetoRad(75.0f));
@@ -2225,7 +2225,7 @@ namespace FlexKit
 	}
 
 
-	physx::PxShape* StaticBodyView::GetShape(size_t idx)
+	physx::PxShape* StaticBodyView::GetShape(uint32_t idx)
 	{
 		auto& staticBody_data = GetComponent().GetLayer_ref(layer)[staticBody];
 
