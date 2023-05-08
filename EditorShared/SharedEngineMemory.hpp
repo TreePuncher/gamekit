@@ -156,6 +156,7 @@ struct InterProcessQueue
 /************************************************************************************************/
 
 
+
 class EditorPlayerState;
 
 struct SharedEngineMemory
@@ -165,9 +166,43 @@ struct SharedEngineMemory
 	SharedComponents*				components = nullptr;
 	mapped_region					mapped;
 	HWND							targetWindow;
+	FlexKit::GameObject*			currentGameObject = nullptr;
 
 	InterProcessQueue<FlexKit::Vector<std::byte>>	inputQueue;
 	InterProcessQueue<FlexKit::Vector<std::byte>>	outputQueue;
+
+
+	void PushMessageToPlayer(auto& message)
+	{
+		FlexKit::SaveArchiveContext archive;
+
+		archive& message;
+		auto blob = archive.GetBlob();
+
+		FlexKit::Vector<std::byte> outputBlob{ blockAllocator };
+
+		outputBlob.resize(blob.buffer.size());
+
+		memcpy(outputBlob.data(), blob.data(), outputBlob.size());
+
+		inputQueue.push_front(outputBlob);
+	}
+
+	void PushMessageToEditor(auto& message)
+	{
+		FlexKit::SaveArchiveContext archive;
+
+		archive& message;
+		auto blob = archive.GetBlob();
+
+		FlexKit::Vector<std::byte> outputBlob{ blockAllocator };
+
+		outputBlob.resize(blob.buffer.size());
+
+		memcpy(outputBlob.data(), blob.data(), outputBlob.size());
+
+		outputQueue.push_front(outputBlob);
+	}
 };
 
 

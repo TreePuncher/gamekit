@@ -20,12 +20,12 @@ struct StringIDEditorComponent final : public IEditorComponent
 	const std::string&		ComponentName()	const noexcept	{ return name; }
 
 
-	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component, bool remoteObject) override;
 
 
-	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
+	FlexKit::ComponentViewBase* Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx, bool remote)
 	{
-		return gameObject.AddView<FlexKit::StringIDView>(nullptr, 0);
+		return &gameObject.AddView<FlexKit::StringIDView>(nullptr, 0);
 	}
 
 
@@ -51,7 +51,7 @@ struct TransformEditorComponent final : public IEditorComponent
 	FlexKit::ComponentID ComponentID() const noexcept { return FlexKit::TransformComponentID; }
 	const std::string& ComponentName() const noexcept { return name; }
 
-	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component, bool remoteObject) override;
 
 
 	static FlexKit::ComponentViewBase& ConstructNode(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
@@ -59,9 +59,9 @@ struct TransformEditorComponent final : public IEditorComponent
 		return (FlexKit::ComponentViewBase&)gameObject.AddView<FlexKit::SceneNodeView>(FlexKit::GetZeroedNode());
 	}
 
-	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
+	FlexKit::ComponentViewBase* Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx, bool constructRemote)
 	{
-		return ConstructNode(gameObject, ctx);
+		return &ConstructNode(gameObject, ctx);
 	}
 
 	inline static const std::string name = "Transform";
@@ -102,9 +102,9 @@ class VisibilityEditorComponent final : public IEditorComponent
 		return true;
 	}
 
-	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component, bool remoteObject) override;
 
-	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject&, ComponentConstructionContext& scene) { std::unreachable(); }
+	FlexKit::ComponentViewBase* Construct(FlexKit::GameObject&, ComponentConstructionContext& scene, bool constructRemote) { std::unreachable(); }
 	bool Constructable() const noexcept { return false; }
 
 	inline static bool registered = Register();
@@ -121,7 +121,7 @@ public:
 	const std::string&		ComponentName() const noexcept { return name; }
 
 
-	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component, bool remoteObject) override;
 
 
 	static FlexKit::ComponentViewBase& ConstructPointLight(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx) noexcept
@@ -137,9 +137,9 @@ public:
 		return *gameObject.GetView(FlexKit::LightComponentID);
 	}
 
-	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
+	FlexKit::ComponentViewBase* Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx, bool constructRemote)
 	{
-		return ConstructPointLight(gameObject, ctx);
+		return &ConstructPointLight(gameObject, ctx);
 	}
 
 	inline static const std::string name = "PointLight";
@@ -165,7 +165,7 @@ public:
 	FlexKit::ComponentID	ComponentID()	const noexcept { return FlexKit::PointLightShadowMapID; }
 	const std::string&		ComponentName()	const noexcept { return "Point Light Shadow"; }
 
-	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component, bool remoteObject) override
 	{
 		auto& cubeShadowMapView = static_cast<FlexKit::ShadowMapView&>(component);
 
@@ -219,16 +219,9 @@ public:
 	FlexKit::ComponentID	ComponentID()	const noexcept { return FlexKit::BrushComponentID; }
 	const std::string&		ComponentName()	const noexcept { return name; }
 
-	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component, bool remote) override;
 
-	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
-	{
-		if (!gameObject.hasView(FlexKit::TransformComponentID))
-			gameObject.AddView<FlexKit::SceneNodeView>();
-
-		return gameObject.AddView<FlexKit::BrushView>();
-	}
-
+	FlexKit::ComponentViewBase* Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx, bool remote) override;
 
 	static void Register(EditorProject& project, EditorViewport& viewport)
 	{
@@ -252,12 +245,12 @@ struct TriggerEditorComponent final : public IEditorComponent
 	};
 
 
-	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
+	FlexKit::ComponentViewBase* Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx, bool constructRemote)
 	{
 		auto& triggerView		= gameObject.AddView<FlexKit::TriggerView>();
 		triggerView->userData	= EditorTriggerData{};
 
-		return triggerView;
+		return &triggerView;
 	}
 
 	static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& base, ViewportSceneContext& scene)
@@ -276,7 +269,7 @@ struct TriggerEditorComponent final : public IEditorComponent
 	FlexKit::ComponentID	ComponentID()		const noexcept { return FlexKit::TriggerComponentID; }
 	const std::string&		ComponentName()		const noexcept { return name; }
 
-	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override;
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component, bool remoteObject) override;
 
 	static bool Register()
 	{

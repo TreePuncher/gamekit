@@ -86,7 +86,7 @@ public:
 	const std::string& ComponentName()	const noexcept { return name; }
 
 
-	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& view) override
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& view, bool remoteObject) override
 	{
 		panelCtx.PushVerticalLayout("Static Collider", true);
 
@@ -400,8 +400,11 @@ public:
 	}
 
 
-	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
+	FlexKit::ComponentViewBase* Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx, bool remote)
 	{
+		if (remote)
+			return nullptr;
+
 		auto layerHandle = ctx.GetSceneLayer();
 		FK_ASSERT(layerHandle != FlexKit::InvalidHandle);
 
@@ -422,7 +425,7 @@ public:
 		staticBody->actor->setGlobalPose(transform);
 		staticBody.SetUserData(editorData);
 
-		return staticBody;
+		return &staticBody;
 	}
 
 
@@ -521,7 +524,7 @@ public:
 	const std::string&		ComponentName() const noexcept { return name; }
 
 
-	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& view) override
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& view, bool remoteObject) override
 	{
 		panelCtx.PushVerticalLayout("Rigid Body Collider", true);
 
@@ -537,8 +540,11 @@ public:
 	}
 
 
-	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
+	FlexKit::ComponentViewBase* Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx, bool remote)
 	{
+		if (remote)
+			return nullptr;
+
 		auto& physx = FlexKit::PhysXComponent::GetComponent();
 		auto layer  = ctx.GetSceneLayer();
 
@@ -549,7 +555,7 @@ public:
 		auto& rigidBodyView = gameObject.AddView<FlexKit::RigidBodyView>(layer);
 		rigidBodyView.AddShape(defaultCube);
 
-		return rigidBodyView;
+		return &rigidBodyView;
 	}
 
 

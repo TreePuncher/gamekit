@@ -8,7 +8,7 @@ class EditorScriptEngine;
 
 struct EditorSelectedPrefabObject
 {
-    FlexKit::GameObject			gameObject;
+    FlexKit::GameObject*		gameObject;
     uint64_t					ID			= (uint64_t)-1;
     uint64_t					resourceID;
 

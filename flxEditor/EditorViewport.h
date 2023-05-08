@@ -78,6 +78,8 @@ public:
 	void ClearMode();
 	void ClearSelection();
 
+	EditorRenderer& GetRenderer() { return renderer; }
+
 	FlexKit::ImGUIIntegrator&	GetHUD();
 	FlexKit::CameraHandle		GetViewportCamera() const noexcept;
 

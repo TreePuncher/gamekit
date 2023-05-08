@@ -61,7 +61,7 @@ struct PortalEditorComponent final : public IEditorComponent
 		project{ IN_project } { }
 
 
-	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& view) override
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& view, bool remoteObject) override
 	{
 		panelCtx.PushVerticalLayout();
 
@@ -143,9 +143,12 @@ struct PortalEditorComponent final : public IEditorComponent
 	}
 
 
-	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
+	FlexKit::ComponentViewBase* Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx, bool remote)
 	{
-		return gameObject.AddView<EditorPortalView>();
+		if (remote)
+			return nullptr;
+
+		return &gameObject.AddView<EditorPortalView>();
 	}
 
 
@@ -207,9 +210,9 @@ void SpawnComponentEventHandler::OnCreateView(FlexKit::GameObject& gameObject, F
 
 struct SpawnPointComponentFactory final : public IEditorComponent
 {
-	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
+	FlexKit::ComponentViewBase* Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx, bool constructRemote)
 	{
-		return gameObject.AddView<EditorSpawnView>();
+		return &gameObject.AddView<EditorSpawnView>();
 	}
 
 	inline static const std::string name = "Spawn";
@@ -231,7 +234,7 @@ struct SpawnPointComponentFactory final : public IEditorComponent
 	{
 	}
 
-	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& view) override
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& view, bool remoteObject) override
 	{
 	}
 

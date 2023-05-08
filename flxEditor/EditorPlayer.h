@@ -71,6 +71,7 @@ public:
 	FlexKit::Scene						scene;
 	SharedEngineMemory*					shared		= nullptr;
 	FlexKit::GameObject*				gameObject	= nullptr;
+	FlexKit::BrushComponent				brushes;
 
 	FlexKit::ConstantBufferHandle		constantBuffer;
 	FlexKit::VertexBufferHandle			vertexBuffer;

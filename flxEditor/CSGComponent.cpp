@@ -2021,7 +2021,7 @@ struct CSGEditorComponent final : public IEditorComponent
 	const std::string&		ComponentName()	const noexcept { return name; }
 
 
-	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& view) override
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& view, bool remoteObject) override
 	{
 		CSGView& csgView = static_cast<CSGView&>(view);
 
@@ -2113,9 +2113,12 @@ struct CSGEditorComponent final : public IEditorComponent
 	}
 
 
-	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
+	FlexKit::ComponentViewBase* Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx, bool remote)
 	{
-		return gameObject.AddView<CSGView>();
+		if (remote)
+			return nullptr;
+		else
+			return &gameObject.AddView<CSGView>();
 	}
 
 	inline static const std::string name = "CSG";

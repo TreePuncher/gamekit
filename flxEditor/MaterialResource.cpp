@@ -61,7 +61,7 @@ void MaterialResource::SetResourceGUID(uint64_t IN_guid) noexcept
 
 struct MaterialEditorComponent final : public IEditorComponent
 {
-	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component, bool remoteObject)
 	{
 		auto& material = static_cast<FlexKit::MaterialView&>(component);
 
@@ -93,12 +93,15 @@ struct MaterialEditorComponent final : public IEditorComponent
 	}
 
 
-	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
+	FlexKit::ComponentViewBase* Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx, bool constructRemote)
 	{
+		if (constructRemote)
+			return nullptr;
+
 		auto& materialComponentView = gameObject.AddView<FlexKit::MaterialView>(FlexKit::MaterialComponent::GetComponent().CreateMaterial());
 		FlexKit::SetMaterialHandle(gameObject, FlexKit::GetMaterialHandle(gameObject));
 
-		return materialComponentView;
+		return &materialComponentView;
 	}
 
 
