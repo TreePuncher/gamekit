@@ -348,7 +348,7 @@ void EditorPrefabPreview::Update(
 
 void EditorPrefabPreview::Reset()
 {
-	struct ResetMessage : public FlexKit::Serializable<ResetMessage, MessageInterface, GetTypeGUID(ResizeMessage)>
+	struct ResetMessage : public FlexKit::Serializable<ResetMessage, MessageInterface, GetTypeGUID(ResetMessage)>
 	{
 		void Do(EditorPlayerState& player) override
 		{
@@ -359,7 +359,17 @@ void EditorPrefabPreview::Reset()
 	};
 
 	auto resetMsg = std::make_shared<ResetMessage>();
+	renderer.GetSharedMemory()->currentGameObject = nullptr;
 	playerContext->push_message(resetMsg);
+}
+
+
+/************************************************************************************************/
+
+
+FlexKit::GameObject* EditorPrefabPreview::GetGameObject()
+{
+	return renderer.GetSharedMemory()->currentGameObject;
 }
 
 
@@ -688,13 +698,13 @@ void EditorPrefabPreview::RenderAnimated(
 		auto& object = *selection;
 
 		if (turnTable)
-			FlexKit::Yaw(object.gameObject, 1.0f / 60.0f);
+			FlexKit::Yaw(*object.gameObject, 1.0f / 60.0f);
 
-		RenderStatic(dispatcher, frameGraph, object.gameObject, dT, temporaryBuffers, renderTarget, allocator);
+		RenderStatic(dispatcher, frameGraph, *object.gameObject, dT, temporaryBuffers, renderTarget, allocator);
 			
-		if (const auto pose = FlexKit::GetPoseState(object.gameObject); skeletonOverlay && pose)
+		if (const auto pose = FlexKit::GetPoseState(*object.gameObject); skeletonOverlay && pose)
 		{
-			const auto node = FlexKit::GetSceneNode(object.gameObject);
+			const auto node = FlexKit::GetSceneNode(*object.gameObject);
 			const auto PV   = GetCameraConstants(previewCamera).PV;
 
 			FlexKit::LineSegments lines(FlexKit::SystemAllocator);
@@ -754,12 +764,12 @@ void EditorPrefabPreview::RenderOverlays(
 	FlexKit::ThreadSafeAllocator&	allocator)
 {
 	auto& object			= selection->gameObject;
-	const auto node			= FlexKit::GetSceneNode(object);
+	const auto node			= FlexKit::GetSceneNode(*object);
 	const auto constants	= GetCameraConstants(previewCamera);
 	const auto PV			= constants.PV;
-	const auto Q			= FlexKit::GetOrientation(object);
-	const auto WT			= FlexKit::GetWT(object).Transpose();
-	const auto brush		= FlexKit::GetBrush(object);
+	const auto Q			= FlexKit::GetOrientation(*object);
+	const auto WT			= FlexKit::GetWT(*object).Transpose();
+	const auto brush		= FlexKit::GetBrush(*object);
 
 	if (!brush)
 		return;
@@ -864,7 +874,7 @@ void EditorPrefabPreview::RenderOverlays(
 		auto meshResource	= static_cast<FlexKit::MeshResource*>(projectRes->resource.get());
 
 		if (boundingVolume)
-			AABBtoLines(FlexKit::GetAABBFromMesh(object), float3{237.0f / 256.0f, 231.0f / 256.0f, 107.0f / 256.0f});
+			AABBtoLines(FlexKit::GetAABBFromMesh(*object), float3{237.0f / 256.0f, 231.0f / 256.0f, 107.0f / 256.0f});
 
 		if (SMboundingVolumes)
 		{
@@ -926,12 +936,12 @@ void EditorPrefabPreview::RenderOverlays(
 void EditorPrefabPreview::CenterCamera()
 {
 	auto& gameObject	= selection->gameObject;
-	auto meshes			= FlexKit::GetTriMesh(gameObject);
+	auto meshes			= FlexKit::GetTriMesh(*gameObject);
 
 	if (meshes.empty())
 		return;
 
-	auto aabb				= FlexKit::GetAABBFromMesh(gameObject);
+	auto aabb				= FlexKit::GetAABBFromMesh(*gameObject);
 	const FlexKit::Camera c = FlexKit::CameraComponent::GetComponent().GetCamera(previewCamera);
 
 	const auto target			= aabb.MidPoint();

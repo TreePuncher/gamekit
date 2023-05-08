@@ -20,6 +20,7 @@ using namespace FlexKit;
 EditorPlayerState::EditorPlayerState(GameFramework & in_framework, SharedEngineMemory* IN_shared) :
 	FrameworkState		{ in_framework	},
 	shared				{ IN_shared		},
+	brushes				{ in_framework.core.GetBlockMemory(), in_framework.core.RenderSystem },
 	scene				{ IN_shared->blockAllocator },
 	renderWindow		{ IN_shared->blockAllocator.allocate<Win32RenderWindow>(std::move(FlexKit::CreateWin32RenderWindowFromHWND(framework.GetRenderSystem(), shared->targetWindow).first)) },
 	constantBuffer		{ in_framework.GetRenderSystem().CreateConstantBuffer(16 * MEGABYTE, false) },
@@ -99,6 +100,7 @@ void EditorPlayerState::Reset()
 
 	scene.ClearScene();
 
+	shared->currentGameObject = gameObject;
 	gameObject->AddView<FlexKit::SceneNodeView>();
 	scene.AddGameObject(*gameObject);
 }

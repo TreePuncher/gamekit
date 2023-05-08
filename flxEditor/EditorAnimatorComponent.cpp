@@ -54,16 +54,18 @@ struct SkeletonEditorCompoment : public IEditorComponent
 		, project	{ IN_project } {}
 
 
-	FlexKit::ComponentViewBase& Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx)
+	FlexKit::ComponentViewBase* Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx, bool remote)
 	{
-		if (gameObject.hasView(FlexKit::BrushComponentID) && !gameObject.hasView(FlexKit::SkeletonComponentID) && FlexKit::GetBrush(gameObject)->meshes.size())
-			return gameObject.AddView<FlexKit::SkeletonView>(-1u);
+		if (remote)
+			return nullptr;
+		else if (gameObject.hasView(FlexKit::BrushComponentID) && !gameObject.hasView(FlexKit::SkeletonComponentID) && FlexKit::GetBrush(gameObject)->meshes.size())
+			return &gameObject.AddView<FlexKit::SkeletonView>(-1u);
 		else
-			return *gameObject.GetView(FlexKit::SkeletonComponentID);
+			return gameObject.GetView(FlexKit::SkeletonComponentID);
 	}
 
 
-	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) override
+	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component, bool remoteObject) override
 	{
 		panelCtx.PushVerticalLayout("Skeleton", true);
 		panelCtx.AddText("TODO: ME!");

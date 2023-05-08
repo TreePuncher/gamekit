@@ -91,7 +91,9 @@ void StringToValue(const std::string& in, FlexKit::AnimatorComponent::InputValue
 
 void EditorSelectedPrefabObject::Reset()
 {
-	gameObject.Release();
+	if(gameObject)
+		gameObject->Release();
+
 	resource    = nullptr;
 	prefab      = nullptr;
 	animator    = nullptr;
@@ -105,7 +107,7 @@ void EditorSelectedPrefabObject::Reset()
 
 void EditorSelectedPrefabObject::Reload(EditorScriptEngine& engine)
 {
-	auto* animatorView  = static_cast<FlexKit::AnimatorView*>(gameObject.GetView(FlexKit::AnimatorComponentID));
+	auto* animatorView  = static_cast<FlexKit::AnimatorView*>(gameObject->GetView(FlexKit::AnimatorComponentID));
 	auto scriptState    = animatorView->GetScriptState();
 
 	auto ctx = FlexKit::GetContext();
@@ -147,7 +149,7 @@ void EditorSelectedPrefabObject::Reload(EditorScriptEngine& engine)
 uint32_t EditorSelectedPrefabObject::AddInputValue(const std::string& name, uint32_t valueType)
 {
 	return FlexKit::Apply(
-		gameObject,
+		*gameObject,
 		[&](FlexKit::AnimatorView& animatorView) -> uint32_t
 		{
 			FlexKit::AnimatorComponent::InputID ID;
@@ -202,7 +204,7 @@ uint32_t EditorSelectedPrefabObject::AddInputValue(const std::string& name, uint
 std::string EditorSelectedPrefabObject::ValueString(uint32_t idx, uint32_t valueType)
 {
 	return FlexKit::Apply(
-		gameObject,
+		*gameObject,
 		[&](FlexKit::AnimatorView& animator) -> std::string
 		{
 			auto value      = animator.GetInputValue(idx).value_or(nullptr);
@@ -349,8 +351,11 @@ void EditorSelectedPrefabObject::UpdateDefaultValue(uint32_t idx, const std::str
 
 void EditorSelectedPrefabObject::UpdateValue(uint32_t idx, const std::string& valueString)
 {
+	if (!gameObject)
+		return;
+
 	FlexKit::Apply(
-		gameObject,
+		*gameObject,
 		[&](FlexKit::AnimatorView& animator)
 		{
 			auto value		= animator.GetInputValue(idx).value_or(nullptr);
@@ -365,7 +370,8 @@ void EditorSelectedPrefabObject::UpdateValue(uint32_t idx, const std::string& va
 
 void EditorSelectedPrefabObject::Release()
 {
-	gameObject.Release();
+	if(gameObject)
+		gameObject->Release();
 }
 
 

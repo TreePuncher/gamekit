@@ -1,15 +1,16 @@
 #include "PCH.h"
 #include "EditorInspectors.h"
 #include "EditorResourcePickerDialog.h"
-#include "ResourceIDs.h"
+#include "EditorPlayer.h"
 #include "EditorViewport.h"
+#include "ResourceIDs.h"
 #include <TriggerSlotStrings.hpp>
 
 
 /************************************************************************************************/
 
 
-void StringIDEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
+void StringIDEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component, bool remoteObject)
 {
 	auto& stringIDView = static_cast<FlexKit::StringIDView&>(component);
 
@@ -34,7 +35,7 @@ void StringIDEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexK
 /************************************************************************************************/
 
 
-void TransformEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
+void TransformEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component, bool remoteObject)
 {
 	auto& sceneNodeView = static_cast<FlexKit::SceneNodeView&>(component);
 
@@ -489,7 +490,7 @@ void TransformEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Flex
 /************************************************************************************************/
 
 
-void VisibilityEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
+void VisibilityEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component, bool remoteObject)
 {
 	auto& visibility = static_cast<FlexKit::SceneVisibilityView&>(component);
 
@@ -519,7 +520,7 @@ void VisibilityEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 /************************************************************************************************/
 
 
-void PointLightEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
+void PointLightEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component, bool remoteObject)
 {
 	auto& pointLight = static_cast<FlexKit::LightView&>(component);
 
@@ -698,8 +699,14 @@ SceneBrushEditorComponent::SceneBrushEditorComponent(EditorProject& IN_project, 
 	, viewport	{ IN_viewport } {}
 
 
-void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& component)
+void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& component, bool remoteObject)
 {
+	if (remoteObject)
+	{
+		panelCtx.AddText(fmt::format("Remote Inspection Not Available!"));
+		return;
+	}
+
 	auto& brush = static_cast<FlexKit::BrushView&>(component);
 
 	panelCtx.PushVerticalLayout("Brush", true);
@@ -770,10 +777,43 @@ void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 }
 
 
+FlexKit::ComponentViewBase* SceneBrushEditorComponent::Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx, bool remote)
+{
+	if (remote)
+	{
+		auto shared = viewport.GetRenderer().GetSharedMemory();
+
+		struct AddBrushMessage : public FlexKit::Serializable<AddBrushMessage, MessageInterface, GetTypeGUID(AddBrushMessage)>
+		{
+			void Do(EditorPlayerState& player) override
+			{
+				if (!player.gameObject->hasView(FlexKit::TransformComponentID))
+					player.gameObject->AddView<FlexKit::SceneNodeView>();
+
+				player.gameObject->AddView<FlexKit::BrushView>();
+			}
+
+			void Serialize(auto& archive) {}
+		};
+
+		auto addBrush = std::make_shared<AddBrushMessage>();
+
+		viewport.GetRenderer().GetSharedMemory()->PushMessageToPlayer(addBrush);
+
+		return nullptr;
+	}
+
+	if (!gameObject.hasView(FlexKit::TransformComponentID))
+		gameObject.AddView<FlexKit::SceneNodeView>();
+
+	return &gameObject.AddView<FlexKit::BrushView>();
+}
+
+
 /************************************************************************************************/
 
 
-void TriggerEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component)
+void TriggerEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component, bool remoteObject)
 {
 	auto& triggers = static_cast<FlexKit::TriggerView&>(component);
 

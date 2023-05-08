@@ -120,10 +120,10 @@ struct IEditorComponent
 	virtual FlexKit::ComponentID	ComponentID()	const noexcept = 0;
 	virtual const std::string&		ComponentName()	const noexcept = 0;
 
-	virtual FlexKit::ComponentViewBase& Construct(FlexKit::GameObject&, ComponentConstructionContext& scene) = 0;
+	virtual FlexKit::ComponentViewBase* Construct(FlexKit::GameObject&, ComponentConstructionContext& scene, bool constructRemote = false) = 0;
 	virtual bool						Constructable() const noexcept { return true; }
 
-	virtual void						Inspect(ComponentViewPanelContext& layout, FlexKit::GameObject&, FlexKit::ComponentViewBase& component) = 0;
+	virtual void						Inspect(ComponentViewPanelContext& layout, FlexKit::GameObject&, FlexKit::ComponentViewBase& component, bool remoteObject = false) = 0;
 };
 
 
@@ -143,7 +143,7 @@ public:
 		availableComponents.push_back(&component_ref);
 	}
 
-	static FlexKit::ComponentViewBase& ConstructComponent(uint32_t ComponentID, ViewportGameObject& gameObject, ComponentConstructionContext& scene);
+	static FlexKit::ComponentViewBase* ConstructComponent(uint32_t ComponentID, ViewportGameObject& gameObject, ComponentConstructionContext& scene);
 
 	 SelectionContext* GetSelectionContext() { return &selectionContext; }
 
@@ -155,7 +155,7 @@ private:
 
 	void UpdatePropertiesViewportObjectInspector();
 	void UpdateAnimatorObjectInspector();
-	void UpdateUI(FlexKit::GameObject&);
+	void UpdateUI(FlexKit::GameObject&, bool remote = false);
 
 	void timerEvent(QTimerEvent*) override;
 	void OnUpdate();

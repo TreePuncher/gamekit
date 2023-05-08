@@ -431,7 +431,7 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
 					} ctx{ selection };
 
 					if(selection)
-						component->Construct(selection->gameObject, ctx);
+						component->Construct(*selection->gameObject, ctx, true);
 				}	break;
 				default:
 					break;
@@ -468,7 +468,7 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
 }
 
 
-FlexKit::ComponentViewBase& EditorInspectorView::ConstructComponent(uint32_t componentID, ViewportGameObject& gameObject, ComponentConstructionContext& ctx)
+FlexKit::ComponentViewBase* EditorInspectorView::ConstructComponent(uint32_t componentID, ViewportGameObject& gameObject, ComponentConstructionContext& ctx)
 {
 	for (auto& component : availableComponents)
 	{
@@ -477,6 +477,7 @@ FlexKit::ComponentViewBase& EditorInspectorView::ConstructComponent(uint32_t com
 	 }
 
 	throw std::runtime_error("Unknown Component");
+	return nullptr;
 }
 
 
@@ -531,7 +532,7 @@ void EditorInspectorView::UpdateAnimatorObjectInspector()
 	uint64_t objectID   = selection->ID;
 	auto& gameObject    = selection->gameObject;
 
-	auto gameObjectPropertyCount = std::distance(gameObject.begin(), gameObject.end());
+	auto gameObjectPropertyCount = std::distance((*gameObject).begin(), (*gameObject).end());
 
 	if (objectID        != selectedObject ||
 		propertyCount   != gameObjectPropertyCount)
@@ -539,7 +540,7 @@ void EditorInspectorView::UpdateAnimatorObjectInspector()
 		selectedObject  = objectID;
 		propertyCount   = gameObjectPropertyCount;
 
-		UpdateUI(gameObject);
+		UpdateUI(*gameObject, true);
 	}
 }
 
@@ -615,7 +616,7 @@ IEditorComponent* EditorInspectorView::FindComponent(uint32_t componentID)
 /************************************************************************************************/
 
 
-void EditorInspectorView::UpdateUI(FlexKit::GameObject& gameObject)
+void EditorInspectorView::UpdateUI(FlexKit::GameObject& gameObject, bool remote)
 {
 	auto children = contentWidget->children();
 	for (auto child : children)
@@ -659,7 +660,7 @@ void EditorInspectorView::UpdateUI(FlexKit::GameObject& gameObject)
 		{
 			toolBox->addItem(scrollable, fmt::format("{}", res->ComponentName()).c_str());
 
-			res->Inspect(context, gameObject, componentView.Get_ref());
+			res->Inspect(context, gameObject, componentView.Get_ref(), remote);
 		}
 		else
 		{
@@ -705,7 +706,7 @@ void EditorInspectorView::OnUpdate()
 		UpdatePropertiesViewportObjectInspector();
 		break;
 	case AnimatorObject_ID:
-		//UpdateAnimatorObjectInspector();
+		UpdateAnimatorObjectInspector();
 		break;
 	default:
 	{

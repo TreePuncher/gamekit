@@ -212,14 +212,15 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 		[&]()
 		{
 			previewWindow->Reset();
+			while (previewWindow->GetGameObject() == nullptr);
 
-			/*
 			globalSelection.Clear();
 			localSelection->Release();
 
 			PrefabGameObjectResource_ptr objectResource = std::make_shared<PrefabGameObjectResource>();
 			auto projectRes = project.AddResource(objectResource);
 
+			localSelection->gameObject	= previewWindow->GetGameObject();
 			localSelection->layer		= GetPhysicsLayer();
 			localSelection->resourceID	= objectResource->GetResourceGUID();
 			localSelection->prefab		= objectResource;
@@ -227,10 +228,10 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 			localSelection->ID			= objectResource->GetResourceGUID();
 			localSelection->animator	= nullptr;
 
+
 			globalSelection.Clear();
 			globalSelection.type		= AnimatorObject_ID;
 			globalSelection.selection	= std::any{ localSelection };
-			*/
 		});
 
 
@@ -385,7 +386,7 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 		createAnimator, &QAction::triggered,
 		[&]()
 		{
-			localSelection->gameObject.AddView<FlexKit::AnimatorView>();
+			localSelection->gameObject->AddView<FlexKit::AnimatorView>();
 		});
 
 	auto viewMenu				= menubar->addMenu("View");
