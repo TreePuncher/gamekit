@@ -1,5 +1,6 @@
 #include "PCH.h"
 #include "DXRenderWindow.h"
+#include "EditorPlayer.h"
 #include "EditorPrefabEditor.h"
 #include "EditorPrefabObject.h"
 #include "EditorPrefabRenderer.h"
@@ -10,6 +11,7 @@
 #include <boost/process.hpp>
 
 #include "Serialization.hpp"
+#include <type_traits>
 
 /************************************************************************************************/
 
@@ -213,12 +215,33 @@ struct LoadEntityContext : public LoadEntityContextInterface
 /************************************************************************************************/
 
 
+
+template<typename TY>
+concept IPCMessage = std::is_base_of_v<MessageInterface, typename TY::element_type>;
+
 struct PlayerContext
 {
-	Queue<MessageBlob>& inputQueue;
-	Queue<MessageBlob>& outputQueue;
+	InterProcessQueue<FlexKit::Vector<std::byte>>&	inputQueue;
+	InterProcessQueue<FlexKit::Vector<std::byte>>&	outputQueue;
+	iAllocator&										sharedMemory;
 
 	boost::process::child child;
+
+	void push_message(IPCMessage auto& message)
+	{
+		FlexKit::SaveArchiveContext archive;
+
+		archive& message;
+		auto blob = archive.GetBlob();
+
+		FlexKit::Vector<std::byte> outputBlob{ sharedMemory };
+
+		outputBlob.resize(blob.buffer.size());
+
+		memcpy(outputBlob.data(), blob.data(), outputBlob.size());
+
+		inputQueue.push_front(outputBlob);
+	}
 };
 
 
@@ -235,36 +258,62 @@ EditorPrefabPreview::EditorPrefabPreview(EditorRenderer& IN_renderer, EditorSele
 		, selection		{ IN_selection }
 		, project		{ IN_project }
 		, previewCamera	{ FlexKit::CameraComponent::GetComponent().CreateCamera() }
-	{
-		FlexKit::SetCameraNode(previewCamera, FlexKit::GetZeroedNode());
+{
+	FlexKit::SetCameraNode(previewCamera, FlexKit::GetZeroedNode());
 
-		auto& renderSystem = renderer.GetRenderSystem();
-		renderSystem.RegisterPSOLoader(FLATSKINNED_PSO,	{ &renderSystem.Library.RS6CBVs4SRVs, &CreateFlatSkinnedPassPSO });
-		renderSystem.RegisterPSOLoader(FLAT_PSO,		{ &renderSystem.Library.RS6CBVs4SRVs, &CreateFlatPassPSO });
+	auto& renderSystem = renderer.GetRenderSystem();
+	renderSystem.RegisterPSOLoader(FLATSKINNED_PSO,	{ &renderSystem.Library.RS6CBVs4SRVs, &CreateFlatSkinnedPassPSO });
+	renderSystem.RegisterPSOLoader(FLAT_PSO,		{ &renderSystem.Library.RS6CBVs4SRVs, &CreateFlatPassPSO });
 
-		/*
-		renderWindow->SetOnDraw(
-			[&](FlexKit::UpdateDispatcher& dispatcher, double dT, TemporaryBuffers& temporaries, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator)
+	/*
+	renderWindow->SetOnDraw(
+		[&](FlexKit::UpdateDispatcher& dispatcher, double dT, TemporaryBuffers& temporaries, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator)
+		{
+			if (isVisible())
+				RenderAnimated(dispatcher, frameGraph, dT, temporaries, renderTarget, allocator);
+		});
+	*/
+
+	auto shared = renderer.GetSharedMemory();
+	shared->targetWindow = sharedWindow.GetHWND();
+
+	playerContext = std::make_unique<PlayerContext>(
+		shared->inputQueue,
+		shared->outputQueue,
+		shared->blockAllocator,
+		boost::process::child(
+			"flxEditor.exe",
+			boost::process::args(std::format("--player", IN_renderer.GetSharedAddress())),
+			boost::process::args(std::format("{}", IN_renderer.GetSharedAddress()))));
+
+	while (shared->outputQueue.size() == 0);
+	shared->outputQueue.pop_back();
+}
+
+
+/************************************************************************************************/
+
+
+EditorPrefabPreview::~EditorPrefabPreview()
+{
+	if (playerContext->child.running())
+	{	// Kill Player!
+		struct QuitMessage : public FlexKit::Serializable<QuitMessage, MessageInterface, GetTypeGUID(QuitMessage)>
+		{
+			void Do(EditorPlayerState& player) override
 			{
-				if (isVisible())
-					RenderAnimated(dispatcher, frameGraph, dT, temporaries, renderTarget, allocator);
-			});
-		*/
+				player.Shutdown();
+			}
 
-		auto shared = renderer.GetSharedMemory();
-		shared->targetWindow = sharedWindow.GetHWND();
+			void Serialize(auto& archive) {}
+		};
 
-		playerContext = std::make_unique<PlayerContext>(
-			shared->inputQueue,
-			shared->outputQueue,
-			boost::process::child(
-				"flxEditor.exe",
-				boost::process::args(std::format("--player", IN_renderer.GetSharedAddress())),
-				boost::process::args(std::format("{}", IN_renderer.GetSharedAddress()))));
+		auto quiteMessage = std::make_shared<QuitMessage>();
+		playerContext->push_message(quiteMessage);
 
-		while (shared->outputQueue.size() == 0);
-		shared->outputQueue.pop_back();
+		while (playerContext->child.running());
 	}
+}
 
 
 /************************************************************************************************/
@@ -278,6 +327,103 @@ void EditorPrefabPreview::Update(
 	if (!playerContext->child.running())
 	{	// Restart Player!
 	}
+
+	while(playerContext->outputQueue.size())
+	{
+		auto message	= playerContext->outputQueue.pop_back();
+		auto& temp		= message.value();
+		FlexKit::Blob					blob	{ (const char*)temp.data(), temp.size() };
+		FlexKit::LoadBlobArchiveContext	loader	{ blob };
+
+		std::shared_ptr<EditorMessageInterface> freshMessage;
+		loader& freshMessage;
+
+		freshMessage->Do();
+	}
+}
+
+
+/************************************************************************************************/
+
+
+void EditorPrefabPreview::Reset()
+{
+	struct ResetMessage : public FlexKit::Serializable<ResetMessage, MessageInterface, GetTypeGUID(ResizeMessage)>
+	{
+		void Do(EditorPlayerState& player) override
+		{
+			player.Reset();
+		}
+
+		void Serialize(auto& archive){}
+	};
+
+	auto resetMsg = std::make_shared<ResetMessage>();
+	playerContext->push_message(resetMsg);
+}
+
+
+/************************************************************************************************/
+
+
+void EditorPrefabPreview::SendResource(FlexKit::AssetHandle handle)
+{
+	auto resource = project.FindProjectResource(handle);
+	auto blob = resource->resource->CreateBlob();
+
+	struct ResourceMessage : public FlexKit::Serializable<ResourceMessage, MessageInterface, GetTypeGUID(ResizeMessage)>
+	{
+		void Do(EditorPlayerState& player) override
+		{
+			player.AddResource(std::move(blob));
+		}
+
+		void Serialize(auto& archive)
+		{
+			archive& blob;
+		}
+
+		FlexKit::Blob blob;
+	};
+
+	auto resourceSend = std::make_shared<ResourceMessage>();
+	resourceSend->blob = blob;
+
+	playerContext->push_message(resourceSend);
+}
+
+
+/************************************************************************************************/
+
+
+void EditorPrefabPreview::SetBrush(FlexKit::AssetHandle handle)
+{
+	SendResource(handle);
+
+	struct SetBrushMessage : public FlexKit::Serializable<SetBrushMessage, MessageInterface, GetTypeGUID(ResizeMessage)>
+	{
+		void Do(EditorPlayerState& player) override
+		{
+			auto triMeshResource = FlexKit::FindMesh(meshHandle);
+
+			if (triMeshResource == FlexKit::InvalidHandle)
+				player.SendErrorMessage("Resource not found!");
+			else
+				player.gameObject->AddView<FlexKit::BrushView>(triMeshResource.value());
+		}
+
+		void Serialize(auto& archive)
+		{
+			archive& meshHandle;
+		}
+
+		FlexKit::AssetHandle	meshHandle;
+	};
+
+	auto brushMsg = std::make_shared<SetBrushMessage>();
+	brushMsg->meshHandle	= handle;
+
+	playerContext->push_message(brushMsg);
 }
 
 
@@ -291,27 +437,29 @@ void EditorPrefabPreview::resizeEvent(QResizeEvent* evt)
 	auto size = evt->size();
 	FlexKit::uint2 newWH = { FlexKit::Max(1, evt->size().width() * 1.5), FlexKit::Max(1, evt->size().height() * 1.5) };
 
-
-	FlexKit::SaveArchiveContext archive;
-
 	struct ResizeMessage : public FlexKit::Serializable<ResizeMessage, MessageInterface, GetTypeGUID(ResizeMessage)>
 	{
 		FlexKit::uint2 newWH;
 
-		void Do() {}
-	} resize;
+		void Do(EditorPlayerState& player) override
+		{
+			player.renderWindow.Resize(newWH);
+		}
 
-	resize.newWH = newWH;
+		void Serialize(auto& archive)
+		{
+			archive& newWH;
+		}
+	};
 
-	archive& resize;
-	auto blob = archive.GetBlob();
+	auto resize = std::make_shared<ResizeMessage>();
 
-	MessageBlob outputBlob;
-	outputBlob.buffer = FlexKit::Vector<std::byte>{};
+	resize->newWH = newWH;
 
-	playerContext->inputQueue.push_front(outputBlob);
+	playerContext->push_message(resize);
 	FlexKit::SetCameraAspectRatio(previewCamera, float(evt->size().width()) / float(evt->size().height()));
 
+	sharedWindow.resize(evt->size());
 	/*
 	renderWindow->resizeEvent(evt);
 	depthBuffer.Resize(newWH);
@@ -801,4 +949,26 @@ void EditorPrefabPreview::CenterCamera()
 }
 
 
-/************************************************************************************************/
+/**********************************************************************
+
+Copyright (c) 2015 - 2023 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

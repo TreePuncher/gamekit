@@ -705,7 +705,7 @@ void EditorInspectorView::OnUpdate()
 		UpdatePropertiesViewportObjectInspector();
 		break;
 	case AnimatorObject_ID:
-		UpdateAnimatorObjectInspector();
+		//UpdateAnimatorObjectInspector();
 		break;
 	default:
 	{

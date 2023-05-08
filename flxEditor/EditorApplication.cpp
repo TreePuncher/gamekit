@@ -305,15 +305,15 @@ EditorProject* EditorApplication::GetCurrentProject()
 
 void SceneReference::Register(asIScriptEngine* engine)
 {
-	int c = engine->RegisterObjectType("Scene", 0, asOBJ_REF);                   assert(c >= 0);
+	int c = engine->RegisterObjectType("Scene", 0, asOBJ_REF);	assert(c >= 0);
 
 	// Life Cycle behaviors
-	c = engine->RegisterObjectBehaviour("Scene", asBEHAVE_ADDREF,     "void f()",	asFunctionPtr(SceneReference::AddRef),    asCALL_CDECL_OBJLAST);    assert(c >= 0);
-	c = engine->RegisterObjectBehaviour("Scene", asBEHAVE_RELEASE,    "void f()",	asFunctionPtr(SceneReference::Release),   asCALL_CDECL_OBJLAST);    assert(c >= 0);
+	c = engine->RegisterObjectBehaviour("Scene", asBEHAVE_ADDREF,     "void f()",	asFunctionPtr(SceneReference::AddRef),    asCALL_CDECL_OBJLAST);	assert(c >= 0);
+	c = engine->RegisterObjectBehaviour("Scene", asBEHAVE_RELEASE,    "void f()",	asFunctionPtr(SceneReference::Release),   asCALL_CDECL_OBJLAST);	assert(c >= 0);
 
 	// Methods
-	c = engine->RegisterObjectMethod("Scene", "bool RayCast(float, float, float)",	asFunctionPtr(SceneReference::RayCast),     asCALL_CDECL_OBJLAST); assert(c >= 0);
-	c = engine->RegisterObjectMethod("Scene", "bool IsValid()",						asFunctionPtr(SceneReference::IsValid),     asCALL_CDECL_OBJLAST); assert(c >= 0);
+	c = engine->RegisterObjectMethod("Scene", "bool RayCast(float, float, float)",	asFunctionPtr(SceneReference::RayCast),     asCALL_CDECL_OBJLAST);	assert(c >= 0);
+	c = engine->RegisterObjectMethod("Scene", "bool IsValid()",						asFunctionPtr(SceneReference::IsValid),     asCALL_CDECL_OBJLAST);	assert(c >= 0);
 }
 
 SceneReference* SceneReference::Factory()

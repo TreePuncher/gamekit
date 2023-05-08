@@ -9,23 +9,17 @@
 
 class EditorCodeEditor;
 class EditorPrefabPreview;
-class EditorRenderer;
+class EditorPrefabInputTab;
 class EditorProject;
+class EditorRenderer;
+class EditorScriptEngine;
 class EditorSelectedPrefabObject;
 class QMenuBar;
-class EditorScriptEngine;
-class SelectionContext;
-class EditorPrefabInputTab;
 class QTimer;
+class SelectionContext;
 
 
 /************************************************************************************************/
-
-
-namespace FlexKit
-{
-	class Animation;
-}
 
 
 class EditorPrefabEditor : public QWidget
@@ -39,8 +33,8 @@ public:
 	FlexKit::LayerHandle GetPhysicsLayer() const;
 
 private:
-	FlexKit::Animation*		LoadAnimation		(std::string&, bool);
-	void					ReleaseAnimation	(FlexKit::Animation*);
+	//FlexKit::Animation*		LoadAnimation		(std::string&, bool);
+	//void					ReleaseAnimation	(FlexKit::Animation*);
 
 	Ui::EditorAnimationEditor	ui;
 	SelectionContext&			globalSelection;

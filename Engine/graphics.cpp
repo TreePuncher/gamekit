@@ -8618,10 +8618,10 @@ namespace FlexKit
 	{
 		if (IsMeshLoaded(guid))
 		{
-			auto [mesh, result] = FindMesh(guid);
+			auto mesh = FindMesh(guid);
 
-			if(result)
-				return mesh;
+			if(mesh)
+				return mesh.value();
 		}
 
 		TriMeshHandle triMesh = LoadTriMeshIntoTable(
@@ -8636,10 +8636,10 @@ namespace FlexKit
 
 	TriMeshHandle GetMesh(const char* meshID, CopyContextHandle copyCtx )
 	{
-		auto [mesh, result] = FindMesh(meshID);
+		auto mesh = FindMesh(meshID);
 
-		if(result)
-			return mesh;
+		if(mesh)
+			return mesh.value();
 
 		return LoadTriMeshIntoTable(copyCtx == InvalidHandle ? GeometryTable.renderSystem->GetImmediateCopyQueue() : copyCtx, meshID);
 	}
@@ -8677,7 +8677,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Pair<TriMeshHandle, bool>	FindMesh(GUID_t guid)
+	std::expected<TriMeshHandle, FINDMESH_RES> FindMesh(GUID_t guid)
 	{
 		size_t location		= 0;
 		size_t HandleIndex	= 0;
@@ -8686,10 +8686,9 @@ namespace FlexKit
 			if (Entry == guid) {
 				for ( auto index : GeometryTable.Handles.Indexes)
 				{
-					if (index == location) {
-						return { TriMeshHandle((unsigned int)HandleIndex, GeometryTable.Handles.mType, 0x04), true };
-						break;
-					}
+					if (index == location)
+						return TriMeshHandle((unsigned int)HandleIndex, GeometryTable.Handles.mType, 0x04);
+
 					++HandleIndex;
 				}
 				break;
@@ -8697,14 +8696,14 @@ namespace FlexKit
 			++location;
 		}
 
-		return { InvalidHandle, false };
+		return std::unexpected{ FINDMESH_RES::NotFound };
 	}
 	
 
 	/************************************************************************************************/
 
 
-	Pair<TriMeshHandle, bool>	FindMesh(const char* ID)
+	std::expected<TriMeshHandle, FINDMESH_RES>	FindMesh(const char* ID)
 	{
 		TriMeshHandle HandleOut = InvalidHandle;
 		size_t location			= 0;
@@ -8715,10 +8714,9 @@ namespace FlexKit
 			if (!strncmp(Entry, ID, 64)) {
 				for (auto index : GeometryTable.Handles.Indexes)
 				{
-					if (index == location) {
-						HandleOut.INDEX = HandleIndex;
-						break;
-					}
+					if (index == location)
+						return TriMeshHandle((unsigned int)HandleIndex, GeometryTable.Handles.mType, 0x04);
+
 					++HandleIndex;
 				}
 				break;
@@ -8726,7 +8724,7 @@ namespace FlexKit
 			++location;
 		}
 
-		return{ HandleOut, 0 };
+		return std::unexpected{ FINDMESH_RES::NotFound };
 	}
 
 
