@@ -21,7 +21,6 @@
 #include "TextureUtilities.h"
 
 #include <algorithm>
-#include <concepts>
 #include <string>
 #include <d3d12.h>
 #include <d3d12sdklayers.h>
@@ -5370,8 +5369,15 @@ private:
 	FLEXKITAPI size_t						GetSkeletonGUID			( TriMeshHandle  TMHandle );
 	FLEXKITAPI void							SetSkeleton				( TriMeshHandle  TMHandle, Skeleton* S );
 
-	FLEXKITAPI Pair<TriMeshHandle, bool>	FindMesh				( GUID_t			guid );
-	FLEXKITAPI Pair<TriMeshHandle, bool>	FindMesh				( const char*	ID   );
+	enum class FINDMESH_RES
+	{
+		NotFound,
+		FailedToCreate
+	};
+
+	FLEXKITAPI std::expected<TriMeshHandle, FINDMESH_RES>	FindMesh(GUID_t			guid);
+	FLEXKITAPI std::expected<TriMeshHandle, FINDMESH_RES >	FindMesh(const char*	ID);
+
 	FLEXKITAPI bool							IsMeshLoaded			( GUID_t			guid );
 	FLEXKITAPI bool							IsSkeletonLoaded		( TriMeshHandle	guid );
 	FLEXKITAPI bool							HasAnimationData		( TriMeshHandle	guid );

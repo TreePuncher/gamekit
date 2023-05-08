@@ -677,15 +677,15 @@ namespace FlexKit
 		{
 			GUID_t guid;
 			memcpy(&guid, buffer + sizeof(BrushComponentBlob) + sizeof(GUID_t) * I, sizeof(GUID_t));
-			auto [triMesh, loaded] = FindMesh(guid);
+			auto triMesh = FindMesh(guid);
 
-			if (!loaded)
+			if (!triMesh)
 				triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateCopyQueue(), guid);
 
 			if (triMesh == InvalidHandle)
 				return;
 
-			brush->PushMesh(triMesh);
+			brush->PushMesh(triMesh.value());
 		}
 
 		SetBoundingSphereFromMesh(gameObject);
