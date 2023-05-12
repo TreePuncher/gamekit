@@ -333,7 +333,7 @@ namespace FlexKit
 			Blocks	{nullptr},
 			Size	{0}{}
 
-		static int MaxAllocationSize() { return sizeof(Block::BlockSize); }
+		static int MaxAllocationSize() { return Block::BlockSize; }
 
 		void Initialise( size_t BufferSize, byte* Buffer )// Size in Bytes
 		{
@@ -345,7 +345,7 @@ namespace FlexKit
 			for (size_t itr = 0; itr < Size; ++itr)
 			{
 				Blocks[itr].BlockFull = false;
-				for (size_t itr2 = 0; itr2 < 4; ++itr2)
+				for (size_t itr2 = 0; itr2 < Block::BlockSize; ++itr2)
 					Blocks[itr].state[itr2] = Block::Free;
 			}
 #endif
@@ -358,7 +358,7 @@ namespace FlexKit
 			{
 				if (!Blocks[itr].BlockFull)
 				{
-					for (size_t itr2 = 0; itr2 < 7; ++itr2)
+					for (size_t itr2 = 0; itr2 < Block::BlockCount; ++itr2)
 					{
 						auto state = Blocks[itr].state[itr2];
 						if (state == Block::Free)
@@ -380,6 +380,9 @@ namespace FlexKit
 
 		void _FreeBlock(size_t BlockID, size_t SBlockID)
 		{
+#ifdef _DEBUG
+			FK_ASSERT(Blocks[BlockID].state[SBlockID] != Block::Free);
+#endif
 			Blocks[BlockID].state[SBlockID] = Block::Free;
 			Blocks[BlockID].BlockFull = false;
 
@@ -742,6 +745,8 @@ namespace FlexKit
 			if (in._ptr == nullptr)
 				in._ptr = (byte*)::_aligned_malloc(Small + Medium + Large, 16);
 
+			Buffer_ptr = (char*)in._ptr;
+
 			SmallBlockAlloc.Initialise	(in.SmallBlock,		in._ptr + 0);
 			MediumBlockAlloc.Initialise	(in.MediumBlock,	in._ptr + Small);
 			LargeBlockAlloc.Initialise	(in.LargeBlock,		in._ptr + Small + Medium);
@@ -819,7 +824,7 @@ namespace FlexKit
 
 			if (InSmallRange(reinterpret_cast<byte*>(_ptr)))
 				SmallBlockAlloc.free(reinterpret_cast<void*>(_ptr));
-			else if (InMediumRange(reinterpret_cast<byte*>(_ptr)))
+			if (InMediumRange(reinterpret_cast<byte*>(_ptr)))
 				MediumBlockAlloc.free(reinterpret_cast<void*>(_ptr));
 			else if (InLargeRange(reinterpret_cast<byte*>(_ptr)))
 				LargeBlockAlloc.free(reinterpret_cast<void*>(_ptr));
@@ -836,9 +841,9 @@ namespace FlexKit
 		{
 			std::unique_lock ul(mu);
 
-			if (InSmallRange((byte*)_ptr) && false)
+			if (InSmallRange((byte*)_ptr))
 				SmallBlockAlloc._aligned_free(_ptr);
-			else if (InMediumRange(static_cast<byte*>(_ptr)))
+			if (InMediumRange(static_cast<byte*>(_ptr)))
 				MediumBlockAlloc._aligned_free(_ptr);
 			else if (InLargeRange(static_cast<byte*>(_ptr)))
 				LargeBlockAlloc._aligned_free(_ptr);
@@ -897,26 +902,26 @@ namespace FlexKit
 
 		bool InSmallRange(byte* a_ptr)
 		{
-			byte* bottom = (byte*)(SmallBlockAlloc.Blocks);
-			byte* top    = ((byte*)SmallBlockAlloc.Blocks) + Small;
+			size_t bottom = (size_t)(Buffer_ptr);
+			size_t top    = (size_t)(Buffer_ptr) + Small;
 
-			return (bottom <= a_ptr) && (a_ptr < top);
+			return (bottom <= (size_t)a_ptr) && ((size_t)a_ptr < top);
 		}
 
 		bool InMediumRange(byte* a_ptr)
 		{
-			byte* bottom = ((byte*)MediumBlockAlloc.Blocks);
-			byte* top    = ((byte*)MediumBlockAlloc.Blocks) + Medium;
+			size_t bottom = ((size_t)Buffer_ptr) + Small;
+			size_t top    = ((size_t)Buffer_ptr) + Small + Medium;
 
-			return(bottom <= a_ptr && a_ptr < top);
+			return(bottom <= (size_t)a_ptr && (size_t)a_ptr < top);
 		}
 
 		bool InLargeRange(byte* a_ptr)
 		{
-			byte* bottom = ((byte*)LargeBlockAlloc.Blocks);
-			byte* top    = ((byte*)LargeBlockAlloc.Blocks) + Large;
+			size_t bottom = ((size_t)Buffer_ptr) + Small + Medium;
+			size_t top    = ((size_t)Buffer_ptr) + Small + Medium + Large;
 
-			return(bottom <= a_ptr && a_ptr < top);
+			return(bottom <= (size_t)a_ptr && (size_t)a_ptr < top);
 		}
 
 		BlockAllocatorStats GetStats() const

@@ -489,6 +489,8 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 	connect(timer, &QTimer::timeout,
 		[&]()
 		{
+			previewWindow->ProcessMessages();
+
 			/*
 			if (isVisible())
 			{
@@ -508,8 +510,8 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 					}
 				}
 			}
-			timer->start(100ms);
 			*/
+			timer->start(100ms);
 		});
 
 	timer->setTimerType(Qt::PreciseTimer);

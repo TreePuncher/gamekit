@@ -55,7 +55,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
+	
 	UAVBuffer::UAVBuffer(const RenderSystem& rs, const ResourceHandle handle, const size_t IN_stride, const size_t IN_offset)
 	{
 		FK_ASSERT(IN_offset < std::numeric_limits<uint32_t>::max());
@@ -572,12 +572,10 @@ namespace FlexKit
 		const size_t UserIdx	= handles[Handle];
 		auto& buffer			= buffers[UserIdx];
 
-		const uint64_t current = renderSystem->directFence->GetCompletedValue();
 		buffer.locks[buffer.currentRes] = renderSystem->GetCurrentCounter();
 		buffer.currentRes = (buffer.currentRes + 1) % 3;
 
-		//renderSystem->WaitFor(buffer.locks[buffer.currentRes]);
-		renderSystem->WaitForGPU();
+		renderSystem->WaitFor(buffer.locks[buffer.currentRes]);
 
 		char* mapped_Ptr	= nullptr;
 		auto HR				= buffer.resources[buffer.currentRes]->Map(0, nullptr, (void**)&mapped_Ptr);
@@ -3441,6 +3439,7 @@ namespace FlexKit
 
 		UpdateResourceStates();
 
+		end = Min(renderSystem->GetResourceSize(UAV), end);
 		uint2 range{ begin / 16, end / 16};
 
 		auto PSO = renderSystem->GetPSO(CLEARBUFFERPSO);
@@ -3451,7 +3450,7 @@ namespace FlexKit
 		DeviceContext->SetComputeRootUnorderedAccessView(1, renderSystem->GetDeviceResource(UAV)->GetGPUVirtualAddress());
 
 		auto resourceSize = renderSystem->GetResourceSize(UAV);
-		DeviceContext->Dispatch(UINT(ceil(Min(resourceSize, end - begin)/ 1024.0f)), 1, 1);
+		DeviceContext->Dispatch(UINT(ceil(Min(resourceSize, end - begin) / 1024.0f)), 1, 1);
 
 		if(CurrentComputeRootSignature)
 			DeviceContext->SetComputeRootSignature(*CurrentComputeRootSignature);
@@ -6391,9 +6390,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::UpdateTextureTileMappings(const ResourceHandle handle, std::span<const TileMapping> tileMaps)
+	void RenderSystem::UpdateTextureTileMappings(const ResourceHandle handle, std::span<const TileMapping> tileMaps, iAllocator& temp)
 	{
-		Textures.UpdateTileMappings(handle, tileMaps.data(), tileMaps.data() + tileMaps.size());
+		Textures.UpdateTileMappings(handle, tileMaps.data(), tileMaps.data() + tileMaps.size(), temp);
 	}
 
 
@@ -8178,7 +8177,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ResourceStateTable::UpdateTileMappings(ResourceHandle handle, const TileMapping* begin, const TileMapping* end)
+	void ResourceStateTable::UpdateTileMappings(ResourceHandle handle, const TileMapping* begin, const TileMapping* end, iAllocator& temp)
 	{
 		if (handle == InvalidHandle)
 			return;
@@ -8189,7 +8188,7 @@ namespace FlexKit
 		auto UserIdx	= Handles[handle];
 		auto& mappings	= UserEntries[UserIdx].tileMappings;
 
-		TileMapList newElements{ allocator };
+		Vector<TileMapping, 256> newElements{ temp };
 
 		std::sort(mappings.begin(), mappings.end(),
 			[](const auto& lhs, const auto& rhs)
@@ -8216,6 +8215,8 @@ namespace FlexKit
 				else
 					newElements.push_back(updatedTile);
 			});
+
+		mappings.reserve(mappings.size() + newElements.size());
 
 		for (auto& e : newElements)
 			mappings.push_back(e);

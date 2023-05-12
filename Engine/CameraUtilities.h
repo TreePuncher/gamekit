@@ -118,6 +118,10 @@ namespace FlexKit
 		GameObject&		gameObject,
 		const float3	xyz);
 
+	void OrbitCameraPitch(
+		GameObject& gameObject,
+		const float	t);
+
 	void OrbitCameraYaw(
 		GameObject&		gameObject,
 		const float		t);

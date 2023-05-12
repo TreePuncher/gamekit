@@ -160,7 +160,7 @@ namespace FlexKit
 	ID3D12PipelineState* TextureStreamingEngine::CreateTextureFeedbackPassPSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("Forward_VS",				"vs_6_0", R"(assets\shaders\TextureFeedback\TextureFeedback_VS.hlsl)");
-		auto PShader = RS->LoadShader("TextureFeedback_PS",		"ps_6_5", R"(assets\shaders\TextureFeedback\TextureFeedback.hlsl)", ShaderOptions{ .enable16BitTypes = true, .hlsl2021 = true });
+		auto PShader = RS->LoadShader("TextureFeedback_PS",		"ps_6_5", R"(assets\shaders\TextureFeedback\TextureFeedback.hlsl)");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -207,7 +207,7 @@ namespace FlexKit
 	ID3D12PipelineState* TextureStreamingEngine::CreateTextureFeedbackAnimatedPassPSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("ForwardSkinned_VS", "vs_6_0", R"(assets\shaders\TextureFeedback\TextureFeedback_VS.hlsl)");
-		auto PShader = RS->LoadShader("TextureFeedback_PS", "ps_6_2", R"(assets\shaders\TextureFeedback\TextureFeedback.hlsl)", ShaderOptions{ .enable16BitTypes = true, .hlsl2021 = true });
+		auto PShader = RS->LoadShader("TextureFeedback_PS", "ps_6_2", R"(assets\shaders\TextureFeedback\TextureFeedback.hlsl)");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -596,13 +596,9 @@ namespace FlexKit
 		const GatherPassesTask&         pvs;
 		ReserveConstantBufferFunction   reserveCB;
 
-		FrameResourceHandle             feedbackBuffers[2];
+		FrameResourceHandle             feedbackBuffer;
 
 		FrameResourceHandle             feedbackDepth;
-		FrameResourceHandle             feedbackCounters;
-		FrameResourceHandle             feedbackBlockSizes;
-		FrameResourceHandle             feedbackBlockOffsets;
-
 		ReadBackResourceHandle          readbackBuffer;
 	};
 
@@ -695,18 +691,14 @@ namespace FlexKit
 				auto depthBufferDesc = GPUResourceDesc::DepthTarget({ 128, 128 }, DeviceFormat::D32_FLOAT);
 				depthBufferDesc.denyShaderUsage = true;
 
-				data.feedbackBuffers[1]			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4 * MEGABYTE), DASUAV, VirtualResourceScope::Frame);
-				data.feedbackBuffers[0]			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4 * MEGABYTE), DASCommon, VirtualResourceScope::Frame);
-				data.feedbackCounters			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DASUAV, VirtualResourceScope::Frame);
-				data.feedbackBlockSizes			= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DASUAV, VirtualResourceScope::Frame);
-				data.feedbackBlockOffsets		= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(sizeof(uint32_t) * 512), DASUAV, VirtualResourceScope::Frame);
-				data.feedbackDepth				= builder.AcquireVirtualResource(depthBufferDesc, DASDEPTHBUFFERWRITE, VirtualResourceScope::Frame);
+				data.feedbackBuffer	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4 * MEGABYTE), DASUAV, VirtualResourceScope::Frame);
+				data.feedbackDepth	= builder.AcquireVirtualResource(depthBufferDesc, DASDEPTHBUFFERWRITE, VirtualResourceScope::Frame);
 			},
 			[=](TextureFeedbackPass_Data& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
 				ctx.ClearDepthBuffer(resources.GetResource(data.feedbackDepth), 1.0f);
-				ctx.ClearUAVBufferRange(resources.GetResource(data.feedbackCounters), 0, 4096);
-				ctx.ClearUAVBufferRange(resources.UAV(data.feedbackBuffers[0], ctx), 0, MEGABYTE);
+				ctx.ClearUAVBufferRange(resources.UAV(data.feedbackBuffer, ctx), 0, 4 * MEGABYTE);
+				ctx.AddUAVBarrier(resources.GetResource(data.feedbackBuffer));
 			});
 
 
@@ -737,15 +729,11 @@ namespace FlexKit
 
 		auto staticPassSetupFn = [&](FrameGraphNodeBuilder& builder, TextureFeedbackPass_Data& data)
 		{
-			auto depthBufferDesc			= GPUResourceDesc::DepthTarget({ 128, 128 }, DeviceFormat::D32_FLOAT);
-			depthBufferDesc.denyShaderUsage = true;
-
 			builder.AddDataDependency(passes);
-			builder.ReadConstantBuffer(brushConstants.constants);
+			builder.ReadConstantBuffer(brushConstants.constants); 
 
-			data.feedbackBuffers[0]			= builder.WriteTransition(initiateFeedbackPass.feedbackBuffers[0], DASUAV);
-			data.feedbackCounters			= builder.WriteTransition(initiateFeedbackPass.feedbackCounters, DASUAV);
-			data.feedbackDepth				= builder.WriteTransition(initiateFeedbackPass.feedbackDepth, DASDEPTHBUFFERWRITE);
+			data.feedbackBuffer	= builder.WriteTransition(initiateFeedbackPass.feedbackBuffer, DASUAV);
+			data.feedbackDepth	= builder.WriteTransition(initiateFeedbackPass.feedbackDepth, DASDEPTHBUFFERWRITE);
 		};
 
 		auto& feedbackPassRootSignature = this->feedbackPassRootSignature;
@@ -763,7 +751,7 @@ namespace FlexKit
 
 			const size_t bufferSize = AlignedSize<Camera::ConstantBuffer>();
 
-			CBPushBuffer passConstantBuffer		{ data.reserveCB(bufferSize) };
+			CBPushBuffer passConstantBuffer{ data.reserveCB(bufferSize) };
 
 			auto cameraConstantValues	= GetCameraConstants(data.camera);
 
@@ -785,7 +773,7 @@ namespace FlexKit
 			ctx.SetRenderTargets({}, true, resources.GetResource(data.feedbackDepth));
 
 			ctx.SetGraphicsConstantBufferView(0, cameraConstants);
-			ctx.SetGraphicsUnorderedAccessView(3, resources.GetResource(data.feedbackBuffers[0]));
+			ctx.SetGraphicsUnorderedAccessView(3, resources.GetResource(data.feedbackBuffer));
 			ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 
 			ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKPASS));
@@ -901,23 +889,19 @@ namespace FlexKit
 
 		auto animatedPassSetupFn = [&](FrameGraphNodeBuilder& builder, TextureFeedbackPass_Data& data)
 		{
-			auto depthBufferDesc			= GPUResourceDesc::DepthTarget({ 128, 128 }, DeviceFormat::D32_FLOAT);
-			depthBufferDesc.denyShaderUsage = true;
-
 			builder.ReadConstantBuffer(brushConstants.constants);
 			builder.AddNodeDependency(animationResources.node);
 			builder.AddDataDependency(passes);
 
-			data.feedbackBuffers[0]			= builder.WriteTransition(initiateFeedbackPass.feedbackBuffers[0], DASUAV);
-			data.feedbackCounters			= builder.WriteTransition(initiateFeedbackPass.feedbackCounters, DASUAV);
-			data.feedbackDepth				= builder.WriteTransition(initiateFeedbackPass.feedbackDepth, DASDEPTHBUFFERWRITE);
+			data.feedbackBuffer	= builder.WriteTransition(initiateFeedbackPass.feedbackBuffer, DASUAV);
+			data.feedbackDepth	= builder.WriteTransition(initiateFeedbackPass.feedbackDepth, DASDEPTHBUFFERWRITE);
 		};
 
 		auto animatedPassDrawFN = [&brushConstants, renderTargetWH, &feedbackPassRootSignature, &animationResources, &feedbackTable](const auto begin, const auto end, std::span<const PVEntry> pvs, TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
 		{
 			ctx.BeginEvent_DEBUG("Texture feedback pass");
 
-			const float bias = std::log2f(128.0f / renderTargetWH[0]);
+			const float bias = std::log2f(512.0f / renderTargetWH[0]);
 
 			auto& materials			= MaterialComponent::GetComponent();
 			auto& constantBuffer	= brushConstants.GetConstantBuffer();
@@ -946,7 +930,7 @@ namespace FlexKit
 			ctx.SetRenderTargets({}, true, resources.GetResource(data.feedbackDepth));
 
 			ctx.SetGraphicsConstantBufferView(0, cameraConstants);
-			ctx.SetGraphicsUnorderedAccessView(3, resources.GetResource(data.feedbackBuffers[0]));
+			ctx.SetGraphicsUnorderedAccessView(3, resources.GetResource(data.feedbackBuffer));
 			ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 
 			ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKANIMATEDPASS));
@@ -1076,25 +1060,17 @@ namespace FlexKit
 			[&](FrameGraphNodeBuilder& builder, TextureFeedbackPass_Data& data)
 			{
 				builder.AddDataDependency(passes);
-
-				auto depthBufferDesc = GPUResourceDesc::DepthTarget({ 128, 128 }, DeviceFormat::D32_FLOAT);
-				depthBufferDesc.denyShaderUsage = true;
-
-				data.feedbackBuffers[0]			= builder.WriteTransition(initiateFeedbackPass.feedbackBuffers[0],		DASCopySrc);
-				data.feedbackBuffers[1]			= builder.WriteTransition(initiateFeedbackPass.feedbackBuffers[1],		DASUAV);
-				data.feedbackCounters			= builder.WriteTransition(initiateFeedbackPass.feedbackCounters,		DASUAV);
-				data.feedbackBlockSizes			= builder.WriteTransition(initiateFeedbackPass.feedbackBlockSizes,		DASUAV);
-				data.feedbackBlockOffsets		= builder.WriteTransition(initiateFeedbackPass.feedbackBlockOffsets,	DASUAV);
-
 				builder.ReadBack(feedbackReturnBuffer);
-				data.readbackBuffer = feedbackReturnBuffer;
+
+				data.feedbackBuffer	= builder.WriteTransition(initiateFeedbackPass.feedbackBuffer,	DASCopySrc);
+				data.readbackBuffer	= feedbackReturnBuffer;
 			},
 			[=, &feedbackTable](TextureFeedbackPass_Data& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
 				ctx.BeginEvent_DEBUG("Copy Out Results");
 
 				// Write out
-				auto src = resources.CopySrc(data.feedbackBuffers[0], ctx);
+				auto src = resources.CopySrc(data.feedbackBuffer, ctx);
 				auto dst = resources.GetDeviceResource(data.readbackBuffer);
 
 				ctx.CopyBufferRegion(dst, src, feedbackTable.offsets * 4);
@@ -1132,6 +1108,11 @@ namespace FlexKit
 		EXITSCOPE(textureStreamEngine.renderSystem.CloseReadBackBuffer(resource));
 		EXITSCOPE(textureStreamEngine.updateInProgress = false);
 		EXITSCOPE(textureStreamEngine.pendingResults.Reset());
+		EXITSCOPE(
+			FK_LOG_INFO("Tiles Updated!");
+			FK_LOG_INFO("Tiles in use: %u", textureStreamEngine.TilesAllocated());
+		);
+		
 
 		std::chrono::high_resolution_clock Clock;
 		auto Before = Clock.now();
@@ -1233,8 +1214,10 @@ namespace FlexKit
 			}
 		}
 
+		FK_LOG_INFO("Request Size: %u", requests.size());
+
 		const auto stateUpdateRes	= textureStreamEngine.UpdateTileStates(requests.begin(), requests.end(), &threadLocalAllocator);
-		const auto blockAllocations	= textureStreamEngine.AllocateTiles(stateUpdateRes.begin(), stateUpdateRes.end());
+		const auto blockAllocations	= textureStreamEngine.AllocateTiles(stateUpdateRes.begin(), stateUpdateRes.end(), threadLocalAllocator);
 
 		if(blockAllocations)
 			textureStreamEngine.PostUpdatedTilesAsync(blockAllocations, threadLocalAllocator);
@@ -1357,7 +1340,7 @@ namespace FlexKit
 				mappings.push_back(mapping);
 			}
 
-			renderSystem.UpdateTextureTileMappings(resource, mappings);
+			renderSystem.UpdateTextureTileMappings(resource, mappings, threadLocalAllocator);
 			updatedTextures.push_back(resource);
 		}
 
@@ -1431,10 +1414,9 @@ namespace FlexKit
 					tile);
 			}
 
-			renderSystem.UpdateTextureTileMappings(resource, mappings);
+			renderSystem.UpdateTextureTileMappings(resource, mappings, threadLocalAllocator);
 			updatedTextures.push_back(resource);
 		}
-
 
 		auto packedAllocations = blockChanges.packedAllocations;
 		// process newly allocated tiled blocks
@@ -1461,7 +1443,7 @@ namespace FlexKit
 			const auto startingLevel	= packedBlockInfo.startingLevel;
 			const auto endingLevel		= packedBlockInfo.endingLevel;
 
-			TileMapList mappings{ &threadLocalAllocator };
+			TileMapList mappings{ threadLocalAllocator };
 
 			mappings.push_back(
 				TileMapping{
@@ -1485,19 +1467,16 @@ namespace FlexKit
 				ctx.CopyTextureRegion(deviceResource, level, { 0, 0, 0 }, tile, MIPLevelInfo.WH, streamContext.Format());
 			}
 
-			renderSystem.UpdateTextureTileMappings(resource, mappings);
+			renderSystem.UpdateTextureTileMappings(resource, mappings, threadLocalAllocator);
 			updatedTextures.push_back(resource);
 			mappings.clear();
 		}
 
 		// Submit Texture tiling changes
-		std::sort(std::begin(updatedTextures), std::end(updatedTextures));
+		std::ranges::sort(updatedTextures);
 
-		updatedTextures.erase(
-			std::unique(
-				std::begin(updatedTextures),
-				std::end(updatedTextures)),
-			std::end(updatedTextures));
+		auto erased = std::ranges::unique(updatedTextures);
+		updatedTextures.resize(updatedTextures.size() - erased.size());
 
 		renderSystem.SyncUploadTo(renderSystem.SyncDirectTicket());
 		renderSystem.SubmitTileMappings(updatedTextures, &threadLocalAllocator);
@@ -1567,7 +1546,7 @@ namespace FlexKit
 				mappings.push_back(mapping);
 			}
 
-			renderSystem.UpdateTextureTileMappings(resource, mappings);
+			renderSystem.UpdateTextureTileMappings(resource, mappings, threadLocalAllocator);
 			updatedTextures.push_back(resource);
 		}
 
@@ -1641,7 +1620,7 @@ namespace FlexKit
 					tile);
 			}
 
-			renderSystem.UpdateTextureTileMappings(resource, mappings);
+			renderSystem.UpdateTextureTileMappings(resource, mappings, threadLocalAllocator);
 			updatedTextures.push_back(resource);
 		}
 
@@ -1695,7 +1674,7 @@ namespace FlexKit
 				ctx.CopyTextureRegion(deviceResource, level, { 0, 0, 0 }, tile, MIPLevelInfo.WH, streamContext.Format());
 			}
 
-			renderSystem.UpdateTextureTileMappings(resource, mappings);
+			renderSystem.UpdateTextureTileMappings(resource, mappings, threadLocalAllocator);
 			updatedTextures.push_back(resource);
 			mappings.clear();
 		}
@@ -1970,10 +1949,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	BlockAllocation TextureStreamingEngine::AllocateTiles(const gpuTileID* begin, const gpuTileID* end)
+	BlockAllocation TextureStreamingEngine::AllocateTiles(const gpuTileID* begin, const gpuTileID* end, iAllocator& allocator)
 	{
 		return textureBlockAllocator.AllocateBlocks({ begin, end }, allocator);
 	}
+
+	size_t TextureStreamingEngine::TilesAllocated() const noexcept
+	{
+		return textureBlockAllocator.inuse.size();
+	}
+
 
 
 	/************************************************************************************************/
@@ -2022,7 +2007,7 @@ namespace FlexKit
 			.heapOffset	= allocation.packedAllocations.front().tileIdx,
 		} };
 
-		renderSystem.UpdateTextureTileMappings(textureResource, { mapping, 1 });
+		renderSystem.UpdateTextureTileMappings(textureResource, { mapping, 1 }, *allocator);
 		renderSystem.SubmitTileMappings({ &textureResource, &textureResource + 1 }, allocator);
 	}
 

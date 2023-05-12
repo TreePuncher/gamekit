@@ -200,8 +200,14 @@ namespace FlexKit
 
 			reserve(RHS.size());
 
-			for (const auto& E : RHS)
-				push_back(E);
+			if constexpr (std::is_pod_v<Ty>)
+			{
+				memcpy(A, RHS.data(), RHS.ByteSize());
+				Size = RHS.size();
+			}
+			else
+				for (const auto& E : RHS)
+					push_back(E);
 		}
 
 		template<size_t rhsSize, typename rhsSizeType>
@@ -216,8 +222,14 @@ namespace FlexKit
 
 			reserve(RHS.size());
 
-			for (const auto& E : RHS)
-				push_back(E);
+			if constexpr (std::is_pod_v<Ty>)
+			{
+				memcpy(A, RHS.data(), RHS.ByteSize());
+				Size = RHS.size();
+			}
+			else
+				for (const auto& E : RHS)
+					push_back(E);
 		}
 
 		template<TYSize rhsSize, typename rhsSizeType>
@@ -657,7 +669,7 @@ namespace FlexKit
 			if (I == end())
 				return;
 
-			*I = back();
+			*I = std::move(back());
 			pop_back();
 		}
 
@@ -1273,12 +1285,12 @@ namespace FlexKit
 
 		bool push_back(Ty&& Item) noexcept
 		{
+			if (_Size + 1 > SIZE)// Call Destructor on Tail
+				back().~Ty();
+
 			_Size = Min(++_Size, SIZE);
 			size_t idx = _Head++;
 			_Head = _Head % SIZE;
-
-			if (_Size + 1 > SIZE)// Call Destructor on Tail
-				Buffer[idx].~Ty();
 
 			new(Buffer + idx) Ty(std::move(Item));
 
@@ -1305,15 +1317,15 @@ namespace FlexKit
 		template<typename FN>
 		bool push_back(Ty&& Item, FN callOnTail) noexcept
 		{
-			_Size = Min(++_Size, SIZE);
-			size_t idx = _Head++;
-			_Head = _Head % SIZE;
-
 			if (_Size + 1 > SIZE)// Call Destructor on Tail
 			{
 				callOnTail(back());
-				Buffer[idx].~Ty();
+				back().~Ty();
 			}
+
+			_Size = Min(++_Size, SIZE);
+			size_t idx = _Head++;
+			_Head = _Head % SIZE;
 
 			new(Buffer + idx) Ty(std::move(Item));
 
@@ -2671,7 +2683,26 @@ namespace FlexKit
 		char			buffer[STORAGESIZE - sizeof(VTable*)];
 	};
 
+	template<typename TY, typename ... TY_tail>
+	using GetHeadArg = TY;
 
+	template<typename TY, typename ... TY_tail>
+	using GetTailArgs = std::tuple<TY_tail...>;
+
+	template<typename TY>
+	struct impl_type
+	{
+		using type = TY;
+	};
+
+	template<typename ... TY_args>
+	struct impl_GetLast
+	{
+		using tail = typename decltype((impl_type<TY_args>{}, ...))::type;
+	};
+
+	template<typename ... TY_args>
+	using GetLastArg = impl_GetLast<TY_args...>::tail;
 }	// namespace FlexKit;
 	/************************************************************************************************/
 #endif

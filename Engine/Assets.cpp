@@ -1350,8 +1350,10 @@ namespace FlexKit
 
 	ReadContext::ReadContext(GUID_t IN_guid, ReadContextInterface* IN_ctx, iAllocator* IN_allocator) :
 		guid        { IN_guid   },
-		pimpl       { IN_ctx    },
-		allocator   { IN_allocator }{}
+		pimpl       { pimpl_ptr{ IN_ctx, CustomDeleter{ IN_allocator } } },
+		allocator   { IN_allocator }
+	{
+	}
 
 	ReadContext::~ReadContext()
 	{
@@ -1360,10 +1362,9 @@ namespace FlexKit
 
 	ReadContext& ReadContext::operator = (ReadContext&& rhs) noexcept
 	{
-		if (pimpl)
-			Release();
+		Release();
 
-		pimpl       = rhs.pimpl;
+		pimpl       = std::move(rhs.pimpl);
 		allocator   = rhs.allocator;
 		guid        = rhs.guid;
 
@@ -1394,10 +1395,7 @@ namespace FlexKit
 
 	void ReadContext::Release()
 	{
-		if (pimpl)
-			allocator->release(*pimpl);
-
-		pimpl       = nullptr;
+		pimpl.reset();
 		allocator   = nullptr;
 		guid        = INVALIDHANDLE;
 	}

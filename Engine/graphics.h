@@ -3024,7 +3024,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void				SetBufferedIdx(ResourceHandle handle, uint32_t idx);
 		void				SetDebugName(ResourceHandle handle, const char* str);
 
-		void				UpdateTileMappings(ResourceHandle handle, const TileMapping* begin, const TileMapping* end);
+		void				UpdateTileMappings(ResourceHandle handle, const TileMapping* begin, const TileMapping* end, iAllocator& temp);
 		const TileMapList&	GetTileMappings(const ResourceHandle handle) const;
 		TileMapList&		_GetTileMappings(const ResourceHandle handle);
 
@@ -3780,8 +3780,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		uint2			GetHeapOffset(ResourceHandle Handle, uint subResourceID = 0) const;
 
 		void				SubmitTileMappings(std::span<ResourceHandle> resources, iAllocator* allocator);
-		void				UpdateTextureTileMappings(const ResourceHandle Handle, std::span<const TileMapping>);
-		const TileMapList& GetTileMappings(const ResourceHandle Handle);
+		void				UpdateTextureTileMappings(const ResourceHandle Handle, std::span<const TileMapping>, iAllocator& temp);
+		const TileMapList&	GetTileMappings(const ResourceHandle Handle);
 
 
 		TextureDimension	GetTextureDimension(ResourceHandle handle) const;

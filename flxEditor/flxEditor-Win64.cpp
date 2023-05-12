@@ -26,6 +26,9 @@ int EditorMain(int argc, char* argv[])
 
 	auto ret = qtApplication->exec();
 
+	std::cout << "Editor Memory Stats\n";
+	FlexKit::PrintBlockStatus(&editor->fkApplication.GetCore().GetBlockMemory());
+
 	editor.reset();
 
 	return ret;

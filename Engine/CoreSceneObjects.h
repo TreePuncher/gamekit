@@ -147,8 +147,9 @@ namespace FlexKit
 		{
 			MaterialProperties	MP;
 			float4x4			Transform;
-			uint32_t			textures;
-			uint32_t			padding[3];
+			uint32_t			textureCount;
+			uint32_t			textureChannels;
+			uint32_t			padding[2];
 			uint4				textureHandles[16];
 		};
 

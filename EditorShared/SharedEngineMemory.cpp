@@ -31,10 +31,11 @@ SharedEngineMemory* InitiateSharedMemory(shared_memory_object& obj)
 	BAdesc.LargeBlock	= BLOCKALLOCSIZE / 2;
 	BAdesc._ptr			= buffer + (64 - ((size_t)buffer % 64));
 
-	sharedMemory->blockAllocator.Init(BAdesc);
+	sharedMemory->sharedAllocator.Init(BAdesc);
 	sharedMemory->components	= &sharedMemory->blockAllocator.allocate<SharedComponents>(sharedMemory->blockAllocator);
 	sharedMemory->inputQueue	= InterProcessQueue<FlexKit::Vector<std::byte>>{ sharedMemory->blockAllocator };
 	sharedMemory->outputQueue	= InterProcessQueue<FlexKit::Vector<std::byte>>{ sharedMemory->blockAllocator };
+	sharedMemory->responders	= FlexKit::Vector<std::unique_ptr<ResponseInterface>>{ sharedMemory->blockAllocator };
 
 	return sharedMemory;
 }
